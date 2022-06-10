@@ -1,0 +1,7 @@
+use test;
+create table tt (v1 int, v2 int, v3 int) ENGINE=STONEDB;
+insert into tt values (20, 30, 40);
+select * from tt where (v1 = 20) OR ((v1 <=> 80) OR (v2 = 70) AND (v3 = 60)) AND (1);
+v1	v2	v3
+20	30	40
+drop table tt;

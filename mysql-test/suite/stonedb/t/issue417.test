@@ -1,0 +1,5 @@
+use test;
+create table ttime (val time) ENGINE=STONEDB;
+insert into ttime values ('12:15:03'), ('18:30:20');
+select (val between '12:00:00' and '12:30:00') as agval from ttime;
+drop table ttime;

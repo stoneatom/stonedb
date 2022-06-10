@@ -1,0 +1,27 @@
+use test;
+CREATE TABLE `select_base_with_primary_key` (
+`pk` bigint(11) NOT NULL AUTO_INCREMENT,
+`varchar_test` varchar(255) DEFAULT NULL,
+`integer_test` int(11) DEFAULT NULL,
+`char_test` char(255) DEFAULT NULL,
+`tinyint_test` tinyint(4) DEFAULT NULL,
+`tinyint_1bit_test` tinyint(1) DEFAULT NULL,
+`smallint_test` smallint(6) DEFAULT NULL,
+`mediumint_test` mediumint(9) DEFAULT NULL,
+`bigint_test` bigint(20) DEFAULT NULL,
+`double_test` double DEFAULT NULL,
+`decimal_test` decimal(10,0) DEFAULT NULL,
+`date_test` date DEFAULT NULL,
+`time_test` time DEFAULT NULL,
+`datetime_test` datetime DEFAULT NULL,
+`timestamp_test` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+`year_test` year(4) DEFAULT NULL,
+PRIMARY KEY (`pk`)
+) ENGINE=STONEDB DEFAULT CHARSET=gbk;
+insert into select_base_with_primary_key values (11, 'abcde', 123, 'char', 3, 1, 23, 32, 332, 1.4, 25, '2017-11-11', '11:11:11', '2017-11-11 11:11:11', 1, 2017);
+Warnings:
+Warning	1265	Data truncated for column 'timestamp_test' at row 1
+select 'aa' as ag_column1,  !( tinyint_1bit_test )as ag_column2, 1 as ag_column3,min((smallint_test +  smallint_test) =11)as ag_column_fun  from select_base_with_primary_key    GROUP BY  ag_column1,ag_column2  asc,ag_column3   having ag_column_fun<= 37 order by  ag_column1    ,ag_column2    asc,ag_column3    asc,ag_column_fun;
+ag_column1	ag_column2	ag_column3	ag_column_fun
+aa	0	1	0
+drop table select_base_with_primary_key;

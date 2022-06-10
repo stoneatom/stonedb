@@ -1,0 +1,6 @@
+use test;
+create table tt(a int, b int) ENGINE=STONEDB;
+insert into tt values (3, 4);
+select * from tt where (a >= 3) AND (b = 5 AND a > 2 OR 0);
+a	b
+drop table tt;

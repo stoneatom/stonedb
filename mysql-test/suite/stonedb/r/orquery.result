@@ -1,0 +1,11 @@
+use test;
+CREATE TABLE `test_or` (
+`id` int(11) DEFAULT NULL,
+`age` int(11) DEFAULT NULL
+) ENGINE=STONEDB;
+insert into test_or values(1,1);
+insert into test_or values(2,2);
+select count(*) from test_or where id=1 or age=2;
+count(*)
+2
+drop table test_or;

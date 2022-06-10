@@ -1,0 +1,5 @@
+use test;
+create table tlike (val varchar(255)) ENGINE=STONEDB;
+insert into tlike values ('abcde');
+select * from tlike where val like NULL;
+drop table tlike;

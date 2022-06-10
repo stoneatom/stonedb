@@ -1,0 +1,5 @@
+use test;
+create table jl (date_test date) ENGINE=STONEDB;
+insert into jl values ('2015-11-12');
+select ADDTIME(date_test, '1 1:1:1.00002') from jl;
+drop table jl;

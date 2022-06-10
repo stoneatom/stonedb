@@ -1,0 +1,33 @@
+--disable_warnings
+drop table if exists t1;
+--enable_warnings
+
+create table t1 (a date, b date, c date not null, d date)engine=stonedb;
+load data infile '../../std_data/loaddata1.dat' into table t1 fields terminated by ',';
+load data infile '../../std_data/loaddata1.dat' into table t1 fields terminated by ',' IGNORE 2 LINES;
+SELECT * from t1;
+show create table t1;
+drop table t1;
+
+CREATE TABLE `column_type_test` (
+ `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
+  `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
+  `c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
+  `c_int` int(11) DEFAULT NULL COMMENT 'int',
+  `c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
+  `c_float` float DEFAULT NULL COMMENT 'float',
+  `c_double` double DEFAULT NULL COMMENT 'double',
+  `c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+  `c_date` date DEFAULT NULL COMMENT 'date',
+  `c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
+  `c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+  `c_time` time DEFAULT NULL COMMENT 'time',
+  `c_char` char(10) DEFAULT NULL COMMENT 'char',
+  `c_varchar` varchar(10) DEFAULT NULL COMMENT 'varchar',
+  `c_blob` blob COMMENT 'blob',
+  `c_text` text COMMENT 'text',
+  `c_longblob` longblob COMMENT 'longblob'
+) ENGINE=StoneDB;
+load data infile '../../std_data/stonedb/loadfile' into table column_type_test fields terminated by '|';
+select * from column_type_test;
+drop table column_type_test;

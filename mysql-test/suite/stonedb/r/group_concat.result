@@ -1,0 +1,37 @@
+use test;
+CREATE TABLE `test_groupconcat_case` (
+`id` int(11) DEFAULT NULL,
+`name` text
+) ENGINE=STONEDB;
+insert into test_groupconcat_case values(1,'test');
+insert into test_groupconcat_case values(1,'test1');
+insert into test_groupconcat_case values(1,'test1');
+insert into test_groupconcat_case values(2,'test');
+insert into test_groupconcat_case values(3,'test1');
+insert into test_groupconcat_case values(2,'test2');
+select id,group_concat(name SEPARATOR ",") from test_groupconcat_case group by id;
+id	group_concat(name SEPARATOR ",")
+1	test,test1,test1
+2	test,test2
+3	test1
+select id,group_concat(name SEPARATOR ",") from test_groupconcat_case group by id order by id desc;
+id	group_concat(name SEPARATOR ",")
+3	test1
+2	test,test2
+1	test,test1,test1
+select id,group_concat(name SEPARATOR ":") from test_groupconcat_case group by id;
+id	group_concat(name SEPARATOR ":")
+1	test:test1:test1
+2	test:test2
+3	test1
+select id,group_concat(name order by name desc SEPARATOR ":") from test_groupconcat_case group by id;
+id	group_concat(name order by name desc SEPARATOR ":")
+1	test1:test1:test
+2	test2:test
+3	test1
+select id,group_concat(distinct name SEPARATOR ":") from test_groupconcat_case group by id;
+id	group_concat(distinct name SEPARATOR ":")
+1	test:test1
+2	test:test2
+3	test1
+drop table test_groupconcat_case;

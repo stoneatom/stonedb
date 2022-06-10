@@ -1,0 +1,15 @@
+use test;
+CREATE TABLE `auto_20` (
+`pk` bigint(11) NOT NULL AUTO_INCREMENT,
+`varchar_test` varchar(255) DEFAULT NULL,
+PRIMARY KEY (`pk`)
+) ENGINE=STONEDB DEFAULT CHARSET=gbk;
+insert into auto_20(varchar_test) values('changsha');
+insert into auto_20(varchar_test) values('aaaa');
+insert into auto_20(varchar_test) values('bbb');
+select * from auto_20;
+pk	varchar_test
+1	changsha
+2	aaaa
+3	bbb
+drop table auto_20;
