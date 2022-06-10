@@ -1,0 +1,8 @@
+use test;
+create table timehi (val time) ENGINE=STONEDB;
+insert into timehi values ('00:00:00'), ('01:15:39'), ('09:11:12'), ('20:30:29');
+select * from timehi where val >= '08:02:45';
+val
+09:11:12
+20:30:29
+drop table timehi;

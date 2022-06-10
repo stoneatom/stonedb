@@ -1,0 +1,5 @@
+use test;
+create table tt (date_test date) ENGINE=STONEDB;
+insert into tt values ('2010-02-22');
+select * from tt where (date_test<='2003-04-05')AND (date_test>='2011-06-22')OR  (date_test<='2012-12-13' );
+drop table tt;

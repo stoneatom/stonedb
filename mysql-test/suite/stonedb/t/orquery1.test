@@ -1,0 +1,10 @@
+use test;
+CREATE TABLE `test_or` (
+  `id` int(11) DEFAULT NULL,
+  `name` varchar(11) DEFAULT NULL
+) ENGINE=STONEDB;
+insert into test_or values(1,'1');
+insert into test_or values(2,'2');
+select count(*) from test_or where id=1 or name='2';
+drop table test_or;
+

@@ -1,0 +1,11 @@
+use test;
+CREATE TABLE `test_case` (
+  `id` int(11) DEFAULT NULL,
+  `name` text
+) ENGINE=STONEDB;
+insert into test_case values(1,'test');
+insert into test_case (name) values('test2');
+insert into test_case values(3,'test3');
+select concat(id,name) from test_case;
+drop table test_case;
+

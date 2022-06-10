@@ -1,0 +1,3 @@
+
+const char* mysql_compilation_comment = "build-@BUILD_NUMBER@";
+

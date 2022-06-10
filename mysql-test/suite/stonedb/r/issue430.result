@@ -1,0 +1,7 @@
+use test;
+create table tt2 (a tinyint(4), b smallint(6), c bigint(20)) ENGINE=STONEDB;
+insert into tt2 values (15, 20, 18), (1, 6, 4);
+select (a/b)/c as agf from tt2 group by agf;
+agf
+0.04166667
+drop table tt2;

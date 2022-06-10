@@ -1,0 +1,6 @@
+use test;
+create table tt (val time) ENGINE=STONEDB;
+insert into tt values ('06:34:12'), ('13:23:33');
+select * from tt where DATE(TIMESTAMP(val)) = CURDATE();
+select * from tt where DATE(TIMESTAMP(val, val)) = CURDATE();
+drop table tt;

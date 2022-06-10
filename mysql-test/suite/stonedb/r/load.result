@@ -1,0 +1,51 @@
+drop table if exists t1;
+create table t1 (a date, b date, c date not null, d date)engine=stonedb;
+load data infile '../../std_data/loaddata1.dat' into table t1 fields terminated by ',';
+load data infile '../../std_data/loaddata1.dat' into table t1 fields terminated by ',' IGNORE 2 LINES;
+Warnings:
+Note	1105	Query contains syntax that is unsupported and will be ignored.
+SELECT * from t1;
+a	b	c	d
+NULL	NULL	0000-00-00	0000-00-00
+0000-00-00	0000-00-00	0000-00-00	0000-00-00
+2003-03-03	2003-03-03	2003-03-03	NULL
+NULL	NULL	0000-00-00	0000-00-00
+0000-00-00	0000-00-00	0000-00-00	0000-00-00
+2003-03-03	2003-03-03	2003-03-03	NULL
+show create table t1;
+Table	Create Table
+t1	CREATE TABLE `t1` (
+  `a` date DEFAULT NULL,
+  `b` date DEFAULT NULL,
+  `c` date NOT NULL,
+  `d` date DEFAULT NULL
+) ENGINE=STONEDB DEFAULT CHARSET=latin1
+drop table t1;
+CREATE TABLE `column_type_test` (
+`c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
+`c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
+`c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
+`c_int` int(11) DEFAULT NULL COMMENT 'int',
+`c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
+`c_float` float DEFAULT NULL COMMENT 'float',
+`c_double` double DEFAULT NULL COMMENT 'double',
+`c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+`c_date` date DEFAULT NULL COMMENT 'date',
+`c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
+`c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+`c_time` time DEFAULT NULL COMMENT 'time',
+`c_char` char(10) DEFAULT NULL COMMENT 'char',
+`c_varchar` varchar(10) DEFAULT NULL COMMENT 'varchar',
+`c_blob` blob COMMENT 'blob',
+`c_text` text COMMENT 'text',
+`c_longblob` longblob COMMENT 'longblob'
+) ENGINE=StoneDB;
+load data infile '../../std_data/stonedb/loadfile' into table column_type_test fields terminated by '|';
+select * from column_type_test;
+c_tinyint	c_smallint	c_mediumint	c_int	c_bigint	c_float	c_double	c_decimal	c_date	c_datetime	c_timestamp	c_time	c_char	c_varchar	c_blob	c_text	c_longblob
+100	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	chenhui	hello	NULL	bcdefghijklmn	NULL
+101	101	101	101	101	5.2	10.88	101.08300	2016-02-25	2016-02-25 10:20:01	1985-08-11 09:10:25	10:20:01	chenhui	hello	NULL	bcdefghijklmn	NULL
+102	102	102	102	102	5.2	10.88	102.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	chenhui	hello	NULL	bcdefghijklmn	NULL
+103	103	103	103	103	5.2	10.88	103.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	chenhui	hello	NULL	bcdefghijklmn	NULL
+104	104	104	104	104	5.2	10.88	104.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	chenhui	hello	NULL	bcdefghijklmn	NULL
+drop table column_type_test;

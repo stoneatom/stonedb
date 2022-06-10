@@ -1,0 +1,97 @@
+use test;
+create table tt (date_test DATE, time_test TIME, datetime_test DATETIME, timestamp_test TIMESTAMP, year_test YEAR) ENGINE=STONEDB;
+insert into tt values ('2017-12-07', '02:03:04', '2017-12-08 05:06:07', '2018-11-08 09:10:11', '2020');
+select DATE(date_test) from tt;
+DATE(date_test)
+2017-12-07
+select DATE(datetime_test) from tt;
+DATE(datetime_test)
+2017-12-08
+select DATE(timestamp_test) from tt;
+DATE(timestamp_test)
+2018-11-08
+select DATE(year_test) from tt;
+DATE(year_test)
+NULL
+select ADDDATE(date_test, 31) from tt;
+ADDDATE(date_test, 31)
+2018-01-07
+select ADDTIME(time_test, time_test), ADDTIME(datetime_test, '200:11:12') from tt;
+ADDTIME(time_test, time_test)	ADDTIME(datetime_test, '200:11:12')
+04:06:08	2017-12-16 13:17:19
+select CONVERT_TZ(datetime_test, 'GMT', 'MET') from tt;
+CONVERT_TZ(datetime_test, 'GMT', 'MET')
+NULL
+select DATEDIFF(date_test, '2010-07-16'), DATEDIFF(datetime_test, '2008-08-08') from tt;
+DATEDIFF(date_test, '2010-07-16')	DATEDIFF(datetime_test, '2008-08-08')
+2701	3409
+select DATE_ADD(datetime_test, INTERVAL 12 HOUR) from tt;
+DATE_ADD(datetime_test, INTERVAL 12 HOUR)
+2017-12-08 17:06:07
+select DATE_ADD(timestamp_test, INTERVAL '12 10:11:12' DAY_SECOND) from tt;
+DATE_ADD(timestamp_test, INTERVAL '12 10:11:12' DAY_SECOND)
+2018-11-20 19:21:23
+select DATE_ADD(date_test, INTERVAL '13 20:20:20' DAY_SECOND) from tt;
+DATE_ADD(date_test, INTERVAL '13 20:20:20' DAY_SECOND)
+2017-12-20 20:20:20
+select DATE_SUB(datetime_test, INTERVAL 12 HOUR) from tt;
+DATE_SUB(datetime_test, INTERVAL 12 HOUR)
+2017-12-07 17:06:07
+select DATE_SUB(timestamp_test, INTERVAL '12 10:11:12' DAY_SECOND) from tt;
+DATE_SUB(timestamp_test, INTERVAL '12 10:11:12' DAY_SECOND)
+2018-10-26 22:58:59
+select DATE_SUB(date_test, INTERVAL '13 20:20:20' DAY_SECOND) from tt;
+DATE_SUB(date_test, INTERVAL '13 20:20:20' DAY_SECOND)
+2017-11-23 03:39:40
+select DATE_FORMAT(datetime_test, '%W %M %Y') from tt;
+DATE_FORMAT(datetime_test, '%W %M %Y')
+Friday December 2017
+select DATE_FORMAT(timestamp_test, '%W %M %Y') from tt;
+DATE_FORMAT(timestamp_test, '%W %M %Y')
+Thursday November 2018
+select DATE_FORMAT(date_test, '%W %M %Y') from tt;
+DATE_FORMAT(date_test, '%W %M %Y')
+Thursday December 2017
+select DAY(date_test), DAY(datetime_test), DAY(timestamp_test) from tt;
+DAY(date_test)	DAY(datetime_test)	DAY(timestamp_test)
+7	8	8
+select DAYNAME(date_test), DAYNAME(datetime_test), DAYNAME(timestamp_test) from tt;
+DAYNAME(date_test)	DAYNAME(datetime_test)	DAYNAME(timestamp_test)
+Thursday	Friday	Thursday
+select DAYOFWEEK(date_test), DAYOFWEEK(datetime_test), DAYOFWEEK(timestamp_test) from tt;
+DAYOFWEEK(date_test)	DAYOFWEEK(datetime_test)	DAYOFWEEK(timestamp_test)
+5	6	5
+select DAYOFYEAR(date_test), DAYOFYEAR(datetime_test), DAYOFYEAR(timestamp_test) from tt;
+DAYOFYEAR(date_test)	DAYOFYEAR(datetime_test)	DAYOFYEAR(timestamp_test)
+341	342	312
+SELECT EXTRACT(DAY_MINUTE FROM date_test), EXTRACT(DAY_MINUTE FROM datetime_test), EXTRACT(DAY_MINUTE FROM timestamp_test) from tt;
+EXTRACT(DAY_MINUTE FROM date_test)	EXTRACT(DAY_MINUTE FROM datetime_test)	EXTRACT(DAY_MINUTE FROM timestamp_test)
+70000	80506	80910
+select FROM_UNIXTIME(UNIX_TIMESTAMP(date_test)), FROM_UNIXTIME(UNIX_TIMESTAMP(datetime_test)), FROM_UNIXTIME(UNIX_TIMESTAMP(timestamp_test)) from tt;
+FROM_UNIXTIME(UNIX_TIMESTAMP(date_test))	FROM_UNIXTIME(UNIX_TIMESTAMP(datetime_test))	FROM_UNIXTIME(UNIX_TIMESTAMP(timestamp_test))
+2017-12-07 00:00:00	2017-12-08 05:06:07	2018-11-08 09:10:11
+select HOUR(date_test), HOUR(time_test), HOUR(datetime_test), HOUR(timestamp_test) from tt;
+HOUR(date_test)	HOUR(time_test)	HOUR(datetime_test)	HOUR(timestamp_test)
+0	2	5	9
+select TIME(date_test), TIME(time_test), TIME(datetime_test), TIME(timestamp_test) from tt;
+TIME(date_test)	TIME(time_test)	TIME(datetime_test)	TIME(timestamp_test)
+00:00:00	02:03:04	05:06:07	09:10:11
+select TIMESTAMP(date_test), TIMESTAMP(datetime_test), TIMESTAMP(timestamp_test) from tt;
+TIMESTAMP(date_test)	TIMESTAMP(datetime_test)	TIMESTAMP(timestamp_test)
+2017-12-07 00:00:00	2017-12-08 05:06:07	2018-11-08 09:10:11
+select TIMESTAMPADD(WEEK, 1, date_test), TIMESTAMPADD(WEEK, 1, time_test), TIMESTAMPADD(WEEK, 1, datetime_test), TIMESTAMPADD(WEEK, 1, timestamp_test) from tt;
+TIMESTAMPADD(WEEK, 1, date_test)	TIMESTAMPADD(WEEK, 1, time_test)	TIMESTAMPADD(WEEK, 1, datetime_test)	TIMESTAMPADD(WEEK, 1, timestamp_test)
+2017-12-14	170:03:04	2017-12-15 05:06:07	2018-11-15 09:10:11
+select TIMESTAMPDIFF(MINUTE, '2017-01-01', date_test), TIMESTAMPDIFF(MINUTE, '2017-01-01', datetime_test), TIMESTAMPDIFF(MINUTE, '2017-01-01', timestamp_test) from tt;
+TIMESTAMPDIFF(MINUTE, '2017-01-01', date_test)	TIMESTAMPDIFF(MINUTE, '2017-01-01', datetime_test)	TIMESTAMPDIFF(MINUTE, '2017-01-01', timestamp_test)
+489600	491346	973990
+select TIME_TO_SEC(time_test), TO_DAYS(date_test) from tt;
+TIME_TO_SEC(time_test)	TO_DAYS(date_test)
+7384	737035
+select TO_SECONDS(date_test), TO_SECONDS(datetime_test) from tt;
+TO_SECONDS(date_test)	TO_SECONDS(datetime_test)
+63679824000	63679928767
+select YEAR(date_test) from tt;
+YEAR(date_test)
+2017
+drop table tt;
