@@ -1,0 +1,16 @@
+use test;
+create table tt(val int) ENGINE=STONEDB;
+insert into tt values (12);
+select * from tt where null in (null);
+select * from tt where null not in (null);
+select * from tt where 42 in (null);
+select * from tt where 42 not in (null);
+select * from tt where null in (select * from tt where val > 42);
+select * from tt where null not in (select * from tt where val > 42);
+select * from tt where 42 in (select * from tt where val > 42);
+select * from tt where 42 not in (select * from tt where val > 42);
+select * from tt where 42 in (select null from tt where val > 42);
+select * from tt where 42 not in (select null from tt where val > 42);
+select * from tt where 42 in (select !null from tt where val > 42);
+select * from tt where 42 not in (select !null from tt where val > 42);
+drop table tt;

@@ -1,0 +1,14 @@
+use test;
+create table t1 (id int, name varchar(10) comment "LOOKUP") ENGINE=STONEDB;
+insert into t1 values (1, 'one');
+insert into t1 values (2, 'one');
+insert into t1 values (3, 'one');
+insert into t1 values (4, 'one');
+update t1 set name='two' where id=2;
+select * from t1;
+id	name
+1	one
+2	two
+3	one
+4	one
+drop table t1;

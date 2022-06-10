@@ -1,0 +1,9 @@
+use test;
+CREATE TABLE `test_case1` (
+`id` int(11) DEFAULT NULL,
+`age` int(11) DEFAULT NULL,
+`name` text
+) ENGINE=STONEDB;
+select id,case age when 2 then '1'  else name end from test_case1;
+id	case age when 2 then '1'  else name end
+drop table test_case1;

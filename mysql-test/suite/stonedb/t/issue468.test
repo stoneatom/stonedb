@@ -1,0 +1,6 @@
+use test;
+create table tt (e1 int, e2 int, e3 int, e4 int, e5 int, e6 int, e7 int, e8 int, e9 int) ENGINE=STONEDB;
+insert into tt values (1,1,1,0,0,0,0,1,0);
+select * from tt where (e1 AND ((e2 AND e3 AND (e4 OR e5)) OR e6) OR (e7 AND e8 AND e9));
+select * from tt where (e1 AND ((e2 AND e3 AND (e4 OR e5)) OR 0) OR (e7 AND e8 AND e9));
+drop table tt;

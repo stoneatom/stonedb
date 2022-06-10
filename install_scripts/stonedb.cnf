@@ -1,0 +1,177 @@
+[client]
+port = 3306
+socket          = /stonedb56/install/tmp/mysql.sock
+
+[mysqld]
+#disable-getopt-prefix-matching
+skip-grant-tables
+port = 3306
+socket          = /stonedb56/install/tmp/mysql.sock
+datadir         = /stonedb56/install/data
+pid-file=/stonedb56/install/data/mysqld.pid
+log-error=/stonedb56/install/log/mysqld.log
+local-infile
+
+
+
+#log-basename=mysqld
+#debug-no-sync
+
+# Retry bind as this may fail on busy server
+#port-open-timeout=10
+#plugin-load-add=ha_connect.so 
+
+lock_wait_timeout=120
+
+max_connections=100
+concurrent_insert=2
+#deadlock_search_depth_short = 3
+#deadlock_search_depth_long = 10
+#deadlock_timeout_long = 10000000
+#deadlock_timeout_short = 5000
+
+slow-query-log = 1
+slow_query_log_file=/stonedb56/install/log/slow.log
+long_query_time=5
+max_binlog_size=1024M
+sync_binlog=0
+log-bin=/stonedb56/install/binlog/binlog
+expire_logs_days=1
+#log_bin_compress=1
+#log_bin_compress_min_len=256
+
+binlog_format=statement
+
+wait_timeout=3600
+interactive_timeout=3600
+connect_timeout=360
+net_read_timeout=360
+net_write_timeout=360
+
+skip-external-locking
+loose-key_buffer_size = 512M
+max_allowed_packet = 512M
+loose-table_cache = 512
+loose-sort_buffer_size = 4M
+loose-read_buffer_size = 4M
+loose-read_rnd_buffer_size = 16M
+loose-thread_cache_size = 8
+loose-query_cache_size = 0
+# Try number of CPU's*2 for thread_concurrency
+#thread_concurrency = 8
+thread_stack = 512K
+lower_case_table_names=0
+group_concat_max_len=512
+sql_mode="ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION"
+
+basedir                         = /stonedb56/install/
+character-sets-dir              = /stonedb56/install/share/charsets/
+lc-messages-dir                 = /stonedb56/install/share/
+plugin_dir                      = /stonedb56/install/lib/plugin
+
+open_files_limit = 65535
+server-id = 1
+
+# Point the following paths to different dedicated disks
+tmpdir          = /stonedb56/install/tmp/
+
+# Uncomment the following if you are using innodb tables
+loose-innodb_data_home_dir = /stonedb56/install/data/innodb
+loose-innodb_data_file_path = ibdata1:2000M;ibdata2:10M:autoextend
+loose-innodb_buffer_pool_size=    512M
+loose-innodb_lru_scan_depth=      100
+loose-innodb_write_io_threads=    2
+loose-innodb_read_io_threads=     2
+loose-innodb_log_buffer_size=     1M
+loose-innodb_log_file_size=       1000M
+loose-innodb_log_files_in_group=  2
+loose-innodb_log_group_home_dir = /stonedb56/install/data/innodb
+loose-innodb-stats-persistent=    OFF
+loose-innodb_lock_wait_timeout = 50
+
+slave-net-timeout=120
+
+# MAINTAINER:
+# the loose- syntax is to make sure the cnf file is also
+# valid when building without the performance schema.
+
+# Run tests with the performance schema instrumentation
+loose-enable-performance-schema
+# Run tests with a small number of instrumented objects
+# to limit memory consumption with MTR
+loose-performance-schema-accounts-size=100
+loose-performance-schema-digests-size=200
+loose-performance-schema-hosts-size=100
+loose-performance-schema-users-size=100
+loose-performance-schema-max-mutex-instances=5000
+loose-performance-schema-max-rwlock-instances=5000
+loose-performance-schema-max-cond-instances=1000
+loose-performance-schema-max-file-instances=10000
+loose-performance-schema-max-socket-instances=1000
+loose-performance-schema-max-table-instances=500
+loose-performance-schema-max-table-handles=1000
+
+loose-performance-schema-events-waits-history-size=10
+loose-performance-schema-events-waits-history-long-size=10000
+loose-performance-schema-events-stages-history-size=10
+loose-performance-schema-events-stages-history-long-size=1000
+loose-performance-schema-events-statements-history-size=10
+loose-performance-schema-events-statements-history-long-size=1000
+loose-performance-schema-max-thread-instances=200
+loose-performance-schema-session-connect-attrs-size=2048
+
+# Enable everything, for maximun code exposure during testing
+
+loose-performance-schema-instrument='%=ON'
+
+loose-performance-schema-consumer-events-stages-current=ON
+loose-performance-schema-consumer-events-stages-history=ON
+loose-performance-schema-consumer-events-stages-history-long=ON
+loose-performance-schema-consumer-events-statements-current=ON
+loose-performance-schema-consumer-events-statements-history=ON
+loose-performance-schema-consumer-events-statements-history-long=ON
+loose-performance-schema-consumer-events-waits-current=ON
+loose-performance-schema-consumer-events-waits-history=ON
+loose-performance-schema-consumer-events-waits-history-long=ON
+loose-performance-schema-consumer-global-instrumentation=ON
+loose-performance-schema-consumer-thread-instrumentation=ON
+
+binlog-direct-non-transactional-updates
+
+default-storage-engine=MyISAM
+#use_stat_tables=preferably
+
+# here, at the end of [mysqld] group mtr will automatically disable
+# all optional plugins.
+
+[embedded]
+# mtr automatically adds [embedded] group at the end and copies [mysqld]
+# and [mysqld.1] groups into it.
+# but we want [server] group to be after [mysqld] (and its copies).
+# create a non-empty [embedded] group here, to force it before [server]
+local-infile
+
+[server]
+# Aria is optional, but it must be enabled if it's used for temporary
+# tables.  Let's enable it in the [server] group, because this group
+# is read after [mysqld] and [embedded]
+#loose-loog
+
+[mysqldump]
+quick
+max_allowed_packet = 512M
+
+[mysql]
+no-auto-rehash
+# Remove the next comment character if you are not familiar with SQL
+#safe-updates
+
+[isamchk]
+key_buffer_size = 256M
+sort_buffer_size = 256M
+read_buffer = 2M
+write_buffer = 2M
+
+[mysqlhotcopy]
+interactive-timeout
+

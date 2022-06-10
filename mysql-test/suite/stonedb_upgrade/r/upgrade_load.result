@@ -1,0 +1,52 @@
+#
+# Test with a saved MyISAM table from 4.1
+#
+# Everything _looks_ fine
+SHOW CREATE TABLE t1;
+Table	Create Table
+t1	CREATE TABLE `t1` (
+  `y2` year(2) DEFAULT NULL,
+  `i` int(11) DEFAULT NULL,
+  `i_chk` int(11) DEFAULT NULL,
+  `y4` year(4) DEFAULT NULL,
+  `y4_chk` year(4) DEFAULT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=latin1
+select * from t1;
+y2	i	i_chk	y4	y4_chk
+01	1901	1	1901	1901
+01	1	1	2001	2001
+70	1970	70	1970	1970
+70	70	70	1970	1970
+00	2000	0	2000	2000
+00	0	0	0000	0000
+69	2069	69	2069	2069
+69	69	69	2069	2069
+55	2155	55	2155	2155
+55	55	55	2055	2055
+drop table t1;
+SHOW CREATE TABLE column_type_test;
+Table	Create Table
+column_type_test	CREATE TABLE `column_type_test` (
+  `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
+  `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
+  `c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
+  `c_int` int(11) DEFAULT NULL COMMENT 'int',
+  `c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
+  `c_float` float DEFAULT NULL COMMENT 'float',
+  `c_double` double DEFAULT NULL COMMENT 'double',
+  `c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+  `c_date` date DEFAULT NULL COMMENT 'date',
+  `c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
+  `c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+  `c_time` time DEFAULT NULL COMMENT 'time',
+  `c_char` char(10) DEFAULT NULL COMMENT 'char',
+  `c_varchar` varchar(10) DEFAULT NULL COMMENT 'varchar',
+  `c_blob` blob COMMENT 'blob',
+  `c_text` text COMMENT 'text',
+  `c_longblob` longblob COMMENT 'longblob'
+) ENGINE=STONEDB DEFAULT CHARSET=utf8
+load data infile '../../std_data/stonedb/bigdata4load' into table column_type_test fields terminated by '|';
+select count(*) from column_type_test;
+count(*)
+100005
+drop table column_type_test;

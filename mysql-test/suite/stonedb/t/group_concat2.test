@@ -1,0 +1,10 @@
+use test;
+CREATE TABLE `test_groupconcat2_case` (
+  `id` int(11) DEFAULT NULL,
+  `val` int(11)
+) ENGINE=STONEDB;
+insert into test_groupconcat2_case values(1, 22);
+insert into test_groupconcat2_case values(1, 4);
+select id,group_concat(val order by val desc SEPARATOR " ") from test_groupconcat2_case group by id;
+select id,group_concat(distinct val SEPARATOR ":") from test_groupconcat2_case group by id;
+drop table test_groupconcat2_case;

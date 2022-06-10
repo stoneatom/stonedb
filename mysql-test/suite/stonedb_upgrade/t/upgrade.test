@@ -1,0 +1,171 @@
+--source include/mysql_upgrade_preparation.inc
+let $MYSQLD_DATADIR= `select @@datadir`;
+
+--echo #
+--echo # Test with a saved MyISAM table from 4.1
+--echo #
+
+--copy_file std_data/wl6219_41.frm $MYSQLD_DATADIR/test/t1.frm
+--chmod 0777 $MYSQLD_DATADIR/test/t1.frm
+--copy_file std_data/wl6219_41.MYD $MYSQLD_DATADIR/test/t1.MYD
+--chmod 0777 $MYSQLD_DATADIR/test/t1.MYD
+--copy_file std_data/wl6219_41.MYI $MYSQLD_DATADIR/test/t1.MYI
+--chmod 0777 $MYSQLD_DATADIR/test/t1.MYI
+
+--echo # Everything _looks_ fine
+SHOW CREATE TABLE t1;
+select * from t1;
+
+drop table t1;
+
+
+--mkdir $MYSQLD_DATADIR/test/column_type_test.bht
+--copy_file std_data/stonedb/column_type_test.frm $MYSQLD_DATADIR/test/column_type_test.frm
+--copy_file std_data/stonedb/column_type_test.bht/TA00000.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00000.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00000000000000.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00000000000000.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00000000000001.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00000000000001.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00000DPN.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00000DPN.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00001.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00001.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00001000000000.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00001000000000.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00001000000001.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00001000000001.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00001DPN.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00001DPN.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00002.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00002.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00002000000000.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00002000000000.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00002000000001.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00002000000001.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00002DPN.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00002DPN.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00003.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00003.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00003000000000.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00003000000000.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00003000000001.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00003000000001.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00003DPN.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00003DPN.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00004.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00004.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00004000000000.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00004000000000.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00004000000001.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00004000000001.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00004DPN.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00004DPN.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00005.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00005.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00005DPN.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00005DPN.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00006.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00006.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00006DPN.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00006DPN.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00007.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00007.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00007000000000.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00007000000000.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00007000000001.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00007000000001.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00007DPN.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00007DPN.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00008.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00008.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00008DPN.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00008DPN.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00009.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00009.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00009DPN.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00009DPN.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00010.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00010.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00010000000000.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00010000000000.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00010000000001.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00010000000001.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00010DPN.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00010DPN.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00011.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00011.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00011DPN.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00011DPN.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00012.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00012.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00012000000000.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00012000000000.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00012000000001.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00012000000001.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00012DPN.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00012DPN.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00013.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00013.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00013000000000.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00013000000000.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00013000000001.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00013000000001.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00013DPN.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00013DPN.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00014.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00014.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00014DPN.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00014DPN.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00015.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00015.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00015000000000.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00015000000000.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00015000000001.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00015000000001.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00015DPN.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00015DPN.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00016.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00016.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TA00016DPN.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TA00016DPN.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TB00000.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TB00000.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TB00001.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TB00001.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TB00002.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TB00002.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TB00003.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TB00003.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TB00004.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TB00004.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TB00005.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TB00005.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TB00006.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TB00006.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TB00007.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TB00007.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TB00008.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TB00008.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TB00009.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TB00009.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TB00010.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TB00010.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TB00011.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TB00011.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TB00012.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TB00012.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TB00013.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TB00013.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TB00014.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TB00014.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TB00015.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TB00015.ctb
+--copy_file std_data/stonedb/column_type_test.bht/TB00016.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/TB00016.ctb
+--copy_file std_data/stonedb/column_type_test.bht/Table.ctb  $MYSQLD_DATADIR/test/column_type_test.bht/Table.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.frm
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00000.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00000000000000.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00000000000001.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00000DPN.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00001.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00001000000000.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00001000000001.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00001DPN.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00002.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00002000000000.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00002000000001.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00002DPN.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00003.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00003000000000.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00003000000001.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00003DPN.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00004.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00004000000000.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00004000000001.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00004DPN.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00005.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00005DPN.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00006.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00006DPN.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00007.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00007000000000.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00007000000001.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00007DPN.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00008.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00008DPN.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00009.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00009DPN.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00010.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00010000000000.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00010000000001.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00010DPN.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00011.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00011DPN.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00012.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00012000000000.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00012000000001.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00012DPN.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00013.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00013000000000.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00013000000001.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00013DPN.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00014.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00014DPN.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00015.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00015000000000.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00015000000001.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00015DPN.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00016.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TA00016DPN.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TB00000.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TB00001.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TB00002.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TB00003.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TB00004.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TB00005.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TB00006.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TB00007.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TB00008.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TB00009.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TB00010.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TB00011.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TB00012.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TB00013.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TB00014.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TB00015.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/TB00016.ctb
+--chmod 0777 $MYSQLD_DATADIR/test/column_type_test.bht/Table.ctb
+SHOW CREATE TABLE column_type_test;
+select * from column_type_test;
+drop table column_type_test;
