@@ -8,7 +8,6 @@ labels: ["A-question"]
 ## General Question
 
 <!--
-
 Before asking a question, make sure you have:
 
 - Searched existing Stack Overflow questions.
@@ -17,6 +16,5 @@ Before asking a question, make sure you have:
 - Read the documentation:
   - [StoneDB Readme](https://github.com/stoneatom/stonedb)
   - [StoneDB Doc](https://github.com/stoneatom/stonedb/docs)
-
 -->
 

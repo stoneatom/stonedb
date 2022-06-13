@@ -1,5 +1,5 @@
 ---
-name: "\U0001F680 Feature request"
+name: "\U0001F680 Feature Request"
 title: "feature: "
 about: Suggest an idea for StoneDB
 labels: ["A-feature"]
