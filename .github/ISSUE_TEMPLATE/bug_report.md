@@ -9,11 +9,9 @@ labels: ["A-bug"]
 <!-- Please describe the problem you observed. -->
 
 **Expected behavior**
-
 <!-- Expected behavior you want to see. -->
 
 **How To Reproduce**
-
 <!-- If possible, provide minimal steps to reproduce the behavior. -->
 
 **Environment**
