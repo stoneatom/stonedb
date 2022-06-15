@@ -123,10 +123,10 @@ class result_set final {
         result.get();
       } catch (std::exception &e) {
         no_except = false;
-        STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+        STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
       } catch (...) {
         no_except = false;
-        STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+        STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
       }
     if (!no_except) {
       throw common::Exception("Parallel worker run failed.");

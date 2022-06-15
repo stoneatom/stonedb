@@ -42,7 +42,7 @@ MINewContents::MINewContents(MultiIndex *m, JoinTips &tips)
   obj = 0;
   roughsorter = NULL;
   f_opt_max_ones = 0;
-  content_type = MCT_UNSPECIFIED;
+  content_type = enumMINCType::MCT_UNSPECIFIED;
   max_filter_val = -1;
   min_block_shift = 0;
   pack_power = mind->NoPower();
@@ -82,7 +82,7 @@ void MINewContents::Init(int64_t initial_size)  // initialize temporary structur
     optimized_dim_stay = -1;  // filter case only
 
   if (optimized_dim_stay != -1)
-    content_type = MCT_FILTER_FORGET;
+    content_type = enumMINCType::MCT_FILTER_FORGET;
   else {
     // check for Virtual Dimension case
     for (int dim = 0; dim < no_dims; dim++) {
@@ -97,9 +97,9 @@ void MINewContents::Init(int64_t initial_size)  // initialize temporary structur
     }
     if (optimized_dim_stay != -1 && mind->GetFilter(optimized_dim_stay) == NULL)
       optimized_dim_stay = -1;  // filter case only
-    if (optimized_dim_stay != -1) content_type = MCT_VIRTUAL_DIM;
+    if (optimized_dim_stay != -1) content_type = enumMINCType::MCT_VIRTUAL_DIM;
   }
-  if (content_type == MCT_UNSPECIFIED) content_type = MCT_MATERIAL;
+  if (content_type == enumMINCType::MCT_UNSPECIFIED) content_type = enumMINCType::MCT_MATERIAL;
 
   for (int dim = 0; dim < no_dims; dim++)
     if (dim_involved[dim]) mind->LockForGetIndex(dim);  // locking for creation
@@ -175,7 +175,7 @@ void MINewContents::Commit([[maybe_unused]] int64_t joined_tuples)  // commit ch
   if (f_opt) f_opt->Commit();
   // Now all involved groups must be replaced by a new contents
 
-  if (content_type == MCT_FILTER_FORGET) {  // optimized version: just exchange filters
+  if (content_type == enumMINCType::MCT_FILTER_FORGET) {  // optimized version: just exchange filters
     DimensionGroupFilter *nf =
         new DimensionGroupFilter(optimized_dim_stay, f_opt, 2,
                                  pack_power);  // mode 2: pass Filter ownership to the DimensionGroup
@@ -186,9 +186,9 @@ void MINewContents::Commit([[maybe_unused]] int64_t joined_tuples)  // commit ch
     dims_to_forget[optimized_dim_stay] = false;
     DimensionGroupMaterialized *ng = new DimensionGroupMaterialized(dims_to_forget);  // forgotten dimensions
     mind->dim_groups.push_back(ng);
-    ng->SetNoObj(1);                             // set a dummy size 1 for a group containing forgotten
-                                                 // dimensions only
-  } else if (content_type == MCT_VIRTUAL_DIM) {  // optimized version: virtual dimension group
+    ng->SetNoObj(1);                                           // set a dummy size 1 for a group containing forgotten
+                                                               // dimensions only
+  } else if (content_type == enumMINCType::MCT_VIRTUAL_DIM) {  // optimized version: virtual dimension group
     DimensionGroupVirtual *nv = new DimensionGroupVirtual(dim_involved, optimized_dim_stay, f_opt,
                                                           2);  // mode 2: pass Filter ownership to the DimensionGroup
     f_opt = NULL;
@@ -246,13 +246,13 @@ void MINewContents::DisableOptimized() {
   delete f_opt;
   f_opt = NULL;
   optimized_dim_stay = -1;
-  content_type = MCT_MATERIAL;
+  content_type = enumMINCType::MCT_MATERIAL;
 }
 
 bool MINewContents::CommitPack(int pack)  // in case of single filter as a result: set a pack as not
                                           // changed (return false if cannot do it)
 {
-  if (content_type != MCT_FILTER_FORGET) return false;
+  if (content_type != enumMINCType::MCT_FILTER_FORGET) return false;
   Filter *orig_filter = mind->GetFilter(optimized_dim_stay);
   f_opt->Commit();
   if (!f_opt->IsEmpty(pack) || orig_filter == NULL) return false;
@@ -264,7 +264,7 @@ void MINewContents::CommitNewTableValues()  // set a value (common::NULL_VALUE_6
                                             // object index); if the index is larger than the
                                             // current size, enlarge table automatically
 {
-  if (content_type == MCT_FILTER_FORGET) {
+  if (content_type == enumMINCType::MCT_FILTER_FORGET) {
     int64_t val = new_value[optimized_dim_stay];
     if (val == common::NULL_VALUE_64 || (optimized_dim_stay != ignore_repetitions_dim && f_opt->Get(val))) {
       // repetition or null object found
@@ -273,7 +273,7 @@ void MINewContents::CommitNewTableValues()  // set a value (common::NULL_VALUE_6
       return;
     }
     f_opt->Set(val);  // not SetDelayed(), because we're checking repetitions by Get()
-  } else if (content_type == MCT_VIRTUAL_DIM) {
+  } else if (content_type == enumMINCType::MCT_VIRTUAL_DIM) {
     int64_t val = new_value[optimized_dim_stay];
     if (val == common::NULL_VALUE_64 || val <= max_filter_val) {  // can only forward iterate in virtual case
       // repetition or null object found
@@ -284,7 +284,7 @@ void MINewContents::CommitNewTableValues()  // set a value (common::NULL_VALUE_6
     f_opt->SetDelayed(val);
     max_filter_val = val;  // always forward
   }
-  if (content_type != MCT_FILTER_FORGET) {
+  if (content_type != enumMINCType::MCT_FILTER_FORGET) {
     if (roughsorter)
       roughsorter->CommitValues(new_value,
                                 obj);  // analyze whether to sort roughly the current t_new contents
@@ -308,7 +308,7 @@ void MINewContents::CommitNewTableValues()  // set a value (common::NULL_VALUE_6
 }
 
 bool MINewContents::NoMoreTuplesPossible() {
-  return (content_type == MCT_FILTER_FORGET || content_type == MCT_VIRTUAL_DIM) &&
+  return (content_type == enumMINCType::MCT_FILTER_FORGET || content_type == enumMINCType::MCT_VIRTUAL_DIM) &&
          optimized_dim_stay == ignore_repetitions_dim && f_opt->NoOnes() >= f_opt_max_ones;
 }
 }  // namespace core

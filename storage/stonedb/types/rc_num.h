@@ -103,7 +103,7 @@ class RCNum : public ValueBasic<RCNum> {
   common::CT attrt;
 
  public:
-  const static ValueTypeEnum value_type = NUMERIC_TYPE;
+  const static ValueTypeEnum value_type = ValueTypeEnum::NUMERIC_TYPE;
 };
 }  // namespace types
 }  // namespace stonedb

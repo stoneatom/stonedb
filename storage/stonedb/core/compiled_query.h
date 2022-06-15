@@ -36,7 +36,7 @@ class MysqlExpression;
 class CompiledQuery final {
  public:
   // Definition of one step
-  enum StepType {
+  enum class StepType {
     TABLE_ALIAS,
     TMP_TABLE,
     CREATE_CONDS,
@@ -67,7 +67,7 @@ class CompiledQuery final {
     AttrID a1, a2;
     CondID c1, c2, c3;
     CQTerm e1, e2, e3;
-    common::Operator op;  // predicate: common::O_EQ, common::O_LESS etc.
+    common::Operator op;  // predicate: common::Operator::O_EQ, common::Operator::O_LESS etc.
     TMParameter tmpar;    // Table Mode Parameter
     JoinType jt;
     common::ColOperation cop;
@@ -81,7 +81,7 @@ class CompiledQuery final {
     SI si;
 
     CQStep()
-        : type(TABLE_ALIAS),
+        : type(StepType::TABLE_ALIAS),
           t1(common::NULL_VALUE_32),
           t2(common::NULL_VALUE_32),
           t3(common::NULL_VALUE_32),
@@ -93,9 +93,9 @@ class CompiledQuery final {
           e1(),
           e2(),
           e3(),
-          op(common::O_EQ),
-          tmpar(TM_DISTINCT),
-          jt(JO_INNER),
+          op(common::Operator::O_EQ),
+          tmpar(TMParameter::TM_DISTINCT),
+          jt(JoinType::JO_INNER),
           cop(common::ColOperation::LISTING),
           alias(NULL),
           n1(common::NULL_VALUE_64),

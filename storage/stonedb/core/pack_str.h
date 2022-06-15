@@ -48,7 +48,7 @@ class PackStr final : public Pack {
   types::BString GetValueBinary(int i) const override;
 
   void LoadValues(const loader::ValueCache *vc);
-  bool IsTrie() const { return state_ == PACK_TRIE; }
+  bool IsTrie() const { return state_ == PackStrtate::PACK_TRIE; }
   bool Lookup(const types::BString &pattern, uint16_t &id);
   bool LikePrefix(const types::BString &pattern, std::size_t prefixlen, std::unordered_set<uint16_t> &ids);
   bool IsNotMatched(int row, uint16_t &id);
@@ -115,8 +115,8 @@ class PackStr final : public Pack {
     SetSize(i, size);
   }
 
-  enum PackStrtate { PACK_ARRAY, PACK_TRIE };
-  PackStrtate state_ = PACK_ARRAY;
+  enum class PackStrtate { PACK_ARRAY, PACK_TRIE };
+  PackStrtate state_ = PackStrtate::PACK_ARRAY;
   marisa::Trie marisa_trie_;
   UniquePtr compressed_data_;
   uint16_t *ids_array_;
@@ -135,7 +135,7 @@ class PackStr final : public Pack {
   void *Put(const void *src, size_t length) {
     if (data.v.empty() || length > data.v.back().capacity()) {
       auto sz = length * 2;
-      data.v.push_back({(char *)alloc(sz, mm::BLOCK_UNCOMPRESSED), sz, 0});
+      data.v.push_back({(char *)alloc(sz, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED), sz, 0});
     }
     return data.v.back().put(src, length);
   }

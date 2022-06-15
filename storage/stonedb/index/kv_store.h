@@ -49,7 +49,9 @@ class KVStore final {
   uint GetNextIndexId() { return ddl_manager.get_and_update_next_number(&dict_manager); }
   rocksdb::ColumnFamilyHandle *GetCfHandle(std::string &cf_name) { return cf_manager.get_or_create_cf(rdb, cf_name); }
   rocksdb::ColumnFamilyHandle *GetCfHandleByID(const uint32_t id) { return cf_manager.get_cf_by_id(id); }
-  bool indexdroping(GlobalId &index) { return dict_manager.is_drop_index_ongoing(index, DDL_DROP_INDEX_ONGOING); }
+  bool indexdroping(GlobalId &index) {
+    return dict_manager.is_drop_index_ongoing(index, MetaType::DDL_DROP_INDEX_ONGOING);
+  }
   // kv table meta operation
   std::shared_ptr<RdbTable> FindTable(std::string &name) { return ddl_manager.find(name); }
   common::ErrorCode KVWriteTableMeta(std::shared_ptr<RdbTable> tbl);

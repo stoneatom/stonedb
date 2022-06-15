@@ -136,7 +136,7 @@ class JoinerHashTable : public mm::TraceableObject {
 
   void ClearAll();  // initialize all
 
-  mm::TO_TYPE TraceableType() const override { return mm::TO_TEMPORARY; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
 
  private:
   int no_of_occupied;

@@ -32,7 +32,7 @@ class Transaction;
 
 class RCMemTable {
  public:
-  enum RecordType { RecordType_min, kSchema, kInsert, kUpdate, kDelete, RecordType_max };
+  enum class RecordType { RecordType_min, kSchema, kInsert, kUpdate, kDelete, RecordType_max };
 
   RCMemTable() = default;
   ~RCMemTable() = default;

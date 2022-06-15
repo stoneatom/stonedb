@@ -65,7 +65,7 @@ class Query final {
               common::Operator *oper_for_subselect = NULL, bool ignore_minmax = false, bool for_subq_in_where = false);
   TempTable *Preexecute(CompiledQuery &qu, ResultSender *sender, bool display_now = true);
   int BuildConditions(Item *conds, CondID &cond_id, CompiledQuery *cq, const TabID &tmp_table, CondType filter_type,
-                      bool is_zero_result = false, JoinType join_type = JO_INNER);
+                      bool is_zero_result = false, JoinType join_type = JoinType::JO_INNER);
 
   std::multimap<std::string, std::pair<int, TABLE *>> table_alias2index_ptr;
 

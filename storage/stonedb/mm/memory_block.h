@@ -21,7 +21,7 @@
 namespace stonedb {
 namespace mm {
 
-enum BLOCK_TYPE : char {
+enum class BLOCK_TYPE : char {
   BLOCK_FREE,
   BLOCK_COMPRESSED,
   BLOCK_UNCOMPRESSED,

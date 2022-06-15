@@ -36,7 +36,7 @@ class MemoryHandling;
 
 namespace mm {
 
-enum TO_TYPE {
+enum class TO_TYPE {
   TO_PACK = 0,
   TO_SORTER,
   TO_CACHEDBUFFER,
@@ -129,7 +129,7 @@ class TraceableObject {
 
   void *alloc(size_t size, BLOCK_TYPE type, bool nothrow = false);
   void dealloc(void *ptr);
-  void *rc_realloc(void *ptr, size_t size, BLOCK_TYPE type = BLOCK_FIXED);
+  void *rc_realloc(void *ptr, size_t size, BLOCK_TYPE type = BLOCK_TYPE::BLOCK_FIXED);
   size_t rc_msize(void *ptr);
 
   void deinitialize(bool detect_leaks);

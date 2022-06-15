@@ -68,7 +68,7 @@ static int setup_sig_handler() {
   sigemptyset(&sa.sa_mask);
 
   if (sigaction(SIGRTMIN, &sa, NULL) == -1) {
-    STONEDB_LOG(INFO, "Failed to set up signal handler. error =%d[%s]", errno, std::strerror(errno));
+    STONEDB_LOG(LogCtl_Level::INFO, "Failed to set up signal handler. error =%d[%s]", errno, std::strerror(errno));
     return 1;
   }
   return 0;
@@ -99,14 +99,14 @@ fs::path Engine::GetNextDataDir() {
                              auto si = fs::space(s);
                              auto usage = 100 - ((si.available * 100) / si.capacity);
                              if (usage > static_cast<size_t>(stonedb_sysvar_disk_usage_threshold)) {
-                               STONEDB_LOG(WARN, "disk %s usage %d%%", s.native().c_str(), usage);
+                               STONEDB_LOG(LogCtl_Level::WARN, "disk %s usage %d%%", s.native().c_str(), usage);
                                return true;
                              }
                              return false;
                            }),
             v.end());
     if (v.size() == 0) {
-      STONEDB_LOG(ERROR, "all data directories usage exceed %d%%", stonedb_sysvar_disk_usage_threshold);
+      STONEDB_LOG(LogCtl_Level::ERROR, "all data directories usage exceed %d%%", stonedb_sysvar_disk_usage_threshold);
       throw common::Exception("Disk usage exceeds defined threshold");
     }
     return v[std::rand() % v.size()];
@@ -228,21 +228,23 @@ int Engine::Init(uint engine_slot) {
 #ifdef FUNCTIONS_EXECUTION_TIMES
   fet = new FunctionsExecutionTimes();
 #endif
-  STONEDB_LOG(INFO, "StoneDB engine started. ");
-  STONEDB_LOG(INFO, "StoneDB data directories:");
-  STONEDB_LOG(INFO, "  {");
+  STONEDB_LOG(LogCtl_Level::INFO, "StoneDB engine started. ");
+  STONEDB_LOG(LogCtl_Level::INFO, "StoneDB data directories:");
+  STONEDB_LOG(LogCtl_Level::INFO, "  {");
   if (stonedb_data_dirs.empty())
-    STONEDB_LOG(INFO, "    default");
+    STONEDB_LOG(LogCtl_Level::INFO, "    default");
   else
     for (auto &dir : stonedb_data_dirs) {
       auto si = fs::space(dir);
-      STONEDB_LOG(INFO, "    %s  capacity/available: %ld/%ld", dir.native().c_str(), si.capacity, si.available);
+      STONEDB_LOG(LogCtl_Level::INFO, "    %s  capacity/available: %ld/%ld", dir.native().c_str(), si.capacity,
+                  si.available);
     }
-  STONEDB_LOG(INFO, "  }");
+  STONEDB_LOG(LogCtl_Level::INFO, "  }");
 
-  STONEDB_LOG(INFO, "StoneDB thread pool for background load, size = %ld", delay_insert_thread_pool.size());
-  STONEDB_LOG(INFO, "StoneDB thread pool for load, size = %ld", load_thread_pool.size());
-  STONEDB_LOG(INFO, "StoneDB thread pool for query, size = %ld", query_thread_pool.size());
+  STONEDB_LOG(LogCtl_Level::INFO, "StoneDB thread pool for background load, size = %ld",
+              delay_insert_thread_pool.size());
+  STONEDB_LOG(LogCtl_Level::INFO, "StoneDB thread pool for load, size = %ld", load_thread_pool.size());
+  STONEDB_LOG(LogCtl_Level::INFO, "StoneDB thread pool for query, size = %ld", query_thread_pool.size());
 
   m_monitor_thread = std::thread([this] {
     struct job {
@@ -253,7 +255,7 @@ int Engine::Init(uint engine_slot) {
         {60 * 5,
          []() {
            STONEDB_LOG(
-               INFO,
+               LogCtl_Level::INFO,
                "Memory: release [%llu %llu %llu %llu] %llu, total "
                "%llu. (un)freeable %lu/%lu, total alloc/free "
                "%lu/%lu",
@@ -278,7 +280,7 @@ int Engine::Init(uint engine_slot) {
         }
       }
     }
-    STONEDB_LOG(INFO, "StoneDB monitor thread exiting...");
+    STONEDB_LOG(LogCtl_Level::INFO, "StoneDB monitor thread exiting...");
   });
 
   m_load_thread = std::thread([this] { ProcessDelayedInsert(); });
@@ -290,7 +292,7 @@ int Engine::Init(uint engine_slot) {
       std::unique_lock<std::mutex> lk(cv_mtx);
       if (cv.wait_for(lk, std::chrono::seconds(3)) == std::cv_status::timeout) HandleDeferredJobs();
     } while (!exiting);
-    STONEDB_LOG(INFO, "StoneDB file purge thread exiting...");
+    STONEDB_LOG(LogCtl_Level::INFO, "StoneDB file purge thread exiting...");
   });
 
   if (setup_sig_handler()) {
@@ -313,7 +315,7 @@ void Engine::HandleDeferredJobs() {
       fs::remove(t.file, ec);
       // Ignore ENOENT since files might be deleted by 'drop table'.
       if (ec && ec != std::errc::no_such_file_or_directory) {
-        STONEDB_LOG(ERROR, "Failed to remove file %s Error:%s", t.file.string().c_str(), ec.message());
+        STONEDB_LOG(LogCtl_Level::ERROR, "Failed to remove file %s Error:%s", t.file.string().c_str(), ec.message());
       }
     } else {
       gc_tasks.emplace_back(t);
@@ -332,7 +334,7 @@ Engine::~Engine() {
     std::scoped_lock lk(cv_mtx);
     std::scoped_lock lk_merge(cv_merge_mtx);
     exiting = true;
-    STONEDB_LOG(INFO, "StoneDB engine shutting down.");
+    STONEDB_LOG(LogCtl_Level::INFO, "StoneDB engine shutting down.");
   }
   cv.notify_all();
   cv_merge.notify_all();
@@ -351,16 +353,16 @@ Engine::~Engine() {
   try {
     mm::MemoryManagerInitializer::EnsureNoLeakedTraceableObject();
   } catch (common::AssertException &e) {
-    STONEDB_LOG(ERROR, "Memory leak! %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Memory leak! %s", e.what());
   } catch (...) {
-    STONEDB_LOG(ERROR, "Unkown exception caught");
+    STONEDB_LOG(LogCtl_Level::ERROR, "Unkown exception caught");
   }
   if (rccontrol.isOn())
     mm::MemoryManagerInitializer::deinit(true);
   else
     mm::MemoryManagerInitializer::deinit(false);
 
-  STONEDB_LOG(INFO, "StoneDB engine destroyed.");
+  STONEDB_LOG(LogCtl_Level::INFO, "StoneDB engine destroyed.");
 }
 
 void Engine::EncodeRecord(const std::string &table_path, int tid, Field **field, size_t col, size_t blobs,
@@ -554,7 +556,7 @@ uint32_t Engine::GetNextTableId() {
   std::scoped_lock lk(seq_mtx);
   fs::path p = stonedb_data_dir / "stonedb.tid";
   if (!fs::exists(p)) {
-    STONEDB_LOG(INFO, "Creating table id file");
+    STONEDB_LOG(LogCtl_Level::INFO, "Creating table id file");
     std::ofstream seq_file(p.string());
     if (seq_file) seq_file << 0;
     if (!seq_file) {
@@ -583,7 +585,7 @@ std::shared_ptr<TableOption> Engine::GetTableOption(const std::string &table, TA
 
   int power = has_pack(form->s->comment);
   if (power < 5 || power > 16) {
-    STONEDB_LOG(ERROR, "create table comment: pack size shift(%d) should be >=5 and <= 16");
+    STONEDB_LOG(LogCtl_Level::ERROR, "create table comment: pack size shift(%d) should be >=5 and <= 16");
     throw common::SyntaxException("Unexpected data pack size.");
   }
 
@@ -665,7 +667,8 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
       if (const Field_str *fstr = dynamic_cast<const Field_string *>(&field)) {
         DTCollation coll(fstr->charset(), fstr->derivation());
         if (fmt == common::PackFmt::TRIE && types::IsCaseInsensitive(coll)) {
-          STONEDB_LOG(ERROR, "TRIE can not work with case-insensitive collation: %s!", coll.collation->name);
+          STONEDB_LOG(LogCtl_Level::ERROR, "TRIE can not work with case-insensitive collation: %s!",
+                      coll.collation->name);
           throw common::UnsupportedDataTypeException();
         }
         if (fstr->charset() != &my_charset_bin)
@@ -733,7 +736,7 @@ void Engine::CommitTx(THD *thd, bool all) {
 
 void Engine::Rollback(THD *thd, bool all, bool force_error_message) {
   force_error_message = force_error_message || (!all && thd_test_options(thd, OPTION_NOT_AUTOCOMMIT));
-  STONEDB_LOG(ERROR, "Roll back query '%s'", thd_query_string(thd)->str);
+  STONEDB_LOG(LogCtl_Level::ERROR, "Roll back query '%s'", thd_query_string(thd)->str);
   if (current_tx) {
     GetTx(thd)->Rollback(thd, force_error_message);
     ClearTx(thd);
@@ -766,7 +769,7 @@ void Engine::DeleteTable(const char *table, [[maybe_unused]] THD *thd) {
     gc_tasks.remove_if([id](const purge_task &t) -> bool { return static_cast<uint32_t>(t.cookie) == id; });
   }
   system::DeleteDirectory(p);
-  STONEDB_LOG(INFO, "Drop table %s, ID = %u", table, id);
+  STONEDB_LOG(LogCtl_Level::INFO, "Drop table %s, ID = %u", table, id);
 }
 
 void Engine::TruncateTable(const std::string &table_path, [[maybe_unused]] THD *thd) {
@@ -779,7 +782,7 @@ void Engine::TruncateTable(const std::string &table_path, [[maybe_unused]] THD *
   auto id = tab->GetID();
   cache.ReleaseTable(id);
   filter_cache.RemoveIf([id](const FilterCoordinate &c) { return c[0] == int(id); });
-  STONEDB_LOG(INFO, "Truncated table %s, ID = %u", table_path.c_str(), id);
+  STONEDB_LOG(LogCtl_Level::INFO, "Truncated table %s, ID = %u", table_path.c_str(), id);
 }
 
 void Engine::GetTableIterator(const std::string &table_path, RCTable::Iterator &iter_begin, RCTable::Iterator &iter_end,
@@ -918,27 +921,27 @@ void Engine::ClearTx(THD *thd) {
 
 int Engine::SetUpCacheFolder(const std::string &cachefolder_path) {
   if (!fs::exists(cachefolder_path)) {
-    STONEDB_LOG(INFO, "Cachefolder %s does not exist. Trying to create it.", cachefolder_path.c_str());
+    STONEDB_LOG(LogCtl_Level::INFO, "Cachefolder %s does not exist. Trying to create it.", cachefolder_path.c_str());
     std::error_code ec;
     fs::create_directories(cachefolder_path, ec);
     if (ec) {
       sql_print_error("StoneDB: Can not create folder %s.", cachefolder_path.c_str());
-      STONEDB_LOG(ERROR, "DatabaseException: %s", ec.message().c_str());
+      STONEDB_LOG(LogCtl_Level::ERROR, "DatabaseException: %s", ec.message().c_str());
       return 1;
     }
   }
 
   if (!system::IsReadWriteAllowed(cachefolder_path)) {
     sql_print_error("StoneDB: Can not access cache folder %s.", cachefolder_path.c_str());
-    STONEDB_LOG(ERROR, "Can not access cache folder %s", cachefolder_path.c_str());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Can not access cache folder %s", cachefolder_path.c_str());
     return 1;
   }
   return 0;
 }
 
 std::string get_parameter_name(enum sdb_var_name vn) {
-  DEBUG_ASSERT(vn >= 0 && vn <= SDB_VAR_LIMIT);
-  return sdb_var_name_strings[vn];
+  DEBUG_ASSERT(static_cast<int>(vn) >= 0 && static_cast<int>(vn) <= static_cast<int>(sdb_var_name::SDB_VAR_LIMIT));
+  return sdb_var_name_strings[static_cast<int>(vn)];
 }
 
 int get_parameter(THD *thd, enum sdb_var_name vn, double &value) {
@@ -992,7 +995,7 @@ int get_parameter(THD *thd, enum sdb_var_name vn, longlong &result, std::string 
 
   if (m_entry->type() == DECIMAL_RESULT) {
     switch (vn) {
-      case SDB_ABORT_ON_THRESHOLD: {
+      case sdb_var_name::SDB_ABORT_ON_THRESHOLD: {
         double dv;
         my_bool null_value;
         my_decimal v;
@@ -1009,10 +1012,10 @@ int get_parameter(THD *thd, enum sdb_var_name vn, longlong &result, std::string 
     return 0;
   } else if (m_entry->type() == INT_RESULT) {
     switch (vn) {
-      case SDB_THROTTLE:
-      case SDB_STONEDBEXPRESSIONS:
-      case SDB_PARALLEL_AGGR:
-      case SDB_ABORT_ON_COUNT:
+      case sdb_var_name::SDB_THROTTLE:
+      case sdb_var_name::SDB_STONEDBEXPRESSIONS:
+      case sdb_var_name::SDB_PARALLEL_AGGR:
+      case sdb_var_name::SDB_ABORT_ON_COUNT:
         my_bool null_value;
         result = m_entry->val_int(&null_value);
         break;
@@ -1029,13 +1032,13 @@ int get_parameter(THD *thd, enum sdb_var_name vn, longlong &result, std::string 
     m_entry->val_str(&null_value, &str, NOT_FIXED_DEC);
     var_data = std::string(str.ptr());
 
-    if (vn == SDB_DATAFORMAT || vn == SDB_REJECT_FILE_PATH) {
+    if (vn == sdb_var_name::SDB_DATAFORMAT || vn == sdb_var_name::SDB_REJECT_FILE_PATH) {
       s_result = var_data;
-    } else if (vn == SDB_PIPEMODE) {
+    } else if (vn == sdb_var_name::SDB_PIPEMODE) {
       boost::to_upper(var_data);
       if (var_data == "SERVER") result = 1;
       if (var_data == "CLIENT") result = 0;
-    } else if (vn == SDB_NULL) {
+    } else if (vn == sdb_var_name::SDB_NULL) {
       s_result = var_data;
     }
     return 0;
@@ -1054,7 +1057,7 @@ void Engine::RenameTable([[maybe_unused]] Transaction *trans, const std::string 
   system::RenameFile(stonedb_data_dir / (from + common::STONEDB_EXT), stonedb_data_dir / (to + common::STONEDB_EXT));
   RenameRdbTable(from, to);
   UnregisterMemTable(from, to);
-  STONEDB_LOG(INFO, "Rename table %s to %s", from.c_str(), to.c_str());
+  STONEDB_LOG(LogCtl_Level::INFO, "Rename table %s to %s", from.c_str(), to.c_str());
 }
 
 void Engine::PrepareAlterTable(const std::string &table_path, std::vector<Field *> &new_cols,
@@ -1139,7 +1142,7 @@ static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec
 
   free_root(thd->mem_root, MYF(MY_KEEP_PREALLOC));
   if (thd->is_fatal_error) {
-    STONEDB_LOG(ERROR, "LOAD DATA failed on table '%s'", tab_name.c_str());
+    STONEDB_LOG(LogCtl_Level::ERROR, "LOAD DATA failed on table '%s'", tab_name.c_str());
   }
   thd->release_resources();
   remove_global_thread(thd);
@@ -1207,7 +1210,7 @@ void Engine::ProcessDelayedInsert() {
       buffer_recordnum = 0;
     }
   }
-  STONEDB_LOG(INFO, "StoneDB load thread exiting...");
+  STONEDB_LOG(LogCtl_Level::INFO, "StoneDB load thread exiting...");
 }
 
 void Engine::ProcessDelayedMerge() {
@@ -1260,12 +1263,12 @@ void Engine::ProcessDelayedMerge() {
           }
         }
       } catch (common::Exception &e) {
-        STONEDB_LOG(ERROR, "delayed merge failed. %s %s", e.what(), e.trace().c_str());
+        STONEDB_LOG(LogCtl_Level::ERROR, "delayed merge failed. %s %s", e.what(), e.trace().c_str());
         std::unique_lock<std::mutex> lk(cv_merge_mtx);
         cv_merge.wait_for(lk, std::chrono::milliseconds(stonedb_sysvar_insert_wait_ms));
         continue;
       } catch (...) {
-        STONEDB_LOG(ERROR, "delayed merge failed.");
+        STONEDB_LOG(LogCtl_Level::ERROR, "delayed merge failed.");
         std::unique_lock<std::mutex> lk(cv_merge_mtx);
         cv_merge.wait_for(lk, std::chrono::milliseconds(stonedb_sysvar_insert_wait_ms));
         continue;
@@ -1278,7 +1281,7 @@ void Engine::ProcessDelayedMerge() {
       cv_merge.wait_for(lk, std::chrono::milliseconds(stonedb_sysvar_insert_wait_ms));
     }
   }
-  STONEDB_LOG(INFO, "StoneDB merge thread exiting...");
+  STONEDB_LOG(LogCtl_Level::INFO, "StoneDB merge thread exiting...");
 }
 
 void Engine::LogStat() {
@@ -1300,7 +1303,7 @@ void Engine::LogStat() {
   long sample_time = t.tv_sec;
   long diff = sample_time - last_sample_time;
   if (diff == 0) {
-    STONEDB_LOG(ERROR, "LogStat() called too frequently. last sample time %ld ", last_sample_time);
+    STONEDB_LOG(LogCtl_Level::ERROR, "LogStat() called too frequently. last sample time %ld ", last_sample_time);
     return;
   }
   query_id_t query_id = global_query_id;
@@ -1334,10 +1337,10 @@ void Engine::LogStat() {
           msg + sql_statement_names[c].str + " " + std::to_string(delta) + "/" + std::to_string(sv.com_stat[c]) + ", ";
     }
     msg = msg + "queries " + std::to_string(queries) + "/" + std::to_string(global_query_id);
-    STONEDB_LOG(INFO, msg.c_str());
+    STONEDB_LOG(LogCtl_Level::INFO, msg.c_str());
   }
 
-  STONEDB_LOG(INFO,
+  STONEDB_LOG(LogCtl_Level::INFO,
               "Select: %lu/%lu, Loaded: %lu/%lu(%lu/%lu), dup: %lu/%lu, insert: "
               "%lu/%lu, failed insert: %lu/%lu, update: "
               "%lu/%lu",
@@ -1349,7 +1352,7 @@ void Engine::LogStat() {
               stonedb_stat.update - saved.update, stonedb_stat.update);
 
   if (stonedb_stat.loaded == saved.loaded && stonedb_stat.delayinsert > saved.delayinsert) {
-    STONEDB_LOG(ERROR, "No data loaded from insert buffer");
+    STONEDB_LOG(LogCtl_Level::ERROR, "No data loaded from insert buffer");
   }
 
   // update with last minute statistics
@@ -1384,7 +1387,7 @@ void Engine::InsertDelayed(const std::string &table_path, int tid, TABLE *table)
       insert_buffer.Write(utils::MappedCircularBuffer::TAG::INSERT_RECORD, buf.get(), buf_sz);
     } catch (std::length_error &e) {
       if (failed++ >= stonedb_sysvar_insert_wait_time / 50) {
-        STONEDB_LOG(ERROR, "insert buffer is out of space");
+        STONEDB_LOG(LogCtl_Level::ERROR, "insert buffer is out of space");
         throw e;
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -1425,11 +1428,11 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
     }
     return ret;
   } catch (common::Exception &e) {
-    STONEDB_LOG(ERROR, "delayed inserting failed. %s %s", e.what(), e.trace().c_str());
+    STONEDB_LOG(LogCtl_Level::ERROR, "delayed inserting failed. %s %s", e.what(), e.trace().c_str());
   } catch (std::exception &e) {
-    STONEDB_LOG(ERROR, "delayed inserting failed. %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "delayed inserting failed. %s", e.what());
   } catch (...) {
-    STONEDB_LOG(ERROR, "delayed inserting failed.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "delayed inserting failed.");
   }
 
   if (stonedb_sysvar_insert_delayed) {
@@ -1511,7 +1514,7 @@ common::SDBError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table
 }
 
 bool Engine::IsSDBRoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects_list,
-                       int &in_case_of_failure_can_go_to_mysql, int with_insert) {
+                        int &in_case_of_failure_can_go_to_mysql, int with_insert) {
   in_case_of_failure_can_go_to_mysql = true;
 
   if (!table_list) return false;
@@ -1542,7 +1545,7 @@ bool Engine::IsSDBRoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects_li
   if (file) {  // it writes to a file
     longlong param = 0;
     std::string s_res;
-    if (!get_parameter(thd, SDB_DATAFORMAT, param, s_res)) {
+    if (!get_parameter(thd, sdb_var_name::SDB_DATAFORMAT, param, s_res)) {
       if (boost::iequals(boost::trim_copy(s_res), "MYSQL")) return false;
 
       common::DataFormatPtr df = common::DataFormat::GetDataFormat(s_res);
@@ -1560,7 +1563,7 @@ bool Engine::IsSDBRoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects_li
                                                      // it cannot go to MYSQL - it writes to a file,
                                                      // but the file format is not MYSQL
     } else                                           // param not set - we assume it is (deprecated: MYSQL)
-                                                     // common::TXT_VARIABLE
+                                                     // common::EDF::TRI_UNKNOWN
       return true;
   }
 
@@ -1651,40 +1654,40 @@ common::SDBError Engine::GetRejectFileIOParameters(THD &thd, std::unique_ptr<sys
   int64_t abort_on_count = 0;
   double abort_on_threshold = 0;
 
-  get_parameter(&thd, SDB_REJECT_FILE_PATH, reject_file);
-  if (get_parameter(&thd, SDB_REJECT_FILE_PATH, reject_file) == 2)
+  get_parameter(&thd, sdb_var_name::SDB_REJECT_FILE_PATH, reject_file);
+  if (get_parameter(&thd, sdb_var_name::SDB_REJECT_FILE_PATH, reject_file) == 2)
     return common::SDBError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of STONEDB_LOAD_REJECT_FILE parameter.");
 
-  if (get_parameter(&thd, SDB_ABORT_ON_COUNT, abort_on_count) == 2)
+  if (get_parameter(&thd, sdb_var_name::SDB_ABORT_ON_COUNT, abort_on_count) == 2)
     return common::SDBError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of SDB_ABORT_ON_COUNT parameter.");
 
-  if (get_parameter(&thd, SDB_ABORT_ON_THRESHOLD, abort_on_threshold) == 2)
+  if (get_parameter(&thd, sdb_var_name::SDB_ABORT_ON_THRESHOLD, abort_on_threshold) == 2)
     return common::SDBError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of SDB_ABORT_ON_THRESHOLD parameter.");
 
   if (abort_on_count != 0 && abort_on_threshold != 0)
     return common::SDBError(common::ErrorCode::WRONG_PARAMETER,
-                           "SDB_ABORT_ON_COUNT and SDB_ABORT_ON_THRESHOLD "
-                           "parameters are mutualy exclusive.");
+                            "SDB_ABORT_ON_COUNT and SDB_ABORT_ON_THRESHOLD "
+                            "parameters are mutualy exclusive.");
 
   if (!(abort_on_threshold >= 0.0 && abort_on_threshold < 1.0))
     return common::SDBError(common::ErrorCode::WRONG_PARAMETER,
-                           "SDB_ABORT_ON_THRESHOLD parameter value must be in range (0,1).");
+                            "SDB_ABORT_ON_THRESHOLD parameter value must be in range (0,1).");
 
   if ((abort_on_count != 0 || abort_on_threshold != 0) && reject_file.empty())
     return common::SDBError(common::ErrorCode::WRONG_PARAMETER,
-                           "SDB_ABORT_ON_COUNT or SDB_ABORT_ON_THRESHOLD can by only specified with "
-                           "SDB_REJECT_FILE_PATH parameter.");
+                            "SDB_ABORT_ON_COUNT or SDB_ABORT_ON_THRESHOLD can by only specified with "
+                            "SDB_REJECT_FILE_PATH parameter.");
 
   if (!reject_file.empty() && fs::exists(reject_file))
     return common::SDBError(common::ErrorCode::WRONG_PARAMETER,
-                           "Can not create the reject file, the file already exists.");
+                            "Can not create the reject file, the file already exists.");
 
   io_params->SetRejectFile(reject_file, abort_on_count, abort_on_threshold);
   return common::ErrorCode::SUCCESS;
 }
 
 common::SDBError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
-                               TABLE *table, void *arg, bool for_exporter) {
+                                TABLE *table, void *arg, bool for_exporter) {
   const CHARSET_INFO *cs = ex.cs;
   bool local_load = for_exporter ? false : (bool)(thd.lex)->local_file;
   uint value_list_elements = (thd.lex)->value_list.elements;
@@ -1713,7 +1716,7 @@ common::SDBError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_params
   longlong param = 0;
   std::string s_res;
   if (common::DataFormat::GetNoFormats() > 1) {
-    if (!get_parameter(&thd, SDB_DATAFORMAT, param, s_res)) {
+    if (!get_parameter(&thd, sdb_var_name::SDB_DATAFORMAT, param, s_res)) {
       common::DataFormatPtr df = common::DataFormat::GetDataFormat(s_res);
       if (!df)
         return common::SDBError(common::ErrorCode::WRONG_PARAMETER, "Unknown value of SDB_DATAFORMAT parameter.");
@@ -1724,7 +1727,7 @@ common::SDBError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_params
   } else
     io_mode = common::DataFormat::GetDataFormat(0)->GetId();
 
-  if (!get_parameter(&thd, SDB_NULL, param, s_res)) io_params->SetNullsStr(s_res);
+  if (!get_parameter(&thd, sdb_var_name::SDB_NULL, param, s_res)) io_params->SetNullsStr(s_res);
 
   if (io_params->LoadDelayed()) {
     std::strcpy(name, ex.file_name);
@@ -1757,9 +1760,9 @@ common::SDBError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_params
     io_params->SetDelimiter(ex.field_term->ptr());
     io_params->SetLineTerminator(ex.line_term->ptr());
     if (ex.enclosed->length() == 4 && strcasecmp(ex.enclosed->ptr(), "NULL") == 0)
-      io_params->SetParameter(system::STRING_QUALIFIER, '\0');
+      io_params->SetParameter(system::Parameter::STRING_QUALIFIER, '\0');
     else
-      io_params->SetParameter(system::STRING_QUALIFIER, *ex.enclosed->ptr());
+      io_params->SetParameter(system::Parameter::STRING_QUALIFIER, *ex.enclosed->ptr());
 
   } else {
     if (ex.escaped->alloced_length() != 0) io_params->SetEscapeCharacter(*ex.escaped->ptr());
@@ -1770,50 +1773,51 @@ common::SDBError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_params
 
     if (ex.enclosed->length()) {
       if (ex.enclosed->length() == 4 && strcasecmp(ex.enclosed->ptr(), "NULL") == 0)
-        io_params->SetParameter(system::STRING_QUALIFIER, '\0');
+        io_params->SetParameter(system::Parameter::STRING_QUALIFIER, '\0');
       else
-        io_params->SetParameter(system::STRING_QUALIFIER, *ex.enclosed->ptr());
+        io_params->SetParameter(system::Parameter::STRING_QUALIFIER, *ex.enclosed->ptr());
     }
   }
 
   if (io_params->EscapeCharacter() != 0 &&
       io_params->Delimiter().find(io_params->EscapeCharacter()) != std::string::npos)
     return common::SDBError(common::ErrorCode::WRONG_PARAMETER,
-                           "Field terminator containing the escape character not supported.");
+                            "Field terminator containing the escape character not supported.");
 
   if (io_params->EscapeCharacter() != 0 && io_params->StringQualifier() != 0 &&
       io_params->EscapeCharacter() == io_params->StringQualifier())
-    return common::SDBError(common::ErrorCode::WRONG_PARAMETER, "The same enclose and escape characters not supported.");
+    return common::SDBError(common::ErrorCode::WRONG_PARAMETER,
+                            "The same enclose and escape characters not supported.");
 
   bool unsupported_syntax = false;
   if (cs != 0)
-    io_params->SetParameter(system::CHARSET_INFO_NUMBER, (int)(cs->number));
+    io_params->SetParameter(system::Parameter::CHARSET_INFO_NUMBER, (int)(cs->number));
   else if (!for_exporter)
-    io_params->SetParameter(system::CHARSET_INFO_NUMBER,
+    io_params->SetParameter(system::Parameter::CHARSET_INFO_NUMBER,
                             (int)(thd.variables.collation_database->number));  // default charset
 
   if (ex.skip_lines != 0) {
     unsupported_syntax = true;
-    io_params->SetParameter(system::SKIP_LINES, (int64_t)ex.skip_lines);
+    io_params->SetParameter(system::Parameter::SKIP_LINES, (int64_t)ex.skip_lines);
   }
 
   if (ex.line_start != 0 && ex.line_start->length() != 0) {
     unsupported_syntax = true;
-    io_params->SetParameter(system::LINE_STARTER, std::string(ex.line_start->ptr()));
+    io_params->SetParameter(system::Parameter::LINE_STARTER, std::string(ex.line_start->ptr()));
   }
 
   if (local_load && ((thd.lex)->sql_command == SQLCOM_LOAD)) {
-    io_params->SetParameter(system::LOCAL_LOAD, (int)local_load);
+    io_params->SetParameter(system::Parameter::LOCAL_LOAD, (int)local_load);
   }
 
   if (value_list_elements != 0) {
     unsupported_syntax = true;
-    io_params->SetParameter(system::VALUE_LIST_ELEMENTS, (int64_t)value_list_elements);
+    io_params->SetParameter(system::Parameter::VALUE_LIST_ELEMENTS, (int64_t)value_list_elements);
   }
 
   if (ex.opt_enclosed) {
     // unsupported_syntax = true;
-    io_params->SetParameter(system::OPTIONALLY_ENCLOSED, 1);
+    io_params->SetParameter(system::Parameter::OPTIONALLY_ENCLOSED, 1);
   }
 
   if (unsupported_syntax)
@@ -1849,11 +1853,11 @@ std::shared_ptr<TableShare> Engine::GetTableShare(const TABLE_SHARE *table_share
     }
     return it->second;
   } catch (common::Exception &e) {
-    STONEDB_LOG(ERROR, "Failed to create table share: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Failed to create table share: %s", e.what());
   } catch (std::exception &e) {
-    STONEDB_LOG(ERROR, "Failed to create table share: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Failed to create table share: %s", e.what());
   } catch (...) {
-    STONEDB_LOG(ERROR, "Failed to create table share");
+    STONEDB_LOG(LogCtl_Level::ERROR, "Failed to create table share");
   }
   return nullptr;
 }
@@ -1903,11 +1907,11 @@ void Engine::AddMemTable(TABLE *form, std::shared_ptr<TableShare> share) {
     }
     return;
   } catch (common::Exception &e) {
-    STONEDB_LOG(ERROR, "Failed to create memory table: %s / %s", e.what(), e.trace().c_str());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Failed to create memory table: %s / %s", e.what(), e.trace().c_str());
   } catch (std::exception &e) {
-    STONEDB_LOG(ERROR, "Failed to create memory table: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Failed to create memory table: %s", e.what());
   } catch (...) {
-    STONEDB_LOG(ERROR, "Failed to create memory table");
+    STONEDB_LOG(LogCtl_Level::ERROR, "Failed to create memory table");
   }
   return;
 }
@@ -1977,24 +1981,24 @@ int stonedb_push_data_dir(const char *dir) {
   try {
     auto p = fs::path(dir);
     if (!fs::is_directory(p)) {
-      STONEDB_LOG(ERROR, "Path %s is not a directory or cannot be accessed.", dir);
+      STONEDB_LOG(LogCtl_Level::ERROR, "Path %s is not a directory or cannot be accessed.", dir);
       return 1;
     }
 
     if (fs::space(p).available < 1_GB) {
-      STONEDB_LOG(ERROR, "StoneDB requires data directory has at least 1G available space!");
+      STONEDB_LOG(LogCtl_Level::ERROR, "StoneDB requires data directory has at least 1G available space!");
       return 1;
     }
     p /= fs::path(STONEDB_DATA_DIR);
     auto result = std::find(std::begin(stonedb_data_dirs), std::end(stonedb_data_dirs), p);
     if (result != std::end(stonedb_data_dirs)) {
-      STONEDB_LOG(WARN, "Path %s specified multiple times as data directory.", dir);
+      STONEDB_LOG(LogCtl_Level::WARN, "Path %s specified multiple times as data directory.", dir);
     } else {
       fs::create_directory(p);
       stonedb_data_dirs.emplace_back(p);
     }
   } catch (fs::filesystem_error &err) {
-    STONEDB_LOG(ERROR, "Filesystem error %s", err.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Filesystem error %s", err.what());
     return 1;
   }
 

@@ -33,7 +33,7 @@ CprsErr ArithCoder::ScaleRange(BitStream *dest, BaseT s_low, BaseT s_high, BaseT
   range = (WideT)(high - low) + 1;
   high = low + (BaseT)((range * s_high) / total - 1);
   low = low + (BaseT)((range * s_low) / total);
-  if (high < low) return CPRS_ERR_SUM;
+  if (high < low) return CprsErr::CPRS_ERR_SUM;
 
   for (;;) {
     // the same MS bits
@@ -50,7 +50,7 @@ CprsErr ArithCoder::ScaleRange(BitStream *dest, BaseT s_low, BaseT s_high, BaseT
       low &= 0x3fff;
       high |= 0x4000;
     } else
-      return CPRS_SUCCESS;
+      return CprsErr::CPRS_SUCCESS;
 
     low <<= 1;
     high <<= 1;
@@ -61,7 +61,7 @@ CprsErr ArithCoder::ScaleRange(BitStream *dest, BaseT s_low, BaseT s_high, BaseT
 template <class T>
 CprsErr ArithCoder::EncodeUniform(BitStream *dest, T val, T maxval, uint bitmax) {
   DEBUG_ASSERT((val <= maxval) && (val >= 0));
-  if (maxval == 0) return CPRS_SUCCESS;
+  if (maxval == 0) return CprsErr::CPRS_SUCCESS;
   DEBUG_ASSERT((maxval _SHR_ bitmax) == 0);
 
   // encode groups of 'uni_nbit' bits, from the least significant
@@ -71,7 +71,7 @@ CprsErr ArithCoder::EncodeUniform(BitStream *dest, T val, T maxval, uint bitmax)
   while (bitmax > uni_nbit) {
     v = (BaseT)(val & uni_mask);
     err = ScaleRange(dest, v, v + (BaseT)1, uni_total);
-    if (err) return err;
+    if (static_cast<int>(err)) return err;
     val >>= uni_nbit;
     maxval >>= uni_nbit;
     bitmax -= uni_nbit;
@@ -79,9 +79,9 @@ CprsErr ArithCoder::EncodeUniform(BitStream *dest, T val, T maxval, uint bitmax)
   // encode the most significant group
   DEBUG_ASSERT(maxval < MAX_TOTAL);
   err = ScaleRange(dest, (BaseT)val, (BaseT)val + (BaseT)1, (BaseT)maxval + (BaseT)1);
-  if (err) return err;
+  if (static_cast<int>(err)) return err;
 
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 // TODO: it was
@@ -92,7 +92,7 @@ void ArithCoder::EndCompress(BitStream *dest) {
 }
 
 CprsErr ArithCoder::CompressBytes(BitStream *dest, char *src, int slen, BaseT *sum, BaseT total) {
-  if (!dest || !src || !sum || (slen < 1) || (total <= 0)) return CPRS_ERR_PAR;
+  if (!dest || !src || !sum || (slen < 1) || (total <= 0)) return CprsErr::CPRS_ERR_PAR;
 
   InitCompress();
 
@@ -103,15 +103,15 @@ CprsErr ArithCoder::CompressBytes(BitStream *dest, char *src, int slen, BaseT *s
     c = *(src++);
     err = ScaleRange(dest, sum[c], sum[c + 1],
                      total);  // rescale high and low, send bits to dest
-    if (err) return err;
+    if (static_cast<int>(static_cast<int>(err))) return err;
   }
 
   EndCompress(dest);
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 CprsErr ArithCoder::CompressBits(BitStream *dest, BitStream *src, BaseT *sum, BaseT total) {
-  if (!dest || !src || !sum || (total <= 0)) return CPRS_ERR_PAR;
+  if (!dest || !src || !sum || (total <= 0)) return CprsErr::CPRS_ERR_PAR;
 
   InitCompress();
 
@@ -122,11 +122,11 @@ CprsErr ArithCoder::CompressBits(BitStream *dest, BitStream *src, BaseT *sum, Ba
     c = src->GetBit();
     err = ScaleRange(dest, sum[c], sum[c + 1],
                      total);  // rescale high and low, send bits to dest
-    if (err) return err;
+    if (static_cast<int>(static_cast<int>(err))) return err;
   }
 
   EndCompress(dest);
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 void ArithCoder::InitDecompress(BitStream *src) {
@@ -158,7 +158,7 @@ CprsErr ArithCoder::RemoveSymbol(BitStream *src, BaseT s_low, BaseT s_high, Base
       low &= 0x3fff;
       high |= 0x4000;
     } else
-      return CPRS_SUCCESS;
+      return CprsErr::CPRS_SUCCESS;
 
     low <<= 1;
     high <<= 1;
@@ -168,14 +168,14 @@ CprsErr ArithCoder::RemoveSymbol(BitStream *src, BaseT s_low, BaseT s_high, Base
     if (src->CanRead())
       code |= src->GetBit();
     else if (++added > sizeof(BaseT) * 8)
-      return CPRS_ERR_BUF;
+      return CprsErr::CPRS_ERR_BUF;
   }
 }
 
 template <class T>
 CprsErr ArithCoder::DecodeUniform(BitStream *src, T &val, T maxval, uint bitmax) {
   val = 0;
-  if (maxval == 0) return CPRS_SUCCESS;
+  if (maxval == 0) return CprsErr::CPRS_SUCCESS;
   DEBUG_ASSERT((maxval _SHR_ bitmax) == 0);
 
   // decode groups of 'uni_nbit' bits, from the least significant
@@ -186,7 +186,7 @@ CprsErr ArithCoder::DecodeUniform(BitStream *src, T &val, T maxval, uint bitmax)
   while (shift + uni_nbit < bitmax) {
     v = GetCount(uni_total);
     err = RemoveSymbol(src, v, v + (BaseT)1, uni_total);
-    if (err) return err;
+    if (static_cast<int>(err)) return err;
     DEBUG_ASSERT(shift < 64);
     val |= (uint64_t)v << shift;
     shift += uni_nbit;
@@ -197,16 +197,16 @@ CprsErr ArithCoder::DecodeUniform(BitStream *src, T &val, T maxval, uint bitmax)
   DEBUG_ASSERT(total <= MAX_TOTAL);
   v = GetCount(total);
   err = RemoveSymbol(src, v, v + (BaseT)1, total);
-  if (err) return err;
+  if (static_cast<int>(err)) return err;
   DEBUG_ASSERT(shift < 64);
   val |= (uint64_t)v << shift;
   DEBUG_ASSERT(val <= maxval);
 
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 CprsErr ArithCoder::DecompressBytes(char *dest, int dlen, BitStream *src, BaseT *sum, BaseT total) {
-  if (!dest || !src || !sum || (dlen < 1)) return CPRS_ERR_PAR;
+  if (!dest || !src || !sum || (dlen < 1)) return CprsErr::CPRS_ERR_PAR;
 
   BaseT count;
   int c;
@@ -227,14 +227,14 @@ CprsErr ArithCoder::DecompressBytes(char *dest, int dlen, BitStream *src, BaseT 
 
     // remove the symbol from the input
     err = RemoveSymbol(src, sum[c], sum[c + 1], total);
-    if (err) return err;
+    if (static_cast<int>(static_cast<int>(err))) return err;
   }
 
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 CprsErr ArithCoder::DecompressBits(BitStream *dest, BitStream *src, BaseT *sum, BaseT total) {
-  if (!dest || !src || !sum) return CPRS_ERR_PAR;
+  if (!dest || !src || !sum) return CprsErr::CPRS_ERR_PAR;
 
   BaseT count, sum0 = sum[0], sum1 = sum[1];
   CprsErr err;
@@ -253,10 +253,10 @@ CprsErr ArithCoder::DecompressBits(BitStream *dest, BitStream *src, BaseT *sum, 
       dest->PutBit0();
       err = RemoveSymbol(src, sum0, sum1, total);
     }
-    if (err) return err;
+    if (static_cast<int>(static_cast<int>(err))) return err;
   }
 
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 ArithCoder::BaseT ArithCoder::GetCount(BaseT total) {

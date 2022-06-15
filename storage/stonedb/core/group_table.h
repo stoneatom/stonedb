@@ -33,7 +33,7 @@ namespace core {
 
 // GroupTable - a tool for storing values and counters
 
-enum GT_Aggregation {
+enum class GT_Aggregation {
   GT_LIST,  // GT_LIST - just store the first value
   GT_COUNT,
   GT_COUNT_NOT_NULL,
@@ -121,7 +121,7 @@ class GroupTable : public mm::TraceableObject {
     if (distinct_present) return false;
 
     for (auto &ag : aggregated_desc) {
-      if (ag.operation == GT_GROUP_CONCAT) return false;
+      if (ag.operation == GT_Aggregation::GT_GROUP_CONCAT) return false;
     }
     return true;
   }
@@ -153,7 +153,7 @@ class GroupTable : public mm::TraceableObject {
   int64_t GetCurrentRow() { return vm_tab->GetCurrentRow(); }
   void NextRow() { vm_tab->NextRow(); }
   bool RowValid() { return vm_tab->RowValid(); }
-  mm::TO_TYPE TraceableType() const override { return mm::TO_TEMPORARY; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
 
  private:
   std::vector<unsigned char> input_buffer;
@@ -182,7 +182,7 @@ class GroupTable : public mm::TraceableObject {
       min = common::MINUS_INF_64;
       max = common::PLUS_INF_64;
       max_no_values = 0;
-      operation = GT_LIST;
+      operation = GT_Aggregation::GT_LIST;
       distinct = false;
       size = 0;
       precision = 0;

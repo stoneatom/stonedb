@@ -46,11 +46,11 @@ MysqlExpression::MysqlExpression(Item *item, Item2VarID &item2varid) {
   }
 
   this->item2varid = &item2varid;
-  this->item = TransformTree(item, FORWARD);
+  this->item = TransformTree(item, TransformDirection::FORWARD);
   this->item2varid = NULL;
 }
 
-MysqlExpression::~MysqlExpression() { TransformTree(item, BACKWARD); }
+MysqlExpression::~MysqlExpression() { TransformTree(item, TransformDirection::BACKWARD); }
 
 bool MysqlExpression::HandledResultType(Item *item) {
   // Warning: if result type is DECIMAL and precision and/or scale greater than
@@ -96,7 +96,7 @@ bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &field
     case Item::VARBIN_ITEM:
       return true;
 
-    case Item_sdbfield::SDBFIELD_ITEM:
+    case static_cast<int>(Item_sdbfield::enumSDBFiledItem::SDBFIELD_ITEM):
       if (has_aggregation) {
         if (Query::IsAggregationItem(((Item_sdbfield *)item)->OriginalItem())) *has_aggregation = true;
       }
@@ -177,7 +177,7 @@ void MysqlExpression::RemoveUnusedVarID(Item *root) {
     case Item::FIELD_ITEM:
     case Item::SUM_FUNC_ITEM:
       break;
-    case (Item::Type)Item_sdbfield::SDBFIELD_ITEM: {
+    case (Item::Type)Item_sdbfield::enumSDBFiledItem::SDBFIELD_ITEM: {
       Item_sdbfield *sdbfield = static_cast<Item_sdbfield *>(root);
       sdbfield->varID.pop_back();
     } break;
@@ -228,7 +228,7 @@ Item *MysqlExpression::TransformTree(Item *root, TransformDirection dir) {
   PrintItemTree("transform tree", root);
   switch (static_cast<int>(root->type())) {
     case Item::FIELD_ITEM: {
-      if (dir == BACKWARD)  // already transformed (DAG case)
+      if (dir == TransformDirection::BACKWARD)  // already transformed (DAG case)
         return root;
       // dir == FORWARD
       Item_sdbfield *sdbfield = GetSdbfieldItem(static_cast<Item_field *>(root));
@@ -237,7 +237,7 @@ Item *MysqlExpression::TransformTree(Item *root, TransformDirection dir) {
       return sdbfield;
     }
     case Item::SUM_FUNC_ITEM: {
-      if (dir == BACKWARD)  // already transformed (DAG case)
+      if (dir == TransformDirection::BACKWARD)  // already transformed (DAG case)
         return root;
       // dir == FORWARD
       Item_sdbfield *sdbsum = GetSdbfieldItem(static_cast<Item_field *>(root));
@@ -246,9 +246,9 @@ Item *MysqlExpression::TransformTree(Item *root, TransformDirection dir) {
       // (*item2varid)[aggregation]);
       return sdbsum;
     }
-    case (Item::Type)Item_sdbfield::SDBFIELD_ITEM: {
+    case (Item::Type)Item_sdbfield::enumSDBFiledItem::SDBFIELD_ITEM: {
       Item_sdbfield *sdbfield = static_cast<Item_sdbfield *>(root);
-      if (dir == FORWARD) {  // already transformed (DAG case)
+      if (dir == TransformDirection::FORWARD) {  // already transformed (DAG case)
         Item_field *ifield = sdbfield->OriginalItem();
         // if(!(sdbfield->varID == (*item2varid)[ifield])) {
         //  char err[256];
@@ -280,7 +280,7 @@ Item *MysqlExpression::TransformTree(Item *root, TransformDirection dir) {
 
     case Item::FUNC_ITEM: {
       Item_func *ifunc = static_cast<Item_func *>(root);
-      if (dir == FORWARD &&
+      if (dir == TransformDirection::FORWARD &&
                 (dynamic_cast<Item_func_rand *>(ifunc) || dynamic_cast<Item_func_last_insert_id *>(ifunc) ||
                  dynamic_cast<Item_func_get_system_var *>(ifunc) || dynamic_cast<Item_func_is_free_lock *>(ifunc) ||
                  dynamic_cast<Item_func_is_used_lock *>(ifunc) || dynamic_cast<Item_func_row_count *>(ifunc) ||
@@ -437,11 +437,11 @@ MysqlExpression::StringType MysqlExpression::GetStringType() {
     if ((item->type() != Item_sdbfield::get_sdbitem_type() && item->field_type() == MYSQL_TYPE_TIME) ||
         (item->type() == Item_sdbfield::get_sdbitem_type() &&
          static_cast<Item_sdbfield *>(item)->IsAggregation() == false && item->field_type() == MYSQL_TYPE_TIME))
-      return STRING_TIME;
+      return StringType::STRING_TIME;
     else
-      return STRING_NORMAL;
+      return StringType::STRING_NORMAL;
   }
-  return STRING_NOTSTRING;
+  return StringType::STRING_NOTSTRING;
 }
 
 std::shared_ptr<ValueOrNull> MysqlExpression::Evaluate() {
@@ -552,10 +552,12 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemInt2ValueOrNull(Item *item) {
   return val;
 }
 
-bool SameSDBField(Item_sdbfield *const &l, Item_sdbfield *const &r) { return (!(l || r)) || (l && r && ((*l) == (*r))); }
+bool SameSDBField(Item_sdbfield *const &l, Item_sdbfield *const &r) {
+  return (!(l || r)) || (l && r && ((*l) == (*r)));
+}
 
 bool SameSDBFieldSet(MysqlExpression::sdbfields_cache_t::value_type const &l,
-                    MysqlExpression::sdbfields_cache_t::value_type const &r) {
+                     MysqlExpression::sdbfields_cache_t::value_type const &r) {
   return l.second.size() == r.second.size() && equal(l.second.begin(), l.second.end(), r.second.begin(), SameSDBField);
 }
 
@@ -635,7 +637,7 @@ bool operator==(Item const &l_, Item const &r_) {
           }
         }
       } break;
-      case (Item_sdbfield::SDBFIELD_ITEM): {
+      case static_cast<int>(Item_sdbfield::enumSDBFiledItem::SDBFIELD_ITEM): {
         Item_sdbfield const *l = static_cast<Item_sdbfield const *>(&l_);
         Item_sdbfield const *r = static_cast<Item_sdbfield const *>(&r_);
         same = (*l == *r);

@@ -60,21 +60,21 @@ ConstColumn::ConstColumn(const types::RCValueObject &v, const core::ColumnType &
     value = core::ValueOrNull(v.ToBString());
     ct.SetPrecision(value.StrLen());
   } else if (c.IsNumeric() && !c.IsDateTime()) {
-    if (v.GetValueType() == types::NUMERIC_TYPE)
+    if (v.GetValueType() == types::ValueTypeEnum::NUMERIC_TYPE)
       value = core::ValueOrNull(static_cast<types::RCNum &>(v));
-    else if (v.GetValueType() == types::STRING_TYPE) {
+    else if (v.GetValueType() == types::ValueTypeEnum::STRING_TYPE) {
       types::RCNum rcn;
       if (c.IsFloat())
         types::RCNum::ParseReal(v.ToBString(), rcn, c.GetTypeName());
       else
         types::RCNum::ParseNum(v.ToBString(), rcn);
       value = rcn;
-    } else if (v.GetValueType() == types::NULL_TYPE)
+    } else if (v.GetValueType() == types::ValueTypeEnum::NULL_TYPE)
       value = core::ValueOrNull();
     else
       throw common::DataTypeConversionException(common::ErrorCode::DATACONVERSION);
   } else {
-    DEBUG_ASSERT(v.GetValueType() == types::DATE_TIME_TYPE);
+    DEBUG_ASSERT(v.GetValueType() == types::ValueTypeEnum::DATE_TIME_TYPE);
     // TODO: if it is non-date-time a proper conversion should be done here
     value = core::ValueOrNull(static_cast<types::RCDateTime &>(v));
   }

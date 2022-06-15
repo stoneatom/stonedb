@@ -51,12 +51,12 @@ class Item_sdbfield : public Item_field {
   // Implementation of MySQL Item interface
 
   static_assert(sizeof(Type) >= 2, "invalid type size");
-  enum {
+  enum class enumSDBFiledItem {
     SDBFIELD_ITEM = 12345
   };  // WARNING: it is risky. We are assuming sizeof(enum) >= 2 in a superclass
       // (Item)
-  static Type get_sdbitem_type() { return (Type)SDBFIELD_ITEM; }
-  Type type() const override { return (Type)SDBFIELD_ITEM; }
+  static Type get_sdbitem_type() { return (Type)enumSDBFiledItem::SDBFIELD_ITEM; }
+  Type type() const override { return (Type)enumSDBFiledItem::SDBFIELD_ITEM; }
   bool is_null() override { return buf->IsNull(); }
   bool is_null_result() override { return buf->IsNull(); }
   double val_real() override;

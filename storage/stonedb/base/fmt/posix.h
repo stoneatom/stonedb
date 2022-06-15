@@ -183,7 +183,7 @@ class File {
 
  public:
   // Possible values for the oflag argument to the constructor.
-  enum {
+  enum class enumOpenFileType {
     RDONLY = FMT_POSIX(O_RDONLY),  // Open for reading only.
     WRONLY = FMT_POSIX(O_WRONLY),  // Open for writing only.
     RDWR = FMT_POSIX(O_RDWR)       // Open for reading and writing.

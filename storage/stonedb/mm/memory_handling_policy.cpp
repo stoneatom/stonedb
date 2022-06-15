@@ -80,8 +80,8 @@ MemoryHandling::MemoryHandling([[maybe_unused]] size_t comp_heap_size, size_t un
     lt_size = 0;
   }
 
-  STONEDB_LOG(INFO, "Adjusted Main Heap size = %ld", adj_mh_size);
-  STONEDB_LOG(INFO, "Adjusted LT Heap size = %ld", lt_size);
+  STONEDB_LOG(LogCtl_Level::INFO, "Adjusted Main Heap size = %ld", adj_mh_size);
+  STONEDB_LOG(LogCtl_Level::INFO, "Adjusted LT Heap size = %ld", lt_size);
 
   // Which heaps to use
   if (hpolicy == "system") {
@@ -161,18 +161,18 @@ void *MemoryHandling::alloc(size_t size, BLOCK_TYPE type, TraceableObject *owner
   ASSERT(size < (size_t)(1 << 31), "Oversized alloc request!");
   // choose appropriate heap for this request
   switch (type) {
-    case BLOCK_TEMPORARY:
+    case BLOCK_TYPE::BLOCK_TEMPORARY:
       // Disable huge_heap check as
       // 1. it cann't work
       // 2. it is hardcoded off
-      // if (m_huge_heap->getHeapStatus() == HEAP_SUCCESS)
+      // if (m_huge_heap->getHeapStatus() == HEAP_STATUS::HEAP_SUCCESS)
       //    heap = m_huge_heap;
       if ((m_large_temp != NULL) && (size >= (stonedb_sysvar_mm_large_threshold * 1_MB)))
         switch (owner->TraceableType()) {
-          case TO_SORTER:
-          case TO_CACHEDBUFFER:
-          case TO_INDEXTABLE:
-          case TO_TEMPORARY:
+          case TO_TYPE::TO_SORTER:
+          case TO_TYPE::TO_CACHEDBUFFER:
+          case TO_TYPE::TO_INDEXTABLE:
+          case TO_TYPE::TO_TEMPORARY:
             heap = m_large_temp;
             break;
           default:
@@ -222,11 +222,11 @@ void *MemoryHandling::alloc(size_t size, BLOCK_TYPE type, TraceableObject *owner
   m_alloc_blocks++;
   m_alloc_size += bsize;
   if (owner != NULL)
-    if (owner->TraceableType() == TO_PACK) {
+    if (owner->TraceableType() == TO_TYPE::TO_PACK) {
       m_alloc_pack_size += bsize;
       m_alloc_pack++;
     } else {
-      // I want this for type = BLOCK_TEMPORARY but will take this for now
+      // I want this for type = BLOCK_TYPE::BLOCK_TEMPORARY but will take this for now
       m_alloc_temp_size += bsize;
       m_alloc_temp++;
     }
@@ -273,7 +273,7 @@ void MemoryHandling::dealloc(void *mh, TraceableObject *owner) {
   m_free_blocks++;
   m_free_size += bsize;
   if (owner != NULL)
-    if (owner->TraceableType() == TO_PACK) {
+    if (owner->TraceableType() == TO_TYPE::TO_PACK) {
       m_free_pack_size += bsize;
       m_free_pack++;
     } else {
@@ -317,7 +317,7 @@ bool MemoryHandling::ReleaseMemory(size_t size, [[maybe_unused]] TraceableObject
 
     for (auto &it : m_objs) {
       if (it.first == NULL) continue;
-      if (it.first->IsLocked() || it.first->TraceableType() != TO_PACK) continue;
+      if (it.first->IsLocked() || it.first->TraceableType() != TO_TYPE::TO_PACK) continue;
 
       for (auto &mit : *it.second) {
         if (mit.second == m_system) {
@@ -341,7 +341,7 @@ bool MemoryHandling::ReleaseMemory(size_t size, [[maybe_unused]] TraceableObject
     auto it = m_objs.begin();
     while (it != m_objs.end()) {
         if ( (*it).first != NULL )
-            if ((*it).first->TraceableType() == TO_PACK && (*it).first->IsLocked() == false) {
+            if ((*it).first->TraceableType() == TO_TYPE::TO_PACK && (*it).first->IsLocked() == false) {
                 if ( (*it).first->IsPrefetchUnused() )
                     (*it).first->clearPrefetchUnused();
                 else
@@ -381,16 +381,16 @@ void MemoryHandling::ReportLeaks() {
       size += it2.second->getBlockSize(it2.first);
     }
   }
-  if (blocks > 0) STONEDB_LOG(WARN, "%d memory block(s) leaked total size = %ld", blocks, size);
+  if (blocks > 0) STONEDB_LOG(LogCtl_Level::WARN, "%d memory block(s) leaked total size = %ld", blocks, size);
 }
 
 void MemoryHandling::EnsureNoLeakedTraceableObject() {
   bool error_found = false;
   for (auto it : m_objs) {
-    if (it.first->IsLocked() && (it.first->NoLocks() > 1 || it.first->TraceableType() == TO_PACK)) {
+    if (it.first->IsLocked() && (it.first->NoLocks() > 1 || it.first->TraceableType() == TO_TYPE::TO_PACK)) {
       error_found = true;
-      STONEDB_LOG(ERROR, "Object @[%ld] locked too many times. Object type: %d, no. locks: %d", long(it.first),
-                  int(it.first->TraceableType()), int(it.first->NoLocks()));
+      STONEDB_LOG(LogCtl_Level::ERROR, "Object @[%ld] locked too many times. Object type: %d, no. locks: %d",
+                  long(it.first), int(it.first->TraceableType()), int(it.first->NoLocks()));
     }
   }
   ASSERT(!error_found, "Objects locked too many times found.");
@@ -449,10 +449,11 @@ void MemoryHandling::HeapHistogram(std::ostream &out) {
   unsigned packs_locked = 0;
 
   SimpleHist main_heap("Main Heap Total"), huge_heap("Huge Heap Total"), system_heap("System Heap Total"),
-      large_temp("Large Temporary Heap"), packs("TO_PACK objects"), sorter("TO_SORTER objects"),
-      cbit("TO_CACHEDBUFFER+TO_INDEXTABLE objects"), filter("TO_FILTER+TO_MULTIFILTER2 objects"),
-      rsisplice("TO_RSINDEX+TO_SPLICE objects"), temp("TO_TEMPORARY objects"), ftree("TO_FTREE objects"),
-      other("other objects");
+      large_temp("Large Temporary Heap"), packs("TO_TYPE::TO_PACK objects"), sorter("TO_TYPE::TO_SORTER objects"),
+      cbit("TO_TYPE::TO_CACHEDBUFFER+TO_TYPE::TO_INDEXTABLE objects"),
+      filter("TO_TYPE::TO_FILTER+TO_TYPE::TO_MULTIFILTER2 objects"),
+      rsisplice("TO_TYPE::TO_RSINDEX+TO_TYPE::TO_SPLICE objects"), temp("TO_TYPE::TO_TEMPORARY objects"),
+      ftree("TO_TYPE::TO_FTREE objects"), other("other objects");
 
   std::unordered_map<HeapPolicy *, SimpleHist *> used_blocks;
 
@@ -467,31 +468,31 @@ void MemoryHandling::HeapHistogram(std::ostream &out) {
     for (auto it : m_objs) {
       SimpleHist *block_type;
 
-      if (it.first->TraceableType() == TO_PACK && it.first->IsLocked()) packs_locked++;
+      if (it.first->TraceableType() == TO_TYPE::TO_PACK && it.first->IsLocked()) packs_locked++;
 
       switch (it.first->TraceableType()) {
-        case TO_PACK:
+        case TO_TYPE::TO_PACK:
           block_type = &packs;
           break;
-        case TO_SORTER:
+        case TO_TYPE::TO_SORTER:
           block_type = &sorter;
           break;
-        case TO_CACHEDBUFFER:
-        case TO_INDEXTABLE:
+        case TO_TYPE::TO_CACHEDBUFFER:
+        case TO_TYPE::TO_INDEXTABLE:
           block_type = &cbit;
           break;
-        case TO_FILTER:
-        case TO_MULTIFILTER2:
+        case TO_TYPE::TO_FILTER:
+        case TO_TYPE::TO_MULTIFILTER2:
           block_type = &filter;
           break;
-        case TO_RSINDEX:
-        case TO_SPLICE:
+        case TO_TYPE::TO_RSINDEX:
+        case TO_TYPE::TO_SPLICE:
           block_type = &rsisplice;
           break;
-        case TO_TEMPORARY:
+        case TO_TYPE::TO_TEMPORARY:
           block_type = &temp;
           break;
-        case TO_FTREE:
+        case TO_TYPE::TO_FTREE:
           block_type = &ftree;
           break;
         default:

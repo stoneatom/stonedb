@@ -33,7 +33,7 @@ GroupByWrapper::GroupByWrapper(int a_size, bool distinct, Transaction *conn, uin
 
   for (int i = 0; i < attrs_size; i++) {
     virt_col[i] = nullptr;
-    input_mode[i] = GBIMODE_NOT_SET;
+    input_mode[i] = GBInputMode::GBIMODE_NOT_SET;
     is_lookup[i] = false;
     attr_mapping[i] = -1;
     dist_vals[i] = common::NULL_VALUE_64;
@@ -110,7 +110,7 @@ void GroupByWrapper::AddGroupingColumn(int attr_no, int orig_attr_no, TempTable:
   // Not used for grouping columns:
   is_lookup[attr_no] = false;
   dist_vals[attr_no] = common::NULL_VALUE_64;
-  input_mode[attr_no] = GBIMODE_NOT_SET;
+  input_mode[attr_no] = GBInputMode::GBIMODE_NOT_SET;
 
   attr_mapping[orig_attr_no] = attr_no;
   gt.AddGroupingColumn(virt_col[attr_no]);
@@ -142,77 +142,77 @@ void GroupByWrapper::AddAggregatedColumn(int orig_attr_no, TempTable::Attr &a, i
 
   switch (a.mode) {
     case common::ColOperation::SUM:
-      ag_oper = GT_SUM;
+      ag_oper = GT_Aggregation::GT_SUM;
       ag_type = virt_col[attr_no]->TypeName();
       ag_prec = virt_col[attr_no]->Type().GetScale();
       break;
     case common::ColOperation::AVG:
-      ag_oper = GT_AVG;
+      ag_oper = GT_Aggregation::GT_AVG;
       ag_type = virt_col[attr_no]->TypeName();
       ag_prec = virt_col[attr_no]->Type().GetScale();
       break;
     case common::ColOperation::MIN:
-      ag_oper = GT_MIN;
+      ag_oper = GT_Aggregation::GT_MIN;
       break;
     case common::ColOperation::MAX:
-      ag_oper = GT_MAX;
+      ag_oper = GT_Aggregation::GT_MAX;
       break;
     case common::ColOperation::COUNT:
       if (a.term.IsNull() || (!ag_distinct && virt_col[attr_no]->IsConst())) {
         if (virt_col[attr_no] && virt_col[attr_no]->IsConst()) {
           MIIterator dummy(NULL, p_power);
           if (virt_col[attr_no]->IsNull(dummy)) {
-            ag_oper = GT_COUNT_NOT_NULL;
+            ag_oper = GT_Aggregation::GT_COUNT_NOT_NULL;
             ag_type = virt_col[attr_no]->TypeName();
             ag_size = max_size;
           } else {
             virt_col[attr_no] = NULL;  // forget about constant in count(...), except null
-            ag_oper = GT_COUNT;
+            ag_oper = GT_Aggregation::GT_COUNT;
           }
         } else {
           virt_col[attr_no] = NULL;  // forget about constant in count(...), except null
-          ag_oper = GT_COUNT;
+          ag_oper = GT_Aggregation::GT_COUNT;
         }
       } else {
-        ag_oper = GT_COUNT_NOT_NULL;
+        ag_oper = GT_Aggregation::GT_COUNT_NOT_NULL;
         ag_type = virt_col[attr_no]->TypeName();
         ag_size = max_size;
       }
       break;
     case common::ColOperation::LISTING:
-      ag_oper = GT_LIST;
+      ag_oper = GT_Aggregation::GT_LIST;
       break;
     case common::ColOperation::VAR_POP:
-      ag_oper = GT_VAR_POP;
+      ag_oper = GT_Aggregation::GT_VAR_POP;
       ag_type = virt_col[attr_no]->TypeName();
       ag_prec = virt_col[attr_no]->Type().GetScale();
       break;
     case common::ColOperation::VAR_SAMP:
-      ag_oper = GT_VAR_SAMP;
+      ag_oper = GT_Aggregation::GT_VAR_SAMP;
       ag_type = virt_col[attr_no]->TypeName();
       ag_prec = virt_col[attr_no]->Type().GetScale();
       break;
     case common::ColOperation::STD_POP:
-      ag_oper = GT_STD_POP;
+      ag_oper = GT_Aggregation::GT_STD_POP;
       ag_type = virt_col[attr_no]->TypeName();
       ag_prec = virt_col[attr_no]->Type().GetScale();
       break;
     case common::ColOperation::STD_SAMP:
-      ag_oper = GT_STD_SAMP;
+      ag_oper = GT_Aggregation::GT_STD_SAMP;
       ag_type = virt_col[attr_no]->TypeName();
       ag_prec = virt_col[attr_no]->Type().GetScale();
       break;
     case common::ColOperation::BIT_AND:
-      ag_oper = GT_BIT_AND;
+      ag_oper = GT_Aggregation::GT_BIT_AND;
       break;
     case common::ColOperation::BIT_OR:
-      ag_oper = GT_BIT_OR;
+      ag_oper = GT_Aggregation::GT_BIT_OR;
       break;
     case common::ColOperation::BIT_XOR:
-      ag_oper = GT_BIT_XOR;
+      ag_oper = GT_Aggregation::GT_BIT_XOR;
       break;
     case common::ColOperation::GROUP_CONCAT:
-      ag_oper = GT_GROUP_CONCAT;
+      ag_oper = GT_Aggregation::GT_GROUP_CONCAT;
       break;
     default:
       throw common::NotImplementedException("Aggregation not implemented");
@@ -220,25 +220,26 @@ void GroupByWrapper::AddAggregatedColumn(int orig_attr_no, TempTable::Attr &a, i
 
   if (virt_col[attr_no] && virt_col[attr_no]->Type().IsLookup() &&
       !types::RequiresUTFConversions(virt_col[attr_no]->GetCollation()) &&
-      (ag_oper == GT_COUNT || ag_oper == GT_COUNT_NOT_NULL || ag_oper == GT_LIST)) {
+      (ag_oper == GT_Aggregation::GT_COUNT || ag_oper == GT_Aggregation::GT_COUNT_NOT_NULL ||
+       ag_oper == GT_Aggregation::GT_LIST)) {
     // lookup for these operations may use codes
     ag_size = 4;  // integer
     ag_prec = 0;
     ag_type = common::CT::INT;
     is_lookup[attr_no] = true;
   }
-  if (ag_oper == GT_COUNT)
-    input_mode[attr_no] = GBIMODE_NO_VALUE;
-  else if (ag_oper == GT_GROUP_CONCAT)
-    input_mode[attr_no] = GBIMODE_AS_TEXT;
+  if (ag_oper == GT_Aggregation::GT_COUNT)
+    input_mode[attr_no] = GBInputMode::GBIMODE_NO_VALUE;
+  else if (ag_oper == GT_Aggregation::GT_GROUP_CONCAT)
+    input_mode[attr_no] = GBInputMode::GBIMODE_AS_TEXT;
   else
     input_mode[attr_no] =
         (ATI::IsStringType(virt_col[attr_no]->TypeName()) &&
                  (!is_lookup[attr_no] || types::RequiresUTFConversions(virt_col[attr_no]->GetCollation()))
-             ? GBIMODE_AS_TEXT
-             : GBIMODE_AS_INT64);
+             ? GBInputMode::GBIMODE_AS_TEXT
+             : GBInputMode::GBIMODE_AS_INT64);
 
-  STONEDB_LOG(DEBUG,
+  STONEDB_LOG(LogCtl_Level::DEBUG,
               "attr_no %d, input_mode[attr_no] %d, a.alias %s, a.si.separator "
               "%s, direction %d, ag_type %d, ag_size %d",
               attr_no, input_mode[attr_no], a.alias, a.si.separator.c_str(), a.si.order, ag_type, ag_size);
@@ -289,8 +290,8 @@ bool GroupByWrapper::AggregatePackInOneGroup(int attr_no, MIIterator &mit, int64
     auto val_it = val_list.begin();
     while (val_it != val_list.end()) {
       GDTResult res = gt.FindDistinctValue(attr_no, uniform_pos, *val_it);
-      if (res == GDT_FULL) return false;  // no chance to optimize
-      if (res == GDT_EXISTS)
+      if (res == GDTResult::GDT_FULL) return false;  // no chance to optimize
+      if (res == GDTResult::GDT_EXISTS)
         val_it = val_list.erase(val_it);
       else
         ++val_it;
@@ -396,8 +397,8 @@ void GroupByWrapper::AddAllGroupingConstants(MIIterator &mit) {
 void GroupByWrapper::AddAllAggregatedConstants(MIIterator &mit) {
   for (int attr_no = no_grouping_attr; attr_no < no_attr; attr_no++)
     if (virt_col[attr_no] && virt_col[attr_no]->IsConst()) {
-      if (mit.NoTuples() > 0 || gt.AttrOper(attr_no) == GT_LIST) {
-        if (!(gt.AttrOper(attr_no) == GT_COUNT && virt_col[attr_no]->IsNull(mit)))  // else left as 0
+      if (mit.NoTuples() > 0 || gt.AttrOper(attr_no) == GT_Aggregation::GT_LIST) {
+        if (!(gt.AttrOper(attr_no) == GT_Aggregation::GT_COUNT && virt_col[attr_no]->IsNull(mit)))  // else left as 0
           PutAggregatedValue(attr_no, 0, mit);
       } else
         PutAggregatedNull(attr_no, 0);
@@ -408,7 +409,7 @@ void GroupByWrapper::AddAllCountStar(int64_t row, MIIterator &mit,
                                      int64_t val)  // set all count(*) values
 {
   for (int gr_a = no_grouping_attr; gr_a < no_attr; gr_a++) {
-    if ((virt_col[gr_a] == NULL || virt_col[gr_a]->IsConst()) && gt.AttrOper(gr_a) == GT_COUNT &&
+    if ((virt_col[gr_a] == NULL || virt_col[gr_a]->IsConst()) && gt.AttrOper(gr_a) == GT_Aggregation::GT_COUNT &&
         !gt.AttrDistinct(gr_a)) {
       if (virt_col[gr_a] && virt_col[gr_a]->IsNull(mit))
         PutAggregatedValueForCount(gr_a, row, 0);
@@ -427,8 +428,9 @@ bool GroupByWrapper::AttrMayBeUpdatedByPack(int i, MIIterator &mit)  // false, i
 bool GroupByWrapper::PackWillNotUpdateAggregation(int i, MIIterator &mit)  // false, if counters can be changed
 {
   // MEASURE_FET("GroupByWrapper::PackWillNotUpdateAggregation(...)");
-  DEBUG_ASSERT(input_mode[i] != GBIMODE_NOT_SET);
-  if (((is_lookup[i] || input_mode[i] == GBIMODE_AS_TEXT) && (gt.AttrOper(i) == GT_MIN || gt.AttrOper(i) == GT_MAX)) ||
+  DEBUG_ASSERT(input_mode[i] != GBInputMode::GBIMODE_NOT_SET);
+  if (((is_lookup[i] || input_mode[i] == GBInputMode::GBIMODE_AS_TEXT) &&
+       (gt.AttrOper(i) == GT_Aggregation::GT_MIN || gt.AttrOper(i) == GT_Aggregation::GT_MAX)) ||
       virt_col[i] == NULL)
     return false;
 
@@ -457,8 +459,9 @@ bool GroupByWrapper::PackWillNotUpdateAggregation(int i, MIIterator &mit)  // fa
 bool GroupByWrapper::DataWillNotUpdateAggregation(int i)  // false, if counters can be changed
 {
   // Identical with PackWillNot...(), but calculated for global statistics
-  DEBUG_ASSERT(input_mode[i] != GBIMODE_NOT_SET);
-  if (((is_lookup[i] || input_mode[i] == GBIMODE_AS_TEXT) && (gt.AttrOper(i) == GT_MIN || gt.AttrOper(i) == GT_MAX)) ||
+  DEBUG_ASSERT(input_mode[i] != GBInputMode::GBIMODE_NOT_SET);
+  if (((is_lookup[i] || input_mode[i] == GBInputMode::GBIMODE_AS_TEXT) &&
+       (gt.AttrOper(i) == GT_Aggregation::GT_MIN || gt.AttrOper(i) == GT_Aggregation::GT_MAX)) ||
       virt_col[i] == NULL)
     return false;
 
@@ -485,25 +488,25 @@ bool GroupByWrapper::DataWillNotUpdateAggregation(int i)  // false, if counters 
 }
 
 bool GroupByWrapper::PutAggregatedValueForCount(int gr_a, int64_t pos, int64_t factor) {
-  DEBUG_ASSERT(gt.AttrOper(gr_a) == GT_COUNT || gt.AttrOper(gr_a) == GT_COUNT_NOT_NULL);
+  DEBUG_ASSERT(gt.AttrOper(gr_a) == GT_Aggregation::GT_COUNT || gt.AttrOper(gr_a) == GT_Aggregation::GT_COUNT_NOT_NULL);
   return gt.PutAggregatedValue(gr_a, pos, factor);
 }
 
 bool GroupByWrapper::PutAggregatedValueForMinMax(int gr_a, int64_t pos, int64_t factor) {
-  DEBUG_ASSERT(gt.AttrOper(gr_a) == GT_MIN || gt.AttrOper(gr_a) == GT_MAX);
+  DEBUG_ASSERT(gt.AttrOper(gr_a) == GT_Aggregation::GT_MIN || gt.AttrOper(gr_a) == GT_Aggregation::GT_MAX);
   return gt.PutAggregatedValue(gr_a, pos, factor);
 }
 
 bool GroupByWrapper::PutAggregatedNull(int gr_a, int64_t pos) {
-  DEBUG_ASSERT(input_mode[gr_a] != GBIMODE_NOT_SET);
-  return gt.PutAggregatedNull(gr_a, pos, (input_mode[gr_a] == GBIMODE_AS_TEXT));
+  DEBUG_ASSERT(input_mode[gr_a] != GBInputMode::GBIMODE_NOT_SET);
+  return gt.PutAggregatedNull(gr_a, pos, (input_mode[gr_a] == GBInputMode::GBIMODE_AS_TEXT));
   return false;
 }
 
 bool GroupByWrapper::PutAggregatedValue(int gr_a, int64_t pos, MIIterator &mit, int64_t factor) {
-  DEBUG_ASSERT(input_mode[gr_a] != GBIMODE_NOT_SET);
-  if (input_mode[gr_a] == GBIMODE_NO_VALUE) return gt.PutAggregatedValue(gr_a, pos, factor);
-  return gt.PutAggregatedValue(gr_a, pos, mit, factor, (input_mode[gr_a] == GBIMODE_AS_TEXT));
+  DEBUG_ASSERT(input_mode[gr_a] != GBInputMode::GBIMODE_NOT_SET);
+  if (input_mode[gr_a] == GBInputMode::GBIMODE_NO_VALUE) return gt.PutAggregatedValue(gr_a, pos, factor);
+  return gt.PutAggregatedValue(gr_a, pos, mit, factor, (input_mode[gr_a] == GBInputMode::GBIMODE_AS_TEXT));
 }
 
 types::BString GroupByWrapper::GetValueT(int col, int64_t row) {
@@ -558,8 +561,9 @@ void GroupByWrapper::ClearDistinctBuffers() {
 
 bool GroupByWrapper::PutCachedValue(int gr_a)  // current value from distinct cache
 {
-  DEBUG_ASSERT(input_mode[gr_a] != GBIMODE_NOT_SET);
-  bool added = gt.PutCachedValue(gr_a, distinct_watch.gd_cache[gr_a], (input_mode[gr_a] == GBIMODE_AS_TEXT));
+  DEBUG_ASSERT(input_mode[gr_a] != GBInputMode::GBIMODE_NOT_SET);
+  bool added =
+      gt.PutCachedValue(gr_a, distinct_watch.gd_cache[gr_a], (input_mode[gr_a] == GBInputMode::GBIMODE_AS_TEXT));
   if (!added) distinct_watch.gd_cache[gr_a].MarkCurrentAsPreserved();
   return added;
 }
@@ -583,16 +587,16 @@ bool GroupByWrapper::IsCountOnly(int gr_a)  // true, if an attribute is count(*)
                                             // no attr specified)
 {
   if (gr_a != -1) {
-    return (virt_col[gr_a] == NULL || virt_col[gr_a]->IsConst()) && gt.AttrOper(gr_a) == GT_COUNT &&
+    return (virt_col[gr_a] == NULL || virt_col[gr_a]->IsConst()) && gt.AttrOper(gr_a) == GT_Aggregation::GT_COUNT &&
            !gt.AttrDistinct(gr_a);
   }
   bool count_found = false;
   for (int i = 0; i < no_attr; i++) {  // function should return true for e.g.: "SELECT 1, 2,
                                        // 'ala', COUNT(*), 5, COUNT(4) FROM ..."
-    if (gt.AttrOper(i) == GT_COUNT) count_found = true;
-    if (!((virt_col[i] == NULL || virt_col[i]->IsConst()) && gt.AttrOper(i) == GT_COUNT &&
-          !gt.AttrDistinct(i))                                      // count(*) or count(const)
-        && (gt.AttrOper(i) != GT_LIST || !virt_col[i]->IsConst()))  // a constant
+    if (gt.AttrOper(i) == GT_Aggregation::GT_COUNT) count_found = true;
+    if (!((virt_col[i] == NULL || virt_col[i]->IsConst()) && gt.AttrOper(i) == GT_Aggregation::GT_COUNT &&
+          !gt.AttrDistinct(i))                                                      // count(*) or count(const)
+        && (gt.AttrOper(i) != GT_Aggregation::GT_LIST || !virt_col[i]->IsConst()))  // a constant
       return false;
   }
   return count_found;
@@ -607,7 +611,7 @@ bool GroupByWrapper::IsMinOnly()  // true, if an attribute is min(column), and
   if (no_attr != 1) {
     return false;
   }
-  if (gt.AttrOper(0) == GT_MIN && no_grouping_attr == 0 && no_aggregated_attr == 1) {
+  if (gt.AttrOper(0) == GT_Aggregation::GT_MIN && no_grouping_attr == 0 && no_aggregated_attr == 1) {
     return true;
   }
   return false;
@@ -622,7 +626,7 @@ bool GroupByWrapper::IsMaxOnly()  // true, if an attribute is max(column), and
   if (no_attr != 1) {
     return false;
   }
-  if (gt.AttrOper(0) == GT_MAX && no_grouping_attr == 0 && no_aggregated_attr == 1) {
+  if (gt.AttrOper(0) == GT_Aggregation::GT_MAX && no_grouping_attr == 0 && no_aggregated_attr == 1) {
     return true;
   }
   return false;

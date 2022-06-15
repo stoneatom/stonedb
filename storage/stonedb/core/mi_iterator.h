@@ -38,7 +38,7 @@ class MIIterator {
  public:
   // The splitting capability supported by MIIterator.
   struct SliceCapability {
-    enum Type {
+    enum class Type {
       kDisable = 0,  // Disable splitting into block.
       kLinear,       // Splitting into block with pack or line, the internal iterator
                      // is FilterOnesIterator.
@@ -46,7 +46,7 @@ class MIIterator {
                      // the internal iterator is
                      // DimensionGroupMultiMaterialized::DGIterator.
     };
-    Type type = kDisable;
+    Type type = Type::kDisable;
     std::vector<int64_t> slices;  // Every element is slice size.
   };
 
@@ -73,7 +73,7 @@ class MIIterator {
   MIIterator();  // empty constructor: only for special cases of MIDummyIterator
   virtual ~MIIterator();
 
-  enum MIIteratorType { MII_NORMAL, MII_DUMMY, MII_LOOKUP };
+  enum class MIIteratorType { MII_NORMAL, MII_DUMMY, MII_LOOKUP };
 
   /*! Get the array of row numbers for each dimension in the MultiIndex for the
    * current position of the iterator.
@@ -338,7 +338,7 @@ class MIDummyIterator : public MIIterator {
 
 class MILookupIterator : public MIDummyIterator {
  public:
-  MILookupIterator() : MIDummyIterator(1) { mii_type = MII_LOOKUP; }
+  MILookupIterator() : MIDummyIterator(1) { mii_type = MIIteratorType::MII_LOOKUP; }
   MILookupIterator(const MILookupIterator &sec) : MIDummyIterator(sec) {}
   void Set(int64_t val) { MIDummyIterator::Set(0, val); }
   void Invalidate() { valid = false; }

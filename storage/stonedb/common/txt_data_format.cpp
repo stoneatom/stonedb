@@ -25,7 +25,7 @@
 namespace stonedb {
 namespace common {
 
-TxtDataFormat::TxtDataFormat() : DataFormat("TXT_VARIABLE", TXT_VARIABLE) {}
+TxtDataFormat::TxtDataFormat() : DataFormat("EDF::TRI_UNKNOWN", EDF::TRI_UNKNOWN) {}
 
 TxtDataFormat::TxtDataFormat(std::string name, EDF edf) : DataFormat(name, edf) {}
 

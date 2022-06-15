@@ -119,7 +119,7 @@ union DT {
   }
 };
 
-enum ValueTypeEnum { NULL_TYPE, DATE_TIME_TYPE, NUMERIC_TYPE, STRING_TYPE };
+enum class ValueTypeEnum { NULL_TYPE, DATE_TIME_TYPE, NUMERIC_TYPE, STRING_TYPE };
 
 class RCDataType {
  public:
@@ -273,7 +273,7 @@ class BString : public ValueBasic<BString> {
   bool persistent;
 
  public:
-  const static ValueTypeEnum value_type = STRING_TYPE;
+  const static ValueTypeEnum value_type = ValueTypeEnum::STRING_TYPE;
 };
 
 class RCDateTime : public ValueBasic<RCDateTime> {
@@ -375,7 +375,7 @@ class RCDateTime : public ValueBasic<RCDateTime> {
   static RCDateTime GetCurrent();
 
  public:
-  const static ValueTypeEnum value_type = DATE_TIME_TYPE;
+  const static ValueTypeEnum value_type = ValueTypeEnum::DATE_TIME_TYPE;
 };
 
 class RCValueObject {
@@ -406,7 +406,7 @@ class RCValueObject {
   bool IsNull() const;
 
   common::CT Type() const { return value.get() ? value->Type() : common::CT::UNK; }
-  ValueTypeEnum GetValueType() const { return value.get() ? value->GetValueType() : NULL_TYPE; }
+  ValueTypeEnum GetValueType() const { return value.get() ? value->GetValueType() : ValueTypeEnum::NULL_TYPE; }
   BString ToBString() const;
   // operator RCDataType*()		{ return value.get(); }
   RCDataType *Get() const { return value.get(); }
@@ -470,17 +470,17 @@ static bool inline CollationStrCmp(DTCollation coll, const BString &s1, const BS
   int res =
       coll.collation->coll->strnncoll(coll.collation, (const uchar *)s1.val, s1.len, (const uchar *)s2.val, s2.len, 0);
   switch (op) {
-    case common::O_EQ:
+    case common::Operator::O_EQ:
       return (res == 0);
-    case common::O_NOT_EQ:
+    case common::Operator::O_NOT_EQ:
       return (res != 0);
-    case common::O_MORE:
+    case common::Operator::O_MORE:
       return (res > 0);
-    case common::O_MORE_EQ:
+    case common::Operator::O_MORE_EQ:
       return (res >= 0);
-    case common::O_LESS:
+    case common::Operator::O_LESS:
       return (res < 0);
-    case common::O_LESS_EQ:
+    case common::Operator::O_LESS_EQ:
       return (res <= 0);
     default:
       ASSERT(false, "OPERATOR NOT IMPLEMENTED");

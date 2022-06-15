@@ -28,7 +28,7 @@
 
 namespace stonedb {
 namespace system {
-enum Parameter {
+enum class Parameter {
   PIPEMODE,
   STRING_QUALIFIER,
   CHARSET_INFO_NUMBER,
@@ -53,19 +53,19 @@ class IOParameters {
   void SetLineTerminator(const std::string &lineTerminator_) { line_terminator = lineTerminator_; }
   void SetParameter(Parameter param, int value) {
     switch (param) {
-      case STRING_QUALIFIER:
+      case Parameter::STRING_QUALIFIER:
         string_qualifier = (char)value;
         break;
-      case CHARSET_INFO_NUMBER:
+      case Parameter::CHARSET_INFO_NUMBER:
         charset_info_number = value;
         break;
-      case LOCAL_LOAD:
+      case Parameter::LOCAL_LOAD:
         local_load = value;
         break;
-      case OPTIONALLY_ENCLOSED:
+      case Parameter::OPTIONALLY_ENCLOSED:
         opt_enclosed = value;
         break;
-      case LOCK_OPTION:
+      case Parameter::LOCK_OPTION:
         lock_option = value;
         break;
       default:
@@ -76,13 +76,13 @@ class IOParameters {
 
   void SetParameter(Parameter param, const std::string &value) {
     switch (param) {
-      case LINE_STARTER:
+      case Parameter::LINE_STARTER:
         line_starter = value;
         break;
-      case LINE_TERMINATOR:
+      case Parameter::LINE_TERMINATOR:
         line_terminator = value;
         break;
-      case CHARSETS_INDEX_FILE:
+      case Parameter::CHARSETS_INDEX_FILE:
         charsets_dir = value;
         break;
       default:
@@ -93,10 +93,10 @@ class IOParameters {
 
   void SetParameter(Parameter param, int64_t value) {
     switch (param) {
-      case SKIP_LINES:
+      case Parameter::SKIP_LINES:
         skip_lines = value;
         break;
-      case VALUE_LIST_ELEMENTS:
+      case Parameter::VALUE_LIST_ELEMENTS:
         value_list_elements = value;
         break;
       default:

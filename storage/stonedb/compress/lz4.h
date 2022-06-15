@@ -45,7 +45,7 @@ extern "C" {
 #endif // defined (__cplusplus)
 
 /*
- * lz4.h provides block compression functions, and gives full buffer control to programmer.
+ * lz4.h provides block compression functions, and gives earlyEnd_directive::full buffer control to programmer.
  * If you need to generate inter-operable compressed data (respecting LZ4 frame specification),
  * and can let the library handle its own memory, please use lz4frame.h instead.
 */
@@ -90,12 +90,12 @@ LZ4_compress_default() :
     As a consequence, 'dest' content is not valid.
     This function never writes outside 'dest' buffer, nor read outside 'source' buffer.
         sourceSize  : Max supported value is LZ4_MAX_INPUT_VALUE
-        maxDestSize : full or partial size of buffer 'dest' (which must be already allocated)
+        maxDestSize : earlyEnd_directive::full or earlyEnd_directive::partial size of buffer 'dest' (which must be already allocated)
         return : the number of bytes written into buffer 'dest' (necessarily <= maxOutputSize)
               or 0 if compression fails
 
 LZ4_decompress_safe() :
-    compressedSize : is the precise full size of the compressed block.
+    compressedSize : is the precise earlyEnd_directive::full size of the compressed block.
     maxDecompressedSize : is the size of destination buffer, which must be already allocated.
     return : the number of bytes decompressed into destination buffer (necessarily <= maxDecompressedSize)
              If destination buffer is not large enough, decoding will stop and output an error code (<0).

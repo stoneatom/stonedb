@@ -183,7 +183,7 @@ int MultiIndexTable::NoLocks() {
 // uninvolved scenes.
 DimensionGroupMultiMaterialized::DimensionGroupMultiMaterialized(int64_t obj, DimensionVector &dims, uint32_t power)
     : power_(power), dims_used_(dims) {
-  dim_group_type = DG_INDEX_TABLE;
+  dim_group_type = DGType::DG_INDEX_TABLE;
   no_obj = obj;
   dims_count_ = dims_used_.Size();
   dim_tables_.resize(dims_count_);

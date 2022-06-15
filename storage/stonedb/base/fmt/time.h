@@ -25,7 +25,7 @@ void format_arg(BasicFormatter<char, ArgFormatter> &f, const char *&format_str, 
   const char *end = format_str;
   while (*end && *end != '}') ++end;
   if (*end != '}') FMT_THROW(FormatError("missing '}' in format string"));
-  internal::MemoryBuffer<char, internal::INLINE_BUFFER_SIZE> format;
+  internal::MemoryBuffer<char, static_cast<size_t>(internal::enumInlineBuffer::INLINE_BUFFER_SIZE)> format;
   format.append(format_str, end + 1);
   format[format.size() - 1] = '\0';
   Buffer<char> &buffer = f.writer().buffer();

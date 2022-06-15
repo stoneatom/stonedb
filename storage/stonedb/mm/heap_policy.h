@@ -23,11 +23,11 @@
 namespace stonedb {
 namespace mm {
 
-enum HEAP_STATUS { HEAP_SUCCESS, HEAP_OUT_OF_MEMORY, HEAP_CORRUPTED, HEAP_ERROR };
+enum class HEAP_STATUS { HEAP_SUCCESS, HEAP_OUT_OF_MEMORY, HEAP_CORRUPTED, HEAP_ERROR };
 
 class HeapPolicy {
  public:
-  HeapPolicy(size_t s) : m_size(s), m_stonedb(HEAP_ERROR) {}
+  HeapPolicy(size_t s) : m_size(s), m_stonedb(HEAP_STATUS::HEAP_ERROR) {}
   virtual ~HeapPolicy() {}
   virtual void *alloc(size_t size) = 0;
   virtual void dealloc(void *mh) = 0;

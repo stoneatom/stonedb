@@ -74,7 +74,7 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
       if (mit.PackrowStarted()) {
         bool omit_this_packrow = false;
         for (int i = 0; (i < no_desc && !omit_this_packrow); i++)
-          if (cond[i].EvaluateRoughlyPack(mit) == common::RS_NONE) omit_this_packrow = true;
+          if (cond[i].EvaluateRoughlyPack(mit) == common::RSValue::RS_NONE) omit_this_packrow = true;
         for (int i = 0; i < no_desc; i++) pack_desc_locked[i] = false;  // delay locking
         if (new_mind.NoMoreTuplesPossible())
           break;  // stop the join if nothing new may be obtained in some
@@ -125,7 +125,7 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
     cond[i].UnlockSourcePacks();
     cond[i].done = true;
   }
-  why_failed = NOT_FAILED;
+  why_failed = JoinFailure::NOT_FAILED;
 }
 
 void JoinerGeneral::ExecuteOuterJoinLoop(Condition &cond, MINewContents &new_mind, DimensionVector &all_dims,

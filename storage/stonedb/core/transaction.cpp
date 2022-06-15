@@ -84,7 +84,7 @@ void Transaction::Commit([[maybe_unused]] THD *thd) {
 }
 
 void Transaction::Rollback([[maybe_unused]] THD *thd, bool force_error_message) {
-  STONEDB_LOG(INFO, "rollback transaction %s.", tid.ToString().c_str());
+  STONEDB_LOG(LogCtl_Level::INFO, "rollback transaction %s.", tid.ToString().c_str());
 
   std::shared_lock<std::shared_mutex> rlock(drop_rename_mutex);
   if (m_modified_tables.size()) {
@@ -92,7 +92,7 @@ void Transaction::Rollback([[maybe_unused]] THD *thd, bool force_error_message) 
       const char *message =
           "StoneDB storage engine has encountered an unexpected error. "
           "The current transaction has been rolled back.";
-      STONEDB_LOG(ERROR, "%s", message);
+      STONEDB_LOG(LogCtl_Level::ERROR, "%s", message);
       my_message(ER_XA_RBROLLBACK, message, MYF(0));
     }
   }

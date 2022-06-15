@@ -53,7 +53,7 @@ class HashTable : public mm::TraceableObject {
 
  private:
   // Overridden from mm::TraceableObject:
-  mm::TO_TYPE TraceableType() const override { return mm::TO_TEMPORARY; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
 
   std::vector<int> column_size_;
   bool for_count_only_ = false;

@@ -38,7 +38,7 @@ Exception::Exception(std::string const &msg) : std::runtime_error(msg) {
     stack_trace += "\n";
   }
   stack_trace += "STACK TRACE END\n";
-  STONEDB_LOG(WARN, "Exception: %s.\n%s", msg.c_str(), stack_trace.c_str());
+  STONEDB_LOG(LogCtl_Level::WARN, "Exception: %s.\n%s", msg.c_str(), stack_trace.c_str());
 }
 
 AssertException::AssertException(const char *cond, const char *file, int line, const std::string &msg)

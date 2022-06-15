@@ -41,8 +41,8 @@ class RoughMultiIndex {
   /*
           Example of query processing steps:
           1. Add new rough filter (RF) by GetLocalDescFilter for a condition.
-     Note that it will have common::RS_NONE if global RF is common::CT::NONE.
-          2. Update local RF for all non-common::RS_NONE packs.
+     Note that it will have common::RSValue::RS_NONE if global RF is common::CT::NONE.
+          2. Update local RF for all non-common::RSValue::RS_NONE packs.
           3. Update global RF by UpdateGlobalRoughFilter, common::CT::NONEto
      optimize access for next conditions.
   */
@@ -61,7 +61,7 @@ class RoughMultiIndex {
                                Filter *loc_f);  // if the filter is nontrivial, then copy pack status
   void UpdateLocalRoughFilters(int dim);        // make projection from global filters to all local for the
                                                 // given dimension
-  void MakeDimensionSuspect(int dim = -1);      // common::RS_ALL -> common::RS_SOME
+  void MakeDimensionSuspect(int dim = -1);      // common::RSValue::RS_ALL -> common::RSValue::RS_SOME
                                                 // for a dimension (or all of them)
   void MakeDimensionEmpty(int dim = -1);
 

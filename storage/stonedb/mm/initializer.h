@@ -45,7 +45,7 @@ class MemoryManagerInitializer : public TraceableObject {
   }
 
   static void EnsureNoLeakedTraceableObject() { m_MemHandling->EnsureNoLeakedTraceableObject(); }
-  TO_TYPE TraceableType() const override { return TO_INITIALIZER; }
+  TO_TYPE TraceableType() const override { return TO_TYPE::TO_INITIALIZER; }
 
  private:
   MemoryManagerInitializer(size_t comp_size, size_t uncomp_size, std::string hugedir = "", int hugesize = 0)

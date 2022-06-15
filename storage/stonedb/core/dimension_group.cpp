@@ -23,7 +23,7 @@ namespace core {
 DimensionGroupFilter::DimensionGroupFilter(int dim, int64_t size, uint32_t power) {
   base_dim = dim;
   f = new Filter(size, power, true);  // all ones
-  dim_group_type = DG_FILTER;
+  dim_group_type = DGType::DG_FILTER;
   no_obj = size;
 }
 
@@ -37,7 +37,7 @@ DimensionGroupFilter::DimensionGroupFilter(int dim, Filter *f_source, int copy_m
     f = Filter::ShallowCopy(*f_source);
   else if (copy_mode == 2)
     f = f_source;
-  dim_group_type = DG_FILTER;
+  dim_group_type = DGType::DG_FILTER;
   no_obj = f->NoOnes();
 }
 
@@ -76,7 +76,7 @@ DimensionGroup::Iterator *DimensionGroupFilter::CopyIterator(DimensionGroup::Ite
 }
 
 DimensionGroupMaterialized::DimensionGroupMaterialized(DimensionVector &dims) {
-  dim_group_type = DG_INDEX_TABLE;
+  dim_group_type = DGType::DG_INDEX_TABLE;
   dims_used = dims;
   no_dims = dims.Size();
   no_obj = 0;

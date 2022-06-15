@@ -54,7 +54,7 @@ namespace tcm {
 template <int BITS>
 class MapSelector {
  public:
-  using Type = TCMalloc_PageMap3<BITS - kPageShift> ;
+  using Type = TCMalloc_PageMap3<BITS - kPageShift>;
 };
 
 // -------------------------------------------------------------------------
@@ -170,7 +170,7 @@ class PageHeap final {
   std::list<void *> system_alloc_list;
 
   // REQUIRES: span->length >= n
-  // REQUIRES: span->location != IN_USE
+  // REQUIRES: span->location != enumSpanType::IN_USE
   // Remove span from its free list, and move any leftover part of
   // span into appropriate free lists.  Also update "span" to have
   // length exactly "n" and mark it as non-free so it can be returned

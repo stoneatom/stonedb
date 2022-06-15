@@ -55,8 +55,8 @@ class MIIteratorPoller {
     }
 
     slice_type_ = "none";
-    if (slice_capability_.type != MIIterator::SliceCapability::kDisable) {
-      if (slice_capability_.type == MIIterator::SliceCapability::kLinear) {
+    if (slice_capability_.type != MIIterator::SliceCapability::Type::kDisable) {
+      if (slice_capability_.type == MIIterator::SliceCapability::Type::kLinear) {
         if (stonedb_sysvar_async_join_setting.pack_per_step > 0)
           slice_type_ = base::sprint("per %d packs", stonedb_sysvar_async_join_setting.pack_per_step);
         else {
@@ -75,11 +75,11 @@ class MIIteratorPoller {
     if (no_more_) return std::shared_ptr<MIIterator>();
 
     std::shared_ptr<MIIterator> pack_iter;
-    if (slice_capability_.type != MIIterator::SliceCapability::kDisable) {
+    if (slice_capability_.type != MIIterator::SliceCapability::Type::kDisable) {
       size_t actual_pos = cur_pos_;
       size_t step = 1;
       int64_t sentry_pos = slice_capability_.slices.size();
-      if (slice_capability_.type == MIIterator::SliceCapability::kLinear) {
+      if (slice_capability_.type == MIIterator::SliceCapability::Type::kLinear) {
         DEBUG_ASSERT(stonedb_sysvar_async_join_setting.pack_per_step > 0 ||
                      stonedb_sysvar_async_join_setting.rows_per_step > 0);
         // Preferred iterating by pack.
@@ -114,7 +114,7 @@ class MIIteratorPoller {
           }
         }
       } else {
-        DEBUG_ASSERT(slice_capability_.type == MIIterator::SliceCapability::kFixed);
+        DEBUG_ASSERT(slice_capability_.type == MIIterator::SliceCapability::Type::kFixed);
         pack_iter.reset(new MIStepIterator(cur_pos_, stonedb_sysvar_async_join_setting.pack_per_step, *miter_));
       }
 
@@ -155,7 +155,7 @@ class ProxyHashJoiner::Action {
   ~Action() = default;
 
   bool Init(Condition &cond) {
-    auto result_defer = base::defer([this] { parent_->why_failed = FAIL_HASH; });
+    auto result_defer = base::defer([this] { parent_->why_failed = JoinFailure::FAIL_HASH; });
 
     std::vector<int> hash_descriptors;
     bool first_found = true;
@@ -165,7 +165,7 @@ class ProxyHashJoiner::Action {
     DimensionVector dims_other(mind_->NoDimensions());
     for (uint index = 0; index < cond.Size(); ++index) {
       bool added = false;
-      if (cond[index].IsType_JoinSimple() && cond[index].op == common::O_EQ) {
+      if (cond[index].IsType_JoinSimple() && cond[index].op == common::Operator::O_EQ) {
         if (first_found) {
           hash_descriptors.push_back(index);
           added = true;
@@ -321,7 +321,7 @@ class ProxyHashJoiner::Action {
       auto _ = base::defer([this] { mind_->UnlockAllFromUse(); });
 
       if (too_many_conflicts_) {
-        parent_->why_failed = FAIL_WRONG_SIDES;
+        parent_->why_failed = JoinFailure::FAIL_WRONG_SIDES;
         return;
       }
 

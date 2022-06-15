@@ -120,7 +120,7 @@ RCDateTime &RCDateTime::operator=(const RCDateTime &rcv) {
 }
 
 RCDateTime &RCDateTime::operator=(const RCDataType &rcv) {
-  if (rcv.GetValueType() == DATE_TIME_TYPE)
+  if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
     *this = (RCDateTime &)rcv;
   else {
     STONEDB_ERROR("bad cast");
@@ -310,7 +310,7 @@ common::ErrorCode RCDateTime::Parse(const int64_t &v, RCDateTime &rcv, common::C
       return common::ErrorCode::SUCCESS;
     if (sign == 1 && at == common::CT::TIMESTAMP &&
         IsCorrectSDBTimestamp(short(rcv.dt.year), short(rcv.dt.month), short(rcv.dt.day), short(rcv.dt.hour),
-                             short(rcv.dt.minute), short(rcv.dt.second)))
+                              short(rcv.dt.minute), short(rcv.dt.second)))
       return common::ErrorCode::SUCCESS;
   } else
     STONEDB_ERROR("type not supported");
@@ -505,9 +505,9 @@ RCDateTime RCDateTime::GetCurrent() {
 
 bool RCDateTime::operator==(const RCDataType &rcv) const {
   if (!AreComparable(at, rcv.Type()) || IsNull() || rcv.IsNull()) return false;
-  if (rcv.GetValueType() == DATE_TIME_TYPE)
+  if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
     return compare((RCDateTime &)rcv) == 0;
-  else if (rcv.GetValueType() == NUMERIC_TYPE) {
+  else if (rcv.GetValueType() == ValueTypeEnum::NUMERIC_TYPE) {
     return compare((RCNum &)rcv) == 0;
   }
   return false;
@@ -515,45 +515,45 @@ bool RCDateTime::operator==(const RCDataType &rcv) const {
 
 bool RCDateTime::operator<(const RCDataType &rcv) const {
   if (!AreComparable(at, rcv.Type()) || IsNull() || rcv.IsNull()) return false;
-  if (rcv.GetValueType() == DATE_TIME_TYPE)
+  if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
     return compare((RCDateTime &)rcv) < 0;
-  else if (rcv.GetValueType() == NUMERIC_TYPE)
+  else if (rcv.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
     return compare((RCNum &)rcv) < 0;
   return false;
 }
 
 bool RCDateTime::operator>(const RCDataType &rcv) const {
   if (!AreComparable(at, rcv.Type()) || IsNull() || rcv.IsNull()) return false;
-  if (rcv.GetValueType() == DATE_TIME_TYPE)
+  if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
     return compare((RCDateTime &)rcv) > 0;
-  else if (rcv.GetValueType() == NUMERIC_TYPE)
+  else if (rcv.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
     return compare((RCNum &)rcv) > 0;
   return false;
 }
 
 bool RCDateTime::operator>=(const RCDataType &rcv) const {
   if (!AreComparable(at, rcv.Type()) || IsNull() || rcv.IsNull()) return false;
-  if (rcv.GetValueType() == DATE_TIME_TYPE)
+  if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
     return compare((RCDateTime &)rcv) >= 0;
-  else if (rcv.GetValueType() == NUMERIC_TYPE)
+  else if (rcv.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
     return compare((RCNum &)rcv) >= 0;
   return false;
 }
 
 bool RCDateTime::operator<=(const RCDataType &rcv) const {
   if (!AreComparable(at, rcv.Type()) || IsNull() || rcv.IsNull()) return false;
-  if (rcv.GetValueType() == DATE_TIME_TYPE)
+  if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
     return compare((RCDateTime &)rcv) <= 0;
-  else if (rcv.GetValueType() == NUMERIC_TYPE)
+  else if (rcv.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
     return compare((RCNum &)rcv) <= 0;
   return false;
 }
 
 bool RCDateTime::operator!=(const RCDataType &rcv) const {
   if (!AreComparable(at, rcv.Type()) || IsNull() || rcv.IsNull()) return false;
-  if (rcv.GetValueType() == DATE_TIME_TYPE)
+  if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
     return compare((RCDateTime &)rcv) != 0;
-  else if (rcv.GetValueType() == NUMERIC_TYPE)
+  else if (rcv.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
     return compare((RCNum &)rcv) != 0;
   return false;
 }

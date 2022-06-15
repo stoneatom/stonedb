@@ -28,7 +28,7 @@ namespace stonedb {
 namespace compress {
 
 // Incremental memory allocator.
-// May throw CPRS_ERR_MEM.
+// May throw CprsErr::CPRS_ERR_MEM.
 class IncAlloc {
   static constexpr int FIRSTSIZE = 16384;  // default size of the first block
   static constexpr int ROUNDUP = 4096;     // block size will be a multiple of this

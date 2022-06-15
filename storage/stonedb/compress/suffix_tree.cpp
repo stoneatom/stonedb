@@ -641,20 +641,20 @@ template <class Symb, int NSymb>
 CprsErr SuffixTree<Symb, NSymb>::GetLabel(Edge e, Symb *lbl, int &len) {
   if (e.n == NIL) {
     len = 0;
-    return CPRS_SUCCESS;
+    return CprsErr::CPRS_SUCCESS;
   }
   if (e.n == ROOT) {
-    if (len < 1) return CPRS_ERR_BUF;
+    if (len < 1) return CprsErr::CPRS_ERR_BUF;
     *lbl = e.s;
     len = 1;
-    return CPRS_SUCCESS;
+    return CprsErr::CPRS_SUCCESS;
   }
 
   Node &n = GetNode(e.n);
-  if (len < n.len) return CPRS_ERR_BUF;
+  if (len < n.len) return CprsErr::CPRS_ERR_BUF;
   len = n.len;
   std::memcpy(lbl, data.get() + n.pos, len);
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 template <class Symb, int NSymb>
@@ -695,10 +695,10 @@ CprsErr SuffixTree<Symb, NSymb>::Move(Count c, Symb *str, int &len, Range &rng) 
   Edge e{NIL, 0};
   FindEdge(e, c);
   CprsErr err = GetLabel(e, str, len);
-  if (err) return err;
+  if (static_cast<int>(err)) return err;
   GetRange(state, e, rng);
   Move(e);
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 template class SuffixTree<uchar, 256>;

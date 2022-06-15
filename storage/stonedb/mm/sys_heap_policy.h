@@ -31,7 +31,7 @@ class SystemHeap : public HeapPolicy {
 
   /*
       allocate memory block of size [size] and for data of type [type]
-      type != BLOCK_FREE
+      type != BLOCK_TYPE::BLOCK_FREE
   */
   void *alloc(size_t size) override;
   void dealloc(void *mh) override;

@@ -29,11 +29,11 @@ JoinerSort::~JoinerSort() { delete outer_filter; }
 
 void JoinerSort::ExecuteJoinConditions(Condition &cond) {
   MEASURE_FET("JoinerSort::ExecuteJoinConditions(...)");
-  why_failed = NOT_FAILED;
+  why_failed = JoinFailure::NOT_FAILED;
   vcolumn::VirtualColumn *vc1 = cond[0].attr.vc;
   vcolumn::VirtualColumn *vc2 = cond[0].val1.vc;
   if (vc1 == NULL || vc2 == NULL) {
-    why_failed = FAIL_COMPLEX;
+    why_failed = JoinFailure::FAIL_COMPLEX;
     return;
   } else {                                        // Normalize: let vc1 = a smaller table
     DimensionVector dims1(mind->NoDimensions());  // Initial dimension descriptions
@@ -46,8 +46,8 @@ void JoinerSort::ExecuteJoinConditions(Condition &cond) {
       vc2 = cond[0].val1.vc;
     }
   }
-  bool less = (cond[0].op == common::O_LESS_EQ || cond[0].op == common::O_LESS);
-  int sharp = ((cond[0].op == common::O_MORE || cond[0].op == common::O_LESS)
+  bool less = (cond[0].op == common::Operator::O_LESS_EQ || cond[0].op == common::Operator::O_LESS);
+  int sharp = ((cond[0].op == common::Operator::O_MORE || cond[0].op == common::Operator::O_LESS)
                    ? 0
                    : 1);  // std::memcmp(...) < 0 for sharp, <= 0 for not sharp
 
@@ -65,7 +65,7 @@ void JoinerSort::ExecuteJoinConditions(Condition &cond) {
 
   if (dims1.Intersects(dims2) ||  // both materialized - we should rather use a simple loop
       !compatible) {              // could not prepare common encoding
-    why_failed = FAIL_COMPLEX;
+    why_failed = JoinFailure::FAIL_COMPLEX;
     return;
   }
 
@@ -82,7 +82,7 @@ void JoinerSort::ExecuteJoinConditions(Condition &cond) {
       other_cond.push_back(cond[i]);
       dims_used_in_cond.Plus(dims_sec);
     } else {
-      why_failed = FAIL_COMPLEX;  // too complex case
+      why_failed = JoinFailure::FAIL_COMPLEX;  // too complex case
       return;
     }
   }
@@ -106,8 +106,8 @@ void JoinerSort::ExecuteJoinConditions(Condition &cond) {
       outer_filter = new Filter(mit1.NoTuples(), mit1.GetPower(), true);
       sort_encoder.WatchTraversed();
     } else {
-      why_failed = FAIL_COMPLEX;  // example: select ... from (t1, t2) left join
-                                  // t3 on t1.a < t2.b;
+      why_failed = JoinFailure::FAIL_COMPLEX;  // example: select ... from (t1, t2) left join
+                                               // t3 on t1.a < t2.b;
       return;
     }
     outer_nulls_only = true;
@@ -493,7 +493,7 @@ void JoinerSortWrapper::InitCache(int64_t no_of_rows) {
       int64_t max_mem_size = mm::TraceableObject::MaxBufferSize(-1);  // -1, because there are two buffers
       if (cache_bytes * cache_size > max_mem_size) cache_size = max_mem_size / cache_bytes;
     }
-    cache = (unsigned char *)alloc(cache_bytes * cache_size, mm::BLOCK_TEMPORARY);
+    cache = (unsigned char *)alloc(cache_bytes * cache_size, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
     if (cache == NULL) throw common::OutOfMemoryException();
   }
 }

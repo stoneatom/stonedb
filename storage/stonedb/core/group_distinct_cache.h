@@ -57,7 +57,7 @@ class GroupDistinctCache : private system::CacheableItem, public mm::TraceableOb
   void Omit(int64_t obj_to_omit);  // move a reading position forward by
                                    // obj_to_omit objects
 
-  mm::TO_TYPE TraceableType() const override { return mm::TO_TEMPORARY; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
 
  private:
   void Initialize();

@@ -58,8 +58,11 @@ void create_rdbkey(TABLE *table, uint i, std::shared_ptr<RdbKey> &new_key_def, r
   }
 
   const char *const key_name = table->key_info[i].name;
-  uchar index_type = (i == table->s->primary_key) ? INDEX_TYPE_PRIMARY : INDEX_TYPE_SECONDARY;
-  uint16_t index_ver = (key_info->actual_key_parts > 1) ? INDEX_INFO_VERSION_COLS : INDEX_INFO_VERSION_INITIAL;
+  uchar index_type = (i == table->s->primary_key) ? static_cast<uchar>(enumIndexType::INDEX_TYPE_PRIMARY)
+                                                  : static_cast<uchar>(enumIndexType::INDEX_TYPE_SECONDARY);
+  uint16_t index_ver = (key_info->actual_key_parts > 1)
+                           ? static_cast<uint16_t>(enumIndexInfo::INDEX_INFO_VERSION_COLS)
+                           : static_cast<uint16_t>(enumIndexInfo::INDEX_INFO_VERSION_INITIAL);
   new_key_def = std::make_shared<RdbKey>(index_id, i, cf_handle, index_ver, index_type, false, key_name, vcols);
 }
 
@@ -91,12 +94,12 @@ RCTableIndex::RCTableIndex(const std::string &name, TABLE *table) {
   std::string fullname;
 
   if (!NormalizeName(name, fullname)) {
-    STONEDB_LOG(WARN, "normalize tablename %s fail!", name.c_str());
+    STONEDB_LOG(LogCtl_Level::WARN, "normalize tablename %s fail!", name.c_str());
     return;
   }
   m_tbl = kvstore->FindTable(fullname);
   if (m_tbl == nullptr) {
-    STONEDB_LOG(WARN, "find table %s fail!", fullname.c_str());
+    STONEDB_LOG(LogCtl_Level::WARN, "find table %s fail!", fullname.c_str());
     return;
   }
   m_keyid = table->s->primary_key;
@@ -128,7 +131,7 @@ common::ErrorCode RCTableIndex::CreateIndexTable(const std::string &name, TABLE 
   }
 
   if (table->s->keys > 1) {
-    STONEDB_LOG(WARN, "Table :%s have other keys except primary key, only use primary key!", name.data());
+    STONEDB_LOG(LogCtl_Level::WARN, "Table :%s have other keys except primary key, only use primary key!", name.data());
   }
 
   //  Create table/key descriptions and put them into the data dictionary
@@ -160,7 +163,7 @@ common::ErrorCode RCTableIndex::RefreshIndexTable(const std::string &name) {
   }
   m_tbl = kvstore->FindTable(fullname);
   if (m_tbl == nullptr) {
-    STONEDB_LOG(WARN, "table %s init ddl error", fullname.c_str());
+    STONEDB_LOG(LogCtl_Level::WARN, "table %s init ddl error", fullname.c_str());
     return common::ErrorCode::FAILED;
   }
   m_rdbkey = m_tbl->m_rdbkeys[m_keyid];
@@ -216,7 +219,7 @@ common::ErrorCode RCTableIndex::CheckUniqueness(core::Transaction *tx, const roc
   }
 
   if (!s.ok() && !s.IsNotFound()) {
-    STONEDB_LOG(ERROR, "RockDb read fail:%s", s.ToString().c_str());
+    STONEDB_LOG(LogCtl_Level::ERROR, "RockDb read fail:%s", s.ToString().c_str());
     return common::ErrorCode::FAILED;
   }
 
@@ -241,7 +244,7 @@ common::ErrorCode RCTableIndex::InsertIndex(core::Transaction *tx, std::vector<s
   const auto s =
       tx->KVTrans().Put(cf, {(const char *)key.ptr(), key.length()}, {(const char *)value.ptr(), value.length()});
   if (!s.ok()) {
-    STONEDB_LOG(ERROR, "RockDb: insert key fail!");
+    STONEDB_LOG(LogCtl_Level::ERROR, "RockDb: insert key fail!");
     rc = common::ErrorCode::FAILED;
   }
   return rc;
@@ -261,7 +264,7 @@ common::ErrorCode RCTableIndex::UpdateIndex(core::Transaction *tx, std::string_v
     const auto cf = m_rdbkey->get_cf();
     tx->KVTrans().Delete(cf, {(const char *)packkey.ptr(), packkey.length()});
   } else {
-    STONEDB_LOG(WARN, "RockDb: don't have the key for update!");
+    STONEDB_LOG(LogCtl_Level::WARN, "RockDb: don't have the key for update!");
   }
   rc = InsertIndex(tx, nfields, row);
   return rc;
@@ -282,7 +285,7 @@ common::ErrorCode RCTableIndex::GetRowByKey(core::Transaction *tx, std::vector<s
 
   StringReader reader({value.data(), value.length()});
   // ver compatible
-  if (m_rdbkey->m_index_ver > INDEX_INFO_VERSION_INITIAL) {
+  if (m_rdbkey->m_index_ver > static_cast<uint16_t>(enumIndexInfo::INDEX_INFO_VERSION_INITIAL)) {
     uint16_t packlen;
     reader.read_uint16(&packlen);
     reader.read(packlen);
@@ -304,15 +307,15 @@ void KeyIterator::ScanToKey(std::shared_ptr<RCTableIndex> tab, std::vector<std::
 
   iter = std::shared_ptr<rocksdb::Iterator>(trans->GetIterator(rdbkey->get_cf(), true));
   switch (op) {
-    case common::O_EQ:  //==
+    case common::Operator::O_EQ:  //==
       iter->Seek(key_slice);
       if (!iter->Valid() || !rdbkey->value_matches_prefix(iter->key(), key_slice)) valid = false;
       break;
-    case common::O_MORE_EQ:  //'>='
+    case common::Operator::O_MORE_EQ:  //'>='
       iter->Seek(key_slice);
       if (!iter->Valid() || !rdbkey->covers_key(iter->key())) valid = false;
       break;
-    case common::O_MORE:  //'>'
+    case common::Operator::O_MORE:  //'>'
       iter->Seek(key_slice);
       if (!iter->Valid() || rdbkey->value_matches_prefix(iter->key(), key_slice)) {
         if (rdbkey->m_is_reverse) {
@@ -324,7 +327,7 @@ void KeyIterator::ScanToKey(std::shared_ptr<RCTableIndex> tab, std::vector<std::
       if (!iter->Valid() || !rdbkey->covers_key(iter->key())) valid = false;
       break;
     default:
-      STONEDB_LOG(ERROR, "key not support this op:%d", op);
+      STONEDB_LOG(LogCtl_Level::ERROR, "key not support this op:%d", op);
       valid = false;
       break;
   }

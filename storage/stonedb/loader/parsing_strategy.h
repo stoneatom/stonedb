@@ -51,6 +51,7 @@ class ParsingStrategy final {
   std::string enclose_eol;
   std::string tablename;
   std::string dbname;
+
   kmp_next_t kmp_next_delimiter;
   kmp_next_t kmp_next_enclose_delimiter;
   kmp_next_t kmp_next_eol;
@@ -61,11 +62,13 @@ class ParsingStrategy final {
 
   void GuessUnescapedEOL(const char *ptr, const char *buf_end);
   void GuessUnescapedEOLWithEnclose(const char *ptr, const char *const buf_end);
+
   bool SearchUnescapedPattern(const char *&ptr, const char *const buf_end, const std::string &pattern,
                               const std::vector<int> &kmp_next);
-  enum SearchResult { PATTERN_FOUND, END_OF_BUFFER, END_OF_LINE };
+  enum class SearchResult { PATTERN_FOUND, END_OF_BUFFER, END_OF_LINE };
   SearchResult SearchUnescapedPatternNoEOL(const char *&ptr, const char *const buf_end, const std::string &pattern,
                                            const std::vector<int> &kmp_next);
+
   void GetEOL(const char *const buf, const char *const buf_end);
   void GetValue(const char *const value_ptr, size_t value_size, ushort col, ValueCache &value);
 };

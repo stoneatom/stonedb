@@ -44,7 +44,7 @@ class KillTimer {
     sev._sigev_un._tid = syscall(SYS_gettid);
     sev.sigev_value.sival_ptr = thd;
     if (timer_create(CLOCK_MONOTONIC, &sev, &id)) {
-      STONEDB_LOG(INFO, "Failed to create timer. error =%d[%s]", errno, std::strerror(errno));
+      STONEDB_LOG(LogCtl_Level::INFO, "Failed to create timer. error =%d[%s]", errno, std::strerror(errno));
       return;
     }
 
@@ -52,7 +52,7 @@ class KillTimer {
     std::memset(&interval, 0, sizeof(interval));
     interval.it_value.tv_sec = secs;
     if (timer_settime(id, 0, &interval, NULL)) {
-      STONEDB_LOG(INFO, "Failed to set up timer. error =%d[%s]", errno, std::strerror(errno));
+      STONEDB_LOG(LogCtl_Level::INFO, "Failed to set up timer. error =%d[%s]", errno, std::strerror(errno));
       return;
     }
     armed = true;
@@ -94,7 +94,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, select_result *&result, ulong setup
   }
 
   if (lock_tables(thd, thd->lex->query_tables, thd->lex->table_count, 0)) {
-    STONEDB_LOG(ERROR, "Failed to lock tables for query '%s'", thd_query_string(thd)->str);
+    STONEDB_LOG(LogCtl_Level::ERROR, "Failed to lock tables for query '%s'", thd_query_string(thd)->str);
     return RCBASE_QUERY_ROUTE;
   }
   /*
@@ -192,7 +192,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, select_result *&result, ulong setup
                     "Error: Query syntax not implemented in StoneDB, can "
                     "export "
                     "only to MySQL format (set SDB_DATAFORMAT to 'MYSQL').";
-                STONEDB_LOG(ERROR, err_msg);
+                STONEDB_LOG(LogCtl_Level::ERROR, err_msg);
                 my_message(ER_SYNTAX_ERROR, err_msg, MYF(0));
                 throw ReturnMeToMySQLWithError();
               }
@@ -230,7 +230,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, select_result *&result, ulong setup
       try {
         route = Execute(thd, lex, result);
         if (route == RETURN_QUERY_TO_MYSQL_ROUTE && !in_case_of_failure_can_go_to_mysql) {
-          STONEDB_LOG(ERROR,
+          STONEDB_LOG(LogCtl_Level::ERROR,
                       "Error: Query syntax not implemented in StoneDB, can export "
                       "only to MySQL format (set SDB_DATAFORMAT to 'MYSQL').");
           my_message(ER_SYNTAX_ERROR,
@@ -258,7 +258,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, select_result *&result, ulong setup
       res = select_lex->join->error;
   }
   if (select_lex->join && Query::IsLOJ(select_lex->join->join_list))
-    optimize_after_sdb = 2;      // optimize partially (part=4), since part of LOJ
+    optimize_after_sdb = 2;     // optimize partially (part=4), since part of LOJ
                                 // optimization was already done
   res |= (int)thd->is_error();  // the ending of original handle_select(...) */
   if (unlikely(res)) {
@@ -369,7 +369,7 @@ int Engine::Execute(THD *thd, LEX *lex, select_result *result_output, SELECT_LEX
       return RETURN_QUERY_TO_MYSQL_ROUTE;
     }
   } catch (common::Exception const &x) {
-    STONEDB_LOG(ERROR, "Query Compile Error: %s", x.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Query Compile Error: %s", x.what());
     my_message(ER_UNKNOWN_ERROR, (std::string("StoneDB compile specific error: ") + x.what()).c_str(), MYF(0));
     throw ReturnMeToMySQLWithError();
   }
@@ -389,7 +389,7 @@ int Engine::Execute(THD *thd, LEX *lex, select_result *result_output, SELECT_LEX
     if (unit_for_union != NULL) {
       int res = result_output->prepare(unit_for_union->item_list, unit_for_union);
       if (res) {
-        STONEDB_LOG(ERROR, "Error: Unsupported UNION");
+        STONEDB_LOG(LogCtl_Level::ERROR, "Error: Unsupported UNION");
         my_message(ER_UNKNOWN_ERROR, "StoneDB: unsupported UNION", MYF(0));
         throw ReturnMeToMySQLWithError();
       }
@@ -441,7 +441,7 @@ int handle_exceptions(THD *thd, Transaction *cur_connection, bool with_error) {
   try {
     std::string msg = "Query terminated with exception: ";
     msg += thd_query_string(thd)->str;
-    STONEDB_LOG(INFO, msg);
+    STONEDB_LOG(LogCtl_Level::INFO, msg);
     throw;
   } catch (common::NotImplementedException const &x) {
     rccontrol.lock(cur_connection->GetThreadID()) << "Switched to MySQL: " << x.what() << system::unlock;

@@ -129,7 +129,7 @@ ValueMatching_LookupTable::ValueMatching_LookupTable(ValueMatching_LookupTable &
   } else
     occupied_table = NULL;
 
-  t = (unsigned char *)alloc(total_width * max_no_rows, mm::BLOCK_TEMPORARY);
+  t = (unsigned char *)alloc(total_width * max_no_rows, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
   t_aggr = t + input_buffer_width;
   std::memcpy(t, sec.t, total_width * max_no_rows);
 }
@@ -155,7 +155,7 @@ void ValueMatching_LookupTable::Init(int64_t max_group_code, int _total_width, i
 
   max_no_rows = max_group_code + 1;  // easy case: the row number is just the coded value
 
-  t = (unsigned char *)alloc(total_width * max_no_rows, mm::BLOCK_TEMPORARY);
+  t = (unsigned char *)alloc(total_width * max_no_rows, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
   t_aggr = t + input_buffer_width;
 
   // initialize structures

@@ -25,18 +25,18 @@
 namespace stonedb {
 namespace dbhandler {
 
-enum SDBEngineReturnValues { LD_Successed = 100, LD_Failed = 101, LD_Continue = 102 };
+enum class SDBEngineReturnValues { LD_Successed = 100, LD_Failed = 101, LD_Continue = 102 };
 
 void SDB_UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
-                                    CHARSET_INFO *cs) {
+                                     CHARSET_INFO *cs) {
   try {
     rceng->UpdateAndStoreColumnComment(table, field_id, source_field, source_field_id, cs);
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s.", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s.", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 }
 
@@ -72,7 +72,7 @@ bool SDB_SetStatementAllowed(THD *thd, LEX *lex) {
 }
 
 int SDB_HandleSelect(THD *thd, LEX *lex, select_result *&result, ulong setup_tables_done_option, int &res,
-                    int &optimize_after_sdb, int &sdb_free_join, int with_insert) {
+                     int &optimize_after_sdb, int &sdb_free_join, int with_insert) {
   int ret = RCBASE_QUERY_ROUTE;
   try {
     // handle_select_ret is introduced here because in case of some exceptions
@@ -91,33 +91,33 @@ Either restructure the query with supported syntax, or enable the MySQL core::Qu
     ret = handle_select_ret;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "HandleSelect Error: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "HandleSelect Error: %s", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
   return ret;
 }
 
 int SDB_LoadData(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg, char *errmsg, int len, int &errcode) {
   common::SDBError sdb_error;
-  int ret = LD_Failed;
+  int ret = static_cast<int>(SDBEngineReturnValues::LD_Failed);
 
-  if (!core::Engine::IsSDBTable(table_list->table)) return LD_Continue;
+  if (!core::Engine::IsSDBTable(table_list->table)) return static_cast<int>(SDBEngineReturnValues::LD_Continue);
 
   try {
     sdb_error = rceng->RunLoader(thd, ex, table_list, arg);
     if (sdb_error.GetErrorCode() != common::ErrorCode::SUCCESS) {
-      STONEDB_LOG(ERROR, "RunLoader Error: %s", sdb_error.Message().c_str());
+      STONEDB_LOG(LogCtl_Level::ERROR, "RunLoader Error: %s", sdb_error.Message().c_str());
     } else {
-      ret = LD_Successed;
+      ret = static_cast<int>(SDBEngineReturnValues::LD_Successed);
     }
   } catch (std::exception &e) {
     sdb_error = common::SDBError(common::ErrorCode::UNKNOWN_ERROR, e.what());
-    STONEDB_LOG(ERROR, "RunLoader Error: %s", sdb_error.Message().c_str());
+    STONEDB_LOG(LogCtl_Level::ERROR, "RunLoader Error: %s", sdb_error.Message().c_str());
   } catch (...) {
     sdb_error = common::SDBError(common::ErrorCode::UNKNOWN_ERROR, "An unknown system exception error caught.");
-    STONEDB_LOG(ERROR, "RunLoader Error: %s", sdb_error.Message().c_str());
+    STONEDB_LOG(LogCtl_Level::ERROR, "RunLoader Error: %s", sdb_error.Message().c_str());
   }
   std::strncpy(errmsg, sdb_error.Message().c_str(), len - 1);
   errmsg[len - 1] = '\0';
@@ -129,13 +129,13 @@ int SDB_LoadData(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg, 
 bool stonedb_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) {
   char sdbmsg[256];
   int sdberrcode;
-  switch (SDB_LoadData(thd, ex, table_list, arg, sdbmsg, 256, sdberrcode)) {
-    case LD_Continue:
+  switch (static_cast<SDBEngineReturnValues>(SDB_LoadData(thd, ex, table_list, arg, sdbmsg, 256, sdberrcode))) {
+    case SDBEngineReturnValues::LD_Continue:
       return true;
-    case LD_Failed:
+    case SDBEngineReturnValues::LD_Failed:
       my_message(sdberrcode, sdbmsg, MYF(0));
       [[fallthrough]];
-    case LD_Successed:
+    case SDBEngineReturnValues::LD_Successed:
       return false;
     default:
       my_message(sdberrcode, sdbmsg, MYF(0));

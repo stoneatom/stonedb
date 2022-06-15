@@ -87,9 +87,9 @@ void RCTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
     fs::create_symlink(dir, lnk);
 
     RCAttr::Create(lnk, opt->atis[idx], opt->pss, 0);
-    // STONEDB_LOG(INFO, "Column %zu at %s", idx, dir.c_str());
+    // STONEDB_LOG(LogCtl_Level::INFO, "Column %zu at %s", idx, dir.c_str());
   }
-  STONEDB_LOG(INFO, "Create table %s, ID = %u", opt->path.c_str(), tid);
+  STONEDB_LOG(LogCtl_Level::INFO, "Create table %s, ID = %u", opt->path.c_str(), tid);
 }
 
 void RCTable::Alter(const std::string &table_path, std::vector<Field *> &new_cols, std::vector<Field *> &old_cols,
@@ -141,7 +141,7 @@ void RCTable::Alter(const std::string &table_path, std::vector<Field *> &new_col
     fs::create_directory(dir);
     fs::create_symlink(dir, column_dir);
     RCAttr::Create(column_dir, Engine::GetAttrTypeInfo(*new_cols[i]), meta.pss, no_objs);
-    STONEDB_LOG(INFO, "Add column %s at %s", new_cols[i]->field_name, dir.c_str());
+    STONEDB_LOG(LogCtl_Level::INFO, "Add column %s at %s", new_cols[i]->field_name, dir.c_str());
   }
   {
     system::StoneDBFile f;
@@ -150,7 +150,7 @@ void RCTable::Alter(const std::string &table_path, std::vector<Field *> &new_col
     f.Flush();
   }
   fs::resize_file(tmp_dir / common::TABLE_VERSION_FILE, new_cols.size() * sizeof(common::TX_ID));
-  STONEDB_LOG(INFO, "Altered table %s", table_path.c_str());
+  STONEDB_LOG(LogCtl_Level::INFO, "Altered table %s", table_path.c_str());
 }
 
 void RCTable::Truncate() {
@@ -224,7 +224,7 @@ std::vector<AttrInfo> RCTable::GetAttributesInfo() {
       info[j].no_nulls = true;
     else
       info[j].no_nulls = false;
-    info[j].actually_unique = (m_attrs[j]->PhysicalColumn::IsDistinct() == common::RS_ALL);
+    info[j].actually_unique = (m_attrs[j]->PhysicalColumn::IsDistinct() == common::RSValue::RS_ALL);
     info[j].uncomp_size = m_attrs[j]->ComputeNaturalSize();
     info[j].comp_size = m_attrs[j]->CompressedSize();
   }
@@ -260,7 +260,7 @@ bool RCTable::Verify() {
     std::stringstream ss;
     ss << "Error: columns in table " << m_path.string() << " are inconsistent. No. of records for each column:\n";
     for (auto &attr : m_attrs) ss << attr->AttrNo() << " : " << attr->NoObj() << std::endl;
-    STONEDB_LOG(ERROR, "%s", ss.str().c_str());
+    STONEDB_LOG(LogCtl_Level::ERROR, "%s", ss.str().c_str());
   }
   return !ok;
 }
@@ -282,10 +282,10 @@ void RCTable::CommitVersion() {
       }
     } catch (std::exception &e) {
       no_except = false;
-      STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+      STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
     } catch (...) {
       no_except = false;
-      STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+      STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
     }
   }
   if (!no_except) {
@@ -303,7 +303,7 @@ void RCTable::CommitVersion() {
   fs::create_symlink(v, m_path / common::TABLE_VERSION_FILE_TMP, ec);
   if (ec) {
     if (ec == std::errc::file_exists) {
-      STONEDB_LOG(WARN, "delete leftover tmp version file under %s", m_path.c_str());
+      STONEDB_LOG(LogCtl_Level::WARN, "delete leftover tmp version file under %s", m_path.c_str());
       fs::remove(m_path / common::TABLE_VERSION_FILE_TMP);
     }
     fs::create_symlink(v, m_path / common::TABLE_VERSION_FILE_TMP);
@@ -317,7 +317,7 @@ void RCTable::CommitVersion() {
       if (fs::is_symlink(dir)) dir = fs::canonical(fs::read_symlink(dir), m_path);
 
       if (!fs::is_directory(dir)) {
-        STONEDB_LOG(ERROR, "Not a directory: %s", dir.c_str());
+        STONEDB_LOG(LogCtl_Level::ERROR, "Not a directory: %s", dir.c_str());
         continue;
       }
 
@@ -379,7 +379,7 @@ void RCTable::PostCommit() {
 }
 
 void RCTable::Rollback([[maybe_unused]] common::TX_ID xid, bool) {
-  STONEDB_LOG(INFO, "roll back table %s.%s", db_name.c_str(), m_path.c_str());
+  STONEDB_LOG(LogCtl_Level::INFO, "roll back table %s.%s", db_name.c_str(), m_path.c_str());
   for (auto &attr : m_attrs) attr->Rollback();
 }
 
@@ -414,7 +414,7 @@ void RCTable::DisplayRSI() {
     ss << std::endl;
   }
   ss << "-----------------------------------------------------------" << std::endl;
-  STONEDB_LOG(DEBUG, "%s", ss.str().c_str());
+  STONEDB_LOG(LogCtl_Level::DEBUG, "%s", ss.str().c_str());
 }
 
 RCTable::Iterator::Iterator(RCTable &table, std::shared_ptr<Filter> filter)
@@ -554,7 +554,7 @@ void RCTable::FillRowByRowid(TABLE *table, int64_t obj) {
 void RCTable::LoadDataInfile(system::IOParameters &iop) {
   if (iop.LoadDelayed() && GetID() != iop.TableID()) {
     throw common::SDBError(common::ErrorCode::DATA_ERROR, "Invalid table ID(" + std::to_string(GetID()) + "/" +
-                                                             std::to_string(iop.TableID()) + "): " + m_path.string());
+                                                              std::to_string(iop.TableID()) + "): " + m_path.string());
   }
 
   FunctionExecutor fe(std::bind(&RCTable::LockPackInfoForUse, this), std::bind(&RCTable::UnlockPackInfoFromUse, this));
@@ -709,7 +709,7 @@ int RCTable::Insert(TABLE *table) {
     }
 
     if (tab->InsertIndex(current_tx, fields, NoObj()) == common::ErrorCode::DUPP_KEY) {
-      STONEDB_LOG(INFO, "Insert duplicate key on row %d", NoObj() - 1);
+      STONEDB_LOG(LogCtl_Level::INFO, "Insert duplicate key on row %d", NoObj() - 1);
       return HA_ERR_FOUND_DUPP_KEY;
     }
   }
@@ -754,7 +754,7 @@ uint64_t RCTable::ProceedNormal(system::IOParameters &iop) {
 
   if (no_loaded_rows > 0 && mysql_bin_log.is_open())
     if (binlog_load_query_log_event(iop) != 0) {
-      STONEDB_LOG(ERROR, "Write load binlog fail!");
+      STONEDB_LOG(LogCtl_Level::ERROR, "Write load binlog fail!");
       throw common::FormatException("Write load binlog fail!");
     }
   timer.Print(__PRETTY_FUNCTION__);
@@ -1077,7 +1077,8 @@ int RCTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, uint
         case common::CT::TIME_N:
         case common::CT::UNK:
         default:
-          throw common::Exception("Unsupported StoneDB Type " + std::to_string(m_attrs[att]->TypeName()));
+          throw common::Exception("Unsupported StoneDB Type " +
+                                  std::to_string(static_cast<unsigned char>(m_attrs[att]->TypeName())));
           break;
       }
     }
@@ -1202,7 +1203,7 @@ class DelayedInsertParser final {
     }
 
     if (index_table->InsertIndex(current_tx, fields, start_row + row_idx) == common::ErrorCode::DUPP_KEY) {
-      STONEDB_LOG(DEBUG, "Delay insert discard this row for duplicate key");
+      STONEDB_LOG(LogCtl_Level::DEBUG, "Delay insert discard this row for duplicate key");
       return common::ErrorCode::DUPP_KEY;
     }
     return common::ErrorCode::SUCCESS;
@@ -1243,7 +1244,7 @@ uint64_t RCTable::ProcessDelayed(system::IOParameters &iop) {
 
   if (no_loaded_rows > 0 && mysql_bin_log.is_open())
     if (binlog_insert2load_log_event(iop) != 0) {
-      STONEDB_LOG(ERROR, "Write insert to load binlog fail!");
+      STONEDB_LOG(LogCtl_Level::ERROR, "Write insert to load binlog fail!");
       throw common::FormatException("Write insert to load binlog fail!");
     }
 
@@ -1269,7 +1270,7 @@ int RCTable::MergeMemTable(system::IOParameters &iop) {
     uint32_t mem_id = m_mem_table->GetMemID();
     index::be_store_index(entry_key + key_pos, mem_id);
     key_pos += sizeof(uint32_t);
-    index::be_store_byte(entry_key + key_pos, RCMemTable::kInsert);
+    index::be_store_byte(entry_key + key_pos, static_cast<uchar>(RCMemTable::RecordType::kInsert));
     key_pos += sizeof(uchar);
     rocksdb::Slice entry_slice((char *)entry_key, key_pos);
 
@@ -1277,7 +1278,7 @@ int RCTable::MergeMemTable(system::IOParameters &iop) {
     size_t upper_pos = 0;
     index::be_store_index(upper_key + upper_pos, mem_id);
     upper_pos += sizeof(uint32_t);
-    uchar upkey = RCMemTable::kInsert + 1;
+    uchar upkey = static_cast<int>(RCMemTable::RecordType::kInsert) + 1;
     index::be_store_byte(upper_key + upper_pos, upkey);
     upper_pos += sizeof(uchar);
     rocksdb::Slice upper_slice((char *)upper_key, upper_pos);
@@ -1332,17 +1333,18 @@ int RCTable::MergeMemTable(system::IOParameters &iop) {
 
   if (no_loaded_rows > 0 && mysql_bin_log.is_open())
     if (binlog_insert2load_log_event(iop) != 0) {
-      STONEDB_LOG(ERROR, "Write insert to load binlog fail!");
+      STONEDB_LOG(LogCtl_Level::ERROR, "Write insert to load binlog fail!");
       throw common::FormatException("Write insert to load binlog fail!");
     }
 
   if (t2.tv_sec - t1.tv_sec > 15) {
-    STONEDB_LOG(WARN, "Latency of rowstore %s larger than 15s, compact manually.", share->Path().c_str());
+    STONEDB_LOG(LogCtl_Level::WARN, "Latency of rowstore %s larger than 15s, compact manually.", share->Path().c_str());
     kvstore->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), m_mem_table->GetCFHandle(), nullptr, nullptr);
   }
 
   if ((t3.tv_sec - t2.tv_sec > 15) && index_table) {
-    STONEDB_LOG(WARN, "Latency of index table %s larger than 15s, compact manually.", share->Path().c_str());
+    STONEDB_LOG(LogCtl_Level::WARN, "Latency of index table %s larger than 15s, compact manually.",
+                share->Path().c_str());
     kvstore->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->m_rdbkey->get_cf(), nullptr, nullptr);
   }
 

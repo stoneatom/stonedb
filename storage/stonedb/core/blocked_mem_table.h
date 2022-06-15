@@ -89,7 +89,7 @@ class MemBlockManager final : public mm::TraceableObject {
    */
   void FreeBlock(void *b);
 
-  mm::TO_TYPE TraceableType() const override { return mm::TO_TEMPORARY; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
 
  private:
   std::vector<void *> free_blocks;

@@ -117,14 +117,15 @@ RCDataType &RCValueObject::operator*() const { return value.get() ? *value.get()
 
 RCValueObject::operator RCNum &() const {
   if (IsNull()) return RCNum::NullValue();
-  if (GetValueType() == NUMERIC_TYPE || GetValueType() == DATE_TIME_TYPE) return static_cast<RCNum &>(*value);
+  if (GetValueType() == ValueTypeEnum::NUMERIC_TYPE || GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
+    return static_cast<RCNum &>(*value);
   STONEDB_ERROR("Bad cast in RCValueObject::RCNum&()");
   return static_cast<RCNum &>(*value);
 }
 
 RCValueObject::operator RCDateTime &() const {
   if (IsNull()) return RCDateTime::NullValue();
-  if (GetValueType() == DATE_TIME_TYPE) return static_cast<RCDateTime &>(*value);
+  if (GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return static_cast<RCDateTime &>(*value);
   STONEDB_ERROR("Bad cast in RCValueObject::RCDateTime&()");
   return static_cast<RCDateTime &>(*value);
 }

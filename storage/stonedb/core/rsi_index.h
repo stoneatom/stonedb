@@ -36,7 +36,7 @@ class RSIndex : public mm::TraceableObject {
  public:
   RSIndex() = default;
   virtual ~RSIndex() = default;
-  mm::TO_TYPE TraceableType() const override { return mm::TO_RSINDEX; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_RSINDEX; }
   virtual void SaveToFile(common::TX_ID ver) = 0;
 
  protected:

@@ -63,19 +63,19 @@ class MappedCircularBuffer {
         throw std::invalid_argument("failed to truncate " + file + ". error " + std::to_string(errno) + ": " +
                                     std::strerror(errno));
       }
-      STONEDB_LOG(INFO, "created delayed buffer file %s with size %ldMB", file.c_str(), buf_size / 1_MB);
+      STONEDB_LOG(LogCtl_Level::INFO, "created delayed buffer file %s with size %ldMB", file.c_str(), buf_size / 1_MB);
     } else {
       // file already exists
       if (sb.st_size == static_cast<decltype(sb.st_size)>(FileSize())) {
         file_exists = true;
-        STONEDB_LOG(INFO, "use delayed buffer file %s with size %ldMB", file.c_str(), buf_size / 1_MB);
+        STONEDB_LOG(LogCtl_Level::INFO, "use delayed buffer file %s with size %ldMB", file.c_str(), buf_size / 1_MB);
       } else {
         // for now just drop the old file.  TODO: handle resize
         if (::ftruncate(fd, 0) == -1 || ::ftruncate(fd, FileSize()) == -1) {
           throw std::invalid_argument("failed to truncate " + file + ". error " + std::to_string(errno) + ": " +
                                       std::strerror(errno));
         }
-        STONEDB_LOG(WARN, "old buffer file (size %ldM) purged!!! ", sb.st_size / 1_MB);
+        STONEDB_LOG(LogCtl_Level::WARN, "old buffer file (size %ldM) purged!!! ", sb.st_size / 1_MB);
       }
     }
     MapFile(file);
@@ -199,7 +199,7 @@ class MappedCircularBuffer {
       throw std::runtime_error("failed to mmap file " + file + ". error " + std::to_string(errno) + ": " +
                                std::strerror(errno));
     }
-    STONEDB_LOG(INFO, "insert buffer address %p", start_addr);
+    STONEDB_LOG(LogCtl_Level::INFO, "insert buffer address %p", start_addr);
   }
   void GetStat() {
     if (hdr->read_offset == hdr->write_offset) {

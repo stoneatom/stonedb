@@ -54,7 +54,7 @@ constexpr int REVERSE_CF_FLAG = 0x1;
 constexpr int INDEX_NUMBER_SIZE = 0x4;
 constexpr int VERSION_SIZE = 0x2;
 
-enum MetaType {
+enum class MetaType {
   DDL_INDEX = 1,
   INDEX_INFO,
   CF_INFO,
@@ -64,7 +64,7 @@ enum MetaType {
   END_DICT_INDEX_ID = 255
 };
 
-enum {
+enum class enumVersion {
   DDL_VERSION = 1,
   CF_VERSION = 1,
   MAX_INDEX_ID_VERSION = 1,
@@ -72,12 +72,12 @@ enum {
   CREATE_INDEX_ONGOING_VERSION = 1,
 };
 
-enum {
+enum class enumIndexInfo {
   INDEX_INFO_VERSION_INITIAL = 1,
   INDEX_INFO_VERSION_COLS = 2,
 };
 
-enum { INDEX_TYPE_PRIMARY = 1, INDEX_TYPE_SECONDARY, INDEX_TYPE_HIDDEN_PRIMARY };
+enum class enumIndexType { INDEX_TYPE_PRIMARY = 1, INDEX_TYPE_SECONDARY, INDEX_TYPE_HIDDEN_PRIMARY };
 
 class RdbKey {
  public:
@@ -214,19 +214,19 @@ class DDLManager {
 /*
   Meta description
   --------------------------------------------------------------
-  Type:  DDL_INDEX
+  Type:  MetaType::DDL_INDEX
   key:    0x01(4B)+dbname.tablename
   value : version, {cf_id, index_id}*n_indexes_of_the_table
   --------------------------------------------------------------
-  Type: INDEX_INFO
+  Type: MetaType::INDEX_INFO
   key: 0x2(4B) + cf_id(4B)+ index_id(4B)
   value: version(2B), index_type(1B), coltype(1B), unsignedflag(1B)
   --------------------------------------------------------------
-  Type:  MAX_INDEX_ID
+  Type:  MetaType::MAX_INDEX_ID
   key:    0x7(4B)
   value : index_id(4B)
  ---------------------------------------------------------------
-  Type:  CF_INFO
+  Type:  MetaType::CF_INFO
   key:    0x3(4B)+ cf_id
   value : version, {is_reverse_cf, is_auto_cf (deprecated), is_per_partition_cf}
   ---------------------------------------------------------------

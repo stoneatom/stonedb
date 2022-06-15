@@ -35,11 +35,11 @@ void Condition::AddDescriptor(const Descriptor &desc) { descriptors.push_back(de
 void Condition::Simplify() {
   int size = int(descriptors.size());
   for (int i = 0; i < size; i++) {
-    if (descriptors[i].op == common::O_OR_TREE) {
+    if (descriptors[i].op == common::Operator::O_OR_TREE) {
       DEBUG_ASSERT(descriptors[i].tree);
       Descriptor desc;
       do {
-        if ((descriptors[i].op != common::O_OR_TREE)) break;
+        if ((descriptors[i].op != common::Operator::O_OR_TREE)) break;
         desc = descriptors[i].tree->ExtractDescriptor();
         if (!desc.IsEmpty()) {
           descriptors[i].Simplify(true);  // true required not to simplify parameters

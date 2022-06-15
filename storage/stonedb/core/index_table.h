@@ -109,7 +109,7 @@ class IndexTable : private system::CacheableItem, public mm::TraceableObject {
   void ExpandTo(int64_t new_size);
 
   // mm::TraceableObject functionality
-  mm::TO_TYPE TraceableType() const override { return mm::TO_INDEXTABLE; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_INDEXTABLE; }
 
  private:
   void LoadBlock(int b);

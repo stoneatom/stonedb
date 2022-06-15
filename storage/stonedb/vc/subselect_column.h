@@ -63,7 +63,8 @@ class SubSelectColumn : public MultiValColumn {
     }
     types::BString DoGetString() const override { return record[0].ToBString(); }
     types::RCNum DoGetRCNum() const override {
-      if (record[0].GetValueType() == types::NUMERIC_TYPE || record[0].GetValueType() == types::DATE_TIME_TYPE)
+      if (record[0].GetValueType() == types::ValueTypeEnum::NUMERIC_TYPE ||
+          record[0].GetValueType() == types::ValueTypeEnum::DATE_TIME_TYPE)
         return static_cast<types::RCNum &>(record[0]);
       STONEDB_ERROR("Bad cast in RCValueObject::RCNum&()");
       return static_cast<types::RCNum &>(record[0]);

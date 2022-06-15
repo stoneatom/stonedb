@@ -110,7 +110,7 @@ int Query::FieldUnmysterify(Item *item, const char *&database_name, const char *
 
   Item_field *ifield;
   switch (static_cast<int>(item->type())) {
-    case Item_sdbfield::SDBFIELD_ITEM:
+    case static_cast<int>(Item_sdbfield::enumSDBFiledItem::SDBFIELD_ITEM):
       ifield = dynamic_cast<Item_sdbfield *>(item)->OriginalItem();
       if (IsAggregationItem(ifield)) {
         Item_sum *is = (Item_sum *)ifield;
@@ -118,7 +118,7 @@ int Query::FieldUnmysterify(Item *item, const char *&database_name, const char *
         Item *tmp_item = UnRef(is->get_arg(0));
         if (tmp_item->type() == Item::FIELD_ITEM)
           ifield = (Item_field *)tmp_item;
-        else if (static_cast<int>(tmp_item->type()) == static_cast<int>(Item_sdbfield::SDBFIELD_ITEM))
+        else if (static_cast<int>(tmp_item->type()) == static_cast<int>(Item_sdbfield::enumSDBFiledItem::SDBFIELD_ITEM))
           ifield = dynamic_cast<Item_sdbfield *>(tmp_item)->OriginalItem();
         else {
           return RETURN_QUERY_TO_MYSQL_ROUTE;
@@ -138,7 +138,7 @@ int Query::FieldUnmysterify(Item *item, const char *&database_name, const char *
       if (tmp_item->type() == Item::FIELD_ITEM)
         ifield = (Item_field *)tmp_item;
       else if (static_cast<int>(tmp_item->type()) ==
-               static_cast<int>(Item_sdbfield::SDBFIELD_ITEM)) /* *CAUTION* comparision of
+               static_cast<int>(Item_sdbfield::enumSDBFiledItem::SDBFIELD_ITEM)) /* *CAUTION* comparision of
                                                                 enumerators from different
                                                                 enums */
         ifield = dynamic_cast<Item_sdbfield *>(tmp_item)->OriginalItem();
@@ -361,7 +361,7 @@ int Query::AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vector<TabID>
       } else {
         cq->Join(tmp_table, tab);
         JoinType join_type = GetJoinTypeAndCheckExpr(join_ptr->outer_join, join_ptr->join_cond());
-        // if(join_type == JO_LEFT && join_ptr->join_cond() &&
+        // if(join_type == JoinType::JO_LEFT && join_ptr->join_cond() &&
         // dynamic_cast<Item_cond_or*>(join_ptr->join_cond()))
         //	return RETURN_QUERY_TO_MYSQL_ROUTE;
         CondID cond_id;
@@ -414,7 +414,7 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
       item = UnRef(item);
       continue;
     }
-    //			if ((UnRef(item)->type() == Item_sdbfield::SDBFIELD_ITEM
+    //			if ((UnRef(item)->type() == Item_sdbfield::enumSDBFiledItem::SDBFIELD_ITEM
     //||
     // UnRef(item)->type() == Item_sdbfield::FIELD_ITEM ) &&
     // IsLocalColumn(UnRef(item), tmp_table)
@@ -452,7 +452,7 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
       CQTerm term;
       AttrID at;
       if (Item2CQTerm(item, term, tmp_table,
-                      /*group_by_clause ? HAVING_FILTER :*/ WHERE_COND) == RETURN_QUERY_TO_MYSQL_ROUTE)
+                      /*group_by_clause ? HAVING_FILTER :*/ CondType::WHERE_COND) == RETURN_QUERY_TO_MYSQL_ROUTE)
         return RETURN_QUERY_TO_MYSQL_ROUTE;
       cq->AddColumn(at, tmp_table, term, common::ColOperation::LISTING, item->item_name.ptr(), distinct);
       field_alias2num[TabIDColAlias(tmp_table.n, item->item_name.ptr())] = at.n;
@@ -503,7 +503,7 @@ int Query::AddGroupByFields(ORDER *group_by, const TabID &tmp_table) {
     else if (item->type() == Item::SUBSELECT_ITEM) {
       CQTerm term;
       AttrID at;
-      if (Item2CQTerm(item, term, tmp_table, WHERE_COND) == RETURN_QUERY_TO_MYSQL_ROUTE)
+      if (Item2CQTerm(item, term, tmp_table, CondType::WHERE_COND) == RETURN_QUERY_TO_MYSQL_ROUTE)
         return RETURN_QUERY_TO_MYSQL_ROUTE;
       cq->AddColumn(at, tmp_table, term, common::ColOperation::GROUP_BY, 0);
       //			field_alias2num[TabIDColAlias(tmp_table.n,
@@ -566,10 +566,10 @@ int Query::AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const g
         cq->Add_Order(tmp_table, AttrID(vc.second), (order_by->direction != ORDER::ORDER_ASC));
         continue;
         // we can reuse transformation done in case of HAVING
-        // result = Item2CQTerm(item, my_term, tmp_table, HAVING_COND);
+        // result = Item2CQTerm(item, my_term, tmp_table, CondType::HAVING_COND);
       } else {
         AttrID at;
-        result = Item2CQTerm(item, my_term, tmp_table, HAVING_COND);
+        result = Item2CQTerm(item, my_term, tmp_table, CondType::HAVING_COND);
         if (item->type() == Item::SUBSELECT_ITEM) {
           // create a materialized column with subsel results for the ordering
           cq->AddColumn(at, tmp_table, my_term, common::ColOperation::DELAYED, NULL, false);
@@ -585,7 +585,7 @@ int Query::AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const g
       }
 
     } else {
-      result = Item2CQTerm(item, my_term, tmp_table, WHERE_COND);
+      result = Item2CQTerm(item, my_term, tmp_table, CondType::WHERE_COND);
       vc.second = my_term.vc_id;
     }
     if (result != RCBASE_QUERY_ROUTE) return RETURN_QUERY_TO_MYSQL_ROUTE;
@@ -972,7 +972,7 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
           if (path2num.find(path) == path2num.end()) {
             path2num[path] = NoTabs();
             AddTable(m_conn->GetTableByPath(path));
-            STONEDB_LOG(DEBUG, "add query table: %s", path.c_str());
+            STONEDB_LOG(LogCtl_Level::DEBUG, "add query table: %s", path.c_str());
           }
         }
       }
@@ -995,13 +995,13 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       if (!AddOrderByFields(order, tmp_table, group != NULL || sl->join->select_distinct || aggr_used))
         throw CompilationError();
       CondID cond_id;
-      if (!BuildConditions(conds, cond_id, cq, tmp_table, WHERE_COND, zero_result)) throw CompilationError();
+      if (!BuildConditions(conds, cond_id, cq, tmp_table, CondType::WHERE_COND, zero_result)) throw CompilationError();
 
-      cq->AddConds(tmp_table, cond_id, WHERE_COND);
+      cq->AddConds(tmp_table, cond_id, CondType::WHERE_COND);
 
       cond_id = CondID();
-      if (!BuildConditions(having, cond_id, cq, tmp_table, HAVING_COND)) throw CompilationError();
-      cq->AddConds(tmp_table, cond_id, HAVING_COND);
+      if (!BuildConditions(having, cond_id, cq, tmp_table, CondType::HAVING_COND)) throw CompilationError();
+      cq->AddConds(tmp_table, cond_id, CondType::HAVING_COND);
 
       cq->ApplyConds(tmp_table);
     } catch (...) {
@@ -1012,8 +1012,8 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       return RETURN_QUERY_TO_MYSQL_ROUTE;
     }
 
-    if (sl->join->select_distinct) cq->Mode(tmp_table, TM_DISTINCT);
-    if (!ignore_limit && limit_value >= 0) cq->Mode(tmp_table, TM_TOP, offset_value, limit_value);
+    if (sl->join->select_distinct) cq->Mode(tmp_table, TMParameter::TM_DISTINCT);
+    if (!ignore_limit && limit_value >= 0) cq->Mode(tmp_table, TMParameter::TM_TOP, offset_value, limit_value);
 
     if (sl == selects_list) {
       prev_result = tmp_table;
@@ -1032,7 +1032,8 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
 
   if (!AddGlobalOrderByFields(global_order, prev_result, col_count)) return RETURN_QUERY_TO_MYSQL_ROUTE;
 
-  if (!ignore_limit && global_limit_value >= 0) cq->Mode(prev_result, TM_TOP, global_offset_value, global_limit_value);
+  if (!ignore_limit && global_limit_value >= 0)
+    cq->Mode(prev_result, TMParameter::TM_TOP, global_offset_value, global_limit_value);
 
   if (res_tab != NULL)
     *res_tab = prev_result;
@@ -1048,13 +1049,13 @@ JoinType Query::GetJoinTypeAndCheckExpr(uint outer_join, Item *on_expr) {
   JoinType join_type;
 
   if ((outer_join & JOIN_TYPE_LEFT) && (outer_join & JOIN_TYPE_RIGHT))
-    join_type = JO_FULL;
+    join_type = JoinType::JO_FULL;
   else if (outer_join & JOIN_TYPE_LEFT)
-    join_type = JO_LEFT;
+    join_type = JoinType::JO_LEFT;
   else if (outer_join & JOIN_TYPE_RIGHT)
-    join_type = JO_RIGHT;
+    join_type = JoinType::JO_RIGHT;
   else
-    join_type = JO_INNER;
+    join_type = JoinType::JO_INNER;
 
   return join_type;
 }
@@ -1064,7 +1065,7 @@ bool Query::IsLOJ(List<TABLE_LIST> *join) {
   List_iterator<TABLE_LIST> li(*join);
   while ((join_ptr = li++) != nullptr) {
     JoinType join_type = GetJoinTypeAndCheckExpr(join_ptr->outer_join, join_ptr->join_cond());
-    if (join_ptr->join_cond() && (join_type == JO_LEFT || join_type == JO_RIGHT)) return true;
+    if (join_ptr->join_cond() && (join_type == JoinType::JO_LEFT || join_type == JoinType::JO_RIGHT)) return true;
   }
   return false;
 }

@@ -58,7 +58,7 @@ TempTable::TempTable(JustATable *t, int alias, Query *q)
 }
 
 void TempTable::JoinT(JustATable *t, int alias, JoinType jt) {
-  if (jt != JO_INNER) throw common::NotImplementedException("left/right/outer join is not implemented.");
+  if (jt != JoinType::JO_INNER) throw common::NotImplementedException("left/right/outer join is not implemented.");
   tables.push_back(t);
   aliases.push_back(alias);
 
@@ -81,7 +81,7 @@ void TempTable::JoinT(JustATable *t, int alias, JoinType jt) {
 }  // namespace core
 
 vcolumn::VirtualColumn *CreateVCCopy(vcolumn::VirtualColumn *vc) {
-  if (vc->IsSingleColumn()) {
+  if (static_cast<int>(vc->IsSingleColumn())) {
     return new vcolumn::SingleColumn(*static_cast<const vcolumn::SingleColumn *>(vc));
   } else if (dynamic_cast<vcolumn::ExpressionColumn *>(vc)) {
     return new vcolumn::ExpressionColumn(*static_cast<const vcolumn::ExpressionColumn *>(vc));

@@ -59,9 +59,10 @@ SorterOnePass::SorterOnePass(uint _size, uint _key_bytes, uint _total_bytes)
   bound_queue = NULL;
   buf_tmp = NULL;
   if (size > 0) {
-    buf = (unsigned char *)alloc(size * total_bytes, mm::BLOCK_TEMPORARY, true);
+    buf = (unsigned char *)alloc(size * total_bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
     if (buf == NULL) throw common::OutOfMemoryException();
-    bound_queue = (unsigned char **)alloc(bound_queue_size * 2 * sizeof(unsigned char *), mm::BLOCK_TEMPORARY, true);
+    bound_queue =
+        (unsigned char **)alloc(bound_queue_size * 2 * sizeof(unsigned char *), mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
     if (bound_queue == NULL) {
       dealloc(buf);
       throw common::OutOfMemoryException();
@@ -90,7 +91,7 @@ bool SorterOnePass::PutValue(unsigned char *b) {
 }
 
 bool SorterOnePass::PutValue(Sorter3 *s) {
-  STONEDB_LOG(WARN, "SorterOnePass PutValue merger, never verified.");
+  STONEDB_LOG(LogCtl_Level::WARN, "SorterOnePass PutValue merger, never verified.");
   DEBUG_ASSERT(buf_input_pos < buf_end);
   already_sorted = false;
   SorterOnePass *sp = (SorterOnePass *)s;
@@ -233,7 +234,7 @@ bool SorterMultiPass::PutValue(unsigned char *b) {
 }
 
 bool SorterMultiPass::PutValue([[maybe_unused]] Sorter3 *s) {
-  STONEDB_LOG(WARN, "PutValue Stub, should not see it now");
+  STONEDB_LOG(LogCtl_Level::WARN, "PutValue Stub, should not see it now");
   return true;
 }
 
@@ -275,7 +276,7 @@ void SorterMultiPass::InitHeap() {
   if (rows_in_small_buffer < 3) {  // extremely rare case: very large data, very small memory
     rows_in_small_buffer = 3;
     dealloc(buf);
-    buf = (unsigned char *)alloc(3 * total_bytes * no_blocks, mm::BLOCK_TEMPORARY, true);
+    buf = (unsigned char *)alloc(3 * total_bytes * no_blocks, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
     if (buf == NULL) throw common::OutOfMemoryException();
   }
   int standard_buf_size = rows_in_small_buffer * total_bytes;
@@ -322,9 +323,9 @@ SorterMultiPass::Keyblock SorterMultiPass::GetFromBlock(int b, bool &reloaded) {
 
 SorterCounting::SorterCounting(uint _size, uint _key_bytes, uint _total_bytes)
     : Sorter3(_size, _key_bytes, _total_bytes) {
-  buf = (unsigned char *)alloc(size * total_bytes, mm::BLOCK_TEMPORARY, true);
+  buf = (unsigned char *)alloc(size * total_bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
   if (buf == NULL) throw common::OutOfMemoryException();
-  buf_output = (unsigned char *)alloc(size * total_bytes, mm::BLOCK_TEMPORARY, true);
+  buf_output = (unsigned char *)alloc(size * total_bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
   if (buf_output == NULL) {
     dealloc(buf);
     throw common::OutOfMemoryException();
@@ -356,7 +357,7 @@ bool SorterCounting::PutValue(unsigned char *b) {
 }
 
 bool SorterCounting::PutValue([[maybe_unused]] Sorter3 *s) {
-  STONEDB_LOG(WARN, "PutValue Stub, should not see it now");
+  STONEDB_LOG(LogCtl_Level::WARN, "PutValue Stub, should not see it now");
   return true;
 }
 
@@ -474,16 +475,17 @@ bool SorterLimit::PutValue(Sorter3 *s) {
   // not called
   uint tmp_noobj = sl->GetObjNo();
   unsigned char *buf1 = sl->Getbuf();
-  STONEDB_LOG(DEBUG, "PutValue: total bytes %d, tmp_noobj %ld ", total_bytes, tmp_noobj);
+  STONEDB_LOG(LogCtl_Level::DEBUG, "PutValue: total bytes %d, tmp_noobj %ld ", total_bytes, tmp_noobj);
 
   if (tmp_noobj) {
     if (no_obj + tmp_noobj <= size) {
       std::memcpy(buf + no_obj * total_bytes, buf1, tmp_noobj * total_bytes);
       no_obj += tmp_noobj;
-      STONEDB_LOG(DEBUG, "PutValue: no_obj %ld, tmp_noobj %ld, total_bytes %ld buf %s", no_obj, tmp_noobj, total_bytes,
-                  buf);
+      STONEDB_LOG(LogCtl_Level::DEBUG, "PutValue: no_obj %ld, tmp_noobj %ld, total_bytes %ld buf %s", no_obj, tmp_noobj,
+                  total_bytes, buf);
     } else {
-      STONEDB_LOG(ERROR, "error in Putvalue, out of  boundary size %d no_obj+tmp_noobj %d", size, no_obj + tmp_noobj);
+      STONEDB_LOG(LogCtl_Level::ERROR, "error in Putvalue, out of  boundary size %d no_obj+tmp_noobj %d", size,
+                  no_obj + tmp_noobj);
       throw common::OutOfMemoryException("Out of boundary after merge sorters together.");
       return false;
     }
