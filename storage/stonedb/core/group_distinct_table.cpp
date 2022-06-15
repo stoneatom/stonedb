@@ -133,7 +133,7 @@ void GroupDistinctTable::InitializeBuffers(int64_t max_no_rows)  // max_no_rows 
   if (no_rows % 17 == 0) no_rows++;
   rows_limit = int64_t(no_rows * 0.9);  // rows_limit is used to determine whether the table is full
 
-  t = (unsigned char *)alloc(total_width * no_rows, mm::BLOCK_TEMPORARY);
+  t = (unsigned char *)alloc(total_width * no_rows, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
   //	t = new BlockedRowMemStorage(total_width, &mem_mngr, no_rows);
   input_buffer = (unsigned char *)(new int[total_width / 4 + 1]);  // ensure proper memory alignment
   rccontrol.lock(m_conn->GetThreadID()) << "GroupDistinctTable initialized as Hash(" << no_rows << "), " << group_bytes
@@ -153,8 +153,8 @@ GDTResult GroupDistinctTable::Find(int64_t group, int64_t val)  // numeric value
   if (filter_implementation) {
     val = encoder->ValPutValue64(val);
     val = group + group_factor * val;
-    if (f->Get(val)) return GDT_EXISTS;
-    return GDT_ADDED;  // "Added" means "found" here.
+    if (f->Get(val)) return GDTResult::GDT_EXISTS;
+    return GDTResult::GBIMODE_AS_TEXT;  // "Added" means "found" here.
   }
   group += 1;  // offset; 0 means empty position
   std::memmove(input_buffer, (unsigned char *)(&group), group_bytes);
@@ -167,9 +167,9 @@ GDTResult GroupDistinctTable::Add(int64_t group, MIIterator &mit) {
   if (filter_implementation) {
     int64_t val = encoder->ValEncode(mit);
     val = group + group_factor * val;
-    if (f->Get(val)) return GDT_EXISTS;
+    if (f->Get(val)) return GDTResult::GDT_EXISTS;
     f->Set(val);
-    return GDT_ADDED;
+    return GDTResult::GBIMODE_AS_TEXT;
   }
   group += 1;  // offset; 0 means empty position
   std::memmove(input_buffer, (unsigned char *)(&group), group_bytes);
@@ -182,9 +182,9 @@ GDTResult GroupDistinctTable::Add(int64_t group, int64_t val)  // numeric values
   if (filter_implementation) {
     val = encoder->ValPutValue64(val);
     val = group + group_factor * val;
-    if (f->Get(val)) return GDT_EXISTS;
+    if (f->Get(val)) return GDTResult::GDT_EXISTS;
     f->Set(val);
-    return GDT_ADDED;
+    return GDTResult::GBIMODE_AS_TEXT;
   }
   group += 1;  // offset; 0 means empty position
   std::memmove(input_buffer, (unsigned char *)(&group), group_bytes);
@@ -250,7 +250,7 @@ GDTResult GroupDistinctTable::FindCurrentRow(bool find_only)  // find / insert t
     if (!RowEmpty(p)) {
       if (std::memcmp(p, input_buffer, total_width) == 0) {
         // i.e. identical row found
-        return GDT_EXISTS;
+        return GDTResult::GDT_EXISTS;
       }
       local_no_of_checks++;
       row += step + local_no_of_checks;
@@ -260,10 +260,10 @@ GDTResult GroupDistinctTable::FindCurrentRow(bool find_only)  // find / insert t
         std::memcpy(p, input_buffer, total_width);
         no_of_occupied++;
       }
-      return GDT_ADDED;
+      return GDTResult::GBIMODE_AS_TEXT;
     }
   } while (local_no_of_checks < 8);  // search depth
-  return GDT_FULL;
+  return GDTResult::GDT_FULL;
 }
 
 void GroupDistinctTable::Clear()  // clear the tables

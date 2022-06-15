@@ -100,7 +100,7 @@ RCNum &RCNum::operator=(const RCNum &rcn) {
 }
 
 RCNum &RCNum::operator=(const RCDataType &rcdt) {
-  if (rcdt.GetValueType() == NUMERIC_TYPE)
+  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
     *this = (RCNum &)rcdt;
   else {
     RCNum rcn1;
@@ -251,54 +251,54 @@ RCNum::operator double() const {
 
 bool RCNum::operator==(const RCDataType &rcdt) const {
   if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == NUMERIC_TYPE) return (compare((RCNum &)rcdt) == 0);
-  if (rcdt.GetValueType() == DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) == 0);
-  if (rcdt.GetValueType() == STRING_TYPE) return (rcdt == this->ToBString());
+  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE) return (compare((RCNum &)rcdt) == 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) == 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (rcdt == this->ToBString());
   STONEDB_ERROR("Bad cast inside RCNum");
   return false;
 }
 
 bool RCNum::operator!=(const RCDataType &rcdt) const {
   if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == NUMERIC_TYPE) return (compare((RCNum &)rcdt) != 0);
-  if (rcdt.GetValueType() == DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) != 0);
-  if (rcdt.GetValueType() == STRING_TYPE) return (rcdt != this->ToBString());
+  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE) return (compare((RCNum &)rcdt) != 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) != 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (rcdt != this->ToBString());
   STONEDB_ERROR("Bad cast inside RCNum");
   return false;
 }
 
 bool RCNum::operator<(const RCDataType &rcdt) const {
   if (IsNull() || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == NUMERIC_TYPE) return (compare((RCNum &)rcdt) < 0);
-  if (rcdt.GetValueType() == DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) < 0);
-  if (rcdt.GetValueType() == STRING_TYPE) return (this->ToBString() < rcdt);
+  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE) return (compare((RCNum &)rcdt) < 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) < 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (this->ToBString() < rcdt);
   STONEDB_ERROR("Bad cast inside RCNum");
   return false;
 }
 
 bool RCNum::operator>(const RCDataType &rcdt) const {
   if (IsNull() || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == NUMERIC_TYPE) return (compare((RCNum &)rcdt) > 0);
-  if (rcdt.GetValueType() == DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) > 0);
-  if (rcdt.GetValueType() == STRING_TYPE) return (this->ToBString() > rcdt);
+  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE) return (compare((RCNum &)rcdt) > 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) > 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (this->ToBString() > rcdt);
   STONEDB_ERROR("Bad cast inside RCNum");
   return false;
 }
 
 bool RCNum::operator<=(const RCDataType &rcdt) const {
   if (IsNull() || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == NUMERIC_TYPE) return (compare((RCNum &)rcdt) <= 0);
-  if (rcdt.GetValueType() == DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) <= 0);
-  if (rcdt.GetValueType() == STRING_TYPE) return (this->ToBString() <= rcdt);
+  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE) return (compare((RCNum &)rcdt) <= 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) <= 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (this->ToBString() <= rcdt);
   STONEDB_ERROR("Bad cast inside RCNum");
   return false;
 }
 
 bool RCNum::operator>=(const RCDataType &rcdt) const {
   if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == NUMERIC_TYPE) return (compare((RCNum &)rcdt) >= 0);
-  if (rcdt.GetValueType() == DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) >= 0);
-  if (rcdt.GetValueType() == STRING_TYPE) return (this->ToBString() >= rcdt);
+  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE) return (compare((RCNum &)rcdt) >= 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) >= 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (this->ToBString() >= rcdt);
   STONEDB_ERROR("Bad cast inside RCNum");
   return false;
 }

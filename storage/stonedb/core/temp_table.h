@@ -87,7 +87,7 @@ class TempTable : public JustATable {
                                    // filled in
     }
 
-    enum phys_col_t ColType() const override { return ATTR; }
+    enum phys_col_t ColType() const override { return phys_col_t::ATTR; }
     //! Use in cases where actual string length is less than declared, before
     //! materialization of Attr
     void OverrideStringSize(int size) {
@@ -146,11 +146,11 @@ class TempTable : public JustATable {
     int AttrNo() const override { return -1; }
     common::RSValue RoughCheck([[maybe_unused]] int pack, [[maybe_unused]] Descriptor &d,
                                [[maybe_unused]] bool additional_nulls_possible) override {
-      return common::RS_SOME;
+      return common::RSValue::RS_SOME;
     }
     common::RSValue RoughCheck([[maybe_unused]] int pack1, [[maybe_unused]] int pack2,
                                [[maybe_unused]] Descriptor &d) override {
-      return common::RS_SOME;
+      return common::RSValue::RS_SOME;
     }
     // as far as Attr is not pack oriented the function below should not be
     // called

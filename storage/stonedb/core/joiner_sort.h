@@ -82,7 +82,7 @@ class JoinerSortWrapper : public mm::TraceableObject {
                      bool count_only);
   void InitCache(int64_t no_of_rows);  // prepare cache table
 
-  mm::TO_TYPE TraceableType() const override { return mm::TO_TEMPORARY; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
   int KeyBytes() { return key_bytes; }
   int TraverseBytes() { return traverse_bytes; }
   int MatchBytes() { return match_bytes; }

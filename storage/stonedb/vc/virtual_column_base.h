@@ -70,7 +70,7 @@ class VirtualColumnBase : public core::Column {
   VirtualColumnBase(core::ColumnType const &col_type, core::MultiIndex *mind);
   VirtualColumnBase(VirtualColumn const &vc);
 
-  enum single_col_t { SC_NOT = 0, SC_ATTR, SC_RCATTR };
+  enum class single_col_t { SC_NOT = 0, SC_ATTR, SC_RCATTR };
 
   virtual ~VirtualColumnBase(){};
 
@@ -379,9 +379,9 @@ class VirtualColumnBase : public core::Column {
   virtual bool IsConst() const = 0;
 
   /*! \brief Returns not zero if the virtual column is an interface to a single
-   * physical column, otherwise SC_ATTR or SC_RCATTR \return single_col_t
+   * physical column, otherwise single_col_t::SC_ATTR or single_col_t::SC_RCATTR \return single_col_t
    */
-  virtual single_col_t IsSingleColumn() const { return SC_NOT; }
+  virtual single_col_t IsSingleColumn() const { return single_col_t::SC_NOT; }
   /*! \brief Returns true if the virtual column is a set (multival), false
    * otherwise \return bool
    */

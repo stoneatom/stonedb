@@ -35,7 +35,7 @@ RSIndex_CMap::RSIndex_CMap(const fs::path &dir, common::TX_ID ver) {
     ASSERT(hdr.no_positions <= MAX_POS);
 
     capacity = (hdr.no_pack / 1024 + 1) * 1024;
-    auto ptr = alloc(capacity * hdr.no_positions * CMAP_BYTES, mm::BLOCK_TEMPORARY);
+    auto ptr = alloc(capacity * hdr.no_positions * CMAP_BYTES, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
     cmap_buffers = static_cast<uint32_t *>(ptr);
     frs_index.ReadExact(cmap_buffers, hdr.no_pack * hdr.no_positions * CMAP_BYTES);
   } else {
@@ -79,11 +79,11 @@ int RSIndex_CMap::Count(int pack, uint pos) {
   return d;
 }
 
-// Results:		common::RS_NONE - there is no objects having values
+// Results:		common::RSValue::RS_NONE - there is no objects having values
 // between min_v and max_v (including)
-//				common::RS_SOME - some objects from this pack
+//				common::RSValue::RS_SOME - some objects from this pack
 // may have
-// values between min_v and max_v 				common::RS_ALL	-
+// values between min_v and max_v 				common::RSValue::RS_ALL	-
 // all objects from this pack do have values between min_v and max_v
 common::RSValue RSIndex_CMap::IsValue(types::BString min_v, types::BString max_v, int pack) {
   ASSERT(size_t(pack) < hdr.no_pack);
@@ -91,16 +91,16 @@ common::RSValue RSIndex_CMap::IsValue(types::BString min_v, types::BString max_v
   if (min_v == max_v) {
     auto size = min_v.size() < hdr.no_positions ? min_v.size() : hdr.no_positions;
     for (uint pos = 0; pos < size; pos++) {
-      if (!IsSet(pack, (unsigned char)min_v[pos], pos)) return common::RS_NONE;
+      if (!IsSet(pack, (unsigned char)min_v[pos], pos)) return common::RSValue::RS_NONE;
     }
-    return common::RS_SOME;
+    return common::RSValue::RS_SOME;
   } else {
     // TODO: may be further optimized
     unsigned char f = 0, l = 255;
     if (min_v.len > 0) f = (unsigned char)min_v[0];  // min_v.len == 0 usually means -inf
     if (max_v.len > 0) l = (unsigned char)max_v[0];
-    if (f > l || !IsAnySet(pack, f, l, 0)) return common::RS_NONE;
-    return common::RS_SOME;
+    if (f > l || !IsAnySet(pack, f, l, 0)) return common::RSValue::RS_NONE;
+    return common::RSValue::RS_SOME;
   }
 }
 
@@ -110,10 +110,10 @@ common::RSValue RSIndex_CMap::IsLike(types::BString pattern, int pack, char esca
   uint pos = 0;
   while (pos < pattern.len && pos < hdr.no_positions) {
     if (p[pos] == '%' || p[pos] == escape_character) break;
-    if (p[pos] != '_' && !IsSet(pack, p[pos], pos)) return common::RS_NONE;
+    if (p[pos] != '_' && !IsSet(pack, p[pos], pos)) return common::RSValue::RS_NONE;
     pos++;
   }
-  return common::RS_SOME;
+  return common::RSValue::RS_SOME;
 }
 
 void RSIndex_CMap::PutValue(const types::BString &v, int pack) {
@@ -151,7 +151,7 @@ void RSIndex_CMap::Update(common::PACK_INDEX pi, DPN &dpn, const PackStr *pack) 
   }
   if (hdr.no_pack > capacity) {
     capacity += 1024;
-    auto ptr = rc_realloc(cmap_buffers, capacity * hdr.no_positions * CMAP_BYTES, mm::BLOCK_TEMPORARY);
+    auto ptr = rc_realloc(cmap_buffers, capacity * hdr.no_positions * CMAP_BYTES, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
     cmap_buffers = static_cast<uint32_t *>(ptr);
     // rclog << lock << "cmap filter capacity increased to " << capacity <<
     // system::unlock;

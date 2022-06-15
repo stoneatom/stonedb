@@ -35,7 +35,7 @@ RCMemTable::RCMemTable(const std::string name, const uint32_t mem_id, const uint
   size_t entry_pos = 0;
   index::be_store_index(entry_key + entry_pos, mem_id_);
   entry_pos += sizeof(uint32_t);
-  index::be_store_byte(entry_key + entry_pos, kInsert);
+  index::be_store_byte(entry_key + entry_pos, static_cast<uchar>(RecordType::kInsert));
   entry_pos += sizeof(uchar);
   rocksdb::Slice entry_slice((char *)entry_key, entry_pos);
 
@@ -43,7 +43,7 @@ RCMemTable::RCMemTable(const std::string name, const uint32_t mem_id, const uint
   size_t upper_pos = 0;
   index::be_store_index(upper_key + upper_pos, mem_id_);
   upper_pos += sizeof(uint32_t);
-  uchar next_key = kInsert + 1;
+  uchar next_key = static_cast<int>(RecordType::kInsert) + 1;
   index::be_store_byte(upper_key + upper_pos, next_key);
   upper_pos += sizeof(uchar);
   rocksdb::Slice upper_slice((char *)upper_key, upper_pos);
@@ -80,7 +80,8 @@ std::shared_ptr<RCMemTable> RCMemTable::CreateMemTable(std::shared_ptr<TableShar
   uint32_t mem_id = kvstore->GetNextIndexId();
   tb_mem = std::make_shared<RCMemTable>(normalized_name, mem_id, cf_id);
   kvstore->KVWriteMemTableMeta(tb_mem);
-  STONEDB_LOG(INFO, "Create RowStore: %s, CF ID: %d, RowStore ID: %u", normalized_name.c_str(), cf_id, mem_id);
+  STONEDB_LOG(LogCtl_Level::INFO, "Create RowStore: %s, CF ID: %d, RowStore ID: %u", normalized_name.c_str(), cf_id,
+              mem_id);
 
   return tb_mem;
 }
@@ -108,7 +109,7 @@ common::ErrorCode RCMemTable::DropMemTable(std::string table_name) {
   auto tb_mem = kvstore->FindMemTable(normalized_name);
   if (!tb_mem) return common::ErrorCode::SUCCESS;
 
-  STONEDB_LOG(INFO, "Dropping RowStore: %s, CF ID: %d, RowStore ID: %u", normalized_name.c_str(),
+  STONEDB_LOG(LogCtl_Level::INFO, "Dropping RowStore: %s, CF ID: %d, RowStore ID: %u", normalized_name.c_str(),
               tb_mem->GetCFHandle()->GetID(), tb_mem->GetMemID());
   return kvstore->KVDelMemTableMeta(normalized_name);
 }
@@ -123,7 +124,7 @@ void RCMemTable::InsertRow(std::unique_ptr<char[]> buf, uint32_t size) {
   index::KVTransaction kv_trans;
   index::be_store_index(key + key_pos, mem_id_);
   key_pos += sizeof(uint32_t);
-  index::be_store_byte(key + key_pos, kInsert);
+  index::be_store_byte(key + key_pos, static_cast<uchar>(RecordType::kInsert));
   key_pos += sizeof(uchar);
   index::be_store_uint64(key + key_pos, row_id);
   key_pos += sizeof(uint64_t);
@@ -139,7 +140,7 @@ void RCMemTable::Truncate(Transaction *tx) {
   size_t key_pos = 0;
   index::be_store_index(entry_key + key_pos, mem_id_);
   key_pos += sizeof(uint32_t);
-  index::be_store_byte(entry_key + key_pos, RCMemTable::kInsert);
+  index::be_store_byte(entry_key + key_pos, static_cast<uchar>(RCMemTable::RecordType::kInsert));
   key_pos += sizeof(uchar);
   rocksdb::Slice entry_slice((char *)entry_key, key_pos);
 
@@ -147,7 +148,7 @@ void RCMemTable::Truncate(Transaction *tx) {
   size_t upper_pos = 0;
   index::be_store_index(upper_key + upper_pos, mem_id_);
   upper_pos += sizeof(uint32_t);
-  uchar upkey = RCMemTable::kInsert + 1;
+  uchar upkey = static_cast<int>(RCMemTable::RecordType::kInsert) + 1;
   index::be_store_byte(upper_key + upper_pos, upkey);
   upper_pos += sizeof(uchar);
   rocksdb::Slice upper_slice((char *)upper_key, upper_pos);

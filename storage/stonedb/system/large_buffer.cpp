@@ -69,12 +69,12 @@ bool LargeBuffer::BufOpen(const IOParameters &iop) {
 }
 
 void LargeBuffer::BufFlush() {
-  if (buf_used > size) STONEDB_LOG(ERROR, "LargeBuffer error: Buffer overrun (Flush)");
+  if (buf_used > size) STONEDB_LOG(LogCtl_Level::ERROR, "LargeBuffer error: Buffer overrun (Flush)");
   if (flush_thread.joinable()) {
     flush_thread.join();
   }
   if (failed) {
-    STONEDB_LOG(ERROR, "Write operation to file or pipe failed.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "Write operation to file or pipe failed.");
     throw common::FileException("Write operation to file or pipe failed.");
   }
   flush_thread = std::thread(std::bind(&LargeBuffer::BufFlushThread, this, ib_stream.get(), buf, buf_used, &failed));
@@ -108,7 +108,7 @@ void LargeBuffer::BufClose()  // close the buffer; warning: does not flush data
 
   buf_used = 0;
   if (buf[size + 1] != D_OVERRUN_GUARDIAN) {
-    STONEDB_LOG(WARN, "buffer overrun detected in LargeBuffer::BufClose.");
+    STONEDB_LOG(LogCtl_Level::WARN, "buffer overrun detected in LargeBuffer::BufClose.");
     DEBUG_ASSERT(0);
   }
 }
@@ -120,7 +120,7 @@ void LargeBuffer::FlushAndClose() {
 
 char *LargeBuffer::BufAppend(unsigned int len) {
   if ((int)len > size) {
-    STONEDB_LOG(ERROR, "Error: LargeBuffer buffer overrun (BufAppend)");
+    STONEDB_LOG(LogCtl_Level::ERROR, "Error: LargeBuffer buffer overrun (BufAppend)");
     return NULL;
   }
   int buf_pos = buf_used;

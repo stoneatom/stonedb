@@ -23,12 +23,12 @@ namespace stonedb {
 namespace dbhandler {
 
 void SDB_UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
-                                    CHARSET_INFO *cs);
+                                     CHARSET_INFO *cs);
 
 bool SDB_SetStatementAllowed(THD *thd, LEX *lex);
 
 int SDB_HandleSelect(THD *thd, LEX *lex, select_result *&result_output, ulong setup_tables_done_option, int &res,
-                    int &optimize_after_sdb, int &sdb_free_join, int with_insert = false);
+                     int &optimize_after_sdb, int &sdb_free_join, int with_insert = false);
 bool stonedb_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
 
 }  // namespace dbhandler

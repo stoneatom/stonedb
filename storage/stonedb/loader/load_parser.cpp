@@ -25,8 +25,8 @@
 
 namespace stonedb {
 namespace loader {
-LoadParser::LoadParser(RCAttrPtrVect_t &attrs, const system::IOParameters &iop,
-                       uint packsize, std::unique_ptr<system::Stream> &f)
+LoadParser::LoadParser(RCAttrPtrVect_t &attrs, const system::IOParameters &iop, uint packsize,
+                       std::unique_ptr<system::Stream> &f)
     : attrs(attrs),
       start_time(types::RCDateTime::GetCurrent().GetInt64()),
       ioparam(iop),
@@ -173,7 +173,7 @@ int LoadParser::ProcessInsertIndex(std::shared_ptr<index::RCTableIndex> tab, std
   }
 
   if (tab->InsertIndex(current_tx, fields, no_obj + no_rows) == common::ErrorCode::DUPP_KEY) {
-    STONEDB_LOG(INFO, "Load discard this row for duplicate key");
+    STONEDB_LOG(LogCtl_Level::INFO, "Load discard this row for duplicate key");
     return HA_ERR_FOUND_DUPP_KEY;
   }
 
@@ -182,10 +182,10 @@ int LoadParser::ProcessInsertIndex(std::shared_ptr<index::RCTableIndex> tab, std
 
 int LoadParser::binlog_loaded_block(const char *buf_start, const char *buf_end) {
   LOAD_FILE_INFO *lf_info = nullptr;
-  uint block_len =0;
+  uint block_len = 0;
 
-  lf_info = static_cast<LOAD_FILE_INFO *> (ioparam.GetLogInfo());
-  uchar* buffer = reinterpret_cast<uchar*> (const_cast<char*>(buf_start));
+  lf_info = static_cast<LOAD_FILE_INFO *>(ioparam.GetLogInfo());
+  uchar *buffer = reinterpret_cast<uchar *>(const_cast<char *>(buf_start));
   uint max_event_size = lf_info->thd->variables.max_allowed_packet;
 
   if (lf_info == nullptr) return -1;
@@ -193,7 +193,6 @@ int LoadParser::binlog_loaded_block(const char *buf_start, const char *buf_end) 
 
   for (block_len = (uint)(buf_end - buf_start); block_len > 0;
        buffer += std::min(block_len, max_event_size), block_len -= std::min(block_len, max_event_size)) {
-
     if (lf_info->wrote_create_file) {
       Append_block_log_event a(lf_info->thd, lf_info->thd->db, buffer, std::min(block_len, max_event_size),
                                lf_info->log_delayed);
@@ -201,8 +200,7 @@ int LoadParser::binlog_loaded_block(const char *buf_start, const char *buf_end) 
     } else {
       Begin_load_query_log_event b(lf_info->thd, lf_info->thd->db, buffer, std::min(block_len, max_event_size),
                                    lf_info->log_delayed);
-      if (mysql_bin_log.write_event(&b))
-         return -1;
+      if (mysql_bin_log.write_event(&b)) return -1;
 
       lf_info->wrote_create_file = 1;
     }

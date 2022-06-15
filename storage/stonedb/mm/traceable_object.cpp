@@ -38,10 +38,10 @@ std::atomic_size_t TraceableObject::globalUnFreeable;
 //   static const char *TypeName(TO_TYPE tt)
 //   {
 //       static const char *arr[] = {
-//           "TO_PACK",        "TO_SORTER",    "TO_CACHEDBUFFER", "TO_FILTER",
-//           "TO_MULTIFILTER2", "TO_INDEXTABLE",  "TO_RSINDEX", "TO_TEMPORARY",
-//           "TO_FTREE",     "TO_SPLICE", "TO_INITIALIZER", "TO_DEPENDENT",
-//           "TO_REFERENCE",    "TO_DATABLOCK",
+//           "TO_TYPE::TO_PACK",        "TO_TYPE::TO_SORTER",    "TO_TYPE::TO_CACHEDBUFFER", "TO_TYPE::TO_FILTER",
+//           "TO_TYPE::TO_MULTIFILTER2", "TO_TYPE::TO_INDEXTABLE",  "TO_TYPE::TO_RSINDEX", "TO_TYPE::TO_TEMPORARY",
+//           "TO_TYPE::TO_FTREE",     "TO_TYPE::TO_SPLICE", "TO_TYPE::TO_INITIALIZER", "TO_TYPE::TO_DEPENDENT",
+//           "TO_TYPE::TO_REFERENCE",    "TO_TYPE::TO_DATABLOCK",
 //
 //       };
 //       return arr[tt];
@@ -56,7 +56,7 @@ void *TraceableObject::alloc(size_t size, BLOCK_TYPE type, bool nothrow) {
   if (addr != NULL) {
     size_t s = Instance()->rc_msize(addr, this);
     m_sizeAllocated += s;
-    if (!IsLocked() && TraceableType() == TO_PACK)
+    if (!IsLocked() && TraceableType() == TO_TYPE::TO_PACK)
       globalFreeable += s;
     else
       globalUnFreeable += s;
@@ -70,7 +70,7 @@ void TraceableObject::dealloc(void *ptr) {
   s = Instance()->rc_msize(ptr, this);
   Instance()->dealloc(ptr, this);
   m_sizeAllocated -= s;
-  if (!IsLocked() && TraceableType() == TO_PACK)
+  if (!IsLocked() && TraceableType() == TO_TYPE::TO_PACK)
     globalFreeable -= s;
   else
     globalUnFreeable -= s;
@@ -85,7 +85,7 @@ void *TraceableObject::rc_realloc(void *ptr, size_t size, BLOCK_TYPE type) {
     size_t s = Instance()->rc_msize(addr, this);
     m_sizeAllocated += s;
     m_sizeAllocated -= s1;
-    if (!IsLocked() && TraceableType() == TO_PACK) {
+    if (!IsLocked() && TraceableType() == TO_TYPE::TO_PACK) {
       globalFreeable += s;
       globalFreeable -= s1;
     } else {
@@ -132,7 +132,7 @@ TraceableObject::~TraceableObject() {
 
 void TraceableObject::Lock() {
   MEASURE_FET("TraceableObject::Lock");
-  if (TraceableType() == TO_PACK) {
+  if (TraceableType() == TO_TYPE::TO_PACK) {
     std::scoped_lock locking_guard(m_locking_mutex);
     clearPrefetchUnused();
     if (!IsLocked()) {
@@ -156,7 +156,7 @@ void TraceableObject::Lock() {
 }
 
 void TraceableObject::SetNoLocks(int n) {
-  if (TraceableType() == TO_PACK) {
+  if (TraceableType() == TO_TYPE::TO_PACK) {
     std::scoped_lock locking_guard(m_locking_mutex);
     clearPrefetchUnused();
     if (!IsLocked()) {
@@ -184,11 +184,11 @@ void TraceableObject::Unlock() {
   std::scoped_lock locking_guard(m_locking_mutex);
   m_lock_count--;
   if (m_lock_count < 0) {
-    STONEDB_LOG(ERROR, "Internal error: An object unlocked too many times in memory manager.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "Internal error: An object unlocked too many times in memory manager.");
     DEBUG_ASSERT(!"Internal error: An object unlocked too many times in memory manager.");
     m_lock_count = 0;
   }
-  if (!IsLocked() && TraceableType() == TO_PACK) {
+  if (!IsLocked() && TraceableType() == TO_TYPE::TO_PACK) {
     globalUnFreeable -= m_sizeAllocated;
     globalFreeable += m_sizeAllocated;
   }
@@ -215,7 +215,7 @@ void TraceableObject::UnlockAndResetPack(std::shared_ptr<core::Pack> &pack) {
 
 void TraceableObject::DestructionLock() {
   std::scoped_lock locking_guard(m_locking_mutex);
-  if (!IsLocked() && TraceableType() == TO_PACK) {
+  if (!IsLocked() && TraceableType() == TO_TYPE::TO_PACK) {
     globalUnFreeable += m_sizeAllocated;
     globalFreeable -= m_sizeAllocated;
   }
@@ -225,8 +225,8 @@ void TraceableObject::DestructionLock() {
 int TraceableObject::MemorySettingsScale() { return rceng->getResourceManager()->GetMemoryScale(); }
 
 void TraceableObject::deinitialize(bool detect_leaks) {
-  if (TraceableType() != TO_INITIALIZER) {
-    STONEDB_ERROR("TraceableType() not equals 'TO_INITIALIZER'");
+  if (TraceableType() != TO_TYPE::TO_INITIALIZER) {
+    STONEDB_ERROR("TraceableType() not equals 'TO_TYPE::TO_INITIALIZER'");
     return;
   }
 

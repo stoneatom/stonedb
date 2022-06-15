@@ -144,14 +144,14 @@ void PartDict<T>::Load(RangeCoder *coder, T maxval) {
     prevc = c++;
     freqval[f].low = low;
     freqval[f].count = c;
-    if (low + c > MAXTOTAL) throw CPRS_ERR_COR;
+    if (low + c > MAXTOTAL) throw CprsErr::CPRS_ERR_COR;
     for (; c > 0; c--) cnt2val[low++] = f;
   }
 
   // load range of ESC
   esc_low = low;
   coder->DecodeUniform(esc_high, MAXTOTAL);
-  if (esc_low > esc_high) throw CPRS_ERR_COR;
+  if (esc_low > esc_high) throw CprsErr::CPRS_ERR_COR;
   esc_usecnt = esc_high - esc_low;
 }
 
@@ -212,7 +212,7 @@ void PartDict<T>::Decode(RangeCoder *coder, DataSet<T> *dataset) {
   // read version
   uchar ver;
   coder->DecodeUniform(ver, (uchar)7);
-  if (ver > 0) throw CPRS_ERR_COR;
+  if (ver > 0) throw CprsErr::CPRS_ERR_COR;
 
   // load dictionary
   Load(coder, dataset->maxval);

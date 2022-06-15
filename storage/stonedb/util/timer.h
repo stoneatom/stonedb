@@ -30,7 +30,7 @@ class Timer {
   Timer() = default;
 
   void Print(const std::string &msg) const {
-    if (STONEDB_LOGCHECK(DEBUG)) DoPrint(msg);
+    if (STONEDB_LOGCHECK(LogCtl_Level::DEBUG)) DoPrint(msg);
   }
 
  private:

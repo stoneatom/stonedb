@@ -40,11 +40,11 @@ int ClearDirectory(std::string const &path) {
       fs::remove_all(p);
     }
   } catch (fs::filesystem_error &e) {
-    STONEDB_LOG(ERROR, "Failed to ClearDirectory(%s). filesystem_error: %s %s %s", path.c_str(), e.what(),
+    STONEDB_LOG(LogCtl_Level::ERROR, "Failed to ClearDirectory(%s). filesystem_error: %s %s %s", path.c_str(), e.what(),
                 e.path1().native().c_str(), e.path2().native().c_str());
     return 1;
   } catch (std::exception &e) {
-    STONEDB_LOG(ERROR, "Failed to ClearDirectory(%s). error: %s", path.c_str(), e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Failed to ClearDirectory(%s). error: %s", path.c_str(), e.what());
     return 1;
   }
   return 0;
@@ -63,13 +63,14 @@ void DeleteDirectory(std::string const &path) {
       // ingore error because the target might be under 'path' and thus have
       // been removed
       fs::remove_all(t, ec);
-      if (ec && ec != std::errc::no_such_file_or_directory) STONEDB_LOG(ERROR, "Failed to delete %s", t.c_str());
+      if (ec && ec != std::errc::no_such_file_or_directory)
+        STONEDB_LOG(LogCtl_Level::ERROR, "Failed to delete %s", t.c_str());
     }
   } catch (fs::filesystem_error &e) {
-    STONEDB_LOG(ERROR, "Failed to delete directory(%s). filesystem_error: %s %s %s", path.c_str(), e.what(),
-                e.path1().native().c_str(), e.path2().native().c_str());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Failed to delete directory(%s). filesystem_error: %s %s %s", path.c_str(),
+                e.what(), e.path1().native().c_str(), e.path2().native().c_str());
   } catch (std::exception &e) {
-    STONEDB_LOG(ERROR, "Failed to delete directory(%s). error: %s", path.c_str(), e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Failed to delete directory(%s). error: %s", path.c_str(), e.what());
   }
 }
 

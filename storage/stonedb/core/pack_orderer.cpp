@@ -27,7 +27,7 @@ PackOrderer::PackOrderer() {
   curvc = 0;
   ncols = 0;
   packs.push_back(std::vector<PackPair>());
-  otype.push_back(NotSpecified);
+  otype.push_back(OrderType::NotSpecified);
   packs_ordered_up_to = 0;
   packs_passed = 0;
 }
@@ -89,16 +89,16 @@ void PackOrderer::InitOneColumn(vcolumn::VirtualColumn *vc, OrderType ot, common
   ++ncols;
   MinMaxType mmt;
   if (vc->Type().IsFixed() || vc->Type().IsDateTime()) {
-    mmt = MMT_Fixed;
+    mmt = MinMaxType::MMT_Fixed;
   } else
-    mmt = MMT_String;
+    mmt = MinMaxType::MMT_String;
 
   mmtype.push_back(mmt);
   otype.push_back(ot);
   packs.push_back(std::vector<PackPair>());
   lastly_left.push_back(true);
-  prevndx.push_back(INIT_VAL);
-  curndx.push_back(INIT_VAL);
+  prevndx.push_back(static_cast<int>(State::INIT_VAL));
+  curndx.push_back(static_cast<int>(State::INIT_VAL));
 
   auto &packs_one_col = packs[ncols - 1];
   int d = vc->GetDim();
@@ -107,27 +107,27 @@ void PackOrderer::InitOneColumn(vcolumn::VirtualColumn *vc, OrderType ot, common
   MMTU mid(0);
   while (mit.IsValid()) {
     int pack = mit.GetCurPackrow(d);
-    if (!r_filter || r_filter[pack] != common::RS_NONE) {
-      if (mmt == MMT_Fixed) {
+    if (!r_filter || r_filter[pack] != common::RSValue::RS_NONE) {
+      if (mmt == MinMaxType::MMT_Fixed) {
         if (vc->GetNoNulls(mit) == mit.GetPackSizeLeft()) {
           mid.i = common::PLUS_INF_64;
         } else {
           int64_t min = vc->GetMinInt64(mit);
           int64_t max = vc->GetMaxInt64(mit);
           switch (ot) {
-            case RangeSimilarity:
+            case OrderType::RangeSimilarity:
               mid.i = (min == common::NULL_VALUE_64 ? common::MINUS_INF_64 : (max - min) / 2);
               break;
-            case MinAsc:
-            case MinDesc:
-            case Covering:
+            case OrderType::MinAsc:
+            case OrderType::MinDesc:
+            case OrderType::Covering:
               mid.i = min;
               break;
-            case MaxAsc:
-            case MaxDesc:
+            case OrderType::MaxAsc:
+            case OrderType::MaxDesc:
               mid.i = max;
               break;
-            case NotSpecified:
+            case OrderType::NotSpecified:
               break;
           }
         }
@@ -152,25 +152,25 @@ void PackOrderer::InitOneColumn(vcolumn::VirtualColumn *vc, OrderType ot, common
   else
     natural_order.push_back(false);
 
-  if (mmt == MMT_Fixed) {
+  if (mmt == MinMaxType::MMT_Fixed) {
     switch (ot) {
-      case RangeSimilarity:
-      case MinAsc:
-      case MaxAsc:
+      case OrderType::RangeSimilarity:
+      case OrderType::MinAsc:
+      case OrderType::MaxAsc:
         sort(packs_one_col.begin(), packs_one_col.end(), [](const auto &v1, const auto &v2) {
           return v1.first.i < v2.first.i || (v1.first.i == v2.first.i && v1.second < v2.second);
         });
         break;
-      case Covering:
+      case OrderType::Covering:
         ReorderForCovering(packs_one_col, vc);
         break;
-      case MinDesc:
-      case MaxDesc:
+      case OrderType::MinDesc:
+      case OrderType::MaxDesc:
         sort(packs_one_col.begin(), packs_one_col.end(), [](const auto &v1, const auto &v2) {
           return v1.first.i > v2.first.i || (v1.first.i == v2.first.i && v1.second < v2.second);
         });
         break;
-      case NotSpecified:
+      case OrderType::NotSpecified:
         break;
     }
   }
@@ -240,13 +240,13 @@ void PackOrderer::NextPack() {
   packs_passed++;
   if (natural_order[curvc]) {
     // natural order traversing all packs
-    if (curndx[curvc] < dimsize - 1 && curndx[curvc] != END)
+    if (curndx[curvc] < dimsize - 1 && curndx[curvc] != static_cast<int>(State::END))
       ++curndx[curvc];
     else
-      curndx[curvc] = END;
+      curndx[curvc] = static_cast<int>(State::END);
   } else
     switch (otype[curvc]) {
-      case RangeSimilarity: {
+      case OrderType::RangeSimilarity: {
         if (lastly_left[curvc]) {
           if (size_t(prevndx[curvc]) < packs[curvc].size() - 1) {
             lastly_left[curvc] = !lastly_left[curvc];
@@ -257,7 +257,7 @@ void PackOrderer::NextPack() {
             if (curndx[curvc] > 0)
               --curndx[curvc];
             else
-              curndx[curvc] = END;
+              curndx[curvc] = static_cast<int>(State::END);
           }
         } else if (prevndx[curvc] > 0) {
           lastly_left[curvc] = !lastly_left[curvc];
@@ -268,17 +268,17 @@ void PackOrderer::NextPack() {
           if (size_t(curndx[curvc]) < packs[curvc].size() - 1)
             ++curndx[curvc];
           else
-            curndx[curvc] = END;
+            curndx[curvc] = static_cast<int>(State::END);
         }
         break;
       }
       default:
         // go along packs from 0 to packs[curvc].size() - 1
-        if (curndx[curvc] != END) {
+        if (curndx[curvc] != static_cast<int>(State::END)) {
           if (curndx[curvc] < (int)packs[curvc].size() - 1)
             ++curndx[curvc];
           else {
-            curndx[curvc] = END;
+            curndx[curvc] = static_cast<int>(State::END);
           }
         }
         break;
@@ -294,10 +294,10 @@ PackOrderer &PackOrderer::operator++() {
 
     do {
       NextPack();
-    } while (curndx[curvc] != END &&
+    } while (curndx[curvc] != static_cast<int>(State::END) &&
              visited->Get(natural_order[curvc] ? curndx[curvc] : packs[curvc][curndx[curvc]].second));
 
-    if (curndx[curvc] != END) {
+    if (curndx[curvc] != static_cast<int>(State::END)) {
       visited->Set(natural_order[curvc] ? curndx[curvc] : packs[curvc][curndx[curvc]].second);
     }
   }
@@ -313,17 +313,17 @@ void PackOrderer::Rewind() {
 
 void PackOrderer::RewindCol() {
   if (!natural_order[curvc] && packs[curvc].size() == 0)
-    curndx[curvc] = END;
+    curndx[curvc] = static_cast<int>(State::END);
   else
-    curndx[curvc] = prevndx[curvc] = INIT_VAL;
+    curndx[curvc] = prevndx[curvc] = static_cast<int>(State::INIT_VAL);
 }
 
 void PackOrderer::RewindToMatch(vcolumn::VirtualColumn *vc, MIIterator &mit) {
   DEBUG_ASSERT(vc->GetDim() != -1);
-  DEBUG_ASSERT(otype[curvc] == RangeSimilarity);
+  DEBUG_ASSERT(otype[curvc] == OrderType::RangeSimilarity);
   DEBUG_ASSERT(ncols == 1);  // not implemented otherwise
 
-  if (mmtype[curvc] == MMT_Fixed) {
+  if (mmtype[curvc] == MinMaxType::MMT_Fixed) {
     int64_t mid = common::MINUS_INF_64;
     if (vc->GetNoNulls(mit) != mit.GetPackSizeLeft()) {
       int64_t min = vc->GetMinInt64(mit);
@@ -342,7 +342,7 @@ void PackOrderer::RewindToMatch(vcolumn::VirtualColumn *vc, MIIterator &mit) {
     // not implemented for strings & doubles/floats
     curndx[curvc] = 0;
 
-  if (packs[curvc].size() == 0 && !natural_order[curvc]) curndx[curvc] = END;
+  if (packs[curvc].size() == 0 && !natural_order[curvc]) curndx[curvc] = static_cast<int>(State::END);
   prevndx[curvc] = curndx[curvc];
 }
 }  // namespace core

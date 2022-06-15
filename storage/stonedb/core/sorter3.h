@@ -63,7 +63,7 @@ class Sorter3 : public mm::TraceableObject {
         Memory management
         For internal use only.
   */
-  mm::TO_TYPE TraceableType() const override { return mm::TO_SORTER; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_SORTER; }
   int Compress() {
     return 0;
   }  // the first stage of conserving memory: delete all redundant data

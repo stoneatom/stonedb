@@ -106,7 +106,7 @@ uint TopBitDict<T>::FindOptimum(DataSet<T> *dataset, uint nbit, uint &opt_bit, D
 template <class T>
 inline bool TopBitDict<T>::Insert(Dictionary<T> *dict, T *data, uint nbit, uint bit, uint nrec, uint skiprec) {
   dict->InitInsert();
-  if (topbottom == tbTop) {  // top bits
+  if (topbottom == TopBottom::tbTop) {  // top bits
     uchar bitlow = (uchar)(nbit - bit);
     DEBUG_ASSERT(bitlow < sizeof(T) * 8);
     for (uint i = 0; i < nrec; i += skiprec)
@@ -138,13 +138,13 @@ bool TopBitDict<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
   coder->EncodeUniform((uchar)0, (uchar)7);
 
   // save no. of lower bits
-  bitlow = (topbottom == tbTop) ? (T)(nbit - bitdict) : (T)bitdict;
+  bitlow = (topbottom == TopBottom::tbTop) ? (T)(nbit - bitdict) : (T)bitdict;
   coder->EncodeUniform(bitlow, (T)64);
 
   // save dictionary
   DEBUG_ASSERT(bitlow < sizeof(maxval) * 8);
   T maxhigh = maxval >> bitlow, maxlow = ((T)1 _SHL_ bitlow) - (T)1;
-  T dictmax = (topbottom == tbTop) ? maxhigh : maxlow;
+  T dictmax = (topbottom == TopBottom::tbTop) ? maxhigh : maxlow;
   dict->Save(coder, dictmax);
 
   IFSTAT(uint pos1 = coder->GetPos());
@@ -155,7 +155,7 @@ bool TopBitDict<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
 
   // encode data
   DEBUG_ASSERT(bitlow < sizeof(T) * 8);
-  if (topbottom == tbTop)
+  if (topbottom == TopBottom::tbTop)
     for (uint i = 0; i < nrec; i++) {
       esc = dict->Encode(coder, data[i] >> bitlow);
       ASSERT(!esc, "TOP encode failed");
@@ -169,7 +169,7 @@ bool TopBitDict<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
     }
 
   IFSTAT(codesize[1] = coder->GetPos() - pos1);
-  dataset->maxval = (topbottom == tbTop) ? maxlow : maxhigh;
+  dataset->maxval = (topbottom == TopBottom::tbTop) ? maxlow : maxhigh;
   return true;
 }
 
@@ -178,7 +178,7 @@ void TopBitDict<T>::Decode(RangeCoder *coder, DataSet<T> *dataset) {
   // read version
   uchar ver;
   coder->DecodeUniform(ver, (uchar)7);
-  if (ver > 0) throw CPRS_ERR_COR;
+  if (ver > 0) throw CprsErr::CPRS_ERR_COR;
 
   // read no. of lower bits
   coder->DecodeUniform(bitlow, (T)64);
@@ -187,7 +187,7 @@ void TopBitDict<T>::Decode(RangeCoder *coder, DataSet<T> *dataset) {
   Dictionary<T> *dict = counters;
   DEBUG_ASSERT(bitlow < sizeof(dataset->maxval) * 8);
   T maxhigh = dataset->maxval >> bitlow, maxlow = ((T)1 _SHL_ bitlow) - (T)1;
-  T dictmax = (topbottom == tbTop) ? maxhigh : maxlow;
+  T dictmax = (topbottom == TopBottom::tbTop) ? maxhigh : maxlow;
   dict->Load(coder, dictmax);
 
   // decode data
@@ -199,7 +199,7 @@ void TopBitDict<T>::Decode(RangeCoder *coder, DataSet<T> *dataset) {
   }
 
   maxval_merge = dataset->maxval;
-  dataset->maxval = (topbottom == tbTop) ? maxlow : maxhigh;
+  dataset->maxval = (topbottom == TopBottom::tbTop) ? maxlow : maxhigh;
 }
 
 template <class T>
@@ -207,7 +207,7 @@ void TopBitDict<T>::Merge(DataSet<T> *dataset) {
   T *data = dataset->data;
   uint nrec = dataset->nrec;
   DEBUG_ASSERT(bitlow < sizeof(T) * 8);
-  if (topbottom == tbTop)
+  if (topbottom == TopBottom::tbTop)
     for (uint i = 0; i < nrec; i++) data[i] |= decoded[i] << bitlow;
   else
     for (uint i = 0; i < nrec; i++) (data[i] <<= bitlow) |= decoded[i];

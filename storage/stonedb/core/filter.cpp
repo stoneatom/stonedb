@@ -825,12 +825,12 @@ void Filter::AddNewBlocks(int new_blocks, bool value, int new_no_bits_last) {
 
 char *HeapAllocator::malloc(const size_type bytes) {
   //		std::cerr<< (bytes >> 20) << " for Filter\n";
-  // return (char*) Instance()->alloc(bytes, mm::BLOCK_TEMPORARY,
+  // return (char*) Instance()->alloc(bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY,
   // the_filter_block_owner);
   std::scoped_lock guard(HeapAllocator::mtx);
   void *r;
   try {
-    r = the_filter_block_owner->alloc(bytes, mm::BLOCK_TEMPORARY);
+    r = the_filter_block_owner->alloc(bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
   } catch (...) {
     return NULL;
   }

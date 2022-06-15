@@ -35,7 +35,7 @@ class TopBitDict : public DataFilt<T> {
   static const uint BITSTEP = 2;
   static const uint KEYOCCUR = 8;
   static const double MINPREDICT;
-  enum TopBottom { tbTop, tbBottom };  // which part of bits is compressed
+  enum class TopBottom { tbTop, tbBottom };  // which part of bits is compressed
 
  private:
   const TopBottom topbottom;
@@ -67,9 +67,9 @@ class TopBitDict : public DataFilt<T> {
   virtual void LogCompress(FILE *f) { std::fprintf(f, "%u %u", this->codesize[0], this->codesize[1]); }
 
  public:
-  TopBitDict(bool top) : topbottom(top ? tbTop : tbBottom) {}
+  TopBitDict(bool top) : topbottom(top ? TopBottom::tbTop : TopBottom::tbBottom) {}
   virtual ~TopBitDict() = default;
-  char const *GetName() override { return topbottom == tbTop ? (char *)"top" : (char *)"low"; }
+  char const *GetName() override { return topbottom == TopBottom::tbTop ? (char *)"top" : (char *)"low"; }
   bool Encode(RangeCoder *coder, DataSet<T> *dataset) override;
   void Decode(RangeCoder *coder, DataSet<T> *dataset) override;
   void Merge(DataSet<T> *dataset) override;

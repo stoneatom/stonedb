@@ -31,7 +31,7 @@ class MultiIndex;
 // a class to store new (future) contents of multiindex
 class MINewContents final {
  public:
-  enum { MCT_UNSPECIFIED, MCT_MATERIAL, MCT_FILTER_FORGET, MCT_VIRTUAL_DIM } content_type;
+  enum class enumMINCType { MCT_UNSPECIFIED, MCT_MATERIAL, MCT_FILTER_FORGET, MCT_VIRTUAL_DIM } content_type;
 
   MINewContents(MultiIndex *m, JoinTips &tips);
   ~MINewContents();
@@ -57,7 +57,7 @@ class MINewContents final {
                                        // at the end, or changes will be lost
   void CommitCountOnly(int64_t joined_tuples);
 
-  int OptimizedCaseDimension() { return (content_type == MCT_FILTER_FORGET ? optimized_dim_stay : -1); }
+  int OptimizedCaseDimension() { return (content_type == enumMINCType::MCT_FILTER_FORGET ? optimized_dim_stay : -1); }
 
  private:
   void InitTnew(int dim, int64_t initial_size);  // create t_new of proper size

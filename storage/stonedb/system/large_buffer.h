@@ -48,7 +48,7 @@ class LargeBuffer final : public mm::TraceableObject {
     DEBUG_ASSERT(n >= 0 && n <= buf_used);
     return buf + n;
   }
-  mm::TO_TYPE TraceableType() const override { return mm::TO_TEMPORARY; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
   int WriteIfNonzero(uchar c) {
     if (c != 0) {
       char *ptr = BufAppend(1);

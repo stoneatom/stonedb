@@ -35,7 +35,7 @@ class PPM {
   CprsErr DecompressArith(Symb *dest, int dlen, char *src, int slen);
 
  public:
-  enum ModelType { ModelNull, ModelSufTree, ModelWordGraph };
+  enum class ModelType { ModelNull, ModelSufTree, ModelWordGraph };
   // enum CoderType { CoderArith, CoderRange };
 
   static FILE *dump;
@@ -49,7 +49,7 @@ class PPM {
 
   // 'dlen' - max size of 'dest'; upon exit: actual size of 'dest'.
   // 'dlen' should be at least slen+1 - in this case buffer overflow will never
-  // occur Otherwise the return value should be checked against CPRS_ERR_BUF.
+  // occur Otherwise the return value should be checked against CprsErr::CPRS_ERR_BUF.
   // The last symbol of 'src' must be '\0'.
   CprsErr Compress(char *dest, int &dlen, Symb *src, int slen);
 

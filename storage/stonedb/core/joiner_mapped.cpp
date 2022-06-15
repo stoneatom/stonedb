@@ -38,9 +38,9 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
 
   std::vector<int64_t> rownums;
   rownums.reserve(128);
-  why_failed = FAIL_1N_TOO_HARD;
+  why_failed = JoinFailure::FAIL_1N_TOO_HARD;
   auto &desc(cond[0]);
-  if (cond.Size() > 1 || !desc.IsType_JoinSimple() || desc.op != common::O_EQ) return;
+  if (cond.Size() > 1 || !desc.IsType_JoinSimple() || desc.op != common::Operator::O_EQ) return;
 
   vcolumn::VirtualColumn *vc1 = desc.attr.vc;
   vcolumn::VirtualColumn *vc2 = desc.val1.vc;
@@ -98,7 +98,7 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
   else if (outer_join) {  // outer join on keys verified as unique - a trivial
                           // answer
     new_mind.CommitCountOnly(dim2_size);
-    why_failed = NOT_FAILED;
+    why_failed = JoinFailure::NOT_FAILED;
     mind->UnlockAllFromUse();
     return;
   }
@@ -199,7 +199,7 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
   }
 
   mind->UnlockAllFromUse();
-  why_failed = NOT_FAILED;
+  why_failed = JoinFailure::NOT_FAILED;
 }
 
 std::unique_ptr<JoinerMapFunction> JoinerMapped::GenerateFunction(vcolumn::VirtualColumn *vc) {
@@ -306,9 +306,9 @@ int64_t JoinerParallelMapped::ExecuteMatchLoop(std::shared_ptr<MultiIndexBuilder
 void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
   MEASURE_FET("JoinerParallelMapped::ExecuteJoinConditions(...)");
 
-  why_failed = FAIL_1N_TOO_HARD;
+  why_failed = JoinFailure::FAIL_1N_TOO_HARD;
   auto &desc(cond[0]);
-  if (cond.Size() > 1 || !desc.IsType_JoinSimple() || desc.op != common::O_EQ) return;
+  if (cond.Size() > 1 || !desc.IsType_JoinSimple() || desc.op != common::Operator::O_EQ) return;
 
   vcolumn::VirtualColumn *vc1 = desc.attr.vc;
   vcolumn::VirtualColumn *vc2 = desc.val1.vc;
@@ -360,7 +360,7 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
   else if (outer_join) {  // outer join on keys verified as unique - a trivial
                           // answer
     new_mind->CommitCountOnly(dim2_size);
-    why_failed = NOT_FAILED;
+    why_failed = JoinFailure::NOT_FAILED;
     mind->UnlockAllFromUse();
     return;
   }
@@ -412,7 +412,7 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
   }
 
   mind->UnlockAllFromUse();
-  why_failed = NOT_FAILED;
+  why_failed = JoinFailure::NOT_FAILED;
 }
 
 void OffsetMapFunction::Fetch(int64_t key_val, std::vector<int64_t> &keys_value) {

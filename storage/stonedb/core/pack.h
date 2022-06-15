@@ -43,7 +43,7 @@ class Pack : public mm::TraceableObject {
  public:
   virtual ~Pack() = default;
 
-  mm::TO_TYPE TraceableType() const override { return mm::TO_PACK; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_PACK; }
   void Release() override;
 
   virtual std::unique_ptr<Pack> Clone(const PackCoordinate &pc) const = 0;

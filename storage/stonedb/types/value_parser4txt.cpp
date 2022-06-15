@@ -671,12 +671,12 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
   if (!EatWhiteSigns(buf, buflen) && !system::EatDTSeparators(buf, buflen)) {
     if ((at == common::CT::DATETIME &&
          RCDateTime::IsCorrectSDBDatetime((short)year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
-                                         RCDateTime::GetSpecialValue(at).Minute(),
-                                         RCDateTime::GetSpecialValue(at).Second())) ||
+                                          RCDateTime::GetSpecialValue(at).Minute(),
+                                          RCDateTime::GetSpecialValue(at).Second())) ||
         (at == common::CT::TIMESTAMP &&
          RCDateTime::IsCorrectSDBTimestamp((short)year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
-                                          RCDateTime::GetSpecialValue(at).Minute(),
-                                          RCDateTime::GetSpecialValue(at).Second())))
+                                           RCDateTime::GetSpecialValue(at).Minute(),
+                                           RCDateTime::GetSpecialValue(at).Second())))
       rcv = RCDateTime((short)year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
                        RCDateTime::GetSpecialValue(at).Minute(), RCDateTime::GetSpecialValue(at).Second(), at);
     return common::ErrorCode::OUT_OF_RANGE;
@@ -738,7 +738,7 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
   try {
     if (at == common::CT::DATETIME) {
       if (RCDateTime::IsCorrectSDBDatetime((short)year, (short)month, (short)day, (short)hour, (short)minute,
-                                          (short)second)) {
+                                           (short)second)) {
         rcv = RCDateTime((short)year, (short)month, (short)day, (short)hour, (short)minute, (short)second, at);
         return sdbrc;
       } else {
@@ -749,7 +749,7 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
       }
     } else if (at == common::CT::TIMESTAMP) {
       if (RCDateTime::IsCorrectSDBTimestamp((short)year, (short)month, (short)day, (short)hour, (short)minute,
-                                           (short)second)) {
+                                            (short)second)) {
         // convert to UTC
         MYSQL_TIME myt;
         std::memset(&myt, 0, sizeof(MYSQL_TIME));

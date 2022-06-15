@@ -378,7 +378,7 @@ void SubSelectColumn::PrepareSubqResult(const core::MIIterator &mit, bool exists
   }
   subq->SuspendDisplay();
   try {
-    if (exists_only) subq->SetMode(core::TM_EXISTS);
+    if (exists_only) subq->SetMode(core::TMParameter::TM_EXISTS);
     subq->Materialize(cor);
   } catch (...) {
     subq->ResumeDisplay();

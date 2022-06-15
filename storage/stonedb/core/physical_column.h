@@ -34,7 +34,7 @@ class PhysicalColumn : public Column {
   PhysicalColumn(const PhysicalColumn &phc)
       : Column(phc), is_unique(phc.is_unique), is_unique_updated(phc.is_unique_updated) {}
 
-  enum phys_col_t { ATTR, RCATTR };
+  enum class phys_col_t { ATTR, RCATTR };
 
   /*! \brief Get a numeric value from a column
    *
@@ -201,7 +201,8 @@ class PhysicalColumn : public Column {
   void SetUniqueUpdated(bool updated) { is_unique_updated = updated; }
   //! shortcut utility function = IsUniqueUpdated && IsUnique
   common::RSValue IsDistinct() const {
-    return (IsUniqueUpdated() ? (IsUnique() ? common::RS_ALL : common::RS_NONE) : common::RS_UNKNOWN);
+    return (IsUniqueUpdated() ? (IsUnique() ? common::RSValue::RS_ALL : common::RSValue::RS_NONE)
+                              : common::RSValue::RS_UNKNOWN);
   }
   virtual int64_t RoughMin(Filter *f = NULL,
                            common::RSValue *rf = NULL) = 0;  // for numerical: best
@@ -267,7 +268,7 @@ class PhysicalColumn : public Column {
   virtual common::RSValue RoughCheck(int pack1, int pack2, Descriptor &d) = 0;
   virtual common::RSValue RoughCheckBetween([[maybe_unused]] int pack, [[maybe_unused]] int64_t min,
                                             [[maybe_unused]] int64_t max) {
-    return common::RS_SOME;
+    return common::RSValue::RS_SOME;
   }
   virtual bool TryToMerge(Descriptor &d1, Descriptor &d2) = 0;
 

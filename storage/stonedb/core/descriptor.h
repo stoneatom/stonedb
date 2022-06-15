@@ -34,12 +34,12 @@ class DescTree;
 class MIUpdatingIterator;
 class QueryOperator;
 
-/*! DT_NON_JOIN - 1 dimension condition
- *  DT_SIMPLE_JOIN - suitable for e.g. hash join
- *  DT_COMPLEX_JOIN - possibly requires nested loop join
+/*! DescriptorJoinType::DT_NON_JOIN - 1 dimension condition
+ *  DescriptorJoinType::DT_SIMPLE_JOIN - suitable for e.g. hash join
+ *  DescriptorJoinType::DT_COMPLEX_JOIN - possibly requires nested loop join
  */
-enum DescriptorJoinType { DT_NON_JOIN, DT_SIMPLE_JOIN, DT_COMPLEX_JOIN, DT_NOT_KNOWN_YET };
-enum SubSelectOptimizationType { ROW_BASED, PACK_BASED };
+enum class DescriptorJoinType { DT_NON_JOIN, DT_SIMPLE_JOIN, DT_COMPLEX_JOIN, DT_NOT_KNOWN_YET };
+enum class SubSelectOptimizationType { ROW_BASED, PACK_BASED };
 
 class Descriptor {
  public:
@@ -89,9 +89,9 @@ class Descriptor {
                                                  // and other may be outer
   void Simplify(bool in_having = false);
   void SwitchSides();
-  bool IsEmpty() const { return op == common::O_UNKNOWN_FUNC; }
-  bool IsTrue() const { return op == common::O_TRUE; }
-  bool IsFalse() const { return op == common::O_FALSE; }
+  bool IsEmpty() const { return op == common::Operator::O_UNKNOWN_FUNC; }
+  bool IsTrue() const { return op == common::Operator::O_TRUE; }
+  bool IsFalse() const { return op == common::Operator::O_FALSE; }
   bool IsSDBItemsEmpty();
   bool WithoutAttrs();
   bool WithoutTypeCast();
@@ -112,7 +112,7 @@ class Descriptor {
   void DimensionUsed(DimensionVector &dims);
   bool IsParameterized() const;
   bool IsDeterministic() const;
-  bool IsType_OrTree() const { return op == common::O_OR_TREE; }
+  bool IsType_OrTree() const { return op == common::Operator::O_OR_TREE; }
   bool IsType_JoinSimple() const;
   bool IsType_AttrAttr() const;
   bool IsType_AttrValOrAttrValVal() const;
@@ -126,7 +126,7 @@ class Descriptor {
   bool IsType_JoinComplex() const;
   bool IsType_Join() const { return (IsType_JoinSimple() || IsType_JoinComplex()); }
   bool IsDelayed() const { return delayed; }
-  bool IsInner() { return right_dims.IsEmpty(); }   // join_type == JO_INNER; }
+  bool IsInner() { return right_dims.IsEmpty(); }   // join_type == JoinType::JO_INNER; }
   bool IsOuter() { return !right_dims.IsEmpty(); }  // (IsLeftJoin() || IsRightJoin() || IsFullOuterJoin()); }
   char *ToString(char buf[], size_t buf_ct);
   void CoerceColumnTypes();
@@ -182,7 +182,7 @@ class Descriptor {
   DTCollation collation;
 
  public:
-  bool null_after_simplify;  // true if Simplify set common::O_FALSE because of
+  bool null_after_simplify;  // true if Simplify set common::Operator::O_FALSE because of
                              // NULL
 };
 

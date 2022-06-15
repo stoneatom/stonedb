@@ -34,13 +34,13 @@ class Item_sdbfield;
 class MysqlExpression {
  public:
   // map which tells how to replace Item_field's with Item_sdbfield
- using Item2VarID = std::map<Item*, VarID> ;
- using TypOfVars = std::map<VarID, DataType>;  // map of types of variables
- using sdbfields_cache_t = std::map<VarID, std::set<Item_sdbfield*>> ;
- using value_or_null_info_t = std::pair<ValueOrNull, ValueOrNull*> ;
- using var_buf_t = std::map<VarID, std::vector<value_or_null_info_t>>;
- using SetOfVars = std::set<VarID>;  // set of IDs of variables occuring in 
- enum StringType { STRING_NOTSTRING, STRING_TIME, STRING_NORMAL };
+  using Item2VarID = std::map<Item *, VarID>;
+  using TypOfVars = std::map<VarID, DataType>;  // map of types of variables
+  using sdbfields_cache_t = std::map<VarID, std::set<Item_sdbfield *>>;
+  using value_or_null_info_t = std::pair<ValueOrNull, ValueOrNull *>;
+  using var_buf_t = std::map<VarID, std::vector<value_or_null_info_t>>;
+  using SetOfVars = std::set<VarID>;  // set of IDs of variables occuring in
+  enum class StringType { STRING_NOTSTRING, STRING_TIME, STRING_NORMAL };
 
   MysqlExpression(Item *item, Item2VarID &item2varid);
   MysqlExpression(const MysqlExpression &) = delete;
@@ -91,7 +91,7 @@ class MysqlExpression {
   static bool HandledFieldType(Item_result type);
   Item_sdbfield *GetSdbfieldItem(Item_field *);
 
-  enum TransformDirection { FORWARD, BACKWARD };
+  enum class TransformDirection { FORWARD, BACKWARD };
 
   //! Returns the root of transformed tree. New root may be different than the
   //! old one!

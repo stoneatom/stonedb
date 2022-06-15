@@ -23,7 +23,7 @@
 namespace stonedb {
 
 namespace logger {
-enum LogCtl_Level { DISABLED = 0, FATAL = 1, ERROR = 2, WARN = 3, INFO = 4, DEBUG = 5, TRACE = 6 };
+enum class LogCtl_Level { DISABLED = 0, FATAL = 1, ERROR = 2, WARN = 3, INFO = 4, DEBUG = 5, TRACE = 6 };
 }  // namespace logger
 namespace utils {
 // a class help to check debug switch and print debug msg

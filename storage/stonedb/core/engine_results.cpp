@@ -380,7 +380,7 @@ void ResultSender::Finalize(TempTable *result_table) {
                << "\tClientPort:" << thd->peer_port << "\tUser:" << sctx.user << glob_serverInfo
                << "\tAffectRows:" << affect_rows << "\tResultRows:" << rows_sent << "\tDBName:" << thd->db
                << "\tCosttime(ms):" << cost_time << "\tSQL:" << thd->query() << system::unlock;
-  STONEDB_LOG(DEBUG, "Result: %" PRId64 " Costtime(ms): %" PRId64, rows_sent, cost_time);
+  STONEDB_LOG(LogCtl_Level::DEBUG, "Result: %" PRId64 " Costtime(ms): %" PRId64, rows_sent, cost_time);
 }
 
 void ResultSender::CleanUp() { restore_fields(fields, items_backup); }
@@ -472,7 +472,7 @@ void ResultExportSender::Init(TempTable *t) {
   TABLE_SHARE share;
   init_field_scan_helpers(thd, tmp_table, share);
 
-  std::vector<AttributeTypeInfo> deas = t->GetATIs(iop->GetEDF() != common::TXT_VARIABLE);
+  std::vector<AttributeTypeInfo> deas = t->GetATIs(iop->GetEDF() != common::EDF::TRI_UNKNOWN);
   int i = 0;
   while ((item = li++) != nullptr) {
     fields_t::value_type ft = guest_field_type(thd, tmp_table, item);
@@ -485,7 +485,7 @@ void ResultExportSender::Init(TempTable *t) {
   if (!rcbuffer->BufOpen(*iop)) throw common::FileException("Unable to open file or named pipe.");
 
   rcde = common::DataFormat::GetDataFormat(iop->GetEDF())->CreateDataExporter(*iop);
-  rcde->Init(rcbuffer, t->GetATIs(iop->GetEDF() != common::TXT_VARIABLE), f, deas);
+  rcde->Init(rcbuffer, t->GetATIs(iop->GetEDF() != common::EDF::TRI_UNKNOWN), f, deas);
 }
 
 // send to Exporter

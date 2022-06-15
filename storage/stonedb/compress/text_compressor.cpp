@@ -92,23 +92,23 @@ void TextCompressor::SetParams(PPMParam &p, int ver, [[maybe_unused]] int lev, i
 }
 
 CprsErr TextCompressor::CompressCopy(char *dest, int &dlen, char *src, int slen) {
-  if (dlen <= slen) return CPRS_ERR_BUF;
+  if (dlen <= slen) return CprsErr::CPRS_ERR_BUF;
   dest[0] = 0;  // method: no compression
   std::memcpy(dest + 1, src, slen);
   dlen = slen + 1;
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 CprsErr TextCompressor::CompressCopy(char *dest, int &dlen, char **index, const uint *lens, int nrec) {
   dest[0] = 0;  // method: no compression
   int dpos = 1;
   for (int i = 0; i < nrec; i++) {
-    if (dpos + lens[i] > (uint)dlen) return CPRS_ERR_BUF;
+    if (dpos + lens[i] > (uint)dlen) return CprsErr::CPRS_ERR_BUF;
     std::memcpy(dest + dpos, index[i], lens[i]);
     dpos += lens[i];
   }
   dlen = dpos;
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 CprsErr TextCompressor::DecompressCopy(char *dest, int dlen, char *src, [[maybe_unused]] int slen, char **index,
@@ -119,16 +119,16 @@ CprsErr TextCompressor::DecompressCopy(char *dest, int dlen, char *src, [[maybe_
     index[i] = dest + sumlen;
     sumlen += lens[i];
   }
-  if (sumlen > dlen) return CPRS_ERR_BUF;
+  if (sumlen > dlen) return CprsErr::CPRS_ERR_BUF;
   std::memcpy(dest, src, sumlen);
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 //---------------------------------------------------------------------------------------------------------
 
 CprsErr TextCompressor::CompressPlain(char *dest, int &dlen, char *src, int slen, int ver, int lev) {
-  if ((dest == NULL) || (src == NULL) || (dlen <= 0) || (slen <= 0)) return CPRS_ERR_PAR;
-  if ((ver < 0) || (ver > 2) || (lev < 1) || (lev > 9)) return CPRS_ERR_VER;
+  if ((dest == NULL) || (src == NULL) || (dlen <= 0) || (slen <= 0)) return CprsErr::CPRS_ERR_PAR;
+  if ((ver < 0) || (ver > 2) || (lev < 1) || (lev > 9)) return CprsErr::CPRS_ERR_VER;
 
   if (ver == 0) return CompressCopy(dest, dlen, src, slen);
 
@@ -136,7 +136,7 @@ CprsErr TextCompressor::CompressPlain(char *dest, int &dlen, char *src, int slen
   dest[0] = (char)ver;
   dest[1] = (char)lev;
   int dpos = 2;
-  CprsErr err = CPRS_SUCCESS;
+  CprsErr err = CprsErr::CPRS_SUCCESS;
 
   // PPM
   if ((ver == 1) || (ver == 2)) {
@@ -149,14 +149,14 @@ CprsErr TextCompressor::CompressPlain(char *dest, int &dlen, char *src, int slen
     int *dpos_tab = (int *)(dest + dpos);
     dpos += n * sizeof(int);
 
-    PPM::ModelType mt = ((ver == 1) ? PPM::ModelSufTree : PPM::ModelWordGraph);
+    PPM::ModelType mt = ((ver == 1) ? PPM::ModelType::ModelSufTree : PPM::ModelType::ModelWordGraph);
 
     // loop: build next PPM model, compress next part of the data
     for (int i = 0; i < n; i++) {
       PPM ppm((uchar *)src, split[i], mt, param);
       clen = dlen - dpos;
       err = ppm.Compress(dest + dpos, clen, (uchar *)src + split[i], split[i + 1] - split[i]);
-      if (err) break;
+      if (static_cast<int>(err)) break;
 
       dpos_tab[i] = dpos;
       dpos += clen;
@@ -164,26 +164,27 @@ CprsErr TextCompressor::CompressPlain(char *dest, int &dlen, char *src, int slen
   }
 
   // is it better to simply copy the source data?
-  if (((err == CPRS_ERR_BUF) || (dpos >= slen)) && (dlen >= slen + 1)) return CompressCopy(dest, dlen, src, slen);
+  if (((err == CprsErr::CPRS_ERR_BUF) || (dpos >= slen)) && (dlen >= slen + 1))
+    return CompressCopy(dest, dlen, src, slen);
 
   dlen = dpos;
   return err;
 }
 
 CprsErr TextCompressor::DecompressPlain(char *dest, int dlen, char *src, int slen) {
-  if ((dest == NULL) || (src == NULL) || (dlen <= 0) || (slen <= 0)) return CPRS_ERR_PAR;
-  if (slen < 2) return CPRS_ERR_BUF;
+  if ((dest == NULL) || (src == NULL) || (dlen <= 0) || (slen <= 0)) return CprsErr::CPRS_ERR_PAR;
+  if (slen < 2) return CprsErr::CPRS_ERR_BUF;
 
   char ver = src[0], lev = (ver > 0) ? src[1] : 1;
   int spos = (ver > 0) ? 2 : 1;
 
-  if ((ver < 0) || (ver > 2) || (lev < 1) || (lev > 9)) return CPRS_ERR_VER;
+  if ((ver < 0) || (ver > 2) || (lev < 1) || (lev > 9)) return CprsErr::CPRS_ERR_VER;
 
   // are the data simply copied, without compression?
   if (ver == 0) {
-    if (dlen != slen - 1) return CPRS_ERR_PAR;
+    if (dlen != slen - 1) return CprsErr::CPRS_ERR_PAR;
     std::memcpy(dest, src + 1, dlen);
-    return CPRS_SUCCESS;
+    return CprsErr::CPRS_SUCCESS;
   }
 
   PPMParam param;
@@ -195,19 +196,19 @@ CprsErr TextCompressor::DecompressPlain(char *dest, int dlen, char *src, int sle
   parts.resize(n + 1);
   for (int j = 0; j < n; j++, spos += sizeof(int)) parts[j] = *(int *)(src + spos);
   parts[n] = slen;
-  if (parts[n] < parts[n - 1]) return CPRS_ERR_BUF;
+  if (parts[n] < parts[n - 1]) return CprsErr::CPRS_ERR_BUF;
 
-  PPM::ModelType mt = ((ver == 1) ? PPM::ModelSufTree : PPM::ModelWordGraph);
+  PPM::ModelType mt = ((ver == 1) ? PPM::ModelType::ModelSufTree : PPM::ModelType::ModelWordGraph);
   CprsErr err;
 
   // loop: build next PPM model, decompress next part of the data
   for (int i = 0; i < n; i++) {
     PPM ppm((uchar *)dest, split[i], mt, param, (uchar)src[parts[i]]);
     err = ppm.Decompress((uchar *)dest + split[i], split[i + 1] - split[i], src + parts[i], parts[i + 1] - parts[i]);
-    if (err) return err;
+    if (static_cast<int>(err)) return err;
   }
 
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 CprsErr TextCompressor::CompressVer2(char *dest, int &dlen, char **index, const uint *lens, int nrec, int ver,
@@ -216,8 +217,8 @@ CprsErr TextCompressor::CompressVer2(char *dest, int &dlen, char **index, const 
   //  '0' -> '1'     (zero may occur frequently and should be encoded as a
   //  single symbol) '1' -> '2' '1' '2' -> '2' '2'
 
-  if ((!dest) || (!index) || (!lens) || (dlen <= 0) || (nrec <= 0)) return CPRS_ERR_PAR;
-  if (dlen < 5) return CPRS_ERR_BUF;
+  if ((!dest) || (!index) || (!lens) || (dlen <= 0) || (nrec <= 0)) return CprsErr::CPRS_ERR_PAR;
+  if (dlen < 5) return CprsErr::CPRS_ERR_BUF;
 
   // how much memory to allocate for encoded data
   int mem = 0, /*stop,*/ i;
@@ -304,15 +305,15 @@ CprsErr TextCompressor::CompressVer2(char *dest, int &dlen, char **index, const 
 
 CprsErr TextCompressor::DecompressVer2(char *dest, int dlen, char *src, int slen, char **index, const uint * /*lens*/,
                                        int nrec) {
-  if ((!dest) || (!src) /*|| (!index) */ || (slen <= 0) || (nrec <= 0)) return CPRS_ERR_PAR;
-  if (slen < 5) return CPRS_ERR_BUF;
+  if ((!dest) || (!src) /*|| (!index) */ || (slen <= 0) || (nrec <= 0)) return CprsErr::CPRS_ERR_PAR;
+  if (slen < 5) return CprsErr::CPRS_ERR_BUF;
 
   // is data encoded?
-  if (src[0] != 1) return CPRS_ERR_VER;
+  if (src[0] != 1) return CprsErr::CPRS_ERR_VER;
   int spos = 1;
 
   // get size of encoded data
-  if (slen < spos + 4) return CPRS_ERR_BUF;
+  if (slen < spos + 4) return CprsErr::CPRS_ERR_BUF;
   int sdata = *(int *)(src + spos);
   spos += 4;
 
@@ -320,7 +321,7 @@ CprsErr TextCompressor::DecompressVer2(char *dest, int dlen, char *src, int slen
 
   // decompress
   CprsErr err = DecompressPlain(data.get(), sdata, src + spos, slen - spos);
-  if (err) {
+  if (static_cast<int>(err)) {
     return err;
   }
 
@@ -338,7 +339,7 @@ CprsErr TextCompressor::DecompressVer2(char *dest, int dlen, char *src, int slen
     }
 
     if (pdst >= dlen) {
-      err = CPRS_ERR_BUF;
+      err = CprsErr::CPRS_ERR_BUF;
       break;
     }
     if ((uint)s > 2)
@@ -347,27 +348,27 @@ CprsErr TextCompressor::DecompressVer2(char *dest, int dlen, char *src, int slen
       dest[pdst++] = '\0';
     else {
       if (pdat >= sdata) {
-        err = CPRS_ERR_OTH;
+        err = CprsErr::CPRS_ERR_OTH;
         break;
       }
       s = data[pdat++];
       if ((s == '\1') || (s == '\2'))
         dest[pdst++] = s;
       else {
-        err = CPRS_ERR_OTH;
+        err = CprsErr::CPRS_ERR_OTH;
         break;
       }
     }
   }
 
-  if (err) return err;
-  if (i != PermFirst(nrec)) return CPRS_ERR_OTH;
-  return CPRS_SUCCESS;
+  if (static_cast<int>(err)) return err;
+  if (i != PermFirst(nrec)) return CprsErr::CPRS_ERR_OTH;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 CprsErr TextCompressor::CompressVer4(char *dest, int &dlen, char **index, const uint *lens, int nrec,
                                      [[maybe_unused]] int ver, [[maybe_unused]] int lev, uint packlen) {
-  if ((!dest) || (!index) || (!lens) || (dlen <= 0) || (nrec <= 0) || (packlen <= 0)) return CPRS_ERR_PAR;
+  if ((!dest) || (!index) || (!lens) || (dlen <= 0) || (nrec <= 0) || (packlen <= 0)) return CprsErr::CPRS_ERR_PAR;
   int length = 0;
   int pos = 0;
   auto srcdata = std::make_unique<char[]>(packlen);
@@ -380,26 +381,26 @@ CprsErr TextCompressor::CompressVer4(char *dest, int &dlen, char **index, const 
   const int cmpBytes = LZ4_compress(srcdata.get(), dest + pos, length);
 
   if (cmpBytes <= 0 || cmpBytes > dlen - pos) {
-    STONEDB_LOG(ERROR, "CompressVer4 error,cmpBytes: %d dlen - pos = %d", cmpBytes, dlen - pos);
-    return CPRS_ERR_OTH;
+    STONEDB_LOG(LogCtl_Level::ERROR, "CompressVer4 error,cmpBytes: %d dlen - pos = %d", cmpBytes, dlen - pos);
+    return CprsErr::CPRS_ERR_OTH;
   }
   *(int *)(dest) = (int)cmpBytes;  // store size of encoded data
   dlen = cmpBytes + 4;
 
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 CprsErr TextCompressor::DecompressVer4(char *dest, int dlen, char *src, int slen, char **index, const uint *lens,
                                        int nrec) {
   int spos = 0;
-  if ((!dest) || (!src) || (slen <= 0) || (nrec <= 0)) return CPRS_ERR_PAR;
+  if ((!dest) || (!src) || (slen <= 0) || (nrec <= 0)) return CprsErr::CPRS_ERR_PAR;
   int datalen = *(int *)(src);
   spos += 4;
 
   const int decBytes = LZ4_decompress_safe(src + spos, dest, datalen, dlen);
   if (decBytes <= 0 || decBytes > dlen) {
-    STONEDB_LOG(ERROR, "DecompressVer4 error,decBytes: %d dlen = %d", decBytes, dlen);
-    return CPRS_ERR_OTH;
+    STONEDB_LOG(LogCtl_Level::ERROR, "DecompressVer4 error,decBytes: %d dlen = %d", decBytes, dlen);
+    return CprsErr::CPRS_ERR_OTH;
   }
 
   size_t sumlen = 0;
@@ -407,11 +408,11 @@ CprsErr TextCompressor::DecompressVer4(char *dest, int dlen, char *src, int slen
     index[i] = dest + sumlen;
     sumlen += lens[i];
   }
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 CprsErr TextCompressor::CompressZlib(char *dest, int &dlen, char **index, const uint *lens, int nrec, uint packlen) {
-  if ((!dest) || (!index) || (!lens) || (dlen <= 4) || (nrec <= 0) || (packlen == 0)) return CPRS_ERR_PAR;
+  if ((!dest) || (!index) || (!lens) || (dlen <= 4) || (nrec <= 0) || (packlen == 0)) return CprsErr::CPRS_ERR_PAR;
   uint64_t srclen = 0;
   std::unique_ptr<unsigned char> srcdata(new unsigned char[packlen]);
   for (int i = 0; i < nrec; i++) {
@@ -423,38 +424,39 @@ CprsErr TextCompressor::CompressZlib(char *dest, int &dlen, char **index, const 
   uint64_t destlen = dlen - pos;
   int ret = compress2(reinterpret_cast<Bytef *>(dest + pos), &destlen, srcdata.get(), srclen, Z_DEFAULT_COMPRESSION);
   if (ret != Z_OK) {
-    STONEDB_LOG(ERROR, "compress2 failure %d, destlen: %d, srclen %d, packlen %u", ret, destlen, srclen, packlen);
-    return CPRS_ERR_OTH;
+    STONEDB_LOG(LogCtl_Level::ERROR, "compress2 failure %d, destlen: %d, srclen %d, packlen %u", ret, destlen, srclen,
+                packlen);
+    return CprsErr::CPRS_ERR_OTH;
   }
   *(reinterpret_cast<uint32_t *>(dest)) = static_cast<uint32_t>(destlen);
   dlen = destlen + pos;
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 CprsErr TextCompressor::DecompressZlib(char *dest, int dlen, char *src, int slen, char **index, const uint *lens,
                                        int nrec) {
-  if ((!dest) || (!src) || (slen <= 0) || (nrec <= 0)) return CPRS_ERR_PAR;
+  if ((!dest) || (!src) || (slen <= 0) || (nrec <= 0)) return CprsErr::CPRS_ERR_PAR;
   uint64_t srclen = *(reinterpret_cast<uint32_t *>(src));
   uint32_t spos = 4;
   uint64_t destlen = dlen;
   const int ret =
       uncompress(reinterpret_cast<Bytef *>(dest), &destlen, reinterpret_cast<const Bytef *>(src + spos), srclen);
   if (ret != Z_OK) {
-    STONEDB_LOG(ERROR, "uncompress error: %d, srclen: %d destlen = %d", ret, srclen, dlen);
-    return CPRS_ERR_OTH;
+    STONEDB_LOG(LogCtl_Level::ERROR, "uncompress error: %d, srclen: %d destlen = %d", ret, srclen, dlen);
+    return CprsErr::CPRS_ERR_OTH;
   }
   size_t sumlen = 0;
   for (int i = 0; i < nrec; i++) {
     index[i] = dest + sumlen;
     sumlen += lens[i];
   }
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 CprsErr TextCompressor::Compress(char *dest, int &dlen, char **index, const uint *lens, int nrec, uint &packlen,
                                  int ver, int lev) {
-  if ((!dest) || (!index) || (!lens) || (dlen <= 0) || (nrec <= 0)) return CPRS_ERR_PAR;
-  if ((ver < 0) || (ver > MAXVER) || (lev < 1) || (lev > 9)) return CPRS_ERR_VER;
+  if ((!dest) || (!index) || (!lens) || (dlen <= 0) || (nrec <= 0)) return CprsErr::CPRS_ERR_PAR;
+  if ((ver < 0) || (ver > MAXVER) || (lev < 1) || (lev > 9)) return CprsErr::CPRS_ERR_VER;
 
   int slen = packlen;
 
@@ -462,7 +464,7 @@ CprsErr TextCompressor::Compress(char *dest, int &dlen, char **index, const uint
 
   dest[0] = 0;  // not encoded
   int dpos = 1;
-  CprsErr err = CPRS_SUCCESS;
+  CprsErr err = CprsErr::CPRS_SUCCESS;
 
   if (ver == 0) {
     dlen -= dpos;
@@ -498,7 +500,7 @@ CprsErr TextCompressor::Compress(char *dest, int &dlen, char **index, const uint
   }
 
   // check if copy compression is better
-  if (((err == CPRS_ERR_BUF) || (dpos >= slen)) && (dlen >= slen + 2)) {
+  if (((err == CprsErr::CPRS_ERR_BUF) || (dpos >= slen)) && (dlen >= slen + 2)) {
     dpos = 1;  // leave first byte of the header
     dlen -= dpos;
     err = CompressCopy(dest + dpos, dlen, index, lens, nrec);
@@ -513,8 +515,8 @@ CprsErr TextCompressor::Compress(char *dest, int &dlen, char **index, const uint
 CprsErr TextCompressor::Decompress(char *dest, int dlen, char *src, int slen, char **index, const uint *lens,
                                    int nrec) {
   MEASURE_FET("TextCompressor::Decompress(...)");
-  if ((!dest) || (!src) || (!index) || (slen <= 0) || (nrec <= 0)) return CPRS_ERR_PAR;
-  if (slen < 2) return CPRS_ERR_BUF;
+  if ((!dest) || (!src) || (!index) || (slen <= 0) || (nrec <= 0)) return CprsErr::CPRS_ERR_PAR;
+  if (slen < 2) return CprsErr::CPRS_ERR_BUF;
 
   // old versions
   if (src[0]) return DecompressVer2(dest, dlen, src, slen, index, lens, nrec);
@@ -525,7 +527,7 @@ CprsErr TextCompressor::Decompress(char *dest, int dlen, char *src, int slen, ch
   if (ver == 0) return DecompressCopy(dest, dlen, src + spos, slen - spos, index, lens, nrec);
 
   // Version 3
-  if (slen <= spos) return CPRS_ERR_BUF;
+  if (slen <= spos) return CprsErr::CPRS_ERR_BUF;
   char lev = src[spos++];
   // add lz4 decompress
   if (ver == 4)
@@ -533,13 +535,13 @@ CprsErr TextCompressor::Decompress(char *dest, int dlen, char *src, int slen, ch
   else if (ver == static_cast<char>(common::PackFmt::ZLIB))
     return DecompressZlib(dest, dlen, src + spos, slen - spos, index, lens, nrec);
 
-  if ((ver != 3) || (lev < 1) || (lev > 9)) return CPRS_ERR_VER;
+  if ((ver != 3) || (lev < 1) || (lev > 9)) return CprsErr::CPRS_ERR_VER;
 
   // check if 'dlen' is large enough
   // int sumlen = 0;
   // for(int i = 0; i < nrec; i++)
   //	sumlen += lens[i];
-  // if(sumlen > dlen) return CPRS_ERR_BUF;
+  // if(sumlen > dlen) return CprsErr::CPRS_ERR_BUF;
 
   // decompress with IncWGraph
   try {
@@ -549,7 +551,7 @@ CprsErr TextCompressor::Decompress(char *dest, int dlen, char *src, int slen, ch
   } catch (CprsErr &e) {
     return e;
   }
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 }  // namespace compress

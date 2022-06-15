@@ -26,7 +26,7 @@ namespace core {
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 DataType::DataType(common::CT atype, int prec, int scale, DTCollation collation) : precision(prec) {
-  valtype = VT_NOTKNOWN;
+  valtype = ValueType::VT_NOTKNOWN;
   attrtype = atype;
   fixscale = scale;
   fixmax = -1;
@@ -34,23 +34,23 @@ DataType::DataType(common::CT atype, int prec, int scale, DTCollation collation)
 
   switch (attrtype) {
     case common::CT::INT:
-      valtype = VT_FIXED;
+      valtype = ValueType::VT_FIXED;
       fixmax = MAX(std::numeric_limits<int>::max(), -SDB_INT_MIN);
       break;
     case common::CT::BIGINT:
-      valtype = VT_FIXED;
+      valtype = ValueType::VT_FIXED;
       fixmax = MAX(common::SDB_BIGINT_MAX, -common::SDB_BIGINT_MIN);
       break;
     case common::CT::MEDIUMINT:
-      valtype = VT_FIXED;
+      valtype = ValueType::VT_FIXED;
       fixmax = MAX(SDB_MEDIUMINT_MAX, -SDB_MEDIUMINT_MIN);
       break;
     case common::CT::SMALLINT:
-      valtype = VT_FIXED;
+      valtype = ValueType::VT_FIXED;
       fixmax = MAX(SDB_SMALLINT_MAX, -SDB_SMALLINT_MIN);
       break;
     case common::CT::BYTEINT:
-      valtype = VT_FIXED;
+      valtype = ValueType::VT_FIXED;
       fixmax = MAX(SDB_TINYINT_MAX, -SDB_TINYINT_MIN);
       break;
 
@@ -60,12 +60,12 @@ DataType::DataType(common::CT atype, int prec, int scale, DTCollation collation)
         fixmax = common::PLUS_INF_64;
       else
         fixmax = QuickMath::power10i(prec) - 1;
-      valtype = VT_FIXED;
+      valtype = ValueType::VT_FIXED;
       break;
 
     case common::CT::REAL:
     case common::CT::FLOAT:
-      valtype = VT_FLOAT;
+      valtype = ValueType::VT_FLOAT;
       break;
 
     case common::CT::STRING:
@@ -74,7 +74,7 @@ DataType::DataType(common::CT atype, int prec, int scale, DTCollation collation)
     case common::CT::BYTE:
     case common::CT::VARBYTE:
     case common::CT::LONGTEXT:
-      valtype = VT_STRING;
+      valtype = ValueType::VT_STRING;
       break;
 
     case common::CT::DATETIME:
@@ -82,7 +82,7 @@ DataType::DataType(common::CT atype, int prec, int scale, DTCollation collation)
     case common::CT::TIME:
     case common::CT::DATE:
     case common::CT::YEAR:
-      valtype = VT_DATETIME;
+      valtype = ValueType::VT_DATETIME;
       break;
 
     case common::CT::DATETIME_N:
@@ -102,7 +102,7 @@ DataType &DataType::operator=(const ColumnType &ct) {
 
   *this = DataType(ct.GetTypeName(), ct.GetPrecision(), ct.GetScale(), ct.GetCollation());
 
-  if (valtype == VT_NOTKNOWN) {
+  if (valtype == ValueType::VT_NOTKNOWN) {
     char s[128];
     std::sprintf(s, "ColumnType (common::CT #%d) is not convertible to a DataType", (int)ct.GetTypeName());
     throw common::Exception(s);

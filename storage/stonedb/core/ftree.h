@@ -50,7 +50,7 @@ class FTree final : public mm::TraceableObject {
                    int end);  // max. value size for an interval of codes
   int CheckConsistency();     // 0 = dictionary consistent, otherwise corrupted
 
-  mm::TO_TYPE TraceableType() const override { return mm::TO_FTREE; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_FTREE; }
   void Release() override;
   bool Changed() const { return changed; }
 

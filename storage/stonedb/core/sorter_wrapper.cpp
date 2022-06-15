@@ -211,7 +211,8 @@ void SorterWrapper::SortRoughly(std::vector<PackOrderer> &po) {
     int dim = input_cols[rough_sort_by].col->GetDim();
     bool asc = (input_cols[rough_sort_by].sort_order > 0);  // ascending sort
     // start with best packs to possibly roughly exclude others
-    po[dim].Init(input_cols[rough_sort_by].col, (asc ? PackOrderer::MaxAsc : PackOrderer::MinDesc));
+    po[dim].Init(input_cols[rough_sort_by].col,
+                 (asc ? PackOrderer::OrderType::MaxAsc : PackOrderer::OrderType::MinDesc));
   }
 }
 
@@ -231,8 +232,8 @@ bool SorterWrapper::InitPackrow(MIIterator &mit)  // return true if the packrow 
     }
   }
 
-  STONEDB_LOG(DEBUG, "InitPackrow: no_values_encoded %d, begin to loadpacks scol size %d ", no_values_encoded,
-              scol.size());
+  STONEDB_LOG(LogCtl_Level::DEBUG, "InitPackrow: no_values_encoded %d, begin to loadpacks scol size %d ",
+              no_values_encoded, scol.size());
   // Not excluded: lock packs
   if (!rceng->query_thread_pool.is_owner()) {
     utils::result_set<void> res;
@@ -263,7 +264,7 @@ bool SorterWrapper::PutValues(MIIterator &mit) {
 bool SorterWrapper::PutValues(SorterWrapper &sw) {
   if (s == NULL) return false;  // trivial sorter (constant values)
   no_values_encoded += sw.GetEncodedValNum();
-  STONEDB_LOG(DEBUG, "PutValues: no_values_encoded %d \n", no_values_encoded);
+  STONEDB_LOG(LogCtl_Level::DEBUG, "PutValues: no_values_encoded %d \n", no_values_encoded);
   return s->PutValue(sw.GetSorter());
 }
 

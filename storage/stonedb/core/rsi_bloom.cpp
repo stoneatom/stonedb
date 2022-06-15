@@ -40,7 +40,7 @@ RSIndex_Bloom::RSIndex_Bloom(const fs::path &dir, common::TX_ID ver) {
 
   // allocate more than requested
   capacity = (hdr.no_pack / 1024 + 1) * 1024;
-  bloom_buffers = static_cast<BF *>(alloc(capacity * sizeof(BF), mm::BLOCK_TEMPORARY));
+  bloom_buffers = static_cast<BF *>(alloc(capacity * sizeof(BF), mm::BLOCK_TYPE::BLOCK_TEMPORARY));
 
   if (hdr.no_pack > 0) {
     frs_index.ReadExact(bloom_buffers, hdr.no_pack * sizeof(BF));
@@ -66,18 +66,18 @@ common::RSValue RSIndex_Bloom::IsValue(types::BString min_v, types::BString max_
     auto &bf = bloom_buffers[pack];
     if (bf.len == 0) {
       // this pack no bloom filter data
-      return common::RS_SOME;
+      return common::RSValue::RS_SOME;
     }
     Slice key(max_v.val, max_v.size());
     // get filter data
     Slice pack_block(bf.data, bf.len);
     FilterBlockReader reader(bloom_filter_policy.get(), pack_block);
     if (!reader.KeyMayMatch(0, key)) {
-      return common::RS_NONE;
+      return common::RSValue::RS_NONE;
     }
-    return common::RS_SOME;
+    return common::RSValue::RS_SOME;
   } else {
-    return common::RS_SOME;
+    return common::RSValue::RS_SOME;
   }
 }
 
@@ -87,7 +87,8 @@ void RSIndex_Bloom::Update(common::PACK_INDEX pi, DPN &dpn, const PackStr *pack)
   }
   if (hdr.no_pack > capacity) {
     capacity += 1024;
-    bloom_buffers = static_cast<BF *>(rc_realloc(bloom_buffers, capacity * sizeof(BF), mm::BLOCK_TEMPORARY));
+    bloom_buffers =
+        static_cast<BF *>(rc_realloc(bloom_buffers, capacity * sizeof(BF), mm::BLOCK_TYPE::BLOCK_TEMPORARY));
     //  rclog << lock << "bloom filter capacity increased to " << capacity <<
     //  system::unlock;
   }
@@ -102,7 +103,7 @@ void RSIndex_Bloom::Update(common::PACK_INDEX pi, DPN &dpn, const PackStr *pack)
   Slice block = bloom_builder->Finish();
 
   if (block.size() > sizeof(BF) - 4) {
-    STONEDB_LOG(WARN, "Bloom len of pack:%d larger than expected", pi);
+    STONEDB_LOG(LogCtl_Level::WARN, "Bloom len of pack:%d larger than expected", pi);
     bloom_buffers[pi].len = 0;
   } else {
     bloom_buffers[pi].len = block.size();

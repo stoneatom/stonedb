@@ -67,7 +67,8 @@ size_t NetStream::Read(void *buf, size_t count) {
   if (len == packet_error) {
     opened = false;
     std::chrono::duration<double> diff = std::chrono::system_clock::now() - start;
-    STONEDB_LOG(INFO, "Failed to read from network: %s. Used %f seconds", std::strerror(errno), diff.count());
+    STONEDB_LOG(LogCtl_Level::INFO, "Failed to read from network: %s. Used %f seconds", std::strerror(errno),
+                diff.count());
     return copied;
   }
   if (len == 0) {

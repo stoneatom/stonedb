@@ -27,7 +27,7 @@ CachedBuffer<T>::CachedBuffer(uint page_size, uint _elem_size, Transaction *conn
   if (!elem_size) elem_size = sizeof(T);
   CI_SetDefaultSize(page_size * elem_size);
 
-  buf = (T *)alloc(sizeof(T) * (size_t)page_size, mm::BLOCK_TEMPORARY);
+  buf = (T *)alloc(sizeof(T) * (size_t)page_size, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
   std::memset(buf, 0, sizeof(T) * (size_t)page_size);
   loaded_page = 0;
   page_changed = false;
@@ -40,7 +40,7 @@ CachedBuffer<types::BString>::CachedBuffer(uint page_size, uint elem_size, Trans
 
   size_t buf_size = sizeof(char) * (size_t)page_size * (elem_size + 4);
   if (buf_size) {
-    buf = (char *)alloc(buf_size, mm::BLOCK_TEMPORARY);
+    buf = (char *)alloc(buf_size, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
     std::memset(buf, 0, buf_size);
   } else
     buf = NULL;
@@ -135,7 +135,7 @@ void CachedBuffer<T>::SetNewPageSize(uint new_page_size) {
                                       // inside try{})
   page_size = new_page_size;
   CI_SetDefaultSize(page_size * elem_size);
-  buf = (T *)rc_realloc(buf, sizeof(T) * (size_t)page_size, mm::BLOCK_TEMPORARY);
+  buf = (T *)rc_realloc(buf, sizeof(T) * (size_t)page_size, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
 }
 
 void CachedBuffer<types::BString>::SetNewPageSize(uint new_page_size) {
@@ -146,7 +146,7 @@ void CachedBuffer<types::BString>::SetNewPageSize(uint new_page_size) {
   page_size = new_page_size;
   CI_SetDefaultSize(page_size * (elem_size + 4));
   size_t buf_size = (size_t)page_size * (elem_size + 4) * sizeof(char);
-  buf = (char *)rc_realloc(buf, buf_size, mm::BLOCK_TEMPORARY);
+  buf = (char *)rc_realloc(buf, buf_size, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
 }
 
 template class CachedBuffer<short>;

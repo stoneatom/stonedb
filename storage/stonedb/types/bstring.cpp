@@ -75,7 +75,7 @@ BString::~BString() {
 BString &BString::operator=(const RCDataType &rcdt) {
   if (this == &rcdt) return *this;
 
-  if (rcdt.GetValueType() == STRING_TYPE)
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
     *this = (BString &)rcdt;
   else
     STONEDB_ERROR("bad cast");
@@ -384,7 +384,7 @@ bool BString::IsNullOrEmpty() const { return ((len == 0 || null) ? true : false)
 
 bool BString::operator==(const RCDataType &rcdt) const {
   if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == STRING_TYPE) return CompareWith((BString &)rcdt) == 0;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) == 0;
   return CompareWith(rcdt.ToBString()) == 0;
 }
 
@@ -395,31 +395,31 @@ bool BString::operator==(const BString &rcs) const {
 
 bool BString::operator<(const RCDataType &rcdt) const {
   if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == STRING_TYPE) return CompareWith((BString &)rcdt) < 0;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) < 0;
   return CompareWith(rcdt.ToBString()) < 0;
 }
 
 bool BString::operator>(const RCDataType &rcdt) const {
   if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == STRING_TYPE) return CompareWith((BString &)rcdt) > 0;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) > 0;
   return CompareWith(rcdt.ToBString()) > 0;
 }
 
 bool BString::operator>=(const RCDataType &rcdt) const {
   if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == STRING_TYPE) return CompareWith((BString &)rcdt) >= 0;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) >= 0;
   return CompareWith(rcdt.ToBString()) >= 0;
 }
 
 bool BString::operator<=(const RCDataType &rcdt) const {
   if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == STRING_TYPE) return CompareWith((BString &)rcdt) <= 0;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) <= 0;
   return CompareWith(rcdt.ToBString()) <= 0;
 }
 
 bool BString::operator!=(const RCDataType &rcdt) const {
   if (null || rcdt.IsNull()) return true;
-  if (rcdt.GetValueType() == STRING_TYPE) return CompareWith((BString &)rcdt) != 0;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) != 0;
   return CompareWith(rcdt.ToBString()) != 0;
 }
 
@@ -456,7 +456,7 @@ size_t BString::RoundUpTo8Bytes(const DTCollation &dt) const {
       next_char_len = dt.collation->cset->mbcharlen(dt.collation, (uchar)val[useful_len + pos]);
 
       if (next_char_len == 0) {
-        STONEDB_LOG(WARN, "RoundUpTo8Bytes() detect non-UTF8 character");
+        STONEDB_LOG(LogCtl_Level::WARN, "RoundUpTo8Bytes() detect non-UTF8 character");
         next_char_len = 1;
       }
 

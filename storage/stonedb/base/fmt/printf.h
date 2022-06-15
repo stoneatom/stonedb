@@ -129,22 +129,22 @@ class ArgConverter : public ArgVisitor<ArgConverter<T>, void> {
     if (sizeof(TargetType) <= sizeof(int)) {
       // Extra casts are used to silence warnings.
       if (is_signed) {
-        arg_.type = Arg::INT;
+        arg_.type = Arg::Type::INT;
         arg_.int_value = static_cast<int>(static_cast<TargetType>(value));
       } else {
-        arg_.type = Arg::UINT;
+        arg_.type = Arg::Type::UINT;
         using Unsigned = typename internal::MakeUnsigned<TargetType>::Type;
         arg_.uint_value = static_cast<unsigned>(static_cast<Unsigned>(value));
       }
     } else {
       if (is_signed) {
-        arg_.type = Arg::LONG_LONG;
+        arg_.type = Arg::Type::LONG_LONG;
         // glibc's printf doesn't sign extend arguments of smaller types:
         //   std::printf("%lld", -42);  // prints "4294967254"
         // but we don't have to do the same because it's a UB.
         arg_.long_long_value = static_cast<LongLong>(value);
       } else {
-        arg_.type = Arg::ULONG_LONG;
+        arg_.type = Arg::Type::ULONG_LONG;
         arg_.ulong_long_value = static_cast<typename internal::MakeUnsigned<U>::Type>(value);
       }
     }
@@ -163,7 +163,7 @@ class CharConverter : public ArgVisitor<CharConverter, void> {
 
   template <typename T>
   void visit_any_int(T value) {
-    arg_.type = internal::Arg::CHAR;
+    arg_.type = internal::Arg::Type::CHAR;
     arg_.int_value = static_cast<char>(value);
   }
 };
@@ -186,7 +186,7 @@ class WidthHandler : public ArgVisitor<WidthHandler, unsigned> {
     using UnsignedType = typename internal::IntTraits<T>::MainType;
     UnsignedType width = static_cast<UnsignedType>(value);
     if (internal::is_negative(value)) {
-      spec_.align_ = ALIGN_LEFT;
+      spec_.align_ = Alignment::ALIGN_LEFT;
       width = 0 - width;
     }
     unsigned int_max = std::numeric_limits<int>::max();
@@ -251,7 +251,7 @@ class BasicPrintfArgFormatter : public internal::ArgFormatterBase<Impl, Char, Sp
     if (fmt_spec.width_ > 1) {
       Char fill = ' ';
       out = w.grow_buffer(fmt_spec.width_);
-      if (fmt_spec.align_ != ALIGN_LEFT) {
+      if (fmt_spec.align_ != Alignment::ALIGN_LEFT) {
         std::fill_n(out, fmt_spec.width_ - 1, fill);
         out += fmt_spec.width_ - 1;
       } else {
@@ -332,19 +332,19 @@ void PrintfFormatter<Char, AF>::parse_flags(FormatSpec &spec, const Char *&s) {
   for (;;) {
     switch (*s++) {
       case '-':
-        spec.align_ = ALIGN_LEFT;
+        spec.align_ = Alignment::ALIGN_LEFT;
         break;
       case '+':
-        spec.flags_ |= SIGN_FLAG | PLUS_FLAG;
+        spec.flags_ |= static_cast<int>(enumFlags::SIGN_FLAG) | static_cast<int>(enumFlags::PLUS_FLAG);
         break;
       case '0':
         spec.fill_ = '0';
         break;
       case ' ':
-        spec.flags_ |= SIGN_FLAG;
+        spec.flags_ |= static_cast<int>(enumFlags::SIGN_FLAG);
         break;
       case '#':
-        spec.flags_ |= HASH_FLAG;
+        spec.flags_ |= static_cast<int>(enumFlags::HASH_FLAG);
         break;
       default:
         --s;
@@ -410,7 +410,7 @@ void PrintfFormatter<Char, AF>::format(BasicCStringRef<Char> format_str) {
     write(writer_, start, s - 1);
 
     FormatSpec spec;
-    spec.align_ = ALIGN_RIGHT;
+    spec.align_ = Alignment::ALIGN_RIGHT;
 
     // Parse argument index, flags and width.
     unsigned arg_index = parse_header(s, spec);
@@ -430,10 +430,11 @@ void PrintfFormatter<Char, AF>::format(BasicCStringRef<Char> format_str) {
 
     using internal::Arg;
     Arg arg = get_arg(s, arg_index);
-    if (spec.flag(HASH_FLAG) && internal::IsZeroInt().visit(arg)) spec.flags_ &= ~internal::to_unsigned<int>(HASH_FLAG);
+    if (spec.flag(static_cast<int>(enumFlags::HASH_FLAG)) && internal::IsZeroInt().visit(arg))
+      spec.flags_ &= ~internal::to_unsigned<int>(static_cast<int>(enumFlags::HASH_FLAG));
     if (spec.fill_ == '0') {
-      if (arg.type <= Arg::LAST_NUMERIC_TYPE)
-        spec.align_ = ALIGN_NUMERIC;
+      if (arg.type <= Arg::Type::LAST_NUMERIC_TYPE)
+        spec.align_ = Alignment::ALIGN_NUMERIC;
       else
         spec.fill_ = ' ';  // Ignore '0' flag for non-numeric types.
     }
@@ -480,7 +481,7 @@ void PrintfFormatter<Char, AF>::format(BasicCStringRef<Char> format_str) {
       spec.type_ = internal::DefaultType().visit(arg);
     }
 
-    if (arg.type <= Arg::LAST_INTEGER_TYPE) {
+    if (arg.type <= Arg::Type::LAST_INTEGER_TYPE) {
       // Normalize type.
       switch (spec.type_) {
         case 'i':

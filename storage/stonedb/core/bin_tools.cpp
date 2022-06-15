@@ -106,15 +106,15 @@ int64_t SafeMultiplication(int64_t x,
 }
 
 common::RSValue Or(common::RSValue f, common::RSValue s) {
-  if (f == common::RS_ALL || s == common::RS_ALL) return common::RS_ALL;
-  if (f == common::RS_SOME || s == common::RS_SOME) return common::RS_SOME;
-  return common::RS_NONE;
+  if (f == common::RSValue::RS_ALL || s == common::RSValue::RS_ALL) return common::RSValue::RS_ALL;
+  if (f == common::RSValue::RS_SOME || s == common::RSValue::RS_SOME) return common::RSValue::RS_SOME;
+  return common::RSValue::RS_NONE;
 }
 
 common::RSValue And(common::RSValue f, common::RSValue s) {
-  if (f == common::RS_ALL && s == common::RS_ALL) return common::RS_ALL;
-  if (f == common::RS_NONE || s == common::RS_NONE) return common::RS_NONE;
-  return common::RS_SOME;
+  if (f == common::RSValue::RS_ALL && s == common::RSValue::RS_ALL) return common::RSValue::RS_ALL;
+  if (f == common::RSValue::RS_NONE || s == common::RSValue::RS_NONE) return common::RSValue::RS_NONE;
+  return common::RSValue::RS_SOME;
 }
 
 int64_t MonotonicDouble2Int64(int64_t d)  // encode double value (bitwise stored as int64_t) into
@@ -290,7 +290,7 @@ uint HashValue(const void *data,
   for (; i < len; i++)
     val ^= uint(((char *)data)[i]) + 0x9e3779b9 + (val << 10) + (val >> 2);  // in boost... there is "<< 6" here, but it
                                                                              // lead to too many collisions
-  val ^= (val >> 11) + (val << 21);  // more hashing to prevent collisions
+  val ^= (val >> 11) + (val << 21);                                          // more hashing to prevent collisions
   return val;
 }
 

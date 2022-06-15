@@ -40,13 +40,20 @@ class JoinTips {
                                     // t2.c is null" (when c is not null by default)
 };
 
-enum JoinAlgType { JTYPE_NONE, JTYPE_SORT, JTYPE_HASH, JTYPE_MIXED, JTYPE_MAP, JTYPE_GENERAL };
+enum class JoinAlgType { JTYPE_NONE, JTYPE_SORT, JTYPE_HASH, JTYPE_MIXED, JTYPE_MAP, JTYPE_GENERAL };
 // MIXED   - for reporting: more than one algorithm was used
 
 class TwoDimensionalJoiner {  // abstract class for multiindex-based join
                               // algorithms
  public:
-  enum JoinFailure { NOT_FAILED, FAIL_COMPLEX, FAIL_SORTER_TOO_WIDE, FAIL_1N_TOO_HARD, FAIL_HASH, FAIL_WRONG_SIDES };
+  enum class JoinFailure {
+    NOT_FAILED,
+    FAIL_COMPLEX,
+    FAIL_SORTER_TOO_WIDE,
+    FAIL_1N_TOO_HARD,
+    FAIL_HASH,
+    FAIL_WRONG_SIDES
+  };
 
   TwoDimensionalJoiner(MultiIndex *_mind,  // multi-index to be updated
                        TempTable *_table, JoinTips &_tips);

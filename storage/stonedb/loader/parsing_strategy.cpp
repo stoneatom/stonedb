@@ -54,11 +54,13 @@ ParsingStrategy::ParsingStrategy(const system::IOParameters &iop, std::vector<uc
       GetATI(i).SetCollation(get_charset(columns_collations[i], 0));
     }
   }
+
   PrepareKMP(kmp_next_delimiter, delimiter);
   if (string_qualifier) {
     enclose_delimiter = std::string((char *)&string_qualifier, 1) + delimiter;
     PrepareKMP(kmp_next_enclose_delimiter, enclose_delimiter);
   }
+
   std::string tmpName = iop.GetTableName();
   if (tmpName.find("/") != std::string::npos) {
     tablename = tmpName.substr(tmpName.find("/") + 1);
@@ -151,6 +153,7 @@ inline bool ParsingStrategy::SearchUnescapedPattern(const char *&ptr, const char
       else
           ASSERT(0, (std::string("Unexpected pattern: '") + delimiter +
      "'").c_str());*/
+
   return (ptr < search_end);
 }
 
@@ -169,12 +172,13 @@ inline ParsingStrategy::SearchResult ParsingStrategy::SearchUnescapedPatternNoEO
   const char *c_eol = eol.c_str();
   size_t crlf = eol.size();
   const char *search_end = buf_end;
+
   if (size == 1) {
     while (ptr < search_end && *ptr != *c_pattern) {
       if (escape_char && *ptr == escape_char)
         ptr += 2;
       else if (*ptr == *c_eol && ptr + crlf <= buf_end && TailsMatch(ptr, c_eol, crlf))
-        return END_OF_LINE;
+        return SearchResult::END_OF_LINE;
       else
         ++ptr;
     }
@@ -184,7 +188,7 @@ inline ParsingStrategy::SearchResult ParsingStrategy::SearchUnescapedPatternNoEO
       if (escape_char && *ptr == escape_char)
         ptr += 2;
       else if (*ptr == *c_eol && ptr + crlf <= buf_end && TailsMatch(ptr, c_eol, crlf))
-        return END_OF_LINE;
+        return SearchResult::END_OF_LINE;
       else
         ++ptr;
     }
@@ -195,7 +199,7 @@ inline ParsingStrategy::SearchResult ParsingStrategy::SearchUnescapedPatternNoEO
         b = 0;
         ++ptr;
       } else if (*ptr == *c_eol && ptr + crlf <= buf_end && TailsMatch(ptr, c_eol, crlf))
-        return END_OF_LINE;
+        return SearchResult::END_OF_LINE;
       else if (c_pattern[b] != *ptr) {
         if (b != 0) {
           b = kmp_next[b];
@@ -216,7 +220,7 @@ inline ParsingStrategy::SearchResult ParsingStrategy::SearchUnescapedPatternNoEO
               if(escape_char && *ptr == escape_char)
                   ptr += 2;
               else if (*ptr == eol[0] && (crlf == 1 || *(ptr+1) == eol[1]))
-                  return END_OF_LINE;
+                  return SearchResult::END_OF_LINE;
               else
                   ++ptr;
           }
@@ -224,7 +228,8 @@ inline ParsingStrategy::SearchResult ParsingStrategy::SearchUnescapedPatternNoEO
       else
           ASSERT(0, (std::string("Unexpected pattern: '") + delimiter +
      "'").c_str());*/
-  return (ptr < search_end) ? PATTERN_FOUND : END_OF_BUFFER;
+
+  return (ptr < search_end) ? SearchResult::PATTERN_FOUND : SearchResult::END_OF_BUFFER;
 }
 
 void ParsingStrategy::GetEOL(const char *const buf, const char *const buf_end) {
@@ -249,6 +254,7 @@ void ParsingStrategy::GetEOL(const char *const buf, const char *const buf_end) {
     else
       GuessUnescapedEOL(ptr, buf_end);
   }
+
   if (eol.size() == 0)
     throw common::Exception(
         "Unable to detect the line terminating sequence, please specify it "
@@ -268,6 +274,7 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
     GetEOL(buf, buf_end);
     prepared = true;
   }
+
   if (buf == buf_end) return ParsingStrategy::ParseResult::EOB;
 
   const char *ptr = buf;
@@ -280,17 +287,18 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
       ++ptr;
     } else {
       SearchResult res = SearchUnescapedPatternNoEOL(ptr, buf_end, delimiter, kmp_next_delimiter);
-      if (res == END_OF_LINE) {
+      if (res == SearchResult::END_OF_LINE) {
         GetValue(val_beg, ptr - val_beg, col, record[col]);
         continue;
       }
-      row_incomplete = (res == END_OF_BUFFER);
+      row_incomplete = (res == SearchResult::END_OF_BUFFER);
     }
 
     if (row_incomplete) {
       errorinfo = col;
       break;
     }
+
     try {
       GetValue(val_beg, ptr - val_beg, col, record[col]);
     } catch (...) {
@@ -298,6 +306,7 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
     }
     ptr += delimiter.size();
   }
+
   if (!row_incomplete) {
     // the last column
     const char *val_beg = ptr;
@@ -316,6 +325,7 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
       ptr += eol.size();
     }
   }
+
   if (row_incomplete) {
     if (errorinfo == -1) errorinfo = atis.size() - 1;
     return ParsingStrategy::ParseResult::EOB;
@@ -329,6 +339,7 @@ char TranslateEscapedChar(char c) {
   static char out[] = {'\0', '\b', '\n', '\r', '\t', char(26)};
   for (int i = 0; i < 6; i++)
     if (in[i] == c) return out[i];
+
   return c;
 }
 
@@ -396,12 +407,13 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
     if (ati.CharLen() < (uint)value_size) {
       std::string valueStr(value_ptr, value_size);
       value_size = ati.CharLen();
-      STONEDB_LOG(DEBUG, "Data format error. DbName:%s ,TableName:%s ,Col %d, value:%s", dbname.c_str(),
+      STONEDB_LOG(LogCtl_Level::DEBUG, "Data format error. DbName:%s ,TableName:%s ,Col %d, value:%s", dbname.c_str(),
                   tablename.c_str(), col, valueStr.c_str());
       std::stringstream err_msg;
       err_msg << "data truncate,col num" << col << " value:" << valueStr << std::endl;
       common::PushWarning(current_tx->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_UNKNOWN_ERROR, err_msg.str().c_str());
     }
+
     uint reserved = (uint)value_size * ati.CharsetInfo()->mbmaxlen;
     char *buf = reinterpret_cast<char *>(buffer.Prepare(reserved));
     size_t new_size = 0;
@@ -414,6 +426,7 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
         buf[new_size] = value_ptr[j];
       new_size++;
     }
+
     if (ati.CharsetInfo() != cs_info) {
       // convert between charsets
       uint errors = 0;
@@ -426,6 +439,7 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
         new_size = copy_and_convert(buf, reserved, ati.CharsetInfo(), tmpbuf, new_size, cs_info, &errors);
       }
     }
+
     // check the value length
     size_t char_len = ati.CharsetInfo()->cset->numchars(ati.CharsetInfo(), buf, buf + new_size);
     if (char_len > ati.CharLen()) throw common::FormatException(0, col);

@@ -43,7 +43,7 @@ class HeapAllocator : public mm::TraceableObject {
 
 class TheFilterBlockOwner : public mm::TraceableObject {
   friend class HeapAllocator;
-  mm::TO_TYPE TraceableType() const override { return mm::TO_FILTER; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_FILTER; }
 };
 
 extern TheFilterBlockOwner *the_filter_block_owner;
@@ -60,7 +60,7 @@ class Filter final : public mm::TraceableObject {
   // original), but it ok as the copy uses pools and mutexes from the original
   static Filter *ShallowCopy(Filter &f);
 
-  mm::TO_TYPE TraceableType() const override { return mm::TO_FILTER; };
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_FILTER; };
   // Copying operation
   std::unique_ptr<Filter> Clone() const;
 

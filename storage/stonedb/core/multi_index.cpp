@@ -425,7 +425,7 @@ std::string MultiIndex::Display() {
   std::vector<int> ind_tab_no;
   int it_count = 0;
   for (uint i = 0; i < dim_groups.size(); i++) {
-    if (dim_groups[i]->Type() == DimensionGroup::DG_INDEX_TABLE) {
+    if (dim_groups[i]->Type() == DimensionGroup::DGType::DG_INDEX_TABLE) {
       it_count++;
       ind_tab_no.push_back(it_count);  // calculate a number of a materialized dim. group
     } else
@@ -437,11 +437,11 @@ std::string MultiIndex::Display() {
   for (int i = 0; i < no_dimensions; i++) {
     if (!group_for_dim[i]->DimEnabled(i))
       s += "-";
-    else if (group_for_dim[i]->Type() == DimensionGroup::DG_FILTER)
+    else if (group_for_dim[i]->Type() == DimensionGroup::DGType::DG_FILTER)
       s += "f";
-    else if (group_for_dim[i]->Type() == DimensionGroup::DG_INDEX_TABLE)
+    else if (group_for_dim[i]->Type() == DimensionGroup::DGType::DG_INDEX_TABLE)
       s += (ind_tab_no[group_num_for_dim[i]] > 9 ? 'T' : '0' + ind_tab_no[group_num_for_dim[i]]);
-    else if (group_for_dim[i]->Type() == DimensionGroup::DG_VIRTUAL)
+    else if (group_for_dim[i]->Type() == DimensionGroup::DGType::DG_VIRTUAL)
       s += (GetFilter(i) ? 'F' : 'v');
     else
       s += "?";

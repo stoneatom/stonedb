@@ -34,7 +34,7 @@ ColumnShare::~ColumnShare() {
   if (start != nullptr) {
     if (::munmap(start, common::COL_DN_FILE_SIZE) != 0) {
       // DO NOT throw in dtor!
-      STONEDB_LOG(WARN, "Failed to unmap DPN file. Error %d(%s)", errno, std::strerror(errno));
+      STONEDB_LOG(LogCtl_Level::WARN, "Failed to unmap DPN file. Error %d(%s)", errno, std::strerror(errno));
     }
   }
   if (dn_fd >= 0) ::close(dn_fd);
@@ -137,7 +137,7 @@ void ColumnShare::scan_dpn(common::TX_ID xid) {
       start[i].synced = 1;
       start[i].xmax = common::MAX_XID;
       if (start[i].local) {
-        STONEDB_LOG(WARN, "uncommited pack found: %s %d", m_path.c_str(), i);
+        STONEDB_LOG(LogCtl_Level::WARN, "uncommited pack found: %s %d", m_path.c_str(), i);
         start[i].local = 0;
       }
       if (start[i].addr != DPN_INVALID_ADDR) {
@@ -153,11 +153,11 @@ void ColumnShare::scan_dpn(common::TX_ID xid) {
   auto second = segs.cbegin();
   for (auto first = second++; second != segs.cend(); ++first, ++second) {
     if (second->offset < first->offset + first->len) {
-      STONEDB_LOG(ERROR, "sorted beg: -------------------");
+      STONEDB_LOG(LogCtl_Level::ERROR, "sorted beg: -------------------");
       for (auto &it : segs) {
-        STONEDB_LOG(ERROR, "     %u  [%ld, %ld]", it.idx, it.offset, it.len);
+        STONEDB_LOG(LogCtl_Level::ERROR, "     %u  [%ld, %ld]", it.idx, it.offset, it.len);
       }
-      STONEDB_LOG(ERROR, "sorted end: -------------------");
+      STONEDB_LOG(LogCtl_Level::ERROR, "sorted end: -------------------");
       throw common::DatabaseException("bad DPN index file: " + m_path.string());
     }
   }

@@ -228,13 +228,13 @@ void ParallelHashJoiner::ExecuteJoinConditions(Condition &cond) {
 
   if (PrepareBeforeJoin(cond)) ExecuteJoin();
 
-  why_failed = too_many_conflicts_ ? FAIL_WRONG_SIDES : NOT_FAILED;
+  why_failed = too_many_conflicts_ ? JoinFailure::FAIL_WRONG_SIDES : JoinFailure::NOT_FAILED;
 }
 
 void ParallelHashJoiner::ForceSwitchingSides() { force_switching_sides_ = true; }
 
 bool ParallelHashJoiner::PrepareBeforeJoin(Condition &cond) {
-  why_failed = FAIL_HASH;
+  why_failed = JoinFailure::FAIL_HASH;
 
   std::vector<int> hash_descriptors;
   // Prepare all descriptor information
@@ -244,7 +244,7 @@ bool ParallelHashJoiner::PrepareBeforeJoin(Condition &cond) {
   DimensionVector dims_other(mind->NoDimensions());  // dimensions for other conditions, if needed
   for (uint i = 0; i < cond.Size(); i++) {
     bool added = false;
-    if (cond[i].IsType_JoinSimple() && cond[i].op == common::O_EQ) {
+    if (cond[i].IsType_JoinSimple() && cond[i].op == common::Operator::O_EQ) {
       if (first_found) {
         hash_descriptors.push_back(i);
         added = true;
@@ -280,7 +280,7 @@ bool ParallelHashJoiner::PrepareBeforeJoin(Condition &cond) {
   }
   cond_hashed_ = int(hash_descriptors.size());
   if (cond_hashed_ == 0) {
-    why_failed = FAIL_HASH;
+    why_failed = JoinFailure::FAIL_HASH;
     return false;
   }
   /*
@@ -354,7 +354,7 @@ bool ParallelHashJoiner::PrepareBeforeJoin(Condition &cond) {
   if (traversed_dims_.Intersects(matched_dims_) || !compatible) {
     // both materialized - we should rather use a simple loop
     // could not prepare common encoding
-    why_failed = FAIL_HASH;
+    why_failed = JoinFailure::FAIL_HASH;
     return false;
   }
   // prepare columns for traversed dimension numbers in hash table
@@ -476,7 +476,7 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
   std::string splitting_type("none");
   std::vector<MITaskIterator *> task_iterators;
   MIIterator::SliceCapability slice_capability = mit.GetSliceCapability();
-  if (slice_capability.type == MIIterator::SliceCapability::kFixed) {
+  if (slice_capability.type == MIIterator::SliceCapability::Type::kFixed) {
     DEBUG_ASSERT(!slice_capability.slices.empty());
     splitting_type = "fixed";
     size_t slices_size = slice_capability.slices.size();
@@ -487,7 +487,7 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
       rows_started += slice_capability.slices[index];
       task_iterators.push_back(iter);
     }
-  } else if ((slice_capability.type == MIIterator::SliceCapability::kLinear) &&
+  } else if ((slice_capability.type == MIIterator::SliceCapability::Type::kLinear) &&
              (availabled_packs > kTraversedPacksPerFragment * 2)) {
     int64_t origin_size = rows_count;
     for (int index = 0; index < mind->NoDimensions(); index++) {
@@ -556,10 +556,10 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
       traversed_rows += res.get(i);
     } catch (std::exception &e) {
       no_except = false;
-      STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+      STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
     } catch (...) {
       no_except = false;
-      STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+      STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
     }
   if (!no_except) {
     throw common::Exception("Parallel hash join failed.");
@@ -676,11 +676,11 @@ bool ParallelHashJoiner::CreateMatchingTasks(MIIterator &mit, int64_t rows_count
   MIIterator::SliceCapability slice_capability = mit.GetSliceCapability();
   for (auto &j : other_cond_) {
     if (j.IsType_Subquery()) {
-      slice_capability.type = MIIterator::SliceCapability::kDisable;
+      slice_capability.type = MIIterator::SliceCapability::Type::kDisable;
       break;
     }
   }
-  if (slice_capability.type == MIIterator::SliceCapability::kFixed) {
+  if (slice_capability.type == MIIterator::SliceCapability::Type::kFixed) {
     DEBUG_ASSERT(!slice_capability.slices.empty());
     size_t slices_size = slice_capability.slices.size();
     int64_t rows_started = 0;
@@ -691,7 +691,7 @@ bool ParallelHashJoiner::CreateMatchingTasks(MIIterator &mit, int64_t rows_count
       task_iterators->push_back(iter);
     }
     *splitting_type = "fixed";
-  } else if (slice_capability.type == MIIterator::SliceCapability::kLinear) {
+  } else if (slice_capability.type == MIIterator::SliceCapability::Type::kLinear) {
     int packs_count = (int)((rows_count + (1 << pack_power_) - 1) >> pack_power_);
     for (int index = 0; index < mind->NoDimensions(); index++) {
       if (matched_dims_[index]) {
@@ -792,10 +792,10 @@ int64_t ParallelHashJoiner::MatchDim(MIIterator &mit) {
         matched_rows += res.get(i);
       } catch (std::exception &e) {
         no_except = false;
-        STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+        STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
       } catch (...) {
         no_except = false;
-        STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+        STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
       }
     if (!no_except) {
       throw common::Exception("Parallel hash join failed.");

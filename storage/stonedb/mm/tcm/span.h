@@ -61,7 +61,7 @@ struct Span {
 #endif
 
   // What freelist the span is on: IN_USE if on none, or normal or returned
-  enum { IN_USE, ON_NORMAL_FREELIST, ON_RETURNED_FREELIST };
+  enum class enumSpanType { IN_USE, ON_NORMAL_FREELIST, ON_RETURNED_FREELIST };
 };
 
 #ifdef SPAN_HISTORY

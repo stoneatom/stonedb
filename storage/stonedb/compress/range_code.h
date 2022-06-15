@@ -43,11 +43,11 @@ class RangeCoder {
   static const uint uni_total = 1u << uni_nbit;
 
   uchar InByte() {
-    if (pos >= stop) throw CPRS_ERR_BUF;
+    if (pos >= stop) throw CprsErr::CPRS_ERR_BUF;
     return *pos++;
   }
   void OutByte(uchar c) {
-    if (pos >= stop) throw CPRS_ERR_BUF;
+    if (pos >= stop) throw CprsErr::CPRS_ERR_BUF;
     *pos++ = c;
   }
 
@@ -91,7 +91,7 @@ class RangeCoder {
     DEBUG_ASSERT(range >= BOT && low + range - 1 >= code && code >= low);
     uint tmp = (code - low) / (range /= total);
     DEBUG_ASSERT(tmp < total);
-    if (tmp >= total) throw CPRS_ERR_COR;
+    if (tmp >= total) throw CprsErr::CPRS_ERR_COR;
     return tmp;
   }
 
@@ -119,7 +119,7 @@ class RangeCoder {
 #endif
     DEBUG_ASSERT(range >= BOT && low + range - 1 >= code && code >= low);
     uint tmp = (code - low) / (range _SHR_ASSIGN_ shift);
-    if (tmp >= (1u << shift)) throw CPRS_ERR_COR;
+    if (tmp >= (1u << shift)) throw CprsErr::CPRS_ERR_COR;
     return tmp;
   }
 

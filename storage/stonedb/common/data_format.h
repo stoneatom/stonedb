@@ -39,7 +39,7 @@ class DataFormat;
 using DataFormatPtr = std::shared_ptr<DataFormat>;
 
 // External Data Format
-enum EDF { TXT_VARIABLE };
+enum class EDF { TRI_UNKNOWN };
 
 class DataFormat {
  protected:

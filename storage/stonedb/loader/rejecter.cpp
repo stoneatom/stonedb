@@ -40,10 +40,10 @@ void Rejecter::ConsumeBadRow(char const *ptr, int64_t size, int64_t row_no, int 
     }
     writer->WriteExact(ptr, (uint)size);
   }
-  STONEDB_LOG(WARN, "Loading file error, row %ld, around:", row_no);
-  STONEDB_LOG(WARN, "---------------------------------------------\n");
-  STONEDB_LOG(WARN, "%s", ptr);
-  STONEDB_LOG(WARN, "---------------------------------------------");
+  STONEDB_LOG(LogCtl_Level::WARN, "Loading file error, row %ld, around:", row_no);
+  STONEDB_LOG(LogCtl_Level::WARN, "---------------------------------------------\n");
+  STONEDB_LOG(LogCtl_Level::WARN, "%s", ptr);
+  STONEDB_LOG(LogCtl_Level::WARN, "---------------------------------------------");
 
   if (abort_on_threshold > 0) {
     if (row_no > packrow_size)

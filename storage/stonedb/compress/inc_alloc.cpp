@@ -67,7 +67,7 @@ void *IncAlloc::_alloc_search(uint size) {
     if (bsize < size) bsize = size;
   }
   void *mem = new char[bsize];
-  if (!mem) throw CPRS_ERR_MEM;
+  if (!mem) throw CprsErr::CPRS_ERR_MEM;
 
   blocks.push_back(Block(mem, bsize));
   used = size;

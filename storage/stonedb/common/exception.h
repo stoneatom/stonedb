@@ -58,7 +58,9 @@ static std::string error_messages[] = {
 };
 
 inline bool IsError(ErrorCode sdbrc) { return sdbrc == ErrorCode::FAILED; }
-inline bool IsWarning(ErrorCode sdbrc) { return sdbrc == ErrorCode::OUT_OF_RANGE || sdbrc == ErrorCode::VALUE_TRUNCATED; }
+inline bool IsWarning(ErrorCode sdbrc) {
+  return sdbrc == ErrorCode::OUT_OF_RANGE || sdbrc == ErrorCode::VALUE_TRUNCATED;
+}
 
 class SDBError {
  public:
@@ -175,7 +177,8 @@ class DataTypeConversionException : public Exception {
   DataTypeConversionException(std::string const &msg, int64_t val = NULL_VALUE_64, CT t = CT::UNK)
       : Exception(msg), value(val), type(t) {}
 
-  DataTypeConversionException(SDBError sdberror = ErrorCode::DATACONVERSION, int64_t val = NULL_VALUE_64, CT t = CT::UNK)
+  DataTypeConversionException(SDBError sdberror = ErrorCode::DATACONVERSION, int64_t val = NULL_VALUE_64,
+                              CT t = CT::UNK)
       : Exception(sdberror.Message()), value(val), type(t) {}
 };
 

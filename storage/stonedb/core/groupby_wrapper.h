@@ -136,7 +136,7 @@ class GroupByWrapper final {
   bool IsMinOnly();              // true, if an attribute is min(column)
   bool IsMaxOnly();              // true, if an attribute is max(column)
   bool IsCountDistinctOnly() {
-    return no_grouping_attr == 0 && no_aggregated_attr == 1 && gt.AttrOper(0) == GT_COUNT_NOT_NULL &&
+    return no_grouping_attr == 0 && no_aggregated_attr == 1 && gt.AttrOper(0) == GT_Aggregation::GT_COUNT_NOT_NULL &&
            gt.AttrDistinct(0);
   }
   bool MayBeParallel() const;
@@ -185,7 +185,7 @@ class GroupByWrapper final {
   Transaction *m_conn;
 
  private:
-  enum GBInputMode {
+  enum class GBInputMode {
     GBIMODE_NOT_SET,
     GBIMODE_NO_VALUE,  // e.g. count(*)
     GBIMODE_AS_INT64,

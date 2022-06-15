@@ -73,7 +73,7 @@ void IncWGraph::Clear() {
 //-------------------------------------------------------------------------------------------
 
 void IncWGraph::Encode(RangeCoder *cod, char **index, const uint *lens, int nrec, uint &packlen) {
-  if ((nrec < 1) || (nrec > 65536) || (!cod)) throw CPRS_ERR_PAR;
+  if ((nrec < 1) || (nrec > 65536) || (!cod)) throw CprsErr::CPRS_ERR_PAR;
   Clear();
   Init();
   coder = cod;
@@ -117,7 +117,7 @@ void IncWGraph::Encode(RangeCoder *cod, char **index, const uint *lens, int nrec
 }
 
 void IncWGraph::Decode(RangeCoder *cod, char **index, const uint *lens, int nrec, char *dest, uint dlen) {
-  if ((nrec < 1) || (nrec > 65536) || (!cod)) throw CPRS_ERR_PAR;
+  if ((nrec < 1) || (nrec > 65536) || (!cod)) throw CprsErr::CPRS_ERR_PAR;
   Clear();
   Init();
   coder = cod;
@@ -251,7 +251,7 @@ void IncWGraph::DecodeRec(ushort rec, uint dlen, bool &repeated) {
         break;
       else {
         if (repeated) {
-          if (len > dlen) throw CPRS_ERR_BUF;
+          if (len > dlen) throw CprsErr::CPRS_ERR_BUF;
           declen = len - restlen;
           LabelCopy(s, base->endpos - declen,
                     declen);  // copy at once all labels passed till now
@@ -287,7 +287,7 @@ void IncWGraph::DecodeRec(ushort rec, uint dlen, bool &repeated) {
     } else if (proj < edge->GetLen()) {  // it appears that the record is not a
                                          // repetition
       DEBUG_ASSERT(base != NIL);
-      if (len > dlen) throw CPRS_ERR_BUF;
+      if (len > dlen) throw CprsErr::CPRS_ERR_BUF;
       declen = len - restlen;
       LabelCopy(s, edge->target->endpos - edgelen + proj - declen,
                 declen);  // copy at once all labels passed till now

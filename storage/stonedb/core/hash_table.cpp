@@ -112,7 +112,7 @@ void HashTable::Initialize(int64_t max_table_size, [[maybe_unused]] bool easy_ro
   rows_lock_.resize(std::min<size_t>(rows_count_, 10000u));
 
   // No need to cache on disk.
-  buffer_ = (unsigned char *)alloc(((total_width_ / 4) * rows_count_) * 4, mm::BLOCK_TEMPORARY);
+  buffer_ = (unsigned char *)alloc(((total_width_ / 4) * rows_count_) * 4, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
   std::memset(buffer_, 0, total_width_ * rows_count_);
 }
 

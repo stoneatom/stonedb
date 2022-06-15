@@ -93,7 +93,7 @@ void ExpressionColumn::SetParamTypes(core::MysqlExpression::TypOfVars *types) { 
 
 bool ExpressionColumn::FeedArguments(const core::MIIterator &mit) {
   bool diff = first_eval;
-  if (mit.Type() == core::MIIterator::MII_LOOKUP) {
+  if (mit.Type() == core::MIIterator::MIIteratorType::MII_LOOKUP) {
     core::MILookupIterator *mit_lookup = (core::MILookupIterator *)(&mit);
     FeedLookupArguments(*mit_lookup);
     first_eval = false;

@@ -171,13 +171,13 @@ common::RSValue SingleColumn::DoRoughCheck(const core::MIIterator &mit, core::De
   if (mit.GetCurPackrow(dim) >= 0) {
     // check whether isn't it a join
     SingleColumn *sc = NULL;
-    if (d.val1.vc && d.val1.vc->IsSingleColumn()) sc = static_cast<SingleColumn *>(d.val1.vc);
+    if (d.val1.vc && static_cast<int>(d.val1.vc->IsSingleColumn())) sc = static_cast<SingleColumn *>(d.val1.vc);
     if (sc && sc->dim != dim)  // Pack2Pack rough check
       return col->RoughCheck(mit.GetCurPackrow(dim), mit.GetCurPackrow(sc->dim), d);
     else  // One-dim rough check
       return col->RoughCheck(mit.GetCurPackrow(dim), d, mit.NullsPossibleInPack(dim));
   } else
-    return common::RS_SOME;
+    return common::RSValue::RS_SOME;
 }
 
 void SingleColumn::DisplayAttrStats() { col->DisplayAttrStats(mind->GetFilter(dim)); }

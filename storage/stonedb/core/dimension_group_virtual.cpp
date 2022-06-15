@@ -34,7 +34,7 @@ DimensionGroupVirtual::DimensionGroupVirtual(DimensionVector &dims, int bdim, Fi
     f = Filter::ShallowCopy(*f_source);
   else if (copy_mode == 2)
     f = f_source;
-  dim_group_type = DG_VIRTUAL;
+  dim_group_type = DGType::DG_VIRTUAL;
   no_obj = f->NoOnes();
   pack_pos = NULL;  // created if needed
   t = new IndexTable *[no_dims];

@@ -30,7 +30,7 @@
 namespace stonedb {
 namespace index {
 
-enum Separator { LE_SPACES = 1, EQ_SPACES, GE_SPACES };
+enum class Separator { LE_SPACES = 1, EQ_SPACES, GE_SPACES };
 
 constexpr uint INTSIZE = 8;
 constexpr uint CHUNKSIZE = 9;

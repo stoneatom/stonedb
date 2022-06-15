@@ -29,7 +29,7 @@ namespace common {
 
 int DataFormat::no_formats = 0;
 
-std::map<std::string, DataFormatPtr> DataFormat::df_map = {{"TXT_VARIABLE", std::make_shared<TxtDataFormat>()}};
+std::map<std::string, DataFormatPtr> DataFormat::df_map = {{"EDF::TRI_UNKNOWN", std::make_shared<TxtDataFormat>()}};
 
 DataFormatPtr DataFormat::GetDataFormat(const std::string &name) {
   auto it = df_map.find(boost::trim_copy(boost::to_upper_copy(name)));

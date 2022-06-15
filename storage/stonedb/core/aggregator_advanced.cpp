@@ -193,7 +193,7 @@ void AggregatorGroupConcat::PutAggregatedValue(unsigned char *buf, const types::
       std::memcpy(buf + pos, src.c_str(), copylen);  // append the separator
       it->second = it->second + copylen;             // update the length of the buffer
     } else {
-      STONEDB_LOG(ERROR,
+      STONEDB_LOG(LogCtl_Level::ERROR,
                   "Internal error for AggregatorGroupConcat: buffer length is "
                   "%d, which beyond threshold %d.",
                   pos, gconcat_maxlen);
@@ -209,7 +209,7 @@ types::BString AggregatorGroupConcat::GetValueT(unsigned char *buf) {
   }
 
   int len = (it->second < gconcat_maxlen) ? it->second : gconcat_maxlen;
-  // STONEDB_LOG(INFO, "GetValueT: buf %s, buf addr  %x, len %d", buf, buf,
+  // STONEDB_LOG(LogCtl_Level::INFO, "GetValueT: buf %s, buf addr  %x, len %d", buf, buf,
   // len);
   if (len == 0) {
     types::BString res("", 0);
@@ -254,7 +254,7 @@ types::BString AggregatorGroupConcat::GetValueT(unsigned char *buf) {
 
   std::ostringstream outbuf_stream;
   std::copy(vstr.begin(), vstr.end(), std::ostream_iterator<std::string>(outbuf_stream, si.separator.c_str()));
-  // STONEDB_LOG(DEBUG, "buf %s, tmpbuf1 %s, pos %d, len %d \n", buf,
+  // STONEDB_LOG(LogCtl_Level::DEBUG, "buf %s, tmpbuf1 %s, pos %d, len %d \n", buf,
   // outbuf_stream.str().c_str(), pos, len);
 
   types::BString res(outbuf_stream.str().c_str(), len, true);

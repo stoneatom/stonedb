@@ -79,10 +79,10 @@ int rcbase_rollback([[maybe_unused]] handlerton *hton, THD *thd, bool all) {
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception error is caught: %s.", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception error is caught: %s.", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
   DBUG_RETURN(ret);
@@ -98,10 +98,10 @@ int rcbase_close_connection(handlerton *hton, THD *thd) {
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception error is caught: %s.", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception error is caught: %s.", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
   DBUG_RETURN(ret);
@@ -129,25 +129,25 @@ int rcbase_commit([[maybe_unused]] handlerton *hton, THD *thd, bool all) {
     try {
       rceng->Rollback(thd, all, true);
       if (!error_message.empty()) {
-        STONEDB_LOG(ERROR, "%s", error_message.c_str());
+        STONEDB_LOG(LogCtl_Level::ERROR, "%s", error_message.c_str());
         my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), error_message.c_str(), MYF(0));
       }
     } catch (std::exception &e) {
       if (!error_message.empty()) {
-        STONEDB_LOG(ERROR, "%s", error_message.c_str());
+        STONEDB_LOG(LogCtl_Level::ERROR, "%s", error_message.c_str());
         my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), error_message.c_str(), MYF(0));
       }
       my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
                  (std::string("Failed to rollback transaction. Error: ") + e.what()).c_str(), MYF(0));
-      STONEDB_LOG(ERROR, "Failed to rollback transaction. Error: %s.", e.what());
+      STONEDB_LOG(LogCtl_Level::ERROR, "Failed to rollback transaction. Error: %s.", e.what());
     } catch (...) {
       if (!error_message.empty()) {
-        STONEDB_LOG(ERROR, "%s", error_message.c_str());
+        STONEDB_LOG(LogCtl_Level::ERROR, "%s", error_message.c_str());
         my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), error_message.c_str(), MYF(0));
       }
       my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Failed to rollback transaction. Unknown error.",
                  MYF(0));
-      STONEDB_LOG(ERROR, "Failed to rollback transaction. Unknown error.");
+      STONEDB_LOG(LogCtl_Level::ERROR, "Failed to rollback transaction. Unknown error.");
     }
   }
 
@@ -216,7 +216,7 @@ int rcbase_init_func(void *p) {
     rceng = new core::Engine();
     ret = rceng->Init(total_ha);
     {
-      STONEDB_LOG(INFO,
+      STONEDB_LOG(LogCtl_Level::INFO,
                   "\n"
                   "------------------------------------------------------------"
                   "----------------------------------"
@@ -242,10 +242,10 @@ int rcbase_init_func(void *p) {
 
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception error is caught: %s.", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception error is caught: %s.", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
   DBUG_RETURN(ret);
@@ -662,7 +662,7 @@ void resolve_async_join_settings(const std::string &settings) {
       stonedb_sysvar_async_join_setting.traverse_slices = boost::lexical_cast<int>(splits_vec[2]);
       stonedb_sysvar_async_join_setting.match_slices = boost::lexical_cast<int>(splits_vec[3]);
     } catch (...) {
-      STONEDB_LOG(ERROR, "Failed resolve async join settings");
+      STONEDB_LOG(LogCtl_Level::ERROR, "Failed resolve async join settings");
     }
   }
 }
@@ -675,63 +675,63 @@ void async_join_update([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] struct s
 }
 
 static struct st_mysql_sys_var *sdb_showvars[] = {MYSQL_SYSVAR(bg_load_threads),
-                                                 MYSQL_SYSVAR(cachinglevel),
-                                                 MYSQL_SYSVAR(compensation_start),
-                                                 MYSQL_SYSVAR(control_trace),
-                                                 MYSQL_SYSVAR(data_distribution_policy),
-                                                 MYSQL_SYSVAR(disk_usage_threshold),
-                                                 MYSQL_SYSVAR(distinct_cache_size),
-                                                 MYSQL_SYSVAR(filterevaluation_speedup),
-                                                 MYSQL_SYSVAR(global_debug_level),
-                                                 MYSQL_SYSVAR(groupby_speedup),
-                                                 MYSQL_SYSVAR(hugefiledir),
-                                                 MYSQL_SYSVAR(index_cache_size),
-                                                 MYSQL_SYSVAR(index_search),
-                                                 MYSQL_SYSVAR(enable_rowstore),
-                                                 MYSQL_SYSVAR(ini_allowmysqlquerypath),
-                                                 MYSQL_SYSVAR(ini_cachefolder),
-                                                 MYSQL_SYSVAR(ini_cachereleasethreshold),
-                                                 MYSQL_SYSVAR(ini_cachesizethreshold),
-                                                 MYSQL_SYSVAR(ini_controlquerylog),
-                                                 MYSQL_SYSVAR(ini_knlevel),
-                                                 MYSQL_SYSVAR(ini_pushdown),
-                                                 MYSQL_SYSVAR(ini_servermainheapsize),
-                                                 MYSQL_SYSVAR(ini_threadpoolsize),
-                                                 MYSQL_SYSVAR(ini_usemysqlimportexportdefaults),
-                                                 MYSQL_SYSVAR(insert_buffer_size),
-                                                 MYSQL_SYSVAR(insert_cntthreshold),
-                                                 MYSQL_SYSVAR(insert_delayed),
-                                                 MYSQL_SYSVAR(insert_max_buffered),
-                                                 MYSQL_SYSVAR(insert_numthreshold),
-                                                 MYSQL_SYSVAR(insert_wait_ms),
-                                                 MYSQL_SYSVAR(insert_wait_time),
-                                                 MYSQL_SYSVAR(join_disable_switch_side),
-                                                 MYSQL_SYSVAR(enable_histogram_cmap_bloom),
-                                                 MYSQL_SYSVAR(join_parallel),
-                                                 MYSQL_SYSVAR(join_splitrows),
-                                                 MYSQL_SYSVAR(load_threads),
-                                                 MYSQL_SYSVAR(lookup_max_size),
-                                                 MYSQL_SYSVAR(max_execution_time),
-                                                 MYSQL_SYSVAR(minmax_speedup),
-                                                 MYSQL_SYSVAR(mm_hardlimit),
-                                                 MYSQL_SYSVAR(mm_largetempratio),
-                                                 MYSQL_SYSVAR(mm_largetemppool_threshold),
-                                                 MYSQL_SYSVAR(mm_policy),
-                                                 MYSQL_SYSVAR(mm_releasepolicy),
-                                                 MYSQL_SYSVAR(orderby_speedup),
-                                                 MYSQL_SYSVAR(parallel_filloutput),
-                                                 MYSQL_SYSVAR(parallel_mapjoin),
-                                                 MYSQL_SYSVAR(qps_log),
-                                                 MYSQL_SYSVAR(query_threads),
-                                                 MYSQL_SYSVAR(refresh_sys_stonedb),
-                                                 MYSQL_SYSVAR(session_debug_level),
-                                                 MYSQL_SYSVAR(sync_buffers),
-                                                 MYSQL_SYSVAR(trigger_error),
-                                                 MYSQL_SYSVAR(async_join),
-                                                 MYSQL_SYSVAR(force_hashjoin),
-                                                 MYSQL_SYSVAR(start_async),
-                                                 MYSQL_SYSVAR(result_sender_rows),
-                                                 NULL};
+                                                  MYSQL_SYSVAR(cachinglevel),
+                                                  MYSQL_SYSVAR(compensation_start),
+                                                  MYSQL_SYSVAR(control_trace),
+                                                  MYSQL_SYSVAR(data_distribution_policy),
+                                                  MYSQL_SYSVAR(disk_usage_threshold),
+                                                  MYSQL_SYSVAR(distinct_cache_size),
+                                                  MYSQL_SYSVAR(filterevaluation_speedup),
+                                                  MYSQL_SYSVAR(global_debug_level),
+                                                  MYSQL_SYSVAR(groupby_speedup),
+                                                  MYSQL_SYSVAR(hugefiledir),
+                                                  MYSQL_SYSVAR(index_cache_size),
+                                                  MYSQL_SYSVAR(index_search),
+                                                  MYSQL_SYSVAR(enable_rowstore),
+                                                  MYSQL_SYSVAR(ini_allowmysqlquerypath),
+                                                  MYSQL_SYSVAR(ini_cachefolder),
+                                                  MYSQL_SYSVAR(ini_cachereleasethreshold),
+                                                  MYSQL_SYSVAR(ini_cachesizethreshold),
+                                                  MYSQL_SYSVAR(ini_controlquerylog),
+                                                  MYSQL_SYSVAR(ini_knlevel),
+                                                  MYSQL_SYSVAR(ini_pushdown),
+                                                  MYSQL_SYSVAR(ini_servermainheapsize),
+                                                  MYSQL_SYSVAR(ini_threadpoolsize),
+                                                  MYSQL_SYSVAR(ini_usemysqlimportexportdefaults),
+                                                  MYSQL_SYSVAR(insert_buffer_size),
+                                                  MYSQL_SYSVAR(insert_cntthreshold),
+                                                  MYSQL_SYSVAR(insert_delayed),
+                                                  MYSQL_SYSVAR(insert_max_buffered),
+                                                  MYSQL_SYSVAR(insert_numthreshold),
+                                                  MYSQL_SYSVAR(insert_wait_ms),
+                                                  MYSQL_SYSVAR(insert_wait_time),
+                                                  MYSQL_SYSVAR(join_disable_switch_side),
+                                                  MYSQL_SYSVAR(enable_histogram_cmap_bloom),
+                                                  MYSQL_SYSVAR(join_parallel),
+                                                  MYSQL_SYSVAR(join_splitrows),
+                                                  MYSQL_SYSVAR(load_threads),
+                                                  MYSQL_SYSVAR(lookup_max_size),
+                                                  MYSQL_SYSVAR(max_execution_time),
+                                                  MYSQL_SYSVAR(minmax_speedup),
+                                                  MYSQL_SYSVAR(mm_hardlimit),
+                                                  MYSQL_SYSVAR(mm_largetempratio),
+                                                  MYSQL_SYSVAR(mm_largetemppool_threshold),
+                                                  MYSQL_SYSVAR(mm_policy),
+                                                  MYSQL_SYSVAR(mm_releasepolicy),
+                                                  MYSQL_SYSVAR(orderby_speedup),
+                                                  MYSQL_SYSVAR(parallel_filloutput),
+                                                  MYSQL_SYSVAR(parallel_mapjoin),
+                                                  MYSQL_SYSVAR(qps_log),
+                                                  MYSQL_SYSVAR(query_threads),
+                                                  MYSQL_SYSVAR(refresh_sys_stonedb),
+                                                  MYSQL_SYSVAR(session_debug_level),
+                                                  MYSQL_SYSVAR(sync_buffers),
+                                                  MYSQL_SYSVAR(trigger_error),
+                                                  MYSQL_SYSVAR(async_join),
+                                                  MYSQL_SYSVAR(force_hashjoin),
+                                                  MYSQL_SYSVAR(start_async),
+                                                  MYSQL_SYSVAR(result_sender_rows),
+                                                  NULL};
 }  // namespace dbhandler
 }  // namespace stonedb
 
@@ -745,8 +745,8 @@ mysql_declare_plugin(stonedb){
     stonedb::dbhandler::rcbase_init_func, /* Plugin Init */
     stonedb::dbhandler::rcbase_done_func, /* Plugin Deinit */
     0x0001 /* 0.1 */,
-    stonedb::dbhandler::statusvars,  /* status variables  */
+    stonedb::dbhandler::statusvars,   /* status variables  */
     stonedb::dbhandler::sdb_showvars, /* system variables  */
-    NULL,                            /* config options    */
-    0                                /* flags for plugin */
+    NULL,                             /* config options    */
+    0                                 /* flags for plugin */
 } mysql_declare_plugin_end;

@@ -164,7 +164,7 @@ class ValueMatching_LookupTable : public mm::TraceableObject, public ValueMatchi
   bool IsOnePass() override { return true; }
   int64_t ByteSize() override { return (total_width + sizeof(int)) * max_no_rows; }
   int64_t RowNumberScope() override { return max_no_rows; }
-  mm::TO_TYPE TraceableType() const override { return mm::TO_TEMPORARY; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
 
  protected:
   unsigned char *t;       // common buffer for grouping values and results of aggregations

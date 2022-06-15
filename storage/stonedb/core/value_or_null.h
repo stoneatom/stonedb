@@ -97,7 +97,7 @@ class ValueOrNull final {
  private:
   int64_t x;                  // 8-byte value of an expression; interpreted as int64_t or double
   char *sp = nullptr;         // != 0 if string value assigned
-  uint len = 0;               // string length; used only for VT_STRING
+  uint len = 0;               // string length; used only for ValueType::VT_STRING
   bool string_owner = false;  // if true, destructor must deallocate sp
   bool null;
 

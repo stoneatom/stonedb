@@ -26,8 +26,7 @@ class TaskRunner {
     ~MyTask() noexcept override {}
 
     void run() noexcept override {
-      stonedb::base::print("Established task on cpu %3d\n",
-                           stonedb::base::engine().cpu_id());
+      stonedb::base::print("Established task on cpu %3d\n", stonedb::base::engine().cpu_id());
       for (int index = 0; index < _count; ++index) {
         for (int jndex = 0; jndex < index; ++jndex) {
           *_result += jndex;
@@ -48,8 +47,7 @@ class TaskRunner {
 
   stonedb::base::future<> Run() {
     return stonedb::base::sleep(std::chrono::milliseconds(1)).then([this]() {
-      stonedb::base::print("Established task on cpu %3d\n",
-                           stonedb::base::engine().cpu_id());
+      stonedb::base::print("Established task on cpu %3d\n", stonedb::base::engine().cpu_id());
       uint64_t count = 0;
       for (int index = 0; index < _count; ++index) {
         for (int jndex = 0; jndex < index; ++jndex) {
@@ -63,8 +61,7 @@ class TaskRunner {
   }
 
   stonedb::base::future<uint64_t> get_result() {
-    stonedb::base::print("Requests on cpu %2d: %ld\n",
-                         stonedb::base::engine().cpu_id(), _result);
+    stonedb::base::print("Requests on cpu %2d: %ld\n", stonedb::base::engine().cpu_id(), _result);
     return stonedb::base::make_ready_future<uint64_t>(_result);
   }
 
@@ -96,21 +93,18 @@ stonedb::base::future<bool> RecurseFuture(int *count) {
   // return sleep(1ms).then([count]{ return RecurseFuture(count); });
 }
 
-stonedb::base::future<stdexp::optional<bool>> Recurse(
-    std::shared_ptr<int> counter, unsigned thd) {
+stonedb::base::future<stdexp::optional<bool>> Recurse(std::shared_ptr<int> counter, unsigned thd) {
   if (*counter == 0) {
     return stonedb::base::make_ready_future<stdexp::optional<bool>>(true);
   }
 
   int count = (*counter)--;
-  return stonedb::base::smp::submit_to(
-             thd,
-             [count, thd] {
-               // std::this_thread::sleep_for(1000ms);
-               stonedb::base::print("Calling on : %d thread counter: %d\n", thd,
-                                    count);
-               test_pool(50000, false);
-             })
+  return stonedb::base::smp::submit_to(thd,
+                                       [count, thd] {
+                                         // std::this_thread::sleep_for(1000ms);
+                                         stonedb::base::print("Calling on : %d thread counter: %d\n", thd, count);
+                                         test_pool(50000, false);
+                                       })
       .then([thd]() {
         stonedb::base::print("Called completed on : %d thread \n", thd);
         return stdexp::optional<bool>(stdexp::nullopt);
@@ -119,8 +113,7 @@ stonedb::base::future<stdexp::optional<bool>> Recurse(
 
 void TestPostTask(std::shared_ptr<core::TaskExecutor> task_executor) {
   std::chrono::duration<double> total_elapsed =
-      stonedb::base::steady_clock_type::now() -
-      stonedb::base::steady_clock_type::now();
+      stonedb::base::steady_clock_type::now() - stonedb::base::steady_clock_type::now();
   std::chrono::duration<double> max_elapsed = total_elapsed;
   for (int index = 0; index < 100000; ++index) {
     auto started = stonedb::base::steady_clock_type::now();
@@ -136,22 +129,19 @@ void TestPostTask(std::shared_ptr<core::TaskExecutor> task_executor) {
 
   auto ave_secs = static_cast<double>(total_elapsed.count() / 100000.0);
   auto max_secs = static_cast<double>(max_elapsed.count());
-  stonedb::base::print("Ave post task time: %fs  max post time:%fs\n", ave_secs,
-                       max_secs);
+  stonedb::base::print("Ave post task time: %fs  max post time:%fs\n", ave_secs, max_secs);
 }
 
 void TestSubmit(std::shared_ptr<core::TaskExecutor> task_executor) {
   auto ready_future = task_executor->Execute([]() {
     std::shared_ptr<int> counter(new int(10));
-    stonedb::base::future<> parallel_future = stonedb::base::parallel_for_each(
-        boost::irange<unsigned>(0, stonedb::base::smp::count),
-        [counter](unsigned c) {
-          return stonedb::base::repeat_until_value(
-                     std::bind(&Recurse, counter, c))
-              .then([](bool) { stonedb::base::print("Repeat completed\n"); });
+    stonedb::base::future<> parallel_future =
+        stonedb::base::parallel_for_each(boost::irange<unsigned>(0, stonedb::base::smp::count), [counter](unsigned c) {
+          return stonedb::base::repeat_until_value(std::bind(&Recurse, counter, c)).then([](bool) {
+            stonedb::base::print("Repeat completed\n");
+          });
         });
-    return parallel_future.then(
-        []() { stonedb::base::print("Parallel completed\n"); });
+    return parallel_future.then([]() { stonedb::base::print("Parallel completed\n"); });
   });
 
   ready_future.wait();
@@ -176,8 +166,7 @@ void TestSubmitRandom(std::shared_ptr<core::TaskExecutor> task_executor) {
 int main(int argc, char **argv) {
   auto started = stonedb::base::steady_clock_type::now();
   std::shared_ptr<core::TaskExecutor> task_executor(new core::TaskExecutor);
-  std::future<void> ready_future =
-      task_executor->Init(std::thread::hardware_concurrency());
+  std::future<void> ready_future = task_executor->Init(std::thread::hardware_concurrency());
   ready_future.wait();
   auto elapsed = stonedb::base::steady_clock_type::now() - started;
   auto secs = static_cast<double>(elapsed.count() / 1000000000.0);

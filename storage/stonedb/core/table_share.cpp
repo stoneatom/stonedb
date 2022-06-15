@@ -58,12 +58,12 @@ TableShare::~TableShare() {
   thr_lock_delete(&thr_lock);
 
   if (current.use_count() > 1)
-    STONEDB_LOG(FATAL, "TableShare still has ref outside by current %ld", current.use_count());
+    STONEDB_LOG(LogCtl_Level::FATAL, "TableShare still has ref outside by current %ld", current.use_count());
 
-  if (!write_table.expired()) STONEDB_LOG(FATAL, "TableShare still has ref outside by write table");
+  if (!write_table.expired()) STONEDB_LOG(LogCtl_Level::FATAL, "TableShare still has ref outside by write table");
 
   for (auto &t : versions)
-    if (!t.expired()) STONEDB_LOG(FATAL, "TableShare still has ref outside by old versions");
+    if (!t.expired()) STONEDB_LOG(LogCtl_Level::FATAL, "TableShare still has ref outside by old versions");
 }
 
 std::shared_ptr<RCTable> TableShare::GetSnapshot() {
