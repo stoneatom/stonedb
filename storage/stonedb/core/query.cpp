@@ -258,7 +258,7 @@ const std::string Query::GetItemName(Item *item) {
       return "REAL";
     case Item::DECIMAL_ITEM:
       return "DECIMAL";
-    case Item_sdbfield::SDBFIELD_ITEM:
+    case static_cast<int>(Item_sdbfield::enumSDBFiledItem::SDBFIELD_ITEM):
       Item_sdbfield *sdb = static_cast<Item_sdbfield *>(item);
       size_t cur_var_id = sdbitems_cur_var_ids[sdb]++;
       if (cur_var_id >= sdb->varID.size()) cur_var_id = 0;
@@ -272,7 +272,7 @@ int Query::GetAddColumnId(const AttrID &vc, const TabID &tmp_table, const common
                           const bool distinct) {
   for (int i = 0; i < cq->NoSteps(); i++) {
     CompiledQuery::CQStep *step = &cq->Step(i);
-    if (step->type == CompiledQuery::ADD_COLUMN && step->t1 == tmp_table && step->e1.vc_id == vc.n &&
+    if (step->type == CompiledQuery::StepType::ADD_COLUMN && step->t1 == tmp_table && step->e1.vc_id == vc.n &&
         step->cop == oper && step->n1 == (distinct ? 1 : 0)) {
       return step->a1.n;
     }
@@ -283,7 +283,7 @@ int Query::GetAddColumnId(const AttrID &vc, const TabID &tmp_table, const common
 void Query::CQChangeAddColumnLIST2GROUP_BY(const TabID &tmp_table, int attr) {
   for (int i = 0; i < cq->NoSteps(); i++) {
     CompiledQuery::CQStep *step = &cq->Step(i);
-    if (step->type == CompiledQuery::ADD_COLUMN && step->t1 == tmp_table && step->a1.n == attr &&
+    if (step->type == CompiledQuery::StepType::ADD_COLUMN && step->t1 == tmp_table && step->a1.n == attr &&
         step->cop == common::ColOperation::LISTING) {
       step->cop = common::ColOperation::GROUP_BY;
       cq->AddGroupByStep(*step);
@@ -294,23 +294,23 @@ void Query::CQChangeAddColumnLIST2GROUP_BY(const TabID &tmp_table, int attr) {
 
 void Query::MarkWithAny(common::Operator &op) {
   switch (op) {
-    case common::O_EQ:
-      op = common::O_EQ_ANY;
+    case common::Operator::O_EQ:
+      op = common::Operator::O_EQ_ANY;
       break;
-    case common::O_NOT_EQ:
-      op = common::O_NOT_EQ_ANY;
+    case common::Operator::O_NOT_EQ:
+      op = common::Operator::O_NOT_EQ_ANY;
       break;
-    case common::O_LESS:
-      op = common::O_LESS_ANY;
+    case common::Operator::O_LESS:
+      op = common::Operator::O_LESS_ANY;
       break;
-    case common::O_MORE:
-      op = common::O_MORE_ANY;
+    case common::Operator::O_MORE:
+      op = common::Operator::O_MORE_ANY;
       break;
-    case common::O_LESS_EQ:
-      op = common::O_LESS_EQ_ANY;
+    case common::Operator::O_LESS_EQ:
+      op = common::Operator::O_LESS_EQ_ANY;
       break;
-    case common::O_MORE_EQ:
-      op = common::O_MORE_EQ_ANY;
+    case common::Operator::O_MORE_EQ:
+      op = common::Operator::O_MORE_EQ_ANY;
       break;
     default:
       // ANY can't be added to any other operator
@@ -320,23 +320,23 @@ void Query::MarkWithAny(common::Operator &op) {
 
 void Query::MarkWithAll(common::Operator &op) {
   switch (op) {
-    case common::O_EQ:
-      op = common::O_EQ_ALL;
+    case common::Operator::O_EQ:
+      op = common::Operator::O_EQ_ALL;
       break;
-    case common::O_NOT_EQ:
-      op = common::O_NOT_EQ_ALL;
+    case common::Operator::O_NOT_EQ:
+      op = common::Operator::O_NOT_EQ_ALL;
       break;
-    case common::O_LESS:
-      op = common::O_LESS_ALL;
+    case common::Operator::O_LESS:
+      op = common::Operator::O_LESS_ALL;
       break;
-    case common::O_MORE:
-      op = common::O_MORE_ALL;
+    case common::Operator::O_MORE:
+      op = common::Operator::O_MORE_ALL;
       break;
-    case common::O_LESS_EQ:
-      op = common::O_LESS_EQ_ALL;
+    case common::Operator::O_LESS_EQ:
+      op = common::Operator::O_LESS_EQ_ALL;
       break;
-    case common::O_MORE_EQ:
-      op = common::O_MORE_EQ_ALL;
+    case common::Operator::O_MORE_EQ:
+      op = common::Operator::O_MORE_EQ_ALL;
       break;
     default:
       // ALL can't be added to any other operator
@@ -345,37 +345,39 @@ void Query::MarkWithAll(common::Operator &op) {
 }
 
 bool Query::IsAllAny(common::Operator &op) {
-  return (op == common::O_EQ_ALL || op == common::O_EQ_ANY || op == common::O_NOT_EQ_ALL ||
-          op == common::O_NOT_EQ_ANY || op == common::O_LESS_ALL || op == common::O_LESS_ANY ||
-          op == common::O_MORE_ALL || op == common::O_MORE_ANY || op == common::O_LESS_EQ_ALL ||
-          op == common::O_LESS_EQ_ANY || op == common::O_MORE_EQ_ALL || op == common::O_MORE_EQ_ANY);
+  return (op == common::Operator::O_EQ_ALL || op == common::Operator::O_EQ_ANY ||
+          op == common::Operator::O_NOT_EQ_ALL || op == common::Operator::O_NOT_EQ_ANY ||
+          op == common::Operator::O_LESS_ALL || op == common::Operator::O_LESS_ANY ||
+          op == common::Operator::O_MORE_ALL || op == common::Operator::O_MORE_ANY ||
+          op == common::Operator::O_LESS_EQ_ALL || op == common::Operator::O_LESS_EQ_ANY ||
+          op == common::Operator::O_MORE_EQ_ALL || op == common::Operator::O_MORE_EQ_ANY);
 }
 
 void Query::UnmarkAllAny(common::Operator &op) {
   switch (op) {
-    case common::O_EQ_ALL:
-    case common::O_EQ_ANY:
-      op = common::O_EQ;
+    case common::Operator::O_EQ_ALL:
+    case common::Operator::O_EQ_ANY:
+      op = common::Operator::O_EQ;
       break;
-    case common::O_NOT_EQ_ALL:
-    case common::O_NOT_EQ_ANY:
-      op = common::O_NOT_EQ;
+    case common::Operator::O_NOT_EQ_ALL:
+    case common::Operator::O_NOT_EQ_ANY:
+      op = common::Operator::O_NOT_EQ;
       break;
-    case common::O_LESS_ALL:
-    case common::O_LESS_ANY:
-      op = common::O_LESS;
+    case common::Operator::O_LESS_ALL:
+    case common::Operator::O_LESS_ANY:
+      op = common::Operator::O_LESS;
       break;
-    case common::O_MORE_ALL:
-    case common::O_MORE_ANY:
-      op = common::O_MORE;
+    case common::Operator::O_MORE_ALL:
+    case common::Operator::O_MORE_ANY:
+      op = common::Operator::O_MORE;
       break;
-    case common::O_LESS_EQ_ALL:
-    case common::O_LESS_EQ_ANY:
-      op = common::O_LESS_EQ;
+    case common::Operator::O_LESS_EQ_ALL:
+    case common::Operator::O_LESS_EQ_ANY:
+      op = common::Operator::O_LESS_EQ;
       break;
-    case common::O_MORE_EQ_ALL:
-    case common::O_MORE_EQ_ANY:
-      op = common::O_MORE_EQ;
+    case common::Operator::O_MORE_EQ_ALL:
+    case common::Operator::O_MORE_EQ_ANY:
+      op = common::Operator::O_MORE_EQ;
       break;
     default:
       // ALL/ANY can't be removed from any other operator
@@ -392,44 +394,44 @@ void Query::ExtractOperatorType(Item *&conds, common::Operator &op, bool &negati
   Item_func *cond_func = (Item_func *)conds;
   switch (cond_func->functype()) {
     case Item_func::BETWEEN:
-      op = is_there_not ? common::O_NOT_BETWEEN : common::O_BETWEEN;
+      op = is_there_not ? common::Operator::O_NOT_BETWEEN : common::Operator::O_BETWEEN;
       break;
     case Item_func::LIKE_FUNC:
-      op = is_there_not ? common::O_NOT_LIKE : common::O_LIKE;
+      op = is_there_not ? common::Operator::O_NOT_LIKE : common::Operator::O_LIKE;
       like_esc = ((Item_func_like *)cond_func)->escape;
       break;
     case Item_func::ISNULL_FUNC:
-      op = common::O_IS_NULL;
+      op = common::Operator::O_IS_NULL;
       break;
     case Item_func::ISNOTNULL_FUNC:
-      op = common::O_NOT_NULL;
+      op = common::Operator::O_NOT_NULL;
       break;
     case Item_func::IN_FUNC:
-      op = is_there_not ? common::O_NOT_IN : common::O_IN;
+      op = is_there_not ? common::Operator::O_NOT_IN : common::Operator::O_IN;
       break;
     case Item_func::EQ_FUNC:  // =
-      op = negative ? common::O_NOT_EQ : common::O_EQ;
+      op = negative ? common::Operator::O_NOT_EQ : common::Operator::O_EQ;
       break;
     case Item_func::NE_FUNC:  // <>
-      op = negative ? common::O_EQ : common::O_NOT_EQ;
+      op = negative ? common::Operator::O_EQ : common::Operator::O_NOT_EQ;
       break;
     case Item_func::LE_FUNC:  // <=
-      op = negative ? common::O_MORE : common::O_LESS_EQ;
+      op = negative ? common::Operator::O_MORE : common::Operator::O_LESS_EQ;
       break;
     case Item_func::GE_FUNC:  // >=
-      op = negative ? common::O_LESS : common::O_MORE_EQ;
+      op = negative ? common::Operator::O_LESS : common::Operator::O_MORE_EQ;
       break;
     case Item_func::GT_FUNC:  // >
-      op = negative ? common::O_LESS_EQ : common::O_MORE;
+      op = negative ? common::Operator::O_LESS_EQ : common::Operator::O_MORE;
       break;
     case Item_func::LT_FUNC:  // <
-      op = negative ? common::O_MORE_EQ : common::O_LESS;
+      op = negative ? common::Operator::O_MORE_EQ : common::Operator::O_LESS;
       break;
     case Item_func::MULT_EQUAL_FUNC:
-      op = common::O_MULT_EQUAL_FUNC;
+      op = common::Operator::O_MULT_EQUAL_FUNC;
       break;
     case Item_func::NOT_FUNC:
-      op = common::O_NOT_FUNC;
+      op = common::Operator::O_NOT_FUNC;
       break;
     case Item_func::NOT_ALL_FUNC: {
       Item_func *cond_func = (Item_func *)conds;
@@ -443,10 +445,10 @@ void Query::ExtractOperatorType(Item *&conds, common::Operator &op, bool &negati
       break;
     }
     case Item_func::UNKNOWN_FUNC:
-      op = common::O_UNKNOWN_FUNC;
+      op = common::Operator::O_UNKNOWN_FUNC;
       break;
     default:
-      op = common::O_ERROR;  // unknown function type
+      op = common::Operator::O_ERROR;  // unknown function type
       break;
   }
 }
@@ -485,7 +487,7 @@ vcolumn::VirtualColumn *Query::CreateColumnFromExpression(std::vector<MysqlExpre
         }
       }
       vc = new vcolumn::ExpressionColumn(exprs[0], temp_table, temp_table_alias, mind);
-      if (static_cast<vcolumn::ExpressionColumn *>(vc)->GetStringType() == MysqlExpression::STRING_TIME &&
+      if (static_cast<vcolumn::ExpressionColumn *>(vc)->GetStringType() == MysqlExpression::StringType::STRING_TIME &&
           vc->TypeName() != common::CT::TIME) {  // common::CT::TIME is already as int64_t
         vcolumn::TypeCastColumn *tcc = new vcolumn::String2DateTimeCastColumn(vc, ColumnType(common::CT::TIME));
         temp_table->AddVirtColumn(vc);
@@ -555,7 +557,7 @@ void Query::GetPrecisionScale(Item *item, int &precision, int &scale, bool max_s
 }
 
 TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_unused]] bool display_now) {
-  if (STONEDB_LOGCHECK(DEBUG)) {
+  if (STONEDB_LOGCHECK(LogCtl_Level::DEBUG)) {
     qu.Print(this);
   }
   std::vector<Condition *> conds(qu.NoConds());
@@ -606,17 +608,17 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
     // Implementation of steps
     try {
       switch (step.type) {
-        case CompiledQuery::TABLE_ALIAS:
+        case CompiledQuery::StepType::TABLE_ALIAS:
           ta[-step.t1.n - 1] = t2_ptr;
           break;
-        case CompiledQuery::TMP_TABLE:
+        case CompiledQuery::StepType::TMP_TABLE:
           DEBUG_ASSERT(step.t1.n < 0);
           ta[-step.t1.n - 1] = step.n1
                                    ? TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this, true)
                                    : TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this);
           ((TempTable *)ta[-step.t1.n - 1].get())->ReserveVirtColumns(qu.NoVirtualColumns(step.t1));
           break;
-        case CompiledQuery::CREATE_CONDS:
+        case CompiledQuery::StepType::CREATE_CONDS:
           DEBUG_ASSERT(step.t1.n < 0);
           step.e1.vc = (step.e1.vc_id != common::NULL_VALUE_32)
                            ? ((TempTable *)ta[-step.t1.n - 1].get())->GetVirtualColumn(step.e1.vc_id)
@@ -627,12 +629,13 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           step.e3.vc = (step.e3.vc_id != common::NULL_VALUE_32)
                            ? ((TempTable *)ta[-step.t1.n - 1].get())->GetVirtualColumn(step.e3.vc_id)
                            : NULL;
-          if (step.n1 != OR_SUBTREE) {  // on result = false
+          if (step.n1 != static_cast<int64_t>(CondType::OR_SUBTREE)) {  // on result = false
             conds[step.c1.n] = new Condition();
             if (step.c2.IsNull()) {
               conds[step.c1.n]->AddDescriptor(
                   step.e1, step.op, step.e2, step.e3, (TempTable *)ta[-step.t1.n - 1].get(), qu.GetNoDims(step.t1),
-                  (step.op == common::O_LIKE || step.op == common::O_NOT_LIKE) ? char(step.n2) : '\\');
+                  (step.op == common::Operator::O_LIKE || step.op == common::Operator::O_NOT_LIKE) ? char(step.n2)
+                                                                                                   : '\\');
             } else {
               DEBUG_ASSERT(conds[step.c2.n]->IsType_Tree());
               conds[step.c1.n]->AddDescriptor(static_cast<SingleTreeCondition *>(conds[step.c2.n])->GetTree(),
@@ -651,22 +654,23 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
             }
           }
           break;
-        case CompiledQuery::AND_F:
-        case CompiledQuery::OR_F:
+        case CompiledQuery::StepType::AND_F:
+        case CompiledQuery::StepType::OR_F:
           if (!conds[step.c2.n]->IsType_Tree()) {
-            ASSERT(step.type == CompiledQuery::AND_F);
+            ASSERT(step.type == CompiledQuery::StepType::AND_F);
             auto cond2 = conds[step.c2.n];
             for (size_t i = 0; i < cond2->Size(); i++) {
               auto &desc = (*cond2)[i];
               if (conds[step.c1.n]->IsType_Tree()) {
                 TempTable *temptb = (TempTable *)ta[-qu.GetTableOfCond(step.c2).n - 1].get();
                 int no_dims = qu.GetNoDims(qu.GetTableOfCond(step.c2));
-                if (desc.op == common::O_OR_TREE) {
-                  static_cast<SingleTreeCondition *>(conds[step.c1.n])->AddTree(common::O_AND, desc.tree, no_dims);
+                if (desc.op == common::Operator::O_OR_TREE) {
+                  static_cast<SingleTreeCondition *>(conds[step.c1.n])
+                      ->AddTree(common::LogicalOperator::O_AND, desc.tree, no_dims);
                 } else {
                   static_cast<SingleTreeCondition *>(conds[step.c1.n])
-                      ->AddDescriptor(common::O_AND, desc.attr, desc.op, desc.val1, desc.val2, temptb, no_dims,
-                                      desc.like_esc);
+                      ->AddDescriptor(common::LogicalOperator::O_AND, desc.attr, desc.op, desc.val1, desc.val2, temptb,
+                                      no_dims, desc.like_esc);
                 }
               } else {
                 conds[step.c1.n]->AddDescriptor(desc);
@@ -674,7 +678,8 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
             }
           } else if (conds[step.c1.n]->IsType_Tree()) {  // on result = false
             DEBUG_ASSERT(conds[step.c2.n]->IsType_Tree());
-            common::LogicalOperator lop = (step.type == CompiledQuery::AND_F ? common::O_AND : common::O_OR);
+            common::LogicalOperator lop = (step.type == CompiledQuery::StepType::AND_F ? common::LogicalOperator::O_AND
+                                                                                       : common::LogicalOperator::O_OR);
             static_cast<SingleTreeCondition *>(conds[step.c1.n])
                 ->AddTree(lop, static_cast<SingleTreeCondition *>(conds[step.c2.n])->GetTree(), qu.GetNoDims(step.t1));
           } else {
@@ -684,9 +689,11 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
                                             qu.GetNoDims(qu.GetTableOfCond(step.c1)));
           }
           break;
-        case CompiledQuery::OR_DESC:
-        case CompiledQuery::AND_DESC: {
-          common::LogicalOperator lop = (step.type == CompiledQuery::AND_DESC ? common::O_AND : common::O_OR);
+        case CompiledQuery::StepType::OR_DESC:
+        case CompiledQuery::StepType::AND_DESC: {
+          common::LogicalOperator lop =
+              (step.type == CompiledQuery::StepType::AND_DESC ? common::LogicalOperator::O_AND
+                                                              : common::LogicalOperator::O_OR);
           step.e1.vc = (step.e1.vc_id != common::NULL_VALUE_32)
                            ? ((TempTable *)ta[-step.t1.n - 1].get())->GetVirtualColumn(step.e1.vc_id)
                            : NULL;
@@ -700,44 +707,48 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
             DEBUG_ASSERT(conds[step.c1.n]);
             conds[step.c1.n]->AddDescriptor(
                 step.e1, step.op, step.e2, step.e3, (TempTable *)ta[-step.t1.n - 1].get(), qu.GetNoDims(step.t1),
-                (step.op == common::O_LIKE || step.op == common::O_NOT_LIKE) ? char(step.n2) : '\\');
+                (step.op == common::Operator::O_LIKE || step.op == common::Operator::O_NOT_LIKE) ? char(step.n2)
+                                                                                                 : '\\');
           } else
             static_cast<SingleTreeCondition *>(conds[step.c1.n])
                 ->AddDescriptor(lop, step.e1, step.op, step.e2, step.e3, (TempTable *)ta[-step.t1.n - 1].get(),
                                 qu.GetNoDims(step.t1),
-                                (step.op == common::O_LIKE || step.op == common::O_NOT_LIKE) ? char(step.n2) : '\\');
+                                (step.op == common::Operator::O_LIKE || step.op == common::Operator::O_NOT_LIKE)
+                                    ? char(step.n2)
+                                    : '\\');
           break;
         }
-        case CompiledQuery::T_MODE:
+        case CompiledQuery::StepType::T_MODE:
           DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
           ((TempTable *)ta[-step.t1.n - 1].get())->SetMode(step.tmpar, step.n1, step.n2);
           break;
-        case CompiledQuery::JOIN_T:
+        case CompiledQuery::StepType::JOIN_T:
           DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
           ((TempTable *)ta[-step.t1.n - 1].get())->JoinT(t2_ptr.get(), step.t2.n, step.jt);
           break;
-        case CompiledQuery::ADD_CONDS: {
+        case CompiledQuery::StepType::ADD_CONDS: {
           DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
           if (step.c1.n == common::NULL_VALUE_32) break;
-          if (step.n1 != HAVING_COND) conds[step.c1.n]->Simplify();
+          if (step.n1 != static_cast<int64_t>(CondType::HAVING_COND)) conds[step.c1.n]->Simplify();
           ((TempTable *)ta[-step.t1.n - 1].get())->AddConds(conds[step.c1.n], (CondType)step.n1);
           break;
         }
-        case CompiledQuery::LEFT_JOIN_ON: {
+        case CompiledQuery::StepType::LEFT_JOIN_ON: {
           DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
           if (step.c1.n == common::NULL_VALUE_32) break;
           ((TempTable *)ta[-step.t1.n - 1].get())->AddLeftConds(conds[step.c1.n], step.tables1, step.tables2);
           break;
         }
-        case CompiledQuery::INNER_JOIN_ON: {
+        case CompiledQuery::StepType::INNER_JOIN_ON: {
           DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
           if (step.c1.n == common::NULL_VALUE_32) break;
           ((TempTable *)ta[-step.t1.n - 1].get())->AddInnerConds(conds[step.c1.n], step.tables1);
           break;
         }
-        case CompiledQuery::APPLY_CONDS: {
+        case CompiledQuery::StepType::APPLY_CONDS: {
           int64_t cur_limit = -1;
-          if (qu.FindDistinct(step.t1.n)) ((TempTable *)ta[-step.t1.n - 1].get())->SetMode(TM_DISTINCT, 0, 0);
+          if (qu.FindDistinct(step.t1.n))
+            ((TempTable *)ta[-step.t1.n - 1].get())->SetMode(TMParameter::TM_DISTINCT, 0, 0);
           if (qu.NoAggregationOrderingAndDistinct(step.t1.n)) cur_limit = qu.FindLimit(step.t1.n);
 
           if (cur_limit != -1 && ((TempTable *)ta[-step.t1.n - 1].get())->GetFilterP()->NoParameterizedDescs())
@@ -765,7 +776,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
                 ->UpdateMultiIndex(qu.CountColumnOnly(step.t1), cur_limit);
           break;
         }
-        case CompiledQuery::ADD_COLUMN: {
+        case CompiledQuery::StepType::ADD_COLUMN: {
           DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
           CQTerm e(step.e1);
           if (e.vc_id != common::NULL_VALUE_32)
@@ -775,7 +786,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
                           ->AddColumn(e, step.cop, step.alias, step.n1 ? true : false, step.si);
           break;
         }
-        case CompiledQuery::CREATE_VC: {
+        case CompiledQuery::StepType::CREATE_VC: {
           DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
           TempTable *t = (TempTable *)ta[-step.t1.n - 1].get();
 
@@ -823,7 +834,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           }
           break;
         }
-        case CompiledQuery::ADD_ORDER: {
+        case CompiledQuery::StepType::ADD_ORDER: {
           DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE && step.n1 >= 0 &&
                        step.n1 < 2);
           DEBUG_ASSERT(step.a1.n >= 0 && step.a1.n < qu.NoVirtualColumns(step.t1));
@@ -832,7 +843,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
                           (int)step.n1);  // step.n1 = 0 for asc, 1 for desc
           break;
         }
-        case CompiledQuery::UNION:
+        case CompiledQuery::StepType::UNION:
           DEBUG_ASSERT(step.t1.n < 0 && step.t2.n < 0 && step.t3.n < 0);
           DEBUG_ASSERT(ta[-step.t2.n - 1]->TableType() == TType::TEMP_TABLE &&
                        (step.t3.n == common::NULL_VALUE_32 || ta[-step.t3.n - 1]->TableType() == TType::TEMP_TABLE));
@@ -857,17 +868,17 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
             }
           }
           break;
-        case CompiledQuery::RESULT:
+        case CompiledQuery::StepType::RESULT:
           DEBUG_ASSERT(step.t1.n < 0 && static_cast<size_t>(-step.t1.n - 1) < ta.size() &&
                        ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
           output_table = (TempTable *)ta[-step.t1.n - 1].get();
           break;
-        case CompiledQuery::STEP_ERROR:
+        case CompiledQuery::StepType::STEP_ERROR:
           rccontrol.lock(m_conn->GetThreadID()) << "ERROR in step " << step.alias << system::unlock;
           break;
         default:
           rccontrol.lock(m_conn->GetThreadID())
-              << "ERROR: unsupported type of CQStep (" << step.type << ")" << system::unlock;
+              << "ERROR: unsupported type of CQStep (" << static_cast<int>(step.type) << ")" << system::unlock;
       }
     } catch (...) {
       for (auto &c : conds) delete c;
@@ -901,7 +912,8 @@ int Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_table, CondT
     bool ignore_minmax = (dynamic_cast<Item_maxmin_subselect *>(item_subs) == NULL &&
                           dynamic_cast<Item_in_subselect *>(item_subs) == NULL && negative &&
                           item_subs->substype() == Item_subselect::SINGLEROW_SUBS);
-    subqueries_in_where.emplace_back(tmp_table, item_subs->place() != IN_HAVING && filter_type != HAVING_COND);
+    subqueries_in_where.emplace_back(tmp_table,
+                                     item_subs->place() != IN_HAVING && filter_type != CondType::HAVING_COND);
 
     // we need to make a copy of global map with table aliases so that subquery
     // contains aliases of outer queries and itself but not "parallel"
@@ -919,7 +931,7 @@ int Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_table, CondT
       AttrID vc;
       vc.n = VirtualColumnAlreadyExists(tmp_table, subselect);
       if (vc.n == common::NULL_VALUE_32) {
-        cq->CreateVirtualColumn(vc, tmp_table, subselect, filter_type == HAVING_COND ? true : false);
+        cq->CreateVirtualColumn(vc, tmp_table, subselect, filter_type == CondType::HAVING_COND ? true : false);
         tab_id2subselect.insert(std::make_pair(tmp_table, std::make_pair(vc.n, subselect)));
       }
       if (oper_for_subselect) {
@@ -927,13 +939,13 @@ int Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_table, CondT
             dynamic_cast<Item_in_subselect *>(item_subs) != NULL) {
           if (negative) {
             MarkWithAll(*oper_for_subselect);
-            if (dynamic_cast<Item_in_subselect *>(item_subs) != NULL && *oper_for_subselect == common::O_IN)
-              *oper_for_subselect = common::O_EQ_ALL;
+            if (dynamic_cast<Item_in_subselect *>(item_subs) != NULL && *oper_for_subselect == common::Operator::O_IN)
+              *oper_for_subselect = common::Operator::O_EQ_ALL;
           } else {
             MarkWithAny(*oper_for_subselect);
             if (dynamic_cast<Item_allany_subselect *>(item_subs) != NULL &&
                 dynamic_cast<Item_allany_subselect *>(item_subs)->all == 1)
-              *oper_for_subselect = common::O_EQ_ALL;
+              *oper_for_subselect = common::Operator::O_EQ_ALL;
           }
         } else {
           if (negative) {
@@ -949,7 +961,7 @@ int Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_table, CondT
     return res;
   }
 
-  if (filter_type == HAVING_COND) {
+  if (filter_type == CondType::HAVING_COND) {
     common::ColOperation oper;
     bool distinct;
     if (!OperationUnmysterify(an_arg, oper, distinct,
@@ -1017,7 +1029,8 @@ int Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_table, CondT
         }
       } else if (IsAggregationItem(an_arg)) {
         DEBUG_ASSERT(expr->GetItem()->type() == Item_sdbfield::get_sdbitem_type());
-        int col_num = ((Item_sdbfield *)expr->GetItem())->varID[((Item_sdbfield *)expr->GetItem())->varID.size() - 1].col;
+        int col_num =
+            ((Item_sdbfield *)expr->GetItem())->varID[((Item_sdbfield *)expr->GetItem())->varID.size() - 1].col;
         auto phys_vc = VirtualColumnAlreadyExists(tmp_table, tmp_table, AttrID(-col_num - 1));
         if (phys_vc.first == common::NULL_VALUE_32) {
           phys_vc.first = tmp_table.n;
@@ -1107,26 +1120,26 @@ CondID Query::ConditionNumberFromMultipleEquality(Item_equal *conds, const TabID
   if (!Item2CQTerm(ifield, first_term, tmp_table, filter_type)) return CondID(-1);
   CondID filter;
   if (!and_me_filter)
-    cq->CreateConds(filter, tmp_table, first_term, common::O_EQ, zero_term, CQTerm(),
-                    is_or_subtree || filter_type == HAVING_COND);
+    cq->CreateConds(filter, tmp_table, first_term, common::Operator::O_EQ, zero_term, CQTerm(),
+                    is_or_subtree || filter_type == CondType::HAVING_COND);
   else {
     if (is_or_subtree)
-      cq->Or(*and_me_filter, tmp_table, first_term, common::O_EQ, zero_term);
+      cq->Or(*and_me_filter, tmp_table, first_term, common::Operator::O_EQ, zero_term);
     else
-      cq->And(*and_me_filter, tmp_table, first_term, common::O_EQ, zero_term);
+      cq->And(*and_me_filter, tmp_table, first_term, common::Operator::O_EQ, zero_term);
   }
   while ((ifield = li++) != nullptr) {
     if (!Item2CQTerm(ifield, next_term, tmp_table, filter_type)) return CondID(-1);
     if (!and_me_filter) {
       if (is_or_subtree)
-        cq->Or(filter, tmp_table, next_term, common::O_EQ, zero_term);
+        cq->Or(filter, tmp_table, next_term, common::Operator::O_EQ, zero_term);
       else
-        cq->And(filter, tmp_table, next_term, common::O_EQ, zero_term);
+        cq->And(filter, tmp_table, next_term, common::Operator::O_EQ, zero_term);
     } else {
       if (is_or_subtree)
-        cq->Or(*and_me_filter, tmp_table, next_term, common::O_EQ, zero_term);
+        cq->Or(*and_me_filter, tmp_table, next_term, common::Operator::O_EQ, zero_term);
       else
-        cq->And(*and_me_filter, tmp_table, next_term, common::O_EQ, zero_term);
+        cq->And(*and_me_filter, tmp_table, next_term, common::Operator::O_EQ, zero_term);
     }
   }
   if (and_me_filter) filter = *and_me_filter;
@@ -1160,35 +1173,35 @@ Item *Query::FindOutAboutNot(Item *it, bool &is_there_not) {
 CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table, CondType filter_type,
                                             CondID *and_me_filter, bool is_or_subtree, bool negative) {
   CondID filter;
-  common::Operator op; /*{    common::O_EQ, common::O_NOT_EQ, common::O_LESS,
-                     common::O_MORE, common::O_LESS_EQ, common::O_MORE_EQ,
-                     common::O_IS_NULL, common::O_NOT_NULL, common::O_BETWEEN,
-                     common::O_LIKE, common::O_IN, common::O_ESCAPE etc...};*/
+  common::Operator op; /*{    common::Operator::O_EQ, common::Operator::O_NOT_EQ, common::Operator::O_LESS,
+                     common::Operator::O_MORE, common::Operator::O_LESS_EQ, common::Operator::O_MORE_EQ,
+                     common::Operator::O_IS_NULL, common::Operator::O_NOT_NULL, common::Operator::O_BETWEEN,
+                     common::Operator::O_LIKE, common::Operator::O_IN, common::Operator::O_ESCAPE etc...};*/
   char like_esc;
   Item_in_optimizer *in_opt = NULL;  // set if IN expression with subselect
 
   ExtractOperatorType(conds, op, negative, like_esc);
   Item_func *cond_func = (Item_func *)conds;
-  if (op == common::O_MULT_EQUAL_FUNC)
+  if (op == common::Operator::O_MULT_EQUAL_FUNC)
     return ConditionNumberFromMultipleEquality((Item_equal *)conds, tmp_table, filter_type, and_me_filter,
                                                is_or_subtree);
-  else if (op == common::O_NOT_FUNC) {
+  else if (op == common::Operator::O_NOT_FUNC) {
     if (cond_func->arg_count != 1 || dynamic_cast<Item_in_optimizer *>(cond_func->arguments()[0]) == NULL)
       return CondID(-2);
     return ConditionNumberFromComparison(cond_func->arguments()[0], tmp_table, filter_type, and_me_filter,
                                          is_or_subtree, true);
-  } else if (op == common::O_NOT_ALL_FUNC) {
+  } else if (op == common::Operator::O_NOT_ALL_FUNC) {
     if (cond_func->arg_count != 1) return CondID(-1);
     return ConditionNumberFromComparison(cond_func->arguments()[0], tmp_table, filter_type, and_me_filter,
                                          is_or_subtree, dynamic_cast<Item_func_nop_all *>(cond_func) == NULL);
-  } else if (op == common::O_UNKNOWN_FUNC) {
+  } else if (op == common::Operator::O_UNKNOWN_FUNC) {
     in_opt = dynamic_cast<Item_in_optimizer *>(cond_func);
     if (in_opt == NULL || cond_func->arg_count != 2 || in_opt->arguments()[0]->cols() != 1) return CondID(-2);
-    op = common::O_IN;
-  } else if (op == common::O_ERROR)
+    op = common::Operator::O_IN;
+  } else if (op == common::Operator::O_ERROR)
     return CondID(-2);  // unknown function type
 
-  if ((cond_func->arg_count > 3 && op != common::O_IN && op != common::O_NOT_IN))
+  if ((cond_func->arg_count > 3 && op != common::Operator::O_IN && op != common::Operator::O_NOT_IN))
     return CondID(-1);  // argument count error
 
   CQTerm terms[3];
@@ -1198,76 +1211,76 @@ CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table,
   Item **args = cond_func->arguments();
   for (uint i = 0; i < cond_func->arg_count; i++) {
     Item *an_arg = UnRef(args[i]);
-    if ((op == common::O_IN || op == common::O_NOT_IN) && i > 0) {
+    if ((op == common::Operator::O_IN || op == common::Operator::O_NOT_IN) && i > 0) {
       if (i == 1 && in_opt) {
         if (!Item2CQTerm(an_arg, terms[i], tmp_table, filter_type, negative, *in_opt->get_cache(), &op))
           return CondID(-1);
         if (negative) switch (op) {
-            case common::O_EQ:
-              op = common::O_NOT_EQ;
+            case common::Operator::O_EQ:
+              op = common::Operator::O_NOT_EQ;
               break;
-            case common::O_EQ_ALL:
-              op = common::O_NOT_IN;
+            case common::Operator::O_EQ_ALL:
+              op = common::Operator::O_NOT_IN;
               break;
-            case common::O_EQ_ANY:
-              op = common::O_NOT_EQ_ANY;
+            case common::Operator::O_EQ_ANY:
+              op = common::Operator::O_NOT_EQ_ANY;
               break;
-            case common::O_NOT_EQ:
-              op = common::O_EQ;
+            case common::Operator::O_NOT_EQ:
+              op = common::Operator::O_EQ;
               break;
-            case common::O_NOT_EQ_ALL:
-              op = common::O_EQ_ALL;
+            case common::Operator::O_NOT_EQ_ALL:
+              op = common::Operator::O_EQ_ALL;
               break;
-            case common::O_NOT_EQ_ANY:
-              op = common::O_EQ_ANY;
+            case common::Operator::O_NOT_EQ_ANY:
+              op = common::Operator::O_EQ_ANY;
               break;
-            case common::O_LESS_EQ:
-              op = common::O_MORE;
+            case common::Operator::O_LESS_EQ:
+              op = common::Operator::O_MORE;
               break;
-            case common::O_LESS_EQ_ALL:
-              op = common::O_MORE_ALL;
+            case common::Operator::O_LESS_EQ_ALL:
+              op = common::Operator::O_MORE_ALL;
               break;
-            case common::O_LESS_EQ_ANY:
-              op = common::O_MORE_ANY;
+            case common::Operator::O_LESS_EQ_ANY:
+              op = common::Operator::O_MORE_ANY;
               break;
-            case common::O_MORE_EQ:
-              op = common::O_LESS;
+            case common::Operator::O_MORE_EQ:
+              op = common::Operator::O_LESS;
               break;
-            case common::O_MORE_EQ_ALL:
-              op = common::O_LESS_ALL;
+            case common::Operator::O_MORE_EQ_ALL:
+              op = common::Operator::O_LESS_ALL;
               break;
-            case common::O_MORE_EQ_ANY:
-              op = common::O_LESS_ANY;
+            case common::Operator::O_MORE_EQ_ANY:
+              op = common::Operator::O_LESS_ANY;
               break;
-            case common::O_MORE:
-              op = common::O_LESS_EQ;
+            case common::Operator::O_MORE:
+              op = common::Operator::O_LESS_EQ;
               break;
-            case common::O_MORE_ALL:
-              op = common::O_LESS_EQ_ALL;
+            case common::Operator::O_MORE_ALL:
+              op = common::Operator::O_LESS_EQ_ALL;
               break;
-            case common::O_MORE_ANY:
-              op = common::O_LESS_EQ_ANY;
+            case common::Operator::O_MORE_ANY:
+              op = common::Operator::O_LESS_EQ_ANY;
               break;
-            case common::O_LESS:
-              op = common::O_MORE_EQ;
+            case common::Operator::O_LESS:
+              op = common::Operator::O_MORE_EQ;
               break;
-            case common::O_LESS_ALL:
-              op = common::O_MORE_EQ_ALL;
+            case common::Operator::O_LESS_ALL:
+              op = common::Operator::O_MORE_EQ_ALL;
               break;
-            case common::O_LESS_ANY:
-              op = common::O_MORE_EQ_ANY;
+            case common::Operator::O_LESS_ANY:
+              op = common::Operator::O_MORE_EQ_ANY;
               break;
-            case common::O_LIKE:
-              op = common::O_NOT_LIKE;
+            case common::Operator::O_LIKE:
+              op = common::Operator::O_NOT_LIKE;
               break;
-            case common::O_IN:
-              op = common::O_NOT_IN;
+            case common::Operator::O_IN:
+              op = common::Operator::O_NOT_IN;
               break;
-            case common::O_NOT_LIKE:
-              op = common::O_LIKE;
+            case common::Operator::O_NOT_LIKE:
+              op = common::Operator::O_LIKE;
               break;
-            case common::O_NOT_IN:
-              op = common::O_IN;
+            case common::Operator::O_NOT_IN:
+              op = common::Operator::O_IN;
               break;
             default:
               return CondID(-1);
@@ -1283,7 +1296,7 @@ CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table,
       if (!Item2CQTerm(an_arg, terms[i], tmp_table, filter_type,
                        an_arg->type() == Item::SUBSELECT_ITEM ? negative : false, NULL, &op))
         return CondID(-1);
-      if ((op == common::O_LIKE || op == common::O_NOT_LIKE) &&
+      if ((op == common::Operator::O_LIKE || op == common::Operator::O_NOT_LIKE) &&
           !(an_arg->field_type() == MYSQL_TYPE_VARCHAR || an_arg->field_type() == MYSQL_TYPE_STRING ||
             an_arg->field_type() == MYSQL_TYPE_VAR_STRING || an_arg->field_type() == MYSQL_TYPE_BLOB)) {
         return CondID(-1);  // Argument of LIKE is not a string, return to MySQL.
@@ -1291,7 +1304,7 @@ CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table,
     }
   }
 
-  if ((op == common::O_IN || op == common::O_NOT_IN) && !in_opt) {
+  if ((op == common::Operator::O_IN || op == common::Operator::O_NOT_IN) && !in_opt) {
     AttrID vc;
     vc.n = VirtualColumnAlreadyExists(tmp_table, vcs, AttrID(terms[0].vc_id));
     if (vc.n == common::NULL_VALUE_32) {
@@ -1302,8 +1315,8 @@ CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table,
   }
 
   if (!and_me_filter)
-    cq->CreateConds(filter, tmp_table, terms[0], op, terms[1], terms[2], is_or_subtree || filter_type == HAVING_COND,
-                    like_esc);
+    cq->CreateConds(filter, tmp_table, terms[0], op, terms[1], terms[2],
+                    is_or_subtree || filter_type == CondType::HAVING_COND, like_esc);
   else {
     if (is_or_subtree)
       cq->Or(*and_me_filter, tmp_table, terms[0], op, terms[1], terms[2]);
@@ -1340,13 +1353,13 @@ CondID Query::ConditionNumberFromNaked(Item *conds, const TabID &tmp_table, Cond
     tab_id2expression.insert(std::make_pair(tmp_table, std::make_pair(vc.n, mysql_expression)));
   }
   if (!and_me_filter)
-    cq->CreateConds(filter, tmp_table, naked_col, common::O_NOT_EQ, CQTerm(vc.n), CQTerm(),
-                    is_or_subtree || filter_type == HAVING_COND);
+    cq->CreateConds(filter, tmp_table, naked_col, common::Operator::O_NOT_EQ, CQTerm(vc.n), CQTerm(),
+                    is_or_subtree || filter_type == CondType::HAVING_COND);
   else {
     if (is_or_subtree)
-      cq->Or(*and_me_filter, tmp_table, naked_col, common::O_NOT_EQ, CQTerm(vc.n), CQTerm());
+      cq->Or(*and_me_filter, tmp_table, naked_col, common::Operator::O_NOT_EQ, CQTerm(vc.n), CQTerm());
     else
-      cq->And(*and_me_filter, tmp_table, naked_col, common::O_NOT_EQ, CQTerm(vc.n), CQTerm());
+      cq->And(*and_me_filter, tmp_table, naked_col, common::Operator::O_NOT_EQ, CQTerm(vc.n), CQTerm());
     filter = *and_me_filter;
   }
   return filter;
@@ -1420,7 +1433,7 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
         while ((item = li++) != nullptr) {
           if (is_transformed[item] == true) continue;
           create_or_subtree = true;
-          CondID res = ConditionNumber(item, tmp_table, filter_type, or_cond.get(), true /*OR_SUBTREE*/);
+          CondID res = ConditionNumber(item, tmp_table, filter_type, or_cond.get(), true /*CondType::OR_SUBTREE*/);
           if (res.IsInvalid()) return res;
           if (!or_cond) or_cond.reset(new CondID(res.n));
         }
@@ -1438,30 +1451,30 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
             terms[1] = CQTerm(vc.n);
             if (!or_cond) {
               if (and_me_filter && !create_or_subtree) {
-                cq->And(*and_me_filter, tmp_table, terms[0], common::O_IN, terms[1], CQTerm());
+                cq->And(*and_me_filter, tmp_table, terms[0], common::Operator::O_IN, terms[1], CQTerm());
                 c_id = *and_me_filter;
                 and_me_filter = NULL;
               } else
-                cq->CreateConds(c_id, tmp_table, terms[0], common::O_IN, terms[1], CQTerm(),
-                                create_or_subtree || filter_type == HAVING_COND);
+                cq->CreateConds(c_id, tmp_table, terms[0], common::Operator::O_IN, terms[1], CQTerm(),
+                                create_or_subtree || filter_type == CondType::HAVING_COND);
               or_cond.reset(new CondID(c_id.n));
             } else {
-              cq->Or(*or_cond, tmp_table, terms[0], common::O_IN, terms[1], CQTerm());
+              cq->Or(*or_cond, tmp_table, terms[0], common::Operator::O_IN, terms[1], CQTerm());
               c_id = *or_cond;
             }
           } else {
             terms[1] = CQTerm(vcv[0]);
             if (!or_cond) {
               if (and_me_filter && !create_or_subtree) {
-                cq->And(*and_me_filter, tmp_table, terms[0], common::O_EQ, terms[1], CQTerm());
+                cq->And(*and_me_filter, tmp_table, terms[0], common::Operator::O_EQ, terms[1], CQTerm());
                 c_id = *and_me_filter;
                 and_me_filter = NULL;
               } else
-                cq->CreateConds(c_id, tmp_table, terms[0], common::O_EQ, terms[1], CQTerm(),
-                                create_or_subtree || filter_type == HAVING_COND);
+                cq->CreateConds(c_id, tmp_table, terms[0], common::Operator::O_EQ, terms[1], CQTerm(),
+                                create_or_subtree || filter_type == CondType::HAVING_COND);
               or_cond.reset(new CondID(c_id.n));
             } else {
-              cq->Or(*or_cond, tmp_table, terms[0], common::O_EQ, terms[1], CQTerm());
+              cq->Or(*or_cond, tmp_table, terms[0], common::Operator::O_EQ, terms[1], CQTerm());
               c_id = *or_cond;
             }
           }
@@ -1474,8 +1487,8 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
           cq->And(*and_me_filter, tmp_table, cond_id);
         else if (and_me_filter && is_or_subtree)
           cq->Or(*and_me_filter, tmp_table, cond_id);
-        else if (filter_type != HAVING_COND && create_or_subtree && !is_or_subtree)
-          cq->CreateConds(cond_id, tmp_table, cond_id, create_or_subtree || filter_type == HAVING_COND);
+        else if (filter_type != CondType::HAVING_COND && create_or_subtree && !is_or_subtree)
+          cq->CreateConds(cond_id, tmp_table, cond_id, create_or_subtree || filter_type == CondType::HAVING_COND);
         break;
       }
       case Item_func::XOR_FUNC:  // we don't handle xor as yet
@@ -1492,13 +1505,13 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
       CQTerm term;
       if (!Item2CQTerm(arg, term, tmp_table, filter_type)) return CondID(-1);
       if (!and_me_filter)
-        cq->CreateConds(cond_id, tmp_table, term, common::O_NOT_EXISTS, CQTerm(), CQTerm(),
-                        is_or_subtree || filter_type == HAVING_COND);
+        cq->CreateConds(cond_id, tmp_table, term, common::Operator::O_NOT_EXISTS, CQTerm(), CQTerm(),
+                        is_or_subtree || filter_type == CondType::HAVING_COND);
       else {
         if (is_or_subtree)
-          cq->Or(*and_me_filter, tmp_table, term, common::O_NOT_EXISTS, CQTerm(), CQTerm());
+          cq->Or(*and_me_filter, tmp_table, term, common::Operator::O_NOT_EXISTS, CQTerm(), CQTerm());
         else
-          cq->And(*and_me_filter, tmp_table, term, common::O_NOT_EXISTS, CQTerm(), CQTerm());
+          cq->And(*and_me_filter, tmp_table, term, common::Operator::O_NOT_EXISTS, CQTerm(), CQTerm());
         cond_id = *and_me_filter;
       }
     } else if (func_type == Item_func::XOR_FUNC) {
@@ -1513,13 +1526,13 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
     CQTerm term;
     if (!Item2CQTerm(conds, term, tmp_table, filter_type)) return CondID(-1);
     if (!and_me_filter) {
-      cq->CreateConds(cond_id, tmp_table, term, common::O_EXISTS, CQTerm(), CQTerm(),
-                      is_or_subtree || filter_type == HAVING_COND);
+      cq->CreateConds(cond_id, tmp_table, term, common::Operator::O_EXISTS, CQTerm(), CQTerm(),
+                      is_or_subtree || filter_type == CondType::HAVING_COND);
     } else {
       if (is_or_subtree)
-        cq->Or(*and_me_filter, tmp_table, term, common::O_EXISTS, CQTerm(), CQTerm());
+        cq->Or(*and_me_filter, tmp_table, term, common::Operator::O_EXISTS, CQTerm(), CQTerm());
       else
-        cq->And(*and_me_filter, tmp_table, term, common::O_EXISTS, CQTerm(), CQTerm());
+        cq->And(*and_me_filter, tmp_table, term, common::Operator::O_EXISTS, CQTerm(), CQTerm());
       cond_id = *and_me_filter;
     }
   } else if (cond_type == Item::FIELD_ITEM || cond_type == Item::SUM_FUNC_ITEM || cond_type == Item::SUBSELECT_ITEM ||
@@ -1536,7 +1549,7 @@ int Query::BuildConditions(Item *conds, CondID &cond_id, CompiledQuery *cq, cons
   PrintItemTree("BuildFiler(), item tree passed in 'conds':", conds);
   if (is_zero_result) {
     CondID fi;
-    cq->CreateConds(fi, tmp_table, CQTerm(), common::O_FALSE, CQTerm(), CQTerm(), false);
+    cq->CreateConds(fi, tmp_table, CQTerm(), common::Operator::O_FALSE, CQTerm(), CQTerm(), false);
     cond_id = fi;
     return RCBASE_QUERY_ROUTE;
   }
@@ -1551,7 +1564,7 @@ int Query::BuildConditions(Item *conds, CondID &cond_id, CompiledQuery *cq, cons
   CondID res = ConditionNumber(conds, tmp_table, filter_type);
   if (res.IsInvalid()) return RETURN_QUERY_TO_MYSQL_ROUTE;
 
-  if (filter_type == HAVING_COND) {
+  if (filter_type == CondType::HAVING_COND) {
     cq->CreateConds(res, tmp_table, res, false);
   }
 
@@ -1658,22 +1671,22 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
   // set the operation type
   switch (((Item_func *)cond_removed)->functype()) {
     case Item_func::EQ_FUNC:
-      oper_for_subselect = common::O_IN; /*common::Operator::common::O_IN;*/
+      oper_for_subselect = common::Operator::O_IN; /*common::Operator::common::Operator::O_IN;*/
       break;
     case Item_func::NE_FUNC:
-      oper_for_subselect = common::O_NOT_EQ;
+      oper_for_subselect = common::Operator::O_NOT_EQ;
       break;
     case Item_func::LT_FUNC:
-      oper_for_subselect = common::O_LESS;
+      oper_for_subselect = common::Operator::O_LESS;
       break;
     case Item_func::LE_FUNC:
-      oper_for_subselect = common::O_LESS_EQ;
+      oper_for_subselect = common::Operator::O_LESS_EQ;
       break;
     case Item_func::GT_FUNC:
-      oper_for_subselect = common::O_MORE;
+      oper_for_subselect = common::Operator::O_MORE;
       break;
     case Item_func::GE_FUNC:
-      oper_for_subselect = common::O_MORE_EQ;
+      oper_for_subselect = common::Operator::O_MORE_EQ;
       break;
     default:
       return false;
@@ -1784,10 +1797,12 @@ int Query::BuildCondsIfPossible(Item *conds, CondID &cond_id, const TabID &tmp_t
   conds = UnRef(conds);
   if (conds) {
     CondType filter_type =
-        (join_type == JO_LEFT ? ON_LEFT_FILTER : (join_type == JO_RIGHT ? ON_RIGHT_FILTER : ON_INNER_FILTER));
+        (join_type == JoinType::JO_LEFT
+             ? CondType::ON_LEFT_FILTER
+             : (join_type == JoinType::JO_RIGHT ? CondType::ON_RIGHT_FILTER : CondType::ON_INNER_FILTER));
     // in case of Right join MySQL changes order of tables. Right must be
     // switched back to left!
-    if (filter_type == ON_RIGHT_FILTER) filter_type = ON_LEFT_FILTER;
+    if (filter_type == CondType::ON_RIGHT_FILTER) filter_type = CondType::ON_LEFT_FILTER;
     DEBUG_ASSERT(PrefixCheck(conds) != TABLE_YET_UNSEEN_INVOLVED &&
                  "Table not yet seen was involved in this condition");
 

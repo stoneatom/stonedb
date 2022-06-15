@@ -32,7 +32,7 @@ TwoDimensionalJoiner::TwoDimensionalJoiner(MultiIndex *_mind,  // multi-index to
     : tips(_tips), m_conn(current_tx) {
   mind = _mind;
   table = _table;
-  why_failed = NOT_FAILED;
+  why_failed = JoinFailure::NOT_FAILED;
 }
 
 TwoDimensionalJoiner::~TwoDimensionalJoiner() {
@@ -40,41 +40,42 @@ TwoDimensionalJoiner::~TwoDimensionalJoiner() {
 }
 
 JoinAlgType TwoDimensionalJoiner::ChooseJoinAlgorithm([[maybe_unused]] MultiIndex &mind, Condition &cond) {
-  JoinAlgType join_alg = JTYPE_GENERAL;
+  JoinAlgType join_alg = JoinAlgType::JTYPE_GENERAL;
 
-  if (cond[0].IsType_JoinSimple() && cond[0].op == common::O_EQ) {
+  if (cond[0].IsType_JoinSimple() && cond[0].op == common::Operator::O_EQ) {
     if ((cond.Size() == 1) && !stonedb_sysvar_force_hashjoin)
-      join_alg = JTYPE_MAP;  // available types checked inside
+      join_alg = JoinAlgType::JTYPE_MAP;  // available types checked inside
     else
-      join_alg = JTYPE_HASH;
+      join_alg = JoinAlgType::JTYPE_HASH;
   } else {
-    if (cond[0].IsType_JoinSimple() && (cond[0].op == common::O_MORE_EQ || cond[0].op == common::O_MORE ||
-                                        cond[0].op == common::O_LESS_EQ || cond[0].op == common::O_LESS))
-      join_alg = JTYPE_SORT;
+    if (cond[0].IsType_JoinSimple() &&
+        (cond[0].op == common::Operator::O_MORE_EQ || cond[0].op == common::Operator::O_MORE ||
+         cond[0].op == common::Operator::O_LESS_EQ || cond[0].op == common::Operator::O_LESS))
+      join_alg = JoinAlgType::JTYPE_SORT;
   }
   return join_alg;
 }
 
 JoinAlgType TwoDimensionalJoiner::ChooseJoinAlgorithm(JoinFailure join_result, JoinAlgType prev_type,
                                                       [[maybe_unused]] size_t desc_size) {
-  if (join_result == FAIL_1N_TOO_HARD) return JTYPE_HASH;
-  if (join_result == FAIL_WRONG_SIDES) return prev_type;
+  if (join_result == JoinFailure::FAIL_1N_TOO_HARD) return JoinAlgType::JTYPE_HASH;
+  if (join_result == JoinFailure::FAIL_WRONG_SIDES) return prev_type;
   // the easiest strategy: in case of any problems, use general joiner
-  return JTYPE_GENERAL;
+  return JoinAlgType::JTYPE_GENERAL;
 }
 
 std::unique_ptr<TwoDimensionalJoiner> TwoDimensionalJoiner::CreateJoiner(JoinAlgType join_alg_type, MultiIndex &mind,
                                                                          JoinTips &tips, TempTable *table) {
   switch (join_alg_type) {
-    case JTYPE_HASH:
+    case JoinAlgType::JTYPE_HASH:
       return CreateHashJoiner(&mind, table, tips);
-    case JTYPE_SORT:
+    case JoinAlgType::JTYPE_SORT:
       return std::unique_ptr<TwoDimensionalJoiner>(new JoinerSort(&mind, table, tips));
-    case JTYPE_MAP:
+    case JoinAlgType::JTYPE_MAP:
       return std::unique_ptr<TwoDimensionalJoiner>(stonedb_sysvar_parallel_mapjoin
                                                        ? (new JoinerParallelMapped(&mind, table, tips))
                                                        : (new JoinerMapped(&mind, table, tips)));
-    case JTYPE_GENERAL:
+    case JoinAlgType::JTYPE_GENERAL:
       return std::unique_ptr<TwoDimensionalJoiner>(new JoinerGeneral(&mind, table, tips));
     default:
       STONEDB_ERROR("Join algorithm not implemented");

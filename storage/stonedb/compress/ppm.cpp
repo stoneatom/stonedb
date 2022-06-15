@@ -30,13 +30,13 @@ FILE *PPM::dump = NULL;
 bool PPM::printstat = false;
 
 PPM::PPM(const Symb *data, int dlen, ModelType mt, PPMParam param, uchar method) {
-  if ((data == NULL) || (dlen <= 0) || (mt == ModelNull)) return;
+  if ((data == NULL) || (dlen <= 0) || (mt == ModelType::ModelNull)) return;
 
   switch (mt) {
-    case ModelSufTree:
+    case ModelType::ModelSufTree:
       model.reset(new SuffixTree<>(data, dlen));
       break;
-    case ModelWordGraph:
+    case ModelType::ModelWordGraph:
       model.reset(new WordGraph(data, dlen, method == 2));
       break;
     default:
@@ -54,11 +54,11 @@ CprsErr PPM::CompressArith(char *dest, int &dlen, Symb *src, int slen) {
 
   // null PPM model
   if (!model) {
-    if (dlen < slen + 1) return CPRS_ERR_BUF;
+    if (dlen < slen + 1) return CprsErr::CPRS_ERR_BUF;
     dest[0] = 0;  // method: no compression
     std::memcpy(dest + 1, src, slen);
     dlen = slen + 1;
-    return CPRS_SUCCESS;
+    return CprsErr::CPRS_SUCCESS;
   }
   WordGraph *wg = NULL;
   try {
@@ -149,23 +149,23 @@ CprsErr PPM::CompressArith(char *dest, int &dlen, Symb *src, int slen) {
     std::memcpy(dest + 1, src, slen);
     clen = slen + 1;
   } else if (overflow)
-    return CPRS_ERR_BUF;
+    return CprsErr::CPRS_ERR_BUF;
 
   dlen = clen;
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 CprsErr PPM::DecompressArith(Symb *dest, int dlen, char *src, int slen) {
-  // if(slen < 1) return CPRS_ERR_BUF;
+  // if(slen < 1) return CprsErr::CPRS_ERR_BUF;
   // uchar method = (uchar) src[0];
   //
   //// are the data simply copied, without compression?
   // if(method == 0) {
-  //	if(dlen != slen - 1) return CPRS_ERR_PAR;
+  //	if(dlen != slen - 1) return CprsErr::CPRS_ERR_PAR;
   //	std::memcpy(dest, src + 1, dlen);
-  //	return CPRS_SUCCESS;
+  //	return CprsErr::CPRS_SUCCESS;
   //}
-  // if(method != 1) return CPRS_ERR_VER;
+  // if(method != 1) return CprsErr::CPRS_ERR_VER;
 
   WordGraph *wg = NULL;
   try {
@@ -198,7 +198,7 @@ CprsErr PPM::DecompressArith(Symb *dest, int dlen, char *src, int slen) {
 
       len = dlen - i;
       err = model->Move(c, dest + i, len, rng);
-      if (err) return err;
+      if (static_cast<int>(err)) return err;
       i += len;
 
       // model->FindEdgeC(stt, edge, c);
@@ -214,17 +214,17 @@ CprsErr PPM::DecompressArith(Symb *dest, int dlen, char *src, int slen) {
 
       // len = dlen - i;
       // err = model->GetLabel(stt, edge, dest + i, len);
-      // if(err)
+      // if(static_cast<int>(err))
       //	return err;
       // i += len;
 
       // model->Move(stt, edge);
     }
   } catch (ErrBufOverrun &) {
-    return CPRS_ERR_BUF;
+    return CprsErr::CPRS_ERR_BUF;
   }
 
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 CprsErr PPM::Compress(char *dest, int &dlen, Symb *src, int slen) {
@@ -232,18 +232,18 @@ CprsErr PPM::Compress(char *dest, int &dlen, Symb *src, int slen) {
 
   // null PPM model
   if (!model) {
-    if (dlen < slen + 1) return CPRS_ERR_BUF;
+    if (dlen < slen + 1) return CprsErr::CPRS_ERR_BUF;
     dest[0] = 0;  // method: no compression
     std::memcpy(dest + 1, src, slen);
     dlen = slen + 1;
-    return CPRS_SUCCESS;
+    return CprsErr::CPRS_SUCCESS;
   }
   // try {
   //	WordGraph* wg = dynamic_cast<WordGraph*>(model);
   //	if(wg) wg->insatend = true;
   //} catch(...){}
 
-  if (dlen < 1) return CPRS_ERR_BUF;
+  if (dlen < 1) return CprsErr::CPRS_ERR_BUF;
   dest[0] = 2;  // compression method: with RangeCoder
 
   WordGraph *wg = NULL;
@@ -278,7 +278,7 @@ CprsErr PPM::Compress(char *dest, int &dlen, Symb *src, int slen) {
     coder.EndCompress();
     clen = 1 + (int)coder.GetPos();
   } catch (CprsErr &e) {
-    if (e == CPRS_ERR_BUF)
+    if (e == CprsErr::CPRS_ERR_BUF)
       overflow = true;
     else
       throw;
@@ -291,24 +291,24 @@ CprsErr PPM::Compress(char *dest, int &dlen, Symb *src, int slen) {
     std::memcpy(dest + 1, src, slen);
     clen = slen + 1;
   } else if (overflow)
-    return CPRS_ERR_BUF;
+    return CprsErr::CPRS_ERR_BUF;
 
   dlen = clen;
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 CprsErr PPM::Decompress(Symb *dest, int dlen, char *src, int slen) {
-  if (slen < 1) return CPRS_ERR_BUF;
+  if (slen < 1) return CprsErr::CPRS_ERR_BUF;
   uchar method = (uchar)src[0];
 
   // are the data simply copied, without compression?
   if (method == 0) {
-    if (dlen != slen - 1) return CPRS_ERR_PAR;
+    if (dlen != slen - 1) return CprsErr::CPRS_ERR_PAR;
     std::memcpy(dest, src + 1, dlen);
-    return CPRS_SUCCESS;
+    return CprsErr::CPRS_SUCCESS;
   } else if (method == 1)
     return DecompressArith(dest, dlen, src, slen);
-  if (method != 2) return CPRS_ERR_VER;
+  if (method != 2) return CprsErr::CPRS_ERR_VER;
 
   WordGraph *wg = NULL;
   try {
@@ -336,7 +336,7 @@ CprsErr PPM::Decompress(Symb *dest, int dlen, char *src, int slen) {
 
       len = dlen - i;
       err = model->Move(c, dest + i, len, rng);
-      if (err) return err;
+      if (static_cast<int>(err)) return err;
       i += len;
 
       coder.Decode(rng.low, rng.high - rng.low, total);
@@ -344,9 +344,9 @@ CprsErr PPM::Decompress(Symb *dest, int dlen, char *src, int slen) {
   } catch (CprsErr &e) {
     return e;
   }
-  // catch(BufOverException) { return CPRS_ERR_BUF; }
+  // catch(BufOverException) { return CprsErr::CPRS_ERR_BUF; }
 
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 void PPM::PrintInfo(std::ostream &str) { str << "No. of all nodes in the model: " << model->GetNNodes() << std::endl; }

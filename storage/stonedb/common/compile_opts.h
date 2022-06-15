@@ -12,7 +12,7 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335  USA 
+   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335  USA
 */
 
 #ifndef STONEDB_COMMON_COMPILE_OPTS_H_
@@ -21,7 +21,7 @@
 namespace stonedb {
 
 #ifdef __clang__
-//in clang
+// in clang
 #elif __GNUC__
 //
 //__GNUC__              // major
@@ -32,13 +32,13 @@ namespace stonedb {
 #if (__GNUC__ > 4 && __GUNC__ < 7) || (__GNUC__ == 4 && __GNUC_MINOR__ > 2)
 // C++0x features are only enabled when -std=c++0x or -std=gnu++0x are
 // passed on the command line, which in turn defines
-// __GXX_EXPERIMENTAL_CXX0X__. 
-   #define STONEDB_UNUSED [[gnu::unused]]
+// __GXX_EXPERIMENTAL_CXX0X__.
+#define STONEDB_UNUSED [[gnu::unused]]
 #elif __GNUC__ > 7
-   //support in c++17
-   #define  STONEDB__UNUSED [[maybe_unused]]
-#else 
-   #define STONEDB_UNUSED __attribute__((unused))
+// support in c++17
+#define STONEDB__UNUSED [[maybe_unused]]
+#else
+#define STONEDB_UNUSED __attribute__((unused))
 #endif
 #elif _MSC_VER
 /*usually has the version number in _MSC_VER*/
@@ -49,4 +49,4 @@ namespace stonedb {
 
 }  // namespace stonedb
 
-#endif //  STONEDB_COMMON_COMPILE_OPTS_H_
+#endif  //  STONEDB_COMMON_COMPILE_OPTS_H_

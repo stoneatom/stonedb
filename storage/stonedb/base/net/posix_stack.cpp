@@ -443,13 +443,18 @@ class posix_udp_channel : public udp_channel_impl {
 
 future<> posix_udp_channel::send(ipv4_addr dst, const char *message) {
   auto len = strlen(message);
-  return _fd->sendto(make_ipv4_address(dst), message, len).then([len](size_t size STONEDB_UNUSED) { assert(size == len);});
+  return _fd->sendto(make_ipv4_address(dst), message, len).then([len](size_t size STONEDB_UNUSED) {
+    assert(size == len);
+  });
 }
 
 future<> posix_udp_channel::send(ipv4_addr dst, packet p) {
   auto len = p.len();
   _send.prepare(dst, std::move(p));
-  return _fd->sendmsg(&_send._hdr).then([len](size_t size) { assert(size == len); (void)size;});
+  return _fd->sendmsg(&_send._hdr).then([len](size_t size) {
+    assert(size == len);
+    (void)size;
+  });
 }
 
 udp_channel posix_network_stack::make_udp_channel(ipv4_addr addr) {

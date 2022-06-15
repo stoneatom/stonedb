@@ -625,7 +625,7 @@ inline typename MakeUnsigned<Int>::Type to_unsigned(Int value) {
 
 // The number of characters to store in the MemoryBuffer object itself
 // to avoid dynamic memory allocation.
-enum { INLINE_BUFFER_SIZE = 500 };
+enum class enumInlineBuffer { INLINE_BUFFER_SIZE = 500 };
 
 #if FMT_SECURE_SCL
 // Use checked iterator to avoid warnings on MSVC.
@@ -802,7 +802,7 @@ template <typename Char>
 class BasicCharTraits {
  public:
 #if FMT_SECURE_SCL
-  using CharPtr = stdext::checked_array_iterator<Char *> ;
+  using CharPtr = stdext::checked_array_iterator<Char *>;
 #else
   typedef Char *CharPtr;
 #endif
@@ -892,7 +892,7 @@ template <typename T>
 struct IntTraits {
   // Smallest of uint32_t and uint64_t that is large enough to represent
   // all values of T.
-  using MainType = typename TypeSelector<std::numeric_limits<T>::digits <= 32>::Type ;
+  using MainType = typename TypeSelector<std::numeric_limits<T>::digits <= 32>::Type;
 };
 
 FMT_API void report_unknown_type(char code, const char *type);
@@ -1018,7 +1018,7 @@ inline void format_decimal(Char *buffer, UInt value, unsigned num_digits) {
 // It is only provided for Windows since other systems support UTF-8 natively.
 class UTF8ToUTF16 {
  private:
-  MemoryBuffer<wchar_t, INLINE_BUFFER_SIZE> buffer_;
+  MemoryBuffer<wchar_t, static_cast<size_t>(enumInlineBuffer::INLINE_BUFFER_SIZE)> buffer_;
 
  public:
   FMT_API explicit UTF8ToUTF16(StringRef s);
@@ -1032,7 +1032,7 @@ class UTF8ToUTF16 {
 // It is only provided for Windows since other systems support UTF-8 natively.
 class UTF16ToUTF8 {
  private:
-  MemoryBuffer<char, INLINE_BUFFER_SIZE> buffer_;
+  MemoryBuffer<char, static_cast<size_t>(enumInlineBuffer::INLINE_BUFFER_SIZE)> buffer_;
 
  public:
   UTF16ToUTF8() {}
@@ -1080,7 +1080,7 @@ struct Value {
     CustomValue custom;
   };
 
-  enum Type {
+  enum class Type {
     NONE,
     NAMED_ARG,
     // Integer types should go first,
@@ -1304,15 +1304,15 @@ class MakeValue : public Arg {
 
 #define FMT_MAKE_VALUE_(Type, field, TYPE, rhs) \
   MakeValue(Type value) { field = rhs; }        \
-  static uint64_t type(Type) { return Arg::TYPE; }
+  static uint64_t type(Type) { return static_cast<uint64_t>(TYPE); }
 
 #define FMT_MAKE_VALUE(Type, field, TYPE) FMT_MAKE_VALUE_(Type, field, TYPE, value)
 
-  FMT_MAKE_VALUE(bool, int_value, BOOL)
-  FMT_MAKE_VALUE(short, int_value, INT)
-  FMT_MAKE_VALUE(unsigned short, uint_value, UINT)
-  FMT_MAKE_VALUE(int, int_value, INT)
-  FMT_MAKE_VALUE(unsigned, uint_value, UINT)
+  FMT_MAKE_VALUE(bool, int_value, Arg::Type::BOOL)
+  FMT_MAKE_VALUE(short, int_value, Arg::Type::INT)
+  FMT_MAKE_VALUE(unsigned short, uint_value, Arg::Type::UINT)
+  FMT_MAKE_VALUE(int, int_value, Arg::Type::INT)
+  FMT_MAKE_VALUE(unsigned, uint_value, Arg::Type::UINT)
 
   MakeValue(long value) {
     // To minimize the number of types we need to deal with, long is
@@ -1322,7 +1322,10 @@ class MakeValue : public Arg {
     else
       long_long_value = value;
   }
-  static uint64_t type(long) { return sizeof(long) == sizeof(int) ? Arg::INT : Arg::LONG_LONG; }
+  static uint64_t type(long) {
+    return sizeof(long) == sizeof(int) ? static_cast<uint64_t>(Arg::Type::INT)
+                                       : static_cast<uint64_t>(Arg::Type::LONG_LONG);
+  }
 
   MakeValue(unsigned long value) {
     if (const_check(sizeof(unsigned long) == sizeof(unsigned)))
@@ -1331,48 +1334,52 @@ class MakeValue : public Arg {
       ulong_long_value = value;
   }
   static uint64_t type(unsigned long) {
-    return sizeof(unsigned long) == sizeof(unsigned) ? Arg::UINT : Arg::ULONG_LONG;
+    return sizeof(unsigned long) == sizeof(unsigned) ? static_cast<uint64_t>(Arg::Type::UINT)
+                                                     : static_cast<uint64_t>(Arg::Type::ULONG_LONG);
   }
 
-  FMT_MAKE_VALUE(LongLong, long_long_value, LONG_LONG)
-  FMT_MAKE_VALUE(ULongLong, ulong_long_value, ULONG_LONG)
-  FMT_MAKE_VALUE(float, double_value, DOUBLE)
-  FMT_MAKE_VALUE(double, double_value, DOUBLE)
-  FMT_MAKE_VALUE(long double, long_double_value, LONG_DOUBLE)
-  FMT_MAKE_VALUE(signed char, int_value, INT)
-  FMT_MAKE_VALUE(unsigned char, uint_value, UINT)
-  FMT_MAKE_VALUE(char, int_value, CHAR)
+  FMT_MAKE_VALUE(LongLong, long_long_value, Arg::Type::LONG_LONG)
+  FMT_MAKE_VALUE(ULongLong, ulong_long_value, Arg::Type::ULONG_LONG)
+  FMT_MAKE_VALUE(float, double_value, Arg::Type::DOUBLE)
+  FMT_MAKE_VALUE(double, double_value, Arg::Type::DOUBLE)
+  FMT_MAKE_VALUE(long double, long_double_value, Arg::Type::LONG_DOUBLE)
+  FMT_MAKE_VALUE(signed char, int_value, Arg::Type::INT)
+  FMT_MAKE_VALUE(unsigned char, uint_value, Arg::Type::UINT)
+  FMT_MAKE_VALUE(char, int_value, Arg::Type::CHAR)
 
 #if !defined(_MSC_VER) || defined(_NATIVE_WCHAR_T_DEFINED)
   MakeValue(typename WCharHelper<wchar_t, Char>::Supported value) { int_value = value; }
-  static uint64_t type(wchar_t) { return Arg::CHAR; }
+  static uint64_t type(wchar_t) { return static_cast<uint64_t>(Arg::Type::CHAR);
+  }
 #endif
 
 #define FMT_MAKE_STR_VALUE(Type, TYPE)         \
   MakeValue(Type value) { set_string(value); } \
-  static uint64_t type(Type) { return Arg::TYPE; }
+  static uint64_t type(Type) { return static_cast<uint64_t>(TYPE); \
+  }
 
-  FMT_MAKE_VALUE(char *, string.value, CSTRING)
-  FMT_MAKE_VALUE(const char *, string.value, CSTRING)
-  FMT_MAKE_VALUE(signed char *, sstring.value, CSTRING)
-  FMT_MAKE_VALUE(const signed char *, sstring.value, CSTRING)
-  FMT_MAKE_VALUE(unsigned char *, ustring.value, CSTRING)
-  FMT_MAKE_VALUE(const unsigned char *, ustring.value, CSTRING)
-  FMT_MAKE_STR_VALUE(const std::string &, STRING)
-  FMT_MAKE_STR_VALUE(StringRef, STRING)
-  FMT_MAKE_VALUE_(CStringRef, string.value, CSTRING, value.c_str())
+  FMT_MAKE_VALUE(char *, string.value, Arg::Type::CSTRING)
+  FMT_MAKE_VALUE(const char *, string.value, Arg::Type::CSTRING)
+  FMT_MAKE_VALUE(signed char *, sstring.value, Arg::Type::CSTRING)
+  FMT_MAKE_VALUE(const signed char *, sstring.value, Arg::Type::CSTRING)
+  FMT_MAKE_VALUE(unsigned char *, ustring.value, Arg::Type::CSTRING)
+  FMT_MAKE_VALUE(const unsigned char *, ustring.value, Arg::Type::CSTRING)
+  FMT_MAKE_STR_VALUE(const std::string &, Arg::Type::STRING)
+  FMT_MAKE_STR_VALUE(StringRef, Arg::Type::STRING)
+  FMT_MAKE_VALUE_(CStringRef, string.value, Arg::Type::CSTRING, value.c_str())
 
 #define FMT_MAKE_WSTR_VALUE(Type, TYPE)                                               \
   MakeValue(typename WCharHelper<Type, Char>::Supported value) { set_string(value); } \
-  static uint64_t type(Type) { return Arg::TYPE; }
+  static uint64_t type(Type) { return static_cast<uint64_t>(TYPE);                     \
+  }
 
-  FMT_MAKE_WSTR_VALUE(wchar_t *, WSTRING)
-  FMT_MAKE_WSTR_VALUE(const wchar_t *, WSTRING)
-  FMT_MAKE_WSTR_VALUE(const std::wstring &, WSTRING)
-  FMT_MAKE_WSTR_VALUE(WStringRef, WSTRING)
+  FMT_MAKE_WSTR_VALUE(wchar_t *, Arg::Type::WSTRING)
+  FMT_MAKE_WSTR_VALUE(const wchar_t *, Arg::Type::WSTRING)
+  FMT_MAKE_WSTR_VALUE(const std::wstring &, Arg::Type::WSTRING)
+  FMT_MAKE_WSTR_VALUE(WStringRef, Arg::Type::WSTRING)
 
-  FMT_MAKE_VALUE(void *, pointer, POINTER)
-  FMT_MAKE_VALUE(const void *, pointer, POINTER)
+  FMT_MAKE_VALUE(void *, pointer, Arg::Type::POINTER)
+  FMT_MAKE_VALUE(const void *, pointer, Arg::Type::POINTER)
 
   template <typename T>
   MakeValue(const T &value, typename EnableIf<Not<ConvertToInt<T>::value>::value, int>::type = 0) {
@@ -1382,7 +1389,7 @@ class MakeValue : public Arg {
 
   template <typename T>
   static typename EnableIf<Not<ConvertToInt<T>::value>::value, uint64_t>::type type(const T &) {
-    return Arg::CUSTOM;
+    return static_cast<uint64_t>(Arg::Type::CUSTOM);
   }
 
   // Additional template param `Char_` is needed here because make_type always
@@ -1398,18 +1405,18 @@ class MakeValue : public Arg {
 
   template <typename Char_>
   static uint64_t type(const NamedArg<Char_> &) {
-    return Arg::NAMED_ARG;
+    return static_cast<uint64_t>(Arg::Type::NAMED_ARG);
   }
   template <typename Char_, typename T>
   static uint64_t type(const NamedArgWithType<Char_, T> &) {
-    return Arg::NAMED_ARG;
+    return static_cast<uint64_t>(Arg::Type::NAMED_ARG);
   }
 };
 
 template <typename Formatter>
 class MakeArg : public Arg {
  public:
-  MakeArg() { type = Arg::NONE; }
+  MakeArg() { type = Arg::Type::NONE; }
 
   template <typename T>
   MakeArg(const T &value) : Arg(MakeValue<Formatter>(value)) {
@@ -1444,15 +1451,19 @@ class ArgMap;
 /** An argument list. */
 class ArgList {
  private:
-  // To reduce compiled code size per formatting function call, types of first
-  // MAX_PACKED_ARGS arguments are passed in the types_ field.
+  /*
+        To reduce compiled code size per formatting function call, types of first
+        MAX_PACKED_ARGS arguments are passed in the types_ field.
+  */
   uint64_t types_;
   union {
-    // If the number of arguments is less than MAX_PACKED_ARGS, the argument
-    // values are stored in values_, otherwise they are stored in args_.
-    // This is done to reduce compiled code size as storing larger objects
-    // may require more code (at least on x86-64) even if the same amount of
-    // data is actually copied to stack. It saves ~10% on the bloat test.
+    /*
+           If the number of arguments is less than MAX_PACKED_ARGS, the argument
+           values are stored in values_, otherwise they are stored in args_.
+           This is done to reduce compiled code size as storing larger objects
+           may require more code (at least on x86-64) even if the same amount of
+           data is actually copied to stack. It saves ~10% on the bloat test.
+   */
     const internal::Value *values_;
     const internal::Arg *args_;
   };
@@ -1464,7 +1475,7 @@ class ArgList {
 
  public:
   // Maximum number of arguments with packed types.
-  enum { MAX_PACKED_ARGS = 16 };
+  enum class enumMaxPacked { MAX_PACKED_ARGS = 16 };
 
   ArgList() : types_(0) {}
 
@@ -1477,22 +1488,22 @@ class ArgList {
   internal::Arg operator[](unsigned index) const {
     using internal::Arg;
     Arg arg;
-    bool use_values = type(MAX_PACKED_ARGS - 1) == Arg::NONE;
-    if (index < MAX_PACKED_ARGS) {
+    bool use_values = type(static_cast<unsigned>(enumMaxPacked::MAX_PACKED_ARGS) - 1) == Arg::Type::NONE;
+    if (index < static_cast<unsigned>(enumMaxPacked::MAX_PACKED_ARGS)) {
       Arg::Type arg_type = type(index);
       internal::Value &val = arg;
-      if (arg_type != Arg::NONE) val = use_values ? values_[index] : args_[index];
+      if (arg_type != Arg::Type::NONE) val = use_values ? values_[index] : args_[index];
       arg.type = arg_type;
       return arg;
     }
     if (use_values) {
       // The index is greater than the number of arguments that can be stored
       // in values, so return a "none" argument.
-      arg.type = Arg::NONE;
+      arg.type = Arg::Type::NONE;
       return arg;
     }
-    for (unsigned i = MAX_PACKED_ARGS; i <= index; ++i) {
-      if (args_[i].type == Arg::NONE) return args_[i];
+    for (unsigned i = static_cast<unsigned>(enumMaxPacked::MAX_PACKED_ARGS); i <= index; ++i) {
+      if (args_[i].type == Arg::Type::NONE) return args_[i];
     }
     return args_[index];
   }
@@ -1604,45 +1615,45 @@ class ArgVisitor {
    */
   Result visit(const Arg &arg) {
     switch (arg.type) {
-      case Arg::NONE:
-      case Arg::NAMED_ARG:
+      case Arg::Type::NONE:
+      case Arg::Type::NAMED_ARG:
         FMT_ASSERT(false, "invalid argument type");
         break;
-      case Arg::INT:
+      case Arg::Type::INT:
         return FMT_DISPATCH(visit_int(arg.int_value));
-      case Arg::UINT:
+      case Arg::Type::UINT:
         return FMT_DISPATCH(visit_uint(arg.uint_value));
-      case Arg::LONG_LONG:
+      case Arg::Type::LONG_LONG:
         return FMT_DISPATCH(visit_long_long(arg.long_long_value));
-      case Arg::ULONG_LONG:
+      case Arg::Type::ULONG_LONG:
         return FMT_DISPATCH(visit_ulong_long(arg.ulong_long_value));
-      case Arg::BOOL:
+      case Arg::Type::BOOL:
         return FMT_DISPATCH(visit_bool(arg.int_value != 0));
-      case Arg::CHAR:
+      case Arg::Type::CHAR:
         return FMT_DISPATCH(visit_char(arg.int_value));
-      case Arg::DOUBLE:
+      case Arg::Type::DOUBLE:
         return FMT_DISPATCH(visit_double(arg.double_value));
-      case Arg::LONG_DOUBLE:
+      case Arg::Type::LONG_DOUBLE:
         return FMT_DISPATCH(visit_long_double(arg.long_double_value));
-      case Arg::CSTRING:
+      case Arg::Type::CSTRING:
         return FMT_DISPATCH(visit_cstring(arg.string.value));
-      case Arg::STRING:
+      case Arg::Type::STRING:
         return FMT_DISPATCH(visit_string(arg.string));
-      case Arg::WSTRING:
+      case Arg::Type::WSTRING:
         return FMT_DISPATCH(visit_wstring(arg.wstring));
-      case Arg::POINTER:
+      case Arg::Type::POINTER:
         return FMT_DISPATCH(visit_pointer(arg.pointer));
-      case Arg::CUSTOM:
+      case Arg::Type::CUSTOM:
         return FMT_DISPATCH(visit_custom(arg.custom));
     }
     return Result();
   }
 };
 
-enum Alignment { ALIGN_DEFAULT, ALIGN_LEFT, ALIGN_RIGHT, ALIGN_CENTER, ALIGN_NUMERIC };
+enum class Alignment { ALIGN_DEFAULT, ALIGN_LEFT, ALIGN_RIGHT, ALIGN_CENTER, ALIGN_NUMERIC };
 
 // Flags.
-enum {
+enum class enumFlags {
   SIGN_FLAG = 1,
   PLUS_FLAG = 2,
   MINUS_FLAG = 4,
@@ -1656,7 +1667,7 @@ struct EmptySpec {};
 // A type specifier.
 template <char TYPE>
 struct TypeSpec : EmptySpec {
-  Alignment align() const { return ALIGN_DEFAULT; }
+  Alignment align() const { return Alignment::ALIGN_DEFAULT; }
   unsigned width() const { return 0; }
   int precision() const { return -1; }
   bool flag(unsigned) const { return false; }
@@ -1682,7 +1693,8 @@ struct WidthSpec {
 struct AlignSpec : WidthSpec {
   Alignment align_;
 
-  AlignSpec(unsigned width, wchar_t fill, Alignment align = ALIGN_DEFAULT) : WidthSpec(width, fill), align_(align) {}
+  AlignSpec(unsigned width, wchar_t fill, Alignment align = Alignment::ALIGN_DEFAULT)
+      : WidthSpec(width, fill), align_(align) {}
 
   Alignment align() const { return align_; }
 
@@ -1882,7 +1894,7 @@ class ArgFormatterBase : public ArgVisitor<Impl, void> {
   FMT_DISALLOW_COPY_AND_ASSIGN(ArgFormatterBase);
 
   void write_pointer(const void *p) {
-    spec_.flags_ = HASH_FLAG;
+    spec_.flags_ = static_cast<int>(enumFlags::HASH_FLAG);
     spec_.type_ = 'x';
     writer_.write_int(reinterpret_cast<uintptr_t>(p), spec_);
   }
@@ -1930,21 +1942,22 @@ class ArgFormatterBase : public ArgVisitor<Impl, void> {
 
   void visit_char(int value) {
     if (spec_.type_ && spec_.type_ != 'c') {
-      spec_.flags_ |= CHAR_FLAG;
+      spec_.flags_ |= static_cast<int>(enumFlags::CHAR_FLAG);
       writer_.write_int(value, spec_);
       return;
     }
-    if (spec_.align_ == ALIGN_NUMERIC || spec_.flags_ != 0) FMT_THROW(FormatError("invalid format specifier for char"));
+    if (spec_.align_ == Alignment::ALIGN_NUMERIC || spec_.flags_ != 0)
+      FMT_THROW(FormatError("invalid format specifier for char"));
     using CharPtr = typename BasicWriter<Char>::CharPtr;
     Char fill = internal::CharTraits<Char>::cast(spec_.fill());
     CharPtr out = CharPtr();
     const unsigned CHAR_SIZE = 1;
     if (spec_.width_ > CHAR_SIZE) {
       out = writer_.grow_buffer(spec_.width_);
-      if (spec_.align_ == ALIGN_RIGHT) {
+      if (spec_.align_ == Alignment::ALIGN_RIGHT) {
         std::uninitialized_fill_n(out, spec_.width_ - CHAR_SIZE, fill);
         out += spec_.width_ - CHAR_SIZE;
-      } else if (spec_.align_ == ALIGN_CENTER) {
+      } else if (spec_.align_ == Alignment::ALIGN_CENTER) {
         out = writer_.fill_padding(out, spec_.width_, internal::const_check(CHAR_SIZE), fill);
       } else {
         std::uninitialized_fill_n(out + CHAR_SIZE, spec_.width_ - CHAR_SIZE, fill);
@@ -2138,7 +2151,7 @@ inline uint64_t make_type(const T &arg) {
   return MakeValue<BasicFormatter<char>>::type(arg);
 }
 
-template <std::size_t N, bool /*IsPacked*/ = (N < ArgList::MAX_PACKED_ARGS)>
+template <std::size_t N, bool /*IsPacked*/ = (N < static_cast<unsigned>(ArgList::enumMaxPacked::MAX_PACKED_ARGS))>
 struct ArgArray;
 
 template <std::size_t N>
@@ -2161,7 +2174,7 @@ struct ArgArray<N, true /*IsPacked*/> {
 
 template <std::size_t N>
 struct ArgArray<N, false /*IsPacked*/> {
-  typedef Arg Type[N + 1];  // +1 for the list end Arg::NONE
+  typedef Arg Type[N + 1];  // +1 for the list end Arg::Type::NONE
 
   template <typename Formatter, typename T>
   static Arg make(const T &value) {
@@ -2625,10 +2638,10 @@ typename BasicWriter<Char>::CharPtr BasicWriter<Char>::write_str(const StrChar *
   if (spec.width() > size) {
     out = grow_buffer(spec.width());
     Char fill = internal::CharTraits<Char>::cast(spec.fill());
-    if (spec.align() == ALIGN_RIGHT) {
+    if (spec.align() == Alignment::ALIGN_RIGHT) {
       std::uninitialized_fill_n(out, spec.width() - size, fill);
       out += spec.width() - size;
-    } else if (spec.align() == ALIGN_CENTER) {
+    } else if (spec.align() == Alignment::ALIGN_CENTER) {
       out = fill_padding(out, spec.width(), size, fill);
     } else {
       std::uninitialized_fill_n(out + size, spec.width() - size, fill);
@@ -2683,16 +2696,16 @@ typename BasicWriter<Char>::CharPtr BasicWriter<Char>::prepare_int_buffer(unsign
     // is specified.
     if (prefix_size > 0 && prefix[prefix_size - 1] == '0') --prefix_size;
     unsigned number_size = prefix_size + internal::to_unsigned(spec.precision());
-    AlignSpec subspec(number_size, '0', ALIGN_NUMERIC);
+    AlignSpec subspec(number_size, '0', Alignment::ALIGN_NUMERIC);
     if (number_size >= width) return prepare_int_buffer(num_digits, subspec, prefix, prefix_size);
     buffer_.reserve(width);
     unsigned fill_size = width - number_size;
-    if (align != ALIGN_LEFT) {
+    if (align != Alignment::ALIGN_LEFT) {
       CharPtr p = grow_buffer(fill_size);
       std::uninitialized_fill(p, p + fill_size, fill);
     }
     CharPtr result = prepare_int_buffer(num_digits, subspec, prefix, prefix_size);
-    if (align == ALIGN_LEFT) {
+    if (align == Alignment::ALIGN_LEFT) {
       CharPtr p = grow_buffer(fill_size);
       std::uninitialized_fill(p, p + fill_size, fill);
     }
@@ -2706,16 +2719,16 @@ typename BasicWriter<Char>::CharPtr BasicWriter<Char>::prepare_int_buffer(unsign
   }
   CharPtr p = grow_buffer(width);
   CharPtr end = p + width;
-  if (align == ALIGN_LEFT) {
+  if (align == Alignment::ALIGN_LEFT) {
     std::uninitialized_copy(prefix, prefix + prefix_size, p);
     p += size;
     std::uninitialized_fill(p, end, fill);
-  } else if (align == ALIGN_CENTER) {
+  } else if (align == Alignment::ALIGN_CENTER) {
     p = fill_padding(p, width, size, fill);
     std::uninitialized_copy(prefix, prefix + prefix_size, p);
     p += size;
   } else {
-    if (align == ALIGN_NUMERIC) {
+    if (align == Alignment::ALIGN_NUMERIC) {
       if (prefix_size != 0) {
         p = std::uninitialized_copy(prefix, prefix + prefix_size, p);
         size -= prefix_size;
@@ -2740,8 +2753,8 @@ void BasicWriter<Char>::write_int(T value, Spec spec) {
     prefix[0] = '-';
     ++prefix_size;
     abs_value = 0 - abs_value;
-  } else if (spec.flag(SIGN_FLAG)) {
-    prefix[0] = spec.flag(PLUS_FLAG) ? '+' : ' ';
+  } else if (spec.flag(static_cast<int>(enumFlags::SIGN_FLAG))) {
+    prefix[0] = spec.flag(static_cast<int>(enumFlags::PLUS_FLAG)) ? '+' : ' ';
     ++prefix_size;
   }
   switch (spec.type()) {
@@ -2755,7 +2768,7 @@ void BasicWriter<Char>::write_int(T value, Spec spec) {
     case 'x':
     case 'X': {
       UnsignedType n = abs_value;
-      if (spec.flag(HASH_FLAG)) {
+      if (spec.flag(static_cast<int>(enumFlags::HASH_FLAG))) {
         prefix[prefix_size++] = '0';
         prefix[prefix_size++] = spec.type_prefix();
       }
@@ -2774,7 +2787,7 @@ void BasicWriter<Char>::write_int(T value, Spec spec) {
     case 'b':
     case 'B': {
       UnsignedType n = abs_value;
-      if (spec.flag(HASH_FLAG)) {
+      if (spec.flag(static_cast<int>(enumFlags::HASH_FLAG))) {
         prefix[prefix_size++] = '0';
         prefix[prefix_size++] = spec.type_prefix();
       }
@@ -2791,7 +2804,7 @@ void BasicWriter<Char>::write_int(T value, Spec spec) {
     }
     case 'o': {
       UnsignedType n = abs_value;
-      if (spec.flag(HASH_FLAG)) prefix[prefix_size++] = '0';
+      if (spec.flag(static_cast<int>(enumFlags::HASH_FLAG))) prefix[prefix_size++] = '0';
       unsigned num_digits = 0;
       do {
         ++num_digits;
@@ -2815,7 +2828,8 @@ void BasicWriter<Char>::write_int(T value, Spec spec) {
       break;
     }
     default:
-      internal::report_unknown_type(spec.type(), spec.flag(CHAR_FLAG) ? "char" : "integer");
+      internal::report_unknown_type(spec.type(),
+                                    spec.flag(static_cast<int>(enumFlags::CHAR_FLAG)) ? "char" : "integer");
       break;
   }
 }
@@ -2857,8 +2871,8 @@ void BasicWriter<Char>::write_double(T value, const Spec &spec) {
   if (internal::FPUtil::isnegative(static_cast<double>(value))) {
     sign = '-';
     value = -value;
-  } else if (spec.flag(SIGN_FLAG)) {
-    sign = spec.flag(PLUS_FLAG) ? '+' : ' ';
+  } else if (spec.flag(static_cast<int>(enumFlags::SIGN_FLAG))) {
+    sign = spec.flag(static_cast<int>(enumFlags::PLUS_FLAG)) ? '+' : ' ';
   }
 
   if (internal::FPUtil::isnotanumber(value)) {
@@ -2898,16 +2912,16 @@ void BasicWriter<Char>::write_double(T value, const Spec &spec) {
   }
 
   // Build format string.
-  enum { MAX_FORMAT_SIZE = 10 };  // longest format: %#-*.*Lg
-  Char format[MAX_FORMAT_SIZE];
+  enum class enumMFS { MAX_FORMAT_SIZE = 10 };  // longest format: %#-*.*Lg
+  Char format[static_cast<int>(enumMFS::MAX_FORMAT_SIZE)];
   Char *format_ptr = format;
   *format_ptr++ = '%';
   unsigned width_for_sprintf = width;
-  if (spec.flag(HASH_FLAG)) *format_ptr++ = '#';
-  if (spec.align() == ALIGN_CENTER) {
+  if (spec.flag(static_cast<int>(enumFlags::HASH_FLAG))) *format_ptr++ = '#';
+  if (spec.align() == Alignment::ALIGN_CENTER) {
     width_for_sprintf = 0;
   } else {
-    if (spec.align() == ALIGN_LEFT) *format_ptr++ = '-';
+    if (spec.align() == Alignment::ALIGN_LEFT) *format_ptr++ = '-';
     if (width != 0) *format_ptr++ = '*';
   }
   if (spec.precision() >= 0) {
@@ -2948,7 +2962,7 @@ void BasicWriter<Char>::write_double(T value, const Spec &spec) {
     }
   }
   if (sign) {
-    if ((spec.align() != ALIGN_RIGHT && spec.align() != ALIGN_DEFAULT) || *start != ' ') {
+    if ((spec.align() != Alignment::ALIGN_RIGHT && spec.align() != Alignment::ALIGN_DEFAULT) || *start != ' ') {
       *(start - 1) = sign;
       sign = 0;
     } else {
@@ -2956,7 +2970,7 @@ void BasicWriter<Char>::write_double(T value, const Spec &spec) {
     }
     ++n;
   }
-  if (spec.align() == ALIGN_CENTER && spec.width() > n) {
+  if (spec.align() == Alignment::ALIGN_CENTER && spec.width() > n) {
     width = spec.width();
     CharPtr p = grow_buffer(width);
     std::memmove(get(p) + (width - n) / 2, get(p), n * sizeof(Char));
@@ -3007,7 +3021,7 @@ void BasicWriter<Char>::write_double(T value, const Spec &spec) {
 template <typename Char, typename Allocator = std::allocator<Char>>
 class BasicMemoryWriter : public BasicWriter<Char> {
  private:
-  internal::MemoryBuffer<Char, internal::INLINE_BUFFER_SIZE, Allocator> buffer_;
+  internal::MemoryBuffer<Char, static_cast<size_t>(internal::enumInlineBuffer::INLINE_BUFFER_SIZE), Allocator> buffer_;
 
  public:
   explicit BasicMemoryWriter(const Allocator &alloc = Allocator()) : BasicWriter<Char>(buffer_), buffer_(alloc) {}
@@ -3133,7 +3147,7 @@ FMT_API void report_windows_error(int error_code, StringRef message) FMT_NOEXCEP
 
 #endif
 
-enum Color { BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE };
+enum class Color { BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE };
 
 /**
   Formats a string and prints it to stdout using ANSI escape sequences
@@ -3193,13 +3207,13 @@ class FormatInt {
  private:
   // Buffer should be large enough to hold all digits (digits10 + 1),
   // a sign and a null character.
-  enum { BUFFER_SIZE = std::numeric_limits<ULongLong>::digits10 + 3 };
-  mutable char buffer_[BUFFER_SIZE];
+  enum class enumFiBs { BUFFER_SIZE = std::numeric_limits<ULongLong>::digits10 + 3 };
+  mutable char buffer_[static_cast<ULongLong>(enumFiBs::BUFFER_SIZE)];
   char *str_;
 
   // Formats value in reverse and returns the number of digits.
   char *format_decimal(ULongLong value) {
-    char *buffer_end = buffer_ + BUFFER_SIZE - 1;
+    char *buffer_end = buffer_ + static_cast<ULongLong>(enumFiBs::BUFFER_SIZE) - 1;
     while (value >= 100) {
       // Integer division is slow so do it for a group of two digits instead
       // of for every digit. The idea comes from the talk by Alexandrescu
@@ -3236,7 +3250,9 @@ class FormatInt {
   explicit FormatInt(ULongLong value) : str_(format_decimal(value)) {}
 
   /** Returns the number of characters written to the output buffer. */
-  std::size_t size() const { return internal::to_unsigned(buffer_ - str_ + BUFFER_SIZE - 1); }
+  std::size_t size() const {
+    return internal::to_unsigned(buffer_ - str_ + static_cast<ULongLong>(enumFiBs::BUFFER_SIZE) - 1);
+  }
 
   /**
     Returns a pointer to the output buffer content. No terminating null
@@ -3249,7 +3265,7 @@ class FormatInt {
     character appended.
    */
   const char *c_str() const {
-    buffer_[BUFFER_SIZE - 1] = '\0';
+    buffer_[static_cast<ULongLong>(enumFiBs::BUFFER_SIZE) - 1] = '\0';
     return str_;
   }
 
@@ -3472,7 +3488,7 @@ unsigned parse_nonnegative_int(const Char *&s) {
 }
 
 inline void require_numeric_argument(const Arg &arg, char spec) {
-  if (arg.type > Arg::LAST_NUMERIC_TYPE) {
+  if (arg.type > Arg::Type::LAST_NUMERIC_TYPE) {
     std::string message = fmt::format("format specifier '{}' requires numeric argument", spec);
     FMT_THROW(fmt::FormatError(message));
   }
@@ -3482,7 +3498,7 @@ template <typename Char>
 void check_sign(const Char *&s, const Arg &arg) {
   char sign = static_cast<char>(*s);
   require_numeric_argument(arg, sign);
-  if (arg.type == Arg::UINT || arg.type == Arg::ULONG_LONG) {
+  if (arg.type == Arg::Type::UINT || arg.type == Arg::Type::ULONG_LONG) {
     FMT_THROW(FormatError(fmt::format("format specifier '{}' requires signed argument", sign)));
   }
   ++s;
@@ -3530,7 +3546,7 @@ const Char *BasicFormatter<Char, ArgFormatter>::format(const Char *&format_str, 
   const Char *s = format_str;
   typename ArgFormatter::SpecType spec;
   if (*s == ':') {
-    if (arg.type == Arg::CUSTOM) {
+    if (arg.type == Arg::Type::CUSTOM) {
       arg.custom.format(this, arg.custom.value, &s);
       return s;
     }
@@ -3538,23 +3554,23 @@ const Char *BasicFormatter<Char, ArgFormatter>::format(const Char *&format_str, 
     // Parse fill and alignment.
     if (Char c = *s) {
       const Char *p = s + 1;
-      spec.align_ = ALIGN_DEFAULT;
+      spec.align_ = Alignment::ALIGN_DEFAULT;
       do {
         switch (*p) {
           case '<':
-            spec.align_ = ALIGN_LEFT;
+            spec.align_ = Alignment::ALIGN_LEFT;
             break;
           case '>':
-            spec.align_ = ALIGN_RIGHT;
+            spec.align_ = Alignment::ALIGN_RIGHT;
             break;
           case '=':
-            spec.align_ = ALIGN_NUMERIC;
+            spec.align_ = Alignment::ALIGN_NUMERIC;
             break;
           case '^':
-            spec.align_ = ALIGN_CENTER;
+            spec.align_ = Alignment::ALIGN_CENTER;
             break;
         }
-        if (spec.align_ != ALIGN_DEFAULT) {
+        if (spec.align_ != Alignment::ALIGN_DEFAULT) {
           if (p != s) {
             if (c == '}') break;
             if (c == '{') FMT_THROW(FormatError("invalid fill character '{'"));
@@ -3562,7 +3578,7 @@ const Char *BasicFormatter<Char, ArgFormatter>::format(const Char *&format_str, 
             spec.fill_ = c;
           } else
             ++s;
-          if (spec.align_ == ALIGN_NUMERIC) require_numeric_argument(arg, '=');
+          if (spec.align_ == Alignment::ALIGN_NUMERIC) require_numeric_argument(arg, '=');
           break;
         }
       } while (--p >= s);
@@ -3572,28 +3588,28 @@ const Char *BasicFormatter<Char, ArgFormatter>::format(const Char *&format_str, 
     switch (*s) {
       case '+':
         check_sign(s, arg);
-        spec.flags_ |= SIGN_FLAG | PLUS_FLAG;
+        spec.flags_ |= static_cast<int>(enumFlags::SIGN_FLAG) | static_cast<int>(enumFlags::PLUS_FLAG);
         break;
       case '-':
         check_sign(s, arg);
-        spec.flags_ |= MINUS_FLAG;
+        spec.flags_ |= static_cast<int>(enumFlags::MINUS_FLAG);
         break;
       case ' ':
         check_sign(s, arg);
-        spec.flags_ |= SIGN_FLAG;
+        spec.flags_ |= static_cast<int>(enumFlags::SIGN_FLAG);
         break;
     }
 
     if (*s == '#') {
       require_numeric_argument(arg, '#');
-      spec.flags_ |= HASH_FLAG;
+      spec.flags_ |= static_cast<int>(enumFlags::HASH_FLAG);
       ++s;
     }
 
     // Parse zero flag.
     if (*s == '0') {
       require_numeric_argument(arg, '0');
-      spec.align_ = ALIGN_NUMERIC;
+      spec.align_ = Alignment::ALIGN_NUMERIC;
       spec.fill_ = '0';
       ++s;
     }
@@ -3607,18 +3623,18 @@ const Char *BasicFormatter<Char, ArgFormatter>::format(const Char *&format_str, 
       if (*s++ != '}') FMT_THROW(FormatError("invalid format string"));
       ULongLong value = 0;
       switch (width_arg.type) {
-        case Arg::INT:
+        case Arg::Type::INT:
           if (width_arg.int_value < 0) FMT_THROW(FormatError("negative width"));
           value = width_arg.int_value;
           break;
-        case Arg::UINT:
+        case Arg::Type::UINT:
           value = width_arg.uint_value;
           break;
-        case Arg::LONG_LONG:
+        case Arg::Type::LONG_LONG:
           if (width_arg.long_long_value < 0) FMT_THROW(FormatError("negative width"));
           value = width_arg.long_long_value;
           break;
-        case Arg::ULONG_LONG:
+        case Arg::Type::ULONG_LONG:
           value = width_arg.ulong_long_value;
           break;
         default:
@@ -3640,18 +3656,18 @@ const Char *BasicFormatter<Char, ArgFormatter>::format(const Char *&format_str, 
         if (*s++ != '}') FMT_THROW(FormatError("invalid format string"));
         ULongLong value = 0;
         switch (precision_arg.type) {
-          case Arg::INT:
+          case Arg::Type::INT:
             if (precision_arg.int_value < 0) FMT_THROW(FormatError("negative precision"));
             value = precision_arg.int_value;
             break;
-          case Arg::UINT:
+          case Arg::Type::UINT:
             value = precision_arg.uint_value;
             break;
-          case Arg::LONG_LONG:
+          case Arg::Type::LONG_LONG:
             if (precision_arg.long_long_value < 0) FMT_THROW(FormatError("negative precision"));
             value = precision_arg.long_long_value;
             break;
-          case Arg::ULONG_LONG:
+          case Arg::Type::ULONG_LONG:
             value = precision_arg.ulong_long_value;
             break;
           default:
@@ -3662,9 +3678,9 @@ const Char *BasicFormatter<Char, ArgFormatter>::format(const Char *&format_str, 
       } else {
         FMT_THROW(FormatError("missing precision specifier"));
       }
-      if (arg.type <= Arg::LAST_INTEGER_TYPE || arg.type == Arg::POINTER) {
+      if (arg.type <= Arg::Type::LAST_INTEGER_TYPE || arg.type == Arg::Type::POINTER) {
         FMT_THROW(FormatError(fmt::format("precision not allowed in {} format specifier",
-                                          arg.type == Arg::POINTER ? "pointer" : "integer")));
+                                          arg.type == Arg::Type::POINTER ? "pointer" : "integer")));
       }
     }
 

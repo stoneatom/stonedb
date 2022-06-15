@@ -29,9 +29,9 @@ class PackOrderer;
 
 class DimensionGroup {
  public:
-  enum DGType { DG_FILTER, DG_INDEX_TABLE, DG_VIRTUAL, DG_NOT_KNOWN } dim_group_type;
+  enum class DGType { DG_FILTER, DG_INDEX_TABLE, DG_VIRTUAL, DG_NOT_KNOWN } dim_group_type;
 
-  DimensionGroup() : dim_group_type(DG_NOT_KNOWN), no_obj(0), locks(0) {}
+  DimensionGroup() : dim_group_type(DGType::DG_NOT_KNOWN), no_obj(0), locks(0) {}
   virtual DimensionGroup *Clone(bool shallow) = 0;  // create a new group with the same (copied) contents
   virtual ~DimensionGroup() {}
   int64_t NoTuples() { return no_obj; }

@@ -288,7 +288,7 @@ bool InSetColumn::DoCopyCond(const core::MIIterator &mit, types::CondArray &cond
       types::BString s;
       it->GetValueString(s, mit);
       if (s.IsNull()) {
-        STONEDB_LOG(WARN, "DoCopyCond condition is NULL");
+        STONEDB_LOG(LogCtl_Level::WARN, "DoCopyCond condition is NULL");
         condition.clear();
         success = false;
         break;

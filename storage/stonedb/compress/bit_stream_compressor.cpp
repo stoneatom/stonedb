@@ -81,7 +81,7 @@ CprsErr BitstreamCompressor::CompressData(BitStream *dest, BitStream *src, unsig
     CprsErr err = ac.CompressBits(dest, src, sum, sum[2]);
     return err;
   } catch (ErrBufOverrun &) {
-    return CPRS_ERR_BUF;
+    return CprsErr::CPRS_ERR_BUF;
   }
 }
 
@@ -105,7 +105,7 @@ CprsErr BitstreamCompressor::Compress(BitStream *dest, BitStream *src, unsigned 
     dest->PutBit1();
     dest->PutBit0();  // version indicator
   } catch (ErrBufOverrun &) {
-    return CPRS_ERR_BUF;
+    return CprsErr::CPRS_ERR_BUF;
   }
 
   // try to differentiate the 'src' stream and check if the compressed data
@@ -139,7 +139,7 @@ CprsErr BitstreamCompressor::Compress(BitStream *dest, BitStream *src, unsigned 
       }
     }
   } catch (ErrBufOverrun &) {
-    return CPRS_ERR_BUF;
+    return CprsErr::CPRS_ERR_BUF;
   }
 
   CprsErr err = CompressData(dest, src, numbits, num1);
@@ -150,19 +150,19 @@ CprsErr BitstreamCompressor::DecompressData(BitStream *dest, BitStream *src, uns
   unsigned short sum[3];
   GetSumTable(sum, numbits - num1, num1);
   try {
-    // if(src->GetBit() != 0) return CPRS_ERR_VER;		// version
+    // if(src->GetBit() != 0) return CprsErr::CPRS_ERR_VER;		// version
     // indicator
     ArithCoder ac;
     CprsErr err = ac.DecompressBits(dest, src, sum, sum[2]);
     return err;
   } catch (ErrBufOverrun &) {
-    return CPRS_ERR_BUF;
+    return CprsErr::CPRS_ERR_BUF;
   }
 }
 
 CprsErr BitstreamCompressor::Decompress(BitStream *dest, BitStream *src, unsigned int numbits, unsigned int num1) {
   try {
-    if ((src->GetBit() == 0) || (src->GetBit() != 0)) return CPRS_ERR_VER;
+    if ((src->GetBit() == 0) || (src->GetBit() != 0)) return CprsErr::CPRS_ERR_VER;
 
     uchar isdiff = src->GetBit();  // is the data differentiated?
     if (isdiff) {
@@ -173,20 +173,20 @@ CprsErr BitstreamCompressor::Decompress(BitStream *dest, BitStream *src, unsigne
       try {
         BitStream diff(tab.get(), numbits);
         CprsErr err = DecompressData(&diff, src, numbits, num1);
-        if (err != CPRS_SUCCESS) {
+        if (err != CprsErr::CPRS_SUCCESS) {
           return err;
         }
 
         diff.Reset();
         Integrt(dest, &diff);
       } catch (ErrBufOverrun &) {
-        return CPRS_ERR_BUF;
+        return CprsErr::CPRS_ERR_BUF;
       }
-      return CPRS_SUCCESS;
+      return CprsErr::CPRS_SUCCESS;
     } else
       return DecompressData(dest, src, numbits, num1);
   } catch (ErrBufOverrun &) {
-    return CPRS_ERR_BUF;
+    return CprsErr::CPRS_ERR_BUF;
   }
 }
 

@@ -65,7 +65,7 @@ void Item_sdbfield::SetType(DataType t) {
 
   sdbtype = t;
   switch (sdbtype.valtype) {
-    case DataType::VT_FIXED:
+    case DataType::ValueType::VT_FIXED:
       if (sdbtype.IsInt())
         ivalue = new Item_int(static_cast<longlong>(0));
       else
@@ -73,15 +73,15 @@ void Item_sdbfield::SetType(DataType t) {
       ivalue->unsigned_flag = ifield->unsigned_flag;
       break;
 
-    case DataType::VT_FLOAT:
+    case DataType::ValueType::VT_FLOAT:
       ivalue = new Item_float(0.0, NOT_FIXED_DEC);
       break;
 
-    case DataType::VT_STRING:
+    case DataType::ValueType::VT_STRING:
       ivalue = new Item_string("", 0, ifield->collation.collation, ifield->collation.derivation);
       break;
 
-    case DataType::VT_DATETIME:
+    case DataType::ValueType::VT_DATETIME:
       switch (sdbtype.attrtype) {
         case common::CT::DATETIME:
           ivalue = new Item_sdbdatetime();
@@ -116,22 +116,22 @@ const ValueOrNull Item_sdbfield::GetCurrentValue() { return *buf; }
 
 void Item_sdbfield::FeedValue() {
   switch (sdbtype.valtype) {
-    case DataType::VT_FIXED:
+    case DataType::ValueType::VT_FIXED:
       if (sdbtype.IsInt())
         ((Item_int *)ivalue)->value = buf->Get64();
       else
         ((Item_sdbdecimal *)ivalue)->Set(buf->Get64());
       break;
 
-    case DataType::VT_FLOAT:
+    case DataType::ValueType::VT_FLOAT:
       ((Item_float *)ivalue)->value = buf->GetDouble();
       break;
 
-    case DataType::VT_STRING:
+    case DataType::ValueType::VT_STRING:
       ((Item_string *)ivalue)->str_value.copy(buf->sp, buf->len, ifield->collation.collation);
       break;
 
-    case DataType::VT_DATETIME:
+    case DataType::ValueType::VT_DATETIME:
       ((Item_sdbdatetime_base *)ivalue)->Set(buf->Get64(), sdbtype.attrtype);
       break;
 
@@ -164,7 +164,7 @@ String *Item_sdbfield::val_str(String *str) {
   // DBUG_ASSERT(fixed == 1);
   if ((null_value = buf->null)) return 0;
   // acceleration
-  if (sdbtype.valtype == DataType::VT_STRING) {
+  if (sdbtype.valtype == DataType::ValueType::VT_STRING) {
     str->copy(buf->sp, buf->len, ifield->collation.collation);
     return str;
   }

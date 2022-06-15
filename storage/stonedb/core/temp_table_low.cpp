@@ -81,7 +81,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
     // recheck the up threashold for each SortLimit sub-sortedtable
     if (((packs_no - 1) * ((1 << filter.mind->NoPower()) - 1)) / task_num < (limit + offset)) {
       task_num = 1;
-      STONEDB_LOG(INFO, "Beyond uplimit of limit sort, switch to single thread logic. ");
+      STONEDB_LOG(LogCtl_Level::INFO, "Beyond uplimit of limit sort, switch to single thread logic. ");
     }
     total_limit = task_num * (limit + offset);
   }
@@ -144,7 +144,8 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
   else
     sorted_table.InitSorter(*(filter.mind), false);
   if (sorted_table.GetSorter() && std::strcmp(sorted_table.GetSorter()->Name(), "Heap Sort") != 0) {
-    STONEDB_LOG(DEBUG, "Multi-thread order by is not supported for %s table.", sorted_table.GetSorter()->Name());
+    STONEDB_LOG(LogCtl_Level::DEBUG, "Multi-thread order by is not supported for %s table.",
+                sorted_table.GetSorter()->Name());
     task_num = 1;
   }
   // Put data
@@ -188,7 +189,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
     for (int i = 0; i < task_num; ++i) {
       int pstart = ((i == 0) ? 0 : mod + i * num);
       int pend = mod + (i + 1) * num - 1;
-      STONEDB_LOG(INFO, "create new MIIterator: start pack %d, endpack %d", pstart, pend);
+      STONEDB_LOG(LogCtl_Level::INFO, "create new MIIterator: start pack %d, endpack %d", pstart, pend);
 
       auto &mi = mis.emplace_back(*filter.mind, true);
 
@@ -199,7 +200,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
       mii.RewindToPack(pstart);
     }
 
-    STONEDB_LOG(DEBUG, "table statistic  no_dim %d, packs_no %d \n", one_dim, packs_no);
+    STONEDB_LOG(LogCtl_Level::DEBUG, "table statistic  no_dim %d, packs_no %d \n", one_dim, packs_no);
     // Repeat the same logic to prepare the new sort tables
     // Note: Don't RoughSort them as it would impact initPack logic
     // and some rows would be skipped from adding in the sort table
@@ -218,7 +219,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
     }
   }
 
-  STONEDB_LOG(DEBUG,
+  STONEDB_LOG(LogCtl_Level::DEBUG,
               "SortTable preparation done. row num %d, offset %d, limit %d, "
               "task_num %d",
               local_row, offset, limit, task_num);
@@ -290,13 +291,13 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
         sender->Send(iter);
         ++iter;
       }
-      // STONEDB_LOG(DEBUG, "Put sort output - %d rows in sender", local_row);
+      // STONEDB_LOG(LogCtl_Level::DEBUG, "Put sort output - %d rows in sender", local_row);
       local_row = 0;
     }
   } while (valid && global_row < limit + offset);
   rccontrol.lock(m_conn->GetThreadID()) << "Sorted end, rows retrieved." << system::unlock;
 
-  // STONEDB_LOG(INFO, "OrderByAndMaterialize complete global_row %d, limit %d,
+  // STONEDB_LOG(LogCtl_Level::INFO, "OrderByAndMaterialize complete global_row %d, limit %d,
   // offset %d", global_row, limit, offset);
   return true;
 }
@@ -551,7 +552,7 @@ size_t TempTable::TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrappe
         local_row += it->GetPackSizeLeft();
         it->NextPackrow();
 
-        STONEDB_LOG(DEBUG, "skip this pack it %x", it);
+        STONEDB_LOG(LogCtl_Level::DEBUG, "skip this pack it %x", it);
         continue;
       }
     }

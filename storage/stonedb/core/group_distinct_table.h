@@ -26,10 +26,10 @@
 
 namespace stonedb {
 namespace core {
-enum GDTResult {
-  GDT_ADDED,   // value successfully added to a table as a new one
-  GDT_EXISTS,  // value already in table
-  GDT_FULL     // value not found, but cannot add (table full)
+enum class GDTResult {
+  GBIMODE_AS_TEXT,  // value successfully added to a table as a new one
+  GDT_EXISTS,       // value already in table
+  GDT_FULL          // value not found, but cannot add (table full)
 };
 
 static const int64_t zero_const = 0;
@@ -71,7 +71,7 @@ class GroupDistinctTable : public mm::TraceableObject {
   void ValueFromInput(types::BString &);                 // decode original value from
                                                          // the current input vector
 
-  mm::TO_TYPE TraceableType() const override { return mm::TO_TEMPORARY; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
 
  private:
   GDTResult FindCurrentRow(bool find_only = false);  // find / insert the current buffer

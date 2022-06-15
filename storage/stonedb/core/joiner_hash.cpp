@@ -50,7 +50,7 @@ JoinerHash::JoinerHash(MultiIndex *_mind, TempTable *_table, JoinTips &_tips)
 
 void JoinerHash::ExecuteJoinConditions(Condition &cond) {
   MEASURE_FET("JoinerHash::ExecuteJoinConditions(...)");
-  why_failed = FAIL_HASH;
+  why_failed = JoinFailure::FAIL_HASH;
 
   std::vector<int> hash_descriptors;
   // Prepare all descriptor information
@@ -60,7 +60,7 @@ void JoinerHash::ExecuteJoinConditions(Condition &cond) {
   DimensionVector dims_other(mind->NoDimensions());  // dimensions for other conditions, if needed
   for (uint i = 0; i < cond.Size(); i++) {
     bool added = false;
-    if (cond[i].IsType_JoinSimple() && cond[i].op == common::O_EQ) {
+    if (cond[i].IsType_JoinSimple() && cond[i].op == common::Operator::O_EQ) {
       if (first_found) {
         hash_descriptors.push_back(i);
         added = true;
@@ -96,7 +96,7 @@ void JoinerHash::ExecuteJoinConditions(Condition &cond) {
   }
   cond_hashed = int(hash_descriptors.size());
   if (cond_hashed == 0) {
-    why_failed = FAIL_HASH;
+    why_failed = JoinFailure::FAIL_HASH;
     return;
   }
 
@@ -177,7 +177,7 @@ void JoinerHash::ExecuteJoinConditions(Condition &cond) {
   if (traversed_dims.Intersects(matched_dims) ||  // both materialized - we should rather use a simple
                                                   // loop
       !compatible) {                              // could not prepare common encoding
-    why_failed = FAIL_HASH;
+    why_failed = JoinFailure::FAIL_HASH;
     return;
   }
   // prepare columns for traversed dimension numbers in hash table
@@ -199,9 +199,9 @@ void JoinerHash::ExecuteJoinConditions(Condition &cond) {
   InitOuter(cond);
   ExecuteJoin();
   if (too_many_conflicts)
-    why_failed = FAIL_WRONG_SIDES;
+    why_failed = JoinFailure::FAIL_WRONG_SIDES;
   else
-    why_failed = NOT_FAILED;
+    why_failed = JoinFailure::NOT_FAILED;
 }
 
 void JoinerHash::ExecuteJoin() {
@@ -575,8 +575,8 @@ int64_t JoinerHash::SubmitOuterMatched(MIIterator &mit, MINewContents &new_mind)
 int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *task_mit1, Transaction *ci,
                                 JoinerHashTable *hash_table, int *join_tuple, int stonedb_sysvar_jointhreadpool) {
   JoinerHashTable &tmp_jhash = *hash_table;
-  STONEDB_LOG(INFO, "NewMatchDim start, taskid %d, stonedb_sysvar_jointhreadpool %d", task_mit1->GetTaskId(),
-              stonedb_sysvar_jointhreadpool);
+  STONEDB_LOG(LogCtl_Level::INFO, "NewMatchDim start, taskid %d, stonedb_sysvar_jointhreadpool %d",
+              task_mit1->GetTaskId(), stonedb_sysvar_jointhreadpool);
   common::SetMySQLTHD(ci->Thd());
   current_tx = ci;
   for (int i = 0; i < cond_hashed; i++) {
@@ -673,7 +673,7 @@ int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *ta
             types::BString local_max = vc2[i]->GetMaxString(task_mit);
             if (!local_min.IsNull() && !local_max.IsNull() && tmp_jhash.ImpossibleValues(i, local_min, local_max)) {
               omit_this_packrow = true;
-              STONEDB_LOG(DEBUG, "JoinerHash::test omit");
+              STONEDB_LOG(LogCtl_Level::DEBUG, "JoinerHash::test omit");
               break;
             }
           }
@@ -719,7 +719,7 @@ int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *ta
           }
         }
         if (no_of_matching_rows > 65536 || no_of_matching_rows < 0)
-          STONEDB_LOG(DEBUG, "no_of_matching_rows %d", no_of_matching_rows);
+          STONEDB_LOG(LogCtl_Level::DEBUG, "no_of_matching_rows %d", no_of_matching_rows);
         joined_tuples += no_of_matching_rows;
         omit_this_packrow = true;
       }
@@ -795,7 +795,7 @@ int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *ta
     matching_row++;
   }
   if (outer_nulls_only) joined_tuples = 0;  // outer tuples added later
-  STONEDB_LOG(DEBUG, "JoinerHash::test %d,matching_row %d", joined_tuples, matching_row);
+  STONEDB_LOG(LogCtl_Level::DEBUG, "JoinerHash::test %d,matching_row %d", joined_tuples, matching_row);
   *join_tuple = joined_tuples;
   return joined_tuples;
 }

@@ -924,7 +924,7 @@ TempTable::~TempTable() {
 
 void TempTable::TranslateBackVCs() {
   for (int i = 0; i < no_global_virt_cols; i++)
-    if (virt_cols[i] && virt_cols[i]->IsSingleColumn())
+    if (virt_cols[i] && static_cast<int>(virt_cols[i]->IsSingleColumn()))
       static_cast<vcolumn::SingleColumn *>(virt_cols[i])->TranslateSourceColumns(attr_back_translation);
 }
 
@@ -994,7 +994,7 @@ std::shared_ptr<TempTable> TempTable::CreateMaterializedCopy(bool translate_orde
       // TODO: redesign it for more universal solution
       vcolumn::VirtualColumn *vc = working_copy->virt_cols[i];
       if (vc) {
-        if (vc->IsSingleColumn())
+        if (static_cast<int>(vc->IsSingleColumn()))
           static_cast<vcolumn::SingleColumn *>(vc)->TranslateSourceColumns(attr_translation);
         else {
           auto &var_maps = vc->GetVarMap();
@@ -1094,10 +1094,10 @@ uint TempTable::GetDisplayableAttrIndex(uint attr) {
 
 void TempTable::AddConds(Condition *cond, CondType type) {
   MEASURE_FET("TempTable::AddConds(...)");
-  if (type == WHERE_COND) {
+  if (type == CondType::WHERE_COND) {
     // need to add one by one since where_conds can be non-empty
     filter.AddConditions(cond);
-  } else if (type == HAVING_COND) {
+  } else if (type == CondType::HAVING_COND) {
     DEBUG_ASSERT((*cond)[0].tree);
     having_conds.AddDescriptor((*cond)[0].tree, this, (*cond)[0].left_dims.Size());
   } else
@@ -1121,15 +1121,15 @@ void TempTable::AddLeftConds(Condition *cond, std::vector<TabID> &left_aliases, 
 
 void TempTable::SetMode(TMParameter mode, int64_t mode_param1, int64_t mode_param2) {
   switch (mode) {
-    case TM_DISTINCT:
+    case TMParameter::TM_DISTINCT:
       this->mode.distinct = true;
       break;
-    case TM_TOP:
+    case TMParameter::TM_TOP:
       this->mode.top = true;
       this->mode.param1 = mode_param1;  // offset
       this->mode.param2 = mode_param2;  // limit
       break;
-    case TM_EXISTS:
+    case TMParameter::TM_EXISTS:
       this->mode.exists = true;
       break;
     default:
@@ -1303,9 +1303,9 @@ void TempTable::Union(TempTable *t, int all) {
           if (first_f.Get(pos)) {
             for (uint i = 0; i < encoder.size(); i++) encoder[i].Encode(input_buf, first_mit);
             GDTResult res = dist_table.Add(input_buf);
-            if (res == GDT_EXISTS) first_mask.ResetDelayed(pos);
-            if (res != GDT_FULL)  // note: if v is omitted here, it will also be
-                                  // omitted in sec!
+            if (res == GDTResult::GDT_EXISTS) first_mask.ResetDelayed(pos);
+            if (res != GDTResult::GDT_FULL)  // note: if v is omitted here, it will also be
+                                             // omitted in sec!
               first_f.ResetDelayed(pos);
           }
           ++first_mit;
@@ -1317,8 +1317,8 @@ void TempTable::Union(TempTable *t, int all) {
           if (sec_f.Get(pos)) {
             for (uint i = 0; i < encoder.size(); i++) encoder[i].Encode(input_buf, sec_mit, sec_vcs[i].get());
             GDTResult res = dist_table.Add(input_buf);
-            if (res == GDT_EXISTS) sec_mask.ResetDelayed(pos);
-            if (res != GDT_FULL) sec_f.ResetDelayed(pos);
+            if (res == GDTResult::GDT_EXISTS) sec_mask.ResetDelayed(pos);
+            if (res != GDTResult::GDT_FULL) sec_f.ResetDelayed(pos);
           }
           ++sec_mit;
           if (m_conn->Killed()) throw common::KilledException();

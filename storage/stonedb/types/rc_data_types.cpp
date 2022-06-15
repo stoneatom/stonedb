@@ -34,7 +34,7 @@ bool RCDataType::AreComperable(const RCDataType &rcdt1, const RCDataType &rcdt2)
 
 bool RCDataType::compare(const RCDataType &rcdt1, const RCDataType &rcdt2, common::Operator op, char like_esc) {
   // DEBUG_ASSERT(RCDataType::AreComperable(rcdt1, rcdt2));
-  if (op == common::O_LIKE || op == common::O_NOT_LIKE) {
+  if (op == common::Operator::O_LIKE || op == common::Operator::O_NOT_LIKE) {
     if (rcdt1.IsNull() || rcdt2.IsNull()) return false;
     BString x, y;
     BString *rcbs1 = dynamic_cast<BString *>(const_cast<RCDataType *>(&rcdt1));
@@ -48,16 +48,17 @@ bool RCDataType::compare(const RCDataType &rcdt1, const RCDataType &rcdt2, commo
       rcbs2 = &y;
     }
     bool res = rcbs1->Like(*rcbs2, like_esc);
-    if (op == common::O_LIKE)
+    if (op == common::Operator::O_LIKE)
       return res;
     else
       return !res;
   } else if (!rcdt1.IsNull() && !rcdt2.IsNull() &&
-             (((op == common::O_EQ) && rcdt1 == rcdt2) || (op == common::O_NOT_EQ && rcdt1 != rcdt2) ||
-              (op == common::O_LESS && rcdt1 < rcdt2) ||
-              (op == common::O_LESS_EQ && (rcdt1 < rcdt2 || rcdt1 == rcdt2)) ||
-              (op == common::O_MORE && (!(rcdt1 < rcdt2) && rcdt1 != rcdt2)) ||
-              (op == common::O_MORE_EQ && (!(rcdt1 < rcdt2) || rcdt1 == rcdt2))))
+             (((op == common::Operator::O_EQ) && rcdt1 == rcdt2) ||
+              (op == common::Operator::O_NOT_EQ && rcdt1 != rcdt2) ||
+              (op == common::Operator::O_LESS && rcdt1 < rcdt2) ||
+              (op == common::Operator::O_LESS_EQ && (rcdt1 < rcdt2 || rcdt1 == rcdt2)) ||
+              (op == common::Operator::O_MORE && (!(rcdt1 < rcdt2) && rcdt1 != rcdt2)) ||
+              (op == common::Operator::O_MORE_EQ && (!(rcdt1 < rcdt2) || rcdt1 == rcdt2))))
     return true;
   return false;
 }
@@ -120,12 +121,12 @@ bool RCDataType::ToReal(const RCDataType &in, RCNum &out) {
 
 ValueTypeEnum RCDataType::GetValueType(common::CT attr_type) {
   if (core::ATI::IsNumericType(attr_type))
-    return NUMERIC_TYPE;
+    return ValueTypeEnum::NUMERIC_TYPE;
   else if (core::ATI::IsDateTimeType(attr_type))
-    return DATE_TIME_TYPE;
+    return ValueTypeEnum::DATE_TIME_TYPE;
   else if (core::ATI::IsStringType(attr_type))
-    return STRING_TYPE;
-  return NULL_TYPE;
+    return ValueTypeEnum::STRING_TYPE;
+  return ValueTypeEnum::NULL_TYPE;
 }
 }  // namespace types
 }  // namespace stonedb

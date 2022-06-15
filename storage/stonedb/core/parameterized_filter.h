@@ -37,7 +37,7 @@ can also store tree of conditions
 
 class ParameterizedFilter final {
  public:
-  ParameterizedFilter(uint32_t power, CondType filter_type = WHERE_COND);
+  ParameterizedFilter(uint32_t power, CondType filter_type = CondType::WHERE_COND);
   ParameterizedFilter(const ParameterizedFilter &);
   virtual ~ParameterizedFilter();
   ParameterizedFilter &operator=(const ParameterizedFilter &pf);

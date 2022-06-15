@@ -32,7 +32,7 @@ namespace core {
                 class NotEqualQueryOperator : public QueryOperator
                 {
                         public:
-                                NotEqualQueryOperator():QueryOperator(common::O_NOT_EQ,
+                                NotEqualQueryOperator():QueryOperator(common::Operator::O_NOT_EQ,
    "<>") {}
                 }
 

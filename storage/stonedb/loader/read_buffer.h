@@ -36,34 +36,33 @@ class ReadBuffer final : public mm::TraceableObject {
 
   bool BufOpen(std::unique_ptr<system::Stream> &s);
   int BufFetch(int unused_bytes);  // load the next data block into buffer
-  int BufSize() const { return buf_used; }
-  char *Buf() const { return buf; }
+  int BufSize() const { return buf_used_; }
+  char *Buf() const { return buf_; }
   int Read(char *buffer, int bytes_to_read);
-  mm::TO_TYPE TraceableType() const override { return mm::TO_TEMPORARY; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
 
  private:
-  int buf_used;  // number of bytes loaded or reserved so far
-  char *buf;     // current buf in bufs
-  int size;
-  int curr_buf_no;  // buf = bufs + currBufNo
-  char *buf2;       // buf to be used next
-  int curr_buf2_no;
-  int bytes_in_read_thread_buffer;
-  bool buf_incomplete;
+  int buf_used_;  // number of bytes loaded or reserved so far
+  char *buf_;     // current buf in bufs
+  int size_;
+  int curr_buf_no_;  // buf_ = bufs_ + currBufNo
+  char *buf2_;       // buf to be used next
+  int curr_buf2_no_;
+  int bytes_in_read_thread_buffer_;
+  bool buf_incomplete_;
 
-  std::vector<std::unique_ptr<char[]>> bufs;
-  std::unique_ptr<char[]> read_thread_buffer;
+  std::vector<std::unique_ptr<char[]>> bufs_;
+  std::unique_ptr<char[]> read_thread_buffer_;
+  std::unique_ptr<system::Stream> ib_stream_;
 
-  std::unique_ptr<system::Stream> ib_stream;
+  std::mutex read_mutex_;
 
-  std::mutex read_mutex;
+  std::mutex mtx_;
+  std::condition_variable cv_;
 
-  std::mutex mtx;
-  std::condition_variable cv;
-
-  std::thread read_thread;
-  bool stop_reading_thread;
-  THD *thd;
+  std::thread read_thread_;
+  bool stop_reading_thread_;
+  THD *thd_;
 
   void ReadThread();
   void UseNextBuf();

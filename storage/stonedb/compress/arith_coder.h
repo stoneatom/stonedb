@@ -24,7 +24,7 @@
 namespace stonedb {
 namespace compress {
 
-// The functions in ArithCoder throw ErrBufOverrun() or return CPRS_ERR_BUF,
+// The functions in ArithCoder throw ErrBufOverrun() or return CprsErr::CPRS_ERR_BUF,
 // when the buffer is too short (during reading or writing).
 //
 // NOTE: cumulative count of symbols ('total') must be smaller than MAX_BaseT /

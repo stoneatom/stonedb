@@ -89,7 +89,7 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
 
   static void Create(const fs::path &path, const AttributeTypeInfo &ati, uint8_t pss, size_t no_rows);
 
-  mm::TO_TYPE TraceableType() const override { return mm::TO_TEMPORARY; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
   void UpdateData(uint64_t row, Value &v);
   void UpdateIfIndex(uint64_t row, uint64_t col, const Value &v);
   void Truncate();
@@ -192,7 +192,7 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   void Release() override;
 
   int AttrNo() const override { return m_cid; }
-  phys_col_t ColType() const override { return RCATTR; }
+  phys_col_t ColType() const override { return phys_col_t::RCATTR; }
   common::PackType GetPackType() const { return pack_type; }
   PackOntologicalStatus GetPackOntologicalStatus(int pack_no) override;
 

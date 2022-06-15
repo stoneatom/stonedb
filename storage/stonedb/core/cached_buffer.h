@@ -49,7 +49,7 @@ class CachedBuffer : public system::CacheableItem, public mm::TraceableObject {
   }
   void Set(uint64_t idx, const T &value);
 
-  mm::TO_TYPE TraceableType() const override { return mm::TO_CACHEDBUFFER; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_CACHEDBUFFER; }
 
  protected:
   void LoadPage(uint n);     // load page n
@@ -80,7 +80,7 @@ class CachedBuffer<types::BString> : public system::CacheableItem, public mm::Tr
   void Get(types::BString &s, uint64_t idx);
   void Set(uint64_t idx, const types::BString &value);
 
-  mm::TO_TYPE TraceableType() const override { return mm::TO_CACHEDBUFFER; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_CACHEDBUFFER; }
 
  protected:
   void LoadPage(uint n);     // load page n

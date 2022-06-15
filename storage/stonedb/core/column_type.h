@@ -26,7 +26,7 @@ namespace core {
 struct DataType;
 
 struct ColumnType {
-  enum {
+  enum class enumCT {
     NOT_NULL = 0,
     AUTO_INC = 1,
     BLOOM_FILTER = 2,
@@ -42,14 +42,14 @@ struct ColumnType {
         display_size(ATI::TextSize(t, prec, sc, collation)),
         collation(collation),
         fmt(fmt) {
-    flag[NOT_NULL] = notnull;
+    flag[static_cast<int>(enumCT::NOT_NULL)] = notnull;
     internal_size = InternalSize();
   }
 
   void Initialize(common::CT t, bool notnull, common::PackFmt f, uint prec, int sc,
                   DTCollation collation = DTCollation()) {
     type = t;
-    flag[NOT_NULL] = notnull;
+    flag[static_cast<int>(enumCT::NOT_NULL)] = notnull;
     fmt = f;
     precision = prec;
     scale = sc;
@@ -132,11 +132,11 @@ struct ColumnType {
   void SetFmt(common::PackFmt f) { fmt = f; }
   unsigned char GetFlag() const { return flag.to_ulong(); }
   void SetFlag(unsigned char v) { flag = std::bitset<std::numeric_limits<unsigned char>::digits>(v); }
-  bool NotNull() const { return flag[NOT_NULL]; }
+  bool NotNull() const { return flag[static_cast<int>(enumCT::NOT_NULL)]; }
   bool Nullable() const { return !NotNull(); }
-  bool GetAutoInc() const { return flag[AUTO_INC]; }
-  void SetAutoInc(bool inc) { flag[AUTO_INC] = inc; }
-  bool HasFilter() const { return flag[BLOOM_FILTER]; }
+  bool GetAutoInc() const { return flag[static_cast<int>(enumCT::AUTO_INC)]; }
+  void SetAutoInc(bool inc) { flag[static_cast<int>(enumCT::AUTO_INC)] = inc; }
+  bool HasFilter() const { return flag[static_cast<int>(enumCT::BLOOM_FILTER)]; }
 
  private:
   common::CT type;

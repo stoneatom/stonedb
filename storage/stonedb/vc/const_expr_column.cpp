@@ -131,7 +131,7 @@ void ConstExpressionColumn::DoEvaluatePack([[maybe_unused]] core::MIUpdatingIter
 
 common::RSValue ConstExpressionColumn::DoRoughCheck([[maybe_unused]] const core::MIIterator &mit,
                                                     [[maybe_unused]] core::Descriptor &d) {
-  return common::RS_SOME;  // not implemented
+  return common::RSValue::RS_SOME;  // not implemented
 }
 
 types::BString ConstExpressionColumn::DecodeValue_S([[maybe_unused]] int64_t code) {

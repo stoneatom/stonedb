@@ -18,7 +18,7 @@
 #define STONEDB_UTIL_QSORT_H_
 #pragma once
 
-using comp_func_ib = int (*) (const void *, const void *);
+using comp_func_ib = int (*)(const void *, const void *);
 
 inline void __ib_swap_local(char *a, char *b, int len) {
   for (int j = 0; j < len; j++) {

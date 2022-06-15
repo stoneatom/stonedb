@@ -21,7 +21,7 @@
 #pragma once
 
 // Compression and decompression errors
-enum CprsErr {
+enum class CprsErr {
   CPRS_SUCCESS = 0,
   CPRS_ERR_BUF = 1,   // buffer overflow error
   CPRS_ERR_PAR = 2,   // bad parameters
@@ -33,7 +33,7 @@ enum CprsErr {
 };
 
 // Attribute types treated specially by compression routines
-enum CprsAttrType /*Enum*/ {
+enum class CprsAttrType /*Enum*/ {
   CAT_OTHER = 0,
   CAT_DATA = 1,
   CAT_TIME = 2,

@@ -28,7 +28,7 @@ namespace stonedb {
 namespace mm {
 
 void Release2Q::Access(TraceableObject *o) {
-  // ASSERT(o->TraceableType() == TO_PACK, "Access wrong type");
+  // ASSERT(o->TraceableType() == TO_TYPE::TO_PACK, "Access wrong type");
   if (!o->IsTracked()) {
     auto it = A1outLookup.find(o->GetCoordinate());
     if (it != A1outLookup.end()) {

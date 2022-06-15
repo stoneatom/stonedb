@@ -55,7 +55,7 @@ class ValueMatching_HashTable : public mm::TraceableObject, public ValueMatching
   bool IsOnePass() override { return one_pass; }
   int64_t ByteSize() override;
   int64_t RowNumberScope() override { return max_no_rows; }
-  mm::TO_TYPE TraceableType() const override { return mm::TO_TEMPORARY; }
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
 
  protected:
   // Definition of the internal structures:

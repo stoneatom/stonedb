@@ -57,9 +57,17 @@ struct CondID {
   bool operator==(const CondID &other) const { return (n == other.n) && (!IsNull()); }
 };
 
-enum JoinType { JO_INNER, JO_LEFT, JO_RIGHT, JO_FULL };
-enum TMParameter { TM_DISTINCT, TM_TOP, TM_EXISTS };  // Table Mode Parameter
-enum CondType { WHERE_COND, HAVING_COND, ON_INNER_FILTER, ON_LEFT_FILTER, ON_RIGHT_FILTER, OR_SUBTREE, AND_SUBTREE };
+enum class JoinType { JO_INNER, JO_LEFT, JO_RIGHT, JO_FULL };
+enum class TMParameter { TM_DISTINCT, TM_TOP, TM_EXISTS };  // Table Mode Parameter
+enum class CondType {
+  WHERE_COND,
+  HAVING_COND,
+  ON_INNER_FILTER,
+  ON_LEFT_FILTER,
+  ON_RIGHT_FILTER,
+  OR_SUBTREE,
+  AND_SUBTREE
+};
 
 /**
   Interpretation of CQTerm depends on which parameters are used.

@@ -106,13 +106,13 @@ void ParameterizedFilter::PrepareRoughMultiIndex() {
       Filter *f = mind->GetFilter(d);
       for (int p = 0; p < rough_mind->NoPacks(d); p++) {
         if (f == NULL)
-          rough_mind->SetPackStatus(d, p, common::RS_UNKNOWN);
+          rough_mind->SetPackStatus(d, p, common::RSValue::RS_UNKNOWN);
         else if (f->IsFull(p))
-          rough_mind->SetPackStatus(d, p, common::RS_ALL);
+          rough_mind->SetPackStatus(d, p, common::RSValue::RS_ALL);
         else if (f->IsEmpty(p))
-          rough_mind->SetPackStatus(d, p, common::RS_NONE);
+          rough_mind->SetPackStatus(d, p, common::RSValue::RS_NONE);
         else
-          rough_mind->SetPackStatus(d, p, common::RS_SOME);
+          rough_mind->SetPackStatus(d, p, common::RSValue::RS_SOME);
       }
     }
   }
@@ -138,7 +138,7 @@ double ParameterizedFilter::EvaluateConditionNonJoinWeight(Descriptor &d, bool f
     answer_size = col->ApproxAnswerSize(d);
     if (for_or) answer_size = d.attr.vc->NoTuples() - answer_size;
     int64_t no_in_values = 1;
-    if (d.op == common::O_IN || d.op == common::O_NOT_IN) {
+    if (d.op == common::Operator::O_IN || d.op == common::Operator::O_NOT_IN) {
       vcolumn::MultiValColumn *iscol = static_cast<vcolumn::MultiValColumn *>(d.val1.vc);
       MIIterator mitor(NULL, d.table->Getpackpower());
       no_in_values = iscol->NoValues(mitor);
@@ -146,9 +146,10 @@ double ParameterizedFilter::EvaluateConditionNonJoinWeight(Descriptor &d, bool f
     eval = log(1 + double(answer_size));  // approximate size of the result
     if (no_in_values > 1)
       eval += log(double(no_in_values)) * 0.5;  // INs are potentially slower (many comparisons needed)
-    if (col->Type().IsString() && !col->Type().IsLookup()) eval += 0.5;     // strings are slower
-    if (col->Type().IsFloat()) eval += 0.1;                                 // floats are slower
-    if (d.op == common::O_LIKE || d.op == common::O_NOT_LIKE) eval += 0.2;  // these operators need more work
+    if (col->Type().IsString() && !col->Type().IsLookup()) eval += 0.5;  // strings are slower
+    if (col->Type().IsFloat()) eval += 0.1;                              // floats are slower
+    if (d.op == common::Operator::O_LIKE || d.op == common::Operator::O_NOT_LIKE)
+      eval += 0.2;  // these operators need more work
 
     // Processing descriptor on PK firstly
     if (d.IsleftIndexSearch()) eval = 0.001;
@@ -158,7 +159,7 @@ double ParameterizedFilter::EvaluateConditionNonJoinWeight(Descriptor &d, bool f
                                               // logarithm for common::NULL_VALUE_64
     if (!d.encoded)
       return log(1 + double(2 * no_obj)) + 5;  // +5 as a penalty for complex expression
-    else if (d.op == common::O_EQ) {
+    else if (d.op == common::Operator::O_EQ) {
       no_distinct = d.attr.vc->GetApproxDistVals(false);
       if (no_distinct == 0) no_distinct = 1;
       no_distinct2 = d.val1.vc->GetApproxDistVals(false);
@@ -212,7 +213,7 @@ double ParameterizedFilter::EvaluateConditionJoinWeight(Descriptor &d) {
     double c_select2 = double(no_obj2) / mind->OrigSize(dim2);
     double bigger_table_size = (double)std::max(no_obj1, no_obj2);
 
-    if (d.op == common::O_EQ) {
+    if (d.op == common::Operator::O_EQ) {
       no_distinct1 = d.attr.vc->GetApproxDistVals(false);
       no_distinct2 = d.val1.vc->GetApproxDistVals(false);
       if (no_distinct1 >= 0.99 * mind->DimSize(dim1)) {  // potentially 1:n join
@@ -278,7 +279,7 @@ bool ParameterizedFilter::RoughUpdateMultiIndex() {
     }
     for (uint i = 0; i < descriptors.Size(); i++) {
       if (!descriptors[i].done && !descriptors[i].IsDelayed() && descriptors[i].IsInner() &&
-          descriptors[i].GetJoinType() == DT_NON_JOIN) {
+          descriptors[i].GetJoinType() == DescriptorJoinType::DT_NON_JOIN) {
         DimensionVector dims(mind->NoDimensions());
         descriptors[i].DimensionUsed(dims);
         int dim = dims.GetOneDim();
@@ -289,7 +290,7 @@ bool ParameterizedFilter::RoughUpdateMultiIndex() {
         MIIterator mit(mind, dim, true);
         while (mit.IsValid()) {
           int p = mit.GetCurPackrow(dim);
-          if (p >= 0 && rf[p] != common::RS_NONE)
+          if (p >= 0 && rf[p] != common::RSValue::RS_NONE)
             rf[p] = descriptors[i].EvaluateRoughlyPack(mit);  // rough values are also accumulated inside
           mit.NextPackrow();
           if (mind->m_conn->Killed()) throw common::KilledException();
@@ -318,9 +319,9 @@ bool ParameterizedFilter::RoughUpdateMultiIndex() {
       pack_some = 0;
       pack_all = rough_mind->NoPacks(dim);
       for (int b = 0; b < pack_all; b++) {
-        if (rough_mind->GetPackStatus(dim, b) == common::RS_ALL)
+        if (rough_mind->GetPackStatus(dim, b) == common::RSValue::RS_ALL)
           pack_full++;
-        else if (rough_mind->GetPackStatus(dim, b) != common::RS_NONE)
+        else if (rough_mind->GetPackStatus(dim, b) != common::RSValue::RS_NONE)
           pack_some++;
       }
 
@@ -344,7 +345,7 @@ bool ParameterizedFilter::PropagateRoughToMind() {
     Filter *f = mind->GetUpdatableFilter(i);
     if (f) {
       for (int b = 0; b < rough_mind->NoPacks(i); b++) {
-        if (rough_mind->GetPackStatus(i, b) == common::RS_NONE) f->ResetBlock(b);
+        if (rough_mind->GetPackStatus(i, b) == common::RSValue::RS_NONE) f->ResetBlock(b);
       }
       if (f->IsEmpty()) is_nonempty = false;
     }
@@ -372,9 +373,9 @@ void ParameterizedFilter::RoughUpdateJoins() {
     }
   }
   if (join_or_delayed_present)
-    rough_mind->MakeDimensionSuspect();  // no common::RS_ALL packs
+    rough_mind->MakeDimensionSuspect();  // no common::RSValue::RS_ALL packs
   else if (dims_to_be_suspect.size()) {
-    for (auto &it : dims_to_be_suspect) rough_mind->MakeDimensionSuspect(it);  // no common::RS_ALL packs
+    for (auto &it : dims_to_be_suspect) rough_mind->MakeDimensionSuspect(it);  // no common::RSValue::RS_ALL packs
   }
 }
 
@@ -414,16 +415,16 @@ void ParameterizedFilter::RoughMakeProjections(int to_dim, bool update_reduced) 
       vcolumn::VirtualColumn *matched_vc;
       MIDummyIterator local_mit(mind);
       if (dim1 == ld.attr.vc->GetDim()) {
-        po.Init(ld.attr.vc, PackOrderer::RangeSimilarity, rough_mind->GetRSValueTable(ld.attr.vc->GetDim()));
+        po.Init(ld.attr.vc, PackOrderer::OrderType::RangeSimilarity, rough_mind->GetRSValueTable(ld.attr.vc->GetDim()));
         matched_vc = ld.val1.vc;
       } else {
-        po.Init(ld.val1.vc, PackOrderer::RangeSimilarity, rough_mind->GetRSValueTable(ld.val1.vc->GetDim()));
+        po.Init(ld.val1.vc, PackOrderer::OrderType::RangeSimilarity, rough_mind->GetRSValueTable(ld.val1.vc->GetDim()));
         matched_vc = ld.attr.vc;
       }
       // for each dim2 pack, check whether it may be joined with anything
       // nonempty on dim1
       for (int p2 = 0; p2 < rough_mind->NoPacks(to_dim); p2++) {
-        if (rough_mind->GetPackStatus(to_dim, p2) != common::RS_NONE) {
+        if (rough_mind->GetPackStatus(to_dim, p2) != common::RSValue::RS_NONE) {
           bool pack_possible = false;
           local_mit.SetPack(to_dim, p2);
 
@@ -437,12 +438,12 @@ void ParameterizedFilter::RoughMakeProjections(int to_dim, bool update_reduced) 
             // rmind.NoPacks(dim1); p1++)
             //							if(rmind.GetPackStatus(dim1,
             // p1)
-            //!= common::RS_NONE) {
-            if (rough_mind->GetPackStatus(dim1, po.Current()) != common::RS_NONE) {
+            //!= common::RSValue::RS_NONE) {
+            if (rough_mind->GetPackStatus(dim1, po.Current()) != common::RSValue::RS_NONE) {
               local_mit.SetPack(dim1,
                                 po.Current());  // set a dummy position, just
                                                 // for transferring pack number
-              if (ld.attr.vc->RoughCheck(local_mit, ld) != common::RS_NONE) {
+              if (ld.attr.vc->RoughCheck(local_mit, ld) != common::RSValue::RS_NONE) {
                 pack_possible = true;
                 break;
               }
@@ -450,7 +451,7 @@ void ParameterizedFilter::RoughMakeProjections(int to_dim, bool update_reduced) 
             ++po;
           }
           if (!pack_possible) {
-            rough_mind->SetPackStatus(to_dim, p2, common::RS_NONE);
+            rough_mind->SetPackStatus(to_dim, p2, common::RSValue::RS_NONE);
             total_excluded++;
           }
         }
@@ -468,7 +469,7 @@ void ParameterizedFilter::RoughMakeProjections(int to_dim, bool update_reduced) 
       Filter *f = mind->GetUpdatableFilter(dim1);
       if (f) {
         for (int b = 0; b < rough_mind->NoPacks(dim1); b++) {
-          if (rough_mind->GetPackStatus(dim1, b) == common::RS_NONE) f->ResetBlock(b);
+          if (rough_mind->GetPackStatus(dim1, b) == common::RSValue::RS_NONE) f->ResetBlock(b);
         }
       }
     }
@@ -569,22 +570,22 @@ void ParameterizedFilter::UpdateJoinCondition(Condition &cond, JoinTips &tips)
 
   // Apply conditions
   int conditions_used = cond.Size();
-  JoinAlgType join_alg = JTYPE_NONE;
-  TwoDimensionalJoiner::JoinFailure join_result = TwoDimensionalJoiner::NOT_FAILED;
+  JoinAlgType join_alg = JoinAlgType::JTYPE_NONE;
+  TwoDimensionalJoiner::JoinFailure join_result = TwoDimensionalJoiner::JoinFailure::NOT_FAILED;
   join_alg = TwoDimensionalJoiner::ChooseJoinAlgorithm(*mind, cond);
 
   // Joining itself
   do {
     auto joiner = TwoDimensionalJoiner::CreateJoiner(join_alg, *mind, tips, table);
-    if (join_result == TwoDimensionalJoiner::FAIL_WRONG_SIDES)  // the previous result, if any
+    if (join_result == TwoDimensionalJoiner::JoinFailure::FAIL_WRONG_SIDES)  // the previous result, if any
       joiner->ForceSwitchingSides();
 
     joiner->ExecuteJoinConditions(cond);
     join_result = joiner->WhyFailed();
 
-    if (join_result != TwoDimensionalJoiner::NOT_FAILED)
+    if (join_result != TwoDimensionalJoiner::JoinFailure::NOT_FAILED)
       join_alg = TwoDimensionalJoiner::ChooseJoinAlgorithm(join_result, join_alg, cond.Size());
-  } while (join_result != TwoDimensionalJoiner::NOT_FAILED);
+  } while (join_result != TwoDimensionalJoiner::JoinFailure::NOT_FAILED);
 
   for (int i = 0; i < conditions_used; i++) cond.EraseFirst();  // erase the first condition (already used)
   mind->UpdateNoTuples();
@@ -625,12 +626,13 @@ void ParameterizedFilter::DisplayJoinResults(DimensionVector &all_involved_dims,
 
     rccontrol.lock(mind->m_conn->GetThreadID())
         << "Tuples after " << buf << "join " << buf_dims
-        << (join_performed == JTYPE_SORT
+        << (join_performed == JoinAlgType::JTYPE_SORT
                 ? " [sort]: "
-                : (join_performed == JTYPE_MAP ? " [map]:  "
-                                               : (join_performed == JTYPE_HASH
-                                                      ? " [hash]: "
-                                                      : (join_performed == JTYPE_GENERAL ? " [loop]: " : " [????]: "))))
+                : (join_performed == JoinAlgType::JTYPE_MAP
+                       ? " [map]:  "
+                       : (join_performed == JoinAlgType::JTYPE_HASH
+                              ? " [hash]: "
+                              : (join_performed == JoinAlgType::JTYPE_GENERAL ? " [loop]: " : " [????]: "))))
         << tuples_after_join << " \t" << mind->Display() << system::unlock;
   }
 }
@@ -638,7 +640,7 @@ void ParameterizedFilter::DisplayJoinResults(DimensionVector &all_involved_dims,
 void ParameterizedFilter::RoughSimplifyCondition(Condition &cond) {
   for (uint i = 0; i < cond.Size(); i++) {
     Descriptor &desc = cond[i];
-    if (desc.op == common::O_FALSE || desc.op == common::O_TRUE || !desc.IsType_OrTree()) continue;
+    if (desc.op == common::Operator::O_FALSE || desc.op == common::Operator::O_TRUE || !desc.IsType_OrTree()) continue;
     DimensionVector all_dims(mind->NoDimensions());  // "false" for all dimensions
     desc.DimensionUsed(all_dims);
     desc.ClearRoughValues();
@@ -664,17 +666,17 @@ bool ParameterizedFilter::TryToMerge(Descriptor &d1, Descriptor &d2)  // true, i
     // Exceptions:
     //		null NOT IN {empty set}
     //		null < ALL {empty set} etc.
-    if ((d1.op == common::O_IS_NULL && d2.op != common::O_IS_NULL && !IsSetOperator(d2.op)) ||
-        (d2.op == common::O_IS_NULL && d1.op != common::O_IS_NULL && !IsSetOperator(d1.op))) {
-      d1.op = common::O_FALSE;
+    if ((d1.op == common::Operator::O_IS_NULL && d2.op != common::Operator::O_IS_NULL && !IsSetOperator(d2.op)) ||
+        (d2.op == common::Operator::O_IS_NULL && d1.op != common::Operator::O_IS_NULL && !IsSetOperator(d1.op))) {
+      d1.op = common::Operator::O_FALSE;
       d1.CalculateJoinType();
       return true;
     }
-    if (d1.op == common::O_NOT_NULL && !IsSetOperator(d2.op)) {
+    if (d1.op == common::Operator::O_NOT_NULL && !IsSetOperator(d2.op)) {
       d1 = d2;
       return true;
     }
-    if (d2.op == common::O_NOT_NULL && !IsSetOperator(d1.op)) return true;
+    if (d2.op == common::Operator::O_NOT_NULL && !IsSetOperator(d1.op)) return true;
   }
   // If a condition is repeated both on outer join list and after WHERE, then
   // the first one is not needed
@@ -749,25 +751,25 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
 
     if (descriptors[i].IsDelayed()) continue;
 
-    DEBUG_ASSERT(descriptors[i].lop == common::O_AND);
-    // if(descriptors[i].lop != common::O_AND && descriptors[i].IsType_Join() &&
-    // (descriptors[i].op == common::O_BETWEEN || descriptors[i].op ==
-    // common::O_NOT_BETWEEN))
+    DEBUG_ASSERT(descriptors[i].lop == common::LogicalOperator::O_AND);
+    // if(descriptors[i].lop != common::LogicalOperator::O_AND && descriptors[i].IsType_Join() &&
+    // (descriptors[i].op == common::Operator::O_BETWEEN || descriptors[i].op ==
+    // common::Operator::O_NOT_BETWEEN))
     //	throw common::NotImplementedException("This kind of join condition with
     // OR is not
     // implemented.");
 
     // normalization of descriptor of type 1 between a and b
-    if (descriptors[i].op == common::O_BETWEEN) {
-      if (descriptors[i].GetJoinType() != DT_COMPLEX_JOIN && !descriptors[i].IsType_Join() && descriptors[i].attr.vc &&
-          descriptors[i].attr.vc->IsConst()) {
+    if (descriptors[i].op == common::Operator::O_BETWEEN) {
+      if (descriptors[i].GetJoinType() != DescriptorJoinType::DT_COMPLEX_JOIN && !descriptors[i].IsType_Join() &&
+          descriptors[i].attr.vc && descriptors[i].attr.vc->IsConst()) {
         std::swap(descriptors[i].attr.vc, descriptors[i].val1.vc);
-        descriptors[i].op = common::O_LESS_EQ;
+        descriptors[i].op = common::Operator::O_LESS_EQ;
         // now, the second part
         Descriptor dd(table, mind->NoDimensions());
         dd.attr = descriptors[i].val2;
         descriptors[i].val2.vc = NULL;
-        dd.op = common::O_MORE_EQ;
+        dd.op = common::Operator::O_MORE_EQ;
         dd.val1 = descriptors[i].val1;
         dd.done = false;
         dd.left_dims = descriptors[i].left_dims;
@@ -778,12 +780,12 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
         no_desc++;
       } else if (descriptors[i].IsType_JoinSimple()) {
         // normalization of descriptor of type a between 1 and b
-        descriptors[i].op = common::O_MORE_EQ;
+        descriptors[i].op = common::Operator::O_MORE_EQ;
         Descriptor dd(table, mind->NoDimensions());
         dd.attr = descriptors[i].attr;
         dd.val1 = descriptors[i].val2;
         descriptors[i].val2.vc = NULL;
-        dd.op = common::O_LESS_EQ;
+        dd.op = common::Operator::O_LESS_EQ;
         dd.done = false;
         dd.left_dims = descriptors[i].left_dims;
         dd.right_dims = descriptors[i].right_dims;
@@ -804,7 +806,7 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
   // condition for another column)
   std::vector<Descriptor> added_cond;
   for (uint i = 0; i < no_desc; i++) {  // t1.x == t2.y && t2.y == 5   =>   t1.x == 5
-    if (!descriptors[i].done && descriptors[i].op == common::O_EQ && descriptors[i].IsType_JoinSimple() &&
+    if (!descriptors[i].done && descriptors[i].op == common::Operator::O_EQ && descriptors[i].IsType_JoinSimple() &&
         descriptors[i].IsInner()) {
       // desc[i] is a joining (eq.) condition
       for (uint j = 0; j < descriptors.Size(); j++) {
@@ -812,8 +814,8 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
           // desc[j] is a second condition, non-join
           if (descriptors[j].attr.vc == descriptors[i].attr.vc) {
             // the same table and column
-            if (descriptors[j].op == common::O_EQ) {  // t2.y == t1.x && t2.y == 5  change to  t1.x
-                                                      // == 5 && t2.y == 5
+            if (descriptors[j].op == common::Operator::O_EQ) {  // t2.y == t1.x && t2.y == 5  change to  t1.x
+                                                                // == 5 && t2.y == 5
               descriptors[i].attr = descriptors[i].val1;
               descriptors[i].val1 = descriptors[j].val1;
               descriptors[i].CalculateJoinType();
@@ -834,8 +836,8 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
           }
           if (descriptors[j].attr.vc == descriptors[i].val1.vc) {  // the same as above for val1
             // the same table and column
-            if (descriptors[j].op == common::O_EQ) {  // t1.x == t2.y && t2.y == 5  change to  t1.x
-                                                      // == 5 && t2.y == 5
+            if (descriptors[j].op == common::Operator::O_EQ) {  // t1.x == t2.y && t2.y == 5  change to  t1.x
+                                                                // == 5 && t2.y == 5
               descriptors[i].val1 = descriptors[j].val1;
               descriptors[i].CalculateJoinType();
               descriptors[i].CoerceColumnTypes();
@@ -1006,7 +1008,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
     rough_mind->ClearLocalDescFilters();
     return;
   }
-  PropagateRoughToMind();  // exclude common::RS_NONE from mind
+  PropagateRoughToMind();  // exclude common::RSValue::RS_NONE from mind
 
   // count other types of conditions, e.g. joins (i.e. conditions using
   // attributes from two
@@ -1138,7 +1140,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
       // for an outer join
       if (join_desc[0].IsOuter()) {
         for (uint i = 0; i < descriptors.Size(); i++) {
-          if (descriptors[i].IsDelayed() && !descriptors[i].done && descriptors[i].op == common::O_IS_NULL &&
+          if (descriptors[i].IsDelayed() && !descriptors[i].done && descriptors[i].op == common::Operator::O_IS_NULL &&
               join_desc[0].right_dims.Get(descriptors[i].attr.vc->GetDim()) &&
               !descriptors[i].attr.vc->NullsPossible()) {
             for (int j = 0; j < join_desc[0].right_dims.Size(); j++) {
@@ -1191,7 +1193,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
       join_or_delayed_present = true;
     }
   }
-  if (join_or_delayed_present) rough_mind->MakeDimensionSuspect();  // no common::RS_ALL packs
+  if (join_or_delayed_present) rough_mind->MakeDimensionSuspect();  // no common::RSValue::RS_ALL packs
   mind->UpdateNoTuples();
 }
 
@@ -1210,11 +1212,11 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
 // desc_number = -1 => switch off the rough part
 {
   Descriptor &desc = descriptors[desc_number];
-  if (desc.op == common::O_TRUE) {
+  if (desc.op == common::Operator::O_TRUE) {
     desc.done = true;
     return;
   }
-  if (desc.op == common::O_FALSE) {
+  if (desc.op == common::Operator::O_FALSE) {
     mind->Empty();
     desc.done = true;
     return;
@@ -1246,7 +1248,7 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
   int pack_all = rough_mind->NoPacks(one_dim);
   int pack_some = 0;
   for (int b = 0; b < pack_all; b++) {
-    if (rough_mind->GetPackStatus(one_dim, b) != common::RS_NONE) pack_some++;
+    if (rough_mind->GetPackStatus(one_dim, b) != common::RSValue::RS_NONE) pack_some++;
   }
   MIUpdatingIterator mit(mind, dims);
   desc.CopyDesCond(mit);
@@ -1320,15 +1322,15 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
         if (rf && mit.GetCurPackrow(one_dim) >= 0)
           cur_roughval = rf[mit.GetCurPackrow(one_dim)];
         else
-          cur_roughval = common::RS_SOME;
+          cur_roughval = common::RSValue::RS_SOME;
 
-        if (cur_roughval == common::RS_NONE) {
+        if (cur_roughval == common::RSValue::RS_NONE) {
           mit.ResetCurrentPack();
           mit.NextPackrow();
-        } else if (cur_roughval == common::RS_ALL) {
+        } else if (cur_roughval == common::RSValue::RS_ALL) {
           mit.NextPackrow();
         } else {
-          // common::RS_SOME or common::RS_UNKNOWN
+          // common::RSValue::RS_SOME or common::RSValue::RS_UNKNOWN
           desc.EvaluatePack(mit);
         }
         if (mind->m_conn->Killed()) throw common::KilledException();
@@ -1341,7 +1343,7 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
     Filter *f = mind->GetFilter(one_dim);
     for (int p = 0; p < rough_mind->NoPacks(one_dim); p++)
       if (f->IsEmpty(p)) {
-        rough_mind->SetPackStatus(one_dim, p, common::RS_NONE);
+        rough_mind->SetPackStatus(one_dim, p, common::RSValue::RS_NONE);
       }
   }
   desc.UpdateVCStatistics();
@@ -1373,11 +1375,11 @@ void ParameterizedFilter::TaskProcessPacks(MIUpdatingIterator *taskIterator, Tra
     if (rf && taskIterator->GetCurPackrow(one_dim) >= 0)
       cur_roughval = rf[taskIterator->GetCurPackrow(one_dim)];  //?D??¦Ì¡À?¡ã¡ã¨¹¨º?¡¤??¨¹?DRS_SOME¡À¨ª¨º?2?¡¤??¨¹?D
     else
-      cur_roughval = common::RS_SOME;
-    if (cur_roughval == common::RS_NONE) {
+      cur_roughval = common::RSValue::RS_SOME;
+    if (cur_roughval == common::RSValue::RS_NONE) {
       taskIterator->ResetCurrentPack();
       taskIterator->NextPackrow();
-    } else if (cur_roughval == common::RS_ALL) {
+    } else if (cur_roughval == common::RSValue::RS_ALL) {
       taskIterator->NextPackrow();
     } else {
       desc.EvaluatePack(*taskIterator);  //??¦Ì¡À?¡ã¡ã¨¹???y??¨¬???DD??¡À¨¨¡ã¨¹¨¤¡§?a?1¡ã¨¹¡ê???¨¬???????¡À¨¨

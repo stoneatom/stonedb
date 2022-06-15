@@ -682,7 +682,7 @@ class values_impl : public value_list {
 
 void add_polled(const type_instance_id &, const shared_ptr<value_list> &, bool enabled = true);
 
-using notify_function = std::function<void()> ;
+using notify_function = std::function<void()>;
 template <typename... _Args>
 static auto make_type_instance(description d, _Args &&...args)
     -> values_impl<decltype(value<_Args>(std::forward<_Args>(args)))...> {

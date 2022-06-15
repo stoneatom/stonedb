@@ -664,11 +664,11 @@ void WordGraph::FindEdge(PEdge &e, PSEdge &se, Count c) {
 CprsErr WordGraph::GetLabel(PEdge e, [[maybe_unused]] Symb *lbl, int &len) {
   if (e == ENIL) {
     len = 0;
-    return CPRS_SUCCESS;
+    return CprsErr::CPRS_SUCCESS;
   }  // "escape"
 
   Edge &edge = GE(e);
-  if (len < (int)edge.GetLen()) return CPRS_ERR_BUF;
+  if (len < (int)edge.GetLen()) return CprsErr::CPRS_ERR_BUF;
   len = (int)edge.GetLen();
 
   // TODO:uncomment ROOT
@@ -676,7 +676,7 @@ CprsErr WordGraph::GetLabel(PEdge e, [[maybe_unused]] Symb *lbl, int &len) {
   // NIL consider separately
   //	else std::memcpy(lbl, data + GN(edge.n).endpos - len, len);
 
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 void WordGraph::GetRange(PEdge e, [[maybe_unused]] PSEdge se, Range &r) {
@@ -773,10 +773,10 @@ CprsErr WordGraph::Move(Count c, Symb *str, int &len, Range &rng) {
   PSEdge se;
   FindEdge(e, se, c);
   CprsErr err = GetLabel(e, str, len);
-  if (err) return err;
+  if (static_cast<int>(err)) return err;
   GetRange(e, se, rng);
   Move(e);
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 // TODO: time - use incremental allocator IncAlloc

@@ -737,11 +737,11 @@ void RCAttr::LockPackForUse(common::PACK_INDEX pn) {
         sp = rceng->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
       } catch (std::exception &e) {
         dpn->SetPackPtr(0);
-        STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+        STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
         throw e;
       } catch (...) {
         dpn->SetPackPtr(0);
-        STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+        STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
         throw;
       }
 
@@ -1234,7 +1234,7 @@ void RCAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
     std::string_view okey(vold.val, vold.size());
     common::ErrorCode rc = tab->UpdateIndex(current_tx, nkey, okey, row);
     if (rc == common::ErrorCode::DUPP_KEY || rc == common::ErrorCode::FAILED) {
-      STONEDB_LOG(DEBUG, "Duplicate entry: %s for primary key", vnew.data());
+      STONEDB_LOG(LogCtl_Level::DEBUG, "Duplicate entry: %s for primary key", vnew.data());
       throw common::DupKeyException("Duplicate entry: " + vnew + " for primary key");
     }
   } else {  // common::PackType::INT
@@ -1244,7 +1244,7 @@ void RCAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
     std::string_view okey(reinterpret_cast<const char *>(&vold), sizeof(int64_t));
     common::ErrorCode rc = tab->UpdateIndex(current_tx, nkey, okey, row);
     if (rc == common::ErrorCode::DUPP_KEY || rc == common::ErrorCode::FAILED) {
-      STONEDB_LOG(DEBUG, "Duplicate entry :%" PRId64 " for primary key", vnew);
+      STONEDB_LOG(LogCtl_Level::DEBUG, "Duplicate entry :%" PRId64 " for primary key", vnew);
       throw common::DupKeyException("Duplicate entry: " + std::to_string(vnew) + " for primary key");
     }
   }

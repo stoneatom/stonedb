@@ -78,7 +78,7 @@ class ATI {
 
 class AttributeTypeInfo {
  public:
-  enum {
+  enum class enumATI {
     NOT_NULL = 0,
     AUTO_INC = 1,
     BLOOM_FILTER = 2,
@@ -88,9 +88,9 @@ class AttributeTypeInfo {
                     DTCollation collation = DTCollation(), common::PackFmt fmt = common::PackFmt::DEFAULT,
                     bool filter = false)
       : attrt(attrt), fmt(fmt), precision(precision), scale(scale), collation(collation) {
-    flag[NOT_NULL] = notnull;
-    flag[BLOOM_FILTER] = filter;
-    flag[AUTO_INC] = auto_inc;
+    flag[static_cast<int>(enumATI::NOT_NULL)] = notnull;
+    flag[static_cast<int>(enumATI::BLOOM_FILTER)] = filter;
+    flag[static_cast<int>(enumATI::AUTO_INC)] = auto_inc;
 
     // lookup only applies to string type
     if (attrt != common::CT::STRING && attrt != common::CT::VARCHAR && Lookup()) fmt = common::PackFmt::DEFAULT;
@@ -103,8 +103,8 @@ class AttributeTypeInfo {
   uint Precision() const { return precision; }
   ushort Scale() const { return scale; }
   uint CharLen() const { return precision / collation.collation->mbmaxlen; }
-  bool NotNull() const { return flag[NOT_NULL]; }
-  bool AutoInc() const { return flag[AUTO_INC]; }
+  bool NotNull() const { return flag[static_cast<int>(enumATI::NOT_NULL)]; }
+  bool AutoInc() const { return flag[static_cast<int>(enumATI::AUTO_INC)]; }
   void SetCollation(const DTCollation &collation) { this->collation = collation; }
   void SetCollation(CHARSET_INFO *charset_info) { this->collation.set(charset_info); }
   DTCollation GetCollation() const { return collation; }

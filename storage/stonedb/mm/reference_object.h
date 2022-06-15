@@ -24,7 +24,7 @@ class ReferenceObject : public TraceableObject {
     m_coord.co.rcattr = r;
   }
   ReferenceObject(core::TOCoordinate &r) : TraceableObject() { m_coord = r; }
-  TO_TYPE TraceableType() const override { return TO_REFERENCE; }
+  TO_TYPE TraceableType() const override { return TO_TYPE::TO_REFERENCE; }
 };
 
 }  // namespace mm

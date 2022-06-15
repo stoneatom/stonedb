@@ -46,7 +46,7 @@ void KVStore::Init() {
   // get column family names from manfest file
   rocksdb::Status status = rocksdb::DB::ListColumnFamilies(db_option, rocksdb_datadir, &cf_names);
   if (!status.ok() && status.subcode() == rocksdb::Status::kNone) {
-    STONEDB_LOG(INFO, "First init rocksdb, create default cloum family");
+    STONEDB_LOG(LogCtl_Level::INFO, "First init rocksdb, create default cloum family");
     cf_names.push_back(DEFAULT_CF_NAME);
   }
 
@@ -109,7 +109,7 @@ void KVStore::AsyncDropData() {
     cv_drop.wait_for(lk, std::chrono::seconds(5 * 60));
 
     std::vector<GlobalId> del_index_ids;
-    dict_manager.get_ongoing_index(del_index_ids, DDL_DROP_INDEX_ONGOING);
+    dict_manager.get_ongoing_index(del_index_ids, MetaType::DDL_DROP_INDEX_ONGOING);
     for (auto d : del_index_ids) {
       rocksdb::CompactRangeOptions options;
       options.bottommost_level_compaction = rocksdb::BottommostLevelCompaction::kForce;
@@ -124,22 +124,22 @@ void KVStore::AsyncDropData() {
       DBUG_ASSERT(cfh);
       rocksdb::Status status = rocksdb::DeleteFilesInRange(rdb->GetBaseDB(), cfh, &range.start, &range.limit);
       if (!status.ok()) {
-        STONEDB_LOG(ERROR, "RocksDB: delete file range fail, status: %s ", status.ToString().c_str());
+        STONEDB_LOG(LogCtl_Level::ERROR, "RocksDB: delete file range fail, status: %s ", status.ToString().c_str());
         if (status.IsShutdownInProgress()) {
           break;
         }
       }
       status = rdb->CompactRange(options, cfh, &range.start, &range.limit);
       if (!status.ok()) {
-        STONEDB_LOG(ERROR, "RocksDB: Compact range index fail, status: %s ", status.ToString().c_str());
+        STONEDB_LOG(LogCtl_Level::ERROR, "RocksDB: Compact range index fail, status: %s ", status.ToString().c_str());
         if (status.IsShutdownInProgress()) {
           break;
         }
       }
     }
-    dict_manager.finish_indexes(del_index_ids, DDL_DROP_INDEX_ONGOING);
+    dict_manager.finish_indexes(del_index_ids, MetaType::DDL_DROP_INDEX_ONGOING);
   }
-  STONEDB_LOG(INFO, "KVStore drop Table thread exiting...");
+  STONEDB_LOG(LogCtl_Level::INFO, "KVStore drop Table thread exiting...");
 }
 
 common::ErrorCode KVStore::KVWriteTableMeta(std::shared_ptr<RdbTable> tbl) {
@@ -149,7 +149,7 @@ common::ErrorCode KVStore::KVWriteTableMeta(std::shared_ptr<RdbTable> tbl) {
   std::shared_ptr<void> defer(nullptr, [this](...) { dict_manager.unlock(); });
   ddl_manager.put_and_write(tbl, batch);
   if (!dict_manager.commit(batch)) {
-    STONEDB_LOG(ERROR, "Commit table metadata fail!");
+    STONEDB_LOG(LogCtl_Level::ERROR, "Commit table metadata fail!");
     return common::ErrorCode::FAILED;
   }
   return common::ErrorCode::SUCCESS;
@@ -181,7 +181,7 @@ common::ErrorCode KVStore::KVRenameTableMeta(const std::string &s_name, const st
   dict_manager.lock();
   std::shared_ptr<void> defer(nullptr, [this](...) { dict_manager.unlock(); });
   if (!ddl_manager.rename(s_name, d_name, batch)) {
-    STONEDB_LOG(ERROR, "rename table %s not exsit", s_name.c_str());
+    STONEDB_LOG(LogCtl_Level::ERROR, "rename table %s not exsit", s_name.c_str());
     return common::ErrorCode::FAILED;
   }
 
@@ -198,7 +198,7 @@ common::ErrorCode KVStore::KVWriteMemTableMeta(std::shared_ptr<core::RCMemTable>
   std::shared_ptr<void> defer(nullptr, [this](...) { dict_manager.unlock(); });
   ddl_manager.put_mem(tb_mem, batch);
   if (!dict_manager.commit(batch)) {
-    STONEDB_LOG(ERROR, "Commit memory table metadata fail!");
+    STONEDB_LOG(LogCtl_Level::ERROR, "Commit memory table metadata fail!");
     return common::ErrorCode::FAILED;
   }
   return common::ErrorCode::SUCCESS;
@@ -231,7 +231,7 @@ common::ErrorCode KVStore::KVRenameMemTableMeta(std::string s_name, std::string 
   dict_manager.lock();
   std::shared_ptr<void> defer(nullptr, [this](...) { dict_manager.unlock(); });
   if (!ddl_manager.rename_mem(s_name, d_name, batch)) {
-    STONEDB_LOG(ERROR, "rename table %s failed", s_name.c_str());
+    STONEDB_LOG(LogCtl_Level::ERROR, "rename table %s failed", s_name.c_str());
     return common::ErrorCode::FAILED;
   }
 
@@ -243,7 +243,7 @@ common::ErrorCode KVStore::KVRenameMemTableMeta(std::string s_name, std::string 
 bool KVStore::KVDeleteKey(rocksdb::WriteOptions &wopts, rocksdb::ColumnFamilyHandle *cf, rocksdb::Slice &key) {
   rocksdb::Status s = rdb->Delete(wopts, cf, key);
   if (!s.ok()) {
-    STONEDB_LOG(ERROR, "Rdb delete key fail: %s", s.ToString().c_str());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Rdb delete key fail: %s", s.ToString().c_str());
     return false;
   }
 
@@ -253,7 +253,7 @@ bool KVStore::KVDeleteKey(rocksdb::WriteOptions &wopts, rocksdb::ColumnFamilyHan
 bool KVStore::KVWriteBatch(rocksdb::WriteOptions &wopts, rocksdb::WriteBatch *batch) {
   const rocksdb::Status s = rdb->GetBaseDB()->Write(wopts, batch);
   if (!s.ok()) {
-    STONEDB_LOG(ERROR, "Rdb write batch fail: %s", s.ToString().c_str());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Rdb write batch fail: %s", s.ToString().c_str());
     return false;
   }
   return true;

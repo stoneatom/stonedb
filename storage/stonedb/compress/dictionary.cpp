@@ -128,7 +128,7 @@ void Dictionary<T>::Load(RangeCoder *src, T maxkey) {
     prevc = c++;
     keys[i].count = c;
     keys[i].low = total;
-    if (total + c > MAXTOTAL) throw CPRS_ERR_COR;
+    if (total + c > MAXTOTAL) throw CprsErr::CPRS_ERR_COR;
     for (; c > 0; c--) cnt2val[total++] = i;
   }
 

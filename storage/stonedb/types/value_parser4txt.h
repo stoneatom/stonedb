@@ -53,7 +53,7 @@ class ValueParserForText {
         return std::bind<common::ErrorCode>(&ParseDateTimeAdapter, std::placeholders::_1, std::placeholders::_2,
                                             at.Type());
       default:
-        STONEDB_ERROR("type not supported:" + std::to_string(at.Type()));
+        STONEDB_ERROR("type not supported:" + std::to_string(static_cast<unsigned char>(at.Type())));
         break;
     }
     return NULL;

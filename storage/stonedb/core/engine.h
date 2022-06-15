@@ -153,7 +153,7 @@ class Engine final {
   static void ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes);
   static std::string GetTablePath(TABLE *table);
   static common::SDBError GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
-                                TABLE *table = 0, void *arg = NULL, bool for_exporter = false);
+                                 TABLE *table = 0, void *arg = NULL, bool for_exporter = false);
   static common::SDBError GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params);
   static fs::path GetNextDataDir();
 
@@ -165,7 +165,7 @@ class Engine final {
 
   static bool AreConvertible(types::RCDataType &rcitem, enum_field_types my_type, uint length = 0);
   static bool IsSDBRoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects_list,
-                        int &in_case_of_failure_can_go_to_mysql, int with_insert);
+                         int &in_case_of_failure_can_go_to_mysql, int with_insert);
   static const char *GetFilename(SELECT_LEX *selects_list, int &is_dumpfile);
   static std::unique_ptr<system::IOParameters> CreateIOParameters(const std::string &path, void *arg);
   static std::unique_ptr<system::IOParameters> CreateIOParameters(THD *thd, TABLE *table, void *arg);
@@ -306,7 +306,7 @@ class ResultExportSender final : public ResultSender {
   std::shared_ptr<system::LargeBuffer> rcbuffer;
 };
 
-enum sdb_var_name {
+enum class sdb_var_name {
   SDB_DATAFORMAT,
   SDB_PIPEMODE,
   SDB_NULL,
@@ -320,10 +320,10 @@ enum sdb_var_name {
 };
 
 static std::string sdb_var_name_strings[] = {"STONEDB_LOAD_TIMEOUT",        "STONEDB_LOAD_DATAFORMAT",
-                                            "STONEDB_LOAD_PIPEMODE",       "STONEDB_LOAD_NULL",
-                                            "STONEDB_LOAD_THROTTLE",       "STONEDB_LOAD_STONEDBEXPRESSIONS",
-                                            "STONEDB_LOAD_PARALLEL_AGGR",  "STONEDB_LOAD_REJECT_FILE",
-                                            "STONEDB_LOAD_ABORT_ON_COUNT", "STONEDB_LOAD_ABORT_ON_THRESHOLD"};
+                                             "STONEDB_LOAD_PIPEMODE",       "STONEDB_LOAD_NULL",
+                                             "STONEDB_LOAD_THROTTLE",       "STONEDB_LOAD_STONEDBEXPRESSIONS",
+                                             "STONEDB_LOAD_PARALLEL_AGGR",  "STONEDB_LOAD_REJECT_FILE",
+                                             "STONEDB_LOAD_ABORT_ON_COUNT", "STONEDB_LOAD_ABORT_ON_THRESHOLD"};
 
 std::string get_parameter_name(enum sdb_var_name vn);
 

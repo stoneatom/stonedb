@@ -124,7 +124,7 @@ void JoinerHashTable::Initialize(int64_t max_table_size, bool easy_roughable) {
   rows_limit = int64_t(no_rows * 0.9);  // rows_limit is used to determine whether the table is full
 
   t = (unsigned char *)alloc(((total_width / 4) * no_rows) * 4,
-                             mm::BLOCK_TEMPORARY);  // no need to cache on disk
+                             mm::BLOCK_TYPE::BLOCK_TEMPORARY);  // no need to cache on disk
   input_buffer.reset(new unsigned char[key_buf_width]);
 
   // initialize everything

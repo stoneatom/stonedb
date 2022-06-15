@@ -42,23 +42,23 @@ void PushWarning(THD *thd, Sql_condition::enum_warning_level level, uint code, c
 // Column Type
 // NOTE: do not change the order of implemented data types! Stored as int(...)
 // on disk.
-enum CT : unsigned char {
-  STRING,    // string treated either as dictionary value or "free" text
-  VARCHAR,   // as above (discerned for compatibility with SQL)
-  INT,       // integer 32-bit
+enum class CT : unsigned char {
+  STRING,   // string treated either as dictionary value or "free" text
+  VARCHAR,  // as above (discerned for compatibility with SQL)
+  INT,      // integer 32-bit
 
-  NUM,       // numerical: decimal, up to DEC(18,18)
-  DATE,      // numerical (treated as integer in YYYYMMDD format)
-  TIME,      // numerical (treated as integer in HHMMSS format)
+  NUM,   // numerical: decimal, up to DEC(18,18)
+  DATE,  // numerical (treated as integer in YYYYMMDD format)
+  TIME,  // numerical (treated as integer in HHMMSS format)
 
   BYTEINT,   // integer 8-bit
   SMALLINT,  // integer 16-bit
 
-  BIN,       // free binary (BLOB), no encoding
-  BYTE,      // free binary, fixed size, no encoding
-  VARBYTE,   // free binary, variable size, no encoding
-  REAL,      // double (stored as non-interpreted int64_t, null value is
-             // NULL_VALUE_64)
+  BIN,      // free binary (BLOB), no encoding
+  BYTE,     // free binary, fixed size, no encoding
+  VARBYTE,  // free binary, variable size, no encoding
+  REAL,     // double (stored as non-interpreted int64_t, null value is
+            // NULL_VALUE_64)
   DATETIME,
   TIMESTAMP,
   DATETIME_N,
@@ -105,12 +105,12 @@ constexpr int64_t SDB_BIGINT_MIN = NULL_VALUE_64;
 #define DEFAULT_DELIMITER ";"
 #define DEFAULT_LINE_TERMINATOR ""
 
-enum RSValue : char {
+enum class RSValue : char {
   RS_NONE = 0,    // the pack is empty
   RS_SOME = 1,    // the pack is suspected (but may be empty or full) (i.e.
-                  // RS_SOME & RS_ALL = RS_SOME)
+                  // RSValue::RS_SOME & RSValue::RS_ALL = RSValue::RS_SOME)
   RS_ALL = 2,     // the pack is full
-  RS_UNKNOWN = 3  // the pack was not checked yet (i.e. RS_UNKNOWN & RS_ALL = RS_ALL)
+  RS_UNKNOWN = 3  // the pack was not checked yet (i.e. RSValue::RS_UNKNOWN & RSValue::RS_ALL = RSValue::RS_ALL)
 };
 
 /**
@@ -121,7 +121,7 @@ enum RSValue : char {
         Any changes made here must also be reflected in the
         Descriptor class' interim createQueryOperator() member.
  */
-enum Operator {
+enum class Operator {
   O_EQ = 0,
   O_EQ_ALL,
   O_EQ_ANY,
@@ -174,7 +174,7 @@ enum Operator {
   OPERATOR_ENUM_COUNT
 };
 
-enum LogicalOperator { O_AND, O_OR };
+enum class LogicalOperator { O_AND, O_OR };
 
 enum class ColOperation {
   DELAYED,
@@ -209,22 +209,25 @@ class Tribool {
   // which initializes Tribool as the "unknown" value.
   // Do not use the enumerator defined below, it is internal only.
 
-  enum tribool { TRI_FALSE, TRI_TRUE, TRI_UNKNOWN };
+  enum class tribool { TRI_FALSE, TRI_TRUE, TRI_UNKNOWN };
 
  public:
-  Tribool() { v = TRI_UNKNOWN; }
-  Tribool(bool b) { v = (b ? TRI_TRUE : TRI_FALSE); }
+  Tribool() { v = tribool::TRI_UNKNOWN; }
+  Tribool(bool b) { v = (b ? tribool::TRI_TRUE : tribool::TRI_FALSE); }
   bool operator==(Tribool sec) { return v == sec.v; }
   bool operator!=(Tribool sec) { return v != sec.v; }
-  const Tribool operator!() { return Tribool(v == TRI_TRUE ? TRI_FALSE : (v == TRI_FALSE ? TRI_TRUE : TRI_UNKNOWN)); }
+  const Tribool operator!() {
+    return Tribool(v == tribool::TRI_TRUE ? tribool::TRI_FALSE
+                                          : (v == tribool::TRI_FALSE ? tribool::TRI_TRUE : tribool::TRI_UNKNOWN));
+  }
   static Tribool And(Tribool a, Tribool b) {
     if (a == true && b == true) return true;
     if (a == false || b == false) return false;
-    return TRI_UNKNOWN;
+    return tribool::TRI_UNKNOWN;
   }
   static Tribool Or(Tribool a, Tribool b) {
     if (a == true || b == true) return true;
-    if (a == TRI_UNKNOWN || b == TRI_UNKNOWN) return TRI_UNKNOWN;
+    if (a == tribool::TRI_UNKNOWN || b == tribool::TRI_UNKNOWN) return tribool::TRI_UNKNOWN;
     return false;
   }
 

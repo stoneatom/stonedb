@@ -63,7 +63,7 @@ No &operator<<(std::ostream &, int);
 template <typename T>
 struct ConvertToIntImpl<T, true> {
   // Convert to int only if T doesn't have an overloaded operator<<.
-  enum { value = sizeof(convert(get<DummyStream>() << get<T>())) == sizeof(No) };
+  enum class enumCtiiValue { value = sizeof(convert(get<DummyStream>() << get<T>())) == sizeof(No) };
 };
 
 // Write the content of w to os.
@@ -73,7 +73,7 @@ FMT_API void write(std::ostream &os, Writer &w);
 // Formats a value.
 template <typename Char, typename ArgFormatter_, typename T>
 void format_arg(BasicFormatter<Char, ArgFormatter_> &f, const Char *&format_str, const T &value) {
-  internal::MemoryBuffer<Char, internal::INLINE_BUFFER_SIZE> buffer;
+  internal::MemoryBuffer<Char, static_cast<size_t>(internal::enumInlineBuffer::INLINE_BUFFER_SIZE)> buffer;
 
   internal::FormatBuf<Char> format_buf(buffer);
   std::basic_ostream<Char> output(&format_buf);

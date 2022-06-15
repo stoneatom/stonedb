@@ -175,7 +175,7 @@ int safe_strerror(int error_code, char *&buffer, std::size_t buffer_size) FMT_NO
 
 void format_error_code(Writer &out, int error_code, StringRef message) FMT_NOEXCEPT {
   // Report error code making sure that the output fits into
-  // INLINE_BUFFER_SIZE to avoid dynamic memory allocation and potential
+  // enumInlineBuffer::INLINE_BUFFER_SIZE to avoid dynamic memory allocation and potential
   // bad_alloc.
   out.clear();
   static const char SEP[] = ": ";
@@ -189,9 +189,10 @@ void format_error_code(Writer &out, int error_code, StringRef message) FMT_NOEXC
     ++error_code_size;
   }
   error_code_size += internal::count_digits(abs_value);
-  if (message.size() <= internal::INLINE_BUFFER_SIZE - error_code_size) out << message << SEP;
+  if (message.size() <= static_cast<size_t>(internal::enumInlineBuffer::INLINE_BUFFER_SIZE) - error_code_size)
+    out << message << SEP;
   out << ERROR_STR << error_code;
-  assert(out.size() <= internal::INLINE_BUFFER_SIZE);
+  assert(out.size() <= static_cast<size_t>(internal::enumInlineBuffer::INLINE_BUFFER_SIZE));
 }
 
 void report_error(FormatFunc func, int error_code, StringRef message) FMT_NOEXCEPT {
@@ -314,8 +315,8 @@ FMT_FUNC void WindowsError::init(int err_code, CStringRef format_str, ArgList ar
 
 FMT_FUNC void internal::format_windows_error(Writer &out, int error_code, StringRef message) FMT_NOEXCEPT {
   FMT_TRY {
-    MemoryBuffer<wchar_t, INLINE_BUFFER_SIZE> buffer;
-    buffer.resize(INLINE_BUFFER_SIZE);
+    MemoryBuffer<wchar_t, enumInlineBuffer::INLINE_BUFFER_SIZE> buffer;
+    buffer.resize(enumInlineBuffer::INLINE_BUFFER_SIZE);
     for (;;) {
       wchar_t *system_message = &buffer[0];
       int result = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, FMT_NULL, error_code,
@@ -341,8 +342,8 @@ FMT_FUNC void internal::format_windows_error(Writer &out, int error_code, String
 
 FMT_FUNC void format_system_error(Writer &out, int error_code, StringRef message) FMT_NOEXCEPT {
   FMT_TRY {
-    internal::MemoryBuffer<char, internal::INLINE_BUFFER_SIZE> buffer;
-    buffer.resize(internal::INLINE_BUFFER_SIZE);
+    internal::MemoryBuffer<char, static_cast<size_t>(internal::enumInlineBuffer::INLINE_BUFFER_SIZE)> buffer;
+    buffer.resize(static_cast<size_t>(internal::enumInlineBuffer::INLINE_BUFFER_SIZE));
     for (;;) {
       char *system_message = &buffer[0];
       int result = safe_strerror(error_code, system_message, buffer.size());
@@ -363,14 +364,15 @@ void internal::ArgMap<Char>::init(const ArgList &args) {
   if (!map_.empty()) return;
   using NamedArg = internal::NamedArg<Char>;
   const NamedArg *named_arg = FMT_NULL;
-  bool use_values = args.type(ArgList::MAX_PACKED_ARGS - 1) == internal::Arg::NONE;
+  bool use_values =
+      args.type(static_cast<unsigned>(ArgList::enumMaxPacked::MAX_PACKED_ARGS) - 1) == internal::Arg::Type::NONE;
   if (use_values) {
     for (unsigned i = 0; /*nothing*/; ++i) {
       internal::Arg::Type arg_type = args.type(i);
       switch (arg_type) {
-        case internal::Arg::NONE:
+        case internal::Arg::Type::NONE:
           return;
-        case internal::Arg::NAMED_ARG:
+        case internal::Arg::Type::NAMED_ARG:
           named_arg = static_cast<const NamedArg *>(args.values_[i].pointer);
           map_.push_back(Pair(named_arg->name, *named_arg));
           break;
@@ -380,18 +382,18 @@ void internal::ArgMap<Char>::init(const ArgList &args) {
     }
     return;
   }
-  for (unsigned i = 0; i != ArgList::MAX_PACKED_ARGS; ++i) {
+  for (unsigned i = 0; i != static_cast<unsigned>(ArgList::enumMaxPacked::MAX_PACKED_ARGS); ++i) {
     internal::Arg::Type arg_type = args.type(i);
-    if (arg_type == internal::Arg::NAMED_ARG) {
+    if (arg_type == internal::Arg::Type::NAMED_ARG) {
       named_arg = static_cast<const NamedArg *>(args.args_[i].pointer);
       map_.push_back(Pair(named_arg->name, *named_arg));
     }
   }
-  for (unsigned i = ArgList::MAX_PACKED_ARGS; /*nothing*/; ++i) {
+  for (unsigned i = static_cast<unsigned>(ArgList::enumMaxPacked::MAX_PACKED_ARGS); /*nothing*/; ++i) {
     switch (args.args_[i].type) {
-      case internal::Arg::NONE:
+      case internal::Arg::Type::NONE:
         return;
-      case internal::Arg::NAMED_ARG:
+      case internal::Arg::Type::NAMED_ARG:
         named_arg = static_cast<const NamedArg *>(args.args_[i].pointer);
         map_.push_back(Pair(named_arg->name, *named_arg));
         break;
@@ -409,10 +411,10 @@ void internal::FixedBuffer<Char>::grow(std::size_t) {
 FMT_FUNC internal::Arg internal::FormatterBase::do_get_arg(unsigned arg_index, const char *&error) {
   internal::Arg arg = args_[arg_index];
   switch (arg.type) {
-    case internal::Arg::NONE:
+    case internal::Arg::Type::NONE:
       error = "argument index out of range";
       break;
-    case internal::Arg::NAMED_ARG:
+    case internal::Arg::Type::NAMED_ARG:
       arg = *static_cast<const internal::Arg *>(arg.pointer);
       break;
     default:
@@ -443,7 +445,7 @@ FMT_FUNC void print(CStringRef format_str, ArgList args) { print(stdout, format_
 
 FMT_FUNC void print_colored(Color c, CStringRef format, ArgList args) {
   char escape[] = "\x1b[30m";
-  escape[3] = static_cast<char>('0' + c);
+  escape[3] = static_cast<char>('0' + static_cast<int>(c));
   std::fputs(escape, stdout);
   print(format, args);
   std::fputs(RESET_COLOR, stdout);

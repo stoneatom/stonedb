@@ -41,10 +41,10 @@ class RSIndex_Hist final : public RSIndex {
 
   //  Return true if there is any common value possible for two packs from two
   //  different columns (histograms).
-  // Results:     common::RS_NONE - there is no objects having values between
+  // Results:     common::RSValue::RS_NONE - there is no objects having values between
   // min_v and max_v (including)
-  //              common::RS_SOME - some objects from this pack do have values
-  //              between min_v and max_v common::RS_ALL  - all objects from
+  //              common::RSValue::RS_SOME - some objects from this pack do have values
+  //              between min_v and max_v common::RSValue::RS_ALL  - all objects from
   //              this pack do have values between min_v and max_v
   bool Intersection(int pack, int64_t pack_min, int64_t pack_max, RSIndex_Hist *sec, int pack2, int64_t pack_min2,
                     int64_t pack_max2);

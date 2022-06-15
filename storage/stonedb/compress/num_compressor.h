@@ -75,66 +75,67 @@ class NumCompressorBase {
   // non-templated type-safe compression methods
   virtual CprsErr Compress([[maybe_unused]] char *dest, [[maybe_unused]] uint &len, [[maybe_unused]] const uchar *src,
                            [[maybe_unused]] uint nrec, [[maybe_unused]] uchar maxval,
-                           [[maybe_unused]] CprsAttrType cat = CAT_OTHER) {
+                           [[maybe_unused]] CprsAttrType cat = CprsAttrType::CAT_OTHER) {
     STONEDB_ERROR("method should not be invoked");
-    return CPRS_ERR_OTH;
+    return CprsErr::CPRS_ERR_OTH;
   }
 
   virtual CprsErr Compress([[maybe_unused]] char *dest, [[maybe_unused]] uint &len, [[maybe_unused]] const ushort *src,
                            [[maybe_unused]] uint nrec, [[maybe_unused]] ushort maxval,
-                           [[maybe_unused]] CprsAttrType cat = CAT_OTHER) {
+                           [[maybe_unused]] CprsAttrType cat = CprsAttrType::CAT_OTHER) {
     STONEDB_ERROR("method should not be invoked");
-    return CPRS_ERR_OTH;
+    return CprsErr::CPRS_ERR_OTH;
   }
 
   virtual CprsErr Compress([[maybe_unused]] char *dest, [[maybe_unused]] uint &len, [[maybe_unused]] const uint *src,
                            [[maybe_unused]] uint nrec, [[maybe_unused]] uint maxval,
-                           [[maybe_unused]] CprsAttrType cat = CAT_OTHER) {
+                           [[maybe_unused]] CprsAttrType cat = CprsAttrType::CAT_OTHER) {
     STONEDB_ERROR("method should not be invoked");
-    return CPRS_ERR_OTH;
+    return CprsErr::CPRS_ERR_OTH;
   }
 
   virtual CprsErr Compress([[maybe_unused]] char *dest, [[maybe_unused]] uint &len,
                            [[maybe_unused]] const uint64_t *src, [[maybe_unused]] uint nrec,
-                           [[maybe_unused]] uint64_t maxval, [[maybe_unused]] CprsAttrType cat = CAT_OTHER) {
+                           [[maybe_unused]] uint64_t maxval,
+                           [[maybe_unused]] CprsAttrType cat = CprsAttrType::CAT_OTHER) {
     STONEDB_ERROR("method should not be invoked");
-    return CPRS_ERR_OTH;
+    return CprsErr::CPRS_ERR_OTH;
   }
 
   virtual CprsErr Decompress([[maybe_unused]] uchar *dest, [[maybe_unused]] char *src, [[maybe_unused]] uint len,
                              [[maybe_unused]] uint nrec, [[maybe_unused]] uchar maxval,
-                             [[maybe_unused]] CprsAttrType cat = CAT_OTHER) {
+                             [[maybe_unused]] CprsAttrType cat = CprsAttrType::CAT_OTHER) {
     STONEDB_ERROR("method should not be invoked");
-    return CPRS_ERR_OTH;
+    return CprsErr::CPRS_ERR_OTH;
   }
 
   virtual CprsErr Decompress([[maybe_unused]] ushort *dest, [[maybe_unused]] char *src, [[maybe_unused]] uint len,
                              [[maybe_unused]] uint nrec, [[maybe_unused]] ushort maxval,
-                             [[maybe_unused]] CprsAttrType cat = CAT_OTHER) {
+                             [[maybe_unused]] CprsAttrType cat = CprsAttrType::CAT_OTHER) {
     STONEDB_ERROR("method should not be invoked");
-    return CPRS_ERR_OTH;
+    return CprsErr::CPRS_ERR_OTH;
   }
 
   virtual CprsErr Decompress([[maybe_unused]] uint *dest, [[maybe_unused]] char *src, [[maybe_unused]] uint len,
                              [[maybe_unused]] uint nrec, [[maybe_unused]] uint maxval,
-                             [[maybe_unused]] CprsAttrType cat = CAT_OTHER) {
+                             [[maybe_unused]] CprsAttrType cat = CprsAttrType::CAT_OTHER) {
     STONEDB_ERROR("method should not be invoked");
-    return CPRS_ERR_OTH;
+    return CprsErr::CPRS_ERR_OTH;
   }
 
   virtual CprsErr Decompress([[maybe_unused]] uint64_t *dest, [[maybe_unused]] char *src, [[maybe_unused]] uint len,
                              [[maybe_unused]] uint nrec, [[maybe_unused]] uint64_t maxval,
-                             [[maybe_unused]] CprsAttrType cat = CAT_OTHER) {
+                             [[maybe_unused]] CprsAttrType cat = CprsAttrType::CAT_OTHER) {
     STONEDB_ERROR("method should not be invoked");
-    return CPRS_ERR_OTH;
+    return CprsErr::CPRS_ERR_OTH;
   }
 
   // non-templated NON-type-safe compression methods - use them carefully!
   // make sure that you invoke them for object of appropriate type
   virtual CprsErr Compress(char *dest, uint &len, const void *src, uint nrec, uint64_t maxval,
-                           CprsAttrType cat = CAT_OTHER) = 0;
+                           CprsAttrType cat = CprsAttrType::CAT_OTHER) = 0;
   virtual CprsErr Decompress(void *dest, char *src, uint len, uint nrec, uint64_t maxval,
-                             CprsAttrType cat = CAT_OTHER) = 0;
+                             CprsAttrType cat = CprsAttrType::CAT_OTHER) = 0;
 };
 
 // THE NumCompressor (templated)
@@ -162,32 +163,35 @@ class NumCompressor : public NumCompressorBase {
   // 'nrec' must be at most CPRS_MAXREC
   // 'maxval' - maximum value in the data
   // Data in 'src' are NOT changed.
-  CprsErr CompressT(char *dest, uint &len, const T *src, uint nrec, T maxval, CprsAttrType cat = CAT_OTHER);
+  CprsErr CompressT(char *dest, uint &len, const T *src, uint nrec, T maxval,
+                    CprsAttrType cat = CprsAttrType::CAT_OTHER);
 
   // 'len' - the value of 'len' returned from Compress()
   // 'dest' must be able to hold at least 'nrec' elements of type T
-  CprsErr DecompressT(T *dest, char *src, uint len, uint nrec, T maxval, CprsAttrType cat = CAT_OTHER);
+  CprsErr DecompressT(T *dest, char *src, uint len, uint nrec, T maxval, CprsAttrType cat = CprsAttrType::CAT_OTHER);
 
   using NumCompressorBase::Compress;
   using NumCompressorBase::Decompress;
-  CprsErr Compress(char *dest, uint &len, const T *src, uint nrec, T maxval, CprsAttrType cat = CAT_OTHER) override {
+  CprsErr Compress(char *dest, uint &len, const T *src, uint nrec, T maxval,
+                   CprsAttrType cat = CprsAttrType::CAT_OTHER) override {
     MEASURE_FET("NumCompressor::Compress(...)");
     return CompressT(dest, len, src, nrec, maxval, cat);
   }
 
-  CprsErr Decompress(T *dest, char *src, uint len, uint nrec, T maxval, CprsAttrType cat = CAT_OTHER) override {
+  CprsErr Decompress(T *dest, char *src, uint len, uint nrec, T maxval,
+                     CprsAttrType cat = CprsAttrType::CAT_OTHER) override {
     MEASURE_FET("NumCompressor::Decompress(...)");
     return DecompressT(dest, src, len, nrec, maxval, cat);
   }
 
   CprsErr Compress(char *dest, uint &len, const void *src, uint nrec, uint64_t maxval,
-                   CprsAttrType cat = CAT_OTHER) override {
+                   CprsAttrType cat = CprsAttrType::CAT_OTHER) override {
     MEASURE_FET("NumCompressor::Compress(...)");
     return CompressT(dest, len, (T *)src, nrec, (T)maxval, cat);
   }
 
   CprsErr Decompress(void *dest, char *src, uint len, uint nrec, uint64_t maxval,
-                     CprsAttrType cat = CAT_OTHER) override {
+                     CprsAttrType cat = CprsAttrType::CAT_OTHER) override {
     MEASURE_FET("NumCompressor::Decompress(...)");
     return DecompressT((T *)dest, src, len, nrec, (T)maxval, cat);
   }
@@ -246,19 +250,19 @@ void NumCompressor<T>::DumpData(DataSet<T> *ds, uint f) {
 template <class T>
 CprsErr NumCompressor<T>::CopyCompress(char *dest, uint &len, const T *src, uint nrec) {
   uint datalen = nrec * sizeof(T);
-  if (len < 1 + datalen) return CPRS_ERR_BUF;
+  if (len < 1 + datalen) return CprsErr::CPRS_ERR_BUF;
   *dest = 0;  // ID of copy compression
   std::memcpy(dest + 1, src, datalen);
   len = 1 + datalen;
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 template <class T>
 CprsErr NumCompressor<T>::CopyDecompress(T *dest, char *src, uint len, uint nrec) {
   uint datalen = nrec * sizeof(T);
-  if (len < 1 + datalen) throw CPRS_ERR_BUF;
+  if (len < 1 + datalen) throw CprsErr::CPRS_ERR_BUF;
   std::memcpy(dest, src + 1, datalen);
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 template <class T>
@@ -268,8 +272,8 @@ CprsErr NumCompressor<T>::CompressT(char *dest, uint &len, const T *src, uint nr
   // <ver>=0  - copy compression
   // <ver>=1  - current version
 
-  if (!dest || !src || (len < 3)) return CPRS_ERR_BUF;
-  if ((nrec == 0) || (maxval == 0)) return CPRS_ERR_PAR;
+  if (!dest || !src || (len < 3)) return CprsErr::CPRS_ERR_BUF;
+  if ((nrec == 0) || (maxval == 0)) return CprsErr::CPRS_ERR_PAR;
 
   if (copy_only) return CopyCompress(dest, len, src, nrec);
 
@@ -281,7 +285,7 @@ CprsErr NumCompressor<T>::CompressT(char *dest, uint &len, const T *src, uint nr
   std::vector<T> buf(src, src + nrec);
   DataSet<T> dataset = {&buf[0], maxval, nrec};
 
-  CprsErr err = CPRS_SUCCESS;
+  CprsErr err = CprsErr::CPRS_SUCCESS;
   try {
     RangeCoder coder;
     coder.InitCompress(dest, len, pos);
@@ -307,21 +311,21 @@ CprsErr NumCompressor<T>::CompressT(char *dest, uint &len, const T *src, uint nr
 
   // if compression failed or the size is bigger than the raw data, use copy
   // compression
-  if (err || (pos >= 0.98 * nrec * sizeof(T))) return CopyCompress(dest, len, src, nrec);
+  if (static_cast<int>(err) || (pos >= 0.98 * nrec * sizeof(T))) return CopyCompress(dest, len, src, nrec);
 
   len = pos;
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 template <class T>
 CprsErr NumCompressor<T>::DecompressT(T *dest, char *src, uint len, uint nrec, T maxval,
                                       [[maybe_unused]] CprsAttrType cat) {
-  if (!src || (len < 1)) return CPRS_ERR_BUF;
-  if ((nrec == 0) || (maxval == 0)) return CPRS_ERR_PAR;
+  if (!src || (len < 1)) return CprsErr::CPRS_ERR_BUF;
+  if ((nrec == 0) || (maxval == 0)) return CprsErr::CPRS_ERR_PAR;
 
   uchar ver = (uchar)src[0];
   if (ver == 0) return CopyDecompress(dest, src, len, nrec);
-  if (len < 3) return CPRS_ERR_BUF;
+  if (len < 3) return CprsErr::CPRS_ERR_BUF;
   ushort ID = *(ushort *)(src + 1);
   uint pos = 3;
 
@@ -350,7 +354,7 @@ CprsErr NumCompressor<T>::DecompressT(T *dest, char *src, uint len, uint nrec, T
     return err;
   }
 
-  return CPRS_SUCCESS;
+  return CprsErr::CPRS_SUCCESS;
 }
 
 }  // namespace compress

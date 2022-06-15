@@ -37,7 +37,7 @@ void *MemBlockManager::GetBlock() {
       p = free_blocks[free_blocks.size() - 1];
       free_blocks.pop_back();
     } else {
-      p = alloc(block_size, mm::BLOCK_TEMPORARY);
+      p = alloc(block_size, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
       current_size += block_size;
     }
     used_blocks.insert(p);

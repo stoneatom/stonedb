@@ -47,8 +47,8 @@ PackStr::PackStr(DPN *dpn, PackCoordinate pc, ColumnShare *s) : Pack(dpn, pc, s)
     data.len_mode = sizeof(uint16_t);
 
   try {
-    data.index = (char **)alloc(sizeof(char *) * (1 << s->pss), mm::BLOCK_UNCOMPRESSED);
-    data.lens = alloc((data.len_mode * (1 << s->pss)), mm::BLOCK_UNCOMPRESSED);
+    data.index = (char **)alloc(sizeof(char *) * (1 << s->pss), mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
+    data.lens = alloc((data.len_mode * (1 << s->pss)), mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
     std::memset(data.lens, 0, data.len_mode * (1 << s->pss));
 
     if (!dpn->NullOnly()) {
@@ -66,12 +66,12 @@ PackStr::PackStr(DPN *dpn, PackCoordinate pc, ColumnShare *s) : Pack(dpn, pc, s)
 PackStr::PackStr(const PackStr &aps, const PackCoordinate &pc) : Pack(aps, pc) {
   try {
     data.len_mode = aps.data.len_mode;
-    data.lens = alloc((data.len_mode * (1 << s->pss)), mm::BLOCK_UNCOMPRESSED);
+    data.lens = alloc((data.len_mode * (1 << s->pss)), mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
     std::memset(data.lens, 0, data.len_mode * (1 << s->pss));
-    data.index = (char **)alloc(sizeof(char *) * (1 << s->pss), mm::BLOCK_UNCOMPRESSED);
+    data.index = (char **)alloc(sizeof(char *) * (1 << s->pss), mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
 
     data.sum_len = aps.data.sum_len;
-    data.v.push_back({(char *)alloc(data.sum_len + 1, mm::BLOCK_UNCOMPRESSED), data.sum_len, 0});
+    data.v.push_back({(char *)alloc(data.sum_len + 1, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED), data.sum_len, 0});
 
     for (uint i = 0; i < aps.dpn->nr; i++) {
       if (aps.IsNull(i)) {
@@ -109,7 +109,7 @@ void PackStr::LoadDataFromFile(system::Stream *f) {
 }
 
 void PackStr::Destroy() {
-  if (state_ == PACK_ARRAY) {
+  if (state_ == PackStrtate::PACK_ARRAY) {
     for (auto &it : data.v) {
       dealloc(it.ptr);
     }
@@ -150,11 +150,11 @@ size_t PackStr::CalculateMaxLen() const {
 }
 
 void PackStr::TransformIntoArray() {
-  if (state_ == PACK_ARRAY) return;
-  data.lens = alloc((data.len_mode * (1 << s->pss)), mm::BLOCK_UNCOMPRESSED);
-  data.index = (char **)alloc(sizeof(char *) * (1 << s->pss), mm::BLOCK_UNCOMPRESSED);
+  if (state_ == PackStrtate::PACK_ARRAY) return;
+  data.lens = alloc((data.len_mode * (1 << s->pss)), mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
+  data.index = (char **)alloc(sizeof(char *) * (1 << s->pss), mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
 
-  data.v.push_back({(char *)alloc(data.sum_len + 1, mm::BLOCK_UNCOMPRESSED), data.sum_len, 0});
+  data.v.push_back({(char *)alloc(data.sum_len + 1, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED), data.sum_len, 0});
 
   for (uint i = 0; i < dpn->nr; i++) {
     if (IsNull(i)) {
@@ -169,7 +169,7 @@ void PackStr::TransformIntoArray() {
       SetPtrSize(i, nullptr, 0);
     }
   }
-  state_ = PACK_ARRAY;
+  state_ = PackStrtate::PACK_ARRAY;
 }
 
 void PackStr::UpdateValue(size_t i, const Value &v) {
@@ -230,7 +230,7 @@ void PackStr::UpdateValue(size_t i, const Value &v) {
 void PackStr::LoadValues(const loader::ValueCache *vc) {
   dpn->synced = false;
   auto sz = vc->SumarizedSize();
-  data.v.push_back({(char *)alloc(sz, mm::BLOCK_UNCOMPRESSED), sz, 0});
+  data.v.push_back({(char *)alloc(sz, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED), sz, 0});
 
   auto total = vc->NoValues();
 
@@ -288,7 +288,7 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
   mm::MMGuard<char> comp_null_buf;
   if (dpn->nn > 0) {
     comp_null_buf_size = ((dpn->nr + 7) / 8);
-    comp_null_buf = mm::MMGuard<char>((char *)alloc((comp_null_buf_size + 2), mm::BLOCK_TEMPORARY), *this);
+    comp_null_buf = mm::MMGuard<char>((char *)alloc((comp_null_buf_size + 2), mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
 
     uint cnbl = comp_null_buf_size + 1;
     comp_null_buf[cnbl] = 0xBA;  // just checking - buffer overrun
@@ -298,20 +298,21 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
     if (comp_null_buf[cnbl] != char(0xBA)) {
       STONEDB_ERROR("buffer overrun by BitstreamCompressor!");
     }
-    if (res == CPRS_SUCCESS)
+    if (res == CprsErr::CPRS_SUCCESS)
       SetModeNullsCompressed();
-    else if (res == CPRS_ERR_BUF) {
+    else if (res == CprsErr::CPRS_ERR_BUF) {
       comp_null_buf = mm::MMGuard<char>((char *)nulls.get(), *this, false);
       comp_null_buf_size = ((dpn->nr + 7) / 8);
       ResetModeNullsCompressed();
     } else {
-      throw common::InternalException(
-          "Compression of nulls failed for column " + std::to_string(pc_column(GetCoordinate().co.pack) + 1) +
-          ", pack " + std::to_string(pc_dp(GetCoordinate().co.pack) + 1) + " (error " + std::to_string(res) + ").");
+      throw common::InternalException("Compression of nulls failed for column " +
+                                      std::to_string(pc_column(GetCoordinate().co.pack) + 1) + ", pack " +
+                                      std::to_string(pc_dp(GetCoordinate().co.pack) + 1) + " (error " +
+                                      std::to_string(static_cast<int>(res)) + ").");
     }
   }
 
-  mm::MMGuard<uint> nc_buffer((uint *)alloc((1 << s->pss) * sizeof(uint32_t), mm::BLOCK_TEMPORARY), *this);
+  mm::MMGuard<uint> nc_buffer((uint *)alloc((1 << s->pss) * sizeof(uint32_t), mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
 
   int onn = 0;
   uint maxv = 0;
@@ -329,20 +330,21 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
 
   if (maxv != 0) {
     comp_len_buf_size = onn * sizeof(uint) + 28;
-    comp_len_buf = mm::MMGuard<uint>((uint *)alloc(comp_len_buf_size / 4 * sizeof(uint), mm::BLOCK_TEMPORARY), *this);
+    comp_len_buf =
+        mm::MMGuard<uint>((uint *)alloc(comp_len_buf_size / 4 * sizeof(uint), mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
     uint tmp_comp_len_buf_size = comp_len_buf_size - 8;
     compress::NumCompressor<uint> nc;
     CprsErr res = nc.Compress((char *)(comp_len_buf.get() + 2), tmp_comp_len_buf_size, nc_buffer.get(), onn, maxv);
-    if (res != CPRS_SUCCESS) {
+    if (res != CprsErr::CPRS_SUCCESS) {
       throw common::InternalException("Compression of lengths of values failed for column " +
                                       std::to_string(pc_column(GetCoordinate().co.pack) + 1) + ", pack " +
                                       std::to_string(pc_dp(GetCoordinate().co.pack) + 1) + " error " +
-                                      std::to_string(res));
+                                      std::to_string(static_cast<int>(res)));
     }
     comp_len_buf_size = tmp_comp_len_buf_size + 8;
   } else {
     comp_len_buf_size = 8;
-    comp_len_buf = mm::MMGuard<uint>((uint *)alloc(sizeof(uint) * 2, mm::BLOCK_TEMPORARY), *this);
+    comp_len_buf = mm::MMGuard<uint>((uint *)alloc(sizeof(uint) * 2, mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
   }
 
   *comp_len_buf.get() = comp_len_buf_size;
@@ -355,13 +357,13 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
 
   auto dlen = GetCompressBufferSize(data.sum_len);
 
-  mm::MMGuard<char> comp_buf((char *)alloc(dlen, mm::BLOCK_TEMPORARY), *this);
+  mm::MMGuard<char> comp_buf((char *)alloc(dlen, mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
 
   if (data.sum_len) {
     int objs = (dpn->nr - dpn->nn) - zlo;
 
-    mm::MMGuard<char *> tmp_index((char **)alloc(objs * sizeof(char *), mm::BLOCK_TEMPORARY), *this);
-    mm::MMGuard<uint> tmp_len((uint *)alloc(objs * sizeof(uint), mm::BLOCK_TEMPORARY), *this);
+    mm::MMGuard<char *> tmp_index((char **)alloc(objs * sizeof(char *), mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
+    mm::MMGuard<uint> tmp_len((uint *)alloc(objs * sizeof(uint), mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
 
     int nid = 0;
     uint packlen = 0;
@@ -375,10 +377,10 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
 
     CprsErr res = tc.Compress(comp_buf.get(), dlen, tmp_index.get(), tmp_len.get(), objs, packlen,
                               static_cast<int>(s->ColType().GetFmt()));
-    if (res != CPRS_SUCCESS) {
+    if (res != CprsErr::CPRS_SUCCESS) {
       std::stringstream msg_buf;
       msg_buf << "Compression of string values failed for column " << (pc_column(GetCoordinate().co.pack) + 1)
-              << ", pack " << (pc_dp(GetCoordinate().co.pack) + 1) << " (error " << res << ").";
+              << ", pack " << (pc_dp(GetCoordinate().co.pack) + 1) << " (error " << static_cast<int>(res) << ").";
       throw common::InternalException(msg_buf.str());
     }
 
@@ -387,7 +389,7 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
   }
 
   size_t comp_buf_size = (comp_null_buf_size > 0 ? 2 + comp_null_buf_size : 0) + comp_len_buf_size + 4 + 4 + dlen;
-  UniquePtr compressed_buf = alloc_ptr(comp_buf_size, mm::BLOCK_COMPRESSED);
+  UniquePtr compressed_buf = alloc_ptr(comp_buf_size, mm::BLOCK_TYPE::BLOCK_COMPRESSED);
   uchar *p = reinterpret_cast<uchar *>(compressed_buf.get());
 
   if (dpn->nn > 0) {
@@ -413,7 +415,7 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
 }
 
 void PackStr::CompressTrie() {
-  DEBUG_ASSERT(state_ == PACK_ARRAY);
+  DEBUG_ASSERT(state_ == PackStrtate::PACK_ARRAY);
   marisa::Keyset keyset;
   std::size_t sum_len = 0;
   for (uint row = 0; row < dpn->nr; row++) {
@@ -428,7 +430,7 @@ void PackStr::CompressTrie() {
   dpn->len = bufsz;
   std::ostringstream oss;
   oss << marisa_trie_;
-  compressed_data_ = alloc_ptr(bufsz, mm::BLOCK_TEMPORARY);
+  compressed_data_ = alloc_ptr(bufsz, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
   char *buf_ptr = (char *)compressed_data_.get();
   std::memcpy(buf_ptr, oss.str().data(), oss.str().length());
   buf_ptr += oss.str().length();
@@ -453,14 +455,14 @@ void PackStr::CompressTrie() {
     dealloc(it.ptr);
   }
   data.v.clear();
-  state_ = PACK_TRIE;
+  state_ = PackStrtate::PACK_TRIE;
 }
 
 void PackStr::Save() {
   UniquePtr compressed_buf;
   if (!ShouldNotCompress()) {
     if (data.sum_len > common::MAX_CMPR_SIZE) {
-      STONEDB_LOG(WARN,
+      STONEDB_LOG(LogCtl_Level::WARN,
                   "pack (%d-%d-%d) size %ld exceeds supported compression "
                   "size, will not be compressed!",
                   pc_table(GetCoordinate().co.pack), pc_column(GetCoordinate().co.pack), pc_dp(GetCoordinate().co.pack),
@@ -483,7 +485,7 @@ void PackStr::Save() {
   f.OpenCreate(s->DataFile());
   f.Seek(dpn->addr, SEEK_SET);
   if (IsModeCompressionApplied()) {
-    if (state_ == PACK_TRIE) {
+    if (state_ == PackStrtate::PACK_TRIE) {
       f.WriteExact(compressed_data_.get(), dpn->len);
     } else {
       f.WriteExact(compressed_buf.get(), dpn->len);
@@ -518,7 +520,7 @@ void PackStr::SaveUncompressed(system::Stream *f) {
 void PackStr::LoadCompressed(system::Stream *f) {
   ASSERT(IsModeCompressionApplied());
 
-  auto compressed_buf = alloc_ptr(dpn->len + 1, mm::BLOCK_COMPRESSED);
+  auto compressed_buf = alloc_ptr(dpn->len + 1, mm::BLOCK_TYPE::BLOCK_COMPRESSED);
   f->ReadExact(compressed_buf.get(), dpn->len);
 
   dpn->synced = true;
@@ -528,7 +530,7 @@ void PackStr::LoadCompressed(system::Stream *f) {
   //}
 
   // uncompress the data
-  mm::MMGuard<char *> tmp_index((char **)alloc(dpn->nr * sizeof(char *), mm::BLOCK_TEMPORARY), *this);
+  mm::MMGuard<char *> tmp_index((char **)alloc(dpn->nr * sizeof(char *), mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
 
   char *cur_buf = reinterpret_cast<char *>(compressed_buf.get());
 
@@ -542,10 +544,11 @@ void PackStr::LoadCompressed(system::Stream *f) {
     else {
       compress::BitstreamCompressor bsc;
       CprsErr res = bsc.Decompress((char *)nulls.get(), null_buf_size, cur_buf + 2, dpn->nr, dpn->nn);
-      if (res != CPRS_SUCCESS) {
-        throw common::DatabaseException(
-            "Decompression of nulls failed for column " + std::to_string(pc_column(GetCoordinate().co.pack) + 1) +
-            ", pack " + std::to_string(pc_dp(GetCoordinate().co.pack) + 1) + " (error " + std::to_string(res) + ").");
+      if (res != CprsErr::CPRS_SUCCESS) {
+        throw common::DatabaseException("Decompression of nulls failed for column " +
+                                        std::to_string(pc_column(GetCoordinate().co.pack) + 1) + ", pack " +
+                                        std::to_string(pc_dp(GetCoordinate().co.pack) + 1) + " (error " +
+                                        std::to_string(static_cast<int>(res)) + ").");
       }
     }
     cur_buf += (null_buf_size + 2);
@@ -564,13 +567,13 @@ void PackStr::LoadCompressed(system::Stream *f) {
 
   if (maxv != 0) {
     compress::NumCompressor<uint> nc;
-    mm::MMGuard<uint> cn_ptr((uint *)alloc((1 << s->pss) * sizeof(uint), mm::BLOCK_TEMPORARY), *this);
+    mm::MMGuard<uint> cn_ptr((uint *)alloc((1 << s->pss) * sizeof(uint), mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
     CprsErr res = nc.Decompress(cn_ptr.get(), (char *)(cur_buf + 8), comp_len_buf_size - 8, dpn->nr - dpn->nn, maxv);
-    if (res != CPRS_SUCCESS) {
+    if (res != CprsErr::CPRS_SUCCESS) {
       std::stringstream msg_buf;
       msg_buf << "Decompression of lengths of std::string values failed for column "
               << (pc_column(GetCoordinate().co.pack) + 1) << ", pack " << (pc_dp(GetCoordinate().co.pack) + 1)
-              << " (error " << res << ").";
+              << " (error " << static_cast<int>(res) << ").";
       throw common::DatabaseException(msg_buf.str());
     }
 
@@ -597,19 +600,19 @@ void PackStr::LoadCompressed(system::Stream *f) {
   int objs = dpn->nr - dpn->nn - zlo;
 
   if (objs) {
-    mm::MMGuard<uint> tmp_len((uint *)alloc(objs * sizeof(uint), mm::BLOCK_TEMPORARY), *this);
+    mm::MMGuard<uint> tmp_len((uint *)alloc(objs * sizeof(uint), mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
     for (uint tmp_id = 0, id = 0; id < dpn->nr; id++)
       if (!IsNull(id) && GetSize(id) != 0) tmp_len[tmp_id++] = GetSize(id);
 
     if (dlen) {
-      data.v.push_back({(char *)alloc(data.sum_len, mm::BLOCK_UNCOMPRESSED), data.sum_len, 0});
+      data.v.push_back({(char *)alloc(data.sum_len, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED), data.sum_len, 0});
       compress::TextCompressor tc;
       CprsErr res =
           tc.Decompress(data.v.front().ptr, data.sum_len, cur_buf, dlen, tmp_index.get(), tmp_len.get(), objs);
-      if (res != CPRS_SUCCESS) {
+      if (res != CprsErr::CPRS_SUCCESS) {
         std::stringstream msg_buf;
         msg_buf << "Decompression of std::string values failed for column " << (pc_column(GetCoordinate().co.pack) + 1)
-                << ", pack " << (pc_dp(GetCoordinate().co.pack) + 1) << " (error " << res << ").";
+                << ", pack " << (pc_dp(GetCoordinate().co.pack) + 1) << " (error " << static_cast<int>(res) << ").";
         throw common::DatabaseException(msg_buf.str());
       }
     }
@@ -628,7 +631,7 @@ void PackStr::LoadCompressed(system::Stream *f) {
 void PackStr::LoadCompressedTrie(system::Stream *f) {
   ASSERT(IsModeCompressionApplied());
 
-  compressed_data_ = alloc_ptr(dpn->len + 1, mm::BLOCK_COMPRESSED);
+  compressed_data_ = alloc_ptr(dpn->len + 1, mm::BLOCK_TYPE::BLOCK_COMPRESSED);
   f->ReadExact(compressed_data_.get(), dpn->len);
   auto trie_length = dpn->len - (dpn->nr * sizeof(unsigned short)) - 8;
   marisa_trie_.map(compressed_data_.get(), trie_length);
@@ -641,7 +644,7 @@ void PackStr::LoadCompressedTrie(system::Stream *f) {
       if (ids_array_[row] == 0xffff) SetNull(row);
     }
   }
-  state_ = PACK_TRIE;
+  state_ = PackStrtate::PACK_TRIE;
 }
 
 types::BString PackStr::GetStringValueTrie(int ono) const {
@@ -655,7 +658,7 @@ types::BString PackStr::GetStringValueTrie(int ono) const {
 types::BString PackStr::GetValueBinary(int ono) const {
   if (IsNull(ono)) return types::BString();
   DEBUG_ASSERT(ono < (int)dpn->nr);
-  if (state_ == PACK_TRIE) return GetStringValueTrie(ono);
+  if (state_ == PackStrtate::PACK_TRIE) return GetStringValueTrie(ono);
   size_t str_size;
   if (data.len_mode == sizeof(ushort))
     str_size = data.lens16[ono];
@@ -672,7 +675,7 @@ void PackStr::LoadUncompressed(system::Stream *f) {
   f->ReadExact(data.lens, (data.len_mode * (1 << s->pss)));
   sz -= (data.len_mode * (1 << s->pss));
 
-  data.v.push_back({(char *)alloc(sz + 1, mm::BLOCK_UNCOMPRESSED), sz, 0});
+  data.v.push_back({(char *)alloc(sz + 1, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED), sz, 0});
   f->ReadExact(data.v.back().ptr, sz);
   data.v.back().pos = sz;
   data.sum_len = 0;

@@ -36,7 +36,7 @@ MIIterator::MIIterator() : po(null_order) {
   next_pack_started = false;
   one_filter_dim = -1;
   one_filter_it = NULL;
-  mii_type = MII_DUMMY;
+  mii_type = MIIteratorType::MII_DUMMY;
   TaskId = 0;
   TasksNum = 1;
 }
@@ -190,7 +190,7 @@ void MIIterator::swap(MIIterator &i) {
 }
 
 void MIIterator::Init(bool lock) {
-  mii_type = MII_NORMAL;
+  mii_type = MIIteratorType::MII_NORMAL;
   bool *dim_group_used = new bool[mind->dim_groups.size()];
   for (uint i = 0; i < mind->dim_groups.size(); i++) dim_group_used[i] = false;
   for (int i = 0; i < no_dims; i++)
@@ -229,8 +229,8 @@ void MIIterator::Init(bool lock) {
     // Create group iterators: other filter-based
     std::vector<std::pair<int, int>> ordering_filters;
     for (uint i = 0; i < mind->dim_groups.size(); i++)
-      if (dim_group_used[i] && (mind->dim_groups[i]->Type() == DimensionGroup::DG_FILTER ||
-                                mind->dim_groups[i]->Type() == DimensionGroup::DG_VIRTUAL))  // filters first
+      if (dim_group_used[i] && (mind->dim_groups[i]->Type() == DimensionGroup::DGType::DG_FILTER ||
+                                mind->dim_groups[i]->Type() == DimensionGroup::DGType::DG_VIRTUAL))  // filters first
         ordering_filters.push_back(std::pair<int, int>(65537 - mind->dim_groups[i]->GetFilter(-1)->DensityWeight(),
                                                        i));  // -1: the default filter for this group
     sort(ordering_filters.begin(),
@@ -270,7 +270,7 @@ void MIIterator::Init(bool lock) {
     std::fill(cur_pack, cur_pack + no_dims, -1);
 
     // Check the optimized case
-    if (dg.size() == 1 && dg[0]->Type() == DimensionGroup::DG_FILTER) {
+    if (dg.size() == 1 && dg[0]->Type() == DimensionGroup::DGType::DG_FILTER) {
       for (int i = 0; i < no_dims; i++)
         if (dimensions[i]) {
           one_filter_dim = i;
@@ -533,14 +533,14 @@ bool MIIterator::RewindToPack(const int pack) {
 }
 
 MIIterator::SliceCapability MIIterator::GetSliceCapability() const {
-  // Default is SliceCapability::kDisable.
+  // Default is SliceCapability::Type::kDisable.
   SliceCapability capability;
   if (one_filter_dim > -1) {
-    capability.type = SliceCapability::kLinear;
+    capability.type = SliceCapability::Type::kLinear;
     one_filter_it->GetSlices(&capability.slices);
   } else {
     if (dg.size() == 1) {
-      if (it[0]->GetSlices(&capability.slices)) capability.type = SliceCapability::kFixed;
+      if (it[0]->GetSlices(&capability.slices)) capability.type = SliceCapability::Type::kFixed;
     }
   }
   return capability;

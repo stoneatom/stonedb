@@ -24,7 +24,7 @@ namespace utils {
 void Timer::DoPrint(const std::string &msg) const {
   using namespace std::chrono;
   auto diff = duration_cast<duration<float>>(high_resolution_clock::now() - start);
-  STONEDB_LOG(INFO, "Timer %f seconds: %s", diff.count(), msg.c_str());
+  STONEDB_LOG(LogCtl_Level::INFO, "Timer %f seconds: %s", diff.count(), msg.c_str());
 }
 }  // namespace utils
 }  // namespace stonedb

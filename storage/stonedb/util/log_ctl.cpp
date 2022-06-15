@@ -26,9 +26,9 @@ namespace stonedb {
 
 namespace logger {
 // NOTICE: the order must be align with enum LogCtl_Level
-static const char *level_str[] = {"", "FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"};
+static const char *level_str[] = {"", "LogCtl_Level::FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"};
 
-static const char *get_level_str(LogCtl_Level level) { return level_str[level]; }
+static const char *get_level_str(LogCtl_Level level) { return level_str[static_cast<int>(level)]; }
 }  // namespace logger
 
 static system::Channel stonedblog(true);
@@ -39,7 +39,7 @@ namespace utils {
 logger::LogCtl_Level LogCtl::GetSessionLevel() {
   if (current_tx == nullptr) {
     stonedblog << system::lock << "ERROR" << __PRETTY_FUNCTION__ << " current_tx invalid" << system::unlock;
-    return logger::DISABLED;
+    return logger::LogCtl_Level::DISABLED;
   }
   return static_cast<logger::LogCtl_Level>(current_tx->DebugLevel());
 }
@@ -58,7 +58,7 @@ bool LogCtl::LogEnabled(logger::LogCtl_Level level) {
     }
     return ((current_tx->DebugLevel() >= level ) || (stonedb_sysvar_global_debug_level >= level));
 #else
-  return stonedb_sysvar_global_debug_level >= level;
+  return stonedb_sysvar_global_debug_level >= static_cast<int>(level);
 #endif
 }
 
@@ -107,16 +107,16 @@ void stonedb_log(enum loglevel mysql_level, const char *buffer, [[maybe_unused]]
   // mapping mysql log level to stonedb log level
   switch (mysql_level) {
     case ERROR_LEVEL:
-      level = logger::ERROR;
+      level = logger::LogCtl_Level::ERROR;
       break;
     case WARNING_LEVEL:
-      level = logger::WARN;
+      level = logger::LogCtl_Level::WARN;
       break;
     case INFORMATION_LEVEL:
-      level = logger::WARN;
+      level = logger::LogCtl_Level::WARN;
       break;
     default:
-      level = logger::ERROR;
+      level = logger::LogCtl_Level::ERROR;
       break;
   }
   utils::LogCtl::LogMsg(level, "MYSQL", 0, buffer);

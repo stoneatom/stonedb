@@ -46,10 +46,10 @@ IndexTable::IndexTable(int64_t _size, int64_t _orig_size, [[maybe_unused]] int m
 
   if (size * bytes_per_value < buffer_size_in_bytes)
     buffer_size_in_bytes = int(size * bytes_per_value);  // the whole table in one buffer
-  buf = (unsigned char *)alloc(buffer_size_in_bytes, mm::BLOCK_TEMPORARY, true);
+  buf = (unsigned char *)alloc(buffer_size_in_bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
   if (!buf) {
     Unlock();
-    STONEDB_LOG(ERROR, "Could not allocate memory for IndexTable, size :%u", buffer_size_in_bytes);
+    STONEDB_LOG(LogCtl_Level::ERROR, "Could not allocate memory for IndexTable, size :%u", buffer_size_in_bytes);
     throw common::OutOfMemoryException();
   }
   std::memset(buf, 0, buffer_size_in_bytes);
@@ -75,11 +75,11 @@ IndexTable::IndexTable(IndexTable &sec)
       m_conn(sec.m_conn) {
   sec.Lock();
   CI_SetDefaultSize((int)max_buffer_size_in_bytes);
-  buf = (unsigned char *)alloc(buffer_size_in_bytes, mm::BLOCK_TEMPORARY, true);
+  buf = (unsigned char *)alloc(buffer_size_in_bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
   if (!buf) {
     sec.Unlock();
     Unlock();
-    STONEDB_LOG(ERROR, "Could not allocate memory for IndexTable(sec)!");
+    STONEDB_LOG(LogCtl_Level::ERROR, "Could not allocate memory for IndexTable(sec)!");
     throw common::OutOfMemoryException();
   }
   int64_t used_size = size;
@@ -102,9 +102,9 @@ IndexTable::~IndexTable() {
 void IndexTable::LoadBlock(int b) {
   DEBUG_ASSERT(IsLocked());
   if (buf == NULL) {  // possible after block caching on disk
-    buf = (unsigned char *)alloc(buffer_size_in_bytes, mm::BLOCK_TEMPORARY, true);
+    buf = (unsigned char *)alloc(buffer_size_in_bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
     if (!buf) {
-      STONEDB_LOG(ERROR, "Could not allocate memory for IndexTable(LoadBlock).");
+      STONEDB_LOG(LogCtl_Level::ERROR, "Could not allocate memory for IndexTable(LoadBlock).");
       throw common::OutOfMemoryException();
     }
   } else if (block_changed)
@@ -139,7 +139,7 @@ void IndexTable::ExpandTo(int64_t new_size) {
     else
       new_buffer_size_in_bytes = max_buffer_size_in_bytes;
     // TODO: check the rc_alloc status
-    buf = (unsigned char *)rc_realloc(buf, new_buffer_size_in_bytes, mm::BLOCK_TEMPORARY);
+    buf = (unsigned char *)rc_realloc(buf, new_buffer_size_in_bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
     buffer_size_in_bytes = new_buffer_size_in_bytes;
   }
   // else: the table is buffered anyway, so we don't need to do anything

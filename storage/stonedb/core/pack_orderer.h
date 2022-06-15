@@ -27,7 +27,7 @@ namespace stonedb {
 namespace core {
 class PackOrderer {
  public:
-  enum OrderType {
+  enum class OrderType {
     RangeSimilarity,  // ...
     MinAsc,           // ascending by pack minimum
     MinDesc,          // descending by pack minimum
@@ -37,7 +37,7 @@ class PackOrderer {
                       // domain (MinAsc, then find the next minimally overlapping pack)
     NotSpecified
   };
-  enum State { INIT_VAL = -1, END = -2 };
+  enum class State { INIT_VAL = -1, END = -2 };
 
   struct OrderStat {
     OrderStat(int n, int o) : neutral(n), ordered(o){};
@@ -98,7 +98,7 @@ class PackOrderer {
   bool NaturallyOrdered() { return packs_passed >= packs_ordered_up_to; }
 
  private:
-  enum MinMaxType { MMT_Fixed, MMT_Float, MMT_Double, MMT_String };
+  enum class MinMaxType { MMT_Fixed, MMT_Float, MMT_Double, MMT_String };
 
   union MMTU {
     int64_t i;

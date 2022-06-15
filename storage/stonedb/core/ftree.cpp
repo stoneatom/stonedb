@@ -36,13 +36,13 @@ FTree::FTree(const FTree &ft)
       changed(ft.changed),
       hash_size(ft.hash_size),
       hdr(ft.hdr) {
-  mem = (char *)alloc(total_buf_size, mm::BLOCK_TEMPORARY, true);
-  len = (uint16_t *)alloc(total_dic_size * sizeof(uint16_t), mm::BLOCK_TEMPORARY, true);
-  value_offset = (uint32_t *)alloc(total_dic_size * sizeof(uint32_t), mm::BLOCK_TEMPORARY, true);
+  mem = (char *)alloc(total_buf_size, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
+  len = (uint16_t *)alloc(total_dic_size * sizeof(uint16_t), mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
+  value_offset = (uint32_t *)alloc(total_dic_size * sizeof(uint32_t), mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
 
   if (total_buf_size > 0 && (!mem || !len || !value_offset)) {
     Destroy();
-    STONEDB_LOG(ERROR, "FTree, out of memory.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "FTree, out of memory.");
     throw common::OutOfMemoryException();
   }
 
@@ -50,11 +50,11 @@ FTree::FTree(const FTree &ft)
   std::memcpy(len, ft.len, hdr.size * sizeof(uint16_t));
   std::memcpy(value_offset, ft.value_offset, hdr.size * sizeof(uint32_t));
 
-  if (ft.hash_table) hash_table = (int *)alloc(hash_size * sizeof(int), mm::BLOCK_TEMPORARY, true);
+  if (ft.hash_table) hash_table = (int *)alloc(hash_size * sizeof(int), mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
 
   if (ft.hash_table && !hash_table) {
     Destroy();
-    STONEDB_LOG(ERROR, "FTree, out of memory.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "FTree, out of memory.");
     throw common::OutOfMemoryException();
   }
 
@@ -121,10 +121,10 @@ void FTree::Init(int width) {
   total_dic_size = 10;  // minimal dictionary size
   total_buf_size = hdr.max_len * 10 + 10;
   if (mem) dealloc(mem);
-  mem = (char *)alloc(total_buf_size, mm::BLOCK_TEMPORARY);
-  if (len == NULL) len = (uint16_t *)alloc(total_dic_size * sizeof(uint16_t), mm::BLOCK_TEMPORARY, true);
+  mem = (char *)alloc(total_buf_size, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
+  if (len == NULL) len = (uint16_t *)alloc(total_dic_size * sizeof(uint16_t), mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
   if (value_offset == NULL)
-    value_offset = (uint32_t *)alloc(total_dic_size * sizeof(uint32_t), mm::BLOCK_TEMPORARY, true);
+    value_offset = (uint32_t *)alloc(total_dic_size * sizeof(uint32_t), mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
 
   std::memset(mem, 0, total_buf_size);
   last_code = -1;
@@ -146,8 +146,9 @@ int FTree::Add(const char *str, size_t sz) {
   if (total_dic_size < size_t(hdr.size + 1)) {  // Enlarge tables, if required
     int new_dic_size = int((total_dic_size + 10) * 1.2);
     if (new_dic_size > 536870910) new_dic_size = total_dic_size + 10;
-    len = (uint16_t *)rc_realloc(len, new_dic_size * sizeof(uint16_t), mm::BLOCK_TEMPORARY);
-    value_offset = (uint32_t *)rc_realloc(value_offset, new_dic_size * sizeof(uint32_t), mm::BLOCK_TEMPORARY);
+    len = (uint16_t *)rc_realloc(len, new_dic_size * sizeof(uint16_t), mm::BLOCK_TYPE::BLOCK_TEMPORARY);
+    value_offset =
+        (uint32_t *)rc_realloc(value_offset, new_dic_size * sizeof(uint32_t), mm::BLOCK_TYPE::BLOCK_TEMPORARY);
     if (len == NULL || value_offset == NULL) throw common::OutOfMemoryException("Too many lookup values");
     for (int i = total_dic_size; i < new_dic_size; i++) {
       len[i] = 0;
@@ -160,7 +161,7 @@ int FTree::Add(const char *str, size_t sz) {
     size_t new_buf_size = (total_buf_size + sz + 10) * 1.2;
     if (new_buf_size > BUF_SIZE_LIMIT) new_buf_size = int64_t(total_buf_size) + sz;
     if (new_buf_size > BUF_SIZE_LIMIT) throw common::OutOfMemoryException("Too many lookup values");
-    mem = (char *)rc_realloc(mem, new_buf_size, mm::BLOCK_TEMPORARY);
+    mem = (char *)rc_realloc(mem, new_buf_size, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
     std::memset(mem + total_buf_size, 0, new_buf_size - total_buf_size);
     total_buf_size = int(new_buf_size);
   }
@@ -207,9 +208,9 @@ void FTree::SaveData(const fs::path &p) {
     }
     int len_sum = (hdr.size > 0 ? value_offset[hdr.size - 1] + len[hdr.size - 1] : 0);
     std::memcpy(buf, mem, len_sum);
-    if (STONEDB_LOGCHECK(DEBUG)) {
+    if (STONEDB_LOGCHECK(LogCtl_Level::DEBUG)) {
       if (CheckConsistency() != 0) {
-        STONEDB_LOG(DEBUG, "FTree CheckConsistency fail");
+        STONEDB_LOG(LogCtl_Level::DEBUG, "FTree CheckConsistency fail");
       }
     }
   }
@@ -237,17 +238,17 @@ void FTree::LoadData(const fs::path &p) {
   buf += sizeof(HDR);
 
   if (hdr.ver != DICT_FILE_VERSION) {
-    STONEDB_LOG(ERROR, "bad dictionary version %d", hdr.ver);
+    STONEDB_LOG(LogCtl_Level::ERROR, "bad dictionary version %d", hdr.ver);
     return;
   }
 
   total_dic_size = hdr.size;
 
   dealloc(len);
-  len = (uint16_t *)alloc(total_dic_size * sizeof(uint16_t), mm::BLOCK_TEMPORARY);
+  len = (uint16_t *)alloc(total_dic_size * sizeof(uint16_t), mm::BLOCK_TYPE::BLOCK_TEMPORARY);
 
   dealloc(value_offset);
-  value_offset = (uint32_t *)alloc(total_dic_size * sizeof(uint32_t), mm::BLOCK_TEMPORARY);
+  value_offset = (uint32_t *)alloc(total_dic_size * sizeof(uint32_t), mm::BLOCK_TYPE::BLOCK_TEMPORARY);
 
   max_value_size = 0;
   for (int i = 0; i < hdr.size; i++) {
@@ -266,7 +267,7 @@ void FTree::LoadData(const fs::path &p) {
     total_buf_size = len_sum;
 
   dealloc(mem);
-  mem = (char *)alloc(total_buf_size, mm::BLOCK_TEMPORARY);
+  mem = (char *)alloc(total_buf_size, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
   std::memset(mem, 0, total_buf_size);
   std::memcpy(mem, buf, len_sum);
   last_code = -1;
@@ -281,7 +282,7 @@ void FTree::InitHash() {
   hash_size = int(hdr.size < 30 ? 97 : (hdr.size + 10) * 2.5);
   while (hash_size % 2 == 0 || hash_size % 3 == 0 || hash_size % 5 == 0 || hash_size % 7 == 0) hash_size++;
   dealloc(hash_table);
-  hash_table = (int *)alloc(hash_size * sizeof(int), mm::BLOCK_TEMPORARY);  // 2 GB max.
+  hash_table = (int *)alloc(hash_size * sizeof(int), mm::BLOCK_TYPE::BLOCK_TEMPORARY);  // 2 GB max.
   if (hash_table == NULL) throw common::OutOfMemoryException("Too many lookup values");
 
   std::memset(hash_table, 0xFF,

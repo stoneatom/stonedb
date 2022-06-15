@@ -39,14 +39,14 @@ namespace core {
 void RCAttr::EvaluatePack(MIUpdatingIterator &mit, int dim, Descriptor &d) {
   MEASURE_FET("RCAttr::EvaluatePack(...)");
   ASSERT(d.encoded, "Descriptor is not encoded!");
-  if (d.op == common::O_FALSE) {
+  if (d.op == common::Operator::O_FALSE) {
     mit.ResetCurrentPack();
     mit.NextPackrow();
-  } else if (d.op == common::O_TRUE)
+  } else if (d.op == common::Operator::O_TRUE)
     mit.NextPackrow();
-  else if (d.op == common::O_NOT_NULL)
+  else if (d.op == common::Operator::O_NOT_NULL)
     EvaluatePack_NotNull(mit, dim);
-  else if (d.op == common::O_IS_NULL)
+  else if (d.op == common::Operator::O_IS_NULL)
     EvaluatePack_IsNull(mit, dim);
   else if (d.val1.vc && !d.val1.vc->IsConst()) {
     if (GetPackType() == common::PackType::INT) {
@@ -56,39 +56,45 @@ void RCAttr::EvaluatePack(MIUpdatingIterator &mit, int dim, Descriptor &d) {
         EvaluatePack_AttrAttr(mit, dim, d);
     } else
       DEBUG_ASSERT(0);  // case not implemented
-  } else if (GetPackType() == common::PackType::INT && (d.op == common::O_BETWEEN || d.op == common::O_NOT_BETWEEN)) {
+  } else if (GetPackType() == common::PackType::INT &&
+             (d.op == common::Operator::O_BETWEEN || d.op == common::Operator::O_NOT_BETWEEN)) {
     if (!ATI::IsRealType(TypeName()))
       EvaluatePack_BetweenInt(mit, dim, d);
     else
       EvaluatePack_BetweenReal(mit, dim, d);
-  } else if (GetPackType() == common::PackType::STR && (d.op == common::O_BETWEEN || d.op == common::O_NOT_BETWEEN)) {
+  } else if (GetPackType() == common::PackType::STR &&
+             (d.op == common::Operator::O_BETWEEN || d.op == common::Operator::O_NOT_BETWEEN)) {
     if (types::RequiresUTFConversions(d.GetCollation()))
       EvaluatePack_BetweenString_UTF(mit, dim, d);
     else
       EvaluatePack_BetweenString(mit, dim, d);
-  } else if (d.op == common::O_LIKE || d.op == common::O_NOT_LIKE) {
+  } else if (d.op == common::Operator::O_LIKE || d.op == common::Operator::O_NOT_LIKE) {
     if (types::RequiresUTFConversions(d.GetCollation()))
       EvaluatePack_Like_UTF(mit, dim, d);
     else
       EvaluatePack_Like(mit, dim, d);
-  } else if (GetPackType() == common::PackType::STR && (d.op == common::O_IN || d.op == common::O_NOT_IN)) {
+  } else if (GetPackType() == common::PackType::STR &&
+             (d.op == common::Operator::O_IN || d.op == common::Operator::O_NOT_IN)) {
     if (types::RequiresUTFConversions(d.GetCollation()))
       EvaluatePack_InString_UTF(mit, dim, d);
     else
       EvaluatePack_InString(mit, dim, d);
-  } else if (GetPackType() == common::PackType::INT && (d.op == common::O_IN || d.op == common::O_NOT_IN))
+  } else if (GetPackType() == common::PackType::INT &&
+             (d.op == common::Operator::O_IN || d.op == common::Operator::O_NOT_IN))
     EvaluatePack_InNum(mit, dim, d);
   else
     DEBUG_ASSERT(0);  // case not implemented!
 }
 
-// TODO: op (common::O_LIKE common::O_IN)
+// TODO: op (common::Operator::O_LIKE common::Operator::O_IN)
 common::ErrorCode RCAttr::EvaluateOnIndex(MIUpdatingIterator &mit, int dim, Descriptor &d, int64_t limit) {
   common::ErrorCode rv = common::ErrorCode::FAILED;
 
-  if (GetPackType() == common::PackType::INT && (d.op == common::O_BETWEEN || d.op == common::O_NOT_BETWEEN)) {
+  if (GetPackType() == common::PackType::INT &&
+      (d.op == common::Operator::O_BETWEEN || d.op == common::Operator::O_NOT_BETWEEN)) {
     rv = EvaluateOnIndex_BetweenInt(mit, dim, d, limit);
-  } else if (GetPackType() == common::PackType::STR && (d.op == common::O_BETWEEN || d.op == common::O_NOT_BETWEEN)) {
+  } else if (GetPackType() == common::PackType::STR &&
+             (d.op == common::Operator::O_BETWEEN || d.op == common::Operator::O_NOT_BETWEEN)) {
     if (types::RequiresUTFConversions(d.GetCollation()))
       rv = EvaluateOnIndex_BetweenString_UTF(mit, dim, d, limit);
     else
@@ -105,7 +111,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenInt(MIUpdatingIterator &mit, in
   int64_t pv1 = d.val1.vc->GetValueInt64(mit);
   int64_t pv2 = d.val2.vc->GetValueInt64(mit);
   auto filter = mit.GetMultiIndex()->GetFilter(dim);
-  if (d.op != common::O_NOT_BETWEEN) filter->Reset();
+  if (d.op != common::Operator::O_NOT_BETWEEN) filter->Reset();
 
   std::vector<uint> keycols = indextab->KeyCols();
   if (keycols.size() > 0 && keycols[0] == ColId()) {
@@ -114,7 +120,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenInt(MIUpdatingIterator &mit, in
     std::vector<std::string_view> fields;
     fields.emplace_back((const char *)&pv1, sizeof(int64_t));
 
-    iter.ScanToKey(indextab, fields, common::O_MORE_EQ);
+    iter.ScanToKey(indextab, fields, common::Operator::O_MORE_EQ);
     while (iter.IsValid()) {
       uint64_t row = 0;
       std::vector<std::string> vkeys;
@@ -122,8 +128,8 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenInt(MIUpdatingIterator &mit, in
       if (common::ErrorCode::SUCCESS == rv) {
         int64_t part1 = *(reinterpret_cast<int64_t *>(vkeys[0].data()));
         bool res = part1 > pv2;
-        if (d.op == common::O_NOT_BETWEEN) {
-          // If operator is common::O_NOT_BETWEEN, only set 0 to the bit by row,
+        if (d.op == common::Operator::O_NOT_BETWEEN) {
+          // If operator is common::Operator::O_NOT_BETWEEN, only set 0 to the bit by row,
           // limit not use because don't have graceful approach to process the
           // bit(1)
           if (!res)
@@ -138,13 +144,14 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenInt(MIUpdatingIterator &mit, in
 
         ++iter;
       } else {
-        STONEDB_LOG(ERROR, "GetCurKV valid! col:[%u]=%I64d, Path:%s", ColId(), pv1, m_share->owner->Path().data());
+        STONEDB_LOG(LogCtl_Level::ERROR, "GetCurKV valid! col:[%u]=%I64d, Path:%s", ColId(), pv1,
+                    m_share->owner->Path().data());
         break;
       }
     }
   }
   // Clear packs not in range
-  if (rv == common::ErrorCode::SUCCESS && d.op != common::O_NOT_BETWEEN) {
+  if (rv == common::ErrorCode::SUCCESS && d.op != common::Operator::O_NOT_BETWEEN) {
     while (mit.IsValid()) {
       if (!filter->GetBlockChangeStatus(mit.GetCurPackrow(dim))) mit.ResetCurrentPack();
       mit.NextPackrow();
@@ -164,7 +171,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString(MIUpdatingIterator &mit,
   d.val1.vc->GetValueString(pv1, mit);
   d.val2.vc->GetValueString(pv2, mit);
   auto filter = mit.GetMultiIndex()->GetFilter(dim);
-  if (d.op != common::O_NOT_BETWEEN) filter->Reset();
+  if (d.op != common::Operator::O_NOT_BETWEEN) filter->Reset();
 
   std::vector<uint> keycols = indextab->KeyCols();
   if (keycols.size() > 0 && keycols[0] == ColId()) {
@@ -173,7 +180,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString(MIUpdatingIterator &mit,
     std::vector<std::string_view> fields;
     fields.emplace_back(pv1.GetDataBytesPointer(), pv1.size());
 
-    iter.ScanToKey(indextab, fields, (d.sharp ? common::O_MORE : common::O_MORE_EQ));
+    iter.ScanToKey(indextab, fields, (d.sharp ? common::Operator::O_MORE : common::Operator::O_MORE_EQ));
     while (iter.IsValid()) {
       uint64_t row = 0;
       std::vector<std::string> vkeys;
@@ -183,8 +190,8 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString(MIUpdatingIterator &mit,
         bool res = (d.sharp && ((pv1.IsNull() || pv > pv1) && (pv2.IsNull() || pv < pv2))) ||
                    (!d.sharp && ((pv1.IsNull() || pv >= pv1) && (pv2.IsNull() || pv <= pv2)));
 
-        if (d.op == common::O_NOT_BETWEEN) {
-          // If operator is common::O_NOT_BETWEEN, only set 0 to the bit by row,
+        if (d.op == common::Operator::O_NOT_BETWEEN) {
+          // If operator is common::Operator::O_NOT_BETWEEN, only set 0 to the bit by row,
           // limit not use because don't have graceful approach to process the
           // bit(1)
           if (res)
@@ -199,14 +206,14 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString(MIUpdatingIterator &mit,
 
         ++iter;
       } else {
-        STONEDB_LOG(ERROR, "GetCurKV valid! col:[%u]=%s, Path:%s", ColId(), pv1.ToString().data(),
+        STONEDB_LOG(LogCtl_Level::ERROR, "GetCurKV valid! col:[%u]=%s, Path:%s", ColId(), pv1.ToString().data(),
                     m_share->owner->Path().data());
         break;
       }
     }
   }
   // Clear packs not in range
-  if (rv == common::ErrorCode::SUCCESS && d.op != common::O_NOT_BETWEEN) {
+  if (rv == common::ErrorCode::SUCCESS && d.op != common::Operator::O_NOT_BETWEEN) {
     while (mit.IsValid()) {
       if (!filter->GetBlockChangeStatus(mit.GetCurPackrow(dim))) mit.ResetCurrentPack();
       mit.NextPackrow();
@@ -226,7 +233,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString_UTF(MIUpdatingIterator &
   d.val1.vc->GetValueString(pv1, mit);
   d.val2.vc->GetValueString(pv2, mit);
   auto filter = mit.GetMultiIndex()->GetFilter(dim);
-  if (d.op != common::O_NOT_BETWEEN) filter->Reset();
+  if (d.op != common::Operator::O_NOT_BETWEEN) filter->Reset();
 
   std::vector<uint> keycols = indextab->KeyCols();
   if (keycols.size() > 0 && keycols[0] == ColId()) {
@@ -234,7 +241,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString_UTF(MIUpdatingIterator &
     index::KeyIterator iter(&current_tx->KVTrans());
     std::vector<std::string_view> fields;
     fields.emplace_back(pv1.GetDataBytesPointer(), pv1.size());
-    iter.ScanToKey(indextab, fields, (d.sharp ? common::O_MORE : common::O_MORE_EQ));
+    iter.ScanToKey(indextab, fields, (d.sharp ? common::Operator::O_MORE : common::Operator::O_MORE_EQ));
     DTCollation coll = d.GetCollation();
     while (iter.IsValid()) {
       uint64_t row = 0;
@@ -247,8 +254,8 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString_UTF(MIUpdatingIterator &
                    (!d.sharp && ((pv1.IsNull() || CollationStrCmp(coll, pv, pv1) >= 0) &&
                                  (pv2.IsNull() || CollationStrCmp(coll, pv, pv2) <= 0)));
 
-        if (d.op == common::O_NOT_BETWEEN) {
-          // If operator is common::O_NOT_BETWEEN, only set 0 to the bit by row,
+        if (d.op == common::Operator::O_NOT_BETWEEN) {
+          // If operator is common::Operator::O_NOT_BETWEEN, only set 0 to the bit by row,
           // limit not use because don't have graceful approach to process the
           // bit(1)
           if (res)
@@ -263,14 +270,14 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString_UTF(MIUpdatingIterator &
 
         ++iter;
       } else {
-        STONEDB_LOG(ERROR, "GetCurKV valid! col:[%u]=%s, Path:%s", ColId(), pv1.ToString().data(),
+        STONEDB_LOG(LogCtl_Level::ERROR, "GetCurKV valid! col:[%u]=%s, Path:%s", ColId(), pv1.ToString().data(),
                     m_share->owner->Path().data());
         break;
       }
     }
   }
   // Clear packs not in range
-  if (rv == common::ErrorCode::SUCCESS && d.op != common::O_NOT_BETWEEN) {
+  if (rv == common::ErrorCode::SUCCESS && d.op != common::Operator::O_NOT_BETWEEN) {
     while (mit.IsValid()) {
       if (!filter->GetBlockChangeStatus(mit.GetCurPackrow(dim))) mit.ResetCurrentPack();
       mit.NextPackrow();
@@ -400,7 +407,7 @@ void RCAttr::EvaluatePack_Like(MIUpdatingIterator &mit, int dim, Descriptor &d) 
         v.MakePersistent();
         res = v.Like(pattern, d.like_esc);
       }
-      if (d.op == common::O_NOT_LIKE) res = !res;
+      if (d.op == common::Operator::O_NOT_LIKE) res = !res;
       if (!res) mit.ResetCurrent();
     }
     ++mit;
@@ -467,7 +474,7 @@ void RCAttr::EvaluatePack_Like_UTF(MIUpdatingIterator &mit, int dim, Descriptor 
                                 '_', '%');
         res = (x == 0 ? true : false);
       }
-      if (d.op == common::O_NOT_LIKE) res = !res;
+      if (d.op == common::Operator::O_NOT_LIKE) res = !res;
       if (!res) mit.ResetCurrent();
     }
     ++mit;
@@ -503,7 +510,7 @@ void RCAttr::EvaluatePack_InString(MIUpdatingIterator &mit, int dim, Descriptor 
         res = multival_column->ContainsString(mit, s);
       else
         res = multival_column->Contains(mit, s);
-      if (d.op == common::O_NOT_IN) res = !res;
+      if (d.op == common::Operator::O_NOT_IN) res = !res;
       if (res != true) mit.ResetCurrent();
     }
     if (current_tx->Killed()) throw common::KilledException();
@@ -550,7 +557,7 @@ void RCAttr::EvaluatePack_InString_UTF(MIUpdatingIterator &mit, int dim, Descrip
         res = multival_column->Contains(mit, vt);
       }
 
-      if (d.op == common::O_NOT_IN) res = !res;
+      if (d.op == common::Operator::O_NOT_IN) res = !res;
       if (res != true) mit.ResetCurrent();
     }
     if (current_tx->Killed()) throw common::KilledException();
@@ -586,7 +593,7 @@ void RCAttr::EvaluatePack_InNum(MIUpdatingIterator &mit, int dim, Descriptor &d)
                                     : multival_column->IsSetEncoded(TypeName(), ct.GetScale()));
   common::Tribool res;
   std::unique_ptr<types::RCDataType> value(ValuePrototype(lookup_to_num).Clone());
-  bool not_in = (d.op == common::O_NOT_IN);
+  bool not_in = (d.op == common::Operator::O_NOT_IN);
   int arraysize = 0;
   if (d.val1.cond_numvalue != nullptr) arraysize = d.val1.cond_numvalue->capacity();
   if (local_min == local_max) {
@@ -692,7 +699,7 @@ void RCAttr::EvaluatePack_BetweenString(MIUpdatingIterator &mit, int dim, Descri
       // IsNull() below means +/-inf
       bool res = (d.sharp && ((v1.IsNull() || v > v1) && (v2.IsNull() || v < v2))) ||
                  (!d.sharp && ((v1.IsNull() || v >= v1) && (v2.IsNull() || v <= v2)));
-      if (d.op == common::O_NOT_BETWEEN) res = !res;
+      if (d.op == common::Operator::O_NOT_BETWEEN) res = !res;
       if (!res) mit.ResetCurrent();
     }
     ++mit;
@@ -750,7 +757,7 @@ void RCAttr::EvaluatePack_BetweenString_UTF(MIUpdatingIterator &mit, int dim, De
            ((v1.IsNull() || CollationStrCmp(coll, v, v1) > 0) && (v2.IsNull() || CollationStrCmp(coll, v, v2) < 0))) ||
           (!d.sharp &&
            ((v1.IsNull() || CollationStrCmp(coll, v, v1) >= 0) && (v2.IsNull() || CollationStrCmp(coll, v, v2) <= 0)));
-      if (d.op == common::O_NOT_BETWEEN) res = !res;
+      if (d.op == common::Operator::O_NOT_BETWEEN) res = !res;
       if (!res) mit.ResetCurrent();
     }
     ++mit;
@@ -794,7 +801,7 @@ void RCAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descripto
     // Loop without it when packs are nearly full
     if (stonedb_sysvar_filterevaluation_speedup && filter &&
         filter->NoOnes(pack) > static_cast<uint>(1 << (mit.GetPower() - 1))) {
-      if (d.op == common::O_BETWEEN && !mit.NullsPossibleInPack(dim) && dpn.nn == 0) {
+      if (d.op == common::Operator::O_BETWEEN && !mit.NullsPossibleInPack(dim) && dpn.nn == 0) {
         // easy and fast case - no "if"s
         for (uint32_t n = 0; n < dpn.nr; n++) {
           auto v = p->GetValInt(n);
@@ -808,14 +815,14 @@ void RCAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descripto
           else {
             auto v = p->GetValInt(n);
             bool res = (pv1 <= v && v <= pv2);
-            if (d.op == common::O_NOT_BETWEEN) res = !res;
+            if (d.op == common::Operator::O_NOT_BETWEEN) res = !res;
             if (!res) filter->Reset(pack, n);
           }
         }
       }
       mit.NextPackrow();
     } else {
-      if (d.op == common::O_BETWEEN && !mit.NullsPossibleInPack(dim) && dpn.nn == 0) {
+      if (d.op == common::Operator::O_BETWEEN && !mit.NullsPossibleInPack(dim) && dpn.nn == 0) {
         // easy and fast case - no "if"s
         do {
           auto v = p->GetValInt(mit.GetCurInpack(dim));
@@ -831,7 +838,7 @@ void RCAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descripto
           else {
             auto v = p->GetValInt(inpack);
             bool res = (pv1 <= v && v <= pv2);
-            if (d.op == common::O_NOT_BETWEEN) res = !res;
+            if (d.op == common::Operator::O_NOT_BETWEEN) res = !res;
             if (!res) mit.ResetCurrent();
           }
           ++mit;
@@ -840,8 +847,8 @@ void RCAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descripto
     }
   } else {
     // local_min==local_max, and in 2-level encoding both are 0
-    if (((pv1 > 0 || pv2 < 0) && d.op == common::O_BETWEEN) ||
-        (pv1 <= 0 && pv2 >= 0 && d.op == common::O_NOT_BETWEEN)) {
+    if (((pv1 > 0 || pv2 < 0) && d.op == common::Operator::O_BETWEEN) ||
+        (pv1 <= 0 && pv2 >= 0 && d.op == common::Operator::O_NOT_BETWEEN)) {
       mit.ResetCurrentPack();
       mit.NextPackrow();
     } else
@@ -882,7 +889,7 @@ void RCAttr::EvaluatePack_BetweenReal(MIUpdatingIterator &mit, int dim, Descript
         else {
           double v = p->GetValDouble(n);
           bool res = (dv1 <= v && v <= dv2);
-          if (d.op == common::O_NOT_BETWEEN) res = !res;
+          if (d.op == common::Operator::O_NOT_BETWEEN) res = !res;
           if (!res) filter->Reset(pack, n);
         }
       }
@@ -895,7 +902,7 @@ void RCAttr::EvaluatePack_BetweenReal(MIUpdatingIterator &mit, int dim, Descript
         else {
           double v = p->GetValDouble(inpack);
           bool res = (dv1 <= v && v <= dv2);
-          if (d.op == common::O_NOT_BETWEEN) res = !res;
+          if (d.op == common::Operator::O_NOT_BETWEEN) res = !res;
           if (!res) mit.ResetCurrent();
         }
         ++mit;
@@ -903,8 +910,8 @@ void RCAttr::EvaluatePack_BetweenReal(MIUpdatingIterator &mit, int dim, Descript
     }
   } else {
     double uni_val = get_dpn(pack).min_d;
-    if (((dv1 > uni_val || dv2 < uni_val) && d.op == common::O_BETWEEN) ||
-        (dv1 <= uni_val && dv2 >= uni_val && d.op == common::O_NOT_BETWEEN)) {
+    if (((dv1 > uni_val || dv2 < uni_val) && d.op == common::Operator::O_BETWEEN) ||
+        (dv1 <= uni_val && dv2 >= uni_val && d.op == common::Operator::O_NOT_BETWEEN)) {
       mit.ResetCurrentPack();
       mit.NextPackrow();
     } else
@@ -946,22 +953,22 @@ void RCAttr::EvaluatePack_AttrAttr(MIUpdatingIterator &mit, int dim, Descriptor 
       v1 = (pack1_uniform ? 0 : p1->GetValInt(obj_in_pack)) + val1_offset;
       v2 = (pack2_uniform ? 0 : p2->GetValInt(obj_in_pack));
       switch (d.op) {
-        case common::O_EQ:
+        case common::Operator::O_EQ:
           res = (v1 == v2);
           break;
-        case common::O_NOT_EQ:
+        case common::Operator::O_NOT_EQ:
           res = (v1 != v2);
           break;
-        case common::O_LESS:
+        case common::Operator::O_LESS:
           res = (v1 < v2);
           break;
-        case common::O_LESS_EQ:
+        case common::Operator::O_LESS_EQ:
           res = (v1 <= v2);
           break;
-        case common::O_MORE:
+        case common::Operator::O_MORE:
           res = (v1 > v2);
           break;
-        case common::O_MORE_EQ:
+        case common::Operator::O_MORE_EQ:
           res = (v1 >= v2);
           break;
         default:
@@ -1008,22 +1015,22 @@ void RCAttr::EvaluatePack_AttrAttrReal(MIUpdatingIterator &mit, int dim, Descrip
       double v1 = *((double *)&pv1);
       double v2 = *((double *)&pv2);
       switch (d.op) {
-        case common::O_EQ:
+        case common::Operator::O_EQ:
           res = (v1 == v2);
           break;
-        case common::O_NOT_EQ:
+        case common::Operator::O_NOT_EQ:
           res = (v1 != v2);
           break;
-        case common::O_LESS:
+        case common::Operator::O_LESS:
           res = (v1 < v2);
           break;
-        case common::O_LESS_EQ:
+        case common::Operator::O_LESS_EQ:
           res = (v1 <= v2);
           break;
-        case common::O_MORE:
+        case common::Operator::O_MORE:
           res = (v1 > v2);
           break;
-        case common::O_MORE_EQ:
+        case common::Operator::O_MORE_EQ:
           res = (v1 >= v2);
           break;
         default:
@@ -1038,8 +1045,8 @@ void RCAttr::EvaluatePack_AttrAttrReal(MIUpdatingIterator &mit, int dim, Descrip
 bool RCAttr::IsDistinct(Filter *f) {
   MEASURE_FET("RCAttr::IsDistinct(...)");
   if (ct.IsLookup() && types::RequiresUTFConversions(GetCollation())) return false;
-  if (PhysicalColumn::IsDistinct() == common::RS_ALL) {  // = is_unique_updated && is_unique
-    if (f == NULL) return (NoNulls() == 0);              // no nulls at all, and is_unique  => distinct
+  if (PhysicalColumn::IsDistinct() == common::RSValue::RS_ALL) {  // = is_unique_updated && is_unique
+    if (f == NULL) return (NoNulls() == 0);                       // no nulls at all, and is_unique  => distinct
     LoadPackInfo();
     for (uint b = 0; b < NoPack(); b++)
       if (!f->IsEmpty(b) && get_dpn(b).nn > 0)  // any null in nonempty pack?
@@ -1054,16 +1061,16 @@ uint64_t RCAttr::ApproxAnswerSize(Descriptor &d) {
   ASSERT(d.encoded, "The descriptor is not encoded!");
   static MIIterator const mit(NULL, pss);
   LoadPackInfo();
-  if (d.op == common::O_NOT_NULL) return NoObj() - NoNulls();
-  if (d.op == common::O_IS_NULL) return NoNulls();
+  if (d.op == common::Operator::O_NOT_NULL) return NoObj() - NoNulls();
+  if (d.op == common::Operator::O_IS_NULL) return NoNulls();
   if (d.val1.vc && !d.val1.vc->IsConst()) {
     uint64_t no_distinct = ApproxDistinctVals(false, NULL, NULL, false);
     if (no_distinct == 0) no_distinct = 1;
-    if (d.op == common::O_EQ) return NoObj() / no_distinct;
-    if (d.op == common::O_NOT_EQ) return NoObj() - (NoObj() / no_distinct);
+    if (d.op == common::Operator::O_EQ) return NoObj() / no_distinct;
+    if (d.op == common::Operator::O_NOT_EQ) return NoObj() - (NoObj() / no_distinct);
     return (NoObj() - NoNulls()) / 2;  // default
   }
-  if (d.op == common::O_BETWEEN && d.val1.vc->IsConst() && d.val2.vc->IsConst() &&
+  if (d.op == common::Operator::O_BETWEEN && d.val1.vc->IsConst() && d.val2.vc->IsConst() &&
       GetPackType() == common::PackType::INT) {
     double res = 0;
     int64_t val1 = d.val1.vc->GetValueInt64(mit);
@@ -1143,8 +1150,8 @@ size_t RCAttr::MaxStringSize(Filter *f)  // maximal byte string length in column
 
 bool RCAttr::TryToMerge(Descriptor &d1, Descriptor &d2) {
   MEASURE_FET("RCAttr::TryToMerge(...)");
-  if ((d1.op != common::O_BETWEEN && d1.op != common::O_NOT_BETWEEN) ||
-      (d2.op != common::O_BETWEEN && d2.op != common::O_NOT_BETWEEN))
+  if ((d1.op != common::Operator::O_BETWEEN && d1.op != common::Operator::O_NOT_BETWEEN) ||
+      (d2.op != common::Operator::O_BETWEEN && d2.op != common::Operator::O_NOT_BETWEEN))
     return false;
   if (GetPackType() == common::PackType::INT && d1.val1.vc && d1.val2.vc && d2.val1.vc && d2.val2.vc &&
       d1.val1.vc->IsConst() && d1.val2.vc->IsConst() && d2.val1.vc->IsConst() && d2.val2.vc->IsConst()) {
@@ -1154,7 +1161,7 @@ bool RCAttr::TryToMerge(Descriptor &d1, Descriptor &d2) {
     int64_t d2min = d2.val1.vc->GetValueInt64(mit);
     int64_t d2max = d2.val2.vc->GetValueInt64(mit);
     if (!ATI::IsRealType(TypeName())) {
-      if (d1.op == common::O_BETWEEN && d2.op == common::O_BETWEEN) {
+      if (d1.op == common::Operator::O_BETWEEN && d2.op == common::Operator::O_BETWEEN) {
         if (d2min > d1min) {
           std::swap(d1.val1, d2.val1);
           std::swap(d1min, d2min);
@@ -1163,10 +1170,10 @@ bool RCAttr::TryToMerge(Descriptor &d1, Descriptor &d2) {
           std::swap(d1.val2, d2.val2);
           std::swap(d1max, d2max);
         }
-        if (d1min > d1max) d1.op = common::O_FALSE;  // disjoint?
+        if (d1min > d1max) d1.op = common::Operator::O_FALSE;  // disjoint?
         return true;
       }
-      if (d1.op == common::O_NOT_BETWEEN && d2.op == common::O_NOT_BETWEEN) {
+      if (d1.op == common::Operator::O_NOT_BETWEEN && d2.op == common::Operator::O_NOT_BETWEEN) {
         if (d1min < d2max && d2min < d1max) {
           if (d2min < d1min) std::swap(d1.val1, d2.val1);
           if (d2max > d1max) std::swap(d1.val2, d2.val2);
@@ -1179,7 +1186,7 @@ bool RCAttr::TryToMerge(Descriptor &d1, Descriptor &d2) {
       double dv1max = *((double *)&d1max);
       double dv2min = *((double *)&d2min);
       double dv2max = *((double *)&d2max);
-      if (d1.op == common::O_BETWEEN && d2.op == common::O_BETWEEN) {
+      if (d1.op == common::Operator::O_BETWEEN && d2.op == common::Operator::O_BETWEEN) {
         if (dv2min > dv1min) {
           std::swap(d1.val1, d2.val1);
           std::swap(dv2min, dv1min);
@@ -1188,10 +1195,10 @@ bool RCAttr::TryToMerge(Descriptor &d1, Descriptor &d2) {
           std::swap(d1.val2, d2.val2);
           std::swap(dv2max, dv1max);
         }
-        if (dv1min > dv1max) d1.op = common::O_FALSE;  // disjoint?
+        if (dv1min > dv1max) d1.op = common::Operator::O_FALSE;  // disjoint?
         return true;
       }
-      if (d1.op == common::O_NOT_BETWEEN && d2.op == common::O_NOT_BETWEEN) {
+      if (d1.op == common::Operator::O_NOT_BETWEEN && d2.op == common::Operator::O_NOT_BETWEEN) {
         if (dv1min < dv2max && dv2min < dv1max) {
           if (dv2min < dv1min) std::swap(d1.val1, d2.val1);
           if (dv2max > dv1max) std::swap(d1.val2, d2.val2);
@@ -1209,17 +1216,18 @@ bool RCAttr::TryToMerge(Descriptor &d1, Descriptor &d2) {
     d2.val1.vc->GetValueString(d2min, mit);
     d2.val2.vc->GetValueString(d2max, mit);
     DTCollation my_coll = d1.GetCollation();
-    if (d1.op == common::O_BETWEEN && d2.op == common::O_BETWEEN) {
+    if (d1.op == common::Operator::O_BETWEEN && d2.op == common::Operator::O_BETWEEN) {
       if (types::RequiresUTFConversions(my_coll)) {
-        if (d1min.IsNull() || CollationStrCmp(my_coll, d2min, d1min, common::O_MORE)) {
+        if (d1min.IsNull() || CollationStrCmp(my_coll, d2min, d1min, common::Operator::O_MORE)) {
           std::swap(d1.val1, d2.val1);
           std::swap(d1min, d2min);
         }
-        if (d1max.IsNull() || (!d2max.IsNull() && CollationStrCmp(my_coll, d2max, d1max, common::O_LESS))) {
+        if (d1max.IsNull() || (!d2max.IsNull() && CollationStrCmp(my_coll, d2max, d1max, common::Operator::O_LESS))) {
           std::swap(d1.val2, d2.val2);
           std::swap(d1max, d2max);
         }
-        if (CollationStrCmp(my_coll, d1min, d1max, common::O_MORE)) d1.op = common::O_FALSE;  // disjoint?
+        if (CollationStrCmp(my_coll, d1min, d1max, common::Operator::O_MORE))
+          d1.op = common::Operator::O_FALSE;  // disjoint?
       } else {
         if (d1min.IsNull() || d2min > d1min) {  // IsNull() means infinity here
           std::swap(d1.val1, d2.val1);
@@ -1229,18 +1237,18 @@ bool RCAttr::TryToMerge(Descriptor &d1, Descriptor &d2) {
           std::swap(d1.val2, d2.val2);
           std::swap(d1max, d2max);
         }
-        if (d1min > d1max) d1.op = common::O_FALSE;  // disjoint?
+        if (d1min > d1max) d1.op = common::Operator::O_FALSE;  // disjoint?
       }
       return true;
     }
-    if (d1.op == common::O_NOT_BETWEEN && d2.op == common::O_NOT_BETWEEN) {
+    if (d1.op == common::Operator::O_NOT_BETWEEN && d2.op == common::Operator::O_NOT_BETWEEN) {
       if (d1min.IsNull() || d1max.IsNull() || d2min.IsNull() || d2max.IsNull())
         return false;  // should not appear in normal circumstances
       if (types::RequiresUTFConversions(my_coll)) {
-        if (CollationStrCmp(my_coll, d1min, d2max, common::O_LESS) &&
-            CollationStrCmp(my_coll, d2min, d1max, common::O_LESS)) {
-          if (CollationStrCmp(my_coll, d2min, d1min, common::O_LESS)) std::swap(d1.val1, d2.val1);
-          if (CollationStrCmp(my_coll, d2max, d1max, common::O_MORE)) std::swap(d1.val2, d2.val2);
+        if (CollationStrCmp(my_coll, d1min, d2max, common::Operator::O_LESS) &&
+            CollationStrCmp(my_coll, d2min, d1max, common::Operator::O_LESS)) {
+          if (CollationStrCmp(my_coll, d2min, d1min, common::Operator::O_LESS)) std::swap(d1.val1, d2.val1);
+          if (CollationStrCmp(my_coll, d2max, d1max, common::Operator::O_MORE)) std::swap(d1.val2, d2.val2);
           return true;
         }
       } else {

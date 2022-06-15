@@ -106,7 +106,7 @@ class FunctionsExecutionTimes {
  private:
   void Clear() { times->clear(); }
   void Print() {
-    STONEDB_LOG(INFO,
+    STONEDB_LOG(LogCtl_Level::INFO,
                 "***** Function Execution Times "
                 "************************************************************");
     std::priority_queue<SortEntry, std::vector<SortEntry>, SortEntryLess> sq;
@@ -115,16 +115,16 @@ class FunctionsExecutionTimes {
 
     while (!sq.empty()) {
       std::sprintf(str, "%-60s \t%6llu \t%8.2fs", sq.top().n.c_str(), sq.top().e.call, sq.top().e.time / 1000000.0);
-      STONEDB_LOG(INFO, "%s", str);
+      STONEDB_LOG(LogCtl_Level::INFO, "%s", str);
       sq.pop();
     }
 
-    STONEDB_LOG(INFO, "Number of distinct Data Packs loads: %u", (uint)count_distinct_dp_loads.size());
-    STONEDB_LOG(INFO, "Number of distinct Data Packs decompressions: %u",
+    STONEDB_LOG(LogCtl_Level::INFO, "Number of distinct Data Packs loads: %u", (uint)count_distinct_dp_loads.size());
+    STONEDB_LOG(LogCtl_Level::INFO, "Number of distinct Data Packs decompressions: %u",
                 (uint)count_distinct_dp_decompressions.size());
-    STONEDB_LOG(INFO, "Size of DP read from disk: %fMB", ((double)NoBytesReadByDPs / 1_MB));
-    STONEDB_LOG(INFO, "Size of uncompressed DPs: %fMB", ((double)SizeOfUncompressedDP / 1_MB));
-    STONEDB_LOG(INFO,
+    STONEDB_LOG(LogCtl_Level::INFO, "Size of DP read from disk: %fMB", ((double)NoBytesReadByDPs / 1_MB));
+    STONEDB_LOG(LogCtl_Level::INFO, "Size of uncompressed DPs: %fMB", ((double)SizeOfUncompressedDP / 1_MB));
+    STONEDB_LOG(LogCtl_Level::INFO,
                 "**************************************************************"
                 "***********"
                 "******************");

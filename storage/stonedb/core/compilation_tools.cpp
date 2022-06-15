@@ -62,7 +62,7 @@ int OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct,
     case Item::FUNC_ITEM:
     case Item::COND_ITEM:
     case Item::SUBSELECT_ITEM:
-    case Item_sdbfield::SDBFIELD_ITEM:
+    case static_cast<int>(Item_sdbfield::enumSDBFiledItem::SDBFIELD_ITEM):
     case Item::FIELD_ITEM:                  // regular select
       oper = common::ColOperation::LISTING; /*GROUP_BY : LISTING;*/
       break;
@@ -115,7 +115,7 @@ int OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct,
           break;
         case Item_sum::GROUP_CONCAT_FUNC:
           distinct = ((Item_func_group_concat *)item)->get_distinct();
-          STONEDB_LOG(DEBUG, "group_concat distinct %d, sepertator %s, direction %d", distinct,
+          STONEDB_LOG(LogCtl_Level::DEBUG, "group_concat distinct %d, sepertator %s, direction %d", distinct,
                       ((Item_func_group_concat *)item)->get_separator()->c_ptr(),
                       ((Item_func_group_concat *)item)->direction());
           oper = common::ColOperation::GROUP_CONCAT;
@@ -176,7 +176,7 @@ void PrintItemTree(Item *item, int indent) {
   if ((int)type < sizeof(name_of) / sizeof(*name_of))
     name = name_of[type];
   else
-    name = "SDBFIELD_ITEM";
+    name = "enumSDBFiledItem::SDBFIELD_ITEM";
 
   const char *result = "<unknown result type>";
   switch (item->result_type()) {

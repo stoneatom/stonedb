@@ -211,40 +211,41 @@ int64_t VirtualColumnBase::DecodeValueAsDouble(int64_t code) {
 
 common::RSValue VirtualColumnBase::DoRoughCheck(const core::MIIterator &mit, core::Descriptor &d) {
   // default implementation
-  if (d.op == common::O_FALSE) return common::RS_NONE;
-  if (d.op == common::O_TRUE) return common::RS_ALL;
+  if (d.op == common::Operator::O_FALSE) return common::RSValue::RS_NONE;
+  if (d.op == common::Operator::O_TRUE) return common::RSValue::RS_ALL;
   bool nulls_possible = NullsPossible();
-  if (d.op == common::O_IS_NULL || d.op == common::O_NOT_NULL) {
+  if (d.op == common::Operator::O_IS_NULL || d.op == common::Operator::O_NOT_NULL) {
     if (GetNoNulls(mit) == mit.GetPackSizeLeft()) {  // nulls only
-      if (d.op == common::O_IS_NULL)
-        return common::RS_ALL;
+      if (d.op == common::Operator::O_IS_NULL)
+        return common::RSValue::RS_ALL;
       else
-        return common::RS_NONE;
+        return common::RSValue::RS_NONE;
     }
     if (!nulls_possible) {
-      if (d.op == common::O_IS_NULL)
-        return common::RS_NONE;
+      if (d.op == common::Operator::O_IS_NULL)
+        return common::RSValue::RS_NONE;
       else
-        return common::RS_ALL;
+        return common::RSValue::RS_ALL;
     }
-    return common::RS_SOME;
+    return common::RSValue::RS_SOME;
   }
-  common::RSValue res = common::RS_SOME;
-  if (d.val1.vc == NULL || ((d.op == common::O_BETWEEN || d.op == common::O_NOT_BETWEEN) && d.val2.vc == NULL))
-    return common::RS_SOME;  // irregular descriptor - cannot use VirtualColumn
-                             // rough statistics
-  // In all other situations: common::RS_NONE for nulls only
+  common::RSValue res = common::RSValue::RS_SOME;
+  if (d.val1.vc == NULL ||
+      ((d.op == common::Operator::O_BETWEEN || d.op == common::Operator::O_NOT_BETWEEN) && d.val2.vc == NULL))
+    return common::RSValue::RS_SOME;  // irregular descriptor - cannot use VirtualColumn
+                                      // rough statistics
+  // In all other situations: common::RSValue::RS_NONE for nulls only
   if (GetNoNulls(mit) == mit.GetPackSizeLeft() ||
       (!d.val1.vc->IsMultival() &&
        (d.val1.vc->GetNoNulls(mit) == mit.GetPackSizeLeft() ||
         (d.val2.vc && !d.val2.vc->IsMultival() && d.val2.vc->GetNoNulls(mit) == mit.GetPackSizeLeft()))))
-    return common::RS_NONE;
-  if (d.op == common::O_LIKE || d.op == common::O_NOT_LIKE || d.val1.vc->IsMultival() ||
+    return common::RSValue::RS_NONE;
+  if (d.op == common::Operator::O_LIKE || d.op == common::Operator::O_NOT_LIKE || d.val1.vc->IsMultival() ||
       (d.val2.vc && d.val2.vc->IsMultival()))
-    return common::RS_SOME;
+    return common::RSValue::RS_SOME;
 
   if (Type().IsString()) {
-    if (types::RequiresUTFConversions(d.GetCollation())) return common::RS_SOME;
+    if (types::RequiresUTFConversions(d.GetCollation())) return common::RSValue::RS_SOME;
     types::BString vamin = GetMinString(mit);
     types::BString vamax = GetMaxString(mit);
     types::BString v1min = d.val1.vc->GetMinString(mit);
@@ -253,32 +254,36 @@ common::RSValue VirtualColumnBase::DoRoughCheck(const core::MIIterator &mit, cor
     types::BString v2max = (d.val2.vc ? d.val2.vc->GetMaxString(mit) : types::BString());
     if (vamin.IsNull() || vamax.IsNull() || v1min.IsNull() || v1max.IsNull() ||
         (d.val2.vc && (v2min.IsNull() || v2max.IsNull())))
-      return common::RS_SOME;
+      return common::RSValue::RS_SOME;
     // Note: rough string values are not suitable to ensuring equality. Only
     // inequalities are processed.
-    if (d.op == common::O_BETWEEN || d.op == common::O_NOT_BETWEEN) {  // the second case will be negated soon
+    if (d.op == common::Operator::O_BETWEEN ||
+        d.op == common::Operator::O_NOT_BETWEEN) {  // the second case will be negated soon
       if (vamin > v1max && vamax < v2min)
-        res = common::RS_ALL;
+        res = common::RSValue::RS_ALL;
       else if (vamin > v2max || vamax < v1min)
-        res = common::RS_NONE;
+        res = common::RSValue::RS_NONE;
     } else {
-      if (vamin > v1max) {  // NOTE: only common::O_MORE, common::O_LESS and
-                            // common::O_EQ are analyzed here, the rest of operators
+      if (vamin > v1max) {  // NOTE: only common::Operator::O_MORE, common::Operator::O_LESS and
+                            // common::Operator::O_EQ are analyzed here, the rest of operators
                             // will be taken into account later (treated as negations)
-        if (d.op == common::O_EQ || d.op == common::O_NOT_EQ || d.op == common::O_LESS || d.op == common::O_MORE_EQ)
-          res = common::RS_NONE;
-        if (d.op == common::O_MORE || d.op == common::O_LESS_EQ) res = common::RS_ALL;
+        if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ || d.op == common::Operator::O_LESS ||
+            d.op == common::Operator::O_MORE_EQ)
+          res = common::RSValue::RS_NONE;
+        if (d.op == common::Operator::O_MORE || d.op == common::Operator::O_LESS_EQ) res = common::RSValue::RS_ALL;
       }
       if (vamax < v1min) {
-        if (d.op == common::O_EQ || d.op == common::O_NOT_EQ || d.op == common::O_MORE || d.op == common::O_LESS_EQ)
-          res = common::RS_NONE;
-        if (d.op == common::O_LESS || d.op == common::O_MORE_EQ) res = common::RS_ALL;
+        if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ || d.op == common::Operator::O_MORE ||
+            d.op == common::Operator::O_LESS_EQ)
+          res = common::RSValue::RS_NONE;
+        if (d.op == common::Operator::O_LESS || d.op == common::Operator::O_MORE_EQ) res = common::RSValue::RS_ALL;
       }
     }
   } else {
     if (!Type().IsNumComparable(d.val1.vc->Type()) ||
-        ((d.op == common::O_BETWEEN || d.op == common::O_NOT_BETWEEN) && !Type().IsNumComparable(d.val2.vc->Type())))
-      return common::RS_SOME;  // non-numerical or non-comparable
+        ((d.op == common::Operator::O_BETWEEN || d.op == common::Operator::O_NOT_BETWEEN) &&
+         !Type().IsNumComparable(d.val2.vc->Type())))
+      return common::RSValue::RS_SOME;  // non-numerical or non-comparable
 
     int64_t vamin = GetMinInt64(mit);
     int64_t vamax = GetMaxInt64(mit);
@@ -289,36 +294,39 @@ common::RSValue VirtualColumnBase::DoRoughCheck(const core::MIIterator &mit, cor
     if (vamin == common::NULL_VALUE_64 || vamax == common::NULL_VALUE_64 || v1min == common::NULL_VALUE_64 ||
         v1max == common::NULL_VALUE_64 ||
         (d.val2.vc && (v2min == common::NULL_VALUE_64 || v2max == common::NULL_VALUE_64)))
-      return common::RS_SOME;
+      return common::RSValue::RS_SOME;
 
     if (!Type().IsFloat()) {
-      if (d.op == common::O_BETWEEN || d.op == common::O_NOT_BETWEEN) {  // the second case will be negated soon
+      if (d.op == common::Operator::O_BETWEEN ||
+          d.op == common::Operator::O_NOT_BETWEEN) {  // the second case will be negated soon
         if (vamin >= v1max && vamax <= v2min)
-          res = common::RS_ALL;
+          res = common::RSValue::RS_ALL;
         else if (vamin > v2max || vamax < v1min)
-          res = common::RS_NONE;
+          res = common::RSValue::RS_NONE;
       } else {
-        if (vamin >= v1max) {  // NOTE: only common::O_MORE, common::O_LESS and
-                               // common::O_EQ are analyzed here, the rest of operators
+        if (vamin >= v1max) {  // NOTE: only common::Operator::O_MORE, common::Operator::O_LESS and
+                               // common::Operator::O_EQ are analyzed here, the rest of operators
                                // will be taken into account later (treated as negations)
-          if (d.op == common::O_LESS || d.op == common::O_MORE_EQ)  // the second case will be negated soon
-            res = common::RS_NONE;
+          if (d.op == common::Operator::O_LESS ||
+              d.op == common::Operator::O_MORE_EQ)  // the second case will be negated soon
+            res = common::RSValue::RS_NONE;
           if (vamin > v1max) {
-            if (d.op == common::O_EQ || d.op == common::O_NOT_EQ) res = common::RS_NONE;
-            if (d.op == common::O_MORE || d.op == common::O_LESS_EQ) res = common::RS_ALL;
+            if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ) res = common::RSValue::RS_NONE;
+            if (d.op == common::Operator::O_MORE || d.op == common::Operator::O_LESS_EQ) res = common::RSValue::RS_ALL;
           }
         }
         if (vamax <= v1min) {
-          if (d.op == common::O_MORE || d.op == common::O_LESS_EQ)  // the second case will be negated soon
-            res = common::RS_NONE;
+          if (d.op == common::Operator::O_MORE ||
+              d.op == common::Operator::O_LESS_EQ)  // the second case will be negated soon
+            res = common::RSValue::RS_NONE;
           if (vamax < v1min) {
-            if (d.op == common::O_EQ || d.op == common::O_NOT_EQ) res = common::RS_NONE;
-            if (d.op == common::O_LESS || d.op == common::O_MORE_EQ) res = common::RS_ALL;
+            if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ) res = common::RSValue::RS_NONE;
+            if (d.op == common::Operator::O_LESS || d.op == common::Operator::O_MORE_EQ) res = common::RSValue::RS_ALL;
           }
         }
-        if (res == common::RS_SOME && (d.op == common::O_EQ || d.op == common::O_NOT_EQ) && vamin == v1max &&
-            vamax == v1min)
-          res = common::RS_ALL;
+        if (res == common::RSValue::RS_SOME && (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ) &&
+            vamin == v1max && vamax == v1min)
+          res = common::RSValue::RS_ALL;
       }
     } else {
       double vamind = (vamin == common::MINUS_INF_64 ? common::MINUS_INF_DBL : *(double *)&vamin);
@@ -328,49 +336,52 @@ common::RSValue VirtualColumnBase::DoRoughCheck(const core::MIIterator &mit, cor
       double v2mind = (v2min == common::MINUS_INF_64 ? common::MINUS_INF_DBL : *(double *)&v2min);
       double v2maxd = (v2max == common::PLUS_INF_64 ? common::PLUS_INF_DBL : *(double *)&v2max);
 
-      if (d.op == common::O_BETWEEN || d.op == common::O_NOT_BETWEEN) {  // the second case will be negated soon
+      if (d.op == common::Operator::O_BETWEEN ||
+          d.op == common::Operator::O_NOT_BETWEEN) {  // the second case will be negated soon
         if (vamind >= v1maxd && vamaxd <= v2mind)
-          res = common::RS_ALL;
+          res = common::RSValue::RS_ALL;
         else if (vamind > v2maxd || vamaxd < v1mind)
-          res = common::RS_NONE;
+          res = common::RSValue::RS_NONE;
       } else {
-        if (vamind >= v1maxd) {                                     // NOTE: only common::O_MORE, common::O_LESS
-                                                                    // and common::O_EQ are analyzed here, the rest
-                                                                    // of operators will be taken into account
-                                                                    // later (treated as negations)
-          if (d.op == common::O_LESS || d.op == common::O_MORE_EQ)  // the second case will be negated soon
-            res = common::RS_NONE;
+        if (vamind >= v1maxd) {  // NOTE: only common::Operator::O_MORE, common::Operator::O_LESS
+                                 // and common::Operator::O_EQ are analyzed here, the rest
+                                 // of operators will be taken into account
+                                 // later (treated as negations)
+          if (d.op == common::Operator::O_LESS ||
+              d.op == common::Operator::O_MORE_EQ)  // the second case will be negated soon
+            res = common::RSValue::RS_NONE;
           if (vamind > v1maxd) {
-            if (d.op == common::O_EQ || d.op == common::O_NOT_EQ) res = common::RS_NONE;
-            if (d.op == common::O_MORE || d.op == common::O_LESS_EQ) res = common::RS_ALL;
+            if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ) res = common::RSValue::RS_NONE;
+            if (d.op == common::Operator::O_MORE || d.op == common::Operator::O_LESS_EQ) res = common::RSValue::RS_ALL;
           }
         }
         if (vamaxd <= v1mind) {
-          if (d.op == common::O_MORE || d.op == common::O_LESS_EQ)  // the second case will be negated soon
-            res = common::RS_NONE;
+          if (d.op == common::Operator::O_MORE ||
+              d.op == common::Operator::O_LESS_EQ)  // the second case will be negated soon
+            res = common::RSValue::RS_NONE;
           if (vamaxd < v1mind) {
-            if (d.op == common::O_EQ || d.op == common::O_NOT_EQ) res = common::RS_NONE;
-            if (d.op == common::O_LESS || d.op == common::O_MORE_EQ) res = common::RS_ALL;
+            if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ) res = common::RSValue::RS_NONE;
+            if (d.op == common::Operator::O_LESS || d.op == common::Operator::O_MORE_EQ) res = common::RSValue::RS_ALL;
           }
         }
-        if (res == common::RS_SOME && (d.op == common::O_EQ || d.op == common::O_NOT_EQ) && vamind == v1maxd &&
-            vamaxd == v1mind)
-          res = common::RS_ALL;
+        if (res == common::RSValue::RS_SOME && (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ) &&
+            vamind == v1maxd && vamaxd == v1mind)
+          res = common::RSValue::RS_ALL;
       }
     }
   }
   // reverse negations
-  if (d.op == common::O_NOT_EQ || d.op == common::O_LESS_EQ || d.op == common::O_MORE_EQ ||
-      d.op == common::O_NOT_BETWEEN) {
-    if (res == common::RS_ALL)
-      res = common::RS_NONE;
-    else if (res == common::RS_NONE)
-      res = common::RS_ALL;
+  if (d.op == common::Operator::O_NOT_EQ || d.op == common::Operator::O_LESS_EQ ||
+      d.op == common::Operator::O_MORE_EQ || d.op == common::Operator::O_NOT_BETWEEN) {
+    if (res == common::RSValue::RS_ALL)
+      res = common::RSValue::RS_NONE;
+    else if (res == common::RSValue::RS_NONE)
+      res = common::RSValue::RS_ALL;
   }
   // check nulls
-  if (res == common::RS_ALL &&
+  if (res == common::RSValue::RS_ALL &&
       (nulls_possible || d.val1.vc->NullsPossible() || (d.val2.vc && d.val2.vc->NullsPossible())))
-    res = common::RS_SOME;
+    res = common::RSValue::RS_SOME;
   return res;
 }
 }  // namespace vcolumn

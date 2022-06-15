@@ -49,10 +49,10 @@ void GroupDistinctCache::Initialize() {
   if (buf_size * width > upper_byte_limit) {
     buf_size = upper_byte_limit / width;
     CI_SetDefaultSize(upper_byte_limit);
-    t = (unsigned char *)alloc(upper_byte_limit, mm::BLOCK_TEMPORARY);
+    t = (unsigned char *)alloc(upper_byte_limit, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
   } else
     t = (unsigned char *)alloc(buf_size * width,
-                               mm::BLOCK_TEMPORARY);  // no need to cache on disk
+                               mm::BLOCK_TYPE::BLOCK_TEMPORARY);  // no need to cache on disk
   cur_pos = t;
   cur_obj = 0;
   cur_write_pos = t;
@@ -129,7 +129,7 @@ void GroupDistinctCache::MarkCurrentAsPreserved() {
   DEBUG_ASSERT(cur_obj >= cur_write_obj);
   if (t_write == NULL) {
     t_write = (unsigned char *)alloc(upper_byte_limit,
-                                     mm::BLOCK_TEMPORARY);  // switch writing to the new buffer
+                                     mm::BLOCK_TYPE::BLOCK_TEMPORARY);  // switch writing to the new buffer
     cur_write_pos = t_write;
   }
   if (cur_obj > cur_write_obj) {

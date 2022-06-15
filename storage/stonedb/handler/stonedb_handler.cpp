@@ -276,10 +276,10 @@ int StonedbHandler::external_lock(THD *thd, int lock_type) {
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "StoneDB internal error", MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s.", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s.", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
   // destroy the tx on failure
@@ -422,24 +422,24 @@ int StonedbHandler::write_row([[maybe_unused]] uchar *buf) {
   } catch (common::OutOfMemoryException &e) {
     DBUG_RETURN(ER_LOCK_WAIT_TIMEOUT);
   } catch (common::DatabaseException &e) {
-    STONEDB_LOG(ERROR, "An exception is caught in Engine::InsertRow: %s.", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::InsertRow: %s.", e.what());
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
   } catch (common::FormatException &e) {
-    STONEDB_LOG(ERROR, "An exception is caught in Engine::InsertRow: %s Row: %ld, field %u.", e.what(), e.m_row_no,
-                e.m_field_no);
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::InsertRow: %s Row: %ld, field %u.", e.what(),
+                e.m_row_no, e.m_field_no);
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
   } catch (common::FileException &e) {
-    STONEDB_LOG(ERROR, "An exception is caught in Engine::InsertRow: %s.", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::InsertRow: %s.", e.what());
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
   } catch (common::Exception &e) {
-    STONEDB_LOG(ERROR, "An exception is caught in Engine::InsertRow: %s.", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::InsertRow: %s.", e.what());
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught in Engine::InsertRow: %s.", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::InsertRow: %s.", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
   DBUG_RETURN(ret);
 }
@@ -499,18 +499,18 @@ int StonedbHandler::update_row(const uchar *old_data, uchar *new_data) {
     rceng->IncStonedbStatUpdate();
     DBUG_RETURN(0);
   } catch (common::DatabaseException &e) {
-    STONEDB_LOG(ERROR, "Update exception: %s.", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Update exception: %s.", e.what());
   } catch (common::FileException &e) {
-    STONEDB_LOG(ERROR, "Update exception: %s.", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Update exception: %s.", e.what());
   } catch (common::DupKeyException &e) {
     ret = HA_ERR_FOUND_DUPP_KEY;
-    STONEDB_LOG(ERROR, "Update exception: %s.", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Update exception: %s.", e.what());
   } catch (common::Exception &e) {
-    STONEDB_LOG(ERROR, "Update exception: %s.", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Update exception: %s.", e.what());
   } catch (std::exception &e) {
-    STONEDB_LOG(ERROR, "Update exception: %s.", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Update exception: %s.", e.what());
   } catch (...) {
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
   DBUG_RETURN(ret);
 }
@@ -555,10 +555,10 @@ int StonedbHandler::rename_table(const char *from, const char *to) {
     return 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
   return 1;
 }
@@ -644,10 +644,10 @@ int StonedbHandler::info(uint flag) {
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
   DBUG_RETURN(ret);
@@ -687,13 +687,13 @@ int StonedbHandler::open(const char *name, [[maybe_unused]] int mode, [[maybe_un
     ret = 0;
   } catch (common::Exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Error from StoneDB engine", MYF(0));
-    STONEDB_LOG(ERROR, "A stonedb exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "A stonedb exception is caught: %s", e.what());
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
   info(HA_STATUS_CONST);
@@ -737,7 +737,7 @@ int StonedbHandler::fill_row_by_id([[maybe_unused]] uchar *buf, uint64_t rowid) 
     }
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   }
   DBUG_RETURN(rc);
 }
@@ -777,7 +777,7 @@ int StonedbHandler::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] con
         }
       } else if (find_flag == HA_READ_AFTER_KEY || find_flag == HA_READ_KEY_OR_NEXT) {
         auto iter = current_tx->KVTrans().KeyIter();
-        common::Operator op = (find_flag == HA_READ_AFTER_KEY) ? common::O_MORE : common::O_MORE_EQ;
+        common::Operator op = (find_flag == HA_READ_AFTER_KEY) ? common::Operator::O_MORE : common::Operator::O_MORE_EQ;
         iter->ScanToKey(index, keys, op);
         uint64_t rowid;
         iter->GetRowid(rowid);
@@ -786,18 +786,18 @@ int StonedbHandler::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] con
       } else {
         // not support HA_READ_PREFIX_LAST_OR_PREV HA_READ_PREFIX_LAST
         rc = HA_ERR_WRONG_COMMAND;
-        STONEDB_LOG(ERROR, "Error: index_read not support prefix search");
+        STONEDB_LOG(LogCtl_Level::ERROR, "Error: index_read not support prefix search");
       }
 
     } else {
       // other index not support
       rc = HA_ERR_WRONG_INDEX;
-      STONEDB_LOG(ERROR, "Error: index_read only support primary key");
+      STONEDB_LOG(LogCtl_Level::ERROR, "Error: index_read only support primary key");
     }
 
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   }
 
   DBUG_RETURN(rc);
@@ -821,7 +821,7 @@ int StonedbHandler::index_next([[maybe_unused]] uchar *buf) {
     }
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   }
   DBUG_RETURN(rc);
 }
@@ -844,7 +844,7 @@ int StonedbHandler::index_prev([[maybe_unused]] uchar *buf) {
     }
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   }
   DBUG_RETURN(rc);
 }
@@ -873,7 +873,7 @@ int StonedbHandler::index_first([[maybe_unused]] uchar *buf) {
     }
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   }
   DBUG_RETURN(rc);
 }
@@ -902,7 +902,7 @@ int StonedbHandler::index_last([[maybe_unused]] uchar *buf) {
     }
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   }
   DBUG_RETURN(rc);
 }
@@ -946,7 +946,7 @@ int StonedbHandler::rnd_init(bool scan) {
       } catch (common::Exception const &e) {
         rccontrol << system::lock << "Error in push-down execution, push-down execution aborted: " << e.what()
                   << system::unlock;
-        STONEDB_LOG(ERROR, "An exception is caught in push-down execution: %s", e.what());
+        STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught in push-down execution: %s", e.what());
       }
       m_query.reset();
       m_cq.reset();
@@ -967,10 +967,10 @@ int StonedbHandler::rnd_init(bool scan) {
     if (table_ptr != NULL) blob_buffers.resize(table_ptr->NoDisplaybleAttrs());
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
   DBUG_RETURN(ret);
@@ -1004,10 +1004,10 @@ int StonedbHandler::rnd_next(uchar *buf) {
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
   DBUG_RETURN(ret);
@@ -1068,10 +1068,10 @@ int StonedbHandler::rnd_pos(uchar *buf, uchar *pos) {
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
   DBUG_RETURN(ret);
@@ -1103,10 +1103,10 @@ int StonedbHandler::start_stmt(THD *thd, thr_lock_type lock_type) {
     }
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
   return 0;
 }
@@ -1145,10 +1145,10 @@ int StonedbHandler::delete_table(const char *name) {
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
   DBUG_RETURN(ret);
@@ -1187,14 +1187,14 @@ int StonedbHandler::create(const char *name, TABLE *table_arg, [[maybe_unused]] 
   } catch (common::UnsupportedDataTypeException &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
   } catch (fs::filesystem_error &e) {
-    STONEDB_LOG(ERROR, "filesystem_error on table creation '%s'", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "filesystem_error on table creation '%s'", e.what());
     fs::remove_all(std::string(name) + common::STONEDB_EXT);
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
   DBUG_RETURN(1);
@@ -1205,10 +1205,10 @@ int StonedbHandler::truncate() {
   try {
     rceng->TruncateTable(m_table_name, ha_thd());
   } catch (std::exception &e) {
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
     ret = 1;
   } catch (...) {
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
     ret = 1;
   }
 
@@ -1283,10 +1283,10 @@ char *StonedbHandler::update_table_comment(const char *comment) {
     ret = str;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
   return ret;
@@ -1329,7 +1329,7 @@ int StonedbHandler::set_cond_iter() {
     } catch (common::Exception const &e) {
       rccontrol << system::lock << "Error in push-down execution, push-down execution aborted: " << e.what()
                 << system::unlock;
-      STONEDB_LOG(ERROR, "Error in push-down execution, push-down execution aborted: %s", e.what());
+      STONEDB_LOG(LogCtl_Level::ERROR, "Error in push-down execution, push-down execution aborted: %s", e.what());
     }
     m_query.reset();
     m_cq.reset();
@@ -1388,11 +1388,11 @@ const Item *StonedbHandler::cond_push(const Item *a_cond) {
 
     std::unique_ptr<core::CompiledQuery> tmp_cq(new core::CompiledQuery(*m_cq));
     core::CondID cond_id;
-    if (!m_query->BuildConditions(cond, cond_id, tmp_cq.get(), m_tmp_table, core::WHERE_COND, false)) {
+    if (!m_query->BuildConditions(cond, cond_id, tmp_cq.get(), m_tmp_table, core::CondType::WHERE_COND, false)) {
       m_query.reset();
       return a_cond;
     }
-    tmp_cq->AddConds(m_tmp_table, cond_id, core::WHERE_COND);
+    tmp_cq->AddConds(m_tmp_table, cond_id, core::CondType::WHERE_COND);
     tmp_cq->ApplyConds(m_tmp_table);
     m_cq.reset(tmp_cq.release());
     // reset  table_new_iter with push condition
@@ -1400,10 +1400,10 @@ const Item *StonedbHandler::cond_push(const Item *a_cond) {
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
   return ret;
 }
@@ -1424,10 +1424,10 @@ int StonedbHandler::reset() {
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
   DBUG_RETURN(ret);
@@ -1453,9 +1453,9 @@ bool StonedbHandler::inplace_alter_table(TABLE *altered_table, Alter_inplace_inf
       return false;
     }
   } catch (std::exception &e) {
-    STONEDB_LOG(ERROR, "An exception is caught: %s", e.what());
+    STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
   } catch (...) {
-    STONEDB_LOG(ERROR, "An unknown system exception error caught.");
+    STONEDB_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
   my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Unable to inplace alter table", MYF(0));
@@ -1466,14 +1466,14 @@ bool StonedbHandler::inplace_alter_table(TABLE *altered_table, Alter_inplace_inf
 bool StonedbHandler::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_table,
                                                 Alter_inplace_info *ha_alter_info, bool commit) {
   if (!commit) {
-    STONEDB_LOG(INFO, "Alter table failed : %s%s", m_table_name.c_str(), " rollback");
+    STONEDB_LOG(LogCtl_Level::INFO, "Alter table failed : %s%s", m_table_name.c_str(), " rollback");
     return true;
   }
   if (ha_alter_info->handler_flags == STONEDB_SUPPORTED_ALTER_COLUMN_NAME) {
     return false;
   }
   if ((ha_alter_info->handler_flags & ~STONEDB_SUPPORTED_ALTER_ADD_DROP_ORDER)) {
-    STONEDB_LOG(INFO, "Altered table not support type %lu", ha_alter_info->handler_flags);
+    STONEDB_LOG(LogCtl_Level::INFO, "Altered table not support type %lu", ha_alter_info->handler_flags);
     return true;
   }
   fs::path tmp_dir(m_table_name + ".tmp");
@@ -1497,12 +1497,13 @@ bool StonedbHandler::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_
       auto search = s.find(target);
       if (search == s.end()) {
         fs::remove_all(target);
-        STONEDB_LOG(INFO, "removing %s", target.c_str());
+        STONEDB_LOG(LogCtl_Level::INFO, "removing %s", target.c_str());
       }
     }
     fs::remove_all(bak_dir);
   } catch (fs::filesystem_error &e) {
-    STONEDB_LOG(ERROR, "file system error: %s %s|%s", e.what(), e.path1().string().c_str(), e.path2().string().c_str());
+    STONEDB_LOG(LogCtl_Level::ERROR, "file system error: %s %s|%s", e.what(), e.path1().string().c_str(),
+                e.path2().string().c_str());
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Failed to commit alter table", MYF(0));
     return true;
   }

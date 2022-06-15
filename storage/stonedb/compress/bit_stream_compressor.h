@@ -26,7 +26,7 @@ namespace compress {
 //////////////////////////////////////////////////////////////////////
 //////  Bitstream Compressor (optimized by the number of 0 and 1) ////
 // Compress() and Decompress() return the error identifier (see defs.h).
-// This should be checked, especially against the CPRS_ERR_BUF value,
+// This should be checked, especially against the CprsErr::CPRS_ERR_BUF value,
 // which indicates buffer overflow (output buf for Compress, input buf for
 // Decompress).
 //

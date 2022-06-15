@@ -51,7 +51,7 @@ class SingleColumn : public VirtualColumn {
   core::PhysicalColumn *GetPhysical() const { return col; }
   bool IsConst() const override { return false; }
   single_col_t IsSingleColumn() const override {
-    return col->ColType() == core::PhysicalColumn::ATTR ? SC_ATTR : SC_RCATTR;
+    return col->ColType() == core::PhysicalColumn::phys_col_t::ATTR ? single_col_t::SC_ATTR : single_col_t::SC_RCATTR;
   }
   char *ToString(char p_buf[], size_t buf_ct) const override;
   virtual void TranslateSourceColumns(std::map<core::PhysicalColumn *, core::PhysicalColumn *> &);
@@ -60,13 +60,13 @@ class SingleColumn : public VirtualColumn {
   }
   int64_t GetNotNullValueInt64(const core::MIIterator &mit) override { return col->GetNotNullValueInt64(mit[dim]); }
   bool IsDistinctInTable() override { return col->IsDistinct(mind->GetFilter(dim)); }
-  bool IsTempTableColumn() const { return col->ColType() == core::PhysicalColumn::ATTR; }
+  bool IsTempTableColumn() const { return col->ColType() == core::PhysicalColumn::phys_col_t::ATTR; }
   void GetTextStat(types::TextStat &s) override { col->GetTextStat(s, mind->GetFilter(dim)); }
   bool CanCopy() const override {
-    return (col->ColType() != core::PhysicalColumn::ATTR);
+    return (col->ColType() != core::PhysicalColumn::phys_col_t::ATTR);
   }  // cannot copy core::TempTable, as it may be paged
   bool IsThreadSafe() override {
-    return (col->ColType() != core::PhysicalColumn::ATTR);
+    return (col->ColType() != core::PhysicalColumn::phys_col_t::ATTR);
   }  // TODO: for ATTR check if not materialized and not buffered
 
  protected:

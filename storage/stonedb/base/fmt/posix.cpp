@@ -191,8 +191,8 @@ void File::pipe(File &read_end, File &write_end) {
   int fds[2] = {};
 #ifdef _WIN32
   // Make the default pipe capacity same as on Linux 2.6.11+.
-  enum { DEFAULT_CAPACITY = 65536 };
-  int result = FMT_POSIX_CALL(pipe(fds, DEFAULT_CAPACITY, _O_BINARY));
+  enum class enumDC { DEFAULT_CAPACITY = 65536 };
+  int result = FMT_POSIX_CALL(pipe(fds, enumDC::DEFAULT_CAPACITY, _O_BINARY));
 #else
   // Don't retry as the pipe function doesn't return EINTR.
   // http://pubs.opengroup.org/onlinepubs/009696799/functions/pipe.html

@@ -828,7 +828,7 @@ void AggregationWorkerEnt::TaskAggrePacks(MIUpdatingIterator *taskIterator, [[ma
     if (grouping_result == 3 || grouping_result == 4) throw common::NotImplementedException("Aggregation overflow.");
     cur_tuple += packrow_length;
   }
-  STONEDB_LOG(DEBUG, "TaskAggrePacks routine ends. Task id %d", taskIterator->GetTaskNum());
+  STONEDB_LOG(LogCtl_Level::DEBUG, "TaskAggrePacks routine ends. Task id %d", taskIterator->GetTaskNum());
 }
 
 void AggregationWorkerEnt::PrepShardingCopy(MIIterator *mit, GroupByWrapper *gb_sharding,

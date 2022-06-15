@@ -96,7 +96,7 @@ int64_t String2NumCastColumn::DoGetValueInt64(const core::MIIterator &mit) {
           std::string s = "Truncated incorrect numeric value: \'";
           s += rs.ToString();
           s += "\'";
-	  common::PushWarning(ConnInfo()->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_TRUNCATED_WRONG_VALUE, s.c_str());
+          common::PushWarning(ConnInfo()->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_TRUNCATED_WRONG_VALUE, s.c_str());
         }
         if (rc == common::ErrorCode::OUT_OF_RANGE && rcn.GetValueInt64() > 0) return -1;
       } else if (ct.IsFixed()) {
@@ -105,14 +105,14 @@ int64_t String2NumCastColumn::DoGetValueInt64(const core::MIIterator &mit) {
           std::string s = "Truncated incorrect numeric value: \'";
           s += rs.ToString();
           s += "\'";
-	  common::PushWarning(ConnInfo()->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_TRUNCATED_WRONG_VALUE, s.c_str());
+          common::PushWarning(ConnInfo()->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_TRUNCATED_WRONG_VALUE, s.c_str());
         }
       } else {
         if (types::RCNum::Parse(rs, rcn) != common::ErrorCode::SUCCESS) {
           std::string s = "Truncated incorrect numeric value: \'";
           s += rs.ToString();
           s += "\'";
-	  common::PushWarning(ConnInfo()->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_TRUNCATED_WRONG_VALUE, s.c_str());
+          common::PushWarning(ConnInfo()->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_TRUNCATED_WRONG_VALUE, s.c_str());
         }
       }
       return rcn.GetValueInt64();
@@ -248,7 +248,7 @@ int64_t String2DateTimeCastColumn::DoGetValueInt64(const core::MIIterator &mit) 
         std::string s = "Incorrect datetime value: \'";
         s += rbs.ToString();
         s += "\'";
-	common::PushWarning(ConnInfo()->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_TRUNCATED_WRONG_VALUE, s.c_str());
+        common::PushWarning(ConnInfo()->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_TRUNCATED_WRONG_VALUE, s.c_str());
         return common::NULL_VALUE_64;
       } /* else if(common::IsWarning(res)) {
                            std::string s = "Incorrect Date/Time value: ";
@@ -276,7 +276,7 @@ void String2DateTimeCastColumn::DoGetValueString(types::BString &rbs, const core
         std::string s = "Incorrect datetime value: \'";
         s += rbs.ToString();
         s += "\'";
-	common::PushWarning(ConnInfo()->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_TRUNCATED_WRONG_VALUE, s.c_str());
+        common::PushWarning(ConnInfo()->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_TRUNCATED_WRONG_VALUE, s.c_str());
         rbs = types::BString();
         return;
       } /* else if(common::IsWarning(res)) {
@@ -306,7 +306,7 @@ types::RCValueObject String2DateTimeCastColumn::DoGetValue(const core::MIIterato
         std::string s = "Incorrect datetime value: \'";
         s += rbs.ToString();
         s += "\'";
-	common::PushWarning(ConnInfo()->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_TRUNCATED_WRONG_VALUE, s.c_str());
+        common::PushWarning(ConnInfo()->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_TRUNCATED_WRONG_VALUE, s.c_str());
         // return types::RCDateTime();
       }
       return rcdt;
@@ -358,7 +358,7 @@ Num2DateTimeCastColumn::Num2DateTimeCastColumn(VirtualColumn *from, core::Column
           std::string s = "Incorrect datetime value: \'";
           s += rcv.ToBString().ToString();
           s += "\'";
-          STONEDB_LOG(WARN, "Num2DateTimeCast %s", s.c_str());
+          STONEDB_LOG(LogCtl_Level::WARN, "Num2DateTimeCast %s", s.c_str());
         }
         if (TypeName() == common::CT::TIMESTAMP) {
           // needs to convert value to UTC
@@ -401,7 +401,7 @@ types::RCValueObject Num2DateTimeCastColumn::DoGetValue(const core::MIIterator &
         std::string s = "Incorrect datetime value: \'";
         s += r.ToBString().ToString();
         s += "\'";
-	common::PushWarning(ConnInfo()->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_TRUNCATED_WRONG_VALUE, s.c_str());
+        common::PushWarning(ConnInfo()->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_TRUNCATED_WRONG_VALUE, s.c_str());
         return types::RCDateTime();
       }
       return rcdt;
@@ -423,7 +423,7 @@ int64_t Num2DateTimeCastColumn::DoGetValueInt64(const core::MIIterator &mit) {
         std::string s = "Incorrect datetime value: \'";
         s += r.ToBString().ToString();
         s += "\'";
-	common::PushWarning(ConnInfo()->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_TRUNCATED_WRONG_VALUE, s.c_str());
+        common::PushWarning(ConnInfo()->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_TRUNCATED_WRONG_VALUE, s.c_str());
         return common::NULL_VALUE_64;
       }
       return rcdt.GetInt64();

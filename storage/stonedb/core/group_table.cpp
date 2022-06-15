@@ -81,7 +81,7 @@ GroupTable::GroupTable(const GroupTable &sec) : mm::TraceableObject(sec) {
     vc[i] = sec.vc[i];
 
     char vco = 0;
-    if (sec.vc[i] && sec.vc[i]->IsSingleColumn()) {
+    if (sec.vc[i] && static_cast<int>(sec.vc[i]->IsSingleColumn())) {
       vc[i] = CreateVCCopy(sec.vc[i]);
       if (vc[i] != sec.vc[i]) {
         // success
@@ -134,7 +134,7 @@ void GroupTable::AddAggregatedColumn(vcolumn::VirtualColumn *vc, GT_Aggregation 
   desc.operation = operation;
   desc.distinct = distinct;
   desc.collation = in_collation;
-  if (operation == GT_GROUP_CONCAT) {
+  if (operation == GT_Aggregation::GT_GROUP_CONCAT) {
     desc.si = si;
   }
   aggregated_desc.push_back(desc);
@@ -172,7 +172,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
       // Aggregations:
 
       // COUNT(...)
-      if (desc.operation == GT_COUNT || desc.operation == GT_COUNT_NOT_NULL) {
+      if (desc.operation == GT_Aggregation::GT_COUNT || desc.operation == GT_Aggregation::GT_COUNT_NOT_NULL) {
         if (desc.max_no_values > 0x7FFFFFFF)
           aggregator[i] = new AggregatorCount64(desc.max_no_values);
         else
@@ -180,7 +180,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
 
       } else  // SUM(...)				Note: strings are parsed
               // to double
-        if (desc.operation == GT_SUM) {
+        if (desc.operation == GT_Aggregation::GT_SUM) {
           if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
             aggregator[i] = new AggregatorSumD;
           else
@@ -188,7 +188,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
 
         } else  // AVG(...)				Note: strings are parsed
                 // to double
-          if (desc.operation == GT_AVG) {
+          if (desc.operation == GT_Aggregation::GT_AVG) {
             if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
               aggregator[i] = new AggregatorAvgD;
             else if (desc.type == common::CT::YEAR)
@@ -197,7 +197,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
               aggregator[i] = new AggregatorAvg64(desc.precision);
 
           } else  // MIN(...)
-            if (desc.operation == GT_MIN) {
+            if (desc.operation == GT_Aggregation::GT_MIN) {
               if (ATI::IsStringType(desc.type)) {
                 if (types::RequiresUTFConversions(desc.collation))
                   aggregator[i] = new AggregatorMinT_UTF(desc.size, desc.collation);
@@ -211,7 +211,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
                 aggregator[i] = new AggregatorMin32;
 
             } else  // MAX(...)
-              if (desc.operation == GT_MAX) {
+              if (desc.operation == GT_Aggregation::GT_MAX) {
                 if (ATI::IsStringType(desc.type)) {
                   if (types::RequiresUTFConversions(desc.collation))
                     aggregator[i] = new AggregatorMaxT_UTF(desc.size, desc.collation);
@@ -224,7 +224,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
                 else
                   aggregator[i] = new AggregatorMax32;
               } else  // LIST - just a first value found
-                if (desc.operation == GT_LIST) {
+                if (desc.operation == GT_Aggregation::GT_LIST) {
                   if (ATI::IsStringType(desc.type))
                     aggregator[i] = new AggregatorListT(desc.size);
                   else if (ATI::IsRealType(desc.type) || (desc.min < -(0x7FFFFFFF) || desc.max > 0x7FFFFFFF))
@@ -233,46 +233,46 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
                     aggregator[i] = new AggregatorList32;
 
                 } else  // VAR_POP(...)
-                  if (desc.operation == GT_VAR_POP) {
+                  if (desc.operation == GT_Aggregation::GT_VAR_POP) {
                     if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
                       aggregator[i] = new AggregatorVarPopD;
                     else
                       aggregator[i] = new AggregatorVarPop64(desc.precision);
 
                   } else  // VAR_SAMP(...)
-                    if (desc.operation == GT_VAR_SAMP) {
+                    if (desc.operation == GT_Aggregation::GT_VAR_SAMP) {
                       if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
                         aggregator[i] = new AggregatorVarSampD;
                       else
                         aggregator[i] = new AggregatorVarSamp64(desc.precision);
 
                     } else  // STD_POP(...)
-                      if (desc.operation == GT_STD_POP) {
+                      if (desc.operation == GT_Aggregation::GT_STD_POP) {
                         if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
                           aggregator[i] = new AggregatorStdPopD;
                         else
                           aggregator[i] = new AggregatorStdPop64(desc.precision);
 
                       } else  // STD_SAMP(...)
-                        if (desc.operation == GT_STD_SAMP) {
+                        if (desc.operation == GT_Aggregation::GT_STD_SAMP) {
                           if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
                             aggregator[i] = new AggregatorStdSampD;
                           else
                             aggregator[i] = new AggregatorStdSamp64(desc.precision);
 
                         } else  // BIT_AND(...)
-                          if (desc.operation == GT_BIT_AND) {
+                          if (desc.operation == GT_Aggregation::GT_BIT_AND) {
                             aggregator[i] = new AggregatorBitAnd;
 
                           } else  // BIT_Or(...)
-                            if (desc.operation == GT_BIT_OR) {
+                            if (desc.operation == GT_Aggregation::GT_BIT_OR) {
                               aggregator[i] = new AggregatorBitOr;
 
                             } else  // BIT_XOR(...)
-                              if (desc.operation == GT_BIT_XOR) {
+                              if (desc.operation == GT_Aggregation::GT_BIT_XOR) {
                                 aggregator[i] = new AggregatorBitXor;
-                              } else  // GT_GROUP_CONCAT(...)
-                                if (desc.operation == GT_GROUP_CONCAT) {
+                              } else  // GT_Aggregation::GT_GROUP_CONCAT(...)
+                                if (desc.operation == GT_Aggregation::GT_GROUP_CONCAT) {
                                   aggregator[i] = new AggregatorGroupConcat(desc.si, desc.type);
                                 }
 
@@ -336,7 +336,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
     max_group_code = encoder[1]->MaxCode() * 256 + encoder[0]->MaxCode();  // wider than one-byte encoders are hard to
                                                                            // interpret, because of endianess swap
 
-  // STONEDB_LOG(INFO, "primary_total_size(mem_available) %d, total_width %d,
+  // STONEDB_LOG(LogCtl_Level::INFO, "primary_total_size(mem_available) %d, total_width %d,
   // declared_max_no_groups %d", primary_total_size, total_width,
   // declared_max_no_groups);
 
@@ -363,7 +363,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
       gdistinct[i] = std::make_shared<GroupDistinctTable>(p_power);
       gdistinct[i]->InitializeVC(vm_tab->RowNumberScope(), vc[i], desc.max_no_values,
                                  distinct_size / no_columns_with_distinct,
-                                 (operation[i] != GT_COUNT_NOT_NULL));  // otherwise must be decodable
+                                 (operation[i] != GT_Aggregation::GT_COUNT_NOT_NULL));  // otherwise must be decodable
       distinct_size -= gdistinct[i]->BytesTaken();
       no_columns_with_distinct--;
     }
@@ -518,7 +518,7 @@ GDTResult GroupTable::FindDistinctValue(int col, int64_t row,
 {
   DEBUG_ASSERT(gdistinct[col]);
   if (v == common::NULL_VALUE_64)  // works also for double
-    return GDT_EXISTS;             // null omitted
+    return GDTResult::GDT_EXISTS;  // null omitted
   return gdistinct[col]->Find(row, v);
 }
 
@@ -527,7 +527,7 @@ GDTResult GroupTable::AddDistinctValue(int col, int64_t row,
 {
   DEBUG_ASSERT(gdistinct[col]);
   if (v == common::NULL_VALUE_64)  // works also for double
-    return GDT_EXISTS;             // null omitted
+    return GDTResult::GDT_EXISTS;  // null omitted
   return gdistinct[col]->Add(row, v);
 }
 
@@ -537,8 +537,8 @@ bool GroupTable::PutAggregatedValue(int col, int64_t row, MIIterator &mit, int64
     DEBUG_ASSERT(gdistinct[col]);
     if (vc[col]->IsNull(mit)) return true;  // omit nulls
     GDTResult res = gdistinct[col]->Add(row, mit);
-    if (res == GDT_EXISTS) return true;  // value found, do not aggregate it again
-    if (res == GDT_FULL) {
+    if (res == GDTResult::GDT_EXISTS) return true;  // value found, do not aggregate it again
+    if (res == GDTResult::GDT_FULL) {
       if (gdistinct[col]->AlreadyFull())
         not_full = false;  // disable also the main grouping table (if it is a
                            // persistent rejection)
@@ -582,8 +582,8 @@ bool GroupTable::PutCachedValue(int col, GroupDistinctCache &cache,
 {
   DEBUG_ASSERT(distinct[col]);
   GDTResult res = gdistinct[col]->AddFromCache(cache.GetCurrentValue());
-  if (res == GDT_EXISTS) return true;  // value found, do not aggregate it again
-  if (res == GDT_FULL) {
+  if (res == GDTResult::GDT_EXISTS) return true;  // value found, do not aggregate it again
+  if (res == GDTResult::GDT_FULL) {
     if (gdistinct[col]->AlreadyFull())
       not_full = false;  // disable also the main grouping table (if it is a
                          // persistent rejection)
@@ -591,7 +591,7 @@ bool GroupTable::PutCachedValue(int col, GroupDistinctCache &cache,
   }
   int64_t row = gdistinct[col]->GroupNoFromInput();  // restore group number
   unsigned char *p = vm_tab->GetAggregationRow(row) + aggregated_col_offset[col];
-  if (operation[col] == GT_COUNT_NOT_NULL)
+  if (operation[col] == GT_Aggregation::GT_COUNT_NOT_NULL)
     aggregator[col]->PutAggregatedValue(p, 1);  // factor = 1, because we are just after distinct
   else {
     if (as_text) {

@@ -96,7 +96,7 @@ class DataCache final {
       if constexpr (T::ID == COORD_TYPE::PACK) {
         p->TrackAccess();
         // int objnum = c.size();
-        // STONEDB_LOG(DEBUG, "PutObject packs objnum %d
+        // STONEDB_LOG(LogCtl_Level::DEBUG, "PutObject packs objnum %d
         // (table:%d,pack:%d,clounm:%d)", objnum,pc_table(coord_),
         // pc_dp(coord_), pc_column(coord_));
       }
@@ -118,7 +118,7 @@ class DataCache final {
       if (it != c.end()) {
         // if (T::ID == COORD_TYPE::PACK) {
         // int objnum = c.size();
-        // STONEDB_LOG(DEBUG, "DropObject packs objnum %d
+        // STONEDB_LOG(LogCtl_Level::DEBUG, "DropObject packs objnum %d
         // (table:%d,pack:%d,clounm:%d)", objnum,pc_table(coord_),
         // pc_dp(coord_), pc_column(coord_));
         //}

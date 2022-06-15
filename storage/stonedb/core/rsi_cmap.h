@@ -42,11 +42,11 @@ class RSIndex_CMap final : public RSIndex {
   void Create(int64_t _no_obj, int no_pos, int pss);
 
   common::RSValue IsValue(types::BString min_v, types::BString max_v, int pack);
-  // Results:		common::RS_NONE - there is no objects having values
+  // Results:		common::RSValue::RS_NONE - there is no objects having values
   // between min_v and max_v (including)
-  //				common::RS_SOME - some objects from this pack do
+  //				common::RSValue::RS_SOME - some objects from this pack do
   // have values
-  // between min_v and max_v 				common::RS_ALL	- all objects
+  // between min_v and max_v 				common::RSValue::RS_ALL	- all objects
   // from this pack do have values between min_v and max_v
   common::RSValue IsLike(types::BString pattern, int pack, char escape_character);
   int Count(int pack, uint pos);  // a number of ones in the pack on a given
