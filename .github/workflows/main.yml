@@ -1,0 +1,185 @@
+name: stonedb CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+  workflow_dispatch:
+
+jobs:
+  stonedb-build:
+    runs-on: ubuntu-18.04
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: installation prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install cmake make perl bison libaio-dev \
+          openssl libssl-dev libncurses5-dev libreadline-dev \
+          autoconf automake libtool \
+          libreadline-dev libpam0g-dev zlib1g-dev libcurl-ocaml-dev \
+          autotools-dev libicu-dev libboost-all-dev \
+          libgflags-dev libsnappy-dev libbz2-dev liblz4-dev libzstd-dev libjemalloc-dev -y
+          sudo mkdir -p /stonedb56/install/tmp
+          sudo mkdir -p /stonedb56/install/log
+          sudo mkdir ./soft
+
+      - name: install gcc 7.3
+        run: |
+          sudo wget -c http://ftp.gnu.org/gnu/gcc/gcc-7.3.0/gcc-7.3.0.tar.gz -O ./soft/gcc-7.3.0.tar.gz
+          sudo tar zxvf ./soft/gcc-7.3.0.tar.gz -C ./soft
+          pushd ./soft/gcc-7.3.0
+          sudo ./contrib/download_prerequisites
+          sudo ./configure --prefix=/usr/local/gcc7.3 --enable-bootstrap -enable-threads=posix --enable-checking=release --enable-languages=c,c++ --disable-multilib --disable-libsanitizer
+          sudo make -j`nproc`
+          sudo make install -j`nproc`
+          popd
+          sudo rm /usr/bin/gcc
+          sudo ln -s /usr/local/gcc7.3/bin/gcc /usr/bin/gcc
+          sudo rm /usr/bin/g++
+          sudo ln -s /usr/local/gcc7.3/bin/g++ /usr/bin/g++
+          
+      - name: install cmake
+        run: |
+          sudo wget https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz -O ./soft/cmake-3.7.2.tar.gz
+          sudo tar -zxvf ./soft/cmake-3.7.2.tar.gz -C ./soft
+          pushd ./soft/cmake-3.7.2
+          sudo ./bootstrap
+          sudo make -j`nproc`
+          sudo make install -j`nproc`
+          popd
+          
+      - name: install marisa
+        run: |
+          sudo mkdir -p ./soft/marisa-trie
+          sudo mkdir -p /usr/local/stonedb-marisa
+          sudo git clone https://github.com/s-yata/marisa-trie.git ./soft/marisa-trie
+          pushd ./soft/marisa-trie
+          sudo autoreconf -i
+          sudo ./configure --enable-native-code --prefix=/usr/local/stonedb-marisa
+          sudo make -j`nproc`
+          sudo make install -j`nproc`
+          popd
+          
+      - name: install rocksdb
+        run: |
+          sudo wget -c https://github.com/facebook/rocksdb/archive/refs/tags/v6.12.6.tar.gz -O ./soft/rocksdb-6.12.6.tar.gz
+          sudo tar zxvf ./soft/rocksdb-6.12.6.tar.gz -C ./soft
+          sudo mkdir -p /usr/local/stonedb-gcc-rocksdb
+          pushd ./soft/rocksdb-6.12.6
+          sudo cmake ./ \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=/usr/local/stonedb-gcc-rocksdb \
+          -DWITH_JEMALLOC=ON \
+          -DWITH_SNAPPY=ON \
+          -DWITH_LZ4=ON \
+          -DWITH_ZLIB=ON \
+          -DWITH_ZSTD=ON \
+          -DROCKSDB_BUILD_SHARED=ON \
+          -DWITH_GFLAGS=OFF \
+          -DWITH_TOOLS=OFF \
+          -DWITH_BENCHMARK_TOOLS=OFF \
+          -DWITH_CORE_TOOLS=OFF
+          sudo make -j`nproc`
+          sudo make install -j`nproc`
+          popd
+          
+      - name: install boost
+        run: |
+          sudo wget -c https://boostorg.jfrog.io/artifactory/main/release/1.66.0/source/boost_1_66_0.tar.bz2 -O ./soft/boost_1_66_0.tar.bz2
+          sudo tar -jxvf ./soft/boost_1_66_0.tar.bz2 -C ./soft
+          sudo mkdir -p /usr/local/stonedb-boost
+          cd ./soft/boost_1_66_0
+          sudo ./bootstrap.sh --prefix=/usr/local/stonedb-boost
+          sudo ./b2 install --with=all
+          sudo ./b2 -q
+          cd ../../         
+      
+      - name: build stonedb
+        if: ${{ always() }}
+        run: |
+          sudo cmake ./ \
+          -DCMAKE_BUILD_TYPE=debug \
+          -DCMAKE_INSTALL_PREFIX=/stonedb56/install \
+          -DMYSQL_DATADIR=/stonedb56/install/data \
+          -DSYSCONFDIR=/stonedb56/install \
+          -DMYSQL_UNIX_ADDR=/stonedb56/install/tmp/mysql.sock \
+          -DWITH_EMBEDDED_SERVER=OFF \
+          -DWITH_STONEDB_STORAGE_ENGINE=1 \
+          -DWITH_MYISAM_STORAGE_ENGINE=1 \
+          -DWITH_INNOBASE_STORAGE_ENGINE=1 \
+          -DWITH_PARTITION_STORAGE_ENGINE=1 \
+          -DMYSQL_TCP_PORT=3306 \
+          -DENABLED_LOCAL_INFILE=1 \
+          -DEXTRA_CHARSETS=all \
+          -DDEFAULT_CHARSET=utf8 \
+          -DDEFAULT_COLLATION=utf8_general_ci \
+          -DWITH_BOOST=/usr/local/stonedb-boost/include
+          sudo make VERBOSE=1 -j`nproc`
+          sudo make install -j`nproc`
+        
+      - name: pack
+        run: sudo tar zcvf ./stonedb56.tar.gz /stonedb56
+      
+      - uses: actions/upload-artifact@v3
+        with:
+          name: stonedb-pack
+          path: ./stonedb56.tar.gz
+
+  stonedb-mtr-test:
+    needs: stonedb-build
+    runs-on: ubuntu-18.04
+
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: stonedb-pack
+          path: ./
+          
+      - uses: geekyeggo/delete-artifact@v1
+        with:
+          name: stonedb-pack
+          failOnError: false
+      
+      - name: untar
+        run: sudo tar zxvf ./stonedb56.tar.gz -C /
+          
+      - name: mysql initial step 1
+        run: |
+          sudo chown -R mysql:mysql /stonedb56
+          sudo chmod -R 755 /stonedb56
+      
+      - name: mysql initial step 2
+        run: /stonedb56/install/reinstall.sh
+      
+      #- name: install valgrind
+        #run: |
+          #sudo wget -c https://sourceware.org/pub/valgrind/valgrind-3.19.0.tar.bz2
+          #sudo bzip2 -d valgrind-3.19.0.tar.bz2
+          #sudo tar xvf valgrind-3.19.0.tar
+          #sudo ./valgrind-3.19.0/configure
+          #sudo make
+          #sudo make install
+      
+      #- name: mtr & valgrind memcheck1
+        #run: |
+          #sudo valgrind --version
+          #sudo valgrind --tool=memcheck --leak-check=full --time-stamp=yes \
+          #--show-reachable=yes --show-leak-kinds=all -v \
+          #--trace-children=yes --track-origins=yes --read-var-info=yes \
+          #--log-file=/tmp/valgrind-stonedb.log \
+          #/stonedb56/install/bin/mysqld --defaults-file=/stonedb56/install/stonedb.cnf --user=root
+          
+      #- name: Deploy to ecs server
+        #uses: easingthemes/ssh-deploy@v2.2.11
+        #with:
+          #SSH_PRIVATE_KEY: ${{ secrets.ECS_PRIVATEKEY }}
+          #ARGS: "-avzr --delete"
+          #SOURCE: "/stonedb56.tar.gz"
+          #REMOTE_HOST: ${{ secrets.ECS_HOST }}
+          #REMOTE_USER: ${{ secrets.ECS_USER }}
+          #TARGET: "/tmp/"
