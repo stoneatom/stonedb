@@ -93,11 +93,10 @@ jobs:
           sudo wget -c https://boostorg.jfrog.io/artifactory/main/release/1.66.0/source/boost_1_66_0.tar.bz2 -O ./soft/boost_1_66_0.tar.bz2
           sudo tar -jxvf ./soft/boost_1_66_0.tar.bz2 -C ./soft
           sudo mkdir -p /usr/local/stonedb-boost
-          cd ./soft/boost_1_66_0
+          pushd ./soft/boost_1_66_0
           sudo ./bootstrap.sh --prefix=/usr/local/stonedb-boost
           sudo ./b2 install --with=all
-          sudo ./b2 -q
-          cd ../../         
+          popd      
       
       - name: build stonedb
         if: ${{ always() }}
