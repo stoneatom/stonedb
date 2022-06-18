@@ -23,6 +23,7 @@
 
 namespace stonedb {
 namespace vcolumn {
+
 class TypeCastColumn : public VirtualColumn {
  public:
   TypeCastColumn(VirtualColumn *from, core::ColumnType const &to);
@@ -58,38 +59,42 @@ class TypeCastColumn : public VirtualColumn {
   std::vector<VirtualColumn *> GetChildren() const override { return std::vector<VirtualColumn *>(1, vc); }
 
  protected:
-  int64_t DoGetValueInt64(const core::MIIterator &mit) override { return vc->GetValueInt64(mit); }
-  bool DoIsNull(const core::MIIterator &mit) override { return vc->IsNull(mit); }
-  void DoGetValueString(types::BString &s, const core::MIIterator &m) override { return vc->GetValueString(s, m); }
-  double DoGetValueDouble(const core::MIIterator &m) override { return vc->GetValueDouble(m); }
-  types::RCValueObject DoGetValue(const core::MIIterator &m, bool lookup_to_num) override {
+  int64_t GetValueInt64Impl (const core::MIIterator &mit) override { return vc->GetValueInt64(mit); }
+  bool IsNullImpl (const core::MIIterator &mit) override { return vc->IsNull(mit); }
+  void GetValueStringImpl (types::BString &s, const core::MIIterator &m) override { return vc->GetValueString(s, m); }
+  double GetValueDoubleImpl (const core::MIIterator &m) override { return vc->GetValueDouble(m); }
+  types::RCValueObject GetValueImpl (const core::MIIterator &m, bool lookup_to_num) override {
     return vc->GetValue(m, lookup_to_num);
   }
-  int64_t DoGetMinInt64([[maybe_unused]] const core::MIIterator &m) override { return common::MINUS_INF_64; }
-  int64_t DoGetMaxInt64([[maybe_unused]] const core::MIIterator &m) override { return common::PLUS_INF_64; }
-  types::BString DoGetMinString([[maybe_unused]] const core::MIIterator &m) override { return types::BString(); }
-  types::BString DoGetMaxString([[maybe_unused]] const core::MIIterator &m) override { return types::BString(); }
-  int64_t DoRoughMin() override { return common::MINUS_INF_64; }
-  int64_t DoRoughMax() override { return common::PLUS_INF_64; }
-  int64_t DoGetNoNulls([[maybe_unused]] const core::MIIterator &m, [[maybe_unused]] bool val_nulls_possible) override {
-    return vc->GetNoNulls(m);
+  int64_t GetMinInt64Impl ([[maybe_unused]] const core::MIIterator &m) override { return common::MINUS_INF_64; }
+  int64_t GetMaxInt64Impl ([[maybe_unused]] const core::MIIterator &m) override { return common::PLUS_INF_64; }
+  types::BString GetMinStringImpl ([[maybe_unused]] const core::MIIterator &m) override { return types::BString(); }
+  types::BString GetMaxStringImpl ([[maybe_unused]] const core::MIIterator &m) override { return types::BString(); }
+
+  int64_t RoughMinImpl () override { return common::MINUS_INF_64; }
+  int64_t RoughMaxImpl () override { return common::PLUS_INF_64; }
+  int64_t GetNumOfNullsImpl ([[maybe_unused]] const core::MIIterator &m, [[maybe_unused]] bool val_nulls_possible) override {
+    return vc->GetNumOfNulls(m);
   }
-  bool DoRoughNullsOnly() const override { return vc->RoughNullsOnly(); }
-  bool DoNullsPossible([[maybe_unused]] bool val_nulls_possible) override { return vc->NullsPossible(); }
-  int64_t DoGetSum(const core::MIIterator &m, bool &nonnegative) override { return vc->GetSum(m, nonnegative); }
-  bool DoIsDistinct() override { return false; }
-  int64_t DoGetApproxDistVals(bool incl_nulls, core::RoughMultiIndex *rough_mind) override {
+
+  bool IsRoughNullsOnlyImpl () const override { return vc->IsRoughNullsOnly(); }
+  bool IsNullsPossibleImpl ([[maybe_unused]] bool val_nulls_possible) override { return vc->IsNullsPossible(); }
+  int64_t GetSumImpl (const core::MIIterator &m, bool &nonnegative) override { return vc->GetSum(m, nonnegative); }
+  bool IsDistinctImpl () override { return false; }
+
+  int64_t GetApproxDistValsImpl (bool incl_nulls, core::RoughMultiIndex *rough_mind) override {
     return vc->GetApproxDistVals(incl_nulls, rough_mind);
   }
-  size_t DoMaxStringSize() override { return vc->MaxStringSize(); }  // maximal byte string length in column
-  core::PackOntologicalStatus DoGetPackOntologicalStatus(const core::MIIterator &m) override {
+  size_t MaxStringSizeImpl () override { return vc->MaxStringSize(); }  // maximal byte string length in column
+  core::PackOntologicalStatus GetPackOntologicalStatusImpl (const core::MIIterator &m) override {
     return vc->GetPackOntologicalStatus(m);
   }
-  common::RSValue DoRoughCheck(const core::MIIterator &m, core::Descriptor &d) override { return vc->RoughCheck(m, d); }
-  void DoEvaluatePack(core::MIUpdatingIterator &mit, core::Descriptor &d) override { return vc->EvaluatePack(mit, d); }
-  common::ErrorCode DoEvaluateOnIndex(core::MIUpdatingIterator &mit, core::Descriptor &d, int64_t limit) override {
+  common::RSValue RoughCheckImpl (const core::MIIterator &m, core::Descriptor &d) override { return vc->RoughCheck(m, d); }
+  void EvaluatePackImpl (core::MIUpdatingIterator &mit, core::Descriptor &d) override { return vc->EvaluatePack(mit, d); }
+  common::ErrorCode EvaluateOnIndexImpl (core::MIUpdatingIterator &mit, core::Descriptor &d, int64_t limit) override {
     return vc->EvaluateOnIndex(mit, d, limit);
   }
+
   bool full_const;
   VirtualColumn *vc;
 };
@@ -101,11 +106,11 @@ class String2NumCastColumn : public TypeCastColumn {
   int64_t GetNotNullValueInt64(const core::MIIterator &mit) override;
   virtual bool IsDistinctInTable() override { return false; }  // cast may make distinct strings equal
  protected:
-  int64_t DoGetValueInt64(const core::MIIterator &mit) override;
-  types::RCValueObject DoGetValue(const core::MIIterator &, bool lookup_to_num = true) override;
-  int64_t DoGetMinInt64(const core::MIIterator &m) override;
-  int64_t DoGetMaxInt64(const core::MIIterator &m) override;
-  double DoGetValueDouble(const core::MIIterator &mit) override;
+  int64_t GetValueInt64Impl (const core::MIIterator &mit) override;
+  types::RCValueObject GetValueImpl (const core::MIIterator &, bool lookup_to_num = true) override;
+  int64_t GetMinInt64Impl (const core::MIIterator &m) override;
+  int64_t GetMaxInt64Impl (const core::MIIterator &m) override;
+  double GetValueDoubleImpl (const core::MIIterator &mit) override;
 
  private:
   mutable int64_t val;
@@ -119,11 +124,11 @@ class String2DateTimeCastColumn : public TypeCastColumn {
   int64_t GetNotNullValueInt64(const core::MIIterator &mit) override;
   bool IsDistinctInTable() override { return false; }  // cast may make distinct strings equal
  protected:
-  int64_t DoGetValueInt64(const core::MIIterator &mit) override;
-  types::RCValueObject DoGetValue(const core::MIIterator &, bool lookup_to_num = true) override;
-  void DoGetValueString(types::BString &s, const core::MIIterator &m) override;
-  int64_t DoGetMinInt64(const core::MIIterator &m) override;
-  int64_t DoGetMaxInt64(const core::MIIterator &m) override;
+  int64_t GetValueInt64Impl (const core::MIIterator &mit) override;
+  types::RCValueObject GetValueImpl (const core::MIIterator &, bool lookup_to_num = true) override;
+  void GetValueStringImpl (types::BString &s, const core::MIIterator &m) override;
+  int64_t GetMinInt64Impl (const core::MIIterator &m) override;
+  int64_t GetMaxInt64Impl (const core::MIIterator &m) override;
 
  private:
   int64_t val;
@@ -136,8 +141,8 @@ class Num2DateTimeCastColumn : public String2DateTimeCastColumn {
   Num2DateTimeCastColumn(VirtualColumn *from, core::ColumnType const &to);
 
  protected:
-  int64_t DoGetValueInt64(const core::MIIterator &mit) override;
-  types::RCValueObject DoGetValue(const core::MIIterator &, bool lookup_to_num = true) override;
+  int64_t GetValueInt64Impl (const core::MIIterator &mit) override;
+  types::RCValueObject GetValueImpl (const core::MIIterator &, bool lookup_to_num = true) override;
 
  private:
   int64_t val;
@@ -147,14 +152,14 @@ class Num2DateTimeCastColumn : public String2DateTimeCastColumn {
 //////////////////////////////////////////////////////////
 class DateTime2VarcharCastColumn : public TypeCastColumn {
  public:
-  DateTime2VarcharCastColumn(VirtualColumn *from, core::ColumnType const &to);
-  void GetNotNullValueString(types::BString &s, const core::MIIterator &m) override {
-    s = DoGetValue(m).ToBString();
+  DateTime2VarcharCastColumn (VirtualColumn *from, core::ColumnType const &to);
+  void GetNotNullValueString (types::BString &s, const core::MIIterator &m) override {
+    s = GetValueImpl (m).ToBString();
     return;
   }
 
  protected:
-  types::RCValueObject DoGetValue(const core::MIIterator &, bool lookup_to_num = true) override;
+  types::RCValueObject GetValueImpl (const core::MIIterator &, bool lookup_to_num = true) override;
 
  private:
   mutable types::RCValueObject rcv;
@@ -164,11 +169,11 @@ class DateTime2VarcharCastColumn : public TypeCastColumn {
 class Num2VarcharCastColumn : public TypeCastColumn {
  public:
   Num2VarcharCastColumn(VirtualColumn *from, core::ColumnType const &to);
-  void GetNotNullValueString(types::BString &s, const core::MIIterator &m) override { DoGetValueString(s, m); }
+  void GetNotNullValueString(types::BString &s, const core::MIIterator &m) override { GetValueStringImpl (s, m); }
 
  protected:
-  types::RCValueObject DoGetValue(const core::MIIterator &, bool lookup_to_num = true) override;
-  void DoGetValueString(types::BString &s, const core::MIIterator &m) override;
+  types::RCValueObject GetValueImpl (const core::MIIterator &, bool lookup_to_num = true) override;
+  void GetValueStringImpl (types::BString &s, const core::MIIterator &m) override;
 
  private:
   mutable types::RCValueObject rcv;
@@ -181,9 +186,9 @@ class DateTime2NumCastColumn : public TypeCastColumn {
   int64_t GetNotNullValueInt64(const core::MIIterator &mit) override;
 
  protected:
-  int64_t DoGetValueInt64(const core::MIIterator &mit) override;
-  types::RCValueObject DoGetValue(const core::MIIterator &, bool lookup_to_num = true) override;
-  double DoGetValueDouble(const core::MIIterator &mit) override;
+  int64_t GetValueInt64Impl (const core::MIIterator &mit) override;
+  types::RCValueObject GetValueImpl (const core::MIIterator &, bool lookup_to_num = true) override;
+  double GetValueDoubleImpl (const core::MIIterator &mit) override;
 
  private:
   mutable int64_t val;
@@ -197,10 +202,10 @@ class TimeZoneConversionCastColumn : public TypeCastColumn {
   int64_t GetNotNullValueInt64(const core::MIIterator &mit) override;
 
  protected:
-  int64_t DoGetValueInt64(const core::MIIterator &mit) override;
-  types::RCValueObject DoGetValue(const core::MIIterator &, bool lookup_to_num = true) override;
-  double DoGetValueDouble(const core::MIIterator &m) override;
-  void DoGetValueString(types::BString &s, const core::MIIterator &m) override;
+  int64_t GetValueInt64Impl (const core::MIIterator &mit) override;
+  types::RCValueObject GetValueImpl (const core::MIIterator &, bool lookup_to_num = true) override;
+  double GetValueDoubleImpl (const core::MIIterator &m) override;
+  void GetValueStringImpl (types::BString &s, const core::MIIterator &m) override;
 
  private:
   mutable int64_t val;
@@ -212,10 +217,11 @@ class StringCastColumn : public TypeCastColumn {
   StringCastColumn(VirtualColumn *from, core::ColumnType const &to) : TypeCastColumn(from, to) {}
 
  protected:
-  void DoGetValueString(types::BString &s, const core::MIIterator &m) override { return vc->GetValueString(s, m); }
-  types::RCValueObject DoGetValue(const core::MIIterator &, bool lookup_to_num = true) override;
-  size_t DoMaxStringSize() override { return ct.GetPrecision(); }
+  void GetValueStringImpl (types::BString &s, const core::MIIterator &m) override { return vc->GetValueString(s, m); }
+  types::RCValueObject GetValueImpl (const core::MIIterator &, bool lookup_to_num = true) override;
+  size_t MaxStringSizeImpl () override { return ct.GetPrecision(); }
 };
+
 }  // namespace vcolumn
 }  // namespace stonedb
 

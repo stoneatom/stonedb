@@ -165,7 +165,7 @@ bool LoadParser::MakeValue(uint att, ValueCache &buffer) {
 int LoadParser::ProcessInsertIndex(std::shared_ptr<index::RCTableIndex> tab, std::vector<ValueCache> &vcs,
                                    uint no_rows) {
   std::vector<std::string_view> fields;
-  size_t lastrow = vcs[0].NoValues();
+  size_t lastrow = vcs[0].NumOfValues();
   ASSERT(lastrow >= 1, "should be 'lastrow >= 1'");
   std::vector<uint> cols = tab->KeyCols();
   for (auto &col : cols) {

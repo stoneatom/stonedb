@@ -1142,7 +1142,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
         for (uint i = 0; i < descriptors.Size(); i++) {
           if (descriptors[i].IsDelayed() && !descriptors[i].done && descriptors[i].op == common::Operator::O_IS_NULL &&
               join_desc[0].right_dims.Get(descriptors[i].attr.vc->GetDim()) &&
-              !descriptors[i].attr.vc->NullsPossible()) {
+              !descriptors[i].attr.vc->IsNullsPossible()) {
             for (int j = 0; j < join_desc[0].right_dims.Size(); j++) {
               if (join_desc[0].right_dims[j] == true) join_tips.null_only[j] = true;
             }

@@ -109,7 +109,7 @@ void PackOrderer::InitOneColumn(vcolumn::VirtualColumn *vc, OrderType ot, common
     int pack = mit.GetCurPackrow(d);
     if (!r_filter || r_filter[pack] != common::RSValue::RS_NONE) {
       if (mmt == MinMaxType::MMT_Fixed) {
-        if (vc->GetNoNulls(mit) == mit.GetPackSizeLeft()) {
+        if (vc->GetNumOfNulls(mit) == mit.GetPackSizeLeft()) {
           mid.i = common::PLUS_INF_64;
         } else {
           int64_t min = vc->GetMinInt64(mit);
@@ -325,7 +325,7 @@ void PackOrderer::RewindToMatch(vcolumn::VirtualColumn *vc, MIIterator &mit) {
 
   if (mmtype[curvc] == MinMaxType::MMT_Fixed) {
     int64_t mid = common::MINUS_INF_64;
-    if (vc->GetNoNulls(mit) != mit.GetPackSizeLeft()) {
+    if (vc->GetNumOfNulls(mit) != mit.GetPackSizeLeft()) {
       int64_t min = vc->GetMinInt64(mit);
       int64_t max = vc->GetMaxInt64(mit);
       mid = (max - min) / 2;

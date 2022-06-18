@@ -23,34 +23,37 @@ namespace stonedb {
 namespace loader {
 
 Rejecter::Rejecter(int packrowSize, std::string const &path, int64_t abortOnCount, double abortOnThreshold)
-    : reject_file(path),
-      abort_on_count(abortOnCount),
-      abort_on_threshold(abortOnThreshold),
-      writer(),
-      packrow_size(packrowSize),
-      rejected(0) {}
+    : reject_file_(path),
+      abort_on_count_(abortOnCount),
+      abort_on_threshold_(abortOnThreshold),
+      writer_(),
+      packrow_size_(packrowSize),
+      rejected_(0) {}
 
 void Rejecter::ConsumeBadRow(char const *ptr, int64_t size, int64_t row_no, int error_code) {
   bool do_throw(false);
-  ++rejected;
-  if (!reject_file.empty()) {
-    if (!writer.get()) {
-      writer.reset(new system::StoneDBFile());
-      writer->OpenCreateNotExists(reject_file);
+  ++rejected_;
+
+  if (!reject_file_.empty()) {
+    if (!writer_.get()) {
+      writer_.reset(new system::StoneDBFile());
+      writer_->OpenCreateNotExists(reject_file_);
     }
-    writer->WriteExact(ptr, (uint)size);
+
+    writer_->WriteExact(ptr, static_cast<uint> (size));
   }
+
   STONEDB_LOG(LogCtl_Level::WARN, "Loading file error, row %ld, around:", row_no);
   STONEDB_LOG(LogCtl_Level::WARN, "---------------------------------------------\n");
   STONEDB_LOG(LogCtl_Level::WARN, "%s", ptr);
   STONEDB_LOG(LogCtl_Level::WARN, "---------------------------------------------");
 
-  if (abort_on_threshold > 0) {
-    if (row_no > packrow_size)
-      do_throw = (static_cast<double>(rejected) / static_cast<double>(row_no)) >= abort_on_threshold;
-  } else if (abort_on_count > 0) {
-    do_throw = (rejected >= abort_on_count);
-  } else if (abort_on_count == 0)
+  if (abort_on_threshold_ > 0) {
+    if (row_no > packrow_size_)
+      do_throw = (static_cast<double>(rejected_) / static_cast<double>(row_no)) >= abort_on_threshold_;
+  } else if (abort_on_count_ > 0) {
+    do_throw = (rejected_ >= abort_on_count_);
+  } else if (abort_on_count_ == 0)
     do_throw = true;
   if (do_throw) throw common::FormatException(row_no, error_code);
 }
