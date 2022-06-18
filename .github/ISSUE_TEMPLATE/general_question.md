@@ -6,7 +6,6 @@ labels: ["A-question"]
 ---
 
 ## General Question
-
 <!--
 Before asking a question, make sure you have:
 
