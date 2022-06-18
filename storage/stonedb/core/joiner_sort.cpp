@@ -450,7 +450,7 @@ bool JoinerSortWrapper::PackPossible(vcolumn::VirtualColumn *v, MIIterator &mit)
   // Note: we are always checking "traversed < matched" condition. If ">" is
   // needed, we are encoding values as for decreasing order. Assuming v is
   // "matched" (the second) virtual column
-  if (!watch_matched && v->GetNoNulls(mit) == mit.GetPackSizeLeft()) return false;
+  if (!watch_matched && v->GetNumOfNulls(mit) == mit.GetPackSizeLeft()) return false;
   if (min_traversed == NULL || v->Type().IsLookup())
     return true;
   else if (v->Type().IsString()) {

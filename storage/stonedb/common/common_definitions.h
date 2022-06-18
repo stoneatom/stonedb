@@ -80,11 +80,12 @@ constexpr double MINUS_INF_DBL = DBL_MAX * -1;
 constexpr int64_t PLUS_INF_64 = 0x7FFFFFFFFFFFFFFFULL;
 constexpr int64_t MINUS_INF_64 = 0x8000000000000000ULL;
 constexpr int64_t NULL_VALUE_64 = 0x8000000000000001ULL;
-constexpr int NULL_VALUE_32 = 0x80000000;
+constexpr int32_t NULL_VALUE_32 = 0x80000000;
 constexpr short NULL_VALUE_SH = -32768;
 constexpr char NULL_VALUE_C = -128;
 constexpr uint32_t NULL_VALUE_U = 0xFFFFFFFC;
 constexpr int64_t MAX_ROW_NUMBER = 0x00007FFFFFFFFFFFULL;  // 2^47 - 1
+
 constexpr int64_t SDB_BIGINT_MAX = PLUS_INF_64 - 1;
 constexpr int64_t SDB_BIGINT_MIN = NULL_VALUE_64;
 
@@ -96,6 +97,7 @@ constexpr int64_t SDB_BIGINT_MIN = NULL_VALUE_64;
 #define SDB_TINYINT_MIN (-127)
 #define SDB_SMALLINT_MAX ((1 << 15) - 1)
 #define SDB_SMALLINT_MIN (-((1 << 15) - 1))
+
 #define PACK_INVALID 0
 #define FIELD_MAXLENGTH 65535
 #define SHORT_MAX 65535

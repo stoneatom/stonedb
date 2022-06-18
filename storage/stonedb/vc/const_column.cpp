@@ -24,6 +24,7 @@
 
 namespace stonedb {
 namespace vcolumn {
+
 ConstColumn::ConstColumn(core::ValueOrNull const &val, core::ColumnType const &c, bool shift_to_UTC)
     : VirtualColumn(c, NULL), value(val) {
   dim = -1;
@@ -80,7 +81,7 @@ ConstColumn::ConstColumn(const types::RCValueObject &v, const core::ColumnType &
   }
 }
 
-double ConstColumn::DoGetValueDouble([[maybe_unused]] const core::MIIterator &mit) {
+double ConstColumn::GetValueDoubleImpl ([[maybe_unused]] const core::MIIterator &mit) {
   DEBUG_ASSERT(core::ATI::IsNumericType(TypeName()));
   double val = 0;
   if (value.IsNull())
@@ -110,7 +111,7 @@ double ConstColumn::DoGetValueDouble([[maybe_unused]] const core::MIIterator &mi
   return val;
 }
 
-types::RCValueObject ConstColumn::DoGetValue([[maybe_unused]] const core::MIIterator &mit, bool lookup_to_num) {
+types::RCValueObject ConstColumn::GetValueImpl ([[maybe_unused]] const core::MIIterator &mit, bool lookup_to_num) {
   if (value.IsNull()) return types::RCValueObject();
 
   if (core::ATI::IsStringType((TypeName()))) {
@@ -126,9 +127,9 @@ types::RCValueObject ConstColumn::DoGetValue([[maybe_unused]] const core::MIIter
   return types::RCValueObject();
 }
 
-void ConstColumn::DoGetValueString(types::BString &s, const core::MIIterator &mit) { s = GetValue(mit).ToBString(); }
+void ConstColumn::GetValueStringImpl (types::BString &s, const core::MIIterator &mit) { s = GetValue(mit).ToBString(); }
 
-int64_t ConstColumn::DoGetSum(const core::MIIterator &mit, bool &nonnegative) {
+int64_t ConstColumn::GetSumImpl (const core::MIIterator &mit, bool &nonnegative) {
   DEBUG_ASSERT(!core::ATI::IsStringType(TypeName()));
   nonnegative = true;
   if (value.IsNull())
@@ -142,36 +143,36 @@ int64_t ConstColumn::DoGetSum(const core::MIIterator &mit, bool &nonnegative) {
   return (value.Get64() * mit.GetPackSizeLeft());
 }
 
-types::BString ConstColumn::DoGetMinString([[maybe_unused]] const core::MIIterator &mit) {
+types::BString ConstColumn::GetMinStringImpl ([[maybe_unused]] const core::MIIterator &mit) {
   types::BString s;
   value.GetBString(s);
   return s;
 }
 
-types::BString ConstColumn::DoGetMaxString([[maybe_unused]] const core::MIIterator &mit) {
+types::BString ConstColumn::GetMaxStringImpl ([[maybe_unused]] const core::MIIterator &mit) {
   types::BString s;
   value.GetBString(s);
   return s;
 }
 
-int64_t ConstColumn::DoGetApproxDistVals([[maybe_unused]] bool incl_nulls,
+int64_t ConstColumn::GetApproxDistValsImpl ([[maybe_unused]] bool incl_nulls,
                                          [[maybe_unused]] core::RoughMultiIndex *rough_mind) {
   return 1;
 }
 
 int64_t ConstColumn::GetExactDistVals() { return (value.IsNull() ? 0 : 1); }
 
-size_t ConstColumn::DoMaxStringSize()  // maximal byte string length in column
+size_t ConstColumn::MaxStringSizeImpl ()  // maximal byte string length in column
 {
   return ct.GetDisplaySize();
 }
 
-core::PackOntologicalStatus ConstColumn::DoGetPackOntologicalStatus([[maybe_unused]] const core::MIIterator &mit) {
+core::PackOntologicalStatus ConstColumn::GetPackOntologicalStatusImpl ([[maybe_unused]] const core::MIIterator &mit) {
   if (value.IsNull()) return core::PackOntologicalStatus::NULLS_ONLY;
   return core::PackOntologicalStatus::UNIFORM;
 }
 
-void ConstColumn::DoEvaluatePack([[maybe_unused]] core::MIUpdatingIterator &mit,
+void ConstColumn::EvaluatePackImpl ([[maybe_unused]] core::MIUpdatingIterator &mit,
                                  [[maybe_unused]] core::Descriptor &desc) {
   DEBUG_ASSERT(0);  // comparison of a const with a const should be simplified earlier
 }
@@ -198,5 +199,6 @@ char *ConstColumn::ToString(char p_buf[], size_t buf_ct) const {
   }
   return p_buf;
 }
+
 }  // namespace vcolumn
 }  // namespace stonedb

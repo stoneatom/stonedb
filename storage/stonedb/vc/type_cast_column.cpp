@@ -79,7 +79,7 @@ int64_t String2NumCastColumn::GetNotNullValueInt64(const core::MIIterator &mit) 
   return rcn.GetValueInt64();
 }
 
-int64_t String2NumCastColumn::DoGetValueInt64(const core::MIIterator &mit) {
+int64_t String2NumCastColumn::GetValueInt64Impl (const core::MIIterator &mit) {
   if (full_const)
     return val;
   else {
@@ -120,7 +120,7 @@ int64_t String2NumCastColumn::DoGetValueInt64(const core::MIIterator &mit) {
   }
 }
 
-double String2NumCastColumn::DoGetValueDouble(const core::MIIterator &mit) {
+double String2NumCastColumn::GetValueDoubleImpl (const core::MIIterator &mit) {
   if (full_const)
     return *(double *)&val;
   else {
@@ -144,7 +144,7 @@ double String2NumCastColumn::DoGetValueDouble(const core::MIIterator &mit) {
   }
 }
 
-types::RCValueObject String2NumCastColumn::DoGetValue(const core::MIIterator &mit, [[maybe_unused]] bool b) {
+types::RCValueObject String2NumCastColumn::GetValueImpl (const core::MIIterator &mit, [[maybe_unused]] bool b) {
   if (full_const)
     return rcv;
   else {
@@ -163,7 +163,7 @@ types::RCValueObject String2NumCastColumn::DoGetValue(const core::MIIterator &mi
   }
 }
 
-int64_t String2NumCastColumn::DoGetMinInt64(const core::MIIterator &m) {
+int64_t String2NumCastColumn::GetMinInt64Impl (const core::MIIterator &m) {
   if (full_const)
     return val;
   else if (IsConst()) {
@@ -184,12 +184,12 @@ int64_t String2NumCastColumn::DoGetMinInt64(const core::MIIterator &m) {
     return common::MINUS_INF_64;
 }
 
-int64_t String2NumCastColumn::DoGetMaxInt64(const core::MIIterator &m) {
-  int64_t v = DoGetMinInt64(m);
+int64_t String2NumCastColumn::GetMaxInt64Impl (const core::MIIterator &m) {
+  int64_t v = GetMinInt64Impl (m);
   return v != common::MINUS_INF_64 ? v : common::PLUS_INF_64;
 }
 
-String2DateTimeCastColumn::String2DateTimeCastColumn(VirtualColumn *from, core::ColumnType const &to)
+String2DateTimeCastColumn::String2DateTimeCastColumn (VirtualColumn *from, core::ColumnType const &to)
     : TypeCastColumn(from, to) {
   full_const = vc->IsFullConst();
   if (full_const) {
@@ -216,7 +216,7 @@ String2DateTimeCastColumn::String2DateTimeCastColumn(VirtualColumn *from, core::
   }
 }
 
-int64_t String2DateTimeCastColumn::GetNotNullValueInt64(const core::MIIterator &mit) {
+int64_t String2DateTimeCastColumn::GetNotNullValueInt64 (const core::MIIterator &mit) {
   if (full_const) return val;
 
   types::RCDateTime rcdt;
@@ -233,7 +233,7 @@ int64_t String2DateTimeCastColumn::GetNotNullValueInt64(const core::MIIterator &
   return rcdt.GetInt64();
 }
 
-int64_t String2DateTimeCastColumn::DoGetValueInt64(const core::MIIterator &mit) {
+int64_t String2DateTimeCastColumn::GetValueInt64Impl (const core::MIIterator &mit) {
   if (full_const)
     return val;
   else {
@@ -262,7 +262,7 @@ int64_t String2DateTimeCastColumn::DoGetValueInt64(const core::MIIterator &mit) 
   }
 }
 
-void String2DateTimeCastColumn::DoGetValueString(types::BString &rbs, const core::MIIterator &mit) {
+void String2DateTimeCastColumn::GetValueStringImpl (types::BString &rbs, const core::MIIterator &mit) {
   if (full_const)
     rbs = rcv.ToBString();
   else {
@@ -291,7 +291,7 @@ void String2DateTimeCastColumn::DoGetValueString(types::BString &rbs, const core
   }
 }
 
-types::RCValueObject String2DateTimeCastColumn::DoGetValue(const core::MIIterator &mit, [[maybe_unused]] bool b) {
+types::RCValueObject String2DateTimeCastColumn::GetValueImpl (const core::MIIterator &mit, [[maybe_unused]] bool b) {
   if (full_const)
     return rcv;
   else {
@@ -314,18 +314,18 @@ types::RCValueObject String2DateTimeCastColumn::DoGetValue(const core::MIIterato
   }
 }
 
-int64_t String2DateTimeCastColumn::DoGetMinInt64(const core::MIIterator &m) {
+int64_t String2DateTimeCastColumn::GetMinInt64Impl (const core::MIIterator &m) {
   if (full_const)
     return val;
   else if (IsConst()) {
     // const with parameters
-    return ((types::RCDateTime *)DoGetValue(m).Get())->GetInt64();
+    return ((types::RCDateTime *)GetValueImpl (m).Get())->GetInt64();
   } else
     return common::MINUS_INF_64;
 }
 
-int64_t String2DateTimeCastColumn::DoGetMaxInt64(const core::MIIterator &m) {
-  int64_t v = DoGetMinInt64(m);
+int64_t String2DateTimeCastColumn::GetMaxInt64Impl (const core::MIIterator &m) {
+  int64_t v = GetMinInt64Impl (m);
   return v != common::MINUS_INF_64 ? v : common::PLUS_INF_64;
 }
 
@@ -388,12 +388,13 @@ Num2DateTimeCastColumn::Num2DateTimeCastColumn(VirtualColumn *from, core::Column
   }
 }
 
-types::RCValueObject Num2DateTimeCastColumn::DoGetValue(const core::MIIterator &mit, [[maybe_unused]] bool b) {
+types::RCValueObject Num2DateTimeCastColumn::GetValueImpl (const core::MIIterator &mit, [[maybe_unused]] bool b) {
   if (full_const)
     return rcv;
   else {
     types::RCDateTime rcdt;
     types::RCValueObject r(vc->GetValue(mit));
+
     if (!r.IsNull()) {
       common::ErrorCode rc =
           types::RCDateTime::Parse(((types::RCNum)r).GetIntPart(), rcdt, TypeName(), ct.GetPrecision());
@@ -401,6 +402,7 @@ types::RCValueObject Num2DateTimeCastColumn::DoGetValue(const core::MIIterator &
         std::string s = "Incorrect datetime value: \'";
         s += r.ToBString().ToString();
         s += "\'";
+
         common::PushWarning(ConnInfo()->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_TRUNCATED_WRONG_VALUE, s.c_str());
         return types::RCDateTime();
       }
@@ -410,7 +412,7 @@ types::RCValueObject Num2DateTimeCastColumn::DoGetValue(const core::MIIterator &
   }
 }
 
-int64_t Num2DateTimeCastColumn::DoGetValueInt64(const core::MIIterator &mit) {
+int64_t Num2DateTimeCastColumn::GetValueInt64Impl (const core::MIIterator &mit) {
   if (full_const)
     return val;
   else {
@@ -423,11 +425,11 @@ int64_t Num2DateTimeCastColumn::DoGetValueInt64(const core::MIIterator &mit) {
         std::string s = "Incorrect datetime value: \'";
         s += r.ToBString().ToString();
         s += "\'";
+
         common::PushWarning(ConnInfo()->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_TRUNCATED_WRONG_VALUE, s.c_str());
         return common::NULL_VALUE_64;
       }
       return rcdt.GetInt64();
-      ;
     } else
       return v;
   }
@@ -449,7 +451,7 @@ DateTime2VarcharCastColumn::DateTime2VarcharCastColumn(VirtualColumn *from, core
   }
 }
 
-types::RCValueObject DateTime2VarcharCastColumn::DoGetValue(const core::MIIterator &mit, [[maybe_unused]] bool b) {
+types::RCValueObject DateTime2VarcharCastColumn::GetValueImpl (const core::MIIterator &mit, [[maybe_unused]] bool b) {
   if (full_const)
     return rcv;
   else {
@@ -463,7 +465,6 @@ types::RCValueObject DateTime2VarcharCastColumn::DoGetValue(const core::MIIterat
   }
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Num2VarcharCastColumn::Num2VarcharCastColumn(VirtualColumn *from, core::ColumnType const &to)
     : TypeCastColumn(from, to) {
   core::MIIterator mit(NULL, PACK_INVALID);
@@ -478,7 +479,7 @@ Num2VarcharCastColumn::Num2VarcharCastColumn(VirtualColumn *from, core::ColumnTy
   }
 }
 
-types::RCValueObject Num2VarcharCastColumn::DoGetValue(const core::MIIterator &mit, [[maybe_unused]] bool b) {
+types::RCValueObject Num2VarcharCastColumn::GetValueImpl (const core::MIIterator &mit, [[maybe_unused]] bool b) {
   if (full_const)
     return rcv;
   else {
@@ -491,7 +492,7 @@ types::RCValueObject Num2VarcharCastColumn::DoGetValue(const core::MIIterator &m
   }
 }
 
-void Num2VarcharCastColumn::DoGetValueString(types::BString &s, const core::MIIterator &m) {
+void Num2VarcharCastColumn::GetValueStringImpl (types::BString &s, const core::MIIterator &m) {
   if (full_const)
     s = rcv.ToBString();
   else {
@@ -541,7 +542,7 @@ int64_t DateTime2NumCastColumn::GetNotNullValueInt64(const core::MIIterator &mit
   return r;
 }
 
-int64_t DateTime2NumCastColumn::DoGetValueInt64(const core::MIIterator &mit) {
+int64_t DateTime2NumCastColumn::GetValueInt64Impl (const core::MIIterator &mit) {
   if (full_const)
     return val;
   else {
@@ -559,7 +560,7 @@ int64_t DateTime2NumCastColumn::DoGetValueInt64(const core::MIIterator &mit) {
   }
 }
 
-double DateTime2NumCastColumn::DoGetValueDouble(const core::MIIterator &mit) {
+double DateTime2NumCastColumn::GetValueDoubleImpl (const core::MIIterator &mit) {
   if (full_const) {
     int64_t v;
     types::RCDateTime rdt(val, vc->TypeName());
@@ -574,7 +575,7 @@ double DateTime2NumCastColumn::DoGetValueDouble(const core::MIIterator &mit) {
   }
 }
 
-types::RCValueObject DateTime2NumCastColumn::DoGetValue(const core::MIIterator &mit, [[maybe_unused]] bool b) {
+types::RCValueObject DateTime2NumCastColumn::GetValueImpl (const core::MIIterator &mit, [[maybe_unused]] bool b) {
   if (full_const)
     return rcv;
   else {
@@ -620,7 +621,7 @@ int64_t TimeZoneConversionCastColumn::GetNotNullValueInt64(const core::MIIterato
   return rdt.GetInt64();
 }
 
-int64_t TimeZoneConversionCastColumn::DoGetValueInt64(const core::MIIterator &mit) {
+int64_t TimeZoneConversionCastColumn::GetValueInt64Impl (const core::MIIterator &mit) {
   if (full_const)
     return val;
   else {
@@ -632,7 +633,7 @@ int64_t TimeZoneConversionCastColumn::DoGetValueInt64(const core::MIIterator &mi
   }
 }
 
-types::RCValueObject TimeZoneConversionCastColumn::DoGetValue(const core::MIIterator &mit, [[maybe_unused]] bool b) {
+types::RCValueObject TimeZoneConversionCastColumn::GetValueImpl (const core::MIIterator &mit, [[maybe_unused]] bool b) {
   if (full_const) {
     if (Type().IsString()) return rcv.ToBString();
     return rcv;
@@ -646,7 +647,7 @@ types::RCValueObject TimeZoneConversionCastColumn::DoGetValue(const core::MIIter
   }
 }
 
-double TimeZoneConversionCastColumn::DoGetValueDouble(const core::MIIterator &mit) {
+double TimeZoneConversionCastColumn::GetValueDoubleImpl (const core::MIIterator &mit) {
   if (full_const) {
     int64_t v;
     types::RCDateTime rdt(val, vc->TypeName());
@@ -662,7 +663,7 @@ double TimeZoneConversionCastColumn::DoGetValueDouble(const core::MIIterator &mi
   }
 }
 
-void TimeZoneConversionCastColumn::DoGetValueString(types::BString &s, const core::MIIterator &mit) {
+void TimeZoneConversionCastColumn::GetValueStringImpl (types::BString &s, const core::MIIterator &mit) {
   if (full_const) {
     s = rcv.ToBString();
   } else {
@@ -677,10 +678,11 @@ void TimeZoneConversionCastColumn::DoGetValueString(types::BString &s, const cor
   }
 }
 
-types::RCValueObject StringCastColumn::DoGetValue(const core::MIIterator &mit, [[maybe_unused]] bool lookup_to_num) {
+types::RCValueObject StringCastColumn::GetValueImpl (const core::MIIterator &mit, [[maybe_unused]] bool lookup_to_num) {
   types::BString s;
   vc->GetValueString(s, mit);
   return s;
 }
+
 }  // namespace vcolumn
 }  // namespace stonedb

@@ -118,8 +118,9 @@ void VirtualColumnBase::SetLocalMinMax(int64_t loc_min, int64_t loc_max) {
 }
 
 int64_t VirtualColumnBase::RoughMax() {
-  int64_t res = DoRoughMax();
+  int64_t res = RoughMaxImpl ();
   DEBUG_ASSERT(res != common::NULL_VALUE_64);
+
   if (Type().IsFloat()) {
     if (*(double *)&res > *(double *)&vc_max_val && vc_max_val != common::PLUS_INF_64 &&
         vc_max_val != common::NULL_VALUE_64)
@@ -130,7 +131,7 @@ int64_t VirtualColumnBase::RoughMax() {
 }
 
 int64_t VirtualColumnBase::RoughMin() {
-  int64_t res = DoRoughMin();
+  int64_t res = RoughMinImpl ();
   DEBUG_ASSERT(res != common::NULL_VALUE_64);
   if (Type().IsFloat()) {
     if (*(double *)&res < *(double *)&vc_min_val && vc_min_val != common::MINUS_INF_64 &&
@@ -142,27 +143,27 @@ int64_t VirtualColumnBase::RoughMin() {
 }
 
 int64_t VirtualColumnBase::GetApproxDistVals(bool incl_nulls, core::RoughMultiIndex *rough_mind) {
-  int64_t res = DoGetApproxDistVals(incl_nulls, rough_mind);
+  int64_t res = GetApproxDistValsImpl (incl_nulls, rough_mind);
   if (vc_dist_vals != common::NULL_VALUE_64) {
     int64_t local_res = vc_dist_vals;
-    if (incl_nulls && NullsPossible()) local_res++;
+    if (incl_nulls && IsNullsPossible()) local_res++;
     if (res == common::NULL_VALUE_64 || res > local_res) res = local_res;
   }
   if (!Type().IsFloat() && vc_min_val > (common::MINUS_INF_64 / 3) && vc_max_val < (common::PLUS_INF_64 / 3)) {
     int64_t local_res = vc_max_val - vc_min_val + 1;
-    if (incl_nulls && NullsPossible()) local_res++;
+    if (incl_nulls && IsNullsPossible()) local_res++;
     if (res == common::NULL_VALUE_64 || res > local_res) return local_res;
   }
   if (Type().IsFloat() && vc_min_val != common::NULL_VALUE_64 && vc_min_val == vc_max_val) {
     int64_t local_res = 1;
-    if (incl_nulls && NullsPossible()) local_res++;
+    if (incl_nulls && IsNullsPossible()) local_res++;
     if (res == common::NULL_VALUE_64 || res > local_res) return local_res;
   }
   return res;
 }
 
 int64_t VirtualColumnBase::GetMaxInt64(const core::MIIterator &mit) {
-  int64_t res = DoGetMaxInt64(mit);
+  int64_t res = GetMaxInt64Impl (mit);
   DEBUG_ASSERT(res != common::NULL_VALUE_64);
   if (Type().IsFloat()) {
     if (*(double *)&res > *(double *)&vc_max_val && vc_max_val != common::PLUS_INF_64 &&
@@ -174,7 +175,7 @@ int64_t VirtualColumnBase::GetMaxInt64(const core::MIIterator &mit) {
 }
 
 int64_t VirtualColumnBase::GetMinInt64(const core::MIIterator &mit) {
-  int64_t res = DoGetMinInt64(mit);
+  int64_t res = GetMinInt64Impl (mit);
   DEBUG_ASSERT(res != common::NULL_VALUE_64);
   if (Type().IsFloat()) {
     if (*(double *)&res < *(double *)&vc_min_val && vc_min_val != common::MINUS_INF_64 &&
@@ -185,10 +186,11 @@ int64_t VirtualColumnBase::GetMinInt64(const core::MIIterator &mit) {
   return res;
 }
 
-int64_t VirtualColumnBase::DoGetApproxSum(const core::MIIterator &mit, bool &nonnegative) {
-  int64_t res = DoGetSum(mit, nonnegative);
+int64_t VirtualColumnBase::GetApproxSumImpl (const core::MIIterator &mit, bool &nonnegative) {
+  int64_t res = GetSumImpl (mit, nonnegative);
   if (res != common::NULL_VALUE_64) return res;
-  res = DoGetMaxInt64(mit);
+  res = GetMaxInt64Impl (mit);
+
   int64_t n = mit.GetPackSizeLeft();
   if (res == common::PLUS_INF_64 || n == common::NULL_VALUE_64) return common::NULL_VALUE_64;
   if (Type().IsFloat()) {
@@ -209,18 +211,20 @@ int64_t VirtualColumnBase::DecodeValueAsDouble(int64_t code) {
   return *(int64_t *)(&res);
 }
 
-common::RSValue VirtualColumnBase::DoRoughCheck(const core::MIIterator &mit, core::Descriptor &d) {
+common::RSValue VirtualColumnBase::RoughCheckImpl (const core::MIIterator &mit, core::Descriptor &d) {
   // default implementation
   if (d.op == common::Operator::O_FALSE) return common::RSValue::RS_NONE;
   if (d.op == common::Operator::O_TRUE) return common::RSValue::RS_ALL;
-  bool nulls_possible = NullsPossible();
+
+  bool nulls_possible = IsNullsPossible();
   if (d.op == common::Operator::O_IS_NULL || d.op == common::Operator::O_NOT_NULL) {
-    if (GetNoNulls(mit) == mit.GetPackSizeLeft()) {  // nulls only
+    if (GetNumOfNulls(mit) == mit.GetPackSizeLeft()) {  // nulls only
       if (d.op == common::Operator::O_IS_NULL)
         return common::RSValue::RS_ALL;
       else
         return common::RSValue::RS_NONE;
     }
+
     if (!nulls_possible) {
       if (d.op == common::Operator::O_IS_NULL)
         return common::RSValue::RS_NONE;
@@ -229,29 +233,33 @@ common::RSValue VirtualColumnBase::DoRoughCheck(const core::MIIterator &mit, cor
     }
     return common::RSValue::RS_SOME;
   }
+
   common::RSValue res = common::RSValue::RS_SOME;
   if (d.val1.vc == NULL ||
       ((d.op == common::Operator::O_BETWEEN || d.op == common::Operator::O_NOT_BETWEEN) && d.val2.vc == NULL))
     return common::RSValue::RS_SOME;  // irregular descriptor - cannot use VirtualColumn
                                       // rough statistics
   // In all other situations: common::RSValue::RS_NONE for nulls only
-  if (GetNoNulls(mit) == mit.GetPackSizeLeft() ||
+  if (GetNumOfNulls(mit) == mit.GetPackSizeLeft() ||
       (!d.val1.vc->IsMultival() &&
-       (d.val1.vc->GetNoNulls(mit) == mit.GetPackSizeLeft() ||
-        (d.val2.vc && !d.val2.vc->IsMultival() && d.val2.vc->GetNoNulls(mit) == mit.GetPackSizeLeft()))))
+       (d.val1.vc->GetNumOfNulls(mit) == mit.GetPackSizeLeft() ||
+        (d.val2.vc && !d.val2.vc->IsMultival() && d.val2.vc->GetNumOfNulls(mit) == mit.GetPackSizeLeft()))))
     return common::RSValue::RS_NONE;
+
   if (d.op == common::Operator::O_LIKE || d.op == common::Operator::O_NOT_LIKE || d.val1.vc->IsMultival() ||
       (d.val2.vc && d.val2.vc->IsMultival()))
     return common::RSValue::RS_SOME;
 
   if (Type().IsString()) {
     if (types::RequiresUTFConversions(d.GetCollation())) return common::RSValue::RS_SOME;
+
     types::BString vamin = GetMinString(mit);
     types::BString vamax = GetMaxString(mit);
     types::BString v1min = d.val1.vc->GetMinString(mit);
     types::BString v1max = d.val1.vc->GetMaxString(mit);
     types::BString v2min = (d.val2.vc ? d.val2.vc->GetMinString(mit) : types::BString());
     types::BString v2max = (d.val2.vc ? d.val2.vc->GetMaxString(mit) : types::BString());
+
     if (vamin.IsNull() || vamax.IsNull() || v1min.IsNull() || v1max.IsNull() ||
         (d.val2.vc && (v2min.IsNull() || v2max.IsNull())))
       return common::RSValue::RS_SOME;
@@ -291,6 +299,7 @@ common::RSValue VirtualColumnBase::DoRoughCheck(const core::MIIterator &mit, cor
     int64_t v1max = d.val1.vc->GetMaxInt64(mit);
     int64_t v2min = (d.val2.vc ? d.val2.vc->GetMinInt64(mit) : common::NULL_VALUE_64);
     int64_t v2max = (d.val2.vc ? d.val2.vc->GetMaxInt64(mit) : common::NULL_VALUE_64);
+
     if (vamin == common::NULL_VALUE_64 || vamax == common::NULL_VALUE_64 || v1min == common::NULL_VALUE_64 ||
         v1max == common::NULL_VALUE_64 ||
         (d.val2.vc && (v2min == common::NULL_VALUE_64 || v2max == common::NULL_VALUE_64)))
@@ -380,9 +389,10 @@ common::RSValue VirtualColumnBase::DoRoughCheck(const core::MIIterator &mit, cor
   }
   // check nulls
   if (res == common::RSValue::RS_ALL &&
-      (nulls_possible || d.val1.vc->NullsPossible() || (d.val2.vc && d.val2.vc->NullsPossible())))
+      (nulls_possible || d.val1.vc->IsNullsPossible() || (d.val2.vc && d.val2.vc->IsNullsPossible())))
     res = common::RSValue::RS_SOME;
   return res;
 }
+
 }  // namespace vcolumn
 }  // namespace stonedb

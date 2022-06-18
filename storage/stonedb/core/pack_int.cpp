@@ -381,7 +381,7 @@ void PackInt::LoadValuesDouble(const loader::ValueCache *vc, const std::optional
   }
   auto new_min = std::min(vc->MinDouble(), dpn->min_d);
   auto new_max = std::max(vc->MaxDouble(), dpn->max_d);
-  auto new_nr = dpn->nr + vc->NoValues();
+  auto new_nr = dpn->nr + vc->NumOfValues();
   if (dpn->Trivial()) {
     ASSERT(data.ptr == nullptr);
     data.vt = sizeof(double);
@@ -397,7 +397,7 @@ void PackInt::LoadValuesDouble(const loader::ValueCache *vc, const std::optional
 
   dpn->synced = false;
 
-  for (size_t i = 0; i < vc->NoValues(); i++) {
+  for (size_t i = 0; i < vc->NumOfValues(); i++) {
     if (!vc->IsNull(i)) {
       AppendValue(*(uint64_t *)vc->GetDataBytesPointer(i));
     } else {
@@ -429,7 +429,7 @@ void PackInt::LoadValuesFixed(const loader::ValueCache *vc, const std::optional<
   auto new_min = std::min(vc->MinInt(), dpn->min_i);
   auto new_max = std::max(vc->MaxInt(), dpn->max_i);
   auto new_vt = GetValueSize(new_max - new_min);
-  auto new_nr = dpn->nr + vc->NoValues();
+  auto new_nr = dpn->nr + vc->NumOfValues();
 
   ASSERT(new_vt >= data.vt);
 
@@ -470,7 +470,7 @@ void PackInt::LoadValuesFixed(const loader::ValueCache *vc, const std::optional<
 
   dpn->synced = false;
 
-  for (size_t i = 0; i < vc->NoValues(); i++) {
+  for (size_t i = 0; i < vc->NumOfValues(); i++) {
     if (vc->NotNull(i)) {
       AppendValue(*(uint64_t *)vc->GetDataBytesPointer(i) - new_min);
     } else {

@@ -87,7 +87,7 @@ ColumnBinEncoder::~ColumnBinEncoder() {
 bool ColumnBinEncoder::PrepareEncoder(vcolumn::VirtualColumn *_vc, vcolumn::VirtualColumn *_vc2) {
   if (_vc == NULL) return false;
   bool nulls_possible = false;
-  if (!ignore_nulls) nulls_possible = _vc->NullsPossible() || (_vc2 != NULL && _vc2->NullsPossible());
+  if (!ignore_nulls) nulls_possible = _vc->IsNullsPossible() || (_vc2 != NULL && _vc2->IsNullsPossible());
   vc = _vc;
   ColumnType vct = vc->Type();
   ColumnType vct2 = _vc2 ? _vc2->Type() : ColumnType();

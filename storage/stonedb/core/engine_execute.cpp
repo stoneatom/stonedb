@@ -16,8 +16,8 @@
 */
 
 #include <sys/syscall.h>
-
-#include <ctime>
+#include <signal.h>
+#include <time.h>
 
 #include "compilation_tools.h"
 #include "core/compiled_query.h"
@@ -30,6 +30,7 @@
 
 namespace stonedb {
 namespace core {
+
 int optimize_select(THD *thd, TABLE_LIST *tables, uint wild_num, List<Item> &fields, Item *conds, uint og_num,
                     ORDER *order, ORDER *group, Item *having, ulong select_options, select_result *result,
                     SELECT_LEX_UNIT *unit, SELECT_LEX *select_lex, int &optimize_after_sdb, int &free_join);

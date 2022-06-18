@@ -202,7 +202,7 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   int64_t CompressedSize() const { return hdr.compressed_size; };
   uint32_t Nopackpower() const { return pss; }
   uint64_t NoObj() const { return hdr.nr; }
-  uint64_t NoNulls() const { return hdr.nn; }
+  uint64_t NumOfNulls() const { return hdr.nn; }
   uint NoPack() const { return m_idx.size(); }
   int64_t GetMinInt64() const { return hdr.min; }
   void SetMinInt64(int64_t a_imin) { hdr.min = a_imin; }
@@ -224,8 +224,8 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   types::RCValueObject GetValue(int64_t obj, bool lookup_to_num = false) override;
   types::RCDataType &GetValueData(size_t obj, types::RCDataType &value, bool lookup_to_num = false);
 
-  int64_t GetNoNulls(int pack) override;
-  bool RoughNullsOnly() const override { return hdr.nr == hdr.nn; }
+  int64_t GetNumOfNulls(int pack) override;
+  bool IsRoughNullsOnly() const override { return hdr.nr == hdr.nn; }
   size_t GetNoValues(int pack) const { return get_dpn(pack).nr; }
   int64_t GetSum(int pack, bool &nonnegative) override;
   size_t GetActualSize(int pack);
