@@ -153,7 +153,9 @@ jobs:
           sudo chmod -R 755 /stonedb56
       
       - name: mysql initial step 2
-        run: /stonedb56/install/reinstall.sh
+        run: |
+          cd /stonedb56/install
+          sudo /stonedb56/install/reinstall.sh
       
       #- name: install valgrind
         #run: |
