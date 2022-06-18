@@ -1,5 +1,5 @@
 mkdir -p data/innodb
-#mkdir binlog
+mkdir binlog
 mkdir log
 mkdir tmp
 
