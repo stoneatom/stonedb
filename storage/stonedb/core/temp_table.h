@@ -140,8 +140,8 @@ class TempTable : public JustATable {
     int64_t GetMaxInt64(int pack) override;
     types::BString GetMaxString(int pack) override;
     types::BString GetMinString(int pack) override;
-    int64_t GetNoNulls(int pack) override;
-    bool RoughNullsOnly() const override { return false; }
+    int64_t GetNumOfNulls(int pack) override;
+    bool IsRoughNullsOnly() const override { return false; }
     int64_t GetSum(int pack, bool &nonnegative) override;
     int AttrNo() const override { return -1; }
     common::RSValue RoughCheck([[maybe_unused]] int pack, [[maybe_unused]] Descriptor &d,
@@ -267,6 +267,7 @@ class TempTable : public JustATable {
 
   int64_t RoughMin([[maybe_unused]] int n_a, Filter *f = NULL) { return common::MINUS_INF_64; }
   int64_t RoughMax([[maybe_unused]] int n_a, Filter *f = NULL) { return common::PLUS_INF_64; }
+
   uint MaxStringSize(int n_a, Filter *f = NULL) override {
     if (n_a < 0) return GetFieldSize(-n_a - 1);
     return GetFieldSize(n_a);
@@ -279,30 +280,37 @@ class TempTable : public JustATable {
     DEBUG_ASSERT(a >= 0 && (uint)a < NoAttrs());
     return attrs[a]->Type().GetScale();
   }
+
   int GetAttrSize(int a) {
     DEBUG_ASSERT(a >= 0 && (uint)a < NoAttrs());
     return attrs[a]->Type().GetDisplaySize();
   }
+
   uint GetFieldSize(int a) {
     DEBUG_ASSERT(a >= 0 && (uint)a < NoAttrs());
     return attrs[a]->Type().GetInternalSize();
   }
+
   int GetNoDigits(int a) {
     DEBUG_ASSERT(a >= 0 && (uint)a < NoAttrs());
     return attrs[a]->Type().GetPrecision();
   }
+
   const ColumnType &GetColumnType(int a) override {
     DEBUG_ASSERT(a >= 0 && (uint)a < NoAttrs());
     return attrs[a]->Type();
   }
+
   PhysicalColumn *GetColumn(int a) override {
     DEBUG_ASSERT(a >= 0 && (uint)a < NoAttrs());
     return attrs[a];
   }
+
   Attr *GetAttrP(uint a) {
     DEBUG_ASSERT(a < (uint)NoAttrs());
     return attrs[a];
   }
+
   Attr *GetDisplayableAttrP(uint i) {
     DEBUG_ASSERT(!displayable_attr.empty());
     return displayable_attr[i];

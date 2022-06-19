@@ -873,7 +873,7 @@ int64_t ParallelHashJoiner::AsyncMatchDim(MatchTaskParams *params) {
             omit_this_packrow = true;
             break;
           }
-          if (other_cond_exist_ || local_min != local_max || vc2_[index]->NullsPossible()) {
+          if (other_cond_exist_ || local_min != local_max || vc2_[index]->IsNullsPossible()) {
             packrow_uniform = false;
           }
         }

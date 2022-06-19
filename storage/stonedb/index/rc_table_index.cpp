@@ -17,6 +17,8 @@
 
 #include "index/rc_table_index.h"
 
+#include "rocksdb/status.h"
+
 #include "common/common_definitions.h"
 #include "core/transaction.h"
 #include "handler/stonedb_handler.h"
@@ -24,6 +26,8 @@
 
 namespace stonedb {
 namespace index {
+
+using ROCKSDB_NAMESPACE::Status;
 
 const std::string generate_cf_name(uint index, TABLE *table) {
   char *comment = table->key_info[index].comment.str;
@@ -219,7 +223,8 @@ common::ErrorCode RCTableIndex::CheckUniqueness(core::Transaction *tx, const roc
   }
 
   if (!s.ok() && !s.IsNotFound()) {
-    STONEDB_LOG(LogCtl_Level::ERROR, "RockDb read fail:%s", s.ToString().c_str());
+    //STONEDB_LOG(LogCtl_Level::ERROR, "RockDb read fail:%s", s.ToString().c_str());
+    STONEDB_LOG(LogCtl_Level::ERROR, "RockDb read fail:%s", s.getState());
     return common::ErrorCode::FAILED;
   }
 

@@ -1046,7 +1046,7 @@ bool RCAttr::IsDistinct(Filter *f) {
   MEASURE_FET("RCAttr::IsDistinct(...)");
   if (ct.IsLookup() && types::RequiresUTFConversions(GetCollation())) return false;
   if (PhysicalColumn::IsDistinct() == common::RSValue::RS_ALL) {  // = is_unique_updated && is_unique
-    if (f == NULL) return (NoNulls() == 0);                       // no nulls at all, and is_unique  => distinct
+    if (f == NULL) return (NumOfNulls() == 0);              // no nulls at all, and is_unique  => distinct
     LoadPackInfo();
     for (uint b = 0; b < NoPack(); b++)
       if (!f->IsEmpty(b) && get_dpn(b).nn > 0)  // any null in nonempty pack?
@@ -1061,15 +1061,18 @@ uint64_t RCAttr::ApproxAnswerSize(Descriptor &d) {
   ASSERT(d.encoded, "The descriptor is not encoded!");
   static MIIterator const mit(NULL, pss);
   LoadPackInfo();
-  if (d.op == common::Operator::O_NOT_NULL) return NoObj() - NoNulls();
-  if (d.op == common::Operator::O_IS_NULL) return NoNulls();
+
+  if (d.op == common::Operator::O_NOT_NULL) return NoObj() - NumOfNulls();
+  if (d.op == common::Operator::O_IS_NULL) return NumOfNulls();
+
   if (d.val1.vc && !d.val1.vc->IsConst()) {
     uint64_t no_distinct = ApproxDistinctVals(false, NULL, NULL, false);
     if (no_distinct == 0) no_distinct = 1;
     if (d.op == common::Operator::O_EQ) return NoObj() / no_distinct;
     if (d.op == common::Operator::O_NOT_EQ) return NoObj() - (NoObj() / no_distinct);
-    return (NoObj() - NoNulls()) / 2;  // default
+    return (NoObj() - NumOfNulls()) / 2;  // default
   }
+
   if (d.op == common::Operator::O_BETWEEN && d.val1.vc->IsConst() && d.val2.vc->IsConst() &&
       GetPackType() == common::PackType::INT) {
     double res = 0;
@@ -1079,7 +1082,7 @@ uint64_t RCAttr::ApproxAnswerSize(Descriptor &d) {
       int64_t span1,
           span2;  // numerical case: approximate number of rows in each pack
       if (val1 == val2) {
-        res = (NoObj() - NoNulls()) / 2;  // return default; up func will make Prior other types
+        res = (NoObj() - NumOfNulls()) / 2;  // return default; up func will make Prior other types
         return int64_t(res);
       }
       for (uint b = 0; b < NoPack(); b++) {
@@ -1120,7 +1123,8 @@ uint64_t RCAttr::ApproxAnswerSize(Descriptor &d) {
     }
     return int64_t(res);
   }
-  return (NoObj() - NoNulls()) / 2;  // default
+
+  return (NoObj() - NumOfNulls()) / 2;  // default
 }
 
 size_t RCAttr::MaxStringSize(Filter *f)  // maximal byte string length in column

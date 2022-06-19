@@ -173,8 +173,8 @@ void ConditionEncoder::TransformWithRespectToNulls() {
     return;
   }
 
-  bool nulls_only = desc->attr.vc->RoughNullsOnly();
-  bool nulls_possible = (additional_nulls || desc->attr.vc->NullsPossible());
+  bool nulls_only = desc->attr.vc->IsRoughNullsOnly();
+  bool nulls_possible = (additional_nulls || desc->attr.vc->IsNullsPossible());
 
   if (desc->op == common::Operator::O_IS_NULL) {
     if (!nulls_possible || attr->NoObj() == 0)

@@ -398,7 +398,7 @@ int64_t JoinerHash::MatchDim(MINewContents &new_mind, MIIterator &mit) {
             omit_this_packrow = true;
             break;
           }
-          if (other_cond_exist || local_min != local_max || vc2[i]->NullsPossible()) {
+          if (other_cond_exist || local_min != local_max || vc2[i]->IsNullsPossible()) {
             packrow_uniform = false;
           }
         }
@@ -687,7 +687,7 @@ int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *ta
             omit_this_packrow = true;
             break;
           }
-          if (other_cond_exist || local_min != local_max || vc2[i]->NullsPossible()) {
+          if (other_cond_exist || local_min != local_max || vc2[i]->IsNullsPossible()) {
             packrow_uniform = false;
           }
         }
