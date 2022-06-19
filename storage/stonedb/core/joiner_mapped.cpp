@@ -119,7 +119,7 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
       }
       int64_t local_min = common::MINUS_INF_64;
       int64_t local_max = common::PLUS_INF_64;
-      if (vc2->GetNoNulls(mit) == mit.GetPackSizeLeft()) {
+      if (vc2->GetNumOfNulls(mit) == mit.GetPackSizeLeft()) {
         omit_this_packrow = true;
       } else {
         local_min = vc2->GetMinInt64(mit);
@@ -129,7 +129,7 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
         }
       }
       packrows_matched++;
-      bool roughly_all = (vc2->GetNoNulls(mit) == 0 && map_function->CertainValues(local_min, local_max));
+      bool roughly_all = (vc2->GetNumOfNulls(mit) == 0 && map_function->CertainValues(local_min, local_max));
       if (single_filter_dim != -1 && roughly_all) {
         if (new_mind.CommitPack(mit.GetCurPackrow(single_filter_dim))) {  // processed as a pack
           joined_tuples += mit.GetPackSizeLeft();
@@ -247,7 +247,7 @@ int64_t JoinerParallelMapped::ExecuteMatchLoop(std::shared_ptr<MultiIndexBuilder
           vc->UnlockSourcePacks();
           throw common::KilledException();
         }
-        if (vc->GetNoNulls(mit) == mit.GetPackSizeLeft()) {
+        if (vc->GetNumOfNulls(mit) == mit.GetPackSizeLeft()) {
           omit_this_packrow = true;
         } else {
           if (map_function->ImpossibleValues(vc->GetMinInt64(mit), vc->GetMaxInt64(mit))) {
@@ -432,7 +432,7 @@ bool OffsetMapFunction::Init(vcolumn::VirtualColumn *vc, MIIterator &mit) {
       key_table_max == common::PLUS_INF_64 || key_table_max == common::NULL_VALUE_64)
     return false;
   int64_t span = key_table_max - key_table_min + 1;
-  if (span < 0 || size_t(span) > 32_MB || (span < mit.NoTuples() && !vc->NullsPossible())) return false;
+  if (span < 0 || size_t(span) > 32_MB || (span < mit.NoTuples() && !vc->IsNullsPossible())) return false;
 
   key_status.resize(span, 255);
 

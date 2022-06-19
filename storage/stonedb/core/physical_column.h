@@ -154,12 +154,12 @@ class PhysicalColumn : public Column {
    * Special case: GetNoNulls(-1) gives a total number of nulls.
    * Value common::NULL_VALUE_64 means 'cannot determine'.
    */
-  virtual int64_t GetNoNulls(int pack) = 0;
+  virtual int64_t GetNumOfNulls(int pack) = 0;
 
   /*!
    * \brief return true if sure that the column contains nulls only
    */
-  virtual bool RoughNullsOnly() const = 0;
+  virtual bool IsRoughNullsOnly() const = 0;
 
   //! \brief Get the sum of values in the datapack identified by \e pack
   virtual int64_t GetSum(int pack, bool &nonnegative) = 0;

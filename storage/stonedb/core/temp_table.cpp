@@ -532,7 +532,7 @@ int64_t TempTable::Attr::GetSum(int pack, bool &nonnegative) {
   return not_null_exists ? sum : common::NULL_VALUE_64;
 }
 
-int64_t TempTable::Attr::GetNoNulls(int pack) {
+int64_t TempTable::Attr::GetNumOfNulls(int pack) {
   if (not_complete) return common::NULL_VALUE_64;
   int64_t start;
   int64_t stop;

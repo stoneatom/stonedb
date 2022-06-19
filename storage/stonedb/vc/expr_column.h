@@ -59,17 +59,17 @@ class ExpressionColumn : public VirtualColumn {
   ExpressionColumn(core::MysqlExpression *expr, core::TempTable *temp_table, int temp_table_alias,
                    core::MultiIndex *mind);
   ExpressionColumn(const ExpressionColumn &);
+  virtual ~ExpressionColumn() = default;
 
   const core::MysqlExpression::sdbfields_cache_t &GetItems() const;
-  virtual ~ExpressionColumn() = default;
   void SetParamTypes(core::MysqlExpression::TypOfVars *types) override;
   bool IsConst() const override { return false; }
-  bool IsDeterministic() override { return expr->IsDeterministic(); }
-  int64_t GetNotNullValueInt64(const core::MIIterator &mit) override { return DoGetValueInt64(mit); }
-  void GetNotNullValueString(types::BString &s, const core::MIIterator &mit) override { DoGetValueString(s, mit); }
-  core::MysqlExpression::StringType GetStringType() { return expr->GetStringType(); }
+  bool IsDeterministic() override { return expr_->IsDeterministic(); }
+  int64_t GetNotNullValueInt64(const core::MIIterator &mit) override { return GetValueInt64Impl (mit); }
+  void GetNotNullValueString(types::BString &s, const core::MIIterator &mit) override { GetValueStringImpl (s, mit); }
+  core::MysqlExpression::StringType GetStringType() { return expr_->GetStringType(); }
+
   /////////////// Special functions for expressions on lookup
-  /////////////////////////
   virtual bool ExactlyOneLookup();  // the column is a deterministic expression
                                     // on exactly one lookup column, return the
                                     // coordinates of this column
@@ -77,38 +77,41 @@ class ExpressionColumn : public VirtualColumn {
   virtual void FeedLookupArguments(core::MILookupIterator &mit);
   void LockSourcePacks(const core::MIIterator &mit) override;
   void LockSourcePacks(const core::MIIterator &mit, int);
+
   /////////////// Data access //////////////////////
-
  protected:
-  int64_t DoGetValueInt64(const core::MIIterator &) override;
-  bool DoIsNull(const core::MIIterator &) override;
-  void DoGetValueString(types::BString &, const core::MIIterator &) override;
-  double DoGetValueDouble(const core::MIIterator &) override;
-  types::RCValueObject DoGetValue(const core::MIIterator &, bool) override;
-  int64_t DoGetMinInt64(const core::MIIterator &) override;
-  int64_t DoGetMaxInt64(const core::MIIterator &) override;
-  int64_t DoRoughMin() override;
-  int64_t DoRoughMax() override;
+  int64_t GetValueInt64Impl (const core::MIIterator &) override;
+  bool IsNullImpl (const core::MIIterator &) override;
+  void GetValueStringImpl (types::BString &, const core::MIIterator &) override;
+  double GetValueDoubleImpl (const core::MIIterator &) override;
+  types::RCValueObject GetValueImpl (const core::MIIterator &, bool) override;
 
-  types::BString DoGetMaxString(const core::MIIterator &) override;
-  types::BString DoGetMinString(const core::MIIterator &) override;
-  int64_t DoGetNoNulls(const core::MIIterator &, bool val_nulls_possible) override;
-  bool DoRoughNullsOnly() const override { return false; }
-  bool DoNullsPossible([[maybe_unused]] bool val_nulls_possible) override { return true; }
-  int64_t DoGetSum(const core::MIIterator &, bool &nonnegative) override;
-  bool DoIsDistinct() override;
-  int64_t DoGetApproxDistVals(bool incl_nulls, core::RoughMultiIndex *rough_mind) override;
-  size_t DoMaxStringSize() override;  // maximal byte string length in column
-  core::PackOntologicalStatus DoGetPackOntologicalStatus(const core::MIIterator &) override;
-  void DoEvaluatePack(core::MIUpdatingIterator &mit, core::Descriptor &) override;
-  virtual common::ErrorCode DoEvaluateOnIndex([[maybe_unused]] core::MIUpdatingIterator &mit, core::Descriptor &,
+  int64_t GetMinInt64Impl (const core::MIIterator &) override;
+  int64_t GetMaxInt64Impl (const core::MIIterator &) override;
+  int64_t RoughMinImpl () override;
+  int64_t RoughMaxImpl () override;
+
+  types::BString GetMaxStringImpl (const core::MIIterator &) override;
+  types::BString GetMinStringImpl (const core::MIIterator &) override;
+  int64_t GetNumOfNullsImpl (const core::MIIterator &, bool val_nulls_possible) override;
+
+  bool IsRoughNullsOnlyImpl () const override { return false; }
+  bool IsNullsPossibleImpl ([[maybe_unused]] bool val_nulls_possible) override { return true; }
+  int64_t GetSumImpl (const core::MIIterator &, bool &nonnegative) override;
+  bool IsDistinctImpl () override;
+  int64_t GetApproxDistValsImpl (bool incl_nulls, core::RoughMultiIndex *rough_mind) override;
+  size_t MaxStringSizeImpl () override;  // maximal byte string length in column
+
+  core::PackOntologicalStatus GetPackOntologicalStatusImpl (const core::MIIterator &) override;
+  void EvaluatePackImpl (core::MIUpdatingIterator &mit, core::Descriptor &) override;
+  virtual common::ErrorCode EvaluateOnIndexImpl ([[maybe_unused]] core::MIUpdatingIterator &mit, core::Descriptor &,
                                               [[maybe_unused]] int64_t limit) override {
     STONEDB_ERROR("Common path shall be used in case of ExpressionColumn.");
     return common::ErrorCode::FAILED;
   }
 
-  const core::MysqlExpression::sdbfields_cache_t &GetSDBItems() const override { return expr->GetSDBItems(); }
-  core::MysqlExpression *expr;  //!= NULL if ExpressionColumn encapsulates an expression. Note - a
+  const core::MysqlExpression::sdbfields_cache_t &GetSDBItems() const override { return expr_->GetSDBItems(); }
+  core::MysqlExpression *expr_;  //!= NULL if ExpressionColumn encapsulates an expression. Note - a
                                 //! constant is an expression
 
  private:
@@ -122,13 +125,13 @@ class ExpressionColumn : public VirtualColumn {
 
   // if ExpressionColumn ExpressionColumn encapsulates an expression these sets
   // are used to interface with core::MysqlExpression
-  core::MysqlExpression::SetOfVars vars;
-  core::MysqlExpression::TypOfVars var_types;
-  mutable core::MysqlExpression::var_buf_t var_buf;
+  core::MysqlExpression::SetOfVars vars_;
+  core::MysqlExpression::TypOfVars var_types_;
+  mutable core::MysqlExpression::var_buf_t var_buf_;
 
   //! value for a given row is always the same or not? e.g. currenttime() is not
   //! deterministic
-  bool deterministic;
+  bool deterministic_;
 };
 }  // namespace vcolumn
 }  // namespace stonedb

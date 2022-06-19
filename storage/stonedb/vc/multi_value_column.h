@@ -59,7 +59,7 @@ class MultiValColumn : public VirtualColumn {
   class LazyValue {
    public:
     LazyValue(LazyValue const &lv) : impl(lv.impl.get() ? lv.impl->Clone() : std::unique_ptr<LazyValueInterface>()) {}
-    LazyValue &operator=(LazyValue const &lv) {
+    LazyValue &operator= (LazyValue const &lv) {
       if (&lv != this) {
         if (lv.impl.get())
           impl = lv.impl->Clone();
@@ -68,6 +68,7 @@ class MultiValColumn : public VirtualColumn {
       }
       return *this;
     }
+
     LazyValue *operator->() { return this; }
     types::BString GetString() { return impl->GetString(); }
     types::RCNum GetRCNum() { return impl->GetRCNum(); }
@@ -137,29 +138,30 @@ class MultiValColumn : public VirtualColumn {
   MultiValColumn(core::ColumnType const &ct, core::MultiIndex *mind) : VirtualColumn(ct, mind) {}
   MultiValColumn(const MultiValColumn &c) : VirtualColumn(c) { sdbitems = c.sdbitems; }
   virtual ~MultiValColumn() {}
+
   bool IsMultival() const override { return true; }
-  inline common::Tribool Contains64(core::MIIterator const &mit, int64_t val) { return DoContains64(mit, val); }
+  inline common::Tribool Contains64(core::MIIterator const &mit, int64_t val) { return Contains64Impl (mit, val); }
   inline common::Tribool ContainsString(core::MIIterator const &mit, types::BString &val) {
-    return DoContainsString(mit, val);
+    return ContainsStringImpl (mit, val);
   }
   inline common::Tribool Contains(core::MIIterator const &mit, types::RCDataType const &val) {
-    return (DoContains(mit, val));
+    return (ContainsImpl (mit, val));
   }
   virtual bool IsSetEncoded([[maybe_unused]] common::CT at, [[maybe_unused]] int scale) {
     return false;
   }  // checks whether the set is constant and fixed size equal to the given one
-  inline bool IsEmpty(core::MIIterator const &mit) { return (DoIsEmpty(mit)); }
-  inline int64_t NoValues(core::MIIterator const &mit) { return DoNoValues(mit); }
+  inline bool IsEmpty(core::MIIterator const &mit) { return (IsEmptyImpl (mit)); }
+  inline int64_t NoValues(core::MIIterator const &mit) { return NoValuesImpl (mit); }
   inline int64_t AtLeastNoDistinctValues(core::MIIterator const &mit, int64_t const at_least) {
-    return DoAtLeastNoDistinctValues(mit, at_least);
+    return AtLeastNoDistinctValuesImpl (mit, at_least);
   }
-  inline bool ContainsNull(const core::MIIterator &mit) { return DoContainsNull(mit); }
-  virtual bool CheckExists(core::MIIterator const &mit) { return (DoNoValues(mit) > 0); }
-  inline Iterator begin(core::MIIterator const &mit) { return Iterator(this, DoBegin(mit)); }
-  inline Iterator end(core::MIIterator const &mit) { return Iterator(this, DoEnd(mit)); }
-  inline types::RCValueObject GetSetMin(core::MIIterator const &mit) { return DoGetSetMin(mit); }
-  inline types::RCValueObject GetSetMax(core::MIIterator const &mit) { return DoGetSetMax(mit); }
-  inline void SetExpectedType(core::ColumnType const &ct) { DoSetExpectedType(ct); }
+  inline bool ContainsNull(const core::MIIterator &mit) { return ContainsNullImpl (mit); }
+  virtual bool CheckExists(core::MIIterator const &mit) { return (NoValuesImpl (mit) > 0); }
+  inline Iterator begin(core::MIIterator const &mit) { return Iterator(this, BeginImpl (mit)); }
+  inline Iterator end(core::MIIterator const &mit) { return Iterator(this, EndImpl (mit)); }
+  inline types::RCValueObject GetSetMin(core::MIIterator const &mit) { return GetSetMinImpl (mit); }
+  inline types::RCValueObject GetSetMax(core::MIIterator const &mit) { return GetSetMaxImpl (mit); }
+  inline void SetExpectedType(core::ColumnType const &ct) { SetExpectedTypeImpl (ct); }
   int64_t GetNotNullValueInt64([[maybe_unused]] const core::MIIterator &mit) override {
     DEBUG_ASSERT(0);
     return 0;
@@ -170,65 +172,69 @@ class MultiValColumn : public VirtualColumn {
     ;
   }
   inline bool CopyCond(core::MIIterator const &mit, types::CondArray &condition, DTCollation coll) {
-    return DoCopyCond(mit, condition, coll);
+    return CopyCondImpl (mit, condition, coll);
   }
   inline bool CopyCond(core::MIIterator const &mit, std::shared_ptr<utils::Hash64> &condition, DTCollation coll) {
-    return DoCopyCond(mit, condition, coll);
+    return CopyCondImpl (mit, condition, coll);
   }
 
  protected:
-  virtual types::RCValueObject DoGetSetMin(core::MIIterator const &mit) = 0;
-  virtual types::RCValueObject DoGetSetMax(core::MIIterator const &mit) = 0;
-  virtual int64_t DoNoValues(core::MIIterator const &mit) = 0;
-  virtual int64_t DoAtLeastNoDistinctValues(core::MIIterator const &, int64_t const at_least) = 0;
-  virtual bool DoContainsNull(const core::MIIterator &) = 0;
-  virtual std::unique_ptr<IteratorInterface> DoBegin(core::MIIterator const &) = 0;
-  virtual std::unique_ptr<IteratorInterface> DoEnd(core::MIIterator const &) = 0;
-  virtual void DoSetExpectedType(core::ColumnType const &) = 0;
-  int64_t DoGetValueInt64([[maybe_unused]] const core::MIIterator &mit) override {
+  virtual types::RCValueObject GetSetMinImpl (core::MIIterator const &mit) = 0;
+  virtual types::RCValueObject GetSetMaxImpl (core::MIIterator const &mit) = 0;
+
+  virtual int64_t NoValuesImpl (core::MIIterator const &mit) = 0;
+  virtual int64_t AtLeastNoDistinctValuesImpl (core::MIIterator const &, int64_t const at_least) = 0;
+  virtual bool ContainsNullImpl (const core::MIIterator &) = 0;
+
+  virtual std::unique_ptr<IteratorInterface> BeginImpl (core::MIIterator const &) = 0;
+  virtual std::unique_ptr<IteratorInterface> EndImpl (core::MIIterator const &) = 0;
+  virtual void SetExpectedTypeImpl (core::ColumnType const &) = 0;
+
+  int64_t GetValueInt64Impl ([[maybe_unused]] const core::MIIterator &mit) override {
     DEBUG_ASSERT(!"Invalid call for this type of column.");
     return (0);
   }
-  double DoGetValueDouble([[maybe_unused]] const core::MIIterator &mit) override {
+  double GetValueDoubleImpl ([[maybe_unused]] const core::MIIterator &mit) override {
     DEBUG_ASSERT(!"Invalid call for this type of column.");
     return (0);
   }
-  bool DoIsNull([[maybe_unused]] const core::MIIterator &mit) override {
+  bool IsNullImpl ([[maybe_unused]] const core::MIIterator &mit) override {
     DEBUG_ASSERT(!"Invalid call for this type of column.");
     return (false);
   }
-  void DoGetValueString([[maybe_unused]] types::BString &s, [[maybe_unused]] const core::MIIterator &mit) override {
+  void GetValueStringImpl ([[maybe_unused]] types::BString &s, [[maybe_unused]] const core::MIIterator &mit) override {
     DEBUG_ASSERT(!"Invalid call for this type of column.");
   }
-  types::RCValueObject DoGetValue([[maybe_unused]] const core::MIIterator &mit,
+  types::RCValueObject GetValueImpl ([[maybe_unused]] const core::MIIterator &mit,
                                   [[maybe_unused]] bool lookup_to_num) override {
     DEBUG_ASSERT(!"Invalid call for this type of column.");
     return (types::RCValueObject());
   }
-  int64_t DoGetNoNulls([[maybe_unused]] const core::MIIterator &mit,
+  int64_t GetNumOfNullsImpl ([[maybe_unused]] const core::MIIterator &mit,
                        [[maybe_unused]] bool val_nulls_possible) override {
     return common::NULL_VALUE_64;
   }
-  bool DoRoughNullsOnly() const override {
+  bool IsRoughNullsOnlyImpl () const override {
     return false;
   }  // implement properly when DoRoughMin/Max are implemented non-trivially
 
-  int64_t DoGetSum([[maybe_unused]] const core::MIIterator &mit, [[maybe_unused]] bool &nonnegative) override {
+  int64_t GetSumImpl ([[maybe_unused]] const core::MIIterator &mit, [[maybe_unused]] bool &nonnegative) override {
     DEBUG_ASSERT(!"Invalid call for this type of column.");
     nonnegative = false;
     return common::NULL_VALUE_64;
   }
-  int64_t DoGetApproxDistVals([[maybe_unused]] bool incl_nulls,
+  int64_t GetApproxDistValsImpl ([[maybe_unused]] bool incl_nulls,
                               [[maybe_unused]] core::RoughMultiIndex *rough_mind) override {
     if (mind->TooManyTuples()) return common::PLUS_INF_64;
     return mind->NoTuples();  // default
   }
-  virtual common::Tribool DoContains64(core::MIIterator const &mit, int64_t val) = 0;
-  virtual common::Tribool DoContainsString(core::MIIterator const &mit, types::BString &val) = 0;
-  virtual common::Tribool DoContains(core::MIIterator const &, types::RCDataType const &) = 0;
-  virtual bool DoIsEmpty(core::MIIterator const &) = 0;
-  virtual bool DoCopyCond(core::MIIterator const &mit, types::CondArray &condition, DTCollation coll) = 0;
-  virtual bool DoCopyCond(core::MIIterator const &mit, std::shared_ptr<utils::Hash64> &condition, DTCollation coll) = 0;
+
+  virtual common::Tribool Contains64Impl (core::MIIterator const &mit, int64_t val) = 0;
+  virtual common::Tribool ContainsStringImpl (core::MIIterator const &mit, types::BString &val) = 0;
+  virtual common::Tribool ContainsImpl (core::MIIterator const &, types::RCDataType const &) = 0;
+  virtual bool IsEmptyImpl (core::MIIterator const &) = 0;
+  virtual bool CopyCondImpl (core::MIIterator const &mit, types::CondArray &condition, DTCollation coll) = 0;
+  virtual bool CopyCondImpl (core::MIIterator const &mit, std::shared_ptr<utils::Hash64> &condition, DTCollation coll) = 0;
   bool CanCopy() const override {
     return false;
   }  // even copies refer to the same core::TempTable and core::TempTable cannot

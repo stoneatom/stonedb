@@ -632,7 +632,7 @@ std::vector<int64_t> RCAttr::GetListOfDistinctValuesInPack(int pack) {
   auto const &dpn(get_dpn(pack));
   if (dpn.min_i == dpn.max_i) {
     list_vals.push_back(dpn.min_i);
-    if (NoNulls() > 0) list_vals.push_back(common::NULL_VALUE_64);
+    if (NumOfNulls() > 0) list_vals.push_back(common::NULL_VALUE_64);
     return list_vals;
   } else if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY) {
     list_vals.push_back(common::NULL_VALUE_64);
@@ -649,7 +649,7 @@ std::vector<int64_t> RCAttr::GetListOfDistinctValuesInPack(int pack) {
     for (int64_t v = dpn.min_i + 1; v < dpn.max_i; v++) {
       if (sp->IsValue(v, v, pack, dpn.min_i, dpn.max_i) != common::RSValue::RS_NONE) list_vals.push_back(v);
     }
-    if (NoNulls() > 0) list_vals.push_back(common::NULL_VALUE_64);
+    if (NumOfNulls() > 0) list_vals.push_back(common::NULL_VALUE_64);
     return list_vals;
   }
   return list_vals;
@@ -659,9 +659,9 @@ uint64_t RCAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue 
   LoadPackInfo();
   uint64_t no_dist = 0;
   int64_t max_obj = NoObj();  // no more values than objects
-  if (NoNulls() > 0 || outer_nulls_possible) {
+  if (NumOfNulls() > 0 || outer_nulls_possible) {
     if (incl_nulls) no_dist++;  // one value for null
-    max_obj = max_obj - NoNulls() + (incl_nulls ? 1 : 0);
+    max_obj = max_obj - NumOfNulls() + (incl_nulls ? 1 : 0);
     if (f && max_obj > f->NoOnes()) max_obj = f->NoOnes();
   } else if (f)
     max_obj = f->NoOnes();

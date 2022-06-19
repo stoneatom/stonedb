@@ -1195,7 +1195,7 @@ class DelayedInsertParser final {
   common::ErrorCode InsertIndex(std::vector<loader::ValueCache> &vcs, int64_t start_row) {
     if (!index_table) return common::ErrorCode::SUCCESS;
 
-    size_t row_idx = vcs[0].NoValues() - 1;
+    size_t row_idx = vcs[0].NumOfValues() - 1;
     std::vector<uint> cols = index_table->KeyCols();
     std::vector<std::string_view> fields;
     for (auto &col : cols) {
@@ -1229,7 +1229,7 @@ uint64_t RCTable::ProcessDelayed(system::IOParameters &iop) {
     to_prepare = share->PackSize() - (int)(m_attrs[0]->NoObj() % share->PackSize());
     std::vector<loader::ValueCache> vcs;
     no_of_rows_returned = parser.GetRows(to_prepare, vcs);
-    size_t real_loaded_rows = vcs[0].NoValues();
+    size_t real_loaded_rows = vcs[0].NumOfValues();
     no_dup_rows += (no_of_rows_returned - real_loaded_rows);
     if (real_loaded_rows > 0) {
       utils::result_set<void> res;
@@ -1317,7 +1317,7 @@ int RCTable::MergeMemTable(system::IOParameters &iop) {
     to_prepare = share->PackSize() - (int)(m_attrs[0]->NoObj() % share->PackSize());
     std::vector<loader::ValueCache> vcs;
     no_of_rows_returned = parser.GetRows(to_prepare, vcs);
-    size_t real_loaded_rows = vcs[0].NoValues();
+    size_t real_loaded_rows = vcs[0].NumOfValues();
     no_dup_rows += (no_of_rows_returned - real_loaded_rows);
     if (real_loaded_rows > 0) {
       utils::result_set<void> res;

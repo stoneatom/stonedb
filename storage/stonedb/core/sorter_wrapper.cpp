@@ -224,7 +224,7 @@ bool SorterWrapper::InitPackrow(MIIterator &mit)  // return true if the packrow 
   if (rough_sort_by > -1 && limit > -1 && no_values_encoded >= limit) {
     // nontrivial rough_sort_by => numerical case only
     vcolumn::VirtualColumn *vc = input_cols[rough_sort_by].col;
-    if (vc->GetNoNulls(mit) == 0) {
+    if (vc->GetNumOfNulls(mit) == 0) {
       bool asc = (input_cols[rough_sort_by].sort_order > 0);  // ascending sort
       int64_t local_min = (asc ? vc->GetMinInt64(mit) : common::MINUS_INF_64);
       int64_t local_max = (asc ? common::PLUS_INF_64 : vc->GetMaxInt64(mit));
