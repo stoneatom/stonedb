@@ -21,6 +21,7 @@
 
 #ifdef STONEDB
 #include <set>
+#include <string>
 #endif 
 
 #ifdef HAVE_IEEEFP_H
