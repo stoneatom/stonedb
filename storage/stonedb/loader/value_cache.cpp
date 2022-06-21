@@ -25,74 +25,73 @@
 namespace stonedb {
 namespace loader {
 
-ValueCache::ValueCache(size_t valueCount, size_t initialCapacity) : value_count(valueCount) {
+ValueCache::ValueCache(size_t valueCount, size_t initialCapacity) : value_count_(valueCount) {
   Realloc(initialCapacity);
-  values.reserve(valueCount);
-  nulls.reserve(valueCount);
+  values_.reserve(valueCount);
+  nulls_.reserve(valueCount);
 }
 
 void *ValueCache::Prepare(size_t valueSize) {
-  size_t newSize(size + valueSize);
-  if (newSize > capacity) {
-    auto newCapacity = capacity;
-    while (newSize > newCapacity) newCapacity <<= 1;
-    auto vals = values.size();
-    if ((capacity > 0) && (vals > 0)) { /* second allocation, first reallocation */
-      auto valSize = size / vals;
-      newCapacity = std::max(newCapacity, valSize * value_count);
+  size_t newSize(size_ + valueSize);
+  if (newSize > capacity_) {
+    auto newCapacity = capacity_;
+    while (newSize > newCapacity) 
+      newCapacity <<= 1;
+
+    auto vals = values_.size();
+    if ((capacity_ > 0) && (vals > 0)) { /* second allocation, first reallocation */
+      auto valSize = size_ / vals;
+      newCapacity = std::max(newCapacity, valSize * value_count_);
     }
     Realloc(newCapacity);
   }
-  if (!data) return nullptr;
-  return (static_cast<char *>(data) + size);
-}
 
-void ValueCache::Realloc(size_t newCapacity) {
-  data = std::realloc(data, newCapacity);
-  capacity = newCapacity;
+  if (!data_) return nullptr;
+  return (static_cast<char *>(data_) + size_);
 }
 
 void ValueCache::CalcIntStats(std::optional<common::double_int_t> nv) {
-  min_i = common::PLUS_INF_64;
-  max_i = common::MINUS_INF_64;
-  sum_i = 0;
-  for (size_t i = 0; i < values.size(); ++i) {
-    if (!nulls[i]) {
+  min_i_ = common::PLUS_INF_64, max_i_ = common::MINUS_INF_64, sum_i_ = 0;
+
+  for (size_t i = 0; i < values_.size(); ++i) {
+    if (!nulls_[i]) {
       auto v = *(int64_t *)GetDataBytesPointer(i);
-      sum_i += v;
-      if (min_i > v) min_i = v;
-      if (max_i < v) max_i = v;
+      sum_i_ += v;
+
+      if (min_i_ > v) min_i_ = v;
+      if (max_i_ < v) max_i_ = v;
     }
   }
-  if (NoNulls() > 0 && nv.has_value()) {
-    if (min_i > nv->i) min_i = nv->i;
-    if (max_i < nv->i) max_i = nv->i;
+
+  if (NumOfNulls() > 0 && nv.has_value()) {
+    if (min_i_ > nv->i) min_i_ = nv->i;
+    if (max_i_ < nv->i) max_i_ = nv->i;
   }
 }
 
 void ValueCache::CalcRealStats(std::optional<common::double_int_t> nv) {
-  min_d = common::PLUS_INF_64;
-  max_d = common::MINUS_INF_64;
-  sum_d = 0;
-  for (size_t i = 0; i < values.size(); ++i) {
-    if (!nulls[i]) {
+  min_d_ = common::PLUS_INF_64, max_d_ = common::MINUS_INF_64, sum_d_ = 0;
+  for (size_t i = 0; i < values_.size(); ++i) {
+    if (!nulls_[i]) {
       auto v = *(double *)GetDataBytesPointer(i);
-      sum_d += v;
-      if (min_d > v) min_d = v;
-      if (max_d < v) max_d = v;
+      sum_d_ += v;
+
+      if (min_d_ > v) min_d_ = v;
+      if (max_d_ < v) max_d_ = v;
     }
   }
-  if (NoNulls() > 0 && nv.has_value()) {
-    if (min_d > nv->d) min_d = nv->d;
-    if (max_d < nv->d) max_d = nv->d;
+
+  if (NumOfNulls() > 0 && nv.has_value()) {
+    if (min_d_ > nv->d) min_d_ = nv->d;
+    if (max_d_ < nv->d) max_d_ = nv->d;
   }
 }
 
 void ValueCache::CalcStrStats(types::BString &min_s, types::BString &max_s, uint &maxlen,
                               const DTCollation &col) const {
   maxlen = 0;
-  for (size_t i = 0; i < values.size(); ++i) {
-    if (!nulls[i]) {
+  for (size_t i = 0; i < values_.size(); ++i) {
+    if (!nulls_[i]) {
       types::BString v((Size(i) ? GetDataBytesPointer(i) : ZERO_LENGTH_STRING), Size(i));
       if (v.len > maxlen) maxlen = v.len;
 
@@ -112,7 +111,7 @@ void ValueCache::CalcStrStats(types::BString &min_s, types::BString &max_s, uint
     }
   }
   types::BString nv(ZERO_LENGTH_STRING, 0);
-  if (NoNulls() > 0) {
+  if (NumOfNulls() > 0) {
     if (min_s > nv) min_s = nv;
     if (max_s < nv) max_s = nv;
   }

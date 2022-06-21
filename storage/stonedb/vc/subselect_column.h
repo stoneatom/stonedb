@@ -116,9 +116,9 @@ class SubSelectColumn : public MultiValColumn {
   bool IsSetEncoded(common::CT at,
                     int scale) override;  // checks whether the set is constant and fixed size
                                           // equal to the given one
-  int64_t GetNotNullValueInt64(const core::MIIterator &mit) override { return DoGetValueInt64(mit); }
+  int64_t GetNotNullValueInt64(const core::MIIterator &mit) override { return GetValueInt64Impl (mit); }
   void GetNotNullValueString(types::BString &s, const core::MIIterator &mit) override {
-    return DoGetValueString(s, mit);
+    return GetValueStringImpl (s, mit);
   }
   core::RoughValue RoughGetValue(const core::MIIterator &mit, core::SubSelectOptimizationType sot);
   bool CheckExists(core::MIIterator const &mit) override;
@@ -133,62 +133,64 @@ class SubSelectColumn : public MultiValColumn {
   types::RCValueObject max;
   bool min_max_uptodate;
   void CalculateMinMax();
-  std::unique_ptr<IteratorInterface> DoBegin(core::MIIterator const &) override;
-  std::unique_ptr<IteratorInterface> DoEnd(core::MIIterator const &) override;
-  common::Tribool DoContains(core::MIIterator const &, types::RCDataType const &) override;
-  common::Tribool DoContains64(const core::MIIterator &mit, int64_t val) override;
-  bool DoCopyCond([[maybe_unused]] const core::MIIterator &mit, [[maybe_unused]] types::CondArray &condition,
+
+  std::unique_ptr<IteratorInterface> BeginImpl (core::MIIterator const &) override;
+  std::unique_ptr<IteratorInterface> EndImpl (core::MIIterator const &) override;
+  common::Tribool ContainsImpl (core::MIIterator const &, types::RCDataType const &) override;
+  common::Tribool Contains64Impl (const core::MIIterator &mit, int64_t val) override;
+  bool CopyCondImpl ([[maybe_unused]] const core::MIIterator &mit, [[maybe_unused]] types::CondArray &condition,
                   [[maybe_unused]] DTCollation coll) override {
     return false;
   }
-  bool DoCopyCond([[maybe_unused]] const core::MIIterator &mit,
+  bool CopyCondImpl ([[maybe_unused]] const core::MIIterator &mit,
                   [[maybe_unused]] std::shared_ptr<utils::Hash64> &condition,
                   [[maybe_unused]] DTCollation coll) override {
     return false;
   }
-  common::Tribool DoContainsString(const core::MIIterator &mit, types::BString &val) override;
-  bool DoIsNull(core::MIIterator const &mit) override;
-  types::RCValueObject DoGetValue(core::MIIterator const &mit, bool lookup_to_num) override;
-  int64_t DoNoValues(core::MIIterator const &mit) override;
-  int64_t DoAtLeastNoDistinctValues(core::MIIterator const &mit, int64_t const at_least) override;
-  bool DoContainsNull(core::MIIterator const &mit) override;
-  void DoSetExpectedType(core::ColumnType const &) override;
-  types::RCValueObject DoGetSetMin(core::MIIterator const &mit) override;
-  types::RCValueObject DoGetSetMax(core::MIIterator const &mit) override;
-  bool DoIsEmpty(core::MIIterator const &) override;
-  int64_t DoGetValueInt64(core::MIIterator const &) override;
-  double DoGetValueDouble(core::MIIterator const &) override;
-  void DoGetValueString(types::BString &s, core::MIIterator const &mit) override;
+  common::Tribool ContainsStringImpl (const core::MIIterator &mit, types::BString &val) override;
+  bool IsNullImpl (core::MIIterator const &mit) override;
 
-  bool DoNullsPossible([[maybe_unused]] bool val_nulls_possible) override { return true; }
-  int64_t DoGetMinInt64([[maybe_unused]] const core::MIIterator &mit) override {
+  types::RCValueObject GetValueImpl (core::MIIterator const &mit, bool lookup_to_num) override;
+  int64_t NoValuesImpl (core::MIIterator const &mit) override;
+  int64_t AtLeastNoDistinctValuesImpl (core::MIIterator const &mit, int64_t const at_least) override;
+  bool ContainsNullImpl (core::MIIterator const &mit) override;
+  void SetExpectedTypeImpl (core::ColumnType const &) override;
+  types::RCValueObject GetSetMinImpl (core::MIIterator const &mit) override;
+  types::RCValueObject GetSetMaxImpl (core::MIIterator const &mit) override;
+  bool IsEmptyImpl (core::MIIterator const &) override;
+  int64_t GetValueInt64Impl (core::MIIterator const &) override;
+  double GetValueDoubleImpl (core::MIIterator const &) override;
+  void GetValueStringImpl (types::BString &s, core::MIIterator const &mit) override;
+
+  bool IsNullsPossibleImpl ([[maybe_unused]] bool val_nulls_possible) override { return true; }
+  int64_t GetMinInt64Impl ([[maybe_unused]] const core::MIIterator &mit) override {
     // DEBUG_ASSERT( !"To be implemented." );
     return common::MINUS_INF_64;
   }
-  int64_t DoGetMaxInt64([[maybe_unused]] const core::MIIterator &mit) override {
+  int64_t GetMaxInt64Impl ([[maybe_unused]] const core::MIIterator &mit) override {
     // DEBUG_ASSERT( !"To be implemented." );
     return common::PLUS_INF_64;
   }
-  int64_t DoRoughMin() override {
+  int64_t RoughMinImpl () override {
     // DEBUG_ASSERT( !"To be implemented." );
     return common::MINUS_INF_64;
   }
-  int64_t DoRoughMax() override {
+  int64_t RoughMaxImpl () override {
     // DEBUG_ASSERT( !"To be implemented." );
     return common::PLUS_INF_64;
   }
-  types::BString DoGetMaxString(const core::MIIterator &mit) override;
-  types::BString DoGetMinString(const core::MIIterator &mit) override;
+  types::BString GetMaxStringImpl (const core::MIIterator &mit) override;
+  types::BString GetMinStringImpl (const core::MIIterator &mit) override;
 
-  bool DoIsDistinct() override {
+  bool IsDistinctImpl () override {
     // DEBUG_ASSERT( !"To be implemented." );
     return (false);
   }
 
-  size_t DoMaxStringSize() override;  // maximal byte string length in column
-  core::PackOntologicalStatus DoGetPackOntologicalStatus(const core::MIIterator &mit) override;
-  void DoEvaluatePack(core::MIUpdatingIterator &mit, core::Descriptor &desc) override;
-  virtual common::ErrorCode DoEvaluateOnIndex([[maybe_unused]] core::MIUpdatingIterator &mit,
+  size_t MaxStringSizeImpl () override;  // maximal byte string length in column
+  core::PackOntologicalStatus GetPackOntologicalStatusImpl (const core::MIIterator &mit) override;
+  void EvaluatePackImpl (core::MIUpdatingIterator &mit, core::Descriptor &desc) override;
+  virtual common::ErrorCode EvaluateOnIndexImpl ([[maybe_unused]] core::MIUpdatingIterator &mit,
                                               [[maybe_unused]] core::Descriptor &desc,
                                               [[maybe_unused]] int64_t limit) override {
     STONEDB_ERROR("To be implemented.");
@@ -198,7 +200,8 @@ class SubSelectColumn : public MultiValColumn {
   bool FeedArguments(const core::MIIterator &mit, bool for_rough);
 
   const core::MysqlExpression::sdbfields_cache_t &GetSDBItems() const override { return sdbitems; }
-  core::ColumnType expected_type;
+
+  core::ColumnType expected_type_;
   std::map<core::VarID, core::ValueOrNull> param_cache_for_exact;
   std::map<core::VarID, core::ValueOrNull> param_cache_for_rough;
 
@@ -208,6 +211,7 @@ class SubSelectColumn : public MultiValColumn {
   void PrepareSubqResult(const core::MIIterator &mit, bool exists_only);
   void RoughPrepareSubqCopy(const core::MIIterator &mit, core::SubSelectOptimizationType sot);
   bool MakeParallelReady();
+
   core::MysqlExpression::TypOfVars var_types;
   mutable core::MysqlExpression::var_buf_t var_buf_for_exact;
   mutable core::MysqlExpression::var_buf_t var_buf_for_rough;
@@ -215,9 +219,9 @@ class SubSelectColumn : public MultiValColumn {
   std::shared_ptr<core::ValueSet> cache;
   int no_cached_values;
   bool first_eval_for_rough;
-  //	bool out_of_date_exact;
   bool out_of_date_rough;  // important only for old mysql expr
 };
+
 }  // namespace vcolumn
 }  // namespace stonedb
 

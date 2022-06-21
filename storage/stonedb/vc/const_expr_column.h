@@ -24,6 +24,7 @@
 
 namespace stonedb {
 namespace vcolumn {
+
 /*! \brief A column defined by an expression (including a subquery) or
  * encapsulating a PhysicalColumn ConstExpressionColumn is associated with an
  * core::MultiIndex object and cannot exist without it. Values contained in
@@ -78,51 +79,57 @@ class ConstExpressionColumn : public ExpressionColumn {
   bool IsThreadSafe() override { return params.size() == 0; }
 
  protected:
-  int64_t DoGetValueInt64([[maybe_unused]] const core::MIIterator &mit) override {
-    return last_val->IsNull() ? common::NULL_VALUE_64 : last_val->Get64();
-  }
-  bool DoIsNull([[maybe_unused]] const core::MIIterator &mit) override { return last_val->IsNull(); }
-  void DoGetValueString(types::BString &s, [[maybe_unused]] const core::MIIterator &mit) override {
+  bool IsNullImpl ([[maybe_unused]] const core::MIIterator &mit) override { return last_val->IsNull(); }
+
+  types::RCValueObject GetValueImpl (const core::MIIterator &mit, bool lookup_to_num) override;
+
+  void GetValueStringImpl (types::BString &s, [[maybe_unused]] const core::MIIterator &mit) override {
     last_val->GetBString(s);
   }
-  double DoGetValueDouble(const core::MIIterator &mit) override;
-  types::RCValueObject DoGetValue(const core::MIIterator &mit, bool lookup_to_num) override;
-  int64_t DoGetMinInt64([[maybe_unused]] const core::MIIterator &mit) override {
+
+  int64_t GetValueInt64Impl ([[maybe_unused]] const core::MIIterator &mit) override {
+    return last_val->IsNull() ? common::NULL_VALUE_64 : last_val->Get64();
+  }
+
+  double GetValueDoubleImpl (const core::MIIterator &mit) override;
+  int64_t GetMinInt64Impl ([[maybe_unused]] const core::MIIterator &mit) override {
     return last_val->IsNull() ? common::MINUS_INF_64 : last_val->Get64();
   }
-  int64_t DoGetMaxInt64([[maybe_unused]] const core::MIIterator &mit) override {
+  int64_t GetMaxInt64Impl ([[maybe_unused]] const core::MIIterator &mit) override {
     return last_val->IsNull() ? common::PLUS_INF_64 : last_val->Get64();
   }
-  int64_t DoRoughMin() override {
+  int64_t RoughMinImpl () override {
     return (last_val->IsNull() || last_val->Get64() == common::NULL_VALUE_64) ? common::MINUS_INF_64
                                                                               : last_val->Get64();
   }
-  int64_t DoRoughMax() override {
+  int64_t RoughMaxImpl () override {
     return (last_val->IsNull() || last_val->Get64() == common::NULL_VALUE_64) ? common::PLUS_INF_64 : last_val->Get64();
   }
-  types::BString DoGetMaxString(const core::MIIterator &mit) override;
-  types::BString DoGetMinString(const core::MIIterator &mit) override;
-  int64_t DoGetNoNulls(const core::MIIterator &mit, [[maybe_unused]] bool val_nulls_possible) override {
+  types::BString GetMaxStringImpl (const core::MIIterator &mit) override;
+  types::BString GetMinStringImpl (const core::MIIterator &mit) override;
+  int64_t GetNumOfNullsImpl (const core::MIIterator &mit, [[maybe_unused]] bool val_nulls_possible) override {
     return last_val->IsNull() ? mit.GetPackSizeLeft() : (mit.NullsPossibleInPack() ? common::NULL_VALUE_64 : 0);
   }
-  bool DoRoughNullsOnly() const override { return last_val->IsNull(); }
-  bool DoNullsPossible([[maybe_unused]] bool val_nulls_possible) override { return last_val->IsNull(); }
-  int64_t DoGetSum(const core::MIIterator &mit, bool &nonnegative) override;
-  bool DoIsDistinct() override {
+
+  bool IsRoughNullsOnlyImpl () const override { return last_val->IsNull(); }
+  bool IsNullsPossibleImpl ([[maybe_unused]] bool val_nulls_possible) override { return last_val->IsNull(); }
+  int64_t GetSumImpl (const core::MIIterator &mit, bool &nonnegative) override;
+  bool IsDistinctImpl () override {
     return (mind->TooManyTuples() || mind->NoTuples() > 1) ? false : (!last_val->IsNull());
   }
-  int64_t DoGetApproxDistVals(bool incl_nulls, core::RoughMultiIndex *rough_mind) override;
-  size_t DoMaxStringSize() override;  // maximal byte string length in column
-  core::PackOntologicalStatus DoGetPackOntologicalStatus(const core::MIIterator &mit) override;
-  common::RSValue DoRoughCheck(const core::MIIterator &it, core::Descriptor &d) override;
-  void DoEvaluatePack(core::MIUpdatingIterator &mit, core::Descriptor &desc) override;
+  int64_t GetApproxDistValsImpl (bool incl_nulls, core::RoughMultiIndex *rough_mind) override;
+  size_t MaxStringSizeImpl () override;  // maximal byte string length in column
+  core::PackOntologicalStatus GetPackOntologicalStatusImpl (const core::MIIterator &mit) override;
+  common::RSValue RoughCheckImpl (const core::MIIterator &it, core::Descriptor &d) override;
+  void EvaluatePackImpl (core::MIUpdatingIterator &mit, core::Descriptor &desc) override;
   // comparison of a const with a const should be simplified earlier
-  virtual common::ErrorCode DoEvaluateOnIndex([[maybe_unused]] core::MIUpdatingIterator &mit, core::Descriptor &,
+  virtual common::ErrorCode EvaluateOnIndexImpl ([[maybe_unused]] core::MIUpdatingIterator &mit, core::Descriptor &,
                                               [[maybe_unused]] int64_t limit) override {
     DEBUG_ASSERT(0);
     return common::ErrorCode::FAILED;
   }
 };
+
 }  // namespace vcolumn
 }  // namespace stonedb
 

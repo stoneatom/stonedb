@@ -279,7 +279,7 @@ bool GroupByWrapper::AggregatePackInOneGroup(int attr_no, MIIterator &mit, int64
                                              int64_t factor) {
   bool no_omitted = (rows_in_pack == mit.GetPackSizeLeft());
   bool aggregated_roughly = false;
-  if (virt_col[attr_no] && virt_col[attr_no]->GetNoNulls(mit) == mit.GetPackSizeLeft() &&
+  if (virt_col[attr_no] && virt_col[attr_no]->GetNumOfNulls(mit) == mit.GetPackSizeLeft() &&
       gt.AttrAggregator(attr_no)->IgnoreNulls())
     return true;  // no operation needed - the pack is ignored
   if (!gt.AttrAggregator(attr_no)->PackAggregationDistinctIrrelevant() && gt.AttrDistinct(attr_no) &&
@@ -342,7 +342,7 @@ bool GroupByWrapper::AggregatePackInOneGroup(int attr_no, MIIterator &mit, int64
     if (gt.AttrAggregator(attr_no)->PackAggregationNeedsSize())
       gt.AttrAggregator(attr_no)->SetAggregatePackNoObj(SafeMultiplication(rows_in_pack, factor));
     if (gt.AttrAggregator(attr_no)->PackAggregationNeedsNotNulls() && virt_col[attr_no]) {
-      int64_t no_nulls = virt_col[attr_no]->GetNoNulls(mit);
+      int64_t no_nulls = virt_col[attr_no]->GetNumOfNulls(mit);
       if (no_nulls == common::NULL_VALUE_64)
         return false;  // aggregation no longer possible
       else
@@ -441,7 +441,7 @@ bool GroupByWrapper::PackWillNotUpdateAggregation(int i, MIIterator &mit)  // fa
   gt.UpdateAttrStats(i);  // Warning: slow if there is a lot of groups involved
 
   // Statistics of data pack:
-  if (virt_col[i]->GetNoNulls(mit) == mit.GetPackSizeLeft()) return true;  // nulls only - omit pack
+  if (virt_col[i]->GetNumOfNulls(mit) == mit.GetPackSizeLeft()) return true;  // nulls only - omit pack
 
   if (gt.AttrAggregator(i)->PackAggregationNeedsMin()) {
     int64_t i_min = virt_col[i]->GetMinInt64(mit);
@@ -472,7 +472,7 @@ bool GroupByWrapper::DataWillNotUpdateAggregation(int i)  // false, if counters 
   gt.UpdateAttrStats(i);  // Warning: slow if there is a lot of groups involved
 
   // Statistics of the whole data:
-  if (virt_col[i]->RoughNullsOnly()) return true;  // nulls only - omit pack
+  if (virt_col[i]->IsRoughNullsOnly()) return true;  // nulls only - omit pack
 
   if (gt.AttrAggregator(i)->PackAggregationNeedsMin()) {
     int64_t i_min = virt_col[i]->RoughMin();

@@ -232,7 +232,7 @@ void PackStr::LoadValues(const loader::ValueCache *vc) {
   auto sz = vc->SumarizedSize();
   data.v.push_back({(char *)alloc(sz, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED), sz, 0});
 
-  auto total = vc->NoValues();
+  auto total = vc->NumOfValues();
 
   TransformIntoArray();
 
@@ -255,7 +255,7 @@ void PackStr::LoadValues(const loader::ValueCache *vc) {
   }
 
   // update min/max/maxlen in DPN, if there is non-null values loaded
-  if (vc->NoValues() > vc->NoNulls()) {
+  if (vc->NumOfValues() > vc->NumOfNulls()) {
     types::BString min_s;
     types::BString max_s;
     uint maxlen;

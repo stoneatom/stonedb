@@ -501,9 +501,9 @@ types::RCDataType &RCAttr::GetValueData(size_t obj, types::RCDataType &value, bo
   return value;
 }
 
-int64_t RCAttr::GetNoNulls(int pack) {
+int64_t RCAttr::GetNumOfNulls(int pack) {
   LoadPackInfo();
-  if (pack == -1) return NoNulls();
+  if (pack == -1) return NumOfNulls();
   return get_dpn(pack).nn;
 }
 
@@ -831,8 +831,8 @@ void RCAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
 
   if (!get_dpn(pi).Trivial()) get_pack(pi)->Save();
 
-  hdr.nr += nvs->NoValues();
-  hdr.nn += (Type().NotNull() ? 0 : nvs->NoNulls());
+  hdr.nr += nvs->NumOfValues();
+  hdr.nn += (Type().NotNull() ? 0 : nvs->NumOfNulls());
   hdr.natural_size += nvs->SumarizedSize();
 }
 
@@ -847,8 +847,8 @@ void RCAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
   }
 
   auto &dpn = get_dpn(pi);
-  auto load_values = nvs->NoValues();
-  size_t load_nulls = nv.has_value() ? 0 : nvs->NoNulls();
+  auto load_values = nvs->NumOfValues();
+  size_t load_nulls = nv.has_value() ? 0 : nvs->NumOfNulls();
 
   // nulls only
   if (load_nulls == load_values && (dpn.nr == 0 || dpn.NullOnly())) {
@@ -895,7 +895,7 @@ void RCAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
   }
 
   // update global column statistics
-  if (nvs->NoNulls() != nvs->NoValues()) {
+  if (nvs->NumOfNulls() != nvs->NumOfValues()) {
     if (NoObj() == 0) {
       SetMinInt64(dpn.min_i);
       SetMaxInt64(dpn.max_i);
@@ -916,8 +916,8 @@ void RCAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
 void RCAttr::LoadDataPackS(size_t pi, loader::ValueCache *nvs) {
   auto &dpn(get_dpn(pi));
 
-  auto load_nulls = Type().NotNull() ? 0 : nvs->NoNulls();
-  auto cnt = nvs->NoValues();
+  auto load_nulls = Type().NotNull() ? 0 : nvs->NumOfNulls();
+  auto cnt = nvs->NumOfValues();
 
   // no need to store any values - uniform package
   if (load_nulls == cnt && (dpn.nr == 0 || dpn.NullOnly())) {
@@ -1062,7 +1062,7 @@ void RCAttr::CompareAndSetCurrentMax(const types::BString &tstmp, types::BString
 }
 
 types::BString RCAttr::MinS(Filter *f) {
-  if (f->IsEmpty() || !ATI::IsStringType(TypeName()) || NoObj() == 0 || NoObj() == NoNulls()) return types::BString();
+  if (f->IsEmpty() || !ATI::IsStringType(TypeName()) || NoObj() == 0 || NoObj() == NumOfNulls()) return types::BString();
   types::BString min;
   bool set = false;
   if (f->NoBlocks() != NoPack())
@@ -1095,7 +1095,7 @@ types::BString RCAttr::MinS(Filter *f) {
 }
 
 types::BString RCAttr::MaxS(Filter *f) {
-  if (f->IsEmpty() || !ATI::IsStringType(TypeName()) || NoObj() == 0 || NoObj() == NoNulls()) return types::BString();
+  if (f->IsEmpty() || !ATI::IsStringType(TypeName()) || NoObj() == 0 || NoObj() == NumOfNulls()) return types::BString();
 
   types::BString max;
   if (f->NoBlocks() != NoPack())

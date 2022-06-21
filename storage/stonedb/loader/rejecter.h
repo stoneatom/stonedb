@@ -26,21 +26,22 @@ namespace stonedb {
 namespace loader {
 
 class Rejecter {
-  std::string reject_file;
-  int64_t abort_on_count;
-  double abort_on_threshold;
-  std::unique_ptr<system::StoneDBFile> writer;
-  int64_t packrow_size;
-  int64_t rejected;
+ private:
+  std::string reject_file_;
+  int64_t abort_on_count_;
+  double abort_on_threshold_;
+  std::unique_ptr<system::StoneDBFile> writer_;
+  int64_t packrow_size_;
+  int64_t rejected_;
 
  public:
   Rejecter(int, std::string const &, int64_t, double);
   void ConsumeBadRow(char const *, int64_t, int64_t, int);
 
-  int64_t GetNoRejectedRows() const { return rejected; }
+  int64_t GetNoRejectedRows() const { return rejected_; }
   bool ThresholdExceeded(int64_t no_rows) const {
-    return abort_on_threshold != 0 &&
-           (static_cast<double>(rejected) / static_cast<double>(no_rows)) >= abort_on_threshold;
+    return abort_on_threshold_ != 0 &&
+           (static_cast<double>(rejected_) / static_cast<double>(no_rows)) >= abort_on_threshold_;
   }
 };
 
