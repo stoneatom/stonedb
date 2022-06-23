@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       
-      - name: installation prerequisites
+      - name: install prerequisites
         run: |
           sudo apt-get update
           sudo apt-get install cmake make perl bison libaio-dev \
@@ -110,12 +110,12 @@ jobs:
           sudo make VERBOSE=1 -j`nproc`
           sudo make install -j`nproc`
 
-      - name: initial stonedb
+      - name: mtr test
         run: |
+          sudo mkdir -p /stonedb56/install/data/innodb
+          sudo mkdir -p /stonedb56/install/binlog
+          sudo mkdir -p /stonedb56/install/log
+          sudo mkdir -p /stonedb56/install/tmp
           sudo chown -R mysql:mysql /stonedb56
-          sudo chmod -R 755 /stonedb56
-          cd /stonedb56/install
-          sudo /stonedb56/install/reinstall.sh
-
-      - name: check status
-        run: sudo netstat -lntp | grep mysql
+          cd /stonedb56/install/mysql-test
+          sudo ./mysql-test-run.pl --suite=stonedb --nowarnings --force
