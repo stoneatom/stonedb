@@ -69,6 +69,7 @@ jobs:
           -DWITH_LZ4=ON \
           -DWITH_ZLIB=ON \
           -DWITH_ZSTD=ON \
+          -DUSE_RTTI=ON \
           -DROCKSDB_BUILD_SHARED=ON \
           -DWITH_GFLAGS=OFF \
           -DWITH_TOOLS=OFF \
