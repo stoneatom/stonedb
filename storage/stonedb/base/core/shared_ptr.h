@@ -28,9 +28,9 @@
 #include <iostream>
 #include <type_traits>
 #include <utility>
-#include "shared_ptr_debug_helper.h"
-#include "util/indirect.h"
-#include "util/is_smart_ptr.h"
+#include "base/core/shared_ptr_debug_helper.h"
+#include "base/util/indirect.h"
+#include "base/util/is_smart_ptr.h"
 
 namespace stonedb {
 namespace base {

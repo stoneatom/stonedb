@@ -21,7 +21,7 @@
 #include <fstream>
 #include <string>
 
-#include "channel_out.h"
+#include "system/channel_out.h"
 #include "common/exception.h"
 
 namespace stonedb {

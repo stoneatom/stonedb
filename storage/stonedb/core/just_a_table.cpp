@@ -18,9 +18,9 @@
 #include "just_a_table.h"
 
 #include "common/assert.h"
-#include "cq_term.h"
-#include "filter.h"
-#include "temp_table.h"
+#include "core/cq_term.h"
+#include "core/filter.h"
+#include "core/temp_table.h"
 
 namespace stonedb {
 namespace core {

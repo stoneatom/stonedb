@@ -19,8 +19,8 @@
 
 #include "core/mi_new_contents.h"
 #include "core/transaction.h"
-#include "joiner_sort.h"
-#include "sorter3.h"
+#include "core/joiner_sort.h"
+#include "core/sorter3.h"
 #include "vc/virtual_column.h"
 
 namespace stonedb {

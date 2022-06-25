@@ -22,8 +22,8 @@
 
 #include "core/bin_tools.h"
 #include "core/quick_math.h"
-#include "data_filt.h"
-#include "dictionary.h"
+#include "compress/data_filt.h"
+#include "compress/dictionary.h"
 
 namespace stonedb {
 namespace compress {

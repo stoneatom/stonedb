@@ -19,7 +19,7 @@
 #pragma once
 
 #include "core/quick_math.h"
-#include "range_code.h"
+#include "compress/range_code.h"
 
 namespace stonedb {
 namespace compress {

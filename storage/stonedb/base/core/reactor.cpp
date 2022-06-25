@@ -47,22 +47,22 @@
 #include <exception>
 #include <regex>
 
-#include "core/future_util.h"
-#include "core/posix.h"
-#include "file_impl.h"
-#include "net/packet.h"
-#include "net/posix_stack.h"
-#include "net/stack.h"
-#include "prefetch.h"
-#include "print.h"
-#include "report_exception.h"
-#include "resource.h"
-#include "scollectd_impl.h"
-#include "systemwide_memory_barrier.h"
-#include "task.h"
-#include "thread.h"
-#include "util/conversions.h"
-#include "util/log.h"
+#include "base/core/future_util.h"
+#include "base/core/posix.h"
+#include "base/core/file_impl.h"
+#include "base/net/packet.h"
+#include "base/net/posix_stack.h"
+#include "base/net/stack.h"
+#include "base/core/prefetch.h"
+#include "base/core/print.h"
+#include "base/core/report_exception.h"
+#include "base/core/resource.h"
+#include "base/core/scollectd_impl.h"
+#include "base/core/systemwide_memory_barrier.h"
+#include "base/core/task.h"
+#include "base/core/thread.h"
+#include "base/util/conversions.h"
+#include "base/util/log.h"
 
 #ifdef __GNUC__
 #include <cxxabi.h>
@@ -74,17 +74,17 @@
 #include <linux/magic.h>
 #include <sys/mman.h>
 #include <sys/utsname.h>
-#include "util/print_safe.h"
-#include "util/spinlock.h"
+#include "base/util/print_safe.h"
+#include "base/util/spinlock.h"
 
 #if defined(__x86_64__) || defined(__i386__)
 #include <xmmintrin.h>
 #endif
 
-#include "core/metrics.h"
-#include "exception_hacks.h"
-#include "execution_stage.h"
-#include "util/defer.h"
+#include "base/core/metrics.h"
+#include "base/core/exception_hacks.h"
+#include "base/core/execution_stage.h"
+#include "base/util/defer.h"
 
 namespace stonedb {
 namespace base {

@@ -23,8 +23,8 @@
 #include "loader/read_buffer.h"
 #include "loader/value_cache.h"
 #include "mm/traceable_object.h"
-#include "parsing_strategy.h"
-#include "rejecter.h"
+#include "loader/parsing_strategy.h"
+#include "loader/rejecter.h"
 
 namespace stonedb {
 

@@ -18,8 +18,8 @@
 #define STONEDB_COMPRESS_ARITH_CODER_H_
 #pragma once
 
-#include "data_stream.h"
-#include "defs.h"
+#include "compress/data_stream.h"
+#include "compress/defs.h"
 
 namespace stonedb {
 namespace compress {

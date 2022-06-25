@@ -24,7 +24,6 @@
 #define MYSQL_SERVER 1
 
 #include "global_threads.h"
-#include "probes_mysql.h"
 #include "sql_array.h"
 #include "sql_base.h"
 #include "sql_class.h"
@@ -36,22 +35,21 @@
 #include "sql_time.h"
 #include "sql_tmp_table.h"
 #include "tztime.h"
-
-#include "my_pthread.h"
 #include "sp_rcontext.h"
 #include "sql_select.h"
-
-#include "mysql_com.h"
 #include "mysqld_suffix.h"
 #include "rpl_slave.h"
 #include "sql_optimizer.h"
-
 #include "key.h"
+#include "lock.h"
+#include "transaction.h"
+
+#include "probes_mysql.h"
+#include "my_pthread.h"
+#include "mysql_com.h"
 #include "m_ctype.h"
 #include "my_bit.h"
 
-#include "lock.h"
-#include "transaction.h"
 
 /* Putting macros named like `max', `min' or `test'
  * into a header is a terrible idea. */

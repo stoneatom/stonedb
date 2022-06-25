@@ -28,9 +28,9 @@
 #include <chrono>
 #include <functional>
 
-#include "core/future.h"
-#include "core/reactor.h"
-#include "core/shared_ptr.h"
+#include "base/core/future.h"
+#include "base/core/reactor.h"
+#include "base/core/shared_ptr.h"
 
 namespace stonedb {
 namespace base {

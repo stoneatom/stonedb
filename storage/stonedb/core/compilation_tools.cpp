@@ -16,10 +16,10 @@
 */
 
 #include "compilation_tools.h"
-#include "compiled_query.h"
+#include "core/compiled_query.h"
 #include "core/engine.h"
-#include "mysql_expression.h"
-#include "value_set.h"
+#include "core/mysql_expression.h"
+#include "core/value_set.h"
 
 namespace stonedb {
 namespace core {

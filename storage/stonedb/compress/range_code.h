@@ -23,7 +23,7 @@
 #include "common/assert.h"
 #include "common/exception.h"
 #include "core/bin_tools.h"
-#include "defs.h"
+#include "compress/defs.h"
 
 namespace stonedb {
 namespace compress {

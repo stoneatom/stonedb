@@ -15,7 +15,7 @@
 #include <algorithm>  // std::fill_n
 #include <limits>     // std::numeric_limits
 
-#include "ostream.h"
+#include "base/fmt/ostream.h"
 
 namespace stonedb {
 namespace fmt {

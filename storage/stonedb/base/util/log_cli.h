@@ -23,14 +23,13 @@
 #define STONEDB_BASE_LOG_CLI_H_
 #pragma once
 
-#include "log.h"
-
 #include <algorithm>
 #include <iostream>
 #include <unordered_map>
 
-#include "core/sstring.h"
-#include "program_options.h"
+#include "base/util/log.h"
+#include "base/core/sstring.h"
+#include "base/util/program_options.h"
 
 /// \addtogroup logging
 /// @{

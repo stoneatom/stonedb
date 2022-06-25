@@ -18,10 +18,10 @@
 #define STONEDB_CORE_GROUP_DISTINCT_TABLE_H_
 #pragma once
 
-#include "bin_tools.h"
-#include "blocked_mem_table.h"
-#include "column_bin_encoder.h"
-#include "filter.h"
+#include "core/bin_tools.h"
+#include "core/blocked_mem_table.h"
+#include "core/column_bin_encoder.h"
+#include "core/filter.h"
 #include "vc/virtual_column.h"
 
 namespace stonedb {

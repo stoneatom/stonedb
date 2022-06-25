@@ -18,9 +18,9 @@
 #define STONEDB_CORE_JOINER_H_
 #pragma once
 
-#include "condition.h"
-#include "descriptor.h"
-#include "mi_iterator.h"
+#include "core/condition.h"
+#include "core/descriptor.h"
+#include "core/mi_iterator.h"
 
 namespace stonedb {
 namespace core {

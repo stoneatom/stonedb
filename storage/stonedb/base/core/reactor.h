@@ -25,11 +25,6 @@
 
 #include <memory>
 #include <type_traits>
-#include "aligned_buffer.h"
-#include "cacheline.h"
-#include "circular_buffer_fixed_capacity.h"
-#include "iostream.h"
-#include "seastar.h"
 
 #if defined(ENABLE_AIO)
 #include <libaio.h>
@@ -61,27 +56,34 @@
 #include <thread>
 #include <unordered_map>
 #include <vector>
-#include "apply.h"
-#include "circular_buffer.h"
-#include "condition_variable.h"
-#include "core/enum.h"
+
+#include "base/core/aligned_buffer.h"
+#include "base/core/cacheline.h"
+#include "base/core/circular_buffer_fixed_capacity.h"
+#include "base/core/iostream.h"
+#include "base/core/seastar.h"
+
+#include "base/core/apply.h"
+#include "base/core/circular_buffer.h"
+#include "base/core/condition_variable.h"
+#include "base/core/enum.h"
 #include "core/metrics_registration.h"
 #include "core/scattered_message.h"
 
-#include "deleter.h"
-#include "fair_queue.h"
-#include "file.h"
-#include "future.h"
-#include "lowres_clock.h"
-#include "manual_clock.h"
-#include "net/api.h"
-#include "posix.h"
-#include "scheduling.h"
-#include "semaphore.h"
-#include "sstring.h"
-#include "temporary_buffer.h"
-#include "timer.h"
-#include "util/log.h"
+#include "base/core/deleter.h"
+#include "base/core/fair_queue.h"
+#include "base/core/file.h"
+#include "base/core/future.h"
+#include "base/core/lowres_clock.h"
+#include "base/core/manual_clock.h"
+#include "base/net/api.h"
+#include "base/core/posix.h"
+#include "base/core/scheduling.h"
+#include "base/core/semaphore.h"
+#include "base/core/sstring.h"
+#include "base/core/temporary_buffer.h"
+#include "base/core/timer.h"
+#include "base/util/log.h"
 
 namespace stonedb {
 namespace base {

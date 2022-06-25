@@ -25,8 +25,8 @@
 #define STONEDB_BASE_SHARED_FUTURE_H_
 #pragma once
 
-#include "expiring_fifo.h"
-#include "future.h"
+#include "base/core/expiring_fifo.h"
+#include "base/core/future.h"
 
 /// \addtogroup future-module
 /// @{

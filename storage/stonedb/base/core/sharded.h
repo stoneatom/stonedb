@@ -26,10 +26,10 @@
 
 #include <boost/iterator/counting_iterator.hpp>
 
-#include "do_with.h"
-#include "future_util.h"
-#include "reactor.h"
-#include "util/is_smart_ptr.h"
+#include "base/core/do_with.h"
+#include "base/core/future_util.h"
+#include "base/core/reactor.h"
+#include "base/util/is_smart_ptr.h"
 
 namespace stonedb {
 namespace base {

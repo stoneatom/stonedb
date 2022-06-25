@@ -12,7 +12,7 @@
 #define STONEDB_BASE_STRING_H_
 #pragma once
 
-#include "format.h"
+#include "base/fmt/format.h"
 
 namespace stonedb {
 namespace fmt {

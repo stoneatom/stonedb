@@ -41,8 +41,8 @@
 ///          continuations, also known as fibers
 ///   - \ref thread-module Support for traditional threaded execution
 
-#include "future.h"
-#include "sstring.h"
+#include "base/core/future.h"
+#include "base/core/sstring.h"
 
 namespace stonedb {
 namespace base {

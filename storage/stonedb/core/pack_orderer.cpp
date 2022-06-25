@@ -17,7 +17,7 @@
 
 #include "pack_orderer.h"
 
-#include "mi_iterator.h"
+#include "core/mi_iterator.h"
 
 namespace stonedb {
 namespace core {

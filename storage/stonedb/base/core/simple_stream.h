@@ -24,7 +24,7 @@
 #define STONEDB_BASE_SIMPLE_STREAM_H_
 #pragma once
 
-#include "core/sstring.h"
+#include "base/core/sstring.h"
 
 namespace stonedb {
 namespace base {

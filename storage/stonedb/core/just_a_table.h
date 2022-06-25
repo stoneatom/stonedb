@@ -21,7 +21,7 @@
 #include <memory>
 #include <vector>
 
-#include "mysql_expression.h"
+#include "core/mysql_expression.h"
 
 namespace stonedb {
 namespace types {

@@ -20,7 +20,7 @@
 
 #include "core/mi_updating_iterator.h"
 #include "core/pack_guardian.h"
-#include "expr_column.h"
+#include "vc/expr_column.h"
 
 namespace stonedb {
 namespace vcolumn {

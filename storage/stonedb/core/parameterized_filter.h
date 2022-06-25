@@ -18,10 +18,10 @@
 #define STONEDB_CORE_PARAMETERIZED_FILTER_H_
 #pragma once
 
-#include "condition.h"
-#include "cq_term.h"
-#include "joiner.h"
-#include "multi_index.h"
+#include "core/condition.h"
+#include "core/cq_term.h"
+#include "core/joiner.h"
+#include "core/multi_index.h"
 
 namespace stonedb {
 namespace core {

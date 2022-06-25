@@ -26,7 +26,7 @@
 #include <exception>
 #include <experimental/optional>
 
-#include "future.h"
+#include "base/core/future.h"
 
 namespace stonedb {
 namespace base {

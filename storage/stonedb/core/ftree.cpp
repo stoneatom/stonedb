@@ -15,13 +15,14 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
+#include "ftree.h"
+
 #include <fstream>
 #include <map>
 
 #include "system/rc_system.h"
 #include "system/stonedb_file.h"
 
-#include "ftree.h"
 
 namespace stonedb {
 namespace core {

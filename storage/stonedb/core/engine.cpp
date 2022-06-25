@@ -15,6 +15,8 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
+#include "engine.h"
+
 #include <sys/sysinfo.h>
 #include <boost/algorithm/string.hpp>
 #include <set>
@@ -30,7 +32,6 @@
 #include "core/temp_table.h"
 #include "core/tools.h"
 #include "core/transaction.h"
-#include "engine.h"
 #include "mm/initializer.h"
 #include "system/file_out.h"
 #include "system/res_manager.h"

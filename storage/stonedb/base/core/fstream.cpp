@@ -28,10 +28,10 @@
 #include "fstream.h"
 #include <malloc.h>
 #include <cstring>
-#include "align.h"
-#include "circular_buffer.h"
-#include "reactor.h"
-#include "semaphore.h"
+#include "base/core/align.h"
+#include "base/core/circular_buffer.h"
+#include "base/core/reactor.h"
+#include "base/core/semaphore.h"
 
 namespace stonedb::base {
 class file_data_source_impl : public data_source_impl {

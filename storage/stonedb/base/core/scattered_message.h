@@ -27,10 +27,10 @@
 #include <memory>
 #include <vector>
 
-#include "core/deleter.h"
-#include "core/temporary_buffer.h"
-#include "net/packet.h"
-#include "sstring.h"
+#include "base/core/deleter.h"
+#include "base/core/temporary_buffer.h"
+#include "base/net/packet.h"
+#include "base/core/sstring.h"
 
 namespace stonedb {
 namespace base {

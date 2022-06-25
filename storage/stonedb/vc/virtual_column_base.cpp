@@ -20,8 +20,8 @@
 #include "core/compiled_query.h"
 #include "core/mysql_expression.h"
 #include "core/rc_attr.h"
-#include "in_set_column.h"
-#include "subselect_column.h"
+#include "vc/in_set_column.h"
+#include "vc/subselect_column.h"
 
 namespace stonedb {
 namespace vcolumn {

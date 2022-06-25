@@ -18,8 +18,8 @@
 #define STONEDB_MM_RELEASE_LRU_H_
 #pragma once
 
-#include "release_strategy.h"
-#include "release_tracker.h"
+#include "mm/release_strategy.h"
+#include "mm/release_tracker.h"
 
 namespace stonedb {
 namespace mm {

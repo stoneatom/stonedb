@@ -17,9 +17,9 @@
 
 #include "core/mi_new_contents.h"
 #include "core/transaction.h"
-#include "descriptor.h"
-#include "joiner.h"
-#include "mi_updating_iterator.h"
+#include "core/descriptor.h"
+#include "core/joiner.h"
+#include "core/mi_updating_iterator.h"
 #include "vc/virtual_column.h"
 
 namespace stonedb {

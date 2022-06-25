@@ -23,9 +23,9 @@
 #define STONEDB_BASE_IOSTREAM_IMPL_H_
 #pragma once
 
-#include "core/future_util.h"
-#include "future_util.h"
-#include "net/packet.h"
+#include "base/core/future_util.h"
+#include "base/core/future_util.h"
+#include "base/net/packet.h"
 
 namespace stonedb {
 namespace base {

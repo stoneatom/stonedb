@@ -28,7 +28,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "core/sstring.h"
+#include "base/core/sstring.h"
 
 namespace stonedb {
 namespace base {

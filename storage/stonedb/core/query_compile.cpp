@@ -18,12 +18,12 @@
 #include <algorithm>
 
 #include "common/mysql_gate.h"
-#include "compilation_tools.h"
+#include "core/compilation_tools.h"
 #include "core/compiled_query.h"
 #include "core/engine.h"
 #include "core/transaction.h"
-#include "mysql_expression.h"
-#include "query.h"
+#include "core/mysql_expression.h"
+#include "core/query.h"
 
 namespace stonedb {
 namespace core {

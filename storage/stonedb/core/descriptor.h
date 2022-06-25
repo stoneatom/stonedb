@@ -23,7 +23,7 @@
 
 #include "common/common_definitions.h"
 #include "core/dimension_group.h"
-#include "cq_term.h"
+#include "core/cq_term.h"
 
 namespace stonedb {
 namespace core {

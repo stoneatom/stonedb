@@ -32,7 +32,7 @@
 #include "core/transaction.h"
 #include "proxy_hash_joiner.h"
 #include "system/fet.h"
-#include "temp_table.h"
+#include "core/temp_table.h"
 #include "vc/virtual_column.h"
 
 namespace stonedb {

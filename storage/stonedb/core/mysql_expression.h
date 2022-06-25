@@ -23,8 +23,8 @@
 
 #include "common/common_definitions.h"
 #include "core/var_id.h"
-#include "item_sdbfield.h"
-#include "value_or_null.h"
+#include "core/item_sdbfield.h"
+#include "core/value_or_null.h"
 
 namespace stonedb {
 namespace core {

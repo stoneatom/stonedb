@@ -17,7 +17,7 @@
 #ifndef STONEDB_MM_MM_GUARD_H_
 #define STONEDB_MM_MM_GUARD_H_
 #pragma once
-#include "traceable_object.h"
+#include "mm/traceable_object.h"
 
 namespace stonedb {
 namespace mm {

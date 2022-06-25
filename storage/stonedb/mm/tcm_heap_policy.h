@@ -21,8 +21,8 @@
 #include <map>
 #include <string>
 
-#include "heap_policy.h"
-#include "memory_block.h"
+#include "mm/heap_policy.h"
+#include "mm/memory_block.h"
 
 #include "tcm/linked_list.h"
 #include "tcm/page_heap.h"

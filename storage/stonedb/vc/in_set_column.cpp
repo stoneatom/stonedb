@@ -17,11 +17,11 @@
 
 #include "in_set_column.h"
 
-#include "const_column.h"
+#include "vc/const_column.h"
 #include "core/compiled_query.h"
 #include "core/mysql_expression.h"
 #include "core/rc_attr.h"
-#include "expr_column.h"
+#include "vc/expr_column.h"
 
 namespace stonedb {
 namespace vcolumn {

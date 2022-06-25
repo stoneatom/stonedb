@@ -16,9 +16,9 @@
 */
 
 #include "column_bin_encoder.h"
-#include "bin_tools.h"
+#include "core/bin_tools.h"
 #include "core/transaction.h"
-#include "mi_iterator.h"
+#include "core/mi_iterator.h"
 #include "vc/virtual_column.h"
 
 namespace stonedb {

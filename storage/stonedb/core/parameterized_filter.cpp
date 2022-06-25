@@ -17,7 +17,7 @@
 
 #include "parameterized_filter.h"
 
-#include "condition_encoder.h"
+#include "core/condition_encoder.h"
 #include "core/engine.h"
 #include "core/mi_updating_iterator.h"
 #include "core/pack_orderer.h"
@@ -25,10 +25,10 @@
 #include "core/rough_multi_index.h"
 #include "core/temp_table.h"
 #include "core/transaction.h"
-#include "joiner.h"
-#include "mi_iterator.h"
+#include "core/joiner.h"
+#include "core/mi_iterator.h"
 #include "util/thread_pool.h"
-#include "value_set.h"
+#include "core/value_set.h"
 #include "vc/in_set_column.h"
 #include "vc/single_column.h"
 #include "vc/virtual_column.h"

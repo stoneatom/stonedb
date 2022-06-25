@@ -27,7 +27,7 @@
 #include <cassert>
 #include <exception>
 #include <functional>
-#include "future.h"
+#include "base/core/future.h"
 
 namespace stonedb {
 namespace base {

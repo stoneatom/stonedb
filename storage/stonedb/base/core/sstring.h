@@ -37,7 +37,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
-#include "core/temporary_buffer.h"
+#include "base/core/temporary_buffer.h"
 
 namespace stonedb {
 namespace base {

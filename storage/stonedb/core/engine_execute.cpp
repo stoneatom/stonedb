@@ -19,12 +19,12 @@
 #include <signal.h>
 #include <time.h>
 
-#include "compilation_tools.h"
+#include "core/compilation_tools.h"
 #include "core/compiled_query.h"
 #include "core/engine.h"
 #include "core/transaction.h"
 #include "exporter/export2file.h"
-#include "query.h"
+#include "core/query.h"
 #include "util/log_ctl.h"
 #include "vc/virtual_column.h"
 

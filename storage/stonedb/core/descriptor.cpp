@@ -15,13 +15,15 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "condition_encoder.h"
+#include "descriptor.h"
+
+#include "core/condition_encoder.h"
 #include "core/compiled_query.h"
 #include "core/transaction.h"
-#include "parameterized_filter.h"
-#include "query.h"
-#include "query_operator.h"
-#include "rough_value.h"
+#include "core/parameterized_filter.h"
+#include "core/query.h"
+#include "core/query_operator.h"
+#include "core/rough_value.h"
 #include "vc/const_column.h"
 #include "vc/const_expr_column.h"
 #include "vc/expr_column.h"
@@ -29,8 +31,6 @@
 #include "vc/single_column.h"
 #include "vc/subselect_column.h"
 #include "vc/type_cast_column.h"
-
-#include "descriptor.h"
 
 namespace stonedb {
 namespace core {

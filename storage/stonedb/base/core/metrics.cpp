@@ -26,7 +26,7 @@
 #include <boost/range/algorithm.hpp>
 #include <boost/range/algorithm_ext/erase.hpp>
 
-#include "metrics_api.h"
+#include "base/core/metrics_api.h"
 
 namespace stonedb {
 namespace base {

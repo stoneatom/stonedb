@@ -18,8 +18,8 @@
 #include "sorter_wrapper.h"
 #include "core/engine.h"
 #include "core/transaction.h"
-#include "mi_iterator.h"
-#include "pack_orderer.h"
+#include "core/mi_iterator.h"
+#include "core/pack_orderer.h"
 #include "util/thread_pool.h"
 
 namespace stonedb {

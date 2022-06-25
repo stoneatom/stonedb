@@ -34,9 +34,9 @@
 #define STONEDB_BASE_IOSTREAM_H_
 #pragma once
 
-#include "future.h"
-#include "scattered_message.h"
-#include "temporary_buffer.h"
+#include "base/core/future.h"
+#include "base/core/scattered_message.h"
+#include "base/core/temporary_buffer.h"
 
 namespace stonedb {
 namespace base {

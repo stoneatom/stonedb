@@ -20,7 +20,7 @@
 
 #include <shared_mutex>
 
-#include "channel.h"
+#include "system/channel.h"
 #include "system/configuration.h"
 #include "util/log_ctl.h"
 

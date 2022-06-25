@@ -21,7 +21,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <string>
-#include "bloom_block.h"
+#include "core/bloom_block.h"
 
 namespace stonedb {
 namespace core {

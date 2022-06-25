@@ -29,7 +29,7 @@
 #include <xlocale.h>  // for LC_NUMERIC_MASK on OS X
 #endif
 
-#include "format.h"
+#include "base/fmt/format.h"
 
 #ifndef FMT_POSIX
 #if defined(_WIN32) && !defined(__MINGW32__)

@@ -20,8 +20,8 @@
 
 #include <map>
 
-#include "aggregator.h"
-#include "temp_table.h"
+#include "core/aggregator.h"
+#include "core/temp_table.h"
 #include "util/log_ctl.h"
 
 namespace stonedb {

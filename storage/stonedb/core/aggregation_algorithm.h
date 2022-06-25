@@ -19,10 +19,10 @@
 #pragma once
 
 #include <mutex>
-#include "groupby_wrapper.h"
-#include "mi_iterator.h"
-#include "query.h"
-#include "temp_table.h"
+#include "core/groupby_wrapper.h"
+#include "core/mi_iterator.h"
+#include "core/query.h"
+#include "core/temp_table.h"
 
 namespace stonedb {
 namespace core {

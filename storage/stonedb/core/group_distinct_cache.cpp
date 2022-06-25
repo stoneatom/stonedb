@@ -15,9 +15,10 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
+#include "group_distinct_cache.h"
+
 #include <cstring>
 
-#include "group_distinct_cache.h"
 #include "system/configuration.h"
 
 namespace stonedb {

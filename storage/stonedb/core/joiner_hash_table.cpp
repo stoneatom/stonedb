@@ -16,6 +16,7 @@
 */
 
 #include "joiner_hash_table.h"
+
 #include "core/tools.h"
 #include "core/transaction.h"
 

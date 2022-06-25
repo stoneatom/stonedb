@@ -16,7 +16,7 @@
 */
 #include <iostream>
 
-#include "bin_tools.h"
+#include "core/bin_tools.h"
 #include "common/common_definitions.h"
 #include "core/tools.h"
 #include "core/transaction.h"

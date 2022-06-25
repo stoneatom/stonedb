@@ -28,11 +28,11 @@
 #include <unordered_map>
 #include <utility>
 
-#include "core/byteorder.h"
-#include "core/future_util.h"
-#include "core/metrics_api.h"
-#include "scollectd_api.h"
-#include "scollectd_impl.h"
+#include "base/core/byteorder.h"
+#include "base/core/future_util.h"
+#include "base/core/metrics_api.h"
+#include "base/core/scollectd_api.h"
+#include "base/core/scollectd_impl.h"
 
 namespace stonedb {
 namespace base {

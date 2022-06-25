@@ -26,7 +26,7 @@
 #include <algorithm>
 
 #include <endian.h>
-#include "unaligned.h"
+#include "base/core/unaligned.h"
 
 namespace stonedb {
 namespace base {

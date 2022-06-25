@@ -26,7 +26,7 @@
 #include "core/task_executor.h"
 #include "core/transaction.h"
 #include "system/fet.h"
-#include "temp_table.h"
+#include "core/temp_table.h"
 #include "util/thread_pool.h"
 #include "vc/virtual_column.h"
 

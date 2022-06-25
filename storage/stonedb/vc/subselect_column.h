@@ -22,7 +22,7 @@
 #include "core/pack_guardian.h"
 #include "core/rough_value.h"
 #include "core/temp_table.h"
-#include "multi_value_column.h"
+#include "vc/multi_value_column.h"
 
 namespace stonedb {
 namespace core {

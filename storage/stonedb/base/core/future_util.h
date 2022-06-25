@@ -28,13 +28,13 @@
 #include <tuple>
 #include <vector>
 
-#include "do_with.h"
-#include "future.h"
-#include "shared_ptr.h"
-#include "task.h"
-#include "timer.h"
-#include "util/bool_class.h"
-#include "util/tuple_utils.h"
+#include "base/core/do_with.h"
+#include "base/core/future.h"
+#include "base/core/shared_ptr.h"
+#include "base/core/task.h"
+#include "base/core/timer.h"
+#include "base/util/bool_class.h"
+#include "base/util/tuple_utils.h"
 
 namespace stonedb {
 namespace base {
