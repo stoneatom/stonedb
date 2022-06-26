@@ -15,8 +15,8 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "core/bin_tools.h"
 #include "common/assert.h"
+#include "core/bin_tools.h"
 #include "core/filter.h"
 #include "core/tools.h"
 

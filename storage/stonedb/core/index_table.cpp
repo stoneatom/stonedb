@@ -17,8 +17,8 @@
 
 #include "index_table.h"
 
-#include "core/transaction.h"
 #include "core/filter.h"
+#include "core/transaction.h"
 #include "system/rc_system.h"
 
 namespace stonedb {

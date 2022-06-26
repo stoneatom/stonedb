@@ -40,7 +40,7 @@ void Rejecter::ConsumeBadRow(char const *ptr, int64_t size, int64_t row_no, int 
       writer_->OpenCreateNotExists(reject_file_);
     }
 
-    writer_->WriteExact(ptr, static_cast<uint> (size));
+    writer_->WriteExact(ptr, static_cast<uint>(size));
   }
 
   STONEDB_LOG(LogCtl_Level::WARN, "Loading file error, row %ld, around:", row_no);

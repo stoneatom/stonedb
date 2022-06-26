@@ -24,8 +24,8 @@
 
 #include "core/column_bin_encoder.h"
 #include "core/hash_table.h"
-#include "core/multi_index_builder.h"
 #include "core/joiner.h"
+#include "core/multi_index_builder.h"
 
 namespace stonedb {
 namespace core {

@@ -47,7 +47,7 @@ ExpressionColumn::ExpressionColumn(core::MysqlExpression *expr, core::TempTable 
 
         var_types_[v] = (*tables)[ndx]->GetColumnType(var_map[var_map.size() - 1].col_ndx);
         var_buf_[v] = std::vector<core::MysqlExpression::value_or_null_info_t>();  // now empty, pointers
-                                                                                  // inserted by SetBufs()
+                                                                                   // inserted by SetBufs()
       } else if (v.tab == temp_table_alias) {
         var_map.push_back(VarMap(v, temp_table, 0));
         if (only_dim_number == -2 || only_dim_number == 0)
@@ -57,7 +57,7 @@ ExpressionColumn::ExpressionColumn(core::MysqlExpression *expr, core::TempTable 
 
         var_types_[v] = temp_table->GetColumnType(var_map[var_map.size() - 1].col_ndx);
         var_buf_[v] = std::vector<core::MysqlExpression::value_or_null_info_t>();  // now empty, pointers
-                                                                                  // inserted by SetBufs()
+                                                                                   // inserted by SetBufs()
       } else {
         // parameter
         // parameter type is not available here, must be set later (EvalType())
@@ -112,18 +112,18 @@ bool ExpressionColumn::FeedArguments(const core::MIIterator &mit) {
   return (diff || !deterministic_);
 }
 
-int64_t ExpressionColumn::GetValueInt64Impl (const core::MIIterator &mit) {
+int64_t ExpressionColumn::GetValueInt64Impl(const core::MIIterator &mit) {
   if (FeedArguments(mit)) last_val = expr_->Evaluate();
   if (last_val->IsNull()) return common::NULL_VALUE_64;
   return last_val->Get64();
 }
 
-bool ExpressionColumn::IsNullImpl (const core::MIIterator &mit) {
+bool ExpressionColumn::IsNullImpl(const core::MIIterator &mit) {
   if (FeedArguments(mit)) last_val = expr_->Evaluate();
   return last_val->IsNull();
 }
 
-void ExpressionColumn::GetValueStringImpl (types::BString &s, const core::MIIterator &mit) {
+void ExpressionColumn::GetValueStringImpl(types::BString &s, const core::MIIterator &mit) {
   if (FeedArguments(mit)) last_val = expr_->Evaluate();
   if (core::ATI::IsDateTimeType(TypeName())) {
     int64_t tmp;
@@ -134,7 +134,7 @@ void ExpressionColumn::GetValueStringImpl (types::BString &s, const core::MIIter
   last_val->GetBString(s);
 }
 
-double ExpressionColumn::GetValueDoubleImpl (const core::MIIterator &mit) {
+double ExpressionColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
   double val = 0;
   if (FeedArguments(mit)) last_val = expr_->Evaluate();
   if (last_val->IsNull()) val = NULL_VALUE_D;
@@ -160,7 +160,7 @@ double ExpressionColumn::GetValueDoubleImpl (const core::MIIterator &mit) {
   return val;
 }
 
-types::RCValueObject ExpressionColumn::GetValueImpl (const core::MIIterator &mit, bool lookup_to_num) {
+types::RCValueObject ExpressionColumn::GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) {
   if (core::ATI::IsStringType((TypeName()))) {
     types::BString s;
     GetValueString(s, mit);
@@ -174,42 +174,41 @@ types::RCValueObject ExpressionColumn::GetValueImpl (const core::MIIterator &mit
   return types::RCValueObject();
 }
 
-int64_t ExpressionColumn::GetSumImpl ([[maybe_unused]] const core::MIIterator &mit, bool &nonnegative) {
+int64_t ExpressionColumn::GetSumImpl([[maybe_unused]] const core::MIIterator &mit, bool &nonnegative) {
   nonnegative = false;
   return common::NULL_VALUE_64;  // not implemented
 }
 
-int64_t ExpressionColumn::GetMinInt64Impl ([[maybe_unused]] const core::MIIterator &mit) {
+int64_t ExpressionColumn::GetMinInt64Impl([[maybe_unused]] const core::MIIterator &mit) {
   return common::MINUS_INF_64;  // not implemented
 }
 
-int64_t ExpressionColumn::GetMaxInt64Impl ([[maybe_unused]] const core::MIIterator &mit) {
+int64_t ExpressionColumn::GetMaxInt64Impl([[maybe_unused]] const core::MIIterator &mit) {
   return common::PLUS_INF_64;  // not implemented
 }
 
-types::BString ExpressionColumn::GetMinStringImpl ([[maybe_unused]] const core::MIIterator &mit) {
+types::BString ExpressionColumn::GetMinStringImpl([[maybe_unused]] const core::MIIterator &mit) {
   return types::BString();  // not implemented
 }
 
-types::BString ExpressionColumn::GetMaxStringImpl ([[maybe_unused]] const core::MIIterator &mit) {
+types::BString ExpressionColumn::GetMaxStringImpl([[maybe_unused]] const core::MIIterator &mit) {
   return types::BString();  // not implemented
 }
 
-int64_t ExpressionColumn::GetApproxDistValsImpl ([[maybe_unused]] bool incl_nulls,
-                                              [[maybe_unused]] core::RoughMultiIndex *rough_mind) {
+int64_t ExpressionColumn::GetApproxDistValsImpl([[maybe_unused]] bool incl_nulls,
+                                                [[maybe_unused]] core::RoughMultiIndex *rough_mind) {
   if (mind->TooManyTuples()) return common::PLUS_INF_64;
   return mind->NoTuples();  // default
 }
 
-size_t ExpressionColumn::MaxStringSizeImpl ()  // maximal byte string length in column
+size_t ExpressionColumn::MaxStringSizeImpl()  // maximal byte string length in column
 {
   return ct.GetPrecision();  // default
 }
 
-core::PackOntologicalStatus ExpressionColumn::GetPackOntologicalStatusImpl (const core::MIIterator &mit) {
-  core::PackOntologicalStatus st = deterministic_ ? 
-                                   core::PackOntologicalStatus::UNIFORM : 
-                                   core::PackOntologicalStatus::NORMAL;  // will be used for
+core::PackOntologicalStatus ExpressionColumn::GetPackOntologicalStatusImpl(const core::MIIterator &mit) {
+  core::PackOntologicalStatus st =
+      deterministic_ ? core::PackOntologicalStatus::UNIFORM : core::PackOntologicalStatus::NORMAL;  // will be used for
 
   // what about 0 arguments and null only?
   core::PackOntologicalStatus st_loc;
@@ -224,12 +223,12 @@ core::PackOntologicalStatus ExpressionColumn::GetPackOntologicalStatusImpl (cons
   return st;
 }
 
-void ExpressionColumn::EvaluatePackImpl ([[maybe_unused]] core::MIUpdatingIterator &mit,
-                                      [[maybe_unused]] core::Descriptor &d) {
+void ExpressionColumn::EvaluatePackImpl([[maybe_unused]] core::MIUpdatingIterator &mit,
+                                        [[maybe_unused]] core::Descriptor &d) {
   DEBUG_ASSERT(!"Common path shall be used in case of ExpressionColumn.");
 }
 
-int64_t ExpressionColumn::RoughMinImpl () {
+int64_t ExpressionColumn::RoughMinImpl() {
   if (core::ATI::IsRealType(TypeName())) {
     double dmin = -(DBL_MAX);
     return *(int64_t *)(&dmin);
@@ -237,7 +236,7 @@ int64_t ExpressionColumn::RoughMinImpl () {
   return common::MINUS_INF_64;
 }
 
-int64_t ExpressionColumn::RoughMaxImpl () {
+int64_t ExpressionColumn::RoughMaxImpl() {
   if (core::ATI::IsRealType(TypeName())) {
     double dmax = DBL_MAX;
     return *(int64_t *)(&dmax);
@@ -245,11 +244,11 @@ int64_t ExpressionColumn::RoughMaxImpl () {
   return common::PLUS_INF_64;
 }
 
-int64_t ExpressionColumn::GetNumOfNullsImpl (core::MIIterator const &, [[maybe_unused]] bool val_nulls_possible) {
+int64_t ExpressionColumn::GetNumOfNullsImpl(core::MIIterator const &, [[maybe_unused]] bool val_nulls_possible) {
   return common::NULL_VALUE_64;
 }
 
-bool ExpressionColumn::IsDistinctImpl () { return false; }
+bool ExpressionColumn::IsDistinctImpl() { return false; }
 
 // the column is a deterministic expression on exactly one lookup column
 bool ExpressionColumn::ExactlyOneLookup() {
@@ -263,7 +262,7 @@ bool ExpressionColumn::ExactlyOneLookup() {
   return true;
 }
 
-VirtualColumnBase::VarMap ExpressionColumn::GetLookupCoordinates () {
+VirtualColumnBase::VarMap ExpressionColumn::GetLookupCoordinates() {
   auto iter = var_map.begin();
   return *iter;
 }

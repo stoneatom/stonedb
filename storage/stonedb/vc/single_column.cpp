@@ -42,14 +42,14 @@ void SingleColumn::TranslateSourceColumns(std::map<core::PhysicalColumn *, core:
   if (attr_translation.find(col_) != attr_translation.end()) col_ = attr_translation[col_];
 }
 
-double SingleColumn::GetValueDoubleImpl (const core::MIIterator &mit) {
+double SingleColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
   double val = 0;
-  if (col_-> IsNull(mit[dim])) {
+  if (col_->IsNull(mit[dim])) {
     return NULL_VALUE_D;
   } else if (core::ATI::IsIntegerType(TypeName())) {
     val = double(col_->GetValueInt64(mit[dim]));
   } else if (core::ATI::IsFixedNumericType(TypeName())) {
-    int64_t v = col_-> GetValueInt64(mit[dim]);
+    int64_t v = col_->GetValueInt64(mit[dim]);
     val = ((double)v) / types::PowOfTen(ct.GetScale());
   } else if (core::ATI::IsRealType(TypeName())) {
     union {
@@ -76,39 +76,39 @@ double SingleColumn::GetValueDoubleImpl (const core::MIIterator &mit) {
   return val;
 }
 
-types::RCValueObject SingleColumn::GetValueImpl (const core::MIIterator &mit, bool lookup_to_num) {
+types::RCValueObject SingleColumn::GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) {
   return col_->GetValue(mit[dim], lookup_to_num);
 }
 
-int64_t SingleColumn::GetSumImpl (const core::MIIterator &mit, bool &nonnegative) {
+int64_t SingleColumn::GetSumImpl(const core::MIIterator &mit, bool &nonnegative) {
   // DEBUG_ASSERT(!core::ATI::IsStringType(TypeName()));
   if (mit.WholePack(dim) && mit.GetCurPackrow(dim) >= 0) return col_->GetSum(mit.GetCurPackrow(dim), nonnegative);
   nonnegative = false;
   return common::NULL_VALUE_64;
 }
 
-int64_t SingleColumn::GetApproxSumImpl (const core::MIIterator &mit, bool &nonnegative) {
+int64_t SingleColumn::GetApproxSumImpl(const core::MIIterator &mit, bool &nonnegative) {
   // DEBUG_ASSERT(!core::ATI::IsStringType(TypeName()));
   if (mit.GetCurPackrow(dim) >= 0) return col_->GetSum(mit.GetCurPackrow(dim), nonnegative);
   nonnegative = false;
   return common::NULL_VALUE_64;
 }
 
-int64_t SingleColumn::GetMinInt64Impl (const core::MIIterator &mit) {
+int64_t SingleColumn::GetMinInt64Impl(const core::MIIterator &mit) {
   if (mit.GetCurPackrow(dim) >= 0 && !(col_->Type().IsString() && !col_->Type().IsLookup()))
     return col_->GetMinInt64(mit.GetCurPackrow(dim));
   else
     return common::MINUS_INF_64;
 }
 
-int64_t SingleColumn::GetMaxInt64Impl (const core::MIIterator &mit) {
+int64_t SingleColumn::GetMaxInt64Impl(const core::MIIterator &mit) {
   if (mit.GetCurPackrow(dim) >= 0 && !(col_->Type().IsString() && !col_->Type().IsLookup()))
     return col_->GetMaxInt64(mit.GetCurPackrow(dim));
   else
     return common::PLUS_INF_64;
 }
 
-int64_t SingleColumn::GetMinInt64ExactImpl (const core::MIIterator &mit) {
+int64_t SingleColumn::GetMinInt64ExactImpl(const core::MIIterator &mit) {
   if (mit.GetCurPackrow(dim) >= 0 && mit.WholePack(dim) && !(col_->Type().IsString() && !col_->Type().IsLookup())) {
     int64_t val = col_->GetMinInt64(mit.GetCurPackrow(dim));
     if (val != common::MINUS_INF_64) return val;
@@ -116,7 +116,7 @@ int64_t SingleColumn::GetMinInt64ExactImpl (const core::MIIterator &mit) {
   return common::NULL_VALUE_64;
 }
 
-int64_t SingleColumn::GetMaxInt64ExactImpl (const core::MIIterator &mit) {
+int64_t SingleColumn::GetMaxInt64ExactImpl(const core::MIIterator &mit) {
   if (mit.GetCurPackrow(dim) >= 0 && mit.WholePack(dim) && !(col_->Type().IsString() && !col_->Type().IsLookup())) {
     int64_t val = col_->GetMaxInt64(mit.GetCurPackrow(dim));
     if (val != common::PLUS_INF_64) return val;
@@ -124,15 +124,15 @@ int64_t SingleColumn::GetMaxInt64ExactImpl (const core::MIIterator &mit) {
   return common::NULL_VALUE_64;
 }
 
-types::BString SingleColumn::GetMinStringImpl (const core::MIIterator &mit) {
+types::BString SingleColumn::GetMinStringImpl(const core::MIIterator &mit) {
   return col_->GetMinString(mit.GetCurPackrow(dim));
 }
 
-types::BString SingleColumn::GetMaxStringImpl (const core::MIIterator &mit) {
+types::BString SingleColumn::GetMaxStringImpl(const core::MIIterator &mit) {
   return col_->GetMaxString(mit.GetCurPackrow(dim));
 }
 
-int64_t SingleColumn::GetApproxDistValsImpl (bool incl_nulls, core::RoughMultiIndex *rough_mind) {
+int64_t SingleColumn::GetApproxDistValsImpl(bool incl_nulls, core::RoughMultiIndex *rough_mind) {
   if (rough_mind)
     return col_->ApproxDistinctVals(incl_nulls, mind->GetFilter(dim), rough_mind->GetRSValueTable(dim), true);
   return col_->ApproxDistinctVals(incl_nulls, mind->GetFilter(dim), NULL, mind->NullsExist(dim));
@@ -154,20 +154,20 @@ std::vector<int64_t> SingleColumn::GetListOfDistinctValues(core::MIIterator cons
 
 bool SingleColumn::TryToMerge(core::Descriptor &d1, core::Descriptor &d2) { return col_->TryToMerge(d1, d2); }
 
-size_t SingleColumn::MaxStringSizeImpl ()  // maximal byte string length in column
+size_t SingleColumn::MaxStringSizeImpl()  // maximal byte string length in column
 {
   return col_->MaxStringSize(mind->NoDimensions() == 0 ? NULL : mind->GetFilter(dim));
 }
 
-core::PackOntologicalStatus SingleColumn::GetPackOntologicalStatusImpl (const core::MIIterator &mit) {
+core::PackOntologicalStatus SingleColumn::GetPackOntologicalStatusImpl(const core::MIIterator &mit) {
   return col_->GetPackOntologicalStatus(mit.GetCurPackrow(dim));
 }
 
-void SingleColumn::EvaluatePackImpl (core::MIUpdatingIterator &mit, core::Descriptor &desc) {
+void SingleColumn::EvaluatePackImpl(core::MIUpdatingIterator &mit, core::Descriptor &desc) {
   col_->EvaluatePack(mit, dim, desc);
 }
 
-common::RSValue SingleColumn::RoughCheckImpl (const core::MIIterator &mit, core::Descriptor &d) {
+common::RSValue SingleColumn::RoughCheckImpl(const core::MIIterator &mit, core::Descriptor &d) {
   if (mit.GetCurPackrow(dim) >= 0) {
     // check whether isn't it a join
     SingleColumn *sc = NULL;

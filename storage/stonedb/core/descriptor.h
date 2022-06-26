@@ -22,8 +22,8 @@
 #include <vector>
 
 #include "common/common_definitions.h"
-#include "core/dimension_group.h"
 #include "core/cq_term.h"
+#include "core/dimension_group.h"
 
 namespace stonedb {
 namespace core {

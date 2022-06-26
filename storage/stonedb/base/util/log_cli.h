@@ -27,8 +27,8 @@
 #include <iostream>
 #include <unordered_map>
 
-#include "base/util/log.h"
 #include "base/core/sstring.h"
+#include "base/util/log.h"
 #include "base/util/program_options.h"
 
 /// \addtogroup logging

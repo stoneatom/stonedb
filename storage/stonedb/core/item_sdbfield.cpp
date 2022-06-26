@@ -19,8 +19,8 @@
 
 #include "common/assert.h"
 #include "core/compilation_tools.h"
-#include "core/transaction.h"
 #include "core/quick_math.h"
+#include "core/transaction.h"
 
 namespace stonedb {
 namespace core {

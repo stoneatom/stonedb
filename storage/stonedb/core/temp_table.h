@@ -23,7 +23,6 @@
 #include "common/common_definitions.h"
 #include "core/cq_term.h"
 #include "core/descriptor.h"
-#include "exporter/data_exporter.h"
 #include "core/just_a_table.h"
 #include "core/mi_updating_iterator.h"
 #include "core/multi_index.h"
@@ -32,6 +31,7 @@
 #include "core/parameterized_filter.h"
 #include "core/physical_column.h"
 #include "core/sorter_wrapper.h"
+#include "exporter/data_exporter.h"
 #include "system/large_buffer.h"
 
 namespace stonedb {

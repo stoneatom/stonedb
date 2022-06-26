@@ -19,9 +19,9 @@
 
 #include "common/common_definitions.h"
 #include "core/ctask.h"
+#include "core/engine.h"
 #include "core/mi_new_contents.h"
 #include "core/transaction.h"
-#include "core/engine.h"
 #include "util/log_ctl.h"
 #include "vc/virtual_column.h"
 

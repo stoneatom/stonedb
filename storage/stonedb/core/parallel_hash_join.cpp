@@ -24,9 +24,9 @@
 #include "core/parallel_hash_join.h"
 #include "core/proxy_hash_joiner.h"
 #include "core/task_executor.h"
+#include "core/temp_table.h"
 #include "core/transaction.h"
 #include "system/fet.h"
-#include "core/temp_table.h"
 #include "util/thread_pool.h"
 #include "vc/virtual_column.h"
 

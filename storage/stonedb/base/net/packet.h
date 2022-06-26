@@ -30,9 +30,9 @@
 #include <iosfwd>
 #include <vector>
 
-#include "base/net/const.h"
 #include "base/core/deleter.h"
 #include "base/core/temporary_buffer.h"
+#include "base/net/const.h"
 
 namespace stonedb {
 namespace base {

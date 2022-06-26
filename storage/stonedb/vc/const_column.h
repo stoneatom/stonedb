@@ -55,50 +55,50 @@ class ConstColumn : public VirtualColumn {
   bool CanCopy() const override { return true; }
 
  protected:
-  int64_t GetValueInt64Impl ([[maybe_unused]] const core::MIIterator &mit) override {
+  int64_t GetValueInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
     return value.IsNull() ? common::NULL_VALUE_64 : value.Get64();
   }
-  bool IsNullImpl ([[maybe_unused]] const core::MIIterator &mit) override { return value.IsNull(); }
-  void GetValueStringImpl (types::BString &s, const core::MIIterator &mit) override;
-  double GetValueDoubleImpl (const core::MIIterator &mit) override;
-  types::RCValueObject GetValueImpl (const core::MIIterator &mit, bool lookup_to_num) override;
+  bool IsNullImpl([[maybe_unused]] const core::MIIterator &mit) override { return value.IsNull(); }
+  void GetValueStringImpl(types::BString &s, const core::MIIterator &mit) override;
+  double GetValueDoubleImpl(const core::MIIterator &mit) override;
+  types::RCValueObject GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) override;
 
-  int64_t GetMinInt64Impl ([[maybe_unused]] const core::MIIterator &mit) override {
+  int64_t GetMinInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
     return value.IsNull() || value.IsString() ? common::MINUS_INF_64 : value.Get64();
   }
-  int64_t GetMaxInt64Impl ([[maybe_unused]] const core::MIIterator &mit) override {
+  int64_t GetMaxInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
     return value.IsNull() || value.IsString() ? common::PLUS_INF_64 : value.Get64();
   }
-  int64_t RoughMinImpl () override { return value.IsNull() || value.IsString() ? common::MINUS_INF_64 : value.Get64(); }
-  int64_t RoughMaxImpl () override { return value.IsNull() || value.IsString() ? common::PLUS_INF_64 : value.Get64(); }
-  int64_t GetMinInt64ExactImpl (const core::MIIterator &) override {
+  int64_t RoughMinImpl() override { return value.IsNull() || value.IsString() ? common::MINUS_INF_64 : value.Get64(); }
+  int64_t RoughMaxImpl() override { return value.IsNull() || value.IsString() ? common::PLUS_INF_64 : value.Get64(); }
+  int64_t GetMinInt64ExactImpl(const core::MIIterator &) override {
     return value.IsNull() ? common::NULL_VALUE_64 : value.Get64();
   }
-  int64_t GetMaxInt64ExactImpl (const core::MIIterator &) override {
+  int64_t GetMaxInt64ExactImpl(const core::MIIterator &) override {
     return value.IsNull() ? common::NULL_VALUE_64 : value.Get64();
   }
 
-  types::BString GetMaxStringImpl (const core::MIIterator &mit) override;
-  types::BString GetMinStringImpl (const core::MIIterator &mit) override;
+  types::BString GetMaxStringImpl(const core::MIIterator &mit) override;
+  types::BString GetMinStringImpl(const core::MIIterator &mit) override;
 
-  int64_t GetNumOfNullsImpl (const core::MIIterator &mit, [[maybe_unused]] bool val_nulls_possible) override {
+  int64_t GetNumOfNullsImpl(const core::MIIterator &mit, [[maybe_unused]] bool val_nulls_possible) override {
     return value.IsNull() ? mit.GetPackSizeLeft() : (mit.NullsPossibleInPack() ? common::NULL_VALUE_64 : 0);
   }
 
-  bool IsRoughNullsOnlyImpl () const override { return value.IsNull(); }
-  bool IsNullsPossibleImpl ([[maybe_unused]] bool val_nulls_possible) override { return value.IsNull(); }
+  bool IsRoughNullsOnlyImpl() const override { return value.IsNull(); }
+  bool IsNullsPossibleImpl([[maybe_unused]] bool val_nulls_possible) override { return value.IsNull(); }
 
-  int64_t GetSumImpl (const core::MIIterator &mit, bool &nonnegative) override;
-  bool IsDistinctImpl () override { return false; }
-  int64_t GetApproxDistValsImpl (bool incl_nulls, core::RoughMultiIndex *rough_mind) override;
+  int64_t GetSumImpl(const core::MIIterator &mit, bool &nonnegative) override;
+  bool IsDistinctImpl() override { return false; }
+  int64_t GetApproxDistValsImpl(bool incl_nulls, core::RoughMultiIndex *rough_mind) override;
   int64_t GetExactDistVals() override;
 
-  size_t MaxStringSizeImpl () override;  // maximal byte string length in column
-  core::PackOntologicalStatus GetPackOntologicalStatusImpl (const core::MIIterator &mit) override;
-  void EvaluatePackImpl (core::MIUpdatingIterator &mit, core::Descriptor &desc) override;
+  size_t MaxStringSizeImpl() override;  // maximal byte string length in column
+  core::PackOntologicalStatus GetPackOntologicalStatusImpl(const core::MIIterator &mit) override;
+  void EvaluatePackImpl(core::MIUpdatingIterator &mit, core::Descriptor &desc) override;
   // comparison of a const with a const should be simplified earlier
-  virtual common::ErrorCode EvaluateOnIndexImpl ([[maybe_unused]] core::MIUpdatingIterator &mit, core::Descriptor &,
-                                              [[maybe_unused]] int64_t limit) override {
+  virtual common::ErrorCode EvaluateOnIndexImpl([[maybe_unused]] core::MIUpdatingIterator &mit, core::Descriptor &,
+                                                [[maybe_unused]] int64_t limit) override {
     DEBUG_ASSERT(0);
     return common::ErrorCode::FAILED;
   }

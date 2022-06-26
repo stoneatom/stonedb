@@ -90,7 +90,7 @@ class VirtualColumnBase : public core::Column {
    * - Decimals must be externally properly shifted
    * - Doubles must be cast e.g. *(double*)&
    */
-  inline int64_t GetValueInt64(const core::MIIterator &mit) { return GetValueInt64Impl (mit); }
+  inline int64_t GetValueInt64(const core::MIIterator &mit) { return GetValueInt64Impl(mit); }
   virtual int64_t GetNotNullValueInt64(const core::MIIterator &mit) = 0;
 
   /*! \brief Is the column value NULL ?
@@ -101,7 +101,7 @@ class VirtualColumnBase : public core::Column {
    * \param mit points to a row in an Multiindex, requested column value comes
    * from this row \return \b true if column value is NULL, \b false otherwise
    */
-  inline bool IsNull(const core::MIIterator &mit) { return IsNullImpl (mit); }
+  inline bool IsNull(const core::MIIterator &mit) { return IsNullImpl(mit); }
   /*! \brief Get a non null-terminated String from a column
    *
    * \pre necessary datapacks (containing rows pointed by \e mit) are loaded and
@@ -114,7 +114,7 @@ class VirtualColumnBase : public core::Column {
    * from this row \param bin_as_hex in case of a binary column, present the
    * value as hexadecimal number
    */
-  inline void GetValueString(types::BString &s, const core::MIIterator &mit) { GetValueStringImpl (s, mit); }
+  inline void GetValueString(types::BString &s, const core::MIIterator &mit) { GetValueStringImpl(s, mit); }
   virtual void GetNotNullValueString(types::BString &s, const core::MIIterator &mit) = 0;
 
   /*! \brief Get a double value from a column, possibly converting the original
@@ -126,7 +126,7 @@ class VirtualColumnBase : public core::Column {
    * \param mit points to a row in an Multiindex, requested column value comes
    * from this row
    */
-  inline double GetValueDouble(const core::MIIterator &mit) { return (GetValueDoubleImpl (mit)); }
+  inline double GetValueDouble(const core::MIIterator &mit) { return (GetValueDoubleImpl(mit)); }
   /*! \brief Get a value from a colunm, whatever the column type is
    *
    * \pre necessary datapacks (containing rows pointed by \e mit) are loaded and
@@ -157,7 +157,7 @@ class VirtualColumnBase : public core::Column {
    * 	\return min or common::NULL_VALUE_64 if min not known exactly (e.g. pack
    * not full)
    */
-  inline int64_t GetMinInt64Exact(const core::MIIterator &mit) { return GetMinInt64ExactImpl (mit); }
+  inline int64_t GetMinInt64Exact(const core::MIIterator &mit) { return GetMinInt64ExactImpl(mit); }
   /*! \brief Get rough maximum for packrow in level-1 encoding
    *
    * Old name: GetMax64
@@ -175,21 +175,21 @@ class VirtualColumnBase : public core::Column {
    * 	\return max or common::NULL_VALUE_64 if max not known exactly (e.g. pack
    * not full)
    */
-  inline int64_t GetMaxInt64Exact(const core::MIIterator &mit) { return GetMaxInt64ExactImpl (mit); }
+  inline int64_t GetMaxInt64Exact(const core::MIIterator &mit) { return GetMaxInt64ExactImpl(mit); }
   /*! \brief Get rough maximum for packrow in level-1 encoding
    *
    * \param mit iterator pointing to a packrow, for which max value is requested
    * \return string value from the column in level-1 encoding or
    * BString.IsNULL() if max not available
    */
-  inline types::BString GetMaxString(const core::MIIterator &mit) { return GetMaxStringImpl (mit); }
+  inline types::BString GetMaxString(const core::MIIterator &mit) { return GetMaxStringImpl(mit); }
   /*! \brief Get rough minimum for packrow in level-1 encoding
    *
    * \param mit iterator pointing to a packrow, for which min value is requested
    * \return string value from the column in level-1 encoding or
    * BString.IsNULL() if min not available
    */
-  inline types::BString GetMinString(const core::MIIterator &mit) { return GetMinStringImpl (mit); }
+  inline types::BString GetMinString(const core::MIIterator &mit) { return GetMinStringImpl(mit); }
   /*! \brief Get (global) rough minimum for numerical column in level-1 encoding
    *  For floating point types it is a double min encoded on int64_t
    *  Special values: common::MINUS_INF_64 is default (also for double),
@@ -221,19 +221,19 @@ class VirtualColumnBase : public core::Column {
    * available Note that int may be not enough, as core::MIIterator packrow may
    * be arbitrarily large.
    */
-  inline int64_t GetNumOfNulls(const core::MIIterator &mit) { return GetNumOfNullsImpl (mit, vc_nulls_possible); }
+  inline int64_t GetNumOfNulls(const core::MIIterator &mit) { return GetNumOfNullsImpl(mit, vc_nulls_possible); }
   /*!
    * \brief returns true -> column contains only NULLs for sure
    * \brief returns false -> it is sure that column contains only NULLs
    * If returns true, rough level Min/Max methods should not be used for this
    * column
    */
-  inline bool IsRoughNullsOnly() const { return IsRoughNullsOnlyImpl (); }
+  inline bool IsRoughNullsOnly() const { return IsRoughNullsOnlyImpl(); }
   /*!
    * \brief Return true if it is possible that the column will return null
    * value, including nulls generated by multiindex null objects
    */
-  inline bool IsNullsPossible() { return IsNullsPossibleImpl (vc_nulls_possible); }
+  inline bool IsNullsPossible() { return IsNullsPossibleImpl(vc_nulls_possible); }
   /*! \brief Get the sum of values in the packrow pointed by \e mit
    * \pre \e mit is located at the beginning of current packrow
    * \return sum or common::NULL_VALUE_64 if sum not available (e.g. if the
@@ -241,7 +241,7 @@ class VirtualColumnBase : public core::Column {
    * nonnegative values only (=> the sum is an upper approx. of a sum of a
    * subset)
    */
-  inline int64_t GetSum(const core::MIIterator &mit, bool &nonnegative) { return GetSumImpl (mit, nonnegative); }
+  inline int64_t GetSum(const core::MIIterator &mit, bool &nonnegative) { return GetSumImpl(mit, nonnegative); }
   /*! \brief Get an upper approximation of the sum of the whole packrow pointed
    * by \e mit (even if the iterator is not full for the pack) \pre \e mit is
    * located at the beginning of current packrow \return sum or
@@ -250,13 +250,13 @@ class VirtualColumnBase : public core::Column {
    * a sum of a subset)
    */
   inline int64_t GetApproxSum(const core::MIIterator &mit, bool &nonnegative) {
-    return GetApproxSumImpl (mit, nonnegative);
+    return GetApproxSumImpl(mit, nonnegative);
   }
   /*! \brief Return true if the virtual column contain only non-null distinct
    * values Depends on the current multiindex state, e.g. if there is no row
    * repetitions.
    */
-  inline bool IsDistinct() { return IsDistinctImpl (); }
+  inline bool IsDistinct() { return IsDistinctImpl(); }
   /*! \brief Return true if the virtual column is based on single physical
    * column and contain distinct values within its table
    */
@@ -276,7 +276,7 @@ class VirtualColumnBase : public core::Column {
    *  Used e.g. to prepare buffers for text values.
    *  maximal byte string length in column
    */
-  inline size_t MaxStringSize() { return MaxStringSizeImpl (); }
+  inline size_t MaxStringSize() { return MaxStringSizeImpl(); }
   virtual types::BString DecodeValue_S([[maybe_unused]] int64_t code) {
     DEBUG_ASSERT(0);
     return types::BString();
@@ -342,16 +342,16 @@ class VirtualColumnBase : public core::Column {
    * Apply all pending changes to the MutliIndex, so they become visible
    * void core::MultiIndex::CommitPendingUpdate();
    */
-  void EvaluatePack(core::MIUpdatingIterator &mit, core::Descriptor &desc) { EvaluatePackImpl (mit, desc); }
+  void EvaluatePack(core::MIUpdatingIterator &mit, core::Descriptor &desc) { EvaluatePackImpl(mit, desc); }
   common::ErrorCode EvaluateOnIndex(core::MIUpdatingIterator &mit, core::Descriptor &desc, int64_t limit) {
-    return EvaluateOnIndexImpl (mit, desc, limit);
+    return EvaluateOnIndexImpl(mit, desc, limit);
   }
   //! check whether any value from the pack may meet the condition
-  inline common::RSValue RoughCheck(const core::MIIterator &it, core::Descriptor &d) { return RoughCheckImpl (it, d); }
+  inline common::RSValue RoughCheck(const core::MIIterator &it, core::Descriptor &d) { return RoughCheckImpl(it, d); }
   //! is a datapack pointed by \e mit NULLS_ONLY, UNIFORM, UNIFORM_AND_NULLS or
   //! NORMAL
   core::PackOntologicalStatus GetPackOntologicalStatus(const core::MIIterator &mit) {
-    return GetPackOntologicalStatusImpl (mit);
+    return GetPackOntologicalStatusImpl(mit);
   }
   /*! \brief Lock datapacks providing parameters for contained expression; must
    * be done before any data access. \param mit Multiindex iterator pointing to
@@ -480,36 +480,36 @@ class VirtualColumnBase : public core::Column {
   virtual std::vector<VirtualColumn *> GetChildren() const { return std::vector<VirtualColumn *>(); }
 
  protected:
-  virtual int64_t GetValueInt64Impl (const core::MIIterator &) = 0;
-  virtual bool IsNullImpl (const core::MIIterator &) = 0;
-  virtual void GetValueStringImpl (types::BString &, const core::MIIterator &) = 0;
-  virtual double GetValueDoubleImpl (const core::MIIterator &) = 0;
-  virtual types::RCValueObject GetValueImpl (const core::MIIterator &, bool) = 0;
+  virtual int64_t GetValueInt64Impl(const core::MIIterator &) = 0;
+  virtual bool IsNullImpl(const core::MIIterator &) = 0;
+  virtual void GetValueStringImpl(types::BString &, const core::MIIterator &) = 0;
+  virtual double GetValueDoubleImpl(const core::MIIterator &) = 0;
+  virtual types::RCValueObject GetValueImpl(const core::MIIterator &, bool) = 0;
 
-  virtual int64_t GetMinInt64Impl (const core::MIIterator &) = 0;
-  virtual int64_t GetMinInt64ExactImpl (const core::MIIterator &) { return common::NULL_VALUE_64; }
-  virtual int64_t GetMaxInt64ExactImpl (const core::MIIterator &) { return common::NULL_VALUE_64; }
-  virtual int64_t GetMaxInt64Impl (const core::MIIterator &) = 0;
+  virtual int64_t GetMinInt64Impl(const core::MIIterator &) = 0;
+  virtual int64_t GetMinInt64ExactImpl(const core::MIIterator &) { return common::NULL_VALUE_64; }
+  virtual int64_t GetMaxInt64ExactImpl(const core::MIIterator &) { return common::NULL_VALUE_64; }
+  virtual int64_t GetMaxInt64Impl(const core::MIIterator &) = 0;
 
-  virtual types::BString GetMinStringImpl (const core::MIIterator &) = 0;
-  virtual types::BString GetMaxStringImpl (const core::MIIterator &) = 0;
+  virtual types::BString GetMinStringImpl(const core::MIIterator &) = 0;
+  virtual types::BString GetMaxStringImpl(const core::MIIterator &) = 0;
 
-  virtual int64_t RoughMinImpl () = 0;
-  virtual int64_t RoughMaxImpl () = 0;
-  virtual int64_t GetNumOfNullsImpl (const core::MIIterator &, bool val_nulls_possible) = 0;
+  virtual int64_t RoughMinImpl() = 0;
+  virtual int64_t RoughMaxImpl() = 0;
+  virtual int64_t GetNumOfNullsImpl(const core::MIIterator &, bool val_nulls_possible) = 0;
 
-  virtual bool IsRoughNullsOnlyImpl () const = 0;
-  virtual bool IsNullsPossibleImpl (bool val_nulls_possible) = 0;
-  virtual int64_t GetSumImpl (const core::MIIterator &, bool &nonnegative) = 0;
-  virtual int64_t GetApproxSumImpl (const core::MIIterator &mit, bool &nonnegative);
-  virtual bool IsDistinctImpl () = 0;
-  virtual int64_t GetApproxDistValsImpl (bool incl_nulls, core::RoughMultiIndex *rough_mind) = 0;
-  virtual size_t MaxStringSizeImpl () = 0;  // maximal byte string length in column
+  virtual bool IsRoughNullsOnlyImpl() const = 0;
+  virtual bool IsNullsPossibleImpl(bool val_nulls_possible) = 0;
+  virtual int64_t GetSumImpl(const core::MIIterator &, bool &nonnegative) = 0;
+  virtual int64_t GetApproxSumImpl(const core::MIIterator &mit, bool &nonnegative);
+  virtual bool IsDistinctImpl() = 0;
+  virtual int64_t GetApproxDistValsImpl(bool incl_nulls, core::RoughMultiIndex *rough_mind) = 0;
+  virtual size_t MaxStringSizeImpl() = 0;  // maximal byte string length in column
 
-  virtual core::PackOntologicalStatus GetPackOntologicalStatusImpl (const core::MIIterator &) = 0;
-  virtual common::RSValue RoughCheckImpl (const core::MIIterator &, core::Descriptor &);
-  virtual void EvaluatePackImpl (core::MIUpdatingIterator &mit, core::Descriptor &) = 0;
-  virtual common::ErrorCode EvaluateOnIndexImpl (core::MIUpdatingIterator &mit, core::Descriptor &, int64_t limit) = 0;
+  virtual core::PackOntologicalStatus GetPackOntologicalStatusImpl(const core::MIIterator &) = 0;
+  virtual common::RSValue RoughCheckImpl(const core::MIIterator &, core::Descriptor &);
+  virtual void EvaluatePackImpl(core::MIUpdatingIterator &mit, core::Descriptor &) = 0;
+  virtual common::ErrorCode EvaluateOnIndexImpl(core::MIUpdatingIterator &mit, core::Descriptor &, int64_t limit) = 0;
 
  protected:
   core::MultiIndex *mind;

@@ -19,9 +19,9 @@
 
 #include "core/engine.h"
 #include "core/rc_attr.h"
+#include "loader/value_cache.h"
 #include "system/io_parameters.h"
 #include "util/timer.h"
-#include "loader/value_cache.h"
 
 namespace stonedb {
 namespace loader {

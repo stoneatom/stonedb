@@ -15,7 +15,7 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "index/rc_table_index.h"
+#include "rc_table_index.h"
 
 #include "rocksdb/status.h"
 
@@ -27,7 +27,7 @@
 namespace stonedb {
 namespace index {
 
-using ROCKSDB_NAMESPACE::Status;
+using rocksdb::Status;
 
 const std::string generate_cf_name(uint index, TABLE *table) {
   char *comment = table->key_info[index].comment.str;
@@ -223,7 +223,7 @@ common::ErrorCode RCTableIndex::CheckUniqueness(core::Transaction *tx, const roc
   }
 
   if (!s.ok() && !s.IsNotFound()) {
-    //STONEDB_LOG(LogCtl_Level::ERROR, "RockDb read fail:%s", s.ToString().c_str());
+    // STONEDB_LOG(LogCtl_Level::ERROR, "RockDb read fail:%s", s.ToString().c_str());
     STONEDB_LOG(LogCtl_Level::ERROR, "RockDb read fail:%s", s.getState());
     return common::ErrorCode::FAILED;
   }

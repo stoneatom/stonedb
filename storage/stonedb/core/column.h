@@ -18,8 +18,8 @@
 #define STONEDB_CORE_COLUMN_H_
 #pragma once
 
-#include "core/column_type.h"
 #include "common/common_definitions.h"
+#include "core/column_type.h"
 #include "types/rc_data_types.h"
 
 namespace stonedb {

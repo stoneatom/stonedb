@@ -29,10 +29,10 @@
 #include "core/mi_step_iterator.h"
 #include "core/multi_index_builder.h"
 #include "core/task_executor.h"
+#include "core/temp_table.h"
 #include "core/transaction.h"
 #include "proxy_hash_joiner.h"
 #include "system/fet.h"
-#include "core/temp_table.h"
 #include "vc/virtual_column.h"
 
 namespace stonedb {

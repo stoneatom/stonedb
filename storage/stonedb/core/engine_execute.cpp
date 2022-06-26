@@ -15,16 +15,16 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include <sys/syscall.h>
 #include <signal.h>
+#include <sys/syscall.h>
 #include <time.h>
 
 #include "core/compilation_tools.h"
 #include "core/compiled_query.h"
 #include "core/engine.h"
+#include "core/query.h"
 #include "core/transaction.h"
 #include "exporter/export2file.h"
-#include "core/query.h"
 #include "util/log_ctl.h"
 #include "vc/virtual_column.h"
 

@@ -15,11 +15,11 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "core/mi_new_contents.h"
-#include "core/transaction.h"
 #include "core/descriptor.h"
 #include "core/joiner.h"
+#include "core/mi_new_contents.h"
 #include "core/mi_updating_iterator.h"
+#include "core/transaction.h"
 #include "vc/virtual_column.h"
 
 namespace stonedb {

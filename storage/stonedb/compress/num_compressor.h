@@ -18,15 +18,15 @@
 #define STONEDB_COMPRESS_NUM_COMPRESSOR_H_
 #pragma once
 
-#include "compress/basic_data_filt.h"
 #include "common/assert.h"
-#include "core/quick_math.h"
-#include "core/tools.h"
+#include "compress/basic_data_filt.h"
 #include "compress/defs.h"
 #include "compress/part_dict.h"
 #include "compress/range_code.h"
-#include "system/fet.h"
 #include "compress/top_bit_dict.h"
+#include "core/quick_math.h"
+#include "core/tools.h"
+#include "system/fet.h"
 
 namespace stonedb {
 namespace compress {

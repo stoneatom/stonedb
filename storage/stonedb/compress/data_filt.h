@@ -18,8 +18,8 @@
 #define STONEDB_COMPRESS_DATA_FILT_H_
 #pragma once
 
-#include "core/quick_math.h"
 #include "compress/range_code.h"
+#include "core/quick_math.h"
 
 namespace stonedb {
 namespace compress {

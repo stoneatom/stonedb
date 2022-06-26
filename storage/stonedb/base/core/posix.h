@@ -44,8 +44,8 @@
 #include <utility>
 
 #include <boost/optional.hpp>
-#include "base/net/socket_defs.h"
 #include "base/core/sstring.h"
+#include "base/net/socket_defs.h"
 
 namespace stonedb {
 namespace base {

@@ -15,13 +15,13 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "core/bin_tools.h"
 #include "common/common_definitions.h"
+#include "core/bin_tools.h"
 #include "core/query_operator.h"
 #include "core/rc_attr.h"
+#include "core/value_set.h"
 #include "system/txt_utils.h"
 #include "types/value_parser4txt.h"
-#include "core/value_set.h"
 #include "vc/virtual_column.h"
 
 namespace stonedb {

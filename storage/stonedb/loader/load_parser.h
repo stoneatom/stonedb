@@ -20,11 +20,11 @@
 
 #include <vector>
 
+#include "loader/parsing_strategy.h"
 #include "loader/read_buffer.h"
+#include "loader/rejecter.h"
 #include "loader/value_cache.h"
 #include "mm/traceable_object.h"
-#include "loader/parsing_strategy.h"
-#include "loader/rejecter.h"
 
 namespace stonedb {
 

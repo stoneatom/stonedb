@@ -18,12 +18,12 @@
 #define STONEDB_CORE_GROUPBY_WRAPPER_H_
 #pragma once
 
-#include "core/tools.h"
 #include "core/group_distinct_cache.h"
 #include "core/group_table.h"
 #include "core/pack_guardian.h"
-#include "system/rc_system.h"
 #include "core/temp_table.h"
+#include "core/tools.h"
+#include "system/rc_system.h"
 #include "vc/virtual_column.h"
 
 namespace stonedb {

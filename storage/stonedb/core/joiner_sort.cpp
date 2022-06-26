@@ -17,10 +17,10 @@
 
 #include <vector>
 
-#include "core/mi_new_contents.h"
-#include "core/transaction.h"
 #include "core/joiner_sort.h"
+#include "core/mi_new_contents.h"
 #include "core/sorter3.h"
+#include "core/transaction.h"
 #include "vc/virtual_column.h"
 
 namespace stonedb {

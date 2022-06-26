@@ -24,7 +24,6 @@
 #pragma once
 
 #include "base/core/future_util.h"
-#include "base/core/future_util.h"
 #include "base/net/packet.h"
 
 namespace stonedb {

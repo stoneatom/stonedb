@@ -22,9 +22,9 @@
 #include <set>
 
 #include "common/common_definitions.h"
-#include "core/var_id.h"
 #include "core/item_sdbfield.h"
 #include "core/value_or_null.h"
+#include "core/var_id.h"
 
 namespace stonedb {
 namespace core {

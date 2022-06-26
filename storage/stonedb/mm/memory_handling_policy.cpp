@@ -16,20 +16,20 @@
 #include "core/transaction.h"
 #include "mm/huge_heap_policy.h"
 
+#include "mm/mysql_heap_policy.h"
+#include "mm/numa_heap_policy.h"
 #include "mm/release2q.h"
 #include "mm/release_all.h"
 #include "mm/release_fifo.h"
 #include "mm/release_lru.h"
 #include "mm/release_null.h"
-#include "mm/mysql_heap_policy.h"
-#include "mm/numa_heap_policy.h"
 
 #include "mm/sys_heap_policy.h"
+#include "mm/tcm_heap_policy.h"
+#include "mm/traceable_object.h"
 #include "system/fet.h"
 #include "system/rc_system.h"
 #include "tcm/page_heap.h"
-#include "mm/tcm_heap_policy.h"
-#include "mm/traceable_object.h"
 
 namespace stonedb {
 namespace mm {

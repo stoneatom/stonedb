@@ -47,12 +47,9 @@
 #include <exception>
 #include <regex>
 
+#include "base/core/file_impl.h"
 #include "base/core/future_util.h"
 #include "base/core/posix.h"
-#include "base/core/file_impl.h"
-#include "base/net/packet.h"
-#include "base/net/posix_stack.h"
-#include "base/net/stack.h"
 #include "base/core/prefetch.h"
 #include "base/core/print.h"
 #include "base/core/report_exception.h"
@@ -61,6 +58,9 @@
 #include "base/core/systemwide_memory_barrier.h"
 #include "base/core/task.h"
 #include "base/core/thread.h"
+#include "base/net/packet.h"
+#include "base/net/posix_stack.h"
+#include "base/net/stack.h"
 #include "base/util/conversions.h"
 #include "base/util/log.h"
 
@@ -81,9 +81,9 @@
 #include <xmmintrin.h>
 #endif
 
-#include "base/core/metrics.h"
 #include "base/core/exception_hacks.h"
 #include "base/core/execution_stage.h"
+#include "base/core/metrics.h"
 #include "base/util/defer.h"
 
 namespace stonedb {

@@ -16,14 +16,14 @@
 */
 
 // This is a part of RCAttr implementation concerned with the KNs and its usage
-#include "core/pack.h"
 #include "core/cq_term.h"
 #include "core/engine.h"
+#include "core/pack.h"
 #include "core/pack_guardian.h"
 #include "core/rc_attr.h"
 #include "core/rc_attr_typeinfo.h"
-#include "types/text_stat.h"
 #include "core/value_set.h"
+#include "types/text_stat.h"
 #include "vc/multi_value_column.h"
 #include "vc/single_column.h"
 

@@ -17,11 +17,11 @@
 
 #include "group_table.h"
 
-#include "core/transaction.h"
 #include "core/group_distinct_table.h"
 #include "core/mi_iterator.h"
-#include "system/fet.h"
+#include "core/transaction.h"
 #include "core/value_matching_table.h"
+#include "system/fet.h"
 
 namespace stonedb {
 namespace core {

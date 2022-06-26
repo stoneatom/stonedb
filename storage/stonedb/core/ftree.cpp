@@ -23,7 +23,6 @@
 #include "system/rc_system.h"
 #include "system/stonedb_file.h"
 
-
 namespace stonedb {
 namespace core {
 static const size_t BUF_SIZE_LIMIT = 1_GB;

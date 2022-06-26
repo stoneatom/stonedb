@@ -27,13 +27,13 @@
 #include "compress/text_compressor.h"
 #include "core/bin_tools.h"
 #include "core/column_share.h"
+#include "core/tools.h"
 #include "core/value.h"
 #include "loader/value_cache.h"
 #include "mm/mm_guard.h"
 #include "system/stonedb_file.h"
 #include "system/stream.h"
 #include "system/txt_utils.h"
-#include "core/tools.h"
 
 namespace stonedb {
 namespace core {

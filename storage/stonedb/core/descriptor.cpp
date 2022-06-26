@@ -17,13 +17,13 @@
 
 #include "descriptor.h"
 
-#include "core/condition_encoder.h"
 #include "core/compiled_query.h"
-#include "core/transaction.h"
+#include "core/condition_encoder.h"
 #include "core/parameterized_filter.h"
 #include "core/query.h"
 #include "core/query_operator.h"
 #include "core/rough_value.h"
+#include "core/transaction.h"
 #include "vc/const_column.h"
 #include "vc/const_expr_column.h"
 #include "vc/expr_column.h"

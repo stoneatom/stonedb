@@ -17,11 +17,11 @@
 
 #include "subselect_column.h"
 
-#include "vc/const_column.h"
 #include "core/compiled_query.h"
 #include "core/mysql_expression.h"
 #include "core/rc_attr.h"
 #include "core/value_set.h"
+#include "vc/const_column.h"
 
 namespace stonedb {
 namespace vcolumn {
@@ -139,34 +139,35 @@ void SubSelectColumn::SetBufs(core::MysqlExpression::var_buf_t *bufs) {
   }
 }
 
-types::BString SubSelectColumn::GetMinStringImpl ([[maybe_unused]] const core::MIIterator &mit) {
+types::BString SubSelectColumn::GetMinStringImpl([[maybe_unused]] const core::MIIterator &mit) {
   types::BString s;
   DEBUG_ASSERT(!"To be implemented.");
   return s;
 }
 
-types::BString SubSelectColumn::GetMaxStringImpl ([[maybe_unused]] const core::MIIterator &mit) {
+types::BString SubSelectColumn::GetMaxStringImpl([[maybe_unused]] const core::MIIterator &mit) {
   types::BString s;
   DEBUG_ASSERT(!"To be implemented.");
   return s;
 }
 
-size_t SubSelectColumn::MaxStringSizeImpl ()  // maximal byte string length in column
+size_t SubSelectColumn::MaxStringSizeImpl()  // maximal byte string length in column
 {
   return ct.GetPrecision();
 }
 
-core::PackOntologicalStatus SubSelectColumn::GetPackOntologicalStatusImpl ([[maybe_unused]] const core::MIIterator &mit) {
+core::PackOntologicalStatus SubSelectColumn::GetPackOntologicalStatusImpl(
+    [[maybe_unused]] const core::MIIterator &mit) {
   return core::PackOntologicalStatus::NORMAL;
 }
 
-void SubSelectColumn::EvaluatePackImpl ([[maybe_unused]] core::MIUpdatingIterator &mit,
-                                     [[maybe_unused]] core::Descriptor &desc) {
+void SubSelectColumn::EvaluatePackImpl([[maybe_unused]] core::MIUpdatingIterator &mit,
+                                       [[maybe_unused]] core::Descriptor &desc) {
   DEBUG_ASSERT(!"To be implemented.");
   DEBUG_ASSERT(0);
 }
 
-common::Tribool SubSelectColumn::ContainsImpl (core::MIIterator const &mit, types::RCDataType const &v) {
+common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types::RCDataType const &v) {
   // If the sub-select is something like 'select null from xxx' then there
   // is no need to execute the sub-select, just return common::TRIBOOL_UNKNOWN.
   VirtualColumn *vc = subq->GetAttrP(col_idx)->term.vc;
@@ -268,7 +269,7 @@ bool SubSelectColumn::IsSetEncoded(common::CT at,
            (core::ATI::IsFixedNumericType(at) && core::ATI::IsFixedNumericType(expected_type_.GetTypeName()))));
 }
 
-common::Tribool SubSelectColumn::Contains64Impl (const core::MIIterator &mit, int64_t val)  // easy case for integers
+common::Tribool SubSelectColumn::Contains64Impl(const core::MIIterator &mit, int64_t val)  // easy case for integers
 {
   if (cache && cache->EasyMode()) {
     common::Tribool contains = false;
@@ -279,11 +280,11 @@ common::Tribool SubSelectColumn::Contains64Impl (const core::MIIterator &mit, in
       contains = common::TRIBOOL_UNKNOWN;
     return contains;
   }
-  return ContainsImpl (mit, types::RCNum(val, ct.GetScale()));
+  return ContainsImpl(mit, types::RCNum(val, ct.GetScale()));
 }
 
-common::Tribool SubSelectColumn::ContainsStringImpl (const core::MIIterator &mit,
-                                                  types::BString &val)  // easy case for strings
+common::Tribool SubSelectColumn::ContainsStringImpl(const core::MIIterator &mit,
+                                                    types::BString &val)  // easy case for strings
 {
   if (cache && cache->EasyMode()) {
     common::Tribool contains = false;
@@ -294,16 +295,16 @@ common::Tribool SubSelectColumn::ContainsStringImpl (const core::MIIterator &mit
       contains = common::TRIBOOL_UNKNOWN;
     return contains;
   }
-  return ContainsImpl (mit, val);
+  return ContainsImpl(mit, val);
 }
 
-int64_t SubSelectColumn::NoValuesImpl (core::MIIterator const &mit) {
+int64_t SubSelectColumn::NoValuesImpl(core::MIIterator const &mit) {
   PrepareSubqResult(mit, false);
   if (!subq->IsMaterialized()) subq->Materialize();
   return subq->NoObj();
 }
 
-int64_t SubSelectColumn::AtLeastNoDistinctValuesImpl (core::MIIterator const &mit, int64_t const at_least) {
+int64_t SubSelectColumn::AtLeastNoDistinctValuesImpl(core::MIIterator const &mit, int64_t const at_least) {
   DEBUG_ASSERT(at_least > 0);
   PrepareSubqResult(mit, false);
   core::ValueSet vals(mind->NoPower());
@@ -331,19 +332,19 @@ int64_t SubSelectColumn::AtLeastNoDistinctValuesImpl (core::MIIterator const &mi
   return vals.NoVals();
 }
 
-bool SubSelectColumn::ContainsNullImpl (const core::MIIterator &mit) {
+bool SubSelectColumn::ContainsNullImpl(const core::MIIterator &mit) {
   PrepareSubqResult(mit, false);
   for (int64_t i = 0; i < subq->NoObj(); ++i)
     if (subq->IsNull(i, col_idx)) return true;
   return false;
 }
 
-std::unique_ptr<MultiValColumn::IteratorInterface> SubSelectColumn::BeginImpl (core::MIIterator const &mit) {
+std::unique_ptr<MultiValColumn::IteratorInterface> SubSelectColumn::BeginImpl(core::MIIterator const &mit) {
   PrepareSubqResult(mit, false);
   return std::unique_ptr<MultiValColumn::IteratorInterface>(new IteratorImpl(subq->begin(), expected_type_));
 }
 
-std::unique_ptr<MultiValColumn::IteratorInterface> SubSelectColumn::EndImpl (core::MIIterator const &mit) {
+std::unique_ptr<MultiValColumn::IteratorInterface> SubSelectColumn::EndImpl(core::MIIterator const &mit) {
   PrepareSubqResult(mit, false);
   return std::unique_ptr<MultiValColumn::IteratorInterface>(new IteratorImpl(subq->end(), expected_type_));
 }
@@ -422,12 +423,12 @@ bool SubSelectColumn::IsCorrelated() const {
   return false;
 }
 
-bool SubSelectColumn::IsNullImpl (const core::MIIterator &mit) {
+bool SubSelectColumn::IsNullImpl(const core::MIIterator &mit) {
   PrepareSubqResult(mit, false);
   return subq->IsNull(0, col_idx);
 }
 
-types::RCValueObject SubSelectColumn::GetValueImpl (const core::MIIterator &mit, [[maybe_unused]] bool lookup_to_num) {
+types::RCValueObject SubSelectColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool lookup_to_num) {
   PrepareSubqResult(mit, false);
   types::RCValueObject val = subq->GetValueObject(0, col_idx);
   if (expected_type_.IsString()) return val.ToBString();
@@ -439,7 +440,7 @@ types::RCValueObject SubSelectColumn::GetValueImpl (const core::MIIterator &mit,
   return val;
 }
 
-int64_t SubSelectColumn::GetValueInt64Impl (const core::MIIterator &mit) {
+int64_t SubSelectColumn::GetValueInt64Impl(const core::MIIterator &mit) {
   PrepareSubqResult(mit, false);
   return subq->GetTable64(0, col_idx);
 }
@@ -449,25 +450,25 @@ core::RoughValue SubSelectColumn::RoughGetValue(const core::MIIterator &mit, cor
   return core::RoughValue(subq->GetTable64(0, col_idx), subq->GetTable64(1, col_idx));
 }
 
-double SubSelectColumn::GetValueDoubleImpl (const core::MIIterator &mit) {
+double SubSelectColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
   PrepareSubqResult(mit, false);
   int64_t v = subq->GetTable64(0, col_idx);
   return *((double *)(&v));
 }
 
-void SubSelectColumn::GetValueStringImpl (types::BString &s, core::MIIterator const &mit) {
+void SubSelectColumn::GetValueStringImpl(types::BString &s, core::MIIterator const &mit) {
   PrepareSubqResult(mit, false);
   subq->GetTable_S(s, 0, col_idx);
 }
 
-types::RCValueObject SubSelectColumn::GetSetMinImpl (core::MIIterator const &mit) {
+types::RCValueObject SubSelectColumn::GetSetMinImpl(core::MIIterator const &mit) {
   // assert: this->params are all set
   PrepareSubqResult(mit, false);
   if (!min_max_uptodate) CalculateMinMax();
   return min;
 }
 
-types::RCValueObject SubSelectColumn::GetSetMaxImpl (core::MIIterator const &mit) {
+types::RCValueObject SubSelectColumn::GetSetMaxImpl(core::MIIterator const &mit) {
   PrepareSubqResult(mit, false);
   if (!min_max_uptodate) CalculateMinMax();
   return max;
@@ -477,7 +478,7 @@ bool SubSelectColumn::CheckExists(core::MIIterator const &mit) {
   return subq->NoObj() > 0;
 }
 
-bool SubSelectColumn::IsEmptyImpl (core::MIIterator const &mit) {
+bool SubSelectColumn::IsEmptyImpl(core::MIIterator const &mit) {
   PrepareSubqResult(mit, false);
   return subq->NoObj() == 0;
 }
@@ -595,7 +596,7 @@ bool SubSelectColumn::FeedArguments(const core::MIIterator &mit, bool for_rough)
   return diff;
 }
 
-void SubSelectColumn::SetExpectedTypeImpl (core::ColumnType const &ct) { expected_type_ = ct; }
+void SubSelectColumn::SetExpectedTypeImpl(core::ColumnType const &ct) { expected_type_ = ct; }
 
 bool SubSelectColumn::MakeParallelReady() {
   core::MIDummyIterator mit(mind);

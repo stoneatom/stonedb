@@ -21,8 +21,8 @@
 #include "core/bin_tools.h"
 #include "core/column_bin_encoder.h"
 #include "core/filter.h"
-#include "mm/traceable_object.h"
 #include "core/rc_attr_typeinfo.h"
+#include "mm/traceable_object.h"
 #include "vc/virtual_column.h"
 
 namespace stonedb {

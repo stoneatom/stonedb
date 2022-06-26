@@ -28,9 +28,9 @@
 #include <vector>
 
 #include "base/core/deleter.h"
+#include "base/core/sstring.h"
 #include "base/core/temporary_buffer.h"
 #include "base/net/packet.h"
-#include "base/core/sstring.h"
 
 namespace stonedb {
 namespace base {
