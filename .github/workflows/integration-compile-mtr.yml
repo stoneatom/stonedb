@@ -1,12 +1,20 @@
-name: Compile & MTR
+name: Developing
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches-ignore:
+      - main
+    pull_request:
+      paths-ignore:
+        - 'docs/**'
 
-  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  PROTOC: protoc
 
 jobs:
   stonedb-build:

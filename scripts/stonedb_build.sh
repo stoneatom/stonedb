@@ -8,8 +8,8 @@ then
     mkdir ../build
 fi
 
-#build_type=Debug
-build_type=RelWithDebInfo
+build_type=Debug
+#build_type=RelWithDebInfo
 branch=`git rev-parse --abbrev-ref HEAD`
 cpu_arc=`uname -m`
 os_dist=`lsb_release -a | grep Distributor | tail -n 1 | awk '{print $3}'`
@@ -49,11 +49,10 @@ cmake ../../ \
 -DEXTRA_CHARSETS=all \
 -DDEFAULT_CHARSET=utf8 \
 -DDEFAULT_COLLATION=utf8_general_ci \
--DDOWNLOAD_BOOST=1 \
--DWITH_BOOST=/usr/local/boost/ \
+-DWITH_BOOST=/usr/local/stonedb-boost/include \
 2>&1 | tee -a ${build_log}
 
 # make
-make VERBOSE=1 -j`nproc`                                             2>&1 | tee -a ${build_log}
-make install                                                         2>&1 | tee -a ${build_log}
-echo "current dir is `pwd`"                                                              2>&1 | tee -a ${build_log}
+#make VERBOSE=1 -j`nproc`                                             2>&1 | tee -a ${build_log}
+#make install                                                         2>&1 | tee -a ${build_log}
+#echo "current dir is `pwd`"                                                              2>&1 | tee -a ${build_log}
