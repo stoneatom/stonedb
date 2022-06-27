@@ -18,7 +18,7 @@
 #define STONEDB_MM_HEAP_POLICY_H_
 #pragma once
 
-#include "memory_block.h"
+#include "mm/memory_block.h"
 
 namespace stonedb {
 namespace mm {

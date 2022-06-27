@@ -17,7 +17,7 @@
 
 #include "groupby_wrapper.h"
 
-#include "rc_attr.h"
+#include "core/rc_attr.h"
 
 namespace stonedb {
 namespace core {

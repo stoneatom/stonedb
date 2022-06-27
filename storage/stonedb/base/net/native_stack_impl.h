@@ -23,8 +23,8 @@
 #define STONEDB_BASE_NATIVE_STACK_IMPL_H_
 #pragma once
 
-#include "core/reactor.h"
-#include "stack.h"
+#include "base/core/reactor.h"
+#include "base/net/stack.h"
 
 namespace stonedb {
 namespace base {

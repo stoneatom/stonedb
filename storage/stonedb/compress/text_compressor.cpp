@@ -17,13 +17,13 @@
 
 #include "text_compressor.h"
 
-#include "lz4.h"
+#include "zconf.h"
 #include "zlib.h"
 
 #include "common/assert.h"
-#include "inc_wgraph.h"
+#include "compress/inc_wgraph.h"
+#include "compress/lz4.h"
 #include "system/fet.h"
-#include "zconf.h"
 
 namespace stonedb {
 namespace compress {

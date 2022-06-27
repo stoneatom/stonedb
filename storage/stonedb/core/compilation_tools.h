@@ -18,7 +18,7 @@
 #define STONEDB_CORE_COMPILATION_TOOLS_H_
 #pragma once
 
-#include "query.h"
+#include "core/query.h"
 
 namespace stonedb {
 namespace core {

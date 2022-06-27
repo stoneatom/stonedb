@@ -27,8 +27,8 @@
 #include <boost/mpl/for_each.hpp>
 #include <boost/mpl/range_c.hpp>
 
-#include "align.h"
-#include "cacheline.h"
+#include "base/core/align.h"
+#include "base/core/cacheline.h"
 
 namespace stonedb {
 namespace base {

@@ -23,7 +23,7 @@
 #define STONEDB_BASE_SCHEDULING_H_
 #pragma once
 
-#include "sstring.h"
+#include "base/core/sstring.h"
 
 namespace stonedb {
 namespace base {

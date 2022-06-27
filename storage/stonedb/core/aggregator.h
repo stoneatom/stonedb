@@ -18,7 +18,7 @@
 #define STONEDB_CORE_AGGREGATOR_H_
 #pragma once
 
-#include "column.h"
+#include "core/column.h"
 
 namespace stonedb {
 namespace core {

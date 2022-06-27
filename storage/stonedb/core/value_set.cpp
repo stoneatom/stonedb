@@ -15,8 +15,8 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 #include "common/common_definitions.h"
-#include "filter.h"
-#include "rc_attr_typeinfo.h"
+#include "core/filter.h"
+#include "core/rc_attr_typeinfo.h"
 #include "types/rc_num.h"
 #include "types/text_stat.h"
 #include "util/hash64.h"

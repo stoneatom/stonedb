@@ -30,12 +30,12 @@
 #include <stdexcept>
 #include <type_traits>
 
-#include "../util/gcc6-concepts.h"
-#include "apply.h"
-#include "function_traits.h"
-#include "preempt.h"
-#include "task.h"
-#include "thread_impl.h"
+#include "base/core/apply.h"
+#include "base/core/function_traits.h"
+#include "base/core/preempt.h"
+#include "base/core/task.h"
+#include "base/core/thread_impl.h"
+#include "base/util/gcc6-concepts.h"
 
 namespace stonedb {
 namespace base {

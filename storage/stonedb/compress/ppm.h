@@ -20,8 +20,8 @@
 
 #include <iostream>
 
-#include "arith_coder.h"
-#include "ppm_defs.h"
+#include "compress/arith_coder.h"
+#include "compress/ppm_defs.h"
 
 namespace stonedb {
 namespace compress {

@@ -21,10 +21,9 @@
  */
 
 #include "posix.h"
-
 #include <sys/mman.h>
 
-#include "align.h"
+#include "base/core/align.h"
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 38)
 #define MADV_HUGEPAGE MADV_NORMAL

@@ -22,9 +22,9 @@
 #define STONEDB_BASE_POSIX_STACK_H_
 #pragma once
 
-#include "core/reactor.h"
-#include "core/sharded.h"
-#include "stack.h"
+#include "base/core/reactor.h"
+#include "base/core/sharded.h"
+#include "base/net/stack.h"
 
 namespace stonedb {
 namespace base {

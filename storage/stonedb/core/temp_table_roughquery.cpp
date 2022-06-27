@@ -20,10 +20,10 @@
    query execution
 */
 
-#include "engine.h"
-#include "mi_iterator.h"
-#include "pack_orderer.h"
-#include "temp_table.h"
+#include "core/engine.h"
+#include "core/mi_iterator.h"
+#include "core/pack_orderer.h"
+#include "core/temp_table.h"
 #include "vc/single_column.h"
 
 namespace stonedb {

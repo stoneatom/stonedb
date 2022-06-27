@@ -17,11 +17,11 @@
 
 #include "multi_index.h"
 
-#include "group_distinct_table.h"
-#include "joiner.h"
-#include "mi_iterator.h"
-#include "mi_new_contents.h"
-#include "tools.h"
+#include "core/group_distinct_table.h"
+#include "core/joiner.h"
+#include "core/mi_iterator.h"
+#include "core/mi_new_contents.h"
+#include "core/tools.h"
 
 namespace stonedb {
 namespace core {

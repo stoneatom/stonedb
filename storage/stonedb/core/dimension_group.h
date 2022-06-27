@@ -18,10 +18,10 @@
 #define STONEDB_CORE_DIMENSION_GROUP_H_
 #pragma once
 
-#include "bin_tools.h"
-#include "dimension_vector.h"
-#include "filter.h"
-#include "index_table.h"
+#include "core/bin_tools.h"
+#include "core/dimension_vector.h"
+#include "core/filter.h"
+#include "core/index_table.h"
 
 namespace stonedb {
 namespace core {

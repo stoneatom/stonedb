@@ -18,9 +18,9 @@
 #define STONEDB_COMPRESS_TOP_BIT_DICT_H_
 #pragma once
 
-#include "data_filt.h"
-#include "dictionary.h"
-#include "range_code.h"
+#include "compress/data_filt.h"
+#include "compress/dictionary.h"
+#include "compress/range_code.h"
 
 namespace stonedb {
 namespace compress {

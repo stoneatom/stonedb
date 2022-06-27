@@ -30,7 +30,7 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/asio/ip/address_v4.hpp>
 
-#include "net/byteorder.h"
+#include "base/net/byteorder.h"
 
 namespace stonedb {
 namespace base {

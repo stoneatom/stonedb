@@ -16,8 +16,8 @@
 */
 
 #include "compiled_query.h"
-#include "mysql_expression.h"
-#include "query.h"
+#include "core/mysql_expression.h"
+#include "core/query.h"
 #include "vc/multi_value_column.h"
 
 namespace stonedb {

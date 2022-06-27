@@ -3053,11 +3053,11 @@ case SQLCOM_PREPARE:
             and item_list belong to SELECT
           */
           // StoneDB hook added
-          int bh_res, free_join_from_bh, optimize_after_bh;
-          if(stonedb::dbhandler::SDB_HandleSelect(thd, lex, result, 0, bh_res, optimize_after_bh, free_join_from_bh, (int)true) == 0)
-            res= handle_select(thd, result, 0, optimize_after_bh, free_join_from_bh);
+          int sdb_res, free_join_from_sdb, optimize_after_sdb;
+          if(stonedb::dbhandler::SDB_HandleSelect(thd, lex, result, 0, sdb_res, optimize_after_sdb, free_join_from_sdb, (int)true) == 0)
+            res= handle_select(thd, result, 0, optimize_after_sdb, free_join_from_sdb);
           else
-            res= bh_res;
+            res= sdb_res;
           //res= handle_select(thd, result, 0);
           delete result;
         }
@@ -3542,15 +3542,15 @@ end_with_restore_list:
           // StoneDB tries to handle a query
           // if StoneDB leaves the query for MySQL engine
           // then the derived tables are filled and the query gets into the original MySQL execution path
-          int bh_res, free_join_from_bh, optimize_after_bh;
+          int sdb_res, free_join_from_sdb, optimize_after_sdb;
 
           //FIXME: this doesn't work but just compile 
           select_result *sel_result2 = sel_result;
           if (stonedb::dbhandler::SDB_HandleSelect(thd, lex, sel_result2, (ulong)OPTION_SETUP_TABLES_DONE, 
-                              bh_res, optimize_after_bh, free_join_from_bh, (int)true)==0)
-            res= handle_select(thd, sel_result, OPTION_SETUP_TABLES_DONE, optimize_after_bh, free_join_from_bh);
+                              sdb_res, optimize_after_sdb, free_join_from_sdb, (int)true)==0)
+            res= handle_select(thd, sel_result, OPTION_SETUP_TABLES_DONE, optimize_after_sdb, free_join_from_sdb);
           else
-            res= bh_res;
+            res= sdb_res;
           // res= handle_select(thd, sel_result, OPTION_SETUP_TABLES_DONE);
           /*
             Invalidate the table in the query cache if something changed

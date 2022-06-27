@@ -23,7 +23,7 @@
 #define STONEDB_BASE_DISTRIBUTED_H_
 #pragma once
 
-#include "sharded.h"
+#include "base/core/sharded.h"
 
 namespace stonedb {
 namespace base {

@@ -27,7 +27,7 @@
 #include <iosfwd>
 #include <utility>
 
-#include "core/unaligned.h"
+#include "base/core/unaligned.h"
 
 namespace stonedb {
 namespace base {

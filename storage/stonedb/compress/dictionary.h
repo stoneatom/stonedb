@@ -19,8 +19,8 @@
 #pragma once
 
 #include "common/assert.h"
-#include "defs.h"
-#include "range_code.h"
+#include "compress/defs.h"
+#include "compress/range_code.h"
 
 namespace stonedb {
 namespace compress {

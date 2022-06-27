@@ -34,14 +34,14 @@
 #include <type_traits>
 #include <utility>
 
-#include "core/print.h"
-#include "core/shared_ptr.h"
-#include "core/sstring.h"
-#include "future.h"
-#include "net/byteorder.h"
-#include "util/log.h"
+#include "base/core/future.h"
+#include "base/core/print.h"
+#include "base/core/shared_ptr.h"
+#include "base/core/sstring.h"
+#include "base/net/byteorder.h"
+#include "base/util/log.h"
 
-#include "core/metrics_api.h"
+#include "base/core/metrics_api.h"
 
 namespace stonedb {
 namespace base {

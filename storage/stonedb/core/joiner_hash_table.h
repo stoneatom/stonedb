@@ -18,11 +18,11 @@
 #define STONEDB_CORE_JOINER_HASH_TABLE_H_
 #pragma once
 
-#include "bin_tools.h"
-#include "column_bin_encoder.h"
-#include "filter.h"
+#include "core/bin_tools.h"
+#include "core/column_bin_encoder.h"
+#include "core/filter.h"
+#include "core/rc_attr_typeinfo.h"
 #include "mm/traceable_object.h"
-#include "rc_attr_typeinfo.h"
 #include "vc/virtual_column.h"
 
 namespace stonedb {

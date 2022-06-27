@@ -22,7 +22,7 @@
 #include <iostream>
 #include <vector>
 
-#include "ppm_defs.h"
+#include "compress/ppm_defs.h"
 
 namespace stonedb {
 namespace compress {

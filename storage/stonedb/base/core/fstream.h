@@ -28,9 +28,9 @@
 // interface to files, while retaining the zero-copy characteristics of
 // seastar files.
 
-#include "file.h"
-#include "iostream.h"
-#include "shared_ptr.h"
+#include "base/core/file.h"
+#include "base/core/iostream.h"
+#include "base/core/shared_ptr.h"
 
 namespace stonedb {
 namespace base {

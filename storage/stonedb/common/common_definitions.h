@@ -23,7 +23,7 @@
 #include <memory>
 #include <string>
 
-#include "mysql_gate.h"
+#include "common/mysql_gate.h"
 
 #include "common/defs.h"
 

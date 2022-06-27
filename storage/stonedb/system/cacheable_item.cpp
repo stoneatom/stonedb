@@ -18,8 +18,8 @@
 #include "cacheable_item.h"
 
 #include "core/tools.h"
-#include "rc_system.h"
 #include "system/fet.h"
+#include "system/rc_system.h"
 
 namespace stonedb {
 namespace system {

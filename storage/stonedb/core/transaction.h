@@ -21,7 +21,7 @@
 #include <unordered_map>
 
 #include "common/sequence_generator.h"
-#include "engine.h"
+#include "core/engine.h"
 #include "index/kv_store.h"
 #include "index/kv_transaction.h"
 namespace stonedb {
