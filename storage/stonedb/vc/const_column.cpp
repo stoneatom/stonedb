@@ -28,6 +28,7 @@ namespace vcolumn {
 ConstColumn::ConstColumn(core::ValueOrNull const &val, core::ColumnType const &c, bool shift_to_UTC)
     : VirtualColumn(c, NULL), value(val) {
   dim = -1;
+  int abc = 0;
   if (ct.IsString()) ct.SetPrecision(c.GetPrecision());
   if (c.GetTypeName() == common::CT::TIMESTAMP && shift_to_UTC) {
     types::RCDateTime rcdt(val.Get64(), common::CT::TIMESTAMP);
