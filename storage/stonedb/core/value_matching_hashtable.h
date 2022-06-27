@@ -18,8 +18,8 @@
 #define STONEDB_CORE_VALUE_MATCHING_HASHTABLE_H_
 #pragma once
 
-#include "blocked_mem_table.h"
-#include "value_matching_table.h"
+#include "core/blocked_mem_table.h"
+#include "core/value_matching_table.h"
 
 namespace stonedb {
 namespace core {

@@ -18,7 +18,7 @@
 #define STONEDB_TYPES_RC_NUM_H_
 #pragma once
 
-#include "rc_data_types.h"
+#include "types/rc_data_types.h"
 
 namespace stonedb {
 namespace types {

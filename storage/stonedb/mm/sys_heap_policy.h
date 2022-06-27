@@ -19,7 +19,7 @@
 #pragma once
 
 #include <unordered_map>
-#include "heap_policy.h"
+#include "mm/heap_policy.h"
 
 namespace stonedb {
 namespace mm {

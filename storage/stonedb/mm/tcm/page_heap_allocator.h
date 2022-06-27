@@ -38,7 +38,7 @@
 #include <cstdlib>
 #include <list>
 
-#include "tccommon.h"
+#include "mm/tcm/tccommon.h"
 
 namespace stonedb {
 namespace mm {

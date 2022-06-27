@@ -36,11 +36,11 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/range/adaptor/map.hpp>
 
-#include "core/array_map.h"
-#include "core/reactor.h"
+#include "base/core/array_map.h"
+#include "base/core/reactor.h"
 
-#include "fmt/time.h"
-#include "log_cli.h"
+#include "base/fmt/time.h"
+#include "base/util/log_cli.h"
 
 using namespace std::chrono_literals;
 

@@ -26,8 +26,8 @@
 #include <experimental/optional>
 #include <queue>
 
-#include "circular_buffer.h"
-#include "future.h"
+#include "core/circular_buffer.h"
+#include "core/future.h"
 
 namespace stonedb {
 namespace base {

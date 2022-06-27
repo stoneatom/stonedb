@@ -17,7 +17,7 @@
 
 #include "filter.h"
 #include "common/assert.h"
-#include "tools.h"
+#include "core/tools.h"
 
 namespace stonedb {
 namespace core {

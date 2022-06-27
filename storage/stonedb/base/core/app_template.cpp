@@ -26,12 +26,12 @@
 #include <cstdlib>
 #include <fstream>
 
-#include "core/metrics_api.h"
-#include "core/print.h"
-#include "core/reactor.h"
-#include "core/scollectd.h"
-#include "util/log.h"
-#include "util/log_cli.h"
+#include "base/core/metrics_api.h"
+#include "base/core/print.h"
+#include "base/core/reactor.h"
+#include "base/core/scollectd.h"
+#include "base/util/log.h"
+#include "base/util/log_cli.h"
 
 namespace stonedb {
 namespace base {

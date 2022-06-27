@@ -17,7 +17,7 @@
 
 #include "bloom_block.h"
 
-#include "bloom_coding.h"
+#include "core/bloom_coding.h"
 
 namespace stonedb {
 namespace core {

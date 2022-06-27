@@ -24,7 +24,7 @@
 #define STONEDB_BASE_SHARED_PTR_INCOMPLETE_H_
 #pragma once
 
-#include "shared_ptr.h"
+#include "base/core/shared_ptr.h"
 
 /// \file Include this header files when using \c
 /// lw_shared_ptr<some_incomplete_type>, at the point where \c

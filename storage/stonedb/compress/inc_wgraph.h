@@ -22,9 +22,9 @@
 #include <iostream>
 
 #include "common/assert.h"
-#include "inc_alloc.h"
-#include "ppm_defs.h"
-#include "range_code.h"
+#include "compress/inc_alloc.h"
+#include "compress/ppm_defs.h"
+#include "compress/range_code.h"
 
 namespace stonedb {
 namespace compress {

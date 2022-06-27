@@ -21,15 +21,15 @@
 */
 
 #include "common/assert.h"
+#include "core/cq_term.h"
+#include "core/pack_guardian.h"
 #include "core/pack_str.h"
+#include "core/rc_attr.h"
+#include "core/rc_attr_typeinfo.h"
+#include "core/tools.h"
 #include "core/transaction.h"
-#include "cq_term.h"
-#include "pack_guardian.h"
-#include "rc_attr.h"
-#include "rc_attr_typeinfo.h"
-#include "tools.h"
+#include "core/value_set.h"
 #include "util/hash64.h"
-#include "value_set.h"
 #include "vc/const_column.h"
 #include "vc/in_set_column.h"
 #include "vc/single_column.h"
@@ -1046,7 +1046,7 @@ bool RCAttr::IsDistinct(Filter *f) {
   MEASURE_FET("RCAttr::IsDistinct(...)");
   if (ct.IsLookup() && types::RequiresUTFConversions(GetCollation())) return false;
   if (PhysicalColumn::IsDistinct() == common::RSValue::RS_ALL) {  // = is_unique_updated && is_unique
-    if (f == NULL) return (NumOfNulls() == 0);              // no nulls at all, and is_unique  => distinct
+    if (f == NULL) return (NumOfNulls() == 0);                    // no nulls at all, and is_unique  => distinct
     LoadPackInfo();
     for (uint b = 0; b < NoPack(); b++)
       if (!f->IsEmpty(b) && get_dpn(b).nn > 0)  // any null in nonempty pack?

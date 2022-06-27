@@ -15,13 +15,13 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "rc_data_types.h"
+#include "types/rc_data_types.h"
 
 #include "core/engine.h"
 #include "core/tools.h"
 #include "core/transaction.h"
 #include "system/rc_system.h"
-#include "value_parser4txt.h"
+#include "types/value_parser4txt.h"
 
 namespace stonedb {
 namespace types {

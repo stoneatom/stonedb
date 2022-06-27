@@ -35,8 +35,7 @@ void *ValueCache::Prepare(size_t valueSize) {
   size_t newSize(size_ + valueSize);
   if (newSize > capacity_) {
     auto newCapacity = capacity_;
-    while (newSize > newCapacity) 
-      newCapacity <<= 1;
+    while (newSize > newCapacity) newCapacity <<= 1;
 
     auto vals = values_.size();
     if ((capacity_ > 0) && (vals > 0)) { /* second allocation, first reallocation */

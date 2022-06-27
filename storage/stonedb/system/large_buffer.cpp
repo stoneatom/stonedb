@@ -21,8 +21,8 @@
 
 #include "common/assert.h"
 #include "core/tools.h"
-#include "rc_system.h"
 #include "system/io_parameters.h"
+#include "system/rc_system.h"
 #include "system/stonedb_file.h"
 
 namespace stonedb {

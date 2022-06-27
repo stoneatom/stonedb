@@ -22,7 +22,7 @@
 
 #include "common/assert.h"
 #include "core/tools.h"
-#include "memory_handling_policy.h"
+#include "mm/memory_handling_policy.h"
 
 namespace stonedb {
 

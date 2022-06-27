@@ -25,7 +25,7 @@
 
 #include <memory>
 
-#include "scheduling.h"
+#include "base/core/scheduling.h"
 
 namespace stonedb {
 namespace base {

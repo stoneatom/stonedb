@@ -18,7 +18,7 @@
 #define STONEDB_CORE_MI_ITERATOR_H_
 #pragma once
 
-#include "multi_index.h"
+#include "core/multi_index.h"
 
 namespace stonedb {
 namespace core {

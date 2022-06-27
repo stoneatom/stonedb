@@ -21,9 +21,9 @@
 
 #include "common/assert.h"
 #include "core/tools.h"
-#include "rc_data_types.h"
 #include "system/txt_utils.h"
-#include "value_parser4txt.h"
+#include "types/rc_data_types.h"
+#include "types/value_parser4txt.h"
 
 namespace stonedb {
 namespace types {

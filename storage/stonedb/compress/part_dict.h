@@ -21,9 +21,9 @@
 #include <cstring>
 
 #include "common/assert.h"
-#include "data_filt.h"
-#include "defs.h"
-#include "range_code.h"
+#include "compress/data_filt.h"
+#include "compress/defs.h"
+#include "compress/range_code.h"
 
 namespace stonedb {
 namespace compress {

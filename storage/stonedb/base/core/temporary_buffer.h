@@ -26,7 +26,7 @@
 #include <malloc.h>
 #include <algorithm>
 
-#include "deleter.h"
+#include "base/core/deleter.h"
 
 namespace stonedb {
 namespace base {

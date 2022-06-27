@@ -16,8 +16,9 @@
 */
 
 #include "group_distinct_table.h"
+
+#include "core/mi_iterator.h"
 #include "core/transaction.h"
-#include "mi_iterator.h"
 
 namespace stonedb {
 namespace core {

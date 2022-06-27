@@ -1062,7 +1062,8 @@ void RCAttr::CompareAndSetCurrentMax(const types::BString &tstmp, types::BString
 }
 
 types::BString RCAttr::MinS(Filter *f) {
-  if (f->IsEmpty() || !ATI::IsStringType(TypeName()) || NoObj() == 0 || NoObj() == NumOfNulls()) return types::BString();
+  if (f->IsEmpty() || !ATI::IsStringType(TypeName()) || NoObj() == 0 || NoObj() == NumOfNulls())
+    return types::BString();
   types::BString min;
   bool set = false;
   if (f->NoBlocks() != NoPack())
@@ -1095,7 +1096,8 @@ types::BString RCAttr::MinS(Filter *f) {
 }
 
 types::BString RCAttr::MaxS(Filter *f) {
-  if (f->IsEmpty() || !ATI::IsStringType(TypeName()) || NoObj() == 0 || NoObj() == NumOfNulls()) return types::BString();
+  if (f->IsEmpty() || !ATI::IsStringType(TypeName()) || NoObj() == 0 || NoObj() == NumOfNulls())
+    return types::BString();
 
   types::BString max;
   if (f->NoBlocks() != NoPack())

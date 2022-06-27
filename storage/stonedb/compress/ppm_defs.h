@@ -19,7 +19,7 @@
 #pragma once
 
 #include "common/assert.h"
-#include "defs.h"
+#include "compress/defs.h"
 
 namespace stonedb {
 namespace compress {

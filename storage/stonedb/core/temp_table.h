@@ -21,17 +21,17 @@
 #include <vector>
 
 #include "common/common_definitions.h"
-#include "cq_term.h"
-#include "descriptor.h"
+#include "core/cq_term.h"
+#include "core/descriptor.h"
+#include "core/just_a_table.h"
+#include "core/mi_updating_iterator.h"
+#include "core/multi_index.h"
+#include "core/mysql_expression.h"
+#include "core/pack_orderer.h"
+#include "core/parameterized_filter.h"
+#include "core/physical_column.h"
+#include "core/sorter_wrapper.h"
 #include "exporter/data_exporter.h"
-#include "just_a_table.h"
-#include "mi_updating_iterator.h"
-#include "multi_index.h"
-#include "mysql_expression.h"
-#include "pack_orderer.h"
-#include "parameterized_filter.h"
-#include "physical_column.h"
-#include "sorter_wrapper.h"
 #include "system/large_buffer.h"
 
 namespace stonedb {

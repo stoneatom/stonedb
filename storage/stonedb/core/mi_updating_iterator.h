@@ -18,7 +18,7 @@
 #define STONEDB_CORE_MI_UPDATING_ITERATOR_H_
 #pragma once
 
-#include "mi_iterator.h"
+#include "core/mi_iterator.h"
 
 namespace stonedb {
 namespace core {

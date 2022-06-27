@@ -19,8 +19,8 @@
 #define STONEDB_BASE_PACKET_DATA_SOURCE_H_
 #pragma once
 
-#include "core/reactor.h"
-#include "net/packet.h"
+#include "base/core/reactor.h"
+#include "base/net/packet.h"
 
 namespace stonedb {
 namespace base {

@@ -1349,14 +1349,12 @@ class MakeValue : public Arg {
 
 #if !defined(_MSC_VER) || defined(_NATIVE_WCHAR_T_DEFINED)
   MakeValue(typename WCharHelper<wchar_t, Char>::Supported value) { int_value = value; }
-  static uint64_t type(wchar_t) { return static_cast<uint64_t>(Arg::Type::CHAR);
-  }
+  static uint64_t type(wchar_t) { return static_cast<uint64_t>(Arg::Type::CHAR); }
 #endif
 
 #define FMT_MAKE_STR_VALUE(Type, TYPE)         \
   MakeValue(Type value) { set_string(value); } \
-  static uint64_t type(Type) { return static_cast<uint64_t>(TYPE); \
-  }
+  static uint64_t type(Type) { return static_cast<uint64_t>(TYPE); }
 
   FMT_MAKE_VALUE(char *, string.value, Arg::Type::CSTRING)
   FMT_MAKE_VALUE(const char *, string.value, Arg::Type::CSTRING)
@@ -1370,8 +1368,7 @@ class MakeValue : public Arg {
 
 #define FMT_MAKE_WSTR_VALUE(Type, TYPE)                                               \
   MakeValue(typename WCharHelper<Type, Char>::Supported value) { set_string(value); } \
-  static uint64_t type(Type) { return static_cast<uint64_t>(TYPE);                     \
-  }
+  static uint64_t type(Type) { return static_cast<uint64_t>(TYPE); }
 
   FMT_MAKE_WSTR_VALUE(wchar_t *, Arg::Type::WSTRING)
   FMT_MAKE_WSTR_VALUE(const wchar_t *, Arg::Type::WSTRING)

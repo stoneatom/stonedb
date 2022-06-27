@@ -24,8 +24,8 @@
 
 #include <netinet/tcp.h>
 
-#include "api.h"
-#include "packet.h"
+#include "base/net/api.h"
+#include "base/net/packet.h"
 
 #include "common/compile_opts.h"
 

@@ -25,8 +25,8 @@
 
 #include <experimental/optional>
 
-#include "future.h"
-#include "queue.h"
+#include "base/core/future.h"
+#include "base/core/queue.h"
 
 /// \defgroup fiber-module Fibers
 ///

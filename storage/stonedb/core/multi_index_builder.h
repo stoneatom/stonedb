@@ -22,13 +22,13 @@
 #include <memory>
 #include <vector>
 
-#include "bin_tools.h"
+#include "core/bin_tools.h"
+#include "core/cq_term.h"
+#include "core/dimension_group.h"
+#include "core/filter.h"
+#include "core/index_table.h"
 #include "core/mi_rough_sorter.h"
 #include "core/multi_index.h"
-#include "cq_term.h"
-#include "dimension_group.h"
-#include "filter.h"
-#include "index_table.h"
 
 namespace stonedb {
 namespace core {

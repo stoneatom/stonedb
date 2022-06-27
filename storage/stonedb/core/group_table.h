@@ -18,15 +18,15 @@
 #define STONEDB_CORE_GROUP_TABLE_H_
 #pragma once
 
-#include "aggregator_advanced.h"
-#include "aggregator_basic.h"
-#include "bin_tools.h"
-#include "column_bin_encoder.h"
-#include "filter.h"
-#include "group_distinct_cache.h"
-#include "group_distinct_table.h"
-#include "temp_table.h"
-#include "value_matching_table.h"
+#include "core/aggregator_advanced.h"
+#include "core/aggregator_basic.h"
+#include "core/bin_tools.h"
+#include "core/column_bin_encoder.h"
+#include "core/filter.h"
+#include "core/group_distinct_cache.h"
+#include "core/group_distinct_table.h"
+#include "core/temp_table.h"
+#include "core/value_matching_table.h"
 
 namespace stonedb {
 namespace core {

@@ -25,7 +25,7 @@
 #include <boost/algorithm/string.hpp>
 #include <regex>
 
-#include "core/align.h"
+#include "base/core/align.h"
 
 namespace stonedb {
 namespace base {
@@ -58,8 +58,8 @@ size_t calculate_memory(configuration c, size_t available_memory, float panic_fa
 #include <hwloc.h>
 #include <boost/range/irange.hpp>
 #include <unordered_map>
-#include "core/print.h"
-#include "util/defer.h"
+#include "base/ecore/print.h"
+#include "base/util/defer.h"
 
 namespace stonedb {
 namespace base {
@@ -307,7 +307,7 @@ unsigned nr_processing_units() {
 #else  // HAVE_HWLOC
 
 #include <unistd.h>
-#include "resource.h"
+#include "base/core/resource.h"
 
 namespace stonedb {
 namespace base {

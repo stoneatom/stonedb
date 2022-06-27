@@ -16,14 +16,15 @@
 */
 
 #include "joiner_hash.h"
+
 #include "common/assert.h"
 #include "core/engine.h"
 #include "core/join_thread_table.h"
 #include "core/mi_new_contents.h"
 #include "core/rough_multi_index.h"
+#include "core/temp_table.h"
 #include "core/transaction.h"
 #include "system/fet.h"
-#include "temp_table.h"
 #include "util/thread_pool.h"
 #include "vc/virtual_column.h"
 

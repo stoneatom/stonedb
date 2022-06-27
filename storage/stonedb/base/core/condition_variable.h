@@ -23,8 +23,8 @@
 #define STONEDB_BASE_COND_VAR_H_
 #pragma once
 
-#include "core/future_util.h"
-#include "core/semaphore.h"
+#include "base/core/future_util.h"
+#include "base/core/semaphore.h"
 
 namespace stonedb {
 namespace base {

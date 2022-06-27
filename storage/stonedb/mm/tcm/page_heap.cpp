@@ -31,7 +31,7 @@
 
 #include "page_heap.h"
 
-#include "tccommon.h"
+#include "mm/tcm/tccommon.h"
 
 namespace stonedb {
 namespace mm {

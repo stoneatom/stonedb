@@ -26,7 +26,7 @@
 #include <iostream>
 #include <map>
 
-#include "net/packet.h"
+#include "base/net/packet.h"
 
 namespace stonedb {
 namespace base {

@@ -22,8 +22,8 @@
 #include <vector>
 
 #include "core/ctask.h"
-#include "joiner.h"
-#include "multi_index_builder.h"
+#include "core/joiner.h"
+#include "core/multi_index_builder.h"
 
 namespace stonedb {
 namespace core {

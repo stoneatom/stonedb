@@ -24,7 +24,7 @@
 #define STONEDB_BASE_VECTOR_DATA_SINK_H_
 #pragma once
 
-#include "core/reactor.h"
+#include "base/core/reactor.h"
 
 namespace stonedb {
 namespace base {

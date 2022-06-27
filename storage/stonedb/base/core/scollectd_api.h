@@ -6,8 +6,8 @@
 #define STONEDB_BASE_SCOLLECTD_API_H_
 #pragma once
 
-#include "core/metrics_api.h"
-#include "core/scollectd.h"
+#include "base/core/metrics_api.h"
+#include "base/core/scollectd.h"
 
 namespace stonedb {
 namespace base {

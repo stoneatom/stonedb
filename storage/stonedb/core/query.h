@@ -18,10 +18,10 @@
 #define STONEDB_CORE_QUERY_H_
 #pragma once
 
-#include "column_type.h"
-#include "item_sdbfield.h"
-#include "joiner.h"
-#include "mysql_expression.h"
+#include "core/column_type.h"
+#include "core/item_sdbfield.h"
+#include "core/joiner.h"
+#include "core/mysql_expression.h"
 
 namespace stonedb {
 namespace core {

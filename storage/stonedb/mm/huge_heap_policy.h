@@ -20,7 +20,7 @@
 
 #include <string>
 
-#include "tcm_heap_policy.h"
+#include "mm/tcm_heap_policy.h"
 
 namespace stonedb {
 namespace mm {

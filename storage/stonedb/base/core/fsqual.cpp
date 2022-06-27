@@ -34,8 +34,8 @@
 #include <iostream>
 #include <type_traits>
 
-#include "posix.h"
-#include "util/defer.h"
+#include "base/core/posix.h"
+#include "base/util/defer.h"
 
 namespace stonedb {
 namespace base {
