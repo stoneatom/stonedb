@@ -15,7 +15,7 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "rc_system.h"
+#include "system/rc_system.h"
 
 // Variables to show config through mysql 'show variables' command
 char stonedb_sysvar_pushdown;

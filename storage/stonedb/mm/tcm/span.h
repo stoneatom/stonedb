@@ -32,8 +32,8 @@
 #define STONEDB_MM_SPAN_H_
 #pragma once
 
-#include "page_heap_allocator.h"
-#include "tccommon.h"
+#include "mm/tcm/page_heap_allocator.h"
+#include "mm/tcm/tccommon.h"
 
 namespace stonedb {
 namespace mm {

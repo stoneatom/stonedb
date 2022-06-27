@@ -16,7 +16,7 @@
 */
 
 #include "rough_multi_index.h"
-#include "rough_value.h"
+#include "core/rough_value.h"
 
 namespace stonedb {
 namespace core {

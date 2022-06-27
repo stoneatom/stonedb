@@ -18,9 +18,9 @@
 #define STONEDB_CORE_ROUGH_MULTI_INDEX_H_
 #pragma once
 
-#include "bin_tools.h"
-#include "cq_term.h"
-#include "filter.h"
+#include "core/bin_tools.h"
+#include "core/cq_term.h"
+#include "core/filter.h"
 
 namespace stonedb {
 namespace core {

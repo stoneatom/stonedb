@@ -34,7 +34,7 @@ void ConstExpressionColumn::RequestEval([[maybe_unused]] const core::MIIterator 
     last_val = expr_->Evaluate();
 }
 
-double ConstExpressionColumn::GetValueDoubleImpl ([[maybe_unused]] const core::MIIterator &mit) {
+double ConstExpressionColumn::GetValueDoubleImpl([[maybe_unused]] const core::MIIterator &mit) {
   DEBUG_ASSERT(core::ATI::IsNumericType(TypeName()));
   double val = 0;
   if (last_val->IsNull()) return NULL_VALUE_D;
@@ -63,8 +63,8 @@ double ConstExpressionColumn::GetValueDoubleImpl ([[maybe_unused]] const core::M
   return val;
 }
 
-types::RCValueObject ConstExpressionColumn::GetValueImpl ([[maybe_unused]] const core::MIIterator &mit,
-                                                       bool lookup_to_num) {
+types::RCValueObject ConstExpressionColumn::GetValueImpl([[maybe_unused]] const core::MIIterator &mit,
+                                                         bool lookup_to_num) {
   if (last_val->IsNull()) return types::RCValueObject();
 
   if (core::ATI::IsStringType((TypeName()))) {
@@ -81,7 +81,7 @@ types::RCValueObject ConstExpressionColumn::GetValueImpl ([[maybe_unused]] const
   return types::RCValueObject();
 }
 
-int64_t ConstExpressionColumn::GetSumImpl (const core::MIIterator &mit, bool &nonnegative) {
+int64_t ConstExpressionColumn::GetSumImpl(const core::MIIterator &mit, bool &nonnegative) {
   DEBUG_ASSERT(!core::ATI::IsStringType(TypeName()));
   nonnegative = true;
   if (last_val->IsNull())
@@ -95,42 +95,42 @@ int64_t ConstExpressionColumn::GetSumImpl (const core::MIIterator &mit, bool &no
   return (last_val->Get64() * mit.GetPackSizeLeft());
 }
 
-types::BString ConstExpressionColumn::GetMinStringImpl ([[maybe_unused]] const core::MIIterator &mit) {
+types::BString ConstExpressionColumn::GetMinStringImpl([[maybe_unused]] const core::MIIterator &mit) {
   types::BString s;
   last_val->GetBString(s);
   return s;
 }
 
-types::BString ConstExpressionColumn::GetMaxStringImpl ([[maybe_unused]] const core::MIIterator &mit) {
+types::BString ConstExpressionColumn::GetMaxStringImpl([[maybe_unused]] const core::MIIterator &mit) {
   types::BString s;
   last_val->GetBString(s);
   return s;
 }
 
-int64_t ConstExpressionColumn::GetApproxDistValsImpl ([[maybe_unused]] bool incl_nulls,
-                                                   [[maybe_unused]] core::RoughMultiIndex *rough_mind) {
+int64_t ConstExpressionColumn::GetApproxDistValsImpl([[maybe_unused]] bool incl_nulls,
+                                                     [[maybe_unused]] core::RoughMultiIndex *rough_mind) {
   return 1;
 }
 
-size_t ConstExpressionColumn::MaxStringSizeImpl ()  // maximal byte string length
-                                                 // in column
+size_t ConstExpressionColumn::MaxStringSizeImpl()  // maximal byte string length
+                                                   // in column
 {
   return ct.GetPrecision();
 }
 
-core::PackOntologicalStatus ConstExpressionColumn::GetPackOntologicalStatusImpl (
+core::PackOntologicalStatus ConstExpressionColumn::GetPackOntologicalStatusImpl(
     [[maybe_unused]] const core::MIIterator &mit) {
   if (last_val->IsNull()) return core::PackOntologicalStatus::NULLS_ONLY;
   return core::PackOntologicalStatus::UNIFORM;
 }
 
-void ConstExpressionColumn::EvaluatePackImpl ([[maybe_unused]] core::MIUpdatingIterator &mit,
-                                           [[maybe_unused]] core::Descriptor &desc) {
+void ConstExpressionColumn::EvaluatePackImpl([[maybe_unused]] core::MIUpdatingIterator &mit,
+                                             [[maybe_unused]] core::Descriptor &desc) {
   DEBUG_ASSERT(0);  // comparison of a const with a const should be simplified earlier
 }
 
-common::RSValue ConstExpressionColumn::RoughCheckImpl ([[maybe_unused]] const core::MIIterator &mit,
-                                                    [[maybe_unused]] core::Descriptor &d) {
+common::RSValue ConstExpressionColumn::RoughCheckImpl([[maybe_unused]] const core::MIIterator &mit,
+                                                      [[maybe_unused]] core::Descriptor &d) {
   return common::RSValue::RS_SOME;  // not implemented
 }
 

@@ -15,7 +15,7 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "data_stream.h"
+#include "compress/data_stream.h"
 
 namespace stonedb {
 namespace compress {

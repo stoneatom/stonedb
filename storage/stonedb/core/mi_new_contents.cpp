@@ -17,10 +17,10 @@
 
 #include "mi_new_contents.h"
 
-#include "dimension_group_virtual.h"
-#include "joiner.h"
-#include "mi_rough_sorter.h"
-#include "multi_index.h"
+#include "core/dimension_group_virtual.h"
+#include "core/joiner.h"
+#include "core/mi_rough_sorter.h"
+#include "core/multi_index.h"
 
 namespace stonedb {
 namespace core {

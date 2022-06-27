@@ -18,8 +18,8 @@
 #define STONEDB_CORE_VALUE_MATCHING_TABLE_H_
 #pragma once
 
-#include "bin_tools.h"
-#include "filter.h"
+#include "core/bin_tools.h"
+#include "core/filter.h"
 #include "mm/traceable_object.h"
 
 namespace stonedb {

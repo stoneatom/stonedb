@@ -18,9 +18,9 @@
 #include "multi_index_builder.h"
 
 #include "core/dimension_group_multiple.h"
-#include "joiner.h"
-#include "mi_rough_sorter.h"
-#include "multi_index.h"
+#include "core/joiner.h"
+#include "core/mi_rough_sorter.h"
+#include "core/multi_index.h"
 
 namespace stonedb {
 namespace core {

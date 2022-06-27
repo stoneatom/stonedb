@@ -18,11 +18,11 @@
 #define STONEDB_CORE_MULTI_INDEX_H_
 #pragma once
 
-#include "bin_tools.h"
-#include "cq_term.h"
-#include "dimension_group.h"
-#include "filter.h"
-#include "index_table.h"
+#include "core/bin_tools.h"
+#include "core/cq_term.h"
+#include "core/dimension_group.h"
+#include "core/filter.h"
+#include "core/index_table.h"
 
 namespace stonedb {
 namespace core {

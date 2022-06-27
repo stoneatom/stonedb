@@ -23,7 +23,7 @@
 #define STONEDB_BASE_RWLOCK_H_
 #pragma once
 
-#include "semaphore.h"
+#include "base/core/semaphore.h"
 
 namespace stonedb {
 namespace base {

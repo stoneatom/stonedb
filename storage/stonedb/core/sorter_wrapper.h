@@ -18,10 +18,10 @@
 #define STONEDB_CORE_SORTER_WRAPPER_H_
 #pragma once
 
-#include "column_bin_encoder.h"
-#include "mi_iterator.h"
-#include "multi_index.h"
-#include "sorter3.h"
+#include "core/column_bin_encoder.h"
+#include "core/mi_iterator.h"
+#include "core/multi_index.h"
+#include "core/sorter3.h"
 #include "vc/virtual_column.h"
 
 namespace stonedb {

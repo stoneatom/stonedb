@@ -20,8 +20,8 @@
 
 #include <set>
 
-#include "cq_term.h"
-#include "descriptor.h"
+#include "core/cq_term.h"
+#include "core/descriptor.h"
 
 namespace stonedb {
 namespace core {

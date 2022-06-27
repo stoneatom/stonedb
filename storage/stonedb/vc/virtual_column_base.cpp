@@ -20,8 +20,8 @@
 #include "core/compiled_query.h"
 #include "core/mysql_expression.h"
 #include "core/rc_attr.h"
-#include "in_set_column.h"
-#include "subselect_column.h"
+#include "vc/in_set_column.h"
+#include "vc/subselect_column.h"
 
 namespace stonedb {
 namespace vcolumn {
@@ -118,7 +118,7 @@ void VirtualColumnBase::SetLocalMinMax(int64_t loc_min, int64_t loc_max) {
 }
 
 int64_t VirtualColumnBase::RoughMax() {
-  int64_t res = RoughMaxImpl ();
+  int64_t res = RoughMaxImpl();
   DEBUG_ASSERT(res != common::NULL_VALUE_64);
 
   if (Type().IsFloat()) {
@@ -131,7 +131,7 @@ int64_t VirtualColumnBase::RoughMax() {
 }
 
 int64_t VirtualColumnBase::RoughMin() {
-  int64_t res = RoughMinImpl ();
+  int64_t res = RoughMinImpl();
   DEBUG_ASSERT(res != common::NULL_VALUE_64);
   if (Type().IsFloat()) {
     if (*(double *)&res < *(double *)&vc_min_val && vc_min_val != common::MINUS_INF_64 &&
@@ -143,7 +143,7 @@ int64_t VirtualColumnBase::RoughMin() {
 }
 
 int64_t VirtualColumnBase::GetApproxDistVals(bool incl_nulls, core::RoughMultiIndex *rough_mind) {
-  int64_t res = GetApproxDistValsImpl (incl_nulls, rough_mind);
+  int64_t res = GetApproxDistValsImpl(incl_nulls, rough_mind);
   if (vc_dist_vals != common::NULL_VALUE_64) {
     int64_t local_res = vc_dist_vals;
     if (incl_nulls && IsNullsPossible()) local_res++;
@@ -163,7 +163,7 @@ int64_t VirtualColumnBase::GetApproxDistVals(bool incl_nulls, core::RoughMultiIn
 }
 
 int64_t VirtualColumnBase::GetMaxInt64(const core::MIIterator &mit) {
-  int64_t res = GetMaxInt64Impl (mit);
+  int64_t res = GetMaxInt64Impl(mit);
   DEBUG_ASSERT(res != common::NULL_VALUE_64);
   if (Type().IsFloat()) {
     if (*(double *)&res > *(double *)&vc_max_val && vc_max_val != common::PLUS_INF_64 &&
@@ -175,7 +175,7 @@ int64_t VirtualColumnBase::GetMaxInt64(const core::MIIterator &mit) {
 }
 
 int64_t VirtualColumnBase::GetMinInt64(const core::MIIterator &mit) {
-  int64_t res = GetMinInt64Impl (mit);
+  int64_t res = GetMinInt64Impl(mit);
   DEBUG_ASSERT(res != common::NULL_VALUE_64);
   if (Type().IsFloat()) {
     if (*(double *)&res < *(double *)&vc_min_val && vc_min_val != common::MINUS_INF_64 &&
@@ -186,10 +186,10 @@ int64_t VirtualColumnBase::GetMinInt64(const core::MIIterator &mit) {
   return res;
 }
 
-int64_t VirtualColumnBase::GetApproxSumImpl (const core::MIIterator &mit, bool &nonnegative) {
-  int64_t res = GetSumImpl (mit, nonnegative);
+int64_t VirtualColumnBase::GetApproxSumImpl(const core::MIIterator &mit, bool &nonnegative) {
+  int64_t res = GetSumImpl(mit, nonnegative);
   if (res != common::NULL_VALUE_64) return res;
-  res = GetMaxInt64Impl (mit);
+  res = GetMaxInt64Impl(mit);
 
   int64_t n = mit.GetPackSizeLeft();
   if (res == common::PLUS_INF_64 || n == common::NULL_VALUE_64) return common::NULL_VALUE_64;
@@ -211,7 +211,7 @@ int64_t VirtualColumnBase::DecodeValueAsDouble(int64_t code) {
   return *(int64_t *)(&res);
 }
 
-common::RSValue VirtualColumnBase::RoughCheckImpl (const core::MIIterator &mit, core::Descriptor &d) {
+common::RSValue VirtualColumnBase::RoughCheckImpl(const core::MIIterator &mit, core::Descriptor &d) {
   // default implementation
   if (d.op == common::Operator::O_FALSE) return common::RSValue::RS_NONE;
   if (d.op == common::Operator::O_TRUE) return common::RSValue::RS_ALL;

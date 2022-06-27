@@ -30,7 +30,7 @@
 #include <mutex>
 #include <unordered_map>
 
-#include "core/sstring.h"
+#include "base/core/sstring.h"
 
 /// \addtogroup logging
 /// @{

@@ -18,7 +18,7 @@
 #include "mysql_expression.h"
 
 #include "common/assert.h"
-#include "compilation_tools.h"
+#include "core/compilation_tools.h"
 #include "core/engine.h"
 #include "core/transaction.h"
 #include "types/value_parser4txt.h"

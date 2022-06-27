@@ -17,7 +17,7 @@
 
 #include "value_matching_hashtable.h"
 
-#include "bin_tools.h"
+#include "core/bin_tools.h"
 
 namespace stonedb {
 namespace core {

@@ -29,8 +29,8 @@
 #include <experimental/optional>
 #include <functional>
 
-#include "future.h"
-#include "timer_set.h"
+#include "base/core/future.h"
+#include "base/core/timer_set.h"
 
 namespace stonedb {
 namespace base {

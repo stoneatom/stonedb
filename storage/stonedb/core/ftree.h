@@ -20,7 +20,7 @@
 #define STONEDB_CORE_FTREE_H_
 #pragma once
 
-#include "bin_tools.h"
+#include "core/bin_tools.h"
 #include "mm/traceable_object.h"
 #include "types/rc_data_types.h"
 #include "util/fs.h"

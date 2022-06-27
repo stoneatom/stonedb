@@ -31,12 +31,12 @@
 #include <experimental/optional>
 #include <system_error>
 
-#include "core/align.h"
-#include "core/fair_queue.h"
-#include "core/future_util.h"
-#include "core/shared_ptr.h"
-#include "sstring.h"
-#include "stream.h"
+#include "base/core/align.h"
+#include "base/core/fair_queue.h"
+#include "base/core/future_util.h"
+#include "base/core/shared_ptr.h"
+#include "base/core/sstring.h"
+#include "base/core/stream.h"
 
 namespace stonedb {
 namespace base {

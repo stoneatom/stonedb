@@ -23,7 +23,7 @@
 #include <vector>
 
 #include "common/assert.h"
-#include "ppm_defs.h"
+#include "compress/ppm_defs.h"
 
 namespace stonedb {
 namespace compress {

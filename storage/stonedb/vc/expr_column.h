@@ -65,8 +65,8 @@ class ExpressionColumn : public VirtualColumn {
   void SetParamTypes(core::MysqlExpression::TypOfVars *types) override;
   bool IsConst() const override { return false; }
   bool IsDeterministic() override { return expr_->IsDeterministic(); }
-  int64_t GetNotNullValueInt64(const core::MIIterator &mit) override { return GetValueInt64Impl (mit); }
-  void GetNotNullValueString(types::BString &s, const core::MIIterator &mit) override { GetValueStringImpl (s, mit); }
+  int64_t GetNotNullValueInt64(const core::MIIterator &mit) override { return GetValueInt64Impl(mit); }
+  void GetNotNullValueString(types::BString &s, const core::MIIterator &mit) override { GetValueStringImpl(s, mit); }
   core::MysqlExpression::StringType GetStringType() { return expr_->GetStringType(); }
 
   /////////////// Special functions for expressions on lookup
@@ -80,39 +80,39 @@ class ExpressionColumn : public VirtualColumn {
 
   /////////////// Data access //////////////////////
  protected:
-  int64_t GetValueInt64Impl (const core::MIIterator &) override;
-  bool IsNullImpl (const core::MIIterator &) override;
-  void GetValueStringImpl (types::BString &, const core::MIIterator &) override;
-  double GetValueDoubleImpl (const core::MIIterator &) override;
-  types::RCValueObject GetValueImpl (const core::MIIterator &, bool) override;
+  int64_t GetValueInt64Impl(const core::MIIterator &) override;
+  bool IsNullImpl(const core::MIIterator &) override;
+  void GetValueStringImpl(types::BString &, const core::MIIterator &) override;
+  double GetValueDoubleImpl(const core::MIIterator &) override;
+  types::RCValueObject GetValueImpl(const core::MIIterator &, bool) override;
 
-  int64_t GetMinInt64Impl (const core::MIIterator &) override;
-  int64_t GetMaxInt64Impl (const core::MIIterator &) override;
-  int64_t RoughMinImpl () override;
-  int64_t RoughMaxImpl () override;
+  int64_t GetMinInt64Impl(const core::MIIterator &) override;
+  int64_t GetMaxInt64Impl(const core::MIIterator &) override;
+  int64_t RoughMinImpl() override;
+  int64_t RoughMaxImpl() override;
 
-  types::BString GetMaxStringImpl (const core::MIIterator &) override;
-  types::BString GetMinStringImpl (const core::MIIterator &) override;
-  int64_t GetNumOfNullsImpl (const core::MIIterator &, bool val_nulls_possible) override;
+  types::BString GetMaxStringImpl(const core::MIIterator &) override;
+  types::BString GetMinStringImpl(const core::MIIterator &) override;
+  int64_t GetNumOfNullsImpl(const core::MIIterator &, bool val_nulls_possible) override;
 
-  bool IsRoughNullsOnlyImpl () const override { return false; }
-  bool IsNullsPossibleImpl ([[maybe_unused]] bool val_nulls_possible) override { return true; }
-  int64_t GetSumImpl (const core::MIIterator &, bool &nonnegative) override;
-  bool IsDistinctImpl () override;
-  int64_t GetApproxDistValsImpl (bool incl_nulls, core::RoughMultiIndex *rough_mind) override;
-  size_t MaxStringSizeImpl () override;  // maximal byte string length in column
+  bool IsRoughNullsOnlyImpl() const override { return false; }
+  bool IsNullsPossibleImpl([[maybe_unused]] bool val_nulls_possible) override { return true; }
+  int64_t GetSumImpl(const core::MIIterator &, bool &nonnegative) override;
+  bool IsDistinctImpl() override;
+  int64_t GetApproxDistValsImpl(bool incl_nulls, core::RoughMultiIndex *rough_mind) override;
+  size_t MaxStringSizeImpl() override;  // maximal byte string length in column
 
-  core::PackOntologicalStatus GetPackOntologicalStatusImpl (const core::MIIterator &) override;
-  void EvaluatePackImpl (core::MIUpdatingIterator &mit, core::Descriptor &) override;
-  virtual common::ErrorCode EvaluateOnIndexImpl ([[maybe_unused]] core::MIUpdatingIterator &mit, core::Descriptor &,
-                                              [[maybe_unused]] int64_t limit) override {
+  core::PackOntologicalStatus GetPackOntologicalStatusImpl(const core::MIIterator &) override;
+  void EvaluatePackImpl(core::MIUpdatingIterator &mit, core::Descriptor &) override;
+  virtual common::ErrorCode EvaluateOnIndexImpl([[maybe_unused]] core::MIUpdatingIterator &mit, core::Descriptor &,
+                                                [[maybe_unused]] int64_t limit) override {
     STONEDB_ERROR("Common path shall be used in case of ExpressionColumn.");
     return common::ErrorCode::FAILED;
   }
 
   const core::MysqlExpression::sdbfields_cache_t &GetSDBItems() const override { return expr_->GetSDBItems(); }
   core::MysqlExpression *expr_;  //!= NULL if ExpressionColumn encapsulates an expression. Note - a
-                                //! constant is an expression
+                                 //! constant is an expression
 
  private:
   /*! \brief Set variable buffers with values for a given iterator.

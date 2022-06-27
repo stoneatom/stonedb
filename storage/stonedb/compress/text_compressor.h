@@ -20,8 +20,8 @@
 
 #include <vector>
 
-#include "inc_wgraph.h"
-#include "ppm.h"
+#include "compress/inc_wgraph.h"
+#include "compress/ppm.h"
 
 namespace stonedb {
 namespace compress {

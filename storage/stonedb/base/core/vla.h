@@ -29,7 +29,7 @@
 #include <new>
 #include <type_traits>
 
-#include "core/reactor.h"
+#include "base/core/reactor.h"
 
 namespace stonedb {
 namespace base {

@@ -28,10 +28,10 @@
 #include <functional>
 #include <map>
 
-#include "core/metrics_registration.h"
-#include "core/metrics_types.h"
-#include "core/shared_ptr.h"
-#include "sstring.h"
+#include "base/core/metrics_registration.h"
+#include "base/core/metrics_types.h"
+#include "base/core/shared_ptr.h"
+#include "base/core/sstring.h"
 
 /*! \file metrics.hh
  *  \brief header for metrics creation.

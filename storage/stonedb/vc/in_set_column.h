@@ -22,7 +22,7 @@
 #include "core/pack_guardian.h"
 #include "core/temp_table.h"
 #include "core/value_set.h"
-#include "multi_value_column.h"
+#include "vc/multi_value_column.h"
 
 namespace stonedb {
 namespace core {
@@ -106,67 +106,67 @@ class InSetColumn : public MultiValColumn {
   virtual bool PrepareValueSet(const core::MIIterator &mit);
 
  protected:
-  int64_t NoValuesImpl (core::MIIterator const &mit) override;
-  int64_t AtLeastNoDistinctValuesImpl (const core::MIIterator &mit, int64_t const at_least) override;
-  bool ContainsNullImpl (const core::MIIterator &mit) override;
-  types::RCValueObject GetSetMinImpl (const core::MIIterator &mit) override;
-  types::RCValueObject GetSetMaxImpl (const core::MIIterator &mit) override;
-  std::unique_ptr<IteratorInterface> BeginImpl (const core::MIIterator &) override;
-  std::unique_ptr<IteratorInterface> EndImpl (const core::MIIterator &) override;
-  common::Tribool ContainsImpl (const core::MIIterator &, const types::RCDataType &) override;
-  common::Tribool Contains64Impl (const core::MIIterator &,
-                               int64_t) override;  // easy case for integers
-  common::Tribool ContainsStringImpl (const core::MIIterator &,
-                                   types::BString &) override;  // easy case for encoded strings
-  void SetExpectedTypeImpl (const core::ColumnType &) override;
-  bool IsEmptyImpl (const core::MIIterator &) override;
+  int64_t NoValuesImpl(core::MIIterator const &mit) override;
+  int64_t AtLeastNoDistinctValuesImpl(const core::MIIterator &mit, int64_t const at_least) override;
+  bool ContainsNullImpl(const core::MIIterator &mit) override;
+  types::RCValueObject GetSetMinImpl(const core::MIIterator &mit) override;
+  types::RCValueObject GetSetMaxImpl(const core::MIIterator &mit) override;
+  std::unique_ptr<IteratorInterface> BeginImpl(const core::MIIterator &) override;
+  std::unique_ptr<IteratorInterface> EndImpl(const core::MIIterator &) override;
+  common::Tribool ContainsImpl(const core::MIIterator &, const types::RCDataType &) override;
+  common::Tribool Contains64Impl(const core::MIIterator &,
+                                 int64_t) override;  // easy case for integers
+  common::Tribool ContainsStringImpl(const core::MIIterator &,
+                                     types::BString &) override;  // easy case for encoded strings
+  void SetExpectedTypeImpl(const core::ColumnType &) override;
+  bool IsEmptyImpl(const core::MIIterator &) override;
 
-  bool IsNullsPossibleImpl ([[maybe_unused]] bool val_nulls_possible) override {
+  bool IsNullsPossibleImpl([[maybe_unused]] bool val_nulls_possible) override {
     DEBUG_ASSERT(!"To be implemented.");
     return true;
   }
 
-  int64_t GetMinInt64Impl ([[maybe_unused]] const core::MIIterator &mit) override {
+  int64_t GetMinInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
     // DEBUG_ASSERT( !"To be implemented." );
     return common::MINUS_INF_64;
   }
 
-  int64_t GetMaxInt64Impl ([[maybe_unused]] const core::MIIterator &mit) override {
+  int64_t GetMaxInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
     // DEBUG_ASSERT( !"To be implemented." );
     return common::PLUS_INF_64;
   }
 
-  int64_t RoughMinImpl () override {
+  int64_t RoughMinImpl() override {
     // DEBUG_ASSERT( !"To be implemented." );
     return common::MINUS_INF_64;
   }
 
-  int64_t RoughMaxImpl () override {
+  int64_t RoughMaxImpl() override {
     // DEBUG_ASSERT( !"To be implemented." );
     return common::PLUS_INF_64;
   }
 
-  types::BString GetMaxStringImpl (const core::MIIterator &mit) override;
-  types::BString GetMinStringImpl (const core::MIIterator &mit) override;
+  types::BString GetMaxStringImpl(const core::MIIterator &mit) override;
+  types::BString GetMinStringImpl(const core::MIIterator &mit) override;
 
-  bool IsDistinctImpl () override {
+  bool IsDistinctImpl() override {
     DEBUG_ASSERT(!"To be implemented.");
     return (false);
   }
 
-  size_t MaxStringSizeImpl () override;
-  core::PackOntologicalStatus GetPackOntologicalStatusImpl (const core::MIIterator &mit) override;
-  void EvaluatePackImpl (core::MIUpdatingIterator &mit, core::Descriptor &desc) override;
-  virtual common::ErrorCode EvaluateOnIndexImpl ([[maybe_unused]] core::MIUpdatingIterator &mit,
-                                              [[maybe_unused]] core::Descriptor &desc,
-                                              [[maybe_unused]] int64_t limit) override {
+  size_t MaxStringSizeImpl() override;
+  core::PackOntologicalStatus GetPackOntologicalStatusImpl(const core::MIIterator &mit) override;
+  void EvaluatePackImpl(core::MIUpdatingIterator &mit, core::Descriptor &desc) override;
+  virtual common::ErrorCode EvaluateOnIndexImpl([[maybe_unused]] core::MIUpdatingIterator &mit,
+                                                [[maybe_unused]] core::Descriptor &desc,
+                                                [[maybe_unused]] int64_t limit) override {
     STONEDB_ERROR("To be implemented.");
     return common::ErrorCode::FAILED;
   }
 
   const core::MysqlExpression::sdbfields_cache_t &GetSDBItems() const override { return sdbitems; }
-  bool CopyCondImpl (const core::MIIterator &mit, types::CondArray &condition, DTCollation coll) override;
-  bool CopyCondImpl (const core::MIIterator &mit, std::shared_ptr<utils::Hash64> &condition, DTCollation coll) override;
+  bool CopyCondImpl(const core::MIIterator &mit, types::CondArray &condition, DTCollation coll) override;
+  bool CopyCondImpl(const core::MIIterator &mit, std::shared_ptr<utils::Hash64> &condition, DTCollation coll) override;
 
  private:
   mutable bool full_cache;

@@ -18,7 +18,7 @@
 #define STONEDB_COMPRESS_BIT_STREAM_COMPRESSOR_H_
 #pragma once
 
-#include "arith_coder.h"
+#include "compress/arith_coder.h"
 
 namespace stonedb {
 namespace compress {

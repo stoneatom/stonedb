@@ -24,9 +24,9 @@ low-level mechanisms
 
 #include "core/ctask.h"
 #include "core/engine.h"
+#include "core/mi_iterator.h"
+#include "core/pack_guardian.h"
 #include "core/transaction.h"
-#include "mi_iterator.h"
-#include "pack_guardian.h"
 #include "system/fet.h"
 #include "system/rc_system.h"
 

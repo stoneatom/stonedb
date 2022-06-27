@@ -18,7 +18,7 @@
 #define STONEDB_COMMON_TXT_DATA_FORMAT_H_
 #pragma once
 
-#include "data_format.h"
+#include "common/data_format.h"
 
 namespace stonedb {
 namespace common {

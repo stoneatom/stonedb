@@ -26,7 +26,7 @@
 #include <memory>
 #include <tuple>
 #include <utility>
-#include "apply.h"
+#include "base/core/apply.h"
 
 namespace stonedb {
 namespace base {

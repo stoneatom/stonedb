@@ -25,7 +25,7 @@
 #include <algorithm>
 #include <cctype>
 #include <iostream>
-#include "core/reactor.h"
+#include "base/core/reactor.h"
 
 namespace stonedb {
 namespace base {

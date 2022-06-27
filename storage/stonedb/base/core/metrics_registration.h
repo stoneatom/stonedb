@@ -23,7 +23,7 @@
 #define STONEDB_BASE_METRICS_REGISTRATION_H_
 #pragma once
 
-#include "core/sstring.h"
+#include "base/core/sstring.h"
 
 /*!
  * \file metrics_registration.hh

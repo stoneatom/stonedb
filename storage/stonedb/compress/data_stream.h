@@ -21,7 +21,7 @@
 #include <cstring>
 
 #include "common/assert.h"
-#include "defs.h"
+#include "compress/defs.h"
 
 namespace stonedb {
 

@@ -18,8 +18,8 @@
 #define STONEDB_CORE_JOINER_SORT_H_
 #pragma once
 
-#include "column_bin_encoder.h"
-#include "joiner.h"
+#include "core/column_bin_encoder.h"
+#include "core/joiner.h"
 #include "mm/traceable_object.h"
 #include "system/cacheable_item.h"
 

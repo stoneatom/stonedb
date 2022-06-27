@@ -33,13 +33,13 @@
 #include <memory>
 #include <type_traits>
 
-#include "do_with.h"
-#include "future.h"
-#include "future_util.h"
-#include "reactor.h"
-#include "scheduling.h"
-#include "thread_impl.h"
-#include "timer.h"
+#include "base/core/do_with.h"
+#include "base/core/future.h"
+#include "base/core/future_util.h"
+#include "base/core/reactor.h"
+#include "base/core/scheduling.h"
+#include "base/core/thread_impl.h"
+#include "base/core/timer.h"
 
 /// \defgroup thread-module Seastar threads
 /// Seastar threads provide an execution environment where blocking

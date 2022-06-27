@@ -17,7 +17,7 @@
 
 #include <cmath>
 
-#include "bin_tools.h"
+#include "core/bin_tools.h"
 #include "system/rc_system.h"
 
 namespace stonedb {
