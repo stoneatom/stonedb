@@ -404,7 +404,7 @@ inline bool has_dup_key(std::shared_ptr<index::RCTableIndex> &indextab, TABLE *t
  case also applied to write_row().
 
  Called from item_sum.cc, item_sum.cc, sql_acl.cc, sql_insert.cc,
- sql_insert.cc, sql_select.cc, sql_table.cc, sql_udf.cc, and sql_update.cc.
+ sql_select.cc, sql_table.cc, sql_udf.cc, and sql_update.cc.
  */
 int StonedbHandler::write_row([[maybe_unused]] uchar *buf) {
   int ret = 1;
