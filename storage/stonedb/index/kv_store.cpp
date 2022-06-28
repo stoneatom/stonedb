@@ -43,11 +43,11 @@ void KVStore::Init() {
   db_option.max_subcompactions = max_compact_threads;
   db_option.env->SetBackgroundThreads(max_compact_threads, rocksdb::Env::Priority::LOW);
   db_option.statistics = rocksdb::CreateDBStatistics();
-  // get column family names from manfest file
+  // get column family names from manifest file
   rocksdb::Status status = rocksdb::DB::ListColumnFamilies(db_option, rocksdb_datadir, &cf_names);
   if (!status.ok() &&
       ((status.subcode() == rocksdb::Status::kNone) || (status.subcode() == rocksdb::Status::kPathNotFound))) {
-    STONEDB_LOG(LogCtl_Level::INFO, "First init rocksdb, create default cloum family");
+    STONEDB_LOG(LogCtl_Level::INFO, "First init rocksdb, create default colunm family");
     cf_names.push_back(DEFAULT_CF_NAME);
   }
 

@@ -35,7 +35,7 @@ class Value;
 //  0 - trivial data: all values are derivable from the statistics, or nulls
 //  only,
 //      the pack physically doesn't exist, only statistics
-//  1 - unloaded (on disc)
+//  1 - unloaded (on disk)
 //  2 - loaded to memory
 //  3 - no data yet, empty pack
 
