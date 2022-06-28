@@ -27,7 +27,7 @@ mkdir tmp
 echo "run mysql_install_db ..."
 sleep 3
 chown -R mysql:mysql *
-./scripts/${mysql_install_db_script} --defaults-file=./stonedb.cnf --user=mysql --basedir=/stonedb56/install --datadir=/stonedb56/install/data
+./scripts/${mysql_install_db_script} --defaults-file=./my.cnf --user=mysql --basedir=/stonedb56/install --datadir=/stonedb56/install/data
 
 echo "start the instance..."
 sleep 3

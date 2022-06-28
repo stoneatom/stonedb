@@ -332,7 +332,7 @@ ELSE()
   # On Unix, most of the files end up in the bin directory
   SET(mysql_config_COMPONENT COMPONENT Development)
   SET(BIN_SCRIPTS
-    msql2mysql
+    mysql2mysql
     mysql_config
     mysql_fix_extensions
     mysql_setpermission
