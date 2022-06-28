@@ -3,13 +3,13 @@ copyright info
 */
 #include <iostream>
 
-#include "core/app_template.h"
-#include "core/distributed.h"
-#include "core/reactor.h"
-#include "core/sleep.h"
-#include "core/thread.h"
+#include "base/core/app_template.h"
+#include "base/core/distributed.h"
+#include "base/core/reactor.h"
+#include "base/core/sleep.h"
+#include "base/core/thread.h"
 
-#include "task_executor.h"
+#include "async_tests/task_executor.h"
 
 using namespace std::chrono_literals;
 using namespace stonedb;

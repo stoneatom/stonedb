@@ -35,8 +35,8 @@
 
 #include <algorithm>
 #include <memory>
-#include "bitops.h"
-#include "transfer.h"
+#include "base/core/bitops.h"
+#include "base/core/transfer.h"
 
 namespace stonedb {
 namespace base {

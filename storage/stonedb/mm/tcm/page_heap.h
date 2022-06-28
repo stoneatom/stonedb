@@ -33,9 +33,9 @@
 #pragma once
 
 #include <list>
-#include "pagemap.h"
-#include "span.h"
-#include "tccommon.h"
+#include "mm/tcm/pagemap.h"
+#include "mm/tcm/span.h"
+#include "mm/tcm/tccommon.h"
 
 namespace stonedb {
 namespace mm {

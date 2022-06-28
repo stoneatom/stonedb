@@ -18,7 +18,7 @@
 #define STONEDB_CORE_COLUMN_BIN_ENCODER_H_
 #pragma once
 
-#include "rsi_cmap.h"
+#include "core/rsi_cmap.h"
 #include "types/text_stat.h"
 #include "vc/virtual_column.h"
 

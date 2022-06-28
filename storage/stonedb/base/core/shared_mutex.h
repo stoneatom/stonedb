@@ -24,8 +24,8 @@
 #define STONEDB_BASE_SHARED_MUTEX_H_
 #pragma once
 
-#include "circular_buffer.h"
-#include "future.h"
+#include "core/circular_buffer.h"
+#include "core/future.h"
 
 namespace stonedb {
 namespace base {

@@ -14,7 +14,7 @@
 
 #include <ctime>
 
-#include "format.h"
+#include "base/fmt/format.h"
 
 namespace stonedb {
 namespace fmt {

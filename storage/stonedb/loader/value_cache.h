@@ -33,8 +33,7 @@ class ValueCache final {
   ValueCache(const ValueCache &) = delete;
   ValueCache(ValueCache &&) = default;
   ~ValueCache() {
-    if (data_ != nullptr)
-      std::free(data_); 
+    if (data_ != nullptr) std::free(data_);
   }
 
   void *Prepare(size_t);

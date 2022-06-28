@@ -21,7 +21,7 @@
 #include "common/assert.h"
 #include "common/exception.h"
 #include "core/rc_attr_typeinfo.h"
-#include "rc_data_types.h"
+#include "types/rc_data_types.h"
 
 namespace stonedb {
 namespace types {

@@ -81,7 +81,7 @@ ConstColumn::ConstColumn(const types::RCValueObject &v, const core::ColumnType &
   }
 }
 
-double ConstColumn::GetValueDoubleImpl ([[maybe_unused]] const core::MIIterator &mit) {
+double ConstColumn::GetValueDoubleImpl([[maybe_unused]] const core::MIIterator &mit) {
   DEBUG_ASSERT(core::ATI::IsNumericType(TypeName()));
   double val = 0;
   if (value.IsNull())
@@ -111,7 +111,7 @@ double ConstColumn::GetValueDoubleImpl ([[maybe_unused]] const core::MIIterator 
   return val;
 }
 
-types::RCValueObject ConstColumn::GetValueImpl ([[maybe_unused]] const core::MIIterator &mit, bool lookup_to_num) {
+types::RCValueObject ConstColumn::GetValueImpl([[maybe_unused]] const core::MIIterator &mit, bool lookup_to_num) {
   if (value.IsNull()) return types::RCValueObject();
 
   if (core::ATI::IsStringType((TypeName()))) {
@@ -127,9 +127,9 @@ types::RCValueObject ConstColumn::GetValueImpl ([[maybe_unused]] const core::MII
   return types::RCValueObject();
 }
 
-void ConstColumn::GetValueStringImpl (types::BString &s, const core::MIIterator &mit) { s = GetValue(mit).ToBString(); }
+void ConstColumn::GetValueStringImpl(types::BString &s, const core::MIIterator &mit) { s = GetValue(mit).ToBString(); }
 
-int64_t ConstColumn::GetSumImpl (const core::MIIterator &mit, bool &nonnegative) {
+int64_t ConstColumn::GetSumImpl(const core::MIIterator &mit, bool &nonnegative) {
   DEBUG_ASSERT(!core::ATI::IsStringType(TypeName()));
   nonnegative = true;
   if (value.IsNull())
@@ -143,37 +143,37 @@ int64_t ConstColumn::GetSumImpl (const core::MIIterator &mit, bool &nonnegative)
   return (value.Get64() * mit.GetPackSizeLeft());
 }
 
-types::BString ConstColumn::GetMinStringImpl ([[maybe_unused]] const core::MIIterator &mit) {
+types::BString ConstColumn::GetMinStringImpl([[maybe_unused]] const core::MIIterator &mit) {
   types::BString s;
   value.GetBString(s);
   return s;
 }
 
-types::BString ConstColumn::GetMaxStringImpl ([[maybe_unused]] const core::MIIterator &mit) {
+types::BString ConstColumn::GetMaxStringImpl([[maybe_unused]] const core::MIIterator &mit) {
   types::BString s;
   value.GetBString(s);
   return s;
 }
 
-int64_t ConstColumn::GetApproxDistValsImpl ([[maybe_unused]] bool incl_nulls,
-                                         [[maybe_unused]] core::RoughMultiIndex *rough_mind) {
+int64_t ConstColumn::GetApproxDistValsImpl([[maybe_unused]] bool incl_nulls,
+                                           [[maybe_unused]] core::RoughMultiIndex *rough_mind) {
   return 1;
 }
 
 int64_t ConstColumn::GetExactDistVals() { return (value.IsNull() ? 0 : 1); }
 
-size_t ConstColumn::MaxStringSizeImpl ()  // maximal byte string length in column
+size_t ConstColumn::MaxStringSizeImpl()  // maximal byte string length in column
 {
   return ct.GetDisplaySize();
 }
 
-core::PackOntologicalStatus ConstColumn::GetPackOntologicalStatusImpl ([[maybe_unused]] const core::MIIterator &mit) {
+core::PackOntologicalStatus ConstColumn::GetPackOntologicalStatusImpl([[maybe_unused]] const core::MIIterator &mit) {
   if (value.IsNull()) return core::PackOntologicalStatus::NULLS_ONLY;
   return core::PackOntologicalStatus::UNIFORM;
 }
 
-void ConstColumn::EvaluatePackImpl ([[maybe_unused]] core::MIUpdatingIterator &mit,
-                                 [[maybe_unused]] core::Descriptor &desc) {
+void ConstColumn::EvaluatePackImpl([[maybe_unused]] core::MIUpdatingIterator &mit,
+                                   [[maybe_unused]] core::Descriptor &desc) {
   DEBUG_ASSERT(0);  // comparison of a const with a const should be simplified earlier
 }
 

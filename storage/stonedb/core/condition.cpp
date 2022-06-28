@@ -17,7 +17,7 @@
 
 #include "condition.h"
 
-#include "temp_table.h"
+#include "core/temp_table.h"
 
 namespace stonedb {
 namespace core {

@@ -18,7 +18,7 @@
 #define STONEDB_CORE_DIMENSION_GROUP_VIRTUAL_H_
 #pragma once
 
-#include "dimension_group.h"
+#include "core/dimension_group.h"
 
 namespace stonedb {
 namespace core {

@@ -18,7 +18,7 @@
 #include "mm/release_tracker.h"
 
 #include "common/assert.h"
-#include "traceable_object.h"
+#include "mm/traceable_object.h"
 
 namespace stonedb {
 namespace mm {

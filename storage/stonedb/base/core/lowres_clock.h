@@ -27,8 +27,8 @@
 #include <chrono>
 #include <cstdint>
 
-#include "cacheline.h"
-#include "timer.h"
+#include "base/core/cacheline.h"
+#include "base/core/timer.h"
 
 namespace stonedb {
 namespace base {

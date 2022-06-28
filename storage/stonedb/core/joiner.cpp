@@ -17,11 +17,11 @@
 
 #include "joiner.h"
 
+#include "core/joiner_hash.h"
+#include "core/joiner_mapped.h"
+#include "core/joiner_sort.h"
 #include "core/parallel_hash_join.h"
-#include "joiner_hash.h"
-#include "joiner_mapped.h"
-#include "joiner_sort.h"
-#include "query.h"
+#include "core/query.h"
 #include "vc/const_column.h"
 #include "vc/virtual_column.h"
 

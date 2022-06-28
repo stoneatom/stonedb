@@ -18,10 +18,10 @@
 #include "ppm.h"
 
 #include "common/assert.h"
-#include "data_stream.h"
-#include "range_code.h"
-#include "suffix_tree.h"
-#include "word_graph.h"
+#include "compress/data_stream.h"
+#include "compress/range_code.h"
+#include "compress/suffix_tree.h"
+#include "compress/word_graph.h"
 
 namespace stonedb {
 namespace compress {

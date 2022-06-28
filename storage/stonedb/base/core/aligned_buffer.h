@@ -27,7 +27,7 @@
 #include <memory>
 #include <stdexcept>
 
-#include "print.h"
+#include "base/core/print.h"
 
 namespace stonedb {
 namespace base {

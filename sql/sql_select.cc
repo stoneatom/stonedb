@@ -73,7 +73,7 @@ static void push_index_cond(JOIN_TAB *tab, uint keyno, bool other_tbls_ok,
 
 bool handle_select(THD *thd, select_result *result,
                    ulong setup_tables_done_option,
-                   int optimize_after_bh, int free_join_from_bh)
+                   int optimize_after_sdb, int free_join_from_sdb)
 {
   bool res;
   LEX *lex= thd->lex;
@@ -92,7 +92,7 @@ bool handle_select(THD *thd, select_result *result,
     //   res= mysql_union(thd, lex, result, &lex->unit, setup_tables_done_option);
   {
     res = FALSE;
-    if (optimize_after_bh)
+    if (optimize_after_sdb)
       res= lex->unit.optimize_after_stonedb();   // optimization after StoneDB
     if (!res)
       res= mysql_union(thd, lex, result, &lex->unit, setup_tables_done_option);
@@ -115,7 +115,7 @@ bool handle_select(THD *thd, select_result *result,
                       select_lex->having,
                       select_lex->options | thd->variables.option_bits | setup_tables_done_option,
                       result, unit, select_lex,
-                      optimize_after_bh, free_join_from_bh);
+                      optimize_after_sdb, free_join_from_sdb);
   }
   DBUG_PRINT("info",("res: %d  report_error: %d", res,
                      thd->is_error()));
@@ -1083,7 +1083,7 @@ mysql_prepare_select(THD *thd,
 */
 
 static bool
-mysql_execute_select(THD *thd, SELECT_LEX *select_lex, bool free_join, int optimize_after_bh)
+mysql_execute_select(THD *thd, SELECT_LEX *select_lex, bool free_join, int optimize_after_sdb)
 {
   bool err;
   JOIN* join= select_lex->join;
@@ -1092,8 +1092,8 @@ mysql_execute_select(THD *thd, SELECT_LEX *select_lex, bool free_join, int optim
   DBUG_ASSERT(join);
 
   // optimization after StoneDB
-  if (optimize_after_bh) {
-    int part = optimize_after_bh == TRUE ? 2 : 4;
+  if (optimize_after_sdb) {
+    int part = optimize_after_sdb == TRUE ? 2 : 4;
     err= join->optimize(part);
   }
   else
@@ -1172,7 +1172,7 @@ mysql_select(THD *thd,
              Item *having, ulonglong select_options,
              select_result *result, SELECT_LEX_UNIT *unit,
              SELECT_LEX *select_lex,
-             int optimize_after_bh, int free_join_from_bh) // FIXME: 
+             int optimize_after_sdb, int free_join_from_sdb) // FIXME: 
 {
   bool free_join= true;
   uint og_num= 0;
@@ -1191,8 +1191,8 @@ mysql_select(THD *thd,
     first_group= group->first;
   }
 
-  if (optimize_after_bh) 
-      free_join = free_join_from_bh;
+  if (optimize_after_sdb) 
+      free_join = free_join_from_sdb;
   else { // FIXME:
 
   if (mysql_prepare_select(thd, tables, wild_num, fields,
@@ -1240,7 +1240,7 @@ mysql_select(THD *thd,
   }
   }
 
-  DBUG_RETURN(mysql_execute_select(thd, select_lex, free_join, optimize_after_bh));
+  DBUG_RETURN(mysql_execute_select(thd, select_lex, free_join, optimize_after_sdb));
 }
 
 /*****************************************************************************

@@ -1311,7 +1311,7 @@ protected:
 bool error_if_full_join(JOIN *join);
 bool handle_select(THD *thd, select_result *result,
                    ulong setup_tables_done_option,
-                   int optimize_after_bh = FALSE, int free_join_from_bh = FALSE);
+                   int optimize_after_sdb = FALSE, int free_join_from_sdb = FALSE);
 
 bool mysql_select(THD *thd,
                   TABLE_LIST *tables, uint wild_num,  List<Item> &list,
@@ -1320,8 +1320,8 @@ bool mysql_select(THD *thd,
                   Item *having, ulonglong select_type, 
                   select_result *result, SELECT_LEX_UNIT *unit, 
                   SELECT_LEX *select_lex,
-                  int optimize_after_bh = FALSE, // FIXME
-                  int free_join_from_bh = FALSE);
+                  int optimize_after_sdb = FALSE, // FIXME
+                  int free_join_from_sdb = FALSE);
 
 void free_underlaid_joins(THD *thd, SELECT_LEX *select);
 

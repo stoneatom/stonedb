@@ -18,7 +18,7 @@
 #define STONEDB_SYSTEM_STDOUT_H_
 #pragma once
 
-#include "channel_out.h"
+#include "system/channel_out.h"
 
 namespace stonedb {
 namespace system {

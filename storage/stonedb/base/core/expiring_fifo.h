@@ -26,11 +26,11 @@
 #include <exception>
 #include <stdexcept>
 
-#include "chunked_fifo.h"
-#include "future.h"
-#include "future_util.h"
-#include "lowres_clock.h"
-#include "timer.h"
+#include "base/core/chunked_fifo.h"
+#include "base/core/future.h"
+#include "base/core/future_util.h"
+#include "base/core/lowres_clock.h"
+#include "base/core/timer.h"
 
 namespace stonedb {
 namespace base {

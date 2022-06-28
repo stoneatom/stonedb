@@ -14,10 +14,10 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
+#include "pack_str.h"
 
 #include <algorithm>
 
-#include "marisa.h"
 #include "zlib.h"
 
 #include "compress/bit_stream_compressor.h"
@@ -27,14 +27,13 @@
 #include "compress/text_compressor.h"
 #include "core/bin_tools.h"
 #include "core/column_share.h"
-#include "core/pack_str.h"
+#include "core/tools.h"
 #include "core/value.h"
 #include "loader/value_cache.h"
 #include "mm/mm_guard.h"
 #include "system/stonedb_file.h"
 #include "system/stream.h"
 #include "system/txt_utils.h"
-#include "tools.h"
 
 namespace stonedb {
 namespace core {

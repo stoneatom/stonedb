@@ -21,7 +21,7 @@
 #include <chrono>
 #include <limits>
 
-#include "bitset_iter.h"
+#include "base/core/bitset_iter.h"
 
 namespace stonedb {
 namespace base {

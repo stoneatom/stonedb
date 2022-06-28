@@ -18,7 +18,7 @@
 #include "release_all.h"
 
 #include "core/data_cache.h"
-#include "traceable_object.h"
+#include "mm/traceable_object.h"
 
 namespace stonedb {
 namespace mm {

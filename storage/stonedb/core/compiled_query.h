@@ -21,9 +21,9 @@
 #include <vector>
 
 #include "common/common_definitions.h"
-#include "cq_term.h"
-#include "just_a_table.h"
-#include "temp_table.h"
+#include "core/cq_term.h"
+#include "core/just_a_table.h"
+#include "core/temp_table.h"
 
 namespace stonedb {
 namespace core {

@@ -18,9 +18,9 @@
 #define STONEDB_CORE_PHYSICAL_COLUMN_H_
 #pragma once
 
-#include "column.h"
-#include "descriptor.h"
-#include "mysql_expression.h"
+#include "core/column.h"
+#include "core/descriptor.h"
+#include "core/mysql_expression.h"
 #include "types/text_stat.h"
 
 namespace stonedb {

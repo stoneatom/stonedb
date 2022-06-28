@@ -20,10 +20,10 @@
 
 #include <cstring>
 
+#include "compress/data_filt.h"
+#include "compress/dictionary.h"
 #include "core/bin_tools.h"
 #include "core/quick_math.h"
-#include "data_filt.h"
-#include "dictionary.h"
 
 namespace stonedb {
 namespace compress {

@@ -19,7 +19,7 @@
 #pragma once
 
 #include "common/common_definitions.h"
-#include "rc_attr_typeinfo.h"
+#include "core/rc_attr_typeinfo.h"
 
 namespace stonedb {
 namespace core {

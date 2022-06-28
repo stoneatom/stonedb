@@ -29,13 +29,13 @@
 #include <memory>
 #include <vector>
 
-#include "core/future.h"
-#include "core/iostream.h"
-#include "core/print.h"
-#include "core/temporary_buffer.h"
-#include "net/byteorder.h"
-#include "net/packet.h"
-#include "net/socket_defs.h"
+#include "base/core/future.h"
+#include "base/core/iostream.h"
+#include "base/core/print.h"
+#include "base/core/temporary_buffer.h"
+#include "base/net/byteorder.h"
+#include "base/net/packet.h"
+#include "base/net/socket_defs.h"
 
 namespace stonedb {
 namespace base {

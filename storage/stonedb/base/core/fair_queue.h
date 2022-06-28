@@ -31,11 +31,11 @@
 #include <type_traits>
 #include <unordered_set>
 
-#include "circular_buffer.h"
-#include "future.h"
-#include "print.h"
-#include "semaphore.h"
-#include "shared_ptr.h"
+#include "base/core/circular_buffer.h"
+#include "base/core/future.h"
+#include "base/core/print.h"
+#include "base/core/semaphore.h"
+#include "base/core/shared_ptr.h"
 
 namespace stonedb {
 namespace base {

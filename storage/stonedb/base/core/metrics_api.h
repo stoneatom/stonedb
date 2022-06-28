@@ -26,8 +26,8 @@
 #include <boost/functional/hash.hpp>
 #include <unordered_map>
 
-#include "metrics.h"
-#include "sharded.h"
+#include "base/core/metrics.h"
+#include "base/core/sharded.h"
 /*!
  * \file metrics_api.hh
  * \brief header file for metric API layer (like promehteus or collectd)

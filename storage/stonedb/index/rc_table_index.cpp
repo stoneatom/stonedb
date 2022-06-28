@@ -15,7 +15,7 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "index/rc_table_index.h"
+#include "rc_table_index.h"
 
 #include "rocksdb/status.h"
 
@@ -223,7 +223,7 @@ common::ErrorCode RCTableIndex::CheckUniqueness(core::Transaction *tx, const roc
   }
 
   if (!s.ok() && !s.IsNotFound()) {
-    //STONEDB_LOG(LogCtl_Level::ERROR, "RockDb read fail:%s", s.ToString().c_str());
+    // STONEDB_LOG(LogCtl_Level::ERROR, "RockDb read fail:%s", s.ToString().c_str());
     STONEDB_LOG(LogCtl_Level::ERROR, "RockDb read fail:%s", s.getState());
     return common::ErrorCode::FAILED;
   }

@@ -18,7 +18,7 @@
 #define STONEDB_CORE_AGGREGATOR_BASIC_H_
 #pragma once
 
-#include "aggregator.h"
+#include "core/aggregator.h"
 
 namespace stonedb {
 namespace core {

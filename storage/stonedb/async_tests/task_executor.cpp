@@ -17,8 +17,8 @@
 
 #include <boost/lockfree/queue.hpp>
 
-#include "core/app_template.h"
-#include "core/future.h"
+#include "base/core/app_template.h"
+#include "base/core/future.h"
 #include "core/task_executor.h"
 
 #ifndef DISABLE_USED_FOR_STONEDB

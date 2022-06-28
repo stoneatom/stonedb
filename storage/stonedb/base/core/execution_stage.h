@@ -24,16 +24,16 @@
 #define STONEDB_BASE_EXECUTION_STAGE_H_
 #pragma once
 
-#include "chunked_fifo.h"
-#include "function_traits.h"
-#include "future.h"
-#include "metrics.h"
-#include "scheduling.h"
-#include "sstring.h"
+#include "base/core/chunked_fifo.h"
+#include "base/core/function_traits.h"
+#include "base/core/future.h"
+#include "base/core/metrics.h"
+#include "base/core/scheduling.h"
+#include "base/core/sstring.h"
 
-#include "../util/defer.h"
-#include "util/gcc6-concepts.h"
-#include "util/reference_wrapper.h"
+#include "base/util/defer.h"
+#include "base/util/gcc6-concepts.h"
+#include "base/util/reference_wrapper.h"
 
 namespace stonedb {
 namespace base {

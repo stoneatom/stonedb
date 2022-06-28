@@ -18,8 +18,8 @@
 #define STONEDB_CORE_JONER_HASH_H_
 #pragma once
 
-#include "joiner.h"
-#include "joiner_hash_table.h"
+#include "core/joiner.h"
+#include "core/joiner_hash_table.h"
 
 namespace stonedb {
 namespace core {

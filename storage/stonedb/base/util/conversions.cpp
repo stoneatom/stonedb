@@ -23,11 +23,11 @@
 #ifndef CONVERSIONS_CC_
 #define CONVERSIONS_CC_
 
-#include <boost/lexical_cast.hpp>
-
 #include "conversions.h"
 
-#include "core/print.h"
+#include <boost/lexical_cast.hpp>
+
+#include "base/core/print.h"
 
 namespace stonedb {
 namespace base {

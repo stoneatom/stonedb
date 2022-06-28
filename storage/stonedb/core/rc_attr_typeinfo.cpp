@@ -18,7 +18,7 @@
 #include "rc_attr_typeinfo.h"
 #include "common/data_format.h"
 #include "common/txt_data_format.h"
-#include "rc_attr.h"
+#include "core/rc_attr.h"
 #include "types/rc_data_types.h"
 #include "types/rc_num.h"
 
