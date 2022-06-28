@@ -741,7 +741,7 @@ mysql_declare_plugin(stonedb){
     "STONEDB",
     "StoneAtom Group Holding Limited",
     "StoneDB storage engine",
-    PLUGIN_LICENSE_PROPRIETARY,
+    PLUGIN_LICENSE_GPL,
     stonedb::dbhandler::rcbase_init_func, /* Plugin Init */
     stonedb::dbhandler::rcbase_done_func, /* Plugin Deinit */
     0x0001 /* 0.1 */,
