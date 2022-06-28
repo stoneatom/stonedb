@@ -47,7 +47,7 @@ void KVStore::Init() {
   rocksdb::Status status = rocksdb::DB::ListColumnFamilies(db_option, rocksdb_datadir, &cf_names);
   if (!status.ok() &&
       ((status.subcode() == rocksdb::Status::kNone) || (status.subcode() == rocksdb::Status::kPathNotFound))) {
-    STONEDB_LOG(LogCtl_Level::INFO, "First init rocksdb, create default colunm family");
+    STONEDB_LOG(LogCtl_Level::INFO, "First init rocksdb, create default column family");
     cf_names.push_back(DEFAULT_CF_NAME);
   }
 
