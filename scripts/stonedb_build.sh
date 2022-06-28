@@ -8,8 +8,9 @@ then
     mkdir ../build
 fi
 
-#build_type=Debug
-build_type=RelWithDebInfo
+build_type=Debug
+#build_type=RelWithDebInfo
+#build_type=release
 branch=`git rev-parse --abbrev-ref HEAD`
 cpu_arc=`uname -m`
 os_dist=`lsb_release -a | grep Distributor | tail -n 1 | awk '{print $3}'`
@@ -49,8 +50,8 @@ cmake ../../ \
 -DEXTRA_CHARSETS=all \
 -DDEFAULT_CHARSET=utf8 \
 -DDEFAULT_COLLATION=utf8_general_ci \
--DDOWNLOAD_BOOST=1 \
--DWITH_BOOST=/usr/local/boost/ \
+#-DDOWNLOAD_BOOST=1 \
+#-DWITH_BOOST=/usr/local/boost/ \
 2>&1 | tee -a ${build_log}
 
 # make

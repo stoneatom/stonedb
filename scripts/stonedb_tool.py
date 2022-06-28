@@ -71,7 +71,7 @@ RC_TYPES = [
 
 
 class OPT:
-   cnf_file = '/etc/stonedb.cnf'
+   cnf_file = '/etc/my.cnf'
    dump_table_info = False
    dump_column_info = False
    dump_dp_info = False
