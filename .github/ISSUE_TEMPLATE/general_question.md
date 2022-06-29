@@ -14,6 +14,6 @@ Before asking a question, make sure you have:
 - Searched open and closed [GitHub issues](https://github.com/stoneatom/stonedb/issues)
 - Read the documentation:
   - [StoneDB Readme](https://github.com/stoneatom/stonedb)
-  - [StoneDB Doc](https://github.com/stoneatom/stonedb/docs)
+  - [StoneDB Doc](https://github.com/stoneatom/stonedb/tree/stonedb-5.6/Docs)
 -->
 
