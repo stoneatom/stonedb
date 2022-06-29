@@ -1,16 +1,31 @@
-[![logo](Docs/stonedb_github_logo.png)](https://stonedb.io/)
 
----
+<div align="center">
 
-[![Build](https://github.com/hpcaitech/ColossalAI/actions/workflows/build.yml/badge.svg)](https://github.com/stoneatom/stonedb/actions/workflows/integration-compile-mtr.yml)
-[![GitHub license](https://img.shields.io/github/license/stoneatom/stonedb)](https://github.com/stoneatom/stonedb)
+[![logo](Docs/stonedb_logo.png)](https://stonedb.io/)
+
+<h3 align="center"><strong>An One-Stop Real-Time HTAP database</strong></h3>
+
+
+</br>
+
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/stoneatom/stonedb/Compile%20&%20MTR)](https://github.com/stoneatom/stonedb/actions)
+[![GitHub license](https://img.shields.io/github/license/stoneatom/stonedb)](https://github.com/stoneatom/stonedb/blob/stonedb-5.6/LICENSE)
 [![slack badge](https://img.shields.io/badge/Slack-Join%20StoneDB-blueviolet?logo=slack&amp)](https://stonedb.slack.com/join/shared_invite/zt-1ba2lpvbo-Vqq62DJcxViyxCZmp7Rimw#/shared-invite/email)
 [![WeChat badge](https://img.shields.io/badge/Wechat-join-green?logo=wechat&amp)](https://cms.stoneatom.com/assets/8f44fbdf-b987-44fb-8b8d-c65a37da9221.jpg)
-[![Twitter](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Ftwitter.com%2FStoneDataBase)](https://twitter.com/intent/tweet?text=Wow:&url=https%3A%2F%2Fgithub.com%2Fstoneatom%2Fstonedb)
+[![Twitter Follow](https://img.shields.io/twitter/follow/StoneDataBase?style=social)](https://twitter.com/intent/follow?screen_name=StoneDataBase)
+
+</div>
 
 # Quick start with StoneDB
 
+[![logo](Docs/stonedb_github_logo.png)](https://stonedb.io/)
+
 StoneDB is a MySQL-compatible high-performance hybrid transaction/analytical processing (HTAP) database. It provides analytical processing (AP) abilities to MySQL. The running systems can be seamlessly migrated to StoneDB without any code changed. Compared to InnoDB, StoneDB provides 10 times the query performance as well as 10 times the load performance. StoneDB also provides 10:1 to 40:1 compression ratio. 
+
+<p align="center"> <b>Architecture</b> </p>
+
+[![logo](Docs/stonedb_architecture.png)](https://stonedb.io/docs/about-stonedb/architecture)
+
 
 For more information about StoneDB, see [stonedb.io](https://stonedb.io/).
 
@@ -107,8 +122,12 @@ The example shows some important features and limitations in StoneDB. For more i
 - StoneDB data is stored in Column format and persist to RocksDB, and RocksDB plays as a disk to store the formatted data by column. All data is compressed, and the compression ratio can be 10:1 to 40:1. 
 - StoneDB can achieve a competitive performance when processing ad-hoc queries, even without any indexes created. For more details, click [here.](http://stonedb.io/)
 
+--- 
 
-# Now, let's exprience your StoneDB
+<h3 align="center">
+<strong>Now, let's exprience your StoneDB</strong>
+</h3>
+</br>
 
 ## Switch from MySQL to StoneDB in Production
 
