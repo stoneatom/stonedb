@@ -361,7 +361,7 @@ void MysqlExpression::SetBufsOrParams(var_buf_t *bufs) {
   }
 }
 
-DataType MysqlExpression::EvalType(TypOfVars *tv) {
+DataType MysqlExpression::EvalType(TypeOfVars *tv) {
   // set types of variables (_sdbfieldsCache)
   if (tv) {
     DataType fieldtype;

@@ -621,13 +621,13 @@ int StonedbHandler::info(uint flag) {
         tab = current_tx->GetTableByPath(m_table_name);
       } else
         tab = rceng->GetTableRD(m_table_name);
-      stats.records = (ha_rows)tab->NoValues();
+      stats.records = (ha_rows)tab->NumOfValues();
       stats.data_file_length = 0;
       stats.mean_rec_length = 0;
       if (stats.records > 0) {
         std::vector<core::AttrInfo> attr_info(tab->GetAttributesInfo());
-        uint no_attrs = tab->NoAttrs();
-        for (uint j = 0; j < no_attrs; j++) stats.data_file_length += attr_info[j].comp_size;  // compressed size
+        uint num_of_attrs = tab->NumOfAttrs();
+        for (uint j = 0; j < num_of_attrs; j++) stats.data_file_length += attr_info[j].comp_size;  // compressed size
         stats.mean_rec_length = ulong(stats.data_file_length / stats.records);
       }
     }
@@ -921,7 +921,7 @@ int StonedbHandler::rnd_init(bool scan) {
 
   int ret = 1;
   try {
-    if (m_query && !m_result && table_ptr->NoObj() != 0) {
+    if (m_query && !m_result && table_ptr->NumOfObj() != 0) {
       m_cq->Result(m_tmp_table);  // it is ALWAYS -2 though....
       m_result = true;
 
@@ -964,7 +964,7 @@ int StonedbHandler::rnd_init(bool scan) {
     }
     ret = 0;
     blob_buffers.resize(0);
-    if (table_ptr != NULL) blob_buffers.resize(table_ptr->NoDisplaybleAttrs());
+    if (table_ptr != NULL) blob_buffers.resize(table_ptr->NumOfDisplaybleAttrs());
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -1304,7 +1304,7 @@ bool StonedbHandler::explain_message(const Item *a_cond, String *buf) {
 
 int StonedbHandler::set_cond_iter() {
   int ret = 1;
-  if (m_query && !m_result && table_ptr->NoObj() != 0) {
+  if (m_query && !m_result && table_ptr->NumOfObj() != 0) {
     m_cq->Result(m_tmp_table);  // it is ALWAYS -2 though....
     m_result = true;
 

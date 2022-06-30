@@ -39,12 +39,12 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
   bool group_by_found = false;
   bool has_lookup = false;
 
-  GroupByWrapper gbw(t->NoAttrs(), just_distinct, m_conn, t->Getpackpower());
+  GroupByWrapper gbw(t->NumOfAttrs(), just_distinct, m_conn, t->Getpackpower());
   int64_t upper_approx_of_groups = 1;  // will remain 1 if there is no grouping columns (aggreg. only)
   int64_t min_v = common::MINUS_INF_64;
   int64_t max_v = common::PLUS_INF_64;
 
-  for (uint i = 0; i < t->NoAttrs(); i++) {  // first pass: find all grouping attributes
+  for (uint i = 0; i < t->NumOfAttrs(); i++) {  // first pass: find all grouping attributes
     TempTable::Attr &cur_a = *(t->GetAttrP(i));
     if (cur_a.mode == common::ColOperation::DELAYED)  // delayed column (e.g. complex exp. on
                                                       // aggregations)
@@ -75,7 +75,7 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
     }
   }
 
-  for (uint i = 0; i < t->NoAttrs(); i++) {  // second pass: find all aggregated attributes
+  for (uint i = 0; i < t->NumOfAttrs(); i++) {  // second pass: find all aggregated attributes
     TempTable::Attr &cur_a = *(t->GetAttrP(i));
     if (cur_a.mode == common::ColOperation::DELAYED) {  // delayed column (e.g. complex exp.
                                                         // on aggregations)
@@ -121,7 +121,7 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
   }
 
   t->SetAsMaterialized();
-  t->SetNoMaterialized(0);
+  t->SetNumOfMaterialized(0);
   if ((just_distinct || group_by_found) && mind->ZeroTuples()) return;
 
   bool limit_less_than_no_groups = false;
@@ -164,8 +164,8 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
     }
   }  // Special case 3: SELECT MIN(col) FROM ..... or SELECT MAX(col) FROM
      // .....;
-  else if (t->GetWhereConds().Size() == 0 && ((gbw.IsMinOnly() && t->NoAttrs() == 1 && min_v != common::MINUS_INF_64) ||
-                                              (gbw.IsMaxOnly() && t->NoAttrs() == 1 && max_v != common::PLUS_INF_64))) {
+  else if (t->GetWhereConds().Size() == 0 && ((gbw.IsMinOnly() && t->NumOfAttrs() == 1 && min_v != common::MINUS_INF_64) ||
+                                              (gbw.IsMaxOnly() && t->NumOfAttrs() == 1 && max_v != common::PLUS_INF_64))) {
     if (stonedb_sysvar_minmax_speedup && !has_lookup) {
       int64_t value = min_v;
       if (gbw.IsMaxOnly()) value = max_v;
@@ -176,7 +176,7 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
   }
 
   if (all_done_in_one_row) {
-    for (uint i = 0; i < t->NoAttrs(); i++) {  // left as uninitialized (NULL or 0)
+    for (uint i = 0; i < t->NumOfAttrs(); i++) {  // left as uninitialized (NULL or 0)
       t->GetAttrP(i)->page_size = 1;
       t->GetAttrP(i)->CreateBuffer(1);
     }
@@ -186,7 +186,7 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
       --limit;
       AggregateFillOutput(gbw, row, offset);
       if (sender) {
-        sender->SetAffectRows(t->NoObj());
+        sender->SetAffectRows(t->NumOfObj());
         TempTable::RecordIterator iter = t->begin();
         sender->Send(iter);
       }
@@ -261,7 +261,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
         mit.Rewind();  // aggregated rows will be massively omitted packrow by
                        // packrow
       rewind_needed = true;
-      for (uint i = 0; i < t->NoAttrs(); i++) {  // left as uninitialized (NULL or 0)
+      for (uint i = 0; i < t->NumOfAttrs(); i++) {  // left as uninitialized (NULL or 0)
         if (t->GetAttrP(i)->mode == common::ColOperation::DELAYED) {
           MIDummyIterator m(1);
           t->GetAttrP(i)->term.vc->LockSourcePacks(m);
@@ -306,7 +306,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
                                                      // combinations
 
         MIDummyIterator m(1);
-        for (uint i = 0; i < t->NoAttrs(); i++) {
+        for (uint i = 0; i < t->NumOfAttrs(); i++) {
           if (t->GetAttrP(i)->mode == common::ColOperation::GROUP_CONCAT) {
             t->GetAttrP(i)->SetTypeName(common::CT::VARCHAR);
             t->GetAttrP(i)->OverrideStringSize(stonedb_group_concat_max_len);
@@ -331,34 +331,34 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
       } else {
         while (gbw.RowValid()) {
           // copy GroupTable into TempTable, row by row
-          if (t->NoObj() >= limit) break;
+          if (t->NumOfObj() >= limit) break;
           AggregateFillOutput(gbw, gbw.GetCurrentRow(),
                               offset);  // offset is decremented for each row, if positive
-          if (sender && t->NoObj() > (1 << mind->NoPower()) - 1) {
+          if (sender && t->NumOfObj() > (1 << mind->NoPower()) - 1) {
             TempTable::RecordIterator iter = t->begin();
-            for (int64_t i = 0; i < t->NoObj(); i++) {
+            for (int64_t i = 0; i < t->NumOfObj(); i++) {
               sender->Send(iter);
               ++iter;
             }
-            displayed_no_groups += t->NoObj();
-            limit -= t->NoObj();
-            t->SetNoObj(0);
+            displayed_no_groups += t->NumOfObj();
+            limit -= t->NumOfObj();
+            t->SetNumOfObj(0);
           }
           gbw.NextRow();
         }
       }
       if (sender) {
         TempTable::RecordIterator iter = t->begin();
-        for (int64_t i = 0; i < t->NoObj(); i++) {
+        for (int64_t i = 0; i < t->NumOfObj(); i++) {
           sender->Send(iter);
           ++iter;
         }
-        displayed_no_groups += t->NoObj();
-        limit -= t->NoObj();
-        t->SetNoObj(0);
+        displayed_no_groups += t->NumOfObj();
+        limit -= t->NumOfObj();
+        t->SetNumOfObj(0);
       } else
-        displayed_no_groups = t->NoObj();
-      if (t->NoObj() >= limit) break;
+        displayed_no_groups = t->NumOfObj();
+      if (t->NumOfObj() >= limit) break;
       if (gbw.AnyTuplesLeft()) gbw.ClearUsed();  // prepare for the next pass, if needed
     } while (gbw.AnyTuplesLeft());               // do the next pass, if anything left
   } catch (...) {
@@ -501,7 +501,7 @@ int AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw, MIIterator *mit,
 
   skip_packrow = AggregateRough(gbw, *mit, packrow_done, part_omitted, aggregations_not_changeable, stop_all,
                                 uniform_pos, rows_in_pack, factor);
-  if (t->NoObj() + gbw.NoGroups() == gbw.UpperApproxOfGroups()) {  // no more groups!
+  if (t->NumOfObj() + gbw.NoGroups() == gbw.UpperApproxOfGroups()) {  // no more groups!
     gbw.SetNoMoreGroups();
     if (skip_packrow)  // no aggr. changeable and no new groups possible?
       packrow_done = true;
@@ -555,7 +555,7 @@ int AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw, MIIterator *mit,
         if (!existed) {
           aggregations_not_changeable = false;
           gbw.AddGroup();                                                  // successfully added
-          if (t->NoObj() + gbw.NoGroups() == gbw.UpperApproxOfGroups()) {  // no more groups!
+          if (t->NumOfObj() + gbw.NoGroups() == gbw.UpperApproxOfGroups()) {  // no more groups!
             gbw.SetNoMoreGroups();
             if (gbw.NoGroupingAttr() == gbw.NoAttr()) {  // just DISTINCT without grouping
               gbw.TuplesResetAll();                      // no more rows needed, just produce output
@@ -600,12 +600,12 @@ void AggregationAlgorithm::AggregateFillOutput(GroupByWrapper &gbw, int64_t gt_p
   int64_t cur_output_tuple;
   {
     std::scoped_lock guard(mtx);
-    cur_output_tuple = t->NoObj();
-    t->SetNoMaterialized(cur_output_tuple + 1);  // needed to allow value reading from this TempTable
+    cur_output_tuple = t->NumOfObj();
+    t->SetNumOfMaterialized(cur_output_tuple + 1);  // needed to allow value reading from this TempTable
   }
 
   // Fill aggregations and grouping columns
-  for (uint i = 0; i < t->NoAttrs(); i++) {
+  for (uint i = 0; i < t->NumOfAttrs(); i++) {
     TempTable::Attr *a = t->GetAttrP(i);  // change to pointer - for speed
     int gt_column = gbw.AttrMapping(i);
     if (gt_column == -1)  // delayed column (e.g. complex exp. on aggregations)
@@ -622,7 +622,7 @@ void AggregationAlgorithm::AggregateFillOutput(GroupByWrapper &gbw, int64_t gt_p
   MIDummyIterator it(1);  // one-dimensional dummy iterator to iterate the result
   it.Set(0, cur_output_tuple);
   types::BString vals;
-  for (uint i = 0; i < t->NoAttrs(); i++) {
+  for (uint i = 0; i < t->NumOfAttrs(); i++) {
     TempTable::Attr *a = t->GetAttrP(i);
     if (a->mode != common::ColOperation::DELAYED) continue;
     vcolumn::VirtualColumn *vc = a->term.vc;
@@ -652,14 +652,14 @@ void AggregationAlgorithm::AggregateFillOutput(GroupByWrapper &gbw, int64_t gt_p
   if (t->HasHavingConditions()) {
     if (!(t->CheckHavingConditions(it))) {     // condition not met - forget about this row (will be
                                                // overwritten soon)
-      t->SetNoMaterialized(cur_output_tuple);  // i.e. no_obj--;
-      for (uint i = 0; i < t->NoAttrs(); i++)
+      t->SetNumOfMaterialized(cur_output_tuple);  // i.e. no_obj--;
+      for (uint i = 0; i < t->NumOfAttrs(); i++)
         t->GetAttrP(i)->InvalidateRow(cur_output_tuple);  // change to pointer - for speed
     } else {
       // OFFSET with HAVING
       if (omit_by_offset > 0) {
         omit_by_offset--;
-        t->SetNoMaterialized(cur_output_tuple);  // i.e. no_obj--;
+        t->SetNumOfMaterialized(cur_output_tuple);  // i.e. no_obj--;
       }
     }
   }
@@ -804,7 +804,7 @@ void AggregationAlgorithm::TaskFillOutput(GroupByWrapper *gbw, Transaction *ci, 
   common::SetMySQLTHD(ci->Thd());
   current_tx = ci;
   while (gbw->RowValid()) {
-    if (t->NoObj() >= limit) {
+    if (t->NumOfObj() >= limit) {
       break;
     }
     AggregateFillOutput(*gbw, gbw->GetCurrentRow(), offset);

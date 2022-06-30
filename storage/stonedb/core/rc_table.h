@@ -82,8 +82,9 @@ class RCTable final : public JustATable {
 
   int GetID() const;
   TType TableType() const override { return TType::TABLE; }
-  uint NoAttrs() const override { return m_attrs.size(); }
-  uint NoDisplaybleAttrs() const override { return NoAttrs(); }
+  uint NumOfAttrs() const override { return m_attrs.size(); }
+  uint NumOfDisplaybleAttrs() const override { return NumOfAttrs(); }
+
   std::vector<AttrInfo> GetAttributesInfo();  // attributes info
   std::vector<AttributeTypeInfo> GetATIs(bool orig = false) override;
   const ColumnType &GetColumnType(int col) override;
@@ -97,8 +98,8 @@ class RCTable final : public JustATable {
   void PostCommit();
 
   // Data access & information
-  int64_t NoObj() override;
-  int64_t NoValues() { return NoObj(); }
+  int64_t NumOfObj() override;
+  int64_t NumOfValues() { return NumOfObj(); }
 
   void GetTable_S(types::BString &s, int64_t obj, int attr) override;
   int64_t GetTable64(int64_t obj, int attr) override;  // value from table in 1-level numerical form
@@ -205,7 +206,7 @@ class RCTable final : public JustATable {
     return Iterator::CreateBegin(*this, std::shared_ptr<Filter>(new Filter(filter)), attrs);
   }
   Iterator Begin(const std::vector<bool> &attrs) {
-    return Iterator::CreateBegin(*this, std::shared_ptr<Filter>(new Filter(NoObj(), Getpackpower(), true)), attrs);
+    return Iterator::CreateBegin(*this, std::shared_ptr<Filter>(new Filter(NumOfObj(), Getpackpower(), true)), attrs);
   }
   Iterator End() { return Iterator::CreateEnd(); }
 };

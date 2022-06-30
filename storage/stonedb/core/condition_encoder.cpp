@@ -31,6 +31,7 @@
 
 namespace stonedb {
 namespace core {
+
 ConditionEncoder::ConditionEncoder(bool additional_nulls, uint32_t power)
     : additional_nulls(additional_nulls),
       in_type(ColumnType(common::CT::UNK)),
@@ -63,7 +64,7 @@ void ConditionEncoder::operator()(Descriptor &desc) {
   if (desc.encoded) return;
 
   auto tab = std::static_pointer_cast<RCTable>(desc.attr.vc->GetVarMap()[0].GetTabPtr());
-  attr = tab->GetAttr(desc.attr.vc->GetVarMap()[0].col_ndx);
+  attr = tab->GetAttr(desc.attr.vc->GetVarMap()[0].col_idx_);
   attr->LoadPackInfo(current_tx);
   in_type = attr->Type();
   this->desc = &desc;
@@ -177,7 +178,7 @@ void ConditionEncoder::TransformWithRespectToNulls() {
   bool nulls_possible = (additional_nulls || desc->attr.vc->IsNullsPossible());
 
   if (desc->op == common::Operator::O_IS_NULL) {
-    if (!nulls_possible || attr->NoObj() == 0)
+    if (!nulls_possible || attr->NumOfObj() == 0)
       desc->op = common::Operator::O_FALSE;
     else if (nulls_only)
       desc->op = common::Operator::O_TRUE;
@@ -779,6 +780,7 @@ void ConditionEncoder::LookupExpressionTransformation() {
   MEASURE_FET("ConditionEncoder::LookupExpressionTransformation(...)");
   vcolumn::ExpressionColumn *vcec = dynamic_cast<vcolumn::ExpressionColumn *>(desc->attr.vc);
   vcolumn::VirtualColumnBase::VarMap col_desc = vcec->GetLookupCoordinates();
+
   MILookupIterator mit;
   mit.Set(common::NULL_VALUE_64);
   desc->encoded = false;
@@ -795,8 +797,8 @@ void ConditionEncoder::LookupExpressionTransformation() {
   } while (mit.IsValid());
 
   if (!null_positive) {
-    PhysicalColumn *col = col_desc.GetTabPtr()->GetColumn(col_desc.col_ndx);
-    desc->attr.vc = new vcolumn::SingleColumn(col, vcec->GetMultiIndex(), col_desc.var.tab, col_desc.col_ndx,
+    PhysicalColumn *col = col_desc.GetTabPtr()->GetColumn(col_desc.col_idx_);
+    desc->attr.vc = new vcolumn::SingleColumn(col, vcec->GetMultiIndex(), col_desc.var_.tab, col_desc.col_idx_,
                                               col_desc.GetTabPtr().get(), vcec->GetDim());
     desc->attr.vc_id = desc->table->AddVirtColumn(desc->attr.vc);
     desc->op = common::Operator::O_IN;
@@ -804,8 +806,8 @@ void ConditionEncoder::LookupExpressionTransformation() {
     desc->val1.vc_id = desc->table->AddVirtColumn(desc->val1.vc);
     desc->encoded = true;
   } else if (valset.IsEmpty()) {
-    PhysicalColumn *col = col_desc.GetTabPtr()->GetColumn(col_desc.col_ndx);
-    desc->attr.vc = new vcolumn::SingleColumn(col, vcec->GetMultiIndex(), col_desc.var.tab, col_desc.col_ndx,
+    PhysicalColumn *col = col_desc.GetTabPtr()->GetColumn(col_desc.col_idx_);
+    desc->attr.vc = new vcolumn::SingleColumn(col, vcec->GetMultiIndex(), col_desc.var_.tab, col_desc.col_idx_,
                                               col_desc.GetTabPtr().get(), vcec->GetDim());
     desc->attr.vc_id = desc->table->AddVirtColumn(desc->attr.vc);
     desc->op = common::Operator::O_IS_NULL;
@@ -816,5 +818,6 @@ void ConditionEncoder::LookupExpressionTransformation() {
     desc->encoded = false;
   }
 }
+
 }  // namespace core
 }  // namespace stonedb

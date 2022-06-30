@@ -58,9 +58,10 @@ class TempTable : public JustATable {
    public:
     SI si;
     void *buffer;             // buffer to values of attribute, if materialized
-    int64_t no_obj;           // number of objects in the buffer
-    uint32_t no_power;        // number of objects in the buffer
-    int64_t no_materialized;  // number of objects already set in the buffer
+    int64_t num_of_obj;           // number of objects in the buffer
+    uint32_t num_of_power;        // number of objects in the buffer
+    int64_t num_of_materialized;  // number of objects already set in the buffer
+
     uint page_size;           // size of one page of buffered values
     char *alias;
     common::ColOperation mode;
@@ -125,7 +126,7 @@ class TempTable : public JustATable {
     PackOntologicalStatus GetPackOntologicalStatus([[maybe_unused]] int pack_no) override {
       return PackOntologicalStatus::NORMAL;
     }  // not implemented properly yet
-    void ApplyFilter(MultiIndex &, int64_t offset, int64_t no_obj);
+    void ApplyFilter(MultiIndex &, int64_t offset, int64_t num_of_obj);
     void DeleteBuffer();
 
     bool IsNull(int64_t obj) const override;
@@ -227,7 +228,7 @@ class TempTable : public JustATable {
   virtual void Materialize(bool in_subq = false, ResultSender *sender = NULL, bool lazy = false);
 
   // just_distinct = 'select distinct' but no 'group by'
-  // Set no_obj = no. of groups in result
+  // Set num_of_obj = no. of groups in result
   void RoughAggregate(ResultSender *sender);
   void RoughAggregateCount(DimensionVector &dims, int64_t &min_val, int64_t &max_val, bool group_by_present);
   void RoughAggregateMinMax(vcolumn::VirtualColumn *vc, int64_t &min_val, int64_t &max_val);
@@ -240,17 +241,17 @@ class TempTable : public JustATable {
   void ResumeDisplay();
   void LockPackForUse(unsigned attr, unsigned pack_no) override;
   void UnlockPackFromUse([[maybe_unused]] unsigned attr, [[maybe_unused]] unsigned pack_no) override {}
-  int64_t NoObj() override { return no_obj; }
+  int64_t NumOfObj() override { return num_of_obj; }
   uint32_t Getpackpower() const override { return p_power; }
-  int64_t NoMaterialized() { return no_materialized; }
-  void SetNoObj(int64_t n) { no_obj = n; }
-  void SetNoMaterialized(int64_t n) {
-    no_obj = n;
-    no_materialized = n;
+  int64_t NumOfMaterialized() { return num_of_materialized; }
+  void SetNumOfObj(int64_t n) { num_of_obj = n; }
+  void SetNumOfMaterialized(int64_t n) {
+    num_of_obj = n;
+    num_of_materialized = n;
   }
   TType TableType() const override { return TType::TEMP_TABLE; }  // type of JustATable - TempTable
-  uint NoAttrs() const override { return (uint)attrs.size(); }
-  uint NoDisplaybleAttrs() const override { return no_cols; }  // no. of columns with defined alias
+  uint NumOfAttrs() const override { return (uint)attrs.size(); }
+  uint NumOfDisplaybleAttrs() const override { return num_of_cols; }  // no. of columns with defined alias
   bool IsDisplayAttr(int i) { return attrs[i]->alias != NULL; }
   int64_t GetTable64(int64_t obj, int attr) override;
   void GetTable_S(types::BString &s, int64_t obj, int attr) override;
@@ -334,7 +335,7 @@ class TempTable : public JustATable {
   bool IsMaterialized() { return materialized; }
   void SetAsMaterialized() { materialized = true; }
   // materialized with order by and limits
-  bool IsFullyMaterialized() { return materialized && ((order_by.size() == 0 && !mode.top) || !no_obj); }
+  bool IsFullyMaterialized() { return materialized && ((order_by.size() == 0 && !mode.top) || !num_of_obj); }
   uint CalculatePageSize(int64_t no_obj = -1);  // computes number of output records kept in memory
   // based on no_obj and some upper limit CACHE_SIZE (100MB)
   void SetPageSize(int64_t new_page_size);
@@ -376,9 +377,9 @@ class TempTable : public JustATable {
   bool HasTempTable() const { return has_temp_table; }
 
  protected:
-  int64_t no_obj;
+  int64_t num_of_obj;
   uint32_t p_power;                      // pack power
-  uint no_cols;                          // no. of output columns, i.e., with defined alias
+  uint num_of_cols;                          // no. of output columns, i.e., with defined alias
   TableMode mode;                        // based on { TM_DISTINCT, TM_TOP, TM_EXISTS }
   std::vector<Attr *> attrs;             // vector of output columns, each column contains
                                          // a buffer with values
@@ -415,7 +416,7 @@ class TempTable : public JustATable {
   bool has_temp_table = false;
 
   bool lazy;                       // materialize on demand, page by page
-  int64_t no_materialized;         // if lazy - how many are ready
+  int64_t num_of_materialized;     // if lazy - how many are ready
   common::Tribool rough_is_empty;  // rough value specifying if there is
                                    // non-empty result of a query
   bool force_full_materialize = false;

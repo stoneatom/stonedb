@@ -498,7 +498,7 @@ vcolumn::VirtualColumn *Query::CreateColumnFromExpression(std::vector<MysqlExpre
     DEBUG_ASSERT(0);
   }
   MysqlExpression::SetOfVars params = vc->GetParams();
-  MysqlExpression::TypOfVars types;
+  MysqlExpression::TypeOfVars types;
   for (auto &iter : params) {
     types[iter] = ta[-iter.tab - 1]->GetColumnType(iter.col < 0 ? -iter.col - 1 : iter.col);
   }

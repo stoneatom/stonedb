@@ -10,8 +10,8 @@ from random import Random
 import MySQLdb
 
 desccmd='mysql -uroot  test -e "desc '
-g_user = "alimail_alarm"
-g_password = "alimail"
+g_user = "xl_alarm"
+g_password = "xl_mail"
 g_port = 3306
 g_host ="127.0.0.1"
 database="test"

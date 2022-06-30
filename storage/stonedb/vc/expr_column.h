@@ -62,7 +62,7 @@ class ExpressionColumn : public VirtualColumn {
   virtual ~ExpressionColumn() = default;
 
   const core::MysqlExpression::sdbfields_cache_t &GetItems() const;
-  void SetParamTypes(core::MysqlExpression::TypOfVars *types) override;
+  void SetParamTypes(core::MysqlExpression::TypeOfVars *types) override;
   bool IsConst() const override { return false; }
   bool IsDeterministic() override { return expr_->IsDeterministic(); }
   int64_t GetNotNullValueInt64(const core::MIIterator &mit) override { return GetValueInt64Impl(mit); }
@@ -126,7 +126,7 @@ class ExpressionColumn : public VirtualColumn {
   // if ExpressionColumn ExpressionColumn encapsulates an expression these sets
   // are used to interface with core::MysqlExpression
   core::MysqlExpression::SetOfVars vars_;
-  core::MysqlExpression::TypOfVars var_types_;
+  core::MysqlExpression::TypeOfVars var_types_;
   mutable core::MysqlExpression::var_buf_t var_buf_;
 
   //! value for a given row is always the same or not? e.g. currenttime() is not
