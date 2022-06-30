@@ -24,7 +24,7 @@ def generate_create_table_statement(tablename, columns):
     res += ",\n\t".join(cols) + "\n);"
     return res
 
-class HistoreTester(unittest.TestCase):
+class StoneDBTester(unittest.TestCase):
     def setUp(self):
         self.db = MySQLdb.connect(**Config)
         self.cursor = self.db.cursor()
