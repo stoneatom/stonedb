@@ -4,7 +4,7 @@ import MySQLdb
 import os, shutil
 import time
 
-class UpdateTestCases(stonedbtester.HistoreTester):
+class UpdateTestCases(stonedbtester.StoneDBTester):
     def setUp(self):
         super(UpdateTestCases, self).setUp()
         self.db.autocommit(True)

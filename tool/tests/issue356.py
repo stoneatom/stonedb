@@ -4,7 +4,7 @@ import MySQLdb
 import os, shutil
 import time
 
-class Issue356Case(stonedbtester.HistoreTester):
+class Issue356Case(stonedbtester.StoneDBTester):
     def setUp(self):
         super(Issue356Case, self).setUp()
         self.db.autocommit(True)

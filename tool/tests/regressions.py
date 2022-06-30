@@ -4,7 +4,7 @@ import MySQLdb
 import os, shutil
 import time
 
-class RegressionTestCases(stonedbtester.HistoreTester):
+class RegressionTestCases(stonedbtester.StoneDBTester):
     def setUp(self):
         super(RegressionTestCases, self).setUp()
         self.db.autocommit(True)
