@@ -294,6 +294,6 @@ int add_pfs_instr_to_array(const char* name, const char* value)
     my_free(e);
     return 1;
   }
-
+  my_free(e);
   return 0;
 }
