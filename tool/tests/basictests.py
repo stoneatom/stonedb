@@ -45,7 +45,7 @@ StringTypes = [
 ]
 
 
-class BasicTestCases(stonedbtester.HistoreTester):
+class BasicTestCases(stonedbtester.StoneDBTester):
     def setUp(self):
         super(BasicTestCases, self).setUp()
     def tearDown(self):

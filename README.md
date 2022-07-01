@@ -1,4 +1,3 @@
-
 <div align="center">
 
 [![logo](Docs/stonedb_logo.png)](https://stonedb.io/)
@@ -16,7 +15,21 @@
 
 </div>
 
-# Quick start with StoneDB
+* [What is StoneDB](#what-is-stonedb)
+* [Contribution](#contribution)
+* [Getting Started](#getting-started)
+   * [Supported Platform](#supported-platform)
+   * [Build StoneDB from the Source Code](#build-stonedb-from-the-source-code)
+   * [Build StoneDB from Source Code in a Docker Container](#build-stonedb-from-source-code-in-a-docker-container)
+   * [Configure StoneDB](#configure-stonedb)
+   * [Initialize the Database](#initialize-the-database)
+   * [Start the Database Instance](#start-the-database-instance)
+   * [Create a StoneDB Table](#create-a-stonedb-table)
+   * [Switch from MySQL to StoneDB in Production](#switch-from-mysql-to-stonedb-in-production)
+* [Documentation](#documentation)
+* [Discussion](#discussion)
+
+# What is StoneDB
 
 [![logo](Docs/stonedb_github_logo.png)](https://stonedb.io/)
 
@@ -29,20 +42,16 @@ StoneDB is a MySQL-compatible high-performance hybrid transaction/analytical pro
 
 For more information about StoneDB, see [stonedb.io](https://stonedb.io/).
 
-# Documentation
-
-Documentation can be found online at [https://stonedb.io](https://stonedb.io/docs/about-stonedb/intro). The documentation provides you with StoneDB basics, extensive examples of using StoneDB, as well as other information that you may need during your usage of StoneDB.
-
-# Discussion
-The [GitHub Discussions](https://github.com/stoneatom/stonedb/discussions) is the home for most discussions and communications about the StoneDB project. We welcome your participation. Every single opinion or suggestion of yours is welcomed and valued. We anticipate StoneDB to be an open and influential project.  
-
-When participating in the StoneDB project, please ensure all your behavior complies with the [Code of Conduct](https://stonedb.io/community/main).
-
 # Contribution
+
 StoneDB welcomes all kinds of contributions, such as contributing code to the code base, sharing your experience on how to use StoneDB, and providing insights in the community on the Forums, or contributing to projects that make StoneDB a better project. For more specifics, see the [contributing guide](https://stonedb.io/community/main) for more specifics.
+
 # Getting Started
+
 The Getting Started part provides information about StoneDB supported platforms, installation (including creating your first table), and migrating from the running MySQL databases to StoneDB.
+
 ## Supported Platform
+
 The officially supported subsets of platforms are:
 
 - CentOS 7.9 or higher
@@ -57,8 +66,8 @@ The following packages we verify our builds with:
 - CMake 3.16.3 or higher
 - RocksDB 6.12.6 or higher
 - marisa 0.2.6 or higher
-## Install StoneDB
-### Build StoneDB from the Source Code
+
+## Build StoneDB from the Source Code
 
 **On a fresh Ubuntu 20.04 instance:**
 
@@ -67,9 +76,10 @@ For more information, see [Compile StoneDB on Ubuntu 20.04](https://stonedb.io/d
 **On CentOS 7.9:**
 
 For more information, see [Compile StoneDB on CentOS 7](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-centos7).
-### Build StoneDB from Source Code in a Docker Container
+## Build StoneDB from Source Code in a Docker Container
 
 For more information, see [Compile StoneDB in a Docker Container](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-docker).
+
 ## Configure StoneDB
 After StoneDB is installed, you need to configure at least the following parameters in the **my.cnf** file:
 
@@ -140,5 +150,12 @@ Online migration tools to move data between storage engines are not currently de
 3. Dump each table to a file by executing `SELECT … INTO OUTFILE`.
 4. Send the files to the destination and load them using `LOAD DATA … INFILE`.
 
+# Documentation
 
+Documentation can be found online at [https://stonedb.io](https://stonedb.io/docs/about-stonedb/intro). The documentation provides you with StoneDB basics, extensive examples of using StoneDB, as well as other information that you may need during your usage of StoneDB.
+
+# Discussion
+The [GitHub Discussions](https://github.com/stoneatom/stonedb/discussions) is the home for most discussions and communications about the StoneDB project. We welcome your participation. Every single opinion or suggestion of yours is welcomed and valued. We anticipate StoneDB to be an open and influential project.  
+
+When participating in the StoneDB project, please ensure all your behavior complies with the [Code of Conduct](https://stonedb.io/community/main).
 
