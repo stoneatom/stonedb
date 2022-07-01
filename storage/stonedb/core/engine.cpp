@@ -1112,7 +1112,7 @@ static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec
                     tab_name.c_str(), TL_WRITE_CONCURRENT_INSERT);
   tl.updating = 1;
   // the table will be opened in mysql_load
-
+  thd->lex->local_file = false;
   thd->lex->sql_command = SQLCOM_LOAD;
   sql_exchange ex("buffered_insert", 0, FILETYPE_MEM);
   ex.file_name = const_cast<char *>(addr.c_str());
