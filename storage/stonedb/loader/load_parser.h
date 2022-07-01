@@ -72,7 +72,7 @@ class LoadParser final {
   uint pack_size;
   Rejecter rejecter;
   uint cur_row = 0;
-  int64_t no_obj = 0;
+  int64_t num_of_obj = 0;
   int64_t row_no = 0;
   int64_t dup_no = 0;
 

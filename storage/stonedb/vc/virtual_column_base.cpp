@@ -25,43 +25,44 @@
 
 namespace stonedb {
 namespace vcolumn {
-VirtualColumnBase::VirtualColumnBase(core::ColumnType const &ct, core::MultiIndex *mind)
+
+VirtualColumnBase::VirtualColumnBase(core::ColumnType const &ct, core::MultiIndex *multi_idx_)
     : Column(ct),
-      mind(mind),
-      conn_info(current_tx),
-      last_val(std::make_shared<core::ValueOrNull>()),
-      first_eval(true),
-      dim(-1) {
+      multi_idx_(multi_idx_),
+      txn_info_(current_tx),
+      last_val_(std::make_shared<core::ValueOrNull>()),
+      is_first_eval_(true),
+      dimension_(-1) {
   ResetLocalStatistics();
 }
 
 VirtualColumnBase::VirtualColumnBase(VirtualColumn const &vc)
     : Column(vc.ct),
-      mind(vc.mind),
-      conn_info(vc.conn_info),
-      var_map(vc.var_map),
-      params(vc.params),
-      last_val(std::make_shared<core::ValueOrNull>()),
-      first_eval(true),
-      dim(vc.dim) {
+      multi_idx_(vc.multi_idx_),
+      txn_info_(vc.txn_info_),
+      var_map_(vc.var_map_),
+      params_(vc.params_),
+      last_val_(std::make_shared<core::ValueOrNull>()),
+      is_first_eval_(true),
+      dimension_(vc.dimension_) {
   ResetLocalStatistics();
 }
 
 void VirtualColumnBase::MarkUsedDims(core::DimensionVector &dims_usage) {
-  for (auto const &it : var_map) dims_usage[it.dim] = true;
+  for (auto const &it : var_map_) dims_usage[it.dimension_] = true;
 }
 std::set<int> VirtualColumnBase::GetDimensions() {
   std::set<int> d;
-  for (auto const &it : var_map) d.insert(it.dim);
+  for (auto const &it : var_map_) d.insert(it.dimension_);
   return d;
 }
 
 int64_t VirtualColumnBase::NoTuples() {
-  if (mind == NULL)  // constant
+  if (multi_idx_ == NULL)  // constant
     return 1;
-  core::DimensionVector dims(mind->NoDimensions());
+  core::DimensionVector dims(multi_idx_->NoDimensions());
   MarkUsedDims(dims);
-  return mind->NoTuples(dims);
+  return multi_idx_->NoTuples(dims);
 }
 
 bool VirtualColumnBase::IsConstExpression(core::MysqlExpression *expr, int temp_table_alias,
@@ -79,41 +80,41 @@ bool VirtualColumnBase::IsConstExpression(core::MysqlExpression *expr, int temp_
 }
 
 void VirtualColumnBase::SetMultiIndex(core::MultiIndex *m, std::shared_ptr<core::JustATable> t) {
-  mind = m;
+  multi_idx_ = m;
   if (t)
-    for (auto &iter : var_map) iter.tab = t;
+    for (auto &iter : var_map_) iter.table_ = t;
 }
 
 void VirtualColumnBase::ResetLocalStatistics() {
   // if(Type().IsFloat()) {
-  //	vc_min_val = common::MINUS_INF_64;
-  //	vc_max_val = common::PLUS_INF_64;
+  //	vc_min_val_ = common::MINUS_INF_64;
+  //	vc_max_val_ = common::PLUS_INF_64;
   //} else {
-  //	vc_min_val = common::MINUS_INF_64;
-  //	vc_max_val = common::PLUS_INF_64;
+  //	vc_min_val_ = common::MINUS_INF_64;
+  //	vc_max_val_ = common::PLUS_INF_64;
   //}
-  vc_min_val = common::NULL_VALUE_64;
-  vc_max_val = common::NULL_VALUE_64;
-  vc_nulls_possible = true;
-  vc_dist_vals = common::NULL_VALUE_64;
-  nulls_only = false;
+  vc_min_val_ = common::NULL_VALUE_64;
+  vc_max_val_ = common::NULL_VALUE_64;
+  vc_nulls_possible_ = true;
+  vc_distinct_vals_ = common::NULL_VALUE_64;
+  nulls_only_ = false;
 }
 
 void VirtualColumnBase::SetLocalMinMax(int64_t loc_min, int64_t loc_max) {
   if (loc_min == common::NULL_VALUE_64) loc_min = common::MINUS_INF_64;
   if (loc_max == common::NULL_VALUE_64) loc_max = common::PLUS_INF_64;
   if (Type().IsFloat()) {
-    if (vc_min_val == common::NULL_VALUE_64 ||
+    if (vc_min_val_ == common::NULL_VALUE_64 ||
         (loc_min != common::MINUS_INF_64 &&
-         (*(double *)&loc_min > *(double *)&vc_min_val || vc_min_val == common::MINUS_INF_64)))
-      vc_min_val = loc_min;
-    if (vc_max_val == common::NULL_VALUE_64 ||
+         (*(double *)&loc_min > *(double *)&vc_min_val_ || vc_min_val_ == common::MINUS_INF_64)))
+      vc_min_val_ = loc_min;
+    if (vc_max_val_ == common::NULL_VALUE_64 ||
         (loc_max != common::PLUS_INF_64 &&
-         (*(double *)&loc_max < *(double *)&vc_max_val || vc_max_val == common::PLUS_INF_64)))
-      vc_max_val = loc_max;
+         (*(double *)&loc_max < *(double *)&vc_max_val_ || vc_max_val_ == common::PLUS_INF_64)))
+      vc_max_val_ = loc_max;
   } else {
-    if (vc_min_val == common::NULL_VALUE_64 || loc_min > vc_min_val) vc_min_val = loc_min;
-    if (vc_max_val == common::NULL_VALUE_64 || loc_max < vc_max_val) vc_max_val = loc_max;
+    if (vc_min_val_ == common::NULL_VALUE_64 || loc_min > vc_min_val_) vc_min_val_ = loc_min;
+    if (vc_max_val_ == common::NULL_VALUE_64 || loc_max < vc_max_val_) vc_max_val_ = loc_max;
   }
 }
 
@@ -122,11 +123,11 @@ int64_t VirtualColumnBase::RoughMax() {
   DEBUG_ASSERT(res != common::NULL_VALUE_64);
 
   if (Type().IsFloat()) {
-    if (*(double *)&res > *(double *)&vc_max_val && vc_max_val != common::PLUS_INF_64 &&
-        vc_max_val != common::NULL_VALUE_64)
-      return vc_max_val;
-  } else if (res > vc_max_val && vc_max_val != common::NULL_VALUE_64)
-    return vc_max_val;
+    if (*(double *)&res > *(double *)&vc_max_val_ && vc_max_val_ != common::PLUS_INF_64 &&
+        vc_max_val_ != common::NULL_VALUE_64)
+      return vc_max_val_;
+  } else if (res > vc_max_val_ && vc_max_val_ != common::NULL_VALUE_64)
+    return vc_max_val_;
   return res;
 }
 
@@ -134,27 +135,27 @@ int64_t VirtualColumnBase::RoughMin() {
   int64_t res = RoughMinImpl();
   DEBUG_ASSERT(res != common::NULL_VALUE_64);
   if (Type().IsFloat()) {
-    if (*(double *)&res < *(double *)&vc_min_val && vc_min_val != common::MINUS_INF_64 &&
-        vc_min_val != common::NULL_VALUE_64)
-      return vc_min_val;
-  } else if (res < vc_min_val && vc_min_val != common::NULL_VALUE_64)
-    return vc_min_val;
+    if (*(double *)&res < *(double *)&vc_min_val_ && vc_min_val_ != common::MINUS_INF_64 &&
+        vc_min_val_ != common::NULL_VALUE_64)
+      return vc_min_val_;
+  } else if (res < vc_min_val_ && vc_min_val_ != common::NULL_VALUE_64)
+    return vc_min_val_;
   return res;
 }
 
 int64_t VirtualColumnBase::GetApproxDistVals(bool incl_nulls, core::RoughMultiIndex *rough_mind) {
   int64_t res = GetApproxDistValsImpl(incl_nulls, rough_mind);
-  if (vc_dist_vals != common::NULL_VALUE_64) {
-    int64_t local_res = vc_dist_vals;
+  if (vc_distinct_vals_ != common::NULL_VALUE_64) {
+    int64_t local_res = vc_distinct_vals_;
     if (incl_nulls && IsNullsPossible()) local_res++;
     if (res == common::NULL_VALUE_64 || res > local_res) res = local_res;
   }
-  if (!Type().IsFloat() && vc_min_val > (common::MINUS_INF_64 / 3) && vc_max_val < (common::PLUS_INF_64 / 3)) {
-    int64_t local_res = vc_max_val - vc_min_val + 1;
+  if (!Type().IsFloat() && vc_min_val_ > (common::MINUS_INF_64 / 3) && vc_max_val_ < (common::PLUS_INF_64 / 3)) {
+    int64_t local_res = vc_max_val_ - vc_min_val_ + 1;
     if (incl_nulls && IsNullsPossible()) local_res++;
     if (res == common::NULL_VALUE_64 || res > local_res) return local_res;
   }
-  if (Type().IsFloat() && vc_min_val != common::NULL_VALUE_64 && vc_min_val == vc_max_val) {
+  if (Type().IsFloat() && vc_min_val_ != common::NULL_VALUE_64 && vc_min_val_ == vc_max_val_) {
     int64_t local_res = 1;
     if (incl_nulls && IsNullsPossible()) local_res++;
     if (res == common::NULL_VALUE_64 || res > local_res) return local_res;
@@ -166,11 +167,11 @@ int64_t VirtualColumnBase::GetMaxInt64(const core::MIIterator &mit) {
   int64_t res = GetMaxInt64Impl(mit);
   DEBUG_ASSERT(res != common::NULL_VALUE_64);
   if (Type().IsFloat()) {
-    if (*(double *)&res > *(double *)&vc_max_val && vc_max_val != common::PLUS_INF_64 &&
-        vc_max_val != common::NULL_VALUE_64)
-      return vc_max_val;
-  } else if ((vc_max_val != common::NULL_VALUE_64 && res > vc_max_val))
-    return vc_max_val;
+    if (*(double *)&res > *(double *)&vc_max_val_ && vc_max_val_ != common::PLUS_INF_64 &&
+        vc_max_val_ != common::NULL_VALUE_64)
+      return vc_max_val_;
+  } else if ((vc_max_val_ != common::NULL_VALUE_64 && res > vc_max_val_))
+    return vc_max_val_;
   return res;
 }
 
@@ -178,11 +179,11 @@ int64_t VirtualColumnBase::GetMinInt64(const core::MIIterator &mit) {
   int64_t res = GetMinInt64Impl(mit);
   DEBUG_ASSERT(res != common::NULL_VALUE_64);
   if (Type().IsFloat()) {
-    if (*(double *)&res < *(double *)&vc_min_val && vc_min_val != common::MINUS_INF_64 &&
-        vc_min_val != common::NULL_VALUE_64)
-      return vc_min_val;
-  } else if ((vc_min_val != common::NULL_VALUE_64 && res < vc_min_val))
-    return vc_min_val;
+    if (*(double *)&res < *(double *)&vc_min_val_ && vc_min_val_ != common::MINUS_INF_64 &&
+        vc_min_val_ != common::NULL_VALUE_64)
+      return vc_min_val_;
+  } else if ((vc_min_val_ != common::NULL_VALUE_64 && res < vc_min_val_))
+    return vc_min_val_;
   return res;
 }
 

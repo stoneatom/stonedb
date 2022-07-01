@@ -32,7 +32,7 @@ void VCPackGuardian::Initialize(int no_th) {
 
   int no_dims = -1;
   for (auto const &iter : my_vc.GetVarMap())
-    if (iter.dim > no_dims) no_dims = iter.dim;  // find the maximal number of dimension used
+    if (iter.dimension_ > no_dims) no_dims = iter.dimension_;  // find the maximal number of dimension used
   no_dims++;
   if (no_dims > 0) {  // else constant
     last_pack.reserve(no_dims);
@@ -66,37 +66,37 @@ void VCPackGuardian::LockPackrow(const MIIterator &mit) {
     }
   }
   for (auto iter = my_vc.GetVarMap().cbegin(); iter != my_vc.GetVarMap().cend(); iter++) {
-    int cur_dim = iter->dim;
+    int cur_dim = iter->dimension_;
     if (last_pack[cur_dim][threadId] != mit.GetCurPackrow(cur_dim)) {
       JustATable *tab = iter->GetTabPtr().get();
       if (last_pack[cur_dim][threadId] != common::NULL_VALUE_32)
-        tab->UnlockPackFromUse(iter->col_ndx, last_pack[cur_dim][threadId]);
+        tab->UnlockPackFromUse(iter->col_idx_, last_pack[cur_dim][threadId]);
       try {
-        tab->LockPackForUse(iter->col_ndx, mit.GetCurPackrow(cur_dim));
+        tab->LockPackForUse(iter->col_idx_, mit.GetCurPackrow(cur_dim));
       } catch (...) {
         // unlock packs which are partially locked for this packrow
         auto it = my_vc.GetVarMap().begin();
         for (; it != iter; ++it) {
-          int cur_dim = it->dim;
+          int cur_dim = it->dimension_;
           if (last_pack[cur_dim][threadId] != mit.GetCurPackrow(cur_dim) &&
               last_pack[cur_dim][threadId] != common::NULL_VALUE_32)
-            it->GetTabPtr()->UnlockPackFromUse(it->col_ndx, mit.GetCurPackrow(cur_dim));
+            it->GetTabPtr()->UnlockPackFromUse(it->col_idx_, mit.GetCurPackrow(cur_dim));
         }
 
         for (++iter; iter != my_vc.GetVarMap().end(); ++iter) {
-          int cur_dim = iter->dim;
+          int cur_dim = iter->dimension_;
           if (last_pack[cur_dim][threadId] != mit.GetCurPackrow(cur_dim) &&
               last_pack[cur_dim][threadId] != common::NULL_VALUE_32)
-            iter->GetTabPtr()->UnlockPackFromUse(iter->col_ndx, last_pack[cur_dim][threadId]);
+            iter->GetTabPtr()->UnlockPackFromUse(iter->col_idx_, last_pack[cur_dim][threadId]);
         }
 
-        for (auto const &iter : my_vc.GetVarMap()) last_pack[iter.dim][threadId] = common::NULL_VALUE_32;
+        for (auto const &iter : my_vc.GetVarMap()) last_pack[iter.dimension_][threadId] = common::NULL_VALUE_32;
         throw;
       }
     }
   }
   for (auto const &iter : my_vc.GetVarMap())
-    last_pack[iter.dim][threadId] = mit.GetCurPackrow(iter.dim);  // must be in a separate loop, otherwise
+    last_pack[iter.dimension_][threadId] = mit.GetCurPackrow(iter.dimension_);  // must be in a separate loop, otherwise
                                                                   // for "a + b" will not lock b
 }
 
@@ -104,12 +104,12 @@ void VCPackGuardian::UnlockAll() {
   if (!initialized) return;
   for (auto const &iter : my_vc.GetVarMap()) {
     for (int i = 0; i < threads; ++i)
-      if (last_pack[iter.dim][i] != common::NULL_VALUE_32 && iter.GetTabPtr())
-        iter.GetTabPtr()->UnlockPackFromUse(iter.col_ndx, last_pack[iter.dim][i]);
+      if (last_pack[iter.dimension_][i] != common::NULL_VALUE_32 && iter.GetTabPtr())
+        iter.GetTabPtr()->UnlockPackFromUse(iter.col_idx_, last_pack[iter.dimension_][i]);
   }
   for (auto const &iter : my_vc.GetVarMap()) {
     for (int i = 0; i < threads; ++i)
-      last_pack[iter.dim][i] = common::NULL_VALUE_32;  // must be in a separate loop, otherwise
+      last_pack[iter.dimension_][i] = common::NULL_VALUE_32;  // must be in a separate loop, otherwise
                                                        // for "a + b" will not unlock b
   }
 }

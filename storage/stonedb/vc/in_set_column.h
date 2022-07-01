@@ -76,7 +76,7 @@ class InSetColumn : public MultiValColumn {
       DEBUG_ASSERT(dynamic_cast<types::RCNum const *>(value));
       return static_cast<types::RCNum const *>(value)->ValueInt();
     }
-    bool DoIsNull() const override { return value->IsNull(); }
+    bool IsNullImpl() const override { return value->IsNull(); }
     virtual ~LazyValueImpl() {}
 
    private:
@@ -97,7 +97,7 @@ class InSetColumn : public MultiValColumn {
   bool IsInSet() const override { return true; }
   char *ToString(char p_buf[], size_t buf_ct) const override;
   void RequestEval(const core::MIIterator &mit, const int tta) override;
-  core::ColumnType &GetExpectedType() { return expected_type; }
+  core::ColumnType &GetExpectedType() { return expected_type_; }
   void LockSourcePacks(const core::MIIterator &mit) override;
   void LockSourcePacks(const core::MIIterator &mit, int);
   bool CanCopy() const override;
@@ -164,17 +164,18 @@ class InSetColumn : public MultiValColumn {
     return common::ErrorCode::FAILED;
   }
 
-  const core::MysqlExpression::sdbfields_cache_t &GetSDBItems() const override { return sdbitems; }
+  const core::MysqlExpression::sdbfields_cache_t &GetSDBItems() const override { return sdb_items_; }
   bool CopyCondImpl(const core::MIIterator &mit, types::CondArray &condition, DTCollation coll) override;
   bool CopyCondImpl(const core::MIIterator &mit, std::shared_ptr<utils::Hash64> &condition, DTCollation coll) override;
 
  private:
-  mutable bool full_cache;
-  mutable core::ValueSet cache;
-  core::ColumnType expected_type;
-  bool is_const;
-  char *last_mit;     // to be used for tracing cache creation for mit values
-  int last_mit_size;  // to be used for tracing cache creation for mit values
+  mutable bool full_cache_;
+  mutable core::ValueSet cache_;
+  core::ColumnType expected_type_;
+  bool is_const_;
+  char *last_mit_;     // to be used for tracing cache creation for mit values
+  int last_mit_size_;  // to be used for tracing cache creation for mit values
+
   void PrepareCache(const core::MIIterator &mit, const int64_t &at_least = common::PLUS_INF_64);
 };
 

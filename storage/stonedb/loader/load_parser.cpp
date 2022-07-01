@@ -32,7 +32,7 @@ LoadParser::LoadParser(RCAttrPtrVect_t &attrs, const system::IOParameters &iop, 
       ioparam(iop),
       pack_size(packsize),
       rejecter(packsize, iop.GetRejectFile(), iop.GetAbortOnCount(), iop.GetAbortOnThreshold()),
-      no_obj(attrs[0]->NoObj()) {
+      num_of_obj(attrs[0]->NumOfObj()) {
   std::vector<uchar> columns_collations;
   for (auto &it : attrs) columns_collations.push_back(it->GetCollation().collation->number);
 
@@ -172,7 +172,7 @@ int LoadParser::ProcessInsertIndex(std::shared_ptr<index::RCTableIndex> tab, std
     fields.emplace_back(vcs[col].GetDataBytesPointer(lastrow - 1), vcs[col].Size(lastrow - 1));
   }
 
-  if (tab->InsertIndex(current_tx, fields, no_obj + no_rows) == common::ErrorCode::DUPP_KEY) {
+  if (tab->InsertIndex(current_tx, fields, num_of_obj + no_rows) == common::ErrorCode::DUPP_KEY) {
     STONEDB_LOG(LogCtl_Level::INFO, "Load discard this row for duplicate key");
     return HA_ERR_FOUND_DUPP_KEY;
   }

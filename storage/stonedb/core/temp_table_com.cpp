@@ -40,19 +40,19 @@ TempTable::TempTable(JustATable *t, int alias, Query *q)
       ((TempTable *)t)->RoughMaterialize(false, NULL, true);
     else
       ((TempTable *)t)->Materialize(false, NULL, false);
-    filter.mind->AddDimension_cross(t->NoObj());
+    filter.mind->AddDimension_cross(t->NumOfObj());
   } else {
-    filter.mind->AddDimension_cross(t->NoObj());
+    filter.mind->AddDimension_cross(t->NumOfObj());
   }
   if (filter.mind->TooManyTuples())
-    no_obj = common::NULL_VALUE_64;  // a big, improper number, which we hope to
+    num_of_obj = common::NULL_VALUE_64;  // a big, improper number, which we hope to
                                      // be changed after conditions are applied
   else
-    no_obj = filter.mind->NoTuples();
-  no_cols = 0;
+    num_of_obj = filter.mind->NoTuples();
+  num_of_cols = 0;
   no_global_virt_cols = 0;
   lazy = false;
-  no_materialized = 0;
+  num_of_materialized = 0;
   is_sent = false;
   rough_is_empty = common::TRIBOOL_UNKNOWN;
 }
@@ -65,17 +65,17 @@ void TempTable::JoinT(JustATable *t, int alias, JoinType jt) {
   if (t->TableType() == TType::TEMP_TABLE) {
     has_temp_table = true;
     ((TempTable *)t)->Materialize();
-    filter.mind->AddDimension_cross(t->NoObj());
+    filter.mind->AddDimension_cross(t->NumOfObj());
   } else
-    filter.mind->AddDimension_cross(t->NoObj());
+    filter.mind->AddDimension_cross(t->NumOfObj());
 
   join_types.push_back(jt);
 
   if (filter.mind->TooManyTuples())
-    no_obj = common::NULL_VALUE_64;  // a big, improper number, which we hope to
+    num_of_obj = common::NULL_VALUE_64;  // a big, improper number, which we hope to
                                      // be changed after conditions are applied
   else
-    no_obj = filter.mind->NoTuples();
+    num_of_obj = filter.mind->NoTuples();
 }
 
 }  // namespace core

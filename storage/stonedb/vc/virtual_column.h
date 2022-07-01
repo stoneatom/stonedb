@@ -38,19 +38,18 @@ namespace vcolumn {
 class VirtualColumn : public VirtualColumnBase {
  public:
   VirtualColumn(core::ColumnType const &col_type, core::MultiIndex *mind)
-      : VirtualColumnBase(col_type, mind), pguard(this) {}
-  VirtualColumn(VirtualColumn const &vc) : VirtualColumnBase(vc), pguard(this) {}
-  virtual ~VirtualColumn() { pguard.UnlockAll(); }
+      : VirtualColumnBase(col_type, mind), pguard_(this) {}
+  VirtualColumn(VirtualColumn const &vc) : VirtualColumnBase(vc), pguard_(this) {}
+  virtual ~VirtualColumn() { pguard_.UnlockAll(); }
 
-  void LockSourcePacks(const core::MIIterator &mit) override { pguard.LockPackrow(mit); }
-  void UnlockSourcePacks() override { pguard.UnlockAll(); }
+  void LockSourcePacks(const core::MIIterator &mit) override { pguard_.LockPackrow(mit); }
+  void UnlockSourcePacks() override { pguard_.UnlockAll(); }
 
  private:
-  core::VCPackGuardian pguard;
+  core::VCPackGuardian pguard_;
 };
 }  // namespace vcolumn
 
-// TODO()
 extern vcolumn::VirtualColumn *CreateVCCopy(vcolumn::VirtualColumn *vc);
 
 }  // namespace stonedb
