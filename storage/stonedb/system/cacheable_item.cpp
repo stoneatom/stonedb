@@ -34,7 +34,7 @@ CacheableItem::CacheableItem(char const *owner_name, char const *object_id, int 
     // read the configuration parameter
     std::string temp_filename = stonedb_sysvar_cachefolder;
     filename_n_position = temp_filename.length();
-    filename = new char[filename_n_position + 37];  // "...path.../XXXXXXnnnnnnAAAAAAAABBBBBBBB.sdb_tmp"
+    filename = new char[filename_n_position + 38];  // "...path.../XXXXXXnnnnnnAAAAAAAABBBBBBBB.sdb_tmp"
     std::strcpy(filename, temp_filename.c_str());
     if (filename[filename_n_position - 1] != '/' && filename[filename_n_position - 1] != '\\') {
       filename[filename_n_position] = '/';
@@ -45,7 +45,7 @@ CacheableItem::CacheableItem(char const *owner_name, char const *object_id, int 
 
   if (filename == NULL) {
     // if the temporary path is not set, use the current folder
-    filename = new char[36];  // "XXXXXXnnnnnnAAAAAAAABBBBBBBB.sdb_tmp"
+    filename = new char[37];  // "XXXXXXnnnnnnAAAAAAAABBBBBBBB.sdb_tmp"
     filename_n_position = 6;
   }
   max_file_id = 0;
