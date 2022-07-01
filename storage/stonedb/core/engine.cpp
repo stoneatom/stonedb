@@ -1148,6 +1148,7 @@ static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec
   thd->release_resources();
   remove_global_thread(thd);
   delete thd;
+  my_thread_end();
 }
 
 void DistributeLoad(std::unordered_map<int, std::vector<std::unique_ptr<char[]>>> &tm) {
