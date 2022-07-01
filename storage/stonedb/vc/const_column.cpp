@@ -29,6 +29,7 @@ ConstColumn::ConstColumn(core::ValueOrNull const &val, core::ColumnType const &c
     : VirtualColumn(c, NULL), value_(val) {
   dimension_ = -1;
   if (ct.IsString()) ct.SetPrecision(c.GetPrecision());
+
   if (c.GetTypeName() == common::CT::TIMESTAMP && shift_to_UTC) {
     types::RCDateTime rcdt(val.Get64(), common::CT::TIMESTAMP);
     // needs to convert value_ to UTC
@@ -76,7 +77,6 @@ ConstColumn::ConstColumn(const types::RCValueObject &v, const core::ColumnType &
       throw common::DataTypeConversionException(common::ErrorCode::DATACONVERSION);
   } else {
     DEBUG_ASSERT(v.GetValueType() == types::ValueTypeEnum::DATE_TIME_TYPE);
-    // TODO: if it is non-date-time a proper conversion should be done here
     value_ = core::ValueOrNull(static_cast<types::RCDateTime &>(v));
   }
 }
@@ -197,6 +197,7 @@ char *ConstColumn::ToString(char p_buf[], size_t buf_ct) const {
                   val.GetDataBytesPointer());
     std::strcat(p_buf, "\"");
   }
+
   return p_buf;
 }
 
