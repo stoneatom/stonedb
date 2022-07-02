@@ -102,6 +102,8 @@ void KVStore::UnInit() {
   if (bbto_.block_cache) bbto_.block_cache->EraseUnRefEntries();
   delete rdb;
   rdb = nullptr;
+
+  kv_data_dir.clear();
 }
 
 void KVStore::AsyncDropData() {
