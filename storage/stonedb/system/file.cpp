@@ -24,16 +24,16 @@ namespace system {
 
 int StoneDBFile::Open(std::string const &file, int flags, mode_t mode) {
   DEBUG_ASSERT(file.length());
-  name = file;
+  name_ = file;
 
-  fd = open(file.c_str(), flags, mode);
-  if (fd == -1) ThrowError(errno);
-  return fd;
+  fd_ = open(file.c_str(), flags, mode);
+  if (fd_ == -1) ThrowError(errno);
+  return fd_;
 }
 
 size_t StoneDBFile::Read(void *buf, size_t count) {
-  DEBUG_ASSERT(fd != -1);
-  auto read_bytes = read(fd, buf, count);
+  DEBUG_ASSERT(fd_ != -1);
+  auto read_bytes = read(fd_, buf, count);
   if (read_bytes == -1) ThrowError(errno);
   return read_bytes;
 }
@@ -41,9 +41,9 @@ size_t StoneDBFile::Read(void *buf, size_t count) {
 int StoneDBFile::Flush() {
   int ret;
 #ifdef HAVE_FDATASYNC
-  ret = fdatasync(fd);
+  ret = fdatasync(fd_);
 #else
-  ret = fsync(fd);
+  ret = fsync(fd_);
 #endif
   return ret;
 }
@@ -76,16 +76,16 @@ void StoneDBFile::ReadExact(void *buf, size_t count) {
     read_bytes += rb;
   }
   if (read_bytes != count) {
-    ThrowError("Failed to read " + std::to_string(count) + " bytes from " + name + ". returned " +
+    ThrowError("Failed to read " + std::to_string(count) + " bytes from " + name_ + ". returned " +
                std::to_string(read_bytes));
   }
 }
 
 void StoneDBFile::WriteExact(const void *buf, size_t count) {
-  DEBUG_ASSERT(fd != -1);
+  DEBUG_ASSERT(fd_ != -1);
   size_t total_writen_bytes = 0;
   while (total_writen_bytes < count) {
-    auto writen_bytes = write(fd, ((char *)buf) + total_writen_bytes, count - total_writen_bytes);
+    auto writen_bytes = write(fd_, ((char *)buf) + total_writen_bytes, count - total_writen_bytes);
     if (writen_bytes == -1) ThrowError(errno);
     total_writen_bytes += writen_bytes;
   }
@@ -93,9 +93,9 @@ void StoneDBFile::WriteExact(const void *buf, size_t count) {
 
 off_t StoneDBFile::Seek(off_t pos, int whence) {
   off_t new_pos = -1;
-  DEBUG_ASSERT(fd != -1);
+  DEBUG_ASSERT(fd_ != -1);
 
-  new_pos = lseek(fd, pos, whence);
+  new_pos = lseek(fd_, pos, whence);
 
   if (new_pos == (off_t)-1) ThrowError(errno);
   return new_pos;
@@ -103,22 +103,23 @@ off_t StoneDBFile::Seek(off_t pos, int whence) {
 
 off_t StoneDBFile::Tell() {
   off_t pos;
-  DEBUG_ASSERT(fd != -1);
-  pos = lseek(fd, 0, SEEK_CUR);
+  DEBUG_ASSERT(fd_ != -1);
+  pos = lseek(fd_, 0, SEEK_CUR);
   if (pos == (off_t)-1) ThrowError(errno);
   return pos;
 }
 
-bool StoneDBFile::IsOpen() const { return (fd != -1 ? true : false); }
+bool StoneDBFile::IsOpen() const { return (fd_ != -1 ? true : false); }
 
 int StoneDBFile::Close() {
   int sdb_err = 0;
-  if (fd != -1) {
-    sdb_err = close(fd);
-    name = "";
-    fd = -1;
+  if (fd_ != -1) {
+    sdb_err = close(fd_);
+    name_ = "";
+    fd_ = -1;
   }
   return sdb_err;
 }
+
 }  // namespace system
 }  // namespace stonedb

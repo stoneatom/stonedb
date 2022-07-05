@@ -22,6 +22,7 @@
 
 namespace stonedb {
 namespace types {
+
 BString::BString()  // null string
 {
   null = true;
@@ -466,7 +467,9 @@ size_t BString::RoundUpTo8Bytes(const DTCollation &dt) const {
     }
   } else
     useful_len = len > 8 ? 8 : len;
+
   return useful_len;
 }
+
 }  // namespace types
 }  // namespace stonedb

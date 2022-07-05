@@ -26,32 +26,32 @@ namespace mm {
 SystemHeap::~SystemHeap() {}
 
 void *SystemHeap::alloc(size_t size) {
-  if (m_size > 0 && (m_allocsize + size > m_size)) return NULL;
+  if (size_ > 0 && (alloc_size_ + size > size_)) return NULL;
 
   void *res = malloc(size);
-  m_blockSizes.insert(std::make_pair(res, size));
-  m_allocsize += size;
+  block_sizes_.insert(std::make_pair(res, size));
+  alloc_size_ += size;
   return res;
 }
 
 void SystemHeap::dealloc(void *mh) {
-  m_allocsize -= getBlockSize(mh);
-  m_blockSizes.erase(mh);
+  alloc_size_ -= getBlockSize(mh);
+  block_sizes_.erase(mh);
   free(mh);
 }
 
 void *SystemHeap::rc_realloc(void *mh, size_t size) {
-  m_allocsize -= getBlockSize(mh);
-  m_blockSizes.erase(mh);
+  alloc_size_ -= getBlockSize(mh);
+  block_sizes_.erase(mh);
   void *res = realloc(mh, size);
-  m_blockSizes.insert(std::make_pair(res, size));
-  m_allocsize += size;
+  block_sizes_.insert(std::make_pair(res, size));
+  alloc_size_ += size;
   return res;
 }
 
 size_t SystemHeap::getBlockSize(void *mh) {
-  auto it = m_blockSizes.find(mh);
-  ASSERT(it != m_blockSizes.end(), "Invalid block address");
+  auto it = block_sizes_.find(mh);
+  ASSERT(it != block_sizes_.end(), "Invalid block address");
   return it->second;
 }
 

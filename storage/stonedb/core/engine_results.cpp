@@ -74,11 +74,11 @@ void scan_fields(List<Item> &fields, uint *&buf_lens, std::map<int, Item *> &ite
         types::Item_sum_hybrid_rcbase *tmp = new types::Item_sum_hybrid_rcbase();
         items_backup[item_id] = item;
         tmp->decimals = item->decimals;
-        tmp->hybrid_type = item->result_type();
+        tmp->hybrid_type_ = item->result_type();
         tmp->unsigned_flag = item->unsigned_flag;
-        tmp->hybrid_field_type = item->field_type();
+        tmp->hybrid_field_type_ = item->field_type();
         tmp->collation.set(item->collation);
-        tmp->value.set_charset(item->collation.collation);
+        tmp->value_.set_charset(item->collation.collation);
         li.replace(tmp);
         break;
       }
@@ -93,11 +93,11 @@ void scan_fields(List<Item> &fields, uint *&buf_lens, std::map<int, Item *> &ite
 
           // We have to add some knowledge to our item from original item
           isum_hybrid_rcbase->decimals = is->decimals;
-          isum_hybrid_rcbase->hybrid_type = is->result_type();
+          isum_hybrid_rcbase->hybrid_type_ = is->result_type();
           isum_hybrid_rcbase->unsigned_flag = is->unsigned_flag;
-          isum_hybrid_rcbase->hybrid_field_type = is->field_type();
+          isum_hybrid_rcbase->hybrid_field_type_ = is->field_type();
           isum_hybrid_rcbase->collation.set(is->collation);
-          isum_hybrid_rcbase->value.set_charset(is->collation.collation);
+          isum_hybrid_rcbase->value_.set_charset(is->collation.collation);
           li.replace(isum_hybrid_rcbase);
           buf_lens[item_id] = 0;
           break;
@@ -118,7 +118,7 @@ void scan_fields(List<Item> &fields, uint *&buf_lens, std::map<int, Item *> &ite
 
           // We have to add some knowledge to our item from original item
           isum_sum_rcbase->decimals = is->decimals;
-          isum_sum_rcbase->hybrid_type = is->result_type();
+          isum_sum_rcbase->hybrid_type_ = is->result_type();
           isum_sum_rcbase->unsigned_flag = is->unsigned_flag;
           li.replace(isum_sum_rcbase);
           buf_lens[item_id] = 0;
@@ -314,13 +314,13 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::RCDataTyp
             Engine::Convert(is_null, isum_hybrid_rcbase->dec_value(), rcdt, item->decimals);
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == INT_RESULT) {
-            Engine::Convert(is_null, isum_hybrid_rcbase->int64_value(), rcdt, isum_hybrid_rcbase->hybrid_field_type);
+            Engine::Convert(is_null, isum_hybrid_rcbase->int64_value(), rcdt, isum_hybrid_rcbase->hybrid_field_type_);
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == REAL_RESULT) {
             Engine::Convert(is_null, isum_hybrid_rcbase->real_value(), rcdt);
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == STRING_RESULT) {
-            Engine::Convert(is_null, isum_hybrid_rcbase->string_value(), rcdt, isum_hybrid_rcbase->hybrid_field_type);
+            Engine::Convert(is_null, isum_hybrid_rcbase->string_value(), rcdt, isum_hybrid_rcbase->hybrid_field_type_);
             isum_hybrid_rcbase->null_value = is_null;
           }
           break;

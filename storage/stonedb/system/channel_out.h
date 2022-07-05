@@ -25,6 +25,7 @@
 
 namespace stonedb {
 namespace system {
+
 class ChannelOut {
  public:
   virtual ChannelOut &operator<<(short value) = 0;
@@ -46,10 +47,12 @@ class ChannelOut {
   virtual ChannelOut &operator<<(const char *buffer) = 0;
   virtual ChannelOut &operator<<(const wchar_t *buffer) = 0;
   virtual ChannelOut &operator<<(const std::string &str) = 0;
+
   ChannelOut &operator<<(types::BString &rcbs) {
     for (ushort i = 0; i < rcbs.len; i++) (*this) << (char)(rcbs[i]);
     return *this;
   }
+
   ChannelOut &operator<<(const std::exception &exc) {
     (*this) << exc.what();
     return *this;
@@ -72,6 +75,7 @@ inline ChannelOut &endl(ChannelOut &inout) {
 }
 
 inline ChannelOut &fixed(ChannelOut &inout) { return inout.fixed(); }
+
 }  // namespace system
 }  // namespace stonedb
 

@@ -22,6 +22,7 @@
 
 namespace stonedb {
 namespace types {
+
 RCDataType::~RCDataType() {}
 
 bool RCDataType::AreComperable(const RCDataType &rcdt) const { return RCDataType::AreComperable(*this, rcdt); }
@@ -128,5 +129,6 @@ ValueTypeEnum RCDataType::GetValueType(common::CT attr_type) {
     return ValueTypeEnum::STRING_TYPE;
   return ValueTypeEnum::NULL_TYPE;
 }
+
 }  // namespace types
 }  // namespace stonedb

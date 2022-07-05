@@ -23,14 +23,17 @@
 
 namespace stonedb {
 namespace system {
+
 void Stream::ThrowError(int errnum) { ThrowError(std::strerror(errnum)); }
 
 void Stream::ThrowError(std::string serror) {
   std::string errmsg = "I/O operation on ";
-  errmsg += name;
+  errmsg += name_;
   errmsg += " failed with error - ";
   errmsg += serror;
+
   throw common::DatabaseException(errmsg);
 }
+
 }  // namespace system
 }  // namespace stonedb

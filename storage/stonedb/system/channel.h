@@ -25,6 +25,7 @@
 
 namespace stonedb {
 namespace system {
+
 class Channel {
  public:
   Channel(bool time_stamp_at_lock = false);
@@ -32,10 +33,11 @@ class Channel {
   ~Channel();
 
   void addOutput(ChannelOut *output);
-  void setOn() { m_bEnabled = true; };
-  void setOff() { m_bEnabled = false; };
-  void setTimeStamp(bool _on = true) { m_bTimeStampAtLock = _on; };
+  void setOn() { enabled_ = true; };
+  void setOff() { enabled_ = false; };
+  void setTimeStamp(bool _on = true) { time_stamp_at_lock_ = _on; };
   bool isOn();
+
   Channel &lock(uint optional_sess_id = 0xFFFFFFFF);
   Channel &unlock();
 
@@ -64,12 +66,12 @@ class Channel {
   Channel &flush();
 
  private:
-  std::vector<ChannelOut *> m_Outputs;
+  std::vector<ChannelOut *> channel_outputs_;
 
-  bool m_bEnabled = true;
-  std::mutex channel_mutex;
+  bool enabled_ = true;
+  std::mutex channel_mutex_;
 
-  bool m_bTimeStampAtLock;
+  bool time_stamp_at_lock_;
 };
 
 inline Channel &lock(Channel &report) { return report.lock(); }
@@ -81,6 +83,7 @@ inline Channel &unlock(Channel &report) {
 }
 
 inline Channel &flush(Channel &report) { return report.flush(); }
+
 }  // namespace system
 }  // namespace stonedb
 

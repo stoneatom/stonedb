@@ -25,6 +25,7 @@
 
 namespace stonedb {
 namespace utils {
+
 class Timer {
  public:
   Timer() = default;
@@ -36,8 +37,9 @@ class Timer {
  private:
   void DoPrint(const std::string &msg) const;
 
-  std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
+  std::chrono::high_resolution_clock::time_point start_ = std::chrono::high_resolution_clock::now();
 };
+
 }  // namespace utils
 }  // namespace stonedb
 

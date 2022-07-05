@@ -59,13 +59,14 @@ static void __bubble_sort(char *b, int lo, int hi, int s, comp_func_ib cmpsrt) {
   }
 }
 
-#define PIVOT_SIZE 32
+constexpr int PIVOT_SIZE = 32;
 
 static void __quicksort_ib(char *b, int lo, int hi, int s, comp_func_ib cmpsrt, int call_seq) {
   if (call_seq > 8192) {
     __bubble_sort(b, lo, hi, s, cmpsrt);
     return;
   }
+
   int i = lo;
   int j = hi;
   int pv = (lo + hi) / 2;
@@ -100,6 +101,7 @@ static void __quicksort_ib(char *b, int lo, int hi, int s, comp_func_ib cmpsrt, 
       jj -= s;
     }
   }
+
   if (lo < j) __quicksort_ib(b, lo, j, s, cmpsrt, call_seq + 1);
   if (i < hi) __quicksort_ib(b, i, hi, s, cmpsrt, call_seq + 1);
 

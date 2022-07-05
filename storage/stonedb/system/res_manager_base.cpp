@@ -19,6 +19,8 @@
 
 namespace stonedb {
 namespace system {
+
 ResourceManagerBase::~ResourceManagerBase() {}
+
 }  // namespace system
 }  // namespace stonedb

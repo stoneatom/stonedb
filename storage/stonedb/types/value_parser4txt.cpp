@@ -96,8 +96,8 @@ common::ErrorCode ValueParserForText::ParseNum(const BString &rcs, RCNum &rcn, s
     return common::ErrorCode::SUCCESS;
   }
   rcn.null = false;
-  rcn.dbl = false;
-  rcn.m_scale = 0;
+  rcn.is_double_ = false;
+  rcn.scale_ = 0;
 
   int ptr_len = len;
   val_ptr = val;
@@ -139,8 +139,8 @@ common::ErrorCode ValueParserForText::ParseNum(const BString &rcs, RCNum &rcn, s
             }
           }
         } else {
-          rcn.value = (Uint64PowOfTen(18) - 1) * sign;
-          rcn.m_scale = 0;
+          rcn.value_ = (Uint64PowOfTen(18) - 1) * sign;
+          rcn.scale_ = 0;
           return common::ErrorCode::OUT_OF_RANGE;
         }
       }
@@ -178,10 +178,10 @@ common::ErrorCode ValueParserForText::ParseNum(const BString &rcs, RCNum &rcn, s
   }
 
   if (no_digs > 18)
-    rcn.value = (Uint64PowOfTen(18) - 1) * sign;
+    rcn.value_ = (Uint64PowOfTen(18) - 1) * sign;
   else
-    rcn.value = v * sign;
-  rcn.m_scale = scale;
+    rcn.value_ = v * sign;
+  rcn.scale_ = scale;
   if (has_unexpected_sign || no_digs > 18) return common::ErrorCode::VALUE_TRUNCATED;
   return sdbret;
 }
@@ -250,8 +250,8 @@ common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, comm
     if (has_unexpected_sign) {
       // same as innodb , string convert to 0
       rcn.null = false;
-      rcn.attrt = at;
-      rcn.value = 0;
+      rcn.attr_type_ = at;
+      rcn.value_ = 0;
       return common::ErrorCode::VALUE_TRUNCATED;
     }
 
@@ -279,20 +279,20 @@ common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, comm
   }
 
   rcn.null = false;
-  rcn.attrt = at;
+  rcn.attr_type_ = at;
   if (core::ATI::IsRealType(at)) {
-    rcn.dbl = true;
-    rcn.m_scale = 0;
+    rcn.is_double_ = true;
+    rcn.scale_ = 0;
   } else
-    rcn.dbl = false;
+    rcn.is_double_ = false;
 
   if (core::ATI::IsRealType(at))
     return ValueParserForText::ParseReal(rcs, rcn, at);
   else if (at == common::CT::NUM)
     return ValueParserForText::ParseNum(rcs, rcn, scale);
 
-  rcn.m_scale = 0;
-  rcn.dbl = false;
+  rcn.scale_ = 0;
+  rcn.is_double_ = false;
 
   if (rcs.Equals("NULL", 4)) {
     rcn.null = true;
@@ -306,7 +306,7 @@ common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, comm
   EatWhiteSigns(val_ptr, ptr_len);
   if (core::ATI::IsIntegerType(at)) {
     ret = ParseBigInt(rcs, rcn);
-    int64_t v = rcn.value;
+    int64_t v = rcn.value_;
 
     if (at == common::CT::BYTEINT) {
       if (v > SDB_TINYINT_MAX) {
@@ -341,9 +341,9 @@ common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, comm
         ret = common::ErrorCode::OUT_OF_RANGE;
       }
     }
-    rcn.dbl = false;
-    rcn.m_scale = 0;
-    rcn.value = v;
+    rcn.is_double_ = false;
+    rcn.scale_ = 0;
+    rcn.value_ = v;
   }
   return ret;
 }
@@ -357,8 +357,8 @@ common::ErrorCode ValueParserForText::ParseReal(const BString &rcbs, RCNum &rcn,
     rcn.null = true;
     return common::ErrorCode::SUCCESS;
   }
-  rcn.dbl = true;
-  rcn.m_scale = 0;
+  rcn.is_double_ = true;
+  rcn.scale_ = 0;
 
   char *val = rcbs.val;
   int len = rcbs.len;
@@ -423,7 +423,7 @@ common::ErrorCode ValueParserForText::ParseReal(const BString &rcbs, RCNum &rcn,
     ret = common::ErrorCode::OUT_OF_RANGE;
   }
 
-  rcn.attrt = at;
+  rcn.attr_type_ = at;
   rcn.null = false;
   if (at == common::CT::REAL) {
     if (d > DBL_MAX) {
@@ -439,7 +439,7 @@ common::ErrorCode ValueParserForText::ParseReal(const BString &rcbs, RCNum &rcn,
       d = /*DBL_MIN*/ 0 * -1;
       ret = common::ErrorCode::OUT_OF_RANGE;
     }
-    *(double *)&rcn.value = d;
+    *(double *)&rcn.value_ = d;
   } else if (at == common::CT::FLOAT) {
     if (d > FLT_MAX) {
       d = FLT_MAX;
@@ -454,7 +454,7 @@ common::ErrorCode ValueParserForText::ParseReal(const BString &rcbs, RCNum &rcn,
       d = 0 * -1;
       ret = common::ErrorCode::OUT_OF_RANGE;
     }
-    *(double *)&rcn.value = d;
+    *(double *)&rcn.value_ = d;
   }
   return ret;
 }
@@ -466,9 +466,9 @@ common::ErrorCode ValueParserForText::ParseBigInt(const BString &rcs, RCNum &rcn
   common::ErrorCode ret = common::ErrorCode::SUCCESS;
 
   rcn.null = false;
-  rcn.attrt = common::CT::BIGINT;
-  rcn.m_scale = 0;
-  rcn.dbl = false;
+  rcn.attr_type_ = common::CT::BIGINT;
+  rcn.scale_ = 0;
+  rcn.is_double_ = false;
 
   if (rcs.Equals("NULL", 4)) {
     rcn.null = true;
@@ -559,9 +559,9 @@ common::ErrorCode ValueParserForText::ParseBigInt(const BString &rcs, RCNum &rcn
     v = common::SDB_BIGINT_MIN;
     ret = common::ErrorCode::OUT_OF_RANGE;
   }
-  rcn.dbl = false;
-  rcn.m_scale = 0;
-  rcn.value = v;
+  rcn.is_double_ = false;
+  rcn.scale_ = 0;
+  rcn.value_ = v;
   return ret;
 }
 

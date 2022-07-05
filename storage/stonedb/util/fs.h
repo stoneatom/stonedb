@@ -22,6 +22,6 @@
 
 namespace stonedb {
 namespace fs = std::experimental::filesystem;
-}
+}  //namespace stonedb
 
 #endif  // STONEDB_UTIL_FS_H_

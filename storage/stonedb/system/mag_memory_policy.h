@@ -47,6 +47,7 @@ class MagMemoryPolicy : public ResourceManagerPolicy {
 
   int estimate() override { return m_scale; }
 };
+
 }  // namespace system
 }  // namespace stonedb
 

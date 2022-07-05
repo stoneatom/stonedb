@@ -29,6 +29,7 @@
 
 namespace stonedb {
 namespace types {
+
 class BString;
 class RCNum;
 
@@ -56,6 +57,7 @@ union DT {
     uint32_t microsecond : 20;
     uint32_t second : 6;
     uint32_t minute : 6;
+
     union {
       uint32_t time_hour : 10;  // -838 to 838
       struct {
@@ -68,6 +70,7 @@ union DT {
       };
     };
   };
+
   uint64_t val = 0;
 
   DT() {}
@@ -82,6 +85,7 @@ union DT {
     neg = my_time.neg;
     if (my_time.time_type == MYSQL_TIMESTAMP_TIME) time_hour = my_time.hour;
   }
+
   bool Neg() const { return neg == 1; }
   void Store(MYSQL_TIME *my_time, enum_mysql_timestamp_type t) {
     my_time->year = year;
@@ -96,7 +100,7 @@ union DT {
 
     if (t == MYSQL_TIMESTAMP_TIME) my_time->hour = time_hour;
   }
-  /////////////////////////////////////////////////////////////////////////////
+
   // util functions
   static int64_t DateSortEncoding(int64_t v) {
     if (v != common::MINUS_INF_64 && v != common::PLUS_INF_64) return (v >> 37);  // omit sec, min, hour
@@ -632,6 +636,7 @@ const static RCDateTime RC_DATETIME_SPEC(0, common::CT::DATETIME);
 const static RCDateTime RC_TIMESTAMP_MIN(1970, 01, 01, 00, 00, 00, common::CT::TIMESTAMP);
 const static RCDateTime RC_TIMESTAMP_MAX(2038, 01, 01, 00, 59, 59, common::CT::TIMESTAMP);
 const static RCDateTime RC_TIMESTAMP_SPEC(0, common::CT::TIMESTAMP);
+
 }  // namespace types
 }  // namespace stonedb
 
