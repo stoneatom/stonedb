@@ -1,0 +1,90 @@
+{
+  "version.label": {
+    "message": "Next",
+    "description": "The label for version current"
+  },
+  "sidebar.autoSidebar.category.About StoneDB": {
+    "message": "关于StoneDB",
+    "description": "The label for category About StoneDB in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Environment Requirements": {
+    "message": "环境要求",
+    "description": "The label for category Environment Requirements in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Getting Started": {
+    "message": "快速上手",
+    "description": "The label for category Getting Started in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.O&M Guide": {
+    "message": "运维管理",
+    "description": "The label for category O&M Guide in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Monitoring and Alerting": {
+    "message": "监控警告",
+    "description": "The label for category Monitoring and Alerting in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Backup and Recovery": {
+    "message": "备份与恢复",
+    "description": "The label for category Backup and Recovery in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Developer Guide": {
+    "message": "开发者指南",
+    "description": "The label for category Developer Guide in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Compiling Methods": {
+    "message": "编译方法",
+    "description": "The label for category Compiling Methods in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Connect to StoneDB": {
+    "message": "连接 StoneDB 数据库",
+    "description": "The label for category Connect to StoneDB in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Create and Manage Database Objects": {
+    "message": "创建和管理数据库对象",
+    "description": "The label for category Connect to StoneDB in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Appendix": {
+    "message": "附录",
+    "description": "The label for category Connect to StoneDB in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.SQL Reference": {
+    "message": "SQL 参考",
+    "description": "The label for category Connect to StoneDB in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Operators": {
+    "message": "运算符",
+    "description": "The label for category Connect to StoneDB in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Functions": {
+    "message": "函数",
+    "description": "The label for category Connect to StoneDB in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Performance Tuning": {
+    "message": "性能优化",
+    "description": "The label for category Connect to StoneDB in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Performance Monitoring Tools": {
+    "message": "性能相关工具",
+    "description": "The label for category Connect to StoneDB in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Database Tuning": {
+    "message": "数据库优化",
+    "description": "The label for category Connect to StoneDB in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Architecture Tuning": {
+    "message": "架构优化",
+    "description": "The label for category Connect to StoneDB in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Performance Tests": {
+    "message": "性能测试",
+    "description": "The label for category Connect to StoneDB in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Data Migration to StoneDB": {
+    "message": "向StoneDB迁移数据",
+    "description": "The label for category Connect to StoneDB in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Troubleshooting": {
+    "message": "故障诊断",
+    "description": "The label for category Connect to StoneDB in sidebar autoSidebar"
+  }
+}
