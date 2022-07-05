@@ -1,0 +1,170 @@
+@import '~antd/dist/antd.less';
+@import './theme.css';
+:root {
+  --ifm-color-primary: #00A6FB;
+  --ifm-color-primary-dark: #29784c;
+  --ifm-color-primary-darker: #277148;
+  --ifm-color-primary-darkest: #205d3b;
+  --ifm-color-primary-light: #33925d;
+  --ifm-color-primary-lighter: #359962;
+  --ifm-color-primary-lightest: #3cad6e;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --ifm-navbar-height: 100px;
+  --ifm-footer-color: #CBCDD3;
+}
+
+.markdown {
+  a {
+    color: #00A6FB;
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+@media (max-width: 996px){
+  .footer {
+    --ifm-footer-padding-horizontal: 0;
+  }
+}
+
+.communityRow{
+  flex-wrap: nowrap;
+  width: 100%;
+  @media (max-width: 996px){
+    flex-wrap: wrap;
+  }
+}
+
+.canvas{
+  width: 700px;
+  height: 700px;
+}
+
+.navbar__logo{
+  height: 50px;
+  font-size: 50px;
+  margin-right: 50px;
+  width: 182px;
+  img{
+    vertical-align: top;
+  }
+}
+
+.navbar__link, 
+.navbar__title{
+  font-size: 18px;
+}
+
+.navbar__link:hover, .navbar__link--active{
+  font-weight: bold;
+}
+
+@media (max-width: 996px){
+  .hideInMobile, .navbar__title{
+    display: none;
+    &.ant-space{
+      display: none;
+    }
+  }
+  .navbar__logo{
+    height: 26px;
+  }
+  .navbar{
+    height: 44px;
+  }
+  .canvas{
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.ant-tooltip.ant-tooltip-hidden{
+  display: none;
+}
+
+// .ant-tooltip.ant-tooltip-placement-top.ant-zoom-big-fast-appear.ant-zoom-big-fast-appear-active.ant-zoom-big-fast,
+// .ant-tooltip.ant-tooltip-placement-top.ant-zoom-big-fast-enter.ant-zoom-big-fast-enter-active.ant-zoom-big-fast{
+//   opacity: 0;
+//   animation-name: none;
+//   .ant-tooltip-content{
+//     opacity: 0;
+//   }
+// }
+
+// .ant-tooltip.ant-tooltip-placement-top.ant-zoom-big-fast-appear.ant-zoom-big-fast-appear-active.ant-zoom-big-fast,
+// .ant-tooltip.ant-tooltip-placement-top.ant-zoom-big-fast-enter.ant-zoom-big-fast-enter-active.ant-zoom-big-fast{
+//   animation-play-state: paused;
+// }
+
+
+.ant-zoom-big-appear.ant-zoom-big-appear-active,
+.ant-zoom-big-enter.ant-zoom-big-enter-active,
+.ant-zoom-big-fast-appear.ant-zoom-big-fast-appear-active,
+.ant-zoom-big-fast-enter.ant-zoom-big-fast-enter-active {
+  animation-name: SafeZoomBigIn;
+  animation-play-state: running
+}
+
+.ant-zoom-big-fast-leave.ant-zoom-big-fast-leave-active,
+.ant-zoom-big-leave.ant-zoom-big-leave-active {
+    animation-name: SafeZoomBigOut;
+    animation-play-state: running;
+    pointer-events: none;
+    .ant-tooltip-content{
+          opacity: 0;
+        }
+}
+
+.ant-tooltip.ant-tooltip-placement-top.ant-zoom-big-fast-appear,
+.ant-tooltip.ant-tooltip-placement-top.ant-zoom-big-fast-enter,
+.ant-tooltip.ant-tooltip-placement-top.ant-zoom-big-fast-leave {
+  animation-duration: .001s;
+  animation-fill-mode: both;
+  animation-play-state: paused
+}
+
+
+.ant-tooltip.ant-tooltip-placement-top{
+  animation-name: SafeIn;
+  animation-play-state: running
+}
+
+@keyframes SafeZoomBigOut {
+  0% {
+    transform: scale(1);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes SafeZoomBigIn {
+  0% {
+      opacity: 0;
+      transform: scale(.8)
+  }
+  99% {
+    opacity: 0;
+    transform: scale(.8)
+  }
+
+  to {
+      opacity: 0;
+      transform: scale(1)
+  }
+}
+
+@keyframes SafeIn {
+  0% {
+      opacity: 0;
+      transform: scale(.8)
+  }
+  to {
+      opacity: 1;
+      transform: scale(1)
+  }
+}
