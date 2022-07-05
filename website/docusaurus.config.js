@@ -61,9 +61,9 @@ const config = {
           editLocalizedFiles: true,
           editUrl: ({versionDocsDirPath, docPath, locale}) => {
             if(locale !== 'en') {
-              return `https://github.com/stoneatom/stonedb-docs/edit/main/i18n/${locale}/docusaurus-plugin-content-docs/current/${docPath}`
+              return `https://github.com/stoneatom/stonedb/edit/stonedb-5.6/website/i18n/${locale}/docusaurus-plugin-content-docs/current/${docPath}`
             }
-            return `https://github.com/stoneatom/stonedb-docs/edit/main/${versionDocsDirPath}/${docPath}`
+            return `https://github.com/stoneatom/stonedb/edit/stonedb-5.6/${versionDocsDirPath}/${docPath}`
           },
         },
         theme: {
