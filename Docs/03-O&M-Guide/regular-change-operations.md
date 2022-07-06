@@ -22,10 +22,10 @@ CREATE TABLE t_name(
 ) engine=STONEDB;
 ```
 
-2. Execute a `CREATE TABLE... LIKE `statement to create another table that uses the same schema as the table created in the step 1.
+2. Execute a `CREATE TABLE... LIKE `statement to create another table that uses the same schema as the table created in the step 1. 
 
 Code example:
-```
+```sql
 create table t_other like t_name;
 ```
 
@@ -33,7 +33,7 @@ create table t_other like t_name;
 Execute a `TRUNCATE TABLE` statement to clear data in a table and retain the table schema.
 
 Code example:
-```
+```sql
 truncate table t_name;
 ```
 
@@ -41,19 +41,19 @@ truncate table t_name;
 Execute an `ALTER TABLE... ADD COLUMN` statement to add a field in a given table. The added field is the last field, by default. 
 Code example:
 
-```
+```sql
 alter table t_name add column c_name varchar(10);
 ```
 
 ### Drop a field
 Execute an `ALTER TABLE... DROP` statement to drop a field from a table.<br />Code example:
-```
+```sql
 alter table t_name drop c_name;
 ```
 
 ### Rename a table
 Execute an `ALTER TABLE... RENAME TO` statement to rename a given table.<br />Code example:
-```
+```sql
 alter table t_name rename to t_name_new;
 ```
 
@@ -61,21 +61,23 @@ alter table t_name rename to t_name_new;
 
 ### Create a user
 Code example:
-```
+```sql
 create user 'u_name'@'hostname' identified by 'xxx';
 ```
 
 ### Grant user permissions
 Code example:
-```
+```sql
 grant all on *.* to 'u_name'@'hostname';
 grant select on db_name.* to 'u_name'@'hostname';
 grant select(column_name) on db_name.t_name to 'u_name'@'hostname';
 ```
 
 ### Revoke permissions
+
 Code example:
-```
+
+```sql
 revoke all privileges on *.* from 'u_name'@'hostname';
 revoke select on db_name.* from 'u_name'@'hostname';
 revoke select(column_name) on db_name.t_name from 'u_name'@'hostname';
@@ -83,6 +85,7 @@ revoke select(column_name) on db_name.t_name from 'u_name'@'hostname';
 
 ### Drop a user
 Code example:
-```
+
+```sql
 drop user 'u_name'@'hostname';
 ```

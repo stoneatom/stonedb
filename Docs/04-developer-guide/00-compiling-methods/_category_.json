@@ -1,0 +1,9 @@
+{
+    "position": 5.1,
+    "label": "Compiling Methods",
+    "collapsible": true,
+    "link": {
+        "type": "generated-index",
+        "slug": "/compiling-methods"
+    }
+}
