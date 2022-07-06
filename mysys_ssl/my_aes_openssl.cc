@@ -1,13 +1,25 @@
-/* Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+/* Copyright (c) 2015, 2021, Oracle and/or its affiliates.
 
 This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; version 2 of the License.
+it under the terms of the GNU General Public License, version 2.0,
+as published by the Free Software Foundation.
+
+This program is also distributed with certain software (including
+but not limited to OpenSSL) that is licensed under separate terms,
+as designated in a particular file or component or in included license
+documentation.  The authors of MySQL hereby grant you an additional
+permission to link the program and your derivative works with the
+separately licensed software that they have included with MySQL.
+
+Without limiting anything contained in the foregoing, this file,
+which is part of C Driver for MySQL (Connector/C), is also subject to the
+Universal FOSS Exception, version 1.0, a copy of which can be found at
+http://oss.oracle.com/licenses/universal-foss-exception.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+GNU General Public License, version 2.0, for more details.
 
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
@@ -21,6 +33,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 #include <openssl/aes.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
+#include <openssl/bio.h>
+
+/*
+  xplugin needs BIO_new_bio_pair, but the server does not.
+  Add an explicit dependency here, so that it is available when loading
+  the plugin.
+ */
+int dummy_function_needed_by_xplugin()
+{
+  BIO *bio1;
+  BIO *bio2;
+  return BIO_new_bio_pair(&bio1, 42U, &bio2, 42U);
+}
 
 
 /* keep in sync with enum my_aes_opmode in my_aes.h */
@@ -106,46 +131,68 @@ aes_evp_type(const my_aes_opmode mode)
 int my_aes_encrypt(const unsigned char *source, uint32 source_length,
                    unsigned char *dest,
                    const unsigned char *key, uint32 key_length,
-                   enum my_aes_opmode mode, const unsigned char *iv)
+                   enum my_aes_opmode mode, const unsigned char *iv,
+                   bool padding)
 {
-  EVP_CIPHER_CTX ctx;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  EVP_CIPHER_CTX stack_ctx;
+  EVP_CIPHER_CTX *ctx= &stack_ctx;
+#else /* OPENSSL_VERSION_NUMBER < 0x10100000L */
+  EVP_CIPHER_CTX *ctx= EVP_CIPHER_CTX_new();
+#endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
   const EVP_CIPHER *cipher= aes_evp_type(mode);
   int u_len, f_len;
   /* The real key to be used for encryption */
   unsigned char rkey[MAX_AES_KEY_LENGTH / 8];
-  my_aes_create_key(key, key_length, rkey, mode);
 
-  if (!cipher || (EVP_CIPHER_iv_length(cipher) > 0 && !iv))
+  my_aes_create_key(key, key_length, rkey, mode);
+  if (!ctx || !cipher || (EVP_CIPHER_iv_length(cipher) > 0 && !iv))
     return MY_AES_BAD_DATA;
 
-  if (!EVP_EncryptInit(&ctx, cipher, rkey, iv))
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  EVP_CIPHER_CTX_init(ctx);
+#endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
+
+  if (!EVP_EncryptInit(ctx, cipher, rkey, iv))
     goto aes_error;                             /* Error */
-  if (!EVP_CIPHER_CTX_set_padding(&ctx, 1))
+  if (!EVP_CIPHER_CTX_set_padding(ctx, padding))
     goto aes_error;                             /* Error */
-  if (!EVP_EncryptUpdate(&ctx, dest, &u_len, source, source_length))
+  if (!EVP_EncryptUpdate(ctx, dest, &u_len, source, source_length))
     goto aes_error;                             /* Error */
 
-  if (!EVP_EncryptFinal(&ctx, dest + u_len, &f_len))
+  if (!EVP_EncryptFinal(ctx, dest + u_len, &f_len))
     goto aes_error;                             /* Error */
 
-  EVP_CIPHER_CTX_cleanup(&ctx);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  EVP_CIPHER_CTX_cleanup(ctx);
+#else /* OPENSSL_VERSION_NUMBER < 0x10100000L */
+  EVP_CIPHER_CTX_free(ctx);
+#endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
   return u_len + f_len;
 
 aes_error:
   /* need to explicitly clean up the error if we want to ignore it */
   ERR_clear_error();
-  EVP_CIPHER_CTX_cleanup(&ctx);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  EVP_CIPHER_CTX_cleanup(ctx);
+#else /* OPENSSL_VERSION_NUMBER < 0x10100000L */
+  EVP_CIPHER_CTX_free(ctx);
+#endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
   return MY_AES_BAD_DATA;
 }
-
 
 int my_aes_decrypt(const unsigned char *source, uint32 source_length,
                    unsigned char *dest,
                    const unsigned char *key, uint32 key_length,
-                   enum my_aes_opmode mode, const unsigned char *iv)
+                   enum my_aes_opmode mode, const unsigned char *iv,
+                   bool padding)
 {
-
-  EVP_CIPHER_CTX ctx;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  EVP_CIPHER_CTX stack_ctx;
+  EVP_CIPHER_CTX *ctx= &stack_ctx;
+#else /* OPENSSL_VERSION_NUMBER < 0x10100000L */
+  EVP_CIPHER_CTX *ctx= EVP_CIPHER_CTX_new();
+#endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
   const EVP_CIPHER *cipher= aes_evp_type(mode);
   int u_len, f_len;
 
@@ -153,30 +200,39 @@ int my_aes_decrypt(const unsigned char *source, uint32 source_length,
   unsigned char rkey[MAX_AES_KEY_LENGTH / 8];
 
   my_aes_create_key(key, key_length, rkey, mode);
-  if (!cipher || (EVP_CIPHER_iv_length(cipher) > 0 && !iv))
+  if (!ctx || !cipher || (EVP_CIPHER_iv_length(cipher) > 0 && !iv))
     return MY_AES_BAD_DATA;
 
-  EVP_CIPHER_CTX_init(&ctx);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  EVP_CIPHER_CTX_init(ctx);
+#endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
+  if (!EVP_DecryptInit(ctx, aes_evp_type(mode), rkey, iv))
+    goto aes_error;                             /* Error */
+  if (!EVP_CIPHER_CTX_set_padding(ctx, padding))
+    goto aes_error;                             /* Error */
+  if (!EVP_DecryptUpdate(ctx, dest, &u_len, source, source_length))
+    goto aes_error;                             /* Error */
+  if (!EVP_DecryptFinal_ex(ctx, dest + u_len, &f_len))
+    goto aes_error;                             /* Error */
 
-  if (!EVP_DecryptInit(&ctx, aes_evp_type(mode), rkey, iv))
-    goto aes_error;                             /* Error */
-  if (!EVP_CIPHER_CTX_set_padding(&ctx, 1))
-    goto aes_error;                             /* Error */
-  if (!EVP_DecryptUpdate(&ctx, dest, &u_len, source, source_length))
-    goto aes_error;                             /* Error */
-  if (!EVP_DecryptFinal_ex(&ctx, dest + u_len, &f_len))
-    goto aes_error;                             /* Error */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  EVP_CIPHER_CTX_cleanup(ctx);
+#else /* OPENSSL_VERSION_NUMBER < 0x10100000L */
+  EVP_CIPHER_CTX_free(ctx);
+#endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
 
-  EVP_CIPHER_CTX_cleanup(&ctx);
   return u_len + f_len;
 
 aes_error:
   /* need to explicitly clean up the error if we want to ignore it */
   ERR_clear_error();
-  EVP_CIPHER_CTX_cleanup(&ctx);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  EVP_CIPHER_CTX_cleanup(ctx);
+#else /* OPENSSL_VERSION_NUMBER < 0x10100000L */
+  EVP_CIPHER_CTX_free(ctx);
+#endif /* OPENSSL_VERSION_NUMBER < 0x10100000L */
   return MY_AES_BAD_DATA;
 }
-
 
 int my_aes_get_size(uint32 source_length, my_aes_opmode opmode)
 {
@@ -207,7 +263,7 @@ my_bool my_aes_needs_iv(my_aes_opmode opmode)
   int iv_length;
 
   iv_length= EVP_CIPHER_iv_length(cipher);
-  DBUG_ASSERT(iv_length == 0 || iv_length == MY_AES_IV_SIZE);
+  assert(iv_length == 0 || iv_length == MY_AES_IV_SIZE);
   return iv_length != 0 ? TRUE : FALSE;
 }
 

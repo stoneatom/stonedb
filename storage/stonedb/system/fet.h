@@ -25,7 +25,6 @@
 
 namespace stonedb {
 namespace system {
-// #define FUNCTIONS_EXECUTION_TIMES
 
 #ifdef FUNCTIONS_EXECUTION_TIMES
 class FunctionsExecutionTimes;
@@ -60,58 +59,59 @@ class FunctionsExecutionTimes {
   class SortEntryLess {
    public:
     bool operator()(const SortEntry &e1, const SortEntry &e2) { return e1.e.time < e2.e.time; }
-  };
+  }; //class SortEntryLess
 
  public:
   FunctionsExecutionTimes() {
-    times = new std::map<std::string, Entry>;
-    flush = false;
+    times_ = new std::map<std::string, Entry>;
+    flushed_ = false;
     InstallFlushSignal();
   }
+
   ~FunctionsExecutionTimes() {
-    times->clear();
-    delete times;
+    times_->clear();
+    delete times_;
   }
 
   void Add(const std::string &function_name, uint64_t time) {
-    std::scoped_lock guard(fet_mutex);
+    std::scoped_lock guard(fet_mutex_);
 
-    if (flush) {
+    if (flushed_) {
       Print();
       Clear();
-      flush = false;
+      flushed_ = false;
     }
 
-    if (times->find(function_name) != times->end()) {
-      Entry &entry = (*times)[function_name];
+    if (times_->find(function_name) != times_->end()) {
+      Entry &entry = (*times_)[function_name];
       entry.time += time;
       entry.call++;
     } else {
-      // times.insert(function_name);
+      // times_.insert(function_name);
       Entry entry(time);
-      times->insert(std::make_pair(function_name, entry));
+      times_->insert(std::make_pair(function_name, entry));
     }
   }
 
   void PrintToRcdev() {
-    std::scoped_lock guard(fet_mutex);
+    std::scoped_lock guard(fet_mutex_);
     Print();
   }
 
   // order flushing; it will be executed on the next Add()
-  void Flush() { flush = true; }
+  void Flush() { flushed_ = true; }
   static void FlushFET(int signum);  // flush global object 'fet'
   static void InstallFlushSignal();
 
  private:
-  void Clear() { times->clear(); }
+  void Clear() { times_->clear(); }
   void Print() {
     STONEDB_LOG(LogCtl_Level::INFO,
                 "***** Function Execution Times "
                 "************************************************************");
     std::priority_queue<SortEntry, std::vector<SortEntry>, SortEntryLess> sq;
     char str[512] = {0};
-    for (auto &iter : *times) sq.push(SortEntry(iter.first, iter.second));
+    for (auto &iter : *times_) sq.push(SortEntry(iter.first, iter.second));
 
     while (!sq.empty()) {
       std::sprintf(str, "%-60s \t%6llu \t%8.2fs", sq.top().n.c_str(), sq.top().e.call, sq.top().e.time / 1000000.0);
@@ -130,9 +130,9 @@ class FunctionsExecutionTimes {
                 "******************");
   }
 
-  std::map<std::string, Entry> *times;
-  std::mutex fet_mutex;
-  bool flush;
+  std::map<std::string, Entry> *times_;
+  std::mutex fet_mutex_;
+  bool flushed_;
 };
 
 class FETOperator {
@@ -160,29 +160,22 @@ class FETOperator {
   }
 
  private:
-  std::string id;
-  struct timeval start_time, t2;
+  std::string id_;
+  struct timeval start_time_, t2_;
 };
 
 inline void FunctionsExecutionTimes::FlushFET(int signum) { fet->Flush(); }
 
 inline void FunctionsExecutionTimes::InstallFlushSignal() {
-  // install FlushFET as a signal handler for SIGUSR1
-  //	void* ret = (void*)signal(16, FunctionsExecutionTimes::FlushFET);
   signal(16, FunctionsExecutionTimes::FlushFET);
 }
-
-// #ifdef FUNCTIONS_EXECUTION_TIMES
-// #define _FET(name,str)		FETOperator name(str)
-// #else
-// #define _FET(name,str)
-// #endif
 
 #define MEASURE_FET(X) FETOperator feto(X)
 
 #else
 #define MEASURE_FET(X)
 #endif
+
 }  // namespace system
 }  // namespace stonedb
 

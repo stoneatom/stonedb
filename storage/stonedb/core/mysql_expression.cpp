@@ -20,6 +20,7 @@
 #include "common/assert.h"
 #include "core/compilation_tools.h"
 #include "core/engine.h"
+#include "item_timefunc.h"
 #include "core/transaction.h"
 #include "types/value_parser4txt.h"
 
@@ -38,7 +39,7 @@ MysqlExpression::MysqlExpression(Item *item, Item2VarID &item2varid) {
       std::string s =
           "Precision of an expression result was reduced due to DECIMAL type "
           "limitations";
-      push_warning(current_tx->Thd(), Sql_condition::WARN_LEVEL_WARN, ER_WARN_DATA_OUT_OF_RANGE, s.c_str());
+      push_warning(current_tx->Thd(), Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE, s.c_str());
     }
   } else {
     decimal_precision = 0;
@@ -361,7 +362,7 @@ void MysqlExpression::SetBufsOrParams(var_buf_t *bufs) {
   }
 }
 
-DataType MysqlExpression::EvalType(TypeOfVars *tv) {
+DataType MysqlExpression::EvalType(TypOfVars *tv) {
   // set types of variables (_sdbfieldsCache)
   if (tv) {
     DataType fieldtype;

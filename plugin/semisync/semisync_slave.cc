@@ -1,14 +1,20 @@
-/* Copyright (c) 2008 MySQL AB, 2009 Sun Microsystems, Inc.
-   Use is subject to license terms.
+/* Copyright (c) 2008, 2021, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; version 2 of the License.
+   it under the terms of the GNU General Public License, version 2.0,
+   as published by the Free Software Foundation.
+
+   This program is also distributed with certain software (including
+   but not limited to OpenSSL) that is licensed under separate terms,
+   as designated in a particular file or component or in included license
+   documentation.  The authors of MySQL hereby grant you an additional
+   permission to link the program and your derivative works with the
+   separately licensed software that they have included with MySQL.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   GNU General Public License, version 2.0, for more details.
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
@@ -16,6 +22,8 @@
 
 
 #include "semisync_slave.h"
+#include "mysql.h"
+#include "debug_sync.h"
 
 char rpl_semi_sync_slave_enabled;
 char rpl_semi_sync_slave_status= 0;
@@ -28,7 +36,7 @@ int ReplSemiSyncSlave::initObject()
 
   if (init_done_)
   {
-    fprintf(stderr, "%s called twice\n", kWho);
+    sql_print_warning("%s called twice", kWho);
     return 1;
   }
   init_done_ = true;
@@ -104,9 +112,19 @@ int ReplSemiSyncSlave::slaveReply(MYSQL *mysql,
   uchar reply_buffer[REPLY_MAGIC_NUM_LEN
                      + REPLY_BINLOG_POS_LEN
                      + REPLY_BINLOG_NAME_LEN];
-  int  reply_res, name_len = strlen(binlog_filename);
+  int reply_res;
+  size_t name_len = strlen(binlog_filename);
 
   function_enter(kWho);
+
+  DBUG_EXECUTE_IF("rpl_semisync_before_send_ack",
+                  {
+                    const char act[]=
+                      "now SIGNAL sending_ack WAIT_FOR continue";
+                    assert(opt_debug_sync_timeout > 0);
+                    assert(!debug_sync_set_action(current_thd,
+                                                  STRING_WITH_LEN(act)));
+                  };);
 
   /* Prepare the buffer of the reply. */
   reply_buffer[REPLY_MAGIC_NUM_OFFSET] = kPacketMagicNum;

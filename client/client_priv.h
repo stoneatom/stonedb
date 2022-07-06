@@ -1,19 +1,29 @@
 /*
-   Copyright (c) 2001, 2014, Oracle and/or its affiliates. All rights reserved.
+   Copyright (c) 2001, 2021, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; version 2 of the License.
+   it under the terms of the GNU General Public License, version 2.0,
+   as published by the Free Software Foundation.
+
+   This program is also distributed with certain software (including
+   but not limited to OpenSSL) that is licensed under separate terms,
+   as designated in a particular file or component or in included license
+   documentation.  The authors of MySQL hereby grant you an additional
+   permission to link the program and your derivative works with the
+   separately licensed software that they have included with MySQL.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   GNU General Public License, version 2.0, for more details.
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
+
+#ifndef CLIENT_PRIV_INCLUDED
+#define CLIENT_PRIV_INCLUDED
 
 /* Common defines for all clients */
 
@@ -25,7 +35,7 @@
 #include <my_getopt.h>
 
 #ifndef WEXITSTATUS
-# ifdef __WIN__
+# ifdef _WIN32
 #  define WEXITSTATUS(stat_val) (stat_val)
 # else
 #  define WEXITSTATUS(stat_val) ((unsigned)(stat_val) >> 8)
@@ -37,7 +47,7 @@ enum options_client
   OPT_CHARSETS_DIR=256, OPT_DEFAULT_CHARSET,
   OPT_PAGER, OPT_TEE,
   OPT_LOW_PRIORITY, OPT_AUTO_REPAIR, OPT_COMPRESS,
-  OPT_DROP, OPT_LOCKS, OPT_KEYWORDS, OPT_DELAYED, OPT_OPTIMIZE,
+  OPT_DROP, OPT_LOCKS, OPT_KEYWORDS, OPT_OPTIMIZE,
   OPT_FTB, OPT_LTB, OPT_ENC, OPT_O_ENC, OPT_ESC, OPT_TABLES,
   OPT_MASTER_DATA, OPT_AUTOCOMMIT, OPT_AUTO_REHASH,
   OPT_LINE_NUMBERS, OPT_COLUMN_NAMES, OPT_CONNECT_TIMEOUT,
@@ -46,7 +56,7 @@ enum options_client
   OPT_SSL_KEY, OPT_SSL_CERT, OPT_SSL_CA, OPT_SSL_CAPATH,
   OPT_SSL_CIPHER, OPT_SHUTDOWN_TIMEOUT, OPT_LOCAL_INFILE,
   OPT_DELETE_MASTER_LOGS, OPT_COMPACT,
-  OPT_PROMPT, OPT_IGN_LINES,OPT_TRANSACTION,OPT_MYSQL_PROTOCOL,
+  OPT_PROMPT, OPT_IGN_LINES, OPT_TRANSACTION, OPT_MYSQL_PROTOCOL,
   OPT_SHARED_MEMORY_BASE_NAME, OPT_FRM, OPT_SKIP_OPTIMIZATION,
   OPT_COMPATIBLE, OPT_RECONNECT, OPT_DELIMITER, OPT_SECURE_AUTH,
   OPT_OPEN_FILES_LIMIT, OPT_SET_CHARSET, OPT_SET_GTID_PURGED, OPT_SERVER_ARG,
@@ -58,11 +68,12 @@ enum options_client
   OPT_USE_THREADS,
   OPT_IMPORT_USE_THREADS,
   OPT_MYSQL_NUMBER_OF_QUERY,
-  OPT_IGNORE_TABLE,OPT_INSERT_IGNORE,OPT_SHOW_WARNINGS,OPT_DROP_DATABASE,
+  OPT_IGNORE_TABLE, OPT_INSERT_IGNORE, OPT_SHOW_WARNINGS, OPT_DROP_DATABASE,
   OPT_TZ_UTC, OPT_CREATE_SLAP_SCHEMA,
   OPT_MYSQLDUMP_SLAVE_APPLY,
   OPT_MYSQLDUMP_SLAVE_DATA,
   OPT_MYSQLDUMP_INCLUDE_MASTER_HOST_PORT,
+  OPT_MYSQLDUMP_IGNORE_ERROR,
   OPT_SLAP_CSV, OPT_SLAP_CREATE_STRING,
   OPT_SLAP_AUTO_GENERATE_SQL_LOAD_TYPE, OPT_SLAP_AUTO_GENERATE_WRITE_NUM,
   OPT_SLAP_AUTO_GENERATE_ADD_AUTO,
@@ -97,9 +108,14 @@ enum options_client
   OPT_MYSQLBINLOG_EXCLUDE_GTIDS,
   OPT_REMOTE_PROTO,
   OPT_CONFIG_ALL,
+  OPT_REWRITE_DB,
   OPT_SERVER_PUBLIC_KEY,
   OPT_ENABLE_CLEARTEXT_PLUGIN,
   OPT_CONNECTION_SERVER_ID,
+  OPT_TLS_VERSION,
+  OPT_SSL_MODE,
+  OPT_SKIP_MYSQL_SCHEMA,
+  /* Add new option above this */
   OPT_MAX_CLIENT_OPTION
 };
 
@@ -123,3 +139,26 @@ enum options_client
 */
 #define PERFORMANCE_SCHEMA_DB_NAME "performance_schema"
 
+/**
+  First mysql version supporting the sys schema.
+*/
+#define FIRST_SYS_SCHEMA_VERSION 50707
+
+/**
+  Name of the sys schema database.
+*/
+#define SYS_SCHEMA_DB_NAME "sys"
+
+/**
+  Client deprecation warnings
+*/
+#define CLIENT_WARN_DEPRECATED_NO_REPLACEMENT(opt) \
+  fprintf(stderr, "WARNING: " opt \
+         " is deprecated and will be removed in a future version\n")
+
+#define CLIENT_WARN_DEPRECATED(opt, new_opt) \
+  fprintf(stderr, "WARNING: " opt \
+         " is deprecated and will be removed in a future version. " \
+         "Use " new_opt " instead.\n")
+
+#endif

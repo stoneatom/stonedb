@@ -105,7 +105,7 @@ void AggregatorAvg64::PutAggregatedValue(unsigned char *buf, int64_t v, int64_t 
   stats_updated = false;
   *((double *)buf) += double(v) * factor;
   if (!warning_issued && (*((double *)buf) > 9.223372037e+18 || *((double *)buf) < -9.223372037e+18)) {
-    common::PushWarning(current_tx->Thd(), Sql_condition::WARN_LEVEL_NOTE, ER_UNKNOWN_ERROR,
+    common::PushWarning(current_tx->Thd(), Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
                         "Values rounded in average()");
     warning_issued = true;
   }
@@ -117,7 +117,7 @@ void AggregatorAvg64::Merge(unsigned char *buf, unsigned char *src_buf) {
   stats_updated = false;
   *((double *)buf) += *((double *)src_buf);
   if (!warning_issued && (*((double *)buf) > 9.223372037e+18 || *((double *)buf) < -9.223372037e+18)) {
-    common::PushWarning(current_tx->Thd(), Sql_condition::WARN_LEVEL_NOTE, ER_UNKNOWN_ERROR,
+    common::PushWarning(current_tx->Thd(), Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
                         "Values rounded in average()");
     warning_issued = true;
   }

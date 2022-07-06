@@ -50,7 +50,7 @@ void Dictionary<T>::SetLows() {
     sumcnt += keys[i].count;
     DEBUG_ASSERT(keys[i].count > 0);
   }
-  qsort_ib(order, nkeys, sizeof(*order), compare);
+  qsort_sdb(order, nkeys, sizeof(*order), compare);
 
   ASSERT(sumcnt <= MAXTOTAL, "should be 'sumcnt <= MAXTOTAL'");
   // set short counts

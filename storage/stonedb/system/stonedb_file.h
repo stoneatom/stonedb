@@ -27,7 +27,7 @@ namespace system {
 
 #define O_BINARY 0
 
-#define ib_umask S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP
+#define sdb_umask S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP
 
 /* A portable wrapper class for low level file I/O.
   Note - Most of the functions throws exception if it fails. So caller must
@@ -35,13 +35,15 @@ namespace system {
 */
 
 class StoneDBFile : public Stream {
-  int fd;
+private:
+  int fd_;
 
  public:
-  StoneDBFile() { fd = -1; }
+  StoneDBFile() { fd_ = -1; }
   ~StoneDBFile() {
-    if (fd != -1) Close();
+    if (fd_ != -1) Close();
   }
+
   off_t Seek(off_t pos, int whence);
   off_t Tell();
   int Flush();

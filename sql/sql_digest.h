@@ -1,13 +1,20 @@
-/* Copyright (c) 2008, 2015, Oracle and/or its affiliates. All rights reserved.
+/* Copyright (c) 2008, 2021, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation; version 2 of the License.
+  it under the terms of the GNU General Public License, version 2.0,
+  as published by the Free Software Foundation.
+
+  This program is also distributed with certain software (including
+  but not limited to OpenSSL) that is licensed under separate terms,
+  as designated in a particular file or component or in included license
+  documentation.  The authors of MySQL hereby grant you an additional
+  permission to link the program and your derivative works with the
+  separately licensed software that they have included with MySQL.
 
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+  GNU General Public License, version 2.0, for more details.
 
   You should have received a copy of the GNU General Public License
   along with this program; if not, write to the Free Software Foundation,
@@ -17,10 +24,12 @@
 #define SQL_DIGEST_H
 
 #include <string.h>
-class String;
+#include "sql_string.h"
 #include "my_md5.h"
 
 #define MAX_DIGEST_STORAGE_SIZE (1024*1024)
+
+ulong get_max_digest_length();
 
 /**
   Structure to store token count/array for a statement
@@ -29,7 +38,7 @@ class String;
 struct sql_digest_storage
 {
   bool m_full;
-  uint m_byte_count;
+  size_t m_byte_count;
   unsigned char m_md5[MD5_HASH_SIZE];
   /** Character set number. */
   uint m_charset_number;
@@ -41,17 +50,20 @@ struct sql_digest_storage
     For Example:
     SELECT * FROM T1;
     &lt;SELECT_TOKEN&gt; &lt;*&gt; &lt;FROM_TOKEN&gt; &lt;ID_TOKEN&gt; &lt;2&gt; &lt;T1&gt;
+
+    @note Only the first @c m_byte_count bytes are initialized,
+      out of @c m_token_array_length.
   */
   unsigned char *m_token_array;
   /* Length of the token array to be considered for DIGEST_TEXT calculation. */
-  uint m_token_array_length;
+  size_t m_token_array_length;
 
   sql_digest_storage()
   {
     reset(NULL, 0);
   }
 
-  inline void reset(unsigned char *token_array, uint length)
+  inline void reset(unsigned char *token_array, size_t length)
   {
     m_token_array= token_array;
     m_token_array_length= length;
@@ -63,10 +75,6 @@ struct sql_digest_storage
     m_full= false;
     m_byte_count= 0;
     m_charset_number= 0;
-    if (m_token_array_length > 0)
-    {
-      memset(m_token_array, 0, m_token_array_length);
-    }
     memset(m_md5, 0, MD5_HASH_SIZE);
   }
 
@@ -82,8 +90,8 @@ struct sql_digest_storage
       as the thread producing the digest is executing concurrently,
       without any lock enforced.
     */
-    uint byte_count_copy= m_token_array_length < from->m_byte_count ?
-                          m_token_array_length : from->m_byte_count;
+    size_t byte_count_copy= m_token_array_length < from->m_byte_count ?
+                            m_token_array_length : from->m_byte_count;
 
     if (byte_count_copy > 0)
     {

@@ -35,7 +35,8 @@
 #include "util/bitset.h"
 #include "util/timer.h"
 #include "vc/virtual_column.h"
-
+#include "binlog.h"
+#include "log_event.h"
 #include "core/rc_table.h"
 
 namespace stonedb {
@@ -214,9 +215,9 @@ void RCTable::UnlockPackFromUse(unsigned attr, unsigned pack_no) {
 int RCTable::GetID() const { return share->TabID(); }
 
 std::vector<AttrInfo> RCTable::GetAttributesInfo() {
-  std::vector<AttrInfo> info(NumOfAttrs());
+  std::vector<AttrInfo> info(NoAttrs());
   Verify();
-  for (int j = 0; j < (int)NumOfAttrs(); j++) {
+  for (int j = 0; j < (int)NoAttrs(); j++) {
     info[j].type = m_attrs[j]->TypeName();
     info[j].size = m_attrs[j]->Type().GetPrecision();
     info[j].precision = m_attrs[j]->Type().GetScale();
@@ -233,7 +234,7 @@ std::vector<AttrInfo> RCTable::GetAttributesInfo() {
 
 std::vector<AttributeTypeInfo> RCTable::GetATIs([[maybe_unused]] bool orig) {
   std::vector<AttributeTypeInfo> deas;
-  for (uint j = 0; j < NumOfAttrs(); j++) {
+  for (uint j = 0; j < NoAttrs(); j++) {
     deas.emplace_back(m_attrs[j]->TypeName(), m_attrs[j]->Type().NotNull(), m_attrs[j]->Type().GetPrecision(),
                       m_attrs[j]->Type().GetScale(), false, m_attrs[j]->Type().GetCollation());
   }
@@ -253,13 +254,13 @@ bool RCTable::Verify() {
   bool ok = true;
   uint64_t n_o = 0xFFFFFFFF;
   for (auto &attr : m_attrs) {
-    if (n_o == 0xFFFFFFFF) n_o = attr->NumOfObj();
-    if (n_o != attr->NumOfObj()) ok = false;
+    if (n_o == 0xFFFFFFFF) n_o = attr->NoObj();
+    if (n_o != attr->NoObj()) ok = false;
   }
   if (!ok) {
     std::stringstream ss;
     ss << "Error: columns in table " << m_path.string() << " are inconsistent. No. of records for each column:\n";
-    for (auto &attr : m_attrs) ss << attr->AttrNo() << " : " << attr->NumOfObj() << std::endl;
+    for (auto &attr : m_attrs) ss << attr->AttrNo() << " : " << attr->NoObj() << std::endl;
     STONEDB_LOG(LogCtl_Level::ERROR, "%s", ss.str().c_str());
   }
   return !ok;
@@ -389,7 +390,7 @@ void RCTable::DisplayRSI() {
   std::stringstream ss;
 
   ss << "--- RSIndices for " << m_path << " (tab.no. " << share->TabID() << ", "
-     << ((NumOfObj() + (1 << Getpackpower()) - 1) >> Getpackpower()) << " packs) ---" << std::endl;
+     << ((NoObj() + (1 << Getpackpower()) - 1) >> Getpackpower()) << " packs) ---" << std::endl;
   ss << "Name               Triv.packs\tSpan\tHist.dens." << std::endl;
   ss << "-----------------------------------------------------------" << std::endl;
   for (size_t i = 0; i < m_attrs.size(); i++) {
@@ -501,43 +502,43 @@ RCTable::Iterator RCTable::Iterator::CreateBegin(RCTable &table, std::shared_ptr
 
 RCTable::Iterator RCTable::Iterator::CreateEnd() { return RCTable::Iterator(); }
 
-int64_t RCTable::NumOfObj() { return m_attrs[0]->NumOfObj(); }
+int64_t RCTable::NoObj() { return m_attrs[0]->NoObj(); }
 
 void RCTable::GetTable_S(types::BString &s, int64_t obj, int attr) {
   DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
-  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
+  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NoObj());
   s = m_attrs[attr]->GetValueString(obj);
 }
 
 int64_t RCTable::GetTable64(int64_t obj, int attr) {
   DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
-  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
+  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NoObj());
   return m_attrs[attr]->GetValueInt64(obj);
 }
 
 bool RCTable::IsNull(int64_t obj, int attr) {
   DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
-  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
+  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NoObj());
   return (m_attrs[attr]->IsNull(obj) ? true : false);
 }
 
 types::RCValueObject RCTable::GetValue(int64_t obj, int attr, [[maybe_unused]] Transaction *conn) {
   DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
-  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
+  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NoObj());
   return m_attrs[attr]->GetValue(obj, false);
 }
 
 uint RCTable::MaxStringSize(int n_a, Filter *f) {
   DEBUG_ASSERT(n_a >= 0 && static_cast<size_t>(n_a) <= m_attrs.size());
-  if (NumOfObj() == 0) return 1;
+  if (NoObj() == 0) return 1;
   return m_attrs[n_a]->MaxStringSize(f);
 }
 
 void RCTable::FillRowByRowid(TABLE *table, int64_t obj) {
   int col_id = 0;
-  assert((int64_t)obj <= NumOfObj());
+  assert((int64_t)obj <= NoObj());
   for (Field **field = table->field; *field; field++, col_id++) {
-    LockPackForUse(col_id, obj >> m_attrs[col_id]->NumOfPackpower());
+    LockPackForUse(col_id, obj >> m_attrs[col_id]->Nopackpower());
     std::shared_ptr<void> defer(nullptr,
                                 [this, col_id, obj](...) { UnlockPackFromUse(col_id, obj >> Getpackpower()); });
     std::unique_ptr<types::RCDataType> value(m_attrs[col_id]->ValuePrototype(false).Clone());
@@ -693,8 +694,8 @@ int RCTable::Insert(TABLE *table) {
                               [org_bitmap, table](...) { dbug_tmp_restore_column_map(table->read_set, org_bitmap); });
 
   std::vector<loader::ValueCache> vcs;
-  vcs.reserve(NumOfAttrs());
-  for (uint i = 0; i < NumOfAttrs(); i++) {
+  vcs.reserve(NoAttrs());
+  for (uint i = 0; i < NoAttrs(); i++) {
     vcs.emplace_back(1, 128);
     Field2VC(table->field[i], vcs[i], i);
     vcs[i].Commit();
@@ -708,12 +709,12 @@ int RCTable::Insert(TABLE *table) {
       fields.emplace_back(vcs[col].GetDataBytesPointer(0), vcs[col].Size(0));
     }
 
-    if (tab->InsertIndex(current_tx, fields, NumOfObj()) == common::ErrorCode::DUPP_KEY) {
-      STONEDB_LOG(LogCtl_Level::INFO, "Insert duplicate key on row %d", NumOfObj() - 1);
+    if (tab->InsertIndex(current_tx, fields, NoObj()) == common::ErrorCode::DUPP_KEY) {
+      STONEDB_LOG(LogCtl_Level::INFO, "Insert duplicate key on row %d", NoObj() - 1);
       return HA_ERR_FOUND_DUPP_KEY;
     }
   }
-  for (uint i = 0; i < NumOfAttrs(); i++) {
+  for (uint i = 0; i < NoAttrs(); i++) {
     m_attrs[i]->LoadData(&vcs[i]);
   }
   return 0;
@@ -736,7 +737,7 @@ uint64_t RCTable::ProceedNormal(system::IOParameters &iop) {
   uint no_of_rows_returned;
   utils::Timer timer;
   do {
-    to_prepare = share->PackSize() - (m_attrs[0]->NumOfObj() % share->PackSize());
+    to_prepare = share->PackSize() - (m_attrs[0]->NoObj() % share->PackSize());
     std::vector<loader::ValueCache> value_buffers;
     no_of_rows_returned = parser.GetPackrow(to_prepare, value_buffers);
     no_dup_rows += parser.GetDuprow();
@@ -783,7 +784,7 @@ int RCTable::binlog_load_query_log_event(system::IOParameters &iop) {
   lf_info = (LOAD_FILE_INFO *)iop.GetLogInfo();
   THD *thd = lf_info->thd;
   sql_exchange *ex = thd->lex->exchange;
-  TABLE *table = thd->lex->select_lex.table_list.first->table;
+  TABLE *table = thd->lex->select_lex->table_list.first->table;
   if (ex == nullptr || table == nullptr) return -1;
   auto pa = fs::path(iop.GetTableName());
   std::tie(db_name, tab_name) = std::make_tuple(pa.parent_path().filename().native(), pa.filename().native());
@@ -791,23 +792,25 @@ int RCTable::binlog_load_query_log_event(system::IOParameters &iop) {
   Load_log_event lle(thd, ex, db_name.c_str(), string_buf.c_ptr_safe(), fv, FALSE, DUP_ERROR, FALSE, TRUE);
   if (thd->lex->local_file) lle.set_fname_outside_temp_buf(ex->file_name, std::strlen(ex->file_name));
 
-  if (!thd->lex->field_list.elements) {
-    Field **field;
-    for (field = table->field; *field; field++) thd->lex->field_list.push_back(new Item_field(*field));
-    // bitmap_set_all(table->write_set);
-    if (setup_fields(thd, Ref_ptr_array(), thd->lex->update_list, MARK_COLUMNS_WRITE, 0, 0) ||
-        setup_fields(thd, Ref_ptr_array(), thd->lex->value_list, MARK_COLUMNS_READ, 0, 0))
-      return -1;
-  } else {
-    if (setup_fields(thd, Ref_ptr_array(), thd->lex->field_list, MARK_COLUMNS_WRITE, 0, 0) ||
-        setup_fields(thd, Ref_ptr_array(), thd->lex->update_list, MARK_COLUMNS_WRITE, 0, 0))
-      return -1;
+    if (!thd->lex->load_field_list.elements) {
+        Field **field;
+        for (field = table->field; *field; field++)
+            thd->lex->load_field_list.push_back(new Item_field(*field));
+        // bitmap_set_all(table->write_set);
+        if (setup_fields(thd, Ref_ptr_array(), thd->lex->load_update_list, UPDATE_ACL, 0, 0, 0) ||
+            setup_fields(thd, Ref_ptr_array(), thd->lex->load_value_list, SELECT_ACL, 0, 0, 0))
+            return -1;
+    } else {
+        if (setup_fields(thd, Ref_ptr_array(), thd->lex->load_field_list, INSERT_ACL, 0, 0, 0) ||
+            setup_fields(thd, Ref_ptr_array(), thd->lex->load_update_list, UPDATE_ACL, 0, 0, 0))
+            return -1;
 
-    if (setup_fields(thd, Ref_ptr_array(), thd->lex->value_list, MARK_COLUMNS_READ, 0, 0)) return -1;
-  }
+        if (setup_fields(thd, Ref_ptr_array(), thd->lex->load_value_list, SELECT_ACL, 0, 0, 0))
+            return -1;
+    }
 
-  if (!thd->lex->field_list.is_empty()) {
-    List_iterator<Item> li(thd->lex->field_list);
+    if (!thd->lex->load_field_list.is_empty()) {
+        List_iterator<Item> li(thd->lex->load_field_list);
 
     pfields.append(" (");
     n = 0;
@@ -822,8 +825,8 @@ int RCTable::binlog_load_query_log_event(system::IOParameters &iop) {
     pfields.append(")");
   }
 
-  if (!thd->lex->update_list.is_empty()) {
-    List_iterator<Item> lu(thd->lex->update_list);
+  if (!thd->lex->load_update_list.is_empty()) {
+    List_iterator<Item> lu(thd->lex->load_update_list);
     List_iterator<String> ls(thd->lex->load_set_str_list);
 
     pfields.append(" SET ");
@@ -836,7 +839,7 @@ int RCTable::binlog_load_query_log_event(system::IOParameters &iop) {
 
       str->copy();
       pfields.append(str->ptr());
-      str->free();
+      str->mem_free();
     }
     thd->lex->load_set_str_list.empty();
   }
@@ -851,10 +854,10 @@ int RCTable::binlog_load_query_log_event(system::IOParameters &iop) {
   std::strcpy(end, p);
   end += pl;
 
-  Execute_load_query_log_event e(thd, load_data_query, end - load_data_query,
-                                 static_cast<uint>(fname_start - load_data_query - 1),
-                                 static_cast<uint>(fname_end - load_data_query), LOAD_DUP_ERROR, TRUE, FALSE, FALSE, 0);
-  return mysql_bin_log.write_event(&e);
+    Execute_load_query_log_event e(
+        thd, load_data_query, end - load_data_query, static_cast<uint>(fname_start - load_data_query - 1),
+        static_cast<uint>(fname_end - load_data_query), (binary_log::enum_load_dup_handling)0, TRUE, FALSE, FALSE, 0);
+    return mysql_bin_log.write_event(&e);
 }
 
 size_t RCTable::max_row_length(std::vector<loader::ValueCache> &vcs, uint row, uint delimiter) {
@@ -927,7 +930,7 @@ int RCTable::binlog_insert2load_log_event(system::IOParameters &iop) {
 
   std::memcpy(load_data_query, p, pl);
   Execute_load_query_log_event e(thd, load_data_query, pl, static_cast<uint>(fname_start_pos - 1),
-                                 static_cast<uint>(fname_end_pos), LOAD_DUP_ERROR, TRUE, FALSE, FALSE, 0);
+                                 static_cast<uint>(fname_end_pos), (binary_log::enum_load_dup_handling)0, TRUE, FALSE, FALSE, 0);
   return mysql_bin_log.write_event(&e);
 }
 
@@ -1089,11 +1092,11 @@ int RCTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, uint
   for (block_len = (uint)(ptr - block_buf.get()); block_len > 0;
        buffer += std::min(block_len, max_event_size), block_len -= std::min(block_len, max_event_size)) {
     if (lf_info->wrote_create_file) {
-      Append_block_log_event a(lf_info->thd, lf_info->thd->db, buffer, std::min(block_len, max_event_size),
+      Append_block_log_event a(lf_info->thd, lf_info->thd->db().str, buffer, std::min(block_len, max_event_size),
                                lf_info->log_delayed);
       if (mysql_bin_log.write_event(&a)) return -1;
     } else {
-      Begin_load_query_log_event b(lf_info->thd, lf_info->thd->db, buffer, std::min(block_len, max_event_size),
+      Begin_load_query_log_event b(lf_info->thd, lf_info->thd->db().str, buffer, std::min(block_len, max_event_size),
                                    lf_info->log_delayed);
       if (mysql_bin_log.write_event(&b)) return -1;
       lf_info->wrote_create_file = 1;
@@ -1110,7 +1113,7 @@ class DelayedInsertParser final {
       : pack_size(packsize), attrs(attrs), vec(vec), index_table(index) {}
 
   uint GetRows(uint no_of_rows, std::vector<loader::ValueCache> &value_buffers) {
-    int64_t start_row = attrs[0]->NumOfObj();
+    int64_t start_row = attrs[0]->NoObj();
 
     value_buffers.reserve(attrs.size());
     for (size_t i = 0; i < attrs.size(); i++) {
@@ -1226,7 +1229,7 @@ uint64_t RCTable::ProcessDelayed(system::IOParameters &iop) {
 
   uint to_prepare, no_of_rows_returned;
   do {
-    to_prepare = share->PackSize() - (int)(m_attrs[0]->NumOfObj() % share->PackSize());
+    to_prepare = share->PackSize() - (int)(m_attrs[0]->NoObj() % share->PackSize());
     std::vector<loader::ValueCache> vcs;
     no_of_rows_returned = parser.GetRows(to_prepare, vcs);
     size_t real_loaded_rows = vcs[0].NumOfValues();
@@ -1314,7 +1317,7 @@ int RCTable::MergeMemTable(system::IOParameters &iop) {
 
   uint to_prepare, no_of_rows_returned;
   do {
-    to_prepare = share->PackSize() - (int)(m_attrs[0]->NumOfObj() % share->PackSize());
+    to_prepare = share->PackSize() - (int)(m_attrs[0]->NoObj() % share->PackSize());
     std::vector<loader::ValueCache> vcs;
     no_of_rows_returned = parser.GetRows(to_prepare, vcs);
     size_t real_loaded_rows = vcs[0].NumOfValues();

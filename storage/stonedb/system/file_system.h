@@ -22,6 +22,7 @@
 
 namespace stonedb {
 namespace system {
+
 /** \brief Deletes a directory defined by path
  *  \param path Directory path
  *  The delete operation is recursive. It deletes all existing files and
@@ -78,6 +79,7 @@ void FlushFileChanges(std::string const &path);
 bool IsReadWriteAllowed(std::string const &path);
 
 int ClearDirectory(std::string const &path);
+
 }  // namespace system
 }  // namespace stonedb
 

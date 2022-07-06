@@ -3,8 +3,11 @@
  *  memcached - memory caching daemon
  *
  *       http://www.danga.com/memcached/
- *
+ *  Copyright (c) 2015, 2021, Oracle and/or its affiliates.
  *  Copyright 2003 Danga Interactive, Inc.  All rights reserved.
+ *  This file was modified by Oracle on 28-08-2015 and 23-03-2016.
+ *  Modifications Copyright (c) 2015, 2021, Oracle and/or its affiliates.
+ *  All rights reserved.
  *
  *  Use and distribution licensed under the BSD license.  See
  *  the LICENSE file for full text.
@@ -32,6 +35,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <stddef.h>
+#include <dlfcn.h>
 
 #include "memcached_mysql.h"
 
@@ -85,7 +89,7 @@ static inline void item_set_cas(const void *cookie, item *it, uint64_t cas) {
 #define STATS_MISS(conn, op, key, nkey) \
     STATS_TWO(conn, op##_misses, cmd_##op, key, nkey)
 
-#if defined(HAVE_GCC_ATOMIC_BUILTINS)
+#if defined(HAVE_GCC_SYNC_BUILTINS)
 
 #define STATS_NOKEY(conn, op)	\
 do { \
@@ -111,7 +115,7 @@ do { \
 
 #define MEMCACHED_ATOMIC_MSG	"InnoDB MEMCACHED: Memcached uses atomic increment \n"
 
-#else /* HAVE_GCC_ATOMIC_BUILTINS */
+#else /* HAVE_GCC_SYNC_BUILTINS */
 #define STATS_NOKEY(conn, op) { \
     struct thread_stats *thread_stats = \
         get_thread_stats(conn); \
@@ -138,7 +142,7 @@ do { \
 }
 
 #define MEMCACHED_ATOMIC_MSG	"InnoDB Memcached: Memcached DOES NOT use atomic increment"
-#endif /* HAVE_GCC_ATOMIC_BUILTINS */
+#endif /* HAVE_GCC_SYNC_BUILTINS */
 
 volatile sig_atomic_t memcached_shutdown;
 volatile sig_atomic_t memcached_initialized;
@@ -2168,6 +2172,8 @@ static void process_bin_sasl_auth(conn *c) {
     int nkey = c->binary_header.request.keylen;
     int vlen = c->binary_header.request.bodylen - nkey;
 
+    assert(vlen >= 0);
+
     if (nkey > MAX_SASL_MECH_LEN) {
         write_bin_packet(c, PROTOCOL_BINARY_RESPONSE_EINVAL, vlen);
         c->write_and_go = conn_swallow;
@@ -2900,9 +2906,15 @@ static RESPONSE_HANDLER response_handlers[256] = {
 static void dispatch_bin_command(conn *c) {
     int protocol_error = 0;
 
-    int extlen = c->binary_header.request.extlen;
+    uint8_t extlen = c->binary_header.request.extlen;
     uint16_t keylen = c->binary_header.request.keylen;
     uint32_t bodylen = c->binary_header.request.bodylen;
+
+    if (keylen > bodylen || keylen + extlen > bodylen) {
+        write_bin_packet(c, PROTOCOL_BINARY_RESPONSE_UNKNOWN_COMMAND, 0);
+        c->write_and_go = conn_closing;
+        return;
+    }
 
     if (settings.require_sasl && !authenticated(c)) {
         write_bin_packet(c, PROTOCOL_BINARY_RESPONSE_AUTH_ERROR, 0);
@@ -3235,6 +3247,8 @@ static void process_bin_append_prepend(conn *c) {
     key = binary_get_key(c);
     nkey = c->binary_header.request.keylen;
     vlen = c->binary_header.request.bodylen - nkey;
+
+    assert(vlen >= 0);
 
     if (settings.verbose > 1) {
         settings.extensions.logger->log(EXTENSION_LOG_DEBUG, c,
@@ -3579,7 +3593,12 @@ static size_t tokenize_command(char *command, token_t *tokens, const size_t max_
     return ntokens;
 }
 
-static void detokenize(token_t *tokens, int ntokens, char **out, int *nbytes) {
+#ifdef INNODB_MEMCACHED
+static void detokenize(token_t *tokens, size_t ntokens, char **out, int *nbytes)
+#else
+static void detokenize(token_t *tokens, int ntokens, char **out, int *nbytes)
+#endif
+{
     int i, nb;
     char *buf, *p;
 
@@ -4244,6 +4263,13 @@ static void process_update_command(conn *c, token_t *tokens, const size_t ntoken
            && safe_strtol(tokens[3].value, &exptime_int)
            && safe_strtol(tokens[4].value, (int32_t *)&vlen))) {
         out_string(c, "CLIENT_ERROR bad command line format");
+        return;
+    }
+
+    /* Negative expire values not allowed */
+
+    if (exptime_int < 0) {
+        out_string(c, "CLIENT_ERROR Invalid expire time");
         return;
     }
 
@@ -6423,6 +6449,15 @@ static void *new_independent_stats(void) {
     int ii;
     int nrecords = num_independent_stats();
     struct independent_stats *independent_stats = calloc(sizeof(independent_stats) + sizeof(struct thread_stats) * nrecords, 1);
+
+#ifdef INNODB_MEMCACHED
+    if (independent_stats == NULL) {
+	fprintf(stderr, "Unable to allocate memory for"
+		       "independent_stats...\n");
+       return (NULL);
+    }
+#endif
+
     if (settings.topkeys > 0)
         independent_stats->topkeys = topkeys_init(settings.topkeys);
     for (ii = 0; ii < nrecords; ii++)
@@ -7001,9 +7036,8 @@ daemon_memcached_make_option(char* option, int* option_argc,
 		num_arg++;
 	}
 
-	free(my_str);
-
-	my_str = option;
+	/* reset my_str, since strtok_r could alter it */
+	strncpy(my_str, option, strlen(option));
 
 	*option_argv = (char**) malloc((num_arg + 1)
 				       * sizeof(**option_argv));
@@ -7011,7 +7045,7 @@ daemon_memcached_make_option(char* option, int* option_argc,
 	for (opt_str = strtok_r(my_str, sep, &last);
 	     opt_str;
 	     opt_str = strtok_r(NULL, sep, &last)) {
-		(*option_argv)[i] = my_strdupl(opt_str, strlen(opt_str));
+		(*option_argv)[i] = opt_str;
 		i++;
 	}
 
@@ -7062,6 +7096,8 @@ int main (int argc, char **argv) {
     int option_argc = 0;
     char** option_argv = NULL;
     eng_config_info_t my_eng_config;
+
+    memcached_initialized = 0;
 
     if (m_config->m_engine_library) {
 	engine = m_config->m_engine_library;
@@ -7851,6 +7887,12 @@ int main (int argc, char **argv) {
 
     default_independent_stats = new_independent_stats();
 
+#ifdef INNODB_MEMCACHED
+    if (!default_independent_stats) {
+	exit(EXIT_FAILURE);
+    }
+#endif
+
 #ifndef __WIN32__
     /*
      * ignore SIGPIPE signals; we can use errno == EPIPE if we
@@ -7960,6 +8002,14 @@ func_exit:
     /* Clean up strdup() call for bind() address */
     if (settings.inter)
       free(settings.inter);
+
+#ifdef INNODB_MEMCACHED
+    /* free event base */
+    if (main_base) {
+        event_base_free(main_base);
+        main_base = NULL;
+    }
+#endif
 
     memcached_shutdown = 2;
     memcached_initialized = 2;

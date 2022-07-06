@@ -21,10 +21,12 @@
 
 namespace stonedb {
 namespace utils {
+
 void Timer::DoPrint(const std::string &msg) const {
   using namespace std::chrono;
-  auto diff = duration_cast<duration<float>>(high_resolution_clock::now() - start);
+  auto diff = duration_cast<duration<float>>(high_resolution_clock::now() - start_);
   STONEDB_LOG(LogCtl_Level::INFO, "Timer %f seconds: %s", diff.count(), msg.c_str());
 }
+
 }  // namespace utils
 }  // namespace stonedb

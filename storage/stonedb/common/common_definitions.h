@@ -37,7 +37,7 @@ constexpr size_t operator""_GB(unsigned long long v) { return 1024u * 1024u * 10
 
 namespace common {
 
-void PushWarning(THD *thd, Sql_condition::enum_warning_level level, uint code, const char *msg);
+extern void PushWarning(THD *thd, Sql_condition::enum_severity_level level, uint code, const char *msg);
 
 // Column Type
 // NOTE: do not change the order of implemented data types! Stored as int(...)
@@ -86,7 +86,7 @@ constexpr char NULL_VALUE_C = -128;
 constexpr uint32_t NULL_VALUE_U = 0xFFFFFFFC;
 constexpr int64_t MAX_ROW_NUMBER = 0x00007FFFFFFFFFFFULL;  // 2^47 - 1
 
-constexpr int64_t SDB_BIGINT_MAX = PLUS_INF_64 - 1;
+constexpr int64_t SDB_BIGINT_MAX = PLUS_INF_64;
 constexpr int64_t SDB_BIGINT_MIN = NULL_VALUE_64;
 
 #define NULL_VALUE_D (*(double *)("\x01\x00\x00\x00\x00\x00\x00\x80"))
@@ -94,9 +94,9 @@ constexpr int64_t SDB_BIGINT_MIN = NULL_VALUE_64;
 #define SDB_MEDIUMINT_MAX ((1 << 23) - 1)
 #define SDB_MEDIUMINT_MIN (-((1 << 23)))
 #define SDB_TINYINT_MAX 127
-#define SDB_TINYINT_MIN (-127)
+#define SDB_TINYINT_MIN (-128)
 #define SDB_SMALLINT_MAX ((1 << 15) - 1)
-#define SDB_SMALLINT_MIN (-((1 << 15) - 1))
+#define SDB_SMALLINT_MIN (-(1 << 15))
 
 #define PACK_INVALID 0
 #define FIELD_MAXLENGTH 65535

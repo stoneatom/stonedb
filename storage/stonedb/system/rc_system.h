@@ -30,10 +30,8 @@ class Engine;
 class Transaction;
 }  // namespace core
 namespace index {
-
 class KVStore;
-
-}
+}  // namespace index
 
 extern system::Channel rccontrol;  // Channel for debugging information, not
                                    // displayed in the standard running mode.
@@ -46,6 +44,7 @@ extern index::KVStore *kvstore;
 extern std::mutex global_mutex;
 extern std::shared_mutex drop_rename_mutex;
 extern thread_local core::Transaction *current_tx;
+
 }  // namespace stonedb
 
 #endif  // STONEDB_SYSTEM_RC_SYSTEM_H_

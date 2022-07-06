@@ -9,8 +9,7 @@ then
 fi
 
 build_type=Debug
-#build_type=RelWithDebInfo
-#build_type=release
+#build_type=Release
 branch=`git rev-parse --abbrev-ref HEAD`
 cpu_arc=`uname -m`
 os_dist=`lsb_release -a | grep Distributor | tail -n 1 | awk '{print $3}'`
@@ -19,7 +18,7 @@ build_time=`date "+%Y-%m-%d_%H-%M-%S"`
 build_tag=build_${branch}_${cpu_arc}_${os_dist}${os_dist_release}_${build_type}_${build_time}
 build_log=`pwd`/../build/build_log_${build_tag}.log
 
-install_target=/stonedb56/install
+install_target=/stonedb57/install
 # shutdown server first
 if test -f ${install_target}/support-files/mysql.server
 then
@@ -48,10 +47,10 @@ cmake ../../ \
 -DMYSQL_TCP_PORT=3306 \
 -DENABLED_LOCAL_INFILE=1 \
 -DEXTRA_CHARSETS=all \
--DDEFAULT_CHARSET=utf8 \
--DDEFAULT_COLLATION=utf8_general_ci \
-#-DDOWNLOAD_BOOST=1 \
-#-DWITH_BOOST=/usr/local/boost/ \
+-DDEFAULT_CHARSET=utf8mb4 \
+-DDEFAULT_COLLATION=utf8mb4_general_ci \
+-DDOWNLOAD_BOOST=0 \
+-DWITH_BOOST=/usr/local/stonedb-boost/include \
 2>&1 | tee -a ${build_log}
 
 # make

@@ -31,9 +31,8 @@
 namespace stonedb {
 namespace core {
 
-int optimize_select(THD *thd, TABLE_LIST *tables, uint wild_num, List<Item> &fields, Item *conds, uint og_num,
-                    ORDER *order, ORDER *group, Item *having, ulong select_options, select_result *result,
-                    SELECT_LEX_UNIT *unit, SELECT_LEX *select_lex, int &optimize_after_sdb, int &free_join);
+int optimize_select(THD *thd, ulong select_options, Query_result *result,
+                    SELECT_LEX *select_lex, int &optimize_after_sdb, int &free_join);
 
 class KillTimer {
  public:
@@ -76,7 +75,7 @@ error through res'. If the query can not be compiled by StoneDB engine
 RETURN_QUERY_TO_MYSQL_ROUTE is returned and MySQL engine continues query
 execution.
 */
-int Engine::HandleSelect(THD *thd, LEX *lex, select_result *&result, ulong setup_tables_done_option, int &res,
+int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
                          int &optimize_after_sdb, int &sdb_free_join, int with_insert) {
   KillTimer timer(thd, stonedb_sysvar_max_execution_time);
 
@@ -87,22 +86,23 @@ int Engine::HandleSelect(THD *thd, LEX *lex, select_result *&result, ulong setup
 
   SELECT_LEX_UNIT *unit = NULL;
   SELECT_LEX *select_lex = NULL;
-  select_export *se = NULL;
+  Query_result_export *se = NULL;
 
-  thd->variables.engine_condition_pushdown = stonedb_sysvar_pushdown;
-  if (!IsSDBRoute(thd, lex->query_tables, &lex->select_lex, in_case_of_failure_can_go_to_mysql, with_insert)) {
+  	if (stonedb_sysvar_pushdown)
+        thd->variables.optimizer_switch|=OPTIMIZER_SWITCH_ENGINE_CONDITION_PUSHDOWN;
+  if (!IsSDBRoute(thd, lex->query_tables, lex->select_lex, in_case_of_failure_can_go_to_mysql, with_insert)) {
     return RETURN_QUERY_TO_MYSQL_ROUTE;
   }
 
   if (lock_tables(thd, thd->lex->query_tables, thd->lex->table_count, 0)) {
-    STONEDB_LOG(LogCtl_Level::ERROR, "Failed to lock tables for query '%s'", thd_query_string(thd)->str);
+    STONEDB_LOG(LogCtl_Level::ERROR, "Failed to lock tables for query '%s'", thd->query().str);
     return RCBASE_QUERY_ROUTE;
   }
   /*
     Only register query in cache if it tables were locked above.
     Tables must be locked before storing the query in the query cache.
   */
-  query_cache_store_query(thd, thd->lex->query_tables);
+  query_cache.store_query(thd, thd->lex->query_tables);
 
   stonedb_stat.select++;
 
@@ -110,7 +110,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, select_result *&result, ulong setup
   // query and we know that if the result goes to the file, the SDB_DATAFORMAT is
   // one of SDB formats
   int route = RCBASE_QUERY_ROUTE;
-  SELECT_LEX *save_current_select = lex->current_select;
+  SELECT_LEX *save_current_select = lex->current_select();
   List<st_select_lex_unit> derived_optimized;  // collection to remember derived
                                                // tables that are optimized
   if (thd->fill_derived_tables() && lex->derived_tables) {
@@ -124,36 +124,34 @@ int Engine::HandleSelect(THD *thd, LEX *lex, select_result *&result, ulong setup
     lex->thd->derived_tables_processing = TRUE;
     for (SELECT_LEX *sl = lex->all_selects_list; sl; sl = sl->next_select_in_list())        // for all selects
       for (TABLE_LIST *cursor = sl->get_table_list(); cursor; cursor = cursor->next_local)  // for all tables
-        if (cursor->table && cursor->derived) {  // data source (view or FROM subselect)
+        if (cursor->table && cursor->is_view_or_derived()) {  // data source (view or FROM subselect)
           // optimize derived table
-          SELECT_LEX *first_select = cursor->derived->first_select();
+          SELECT_LEX *first_select = cursor->derived_unit()->first_select();
           if (first_select->next_select() && first_select->next_select()->linkage == UNION_TYPE) {  //?? only if union
-            if (cursor->derived->describe || cursor->derived->item) {  //??called for explain
+            if (lex->is_explain() || cursor->derived_unit()->item) {  //??called for explain
               // OR there is subselect(?)
               route = RETURN_QUERY_TO_MYSQL_ROUTE;
               goto ret_derived;
             }
-            if (!cursor->derived->executed || cursor->derived->uncacheable) {  //??not already executed (not
+            if (!cursor->derived_unit()->is_executed() || cursor->derived_unit()->uncacheable) {  //??not already executed (not
                                                                                // materialized?)
               // OR not cacheable (meaning not yet in cache, i.e. not
               // materialized it seems to boil down to NOT MATERIALIZED(?)
-              res = cursor->derived->optimize_for_stonedb();  //===exec()
-              derived_optimized.push_back(cursor->derived);
+              res = cursor->derived_unit()->optimize_for_stonedb();  //===exec()
+              derived_optimized.push_back(cursor->derived_unit());
             }
           } else {  //??not union
-            cursor->derived->set_limit(first_select);
-            if (cursor->derived->select_limit_cnt == HA_POS_ERROR) first_select->options &= ~OPTION_FOUND_ROWS;
-            lex->current_select = first_select;
+            cursor->derived_unit()->set_limit(first_select);
+            if (cursor->derived_unit()->select_limit_cnt == HA_POS_ERROR) first_select->remove_base_options(OPTION_FOUND_ROWS);
+            lex->set_current_select(first_select);
             int optimize_derived_after_sdb = FALSE;
             res = optimize_select(
-                thd, (TABLE_LIST *)first_select->table_list.first, first_select->with_wild, first_select->item_list,
-                first_select->where, (first_select->order_list.elements + first_select->group_list.elements),
-                (ORDER *)first_select->order_list.first, (ORDER *)first_select->group_list.first, first_select->having,
-                ulong(first_select->options | thd->variables.option_bits | SELECT_NO_UNLOCK), cursor->derived_result,
-                cursor->derived, first_select, optimize_derived_after_sdb, free_join);
-            if (optimize_derived_after_sdb) derived_optimized.push_back(cursor->derived);
+                            thd, ulong(first_select->active_options() | thd->variables.option_bits | SELECT_NO_UNLOCK),
+                            (Query_result*)cursor->derived_result, first_select, optimize_derived_after_sdb,
+                            free_join);
+            if (optimize_derived_after_sdb) derived_optimized.push_back(cursor->derived_unit());
           }
-          lex->current_select = save_current_select;
+          lex->set_current_select(save_current_select);
           if (!res && free_join)  // no error &
             route = RETURN_QUERY_TO_MYSQL_ROUTE;
           if (res || route == RETURN_QUERY_TO_MYSQL_ROUTE) goto ret_derived;
@@ -161,13 +159,13 @@ int Engine::HandleSelect(THD *thd, LEX *lex, select_result *&result, ulong setup
     lex->thd->derived_tables_processing = FALSE;
   }
 
-  se = dynamic_cast<select_export *>(result);
+  se = dynamic_cast<Query_result_export *>(result);
   if (se != NULL) result = new exporter::select_sdb_export(se);
   // prepare, optimize and execute the main query
-  select_lex = &lex->select_lex;
-  unit = &lex->unit;
+  select_lex = lex->select_lex;
+  unit = lex->unit;
   if (select_lex->next_select()) {  // it is union
-    if (!(res = unit->prepare(thd, result, SELECT_NO_UNLOCK | setup_tables_done_option))) {
+    if (!(res = unit->prepare(thd, result, (ulong)(SELECT_NO_UNLOCK | setup_tables_done_option),0))) {
       // similar to mysql_union(...) from sql_union.cpp
 
       /* FIXME: create_table is private in mysql5.6
@@ -176,10 +174,10 @@ int Engine::HandleSelect(THD *thd, LEX *lex, select_result *&result, ulong setup
          != 0) { my_error(ER_TABLE_EXISTS_ERROR, MYF(0),
          sc->create_table->table_name); res = 1; } else
        */
-      if (unit->describe || unit->item)  // explain or sth was already computed - go to mysql
+      if (lex->is_explain() || unit->item)  // explain or sth was already computed - go to mysql
         route = RETURN_QUERY_TO_MYSQL_ROUTE;
       else {
-        int old_executed = unit->executed;
+        int old_executed = unit->is_executed();
         res = unit->optimize_for_stonedb();  //====exec()
         optimize_after_sdb = TRUE;
         if (!res) {
@@ -187,7 +185,11 @@ int Engine::HandleSelect(THD *thd, LEX *lex, select_result *&result, ulong setup
             route = rceng->Execute(unit->thd, unit->thd->lex, result, unit);
             if (route == RETURN_QUERY_TO_MYSQL_ROUTE) {
               if (in_case_of_failure_can_go_to_mysql)
-                unit->executed = old_executed;
+                                if(old_executed)
+                                   unit->set_executed();
+                                else
+                                   unit->reset_executed();
+
               else {
                 const char *err_msg =
                     "Error: Query syntax not implemented in StoneDB, can "
@@ -206,11 +208,11 @@ int Engine::HandleSelect(THD *thd, LEX *lex, select_result *&result, ulong setup
       }
     }
     if (res || route == RCBASE_QUERY_ROUTE) {
-      res |= (int)unit->cleanup();
+      res |= (int)unit->cleanup(0);
       optimize_after_sdb = FALSE;
     }
   } else {
-    unit->set_limit(unit->global_parameters);  // the fragment of original
+    unit->set_limit(unit->global_parameters());  // the fragment of original
                                                // handle_select(...)
     //(until the first part of optimization)
     // used for non-union select
@@ -220,12 +222,10 @@ int Engine::HandleSelect(THD *thd, LEX *lex, select_result *&result, ulong setup
     // setup_tables_done_option changed for next rexecution
 
     int err;
-    err = optimize_select(thd, (TABLE_LIST *)select_lex->table_list.first, select_lex->with_wild, select_lex->item_list,
-                          select_lex->where, select_lex->order_list.elements + select_lex->group_list.elements,
-                          (ORDER *)select_lex->order_list.first, (ORDER *)select_lex->group_list.first,
-                          select_lex->having,
-                          ulong(select_lex->options | thd->variables.option_bits | setup_tables_done_option), result,
-                          unit, select_lex, optimize_after_sdb, sdb_free_join);
+        err = optimize_select(
+            thd, ulong(select_lex->active_options() | thd->variables.option_bits | setup_tables_done_option), result,
+            select_lex, optimize_after_sdb, sdb_free_join);
+
     // RCBase query engine entry point
     if (!err) {
       try {
@@ -250,7 +250,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, select_result *&result, ulong setup
       // so an upper function will do the cleanup
       if (err || route == RCBASE_QUERY_ROUTE) {
         thd->proc_info = "end";
-        err |= (int)select_lex->cleanup();
+        err |= (int)select_lex->cleanup(0);
         optimize_after_sdb = FALSE;
         sdb_free_join = 0;
       }
@@ -258,7 +258,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, select_result *&result, ulong setup
     } else
       res = select_lex->join->error;
   }
-  if (select_lex->join && Query::IsLOJ(select_lex->join->join_list))
+  if (select_lex->join && Query::IsLOJ(select_lex->join_list))
     optimize_after_sdb = 2;     // optimize partially (part=4), since part of LOJ
                                 // optimization was already done
   res |= (int)thd->is_error();  // the ending of original handle_select(...) */
@@ -271,10 +271,12 @@ int Engine::HandleSelect(THD *thd, LEX *lex, select_result *&result, ulong setup
     // free the sdb export object,
     // restore the original mysql export object
     // and prepare if it is expected to be prepared
-    if (!select_lex->next_select() && select_lex->join != 0 && select_lex->join->result == result) {
-      select_lex->join->result = se;
-      if (((exporter::select_sdb_export *)result)->IsPrepared()) se->prepare(select_lex->join->fields_list, unit);
-    }
+        if (!select_lex->next_select() && select_lex->join != 0 && select_lex->query_result() == result) {
+            select_lex->set_query_result(se);
+            if (((exporter::select_sdb_export *)result)->IsPrepared())
+                se->prepare(select_lex->join->fields_list, unit);
+        }
+
     delete result;
     result = se;
   }
@@ -285,11 +287,11 @@ ret_derived:
   if (route == RETURN_QUERY_TO_MYSQL_ROUTE) {
     for (SELECT_LEX *sl = lex->all_selects_list; sl; sl = sl->next_select_in_list())
       for (TABLE_LIST *cursor = sl->get_table_list(); cursor; cursor = cursor->next_local)
-        if (cursor->table && cursor->derived) {
+        if (cursor->table && cursor->is_derived()) {
           lex->thd->derived_tables_processing = TRUE;
-          cursor->derived->optimize_after_stonedb();
+          cursor->derived_unit()->optimize_after_stonedb();
         }
-    lex->current_select = save_current_select;
+    lex->set_current_select(save_current_select);
   }
   lex->thd->derived_tables_processing = FALSE;
 
@@ -299,60 +301,71 @@ ret_derived:
 /*
 Prepares and optimizes a single select for StoneDB engine
 */
-int optimize_select(THD *thd, TABLE_LIST *tables, uint wild_num, List<Item> &fields, Item *conds, uint og_num,
-                    ORDER *order, ORDER *group, Item *having, ulong select_options, select_result *result,
-                    SELECT_LEX_UNIT *unit, SELECT_LEX *select_lex, int &optimize_after_sdb, int &free_join) {
-  // copied from sql_select.cpp from the beginning of mysql_select(...)
-  int err;
-  free_join = 1;
-
-  select_lex->context.resolve_in_select_list = TRUE;
-  JOIN *join;
-  if (select_lex->join != 0) {
-    join = select_lex->join;
-    // is it single SELECT in derived table, called in derived table
-    // creation
-    if (select_lex->linkage != DERIVED_TABLE_TYPE || (select_options & SELECT_DESCRIBE)) {
-      if (select_lex->linkage != GLOBAL_OPTIONS_TYPE) {
+int optimize_select(THD *thd, ulong select_options, Query_result *result,
+                    SELECT_LEX *select_lex, int &optimize_after_sdb, int &free_join)
+{
+    // copied from sql_select.cpp from the beginning of mysql_select(...)
+    int err = 0;
+    free_join = 1;
+    select_lex->context.resolve_in_select_list = TRUE;
+    JOIN *join;
+    if (select_lex->join != 0) {
+        join = select_lex->join;
         // here is EXPLAIN of subselect or derived table
-        if (join->change_result(result)) return TRUE;
-      } else {
-        err = join->prepare(tables, wild_num, conds, og_num, order, group, having, select_lex, unit);
-        if (err) {
-          return err;
-        }
-      }
-    }
-    free_join = 0;
-    join->select_options = select_options;
-  } else {
-    if (!(join = new JOIN(thd, fields, select_options, result))) return TRUE;
-    thd_proc_info(thd, "init");
-    // thd->used_tables = 0; // Updated by setup_fields... // gone in mysql 5.6
-    err = join->prepare(tables, wild_num, conds, og_num, order, group, having, select_lex, unit);
-    if (err) {
-      return err;
-    }
-  }
-  join->best_rowcount = 2;
-  optimize_after_sdb = TRUE;
-  if ((err = join->optimize(1))) return err;  // 1
-  // until HERE this was the copy of thebeginning of mysql_select(...)
-  return FALSE;
+		if (select_lex->linkage != DERIVED_TABLE_TYPE || (select_options & (1ULL << 2))) {
+
+			if (select_lex->linkage != GLOBAL_OPTIONS_TYPE) {
+				
+				if (result->prepare(select_lex->join->fields_list, select_lex->master_unit()) || result->prepare2())
+				{
+                    return TRUE;
+
+				}
+			} else {
+				if ((err = select_lex->prepare(thd))) 
+				{
+					return err;
+				}				
+			}
+		}
+		free_join = 0;
+		join->select_options = select_options;
+    }       
+	else
+	{		
+		thd_proc_info(thd, "init");
+
+		if ((err = select_lex->prepare(thd))) 
+		{
+			return err;
+		}
+        if (result->prepare(select_lex->fields_list, select_lex->master_unit()) || result->prepare2()) {
+            return TRUE;
+        }       
+        if (!(join = new JOIN(thd, select_lex)))
+            return TRUE; /* purecov: inspected */
+        select_lex->set_join(join);
+        
+	}
+    join->best_rowcount = 2;
+    optimize_after_sdb = TRUE;
+	if ((err = join->optimize(1)))
+        return err;
+	return FALSE;
 }
 
 int handle_exceptions(THD *, Transaction *, bool with_error = false);
 
-int Engine::Execute(THD *thd, LEX *lex, select_result *result_output, SELECT_LEX_UNIT *unit_for_union) {
+int Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_UNIT *unit_for_union) {
   DEBUG_ASSERT(thd->lex == lex);
-  SELECT_LEX *selects_list = &lex->select_lex;
+  SELECT_LEX *selects_list = lex->select_lex;
   SELECT_LEX *last_distinct = NULL;
   if (unit_for_union != NULL) last_distinct = unit_for_union->union_distinct;
 
   int is_dumpfile = 0;
   const char *export_file_name = GetFilename(selects_list, is_dumpfile);
   if (is_dumpfile) {
-    push_warning(thd, Sql_condition::WARN_LEVEL_NOTE, ER_UNKNOWN_ERROR,
+    push_warning(thd, Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
                  "Dumpfile not implemented in StoneDB, executed by MySQL engine.");
     return RETURN_QUERY_TO_MYSQL_ROUTE;
   }
@@ -361,11 +374,11 @@ int Engine::Execute(THD *thd, LEX *lex, select_result *result_output, SELECT_LEX
   CompiledQuery cqu;
 
   current_tx->ResetDisplay();  // switch display on
-  query.SetRoughQuery(selects_list->options & SELECT_ROUGHLY);
+  query.SetRoughQuery(selects_list->active_options() & SELECT_ROUGHLY);
 
   try {
     if (!query.Compile(&cqu, selects_list, last_distinct)) {
-      push_warning(thd, Sql_condition::WARN_LEVEL_NOTE, ER_UNKNOWN_ERROR,
+      push_warning(thd, Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
                    "Query syntax not implemented in StoneDB, executed by MySQL engine.");
       return RETURN_QUERY_TO_MYSQL_ROUTE;
     }
@@ -400,9 +413,9 @@ int Engine::Execute(THD *thd, LEX *lex, select_result *result_output, SELECT_LEX
         sender.reset(new ResultSender(unit_for_union->thd, result_output, unit_for_union->item_list));
     } else {
       if (export_file_name)
-        sender.reset(new ResultExportSender(selects_list->join->thd, result_output, selects_list->item_list));
+        sender.reset(new ResultExportSender(selects_list->master_unit()->thd, result_output, selects_list->item_list));
       else
-        sender.reset(new ResultSender(selects_list->join->thd, result_output, selects_list->item_list));
+        sender.reset(new ResultSender(selects_list->master_unit()->thd, result_output, selects_list->item_list));
     }
 
     TempTable *result = query.Preexecute(cqu, sender.get());
@@ -441,7 +454,7 @@ int Engine::Execute(THD *thd, LEX *lex, select_result *result_output, SELECT_LEX
 int handle_exceptions(THD *thd, Transaction *cur_connection, bool with_error) {
   try {
     std::string msg = "Query terminated with exception: ";
-    msg += thd_query_string(thd)->str;
+    msg += thd->query().str;
     STONEDB_LOG(LogCtl_Level::INFO, msg);
     throw;
   } catch (common::NotImplementedException const &x) {
@@ -498,15 +511,15 @@ int handle_exceptions(THD *thd, Transaction *cur_connection, bool with_error) {
 
 int st_select_lex_unit::optimize_for_stonedb() {
   // copied from sql_union.cpp from the beginning of st_select_lex_unit::exec()
-  SELECT_LEX *lex_select_save = thd->lex->current_select;
+  SELECT_LEX *lex_select_save = thd->lex->current_select();
   SELECT_LEX *select_cursor = first_select();
 
-  if (executed && !uncacheable && !describe) return FALSE;
+  if (is_executed() && !uncacheable && !thd->lex->is_explain()) return FALSE;
   executed = 1;
 
-  if (uncacheable || !item || !item->assigned() || describe) {
+  if (uncacheable || !item || !item->assigned() || thd->lex->is_explain()) {
     if (item) item->reset_value_registration();
-    if (optimized && item) {
+    if (is_optimized() && item) {
       if (item->assigned()) {
         item->assigned(0);  // We will reinit & rexecute unit
         item->reset();
@@ -515,76 +528,120 @@ int st_select_lex_unit::optimize_for_stonedb() {
       // re-enabling indexes for next subselect iteration
       if (union_distinct && table->file->ha_enable_indexes(HA_KEY_SWITCH_ALL)) DEBUG_ASSERT(0);
     }
-    for (SELECT_LEX *sl = select_cursor; sl; sl = sl->next_select()) {
-      thd->lex->current_select = sl;
+        for (SELECT_LEX *sl = select_cursor; sl; sl = sl->next_select()) {
+       thd->lex->set_current_select(sl);
+            sl->add_active_options(SELECT_NO_UNLOCK);
+            /*
+              setup_tables_done_option should be set only for very first SELECT,
+              because it protect from secont setup_tables call for select-like non
+              select commands (DELETE/INSERT/...) and they use only very first
+              SELECT (for union it can be only INSERT ... SELECT).
+            */
+            if (!sl->join)
+			{
+                JOIN *join = new JOIN(thd, sl);
+                if (!join) {
+                    thd->lex->set_current_select(lex_select_save);
+                    cleanup(0);
+                    return TRUE;
+                }
+                sl->set_join(join);
+            }           
+            if (is_optimized())
+                sl->join->reset();
+            else {
+                set_limit(sl);
+                if (sl == global_parameters() || thd->lex->is_explain()) {
+                    offset_limit_cnt = 0;
+                    // We can't use LIMIT at this stage if we are using ORDER BY for the
+                    // whole query
+                    if (sl->order_list.first || thd->lex->is_explain())
+                        select_limit_cnt = HA_POS_ERROR;
+                }
 
-      if (optimized)
-        sl->join->reset();
-      else {
-        set_limit(sl);
-        if (sl == global_parameters || describe) {
-          offset_limit_cnt = 0;
-          // We can't use LIMIT at this stage if we are using ORDER BY for the
-          // whole query
-          if (sl->order_list.first || describe) select_limit_cnt = HA_POS_ERROR;
+                // When using braces, SQL_CALC_FOUND_ROWS affects the whole query:
+                // we don't calculate found_rows() per union part.
+                // Otherwise, SQL_CALC_FOUND_ROWS should be done on all sub parts.
+                sl->join->select_options = (select_limit_cnt == HA_POS_ERROR || sl->braces)
+                                               ? sl->active_options() & ~OPTION_FOUND_ROWS
+                                               : sl->active_options() | found_rows_for_union;
+                saved_error = sl->join->optimize(1);
+            }
+
+            // HERE ends the code from bool st_select_lex_unit::exec()
+            if (saved_error) {
+                thd->lex->set_current_select(lex_select_save);
+                return saved_error;
+            }
         }
-
-        // When using braces, SQL_CALC_FOUND_ROWS affects the whole query:
-        // we don't calculate found_rows() per union part.
-        // Otherwise, SQL_CALC_FOUND_ROWS should be done on all sub parts.
-        sl->join->select_options = (select_limit_cnt == HA_POS_ERROR || sl->braces)
-                                       ? sl->options & ~OPTION_FOUND_ROWS
-                                       : sl->options | found_rows_for_union;
-        saved_error = sl->join->optimize(1);
-      }
-
-      // HERE ends the code from bool st_select_lex_unit::exec()
-      if (saved_error) {
-        thd->lex->current_select = lex_select_save;
-        return saved_error;
-      }
     }
-  }
-  /* code from st_select_lex_unit::exec*/
-  if (!saved_error && !thd->is_fatal_error) {
-    /* Send result to 'result' */
-    saved_error = true;
-    set_limit(global_parameters);
-    if (init_prepare_fake_select_lex(thd, true)) return saved_error;
-    JOIN *join = fake_select_lex->join;
-    if (!join->optimized) {
-      saved_error = join->prepare(fake_select_lex->table_list.first, 0, 0, global_parameters->order_list.elements,
-                                  global_parameters->order_list.first, NULL, NULL, fake_select_lex, this);
-    } else {
-      join->examined_rows = 0;
-      join->reset();
+    /* code from st_select_lex_unit::exec*/
+    if (!saved_error && !thd->is_fatal_error) {
+        /* Send result to 'result' */
+        saved_error = true;
+        set_limit(global_parameters());
+        if (fake_select_lex != NULL) 
+		{
+            thd->lex->set_current_select(fake_select_lex);
+            if (prepare_fake_select_lex(thd))
+                return saved_error;
+            JOIN *join;
+            if (fake_select_lex->join)
+                join = fake_select_lex->join;
+            else {
+                if (!(join = new JOIN(thd, fake_select_lex)))
+                    DEBUG_ASSERT(0);
+                // fake_select_lex->set_join(join);
+            }
+
+            if (!join->is_optimized()) {
+                //    saved_error = join->prepare(fake_select_lex->table_list.first, 0, 0,
+                //    global_parameters->order_list.elements,
+                //                                global_parameters->order_list.first, NULL, NULL, fake_select_lex,
+                //                                this); //STONEDB UPGRADE
+                fake_select_lex->prepare(thd);
+            } else {
+                join->examined_rows = 0;
+                join->reset();
+            }
+
+            fake_select_lex->table_list.empty();
+        }
+       
     }
 
-    fake_select_lex->table_list.empty();
-  }
-
-  optimized = 1;
-  thd->lex->current_select = lex_select_save;
-  return FALSE;
+    optimized = 1;
+    thd->lex->set_current_select(lex_select_save);
+    return FALSE;
 }
 
-int st_select_lex_unit::optimize_after_stonedb() {
-  SELECT_LEX *lex_select_save = thd->lex->current_select;
-  for (SELECT_LEX *sl = first_select(); sl; sl = sl->next_select()) {
-    thd->lex->current_select = sl;
-    int res = sl->join->optimize(2);
-    if (res) {
-      thd->lex->current_select = lex_select_save;
-      return res;
+int st_select_lex_unit::optimize_after_stonedb()
+{
+    SELECT_LEX *lex_select_save = thd->lex->current_select();
+    for (SELECT_LEX *sl = first_select(); sl; sl = sl->next_select()) {
+        thd->lex->set_current_select(sl);
+        if (!sl->join) {
+            JOIN *join = new JOIN(thd, sl);
+            if (!join) {
+                thd->lex->set_current_select(lex_select_save);
+                cleanup(0);
+                return TRUE;
+            }
+            sl->set_join(join);
+        }           
+        int res = sl->join->optimize(2);
+        if (res) {
+            thd->lex->set_current_select(lex_select_save);
+            return res;
+        }
     }
-  }
-  if (fake_select_lex && fake_select_lex->join) {
-    // fake_select_lex->join must be cleaned up before returning to
-    // MySQL route, otherwise sub select + union would coredump.
-    thd->lex->current_select = fake_select_lex;
-    fake_select_lex->cleanup();
-  }
-  executed = 0;
-  thd->lex->current_select = lex_select_save;
-  return FALSE;
+    if (fake_select_lex && fake_select_lex->join) {
+        // fake_select_lex->join must be cleaned up before returning to
+        // MySQL route, otherwise sub select + union would coredump.
+        thd->lex->set_current_select(fake_select_lex);
+        fake_select_lex->cleanup(0);
+    }
+    executed = 0;
+    thd->lex->set_current_select(lex_select_save);
+    return FALSE;
 }

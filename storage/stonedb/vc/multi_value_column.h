@@ -44,7 +44,7 @@ class MultiValColumn : public VirtualColumn {
     inline types::RCNum GetRCNum() const { return DoGetRCNum(); }
     inline types::RCValueObject GetValue() const { return DoGetValue(); }
     inline int64_t GetInt64() const { return DoGetInt64(); }
-    inline bool IsNull() const { return IsNullImpl(); }
+    inline bool IsNull() const { return DoIsNull(); }
 
    private:
     virtual std::unique_ptr<LazyValueInterface> DoClone() const = 0;
@@ -52,33 +52,33 @@ class MultiValColumn : public VirtualColumn {
     virtual types::RCNum DoGetRCNum() const = 0;
     virtual types::RCValueObject DoGetValue() const = 0;
     virtual int64_t DoGetInt64() const = 0;
-    virtual bool IsNullImpl() const = 0;
+    virtual bool DoIsNull() const = 0;
   };
 
   class Iterator;
   class LazyValue {
    public:
-    LazyValue(LazyValue const &lv) : impl_(lv.impl_.get() ? lv.impl_->Clone() : std::unique_ptr<LazyValueInterface>()) {}
+    LazyValue(LazyValue const &lv) : impl(lv.impl.get() ? lv.impl->Clone() : std::unique_ptr<LazyValueInterface>()) {}
     LazyValue &operator=(LazyValue const &lv) {
       if (&lv != this) {
-        if (lv.impl_.get())
-          impl_ = lv.impl_->Clone();
+        if (lv.impl.get())
+          impl = lv.impl->Clone();
         else
-          impl_.reset();
+          impl.reset();
       }
       return *this;
     }
 
     LazyValue *operator->() { return this; }
-    types::BString GetString() { return impl_->GetString(); }
-    types::RCNum GetRCNum() { return impl_->GetRCNum(); }
-    types::RCValueObject GetValue() { return impl_->GetValue(); }
-    int64_t GetInt64() { return impl_->GetInt64(); }
-    bool IsNull() { return impl_->IsNull(); }
+    types::BString GetString() { return impl->GetString(); }
+    types::RCNum GetRCNum() { return impl->GetRCNum(); }
+    types::RCValueObject GetValue() { return impl->GetValue(); }
+    int64_t GetInt64() { return impl->GetInt64(); }
+    bool IsNull() { return impl->IsNull(); }
 
    private:
-    std::unique_ptr<LazyValueInterface> impl_;
-    LazyValue(std::unique_ptr<LazyValueInterface> impl_) : impl_(std::move(impl_)) {}
+    std::unique_ptr<LazyValueInterface> impl;
+    LazyValue(std::unique_ptr<LazyValueInterface> impl_) : impl(std::move(impl_)) {}
     friend class Iterator;
   };
 
@@ -100,35 +100,32 @@ class MultiValColumn : public VirtualColumn {
   class Iterator {
    public:
     Iterator(Iterator const &it)
-        : owner_(it.owner_), impl_(it.impl_.get() ? it.impl_->clone() : std::unique_ptr<IteratorInterface>()) {}
+        : owner(it.owner), impl(it.impl.get() ? it.impl->clone() : std::unique_ptr<IteratorInterface>()) {}
     Iterator &operator=(Iterator const &i) {
       if (&i != this) {
-        if (i.impl_.get())
-          impl_ = i.impl_->clone();
+        if (i.impl.get())
+          impl = i.impl->clone();
         else
-          impl_.reset();
+          impl.reset();
       }
       return *this;
     }
     Iterator &operator++() {
-      impl_->Next();
+      impl->Next();
       return *this;
     }
-
-    LazyValue operator*() { return LazyValue(impl_->GetValue()); }
-    LazyValue operator->() { return LazyValue(impl_->GetValue()); }
+    LazyValue operator*() { return LazyValue(impl->GetValue()); }
+    LazyValue operator->() { return LazyValue(impl->GetValue()); }
     bool operator!=(Iterator const &it) const {
-      DEBUG_ASSERT(owner_ == it.owner_);
-      return (impl_->NotEq(it.impl_.get()));
+      DEBUG_ASSERT(owner == it.owner);
+      return (impl->NotEq(it.impl.get()));
     }
 
    private:
-    MultiValColumn const *owner_;
-    std::unique_ptr<IteratorInterface> impl_;
-
-    Iterator(MultiValColumn const *owner, std::unique_ptr<IteratorInterface> impl)
-        : owner_(owner), impl_(std::move(impl)) {}
-
+    MultiValColumn const *owner;
+    std::unique_ptr<IteratorInterface> impl;
+    Iterator(MultiValColumn const *owner_, std::unique_ptr<IteratorInterface> impl_)
+        : owner(owner_), impl(std::move(impl_)) {}
     friend class MultiValColumn;
   };
 
@@ -139,7 +136,7 @@ class MultiValColumn : public VirtualColumn {
    * \param expressions - a STL container of core::MysqlExpression*.
    */
   MultiValColumn(core::ColumnType const &ct, core::MultiIndex *mind) : VirtualColumn(ct, mind) {}
-  MultiValColumn(const MultiValColumn &c) : VirtualColumn(c) { sdb_items_ = c.sdb_items_; }
+  MultiValColumn(const MultiValColumn &c) : VirtualColumn(c) { sdbitems = c.sdbitems; }
   virtual ~MultiValColumn() {}
 
   bool IsMultival() const override { return true; }
@@ -147,21 +144,17 @@ class MultiValColumn : public VirtualColumn {
   inline common::Tribool ContainsString(core::MIIterator const &mit, types::BString &val) {
     return ContainsStringImpl(mit, val);
   }
-
   inline common::Tribool Contains(core::MIIterator const &mit, types::RCDataType const &val) {
     return (ContainsImpl(mit, val));
   }
-
   virtual bool IsSetEncoded([[maybe_unused]] common::CT at, [[maybe_unused]] int scale) {
     return false;
   }  // checks whether the set is constant and fixed size equal to the given one
-
   inline bool IsEmpty(core::MIIterator const &mit) { return (IsEmptyImpl(mit)); }
   inline int64_t NoValues(core::MIIterator const &mit) { return NoValuesImpl(mit); }
   inline int64_t AtLeastNoDistinctValues(core::MIIterator const &mit, int64_t const at_least) {
     return AtLeastNoDistinctValuesImpl(mit, at_least);
   }
-
   inline bool ContainsNull(const core::MIIterator &mit) { return ContainsNullImpl(mit); }
   virtual bool CheckExists(core::MIIterator const &mit) { return (NoValuesImpl(mit) > 0); }
   inline Iterator begin(core::MIIterator const &mit) { return Iterator(this, BeginImpl(mit)); }
@@ -173,17 +166,14 @@ class MultiValColumn : public VirtualColumn {
     DEBUG_ASSERT(0);
     return 0;
   }
-
   void GetNotNullValueString([[maybe_unused]] types::BString &s,
                              [[maybe_unused]] const core::MIIterator &mit) override {
     DEBUG_ASSERT(0);
     ;
   }
-
   inline bool CopyCond(core::MIIterator const &mit, types::CondArray &condition, DTCollation coll) {
     return CopyCondImpl(mit, condition, coll);
   }
-
   inline bool CopyCond(core::MIIterator const &mit, std::shared_ptr<utils::Hash64> &condition, DTCollation coll) {
     return CopyCondImpl(mit, condition, coll);
   }
@@ -204,32 +194,26 @@ class MultiValColumn : public VirtualColumn {
     DEBUG_ASSERT(!"Invalid call for this type of column.");
     return (0);
   }
-
   double GetValueDoubleImpl([[maybe_unused]] const core::MIIterator &mit) override {
     DEBUG_ASSERT(!"Invalid call for this type of column.");
     return (0);
   }
-
   bool IsNullImpl([[maybe_unused]] const core::MIIterator &mit) override {
     DEBUG_ASSERT(!"Invalid call for this type of column.");
     return (false);
   }
-
   void GetValueStringImpl([[maybe_unused]] types::BString &s, [[maybe_unused]] const core::MIIterator &mit) override {
     DEBUG_ASSERT(!"Invalid call for this type of column.");
   }
-
   types::RCValueObject GetValueImpl([[maybe_unused]] const core::MIIterator &mit,
                                     [[maybe_unused]] bool lookup_to_num) override {
     DEBUG_ASSERT(!"Invalid call for this type of column.");
     return (types::RCValueObject());
   }
-
   int64_t GetNumOfNullsImpl([[maybe_unused]] const core::MIIterator &mit,
                             [[maybe_unused]] bool val_nulls_possible) override {
     return common::NULL_VALUE_64;
   }
-
   bool IsRoughNullsOnlyImpl() const override {
     return false;
   }  // implement properly when DoRoughMin/Max are implemented non-trivially
@@ -239,11 +223,10 @@ class MultiValColumn : public VirtualColumn {
     nonnegative = false;
     return common::NULL_VALUE_64;
   }
-
   int64_t GetApproxDistValsImpl([[maybe_unused]] bool incl_nulls,
                                 [[maybe_unused]] core::RoughMultiIndex *rough_mind) override {
-    if (multi_idx_->TooManyTuples()) return common::PLUS_INF_64;
-    return multi_idx_->NoTuples();  // default
+    if (mind->TooManyTuples()) return common::PLUS_INF_64;
+    return mind->NoTuples();  // default
   }
 
   virtual common::Tribool Contains64Impl(core::MIIterator const &mit, int64_t val) = 0;
@@ -258,8 +241,7 @@ class MultiValColumn : public VirtualColumn {
   }  // even copies refer to the same core::TempTable and core::TempTable cannot
      // be used in parallel due to Attr paging
   bool IsThreadSafe() override { return false; }
-
-  core::MysqlExpression::sdbfields_cache_t sdb_items_;  // items used in mysqlExpressions
+  core::MysqlExpression::sdbfields_cache_t sdbitems;  // items used in mysqlExpressions
 };
 }  // namespace vcolumn
 }  // namespace stonedb

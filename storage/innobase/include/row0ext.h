@@ -1,14 +1,22 @@
 /*****************************************************************************
 
-Copyright (c) 2006, 2009, Oracle and/or its affiliates. All Rights Reserved.
+Copyright (c) 2006, 2021, Oracle and/or its affiliates.
 
-This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
-Foundation; version 2 of the License.
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License, version 2.0,
+as published by the Free Software Foundation.
 
-This program is distributed in the hope that it will be useful, but WITHOUT
-ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+This program is also distributed with certain software (including
+but not limited to OpenSSL) that is licensed under separate terms,
+as designated in a particular file or component or in included license
+documentation.  The authors of MySQL hereby grant you an additional
+permission to link the program and your derivative works with the
+separately licensed software that they have included with MySQL.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License, version 2.0, for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program; if not, write to the Free Software Foundation, Inc.,
@@ -31,11 +39,11 @@ Created September 2006 Marko Makela
 #include "data0types.h"
 #include "mem0mem.h"
 #include "dict0types.h"
+#include "page0size.h"
 
 /********************************************************************//**
 Creates a cache of column prefixes of externally stored columns.
-@return	own: column prefix cache */
-UNIV_INTERN
+@return own: column prefix cache */
 row_ext_t*
 row_ext_create(
 /*===========*/
@@ -58,7 +66,7 @@ Looks up a column prefix of an externally stored column.
 @return column prefix, or NULL if the column is not stored externally,
 or pointer to field_ref_zero if the BLOB pointer is unset */
 UNIV_INLINE
-const ::byte*
+const byte*
 row_ext_lookup_ith(
 /*===============*/
 	const row_ext_t*	ext,	/*!< in/out: column prefix cache */
@@ -71,7 +79,7 @@ Looks up a column prefix of an externally stored column.
 @return column prefix, or NULL if the column is not stored externally,
 or pointer to field_ref_zero if the BLOB pointer is unset */
 UNIV_INLINE
-const ::byte*
+const byte*
 row_ext_lookup(
 /*===========*/
 	const row_ext_t*	ext,	/*!< in: column prefix cache */
@@ -87,11 +95,14 @@ row_ext_lookup(
 struct row_ext_t{
 	ulint		n_ext;	/*!< number of externally stored columns */
 	const ulint*	ext;	/*!< col_no's of externally stored columns */
-	::byte*		buf;	/*!< backing store of the column prefix cache */
+	byte*		buf;	/*!< backing store of the column prefix cache */
 	ulint		max_len;/*!< maximum prefix length, it could be
 				REC_ANTELOPE_MAX_INDEX_COL_LEN or
 				REC_VERSION_56_MAX_INDEX_COL_LEN depending
 				on row format */
+	page_size_t	page_size;
+				/*!< page size of the externally stored
+				columns */
 	ulint		len[1];	/*!< prefix lengths; 0 if not cached */
 };
 

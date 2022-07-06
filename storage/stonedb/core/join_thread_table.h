@@ -40,7 +40,7 @@ class TempTablePackLocker {
         std::shared_ptr<JustATable> tab = var_map.GetTabPtr();
         if (tab->TableType() == TType::TEMP_TABLE) {
           dynamic_cast<TempTable *>(tab.get())->ForceFullMaterialize();
-          tab->LockPackForUse(var_map.col_idx_, packs_);
+          tab->LockPackForUse(var_map.col_ndx, packs_);
         }
       }
     }
@@ -51,7 +51,7 @@ class TempTablePackLocker {
       for (auto &var_map : vc_[index]->GetVarMap()) {
         std::shared_ptr<JustATable> tab = var_map.GetTabPtr();
         if (tab->TableType() == TType::TEMP_TABLE) {
-          tab->UnlockPackFromUse(var_map.col_idx_, packs_);
+          tab->UnlockPackFromUse(var_map.col_ndx, packs_);
         }
       }
     }

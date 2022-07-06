@@ -23,7 +23,9 @@
 
 namespace stonedb {
 namespace utils {
+
 bool GetStackTrace(std::vector<std::string> &v, int skip_level = 1, bool demangle = true);
+
 }  // namespace utils
 }  // namespace stonedb
 

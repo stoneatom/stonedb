@@ -15,14 +15,14 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "common/data_format.h"
+#include "data_format.h"
 
 #include <algorithm>
 #include <string>
 
 #include <boost/algorithm/string.hpp>
 
-#include "common/txt_data_format.h"
+#include "txt_data_format.h"
 
 namespace stonedb {
 namespace common {

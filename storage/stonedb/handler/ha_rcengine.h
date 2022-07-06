@@ -27,7 +27,7 @@ void SDB_UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_f
 
 bool SDB_SetStatementAllowed(THD *thd, LEX *lex);
 
-int SDB_HandleSelect(THD *thd, LEX *lex, select_result *&result_output, ulong setup_tables_done_option, int &res,
+int SDB_HandleSelect(THD *thd, LEX *lex, Query_result *&result_output, ulong setup_tables_done_option, int &res,
                      int &optimize_after_sdb, int &sdb_free_join, int with_insert = false);
 bool stonedb_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
 

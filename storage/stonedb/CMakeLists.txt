@@ -24,7 +24,7 @@ MESSAGE(STATUS "Using cmake version ${CMAKE_VERSION}")
 MESSAGE(STATUS "Building StoneDB")
 
 #lihao Here, the dependency libs will be moved to 'third_party' directory.
-SET(BOOST_ROOT /usr/local/stonedb-boost)
+SET(BOOST_ROOT ${WITH_BOOST})
 SET(MARISA_ROOT /usr/local/stonedb-marisa)
 SET(ROCKSDB_ROOT /usr/local/stonedb-gcc-rocksdb)
 
@@ -34,7 +34,6 @@ SET(LINK_LIBS ${BOOST_ROOT}/lib/libboost_system.a
               bz2
               lz4
               zstd
-#              /opt/rh/devtoolset-7/root/usr/lib/gcc/x86_64-redhat-linux/7/libstdc++fs.a
               ${MARISA_ROOT}/lib/libmarisa.a
               ${ROCKSDB_ROOT}/lib/librocksdb.a
               ${BOOST_ROOT}/lib/libboost_thread.a)

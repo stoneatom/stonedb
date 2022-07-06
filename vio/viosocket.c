@@ -1,15 +1,26 @@
 /*
-   Copyright (c) 2001, 2015, Oracle and/or its affiliates. All rights reserved.
+   Copyright (c) 2001, 2021, Oracle and/or its affiliates.
 
-   This program is free software; you can redistribute it and/or
-   modify it under the terms of the GNU General Public License
-   as published by the Free Software Foundation; version 2 of
-   the License.
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License, version 2.0,
+   as published by the Free Software Foundation.
+
+   This program is also distributed with certain software (including
+   but not limited to OpenSSL) that is licensed under separate terms,
+   as designated in a particular file or component or in included license
+   documentation.  The authors of MySQL hereby grant you an additional
+   permission to link the program and your derivative works with the
+   separately licensed software that they have included with MySQL.
+
+   Without limiting anything contained in the foregoing, this file,
+   which is part of C Driver for MySQL (Connector/C), is also subject to the
+   Universal FOSS Exception, version 1.0, a copy of which can be found at
+   http://oss.oracle.com/licenses/universal-foss-exception.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-   GNU General Public License for more details.
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License, version 2.0, for more details.
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
@@ -28,8 +39,17 @@
 #ifdef FIONREAD_IN_SYS_FILIO
 # include <sys/filio.h>
 #endif
+#ifndef _WIN32
+# include <netinet/tcp.h>
+#endif
+#ifdef HAVE_POLL_H
+# include <poll.h>
+#endif
+#ifdef HAVE_SYS_IOCTL_H
+# include <sys/ioctl.h>
+#endif
 
-int vio_errno(Vio *vio __attribute__((unused)))
+int vio_errno(Vio *vio MY_ATTRIBUTE((unused)))
 {
   /* These transport types are not Winsock based. */
 #ifdef _WIN32
@@ -56,7 +76,7 @@ int vio_socket_io_wait(Vio *vio, enum enum_vio_io_event event)
 {
   int timeout, ret;
 
-  DBUG_ASSERT(event == VIO_IO_EVENT_READ || event == VIO_IO_EVENT_WRITE);
+  assert(event == VIO_IO_EVENT_READ || event == VIO_IO_EVENT_WRITE);
 
   /* Choose an appropriate timeout. */
   if (event == VIO_IO_EVENT_READ)
@@ -105,7 +125,7 @@ size_t vio_read(Vio *vio, uchar *buf, size_t size)
   DBUG_ENTER("vio_read");
 
   /* Ensure nobody uses vio_read_buff and vio_read simultaneously. */
-  DBUG_ASSERT(vio->read_end == vio->read_pos);
+  assert(vio->read_end == vio->read_pos);
 
   /* If timeout is enabled, do not block if data is unavailable. */
   if (vio->read_timeout >= 0)
@@ -211,8 +231,8 @@ static int vio_set_blocking(Vio *vio, my_bool status)
   DBUG_ENTER("vio_set_blocking");
 
 #ifdef _WIN32
-  DBUG_ASSERT(vio->type != VIO_TYPE_NAMEDPIPE);
-  DBUG_ASSERT(vio->type != VIO_TYPE_SHARED_MEMORY);
+  assert(vio->type != VIO_TYPE_NAMEDPIPE);
+  assert(vio->type != VIO_TYPE_SHARED_MEMORY);
   {
     int ret;
     u_long arg= status ? 0 : 1;
@@ -247,8 +267,8 @@ static int vio_set_blocking(Vio *vio, my_bool status)
 
 
 int vio_socket_timeout(Vio *vio,
-                       uint which __attribute__((unused)),
-                       my_bool old_mode __attribute__((unused)))
+                       uint which MY_ATTRIBUTE((unused)),
+                       my_bool old_mode MY_ATTRIBUTE((unused)))
 {
   int ret= 0;
   DBUG_ENTER("vio_socket_timeout");
@@ -269,8 +289,8 @@ int vio_socket_timeout(Vio *vio,
 
       Assert that the VIO timeout is either positive or set to infinite.
     */
-    DBUG_ASSERT(which || vio->read_timeout);
-    DBUG_ASSERT(!which || vio->write_timeout);
+    assert(which || vio->read_timeout);
+    assert(!which || vio->write_timeout);
 
     if (which)
     {
@@ -314,7 +334,7 @@ int vio_socket_timeout(Vio *vio,
 }
 
 
-int vio_fastsend(Vio * vio __attribute__((unused)))
+int vio_fastsend(Vio * vio MY_ATTRIBUTE((unused)))
 {
   int r=0;
   DBUG_ENTER("vio_fastsend");
@@ -328,7 +348,7 @@ int vio_fastsend(Vio * vio __attribute__((unused)))
 #endif                                    /* IPTOS_THROUGHPUT */
   if (!r)
   {
-#ifdef __WIN__
+#ifdef _WIN32
     BOOL nodelay= 1;
 #else
     int nodelay = 1;
@@ -407,11 +427,11 @@ int vio_shutdown(Vio * vio)
 
  if (vio->inactive == FALSE)
   {
-    DBUG_ASSERT(vio->type ==  VIO_TYPE_TCPIP ||
-      vio->type == VIO_TYPE_SOCKET ||
-      vio->type == VIO_TYPE_SSL);
+    assert(vio->type ==  VIO_TYPE_TCPIP ||
+           vio->type == VIO_TYPE_SOCKET ||
+           vio->type == VIO_TYPE_SSL);
 
-    DBUG_ASSERT(mysql_socket_getfd(vio->mysql_socket) >= 0);
+    assert(mysql_socket_getfd(vio->mysql_socket) >= 0);
     if (mysql_socket_shutdown(vio->mysql_socket, SHUT_RDWR))
       r= -1;
     if (mysql_socket_close(vio->mysql_socket))
@@ -473,9 +493,9 @@ my_socket vio_fd(Vio* vio)
   @param dst_length [out] actual length of the normalized IP address.
 */
 static void vio_get_normalized_ip(const struct sockaddr *src,
-                                  int src_length,
+                                  size_t src_length,
                                   struct sockaddr *dst,
-                                  int *dst_length)
+                                  size_t *dst_length)
 {
   switch (src->sa_family) {
   case AF_INET:
@@ -549,13 +569,13 @@ static void vio_get_normalized_ip(const struct sockaddr *src,
 */
 
 my_bool vio_get_normalized_ip_string(const struct sockaddr *addr,
-                                     int addr_length,
+                                     size_t addr_length,
                                      char *ip_string,
                                      size_t ip_string_size)
 {
   struct sockaddr_storage norm_addr_storage;
   struct sockaddr *norm_addr= (struct sockaddr *) &norm_addr_storage;
-  int norm_addr_length;
+  size_t norm_addr_length;
   int err_code;
 
   vio_get_normalized_ip(addr, addr_length, norm_addr, &norm_addr_length);
@@ -605,7 +625,7 @@ my_bool vio_peer_addr(Vio *vio, char *ip_buffer, uint16 *port,
 
     /* Initialize ip_buffer and port. */
 
-    strmov(ip_buffer, "127.0.0.1");
+    my_stpcpy(ip_buffer, "127.0.0.1");
     *port= 0;
   }
   else
@@ -615,7 +635,7 @@ my_bool vio_peer_addr(Vio *vio, char *ip_buffer, uint16 *port,
 
     struct sockaddr_storage addr_storage;
     struct sockaddr *addr= (struct sockaddr *) &addr_storage;
-    size_socket addr_length= sizeof (addr_storage);
+    socket_len_t addr_length= sizeof (addr_storage);
 
     /* Get sockaddr by socked fd. */
 
@@ -735,7 +755,9 @@ static my_bool socket_peek_read(Vio *vio, uint *bytes)
 int vio_io_wait(Vio *vio, enum enum_vio_io_event event, int timeout)
 {
   int ret;
-  short revents __attribute__((unused)) = 0;
+#ifndef NDEBUG
+  short revents= 0;
+#endif
   struct pollfd pfd;
   my_socket sd= mysql_socket_getfd(vio->mysql_socket);
   MYSQL_SOCKET_WAIT_VARIABLES(locker, state) /* no ';' */
@@ -753,12 +775,16 @@ int vio_io_wait(Vio *vio, enum enum_vio_io_event event, int timeout)
   {
   case VIO_IO_EVENT_READ:
     pfd.events= MY_POLL_SET_IN;
+#ifndef NDEBUG
     revents= MY_POLL_SET_IN | MY_POLL_SET_ERR | POLLRDHUP;
+#endif
     break;
   case VIO_IO_EVENT_WRITE:
   case VIO_IO_EVENT_CONNECT:
     pfd.events= MY_POLL_SET_OUT;
+#ifndef NDEBUG
     revents= MY_POLL_SET_OUT | MY_POLL_SET_ERR;
+#endif
     break;
   }
 
@@ -782,7 +808,7 @@ int vio_io_wait(Vio *vio, enum enum_vio_io_event event, int timeout)
     break;
   default:
     /* Ensure that the requested I/O event has completed. */
-    DBUG_ASSERT(pfd.revents & revents);
+    assert(pfd.revents & revents);
     break;
   }
 
@@ -805,6 +831,11 @@ int vio_io_wait(Vio *vio, enum enum_vio_io_event event, int timeout)
 
   if (fd == INVALID_SOCKET)
     DBUG_RETURN(-1);
+
+#ifdef __APPLE__
+  if (fd >= FD_SETSIZE)
+    DBUG_RETURN(-1);
+#endif
 
   /* Convert the timeout, in milliseconds, to seconds and microseconds. */
   if (timeout >= 0)
@@ -836,7 +867,7 @@ int vio_io_wait(Vio *vio, enum enum_vio_io_event event, int timeout)
   MYSQL_START_SOCKET_WAIT(locker, &state, vio->mysql_socket, PSI_SOCKET_SELECT, 0);
 
   /* The first argument is ignored on Windows. */
-  ret= select(fd + 1, &readfds, &writefds, &exceptfds, 
+  ret= select((int)(fd + 1), &readfds, &writefds, &exceptfds, 
               (timeout >= 0) ? &tm : NULL);
 
   MYSQL_END_SOCKET_WAIT(locker, 0);
@@ -871,7 +902,7 @@ int vio_io_wait(Vio *vio, enum enum_vio_io_event event, int timeout)
   ret|= MY_TEST(FD_ISSET(fd, &exceptfds));
 
   /* Not a timeout, ensure that a condition was met. */
-  DBUG_ASSERT(ret);
+  assert(ret);
 
   DBUG_RETURN(ret);
 }
@@ -899,7 +930,7 @@ vio_socket_connect(Vio *vio, struct sockaddr *addr, socklen_t len, int timeout)
   DBUG_ENTER("vio_socket_connect");
 
   /* Only for socket-based transport types. */
-  DBUG_ASSERT(vio->type == VIO_TYPE_SOCKET || vio->type == VIO_TYPE_TCPIP);
+  assert(vio->type == VIO_TYPE_SOCKET || vio->type == VIO_TYPE_TCPIP);
 
   /* If timeout is not infinite, set socket to non-blocking mode. */
   if ((timeout > -1) && vio_set_blocking(vio, FALSE))
@@ -1015,7 +1046,7 @@ my_bool vio_is_connected(Vio *vio)
   DBUG_RETURN(bytes ? TRUE : FALSE);
 }
 
-#ifndef DBUG_OFF
+#ifndef NDEBUG
 
 /**
   Number of bytes in the read or socket buffer
@@ -1040,11 +1071,6 @@ ssize_t vio_pending(Vio *vio)
     if (socket_peek_read(vio, &bytes))
       return -1;
   }
-
-  /*
-    SSL not checked due to a yaSSL bug in SSL_pending that
-    causes it to attempt to read from the socket.
-  */
 
   return (ssize_t) bytes;
 }

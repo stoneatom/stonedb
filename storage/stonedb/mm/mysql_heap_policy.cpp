@@ -27,7 +27,7 @@ namespace mm {
 MySQLHeap::~MySQLHeap() {}
 
 void *MySQLHeap::alloc(size_t size) {
-  void *res = my_malloc(size, 0);
+  void *res = my_malloc(PSI_NOT_INSTRUMENTED, size, 0);
   m_blockSizes.insert(std::make_pair(res, size));
   return res;
 }
@@ -39,7 +39,7 @@ void MySQLHeap::dealloc(void *mh) {
 
 void *MySQLHeap::rc_realloc(void *mh, size_t size) {
   m_blockSizes.erase(mh);
-  void *res = my_realloc(mh, size, MY_ALLOW_ZERO_PTR);
+  void *res = my_realloc(PSI_NOT_INSTRUMENTED, mh, size, MY_ALLOW_ZERO_PTR);
   m_blockSizes.insert(std::make_pair(res, size));
   return res;
 }

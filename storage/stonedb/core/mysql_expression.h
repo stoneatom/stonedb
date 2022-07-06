@@ -35,7 +35,7 @@ class MysqlExpression {
  public:
   // map which tells how to replace Item_field's with Item_sdbfield
   using Item2VarID = std::map<Item *, VarID>;
-  using TypeOfVars = std::map<VarID, DataType>;  // map of types of variables
+  using TypOfVars = std::map<VarID, DataType>;  // map of types of variables
   using sdbfields_cache_t = std::map<VarID, std::set<Item_sdbfield *>>;
   using value_or_null_info_t = std::pair<ValueOrNull, ValueOrNull *>;
   using var_buf_t = std::map<VarID, std::vector<value_or_null_info_t>>;
@@ -48,12 +48,12 @@ class MysqlExpression {
   virtual ~MysqlExpression();
 
   static bool SanityAggregationCheck(Item *item, std::set<Item *> &aggregations, bool toplevel = true,
-                                     bool *has_aggregation = nullptr);
+                                     bool *has_aggregation = NULL);
   static bool HasAggregation(Item *item);
 
   virtual MysqlExpression::SetOfVars &GetVars();
   void SetBufsOrParams(var_buf_t *bufs);
-  virtual DataType EvalType(TypeOfVars *tv = nullptr);
+  virtual DataType EvalType(TypOfVars *tv = NULL);
   StringType GetStringType();
   virtual std::shared_ptr<ValueOrNull> Evaluate();
 

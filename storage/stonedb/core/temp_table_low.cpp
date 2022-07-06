@@ -48,7 +48,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
   MEASURE_FET("TempTable::OrderBy(...)");
   thd_proc_info(m_conn->Thd(), "order by");
   DEBUG_ASSERT(limit >= 0 && offset >= 0);
-  num_of_obj = limit;
+  no_obj = limit;
   if ((int)ord.size() == 0 || filter.mind->NoTuples() < 2 || limit == 0) {
     ord.clear();
     return false;
@@ -225,13 +225,13 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
               local_row, offset, limit, task_num);
 
   // Create output
-  for (uint i = 0; i < NumOfAttrs(); i++) {
+  for (uint i = 0; i < NoAttrs(); i++) {
     if (attrs[i]->alias != NULL) {
       if (sender)
-        attrs[i]->CreateBuffer(num_of_obj > stonedb_sysvar_result_sender_rows ? stonedb_sysvar_result_sender_rows : num_of_obj,
-                               m_conn, num_of_obj > stonedb_sysvar_result_sender_rows);
+        attrs[i]->CreateBuffer(no_obj > stonedb_sysvar_result_sender_rows ? stonedb_sysvar_result_sender_rows : no_obj,
+                               m_conn, no_obj > stonedb_sysvar_result_sender_rows);
       else
-        attrs[i]->CreateBuffer(num_of_obj, m_conn);
+        attrs[i]->CreateBuffer(no_obj, m_conn);
     }
   }
 
@@ -284,7 +284,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
     } while (valid && global_row < limit + offset &&
              !(sender && local_row >= stonedb_sysvar_result_sender_rows));  // a limit for
                                                                             // streaming buffer
-    // Note: what about SetNoMaterialized()? Only num_of_obj is set now.
+    // Note: what about SetNoMaterialized()? Only no_obj is set now.
     if (sender) {
       TempTable::RecordIterator iter = begin();
       for (int i = 0; i < local_row; i++) {
@@ -311,16 +311,16 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
     return;
   }
 
-  num_of_obj = local_limit;
+  no_obj = local_limit;
   uint page_size = CalculatePageSize();
   if (pagewise)
     // the number of rows to be sent at once
     page_size = std::min(page_size, stonedb_sysvar_result_sender_rows);
 
-  if (num_of_materialized == 0) {
+  if (no_materialized == 0) {
     // Column statistics
     if (m_conn->DisplayAttrStats()) {
-      for (uint j = 0; j < NumOfAttrs(); j++) {
+      for (uint j = 0; j < NoAttrs(); j++) {
         if (attrs[j]->term.vc) attrs[j]->term.vc->DisplayAttrStats();
       }
       m_conn->SetDisplayAttrStats(false);  // already displayed
@@ -337,7 +337,7 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
   if (!has_intresting_columns) return;
 
   MIIterator it(filter.mind, filter.mind->NoPower());
-  if (pagewise && local_offset < num_of_materialized) local_offset = num_of_materialized;  // continue filling
+  if (pagewise && local_offset < no_materialized) local_offset = no_materialized;  // continue filling
 
   if (local_offset > 0) it.Skip(local_offset);
 
@@ -366,24 +366,24 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
 
   // Semantics of variables:
   // row		- a row number in orig. tables
-  // num_of_obj	- a number of rows to be actually sent (offset already omitted)
+  // no_obj	- a number of rows to be actually sent (offset already omitted)
   // start_row, page_end - in terms of orig. tables
-  while (it.IsValid() && row < num_of_obj + local_offset) { /* go thru all rows */
+  while (it.IsValid() && row < no_obj + local_offset) { /* go thru all rows */
     bool outer_iterator_updated = false;
     MIIterator page_start(it);
     int64_t start_row = row;
     int64_t page_end = (((row - local_offset) / page_size) + 1) * page_size + local_offset;
     // where the current TempTable buffer ends, in terms of multiindex rows
     // (integer division)
-    if (page_end > num_of_obj + local_offset) page_end = num_of_obj + local_offset;
+    if (page_end > no_obj + local_offset) page_end = no_obj + local_offset;
 
-    for (uint i = 0; i < NumOfAttrs(); i++) attrs[i]->CreateBuffer(page_end - start_row, m_conn, pagewise);
+    for (uint i = 0; i < NoAttrs(); i++) attrs[i]->CreateBuffer(page_end - start_row, m_conn, pagewise);
 
     auto &attr = attrs[0];
     if (attr->NeedFill()) {
       MIIterator i(page_start);
       auto cnt = attr->FillValues(i, start_row, page_end - start_row);
-      num_of_materialized += cnt;
+      no_materialized += cnt;
       if (!outer_iterator_updated) {
         it.swap(i); /* update global iterator - once */
         row = start_row + cnt;
@@ -407,12 +407,12 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
 }
 
 void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, bool pagewise) {
-  num_of_obj = limit;
+  no_obj = limit;
 
-  if (num_of_materialized == 0) {
+  if (no_materialized == 0) {
     //////// Column statistics ////////////////////////
     if (m_conn->DisplayAttrStats()) {
-      for (uint j = 0; j < NumOfAttrs(); j++) {
+      for (uint j = 0; j < NoAttrs(); j++) {
         if (attrs[j]->term.vc) attrs[j]->term.vc->DisplayAttrStats();
       }
       m_conn->SetDisplayAttrStats(false);  // already displayed
@@ -429,20 +429,20 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
   if (!has_intresting_columns) return;
 
   MIIterator it(filter.mind, filter.mind->NoPower());
-  if (pagewise && offset < num_of_materialized) offset = num_of_materialized;  // continue filling
+  if (pagewise && offset < no_materialized) offset = no_materialized;  // continue filling
 
   if (offset > 0) it.Skip(offset);
 
   int row = 0;
   bool first_row_for_vc = true;
-  while (it.IsValid() && row < num_of_obj) {
+  while (it.IsValid() && row < no_obj) {
     if (it.PackrowStarted() || first_row_for_vc) {
       for (auto &attr : attrs) attr->term.vc->LockSourcePacks(it);
       first_row_for_vc = false;
     }
 
     std::vector<std::unique_ptr<types::RCDataType>> record;
-    for (uint att = 0; att < NumOfDisplaybleAttrs(); ++att) {
+    for (uint att = 0; att < NoDisplaybleAttrs(); ++att) {
       Attr *col = GetDisplayableAttrP(att);
       common::CT ct = col->TypeName();
 
@@ -491,7 +491,7 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
 
 std::vector<AttributeTypeInfo> TempTable::GetATIs(bool orig) {
   std::vector<AttributeTypeInfo> deas;
-  for (uint i = 0; i < NumOfAttrs(); i++) {
+  for (uint i = 0; i < NoAttrs(); i++) {
     if (!IsDisplayAttr(i)) continue;
     deas.emplace_back(attrs[i]->TypeName(), attrs[i]->Type().NotNull(),
                       orig ? attrs[i]->orig_precision : attrs[i]->Type().GetPrecision(), attrs[i]->Type().GetScale(),
@@ -500,7 +500,7 @@ std::vector<AttributeTypeInfo> TempTable::GetATIs(bool orig) {
   return deas;
 }
 
-constexpr int STRING_LENGTH_THRESHOLD = 512;
+#define STRING_LENGTH_THRESHOLD 512
 void TempTable::VerifyAttrsSizes()  // verifies attr[i].field_size basing on the
                                     // current multiindex contents
 {
@@ -516,7 +516,7 @@ void TempTable::VerifyAttrsSizes()  // verifies attr[i].field_size basing on the
         if (dynamic_cast<vcolumn::ExpressionColumn *>(vc)) {
           auto &var_map = dynamic_cast<vcolumn::ExpressionColumn *>(vc)->GetVarMap();
           for (auto &it : var_map) {
-            PhysicalColumn *column = it.GetTabPtr()->GetColumn(it.col_idx_);
+            PhysicalColumn *column = it.GetTabPtr()->GetColumn(it.col_ndx);
             ColumnType ct = column->Type();
             uint precision = ct.GetPrecision();
             if (precision >= STRING_LENGTH_THRESHOLD) {

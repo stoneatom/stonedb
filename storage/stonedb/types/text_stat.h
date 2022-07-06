@@ -22,6 +22,7 @@
 
 namespace stonedb {
 namespace types {
+
 class TextStat final {
   //////////////////////////////////////////////
   //
@@ -47,31 +48,34 @@ class TextStat final {
                                           // encodable, round_up = true =>
                                           // fill the unused characters by
                                           // max codes
-  int64_t MaxCode() { return max_code; }  // return the maximal code which may occur
+  int64_t MaxCode() { return max_code_; }  // return the maximal code which may occur
   BString Decode(int64_t code);
 
-  bool IsValid() { return valid; }
-  void Invalidate() { valid = false; }
+  bool IsValid() { return valid_; }
+  void Invalidate() { valid_ = false; }
 
  private:
+  static constexpr int TMP_BUFFER_SIZE = 49;
+
   static constexpr size_t TAB_SIZE = 48;
 
   // binary length of position n, value 0 means that this is a constant
   // character
-  std::array<int, TAB_SIZE> len_table;
+  std::array<int, TAB_SIZE> len_table_;
 
   // encode_table[c + 256 * n] is a character for code c on position n
-  std::array<uchar, 256 * TAB_SIZE> encode_table;
+  std::array<uchar, 256 * TAB_SIZE> encode_table_;
 
   // a buffer for two purposes: collecting 0/1 info about chars found, or
   // collecting decoding into
-  std::array<uchar, 256 * TAB_SIZE> chars_found;
+  std::array<uchar, 256 * TAB_SIZE> chars_found_;
 
-  bool chars_found_for_decoding{false};  // true, if chars_found is initialized for value decoding
-  bool valid{true};
-  size_t max_string_size{0};
-  int64_t max_code{0};
+  bool chars_found_for_decoding_{false};  // true, if chars_found is initialized for value decoding
+  bool valid_{true};
+  size_t max_string_size_{0};
+  int64_t max_code_{0};
 };
+
 }  // namespace types
 }  // namespace stonedb
 

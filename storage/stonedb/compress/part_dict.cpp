@@ -48,7 +48,7 @@ void PartDict<T>::Create(DataSet<T> *dataset) {
     if (hash.keys[k].count >= MINOCCUR) freqkey[nfreq++] = &hash.keys[k];
 
   // sort the array of pointers to frequent values in descending order
-  if (nfreq > 0) qsort_ib(freqkey, nfreq, sizeof(*freqkey), compare);
+  if (nfreq > 0) qsort_sdb(freqkey, nfreq, sizeof(*freqkey), compare);
 
   if (nfreq > MAXTOTAL / 2)
     nfreq = MAXTOTAL / 2;  // there is no sense to hold big dictionary with all

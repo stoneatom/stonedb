@@ -5,5 +5,5 @@ select 1 from (select * from tt) as A join tt where A.val > 1 XOR tt.val > 2;
 1
 1
 Warnings:
-Note	1105	Query syntax not implemented in StoneDB, executed by MySQL engine.
+Note	1105	Query syntax not implemented in Stonedb, executed by MySQL engine.
 drop table tt;

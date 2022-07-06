@@ -1,13 +1,20 @@
-/* Copyright (c) 2008, 2010, Oracle and/or its affiliates. All rights reserved.
+/* Copyright (c) 2008, 2021, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation; version 2 of the License.
+  it under the terms of the GNU General Public License, version 2.0,
+  as published by the Free Software Foundation.
+
+  This program is also distributed with certain software (including
+  but not limited to OpenSSL) that is licensed under separate terms,
+  as designated in a particular file or component or in included license
+  documentation.  The authors of MySQL hereby grant you an additional
+  permission to link the program and your derivative works with the
+  separately licensed software that they have included with MySQL.
 
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+  GNU General Public License, version 2.0, for more details.
 
   You should have received a copy of the GNU General Public License
   along with this program; if not, write to the Free Software Foundation,
@@ -20,12 +27,14 @@
 */
 
 #include "my_global.h"
-#include "my_pthread.h"
+#include "my_thread.h"
 #include "pfs_instr.h"
 #include "pfs_column_types.h"
 #include "pfs_column_values.h"
 #include "table_sync_instances.h"
 #include "pfs_global.h"
+#include "pfs_buffer_container.h"
+#include "field.h"
 
 THR_LOCK table_mutex_instances::m_table_lock;
 
@@ -57,20 +66,26 @@ table_mutex_instances::m_share=
 {
   { C_STRING_WITH_LEN("mutex_instances") },
   &pfs_readonly_acl,
-  &table_mutex_instances::create,
+  table_mutex_instances::create,
   NULL, /* write_row */
   NULL, /* delete_all_rows */
-  NULL, /* get_row_count */
-  1000, /* records */
+  table_mutex_instances::get_row_count,
   sizeof(PFS_simple_index),
   &m_table_lock,
   &m_field_def,
-  false /* checked */
+  false, /* checked */
+  false  /* perpetual */
 };
 
 PFS_engine_table* table_mutex_instances::create(void)
 {
   return new table_mutex_instances();
+}
+
+ha_rows
+table_mutex_instances::get_row_count(void)
+{
+  return global_mutex_container.get_row_count();
 }
 
 table_mutex_instances::table_mutex_instances()
@@ -88,15 +103,14 @@ int table_mutex_instances::rnd_next(void)
 {
   PFS_mutex *pfs;
 
-  for (m_pos.set_at(&m_next_pos); m_pos.m_index < mutex_max; m_pos.next())
+  m_pos.set_at(&m_next_pos);
+  PFS_mutex_iterator it= global_mutex_container.iterate(m_pos.m_index);
+  pfs= it.scan_next(& m_pos.m_index);
+  if (pfs != NULL)
   {
-    pfs= &mutex_array[m_pos.m_index];
-    if (pfs->m_lock.is_populated())
-    {
-      make_row(pfs);
-      m_next_pos.set_after(&m_pos);
-      return 0;
-    }
+    make_row(pfs);
+    m_next_pos.set_after(&m_pos);
+    return 0;
   }
 
   return HA_ERR_END_OF_FILE;
@@ -107,9 +121,9 @@ int table_mutex_instances::rnd_pos(const void *pos)
   PFS_mutex *pfs;
 
   set_position(pos);
-  DBUG_ASSERT(m_pos.m_index < mutex_max);
-  pfs= &mutex_array[m_pos.m_index];
-  if (pfs->m_lock.is_populated())
+
+  pfs= global_mutex_container.get(m_pos.m_index);
+  if (pfs != NULL)
   {
     make_row(pfs);
     return 0;
@@ -120,7 +134,7 @@ int table_mutex_instances::rnd_pos(const void *pos)
 
 void table_mutex_instances::make_row(PFS_mutex *pfs)
 {
-  pfs_lock lock;
+  pfs_optimistic_state lock;
   PFS_mutex_class *safe_class;
 
   m_row_exists= false;
@@ -161,7 +175,7 @@ int table_mutex_instances::read_row_values(TABLE *table,
     return HA_ERR_RECORD_DELETED;
 
   /* Set the null bits */
-  DBUG_ASSERT(table->s->null_bytes == 1);
+  assert(table->s->null_bytes == 1);
   buf[0]= 0;
 
   for (; (f= *fields) ; fields++)
@@ -183,7 +197,7 @@ int table_mutex_instances::read_row_values(TABLE *table,
           f->set_null();
         break;
       default:
-        DBUG_ASSERT(false);
+        assert(false);
       }
     }
   }
@@ -226,20 +240,26 @@ table_rwlock_instances::m_share=
 {
   { C_STRING_WITH_LEN("rwlock_instances") },
   &pfs_readonly_acl,
-  &table_rwlock_instances::create,
+  table_rwlock_instances::create,
   NULL, /* write_row */
   NULL, /* delete_all_rows */
-  NULL, /* get_row_count */
-  1000, /* records */
+  table_rwlock_instances::get_row_count,
   sizeof(PFS_simple_index),
   &m_table_lock,
   &m_field_def,
-  false /* checked */
+  false, /* checked */
+  false  /* perpetual */
 };
 
 PFS_engine_table* table_rwlock_instances::create(void)
 {
   return new table_rwlock_instances();
+}
+
+ha_rows
+table_rwlock_instances::get_row_count(void)
+{
+  return global_rwlock_container.get_row_count();
 }
 
 table_rwlock_instances::table_rwlock_instances()
@@ -257,15 +277,14 @@ int table_rwlock_instances::rnd_next(void)
 {
   PFS_rwlock *pfs;
 
-  for (m_pos.set_at(&m_next_pos); m_pos.m_index < rwlock_max; m_pos.next())
+  m_pos.set_at(&m_next_pos);
+  PFS_rwlock_iterator it= global_rwlock_container.iterate(m_pos.m_index);
+  pfs= it.scan_next(& m_pos.m_index);
+  if (pfs != NULL)
   {
-    pfs= &rwlock_array[m_pos.m_index];
-    if (pfs->m_lock.is_populated())
-    {
-      make_row(pfs);
-      m_next_pos.set_after(&m_pos);
-      return 0;
-    }
+    make_row(pfs);
+    m_next_pos.set_after(&m_pos);
+    return 0;
   }
 
   return HA_ERR_END_OF_FILE;
@@ -276,9 +295,9 @@ int table_rwlock_instances::rnd_pos(const void *pos)
   PFS_rwlock *pfs;
 
   set_position(pos);
-  DBUG_ASSERT(m_pos.m_index < rwlock_max);
-  pfs= &rwlock_array[m_pos.m_index];
-  if (pfs->m_lock.is_populated())
+
+  pfs= global_rwlock_container.get(m_pos.m_index);
+  if (pfs != NULL)
   {
     make_row(pfs);
     return 0;
@@ -289,7 +308,7 @@ int table_rwlock_instances::rnd_pos(const void *pos)
 
 void table_rwlock_instances::make_row(PFS_rwlock *pfs)
 {
-  pfs_lock lock;
+  pfs_optimistic_state lock;
   PFS_rwlock_class *safe_class;
 
   m_row_exists= false;
@@ -334,7 +353,7 @@ int table_rwlock_instances::read_row_values(TABLE *table,
     return HA_ERR_RECORD_DELETED;
 
   /* Set the null bits */
-  DBUG_ASSERT(table->s->null_bytes == 1);
+  assert(table->s->null_bytes == 1);
   buf[0]= 0;
 
   for (; (f= *fields) ; fields++)
@@ -359,7 +378,7 @@ int table_rwlock_instances::read_row_values(TABLE *table,
         set_field_ulong(f, m_row.m_readers);
         break;
       default:
-        DBUG_ASSERT(false);
+        assert(false);
       }
     }
   }
@@ -392,20 +411,26 @@ table_cond_instances::m_share=
 {
   { C_STRING_WITH_LEN("cond_instances") },
   &pfs_readonly_acl,
-  &table_cond_instances::create,
+  table_cond_instances::create,
   NULL, /* write_row */
   NULL, /* delete_all_rows */
-  NULL, /* get_row_count */
-  1000, /* records */
+  table_cond_instances::get_row_count,
   sizeof(PFS_simple_index),
   &m_table_lock,
   &m_field_def,
-  false /* checked */
+  false, /* checked */
+  false  /* perpetual */
 };
 
 PFS_engine_table* table_cond_instances::create(void)
 {
   return new table_cond_instances();
+}
+
+ha_rows
+table_cond_instances::get_row_count(void)
+{
+  return global_cond_container.get_row_count();
 }
 
 table_cond_instances::table_cond_instances()
@@ -423,15 +448,14 @@ int table_cond_instances::rnd_next(void)
 {
   PFS_cond *pfs;
 
-  for (m_pos.set_at(&m_next_pos); m_pos.m_index < cond_max; m_pos.next())
+  m_pos.set_at(&m_next_pos);
+  PFS_cond_iterator it= global_cond_container.iterate(m_pos.m_index);
+  pfs= it.scan_next(& m_pos.m_index);
+  if (pfs != NULL)
   {
-    pfs= &cond_array[m_pos.m_index];
-    if (pfs->m_lock.is_populated())
-    {
-      make_row(pfs);
-      m_next_pos.set_after(&m_pos);
-      return 0;
-    }
+    make_row(pfs);
+    m_next_pos.set_after(&m_pos);
+    return 0;
   }
 
   return HA_ERR_END_OF_FILE;
@@ -442,9 +466,9 @@ int table_cond_instances::rnd_pos(const void *pos)
   PFS_cond *pfs;
 
   set_position(pos);
-  DBUG_ASSERT(m_pos.m_index < cond_max);
-  pfs= &cond_array[m_pos.m_index];
-  if (pfs->m_lock.is_populated())
+
+  pfs= global_cond_container.get(m_pos.m_index);
+  if (pfs != NULL)
   {
     make_row(pfs);
     return 0;
@@ -455,7 +479,7 @@ int table_cond_instances::rnd_pos(const void *pos)
 
 void table_cond_instances::make_row(PFS_cond *pfs)
 {
-  pfs_lock lock;
+  pfs_optimistic_state lock;
   PFS_cond_class *safe_class;
 
   m_row_exists= false;
@@ -486,7 +510,7 @@ int table_cond_instances::read_row_values(TABLE *table,
     return HA_ERR_RECORD_DELETED;
 
   /* Set the null bits */
-  DBUG_ASSERT(table->s->null_bytes == 0);
+  assert(table->s->null_bytes == 0);
 
   for (; (f= *fields) ; fields++)
   {
@@ -501,7 +525,7 @@ int table_cond_instances::read_row_values(TABLE *table,
         set_field_ulonglong(f, (intptr) m_row.m_identity);
         break;
       default:
-        DBUG_ASSERT(false);
+        assert(false);
       }
     }
   }

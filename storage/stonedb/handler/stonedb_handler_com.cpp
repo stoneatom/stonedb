@@ -14,6 +14,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
+#include <arpa/inet.h>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
@@ -22,6 +23,7 @@
 #include "handler/stonedb_handler.h"
 #include "mm/initializer.h"
 #include "system/file_out.h"
+#include "binlog.h"
 
 handlerton *rcbase_hton;
 
@@ -38,6 +40,12 @@ namespace dbhandler {
  rename_table and delete_table method in handler.cc.
  */
 my_bool stonedb_bootstrap = 0;
+
+char *strmov_str(char *dst, const char *src)
+{
+  while ((*dst++ = *src++)) ;
+  return dst-1;
+}
 
 static int rcbase_done_func([[maybe_unused]] void *p) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
@@ -113,7 +121,6 @@ int rcbase_commit([[maybe_unused]] handlerton *hton, THD *thd, bool all) {
   int ret = 1;
   std::string error_message;
 
-  // GA: double check that thd->no_errors is the same as query_error
   if (!(thd->no_errors != 0 || thd->killed || thd->transaction_rollback_request)) {
     try {
       rceng->CommitTx(thd, all);
@@ -208,7 +215,7 @@ int rcbase_init_func(void *p) {
     rcquerylog.addOutput(new system::FileOut(log_file + "/log/query.log"));
     struct hostent *hent = NULL;
     hent = gethostbyname(glob_hostname);
-    if (hent) strmov(glob_hostip, inet_ntoa(*(struct in_addr *)(hent->h_addr_list[0])));
+    if (hent) strmov_str(glob_hostip, inet_ntoa(*(struct in_addr *)(hent->h_addr_list[0])));
     my_snprintf(glob_serverInfo, sizeof(glob_serverInfo), "\tServerIp:%s\tServerHostName:%s\tServerPort:%d",
                 glob_hostip, glob_hostname, mysqld_port);
     kvstore = new index::KVStore();
@@ -362,7 +369,7 @@ int get_UpdatePerMinute_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outv
 
 char masteslave_info[8192];
 
-SHOW_VAR stonedb_masterslave_dump[] = {{"info", masteslave_info, SHOW_CHAR}, {NullS, NullS, SHOW_LONG}};
+SHOW_VAR stonedb_masterslave_dump[] = {{"info", masteslave_info, SHOW_CHAR, SHOW_SCOPE_UNDEF}, {NullS, NullS, SHOW_LONG, SHOW_SCOPE_UNDEF}};
 
 //  showtype
 //  =====================
@@ -385,7 +392,7 @@ static void update_func_str([[maybe_unused]] THD *thd, struct st_mysql_sys_var *
   char *old = *(char **)tgt;
   *(char **)tgt = *(char **)save;
   if (var->flags & PLUGIN_VAR_MEMALLOC) {
-    *(char **)tgt = my_strdup(*(char **)save, MYF(0));
+    *(char **)tgt = my_strdup(PSI_NOT_INSTRUMENTED, *(char **)save, MYF(0));
     my_free(old);
   }
 }
@@ -418,7 +425,7 @@ extern void async_join_update(MYSQL_THD thd, struct st_mysql_sys_var *var, void 
   }
 
 #define STATUS_MEMBER(name, label) \
-  { "StoneDB_" #label, (char *)get_##name##_StatusVar, SHOW_FUNC }
+  { "StoneDB_" #label, (char *)get_##name##_StatusVar, SHOW_FUNC, SHOW_SCOPE_UNDEF}
 
 STATUS_FUNCTION(gdchits, SHOW_LONGLONG, getCacheHits)
 STATUS_FUNCTION(gdcmisses, SHOW_LONGLONG, getCacheMisses)
@@ -496,7 +503,7 @@ static struct st_mysql_show_var statusvars[] = {
     STATUS_MEMBER(LoadDupTotal, load_dup_total),
     STATUS_MEMBER(UpdatePerMinute, update_per_minute),
     STATUS_MEMBER(UpdateTotal, update_total),
-    {0, 0, SHOW_UNDEF},
+    {0, 0, SHOW_UNDEF, SHOW_SCOPE_UNDEF},
 };
 
 static MYSQL_SYSVAR_BOOL(refresh_sys_stonedb, stonedb_sysvar_refresh_sys_table, PLUGIN_VAR_BOOL, "-", NULL,

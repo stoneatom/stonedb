@@ -38,7 +38,7 @@ namespace stonedb {
 namespace dbhandler {
 
 const Alter_inplace_info::HA_ALTER_FLAGS StonedbHandler::STONEDB_SUPPORTED_ALTER_ADD_DROP_ORDER =
-    Alter_inplace_info::ADD_COLUMN | Alter_inplace_info::DROP_COLUMN | Alter_inplace_info::ALTER_COLUMN_ORDER;
+    Alter_inplace_info::ADD_COLUMN | Alter_inplace_info::DROP_COLUMN | Alter_inplace_info::ALTER_STORED_COLUMN_ORDER;
 const Alter_inplace_info::HA_ALTER_FLAGS StonedbHandler::STONEDB_SUPPORTED_ALTER_COLUMN_NAME =
     Alter_inplace_info::ALTER_COLUMN_DEFAULT | Alter_inplace_info::ALTER_COLUMN_NAME;
 /////////////////////////////////////////////////////////////////////
@@ -269,8 +269,8 @@ int StonedbHandler::external_lock(THD *thd, int lock_type) {
         tx->AddTableRD(share);
       } else {
         tx->AddTableWR(share);
-        trans_register_ha(thd, false, rcbase_hton);
-        if (thd_test_options(thd, OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN)) trans_register_ha(thd, true, rcbase_hton);
+        trans_register_ha(thd, false, rcbase_hton,NULL);
+        if (thd_test_options(thd, OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN)) trans_register_ha(thd, true, rcbase_hton,NULL);
       }
     }
     ret = 0;
@@ -404,7 +404,7 @@ inline bool has_dup_key(std::shared_ptr<index::RCTableIndex> &indextab, TABLE *t
  case also applied to write_row().
 
  Called from item_sum.cc, item_sum.cc, sql_acl.cc, sql_insert.cc,
- sql_select.cc, sql_table.cc, sql_udf.cc, and sql_update.cc.
+ sql_insert.cc, sql_select.cc, sql_table.cc, sql_udf.cc, and sql_update.cc.
  */
 int StonedbHandler::write_row([[maybe_unused]] uchar *buf) {
   int ret = 1;
@@ -621,13 +621,13 @@ int StonedbHandler::info(uint flag) {
         tab = current_tx->GetTableByPath(m_table_name);
       } else
         tab = rceng->GetTableRD(m_table_name);
-      stats.records = (ha_rows)tab->NumOfValues();
+      stats.records = (ha_rows)tab->NoValues();
       stats.data_file_length = 0;
       stats.mean_rec_length = 0;
       if (stats.records > 0) {
         std::vector<core::AttrInfo> attr_info(tab->GetAttributesInfo());
-        uint num_of_attrs = tab->NumOfAttrs();
-        for (uint j = 0; j < num_of_attrs; j++) stats.data_file_length += attr_info[j].comp_size;  // compressed size
+        uint no_attrs = tab->NoAttrs();
+        for (uint j = 0; j < no_attrs; j++) stats.data_file_length += attr_info[j].comp_size;  // compressed size
         stats.mean_rec_length = ulong(stats.data_file_length / stats.records);
       }
     }
@@ -921,7 +921,7 @@ int StonedbHandler::rnd_init(bool scan) {
 
   int ret = 1;
   try {
-    if (m_query && !m_result && table_ptr->NumOfObj() != 0) {
+    if (m_query && !m_result && table_ptr->NoObj() != 0) {
       m_cq->Result(m_tmp_table);  // it is ALWAYS -2 though....
       m_result = true;
 
@@ -964,7 +964,7 @@ int StonedbHandler::rnd_init(bool scan) {
     }
     ret = 0;
     blob_buffers.resize(0);
-    if (table_ptr != NULL) blob_buffers.resize(table_ptr->NumOfDisplaybleAttrs());
+    if (table_ptr != NULL) blob_buffers.resize(table_ptr->NoDisplaybleAttrs());
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     STONEDB_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -1097,8 +1097,8 @@ int StonedbHandler::extra(enum ha_extra_function operation) {
 int StonedbHandler::start_stmt(THD *thd, thr_lock_type lock_type) {
   try {
     if (lock_type == TL_WRITE_CONCURRENT_INSERT || lock_type == TL_WRITE_DEFAULT || lock_type == TL_WRITE) {
-      trans_register_ha(thd, true, rcbase_hton);
-      trans_register_ha(thd, false, rcbase_hton);
+      trans_register_ha(thd, true, rcbase_hton,NULL);
+      trans_register_ha(thd, false, rcbase_hton,NULL);
       current_tx->AddTableWRIfNeeded(share);
     }
   } catch (std::exception &e) {
@@ -1116,7 +1116,7 @@ int StonedbHandler::start_stmt(THD *thd, thr_lock_type lock_type) {
  If current thread is in non-autocommit, we don't permit any mysql query
  caching.
  */
-my_bool StonedbHandler::register_query_cache_table(THD *thd, char *table_key, uint key_length,
+my_bool StonedbHandler::register_query_cache_table(THD *thd, char *table_key, size_t key_length,
                                                    qc_engine_callback *call_back,
                                                    [[maybe_unused]] ulonglong *engine_data) {
   *call_back = rcbase_query_caching_of_table_permitted;
@@ -1268,7 +1268,7 @@ char *StonedbHandler::update_table_comment(const char *comment) {
     int count = std::sprintf(buf, "Overall compression ratio: %.3f, Raw size=%ld MB", ratio, sum_u >> 20);
     extra_len += count;
 
-    str = (char *)my_malloc(length + extra_len + 3, MYF(0));
+    str = (char *)my_malloc(PSI_NOT_INSTRUMENTED,length + extra_len + 3, MYF(0));
     if (str) {
       char *pos = str + length;
       if (length) {
@@ -1304,7 +1304,7 @@ bool StonedbHandler::explain_message(const Item *a_cond, String *buf) {
 
 int StonedbHandler::set_cond_iter() {
   int ret = 1;
-  if (m_query && !m_result && table_ptr->NumOfObj() != 0) {
+  if (m_query && !m_result && table_ptr->NoObj() != 0) {
     m_cq->Result(m_tmp_table);  // it is ALWAYS -2 though....
     m_result = true;
 

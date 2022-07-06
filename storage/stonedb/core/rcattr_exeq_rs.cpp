@@ -658,7 +658,7 @@ std::vector<int64_t> RCAttr::GetListOfDistinctValuesInPack(int pack) {
 uint64_t RCAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue *rf, bool outer_nulls_possible) {
   LoadPackInfo();
   uint64_t no_dist = 0;
-  int64_t max_obj = NumOfObj();  // no more values than objects
+  int64_t max_obj = NoObj();  // no more values than objects
   if (NumOfNulls() > 0 || outer_nulls_possible) {
     if (incl_nulls) no_dist++;  // one value for null
     max_obj = max_obj - NumOfNulls() + (incl_nulls ? 1 : 0);
@@ -762,7 +762,7 @@ uint64_t RCAttr::ExactDistinctVals(Filter *f)  // provide the exact number of di
     uint64_t span = cur_max - cur_min + 1;
     if (span < 100000) {  // use Histograms to calculate exact number of
                           // distinct values
-      Filter values_present(span, NumOfPackpower());
+      Filter values_present(span, Nopackpower());
       values_present.Reset();
       // Phase 1: mark all values, which are present for sure
       for (uint p = 0; p < NoPack(); p++)

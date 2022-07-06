@@ -1,9 +1,15 @@
-mkdir -p data/innodb
+sleep 3
+if ! test -d data
+then 
+	mkdir data
+fi
 mkdir binlog
 mkdir log
 mkdir tmp
+mkdir redolog
+mkdir undolog
 
 chown -R mysql:mysql *
-sh -x ./scripts/mysql_install_db.sh --defaults-file=./my.cnf --user=mysql --basedir=/stonedb/install --datadir=/stonedb/install/data
+sh ./bin/mysqld --defaults-file=./stonedb.cnf --initialize
 chown -R mysql:mysql *
 sh -x ./mysql_server start

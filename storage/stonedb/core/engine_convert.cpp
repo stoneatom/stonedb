@@ -67,7 +67,7 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
         if (src) {
           blob_buf->resize(length);
           tgt = &((*blob_buf)[0]);
-          bmove(tgt, src, length);
+          memmove(tgt, src, length);
           std::memcpy(blob->ptr + packlength, &tgt, sizeof(char *));
         }
       }
@@ -155,7 +155,7 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
                 if (src) {
                   blob_buf->resize(length);
                   tgt = &((*blob_buf)[0]);
-                  bmove(tgt, src, length);
+                  memmove(tgt, src, length);
                   std::memcpy(blob->ptr + packlength, &tgt, sizeof(char *));
                 }
               }

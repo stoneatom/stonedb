@@ -18,9 +18,9 @@
 #define STONEDB_UTIL_QSORT_H_
 #pragma once
 
-using comp_func_ib = int (*)(const void *, const void *);
+using comp_func_sdb = int (*)(const void *, const void *);
 
-inline void __ib_swap_local(char *a, char *b, int len) {
+inline void __sdb_swap_local(char *a, char *b, int len) {
   for (int j = 0; j < len; j++) {
     char t = a[j];
     a[j] = b[j];
@@ -28,7 +28,7 @@ inline void __ib_swap_local(char *a, char *b, int len) {
   }
 }
 
-static void __bubble_sort(char *b, int lo, int hi, int s, comp_func_ib cmpsrt) {
+static void __bubble_sort(char *b, int lo, int hi, int s, comp_func_sdb cmpsrt) {
   bool swapped = true;
   int i;
 
@@ -37,7 +37,7 @@ static void __bubble_sort(char *b, int lo, int hi, int s, comp_func_ib cmpsrt) {
     swapped = false;
     for (i = lo; i < hi; i++) {
       if (cmpsrt((void *)(b + i * s), (void *)(b + (i + 1) * s)) > 0) {
-        __ib_swap_local(b + i * s, b + (i + 1) * s, s);
+        __sdb_swap_local(b + i * s, b + (i + 1) * s, s);
         swapped = true;
       }
     }
@@ -51,7 +51,7 @@ static void __bubble_sort(char *b, int lo, int hi, int s, comp_func_ib cmpsrt) {
 
     for (i = hi; i > lo; i--) {
       if (cmpsrt((void *)(b + i * s), (void *)(b + (i - 1) * s)) < 0) {
-        __ib_swap_local(b + i * s, b + (i - 1) * s, s);
+        __sdb_swap_local(b + i * s, b + (i - 1) * s, s);
         swapped = true;
       }
     }
@@ -59,13 +59,14 @@ static void __bubble_sort(char *b, int lo, int hi, int s, comp_func_ib cmpsrt) {
   }
 }
 
-#define PIVOT_SIZE 32
+constexpr int PIVOT_SIZE = 32;
 
-static void __quicksort_ib(char *b, int lo, int hi, int s, comp_func_ib cmpsrt, int call_seq) {
+static void __quicksort_sdb(char *b, int lo, int hi, int s, comp_func_sdb cmpsrt, int call_seq) {
   if (call_seq > 8192) {
     __bubble_sort(b, lo, hi, s, cmpsrt);
     return;
   }
+
   int i = lo;
   int j = hi;
   int pv = (lo + hi) / 2;
@@ -81,6 +82,7 @@ static void __quicksort_ib(char *b, int lo, int hi, int s, comp_func_ib cmpsrt, 
     pivot = (char *)malloc(s);
     if (!pivot) return;
   }
+
   std::memcpy(pivot, b + pv * s, s);
 
   while (i <= j) {
@@ -93,20 +95,21 @@ static void __quicksort_ib(char *b, int lo, int hi, int s, comp_func_ib cmpsrt, 
       jj -= s;
     };
     if (i <= j) {
-      __ib_swap_local(b + ii, b + jj, s);
+      __sdb_swap_local(b + ii, b + jj, s);
       i++;
       ii += s;
       j--;
       jj -= s;
     }
   }
-  if (lo < j) __quicksort_ib(b, lo, j, s, cmpsrt, call_seq + 1);
-  if (i < hi) __quicksort_ib(b, i, hi, s, cmpsrt, call_seq + 1);
+
+  if (lo < j) __quicksort_sdb(b, lo, j, s, cmpsrt, call_seq + 1);
+  if (i < hi) __quicksort_sdb(b, i, hi, s, cmpsrt, call_seq + 1);
 
   if (s > PIVOT_SIZE) free(pivot);
 }
 
 // buf, total elements, element size, compare function
-static void qsort_ib(void *b, int l, int s, comp_func_ib cmpsrt) { __quicksort_ib((char *)b, 0, l - 1, s, cmpsrt, 0); }
+static void qsort_sdb(void *b, int l, int s, comp_func_sdb cmpsrt) { __quicksort_sdb((char *)b, 0, l - 1, s, cmpsrt, 0); }
 
 #endif  // STONEDB_UTIL_QSORT_H_

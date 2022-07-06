@@ -22,88 +22,102 @@
 
 namespace stonedb {
 namespace system {
+
 class StdOut : public ChannelOut {
  public:
   ChannelOut &operator<<(short value) override {
     std::cout << value;
     return *this;
-  };
+  }
+
   ChannelOut &operator<<(int value) override {
     std::cout << value;
     return *this;
-  };
+  }
+
   ChannelOut &operator<<(long value) override {
     std::cout << value;
     return *this;
-  };
+  }
 
   ChannelOut &operator<<(float value) override {
     std::cout << value;
     return *this;
-  };
+  }
+
   ChannelOut &operator<<(double value) override {
     std::cout << value;
     return *this;
-  };
+  }
+
   ChannelOut &operator<<(long double value) override {
     std::cout << value;
     return *this;
-  };
+  }
 
   ChannelOut &operator<<(unsigned short value) override {
     std::cout << value;
     return *this;
-  };
+  }
+
   ChannelOut &operator<<(unsigned int value) override {
     std::cout << value;
     return *this;
-  };
+  }
+
   ChannelOut &operator<<(unsigned long value) override {
     std::cout << value;
     return *this;
-  };
+  }
 
   ChannelOut &operator<<(int long long value) override {
     std::cout << value;
     return *this;
-  };
+  }
+
   ChannelOut &operator<<(int long long unsigned value) override {
     std::cout << value;
     return *this;
-  };
+  }
 
   ChannelOut &operator<<(char c) override {
     std::cout << c;
     return *this;
-  };
+  }
+
   ChannelOut &operator<<(const char *buffer) override {
     std::cout << buffer;
     return *this;
-  };
+  }
+
   ChannelOut &operator<<(const wchar_t *buffer) override {
     std::wcout << buffer;
     return *this;
-  };
+  }
+
   ChannelOut &operator<<(const std::string &str) override {
     std::cout << str;
     return *this;
-  };
+  }
 
-  void setf(std::ios_base::fmtflags _Mask) override { std::cout.setf(_Mask); };
-  void precision(std::streamsize prec) override { std::cout.precision(prec); };
+  void setf(std::ios_base::fmtflags _Mask) override { std::cout.setf(_Mask); }
+  void precision(std::streamsize prec) override { std::cout.precision(prec); }
+
   ChannelOut &flush() override {
     std::cout.flush();
     return *this;
-  };
+  }
+
   ChannelOut &fixed() override {
     std::cout.setf(std::ios_base::fixed, std::ios_base::floatfield);
     return *this;
-  };
+  }
 
-  void close() override{};
+  void close() override{}
 
-  ChannelOut &operator<<(ChannelOut &(*_Pfn)(ChannelOut &)) override { return _Pfn(*this); };
+  ChannelOut &operator<<(ChannelOut &(*_Pfn)(ChannelOut &)) override { return _Pfn(*this); }
 };
+
 }  // namespace system
 }  // namespace stonedb
 

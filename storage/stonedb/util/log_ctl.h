@@ -25,6 +25,7 @@ namespace stonedb {
 namespace logger {
 enum class LogCtl_Level { DISABLED = 0, FATAL = 1, ERROR = 2, WARN = 3, INFO = 4, DEBUG = 5, TRACE = 6 };
 }  // namespace logger
+
 namespace utils {
 // a class help to check debug switch and print debug msg
 class LogCtl {
@@ -48,10 +49,10 @@ constexpr size_t MAX_LOG_LEN = 4096;
 #define STONEDB_LOG(_level, ...) stonedb::utils::LogCtl::LogMsg(logger::_level, __FILE__, __LINE__, ##__VA_ARGS__)
 
 #define STONEDB_LOGCHECK(_level) (stonedb::utils::LogCtl::LogEnabled(logger::_level))
-
 #define LOG_MSG(_level, msg) stonedb::utils::LogCtl::LogMsg(logger::_level, __FILE__, __LINE__, msg);
 
 void log_setup(const std::string &log_file);
+
 }  // namespace stonedb
 
 #endif  // STONEDB_UTIL_LOG_CTL_H_

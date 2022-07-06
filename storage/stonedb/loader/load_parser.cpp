@@ -17,6 +17,8 @@
 
 #include "load_parser.h"
 
+#include "binlog.h"
+#include "log_event.h"
 #include "core/engine.h"
 #include "core/rc_attr.h"
 #include "loader/value_cache.h"
@@ -32,7 +34,7 @@ LoadParser::LoadParser(RCAttrPtrVect_t &attrs, const system::IOParameters &iop, 
       ioparam(iop),
       pack_size(packsize),
       rejecter(packsize, iop.GetRejectFile(), iop.GetAbortOnCount(), iop.GetAbortOnThreshold()),
-      num_of_obj(attrs[0]->NumOfObj()) {
+      no_obj(attrs[0]->NoObj()) {
   std::vector<uchar> columns_collations;
   for (auto &it : attrs) columns_collations.push_back(it->GetCollation().collation->number);
 
@@ -172,7 +174,7 @@ int LoadParser::ProcessInsertIndex(std::shared_ptr<index::RCTableIndex> tab, std
     fields.emplace_back(vcs[col].GetDataBytesPointer(lastrow - 1), vcs[col].Size(lastrow - 1));
   }
 
-  if (tab->InsertIndex(current_tx, fields, num_of_obj + no_rows) == common::ErrorCode::DUPP_KEY) {
+  if (tab->InsertIndex(current_tx, fields, no_obj + no_rows) == common::ErrorCode::DUPP_KEY) {
     STONEDB_LOG(LogCtl_Level::INFO, "Load discard this row for duplicate key");
     return HA_ERR_FOUND_DUPP_KEY;
   }
@@ -194,11 +196,11 @@ int LoadParser::binlog_loaded_block(const char *buf_start, const char *buf_end) 
   for (block_len = (uint)(buf_end - buf_start); block_len > 0;
        buffer += std::min(block_len, max_event_size), block_len -= std::min(block_len, max_event_size)) {
     if (lf_info->wrote_create_file) {
-      Append_block_log_event a(lf_info->thd, lf_info->thd->db, buffer, std::min(block_len, max_event_size),
+      Append_block_log_event a(lf_info->thd, lf_info->thd->db().str, buffer, std::min(block_len, max_event_size),
                                lf_info->log_delayed);
       if (mysql_bin_log.write_event(&a)) return -1;
     } else {
-      Begin_load_query_log_event b(lf_info->thd, lf_info->thd->db, buffer, std::min(block_len, max_event_size),
+      Begin_load_query_log_event b(lf_info->thd, lf_info->thd->db().str, buffer, std::min(block_len, max_event_size),
                                    lf_info->log_delayed);
       if (mysql_bin_log.write_event(&b)) return -1;
 
