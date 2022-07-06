@@ -37,6 +37,7 @@
 #include "index/rc_table_index.h"
 #include "system/io_parameters.h"
 #include "system/rc_system.h"
+#include "log.h"
 #include "util/fs.h"
 #include "util/mapped_circular_buffer.h"
 #include "util/thread_pool.h"
@@ -106,7 +107,7 @@ class Engine final {
   Transaction *CreateTx(THD *thd);
   Transaction *GetTx(THD *thd);
   void ClearTx(THD *thd);
-  int HandleSelect(THD *thd, LEX *lex, select_result *&result_output, ulong setup_tables_done_option, int &res,
+  int HandleSelect(THD *thd, LEX *lex, Query_result *&result_output, ulong setup_tables_done_option, int &res,
                    int &optimize_after_sdb, int &sdb_free_join, int with_insert = false);
   system::ResourceManager *getResourceManager() const { return m_resourceManager; }
   std::shared_ptr<RCTable> GetTableRD(const std::string &table_path);
@@ -160,7 +161,7 @@ class Engine final {
  private:
   void AddTx(Transaction *tx);
   void RemoveTx(Transaction *tx);
-  int Execute(THD *thd, LEX *lex, select_result *result_output, SELECT_LEX_UNIT *unit_for_union = NULL);
+  int Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_UNIT *unit_for_union = NULL);
   int SetUpCacheFolder(const std::string &cachefolder_path);
 
   static bool AreConvertible(types::RCDataType &rcitem, enum_field_types my_type, uint length = 0);
@@ -256,7 +257,7 @@ class Engine final {
 
 class ResultSender {
  public:
-  ResultSender(THD *thd, select_result *res, List<Item> &fields);
+  ResultSender(THD *thd, Query_result *res, List<Item> &fields);
   virtual ~ResultSender();
 
   void Send(TempTable *t);
@@ -276,7 +277,7 @@ class ResultSender {
 
  protected:
   THD *thd;
-  select_result *res;
+  Query_result *res;
   std::map<int, Item *> items_backup;
   uint *buf_lens;
   List<Item> &fields;
@@ -292,7 +293,7 @@ class ResultSender {
 
 class ResultExportSender final : public ResultSender {
  public:
-  ResultExportSender(THD *thd, select_result *result, List<Item> &fields);
+  ResultExportSender(THD *thd, Query_result *result, List<Item> &fields);
 
   void CleanUp() override {}
   void SendEof() override;

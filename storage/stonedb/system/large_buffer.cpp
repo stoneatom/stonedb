@@ -48,14 +48,14 @@ LargeBuffer::LargeBuffer(int num, int requested_size) : size_(requested_size), b
 
 LargeBuffer::~LargeBuffer() {
   if (flush_thread_.joinable()) flush_thread_.join();
-  if (ib_stream_) ib_stream_->Close();
+  if (sdb_stream_) sdb_stream_->Close();
 }
 
 bool LargeBuffer::BufOpen(const IOParameters &iop) {
   try {
-    ib_stream_ = std::unique_ptr<Stream>(new StoneDBFile());
-    ib_stream_->OpenCreateEmpty(iop.Path());
-    if (!ib_stream_ || !ib_stream_->IsOpen()) {
+    sdb_stream_ = std::unique_ptr<Stream>(new StoneDBFile());
+    sdb_stream_->OpenCreateEmpty(iop.Path());
+    if (!sdb_stream_ || !sdb_stream_->IsOpen()) {
       BufClose();
       return false;
     }
@@ -77,7 +77,7 @@ void LargeBuffer::BufFlush() {
     STONEDB_LOG(LogCtl_Level::ERROR, "Write operation to file or pipe failed_.");
     throw common::FileException("Write operation to file or pipe failed_.");
   }
-  flush_thread_ = std::thread(std::bind(&LargeBuffer::BufFlushThread, this, ib_stream_.get(), buf_, buf_used_, &failed_));
+  flush_thread_ = std::thread(std::bind(&LargeBuffer::BufFlushThread, this, sdb_stream_.get(), buf_, buf_used_, &failed_));
   UseNextBuf();
 }
 
@@ -104,7 +104,7 @@ void LargeBuffer::BufClose()  // close the buffer; warning: does not flush data
 {
   if (flush_thread_.joinable()) flush_thread_.join();
 
-  if (ib_stream_) ib_stream_->Close();
+  if (sdb_stream_) sdb_stream_->Close();
 
   buf_used_ = 0;
   if (buf_[size_ + 1] != D_OVERRUN_GUARDIAN) {

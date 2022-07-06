@@ -49,15 +49,15 @@ ReadBuffer::~ReadBuffer() {
     read_thread_.join();
   }
 
-  if (ib_stream_) ib_stream_->Close();
+  if (sdb_stream_) sdb_stream_->Close();
 }
 
 bool ReadBuffer::BufOpen(std::unique_ptr<system::Stream> &s) {
-  ib_stream_ = std::move(s);
+  sdb_stream_ = std::move(s);
 
   auto r = Read(buf_ + buf_used_, size_);
   if (r == -1) {
-    ib_stream_->Close();
+    sdb_stream_->Close();
     buf_incomplete_ = false;
     return false;
   }
@@ -68,7 +68,7 @@ bool ReadBuffer::BufOpen(std::unique_ptr<system::Stream> &s) {
     }
     buf_incomplete_ = true;
   } else {
-    ib_stream_->Close();
+    sdb_stream_->Close();
     buf_incomplete_ = false;
   }
 
@@ -99,12 +99,12 @@ int ReadBuffer::BufFetch(int unused_bytes) {
     std::scoped_lock guard(read_mutex_);
 
     if (bytes_in_read_thread_buffer_ == -1) {
-      ib_stream_->Close();
+      sdb_stream_->Close();
       buf_incomplete_ = false;
       throw common::FileException("Unable to read from the input file.");
     }
 
-    if ((!ib_stream_->IsOpen() && bytes_in_read_thread_buffer_ == 0) || to_read == unused_bytes) return 0;
+    if ((!sdb_stream_->IsOpen() && bytes_in_read_thread_buffer_ == 0) || to_read == unused_bytes) return 0;
 
     for (int i = 0; i < unused_bytes; i++) buf2_[i] = *(buf_ + ((buf_used_ - unused_bytes) + i));
     to_read -= unused_bytes;
@@ -120,19 +120,19 @@ int ReadBuffer::BufFetch(int unused_bytes) {
     to_read -= to_read_from_th_buf;
 
     buf_used_ = unused_bytes;
-    if (ib_stream_->IsOpen()) {
+    if (sdb_stream_->IsOpen()) {
       ushort no_steps = 0;
       int r = 0;
       while (no_steps < 15 && to_read > 0) {
         try {
-          r = ib_stream_->Read(buf2_ + unused_bytes, to_read);
+          r = sdb_stream_->Read(buf2_ + unused_bytes, to_read);
         } catch (common::DatabaseException &) {
           r = -1;
         }
         if (r != -1) {
           buf_used_ += r;
           if (r == 0) {
-            ib_stream_->Close();
+            sdb_stream_->Close();
             buf_incomplete_ = false;
             break;
           } else {
@@ -150,7 +150,7 @@ int ReadBuffer::BufFetch(int unused_bytes) {
         }
       }
       if (r == -1) {
-        ib_stream_->Close();
+        sdb_stream_->Close();
         buf_incomplete_ = false;
         throw common::FileException("Unable to read from the input file.");
       }
@@ -171,7 +171,7 @@ int ReadBuffer::Read(char *buffer, int bytes_to_read) {
     bool do_stop = false;
     while (!do_stop) {
       try {
-        read_b = ib_stream_->Read(buffer + bytes_read, std::min(bytes_to_read, requested_size - bytes_read));
+        read_b = sdb_stream_->Read(buffer + bytes_read, std::min(bytes_to_read, requested_size - bytes_read));
       } catch (common::DatabaseException &) {
         read_b = -1;
       }
@@ -201,7 +201,7 @@ void ReadBuffer::ReadThread() {
     no_read_bytes = 0;
     {
       std::scoped_lock guard(read_mutex_);
-      if (!buf_incomplete_ || !ib_stream_->IsOpen() || stop_reading_thread_) {
+      if (!buf_incomplete_ || !sdb_stream_->IsOpen() || stop_reading_thread_) {
         break;
       }
 
@@ -211,7 +211,7 @@ void ReadBuffer::ReadThread() {
         ushort no_steps = 0;
         while (no_steps < 15 && to_read > 0) {
           try {
-            no_read_bytes = ib_stream_->Read(read_thread_buffer_.get() + bytes_in_read_thread_buffer_, to_read);
+            no_read_bytes = sdb_stream_->Read(read_thread_buffer_.get() + bytes_in_read_thread_buffer_, to_read);
           } catch (common::DatabaseException &) {
             no_read_bytes = -1;
           }
@@ -227,7 +227,7 @@ void ReadBuffer::ReadThread() {
             if (no_read_bytes != 0)
               buf_incomplete_ = true;
             else {
-              ib_stream_->Close();
+              sdb_stream_->Close();
               buf_incomplete_ = false;
               do_stop = true;
             }

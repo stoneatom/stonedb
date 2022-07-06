@@ -2,7 +2,7 @@
 # Copyright Abandoned 1996 TCX DataKonsult AB & Monty Program KB & Detron HB
 # This file is public domain and comes with NO WARRANTY of any kind
 
-# StoneDB daemon start/stop script.
+# Stonedb daemon start/stop script.
 
 # Usually this is put in /etc/init.d (at least on machines SYSV R4 based
 # systems) and linked to /etc/rc3.d/S99mysql and /etc/rc0.d/K01mysql.
@@ -21,13 +21,13 @@
 # Required-Stop: $local_fs $network $remote_fs
 # Default-Start:  2 3 4 5
 # Default-Stop: 0 1 6
-# Short-Description: start and stop StoneDB
-# Description: StoneDB is a very fast and reliable SQL database engine.
+# Short-Description: start and stop Stonedb
+# Description: Stonedb is a very fast and reliable SQL database engine.
 ### END INIT INFO
 
 # have to do one of the following things for this script to work:
 #
-# - Run this script from within the StoneDB installation directory
+# - Run this script from within the Stonedb installation directory
 # - Create a /etc/my.cnf file with the following information:
 #   [mysqld]
 #   basedir=<path-to-mysql-installation-directory>
@@ -36,11 +36,11 @@
 # - Add the path to the mysql-installation-directory to the basedir variable
 #   below.
 #
-# If you want to affect other StoneDB variables, you should make your changes
-# in the /etc/my.cnf, ~/.my.cnf or other StoneDB configuration files.
+# If you want to affect other Stonedb variables, you should make your changes
+# in the /etc/my.cnf, ~/.my.cnf or other Stonedb configuration files.
 
 # If you change base dir, you must also change datadir. These may get
-# overwritten by settings in the StoneDB configuration files.
+# overwritten by settings in the Stonedb configuration files.
 
 basedir=
 datadir=
@@ -62,14 +62,14 @@ lock_file_path="$lockdir/mysql"
 mysqld_pid_file_path=
 if test -z "$basedir"
 then
-  basedir=/stonedb56/install
-  bindir=/stonedb56/install/bin
+  basedir=/stonedb57/install
+  bindir=/stonedb57/install/bin
   if test -z "$datadir"
   then
-    datadir=/stonedb56/install/data
+    datadir=/stonedb57/install/data
   fi
-  sbindir=/stonedb56/install/bin
-  libexecdir=/stonedb56/install/bin
+  sbindir=/stonedb57/install/bin
+  libexecdir=/stonedb57/install/bin
 else
   bindir="$basedir/bin"
   if test -z "$datadir"
@@ -302,7 +302,7 @@ case "$mode" in
     # Safeguard (relative paths, core dumps..)
     cd $basedir
 
-    echo $echo_n "Starting StoneDB"
+    echo $echo_n "Starting Stonedb"
     if test -x $bindir/mysqld_safe
     then
       # Give extra arguments to mysqld with the my.cnf file. This script
@@ -322,7 +322,7 @@ case "$mode" in
 
       exit $return_value
     else
-      log_failure_msg "Couldn't find StoneDB server ($bindir/mysqld_safe)"
+      log_failure_msg "Couldn't find Stonedb server ($bindir/mysqld_safe)"
     fi
     ;;
 
@@ -335,12 +335,12 @@ case "$mode" in
       mysqld_pid=`cat "$mysqld_pid_file_path"`
 
       if su_kill -0 $mysqld_pid ; then
-        echo $echo_n "Shutting down StoneDB"
+        echo $echo_n "Shutting down Stonedb"
         su_kill $mysqld_pid
         # mysqld should remove the pid file when it exits, so wait for it.
         wait_for_gone $mysqld_pid "$mysqld_pid_file_path"; return_value=$?
       else
-        log_failure_msg "StoneDB server process #$mysqld_pid is not running!"
+        log_failure_msg "Stonedb server process #$mysqld_pid is not running!"
         rm "$mysqld_pid_file_path"
       fi
 
@@ -351,7 +351,7 @@ case "$mode" in
       fi
       exit $return_value
     else
-      log_failure_msg "StoneDB server PID file could not be found!"
+      log_failure_msg "Stonedb server PID file could not be found!"
     fi
     ;;
 
@@ -372,10 +372,10 @@ case "$mode" in
   'reload'|'force-reload')
     if test -s "$mysqld_pid_file_path" ; then
       read mysqld_pid <  "$mysqld_pid_file_path"
-      su_kill -HUP $mysqld_pid && log_success_msg "Reloading service StoneDB"
+      su_kill -HUP $mysqld_pid && log_success_msg "Reloading service Stonedb"
       touch "$mysqld_pid_file_path"
     else
-      log_failure_msg "StoneDB PID file could not be found!"
+      log_failure_msg "Stonedb PID file could not be found!"
       exit 1
     fi
     ;;
@@ -384,10 +384,10 @@ case "$mode" in
     if test -s "$mysqld_pid_file_path" ; then
       read mysqld_pid < "$mysqld_pid_file_path"
       if su_kill -0 $mysqld_pid ; then
-        log_success_msg "StoneDB running ($mysqld_pid)"
+        log_success_msg "Stonedb running ($mysqld_pid)"
         exit 0
       else
-        log_failure_msg "StoneDB is not running, but PID file exists"
+        log_failure_msg "Stonedb is not running, but PID file exists"
         exit 1
       fi
     else
@@ -397,17 +397,17 @@ case "$mode" in
       # test if multiple pids exist
       pid_count=`echo $mysqld_pid | wc -w`
       if test $pid_count -gt 1 ; then
-        log_failure_msg "Multiple StoneDB running but PID file could not be found ($mysqld_pid)"
+        log_failure_msg "Multiple Stonedb running but PID file could not be found ($mysqld_pid)"
         exit 5
       elif test -z $mysqld_pid ; then
         if test -f "$lock_file_path" ; then
-          log_failure_msg "StoneDB is not running, but lock file ($lock_file_path) exists"
+          log_failure_msg "Stonedb is not running, but lock file ($lock_file_path) exists"
           exit 2
         fi
-        log_failure_msg "StoneDB is not running"
+        log_failure_msg "Stonedb is not running"
         exit 3
       else
-        log_failure_msg "StoneDB is running but PID file could not be found"
+        log_failure_msg "Stonedb is running but PID file could not be found"
         exit 4
       fi
     fi
@@ -415,7 +415,7 @@ case "$mode" in
   'configtest')
     # Safeguard (relative paths, core dumps..)
     cd $basedir
-    echo $echo_n "Testing StoneDB configuration syntax"
+    echo $echo_n "Testing Stonedb configuration syntax"
     daemon=$bindir/mysqld
     if test -x $libexecdir/mysqld
     then
@@ -441,7 +441,7 @@ case "$mode" in
     ;;
   'bootstrap')
       if test "$_use_systemctl" == 1 ; then
-        log_failure_msg "Please use galera_new_cluster to start the StoneDB service with --wsrep-new-cluster"
+        log_failure_msg "Please use galera_new_cluster to start the Stonedb service with --wsrep-new-cluster"
         exit 1
       fi
       # Bootstrap the cluster, start the first node
@@ -453,7 +453,7 @@ case "$mode" in
   *)
       # usage
       basename=`basename "$0"`
-      echo "Usage: $basename  {start|stop|restart|reload|force-reload|status|configtest|bootstrap}  [ StoneDB server options ]"
+      echo "Usage: $basename  {start|stop|restart|reload|force-reload|status|configtest|bootstrap}  [ Stonedb server options ]"
       exit 1
     ;;
 esac

@@ -27,7 +27,7 @@ namespace system {
 
 #define O_BINARY 0
 
-#define ib_umask S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP
+#define sdb_umask S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP
 
 /* A portable wrapper class for low level file I/O.
   Note - Most of the functions throws exception if it fails. So caller must

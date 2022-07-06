@@ -498,7 +498,7 @@ vcolumn::VirtualColumn *Query::CreateColumnFromExpression(std::vector<MysqlExpre
     DEBUG_ASSERT(0);
   }
   MysqlExpression::SetOfVars params = vc->GetParams();
-  MysqlExpression::TypeOfVars types;
+  MysqlExpression::TypOfVars types;
   for (auto &iter : params) {
     types[iter] = ta[-iter.tab - 1]->GetColumnType(iter.col < 0 ? -iter.col - 1 : iter.col);
   }
@@ -522,16 +522,17 @@ bool Query::IsParameterFromWhere(const TabID &params_table) {
   return true;
 }
 
-const char *Query::GetTableName(Item_field *ifield) {
-  char *table_name = NULL;
-  if (ifield->cached_table && !ifield->cached_table->view && !ifield->cached_table->derived)
-    if (ifield->cached_table->referencing_view)
-      table_name = ifield->cached_table->referencing_view->table_name;
-    else
-      table_name = ifield->cached_table->table_name;
-  else if (ifield->result_field->table && ifield->result_field->table->s->table_category != TABLE_CATEGORY_TEMPORARY)
-    table_name = ifield->result_field->table->s->table_name.str;
-  return table_name;
+const char *Query::GetTableName(Item_field *ifield)
+{
+    const char *table_name = NULL;
+    if (ifield->cached_table && !ifield->cached_table->is_view() && !ifield->cached_table->is_view_or_derived())//STONEDB UPGRADE
+        if (ifield->cached_table->referencing_view)
+            table_name = ifield->cached_table->referencing_view->table_name;
+        else
+            table_name = ifield->cached_table->table_name;
+    else if (ifield->result_field && ifield->result_field->table && ifield->result_field->table->s->table_category != TABLE_CATEGORY_TEMPORARY)
+        table_name = ifield->result_field->table->s->table_name.str;
+    return table_name;
 }
 
 void Query::GetPrecisionScale(Item *item, int &precision, int &scale, bool max_scale) {
@@ -913,7 +914,7 @@ int Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_table, CondT
                           dynamic_cast<Item_in_subselect *>(item_subs) == NULL && negative &&
                           item_subs->substype() == Item_subselect::SINGLEROW_SUBS);
     subqueries_in_where.emplace_back(tmp_table,
-                                     item_subs->place() != IN_HAVING && filter_type != CondType::HAVING_COND);
+                                     item_subs->place() != CTX_HAVING && filter_type != CondType::HAVING_COND);
 
     // we need to make a copy of global map with table aliases so that subquery
     // contains aliases of outer queries and itself but not "parallel"

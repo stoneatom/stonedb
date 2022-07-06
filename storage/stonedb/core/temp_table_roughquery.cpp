@@ -294,7 +294,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
   }
 
   // Rough values for EXIST
-  rough_is_empty = common::TRIBOOL_UNKNOWN;        // num_of_obj > 0 ? false - non-empty
+  rough_is_empty = common::TRIBOOL_UNKNOWN;        // no_obj > 0 ? false - non-empty
                                                    // for sure, true - empty for sure
   if (!aggregation_present || group_by_present) {  // otherwise even empty multiindex may produce
                                                    // nonempty result - checked later
@@ -325,7 +325,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
   CalculatePageSize(2);  // 2 rows in result
 
   if (rough_is_empty == true || (mode.top && mode.param2 == 0)) {  // empty or "limit 0"
-    num_of_obj = 0;
+    no_obj = 0;
     materialized = true;
     if (sender) sender->Send(this);
     return;
@@ -711,7 +711,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
       }
     }
   }
-  num_of_obj = 2;
+  no_obj = 2;
   materialized = true;
   if (sender) sender->Send(this);
 }
@@ -723,7 +723,7 @@ void TempTable::RoughUnion(TempTable *t, ResultSender *sender) {
     return;
   }
   DEBUG_ASSERT(NoDisplaybleAttrs() == t->NoDisplaybleAttrs());
-  if (NumOfDisplaybleAttrs() != t->NumOfDisplaybleAttrs())
+  if (NoDisplaybleAttrs() != t->NoDisplaybleAttrs())
     throw common::NotImplementedException("UNION of tables with different number of columns.");
   if (this->IsParametrized() || t->IsParametrized())
     throw common::NotImplementedException("Materialize: not implemented union of parameterized queries.");
@@ -737,8 +737,8 @@ void TempTable::RoughUnion(TempTable *t, ResultSender *sender) {
   for (uint i = 0; i < attrs.size(); i++)
     if (!attrs[i]->buffer) attrs[i]->CreateBuffer(2);
 
-  int64_t pos = NumOfObj();
-  num_of_obj += 2;
+  int64_t pos = NoObj();
+  no_obj += 2;
   for (uint i = 0; i < attrs.size(); i++) {
     if (IsDisplayAttr(i) && !ATI::IsStringType(attrs[i]->TypeName())) {
       int64_t v;

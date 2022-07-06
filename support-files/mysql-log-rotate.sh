@@ -37,8 +37,7 @@
 	fi
     endscript
 }
-
-
+#STONEDB UPGRADE BEGIN
 @prefix@/log/query.log {
         notifempty
         daily
@@ -49,3 +48,4 @@
         compress
         dateext
 }
+#END

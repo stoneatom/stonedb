@@ -24,10 +24,10 @@
 namespace stonedb {
 namespace exporter {
 
-class select_sdb_export : public select_export {
+class select_sdb_export : public Query_result_export {
  public:
   // select_sdb_export(sql_exchange *ex);
-  select_sdb_export(select_export *se);
+  select_sdb_export(Query_result_export *se);
   ~select_sdb_export(){};
   int prepare(List<Item> &list, SELECT_LEX_UNIT *u) override;
   void SetRowCount(ha_rows x);
@@ -37,7 +37,7 @@ class select_sdb_export : public select_export {
   bool send_data(List<Item> &items) override;
 
  private:
-  select_export *se;
+  Query_result_export *se;
   bool prepared;
 };
 

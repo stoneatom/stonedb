@@ -17,6 +17,7 @@
 
 #include "rc_item_types.h"
 
+#include "item_sum.h"
 #include "common/common_definitions.h"
 
 namespace stonedb {

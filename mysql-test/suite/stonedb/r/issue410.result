@@ -4,5 +4,5 @@ insert into tlike values ('abcde');
 select * from tlike where val like NULL;
 val
 Warnings:
-Note	1105	Query syntax not implemented in StoneDB, executed by MySQL engine.
+Note	1105	Query syntax not implemented in Stonedb, executed by MySQL engine.
 drop table tlike;

@@ -186,7 +186,7 @@ inline static void SetFieldState(Field *field, bool is_null) {
   }
 }
 
-ResultSender::ResultSender(THD *thd, select_result *res, List<Item> &fields)
+ResultSender::ResultSender(THD *thd, Query_result *res, List<Item> &fields)
     : thd(thd),
       res(res),
       buf_lens(NULL),
@@ -201,8 +201,8 @@ void ResultSender::Init([[maybe_unused]] TempTable *t) {
   DBUG_PRINT("info", ("%s", thd->proc_info));
   res->send_result_set_metadata(fields, Protocol::SEND_NUM_ROWS | Protocol::SEND_EOF);
 
-  thd->lex->unit.offset_limit_cnt = 0;
-  thd->limit_found_rows = 0;
+  thd->lex->unit->offset_limit_cnt = 0;
+  thd->current_found_rows = 0;
   scan_fields(fields, buf_lens, items_backup);
 }
 
@@ -219,7 +219,8 @@ void ResultSender::Send(TempTable::RecordIterator &iter) {
   if (owner && !owner->IsSent()) owner->SetIsSent();
 
   // func found_rows() need limit_found_rows
-  thd->limit_found_rows++;
+  thd->current_found_rows++;
+  thd->update_previous_found_rows();
   if (offset && *offset > 0) {
     --(*offset);
     return;
@@ -246,7 +247,8 @@ void ResultSender::SendRow(const std::vector<std::unique_ptr<types::RCDataType>>
   if (owner && !owner->IsSent()) owner->SetIsSent();
 
   // func found_rows() need limit_found_rows
-  thd->limit_found_rows++;
+  thd->current_found_rows++;
+  thd->update_previous_found_rows();
   if (offset && *offset > 0) {
     --(*offset);
     return;
@@ -373,13 +375,13 @@ void ResultSender::Finalize(TempTable *result_table) {
   CleanUp();
   SendEof();
   ulonglong cost_time = (thd->current_utime() - thd->start_utime) / 1000;
-  auto &sctx = thd->main_security_ctx;
+  auto &sctx = thd->m_main_security_ctx;
   if (rcquerylog.isOn())
-    rcquerylog << system::lock << "\tClientIp:" << (sctx.get_ip()->length() ? sctx.get_ip()->ptr() : "unkownn")
-               << "\tClientHostName:" << (sctx.get_host()->length() ? sctx.get_host()->ptr() : "unknown")
-               << "\tClientPort:" << thd->peer_port << "\tUser:" << sctx.user << glob_serverInfo
-               << "\tAffectRows:" << affect_rows << "\tResultRows:" << rows_sent << "\tDBName:" << thd->db
-               << "\tCosttime(ms):" << cost_time << "\tSQL:" << thd->query() << system::unlock;
+    rcquerylog << system::lock << "\tClientIp:" << (sctx.ip().length ? sctx.ip().str : "unkownn")
+               << "\tClientHostName:" << (sctx.host().length ? sctx.host().str : "unknown")
+               << "\tClientPort:" << thd->peer_port << "\tUser:" << sctx.user().str << glob_serverInfo
+               << "\tAffectRows:" << affect_rows << "\tResultRows:" << rows_sent << "\tDBName:" << thd->db().str
+               << "\tCosttime(ms):" << cost_time << "\tSQL:" << thd->query().str << system::unlock;
   STONEDB_LOG(LogCtl_Level::DEBUG, "Result: %" PRId64 " Costtime(ms): %" PRId64, rows_sent, cost_time);
 }
 
@@ -389,7 +391,7 @@ void ResultSender::SendEof() { res->send_eof(); }
 
 ResultSender::~ResultSender() { delete[] buf_lens; }
 
-ResultExportSender::ResultExportSender(THD *thd, select_result *result, List<Item> &fields)
+ResultExportSender::ResultExportSender(THD *thd, Query_result *result, List<Item> &fields)
     : ResultSender(thd, result, fields) {
   export_res = dynamic_cast<exporter::select_sdb_export *>(result);
   DEBUG_ASSERT(export_res);
@@ -421,7 +423,7 @@ fields_t::value_type guest_field_type(THD *&thd, TABLE &tmp_table, Item *&item) 
     else
       field = item->tmp_table_field_from_field_type(&tmp_table, 0);
   } else
-    field = create_tmp_field(thd, &tmp_table, item, item->type(), (Item ***)0, &tmp_field, &def_field, 0, 0, 0, 0);
+    field = create_tmp_field(thd, &tmp_table, item, item->type(), (Func_ptr_array*)0, &tmp_field, &def_field, 0, 0, 0, 0);
   fields_t::value_type f(MYSQL_TYPE_STRING);
   if (field) {
     f = field->type();
@@ -441,7 +443,7 @@ AttributeTypeInfo create_ati(THD *&thd, TABLE &tmp_table, Item *&item) {
     else
       field = item->tmp_table_field_from_field_type(&tmp_table, 0);
   } else
-    field = create_tmp_field(thd, &tmp_table, item, item->type(), (Item ***)0, &tmp_field, &def_field, 0, 0, 0, 0);
+    field = create_tmp_field(thd, &tmp_table, item, item->type(), (Func_ptr_array*)0, &tmp_field, &def_field, 0, 0, 0, 0);
   if (!field) throw common::DatabaseException("failed to guess item type");
   AttributeTypeInfo ati = Engine::GetCorrespondingATI(*field);
   delete field;
@@ -453,7 +455,7 @@ void ResultExportSender::Init(TempTable *t) {
   DBUG_PRINT("info", ("%s", thd->proc_info));
   DEBUG_ASSERT(t);
 
-  thd->lex->unit.offset_limit_cnt = 0;
+  thd->lex->unit->offset_limit_cnt = 0;
 
   std::unique_ptr<system::IOParameters> iop;
 

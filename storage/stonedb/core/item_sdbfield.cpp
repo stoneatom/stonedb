@@ -235,7 +235,7 @@ String *Item_sdbdatetime::val_str(String *s) {
   MYSQL_TIME ltime;
   get_date(&ltime, 0);
   s->alloc(19);
-  make_datetime((DATE_TIME_FORMAT *)0, &ltime, s, 0);
+  make_datetime((Date_time_format *)0, &ltime, s, 0);
   return s;
 }
 
@@ -259,7 +259,7 @@ String *Item_sdbdate::val_str(String *s) {
   MYSQL_TIME ltime;
   get_date(&ltime, 0);
   s->alloc(19);
-  make_date((DATE_TIME_FORMAT *)0, &ltime, s);
+  make_date((Date_time_format *)0, &ltime, s);
   return s;
 }
 bool Item_sdbdate::get_date(MYSQL_TIME *ltime, [[maybe_unused]] uint fuzzydate) {
@@ -283,7 +283,7 @@ String *Item_sdbtime::val_str(String *s) {
   MYSQL_TIME ltime;
   get_time(&ltime);
   s->alloc(19);
-  make_time((DATE_TIME_FORMAT *)0, &ltime, s, 0);
+  make_time((Date_time_format *)0, &ltime, s, 0);
   return s;
 }
 

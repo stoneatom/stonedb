@@ -1,13 +1,25 @@
-/* Copyright (c) 2000, 2014, Oracle and/or its affiliates. All rights reserved.
+/* Copyright (c) 2000, 2021, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; version 2 of the License.
+   it under the terms of the GNU General Public License, version 2.0,
+   as published by the Free Software Foundation.
+
+   This program is also distributed with certain software (including
+   but not limited to OpenSSL) that is licensed under separate terms,
+   as designated in a particular file or component or in included license
+   documentation.  The authors of MySQL hereby grant you an additional
+   permission to link the program and your derivative works with the
+   separately licensed software that they have included with MySQL.
+
+   Without limiting anything contained in the foregoing, this file,
+   which is part of C Driver for MySQL (Connector/C), is also subject to the
+   Universal FOSS Exception, version 1.0, a copy of which can be found at
+   http://oss.oracle.com/licenses/universal-foss-exception.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   GNU General Public License, version 2.0, for more details.
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
@@ -43,14 +55,18 @@
 #include "m_ctype.h"
 #include <my_dir.h>
 #include <my_aes.h>
-#ifdef __WIN__
+#include "mysql/psi/mysql_file.h"
+#ifdef _WIN32
 #include <winbase.h>
 #endif
+
+#include "prealloced_array.h"
 
 C_MODE_START
 #ifdef HAVE_PSI_INTERFACE
 extern PSI_file_key key_file_cnf;
 #endif
+PSI_memory_key key_memory_defaults;
 C_MODE_END
 
 /**
@@ -82,7 +98,7 @@ C_MODE_END
 static const char *args_separator= "----args-separator----";
 inline static void set_args_separator(char** arg)
 {
-  DBUG_ASSERT(my_getopt_use_args_separator);
+  assert(my_getopt_use_args_separator);
   *arg= (char*)args_separator;
 }
 
@@ -106,15 +122,7 @@ static const char *my_login_path= 0;
 static char my_defaults_file_buffer[FN_REFLEN];
 static char my_defaults_extra_file_buffer[FN_REFLEN];
 
-static char my_login_file[FN_REFLEN];
-
 static my_bool defaults_already_read= FALSE;
-
-/* Set to TRUE, if --no-defaults is found. */
-static my_bool found_no_defaults= FALSE;
-
-/* Set to TRUE, when login file is being processed. */
-static my_bool is_login_file= FALSE;
 
 /* Which directories are searched for options (and in which order) */
 
@@ -122,7 +130,7 @@ static my_bool is_login_file= FALSE;
 #define DEFAULT_DIRS_SIZE (MAX_DEFAULT_DIRS + 1)  /* Terminate with NULL */
 static const char **default_directories = NULL;
 
-#ifdef __WIN__
+#ifdef _WIN32
 static const char *f_extensions[]= { ".ini", ".cnf", 0 };
 #define NEWLINE "\r\n"
 #else
@@ -130,8 +138,10 @@ static const char *f_extensions[]= { ".cnf", 0 };
 #define NEWLINE "\n"
 #endif
 
+extern "C" {
 static int handle_default_option(void *in_ctx, const char *group_name,
                                  const char *option);
+}
 
 /*
    This structure defines the context that we pass to callback
@@ -140,21 +150,25 @@ static int handle_default_option(void *in_ctx, const char *group_name,
    was called from load_defaults.
 */
 
+typedef Prealloced_array<char*, 100> My_args;
 struct handle_option_ctx
 {
    MEM_ROOT *alloc;
-   DYNAMIC_ARRAY *args;
+   My_args *m_args;
    TYPELIB *group;
 };
 
 static int search_default_file(Process_option_func func, void *func_ctx,
-			       const char *dir, const char *config_file);
+                               const char *dir, const char *config_file,
+                               my_bool is_login_file);
 static int search_default_file_with_ext(Process_option_func func,
                                         void *func_ctx,
 					const char *dir, const char *ext,
-					const char *config_file, int recursion_level);
-static my_bool mysql_file_getline(char *str, int size, MYSQL_FILE *file);
-
+                                        const char *config_file,
+                                        int recursion_level,
+                                        my_bool is_login_file);
+static my_bool mysql_file_getline(char *str, int size, MYSQL_FILE *file,
+                                  my_bool is_login_file);
 
 /**
   Create the list of default directories.
@@ -230,6 +244,7 @@ fn_expand(const char *filename, char *result_buf)
   func_ctx                    It's context. Usually it is the structure to
                               store additional options.
   default_directories         List of default directories.
+  found_no_defaults           TRUE, if --no-defaults is specified.
 
   DESCRIPTION
     Process the default options from argc & argv
@@ -253,7 +268,8 @@ fn_expand(const char *filename, char *result_buf)
 
 int my_search_option_files(const char *conf_file, int *argc, char ***argv,
                            uint *args_used, Process_option_func func,
-                           void *func_ctx, const char **default_directories)
+                           void *func_ctx, const char **default_directories,
+                           my_bool is_login_file, my_bool found_no_defaults)
 {
   const char **dirs, *forced_default_file, *forced_extra_defaults;
   int error= 0;
@@ -267,10 +283,10 @@ int my_search_option_files(const char *conf_file, int *argc, char ***argv,
                                       (char **) &forced_default_file,
                                       (char **) &forced_extra_defaults,
                                       (char **) &my_defaults_group_suffix,
-                                      (char **) &my_login_path);
+                                      (char **) &my_login_path, found_no_defaults);
 
     if (! my_defaults_group_suffix)
-      my_defaults_group_suffix= getenv(STRINGIFY_ARG(DEFAULT_GROUP_SUFFIX_ENV));
+      my_defaults_group_suffix= getenv("MYSQL_GROUP_SUFFIX");
 
     if (forced_extra_defaults && !defaults_already_read)
     {
@@ -382,19 +398,22 @@ int my_search_option_files(const char *conf_file, int *argc, char ***argv,
   // If conf_file is an absolute path, we only read it
   if (dirname_length(conf_file))
   {
-    if ((error= search_default_file(func, func_ctx, NullS, conf_file)) < 0)
-      goto err;
+    if ((error= search_default_file(func, func_ctx, NullS, conf_file,
+                                    is_login_file)) < 0)
+    goto err;
   }
   // If my defaults file is set (from a previous run), we read it
   else if (my_defaults_file)
   {
     if ((error= search_default_file_with_ext(func, func_ctx, "", "",
-                                             my_defaults_file, 0)) < 0)
+                                             my_defaults_file, 0,
+                                             is_login_file)) < 0)
       goto err;
     if (error > 0)
     {
-      fprintf(stderr, "Could not open required defaults file: %s\n",
-              my_defaults_file);
+      my_message_local(ERROR_LEVEL,
+                       "Could not open required defaults file: %s",
+                       my_defaults_file);
       goto err;
     }
   }
@@ -404,18 +423,21 @@ int my_search_option_files(const char *conf_file, int *argc, char ***argv,
     {
       if (**dirs)
       {
-	if (search_default_file(func, func_ctx, *dirs, conf_file) < 0)
-	  goto err;
+       if (search_default_file(func, func_ctx, *dirs, conf_file,
+                               is_login_file) < 0)
+        goto err;
       }
       else if (my_defaults_extra_file)
       {
         if ((error= search_default_file_with_ext(func, func_ctx, "", "",
-                                                my_defaults_extra_file, 0)) < 0)
-	  goto err;				/* Fatal error */
+                                                 my_defaults_extra_file, 0,
+                                                 is_login_file)) < 0)
+          goto err;				/* Fatal error */
         if (error > 0)
         {
-          fprintf(stderr, "Could not open required defaults file: %s\n",
-                  my_defaults_extra_file);
+          my_message_local(ERROR_LEVEL,
+                           "Could not open required defaults file: %s",
+                           my_defaults_extra_file);
           goto err;
         }
       }
@@ -425,7 +447,8 @@ int my_search_option_files(const char *conf_file, int *argc, char ***argv,
   DBUG_RETURN(0);
 
 err:
-  fprintf(stderr,"Fatal error in defaults handling. Program aborted\n");
+  my_message_local(ERROR_LEVEL,
+                   "Fatal error in defaults handling. Program aborted!");
   DBUG_RETURN(1);
 }
 
@@ -466,9 +489,9 @@ static int handle_default_option(void *in_ctx, const char *group_name,
   {
     if (!(tmp= (char *) alloc_root(ctx->alloc, strlen(option) + 1)))
       return 1;
-    if (insert_dynamic(ctx->args, &tmp))
+    if (ctx->m_args->push_back(tmp))
       return 1;
-    strmov(tmp, option);
+    my_stpcpy(tmp, option);
   }
 
   return 0;
@@ -499,7 +522,8 @@ int get_defaults_options(int argc, char **argv,
                          char **defaults,
                          char **extra_defaults,
                          char **group_suffix,
-                         char **login_path)
+                         char **login_path,
+                         my_bool found_no_defaults)
 {
   int org_argc= argc, prev_argc= 0, default_option_count= 0;
   *defaults= *extra_defaults= *group_suffix= *login_path= 0;
@@ -576,6 +600,8 @@ int load_defaults(const char *conf_file, const char **groups,
   return my_load_defaults(conf_file, groups, argc, argv, &default_directories);
 }
 
+/** A global to turn off or on reading the mylogin file. On by default */
+my_bool my_defaults_read_login_file= TRUE;
 /*
   Read options from configurations files
 
@@ -617,7 +643,7 @@ int load_defaults(const char *conf_file, const char **groups,
 int my_load_defaults(const char *conf_file, const char **groups,
                   int *argc, char ***argv, const char ***default_directories)
 {
-  DYNAMIC_ARRAY args;
+  My_args my_args(key_memory_defaults);
   TYPELIB group;
   my_bool found_print_defaults= 0;
   uint args_used= 0;
@@ -626,10 +652,12 @@ int my_load_defaults(const char *conf_file, const char **groups,
   char *ptr,**res;
   struct handle_option_ctx ctx;
   const char **dirs;
+  char my_login_file[FN_REFLEN];
+  my_bool found_no_defaults= false;
   uint args_sep= my_getopt_use_args_separator ? 1 : 0;
   DBUG_ENTER("load_defaults");
 
-  init_alloc_root(&alloc,512,0);
+  init_alloc_root(key_memory_defaults, &alloc,512,0);
   if ((dirs= init_default_directories(&alloc)) == NULL)
     goto err;
   /*
@@ -646,45 +674,44 @@ int my_load_defaults(const char *conf_file, const char **groups,
   for (; *groups ; groups++)
     group.count++;
 
-  if (my_init_dynamic_array(&args, sizeof(char*),*argc, 32))
-    goto err;
-
   ctx.alloc= &alloc;
-  ctx.args= &args;
+  ctx.m_args= &my_args;
   ctx.group= &group;
 
   if ((error= my_search_option_files(conf_file, argc, argv,
                                      &args_used, handle_default_option,
-                                     (void *) &ctx, dirs)))
+                                     (void *) &ctx, dirs, false, found_no_defaults)))
   {
     free_root(&alloc,MYF(0));
     DBUG_RETURN(error);
   }
 
-  /* Read options from login group. */
-  is_login_file= TRUE;
-  if (my_default_get_login_file(my_login_file, sizeof(my_login_file)) &&
-      (error= my_search_option_files(my_login_file,argc, argv, &args_used,
+  if (my_defaults_read_login_file)
+  {
+    /* Read options from login group. */
+    if (my_default_get_login_file(my_login_file, sizeof(my_login_file)) &&
+      (error= my_search_option_files(my_login_file, argc, argv, &args_used,
                                      handle_default_option, (void *) &ctx,
-                                     dirs)))
-  {
-    free_root(&alloc,MYF(0));
-    DBUG_RETURN(error);
+                                     dirs, true, found_no_defaults)))
+    {
+      free_root(&alloc, MYF(0));
+      DBUG_RETURN(error);
+    }
   }
-  is_login_file= FALSE;
-
   /*
     Here error contains <> 0 only if we have a fully specified conf_file
     or a forced default file
   */
-  if (!(ptr=(char*) alloc_root(&alloc,sizeof(alloc)+
-			       (args.elements + *argc + 1 + args_sep) *sizeof(char*))))
+  if (!(ptr=(char*)
+        alloc_root(&alloc,sizeof(alloc)+
+                   (my_args.size() + *argc + 1 + args_sep) *sizeof(char*))))
     goto err;
   res= (char**) (ptr+sizeof(alloc));
 
   /* copy name + found arguments + command line arguments to new array */
   res[0]= argv[0][0];  /* Name MUST be set, even by embedded library */
-  memcpy((uchar*) (res+1), args.buffer, args.elements*sizeof(char*));
+  if (!my_args.empty())
+    memcpy((res+1), &my_args[0], my_args.size() * sizeof(char*));
   /* Skip --defaults-xxx options */
   (*argc)-= args_used;
   (*argv)+= args_used;
@@ -703,18 +730,18 @@ int my_load_defaults(const char *conf_file, const char **groups,
   {
     /* set arguments separator for arguments from config file and
        command line */
-    set_args_separator(&res[args.elements+1]);
+    set_args_separator(&res[my_args.size() + 1]);
   }
 
   if (*argc)
-    memcpy((uchar*) (res+1+args.elements+args_sep), (char*) ((*argv)+1),
+    memcpy((uchar*) (res + 1 + my_args.size() + args_sep),
+           (char*) ((*argv)+1),
 	   (*argc-1)*sizeof(char*));
-  res[args.elements+ *argc+args_sep]=0;                /* last null */
+  res[my_args.size() + *argc + args_sep]= 0;  /* last null */
 
-  (*argc)+=args.elements+args_sep;
-  *argv= (char**) res;
+  (*argc)+= my_args.size() + args_sep;
+  *argv= res;
   *(MEM_ROOT*) ptr= alloc;			/* Save alloc root for free */
-  delete_dynamic(&args);
 
   if (default_directories)
     *default_directories= dirs;
@@ -729,7 +756,12 @@ int my_load_defaults(const char *conf_file, const char **groups,
 	   **argv);
     for (i=1 ; i < *argc ; i++)
       if (!my_getopt_is_args_separator((*argv)[i])) /* skip arguments separator */
-        printf("%s ", (*argv)[i]);
+      {
+        if(strncmp((*argv)[i], "--password", 10) == 0)
+          printf("%s ", "--password=*****");
+        else
+          printf("%s ", (*argv)[i]);
+      }
     puts("");
     exit(0);
   }
@@ -737,7 +769,8 @@ int my_load_defaults(const char *conf_file, const char **groups,
   DBUG_RETURN(0);
 
  err:
-  fprintf(stderr,"Fatal error in defaults handling. Program aborted\n");
+  my_message_local(ERROR_LEVEL,
+                   "Fatal error in defaults handling. Program aborted!");
   exit(1);
   return 0;					/* Keep compiler happy */
 }
@@ -754,7 +787,8 @@ void free_defaults(char **argv)
 static int search_default_file(Process_option_func opt_handler,
                                void *handler_ctx,
 			       const char *dir,
-			       const char *config_file)
+                               const char *config_file,
+                               my_bool is_login_file)
 {
   char **ext;
   const char *empty_list[]= { "", 0 };
@@ -766,7 +800,7 @@ static int search_default_file(Process_option_func opt_handler,
     int error;
     if ((error= search_default_file_with_ext(opt_handler, handler_ctx,
                                              dir, *ext,
-					     config_file, 0)) < 0)
+                                             config_file, 0, is_login_file)) < 0)
       return error;
   }
   return 0;
@@ -814,9 +848,9 @@ static char *get_argument(const char *keyword, size_t kwlen,
   /* Print error msg if there is nothing after !include* directive */
   if (end <= ptr)
   {
-    fprintf(stderr,
-	    "error: Wrong '!%s' directive in config file: %s at line %d\n",
-	    keyword, name, line);
+    my_message_local(ERROR_LEVEL,
+                     "Wrong '!%s' directive in config file %s at line %d!",
+                     keyword, name, line);
     return 0;
   }
   return ptr;
@@ -838,6 +872,7 @@ static char *get_argument(const char *keyword, size_t kwlen,
     group			groups to read
     recursion_level             the level of recursion, got while processing
                                 "!include" or "!includedir"
+    is_login_file               TRUE, when login file is being processed.
 
   RETURN
     0   Success
@@ -850,7 +885,8 @@ static int search_default_file_with_ext(Process_option_func opt_handler,
                                         const char *dir,
                                         const char *ext,
                                         const char *config_file,
-                                        int recursion_level)
+                                        int recursion_level,
+                                        my_bool is_login_file)
 {
   char name[FN_REFLEN + 10], buff[4096], curr_gr[4096], *ptr, *end, **tmp_ext;
   char *value, option[4096+2], tmp[FN_REFLEN];
@@ -875,11 +911,11 @@ static int search_default_file_with_ext(Process_option_func opt_handler,
   }
   else
   {
-    strmov(name,config_file);
+    my_stpcpy(name,config_file);
   }
   fn_format(name,name,"","",4);
 
-  if ((rc= check_file_permissions(name)) < 2)
+  if ((rc= check_file_permissions(name, is_login_file)) < 2)
     return (int) rc;
 
   if (is_login_file)
@@ -894,7 +930,7 @@ static int search_default_file_with_ext(Process_option_func opt_handler,
       return 1;                                 /* Ignore wrong files */
   }
 
-  while (mysql_file_getline(buff, sizeof(buff) - 1, fp))
+  while (mysql_file_getline(buff, sizeof(buff) - 1, fp, is_login_file))
   {
     line++;
     /* Ignore comment and empty lines */
@@ -914,10 +950,10 @@ static int search_default_file_with_ext(Process_option_func opt_handler,
              end--)
         {}
         end[0]= 0;
-        fprintf(stderr,
-                "Warning: skipping '%s' directive as maximum include"
-                "recursion level was reached in file %s at line %d\n",
-                ptr, name, line);
+        my_message_local(WARNING_LEVEL,
+                         "skipping '%s' directive as maximum include"
+                         "recursion level was reached in file %s at line %d!",
+                         ptr, name, line);
         continue;
       }
 
@@ -937,7 +973,7 @@ static int search_default_file_with_ext(Process_option_func opt_handler,
         if (!(search_dir= my_dir(ptr, MYF(MY_WME))))
           goto err;
 
-        for (i= 0; i < (uint) search_dir->number_off_files; i++)
+        for (i= 0; i < search_dir->number_off_files; i++)
         {
           search_file= search_dir->dir_entry + i;
           ext= fn_ext(search_file->name);
@@ -955,7 +991,7 @@ static int search_default_file_with_ext(Process_option_func opt_handler,
                       MY_UNPACK_FILENAME | MY_SAFE_PATH);
 
             search_default_file_with_ext(opt_handler, handler_ctx, "", "", tmp,
-                                         recursion_level + 1);
+                                         recursion_level + 1, is_login_file);
           }
         }
 
@@ -970,7 +1006,7 @@ static int search_default_file_with_ext(Process_option_func opt_handler,
 	  goto err;
 
         search_default_file_with_ext(opt_handler, handler_ctx, "", "", ptr,
-                                     recursion_level + 1);
+                                     recursion_level + 1, is_login_file);
       }
 
       continue;
@@ -979,12 +1015,12 @@ static int search_default_file_with_ext(Process_option_func opt_handler,
     if (*ptr == '[')				/* Group name */
     {
       found_group=1;
-      if (!(end=(char *) strchr(++ptr,']')))
+      if (!(end= strchr(++ptr,']')))
       {
-	fprintf(stderr,
-		"error: Wrong group definition in config file: %s at line %d\n",
-		name,line);
-	goto err;
+        my_message_local(ERROR_LEVEL,
+                         "Wrong group definition in config file %s at line %d!",
+                         name,line);
+        goto err;
       }
       /* Remove end space */
       for ( ; my_isspace(&my_charset_latin1, end[-1]); end --)
@@ -1001,14 +1037,18 @@ static int search_default_file_with_ext(Process_option_func opt_handler,
     }
     if (!found_group)
     {
-      fprintf(stderr,
-	      "error: Found option without preceding group in config file: %s at line: %d\n",
-	      name,line);
+      my_message_local(ERROR_LEVEL,
+                       "Found option without preceding group in config file"
+                       " %s at line %d!", name,line);
       goto err;
     }
-    
-   
-    end= remove_end_comment(ptr);
+
+    /* comments are not supported in login file */
+    if (!is_login_file)
+      end = remove_end_comment(ptr);
+    else
+      end = ptr + strlen(ptr);
+
     if ((value= strchr(ptr, '=')))
       end= value;				/* Option without argument */
     for ( ; my_isspace(&my_charset_latin1, end[-1]) ; end--)
@@ -1016,7 +1056,7 @@ static int search_default_file_with_ext(Process_option_func opt_handler,
 
     if (!value)
     {
-      strmake(strmov(option,"--"),ptr, (size_t) (end-ptr));
+      strmake(my_stpcpy(option,"--"),ptr, (size_t) (end-ptr));
       if (opt_handler(handler_ctx, curr_gr, option))
         goto err;
     }
@@ -1046,7 +1086,7 @@ static int search_default_file_with_ext(Process_option_func opt_handler,
 	value++;
 	value_end--;
       }
-      ptr=strnmov(strmov(option,"--"),ptr,(size_t) (end-ptr));
+      ptr=my_stpnmov(my_stpcpy(option,"--"),ptr,(size_t) (end-ptr));
       *ptr++= '=';
 
       for ( ; value != value_end; value++)
@@ -1132,15 +1172,17 @@ static char *remove_end_comment(char *ptr)
   of scrambled login file, the line read is first
   decrypted and then returned.
 
-  @param str  [out]       Buffer to store the read text.
-  @param size [in]        At max, size-1 bytes to be read.
-  @param file [in]        Source file.
+  @param str           [out]  Buffer to store the read text.
+  @param size          [in]   At max, size-1 bytes to be read.
+  @param file          [in]   Source file.
+  @param is_login_file [in]   TRUE, when login file is being processed.
 
   @return 1               Success
           0               Error
 */
 
-static my_bool mysql_file_getline(char *str, int size, MYSQL_FILE *file)
+static my_bool mysql_file_getline(char *str, int size, MYSQL_FILE *file,
+                                  my_bool is_login_file)
 {
   uchar cipher[4096], len_buf[MAX_CIPHER_STORE_LEN];
   static unsigned char my_key[LOGIN_KEY_LEN];
@@ -1202,7 +1244,7 @@ void my_print_default_files(const char *conf_file)
   {
     const char **dirs;
     MEM_ROOT alloc;
-    init_alloc_root(&alloc,512,0);
+    init_alloc_root(key_memory_defaults, &alloc, 512, 0);
 
     if ((dirs= init_default_directories(&alloc)) == NULL)
     {
@@ -1279,20 +1321,20 @@ static int add_directory(MEM_ROOT *alloc, const char *dir, const char **dirs)
   char buf[FN_REFLEN];
   size_t len;
   char *p;
-  my_bool err __attribute__((unused));
+  my_bool err MY_ATTRIBUTE((unused));
 
   len= normalize_dirname(buf, dir);
   if (!(p= strmake_root(alloc, buf, len)))
     return 1;  /* Failure */
   /* Should never fail if DEFAULT_DIRS_SIZE is correct size */
   err= array_append_string_unique(p, dirs, DEFAULT_DIRS_SIZE);
-  DBUG_ASSERT(err == FALSE);
+  assert(err == FALSE);
 
   return 0;
 }
 
 
-#ifdef __WIN__
+#ifdef _WIN32
 /*
   This wrapper for GetSystemWindowsDirectory() will dynamically bind to the
   function if it is available, emulate it on NT4 Terminal Server by stripping
@@ -1357,7 +1399,7 @@ static const char *my_get_module_parent(char *buf, size_t size)
 
   return buf;
 }
-#endif /* __WIN__ */
+#endif /* _WIN32 */
 
 
 static const char **init_default_directories(MEM_ROOT *alloc)
@@ -1371,7 +1413,7 @@ static const char **init_default_directories(MEM_ROOT *alloc)
     return NULL;
   memset(dirs, 0, DEFAULT_DIRS_SIZE * sizeof(char *));
 
-#ifdef __WIN__
+#ifdef _WIN32
 
   {
     char fname_buffer[FN_REFLEN];
@@ -1405,7 +1447,7 @@ static const char **init_default_directories(MEM_ROOT *alloc)
   /* Placeholder for --defaults-extra-file=<path> */
   errors += add_directory(alloc, "", dirs);
 
-#if !defined(__WIN__)
+#if !defined(_WIN32)
   errors += add_directory(alloc, "~/", dirs);
 #endif
 
@@ -1453,15 +1495,16 @@ int my_default_get_login_file(char *file_name, size_t file_name_size)
 /**
   Check file permissions of the option file.
 
-  @param file_name [in]       Name of the option file.
+  @param file_name     [in]   Name of the option file.
+  @param is_login_file [in]   TRUE, when login file is being processed.
 
   @return  0 - Non-allowable file permissions.
            1 - Failed to stat.
            2 - Success.
 */
-int check_file_permissions(const char *file_name)
+int check_file_permissions(const char *file_name, my_bool is_login_file)
 {
-#if !defined(__WIN__)
+#if !defined(_WIN32)
   MY_STAT stat_info;
 
   if (!my_stat(file_name,&stat_info,MYF(0)))
@@ -1473,8 +1516,8 @@ int check_file_permissions(const char *file_name)
   if (is_login_file && (stat_info.st_mode & (S_IXUSR | S_IRWXG | S_IRWXO))
       && (stat_info.st_mode & S_IFMT) == S_IFREG)
   {
-    fprintf(stderr, "Warning: %s should be readable/writable only by "
-            "current user.\n", file_name);
+    my_message_local(WARNING_LEVEL, "%s should be readable/writable only by "
+            "current user.", file_name);
     return 0;
   }
   /*
@@ -1486,8 +1529,8 @@ int check_file_permissions(const char *file_name)
            (stat_info.st_mode & S_IFMT) == S_IFREG)
 
   {
-    fprintf(stderr, "Warning: World-writable config file '%s' is ignored\n",
-            file_name);
+    my_message_local(WARNING_LEVEL,
+                     "World-writable config file '%s' is ignored.", file_name);
     return 0;
   }
 #endif

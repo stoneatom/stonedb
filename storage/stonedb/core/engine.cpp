@@ -39,6 +39,9 @@
 #include "util/bitset.h"
 #include "util/fs.h"
 #include "util/thread_pool.h"
+#include "mysqld_thd_manager.h"
+#include "mysql/thread_pool_priv.h"
+#include "thr_lock.h"
 
 namespace stonedb {
 namespace dbhandler {
@@ -623,7 +626,7 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
           "LOOKUP can only be declared on CHAR/VARCHAR column. Ignored on "
           "column ";
       s = s + (field.table ? std::string(field.table->s->table_name.str) + "." : "") + field.field_name;
-      push_warning(current_thd, Sql_condition::WARN_LEVEL_WARN, WARN_OPTION_IGNORED, s.c_str());
+      push_warning(current_thd, Sql_condition::SL_WARNING, WARN_OPTION_IGNORED, s.c_str());
     }
   } else if (str.find("NOCOMPRESS") != std::string::npos)
     fmt = common::PackFmt::NOCOMPRESS;
@@ -737,7 +740,7 @@ void Engine::CommitTx(THD *thd, bool all) {
 
 void Engine::Rollback(THD *thd, bool all, bool force_error_message) {
   force_error_message = force_error_message || (!all && thd_test_options(thd, OPTION_NOT_AUTOCOMMIT));
-  STONEDB_LOG(LogCtl_Level::ERROR, "Roll back query '%s'", thd_query_string(thd)->str);
+  STONEDB_LOG(LogCtl_Level::ERROR, "Roll back query '%s'", thd->query().str);
   if (current_tx) {
     GetTx(thd)->Rollback(thd, force_error_message);
     ClearTx(thd);
@@ -844,7 +847,7 @@ void Engine::UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *sour
     uint len = uint(source_field->comment.length) + buf_size_count + buf_ratio_count + 3;
     //  char* full_comment = new char(len);  !!!! DO NOT USE NEW
     //  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11
-    char *full_comment = (char *)my_malloc(len, MYF(0));
+    char *full_comment = (char *)my_malloc(0, len, MYF(0));
     for (uint i = 0; i < len; i++) full_comment[i] = ' ';
     full_comment[len - 1] = 0;
 
@@ -1067,7 +1070,7 @@ void Engine::PrepareAlterTable(const std::string &table_path, std::vector<Field 
   HandleDeferredJobs();
 
   auto tab = current_tx->GetTableByPath(table_path);
-  RCTable::Alter(table_path, new_cols, old_cols, tab->NumOfObj());
+  RCTable::Alter(table_path, new_cols, old_cols, tab->NoObj());
   cache.ReleaseTable(tab->GetID());
   UnRegisterTable(table_path);
 }
@@ -1081,72 +1084,78 @@ static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec
   std::tie(db_name, tab_name) = GetNames(table_path);
   std::string load_data_query = "LOAD DELAYED INSERT DATA INTO TABLE " + db_name + "." + tab_name;
 
-  my_thread_init();
-  THD *thd = new THD;
-  thd->thread_stack = (char *)&thd;
-  thd->security_ctx->skip_grants();
-  init_thr_lock();
-  thd->store_globals();
+    LEX_CSTRING dbname,tabname,loadquery;
+    dbname.str=const_cast<char *>(db_name.c_str());
+    dbname.length=db_name.length();
+    loadquery.str=const_cast<char *>(load_data_query.c_str());
+    loadquery.length=load_data_query.length();
+    tabname.str=const_cast<char *>(tab_name.c_str());
+    tabname.length=tab_name.length();
+    // END
+	
+	//STONEDB UPGRADE
+    Global_THD_manager *thd_manager = Global_THD_manager::get_instance();//global thread manager
+    
+	THD *thd = new THD;
+    thd->thread_stack = (char *)&thd;
+    my_thread_init();
+    thd->store_globals();
+    thd->m_security_ctx->skip_grants();
+    
+    /* Add thread to THD list so that's it's visible in 'show processlist' */
+    thd->set_new_thread_id();
+    thd->set_current_time();
+    thd_manager->add_thd(thd);
+    mysql_reset_thd_for_next_command(thd);
+    thd->init_for_queries();
+    thd->set_db(dbname);
+    // Forge LOAD DATA INFILE query which will be used in SHOW PROCESS LIST
+    thd->set_query(loadquery);
+    thd->set_query_id(next_query_id());
+    thd->update_charset();  // for the charset change to take effect
+    // Usually lex_start() is called by mysql_parse(), but we need
+    // it here as the present method does not call mysql_parse().
+    lex_start(thd);
+    TABLE_LIST tl;
+    tl.init_one_table(thd->strmake(thd->db().str, thd->db().length), thd->db().length, tabname.str, tabname.length,
+                      tabname.str, TL_WRITE_CONCURRENT_INSERT);//STONEDB UPGRADE
+    tl.updating = 1;
 
-  /* Add thread to THD list so that's it's visible in 'show processlist' */
-  mysql_mutex_lock(&LOCK_thread_count);
-  thd->thread_id = thd->variables.pseudo_thread_id = thread_id++;
-  thd->set_current_time();
-  add_global_thread(thd);
-  mysql_mutex_unlock(&LOCK_thread_count);
+    // the table will be opened in mysql_load
+    thd->lex->sql_command = SQLCOM_LOAD;
+    sql_exchange ex("buffered_insert", 0, FILETYPE_MEM);
+    ex.file_name = const_cast<char *>(addr.c_str());
+    ex.skip_lines = tid;  // this is ugly...
+    thd->lex->select_lex->context.resolve_in_table_list_only(&tl);
+    if (open_temporary_tables(thd, &tl)) {
+        // error/////
+    }
+    List<Item> tmp_list;  // dummy
+    if (mysql_load(thd, &ex, &tl, tmp_list, tmp_list, tmp_list, DUP_ERROR, false)) {
+        thd->is_slave_error = 1;
+    }
 
-  mysql_reset_thd_for_next_command(thd);
-
-  thd->init_for_queries();
-  thd->set_db(db_name.c_str(), db_name.length());
-  // Forge LOAD DATA INFILE query which will be used in SHOW PROCESS LIST
-  thd->set_query_and_id(const_cast<char *>(load_data_query.c_str()), load_data_query.length(), thd->charset(),
-                        next_query_id());
-  thd->update_charset();  // for the charset change to take effect
-
-  // Usually lex_start() is called by mysql_parse(), but we need
-  // it here as the present method does not call mysql_parse().
-  lex_start(thd);
-  TABLE_LIST tl;
-  tl.init_one_table(thd->strmake(thd->db, thd->db_length), thd->db_length, tab_name.c_str(), tab_name.length(),
-                    tab_name.c_str(), TL_WRITE_CONCURRENT_INSERT);
-  tl.updating = 1;
-  // the table will be opened in mysql_load
-  thd->lex->local_file = false;
-  thd->lex->sql_command = SQLCOM_LOAD;
-  sql_exchange ex("buffered_insert", 0, FILETYPE_MEM);
-  ex.file_name = const_cast<char *>(addr.c_str());
-  ex.skip_lines = tid;  // this is ugly...
-  thd->lex->select_lex.context.resolve_in_table_list_only(&tl);
-  if (open_temporary_tables(thd, &tl)) {
-    // error
-  }
-  List<Item> tmp_list;  // dummy
-  if (mysql_load(thd, &ex, &tl, tmp_list, tmp_list, tmp_list, DUP_ERROR, false, false)) {
-    thd->is_slave_error = 1;
-  }
-
-  thd->catalog = 0;
-  thd->set_db(NULL, 0); /* will free the current database */
-  thd->reset_query();
-  thd->get_stmt_da()->set_overwrite_status(true);
-  thd->is_error() ? trans_rollback_stmt(thd) : trans_commit_stmt(thd);
-  thd->get_stmt_da()->set_overwrite_status(false);
-  close_thread_tables(thd);
-  if (thd->transaction_rollback_request) {
-    trans_rollback_implicit(thd);
-    thd->mdl_context.release_transactional_locks();
-  } else if (!thd->in_multi_stmt_transaction_mode())
-    thd->mdl_context.release_transactional_locks();
-  else
-    thd->mdl_context.release_statement_locks();
+    thd->set_catalog({0, 1});//STONEDB UPGRADE
+    thd->set_db({NULL,0}); /* will free the current database */
+    thd->reset_query();
+    thd->get_stmt_da()->set_overwrite_status(true);
+    thd->is_error() ? trans_rollback_stmt(thd) : trans_commit_stmt(thd);
+    thd->get_stmt_da()->set_overwrite_status(false);
+    close_thread_tables(thd);
+    if (thd->transaction_rollback_request) {
+        trans_rollback_implicit(thd);
+        thd->mdl_context.release_transactional_locks();
+    } else if (!thd->in_multi_stmt_transaction_mode())
+        thd->mdl_context.release_transactional_locks();
+    else
+        thd->mdl_context.release_statement_locks();
 
   free_root(thd->mem_root, MYF(MY_KEEP_PREALLOC));
   if (thd->is_fatal_error) {
     STONEDB_LOG(LogCtl_Level::ERROR, "LOAD DATA failed on table '%s'", tab_name.c_str());
   }
   thd->release_resources();
-  remove_global_thread(thd);
+  thd_manager->remove_thd(thd);
   delete thd;
   my_thread_end();
 }
@@ -1164,7 +1173,7 @@ void Engine::ProcessDelayedInsert() {
   mysql_mutex_lock(&LOCK_server_started);
   while (!mysqld_server_started) {
     struct timespec abstime;
-    set_timespec(abstime, 1);
+    set_timespec(&abstime, 1);
     mysql_cond_timedwait(&COND_server_started, &LOCK_server_started, &abstime);
     if (exiting) {
       mysql_mutex_unlock(&LOCK_server_started);
@@ -1219,7 +1228,7 @@ void Engine::ProcessDelayedMerge() {
   mysql_mutex_lock(&LOCK_server_started);
   while (!mysqld_server_started) {
     struct timespec abstime;
-    set_timespec(abstime, 1);
+    set_timespec(&abstime, 1);
     mysql_cond_timedwait(&COND_server_started, &LOCK_server_started, &abstime);
     if (exiting) {
       mysql_mutex_unlock(&LOCK_server_started);
@@ -1329,8 +1338,9 @@ void Engine::LogStat() {
     };
 
     STATUS_VAR sv;
+	mysql_mutex_lock(&LOCK_status);
     calc_sum_of_all_status(&sv);
-
+	mysql_mutex_unlock(&LOCK_status);
     std::string msg("Command: ");
     for (auto &c : cmds) {
       auto delta = sv.com_stat[c] - saved_com_stat[c];
@@ -1476,7 +1486,7 @@ common::SDBError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table
 
     // We must invalidate the table in query cache before binlog writing and
     // ha_autocommit_...
-    query_cache_invalidate3(thd, table_list, 0);
+    query_cache.invalidate(thd, table_list, 0);
 
     COPY_INFO::Statistics stats;
     stats.records = ha_rows(tab->NoRecordsLoaded());
@@ -1488,7 +1498,7 @@ common::SDBError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table
     my_snprintf(name, sizeof(name), ER(ER_LOAD_INFO), (long)stats.records,
                 0,  // deleted
                 0,  // skipped
-                (long)thd->get_stmt_da()->current_statement_warn_count());
+                (long)thd->get_stmt_da()->current_statement_cond_count());
 
     /* ok to client */
     my_ok(thd, stats.records, 0L, name);
@@ -1498,7 +1508,8 @@ common::SDBError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table
     sdbe = e;
   }
 
-  if (thd->transaction.stmt.cannot_safely_rollback()) thd->transaction.all.mark_modified_non_trans_table();
+    //if (thd->transaction.stmt.cannot_safely_rollback())
+    //    thd->transaction.all.mark_modified_non_trans_table();
 
   if (transactional_table) {
     if (sdbe == common::ErrorCode::SUCCESS)
@@ -1511,7 +1522,7 @@ common::SDBError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table
     mysql_unlock_tables(thd, thd->lock);
     thd->lock = 0;
   }
-  thd->abort_on_warning = 0;
+  //thd->abort_on_warning = 0;
   return sdbe;
 }
 
@@ -1526,7 +1537,7 @@ bool Engine::IsSDBRoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects_li
 
   bool has_SDBTable = false;
   for (TABLE_LIST *tl = table_list; tl; tl = tl->next_global) {  // SZN:we go through tables
-    if (!tl->derived && !tl->view) {
+    if (!tl->is_view_or_derived() && !tl->is_view()) {
       // In this list we have all views, derived tables and their
       // sources, so anyway we walk through all the source tables
       // even though we seem to reject the control of views
@@ -1692,16 +1703,16 @@ common::SDBError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_params
                                 TABLE *table, void *arg, bool for_exporter) {
   const CHARSET_INFO *cs = ex.cs;
   bool local_load = for_exporter ? false : (bool)(thd.lex)->local_file;
-  uint value_list_elements = (thd.lex)->value_list.elements;
+  uint value_list_elements = (thd.lex)->load_value_list.elements;
   // thr_lock_type lock_option = (thd.lex)->lock_option;
 
   int io_mode = -1;
   char name[FN_REFLEN];
   char *tdb = 0;
   if (table) {
-    tdb = table->s->db.str ? table->s->db.str : thd.db;
+    tdb = table->s->db.str ? table->s->db.str : (char*)thd.db().str;
   } else
-    tdb = thd.db;
+    tdb = (char*)thd.db().str;
 
   io_params = CreateIOParameters(&thd, table, arg);
   short sign, minutes;
@@ -1746,10 +1757,10 @@ common::SDBError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_params
   }
   io_params->SetOutput(io_mode, name);
 
-  if (ex.escaped->length() > 1)
+  if (ex.field.escaped->length() > 1)
     return common::SDBError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter escape std::string not supported.");
 
-  if (ex.enclosed->length() > 1 && (ex.enclosed->length() != 4 || strcasecmp(ex.enclosed->ptr(), "NULL") != 0))
+  if (ex.field.enclosed->length() > 1 && (ex.field.enclosed->length() != 4 || strcasecmp(ex.field.enclosed->ptr(), "NULL") != 0))
     return common::SDBError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter enclose std::string not supported.");
 
   if (!for_exporter) {
@@ -1758,26 +1769,26 @@ common::SDBError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_params
   }
 
   if (stonedb_sysvar_usemysqlimportexportdefaults) {
-    io_params->SetEscapeCharacter(*ex.escaped->ptr());
-    io_params->SetDelimiter(ex.field_term->ptr());
-    io_params->SetLineTerminator(ex.line_term->ptr());
-    if (ex.enclosed->length() == 4 && strcasecmp(ex.enclosed->ptr(), "NULL") == 0)
+    io_params->SetEscapeCharacter(*ex.field.escaped->ptr());
+    io_params->SetDelimiter(ex.field.field_term->ptr());
+    io_params->SetLineTerminator(ex.line.line_term->ptr());
+    if (ex.field.enclosed->length() == 4 && strcasecmp(ex.field.enclosed->ptr(), "NULL") == 0)
       io_params->SetParameter(system::Parameter::STRING_QUALIFIER, '\0');
     else
-      io_params->SetParameter(system::Parameter::STRING_QUALIFIER, *ex.enclosed->ptr());
+      io_params->SetParameter(system::Parameter::STRING_QUALIFIER, *ex.field.enclosed->ptr());
 
   } else {
-    if (ex.escaped->alloced_length() != 0) io_params->SetEscapeCharacter(*ex.escaped->ptr());
+    if (ex.field.escaped->alloced_length() != 0) io_params->SetEscapeCharacter(*ex.field.escaped->ptr());
 
-    if (ex.field_term->alloced_length() != 0) io_params->SetDelimiter(ex.field_term->ptr());
+    if (ex.field.field_term->alloced_length() != 0) io_params->SetDelimiter(ex.field.field_term->ptr());
 
-    if (ex.line_term->alloced_length() != 0) io_params->SetLineTerminator(ex.line_term->ptr());
+    if (ex.line.line_term->alloced_length() != 0) io_params->SetLineTerminator(ex.line.line_term->ptr());
 
-    if (ex.enclosed->length()) {
-      if (ex.enclosed->length() == 4 && strcasecmp(ex.enclosed->ptr(), "NULL") == 0)
+    if (ex.field.enclosed->length()) {
+      if (ex.field.enclosed->length() == 4 && strcasecmp(ex.field.enclosed->ptr(), "NULL") == 0)
         io_params->SetParameter(system::Parameter::STRING_QUALIFIER, '\0');
       else
-        io_params->SetParameter(system::Parameter::STRING_QUALIFIER, *ex.enclosed->ptr());
+        io_params->SetParameter(system::Parameter::STRING_QUALIFIER, *ex.field.enclosed->ptr());
     }
   }
 
@@ -1803,9 +1814,9 @@ common::SDBError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_params
     io_params->SetParameter(system::Parameter::SKIP_LINES, (int64_t)ex.skip_lines);
   }
 
-  if (ex.line_start != 0 && ex.line_start->length() != 0) {
+  if (ex.line.line_start != 0 && ex.line.line_start->length() != 0) {
     unsupported_syntax = true;
-    io_params->SetParameter(system::Parameter::LINE_STARTER, std::string(ex.line_start->ptr()));
+    io_params->SetParameter(system::Parameter::LINE_STARTER, std::string(ex.line.line_start->ptr()));
   }
 
   if (local_load && ((thd.lex)->sql_command == SQLCOM_LOAD)) {
@@ -1817,13 +1828,13 @@ common::SDBError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_params
     io_params->SetParameter(system::Parameter::VALUE_LIST_ELEMENTS, (int64_t)value_list_elements);
   }
 
-  if (ex.opt_enclosed) {
+  if (ex.field.opt_enclosed) {
     // unsupported_syntax = true;
     io_params->SetParameter(system::Parameter::OPTIONALLY_ENCLOSED, 1);
   }
 
   if (unsupported_syntax)
-    push_warning(&thd, Sql_condition::WARN_LEVEL_NOTE, ER_UNKNOWN_ERROR,
+    push_warning(&thd, Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
                  "Query contains syntax that is unsupported and will be ignored.");
   return common::ErrorCode::SUCCESS;
 }

@@ -20,7 +20,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-# We want boost 1.66.0 in order to build our boost/geometry code.
+# We want boost 1.59.0 in order to build our boost/geometry code.
 # The boost tarball is fairly big, and takes several minutes
 # to download. So we recommend downloading/unpacking it
 # only once, in a place visible from any bzr sandbox.
@@ -164,7 +164,7 @@ ENDIF()
 # There is a similar option in unittest/gunit.
 # But the boost tarball is much bigger, so we have a separate option.
 OPTION(DOWNLOAD_BOOST "Download boost from sourceforge." OFF)
-SET(DOWNLOAD_BOOST_TIMEOUT 6000 CACHE STRING
+SET(DOWNLOAD_BOOST_TIMEOUT 600 CACHE STRING
   "Timeout in seconds when downloading boost.")
 
 # If we could not find it, then maybe download it.

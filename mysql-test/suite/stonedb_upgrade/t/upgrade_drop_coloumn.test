@@ -169,13 +169,13 @@ drop table t1;
 SHOW CREATE TABLE column_type_test;
 alter table column_type_test  drop column c_longblob;
 insert into column_type_test(c_tinyint,c_smallint,c_mediumint,c_bigint,c_float,c_double,c_decimal,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
-values(105,105,105,105,5.2,10.88,105.083,'2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','chenhui','hello','bcdefghijklmn');
+values(105,105,105,105,5.2,10.88,105.083,'2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom','hello','bcdefghijklmn');
 insert into column_type_test(c_tinyint,c_smallint,c_mediumint,c_bigint,c_float,c_double,c_decimal,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
-values(106,106,106,106,5.2,10.88,106.083,'2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','chenhui','hello','bcdefghijklmn');
+values(106,106,106,106,5.2,10.88,106.083,'2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom','hello','bcdefghijklmn');
 insert into column_type_test(c_tinyint,c_smallint,c_mediumint,c_bigint,c_float,c_double,c_decimal,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
-values(107,107,107,107,5.2,10.88,107.083,'2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','chenhui','hello','bcdefghijklmn');
+values(107,107,107,107,5.2,10.88,107.083,'2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom','hello','bcdefghijklmn');
 insert into column_type_test(c_tinyint,c_smallint,c_mediumint,c_bigint,c_float,c_double,c_decimal,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
-values(108,108,108,108,5.2,10.88,108.083,'2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','chenhui','hello','bcdefghijklmn');
+values(108,108,108,108,5.2,10.88,108.083,'2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom','hello','bcdefghijklmn');
 
 select * from column_type_test;
 drop table column_type_test;

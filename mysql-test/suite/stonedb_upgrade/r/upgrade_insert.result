@@ -46,22 +46,22 @@ column_type_test	CREATE TABLE `column_type_test` (
   `c_longblob` longblob COMMENT 'longblob'
 ) ENGINE=STONEDB DEFAULT CHARSET=utf8
 insert into column_type_test(c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
-values(100,100,100,100,100,5.2,10.88,100.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 10:20:01','10:20:01','chenhui','hello','abcdefghijklmn');
+values(100,100,100,100,100,5.2,10.88,100.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 10:20:01','10:20:01','stoneatom','hello','abcdefghijklmn');
 insert into column_type_test(c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
-values(100,100,100,100,100,5.2,10.88,100.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 10:20:01','10:20:01','chenhui','hello','abcdefghijklmn');
+values(100,100,100,100,100,5.2,10.88,100.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 10:20:01','10:20:01','stoneatom','hello','abcdefghijklmn');
 insert into column_type_test(c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
-values(100,100,100,100,100,5.2,10.88,100.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 10:20:01','10:20:01','chenhui','hello','abcdefghijklmn');
+values(100,100,100,100,100,5.2,10.88,100.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 10:20:01','10:20:01','stoneatom','hello','abcdefghijklmn');
 insert into column_type_test(c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
-values(100,100,100,100,100,5.2,10.88,100.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 10:20:01','10:20:01','chenhui','hello','abcdefghijklmn');
+values(100,100,100,100,100,5.2,10.88,100.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 10:20:01','10:20:01','stoneatom','hello','abcdefghijklmn');
 select * from column_type_test;
 c_tinyint	c_smallint	c_mediumint	c_int	c_bigint	c_float	c_double	c_decimal	c_date	c_datetime	c_timestamp	c_time	c_char	c_varchar	c_blob	c_text	c_longblob
-100	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-05-23 21:59:13	10:20:01	chenhui	hello	NULL	bcdefghijklmn	NULL
-101	101	101	101	101	5.2	10.88	101.08300	2016-02-25	2016-02-25 10:20:01	2056-03-28 05:56:01	10:20:01	chenhui	hello	NULL	bcdefghijklmn	NULL
-102	102	102	102	102	5.2	10.88	102.08300	2016-02-25	2016-02-25 10:20:01	2004-08-12 19:19:13	10:20:01	chenhui	hello	NULL	bcdefghijklmn	NULL
-103	103	103	103	103	5.2	10.88	103.08300	2016-02-25	2016-02-25 10:20:01	2091-12-26 15:19:13	10:20:01	chenhui	hello	NULL	bcdefghijklmn	NULL
-104	104	104	104	104	5.2	10.88	104.08300	2016-02-25	2016-02-25 10:20:01	2065-05-04 07:40:33	10:20:01	chenhui	hello	NULL	bcdefghijklmn	NULL
-100	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2016-02-25 10:20:01	10:20:01	chenhui	hello	NULL	abcdefghijklmn	NULL
-100	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2016-02-25 10:20:01	10:20:01	chenhui	hello	NULL	abcdefghijklmn	NULL
-100	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2016-02-25 10:20:01	10:20:01	chenhui	hello	NULL	abcdefghijklmn	NULL
-100	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2016-02-25 10:20:01	10:20:01	chenhui	hello	NULL	abcdefghijklmn	NULL
+100	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-05-23 21:59:13	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+101	101	101	101	101	5.2	10.88	101.08300	2016-02-25	2016-02-25 10:20:01	2056-03-28 05:56:01	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	102	102	102	102	5.2	10.88	102.08300	2016-02-25	2016-02-25 10:20:01	2004-08-12 19:19:13	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+103	103	103	103	103	5.2	10.88	103.08300	2016-02-25	2016-02-25 10:20:01	2091-12-26 15:19:13	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+104	104	104	104	104	5.2	10.88	104.08300	2016-02-25	2016-02-25 10:20:01	2065-05-04 07:40:33	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+100	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2016-02-25 10:20:01	10:20:01	stoneatom	hello	NULL	abcdefghijklmn	NULL
+100	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2016-02-25 10:20:01	10:20:01	stoneatom	hello	NULL	abcdefghijklmn	NULL
+100	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2016-02-25 10:20:01	10:20:01	stoneatom	hello	NULL	abcdefghijklmn	NULL
+100	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2016-02-25 10:20:01	10:20:01	stoneatom	hello	NULL	abcdefghijklmn	NULL
 drop table column_type_test;

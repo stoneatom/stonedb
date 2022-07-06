@@ -8,8 +8,8 @@ on:
       - 'docs/**'
       - 'website/**'
       - '**.md'
-      - 'scripts/setup/**'
-      - '.devcontainer/**'
+      - 'scripts/**'
+      - 'install_scripts/**'
   pull_request:
     paths-ignore:
       - 'Docs/**'

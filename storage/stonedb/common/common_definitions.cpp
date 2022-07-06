@@ -25,7 +25,7 @@
 namespace stonedb {
 namespace common {
 
-void PushWarning(THD *thd, Sql_condition::enum_warning_level level, uint code, const char *msg) {
+void PushWarning(THD *thd, Sql_condition::enum_severity_level level, uint code, const char *msg) {
   static std::mutex ibm;
 
   std::scoped_lock guard(ibm);

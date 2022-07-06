@@ -269,7 +269,7 @@ bool Query::FieldUnmysterify(Item *item, TabID &tab, AttrID &col) {
     if (ifield->field->table != mysql_table) continue;
 
     // FIXME: is this correct?
-    if (mysql_table->pos_in_table_list->derived == NULL) {
+    if (!mysql_table->pos_in_table_list->is_view_or_derived()) {
       // Physical table in FROM - RCTable
       int field_num;
       for (field_num = 0; mysql_table->field[field_num]; field_num++)
@@ -337,8 +337,8 @@ int Query::AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vector<TabID>
       const char *table_alias = 0;
       const char *table_path = 0;
       TabID tab(0);
-      if (join_ptr->derived) {
-        if (!Compile(cq, join_ptr->derived->first_select(), join_ptr->derived->union_distinct, &tab))
+      if (join_ptr->is_view_or_derived()) {
+        if (!Compile(cq, join_ptr->derived_unit()->first_select(), join_ptr->derived_unit()->union_distinct, &tab))
           return RETURN_QUERY_TO_MYSQL_ROUTE;
         table_alias = join_ptr->alias;
       } else {
@@ -919,31 +919,47 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
   CompiledQuery *saved_cq = cq;
   cq = compiled_query;
 
-  if (selects_list != selects_list->join->unit->global_parameters) {  // only in case of unions this is set
-    SetLimit(selects_list->join->unit->global_parameters, 0, global_offset_value, (int64_t &)global_limit_value);
-    global_order = &(selects_list->join->unit->global_parameters->order_list);
+  if ((selects_list->join)&&(selects_list != selects_list->join->unit->global_parameters())) {  // only in case of unions this is set
+    SetLimit(selects_list->join->unit->global_parameters(), 0, global_offset_value, (int64_t &)global_limit_value);
+    global_order = &(selects_list->join->unit->global_parameters()->order_list);
   }
 
   for (SELECT_LEX *sl = selects_list; sl; sl = sl->next_select()) {
     int64_t limit_value = -1;
     int64_t offset_value = -1;
 
-    if (!JudgeErrors(sl)) return RETURN_QUERY_TO_MYSQL_ROUTE;
-    SetLimit(sl, sl == selects_list ? 0 : sl->join->unit->global_parameters, offset_value, limit_value);
+		
+        if (!sl->join) 
+		
+		{
+            sl->add_active_options(SELECT_NO_UNLOCK);
+            JOIN *join = new JOIN(sl->master_unit()->thd, sl);
+                    
+            if (!join) {
 
-    List<Item> *fields = &sl->join->fields_list;
-    Item *conds = sl->join->conds;
-    ORDER *order = sl->join->order;
+                sl->cleanup(0);
+                return TRUE;
+            }
+            sl->set_join(join);
+        }
+        
+        if (!JudgeErrors(sl))
+            return RETURN_QUERY_TO_MYSQL_ROUTE;
+        SetLimit(sl, sl == selects_list ? 0 : sl->join->unit->global_parameters(), offset_value, limit_value);
+
+        List<Item> *fields = &sl->fields_list;
+        Item *      conds = sl->where_cond();
+        ORDER *     order = sl->order_list.first;
 
     // if (order) global_order = 0;   //we want to zero global order (which
     // seems to be always present) if we find a local order by clause
     //  The above is not necessary since global_order is set only in case of
     //  real UNIONs
 
-    ORDER *group = sl->join->group_list;
-    Item *having = sl->join->having;
-    List<TABLE_LIST> *join_list = sl->join->join_list;
-    bool zero_result = sl->join->zero_result_cause != NULL;
+        ORDER *           group = sl->group_list.first;
+        Item *            having = sl->having_cond();
+        List<TABLE_LIST> *join_list = sl->join_list;
+        bool              zero_result = sl->join->zero_result_cause != NULL;
 
     Item *field_for_subselect;
     Item *cond_to_reinsert = NULL;
@@ -966,7 +982,7 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
 
       TABLE_LIST *tables = sl->leaf_tables ? sl->leaf_tables : (TABLE_LIST *)sl->table_list.first;
       for (TABLE_LIST *table_ptr = tables; table_ptr; table_ptr = table_ptr->next_leaf) {
-        if (!table_ptr->derived) {
+        if (!table_ptr->is_view_or_derived()) {
           if (!Engine::IsSDBTable(table_ptr->table)) throw CompilationError();
           std::string path = TablePath(table_ptr);
           if (path2num.find(path) == path2num.end()) {
@@ -1009,6 +1025,7 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       // called recursively)
       cq = saved_cq;
       if (cond_to_reinsert && list_to_reinsert) list_to_reinsert->push_back(cond_to_reinsert);
+	  sl->cleanup(0);
       return RETURN_QUERY_TO_MYSQL_ROUTE;
     }
 
@@ -1026,6 +1043,7 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       cq->Union(prev_result, prev_result, tmp_table, union_all);
     if (sl == last_distinct) union_all = true;
     if (cond_to_reinsert && list_to_reinsert) list_to_reinsert->push_back(cond_to_reinsert);
+	sl->cleanup(0);
   }
 
   cq->BuildTableIDStepsMap();

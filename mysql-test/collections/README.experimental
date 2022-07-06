@@ -26,7 +26,7 @@ The syntax is as follows:
    specification may be an asterisk (*). In that case, all test cases that
    start with the same characters up to the last letter before the asterisk
    are considered experimental:
-        main.a*  # get rid of main.alias and main.agliolio
+        main.a*  # get rid of main.alias, main.alibaba and main.agliolio
 
 6) Optionally, the test case may be followed by one or more platform
    qualifiers beginning with @ or @!. The test will then be considered

@@ -1,14 +1,21 @@
 /*
-   Copyright (c) 2012, 2014, Oracle and/or its affiliates. All rights reserved.
+   Copyright (c) 2012, 2021, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; version 2 of the License.
+   it under the terms of the GNU General Public License, version 2.0,
+   as published by the Free Software Foundation.
+
+   This program is also distributed with certain software (including
+   but not limited to OpenSSL) that is licensed under separate terms,
+   as designated in a particular file or component or in included license
+   documentation.  The authors of MySQL hereby grant you an additional
+   permission to link the program and your derivative works with the
+   separately licensed software that they have included with MySQL.
 
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   GNU General Public License, version 2.0, for more details.
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
@@ -70,7 +77,7 @@ static my_bool check_and_create_login_file(void);
 static void mask_password_and_print(char *buf);
 static int reset_login_file(bool gen_key);
 
-static int encrypt_buffer(const char *plain, int plain_len, char cipher[]);
+static int encrypt_buffer(const char *plain, int plain_len, char cipher[], const int aes_len);
 static int decrypt_buffer(const char *cipher, int cipher_len, char plain[]);
 static int encrypt_and_write_file(DYNAMIC_STRING *file_buf);
 static int read_and_decrypt_file(DYNAMIC_STRING *file_buf);
@@ -112,7 +119,10 @@ struct my_command_data {
 /* mysql_config_editor utility options. */
 static struct my_option my_program_long_options[]=
 {
-#ifndef DBUG_OFF
+#ifdef NDEBUG
+  {"debug", '#', "This is a non-debug version. Catch this and exit.",
+  0, 0, 0, GET_DISABLED, OPT_ARG, 0, 0, 0, 0, 0, 0},
+#else
   {"debug", '#', "Output debug log. Often this is 'd:t:o,filename'.",
    0, 0, 0, GET_STR, OPT_ARG, 0, 0, 0, 0, 0, 0},
 #endif
@@ -209,7 +219,7 @@ static struct my_option my_help_command_options[]=
 
 my_bool
 my_program_get_one_option(int optid,
-                          const struct my_option *opt __attribute__((unused)),
+                          const struct my_option *opt MY_ATTRIBUTE((unused)),
                           char *argument)
 {
   switch(optid) {
@@ -230,7 +240,7 @@ my_program_get_one_option(int optid,
 
 my_bool
 my_set_command_get_one_option(int optid,
-                              const struct my_option *opt __attribute__((unused)),
+                              const struct my_option *opt MY_ATTRIBUTE((unused)),
                               char *argument)
 {
   switch(optid) {
@@ -257,7 +267,7 @@ my_set_command_get_one_option(int optid,
 
 my_bool
 my_remove_command_get_one_option(int optid,
-                                 const struct my_option *opt __attribute__((unused)),
+                                 const struct my_option *opt MY_ATTRIBUTE((unused)),
                                  char *argument)
 {
   switch(optid) {
@@ -281,7 +291,7 @@ my_remove_command_get_one_option(int optid,
 
 my_bool
 my_print_command_get_one_option(int optid,
-                                const struct my_option *opt __attribute__((unused)),
+                                const struct my_option *opt MY_ATTRIBUTE((unused)),
                                 char *argument)
 {
   switch(optid) {
@@ -305,7 +315,7 @@ my_print_command_get_one_option(int optid,
 
 my_bool
 my_reset_command_get_one_option(int optid,
-                                const struct my_option *opt __attribute__((unused)),
+                                const struct my_option *opt MY_ATTRIBUTE((unused)),
                                 char *argument)
 {
   switch(optid) {
@@ -372,7 +382,7 @@ int main(int argc, char *argv[])
   if (command > -1)
     rc= execute_commands(command);
 
-  if (rc == -1)
+  if (rc != 0)
   {
     my_perror("operation failed.");
     DBUG_RETURN(1);
@@ -404,7 +414,8 @@ static int do_handle_options(int argc, char *argv[])
     exit(1);
   }
 
-  if (!(ptr= (char *) my_malloc((argc + 2) * sizeof(char *),
+  if (!(ptr= (char *) my_malloc(PSI_NOT_INSTRUMENTED,
+                                (argc + 2) * sizeof(char *),
                                 MYF(MY_WME))))
     goto error;
 
@@ -416,7 +427,7 @@ static int do_handle_options(int argc, char *argv[])
   command_list[i]= NULL;
 
   if ((rc= my_handle_options(&argc, &argv, my_program_long_options,
-                             my_program_get_one_option, command_list)))
+                             my_program_get_one_option, command_list, FALSE)))
     exit(rc);
 
   if (argc == 0)                                /* No command specified. */
@@ -504,9 +515,9 @@ static int execute_commands(int command)
       exit(1);
   }
 
+done:
   my_close(g_fd, MYF(MY_WME));
 
-done:
   DBUG_RETURN(rc);
 }
 
@@ -702,8 +713,8 @@ error:
 
   @param void
 
-  @return -1              Error
-           0              Success
+  @return  TRUE           Error
+           FALSE          Success
 */
 
 static my_bool check_and_create_login_file(void)
@@ -746,7 +757,7 @@ static my_bool check_and_create_login_file(void)
 
     dirname_part(login_dir, my_login_file, &size);
     /* Remove the trailing '\' */
-    if (login_dir[-- size] == FN_LIBCHAR)
+    if (is_directory_separator(login_dir[-- size]))
       login_dir[size]= 0;
 
     /* Now check if directory exists? */
@@ -800,7 +811,7 @@ static my_bool check_and_create_login_file(void)
   {
     verbose_msg("File does not exist.\nCreating login file.\n");
     if ((g_fd= my_create(my_login_file, create_mode, access_flag,
-                       MYF(MY_WME)) == -1))
+                       MYF(MY_WME))) == -1)
     {
       my_perror("couldn't create the login file");
       goto error;
@@ -808,6 +819,7 @@ static my_bool check_and_create_login_file(void)
     else
     {
       verbose_msg("Login file created.\n");
+      my_close(g_fd, MYF(MY_WME));
       verbose_msg("Opening the file.\n");
 
       if((g_fd= my_open(my_login_file, access_flag, MYF(MY_WME))) == -1)
@@ -831,10 +843,10 @@ static my_bool check_and_create_login_file(void)
       goto error;
   }
 
-  DBUG_RETURN(0);
+  DBUG_RETURN(FALSE);
 
 error:
-  DBUG_RETURN(-1);
+  DBUG_RETURN(TRUE);
 }
 
 
@@ -973,10 +985,11 @@ static void remove_option(DYNAMIC_STRING *file_buf, const char *path_name,
 
   char *start= NULL, *end= NULL;
   char *search_str;
-  int search_len, shift_len;
+  size_t search_len, shift_len;
   bool option_found= FALSE;
 
-  search_str= (char *) my_malloc((uint) strlen(option_name) + 2, MYF(MY_WME));
+  search_str= (char *) my_malloc(PSI_NOT_INSTRUMENTED,
+                                 (uint) strlen(option_name) + 2, MYF(MY_WME));
   sprintf(search_str, "\n%s", option_name);
 
   if ((start= locate_login_path(file_buf, path_name)) == NULL)
@@ -1054,7 +1067,7 @@ static void remove_login_path(DYNAMIC_STRING *file_buf, const char *path_name)
   {
     end ++;                                     /* Move past '\n' */
     len= ((diff= (start - end)) > 0) ? diff : - diff;
-    to_move= file_buf->length - (end - file_buf->str);
+    to_move= file_buf->length - (end - file_buf->str) ;
   }
   else
   {
@@ -1203,14 +1216,20 @@ static int encrypt_and_write_file(DYNAMIC_STRING *file_buf)
     if (done)
       break;
 
-    if ((enc_len= encrypt_buffer(&file_buf->str[bytes_read],
-                                 ++ len, cipher + MAX_CIPHER_STORE_LEN)) < 0)
+    if ((enc_len= my_aes_get_size(len + 1, my_aes_128_ecb)) >
+        (MY_LINE_MAX - (int)MAX_CIPHER_STORE_LEN))
+    {
+      my_perror("A parameter to mysql_config_editor exceeds the maximum "
+                "accepted length. Please review the data you've supplied "
+                "and try to shorten them permissible length.\n");
+      goto error;
+    }
+
+    if (encrypt_buffer(&file_buf->str[bytes_read], ++len,
+                       cipher + MAX_CIPHER_STORE_LEN, enc_len) < 0)
       goto error;
 
     bytes_read += len;
-
-    if (enc_len > MY_LINE_MAX)
-      goto error;
 
     /* Store cipher length first. */
     int4store(cipher, enc_len);
@@ -1297,12 +1316,9 @@ error:
                           length encrypted, otherwise.
 */
 
-static int encrypt_buffer(const char *plain, int plain_len, char cipher[])
+static int encrypt_buffer(const char *plain, int plain_len, char cipher[], const int aes_len)
 {
   DBUG_ENTER("encrypt_buffer");
-  int aes_len;
-
-  aes_len= my_aes_get_size(plain_len, my_aes_128_ecb);
 
   if (my_aes_encrypt((const unsigned char *) plain, plain_len,
                      (unsigned char *) cipher,

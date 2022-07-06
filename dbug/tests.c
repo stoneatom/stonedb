@@ -5,7 +5,7 @@
 char *push1=0;
 
 #include <my_global.h>  /* This includes dbug.h */
-#include <my_pthread.h>
+#include <my_thread.h>
 #include <string.h>
 
 const char *func3()
@@ -38,7 +38,7 @@ int func1()
 int main (int argc, char *argv[])
 {
   int i;
-#ifdef DBUG_OFF
+#ifdef NDEBUG
   return 1;
 #endif
   if (argc == 1)
@@ -73,7 +73,7 @@ int main (int argc, char *argv[])
             DBUG_EVALUATE_IF("evaluate_if", "ON", "OFF"));
     DBUG_EXECUTE_IF("pop",  DBUG_POP(); );
     {
-      char s[1000] __attribute__((unused));
+      char s[1000] MY_ATTRIBUTE((unused));
       DBUG_EXPLAIN(s, sizeof(s)-1);
       DBUG_PRINT("explain", ("dbug explained: %s", s));
     }

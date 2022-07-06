@@ -43,14 +43,13 @@ void KVStore::Init() {
   db_option.max_subcompactions = max_compact_threads;
   db_option.env->SetBackgroundThreads(max_compact_threads, rocksdb::Env::Priority::LOW);
   db_option.statistics = rocksdb::CreateDBStatistics();
-  // get column family names from manifest file
+  // get column family names from manfest file
   rocksdb::Status status = rocksdb::DB::ListColumnFamilies(db_option, rocksdb_datadir, &cf_names);
-  if (!status.ok() &&
-      ((status.subcode() == rocksdb::Status::kNone) || (status.subcode() == rocksdb::Status::kPathNotFound))) {
-    STONEDB_LOG(LogCtl_Level::INFO, "First init rocksdb, create default column family");
-    cf_names.push_back(DEFAULT_CF_NAME);
-  }
-
+  if (!status.ok() && ( (status.subcode() == rocksdb::Status::kNone) || (status.subcode() == rocksdb::Status::kPathNotFound)) ) 
+  {
+      STONEDB_LOG(LogCtl_Level::INFO, "First init rocksdb, create default cloum family");
+      cf_names.push_back(DEFAULT_CF_NAME);
+  } 
   rocksdb::ColumnFamilyOptions rs_cf_option(options);
   rocksdb::ColumnFamilyOptions index_cf_option(options);
   // Disable compactions to prevent compaction start before compaction filter is
@@ -102,8 +101,6 @@ void KVStore::UnInit() {
   if (bbto_.block_cache) bbto_.block_cache->EraseUnRefEntries();
   delete rdb;
   rdb = nullptr;
-
-  kv_data_dir.clear();
 }
 
 void KVStore::AsyncDropData() {
@@ -124,7 +121,7 @@ void KVStore::AsyncDropData() {
       rocksdb::Range range =
           rocksdb::Range({(const char *)buf_begin, INDEX_NUMBER_SIZE}, {(const char *)buf_end, INDEX_NUMBER_SIZE});
       rocksdb::ColumnFamilyHandle *cfh = cf_manager.get_cf_by_id(d.cf_id);
-      DBUG_ASSERT(cfh);
+      DEBUG_ASSERT(cfh);
       rocksdb::Status status = rocksdb::DeleteFilesInRange(rdb->GetBaseDB(), cfh, &range.start, &range.limit);
       if (!status.ok()) {
         STONEDB_LOG(LogCtl_Level::ERROR, "RocksDB: delete file range fail, status: %s ", status.ToString().c_str());

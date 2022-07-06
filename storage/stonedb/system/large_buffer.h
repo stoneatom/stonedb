@@ -63,31 +63,30 @@ class LargeBuffer final : public mm::TraceableObject {
     return -1;
   }
 
-private:
+ private:
+
   void BufFlush();  // save the data to the file (in writing mode)
   void BufClose();  // close the buffer; warning: does not flush data in writing mode
   void UseNextBuf();
   int FindUnusedBuf();
   void BufFlushThread(Stream *file, char *buf_ptr, int len, bool *failed);
 
-private:
-  int buf_used_;  // number of bytes loaded or reserved so far
-  char *buf_;     // current buf in bufs
-  int size_;
-  std::vector<std::unique_ptr<char[]>> bufs_;
-  int curr_buf_num_;     // buf = bufs + currBufNo
-  char *buf2next_;       // buf to be used next
-  int curr_buf2next_num_;
+ private:
+    int buf_used_;  // number of bytes loaded or reserved so far
+    char *buf_;     // current buf in bufs
+    int size_;
+    std::vector<std::unique_ptr<char[]>> bufs_;
+    int curr_buf_num_;     // buf = bufs + currBufNo
+    char *buf2next_;       // buf to be used next
+    int curr_buf2next_num_;
 
-  std::unique_ptr<Stream> ib_stream_;
+    std::unique_ptr<Stream> sdb_stream_;
 
-  std::mutex mutex_;
-  std::condition_variable cond_var_;
-  std::thread flush_thread_;
-  bool failed_;
+    std::mutex mutex_;
+    std::condition_variable cond_var_;
+    std::thread flush_thread_;
+    bool failed_;
 };
-
 }  // namespace system
 }  // namespace stonedb
-
 #endif  // STONEDB_SYSTEM_LARGE_BUFFER_H_

@@ -23,9 +23,6 @@
 
 namespace stonedb {
 namespace system {
-
-#define FILENAME_LENGTH 38
-
 CacheableItem::CacheableItem(char const *owner_name, char const *object_id, int _default_block_size) {
   default_block_size = _default_block_size;
   DEBUG_ASSERT(owner_name != NULL);
@@ -37,9 +34,8 @@ CacheableItem::CacheableItem(char const *owner_name, char const *object_id, int 
     // read the configuration parameter
     std::string temp_filename = stonedb_sysvar_cachefolder;
     filename_n_position = temp_filename.length();
-    filename = new char[filename_n_position + FILENAME_LENGTH];  // "...path.../XXXXXXnnnnnnAAAAAAAABBBBBBBB.sdb_tmp"
-    std::memset(filename, 0, filename_n_position + FILENAME_LENGTH);
-    std::strncpy(filename, temp_filename.c_str(), std::strlen(temp_filename.c_str()));
+    filename = new char[filename_n_position + 37];  // "...path.../XXXXXXnnnnnnAAAAAAAABBBBBBBB.sdb_tmp"
+    std::strcpy(filename, temp_filename.c_str());
     if (filename[filename_n_position - 1] != '/' && filename[filename_n_position - 1] != '\\') {
       filename[filename_n_position] = '/';
       filename_n_position++;
@@ -49,8 +45,7 @@ CacheableItem::CacheableItem(char const *owner_name, char const *object_id, int 
 
   if (filename == NULL) {
     // if the temporary path is not set, use the current folder
-    filename = new char[FILENAME_LENGTH - 1];  // "XXXXXXnnnnnnAAAAAAAABBBBBBBB.sdb_tmp"
-    std::memset(filename, 0, FILENAME_LENGTH - 1);
+    filename = new char[36];  // "XXXXXXnnnnnnAAAAAAAABBBBBBBB.sdb_tmp"
     filename_n_position = 6;
   }
   max_file_id = 0;
@@ -64,19 +59,19 @@ CacheableItem::CacheableItem(char const *owner_name, char const *object_id, int 
   j = 0;
   while (object_id[j] != 0 && i < 6) filename[filename_n_position - 6 + (i++)] = object_id[j++];
   while (i < 6) filename[filename_n_position - 6 + (i++)] = '_';
-  std::strncpy(filename + filename_n_position, "000000", std::strlen("000000"));
+  std::strcpy(filename + filename_n_position, "000000");
   char buf[30];
   unsigned int random_number = 0;
   random_number |= ((rand() % 1024) << 21);
   random_number |= ((rand() % 1024) << 11);
   random_number |= (rand() % 2048);
   std::sprintf(buf, "%X", random_number);
-  std::strncpy(filename + filename_n_position + 6 + (8 - std::strlen(buf)), buf, std::strlen(buf));
+  std::strcpy(filename + filename_n_position + 6 + (8 - std::strlen(buf)), buf);
   if (std::strlen(buf) < 8) std::memset(filename + filename_n_position + 6, '0', 8 - std::strlen(buf));
   std::sprintf(buf, "%p", this);
-  std::strncpy(filename + filename_n_position + 14 + (8 - std::strlen(buf)), buf, std::strlen(buf));
+  std::strcpy(filename + filename_n_position + 14 + (8 - std::strlen(buf)), buf);
   if (std::strlen(buf) < 8) std::memset(filename + filename_n_position + 14, '0', 8 - std::strlen(buf));
-  std::strncpy(filename + filename_n_position + 22, ".sdb_tmp", std::strlen(".sdb_tmp"));
+  std::strcpy(filename + filename_n_position + 22, ".sdb_tmp");
 }
 
 CacheableItem::~CacheableItem() {

@@ -17,7 +17,7 @@ CREATE TABLE `column_type_test` (
 `c_blob` blob COMMENT 'blob',
 `c_text` text COMMENT 'text',
 `c_longblob` longblob COMMENT 'longblob'
-) ENGINE=StoneDB;
+) ENGINE=Stonedb;
 alter table column_type_test drop column c_char;
 show create table column_type_test;
 Table	Create Table

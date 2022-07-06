@@ -62,14 +62,14 @@ class ExpressionColumn : public VirtualColumn {
   virtual ~ExpressionColumn() = default;
 
   const core::MysqlExpression::sdbfields_cache_t &GetItems() const;
-  void SetParamTypes(core::MysqlExpression::TypeOfVars *types) override;
+  void SetParamTypes(core::MysqlExpression::TypOfVars *types) override;
   bool IsConst() const override { return false; }
   bool IsDeterministic() override { return expr_->IsDeterministic(); }
   int64_t GetNotNullValueInt64(const core::MIIterator &mit) override { return GetValueInt64Impl(mit); }
   void GetNotNullValueString(types::BString &s, const core::MIIterator &mit) override { GetValueStringImpl(s, mit); }
   core::MysqlExpression::StringType GetStringType() { return expr_->GetStringType(); }
 
-  /////////////// Special functions for expressions on lookup
+  // Special functions for expressions on lookup
   virtual bool ExactlyOneLookup();  // the column is a deterministic expression
                                     // on exactly one lookup column, return the
                                     // coordinates of this column
@@ -126,7 +126,7 @@ class ExpressionColumn : public VirtualColumn {
   // if ExpressionColumn ExpressionColumn encapsulates an expression these sets
   // are used to interface with core::MysqlExpression
   core::MysqlExpression::SetOfVars vars_;
-  core::MysqlExpression::TypeOfVars var_types_;
+  core::MysqlExpression::TypOfVars var_types_;
   mutable core::MysqlExpression::var_buf_t var_buf_;
 
   //! value for a given row is always the same or not? e.g. currenttime() is not

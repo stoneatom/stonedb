@@ -23,19 +23,20 @@
 
 #define MYSQL_SERVER 1
 
-#include "global_threads.h"
+
 #include "key.h"
 #include "lock.h"
 #include "mysqld_suffix.h"
 #include "rpl_slave.h"
 #include "sp_rcontext.h"
+#include "item_strfunc.h"
+#include "item_sum.h"
 #include "sql_array.h"
 #include "sql_base.h"
 #include "sql_class.h"
 #include "sql_load.h"
 #include "sql_parse.h"
 #include "sql_plugin.h"
-#include "sql_priv.h"
 #include "sql_select.h"
 #include "sql_show.h"
 #include "sql_time.h"
@@ -46,7 +47,7 @@
 
 #include "m_ctype.h"
 #include "my_bit.h"
-#include "my_pthread.h"
+#include "my_thread_local.h"
 #include "mysql_com.h"
 #include "probes_mysql.h"
 

@@ -53,7 +53,7 @@ class ReadBuffer final : public mm::TraceableObject {
 
   std::vector<std::unique_ptr<char[]>> bufs_;
   std::unique_ptr<char[]> read_thread_buffer_;
-  std::unique_ptr<system::Stream> ib_stream_;
+  std::unique_ptr<system::Stream> sdb_stream_;
 
   std::mutex read_mutex_;
 

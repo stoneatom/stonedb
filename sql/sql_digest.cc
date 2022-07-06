@@ -1,13 +1,20 @@
-/* Copyright (c) 2008, 2015, Oracle and/or its affiliates. All rights reserved.
+/* Copyright (c) 2008, 2021, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation; version 2 of the License.
+  it under the terms of the GNU General Public License, version 2.0,
+  as published by the Free Software Foundation.
+
+  This program is also distributed with certain software (including
+  but not limited to OpenSSL) that is licensed under separate terms,
+  as designated in a particular file or component or in included license
+  documentation.  The authors of MySQL hereby grant you an additional
+  permission to link the program and your derivative works with the
+  separately licensed software that they have included with MySQL.
 
   This program is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
+  GNU General Public License, version 2.0, for more details.
 
   You should have received a copy of the GNU General Public License
   along with this program; if not, write to the Free Software Foundation,
@@ -18,22 +25,14 @@
 */
 
 #include "my_global.h"
+#include "my_sys.h"
 #include "my_md5.h"
-#include "mysqld_error.h"
-#include "sql_data_change.h"
-
-#include "sql_string.h"
-#include "sql_class.h"
 #include "sql_lex.h"
+#include "sql_signal.h"
+#include "sql_get_diagnostics.h"
+#include "sql_string.h"
 #include "sql_digest.h"
 #include "sql_digest_stream.h"
-
-#include "sql_get_diagnostics.h"
-
-#ifdef NEVER
-#include "my_sys.h"
-#include "sql_signal.h"
-#endif
 
 /* Generated code */
 #include "sql_yacc.h"
@@ -49,13 +48,19 @@
 
 #define SIZE_OF_A_TOKEN 2
 
+ulong max_digest_length= 0;
+ulong get_max_digest_length()
+{
+  return max_digest_length;
+}
+
 /**
   Read a single token from token array.
 */
 inline uint read_token(const sql_digest_storage *digest_storage,
                        uint index, uint *tok)
 {
-  uint safe_byte_count= digest_storage->m_byte_count;
+  size_t safe_byte_count= digest_storage->m_byte_count;
 
   if (index + SIZE_OF_A_TOKEN <= safe_byte_count &&
       safe_byte_count <= digest_storage->m_token_array_length)
@@ -75,7 +80,7 @@ inline uint read_token(const sql_digest_storage *digest_storage,
 */
 inline void store_token(sql_digest_storage* digest_storage, uint token)
 {
-  DBUG_ASSERT(digest_storage->m_byte_count <= digest_storage->m_token_array_length);
+  assert(digest_storage->m_byte_count <= digest_storage->m_token_array_length);
 
   if (digest_storage->m_byte_count + SIZE_OF_A_TOKEN <= digest_storage->m_token_array_length)
   {
@@ -99,8 +104,8 @@ inline uint read_identifier(const sql_digest_storage* digest_storage,
   uint new_index;
   uint safe_byte_count= digest_storage->m_byte_count;
 
-  DBUG_ASSERT(index <= safe_byte_count);
-  DBUG_ASSERT(safe_byte_count <= digest_storage->m_token_array_length);
+  assert(index <= safe_byte_count);
+  assert(safe_byte_count <= digest_storage->m_token_array_length);
 
   /*
     token + length + string are written in an atomic way,
@@ -122,7 +127,7 @@ inline uint read_identifier(const sql_digest_storage* digest_storage,
       *id_length= length;
 
       new_index= index + bytes_needed;
-      DBUG_ASSERT(new_index <= safe_byte_count);
+      assert(new_index <= safe_byte_count);
       return new_index;
     }
   }
@@ -138,7 +143,7 @@ inline void store_token_identifier(sql_digest_storage* digest_storage,
                                    uint token,
                                    size_t id_length, const char *id_name)
 {
-  DBUG_ASSERT(digest_storage->m_byte_count <= digest_storage->m_token_array_length);
+  assert(digest_storage->m_byte_count <= digest_storage->m_token_array_length);
 
   size_t bytes_needed= 2 * SIZE_OF_A_TOKEN + id_length;
   if (digest_storage->m_byte_count + bytes_needed <= (unsigned int)digest_storage->m_token_array_length)
@@ -174,7 +179,7 @@ void compute_digest_md5(const sql_digest_storage *digest_storage, unsigned char 
 void compute_digest_text(const sql_digest_storage* digest_storage,
                          String *digest_text)
 {
-  DBUG_ASSERT(digest_storage != NULL);
+  assert(digest_storage != NULL);
   uint byte_count= digest_storage->m_byte_count;
   String *digest_output= digest_text;
   uint tok= 0;
@@ -224,6 +229,8 @@ void compute_digest_text(const sql_digest_storage* digest_storage,
     /* All identifiers are printed with their name. */
     case IDENT:
     case IDENT_QUOTED:
+    case TOK_IDENT:
+    case TOK_IDENT_AT:
       {
         char *id_ptr= NULL;
         int id_len= 0;
@@ -259,13 +266,13 @@ void compute_digest_text(const sql_digest_storage* digest_storage,
           break;
         }
         /* Copy the converted identifier into the digest string. */
-        if (tok == IDENT_QUOTED)
-          digest_output->append("`", 1);
+        digest_output->append("`", 1);
         if (id_length > 0)
           digest_output->append(id_string, id_length);
-        if (tok == IDENT_QUOTED)
+        if (tok == TOK_IDENT_AT) // No space before @ in "table@query_block".
           digest_output->append("`", 1);
-        digest_output->append(" ", 1);
+        else
+          digest_output->append("` ", 2);
       }
       break;
 
@@ -288,8 +295,8 @@ void compute_digest_text(const sql_digest_storage* digest_storage,
 static inline uint peek_token(const sql_digest_storage *digest, uint index)
 {
   uint token;
-  DBUG_ASSERT(index + SIZE_OF_A_TOKEN <= digest->m_byte_count);
-  DBUG_ASSERT(digest->m_byte_count <=  digest->m_token_array_length);
+  assert(index + SIZE_OF_A_TOKEN <= digest->m_byte_count);
+  assert(digest->m_byte_count <=  digest->m_token_array_length);
 
   token= ((digest->m_token_array[index + 1])<<8) | digest->m_token_array[index];
   return token;
@@ -570,16 +577,39 @@ sql_digest_state* digest_add_token(sql_digest_state *state,
     }
     case IDENT:
     case IDENT_QUOTED:
+    case TOK_IDENT_AT:
     {
       YYSTYPE *lex_token= yylval;
       char *yytext= lex_token->lex_str.str;
       size_t yylen= lex_token->lex_str.length;
 
+      /*
+        REDUCE:
+          TOK_IDENT := IDENT | IDENT_QUOTED
+        The parser gives IDENT or IDENT_TOKEN for the same text,
+        depending on the character set used.
+        We unify both to always print the same digest text,
+        and always have the same digest hash.
+      */
+      if (token != TOK_IDENT_AT)
+        token= TOK_IDENT;
       /* Add this token and identifier string to digest storage. */
       store_token_identifier(digest_storage, token, yylen, yytext);
 
       /* Update the index of last identifier found. */
       state->m_last_id_index= digest_storage->m_byte_count;
+      break;
+    }
+    case 0:
+    {
+      if (digest_storage->m_byte_count < SIZE_OF_A_TOKEN)
+        break;
+      unsigned int temp_tok;
+      read_token(digest_storage,
+                 digest_storage->m_byte_count-SIZE_OF_A_TOKEN,
+                 & temp_tok);
+      if (temp_tok == ';')
+        digest_storage->m_byte_count-= SIZE_OF_A_TOKEN;
       break;
     }
     default:
@@ -644,7 +674,7 @@ sql_digest_state* digest_reduce_token(sql_digest_state *state,
       REDUCE to
         TOKEN_X TOKEN_LEFT . TOKEN_Y
     */
-    DBUG_ASSERT(last_token2 == token_right);
+    assert(last_token2 == token_right);
     digest_storage->m_byte_count-= 2 * SIZE_OF_A_TOKEN;
     store_token(digest_storage, token_left);
     token_to_push= last_token;

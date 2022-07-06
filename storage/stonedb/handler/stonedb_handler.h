@@ -141,15 +141,15 @@ class StonedbHandler final : public handler {
   THR_LOCK_DATA **store_lock(THD *thd, THR_LOCK_DATA **to,
                              enum thr_lock_type lock_type) override;  // required
 
-  char *update_table_comment(const char *comment) override;
+  char *update_table_comment(const char *comment);
   bool explain_message(const Item *a_cond, String *buf) override;
   /* Condition push-down operation */
   const Item *cond_push(const Item *cond) override;
   void cond_pop() override {}
   int reset() override;
 
-  my_bool register_query_cache_table(THD *thd, char *table_key, uint key_length, qc_engine_callback *call_back,
-                                     ulonglong *engine_data) override;
+ my_bool register_query_cache_table(THD *thd, char *table_key, size_t key_length,
+                                       qc_engine_callback *engine_callback, ulonglong *engine_data) override;
   void update_create_info(HA_CREATE_INFO *create_info) override;
   int fill_row_by_id(uchar *buf, uint64_t rowid);
   void key_convert(const uchar *key, uint key_len, std::vector<uint> cols, std::vector<std::string_view> &keys);

@@ -63,7 +63,7 @@ bool SDB_SetStatementAllowed(THD *thd, LEX *lex) {
                  MYF(0));
       return false;
     } else
-      push_warning(thd, Sql_condition::WARN_LEVEL_NOTE, ER_UNKNOWN_ERROR,
+      push_warning(thd, Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
                    "SET statement not supported by the StoneDB Optimizer. The "
                    "query executed "
                    "by MySQL engine.");
@@ -71,8 +71,8 @@ bool SDB_SetStatementAllowed(THD *thd, LEX *lex) {
   return true;
 }
 
-int SDB_HandleSelect(THD *thd, LEX *lex, select_result *&result, ulong setup_tables_done_option, int &res,
-                     int &optimize_after_sdb, int &sdb_free_join, int with_insert) {
+int SDB_HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
+                     int &optimize_after_sdb, int &sdb_free_join, int with_insert=false) {
   int ret = RCBASE_QUERY_ROUTE;
   try {
     // handle_select_ret is introduced here because in case of some exceptions

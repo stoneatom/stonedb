@@ -24,39 +24,39 @@
 namespace stonedb {
 namespace vcolumn {
 void ConstExpressionColumn::RequestEval([[maybe_unused]] const core::MIIterator &mit, [[maybe_unused]] const int tta) {
-  is_first_eval_ = true;
+  first_eval = true;
   // TODO: check if parameters were changed before reeval
   if (expr_->GetItem()->type() == core::Item_sdbfield::get_sdbitem_type()) {
     // a special case when a naked column is a parameter
-    last_val_ = std::make_shared<core::ValueOrNull>(((core::Item_sdbfield *)(expr_->GetItem()))->GetCurrentValue());
-    last_val_->MakeStringOwner();
+    last_val = std::make_shared<core::ValueOrNull>(((core::Item_sdbfield *)(expr_->GetItem()))->GetCurrentValue());
+    last_val->MakeStringOwner();
   } else
-    last_val_ = expr_->Evaluate();
+    last_val = expr_->Evaluate();
 }
 
 double ConstExpressionColumn::GetValueDoubleImpl([[maybe_unused]] const core::MIIterator &mit) {
   DEBUG_ASSERT(core::ATI::IsNumericType(TypeName()));
   double val = 0;
-  if (last_val_->IsNull()) return NULL_VALUE_D;
+  if (last_val->IsNull()) return NULL_VALUE_D;
   if (core::ATI::IsIntegerType(TypeName()))
-    val = static_cast<double> (last_val_->Get64());
+    val = (double)last_val->Get64();
   else if (core::ATI::IsFixedNumericType(TypeName()))
-    val = (static_cast<double>(last_val_->Get64())) / types::PowOfTen(ct.GetScale());
+    val = ((double)last_val->Get64()) / types::PowOfTen(ct.GetScale());
   else if (core::ATI::IsRealType(TypeName())) {
     union {
       double d;
       int64_t i;
     } u;
-    u.i = last_val_->Get64();
+    u.i = last_val->Get64();
     val = u.d;
   } else if (core::ATI::IsDateTimeType(TypeName())) {
-    types::RCDateTime vd(last_val_->Get64(),
+    types::RCDateTime vd(last_val->Get64(),
                          TypeName());  // 274886765314048  ->  2000-01-01
     int64_t vd_conv = 0;
     vd.ToInt64(vd_conv);  // 2000-01-01  ->  20000101
     val = (double)vd_conv;
   } else if (core::ATI::IsStringType(TypeName())) {
-    auto vs = last_val_->ToString();
+    auto vs = last_val->ToString();
     if (vs) val = std::stod(*vs);
   } else
     DEBUG_ASSERT(0 && "conversion to double not implemented");
@@ -65,18 +65,18 @@ double ConstExpressionColumn::GetValueDoubleImpl([[maybe_unused]] const core::MI
 
 types::RCValueObject ConstExpressionColumn::GetValueImpl([[maybe_unused]] const core::MIIterator &mit,
                                                          bool lookup_to_num) {
-  if (last_val_->IsNull()) return types::RCValueObject();
+  if (last_val->IsNull()) return types::RCValueObject();
 
   if (core::ATI::IsStringType((TypeName()))) {
     types::BString s;
-    last_val_->GetBString(s);
+    last_val->GetBString(s);
     return s;
   }
-  if (core::ATI::IsIntegerType(TypeName())) return types::RCNum(last_val_->Get64(), -1, false, TypeName());
-  if (core::ATI::IsDateTimeType(TypeName())) return types::RCDateTime(last_val_->Get64(), TypeName());
-  if (core::ATI::IsRealType(TypeName())) return types::RCNum(last_val_->Get64(), 0, true, TypeName());
+  if (core::ATI::IsIntegerType(TypeName())) return types::RCNum(last_val->Get64(), -1, false, TypeName());
+  if (core::ATI::IsDateTimeType(TypeName())) return types::RCDateTime(last_val->Get64(), TypeName());
+  if (core::ATI::IsRealType(TypeName())) return types::RCNum(last_val->Get64(), 0, true, TypeName());
   if (lookup_to_num || TypeName() == common::CT::NUM)
-    return types::RCNum((int64_t)last_val_->Get64(), Type().GetScale());
+    return types::RCNum((int64_t)last_val->Get64(), Type().GetScale());
   DEBUG_ASSERT(!"Illegal execution path");
   return types::RCValueObject();
 }
@@ -84,26 +84,26 @@ types::RCValueObject ConstExpressionColumn::GetValueImpl([[maybe_unused]] const 
 int64_t ConstExpressionColumn::GetSumImpl(const core::MIIterator &mit, bool &nonnegative) {
   DEBUG_ASSERT(!core::ATI::IsStringType(TypeName()));
   nonnegative = true;
-  if (last_val_->IsNull())
+  if (last_val->IsNull())
     return common::NULL_VALUE_64;  // note that this is a bit ambiguous: the
                                    // same is for sum of nulls and for "not
                                    // implemented"
   if (core::ATI::IsRealType(TypeName())) {
-    double res = last_val_->GetDouble() * mit.GetPackSizeLeft();
+    double res = last_val->GetDouble() * mit.GetPackSizeLeft();
     return *(int64_t *)&res;
   }
-  return (last_val_->Get64() * mit.GetPackSizeLeft());
+  return (last_val->Get64() * mit.GetPackSizeLeft());
 }
 
 types::BString ConstExpressionColumn::GetMinStringImpl([[maybe_unused]] const core::MIIterator &mit) {
   types::BString s;
-  last_val_->GetBString(s);
+  last_val->GetBString(s);
   return s;
 }
 
 types::BString ConstExpressionColumn::GetMaxStringImpl([[maybe_unused]] const core::MIIterator &mit) {
   types::BString s;
-  last_val_->GetBString(s);
+  last_val->GetBString(s);
   return s;
 }
 
@@ -120,7 +120,7 @@ size_t ConstExpressionColumn::MaxStringSizeImpl()  // maximal byte string length
 
 core::PackOntologicalStatus ConstExpressionColumn::GetPackOntologicalStatusImpl(
     [[maybe_unused]] const core::MIIterator &mit) {
-  if (last_val_->IsNull()) return core::PackOntologicalStatus::NULLS_ONLY;
+  if (last_val->IsNull()) return core::PackOntologicalStatus::NULLS_ONLY;
   return core::PackOntologicalStatus::UNIFORM;
 }
 
@@ -136,7 +136,7 @@ common::RSValue ConstExpressionColumn::RoughCheckImpl([[maybe_unused]] const cor
 
 types::BString ConstExpressionColumn::DecodeValue_S([[maybe_unused]] int64_t code) {
   types::BString s;
-  last_val_->GetBString(s);
+  last_val->GetBString(s);
   return s;
 }
 

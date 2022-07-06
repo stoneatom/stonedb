@@ -49,23 +49,23 @@ int StoneDBFile::Flush() {
 }
 
 int StoneDBFile::OpenCreate(std::string const &file) {
-  return Open(file, O_CREAT | O_RDWR | O_LARGEFILE | O_BINARY, ib_umask);
+  return Open(file, O_CREAT | O_RDWR | O_LARGEFILE | O_BINARY, sdb_umask);
 }
 
 int StoneDBFile::OpenCreateNotExists(std::string const &file) {
-  return Open(file, O_CREAT | O_EXCL | O_RDWR | O_LARGEFILE | O_BINARY, ib_umask);
+  return Open(file, O_CREAT | O_EXCL | O_RDWR | O_LARGEFILE | O_BINARY, sdb_umask);
 }
 
 int StoneDBFile::OpenCreateEmpty(std::string const &file) {
-  return Open(file, O_CREAT | O_RDWR | O_TRUNC | O_LARGEFILE | O_BINARY, ib_umask);
+  return Open(file, O_CREAT | O_RDWR | O_TRUNC | O_LARGEFILE | O_BINARY, sdb_umask);
 }
 
 int StoneDBFile::OpenReadOnly(std::string const &file) {
-  return Open(file, O_RDONLY | O_LARGEFILE | O_BINARY, ib_umask);
+  return Open(file, O_RDONLY | O_LARGEFILE | O_BINARY, sdb_umask);
 }
 
 int StoneDBFile::OpenReadWrite(std::string const &file) {
-  return Open(file, O_RDWR | O_LARGEFILE | O_BINARY, ib_umask);
+  return Open(file, O_RDWR | O_LARGEFILE | O_BINARY, sdb_umask);
 }
 
 void StoneDBFile::ReadExact(void *buf, size_t count) {
