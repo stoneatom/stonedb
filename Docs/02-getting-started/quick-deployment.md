@@ -5,61 +5,67 @@ sidebar_position: 3.1
 
 # Quick Deployment
 
-## Upload and decompress the TAR package
+## 1. Download the latest package
+Click [here](https://static.stoneatom.com/stonedb-ce-5.6-v1.0.0.el7.x86_64.tar.gz) to download the latest installation package of StoneDB.
+## 2. Upload and decompress the TAR package
+```shell
+tar -zxvf stonedb-ce-5.6-v1.0.0.el7.x86_64.tar.gz
 ```
-tar -zxvf stonedb-build_stonedb5.7_0.1_x86_64_CentOS7.9.2009_Release_2022-05-17_12_06.bin.tar.gz
-```
-
-Upload the installation package to the directory. The name of the folder extracted from the package is **stonedb**.
-
-## Check dependencies
-```
-cd stonedb/install/bin
+Upload the installation package to the directory. The name of the folder extracted from the package is **stonedb56**.
+## 3. Check dependencies
+```bash
+cd /stonedb56/install/bin
 ldd mysqld
 ldd mysql
 ```
 If the command output contains keywords **not found**, some dependencies are missing and must be installed.
-
-## Modify the configuration file
-
-```
-cd stonedb/install/
+## 4. Modify the configuration file
+```bash
+cd /stonedb56/install/
 cp stonedb.cnf stonedb.cnf.bak
 vi stonedb.cnf
 ```
-
 Modify the path and parameters. If the installation folder is **stonedb**, you only need to modify the parameters.
+## 5. Create an account
+```bash
+groupadd mysql
+useradd -g mysql mysql
+passwd mysql
+```
+## 6. Execute reinstall.sh
+```bash
+cd /stonedb56/install
+./reinstall.sh
+```
+The process of executing the script is to initialize and start the StoneDB.
+## 7. Log in to StoneDB
+```shell
+/stonedb56/install/bin/mysql -uroot -p -S /stonedb56/install/tmp/mysql.sock 
+Enter password: 
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 1
+Server version: 5.6.24-StoneDB-log build-
 
-## Create an account and directories
-```
-groupadd stonedb
-useradd -g stonedb stonedb
-passwd stonedb
-cd stonedb/install/
-mkdir binlog
-mkdir log
-mkdir tmp
-mkdir redolog
-mkdir undolog
-chown -R stonedb:stonedb stonedb
-```
+Copyright (c) 2000, 2022 StoneAtom Group Holding Limited
+No entry for terminal type "xterm";
+using dumb terminal settings.
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
-## Initialize StoneDB
-
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| cache              |
+| innodb             |
+| mysql              |
+| performance_schema |
+| sys_stonedb        |
+| test               |
++--------------------+
+7 rows in set (0.00 sec)
 ```
-/stonedb/install/bin/mysqld --defaults-file=/stonedb/install/stonedb.cnf --initialize-insecure --user=stonedb
+## 8. Stop StoneDB
+```shell
+/stonedb56/install/bin/mysqladmin -uroot -p -S /stonedb56/install/tmp/mysql.sock shutdown
 ```
-
-When you initialize StoneDB, add** parameter --initialize-insecure** to allow the admin to initially log in without the need to enter a password. The admin is required to set a password after the initial login.
-
-## Start or stop StoneDB
-```
-/stonedb/install/bin/mysqld_safe --defaults-file=/stonedb/install/stonedb.cnf --user=stonedb &
-mysqladmin -uroot -p -S /stonedb/install/tmp/mysql.sock shutdown
-```
-## Log in as admin and reset the password
-```
-mysql -uroot -p -S /stonedb/install/tmp/mysql.sock
->set password = password('MYPASSWORD');
-```
-Replace **MYPASSWORD** with your password.
