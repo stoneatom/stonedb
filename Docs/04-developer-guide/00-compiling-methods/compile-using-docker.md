@@ -4,18 +4,15 @@ sidebar_position: 5.15
 ---
 
 # Compile StoneDB in a Docker Container
-
 ## Introduction
 Compiling StoneDB on a physical server requires installation of third-party repositories, which is complicated. In addition, if the OS in your environment is Fedora or Ubuntu, you also need to install many dependencies. We recommend that you compile StoneDB in a Docker container. After StoneDB is compiled, you can directly run StoneDB in the container or copy the compilation files to your environment.
 ## Prerequisites
 Docker has been installed. For information about how to install Docker, visit [https://docs.docker.com/engine/install/ubuntu/](https://docs.docker.com/engine/install/ubuntu/).
-
 ## Use a Dockerfile in a compilation environment
 ### Step 1. Download the source code of StoneDB and docker.zip
-
 Download file **docker.zip**, save the file to the root directory of the source code of StoneDB, and then decompress the file.
 
-*docker.zip(waiting)*
+[docker.zip](https://static.stoneatom.com/stonedb_docker_220706.zip)
 
 ```bash
 [root@testOS src]# cd /home/src/
@@ -44,7 +41,7 @@ docker
 ```
 ### Step 2. Build a Docker image
 ```bash
-[root@testOS atomstore2022]# cd docke
+[root@testOS atomstore2022]# cd docker
 [root@testOS docker]# chmod u+x docker_build.sh
 # If an image has been created in your environment, you can use the cache. If this is the first image that is to be created in your environment, you must install dependencies. This may take a longer period of time.
 # Run the './docker_build.sh <tag>' command to call the script. <tag> specifies the tag of the image.
@@ -97,6 +94,9 @@ Successfully built 38381cd2bf3d
 Successfully tagged stonedb_buildenv:v0.1
 Docker build success!you can run it:
         docker run -d -p 23306:3306 -v /home/src:/home/ stonedb_buildenv:v0.1
+
+
+
 ```
 ### Step 3. Enter the container and compile StoneDB
 ```bash
@@ -167,7 +167,6 @@ After the `make` commands are successful, you can choose either to compress the 
 ```
 ### Directly use StoneDB in the container
 You can refer to [Quick Deployment](https://stoneatom.yuque.com/staff-ft8n1u/dghuxr/pv8ath) or the following code to deploy and use StoneDB in the container.
-
 ```bash
 [root@06f1f385d3b3 build]# cd /stonedb56/install/
 
@@ -196,6 +195,7 @@ drwxr-xr-x.  4 root root   4096 Jun  8 06:16 sql-bench
 -rw-r--r--.  1 root root   5526 Jun  8 03:41 stonedb.cnf
 drwxr-xr-x.  2 root root    136 Jun  8 06:16 support-files
 [root@06f1f385d3b3 install]# ./reinstall.sh
+。
 。
 。
 。
