@@ -26,98 +26,113 @@
 
 namespace stonedb {
 namespace system {
+
 class FileOut : public ChannelOut {
  public:
-  FileOut(std::string const &filepath) : m_out(filepath.c_str(), std::ios_base::out | std::ios_base::app) {
-    if (!m_out.is_open()) throw common::FileException(std::string("Unable to open ") + std::string(filepath));
+  FileOut(std::string const &filepath) : out_stream_(filepath.c_str(), std::ios_base::out | std::ios_base::app) {
+    if (!out_stream_.is_open()) throw common::FileException(std::string("Unable to open ") + std::string(filepath));
   }
 
   ~FileOut() {}
+
   ChannelOut &operator<<(short value) override {
-    m_out << value;
+    out_stream_ << value;
     return *this;
   };
+
   ChannelOut &operator<<(int value) override {
-    m_out << value;
+    out_stream_ << value;
     return *this;
   };
+
   ChannelOut &operator<<(long value) override {
-    m_out << value;
+    out_stream_ << value;
     return *this;
   };
 
   ChannelOut &operator<<(float value) override {
-    m_out << value;
+    out_stream_ << value;
     return *this;
   };
+
   ChannelOut &operator<<(double value) override {
-    m_out << value;
+    out_stream_ << value;
     return *this;
   };
+
   ChannelOut &operator<<(long double value) override {
-    m_out << value;
+    out_stream_ << value;
     return *this;
   };
 
   ChannelOut &operator<<(unsigned short value) override {
-    m_out << value;
+    out_stream_ << value;
     return *this;
   };
+
   ChannelOut &operator<<(unsigned int value) override {
-    m_out << value;
+    out_stream_ << value;
     return *this;
   };
+
   ChannelOut &operator<<(unsigned long value) override {
-    m_out << value;
+    out_stream_ << value;
     return *this;
   };
 
   ChannelOut &operator<<(int long long value) override {
-    m_out << value;
+    out_stream_ << value;
     return *this;
   };
+
   ChannelOut &operator<<(int long long unsigned value) override {
-    m_out << value;
+    out_stream_ << value;
     return *this;
   };
 
   ChannelOut &operator<<(char c) override {
-    m_out << c;
-    return *this;
-  };
-  ChannelOut &operator<<(const char *buffer) override {
-    m_out << buffer;
-    return *this;
-  };
-  ChannelOut &operator<<(const wchar_t *buffer) override {
-    m_out << buffer;
-    return *this;
-  };
-  ChannelOut &operator<<(const std::string &str) override {
-    m_out << str.c_str();
+    out_stream_ << c;
     return *this;
   };
 
-  void setf(std::ios_base::fmtflags _Mask) override { m_out.setf(_Mask); };
-  void precision(std::streamsize prec) override { m_out.precision(prec); };
-  ChannelOut &flush() override {
-    m_out.flush();
+  ChannelOut &operator<<(const char *buffer) override {
+    out_stream_ << buffer;
     return *this;
   };
+
+  ChannelOut &operator<<(const wchar_t *buffer) override {
+    out_stream_ << buffer;
+    return *this;
+  };
+
+  ChannelOut &operator<<(const std::string &str) override {
+    out_stream_ << str.c_str();
+    return *this;
+  };
+
+  void setf(std::ios_base::fmtflags _Mask) override { out_stream_.setf(_Mask); };
+  void precision(std::streamsize prec) override { out_stream_.precision(prec); };
+
+  ChannelOut &flush() override {
+    out_stream_.flush();
+    return *this;
+  };
+
   ChannelOut &fixed() override {
-    m_out.setf(std::ios_base::fixed, std::ios_base::floatfield);
+    out_stream_.setf(std::ios_base::fixed, std::ios_base::floatfield);
     return *this;
   };
 
   void close() override {
-    if (m_out.is_open()) m_out.close();
+    if (out_stream_.is_open()) out_stream_.close();
   };
 
   ChannelOut &operator<<(ChannelOut &(*_Pfn)(ChannelOut &)) override { return _Pfn(*this); };
 
  private:
-  std::ofstream m_out;
+  std::ofstream out_stream_;
 };
+
 }  // namespace system
 }  // namespace stonedb
 

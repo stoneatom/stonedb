@@ -31,9 +31,9 @@ class HugeHeap : public TCMHeap {
   virtual ~HugeHeap();
 
  private:
-  int m_fd;
-  void *m_heap_frame;
-  char m_hugefilename[2048];
+  int fd_;
+  void *heap_frame_;
+  char huge_filename_[2048];
 };
 
 }  // namespace mm

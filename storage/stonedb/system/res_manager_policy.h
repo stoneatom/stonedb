@@ -20,11 +20,13 @@
 
 namespace stonedb {
 namespace system {
+
 class ResourceManagerPolicy {
  public:
   virtual ~ResourceManagerPolicy() {}
   virtual int estimate() = 0;
 };
+
 }  // namespace system
 }  // namespace stonedb
 

@@ -21,53 +21,52 @@
 
 namespace stonedb {
 namespace types {
-/************************************* Item_sum_int_rcbase
- * ************************************/
 
 Item_sum_int_rcbase::Item_sum_int_rcbase() : Item_sum_num() {}
 Item_sum_int_rcbase::~Item_sum_int_rcbase() {}
+
 longlong Item_sum_int_rcbase::val_int() {
   DEBUG_ASSERT(fixed == 1);
-  return (longlong)count;
+  return (longlong) count_;
 }
+
 String *Item_sum_int_rcbase::val_str([[maybe_unused]] String *str) { return NULL; }
 my_decimal *Item_sum_int_rcbase::val_decimal(my_decimal *) { return NULL; }
 
-// TODO: Test this part
-// void Item_sum_int_rcbase::int64_value(int64_t &value)
 void Item_sum_int_rcbase::int64_value(int64_t &value) {
   fixed = 1;
-  count = value;
+  count_ = value;
 }
-// Not used
+
 void Item_sum_int_rcbase::clear() {}
 bool Item_sum_int_rcbase::add() { return 0; }
 void Item_sum_int_rcbase::update_field() {}
 
-/************************************* Item_sum_sum_rcbase
- * ************************************/
 
-Item_sum_sum_rcbase::Item_sum_sum_rcbase() : Item_sum_num() { sum = 0; }
+Item_sum_sum_rcbase::Item_sum_sum_rcbase() : Item_sum_num() { sum_ = 0; }
 Item_sum_sum_rcbase::~Item_sum_sum_rcbase() {}
 
 double Item_sum_sum_rcbase::val_real() {
   DEBUG_ASSERT(fixed == 1);
-  if (hybrid_type == DECIMAL_RESULT) my_decimal2double(E_DEC_FATAL_ERROR, dec_buffs, &sum);
-  return sum;
+  if (hybrid_type_ == DECIMAL_RESULT) my_decimal2double(E_DEC_FATAL_ERROR, decimal_buffs_, &sum_);
+  return sum_;
 }
+
 my_decimal *Item_sum_sum_rcbase::val_decimal(my_decimal *val) {
-  if (hybrid_type == DECIMAL_RESULT) return dec_buffs;
+  if (hybrid_type_ == DECIMAL_RESULT) return decimal_buffs_;
   return val_decimal_from_real(val);
 }
+
 String *Item_sum_sum_rcbase::val_str(String *str) {
-  if (hybrid_type == DECIMAL_RESULT) return val_string_from_decimal(str);
+  if (hybrid_type_ == DECIMAL_RESULT) return val_string_from_decimal(str);
   return val_string_from_real(str);
 }
+
 longlong Item_sum_sum_rcbase::val_int() {
   DEBUG_ASSERT(fixed == 1);
-  if (hybrid_type == DECIMAL_RESULT) {
+  if (hybrid_type_ == DECIMAL_RESULT) {
     longlong result;
-    my_decimal2int(E_DEC_FATAL_ERROR, dec_buffs, unsigned_flag, &result);
+    my_decimal2int(E_DEC_FATAL_ERROR, decimal_buffs_, unsigned_flag, &result);
     return result;
   }
   return (longlong)rint(val_real());
@@ -75,101 +74,47 @@ longlong Item_sum_sum_rcbase::val_int() {
 
 my_decimal *Item_sum_sum_rcbase::dec_value() {
   fixed = 1;
-  return dec_buffs;
-}
-double &Item_sum_sum_rcbase::real_value() {
-  fixed = 1;
-  return sum;
-}
-void Item_sum_sum_rcbase::real_value(double &val) {
-  fixed = 1;
-  sum = val;
+  return decimal_buffs_;
 }
 
-// Not used
+double &Item_sum_sum_rcbase::real_value() {
+  fixed = 1;
+  return sum_;
+}
+
+void Item_sum_sum_rcbase::real_value(double &val) {
+  fixed = 1;
+  sum_ = val;
+}
 
 void Item_sum_sum_rcbase::clear() {}
 bool Item_sum_sum_rcbase::add() { return false; }
 void Item_sum_sum_rcbase::update_field() {}
 
-/************************************* Item_sum_distinct_rcbase
- * ************************************/
-
-// Item_sum_distinct_rcbase::Item_sum_distinct_rcbase()
-//	:Item_sum_num()
-//{
-//}
-// Item_sum_distinct_rcbase::~Item_sum_distinct_rcbase()
-//{
-//}
-// double Item_sum_distinct_rcbase::val_real()
-//{
-//	return val.traits->val_real(&val);
-//}
-// my_decimal *Item_sum_distinct_rcbase::val_decimal(my_decimal *to)
-//{
-//	if (null_value)
-//		return 0;
-//	return val.traits->val_decimal(&val, to);
-//}
-// longlong Item_sum_distinct_rcbase::val_int()
-//{
-//	return val.traits->val_int(&val, unsigned_flag);
-//}
-// String *Item_sum_distinct_rcbase::val_str(String *str)
-//{
-//	if (null_value)
-//		return 0;
-//	return val.traits->val_str(&val, str, decimals);
-//}
-// my_decimal* Item_sum_distinct_rcbase::dec_value()
-//{
-//	val.traits = Hybrid_type_traits_decimal::instance();
-//	val.used_dec_buf_no = 0;
-//	decimals = 4;
-//	return &val.dec_buf[val.used_dec_buf_no];
-//}
-// void Item_sum_distinct_rcbase::real_value(double &value)
-//{
-//	val.traits = Hybrid_type_traits::instance();
-//	val.real = value;
-//}
-//
-////Not used
-// void Item_sum_distinct_rcbase::clear(){}
-// bool Item_sum_distinct_rcbase::add(){ return 0; }
-// void Item_sum_distinct_rcbase::update_field(){}
-// const char* Item_sum_distinct_rcbase::func_name() const
-//{
-//	return NULL;
-//}
-
-/************************************* Item_sum_hybrid_rcbase
- * ************************************/
-
 Item_sum_hybrid_rcbase::Item_sum_hybrid_rcbase() : Item_sum() {
-  was_values = true;
-  sum_int = 0;
-  my_decimal_set_zero(&sum_dec);
-  sum = 0.0;
-  value.length(0);
+  is_values_ = true;
+  sum_longint_ = 0;
+  my_decimal_set_zero(&sum_decimal_);
+  sum_ = 0.0;
+  value_.length(0);
   null_value = 1;
 }
+
 Item_sum_hybrid_rcbase::~Item_sum_hybrid_rcbase() {}
 
 void Item_sum_hybrid_rcbase::clear() {
-  switch (hybrid_type) {
+  switch (hybrid_type_) {
     case INT_RESULT:
-      sum_int = 0;
+      sum_longint_ = 0;
       break;
     case DECIMAL_RESULT:
-      my_decimal_set_zero(&sum_dec);
+      my_decimal_set_zero(&sum_decimal_);
       break;
     case REAL_RESULT:
-      sum = 0.0;
+      sum_ = 0.0;
       break;
     default:
-      value.length(0);
+      value_.length(0);
   }
   null_value = 1;
 }
@@ -177,7 +122,7 @@ void Item_sum_hybrid_rcbase::clear() {
 double Item_sum_hybrid_rcbase::val_real() {
   DEBUG_ASSERT(fixed == 1);
   if (null_value) return 0.0;
-  switch (hybrid_type) {
+  switch (hybrid_type_) {
     case STRING_RESULT: {
       char *end_not_used;
       int err_not_used;
@@ -186,13 +131,13 @@ double Item_sum_hybrid_rcbase::val_real() {
       return (res ? my_strntod(res->charset(), (char *)res->ptr(), res->length(), &end_not_used, &err_not_used) : 0.0);
     }
     case INT_RESULT:
-      if (unsigned_flag) return ulonglong2double(sum_int);
-      return (double)sum_int;
+      if (unsigned_flag) return ulonglong2double(sum_longint_);
+      return (double)sum_longint_;
     case DECIMAL_RESULT:
-      my_decimal2double(E_DEC_FATAL_ERROR, &sum_dec, &sum);
-      return sum;
+      my_decimal2double(E_DEC_FATAL_ERROR, &sum_decimal_, &sum_);
+      return sum_;
     case REAL_RESULT:
-      return sum;
+      return sum_;
     case ROW_RESULT:
     default:
       // This case should never be chosen
@@ -204,12 +149,12 @@ double Item_sum_hybrid_rcbase::val_real() {
 longlong Item_sum_hybrid_rcbase::val_int() {
   DEBUG_ASSERT(fixed == 1);
   if (null_value) return 0;
-  switch (hybrid_type) {
+  switch (hybrid_type_) {
     case INT_RESULT:
-      return sum_int;
+      return sum_longint_;
     case DECIMAL_RESULT: {
       longlong result;
-      my_decimal2int(E_DEC_FATAL_ERROR, &sum_dec, unsigned_flag, &result);
+      my_decimal2int(E_DEC_FATAL_ERROR, &sum_decimal_, unsigned_flag, &result);
       return result;
     }
     default:
@@ -220,18 +165,18 @@ longlong Item_sum_hybrid_rcbase::val_int() {
 my_decimal *Item_sum_hybrid_rcbase::val_decimal(my_decimal *val) {
   DEBUG_ASSERT(fixed == 1);
   if (null_value) return 0;
-  switch (hybrid_type) {
+  switch (hybrid_type_) {
     case STRING_RESULT:
-      string2my_decimal(E_DEC_FATAL_ERROR, &value, val);
+      string2my_decimal(E_DEC_FATAL_ERROR, &value_, val);
       break;
     case REAL_RESULT:
-      double2my_decimal(E_DEC_FATAL_ERROR, sum, val);
+      double2my_decimal(E_DEC_FATAL_ERROR, sum_, val);
       break;
     case DECIMAL_RESULT:
-      val = &sum_dec;
+      val = &sum_decimal_;
       break;
     case INT_RESULT:
-      int2my_decimal(E_DEC_FATAL_ERROR, sum_int, unsigned_flag, val);
+      int2my_decimal(E_DEC_FATAL_ERROR, sum_longint_, unsigned_flag, val);
       break;
     case ROW_RESULT:
     default:
@@ -245,20 +190,20 @@ my_decimal *Item_sum_hybrid_rcbase::val_decimal(my_decimal *val) {
 String *Item_sum_hybrid_rcbase::val_str(String *str) {
   DEBUG_ASSERT(fixed == 1);
   if (null_value) return (String *)0;
-  switch (hybrid_type) {
+  switch (hybrid_type_) {
     case STRING_RESULT:
-      return &value;
+      return &value_;
     case REAL_RESULT:
-      str->set_real(sum, decimals, &my_charset_bin);
+      str->set_real(sum_, decimals, &my_charset_bin);
       break;
     case DECIMAL_RESULT:
-      my_decimal2string(E_DEC_FATAL_ERROR, &sum_dec, 0, 0, 0, str);
+      my_decimal2string(E_DEC_FATAL_ERROR, &sum_decimal_, 0, 0, 0, str);
       return str;
     case INT_RESULT:
       if (unsigned_flag)
-        str->set((ulonglong)sum_int, &my_charset_bin);
+        str->set((ulonglong)sum_longint_, &my_charset_bin);
       else
-        str->set((longlong)sum_int, &my_charset_bin);
+        str->set((longlong)sum_longint_, &my_charset_bin);
       break;
     case ROW_RESULT:
     default:
@@ -271,26 +216,24 @@ String *Item_sum_hybrid_rcbase::val_str(String *str) {
 
 my_decimal *Item_sum_hybrid_rcbase::dec_value() {
   fixed = 1;
-  return &sum_dec;
+  return &sum_decimal_;
 }
 double &Item_sum_hybrid_rcbase::real_value() {
   fixed = 1;
-  return sum;
+  return sum_;
 }
-// TODO: test this part
-// int64_t& Item_sum_hybrid_rcbase::int64_value()
+
 int64_t &Item_sum_hybrid_rcbase::int64_value() {
   fixed = 1;
-  return (int64_t &)sum_int;
+  return (int64_t &)sum_longint_;
 }
 String *Item_sum_hybrid_rcbase::string_value() {
   fixed = 1;
-  return &value;
+  return &value_;
 }
-
-// Not used
 
 bool Item_sum_hybrid_rcbase::add() { return false; }
 void Item_sum_hybrid_rcbase::update_field() {}
+
 }  // namespace types
 }  // namespace stonedb

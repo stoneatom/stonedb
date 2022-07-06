@@ -26,7 +26,7 @@ namespace mm {
 
 class SystemHeap : public HeapPolicy {
  public:
-  SystemHeap(size_t size) : HeapPolicy(size), m_avail(true), m_allocsize(0) {}
+  SystemHeap(size_t size) : HeapPolicy(size), avail_(true), alloc_size_(0) {}
   virtual ~SystemHeap();
 
   /*
@@ -40,9 +40,9 @@ class SystemHeap : public HeapPolicy {
   size_t getBlockSize(void *mh) override;
 
  private:
-  bool m_avail;
-  size_t m_allocsize;
-  std::unordered_map<void *, size_t> m_blockSizes;
+  bool avail_;
+  size_t alloc_size_;
+  std::unordered_map<void *, size_t> block_sizes_;
 };
 
 }  // namespace mm

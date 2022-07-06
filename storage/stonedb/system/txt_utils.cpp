@@ -21,6 +21,7 @@
 
 namespace stonedb {
 namespace system {
+
 inline char Convert2Hex(int index) {
   static const char tab[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
   return tab[index];
@@ -146,5 +147,6 @@ bool CanBeDTSeparator(char c) {
     return true;
   return false;
 }
+
 }  // namespace system
 }  // namespace stonedb

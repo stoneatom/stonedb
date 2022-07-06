@@ -1709,7 +1709,7 @@ common::SDBError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_params
   io_params->SetTimeZone(sign, minutes);
 
   if (ex.filetype == FILETYPE_MEM) {
-    io_params->load_delayed_insert = true;
+    io_params->load_delayed_insert_ = true;
   }
 #ifdef DONT_ALLOW_FULL_LOAD_DATA_PATSTONEDB
   ex->file_name += dirname_length(ex->file_name);

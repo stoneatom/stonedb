@@ -19,6 +19,7 @@
 
 namespace stonedb {
 namespace types {
+
 RCValueObject::RCValueObject() {}
 
 RCValueObject::RCValueObject(const RCValueObject &rcvo) {
@@ -119,6 +120,7 @@ RCValueObject::operator RCNum &() const {
   if (IsNull()) return RCNum::NullValue();
   if (GetValueType() == ValueTypeEnum::NUMERIC_TYPE || GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
     return static_cast<RCNum &>(*value);
+
   STONEDB_ERROR("Bad cast in RCValueObject::RCNum&()");
   return static_cast<RCNum &>(*value);
 }
@@ -126,6 +128,7 @@ RCValueObject::operator RCNum &() const {
 RCValueObject::operator RCDateTime &() const {
   if (IsNull()) return RCDateTime::NullValue();
   if (GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return static_cast<RCDateTime &>(*value);
+
   STONEDB_ERROR("Bad cast in RCValueObject::RCDateTime&()");
   return static_cast<RCDateTime &>(*value);
 }
@@ -139,5 +142,6 @@ uint RCValueObject::GetHashCode() const {
   if (IsNull()) return 0;
   return value->GetHashCode();
 }
+
 }  // namespace types
 }  // namespace stonedb

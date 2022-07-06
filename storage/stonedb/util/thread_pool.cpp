@@ -19,6 +19,8 @@
 
 namespace stonedb {
 namespace utils {
-thread_local thread_pool *thread_pool::tp_owner;
+
+thread_local thread_pool *thread_pool::tp_owner_;
+
 }  // namespace utils
 }  // namespace stonedb

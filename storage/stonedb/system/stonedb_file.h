@@ -35,13 +35,15 @@ namespace system {
 */
 
 class StoneDBFile : public Stream {
-  int fd;
+private:
+  int fd_;
 
  public:
-  StoneDBFile() { fd = -1; }
+  StoneDBFile() { fd_ = -1; }
   ~StoneDBFile() {
-    if (fd != -1) Close();
+    if (fd_ != -1) Close();
   }
+
   off_t Seek(off_t pos, int whence);
   off_t Tell();
   int Flush();

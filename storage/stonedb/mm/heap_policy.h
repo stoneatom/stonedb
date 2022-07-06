@@ -27,18 +27,19 @@ enum class HEAP_STATUS { HEAP_SUCCESS, HEAP_OUT_OF_MEMORY, HEAP_CORRUPTED, HEAP_
 
 class HeapPolicy {
  public:
-  HeapPolicy(size_t s) : m_size(s), m_stonedb(HEAP_STATUS::HEAP_ERROR) {}
+  HeapPolicy(size_t sz) : size_(sz), heap_status_(HEAP_STATUS::HEAP_ERROR) {}
   virtual ~HeapPolicy() {}
+
   virtual void *alloc(size_t size) = 0;
   virtual void dealloc(void *mh) = 0;
   virtual void *rc_realloc(void *mh, size_t size) = 0;
   virtual size_t getBlockSize(void *mh) = 0;
 
-  HEAP_STATUS getHeapStatus() { return m_stonedb; }
+  HEAP_STATUS getHeapStatus() { return heap_status_; }
 
  protected:
-  size_t m_size;
-  HEAP_STATUS m_stonedb;
+  size_t size_;
+  HEAP_STATUS heap_status_;
 };
 
 }  // namespace mm

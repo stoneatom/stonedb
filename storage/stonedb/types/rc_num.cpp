@@ -27,53 +27,52 @@
 
 namespace stonedb {
 namespace types {
-#define MAX_DEC_PRECISION 18
 
-RCNum::RCNum(common::CT attrt) : value(0), m_scale(0), dbl(false), dot(false), attrt(attrt) {}
+RCNum::RCNum(common::CT attrt) : value_(0), scale_(0), is_double_(false), is_dot_(false), attr_type_(attrt) {}
 
-RCNum::RCNum(int64_t value, short scale, bool dbl, common::CT attrt) { Assign(value, scale, dbl, attrt); }
+RCNum::RCNum(int64_t value_, short scale, bool is_double_, common::CT attrt) { Assign(value_, scale, is_double_, attrt); }
 
-RCNum::RCNum(double value) : value(*(int64_t *)&value), m_scale(0), dbl(true), dot(false), attrt(common::CT::REAL) {
-  null = (value == NULL_VALUE_D ? true : false);
+RCNum::RCNum(double value_) : value_(*(int64_t *)&value_), scale_(0), is_double_(true), is_dot_(false), attr_type_(common::CT::REAL) {
+  null = (value_ == NULL_VALUE_D ? true : false);
 }
 
 RCNum::RCNum(const RCNum &rcn)
-    : ValueBasic<RCNum>(rcn), value(rcn.value), m_scale(rcn.m_scale), dbl(rcn.dbl), dot(rcn.dot), attrt(rcn.attrt) {
+    : ValueBasic<RCNum>(rcn), value_(rcn.value_), scale_(rcn.scale_), is_double_(rcn.is_double_), is_dot_(rcn.is_dot_), attr_type_(rcn.attr_type_) {
   null = rcn.null;
 }
 
 RCNum::~RCNum() {}
 
-RCNum &RCNum::Assign(int64_t value, short scale, bool dbl, common::CT attrt) {
-  this->value = value;
-  this->m_scale = scale;
-  this->dbl = dbl;
-  this->attrt = attrt;
+RCNum &RCNum::Assign(int64_t value_, short scale, bool is_double_, common::CT attrt) {
+  this->value_ = value_;
+  this->scale_ = scale;
+  this->is_double_ = is_double_;
+  this->attr_type_ = attrt;
 
-  if (scale != -1 && !dbl) {
+  if (scale != -1 && !is_double_) {
     if (scale != 0 || attrt == common::CT::UNK) {
-      dot = true;
-      this->attrt = common::CT::NUM;
+      is_dot_ = true;
+      this->attr_type_ = common::CT::NUM;
     }
   }
-  if (scale <= -1 && !dbl) m_scale = 0;
-  if (dbl) {
-    if (!(this->attrt == common::CT::REAL || this->attrt == common::CT::FLOAT)) this->attrt = common::CT::REAL;
-    this->dot = false;
-    m_scale = 0;
-    null = (value == *(int64_t *)&NULL_VALUE_D ? true : false);
+  if (scale <= -1 && !is_double_) scale_ = 0;
+  if (is_double_) {
+    if (!(this->attr_type_ == common::CT::REAL || this->attr_type_ == common::CT::FLOAT)) this->attr_type_ = common::CT::REAL;
+    this->is_dot_ = false;
+    scale_ = 0;
+    null = (value_ == *(int64_t *)&NULL_VALUE_D ? true : false);
   } else
-    null = (value == common::NULL_VALUE_64 ? true : false);
+    null = (value_ == common::NULL_VALUE_64 ? true : false);
   return *this;
 }
 
-RCNum &RCNum::Assign(double value) {
-  this->value = *(int64_t *)&value;
-  this->m_scale = 0;
-  this->dbl = true;
-  this->dot = false;
-  this->attrt = common::CT::REAL;
-  common::double_int_t v(value);
+RCNum &RCNum::Assign(double value_) {
+  this->value_ = *(int64_t *)&value_;
+  this->scale_ = 0;
+  this->is_double_ = true;
+  this->is_dot_ = false;
+  this->attr_type_ = common::CT::REAL;
+  common::double_int_t v(value_);
   null = (v.i == common::NULL_VALUE_64 ? true : false);
   return *this;
 }
@@ -91,11 +90,11 @@ common::ErrorCode RCNum::ParseNum(const BString &rcs, RCNum &rcn, short scale) {
 }
 
 RCNum &RCNum::operator=(const RCNum &rcn) {
-  value = rcn.value;
-  dbl = rcn.dbl;
-  m_scale = rcn.m_scale;
+  value_ = rcn.value_;
+  is_double_ = rcn.is_double_;
+  scale_ = rcn.scale_;
   null = rcn.null;
-  attrt = rcn.attrt;
+  attr_type_ = rcn.attr_type_;
   return *this;
 }
 
@@ -104,7 +103,7 @@ RCNum &RCNum::operator=(const RCDataType &rcdt) {
     *this = (RCNum &)rcdt;
   else {
     RCNum rcn1;
-    if (common::IsError(RCNum::Parse(rcdt.ToBString(), rcn1, this->attrt))) {
+    if (common::IsError(RCNum::Parse(rcdt.ToBString(), rcn1, this->attr_type_))) {
       *this = rcn1;
     } else {
       STONEDB_ERROR("Unsupported assign operation!");
@@ -114,14 +113,14 @@ RCNum &RCNum::operator=(const RCDataType &rcdt) {
   return *this;
 }
 
-common::CT RCNum::Type() const { return attrt; }
+common::CT RCNum::Type() const { return attr_type_; }
 
 bool RCNum::IsDecimal(ushort scale) const {
-  if (core::ATI::IsIntegerType(this->attrt)) {
+  if (core::ATI::IsIntegerType(this->attr_type_)) {
     return GetDecIntLen() <= (MAX_DEC_PRECISION - scale);
-  } else if (attrt == common::CT::NUM) {
+  } else if (attr_type_ == common::CT::NUM) {
     if (this->GetDecFractLen() <= scale) return true;
-    if (m_scale > scale) return value % (int64_t)Uint64PowOfTen(m_scale - scale) == 0;
+    if (scale_ > scale) return value_ % (int64_t)Uint64PowOfTen(scale_ - scale) == 0;
     return true;
   } else {
     double f = GetFractPart();
@@ -131,8 +130,8 @@ bool RCNum::IsDecimal(ushort scale) const {
 }
 
 bool RCNum::IsInt() const {
-  if (!dbl) {
-    if ((value % (int64_t)Uint64PowOfTen(m_scale)) != 0) {
+  if (!is_double_) {
+    if ((value_ % (int64_t)Uint64PowOfTen(scale_)) != 0) {
       return false;
     }
     return true;
@@ -144,9 +143,10 @@ RCNum RCNum::ToDecimal(int scale) const {
   int64_t tmpv = 0;
   short tmpp = 0;
   int sign = 1;
-  if (dbl) {
+
+  if (is_double_) {
     double intpart(0);
-    double fracpart(modf(*(double *)&value, &intpart));
+    double fracpart(modf(*(double *)&value_, &intpart));
 
     if (intpart < 0 || fracpart < 0) {
       sign = -1;
@@ -171,8 +171,8 @@ RCNum RCNum::ToDecimal(int scale) const {
 
     tmpp = scale;
   } else {
-    tmpv = this->value;
-    tmpp = this->m_scale;
+    tmpv = this->value_;
+    tmpp = this->scale_;
     if (scale != -1) {
       if (tmpp > scale)
         tmpv /= (int64_t)Uint64PowOfTen(tmpp - scale);
@@ -185,21 +185,21 @@ RCNum RCNum::ToDecimal(int scale) const {
 }
 
 RCNum RCNum::ToReal() const {
-  if (core::ATI::IsRealType(attrt)) {
-    return RCNum(*(double *)&value);
+  if (core::ATI::IsRealType(attr_type_)) {
+    return RCNum(*(double *)&value_);
   }
-  return RCNum((double)((double)(this->value / PowOfTen(m_scale))));
+  return RCNum((double)((double)(this->value_ / PowOfTen(scale_))));
 }
 
 RCNum RCNum::ToInt() const { return GetIntPart(); }
 
-static char *Text(int64_t value, char buf[], int scale) {
+static char *Text(int64_t value_, char buf[], int scale) {
   bool sign = true;
-  if (value < 0) {
+  if (value_ < 0) {
     sign = false;
-    value *= -1;
+    value_ *= -1;
   }
-  longlong2str(value, buf, 10);
+  longlong2str(value_, buf, 10);
   int l = (int)std::strlen(buf);
   std::memset(buf + l + 1, ' ', 21 - l);
   int pos = 21;
@@ -230,14 +230,14 @@ BString RCNum::ToBString() const {
   if (!IsNull()) {
     static int const SIZE(24);
     char buf[SIZE];
-    if (core::ATI::IsRealType(attrt)) {
-      gcvt(*(double *)&value, 15, buf);
+    if (core::ATI::IsRealType(attr_type_)) {
+      gcvt(*(double *)&value_, 15, buf);
       size_t s = std::strlen(buf);
       if (s && buf[s - 1] == '.') buf[s - 1] = 0;
-    } else if (core::ATI::IsIntegerType(attrt))
-      std::sprintf(buf, "%ld", value);
+    } else if (core::ATI::IsIntegerType(attr_type_))
+      std::sprintf(buf, "%ld", value_);
     else {
-      return BString(Text(value, buf, m_scale), 0, true);
+      return BString(Text(value_, buf, scale_), 0, true);
     }
     return BString(buf, std::strlen(buf), true);
   }
@@ -245,7 +245,7 @@ BString RCNum::ToBString() const {
 }
 
 RCNum::operator double() const {
-  return (core::ATI::IsRealType(Type()) || Type() == common::CT::FLOAT) ? *(double *)&value
+  return (core::ATI::IsRealType(Type()) || Type() == common::CT::FLOAT) ? *(double *)&value_
                                                                         : GetIntPart() + GetFractPart();
 }
 
@@ -308,7 +308,7 @@ RCNum &RCNum::operator-=(const RCNum &rcn) {
   if (rcn.IsNull() || rcn.IsNull()) return *this;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
-      *(double *)&value -= *(double *)&rcn.value;
+      *(double *)&value_ -= *(double *)&rcn.value_;
     else {
       if (IsReal())
         *this -= rcn.ToReal();
@@ -316,11 +316,11 @@ RCNum &RCNum::operator-=(const RCNum &rcn) {
         *this -= rcn.ToDecimal();
     }
   } else {
-    if (m_scale < rcn.m_scale) {
-      value = ((int64_t)(value * PowOfTen(rcn.m_scale - m_scale)) - rcn.value);
-      m_scale = rcn.m_scale;
+    if (scale_ < rcn.scale_) {
+      value_ = ((int64_t)(value_ * PowOfTen(rcn.scale_ - scale_)) - rcn.value_);
+      scale_ = rcn.scale_;
     } else {
-      value -= (int64_t)(rcn.value * PowOfTen(m_scale - rcn.m_scale));
+      value_ -= (int64_t)(rcn.value_ * PowOfTen(scale_ - rcn.scale_));
     }
   }
   return *this;
@@ -331,7 +331,7 @@ RCNum &RCNum::operator+=(const RCNum &rcn) {
   if (rcn.IsNull() || rcn.IsNull()) return *this;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
-      *(double *)&value -= *(double *)&rcn.value;
+      *(double *)&value_ -= *(double *)&rcn.value_;
     else {
       if (IsReal())
         *this += rcn.ToReal();
@@ -339,11 +339,11 @@ RCNum &RCNum::operator+=(const RCNum &rcn) {
         *this += rcn.ToDecimal();
     }
   } else {
-    if (m_scale < rcn.m_scale) {
-      value = ((int64_t)(value * PowOfTen(rcn.m_scale - m_scale)) + rcn.value);
-      m_scale = rcn.m_scale;
+    if (scale_ < rcn.scale_) {
+      value_ = ((int64_t)(value_ * PowOfTen(rcn.scale_ - scale_)) + rcn.value_);
+      scale_ = rcn.scale_;
     } else {
-      value += (int64_t)(rcn.value * PowOfTen(m_scale - rcn.m_scale));
+      value_ += (int64_t)(rcn.value_ * PowOfTen(scale_ - rcn.scale_));
     }
   }
   return *this;
@@ -354,7 +354,7 @@ RCNum &RCNum::operator*=(const RCNum &rcn) {
   if (rcn.IsNull() || rcn.IsNull()) return *this;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
-      *(double *)&value -= *(double *)&rcn.value;
+      *(double *)&value_ -= *(double *)&rcn.value_;
     else {
       if (IsReal())
         *this /= rcn.ToReal();
@@ -362,8 +362,8 @@ RCNum &RCNum::operator*=(const RCNum &rcn) {
         *this /= rcn.ToDecimal();
     }
   } else {
-    value *= rcn.value;
-    m_scale += rcn.m_scale;
+    value_ *= rcn.value_;
+    scale_ += rcn.scale_;
   }
   return *this;
 }
@@ -390,7 +390,7 @@ RCNum &RCNum::operator/=(const RCNum &rcn) {
   if (rcn.IsNull() || rcn.IsNull()) return *this;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
-      *(double *)&value -= *(double *)&rcn.value;
+      *(double *)&value_ -= *(double *)&rcn.value_;
     else {
       if (IsReal())
         *this /= rcn.ToReal();
@@ -398,7 +398,7 @@ RCNum &RCNum::operator/=(const RCNum &rcn) {
         *this /= rcn.ToDecimal();
     }
   } else {
-    double tmv = ((double)(value / rcn.value) / PowOfTen(m_scale - rcn.m_scale));
+    double tmv = ((double)(value_ / rcn.value_) / PowOfTen(scale_ - rcn.scale_));
     int decimal = 0;
     int sign;
     static int const MAX_NUM_DIGITS = 21 + 1;
@@ -409,8 +409,8 @@ RCNum &RCNum::operator/=(const RCNum &rcn) {
     while (lz >= 0 && buf[lz--] == '0')
       ;
     buf[lz + 2] = 0;
-    value = std::strtoll(buf, NULL, 10) * (sign == 1 ? -1 : 1);
-    m_scale = (short)((lz + 2) - decimal);
+    value_ = std::strtoll(buf, NULL, 10) * (sign == 1 ? -1 : 1);
+    scale_ = (short)((lz + 2) - decimal);
   }
   return *this;
 }
@@ -441,7 +441,7 @@ int RCNum::compare(const RCNum &rcn) const {
   if (IsNull() || rcn.IsNull()) return false;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
-      return (*(double *)&value > *(double *)&rcn.value ? 1 : (*(double *)&value == *(double *)&rcn.value ? 0 : -1));
+      return (*(double *)&value_ > *(double *)&rcn.value_ ? 1 : (*(double *)&value_ == *(double *)&rcn.value_ ? 0 : -1));
     else {
       if (IsReal())
         return (*this > rcn.ToReal() ? 1 : (*this == rcn.ToReal() ? 0 : -1));
@@ -449,26 +449,26 @@ int RCNum::compare(const RCNum &rcn) const {
         return (this->ToReal() > rcn ? 1 : (this->ToReal() == rcn ? 0 : -1));
     }
   } else {
-    if (m_scale != rcn.m_scale) {
-      if (value < 0 && rcn.value >= 0) return -1;
-      if (value >= 0 && rcn.value < 0) return 1;
-      if (m_scale < rcn.m_scale) {
-        int64_t power_of_ten = (int64_t)PowOfTen(rcn.m_scale - m_scale);
-        int64_t tmpv = (int64_t)(rcn.value / power_of_ten);
-        if (value > tmpv) return 1;
-        if (value < tmpv || rcn.value % power_of_ten > 0) return -1;
-        if (rcn.value % power_of_ten < 0) return 1;
+    if (scale_ != rcn.scale_) {
+      if (value_ < 0 && rcn.value_ >= 0) return -1;
+      if (value_ >= 0 && rcn.value_ < 0) return 1;
+      if (scale_ < rcn.scale_) {
+        int64_t power_of_ten = (int64_t)PowOfTen(rcn.scale_ - scale_);
+        int64_t tmpv = (int64_t)(rcn.value_ / power_of_ten);
+        if (value_ > tmpv) return 1;
+        if (value_ < tmpv || rcn.value_ % power_of_ten > 0) return -1;
+        if (rcn.value_ % power_of_ten < 0) return 1;
         return 0;
       } else {
-        int64_t power_of_ten = (int64_t)PowOfTen(m_scale - rcn.m_scale);
-        int64_t tmpv = (int64_t)(value / power_of_ten);
-        if (tmpv < rcn.value) return -1;
-        if (tmpv > rcn.value || value % power_of_ten > 0) return 1;
-        if (value % power_of_ten < 0) return -1;
+        int64_t power_of_ten = (int64_t)PowOfTen(scale_ - rcn.scale_);
+        int64_t tmpv = (int64_t)(value_ / power_of_ten);
+        if (tmpv < rcn.value_) return -1;
+        if (tmpv > rcn.value_ || value_ % power_of_ten > 0) return 1;
+        if (value_ % power_of_ten < 0) return -1;
         return 0;
       }
     } else
-      return (value > rcn.value ? 1 : (value == rcn.value ? 0 : -1));
+      return (value_ > rcn.value_ ? 1 : (value_ == rcn.value_ ? 0 : -1));
   }
 }
 
@@ -479,22 +479,22 @@ int RCNum::compare(const RCDateTime &rcdt) const {
 }
 
 double RCNum::GetIntPartAsDouble() const {
-  if (dbl) {
+  if (is_double_) {
     double integer;
-    modf(*(double *)&value, &integer);
+    modf(*(double *)&value_, &integer);
     return integer;
   } else {
-    return (double)(value / (int64_t)Uint64PowOfTen(m_scale));
+    return (double)(value_ / (int64_t)Uint64PowOfTen(scale_));
   }
 }
 
 double RCNum::GetFractPart() const {
-  if (dbl) {
+  if (is_double_) {
     double fract, integer;
-    fract = modf(*(double *)&value, &integer);
+    fract = modf(*(double *)&value_, &integer);
     return fract;
   } else {
-    double tmpv = ((double)value / Uint64PowOfTen(m_scale));
+    double tmpv = ((double)value_ / Uint64PowOfTen(scale_));
     double fract, integer;
     fract = modf(tmpv, &integer);
     return fract;
@@ -503,9 +503,9 @@ double RCNum::GetFractPart() const {
 
 short RCNum::GetDecStrLen() const {
   if (IsNull()) return 0;
-  if (dbl) return 18;
-  short res = m_scale;
-  int64_t tmpi = value / (int64_t)PowOfTen(m_scale);
+  if (is_double_) return 18;
+  short res = scale_;
+  int64_t tmpi = value_ / (int64_t)PowOfTen(scale_);
   while (tmpi != 0) {
     tmpi /= 10;
     res++;
@@ -517,10 +517,10 @@ short RCNum::GetDecIntLen() const {
   if (IsNull()) return 0;
   short res = 0;
   int64_t tmpi = 0;
-  if (dbl)
+  if (is_double_)
     tmpi = GetIntPart();
   else {
-    tmpi = value / (int64_t)PowOfTen(m_scale);
+    tmpi = value_ / (int64_t)PowOfTen(scale_);
   }
   while (tmpi != 0) {
     tmpi /= 10;
@@ -531,15 +531,16 @@ short RCNum::GetDecIntLen() const {
 
 short RCNum::GetDecFractLen() const {
   if (IsNull()) return 0;
-  return m_scale;
+  return scale_;
 }
 
 void RCNum::Negate() {
   if (IsNull()) return;
-  if (dbl)
-    *(double *)&value = *(double *)&value * -1;
+  if (is_double_)
+    *(double *)&value_ = *(double *)&value_ * -1;
   else
-    value *= -1;
+    value_ *= -1;
 }
+
 }  // namespace types
 }  // namespace stonedb

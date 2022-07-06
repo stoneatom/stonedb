@@ -98,11 +98,7 @@ void CacheableItem::CI_Put(int block, unsigned char *data, int size) {
     file_size.push_back(0);
     file_start.push_back(0);
   }
-  //	cout << "CI_Put[" << (int64_t(this))%101 << "] : " << size  << ",
-  // file_size: "
-  //		 << (block<no_block ? file_size[block] : -1) << ", block: " <<
-  // block
-  //<< endl;
+
   try {
     if (block >= no_block || size != file_size[block]) {
       // create a new block or reallocate the existing one
@@ -202,5 +198,6 @@ void CacheableItem::SetFilename(int i)  // char -> void temporary change to enab
   filename[filename_n_position + 1] = (char)('0' + (i / 10000) % 10);
   filename[filename_n_position] = (char)('0' + (i / 100000) % 10);
 }
+
 }  // namespace system
 }  // namespace stonedb

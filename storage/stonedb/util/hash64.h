@@ -23,10 +23,9 @@
 
 namespace stonedb {
 namespace utils {
+
 // Easy hash set for 64-bit values
 class Hash64 final {
-  static constexpr int HASH64_STEPS_MASK = 31;
-
  private:
   int64_t FindAddress(int64_t n) {
     n ^= n << 17;
@@ -35,7 +34,7 @@ class Hash64 final {
     n += n >> 42;
     n ^= n << 33;
     n += n >> 25;
-    return n & address_mask;
+    return n & address_mask_;
   }
 
   int64_t HashStep(int64_t n) {
@@ -51,70 +50,79 @@ class Hash64 final {
     for (size = 4; size < set_size + 2; size <<= 1)
       ;
     size <<= 1;  // at least twice as much as set_size, typically 3 times
-    t.resize(size);
-    address_mask = size - 1;
-    zero_inserted = false;
-    hash_capacity = set_size;
+    table_.resize(size);
+    address_mask_ = size - 1;
+    zero_inserted_ = false;
+    capacity_ = set_size;
   }
-  Hash64(Hash64 &sec) : t(sec.t), hash_step(sec.hash_step) {
-    address_mask = sec.address_mask;
-    zero_inserted = sec.zero_inserted;
+
+  Hash64(Hash64 &sec) : table_(sec.table_), hash_step(sec.hash_step) {
+    address_mask_ = sec.address_mask_;
+    zero_inserted_ = sec.zero_inserted_;
   }
 
   ~Hash64() = default;
 
   bool Find(int64_t &n) {
-    if (n == 0) return zero_inserted;
+    if (n == 0) return zero_inserted_;
+
     int64_t i = FindAddress(n);
-    int64_t tv = t[i];
+    int64_t tv = table_[i];
     if (tv == n) return true;
     if (tv == 0) return false;
+
     int64_t s = HashStep(n);
     while (1) {
-      i = (i + s) & address_mask;
-      tv = t[i];
+      i = (i + s) & address_mask_;
+      tv = table_[i];
       if (tv == n) return true;
       if (tv == 0) return false;
     }
+
     return false;
   }
 
   void Insert(int64_t n) {
     if (n == 0) {
-      zero_inserted = true;
+      zero_inserted_ = true;
       return;
     }
+
     int64_t i = FindAddress(n);
-    if (t[i] == 0) {
-      t[i] = n;
+    if (table_[i] == 0) {
+      table_[i] = n;
       return;
     }
-    if (t[i] == n) return;
+
+    if (table_[i] == n) return;
     int64_t s = HashStep(n);
     while (1) {
-      i = (i + s) & address_mask;
-      if (t[i] == 0) {
-        t[i] = n;
+      i = (i + s) & address_mask_;
+      if (table_[i] == 0) {
+        table_[i] = n;
         return;
       }
-      if (t[i] == n) return;
+      if (table_[i] == n) return;
     }
+
     return;
   }
 
-  int capacity() { return hash_capacity; }
+  int capacity() { return capacity_; }
 
  private:
-  int hash_capacity;
-  int64_t address_mask;
-  bool zero_inserted;
+  int capacity_;
+  int64_t address_mask_;
+  bool zero_inserted_;
 
-  std::vector<int64_t> t;
+  std::vector<int64_t> table_;
 
+  static constexpr int HASH64_STEPS_MASK = 31;
   std::array<int64_t, HASH64_STEPS_MASK + 1> hash_step{1,   5,   7,   11,  13,  17,  19,  23,  29,  31, 37,
                                                        41,  43,  47,  53,  59,  71,  73,  79,  83,  89, 97,
                                                        101, 103, 107, 109, 113, 127, 131, 137, 139, 149};
 };
+
 }  // namespace utils
 }  // namespace stonedb
 

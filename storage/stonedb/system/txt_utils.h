@@ -23,6 +23,7 @@
 
 namespace stonedb {
 namespace system {
+
 // bool TcharToAscii(const TCHAR* src, char* dest, unsigned long destSize);  //
 // Converts TCHAR string to char string const char* DecodeError(int
 // common::ErrorCode, char* msg_buffer, unsigned long size);
@@ -34,6 +35,7 @@ common::ErrorCode EatUInt(char *&ptr, int &len, uint &out_value);
 common::ErrorCode EatInt(char *&ptr, int &len, int &out_value);
 common::ErrorCode EatUInt64(char *&ptr, int &len, uint64_t &out_value);
 bool CanBeDTSeparator(char c);
+
 }  // namespace system
 }  // namespace stonedb
 
