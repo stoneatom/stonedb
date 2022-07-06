@@ -76,6 +76,7 @@ class ValueParserForText {
   static common::ErrorCode ParseDate(const BString &rcs, RCDateTime &rcv);
   static common::ErrorCode ParseYear(const BString &rcs, RCDateTime &rcv);
 };
+
 }  // namespace types
 }  // namespace stonedb
 

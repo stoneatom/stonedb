@@ -23,6 +23,7 @@
 #include "system/fet.h"
 
 namespace stonedb {
+
 system::Channel rccontrol(true);
 system::Channel rcquerylog(true);
 char glob_hostip[FN_REFLEN];

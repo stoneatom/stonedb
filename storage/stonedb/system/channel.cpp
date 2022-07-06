@@ -25,23 +25,24 @@
 
 namespace stonedb {
 namespace system {
-Channel::Channel(bool time_stamp_at_lock) : m_bTimeStampAtLock(time_stamp_at_lock) {}
 
-Channel::Channel(ChannelOut *output, bool time_stamp_at_lock) : m_bTimeStampAtLock(time_stamp_at_lock) {
+Channel::Channel(bool time_stamp_at_lock) : time_stamp_at_lock_(time_stamp_at_lock) {}
+
+Channel::Channel(ChannelOut *output, bool time_stamp_at_lock) : time_stamp_at_lock_(time_stamp_at_lock) {
   addOutput(output);
 }
 
 Channel::~Channel() {
-  for (auto &out : m_Outputs) delete out;
+  for (auto &out : channel_outputs_) delete out;
 }
 
-void Channel::addOutput(ChannelOut *output) { m_Outputs.push_back(output); }
+void Channel::addOutput(ChannelOut *output) { channel_outputs_.push_back(output); }
 
-bool Channel::isOn() { return m_bEnabled; }
+bool Channel::isOn() { return enabled_; }
 
 Channel &Channel::lock(uint optional_sess_id) {
-  channel_mutex.lock();
-  if (m_bTimeStampAtLock && m_bEnabled) {
+  channel_mutex_.lock();
+  if (time_stamp_at_lock_ && enabled_) {
     time_t curtime = time(NULL);
     struct tm *cdt = localtime(&curtime);
     char sdatetime[32] = "";
@@ -65,63 +66,63 @@ Channel &Channel::lock(uint optional_sess_id) {
 }
 
 Channel &Channel::unlock() {
-  channel_mutex.unlock();
+  channel_mutex_.unlock();
   return *this;
 }
 
 Channel &Channel::operator<<(short value) {
-  if (m_bEnabled)
-    for (auto &out : m_Outputs) (*out) << value;
+  if (enabled_)
+    for (auto &out : channel_outputs_) (*out) << value;
   return *this;
 }
 
 Channel &Channel::operator<<(int value) {
-  if (m_bEnabled)
-    for (auto &out : m_Outputs) (*out) << value;
+  if (enabled_)
+    for (auto &out : channel_outputs_) (*out) << value;
   return *this;
 }
 
 Channel &Channel::operator<<(float value) {
-  if (m_bEnabled)
-    for (auto &out : m_Outputs) (*out) << value;
+  if (enabled_)
+    for (auto &out : channel_outputs_) (*out) << value;
   return *this;
 }
 
 Channel &Channel::operator<<(double value) {
-  if (m_bEnabled)
-    for (auto &out : m_Outputs) (*out) << value;
+  if (enabled_)
+    for (auto &out : channel_outputs_) (*out) << value;
   return *this;
 }
 
 Channel &Channel::operator<<(long double value) {
-  if (m_bEnabled)
-    for (auto &out : m_Outputs) (*out) << value;
+  if (enabled_)
+    for (auto &out : channel_outputs_) (*out) << value;
   return *this;
 }
 
 Channel &Channel::operator<<(unsigned short value) {
-  if (m_bEnabled)
-    for (auto &out : m_Outputs) (*out) << value;
+  if (enabled_)
+    for (auto &out : channel_outputs_) (*out) << value;
   return *this;
 }
 
 Channel &Channel::operator<<(unsigned int value) {
-  if (m_bEnabled)
-    for (auto &out : m_Outputs) (*out) << value;
+  if (enabled_)
+    for (auto &out : channel_outputs_) (*out) << value;
   return *this;
 }
 
 Channel &Channel::operator<<(unsigned long value) {
-  if (m_bEnabled)
-    for (auto &out : m_Outputs) (*out) << value;
+  if (enabled_)
+    for (auto &out : channel_outputs_) (*out) << value;
   return *this;
 }
 
 Channel &Channel::operator<<(int long value) { return operator<<(static_cast<int long long>(value)); }
 
 Channel &Channel::operator<<(int long long value) {
-  if (m_bEnabled)
-    for (auto &out : m_Outputs) {
+  if (enabled_)
+    for (auto &out : channel_outputs_) {
       if (value == common::NULL_VALUE_64)
         (*out) << "null";
       else if (value == common::PLUS_INF_64)
@@ -135,8 +136,8 @@ Channel &Channel::operator<<(int long long value) {
 }
 
 Channel &Channel::operator<<(unsigned long long value) {
-  if (m_bEnabled)
-    for (auto &out : m_Outputs) {
+  if (enabled_)
+    for (auto &out : channel_outputs_) {
       if (value == (unsigned long long)common::NULL_VALUE_64)
         (*out) << "null";
       else if (value == common::PLUS_INF_64)
@@ -150,38 +151,39 @@ Channel &Channel::operator<<(unsigned long long value) {
 }
 
 Channel &Channel::operator<<(const char *buffer) {
-  if (m_bEnabled)
-    for (auto &out : m_Outputs) (*out) << buffer;
+  if (enabled_)
+    for (auto &out : channel_outputs_) (*out) << buffer;
   return *this;
 }
 
 Channel &Channel::operator<<(const wchar_t *buffer) {
-  if (m_bEnabled)
-    for (auto &out : m_Outputs) (*out) << buffer;
+  if (enabled_)
+    for (auto &out : channel_outputs_) (*out) << buffer;
   return *this;
 }
 
 Channel &Channel::operator<<(char c) {
-  if (m_bEnabled)
-    for (auto &out : m_Outputs) (*out) << c;
+  if (enabled_)
+    for (auto &out : channel_outputs_) (*out) << c;
   return *this;
 }
 Channel &Channel::operator<<(const std::string &str) {
-  if (m_bEnabled)
-    for (auto &out : m_Outputs) (*out) << str;
+  if (enabled_)
+    for (auto &out : channel_outputs_) (*out) << str;
   return *this;
 }
 
 Channel &Channel::operator<<(const std::exception &exc) {
-  if (m_bEnabled)
-    for (auto &out : m_Outputs) (*out) << exc.what();
+  if (enabled_)
+    for (auto &out : channel_outputs_) (*out) << exc.what();
   return *this;
 }
 
 Channel &Channel::flush() {
-  if (m_bEnabled)
-    for (auto &out : m_Outputs) out->flush();
+  if (enabled_)
+    for (auto &out : channel_outputs_) out->flush();
   return *this;
 }
+
 }  // namespace system
 }  // namespace stonedb

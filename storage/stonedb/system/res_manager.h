@@ -23,15 +23,17 @@
 
 namespace stonedb {
 namespace system {
-class ResourceManager : public ResourceManagerBase {
-  ResourceManagerPolicy *m_memory;
 
+class ResourceManager : public ResourceManagerBase {
  public:
   ResourceManager();
   ~ResourceManager();
 
-  int GetMemoryScale() override { return m_memory->estimate(); }
+  int GetMemoryScale() override { return res_manage_policy_->estimate(); }
+private:
+  ResourceManagerPolicy *res_manage_policy_;
 };
+
 }  // namespace system
 }  // namespace stonedb
 

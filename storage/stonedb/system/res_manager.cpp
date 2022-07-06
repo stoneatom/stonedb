@@ -22,11 +22,13 @@
 
 namespace stonedb {
 namespace system {
+
 ResourceManager::ResourceManager() {
   // Instantiate policies based on ConfigurationManager settings
-  m_memory = new MagMemoryPolicy(stonedb_sysvar_servermainheapsize);
+ res_manage_policy_ = new MagMemoryPolicy(stonedb_sysvar_servermainheapsize);
 }
 
-ResourceManager::~ResourceManager() { delete m_memory; }
+ResourceManager::~ResourceManager() { delete res_manage_policy_; }
+
 }  // namespace system
 }  // namespace stonedb

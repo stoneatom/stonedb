@@ -27,6 +27,7 @@
 
 namespace stonedb {
 namespace system {
+
 class IOParameters;
 class Stream;
 
@@ -41,13 +42,15 @@ class LargeBuffer final : public mm::TraceableObject {
   void FlushAndClose();
   char *BufAppend(unsigned int len);
   char *SeekBack(uint len);
+
   // direct access to the buffer (declared part only):
   char *Buf(int n) {
     // Note: we allow n=buf_used, although it is out of declared limits.
     // Fortunately "buf" is one character longer.
-    DEBUG_ASSERT(n >= 0 && n <= buf_used);
-    return buf + n;
+    DEBUG_ASSERT(n >= 0 && n <= buf_used_);
+    return buf_ + n;
   }
+
   mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_TEMPORARY; }
   int WriteIfNonzero(uchar c) {
     if (c != 0) {
@@ -60,29 +63,30 @@ class LargeBuffer final : public mm::TraceableObject {
     return -1;
   }
 
- private:
-  int buf_used;  // number of bytes loaded or reserved so far
-  char *buf;     // current buf in bufs
-  int size;
-  std::vector<std::unique_ptr<char[]>> bufs;
-  int curr_buf_no;  // buf = bufs + currBufNo
-  char *buf2;       // buf to be used next
-  int curr_buf2_no;
-
-  std::unique_ptr<Stream> ib_stream;
-
-  std::mutex mtx;
-  std::condition_variable cv;
-
-  std::thread flush_thread;
-  bool failed;
-
+private:
   void BufFlush();  // save the data to the file (in writing mode)
   void BufClose();  // close the buffer; warning: does not flush data in writing mode
   void UseNextBuf();
   int FindUnusedBuf();
   void BufFlushThread(Stream *file, char *buf_ptr, int len, bool *failed);
+
+private:
+  int buf_used_;  // number of bytes loaded or reserved so far
+  char *buf_;     // current buf in bufs
+  int size_;
+  std::vector<std::unique_ptr<char[]>> bufs_;
+  int curr_buf_num_;     // buf = bufs + currBufNo
+  char *buf2next_;       // buf to be used next
+  int curr_buf2next_num_;
+
+  std::unique_ptr<Stream> ib_stream_;
+
+  std::mutex mutex_;
+  std::condition_variable cond_var_;
+  std::thread flush_thread_;
+  bool failed_;
 };
+
 }  // namespace system
 }  // namespace stonedb
 

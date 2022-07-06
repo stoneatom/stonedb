@@ -20,12 +20,14 @@
 
 namespace stonedb {
 namespace system {
+
 class ResourceManagerBase {
  public:
   virtual ~ResourceManagerBase();
 
   virtual int GetMemoryScale() = 0;
 };
+
 }  // namespace system
 }  // namespace stonedb
 

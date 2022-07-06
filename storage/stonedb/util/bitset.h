@@ -20,34 +20,40 @@
 
 namespace stonedb {
 namespace utils {
-class BitSet {
-  static const size_t NO_OF_BITS = 8;
 
+class BitSet {
  public:
   BitSet() = delete;
-  BitSet(size_t sz, char *data = nullptr) : sz(sz) {
+  BitSet(size_t sz_, char *data = nullptr) : sz_(sz_) {
     if (data) {
-      ptr = data;
-      allocated = false;
+      ptr_ = data;
+      allocated_ = false;
     } else {
-      ptr = new char[(sz + NO_OF_BITS - 1) / NO_OF_BITS]();
-      allocated = true;
+      ptr_ = new char[(sz_ + NO_OF_BITS - 1) / NO_OF_BITS]();
+      allocated_ = true;
     }
   }
+
   ~BitSet() {
-    if (allocated) delete[] ptr;
+    if (allocated_) {
+      delete[] ptr_;
+      ptr_ = nullptr;
+    }
   }
-  bool operator[](size_t pos) const { return ptr[pos / NO_OF_BITS] & (1U << (pos % NO_OF_BITS)); }
-  void set(size_t pos) { ptr[pos / NO_OF_BITS] |= (1U << (pos % NO_OF_BITS)); }
-  void reset(size_t pos) { ptr[pos / NO_OF_BITS] &= ~(1U << (pos % NO_OF_BITS)); }
-  const char *data() const { return ptr; }
-  size_t data_size() const { return (sz + NO_OF_BITS - 1) / NO_OF_BITS; }
+
+  bool operator[](size_t pos) const { return ptr_[pos / NO_OF_BITS] & (1U << (pos % NO_OF_BITS)); }
+  void set(size_t pos) { ptr_[pos / NO_OF_BITS] |= (1U << (pos % NO_OF_BITS)); }
+  void reset(size_t pos) { ptr_[pos / NO_OF_BITS] &= ~(1U << (pos % NO_OF_BITS)); }
+  const char *data() const { return ptr_; }
+  size_t data_size() const { return (sz_ + NO_OF_BITS - 1) / NO_OF_BITS; }
 
  private:
-  char *ptr;
-  size_t sz;
-  bool allocated;
+  char *ptr_;
+  size_t sz_;
+  bool allocated_;
+  static constexpr size_t NO_OF_BITS = 8;
 };
+
 }  // namespace utils
 }  // namespace stonedb
 

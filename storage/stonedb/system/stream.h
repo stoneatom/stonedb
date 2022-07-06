@@ -23,9 +23,11 @@
 namespace stonedb {
 namespace system {
 class Stream {
+
  public:
   Stream() = default;
   virtual ~Stream() = default;
+
   virtual bool IsOpen() const = 0;
   virtual int Close() = 0;
   virtual int OpenReadOnly(std::string const &filename) = 0;
@@ -36,11 +38,12 @@ class Stream {
   virtual void ReadExact(void *buf, size_t count) = 0;
   void ThrowError(int errnum);
   void ThrowError(std::string serror);
-  const std::string &Name() const { return name; }
+  const std::string &Name() const { return name_; }
 
  protected:
-  std::string name;
+  std::string name_;
 };
+
 }  // namespace system
 }  // namespace stonedb
 

@@ -22,6 +22,7 @@
 
 namespace stonedb {
 namespace types {
+
 class BString;
 
 class RCNum : public ValueBasic<RCNum> {
@@ -65,22 +66,24 @@ class RCNum : public ValueBasic<RCNum> {
   RCNum operator/(const RCNum &rcn) const;
 
   bool IsDecimal(ushort scale) const;
-  bool IsReal() const { return dbl; }
+  bool IsReal() const { return is_double_; }
   bool IsInt() const;
 
   BString ToBString() const override;
   RCNum ToDecimal(int scale = -1) const;
   RCNum ToReal() const;
   RCNum ToInt() const;
+
   operator int64_t() const { return GetIntPart(); }
   operator double() const;
   operator float() const { return (float)(double)*this; }
-  short Scale() const { return m_scale; }
-  int64_t ValueInt() const { return value; }
-  char *GetDataBytesPointer() const override { return (char *)&value; }
-  int64_t GetIntPart() const { return dbl ? (int64_t)GetIntPartAsDouble() : value / (int64_t)Uint64PowOfTen(m_scale); }
 
-  int64_t GetValueInt64() const { return value; }
+  short Scale() const { return scale_; }
+  int64_t ValueInt() const { return value_; }
+  char *GetDataBytesPointer() const override { return (char *)&value_; }
+  int64_t GetIntPart() const { return is_double_ ? (int64_t)GetIntPartAsDouble() : value_ / (int64_t)Uint64PowOfTen(scale_); }
+
+  int64_t GetValueInt64() const { return value_; }
   double GetIntPartAsDouble() const;
   double GetFractPart() const;
 
@@ -96,15 +99,17 @@ class RCNum : public ValueBasic<RCNum> {
   int compare(const RCDateTime &rcn) const;
 
  private:
-  int64_t value;
-  ushort m_scale;  // means 'scale' actually
-  bool dbl;
-  bool dot;
-  common::CT attrt;
+  static constexpr int MAX_DEC_PRECISION = 18;
+  int64_t value_;
+  ushort scale_;  // means 'scale' actually
+  bool is_double_;
+  bool is_dot_;
+  common::CT attr_type_;
 
  public:
   const static ValueTypeEnum value_type = ValueTypeEnum::NUMERIC_TYPE;
 };
+
 }  // namespace types
 }  // namespace stonedb
 

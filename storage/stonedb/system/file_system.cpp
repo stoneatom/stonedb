@@ -34,6 +34,7 @@
 
 namespace stonedb {
 namespace system {
+
 int ClearDirectory(std::string const &path) {
   try {
     for (auto &p : fs::directory_iterator(path)) {
@@ -140,5 +141,6 @@ bool IsReadWriteAllowed(std::string const &path) {
   int ret = access(path.c_str(), R_OK | W_OK);
   return (ret == 0);
 }
+
 }  // namespace system
 }  // namespace stonedb

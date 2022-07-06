@@ -96,6 +96,7 @@ struct async_join_setting {
 
   bool is_enabled() const { return (pack_per_step > 0) || (rows_per_step > 0); }
 };
+
 extern async_join_setting stonedb_sysvar_async_join_setting;
 
 #endif  // STONEDB_SYSTEM_CONFIGURATION_H_

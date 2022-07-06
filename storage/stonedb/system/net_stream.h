@@ -27,10 +27,12 @@
 
 namespace stonedb {
 namespace system {
+
 class NetStream : public Stream {
  public:
   NetStream(const IOParameters &iop);
   virtual ~NetStream() { Close(); }
+
   bool IsOpen() const override;
   int Open();
   int Close() override;
@@ -43,12 +45,13 @@ class NetStream : public Stream {
   void ReadExact(void *, size_t) override {}
 
  private:
-  NET *net;
-  bool opened;
-  ulong cached_size;
-  ulong cached_offset;
-  bool can_read;
+  NET *net_;
+  bool opened_;
+  ulong cached_size_;
+  ulong cached_offset_;
+  bool can_read_;
 };
+
 }  // namespace system
 }  // namespace stonedb
 
