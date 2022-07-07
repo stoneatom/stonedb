@@ -821,7 +821,9 @@ CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/include/mysql_version.h.in
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/sql/mysql_version.cc.in
                ${CMAKE_BINARY_DIR}/sql/mysql_version.cc )
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/sql/sql_builtin.cc.in
-    ${CMAKE_BINARY_DIR}/sql/sql_builtin.cc)
+    	       ${CMAKE_BINARY_DIR}/sql/sql_builtin.cc)
+CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/sql/build_info.h.ini
+               ${CMAKE_SOURCE_DIR}/sql/build_info.h)
 CONFIGURE_FILE(
     ${CMAKE_SOURCE_DIR}/cmake/info_macros.cmake.in
     ${CMAKE_BINARY_DIR}/info_macros.cmake @ONLY)
