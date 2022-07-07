@@ -10,6 +10,6 @@ mkdir redolog
 mkdir undolog
 
 chown -R mysql:mysql *
-sh ./bin/mysqld --defaults-file=./stonedb.cnf --initialize
+./bin/mysqld --defaults-file=./stonedb.cnf --initialize
 chown -R mysql:mysql *
 sh -x ./mysql_server start
