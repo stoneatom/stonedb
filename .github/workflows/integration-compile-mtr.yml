@@ -72,7 +72,7 @@ jobs:
           sudo ln -s /usr/local/gcc7.3/bin/g++ /usr/bin/g++
           sudo rm /usr/bin/c++
           sudo ln -s /usr/local/gcc7.3/bin/c++ /usr/bin/c++
-          gcc -v
+          cd ..
        
       - name: compile stonedb
         run: |
