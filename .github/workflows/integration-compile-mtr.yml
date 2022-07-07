@@ -63,6 +63,7 @@ jobs:
           sudo tar -zxvf cc1.tar.gz
           cd - && cd ..
           sudo cp -r stonedb-boost /usr/local/stonedb-boost
+          sudo cp -r stonedb-boost/lib /usr/local/stonedb-boost/include
           sudo cp -r stonedb-gcc-rocksdb /usr/local/stonedb-gcc-rocksdb
           sudo cp -r stonedb-marisa /usr/local/stonedb-marisa
           sudo cp -r gcc7.3 /usr/local/gcc7.3
