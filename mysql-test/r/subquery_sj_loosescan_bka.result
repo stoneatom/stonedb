@@ -4278,6 +4278,8 @@ left(a1,7)	left(a2,7)
 1 - 01x	2 - 01x
 1 - 02x	2 - 02x
 set @@group_concat_max_len = 256;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 explain extended select left(a1,7), left(a2,7)
 from t1_16
 where a1 in (select group_concat(b1) from t2_16 group by b2);
@@ -4424,6 +4426,8 @@ Warning	1260	Row 7 was cut by GROUP_CONCAT()
 Warning	1260	Row 8 was cut by GROUP_CONCAT()
 Warning	1260	Row 9 was cut by GROUP_CONCAT()
 set @@group_concat_max_len = 256;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 explain extended select left(a1,7), left(a2,7)
 from t1_512
 where a1 in (select group_concat(b1) from t2_512 group by b2);
@@ -4636,6 +4640,8 @@ Warning	1260	Row 7 was cut by GROUP_CONCAT()
 Warning	1260	Row 8 was cut by GROUP_CONCAT()
 Warning	1260	Row 9 was cut by GROUP_CONCAT()
 set @@group_concat_max_len = 256;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 explain extended select left(a1,7), left(a2,7)
 from t1_1024
 where a1 in (select group_concat(b1) from t2_1024 group by b2);
@@ -4754,6 +4760,8 @@ Warning	1260	Row 7 was cut by GROUP_CONCAT()
 Warning	1260	Row 8 was cut by GROUP_CONCAT()
 Warning	1260	Row 9 was cut by GROUP_CONCAT()
 set @@group_concat_max_len = 256;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 explain extended select left(a1,7), left(a2,7)
 from t1_1025
 where a1 in (select group_concat(b1) from t2_1025 group by b2);
