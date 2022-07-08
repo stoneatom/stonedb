@@ -459,12 +459,20 @@ ENDIF()
 
 OPTION(USE_CXX11 "Enable C++1z support (GCC only)" ON)
 IF (USE_CXX11 AND CMAKE_COMPILER_IS_GNUCC AND CMAKE_COMPILER_IS_GNUCXX)
+  SET(CMAKE_C_FLAGS_RELEASE
+    "${CMAKE_C_FLAGS_RELEASE}")
+  SET(CMAKE_CXX_FLAGS_RELEASE
+    "${CMAKE_CXX_FLAGS_RELEASE} -std=c++1z -fno-sized-deallocation")
+  SET(CMAKE_EXE_LINKER_FLAGS_RELEASE
+    "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -static-libstdc++ -static-libgcc")
+
   SET(CMAKE_C_FLAGS_RELWITHDEBINFO
     "${CMAKE_C_FLAGS_RELWITHDEBINFO} -gdwarf-2")
   SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO
     "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -gdwarf-2 -std=c++1z -fno-sized-deallocation")
   SET(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO
     "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} -static-libstdc++ -static-libgcc")
+
   SET(CMAKE_C_FLAGS_DEBUG
           "${CMAKE_C_FLAGS_DEBUG} -gdwarf-2")
   SET(CMAKE_CXX_FLAGS_DEBUG
@@ -813,7 +821,9 @@ CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/include/mysql_version.h.in
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/sql/mysql_version.cc.in
                ${CMAKE_BINARY_DIR}/sql/mysql_version.cc )
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/sql/sql_builtin.cc.in
-    ${CMAKE_BINARY_DIR}/sql/sql_builtin.cc)
+    	       ${CMAKE_BINARY_DIR}/sql/sql_builtin.cc)
+CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/sql/build_info.h.ini
+               ${CMAKE_SOURCE_DIR}/sql/build_info.h)
 CONFIGURE_FILE(
     ${CMAKE_SOURCE_DIR}/cmake/info_macros.cmake.in
     ${CMAKE_BINARY_DIR}/info_macros.cmake @ONLY)
