@@ -151,6 +151,7 @@ IF (WITH_BOOST)
   FIND_PATH(LOCAL_BOOST_DIR
             NAMES "boost/version.hpp"
             PATHS ${WITH_BOOST}
+                  ${WITH_BOOST}/include
             NO_DEFAULT_PATH
            )
   IF(LOCAL_BOOST_DIR)
@@ -233,6 +234,7 @@ FIND_PATH(BOOST_INCLUDE_DIR
   PATHS ${LOCAL_BOOST_DIR}
         ${LOCAL_BOOST_DIR}/${BOOST_PACKAGE_NAME}
         ${WITH_BOOST}
+        ${WITH_BOOST}/include
 )
 # Then search in standard places (if not found above).
 FIND_PATH(BOOST_INCLUDE_DIR

@@ -29,7 +29,7 @@ mkdir undolog
 echo "run mysqld initialize ..."
 sleep 3
 chown -R mysql:mysql *
-./bin/mysqld --defaults-file=./stonedb.cnf --initialize
+./bin/mysqld --defaults-file=./my.cnf --initialize
 echo "start the instance..."
 sleep 3
 chown -R mysql:mysql *
