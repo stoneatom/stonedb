@@ -50,42 +50,42 @@ pull_request_rules:
 
   - name: label on new feature
     conditions:
-      - body~=- New Feature
+      - body~= New Feature
     actions:
       label:
         add:
           - PR-feature
   - name: label on bug fix
     conditions:
-      - body~=- Bug Fix
+      - body~= Bug Fix
     actions:
       label:
         add:
           - PR-bug
   - name: label on Documentation
     conditions:
-      - body~=- Documentation
+      - body~= Documentation
     actions:
       label:
         add:
           - PR-docs
   - name: label on Improvement
     conditions:
-      - body~=- Improvement
+      - body~= Improvement
     actions:
       label:
         add:
           - PR-improvement
   - name: label on Performance Improvement
     conditions:
-      - body~=- Performance Improvement
+      - body~= Performance Improvement
     actions:
       label:
         add:
           - PR-performance
   - name: label on Build/Testing/CI/CD
     conditions:
-      - body~=- Build/Testing/CI/CD
+      - body~= Build/Testing/CI/CD
     actions:
       label:
         add:
