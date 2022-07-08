@@ -1,5 +1,7 @@
 call mtr.add_suppression("You need to use --log-bin to make --log-slave-updates work.");
 include/gtid_utils.inc
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 CREATE VIEW v_processlist  as SELECT * FROM performance_schema.threads where type = 'FOREGROUND';
 call mtr.add_suppression("Found 10 prepared XA transactions");
 call mtr.add_suppression("Found 1 prepared XA transactions");

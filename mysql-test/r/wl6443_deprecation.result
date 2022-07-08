@@ -144,6 +144,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 drop table mysql.host;
 create view mysql.host as select HOST from mysql.db;
 create user 'wl6443_u1'@'10.10.10.1' identified by 'sql';
@@ -184,6 +188,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 drop view mysql.host;
 drop user 'wl6443_u1'@'10.10.10.1';
 mysql.columns_priv                                 OK
@@ -220,6 +228,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # End of 5.6 tests
 #
 # WL#6802: Deprecate the INFORMATION_SCHEMA.PROFILING table
