@@ -52,7 +52,7 @@ const config = {
       '@docusaurus/preset-classic',
       ({
         docs: {
-          path: 'docs',
+          path: '../Docs',
           id: 'default',
           routeBasePath: 'docs',
           sidebarPath: require.resolve('./sidebars.js'),
