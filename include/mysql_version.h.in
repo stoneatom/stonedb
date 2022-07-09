@@ -17,7 +17,7 @@
 #define MYSQL_PORT                  @MYSQL_TCP_PORT@
 #define MYSQL_PORT_DEFAULT          @MYSQL_TCP_PORT_DEFAULT@
 #define MYSQL_UNIX_ADDR            "@MYSQL_UNIX_ADDR@"
-#define MYSQL_CONFIG_NAME		"stonedb"
+#define MYSQL_CONFIG_NAME		"my"
 
 extern const char* mysql_compilation_comment;
 #define MYSQL_COMPILATION_COMMENT	mysql_compilation_comment
