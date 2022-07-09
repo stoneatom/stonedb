@@ -4,3 +4,4 @@ sql/build_info.h
 .vscode
 CMakeFiles
 VERSION.dep
+.vs
