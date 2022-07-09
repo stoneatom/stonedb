@@ -598,7 +598,7 @@ bool SubSelectColumn::MakeParallelReady() {
   if (tmptable_for_subquery_->NumOfObj() > tmptable_for_subquery_->GetPageSize()) return false;  // multipage Attrs - not thread safe
   // below assert doesn't take into account lazy field
   // NoMaterialized() tells how many rows in lazy mode are materialized
-  DEBUG_ASSERT(tmptable_for_subquery_->NumOfObj() == tmptable_for_subquery_->NoMaterialized());
+  // DEBUG_ASSERT(tmptable_for_subquery_->NumOfObj() == tmptable_for_subquery_->NoMaterialized());
   PrepareAndFillCache();
   return true;
 }

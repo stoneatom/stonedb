@@ -50,8 +50,8 @@ cmake ../../ \
 -DEXTRA_CHARSETS=all \
 -DDEFAULT_CHARSET=utf8 \
 -DDEFAULT_COLLATION=utf8_general_ci \
-#-DDOWNLOAD_BOOST=1 \
-#-DWITH_BOOST=/usr/local/boost/ \
+-DDOWNLOAD_BOOST=0 \
+-DWITH_BOOST=/usr/local/stonedb-boost/include \
 2>&1 | tee -a ${build_log}
 
 # make
