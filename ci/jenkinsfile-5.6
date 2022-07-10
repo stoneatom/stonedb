@@ -22,23 +22,6 @@ pipeline {
             }
         }
 
-        // 并行测试
-        stage('RunTestsParallel') {
-            parallel {
-
-                stage('run_test1') {
-                    steps {
-                        script {
-					     catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-					     	sh label: 'test1', 
-					     	script: '''
-                                pwd
-					     		'''
-					        }
-				        }
-                    }
-                }
-
         stage('ReStartSvc') {
             steps {
                 sh label: '', 
@@ -47,7 +30,7 @@ pipeline {
                     JENKINS_NODE_COOKIE=dontKillMe
                     export JENKINS_NODE_COOKIE=dontKillMe
 
-                
+                    echo "restart"
 
                 '''
             }
@@ -73,12 +56,8 @@ pipeline {
         success { 
             sh label: '', 
             script:'''
-
                echo "success"
-
             '''
         }
     }
-
-
 }
