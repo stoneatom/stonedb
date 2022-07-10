@@ -1,0 +1,110 @@
+pipeline {
+    // 要求使用带标签 gcc 的slave节点。gcc这个标签似乎不太合适，考虑换成更准确的描述
+    agent {
+        label 'agent-30-208'
+    }
+
+    options{
+        disableConcurrentBuilds()
+        timeout(time:2, unit: 'HOURS')
+    }
+
+    stages {
+
+        // 编译 （注意，目前make -j不要指定太多核数）
+        stage('Compile') {
+
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    cd scripts
+                    bash stonedb_build.sh
+                    """
+            }
+        }
+
+
+        // 并行测试
+        stage('RunTestsParallel') {
+            parallel {
+
+                stage('run_test1') {
+                    steps {
+                        script {
+					     catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+					     	sh label: 'test1', 
+					     	script: '''
+                                pwd
+					     		'''
+					        }
+				        }
+                    }
+                }
+
+
+        stage('ReStartSvc') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                
+
+                    '''
+            }
+        }
+        
+    } // stages
+
+
+
+    post { 
+        failure { 
+            sh label: '', 
+            script:'''
+                number=`cat number.txt`
+                author=`cat author.txt`
+
+                curl 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=dd9ba437-6c28-4d00-8130-303455d789ee' \
+                -H 'Content-Type: application/json'\
+                -d '{\
+                        \"msgtype\":\"markdown\",\
+                        \"markdown\":{\
+                            \"content\":\"<font color=\\\"red\\\">'$JOB_NAME' 失败!</font> p4提交号:<font color=\\\"red\\\">'$number'</font> 提交者:@<font color=\\\"red\\\">'$author'</font> [点击查看构建日志!]('$BUILD_URL'/console)\"\
+                        }\
+                    }'\
+            '''
+        }
+
+		unstable { 
+            sh label: '', 
+            script:'''
+                number=`cat number.txt`
+                author=`cat author.txt`
+
+                curl 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=dd9ba437-6c28-4d00-8130-303455d789ee' \
+                -H 'Content-Type: application/json'\
+                -d '{\
+                        \"msgtype\":\"markdown\",\
+                        \"markdown\":{\
+                            \"content\":\"<font color=\\\"red\\\">项目['$JOB_NAME']构建不稳定!</font> p4提交号:<font color=\\\"red\\\">'$number'</font> 提交者:@<font color=\\\"red\\\">'$author'</font> [点击查看日志!]('$RUN_DISPLAY_URL')\"\
+                        }\
+                    }'\
+                '''
+        }
+
+        success { 
+            sh label: '', 
+            script:'''
+
+               echo "success!"
+               
+            '''
+        }
+    }
+
+
+}
