@@ -104,6 +104,9 @@ pipeline {
 
                     bash ./split_file2db.sh 
 
+                    cd ../..
+                    rm tpc-h -rf
+
                 '''
             }
         }
