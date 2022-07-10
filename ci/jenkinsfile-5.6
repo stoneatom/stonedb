@@ -1,5 +1,4 @@
 pipeline {
-    // 要求使用带标签 gcc 的slave节点。gcc这个标签似乎不太合适，考虑换成更准确的描述
     agent {
         label 'agent-30-208'
     }
@@ -11,7 +10,6 @@ pipeline {
 
     stages {
 
-        // 编译 （注意，目前make -j不要指定太多核数）
         stage('Compile') {
 
             steps {
@@ -23,7 +21,6 @@ pipeline {
                     """
             }
         }
-
 
         // 并行测试
         stage('RunTestsParallel') {
@@ -42,7 +39,6 @@ pipeline {
                     }
                 }
 
-
         stage('ReStartSvc') {
             steps {
                 sh label: '', 
@@ -53,55 +49,33 @@ pipeline {
 
                 
 
-                    '''
+                '''
             }
         }
         
     } // stages
 
-
-
     post { 
         failure { 
             sh label: '', 
             script:'''
-                number=`cat number.txt`
-                author=`cat author.txt`
-
-                curl 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=dd9ba437-6c28-4d00-8130-303455d789ee' \
-                -H 'Content-Type: application/json'\
-                -d '{\
-                        \"msgtype\":\"markdown\",\
-                        \"markdown\":{\
-                            \"content\":\"<font color=\\\"red\\\">'$JOB_NAME' 失败!</font> p4提交号:<font color=\\\"red\\\">'$number'</font> 提交者:@<font color=\\\"red\\\">'$author'</font> [点击查看构建日志!]('$BUILD_URL'/console)\"\
-                        }\
-                    }'\
+               echo "failure"
             '''
         }
 
 		unstable { 
             sh label: '', 
             script:'''
-                number=`cat number.txt`
-                author=`cat author.txt`
-
-                curl 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=dd9ba437-6c28-4d00-8130-303455d789ee' \
-                -H 'Content-Type: application/json'\
-                -d '{\
-                        \"msgtype\":\"markdown\",\
-                        \"markdown\":{\
-                            \"content\":\"<font color=\\\"red\\\">项目['$JOB_NAME']构建不稳定!</font> p4提交号:<font color=\\\"red\\\">'$number'</font> 提交者:@<font color=\\\"red\\\">'$author'</font> [点击查看日志!]('$RUN_DISPLAY_URL')\"\
-                        }\
-                    }'\
-                '''
+                echo "unstable"    
+            '''
         }
 
         success { 
             sh label: '', 
             script:'''
 
-               echo "success!"
-               
+               echo "success"
+
             '''
         }
     }
