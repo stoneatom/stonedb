@@ -71,7 +71,7 @@ pipeline {
 
                     pkill -9 mysqld && set ?=0
                     sleep 5s
-                    
+
                     mkdir -p /data/stonedb56
                     ln -s /data/stonedb56 /stonedb56
                     mkdir -p /stonedb56/install
@@ -126,6 +126,13 @@ pipeline {
 
                     JENKINS_NODE_COOKIE=dontKillMe
                     export JENKINS_NODE_COOKIE=dontKillMe
+
+                    TB_TPCH_NUM=`/stonedb56/install/bin/mysql -e "show databases;" | grep tpch | grep -v grep | wc -l`
+
+                    if [ "0" != "$TB_TPCH_NUM" ]; then
+                        echo "tpch data has imported"
+                        exit 0
+                    fi
 
                     cd tests/tpc-h
 
