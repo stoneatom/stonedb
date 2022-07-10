@@ -31,6 +31,9 @@ pipeline {
                 sh label: 'make', 
                 script: """set -e
 
+                    groupadd mysql && set ?=0
+                    useradd -g mysql mysql && set ?=0
+
                     mkdir -p /stonedb56/install/{log/,tmp/,binlog/,data/innodb}
                     mkdir -p /var/lib/mysql/
                     touch /stonedb56/install/log/stonedb.log
@@ -43,7 +46,7 @@ pipeline {
         }
 
 
-        stage('ReStartSvc') {
+        stage('ReStartStonedb') {
             steps {
                 sh label: '', 
                 script: '''
@@ -96,6 +99,8 @@ pipeline {
                     /stonedb56/install/bin/mysql -D tpch -e "source ./stonedb/dss_stonedb.ddl "
 
                     /stonedb56/install/bin/mysql -D tpch < ./stonedb.sql
+
+                    /stonedb56/install/bin/mysql -D tpch -e " show tables; "
 
                     bash ./split_file2db.sh 
 
