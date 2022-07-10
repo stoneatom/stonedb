@@ -5,3 +5,4 @@ sql/build_info.h
 CMakeFiles
 VERSION.dep
 .vs
+commit-5.6.bat
