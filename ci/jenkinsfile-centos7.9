@@ -69,6 +69,40 @@ pipeline {
             }
         }
 
+
+        stage('ImportTPCHData') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd tests/tpch-h
+                    tar -xzvf tpc-h.tar.gz
+                    cd tpc-h
+                    cd dbgen
+
+                    make -j`nproc`
+
+                    ./dbgen -s 10
+                    mkdir -p stonedb/
+                    mv *.tbl stonedb/
+                    
+                    cp dss.ddl stonedb/dss_stonedb.ddl		
+
+                    /stonedb56/install/bin/mysql -e "create database tpch;"
+
+                    /stonedb56/install/bin/mysql -D tpch -e "source ./stonedb/dss_stonedb.ddl "
+
+                    /stonedb56/install/bin/mysql -D tpch < ./stonedb.sql
+
+                    bash ./split_file2db.sh 
+
+                '''
+            }
+        }
+
         stage('RunTest') {
             steps {
                 sh label: '', 
