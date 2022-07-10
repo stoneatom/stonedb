@@ -24,6 +24,25 @@ pipeline {
             }
         }
 
+
+        stage('CreeateDir') {
+
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    mkdir -p /stonedb56/install/{log/,tmp/,binlog/,data/innodb}
+                    mkdir -p /var/lib/mysql/
+                    touch /stonedb56/install/log/stonedb.log
+
+                    chown -R mysql:mysql /stonedb56/*
+                    chown -R mysql:mysql /var/lib/mysql/
+
+                """
+            }
+        }
+
+
         stage('ReStartSvc') {
             steps {
                 sh label: '', 
@@ -32,7 +51,19 @@ pipeline {
                     JENKINS_NODE_COOKIE=dontKillMe
                     export JENKINS_NODE_COOKIE=dontKillMe
 
-                    echo "restart"
+                    /stonedb56/install/bin/mysqld --user=mysql stop && $?=0
+ 
+                    pkill -9 mysqld && $?=0
+
+                    sleep 5s
+
+                    /stonedb56/install/scripts/mysql_install_db.sh  --user=mysql  --basedir=/stonedb56/install --datadir=/stonedb56/install/data && $?=0
+
+                    sleep 3s
+
+                    /stonedb56/install/bin/mysqld --user=mysql --skip-grant-tables &
+
+                    echo "restart ok"
 
                 '''
             }
