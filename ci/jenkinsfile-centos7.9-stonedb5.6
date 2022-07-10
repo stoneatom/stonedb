@@ -139,8 +139,19 @@ pipeline {
                             o_orderpriority ;"
 
 
-                    echo -e "\n"
-                    
+                '''
+            }
+        }
+
+        stage('RunTestSubQueryExplain') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                
                     /stonedb56/install/bin/mysql -D tpch -e "explain select
                             o_orderpriority,
                             count(*) as order_count
@@ -164,7 +175,7 @@ pipeline {
                             o_orderpriority ;"
 
 
-                                        '''
+                '''
             }
         }
         
