@@ -31,6 +31,9 @@ pipeline {
                 sh label: 'make', 
                 script: """set -e
 
+                    rm /stonedb56 -rf
+                    rm /var/lib/mysql -rf
+
                     groupadd mysql && set ?=0
                     useradd -g mysql mysql && set ?=0
 
@@ -82,6 +85,8 @@ pipeline {
                     export JENKINS_NODE_COOKIE=dontKillMe
 
                     cd tests/tpc-h
+
+                    rm tpc-h -rf
                     tar -xzvf tpc-h.tar.gz
                     cd tpc-h
                     cd dbgen
