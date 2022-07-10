@@ -10,26 +10,14 @@ pipeline {
 
     stages {
 
-        stage('CompileStonedb') {
-
-            steps {
-                sh label: 'make', 
-                script: """set -e
-
-                    gcc -v
-
-                    cd scripts
-                    bash stonedb_build.sh
-                    """
-            }
-        }
-
-
         stage('CreeateDir') {
 
             steps {
                 sh label: 'make', 
                 script: """set -e
+
+                    pkill -9 mysqld && set ?=0
+                    sleep 5s
 
                     rm /stonedb56 -rf
                     rm /var/lib/mysql -rf
@@ -48,6 +36,19 @@ pipeline {
             }
         }
 
+        stage('CompileStonedb') {
+
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    gcc -v
+
+                    cd scripts
+                    bash stonedb_build.sh
+                    """
+            }
+        }
 
         stage('ReStartStonedb') {
             steps {
