@@ -10,7 +10,7 @@ pipeline {
 
     stages {
 
-        stage('Compile') {
+        stage('CompileStonedb') {
 
             steps {
                 sh label: 'make', 
@@ -19,7 +19,7 @@ pipeline {
                     gcc -v
 
                     cd scripts
-                    # bash stonedb_build.sh
+                    bash stonedb_build.sh
                     """
             }
         }
@@ -57,7 +57,7 @@ pipeline {
 
                     sleep 5s
 
-                    # /stonedb56/install/scripts/mysql_install_db.sh  --user=mysql  --basedir=/stonedb56/install --datadir=/stonedb56/install/data && set ?=0
+                    /stonedb56/install/scripts/mysql_install_db.sh  --user=mysql  --basedir=/stonedb56/install --datadir=/stonedb56/install/data && set ?=0
 
                     sleep 3s
 
@@ -103,7 +103,7 @@ pipeline {
             }
         }
 
-        stage('RunTest') {
+        stage('RunTestSubQuery') {
             steps {
                 sh label: '', 
                 script: '''
@@ -111,9 +111,55 @@ pipeline {
                     JENKINS_NODE_COOKIE=dontKillMe
                     export JENKINS_NODE_COOKIE=dontKillMe
 
-                    echo "run test"
+                    /stonedb56/install/bin/mysql -D tpch -e "select
+                            o_orderpriority,
+                            count(*) as order_count
+                        from
+                            orders
+                        where
+                            o_orderdate >= date '1993-07-01'
+                            and o_orderdate < date '1993-07-01' + interval '3' month
+                            and exists (
+                                select
+                                    *
+                                from
+                                    lineitem
+                                where
+                                    l_orderkey = o_orderkey
+                                    and l_commitdate < l_receiptdate
+                            )
+                        group by
+                            o_orderpriority
+                        order by
+                            o_orderpriority ;"
 
-                '''
+
+                    echo -e "\n"
+                    
+                    /stonedb56/install/bin/mysql -D tpch -e "explain select
+                            o_orderpriority,
+                            count(*) as order_count
+                        from
+                            orders
+                        where
+                            o_orderdate >= date '1993-07-01'
+                            and o_orderdate < date '1993-07-01' + interval '3' month
+                            and exists (
+                                select
+                                    *
+                                from
+                                    lineitem
+                                where
+                                    l_orderkey = o_orderkey
+                                    and l_commitdate < l_receiptdate
+                            )
+                        group by
+                            o_orderpriority
+                        order by
+                            o_orderpriority \G"
+
+
+                                        '''
             }
         }
         
