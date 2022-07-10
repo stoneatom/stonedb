@@ -19,7 +19,7 @@ pipeline {
                     gcc -v
 
                     cd scripts
-                    bash stonedb_build.sh
+                    # bash stonedb_build.sh
                     """
             }
         }
@@ -57,7 +57,7 @@ pipeline {
 
                     sleep 5s
 
-                    /stonedb56/install/scripts/mysql_install_db.sh  --user=mysql  --basedir=/stonedb56/install --datadir=/stonedb56/install/data && set ?=0
+                    # /stonedb56/install/scripts/mysql_install_db.sh  --user=mysql  --basedir=/stonedb56/install --datadir=/stonedb56/install/data && set ?=0
 
                     sleep 3s
 
@@ -78,7 +78,7 @@ pipeline {
                     JENKINS_NODE_COOKIE=dontKillMe
                     export JENKINS_NODE_COOKIE=dontKillMe
 
-                    cd tests/tpch-h
+                    cd tests/tpc-h
                     tar -xzvf tpc-h.tar.gz
                     cd tpc-h
                     cd dbgen
