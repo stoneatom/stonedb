@@ -16,6 +16,8 @@ pipeline {
                 sh label: 'make', 
                 script: """set -e
 
+                    gcc -v
+
                     cd scripts
                     bash stonedb_build.sh
                     """
@@ -31,6 +33,20 @@ pipeline {
                     export JENKINS_NODE_COOKIE=dontKillMe
 
                     echo "restart"
+
+                '''
+            }
+        }
+
+        stage('RunTest') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    echo "run test"
 
                 '''
             }
