@@ -51,13 +51,13 @@ pipeline {
                     JENKINS_NODE_COOKIE=dontKillMe
                     export JENKINS_NODE_COOKIE=dontKillMe
 
-                    /stonedb56/install/bin/mysqld --user=mysql stop && $?=0
+                    /stonedb56/install/bin/mysqld --user=mysql stop && set ?=0
  
-                    pkill -9 mysqld && $?=0
+                    pkill -9 mysqld && set ?=0
 
                     sleep 5s
 
-                    # /stonedb56/install/scripts/mysql_install_db.sh  --user=mysql  --basedir=/stonedb56/install --datadir=/stonedb56/install/data && $?=0
+                    /stonedb56/install/scripts/mysql_install_db.sh  --user=mysql  --basedir=/stonedb56/install --datadir=/stonedb56/install/data && set ?=0
 
                     sleep 3s
 
