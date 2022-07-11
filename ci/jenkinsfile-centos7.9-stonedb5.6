@@ -142,8 +142,9 @@ pipeline {
                     cd dbgen
 
                     make -j`nproc`
-
-                    ./dbgen -s 10
+                    
+                    # GB
+                    ./dbgen -s 1
                     mkdir -p stonedb/
                     mv *.tbl stonedb/
                     
