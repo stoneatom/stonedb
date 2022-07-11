@@ -118,6 +118,20 @@ pipeline {
             }
         }
 
+        stage('RunMtrTest') {
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd /stonedb56/install/mysql-test
+                    sudo ./mysql-test-run.pl --suite=stonedb --nowarnings --force
+
+                """
+            }
+        }
 
         stage('ImportTPCHData') {
             steps {
