@@ -37,6 +37,14 @@ mysql.time_zone_transition                         OK
 mysql.time_zone_transition_type                    OK
 mysql.user                                         OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl
+note     : The storage engine for the table doesn't support analyze
+sys_stonedb.columns
+note     : The storage engine for the table doesn't support analyze
+sys_stonedb.decomposition_dictionary
+note     : The storage engine for the table doesn't support analyze
+sys_stonedb.logs
+note     : The storage engine for the table doesn't support analyze
 mtr.global_suppressions                            Table is already up to date
 mtr.test_suppressions                              Table is already up to date
 mysql.columns_priv                                 OK
@@ -114,6 +122,14 @@ mysql.user                                         OK
 sys.sys_config
 note     : Table does not support optimize, doing recreate + analyze instead
 status   : OK
+sys_stonedb.column_ttl
+note     : The storage engine for the table doesn't support optimize
+sys_stonedb.columns
+note     : The storage engine for the table doesn't support optimize
+sys_stonedb.decomposition_dictionary
+note     : The storage engine for the table doesn't support optimize
+sys_stonedb.logs
+note     : The storage engine for the table doesn't support optimize
 mysql.columns_priv                                 OK
 mysql.db                                           OK
 mysql.engine_cost                                  OK

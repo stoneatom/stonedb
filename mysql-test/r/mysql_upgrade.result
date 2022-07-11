@@ -33,6 +33,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 Run it again - should say already completed
 This installation of MySQL is already upgraded to VERSION, use --force if you still need to run mysql_upgrade
 Force should run it regardless of wether it's been run before
@@ -70,6 +74,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 CREATE USER mysqltest1@'%' IDENTIFIED by 'sakila';
 GRANT ALL ON *.* TO mysqltest1@'%';
 Run mysql_upgrade with password protected account
@@ -108,6 +116,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 DROP USER mysqltest1@'%';
 Run mysql_upgrade with a non existing server socket
 mysql_upgrade: Got error: 2005: Unknown MySQL server host 'not_existing_host' (errno) while connecting to the MySQL server
@@ -146,6 +158,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 #
 # Bug #41569 mysql_upgrade (ver 5.1) add 3 fields to mysql.proc table
 # but does not set values.
@@ -188,6 +204,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 CALL testproc();
 DROP PROCEDURE testproc;
 WARNING: NULL values of the 'character_set_client' column ('mysql.proc' table) have been updated with a default value (latin1). Please verify if necessary.
@@ -243,6 +263,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 SHOW GRANTS FOR 'user3'@'%';
 Grants for user3@%
 GRANT USAGE ON *.* TO 'user3'@'%'
@@ -288,6 +312,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 #
 # Bug#11827359 60223: MYSQL_UPGRADE PROBLEM WITH OPTION
 #                     SKIP-WRITE-BINLOG
@@ -328,6 +356,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # Running mysql_upgrade with --write-binlog..
 mysql.columns_priv                                 OK
 mysql.db                                           OK
@@ -363,6 +395,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # Running mysql_upgrade with --max-allowed-packet=4096..
 mysql.columns_priv                                 OK
 mysql.db                                           OK
@@ -398,6 +434,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # Running mysql_upgrade with --max-allowed-packet=2147483648..
 mysql.columns_priv                                 OK
 mysql.db                                           OK
@@ -433,6 +473,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # Running mysql_upgrade with --max-allowed-packet=4095..
 mysql_upgrade: [Warning] option 'max_allowed_packet': unsigned value 4095 adjusted to 4096
 mysql.columns_priv                                 OK
@@ -469,6 +513,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # Running mysql_upgrade with --max-allowed-packet=1000..
 mysql_upgrade: [Warning] option 'max_allowed_packet': unsigned value 1000 adjusted to 4096
 mysql.columns_priv                                 OK
@@ -505,6 +553,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # Running mysql_upgrade with --max-allowed-packet=2147483649..
 mysql_upgrade: [Warning] option 'max_allowed_packet': unsigned value 2147483649 adjusted to 2147483648
 mysql.columns_priv                                 OK
@@ -541,6 +593,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # Running mysql_upgrade with --max-allowed-packet=21474836480..
 mysql_upgrade: [Warning] option 'max_allowed_packet': unsigned value 2147484652 adjusted to 2147483648
 mysql.columns_priv                                 OK
@@ -577,6 +633,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # Running mysql_upgrade with --net-buffer-length=4096..
 mysql.columns_priv                                 OK
 mysql.db                                           OK
@@ -612,6 +672,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # Running mysql_upgrade with --net-buffer-length=16777216..
 mysql.columns_priv                                 OK
 mysql.db                                           OK
@@ -647,6 +711,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # Running mysql_upgrade with --net-buffer-length=4095..
 mysql_upgrade: [Warning] option 'net_buffer_length': unsigned value 4095 adjusted to 4096
 mysql.columns_priv                                 OK
@@ -683,6 +751,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # Running mysql_upgrade with --net-buffer-length=1024..
 mysql_upgrade: [Warning] option 'net_buffer_length': unsigned value 1024 adjusted to 4096
 mysql.columns_priv                                 OK
@@ -719,6 +791,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # Running mysql_upgrade with --net-buffer-length=16777217..
 mysql_upgrade: [Warning] option 'net_buffer_length': unsigned value 16777217 adjusted to 16777216
 mysql.columns_priv                                 OK
@@ -755,6 +831,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # Running mysql_upgrade with --net-buffer-length=167772160..
 mysql_upgrade: [Warning] option 'net_buffer_length': unsigned value 167772160 adjusted to 16777216
 mysql.columns_priv                                 OK
@@ -791,6 +871,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # Running mysql_upgrade with --bind-address..
 mysql.columns_priv                                 OK
 mysql.db                                           OK
@@ -826,6 +910,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # Running mysql_upgrade with -C option..
 mysql.columns_priv                                 OK
 mysql.db                                           OK
@@ -861,6 +949,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # Running mysql_upgrade with --compress..
 mysql.columns_priv                                 OK
 mysql.db                                           OK
@@ -896,6 +988,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # Running mysql_upgrade with --verbose..
 Checking server version.
 Running queries to upgrade MySQL server.
@@ -936,6 +1032,10 @@ Checking databases.
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 Upgrade process completed successfully.
 Checking if update is needed.
 # Running mysql_upgrade with --protocol..
@@ -973,6 +1073,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # Test positional arguments
 mysql.columns_priv                                 OK
 mysql.db                                           OK
@@ -1008,6 +1112,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 #
 # WL#7010: Remove unused --basedir and --datadir options
 #   from mysql_upgrade
@@ -1085,6 +1193,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 test.backup_user                                   OK
 # expect mysql_native_password
 SELECT plugin FROM mysql.user WHERE user='B19011337_nhash';
@@ -1140,12 +1252,18 @@ mysql.time_zone_transition_type                    OK
 mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 SHOW DATABASES;
 Database
 information_schema
+cache
 mtr
 mysql
 performance_schema
+sys_stonedb
 test
 # Now run it normally, to ensure the sys schema is created
 mysql.columns_priv                                 OK
@@ -1182,13 +1300,19 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 SHOW DATABASES;
 Database
 information_schema
+cache
 mtr
 mysql
 performance_schema
 sys
+sys_stonedb
 test
 # Now drop procedures and make sure re-install is done
 DROP PROCEDURE sys.ps_setup_save;
@@ -1227,6 +1351,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 SELECT ROUTINE_NAME FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_SCHEMA = 'sys' AND ROUTINE_TYPE = 'PROCEDURE';
 ROUTINE_NAME
 create_synonym_db
@@ -1292,6 +1420,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 SELECT ROUTINE_NAME FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_SCHEMA = 'sys' AND ROUTINE_TYPE = 'FUNCTION';
 ROUTINE_NAME
 extract_schema_from_file_name
@@ -1353,6 +1485,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'sys' AND TABLE_TYPE = 'VIEW';
 TABLE_NAME
 host_summary
@@ -1492,6 +1628,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 SELECT TRIGGER_NAME FROM INFORMATION_SCHEMA.TRIGGERS WHERE TRIGGER_SCHEMA = 'sys';
 TRIGGER_NAME
 sys_config_insert_set_user
@@ -1532,6 +1672,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'sys' AND TABLE_TYPE = 'BASE TABLE';
 TABLE_NAME
 sys_config
@@ -1595,6 +1739,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 test.t1                                            OK
 SELECT f_time, f_datetime, f_timestamp, HEX(WEIGHT_STRING(f_time)),
 HEX(WEIGHT_STRING(f_datetime)), HEX(WEIGHT_STRING(f_timestamp)) FROM t1;
@@ -1651,6 +1799,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 test.t1
 error    : Table upgrade required. Please do "REPAIR TABLE `t1`" or dump/reload to fix it!
 
@@ -1796,6 +1948,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 test.backup_user                                   OK
 call mtr.add_suppression("User entry 'user_old_pass_pn'@'%' has an empty plugin value. The user will be ignored and no one can login with this user anymore.");
 call mtr.add_suppression("User entry 'su_old_pass_pn'@'%' has an empty plugin value. The user will be ignored and no one can login with this user anymore.");
@@ -1893,6 +2049,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 test.backup_user                                   OK
 call mtr.add_suppression("User entry 'B20614545'@'localhost' has an empty plugin value. The user will be ignored and no one can login with this user anymore.");
 # check the presents of the warnings in the log file
@@ -2368,6 +2528,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 # After downgrading all tables with user columns to 5.6 schema and then
 # running mysql_upgrade check if all tables have correct 5.7 structure
 SHOW CREATE TABLE performance_schema.users;
@@ -2624,6 +2788,7 @@ Warnings:
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 Run mysql_upgrade
 mysql_upgrade: (non fatal) [ERROR] 1728: Cannot load from mysql.proc. The table is probably corrupted
+mysql_upgrade: (non fatal) [ERROR] 1728: Cannot load from mysql.proc. The table is probably corrupted
 mysql.columns_priv                                 OK
 mysql.db                                           OK
 mysql.engine_cost                                  OK
@@ -2658,6 +2823,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 Check mysql.proc structure
 SHOW CREATE TABLE mysql.proc;
 Table	Create Table
@@ -2722,6 +2891,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 test.t1
 error    : Table upgrade required for `test`.`t1`. Please dump/reload table to fix it!
 These tables cannot be automatically upgraded, see the log above:
@@ -2761,6 +2934,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 test.t1
 error    : Table upgrade required for `test`.`t1`. Please dump/reload table to fix it!
 These tables cannot be automatically upgraded, see the log above:
