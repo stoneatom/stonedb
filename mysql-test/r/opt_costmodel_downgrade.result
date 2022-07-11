@@ -41,6 +41,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 SELECT * FROM mysql.server_cost;
 cost_name	cost_value	last_update	comment
 disk_temptable_create_cost	NULL	#	NULL

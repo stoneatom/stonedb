@@ -252,83 +252,81 @@ EXPLAIN
   "query_block": {
     "select_id": 1,
     "cost_info": {
-      "query_cost": "100.00"
+      "query_cost": "29.00"
     },
-    "nested_loop": [
-      {
-        "table": {
-          "table_name": "t1",
-          "access_type": "ALL",
-          "possible_keys": [
-            "i1_key"
-          ],
-          "rows_examined_per_scan": 100,
-          "rows_produced_per_join": 100,
-          "filtered": "100.00",
-          "cost_info": {
-            "read_cost": "9.00",
-            "eval_cost": "20.00",
-            "prefix_cost": "29.00",
-            "data_read_per_join": "99K"
-          },
-          "used_columns": [
-            "pk",
-            "i1",
-            "c1",
-            "c2",
-            "c3",
-            "c4"
-          ],
-          "attached_condition": "(`test`.`t1`.`i1` is not null)"
-        }
+    "table": {
+      "table_name": "t1",
+      "access_type": "ALL",
+      "rows_examined_per_scan": 100,
+      "rows_produced_per_join": 100,
+      "filtered": "100.00",
+      "cost_info": {
+        "read_cost": "9.00",
+        "eval_cost": "20.00",
+        "prefix_cost": "29.00",
+        "data_read_per_join": "99K"
       },
-      {
-        "table": {
-          "table_name": "<subquery2>",
-          "access_type": "eq_ref",
-          "key": "<auto_key>",
-          "key_length": "4",
-          "ref": [
-            "test.t1.i1"
-          ],
-          "rows_examined_per_scan": 1,
-          "materialized_from_subquery": {
-            "using_temporary_table": true,
-            "query_block": {
-              "table": {
-                "table_name": "t1",
-                "access_type": "index",
-                "possible_keys": [
-                  "i1_key"
-                ],
-                "key": "i1_key",
-                "used_key_parts": [
-                  "i1"
-                ],
-                "key_length": "4",
-                "rows_examined_per_scan": 100,
-                "rows_produced_per_join": 100,
-                "filtered": "100.00",
-                "using_index": true,
+      "used_columns": [
+        "pk",
+        "i1",
+        "c1",
+        "c2",
+        "c3",
+        "c4"
+      ],
+      "attached_condition": "<in_optimizer>(`test`.`t1`.`i1`,`test`.`t1`.`i1` in ( <materialize> (/* select#2 */ select `test`.`t1`.`i1` from `test`.`t1` where 1 ), <primary_index_lookup>(`test`.`t1`.`i1` in <temporary table> on <auto_key> where ((`test`.`t1`.`i1` = `materialized-subquery`.`i1`)))))",
+      "attached_subqueries": [
+        {
+          "table": {
+            "table_name": "<materialized_subquery>",
+            "access_type": "eq_ref",
+            "key": "<auto_key>",
+            "key_length": "4",
+            "rows_examined_per_scan": 1,
+            "materialized_from_subquery": {
+              "using_temporary_table": true,
+              "dependent": true,
+              "cacheable": false,
+              "query_block": {
+                "select_id": 2,
                 "cost_info": {
-                  "read_cost": "9.00",
-                  "eval_cost": "20.00",
-                  "prefix_cost": "29.00",
-                  "data_read_per_join": "99K"
+                  "query_cost": "29.00"
                 },
-                "used_columns": [
-                  "i1"
-                ]
+                "table": {
+                  "table_name": "t1",
+                  "access_type": "index",
+                  "possible_keys": [
+                    "i1_key"
+                  ],
+                  "key": "i1_key",
+                  "used_key_parts": [
+                    "i1"
+                  ],
+                  "key_length": "4",
+                  "rows_examined_per_scan": 100,
+                  "rows_produced_per_join": 100,
+                  "filtered": "100.00",
+                  "using_index": true,
+                  "cost_info": {
+                    "read_cost": "9.00",
+                    "eval_cost": "20.00",
+                    "prefix_cost": "29.00",
+                    "data_read_per_join": "99K"
+                  },
+                  "used_columns": [
+                    "i1"
+                  ]
+                }
               }
             }
           }
         }
-      }
-    ]
+      ]
+    }
   }
 }
 Warnings:
-Note	1003	/* select#1 */ select `test`.`t1`.`pk` AS `pk`,`test`.`t1`.`i1` AS `i1`,`test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2`,`test`.`t1`.`c3` AS `c3`,`test`.`t1`.`c4` AS `c4` from `test`.`t1` semi join (`test`.`t1`) where (`<subquery2>`.`i1` = `test`.`t1`.`i1`)
+Note	1003	/* select#1 */ select `test`.`t1`.`pk` AS `pk`,`test`.`t1`.`i1` AS `i1`,`test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2`,`test`.`t1`.`c3` AS `c3`,`test`.`t1`.`c4` AS `c4` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`i1`,`test`.`t1`.`i1` in ( <materialize> (/* select#2 */ select `test`.`t1`.`i1` from `test`.`t1` where 1 ), <primary_index_lookup>(`test`.`t1`.`i1` in <temporary table> on <auto_key> where ((`test`.`t1`.`i1` = `materialized-subquery`.`i1`)))))
 UPDATE mysql.server_cost
 SET cost_value=10.0
 WHERE cost_name="memory_temptable_create_cost";
@@ -343,83 +341,81 @@ EXPLAIN
   "query_block": {
     "select_id": 1,
     "cost_info": {
-      "query_cost": "108.00"
+      "query_cost": "29.00"
     },
-    "nested_loop": [
-      {
-        "table": {
-          "table_name": "t1",
-          "access_type": "ALL",
-          "possible_keys": [
-            "i1_key"
-          ],
-          "rows_examined_per_scan": 100,
-          "rows_produced_per_join": 100,
-          "filtered": "100.00",
-          "cost_info": {
-            "read_cost": "9.00",
-            "eval_cost": "20.00",
-            "prefix_cost": "29.00",
-            "data_read_per_join": "99K"
-          },
-          "used_columns": [
-            "pk",
-            "i1",
-            "c1",
-            "c2",
-            "c3",
-            "c4"
-          ],
-          "attached_condition": "(`test`.`t1`.`i1` is not null)"
-        }
+    "table": {
+      "table_name": "t1",
+      "access_type": "ALL",
+      "rows_examined_per_scan": 100,
+      "rows_produced_per_join": 100,
+      "filtered": "100.00",
+      "cost_info": {
+        "read_cost": "9.00",
+        "eval_cost": "20.00",
+        "prefix_cost": "29.00",
+        "data_read_per_join": "99K"
       },
-      {
-        "table": {
-          "table_name": "<subquery2>",
-          "access_type": "eq_ref",
-          "key": "<auto_key>",
-          "key_length": "4",
-          "ref": [
-            "test.t1.i1"
-          ],
-          "rows_examined_per_scan": 1,
-          "materialized_from_subquery": {
-            "using_temporary_table": true,
-            "query_block": {
-              "table": {
-                "table_name": "t1",
-                "access_type": "index",
-                "possible_keys": [
-                  "i1_key"
-                ],
-                "key": "i1_key",
-                "used_key_parts": [
-                  "i1"
-                ],
-                "key_length": "4",
-                "rows_examined_per_scan": 100,
-                "rows_produced_per_join": 100,
-                "filtered": "100.00",
-                "using_index": true,
+      "used_columns": [
+        "pk",
+        "i1",
+        "c1",
+        "c2",
+        "c3",
+        "c4"
+      ],
+      "attached_condition": "<in_optimizer>(`test`.`t1`.`i1`,`test`.`t1`.`i1` in ( <materialize> (/* select#2 */ select `test`.`t1`.`i1` from `test`.`t1` where 1 ), <primary_index_lookup>(`test`.`t1`.`i1` in <temporary table> on <auto_key> where ((`test`.`t1`.`i1` = `materialized-subquery`.`i1`)))))",
+      "attached_subqueries": [
+        {
+          "table": {
+            "table_name": "<materialized_subquery>",
+            "access_type": "eq_ref",
+            "key": "<auto_key>",
+            "key_length": "4",
+            "rows_examined_per_scan": 1,
+            "materialized_from_subquery": {
+              "using_temporary_table": true,
+              "dependent": true,
+              "cacheable": false,
+              "query_block": {
+                "select_id": 2,
                 "cost_info": {
-                  "read_cost": "9.00",
-                  "eval_cost": "20.00",
-                  "prefix_cost": "29.00",
-                  "data_read_per_join": "99K"
+                  "query_cost": "29.00"
                 },
-                "used_columns": [
-                  "i1"
-                ]
+                "table": {
+                  "table_name": "t1",
+                  "access_type": "index",
+                  "possible_keys": [
+                    "i1_key"
+                  ],
+                  "key": "i1_key",
+                  "used_key_parts": [
+                    "i1"
+                  ],
+                  "key_length": "4",
+                  "rows_examined_per_scan": 100,
+                  "rows_produced_per_join": 100,
+                  "filtered": "100.00",
+                  "using_index": true,
+                  "cost_info": {
+                    "read_cost": "9.00",
+                    "eval_cost": "20.00",
+                    "prefix_cost": "29.00",
+                    "data_read_per_join": "99K"
+                  },
+                  "used_columns": [
+                    "i1"
+                  ]
+                }
               }
             }
           }
         }
-      }
-    ]
+      ]
+    }
   }
 }
 Warnings:
-Note	1003	/* select#1 */ select `test`.`t1`.`pk` AS `pk`,`test`.`t1`.`i1` AS `i1`,`test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2`,`test`.`t1`.`c3` AS `c3`,`test`.`t1`.`c4` AS `c4` from `test`.`t1` semi join (`test`.`t1`) where (`<subquery2>`.`i1` = `test`.`t1`.`i1`)
+Note	1003	/* select#1 */ select `test`.`t1`.`pk` AS `pk`,`test`.`t1`.`i1` AS `i1`,`test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2`,`test`.`t1`.`c3` AS `c3`,`test`.`t1`.`c4` AS `c4` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`i1`,`test`.`t1`.`i1` in ( <materialize> (/* select#2 */ select `test`.`t1`.`i1` from `test`.`t1` where 1 ), <primary_index_lookup>(`test`.`t1`.`i1` in <temporary table> on <auto_key> where ((`test`.`t1`.`i1` = `materialized-subquery`.`i1`)))))
 UPDATE mysql.server_cost
 SET cost_value=DEFAULT;
 #
@@ -435,83 +431,81 @@ EXPLAIN
   "query_block": {
     "select_id": 1,
     "cost_info": {
-      "query_cost": "100.00"
+      "query_cost": "29.00"
     },
-    "nested_loop": [
-      {
-        "table": {
-          "table_name": "t1",
-          "access_type": "ALL",
-          "possible_keys": [
-            "i1_key"
-          ],
-          "rows_examined_per_scan": 100,
-          "rows_produced_per_join": 100,
-          "filtered": "100.00",
-          "cost_info": {
-            "read_cost": "9.00",
-            "eval_cost": "20.00",
-            "prefix_cost": "29.00",
-            "data_read_per_join": "99K"
-          },
-          "used_columns": [
-            "pk",
-            "i1",
-            "c1",
-            "c2",
-            "c3",
-            "c4"
-          ],
-          "attached_condition": "(`test`.`t1`.`i1` is not null)"
-        }
+    "table": {
+      "table_name": "t1",
+      "access_type": "ALL",
+      "rows_examined_per_scan": 100,
+      "rows_produced_per_join": 100,
+      "filtered": "100.00",
+      "cost_info": {
+        "read_cost": "9.00",
+        "eval_cost": "20.00",
+        "prefix_cost": "29.00",
+        "data_read_per_join": "99K"
       },
-      {
-        "table": {
-          "table_name": "<subquery2>",
-          "access_type": "eq_ref",
-          "key": "<auto_key>",
-          "key_length": "4",
-          "ref": [
-            "test.t1.i1"
-          ],
-          "rows_examined_per_scan": 1,
-          "materialized_from_subquery": {
-            "using_temporary_table": true,
-            "query_block": {
-              "table": {
-                "table_name": "t1",
-                "access_type": "index",
-                "possible_keys": [
-                  "i1_key"
-                ],
-                "key": "i1_key",
-                "used_key_parts": [
-                  "i1"
-                ],
-                "key_length": "4",
-                "rows_examined_per_scan": 100,
-                "rows_produced_per_join": 100,
-                "filtered": "100.00",
-                "using_index": true,
+      "used_columns": [
+        "pk",
+        "i1",
+        "c1",
+        "c2",
+        "c3",
+        "c4"
+      ],
+      "attached_condition": "<in_optimizer>(`test`.`t1`.`i1`,`test`.`t1`.`i1` in ( <materialize> (/* select#2 */ select `test`.`t1`.`i1` from `test`.`t1` where 1 ), <primary_index_lookup>(`test`.`t1`.`i1` in <temporary table> on <auto_key> where ((`test`.`t1`.`i1` = `materialized-subquery`.`i1`)))))",
+      "attached_subqueries": [
+        {
+          "table": {
+            "table_name": "<materialized_subquery>",
+            "access_type": "eq_ref",
+            "key": "<auto_key>",
+            "key_length": "4",
+            "rows_examined_per_scan": 1,
+            "materialized_from_subquery": {
+              "using_temporary_table": true,
+              "dependent": true,
+              "cacheable": false,
+              "query_block": {
+                "select_id": 2,
                 "cost_info": {
-                  "read_cost": "9.00",
-                  "eval_cost": "20.00",
-                  "prefix_cost": "29.00",
-                  "data_read_per_join": "99K"
+                  "query_cost": "29.00"
                 },
-                "used_columns": [
-                  "i1"
-                ]
+                "table": {
+                  "table_name": "t1",
+                  "access_type": "index",
+                  "possible_keys": [
+                    "i1_key"
+                  ],
+                  "key": "i1_key",
+                  "used_key_parts": [
+                    "i1"
+                  ],
+                  "key_length": "4",
+                  "rows_examined_per_scan": 100,
+                  "rows_produced_per_join": 100,
+                  "filtered": "100.00",
+                  "using_index": true,
+                  "cost_info": {
+                    "read_cost": "9.00",
+                    "eval_cost": "20.00",
+                    "prefix_cost": "29.00",
+                    "data_read_per_join": "99K"
+                  },
+                  "used_columns": [
+                    "i1"
+                  ]
+                }
               }
             }
           }
         }
-      }
-    ]
+      ]
+    }
   }
 }
 Warnings:
-Note	1003	/* select#1 */ select `test`.`t1`.`pk` AS `pk`,`test`.`t1`.`i1` AS `i1`,`test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2`,`test`.`t1`.`c3` AS `c3`,`test`.`t1`.`c4` AS `c4` from `test`.`t1` semi join (`test`.`t1`) where (`<subquery2>`.`i1` = `test`.`t1`.`i1`)
+Note	1003	/* select#1 */ select `test`.`t1`.`pk` AS `pk`,`test`.`t1`.`i1` AS `i1`,`test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2`,`test`.`t1`.`c3` AS `c3`,`test`.`t1`.`c4` AS `c4` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`i1`,`test`.`t1`.`i1` in ( <materialize> (/* select#2 */ select `test`.`t1`.`i1` from `test`.`t1` where 1 ), <primary_index_lookup>(`test`.`t1`.`i1` in <temporary table> on <auto_key> where ((`test`.`t1`.`i1` = `materialized-subquery`.`i1`)))))
 UPDATE mysql.server_cost
 SET cost_value=0.4
 WHERE cost_name="memory_temptable_row_cost";
@@ -529,83 +523,81 @@ EXPLAIN
   "query_block": {
     "select_id": 1,
     "cost_info": {
-      "query_cost": "140.00"
+      "query_cost": "29.00"
     },
-    "nested_loop": [
-      {
-        "table": {
-          "table_name": "t1",
-          "access_type": "ALL",
-          "possible_keys": [
-            "i1_key"
-          ],
-          "rows_examined_per_scan": 100,
-          "rows_produced_per_join": 100,
-          "filtered": "100.00",
-          "cost_info": {
-            "read_cost": "9.00",
-            "eval_cost": "20.00",
-            "prefix_cost": "29.00",
-            "data_read_per_join": "99K"
-          },
-          "used_columns": [
-            "pk",
-            "i1",
-            "c1",
-            "c2",
-            "c3",
-            "c4"
-          ],
-          "attached_condition": "(`test`.`t1`.`i1` is not null)"
-        }
+    "table": {
+      "table_name": "t1",
+      "access_type": "ALL",
+      "rows_examined_per_scan": 100,
+      "rows_produced_per_join": 100,
+      "filtered": "100.00",
+      "cost_info": {
+        "read_cost": "9.00",
+        "eval_cost": "20.00",
+        "prefix_cost": "29.00",
+        "data_read_per_join": "99K"
       },
-      {
-        "table": {
-          "table_name": "<subquery2>",
-          "access_type": "eq_ref",
-          "key": "<auto_key>",
-          "key_length": "4",
-          "ref": [
-            "test.t1.i1"
-          ],
-          "rows_examined_per_scan": 1,
-          "materialized_from_subquery": {
-            "using_temporary_table": true,
-            "query_block": {
-              "table": {
-                "table_name": "t1",
-                "access_type": "index",
-                "possible_keys": [
-                  "i1_key"
-                ],
-                "key": "i1_key",
-                "used_key_parts": [
-                  "i1"
-                ],
-                "key_length": "4",
-                "rows_examined_per_scan": 100,
-                "rows_produced_per_join": 100,
-                "filtered": "100.00",
-                "using_index": true,
+      "used_columns": [
+        "pk",
+        "i1",
+        "c1",
+        "c2",
+        "c3",
+        "c4"
+      ],
+      "attached_condition": "<in_optimizer>(`test`.`t1`.`i1`,`test`.`t1`.`i1` in ( <materialize> (/* select#2 */ select `test`.`t1`.`i1` from `test`.`t1` where 1 ), <primary_index_lookup>(`test`.`t1`.`i1` in <temporary table> on <auto_key> where ((`test`.`t1`.`i1` = `materialized-subquery`.`i1`)))))",
+      "attached_subqueries": [
+        {
+          "table": {
+            "table_name": "<materialized_subquery>",
+            "access_type": "eq_ref",
+            "key": "<auto_key>",
+            "key_length": "4",
+            "rows_examined_per_scan": 1,
+            "materialized_from_subquery": {
+              "using_temporary_table": true,
+              "dependent": true,
+              "cacheable": false,
+              "query_block": {
+                "select_id": 2,
                 "cost_info": {
-                  "read_cost": "9.00",
-                  "eval_cost": "20.00",
-                  "prefix_cost": "29.00",
-                  "data_read_per_join": "99K"
+                  "query_cost": "29.00"
                 },
-                "used_columns": [
-                  "i1"
-                ]
+                "table": {
+                  "table_name": "t1",
+                  "access_type": "index",
+                  "possible_keys": [
+                    "i1_key"
+                  ],
+                  "key": "i1_key",
+                  "used_key_parts": [
+                    "i1"
+                  ],
+                  "key_length": "4",
+                  "rows_examined_per_scan": 100,
+                  "rows_produced_per_join": 100,
+                  "filtered": "100.00",
+                  "using_index": true,
+                  "cost_info": {
+                    "read_cost": "9.00",
+                    "eval_cost": "20.00",
+                    "prefix_cost": "29.00",
+                    "data_read_per_join": "99K"
+                  },
+                  "used_columns": [
+                    "i1"
+                  ]
+                }
               }
             }
           }
         }
-      }
-    ]
+      ]
+    }
   }
 }
 Warnings:
-Note	1003	/* select#1 */ select `test`.`t1`.`pk` AS `pk`,`test`.`t1`.`i1` AS `i1`,`test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2`,`test`.`t1`.`c3` AS `c3`,`test`.`t1`.`c4` AS `c4` from `test`.`t1` semi join (`test`.`t1`) where (`<subquery2>`.`i1` = `test`.`t1`.`i1`)
+Note	1003	/* select#1 */ select `test`.`t1`.`pk` AS `pk`,`test`.`t1`.`i1` AS `i1`,`test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2`,`test`.`t1`.`c3` AS `c3`,`test`.`t1`.`c4` AS `c4` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`i1`,`test`.`t1`.`i1` in ( <materialize> (/* select#2 */ select `test`.`t1`.`i1` from `test`.`t1` where 1 ), <primary_index_lookup>(`test`.`t1`.`i1` in <temporary table> on <auto_key> where ((`test`.`t1`.`i1` = `materialized-subquery`.`i1`)))))
 UPDATE mysql.server_cost
 SET cost_value=DEFAULT;
 set @max_heap_table_size_save= @@max_heap_table_size;
@@ -623,71 +615,72 @@ EXPLAIN
   "query_block": {
     "select_id": 1,
     "cost_info": {
-      "query_cost": "298.00"
+      "query_cost": "29.00"
     },
-    "nested_loop": [
-      {
-        "table": {
-          "table_name": "t1",
-          "access_type": "ALL",
-          "rows_examined_per_scan": 100,
-          "rows_produced_per_join": 100,
-          "filtered": "100.00",
-          "cost_info": {
-            "read_cost": "9.00",
-            "eval_cost": "20.00",
-            "prefix_cost": "29.00",
-            "data_read_per_join": "99K"
-          },
-          "used_columns": [
-            "pk",
-            "i1",
-            "c1",
-            "c2",
-            "c3",
-            "c4"
-          ],
-          "attached_condition": "(`test`.`t1`.`c1` is not null)"
-        }
+    "table": {
+      "table_name": "t1",
+      "access_type": "ALL",
+      "rows_examined_per_scan": 100,
+      "rows_produced_per_join": 100,
+      "filtered": "100.00",
+      "cost_info": {
+        "read_cost": "9.00",
+        "eval_cost": "20.00",
+        "prefix_cost": "29.00",
+        "data_read_per_join": "99K"
       },
-      {
-        "table": {
-          "table_name": "<subquery2>",
-          "access_type": "eq_ref",
-          "key": "<auto_key>",
-          "key_length": "251",
-          "ref": [
-            "test.t1.c1"
-          ],
-          "rows_examined_per_scan": 1,
-          "materialized_from_subquery": {
-            "using_temporary_table": true,
-            "query_block": {
-              "table": {
-                "table_name": "t1",
-                "access_type": "ALL",
-                "rows_examined_per_scan": 100,
-                "rows_produced_per_join": 100,
-                "filtered": "100.00",
+      "used_columns": [
+        "pk",
+        "i1",
+        "c1",
+        "c2",
+        "c3",
+        "c4"
+      ],
+      "attached_condition": "<in_optimizer>(`test`.`t1`.`c1`,`test`.`t1`.`c1` in ( <materialize> (/* select#2 */ select `test`.`t1`.`c1` from `test`.`t1` where 1 ), <primary_index_lookup>(`test`.`t1`.`c1` in <temporary table> on <auto_key> where ((`test`.`t1`.`c1` = `materialized-subquery`.`c1`)))))",
+      "attached_subqueries": [
+        {
+          "table": {
+            "table_name": "<materialized_subquery>",
+            "access_type": "eq_ref",
+            "key": "<auto_key>",
+            "key_length": "251",
+            "rows_examined_per_scan": 1,
+            "materialized_from_subquery": {
+              "using_temporary_table": true,
+              "dependent": true,
+              "cacheable": false,
+              "query_block": {
+                "select_id": 2,
                 "cost_info": {
-                  "read_cost": "9.00",
-                  "eval_cost": "20.00",
-                  "prefix_cost": "29.00",
-                  "data_read_per_join": "99K"
+                  "query_cost": "29.00"
                 },
-                "used_columns": [
-                  "c1"
-                ]
+                "table": {
+                  "table_name": "t1",
+                  "access_type": "ALL",
+                  "rows_examined_per_scan": 100,
+                  "rows_produced_per_join": 100,
+                  "filtered": "100.00",
+                  "cost_info": {
+                    "read_cost": "9.00",
+                    "eval_cost": "20.00",
+                    "prefix_cost": "29.00",
+                    "data_read_per_join": "99K"
+                  },
+                  "used_columns": [
+                    "c1"
+                  ]
+                }
               }
             }
           }
         }
-      }
-    ]
+      ]
+    }
   }
 }
 Warnings:
-Note	1003	/* select#1 */ select `test`.`t1`.`pk` AS `pk`,`test`.`t1`.`i1` AS `i1`,`test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2`,`test`.`t1`.`c3` AS `c3`,`test`.`t1`.`c4` AS `c4` from `test`.`t1` semi join (`test`.`t1`) where (`<subquery2>`.`c1` = `test`.`t1`.`c1`)
+Note	1003	/* select#1 */ select `test`.`t1`.`pk` AS `pk`,`test`.`t1`.`i1` AS `i1`,`test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2`,`test`.`t1`.`c3` AS `c3`,`test`.`t1`.`c4` AS `c4` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`c1`,`test`.`t1`.`c1` in ( <materialize> (/* select#2 */ select `test`.`t1`.`c1` from `test`.`t1` where 1 ), <primary_index_lookup>(`test`.`t1`.`c1` in <temporary table> on <auto_key> where ((`test`.`t1`.`c1` = `materialized-subquery`.`c1`)))))
 UPDATE mysql.server_cost
 SET cost_value=80.0
 WHERE cost_name="disk_temptable_create_cost";
@@ -703,71 +696,72 @@ EXPLAIN
   "query_block": {
     "select_id": 1,
     "cost_info": {
-      "query_cost": "338.00"
+      "query_cost": "29.00"
     },
-    "nested_loop": [
-      {
-        "table": {
-          "table_name": "t1",
-          "access_type": "ALL",
-          "rows_examined_per_scan": 100,
-          "rows_produced_per_join": 100,
-          "filtered": "100.00",
-          "cost_info": {
-            "read_cost": "9.00",
-            "eval_cost": "20.00",
-            "prefix_cost": "29.00",
-            "data_read_per_join": "99K"
-          },
-          "used_columns": [
-            "pk",
-            "i1",
-            "c1",
-            "c2",
-            "c3",
-            "c4"
-          ],
-          "attached_condition": "(`test`.`t1`.`c1` is not null)"
-        }
+    "table": {
+      "table_name": "t1",
+      "access_type": "ALL",
+      "rows_examined_per_scan": 100,
+      "rows_produced_per_join": 100,
+      "filtered": "100.00",
+      "cost_info": {
+        "read_cost": "9.00",
+        "eval_cost": "20.00",
+        "prefix_cost": "29.00",
+        "data_read_per_join": "99K"
       },
-      {
-        "table": {
-          "table_name": "<subquery2>",
-          "access_type": "eq_ref",
-          "key": "<auto_key>",
-          "key_length": "251",
-          "ref": [
-            "test.t1.c1"
-          ],
-          "rows_examined_per_scan": 1,
-          "materialized_from_subquery": {
-            "using_temporary_table": true,
-            "query_block": {
-              "table": {
-                "table_name": "t1",
-                "access_type": "ALL",
-                "rows_examined_per_scan": 100,
-                "rows_produced_per_join": 100,
-                "filtered": "100.00",
+      "used_columns": [
+        "pk",
+        "i1",
+        "c1",
+        "c2",
+        "c3",
+        "c4"
+      ],
+      "attached_condition": "<in_optimizer>(`test`.`t1`.`c1`,`test`.`t1`.`c1` in ( <materialize> (/* select#2 */ select `test`.`t1`.`c1` from `test`.`t1` where 1 ), <primary_index_lookup>(`test`.`t1`.`c1` in <temporary table> on <auto_key> where ((`test`.`t1`.`c1` = `materialized-subquery`.`c1`)))))",
+      "attached_subqueries": [
+        {
+          "table": {
+            "table_name": "<materialized_subquery>",
+            "access_type": "eq_ref",
+            "key": "<auto_key>",
+            "key_length": "251",
+            "rows_examined_per_scan": 1,
+            "materialized_from_subquery": {
+              "using_temporary_table": true,
+              "dependent": true,
+              "cacheable": false,
+              "query_block": {
+                "select_id": 2,
                 "cost_info": {
-                  "read_cost": "9.00",
-                  "eval_cost": "20.00",
-                  "prefix_cost": "29.00",
-                  "data_read_per_join": "99K"
+                  "query_cost": "29.00"
                 },
-                "used_columns": [
-                  "c1"
-                ]
+                "table": {
+                  "table_name": "t1",
+                  "access_type": "ALL",
+                  "rows_examined_per_scan": 100,
+                  "rows_produced_per_join": 100,
+                  "filtered": "100.00",
+                  "cost_info": {
+                    "read_cost": "9.00",
+                    "eval_cost": "20.00",
+                    "prefix_cost": "29.00",
+                    "data_read_per_join": "99K"
+                  },
+                  "used_columns": [
+                    "c1"
+                  ]
+                }
               }
             }
           }
         }
-      }
-    ]
+      ]
+    }
   }
 }
 Warnings:
-Note	1003	/* select#1 */ select `test`.`t1`.`pk` AS `pk`,`test`.`t1`.`i1` AS `i1`,`test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2`,`test`.`t1`.`c3` AS `c3`,`test`.`t1`.`c4` AS `c4` from `test`.`t1` semi join (`test`.`t1`) where (`<subquery2>`.`c1` = `test`.`t1`.`c1`)
+Note	1003	/* select#1 */ select `test`.`t1`.`pk` AS `pk`,`test`.`t1`.`i1` AS `i1`,`test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2`,`test`.`t1`.`c3` AS `c3`,`test`.`t1`.`c4` AS `c4` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`c1`,`test`.`t1`.`c1` in ( <materialize> (/* select#2 */ select `test`.`t1`.`c1` from `test`.`t1` where 1 ), <primary_index_lookup>(`test`.`t1`.`c1` in <temporary table> on <auto_key> where ((`test`.`t1`.`c1` = `materialized-subquery`.`c1`)))))
 UPDATE mysql.server_cost
 SET cost_value=DEFAULT;
 #
@@ -783,71 +777,72 @@ EXPLAIN
   "query_block": {
     "select_id": 1,
     "cost_info": {
-      "query_cost": "298.00"
+      "query_cost": "29.00"
     },
-    "nested_loop": [
-      {
-        "table": {
-          "table_name": "t1",
-          "access_type": "ALL",
-          "rows_examined_per_scan": 100,
-          "rows_produced_per_join": 100,
-          "filtered": "100.00",
-          "cost_info": {
-            "read_cost": "9.00",
-            "eval_cost": "20.00",
-            "prefix_cost": "29.00",
-            "data_read_per_join": "99K"
-          },
-          "used_columns": [
-            "pk",
-            "i1",
-            "c1",
-            "c2",
-            "c3",
-            "c4"
-          ],
-          "attached_condition": "(`test`.`t1`.`c1` is not null)"
-        }
+    "table": {
+      "table_name": "t1",
+      "access_type": "ALL",
+      "rows_examined_per_scan": 100,
+      "rows_produced_per_join": 100,
+      "filtered": "100.00",
+      "cost_info": {
+        "read_cost": "9.00",
+        "eval_cost": "20.00",
+        "prefix_cost": "29.00",
+        "data_read_per_join": "99K"
       },
-      {
-        "table": {
-          "table_name": "<subquery2>",
-          "access_type": "eq_ref",
-          "key": "<auto_key>",
-          "key_length": "251",
-          "ref": [
-            "test.t1.c1"
-          ],
-          "rows_examined_per_scan": 1,
-          "materialized_from_subquery": {
-            "using_temporary_table": true,
-            "query_block": {
-              "table": {
-                "table_name": "t1",
-                "access_type": "ALL",
-                "rows_examined_per_scan": 100,
-                "rows_produced_per_join": 100,
-                "filtered": "100.00",
+      "used_columns": [
+        "pk",
+        "i1",
+        "c1",
+        "c2",
+        "c3",
+        "c4"
+      ],
+      "attached_condition": "<in_optimizer>(`test`.`t1`.`c1`,`test`.`t1`.`c1` in ( <materialize> (/* select#2 */ select `test`.`t1`.`c1` from `test`.`t1` where 1 ), <primary_index_lookup>(`test`.`t1`.`c1` in <temporary table> on <auto_key> where ((`test`.`t1`.`c1` = `materialized-subquery`.`c1`)))))",
+      "attached_subqueries": [
+        {
+          "table": {
+            "table_name": "<materialized_subquery>",
+            "access_type": "eq_ref",
+            "key": "<auto_key>",
+            "key_length": "251",
+            "rows_examined_per_scan": 1,
+            "materialized_from_subquery": {
+              "using_temporary_table": true,
+              "dependent": true,
+              "cacheable": false,
+              "query_block": {
+                "select_id": 2,
                 "cost_info": {
-                  "read_cost": "9.00",
-                  "eval_cost": "20.00",
-                  "prefix_cost": "29.00",
-                  "data_read_per_join": "99K"
+                  "query_cost": "29.00"
                 },
-                "used_columns": [
-                  "c1"
-                ]
+                "table": {
+                  "table_name": "t1",
+                  "access_type": "ALL",
+                  "rows_examined_per_scan": 100,
+                  "rows_produced_per_join": 100,
+                  "filtered": "100.00",
+                  "cost_info": {
+                    "read_cost": "9.00",
+                    "eval_cost": "20.00",
+                    "prefix_cost": "29.00",
+                    "data_read_per_join": "99K"
+                  },
+                  "used_columns": [
+                    "c1"
+                  ]
+                }
               }
             }
           }
         }
-      }
-    ]
+      ]
+    }
   }
 }
 Warnings:
-Note	1003	/* select#1 */ select `test`.`t1`.`pk` AS `pk`,`test`.`t1`.`i1` AS `i1`,`test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2`,`test`.`t1`.`c3` AS `c3`,`test`.`t1`.`c4` AS `c4` from `test`.`t1` semi join (`test`.`t1`) where (`<subquery2>`.`c1` = `test`.`t1`.`c1`)
+Note	1003	/* select#1 */ select `test`.`t1`.`pk` AS `pk`,`test`.`t1`.`i1` AS `i1`,`test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2`,`test`.`t1`.`c3` AS `c3`,`test`.`t1`.`c4` AS `c4` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`c1`,`test`.`t1`.`c1` in ( <materialize> (/* select#2 */ select `test`.`t1`.`c1` from `test`.`t1` where 1 ), <primary_index_lookup>(`test`.`t1`.`c1` in <temporary table> on <auto_key> where ((`test`.`t1`.`c1` = `materialized-subquery`.`c1`)))))
 UPDATE mysql.server_cost
 SET cost_value=2.0
 WHERE cost_name="disk_temptable_row_cost";
@@ -866,71 +861,72 @@ EXPLAIN
   "query_block": {
     "select_id": 1,
     "cost_info": {
-      "query_cost": "498.00"
+      "query_cost": "29.00"
     },
-    "nested_loop": [
-      {
-        "table": {
-          "table_name": "t1",
-          "access_type": "ALL",
-          "rows_examined_per_scan": 100,
-          "rows_produced_per_join": 100,
-          "filtered": "100.00",
-          "cost_info": {
-            "read_cost": "9.00",
-            "eval_cost": "20.00",
-            "prefix_cost": "29.00",
-            "data_read_per_join": "99K"
-          },
-          "used_columns": [
-            "pk",
-            "i1",
-            "c1",
-            "c2",
-            "c3",
-            "c4"
-          ],
-          "attached_condition": "(`test`.`t1`.`c1` is not null)"
-        }
+    "table": {
+      "table_name": "t1",
+      "access_type": "ALL",
+      "rows_examined_per_scan": 100,
+      "rows_produced_per_join": 100,
+      "filtered": "100.00",
+      "cost_info": {
+        "read_cost": "9.00",
+        "eval_cost": "20.00",
+        "prefix_cost": "29.00",
+        "data_read_per_join": "99K"
       },
-      {
-        "table": {
-          "table_name": "<subquery2>",
-          "access_type": "eq_ref",
-          "key": "<auto_key>",
-          "key_length": "251",
-          "ref": [
-            "test.t1.c1"
-          ],
-          "rows_examined_per_scan": 1,
-          "materialized_from_subquery": {
-            "using_temporary_table": true,
-            "query_block": {
-              "table": {
-                "table_name": "t1",
-                "access_type": "ALL",
-                "rows_examined_per_scan": 100,
-                "rows_produced_per_join": 100,
-                "filtered": "100.00",
+      "used_columns": [
+        "pk",
+        "i1",
+        "c1",
+        "c2",
+        "c3",
+        "c4"
+      ],
+      "attached_condition": "<in_optimizer>(`test`.`t1`.`c1`,`test`.`t1`.`c1` in ( <materialize> (/* select#2 */ select `test`.`t1`.`c1` from `test`.`t1` where 1 ), <primary_index_lookup>(`test`.`t1`.`c1` in <temporary table> on <auto_key> where ((`test`.`t1`.`c1` = `materialized-subquery`.`c1`)))))",
+      "attached_subqueries": [
+        {
+          "table": {
+            "table_name": "<materialized_subquery>",
+            "access_type": "eq_ref",
+            "key": "<auto_key>",
+            "key_length": "251",
+            "rows_examined_per_scan": 1,
+            "materialized_from_subquery": {
+              "using_temporary_table": true,
+              "dependent": true,
+              "cacheable": false,
+              "query_block": {
+                "select_id": 2,
                 "cost_info": {
-                  "read_cost": "9.00",
-                  "eval_cost": "20.00",
-                  "prefix_cost": "29.00",
-                  "data_read_per_join": "99K"
+                  "query_cost": "29.00"
                 },
-                "used_columns": [
-                  "c1"
-                ]
+                "table": {
+                  "table_name": "t1",
+                  "access_type": "ALL",
+                  "rows_examined_per_scan": 100,
+                  "rows_produced_per_join": 100,
+                  "filtered": "100.00",
+                  "cost_info": {
+                    "read_cost": "9.00",
+                    "eval_cost": "20.00",
+                    "prefix_cost": "29.00",
+                    "data_read_per_join": "99K"
+                  },
+                  "used_columns": [
+                    "c1"
+                  ]
+                }
               }
             }
           }
         }
-      }
-    ]
+      ]
+    }
   }
 }
 Warnings:
-Note	1003	/* select#1 */ select `test`.`t1`.`pk` AS `pk`,`test`.`t1`.`i1` AS `i1`,`test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2`,`test`.`t1`.`c3` AS `c3`,`test`.`t1`.`c4` AS `c4` from `test`.`t1` semi join (`test`.`t1`) where (`<subquery2>`.`c1` = `test`.`t1`.`c1`)
+Note	1003	/* select#1 */ select `test`.`t1`.`pk` AS `pk`,`test`.`t1`.`i1` AS `i1`,`test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2`,`test`.`t1`.`c3` AS `c3`,`test`.`t1`.`c4` AS `c4` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`c1`,`test`.`t1`.`c1` in ( <materialize> (/* select#2 */ select `test`.`t1`.`c1` from `test`.`t1` where 1 ), <primary_index_lookup>(`test`.`t1`.`c1` in <temporary table> on <auto_key> where ((`test`.`t1`.`c1` = `materialized-subquery`.`c1`)))))
 UPDATE mysql.server_cost
 SET cost_value=DEFAULT;
 set max_heap_table_size= @max_heap_table_size_save;

@@ -233,20 +233,24 @@ DROP PROCEDURE p1;
 SHOW DATABASES;
 Database
 information_schema
+cache
 mtr
 mysql
 performance_schema
 sys
+sys_stonedb
 test
 # 'bug58090' database should be present.
 SHOW DATABASES;
 Database
 information_schema
 bug58090
+cache
 mtr
 mysql
 performance_schema
 sys
+sys_stonedb
 test
 DROP DATABASE bug58090;
 #

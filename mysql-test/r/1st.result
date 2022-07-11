@@ -1,8 +1,10 @@
 select schema_name from information_schema.schemata where schema_name not in ('sys', 'performance_schema');
 schema_name
 information_schema
+cache
 mtr
 mysql
+sys_stonedb
 test
 show tables in mysql;
 Tables_in_mysql
