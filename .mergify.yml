@@ -2,28 +2,27 @@ queue_rules:
   - name: shared_queue
     conditions:
       - "#approved-reviews-by>=2"
-      - check-success=stonedb-build
 
 pull_request_rules:
-  - name: put bug fix to merge queue on approval with high priority
+  - name: automatic merge of hotfix (high priority)
     conditions:
       - "#approved-reviews-by>=2"
-      - check-success=stonedb-build
       - label=A-bug
-      
+      - check-success=stonedb-build
     actions:
       queue:
         name: shared_queue
+        method: squash
 
   - name: put other pr to merge queue
     conditions:
       - "#approved-reviews-by>=2"
-      - check-success=stonedb-build
       - label!=A-bug
-
+      - check-success=stonedb-build
     actions:
       queue:
         name: shared_queue
+        method: squash
         
 # if there is a conflict in a approved PR, ping the author.
   - name: ping author if there is conflicts
@@ -48,45 +47,53 @@ pull_request_rules:
 
           Please review the labels and make any necessary changes.
 
-  - name: label on new feature
+  # Assign pr label based of tags
+  - name: label on New Feature
     conditions:
-      - body~= New Feature
+      - 'title~=^(feat)(\(.*\))?:'
     actions:
       label:
         add:
           - PR-feature
-  - name: label on bug fix
+  - name: label on Bug Fix
     conditions:
-      - body~= Bug Fix
+      - 'title~=^(fix)(\(.*\))?:'
     actions:
       label:
         add:
           - PR-bug
-  - name: label on Documentation
+  - name: label on docs
     conditions:
-      - body~= Documentation
+      - 'title~=^(docs)(\(.*\))?:'
     actions:
       label:
         add:
           - PR-docs
-  - name: label on Improvement
+  - name: label on style
     conditions:
-      - body~= Improvement
+      - 'title~=^(style)(\(.*\))?:'
     actions:
       label:
         add:
-          - PR-improvement
-  - name: label on Performance Improvement
+          - PR-style
+  - name: label on Refactor
     conditions:
-      - body~= Performance Improvement
+      - 'title~=^(refactor)(\(.*\))?:'
     actions:
       label:
         add:
-          - PR-performance
-  - name: label on Build/Testing/CI/CD
+          - PR-refactor
+  - name: label on test
     conditions:
-      - body~= Build/Testing/CI/CD
+      - 'title~=^(test)(\(.*\))?:'
     actions:
       label:
         add:
           - PR-testing
+  - name: label on chore
+    conditions:
+      - 'title~=^(chore)(\(.*\))?:'
+    actions:
+      label:
+        add:
+          - PR-chore

@@ -52,7 +52,7 @@ const config = {
       '@docusaurus/preset-classic',
       ({
         docs: {
-          path: 'docs',
+          path: '../Docs',
           id: 'default',
           routeBasePath: 'docs',
           sidebarPath: require.resolve('./sidebars.js'),
@@ -61,9 +61,9 @@ const config = {
           editLocalizedFiles: true,
           editUrl: ({versionDocsDirPath, docPath, locale}) => {
             if(locale !== 'en') {
-              return `https://github.com/stoneatom/stonedb/edit/stonedb-5.6/website/i18n/${locale}/docusaurus-plugin-content-docs/current/${docPath}`
+              return `https://github.com/stoneatom/stonedb/edit/stonedb-5.7/website/i18n/${locale}/docusaurus-plugin-content-docs/current/${docPath}`
             }
-            return `https://github.com/stoneatom/stonedb/edit/stonedb-5.6/${versionDocsDirPath}/${docPath}`
+            return `https://github.com/stoneatom/stonedb/edit/stonedb-5.7/${versionDocsDirPath}/${docPath}`
           },
         },
         theme: {
