@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - stonedb-5.6
+      - stonedb-5.7
 
 jobs:
   deploy:
