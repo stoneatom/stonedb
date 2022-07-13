@@ -46,7 +46,6 @@ class RCTableIndex final {
   static common::ErrorCode CreateIndexTable(const std::string &name, TABLE *table);
   static common::ErrorCode DropIndexTable(const std::string &name);
   static bool FindIndexTable(const std::string &name);
-  static bool NormalLizeName(const std::string &path, std::string &name);
   common::ErrorCode RefreshIndexTable(const std::string &name);
   common::ErrorCode RenameIndexTable(const std::string &from, const std::string &to);
   void TruncateIndexTable();
