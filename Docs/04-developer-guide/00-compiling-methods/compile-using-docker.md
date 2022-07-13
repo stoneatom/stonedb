@@ -166,7 +166,7 @@ After the `make` commands are successful, you can choose either to compress the 
 [root@06f1f385d3b3 build]# tar -zcPvf /home/stonedb56.tar.gz /stonedb56/
 ```
 ### Directly use StoneDB in the container
-You can refer to [Quick Deployment](https://stoneatom.yuque.com/staff-ft8n1u/dghuxr/pv8ath) or the following code to deploy and use StoneDB in the container.
+You can refer to [Quick Deployment](../../02-getting-started/quick-deployment.md) or the following code to deploy and use StoneDB in the container.
 ```bash
 [root@06f1f385d3b3 build]# cd /stonedb56/install/
 

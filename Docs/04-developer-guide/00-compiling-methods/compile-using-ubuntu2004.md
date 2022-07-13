@@ -6,7 +6,8 @@ sidebar_position: 5.14
 # Compile StoneDB on Ubuntu 20.04
 
 This topic describes how to compile StoneDB on Ubuntu 20.04.
-This topic describes how to compile StoneDB on Ubuntu 20.04.
+## Prerequisites
+The source code of StoneDB has been downloaded.
 ## Step 1. Install GCC 7.3.0
 Ubuntu 20.04 LTS uses GCC 9.4.0, by default. You must downgrade the GCC version to 7.3.0, because StoneDB can be complied only on GCC 7.3.0.
 ### 1. Install the dependencies
@@ -37,12 +38,26 @@ sudo apt install libzstd-dev
 sudo apt install lz4
 sudo apt install ncurses-dev
 sudo apt install libsnappy-dev
+sudo apt install libedit-dev
+sudo apt install libaio-dev
+sudo apt install libncurses5-dev 
+sudo apt install libreadline-dev
+sudo apt install libpam0g-dev
+sudo apt install zlib1g-dev
+sudo apt install libcurl-ocaml-dev
+sudo apt install libicu-dev
+sudo apt install libboost-all-dev
+sudo apt install libgflags-dev
+sudo apt install libjemalloc-dev
+sudo apt install libssl-dev
 ```
 :::info
 Ensure that all the dependencies are installed. Otherwise, a large number of errors will be reported.
 :::
 ### 2. Decompress the source code package of GCC 7.3.0
+
 [Download](http://ftp.gnu.org/gnu/gcc/), upload, and then decompress the source code package of GCC 7.3.0.
+
 ```shell
 cd /home
 tar -zxvf gcc-7.3.0.tar.gz
@@ -59,6 +74,7 @@ vim sanitizer_platform_limits_posix.cc
 ```
 
 2. Add the following code after row 250.
+
 ```shell
 vim sanitizer_platform_limits_posix.cc
 
@@ -80,7 +96,7 @@ vim sanitizer_platform_limits_posix.cc
 :::info
 If GCC is compiled without these modifications, an error will be reported, indicating that **sys/ustat.h** does not exist. This is because **ustat.h** is removed from **sanitizer-platform-limits-posix.cc** in GCC 7.3.0.
 :::
-## 4. Compile GCC
+### 4. Compile GCC
 ```shell
 mkdir /gcc
 cd /home/gcc-7.3.0
@@ -120,14 +136,10 @@ c++ (GCC) 7.3.0
 Copyright (C) 2017 Free Software Foundation, Inc.
 This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-
 ```
-## Step 2. Compile StoneDB
-### 1. Download the source code package of StoneDB
-Download the source code from [https://github.com/stoneatom/stonedb.git](https://github.com/stoneatom/stonedb.git).
-### 2. Install CMake and the third-party libraries
-
-1. Install CMake.
+## Step 2. Install CMake and third-party dependencies
+Before compiling StoneDB, install CMake 3.7 or later, Make 3.82 or later, and the following third-party libraries: marisa, RocksDB, and Boost.
+### 1. Install CMake
 ```shell
 wget https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz
 tar -zxvf cmake-3.7.2.tar.gz
@@ -137,8 +149,7 @@ cd cmake-3.7.2
 apt remove cmake -y
 ln -s /usr/local/bin/cmake /usr/bin/
 ```
-
-2. Install marisa.
+### 2. Install marisa
 ```shell
 git clone https://github.com/s-yata/marisa-trie.git
 cd marisa-trie
@@ -148,49 +159,12 @@ make && make install
 ```
 The directories and files shown in the following figure are generated in directory **/usr/local/stonedb-marisa**.
 
-![marisa_dirs_files.png](./../../images/compile-stonedb-on-ubuntu2004/marisa_dirs_files.png)
-
-1. Install GCC 4.8.5 in an offline manner and configure it to be the default version.
+![stonedb-marisa](../../images/compile-stonedb-on-ubuntu2004/marisa_dir.png)
+### 3. Install RocksDB
 ```shell
-sudo vim /etc/apt/sources.list
-# Append the image sources to the paths.
-deb http://dk.archive.ubuntu.com/ubuntu/ xenial main
-deb http://dk.archive.ubuntu.com/ubuntu/ xenial universe
-# Install GCC 4.8.5.
-sudo apt update
-sudo apt install gcc-4.8
-sudo apt install gcc-4.8-locales
-sudo apt install gcc-4.8-multilib
-sudo apt install gcc-4.8-doc
-sudo apt install g++-4.8
-# Switch the GCC version to 4.8.5.
-update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 20
-update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 20
-# Check the GCC version.
-gcc --version
-gcc (Ubuntu 4.8.5-4ubuntu2) 4.8.5
-Copyright (C) 2015 Free Software Foundation, Inc.
-This is free software; see the source for copying conditions.  There is NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-
-c++ --version
-c++ (Ubuntu 4.8.5-4ubuntu2) 4.8.5
-Copyright (C) 2015 Free Software Foundation, Inc.
-This is free software; see the source for copying conditions.  There is NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-
-g++ --version
-g++ (Ubuntu 4.8.5-4ubuntu2) 4.8.5
-Copyright (C) 2015 Free Software Foundation, Inc.
-This is free software; see the source for copying conditions.  There is NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-```
-
-4. Install RocksDB.
-```shell
-wget https://github.com/facebook/rocksdb/archive/refs/tags/v4.13.tar.gz
-tar -zxvf v4.13.tar.gz
-cd rocksdb-4.13
+wget https://github.com/facebook/rocksdb/archive/refs/tags/v6.12.6.tar.gz 
+tar -zxvf v6.12.6.tar.gz
+cd rocksdb-6.12.6
 make shared_lib
 make install-shared INSTALL_PATH=/usr/local/stonedb-gcc-rocksdb
 make static_lib
@@ -198,81 +172,69 @@ make install-static INSTALL_PATH=/usr/local/stonedb-gcc-rocksdb
 ```
 The directories and files shown in the following figure are generated in directory **/usr/local/stonedb-gcc-rocksdb**.
 
-![rocksdb_dirs_files.png](./../../images/compile-stonedb-on-ubuntu2004/rocksdb_dirs_files.png)
-
-1. Switch the GCC version back to 7.3.0. Otherwise, errors will be reported.
+![stonedb-gcc-rocksdb](../../images/compile-stonedb-on-ubuntu2004/rocks_dir.png)
+### 4. Install Boost
 ```shell
-sudo rm /usr/bin/gcc
-sudo ln -s /gcc/bin/gcc /usr/bin/gcc
-sudo rm /usr/bin/g++
-sudo ln -s /gcc/bin/g++ /usr/bin/g++
-```
-
-6. Install Boost.
-
-Boost can be automatically installed when you execute the **stonedb_build.sh** script stored in directory** /stonedb2022/scripts**. The following code shows how to manually install Boost.
-```shell
+wget https://sourceforge.net/projects/boost/files/boost/1.66.0/boost_1_66_0.tar.gz
 tar -zxvf boost_1_66_0.tar.gz
 cd boost_1_66_0
 ./bootstrap.sh --prefix=/usr/local/stonedb-boost
 ./b2 install --with=all
 ```
-The files and directories shown in the following figure are generated in directory **/usr/local/stonedb-boost**.
+The directories and files shown in the following figure are generated in directory **/usr/local/stonedb-boost**.
 
-![boost_dirs_files.png](./../../images/compile-stonedb-on-ubuntu2004/boost_dirs_files.png)
-### 3. Compile StoneDB
-
-1. Modify script **stonedb_build.sh**.
+![stonedb-boost](../../images/compile-stonedb-on-ubuntu2004/boost_dir.png)
+## Step 3. Compile StoneDB
 ```shell
-vim /stonedb2022/scripts/stonedb_build.sh
-cmake ../../ \
--DCMAKE_BUILD_TYPE=${build_type} \
--DCMAKE_INSTALL_PREFIX=${install_target} \
--DMYSQL_DATADIR=${install_target}/data \
--DSYSCONFDIR=${install_target} \
--DMYSQL_UNIX_ADDR=${install_target}/tmp/mysql.sock \
--DWITH_EMBEDDED_SERVER=OFF \
--DWITH_STONEDB_STORAGE_ENGINE=1 \
--DWITH_MYISAM_STORAGE_ENGINE=1 \
--DWITH_INNOBASE_STORAGE_ENGINE=1 \
--DWITH_PARTITION_STORAGE_ENGINE=1 \
--DMYSQL_TCP_PORT=3306 \
--DENABLED_LOCAL_INFILE=1 \
--DEXTRA_CHARSETS=all \
--DDEFAULT_CHARSET=utf8 \
--DDEFAULT_COLLATION=utf8_general_ci \
--DDOWNLOAD_BOOST=0 \
--DWITH_BOOST=/usr/local/stonedb-boost/include \
--DCMAKE_CXX_FLAGS='-D_GLIBCXX_USE_CXX11_ABI=0'
-
-cd /stonedb2022/scripts/
+cd /stonedb/scripts
 ./stonedb_build.sh
 ```
-After the compilation is complete, directory **/stonedb56** is generated.
-:::info
-
-- Because Boost in this example is manually installed, the value of **-DWITH_BOOST** must be set to **/usr/local/stonedb-boost/include**.
-- For compatibility purposes, **-DCMAKE_CXX_FLAGS='-D_GLIBCXX_USE_CXX11_ABI=0** must be included in the script. Otherwise, an error will be reported when the complication progress reaches 82%.
-:::
-## Step 3. Start StoneDB
+After the compilation is complete, directory **/stonedb57** is generated.
+## Step 4. Start StoneDB
 Perform the following steps to start StoneDB.
-### 1. Create a user group, a user, and directories
+### 1. Create an account
 ```shell
 groupadd mysql
 useradd -g mysql mysql
-mkdir -p /stonedb56/install/{log/,tmp/,binlog/,data/innodb} && chown -R mysql:mysql /stonedb56
+passwd mysql
 ```
-### 2. Start StoneDB
+### 2. Execute reinstall.sh
 ```shell
-/stonedb56/install/bin/mysqld_safe --defaults-file=/stonedb56/install/stonedb.cnf --user=mysql &
+cd /stonedb57/install
+./reinstall.sh
 ```
+:::info
+The aim of executing the script is to initialize and start StoneDB.
+:::
 ### 3. Log in to StoneDB
+Before you log in to StoneDB, you must find the password of the super admin in **/stonedb57/install/log/mysqld.log**.
 ```shell
-/stonedb56/install/bin/mysql -uroot -p -S /stonedb56/install/tmp/mysql.sock
-Warning: Using a password on the command line interface can be insecure.
+more /stonedb57/install/log/mysqld.log |grep password
+2022-07-12T06:02:17.440039Z 1 [Note] A temporary password is generated for root@localhost: 3QpW#tTDAe=U
+```
+```shell
+/stonedb57/install/bin/mysql -uroot -p -S /stonedb57/install//tmp/mysql.sock
+Enter password: 
 Welcome to the MySQL monitor.  Commands end with ; or \g.
-Your MySQL connection id is 1
-Server version: 5.6.24-StoneDB-log build-
+Your MySQL connection id is 3
+Server version: 5.7.36-StoneDB-debug-log
+
+Copyright (c) 2000, 2022 StoneAtom Group Holding Limited
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> show databases;
+ERROR 1820 (HY000): You must reset your password using ALTER USER statement before executing this statement.
+mysql> alter user 'root'@'localhost' identified by 'xxx';
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> exit
+Bye
+
+/stonedb57/install/bin/mysql -uroot -p -S /stonedb57/install//tmp/mysql.sock
+Enter password: 
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 4
+Server version: 5.7.36-StoneDB-debug-log build-
 
 Copyright (c) 2000, 2022 StoneAtom Group Holding Limited
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
@@ -283,8 +245,10 @@ mysql> show databases;
 +--------------------+
 | information_schema |
 | cache              |
-| innodb             |
-| test               |
+| mysql              |
+| performance_schema |
+| sys                |
+| sys_stonedb        |
 +--------------------+
-4 rows in set (0.08 sec)
+6 rows in set (0.00 sec)
 ```
