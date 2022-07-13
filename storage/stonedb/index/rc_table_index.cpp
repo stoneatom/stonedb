@@ -27,7 +27,7 @@
 namespace stonedb {
 namespace index {
 
-using ROCKSDB_NAMESPACE::Status;
+// using ROCKSDB_NAMESPACE::Status;
 
 const std::string generate_cf_name(uint index, TABLE *table) {
   char *comment = table->key_info[index].comment.str;

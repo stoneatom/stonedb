@@ -4,3 +4,5 @@ sql/build_info.h
 .vscode
 CMakeFiles
 VERSION.dep
+.vs
+commit-5.6.bat
