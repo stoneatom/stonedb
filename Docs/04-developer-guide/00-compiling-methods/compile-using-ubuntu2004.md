@@ -37,6 +37,7 @@ sudo apt install libzstd-dev
 sudo apt install lz4
 sudo apt install ncurses-dev
 sudo apt install libsnappy-dev
+sudo apt install pkg-config
 ```
 :::info
 Ensure that all the dependencies are installed. Otherwise, a large number of errors will be reported.
