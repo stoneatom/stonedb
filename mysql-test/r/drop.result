@@ -47,10 +47,12 @@ create database mysqltest;
 select schema_name from information_schema.schemata where schema_name != 'sys';
 schema_name
 information_schema
+cache
 mtr
 mysql
 mysqltest
 performance_schema
+sys_stonedb
 test
 flush tables with read lock;
 drop database mysqltest;
@@ -60,9 +62,11 @@ drop database mysqltest;
 select schema_name from information_schema.schemata where schema_name != 'sys';
 schema_name
 information_schema
+cache
 mtr
 mysql
 performance_schema
+sys_stonedb
 test
 drop database mysqltest;
 ERROR HY000: Can't drop database 'mysqltest'; database doesn't exist

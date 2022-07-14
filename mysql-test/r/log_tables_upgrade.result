@@ -44,6 +44,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_stonedb.column_ttl                             OK
+sys_stonedb.columns                                OK
+sys_stonedb.decomposition_dictionary               OK
+sys_stonedb.logs                                   OK
 DROP TABLE general_log;
 RENAME TABLE renamed_general_log TO general_log;
 SET GLOBAL general_log = @saved_general_log;

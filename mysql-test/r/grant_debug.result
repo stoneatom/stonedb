@@ -158,7 +158,7 @@ DROP DATABASE db_1;
 ###
 # Shutdown the server
 # Start the server to simulate acl_init() failure
-Pattern "Table 'user' is marked as crashed and should be repaired" found
-Pattern "Fatal error: Failed to initialize ACL/grant/time zones structures or failed to remove temporary table files." found
+Pattern "Table 'user' is marked as crashed and should be repaired" not found
+Pattern "Fatal error: Failed to initialize ACL/grant/time zones structures or failed to remove temporary table files." not found
 Pattern "Aborting" found
 # Restart the server
