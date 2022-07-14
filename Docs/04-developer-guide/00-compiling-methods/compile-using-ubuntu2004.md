@@ -30,13 +30,24 @@ sudo apt install libgmp-dev
 sudo apt install libmpfr-dev
 sudo apt install libmpc-dev
 sudo apt install libisl-dev
-sudo apt install zlib1g-dev
 sudo apt install liblz4-dev
 sudo apt install libbz2-dev
 sudo apt install libzstd-dev
 sudo apt install lz4
 sudo apt install ncurses-dev
 sudo apt install libsnappy-dev
+sudo apt install libedit-dev
+sudo apt install libaio-dev
+sudo apt install libncurses5-dev 
+sudo apt install libreadline-dev
+sudo apt install libpam0g-dev
+sudo apt install zlib1g-dev
+sudo apt install libcurl-ocaml-dev
+sudo apt install libicu-dev
+sudo apt install libboost-all-dev
+sudo apt install libgflags-dev
+sudo apt install libjemalloc-dev
+sudo apt install libssl-dev
 sudo apt install pkg-config
 ```
 :::info
