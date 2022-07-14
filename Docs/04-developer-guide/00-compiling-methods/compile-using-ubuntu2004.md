@@ -284,8 +284,10 @@ mysql> show databases;
 +--------------------+
 | information_schema |
 | cache              |
-| innodb             |
-| test               |
+| mysql              |
+| performance_schema |
+| sys                |
+| sys_stonedb        |
 +--------------------+
-4 rows in set (0.08 sec)
+6 rows in set (0.08 sec)
 ```
