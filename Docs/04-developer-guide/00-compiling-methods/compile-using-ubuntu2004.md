@@ -289,5 +289,5 @@ mysql> show databases;
 | sys                |
 | sys_stonedb        |
 +--------------------+
-6 rows in set (0.08 sec)
+6 rows in set (0.00 sec)
 ```
