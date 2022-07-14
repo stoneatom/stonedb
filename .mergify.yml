@@ -2,29 +2,63 @@ queue_rules:
   - name: shared_queue
     conditions:
       - "#approved-reviews-by>=2"
-      - check-success=stonedb-build
 
 pull_request_rules:
-  - name: put bug fix to merge queue on approval with high priority
+  - name: automatic merge of hotfix (high priority)
     conditions:
       - "#approved-reviews-by>=2"
-      - check-success=stonedb-build
       - label=A-bug
-      
+      - check-success=stonedb-build
     actions:
       queue:
         name: shared_queue
+        method: squash
 
   - name: put other pr to merge queue
     conditions:
       - "#approved-reviews-by>=2"
-      - check-success=stonedb-build
       - label!=A-bug
-
+      - check-success=stonedb-build
     actions:
       queue:
         name: shared_queue
-        
+        method: squash
+
+  # Check if PR title contain valid types
+  - name: Comment PR if title not semantic
+    conditions:
+          - author!=Mergify
+          - 'title!=^(feat|fix|docs|workflow|style|refactor|test|website|chore)(\(.*\))?:'
+    actions:
+      comment:
+        message: |
+          This pull request's title is not fulfill the requirements. @{{author}} please update it :point_down:.
+
+          Valid format:
+
+          ```
+          fix(vc): fix sth..... (#3306)
+            ^         ^---------^  ^----^
+            |         |            |
+            |         +            +-> you issue id.
+            |         |
+            |         +-> Summary in present tense.
+            |
+            +-------> Type: feat, fix, docs, workflow, style, refactor, test, website, chore
+          ```
+
+          Valid types:
+
+          - `feat`: new feature for stonedb
+          - `fix`: bug fix for stonedb
+          - `docs`: changes to the documentation
+          - `workflow`: ci/cd in .github
+          - `refactor`: refactoring production code, eg. renaming a variable
+          - `style`: formatting, missing semi colons, etc; no production code change
+          - `test`: adding missing tests, refactoring tests; no production code change
+          - `website`
+          - `chore`: updating grunt tasks etc; no production code change
+
 # if there is a conflict in a approved PR, ping the author.
   - name: ping author if there is conflicts
     conditions:
@@ -48,45 +82,53 @@ pull_request_rules:
 
           Please review the labels and make any necessary changes.
 
-  - name: label on new feature
+  # Assign pr label based of tags
+  - name: label on New Feature
     conditions:
-      - body~= New Feature
+      - 'title~=^(feat)(\(.*\))?:'
     actions:
       label:
         add:
           - PR-feature
-  - name: label on bug fix
+  - name: label on Bug Fix
     conditions:
-      - body~= Bug Fix
+      - 'title~=^(fix)(\(.*\))?:'
     actions:
       label:
         add:
           - PR-bug
-  - name: label on Documentation
+  - name: label on docs
     conditions:
-      - body~= Documentation
+      - 'title~=^(docs)(\(.*\))?:'
     actions:
       label:
         add:
           - PR-docs
-  - name: label on Improvement
+  - name: label on style
     conditions:
-      - body~= Improvement
+      - 'title~=^(style)(\(.*\))?:'
     actions:
       label:
         add:
-          - PR-improvement
-  - name: label on Performance Improvement
+          - PR-style
+  - name: label on Refactor
     conditions:
-      - body~= Performance Improvement
+      - 'title~=^(refactor)(\(.*\))?:'
     actions:
       label:
         add:
-          - PR-performance
-  - name: label on Build/Testing/CI/CD
+          - PR-refactor
+  - name: label on test
     conditions:
-      - body~= Build/Testing/CI/CD
+      - 'title~=^(test)(\(.*\))?:'
     actions:
       label:
         add:
           - PR-testing
+  - name: label on chore
+    conditions:
+      - 'title~=^(chore)(\(.*\))?:'
+    actions:
+      label:
+        add:
+          - PR-chore

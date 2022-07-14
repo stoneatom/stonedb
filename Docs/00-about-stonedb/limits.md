@@ -48,7 +48,7 @@ StoneDB does not support the following objects:
 - Stored procedures containing dynamic SQL statements
 - User-defined functions containing nested SQL statements
 
-If you want to use user-defined functions that contain nested SQL statements, set the **stonedb_ini_allowmysqlquerypath** parameter to **1** in the **stonedb.cnf** configuration file.
+If you want to use user-defined functions that contain nested SQL statements, set the **stonedb_ini_allowmysqlquerypath** parameter to **1** in the **my.cnf** configuration file.
 ## Unsupported data types
 StoneDB does not support the following data types:
 
@@ -65,7 +65,7 @@ StoneDB does not support the following binary log formats:
 
 Column-based storage engines support only statement-based binary logs. Row-based binary logs and mixed binary logs are not supported.
 ## Join queries across storage engines not supported
-By default, StoneDB does not support join queries across storage engines. If a join query involves tables in both InnoDB and StoneDB, an error will be reported. You can set the **stonedb_ini_allowmysqlquerypath** parameter to **1** in the **stonedb.cnf** configuration file to remove this limit.
+By default, StoneDB does not support join queries across storage engines. If a join query involves tables in both InnoDB and StoneDB, an error will be reported. You can set the **stonedb_ini_allowmysqlquerypath** parameter to **1** in the **my.cnf** configuration file to remove this limit.
 ## Transactions not supported
 Transactions must strictly comply with the ACID attributes. However, StoneDB does not support redo and undo logs and thus does not support transactions.
 ## Partitions not supported

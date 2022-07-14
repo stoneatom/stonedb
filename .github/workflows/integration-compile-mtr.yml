@@ -11,12 +11,15 @@ on:
       - 'scripts/setup/**'
       - '.devcontainer/**'
   pull_request:
-    paths-ignore:
-      - 'Docs/**'
-      - 'website/**'
-      - '**.md'
-      - 'scripts/**'
-      - 'install_scripts/**'
+    branches-ignore:
+      - main
+        # wait for mergify to ignore
+        #paths-ignore:
+            #- 'Docs/**'
+            #- 'website/**'
+            #- '**.md'
+            #- 'scripts/**'
+            #- 'install_scripts/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
