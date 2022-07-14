@@ -1202,6 +1202,95 @@ The following options may be given as the first argument:
  replication.
  --sql-mode=name     Syntax: sql-mode=mode[,mode[,mode...]]. See the manual
  for the complete list of valid sql modes
+ --stonedb-async-join=name 
+ Set async join params: packStep;traverseCount;matchCount
+ --stonedb-bg-load-threads=# 
+ --stonedb-cachinglevel=# 
+ --stonedb-compensation-start 
+ --stonedb-control-trace[=#] 
+ ini controltrace
+ --stonedb-data-dir=name 
+ Specifies a directory to add to the stonedb data storage.
+ --stonedb-data-distribution-policy=name 
+ Specifies the policy to distribute column data among
+ multiple data directories.Possible values are
+ round-robin(default), random, and space
+ --stonedb-disk-usage-threshold=# 
+ Specifies the disk usage threshold for data diretories.
+ --stonedb-distinct-cache-size=# 
+ Upper byte limit for GroupDistinctCache buffer
+ --stonedb-enable-histogram-cmap-bloom 
+ --stonedb-enable-rowstore 
+ (Defaults to on; use --skip-stonedb-enable-rowstore to disable.)
+ --stonedb-filterevaluation-speedup 
+ (Defaults to on; use --skip-stonedb-filterevaluation-speedup to disable.)
+ --stonedb-force-hashjoin 
+ --stonedb-global-debug-level=# 
+ global debug level
+ --stonedb-groupby-speedup 
+ (Defaults to on; use --skip-stonedb-groupby-speedup to disable.)
+ --stonedb-hugefiledir=name 
+ --stonedb-index-cache-size=# 
+ Index cache size in MB
+ --stonedb-index-search 
+ (Defaults to on; use --skip-stonedb-index-search to disable.)
+ --stonedb-ini-allowmysqlquerypath=# 
+ --stonedb-ini-cachefolder=name 
+ --stonedb-ini-cachereleasethreshold=# 
+ --stonedb-ini-cachesizethreshold=# 
+ --stonedb-ini-controlquerylog=# 
+ global controlquerylog
+ --stonedb-ini-knlevel=# 
+ --stonedb-ini-pushdown 
+ (Defaults to on; use --skip-stonedb-ini-pushdown to disable.)
+ --stonedb-ini-servermainheapsize=# 
+ --stonedb-ini-threadpoolsize=# 
+ --stonedb-ini-usemysqlimportexportdefaults 
+ --stonedb-insert-buffer-size=# 
+ --stonedb-insert-cntthreshold=# 
+ --stonedb-insert-delayed 
+ (Defaults to on; use --skip-stonedb-insert-delayed to disable.)
+ --stonedb-insert-max-buffered=# 
+ --stonedb-insert-numthreshold=# 
+ --stonedb-insert-wait-ms=# 
+ --stonedb-insert-wait-time=# 
+ --stonedb-join-disable-switch-side 
+ --stonedb-join-parallel=# 
+ join matching parallel: 0-Disabled, 1-Auto, N-specify
+ count
+ --stonedb-join-splitrows=# 
+ join split rows:0-Disabled, 1-Auto, N-specify count
+ --stonedb-load-threads=# 
+ --stonedb-lookup-max-size=# 
+ Lookup dictionary max size
+ --stonedb-max-execution-time=# 
+ max query execution time in seconds
+ --stonedb-minmax-speedup 
+ (Defaults to on; use --skip-stonedb-minmax-speedup to disable.)
+ --stonedb-mm-hardlimit=# 
+ --stonedb-mm-largetemppool-threshold=# 
+ size threshold in MB for using large temp thread pool
+ --stonedb-mm-largetempratio=# 
+ --stonedb-mm-policy=name 
+ --stonedb-mm-releasepolicy=name 
+ --stonedb-orderby-speedup 
+ --stonedb-parallel-filloutput 
+ (Defaults to on; use --skip-stonedb-parallel-filloutput to disable.)
+ --stonedb-parallel-mapjoin 
+ --stonedb-qps-log   -
+ (Defaults to on; use --skip-stonedb-qps-log to disable.)
+ --stonedb-query-threads=# 
+ --stonedb-refresh-sys-stonedb 
+ (Defaults to on; use --skip-stonedb-refresh-sys-stonedb to disable.)
+ --stonedb-result-sender-rows=# 
+ The number of rows to load at a time when processing
+ queries like select xxx from yyya
+ --stonedb-session-debug-level=# 
+ session debug level
+ --stonedb-start-async=# 
+ Enable async, specifies async threads x/100 * cpus
+ --stonedb-sync-buffers=# 
+ --stonedb-trigger-error=name 
  --stored-program-cache=# 
  The soft upper limit for number of cached stored routines
  for one connection.
@@ -1315,11 +1404,11 @@ block-encryption-mode aes-128-ecb
 bulk-insert-buffer-size 8388608
 character-set-client-handshake TRUE
 character-set-filesystem binary
-character-set-server latin1
+character-set-server utf8mb4
 character-sets-dir MYSQL_CHARSETSDIR/
 check-proxy-users FALSE
 chroot (No default value)
-collation-server latin1_swedish_ci
+collation-server utf8mb4_general_ci
 completion-type NO_CHAIN
 concurrent-insert AUTO
 connect-timeout 10
@@ -1329,7 +1418,7 @@ date-format %Y-%m-%d
 datetime-format %Y-%m-%d %H:%i:%s
 default-authentication-plugin mysql_native_password
 default-password-lifetime 0
-default-storage-engine InnoDB
+default-storage-engine stonedb
 default-time-zone (No default value)
 default-tmp-storage-engine InnoDB
 default-week-format 0
@@ -1472,7 +1561,7 @@ old-passwords 0
 old-style-user-limits FALSE
 optimizer-prune-level 1
 optimizer-search-depth 62
-optimizer-switch index_merge=on,index_merge_union=on,index_merge_sort_union=on,index_merge_intersection=on,engine_condition_pushdown=on,index_condition_pushdown=on,mrr=on,mrr_cost_based=on,block_nested_loop=on,batched_key_access=off,materialization=on,semijoin=on,loosescan=on,firstmatch=on,duplicateweedout=on,subquery_materialization_cost_based=on,use_index_extensions=on,condition_fanout_filter=on,derived_merge=on,prefer_ordering_index=on
+optimizer-switch index_merge=on,index_merge_union=on,index_merge_sort_union=on,index_merge_intersection=on,engine_condition_pushdown=on,index_condition_pushdown=on,mrr=on,mrr_cost_based=on,block_nested_loop=on,batched_key_access=off,materialization=on,semijoin=off,loosescan=on,firstmatch=on,duplicateweedout=on,subquery_materialization_cost_based=on,use_index_extensions=on,condition_fanout_filter=on,derived_merge=on,prefer_ordering_index=on
 optimizer-trace 
 optimizer-trace-features greedy_search=on,range_optimizer=on,dynamic_range=on,repeated_subselect=on
 optimizer-trace-limit 1
@@ -1609,6 +1698,63 @@ slow-query-log FALSE
 sort-buffer-size 262144
 sporadic-binlog-dump-fail FALSE
 sql-mode ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+stonedb-async-join 1;0;0;0
+stonedb-bg-load-threads 0
+stonedb-cachinglevel 1
+stonedb-compensation-start FALSE
+stonedb-control-trace 0
+stonedb-data-distribution-policy space
+stonedb-disk-usage-threshold 85
+stonedb-distinct-cache-size 64
+stonedb-enable-histogram-cmap-bloom FALSE
+stonedb-enable-rowstore TRUE
+stonedb-filterevaluation-speedup TRUE
+stonedb-force-hashjoin FALSE
+stonedb-global-debug-level 4
+stonedb-groupby-speedup TRUE
+stonedb-hugefiledir 
+stonedb-index-cache-size 0
+stonedb-index-search TRUE
+stonedb-ini-allowmysqlquerypath 0
+stonedb-ini-cachefolder cache
+stonedb-ini-cachereleasethreshold 100
+stonedb-ini-cachesizethreshold 4
+stonedb-ini-controlquerylog 1
+stonedb-ini-knlevel 99
+stonedb-ini-pushdown TRUE
+stonedb-ini-servermainheapsize 0
+stonedb-ini-threadpoolsize 1
+stonedb-ini-usemysqlimportexportdefaults FALSE
+stonedb-insert-buffer-size 512
+stonedb-insert-cntthreshold 2
+stonedb-insert-delayed TRUE
+stonedb-insert-max-buffered 65536
+stonedb-insert-numthreshold 10000
+stonedb-insert-wait-ms 100
+stonedb-insert-wait-time 1000
+stonedb-join-disable-switch-side FALSE
+stonedb-join-parallel 1
+stonedb-join-splitrows 0
+stonedb-load-threads 0
+stonedb-lookup-max-size 100000
+stonedb-max-execution-time 0
+stonedb-minmax-speedup TRUE
+stonedb-mm-hardlimit 0
+stonedb-mm-largetemppool-threshold 16
+stonedb-mm-largetempratio 0
+stonedb-mm-policy 
+stonedb-mm-releasepolicy 2q
+stonedb-orderby-speedup FALSE
+stonedb-parallel-filloutput TRUE
+stonedb-parallel-mapjoin FALSE
+stonedb-qps-log TRUE
+stonedb-query-threads 0
+stonedb-refresh-sys-stonedb TRUE
+stonedb-result-sender-rows 65536
+stonedb-session-debug-level 3
+stonedb-start-async 0
+stonedb-sync-buffers 0
+stonedb-trigger-error (No default value)
 stored-program-cache 256
 super-read-only FALSE
 symbolic-links FALSE

@@ -9,10 +9,9 @@ This topic describes how to compile StoneDB on CentOS 7.
 ## Prerequisites
 The source code of StoneDB has been downloaded.
 
-Download link: [https://github.com/stoneatom/stonedb.git](https://github.com/stoneatom/stonedb.git)
+Download link:  [https://github.com/stoneatom/stonedb.git](https://github.com/stoneatom/stonedb.git)
 ## Procedure
 ### Step 1. Install the dependencies
-Before installing the dependencies, ensure that the GCC version in use is 4.8.5.
 ```shell
 yum install -y tree
 yum install -y gcc
@@ -31,7 +30,6 @@ yum install -y readline-devel
 yum install -y numactl
 yum install -y zlib
 yum install -y zlib-devel
-yum install -y curldevel
 yum install -y openssl
 yum install -y openssl-devel
 yum install -y redhat-lsb-core
@@ -47,44 +45,13 @@ yum install -y snappy-devel
 yum install -y bzip2
 yum install -y bzip2-devel
 yum install -y zstd
+yum install -y libedit
+yum install -y libedit-devel
+yum install -y libaio-devel
+yum install -y libicu
+yum install -y libicu-devel
 ```
-### Step 2. Install CMake and third-party libraries
-Before compiling StoneDB, install CMake 3.7 or later and the following third-party libraries: marisa, RocksDB, and Boost.
-
-1. Install CMake.
-```shell
-wget https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz
-tar -zxvf cmake-3.7.2.tar.gz
-cd cmake-3.7.2
-./bootstrap && make && make install
-/usr/local/bin/cmake --version
-apt remove cmake -y
-ln -s /usr/local/bin/cmake /usr/bin/
-```
-
-2. Install marisa.
-```shell
-git clone https://github.com/s-yata/marisa-trie.git
-cd marisa-trie
-autoreconf -i
-./configure --enable-native-code --prefix=/usr/local/stonedb-marisa
-make && make install 
-```
-
-3. Install RocksDB.
-```shell
-wget https://github.com/facebook/rocksdb/archive/refs/tags/v4.13.tar.gz
-tar -zxvf v4.13.tar.gz
-cd rocksdb-4.13
-make shared_lib
-make install-shared INSTALL_PATH=/usr/local/stonedb-gcc-rocksdb
-make static_lib
-make install-static INSTALL_PATH=/usr/local/stonedb-gcc-rocksdb
-```
-:::info
-Boost is automatically installed when the **stonedb_build.sh** script is executed in **Step 4**. 
-:::
-### Step 3. Install GCC 7.3.0
+### Step 2. Install GCC 7.3.0
 Before executing **stonedb_build.sh** to compile StoneDB, you must ensure the GCC version is 7.3.0.
 
 You can run the following command to check the GCC version.
@@ -98,7 +65,7 @@ If the version is earlier than 7.3.0, perform the following steps to upgrade GCC
 yum install centos-release-scl scl-utils-build -y
 ```
 
-2. Install GCC, GCC-C++, or GDB of v7.3.0.
+2. Install GCC, GCC-C++, or GDB of version 7.3.0.
 ```shell
 yum install devtoolset-7-gcc.x86_64 devtoolset-7-gcc-c++.x86_64 devtoolset-7-gcc-gdb-plugin.x86_64 -y
 ```
@@ -112,47 +79,116 @@ scl enable devtoolset-7 bash
 ```shell
 gcc --version
 ```
+### Step 3. Install CMake, Make, and third-party libraries
+Before compiling StoneDB, install CMake 3.7or later, Make 3.82 or later, and the following third-party libraries: marisa, RocksDB, and Boost.
+
+1. Install CMake.
+```shell
+wget https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz
+tar -zxvf cmake-3.7.2.tar.gz
+cd cmake-3.7.2
+./bootstrap && make && make install
+/usr/local/bin/cmake --version
+rm -rf /usr/bin/cmake
+ln -s /usr/local/bin/cmake /usr/bin/
+```
+
+2. Install Make.
+```shell
+http://mirrors.ustc.edu.cn/gnu/make/
+tar -zxvf make-3.82.tar.gz
+./configure  --prefix=/usr/local/make
+make && make install
+rm -rf /usr/local/bin/make
+ln -s /usr/local/make/bin/make /usr/local/bin/make
+```
+
+3. Install marisa.
+```shell
+git clone https://github.com/s-yata/marisa-trie.git
+cd marisa-trie
+autoreconf -i
+./configure --enable-native-code --prefix=/usr/local/stonedb-marisa
+make && make install 
+```
+
+4. Install RocksDB.
+```shell
+wget https://github.com/facebook/rocksdb/archive/refs/tags/v4.13.tar.gz
+tar -zxvf v4.13.tar.gz
+cd rocksdb-4.13
+make shared_lib
+make install-shared INSTALL_PATH=/usr/local/stonedb-gcc-rocksdb
+make static_lib
+make install-static INSTALL_PATH=/usr/local/stonedb-gcc-rocksdb
+```
+
+5. Install Boost.
+```shell
+wget https://sourceforge.net/projects/boost/files/boost/1.66.0/boost_1_66_0.tar.gz
+tar -zxvf boost_1_66_0.tar.gz
+cd boost_1_66_0
+./bootstrap.sh --prefix=/usr/local/stonedb-boost
+./b2 install --with=all
+```
 ### Step 4. Compile StoneDB
 Execute the following script to compile StoneDB:
 ```shell
-cd /stonedb2022/scripts
+cd /stonedb/scripts
 ./stonedb_build.sh
 ```
-After the compilation is complete, a folder named **/stonedb56** is generated.
+After the compilation is complete, a folder named **/stonedb57** is generated.
 ### Step 5. Start StoneDB
 Perform the following steps to start StoneDB.
 
-1. Create a group, a user, and relevant directories.
+1. Create an account.
 ```shell
 groupadd mysql
 useradd -g mysql mysql
-mkdir -p /stonedb56/install/{log/,tmp/,binlog/,data/innodb} && chown -R mysql:mysql /stonedb56
+passwd mysql
 ```
 
-2. Start StoneDB.
+2. Execute **reinstall.sh**.
 ```shell
-/stonedb56/install/bin/mysqld_safe --defaults-file=/stonedb56/install/stonedb.cnf --user=mysql &
+cd /stonedb57/install
+./reinstall.sh
 ```
+:::info
+The aim of executing the script is to initialize and start StoneDB.
+:::
 
 3. Log in to StoneDB.
+
+ Before you log in to StoneDB, you must find the password of the super admin in **/stonedb57/install/log/mysqld.log**.
 ```shell
-/stonedb56/install/bin/mysql -uroot -p -S /stonedb56/install/tmp/mysql.sock
-Warning: Using a password on the command line interface can be insecure.
+more /stonedb57/install/log/mysqld.log |grep password
+2022-07-12T11:41:59.849676Z 1 [Note] A temporary password is generated for root@localhost: %xjqgHux(6pr
+```
+```shell
+/stonedb57/install/bin/mysql -uroot -p -S /stonedb57/install//tmp/mysql.sock
+Enter password: 
 Welcome to the MySQL monitor.  Commands end with ; or \g.
-Your MySQL connection id is 1
-Server version: 5.6.24-StoneDB-log build-
+Your MySQL connection id is 3
+Server version: 5.7.36-StoneDB-debug-log
 
 Copyright (c) 2000, 2022 StoneAtom Group Holding Limited
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
-mysql> show databases;
+root@localhost [(none)]> show databases;
+ERROR 1820 (HY000): You must reset your password using ALTER USER statement before executing this statement.
+root@localhost [(none)]> alter user 'root'@'localhost' identified by 'xxx';
+Query OK, 0 rows affected (0.00 sec)
+
+root@localhost [(none)]> show databases;
 +--------------------+
 | Database           |
 +--------------------+
 | information_schema |
 | cache              |
-| innodb             |
-| test               |
+| mysql              |
+| performance_schema |
+| sys                |
+| sys_stonedb        |
 +--------------------+
-4 rows in set (0.08 sec)
+6 rows in set (0.00 sec)
 ```
