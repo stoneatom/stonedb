@@ -31,7 +31,6 @@ sudo apt install libgmp-dev
 sudo apt install libmpfr-dev
 sudo apt install libmpc-dev
 sudo apt install libisl-dev
-sudo apt install zlib1g-dev
 sudo apt install liblz4-dev
 sudo apt install libbz2-dev
 sudo apt install libzstd-dev
@@ -251,4 +250,3 @@ mysql> show databases;
 | sys_stonedb        |
 +--------------------+
 6 rows in set (0.00 sec)
-```
