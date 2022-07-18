@@ -3,7 +3,7 @@ id: download
 sidebar_position: 100
 ---
 
-# 即将发布
+# 立即下载
 
 ## StoneDB
 
