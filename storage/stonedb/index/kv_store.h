@@ -24,9 +24,8 @@
 
 #include "common/common_definitions.h"
 #include "index/rdb_meta_manager.h"
-#include "index/rdb_utils.h"
-#include "rocksdb/compaction_filter.h"
-#include "rocksdb/convenience.h"
+//#include "index/rdb_utils.h"
+#include "rocksdb/table.h"
 #include "rocksdb/db.h"
 #include "rocksdb/utilities/transaction_db.h"
 #include "rocksdb/utilities/write_batch_with_index.h"

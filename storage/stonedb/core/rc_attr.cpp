@@ -183,39 +183,39 @@ void RCAttr::Truncate() {
 }
 
 size_t RCAttr::ComputeNaturalSize() {
-  size_t na_size = (Type().NotNull() ? 0 : 1) * NoObj() / 8;
+  size_t na_size = (Type().NotNull() ? 0 : 1) * NumOfObj() / 8;
 
   switch (TypeName()) {
     case common::CT::STRING:
     case common::CT::BYTE:
     case common::CT::DATE:
-      na_size += Type().GetPrecision() * NoObj();
+      na_size += Type().GetPrecision() * NumOfObj();
       break;
     case common::CT::TIME:
     case common::CT::YEAR:
     case common::CT::DATETIME:
     case common::CT::TIMESTAMP:
-      na_size += Type().GetDisplaySize() * NoObj();
+      na_size += Type().GetDisplaySize() * NumOfObj();
       break;
     case common::CT::NUM:
-      na_size += (Type().GetPrecision() + (Type().GetScale() ? 1 : 0)) * NoObj();
+      na_size += (Type().GetPrecision() + (Type().GetScale() ? 1 : 0)) * NumOfObj();
       break;
     case common::CT::BIGINT:
     case common::CT::REAL:
-      na_size += 8 * NoObj();
+      na_size += 8 * NumOfObj();
       break;
     case common::CT::FLOAT:
     case common::CT::INT:
-      na_size += 4 * NoObj();
+      na_size += 4 * NumOfObj();
       break;
     case common::CT::MEDIUMINT:
-      na_size += 3 * NoObj();
+      na_size += 3 * NumOfObj();
       break;
     case common::CT::SMALLINT:
-      na_size += 2 * NoObj();
+      na_size += 2 * NumOfObj();
       break;
     case common::CT::BYTEINT:
-      na_size += 1 * NoObj();
+      na_size += 1 * NumOfObj();
       break;
     case common::CT::VARCHAR:
       na_size += hdr.natural_size;
@@ -401,7 +401,7 @@ void RCAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
   if (obj == common::NULL_VALUE_64) return;
   common::CT a_type = TypeName();
   size = 0;
-  DEBUG_ASSERT(NoObj() >= static_cast<uint64_t>(obj));
+  DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
   LoadPackInfo();
   int pack = row2pack(obj);
   int offset = row2offset(obj);
@@ -445,7 +445,7 @@ void RCAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
 types::RCValueObject RCAttr::GetValue(int64_t obj, bool lookup_to_num) {
   if (obj == common::NULL_VALUE_64) return types::RCValueObject();
   common::CT a_type = TypeName();
-  DEBUG_ASSERT(NoObj() >= static_cast<uint64_t>(obj));
+  DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
   types::RCValueObject ret;
   if (!IsNull(obj)) {
     if (ATI::IsTxtType(a_type) && !lookup_to_num)
@@ -481,7 +481,7 @@ types::RCDataType &RCAttr::GetValueData(size_t obj, types::RCDataType &value, bo
     value = ValuePrototype(lookup_to_num);
   else {
     common::CT a_type = TypeName();
-    DEBUG_ASSERT(NoObj() >= static_cast<uint64_t>(obj));
+    DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
     if (ATI::IsTxtType(a_type) && !lookup_to_num)
       ((types::BString &)value) = GetNotNullValueString(obj);
     else if (ATI::IsBinType(a_type)) {
@@ -564,7 +564,7 @@ types::BString RCAttr::GetMinString(int pack) {
 
 // size of original 0-level value (text/binary, not null-terminated)
 size_t RCAttr::GetLength(int64_t obj) {
-  DEBUG_ASSERT(NoObj() >= static_cast<uint64_t>(obj));
+  DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
   LoadPackInfo();
   int pack = row2pack(obj);
   auto const &dpn(get_dpn(pack));
@@ -896,7 +896,7 @@ void RCAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
 
   // update global column statistics
   if (nvs->NumOfNulls() != nvs->NumOfValues()) {
-    if (NoObj() == 0) {
+    if (NumOfObj() == 0) {
       SetMinInt64(dpn.min_i);
       SetMaxInt64(dpn.max_i);
     } else {
@@ -1062,7 +1062,7 @@ void RCAttr::CompareAndSetCurrentMax(const types::BString &tstmp, types::BString
 }
 
 types::BString RCAttr::MinS(Filter *f) {
-  if (f->IsEmpty() || !ATI::IsStringType(TypeName()) || NoObj() == 0 || NoObj() == NumOfNulls())
+  if (f->IsEmpty() || !ATI::IsStringType(TypeName()) || NumOfObj() == 0 || NumOfObj() == NumOfNulls())
     return types::BString();
   types::BString min;
   bool set = false;
@@ -1096,7 +1096,7 @@ types::BString RCAttr::MinS(Filter *f) {
 }
 
 types::BString RCAttr::MaxS(Filter *f) {
-  if (f->IsEmpty() || !ATI::IsStringType(TypeName()) || NoObj() == 0 || NoObj() == NumOfNulls())
+  if (f->IsEmpty() || !ATI::IsStringType(TypeName()) || NumOfObj() == 0 || NumOfObj() == NumOfNulls())
     return types::BString();
 
   types::BString max;
@@ -1135,13 +1135,13 @@ void RCAttr::UpdateRSI_Hist(common::PACK_INDEX pi) {
     return;
   }
 
-  if (GetPackType() != common::PackType::INT || NoObj() == 0) return;
+  if (GetPackType() != common::PackType::INT || NumOfObj() == 0) return;
 
   filter_hist->Update(pi, get_dpn(pi), get_packN(pi));
 }
 
 void RCAttr::UpdateRSI_CMap(common::PACK_INDEX pi) {
-  if (GetPackType() != common::PackType::STR || NoObj() == 0 || types::RequiresUTFConversions(Type().GetCollation()))
+  if (GetPackType() != common::PackType::STR || NumOfObj() == 0 || types::RequiresUTFConversions(Type().GetCollation()))
     return;
 
   if (!GetFilter_CMap()) return;
@@ -1155,7 +1155,7 @@ void RCAttr::UpdateRSI_Bloom(common::PACK_INDEX pi) {
     return;
   }
 
-  if (NoObj() == 0) return;
+  if (NumOfObj() == 0) return;
 
   if (GetPackOntologicalStatus(pi) == PackOntologicalStatus::NULLS_ONLY) return;
 

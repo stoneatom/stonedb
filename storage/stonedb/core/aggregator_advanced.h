@@ -52,13 +52,13 @@ class AggregatorStat : public STONEDBAggregator {
   }
 
  protected:
-  int64_t &NoObj(unsigned char *buf) { return *((int64_t *)buf); }
+  int64_t &NumOfObj(unsigned char *buf) { return *((int64_t *)buf); }
   // efficient implementation from WIKI
   // http://en.wikipedia.org/wiki/Standard_deviation
   double &A(unsigned char *buf) { return *((double *)(buf + 8)); }
   double &Q(unsigned char *buf) { return *((double *)(buf + 16)); }
-  double VarPop(unsigned char *buf) { return Q(buf) / NoObj(buf); }
-  double VarSamp(unsigned char *buf) { return Q(buf) / (NoObj(buf) - 1); }
+  double VarPop(unsigned char *buf) { return Q(buf) / NumOfObj(buf); }
+  double VarSamp(unsigned char *buf) { return Q(buf) / (NumOfObj(buf) - 1); }
 };
 
 class AggregatorStat64 : public AggregatorStat {

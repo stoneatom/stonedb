@@ -25,53 +25,76 @@ namespace index {
 
 KVTransaction::~KVTransaction() {
   Releasesnapshot();
-  m_index_batch->Clear();
-  m_data_batch->Clear();
+  batch_index_->Clear();
+  batch_data_->Clear();
 }
 
 rocksdb::Status KVTransaction::Get(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
                                    std::string *value) {
-  m_read_opts.total_order_seek = false;
-  return m_index_batch->GetFromBatchAndDB(kvstore->GetRdb(), m_read_opts, column_family, key, value);
+  rocksdb::Status status;
+  read_opts_.total_order_seek = false;
+  
+  batch_index_->Clear();
+  batch_index_->GetDataSize();
+  batch_index_->SetMaxBytes(100);
+
+  rocksdb::Options options;
+  options.create_if_missing = true;
+  rocksdb::DBOptions db_option(options); 
+  //batch_index_->GetFromBatch(db_option, key, value);
+  //batch_index_->Put(key, value);
+
+  //return batch_index_->GetFromBatchAndDB(kvstore->GetRdb(), read_opts_, column_family, key, value);
+  //return batch_index_->GetFromBatchAndDB(kvstore->GetRdb(), read_opts_, key, value);
+  return status;
+}
+
+rocksdb::Status KVTransaction::Get(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
+                                   rocksdb::PinnableSlice *value) {
+  rocksdb::Status status;
+  read_opts_.total_order_seek = false;
+ 
+  //return batch_index_->GetFromBatchAndDB(kvstore->GetRdb(), read_opts_, column_family, key, value);
+  return status;
 }
 
 rocksdb::Status KVTransaction::Put(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
                                    const rocksdb::Slice &value) {
-  m_index_batch->Put(column_family, key, value);
+  batch_index_->Put(column_family, key, value);
   return rocksdb::Status::OK();
 }
 
 rocksdb::Status KVTransaction::Delete(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key) {
-  m_index_batch->Delete(column_family, key);
+  batch_index_->Delete(column_family, key);
   return rocksdb::Status::OK();
 }
 
 rocksdb::Iterator *KVTransaction::GetIterator(rocksdb::ColumnFamilyHandle *const column_family, bool skip_filter) {
   if (skip_filter) {
-    m_read_opts.total_order_seek = true;
+    read_opts_.total_order_seek = true;
   } else {
-    m_read_opts.total_order_seek = false;
-    m_read_opts.prefix_same_as_start = true;
+    read_opts_.total_order_seek = false;
+    read_opts_.prefix_same_as_start = true;
   }
-  return m_index_batch->NewIteratorWithBase(kvstore->GetRdb()->NewIterator(m_read_opts, column_family));
+  return batch_index_->NewIteratorWithBase(kvstore->GetRdb()->NewIterator(read_opts_, column_family));
 }
 
 rocksdb::Status KVTransaction::GetData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
                                        std::string *value) {
-  m_read_opts.total_order_seek = false;
-  return kvstore->GetRdb()->Get(m_read_opts, column_family, key, value);
+  read_opts_.total_order_seek = false;
+  return kvstore->GetRdb()->Get(read_opts_, column_family, key, value);
 }
 
 rocksdb::Status KVTransaction::PutData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
                                        const rocksdb::Slice &value) {
-  m_data_batch->Put(column_family, key, value);
+  batch_data_->Put(column_family, key, value);
   return rocksdb::Status::OK();
 }
 
 rocksdb::Status KVTransaction::SingleDeleteData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key) {
   // notice: if a key is overwritten (by calling Put() multiple times), then the
   // result of calling SingleDelete() on this key is undefined, delete is better
-  m_data_batch->SingleDelete(column_family, key);
+  batch_data_->SingleDelete(column_family, key);
   return rocksdb::Status::OK();
 }
 
@@ -81,35 +104,37 @@ rocksdb::Iterator *KVTransaction::GetDataIterator(rocksdb::ReadOptions &ropts,
 }
 
 void KVTransaction::Acquiresnapshot() {
-  if (m_read_opts.snapshot == nullptr) m_read_opts.snapshot = kvstore->GetRdbSnapshot();
+  if (read_opts_.snapshot == nullptr) read_opts_.snapshot = kvstore->GetRdbSnapshot();
 }
 
 void KVTransaction::Releasesnapshot() {
-  if (m_read_opts.snapshot != nullptr) {
-    kvstore->ReleaseRdbSnapshot(m_read_opts.snapshot);
-    m_read_opts.snapshot = nullptr;
+  if (read_opts_.snapshot != nullptr) {
+    kvstore->ReleaseRdbSnapshot(read_opts_.snapshot);
+    read_opts_.snapshot = nullptr;
   }
 }
 
 bool KVTransaction::Commit() {
   bool res = true;
   Releasesnapshot();
-  auto index_write_batch = m_index_batch->GetWriteBatch();
-  if (index_write_batch && index_write_batch->Count() > 0 && !kvstore->KVWriteBatch(write_opts, index_write_batch)) {
+  auto index_write_batch = batch_index_->GetWriteBatch();
+  if (index_write_batch && index_write_batch->Count() > 0 && !kvstore->KVWriteBatch(write_opts_, index_write_batch)) {
     res = false;
   }
-  if (res && m_data_batch->Count() > 0 && !kvstore->KVWriteBatch(write_opts, m_data_batch.get())) {
+
+  if (res && batch_data_->Count() > 0 && !kvstore->KVWriteBatch(write_opts_, batch_data_.get())) {
     res = false;
   }
-  m_index_batch->Clear();
-  m_data_batch->Clear();
+
+  batch_index_->Clear();
+  batch_data_->Clear();
   return res;
 }
 
 void KVTransaction::Rollback() {
   Releasesnapshot();
-  m_index_batch->Clear();
-  m_data_batch->Clear();
+  batch_index_->Clear();
+  batch_data_->Clear();
 }
 
 }  // namespace index

@@ -27,34 +27,43 @@ namespace stonedb {
 namespace index {
 
 class KVTransaction {
- private:
-  std::unique_ptr<rocksdb::WriteBatchWithIndex> m_index_batch;
-  std::unique_ptr<rocksdb::WriteBatch> m_data_batch;
-  rocksdb::WriteOptions write_opts;
-  rocksdb::ReadOptions m_read_opts;
-  std::shared_ptr<KeyIterator> keyiter;
-
  public:
   KVTransaction()
-      : m_index_batch(std::make_unique<rocksdb::WriteBatchWithIndex>(rocksdb::BytewiseComparator(), 0, true)),
-        m_data_batch(std::make_unique<rocksdb::WriteBatch>()),
-        keyiter(std::make_shared<KeyIterator>(this)) {}
+      : batch_index_(std::make_unique<rocksdb::WriteBatchWithIndex>(rocksdb::BytewiseComparator(), 0, true)),
+        batch_data_(std::make_unique<rocksdb::WriteBatch>()),
+        key_iter_(std::make_shared<KeyIterator>(this)) {}
   ~KVTransaction();
+
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key, std::string *value);
+  rocksdb::Status Get(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key, rocksdb::PinnableSlice *value);
+
   rocksdb::Status Put(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
                       const rocksdb::Slice &value);
-  rocksdb::Status Delete(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key);
-  rocksdb::Iterator *GetIterator(rocksdb::ColumnFamilyHandle *const column_family, bool skip_filter);
   rocksdb::Status GetData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key, std::string *value);
   rocksdb::Status PutData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
                           const rocksdb::Slice &value);
+  
+  rocksdb::Status Delete(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key);
   rocksdb::Status SingleDeleteData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key);
+
+  rocksdb::Iterator *GetIterator(rocksdb::ColumnFamilyHandle *const column_family, bool skip_filter);
   rocksdb::Iterator *GetDataIterator(rocksdb::ReadOptions &ropts, rocksdb::ColumnFamilyHandle *const column_family);
-  std::shared_ptr<KeyIterator> KeyIter() { return keyiter; }
+
+  std::shared_ptr<KeyIterator> KeyIter() { return key_iter_; }
+
   void Acquiresnapshot();
   void Releasesnapshot();
   bool Commit();
   void Rollback();
+
+ private:
+  std::unique_ptr<rocksdb::WriteBatchWithIndex> batch_index_;
+  std::unique_ptr<rocksdb::WriteBatch> batch_data_;
+
+  rocksdb::WriteOptions write_opts_;
+  rocksdb::ReadOptions read_opts_;
+
+  std::shared_ptr<KeyIterator> key_iter_;
 };
 
 }  // namespace index

@@ -722,8 +722,8 @@ void TempTable::RoughUnion(TempTable *t, ResultSender *sender) {
     if (sender && !this->IsSent()) sender->Send(this);
     return;
   }
-  DEBUG_ASSERT(NoDisplaybleAttrs() == t->NoDisplaybleAttrs());
-  if (NoDisplaybleAttrs() != t->NoDisplaybleAttrs())
+  DEBUG_ASSERT(NumOfDisplaybleAttrs() == t->NumOfDisplaybleAttrs());
+  if (NumOfDisplaybleAttrs() != t->NumOfDisplaybleAttrs())
     throw common::NotImplementedException("UNION of tables with different number of columns.");
   if (this->IsParametrized() || t->IsParametrized())
     throw common::NotImplementedException("Materialize: not implemented union of parameterized queries.");
@@ -737,7 +737,7 @@ void TempTable::RoughUnion(TempTable *t, ResultSender *sender) {
   for (uint i = 0; i < attrs.size(); i++)
     if (!attrs[i]->buffer) attrs[i]->CreateBuffer(2);
 
-  int64_t pos = NoObj();
+  int64_t pos = NumOfObj();
   no_obj += 2;
   for (uint i = 0; i < attrs.size(); i++) {
     if (IsDisplayAttr(i) && !ATI::IsStringType(attrs[i]->TypeName())) {

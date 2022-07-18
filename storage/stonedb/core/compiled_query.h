@@ -184,7 +184,7 @@ class CompiledQuery final {
   // Informations
 
   int NoTabs() { return no_tabs; }
-  int NoAttrs(const TabID &tab) { return no_attrs[-tab.n - 1]; }
+  int NumOfAttrs(const TabID &tab) { return no_attrs[-tab.n - 1]; }
   int NoConds() { return no_conds; }
   int NoVirtualColumns(const TabID &tt) {
     if (no_virt_cols.find(tt) != no_virt_cols.end()) return no_virt_cols[tt];

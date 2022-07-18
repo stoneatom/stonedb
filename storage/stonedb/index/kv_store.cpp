@@ -18,6 +18,8 @@
 #include "index/kv_store.h"
 
 #include "core/engine.h"
+#include "rocksdb/compaction_filter.h"
+#include "rocksdb/convenience.h"
 
 namespace stonedb {
 namespace index {
@@ -29,27 +31,37 @@ void KVStore::Init() {
   std::vector<rocksdb::ColumnFamilyHandle *> cf_handles;
   rocksdb::Options options;
   options.create_if_missing = true;
+
   if (stonedb_sysvar_index_cache_size != 0) {
     bbto_.no_block_cache = false;
     bbto_.cache_index_and_filter_blocks = true;
     bbto_.block_cache = rocksdb::NewLRUCache(stonedb_sysvar_index_cache_size << 20);
     options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(bbto_));
   }
-  rocksdb::DBOptions db_option(options);
+
+  rocksdb::DBOptions db_options(options);
   auto rocksdb_datadir = kv_data_dir / ".index";
   int max_compact_threads = std::thread::hardware_concurrency() / 4;
   max_compact_threads = (max_compact_threads > 1) ? max_compact_threads : 1;
-  db_option.max_background_compactions = max_compact_threads;
-  db_option.max_subcompactions = max_compact_threads;
-  db_option.env->SetBackgroundThreads(max_compact_threads, rocksdb::Env::Priority::LOW);
-  db_option.statistics = rocksdb::CreateDBStatistics();
-  // get column family names from manfest file
-  rocksdb::Status status = rocksdb::DB::ListColumnFamilies(db_option, rocksdb_datadir, &cf_names);
-  if (!status.ok() && ( (status.subcode() == rocksdb::Status::kNone) || (status.subcode() == rocksdb::Status::kPathNotFound)) ) 
-  {
-      STONEDB_LOG(LogCtl_Level::INFO, "First init rocksdb, create default cloum family");
-      cf_names.push_back(DEFAULT_CF_NAME);
-  } 
+  db_options.max_background_compactions = max_compact_threads;
+  db_options.max_subcompactions = max_compact_threads;
+  db_options.env->SetBackgroundThreads(max_compact_threads, rocksdb::Env::Priority::LOW);
+  db_options.statistics = rocksdb::CreateDBStatistics();
+
+  // get column family names from manifest file
+  rocksdb::Status status ;
+  //const std::shared_ptr<rocksdb::FileSystem>& fs = db_options.env->GetFileSystem();
+  //VersionSet::ListColumnFamilies(&cf_names, rocksdb_datadir, fs.get());
+  rocksdb::DB* db; 
+  db->GetSnapshot();
+
+  status = rocksdb::DB::ListColumnFamilies(db_options, rocksdb_datadir, &cf_names);
+  if (!status.ok() &&
+      ((status.subcode() == rocksdb::Status::kNone) || (status.subcode() == rocksdb::Status::kPathNotFound))) {
+    STONEDB_LOG(LogCtl_Level::INFO, "First init rocksdb, create default column family");
+    cf_names.push_back(DEFAULT_CF_NAME);
+  }
+
   rocksdb::ColumnFamilyOptions rs_cf_option(options);
   rocksdb::ColumnFamilyOptions index_cf_option(options);
   // Disable compactions to prevent compaction start before compaction filter is
@@ -62,10 +74,12 @@ void KVStore::Init() {
     else
       cf_descr.emplace_back(cfn, index_cf_option);
   }
+
   // open db, get column family handles
-  status = rocksdb::TransactionDB::Open(options, txn_db_options, rocksdb_datadir, cf_descr, &cf_handles, &rdb);
+  //status = rocksdb::TransactionDB::Open(options, txn_db_options, rocksdb_datadir, cf_descr, &cf_handles, &rdb);
   if (!status.ok()) {
-    throw common::Exception("Error opening rocks instance. status msg: " + status.ToString());
+    std::string status_msg(status.getState());
+    throw common::Exception("Error opening rocks instance. status msg: " + status_msg);
   }
 
   cf_manager.init(cf_handles);
@@ -84,21 +98,28 @@ void KVStore::Init() {
   }
   drop_kv_thread = std::thread([this] { this->AsyncDropData(); });
 }
+
 void KVStore::UnInit() {
   exiting = true;
   DelDataSignal();
   drop_kv_thread.join();
+
   // flush all memtables
   for (const auto &cf_handle : cf_manager.get_all_cf()) {
     rdb->Flush(rocksdb::FlushOptions(), cf_handle);
   }
+
   // Stop all rocksdb background work
   rocksdb::CancelAllBackgroundWork(rdb->GetBaseDB(), true);
+
   // clear primary key info
   ddl_manager.cleanup();
   dict_manager.cleanup();
   cf_manager.cleanup();
-  if (bbto_.block_cache) bbto_.block_cache->EraseUnRefEntries();
+
+  if (bbto_.block_cache) 
+    bbto_.block_cache->EraseUnRefEntries();
+ 
   delete rdb;
   rdb = nullptr;
 }
@@ -114,8 +135,8 @@ void KVStore::AsyncDropData() {
       rocksdb::CompactRangeOptions options;
       options.bottommost_level_compaction = rocksdb::BottommostLevelCompaction::kForce;
       options.exclusive_manual_compaction = false;
-      uchar buf_begin[INDEX_NUMBER_SIZE];
-      uchar buf_end[INDEX_NUMBER_SIZE];
+      uchar buf_begin[INDEX_NUMBER_SIZE] = {0};
+      uchar buf_end[INDEX_NUMBER_SIZE] = {0};
       be_store_index(buf_begin, d.index_id);
       be_store_index(buf_end, d.index_id + 1);
       rocksdb::Range range =
@@ -124,14 +145,15 @@ void KVStore::AsyncDropData() {
       DEBUG_ASSERT(cfh);
       rocksdb::Status status = rocksdb::DeleteFilesInRange(rdb->GetBaseDB(), cfh, &range.start, &range.limit);
       if (!status.ok()) {
-        STONEDB_LOG(LogCtl_Level::ERROR, "RocksDB: delete file range fail, status: %s ", status.ToString().c_str());
+        STONEDB_LOG(LogCtl_Level::ERROR, "RocksDB: delete file range fail, status: %s ", status.getState());
         if (status.IsShutdownInProgress()) {
           break;
         }
       }
+
       status = rdb->CompactRange(options, cfh, &range.start, &range.limit);
       if (!status.ok()) {
-        STONEDB_LOG(LogCtl_Level::ERROR, "RocksDB: Compact range index fail, status: %s ", status.ToString().c_str());
+        STONEDB_LOG(LogCtl_Level::ERROR, "RocksDB: Compact range index fail, status: %s ", status.getState());
         if (status.IsShutdownInProgress()) {
           break;
         }
@@ -139,6 +161,7 @@ void KVStore::AsyncDropData() {
     }
     dict_manager.finish_indexes(del_index_ids, MetaType::DDL_DROP_INDEX_ONGOING);
   }
+
   STONEDB_LOG(LogCtl_Level::INFO, "KVStore drop Table thread exiting...");
 }
 
@@ -171,6 +194,7 @@ common::ErrorCode KVStore::KVDelTableMeta(const std::string &tablename) {
   if (!dict_manager.commit(batch)) {
     return common::ErrorCode::FAILED;
   }
+
   DelDataSignal();
   return common::ErrorCode::SUCCESS;
 }
@@ -243,7 +267,7 @@ common::ErrorCode KVStore::KVRenameMemTableMeta(std::string s_name, std::string 
 bool KVStore::KVDeleteKey(rocksdb::WriteOptions &wopts, rocksdb::ColumnFamilyHandle *cf, rocksdb::Slice &key) {
   rocksdb::Status s = rdb->Delete(wopts, cf, key);
   if (!s.ok()) {
-    STONEDB_LOG(LogCtl_Level::ERROR, "Rdb delete key fail: %s", s.ToString().c_str());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Rdb delete key fail: %s", s.getState());
     return false;
   }
 
@@ -253,7 +277,7 @@ bool KVStore::KVDeleteKey(rocksdb::WriteOptions &wopts, rocksdb::ColumnFamilyHan
 bool KVStore::KVWriteBatch(rocksdb::WriteOptions &wopts, rocksdb::WriteBatch *batch) {
   const rocksdb::Status s = rdb->GetBaseDB()->Write(wopts, batch);
   if (!s.ok()) {
-    STONEDB_LOG(LogCtl_Level::ERROR, "Rdb write batch fail: %s", s.ToString().c_str());
+    STONEDB_LOG(LogCtl_Level::ERROR, "Rdb write batch fail: %s", s.getState());
     return false;
   }
   return true;
