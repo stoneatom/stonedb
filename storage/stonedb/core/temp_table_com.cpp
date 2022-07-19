@@ -40,9 +40,9 @@ TempTable::TempTable(JustATable *t, int alias, Query *q)
       ((TempTable *)t)->RoughMaterialize(false, NULL, true);
     else
       ((TempTable *)t)->Materialize(false, NULL, false);
-    filter.mind->AddDimension_cross(t->NoObj());
+    filter.mind->AddDimension_cross(t->NumOfObj());
   } else {
-    filter.mind->AddDimension_cross(t->NoObj());
+    filter.mind->AddDimension_cross(t->NumOfObj());
   }
   if (filter.mind->TooManyTuples())
     no_obj = common::NULL_VALUE_64;  // a big, improper number, which we hope to
@@ -65,9 +65,9 @@ void TempTable::JoinT(JustATable *t, int alias, JoinType jt) {
   if (t->TableType() == TType::TEMP_TABLE) {
     has_temp_table = true;
     ((TempTable *)t)->Materialize();
-    filter.mind->AddDimension_cross(t->NoObj());
+    filter.mind->AddDimension_cross(t->NumOfObj());
   } else
-    filter.mind->AddDimension_cross(t->NoObj());
+    filter.mind->AddDimension_cross(t->NumOfObj());
 
   join_types.push_back(jt);
 

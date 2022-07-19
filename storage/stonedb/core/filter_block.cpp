@@ -29,7 +29,7 @@ Filter::Block::Block(Filter *owner, int _no_obj, bool all_full) {
 
   this->owner = owner;
   no_obj = _no_obj;
-  block_size = (NoObj() + 31) / 32;
+  block_size = (NumOfObj() + 31) / 32;
 
   owner->bit_mut->lock();
   block_table = (uint *)owner->bit_block_pool->malloc();
@@ -240,7 +240,7 @@ bool Filter::Block::IsEqual(Block &b2) {
 }
 
 bool Filter::Block::And(Block &b2) {
-  int mn = b2.NoObj() < NoObj() ? b2.NoObj() : NoObj();
+  int mn = b2.NumOfObj() < NumOfObj() ? b2.NumOfObj() : NumOfObj();
   for (int n = 0; n < mn; n++) {
     if (Get(n) && !b2.Get(n)) Reset(n);
   }
@@ -249,13 +249,13 @@ bool Filter::Block::And(Block &b2) {
 
 bool Filter::Block::Or(Block &b2) {
   int new_set_bits = 0;
-  int no_positions = NoObj() / 32;
+  int no_positions = NumOfObj() / 32;
   for (int b = 0; b < no_positions; b++) {
     block_table[b] |= b2.block_table[b];
     new_set_bits += CalculateBinSum(block_table[b]);
   }
   no_set_bits = new_set_bits;
-  int no_all_obj = (int)NoObj();
+  int no_all_obj = (int)NumOfObj();
   if (no_all_obj % 32)
     for (int n = (no_all_obj / 32) * 32; n < no_all_obj; n++) {
       if (Get(n))
@@ -269,7 +269,7 @@ bool Filter::Block::Or(Block &b2) {
 }
 
 bool Filter::Block::AndNot(Block &b2) {
-  int mn = b2.NoObj() < NoObj() ? b2.NoObj() : NoObj();
+  int mn = b2.NumOfObj() < NumOfObj() ? b2.NumOfObj() : NumOfObj();
   for (int n = 0; n < mn; n++) {
     if (Get(n) && b2.Get(n)) Reset(n);
   }
@@ -279,7 +279,7 @@ bool Filter::Block::AndNot(Block &b2) {
 void Filter::Block::Not() {
   int new_set_bits;
   new_set_bits = no_obj - no_set_bits;
-  int no_all_obj = (int)NoObj();
+  int no_all_obj = (int)NumOfObj();
   if (no_all_obj % 32) {
     for (int n = (no_all_obj / 32) * 32; n < no_all_obj; n++)
       if (Get(n))
@@ -287,7 +287,7 @@ void Filter::Block::Not() {
       else
         Set(n);
   }
-  for (uint b = 0; b < NoObj() / 32; b++) block_table[b] = ~(block_table[b]);
+  for (uint b = 0; b < NumOfObj() / 32; b++) block_table[b] = ~(block_table[b]);
 
   no_set_bits = new_set_bits;
 }

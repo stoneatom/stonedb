@@ -1236,27 +1236,27 @@ void TempTable::Union(TempTable *t, int all) {
     this->Materialize();
     return;
   }
-  DEBUG_ASSERT(NoDisplaybleAttrs() == t->NoDisplaybleAttrs());
-  if (NoDisplaybleAttrs() != t->NoDisplaybleAttrs())
+  DEBUG_ASSERT(NumOfDisplaybleAttrs() == t->NumOfDisplaybleAttrs());
+  if (NumOfDisplaybleAttrs() != t->NumOfDisplaybleAttrs())
     throw common::NotImplementedException("UNION of tables with different number of columns.");
   if (this->IsParametrized() || t->IsParametrized())
     throw common::NotImplementedException("Materialize: not implemented union of parameterized queries.");
   rccontrol.lock(m_conn->GetThreadID()) << "UNION: materializing components." << system::unlock;
   this->Materialize();
   t->Materialize();
-  if ((!t->NoObj() && all) || (!this->NoObj() && !t->NoObj()))  // no objects = no union
+  if ((!t->NumOfObj() && all) || (!this->NumOfObj() && !t->NumOfObj()))  // no objects = no union
     return;
 
-  Filter first_f(NoObj(), p_power), first_mask(NoObj(),
+  Filter first_f(NumOfObj(), p_power), first_mask(NumOfObj(),
                                                p_power);  // mask of objects to be added to the final result set
-  Filter sec_f(t->NoObj(), p_power), sec_mask(t->NoObj(), p_power);
+  Filter sec_f(t->NumOfObj(), p_power), sec_mask(t->NumOfObj(), p_power);
   first_mask.Set();
   sec_mask.Set();
   if (!all) {
     rccontrol.lock(m_conn->GetThreadID()) << "UNION: excluding repetitions." << system::unlock;
-    Filter first_f(NoObj(), p_power);
+    Filter first_f(NumOfObj(), p_power);
     first_f.Set();
-    Filter sec_f(t->NoObj(), p_power);
+    Filter sec_f(t->NumOfObj(), p_power);
     sec_f.Set();
     GroupDistinctTable dist_table(p_power);
     using vc_ptr_t = std::shared_ptr<vcolumn::VirtualColumn>;
@@ -1267,16 +1267,16 @@ void TempTable::Union(TempTable *t, int all) {
       // block to ensure deleting encoder before deleting first_vcs, sec_vcs
       int size = 0;
       std::vector<ColumnBinEncoder> encoder;
-      for (int i = 0; i < (int)NoDisplaybleAttrs(); i++) {
+      for (int i = 0; i < (int)NumOfDisplaybleAttrs(); i++) {
         first_vcs.push_back(
             vc_ptr_t(new vcolumn::SingleColumn(GetDisplayableAttrP(i), &output_mind, 0, -i - 1, this, 0)));
         sec_vcs.push_back(
             vc_ptr_t(new vcolumn::SingleColumn(t->GetDisplayableAttrP(i), t->GetOutputMultiIndexP(), 1, -i - 1, t, 0)));
         encoder.push_back(ColumnBinEncoder());
         bool encoder_created;
-        if (NoObj() == 0)
+        if (NumOfObj() == 0)
           encoder_created = encoder[i].PrepareEncoder(sec_vcs[i].get());
-        else if (t->NoObj() == 0)
+        else if (t->NumOfObj() == 0)
           encoder_created = encoder[i].PrepareEncoder(first_vcs[i].get());
         else
           encoder_created = encoder[i].PrepareEncoder(first_vcs[i].get(), sec_vcs[i].get());
@@ -1289,7 +1289,7 @@ void TempTable::Union(TempTable *t, int all) {
         size += encoder[i].GetPrimarySize();
       }
       input_buf = new uchar[size];
-      dist_table.InitializeB(size, NoObj() + t->NoObj() / 2);  // optimization assumption: a
+      dist_table.InitializeB(size, NumOfObj() + t->NumOfObj() / 2);  // optimization assumption: a
                                                                // half of values in the second
                                                                // table will be repetitions
       MIIterator first_mit(&output_mind, p_power);
@@ -1336,7 +1336,7 @@ void TempTable::Union(TempTable *t, int all) {
   int64_t new_no_obj = first_no_obj + sec_no_obj;
   rccontrol.lock(m_conn->GetThreadID()) << "UNION: generating result (" << new_no_obj << " rows)." << system::unlock;
   uint new_page_size = CalculatePageSize(new_no_obj);
-  for (uint i = 0; i < NoDisplaybleAttrs(); i++) {
+  for (uint i = 0; i < NumOfDisplaybleAttrs(); i++) {
     Attr *first_attr = GetDisplayableAttrP(i);
     Attr *sec_attr = t->GetDisplayableAttrP(i);
     ColumnType new_type = GetUnionType(first_attr->Type(), sec_attr->Type());
@@ -1472,8 +1472,8 @@ void TempTable::Union(TempTable *t, [[maybe_unused]] int all, ResultSender *send
                       int64_t &g_limit) {
   MEASURE_FET("TempTable::UnionSender(...)");
 
-  DEBUG_ASSERT(NoDisplaybleAttrs() == t->NoDisplaybleAttrs());
-  if (NoDisplaybleAttrs() != t->NoDisplaybleAttrs())
+  DEBUG_ASSERT(NumOfDisplaybleAttrs() == t->NumOfDisplaybleAttrs());
+  if (NumOfDisplaybleAttrs() != t->NumOfDisplaybleAttrs())
     throw common::NotImplementedException("UNION of tables with different number of columns.");
   if (this->IsParametrized() || t->IsParametrized())
     throw common::NotImplementedException("Materialize: not implemented union of parameterized queries.");
@@ -1516,10 +1516,10 @@ void TempTable::Union(TempTable *t, [[maybe_unused]] int all, ResultSender *send
 }
 
 void TempTable::Display(std::ostream &out) {
-  out << "No obj.:" << no_obj << ", No attrs.:" << this->NoDisplaybleAttrs() << system::endl
+  out << "No obj.:" << no_obj << ", No attrs.:" << this->NumOfDisplaybleAttrs() << system::endl
       << "-----------" << system::endl;
   for (int64_t i = 0; i < no_obj; i++) {
-    for (uint j = 0; j < this->NoDisplaybleAttrs(); j++) {
+    for (uint j = 0; j < this->NumOfDisplaybleAttrs(); j++) {
       if (!attrs[j]->alias) continue;
       if (!IsNull(i, j)) {
         types::BString s;
@@ -1735,7 +1735,7 @@ bool TempTable::LimitMayBeAppliedToWhere() {
     return false;
   if (mode.distinct || HasHavingConditions())  // DISTINCT or HAVING  => false
     return false;
-  for (uint i = 0; i < NoAttrs(); i++)  // GROUP BY or other aggregation => false
+  for (uint i = 0; i < NumOfAttrs(); i++)  // GROUP BY or other aggregation => false
     if (attrs[i]->mode != common::ColOperation::LISTING) return false;
   return true;
 }
@@ -1897,7 +1897,7 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
 
   bool table_distinct = this->mode.distinct;
   bool distinct_on_materialized = false;
-  for (uint i = 0; i < NoAttrs(); i++)
+  for (uint i = 0; i < NumOfAttrs(); i++)
     if (attrs[i]->mode != common::ColOperation::LISTING) group_by = true;
   if (table_distinct && group_by) {
     distinct_on_materialized = true;
@@ -2036,8 +2036,8 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
 }
 
 void TempTable::RecordIterator::PrepareValues() {
-  if (_currentRNo < uint64_t(table->NoObj())) {
-    uint no_disp_attr = table->NoDisplaybleAttrs();
+  if (_currentRNo < uint64_t(table->NumOfObj())) {
+    uint no_disp_attr = table->NumOfDisplaybleAttrs();
     for (uint att = 0; att < no_disp_attr; ++att) {
       common::CT attrt_tmp = table->GetDisplayableAttrP(att)->TypeName();
       if (attrt_tmp == common::CT::INT || attrt_tmp == common::CT::MEDIUMINT) {
@@ -2087,7 +2087,7 @@ void TempTable::RecordIterator::PrepareValues() {
 }
 
 TempTable::RecordIterator &TempTable::RecordIterator::operator++() {
-  DEBUG_ASSERT(_currentRNo < uint64_t(table->NoObj()));
+  DEBUG_ASSERT(_currentRNo < uint64_t(table->NumOfObj()));
   is_prepared = false;
   ++_currentRNo;
   return (*this);
@@ -2095,15 +2095,15 @@ TempTable::RecordIterator &TempTable::RecordIterator::operator++() {
 
 TempTable::RecordIterator TempTable::begin(Transaction *conn) { return (RecordIterator(this, conn, 0)); }
 
-TempTable::RecordIterator TempTable::end(Transaction *conn) { return (RecordIterator(this, conn, NoObj())); }
+TempTable::RecordIterator TempTable::end(Transaction *conn) { return (RecordIterator(this, conn, NumOfObj())); }
 
 TempTable::RecordIterator::RecordIterator() : table(NULL), _currentRNo(0), _conn(NULL), is_prepared(false) {}
 
 TempTable::RecordIterator::RecordIterator(TempTable *table_, Transaction *conn_, uint64_t rowNo_)
     : table(table_), _currentRNo(rowNo_), _conn(conn_), is_prepared(false) {
   DEBUG_ASSERT(table != 0);
-  DEBUG_ASSERT(_currentRNo <= uint64_t(table->NoObj()));
-  for (uint att = 0; att < table->NoDisplaybleAttrs(); att++) {
+  DEBUG_ASSERT(_currentRNo <= uint64_t(table->NumOfObj()));
+  for (uint att = 0; att < table->NumOfDisplaybleAttrs(); att++) {
     common::CT att_type = table->GetDisplayableAttrP(att)->TypeName();
     if (att_type == common::CT::INT || att_type == common::CT::MEDIUMINT || att_type == common::CT::SMALLINT ||
         att_type == common::CT::BYTEINT || ATI::IsRealType(att_type) || att_type == common::CT::NUM ||

@@ -141,7 +141,7 @@ void Filter::ConstructPool() {
 }
 
 Filter *Filter::ShallowCopy(Filter &f) {
-  Filter *sc = new Filter(&f, f.NoObj(), f.GetPower(), true,
+  Filter *sc = new Filter(&f, f.NumOfObj(), f.GetPower(), true,
                           true);  // shallow construct - no pool
   // sc->shallow = true;
   sc->block_allocator = f.block_allocator;
@@ -789,7 +789,7 @@ int Filter::DensityWeight()  // = 65537 for empty filter or a filter with only
   return int(count / double(nonempty));
 }
 
-int64_t Filter::NoObj() const {
+int64_t Filter::NumOfObj() const {
   int64_t res = int64_t(no_blocks - (no_of_bits_in_last_block ? 1 : 0)) << no_power;
   return res + no_of_bits_in_last_block;
 }
