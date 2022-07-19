@@ -145,7 +145,7 @@ void GroupDistinctTable::InitializeBuffers(int64_t max_no_rows)  // max_no_rows 
 int64_t GroupDistinctTable::BytesTaken()  // actual size of structures
 {
   DEBUG_ASSERT(initialized);
-  if (filter_implementation) return f->NoObj() / 8;
+  if (filter_implementation) return f->NumOfObj() / 8;
   return total_width * no_rows;
 }
 

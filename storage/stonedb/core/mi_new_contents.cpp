@@ -121,7 +121,7 @@ void MINewContents::Init(int64_t initial_size)  // initialize temporary structur
         min_block_shift = std::min(min_block_shift, t_new[dim]->BlockShift());
         t_opt = t_new[dim];
         t_new[dim] = NULL;
-        f_opt = new Filter(mind->GetFilter(dim)->NoObj(), pack_power);
+        f_opt = new Filter(mind->GetFilter(dim)->NumOfObj(), pack_power);
         f_opt_max_ones = mind->GetFilter(dim)->NoOnes();
         f_opt->Reset();
       }

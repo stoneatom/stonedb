@@ -658,7 +658,7 @@ std::vector<int64_t> RCAttr::GetListOfDistinctValuesInPack(int pack) {
 uint64_t RCAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue *rf, bool outer_nulls_possible) {
   LoadPackInfo();
   uint64_t no_dist = 0;
-  int64_t max_obj = NoObj();  // no more values than objects
+  int64_t max_obj = NumOfObj();  // no more values than objects
   if (NumOfNulls() > 0 || outer_nulls_possible) {
     if (incl_nulls) no_dist++;  // one value for null
     max_obj = max_obj - NumOfNulls() + (incl_nulls ? 1 : 0);

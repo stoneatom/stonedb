@@ -240,7 +240,7 @@ class TempTable : public JustATable {
   void ResumeDisplay();
   void LockPackForUse(unsigned attr, unsigned pack_no) override;
   void UnlockPackFromUse([[maybe_unused]] unsigned attr, [[maybe_unused]] unsigned pack_no) override {}
-  int64_t NoObj() override { return no_obj; }
+  int64_t NumOfObj() override { return no_obj; }
   uint32_t Getpackpower() const override { return p_power; }
   int64_t NoMaterialized() { return no_materialized; }
   void SetNoObj(int64_t n) { no_obj = n; }
@@ -249,8 +249,8 @@ class TempTable : public JustATable {
     no_materialized = n;
   }
   TType TableType() const override { return TType::TEMP_TABLE; }  // type of JustATable - TempTable
-  uint NoAttrs() const override { return (uint)attrs.size(); }
-  uint NoDisplaybleAttrs() const override { return no_cols; }  // no. of columns with defined alias
+  uint NumOfAttrs() const override { return (uint)attrs.size(); }
+  uint NumOfDisplaybleAttrs() const override { return no_cols; }  // no. of columns with defined alias
   bool IsDisplayAttr(int i) { return attrs[i]->alias != NULL; }
   int64_t GetTable64(int64_t obj, int attr) override;
   void GetTable_S(types::BString &s, int64_t obj, int attr) override;
@@ -277,37 +277,37 @@ class TempTable : public JustATable {
   int GetDimension(TabID alias);
   std::vector<AttributeTypeInfo> GetATIs(bool orig = false) override;
   int GetAttrScale(int a) {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NoAttrs());
+    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a]->Type().GetScale();
   }
 
   int GetAttrSize(int a) {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NoAttrs());
+    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a]->Type().GetDisplaySize();
   }
 
   uint GetFieldSize(int a) {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NoAttrs());
+    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a]->Type().GetInternalSize();
   }
 
   int GetNoDigits(int a) {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NoAttrs());
+    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a]->Type().GetPrecision();
   }
 
   const ColumnType &GetColumnType(int a) override {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NoAttrs());
+    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a]->Type();
   }
 
   PhysicalColumn *GetColumn(int a) override {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NoAttrs());
+    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a];
   }
 
   Attr *GetAttrP(uint a) {
-    DEBUG_ASSERT(a < (uint)NoAttrs());
+    DEBUG_ASSERT(a < (uint)NumOfAttrs());
     return attrs[a];
   }
 
