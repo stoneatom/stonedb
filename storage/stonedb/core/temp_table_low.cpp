@@ -225,7 +225,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
               local_row, offset, limit, task_num);
 
   // Create output
-  for (uint i = 0; i < NoAttrs(); i++) {
+  for (uint i = 0; i < NumOfAttrs(); i++) {
     if (attrs[i]->alias != NULL) {
       if (sender)
         attrs[i]->CreateBuffer(no_obj > stonedb_sysvar_result_sender_rows ? stonedb_sysvar_result_sender_rows : no_obj,
@@ -320,7 +320,7 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
   if (no_materialized == 0) {
     // Column statistics
     if (m_conn->DisplayAttrStats()) {
-      for (uint j = 0; j < NoAttrs(); j++) {
+      for (uint j = 0; j < NumOfAttrs(); j++) {
         if (attrs[j]->term.vc) attrs[j]->term.vc->DisplayAttrStats();
       }
       m_conn->SetDisplayAttrStats(false);  // already displayed
@@ -377,7 +377,7 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
     // (integer division)
     if (page_end > no_obj + local_offset) page_end = no_obj + local_offset;
 
-    for (uint i = 0; i < NoAttrs(); i++) attrs[i]->CreateBuffer(page_end - start_row, m_conn, pagewise);
+    for (uint i = 0; i < NumOfAttrs(); i++) attrs[i]->CreateBuffer(page_end - start_row, m_conn, pagewise);
 
     auto &attr = attrs[0];
     if (attr->NeedFill()) {
@@ -412,7 +412,7 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
   if (no_materialized == 0) {
     //////// Column statistics ////////////////////////
     if (m_conn->DisplayAttrStats()) {
-      for (uint j = 0; j < NoAttrs(); j++) {
+      for (uint j = 0; j < NumOfAttrs(); j++) {
         if (attrs[j]->term.vc) attrs[j]->term.vc->DisplayAttrStats();
       }
       m_conn->SetDisplayAttrStats(false);  // already displayed
@@ -442,7 +442,7 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
     }
 
     std::vector<std::unique_ptr<types::RCDataType>> record;
-    for (uint att = 0; att < NoDisplaybleAttrs(); ++att) {
+    for (uint att = 0; att < NumOfDisplaybleAttrs(); ++att) {
       Attr *col = GetDisplayableAttrP(att);
       common::CT ct = col->TypeName();
 
@@ -491,7 +491,7 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
 
 std::vector<AttributeTypeInfo> TempTable::GetATIs(bool orig) {
   std::vector<AttributeTypeInfo> deas;
-  for (uint i = 0; i < NoAttrs(); i++) {
+  for (uint i = 0; i < NumOfAttrs(); i++) {
     if (!IsDisplayAttr(i)) continue;
     deas.emplace_back(attrs[i]->TypeName(), attrs[i]->Type().NotNull(),
                       orig ? attrs[i]->orig_precision : attrs[i]->Type().GetPrecision(), attrs[i]->Type().GetScale(),

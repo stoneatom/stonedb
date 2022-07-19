@@ -145,7 +145,7 @@ class Filter final : public mm::TraceableObject {
   uint NoOnesUncommited(int b);  // with uncommitted Set/Reset
   int64_t NoOnesBetween(int64_t n1,
                         int64_t n2);  // no of 1 between n1 and n2, inclusively
-  int64_t NoObj() const;              // number of objects (table size)
+  int64_t NumOfObj() const;              // number of objects (table size)
   size_t NoBlocks() const { return no_blocks; }
   int NoAddBits() const;
   int DensityWeight();  // = 65537 for empty filter or a filter with only one
@@ -272,7 +272,7 @@ class Filter final : public mm::TraceableObject {
     bool IsEmptyBetween(int n1, int n2);
     bool IsFullBetween(int n1, int n2);
     int NoOnesBetween(int n1, int n2);
-    uint NoObj() { return no_obj; }
+    uint NumOfObj() { return no_obj; }
 
     Filter *Owner() { return owner; }
 

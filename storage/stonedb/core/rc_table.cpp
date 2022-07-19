@@ -215,9 +215,9 @@ void RCTable::UnlockPackFromUse(unsigned attr, unsigned pack_no) {
 int RCTable::GetID() const { return share->TabID(); }
 
 std::vector<AttrInfo> RCTable::GetAttributesInfo() {
-  std::vector<AttrInfo> info(NoAttrs());
+  std::vector<AttrInfo> info(NumOfAttrs());
   Verify();
-  for (int j = 0; j < (int)NoAttrs(); j++) {
+  for (int j = 0; j < (int)NumOfAttrs(); j++) {
     info[j].type = m_attrs[j]->TypeName();
     info[j].size = m_attrs[j]->Type().GetPrecision();
     info[j].precision = m_attrs[j]->Type().GetScale();
@@ -234,7 +234,7 @@ std::vector<AttrInfo> RCTable::GetAttributesInfo() {
 
 std::vector<AttributeTypeInfo> RCTable::GetATIs([[maybe_unused]] bool orig) {
   std::vector<AttributeTypeInfo> deas;
-  for (uint j = 0; j < NoAttrs(); j++) {
+  for (uint j = 0; j < NumOfAttrs(); j++) {
     deas.emplace_back(m_attrs[j]->TypeName(), m_attrs[j]->Type().NotNull(), m_attrs[j]->Type().GetPrecision(),
                       m_attrs[j]->Type().GetScale(), false, m_attrs[j]->Type().GetCollation());
   }
@@ -254,13 +254,13 @@ bool RCTable::Verify() {
   bool ok = true;
   uint64_t n_o = 0xFFFFFFFF;
   for (auto &attr : m_attrs) {
-    if (n_o == 0xFFFFFFFF) n_o = attr->NoObj();
-    if (n_o != attr->NoObj()) ok = false;
+    if (n_o == 0xFFFFFFFF) n_o = attr->NumOfObj();
+    if (n_o != attr->NumOfObj()) ok = false;
   }
   if (!ok) {
     std::stringstream ss;
     ss << "Error: columns in table " << m_path.string() << " are inconsistent. No. of records for each column:\n";
-    for (auto &attr : m_attrs) ss << attr->AttrNo() << " : " << attr->NoObj() << std::endl;
+    for (auto &attr : m_attrs) ss << attr->AttrNo() << " : " << attr->NumOfObj() << std::endl;
     STONEDB_LOG(LogCtl_Level::ERROR, "%s", ss.str().c_str());
   }
   return !ok;
@@ -390,7 +390,7 @@ void RCTable::DisplayRSI() {
   std::stringstream ss;
 
   ss << "--- RSIndices for " << m_path << " (tab.no. " << share->TabID() << ", "
-     << ((NoObj() + (1 << Getpackpower()) - 1) >> Getpackpower()) << " packs) ---" << std::endl;
+     << ((NumOfObj() + (1 << Getpackpower()) - 1) >> Getpackpower()) << " packs) ---" << std::endl;
   ss << "Name               Triv.packs\tSpan\tHist.dens." << std::endl;
   ss << "-----------------------------------------------------------" << std::endl;
   for (size_t i = 0; i < m_attrs.size(); i++) {
@@ -502,41 +502,41 @@ RCTable::Iterator RCTable::Iterator::CreateBegin(RCTable &table, std::shared_ptr
 
 RCTable::Iterator RCTable::Iterator::CreateEnd() { return RCTable::Iterator(); }
 
-int64_t RCTable::NoObj() { return m_attrs[0]->NoObj(); }
+int64_t RCTable::NumOfObj() { return m_attrs[0]->NumOfObj(); }
 
 void RCTable::GetTable_S(types::BString &s, int64_t obj, int attr) {
   DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
-  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NoObj());
+  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   s = m_attrs[attr]->GetValueString(obj);
 }
 
 int64_t RCTable::GetTable64(int64_t obj, int attr) {
   DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
-  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NoObj());
+  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   return m_attrs[attr]->GetValueInt64(obj);
 }
 
 bool RCTable::IsNull(int64_t obj, int attr) {
   DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
-  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NoObj());
+  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   return (m_attrs[attr]->IsNull(obj) ? true : false);
 }
 
 types::RCValueObject RCTable::GetValue(int64_t obj, int attr, [[maybe_unused]] Transaction *conn) {
   DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
-  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NoObj());
+  DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   return m_attrs[attr]->GetValue(obj, false);
 }
 
 uint RCTable::MaxStringSize(int n_a, Filter *f) {
   DEBUG_ASSERT(n_a >= 0 && static_cast<size_t>(n_a) <= m_attrs.size());
-  if (NoObj() == 0) return 1;
+  if (NumOfObj() == 0) return 1;
   return m_attrs[n_a]->MaxStringSize(f);
 }
 
 void RCTable::FillRowByRowid(TABLE *table, int64_t obj) {
   int col_id = 0;
-  assert((int64_t)obj <= NoObj());
+  assert((int64_t)obj <= NumOfObj());
   for (Field **field = table->field; *field; field++, col_id++) {
     LockPackForUse(col_id, obj >> m_attrs[col_id]->Nopackpower());
     std::shared_ptr<void> defer(nullptr,
@@ -694,8 +694,8 @@ int RCTable::Insert(TABLE *table) {
                               [org_bitmap, table](...) { dbug_tmp_restore_column_map(table->read_set, org_bitmap); });
 
   std::vector<loader::ValueCache> vcs;
-  vcs.reserve(NoAttrs());
-  for (uint i = 0; i < NoAttrs(); i++) {
+  vcs.reserve(NumOfAttrs());
+  for (uint i = 0; i < NumOfAttrs(); i++) {
     vcs.emplace_back(1, 128);
     Field2VC(table->field[i], vcs[i], i);
     vcs[i].Commit();
@@ -709,12 +709,12 @@ int RCTable::Insert(TABLE *table) {
       fields.emplace_back(vcs[col].GetDataBytesPointer(0), vcs[col].Size(0));
     }
 
-    if (tab->InsertIndex(current_tx, fields, NoObj()) == common::ErrorCode::DUPP_KEY) {
-      STONEDB_LOG(LogCtl_Level::INFO, "Insert duplicate key on row %d", NoObj() - 1);
+    if (tab->InsertIndex(current_tx, fields, NumOfObj()) == common::ErrorCode::DUPP_KEY) {
+      STONEDB_LOG(LogCtl_Level::INFO, "Insert duplicate key on row %d", NumOfObj() - 1);
       return HA_ERR_FOUND_DUPP_KEY;
     }
   }
-  for (uint i = 0; i < NoAttrs(); i++) {
+  for (uint i = 0; i < NumOfAttrs(); i++) {
     m_attrs[i]->LoadData(&vcs[i]);
   }
   return 0;
@@ -737,7 +737,7 @@ uint64_t RCTable::ProceedNormal(system::IOParameters &iop) {
   uint no_of_rows_returned;
   utils::Timer timer;
   do {
-    to_prepare = share->PackSize() - (m_attrs[0]->NoObj() % share->PackSize());
+    to_prepare = share->PackSize() - (m_attrs[0]->NumOfObj() % share->PackSize());
     std::vector<loader::ValueCache> value_buffers;
     no_of_rows_returned = parser.GetPackrow(to_prepare, value_buffers);
     no_dup_rows += parser.GetDuprow();
@@ -1113,7 +1113,7 @@ class DelayedInsertParser final {
       : pack_size(packsize), attrs(attrs), vec(vec), index_table(index) {}
 
   uint GetRows(uint no_of_rows, std::vector<loader::ValueCache> &value_buffers) {
-    int64_t start_row = attrs[0]->NoObj();
+    int64_t start_row = attrs[0]->NumOfObj();
 
     value_buffers.reserve(attrs.size());
     for (size_t i = 0; i < attrs.size(); i++) {
@@ -1229,7 +1229,7 @@ uint64_t RCTable::ProcessDelayed(system::IOParameters &iop) {
 
   uint to_prepare, no_of_rows_returned;
   do {
-    to_prepare = share->PackSize() - (int)(m_attrs[0]->NoObj() % share->PackSize());
+    to_prepare = share->PackSize() - (int)(m_attrs[0]->NumOfObj() % share->PackSize());
     std::vector<loader::ValueCache> vcs;
     no_of_rows_returned = parser.GetRows(to_prepare, vcs);
     size_t real_loaded_rows = vcs[0].NumOfValues();
@@ -1317,7 +1317,7 @@ int RCTable::MergeMemTable(system::IOParameters &iop) {
 
   uint to_prepare, no_of_rows_returned;
   do {
-    to_prepare = share->PackSize() - (int)(m_attrs[0]->NoObj() % share->PackSize());
+    to_prepare = share->PackSize() - (int)(m_attrs[0]->NumOfObj() % share->PackSize());
     std::vector<loader::ValueCache> vcs;
     no_of_rows_returned = parser.GetRows(to_prepare, vcs);
     size_t real_loaded_rows = vcs[0].NumOfValues();
