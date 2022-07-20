@@ -37,7 +37,7 @@ SubSelectColumn::SubSelectColumn(core::TempTable *subq, core::MultiIndex *mind, 
   const std::vector<int> *aliases = &temp_table->GetAliases();
 
   col_idx = 0;
-  for (uint i = 0; i < subq->NoAttrs(); i++)
+  for (uint i = 0; i < subq->NumOfAttrs(); i++)
     if (subq->IsDisplayAttr(i)) {
       col_idx = i;
       break;
@@ -187,7 +187,7 @@ common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types
 
   bool added_new_value = false;
   if (types::RequiresUTFConversions(GetCollation()) && Type().IsString()) {
-    for (int64_t i = no_cached_values; i < subq->NoObj(); i++) {
+    for (int64_t i = no_cached_values; i < subq->NumOfObj(); i++) {
       no_cached_values++;
       added_new_value = true;
       if (subq->IsNull(i, col_idx)) {
@@ -205,7 +205,7 @@ common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types
       }
     }
   } else {
-    for (int64_t i = no_cached_values; i < subq->NoObj(); i++) {
+    for (int64_t i = no_cached_values; i < subq->NumOfObj(); i++) {
       no_cached_values++;
       added_new_value = true;
       if (subq->IsNull(i, col_idx)) {
@@ -228,7 +228,7 @@ common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types
       }
     }
   }
-  if (added_new_value && no_cached_values == subq->NoObj())
+  if (added_new_value && no_cached_values == subq->NumOfObj())
     cache->ForcePreparation();  // completed for the first time => recalculate
                                 // cache
   return res;
@@ -239,7 +239,7 @@ void SubSelectColumn::PrepareAndFillCache() {
     cache = std::shared_ptr<core::ValueSet>(new core::ValueSet(mind->NoPower()));
     cache->Prepare(Type().GetTypeName(), Type().GetScale(), GetCollation());
   }
-  for (int64_t i = no_cached_values; i < subq->NoObj(); i++) {
+  for (int64_t i = no_cached_values; i < subq->NumOfObj(); i++) {
     no_cached_values++;
     if (subq->IsNull(i, col_idx)) {
       cache->AddNull();
@@ -263,7 +263,7 @@ bool SubSelectColumn::IsSetEncoded(common::CT at,
                                    int scale)  // checks whether the set is constant and fixed size equal to
                                                // the given one
 {
-  if (!cache || !cache->EasyMode() || !subq->IsMaterialized() || no_cached_values < subq->NoObj()) return false;
+  if (!cache || !cache->EasyMode() || !subq->IsMaterialized() || no_cached_values < subq->NumOfObj()) return false;
   return (scale == ct.GetScale() &&
           (at == expected_type_.GetTypeName() ||
            (core::ATI::IsFixedNumericType(at) && core::ATI::IsFixedNumericType(expected_type_.GetTypeName()))));
@@ -301,7 +301,7 @@ common::Tribool SubSelectColumn::ContainsStringImpl(const core::MIIterator &mit,
 int64_t SubSelectColumn::NoValuesImpl(core::MIIterator const &mit) {
   PrepareSubqResult(mit, false);
   if (!subq->IsMaterialized()) subq->Materialize();
-  return subq->NoObj();
+  return subq->NumOfObj();
 }
 
 int64_t SubSelectColumn::AtLeastNoDistinctValuesImpl(core::MIIterator const &mit, int64_t const at_least) {
@@ -312,7 +312,7 @@ int64_t SubSelectColumn::AtLeastNoDistinctValuesImpl(core::MIIterator const &mit
 
   if (types::RequiresUTFConversions(GetCollation()) && Type().IsString()) {
     types::BString buf(NULL, types::CollationBufLen(GetCollation(), subq->MaxStringSize(col_idx)), true);
-    for (int64_t i = 0; vals.NoVals() < at_least && i < subq->NoObj(); i++) {
+    for (int64_t i = 0; vals.NoVals() < at_least && i < subq->NumOfObj(); i++) {
       if (!subq->IsNull(i, col_idx)) {
         types::BString s;
         subq->GetTable_S(s, i, col_idx);
@@ -321,7 +321,7 @@ int64_t SubSelectColumn::AtLeastNoDistinctValuesImpl(core::MIIterator const &mit
       }
     }
   } else {
-    for (int64_t i = 0; vals.NoVals() < at_least && i < subq->NoObj(); i++) {
+    for (int64_t i = 0; vals.NoVals() < at_least && i < subq->NumOfObj(); i++) {
       if (!subq->IsNull(i, col_idx)) {
         types::RCValueObject val = subq->GetValueObject(i, col_idx);
         vals.Add(val);
@@ -334,7 +334,7 @@ int64_t SubSelectColumn::AtLeastNoDistinctValuesImpl(core::MIIterator const &mit
 
 bool SubSelectColumn::ContainsNullImpl(const core::MIIterator &mit) {
   PrepareSubqResult(mit, false);
-  for (int64_t i = 0; i < subq->NoObj(); ++i)
+  for (int64_t i = 0; i < subq->NumOfObj(); ++i)
     if (subq->IsNull(i, col_idx)) return true;
   return false;
 }
@@ -475,12 +475,12 @@ types::RCValueObject SubSelectColumn::GetSetMaxImpl(core::MIIterator const &mit)
 }
 bool SubSelectColumn::CheckExists(core::MIIterator const &mit) {
   PrepareSubqResult(mit, true);  // true: exists_only
-  return subq->NoObj() > 0;
+  return subq->NumOfObj() > 0;
 }
 
 bool SubSelectColumn::IsEmptyImpl(core::MIIterator const &mit) {
   PrepareSubqResult(mit, false);
-  return subq->NoObj() == 0;
+  return subq->NumOfObj() == 0;
 }
 
 common::Tribool SubSelectColumn::RoughIsEmpty(core::MIIterator const &mit, core::SubSelectOptimizationType sot) {
@@ -490,7 +490,7 @@ common::Tribool SubSelectColumn::RoughIsEmpty(core::MIIterator const &mit, core:
 
 void SubSelectColumn::CalculateMinMax() {
   if (!subq->IsMaterialized()) subq->Materialize();
-  if (subq->NoObj() == 0) {
+  if (subq->NumOfObj() == 0) {
     min = max = types::RCValueObject();
     min_max_uptodate = true;
     return;
@@ -500,7 +500,7 @@ void SubSelectColumn::CalculateMinMax() {
   bool found_not_null = false;
   if (types::RequiresUTFConversions(GetCollation()) && Type().IsString() && expected_type_.IsString()) {
     types::BString val_s, min_s, max_s;
-    for (int64_t i = 0; i < subq->NoObj(); i++) {
+    for (int64_t i = 0; i < subq->NumOfObj(); i++) {
       subq->GetTable_S(val_s, i, col_idx);
       if (val_s.IsNull()) continue;
       if (!found_not_null && !val_s.IsNull()) {
@@ -519,7 +519,7 @@ void SubSelectColumn::CalculateMinMax() {
     max = max_s;
   } else {
     types::RCValueObject val;
-    for (int64_t i = 0; i < subq->NoObj(); i++) {
+    for (int64_t i = 0; i < subq->NumOfObj(); i++) {
       val = subq->GetValueObject(i, col_idx);
       if (expected_type_.IsString()) {
         val = val.ToBString();
@@ -602,10 +602,10 @@ bool SubSelectColumn::MakeParallelReady() {
   core::MIDummyIterator mit(mind);
   PrepareSubqResult(mit, false);
   if (!subq->IsMaterialized()) subq->Materialize();
-  if (subq->NoObj() > subq->GetPageSize()) return false;  // multipage Attrs - not thread safe
+  if (subq->NumOfObj() > subq->GetPageSize()) return false;  // multipage Attrs - not thread safe
   // below assert doesn't take into account lazy field
   // NoMaterialized() tells how many rows in lazy mode are materialized
-  DEBUG_ASSERT(subq->NoObj() == subq->NoMaterialized());
+  DEBUG_ASSERT(subq->NumOfObj() == subq->NoMaterialized());
   PrepareAndFillCache();
   return true;
 }

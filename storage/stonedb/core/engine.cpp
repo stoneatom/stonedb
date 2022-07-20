@@ -1070,7 +1070,7 @@ void Engine::PrepareAlterTable(const std::string &table_path, std::vector<Field 
   HandleDeferredJobs();
 
   auto tab = current_tx->GetTableByPath(table_path);
-  RCTable::Alter(table_path, new_cols, old_cols, tab->NoObj());
+  RCTable::Alter(table_path, new_cols, old_cols, tab->NumOfObj());
   cache.ReleaseTable(tab->GetID());
   UnRegisterTable(table_path);
 }

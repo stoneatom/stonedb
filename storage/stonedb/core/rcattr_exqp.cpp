@@ -1062,15 +1062,15 @@ uint64_t RCAttr::ApproxAnswerSize(Descriptor &d) {
   static MIIterator const mit(NULL, pss);
   LoadPackInfo();
 
-  if (d.op == common::Operator::O_NOT_NULL) return NoObj() - NumOfNulls();
+  if (d.op == common::Operator::O_NOT_NULL) return NumOfObj() - NumOfNulls();
   if (d.op == common::Operator::O_IS_NULL) return NumOfNulls();
 
   if (d.val1.vc && !d.val1.vc->IsConst()) {
     uint64_t no_distinct = ApproxDistinctVals(false, NULL, NULL, false);
     if (no_distinct == 0) no_distinct = 1;
-    if (d.op == common::Operator::O_EQ) return NoObj() / no_distinct;
-    if (d.op == common::Operator::O_NOT_EQ) return NoObj() - (NoObj() / no_distinct);
-    return (NoObj() - NumOfNulls()) / 2;  // default
+    if (d.op == common::Operator::O_EQ) return NumOfObj() / no_distinct;
+    if (d.op == common::Operator::O_NOT_EQ) return NumOfObj() - (NumOfObj() / no_distinct);
+    return (NumOfObj() - NumOfNulls()) / 2;  // default
   }
 
   if (d.op == common::Operator::O_BETWEEN && d.val1.vc->IsConst() && d.val2.vc->IsConst() &&
@@ -1082,7 +1082,7 @@ uint64_t RCAttr::ApproxAnswerSize(Descriptor &d) {
       int64_t span1,
           span2;  // numerical case: approximate number of rows in each pack
       if (val1 == val2) {
-        res = (NoObj() - NumOfNulls()) / 2;  // return default; up func will make Prior other types
+        res = (NumOfObj() - NumOfNulls()) / 2;  // return default; up func will make Prior other types
         return int64_t(res);
       }
       for (uint b = 0; b < NoPack(); b++) {
@@ -1124,7 +1124,7 @@ uint64_t RCAttr::ApproxAnswerSize(Descriptor &d) {
     return int64_t(res);
   }
 
-  return (NoObj() - NumOfNulls()) / 2;  // default
+  return (NumOfObj() - NumOfNulls()) / 2;  // default
 }
 
 size_t RCAttr::MaxStringSize(Filter *f)  // maximal byte string length in column

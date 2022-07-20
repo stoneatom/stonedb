@@ -30,17 +30,17 @@ void AggregatorStat64::PutAggregatedValue(unsigned char *buf, int64_t v, int64_t
   // http://en.wikipedia.org/wiki/Standard_deviation
   stats_updated = false;
   if (v != common::NULL_VALUE_64) {
-    if (NoObj(buf) == 0) {
-      NoObj(buf) += 1;
+    if (NumOfObj(buf) == 0) {
+      NumOfObj(buf) += 1;
       A(buf) = double(v);  // m
       Q(buf) = 0;          // s
       factor--;
     }
     for (int i = 0; i < factor; i++) {
-      NoObj(buf) += 1;
+      NumOfObj(buf) += 1;
       double vd = double(v);
       double A_prev = A(buf);
-      A(buf) = A_prev + (vd - A_prev) / (double)NoObj(buf);
+      A(buf) = A_prev + (vd - A_prev) / (double)NumOfObj(buf);
       Q(buf) += (vd - A_prev) * (vd - A(buf));
     }
   }
@@ -51,30 +51,30 @@ void AggregatorStatD::PutAggregatedValue(unsigned char *buf, int64_t v, int64_t 
   // http://en.wikipedia.org/wiki/Standard_deviation
   stats_updated = false;
   if (v != common::NULL_VALUE_64) {
-    if (NoObj(buf) == 0) {
-      NoObj(buf) += 1;
+    if (NumOfObj(buf) == 0) {
+      NumOfObj(buf) += 1;
       A(buf) = *((double *)(&v));  // m
       Q(buf) = 0;                  // s
       factor--;
     }
     for (int i = 0; i < factor; i++) {
-      NoObj(buf) += 1;
+      NumOfObj(buf) += 1;
       double vd = *((double *)(&v));
       double A_prev = A(buf);
-      A(buf) = A_prev + (vd - A_prev) / (double)NoObj(buf);
+      A(buf) = A_prev + (vd - A_prev) / (double)NumOfObj(buf);
       Q(buf) += (vd - A_prev) * (vd - A(buf));
     }
   }
 }
 
 void AggregatorStat::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (NoObj(src_buf) == 0) return;
+  if (NumOfObj(src_buf) == 0) return;
   stats_updated = false;
-  if (NoObj(buf) == 0)
+  if (NumOfObj(buf) == 0)
     std::memcpy(buf, src_buf, BufferByteSize());
   else {
-    int64_t n = NoObj(buf);
-    int64_t m = NoObj(src_buf);
+    int64_t n = NumOfObj(buf);
+    int64_t m = NumOfObj(src_buf);
     // n*var(X) = Q(X)
     // var(X+Y) = (n*var(X) + m*var(Y)) / (n+m) + nm / (n+m)^2 * (avg(X) -
     // avg(Y))^2
@@ -82,7 +82,7 @@ void AggregatorStat::Merge(unsigned char *buf, unsigned char *src_buf) {
 
     // avg(X+Y) = (avg(X)*n + avg(Y)*m) / (n+m)
     A(buf) = (A(buf) * n + A(src_buf) * m) / double(n + m);
-    NoObj(buf) = n + m;
+    NumOfObj(buf) = n + m;
   }
 }
 
@@ -97,52 +97,52 @@ void AggregatorStatD::PutAggregatedValue(unsigned char *buf, const types::BStrin
 }
 
 int64_t AggregatorVarPop64::GetValue64(unsigned char *buf) {
-  if (NoObj(buf) < 1) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 1) return common::NULL_VALUE_64;
   double vd = VarPop(buf) / prec_factor / double(prec_factor);
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorVarSamp64::GetValue64(unsigned char *buf) {
-  if (NoObj(buf) < 2) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 2) return common::NULL_VALUE_64;
   double vd = VarSamp(buf) / prec_factor / double(prec_factor);
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorStdPop64::GetValue64(unsigned char *buf) {
-  if (NoObj(buf) < 1) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 1) return common::NULL_VALUE_64;
   double vd = sqrt(VarPop(buf)) / prec_factor;
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorStdSamp64::GetValue64(unsigned char *buf) {
-  if (NoObj(buf) < 2) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 2) return common::NULL_VALUE_64;
   double vd = sqrt(VarSamp(buf)) / prec_factor;
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorVarPopD::GetValue64(unsigned char *buf) {
-  if (NoObj(buf) < 1) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 1) return common::NULL_VALUE_64;
   double vd = VarPop(buf);
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorVarSampD::GetValue64(unsigned char *buf) {
-  if (NoObj(buf) < 2) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 2) return common::NULL_VALUE_64;
   double vd = VarSamp(buf);
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorStdPopD::GetValue64(unsigned char *buf) {
-  if (NoObj(buf) < 1) return common::NULL_VALUE_64;
-  // double vd = Q(buf) / NoObj(buf);
+  if (NumOfObj(buf) < 1) return common::NULL_VALUE_64;
+  // double vd = Q(buf) / NumOfObj(buf);
   // vd = sqrt(vd);
   double vd = sqrt(VarPop(buf));
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorStdSampD::GetValue64(unsigned char *buf) {
-  if (NoObj(buf) < 2) return common::NULL_VALUE_64;
-  // double vd = Q(buf) / (NoObj(buf) - 1);
+  if (NumOfObj(buf) < 2) return common::NULL_VALUE_64;
+  // double vd = Q(buf) / (NumOfObj(buf) - 1);
   // vd = sqrt(vd);
   double vd = sqrt(VarSamp(buf));
   return *(int64_t *)(&vd);

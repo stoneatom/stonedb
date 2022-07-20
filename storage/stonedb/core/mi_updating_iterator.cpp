@@ -134,7 +134,7 @@ Filter *MIUpdatingIterator::NewPackFilter(int pack)  // create a new filter for 
 {
   DEBUG_ASSERT(one_filter_it);
   Filter *f_old = mind->GetFilter(one_filter_dim);
-  Filter *new_f = new Filter(f_old->NoObj(), pack_power);
+  Filter *new_f = new Filter(f_old->NumOfObj(), pack_power);
   new_f->Or(*f_old, pack);
   return new_f;
 }
