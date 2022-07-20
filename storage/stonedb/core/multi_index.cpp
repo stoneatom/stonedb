@@ -327,7 +327,7 @@ int MultiIndex::MaxNoPacks(int dim)  // maximal (upper approx.) number of differ
   int max_packs = 0;
   Filter *f = group_for_dim[dim]->GetFilter(dim);
   if (f) {
-    for (size_t p = 0; p < f->NoBlocks(); p++)
+    for (size_t p = 0; p < f->NumOfBlocks(); p++)
       if (!f->IsEmpty(p)) max_packs++;
   } else {
     max_packs = int((dim_size[dim]) >> p_power) + 1;

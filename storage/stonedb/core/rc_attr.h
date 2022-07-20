@@ -203,7 +203,7 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   uint32_t Nopackpower() const { return pss; }
   uint64_t NumOfObj() const { return hdr.nr; }
   uint64_t NumOfNulls() const { return hdr.nn; }
-  uint NoPack() const { return m_idx.size(); }
+  uint NumOfPack() const { return m_idx.size(); }
   int64_t GetMinInt64() const { return hdr.min; }
   void SetMinInt64(int64_t a_imin) { hdr.min = a_imin; }
   int64_t GetMaxInt64() const { return hdr.max; }

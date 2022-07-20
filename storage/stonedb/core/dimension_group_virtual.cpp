@@ -93,7 +93,7 @@ DimensionGroup::Iterator *DimensionGroupVirtual::NewIterator(DimensionVector &di
 DimensionGroup::Iterator *DimensionGroupVirtual::NewOrderedIterator(DimensionVector &dim, PackOrderer *po,
                                                                     uint32_t power) {
   if (pack_pos == NULL) {  // not used yet - create
-    int no_packs = f->NoBlocks();
+    int no_packs = f->NumOfBlocks();
     pack_pos = new int64_t[no_packs];
     int64_t cur_pack_start = 0;
     for (int i = 0; i < no_packs; i++) {

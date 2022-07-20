@@ -621,7 +621,7 @@ int StonedbHandler::info(uint flag) {
         tab = current_tx->GetTableByPath(m_table_name);
       } else
         tab = rceng->GetTableRD(m_table_name);
-      stats.records = (ha_rows)tab->NoValues();
+      stats.records = (ha_rows)tab->NumOfValues();
       stats.data_file_length = 0;
       stats.mean_rec_length = 0;
       if (stats.records > 0) {

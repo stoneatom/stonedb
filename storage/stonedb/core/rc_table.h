@@ -98,7 +98,7 @@ class RCTable final : public JustATable {
 
   // Data access & information
   int64_t NumOfObj() override;
-  int64_t NoValues() { return NumOfObj(); }
+  int64_t NumOfValues() { return NumOfObj(); }
 
   void GetTable_S(types::BString &s, int64_t obj, int attr) override;
   int64_t GetTable64(int64_t obj, int attr) override;  // value from table in 1-level numerical form

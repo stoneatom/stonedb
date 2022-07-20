@@ -696,7 +696,7 @@ bool ParallelHashJoiner::CreateMatchingTasks(MIIterator &mit, int64_t rows_count
     for (int index = 0; index < mind->NoDimensions(); index++) {
       if (matched_dims_[index]) {
         Filter *filter = mind->GetFilter(index);
-        if (filter) packs_count = filter->NoBlocks();
+        if (filter) packs_count = filter->NumOfBlocks();
       }
     }
 
