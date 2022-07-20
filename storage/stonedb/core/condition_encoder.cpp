@@ -177,7 +177,7 @@ void ConditionEncoder::TransformWithRespectToNulls() {
   bool nulls_possible = (additional_nulls || desc->attr.vc->IsNullsPossible());
 
   if (desc->op == common::Operator::O_IS_NULL) {
-    if (!nulls_possible || attr->NoObj() == 0)
+    if (!nulls_possible || attr->NumOfObj() == 0)
       desc->op = common::Operator::O_FALSE;
     else if (nulls_only)
       desc->op = common::Operator::O_TRUE;

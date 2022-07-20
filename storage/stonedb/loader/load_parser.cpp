@@ -34,7 +34,7 @@ LoadParser::LoadParser(RCAttrPtrVect_t &attrs, const system::IOParameters &iop, 
       ioparam(iop),
       pack_size(packsize),
       rejecter(packsize, iop.GetRejectFile(), iop.GetAbortOnCount(), iop.GetAbortOnThreshold()),
-      no_obj(attrs[0]->NoObj()) {
+      no_obj(attrs[0]->NumOfObj()) {
   std::vector<uchar> columns_collations;
   for (auto &it : attrs) columns_collations.push_back(it->GetCollation().collation->number);
 

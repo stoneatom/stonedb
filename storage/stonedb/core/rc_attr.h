@@ -201,7 +201,7 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   // ratio); may be slightly approximated
   int64_t CompressedSize() const { return hdr.compressed_size; };
   uint32_t Nopackpower() const { return pss; }
-  uint64_t NoObj() const { return hdr.nr; }
+  uint64_t NumOfObj() const { return hdr.nr; }
   uint64_t NumOfNulls() const { return hdr.nn; }
   uint NoPack() const { return m_idx.size(); }
   int64_t GetMinInt64() const { return hdr.min; }
