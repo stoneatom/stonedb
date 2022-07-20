@@ -3,12 +3,9 @@ id: DML-statements
 sidebar_position: 5.3
 ---
 
-# DML Statements
+# DML语句
 
-This topic describes the DML statements supported by StoneDB.
-
-In this topic, table **t_test** created by executing the following statement is used in all code examples. 
-
+StoneDB只支持以下DML操作，其它没有说明的表示不支持。
 ```sql
 CREATE TABLE t_test(
   id INT NOT NULL AUTO_INCREMENT,
@@ -20,24 +17,21 @@ CREATE TABLE t_test(
   PRIMARY KEY (`id`)
 ) engine=STONEDB;
 ```
-
-## INSERT
+## insert
 ```sql
 insert into t_test values(1,'jack','rose','0',58,1);
 ```
-## UPDATE
+## update
 ```sql
 update t_test set score=200 where id=1;
 ```
-## INSERT INTO ... SELECT
+## insert into select
 ```sql
 create table t_test2 like t_test;
 insert into t_test2 select * from t_test;
 ```
-## INSERT INTO ... ON DUPLICATE KEY UPDATE
+## insert into on duplicate key update
 ```sql
 insert into t_test1 values(1,'Bond','Jason','1',47,10) on duplicate key update last_name='James';
 ```
-:::info
-The logic of this syntax is to insert a row of data. The UPDATE statement is executed only if a primary key constraint or unique constraint conflict occurs.
-:::
+注：语义的逻辑是插入一行数据，如果碰到主键约束或者唯一约束冲突，就执行后面的更新语句。
