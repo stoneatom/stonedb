@@ -1,5 +1,5 @@
 ---
-id: supported-servers-and-oss
+id: supported-servers-and-OSs
 sidebar_position: 2.1
 ---
 
