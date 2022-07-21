@@ -5,7 +5,7 @@ sidebar_position: 1.2
 
 # 整体架构
 
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/22447227/1657027052362-321b55ab-60f9-4796-aaa7-651d2d3e555c.png#clientId=ue6882c22-0057-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=674&id=u4c1675ef&margin=%5Bobject%20Object%5D&name=image.png&originHeight=588&originWidth=634&originalType=binary&ratio=1&rotation=0&showTitle=false&size=136249&status=done&style=none&taskId=u1fb39fce-bd39-4e47-8e1e-a56cf423cb3&title=&width=727)
+![StoneDB_V1.0](stonedb-V1-zhCN.png)
 
 StoneDB是一个HTAP数据库，其存储引擎stonedb是一个高性能、高压缩比的列式存储引擎，适用于OLAP应用。和其他的存储引擎如InnoDB、MyISAM一样，stonedb提供了存储引擎所具有的一切功能。从架构上可以看出，逻辑上分为应用层、服务层和存储引擎层。在StoneDB中，一个SQL从发起到最终返回结果，会经历每个逻辑层的不同组件。
 # 应用层
