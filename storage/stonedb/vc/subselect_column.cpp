@@ -298,7 +298,7 @@ common::Tribool SubSelectColumn::ContainsStringImpl(const core::MIIterator &mit,
   return ContainsImpl(mit, val);
 }
 
-int64_t SubSelectColumn::NoValuesImpl(core::MIIterator const &mit) {
+int64_t SubSelectColumn::NumOfValuesImpl(core::MIIterator const &mit) {
   PrepareSubqResult(mit, false);
   if (!subq->IsMaterialized()) subq->Materialize();
   return subq->NumOfObj();

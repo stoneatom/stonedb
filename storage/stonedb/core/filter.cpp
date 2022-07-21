@@ -94,7 +94,7 @@ Filter::Filter(const Filter &filter)
   Filter &tmp_filter = const_cast<Filter &>(filter);
   no_power = filter.no_power;
   pack_def = 1 << no_power;
-  no_blocks = filter.NoBlocks();
+  no_blocks = filter.NumOfBlocks();
   no_of_bits_in_last_block = tmp_filter.NoAddBits();
   blocks = new Block *[no_blocks];
   ConstructPool();
@@ -386,7 +386,7 @@ void Filter::ResetBetween(size_t b1, int n1, size_t b2, int n2) {
 }
 
 void Filter::Reset(Filter &f2) {
-  auto mb = std::min(f2.NoBlocks(), NoBlocks());
+  auto mb = std::min(f2.NumOfBlocks(), NumOfBlocks());
   for (size_t b = 0; b < mb; b++) {
     if (f2.block_status[b] == FB_FULL)
       ResetBetween(b, 0, b, f2.block_last_one[b]);
@@ -564,7 +564,7 @@ bool Filter::IsEqual(Filter &sec) {
 }
 
 void Filter::And(Filter &f2) {
-  auto mb = std::min(f2.NoBlocks(), NoBlocks());
+  auto mb = std::min(f2.NumOfBlocks(), NumOfBlocks());
   for (size_t b = 0; b < mb; b++) {
     if (f2.block_status[b] == FB_EMPTY)
       ResetBlock(b);
@@ -588,7 +588,7 @@ void Filter::And(Filter &f2) {
 }
 
 void Filter::Or(Filter &f2, int pack) {
-  auto mb = std::min(f2.NoBlocks(), NoBlocks());
+  auto mb = std::min(f2.NumOfBlocks(), NumOfBlocks());
   size_t b = (pack == -1 ? 0 : pack);
   for (; b < mb; b++) {
     if (f2.block_status[b] == FB_FULL)
@@ -634,7 +634,7 @@ void Filter::Not() {
 
 void Filter::AndNot(Filter &f2)  // reset all positions which are set in f2
 {
-  auto mb = std::min(f2.NoBlocks(), NoBlocks());
+  auto mb = std::min(f2.NumOfBlocks(), NumOfBlocks());
   for (size_t b = 0; b < mb; b++) {
     if (f2.block_status[b] == FB_FULL)
       ResetBetween(b, 0, b, f2.block_last_one[b]);

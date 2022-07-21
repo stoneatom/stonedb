@@ -141,7 +141,7 @@ double ParameterizedFilter::EvaluateConditionNonJoinWeight(Descriptor &d, bool f
     if (d.op == common::Operator::O_IN || d.op == common::Operator::O_NOT_IN) {
       vcolumn::MultiValColumn *iscol = static_cast<vcolumn::MultiValColumn *>(d.val1.vc);
       MIIterator mitor(NULL, d.table->Getpackpower());
-      no_in_values = iscol->NoValues(mitor);
+      no_in_values = iscol->NumOfValues(mitor);
     }
     eval = log(1 + double(answer_size));  // approximate size of the result
     if (no_in_values > 1)

@@ -911,7 +911,7 @@ void Descriptor::UpdateVCStatistics()  // Apply all the information from
   if (op == common::Operator::O_IN && val1.vc->IsConst()) {
     vcolumn::MultiValColumn *mv_vc = static_cast<vcolumn::MultiValColumn *>(val1.vc);
     MIDummyIterator mit(1);
-    int64_t v = mv_vc->NoValues(mit);
+    int64_t v = mv_vc->NumOfValues(mit);
     attr.vc->SetLocalDistVals(v);
   }
   // TODO: all other info, e.g.:
@@ -1270,7 +1270,7 @@ bool Descriptor::CheckSetCondition_UTF(const MIIterator &mit, common::Operator o
       break;
     case common::Operator::O_NOT_IN:
     case common::Operator::O_NOT_EQ_ALL: {
-      if ((s1.IsNull() && mvc->NoValues(mit) != 0)) {
+      if ((s1.IsNull() && mvc->NumOfValues(mit) != 0)) {
         result = false;
         break;
       }
@@ -1293,7 +1293,7 @@ bool Descriptor::CheckSetCondition_UTF(const MIIterator &mit, common::Operator o
     case common::Operator::O_LESS_EQ_ALL:
       Query::UnmarkAllAny(op);
       aggr = mvc->GetSetMin(mit);
-      if (mvc->NoValues(mit) == 0)
+      if (mvc->NumOfValues(mit) == 0)
         result = true;  // op ALL (empty_set) is TRUE
       else if (s1.IsNull() || aggr.IsNull() || mvc->ContainsNull(mit) ||
                !CollationStrCmp(collation, s1, aggr.ToBString(), op))
@@ -1303,7 +1303,7 @@ bool Descriptor::CheckSetCondition_UTF(const MIIterator &mit, common::Operator o
     case common::Operator::O_MORE_EQ_ANY:
       Query::UnmarkAllAny(op);
       aggr = mvc->GetSetMin(mit);
-      if (mvc->NoValues(mit) == 0)
+      if (mvc->NumOfValues(mit) == 0)
         result = false;  // op ANY (empty_set) is FALSE
       else if (s1.IsNull() || aggr.IsNull() || !CollationStrCmp(collation, s1, aggr.ToBString(), op))
         result = false;
@@ -1312,7 +1312,7 @@ bool Descriptor::CheckSetCondition_UTF(const MIIterator &mit, common::Operator o
     case common::Operator::O_LESS_EQ_ANY:
       Query::UnmarkAllAny(op);
       aggr = mvc->GetSetMax(mit);
-      if (mvc->NoValues(mit) == 0)
+      if (mvc->NumOfValues(mit) == 0)
         result = false;  // op ANY (empty_set) is FALSE
       else if (s1.IsNull() || aggr.IsNull() || !CollationStrCmp(collation, s1, aggr.ToBString(), op))
         result = false;
@@ -1321,7 +1321,7 @@ bool Descriptor::CheckSetCondition_UTF(const MIIterator &mit, common::Operator o
     case common::Operator::O_MORE_EQ_ALL:
       Query::UnmarkAllAny(op);
       aggr = mvc->GetSetMax(mit);
-      if (mvc->NoValues(mit) == 0)
+      if (mvc->NumOfValues(mit) == 0)
         result = true;  // op ALL (empty_set) is TRUE
       else if (s1.IsNull() || aggr.IsNull() || mvc->ContainsNull(mit) ||
                !CollationStrCmp(collation, s1, aggr.ToBString(), op))
@@ -1342,7 +1342,7 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
     DEBUG_ASSERT(op == common::Operator::O_IN || op == common::Operator::O_NOT_IN);
     if (attr.vc->IsNull(mit)) {
       if (op == common::Operator::O_IN) return false;
-      if (mvc->NoValues(mit) != 0) return false;
+      if (mvc->NumOfValues(mit) != 0) return false;
       return true;
     }
     common::Tribool res;
@@ -1376,7 +1376,7 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
       break;
     case common::Operator::O_NOT_IN:
     case common::Operator::O_NOT_EQ_ALL: {
-      if ((val.IsNull() && mvc->NoValues(mit) != 0)) {
+      if ((val.IsNull() && mvc->NumOfValues(mit) != 0)) {
         result = false;
         break;
       }
@@ -1398,7 +1398,7 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
     case common::Operator::O_LESS_EQ_ALL:
       Query::UnmarkAllAny(op);
       aggr = mvc->GetSetMin(mit);
-      if (mvc->NoValues(mit) == 0)
+      if (mvc->NumOfValues(mit) == 0)
         result = true;  // op ALL (empty_set) is TRUE
       else if (val.IsNull() || aggr.IsNull() || mvc->ContainsNull(mit) ||
                !types::RCValueObject::compare(val, aggr, op, '\\'))
@@ -1408,7 +1408,7 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
     case common::Operator::O_MORE_EQ_ANY:
       Query::UnmarkAllAny(op);
       aggr = mvc->GetSetMin(mit);
-      if (mvc->NoValues(mit) == 0)
+      if (mvc->NumOfValues(mit) == 0)
         result = false;  // op ANY (empty_set) is FALSE
       else if (val.IsNull() || aggr.IsNull() || !types::RCValueObject::compare(val, aggr, op, '\\'))
         result = false;
@@ -1417,7 +1417,7 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
     case common::Operator::O_LESS_EQ_ANY:
       Query::UnmarkAllAny(op);
       aggr = mvc->GetSetMax(mit);
-      if (mvc->NoValues(mit) == 0)
+      if (mvc->NumOfValues(mit) == 0)
         result = false;  // op ANY (empty_set) is FALSE
       else if (val.IsNull() || aggr.IsNull() || !types::RCValueObject::compare(val, aggr, op, '\\'))
         result = false;
@@ -1426,7 +1426,7 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
     case common::Operator::O_MORE_EQ_ALL:
       Query::UnmarkAllAny(op);
       aggr = mvc->GetSetMax(mit);
-      if (mvc->NoValues(mit) == 0)
+      if (mvc->NumOfValues(mit) == 0)
         result = true;  // op ALL (empty_set) is TRUE
       else if (val.IsNull() || aggr.IsNull() || mvc->ContainsNull(mit) ||
                !types::RCValueObject::compare(val, aggr, op, '\\'))
@@ -1539,7 +1539,7 @@ common::Tribool Descriptor::RoughCheckSetSubSelectCondition(const MIIterator &mi
       break;
     // case common::Operator::O_NOT_IN:
     // case common::Operator::O_NOT_EQ_ALL: {
-    //	if((val.IsNull() && mvc->NoValues(mit) != 0)) {
+    //	if((val.IsNull() && mvc->NumOfValues(mit) != 0)) {
     //		result = false;
     //		break;
     //	}

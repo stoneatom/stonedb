@@ -146,7 +146,7 @@ class Filter final : public mm::TraceableObject {
   int64_t NoOnesBetween(int64_t n1,
                         int64_t n2);  // no of 1 between n1 and n2, inclusively
   int64_t NumOfObj() const;              // number of objects (table size)
-  size_t NoBlocks() const { return no_blocks; }
+  size_t NumOfBlocks() const { return no_blocks; }
   int NoAddBits() const;
   int DensityWeight();  // = 65537 for empty filter or a filter with only one
                         // nonempty block.
@@ -476,6 +476,7 @@ class FilterOnesIteratorOrdered : public FilterOnesIterator {
  private:
   bool IteratorBpp() override;
 };
+
 }  // namespace core
 }  // namespace stonedb
 
