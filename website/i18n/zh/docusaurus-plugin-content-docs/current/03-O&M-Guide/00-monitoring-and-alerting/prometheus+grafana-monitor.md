@@ -59,15 +59,15 @@ docker run -d  --restart=always --name=prometheus  -p 9090:9090  \
 --storage.tsdb.path=/prometheus \
 --web.enable-admin-api \
 --web.enable-lifecycle \
---web.external-url='http://A机器IP:19090'  \
+--web.external-url='http://A机器IP:9090'  \
 --storage.tsdb.retention.time=30d
 
 ```
-查看A机器IP:9090 即部署成功，不成功请使用用docker logs 容器ID查看错误日志针对百度google
+查看A机器IP:9090 即部署成功，不成功请使用docker logs 容器ID查看错误日志进行排查
 ![image.png](Prometheus.png)
 ## 第二步：部署exporter
 以MySQL和操作系统监控为示例：
-建议使用supervisord进程控制来控制监控端的exporter行为。
+建议使用supervisord进程来控制监控端的exporter服务行为。
 supervisord使用方法参考：[https://www.jianshu.com/p/0b9054b33db3](https://www.jianshu.com/p/0b9054b33db3)
 ### 部署node_exporter
 下载解压node_exporter
@@ -104,7 +104,7 @@ stdout_logfile = /var/log/supervisor/node_exporter.log
 systemctl restart supervisord
 ```
 ### 部署mysqld_exporter
-登录机器mysql数据库设置mysql监控账号
+登录机器B mysql数据库设置mysql监控账号
 ```shell
 GRANT REPLICATION CLIENT, PROCESS ON . TO 'exporter'@'localhost' identified by 'exporter@123';
 GRANT SELECT ON performance_schema.* TO 'exporter'@'localhost';
@@ -189,13 +189,13 @@ scrape_configs:
     static_configs:
       - targets: ["B机器IP:9100"]
         labels:
-          instance: B机器_atomstore
+          instance: B机器_stonedb
 
   - job_name: "mysqld_exporter"
     static_configs:
       - targets: ["B机器IP:9104"]
         labels:
-          instance: B机器_atomstore
+          instance: B机器_stonedb
 ```
 添加mysqld_exporter 和node_exporter后，docker需要重启容器加载下配置文件。
 ```shell
@@ -241,7 +241,7 @@ docker run -d  --restart=always --name=grafana  -p 13000:3000  \
 点击底部Save & test出现Data source is working即可![image.png](Prometheus_save.png)
 ### 配置Grafana 监控图表
 通过import 导入官方图表，也可自定义添加自己需要的图表，官方监控图表查找地址：[https://grafana.com/grafana/dashboards/](https://grafana.com/grafana/dashboards/)
-本文展示node 图表编号为 11074
+本文展示node_exporter图表编号为 11074
 和mysql 图表编号为 11323
 ![image.png](Grafana_import1.png)
 ![image.png](Grafana_import2.png)
