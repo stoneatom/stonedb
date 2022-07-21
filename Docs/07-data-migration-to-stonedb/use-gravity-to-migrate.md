@@ -13,7 +13,7 @@ It is designed to be a customizable data migration tool that:
 - Supports multiple data sources and destinations.
 - Supports Kubernetes-based replication clusters.
 
-*TODO*
+![Gravity](./Gravity.png)
 
 For more information about Gravity on GitHub, visit [https://github.com/moiot/gravity](https://github.com/moiot/gravity).
 
@@ -143,8 +143,8 @@ The following are two screenshot examples of the Grafana monitoring dashboard. F
 
 **Example 1:**
 
-*image todo*
+![example-1](./example-1.png)
 
 **Example 2:**
 
-*image todo*
+![example-2](./example-2.png)
