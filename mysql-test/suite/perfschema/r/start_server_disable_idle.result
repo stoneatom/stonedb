@@ -1,10 +1,12 @@
 show databases;
 Database
 information_schema
+cache
 mtr
 mysql
 performance_schema
 sys
+sys_stonedb
 test
 select count(*) from performance_schema.performance_timers;
 count(*)
