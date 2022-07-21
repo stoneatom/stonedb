@@ -115,6 +115,7 @@ event_type NOT IN ('ONE TIME','RECURRING') or
 status NOT IN ('ENABLED','DISABLED','SLAVESIDE_DISABLED') or
 on_completion NOT IN ('PRESERVE','NOT PRESERVE');
 event_catalog	event_name	event_body	event_type	event_type	status	on_completion
+def	daily_event	SQL	RECURRING	RECURRING	ENABLED	NOT PRESERVE
 ########################################################################
 # Testcases 3.2.1.3-3.2.1.5 + 3.2.1.8-3.2.1.12: INSERT/UPDATE/DELETE and
 #           DDL on INFORMATION_SCHEMA tables are not supported

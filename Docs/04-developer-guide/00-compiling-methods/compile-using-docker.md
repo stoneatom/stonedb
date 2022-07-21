@@ -8,12 +8,17 @@ sidebar_position: 5.15
 Compiling StoneDB on a physical server requires installation of third-party repositories, which is complicated. In addition, if the OS in your environment is Fedora or Ubuntu, you also need to install many dependencies. We recommend that you compile StoneDB in a Docker container. After StoneDB is compiled, you can directly run StoneDB in the container or copy the compilation files to your environment.
 ## Prerequisites
 Docker has been installed. For information about how to install Docker, visit [https://docs.docker.com/engine/install/ubuntu/](https://docs.docker.com/engine/install/ubuntu/).
-## Use a Dockerfile in a compilation environment
-### Step 1. Download the source code of StoneDB and docker.zip
-Download file **docker.zip**, save the file to the root directory of the source code of StoneDB, and then decompress the file.
+## Procedure
+### Step 1. Download the source code of StoneDB and start the docker_buildenv image
+The **docker_buildenv** image can be obtained by using two ways:
 
-[docker.zip](https://static.stoneatom.com/stonedb_docker_220706.zip)
+- Pull it from Docker Hub
+```bash
+docker pull stoneatom/stonedb_buildenv
+```
 
+- Run the docker build command to create the Docker image
+1. Download the [docker.zip](https://static.stoneatom.com/stonedb_docker_220706.zip) file, save it to the root directory of the source code of StoneDB, and then decompress it. 
 ```bash
 [root@testOS src]# cd /home/src/
 [root@testOS src]# git clone https://github.com/stoneatom/stonedb.git
@@ -24,24 +29,27 @@ remote: Total 84350 (delta 19707), reused 83550 (delta 19707), pack-reused 0
 Receiving objects: 100% (84350/84350), 402.19 MiB | 13.50 MiB/s, done.
 Resolving deltas: 100% (19707/19707), done.
 
-[root@testOS src]# cd atomstore2022/
+[root@testOS src]# cd stonedb
 
 #Use an FTP tool to upload 'docker.zip' to this directory for decompression.
-[root@testOS atomstore2022]# unzip docker.zip
-[root@testOS atomstore2022]# tree docker
-docker
+[root@testOS stonedb]# unzip docker_buildenv.zip
+[root@testOS stonedb]# tree docker_buildenv
+docker_buildenv
 ├── cmake.tar.gz
 ├── docker_build.sh
 ├── Dockerfile
+├── README.md
 ├── stonedb-boost1.66.tar.gz
-├── stonedb-gcc-rocksdb.tar.gz
+├── stonedb-gcc-rocksdb6.12.6.tar.gz
 └── stonedb-marisa.tar.gz
 
-0 directories, 6 files
+
+0 directories, 7 files
 ```
-### Step 2. Build a Docker image
+
+2. Build the Docker image.
 ```bash
-[root@testOS atomstore2022]# cd docker
+[root@testOS stonedb]# cd docker
 [root@testOS docker]# chmod u+x docker_build.sh
 # If an image has been created in your environment, you can use the cache. If this is the first image that is to be created in your environment, you must install dependencies. This may take a longer period of time.
 # Run the './docker_build.sh <tag>' command to call the script. <tag> specifies the tag of the image.
@@ -95,10 +103,8 @@ Successfully tagged stonedb_buildenv:v0.1
 Docker build success!you can run it:
         docker run -d -p 23306:3306 -v /home/src:/home/ stonedb_buildenv:v0.1
 
-
-
 ```
-### Step 3. Enter the container and compile StoneDB
+### Step 2. Enter the container and compile StoneDB
 ```bash
 # docker run parameter description
 # -v Directory mounting. Specify the directory on the host first and then the directory in the container.
@@ -113,26 +119,16 @@ CONTAINER ID        IMAGE                   COMMAND             CREATED         
 
 # Enter the Docker container and compile StoneDB.
 [root@testOS docker]# docker exec -it 06f1f385d3b3 bash
-[root@06f1f385d3b3 home]# cd /home/atomstore2022/
-[root@06f1f385d3b3 atomstore2022]# git branch -a
-* 0.4
-  remotes/origin/0.4
-  remotes/origin/0.5
-  remotes/origin/HEAD -> origin/0.4
+[root@06f1f385d3b3 home]# cd /home/stonedb/
+[root@06f1f385d3b3 stonedb]# git branch -a
+* stonedb-5.7
+  remotes/origin/HEAD -> origin/stonedb-5.7
+  remotes/origin/stonedb-5.6
+  remotes/origin/stonedb-5.7
 
-[root@06f1f385d3b3 atomstore2022]# git checkout 0.5
-Branch 0.5 set up to track remote branch 0.5 from origin.
-Switched to a new branch '0.5'
-[root@06f1f385d3b3 atomstore2022]# git branch -a
-  0.4
-* 0.5
-  remotes/origin/0.4
-  remotes/origin/0.5
-  remotes/origin/HEAD -> origin/0.4
-  
-[root@06f1f385d3b3 atomstore2022]# mkdir build
+[root@06f1f385d3b3 stonedb]# mkdir build
 
-[root@06f1f385d3b3 atomstore2022]# cd build/
+[root@06f1f385d3b3 stonedb]# cd build/
 
 [root@06f1f385d3b3 build]# cmake ../ \
 -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -151,7 +147,7 @@ Switched to a new branch '0.5'
 -DDEFAULT_CHARSET=utf8 \
 -DDEFAULT_COLLATION=utf8_general_ci \
 -DDOWNLOAD_BOOST=0 \
--DWITH_BOOST=/usr/local/stonedb-boost/include/
+-DWITH_BOOST=/usr/local/stonedb-boost/
 
 #After the 'cmake' command is completed, run the 'make' and 'make install' commands.
 [root@06f1f385d3b3 build]# make 
@@ -166,7 +162,7 @@ After the `make` commands are successful, you can choose either to compress the 
 [root@06f1f385d3b3 build]# tar -zcPvf /home/stonedb56.tar.gz /stonedb56/
 ```
 ### Directly use StoneDB in the container
-You can refer to [Quick Deployment](../../02-getting-started/quick-deployment.md) or the following code to deploy and use StoneDB in the container.
+You can refer to [Quick Deployment](.../../../../02-getting-started/quick-deployment.md) or the following code to deploy and use StoneDB in the container.
 ```bash
 [root@06f1f385d3b3 build]# cd /stonedb56/install/
 
@@ -195,10 +191,9 @@ drwxr-xr-x.  4 root root   4096 Jun  8 06:16 sql-bench
 -rw-r--r--.  1 root root   5526 Jun  8 03:41 stonedb.cnf
 drwxr-xr-x.  2 root root    136 Jun  8 06:16 support-files
 [root@06f1f385d3b3 install]# ./reinstall.sh
-。
-。
-。
-。
+
+...
+
 # If the following information is returned, StoneDB is started.
 + log_success_msg
 + /etc/redhat-lsb/lsb_log_message success
@@ -230,6 +225,6 @@ Query OK, 0 rows affected (0.00 sec)
 
 mysql> flush privileges;
 Query OK, 0 rows affected (0.00 sec)
-```
 
+```
 After you start StoneDB in the container, you can log in to and use StoneDB or run the `docker run -p <port mapping>` command to connect to StoneDB.
