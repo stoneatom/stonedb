@@ -83,7 +83,7 @@ bin/sysbench --db-driver=mysql --mysql-host=xx.xx.xx.xx --mysql-port=3306 --mysq
 | threads | 测试线程数。 |
 | percentile | 需要统计的百分比，默认值为95%，即请求在95%的情况下的执行时间。 |
 | report-interval | 表示N秒输出一次测试进度报告，0表示关闭测试进度报告输出，仅输出最终的报告结果。 |
-| skip-trx | 是否跳过事务。<br>- 1：跳过<br>- 0：不跳过 |
+| skip-trx | 是否跳过事务。<br> 1：跳过<br> 0：不跳过 |
 | mysql-socket | 本地的实例可以指定socket文件 |
 | create_secondary | 是否创建二级索引，默认true |
 
