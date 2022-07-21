@@ -3,22 +3,23 @@ id: compile-using-docker
 sidebar_position: 5.15
 ---
 
-# Compile StoneDB in a Docker Container
-## Introduction
-Compiling StoneDB on a physical server requires installation of third-party repositories, which is complicated. In addition, if the OS in your environment is Fedora or Ubuntu, you also need to install many dependencies. We recommend that you compile StoneDB in a Docker container. After StoneDB is compiled, you can directly run StoneDB in the container or copy the compilation files to your environment.
-## Prerequisites
-Docker has been installed. For information about how to install Docker, visit [https://docs.docker.com/engine/install/ubuntu/](https://docs.docker.com/engine/install/ubuntu/).
-## Procedure
-### Step 1. Download the source code of StoneDB and start the docker_buildenv image
-The **docker_buildenv** image can be obtained by using two ways:
+# Docker 编译环境搭建和使用
+## 环境简介
+由于编译环境搭建第三方库较为繁琐，且Fedora，Ubuntu等环境编译存在大量依赖缺失，需要补充安装依赖，搭建麻烦，所以搭建一个Docker  Centos 编译环境容器，可以通过Docker 容器快速编译StoneDB，解决编译环境搭建繁琐问题，也可以通过Docker 容器编译后直接启动StoneDB进行调试使用。
 
-- Pull it from Docker Hub
+## Docker编译环境搭建使用步骤
+本搭建文档需要提前安装好Docker，Docker 安装请参考Docker官方文档[https://docs.docker.com/engine/install/ubuntu/](https://docs.docker.com/engine/install/ubuntu/)。
+
+### 下载StoneDB源码、启动docker_buildenv 镜像
+docker_buildenv镜像获取有两种方式：
+#### 通过docker hub 获取
 ```bash
 docker pull stoneatom/stonedb_buildenv
 ```
+#### 使用docker build 创建docker 镜像
+##### 下载docker.zip文件，保存到StoneDB源码根目录下解压，可参考以下步骤。
+[docker_buildenv_v1.0.1.zip](https://stoneatom.yuque.com/attachments/yuque/0/2022/zip/26909006/1657765779060-80a9bc71-5205-475f-aaa1-b6b2302853cd.zip?_lake_card=%7B%22src%22%3A%22https%3A%2F%2Fstoneatom.yuque.com%2Fattachments%2Fyuque%2F0%2F2022%2Fzip%2F26909006%2F1657765779060-80a9bc71-5205-475f-aaa1-b6b2302853cd.zip%22%2C%22name%22%3A%22docker_buildenv_v1.0.1.zip%22%2C%22size%22%3A139304521%2C%22type%22%3A%22application%2Fx-zip-compressed%22%2C%22ext%22%3A%22zip%22%2C%22source%22%3A%22%22%2C%22status%22%3A%22done%22%2C%22mode%22%3A%22title%22%2C%22download%22%3Atrue%2C%22taskId%22%3A%22ua1e9f4fc-afd2-4851-8e7a-496ba3b57a2%22%2C%22taskType%22%3A%22upload%22%2C%22__spacing%22%3A%22both%22%2C%22id%22%3A%22hRoda%22%2C%22margin%22%3A%7B%22top%22%3Atrue%2C%22bottom%22%3Atrue%7D%2C%22card%22%3A%22file%22%7D)
 
-- Run the docker build command to create the Docker image
-1. Download the [docker.zip](https://static.stoneatom.com/stonedb_docker_220706.zip) file, save it to the root directory of the source code of StoneDB, and then decompress it. 
 ```bash
 [root@testOS src]# cd /home/src/
 [root@testOS src]# git clone https://github.com/stoneatom/stonedb.git
@@ -31,7 +32,7 @@ Resolving deltas: 100% (19707/19707), done.
 
 [root@testOS src]# cd stonedb
 
-#Use an FTP tool to upload 'docker.zip' to this directory for decompression.
+#使用ftp工具上传docker.zip到本目录下解压
 [root@testOS stonedb]# unzip docker_buildenv.zip
 [root@testOS stonedb]# tree docker_buildenv
 docker_buildenv
@@ -45,15 +46,16 @@ docker_buildenv
 
 
 0 directories, 7 files
-```
 
-2. Build the Docker image.
+```
+##### Docker build
+
 ```bash
 [root@testOS stonedb]# cd docker
 [root@testOS docker]# chmod u+x docker_build.sh
-# If an image has been created in your environment, you can use the cache. If this is the first image that is to be created in your environment, you must install dependencies. This may take a longer period of time.
-# Run the './docker_build.sh <tag>' command to call the script. <tag> specifies the tag of the image.
-# Example './docker_build.sh 0.1'
+#之前环境内build过镜像，使用缓存较快，第一次需要进行镜像依赖安装，会久一点
+#脚本使用方法：./docker_build.sh tag  tag为打的镜像tag号
+#例如：./docker_build.sh 0.1
 [root@testOS docker]# ./docker_build.sh v0.1
 /home/src
 Sending build context to Docker daemon  99.41MB
@@ -103,21 +105,24 @@ Successfully tagged stonedb_buildenv:v0.1
 Docker build success!you can run it:
         docker run -d -p 23306:3306 -v /home/src:/home/ stonedb_buildenv:v0.1
 
+
+
 ```
-### Step 2. Enter the container and compile StoneDB
+
+### 进入容器编译StoneDB
 ```bash
-# docker run parameter description
-# -v Directory mounting. Specify the directory on the host first and then the directory in the container.
-# -p Port mapping. Specify the port on the host first and then the port in the container.
-#    After configuring the port mapping, you can directly start StoneDB in the container. If you do not need the trial, you can skip this parameter.
-# docker run You can refer to the commands used in 'Step 2. Build a Docker image'.
+# docker run 参数说明
+# -v 目录挂载，前面是宿主机目录，后面是容器内目录,宿主机目录为stonedb源码父目录路径，本文档以/home/src路径为示例
+# -p 端口映射，前面是宿主机端口，后面是容器端口,
+#    这里设置端口映射是为了后面容器内可以直接运行试用StoneDB，如果不需要在容器中试用可以忽略该配置
+# docker run 可以参考上面docker build 成功后的参考命令
 [root@testOS docker]# docker run -d -p 23306:3306 -v /home/src:/home/ stonedb_buildenv:v0.1
 06f1f385d3b35c86c4ed324731a13785b2a66f8ef2c3423c9b4711c56de1910f
 [root@testOS docker]# docker ps
 CONTAINER ID        IMAGE                   COMMAND             CREATED             STATUS              PORTS                     NAMES
 06f1f385d3b3        stonedb_buildenv:v0.1   "/usr/sbin/init"    18 seconds ago      Up 17 seconds       0.0.0.0:23306->3306/tcp   confident_tesla
 
-# Enter the Docker container and compile StoneDB.
+#进入Docker 容器内部进行编译StoneDB
 [root@testOS docker]# docker exec -it 06f1f385d3b3 bash
 [root@06f1f385d3b3 home]# cd /home/stonedb/
 [root@06f1f385d3b3 stonedb]# git branch -a
@@ -149,20 +154,21 @@ CONTAINER ID        IMAGE                   COMMAND             CREATED         
 -DDOWNLOAD_BOOST=0 \
 -DWITH_BOOST=/usr/local/stonedb-boost/
 
-#After the 'cmake' command is completed, run the 'make' and 'make install' commands.
+#等待cmake 结束，然后执行make和make install
 [root@06f1f385d3b3 build]# make 
 [root@06f1f385d3b3 build]# make install
 ```
 
-## (Optional) Follow-up operations
-After the `make` commands are successful, you can choose either to compress the compilation files to a TAR file and copy the TAR file from the container or to directly run it in the container.
-### Compress compilation files to a TAR file
+## （可选）后续步骤
+编译make 成功后，可以将编译文件打包成tar拷贝出容器，或者直接在容器中运行。
+### tar打包导出
 ```bash
-# Compress the 'home' folder to a TAR file and mount the TAR file to a directory outside the container.
+#/home目录挂载到容器外，所以直接tar打包到挂载目录即可直接打包到容器外
 [root@06f1f385d3b3 build]# tar -zcPvf /home/stonedb56.tar.gz /stonedb56/
 ```
-### Directly use StoneDB in the container
-You can refer to [Quick Deployment](.../../../../02-getting-started/quick-deployment.md) or the following code to deploy and use StoneDB in the container.
+### 容器中直接运行试用StoneDB
+可以参考：[StoneDB快速部署手册](https://stoneatom.yuque.com/staff-ft8n1u/dghuxr/cumqaz)，
+或者在容器中参考以下方法快速部署进行试用。
 ```bash
 [root@06f1f385d3b3 build]# cd /stonedb56/install/
 
@@ -194,7 +200,7 @@ drwxr-xr-x.  2 root root    136 Jun  8 06:16 support-files
 
 ...
 
-# If the following information is returned, StoneDB is started.
+#出现以下信息即启动成功
 + log_success_msg
 + /etc/redhat-lsb/lsb_log_message success
 /etc/redhat-lsb/lsb_log_message: line 3: /etc/init.d/functions: No such file or directory
@@ -207,10 +213,10 @@ drwxr-xr-x.  2 root root    136 Jun  8 06:16 support-files
 + exit 0
 
 
-# Reset the password of local user 'root'.
+# 修改本地root 密码
 [root@06f1f385d3b3 install]# /stonedb56/install/bin/mysqladmin flush-privileges -u root password "*******"
 Warning: Using a password on the command line interface can be insecure.
-# Create a username and password for remote connection.
+# 创建远程链接账号密码
 [root@06f1f385d3b3 install]# /stonedb56/install/bin/mysql -uroot -p*******
 Warning: Using a password on the command line interface can be insecure.
 Welcome to the MySQL monitor.  Commands end with ; or \g.
@@ -227,4 +233,5 @@ mysql> flush privileges;
 Query OK, 0 rows affected (0.00 sec)
 
 ```
-After you start StoneDB in the container, you can log in to and use StoneDB or run the `docker run -p <port mapping>` command to connect to StoneDB.
+容器内启动StoneDB后，可以在容器内登录使用，也可以通过docker run -p挂载映射的端口进行访问。
+
