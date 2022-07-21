@@ -1052,7 +1052,7 @@ int get_parameter(THD *thd, enum sdb_var_name vn, longlong &result, std::string 
   }
 }
 
-void Engine::RenameTable([[maybe_unused]] Transaction *trans, const std::string &from, const std::string &to,
+void Engine::RenameTable([[maybe_unused]] Transaction *trans_, const std::string &from, const std::string &to,
                          [[maybe_unused]] THD *thd) {
   UnRegisterTable(from);
   auto id = RCTable::GetTableId(from + common::STONEDB_EXT);
@@ -1423,7 +1423,7 @@ void Engine::InsertMemRow(const std::string &table_path, std::shared_ptr<TableSh
   rctable->InsertMemRow(std::move(buf), buf_sz);
 }
 
-int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transaction *trans, TABLE *table,
+int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transaction *trans_, TABLE *table,
                       std::shared_ptr<TableShare> &share) {
   int ret = 0;
   try {
