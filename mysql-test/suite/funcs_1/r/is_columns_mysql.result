@@ -74,7 +74,7 @@ def	mysql	general_log	thread_id	3	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	b
 def	mysql	general_log	user_host	2	NULL	NO	mediumtext	16777215	16777215	NULL	NULL	NULL	utf8	utf8_general_ci	mediumtext			select,insert,update,references		
 def	mysql	gtid_executed	interval_end	3	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)			select,insert,update,references	Last number of interval.	
 def	mysql	gtid_executed	interval_start	2	NULL	NO	bigint	NULL	NULL	19	0	NULL	NULL	NULL	bigint(20)	PRI		select,insert,update,references	First number of interval.	
-def	mysql	gtid_executed	source_uuid	1	NULL	NO	char	36	36	NULL	NULL	NULL	latin1	latin1_swedish_ci	char(36)	PRI		select,insert,update,references	uuid of the source where the transaction was originally executed.	
+def	mysql	gtid_executed	source_uuid	1	NULL	NO	char	36	144	NULL	NULL	NULL	utf8mb4	utf8mb4_general_ci	char(36)	PRI		select,insert,update,references	uuid of the source where the transaction was originally executed.	
 def	mysql	help_category	help_category_id	1	NULL	NO	smallint	NULL	NULL	5	0	NULL	NULL	NULL	smallint(5) unsigned	PRI		select,insert,update,references		
 def	mysql	help_category	name	2	NULL	NO	char	64	192	NULL	NULL	NULL	utf8	utf8_general_ci	char(64)	UNI		select,insert,update,references		
 def	mysql	help_category	parent_category_id	3	NULL	YES	smallint	NULL	NULL	5	0	NULL	NULL	NULL	smallint(5) unsigned			select,insert,update,references		
@@ -105,10 +105,10 @@ def	mysql	innodb_table_stats	sum_of_other_index_sizes	6	NULL	NO	bigint	NULL	NULL
 def	mysql	innodb_table_stats	table_name	2	NULL	NO	varchar	199	597	NULL	NULL	NULL	utf8	utf8_bin	varchar(199)	PRI		select,insert,update,references		
 def	mysql	ndb_binlog_index	deletes	6	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned			select,insert,update,references		
 def	mysql	ndb_binlog_index	epoch	3	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned	PRI		select,insert,update,references		
-def	mysql	ndb_binlog_index	File	2	NULL	NO	varchar	255	255	NULL	NULL	NULL	latin1	latin1_swedish_ci	varchar(255)			select,insert,update,references		
+def	mysql	ndb_binlog_index	File	2	NULL	NO	varchar	255	1020	NULL	NULL	NULL	utf8mb4	utf8mb4_general_ci	varchar(255)			select,insert,update,references		
 def	mysql	ndb_binlog_index	gci	10	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned			select,insert,update,references		
 def	mysql	ndb_binlog_index	inserts	4	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned			select,insert,update,references		
-def	mysql	ndb_binlog_index	next_file	12	NULL	NO	varchar	255	255	NULL	NULL	NULL	latin1	latin1_swedish_ci	varchar(255)			select,insert,update,references		
+def	mysql	ndb_binlog_index	next_file	12	NULL	NO	varchar	255	1020	NULL	NULL	NULL	utf8mb4	utf8mb4_general_ci	varchar(255)			select,insert,update,references		
 def	mysql	ndb_binlog_index	next_position	11	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned			select,insert,update,references		
 def	mysql	ndb_binlog_index	orig_epoch	9	NULL	NO	bigint	NULL	NULL	20	0	NULL	NULL	NULL	bigint(20) unsigned	PRI		select,insert,update,references		
 def	mysql	ndb_binlog_index	orig_server_id	8	NULL	NO	int	NULL	NULL	10	0	NULL	NULL	NULL	int(10) unsigned	PRI		select,insert,update,references		
@@ -308,7 +308,6 @@ COL_CML	DATA_TYPE	CHARACTER_SET_NAME	COLLATION_NAME
 1.0000	longblob	NULL	NULL
 1.0000	mediumblob	NULL	NULL
 1.0000	char	latin1	latin1_swedish_ci
-1.0000	varchar	latin1	latin1_swedish_ci
 1.0000	text	utf8	utf8_bin
 1.0000	mediumtext	utf8	utf8_general_ci
 1.0000	text	utf8	utf8_general_ci
@@ -329,6 +328,8 @@ COL_CML	DATA_TYPE	CHARACTER_SET_NAME	COLLATION_NAME
 3.0000	enum	utf8	utf8_general_ci
 3.0000	set	utf8	utf8_general_ci
 3.0000	varchar	utf8	utf8_general_ci
+4.0000	char	utf8mb4	utf8mb4_general_ci
+4.0000	varchar	utf8mb4	utf8mb4_general_ci
 SELECT DISTINCT
 CHARACTER_OCTET_LENGTH / CHARACTER_MAXIMUM_LENGTH AS COL_CML,
 DATA_TYPE,
@@ -430,7 +431,7 @@ NULL	mysql	general_log	thread_id	bigint	NULL	NULL	NULL	NULL	bigint(21) unsigned
 NULL	mysql	general_log	server_id	int	NULL	NULL	NULL	NULL	int(10) unsigned
 3.0000	mysql	general_log	command_type	varchar	64	192	utf8	utf8_general_ci	varchar(64)
 1.0000	mysql	general_log	argument	mediumblob	16777215	16777215	NULL	NULL	mediumblob
-1.0000	mysql	gtid_executed	source_uuid	char	36	36	latin1	latin1_swedish_ci	char(36)
+4.0000	mysql	gtid_executed	source_uuid	char	36	144	utf8mb4	utf8mb4_general_ci	char(36)
 NULL	mysql	gtid_executed	interval_start	bigint	NULL	NULL	NULL	NULL	bigint(20)
 NULL	mysql	gtid_executed	interval_end	bigint	NULL	NULL	NULL	NULL	bigint(20)
 NULL	mysql	help_category	help_category_id	smallint	NULL	NULL	NULL	NULL	smallint(5) unsigned
@@ -462,7 +463,7 @@ NULL	mysql	innodb_table_stats	n_rows	bigint	NULL	NULL	NULL	NULL	bigint(20) unsig
 NULL	mysql	innodb_table_stats	clustered_index_size	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
 NULL	mysql	innodb_table_stats	sum_of_other_index_sizes	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
 NULL	mysql	ndb_binlog_index	Position	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
-1.0000	mysql	ndb_binlog_index	File	varchar	255	255	latin1	latin1_swedish_ci	varchar(255)
+4.0000	mysql	ndb_binlog_index	File	varchar	255	1020	utf8mb4	utf8mb4_general_ci	varchar(255)
 NULL	mysql	ndb_binlog_index	epoch	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
 NULL	mysql	ndb_binlog_index	inserts	int	NULL	NULL	NULL	NULL	int(10) unsigned
 NULL	mysql	ndb_binlog_index	updates	int	NULL	NULL	NULL	NULL	int(10) unsigned
@@ -472,7 +473,7 @@ NULL	mysql	ndb_binlog_index	orig_server_id	int	NULL	NULL	NULL	NULL	int(10) unsig
 NULL	mysql	ndb_binlog_index	orig_epoch	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
 NULL	mysql	ndb_binlog_index	gci	int	NULL	NULL	NULL	NULL	int(10) unsigned
 NULL	mysql	ndb_binlog_index	next_position	bigint	NULL	NULL	NULL	NULL	bigint(20) unsigned
-1.0000	mysql	ndb_binlog_index	next_file	varchar	255	255	latin1	latin1_swedish_ci	varchar(255)
+4.0000	mysql	ndb_binlog_index	next_file	varchar	255	1020	utf8mb4	utf8mb4_general_ci	varchar(255)
 3.0000	mysql	plugin	name	varchar	64	192	utf8	utf8_general_ci	varchar(64)
 3.0000	mysql	plugin	dl	varchar	128	384	utf8	utf8_general_ci	varchar(128)
 3.0000	mysql	proc	db	char	64	192	utf8	utf8_bin	char(64)

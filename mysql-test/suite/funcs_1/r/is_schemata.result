@@ -54,10 +54,12 @@ FROM information_schema.schemata
 WHERE catalog_name IS NOT NULL or sql_path IS NOT NULL;
 catalog_name	schema_name	sql_path
 def	information_schema	NULL
+def	cache	NULL
 def	mtr	NULL
 def	mysql	NULL
 def	performance_schema	NULL
 def	sys	NULL
+def	sys_stonedb	NULL
 def	test	NULL
 ###############################################################################
 # Testcases 3.2.9.2+3.2.9.3: INFORMATION_SCHEMA.SCHEMATA accessible information
