@@ -5,7 +5,7 @@ sidebar_position: 1.2
 
 # Architecture
 
-![StoneDB_V1.0](stonedb-V1.png)
+![StoneDB_V1.0](./stonedb-architecture-V1.png)
 
 StoneDB is a hybrid transaction/analytical processing (HTAP) database. It provides a column-based storage engine also named StoneDB to handle online analytical processing (OLAP) workloads. The StoneDB storage engine features high performance and high data compression ratio, in addition to common features provided by other storage engines such as InnoDB and MyISAM. The logical architecture of StoneDB consists of three layers: applications, services, and storage engine. When an SQL query is processed by StoneDB, the SQL query is processed through every module in the three layers one after one.
 
@@ -39,7 +39,7 @@ StoneDB Optimizer is a self-developed optimizer provided by StoneDB. It is used 
 ### StoneDB Executor
 StoneDB Executor reads data based on the execution plan.
 ### Knowledge Grid Manager
-#### Data Pack
+#### **Data Pack**
 Data Packs are data storage units. Data in each column is sliced into Data Packs every 65,536 rows. A Data Pack is smaller than a column and supports higher data compression ratio, whereas it is larger than a row and supports higher query performance. Data Packs are also the units for which the Knowledge Grid uses to decompress data.
 
 Based on the theory of rough sets, Data Packs can be classified into the following three categories:
@@ -48,16 +48,17 @@ Based on the theory of rough sets, Data Packs can be classified into the followi
 - Relevant Data Packs: with all data elements relevant for further execution
 - Suspect Data Packs: with some data elements relevant for further execution
 
-This classification help filter out irrelevant Data Packs. StoneDB needs only to decompress suspect Data Packs and then examine the data records to filter relevant data records, effectively improving query performance.
-#### Data Pack Node
+This classification helps filter out irrelevant Data Packs. StoneDB needs only to read metadata of relevant Data Packs, and decompress suspect Data Packs and then examine the data records to filter relevant data records. The process of handling relevant Data Packs does not consume I/O, since no data is decompressed.
+#### **Data Pack Node**
 A Data Pack Node stores the following information about a Data Pack:
+
 - The maximum, minimum, average, and sum of the values
 - The number of values and the number of non-null values
 - The compression method
-- The length in byte
+- The length in bytes
 
 Therefore, Data Pack Node is also called Metadata Node. One Data Pack Node corresponds to one Data Pack.
-#### Knowledge Nod
+#### **Knowledge Node**
 Knowledge Nodes are at the upper layer of Data Pack Nodes. Knowledge Nodes store a collection of metadata that shows the relations between Data Packs and columns, including the range of value occurrence and the associations between columns. Most data stored in a Knowledge Node is generated when data is being loaded and the rest is generated during queries. 
 
 Knowledge Nodes can be classified into the following types:
@@ -71,7 +72,6 @@ Suppose values in a Data Pack fall within two ranges: 0‒100 and 102301‒10240
 | 1 | 0 | 0 | ... | 1 |
 
 Execute the following SQL statement:
-
 ```sql
 select * from table where id>199 and id<299;
 ```
@@ -99,12 +99,12 @@ In the following example, the condition for joining tables is `A.C=B.D`. For Dat
 | A.C2 | 1 | 1 | 0 | 0 | 0 |
 | A.C3 | 1 | 1 | 0 | 1 | 1 |
 
-#### Knowledge Grid
+#### **Knowledge Grid**
 The Knowledge Grid consists of Data Pack Nodes and Knowledge Nodes. Data Packs are compressed for storage and the cost for decompressing Data Packs is high. Therefore, the key to improving read performance is to retrieve as few as Data Packs. The Knowledge Grid can help filter out irrelevant data. With the Knowledge Gid, the data retrieved can be reduced to less than 1% of the total data. In most cases, the data retrieved can be loaded to memory so that the query processing efficiency can be further improved.
 
 For most statistical and aggregate queries, StoneDB can return query results by using only the Knowledge Grid. In this way, the number of Data Packs to be decompressed is greatly reduced, saving I/O resources, minimizing the response time, and improving the network utilization.
 
-**Following is an example showing how the Knowledge Grid works.**
+Following is an example showing how the Knowledge Grid works.
 
 The following table shows the distribution of values recorded in Data Pack Nodes.
 
@@ -115,14 +115,12 @@ The following table shows the distribution of values recorded in Data Pack Nodes
 | t1.A3 | 40 | 100 |
 
 The following SQL statement is executed.
-
 ```sql
 select min(t2.D) from t1,t2 where t1.B=t2.C and t1.A>15;
 ```
 The working process of the Knowledge Grid is as follows:
 
 1. Filter Data Packs based on Data Pack Nodes: data pack t1.A1 is irrelevant, t1.A2 is suspect, and t1.A3 is relevant. Therefore, t1.A1 is filtered out.
-
 |  | t2.C1 | t2.C2 | t2.C3 | t2.C4 | t2.C5 |
 | --- | --- | --- | --- | --- | --- |
 | t1.B1 | 1 | 1 | 1 | 0 | 1 |
@@ -131,7 +129,6 @@ The working process of the Knowledge Grid is as follows:
 
 
 2. Compare t1.B1 and t2.C1 to check whether matching pairs exist based on pack-to-packs. In this step, Data Packs t2.C2 and t2.C5 contain matching pairs while Data Packs t2.C3 and t2.C4 are filtered out.
-
 |  | Min. | Max. |
 | --- | --- | --- |
 | t2.D1 | 0 | 500 |
@@ -144,7 +141,7 @@ The working process of the Knowledge Grid is as follows:
 ### StoneDB Loader Parser
 StoneDB Loader Parser is a module responsible for data import and export. It processes `LOAD DATA INFILE` and `SELECT … INTO FILE` operations.
 ### Insert Buffer
-The Insert Buffer is used to optimize insert performance. When you insert data to a table, the data to insert is first temporarily stored in Insert Buffer and then flushed from Insert Buffer to disks in batches. This improves system throughput. If the data is directly written into disks, the data is written one row after another because StoneDB does not support transactions. As a result, the system throughput is low and thus the insertion efficiency is low. Insert Buffer is enabled by default. If you want to disable it, set parameter **stonedb_insert_delayed** to **off**.
+The Insert Buffer is used to optimize insert performance. When you insert data to a table, the data to insert is first temporarily stored in Insert Buffer and then flushed from Insert Buffer to disks in batches. This improves system throughput. If the data is directly written into disks, the data is written one row after another because StoneDB does not support transactions. As a result, the system throughput is low and thus the insertion efficiency is low. Insert Buffer is enabled by default. If you want to disable it, set parameter** stonedb_insert_delayed** to **off**.
 ### Replication Manager
 The high-availability structure of StoneDB includes a replication engine called Replication Manager to ensure strong consistency between the primary and secondary databases. Different from binlog replication used by MySQL to replicate original data, Replication Manager can directly replicate compressed data since data stored in StoneDB is compressed, without the need for decompression. This greatly reduces the traffic required for transmitting data.
 ### Compress
