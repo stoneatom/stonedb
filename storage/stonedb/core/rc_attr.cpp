@@ -801,12 +801,12 @@ std::shared_ptr<FTree> RCAttr::Fetch([[maybe_unused]] const FTreeCoordinate &coo
 }
 
 void RCAttr::PreparePackForLoad() {
-  if (NoPack() == 0 || get_last_dpn().nr == (1U << pss)) {
+  if (NumOfPack() == 0 || get_last_dpn().nr == (1U << pss)) {
     // just allocate a DPN but do not create dp for now
     auto ret = m_share->alloc_dpn(m_tx->GetID());
     m_idx.push_back(ret);
   } else {
-    CopyPackForWrite(NoPack() - 1);
+    CopyPackForWrite(NumOfPack() - 1);
   }
 }
 
@@ -815,7 +815,7 @@ void RCAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
   if (conn_info) current_tx = conn_info;
 
   PreparePackForLoad();
-  int pi = NoPack() - 1;
+  int pi = NumOfPack() - 1;
   switch (GetPackType()) {
     case common::PackType::INT:
       LoadDataPackN(pi, nvs);
@@ -1066,14 +1066,14 @@ types::BString RCAttr::MinS(Filter *f) {
     return types::BString();
   types::BString min;
   bool set = false;
-  if (f->NoBlocks() != NoPack())
+  if (f->NumOfBlocks() != NumOfPack())
     throw common::DatabaseException("Data integrity error, query cannot be evaluated (MinS).");
   else {
     LoadPackInfo();
     FilterOnesIterator it(f, pss);
     while (it.IsValid()) {
       uint b = it.GetCurrPack();
-      if (b >= NoPack()) continue;
+      if (b >= NumOfPack()) continue;
       auto const &dpn(get_dpn(b));
       auto p = get_packS(b);
       if (GetPackType() == common::PackType::INT &&
@@ -1100,14 +1100,14 @@ types::BString RCAttr::MaxS(Filter *f) {
     return types::BString();
 
   types::BString max;
-  if (f->NoBlocks() != NoPack())
+  if (f->NumOfBlocks() != NumOfPack())
     throw common::DatabaseException("Data integrity error, query cannot be evaluated (MaxS).");
   else {
     LoadPackInfo();
     FilterOnesIterator it(f, pss);
     while (it.IsValid()) {
       int b = it.GetCurrPack();
-      if (uint(b) >= NoPack()) continue;
+      if (uint(b) >= NumOfPack()) continue;
       auto const &dpn(get_dpn(b));
       auto p = get_packS(b);
       if (GetPackType() == common::PackType::INT &&

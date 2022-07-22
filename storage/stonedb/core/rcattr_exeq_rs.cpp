@@ -168,7 +168,7 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
       vcolumn::MultiValColumn *mvc(static_cast<vcolumn::MultiValColumn *>(vc1));
       uint pack_prefix = GetPrefixLength(pack);
       common::RSValue res = common::RSValue::RS_SOME;
-      if ((mvc->IsConst()) && (mvc->NoValues(mit) > 0 && mvc->NoValues(mit) < 64) &&
+      if ((mvc->IsConst()) && (mvc->NumOfValues(mit) > 0 && mvc->NumOfValues(mit) < 64) &&
           !types::RequiresUTFConversions(d.GetCollation())) {
         if (auto sp = GetFilter_CMap()) {
           res = common::RSValue::RS_NONE;  // TODO: get rid with the iterator below
@@ -191,7 +191,7 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
       }
 
       // add bloom filter for in/not in
-      if (res == common::RSValue::RS_SOME && (mvc->IsConst()) && (mvc->NoValues(mit) > 0 && mvc->NoValues(mit) < 64)) {
+      if (res == common::RSValue::RS_SOME && (mvc->IsConst()) && (mvc->NumOfValues(mit) > 0 && mvc->NumOfValues(mit) < 64)) {
         if (auto sp = GetFilter_Bloom()) {
           res = common::RSValue::RS_NONE;
           for (vcolumn::MultiValColumn::Iterator it = mvc->begin(mit), end = mvc->end(mit);
@@ -245,7 +245,7 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
                                                // continuous interval
             res = common::RSValue::RS_SOME;
         }
-        if (res == common::RSValue::RS_SOME && (mvc->NoValues(mit) > 0 && mvc->NoValues(mit) < 64)) {
+        if (res == common::RSValue::RS_SOME && (mvc->NumOfValues(mit) > 0 && mvc->NumOfValues(mit) < 64)) {
           bool v_rounded = false;
           res = common::RSValue::RS_NONE;
           int64_t v;  // TODO: get rid with the iterator below
@@ -572,7 +572,7 @@ int64_t RCAttr::RoughMin(Filter *f, common::RSValue *rf)  // f == NULL is treate
       int64_t i;
     } di;
     di.d = DBL_MAX;
-    for (uint p = 0; p < NoPack(); p++) {  // minimum of nonempty packs
+    for (uint p = 0; p < NumOfPack(); p++) {  // minimum of nonempty packs
       auto const &dpn(get_dpn(p));
       if ((f == NULL || !f->IsEmpty(p)) && (rf == NULL || rf[p] != common::RSValue::RS_NONE)) {
         if (di.d > dpn.min_d) di.i = dpn.min_i;
@@ -582,7 +582,7 @@ int64_t RCAttr::RoughMin(Filter *f, common::RSValue *rf)  // f == NULL is treate
     res = di.i;
   } else {
     res = common::PLUS_INF_64;
-    for (uint p = 0; p < NoPack(); p++) {  // minimum of nonempty packs
+    for (uint p = 0; p < NumOfPack(); p++) {  // minimum of nonempty packs
       auto const &dpn(get_dpn(p));
       if ((f == NULL || !f->IsEmpty(p)) && (rf == NULL || rf[p] != common::RSValue::RS_NONE) && res > dpn.min_i)
         res = dpn.min_i;
@@ -604,7 +604,7 @@ int64_t RCAttr::RoughMax(Filter *f, common::RSValue *rf)  // f == NULL is treate
       int64_t i;
     } di;
     di.d = -(DBL_MAX);
-    for (uint p = 0; p < NoPack(); p++) {  // minimum of nonempty packs
+    for (uint p = 0; p < NumOfPack(); p++) {  // minimum of nonempty packs
       auto const &dpn(get_dpn(p));
       if ((f == NULL || !f->IsEmpty(p)) && (rf == NULL || rf[p] != common::RSValue::RS_NONE)) {
         if (di.d < dpn.max_d) di.i = dpn.max_i;
@@ -614,7 +614,7 @@ int64_t RCAttr::RoughMax(Filter *f, common::RSValue *rf)  // f == NULL is treate
     res = di.i;
   } else {
     res = common::MINUS_INF_64;
-    for (uint p = 0; p < NoPack(); p++) {  // maximum of nonempty packs
+    for (uint p = 0; p < NumOfPack(); p++) {  // maximum of nonempty packs
       auto const &dpn(get_dpn(p));
       if ((f == NULL || !f->IsEmpty(p)) && (rf == NULL || rf[p] != common::RSValue::RS_NONE) && res < dpn.max_i)
         res = dpn.max_i;
@@ -692,7 +692,7 @@ uint64_t RCAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue 
                           // distinct values
       Filter values_present(span, pss);
       values_present.Reset();
-      for (uint p = 0; p < NoPack(); p++) {
+      for (uint p = 0; p < NumOfPack(); p++) {
         auto const &dpn(get_dpn(p));
         if ((f == NULL || !f->IsEmpty(p)) && (rf == NULL || rf[p] != common::RSValue::RS_NONE) &&
             dpn.min_i <= dpn.max_i) {
@@ -724,7 +724,7 @@ uint64_t RCAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue 
   } else if (TypeName() == common::CT::STRING || TypeName() == common::CT::VARCHAR ||
              TypeName() == common::CT::LONGTEXT) {
     size_t max_len = 0;
-    for (uint p = 0; p < NoPack(); p++) {  // max len of nonempty packs
+    for (uint p = 0; p < NumOfPack(); p++) {  // max len of nonempty packs
       if (f == NULL || !f->IsEmpty(p)) max_len = std::max(max_len, GetActualSize(p));
     }
     if (max_len > 0 && max_len < 6)
@@ -749,7 +749,7 @@ uint64_t RCAttr::ExactDistinctVals(Filter *f)  // provide the exact number of di
   LoadPackInfo();
   if (Type().IsLookup() && !types::RequiresUTFConversions(GetCollation()) && f->IsFull()) return RoughMax(NULL) + 1;
   bool nulls_only = true;
-  for (uint p = 0; p < NoPack(); p++)
+  for (uint p = 0; p < NumOfPack(); p++)
     if (!f->IsEmpty(p) && GetPackOntologicalStatus(p) != PackOntologicalStatus::NULLS_ONLY) {
       nulls_only = false;
       break;
@@ -765,7 +765,7 @@ uint64_t RCAttr::ExactDistinctVals(Filter *f)  // provide the exact number of di
       Filter values_present(span, Nopackpower());
       values_present.Reset();
       // Phase 1: mark all values, which are present for sure
-      for (uint p = 0; p < NoPack(); p++)
+      for (uint p = 0; p < NumOfPack(); p++)
         if (f->IsFull(p)) {
           auto const &dpn(get_dpn(p));
           if (dpn.min_i < dpn.max_i) {
@@ -789,7 +789,7 @@ uint64_t RCAttr::ExactDistinctVals(Filter *f)  // provide the exact number of di
         }
       // Phase 2: check whether there are any other values possible in suspected
       // packs
-      for (uint p = 0; p < NoPack(); p++) {
+      for (uint p = 0; p < NumOfPack(); p++) {
         if (!f->IsEmpty(p) && !f->IsFull(p)) {  // suspected pack
           auto const &dpn(get_dpn(p));
           if (!values_present.IsFullBetween(dpn.min_i - cur_min, dpn.max_i - cur_min)) {
@@ -807,18 +807,18 @@ double RCAttr::RoughSelectivity() {
   if (rough_selectivity == -1) {
     LoadPackInfo();
     if (GetPackType() == common::PackType::INT && TypeName() != common::CT::REAL && TypeName() != common::CT::FLOAT &&
-        NoPack() > 0) {
+        NumOfPack() > 0) {
       int64_t global_min = common::PLUS_INF_64;
       int64_t global_max = common::MINUS_INF_64;
       double width_sum = 0;
-      for (uint p = 0; p < NoPack(); p++) {  // minimum of nonempty packs
+      for (uint p = 0; p < NumOfPack(); p++) {  // minimum of nonempty packs
         auto const &dpn(get_dpn(p));
         if (dpn.nn == uint(dpn.nr) + 1) continue;
         if (dpn.min_i < global_min) global_min = dpn.min_i;
         if (dpn.max_i > global_max) global_max = dpn.max_i;
         width_sum += double(dpn.max_i) - double(dpn.min_i) + 1;
       }
-      rough_selectivity = (width_sum / NoPack()) / (double(global_max) - double(global_min) + 1);
+      rough_selectivity = (width_sum / NumOfPack()) / (double(global_max) - double(global_min) + 1);
     } else
       rough_selectivity = 1;
   }
@@ -831,7 +831,7 @@ void RCAttr::GetTextStat(types::TextStat &s, Filter *f) {
   if (GetPackType() == common::PackType::STR && !types::RequiresUTFConversions(GetCollation())) {
     if (auto sp = GetFilter_CMap()) {
       success = true;
-      for (uint p = 0; p < NoPack(); p++)
+      for (uint p = 0; p < NumOfPack(); p++)
         if (f == NULL || !f->IsEmpty(p)) {
           auto const &dpn(get_dpn(p));
           if (dpn.NullOnly()) continue;
@@ -861,7 +861,7 @@ void RCAttr::GetTextStat(types::TextStat &s, Filter *f) {
 
 // calculate the number of 1's in histograms and other KN stats
 void RCAttr::RoughStats(double &hist_density, int &trivial_packs, double &span) {
-  uint npack = NoPack();
+  uint npack = NumOfPack();
   hist_density = -1;
   trivial_packs = 0;
   span = -1;
@@ -909,7 +909,7 @@ void RCAttr::RoughStats(double &hist_density, int &trivial_packs, double &span) 
 
 void RCAttr::DisplayAttrStats(Filter *f)  // filter is for # of objects
 {
-  int npack = NoPack();
+  int npack = NumOfPack();
   LoadPackInfo();
   std::stringstream ss;
   ss << "Column " << m_cid << ", table " << m_tid << (IsUnique() ? ", unique" : " ") << std::endl;

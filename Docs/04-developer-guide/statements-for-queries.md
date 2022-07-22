@@ -4,9 +4,7 @@ sidebar_position: 5.4
 ---
 
 # Statements for Queries
-
 ## Statements for common queries
-
 ### UNION/UNION ALL
 ```sql
 select first_name from t_test1
@@ -32,17 +30,17 @@ from t_test1 e
 group by e.id
 having avg(e.score) > (select avg(score) from t_test1);
 ```
-## Statements used for aggregate queries
+## **Statements used for aggregate queries**
 ```sql
 select first_name,count(*) from t_test group by first_name;
 select sum(score) from t_test;
 ```
-## Statements used for pagination queries
+## **Statements used for pagination queries**
 ```sql
 select * from t_test1 limit 10;
 select * from t_test1 limit 10,10;
 ```
-## Statements used for correlated queries
+## Statements used for join queries
 ### INNER JOIN
 ```sql
 select t1.id,t1.first_name,t2.last_name from t_test1 t1,t_test2 t2 where t1.id = t2.id;
@@ -77,6 +75,14 @@ select * from t_test1 where id in(select id from t_test2);
 ```sql
 select * from t_test1 A where exists (select 1 from t_test2 B where B.id = A.id);
 ```
+
+
+
+
+
+
+
+
 
 
 
