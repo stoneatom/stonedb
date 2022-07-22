@@ -13,7 +13,7 @@ The following table describes parameters for configuring slow query log.
 | --- | --- |
 | slow_query_log | Whether to enable slog query log. |
 | slow_query_log_file | The file that stores slow query log records. |
-| long_query_time | The execution time threshold. If the execution time of an SQL query exceeds this threshold, the SQL query will be recorded in the slow query log.<br>:::info **long_query_time** is used to limit the actual execution time of each SQL query, excluding the lock wait time. Therefore, if an SQL query has long total execution time but its actual execution time does not exceed the this threshold, the SQL query will not be recorded in the slow query log. :::|
+| long_query_time | The execution time threshold. If the execution time of an SQL query exceeds this threshold, the SQL query will be recorded in the slow query log.<br>info **long_query_time** is used to limit the actual execution time of each SQL query, excluding the lock wait time. Therefore, if an SQL query has long total execution time but its actual execution time does not exceed the this threshold, the SQL query will not be recorded in the slow query log. |
 | log_queries_not_using_indexes | Whether to record the queries that do not use indexes. |
 | log_slow_admin_statements | Whether to record management statements, including ALTER, CREATE, and DROP. |
 

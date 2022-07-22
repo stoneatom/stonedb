@@ -17,7 +17,8 @@ sidebar_position: 7.41
 - Do not use a reserved keyword such as **desc**, **order**, **group**, or **distinct** as a table or field name.
 - Ensure that the fields in a table use the same character set as the table.
 ## **Best practices for writting SQL queries**
-### **Avoid the USE of SELECT ***
+
+### **Avoid the USE of `SELECT *` **
 When you use a `SELECT` statement, specify the names of columns, instead of using a wildcard (*). This is because using `SELECT *` has the following negative impacts:
 
 - Transmit irrelevant fields from the server to the client, incurring additional network overhead.
@@ -33,7 +34,7 @@ Prefer:
 ```sql
 select id,name from test;
 ```
-### **Avoid use OR in a WHERE clause**
+### **Avoid use `OR` in a `WHERE` clause**
 Use `UNION ALL` instead of `OR` when combing multiple fields in a `WHERE` clause to split the query into multiple queries. Otherwise, the indexes may become invalid.
 
 Following are statement examples:
@@ -87,9 +88,9 @@ Prefer:
 ```sql
 select * from test where group_id='40';
 ```
-### **Avoid use NOT or <> on indexed columns**
+### **Avoid use `NOT` or `<>` on indexed columns**
 If `NOT` or `<>` is used on an indexed column, the index will become invalid.
-### **Avoid use IS NOT NULL on an indexed column**
+### **Avoid use `IS NOT NULL` on an indexed column**
 If `IS NOT NULL` is used on an indexed column, the index will become invalid.
 ### **Do not use leading wildcards unless necessary**
 If leading wildcards are used, relevant indexes will become invalid.
@@ -101,7 +102,7 @@ We recommend that you split a large transaction into small transactions, since t
 We recommend you use batch operations when inserting a large amount of data. This can greatly reduce the number of commits, improving query performance.
 ### **Commit transactions as soon as possible**
 We recommend that you commit transactions as soon as possible to reduce the lock time.
-### **Avoid use HAVING to filter data**
+### **Avoid use `HAVING` to filter data**
 When `HAVING` is used to filter the data set at the last step, the data set is sorted and summarized. Therefore, use `WHERE` to replace `HAVING` if possible.
 
 Following are statement examples:
@@ -176,7 +177,7 @@ Prefer:
 ```sql
 select * from a,b where a.id=b.id;
 ```
-### **Use a comparatively small offset for pagination with LIMIT**
+### **Use a comparatively small offset for pagination with `LIMIT`**
 When a pagination query with `LIMIT` is processed, the offset data is first obtained, the data for pagination is later obtained, and the offset data is discarded to return only the paginated data. Therefore, if the offset is large, the performance of the SQL statement will be poor.
 
 Following are statement examples:
@@ -189,20 +190,20 @@ Prefer:
 ```sql
 select id,name from test where id>10000 limit 10;
 ```
-### **In a LEFT JOIN operation, ensure the table on the left has a smaller result set**
-In most cases, the table on the left in a LEFT JOIN functions as the driving table. The number of records in the result set of the driving table is equal to the number of times that the driven table is executed. Therefore, if the result set of the driving table is large, the performance will be poor.
+### **In a `LEFT JOIN` operation, ensure the table on the left has a smaller result set**
+In most cases, the table on the left in a `LEFT JOIN` functions as the driving table. The number of records in the result set of the driving table is equal to the number of times that the driven table is executed. Therefore, if the result set of the driving table is large, the performance will be poor.
 ### **Use EXIST and IN accurately**
 When to use `EXISTS` or `IN` is determined by the result set sizes of the outer query and inner query. If the result set of the outer query is larger than that of the inner query, `IN` is superior to `EXIST`. Otherwise, `EXIST` is preferred.
-### **Use UNION ALL and UNION accurately**
+### **Use `UNION ALL` and `UNION` accurately**
 A `UNION ALL` operation simple combines the two result sets and returns the collection. A `UNION` operation combines the two result sets and sort, deduplicates the records in the collection, and then returns the collection. We recommend that you use `UNION ALL` if possible, because `UNION` consumes more resources.
-### **Use LEFT JOIN and INNER JOIN accurately**
+### **Use `LEFT JOIN` and `INNER JOIN` accurately**
 In a `LEFT JOIN` operation, the rows that match in both tables and the remaining rows in the table on the left are returned. In an `INNER JOIN` operation, only the rows that match in both tables are returned.
-### **In a LEFT JOIN, use ON … AND and ON … WHERE accurately**
+### **In a `LEFT JOIN`, use `ON … AND` and `ON … WHERE` accurately**
 The following information describes the main differences between `ON … AND` and `ON … WHERE`:
 
 - `ON … AND` does not provide the filtering capability. Rows that have no match in the table on the right are filled with null.
 - `ON … WHERE` provides the filtering capability. No matter whether the predicate condition is placed after `ON` or `WHERE`, rows in the table on the right are filtered first. However, if the predicate condition is placed after `WHERE`, the `LEFT JOIN` operation will be converted into an `INNER JOIN` operation.
-### **In an INNER JOIN, use ON … AND and ON … WHERE accurately**
+### **In an `INNER JOIN`, use `ON … AND` and `ON … WHERE` accurately**
 In an `INNER JOIN` operation, `ON … AND` is equivalent to `ON … WHERE`. The both provide the filtering capability.
 ### **Avoid uncessary sorting**
 For count operations, sorting is unnecessary.

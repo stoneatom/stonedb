@@ -26,7 +26,7 @@ The following table describes the columns included in a StoneDB execution plan.
 
 | **Column** | **Description** |
 | --- | --- |
-| id | The sequence number of an operation. <br>:::info - A higher _id_ indicates higher priority for execution. <br> - If two or more operations have the same _id_, first come, first served.:::|
+| id | The sequence number of an operation. <br>info - A higher _id_ indicates higher priority for execution. <br> - If two or more operations have the same _id_, first come, first served.|
 | select_type | The query type, used to categorize simple queries, JOIN queries, and subqueries. The value can be:<br />- **SIMPLE**: simple query.<br />- **PRIMARY**: outmost `SELECT`. If a query contains subqueries, the outermost `SELECT` is marked with **PRIMARY**.<br />- **SUBQUERY**: subquery, normally placed after a `SELECT` or `WHERE` clause.<br />- **DEPENDENT SUBQUERY**: first `SELECT` statement in subquery, dependent on the outer query. The number of times that the subquery is executed is equal to the number of records contained in the result set of the outer query.<br />- **DERIVED**: derived query, normally placed after a `FROM` clause.<br />- **UNION**: second or later `SELECT` statement in a `UNION` operation.<br />- **UNION RESULT**: result of a `UNION` operation.<br />|
 | table | The name of the table to access in the current step. |
 | partitions | The partitions from which records would be matched by the query. |
