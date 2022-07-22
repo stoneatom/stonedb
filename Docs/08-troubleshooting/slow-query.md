@@ -11,11 +11,11 @@ The following table describes parameters for configuring slow query log.
 
 | **Parameter** | **Description** |
 | --- | --- |
-| slow_query_log | Whether to enable slog query log. |
-| slow_query_log_file | The file that stores slow query log records. |
-| long_query_time | The execution time threshold. If the execution time of an SQL query exceeds this threshold, the SQL query will be recorded in the slow query log.<br>info **long_query_time** is used to limit the actual execution time of each SQL query, excluding the lock wait time. Therefore, if an SQL query has long total execution time but its actual execution time does not exceed the this threshold, the SQL query will not be recorded in the slow query log. |
-| log_queries_not_using_indexes | Whether to record the queries that do not use indexes. |
-| log_slow_admin_statements | Whether to record management statements, including ALTER, CREATE, and DROP. |
+| `slow_query_log` | Whether to enable slog query log. |
+| `slow_query_log_file` | The file that stores slow query log records. |
+| `long_query_time` | The execution time threshold. If the execution time of an SQL query exceeds this threshold, the SQL query will be recorded in the slow query log. info **long_query_time** is used to limit the actual execution time of each SQL query, excluding the lock wait time. Therefore, if an SQL query has long total execution time but its actual execution time does not exceed the this threshold, the SQL query will not be recorded in the slow query log. |
+| `log_queries_not_using_indexes` | Whether to record the queries that do not use indexes. |
+| `log_slow_admin_statements` | Whether to record management statements, including `ALTER`, `CREATE`, and `DROP`. |
 
 The following table describes the parameters in the slow query log:
 
@@ -127,7 +127,7 @@ The following table describes each status that an SQL statement may pass through
 | locked | Encountering a congestion. |
 | Waiting for table metadata lock | Waiting for a metadata lock. |
 
-:::info
+### info
 If the statement remains in any of the following states for a long time, the SQL statement has performance issues or is waiting for process:
 - **Sending data**
 - **Creating tmp table**
@@ -135,7 +135,7 @@ If the statement remains in any of the following states for a long time, the SQL
 - **Creating sort index**
 - **locked**
 - **Waiting for table metadata lock**
-:::
+
 # Optimizer trace
 The optimizer trace feature helps you understand the process of generating an execution plan. This feature is controlled by system variable **optimizer_trace**.
 ```sql
@@ -161,9 +161,9 @@ set optimizer_trace='enabled=on';
 ```
 
 3. Execute an SQL statement.
-:::info
+### info
 If the execution time is too long and you want traces generated during the execution of the SQL statement, you can execute an EXPLAIN statement to explain the statement, instead.
-:::
+
 
 4. Check the optimization process of the previous SQL statement in the **optimizer_trace** table.
 ```sql
@@ -202,7 +202,7 @@ rows_estimation: estimates the relevant rows for a one-table query.
 
 - "cause": "not_applicable"
 
-- "index": "idx_xxx", # The **id**_x_xxx_ index may be used.
+- "index": "idx_xxx", # The **id**`_x_xxx_` index may be used.
 
 - "usable": true,
 
