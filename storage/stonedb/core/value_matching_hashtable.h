@@ -80,6 +80,7 @@ class ValueMatching_HashTable : public mm::TraceableObject, public ValueMatching
   BlockedRowMemStorage t;  // row storage itself
   std::shared_ptr<MemBlockManager> bmanager;
 };
+
 }  // namespace core
 }  // namespace stonedb
 

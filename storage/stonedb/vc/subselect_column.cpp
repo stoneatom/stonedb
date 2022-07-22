@@ -45,7 +45,7 @@ SubSelectColumn::SubSelectColumn(core::TempTable *subq, core::MultiIndex *mind, 
   ct = subq->GetColumnType(col_idx);
   core::MysqlExpression::SetOfVars all_params;
 
-  for (uint i = 0; i < subq->NoVirtColumns(); i++) {
+  for (uint i = 0; i < subq->NumOfVirtColumns(); i++) {
     core::MysqlExpression::SetOfVars params = subq->GetVirtualColumn(i)->GetParams();
     all_params.insert(params.begin(), params.end());
     core::MysqlExpression::sdbfields_cache_t sdbfields = subq->GetVirtualColumn(i)->GetSDBItems();
@@ -171,12 +171,12 @@ common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types
   // If the sub-select is something like 'select null from xxx' then there
   // is no need to execute the sub-select, just return common::TRIBOOL_UNKNOWN.
   VirtualColumn *vc = subq->GetAttrP(col_idx)->term.vc;
-  if (vc->IsFullConst() && vc->IsNull(core::MIIterator(NULL, mind->NoPower()))) return common::TRIBOOL_UNKNOWN;
+  if (vc->IsFullConst() && vc->IsNull(core::MIIterator(NULL, mind->ValueOfPower()))) return common::TRIBOOL_UNKNOWN;
 
   PrepareSubqResult(mit, false);
   common::Tribool res = false;
   if (!cache) {
-    cache = std::shared_ptr<core::ValueSet>(new core::ValueSet(mind->NoPower()));
+    cache = std::shared_ptr<core::ValueSet>(new core::ValueSet(mind->ValueOfPower()));
     cache->Prepare(Type().GetTypeName(), Type().GetScale(), GetCollation());
   }
 
@@ -236,7 +236,7 @@ common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types
 
 void SubSelectColumn::PrepareAndFillCache() {
   if (!cache) {
-    cache = std::shared_ptr<core::ValueSet>(new core::ValueSet(mind->NoPower()));
+    cache = std::shared_ptr<core::ValueSet>(new core::ValueSet(mind->ValueOfPower()));
     cache->Prepare(Type().GetTypeName(), Type().GetScale(), GetCollation());
   }
   for (int64_t i = no_cached_values; i < subq->NumOfObj(); i++) {
@@ -307,7 +307,7 @@ int64_t SubSelectColumn::NumOfValuesImpl(core::MIIterator const &mit) {
 int64_t SubSelectColumn::AtLeastNoDistinctValuesImpl(core::MIIterator const &mit, int64_t const at_least) {
   DEBUG_ASSERT(at_least > 0);
   PrepareSubqResult(mit, false);
-  core::ValueSet vals(mind->NoPower());
+  core::ValueSet vals(mind->ValueOfPower());
   vals.Prepare(expected_type_.GetTypeName(), expected_type_.GetScale(), expected_type_.GetCollation());
 
   if (types::RequiresUTFConversions(GetCollation()) && Type().IsString()) {
@@ -352,7 +352,7 @@ std::unique_ptr<MultiValColumn::IteratorInterface> SubSelectColumn::EndImpl(core
 void SubSelectColumn::RequestEval(const core::MIIterator &mit, const int tta) {
   first_eval = true;
   first_eval_for_rough = true;
-  for (uint i = 0; i < subq->NoVirtColumns(); i++) subq->GetVirtualColumn(i)->RequestEval(mit, tta);
+  for (uint i = 0; i < subq->NumOfVirtColumns(); i++) subq->GetVirtualColumn(i)->RequestEval(mit, tta);
 }
 
 void SubSelectColumn::PrepareSubqResult(const core::MIIterator &mit, bool exists_only) {
@@ -604,8 +604,8 @@ bool SubSelectColumn::MakeParallelReady() {
   if (!subq->IsMaterialized()) subq->Materialize();
   if (subq->NumOfObj() > subq->GetPageSize()) return false;  // multipage Attrs - not thread safe
   // below assert doesn't take into account lazy field
-  // NoMaterialized() tells how many rows in lazy mode are materialized
-  DEBUG_ASSERT(subq->NumOfObj() == subq->NoMaterialized());
+  // NumOfMaterialized() tells how many rows in lazy mode are materialized
+  DEBUG_ASSERT(subq->NumOfObj() == subq->NumOfMaterialized());
   PrepareAndFillCache();
   return true;
 }

@@ -236,7 +236,7 @@ void PackStr::LoadValues(const loader::ValueCache *vc) {
   TransformIntoArray();
 
   for (uint i = 0; i < total; i++) {
-    if (vc->IsNull(i) && s->ColType().Nullable()) {
+    if (vc->IsNull(i) && s->ColType().IsNullable()) {
       SetNull(dpn->nr);
       SetPtr(dpn->nr, nullptr);
       dpn->nr++;

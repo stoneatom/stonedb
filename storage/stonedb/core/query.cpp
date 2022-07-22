@@ -270,7 +270,7 @@ const std::string Query::GetItemName(Item *item) {
 
 int Query::GetAddColumnId(const AttrID &vc, const TabID &tmp_table, const common::ColOperation oper,
                           const bool distinct) {
-  for (int i = 0; i < cq->NoSteps(); i++) {
+  for (int i = 0; i < cq->NumOfSteps(); i++) {
     CompiledQuery::CQStep *step = &cq->Step(i);
     if (step->type == CompiledQuery::StepType::ADD_COLUMN && step->t1 == tmp_table && step->e1.vc_id == vc.n &&
         step->cop == oper && step->n1 == (distinct ? 1 : 0)) {
@@ -281,7 +281,7 @@ int Query::GetAddColumnId(const AttrID &vc, const TabID &tmp_table, const common
 }
 
 void Query::CQChangeAddColumnLIST2GROUP_BY(const TabID &tmp_table, int attr) {
-  for (int i = 0; i < cq->NoSteps(); i++) {
+  for (int i = 0; i < cq->NumOfSteps(); i++) {
     CompiledQuery::CQStep *step = &cq->Step(i);
     if (step->type == CompiledQuery::StepType::ADD_COLUMN && step->t1 == tmp_table && step->a1.n == attr &&
         step->cop == common::ColOperation::LISTING) {
@@ -561,16 +561,16 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
   if (STONEDB_LOGCHECK(LogCtl_Level::DEBUG)) {
     qu.Print(this);
   }
-  std::vector<Condition *> conds(qu.NoConds());
+  std::vector<Condition *> conds(qu.NumOfConds());
 
   TempTable *output_table = NULL;  // NOTE: this pointer will be returned by the function
 
-  ta.resize(qu.NoTabs());
+  ta.resize(qu.NumOfTabs());
   auto global_limits = qu.GetGlobalLimit();
 
   cq = &qu;
   // Execution itself
-  for (int i = 0; i < qu.NoSteps(); i++) {
+  for (int i = 0; i < qu.NumOfSteps(); i++) {
     CompiledQuery::CQStep step = qu.Step(i);
     std::shared_ptr<JustATable> t1_ptr, t2_ptr, t3_ptr;
 
@@ -617,7 +617,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           ta[-step.t1.n - 1] = step.n1
                                    ? TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this, true)
                                    : TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this);
-          ((TempTable *)ta[-step.t1.n - 1].get())->ReserveVirtColumns(qu.NoVirtualColumns(step.t1));
+          ((TempTable *)ta[-step.t1.n - 1].get())->ReserveVirtColumns(qu.NumOfVirtualColumns(step.t1));
           break;
         case CompiledQuery::StepType::CREATE_CONDS:
           DEBUG_ASSERT(step.t1.n < 0);
@@ -634,24 +634,24 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
             conds[step.c1.n] = new Condition();
             if (step.c2.IsNull()) {
               conds[step.c1.n]->AddDescriptor(
-                  step.e1, step.op, step.e2, step.e3, (TempTable *)ta[-step.t1.n - 1].get(), qu.GetNoDims(step.t1),
+                  step.e1, step.op, step.e2, step.e3, (TempTable *)ta[-step.t1.n - 1].get(), qu.GetNumOfDimens(step.t1),
                   (step.op == common::Operator::O_LIKE || step.op == common::Operator::O_NOT_LIKE) ? char(step.n2)
                                                                                                    : '\\');
             } else {
               DEBUG_ASSERT(conds[step.c2.n]->IsType_Tree());
               conds[step.c1.n]->AddDescriptor(static_cast<SingleTreeCondition *>(conds[step.c2.n])->GetTree(),
-                                              (TempTable *)ta[-step.t1.n - 1].get(), qu.GetNoDims(step.t1));
+                                              (TempTable *)ta[-step.t1.n - 1].get(), qu.GetNumOfDimens(step.t1));
             }
           } else {  // on result = true
             if (step.c2.IsNull())
               conds[step.c1.n] =
                   new SingleTreeCondition(step.e1, step.op, step.e2, step.e3, (TempTable *)ta[-step.t1.n - 1].get(),
-                                          qu.GetNoDims(step.t1), char(step.n2));
+                                          qu.GetNumOfDimens(step.t1), char(step.n2));
             else {
               DEBUG_ASSERT(conds[step.c2.n]->IsType_Tree());
               conds[step.c1.n] = new Condition();
               conds[step.c1.n]->AddDescriptor(((SingleTreeCondition *)conds[step.c2.n])->GetTree(),
-                                              (TempTable *)ta[-step.t1.n - 1].get(), qu.GetNoDims(step.t1));
+                                              (TempTable *)ta[-step.t1.n - 1].get(), qu.GetNumOfDimens(step.t1));
             }
           }
           break;
@@ -664,7 +664,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
               auto &desc = (*cond2)[i];
               if (conds[step.c1.n]->IsType_Tree()) {
                 TempTable *temptb = (TempTable *)ta[-qu.GetTableOfCond(step.c2).n - 1].get();
-                int no_dims = qu.GetNoDims(qu.GetTableOfCond(step.c2));
+                int no_dims = qu.GetNumOfDimens(qu.GetTableOfCond(step.c2));
                 if (desc.op == common::Operator::O_OR_TREE) {
                   static_cast<SingleTreeCondition *>(conds[step.c1.n])
                       ->AddTree(common::LogicalOperator::O_AND, desc.tree, no_dims);
@@ -682,12 +682,12 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
             common::LogicalOperator lop = (step.type == CompiledQuery::StepType::AND_F ? common::LogicalOperator::O_AND
                                                                                        : common::LogicalOperator::O_OR);
             static_cast<SingleTreeCondition *>(conds[step.c1.n])
-                ->AddTree(lop, static_cast<SingleTreeCondition *>(conds[step.c2.n])->GetTree(), qu.GetNoDims(step.t1));
+                ->AddTree(lop, static_cast<SingleTreeCondition *>(conds[step.c2.n])->GetTree(), qu.GetNumOfDimens(step.t1));
           } else {
             DEBUG_ASSERT(conds[step.c2.n]->IsType_Tree());
             conds[step.c1.n]->AddDescriptor(static_cast<SingleTreeCondition *>(conds[step.c2.n])->GetTree(),
                                             (TempTable *)ta[-qu.GetTableOfCond(step.c1).n - 1].get(),
-                                            qu.GetNoDims(qu.GetTableOfCond(step.c1)));
+                                            qu.GetNumOfDimens(qu.GetTableOfCond(step.c1)));
           }
           break;
         case CompiledQuery::StepType::OR_DESC:
@@ -707,13 +707,13 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           if (!conds[step.c1.n]->IsType_Tree()) {
             DEBUG_ASSERT(conds[step.c1.n]);
             conds[step.c1.n]->AddDescriptor(
-                step.e1, step.op, step.e2, step.e3, (TempTable *)ta[-step.t1.n - 1].get(), qu.GetNoDims(step.t1),
+                step.e1, step.op, step.e2, step.e3, (TempTable *)ta[-step.t1.n - 1].get(), qu.GetNumOfDimens(step.t1),
                 (step.op == common::Operator::O_LIKE || step.op == common::Operator::O_NOT_LIKE) ? char(step.n2)
                                                                                                  : '\\');
           } else
             static_cast<SingleTreeCondition *>(conds[step.c1.n])
                 ->AddDescriptor(lop, step.e1, step.op, step.e2, step.e3, (TempTable *)ta[-step.t1.n - 1].get(),
-                                qu.GetNoDims(step.t1),
+                                qu.GetNumOfDimens(step.t1),
                                 (step.op == common::Operator::O_LIKE || step.op == common::Operator::O_NOT_LIKE)
                                     ? char(step.n2)
                                     : '\\');
@@ -762,7 +762,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           bool is_simple_filter = true;  // qu.IsSimpleFilter(step.c1);
           if (used_dims.size() == 1 && used_dims.find(common::NULL_VALUE_32) != used_dims.end())
             is_simple_filter = false;
-          for (int i = 0; i < filter->mind->NoDimensions(); i++) {
+          for (int i = 0; i < filter->mind->NumOfDimensions(); i++) {
             if (used_dims.find(i) == used_dims.end() && is_simple_filter)
               filter->mind->ResetUsedInOutput(i);
             else
@@ -838,7 +838,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
         case CompiledQuery::StepType::ADD_ORDER: {
           DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE && step.n1 >= 0 &&
                        step.n1 < 2);
-          DEBUG_ASSERT(step.a1.n >= 0 && step.a1.n < qu.NoVirtualColumns(step.t1));
+          DEBUG_ASSERT(step.a1.n >= 0 && step.a1.n < qu.NumOfVirtualColumns(step.t1));
           TempTable *loc_t = (TempTable *)ta[-step.t1.n - 1].get();
           loc_t->AddOrder(loc_t->GetVirtualColumn(step.a1.n),
                           (int)step.n1);  // step.n1 = 0 for asc, 1 for desc

@@ -35,7 +35,7 @@ DimensionGroupVirtual::DimensionGroupVirtual(DimensionVector &dims, int bdim, Fi
   else if (copy_mode == 2)
     f = f_source;
   dim_group_type = DGType::DG_VIRTUAL;
-  no_obj = f->NoOnes();
+  no_obj = f->NumOfOnes();
   pack_pos = NULL;  // created if needed
   t = new IndexTable *[no_dims];
   nulls_possible = new bool[no_dims];
@@ -98,7 +98,7 @@ DimensionGroup::Iterator *DimensionGroupVirtual::NewOrderedIterator(DimensionVec
     int64_t cur_pack_start = 0;
     for (int i = 0; i < no_packs; i++) {
       pack_pos[i] = cur_pack_start;
-      cur_pack_start += f->NoOnes(i);
+      cur_pack_start += f->NumOfOnes(i);
     }
   }
   return new DGVirtualOrderedIterator(f, base_dim, dim, pack_pos, t, po, power);
@@ -123,8 +123,8 @@ DimensionGroup::Iterator *DimensionGroupVirtual::CopyIterator(DimensionGroup::It
   return new DGVirtualIterator(*s, power);
 }
 
-void DimensionGroupVirtual::UpdateNoTuples() {
-  no_obj = f->NoOnes();
+void DimensionGroupVirtual::UpdateNumOfTuples() {
+  no_obj = f->NumOfOnes();
   for (int d = 0; d < no_dims; d++)
     if (t[d]) DEBUG_ASSERT((uint64_t)no_obj <= t[d]->N());  // N() is an upper size of buffer
 }
@@ -145,7 +145,7 @@ DimensionGroupVirtual::DGVirtualIterator::DGVirtualIterator(Filter *f_to_iterate
   no_dims = dims.Size();
   nulls_found = new bool[no_dims];
   cur_pack = new int[no_dims];
-  no_obj = f->NoOnes();
+  no_obj = f->NumOfOnes();
   for (int d = 0; d < no_dims; d++) {
     nulls_found[d] = false;
     cur_pack[d] = -1;
@@ -244,7 +244,7 @@ DimensionGroupVirtual::DGVirtualOrderedIterator::DGVirtualOrderedIterator(Filter
   pack_pos = ppos;
   nulls_found = new bool[no_dims];
   cur_pack = new int[no_dims];
-  int64_t no_obj = f->NoOnes();
+  int64_t no_obj = f->NumOfOnes();
   for (int d = 0; d < no_dims; d++) {
     nulls_found[d] = false;
     cur_pack[d] = -1;

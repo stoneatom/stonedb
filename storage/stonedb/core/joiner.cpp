@@ -86,7 +86,7 @@ std::unique_ptr<TwoDimensionalJoiner> TwoDimensionalJoiner::CreateJoiner(JoinAlg
 JoinTips::JoinTips(MultiIndex &mind) {
   limit = -1;
   count_only = false;
-  for (int i = 0; i < mind.NoDimensions(); i++) {
+  for (int i = 0; i < mind.NumOfDimensions(); i++) {
     forget_now.push_back(mind.IsForgotten(i));
     distinct_only.push_back(false);
     null_only.push_back(false);

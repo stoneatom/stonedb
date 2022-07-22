@@ -1298,7 +1298,7 @@ bool ColumnBinEncoder::EncoderTextMD5::ImpossibleStringValues(types::BString &pa
 MultiindexPositionEncoder::MultiindexPositionEncoder(MultiIndex *mind, DimensionVector &dims) {
   val_size = 0;
   val_offset = 0;
-  for (int i = 0; i < mind->NoDimensions(); i++)
+  for (int i = 0; i < mind->NumOfDimensions(); i++)
     if (dims[i]) {
       dim_no.push_back(i);
       auto loc_size = DimByteSize(mind, i);

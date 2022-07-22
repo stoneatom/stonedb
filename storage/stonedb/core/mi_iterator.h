@@ -165,9 +165,9 @@ class MIIterator {
    * \pre The result is correct for an initial state of multiindex (no further
    * changes apply).
    */
-  virtual int64_t NoTuples() const { return no_obj; }
+  virtual int64_t NumOfTuples() const { return no_obj; }
   //! Total number of tuples in the source multiindex
-  int64_t NoOrigTuples() const { return mind->NoTuples(); }
+  int64_t NumOfOrigTuples() const { return mind->NumOfTuples(); }
   //! How many rows (including the current one) are ahead of the current
   //! position in the current packrow
   virtual int64_t GetPackSizeLeft() const { return pack_size_left; }
@@ -217,7 +217,7 @@ class MIIterator {
 
   virtual bool DimUsed(int dim) const { return dimensions.Get(dim); }  // is the dimension used in iterator?
   DimensionVector DimsUsed() { return dimensions; }
-  int NoDimensions() const { return no_dims; }
+  int NumOfDimensions() const { return no_dims; }
   int64_t OrigSize(int dim) const { return mind->OrigSize(dim); }  // upper limit of a number of rows
   bool IsThreadSafe();
   bool BarrierAfterPackrow();  // true, if we must synchronize threads before
@@ -310,7 +310,7 @@ class MIDummyIterator : public MIIterator {
   bool WholePack([[maybe_unused]] int dim) const override { return false; }
   // These functions are usually unused, but if (for test reasons) we need them,
   // simulate one-row nonull multiindex
-  int64_t NoTuples() const override { return 1; }
+  int64_t NumOfTuples() const override { return 1; }
   int64_t GetPackSizeLeft() const override { return 1; }
   // These functions are illegal for MIDummyIterator
   MIIterator &Increment() override {

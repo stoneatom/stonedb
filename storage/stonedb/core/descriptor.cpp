@@ -1806,7 +1806,7 @@ bool Descriptor::IsleftIndexSearch() const {
   if (!stonedb_sysvar_index_search || IsType_OrTree()) return false;
   if (IsType_AttrValOrAttrValVal() && encoded) {
     auto col = static_cast<vcolumn::SingleColumn *>(attr.vc);
-    if (table && table->NoTables() == 1 && table->GetTableP(0)->TableType() == TType::TABLE &&
+    if (table && table->NumOfTables() == 1 && table->GetTableP(0)->TableType() == TType::TABLE &&
         col->GetPhysical()->ColType() == PhysicalColumn::phys_col_t::RCATTR) {
       auto path = (static_cast<RCTable *>(table->GetTableP(0))->Path());
       auto indextab = rceng->GetTableIndex(path.replace_extension().string());

@@ -110,7 +110,7 @@ class MultiIndexTable {
 
   void Lock(int n = 1);
   void Unlock();
-  int NoLocks();
+  int NumOfLocks();
 
   int64_t GetCount() const { return total_count_; }
   size_t GetTableCount() const { return table_items_.size(); }
@@ -183,7 +183,7 @@ class DimensionGroupMultiMaterialized : public DimensionGroup {
   void FillCurrentPos(DimensionGroup::Iterator *iter, int64_t *cur_pos, int *cur_pack, DimensionVector &dims) override;
   void Lock(int dim, int n = 1) override;
   void Unlock(int dim) override;
-  int NoLocks(int dim) override;
+  int NumOfLocks(int dim) override;
   bool IsThreadSafe() override { return true; }
   bool IsOrderable() override { return false; }
   DimensionGroup::Iterator *NewIterator(DimensionVector &, uint32_t power) override;

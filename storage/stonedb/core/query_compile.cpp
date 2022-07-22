@@ -986,7 +986,7 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
           if (!Engine::IsSDBTable(table_ptr->table)) throw CompilationError();
           std::string path = TablePath(table_ptr);
           if (path2num.find(path) == path2num.end()) {
-            path2num[path] = NoTabs();
+            path2num[path] = NumOfTabs();
             AddTable(m_conn->GetTableByPath(path));
             STONEDB_LOG(LogCtl_Level::DEBUG, "add query table: %s", path.c_str());
           }

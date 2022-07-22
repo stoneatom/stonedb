@@ -203,10 +203,10 @@ ParallelHashJoiner::MatchTaskParams::~MatchTaskParams() {
 // ParallelHashJoiner
 ParallelHashJoiner::ParallelHashJoiner(MultiIndex *multi_index, TempTable *temp_table, JoinTips &join_tips)
     : TwoDimensionalJoiner(multi_index, temp_table, join_tips), interrupt_matching_(false) {
-  pack_power_ = multi_index->NoPower();
-  traversed_dims_ = DimensionVector(multi_index->NoDimensions());
-  matched_dims_ = DimensionVector(multi_index->NoDimensions());
-  for (int i = 0; i < multi_index->NoDimensions(); i++) traversed_hash_column_.push_back(-1);
+  pack_power_ = multi_index->ValueOfPower();
+  traversed_dims_ = DimensionVector(multi_index->NumOfDimensions());
+  matched_dims_ = DimensionVector(multi_index->NumOfDimensions());
+  for (int i = 0; i < multi_index->NumOfDimensions(); i++) traversed_hash_column_.push_back(-1);
 
   cond_hashed_ = 0;
   other_cond_exist_ = false;
@@ -239,9 +239,9 @@ bool ParallelHashJoiner::PrepareBeforeJoin(Condition &cond) {
   std::vector<int> hash_descriptors;
   // Prepare all descriptor information
   bool first_found = true;
-  DimensionVector dims1(mind->NoDimensions());  // Initial dimension descriptions
-  DimensionVector dims2(mind->NoDimensions());
-  DimensionVector dims_other(mind->NoDimensions());  // dimensions for other conditions, if needed
+  DimensionVector dims1(mind->NumOfDimensions());  // Initial dimension descriptions
+  DimensionVector dims2(mind->NumOfDimensions());
+  DimensionVector dims_other(mind->NumOfDimensions());  // dimensions for other conditions, if needed
   for (uint i = 0; i < cond.Size(); i++) {
     bool added = false;
     if (cond[i].IsType_JoinSimple() && cond[i].op == common::Operator::O_EQ) {
@@ -257,9 +257,9 @@ bool ParallelHashJoiner::PrepareBeforeJoin(Condition &cond) {
         if (dims2.Intersects(cond[i].right_dims)) dims2.Plus(cond[i].right_dims);
         first_found = false;
       } else {
-        DimensionVector sec_dims1(mind->NoDimensions());  // Make sure the local descriptions are
+        DimensionVector sec_dims1(mind->NumOfDimensions());  // Make sure the local descriptions are
                                                           // compatible
-        DimensionVector sec_dims2(mind->NoDimensions());
+        DimensionVector sec_dims2(mind->NumOfDimensions());
         cond[i].attr.vc->MarkUsedDims(sec_dims1);
         cond[i].val1.vc->MarkUsedDims(sec_dims2);
         if (dims1.Includes(sec_dims1) && dims2.Includes(sec_dims2)) {
@@ -292,8 +292,8 @@ bool ParallelHashJoiner::PrepareBeforeJoin(Condition &cond) {
     repeatable
   */
   bool switch_sides = false;
-  int64_t dim1_size = mind->NoTuples(dims1);
-  int64_t dim2_size = mind->NoTuples(dims2);
+  int64_t dim1_size = mind->NumOfTuples(dims1);
+  int64_t dim2_size = mind->NumOfTuples(dims2);
   if (std::min(dim1_size, dim2_size) > 100000) {  // approximate criteria for large tables (many packs)
     if (dim1_size > 2 * dim2_size)
       switch_sides = true;
@@ -359,7 +359,7 @@ bool ParallelHashJoiner::PrepareBeforeJoin(Condition &cond) {
   }
   // prepare columns for traversed dimension numbers in hash table
   int num_of_traversed_dims = 0;
-  for (int i = 0; i < mind->NoDimensions(); i++) {
+  for (int i = 0; i < mind->NumOfDimensions(); i++) {
     if (traversed_dims_[i] && !(tips.count_only && !other_cond_exist_)) {  // storing tuples may be omitted if
                                                                            // (count_only_now && !other_cond_exist_)
       traversed_hash_column_[i] = cond_hashed_ + num_of_traversed_dims;    // jump over the joining key columns
@@ -400,8 +400,8 @@ void ParallelHashJoiner::ExecuteJoin() {
   // Preparing the new multiindex tables.
   MIIterator traversed_mit(mind, traversed_dims_);
   MIIterator match_mit(mind, matched_dims_);
-  uint64_t traversed_dims_size = traversed_mit.NoTuples();
-  uint64_t matched_dims_size = match_mit.NoTuples();
+  uint64_t traversed_dims_size = traversed_mit.NumOfTuples();
+  uint64_t matched_dims_size = match_mit.NumOfTuples();
 
   uint64_t approx_join_size = traversed_dims_size;
   if (matched_dims_size > approx_join_size) approx_join_size = matched_dims_size;
@@ -462,7 +462,7 @@ void ParallelHashJoiner::ExecuteJoin() {
         traversed_dist_limit =
             std::min(traversed_dist_limit, vc2_[i]->GetApproxDistVals(false) + (outer_tuples_ - outer_tuples_matched));
     }
-  for (int i = 0; i < mind->NoDimensions(); i++)
+  for (int i = 0; i < mind->NumOfDimensions(); i++)
     if (traversed_dims_[i])
       table->SetVCDistinctVals(i,
                                traversed_dist_limit);  // all dimensions involved in traversed side
@@ -470,7 +470,7 @@ void ParallelHashJoiner::ExecuteJoin() {
 }
 
 int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) {
-  int64_t rows_count = mind->NoTuples(traversed_dims_);
+  int64_t rows_count = mind->NumOfTuples(traversed_dims_);
   int availabled_packs = (int)((rows_count + (1 << pack_power_) - 1) >> pack_power_);
 
   std::string splitting_type("none");
@@ -490,7 +490,7 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
   } else if ((slice_capability.type == MIIterator::SliceCapability::Type::kLinear) &&
              (availabled_packs > kTraversedPacksPerFragment * 2)) {
     int64_t origin_size = rows_count;
-    for (int index = 0; index < mind->NoDimensions(); index++) {
+    for (int index = 0; index < mind->NumOfDimensions(); index++) {
       if (traversed_dims_[index]) {
         origin_size = std::max<int64_t>(origin_size, mind->OrigSize(index));
       }
@@ -638,11 +638,11 @@ int64_t ParallelHashJoiner::AsyncTraverseDim(TraverseTaskParams *params) {
       // Put the tuple column. Note: needed also for count_only_now, because
       // another conditions may need it.
       if (!tips.count_only || other_cond_exist_) {
-        for (int index = 0; index < mind->NoDimensions(); ++index)
+        for (int index = 0; index < mind->NumOfDimensions(); ++index)
           if (traversed_dims_[index]) hash_table->SetTupleValue(traversed_hash_column_[index], hash_row, miter[index]);
       }
     } else if (watch_traversed_) {
-      for (int index = 0; index < mind->NoDimensions(); ++index) {
+      for (int index = 0; index < mind->NumOfDimensions(); ++index) {
         if (matched_dims_[index]) {
           params->build_item->SetTableValue(index, common::NULL_VALUE_64);
         } else if (traversed_dims_[index]) {
@@ -693,7 +693,7 @@ bool ParallelHashJoiner::CreateMatchingTasks(MIIterator &mit, int64_t rows_count
     *splitting_type = "fixed";
   } else if (slice_capability.type == MIIterator::SliceCapability::Type::kLinear) {
     int packs_count = (int)((rows_count + (1 << pack_power_) - 1) >> pack_power_);
-    for (int index = 0; index < mind->NoDimensions(); index++) {
+    for (int index = 0; index < mind->NumOfDimensions(); index++) {
       if (matched_dims_[index]) {
         Filter *filter = mind->GetFilter(index);
         if (filter) packs_count = filter->NumOfBlocks();
@@ -718,7 +718,7 @@ bool ParallelHashJoiner::CreateMatchingTasks(MIIterator &mit, int64_t rows_count
     } else if (stonedb_sysvar_join_splitrows > 0) {
       // Splitting using rows.
       uint64_t origin_size = rows_count;
-      for (int index = 0; index < mind->NoDimensions(); index++) {
+      for (int index = 0; index < mind->NumOfDimensions(); index++) {
         if (matched_dims_[index]) {
           origin_size = std::max(origin_size, mind->OrigSize(index));
         }
@@ -750,7 +750,7 @@ bool ParallelHashJoiner::CreateMatchingTasks(MIIterator &mit, int64_t rows_count
 }
 
 int64_t ParallelHashJoiner::MatchDim(MIIterator &mit) {
-  int64_t rows_count = mind->NoTuples(matched_dims_);
+  int64_t rows_count = mind->NumOfTuples(matched_dims_);
 
   std::string splitting_type("none");
   std::vector<MITaskIterator *> task_iterators;
@@ -961,7 +961,7 @@ int64_t ParallelHashJoiner::AsyncMatchDim(MatchTaskParams *params) {
           combined_mit.Combine(miter);
           while ((hash_row = hash_table_finder.GetNextRow()) != common::NULL_VALUE_64) {
             bool other_cond_true = true;
-            for (int i = 0; i < mind->NoDimensions(); i++) {
+            for (int i = 0; i < mind->NumOfDimensions(); i++) {
               if (traversed_dims_[i])
                 combined_mit.Set(i, hash_table->GetTupleValue(traversed_hash_column_[i], hash_row));
             }
@@ -1018,7 +1018,7 @@ void ParallelHashJoiner::SubmitJoinedTuple(MultiIndexBuilder::BuildItem *build_i
   // integrity checking)
   if (!outer_nulls_only_) {
     HashTable *hash_table = traversed_hash_table->hash_table();
-    for (int index = 0; index < mind->NoDimensions(); ++index) {
+    for (int index = 0; index < mind->NumOfDimensions(); ++index) {
       if (matched_dims_[index]) {
         build_item->SetTableValue(index, mit[index]);
       } else if (traversed_dims_[index]) {
@@ -1040,8 +1040,8 @@ void ParallelHashJoiner::InitOuter(Condition &cond) {
       // outer dim.
       watch_matched_ = true;
 
-      uint64_t origin_size = mind->NoTuples(matched_dims_);
-      for (int index = 0; index < mind->NoDimensions(); index++) {
+      uint64_t origin_size = mind->NumOfTuples(matched_dims_);
+      for (int index = 0; index < mind->NumOfDimensions(); index++) {
         if (matched_dims_[index]) {
           origin_size = std::max(origin_size, mind->OrigSize(index));
         }
@@ -1072,7 +1072,7 @@ int64_t ParallelHashJoiner::SubmitOuterTraversed() {
       HashTable *hash_table = it.hash_table();
       for (int64_t hash_row = 0; hash_row < hash_table->GetCount(); ++hash_row) {
         if (outer_filter->Get(hash_row)) {
-          for (int index = 0; index < mind->NoDimensions(); ++index) {
+          for (int index = 0; index < mind->NumOfDimensions(); ++index) {
             if (matched_dims_[index])
               build_item->SetTableValue(index, common::NULL_VALUE_64);
             else if (traversed_dims_[index])
@@ -1113,7 +1113,7 @@ void ParallelHashJoiner::AsyncSubmitOuterMatched(OuterMatchedParams *params, Mut
   while (params->task_iter->IsValid()) {
     if (outer_matched_filter->Get(matched_row)) {  // if the matched tuple is still unused, add it
                                                    // with nulls
-      for (int index = 0; index < mind->NoDimensions(); ++index) {
+      for (int index = 0; index < mind->NumOfDimensions(); ++index) {
         if (matched_dims_[index])
           params->build_item->SetTableValue(index, miter[index]);
         else if (traversed_dims_[index])
@@ -1135,7 +1135,7 @@ int64_t ParallelHashJoiner::SubmitOuterMatched(MIIterator &miter) {
   DEBUG_ASSERT(outer_matched_filter_ && watch_matched_);
   if (tips.count_only) return outer_matched_filter_->GetOnesCount();
 
-  int64_t rows_count = mind->NoTuples(matched_dims_);
+  int64_t rows_count = mind->NumOfTuples(matched_dims_);
   std::string splitting_type("none");
   std::vector<MITaskIterator *> task_iterators;
   CreateMatchingTasks(miter, rows_count, &task_iterators, &splitting_type);

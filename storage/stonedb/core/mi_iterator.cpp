@@ -42,8 +42,8 @@ MIIterator::MIIterator() : po(null_order) {
 }
 
 MIIterator::MIIterator(MultiIndex *_mind, DimensionVector &_dimensions) : mind(_mind), po(null_order) {
-  p_power = mind->NoPower();
-  no_dims = mind->NoDimensions();
+  p_power = mind->ValueOfPower();
+  no_dims = mind->NumOfDimensions();
   mind_created_locally = false;
   cur_pos = NULL;
   cur_pack = NULL;
@@ -60,8 +60,8 @@ MIIterator::MIIterator(MultiIndex *_mind, DimensionVector &_dimensions, std::vec
     : mind(_mind),
       po(_po)  // Ordered iterator
 {
-  p_power = mind->NoPower();
-  no_dims = mind->NoDimensions();
+  p_power = mind->ValueOfPower();
+  no_dims = mind->NumOfDimensions();
   mind_created_locally = false;
   cur_pos = NULL;
   cur_pack = NULL;
@@ -81,8 +81,8 @@ MIIterator::MIIterator(MultiIndex *_mind, uint32_t power) : mind(_mind), po(null
     mind->AddDimension_cross(1);   // just one row
   } else
     mind_created_locally = false;
-  p_power = mind->NoPower();
-  no_dims = mind->NoDimensions();
+  p_power = mind->ValueOfPower();
+  no_dims = mind->NumOfDimensions();
   cur_pos = NULL;
   cur_pack = NULL;
   it_for_dim = NULL;
@@ -96,8 +96,8 @@ MIIterator::MIIterator(MultiIndex *_mind, uint32_t power) : mind(_mind), po(null
 }
 
 MIIterator::MIIterator(MultiIndex *_mind, int one_dimension, bool lock) : mind(_mind), po(null_order) {
-  p_power = mind->NoPower();
-  no_dims = mind->NoDimensions();
+  p_power = mind->ValueOfPower();
+  no_dims = mind->NumOfDimensions();
   mind_created_locally = false;
   cur_pos = NULL;
   cur_pack = NULL;
@@ -204,10 +204,10 @@ void MIIterator::Init(bool lock) {
   bool zero_tuples = true;
   for (uint i = 0; i < mind->dim_groups.size(); i++) {
     if (dim_group_used[i]) {
-      no_obj = SafeMultiplication(no_obj, mind->dim_groups[i]->NoTuples());
+      no_obj = SafeMultiplication(no_obj, mind->dim_groups[i]->NumOfTuples());
       zero_tuples = false;
     } else {
-      omitted_factor = SafeMultiplication(omitted_factor, mind->dim_groups[i]->NoTuples());
+      omitted_factor = SafeMultiplication(omitted_factor, mind->dim_groups[i]->NumOfTuples());
     }
   }
   if (zero_tuples) no_obj = 0;
@@ -409,9 +409,9 @@ bool MIIterator::BarrierAfterPackrow() {
 
 MIDummyIterator::MIDummyIterator(MultiIndex *_mind) {
   mind = _mind;
-  SetPower(mind->NoPower());
+  SetPower(mind->ValueOfPower());
   valid = true;
-  no_dims = mind->NoDimensions();
+  no_dims = mind->NumOfDimensions();
   mind_created_locally = false;
   it_for_dim = NULL;
   cur_pos = new int64_t[no_dims];

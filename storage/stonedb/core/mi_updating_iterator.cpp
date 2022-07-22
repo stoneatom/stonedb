@@ -21,7 +21,7 @@ namespace stonedb {
 namespace core {
 MIUpdatingIterator::MIUpdatingIterator(MultiIndex *_mind, DimensionVector &dimensions)
     : MIIterator(_mind, dimensions), changed(false), multi_filter_pos(0), multi_filter_pack_start(0) {
-  pack_power = mind->NoPower();
+  pack_power = mind->ValueOfPower();
   mind->IteratorUnlock();  // unlock a base class lock
   bool success = mind->IteratorUpdatingLock();
   (void)success;          // FIXME: error handling
@@ -60,7 +60,7 @@ void MIUpdatingIterator::Commit(bool recalculate_no_tuples) {
     one_filter_it->CommitUpdate();  // working directly on multiindex filer
                                     // (special case)
     if (recalculate_no_tuples)
-      mind->UpdateNoTuples();  // not for parallel WHERE - shallow copy of
+      mind->UpdateNumOfTuples();  // not for parallel WHERE - shallow copy of
                                // MultiIndex/Filter
   } else {
     multi_dim_filter->Commit();
@@ -68,7 +68,7 @@ void MIUpdatingIterator::Commit(bool recalculate_no_tuples) {
     {
       // create scope to ensure that mit_read will be unlocked on the end
       MIIterator mit_read(*this);                      // make a traversing copy of the current iterator
-      mind->MIFilterAnd(mit_read, *multi_dim_filter);  // UpdateNoTuples inside
+      mind->MIFilterAnd(mit_read, *multi_dim_filter);  // UpdateNumOfTuples inside
     }
     mind->IteratorUpdatingLock();  // lock it again for consistency
   }
@@ -87,10 +87,10 @@ void MIUpdatingIterator::NextPackrow() {
   MIIterator::NextPackrow();
 }
 
-int MIUpdatingIterator::NoOnesUncommited(uint pack) {
+int MIUpdatingIterator::NumOfOnesUncommited(uint pack) {
   DEBUG_ASSERT(one_filter_it);
   if (one_filter_dim > -1)
-    return one_filter_it->NoOnesUncommited(pack);
+    return one_filter_it->NumOfOnesUncommited(pack);
   else
     return -1;
 }

@@ -49,7 +49,7 @@ class LoadParser final {
   ~LoadParser() = default;
 
   uint GetPackrow(uint no_of_rows, std::vector<ValueCache> &vcs);
-  int64_t GetNoRejectedRows() const { return rejecter.GetNoRejectedRows(); }
+  int64_t GetNumOfRejectedRows() const { return rejecter.GetNumOfRejectedRows(); }
   bool ThresholdExceeded(int64_t no_rows) const { return rejecter.ThresholdExceeded(no_rows); }
   int ProcessInsertIndex(std::shared_ptr<index::RCTableIndex> tab, std::vector<ValueCache> &vcs, uint no_rows);
   int64_t GetNoRow() const { return row_no; }

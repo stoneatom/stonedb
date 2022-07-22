@@ -1255,7 +1255,7 @@ void Engine::ProcessDelayedMerge() {
               (sleep_cnts.count(name) && sleep_cnts[name] > stonedb_sysvar_insert_cntthreshold)) {
             auto share = rceng->getTableShare(name);
             auto tid = share->TabID();
-            utils::BitSet null_mask(share->NoCols());
+            utils::BitSet null_mask(share->NumOfCols());
             std::unique_ptr<char[]> buf(new char[sizeof(uint32_t) + name.size() + 1 + null_mask.data_size()]);
             char *ptr = buf.get();
             *(int32_t *)ptr = tid;  // table id

@@ -226,7 +226,7 @@ class MultiValColumn : public VirtualColumn {
   int64_t GetApproxDistValsImpl([[maybe_unused]] bool incl_nulls,
                                 [[maybe_unused]] core::RoughMultiIndex *rough_mind) override {
     if (mind->TooManyTuples()) return common::PLUS_INF_64;
-    return mind->NoTuples();  // default
+    return mind->NumOfTuples();  // default
   }
 
   virtual common::Tribool Contains64Impl(core::MIIterator const &mit, int64_t val) = 0;

@@ -32,7 +32,7 @@ class DimensionGroupVirtual : public DimensionGroup {
   DimensionGroup *Clone(bool shallow) override;
 
   void FillCurrentPos(DimensionGroup::Iterator *it, int64_t *cur_pos, int *cur_pack, DimensionVector &dims) override;
-  void UpdateNoTuples() override;
+  void UpdateNumOfTuples() override;
   Filter *GetFilter(int dim) const override { return (base_dim == dim || dim == -1 ? f : NULL); }
   // For this type of filter: dim == -1 means the only existing one
   // Note: GetUpdatableFilter remains default (NULL)
@@ -58,8 +58,8 @@ class DimensionGroupVirtual : public DimensionGroup {
     else if (base_dim == dim)
       locks--;
   }
-  int NoLocks(int dim) override {
-    if (t[dim]) return t[dim]->NoLocks();
+  int NumOfLocks(int dim) override {
+    if (t[dim]) return t[dim]->NumOfLocks();
     if (base_dim == dim) return locks;
     return 0;
   }
