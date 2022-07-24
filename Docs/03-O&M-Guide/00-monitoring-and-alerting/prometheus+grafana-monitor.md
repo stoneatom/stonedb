@@ -66,7 +66,7 @@ docker run -d  --restart=always --name=prometheus  -p 9090:9090  \
 --storage.tsdb.retention.time=30d
 
 ```
-If "http://<IP address of machine A>:9090" appears, Prometheus is successfully deployed. If the deployment fails, run the `docker logs <Container ID>` command to view logs and rectify the fault.
+If `"http://<IP address of machine A>:9090"` appears, Prometheus is successfully deployed. If the deployment fails, run the `docker logs <Container ID>` command to view logs and rectify the fault.
 ![image.png](../../../website/i18n/zh/docusaurus-plugin-content-docs/current/03-O%26M-Guide/00-monitoring-and-alerting/Prometheus.png)
 ## Step 2. **Deploy Prometheus Exporter**
 The following example shows how to monitor the OS and a MySQL database.
@@ -249,7 +249,7 @@ docker run -d  --restart=always --name=grafana  -p 13000:3000  \
 -v /home/zsp/grafana/data/grafana/:/var/lib/grafana/    grafana/grafana
 ```
 
-3. Visit http://<IP address of machine A>:13000 and log in to Grafana. The default username and password are **admin** and **admin**.
+3. Visit `http://<IP address of machine A>:13000` and log in to Grafana. The default username and password are **admin** and **admin**.
 
 ![image.png](../../../website/i18n/zh/docusaurus-plugin-content-docs/current/03-O%26M-Guide/00-monitoring-and-alerting/Grafana.png)
 ## **Step 5. Configure Grafana to display monitoring data from Prometheus**

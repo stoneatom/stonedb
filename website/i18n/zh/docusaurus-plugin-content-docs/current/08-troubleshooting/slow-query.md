@@ -6,18 +6,30 @@ sidebar_position: 9.8
 # 慢SQL诊断
 
 慢查询日志用来记录SQL的执行时间超过long_query_time的阀值，慢查询日志支持将日志写入文件，也支持将日志写入数据库的表。慢查询日志能帮助我们捕捉到有性能问题的SQL，相关慢查询日志参数如下：
+
 slow_query_log：慢查询日志是否开启
+
 slow_query_log_file：慢查询日志记录的文件
+
 long_query_time：SQL实际执行时间超过该参数阀值就会被记录
+
 log_queries_not_using_indexes：未使用索引就会被记录
+
 log_slow_admin_statements：是否记录管理语句，如alter、create、drop
+
 注：long_query_time记录的是SQL实际执行时间，不包含锁等待时间，虽然有的SQL执行时间很长，但可能是由于锁等待引起的，实际上这种SQL不会被记录到慢查询日志。
+
 慢查询日志输出解释：
+
 Query_time：SQL总执行时间，即实际执行时间 + 锁等待时间
+
 Lock_time：锁等待时间
+
 Rows_sent：发送给客户端的行数
+
 Rows_examined：表示执行过程中扫描了多少行，这个值是在执行器每次调用存储引擎获取数据行的时候累加的，是在Server层统计的
 注：在有些场景下，执行器调用一次，在存储引擎内部则扫描了多行，因此存储引擎扫描行数和rows_examined并不是完全相同的。
+
 ## mysqldumpslow
 mysqldumpslow常用于对慢查询日志进行汇总分类。
 1）查看慢查询日志中TOP 10（以平均执行时间降序排列）
