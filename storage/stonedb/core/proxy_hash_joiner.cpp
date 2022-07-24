@@ -47,8 +47,8 @@ class MIIteratorPoller {
   MIIteratorPoller(std::shared_ptr<MIIterator> miter, int start_pack = 0) : miter_(miter), cur_pos_(start_pack) {
     slice_capability_ = miter_->GetSliceCapability();
 
-    origin_size_ = miter_->NoTuples();
-    for (int index = 0; index < miter_->NoDimensions(); ++index) {
+    origin_size_ = miter_->NumOfTuples();
+    for (int index = 0; index < miter_->NumOfDimensions(); ++index) {
       if (miter_->DimUsed(index)) {
         origin_size_ = std::max<int64_t>(origin_size_, miter_->OrigSize(index));
       }
@@ -88,7 +88,7 @@ class MIIteratorPoller {
           step = stonedb_sysvar_async_join_setting.pack_per_step;
           // Get actual pack, because RewindToPack of MIIterator will skip the
           // un-hitted package.
-          for (auto index : boost::irange<int>(0, pack_iter->NoDimensions())) {
+          for (auto index : boost::irange<int>(0, pack_iter->NumOfDimensions())) {
             if (pack_iter->DimUsed(index)) {
               actual_pos = pack_iter->GetCurPackrow(index);
               break;
@@ -105,7 +105,7 @@ class MIIteratorPoller {
             step = stonedb_sysvar_async_join_setting.rows_per_step;
             // Get actual pack, because RewindToPack of MIIterator will skip the
             // un-hitted package.
-            for (auto index : boost::irange<int>(0, pack_iter->NoDimensions())) {
+            for (auto index : boost::irange<int>(0, pack_iter->NumOfDimensions())) {
               if (pack_iter->DimUsed(index)) {
                 actual_pos = pack_iter->operator[](index);
                 break;
@@ -145,8 +145,8 @@ class ProxyHashJoiner::Action {
  public:
   Action(ProxyHashJoiner *parent, bool force_switching_sides)
       : parent_(parent), mind_(parent->mind), force_switching_sides_(force_switching_sides) {
-    pack_power_ = mind_->NoPower();
-    int dim_count = mind_->NoDimensions();
+    pack_power_ = mind_->ValueOfPower();
+    int dim_count = mind_->NumOfDimensions();
     traversed_dims_ = DimensionVector(dim_count);
     matched_dims_ = DimensionVector(dim_count);
     traversed_hash_column_.resize(dim_count, -1);
@@ -159,10 +159,10 @@ class ProxyHashJoiner::Action {
 
     std::vector<int> hash_descriptors;
     bool first_found = true;
-    DimensionVector dims1(mind_->NoDimensions());  // Initial dimension descriptions
-    DimensionVector dims2(mind_->NoDimensions());
+    DimensionVector dims1(mind_->NumOfDimensions());  // Initial dimension descriptions
+    DimensionVector dims2(mind_->NumOfDimensions());
     // Dimensions for other conditions, if needed.
-    DimensionVector dims_other(mind_->NoDimensions());
+    DimensionVector dims_other(mind_->NumOfDimensions());
     for (uint index = 0; index < cond.Size(); ++index) {
       bool added = false;
       if (cond[index].IsType_JoinSimple() && cond[index].op == common::Operator::O_EQ) {
@@ -179,8 +179,8 @@ class ProxyHashJoiner::Action {
           first_found = false;
         } else {
           // Make sure the local descriptions are compatible.
-          DimensionVector sec_dims1(mind_->NoDimensions());
-          DimensionVector sec_dims2(mind_->NoDimensions());
+          DimensionVector sec_dims1(mind_->NumOfDimensions());
+          DimensionVector sec_dims2(mind_->NumOfDimensions());
           cond[index].attr.vc->MarkUsedDims(sec_dims1);
           cond[index].val1.vc->MarkUsedDims(sec_dims2);
           if (dims1.Includes(sec_dims1) && dims2.Includes(sec_dims2)) {
@@ -212,8 +212,8 @@ class ProxyHashJoiner::Action {
        which is less repeatable
         */
     bool switch_sides = false;
-    int64_t dim1_size = mind_->NoTuples(dims1);
-    int64_t dim2_size = mind_->NoTuples(dims2);
+    int64_t dim1_size = mind_->NumOfTuples(dims1);
+    int64_t dim2_size = mind_->NumOfTuples(dims2);
     if (std::min(dim1_size, dim2_size) > 100000) {
       // Approximate criteria for large tables (many packs).
       if (dim1_size > 2 * dim2_size)
@@ -297,8 +297,8 @@ class ProxyHashJoiner::Action {
 
   base::future<> Execute() {
     // Preparing the new multiindex tables.
-    int64_t traversed_dims_size = mind_->NoTuples(traversed_dims_);
-    int64_t matched_dims_size = mind_->NoTuples(matched_dims_);
+    int64_t traversed_dims_size = mind_->NumOfTuples(traversed_dims_);
+    int64_t matched_dims_size = mind_->NumOfTuples(matched_dims_);
 
     std::vector<bool> traverse_keys_unique;
     for (auto vc : vc1_) traverse_keys_unique.push_back(vc->IsDistinctInTable());
@@ -359,7 +359,7 @@ class ProxyHashJoiner::Action {
         }
       }
 
-      for (int index = 0; index < mind_->NoDimensions(); index++) {
+      for (int index = 0; index < mind_->NumOfDimensions(); index++) {
         // All dimensions involved in traversed side.
         if (traversed_dims_[index]) parent_->table->SetVCDistinctVals(index, traversed_dist_limit);
       }
@@ -403,7 +403,7 @@ class ProxyHashJoiner::Action {
     // Prepare columns for traversed dimension numbers in hash table.
     std::vector<int> hash_table_tuple_size;
     int num_of_traversed_dims = 0;
-    for (int index = 0; index < mind_->NoDimensions(); ++index) {
+    for (int index = 0; index < mind_->NumOfDimensions(); ++index) {
       if (traversed_dims_[index] && !(parent_->tips.count_only && !other_cond_exist_)) {
         // Storing tuples may be omitted if (count_only && !other_cond_exist_).
         // Jump over the joining key columns.
@@ -419,7 +419,7 @@ class ProxyHashJoiner::Action {
     HashTable::CreateParams hash_table_create_params;
     hash_table_create_params.keys_length = std::move(hash_table_key_size);
     hash_table_create_params.tuples_length = std::move(hash_table_tuple_size);
-    hash_table_create_params.max_table_size = int64_t(mind_->NoTuples(traversed_dims_) * 1.5);
+    hash_table_create_params.max_table_size = int64_t(mind_->NumOfTuples(traversed_dims_) * 1.5);
     hash_table_create_params.easy_roughable = false;
     tables_manager_.reset(JoinThreadTableManager::CreateSharedTableManager(
         pack_power_, hash_table_count, hash_table_create_params, std::move(column_encoder), watch_traversed_,
@@ -489,12 +489,12 @@ class ProxyHashJoiner::Action {
           // Put the tuple column. Note: needed also for count_only_now, because
           // another conditions may need it.
           if (!parent_->tips.count_only || other_cond_exist_) {
-            for (int index = 0; index < mind_->NoDimensions(); ++index)
+            for (int index = 0; index < mind_->NumOfDimensions(); ++index)
               if (traversed_dims_[index])
                 thread_table->SetTupleValue(traversed_hash_column_[index], hash_row, (*miter)[index]);
           }
         } else if (watch_traversed_) {
-          for (int index = 0; index < mind_->NoDimensions(); ++index) {
+          for (int index = 0; index < mind_->NumOfDimensions(); ++index) {
             if (matched_dims_[index]) {
               build_item->SetTableValue(index, common::NULL_VALUE_64);
             } else if (traversed_dims_[index]) {
@@ -580,7 +580,7 @@ class ProxyHashJoiner::Action {
             if (watch_matched_) {
               MIIterator mit_this_pack(*miter);
               do {
-                for (int index = 0; index < mind_->NoDimensions(); ++index) {
+                for (int index = 0; index < mind_->NumOfDimensions(); ++index) {
                   if (matched_dims_[index])
                     build_item->SetTableValue(index, mit_this_pack[index]);
                   else if (traversed_dims_[index])
@@ -620,7 +620,7 @@ class ProxyHashJoiner::Action {
               if (!parent_->tips.count_only || watch_traversed_) {
                 while ((hash_row = table_finder.GetNextRow()) != common::NULL_VALUE_64) {
                   if (!parent_->tips.count_only || !outer_nulls_only_) {
-                    for (int index = 0; index < mind_->NoDimensions(); ++index) {
+                    for (int index = 0; index < mind_->NumOfDimensions(); ++index) {
                       if (matched_dims_[index]) {
                         build_item->SetTableValue(index, (*miter)[index]);
                       } else if (traversed_dims_[index]) {
@@ -635,7 +635,7 @@ class ProxyHashJoiner::Action {
 
               if (watch_matched_ && matching_rows == 0) {
                 // Add outer join of matched.
-                for (int index = 0; index < mind_->NoDimensions(); ++index) {
+                for (int index = 0; index < mind_->NumOfDimensions(); ++index) {
                   if (matched_dims_[index])
                     build_item->SetTableValue(index, (*miter)[index]);
                   else if (traversed_dims_[index])
@@ -650,7 +650,7 @@ class ProxyHashJoiner::Action {
               combined_mit.Combine(*miter);
               while ((hash_row = table_finder.GetNextRow(false)) != common::NULL_VALUE_64) {
                 bool other_cond_true = true;
-                for (int index = 0; index < mind_->NoDimensions(); index++) {
+                for (int index = 0; index < mind_->NumOfDimensions(); index++) {
                   if (traversed_dims_[index])
                     combined_mit.Set(index, thread_table->GetTupleValue(traversed_hash_column_[index], hash_row));
                 }
@@ -663,7 +663,7 @@ class ProxyHashJoiner::Action {
                 }
                 if (other_cond_true) {
                   if (!parent_->tips.count_only) {
-                    for (int index = 0; index < mind_->NoDimensions(); ++index) {
+                    for (int index = 0; index < mind_->NumOfDimensions(); ++index) {
                       if (matched_dims_[index]) {
                         build_item->SetTableValue(index, (*miter)[index]);
                       } else if (traversed_dims_[index]) {
@@ -677,7 +677,7 @@ class ProxyHashJoiner::Action {
                   thread_table->ResetTraversed(hash_row);
                   actually_matched_rows_++;
                 } else if (watch_matched_) {
-                  for (int index = 0; index < mind_->NoDimensions(); ++index) {
+                  for (int index = 0; index < mind_->NumOfDimensions(); ++index) {
                     if (matched_dims_[index])
                       build_item->SetTableValue(index, (*miter)[index]);
                     else if (traversed_dims_[index])
@@ -712,7 +712,7 @@ class ProxyHashJoiner::Action {
     std::shared_ptr<MIIteratorPoller> miter_poller(new MIIteratorPoller(miter));
 
     rccontrol.lock(parent_->m_conn->GetThreadID())
-        << "Start traverse " << miter->NoTuples() << " rows with " << slice_count << " threads using "
+        << "Start traverse " << miter->NumOfTuples() << " rows with " << slice_count << " threads using "
         << miter_poller->GetSliceType() << system::unlock;
     auto start_traversing = base::steady_clock_type::now();
     int availabled_packs = (int)((wait_traversed_rows + (1 << pack_power_) - 1) >> pack_power_);
@@ -754,7 +754,7 @@ class ProxyHashJoiner::Action {
     std::shared_ptr<MIIterator> miter(new MIIterator(mind_, matched_dims_));
     std::shared_ptr<MIIteratorPoller> miter_poller(new MIIteratorPoller(miter));
     rccontrol.lock(parent_->m_conn->GetThreadID())
-        << "Start match " << miter->NoTuples() << " rows with " << slice_count << " threads using "
+        << "Start match " << miter->NumOfTuples() << " rows with " << slice_count << " threads using "
         << miter_poller->GetSliceType() << system::unlock;
     auto start_matching = base::steady_clock_type::now();
     int availabled_packs = (int)((wait_matched_rows + (1 << pack_power_) - 1) >> pack_power_);
@@ -810,7 +810,7 @@ class ProxyHashJoiner::Action {
         int64_t count = thread_table->GetHashCount();
         for (int64_t hash_row = 0; hash_row < count; ++hash_row) {
           if (thread_table->IsOuterTraversed(hash_row)) {
-            for (int index = 0; index < mind_->NoDimensions(); ++index) {
+            for (int index = 0; index < mind_->NumOfDimensions(); ++index) {
               if (matched_dims_[index])
                 build_item->SetTableValue(index, common::NULL_VALUE_64);
               else if (traversed_dims_[index])

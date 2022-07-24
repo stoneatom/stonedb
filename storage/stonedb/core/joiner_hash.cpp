@@ -32,10 +32,10 @@ namespace stonedb {
 namespace core {
 JoinerHash::JoinerHash(MultiIndex *_mind, TempTable *_table, JoinTips &_tips)
     : TwoDimensionalJoiner(_mind, _table, _tips) {
-  p_power = _mind->NoPower();
-  traversed_dims = DimensionVector(_mind->NoDimensions());
-  matched_dims = DimensionVector(_mind->NoDimensions());
-  for (int i = 0; i < _mind->NoDimensions(); i++) traversed_hash_column.push_back(-1);
+  p_power = _mind->ValueOfPower();
+  traversed_dims = DimensionVector(_mind->NumOfDimensions());
+  matched_dims = DimensionVector(_mind->NumOfDimensions());
+  for (int i = 0; i < _mind->NumOfDimensions(); i++) traversed_hash_column.push_back(-1);
   no_of_traversed_dims = 0;
   cond_hashed = 0;
   other_cond_exist = false;
@@ -56,9 +56,9 @@ void JoinerHash::ExecuteJoinConditions(Condition &cond) {
   std::vector<int> hash_descriptors;
   // Prepare all descriptor information
   bool first_found = true;
-  DimensionVector dims1(mind->NoDimensions());  // Initial dimension descriptions
-  DimensionVector dims2(mind->NoDimensions());
-  DimensionVector dims_other(mind->NoDimensions());  // dimensions for other conditions, if needed
+  DimensionVector dims1(mind->NumOfDimensions());  // Initial dimension descriptions
+  DimensionVector dims2(mind->NumOfDimensions());
+  DimensionVector dims_other(mind->NumOfDimensions());  // dimensions for other conditions, if needed
   for (uint i = 0; i < cond.Size(); i++) {
     bool added = false;
     if (cond[i].IsType_JoinSimple() && cond[i].op == common::Operator::O_EQ) {
@@ -74,9 +74,9 @@ void JoinerHash::ExecuteJoinConditions(Condition &cond) {
         if (dims2.Intersects(cond[i].right_dims)) dims2.Plus(cond[i].right_dims);
         first_found = false;
       } else {
-        DimensionVector sec_dims1(mind->NoDimensions());  // Make sure the local descriptions are
+        DimensionVector sec_dims1(mind->NumOfDimensions());  // Make sure the local descriptions are
                                                           // compatible
-        DimensionVector sec_dims2(mind->NoDimensions());
+        DimensionVector sec_dims2(mind->NumOfDimensions());
         cond[i].attr.vc->MarkUsedDims(sec_dims1);
         cond[i].val1.vc->MarkUsedDims(sec_dims2);
         if (dims1.Includes(sec_dims1) && dims2.Includes(sec_dims2)) {
@@ -108,8 +108,8 @@ void JoinerHash::ExecuteJoinConditions(Condition &cond) {
   // - if neither is 3 times smaller than other, traverse the one which is less
   // repeatable
   bool switch_sides = false;
-  int64_t dim1_size = mind->NoTuples(dims1);
-  int64_t dim2_size = mind->NoTuples(dims2);
+  int64_t dim1_size = mind->NumOfTuples(dims1);
+  int64_t dim2_size = mind->NumOfTuples(dims2);
   bool easy_roughable = false;
   if (std::min(dim1_size, dim2_size) > 100000) {  // approximate criteria for large tables (many packs)
     if (dim1_size > 2 * dim2_size)
@@ -183,7 +183,7 @@ void JoinerHash::ExecuteJoinConditions(Condition &cond) {
   }
   // prepare columns for traversed dimension numbers in hash table
   no_of_traversed_dims = 0;
-  for (int i = 0; i < mind->NoDimensions(); i++) {
+  for (int i = 0; i < mind->NumOfDimensions(); i++) {
     if (traversed_dims[i] && !(tips.count_only && !other_cond_exist)) {  // storing tuples may be omitted if
                                                                          // (count_only_now && !other_cond_exist)
       traversed_hash_column[i] = cond_hashed + no_of_traversed_dims;     // jump over the joining key columns
@@ -194,7 +194,7 @@ void JoinerHash::ExecuteJoinConditions(Condition &cond) {
     }
   }
   // calculate the size of hash table
-  jhash.Initialize(int64_t(mind->NoTuples(traversed_dims) * 1.5), easy_roughable);
+  jhash.Initialize(int64_t(mind->NumOfTuples(traversed_dims) * 1.5), easy_roughable);
 
   // jhash prepared, perform the join
   InitOuter(cond);
@@ -212,8 +212,8 @@ void JoinerHash::ExecuteJoin() {
   // preparing the new multiindex tables
   MIIterator tr_mit(mind, traversed_dims);
   MIIterator match_mit(mind, matched_dims);
-  uint64_t dim1_size = tr_mit.NoTuples();
-  uint64_t dim2_size = match_mit.NoTuples();
+  uint64_t dim1_size = tr_mit.NumOfTuples();
+  uint64_t dim2_size = match_mit.NumOfTuples();
 
   uint64_t approx_join_size = dim1_size;
   if (dim2_size > approx_join_size) approx_join_size = dim2_size;
@@ -283,7 +283,7 @@ void JoinerHash::ExecuteJoin() {
         traversed_dist_limit =
             std::min(traversed_dist_limit, vc2[i]->GetApproxDistVals(false) + (outer_tuples - outer_tuples_matched));
     }
-  for (int i = 0; i < mind->NoDimensions(); i++)
+  for (int i = 0; i < mind->NumOfDimensions(); i++)
     if (traversed_dims[i])
       table->SetVCDistinctVals(i,
                                traversed_dist_limit);  // all dimensions involved in traversed side
@@ -296,7 +296,7 @@ int64_t JoinerHash::TraverseDim(MINewContents &new_mind, MIIterator &mit, int64_
   MEASURE_FET("JoinerHash::TraverseMaterialDim(...)");
   jhash.ClearAll();
 
-  int availabled_packs = (int)((mind->NoTuples(traversed_dims) + (1 << p_power) - 1) >> p_power);
+  int availabled_packs = (int)((mind->NumOfTuples(traversed_dims) + (1 << p_power) - 1) >> p_power);
   TempTablePackLocker temptable_pack_locker(vc1, cond_hashed, availabled_packs);
 
   int64_t hash_row = 0;  // hash_row = 0, otherwise deadlock for null on the first position
@@ -333,12 +333,12 @@ int64_t JoinerHash::TraverseDim(MINewContents &new_mind, MIIterator &mit, int64_
       // Put the tuple column. Note: needed also for count_only_now, because
       // another conditions may need it.
       if (!tips.count_only || other_cond_exist) {
-        for (int i = 0; i < mind->NoDimensions(); i++)
+        for (int i = 0; i < mind->NumOfDimensions(); i++)
           if (traversed_dims[i]) jhash.PutTupleValue(traversed_hash_column[i], hash_row, mit[i]);
       }
     } else if (watch_traversed) {
       // Add outer tuples for omitted hash positions
-      for (int i = 0; i < mind->NoDimensions(); i++) {
+      for (int i = 0; i < mind->NumOfDimensions(); i++) {
         if (traversed_dims[i])
           new_mind.SetNewTableValue(i, mit[i]);
         else if (matched_dims[i])
@@ -368,7 +368,7 @@ int64_t JoinerHash::MatchDim(MINewContents &new_mind, MIIterator &mit) {
   int64_t matching_row = 0;
   MIDummyIterator combined_mit(mind);  // a combined iterator for checking non-hashed conditions, if any
 
-  int availabled_packs = (int)((mind->NoTuples(matched_dims) + (1 << p_power) - 1) >> p_power);
+  int availabled_packs = (int)((mind->NumOfTuples(matched_dims) + (1 << p_power) - 1) >> p_power);
   TempTablePackLocker temptable_pack_locker(vc2, cond_hashed, availabled_packs);
 
   while (mit.IsValid()) {
@@ -471,7 +471,7 @@ int64_t JoinerHash::MatchDim(MINewContents &new_mind, MIIterator &mit) {
         combined_mit.Combine(mit);
         while ((hash_row = jhash.GetNextRow()) != common::NULL_VALUE_64) {
           bool other_cond_true = true;
-          for (int i = 0; i < mind->NoDimensions(); i++) {
+          for (int i = 0; i < mind->NumOfDimensions(); i++) {
             if (traversed_dims[i]) combined_mit.Set(i, jhash.GetTupleValue(traversed_hash_column[i], hash_row));
           }
           for (auto &j : other_cond) {
@@ -517,7 +517,7 @@ void JoinerHash::SubmitJoinedTuple(int64_t hash_row, MIIterator &mit, MINewConte
   // assumption: SetNewTableValue is called once for each dimension involved (no
   // integrity checking)
   if (!outer_nulls_only) {
-    for (int i = 0; i < mind->NoDimensions(); i++) {
+    for (int i = 0; i < mind->NumOfDimensions(); i++) {
       if (matched_dims[i])
         new_mind.SetNewTableValue(i, mit[i]);
       else if (traversed_dims[i])
@@ -536,7 +536,7 @@ void JoinerHash::InitOuter(Condition &cond) {
     if (traversed_dims.Includes(outer_dims)) {
       watch_matched = true;  // watch the non-outer dim for unmatched tuples and add them
                              // with nulls on outer dim the filter updated for each matching
-      outer_filter.reset(new Filter(mind->NoTuples(matched_dims), p_power, true));
+      outer_filter.reset(new Filter(mind->NumOfTuples(matched_dims), p_power, true));
     } else if (matched_dims.Includes(outer_dims)) {
       watch_traversed = true;
       outer_filter.reset(new Filter(jhash.NoRows(), p_power));  // the filter reused for each traverse
@@ -551,14 +551,14 @@ int64_t JoinerHash::SubmitOuterMatched(MIIterator &mit, MINewContents &new_mind)
   MEASURE_FET("JoinerHash::SubmitOuterMatched(...)");
   // mit - an iterator through the matched dimensions
   DEBUG_ASSERT(outer_filter && watch_matched);
-  if (tips.count_only) return outer_filter->NoOnes();
+  if (tips.count_only) return outer_filter->NumOfOnes();
   mit.Rewind();
   int64_t matched_row = 0;
   int64_t outer_added = 0;
   while (mit.IsValid()) {
     if (outer_filter->Get(matched_row)) {  // if the matched tuple is still
                                            // unused, add it with nulls
-      for (int i = 0; i < mind->NoDimensions(); i++) {
+      for (int i = 0; i < mind->NumOfDimensions(); i++) {
         if (matched_dims[i])
           new_mind.SetNewTableValue(i, mit[i]);
         else if (traversed_dims[i])
@@ -583,7 +583,7 @@ int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *ta
   for (int i = 0; i < cond_hashed; i++) {
     tmp_jhash.AddKeyColumn(vc1[i], vc2[i]);
   }
-  for (int i = 0; i < mind->NoDimensions(); i++) {
+  for (int i = 0; i < mind->NumOfDimensions(); i++) {
     if (traversed_dims[i] && !(tips.count_only && !other_cond_exist)) {  // storing tuples may be omitted if
                                                                          // (count_only_now && !other_cond_exist)
       int bin_index_size = 4;
@@ -592,7 +592,7 @@ int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *ta
     }
   }
   bool easy_roughable = false;
-  tmp_jhash.Initialize(int64_t(mind->NoTuples(traversed_dims) * 1.5), easy_roughable);
+  tmp_jhash.Initialize(int64_t(mind->NumOfTuples(traversed_dims) * 1.5), easy_roughable);
   {
     std::scoped_lock guard(joiner_mutex);
     MIIterator tr_mit(mind, traversed_dims);
@@ -621,7 +621,7 @@ int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *ta
           break;  // and exit the function
         }
         if (!tips.count_only || other_cond_exist) {
-          for (int i = 0; i < mind->NoDimensions(); i++)
+          for (int i = 0; i < mind->NumOfDimensions(); i++)
             if (traversed_dims[i]) tmp_jhash.PutTupleValue(traversed_hash_column[i], hash_row, tr_mit[i]);
         }
       }
@@ -643,14 +643,14 @@ int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *ta
     {
       MIIterator mit(mind, matched_dims);
       mit.Rewind();
-      int no_dims=mit.NoDimensions();
+      int no_dims=mit.NumOfDimensions();
       int64_t no_obj=0;
       for(int i=0;i<no_dims;i++)
       {
         if( mit.DimUsed(i) )
           no_obj=mit.OrigSize(i);
       }
-      int packs_no = (int)((no_obj + (1 << p_power) - 1) >> mind->NoPower());
+      int packs_no = (int)((no_obj + (1 << p_power) - 1) >> mind->ValueOfPower());
       int mod = packs_no%stonedb_sysvar_jointhreadpool;
       int num = packs_no/stonedb_sysvar_jointhreadpool;
       //benq: why recalculate the matching row? consider make it a one
@@ -769,7 +769,7 @@ int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *ta
         combined_mit.Combine(task_mit);
         while ((hash_row = tmp_jhash.GetNextRow()) != common::NULL_VALUE_64) {
           bool other_cond_true = true;
-          for (int i = 0; i < mind->NoDimensions(); i++) {
+          for (int i = 0; i < mind->NumOfDimensions(); i++) {
             if (traversed_dims[i]) combined_mit.Set(i, tmp_jhash.GetTupleValue(traversed_hash_column[i], hash_row));
           }
           for (auto &j : other_cond) {
@@ -804,11 +804,11 @@ int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *ta
 int64_t JoinerHash::SubmitOuterTraversed(MINewContents &new_mind) {
   MEASURE_FET("JoinerHash::SubmitOuterTraversed(...)");
   DEBUG_ASSERT(outer_filter && watch_traversed);
-  if (tips.count_only) return outer_filter->NoOnes();
+  if (tips.count_only) return outer_filter->NumOfOnes();
   int64_t outer_added = 0;
   for (int64_t hash_row = 0; hash_row < jhash.NoRows(); hash_row++) {
     if (outer_filter->Get(hash_row)) {
-      for (int i = 0; i < mind->NoDimensions(); i++) {
+      for (int i = 0; i < mind->NumOfDimensions(); i++) {
         if (matched_dims[i])
           new_mind.SetNewTableValue(i, common::NULL_VALUE_64);
         else if (traversed_dims[i])

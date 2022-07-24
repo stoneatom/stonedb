@@ -25,7 +25,7 @@
 namespace stonedb {
 namespace core {
 SorterWrapper::SorterWrapper(MultiIndex &_mind, int64_t _limit) : cur_mit(&_mind) {
-  no_of_rows = _mind.NoTuples();
+  no_of_rows = _mind.NumOfTuples();
   limit = _limit;
   s = NULL;
   mi_encoder = NULL;
@@ -74,13 +74,13 @@ void SorterWrapper::InitOrderByVector(std::vector<int> &order_by) {
 }
 
 void SorterWrapper::InitSorter(MultiIndex &mind, bool implicit_logic) {
-  DimensionVector implicit_dims(mind.NoDimensions());  // these dimensions will be implicit
-  DimensionVector one_pack_dims(mind.NoDimensions());  // these dimensions contain only one used pack
+  DimensionVector implicit_dims(mind.NumOfDimensions());  // these dimensions will be implicit
+  DimensionVector one_pack_dims(mind.NumOfDimensions());  // these dimensions contain only one used pack
                                                        // (potentially implicit)
 
   // Prepare optimization guidelines
-  for (int dim = 0; dim < mind.NoDimensions(); dim++) {
-    int no_packs = mind.MaxNoPacks(dim);
+  for (int dim = 0; dim < mind.NumOfDimensions(); dim++) {
+    int no_packs = mind.MaxNumOfPacks(dim);
     if (no_packs == 1) one_pack_dims[dim] = true;  // possibly implicit if only one pack
                                                    /*
                                                            //disable implicit logic for SorterWrapper Merge case(multi thread
@@ -126,7 +126,7 @@ void SorterWrapper::InitSorter(MultiIndex &mind, bool implicit_logic) {
   }
 
   // Identify implicitly encoded columns
-  for (int dim = 0; dim < mind.NoDimensions(); dim++)
+  for (int dim = 0; dim < mind.NumOfDimensions(); dim++)
     if (one_pack_dims[dim] && !implicit_dims[dim]) {  // potentially implicit, check sizes
       uint col_sizes_for_dim = 0;
       for (uint i = 0; i < input_cols.size(); i++) {
@@ -139,10 +139,10 @@ void SorterWrapper::InitSorter(MultiIndex &mind, bool implicit_logic) {
         implicit_dims[dim] = true;  // actual data are larger than row number
     }
 
-  DimensionVector implicit_now(mind.NoDimensions());  // these dimensions will be made implicit
+  DimensionVector implicit_now(mind.NumOfDimensions());  // these dimensions will be made implicit
   for (uint i = 0; i < input_cols.size(); i++) {
     if (input_cols[i].sort_order == 0 && scol[i].IsEnabled()) {
-      DimensionVector local_dims(mind.NoDimensions());
+      DimensionVector local_dims(mind.NumOfDimensions());
       input_cols[i].col->MarkUsedDims(local_dims);
       if (local_dims.NoDimsUsed() > 0 && implicit_dims.Includes(local_dims)) {
         // all dims of the column are marked as implicit

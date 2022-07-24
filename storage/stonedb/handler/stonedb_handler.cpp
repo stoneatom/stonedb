@@ -930,7 +930,7 @@ int StonedbHandler::rnd_init(bool scan) {
                                   std::bind(&core::Query::UnlockPackInfoFromUse, std::ref(m_query)));
 
         core::TempTable *push_down_result = m_query->Preexecute(*m_cq, NULL, false);
-        if (!push_down_result || push_down_result->NoTables() != 1)
+        if (!push_down_result || push_down_result->NumOfTables() != 1)
           throw common::InternalException("core::Query execution returned no result object");
 
         core::Filter *filter(push_down_result->GetMultiIndexP()->GetFilter(0));
@@ -1313,7 +1313,7 @@ int StonedbHandler::set_cond_iter() {
                                 std::bind(&core::Query::UnlockPackInfoFromUse, std::ref(m_query)));
 
       core::TempTable *push_down_result = m_query->Preexecute(*m_cq, NULL, false);
-      if (!push_down_result || push_down_result->NoTables() != 1)
+      if (!push_down_result || push_down_result->NumOfTables() != 1)
         throw common::InternalException("core::Query execution returned no result object");
 
       core::Filter *filter(push_down_result->GetMultiIndexP()->GetFilter(0));

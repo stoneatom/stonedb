@@ -441,7 +441,7 @@ void CompiledQuery::TmpTable(TabID &t_out, const TabID &t1, bool for_subq_in_whe
     s.n1 = 1;
   else
     s.n1 = 0;
-  DEBUG_ASSERT(t1.n < 0 && NoTabs() > 0);
+  DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
   s.type = StepType::TMP_TABLE;
   s.t1 = t_out = NextTabID();  // was s.t2!!!
   s.tables1.push_back(t1);
@@ -599,7 +599,7 @@ void CompiledQuery::ApplyConds(const TabID &t1) {
 
 void CompiledQuery::AddColumn(AttrID &a_out, const TabID &t1, CQTerm e1, common::ColOperation op, char const alias[],
                               bool distinct, SI *si) {
-  DEBUG_ASSERT(t1.n < 0 && NoTabs() > 0);
+  DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
   CompiledQuery::CQStep s;
   s.type = StepType::ADD_COLUMN;
   s.a1 = a_out = NextAttrID(t1);
@@ -619,7 +619,7 @@ void CompiledQuery::AddColumn(AttrID &a_out, const TabID &t1, CQTerm e1, common:
 }
 
 void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TabID &t1, MysqlExpression *expr, const TabID &src_tab) {
-  DEBUG_ASSERT(t1.n < 0 && NoTabs() > 0);
+  DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
   CompiledQuery::CQStep s;
   s.type = StepType::CREATE_VC;
   s.a1 = a_out = NextVCID(t1);
@@ -630,7 +630,7 @@ void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TabID &t1, MysqlExp
 }
 
 void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TabID &t1, const TabID &subquery, bool on_result) {
-  DEBUG_ASSERT(t1.n < 0 && NoTabs() > 0);
+  DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
   CompiledQuery::CQStep s;
   s.type = StepType::CREATE_VC;
   s.a1 = a_out = NextVCID(t1);
@@ -641,7 +641,7 @@ void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TabID &t1, const Ta
 }
 
 void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TabID &t1, std::vector<int> &vcs, const AttrID &vc_id) {
-  DEBUG_ASSERT(t1.n < 0 && NoTabs() > 0);
+  DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
   CompiledQuery::CQStep s;
   s.type = StepType::CREATE_VC;
   s.a1 = a_out = NextVCID(t1);
@@ -653,7 +653,7 @@ void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TabID &t1, std::vec
 
 void CompiledQuery::CreateVirtualColumn(int &a_out, const TabID &t1, const TabID &table_alias,
                                         const AttrID &col_number) {
-  DEBUG_ASSERT(t1.n < 0 && NoTabs() > 0);
+  DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
   CompiledQuery::CQStep s;
   s.type = StepType::CREATE_VC;
   s.a1 = NextVCID(t1);
@@ -702,7 +702,7 @@ void CompiledQuery::Print(Query *query) {
 bool CompiledQuery::CountColumnOnly(const TabID &table) {
   CompiledQuery::CQStep step;
   bool count_only = false;
-  for (int i = 0; i < NoSteps(); i++) {
+  for (int i = 0; i < NumOfSteps(); i++) {
     step = Step(i);
     if (step.type == CompiledQuery::StepType::ADD_COLUMN && step.t1 == table &&
         step.cop == common::ColOperation::COUNT && step.e1.IsNull())
@@ -718,7 +718,7 @@ bool CompiledQuery::CountColumnOnly(const TabID &table) {
 
 bool CompiledQuery::NoAggregationOrderingAndDistinct(int table) {
   CompiledQuery::CQStep step;
-  for (int i = 0; i < NoSteps(); i++) {
+  for (int i = 0; i < NumOfSteps(); i++) {
     step = Step(i);
     if (step.type == CompiledQuery::StepType::ADD_ORDER && step.t1.n == table) return false;  // exclude ordering
     if (step.type == CompiledQuery::StepType::ADD_COLUMN && step.t1.n == table &&
@@ -732,7 +732,7 @@ bool CompiledQuery::NoAggregationOrderingAndDistinct(int table) {
 
 int64_t CompiledQuery::FindLimit(int table) {
   CompiledQuery::CQStep step;
-  for (int i = 0; i < NoSteps(); i++) {
+  for (int i = 0; i < NumOfSteps(); i++) {
     step = Step(i);
     if (step.type == CompiledQuery::StepType::T_MODE && step.t1.n == table && step.tmpar == TMParameter::TM_TOP)
       return step.n1 + step.n2;  // n1 - omitted, n2 - displayed, i.e. either
@@ -743,7 +743,7 @@ int64_t CompiledQuery::FindLimit(int table) {
 
 bool CompiledQuery::FindDistinct(int table) {
   CompiledQuery::CQStep step;
-  for (int i = 0; i < NoSteps(); i++) {
+  for (int i = 0; i < NumOfSteps(); i++) {
     step = Step(i);
     if (step.type == CompiledQuery::StepType::T_MODE && step.t1.n == table && step.tmpar == TMParameter::TM_DISTINCT)
       return true;
@@ -792,7 +792,7 @@ std::set<int> CompiledQuery::GetUsedDims(const TabID &table_id, std::vector<std:
 
 void CompiledQuery::BuildTableIDStepsMap() {
   CompiledQuery::CQStep step;
-  for (int i = 0; i < NoSteps(); i++) {
+  for (int i = 0; i < NumOfSteps(); i++) {
     step = Step(i);
     TabIDSteps.emplace(step.t1, step);
   }
@@ -833,7 +833,7 @@ TabID CompiledQuery::FindSourceOfParameter(const TabID &tab_id, const TabID &tmp
 }
 
 bool CompiledQuery::IsTempTable(const TabID &t) {
-  for (int i = 0; i < NoSteps(); i++) {
+  for (int i = 0; i < NumOfSteps(); i++) {
     if (Step(i).type == CompiledQuery::StepType::TMP_TABLE && Step(i).t1 == t) return true;
   }
   return false;
@@ -848,7 +848,7 @@ int CompiledQuery::FindRootTempTable(int tab_id) {
 }
 
 bool CompiledQuery::IsResultTable(const TabID &t) {
-  for (int i = 0; i < NoSteps(); i++) {
+  for (int i = 0; i < NumOfSteps(); i++) {
     if (Step(i).type == CompiledQuery::StepType::RESULT && Step(i).t1 == t) {
       return true;
     }
@@ -857,7 +857,7 @@ bool CompiledQuery::IsResultTable(const TabID &t) {
 }
 
 bool CompiledQuery::IsOrderedBy(const TabID &t) {
-  for (int i = 0; i < NoSteps(); i++) {
+  for (int i = 0; i < NumOfSteps(); i++) {
     if (Step(i).type == CompiledQuery::StepType::ADD_ORDER && Step(i).t1 == t) {
       return true;
     }
@@ -870,12 +870,12 @@ std::pair<int64_t, int64_t> CompiledQuery::GetGlobalLimit() {
   // RESULT
 
   int i;
-  for (i = 0; i < NoSteps(); i++) {
+  for (i = 0; i < NumOfSteps(); i++) {
     if (Step(i).type == CompiledQuery::StepType::RESULT) {
       break;
     }
   }
-  DEBUG_ASSERT(i < NoSteps());
+  DEBUG_ASSERT(i < NumOfSteps());
   TabID res = Step(i).t1;
   if (i > 0 && Step(i - 1).type == CompiledQuery::StepType::T_MODE && Step(i - 1).t1 == res) {
     return std::pair<int64_t, int64_t>(Step(i - 1).n1, Step(i - 1).n2);
@@ -883,8 +883,8 @@ std::pair<int64_t, int64_t> CompiledQuery::GetGlobalLimit() {
   return std::pair<int64_t, int64_t>(0, -1);
 }
 
-int CompiledQuery::GetNoDims(const TabID &tab_id) {
-  for (int i = 0; i < NoSteps(); i++) {
+int CompiledQuery::GetNumOfDimens(const TabID &tab_id) {
+  for (int i = 0; i < NumOfSteps(); i++) {
     if (Step(i).type == CompiledQuery::StepType::TMP_TABLE && Step(i).t1 == tab_id) {
       return int(Step(i).tables1.size());
     }
@@ -893,7 +893,7 @@ int CompiledQuery::GetNoDims(const TabID &tab_id) {
 }
 
 TabID CompiledQuery::GetTableOfCond(const CondID &cond_id) {
-  for (int i = 0; i < NoSteps(); i++) {
+  for (int i = 0; i < NumOfSteps(); i++) {
     if (Step(i).type == CompiledQuery::StepType::CREATE_CONDS && Step(i).c1 == cond_id) return Step(i).t1;
   }
   return TabID();

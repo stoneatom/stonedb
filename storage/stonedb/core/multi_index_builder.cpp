@@ -24,7 +24,7 @@
 
 namespace stonedb {
 namespace core {
-//---------------------------MultiIndexBuilder::BuildItem--------------------------------------
+
 MultiIndexBuilder::BuildItem::BuildItem(MultiIndexBuilder *builder) : builder_(builder) {
   cached_values_.resize(builder_->dims_count_);
   nulls_possible_.resize(builder_->dims_count_);
@@ -55,10 +55,10 @@ void MultiIndexBuilder::BuildItem::Initialize(int64_t initial_size) {
       if (builder_->forget_now_[dim]) continue;
 
       index_table_[dim] = new IndexTable(initial_size, mind->OrigSize(dim), 0);
-      index_table_[dim]->SetNoLocks(mind->group_for_dim[dim]->NoLocks(dim));
+      index_table_[dim]->SetNumOfLocks(mind->group_for_dim[dim]->NumOfLocks(dim));
       min_block_shift = std::min(min_block_shift, index_table_[dim]->BlockShift());
 
-      if (initial_size > (1U << mind->NoPower())) rough_sort_needed = true;
+      if (initial_size > (1U << mind->ValueOfPower())) rough_sort_needed = true;
     }
   }
 
@@ -104,7 +104,7 @@ IndexTable *MultiIndexBuilder::BuildItem::ReleaseIndexTable(int dim) {
 //-------------------------------MultiIndexBuilder---------------------------------
 MultiIndexBuilder::MultiIndexBuilder(MultiIndex *multi_index, const JoinTips &tips) : multi_index_(multi_index) {
   initial_size_ = 0;
-  dims_count_ = multi_index_->NoDimensions();
+  dims_count_ = multi_index_->NumOfDimensions();
   dims_involved_ = DimensionVector(dims_count_);
   forget_now_.resize(dims_count_);
 
@@ -151,7 +151,7 @@ void MultiIndexBuilder::Commit(int64_t joined_tuples, bool count_only) {
   std::vector<int> no_locks(dims_count_);
   for (int dim = 0; dim < dims_count_; dim++) {
     if (dims_involved_[dim]) {
-      no_locks[dim] = multi_index_->group_for_dim[dim]->NoLocks(dim);
+      no_locks[dim] = multi_index_->group_for_dim[dim]->NumOfLocks(dim);
     }
   }
 
@@ -167,7 +167,7 @@ void MultiIndexBuilder::Commit(int64_t joined_tuples, bool count_only) {
   }
 
   DimensionGroupMultiMaterialized *ng =
-      new DimensionGroupMultiMaterialized(joined_tuples, dims_involved_, multi_index_->NoPower());
+      new DimensionGroupMultiMaterialized(joined_tuples, dims_involved_, multi_index_->ValueOfPower());
   multi_index_->dim_groups.push_back(ng);
 
   for (auto &build_item : build_items_) {
@@ -175,7 +175,7 @@ void MultiIndexBuilder::Commit(int64_t joined_tuples, bool count_only) {
       for (int dim = 0; dim < dims_count_; dim++) {
         IndexTable *index_table = build_item->ReleaseIndexTable(dim);
         if (dims_involved_[dim] && !forget_now_[dim]) {
-          index_table->SetNoLocks(no_locks[dim]);
+          index_table->SetNumOfLocks(no_locks[dim]);
           ng->AddDimensionContent(dim, index_table, build_item->GetCount(), build_item->NullExisted(dim));
         }
       }
@@ -183,9 +183,10 @@ void MultiIndexBuilder::Commit(int64_t joined_tuples, bool count_only) {
   }
 
   multi_index_->FillGroupForDim();
-  multi_index_->UpdateNoTuples();
+  multi_index_->UpdateNumOfTuples();
   for (int dim = 0; dim < dims_count_; dim++)
     if (dims_involved_[dim] && !forget_now_[dim]) multi_index_->UnlockFromGetIndex(dim);
 }
+
 }  // namespace core
 }  // namespace stonedb

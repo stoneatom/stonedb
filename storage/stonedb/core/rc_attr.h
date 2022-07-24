@@ -56,20 +56,19 @@ class TextStat;
 //     NULL represented as '\0' string or null pointer
 // 1 - int encoded:
 //		common::CT::INT,common::CT::NUM   - int64_t value,
-// common::NULL_VALUE_64 for null, 		                  may be also
-// treated as int (NULL_VALUE) 						  decimals: the
+// common::NULL_VALUE_64 for null, may be also
+// treated as int (NULL_VALUE)   decimals: the
 // value is shifted by precision, e.g. "583880"=583.88 for DEC(10,3)
 // common::CT::TIME, common::CT::DATE, common::CT::YEAR - bitwise 64-bit
 // encoding as DATETIME
-//		common::CT::STRING, common::CT::VARCHAR:
-//				lookup	- value from the dictionary as int64_t,
-// common::NULL_VALUE_64 for
-// null
-//			non-lookup	- text value as BString
+// common::CT::STRING, common::CT::VARCHAR:
+// lookup	- value from the dictionary as int64_t,
+// common::NULL_VALUE_64 for null
+// non-lookup	- text value as BString
 // 2 - locally encoded (to be read from packs):
-//		string, non-lookup - as level 1;
-//		other			- uint64_t, relatively to min value in
-// pack, 		                  nulls encoded in a separate bit mask.
+// string, non-lookup - as level 1;
+//	other			- uint64_t, relatively to min value in
+// pack, nulls encoded in a separate bit mask.
 
 class PackAllocator {
  public:
@@ -191,7 +190,7 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
 
   void Release() override;
 
-  int AttrNo() const override { return m_cid; }
+  int NumOfAttr() const override { return m_cid; }
   phys_col_t ColType() const override { return phys_col_t::RCATTR; }
   common::PackType GetPackType() const { return pack_type; }
   PackOntologicalStatus GetPackOntologicalStatus(int pack_no) override;
@@ -200,10 +199,10 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   // the compressed size of the attribute (for e.g. calculating compression
   // ratio); may be slightly approximated
   int64_t CompressedSize() const { return hdr.compressed_size; };
-  uint32_t Nopackpower() const { return pss; }
+  uint32_t ValueOfPackPower() const { return pss; }
   uint64_t NumOfObj() const { return hdr.nr; }
   uint64_t NumOfNulls() const { return hdr.nn; }
-  uint NumOfPack() const { return m_idx.size(); }
+  uint SizeOfPack() const { return m_idx.size(); }
   int64_t GetMinInt64() const { return hdr.min; }
   void SetMinInt64(int64_t a_imin) { hdr.min = a_imin; }
   int64_t GetMaxInt64() const { return hdr.max; }
@@ -226,7 +225,7 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
 
   int64_t GetNumOfNulls(int pack) override;
   bool IsRoughNullsOnly() const override { return hdr.nr == hdr.nn; }
-  size_t GetNoValues(int pack) const { return get_dpn(pack).nr; }
+  size_t GetNumOfValues(int pack) const { return get_dpn(pack).nr; }
   int64_t GetSum(int pack, bool &nonnegative) override;
   size_t GetActualSize(int pack);
   int64_t GetMinInt64(int pack) override;

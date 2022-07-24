@@ -52,7 +52,7 @@ class MutexFilter {
   MutexFilter(int64_t count, uint32_t power, bool all_ones = false);
   ~MutexFilter();
 
-  int64_t GetOnesCount() const { return filter_->NoOnes(); }
+  int64_t GetOnesCount() const { return filter_->NumOfOnes(); }
   bool IsEmpty() { return filter_->IsEmpty(); }
   bool Get(int64_t position) { return filter_->Get(position); }
   void Set(int64_t position, bool should_mutex = false);

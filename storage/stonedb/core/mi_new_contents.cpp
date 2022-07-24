@@ -26,7 +26,7 @@ namespace stonedb {
 namespace core {
 MINewContents::MINewContents(MultiIndex *m, JoinTips &tips)
     : mind(m), t_new(NULL), optimized_dim_stay(-1), f_opt(NULL), t_opt(NULL) {
-  no_dims = mind->NoDimensions();
+  no_dims = mind->NumOfDimensions();
   dim_involved = DimensionVector(no_dims);  // init as empty
   nulls_possible = new bool[no_dims];
   forget_now = new bool[no_dims];
@@ -45,7 +45,7 @@ MINewContents::MINewContents(MultiIndex *m, JoinTips &tips)
   content_type = enumMINCType::MCT_UNSPECIFIED;
   max_filter_val = -1;
   min_block_shift = 0;
-  pack_power = mind->NoPower();
+  pack_power = mind->ValueOfPower();
 }
 
 MINewContents::~MINewContents() {
@@ -86,7 +86,7 @@ void MINewContents::Init(int64_t initial_size)  // initialize temporary structur
   else {
     // check for Virtual Dimension case
     for (int dim = 0; dim < no_dims; dim++) {
-      if (dim_involved[dim] && !forget_now[dim] && mind->MaxNoPacks(dim) > 1) {
+      if (dim_involved[dim] && !forget_now[dim] && mind->MaxNumOfPacks(dim) > 1) {
         if (optimized_dim_stay != -1) {  // more than one large found
           optimized_dim_stay = -1;
           break;
@@ -122,7 +122,7 @@ void MINewContents::Init(int64_t initial_size)  // initialize temporary structur
         t_opt = t_new[dim];
         t_new[dim] = NULL;
         f_opt = new Filter(mind->GetFilter(dim)->NumOfObj(), pack_power);
-        f_opt_max_ones = mind->GetFilter(dim)->NoOnes();
+        f_opt_max_ones = mind->GetFilter(dim)->NumOfOnes();
         f_opt->Reset();
       }
       if (mind->OrigSize(dim) > (1U << pack_power) && dim != optimized_dim_stay)  // more than one material //65536
@@ -137,7 +137,7 @@ void MINewContents::Init(int64_t initial_size)  // initialize temporary structur
 void MINewContents::InitTnew(int dim, int64_t initial_size) {
   if (initial_size < 8) initial_size = 8;
   t_new[dim] = new IndexTable(initial_size, mind->OrigSize(dim), 0);
-  t_new[dim]->SetNoLocks(mind->group_for_dim[dim]->NoLocks(dim));
+  t_new[dim]->SetNumOfLocks(mind->group_for_dim[dim]->NumOfLocks(dim));
   nulls_possible[dim] = false;
 }
 
@@ -147,7 +147,7 @@ void MINewContents::CommitCountOnly(int64_t joined_tuples)  // commit changes to
 {
   MEASURE_FET("MINewContents::CommitCountOnly(...)");
   mind->MakeCountOnly(joined_tuples,
-                      dim_involved);  // inside: UpdateNoTuples();
+                      dim_involved);  // inside: UpdateNumOfTuples();
   for (int dim = 0; dim < no_dims; dim++)
     if (dim_involved[dim]) mind->UnlockFromGetIndex(dim);
 }
@@ -159,7 +159,7 @@ void MINewContents::Commit([[maybe_unused]] int64_t joined_tuples)  // commit ch
   std::vector<int> no_locks(no_dims);
   for (int dim = 0; dim < no_dims; dim++)
     if (dim_involved[dim]) {
-      no_locks[dim] = mind->group_for_dim[dim]->NoLocks(dim);
+      no_locks[dim] = mind->group_for_dim[dim]->NumOfLocks(dim);
     }
 
   // dim_involved contains full original groups (to be deleted)
@@ -186,7 +186,7 @@ void MINewContents::Commit([[maybe_unused]] int64_t joined_tuples)  // commit ch
     dims_to_forget[optimized_dim_stay] = false;
     DimensionGroupMaterialized *ng = new DimensionGroupMaterialized(dims_to_forget);  // forgotten dimensions
     mind->dim_groups.push_back(ng);
-    ng->SetNoObj(1);                                           // set a dummy size 1 for a group containing forgotten
+    ng->SetNumOfObj(1);                                           // set a dummy size 1 for a group containing forgotten
                                                                // dimensions only
   } else if (content_type == enumMINCType::MCT_VIRTUAL_DIM) {  // optimized version: virtual dimension group
     DimensionGroupVirtual *nv = new DimensionGroupVirtual(dim_involved, optimized_dim_stay, f_opt,
@@ -196,7 +196,7 @@ void MINewContents::Commit([[maybe_unused]] int64_t joined_tuples)  // commit ch
     mind->dim_groups.push_back(nv);
     for (int dim = 0; dim < no_dims; dim++) {
       if (dim_involved[dim] && !forget_now[dim] && dim != optimized_dim_stay) {
-        t_new[dim]->SetNoLocks(no_locks[dim]);
+        t_new[dim]->SetNumOfLocks(no_locks[dim]);
         nv->NewDimensionContent(dim, t_new[dim], nulls_possible[dim]);
         t_new[dim] = NULL;  // ownership transferred to the DimensionGroup
       }
@@ -211,17 +211,17 @@ void MINewContents::Commit([[maybe_unused]] int64_t joined_tuples)  // commit ch
 
     DimensionGroupMaterialized *ng = new DimensionGroupMaterialized(dim_involved);  // involving also forgotten
     mind->dim_groups.push_back(ng);
-    ng->SetNoObj(obj);
+    ng->SetNumOfObj(obj);
     for (int dim = 0; dim < no_dims; dim++) {
       if (dim_involved[dim] && !forget_now[dim]) {
-        t_new[dim]->SetNoLocks(no_locks[dim]);
+        t_new[dim]->SetNumOfLocks(no_locks[dim]);
         ng->NewDimensionContent(dim, t_new[dim], nulls_possible[dim]);
         t_new[dim] = NULL;  // ownership transferred to the DimensionGroup
       }
     }
   }
   mind->FillGroupForDim();
-  mind->UpdateNoTuples();
+  mind->UpdateNumOfTuples();
   for (int dim = 0; dim < no_dims; dim++)
     if (dim_involved[dim] && !forget_now[dim]) mind->UnlockFromGetIndex(dim);
 }
@@ -289,7 +289,7 @@ void MINewContents::CommitNewTableValues()  // set a value (common::NULL_VALUE_6
       roughsorter->CommitValues(new_value,
                                 obj);  // analyze whether to sort roughly the current t_new contents
 
-    for (int dim = 0; dim < mind->NoDimensions(); dim++) {
+    for (int dim = 0; dim < mind->NumOfDimensions(); dim++) {
       if (t_new[dim]) {  // == !forget_now[dim] && dim_involved[dim] &&
                          // optimized_dim_stay != dim
         if ((uint64_t)obj >= t_new[dim]->N()) {
@@ -309,7 +309,7 @@ void MINewContents::CommitNewTableValues()  // set a value (common::NULL_VALUE_6
 
 bool MINewContents::NoMoreTuplesPossible() {
   return (content_type == enumMINCType::MCT_FILTER_FORGET || content_type == enumMINCType::MCT_VIRTUAL_DIM) &&
-         optimized_dim_stay == ignore_repetitions_dim && f_opt->NoOnes() >= f_opt_max_ones;
+         optimized_dim_stay == ignore_repetitions_dim && f_opt->NumOfOnes() >= f_opt_max_ones;
 }
 }  // namespace core
 }  // namespace stonedb

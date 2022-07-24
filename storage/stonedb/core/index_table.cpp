@@ -149,7 +149,7 @@ void IndexTable::ExpandTo(int64_t new_size) {
 void IndexTable::SetByFilter(Filter *f, uint32_t power)  // add all positions where filter is one
 {
   FilterOnesIterator it(f, power);
-  ExpandTo(f->NoOnes());
+  ExpandTo(f->NumOfOnes());
   int64_t loc_obj = 0;
   while (it.IsValid()) {
     Set64(loc_obj++, *it + 1);

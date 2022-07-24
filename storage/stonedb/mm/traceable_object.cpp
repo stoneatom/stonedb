@@ -155,7 +155,7 @@ void TraceableObject::Lock() {
   }
 }
 
-void TraceableObject::SetNoLocks(int n) {
+void TraceableObject::SetNumOfLocks(int n) {
   if (TraceableType() == TO_TYPE::TO_PACK) {
     std::scoped_lock locking_guard(m_locking_mutex);
     clearPrefetchUnused();

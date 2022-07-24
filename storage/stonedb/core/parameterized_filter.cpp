@@ -99,10 +99,10 @@ void ParameterizedFilter::PrepareRoughMultiIndex() {
   MEASURE_FET("ParameterizedFilter::PrepareRoughMultiIndex(...)");
   if (!rough_mind && mind) {
     std::vector<int> packs;
-    for (uint i = 0; i < (uint)mind->NoDimensions(); i++)
-      packs.push_back((int)((mind->OrigSize(i) + ((1 << mind->NoPower()) - 1)) >> mind->NoPower()));
+    for (uint i = 0; i < (uint)mind->NumOfDimensions(); i++)
+      packs.push_back((int)((mind->OrigSize(i) + ((1 << mind->ValueOfPower()) - 1)) >> mind->ValueOfPower()));
     rough_mind = new RoughMultiIndex(packs);
-    for (uint d = 0; d < (uint)mind->NoDimensions(); d++) {
+    for (uint d = 0; d < (uint)mind->NumOfDimensions(); d++) {
       Filter *f = mind->GetFilter(d);
       for (int p = 0; p < rough_mind->NoPacks(d); p++) {
         if (f == NULL)
@@ -132,11 +132,11 @@ double ParameterizedFilter::EvaluateConditionNonJoinWeight(Descriptor &d, bool f
     eval = 0;                                 // constant time
   else if (d.IsType_AttrValOrAttrValVal()) {  // typical condition: attr=val
     if (!d.encoded) {
-      return log(1 + double(d.attr.vc->NoTuples())) + 5;  // +5 as a penalty for complex expression
+      return log(1 + double(d.attr.vc->NumOfTuples())) + 5;  // +5 as a penalty for complex expression
     }
     vcolumn::SingleColumn *col = static_cast<vcolumn::SingleColumn *>(d.attr.vc);
     answer_size = col->ApproxAnswerSize(d);
-    if (for_or) answer_size = d.attr.vc->NoTuples() - answer_size;
+    if (for_or) answer_size = d.attr.vc->NumOfTuples() - answer_size;
     int64_t no_in_values = 1;
     if (d.op == common::Operator::O_IN || d.op == common::Operator::O_NOT_IN) {
       vcolumn::MultiValColumn *iscol = static_cast<vcolumn::MultiValColumn *>(d.val1.vc);
@@ -155,7 +155,7 @@ double ParameterizedFilter::EvaluateConditionNonJoinWeight(Descriptor &d, bool f
     if (d.IsleftIndexSearch()) eval = 0.001;
 
   } else if (d.IsType_AttrAttr()) {           // attr=attr on the same table
-    uint64_t no_obj = d.attr.vc->NoTuples();  // changed to uint64_t to prevent negative
+    uint64_t no_obj = d.attr.vc->NumOfTuples();  // changed to uint64_t to prevent negative
                                               // logarithm for common::NULL_VALUE_64
     if (!d.encoded)
       return log(1 + double(2 * no_obj)) + 5;  // +5 as a penalty for complex expression
@@ -178,7 +178,7 @@ double ParameterizedFilter::EvaluateConditionNonJoinWeight(Descriptor &d, bool f
   } else {  // expressions and other types, incl. joins (to be calculated
             // separately)
     if (d.IsType_STONEDBExpression())
-      return log(1 + double(d.attr.vc->NoTuples())) + 2;  // +2 as a penalty for STONEDB complex expression
+      return log(1 + double(d.attr.vc->NumOfTuples())) + 2;  // +2 as a penalty for STONEDB complex expression
     eval = 99999;
   }
   return eval;
@@ -273,14 +273,14 @@ bool ParameterizedFilter::RoughUpdateMultiIndex() {
   // one-dimensional conditions
   if (!false_desc) {
     // init by previous values of mind (if any nontrivial)
-    for (int i = 0; i < mind->NoDimensions(); i++) {
+    for (int i = 0; i < mind->NumOfDimensions(); i++) {
       Filter *loc_f = mind->GetFilter(i);
       rough_mind->UpdateGlobalRoughFilter(i, loc_f);  // if the filter is nontrivial, then copy pack status
     }
     for (uint i = 0; i < descriptors.Size(); i++) {
       if (!descriptors[i].done && !descriptors[i].IsDelayed() && descriptors[i].IsInner() &&
           descriptors[i].GetJoinType() == DescriptorJoinType::DT_NON_JOIN) {
-        DimensionVector dims(mind->NoDimensions());
+        DimensionVector dims(mind->NumOfDimensions());
         descriptors[i].DimensionUsed(dims);
         int dim = dims.GetOneDim();
         if (dim == -1) continue;
@@ -313,7 +313,7 @@ bool ParameterizedFilter::RoughUpdateMultiIndex() {
   if (rccontrol.isOn() || mind->m_conn->Explain()) {
     int pack_full = 0, pack_some = 0, pack_all = 0;
     rccontrol.lock(mind->m_conn->GetThreadID()) << "Packs/packrows after KN evaluation:" << system::unlock;
-    for (int dim = 0; dim < rough_mind->NoDimensions(); dim++) {
+    for (int dim = 0; dim < rough_mind->NumOfDimensions(); dim++) {
       std::stringstream ss;
       pack_full = 0;
       pack_some = 0;
@@ -341,7 +341,7 @@ bool ParameterizedFilter::RoughUpdateMultiIndex() {
 bool ParameterizedFilter::PropagateRoughToMind() {
   MEASURE_FET("ParameterizedFilter::PropagateRoughToMind(...)");
   bool is_nonempty = true;
-  for (int i = 0; i < rough_mind->NoDimensions(); i++) {  // update classical multiindex
+  for (int i = 0; i < rough_mind->NumOfDimensions(); i++) {  // update classical multiindex
     Filter *f = mind->GetUpdatableFilter(i);
     if (f) {
       for (int b = 0; b < rough_mind->NoPacks(i); b++) {
@@ -380,7 +380,7 @@ void ParameterizedFilter::RoughUpdateJoins() {
 }
 
 void ParameterizedFilter::RoughMakeProjections() {
-  for (int dim = 0; dim < mind->NoDimensions(); dim++) RoughMakeProjections(dim, false);
+  for (int dim = 0; dim < mind->NumOfDimensions(); dim++) RoughMakeProjections(dim, false);
 
   rough_mind->UpdateReducedDimension();
 }
@@ -399,7 +399,7 @@ void ParameterizedFilter::RoughMakeProjections(int to_dim, bool update_reduced) 
       if (!descriptors[i].attr.vc || descriptors[i].attr.vc->GetDim() == -1 || !descriptors[i].val1.vc ||
           descriptors[i].val1.vc->GetDim() == -1)
         continue;  // only SingleColumns processed here
-      DimensionVector dims(mind->NoDimensions());
+      DimensionVector dims(mind->NumOfDimensions());
       descriptors[i].DimensionUsed(dims);
       if (descriptors[i].attr.vc && dims[dim1] && dims[to_dim] && dims.NoDimsUsed() == 2)
         local_desc.push_back(descriptors[i]);
@@ -409,7 +409,7 @@ void ParameterizedFilter::RoughMakeProjections(int to_dim, bool update_reduced) 
     for (uint i = 0; i < local_desc.size(); i++) {
       // find the other dimension
       Descriptor &ld = local_desc[i];
-      DimensionVector dims(mind->NoDimensions());
+      DimensionVector dims(mind->NumOfDimensions());
       ld.DimensionUsed(dims);
       PackOrderer po;
       vcolumn::VirtualColumn *matched_vc;
@@ -473,12 +473,12 @@ void ParameterizedFilter::RoughMakeProjections(int to_dim, bool update_reduced) 
         }
       }
     }
-    mind->UpdateNoTuples();
+    mind->UpdateNumOfTuples();
   }
 }
 
 bool ParameterizedFilter::DimsWith1dimFilters() {
-  DimensionVector dv1(mind->NoDimensions()), dv2(mind->NoDimensions());
+  DimensionVector dv1(mind->NumOfDimensions()), dv2(mind->NumOfDimensions());
   bool first = true;
   for (uint i = 0; i < descriptors.Size(); i++) {
     if (!descriptors[i].done && descriptors[i].IsInner() && !descriptors[i].IsType_Join() &&
@@ -497,7 +497,7 @@ bool ParameterizedFilter::DimsWith1dimFilters() {
 
 void ParameterizedFilter::PrepareJoiningStep(Condition &join_desc, Condition &desc, int desc_no, MultiIndex &mind) {
   // join parameters based on the first joining condition
-  DimensionVector dims1(mind.NoDimensions());
+  DimensionVector dims1(mind.NumOfDimensions());
   desc[desc_no].DimensionUsed(dims1);
   mind.MarkInvolvedDimGroups(dims1);
   DimensionVector cur_outer_dim(desc[desc_no].right_dims);
@@ -506,7 +506,7 @@ void ParameterizedFilter::PrepareJoiningStep(Condition &join_desc, Condition &de
   // add join (two-table) conditions first
   for (uint i = desc_no; i < desc.Size(); i++) {
     if (!desc[i].done && !desc[i].IsDelayed() && desc[i].IsType_JoinSimple()) {
-      DimensionVector dims2(mind.NoDimensions());
+      DimensionVector dims2(mind.NumOfDimensions());
       desc[i].DimensionUsed(dims2);
       if (desc[i].right_dims == cur_outer_dim && (outer_present || dims1.Includes(dims2))) {
         // can be executed together if all dimensions of the other condition are
@@ -522,7 +522,7 @@ void ParameterizedFilter::PrepareJoiningStep(Condition &join_desc, Condition &de
   // are not "done" yet
   for (uint i = desc_no; i < desc.Size(); i++) {
     if (!desc[i].done && !desc[i].IsDelayed()) {
-      DimensionVector dims2(mind.NoDimensions());
+      DimensionVector dims2(mind.NumOfDimensions());
       desc[i].DimensionUsed(dims2);
       if (desc[i].right_dims == cur_outer_dim && (outer_present || dims1.Includes(dims2))) {
         // can be executed together if all dimensions of the other condition are
@@ -563,7 +563,7 @@ void ParameterizedFilter::UpdateJoinCondition(Condition &cond, JoinTips &tips)
   // as well as other conditions (incl. one-dim) flagged as "outer join"
 
   thd_proc_info(mind->ConnInfo().Thd(), "join");
-  DimensionVector all_involved_dims(mind->NoDimensions());
+  DimensionVector all_involved_dims(mind->NumOfDimensions());
   RoughSimplifyCondition(cond);
   for (uint i = 0; i < cond.Size(); i++) cond[i].DimensionUsed(all_involved_dims);
   bool is_outer = cond[0].IsOuter();
@@ -588,7 +588,7 @@ void ParameterizedFilter::UpdateJoinCondition(Condition &cond, JoinTips &tips)
   } while (join_result != TwoDimensionalJoiner::JoinFailure::NOT_FAILED);
 
   for (int i = 0; i < conditions_used; i++) cond.EraseFirst();  // erase the first condition (already used)
-  mind->UpdateNoTuples();
+  mind->UpdateNumOfTuples();
 
   // display results (the last alg.)
   DisplayJoinResults(all_involved_dims, join_alg, is_outer, conditions_used);
@@ -597,7 +597,7 @@ void ParameterizedFilter::UpdateJoinCondition(Condition &cond, JoinTips &tips)
 void ParameterizedFilter::DisplayJoinResults(DimensionVector &all_involved_dims, JoinAlgType join_performed,
                                              bool is_outer, int conditions_used) {
   if (rccontrol.isOn()) {
-    int64_t tuples_after_join = mind->NoTuples(all_involved_dims);
+    int64_t tuples_after_join = mind->NumOfTuples(all_involved_dims);
 
     char buf[30];
     if (conditions_used > 1)
@@ -612,7 +612,7 @@ void ParameterizedFilter::DisplayJoinResults(DimensionVector &all_involved_dims,
     char buf_dims[500];
     buf_dims[0] = '\0';
     bool first = true;
-    for (int i = 0; i < mind->NoDimensions(); i++)
+    for (int i = 0; i < mind->NumOfDimensions(); i++)
       if (all_involved_dims[i]) {
         if (first) {
           if (all_involved_dims.NoDimsUsed() == 1)
@@ -641,7 +641,7 @@ void ParameterizedFilter::RoughSimplifyCondition(Condition &cond) {
   for (uint i = 0; i < cond.Size(); i++) {
     Descriptor &desc = cond[i];
     if (desc.op == common::Operator::O_FALSE || desc.op == common::Operator::O_TRUE || !desc.IsType_OrTree()) continue;
-    DimensionVector all_dims(mind->NoDimensions());  // "false" for all dimensions
+    DimensionVector all_dims(mind->NumOfDimensions());  // "false" for all dimensions
     desc.DimensionUsed(all_dims);
     desc.ClearRoughValues();
     MIIterator mit(mind, all_dims);
@@ -702,7 +702,7 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
   // outer joins preprocessing (delaying conditions etc.)
   bool outer_join_found = false;
   uint no_desc = uint(descriptors.Size());
-  DimensionVector all_outer(mind->NoDimensions());
+  DimensionVector all_outer(mind->NumOfDimensions());
   for (uint i = 0; i < no_desc; i++) {
     if (!descriptors[i].done && descriptors[i].IsOuter()) {
       outer_join_found = true;
@@ -712,7 +712,7 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
   if (outer_join_found) {
     for (uint i = 0; i < no_desc; i++)
       if (!descriptors[i].done && descriptors[i].IsInner()) {
-        DimensionVector inner(mind->NoDimensions());
+        DimensionVector inner(mind->NumOfDimensions());
         descriptors[i].DimensionUsed(inner);
         if (all_outer.Intersects(inner)) {
           if (descriptors[i].NullMayBeTrue()) {
@@ -766,7 +766,7 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
         std::swap(descriptors[i].attr.vc, descriptors[i].val1.vc);
         descriptors[i].op = common::Operator::O_LESS_EQ;
         // now, the second part
-        Descriptor dd(table, mind->NoDimensions());
+        Descriptor dd(table, mind->NumOfDimensions());
         dd.attr = descriptors[i].val2;
         descriptors[i].val2.vc = NULL;
         dd.op = common::Operator::O_MORE_EQ;
@@ -781,7 +781,7 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
       } else if (descriptors[i].IsType_JoinSimple()) {
         // normalization of descriptor of type a between 1 and b
         descriptors[i].op = common::Operator::O_MORE_EQ;
-        Descriptor dd(table, mind->NoDimensions());
+        Descriptor dd(table, mind->NumOfDimensions());
         dd.attr = descriptors[i].attr;
         dd.val1 = descriptors[i].val2;
         descriptors[i].val2.vc = NULL;
@@ -824,7 +824,7 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
             } else {  // t2.y == t1.x && t2.y > 5  change to  t2.y == t1.x &&
                       // t2.y > 5
                       // && t1.x > 5
-              Descriptor dd(table, mind->NoDimensions());
+              Descriptor dd(table, mind->NumOfDimensions());
               dd.attr = descriptors[i].val1;
               dd.op = descriptors[j].op;
               dd.val1 = descriptors[j].val1;
@@ -845,7 +845,7 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
             } else {  // t1.x == t2.y && t2.y > 5  change to  t1.x == t2.y &&
                       // t2.y > 5
                       // && t1.x > 5
-              Descriptor dd(table, mind->NoDimensions());
+              Descriptor dd(table, mind->NumOfDimensions());
               dd.attr = descriptors[i].attr;
               dd.op = descriptors[j].op;
               dd.val1 = descriptors[j].val1;
@@ -870,10 +870,10 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
   // "attr-operator-value" and other, if possible
   if (!false_desc) {
     for (uint i = 0; i < no_desc; i++) {
-      DimensionVector all_dims(mind->NoDimensions());
+      DimensionVector all_dims(mind->NumOfDimensions());
       descriptors[i].DimensionUsed(all_dims);
       bool additional_nulls_possible = false;
-      for (int d = 0; d < mind->NoDimensions(); d++)
+      for (int d = 0; d < mind->NumOfDimensions(); d++)
         if (all_dims[d] && mind->GetFilter(d) == NULL) additional_nulls_possible = true;
       if (descriptors[i].IsOuter()) additional_nulls_possible = true;
       ConditionEncoder::EncodeIfPossible(descriptors[i], for_rough_query, additional_nulls_possible);
@@ -990,7 +990,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
             rough_mind->ClearLocalDescFilters();
             return;
           } else {
-            DimensionVector dims(mind->NoDimensions());
+            DimensionVector dims(mind->NumOfDimensions());
             descriptors[i].attr.vc->MarkUsedDims(dims);
             mind->MakeCountOnly(0, dims);
           }
@@ -1065,11 +1065,11 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
     }
   }
   rough_mind->UpdateReducedDimension();
-  mind->UpdateNoTuples();
-  for (int i = 0; i < mind->NoDimensions(); i++)
+  mind->UpdateNumOfTuples();
+  for (int i = 0; i < mind->NumOfDimensions(); i++)
     if (mind->GetFilter(i))
       table->SetVCDistinctVals(i,
-                               mind->GetFilter(i)->NoOnes());  // distinct values - not more than the
+                               mind->GetFilter(i)->NumOfOnes());  // distinct values - not more than the
                                                                // number of rows after WHERE
   rough_mind->ClearLocalDescFilters();
 
@@ -1079,12 +1079,12 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
     int pack_full = 0, pack_some = 0, pack_all = 0;
     rccontrol.lock(mind->m_conn->GetThreadID())
         << "Packrows after exact evaluation (execute WHERE end):" << system::unlock;
-    for (uint i = 0; i < (uint)mind->NoDimensions(); i++)
+    for (uint i = 0; i < (uint)mind->NumOfDimensions(); i++)
       if (mind->GetFilter(i)) {
         Filter *f = mind->GetFilter(i);
         pack_full = 0;
         pack_some = 0;
-        pack_all = (int)((mind->OrigSize(i) + ((1 << mind->NoPower()) - 1)) >> mind->NoPower());
+        pack_all = (int)((mind->OrigSize(i) + ((1 << mind->ValueOfPower()) - 1)) >> mind->ValueOfPower());
         for (int b = 0; b < pack_all; b++) {
           if (f->IsFull(b))
             pack_full++;
@@ -1156,25 +1156,25 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
           no_of_delayed_conditions == 0 && parametrized_desc.Size() == 0) {
         // Optimization: count_only is true => do not materialize multiindex
         // (just counts tuples). WARNING: in this case cannot use multiindex for
-        // any operations other than NoTuples().
+        // any operations other than NumOfTuples().
         if (count_only) join_tips.count_only = true;
         join_tips.limit = limit;
         // only one dim used in distinct context?
         int distinct_dim = table->DimInDistinctContext();
         int dims_in_output = 0;
-        for (int dim = 0; dim < mind->NoDimensions(); dim++)
+        for (int dim = 0; dim < mind->NumOfDimensions(); dim++)
           if (mind->IsUsedInOutput(dim)) dims_in_output++;
         if (distinct_dim != -1 && dims_in_output == 1) join_tips.distinct_only[distinct_dim] = true;
       }
 
       // Optimization: Check whether all dimensions are really used
-      DimensionVector dims_used(mind->NoDimensions());
+      DimensionVector dims_used(mind->NumOfDimensions());
       for (uint jj = 0; jj < descriptors.Size(); jj++) {
         if (jj != i && !descriptors[jj].done) descriptors[jj].DimensionUsed(dims_used);
       }
       // can't utilize not_used_dims in case there are parameterized descs left
       if (parametrized_desc.Size() == 0) {
-        for (int dim = 0; dim < mind->NoDimensions(); dim++)
+        for (int dim = 0; dim < mind->NumOfDimensions(); dim++)
           if (!mind->IsUsedInOutput(dim) && dims_used[dim] == false) join_tips.forget_now[dim] = true;
       }
 
@@ -1194,7 +1194,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
     }
   }
   if (join_or_delayed_present) rough_mind->MakeDimensionSuspect();  // no common::RSValue::RS_ALL packs
-  mind->UpdateNoTuples();
+  mind->UpdateNumOfTuples();
 }
 
 void ParameterizedFilter::RoughUpdateParamFilter() {
@@ -1222,7 +1222,7 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
     return;
   }
 
-  DimensionVector dims(mind->NoDimensions());
+  DimensionVector dims(mind->NumOfDimensions());
   desc.DimensionUsed(dims);
   mind->MarkInvolvedDimGroups(dims);  // create iterators on whole groups (important for
                                       // multidimensional updatable iterators)
@@ -1232,7 +1232,7 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
   int one_dim = -1;
   common::RSValue *rf = NULL;
   if (no_dims == 1) {
-    for (int i = 0; i < mind->NoDimensions(); i++) {
+    for (int i = 0; i < mind->NumOfDimensions(); i++) {
       if (dims[i]) {
         if (mind->GetFilter(i)) one_dim = i;  // exactly one filter (non-join or join with forgotten dims)
         break;
@@ -1244,7 +1244,7 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
                                         true);  // "true" here means that we demand an existing local rough
                                                 // filter
 
-  int packs_no = (int)((mind->OrigSize(one_dim) + ((1 << mind->NoPower()) - 1)) >> mind->NoPower());
+  int packs_no = (int)((mind->OrigSize(one_dim) + ((1 << mind->ValueOfPower()) - 1)) >> mind->ValueOfPower());
   int pack_all = rough_mind->NoPacks(one_dim);
   int pack_some = 0;
   for (int b = 0; b < pack_all; b++) {
@@ -1299,7 +1299,7 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
       res.get_all_with_except();
 
       if (mind->m_conn->Killed()) throw common::KilledException("catch thread pool Exception: TaskProcessPacks");
-      mind->UpdateNoTuples();
+      mind->UpdateNumOfTuples();
 
     } else {
       common::RSValue cur_roughval;
@@ -1314,7 +1314,7 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
             continue;
           }
           if (mit.PackrowStarted()) {
-            if (pack != -1) passed += mit.NoOnesUncommited(pack);
+            if (pack != -1) passed += mit.NumOfOnesUncommited(pack);
             pack = mit.GetCurPackrow(one_dim);
           }
         }
@@ -1367,7 +1367,7 @@ void ParameterizedFilter::TaskProcessPacks(MIUpdatingIterator *taskIterator, Tra
         continue;
       }
       if (taskIterator->PackrowStarted()) {
-        if (pack != -1) passed += taskIterator->NoOnesUncommited(pack);
+        if (pack != -1) passed += taskIterator->NumOfOnesUncommited(pack);
         pack = taskIterator->GetCurPackrow(one_dim);
       }
     }

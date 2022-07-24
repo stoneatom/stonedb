@@ -34,7 +34,7 @@ class RoughMultiIndex {
   common::RSValue GetPackStatus(int dim, int pack) { return rf[dim][pack]; };
   void SetPackStatus(int dim, int pack, common::RSValue v) { rf[dim][pack] = v; };
 
-  int NoDimensions() { return no_dims; };
+  int NumOfDimensions() { return no_dims; };
   int NoPacks(int dim) { return no_packs[dim]; };
   int NoConditions(int dim) { return int(local_desc[dim].size()); };
   int GlobalDescNum(int dim, int local_desc_num) { return (local_desc[dim])[local_desc_num]->desc_num; }

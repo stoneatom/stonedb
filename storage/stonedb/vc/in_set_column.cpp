@@ -30,7 +30,7 @@ InSetColumn::InSetColumn(core::ColumnType const &ct, core::MultiIndex *mind,
     : MultiValColumn(ct, mind),
       columns(columns_),
       full_cache(false),
-      cache(mind->NoPower()),
+      cache(mind->ValueOfPower()),
       expected_type(ct),
       last_mit(NULL),
       last_mit_size(0) {

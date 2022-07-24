@@ -800,7 +800,7 @@ void RCAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descripto
     // MIIterator iteratoring costs too much
     // Loop without it when packs are nearly full
     if (stonedb_sysvar_filterevaluation_speedup && filter &&
-        filter->NoOnes(pack) > static_cast<uint>(1 << (mit.GetPower() - 1))) {
+        filter->NumOfOnes(pack) > static_cast<uint>(1 << (mit.GetPower() - 1))) {
       if (d.op == common::Operator::O_BETWEEN && !mit.NullsPossibleInPack(dim) && dpn.nn == 0) {
         // easy and fast case - no "if"s
         for (uint32_t n = 0; n < dpn.nr; n++) {
@@ -882,7 +882,7 @@ void RCAttr::EvaluatePack_BetweenReal(MIUpdatingIterator &mit, int dim, Descript
     // MIIterator iteratoring costs too much
     // Loop without it when packs are nearly full
     if (stonedb_sysvar_filterevaluation_speedup && filter &&
-        filter->NoOnes(pack) > static_cast<uint>(1 << (mit.GetPower() - 1))) {
+        filter->NumOfOnes(pack) > static_cast<uint>(1 << (mit.GetPower() - 1))) {
       for (uint32_t n = 0; n < dpn.nr; n++) {
         if (p->IsNull(n))
           filter->Reset(pack, n);
@@ -1048,7 +1048,7 @@ bool RCAttr::IsDistinct(Filter *f) {
   if (PhysicalColumn::IsDistinct() == common::RSValue::RS_ALL) {  // = is_unique_updated && is_unique
     if (f == NULL) return (NumOfNulls() == 0);                    // no nulls at all, and is_unique  => distinct
     LoadPackInfo();
-    for (uint b = 0; b < NumOfPack(); b++)
+    for (uint b = 0; b < SizeOfPack(); b++)
       if (!f->IsEmpty(b) && get_dpn(b).nn > 0)  // any null in nonempty pack?
         return false;
     return true;
@@ -1085,7 +1085,7 @@ uint64_t RCAttr::ApproxAnswerSize(Descriptor &d) {
         res = (NumOfObj() - NumOfNulls()) / 2;  // return default; up func will make Prior other types
         return int64_t(res);
       }
-      for (uint b = 0; b < NumOfPack(); b++) {
+      for (uint b = 0; b < SizeOfPack(); b++) {
         if (get_dpn(b).min_i > val2 || get_dpn(b).max_i < val1 || get_dpn(b).nn == get_dpn(b).nr)
           continue;  // pack irrelevant
         span1 = get_dpn(b).max_i - get_dpn(b).min_i + 1;
@@ -1107,7 +1107,7 @@ uint64_t RCAttr::ApproxAnswerSize(Descriptor &d) {
           span2;  // numerical case: approximate number of rows in each pack
       double v_min = *(double *)&val1;
       double v_max = *(double *)&val2;
-      for (uint b = 0; b < NumOfPack(); b++) {
+      for (uint b = 0; b < SizeOfPack(); b++) {
         double d_min = get_dpn(b).min_d;
         double d_max = get_dpn(b).max_d;
         if (d_min > v_max || d_max < v_min || get_dpn(b).nn == get_dpn(b).nr) continue;  // pack irrelevant
@@ -1134,7 +1134,7 @@ size_t RCAttr::MaxStringSize(Filter *f)  // maximal byte string length in column
   if (Type().IsLookup()) {
     int64_t cur_min = common::PLUS_INF_64;
     int64_t cur_max = common::MINUS_INF_64;
-    for (uint b = 0; b < NumOfPack(); b++) {
+    for (uint b = 0; b < SizeOfPack(); b++) {
       if ((f && f->IsEmpty(b)) || GetPackOntologicalStatus(b) == PackOntologicalStatus::NULLS_ONLY) continue;
       auto &d = get_dpn(b);
       if (d.min_i < cur_min) cur_min = d.min_i;
@@ -1142,7 +1142,7 @@ size_t RCAttr::MaxStringSize(Filter *f)  // maximal byte string length in column
     }
     if (cur_min != common::PLUS_INF_64) max_size = m_dict->MaxValueSize(int(cur_min), int(cur_max));
   } else {
-    for (uint b = 0; b < NumOfPack(); b++) {
+    for (uint b = 0; b < SizeOfPack(); b++) {
       if (f && f->IsEmpty(b)) continue;
       size_t cur_size = GetActualSize(b);
       if (max_size < cur_size) max_size = cur_size;

@@ -34,9 +34,9 @@ class DimensionGroup {
   DimensionGroup() : dim_group_type(DGType::DG_NOT_KNOWN), no_obj(0), locks(0) {}
   virtual DimensionGroup *Clone(bool shallow) = 0;  // create a new group with the same (copied) contents
   virtual ~DimensionGroup() {}
-  int64_t NoTuples() { return no_obj; }
-  virtual void UpdateNoTuples() {}          // may be not needed for some group types
-  DGType Type() { return dim_group_type; }  // type selector
+  int64_t NumOfTuples() { return no_obj; }
+  virtual void UpdateNumOfTuples() {}          // may be not needed for some group types
+  DGType Type() { return dim_group_type; }     // type selector
   virtual Filter *GetFilter([[maybe_unused]] int dim) const {
     return NULL;
   }  // Get the pointer to a filter attached to a dimension. NOTE: will be NULL
@@ -56,7 +56,7 @@ class DimensionGroup {
     locks += n;
   }  // lock for getting value (if needed), or just remember the number of locks
   virtual void Unlock([[maybe_unused]] int dim) { locks--; }
-  virtual int NoLocks([[maybe_unused]] int dim) { return locks; }
+  virtual int NumOfLocks([[maybe_unused]] int dim) { return locks; }
   virtual bool IsThreadSafe() = 0;  // true if the dimension group may be used
                                     // in parallel for reading
   virtual bool IsOrderable() = 0;   // true if the dimension group may provide an
@@ -106,7 +106,7 @@ class DimensionGroup {
     virtual void SetNoPacksToGo([[maybe_unused]] int n) {}
     virtual void RewindToRow([[maybe_unused]] int64_t n) {}
     virtual bool RewindToPack([[maybe_unused]] int pack) { return false; }  // true if the pack is nonempty
-    virtual int NoOnesUncommited([[maybe_unused]] uint pack) { return -1; }
+    virtual int NumOfOnesUncommited([[maybe_unused]] uint pack) { return -1; }
     // Extend the capability of splitting.
     virtual bool GetSlices([[maybe_unused]] std::vector<int64_t> *slices) const { return false; }
 
@@ -148,7 +148,7 @@ class DimensionGroupFilter : public DimensionGroup {
       cur_pack[base_dim] = it->GetCurPackrow(base_dim);
     }
   }
-  void UpdateNoTuples() override { no_obj = f->NoOnes(); }
+  void UpdateNumOfTuples() override { no_obj = f->NumOfOnes(); }
   Filter *GetFilter([[maybe_unused]] int dim) const override {
     DEBUG_ASSERT(dim == base_dim || dim == -1);
     return f;
@@ -223,7 +223,7 @@ class DimensionGroupFilter : public DimensionGroup {
       return true;
     }
 
-    int NoOnesUncommited(uint pack) override { return f->NoOnesUncommited(pack); }
+    int NumOfOnesUncommited(uint pack) override { return f->NumOfOnesUncommited(pack); }
     virtual bool Ordered() { return false; }  // check if it is an ordered iterator
    private:
     FilterOnesIterator fi;
@@ -287,7 +287,7 @@ class DimensionGroupFilter : public DimensionGroup {
       return true;
     }
 
-    int NoOnesUncommited(uint pack) override { return f->NoOnesUncommited(pack); }
+    int NumOfOnesUncommited(uint pack) override { return f->NumOfOnesUncommited(pack); }
     virtual bool Ordered() { return true; }  // check if it is an ordered iterator
    private:
     FilterOnesIteratorOrdered fi;
@@ -318,7 +318,7 @@ class DimensionGroupMaterialized : public DimensionGroup {
                                          // pointer to be deleted by
                                          // destructor) on a dimension
                                          // dim
-  void SetNoObj(int64_t _no_obj) { no_obj = _no_obj; }
+  void SetNumOfObj(int64_t _no_obj) { no_obj = _no_obj; }
   bool DimUsed(int dim) override { return dims_used[dim]; }
   bool DimEnabled(int dim) override { return (t[dim] != NULL); }
   bool NullsPossible(int dim) override { return nulls_possible[dim]; }
@@ -333,7 +333,7 @@ class DimensionGroupMaterialized : public DimensionGroup {
   void Unlock(int dim) override {
     if (t[dim]) t[dim]->Unlock();
   }
-  int NoLocks(int dim) override { return (t[dim] ? t[dim]->NoLocks() : 0); }
+  int NumOfLocks(int dim) override { return (t[dim] ? t[dim]->NumOfLocks() : 0); }
   bool IsThreadSafe() override { return true; }  // BarrierAfterPackrow() must be used for parallel execution
   bool IsOrderable() override { return false; }
 

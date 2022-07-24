@@ -156,7 +156,7 @@ bool SingleColumn::TryToMerge(core::Descriptor &d1, core::Descriptor &d2) { retu
 
 size_t SingleColumn::MaxStringSizeImpl()  // maximal byte string length in column
 {
-  return col_->MaxStringSize(mind->NoDimensions() == 0 ? NULL : mind->GetFilter(dim));
+  return col_->MaxStringSize(mind->NumOfDimensions() == 0 ? NULL : mind->GetFilter(dim));
 }
 
 core::PackOntologicalStatus SingleColumn::GetPackOntologicalStatusImpl(const core::MIIterator &mit) {
@@ -183,7 +183,7 @@ common::RSValue SingleColumn::RoughCheckImpl(const core::MIIterator &mit, core::
 void SingleColumn::DisplayAttrStats() { col_->DisplayAttrStats(mind->GetFilter(dim)); }
 
 char *SingleColumn::ToString(char p_buf[], size_t buf_ct) const {
-  int attr_no = col_->AttrNo();
+  int attr_no = col_->NumOfAttr();
   if (attr_no > -1)
     std::snprintf(p_buf, buf_ct, "t%da%d", dim, attr_no);
   else

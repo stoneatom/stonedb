@@ -719,21 +719,21 @@ bool TempTable::Attr::IsNull(const int64_t obj) const {
 }
 
 void TempTable::Attr::ApplyFilter(MultiIndex &mind, int64_t offset, int64_t last_index) {
-  DEBUG_ASSERT(mind.NoDimensions() == 1);
+  DEBUG_ASSERT(mind.NumOfDimensions() == 1);
 
-  if (mind.NoDimensions() != 1) throw common::NotImplementedException("MultiIndex has too many dimensions.");
-  if (mind.ZeroTuples() || no_obj == 0 || offset >= mind.NoTuples()) {
+  if (mind.NumOfDimensions() != 1) throw common::NotImplementedException("MultiIndex has too many dimensions.");
+  if (mind.ZeroTuples() || no_obj == 0 || offset >= mind.NumOfTuples()) {
     DeleteBuffer();
     return;
   }
 
-  if (last_index > mind.NoTuples()) last_index = mind.NoTuples();
+  if (last_index > mind.NumOfTuples()) last_index = mind.NumOfTuples();
 
   void *old_buffer = buffer;
   buffer = NULL;
   CreateBuffer(last_index - offset, mind.m_conn);
 
-  MIIterator mit(&mind, mind.NoPower());
+  MIIterator mit(&mind, mind.ValueOfPower());
   for (int64_t i = 0; i < offset; i++) ++mit;
   uint64_t idx = 0;
   for (int64_t i = 0; i < last_index - offset; i++, ++mit) {
@@ -821,7 +821,7 @@ uint64_t TempTable::Attr::ApproxDistinctVals([[maybe_unused]] bool incl_nulls, F
                                              [[maybe_unused]] common::RSValue *rf,
                                              [[maybe_unused]] bool outer_nulls_possible) {
   // TODO: can it be done better?
-  if (f) return f->NoOnes();
+  if (f) return f->NumOfOnes();
   return no_obj;
 }
 
@@ -1331,8 +1331,8 @@ void TempTable::Union(TempTable *t, int all) {
     }
     delete[] input_buf;
   }
-  int64_t first_no_obj = first_mask.NoOnes();
-  int64_t sec_no_obj = sec_mask.NoOnes();
+  int64_t first_no_obj = first_mask.NumOfOnes();
+  int64_t sec_no_obj = sec_mask.NumOfOnes();
   int64_t new_no_obj = first_no_obj + sec_no_obj;
   rccontrol.lock(m_conn->GetThreadID()) << "UNION: generating result (" << new_no_obj << " rows)." << system::unlock;
   uint new_page_size = CalculatePageSize(new_no_obj);
@@ -1461,7 +1461,7 @@ void TempTable::Union(TempTable *t, int all) {
     displayable_attr[i] = new_attr;
     delete first_attr;
   }
-  SetNoMaterialized(new_no_obj);
+  SetNumOfMaterialized(new_no_obj);
   // this->no_obj = new_no_obj;
   // this->Display();
   output_mind.Clear();
@@ -1701,7 +1701,7 @@ int TempTable::DimInDistinctContext() {
   // return a dimension number if it is used only in contexts where row
   // repetitions may be omitted, e.g. distinct
   int d = -1;
-  if (HasHavingConditions() || filter.mind->NoDimensions() == 1)  // having or no joins
+  if (HasHavingConditions() || filter.mind->NumOfDimensions() == 1)  // having or no joins
     return -1;
   bool group_by_exists = false;
   bool aggregation_exists = false;
@@ -1922,7 +1922,7 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
       if (no_rows_too_large && order_by.size() == 0)
         no_obj = offset + limit;  // offset + limit in the worst case
       else
-        no_obj = filter.mind->NoTuples();
+        no_obj = filter.mind->NumOfTuples();
       if (no_obj <= offset) {
         no_obj = 0;
         materialized = true;
@@ -1933,7 +1933,7 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
       local_limit = std::min(limit, (int64_t)no_obj - offset);
       local_limit = local_limit < 0 ? 0 : local_limit;
     } else {
-      no_obj = filter.mind->NoTuples();
+      no_obj = filter.mind->NumOfTuples();
       local_limit = no_obj;
     }
     if (exists_only) {

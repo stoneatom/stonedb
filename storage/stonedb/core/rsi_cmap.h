@@ -32,7 +32,7 @@ class RSIndex_CMap final : public RSIndex {
   ~RSIndex_CMap();
   void SaveToFile(common::TX_ID ver) override;
 
-  uint NoPositions() { return hdr.no_positions; }
+  uint NumOfPositions() { return hdr.no_positions; }
   // reset the information about the specified pack and prepare it for update
   // (i.e. analyzing again all values)
   void ClearPack(int pack);

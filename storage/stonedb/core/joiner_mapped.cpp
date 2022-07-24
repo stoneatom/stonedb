@@ -29,8 +29,8 @@ namespace stonedb {
 namespace core {
 JoinerMapped::JoinerMapped(MultiIndex *_mind, TempTable *_table, JoinTips &_tips)
     : TwoDimensionalJoiner(_mind, _table, _tips) {
-  traversed_dims = DimensionVector(_mind->NoDimensions());
-  matched_dims = DimensionVector(_mind->NoDimensions());
+  traversed_dims = DimensionVector(_mind->NumOfDimensions());
+  matched_dims = DimensionVector(_mind->NumOfDimensions());
 }
 
 void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
@@ -58,9 +58,9 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
     return;
 
   MIIterator mit_m(mind, matched_dims);
-  uint64_t dim_m_size = mit_m.NoTuples();
+  uint64_t dim_m_size = mit_m.NumOfTuples();
   MIIterator mit_t(mind, traversed_dims);
-  uint64_t dim_t_size = mit_t.NoTuples();
+  uint64_t dim_t_size = mit_t.NumOfTuples();
 
   if ((vc2->IsDistinct() && !vc1->IsDistinct()) || traversed_dims.NoDimsUsed() > 1 || dim_m_size < dim_t_size) {
     desc.SwitchSides();
@@ -87,7 +87,7 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
     outer_nulls_only = false;  // leave only those tuples which obtain outer nulls
 
   MIIterator mit(mind, matched_dims);
-  uint64_t dim2_size = mit.NoTuples();
+  uint64_t dim2_size = mit.NumOfTuples();
 
   mind->LockAllForUse();
   MINewContents new_mind(mind, tips);
@@ -157,7 +157,7 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
         for (auto rownum : rownums) {
           joined_tuples++;
           if (tips.count_only) continue;
-          for (int i = 0; i < mind->NoDimensions(); i++)
+          for (int i = 0; i < mind->NumOfDimensions(); i++)
             if (matched_dims[i]) new_mind.SetNewTableValue(i, mit[i]);
           new_mind.SetNewTableValue(traversed_dim, rownum);
           new_mind.CommitNewTableValues();
@@ -166,7 +166,7 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
     } else if (outer_join) {
       joined_tuples++;
       if (!tips.count_only) {
-        for (int i = 0; i < mind->NoDimensions(); i++)
+        for (int i = 0; i < mind->NumOfDimensions(); i++)
           if (matched_dims[i]) new_mind.SetNewTableValue(i, mit[i]);
         new_mind.SetNewTableValue(traversed_dim, common::NULL_VALUE_64);
         new_mind.CommitNewTableValues();
@@ -207,7 +207,7 @@ std::unique_ptr<JoinerMapFunction> JoinerMapped::GenerateFunction(vcolumn::Virtu
   auto map_function = std::make_unique<MultiMapsFunction>(m_conn);
   if (!map_function->Init(vc, mit)) return nullptr;
 
-  rccontrol.lock(m_conn->GetThreadID()) << "Join mapping (multimaps) created on " << mit.NoTuples() << " rows."
+  rccontrol.lock(m_conn->GetThreadID()) << "Join mapping (multimaps) created on " << mit.NumOfTuples() << " rows."
                                         << system::unlock;
   return std::move(map_function);
 }
@@ -274,7 +274,7 @@ int64_t JoinerParallelMapped::ExecuteMatchLoop(std::shared_ptr<MultiIndexBuilder
           for (auto rownum : rownums) {
             joined_tuples++;
             if (tips.count_only) continue;
-            for (int i = 0; i < mind->NoDimensions(); i++)
+            for (int i = 0; i < mind->NumOfDimensions(); i++)
               if (matched_dims[i]) (*indextable)->SetTableValue(i, mit[i]);
             (*indextable)->SetTableValue(traversed_dim, rownum);
             (*indextable)->CommitTableValues();
@@ -283,7 +283,7 @@ int64_t JoinerParallelMapped::ExecuteMatchLoop(std::shared_ptr<MultiIndexBuilder
       } else if (outer_join) {
         joined_tuples++;
         if (!tips.count_only) {
-          for (int i = 0; i < mind->NoDimensions(); i++)
+          for (int i = 0; i < mind->NumOfDimensions(); i++)
             if (matched_dims[i]) (*indextable)->SetTableValue(i, mit[i]);
           (*indextable)->SetTableValue(traversed_dim, common::NULL_VALUE_64);
           (*indextable)->CommitTableValues();
@@ -329,7 +329,7 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
   MIIterator mit_t(mind, traversed_dims);
 
   if ((vc2->IsDistinct() && !vc1->IsDistinct()) || traversed_dims.NoDimsUsed() > 1 ||
-      mit_m.NoTuples() < mit_t.NoTuples()) {
+      mit_m.NumOfTuples() < mit_t.NumOfTuples()) {
     desc.SwitchSides();
     vc1 = desc.attr.vc;
     vc2 = desc.val1.vc;
@@ -352,7 +352,7 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
     outer_nulls_only = false;  // leave only those tuples which obtain outer nulls
 
   MIIterator mit(mind, matched_dims);
-  uint64_t dim2_size = mit.NoTuples();
+  uint64_t dim2_size = mit.NumOfTuples();
   std::vector<DimensionVector> dims_involved = {traversed_dims, matched_dims};
   mind->LockAllForUse();
   if (!tips.count_only)
@@ -432,7 +432,7 @@ bool OffsetMapFunction::Init(vcolumn::VirtualColumn *vc, MIIterator &mit) {
       key_table_max == common::PLUS_INF_64 || key_table_max == common::NULL_VALUE_64)
     return false;
   int64_t span = key_table_max - key_table_min + 1;
-  if (span < 0 || size_t(span) > 32_MB || (span < mit.NoTuples() && !vc->IsNullsPossible())) return false;
+  if (span < 0 || size_t(span) > 32_MB || (span < mit.NumOfTuples() && !vc->IsNullsPossible())) return false;
 
   key_status.resize(span, 255);
 
@@ -494,7 +494,7 @@ bool MultiMapsFunction::Init(vcolumn::VirtualColumn *vc, MIIterator &mit) {
     return false;
   int64_t span = key_table_max - key_table_min + 1;
   if (span < 0) return false;
-  rccontrol.lock(m_conn->GetThreadID()) << "MultiMapsFunction: constructing a multimap with " << mit.NoTuples()
+  rccontrol.lock(m_conn->GetThreadID()) << "MultiMapsFunction: constructing a multimap with " << mit.NumOfTuples()
                                         << " tuples." << system::unlock;
   while (mit.IsValid()) {
     if (mit.PackrowStarted()) vc->LockSourcePacks(mit);

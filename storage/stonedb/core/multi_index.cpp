@@ -251,9 +251,9 @@ void MultiIndex::LockForGetIndex(int dim) { group_for_dim[dim]->Lock(dim); }
 void MultiIndex::UnlockFromGetIndex(int dim) { group_for_dim[dim]->Unlock(dim); }
 
 uint64_t MultiIndex::DimSize(int dim)  // the size of one dimension: material_no_tuples for materialized,
-                                       // NoOnes for virtual
+                                       // NumOfOnes for virtual
 {
-  return group_for_dim[dim]->NoTuples();
+  return group_for_dim[dim]->NumOfTuples();
 }
 
 void MultiIndex::LockAllForUse() {
@@ -267,11 +267,11 @@ void MultiIndex::UnlockAllFromUse() {
 void MultiIndex::MakeCountOnly(int64_t mat_tuples, DimensionVector &dims_to_materialize) {
   MEASURE_FET("MultiIndex::MakeCountOnly(...)");
   MarkInvolvedDimGroups(dims_to_materialize);
-  for (int i = 0; i < NoDimensions(); i++) {
+  for (int i = 0; i < NumOfDimensions(); i++) {
     if (dims_to_materialize[i] && group_for_dim[i] != NULL) {
       // delete this group
       int dim_group_to_delete = group_num_for_dim[i];
-      for (int j = i; j < NoDimensions(); j++)
+      for (int j = i; j < NumOfDimensions(); j++)
         if (group_num_for_dim[j] == dim_group_to_delete) {
           group_for_dim[j] = NULL;
           group_num_for_dim[j] = -1;
@@ -281,13 +281,13 @@ void MultiIndex::MakeCountOnly(int64_t mat_tuples, DimensionVector &dims_to_mate
     }
   }
   DimensionGroupMaterialized *count_only_group = new DimensionGroupMaterialized(dims_to_materialize);
-  count_only_group->SetNoObj(mat_tuples);
+  count_only_group->SetNumOfObj(mat_tuples);
   dim_groups.push_back(count_only_group);
   FillGroupForDim();
-  UpdateNoTuples();
+  UpdateNumOfTuples();
 }
 
-void MultiIndex::UpdateNoTuples() {
+void MultiIndex::UpdateNumOfTuples() {
   // assumptions:
   // - no_material_tuples is correct, even if all t[...] are NULL (forgotten).
   //   However, if all f[...] are not NULL, then the index is set to IT_VIRTUAL
@@ -301,27 +301,27 @@ void MultiIndex::UpdateNoTuples() {
   else {
     no_tuples = 1;
     for (uint i = 0; i < dim_groups.size(); i++) {
-      dim_groups[i]->UpdateNoTuples();
-      MultiplyNoTuples(dim_groups[i]->NoTuples());
+      dim_groups[i]->UpdateNumOfTuples();
+      MultiplyNoTuples(dim_groups[i]->NumOfTuples());
     }
   }
 }
 
-int64_t MultiIndex::NoTuples(DimensionVector &dimensions,
+int64_t MultiIndex::NumOfTuples(DimensionVector &dimensions,
                              bool fail_on_overflow)  // for a given subset of dimensions
 {
   std::vector<int> dg = ListInvolvedDimGroups(dimensions);
   if (dg.size() == 0) return 0;
   int64_t res = 1;
   for (uint i = 0; i < dg.size(); i++) {
-    dim_groups[dg[i]]->UpdateNoTuples();
-    res = SafeMultiplication(res, dim_groups[dg[i]]->NoTuples());
+    dim_groups[dg[i]]->UpdateNumOfTuples();
+    res = SafeMultiplication(res, dim_groups[dg[i]]->NumOfTuples());
   }
   if (res == common::NULL_VALUE_64 && fail_on_overflow) throw common::OutOfMemoryException("Too many tuples.  (1428)");
   return res;
 }
 
-int MultiIndex::MaxNoPacks(int dim)  // maximal (upper approx.) number of different nonempty data
+int MultiIndex::MaxNumOfPacks(int dim)  // maximal (upper approx.) number of different nonempty data
                                      // packs for the given dimension
 {
   int max_packs = 0;
@@ -331,7 +331,7 @@ int MultiIndex::MaxNoPacks(int dim)  // maximal (upper approx.) number of differ
       if (!f->IsEmpty(p)) max_packs++;
   } else {
     max_packs = int((dim_size[dim]) >> p_power) + 1;
-    if (group_for_dim[dim]->NoTuples() < max_packs) max_packs = (int)group_for_dim[dim]->NoTuples();
+    if (group_for_dim[dim]->NumOfTuples() < max_packs) max_packs = (int)group_for_dim[dim]->NumOfTuples();
   }
   return max_packs;
 }
@@ -355,14 +355,14 @@ void MultiIndex::MIFilterAnd(MIIterator &mit,
       cur_pos++;
     }
     f->Commit();
-    UpdateNoTuples();
+    UpdateNumOfTuples();
     UnlockAllFromUse();
     return;
   }
 
   DimensionVector dim_used(mit.DimsUsed());
   MarkInvolvedDimGroups(dim_used);
-  int64_t new_no_tuples = fd.NoOnes();
+  int64_t new_no_tuples = fd.NumOfOnes();
   JoinTips tips(*this);
   MINewContents new_mind(this, tips);
   new_mind.SetDimensions(dim_used);
@@ -379,7 +379,7 @@ void MultiIndex::MIFilterAnd(MIIterator &mit,
     f_pos++;
   }
   new_mind.Commit(new_no_tuples);
-  UpdateNoTuples();
+  UpdateNumOfTuples();
   UnlockAllFromUse();
 }
 

@@ -133,7 +133,7 @@ struct ColumnType {
   unsigned char GetFlag() const { return flag.to_ulong(); }
   void SetFlag(unsigned char v) { flag = std::bitset<std::numeric_limits<unsigned char>::digits>(v); }
   bool NotNull() const { return flag[static_cast<int>(enumCT::NOT_NULL)]; }
-  bool Nullable() const { return !NotNull(); }
+  bool IsNullable() const { return !NotNull(); }
   bool GetAutoInc() const { return flag[static_cast<int>(enumCT::AUTO_INC)]; }
   void SetAutoInc(bool inc) { flag[static_cast<int>(enumCT::AUTO_INC)] = inc; }
   bool HasFilter() const { return flag[static_cast<int>(enumCT::BLOOM_FILTER)]; }

@@ -273,7 +273,7 @@ class PhysicalColumn : public Column {
   virtual bool TryToMerge(Descriptor &d1, Descriptor &d2) = 0;
 
   virtual void DisplayAttrStats(Filter *f) = 0;
-  virtual int AttrNo() const = 0;
+  virtual int NumOfAttr() const = 0;
 
   virtual ~PhysicalColumn() = default;
 
@@ -288,6 +288,7 @@ class PhysicalColumn : public Column {
   bool is_unique;
   bool is_unique_updated;
 };
+
 }  // namespace core
 }  // namespace stonedb
 
