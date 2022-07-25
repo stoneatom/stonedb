@@ -1918,67 +1918,68 @@ EXPLAIN
   "query_block": {
     "select_id": 1,
     "cost_info": {
-      "query_cost": "8.00"
+      "query_cost": "2.00"
     },
-    "nested_loop": [
-      {
-        "table": {
-          "table_name": "t1",
-          "access_type": "ALL",
-          "rows_examined_per_scan": 5,
-          "rows_produced_per_join": 5,
-          "filtered": "100.00",
-          "cost_info": {
-            "read_cost": "1.00",
-            "eval_cost": "1.00",
-            "prefix_cost": "2.00",
-            "data_read_per_join": "160"
-          },
-          "used_columns": [
-            "a",
-            "b"
-          ],
-          "attached_condition": "(`test`.`t1`.`a` is not null)"
-        }
+    "table": {
+      "table_name": "t1",
+      "access_type": "ALL",
+      "rows_examined_per_scan": 5,
+      "rows_produced_per_join": 5,
+      "filtered": "100.00",
+      "cost_info": {
+        "read_cost": "1.00",
+        "eval_cost": "1.00",
+        "prefix_cost": "2.00",
+        "data_read_per_join": "160"
       },
-      {
-        "table": {
-          "table_name": "<subquery2>",
-          "access_type": "eq_ref",
-          "key": "<auto_key>",
-          "key_length": "5",
-          "ref": [
-            "test.t1.a"
-          ],
-          "rows_examined_per_scan": 1,
-          "materialized_from_subquery": {
-            "using_temporary_table": true,
-            "query_block": {
-              "table": {
-                "table_name": "t2",
-                "access_type": "ALL",
-                "rows_examined_per_scan": 5,
-                "rows_produced_per_join": 5,
-                "filtered": "100.00",
+      "used_columns": [
+        "a",
+        "b"
+      ],
+      "attached_condition": "<in_optimizer>(`test`.`t1`.`a`,`test`.`t1`.`a` in ( <materialize> (/* select#2 */ select `test`.`t2`.`a` from `test`.`t2` where 1 ), <primary_index_lookup>(`test`.`t1`.`a` in <temporary table> on <auto_key> where ((`test`.`t1`.`a` = `materialized-subquery`.`a`)))))",
+      "attached_subqueries": [
+        {
+          "table": {
+            "table_name": "<materialized_subquery>",
+            "access_type": "eq_ref",
+            "key": "<auto_key>",
+            "key_length": "5",
+            "rows_examined_per_scan": 1,
+            "materialized_from_subquery": {
+              "using_temporary_table": true,
+              "dependent": true,
+              "cacheable": false,
+              "query_block": {
+                "select_id": 2,
                 "cost_info": {
-                  "read_cost": "1.00",
-                  "eval_cost": "1.00",
-                  "prefix_cost": "2.00",
-                  "data_read_per_join": "160"
+                  "query_cost": "2.00"
                 },
-                "used_columns": [
-                  "a"
-                ]
+                "table": {
+                  "table_name": "t2",
+                  "access_type": "ALL",
+                  "rows_examined_per_scan": 5,
+                  "rows_produced_per_join": 5,
+                  "filtered": "100.00",
+                  "cost_info": {
+                    "read_cost": "1.00",
+                    "eval_cost": "1.00",
+                    "prefix_cost": "2.00",
+                    "data_read_per_join": "160"
+                  },
+                  "used_columns": [
+                    "a"
+                  ]
+                }
               }
             }
           }
         }
-      }
-    ]
+      ]
+    }
   }
 }
 Warnings:
-Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2`) where (`<subquery2>`.`a` = `test`.`t1`.`a`)
+Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,`test`.`t1`.`a` in ( <materialize> (/* select#2 */ select `test`.`t2`.`a` from `test`.`t2` where 1 ), <primary_index_lookup>(`test`.`t1`.`a` in <temporary table> on <auto_key> where ((`test`.`t1`.`a` = `materialized-subquery`.`a`)))))
 select * from t1 where t1.a in (select a from t2) ;
 a	b
 2	b
@@ -1994,48 +1995,51 @@ EXPLAIN
   "query_block": {
     "select_id": 1,
     "cost_info": {
-      "query_cost": "12.00"
+      "query_cost": "2.00"
     },
-    "duplicates_removal": {
-      "using_temporary_table": true,
-      "nested_loop": [
+    "table": {
+      "table_name": "t1",
+      "access_type": "ALL",
+      "rows_examined_per_scan": 5,
+      "rows_produced_per_join": 5,
+      "filtered": "100.00",
+      "cost_info": {
+        "read_cost": "1.00",
+        "eval_cost": "1.00",
+        "prefix_cost": "2.00",
+        "data_read_per_join": "160"
+      },
+      "used_columns": [
+        "a",
+        "b"
+      ],
+      "attached_condition": "<in_optimizer>(`test`.`t1`.`a`,<exists>(/* select#2 */ select 1 from `test`.`t2` where (<cache>(`test`.`t1`.`a`) = `test`.`t2`.`a`)))",
+      "attached_subqueries": [
         {
-          "table": {
-            "table_name": "t1",
-            "access_type": "ALL",
-            "rows_examined_per_scan": 5,
-            "rows_produced_per_join": 5,
-            "filtered": "100.00",
+          "dependent": true,
+          "cacheable": false,
+          "query_block": {
+            "select_id": 2,
             "cost_info": {
-              "read_cost": "1.00",
-              "eval_cost": "1.00",
-              "prefix_cost": "2.00",
-              "data_read_per_join": "160"
+              "query_cost": "2.00"
             },
-            "used_columns": [
-              "a",
-              "b"
-            ]
-          }
-        },
-        {
-          "table": {
-            "table_name": "t2",
-            "access_type": "ALL",
-            "rows_examined_per_scan": 5,
-            "rows_produced_per_join": 5,
-            "filtered": "20.00",
-            "using_join_buffer": "Block Nested Loop",
-            "cost_info": {
-              "read_cost": "1.00",
-              "eval_cost": "1.00",
-              "prefix_cost": "12.00",
-              "data_read_per_join": "160"
-            },
-            "used_columns": [
-              "a"
-            ],
-            "attached_condition": "(`test`.`t2`.`a` = `test`.`t1`.`a`)"
+            "table": {
+              "table_name": "t2",
+              "access_type": "ALL",
+              "rows_examined_per_scan": 5,
+              "rows_produced_per_join": 1,
+              "filtered": "20.00",
+              "cost_info": {
+                "read_cost": "1.00",
+                "eval_cost": "0.20",
+                "prefix_cost": "2.00",
+                "data_read_per_join": "32"
+              },
+              "used_columns": [
+                "a"
+              ],
+              "attached_condition": "(<cache>(`test`.`t1`.`a`) = `test`.`t2`.`a`)"
+            }
           }
         }
       ]
@@ -2043,7 +2047,7 @@ EXPLAIN
   }
 }
 Warnings:
-Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2`) where (`test`.`t2`.`a` = `test`.`t1`.`a`)
+Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,<exists>(/* select#2 */ select 1 from `test`.`t2` where (<cache>(`test`.`t1`.`a`) = `test`.`t2`.`a`)))
 select * from t1 where t1.a in (select a from t2) ;
 a	b
 2	b
@@ -3832,67 +3836,68 @@ EXPLAIN
   "query_block": {
     "select_id": 1,
     "cost_info": {
-      "query_cost": "8.00"
+      "query_cost": "2.00"
     },
-    "nested_loop": [
-      {
-        "table": {
-          "table_name": "t1",
-          "access_type": "ALL",
-          "rows_examined_per_scan": 5,
-          "rows_produced_per_join": 5,
-          "filtered": "100.00",
-          "cost_info": {
-            "read_cost": "1.00",
-            "eval_cost": "1.00",
-            "prefix_cost": "2.00",
-            "data_read_per_join": "160"
-          },
-          "used_columns": [
-            "a",
-            "b"
-          ],
-          "attached_condition": "(`test`.`t1`.`a` is not null)"
-        }
+    "table": {
+      "table_name": "t1",
+      "access_type": "ALL",
+      "rows_examined_per_scan": 5,
+      "rows_produced_per_join": 5,
+      "filtered": "100.00",
+      "cost_info": {
+        "read_cost": "1.00",
+        "eval_cost": "1.00",
+        "prefix_cost": "2.00",
+        "data_read_per_join": "160"
       },
-      {
-        "table": {
-          "table_name": "<subquery2>",
-          "access_type": "eq_ref",
-          "key": "<auto_key>",
-          "key_length": "5",
-          "ref": [
-            "test.t1.a"
-          ],
-          "rows_examined_per_scan": 1,
-          "materialized_from_subquery": {
-            "using_temporary_table": true,
-            "query_block": {
-              "table": {
-                "table_name": "t2",
-                "access_type": "ALL",
-                "rows_examined_per_scan": 5,
-                "rows_produced_per_join": 5,
-                "filtered": "100.00",
+      "used_columns": [
+        "a",
+        "b"
+      ],
+      "attached_condition": "<in_optimizer>(`test`.`t1`.`a`,`test`.`t1`.`a` in ( <materialize> (/* select#2 */ select `test`.`t2`.`a` from `test`.`t2` where 1 ), <primary_index_lookup>(`test`.`t1`.`a` in <temporary table> on <auto_key> where ((`test`.`t1`.`a` = `materialized-subquery`.`a`)))))",
+      "attached_subqueries": [
+        {
+          "table": {
+            "table_name": "<materialized_subquery>",
+            "access_type": "eq_ref",
+            "key": "<auto_key>",
+            "key_length": "5",
+            "rows_examined_per_scan": 1,
+            "materialized_from_subquery": {
+              "using_temporary_table": true,
+              "dependent": true,
+              "cacheable": false,
+              "query_block": {
+                "select_id": 2,
                 "cost_info": {
-                  "read_cost": "1.00",
-                  "eval_cost": "1.00",
-                  "prefix_cost": "2.00",
-                  "data_read_per_join": "160"
+                  "query_cost": "2.00"
                 },
-                "used_columns": [
-                  "a"
-                ]
+                "table": {
+                  "table_name": "t2",
+                  "access_type": "ALL",
+                  "rows_examined_per_scan": 5,
+                  "rows_produced_per_join": 5,
+                  "filtered": "100.00",
+                  "cost_info": {
+                    "read_cost": "1.00",
+                    "eval_cost": "1.00",
+                    "prefix_cost": "2.00",
+                    "data_read_per_join": "160"
+                  },
+                  "used_columns": [
+                    "a"
+                  ]
+                }
               }
             }
           }
         }
-      }
-    ]
+      ]
+    }
   }
 }
 Warnings:
-Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2`) where (`<subquery2>`.`a` = `test`.`t1`.`a`)
+Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,`test`.`t1`.`a` in ( <materialize> (/* select#2 */ select `test`.`t2`.`a` from `test`.`t2` where 1 ), <primary_index_lookup>(`test`.`t1`.`a` in <temporary table> on <auto_key> where ((`test`.`t1`.`a` = `materialized-subquery`.`a`)))))
 select * from t1 where t1.a in (select a from t2) ;
 a	b
 set optimizer_switch='materialization=off';
@@ -3904,48 +3909,51 @@ EXPLAIN
   "query_block": {
     "select_id": 1,
     "cost_info": {
-      "query_cost": "12.00"
+      "query_cost": "2.00"
     },
-    "duplicates_removal": {
-      "using_temporary_table": true,
-      "nested_loop": [
+    "table": {
+      "table_name": "t1",
+      "access_type": "ALL",
+      "rows_examined_per_scan": 5,
+      "rows_produced_per_join": 5,
+      "filtered": "100.00",
+      "cost_info": {
+        "read_cost": "1.00",
+        "eval_cost": "1.00",
+        "prefix_cost": "2.00",
+        "data_read_per_join": "160"
+      },
+      "used_columns": [
+        "a",
+        "b"
+      ],
+      "attached_condition": "<in_optimizer>(`test`.`t1`.`a`,<exists>(/* select#2 */ select 1 from `test`.`t2` where (<cache>(`test`.`t1`.`a`) = `test`.`t2`.`a`)))",
+      "attached_subqueries": [
         {
-          "table": {
-            "table_name": "t1",
-            "access_type": "ALL",
-            "rows_examined_per_scan": 5,
-            "rows_produced_per_join": 5,
-            "filtered": "100.00",
+          "dependent": true,
+          "cacheable": false,
+          "query_block": {
+            "select_id": 2,
             "cost_info": {
-              "read_cost": "1.00",
-              "eval_cost": "1.00",
-              "prefix_cost": "2.00",
-              "data_read_per_join": "160"
+              "query_cost": "2.00"
             },
-            "used_columns": [
-              "a",
-              "b"
-            ]
-          }
-        },
-        {
-          "table": {
-            "table_name": "t2",
-            "access_type": "ALL",
-            "rows_examined_per_scan": 5,
-            "rows_produced_per_join": 5,
-            "filtered": "20.00",
-            "using_join_buffer": "Block Nested Loop",
-            "cost_info": {
-              "read_cost": "1.00",
-              "eval_cost": "1.00",
-              "prefix_cost": "12.00",
-              "data_read_per_join": "160"
-            },
-            "used_columns": [
-              "a"
-            ],
-            "attached_condition": "(`test`.`t2`.`a` = `test`.`t1`.`a`)"
+            "table": {
+              "table_name": "t2",
+              "access_type": "ALL",
+              "rows_examined_per_scan": 5,
+              "rows_produced_per_join": 1,
+              "filtered": "20.00",
+              "cost_info": {
+                "read_cost": "1.00",
+                "eval_cost": "0.20",
+                "prefix_cost": "2.00",
+                "data_read_per_join": "32"
+              },
+              "used_columns": [
+                "a"
+              ],
+              "attached_condition": "(<cache>(`test`.`t1`.`a`) = `test`.`t2`.`a`)"
+            }
           }
         }
       ]
@@ -3953,7 +3961,7 @@ EXPLAIN
   }
 }
 Warnings:
-Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2`) where (`test`.`t2`.`a` = `test`.`t1`.`a`)
+Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,<exists>(/* select#2 */ select 1 from `test`.`t2` where (<cache>(`test`.`t1`.`a`) = `test`.`t2`.`a`)))
 select * from t1 where t1.a in (select a from t2) ;
 a	b
 set optimizer_switch='default,derived_merge=off';
