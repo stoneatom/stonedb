@@ -82,10 +82,10 @@ jobs:
         run: |
           sudo cmake ./ \
           -DCMAKE_BUILD_TYPE=release \
-          -DCMAKE_INSTALL_PREFIX=/stonedb56/install \
-          -DMYSQL_DATADIR=/stonedb56/install/data \
-          -DSYSCONFDIR=/stonedb56/install \
-          -DMYSQL_UNIX_ADDR=/stonedb56/install/tmp/mysql.sock \
+          -DCMAKE_INSTALL_PREFIX=/stonedb57/install \
+          -DMYSQL_DATADIR=/stonedb57/install/data \
+          -DSYSCONFDIR=/stonedb57/install \
+          -DMYSQL_UNIX_ADDR=/stonedb57/install/tmp/mysql.sock \
           -DWITH_EMBEDDED_SERVER=OFF \
           -DWITH_STONEDB_STORAGE_ENGINE=1 \
           -DWITH_MYISAM_STORAGE_ENGINE=1 \
@@ -102,10 +102,18 @@ jobs:
 
           #- name: mtr test
           #  run: |
-          #    sudo mkdir -p /stonedb56/install/data/innodb
-          #    sudo mkdir -p /stonedb56/install/binlog
-          #    sudo mkdir -p /stonedb56/install/log
-          #    sudo mkdir -p /stonedb56/install/tmp
-          #    sudo chown -R mysql:mysql /stonedb56
-          #    cd /stonedb56/install/mysql-test
+          #    sudo mkdir -p /stonedb57/install/data/innodb
+          #    sudo mkdir -p /stonedb57/install/binlog
+          #    sudo mkdir -p /stonedb5 7/install/log
+          #    sudo mkdir -p /stonedb57/install/tmp
+          #    sudo chown -R mysql:mysql /stonedb57
+          #    cd /stonedb57/install/mysql-test
           #    sudo ./mysql-test-run.pl --suite=stonedb --nowarnings --force
+          
+      - name: pack stonedb after install
+        run: sudo tar zcvf ./stonedb57.tar.gz /stonedb57
+      
+      - uses: actions/upload-artifact@v3
+        with:
+          name: stonedb-artifact
+          path: ./stonedb57.tar.gz
