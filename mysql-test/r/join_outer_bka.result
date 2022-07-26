@@ -970,6 +970,8 @@ a	b	a	b
 4	2	NULL	NULL
 DROP TABLE t1,t2;
 set group_concat_max_len=5;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 create table t1 (a int, b varchar(20));
 create table t2 (a int, c varchar(20));
 insert into t1 values (1,"aaaaaaaaaa"),(2,"bbbbbbbbbb");
@@ -1004,6 +1006,8 @@ Warning	1260	Row 1 was cut by GROUP_CONCAT()
 Warning	1260	Row 2 was cut by GROUP_CONCAT()
 drop table t1, t2;
 set group_concat_max_len=default;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 create table t1 (gid smallint(5) unsigned not null, x int(11) not null, y int(11) not null, art int(11) not null, primary key  (gid,x,y));
 insert t1 values (1, -5, -8, 2), (1, 2, 2, 1), (1, 1, 1, 1);
 create table t2 (gid smallint(5) unsigned not null, x int(11) not null, y int(11) not null, id int(11) not null, primary key  (gid,id,x,y), key id (id));

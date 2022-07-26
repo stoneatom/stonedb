@@ -148,6 +148,8 @@ grp	group_concat(c order by c)
 4	
 5	NULL
 set group_concat_max_len = 4;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 select grp,group_concat(c order by c) from t1 group by grp;
 grp	group_concat(c order by c)
 1	NULL
@@ -161,6 +163,8 @@ show warnings;
 Level	Code	Message
 Warning	1260	Row 4 was cut by GROUP_CONCAT()
 set group_concat_max_len = 1024;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 select group_concat(sum(c)) from t1 group by grp;
 ERROR HY000: Invalid use of group function
 select grp,group_concat(c order by 2) from t1 group by grp;
@@ -378,6 +382,8 @@ group_concat(distinct b order by b)
 a,bb,ccc
 A,BB,CCC
 set local group_concat_max_len=4;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 select group_concat(b) from t1 group by a;
 group_concat(b)
 bb,c
@@ -411,6 +417,8 @@ insert into t1 values (1, concat(repeat('1', 300), '2')),
 (2, concat(repeat('1', 300), '2')), (2, concat(repeat('1', 300), '2')), 
 (2, concat(repeat('0', 300), '1'));
 set local group_concat_max_len=1024;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 select group_concat(b) from t1 group by a;
 group_concat(b)
 bb,ccc,a,bb,ccc,1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111112,1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111112,0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
@@ -428,6 +436,8 @@ group_concat(distinct b order by b)
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001,1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111112,a,bb,ccc
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001,1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111112,A,BB,CCC
 set local group_concat_max_len=400;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 select group_concat(b) from t1 group by a;
 group_concat(b)
 bb,ccc,a,bb,ccc,1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111112,1111111111111111111111111111111111111111111111111111111111111111111111111111111111
@@ -657,6 +667,8 @@ latin1
 drop table t1;
 CREATE TABLE t1 (a INT(10), b LONGTEXT, PRIMARY KEY (a));
 SET GROUP_CONCAT_MAX_LEN = 20000000;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 INSERT INTO t1 VALUES (1,REPEAT(CONCAT('A',CAST(CHAR(0) AS BINARY),'B'), 40000));
 INSERT INTO t1 SELECT a + 1, b FROM t1;
 SELECT a, CHAR_LENGTH(b) FROM t1;
@@ -667,6 +679,8 @@ SELECT CHAR_LENGTH( GROUP_CONCAT(b) ) FROM t1;
 CHAR_LENGTH( GROUP_CONCAT(b) )
 240001
 SET GROUP_CONCAT_MAX_LEN = 1024;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 DROP TABLE t1;
 CREATE TABLE t1 (a int, b int);
 INSERT INTO t1 VALUES (2,1), (1,2), (2,2), (1,3);
@@ -685,57 +699,99 @@ y integer not null
 );
 insert into t1 values (repeat('a', 1022), 0), (repeat(_utf8 0xc3b7, 4), 0);
 set group_concat_max_len= 1022 + 10;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 select @x:=group_concat(x) from t1 group by y;
 select @@group_concat_max_len, length(@x), char_length(@x), right(@x,12), right(HEX(@x),12);
 @@group_concat_max_len	length(@x)	char_length(@x)	right(@x,12)	right(HEX(@x),12)
 1032	1031	1027	aaaaaaa,÷÷÷÷	C3B7C3B7C3B7
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 set group_concat_max_len= 1022 + 9;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 select @x:=group_concat(x) from t1 group by y;
 select @@group_concat_max_len, length(@x), char_length(@x), right(@x,12), right(HEX(@x),12);
 @@group_concat_max_len	length(@x)	char_length(@x)	right(@x,12)	right(HEX(@x),12)
 1031	1031	1027	aaaaaaa,÷÷÷÷	C3B7C3B7C3B7
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 set group_concat_max_len= 1022 + 8;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 select @x:=group_concat(x) from t1 group by y;
 select @@group_concat_max_len, length(@x), char_length(@x), right(@x,12), right(HEX(@x),12);
 @@group_concat_max_len	length(@x)	char_length(@x)	right(@x,12)	right(HEX(@x),12)
 1030	1029	1026	aaaaaaaa,÷÷÷	C3B7C3B7C3B7
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 set group_concat_max_len= 1022 + 7;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 select @x:=group_concat(x) from t1 group by y;
 select @@group_concat_max_len, length(@x), char_length(@x), right(@x,12), right(HEX(@x),12);
 @@group_concat_max_len	length(@x)	char_length(@x)	right(@x,12)	right(HEX(@x),12)
 1029	1029	1026	aaaaaaaa,÷÷÷	C3B7C3B7C3B7
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 set group_concat_max_len= 1022 + 6;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 select @x:=group_concat(x) from t1 group by y;
 select @@group_concat_max_len, length(@x), char_length(@x), right(@x,12), right(HEX(@x),12);
 @@group_concat_max_len	length(@x)	char_length(@x)	right(@x,12)	right(HEX(@x),12)
 1028	1027	1025	aaaaaaaaa,÷÷	612CC3B7C3B7
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 set group_concat_max_len= 1022 + 5;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 select @x:=group_concat(x) from t1 group by y;
 select @@group_concat_max_len, length(@x), char_length(@x), right(@x,12), right(HEX(@x),12);
 @@group_concat_max_len	length(@x)	char_length(@x)	right(@x,12)	right(HEX(@x),12)
 1027	1027	1025	aaaaaaaaa,÷÷	612CC3B7C3B7
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 set group_concat_max_len= 1022 + 4;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 select @x:=group_concat(x) from t1 group by y;
 select @@group_concat_max_len, length(@x), char_length(@x), right(@x,12), right(HEX(@x),12);
 @@group_concat_max_len	length(@x)	char_length(@x)	right(@x,12)	right(HEX(@x),12)
 1026	1025	1024	aaaaaaaaaa,÷	6161612CC3B7
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 set group_concat_max_len= 1022 + 3;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 select @x:=group_concat(x) from t1 group by y;
 select @@group_concat_max_len, length(@x), char_length(@x), right(@x,12), right(HEX(@x),12);
 @@group_concat_max_len	length(@x)	char_length(@x)	right(@x,12)	right(HEX(@x),12)
 1025	1025	1024	aaaaaaaaaa,÷	6161612CC3B7
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 set group_concat_max_len= 1022 + 2;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 select @x:=group_concat(x) from t1 group by y;
 select @@group_concat_max_len, length(@x), char_length(@x), right(@x,12), right(HEX(@x),12);
 @@group_concat_max_len	length(@x)	char_length(@x)	right(@x,12)	right(HEX(@x),12)
 1024	1023	1023	aaaaaaaaaaa,	61616161612C
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 set group_concat_max_len= 1022 + 1;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 select @x:=group_concat(x) from t1 group by y;
 select @@group_concat_max_len, length(@x), char_length(@x), right(@x,12), right(HEX(@x),12);
 @@group_concat_max_len	length(@x)	char_length(@x)	right(@x,12)	right(HEX(@x),12)
 1023	1023	1023	aaaaaaaaaaa,	61616161612C
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 drop table t1;
 set group_concat_max_len=1024;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 set names latin1;
 create table t1 (f1 int unsigned, f2 varchar(255));
 insert into t1 values (1,repeat('a',255)),(2,repeat('b',255));
@@ -760,6 +816,8 @@ CREATE TABLE t1( a VARCHAR( 10 ), b INT );
 INSERT INTO t1 VALUES ( repeat( 'a', 10 ), 1), 
 ( repeat( 'b', 10 ), 2);
 SET group_concat_max_len = 20;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 SELECT GROUP_CONCAT( a ) FROM t1;
 GROUP_CONCAT( a )
 aaaaaaaaaa,bbbbbbbbb
@@ -781,8 +839,12 @@ aaaaaaaaaa,bbbbbbbbb
 Warnings:
 Warning	1260	Row 2 was cut by GROUP_CONCAT()
 SET group_concat_max_len = DEFAULT;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 DROP TABLE t1;
 SET group_concat_max_len= 65535;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 CREATE TABLE t1( a TEXT, b INTEGER );
 INSERT INTO t1 VALUES ( 'a', 0 ), ( 'b', 1 );
 SELECT GROUP_CONCAT( a ORDER BY b ) FROM t1;
@@ -795,6 +857,8 @@ SELECT GROUP_CONCAT(DISTINCT a) FROM t1;
 GROUP_CONCAT(DISTINCT a)
 a,b
 SET group_concat_max_len= 10;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 SELECT GROUP_CONCAT(a ORDER BY b) FROM t1;
 GROUP_CONCAT(a ORDER BY b)
 a,b
@@ -805,6 +869,8 @@ SELECT GROUP_CONCAT(DISTINCT a) FROM t1;
 GROUP_CONCAT(DISTINCT a)
 a,b
 SET group_concat_max_len= 65535;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 CREATE TABLE t2( a TEXT );
 INSERT INTO t2 VALUES( REPEAT( 'a', 5000 ) );
 INSERT INTO t2 VALUES( REPEAT( 'b', 5000 ) );
@@ -828,6 +894,8 @@ SELECT LENGTH( GROUP_CONCAT( a ) ) FROM t3 WHERE b = 3;
 LENGTH( GROUP_CONCAT( a ) )
 65535
 SET group_concat_max_len= DEFAULT;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 DROP TABLE t1, t2, t3;
 set names latin1;
 create table t1 (id int, name varchar(20)) DEFAULT CHARSET=utf8;
@@ -1075,6 +1143,8 @@ INSERT INTO t1 VALUES ('333333', 3);
 INSERT INTO t1 VALUES ('444444', 4);
 INSERT INTO t1 VALUES ('555555', 5);
 SET group_concat_max_len = 5;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 SET @old_sql_mode = @@sql_mode, @@sql_mode = 'traditional';
 SELECT GROUP_CONCAT(a), b FROM t1 GROUP BY b LIMIT 3;
 GROUP_CONCAT(a)	b
@@ -1092,6 +1162,8 @@ UPDATE t1 SET a = '22222' WHERE b = 2;
 INSERT INTO t2 SELECT GROUP_CONCAT(a), b FROM t1 GROUP BY b;
 ERROR HY000: Row 3 was cut by GROUP_CONCAT()
 SET group_concat_max_len = DEFAULT;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 SET @@sql_mode = @old_sql_mode;
 DROP TABLE t1, t2;
 #
@@ -1099,6 +1171,8 @@ DROP TABLE t1, t2;
 #  Bug#13387020 GROUP_CONCAT WITH ORDER BY RESULTS ARE TRUNCATED.
 #
 SET group_concat_max_len= 9999999;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 CREATE TABLE t1 (f1 LONGTEXT , f2  INTEGER);
 INSERT INTO t1 VALUES (REPEAT('a', 500000), 0), (REPEAT('b', 500000), 1), (REPEAT('c', 500000), 2);
 SELECT LENGTH(GROUP_CONCAT(f1 ORDER BY f2)) FROM t1;
@@ -1140,12 +1214,16 @@ t2	CREATE TABLE `t2` (
 ) ENGINE=ENGINE DEFAULT CHARSET=latin1
 DROP TABLE t2;
 SET group_concat_max_len= DEFAULT;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 SELECT LENGTH(GROUP_CONCAT(f1 ORDER BY f2)) FROM t1;
 LENGTH(GROUP_CONCAT(f1 ORDER BY f2))
 1024
 Warnings:
 Warning	1260	Row 2 was cut by GROUP_CONCAT()
 SET group_concat_max_len= 499999;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 SELECT LENGTH(GROUP_CONCAT(f1 ORDER BY f2)) FROM t1 WHERE f2 = 0;
 LENGTH(GROUP_CONCAT(f1 ORDER BY f2))
 499999
@@ -1175,6 +1253,8 @@ Warning	1260	Row 3 was cut by GROUP_CONCAT()
 Warning	1260	Row 5 was cut by GROUP_CONCAT()
 DROP TABLE t1;
 SET group_concat_max_len= DEFAULT;
+Warnings:
+Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 End of 5.6 tests
 #
 # Bug #25331425: DISTINCT CLAUSE DOES NOT WORK IN GROUP_CONCAT

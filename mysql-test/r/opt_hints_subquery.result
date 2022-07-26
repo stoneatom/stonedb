@@ -14,10 +14,10 @@ This query will normally use Table Pull-out
 EXPLAIN
 SELECT * FROM t2 WHERE t2.a IN (SELECT a FROM t1);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	index	a	a	4	NULL	4	100.00	Using index
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t2.a	1	100.00	Using index
+1	PRIMARY	t2	NULL	index	NULL	a	4	NULL	4	100.00	Using where; Using index
+2	DEPENDENT SUBQUERY	t1	NULL	unique_subquery	PRIMARY	PRIMARY	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select `test`.`t2`.`a` AS `a` from `test`.`t1` join `test`.`t2` where (`test`.`t1`.`a` = `test`.`t2`.`a`)
+Note	1003	/* select#1 */ select `test`.`t2`.`a` AS `a` from `test`.`t2` where <in_optimizer>(`test`.`t2`.`a`,<exists>(<primary_index_lookup>(<cache>(`test`.`t2`.`a`) in t1 on PRIMARY)))
 Check that we can disable SEMIJOIN transformation
 EXPLAIN
 SELECT * FROM t2 WHERE t2.a IN (SELECT /*+ NO_SEMIJOIN() */ a FROM t1);
@@ -41,11 +41,11 @@ SELECT * FROM t3
 WHERE t3.a IN (SELECT a FROM t1 tx)
 AND t3.b IN (SELECT a FROM t1 ty);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	tx	NULL	index	PRIMARY	PRIMARY	4	NULL	4	100.00	Using index
-1	SIMPLE	t3	NULL	ALL	a	NULL	NULL	NULL	3	33.33	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	ty	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.b	1	100.00	Using index
+1	PRIMARY	t3	NULL	ALL	NULL	NULL	NULL	NULL	3	100.00	Using where
+3	DEPENDENT SUBQUERY	ty	NULL	unique_subquery	PRIMARY	PRIMARY	4	func	1	100.00	Using index
+2	DEPENDENT SUBQUERY	tx	NULL	unique_subquery	PRIMARY	PRIMARY	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t1` `ty` join `test`.`t1` `tx` join `test`.`t3` where ((`test`.`ty`.`a` = `test`.`t3`.`b`) and (`test`.`t3`.`a` = `test`.`tx`.`a`))
+Note	1003	/* select#1 */ select `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t3` where (<in_optimizer>(`test`.`t3`.`a`,<exists>(<primary_index_lookup>(<cache>(`test`.`t3`.`a`) in t1 on PRIMARY))) and <in_optimizer>(`test`.`t3`.`b`,<exists>(<primary_index_lookup>(<cache>(`test`.`t3`.`b`) in t1 on PRIMARY))))
 No SEMIJOIN transformation for first subquery
 EXPLAIN
 SELECT * FROM t3
@@ -53,41 +53,41 @@ WHERE t3.a IN (SELECT /*+ NO_SEMIJOIN() */ a FROM t1 tx)
 AND t3.b IN (SELECT a FROM t1 ty);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
 1	PRIMARY	t3	NULL	ALL	NULL	NULL	NULL	NULL	3	100.00	Using where
-1	PRIMARY	ty	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.b	1	100.00	Using index
+3	DEPENDENT SUBQUERY	ty	NULL	unique_subquery	PRIMARY	PRIMARY	4	func	1	100.00	Using index
 2	DEPENDENT SUBQUERY	tx	NULL	unique_subquery	PRIMARY	PRIMARY	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`select#2`) */ `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t1` `ty` join `test`.`t3` where ((`test`.`ty`.`a` = `test`.`t3`.`b`) and <in_optimizer>(`test`.`t3`.`a`,<exists>(<primary_index_lookup>(<cache>(`test`.`t3`.`a`) in t1 on PRIMARY))))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`select#2`) */ `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t3` where (<in_optimizer>(`test`.`t3`.`a`,<exists>(<primary_index_lookup>(<cache>(`test`.`t3`.`a`) in t1 on PRIMARY))) and <in_optimizer>(`test`.`t3`.`b`,<exists>(<primary_index_lookup>(<cache>(`test`.`t3`.`b`) in t1 on PRIMARY))))
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1) */ * FROM t3
 WHERE t3.a IN (SELECT /*+ QB_NAME(`subq1`) */ a FROM t1 tx)
 AND t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t1 ty);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
 1	PRIMARY	t3	NULL	ALL	NULL	NULL	NULL	NULL	3	100.00	Using where
-1	PRIMARY	ty	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.b	1	100.00	Using index
+3	DEPENDENT SUBQUERY	ty	NULL	unique_subquery	PRIMARY	PRIMARY	4	func	1	100.00	Using index
 2	DEPENDENT SUBQUERY	tx	NULL	unique_subquery	PRIMARY	PRIMARY	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1`) */ `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t1` `ty` join `test`.`t3` where ((`test`.`ty`.`a` = `test`.`t3`.`b`) and <in_optimizer>(`test`.`t3`.`a`,<exists>(<primary_index_lookup>(<cache>(`test`.`t3`.`a`) in t1 on PRIMARY))))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1`) */ `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t3` where (<in_optimizer>(`test`.`t3`.`a`,<exists>(<primary_index_lookup>(<cache>(`test`.`t3`.`a`) in t1 on PRIMARY))) and <in_optimizer>(`test`.`t3`.`b`,<exists>(<primary_index_lookup>(<cache>(`test`.`t3`.`b`) in t1 on PRIMARY))))
 No SEMIJOIN transformation for latter subquery
 EXPLAIN
 SELECT * FROM t3
 WHERE t3.a IN (SELECT a FROM t1 tx)
 AND t3.b IN (SELECT /*+ NO_SEMIJOIN() */ a FROM t1 ty);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	PRIMARY	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	Using where
-1	PRIMARY	tx	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.a	1	100.00	Using index
+1	PRIMARY	t3	NULL	ALL	NULL	NULL	NULL	NULL	3	100.00	Using where
 3	DEPENDENT SUBQUERY	ty	NULL	unique_subquery	PRIMARY	PRIMARY	4	func	1	100.00	Using index
+2	DEPENDENT SUBQUERY	tx	NULL	unique_subquery	PRIMARY	PRIMARY	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`select#3`) */ `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t1` `tx` join `test`.`t3` where ((`test`.`tx`.`a` = `test`.`t3`.`a`) and <in_optimizer>(`test`.`t3`.`b`,<exists>(<primary_index_lookup>(<cache>(`test`.`t3`.`b`) in t1 on PRIMARY))))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`select#3`) */ `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t3` where (<in_optimizer>(`test`.`t3`.`a`,<exists>(<primary_index_lookup>(<cache>(`test`.`t3`.`a`) in t1 on PRIMARY))) and <in_optimizer>(`test`.`t3`.`b`,<exists>(<primary_index_lookup>(<cache>(`test`.`t3`.`b`) in t1 on PRIMARY))))
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@`subq2`) */ * FROM t3
 WHERE t3.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t1 tx)
 AND t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t1 ty);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	PRIMARY	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	Using where
-1	PRIMARY	tx	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.a	1	100.00	Using index
+1	PRIMARY	t3	NULL	ALL	NULL	NULL	NULL	NULL	3	100.00	Using where
 3	DEPENDENT SUBQUERY	ty	NULL	unique_subquery	PRIMARY	PRIMARY	4	func	1	100.00	Using index
+2	DEPENDENT SUBQUERY	tx	NULL	unique_subquery	PRIMARY	PRIMARY	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2`) */ `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t1` `tx` join `test`.`t3` where ((`test`.`tx`.`a` = `test`.`t3`.`a`) and <in_optimizer>(`test`.`t3`.`b`,<exists>(<primary_index_lookup>(<cache>(`test`.`t3`.`b`) in t1 on PRIMARY))))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2`) */ `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t3` where (<in_optimizer>(`test`.`t3`.`a`,<exists>(<primary_index_lookup>(<cache>(`test`.`t3`.`a`) in t1 on PRIMARY))) and <in_optimizer>(`test`.`t3`.`b`,<exists>(<primary_index_lookup>(<cache>(`test`.`t3`.`b`) in t1 on PRIMARY))))
 No SEMIJOIN transformation for any subquery
 EXPLAIN
 SELECT * FROM t3
@@ -115,11 +115,11 @@ SELECT * FROM t3
 WHERE t3.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t1 tx
 WHERE tx.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t1 ty));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	NULL
-1	SIMPLE	tx	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	25.00	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	ty	NULL	eq_ref	PRIMARY	PRIMARY	4	test.tx.b	1	100.00	Using index
+1	PRIMARY	t3	NULL	ALL	NULL	NULL	NULL	NULL	3	100.00	Using where
+2	DEPENDENT SUBQUERY	tx	NULL	unique_subquery	PRIMARY	PRIMARY	4	func	1	100.00	Using where
+3	DEPENDENT SUBQUERY	ty	NULL	unique_subquery	PRIMARY	PRIMARY	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t1` `ty` join `test`.`t1` `tx` join `test`.`t3` where ((`test`.`tx`.`a` = `test`.`t3`.`a`) and (`test`.`ty`.`a` = `test`.`tx`.`b`))
+Note	1003	/* select#1 */ select `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t3` where <in_optimizer>(`test`.`t3`.`a`,<exists>(<primary_index_lookup>(<cache>(`test`.`t3`.`a`) in t1 on PRIMARY where (<in_optimizer>(`test`.`tx`.`b`,<exists>(<primary_index_lookup>(<cache>(`test`.`tx`.`b`) in t1 on PRIMARY))) and (<cache>(`test`.`t3`.`a`) = `test`.`tx`.`a`)))))
 No SEMIJOIN transformation for outer subquery
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1) */ * FROM t3
@@ -127,21 +127,21 @@ WHERE t3.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t1 tx
 WHERE tx.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t1 ty));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
 1	PRIMARY	t3	NULL	ALL	NULL	NULL	NULL	NULL	3	100.00	Using where
-2	DEPENDENT SUBQUERY	tx	NULL	eq_ref	PRIMARY	PRIMARY	4	func	1	100.00	Using where
-2	DEPENDENT SUBQUERY	ty	NULL	eq_ref	PRIMARY	PRIMARY	4	test.tx.b	1	100.00	Using index
+2	DEPENDENT SUBQUERY	tx	NULL	unique_subquery	PRIMARY	PRIMARY	4	func	1	100.00	Using where
+3	DEPENDENT SUBQUERY	ty	NULL	unique_subquery	PRIMARY	PRIMARY	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1`) */ `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t3` where <in_optimizer>(`test`.`t3`.`a`,<exists>(/* select#2 */ select /*+ QB_NAME(`subq1`) */ 1 from `test`.`t1` `ty` join `test`.`t1` `tx` where ((`test`.`ty`.`a` = `test`.`tx`.`b`) and (<cache>(`test`.`t3`.`a`) = `test`.`tx`.`a`))))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1`) */ `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t3` where <in_optimizer>(`test`.`t3`.`a`,<exists>(<primary_index_lookup>(<cache>(`test`.`t3`.`a`) in t1 on PRIMARY where (<in_optimizer>(`test`.`tx`.`b`,<exists>(<primary_index_lookup>(<cache>(`test`.`tx`.`b`) in t1 on PRIMARY))) and (<cache>(`test`.`t3`.`a`) = `test`.`tx`.`a`)))))
 No SEMIJOIN transformation for inner-most subquery
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq2) */ * FROM t3
 WHERE t3.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t1 tx
 WHERE tx.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t1 ty));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	PRIMARY	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	NULL
-1	PRIMARY	tx	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	25.00	Using where; Using join buffer (Block Nested Loop)
-3	SUBQUERY	ty	NULL	index	PRIMARY	PRIMARY	4	NULL	4	100.00	Using index
+1	PRIMARY	t3	NULL	ALL	NULL	NULL	NULL	NULL	3	100.00	Using where
+2	DEPENDENT SUBQUERY	tx	NULL	unique_subquery	PRIMARY	PRIMARY	4	func	1	100.00	Using where
+3	DEPENDENT SUBQUERY	ty	NULL	unique_subquery	PRIMARY	PRIMARY	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2`) */ `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t1` `tx` join `test`.`t3` where ((`test`.`tx`.`a` = `test`.`t3`.`a`) and <in_optimizer>(`test`.`tx`.`b`,`test`.`tx`.`b` in ( <materialize> (/* select#3 */ select /*+ QB_NAME(`subq2`) */ `test`.`ty`.`a` from `test`.`t1` `ty` where 1 ), <primary_index_lookup>(`test`.`tx`.`b` in <temporary table> on <auto_key> where ((`test`.`tx`.`b` = `materialized-subquery`.`a`))))))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2`) */ `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t3` where <in_optimizer>(`test`.`t3`.`a`,<exists>(<primary_index_lookup>(<cache>(`test`.`t3`.`a`) in t1 on PRIMARY where (<in_optimizer>(`test`.`tx`.`b`,<exists>(<primary_index_lookup>(<cache>(`test`.`tx`.`b`) in t1 on PRIMARY))) and (<cache>(`test`.`t3`.`a`) = `test`.`tx`.`a`)))))
 No SEMIJOIN transformation at all
 EXPLAIN
 SELECT /*+  NO_SEMIJOIN(@subq1) NO_SEMIJOIN(@subq2) */ * FROM t3
@@ -166,39 +166,38 @@ This query will get LooseScan by default
 EXPLAIN
 SELECT * FROM t2 WHERE t2.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t3	NULL	index	a	a	4	NULL	3	100.00	Using index; LooseScan
-1	SIMPLE	t2	NULL	ref	a	a	4	test.t3.a	1	100.00	Using index
+1	PRIMARY	t2	NULL	index	NULL	a	4	NULL	4	100.00	Using where; Using index
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select `test`.`t2`.`a` AS `a` from `test`.`t2` semi join (`test`.`t3`) where (`test`.`t2`.`a` = `test`.`t3`.`a`)
+Note	1003	/* select#1 */ select `test`.`t2`.`a` AS `a` from `test`.`t2` where <in_optimizer>(`test`.`t2`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t2`.`a`) in t3 on a)))
 Let's turn off LooseScan, FirstMatch is then SELECTed
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1 LOOSESCAN) */ * FROM t2
 WHERE t2.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	index	a	a	4	NULL	4	100.00	Using index
-1	SIMPLE	t3	NULL	ref	a	a	4	test.t2.a	1	100.00	Using index; FirstMatch(t2)
+1	PRIMARY	t2	NULL	index	NULL	a	4	NULL	4	100.00	Using where; Using index
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` LOOSESCAN) */ `test`.`t2`.`a` AS `a` from `test`.`t2` semi join (`test`.`t3`) where (`test`.`t3`.`a` = `test`.`t2`.`a`)
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` LOOSESCAN) */ `test`.`t2`.`a` AS `a` from `test`.`t2` where <in_optimizer>(`test`.`t2`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t2`.`a`) in t3 on a)))
 Let's also turn off FirstMatch, MatLookup is then used
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1 FIRSTMATCH, LOOSESCAN) */ * FROM t2
 WHERE t2.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	index	a	a	4	NULL	4	100.00	Using where; Using index
-1	SIMPLE	<subquery2>	NULL	eq_ref	<auto_key>	<auto_key>	4	test.t2.a	1	100.00	NULL
-2	MATERIALIZED	t3	NULL	index	a	a	4	NULL	3	100.00	Using index
+1	PRIMARY	t2	NULL	index	NULL	a	4	NULL	4	100.00	Using where; Using index
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN) */ `test`.`t2`.`a` AS `a` from `test`.`t2` semi join (`test`.`t3`) where (`<subquery2>`.`a` = `test`.`t2`.`a`)
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN) */ `test`.`t2`.`a` AS `a` from `test`.`t2` where <in_optimizer>(`test`.`t2`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t2`.`a`) in t3 on a)))
 Let's also turn off Materialization, DuplicateWeedout should then be used
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1 FIRSTMATCH, LOOSESCAN, MATERIALIZATION) */ *
 FROM t2
 WHERE t2.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t3	NULL	index	a	a	4	NULL	3	100.00	Using index; Start temporary
-1	SIMPLE	t2	NULL	ref	a	a	4	test.t3.a	1	100.00	Using index; End temporary
+1	PRIMARY	t2	NULL	index	NULL	a	4	NULL	4	100.00	Using where; Using index
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN, MATERIALIZATION) */ `test`.`t2`.`a` AS `a` from `test`.`t2` semi join (`test`.`t3`) where (`test`.`t2`.`a` = `test`.`t3`.`a`)
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN, MATERIALIZATION) */ `test`.`t2`.`a` AS `a` from `test`.`t2` where <in_optimizer>(`test`.`t2`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t2`.`a`) in t3 on a)))
 If we turn off all strategies, DuplicateWeedout should still be used
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1 FIRSTMATCH, LOOSESCAN, MATERIALIZATION,
@@ -206,20 +205,20 @@ DUPSWEEDOUT) */ *
 FROM t2
 WHERE t2.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t3	NULL	index	a	a	4	NULL	3	100.00	Using index; Start temporary
-1	SIMPLE	t2	NULL	ref	a	a	4	test.t3.a	1	100.00	Using index; End temporary
+1	PRIMARY	t2	NULL	index	NULL	a	4	NULL	4	100.00	Using where; Using index
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN, MATERIALIZATION, DUPSWEEDOUT) */ `test`.`t2`.`a` AS `a` from `test`.`t2` semi join (`test`.`t3`) where (`test`.`t2`.`a` = `test`.`t3`.`a`)
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN, MATERIALIZATION, DUPSWEEDOUT) */ `test`.`t2`.`a` AS `a` from `test`.`t2` where <in_optimizer>(`test`.`t2`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t2`.`a`) in t3 on a)))
 Turn off non-used strategies, nothing should change.  Still Loosescan
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1 FIRSTMATCH, MATERIALIZATION, DUPSWEEDOUT) */ *
 FROM t2
 WHERE t2.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t3	NULL	index	a	a	4	NULL	3	100.00	Using index; LooseScan
-1	SIMPLE	t2	NULL	ref	a	a	4	test.t3.a	1	100.00	Using index
+1	PRIMARY	t2	NULL	index	NULL	a	4	NULL	4	100.00	Using where; Using index
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, MATERIALIZATION, DUPSWEEDOUT) */ `test`.`t2`.`a` AS `a` from `test`.`t2` semi join (`test`.`t3`) where (`test`.`t2`.`a` = `test`.`t3`.`a`)
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, MATERIALIZATION, DUPSWEEDOUT) */ `test`.`t2`.`a` AS `a` from `test`.`t2` where <in_optimizer>(`test`.`t2`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t2`.`a`) in t3 on a)))
 Test same query with SEMIJOIN hint
 Forcing LooseScan, should not change anything
 EXPLAIN
@@ -308,21 +307,21 @@ EXPLAIN
 SELECT * FROM t1
 WHERE t1.b IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3 WHERE t3.b = t1.a);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	100.00	NULL
-1	SIMPLE	t3	NULL	ALL	a	NULL	NULL	NULL	3	33.33	Using where; FirstMatch(t1); Using join buffer (Block Nested Loop)
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	33.33	Using where
 Warnings:
 Note	1276	Field or reference 'test.t1.a' of SELECT #2 was resolved in SELECT #1
-Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) where ((`test`.`t3`.`a` = `test`.`t1`.`b`) and (`test`.`t3`.`b` = `test`.`t1`.`a`))
+Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`b`) in t3 on a where ((`test`.`t3`.`b` = `test`.`t1`.`a`) and (<cache>(`test`.`t1`.`b`) = `test`.`t3`.`a`)))))
 Turn off all applicable strategies. DuplicateWeedout should be used
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1 FIRSTMATCH, DUPSWEEDOUT) */ * FROM t1
 WHERE t1.b IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3 WHERE t3.b = t1.a);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	Start temporary
-1	SIMPLE	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	25.00	Using where; End temporary; Using join buffer (Block Nested Loop)
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	33.33	Using where
 Warnings:
 Note	1276	Field or reference 'test.t1.a' of SELECT #2 was resolved in SELECT #1
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) where ((`test`.`t1`.`b` = `test`.`t3`.`a`) and (`test`.`t1`.`a` = `test`.`t3`.`b`))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`b`) in t3 on a where ((`test`.`t3`.`b` = `test`.`t1`.`a`) and (<cache>(`test`.`t1`.`b`) = `test`.`t3`.`a`)))))
 Similar with SEMIJOIN hint
 EXPLAIN
 SELECT /*+ SEMIJOIN(@subq1 LOOSESCAN, MATERIALIZATION) */ * FROM t1
@@ -340,11 +339,11 @@ SELECT * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3)
 AND t1.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t3	NULL	index	a	a	4	NULL	3	100.00	Using index; LooseScan
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.a	1	100.00	Using where
-1	SIMPLE	t2	NULL	ref	a	a	4	test.t1.b	1	100.00	Using index; FirstMatch(t1)
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) semi join (`test`.`t2`) where ((`test`.`t2`.`a` = `test`.`t1`.`b`) and (`test`.`t1`.`a` = `test`.`t3`.`a`))
+Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where (<in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a))) and <in_optimizer>(`test`.`t1`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`b`) in t2 on a))))
 Forcing the default strategy should not change anything
 EXPLAIN
 SELECT /*+ SEMIJOIN(@subq1 LOOSESCAN) SEMIJOIN(@subq2 FIRSTMATCH) */ * FROM t1
@@ -362,11 +361,11 @@ SELECT /*+ SEMIJOIN(@subq1 FIRSTMATCH) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3)
 AND t1.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	index	a	a	4	NULL	4	100.00	Using index; LooseScan
-1	SIMPLE	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	25.00	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	t3	NULL	ref	a	a	4	test.t1.a	1	100.00	Using index; FirstMatch(t1)
+1	PRIMARY	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	100.00	Using where
+1	PRIMARY	t3	NULL	ref	a	a	4	test.t1.a	1	100.00	Using index; FirstMatch(t1)
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` FIRSTMATCH) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) semi join (`test`.`t2`) where ((`test`.`t1`.`b` = `test`.`t2`.`a`) and (`test`.`t3`.`a` = `test`.`t1`.`a`))
+Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` FIRSTMATCH) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) where ((`test`.`t3`.`a` = `test`.`t1`.`a`) and <in_optimizer>(`test`.`t1`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`b`) in t2 on a))))
 Forcing same strategy for both
 EXPLAIN
 SELECT /*+ SEMIJOIN(@subq1 FIRSTMATCH) SEMIJOIN(@subq2 FIRSTMATCH) */ * FROM t1
@@ -444,11 +443,11 @@ NO_SEMIJOIN(@subq2 FIRSTMATCH) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3)
 AND t1.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	index	a	a	4	NULL	4	100.00	Using index; LooseScan
-1	SIMPLE	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	25.00	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	t3	NULL	ref	a	a	4	test.t1.a	1	100.00	Using index; FirstMatch(t1)
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` LOOSESCAN) NO_SEMIJOIN(@`subq2` FIRSTMATCH) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) semi join (`test`.`t2`) where ((`test`.`t1`.`b` = `test`.`t2`.`a`) and (`test`.`t3`.`a` = `test`.`t1`.`a`))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` LOOSESCAN) NO_SEMIJOIN(@`subq2` FIRSTMATCH) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where (<in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a))) and <in_optimizer>(`test`.`t1`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`b`) in t2 on a))))
 Also turn off 2nd choice. Gives DuplicateWeedout over both
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1 LOOSESCAN, FIRSTMATCH)
@@ -456,11 +455,11 @@ NO_SEMIJOIN(@subq2 FIRSTMATCH, LOOSESCAN) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3)
 AND t1.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t3	NULL	index	a	a	4	NULL	3	100.00	Using index; Start temporary
-1	SIMPLE	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	25.00	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	t2	NULL	ref	a	a	4	test.t1.b	1	100.00	Using index; End temporary
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN) NO_SEMIJOIN(@`subq2` FIRSTMATCH, LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) semi join (`test`.`t2`) where ((`test`.`t2`.`a` = `test`.`t1`.`b`) and (`test`.`t1`.`a` = `test`.`t3`.`a`))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN) NO_SEMIJOIN(@`subq2` FIRSTMATCH, LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where (<in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a))) and <in_optimizer>(`test`.`t1`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`b`) in t2 on a))))
 Also turn off DuplicateWeedout.  Materialization is only one left.
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1 LOOSESCAN, FIRSTMATCH, DUPSWEEDOUT)
@@ -468,13 +467,11 @@ NO_SEMIJOIN(@subq2 FIRSTMATCH, LOOSESCAN, DUPSWEEDOUT) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3)
 AND t1.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	100.00	Using where
-1	SIMPLE	<subquery2>	NULL	eq_ref	<auto_key>	<auto_key>	4	test.t1.a	1	100.00	NULL
-1	SIMPLE	<subquery3>	NULL	eq_ref	<auto_key>	<auto_key>	4	test.t1.b	1	100.00	NULL
-2	MATERIALIZED	t3	NULL	index	a	a	4	NULL	3	100.00	Using index
-3	MATERIALIZED	t2	NULL	index	a	a	4	NULL	4	100.00	Using index
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN, DUPSWEEDOUT) NO_SEMIJOIN(@`subq2` FIRSTMATCH, LOOSESCAN, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) semi join (`test`.`t2`) where ((`<subquery3>`.`a` = `test`.`t1`.`b`) and (`<subquery2>`.`a` = `test`.`t1`.`a`))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN, DUPSWEEDOUT) NO_SEMIJOIN(@`subq2` FIRSTMATCH, LOOSESCAN, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where (<in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a))) and <in_optimizer>(`test`.`t1`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`b`) in t2 on a))))
 Force materialization with SEMIJOIN hints instead
 EXPLAIN
 SELECT /*+ SEMIJOIN(@subq1 MATERIALIZATION)
@@ -521,34 +518,33 @@ SELECT * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	<subquery2>	NULL	ALL	NULL	NULL	NULL	NULL	NULL	100.00	NULL
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	<subquery2>.a	1	100.00	NULL
-2	MATERIALIZED	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	Using where
-2	MATERIALIZED	t2	NULL	ref	a	a	4	test.t3.b	1	100.00	Using index
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2` join `test`.`t3`) where ((`test`.`t1`.`a` = `<subquery2>`.`a`) and (`test`.`t2`.`a` = `test`.`t3`.`b`))
+Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a where (<in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))) and (<cache>(`test`.`t1`.`a`) = `test`.`t3`.`a`)))))
 Let's turn off Materialization, DuplicateWeedout is then SELECTed
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1 MATERIALIZATION) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	index	a	a	4	NULL	4	100.00	Using index; Start temporary
-1	SIMPLE	t3	NULL	ALL	a	NULL	NULL	NULL	3	33.33	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.a	1	100.00	End temporary
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` MATERIALIZATION) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2` join `test`.`t3`) where ((`test`.`t1`.`a` = `test`.`t3`.`a`) and (`test`.`t3`.`b` = `test`.`t2`.`a`))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` MATERIALIZATION) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a where (<in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))) and (<cache>(`test`.`t1`.`a`) = `test`.`t3`.`a`)))))
 Let's also turn off DuplicateWeedout,  FirstMatch is then used
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1 MATERIALIZATION, DUPSWEEDOUT) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	100.00	NULL
-1	SIMPLE	t3	NULL	ref	a	a	4	test.t1.a	1	100.00	Using where
-1	SIMPLE	t2	NULL	ref	a	a	4	test.t3.b	1	100.00	Using index; FirstMatch(t1)
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` MATERIALIZATION, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2` join `test`.`t3`) where ((`test`.`t3`.`a` = `test`.`t1`.`a`) and (`test`.`t2`.`a` = `test`.`t3`.`b`))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` MATERIALIZATION, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a where (<in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))) and (<cache>(`test`.`t1`.`a`) = `test`.`t3`.`a`)))))
 Also turn off FirstMatch. LooseScan not usable. Back to DuplicateWeedout
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1 MATERIALIZATION, DUPSWEEDOUT, FIRSTMATCH) */ *
@@ -556,11 +552,11 @@ FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	index	a	a	4	NULL	4	100.00	Using index; Start temporary
-1	SIMPLE	t3	NULL	ALL	a	NULL	NULL	NULL	3	33.33	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.a	1	100.00	End temporary
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, MATERIALIZATION, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2` join `test`.`t3`) where ((`test`.`t1`.`a` = `test`.`t3`.`a`) and (`test`.`t3`.`b` = `test`.`t2`.`a`))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, MATERIALIZATION, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a where (<in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))) and (<cache>(`test`.`t1`.`a`) = `test`.`t3`.`a`)))))
 If we turn off all strategies, DuplicateWeedout should still be used
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1 FIRSTMATCH, LOOSESCAN, MATERIALIZATION,
@@ -569,11 +565,11 @@ FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	index	a	a	4	NULL	4	100.00	Using index; Start temporary
-1	SIMPLE	t3	NULL	ALL	a	NULL	NULL	NULL	3	33.33	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.a	1	100.00	End temporary
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN, MATERIALIZATION, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2` join `test`.`t3`) where ((`test`.`t1`.`a` = `test`.`t3`.`a`) and (`test`.`t3`.`b` = `test`.`t2`.`a`))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN, MATERIALIZATION, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a where (<in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))) and (<cache>(`test`.`t1`.`a`) = `test`.`t3`.`a`)))))
 Test same query with SEMIJOIN hint
 Force Materialization, should not change anything
 EXPLAIN
@@ -581,129 +577,115 @@ SELECT /*+ SEMIJOIN(@subq1 MATERIALIZATION) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	<subquery2>	NULL	ALL	NULL	NULL	NULL	NULL	NULL	100.00	NULL
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	<subquery2>.a	1	100.00	NULL
+1	PRIMARY	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	100.00	Using where
+1	PRIMARY	<subquery2>	NULL	eq_ref	<auto_key>	<auto_key>	4	test.t1.a	1	100.00	NULL
 2	MATERIALIZED	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	Using where
-2	MATERIALIZED	t2	NULL	ref	a	a	4	test.t3.b	1	100.00	Using index
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` MATERIALIZATION) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2` join `test`.`t3`) where ((`test`.`t1`.`a` = `<subquery2>`.`a`) and (`test`.`t2`.`a` = `test`.`t3`.`b`))
+Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` MATERIALIZATION) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) where ((`<subquery2>`.`a` = `test`.`t1`.`a`) and <in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))))
 Force LooseScan, will use DuplicateWeedout
 EXPLAIN
 SELECT /*+ SEMIJOIN(@subq1 LOOSESCAN) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	index	a	a	4	NULL	4	100.00	Using index; Start temporary
-1	SIMPLE	t3	NULL	ALL	a	NULL	NULL	NULL	3	33.33	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.a	1	100.00	End temporary
+1	PRIMARY	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	Using where; Start temporary
+1	PRIMARY	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	25.00	Using where; End temporary; Using join buffer (Block Nested Loop)
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2` join `test`.`t3`) where ((`test`.`t1`.`a` = `test`.`t3`.`a`) and (`test`.`t3`.`b` = `test`.`t2`.`a`))
+Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) where ((`test`.`t1`.`a` = `test`.`t3`.`a`) and <in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))))
 Force FirstMatch
 EXPLAIN
 SELECT /*+ SEMIJOIN(@subq1 FIRSTMATCH) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	100.00	NULL
-1	SIMPLE	t3	NULL	ref	a	a	4	test.t1.a	1	100.00	Using where
-1	SIMPLE	t2	NULL	ref	a	a	4	test.t3.b	1	100.00	Using index; FirstMatch(t1)
+1	PRIMARY	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	100.00	NULL
+1	PRIMARY	t3	NULL	ALL	a	NULL	NULL	NULL	3	33.33	Using where; FirstMatch(t1); Using join buffer (Block Nested Loop)
+3	SUBQUERY	t2	NULL	index	a	a	4	NULL	4	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` FIRSTMATCH) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2` join `test`.`t3`) where ((`test`.`t3`.`a` = `test`.`t1`.`a`) and (`test`.`t2`.`a` = `test`.`t3`.`b`))
+Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` FIRSTMATCH) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) where ((`test`.`t3`.`a` = `test`.`t1`.`a`) and <in_optimizer>(`test`.`t3`.`b`,`test`.`t3`.`b` in ( <materialize> (/* select#3 */ select /*+ QB_NAME(`subq2`) */ `test`.`t2`.`a` from `test`.`t2` where 1 ), <primary_index_lookup>(`test`.`t3`.`b` in <temporary table> on <auto_key> where ((`test`.`t3`.`b` = `materialized-subquery`.`a`))))))
 Force DuplicateWeedout
 EXPLAIN
 SELECT /*+ SEMIJOIN(@subq1 DUPSWEEDOUT) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	index	a	a	4	NULL	4	100.00	Using index; Start temporary
-1	SIMPLE	t3	NULL	ALL	a	NULL	NULL	NULL	3	33.33	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.a	1	100.00	End temporary
+1	PRIMARY	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	Using where; Start temporary
+1	PRIMARY	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	25.00	Using where; End temporary; Using join buffer (Block Nested Loop)
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2` join `test`.`t3`) where ((`test`.`t1`.`a` = `test`.`t3`.`a`) and (`test`.`t3`.`b` = `test`.`t2`.`a`))
+Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) where ((`test`.`t1`.`a` = `test`.`t3`.`a`) and <in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))))
 If Materialization is among candidates, it will be used
 EXPLAIN
 SELECT /*+ SEMIJOIN(@subq1 MATERIALIZATION, DUPSWEEDOUT) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	<subquery2>	NULL	ALL	NULL	NULL	NULL	NULL	NULL	100.00	NULL
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	<subquery2>.a	1	100.00	NULL
+1	PRIMARY	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	100.00	Using where
+1	PRIMARY	<subquery2>	NULL	eq_ref	<auto_key>	<auto_key>	4	test.t1.a	1	100.00	NULL
 2	MATERIALIZED	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	Using where
-2	MATERIALIZED	t2	NULL	ref	a	a	4	test.t3.b	1	100.00	Using index
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` MATERIALIZATION, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2` join `test`.`t3`) where ((`test`.`t1`.`a` = `<subquery2>`.`a`) and (`test`.`t2`.`a` = `test`.`t3`.`b`))
+Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` MATERIALIZATION, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) where ((`<subquery2>`.`a` = `test`.`t1`.`a`) and <in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))))
 EXPLAIN
 SELECT /*+ SEMIJOIN(@subq1 MATERIALIZATION, LOOSESCAN, DUPSWEEDOUT) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	<subquery2>	NULL	ALL	NULL	NULL	NULL	NULL	NULL	100.00	NULL
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	<subquery2>.a	1	100.00	NULL
+1	PRIMARY	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	100.00	Using where
+1	PRIMARY	<subquery2>	NULL	eq_ref	<auto_key>	<auto_key>	4	test.t1.a	1	100.00	NULL
 2	MATERIALIZED	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	Using where
-2	MATERIALIZED	t2	NULL	ref	a	a	4	test.t3.b	1	100.00	Using index
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` LOOSESCAN, MATERIALIZATION, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2` join `test`.`t3`) where ((`test`.`t1`.`a` = `<subquery2>`.`a`) and (`test`.`t2`.`a` = `test`.`t3`.`b`))
+Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` LOOSESCAN, MATERIALIZATION, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) where ((`<subquery2>`.`a` = `test`.`t1`.`a`) and <in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))))
 EXPLAIN
 SELECT /*+ SEMIJOIN(@subq1 MATERIALIZATION, FIRSTMATCH, LOOSESCAN,
 DUPSWEEDOUT) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	<subquery2>	NULL	ALL	NULL	NULL	NULL	NULL	NULL	100.00	NULL
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	<subquery2>.a	1	100.00	NULL
-2	MATERIALIZED	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	Using where
-2	MATERIALIZED	t2	NULL	ref	a	a	4	test.t3.b	1	100.00	Using index
+1	PRIMARY	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	100.00	NULL
+1	PRIMARY	t3	NULL	ALL	a	NULL	NULL	NULL	3	33.33	Using where; FirstMatch(t1); Using join buffer (Block Nested Loop)
+3	SUBQUERY	t2	NULL	index	a	a	4	NULL	4	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN, MATERIALIZATION, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2` join `test`.`t3`) where ((`test`.`t1`.`a` = `<subquery2>`.`a`) and (`test`.`t2`.`a` = `test`.`t3`.`b`))
+Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN, MATERIALIZATION, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) where ((`test`.`t3`.`a` = `test`.`t1`.`a`) and <in_optimizer>(`test`.`t3`.`b`,`test`.`t3`.`b` in ( <materialize> (/* select#3 */ select /*+ QB_NAME(`subq2`) */ `test`.`t2`.`a` from `test`.`t2` where 1 ), <primary_index_lookup>(`test`.`t3`.`b` in <temporary table> on <auto_key> where ((`test`.`t3`.`b` = `materialized-subquery`.`a`))))))
 Drop Materialization. DuplicateWeedout will be used
 EXPLAIN
 SELECT /*+ SEMIJOIN(@subq1 FIRSTMATCH, LOOSESCAN, DUPSWEEDOUT) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	index	a	a	4	NULL	4	100.00	Using index; Start temporary
-1	SIMPLE	t3	NULL	ALL	a	NULL	NULL	NULL	3	33.33	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.a	1	100.00	End temporary
+1	PRIMARY	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	100.00	NULL
+1	PRIMARY	t3	NULL	ALL	a	NULL	NULL	NULL	3	33.33	Using where; FirstMatch(t1); Using join buffer (Block Nested Loop)
+3	SUBQUERY	t2	NULL	index	a	a	4	NULL	4	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2` join `test`.`t3`) where ((`test`.`t1`.`a` = `test`.`t3`.`a`) and (`test`.`t3`.`b` = `test`.`t2`.`a`))
+Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) where ((`test`.`t3`.`a` = `test`.`t1`.`a`) and <in_optimizer>(`test`.`t3`.`b`,`test`.`t3`.`b` in ( <materialize> (/* select#3 */ select /*+ QB_NAME(`subq2`) */ `test`.`t2`.`a` from `test`.`t2` where 1 ), <primary_index_lookup>(`test`.`t3`.`b` in <temporary table> on <auto_key> where ((`test`.`t3`.`b` = `materialized-subquery`.`a`))))))
 Drop DuplicateWeedout, FirstMatch is next
 EXPLAIN
 SELECT /*+ SEMIJOIN(@subq1 FIRSTMATCH, LOOSESCAN) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	100.00	NULL
-1	SIMPLE	t3	NULL	ref	a	a	4	test.t1.a	1	100.00	Using where
-1	SIMPLE	t2	NULL	ref	a	a	4	test.t3.b	1	100.00	Using index; FirstMatch(t1)
+1	PRIMARY	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	100.00	NULL
+1	PRIMARY	t3	NULL	ALL	a	NULL	NULL	NULL	3	33.33	Using where; FirstMatch(t1); Using join buffer (Block Nested Loop)
+3	SUBQUERY	t2	NULL	index	a	a	4	NULL	4	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2` join `test`.`t3`) where ((`test`.`t3`.`a` = `test`.`t1`.`a`) and (`test`.`t2`.`a` = `test`.`t3`.`b`))
+Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) where ((`test`.`t3`.`a` = `test`.`t1`.`a`) and <in_optimizer>(`test`.`t3`.`b`,`test`.`t3`.`b` in ( <materialize> (/* select#3 */ select /*+ QB_NAME(`subq2`) */ `test`.`t2`.`a` from `test`.`t2` where 1 ), <primary_index_lookup>(`test`.`t3`.`b` in <temporary table> on <auto_key> where ((`test`.`t3`.`b` = `materialized-subquery`.`a`))))))
 Strategy hints on inner-most query is ignored since sj-nests are merged
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq2 MATERIALIZATION) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	<subquery2>	NULL	ALL	NULL	NULL	NULL	NULL	NULL	100.00	NULL
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	<subquery2>.a	1	100.00	NULL
-2	MATERIALIZED	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	Using where
-2	MATERIALIZED	t2	NULL	ref	a	a	4	test.t3.b	1	100.00	Using index
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2` MATERIALIZATION) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2` join `test`.`t3`) where ((`test`.`t1`.`a` = `<subquery2>`.`a`) and (`test`.`t2`.`a` = `test`.`t3`.`b`))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2` MATERIALIZATION) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a where (<in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))) and (<cache>(`test`.`t1`.`a`) = `test`.`t3`.`a`)))))
 Ditto
 EXPLAIN
 SELECT /*+ SEMIJOIN(@subq2 FIRSTMATCH) */ * FROM t1
-WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
-WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
-id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	<subquery2>	NULL	ALL	NULL	NULL	NULL	NULL	NULL	100.00	NULL
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	<subquery2>.a	1	100.00	NULL
-2	MATERIALIZED	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	Using where
-2	MATERIALIZED	t2	NULL	ref	a	a	4	test.t3.b	1	100.00	Using index
-Warnings:
-Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq2` FIRSTMATCH) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2` join `test`.`t3`) where ((`test`.`t1`.`a` = `<subquery2>`.`a`) and (`test`.`t2`.`a` = `test`.`t3`.`b`))
-Turn off semijoin for outer subquery. FirstMatch is used for inner
-EXPLAIN
-SELECT /*+ NO_SEMIJOIN(@subq1) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
@@ -711,7 +693,18 @@ id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered
 2	SUBQUERY	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	Using where
 2	SUBQUERY	t2	NULL	ref	a	a	4	test.t3.b	1	100.00	Using index; FirstMatch(t3)
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1`) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,`test`.`t1`.`a` in ( <materialize> (/* select#2 */ select /*+ QB_NAME(`subq1`) */ `test`.`t3`.`a` from `test`.`t3` semi join (`test`.`t2`) where (`test`.`t2`.`a` = `test`.`t3`.`b`) ), <primary_index_lookup>(`test`.`t1`.`a` in <temporary table> on <auto_key> where ((`test`.`t1`.`a` = `materialized-subquery`.`a`)))))
+Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq2` FIRSTMATCH) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,`test`.`t1`.`a` in ( <materialize> (/* select#2 */ select /*+ QB_NAME(`subq1`) */ `test`.`t3`.`a` from `test`.`t3` semi join (`test`.`t2`) where (`test`.`t2`.`a` = `test`.`t3`.`b`) ), <primary_index_lookup>(`test`.`t1`.`a` in <temporary table> on <auto_key> where ((`test`.`t1`.`a` = `materialized-subquery`.`a`)))))
+Turn off semijoin for outer subquery. FirstMatch is used for inner
+EXPLAIN
+SELECT /*+ NO_SEMIJOIN(@subq1) */ * FROM t1
+WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
+WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
+id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
+Warnings:
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1`) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a where (<in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))) and (<cache>(`test`.`t1`.`a`) = `test`.`t3`.`a`)))))
 Do not use FirstMatch for inner
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1) NO_SEMIJOIN(@subq2 FIRSTMATCH) */ * FROM t1
@@ -719,11 +712,10 @@ WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
 1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
-2	SUBQUERY	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	Using where
-2	SUBQUERY	<subquery3>	NULL	eq_ref	<auto_key>	<auto_key>	4	test.t3.b	1	100.00	NULL
-3	MATERIALIZED	t2	NULL	index	a	a	4	NULL	4	100.00	Using index
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2` FIRSTMATCH) NO_SEMIJOIN(@`subq1`) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,`test`.`t1`.`a` in ( <materialize> (/* select#2 */ select /*+ QB_NAME(`subq1`) */ `test`.`t3`.`a` from `test`.`t3` semi join (`test`.`t2`) where (`<subquery3>`.`a` = `test`.`t3`.`b`) ), <primary_index_lookup>(`test`.`t1`.`a` in <temporary table> on <auto_key> where ((`test`.`t1`.`a` = `materialized-subquery`.`a`)))))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2` FIRSTMATCH) NO_SEMIJOIN(@`subq1`) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a where (<in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))) and (<cache>(`test`.`t1`.`a`) = `test`.`t3`.`a`)))))
 Do not use FirstMatch nor Materialization for inner
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1)
@@ -732,10 +724,10 @@ WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
 1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
-2	SUBQUERY	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	Using where
-2	SUBQUERY	t2	NULL	ref	a	a	4	test.t3.b	1	100.00	Using index; Start temporary; End temporary
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2` FIRSTMATCH, MATERIALIZATION) NO_SEMIJOIN(@`subq1`) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,`test`.`t1`.`a` in ( <materialize> (/* select#2 */ select /*+ QB_NAME(`subq1`) */ `test`.`t3`.`a` from `test`.`t3` semi join (`test`.`t2`) where (`test`.`t2`.`a` = `test`.`t3`.`b`) ), <primary_index_lookup>(`test`.`t1`.`a` in <temporary table> on <auto_key> where ((`test`.`t1`.`a` = `materialized-subquery`.`a`)))))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2` FIRSTMATCH, MATERIALIZATION) NO_SEMIJOIN(@`subq1`) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a where (<in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))) and (<cache>(`test`.`t1`.`a`) = `test`.`t3`.`a`)))))
 LooseScan is last resort
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1)
@@ -745,10 +737,10 @@ WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
 1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
-2	SUBQUERY	t2	NULL	index	a	a	4	NULL	4	100.00	Using index; LooseScan
-2	SUBQUERY	t3	NULL	ALL	a	NULL	NULL	NULL	3	33.33	Using where; Using join buffer (Block Nested Loop)
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2` FIRSTMATCH, MATERIALIZATION, DUPSWEEDOUT) NO_SEMIJOIN(@`subq1`) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,`test`.`t1`.`a` in ( <materialize> (/* select#2 */ select /*+ QB_NAME(`subq1`) */ `test`.`t3`.`a` from `test`.`t3` semi join (`test`.`t2`) where (`test`.`t3`.`b` = `test`.`t2`.`a`) ), <primary_index_lookup>(`test`.`t1`.`a` in <temporary table> on <auto_key> where ((`test`.`t1`.`a` = `materialized-subquery`.`a`)))))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2` FIRSTMATCH, MATERIALIZATION, DUPSWEEDOUT) NO_SEMIJOIN(@`subq1`) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a where (<in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))) and (<cache>(`test`.`t1`.`a`) = `test`.`t3`.`a`)))))
 Allow all stragies except default
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1)
@@ -780,23 +772,22 @@ SELECT /*+ NO_SEMIJOIN(@subq2) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	PRIMARY	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	100.00	NULL
-1	PRIMARY	t3	NULL	ALL	a	NULL	NULL	NULL	3	33.33	Using where; FirstMatch(t1); Using join buffer (Block Nested Loop)
-3	SUBQUERY	t2	NULL	index	a	a	4	NULL	4	100.00	Using index
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2`) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) where ((`test`.`t3`.`a` = `test`.`t1`.`a`) and <in_optimizer>(`test`.`t3`.`b`,`test`.`t3`.`b` in ( <materialize> (/* select#3 */ select /*+ QB_NAME(`subq2`) */ `test`.`t2`.`a` from `test`.`t2` where 1 ), <primary_index_lookup>(`test`.`t3`.`b` in <temporary table> on <auto_key> where ((`test`.`t3`.`b` = `materialized-subquery`.`a`))))))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2`) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a where (<in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))) and (<cache>(`test`.`t1`.`a`) = `test`.`t3`.`a`)))))
 Do not use FirstMatch for outer
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1 FIRSTMATCH) NO_SEMIJOIN(@subq2) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	PRIMARY	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	100.00	Using where
-1	PRIMARY	<subquery2>	NULL	eq_ref	<auto_key>	<auto_key>	4	test.t1.a	1	100.00	NULL
-2	MATERIALIZED	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	Using where
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using where
 3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2`) NO_SEMIJOIN(@`subq1` FIRSTMATCH) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) where ((`<subquery2>`.`a` = `test`.`t1`.`a`) and <in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2`) NO_SEMIJOIN(@`subq1` FIRSTMATCH) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a where (<in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))) and (<cache>(`test`.`t1`.`a`) = `test`.`t3`.`a`)))))
 Do not use FirstMatch nor Materialization for outer
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1 FIRSTMATCH, MATERIALIZATION)
@@ -804,11 +795,11 @@ NO_SEMIJOIN(@subq2) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	PRIMARY	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	Using where; Start temporary
-1	PRIMARY	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	25.00	Using where; End temporary; Using join buffer (Block Nested Loop)
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using where
 3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2`) NO_SEMIJOIN(@`subq1` FIRSTMATCH, MATERIALIZATION) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) where ((`test`.`t1`.`a` = `test`.`t3`.`a`) and <in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2`) NO_SEMIJOIN(@`subq1` FIRSTMATCH, MATERIALIZATION) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a where (<in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))) and (<cache>(`test`.`t1`.`a`) = `test`.`t3`.`a`)))))
 LooseScan can not be used since index scan would not be "covering"
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1 FIRSTMATCH, MATERIALIZATION, DUPSWEEDOUT)
@@ -816,11 +807,11 @@ NO_SEMIJOIN(@subq2) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3
 WHERE t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2));
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	PRIMARY	t3	NULL	ALL	a	NULL	NULL	NULL	3	100.00	Using where; Start temporary
-1	PRIMARY	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	25.00	Using where; End temporary; Using join buffer (Block Nested Loop)
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using where
 3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2`) NO_SEMIJOIN(@`subq1` FIRSTMATCH, MATERIALIZATION, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) where ((`test`.`t1`.`a` = `test`.`t3`.`a`) and <in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq2`) NO_SEMIJOIN(@`subq1` FIRSTMATCH, MATERIALIZATION, DUPSWEEDOUT) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where <in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a where (<in_optimizer>(`test`.`t3`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t3`.`b`) in t2 on a))) and (<cache>(`test`.`t1`.`a`) = `test`.`t3`.`a`)))))
 Allow all stragies except default
 EXPLAIN
 SELECT /*+ SEMIJOIN(@subq1 MATERIALIZATION, DUPSWEEDOUT, LOOSESCAN)
@@ -864,18 +855,18 @@ WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3)
   AND t1.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2)";
 EXECUTE stmt1;
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t3	NULL	index	a	a	4	NULL	3	100.00	Using index; Start temporary
-1	SIMPLE	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	25.00	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	t2	NULL	ref	a	a	4	test.t1.b	1	100.00	Using index; End temporary
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN) NO_SEMIJOIN(@`subq2` FIRSTMATCH, LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) semi join (`test`.`t2`) where ((`test`.`t2`.`a` = `test`.`t1`.`b`) and (`test`.`t1`.`a` = `test`.`t3`.`a`))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN) NO_SEMIJOIN(@`subq2` FIRSTMATCH, LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where (<in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a))) and <in_optimizer>(`test`.`t1`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`b`) in t2 on a))))
 EXECUTE stmt1;
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t3	NULL	index	a	a	4	NULL	3	100.00	Using index; Start temporary
-1	SIMPLE	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	25.00	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	t2	NULL	ref	a	a	4	test.t1.b	1	100.00	Using index; End temporary
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN) NO_SEMIJOIN(@`subq2` FIRSTMATCH, LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) semi join (`test`.`t2`) where ((`test`.`t2`.`a` = `test`.`t1`.`b`) and (`test`.`t1`.`a` = `test`.`t3`.`a`))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN) NO_SEMIJOIN(@`subq2` FIRSTMATCH, LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where (<in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a))) and <in_optimizer>(`test`.`t1`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`b`) in t2 on a))))
 DEALLOCATE PREPARE stmt1;
 Another Prepared Statement test
 PREPARE stmt1 FROM "EXPLAIN
@@ -1386,31 +1377,29 @@ WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3)
   AND t1.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2)";
 EXECUTE stmt1;
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t3	NULL	index	a	a	4	NULL	3	100.00	Using index; Start temporary
-1	SIMPLE	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	25.00	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	t2	NULL	ref	a	a	4	test.t1.b	1	100.00	Using index; End temporary
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN) NO_SEMIJOIN(@`subq2` FIRSTMATCH, LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) semi join (`test`.`t2`) where ((`test`.`t2`.`a` = `test`.`t1`.`b`) and (`test`.`t1`.`a` = `test`.`t3`.`a`))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN) NO_SEMIJOIN(@`subq2` FIRSTMATCH, LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where (<in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a))) and <in_optimizer>(`test`.`t1`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`b`) in t2 on a))))
 SET optimizer_switch = 'duplicateweedout=off';
 Will now use materialization
 EXECUTE stmt1;
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	100.00	Using where
-1	SIMPLE	<subquery2>	NULL	eq_ref	<auto_key>	<auto_key>	4	test.t1.a	1	100.00	NULL
-1	SIMPLE	<subquery3>	NULL	eq_ref	<auto_key>	<auto_key>	4	test.t1.b	1	100.00	NULL
-2	MATERIALIZED	t3	NULL	index	a	a	4	NULL	3	100.00	Using index
-3	MATERIALIZED	t2	NULL	index	a	a	4	NULL	4	100.00	Using index
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN) NO_SEMIJOIN(@`subq2` FIRSTMATCH, LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) semi join (`test`.`t2`) where ((`<subquery3>`.`a` = `test`.`t1`.`b`) and (`<subquery2>`.`a` = `test`.`t1`.`a`))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN) NO_SEMIJOIN(@`subq2` FIRSTMATCH, LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where (<in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a))) and <in_optimizer>(`test`.`t1`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`b`) in t2 on a))))
 SET optimizer_switch = 'duplicateweedout=on';
 Turn DuplicateWeedout back on
 EXECUTE stmt1;
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t3	NULL	index	a	a	4	NULL	3	100.00	Using index; Start temporary
-1	SIMPLE	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	25.00	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	t2	NULL	ref	a	a	4	test.t1.b	1	100.00	Using index; End temporary
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN) NO_SEMIJOIN(@`subq2` FIRSTMATCH, LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) semi join (`test`.`t2`) where ((`test`.`t2`.`a` = `test`.`t1`.`b`) and (`test`.`t1`.`a` = `test`.`t3`.`a`))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` FIRSTMATCH, LOOSESCAN) NO_SEMIJOIN(@`subq2` FIRSTMATCH, LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where (<in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a))) and <in_optimizer>(`test`.`t1`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`b`) in t2 on a))))
 DEALLOCATE PREPARE stmt1;
 SET optimizer_switch = default;
 Specifying two SEMIJOIN/NO_SEMIJOIN for same query block gives warning
@@ -1491,49 +1480,49 @@ SELECT /*+ SEMIJOIN(@subq1 LOOSESCAN) SEMIJOIN(@subq2 FIRSTMATCH) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) NO_SEMIJOIN(LOOSESCAN) */ a FROM t3)
 AND t1.b IN (SELECT /*+ QB_NAME(subq2) SEMIJOIN(LOOSESCAN) */ a FROM t2);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	index	a	a	4	NULL	4	100.00	Using index; LooseScan
-1	SIMPLE	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	25.00	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	t3	NULL	ref	a	a	4	test.t1.a	1	100.00	Using index; FirstMatch(t1)
+1	PRIMARY	t2	NULL	index	a	a	4	NULL	4	100.00	Using index; LooseScan
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	25.00	Using where; Using join buffer (Block Nested Loop)
+2	SUBQUERY	t3	NULL	index	a	a	4	NULL	3	100.00	Using index
 Warnings:
 Warning	3126	Hint SEMIJOIN(@`subq1`  LOOSESCAN) is ignored as conflicting/duplicated
 Warning	3126	Hint SEMIJOIN(@`subq2`  FIRSTMATCH) is ignored as conflicting/duplicated
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` LOOSESCAN) SEMIJOIN(@`subq2` LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) semi join (`test`.`t2`) where ((`test`.`t1`.`b` = `test`.`t2`.`a`) and (`test`.`t3`.`a` = `test`.`t1`.`a`))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` LOOSESCAN) SEMIJOIN(@`subq2` LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t2`) where ((`test`.`t1`.`b` = `test`.`t2`.`a`) and <in_optimizer>(`test`.`t1`.`a`,`test`.`t1`.`a` in ( <materialize> (/* select#2 */ select /*+ QB_NAME(`subq1`) */ `test`.`t3`.`a` from `test`.`t3` where 1 ), <primary_index_lookup>(`test`.`t1`.`a` in <temporary table> on <auto_key> where ((`test`.`t1`.`a` = `materialized-subquery`.`a`))))))
 Conflicting hints in same hint comment
 EXPLAIN
 SELECT /*+ SEMIJOIN(@subq1 LOOSESCAN) SEMIJOIN(@subq1 FIRSTMATCH) */ * FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3)
 AND t1.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t3	NULL	index	a	a	4	NULL	3	100.00	Using index; LooseScan
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.a	1	100.00	Using where
-1	SIMPLE	t2	NULL	ref	a	a	4	test.t1.b	1	100.00	Using index; FirstMatch(t1)
+1	PRIMARY	t3	NULL	index	a	a	4	NULL	3	100.00	Using index; LooseScan
+1	PRIMARY	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.a	1	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
 Warning	3126	Hint SEMIJOIN(@`subq1`  FIRSTMATCH) is ignored as conflicting/duplicated
-Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) semi join (`test`.`t2`) where ((`test`.`t2`.`a` = `test`.`t1`.`b`) and (`test`.`t1`.`a` = `test`.`t3`.`a`))
+Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) where ((`test`.`t1`.`a` = `test`.`t3`.`a`) and <in_optimizer>(`test`.`t1`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`b`) in t2 on a))))
 EXPLAIN
 SELECT /*+ SEMIJOIN(@subq1 LOOSESCAN) NO_SEMIJOIN(@subq1 LOOSESCAN) */ *
 FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3)
 AND t1.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t3	NULL	index	a	a	4	NULL	3	100.00	Using index; LooseScan
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.a	1	100.00	Using where
-1	SIMPLE	t2	NULL	ref	a	a	4	test.t1.b	1	100.00	Using index; FirstMatch(t1)
+1	PRIMARY	t3	NULL	index	a	a	4	NULL	3	100.00	Using index; LooseScan
+1	PRIMARY	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.a	1	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
 Warning	3126	Hint NO_SEMIJOIN(@`subq1`  LOOSESCAN) is ignored as conflicting/duplicated
-Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) semi join (`test`.`t2`) where ((`test`.`t2`.`a` = `test`.`t1`.`b`) and (`test`.`t1`.`a` = `test`.`t3`.`a`))
+Note	1003	/* select#1 */ select /*+ SEMIJOIN(@`subq1` LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) where ((`test`.`t1`.`a` = `test`.`t3`.`a`) and <in_optimizer>(`test`.`t1`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`b`) in t2 on a))))
 EXPLAIN
 SELECT /*+ NO_SEMIJOIN(@subq1 LOOSESCAN) NO_SEMIJOIN(@subq1 FIRSTMATCH) */ *
 FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3)
 AND t1.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	index	a	a	4	NULL	4	100.00	Using index; LooseScan
-1	SIMPLE	t1	NULL	ALL	PRIMARY	NULL	NULL	NULL	4	25.00	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	t3	NULL	ref	a	a	4	test.t1.a	1	100.00	Using index; FirstMatch(t1)
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
 Warning	3126	Hint NO_SEMIJOIN(@`subq1`  FIRSTMATCH) is ignored as conflicting/duplicated
-Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) semi join (`test`.`t2`) where ((`test`.`t1`.`b` = `test`.`t2`.`a`) and (`test`.`t3`.`a` = `test`.`t1`.`a`))
+Note	1003	/* select#1 */ select /*+ NO_SEMIJOIN(@`subq1` LOOSESCAN) */ `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where (<in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a))) and <in_optimizer>(`test`.`t1`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`b`) in t2 on a))))
 Non-supported strategies should give warnings
 EXPLAIN
 SELECT /*+ SEMIJOIN(@subq1 INTOEXISTS) NO_SEMIJOIN(@subq2 INTOEXISTS) */ *
@@ -1541,14 +1530,14 @@ FROM t1
 WHERE t1.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t3)
 AND t1.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t2);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t3	NULL	index	a	a	4	NULL	3	100.00	Using index; LooseScan
-1	SIMPLE	t1	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.a	1	100.00	Using where
-1	SIMPLE	t2	NULL	ref	a	a	4	test.t1.b	1	100.00	Using index; FirstMatch(t1)
+1	PRIMARY	t1	NULL	ALL	NULL	NULL	NULL	NULL	4	100.00	Using where
+3	DEPENDENT SUBQUERY	t2	NULL	index_subquery	a	a	4	func	1	100.00	Using index
+2	DEPENDENT SUBQUERY	t3	NULL	index_subquery	a	a	4	func	1	100.00	Using index
 Warnings:
 Warning	1064	Optimizer hint syntax error near 'INTOEXISTS) NO_SEMIJOIN(@subq2 INTOEXISTS) */ *
 FROM t1
 WHERE t1.a IN (SELECT /*' at line 2
-Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` semi join (`test`.`t3`) semi join (`test`.`t2`) where ((`test`.`t2`.`a` = `test`.`t1`.`b`) and (`test`.`t1`.`a` = `test`.`t3`.`a`))
+Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b` from `test`.`t1` where (<in_optimizer>(`test`.`t1`.`a`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`a`) in t3 on a))) and <in_optimizer>(`test`.`t1`.`b`,<exists>(<index_lookup>(<cache>(`test`.`t1`.`b`) in t2 on a))))
 SUBQUERY tests
 SUBQUERY should disable SEMIJOIN and use specified subquery strategy
 EXPLAIN
@@ -1728,15 +1717,15 @@ FROM t3
 WHERE t3.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t1 tx)
 AND t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t1 ty);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	tx	NULL	index	PRIMARY	PRIMARY	4	NULL	4	100.00	Using index
-1	SIMPLE	t3	NULL	ALL	a	NULL	NULL	NULL	3	33.33	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	ty	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.b	1	100.00	Using index
+1	PRIMARY	t3	NULL	ALL	NULL	NULL	NULL	NULL	3	100.00	Using where
+3	SUBQUERY	ty	NULL	index	PRIMARY	PRIMARY	4	NULL	4	100.00	Using index
+2	SUBQUERY	tx	NULL	index	PRIMARY	PRIMARY	4	NULL	4	100.00	Using index
 Warnings:
 Warning	1064	Optimizer hint syntax error near ', INTOEXISTS)
 SUBQUERY(@subq2 MATERIALIZATION, INTOEXISTS) */ *
 FROM t3
 WHERE t3' at line 2
-Note	1003	/* select#1 */ select `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t1` `ty` join `test`.`t1` `tx` join `test`.`t3` where ((`test`.`ty`.`a` = `test`.`t3`.`b`) and (`test`.`t3`.`a` = `test`.`tx`.`a`))
+Note	1003	/* select#1 */ select `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t3` where (<in_optimizer>(`test`.`t3`.`a`,`test`.`t3`.`a` in ( <materialize> (/* select#2 */ select /*+ QB_NAME(`subq1`) */ `test`.`tx`.`a` from `test`.`t1` `tx` where 1 ), <primary_index_lookup>(`test`.`t3`.`a` in <temporary table> on <auto_key> where ((`test`.`t3`.`a` = `materialized-subquery`.`a`))))) and <in_optimizer>(`test`.`t3`.`b`,`test`.`t3`.`b` in ( <materialize> (/* select#3 */ select /*+ QB_NAME(`subq2`) */ `test`.`ty`.`a` from `test`.`t1` `ty` where 1 ), <primary_index_lookup>(`test`.`t3`.`b` in <temporary table> on <auto_key> where ((`test`.`t3`.`b` = `materialized-subquery`.`a`))))))
 Non-supported strategies should give warnings
 EXPLAIN
 SELECT /*+ SUBQUERY(@subq1 FIRSTMATCH) SUBQUERY(@subq2 LOOSESCAN) */ *
@@ -1744,14 +1733,14 @@ FROM t3
 WHERE t3.a IN (SELECT /*+ QB_NAME(subq1) */ a FROM t1 tx)
 AND t3.b IN (SELECT /*+ QB_NAME(subq2) */ a FROM t1 ty);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	tx	NULL	index	PRIMARY	PRIMARY	4	NULL	4	100.00	Using index
-1	SIMPLE	t3	NULL	ALL	a	NULL	NULL	NULL	3	33.33	Using where; Using join buffer (Block Nested Loop)
-1	SIMPLE	ty	NULL	eq_ref	PRIMARY	PRIMARY	4	test.t3.b	1	100.00	Using index
+1	PRIMARY	t3	NULL	ALL	NULL	NULL	NULL	NULL	3	100.00	Using where
+3	SUBQUERY	ty	NULL	index	PRIMARY	PRIMARY	4	NULL	4	100.00	Using index
+2	SUBQUERY	tx	NULL	index	PRIMARY	PRIMARY	4	NULL	4	100.00	Using index
 Warnings:
 Warning	1064	Optimizer hint syntax error near 'FIRSTMATCH) SUBQUERY(@subq2 LOOSESCAN) */ *
 FROM t3
 WHERE t3.a IN (SELECT /*+ QB' at line 2
-Note	1003	/* select#1 */ select `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t1` `ty` join `test`.`t1` `tx` join `test`.`t3` where ((`test`.`ty`.`a` = `test`.`t3`.`b`) and (`test`.`t3`.`a` = `test`.`tx`.`a`))
+Note	1003	/* select#1 */ select `test`.`t3`.`a` AS `a`,`test`.`t3`.`b` AS `b` from `test`.`t3` where (<in_optimizer>(`test`.`t3`.`a`,`test`.`t3`.`a` in ( <materialize> (/* select#2 */ select /*+ QB_NAME(`subq1`) */ `test`.`tx`.`a` from `test`.`t1` `tx` where 1 ), <primary_index_lookup>(`test`.`t3`.`a` in <temporary table> on <auto_key> where ((`test`.`t3`.`a` = `materialized-subquery`.`a`))))) and <in_optimizer>(`test`.`t3`.`b`,`test`.`t3`.`b` in ( <materialize> (/* select#3 */ select /*+ QB_NAME(`subq2`) */ `test`.`ty`.`a` from `test`.`t1` `ty` where 1 ), <primary_index_lookup>(`test`.`t3`.`b` in <temporary table> on <auto_key> where ((`test`.`t3`.`b` = `materialized-subquery`.`a`))))))
 SET optimizer_switch= default;
 Specifying two SUBQUERY for same query block gives warning
 First has effect, second is ignored

@@ -887,7 +887,7 @@ FROM t1
 WHERE ( c2, c2, pk ) IN (
   SELECT * FROM v1
 )
-GROUP BY field1, field3, field3;
+GROUP BY field1, field2, field3, field4;
 
 --echo #
 --echo # Bug#19687724 FUNCTIONAL DEPENDENCIES ARE NOT RECOGNIZED IN EQUALITIES BETWEEN ROWS
@@ -900,7 +900,7 @@ SELECT c5 AS field1,
        c1 AS field4
 FROM t1, v1
 WHERE ( c2, c2, pk ) = (subfield11, subfield12, subfield13)
-GROUP BY field1, field3, field3;
+GROUP BY field1, field2, field3, field4;
 
 --echo # With constants:
 SELECT c5 AS field1,
@@ -909,7 +909,7 @@ SELECT c5 AS field1,
        c1 AS field4
 FROM t1
 WHERE ( c2, c2, pk ) = (1, 2, 3)
-GROUP BY field1, field3, field3;
+GROUP BY field1, field2, field3, field4;
 
 DROP TABLE t1;
 
