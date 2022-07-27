@@ -1470,7 +1470,7 @@ static void my_perror(const char *msg)
 static void usage_command(int command)
 {
   print_version();
-  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2012"));
+  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2021"));
   puts("MySQL Configuration Utility.");
   printf("\nDescription: %s\n", command_data[command].description);
   printf("Usage: %s [program options] [%s [command options]]\n",
@@ -1483,7 +1483,7 @@ static void usage_command(int command)
 static void usage_program(void)
 {
   print_version();
-  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2012"));
+  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2021"));
   puts("MySQL Configuration Utility.");
   printf("Usage: %s [program options] [command [command options]]\n",
          my_progname);

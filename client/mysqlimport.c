@@ -225,7 +225,7 @@ static void usage(void)
 {
   struct my_option *optp;
   print_version();
-  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2000"));
+  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2021"));
   printf("\
 Loads tables from text files in various formats.  The base name of the\n\
 text file must be the name of the table that should be used.\n\

@@ -741,7 +741,7 @@ static void usage(void)
 {
   struct my_option *optp;
   print_version();
-  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2005"));
+  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2021"));
   puts("Run a query multiple times against the server.\n");
   printf("Usage: %s [OPTIONS]\n",my_progname);
   print_defaults("my",load_default_groups);

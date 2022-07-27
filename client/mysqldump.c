@@ -666,7 +666,7 @@ static void usage(void)
 {
   struct my_option *optp;
   print_version();
-  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2000"));
+  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2021"));
   puts("Dumping structure and contents of MySQL databases and tables.");
   short_usage_sub();
 #if defined(STONEDB)

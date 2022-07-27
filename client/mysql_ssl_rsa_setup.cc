@@ -424,7 +424,7 @@ static
 void usage(void)
 {
   print_version();
-  cout << (ORACLE_WELCOME_COPYRIGHT_NOTICE("2015")) << endl
+  cout << (ORACLE_WELCOME_COPYRIGHT_NOTICE("2021")) << endl
        << "MySQL SSL Certificate and RSA Key Generation Utility" << endl
        << "Usage : " << my_progname << " [OPTIONS]" << endl;
 

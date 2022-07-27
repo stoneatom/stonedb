@@ -33,7 +33,7 @@ static void usage()
 {
   printf("%s  Ver 1.6 for %s at %s\n","zlib_decompress",SYSTEM_TYPE,
 	 MACHINE_TYPE);
-  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2015"));
+  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2021"));
   puts("Decompress data compressed by mysqlpump using zlib compression "
     "algorithm by reading from input file and writing uncompressed "
     "data to output file");

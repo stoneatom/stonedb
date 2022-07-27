@@ -1363,7 +1363,7 @@ int main(int argc,char *argv[])
 	   mysql_thread_id(&mysql), server_version_string(&mysql));
   put_info((char*) glob_buffer.ptr(),INFO_INFO);
 
-  put_info(ORACLE_WELCOME_COPYRIGHT_NOTICE("2000"), INFO_INFO);
+  put_info(ORACLE_WELCOME_COPYRIGHT_NOTICE("2021"), INFO_INFO);
 
   if (!status.batch)
   {
@@ -1925,7 +1925,7 @@ static void usage(int version)
 
   if (version)
     return;
-  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2000"));
+  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2021"));
   printf("Usage: %s [OPTIONS] [database]\n", my_progname);
   /*
     Turn default for zombies off so that the help on how to 

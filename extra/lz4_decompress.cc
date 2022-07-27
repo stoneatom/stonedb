@@ -32,7 +32,7 @@ static void usage()
 {
   printf("%s  Ver 1.7 for %s at %s\n","lz4_decompress",SYSTEM_TYPE,
 	 MACHINE_TYPE);
-  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2015"));
+  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2021"));
   puts("Decompress data compressed by mysqlpump using lz4 compression "
     "algorithm by reading from input file and writing uncompressed "
     "data to output file");
