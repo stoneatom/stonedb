@@ -48,7 +48,7 @@ TempTable::TempTable(JustATable *t, int alias, Query *q)
     no_obj = common::NULL_VALUE_64;  // a big, improper number, which we hope to
                                      // be changed after conditions are applied
   else
-    no_obj = filter.mind->NoTuples();
+    no_obj = filter.mind->NumOfTuples();
   no_cols = 0;
   no_global_virt_cols = 0;
   lazy = false;
@@ -75,7 +75,7 @@ void TempTable::JoinT(JustATable *t, int alias, JoinType jt) {
     no_obj = common::NULL_VALUE_64;  // a big, improper number, which we hope to
                                      // be changed after conditions are applied
   else
-    no_obj = filter.mind->NoTuples();
+    no_obj = filter.mind->NumOfTuples();
 }
 
 }  // namespace core

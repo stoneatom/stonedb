@@ -37,7 +37,7 @@ class GroupDistinctCache : private system::CacheableItem, public mm::TraceableOb
   GroupDistinctCache();
   ~GroupDistinctCache();
 
-  void SetNoObj(int64_t max_no_obj) {
+  void SetNumOfObj(int64_t max_no_obj) {
     no_obj = max_no_obj;
     orig_no_obj = max_no_obj;
   }

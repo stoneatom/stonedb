@@ -86,9 +86,9 @@ class MIUpdatingIterator : public MIIterator {
 
   // number of ones in the given pack taking into account uncommitted resets
   // \pre iterates on a 1-dimensional multiindex
-  int NoOnesUncommited(uint pack);
+  int NumOfOnesUncommited(uint pack);
 
-  void UpdateNoTuples() { mind->UpdateNoTuples(); }
+  void UpdateNumOfTuples() { mind->UpdateNumOfTuples(); }
   int SingleFilterDim() const { return one_filter_dim; }
   // Routines for execution of OR (only in single dimension mode):
   // - make a snapshot of a pack,
@@ -107,7 +107,7 @@ class MIUpdatingIterator : public MIIterator {
   uint32_t pack_power;  // 2^pack_power
   bool changed;         // alias necessary for MIUpdatingIteratorOnePackShadow subclass
 
-  std::unique_ptr<Filter> multi_dim_filter;  // internal filter of this->NoTuples() bits; a delete
+  std::unique_ptr<Filter> multi_dim_filter;  // internal filter of this->NumOfTuples() bits; a delete
                                              // mask for multiindex
 
   int64_t multi_filter_pos;         // current position of multidimensional filter

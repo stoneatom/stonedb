@@ -209,7 +209,7 @@ void TempTable::RoughAggregateSum(vcolumn::VirtualColumn *vc, int64_t &min_val, 
   if (is_const) {
     int64_t min_count = common::NULL_VALUE_64;
     int64_t max_count = common::NULL_VALUE_64;
-    DimensionVector other_dims(filter.mind->NoDimensions());
+    DimensionVector other_dims(filter.mind->NumOfDimensions());
     other_dims.SetAll();
     RoughAggregateCount(other_dims, min_count, max_count, group_by_present);
     MIIterator mit(filter.mind, dim, true);
@@ -230,10 +230,10 @@ void TempTable::RoughAggregateSum(vcolumn::VirtualColumn *vc, int64_t &min_val, 
     }
   } else if (success) {
     empty_set = false;
-    if (filter.mind->NoDimensions() > 1) {
+    if (filter.mind->NumOfDimensions() > 1) {
       int64_t min_count = common::NULL_VALUE_64;
       int64_t max_count = common::NULL_VALUE_64;
-      DimensionVector other_dims(filter.mind->NoDimensions());
+      DimensionVector other_dims(filter.mind->NumOfDimensions());
       other_dims.SetAll();
       other_dims[dim] = false;
       RoughAggregateCount(other_dims, min_count, max_count, group_by_present);
@@ -299,7 +299,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
   if (!aggregation_present || group_by_present) {  // otherwise even empty multiindex may produce
                                                    // nonempty result - checked later
     rough_is_empty = false;
-    for (int dim = 0; dim < filter.mind->NoDimensions(); dim++) {
+    for (int dim = 0; dim < filter.mind->NumOfDimensions(); dim++) {
       bool local_empty = true;
       bool local_some = true;  // true if no pack is full
       for (int pack = 0; pack < filter.rough_mind->NoPacks(dim); pack++) {
@@ -333,7 +333,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
 
   // Rough sorting / limit
   if (!aggregation_present && !group_by_present && !mode.distinct && mode.top && mode.param2 > -1 &&
-      filter.mind->NoDimensions() == 1) {
+      filter.mind->NumOfDimensions() == 1) {
     int64_t local_limit = mode.param1 + mode.param2;
     if (order_by.size() > 0) {
       vcolumn::VirtualColumn *vc;
@@ -399,7 +399,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
     } else {
       int64_t certain_rows = 0;
       bool omit_the_rest = false;
-      MIIterator mit(filter.mind, filter.mind->NoPower());
+      MIIterator mit(filter.mind, filter.mind->ValueOfPower());
       while (mit.IsValid()) {
         if (omit_the_rest) {
           filter.rough_mind->SetPackStatus(0, mit.GetCurPackrow(0), common::RSValue::RS_NONE);
@@ -432,7 +432,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
         attrs[i]->SetValueInt64(1, 0);
       } else {  // other rough values for constants: usually just these
                 // constants
-        MIIterator mit(filter.mind, filter.mind->NoPower());
+        MIIterator mit(filter.mind, filter.mind->ValueOfPower());
         if (vc->IsNull(mit)) {
           attrs[i]->SetNull(0);
           attrs[i]->SetNull(1);
@@ -532,7 +532,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
         case common::ColOperation::COUNT: {
           int64_t min_val = common::NULL_VALUE_64;
           int64_t max_val = common::NULL_VALUE_64;
-          DimensionVector dims(filter.mind->NoDimensions());  // initialized as empty
+          DimensionVector dims(filter.mind->NumOfDimensions());  // initialized as empty
           bool skip_counting = (IsTempTableColumn(vc) || SubqueryInFrom());
           if (vc && !attrs[i]->distinct && !skip_counting) {  // COUNT(a)
             int dim = vc->GetDim();

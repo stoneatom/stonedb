@@ -151,7 +151,7 @@ class SubSelectColumn : public MultiValColumn {
   bool IsNullImpl(core::MIIterator const &mit) override;
 
   types::RCValueObject GetValueImpl(core::MIIterator const &mit, bool lookup_to_num) override;
-  int64_t NoValuesImpl(core::MIIterator const &mit) override;
+  int64_t NumOfValuesImpl(core::MIIterator const &mit) override;
   int64_t AtLeastNoDistinctValuesImpl(core::MIIterator const &mit, int64_t const at_least) override;
   bool ContainsNullImpl(core::MIIterator const &mit) override;
   void SetExpectedTypeImpl(core::ColumnType const &) override;

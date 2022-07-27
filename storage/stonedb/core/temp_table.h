@@ -143,7 +143,7 @@ class TempTable : public JustATable {
     int64_t GetNumOfNulls(int pack) override;
     bool IsRoughNullsOnly() const override { return false; }
     int64_t GetSum(int pack, bool &nonnegative) override;
-    int AttrNo() const override { return -1; }
+    int NumOfAttr() const override { return -1; }
     common::RSValue RoughCheck([[maybe_unused]] int pack, [[maybe_unused]] Descriptor &d,
                                [[maybe_unused]] bool additional_nulls_possible) override {
       return common::RSValue::RS_SOME;
@@ -242,9 +242,9 @@ class TempTable : public JustATable {
   void UnlockPackFromUse([[maybe_unused]] unsigned attr, [[maybe_unused]] unsigned pack_no) override {}
   int64_t NumOfObj() override { return no_obj; }
   uint32_t Getpackpower() const override { return p_power; }
-  int64_t NoMaterialized() { return no_materialized; }
-  void SetNoObj(int64_t n) { no_obj = n; }
-  void SetNoMaterialized(int64_t n) {
+  int64_t NumOfMaterialized() { return no_materialized; }
+  void SetNumOfObj(int64_t n) { no_obj = n; }
+  void SetNumOfMaterialized(int64_t n) {
     no_obj = n;
     no_materialized = n;
   }
@@ -273,7 +273,7 @@ class TempTable : public JustATable {
     return GetFieldSize(n_a);
   }
 
-  uint NoDimensions() { return filter.mind ? (uint)filter.mind->NoDimensions() : 1; }
+  uint NumOfDimensions() { return filter.mind ? (uint)filter.mind->NumOfDimensions() : 1; }
   int GetDimension(TabID alias);
   std::vector<AttributeTypeInfo> GetATIs(bool orig = false) override;
   int GetAttrScale(int a) {
@@ -291,7 +291,7 @@ class TempTable : public JustATable {
     return attrs[a]->Type().GetInternalSize();
   }
 
-  int GetNoDigits(int a) {
+  int GetNumOfDigits(int a) {
     DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a]->Type().GetPrecision();
   }
@@ -328,7 +328,8 @@ class TempTable : public JustATable {
     DEBUG_ASSERT(dim < tables.size());
     return tables[dim];
   }
-  int NoTables() const { return int(tables.size()); }
+
+  int NumOfTables() const { return int(tables.size()); }
   std::vector<int> &GetAliases() { return aliases; }
   std::vector<JustATable *> &GetTables() { return tables; }
   bool IsMaterialized() { return materialized; }
@@ -354,7 +355,7 @@ class TempTable : public JustATable {
   void RemoveFromManagedList(const RCTable *rct);
   int AddVirtColumn(vcolumn::VirtualColumn *vc);
   int AddVirtColumn(vcolumn::VirtualColumn *vc, int no);
-  uint NoVirtColumns() { return uint(virt_cols.size()); }
+  uint NumOfVirtColumns() { return uint(virt_cols.size()); }
   void ReserveVirtColumns(int no);
   vcolumn::VirtualColumn *GetVirtualColumn(uint col_num) {
     DEBUG_ASSERT(col_num < virt_cols.size());

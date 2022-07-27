@@ -30,7 +30,7 @@ InSetColumn::InSetColumn(core::ColumnType const &ct, core::MultiIndex *mind,
     : MultiValColumn(ct, mind),
       columns(columns_),
       full_cache(false),
-      cache(mind->NoPower()),
+      cache(mind->ValueOfPower()),
       expected_type(ct),
       last_mit(NULL),
       last_mit_size(0) {
@@ -186,7 +186,7 @@ common::Tribool InSetColumn::ContainsImpl(const core::MIIterator &mit, const typ
   return contains;
 }
 
-int64_t InSetColumn::NoValuesImpl([[maybe_unused]] core::MIIterator const &mit) {
+int64_t InSetColumn::NumOfValuesImpl([[maybe_unused]] core::MIIterator const &mit) {
   if (full_cache && is_const) return cache.NoVals();
   return columns.size();
 }

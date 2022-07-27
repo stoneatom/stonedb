@@ -115,7 +115,7 @@ class ConstExpressionColumn : public ExpressionColumn {
   bool IsNullsPossibleImpl([[maybe_unused]] bool val_nulls_possible) override { return last_val->IsNull(); }
   int64_t GetSumImpl(const core::MIIterator &mit, bool &nonnegative) override;
   bool IsDistinctImpl() override {
-    return (mind->TooManyTuples() || mind->NoTuples() > 1) ? false : (!last_val->IsNull());
+    return (mind->TooManyTuples() || mind->NumOfTuples() > 1) ? false : (!last_val->IsNull());
   }
   int64_t GetApproxDistValsImpl(bool incl_nulls, core::RoughMultiIndex *rough_mind) override;
   size_t MaxStringSizeImpl() override;  // maximal byte string length in column

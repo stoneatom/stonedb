@@ -166,8 +166,8 @@ RCTable::RCTable(std::string const &p, TableShare *s, Transaction *tx) : share(s
     throw common::NoTableFolderException(m_path);
   }
 
-  m_attrs.reserve(share->NoCols());
-  m_versions.resize(share->NoCols());
+  m_attrs.reserve(share->NumOfCols());
+  m_versions.resize(share->NumOfCols());
 
   auto sz = sizeof(decltype(m_versions)::value_type) * m_versions.size();
   ASSERT(sz == fs::file_size(fs::canonical(fs::read_symlink(m_path / common::TABLE_VERSION_FILE), m_path)),
@@ -177,7 +177,7 @@ RCTable::RCTable(std::string const &p, TableShare *s, Transaction *tx) : share(s
   f.OpenReadOnly(m_path / common::TABLE_VERSION_FILE);
   f.ReadExact(&m_versions[0], sz);
 
-  for (uint32_t i = 0; i < share->NoCols(); i++) {
+  for (uint32_t i = 0; i < share->NumOfCols(); i++) {
     auto &attr = m_attrs.emplace_back(
         std::make_unique<RCAttr>(m_tx, m_versions[i], i, share->TabID(), share->GetColumnShare(i)));
     attr->TrackAccess();
@@ -260,7 +260,7 @@ bool RCTable::Verify() {
   if (!ok) {
     std::stringstream ss;
     ss << "Error: columns in table " << m_path.string() << " are inconsistent. No. of records for each column:\n";
-    for (auto &attr : m_attrs) ss << attr->AttrNo() << " : " << attr->NumOfObj() << std::endl;
+    for (auto &attr : m_attrs) ss << attr->NumOfAttr() << " : " << attr->NumOfObj() << std::endl;
     STONEDB_LOG(LogCtl_Level::ERROR, "%s", ss.str().c_str());
   }
   return !ok;
@@ -538,7 +538,7 @@ void RCTable::FillRowByRowid(TABLE *table, int64_t obj) {
   int col_id = 0;
   assert((int64_t)obj <= NumOfObj());
   for (Field **field = table->field; *field; field++, col_id++) {
-    LockPackForUse(col_id, obj >> m_attrs[col_id]->Nopackpower());
+    LockPackForUse(col_id, obj >> m_attrs[col_id]->ValueOfPackPower());
     std::shared_ptr<void> defer(nullptr,
                                 [this, col_id, obj](...) { UnlockPackFromUse(col_id, obj >> Getpackpower()); });
     std::unique_ptr<types::RCDataType> value(m_attrs[col_id]->ValuePrototype(false).Clone());
@@ -760,7 +760,7 @@ uint64_t RCTable::ProceedNormal(system::IOParameters &iop) {
     }
   timer.Print(__PRETTY_FUNCTION__);
 
-  no_rejected_rows = parser.GetNoRejectedRows();
+  no_rejected_rows = parser.GetNumOfRejectedRows();
 
   if (parser.ThresholdExceeded(no_loaded_rows + no_rejected_rows))
     throw common::FormatException("Rejected rows threshold exceeded. " + std::to_string(no_rejected_rows) + " out of " +

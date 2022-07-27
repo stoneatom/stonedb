@@ -172,9 +172,9 @@ void MultiIndexTable::Unlock() {
   }
 }
 
-int MultiIndexTable::NoLocks() {
+int MultiIndexTable::NumOfLocks() {
   int locks = 0;
-  if (!table_items_.empty()) locks = table_items_[0].GetTable()->NoLocks();
+  if (!table_items_.empty()) locks = table_items_[0].GetTable()->NumOfLocks();
   return locks;
 }
 
@@ -246,9 +246,9 @@ void DimensionGroupMultiMaterialized::Unlock(int dim) {
   if (tables) tables->Unlock();
 }
 
-int DimensionGroupMultiMaterialized::NoLocks(int dim) {
+int DimensionGroupMultiMaterialized::NumOfLocks(int dim) {
   MultiIndexTable *tables = dim_tables_[dim];
-  return (tables ? tables->NoLocks() : 0);
+  return (tables ? tables->NumOfLocks() : 0);
 }
 
 DimensionGroup::Iterator *DimensionGroupMultiMaterialized::NewIterator(DimensionVector &dim, uint32_t power) {

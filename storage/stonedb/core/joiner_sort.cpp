@@ -36,11 +36,11 @@ void JoinerSort::ExecuteJoinConditions(Condition &cond) {
     why_failed = JoinFailure::FAIL_COMPLEX;
     return;
   } else {                                        // Normalize: let vc1 = a smaller table
-    DimensionVector dims1(mind->NoDimensions());  // Initial dimension descriptions
-    DimensionVector dims2(mind->NoDimensions());
+    DimensionVector dims1(mind->NumOfDimensions());  // Initial dimension descriptions
+    DimensionVector dims2(mind->NumOfDimensions());
     vc1->MarkUsedDims(dims1);
     vc2->MarkUsedDims(dims2);
-    if (mind->NoTuples(dims1) > mind->NoTuples(dims2)) {
+    if (mind->NumOfTuples(dims1) > mind->NumOfTuples(dims2)) {
       cond[0].SwitchSides();
       vc1 = cond[0].attr.vc;
       vc2 = cond[0].val1.vc;
@@ -51,8 +51,8 @@ void JoinerSort::ExecuteJoinConditions(Condition &cond) {
                    ? 0
                    : 1);  // std::memcmp(...) < 0 for sharp, <= 0 for not sharp
 
-  DimensionVector dims1(mind->NoDimensions());  // Initial dimension descriptions
-  DimensionVector dims2(mind->NoDimensions());
+  DimensionVector dims1(mind->NumOfDimensions());  // Initial dimension descriptions
+  DimensionVector dims2(mind->NumOfDimensions());
   vc1->MarkUsedDims(dims1);  // smaller table (traversed)
   vc2->MarkUsedDims(dims2);  // bigger table (matched)
   mind->MarkInvolvedDimGroups(dims1);
@@ -70,11 +70,11 @@ void JoinerSort::ExecuteJoinConditions(Condition &cond) {
   }
 
   // Analyze additional conditions to be executed by JoinerSort
-  DimensionVector dims_used_in_cond(mind->NoDimensions());
+  DimensionVector dims_used_in_cond(mind->NumOfDimensions());
   DimensionVector dims_sum(dims1);  // only for checking if condition may be executed
   dims_sum.Plus(dims2);
   for (uint i = 1; i < cond.Size(); i++) {
-    DimensionVector dims_sec(mind->NoDimensions());
+    DimensionVector dims_sec(mind->NumOfDimensions());
     cond[i].DimensionUsed(dims_sec);
     if (dims_sum.Includes(dims_sec)) {  // only additional conditions on the
                                         // same dimensions are legal
@@ -98,12 +98,12 @@ void JoinerSort::ExecuteJoinConditions(Condition &cond) {
     if (dims1.Includes(outer_dims)) {
       watch_matched = true;  // watch the non-outer dim for unmatched tuples and
                              // add them with nulls on outer dim
-      outer_filter = new Filter(mit2.NoTuples(), mit2.GetPower(), true);
+      outer_filter = new Filter(mit2.NumOfTuples(), mit2.GetPower(), true);
       sort_encoder.WatchMatched();
     } else if (dims2.Includes(outer_dims)) {  // outer dims are among matched =>
                                               // watch traversed for unused
       watch_traversed = true;
-      outer_filter = new Filter(mit1.NoTuples(), mit1.GetPower(), true);
+      outer_filter = new Filter(mit1.NumOfTuples(), mit1.GetPower(), true);
       sort_encoder.WatchTraversed();
     } else {
       why_failed = JoinFailure::FAIL_COMPLEX;  // example: select ... from (t1, t2) left join
@@ -119,9 +119,9 @@ void JoinerSort::ExecuteJoinConditions(Condition &cond) {
   sort_encoder.SetDimensions(mind, dims1, dims2, dims_used_in_cond, tips.count_only);
   int key_bytes = sort_encoder.KeyBytes();
   std::unique_ptr<Sorter3> s1(
-      Sorter3::CreateSorter(mit1.NoTuples(), key_bytes, sort_encoder.TraverseBytes(), -1,
+      Sorter3::CreateSorter(mit1.NumOfTuples(), key_bytes, sort_encoder.TraverseBytes(), -1,
                             -1));  // mem_modifier = -1, because there is another sorter in memory
-  std::unique_ptr<Sorter3> s2(Sorter3::CreateSorter(mit2.NoTuples(), key_bytes, sort_encoder.MatchBytes(), -1, -1));
+  std::unique_ptr<Sorter3> s2(Sorter3::CreateSorter(mit2.NumOfTuples(), key_bytes, sort_encoder.MatchBytes(), -1, -1));
 
   int64_t actual_s1_size = 0;
   int64_t actual_s2_size = 0;
@@ -265,7 +265,7 @@ void JoinerSort::AddTuples(MINewContents &new_mind, JoinerSortWrapper &sort_enco
     bool add_now = true;
     // check other conditions
     if (other_cond_exist) {
-      for (int i = 0; i < mind->NoDimensions(); i++)
+      for (int i = 0; i < mind->NumOfDimensions(); i++)
         if (dims_used_in_cond[i]) mit.Set(i, sort_encoder.DimValue(i, cache_pos, matched_row));
       for (auto &j : other_cond) {
         j.LockSourcePacks(mit);
@@ -287,7 +287,7 @@ void JoinerSort::AddTuples(MINewContents &new_mind, JoinerSortWrapper &sort_enco
     if (add_now) {
       if (!outer_nulls_only) {
         if (!tips.count_only) {
-          for (int d = 0; d < mind->NoDimensions(); d++)
+          for (int d = 0; d < mind->NumOfDimensions(); d++)
             if (sort_encoder.DimEncoded(d))
               new_mind.SetNewTableValue(d, sort_encoder.DimValue(d, cache_pos, matched_row));
           new_mind.CommitNewTableValues();
@@ -308,7 +308,7 @@ int64_t JoinerSort::AddOuterTuples(MINewContents &new_mind, JoinerSortWrapper &s
     int64_t outer_row = 0;
     while (mit.IsValid()) {
       if (outer_filter->Get(outer_row)) {
-        for (int d = 0; d < mind->NoDimensions(); d++)
+        for (int d = 0; d < mind->NumOfDimensions(); d++)
           if (sort_encoder.DimEncoded(d)) {
             if (iterate_watched[d])
               new_mind.SetNewTableValue(d, mit[d]);
@@ -321,7 +321,7 @@ int64_t JoinerSort::AddOuterTuples(MINewContents &new_mind, JoinerSortWrapper &s
       outer_row++;
     }
   }
-  return outer_filter->NoOnes();
+  return outer_filter->NumOfOnes();
 }
 
 JoinerSortWrapper::JoinerSortWrapper(bool _less) {
@@ -367,7 +367,7 @@ void JoinerSortWrapper::SetDimensions(MultiIndex *mind, DimensionVector &dim_tr,
   encoder->SetPrimaryOffset(0);  // key values always on the beginning of buffer
   traverse_bytes = key_bytes;
   match_bytes = key_bytes;
-  no_dims = mind->NoDimensions();
+  no_dims = mind->NumOfDimensions();
   int64_t tuple_size;
   for (int i = 0; i < no_dims; i++) {
     if (dim_tr[i]) {

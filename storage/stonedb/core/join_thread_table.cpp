@@ -66,7 +66,7 @@ class JoinThreadTableImpl : public JoinThreadTable {
   ~JoinThreadTableImpl() override {}
 
   // Overridden from JoinThreadTable:
-  int64_t GetOuterTraversedCount() const override { return outer_filter_->NoOnes(); }
+  int64_t GetOuterTraversedCount() const override { return outer_filter_->NumOfOnes(); }
   bool IsOuterTraversed(int64_t hash_row) override { return outer_filter_->Get(hash_row); }
   void SetTraversed(int64_t hash_row) override {
     if (outer_filter_) outer_filter_->Set(hash_row);

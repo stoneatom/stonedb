@@ -442,7 +442,7 @@ class VirtualColumnBase : public core::Column {
    */
   void SetMultiIndex(core::MultiIndex *m, std::shared_ptr<core::JustATable> t = std::shared_ptr<core::JustATable>());
 
-  virtual int64_t NoTuples();
+  virtual int64_t NumOfTuples();
 
   //! Is it a CONST column without parameters? (i.e. fully defined by a value)
   bool IsFullConst() { return IsConst() && !IsParameterized(); }

@@ -96,11 +96,11 @@ class GroupByWrapper final {
   bool AnyOmittedByDistinct() { return distinct_watch.AnyOmitted(); }
   int64_t ApproxDistinctVals(int gr_a, MultiIndex *mind = NULL);
 
-  int NoAttr() { return no_attr; }
-  int NoGroupingAttr() { return no_grouping_attr; }
+  int NumOfAttrs() { return no_attr; }
+  int NumOfGroupingAttrs() { return no_grouping_attr; }
   bool DistinctAggr(int col) { return gt.AttrDistinct(col); }
   void Initialize(int64_t upper_approx_of_groups, bool parallel_allowed = true);
-  int64_t NoGroups() { return no_groups; }
+  int64_t NumOfGroups() { return no_groups; }
   void AddGroup() { no_groups++; }
   void ClearNoGroups() { no_groups = 0; }
   int64_t UpperApproxOfGroups() { return gt.UpperApproxOfGroups(); }
@@ -126,8 +126,8 @@ class GroupByWrapper final {
   void SetDistinctTuples(int64_t no_tuples) { distinct_watch.InitTuples(no_tuples, gt); }
   bool IsFull() { return gt.IsFull(); }
   void SetAsFull() { gt.SetAsFull(); }
-  bool NoMoreGroups() { return no_more_groups; }
-  void SetNoMoreGroups() { no_more_groups = true; }
+  bool IsAllGroupsFound() { return no_more_groups; }
+  void SetAllGroupsFound() { no_more_groups = true; }
   void FillDimsUsed(DimensionVector &dims);  // set true on all dimensions used
   int AttrMapping(int a) { return attr_mapping[a]; }
   bool IsCountOnly(int a = -1);  // true, if an attribute is count(*)/count(const), or if
@@ -162,7 +162,7 @@ class GroupByWrapper final {
     if (tuple_left) tuple_left->ResetDelayed(pos);
   }
   bool TuplesGet(int64_t pos) { return (tuple_left == NULL) || tuple_left->Get(pos); }
-  int64_t TuplesNoOnes() { return (tuple_left == NULL ? 0 : tuple_left->NoOnes()); }
+  int64_t TuplesNoOnes() { return (tuple_left == NULL ? 0 : tuple_left->NumOfOnes()); }
   // Locking packs etc.
 
   void LockPack(int i, MIIterator &mit);

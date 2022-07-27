@@ -206,7 +206,7 @@ bool Filter::Block::IsFullBetween(int n1, int n2) {
   return true;
 }
 
-int Filter::Block::NoOnesBetween(int n1, int n2) {
+int Filter::Block::NumOfOnesBetween(int n1, int n2) {
   int result = 0;
   int bl1 = n1 / 32;
   int bl2 = n2 / 32;
