@@ -395,7 +395,7 @@ static struct my_option my_long_options[] =
 static void usage(void)
 {
   print_version();
-  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2007"));
+  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2021"));
 
   puts("Read and modify Archive files directly\n");
   printf("Usage: %s [OPTIONS] file_to_be_looked_at [file_for_backup]\n", my_progname);
