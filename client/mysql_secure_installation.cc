@@ -102,7 +102,7 @@ static void print_version(void)
 static void usage()
 {
   print_version();
-  fprintf(stdout, ORACLE_WELCOME_COPYRIGHT_NOTICE("2013"));
+  fprintf(stdout, ORACLE_WELCOME_COPYRIGHT_NOTICE(COPYRIGHT_NOTICE_STONEDB_BEGIN_YEAR));
   fprintf(stdout, "\nMySQL Configuration Utility.");
   fprintf(stdout, "Usage: %s [OPTIONS]\n", my_progname);
   my_print_help(my_connection_options);

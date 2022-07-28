@@ -88,16 +88,16 @@ void Mysql::Tools::Base::Options::Help_options::print_usage()
 
   if (first_year_str == COPYRIGHT_NOTICE_CURRENT_YEAR)
   {
-    copyright= ORACLE_WELCOME_COPYRIGHT_NOTICE(COPYRIGHT_NOTICE_CURRENT_YEAR);
+    copyright= ORACLE_WELCOME_COPYRIGHT_NOTICE(COPYRIGHT_NOTICE_STONEDB_BEGIN_YEAR);
   }
   else
   {
 #define FIRST_YEAR_CONSTANT "$first_year$"
     string first_year_constant_str= FIRST_YEAR_CONSTANT;
 
-    copyright= ORACLE_WELCOME_COPYRIGHT_NOTICE(FIRST_YEAR_CONSTANT);
-    copyright= copyright.replace(copyright.find(first_year_constant_str),
-                                 first_year_constant_str.length(), first_year_str);
+    copyright= ORACLE_WELCOME_COPYRIGHT_NOTICE(COPYRIGHT_NOTICE_STONEDB_BEGIN_YEAR);
+/*  copyright= copyright.replace(copyright.find(first_year_constant_str),
+                                 first_year_constant_str.length(), first_year_str);*/
   }
 
   printf("%s\n%s\n",

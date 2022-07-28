@@ -741,7 +741,7 @@ static void usage(void)
 {
   struct my_option *optp;
   print_version();
-  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2005"));
+  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE(COPYRIGHT_NOTICE_STONEDB_BEGIN_YEAR));
   puts("Run a query multiple times against the server.\n");
   printf("Usage: %s [OPTIONS]\n",my_progname);
   print_defaults("my",load_default_groups);

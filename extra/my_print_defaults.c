@@ -115,7 +115,7 @@ static void usage(my_bool version)
 	 MACHINE_TYPE);
   if (version)
     return;
-  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2000"));
+  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE(COPYRIGHT_NOTICE_STONEDB_BEGIN_YEAR));
   puts("Prints all arguments that is give to some program using the default files");
   printf("Usage: %s [OPTIONS] groups\n", my_progname);
   my_print_help(my_long_options);
