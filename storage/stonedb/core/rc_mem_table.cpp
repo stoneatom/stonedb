@@ -16,6 +16,7 @@
 */
 
 #include "core/rc_mem_table.h"
+
 #include "common/common_definitions.h"
 #include "core/rc_table.h"
 #include "core/table_share.h"
@@ -26,6 +27,7 @@
 
 namespace stonedb {
 namespace core {
+
 RCMemTable::RCMemTable(const std::string name, const uint32_t mem_id, const uint32_t cf_id)
     : fullname_(name), mem_id_(mem_id), cf_handle_(kvstore->GetCfHandleByID(cf_id)) {
   ASSERT(cf_handle_, "column family handle not exist " + name);
@@ -170,5 +172,6 @@ void RCMemTable::Truncate(Transaction *tx) {
 
   return;
 }
+
 }  // namespace core
 }  // namespace stonedb

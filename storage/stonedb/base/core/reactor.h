@@ -67,8 +67,8 @@
 #include "base/core/circular_buffer.h"
 #include "base/core/condition_variable.h"
 #include "base/core/enum.h"
-#include "core/metrics_registration.h"
-#include "core/scattered_message.h"
+#include "base/core/metrics_registration.h"
+#include "base/core/scattered_message.h"
 
 #include "base/core/deleter.h"
 #include "base/core/fair_queue.h"

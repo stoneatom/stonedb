@@ -426,12 +426,30 @@ ELSE()
   SET(DEFAULT_TMPDIR "\"${TMPDIR}\"")
 ENDIF()
 
+# Ported from mysql 5.7, add by stonedb authors
+INCLUDE(cmake/boost.cmake)
+#Link directories under boost, etc.
+IF (WITH_BOOST)
+  INCLUDE_DIRECTORIES("${WITH_BOOST}/")
+  LINK_DIRECTORIES("${WITH_BOOST}/../lib/")
+ENDIF ()
+
+#for rocksdb, to check rocksdb
+INCLUDE(cmake/rocksdb.cmake)
+#Link directories under rocksdb, etc.
+IF (WITH_ROCKSDB)
+  INCLUDE_DIRECTORIES("${WITH_ROCKSDB}/include")
+  LINK_DIRECTORIES("${WITH_ROCKSDB}")
+ENDIF ()
+
+
 # Run platform tests
 INCLUDE(configure.cmake)
 
 # Common defines and includes
 ADD_DEFINITIONS(-DHAVE_CONFIG_H)
 ADD_DEFINITIONS(-DSTONEDB)
+ADD_DEFINITIONS(-D_GLIBCXX_USE_CXX11_ABI=1)
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/include)
 
 # Add bundled or system zlib.
@@ -646,8 +664,6 @@ ENDIF()
 
 INCLUDE(CPack)
 
-# Ported from mysql 5.7, add by stonedb authors
-INCLUDE(cmake/boost.cmake)
 
 # C compiler flags consist of:
 # CPPFLAGS        Taken from environment, see above.

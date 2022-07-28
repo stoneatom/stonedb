@@ -24,9 +24,9 @@
 #define STONEDB_BASE_SCOLLECTD_IMPL_H_
 #pragma once
 
-#include "core/metrics_api.h"
-#include "core/reactor.h"
-#include "core/scollectd.h"
+#include "base/core/metrics_api.h"
+#include "base/core/reactor.h"
+#include "base/core/scollectd.h"
 
 namespace stonedb {
 namespace base {

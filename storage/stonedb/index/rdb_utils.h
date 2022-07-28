@@ -24,7 +24,6 @@
 
 #include "common/assert.h"
 #include "common/mysql_gate.h"
-#include "rocksdb/db.h"
 #include "util/fs.h"
 
 namespace stonedb {
