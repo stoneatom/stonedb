@@ -1395,11 +1395,14 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
           if (res.IsInvalid()) return res;
           if (!and_cond.get()) and_cond = std::unique_ptr<CondID>(new CondID(res.n));
         }
-        cond_id.n = and_cond->n;
-        if (and_me_filter && is_or_subtree)
-          cq->Or(*and_me_filter, tmp_table, cond_id);
-        else if (and_me_filter && !is_or_subtree)
-          cq->And(*and_me_filter, tmp_table, cond_id);
+
+        if (and_cond.get() != nullptr) {
+          cond_id.n = and_cond->n;
+          if (and_me_filter && is_or_subtree)
+            cq->Or(*and_me_filter, tmp_table, cond_id);
+          else if (and_me_filter && !is_or_subtree)
+            cq->And(*and_me_filter, tmp_table, cond_id);
+        }
         break;
       }
       case Item_func::COND_OR_FUNC: {
@@ -1483,13 +1486,16 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
             return c_id;
           }
         }
-        cond_id.n = or_cond->n;
-        if (and_me_filter && !is_or_subtree)
-          cq->And(*and_me_filter, tmp_table, cond_id);
-        else if (and_me_filter && is_or_subtree)
-          cq->Or(*and_me_filter, tmp_table, cond_id);
-        else if (filter_type != CondType::HAVING_COND && create_or_subtree && !is_or_subtree)
-          cq->CreateConds(cond_id, tmp_table, cond_id, create_or_subtree || filter_type == CondType::HAVING_COND);
+
+        if (or_cond.get() != nullptr) {
+          cond_id.n = or_cond->n;
+          if (and_me_filter && !is_or_subtree)
+            cq->And(*and_me_filter, tmp_table, cond_id);
+          else if (and_me_filter && is_or_subtree)
+            cq->Or(*and_me_filter, tmp_table, cond_id);
+          else if (filter_type != CondType::HAVING_COND && create_or_subtree && !is_or_subtree)
+            cq->CreateConds(cond_id, tmp_table, cond_id, create_or_subtree || filter_type == CondType::HAVING_COND);
+        }
         break;
       }
       case Item_func::XOR_FUNC:  // we don't handle xor as yet
