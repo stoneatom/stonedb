@@ -47,7 +47,6 @@ SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 # respect user wishes and do not (re)define CMAKE_BUILD_TYPE. If WITH_DEBUG{_FULL} 
 # is given, set CMAKE_BUILD_TYPE = Debug. Otherwise, use Relwithdebinfo.
 
-
 IF(DEFINED CMAKE_BUILD_TYPE)
   SET(HAVE_CMAKE_BUILD_TYPE TRUE)
 ENDIF()
@@ -133,7 +132,6 @@ ENDIF()
 #cmake on 64bit windows/mac/solaris doesn't set CMAKE_SYSTEM_PROCESSOR correctly
 SET(MYSQL_MACHINE_TYPE ${CMAKE_SYSTEM_PROCESSOR})
 
-
 # Include the platform-specific file. To allow exceptions, this code
 # looks for files in order of how specific they are. If there is, for
 # example, a generic Linux.cmake and a version-specific
@@ -150,7 +148,6 @@ FOREACH(_base
     BREAK()
   ENDIF()
 ENDFOREACH()
-
 
 IF(UNIX)
   OPTION(WITH_INNODB_MEMCACHED "" OFF)
@@ -208,6 +205,29 @@ IF(NOT WITHOUT_SERVER)
 ENDIF()
 MARK_AS_ADVANCED(CYBOZU BACKUP_TEST WITHOUT_SERVER DISABLE_SHARED)
 
+# Ported from mysql 5.7, add by stonedb authors
+INCLUDE(cmake/boost.cmake)
+#Link directories under boost, etc.
+IF (WITH_BOOST)
+  INCLUDE_DIRECTORIES("${WITH_BOOST}/include")
+  LINK_DIRECTORIES("${WITH_BOOST}/lib/")
+ENDIF ()
+
+#for rocksdb, to check rocksdb
+INCLUDE(cmake/rocksdb.cmake)
+#Link directories under rocksdb, etc.
+IF (WITH_ROCKSDB)
+  INCLUDE_DIRECTORIES("${WITH_ROCKSDB}" "${WITH_ROCKSDB}/include")
+  LINK_DIRECTORIES("${WITH_ROCKSDB}")
+ENDIF ()
+
+#for marisa, to check marisa
+INCLUDE(cmake/marisa.cmake)
+#Link directories under marisa, etc.
+IF (WITH_MARISA)
+  INCLUDE_DIRECTORIES("${WITH_MARISA}" "${WITH_MARISA}/include")
+  LINK_DIRECTORIES("${WITH_MARISA}" "${WITH_MARISA}/lib")
+ENDIF ()
 
 include(CheckCSourceCompiles)
 include(CheckCXXSourceCompiles)
@@ -283,7 +303,6 @@ IF (WITH_ASAN)
   ENDIF()
 ENDIF()
 
-
 OPTION(ENABLE_DEBUG_SYNC "Enable debug sync (debug builds only)" ON) 
 IF(ENABLE_DEBUG_SYNC) 
   SET(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DENABLED_DEBUG_SYNC") 
@@ -344,6 +363,11 @@ IF (CMAKE_COMPILER_IS_GNUCC AND CMAKE_COMPILER_IS_GNUCXX)
           "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -static-libstdc++ -static-libgcc")
 ENDIF()
 
+IF(WITH_BOOST AND WITH_ROCKSDB AND WITH_MARISA)
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${WITH_BOOST}/lib;${WITH_ROCKSDB};${WITH_MARISA}/lib")
+MESSAGE(STATUS "TO SET INSTALL RPATH FOR STONEDB: ${CMAKE_INSTALL_RPATH}")
+ENDIF()
+
 OPTION(ENABLED_LOCAL_INFILE
  "If we should should enable LOAD DATA LOCAL by default" ${IF_WIN})
 MARK_AS_ADVANCED(ENABLED_LOCAL_INFILE)
@@ -393,7 +417,6 @@ IF(WITH_DEBUG AND NOT WIN32 AND NOT WITH_INNODB_MEMCACHED)
   ENDFOREACH()
 ENDIF()
 
-
 # Set commonly used variables
 IF(WIN32)
   SET(DEFAULT_MYSQL_HOME "C:/Program Files/MySQL/MySQL Server ${MYSQL_BASE_VERSION}" )
@@ -432,6 +455,7 @@ INCLUDE(configure.cmake)
 # Common defines and includes
 ADD_DEFINITIONS(-DHAVE_CONFIG_H)
 ADD_DEFINITIONS(-DSTONEDB)
+ADD_DEFINITIONS(-D_GLIBCXX_USE_CXX11_ABI=1)
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/include)
 
 # Add bundled or system zlib.
@@ -568,7 +592,6 @@ IF (UNIX)
  SET(STONEDB_BUILD_TIME "Date: ${ER_BUILD_TIME}")
 ENDIF()
 
-
 CONFIGURE_FILE(config.h.cmake   ${CMAKE_BINARY_DIR}/include/my_config.h)
 CONFIGURE_FILE(config.h.cmake   ${CMAKE_BINARY_DIR}/include/config.h)
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/include/mysql_version.h.in
@@ -645,9 +668,6 @@ IF(NOT INSTALL_LAYOUT MATCHES "RPM")
 ENDIF()
 
 INCLUDE(CPack)
-
-# Ported from mysql 5.7, add by stonedb authors
-INCLUDE(cmake/boost.cmake)
 
 # C compiler flags consist of:
 # CPPFLAGS        Taken from environment, see above.

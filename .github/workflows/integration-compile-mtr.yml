@@ -28,7 +28,7 @@ env:
 
 jobs:
   stonedb-build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
@@ -45,21 +45,6 @@ jobs:
           sudo mkdir -p /stonedb56/install/tmp
           sudo mkdir -p /stonedb56/install/log
           sudo mkdir ./soft
-
-      - name: install gcc 7.3
-        run: |
-          sudo wget -c http://ftp.gnu.org/gnu/gcc/gcc-7.3.0/gcc-7.3.0.tar.gz -O ./soft/gcc-7.3.0.tar.gz
-          sudo tar zxvf ./soft/gcc-7.3.0.tar.gz -C ./soft
-          pushd ./soft/gcc-7.3.0
-          sudo ./contrib/download_prerequisites
-          sudo ./configure --prefix=/usr/local/gcc7.3 --enable-bootstrap -enable-threads=posix --enable-checking=release --enable-languages=c,c++ --disable-multilib --disable-libsanitizer
-          sudo make -j`nproc`
-          sudo make install -j`nproc`
-          popd
-          sudo rm /usr/bin/gcc
-          sudo ln -s /usr/local/gcc7.3/bin/gcc /usr/bin/gcc
-          sudo rm /usr/bin/g++
-          sudo ln -s /usr/local/gcc7.3/bin/g++ /usr/bin/g++
 
       - name: install marisa
         run: |
@@ -82,6 +67,7 @@ jobs:
           sudo cmake ./ \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/usr/local/stonedb-gcc-rocksdb \
+          -DCMAKE_INSTALL_LIBDIR=/usr/local/stonedb-gcc-rocksdb \
           -DWITH_JEMALLOC=ON \
           -DWITH_SNAPPY=ON \
           -DWITH_LZ4=ON \
@@ -102,14 +88,21 @@ jobs:
           sudo wget -c https://boostorg.jfrog.io/artifactory/main/release/1.66.0/source/boost_1_66_0.tar.bz2 -O ./soft/boost_1_66_0.tar.bz2
           sudo tar -jxvf ./soft/boost_1_66_0.tar.bz2 -C ./soft
           sudo mkdir -p /usr/local/stonedb-boost
+          #for boost warning: Unnecessary parenthesis warning in gcc-8.0.0 or higher.
+          sudo sed -i '1 i #define BOOST_MPL_CFG_ASSERT_BROKEN_POINTER_TO_POINTER_TO_MEMBER' ./soft/boost_1_66_0/boost/mpl/assert.hpp
           pushd ./soft/boost_1_66_0
           sudo ./bootstrap.sh --prefix=/usr/local/stonedb-boost
-          sudo ./b2 install
+          #in lib python, builtin_converters.cpp:51:35: error: invalid conversion from ‘const void*’ to ‘void*’ [-fpermissive]
+          #therefore, the simplest way to supress this error is 'DO NOT BUILD'-python libs.
+          sudo ./b2 install --variant=release --without-python
           popd
 
       - name: compile stonedb
         run: |
           sudo cmake ./ \
+          -DWITH_BOOST=/usr/local/stonedb-boost \
+          -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb \
+          -DWITH_MARISA=/usr/local/stonedb-marisa \
           -DCMAKE_BUILD_TYPE=release \
           -DCMAKE_INSTALL_PREFIX=/stonedb56/install \
           -DMYSQL_DATADIR=/stonedb56/install/data \
@@ -124,8 +117,7 @@ jobs:
           -DENABLED_LOCAL_INFILE=1 \
           -DEXTRA_CHARSETS=all \
           -DDEFAULT_CHARSET=utf8 \
-          -DDEFAULT_COLLATION=utf8_general_ci \
-          -DWITH_BOOST=/usr/local/stonedb-boost/include
+          -DDEFAULT_COLLATION=utf8_general_ci
           sudo make VERBOSE=1 -j`nproc`
           sudo make install -j`nproc`
 

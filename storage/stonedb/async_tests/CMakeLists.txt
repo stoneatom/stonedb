@@ -1,4 +1,3 @@
-SET(BOOST_ROOT /usr/local/stonedb-boost)
 AUX_SOURCE_DIRECTORY(. DIR_SRCS)
 
 ADD_DEFINITIONS(-DDISABLE_USED_FOR_STONEDB)
@@ -25,8 +24,7 @@ SET(ASYNC_SOURCES ${SOURCE_async_core}
                   ${SOURCE_async_util}
                   ${DIR_SRCS})
 
-SET(DEPENDED_LIBS rt pthread dl ${BOOST_ROOT}/lib/libboost_system.a
-${BOOST_ROOT}/lib/libboost_thread.a)
+SET(DEPENDED_LIBS rt pthread dl boost_system boost_thread)
 
 LINK_LIBRARIES(${DEPENDED_LIBS})
 
