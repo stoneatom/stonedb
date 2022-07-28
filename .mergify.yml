@@ -32,7 +32,7 @@ pull_request_rules:
     actions:
       comment:
         message: |
-          This pull request's title is not fulfill the requirements. @{{author}} please update it :point_down:.
+          This pull request's title should follow requirements next. @{{author}} please check it :point_down:.
 
           Valid format:
 

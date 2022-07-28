@@ -4124,8 +4124,8 @@ MYSQL *STDCALL CLI_MYSQL_REAL_CONNECT(MYSQL *mysql, const char *host,
     mysql_read_default_options(
         &mysql->options,
         (mysql->options.my_cnf_file ? 
-#if defined(STONEDB)
-        mysql->options.my_cnf_file : MYSQL_CONFIG_NAME), //STONEDB UPGRADE
+#if defined(TIANMU)
+        mysql->options.my_cnf_file : MYSQL_CONFIG_NAME), //TIANMU UPGRADE
 #else
         mysql->options.my_cnf_file : "my"),
 #endif

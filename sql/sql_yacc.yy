@@ -963,7 +963,7 @@ bool my_yyoverflow(short **a, YYSTYPE **b, YYLTYPE **c, ulong *yystacksize);
 %token  RIGHT                         /* SQL-2003-R */
 %token  ROLLBACK_SYM                  /* SQL-2003-R */
 %token  ROLLUP_SYM                    /* SQL-2003-R */
-%token  ROUGHLY_SYM                   /*STONEDB UPGRADE*/
+%token  ROUGHLY_SYM                   /*TIANMU UPGRADE*/
 %token  ROTATE_SYM
 %token  ROUTINE_SYM                   /* SQL-2003-N */
 %token  ROWS_SYM                      /* SQL-2003-R */
@@ -14872,7 +14872,7 @@ query_spec_option:
         | DISTINCT            { $$= SELECT_DISTINCT; }
         | SQL_SMALL_RESULT    { $$= SELECT_SMALL_RESULT; }
         | SQL_BIG_RESULT      { $$= SELECT_BIG_RESULT; }
-        | ROUGHLY_SYM         { $$= SELECT_ROUGHLY; }//STONEDB UPGRADE
+        | ROUGHLY_SYM         { $$= SELECT_ROUGHLY; }//TIANMU UPGRADE
         | SQL_BUFFER_RESULT   { $$= OPTION_BUFFER_RESULT; }
         | SQL_CALC_FOUND_ROWS { $$= OPTION_FOUND_ROWS; }
         | ALL                 { $$= SELECT_ALL; }

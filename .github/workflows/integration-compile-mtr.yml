@@ -105,4 +105,4 @@ jobs:
           sudo mkdir -p /stonedb57/install/log
           sudo chown -R mysql:mysql /stonedb57
           cd /stonedb57/install/mysql-test
-          sudo ./mysql-test-run.pl --suite=stonedb --nowarnings --force --nocheck-testcases
+          sudo ./mysql-test-run.pl --suite=tianmu --nowarnings --force --nocheck-testcases

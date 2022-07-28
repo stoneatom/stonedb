@@ -33,7 +33,7 @@ class PT_item_list;
 
 /* Function items used by mysql */
 
-#ifdef STONEDB
+#ifdef TIANMU
 #include <set>
 #endif 
 
@@ -2891,7 +2891,7 @@ Item_field *get_gc_for_expr(Item_func **func, Field *fld, Item_result type);
 
 extern bool volatile  mqh_used;
 
-#ifdef STONEDB
+#ifdef TIANMU
 class Item_func_multivalue_find :public Item_int_func
 {
   String value0,value1,value2;

@@ -669,7 +669,7 @@ static void usage(void)
   puts(ORACLE_WELCOME_COPYRIGHT_NOTICE(COPYRIGHT_NOTICE_STONEDB_BEGIN_YEAR));
   puts("Dumping structure and contents of MySQL databases and tables.");
   short_usage_sub();
-#if defined(STONEDB)
+#if defined(TIANMU)
   print_defaults(MYSQL_CONFIG_NAME,load_default_groups);
 #else
   print_defaults("my",load_default_groups);
@@ -1017,7 +1017,7 @@ static int get_options(int *argc, char ***argv)
 
   md_result_file= stdout;
   my_getopt_use_args_separator= TRUE;
-#if defined(STONEDB)
+#if defined(TIANMU)
   if (load_defaults(MYSQL_CONFIG_NAME,load_default_groups,argc,argv))
 #else
   if (load_defaults("my",load_default_groups,argc,argv))

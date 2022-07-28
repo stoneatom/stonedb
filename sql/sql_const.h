@@ -311,7 +311,7 @@
 #define OPTIMIZER_SWITCH_PREFER_ORDERING_INDEX     (1ULL << 19)
 #define OPTIMIZER_SWITCH_LAST                      (1ULL << 20)
 
-#ifdef STONEDB /*Turn off SEMIJOIN by default as StoneDB does not support it*/
+#ifdef TIANMU /*Turn off SEMIJOIN by default as Tianmu does not support it*/
 #define OPTIMIZER_SWITCH_DEFAULT (OPTIMIZER_SWITCH_INDEX_MERGE | \
                                   OPTIMIZER_SWITCH_INDEX_MERGE_UNION | \
                                   OPTIMIZER_SWITCH_INDEX_MERGE_SORT_UNION | \

@@ -3827,7 +3827,7 @@ ORDER::enum_order Item_func_group_concat::direction()
   {
     for (uint i= 0 ; i < arg_count_order ; i++)
     {
-        //just return the 1st arg order as StoneDB only support one
+        //just return the 1st arg order as Tianmu only support one
         return order_array[i].direction;
     }
   }

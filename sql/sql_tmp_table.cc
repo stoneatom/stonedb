@@ -1074,7 +1074,7 @@ update_hidden:
     table->file= get_new_handler(share, &table->mem_root,
                                  share->db_type());
   }
-  else if (blob_count || (heap_hton == NULL) || //STONEDB UPGRADE
+  else if (blob_count || (heap_hton == NULL) || //TIANMU UPGRADE
            (thd->variables.big_tables &&
             !(select_options & SELECT_SMALL_RESULT)))
   {
