@@ -28,7 +28,7 @@ env:
 
 jobs:
   stonedb-build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
@@ -46,20 +46,20 @@ jobs:
           sudo mkdir -p /stonedb56/install/log
           sudo mkdir ./soft
 
-      - name: install gcc 7.3
-        run: |
-          sudo wget -c http://ftp.gnu.org/gnu/gcc/gcc-7.3.0/gcc-7.3.0.tar.gz -O ./soft/gcc-7.3.0.tar.gz
-          sudo tar zxvf ./soft/gcc-7.3.0.tar.gz -C ./soft
-          pushd ./soft/gcc-7.3.0
-          sudo ./contrib/download_prerequisites
-          sudo ./configure --prefix=/usr/local/gcc7.3 --enable-bootstrap -enable-threads=posix --enable-checking=release --enable-languages=c,c++ --disable-multilib --disable-libsanitizer
-          sudo make -j`nproc`
-          sudo make install -j`nproc`
-          popd
-          sudo rm /usr/bin/gcc
-          sudo ln -s /usr/local/gcc7.3/bin/gcc /usr/bin/gcc
-          sudo rm /usr/bin/g++
-          sudo ln -s /usr/local/gcc7.3/bin/g++ /usr/bin/g++
+#      - name: install gcc 7.3
+#        run: |
+#          sudo wget -c http://ftp.gnu.org/gnu/gcc/gcc-7.3.0/gcc-7.3.0.tar.gz -O ./soft/gcc-7.3.0.tar.gz
+#          sudo tar zxvf ./soft/gcc-7.3.0.tar.gz -C ./soft
+#          pushd ./soft/gcc-7.3.0
+#          sudo ./contrib/download_prerequisites
+#          sudo ./configure --prefix=/usr/local/gcc7.3 --enable-bootstrap -enable-threads=posix --enable-checking=release --enable-languages=c,c++ --disable-multilib --disable-libsanitizer
+#          sudo make -j`nproc`
+#          sudo make install -j`nproc`
+#          popd
+#          sudo rm /usr/bin/gcc
+#          sudo ln -s /usr/local/gcc7.3/bin/gcc /usr/bin/gcc
+#          sudo rm /usr/bin/g++
+#          sudo ln -s /usr/local/gcc7.3/bin/g++ /usr/bin/g++
 
       - name: install marisa
         run: |
@@ -110,6 +110,8 @@ jobs:
       - name: compile stonedb
         run: |
           sudo cmake ./ \
+          -DWITH_BOOST=/usr/local/stonedb-boost/include
+          -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb
           -DCMAKE_BUILD_TYPE=release \
           -DCMAKE_INSTALL_PREFIX=/stonedb56/install \
           -DMYSQL_DATADIR=/stonedb56/install/data \
@@ -125,7 +127,6 @@ jobs:
           -DEXTRA_CHARSETS=all \
           -DDEFAULT_CHARSET=utf8 \
           -DDEFAULT_COLLATION=utf8_general_ci \
-          -DWITH_BOOST=/usr/local/stonedb-boost/include
           sudo make VERBOSE=1 -j`nproc`
           sudo make install -j`nproc`
 

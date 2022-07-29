@@ -60,7 +60,7 @@ class ConstExpressionColumn : public ExpressionColumn {
   }
 
   ConstExpressionColumn(ConstExpressionColumn const &cc) : ExpressionColumn(NULL, NULL, common::NULL_VALUE_32, NULL) {
-    DEBUG_ASSERT(params.size() == 0 && "cannot copy expressions");
+    DEBUG_ASSERT(params_.size() == 0 && "cannot copy expressions");
     last_val_ = cc.last_val_;
     ct = cc.ct;
     is_first_eval_ = cc.is_first_eval_;
