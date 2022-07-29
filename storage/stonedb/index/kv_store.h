@@ -38,52 +38,52 @@ namespace index {
 class KVStore final {
  public:
   KVStore(const KVStore &) = delete;
-  KVStore() : kv_data_dir(mysql_real_data_home){};
+  KVStore() : kv_data_dir_(mysql_real_data_home){};
   KVStore &operator=(const KVStore &) = delete;
   ~KVStore() { UnInit(); }
   void Init();
   void UnInit();
-  void DelDataSignal() { cv_drop.notify_one(); }
+  void DelDataSignal() { cv_drop_.notify_one(); }
   void AsyncDropData();
-  rocksdb::TransactionDB *GetRdb() const { return rdb; }
-  uint GetNextIndexId() { return ddl_manager.get_and_update_next_number(&dict_manager); }
-  rocksdb::ColumnFamilyHandle *GetCfHandle(std::string &cf_name) { return cf_manager.get_or_create_cf(rdb, cf_name); }
-  rocksdb::ColumnFamilyHandle *GetCfHandleByID(const uint32_t id) { return cf_manager.get_cf_by_id(id); }
+  rocksdb::TransactionDB *GetRdb() const { return rdb_; }
+  uint GetNextIndexId() { return ddl_manager_.get_and_update_next_number(&dict_manager_); }
+  rocksdb::ColumnFamilyHandle *GetCfHandle(std::string &cf_name) { return cf_manager_.get_or_create_cf(rdb_, cf_name); }
+  rocksdb::ColumnFamilyHandle *GetCfHandleByID(const uint32_t id) { return cf_manager_.get_cf_by_id(id); }
   bool indexdroping(GlobalId &index) {
-    return dict_manager.is_drop_index_ongoing(index, MetaType::DDL_DROP_INDEX_ONGOING);
+    return dict_manager_.is_drop_index_ongoing(index, MetaType::DDL_DROP_INDEX_ONGOING);
   }
   // kv table meta operation
-  std::shared_ptr<RdbTable> FindTable(std::string &name) { return ddl_manager.find(name); }
+  std::shared_ptr<RdbTable> FindTable(std::string &name) { return ddl_manager_.find(name); }
   common::ErrorCode KVWriteTableMeta(std::shared_ptr<RdbTable> tbl);
   common::ErrorCode KVDelTableMeta(const std::string &tablename);
   common::ErrorCode KVRenameTableMeta(const std::string &s_name, const std::string &d_name);
   // kv memory table meta operation
-  std::shared_ptr<core::RCMemTable> FindMemTable(std::string &name) { return ddl_manager.find_mem(name); }
+  std::shared_ptr<core::RCMemTable> FindMemTable(std::string &name) { return ddl_manager_.find_mem(name); }
   common::ErrorCode KVWriteMemTableMeta(std::shared_ptr<core::RCMemTable> tb_mem);
   common::ErrorCode KVDelMemTableMeta(std::string table_name);
   common::ErrorCode KVRenameMemTableMeta(std::string s_name, std::string d_name);
   // kv data operation
   bool KVDeleteKey(rocksdb::WriteOptions &wopts, rocksdb::ColumnFamilyHandle *cf, rocksdb::Slice &key);
   rocksdb::Iterator *GetScanIter(rocksdb::ReadOptions &ropts, rocksdb::ColumnFamilyHandle *cf) {
-    return rdb->NewIterator(ropts, cf);
+    return rdb_->NewIterator(ropts, cf);
   }
   bool KVWriteBatch(rocksdb::WriteOptions &wopts, rocksdb::WriteBatch *batch);
 
-  const rocksdb::Snapshot *GetRdbSnapshot() { return rdb->GetSnapshot(); }
-  void ReleaseRdbSnapshot(const rocksdb::Snapshot *snapshot) { rdb->ReleaseSnapshot(snapshot); }
+  const rocksdb::Snapshot *GetRdbSnapshot() { return rdb_->GetSnapshot(); }
+  void ReleaseRdbSnapshot(const rocksdb::Snapshot *snapshot) { rdb_->ReleaseSnapshot(snapshot); }
 
  private:
-  bool exiting = false;
-  fs::path kv_data_dir;
-  std::thread drop_kv_thread;
-  std::mutex cv_drop_mtx;
-  std::condition_variable cv_drop;
+  bool exiting_ = false;
+  fs::path kv_data_dir_;
+  std::thread drop_kv_thread_;
+  std::mutex cv_drop_mtx_;
+  std::condition_variable cv_drop_;
   rocksdb::BlockBasedTableOptions bbto_;
 
-  rocksdb::TransactionDB *rdb;
-  DICTManager dict_manager;
-  CFManager cf_manager;
-  DDLManager ddl_manager;
+  rocksdb::TransactionDB *rdb_;
+  DICTManager dict_manager_;
+  CFManager cf_manager_;
+  DDLManager ddl_manager_;
 };
 
 // application write a compaction filter that can filter out keys from deleted
@@ -93,7 +93,7 @@ class IndexCompactFilter : public rocksdb::CompactionFilter {
   IndexCompactFilter(const IndexCompactFilter &) = delete;
   IndexCompactFilter &operator=(const IndexCompactFilter &) = delete;
 
-  explicit IndexCompactFilter(uint32_t _cf_id) : m_cf_id(_cf_id) {}
+  explicit IndexCompactFilter(uint32_t _cf_id) : cf_id_(_cf_id) {}
   ~IndexCompactFilter() {}
   bool Filter(int level, const rocksdb::Slice &key, const rocksdb::Slice &existing_value, std::string *new_value,
               bool *value_changed) const override;
@@ -102,9 +102,9 @@ class IndexCompactFilter : public rocksdb::CompactionFilter {
   const char *Name() const override { return "IndexCompactFilter"; }
 
  private:
-  const uint32_t m_cf_id;
-  mutable GlobalId m_prev_index = {0, 0};
-  mutable bool m_should_delete = false;
+  const uint32_t cf_id_;
+  mutable GlobalId prev_index_ = {0, 0};
+  mutable bool should_delete_ = false;
 };
 
 class IndexCompactFilterFactory : public rocksdb::CompactionFilterFactory {

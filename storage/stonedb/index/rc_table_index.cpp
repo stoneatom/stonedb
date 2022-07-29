@@ -100,19 +100,19 @@ RCTableIndex::RCTableIndex(const std::string &name, TABLE *table) {
     STONEDB_LOG(LogCtl_Level::WARN, "normalize tablename %s fail!", name.c_str());
     return;
   }
-  m_tbl = kvstore->FindTable(fullname);
-  if (m_tbl == nullptr) {
+  tbl_ = kvstore->FindTable(fullname);
+  if (tbl_ == nullptr) {
     STONEDB_LOG(LogCtl_Level::WARN, "find table %s fail!", fullname.c_str());
     return;
   }
-  m_keyid = table->s->primary_key;
-  m_rdbkey = m_tbl->m_rdbkeys[pk_index(table, m_tbl)];
+  keyid_ = table->s->primary_key;
+  rdbkey_ = tbl_->m_rdbkeys[pk_index(table, tbl_)];
   // compatible version that primary key make up of one part
-  if (table->key_info[m_keyid].actual_key_parts == 1)
-    m_cols.push_back(table->key_info[m_keyid].key_part[0].field->field_index);
+  if (table->key_info[keyid_].actual_key_parts == 1)
+    cols_.push_back(table->key_info[keyid_].key_part[0].field->field_index);
   else
-    m_rdbkey->get_key_cols(m_cols);
-  m_enable = true;
+    rdbkey_->get_key_cols(cols_);
+  enable_ = true;
 }
 
 bool RCTableIndex::FindIndexTable(const std::string &name) {
@@ -133,6 +133,10 @@ common::ErrorCode RCTableIndex::CreateIndexTable(const std::string &name, TABLE 
     throw common::Exception("Normalization wrong of table  " + name);
   }
 
+  // ref from mariadb: https://mariadb.com/kb/en/uniqueness-within-a-columnstore-table
+  // ColumnStore like many other analytical database engines does not support unique constraints.
+  // This helps with performance and scaling out to much larger volumes than innodb supports.
+  // It is assumed that your data preparation / ETL phase will ensure correct data being fed into columnstore.
   if (table->s->keys > 1) {
     STONEDB_LOG(LogCtl_Level::WARN, "Table :%s have other keys except primary key, only use primary key!", name.data());
   }
@@ -164,12 +168,12 @@ common::ErrorCode RCTableIndex::RefreshIndexTable(const std::string &name) {
   if (!NormalizeName(name, fullname)) {
     return common::ErrorCode::FAILED;
   }
-  m_tbl = kvstore->FindTable(fullname);
-  if (m_tbl == nullptr) {
+  tbl_ = kvstore->FindTable(fullname);
+  if (tbl_ == nullptr) {
     STONEDB_LOG(LogCtl_Level::WARN, "table %s init ddl error", fullname.c_str());
     return common::ErrorCode::FAILED;
   }
-  m_rdbkey = m_tbl->m_rdbkeys[m_keyid];
+  rdbkey_ = tbl_->m_rdbkeys[keyid_];
   return common::ErrorCode::SUCCESS;
 }
 
@@ -191,15 +195,15 @@ void RCTableIndex::TruncateIndexTable() {
   rocksdb::ReadOptions ropts;
   ropts.total_order_seek = true;
   uchar key_buf[INDEX_NUMBER_SIZE];
-  for (auto &rdbkey : m_tbl->m_rdbkeys) {
-    be_store_index(key_buf, rdbkey->get_gl_index_id().index_id);
-    auto cf = rdbkey->get_cf();
+  for (auto &rdbkey_ : tbl_->m_rdbkeys) {
+    be_store_index(key_buf, rdbkey_->get_gl_index_id().index_id);
+    auto cf = rdbkey_->get_cf();
     std::unique_ptr<rocksdb::Iterator> it(kvstore->GetScanIter(ropts, cf));
     it->Seek({(const char *)key_buf, INDEX_NUMBER_SIZE});
 
     while (it->Valid()) {
       auto key = it->key();
-      if (!rdbkey->covers_key(key)) {
+      if (!rdbkey_->covers_key(key)) {
         break;
       }
       if (!kvstore->KVDeleteKey(wopts, cf, key)) {
@@ -213,12 +217,12 @@ void RCTableIndex::TruncateIndexTable() {
 common::ErrorCode RCTableIndex::CheckUniqueness(core::Transaction *tx, const rocksdb::Slice &pk_slice) {
   std::string retrieved_value;
 
-  rocksdb::Status s = tx->KVTrans().Get(m_rdbkey->get_cf(), pk_slice, &retrieved_value);
+  rocksdb::Status s = tx->KVTrans().Get(rdbkey_->get_cf(), pk_slice, &retrieved_value);
 
   if (s.IsBusy() && !s.IsDeadlock()) {
     tx->KVTrans().Releasesnapshot();
     tx->KVTrans().Acquiresnapshot();
-    s = tx->KVTrans().Get(m_rdbkey->get_cf(), pk_slice, &retrieved_value);
+    s = tx->KVTrans().Get(rdbkey_->get_cf(), pk_slice, &retrieved_value);
   }
 
   if (!s.ok() && !s.IsNotFound()) {
@@ -238,13 +242,13 @@ common::ErrorCode RCTableIndex::InsertIndex(core::Transaction *tx, std::vector<s
                                             uint64_t row) {
   StringWriter value, key;
 
-  m_rdbkey->pack_key(key, fields, value);
+  rdbkey_->pack_key(key, fields, value);
 
   common::ErrorCode rc = CheckUniqueness(tx, {(const char *)key.ptr(), key.length()});
   if (rc != common::ErrorCode::SUCCESS) return rc;
 
   value.write_uint64(row);
-  const auto cf = m_rdbkey->get_cf();
+  const auto cf = rdbkey_->get_cf();
   const auto s =
       tx->KVTrans().Put(cf, {(const char *)key.ptr(), key.length()}, {(const char *)value.ptr(), value.length()});
   if (!s.ok()) {
@@ -262,10 +266,10 @@ common::ErrorCode RCTableIndex::UpdateIndex(core::Transaction *tx, std::string_v
   ofields.emplace_back(okey);
   nfields.emplace_back(nkey);
 
-  m_rdbkey->pack_key(packkey, ofields, value);
+  rdbkey_->pack_key(packkey, ofields, value);
   common::ErrorCode rc = CheckUniqueness(tx, {(const char *)packkey.ptr(), packkey.length()});
   if (rc == common::ErrorCode::DUPP_KEY) {
-    const auto cf = m_rdbkey->get_cf();
+    const auto cf = rdbkey_->get_cf();
     tx->KVTrans().Delete(cf, {(const char *)packkey.ptr(), packkey.length()});
   } else {
     STONEDB_LOG(LogCtl_Level::WARN, "RockDb: don't have the key for update!");
@@ -278,8 +282,8 @@ common::ErrorCode RCTableIndex::GetRowByKey(core::Transaction *tx, std::vector<s
                                             uint64_t &row) {
   std::string value;
   StringWriter packkey, info;
-  m_rdbkey->pack_key(packkey, fields, info);
-  rocksdb::Status s = tx->KVTrans().Get(m_rdbkey->get_cf(), {(const char *)packkey.ptr(), packkey.length()}, &value);
+  rdbkey_->pack_key(packkey, fields, info);
+  rocksdb::Status s = tx->KVTrans().Get(rdbkey_->get_cf(), {(const char *)packkey.ptr(), packkey.length()}, &value);
 
   if (!s.IsNotFound() && !s.ok()) {
     return common::ErrorCode::FAILED;
@@ -289,7 +293,7 @@ common::ErrorCode RCTableIndex::GetRowByKey(core::Transaction *tx, std::vector<s
 
   StringReader reader({value.data(), value.length()});
   // ver compatible
-  if (m_rdbkey->m_index_ver > static_cast<uint16_t>(enumIndexInfo::INDEX_INFO_VERSION_INITIAL)) {
+  if (rdbkey_->m_index_ver > static_cast<uint16_t>(enumIndexInfo::INDEX_INFO_VERSION_INITIAL)) {
     uint16_t packlen;
     reader.read_uint16(&packlen);
     reader.read(packlen);
@@ -300,35 +304,35 @@ common::ErrorCode RCTableIndex::GetRowByKey(core::Transaction *tx, std::vector<s
 
 void KeyIterator::ScanToKey(std::shared_ptr<RCTableIndex> tab, std::vector<std::string_view> &fields,
                             common::Operator op) {
-  if (!tab || !trans) {
+  if (!tab || !trans_) {
     return;
   }
   StringWriter packkey, info;
   valid = true;
-  rdbkey = tab->m_rdbkey;
-  rdbkey->pack_key(packkey, fields, info);
+  rdbkey_ = tab->rdbkey_;
+  rdbkey_->pack_key(packkey, fields, info);
   rocksdb::Slice key_slice((const char *)packkey.ptr(), packkey.length());
 
-  iter = std::shared_ptr<rocksdb::Iterator>(trans->GetIterator(rdbkey->get_cf(), true));
+  iter_ = std::shared_ptr<rocksdb::Iterator>(trans_->GetIterator(rdbkey_->get_cf(), true));
   switch (op) {
     case common::Operator::O_EQ:  //==
-      iter->Seek(key_slice);
-      if (!iter->Valid() || !rdbkey->value_matches_prefix(iter->key(), key_slice)) valid = false;
+      iter_->Seek(key_slice);
+      if (!iter_->Valid() || !rdbkey_->value_matches_prefix(iter_->key(), key_slice)) valid = false;
       break;
     case common::Operator::O_MORE_EQ:  //'>='
-      iter->Seek(key_slice);
-      if (!iter->Valid() || !rdbkey->covers_key(iter->key())) valid = false;
+      iter_->Seek(key_slice);
+      if (!iter_->Valid() || !rdbkey_->covers_key(iter_->key())) valid = false;
       break;
     case common::Operator::O_MORE:  //'>'
-      iter->Seek(key_slice);
-      if (!iter->Valid() || rdbkey->value_matches_prefix(iter->key(), key_slice)) {
-        if (rdbkey->m_is_reverse) {
-          iter->Prev();
+      iter_->Seek(key_slice);
+      if (!iter_->Valid() || rdbkey_->value_matches_prefix(iter_->key(), key_slice)) {
+        if (rdbkey_->m_is_reverse) {
+          iter_->Prev();
         } else {
-          iter->Next();
+          iter_->Next();
         }
       }
-      if (!iter->Valid() || !rdbkey->covers_key(iter->key())) valid = false;
+      if (!iter_->Valid() || !rdbkey_->covers_key(iter_->key())) valid = false;
       break;
     default:
       STONEDB_LOG(LogCtl_Level::ERROR, "key not support this op:%d", op);
@@ -338,37 +342,37 @@ void KeyIterator::ScanToKey(std::shared_ptr<RCTableIndex> tab, std::vector<std::
 }
 
 void KeyIterator::ScanToEdge(std::shared_ptr<RCTableIndex> tab, bool forward) {
-  if (!tab || !trans) {
+  if (!tab || !trans_) {
     return;
   }
   valid = true;
-  rdbkey = tab->m_rdbkey;
-  iter = std::shared_ptr<rocksdb::Iterator>(trans->GetIterator(rdbkey->get_cf(), true));
-  std::string key = rdbkey->get_boundary_key(forward);
+  rdbkey_ = tab->rdbkey_;
+  iter_ = std::shared_ptr<rocksdb::Iterator>(trans_->GetIterator(rdbkey_->get_cf(), true));
+  std::string key = rdbkey_->get_boundary_key(forward);
 
   rocksdb::Slice key_slice((const char *)key.data(), key.length());
 
-  iter->Seek(key_slice);
+  iter_->Seek(key_slice);
   if (forward) {
-    if (!iter->Valid() || !rdbkey->value_matches_prefix(iter->key(), key_slice)) valid = false;
+    if (!iter_->Valid() || !rdbkey_->value_matches_prefix(iter_->key(), key_slice)) valid = false;
   } else {
-    if (!iter)
+    if (!iter_)
       valid = false;
     else {
-      iter->Prev();
-      if (!iter->Valid() || !rdbkey->covers_key(iter->key())) valid = false;
+      iter_->Prev();
+      if (!iter_->Valid() || !rdbkey_->covers_key(iter_->key())) valid = false;
     }
   }
 }
 
 KeyIterator &KeyIterator::operator++() {
-  if (!iter || !iter->Valid() || !rdbkey) {
+  if (!iter_ || !iter_->Valid() || !rdbkey_) {
     valid = false;
     return *this;
   }
 
-  iter->Next();
-  if (!iter->Valid() || !rdbkey->covers_key(iter->key())) {
+  iter_->Next();
+  if (!iter_->Valid() || !rdbkey_->covers_key(iter_->key())) {
     valid = false;
     return *this;
   }
@@ -377,13 +381,13 @@ KeyIterator &KeyIterator::operator++() {
 }
 
 KeyIterator &KeyIterator::operator--() {
-  if (!iter || !iter->Valid() || !rdbkey) {
+  if (!iter_ || !iter_->Valid() || !rdbkey_) {
     valid = false;
     return *this;
   }
 
-  iter->Prev();
-  if (!iter->Valid() || !rdbkey->covers_key(iter->key())) {
+  iter_->Prev();
+  if (!iter_->Valid() || !rdbkey_->covers_key(iter_->key())) {
     valid = false;
     return *this;
   }
@@ -392,10 +396,10 @@ KeyIterator &KeyIterator::operator--() {
 }
 
 common::ErrorCode KeyIterator::GetCurKV(std::vector<std::string> &keys, uint64_t &row) {
-  StringReader key({iter->key().data(), iter->key().size()});
-  StringReader value({iter->value().data(), iter->value().size()});
+  StringReader key({iter_->key().data(), iter_->key().size()});
+  StringReader value({iter_->value().data(), iter_->value().size()});
 
-  common::ErrorCode ret = rdbkey->unpack_key(key, value, keys);
+  common::ErrorCode ret = rdbkey_->unpack_key(key, value, keys);
   value.read_uint64(&row);
   return ret;
 }
