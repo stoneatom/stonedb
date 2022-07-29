@@ -22,6 +22,15 @@ ldd mysqld
 ldd mysql
 ```
 如果检查返回有关键字"not found"，说明缺少文件，需要安装对应的依赖包。
+
+我们可以参考如下链接寻找所需依赖包：
+https://pkgs.org/search/?q=libzstd.so.1 (这里以libzstd.so.1为例说明)
+会看到搜索结果为我们列举了不同系统版本下对应的依赖（系统版本的查看可以通过执行"cat /proc/version"等命令查看）
+；举例来说如果系统版本是"amazon linux2" ；那么安装依赖的命令是
+```shell
+sudo yum install libzstd
+```
+
 ## 修改配置文件
 ```shell
 cd /stonedb56/install/

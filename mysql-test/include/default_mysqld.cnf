@@ -75,3 +75,5 @@ binlog-direct-non-transactional-updates
 
 loose-show-compatibility-56=ON
 
+stonedb_insert_delayed = 0
+stonedb_ini_allowmysqlquerypath=1
