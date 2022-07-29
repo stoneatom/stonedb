@@ -37,7 +37,7 @@ class TypeCastColumn : public VirtualColumn {
   void UnlockSourcePacks() override { vc->UnlockSourcePacks(); }
   void MarkUsedDims(core::DimensionVector &dims_usage) override { vc->MarkUsedDims(dims_usage); }
   std::set<int> GetDimensions() override { return vc->GetDimensions(); }
-  int64_t NoTuples() override { return vc->NoTuples(); }
+  int64_t NumOfTuples() override { return vc->NumOfTuples(); }
   bool IsConstExpression(core::MysqlExpression *expr, int temp_table_alias, const std::vector<int> *aliases) {
     return vc->IsConstExpression(expr, temp_table_alias, aliases);
   }

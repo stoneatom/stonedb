@@ -38,7 +38,7 @@ class Rejecter {
   Rejecter(int, std::string const &, int64_t, double);
   void ConsumeBadRow(char const *, int64_t, int64_t, int);
 
-  int64_t GetNoRejectedRows() const { return rejected_; }
+  int64_t GetNumOfRejectedRows() const { return rejected_; }
   bool ThresholdExceeded(int64_t no_rows) const {
     return abort_on_threshold_ != 0 &&
            (static_cast<double>(rejected_) / static_cast<double>(no_rows)) >= abort_on_threshold_;

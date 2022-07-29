@@ -198,7 +198,7 @@ types::BString ExpressionColumn::GetMaxStringImpl([[maybe_unused]] const core::M
 int64_t ExpressionColumn::GetApproxDistValsImpl([[maybe_unused]] bool incl_nulls,
                                                 [[maybe_unused]] core::RoughMultiIndex *rough_mind) {
   if (mind->TooManyTuples()) return common::PLUS_INF_64;
-  return mind->NoTuples();  // default
+  return mind->NumOfTuples();  // default
 }
 
 size_t ExpressionColumn::MaxStringSizeImpl()  // maximal byte string length in column

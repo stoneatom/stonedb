@@ -21,6 +21,7 @@
 
 namespace stonedb {
 namespace core {
+
 ValueMatching_HashTable::ValueMatching_HashTable() {
   max_no_rows = 0;
   one_pass = false;
@@ -153,5 +154,6 @@ bool ValueMatching_HashTable::FindCurrentRow(unsigned char *input_buffer, int64_
   no_rows++;
   return false;
 }
+
 }  // namespace core
 }  // namespace stonedb

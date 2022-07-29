@@ -94,8 +94,8 @@ Filter::Filter(const Filter &filter)
   Filter &tmp_filter = const_cast<Filter &>(filter);
   no_power = filter.no_power;
   pack_def = 1 << no_power;
-  no_blocks = filter.NoBlocks();
-  no_of_bits_in_last_block = tmp_filter.NoAddBits();
+  no_blocks = filter.NumOfBlocks();
+  no_of_bits_in_last_block = tmp_filter.NumOfAddBits();
   blocks = new Block *[no_blocks];
   ConstructPool();
   block_filter = this;
@@ -386,7 +386,7 @@ void Filter::ResetBetween(size_t b1, int n1, size_t b2, int n2) {
 }
 
 void Filter::Reset(Filter &f2) {
-  auto mb = std::min(f2.NoBlocks(), NoBlocks());
+  auto mb = std::min(f2.NumOfBlocks(), NumOfBlocks());
   for (size_t b = 0; b < mb; b++) {
     if (f2.block_status[b] == FB_FULL)
       ResetBetween(b, 0, b, f2.block_last_one[b]);
@@ -564,7 +564,7 @@ bool Filter::IsEqual(Filter &sec) {
 }
 
 void Filter::And(Filter &f2) {
-  auto mb = std::min(f2.NoBlocks(), NoBlocks());
+  auto mb = std::min(f2.NumOfBlocks(), NumOfBlocks());
   for (size_t b = 0; b < mb; b++) {
     if (f2.block_status[b] == FB_EMPTY)
       ResetBlock(b);
@@ -588,7 +588,7 @@ void Filter::And(Filter &f2) {
 }
 
 void Filter::Or(Filter &f2, int pack) {
-  auto mb = std::min(f2.NoBlocks(), NoBlocks());
+  auto mb = std::min(f2.NumOfBlocks(), NumOfBlocks());
   size_t b = (pack == -1 ? 0 : pack);
   for (; b < mb; b++) {
     if (f2.block_status[b] == FB_FULL)
@@ -634,7 +634,7 @@ void Filter::Not() {
 
 void Filter::AndNot(Filter &f2)  // reset all positions which are set in f2
 {
-  auto mb = std::min(f2.NoBlocks(), NoBlocks());
+  auto mb = std::min(f2.NumOfBlocks(), NumOfBlocks());
   for (size_t b = 0; b < mb; b++) {
     if (f2.block_status[b] == FB_FULL)
       ResetBetween(b, 0, b, f2.block_last_one[b]);
@@ -694,28 +694,28 @@ void Filter::SwapPack(Filter &f2, int pack) {
   if (f2.block_status[pack] == FB_MIXED) DEBUG_ASSERT(f2.blocks[pack]->Owner() == &f2);
 }
 
-int64_t Filter::NoOnes() const {
+int64_t Filter::NumOfOnes() const {
   if (no_blocks == 0) return 0;
   int64_t count = 0;
   for (size_t b = 0; b < no_blocks; b++) {
     if (block_status[b] == FB_FULL)
       count += int(block_last_one[b]) + 1;
     else if (blocks[b])
-      count += blocks[b]->NoOnes();  // else empty
+      count += blocks[b]->NumOfOnes();  // else empty
   }
   return count;
 }
 
-uint Filter::NoOnes(int b) {
+uint Filter::NumOfOnes(int b) {
   if (no_blocks == 0) return 0;
   if (block_status[b] == FB_FULL)
     return uint(block_last_one[b]) + 1;
   else if (blocks[b])
-    return blocks[b]->NoOnes();
+    return blocks[b]->NumOfOnes();
   return 0;
 }
 
-uint Filter::NoOnesUncommited(int b) {
+uint Filter::NumOfOnesUncommited(int b) {
   int uc = 0;
   if (delayed_block == b) {
     if (block_status[b] == FB_FULL && delayed_stats >= 0) uc = -delayed_stats - 1;
@@ -723,10 +723,10 @@ uint Filter::NoOnesUncommited(int b) {
   if (delayed_block_set == b) {
     if (block_status[b] == FB_EMPTY && delayed_stats_set >= 0) uc = delayed_stats_set + 1;
   }
-  return NoOnes(b) + uc;
+  return NumOfOnes(b) + uc;
 }
 
-int64_t Filter::NoOnesBetween(int64_t n1, int64_t n2)  // no of 1 between n1 and n2, inclusively
+int64_t Filter::NumOfOnesBetween(int64_t n1, int64_t n2)  // no of 1 between n1 and n2, inclusively
 {
   DEBUG_ASSERT((n1 >= 0) && (n1 <= n2));
   if (n1 == n2) return (Get(n1) ? 1 : 0);
@@ -741,7 +741,7 @@ int64_t Filter::NoOnesBetween(int64_t n1, int64_t n2)  // no of 1 between n1 and
       return nn2 - nn1 + 1;
     }
     if (block_status[b1] == FB_EMPTY) return 0;
-    return blocks[b1]->NoOnesBetween(nn1, nn2);
+    return blocks[b1]->NumOfOnesBetween(nn1, nn2);
   }
   int64_t counter = 0;
   size_t full_pack_start = (nn1 == 0 ? b1 : b1 + 1);
@@ -749,7 +749,7 @@ int64_t Filter::NoOnesBetween(int64_t n1, int64_t n2)  // no of 1 between n1 and
   if ((uint)nn2 == (pack_def - 1) || (b2 == no_blocks - 1 && nn2 == no_of_bits_in_last_block - 1)) full_pack_stop = b2;
   for (size_t i = full_pack_start; i <= full_pack_stop; i++) {
     if (block_status[i] == FB_MIXED)
-      counter += blocks[i]->NoOnes();
+      counter += blocks[i]->NumOfOnes();
     else if (block_status[i] == FB_FULL)
       counter += int64_t(block_last_one[i]) + 1;
   }
@@ -757,13 +757,13 @@ int64_t Filter::NoOnesBetween(int64_t n1, int64_t n2)  // no of 1 between n1 and
     if (block_status[b1] == FB_FULL) {
       if (nn1 <= block_last_one[b1]) counter += block_last_one[b1] - nn1 + 1;
     } else if (block_status[b1] != FB_EMPTY)
-      counter += blocks[b1]->NoOnesBetween(nn1, (pack_def - 1));  // note that b1 is never the last block
+      counter += blocks[b1]->NumOfOnesBetween(nn1, (pack_def - 1));  // note that b1 is never the last block
   }
   if (b2 != full_pack_stop) {
     if (block_status[b2] == FB_FULL)
       counter += std::min(nn2 + 1, int(block_last_one[b2]) + 1);
     else if (block_status[b2] != FB_EMPTY)
-      counter += blocks[b2]->NoOnesBetween(0, nn2);
+      counter += blocks[b2]->NumOfOnesBetween(0, nn2);
   }
   return counter;
 }
@@ -780,7 +780,7 @@ int Filter::DensityWeight()  // = 65537 for empty filter or a filter with only
         count += int64_t(block_last_one[b]) + 1;
         nonempty++;
       } else if (blocks[b]) {
-        count += blocks[b]->NoOnes();
+        count += blocks[b]->NumOfOnes();
         nonempty++;
       }
     }
@@ -794,7 +794,7 @@ int64_t Filter::NumOfObj() const {
   return res + no_of_bits_in_last_block;
 }
 
-int Filter::NoAddBits() const { return no_of_bits_in_last_block; }
+int Filter::NumOfAddBits() const { return no_of_bits_in_last_block; }
 
 void Filter::AddNewBlocks(int new_blocks, bool value, int new_no_bits_last) {
   if (new_blocks > 0) {

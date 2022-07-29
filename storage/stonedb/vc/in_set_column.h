@@ -106,7 +106,7 @@ class InSetColumn : public MultiValColumn {
   virtual bool PrepareValueSet(const core::MIIterator &mit);
 
  protected:
-  int64_t NoValuesImpl(core::MIIterator const &mit) override;
+  int64_t NumOfValuesImpl(core::MIIterator const &mit) override;
   int64_t AtLeastNoDistinctValuesImpl(const core::MIIterator &mit, int64_t const at_least) override;
   bool ContainsNullImpl(const core::MIIterator &mit) override;
   types::RCValueObject GetSetMinImpl(const core::MIIterator &mit) override;

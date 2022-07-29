@@ -56,12 +56,12 @@ std::set<int> VirtualColumnBase::GetDimensions() {
   return d;
 }
 
-int64_t VirtualColumnBase::NoTuples() {
+int64_t VirtualColumnBase::NumOfTuples() {
   if (mind == NULL)  // constant
     return 1;
-  core::DimensionVector dims(mind->NoDimensions());
+  core::DimensionVector dims(mind->NumOfDimensions());
   MarkUsedDims(dims);
-  return mind->NoTuples(dims);
+  return mind->NumOfTuples(dims);
 }
 
 bool VirtualColumnBase::IsConstExpression(core::MysqlExpression *expr, int temp_table_alias,

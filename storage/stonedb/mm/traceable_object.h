@@ -91,8 +91,8 @@ class TraceableObject {
   bool IsLocked() const { return m_lock_count > 0; }
   bool LastLock() const { return m_lock_count == 1; }
   // Locking is used by RCAttr etc. for packs manipulation purposes
-  short NoLocks() const { return m_lock_count; }
-  void SetNoLocks(int n);
+  short NumOfLocks() const { return m_lock_count; }
+  void SetNumOfLocks(int n);
 
   void SetOwner(core::DataCache *new_owner) { owner = new_owner; }
   core::DataCache *GetOwner() { return owner; }

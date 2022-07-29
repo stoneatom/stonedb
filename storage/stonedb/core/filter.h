@@ -140,14 +140,14 @@ class Filter final : public mm::TraceableObject {
   void SwapPack(Filter &f2, int pack);
 
   // Statistics etc.
-  int64_t NoOnes() const;
-  uint NoOnes(int b);            // block b
-  uint NoOnesUncommited(int b);  // with uncommitted Set/Reset
-  int64_t NoOnesBetween(int64_t n1,
-                        int64_t n2);  // no of 1 between n1 and n2, inclusively
-  int64_t NumOfObj() const;              // number of objects (table size)
-  size_t NoBlocks() const { return no_blocks; }
-  int NoAddBits() const;
+  int64_t NumOfOnes() const;
+  uint NumOfOnes(int b);         // block b
+  uint NumOfOnesUncommited(int b);  // with uncommitted Set/Reset
+  int64_t NumOfOnesBetween(int64_t n1,
+                           int64_t n2);  // no of 1 between n1 and n2, inclusively
+  int64_t NumOfObj() const;           // number of objects (table size)
+  size_t NumOfBlocks() const { return no_blocks; }
+  int NumOfAddBits() const;
   int DensityWeight();  // = 65537 for empty filter or a filter with only one
                         // nonempty block.
   // Otherwise it is an average number of ones in nonempty blocks.
@@ -268,10 +268,10 @@ class Filter final : public mm::TraceableObject {
     bool Or(Block &b2);   // true => block is full
     void Not();
     bool AndNot(Block &b2);  // true => block is empty
-    uint NoOnes() { return no_set_bits; }
+    uint NumOfOnes() { return no_set_bits; }
     bool IsEmptyBetween(int n1, int n2);
     bool IsFullBetween(int n1, int n2);
-    int NoOnesBetween(int n1, int n2);
+    int NumOfOnesBetween(int n1, int n2);
     uint NumOfObj() { return no_obj; }
 
     Filter *Owner() { return owner; }

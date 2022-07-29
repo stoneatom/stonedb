@@ -5222,18 +5222,19 @@ static int get_schema_tables_record(THD *thd, TABLE_LIST *tables,
         table->field[18]->store((longlong) file->checksum(), TRUE);
         table->field[18]->set_notnull();
       }
-      //STONEDB UPGRADE BEGIN
-      uint length = (uint) strlen(share->comment.str);
-      char* comment=(length > 64000 - 3)?(char*)(share->comment.str):share->comment.str;
-      //char *comment = show_table->file->update_table_comment(share->comment.str);
+
+      //STONEDB UPGRADE BEGIN 
+      char* comment=share->comment.str;
       if (comment)
       {
-        table->field[20]->store(comment,
-  	(comment == share->comment.str ? share->comment.length : strlen(comment)), cs);
+        table->field[20]->store(comment, (comment == share->comment.str ? share->comment.length : strlen(comment)), cs);
         if (comment != share->comment.str)
-  	    my_free(comment);
+        {
+            my_free(comment);
+        }  	    
       }
      //END
+
     }
   }
 

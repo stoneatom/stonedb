@@ -1,13 +1,22 @@
-//<!***************************************************************************
-/**
- * Copyright (C) 2021-2022 StoneAtom Group Holding Limited
- */
-//<!***************************************************************************
+/* Copyright (c) 2022 StoneAtom, Inc. All rights reserved.
+   Use is subject to license terms
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; version 2 of the License.
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
+*/
 
 #include "mi_rough_sorter.h"
 
 namespace stonedb {
 namespace core {
+
 MINewContentsRSorter::MINewContentsRSorter(MultiIndex *_m, IndexTable **t_new, int min_block_shift) {
   rough_comp_bit_offset = 16;  // default - pack size
   bound_queue_size = 2 + MAX_SORT_SIZE / 10;
@@ -15,8 +24,8 @@ MINewContentsRSorter::MINewContentsRSorter(MultiIndex *_m, IndexTable **t_new, i
   worker = new MINewContentsRSorterWorker(bound_queue_size, this);
 
   mind = _m;
-  p_power = mind->NoPower();
-  no_dim = mind->NoDimensions();
+  p_power = mind->ValueOfPower();
+  no_dim = mind->NumOfDimensions();
 
   tcomp = new IndexTable *[no_dim];  // these table should be compared (more
                                      // than one pack, potentially)
@@ -160,5 +169,6 @@ MINewContentsRSorterWorker::MINewContentsRSorterWorker(int _bound_queue_size, MI
 }
 
 MINewContentsRSorterWorker::~MINewContentsRSorterWorker() { delete[] bound_queue; }
+
 }  // namespace core
 }  // namespace stonedb

@@ -328,7 +328,7 @@ static void print_version(void)
 static void usage(void)
 {
   print_version();
-  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2002"));
+  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE(COPYRIGHT_NOTICE_STONEDB_BEGIN_YEAR));
 
   puts("Pack a MyISAM-table to take much less space.");
   puts("Keys are not updated, you must run myisamchk -rq on the datafile");

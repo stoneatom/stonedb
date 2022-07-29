@@ -151,12 +151,12 @@ class MultiValColumn : public VirtualColumn {
     return false;
   }  // checks whether the set is constant and fixed size equal to the given one
   inline bool IsEmpty(core::MIIterator const &mit) { return (IsEmptyImpl(mit)); }
-  inline int64_t NoValues(core::MIIterator const &mit) { return NoValuesImpl(mit); }
+  inline int64_t NumOfValues(core::MIIterator const &mit) { return NumOfValuesImpl(mit); }
   inline int64_t AtLeastNoDistinctValues(core::MIIterator const &mit, int64_t const at_least) {
     return AtLeastNoDistinctValuesImpl(mit, at_least);
   }
   inline bool ContainsNull(const core::MIIterator &mit) { return ContainsNullImpl(mit); }
-  virtual bool CheckExists(core::MIIterator const &mit) { return (NoValuesImpl(mit) > 0); }
+  virtual bool CheckExists(core::MIIterator const &mit) { return (NumOfValuesImpl(mit) > 0); }
   inline Iterator begin(core::MIIterator const &mit) { return Iterator(this, BeginImpl(mit)); }
   inline Iterator end(core::MIIterator const &mit) { return Iterator(this, EndImpl(mit)); }
   inline types::RCValueObject GetSetMin(core::MIIterator const &mit) { return GetSetMinImpl(mit); }
@@ -182,7 +182,7 @@ class MultiValColumn : public VirtualColumn {
   virtual types::RCValueObject GetSetMinImpl(core::MIIterator const &mit) = 0;
   virtual types::RCValueObject GetSetMaxImpl(core::MIIterator const &mit) = 0;
 
-  virtual int64_t NoValuesImpl(core::MIIterator const &mit) = 0;
+  virtual int64_t NumOfValuesImpl(core::MIIterator const &mit) = 0;
   virtual int64_t AtLeastNoDistinctValuesImpl(core::MIIterator const &, int64_t const at_least) = 0;
   virtual bool ContainsNullImpl(const core::MIIterator &) = 0;
 
@@ -226,7 +226,7 @@ class MultiValColumn : public VirtualColumn {
   int64_t GetApproxDistValsImpl([[maybe_unused]] bool incl_nulls,
                                 [[maybe_unused]] core::RoughMultiIndex *rough_mind) override {
     if (mind->TooManyTuples()) return common::PLUS_INF_64;
-    return mind->NoTuples();  // default
+    return mind->NumOfTuples();  // default
   }
 
   virtual common::Tribool Contains64Impl(core::MIIterator const &mit, int64_t val) = 0;

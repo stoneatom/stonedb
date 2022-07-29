@@ -397,7 +397,7 @@ void GroupByWrapper::AddAllGroupingConstants(MIIterator &mit) {
 void GroupByWrapper::AddAllAggregatedConstants(MIIterator &mit) {
   for (int attr_no = no_grouping_attr; attr_no < no_attr; attr_no++)
     if (virt_col[attr_no] && virt_col[attr_no]->IsConst()) {
-      if (mit.NoTuples() > 0 || gt.AttrOper(attr_no) == GT_Aggregation::GT_LIST) {
+      if (mit.NumOfTuples() > 0 || gt.AttrOper(attr_no) == GT_Aggregation::GT_LIST) {
         if (!(gt.AttrOper(attr_no) == GT_Aggregation::GT_COUNT && virt_col[attr_no]->IsNull(mit)))  // else left as 0
           PutAggregatedValue(attr_no, 0, mit);
       } else
@@ -415,7 +415,7 @@ void GroupByWrapper::AddAllCountStar(int64_t row, MIIterator &mit,
         PutAggregatedValueForCount(gr_a, row, 0);
       else
         PutAggregatedValueForCount(gr_a, row,
-                                   val);  // note: mit.NoTuples() may be 0 in some not-used cases
+                                   val);  // note: mit.NumOfTuples() may be 0 in some not-used cases
     }
   }
 }
@@ -645,7 +645,7 @@ bool GroupByWrapper::AnyTuplesLeft(int64_t from, int64_t to) {
 
 int64_t GroupByWrapper::TuplesLeftBetween(int64_t from, int64_t to) {
   if (tuple_left == NULL) return to - from + 1;
-  return tuple_left->NoOnesBetween(from, to);
+  return tuple_left->NumOfOnesBetween(from, to);
 }
 
 bool GroupByWrapper::MayBeParallel() const {
@@ -682,7 +682,7 @@ void DistinctWrapper::InitTuples(int64_t n_obj, const GroupTable &gt) {
     if (is_dist[i]) {
       // for now - init cache with a number of objects decreased (will cache on
       // disk if more is needed)
-      gd_cache[i].SetNoObj(n_obj);
+      gd_cache[i].SetNumOfObj(n_obj);
       DEBUG_ASSERT(f[i] == NULL);
       f[i].reset(new Filter(n_obj, p_power));
       gd_cache[i].SetWidth(gt.GetCachedWidth(i));

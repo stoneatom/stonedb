@@ -115,13 +115,13 @@ void ConditionEncoder::DescriptorTransformation() {
   }
 
   if (IsSetAllOperator(desc->op) && (desc->val1.vc)->IsMultival() &&
-      static_cast<vcolumn::MultiValColumn &>(*desc->val1.vc).NoValues(mit) == 0)
+      static_cast<vcolumn::MultiValColumn &>(*desc->val1.vc).NumOfValues(mit) == 0)
     desc->op = common::Operator::O_TRUE;
   else {
     if (desc->op == common::Operator::O_EQ_ALL && (desc->val1.vc)->IsMultival()) {
       vcolumn::MultiValColumn &mvc = static_cast<vcolumn::MultiValColumn &>(*desc->val1.vc);
       PrepareValueSet(mvc);
-      if (mvc.NoValues(mit) == 0)
+      if (mvc.NumOfValues(mit) == 0)
         desc->op = common::Operator::O_TRUE;
       else if (mvc.AtLeastNoDistinctValues(mit, 2) == 1 && !mvc.ContainsNull(mit)) {
         desc->op = common::Operator::O_EQ;
@@ -135,7 +135,7 @@ void ConditionEncoder::DescriptorTransformation() {
     if (desc->op == common::Operator::O_NOT_EQ_ANY && (desc->val1.vc)->IsMultival()) {
       vcolumn::MultiValColumn &mvc = static_cast<vcolumn::MultiValColumn &>(*desc->val1.vc);
       PrepareValueSet(mvc);
-      if (mvc.NoValues(mit) == 0) {
+      if (mvc.NumOfValues(mit) == 0) {
         desc->op = common::Operator::O_FALSE;
         return;
       }
@@ -474,7 +474,7 @@ void ConditionEncoder::TransformIntoINsOnLookup() {
   ValueSet vset_negative(desc->table->Getpackpower());
   types::BString s, vs1, vs2;
   types::RCValueObject vo;
-  if (desc->val1.vc->IsMultival() && static_cast<vcolumn::MultiValColumn &>(*desc->val1.vc).NoValues(mit) > 0) {
+  if (desc->val1.vc->IsMultival() && static_cast<vcolumn::MultiValColumn &>(*desc->val1.vc).NumOfValues(mit) > 0) {
     if ((desc->op == common::Operator::O_LESS_ALL || desc->op == common::Operator::O_LESS_EQ_ALL) ||
         (desc->op == common::Operator::O_MORE_ANY || desc->op == common::Operator::O_MORE_EQ_ANY))
       vo = static_cast<vcolumn::MultiValColumn &>(*desc->val1.vc).GetSetMin(mit);
@@ -486,7 +486,7 @@ void ConditionEncoder::TransformIntoINsOnLookup() {
     desc->val1.vc->GetValueString(vs1, mit);
 
   if (desc->op == common::Operator::O_BETWEEN || desc->op == common::Operator::O_NOT_BETWEEN) {
-    if (desc->val2.vc->IsMultival() && static_cast<vcolumn::MultiValColumn &>(*desc->val2.vc).NoValues(mit) > 0) {
+    if (desc->val2.vc->IsMultival() && static_cast<vcolumn::MultiValColumn &>(*desc->val2.vc).NumOfValues(mit) > 0) {
       vo = static_cast<vcolumn::MultiValColumn &>(*desc->val2.vc).GetSetMin(mit);
       if (vo.Get()) vs2 = vo.Get()->ToBString();
     } else if (desc->val2.vc->IsConst())

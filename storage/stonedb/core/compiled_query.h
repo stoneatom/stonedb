@@ -183,16 +183,16 @@ class CompiledQuery final {
 
   // Informations
 
-  int NoTabs() { return no_tabs; }
+  int NumOfTabs() { return no_tabs; }
   int NumOfAttrs(const TabID &tab) { return no_attrs[-tab.n - 1]; }
-  int NoConds() { return no_conds; }
-  int NoVirtualColumns(const TabID &tt) {
+  int NumOfConds() { return no_conds; }
+  int NumOfVirtualColumns(const TabID &tt) {
     if (no_virt_cols.find(tt) != no_virt_cols.end()) return no_virt_cols[tt];
     return 0;
   }
   void Print(Query *);  // display the CompiledQuery
 
-  int NoSteps() { return (int)steps.size(); }
+  int NumOfSteps() { return (int)steps.size(); }
   CQStep &Step(int i) { return steps[i]; }
   bool CountColumnOnly(const TabID &table);
 
@@ -230,7 +230,7 @@ class CompiledQuery final {
   bool NoAggregationOrderingAndDistinct(int table);
   std::pair<int64_t, int64_t> GetGlobalLimit();
 
-  int GetNoDims(const TabID &tab_id);
+  int GetNumOfDimens(const TabID &tab_id);
   TabID GetTableOfCond(const CondID &cond_id);
 
   void BuildTableIDStepsMap();

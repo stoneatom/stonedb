@@ -38,7 +38,7 @@ DimensionGroupFilter::DimensionGroupFilter(int dim, Filter *f_source, int copy_m
   else if (copy_mode == 2)
     f = f_source;
   dim_group_type = DGType::DG_FILTER;
-  no_obj = f->NoOnes();
+  no_obj = f->NumOfOnes();
 }
 
 DimensionGroupFilter::~DimensionGroupFilter() { delete f; }

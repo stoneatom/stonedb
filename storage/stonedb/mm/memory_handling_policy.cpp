@@ -157,7 +157,7 @@ void MemoryHandling::DumpObjs(std::ostream &out) {
   std::scoped_lock guard(m_mutex);
   out << "  MEMORY DUMP: {" << std::endl;
   for (auto &[obj, heap_map] : m_objs) {
-    out << "    " << obj->GetCoordinate().ToString() << ", locks: " << obj->NoLocks() << ", size allocated "
+    out << "    " << obj->GetCoordinate().ToString() << ", locks: " << obj->NumOfLocks() << ", size allocated "
         << obj->SizeAllocated() << std::endl;
     (void)heap_map;
   }
@@ -398,10 +398,10 @@ void MemoryHandling::ReportLeaks() {
 void MemoryHandling::EnsureNoLeakedTraceableObject() {
   bool error_found = false;
   for (auto it : m_objs) {
-    if (it.first->IsLocked() && (it.first->NoLocks() > 1 || it.first->TraceableType() == TO_TYPE::TO_PACK)) {
+    if (it.first->IsLocked() && (it.first->NumOfLocks() > 1 || it.first->TraceableType() == TO_TYPE::TO_PACK)) {
       error_found = true;
       STONEDB_LOG(LogCtl_Level::ERROR, "Object @[%ld] locked too many times. Object type: %d, no. locks: %d",
-                  long(it.first), int(it.first->TraceableType()), int(it.first->NoLocks()));
+                  long(it.first), int(it.first->TraceableType()), int(it.first->NumOfLocks()));
     }
   }
   ASSERT(!error_found, "Objects locked too many times found.");

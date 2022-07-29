@@ -54,7 +54,7 @@ class TableShare final {
   size_t PackSize() const { return 1 << meta.pss; }
   uint8_t PackSizeShift() const { return meta.pss; }
   uint32_t TabID() const { return meta.id; }
-  size_t NoCols() const { return no_cols; }
+  size_t NumOfCols() const { return no_cols; }
   std::shared_ptr<RCTable> GetSnapshot();
   std::shared_ptr<RCTable> GetTableForWrite();
 

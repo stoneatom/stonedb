@@ -46,14 +46,14 @@ class MultiIndex {
                                            // objects
 
   // retrieve information
-  uint32_t NoPower() { return p_power; }
-  int NoDimensions() const { return no_dimensions; }  // number of dimensions
-  int64_t NoTuples() const {                          // number of all tuples
+  uint32_t ValueOfPower() { return p_power; }
+  int NumOfDimensions() const { return no_dimensions; }  // number of dimensions
+  int64_t NumOfTuples() const {                          // number of all tuples
     if (!no_tuples_too_big) return no_tuples;
     throw common::OutOfMemoryException("Too many tuples.    (85)");
     return 0;
   }
-  int64_t NoTuples(DimensionVector &dimensions,
+  int64_t NumOfTuples(DimensionVector &dimensions,
                    bool fail_on_overflow = true);  // for a given subset of dimensions
 
   bool ZeroTuples() { return (!no_tuples_too_big && no_tuples == 0); }
@@ -77,7 +77,7 @@ class MultiIndex {
                                                    // rest of this class. Return true if anything
                                                    // new marked.
   bool IsOrderable(int dim) { return no_dimensions > 0 ? group_for_dim[dim]->IsOrderable() : true; }
-  uint64_t DimSize(int dim);  // the size of one dimension: NoOnes for virtual,
+  uint64_t DimSize(int dim);  // the size of one dimension: NumOfOnes for virtual,
                               // number of materialized tuples for materialized
   uint64_t OrigSize(int dim) { return dim_size[dim]; }
   // the maximal size of one dimension (e.g. the size of a table, the maximal
@@ -129,12 +129,12 @@ class MultiIndex {
   void Empty(int dim_to_make_empty = -1);  // make an index empty (delete all
                                            // tuples) with the same dimensions
   // if parameter is set, then do not delete any virtual filter except this one
-  void UpdateNoTuples();  // recalculate the number of tuples
+  void UpdateNumOfTuples();  // recalculate the number of tuples
   void MakeCountOnly(int64_t mat_tuples, DimensionVector &dims_to_materialize);
   // recalculate the number of tuples, assuming mat_tuples is the new
   // material_no_tuples and the dimensions from the list are deleted
 
-  int MaxNoPacks(int dim);  // maximal (upper approx.) number of different
+  int MaxNumOfPacks(int dim);  // maximal (upper approx.) number of different
                             // nonempty data packs for the given dimension
   std::string Display();    // MultiIndex structure: f - Filter, i - IndexTable
 

@@ -63,8 +63,8 @@
     "message": "性能优化",
     "description": "The label for category Connect to StoneDB in sidebar autoSidebar"
   },
-  "sidebar.autoSidebar.category.Performance Monitoring Tools": {
-    "message": "性能相关工具",
+  "sidebar.autoSidebar.category.Performance Monitoring Commands": {
+    "message": "性能相关命令",
     "description": "The label for category Connect to StoneDB in sidebar autoSidebar"
   },
   "sidebar.autoSidebar.category.Database Tuning": {

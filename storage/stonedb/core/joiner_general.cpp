@@ -27,7 +27,7 @@ namespace core {
 void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
   MEASURE_FET("JoinerGeneral::ExecuteJoinConditions(...)");
   int no_desc = cond.Size();
-  DimensionVector all_dims(mind->NoDimensions());  // "false" for all dimensions
+  DimensionVector all_dims(mind->NumOfDimensions());  // "false" for all dimensions
   std::vector<bool> pack_desc_locked;
   bool false_desc_found = false;
   bool non_true_desc_found = false;
@@ -48,21 +48,21 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
   if (false_desc_found && outer_dims.IsEmpty()) {
     all_dims.Plus(cond[0].left_dims);  // for FALSE join condition
                                        // DimensionUsed() does not mark anything
-    for (int i = 0; i < mind->NoDimensions(); i++)
+    for (int i = 0; i < mind->NumOfDimensions(); i++)
       if (all_dims[i]) mind->Empty(i);
     return;  // all done
   }
   MIIterator mit(mind, all_dims);
   MINewContents new_mind(mind, tips);
   new_mind.SetDimensions(all_dims);
-  int64_t approx_size = (tips.limit > -1 ? tips.limit : mit.NoTuples() / 4);
+  int64_t approx_size = (tips.limit > -1 ? tips.limit : mit.NumOfTuples() / 4);
   if (!tips.count_only) new_mind.Init(approx_size);  // an initial size of IndexTable
 
   int64_t tuples_in_output = 0;
   bool loc_result;
   bool stop_execution = false;  // early stop for LIMIT
 
-  rccontrol.lock(m_conn->GetThreadID()) << "Starting joiner loop (" << mit.NoTuples() << " rows)." << system::unlock;
+  rccontrol.lock(m_conn->GetThreadID()) << "Starting joiner loop (" << mit.NumOfTuples() << " rows)." << system::unlock;
   // The main loop for checking conditions
   int64_t rows_passed = 0;
   int64_t rows_omitted = 0;
@@ -101,7 +101,7 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
       }
       if (loc_result) {
         if (!tips.count_only) {
-          for (int i = 0; i < mind->NoDimensions(); i++)
+          for (int i = 0; i < mind->NumOfDimensions(); i++)
             if (all_dims[i]) new_mind.SetNewTableValue(i, mit[i]);
           new_mind.CommitNewTableValues();
         }
@@ -170,7 +170,7 @@ void JoinerGeneral::ExecuteOuterJoinLoop(Condition &cond, MINewContents &new_min
       if (loc_result) {
         if (!outer_nulls_only) {
           if (!tips.count_only) {
-            for (int i = 0; i < mind->NoDimensions(); i++)
+            for (int i = 0; i < mind->NumOfDimensions(); i++)
               if (all_dims[i]) new_mind.SetNewTableValue(i, complex_mit[i]);
             new_mind.CommitNewTableValues();
           }
@@ -184,7 +184,7 @@ void JoinerGeneral::ExecuteOuterJoinLoop(Condition &cond, MINewContents &new_min
     }
     if (!tuple_used && !stop_execution) {
       if (!tips.count_only) {
-        for (int i = 0; i < mind->NoDimensions(); i++) {
+        for (int i = 0; i < mind->NumOfDimensions(); i++) {
           if (non_outer_dims[i])
             new_mind.SetNewTableValue(i, nout_mit[i]);
           else if (outer_dims[i])

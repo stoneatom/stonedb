@@ -49,19 +49,19 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
   thd_proc_info(m_conn->Thd(), "order by");
   DEBUG_ASSERT(limit >= 0 && offset >= 0);
   no_obj = limit;
-  if ((int)ord.size() == 0 || filter.mind->NoTuples() < 2 || limit == 0) {
+  if ((int)ord.size() == 0 || filter.mind->NumOfTuples() < 2 || limit == 0) {
     ord.clear();
     return false;
   }
 
   int task_num = 1;
   int total_limit = limit + offset;
-  DimensionVector all_dims(filter.mind->NoDimensions());
+  DimensionVector all_dims(filter.mind->NumOfDimensions());
   all_dims.SetAll();
   int one_dim = -1;
   int no_dims = all_dims.NoDimsUsed();
   if (no_dims == 1) {
-    for (int i = 0; i < filter.mind->NoDimensions(); i++) {
+    for (int i = 0; i < filter.mind->NumOfDimensions(); i++) {
       if (all_dims[i]) {
         if (filter.mind->GetFilter(i)) one_dim = i;  // exactly one filter (non-join or join with forgotten dims)
         break;
@@ -69,7 +69,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
     }
   }
   int packs_no =
-      (int)((filter.mind->OrigSize(one_dim) + ((1 << filter.mind->NoPower()) - 1)) >> filter.mind->NoPower());
+      (int)((filter.mind->OrigSize(one_dim) + ((1 << filter.mind->ValueOfPower()) - 1)) >> filter.mind->ValueOfPower());
   // Fixme: single thread control logic based on the following assumption:
   // 1. Single thread is enough for cases with pack num less than 20
   //   A rough statistic is it takes about 1 secs handle 20 packs - Intel(R)
@@ -79,7 +79,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
   if (stonedb_sysvar_orderby_speedup && packs_no > 20 && no_dims == 1) {
     task_num = 8;
     // recheck the up threashold for each SortLimit sub-sortedtable
-    if (((packs_no - 1) * ((1 << filter.mind->NoPower()) - 1)) / task_num < (limit + offset)) {
+    if (((packs_no - 1) * ((1 << filter.mind->ValueOfPower()) - 1)) / task_num < (limit + offset)) {
       task_num = 1;
       STONEDB_LOG(LogCtl_Level::INFO, "Beyond uplimit of limit sort, switch to single thread logic. ");
     }
@@ -149,7 +149,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
     task_num = 1;
   }
   // Put data
-  std::vector<PackOrderer> po(filter.mind->NoDimensions());
+  std::vector<PackOrderer> po(filter.mind->NumOfDimensions());
   if (task_num == 1) {
     sorted_table.SortRoughly(po);
   }
@@ -174,7 +174,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
       local_row++;
       if (local_row % 10000000 == 0)
         rccontrol.lock(m_conn->GetThreadID())
-            << "Preparing values to sort (" << int(local_row / double(filter.mind->NoTuples()) * 100) << "% done)."
+            << "Preparing values to sort (" << int(local_row / double(filter.mind->NumOfTuples()) * 100) << "% done)."
             << system::unlock;
     }
   } else {
@@ -284,7 +284,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
     } while (valid && global_row < limit + offset &&
              !(sender && local_row >= stonedb_sysvar_result_sender_rows));  // a limit for
                                                                             // streaming buffer
-    // Note: what about SetNoMaterialized()? Only no_obj is set now.
+    // Note: what about SetNumOfMaterialized()? Only no_obj is set now.
     if (sender) {
       TempTable::RecordIterator iter = begin();
       for (int i = 0; i < local_row; i++) {
@@ -336,7 +336,7 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
   }
   if (!has_intresting_columns) return;
 
-  MIIterator it(filter.mind, filter.mind->NoPower());
+  MIIterator it(filter.mind, filter.mind->ValueOfPower());
   if (pagewise && local_offset < no_materialized) local_offset = no_materialized;  // continue filling
 
   if (local_offset > 0) it.Skip(local_offset);
@@ -428,7 +428,7 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
   }
   if (!has_intresting_columns) return;
 
-  MIIterator it(filter.mind, filter.mind->NoPower());
+  MIIterator it(filter.mind, filter.mind->ValueOfPower());
   if (pagewise && offset < no_materialized) offset = no_materialized;  // continue filling
 
   if (offset > 0) it.Skip(offset);
@@ -562,7 +562,7 @@ size_t TempTable::TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrappe
     local_row++;
     if (local_row % 10000000 == 0)
       rccontrol.lock(m_conn->GetThreadID())
-          << "Preparing values to sort (" << int(local_row / double(filter.mind->NoTuples()) * 100) << "% done)."
+          << "Preparing values to sort (" << int(local_row / double(filter.mind->NumOfTuples()) * 100) << "% done)."
           << system::unlock;
   }
   return local_row;
