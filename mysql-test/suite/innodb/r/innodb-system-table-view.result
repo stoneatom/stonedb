@@ -74,7 +74,7 @@ table_id	pos	mtype	prtype	len	name
 25	4	13	2163198	24	Abbreviation
 26	0	6	1288	8	Transition_time
 26	1	6	1283	4	Correction
-32	0	13	2949630	144	source_uuid
+32	0	13	2163198	108	source_uuid
 32	1	6	1288	8	interval_start
 32	2	6	1288	8	interval_end
 33	0	12	2162959	192	cost_name

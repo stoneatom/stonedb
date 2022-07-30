@@ -1,15 +1,19 @@
 use test;
 Database
 information_schema
+cache
 mtr
 mysql
 performance_schema
 sys
+sys_stonedb
 test
 Database
 information_schema
+cache
 mtr
 mysql
 performance_schema
 sys
+sys_stonedb
 test
