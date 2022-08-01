@@ -137,7 +137,7 @@ class RdbKey {
 
  private:
   uint m_keyno;
-  std::vector<ColAttr> m_cols;
+  std::vector<ColAttr> cols_;
 };
 
 class RdbTable {
@@ -183,7 +183,7 @@ class DDLManager {
   DDLManager &operator=(const DDLManager &) = delete;
   DDLManager() = default;
 
-  bool init(DICTManager *const dict, CFManager *const cf_manager);
+  bool init(DICTManager *const dict, CFManager *const cf_manager_);
   void cleanup();
   std::shared_ptr<RdbTable> find(const std::string &table_name);
   void put_and_write(std::shared_ptr<RdbTable> key_descr, rocksdb::WriteBatch *const batch);
@@ -239,7 +239,7 @@ class DICTManager {
   DICTManager &operator=(const DICTManager &) = delete;
   DICTManager() = default;
 
-  bool init(rocksdb::DB *const rdb_dict, CFManager *const cf_manager);
+  bool init(rocksdb::DB *const rdb_dict, CFManager *const cf_manager_);
   inline void lock() { m_mutex.lock(); }
   inline void unlock() { m_mutex.unlock(); }
   void cleanup(){};
@@ -288,7 +288,7 @@ class CFManager {
 
   void init(std::vector<rocksdb::ColumnFamilyHandle *> &handles);
   void cleanup();
-  rocksdb::ColumnFamilyHandle *get_or_create_cf(rocksdb::DB *const rdb, const std::string &cf_name);
+  rocksdb::ColumnFamilyHandle *get_or_create_cf(rocksdb::DB *const rdb_, const std::string &cf_name);
   rocksdb::ColumnFamilyHandle *get_cf_by_id(const uint32_t &id);
   std::vector<rocksdb::ColumnFamilyHandle *> get_all_cf();
 

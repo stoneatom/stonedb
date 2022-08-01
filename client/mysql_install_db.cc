@@ -329,7 +329,7 @@ void print_version(const string &p)
 void usage(const string &p)
 {
   print_version(p);
-  cout << ORACLE_WELCOME_COPYRIGHT_NOTICE("2015") << endl
+  cout << ORACLE_WELCOME_COPYRIGHT_NOTICE(COPYRIGHT_NOTICE_STONEDB_BEGIN_YEAR) << endl
        << "MySQL Database Deployment Utility." << endl
        << "Usage: "
        << p

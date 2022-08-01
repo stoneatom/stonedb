@@ -88,7 +88,7 @@ static void print_version(void)
 static void usage()
 {
   print_version();
-  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2001"));
+  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE(COPYRIGHT_NOTICE_STONEDB_BEGIN_YEAR));
   printf("Resolve numeric stack strace dump into symbols.\n\n");
   printf("Usage: %s [OPTIONS] symbols-file [numeric-dump-file]\n",
 	 my_progname);

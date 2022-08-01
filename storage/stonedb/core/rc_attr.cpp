@@ -345,7 +345,7 @@ void RCAttr::Rollback() {
   m_tx = nullptr;
 }
 
-void RCAttr::LoadPackInfo([[maybe_unused]] Transaction *trans) {
+void RCAttr::LoadPackInfo([[maybe_unused]] Transaction *trans_) {
   if (hdr.dict_ver != 0 && !m_dict) {
     m_dict = rceng->cache.GetOrFetchObject<FTree>(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), this);
   }

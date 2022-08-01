@@ -46,7 +46,7 @@ RdbKey::RdbKey(uint indexnr, uint keyno, rocksdb::ColumnFamilyHandle *cf_handle,
       m_is_reverse(is_reverse_cf),
       m_name(_name),
       m_keyno(keyno),
-      m_cols(cols) {
+      cols_(cols) {
   be_store_index(m_index_nr_be, m_indexnr);
 
   ASSERT(m_cf_handle != nullptr, "m_cf_handle is NULL");
@@ -59,7 +59,7 @@ RdbKey::RdbKey(const RdbKey &k)
       m_is_reverse(k.m_is_reverse),
       m_name(k.m_name),
       m_keyno(k.m_keyno),
-      m_cols(k.m_cols) {
+      cols_(k.cols_) {
   be_store_index(m_index_nr_be, m_indexnr);
 }
 
@@ -96,7 +96,7 @@ const std::string RdbKey::parse_comment(const std::string &comment) {
   return empty_result;
 }
 void RdbKey::get_key_cols(std::vector<uint> &cols) {
-  for (auto &col : m_cols) {
+  for (auto &col : cols_) {
     cols.push_back(col.col_no);
   }
 }
@@ -201,7 +201,7 @@ int RdbKey::unpack_field_string(StringReader &key, StringReader &info, std::stri
 
 // cmp packed
 void RdbKey::pack_key(StringWriter &key, std::vector<std::string_view> &fields, StringWriter &info) {
-  ASSERT(m_cols.size() >= fields.size(), "fields size larger than keyparts size");
+  ASSERT(cols_.size() >= fields.size(), "fields size larger than keyparts size");
   key.clear();
   info.clear();
   key.write_uint32(m_indexnr);
@@ -210,7 +210,7 @@ void RdbKey::pack_key(StringWriter &key, std::vector<std::string_view> &fields, 
   size_t pos = info.length();
 
   for (uint i = 0; i < fields.size(); i++) {
-    switch (m_cols[i].col_type) {
+    switch (cols_[i].col_type) {
       case MYSQL_TYPE_LONGLONG:
       case MYSQL_TYPE_LONG:
       case MYSQL_TYPE_INT24:
@@ -229,7 +229,7 @@ void RdbKey::pack_key(StringWriter &key, std::vector<std::string_view> &fields, 
       case MYSQL_TYPE_TIMESTAMP2:
       case MYSQL_TYPE_TIME2:
       case MYSQL_TYPE_YEAR: {
-        pack_field_number(key, fields[i], m_cols[i].col_flag);
+        pack_field_number(key, fields[i], cols_[i].col_flag);
         break;
       }
       case MYSQL_TYPE_VARCHAR:
@@ -263,7 +263,7 @@ common::ErrorCode RdbKey::unpack_key(StringReader &key, StringReader &value, std
   // version compatible
   if (m_index_ver > static_cast<uint16_t>(enumIndexInfo::INDEX_INFO_VERSION_INITIAL)) value.read_uint16(&info_len);
 
-  for (auto &col : m_cols) {
+  for (auto &col : cols_) {
     std::string field;
     switch (col.col_type) {
       case MYSQL_TYPE_LONGLONG:
@@ -332,7 +332,7 @@ void RdbTable::put_dict(DICTManager *dict, rocksdb::WriteBatch *const batch, uch
     }
     value.write_uint32(cf_id);
     value.write_uint32(kd->m_indexnr);
-    dict->save_index_info(batch, kd->m_index_ver, kd->m_index_type, kd->m_indexnr, cf_id, kd->m_cols);
+    dict->save_index_info(batch, kd->m_index_ver, kd->m_index_type, kd->m_indexnr, cf_id, kd->cols_);
   }
   dict->put_key(batch, {(char *)key, keylen}, {(char *)value.ptr(), value.length()});
 }
@@ -360,9 +360,9 @@ void RdbTable::set_name(const std::string &name) {
   m_tablename = name.substr(++dotpos);
 }
 
-bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager) {
+bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager_) {
   m_dict = dict;
-  m_cf = cf_manager;
+  m_cf = cf_manager_;
   uchar ddl_entry[INDEX_NUMBER_SIZE];
   be_store_index(ddl_entry, static_cast<uint32_t>(MetaType::DDL_INDEX));
 
@@ -439,7 +439,7 @@ bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager) {
                     gl_index_id.cf_id, tdef->fullname().c_str());
         return false;
       }
-      rocksdb::ColumnFamilyHandle *const cfh = cf_manager->get_cf_by_id(gl_index_id.cf_id);
+      rocksdb::ColumnFamilyHandle *const cfh = cf_manager_->get_cf_by_id(gl_index_id.cf_id);
 
       tdef->m_rdbkeys[keyno] = std::make_shared<RdbKey>(gl_index_id.index_id, keyno, cfh, index_ver, index_type,
                                                         flags & REVERSE_CF_FLAG, "", vcols);
@@ -645,9 +645,9 @@ bool DDLManager::rename_mem(std::string &from, std::string &to, rocksdb::WriteBa
   return true;
 }
 
-bool DICTManager::init(rocksdb::DB *const rdb_dict, CFManager *const cf_manager) {
+bool DICTManager::init(rocksdb::DB *const rdb_dict, CFManager *const cf_manager_) {
   m_db = rdb_dict;
-  m_system_cfh = cf_manager->get_or_create_cf(m_db, DEFAULT_SYSTEM_CF_NAME);
+  m_system_cfh = cf_manager_->get_or_create_cf(m_db, DEFAULT_SYSTEM_CF_NAME);
 
   if (m_system_cfh == nullptr) return false;
 
@@ -826,8 +826,8 @@ bool DICTManager::get_cf_flags(const uint32_t &cf_id, uint32_t &cf_flags) const 
 // This function is supposed to be called by DROP TABLE
 void DICTManager::add_drop_table(std::vector<std::shared_ptr<RdbKey>> &keys, rocksdb::WriteBatch *const batch) const {
   std::vector<GlobalId> dropped_index_ids;
-  for (auto &rdbkey : keys) {
-    dropped_index_ids.push_back(rdbkey->get_gl_index_id());
+  for (auto &rdbkey_ : keys) {
+    dropped_index_ids.push_back(rdbkey_->get_gl_index_id());
   }
 
   add_drop_index(dropped_index_ids, batch);
@@ -962,7 +962,7 @@ void CFManager::cleanup() {
 }
 
 // Find column family by name. If it doesn't exist, create it
-rocksdb::ColumnFamilyHandle *CFManager::get_or_create_cf(rocksdb::DB *const rdb, const std::string &cf_name_arg) {
+rocksdb::ColumnFamilyHandle *CFManager::get_or_create_cf(rocksdb::DB *const rdb_, const std::string &cf_name_arg) {
   rocksdb::ColumnFamilyHandle *cf_handle = nullptr;
 
   const std::string &cf_name = cf_name_arg.empty() ? DEFAULT_CF_NAME : cf_name_arg;
@@ -974,7 +974,7 @@ rocksdb::ColumnFamilyHandle *CFManager::get_or_create_cf(rocksdb::DB *const rdb,
   } else {
     rocksdb::ColumnFamilyOptions opts;
     if (!IsRowStoreCF(cf_name)) opts.compaction_filter_factory.reset(new index::IndexCompactFilterFactory);
-    const rocksdb::Status s = rdb->CreateColumnFamily(opts, cf_name, &cf_handle);
+    const rocksdb::Status s = rdb_->CreateColumnFamily(opts, cf_name, &cf_handle);
     if (s.ok()) {
       m_cf_name_map[cf_handle->GetName()] = cf_handle;
       m_cf_id_map[cf_handle->GetID()] = cf_handle;

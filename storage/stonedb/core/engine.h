@@ -79,7 +79,7 @@ class Engine final {
   void CreateTable(const std::string &table, TABLE *from);
   void DeleteTable(const char *table, THD *thd);
   void TruncateTable(const std::string &table_path, THD *thd);
-  void RenameTable(Transaction *trans, const std::string &from, const std::string &to, THD *thd);
+  void RenameTable(Transaction *trans_, const std::string &from, const std::string &to, THD *thd);
   void PrepareAlterTable(const std::string &table_path, std::vector<Field *> &new_cols, std::vector<Field *> &old_cols,
                          THD *thd);
 
@@ -111,7 +111,7 @@ class Engine final {
                    int &optimize_after_sdb, int &sdb_free_join, int with_insert = false);
   system::ResourceManager *getResourceManager() const { return m_resourceManager; }
   std::shared_ptr<RCTable> GetTableRD(const std::string &table_path);
-  int InsertRow(const std::string &tablename, Transaction *trans, TABLE *table, std::shared_ptr<TableShare> &share);
+  int InsertRow(const std::string &tablename, Transaction *trans_, TABLE *table, std::shared_ptr<TableShare> &share);
   void InsertDelayed(const std::string &table_path, int tid, TABLE *table);
   void InsertMemRow(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table);
   std::string DelayedBufferStat() { return insert_buffer.Status(); }
@@ -127,7 +127,7 @@ class Engine final {
   std::shared_ptr<index::RCTableIndex> GetTableIndex(const std::string &table_path);
   bool has_pk(TABLE *table) const { return table->s->primary_key != MAX_INDEXES; }
   void RenameRdbTable(const std::string &from, const std::string &to);
-  void DropSignal() { cv_drop.notify_one(); }
+  void DropSignal() { cv_drop_.notify_one(); }
   void ResetTaskExecutor(int percent);
   TaskExecutor *GetTaskExecutor() const { return task_executor.get(); }
   void AddMemTable(TABLE *form, std::shared_ptr<TableShare> share);
@@ -250,8 +250,8 @@ class Engine final {
   std::shared_mutex tables_keys_mutex;
   std::shared_mutex mem_table_mutex;
   std::thread m_drop_idx_thread;
-  std::condition_variable cv_drop;
-  std::mutex cv_drop_mtx;
+  std::condition_variable cv_drop_;
+  std::mutex cv_drop_mtx_;
   std::unique_ptr<TaskExecutor> task_executor;
 };
 
