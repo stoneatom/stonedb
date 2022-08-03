@@ -346,7 +346,7 @@ TODO list:
 #include <m_ctype.h>
 #include <my_dir.h>
 #include <hash.h>
-//STONEDB UPGRADE BEGIN
+//TIANMU UPGRADE BEGIN
 //#ifdef WITH_MYISAMMRG_STORAGE_ENGINE
 #include "../storage/myisammrg/ha_myisammrg.h"
 #include "../storage/myisammrg/myrg_def.h"

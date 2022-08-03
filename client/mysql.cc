@@ -1291,7 +1291,7 @@ int main(int argc,char *argv[])
 #endif
 
   my_getopt_use_args_separator= TRUE;
-#if defined(STONEDB)
+#if defined(TIANMU)
   if (load_defaults(MYSQL_CONFIG_NAME,load_default_groups,&argc,&argv))
 #else
   if (load_defaults("my",load_default_groups,&argc,&argv))
@@ -1941,7 +1941,7 @@ static void usage(int version)
     }
   }
   my_print_help(my_long_options);
-#if defined(STONEDB)
+#if defined(TIANMU)
   print_defaults(MYSQL_CONFIG_NAME, load_default_groups);
 #else
   print_defaults("my", load_default_groups);

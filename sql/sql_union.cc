@@ -721,7 +721,7 @@ bool st_select_lex_unit::optimize(THD *thd)
     if (query_result())
       query_result()->estimated_rowcount+=
         sl->is_implicitly_grouped() || sl->join->group_optimized_away ?
-          2 :  sl->join->best_rowcount; //STONEDB UPGRADE
+          2 :  sl->join->best_rowcount; //TIANMU UPGRADE
 
   }
   if (fake_select_lex)
