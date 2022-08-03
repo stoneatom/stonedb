@@ -776,7 +776,7 @@ int ha_finalize_handlerton(st_plugin_int *plugin)
   if (!hton)
     goto end;
 
-#if !defined(STONEDB)
+#if !defined(TIANMU)
   switch (hton->state)
   {
   case SHOW_OPTION_NO:
@@ -806,7 +806,7 @@ int ha_finalize_handlerton(st_plugin_int *plugin)
     }
   }
 
-#if defined(STONEDB)
+#if defined(TIANMU)
   switch (hton->state)
   {
   case SHOW_OPTION_NO:

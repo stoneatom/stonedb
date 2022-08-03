@@ -1284,8 +1284,8 @@ and you are welcome to modify and redistribute it under the GPL license\n");
  printf("Usage: %s [OPTIONS] [TESTNAME1 TESTNAME2...]\n", my_progname);
  my_print_help(client_test_long_options);
  //print_defaults("my", client_test_load_default_groups);
- //STONEDB UPGRADE BEGIN
- #if defined(STONEDB)
+ //TIANMU UPGRADE BEGIN
+ #if defined(TIANMU)
  print_defaults(MYSQL_CONFIG_NAME, client_test_load_default_groups);
 #else
  print_defaults("my", client_test_load_default_groups);
@@ -1432,8 +1432,8 @@ int main(int argc, char **argv)
  exit(1);
  for (i= 0; i < argc; i++)
  original_argv[i]= strdup(argv[i]);
-//STONEDB UPGRADE BEGIN
- #if defined(STONEDB)
+//TIANMU UPGRADE BEGIN
+ #if defined(TIANMU)
  if (load_defaults(MYSQL_CONFIG_NAME, client_test_load_default_groups, &argc, &argv))
 #else
  if (load_defaults("my", client_test_load_default_groups, &argc, &argv))

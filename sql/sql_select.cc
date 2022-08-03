@@ -145,7 +145,7 @@ bool handle_query(THD *thd, LEX *lex, Query_result *result, ulonglong added_opti
   {
 	res = FALSE;
 	if (optimize_after_bh)
-		res = lex->unit->optimize_after_stonedb();   // optimization after Stonedb
+		res = lex->unit->optimize_after_tianmu();   // optimization after Tianmu
 	if (!res)
 		if (unit->prepare(thd, result, SELECT_NO_UNLOCK | added_options,
 						  removed_options))

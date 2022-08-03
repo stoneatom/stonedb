@@ -305,7 +305,7 @@ enum enum_alter_inplace_result {
 /*
   The handler supports non-KEY auto_increment column
 */
-#define HA_NON_KEY_AUTO_INC           (1LL << 48) //STONEDB UPGRADE
+#define HA_NON_KEY_AUTO_INC           (1LL << 48) //TIANMU UPGRADE
 
 /* bits in index_flags(index_number) for what you can do with index */
 #define HA_READ_NEXT            1       /* TODO really use this flag */
@@ -417,7 +417,7 @@ enum legacy_db_type
   DB_TYPE_TABLE_FUNCTION,
   DB_TYPE_MEMCACHE,
   DB_TYPE_FALCON,
-  DB_TYPE_STONEDB,
+  DB_TYPE_TIANMU,
   DB_TYPE_MARIA,
   /** Performance schema engine. */
   DB_TYPE_PERFORMANCE_SCHEMA,
@@ -2826,9 +2826,9 @@ public:
     return HA_ERR_WRONG_COMMAND;
   }
   /**
-    StoneDB update
+    Tianmu update
   */
-#if defined(STONEDB)
+#if defined(TIANMU)
   virtual bool explain_message(const Item *a_cond, String *buf)
   {
     return true;

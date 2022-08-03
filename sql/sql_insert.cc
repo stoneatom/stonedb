@@ -830,10 +830,10 @@ bool Sql_cmd_insert::mysql_insert(THD *thd,TABLE_LIST *table_list)
     if (error <= 0 || thd->get_transaction()->cannot_safely_rollback(
         Transaction_ctx::STMT))
     {
-//STONEDB UPGRADE BEGIN
-#if defined(STONEDB)
-      bool stonedb_engine = insert_table->s->db_type() ? insert_table->s->db_type()->db_type == DB_TYPE_STONEDB : false;
-      if (mysql_bin_log.is_open()&& !stonedb_engine)
+//TIANMU UPGRADE BEGIN
+#if defined(TIANMU)
+      bool tianmu_engine = insert_table->s->db_type() ? insert_table->s->db_type()->db_type == DB_TYPE_TIANMU: false;
+      if (mysql_bin_log.is_open()&& !tianmu_engine)
 #else
       if (mysql_bin_log.is_open())
 #endif

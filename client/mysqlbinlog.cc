@@ -2070,7 +2070,7 @@ static void print_version()
 static void usage()
 {
   print_version();
-  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2000"));
+  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE(COPYRIGHT_NOTICE_STONEDB_BEGIN_YEAR));
   printf("\
 Dumps a MySQL binary log in a format usable for viewing or for piping to\n\
 the mysql command line client.\n\n");
@@ -3382,7 +3382,7 @@ int main(int argc, char** argv)
   buff_ev= new Buff_ev(PSI_NOT_INSTRUMENTED);
 
   my_getopt_use_args_separator= TRUE;
-#if defined(STONEDB)
+#if defined(TIANMU)
   if (load_defaults(MYSQL_CONFIG_NAME, load_default_groups, &argc, &argv))
 #else
   if (load_defaults("my", load_default_groups, &argc, &argv))

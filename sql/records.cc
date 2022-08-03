@@ -285,9 +285,9 @@ bool init_read_record(READ_RECORD *info,THD *thd,
   }
   else if (info->quick)
   {
-#ifdef STONEDB
-	  //pk processed by engine for stonedb    
-	  if (table->s->db_type()->db_type == DB_TYPE_STONEDB) {
+#ifdef TIANMU
+	  //pk processed by engine for tianmu    
+	  if (table->s->db_type()->db_type == DB_TYPE_TIANMU) {
 		  info->read_record = rr_sequential;
 		  if ((error = table->file->ha_rnd_init(1)))
 			  goto err;
