@@ -584,7 +584,7 @@ typedef char		my_bool; /* Small bool */
 /* Macros for converting *constants* to the right type */
 #define MYF(v)		(myf) (v)
 
-//STONEDB UPGRADE
+//TIANMU UPGRADE
 #ifndef USING_X
 #define reg1 register
 #endif

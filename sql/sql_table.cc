@@ -74,7 +74,7 @@
 
 #include <algorithm>
 
-#include "mysys_err.h" //STONEDB UPGRADE
+#include "mysys_err.h" //TIANMU UPGRADE
 
 using std::max;
 using std::min;
@@ -4522,7 +4522,7 @@ mysql_prepare_create_table(THD *thd, const char *error_schema_name,
     my_message(ER_REQUIRES_PRIMARY_KEY, ER(ER_REQUIRES_PRIMARY_KEY), MYF(0));
     DBUG_RETURN(TRUE);
   }
-  if (auto_increment > 0 && !(file->ha_table_flags() & HA_NON_KEY_AUTO_INC))//STONEDB UPGRADE
+  if (auto_increment > 0 && !(file->ha_table_flags() & HA_NON_KEY_AUTO_INC))//TIANMU UPGRADE
   {
     my_message(ER_WRONG_AUTO_KEY, ER(ER_WRONG_AUTO_KEY), MYF(0));
     DBUG_RETURN(TRUE);
@@ -5702,7 +5702,7 @@ mysql_rename_table(handlerton *base, const char *old_db,
   else if (error)
   {
     char errbuf[MYSYS_STRERROR_SIZE];
-    //STONEDB UPGRADE
+    //TIANMU UPGRADE
     if( error == -1 )
         my_error(EE_DROP_COLUMN, MYF(0));
     //END

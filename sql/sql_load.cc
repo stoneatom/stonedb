@@ -51,7 +51,7 @@
 
 #include <algorithm>
 
-#include "../storage/stonedb/handler/ha_rcengine.h" // stonedb code
+#include "../storage/tianmu/handler/ha_rcengine.h" // tianmu code
 
 using std::min;
 using std::max;
@@ -216,8 +216,6 @@ int mysql_load(THD *thd,sql_exchange *ex,TABLE_LIST *table_list,
   const char *tdb= thd->db().str ? thd->db().str : db; //Result is never null
   ulong skip_lines= ex->skip_lines;
   DBUG_ENTER("mysql_load");
-  //STONEDB UPGRADE BEGIN
-  //bool stonedb::dbhandler::stonedb_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void* arg);
   if (mysql_bin_log.is_open())
   {
     lf_info.thd = thd;
@@ -310,8 +308,8 @@ int mysql_load(THD *thd,sql_exchange *ex,TABLE_LIST *table_list,
     my_error(ER_UPDATE_TABLE_USED, MYF(0), table_list->table_name);
     DBUG_RETURN(TRUE);
   }
-  //STONEDB UPGRADE BEGIN
-  if (!stonedb::dbhandler::stonedb_load(thd, ex, table_list, (void*) &lf_info)) {
+  // TIANMU UPGRADE BEGIN
+  if (!Tianmu::dbhandler::tianmu_load(thd, ex, table_list, (void*) &lf_info)) {
     DBUG_RETURN(FALSE);
   }
   //END

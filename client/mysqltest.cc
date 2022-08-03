@@ -7362,7 +7362,7 @@ get_one_option(int optid, const struct my_option *opt, char *argument)
 
 int parse_args(int argc, char **argv)
 {
-#if defined(STONEDB)
+#if defined(TIANMU)
   if (load_defaults(MYSQL_CONFIG_NAME,load_default_groups,&argc,&argv))
 #else
   if (load_defaults("my",load_default_groups,&argc,&argv))

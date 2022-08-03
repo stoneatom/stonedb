@@ -234,7 +234,7 @@ read the text file directly. In other cases the client will open the text\n\
 file. The SQL command 'LOAD DATA INFILE' is used to import the rows.\n");
 
   printf("\nUsage: %s [OPTIONS] database textfile...",my_progname);
-#if defined(STONEDB)
+#if defined(TIANMU)
   print_defaults(MYSQL_CONFIG_NAME,load_default_groups);
 #else
   print_defaults("my",load_default_groups);
@@ -669,7 +669,7 @@ int main(int argc, char **argv)
   MY_INIT(argv[0]);
 
   my_getopt_use_args_separator= TRUE;
-#if defined(STONEDB)
+#if defined(TIANMU)
   if (load_defaults(MYSQL_CONFIG_NAME,load_default_groups,&argc,&argv))
 #else
   if (load_defaults("my",load_default_groups,&argc,&argv))

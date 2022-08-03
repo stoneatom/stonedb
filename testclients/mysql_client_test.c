@@ -7211,8 +7211,8 @@ static void test_embedded_start_stop()
     MY_INIT(argv[0]);
 
     /* Load the client defaults from the .cnf file[s]. */
-//STONEDB UPGRADE BEGIN
-#if defined(STONEDB)
+//TIANMU UPGRADE BEGIN
+#if defined(TIANMU)
     if (load_defaults(MYSQL_CONFIG_NAME, client_test_load_default_groups, &argc, &argv))
 #else
     if (load_defaults("my", client_test_load_default_groups, &argc, &argv))

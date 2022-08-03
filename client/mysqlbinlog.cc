@@ -3382,7 +3382,7 @@ int main(int argc, char** argv)
   buff_ev= new Buff_ev(PSI_NOT_INSTRUMENTED);
 
   my_getopt_use_args_separator= TRUE;
-#if defined(STONEDB)
+#if defined(TIANMU)
   if (load_defaults(MYSQL_CONFIG_NAME, load_default_groups, &argc, &argv))
 #else
   if (load_defaults("my", load_default_groups, &argc, &argv))
