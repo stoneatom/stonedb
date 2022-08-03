@@ -408,7 +408,7 @@ void Diagnostics_area::set_eof_status(THD *thd)
 {
   DBUG_ENTER("set_eof_status");
   /* Only allowed to report eof if has not yet reported an error */
-  //STONEDB UPGRADE BEGIN
+  //TIANMU UPGRADE BEGIN
   //assert(! is_set());
   //END
   /*

@@ -2,6 +2,7 @@ build/
 cscope*
 sql/build_info.h
 .vscode
+.idea
 VERSION.dep
 CMakeCache
 CMakeFiles
@@ -112,3 +113,4 @@ CMakeFiles
 CMakeFiles/*
 CTestTestfile.cmake
 COPYING
+.vs/

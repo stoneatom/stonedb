@@ -82,7 +82,7 @@ int main(int argc, char **argv)
   MY_INIT(argv[0]);
 
   my_getopt_use_args_separator= TRUE;
-#if defined(STONEDB)
+#if defined(TIANMU)
   if (load_defaults(MYSQL_CONFIG_NAME,load_default_groups,&argc,&argv))
 #else
   if (load_defaults("my",load_default_groups,&argc,&argv))
@@ -304,7 +304,7 @@ static void usage(void)
 {
   struct my_option *optp;
   print_version();
-  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2000"));
+  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE(COPYRIGHT_NOTICE_STONEDB_BEGIN_YEAR));
   puts("Shows the structure of a MySQL database (databases, tables, and columns).\n");
   printf("Usage: %s [OPTIONS] [database [table [column]]]\n",my_progname);
   puts("\n\
@@ -314,7 +314,7 @@ If no database is given then all matching databases are shown.\n\
 If no table is given, then all matching tables in database are shown.\n\
 If no column is given, then all matching columns and column types in table\n\
 are shown.");
-#if defined(STONEDB)
+#if defined(TIANMU)
   print_defaults(MYSQL_CONFIG_NAME,load_default_groups);
 #else
   print_defaults("my",load_default_groups);

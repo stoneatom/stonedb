@@ -32,7 +32,7 @@ env:
 
 jobs:
   stonedb-build:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
@@ -49,43 +49,23 @@ jobs:
           
       - name: install libs
         run: |
-          sudo git clone https://github.com/hustjieke/stonedb-libs.git
+          sudo git clone https://github.com/stoneatom/stonedb-libs.git
           cd stonedb-libs
           sudo tar -zxvf stonedb-boost.tar.gz
           sudo tar -zxvf stonedb-gcc-rocksdb.tar.gz
           sudo tar -zxvf stonedb-marisa.tar.gz
-          cd gcc7.3
-          sudo tar -zxvf bin.tar.gz
-          sudo tar -zxvf include.tar.gz
-          sudo tar -zxvf lib64.tar.gz
-          sudo tar -zxvf lib.tar.gz
-          sudo tar -zxvf share.tar.gz
-          cd libexec/gcc/x86_64-pc-linux-gnu/7.3.0
-          sudo tar -zxvf all.tar.gz
-          sudo tar -zxvf cc1plus.tar.gz
-          sudo tar -zxvf cc1.tar.gz
-          cd - && cd ..
           sudo cp -r stonedb-boost /usr/local/stonedb-boost
-          sudo cp -r stonedb-boost/lib /usr/local/stonedb-boost/include
           sudo cp -r stonedb-gcc-rocksdb /usr/local/stonedb-gcc-rocksdb
           sudo cp -r stonedb-marisa /usr/local/stonedb-marisa
-          sudo cp -r gcc7.3 /usr/local/gcc7.3
-          sudo rm /usr/bin/gcc
-          sudo ln -s /usr/local/gcc7.3/bin/gcc /usr/bin/gcc
-          sudo rm /usr/bin/g++
-          sudo ln -s /usr/local/gcc7.3/bin/g++ /usr/bin/g++
-          sudo rm /usr/bin/c++
-          sudo ln -s /usr/local/gcc7.3/bin/c++ /usr/bin/c++
-          cd ..
        
       - name: compile stonedb
         run: |
           sudo cmake ./ \
           -DCMAKE_BUILD_TYPE=release \
-          -DCMAKE_INSTALL_PREFIX=/stonedb56/install \
-          -DMYSQL_DATADIR=/stonedb56/install/data \
-          -DSYSCONFDIR=/stonedb56/install \
-          -DMYSQL_UNIX_ADDR=/stonedb56/install/tmp/mysql.sock \
+          -DCMAKE_INSTALL_PREFIX=/stonedb57/install \
+          -DMYSQL_DATADIR=/stonedb57/install/data \
+          -DSYSCONFDIR=/stonedb57/install \
+          -DMYSQL_UNIX_ADDR=/stonedb57/install/tmp/mysql.sock \
           -DWITH_EMBEDDED_SERVER=OFF \
           -DWITH_STONEDB_STORAGE_ENGINE=1 \
           -DWITH_MYISAM_STORAGE_ENGINE=1 \
@@ -96,16 +76,15 @@ jobs:
           -DEXTRA_CHARSETS=all \
           -DDEFAULT_CHARSET=utf8 \
           -DDEFAULT_COLLATION=utf8_general_ci \
-          -DWITH_BOOST=/usr/local/stonedb-boost/include
+          -DWITH_BOOST=/usr/local/stonedb-boost \
+          -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb \
+          -DWITH_MARISA=/usr/local/stonedb-marisa
           sudo make VERBOSE=1 -j`nproc`
           sudo make install -j`nproc`
 
-          #- name: mtr test
-          #  run: |
-          #    sudo mkdir -p /stonedb56/install/data/innodb
-          #    sudo mkdir -p /stonedb56/install/binlog
-          #    sudo mkdir -p /stonedb56/install/log
-          #    sudo mkdir -p /stonedb56/install/tmp
-          #    sudo chown -R mysql:mysql /stonedb56
-          #    cd /stonedb56/install/mysql-test
-          #    sudo ./mysql-test-run.pl --suite=stonedb --nowarnings --force
+      - name: mtr test
+        run: |
+          sudo mkdir -p /stonedb57/install/log
+          sudo chown -R mysql:mysql /stonedb57
+          cd /stonedb57/install/mysql-test
+          sudo ./mysql-test-run.pl --suite=tianmu --nowarnings --force --nocheck-testcases

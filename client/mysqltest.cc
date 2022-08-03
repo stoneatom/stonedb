@@ -7200,7 +7200,7 @@ void print_version(void)
 void usage()
 {
   print_version();
-  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2000"));
+  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE(COPYRIGHT_NOTICE_STONEDB_BEGIN_YEAR));
   printf("Runs a test against the mysql server and compares output with a results file.\n\n");
   printf("Usage: %s [OPTIONS] [database] < test_file\n", my_progname);
   my_print_help(my_long_options);
@@ -7362,7 +7362,7 @@ get_one_option(int optid, const struct my_option *opt, char *argument)
 
 int parse_args(int argc, char **argv)
 {
-#if defined(STONEDB)
+#if defined(TIANMU)
   if (load_defaults(MYSQL_CONFIG_NAME,load_default_groups,&argc,&argv))
 #else
   if (load_defaults("my",load_default_groups,&argc,&argv))

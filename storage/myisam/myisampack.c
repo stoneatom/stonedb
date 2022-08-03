@@ -28,7 +28,7 @@
 
 #include "myisamdef.h"
 #include "my_default.h"
-#include "mysql_version.h"//STONEDB UPGRADE
+#include "mysql_version.h"//TIANMU UPGRADE
 #include <queues.h>
 #include <my_tree.h>
 #include "mysys_err.h"
@@ -227,8 +227,8 @@ int main(int argc, char **argv)
                   &main_thread_keycache_var.suspend);
 
   
- //STONEDB UPGRADE BEGIN
-#if defined(STONEDB)
+ //TIANMU UPGRADE BEGIN
+#if defined(TIANMU)
   if (load_defaults(MYSQL_CONFIG_NAME,load_default_groups,&argc,&argv))
 #else
   if (load_defaults("my",load_default_groups,&argc,&argv))
@@ -328,7 +328,7 @@ static void print_version(void)
 static void usage(void)
 {
   print_version();
-  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2002"));
+  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE(COPYRIGHT_NOTICE_STONEDB_BEGIN_YEAR));
 
   puts("Pack a MyISAM-table to take much less space.");
   puts("Keys are not updated, you must run myisamchk -rq on the datafile");
@@ -338,8 +338,8 @@ static void usage(void)
   printf("\nUsage: %s [OPTIONS] filename...\n", my_progname);
   my_print_help(my_long_options);
 
-//STONEDB UPGRADE BEGIN
-#if defined(STONEDB)
+//TIANMU UPGRADE BEGIN
+#if defined(TIANMU)
   print_defaults(MYSQL_CONFIG_NAME, load_default_groups);
 #else
   print_defaults("my", load_default_groups);

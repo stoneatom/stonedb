@@ -8961,7 +8961,7 @@ bool Item_func_version::itemize(Parse_context *pc, Item **res)
   pc->thd->lex->set_stmt_unsafe(LEX::BINLOG_STMT_UNSAFE_SYSTEM_FUNCTION);
   return false;
 }
-#ifdef STONEDB
+#ifdef TIANMU
 std::set<std::string> Item_func_multivalue_find::sepstr(const std::string &sStr, const std::string &sSep, bool withEmpty)
 {
     std::set<std::string> setResult;

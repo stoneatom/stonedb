@@ -59,8 +59,8 @@ void install_default_setup(PSI_bootstrap *boot)
     String mysql_db("mysql", 5, &my_charset_utf8_bin);
     String PS_db("performance_schema", 18, &my_charset_utf8_bin);
     String IS_db("information_schema", 18, &my_charset_utf8_bin);
-    //STONEDB UPGRADE,ADD SYS_STONEDB
-    String stonedb_db("sys_stonedb", 13, &my_charset_utf8_bin);
+    //TIANMU UPGRADE,ADD SYS_TIANMU
+    String tianmu_db("sys_tianmu", 13, &my_charset_utf8_bin);
     //String cache_db("cache", 5, &my_charset_utf8_bin);
     //END
     /* Disable sp by default in mysql. */
@@ -68,8 +68,8 @@ void install_default_setup(PSI_bootstrap *boot)
     /* Disable sp in performance/information schema. */
     insert_setup_object(OBJECT_TYPE_EVENT, &PS_db, &percent, false, false);
     insert_setup_object(OBJECT_TYPE_EVENT, &IS_db, &percent, false, false);
-    /*STONEDB UPGRADE Disable sp in sys_stonedb/cache*/
-    insert_setup_object(OBJECT_TYPE_EVENT, &stonedb_db, &percent, false, false);
+    /*TIANMU UPGRADE Disable sp in sys_tianmu/cache*/
+    insert_setup_object(OBJECT_TYPE_EVENT, &tianmu_db, &percent, false, false);
     //insert_setup_object(OBJECT_TYPE_EVENT, &cache_db, &percent, false, false);
     /* Enable every other sp. */
     insert_setup_object(OBJECT_TYPE_EVENT, &percent, &percent, true, true);
@@ -79,8 +79,8 @@ void install_default_setup(PSI_bootstrap *boot)
     /* Disable sp in performance/information schema. */
     insert_setup_object(OBJECT_TYPE_FUNCTION, &PS_db, &percent, false, false);
     insert_setup_object(OBJECT_TYPE_FUNCTION, &IS_db, &percent, false, false);
-    /*STONEDB UPGRADE Disable sp in sys_stonedb/cache*/
-    insert_setup_object(OBJECT_TYPE_FUNCTION, &stonedb_db, &percent, false, false);
+    /*TIANMU UPGRADE Disable sp in sys_tianmu/cache*/
+    insert_setup_object(OBJECT_TYPE_FUNCTION, &tianmu_db, &percent, false, false);
     //insert_setup_object(OBJECT_TYPE_FUNCTION, &cache_db, &percent, false, false);
     /* Enable every other sp. */
     insert_setup_object(OBJECT_TYPE_FUNCTION, &percent, &percent, true, true);
@@ -90,8 +90,8 @@ void install_default_setup(PSI_bootstrap *boot)
     /* Disable sp in performance/information schema. */
     insert_setup_object(OBJECT_TYPE_PROCEDURE, &PS_db, &percent, false, false);
     insert_setup_object(OBJECT_TYPE_PROCEDURE, &IS_db, &percent, false, false);
-    /*STONEDB UPGRADE Disable sp in sys_stonedb/cache*/
-    insert_setup_object(OBJECT_TYPE_PROCEDURE, &stonedb_db, &percent, false, false);
+    /*TIANMU UPGRADE Disable sp in sys_tianmu/cache*/
+    insert_setup_object(OBJECT_TYPE_PROCEDURE, &tianmu_db, &percent, false, false);
     //insert_setup_object(OBJECT_TYPE_PROCEDURE, &cache_db, &percent, false, false);
     /* Enable every other sp. */
     insert_setup_object(OBJECT_TYPE_PROCEDURE, &percent, &percent, true, true);
@@ -101,8 +101,8 @@ void install_default_setup(PSI_bootstrap *boot)
     /* Disable performance/information schema tables. */
     insert_setup_object(OBJECT_TYPE_TABLE, &PS_db, &percent, false, false);
     insert_setup_object(OBJECT_TYPE_TABLE, &IS_db, &percent, false, false);
-    /*STONEDB UPGRADE Disable sp in sys_stonedb/cache*/
-    insert_setup_object(OBJECT_TYPE_TABLE, &stonedb_db, &percent, false, false);
+    /*TIANMU UPGRADE Disable sp in sys_tianmu/cache*/
+    insert_setup_object(OBJECT_TYPE_TABLE, &tianmu_db, &percent, false, false);
     //insert_setup_object(OBJECT_TYPE_TABLE, &cache_db, &percent, false, false);
     /* Enable every other tables */
     insert_setup_object(OBJECT_TYPE_TABLE, &percent, &percent, true, true);
@@ -112,8 +112,8 @@ void install_default_setup(PSI_bootstrap *boot)
     /* Disable sp in performance/information schema. */
     insert_setup_object(OBJECT_TYPE_TRIGGER, &PS_db, &percent, false, false);
     insert_setup_object(OBJECT_TYPE_TRIGGER, &IS_db, &percent, false, false);
-    /*STONEDB UPGRADE Disable sp in sys_stonedb/cache*/
-    insert_setup_object(OBJECT_TYPE_TRIGGER, &stonedb_db, &percent, false, false);
+    /*TIANMU UPGRADE Disable sp in sys_tianmu/cache*/
+    insert_setup_object(OBJECT_TYPE_TRIGGER, &tianmu_db, &percent, false, false);
     //insert_setup_object(OBJECT_TYPE_TRIGGER, &cache_db, &percent, false, false);
     /* Enable every other sp. */
     insert_setup_object(OBJECT_TYPE_TRIGGER, &percent, &percent, true, true);

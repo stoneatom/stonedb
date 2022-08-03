@@ -13,6 +13,8 @@ my_restart.err
 # Start mysqld to create tablespaces according to my.cnf
 # Backup tmp/logfile/*
 # 1. With ibdata2, Without ibdata1
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -21,6 +23,7 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 ib_logfile0
 ib_logfile1
@@ -32,6 +35,8 @@ undo001
 undo002
 undo003
 # 2. With ibdata1, without ibdata2
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -40,6 +45,7 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 ib_logfile0
 ib_logfile1
@@ -52,6 +58,8 @@ undo001
 undo002
 undo003
 # 3. Without ibdata1 & ibdata2
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -60,6 +68,7 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 ib_logfile0
 ib_logfile1
@@ -69,6 +78,8 @@ my_restart.err
 undo001
 undo002
 undo003
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -77,6 +88,7 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 ib_logfile0
 ib_logfile1
@@ -87,6 +99,8 @@ undo001
 undo002
 undo003
 # 4. Without ibdata*, ib_logfile* and with undo00*
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -95,12 +109,15 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 my.cnf
 my_restart.err
 undo001
 undo002
 undo003
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -109,6 +126,7 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 my.cnf
 my_restart.err
@@ -116,6 +134,8 @@ undo001
 undo002
 undo003
 # 5. Without ibdata*,ib_logfile* files & Without undo002
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -124,11 +144,14 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 my.cnf
 my_restart.err
 undo001
 undo003
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -137,12 +160,15 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 my.cnf
 my_restart.err
 undo001
 undo003
 # 6. Without ibdata*,ib_logfile* files & Without undo001, undo002
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -151,10 +177,13 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 my.cnf
 my_restart.err
 undo003
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -163,11 +192,14 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 my.cnf
 my_restart.err
 undo003
 # 7. With ibdata files & Without undo002
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -176,6 +208,7 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 ib_logfile0
 ib_logfile1
@@ -186,6 +219,8 @@ my.cnf
 my_restart.err
 undo001
 undo003
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -194,6 +229,7 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 ib_logfile0
 ib_logfile1
@@ -205,6 +241,8 @@ my_restart.err
 undo001
 undo003
 # 8. With ibdata files & Without undo001, undo002
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -213,6 +251,7 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 ib_logfile0
 ib_logfile1
@@ -222,6 +261,8 @@ ibdata2
 my.cnf
 my_restart.err
 undo003
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -230,6 +271,7 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 ib_logfile0
 ib_logfile1
@@ -240,6 +282,8 @@ my.cnf
 my_restart.err
 undo003
 # 9. Without ibdata*, without undo*, Without ib_logfile1 and with ib_logfile2
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -248,11 +292,14 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 ib_logfile0
 ib_logfile2
 my.cnf
 my_restart.err
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -261,12 +308,15 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 ib_logfile0
 ib_logfile2
 my.cnf
 my_restart.err
 # 11. With ibdata*, without ib_logfile1
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -275,6 +325,7 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 ib_logfile0
 ib_logfile2
@@ -285,6 +336,8 @@ my_restart.err
 undo001
 undo002
 undo003
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -293,6 +346,7 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 ib_logfile0
 ib_logfile2
@@ -304,6 +358,8 @@ undo001
 undo002
 undo003
 # 12. With ibdata*, without ib_logfile2
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -312,6 +368,7 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 ib_logfile0
 ib_logfile1
@@ -323,6 +380,8 @@ undo001
 undo002
 undo003
 # Cleanup
+.index
+TIANMU_INSERT_BUFFER
 bak_ib_logfile0
 bak_ib_logfile1
 bak_ib_logfile2
@@ -331,6 +390,7 @@ bak_ibdata2
 bak_undo001
 bak_undo002
 bak_undo003
+cache
 ib_buffer_pool
 ib_logfile0
 ib_logfile1

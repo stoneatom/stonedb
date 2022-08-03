@@ -1291,7 +1291,7 @@ int main(int argc,char *argv[])
 #endif
 
   my_getopt_use_args_separator= TRUE;
-#if defined(STONEDB)
+#if defined(TIANMU)
   if (load_defaults(MYSQL_CONFIG_NAME,load_default_groups,&argc,&argv))
 #else
   if (load_defaults("my",load_default_groups,&argc,&argv))
@@ -1363,7 +1363,7 @@ int main(int argc,char *argv[])
 	   mysql_thread_id(&mysql), server_version_string(&mysql));
   put_info((char*) glob_buffer.ptr(),INFO_INFO);
 
-  put_info(ORACLE_WELCOME_COPYRIGHT_NOTICE("2000"), INFO_INFO);
+  put_info(ORACLE_WELCOME_COPYRIGHT_NOTICE(COPYRIGHT_NOTICE_STONEDB_BEGIN_YEAR), INFO_INFO);
 
   if (!status.batch)
   {
@@ -1925,7 +1925,7 @@ static void usage(int version)
 
   if (version)
     return;
-  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE("2000"));
+  puts(ORACLE_WELCOME_COPYRIGHT_NOTICE(COPYRIGHT_NOTICE_STONEDB_BEGIN_YEAR));
   printf("Usage: %s [OPTIONS] [database]\n", my_progname);
   /*
     Turn default for zombies off so that the help on how to 
@@ -1941,7 +1941,7 @@ static void usage(int version)
     }
   }
   my_print_help(my_long_options);
-#if defined(STONEDB)
+#if defined(TIANMU)
   print_defaults(MYSQL_CONFIG_NAME, load_default_groups);
 #else
   print_defaults("my", load_default_groups);

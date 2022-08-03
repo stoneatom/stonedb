@@ -115,7 +115,7 @@ mysql_real_connect(MYSQL *mysql,const char *host, const char *user,
   {
     mysql_read_default_options(&mysql->options,
 			       (mysql->options.my_cnf_file ?
-#if defined(STONEDB)
+#if defined(TIANMU)
 				mysql->options.my_cnf_file : MYSQL_CONFIG_NAME),
 #else
 				mysql->options.my_cnf_file : "my"),

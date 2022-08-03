@@ -135,7 +135,7 @@ static uint32 get_key_length_tmp_table(Item *item);
   @retval 1 Error, error code saved in member JOIN::error.
 */
 int
-JOIN::optimize(unsigned char part) //STONEDB UPGRADE
+JOIN::optimize(unsigned char part) //TIANMU UPGRADE
 {
   uint no_jbuf_after= UINT_MAX;
 
@@ -146,7 +146,7 @@ JOIN::optimize(unsigned char part) //STONEDB UPGRADE
   //assert(tables == 0 &&
   //       primary_tables == 0 &&
   //       tables_list == (TABLE_LIST*)1);
-  //STONEDB UPGRADE BEGIN
+  //TIANMU UPGRADE BEGIN
   /*
   Two more values of part were introduced part=3 and part=4. The main reason is to break optimization in sense of part=2 in point
   where all transformations of LOJ conditions are finished. The optimization is continued in case we switch to MySQL.
@@ -189,7 +189,7 @@ JOIN::optimize(unsigned char part) //STONEDB UPGRADE
     if (select_lex->apply_local_transforms(thd, false))
       DBUG_RETURN(error= 1);
   }
-  //STONEDB UPGRADE
+  //TIANMU UPGRADE
   /*
   Opt_trace_context * const trace= &thd->opt_trace;
   Opt_trace_object trace_wrapper(trace);
@@ -257,11 +257,11 @@ JOIN::optimize(unsigned char part) //STONEDB UPGRADE
     best_rowcount= 0;
     goto setup_subq_exit;
   }
- }//STONEDB UPGRADE END part=0||part=1
+ }//TIANMU UPGRADE END part=0||part=1
   if (where_cond || select_lex->outer_join)
   {
     if (optimize_cond(thd, &where_cond, &cond_equal,
-                      &select_lex->top_join_list, &select_lex->cond_value,part))//STONEDB UPGRADE
+                      &select_lex->top_join_list, &select_lex->cond_value,part))//TIANMU UPGRADE
     {
       error= 1;
       DBUG_PRINT("error",("Error from optimize_cond"));
@@ -277,7 +277,7 @@ JOIN::optimize(unsigned char part) //STONEDB UPGRADE
   if (having_cond)
   {
     if (optimize_cond(thd, &having_cond, &cond_equal, NULL,
-                      &select_lex->having_value, part))//STONEDB UPGRADE
+                      &select_lex->having_value, part))//TIANMU UPGRADE
     {
       error= 1;
       DBUG_PRINT("error",("Error from optimize_cond"));
@@ -290,7 +290,7 @@ JOIN::optimize(unsigned char part) //STONEDB UPGRADE
       goto setup_subq_exit;
     }
   }
-   //STONEDB UPGRADE 
+   //TIANMU UPGRADE 
   if (part == 1)
   {
 	error= 0;
@@ -436,7 +436,7 @@ JOIN::optimize(unsigned char part) //STONEDB UPGRADE
   }
 
   if (const_tables && !thd->locked_tables_mode &&
-      !(select_lex->active_options() & SELECT_NO_UNLOCK )&& part!=3) //STONEDB UPGRADE
+      !(select_lex->active_options() & SELECT_NO_UNLOCK )&& part!=3) //TIANMU UPGRADE
   {
     TABLE *ct[MAX_TABLES];
     for (uint i= 0; i < const_tables; i++)
@@ -493,7 +493,7 @@ JOIN::optimize(unsigned char part) //STONEDB UPGRADE
       tab->join_cond()->update_used_tables();
     }
   }
-  //STONEDB UPGRADE BEGIN
+  //TIANMU UPGRADE BEGIN
   // this is end of part=3 and beginning of part=4
   if(part == 3) {
      DBUG_RETURN(0);	// error == 0
@@ -10032,7 +10032,7 @@ ORDER *JOIN::remove_const(ORDER *first_order, Item *cond, bool change_list,
 bool optimize_cond(THD *thd, Item **cond, COND_EQUAL **cond_equal,
                    List<TABLE_LIST> *join_list,
                    Item::cond_result *cond_value, 
-                   unsigned char part)//STONEDB UPGRADE
+                   unsigned char part)//TIANMU UPGRADE
 {
   Opt_trace_context * const trace= &thd->opt_trace;
   DBUG_ENTER("optimize_cond");
@@ -10287,7 +10287,7 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
     if (cond->const_item())
     {
       if (part!=1 || cond->type()!=Item::SUBSELECT_ITEM)
-      {//STONEDB UPGRADE
+      {//TIANMU UPGRADE
       bool value;
       if (eval_const_cond(thd, cond, &value))
         return true;
@@ -10349,7 +10349,7 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
 */
 
 bool remove_eq_conds(THD *thd, Item *cond, Item **retcond,
-                     Item::cond_result *cond_value, unsigned char part)//STONEDB UPGRADE
+                     Item::cond_result *cond_value, unsigned char part)//TIANMU UPGRADE
 {
   if (cond->type() == Item::FUNC_ITEM &&
       down_cast<Item_func *>(cond)->functype() == Item_func::ISNULL_FUNC)
@@ -10400,7 +10400,7 @@ bool remove_eq_conds(THD *thd, Item *cond, Item **retcond,
       }
     }
   }
-  return internal_remove_eq_conds(thd, cond, retcond, cond_value, part);//STONEDB UPGRADE
+  return internal_remove_eq_conds(thd, cond, retcond, cond_value, part);//TIANMU UPGRADE
 }
 
 

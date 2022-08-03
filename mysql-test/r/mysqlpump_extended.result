@@ -18,11 +18,13 @@ DROP DATABASE db1_extended;
 SHOW DATABASES;
 Database
 information_schema
+cache
 db2_extended
 mtr
 mysql
 performance_schema
 sys
+sys_tianmu
 test
 DROP DATABASE db2_extended;
 # test exclude-events
@@ -171,12 +173,14 @@ DROP DATABASE db4_extended;
 SHOW DATABASES;
 Database
 information_schema
+cache
 db2_extended
 db4_extended
 mtr
 mysql
 performance_schema
 sys
+sys_tianmu
 test
 DROP DATABASE db2_extended;
 DROP DATABASE db4_extended;

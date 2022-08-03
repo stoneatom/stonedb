@@ -118,7 +118,7 @@
 #include "rpl_group_replication.h"
 #include <algorithm>
 
-#include "../storage/stonedb/handler/ha_rcengine.h" // stonedb code
+#include "../storage/tianmu/handler/ha_rcengine.h" // tianmu code
 using std::max;
 
 /**
@@ -3259,10 +3259,10 @@ case SQLCOM_PREPARE:
           */
           
           //res= handle_query(thd, lex, result, SELECT_NO_UNLOCK, 0);
-		  // StoneDB hook added
+		  // Tianmu hook added
 		  
-		  int sdb_res, free_join_from_sdb, optimize_after_sdb;//STONEDB UPGRADE
-		  if (stonedb::dbhandler::SDB_HandleSelect(thd, lex, result, 0, sdb_res, optimize_after_sdb, free_join_from_sdb, (int)true) == 0)
+		  int sdb_res, free_join_from_sdb, optimize_after_sdb;//TIANMU UPGRADE
+		  if (Tianmu::dbhandler::TIANMU_HandleSelect(thd, lex, result, 0, sdb_res, optimize_after_sdb, free_join_from_sdb, (int)true) == 0)
 			  res = handle_query(thd, lex, result, SELECT_NO_UNLOCK, (ulong)0, optimize_after_sdb, free_join_from_sdb);
 		  else
 			  res = sdb_res;
@@ -3727,7 +3727,7 @@ end_with_restore_list:
     if ((check_table_access(thd, SELECT_ACL, all_tables, FALSE, UINT_MAX, FALSE)
          || open_and_lock_tables(thd, all_tables, 0)))
       goto error;
-	if (!stonedb::dbhandler::SDB_SetStatementAllowed(thd, lex)) {
+	if (!Tianmu::dbhandler::TIANMU_SetStatementAllowed(thd, lex)) {
 		goto error;
 	}
     if (!(res= sql_set_variables(thd, lex_var_list)))
@@ -5179,7 +5179,7 @@ static bool execute_sqlcom_select(THD *thd, TABLE_LIST *all_tables)
       //res= handle_query(thd, lex, result, 0, 0, 0, 0);
 	 
 	  int sdb_res, free_join_from_sdb, optimize_after_sdb;//ATIMSTORE UPGRADE
-	  if (stonedb::dbhandler::SDB_HandleSelect(thd, lex, result, (ulong)0,
+	  if (Tianmu::dbhandler::TIANMU_HandleSelect(thd, lex, result, (ulong)0,
 		  sdb_res, optimize_after_sdb, free_join_from_sdb) == 0) {
 		  res = handle_query(thd, lex, result, (ulonglong)0, (ulonglong)0, optimize_after_sdb, free_join_from_sdb);
 	  }

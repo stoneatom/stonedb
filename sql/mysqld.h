@@ -194,7 +194,7 @@ extern my_bool locked_in_memory;
 extern bool opt_using_transactions;
 extern ulong max_long_data_size;
 extern ulong current_pid;
-#if defined(STONEDB)
+#if defined(TIANMU)
 extern double expire_logs_days;
 #else
 extern ulong expire_logs_days;
@@ -241,7 +241,7 @@ extern ulong aborted_threads;
 extern ulong delayed_insert_timeout;
 extern ulong delayed_insert_limit, delayed_queue_size;
 extern ulong delayed_insert_threads, delayed_insert_writes;
-extern ulong stonedb_group_concat_max_len;
+extern ulong tianmu_group_concat_max_len;
 extern ulong delayed_rows_in_use,delayed_insert_errors;
 extern Atomic_int32 slave_open_temp_tables;
 extern ulong query_cache_size, query_cache_min_res_unit;
@@ -953,8 +953,8 @@ enum options_mysqld
   OPT_KEYRING_MIGRATION_SOCKET,
   OPT_KEYRING_MIGRATION_PORT,
   OPT_NAMED_PIPE_FULL_ACCESS_GROUP,
-#if defined(STONEDB)
-  OPT_STONEDB_DATA_DIRECTORY,
+#if defined(TIANMU)
+  OPT_TIANMU_DATA_DIRECTORY,
 #endif
 };
 

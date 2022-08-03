@@ -32,7 +32,7 @@
 #ifdef HAVE_SYS_MMAN_H
 #include <sys/mman.h>
 #endif
-#include "mysql_version.h" //STONEDB UPGRADE
+#include "mysql_version.h" //TIANMU UPGRADE
 static uint decode_bits;
 static char **default_argv;
 static const char *load_default_groups[]= { "myisamchk", 0 };
@@ -473,8 +473,8 @@ static void usage(void)
                        Find a record, a block at given offset belongs to.");
 
   //print_defaults("my", load_default_groups);
-  //STONEDB UPGRADE BEGIN
-  #if defined(STONEDB)
+  //TIANMU UPGRADE BEGIN
+  #if defined(TIANMU)
   print_defaults(MYSQL_CONFIG_NAME, load_default_groups);
   #else
   print_defaults("my", load_default_groups);
@@ -748,8 +748,8 @@ get_one_option(int optid,
 static void get_options(int *argc,char ***argv)
 {
   int ho_error;
-//STONEDB UPGRADE BEGIN
-#if defined(STONEDB)
+//TIANMU UPGRADE BEGIN
+#if defined(TIANMU)
   if (load_defaults(MYSQL_CONFIG_NAME, load_default_groups, argc, argv))
 #else
   if (load_defaults("my", load_default_groups, argc, argv))

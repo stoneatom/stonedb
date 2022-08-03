@@ -91,7 +91,7 @@
 #else
 #define GET_HA_ROWS GET_ULONG
 #endif
-#define DEPRECATED(X) X //STONEDB UPGRADE
+#define DEPRECATED(X) X //TIANMU UPGRADE
 extern sys_var_chain all_sys_vars;
 
 enum charset_enum {IN_SYSTEM_CHARSET, IN_FS_CHARSET};
