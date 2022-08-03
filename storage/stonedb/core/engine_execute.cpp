@@ -400,7 +400,7 @@ int Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_
       std::string table_path = Engine::GetTablePath(((Query_tables_list *)lex)->query_tables->table);
       rct = current_tx->GetTableByPathIfExists(table_path);
     }
-    if (unit_for_union != NULL) {
+    if (unit_for_union != NULL && !unit_for_union->is_prepared()) {
       int res = result_output->prepare(unit_for_union->item_list, unit_for_union);
       if (res) {
         STONEDB_LOG(LogCtl_Level::ERROR, "Error: Unsupported UNION");
@@ -583,8 +583,10 @@ int st_select_lex_unit::optimize_for_stonedb() {
         if (fake_select_lex != NULL) 
 		{
             thd->lex->set_current_select(fake_select_lex);
-            if (prepare_fake_select_lex(thd))
-                return saved_error;
+            if(!is_prepared()) {
+              if (prepare_fake_select_lex(thd))
+                  return saved_error;
+            }
             JOIN *join;
             if (fake_select_lex->join)
                 join = fake_select_lex->join;
@@ -596,10 +598,13 @@ int st_select_lex_unit::optimize_for_stonedb() {
 
             if (!join->is_optimized()) {
                 //    saved_error = join->prepare(fake_select_lex->table_list.first, 0, 0,
-                //    global_parameters->order_list.elements,
+                //                                global_parameters->order_list.elements,
                 //                                global_parameters->order_list.first, NULL, NULL, fake_select_lex,
                 //                                this); //STONEDB UPGRADE
-                fake_select_lex->prepare(thd);
+                if(!is_prepared()) {
+                  if (fake_select_lex->prepare(thd))
+                      return saved_error;
+                }
             } else {
                 join->examined_rows = 0;
                 join->reset();
