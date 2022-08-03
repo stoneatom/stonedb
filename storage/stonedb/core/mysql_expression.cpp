@@ -95,6 +95,7 @@ bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &field
     case Item::DECIMAL_ITEM:
     case Item::NULL_ITEM:
     case Item::VARBIN_ITEM:
+    case Item::CACHE_ITEM:
       return true;
 
     case static_cast<int>(Item_sdbfield::enumSDBFiledItem::SDBFIELD_ITEM):
@@ -336,6 +337,7 @@ Item *MysqlExpression::TransformTree(Item *root, TransformDirection dir) {
     case Item::DECIMAL_ITEM:
     case Item::NULL_ITEM:
     case Item::VARBIN_ITEM:
+    case Item::CACHE_ITEM:
       return root;
 
     default:
