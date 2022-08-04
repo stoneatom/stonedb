@@ -230,7 +230,7 @@ database.table-metadata 表元数据文件
 
 ***扩展***
 
-如果要导入数据到StoneDB，需要把Mydumper的database.table-schema.sql 表结构文件中建表语句engine=innodb 改成 engine=stonedb,并检查表结构是否有StoneDB不兼容的语法：类似unsign 之类的限制。修改后结构示例：
+如果要导入数据到StoneDB，需要把Mydumper的database.table-schema.sql 表结构文件中建表语句engine=innodb 改成 engine=stonedb,并检查表结构是否有StoneDB不兼容的语法：类似unsigned 之类的限制。修改后结构示例：
 ```
 [root@dev-myos dumper]# cat zz.t_user-schema.sql
 /*!40101 SET NAMES binary*/;

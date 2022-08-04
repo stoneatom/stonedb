@@ -427,6 +427,7 @@ mysql> select * from dumpdb.dumptb;
 ```
 
 ***扩展***
+
 使用Mysqldump 备份innodb 导入StoneDB 表小的可以基于上面的mysqldump 备份，大表建议单独备份表结构和数据备份文件，然后使用`sed -i 's/原字符串/新字符串/g' 文件` 命令修改备份文件中的引擎,例如:
 ```
 sed -i 's/ENGINE=InnoDB/ENGINE=STONEDB/g' 文件
