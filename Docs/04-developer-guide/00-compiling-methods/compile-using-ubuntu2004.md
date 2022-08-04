@@ -161,7 +161,8 @@ The directories and files shown in the following figure are generated in directo
 ![stonedb-marisa](../../images/compile-stonedb-on-ubuntu2004/marisa_dir.png)
 ### 3. Install RocksDB
 ```shell
-wget https://github.com/facebook/rocksdb/archive/refs/tags/v6.12.6.tar.gz 
+wget shell
+wget https://github.com/facebook/rocksdb/archive/refs/tags/v6.12.6.tar.gz
 tar -zxvf v6.12.6.tar.gz
 cd rocksdb-6.12.6
 make shared_lib

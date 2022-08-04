@@ -114,9 +114,9 @@ make && make install
 
 4. Install RocksDB.
 ```shell
-wget https://github.com/facebook/rocksdb/archive/refs/tags/v4.13.tar.gz
-tar -zxvf v4.13.tar.gz
-cd rocksdb-4.13
+wget https://github.com/facebook/rocksdb/archive/refs/tags/v6.12.6.tar.gz
+tar -zxvf v6.12.6.tar.gz
+cd rocksdb-6.12.6
 make shared_lib
 make install-shared INSTALL_PATH=/usr/local/stonedb-gcc-rocksdb
 make static_lib
