@@ -238,7 +238,7 @@ mtr
 mysql
 performance_schema
 sys
-sys_stonedb
+sys_tianmu
 test
 # 'bug58090' database should be present.
 SHOW DATABASES;
@@ -250,7 +250,7 @@ mtr
 mysql
 performance_schema
 sys
-sys_stonedb
+sys_tianmu
 test
 DROP DATABASE bug58090;
 #
