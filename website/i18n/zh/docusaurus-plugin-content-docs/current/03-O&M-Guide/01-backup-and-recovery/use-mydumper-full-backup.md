@@ -228,6 +228,27 @@ database.table-schema.sql 表结构文件
 database.table.00000.sql 表数据文件
 database.table-metadata 表元数据文件
 
+***扩展***
+
+如果要导入数据到StoneDB，需要把Mydumper的database.table-schema.sql 表结构文件中建表语句engine=innodb 改成 engine=stonedb,并检查表结构是否有StoneDB不兼容的语法：类似unsign 之类的限制。修改后结构示例：
+```
+[root@dev-myos dumper]# cat zz.t_user-schema.sql
+/*!40101 SET NAMES binary*/;
+/*!40014 SET FOREIGN_KEY_CHECKS=0*/;
+
+/*!40103 SET TIME_ZONE='+00:00' */;
+CREATE TABLE `t_user` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `c_user_id` varchar(36) NOT NULL DEFAULT '',
+  `c_name` varchar(22) NOT NULL DEFAULT '',
+  `c_province_id` int(11) NOT NULL,
+  `c_city_id` int(11) NOT NULL,
+  `create_time` datetime NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=STONEDB AUTO_INCREMENT=10001 DEFAULT CHARSET=utf8;
+```
+
+
 ### 备份原理
 
    - 主线程 FLUSH TABLES WITH READ LOCK, 施加全局只读锁，保证数据的一致性 

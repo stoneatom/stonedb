@@ -411,10 +411,29 @@ mysql> select * from dumpdb.dumptb;
 /stonedb56/install/bin/mysqldump  -uroot -p***** -P3306 --skip-opt --master-data=2 --single-transaction --set-gtid-purged=off  --databases dumpdb > /tmp/dumpdb.sql
 ```
 
+#### 备份指定库的表结构
+```
+/stonedb56/install/bin/mysqldump  -uroot -p***** -P3306   -d --databases dumpdb > /tmp/dumpdb_table.sql
+```
+#### 备份指定库的表数据(不包含表结构)
+```
+/stonedb56/install/bin/mysqldump  -uroot -p***** -P3306 --skip-opt --master-data=2 --single-transaction --set-gtid-purged=off  -t dumpdb > /tmp/dumpdb_table.sql
+```
+
+
 #### 使用mysqldump 备份除系统库（mysql、performation_schema、information_schema）外其他库
 ```bash
 /stonedb56/install/bin/mysql  -uroot -p****** -P3306 -e "show databases;" | grep -Ev "sys|performance_schema|information_schema|Database|test" | xargs /stonedb56/install/bin/mysqldump  -uroot -p****** -P3306 --master-data=1 --skip-opt --databases > /tmp/ig_sysdb.sql
 ```
+
+***扩展***
+使用Mysqldump 备份innodb 导入StoneDB 表小的可以基于上面的mysqldump 备份，大表建议单独备份表结构和数据备份文件，然后使用`sed -i 's/原字符串/新字符串/g' 文件` 命令修改备份文件中的引擎,例如:
+```
+sed -i 's/ENGINE=InnoDB/ENGINE=STONEDB/g' 文件
+```
+修改引擎后按照下面恢复方式导入到StoneDB。
+
+
 ### 恢复
 #### 数据导入到StoneDB
 ```bash
