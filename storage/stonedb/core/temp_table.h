@@ -278,37 +278,37 @@ class TempTable : public JustATable {
   int GetDimension(TabID alias);
   std::vector<AttributeTypeInfo> GetATIs(bool orig = false) override;
   int GetAttrScale(int a) {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NoAttrs());
+    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a]->Type().GetScale();
   }
 
   int GetAttrSize(int a) {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NoAttrs());
+    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a]->Type().GetDisplaySize();
   }
 
   uint GetFieldSize(int a) {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NoAttrs());
+    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a]->Type().GetInternalSize();
   }
 
   int GetNoDigits(int a) {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NoAttrs());
+    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a]->Type().GetPrecision();
   }
 
   const ColumnType &GetColumnType(int a) override {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NoAttrs());
+    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a]->Type();
   }
 
   PhysicalColumn *GetColumn(int a) override {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NoAttrs());
+    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
     return attrs[a];
   }
 
   Attr *GetAttrP(uint a) {
-    DEBUG_ASSERT(a < (uint)NoAttrs());
+    DEBUG_ASSERT(a < (uint)NumOfAttrs());
     return attrs[a];
   }
 

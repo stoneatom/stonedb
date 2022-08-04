@@ -29,12 +29,14 @@ void KVStore::Init() {
   std::vector<rocksdb::ColumnFamilyHandle *> cf_handles;
   rocksdb::Options options;
   options.create_if_missing = true;
+
   if (stonedb_sysvar_index_cache_size != 0) {
     bbto_.no_block_cache = false;
     bbto_.cache_index_and_filter_blocks = true;
     bbto_.block_cache = rocksdb::NewLRUCache(stonedb_sysvar_index_cache_size << 20);
     options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(bbto_));
   }
+
   rocksdb::DBOptions db_option(options);
   auto rocksdb_datadir = kv_data_dir / ".index";
   int max_compact_threads = std::thread::hardware_concurrency() / 4;
@@ -43,6 +45,7 @@ void KVStore::Init() {
   db_option.max_subcompactions = max_compact_threads;
   db_option.env->SetBackgroundThreads(max_compact_threads, rocksdb::Env::Priority::LOW);
   db_option.statistics = rocksdb::CreateDBStatistics();
+
   // get column family names from manifest file
   rocksdb::Status status = rocksdb::DB::ListColumnFamilies(db_option, rocksdb_datadir, &cf_names);
   if (!status.ok() &&
@@ -63,6 +66,7 @@ void KVStore::Init() {
     else
       cf_descr.emplace_back(cfn, index_cf_option);
   }
+
   // open db, get column family handles
   status = rocksdb::TransactionDB::Open(options, txn_db_options, rocksdb_datadir, cf_descr, &cf_handles, &rdb);
   if (!status.ok()) {

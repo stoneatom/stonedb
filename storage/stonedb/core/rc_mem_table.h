@@ -27,6 +27,7 @@
 
 namespace stonedb {
 namespace core {
+
 class TableShare;
 class Transaction;
 
@@ -62,6 +63,7 @@ class RCMemTable {
   uint32_t mem_id_ = 0;
   rocksdb::ColumnFamilyHandle *cf_handle_ = nullptr;
 };
+
 }  // namespace core
 }  // namespace stonedb
 

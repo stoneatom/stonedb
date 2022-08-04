@@ -149,7 +149,7 @@ IF (WITH_BOOST)
            )
   ## Did we get a path name to an unzippped version?
   FIND_PATH(LOCAL_BOOST_DIR
-            NAMES "boost/version.hpp"
+            NAMES "include/boost/version.hpp"
             PATHS ${WITH_BOOST}
             NO_DEFAULT_PATH
            )
@@ -228,7 +228,7 @@ ENDIF()
 
 # Search for the version file, first in LOCAL_BOOST_DIR or WITH_BOOST
 FIND_PATH(BOOST_INCLUDE_DIR
-  NAMES boost/version.hpp
+  NAMES include/boost/version.hpp
   NO_DEFAULT_PATH
   PATHS ${LOCAL_BOOST_DIR}
         ${LOCAL_BOOST_DIR}/${BOOST_PACKAGE_NAME}
@@ -236,15 +236,15 @@ FIND_PATH(BOOST_INCLUDE_DIR
 )
 # Then search in standard places (if not found above).
 FIND_PATH(BOOST_INCLUDE_DIR
-  NAMES boost/version.hpp
+  NAMES include/boost/version.hpp
 )
 
 IF(NOT BOOST_INCLUDE_DIR)
   MESSAGE(STATUS
-    "Looked for boost/version.hpp in ${LOCAL_BOOST_DIR} and ${WITH_BOOST}")
+    "Looked for include/boost/version.hpp in ${LOCAL_BOOST_DIR} and ${WITH_BOOST}")
   COULD_NOT_FIND_BOOST()
 ELSE()
-  MESSAGE(STATUS "Found ${BOOST_INCLUDE_DIR}/boost/version.hpp ")
+  MESSAGE(STATUS "Found ${BOOST_INCLUDE_DIR}/include/boost/version.hpp ")
 ENDIF()
 
 # Verify version number. Version information looks like:
@@ -252,7 +252,7 @@ ENDIF()
 # //  BOOST_VERSION / 100 % 1000 is the minor version
 # //  BOOST_VERSION / 100000 is the major version
 # #define BOOST_VERSION 105900
-FILE(STRINGS "${BOOST_INCLUDE_DIR}/boost/version.hpp"
+FILE(STRINGS "${BOOST_INCLUDE_DIR}/include/boost/version.hpp"
   BOOST_VERSION_NUMBER
   REGEX "^#define[\t ]+BOOST_VERSION[\t ][0-9]+.*"
 )

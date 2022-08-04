@@ -26,9 +26,9 @@
 #include <chrono>
 #include <functional>
 
-#include <core/future.h>
-#include <core/reactor.h>
-#include <core/sstring.h>
+#include <base/core/future.h>
+#include <base/core/reactor.h>
+#include <base/core/sstring.h>
 #include <boost/optional.hpp>
 
 namespace stonedb {
