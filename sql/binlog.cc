@@ -7606,7 +7606,7 @@ int MYSQL_BIN_LOG::rotate(bool force_rotate, bool* check_purge)
 void MYSQL_BIN_LOG::purge()
 {
 #ifdef HAVE_REPLICATION
-#if defined(STONEDB)
+#if defined(TIANMU)
   if (expire_logs_days >= 0.1)
 #else
   if (expire_logs_days)

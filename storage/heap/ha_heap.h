@@ -124,7 +124,7 @@ public:
     return memcmp(ref1, ref2, sizeof(HEAP_PTR));
   }
   bool check_if_incompatible_data(HA_CREATE_INFO *info, uint table_changes);
-  HP_INFO* get_hp_info() { return file; } //STONEDB UPGRADE
+  HP_INFO* get_hp_info() { return file; } //TIANMU UPGRADE
 private:
   void update_key_stats();
 };

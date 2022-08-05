@@ -559,7 +559,7 @@ int init_embedded_server(int argc, char **argv, char **groups)
 
   orig_argc= *argcp;
   orig_argv= *argvp;
-#if defined(STONEDB)
+#if defined(TIANMU)
   if (load_defaults(MYSQL_CONFIG_NAME, (const char **)groups, argcp, argvp))
 #else
   if (load_defaults("my", (const char **)groups, argcp, argvp))

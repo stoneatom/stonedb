@@ -529,7 +529,7 @@ static bool convert_constant_item(THD *thd, Item_field *field_item,
       !((*item)->field_type() == field_item->field_type() &&
         (*item)->basic_const_item()))
   {
-    /* FIXME: Stonedb integration disables subquery execution in this phase */
+    /* FIXME: Tianmu integration disables subquery execution in this phase */
     if ((*item)->type()==Item::SUBSELECT_ITEM)
 	    return 0;
     TABLE *table= field->table;

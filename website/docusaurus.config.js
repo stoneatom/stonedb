@@ -63,7 +63,7 @@ const config = {
             if(locale !== 'en') {
               return `https://github.com/stoneatom/stonedb/edit/stonedb-5.7/website/i18n/${locale}/docusaurus-plugin-content-docs/current/${docPath}`
             }
-            return `https://github.com/stoneatom/stonedb/edit/stonedb-5.7/${versionDocsDirPath}/${docPath}`
+            return `https://github.com/stoneatom/stonedb/edit/stonedb-5.7/Docs/${docPath}`
           },
         },
         theme: {

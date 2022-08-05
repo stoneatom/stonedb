@@ -201,7 +201,7 @@ extern LEX_CSTRING NULL_CSTR;
 
 extern "C" LEX_CSTRING thd_query_unsafe(MYSQL_THD thd);
 extern "C" size_t thd_query_safe(MYSQL_THD thd, char *buf, size_t buflen);
-extern "C" LEX_STRING * thd_query_string (MYSQL_THD thd);//STONEDB UPGRADE
+extern "C" LEX_STRING * thd_query_string (MYSQL_THD thd);//TIANMU UPGRADE
 
 /**
   @class CSET_STRING
@@ -5083,8 +5083,8 @@ public:
   void send_error(uint errcode,const char *err);
   bool send_eof();
   void cleanup();
-  //STONEDB UPGRADE BEGIN
-  // FIXME: for stonedb. this is a kludge!
+  //TIANMU UPGRADE BEGIN
+  // FIXME: for tianmu. this is a kludge!
   sql_exchange* get_sql_exchange() const { return exchange; }
   //END
 };
@@ -5100,14 +5100,14 @@ public:
 
 
 class Query_result_export :public Query_result_to_file {
-  //STONEDB UPGRADE BEGIN
-protected: // FIXME: for stonedb
+  //TIANMU UPGRADE BEGIN
+protected: // FIXME: for tianmu
   size_t field_term_length;
   int field_sep_char,escape_char,line_sep_char;
   int field_term_char; // first char of FIELDS TERMINATED BY or MAX_INT
   bool fixed_row_size;
 private:
-// STONEDB UPGRADE END
+// TIANMU UPGRADE END
   /*
     The is_ambiguous_field_sep field is true if a value of the field_sep_char
     field is one of the 'n', 't', 'r' etc characters

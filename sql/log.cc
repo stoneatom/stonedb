@@ -51,7 +51,7 @@
 #include <syslog.h>
 #endif
 
-#include "stonedb.h"
+#include "tianmu.h"
 
 using std::min;
 using std::max;
@@ -2112,7 +2112,7 @@ static void print_buffer_to_file(enum loglevel level, const char *buffer,
   if (error_log_initialized)
     mysql_mutex_unlock(&LOCK_error_log);
 
-  stonedb_log(level, buffer, length);
+  tianmu_log(level, buffer, length);
 
   DBUG_VOID_RETURN;
 }
