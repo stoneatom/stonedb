@@ -42,7 +42,7 @@ ParameterizedFilter::ParameterizedFilter(uint32_t power, CondType filter_type)
 
 ParameterizedFilter &ParameterizedFilter::operator=(const ParameterizedFilter &pf) {
   if (this != &pf) {
-    if (mind) delete mind;
+    if (mind && (!mind_shallow)) delete mind;
     if (pf.mind)
       mind = new MultiIndex(*pf.mind);
     else
