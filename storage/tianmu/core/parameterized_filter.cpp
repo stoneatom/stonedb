@@ -48,7 +48,23 @@ ParameterizedFilter &ParameterizedFilter::operator=(const ParameterizedFilter &p
     else
       mind = NULL;  // possible e.g. for a temporary data sources
     AssignInternal(pf);
+    mind_shallow = false;
   }
+  return *this;
+}
+
+ParameterizedFilter &ParameterizedFilter::operator=(ParameterizedFilter &&pf) {
+  if (this == &pf) {
+    return *this;
+  }
+
+  if (mind && (!mind_shallow)) delete mind;
+
+  mind = pf.mind;
+  rough_mind = pf.rough_mind;
+  table = pf.table;
+
+  mind_shallow = true;
   return *this;
 }
 
@@ -59,9 +75,15 @@ ParameterizedFilter::ParameterizedFilter(const ParameterizedFilter &pf) {
     mind = NULL;  // possible e.g. for a temporary data sources
   rough_mind = NULL;
   AssignInternal(pf);
+  mind_shallow = false;
 }
 
 ParameterizedFilter::~ParameterizedFilter() {
+
+  if (mind_shallow) {
+    return;
+  }
+
   delete mind;
   delete rough_mind;
 }
@@ -1017,7 +1039,8 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
   int no_of_delayed_conditions = 0;
   for (uint i = 0; i < descriptors.Size(); i++) {
     if (!descriptors[i].done)
-      if (descriptors[i].IsType_Join() || descriptors[i].IsDelayed() || descriptors[i].IsOuter()) {
+      if (descriptors[i].IsType_Join() || descriptors[i].IsDelayed() || descriptors[i].IsOuter() ||
+          descriptors[i].IsType_Exists()) {
         if (!descriptors[i].IsDelayed())
           no_of_join_conditions++;
         else
@@ -1033,13 +1056,16 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
   int no_desc = 0;
   for (uint i = 0; i < descriptors.Size(); i++)
     if (!descriptors[i].done && descriptors[i].IsInner() && !descriptors[i].IsType_Join() &&
-        !descriptors[i].IsDelayed())
+        !descriptors[i].IsDelayed() && !descriptors[i].IsType_Exists())
       ++no_desc;
 
   int desc_no = 0;
   for (uint i = 0; i < descriptors.Size(); i++) {
-    if (!descriptors[i].done && descriptors[i].IsInner() && !descriptors[i].IsType_Join() &&
-        !descriptors[i].IsDelayed()) {
+    if (!descriptors[i].done 
+        && descriptors[i].IsInner() 
+        && !descriptors[i].IsType_Join() 
+        && !descriptors[i].IsDelayed() 
+        && !descriptors[i].IsType_Exists()) {
       ++desc_no;
       if (descriptors[i].attr.vc) {
         cur_dim = descriptors[i].attr.vc->GetDim();

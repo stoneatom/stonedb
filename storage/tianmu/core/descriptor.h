@@ -121,6 +121,7 @@ class Descriptor {
   void CalculateJoinType();
   DescriptorJoinType GetJoinType() const { return desc_t; }
   bool IsType_Subquery();
+  bool IsType_Exists() const { return op == common::Operator::O_EXISTS || op == common::Operator::O_NOT_EXISTS; }
 
   bool IsType_TIANMUExpression() const;  // only columns, constants and TIANMUExpressions
   bool IsType_JoinComplex() const;
