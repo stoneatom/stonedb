@@ -45,6 +45,10 @@ JoinAlgType TwoDimensionalJoiner::ChooseJoinAlgorithm([[maybe_unused]] MultiInde
       break;
     }
 
+    if (cond[0].IsType_In()) {
+      break;
+    }
+
     if (!cond[0].IsType_JoinSimple()) {
       return JoinAlgType::JTYPE_GENERAL;
     }

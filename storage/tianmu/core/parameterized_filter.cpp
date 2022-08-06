@@ -1039,8 +1039,11 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
   int no_of_delayed_conditions = 0;
   for (uint i = 0; i < descriptors.Size(); i++) {
     if (!descriptors[i].done)
-      if (descriptors[i].IsType_Join() || descriptors[i].IsDelayed() || descriptors[i].IsOuter() ||
-          descriptors[i].IsType_Exists()) {
+      if (descriptors[i].IsType_Join() 
+          || descriptors[i].IsDelayed() 
+          || descriptors[i].IsOuter() 
+          || descriptors[i].IsType_In() 
+          || descriptors[i].IsType_Exists()) {
         if (!descriptors[i].IsDelayed())
           no_of_join_conditions++;
         else
@@ -1056,7 +1059,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
   int no_desc = 0;
   for (uint i = 0; i < descriptors.Size(); i++)
     if (!descriptors[i].done && descriptors[i].IsInner() && !descriptors[i].IsType_Join() &&
-        !descriptors[i].IsDelayed() && !descriptors[i].IsType_Exists())
+        !descriptors[i].IsDelayed() && !descriptors[i].IsType_Exists() && !descriptors[i].IsType_In())
       ++no_desc;
 
   int desc_no = 0;
@@ -1065,6 +1068,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
         && descriptors[i].IsInner() 
         && !descriptors[i].IsType_Join() 
         && !descriptors[i].IsDelayed() 
+        && !descriptors[i].IsType_In() 
         && !descriptors[i].IsType_Exists()) {
       ++desc_no;
       if (descriptors[i].attr.vc) {
