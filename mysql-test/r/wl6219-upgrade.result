@@ -262,10 +262,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
-sys_stonedb.column_ttl                             OK
-sys_stonedb.columns                                OK
-sys_stonedb.decomposition_dictionary               OK
-sys_stonedb.logs                                   OK
+sys_tianmu.column_ttl                              OK
+sys_tianmu.columns                                 OK
+sys_tianmu.decomposition_dictionary                OK
+sys_tianmu.logs                                    OK
 test.t1
 warning  : Table is marked as crashed
 Warning  : Found incompatible YEAR(x) field 'y2' in t1; Please do "ALTER TABLE `t1` FORCE" to fix it!

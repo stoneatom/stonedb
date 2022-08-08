@@ -6,7 +6,7 @@ mtr
 mysql
 performance_schema
 sys
-sys_stonedb
+sys_tianmu
 test
 select count(*) from performance_schema.performance_timers;
 count(*)
