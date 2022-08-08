@@ -6,10 +6,15 @@ sidebar_position: 5.13
 # Compile StoneDB on RHEL 7
 
 This topic describes how to compile StoneDB on Red Hat Enterprise Linux (RHEL) 7.
-## Prerequisites
-The source code of StoneDB has been downloaded.
+## Precautions
+Ensure that the tools and third-party libraries used in your environment meet the following version requirements:
 
-Download link: [https://github.com/stoneatom/stonedb.git](https://github.com/stoneatom/stonedb.git) 
+- GCC 9.3.0
+- Make 3.82 or later
+- CMake 3.7.2 or later
+- marisa 0.77
+- RocksDB 6.12.6
+- Boost 1.66
 ## Procedure
 ### Step 1. Install the dependencies
 ```shell
@@ -51,36 +56,39 @@ yum install -y libaio-devel
 yum install -y libicu
 yum install -y libicu-devel
 ```
-### Step 2. Install GCC 7.3.0
-Before executing **stonedb_build.sh** to compile StoneDB, you must ensure the GCC version is 7.3.0.
+### Step 2. Install GCC 9.3.0
+Before performing the follow-up steps, you must ensure the GCC version is 9.3.0.
 
 You can run the following command to check the GCC version.
 ```shell
 gcc --version
 ```
-If the version is earlier than 7.3.0, perform the following steps to upgrade GCC.
+If the version is earlier than 9.3.0, perform the following steps to upgrade GCC.
 
 1. Install the SCL utility.
 ```shell
 yum install centos-release-scl scl-utils-build -y
 ```
 
-2. Install GCC, GCC-C++, or GDB of version 7.3.0.
+2. Install GCC, GCC-C++, or GDB of version 9.3.0.
 ```shell
-yum install devtoolset-7-gcc.x86_64 devtoolset-7-gcc-c++.x86_64 devtoolset-7-gcc-gdb-plugin.x86_64 -y
+yum install devtoolset-9-gcc.x86_64 devtoolset-9-gcc-c++.x86_64 devtoolset-9-gcc-gdb-plugin.x86_64 -y
 ```
 
-3. Switch the version to 7.3.0.
+3. Switch the version to 9.3.0.
 ```shell
-scl enable devtoolset-7 bash
+scl enable devtoolset-9 bash
 ```
 
-4. Check that the version is switched to 7.3.0.
+4. Check that the version is switched to 9.3.0.
 ```shell
 gcc --version
 ```
-### Step 3. Install CMake, Make, and third-party libraries
-Before compiling StoneDB, install CMake 3.7 or later, Make 3.82 or later, and the following third-party libraries: marisa, RocksDB, and Boost.
+### Step 3. Install third-party libraries
+Ensure that the CMake version in your environment is 3.7.2 or later and the Make version is 3.82 or later. Otherwise, install CMake, Make, or both of them of the correct versions.
+:::info
+StoneDB is dependent on marisa, RocksDB, and Boost. You can specify an installation directory for marisa, RocksDB, or Boost, when compiling it, or the library will be saved in **/usr/local **by default. In the following example, each directory is specified with an installation directory. There is also no need to specify the installation directory for StoneDB.
+:::
 
 1. Install CMake.
 ```shell
@@ -89,7 +97,7 @@ tar -zxvf cmake-3.7.2.tar.gz
 cd cmake-3.7.2
 ./bootstrap && make && make install
 /usr/local/bin/cmake --version
-apt remove cmake -y
+rm -rf /usr/bin/cmake
 ln -s /usr/local/bin/cmake /usr/bin/
 ```
 
@@ -97,6 +105,7 @@ ln -s /usr/local/bin/cmake /usr/bin/
 ```shell
 http://mirrors.ustc.edu.cn/gnu/make/
 tar -zxvf make-3.82.tar.gz
+cd make-3.82
 ./configure  --prefix=/usr/local/make
 make && make install
 rm -rf /usr/local/bin/make
@@ -111,17 +120,34 @@ autoreconf -i
 ./configure --enable-native-code --prefix=/usr/local/stonedb-marisa
 make && make install 
 ```
+The installation directory of marisa in the example is **/usr/local/stonedb-marisa**. You can change it based on your actual conditions.
 
 4. Install RocksDB.
 ```shell
 wget https://github.com/facebook/rocksdb/archive/refs/tags/v6.12.6.tar.gz
 tar -zxvf v6.12.6.tar.gz
 cd rocksdb-6.12.6
-make shared_lib
-make install-shared INSTALL_PATH=/usr/local/stonedb-gcc-rocksdb
-make static_lib
-make install-static INSTALL_PATH=/usr/local/stonedb-gcc-rocksdb
+
+cmake ./ \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/usr/local/stonedb-gcc-rocksdb \
+  -DCMAKE_INSTALL_LIBDIR=/usr/local/stonedb-gcc-rocksdb \
+  -DWITH_JEMALLOC=ON \
+  -DWITH_SNAPPY=ON \
+  -DWITH_LZ4=ON \
+  -DWITH_ZLIB=ON \
+  -DWITH_ZSTD=ON \
+  -DUSE_RTTI=ON \
+  -DROCKSDB_BUILD_SHARED=ON \
+  -DWITH_GFLAGS=OFF \
+  -DWITH_TOOLS=OFF \
+  -DWITH_BENCHMARK_TOOLS=OFF \
+  -DWITH_CORE_TOOLS=OFF 
+
+make -j`nproc`
+make install -j`nproc`
 ```
+The installation directory of RocksDB in the example is **/usr/local/stonedb-gcc-rocksdb**. You can change it based on your actual conditions.
 
 5. Install Boost.
 ```shell
@@ -131,14 +157,44 @@ cd boost_1_66_0
 ./bootstrap.sh --prefix=/usr/local/stonedb-boost
 ./b2 install --with=all
 ```
+The installation directory of Boost in the example is **/usr/local/stonedb-boost**. You can change it based on your actual conditions.
+:::info
+During the compilation, the occurrences of keywords **warning** and** failed** are normal, unless **error** is displayed and the CLI is automatically closed.
+:::
 ### Step 4. Compile StoneDB
-Execute the following script to compile StoneDB:
+Currently, StoneDB has two branches: StoneDB-5.6 (for MySQL 5.6) and StoneDB-5.7 (for MySQL 5.7). The link provided in this topic is to the source code package of StoneDB-5.7. In the following example, the source code package is saved to the root directory and is switched to StoneDB-5.6 for compilation. 
+:::info
+GCC 9.3.0 or later supports the compilation of StoneDB-5.6 and allows you to specify the installation directories for RocksDB and marisa. We are working on the support for GCC 7.3.0 and for compilation of StoneDB-5.7.
+:::
 ```shell
-cd /stonedb/scripts
-./stonedb_build.sh
+cd /
+git clone https://github.com/stoneatom/stonedb.git
+cd stonedb
+git checkout remotes/origin/stonedb-5.6
 ```
-After the compilation is complete, a folder named **/stonedb57** is generated.
-### Step 5. Start StoneDB
+Before compilation, modify the compilation script as follows:
+
+1. Change the installation directory of StoneDB based on your actual conditions. In the example, **/stonedb56/install** is used.
+1. Change the installation directories of marisa, RocksDB, and Boost based on your actual conditions.
+
+```shell
+### Modify the compilation script.
+cd /stonedb/scripts
+vim stonedb_build.sh
+...
+install_target=/stonedb56/install
+...
+-DDOWNLOAD_BOOST=0 \
+-DWITH_BOOST=/usr/local/stonedb-boost/ \
+-DWITH_MARISA=/usr/local/stonedb-marisa \
+-DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb \
+2>&1 | tee -a ${build_log}
+
+### Execute the compilation script.
+sh stonedb_build.sh
+```
+After the compilation is complete, a folder named **/stonedb56** is generated.
+## Step 5. Start StoneDB
 Perform the following steps to start StoneDB.
 
 1. Create an account.
@@ -148,24 +204,56 @@ useradd -g mysql mysql
 passwd mysql
 ```
 
-2. Execute **reinstall.sh**.
+2. Manually install StoneDB.
+
+If the installation directory after compilation is not **/stonedb56**, files **reinstall.sh**, **install.sh**, and **my.cnf** will not automatically generated. You need to manually create directories, and then initialize and start StoneDB. You also need to configure parameters in file **my.cnf**, including the installation directories and port.
 ```shell
-cd /stonedb57/install
+### Create directories.
+mkdir -p /data/stonedb56/install/data/innodb
+mkdir -p /data/stonedb56/install/binlog
+mkdir -p /data/stonedb56/install/log
+mkdir -p /data/stonedb56/install/tmp
+chown -R mysql:mysql /data
+
+### Configure parameters in my.cnf.
+vim /data/stonedb56/install/my.cnf
+[mysqld]
+port      = 3306
+socket    = /data/stonedb56/install/tmp/mysql.sock
+datadir   = /data/stonedb56/install/data
+pid-file  = /data/stonedb56/install/data/mysqld.pid
+log-error = /data/stonedb56/install/log/mysqld.log
+
+chown -R mysql:mysql /data/stonedb56/install/my.cnf
+
+### Initialize StoneDB.
+/data/stonedb56/install/scripts/mysql_install_db --datadir=/data/stonedb56/install/data --basedir=/data/stonedb56/install --user=mysql
+
+### Start StoneDB.
+/data/stonedb56/install/bin/mysqld_safe --defaults-file=/data/stonedb56/install/my.cnf --user=mysql &
+```
+
+3. Execute **reinstall.sh** to automatically install StoneDB.
+
+If the installation directory after compilation is **/stonedb56**, execute **reinstall.sh**. Then, StoneDB will be automatically installed.
+```shell
+cd /stonedb56/install
 ./reinstall.sh
 ```
 :::info
-The aim of executing the script is to initialize and start StoneDB.
+Differences between **reinstall.sh** and **install.sh**:
+
+- **reinstall.sh** is the script for automatic installation. When the script is being executed, directories are created, and StoneDB is initialized and started. Therefore, do not execute the script unless for the initial startup of StoneDB. Otherwise, all directories will be deleted and StoneDB will be initialized again.
+- **install.sh** is the script for manual installation. You can specify the installation directories based on your needs and then execute the script. Same as **reinstall.sh**, when the script is being executed, directories are created, and StoneDB is initialized and started. Therefore, do not execute the script unless for the initial startup. Otherwise, all directories will be deleted and StoneDB will be initialized again.
 :::
 
-3. Log in to StoneDB.
-
-Before you log in to StoneDB, you must find the password of the super admin in **/stonedb57/install/log/mysqld.log**.
+4. Log in to StoneDB.
 ```shell
 /stonedb56/install/bin/mysql -uroot -p -S /stonedb56/install/tmp/mysql.sock
-Warning: Using a password on the command line interface can be insecure.
+Enter password: 
 Welcome to the MySQL monitor.  Commands end with ; or \g.
-Your MySQL connection id is 1
-Server version: 5.6.24-StoneDB-log build-
+Your MySQL connection id is 2
+Server version: 5.6.24-StoneDB-debug build-
 
 Copyright (c) 2000, 2022 StoneAtom Group Holding Limited
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
@@ -177,7 +265,10 @@ mysql> show databases;
 | information_schema |
 | cache              |
 | innodb             |
+| mysql              |
+| performance_schema |
+| sys_stonedb        |
 | test               |
 +--------------------+
-4 rows in set (0.08 sec)
+7 rows in set (0.00 sec)
 ```

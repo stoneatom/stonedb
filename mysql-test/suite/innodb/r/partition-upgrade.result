@@ -123,10 +123,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
-sys_stonedb.column_ttl                             OK
-sys_stonedb.columns                                OK
-sys_stonedb.decomposition_dictionary               OK
-sys_stonedb.logs                                   OK
+sys_tianmu.column_ttl                              OK
+sys_tianmu.columns                                 OK
+sys_tianmu.decomposition_dictionary                OK
+sys_tianmu.logs                                    OK
 test.t575                                          OK
 # Flush the table data files
 FLUSH TABLE t575 FOR EXPORT;
@@ -210,10 +210,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
-sys_stonedb.column_ttl                             OK
-sys_stonedb.columns                                OK
-sys_stonedb.decomposition_dictionary               OK
-sys_stonedb.logs                                   OK
+sys_tianmu.column_ttl                              OK
+sys_tianmu.columns                                 OK
+sys_tianmu.decomposition_dictionary                OK
+sys_tianmu.logs                                    OK
 test.t575
 error    : Partitioning upgrade required. Please dump/reload to fix it or do: ALTER TABLE `test`.`t575` UPGRADE PARTITIONING
 warning  : The partition engine, used by table 'test.t575', is deprecated and will be removed in a future release. Please use native partitioning instead.

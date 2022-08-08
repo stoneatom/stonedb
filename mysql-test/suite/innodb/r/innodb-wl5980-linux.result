@@ -279,10 +279,10 @@ mysql_upgrade: [ERROR] 1033: Incorrect information in file: './performance_schem
 mysql_upgrade: [ERROR] 1146: Table 'sys.processlist' doesn't exist
 mysql_upgrade: [ERROR] 1146: Table 'sys.x$processlist' doesn't exist
 sys.sys_config                                     OK
-sys_stonedb.column_ttl                             OK
-sys_stonedb.columns                                OK
-sys_stonedb.decomposition_dictionary               OK
-sys_stonedb.logs                                   OK
+sys_tianmu.column_ttl                              OK
+sys_tianmu.columns                                 OK
+sys_tianmu.decomposition_dictionary                OK
+sys_tianmu.logs                                    OK
 test.emp1                                          OK
 test.emp2
 error    : Partitioning upgrade required. Please dump/reload to fix it or do: ALTER TABLE `test`.`emp2` UPGRADE PARTITIONING

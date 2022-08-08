@@ -5,137 +5,64 @@ sidebar_position: 5.14
 
 # Ubuntu 20.04 下编译StoneDB
 
-## 第一步：安装gcc 7.3.0
-Ubuntu 20.04 LTS默认的gcc版本是9.4.0，由于高版本不支持编译，需要降低gcc版本为 7.3.0。
-### 1. 安装依赖包
-```shell
-sudo apt install gcc
-sudo apt install g++
-sudo apt install make
-sudo apt install build-essential
-sudo apt install autoconf
-sudo apt install tree
-sudo apt install bison
-sudo apt install git
-sudo apt install cmake
-sudo apt install libtool
-sudo apt install numactl
-sudo apt install python
-sudo apt install openssl
-sudo apt install perl
-sudo apt install binutils
-sudo apt install libgmp-dev
-sudo apt install libmpfr-dev
-sudo apt install libmpc-dev
-sudo apt install libisl-dev
-sudo apt install zlib1g-dev
-sudo apt install liblz4-dev
-sudo apt install libbz2-dev
-sudo apt install libzstd-dev
-sudo apt install lz4
-sudo apt install ncurses-dev
-sudo apt install libsnappy-dev
-sudo apt install libedit-dev
-sudo apt install libaio-dev
-sudo apt install libncurses5-dev 
-sudo apt install libreadline-dev
-sudo apt install libpam0g-dev
-sudo apt install zlib1g-dev
-sudo apt install libcurl-ocaml-dev
-sudo apt install libicu-dev
-sudo apt install libboost-all-dev
-sudo apt install libgflags-dev
-sudo apt install libjemalloc-dev
-sudo apt install libssl-dev
-```
-注：依赖包必须都装上，否则后面有很多报错。
-### 2. 解压gcc 7.3.0源码包
-[http://ftp.gnu.org/gnu/gcc/](http://ftp.gnu.org/gnu/gcc/)
-下载gcc 7.3.0源码包，上传并解压。
-```shell
-cd /home
-tar -zxvf gcc-7.3.0.tar.gz
-```
-### 3. 编译前准备工作
-如果直接编译会报错，提示找不到sys/ustat.h，这是因为gcc-7.3.0在文件 sanitizer-platform-limits-posix.cc
-已经移除了 ustat.h，需要做如下修改。
-1）在第157行将 ustat.h 注释
-```shell
-cd /home/gcc-7.3.0/libsanitizer/sanitizer_common
-cp sanitizer_platform_limits_posix.cc sanitizer_platform_limits_posix.cc.bak
-vim sanitizer_platform_limits_posix.cc
+编译工具以及第三方库的版本要求如下。
 
-//#include <sys/ustat.h>
+| 编译工具及第三方库 | 版本要求 |
+| --- | --- |
+| gcc | 9.4.0 |
+| make | 3.82 |
+| cmake | 3.7.2 |
+| marisa | 0.77 |
+| rocksdb | 6.12.6 |
+| boost | 1.66 |
 
-```
-2）在第250行后添加如下代码
+## 第一步：安装依赖包
 ```shell
-vim sanitizer_platform_limits_posix.cc
-
-// Use pre-computed size of struct ustat to avoid <sys/ustat.h> which
-// has been removed from glibc 2.28.
-#if defined(__aarch64__) || defined(__s390x__) || defined (__mips64) \
-|| defined(__powerpc64__) || defined(__arch64__) || defined(__sparcv9) \
-|| defined(__x86_64__)
-#define SIZEOF_STRUCT_USTAT 32
-#elif defined(__arm__) || defined(__i386__) || defined(__mips__) \
-|| defined(__powerpc__) || defined(__s390__)
-#define SIZEOF_STRUCT_USTAT 20
-#else
-#error Unknown size of struct ustat
-#endif
-  unsigned struct_ustat_sz = SIZEOF_STRUCT_USTAT;
+sudo apt install -y gcc
+sudo apt install -y g++
+sudo apt install -y make
+sudo apt install -y cmake
+sudo apt install -y build-essential
+sudo apt install -y autoconf
+sudo apt install -y tree
+sudo apt install -y bison
+sudo apt install -y git
+sudo apt install -y libtool
+sudo apt install -y numactl
+sudo apt install -y python3-dev
+sudo apt install -y openssl
+sudo apt install -y perl
+sudo apt install -y binutils
+sudo apt install -y libgmp-dev
+sudo apt install -y libmpfr-dev
+sudo apt install -y libmpc-dev
+sudo apt install -y libisl-dev
+sudo apt install -y zlib1g-dev
+sudo apt install -y liblz4-dev
+sudo apt install -y libbz2-dev
+sudo apt install -y libzstd-dev
+sudo apt install -y zstd
+sudo apt install -y lz4
+sudo apt install -y ncurses-dev
+sudo apt install -y libsnappy-dev
+sudo apt install -y libedit-dev
+sudo apt install -y libaio-dev
+sudo apt install -y libncurses5-dev 
+sudo apt install -y libreadline-dev
+sudo apt install -y libpam0g-dev
+sudo apt install -y zlib1g-dev
+sudo apt install -y libicu-dev
+sudo apt install -y libboost-all-dev
+sudo apt install -y libgflags-dev
+sudo apt install -y libjemalloc-dev
+sudo apt install -y libssl-dev
+sudo apt install -y pkg-config
 ```
-### 4. 编译
-```shell
-mkdir /gcc
-cd /home/gcc-7.3.0
-./contrib/download_prerequisites
-./configure --prefix=/gcc --enable-bootstrap -enable-threads=posix --enable-checking=release --enable-languages=c,c++ --disable-multilib --disable-libsanitizer
-sudo make && make install
-```
-### 5. 检查版本
-```shell
-/gcc/bin/gcc --version
-gcc (GCC) 7.3.0
-Copyright (C) 2017 Free Software Foundation, Inc.
-This is free software; see the source for copying conditions.  There is NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-```
-### 6. 删除高版本gcc、g++
-```shell
-sudo rm /usr/bin/gcc
-sudo ln -s /gcc/bin/gcc /usr/bin/gcc
-sudo rm /usr/bin/g++
-sudo ln -s /gcc/bin/g++ /usr/bin/g++
-
-gcc --version
-gcc (GCC) 7.3.0
-Copyright (C) 2017 Free Software Foundation, Inc.
-This is free software; see the source for copying conditions.  There is NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-
-g++ --version
-g++ (GCC) 7.3.0
-Copyright (C) 2017 Free Software Foundation, Inc.
-This is free software; see the source for copying conditions.  There is NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-
-c++ --version
-c++ (GCC) 7.3.0
-Copyright (C) 2017 Free Software Foundation, Inc.
-This is free software; see the source for copying conditions.  There is NO
-warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-
-```
-## 下载源码包
-下载地址： [https://github.com/stoneatom/stonedb.git](https://github.com/stoneatom/stonedb.git)
-完成源码包下载后，需要执行以下三个步骤，完成编译工作
-第二步：安装第三方库
-第三步：执行编译
-第四步：启动实例
+:::caution
+**注：依赖包必须都装上，否则后面有很多报错。**
+:::
 ## 第二步：安装第三方库
-安装第三库前需要确认cmake版本是3.7.2以上，make版本是3.82以上。
+安装第三库前需要确认 cmake 版本是3.7.2以上，make 版本是3.82以上，如果低于这两个版本，需要进行安装。StoneDB 依赖 marisa、rocksdb、boost，在编译 marisa、rocksdb、boost 时，可以不指定安装路径，默认安装路径在 /usr/local 下。如果不指定 marisa、rocksdb、boost 的安装路径，在编译安装 StoneDB 时也无需指定路径。示例中我们指定了 marisa、rocksdb、boost 的安装路径。
 ### 1. 安装 cmake
 ```shell
 wget https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz
@@ -146,29 +73,58 @@ cd cmake-3.7.2
 apt remove cmake -y
 ln -s /usr/local/bin/cmake /usr/bin/
 ```
-### 2. 安装 marisa 
+### 2. 安装 make
+```shell
+http://mirrors.ustc.edu.cn/gnu/make/
+tar -zxvf make-3.82.tar.gz
+./configure  --prefix=/usr/local/make
+make && make install
+rm -rf /usr/local/bin/make
+ln -s /usr/local/make/bin/make /usr/local/bin/make
+make --version
+```
+### 3. 安装 marisa 
 ```shell
 git clone https://github.com/s-yata/marisa-trie.git
 cd marisa-trie
 autoreconf -i
 ./configure --enable-native-code --prefix=/usr/local/stonedb-marisa
-make && make install 
+sudo make && make install 
 ```
-此步骤会在/usr/local/stonedb-marisa下生成如下目录和文件。
-![image.png](libmarisa.png)
-### 3. 安装 rocksdb 
+marisa 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-marisa。此步骤会在 /usr/local/stonedb-marisa/lib 下生成如下目录和文件。
+
+![libmarisa](./libmarisa.png)
+
+### 4. 安装 rocksdb 
 ```shell
 wget https://github.com/facebook/rocksdb/archive/refs/tags/v6.12.6.tar.gz 
 tar -zxvf v6.12.6.tar.gz
 cd rocksdb-6.12.6
-make shared_lib
-make install-shared INSTALL_PATH=/usr/local/stonedb-gcc-rocksdb
-make static_lib
-make install-static INSTALL_PATH=/usr/local/stonedb-gcc-rocksdb
+
+sudo cmake ./ \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=/usr/local/stonedb-gcc-rocksdb \
+  -DCMAKE_INSTALL_LIBDIR=/usr/local/stonedb-gcc-rocksdb \
+  -DWITH_JEMALLOC=ON \
+  -DWITH_SNAPPY=ON \
+  -DWITH_LZ4=ON \
+  -DWITH_ZLIB=ON \
+  -DWITH_ZSTD=ON \
+  -DUSE_RTTI=ON \
+  -DROCKSDB_BUILD_SHARED=ON \
+  -DWITH_GFLAGS=OFF \
+  -DWITH_TOOLS=OFF \
+  -DWITH_BENCHMARK_TOOLS=OFF \
+  -DWITH_CORE_TOOLS=OFF 
+
+sudo make -j`nproc`
+sudo make install -j`nproc`
 ```
-此步骤会在/usr/local/stonedb-gcc-rocksdb下生成如下目录和文件。
-![image.png](librocksdb.png)
-### 4. 安装 boost
+rocksdb 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-gcc-rocksdb。此步骤会在 /usr/local/stonedb-gcc-rocksdb 下生成如下目录和文件。
+
+![librocksdb](./librocksdb.png)
+
+### 5. 安装 boost
 ```shell
 wget https://sourceforge.net/projects/boost/files/boost/1.66.0/boost_1_66_0.tar.gz
 tar -zxvf boost_1_66_0.tar.gz
@@ -176,48 +132,96 @@ cd boost_1_66_0
 ./bootstrap.sh --prefix=/usr/local/stonedb-boost
 ./b2 install --with=all
 ```
-在/usr/local/stonedb-boost下生成如下目录和文件。
-![image.png](libboost.png)
+boost 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-boost。此步骤会在 /usr/local/stonedb-boost/lib 下生成如下目录和文件。
+
+![libboost](./libboost.png)
+
+注：在编译过程中，除非有关键字 "error" 报错自动退出，否则出现关键字 "warning"、"failed"是正常的。
 ## 第三步：执行编译
+StoneDB 现有 5.6 和 5.7 两个分支，下载的源码包默认是 5.7 分支。下载的源码包存放路径可根据实际情况指定，示例中的源码包存放路径是在根目录下，并且是切换为 5.6 分支的编译安装。
+
+注：gcc 9.3.0以上版本已经支持 5.6 的编译，并且支持自定义指定 rocksdb 和 marisa 的安装路径。5.7 的编译还是 gcc 7.3.0版本，后续会得到支持。
 ```shell
-cd /stonedb/scripts
-./stonedb_build.sh
+cd /
+git clone https://github.com/stoneatom/stonedb.git
+cd stonedb
+git checkout remotes/origin/stonedb-5.6
 ```
-编译完成后会自动生成目录/stonedb57。
+在执行编译脚本前，需要修改编译脚本的两处内容：
+
+1）StoneDB 安装目录，可根据实际情况修改，示例中的安装目录是 /stonedb56/install；
+
+2）marisa、rocksdb、boost 的实际安装路径，必须与上文安装 marisa、rocksdb、boost 的路径保持一致。
+```shell
+###修改编译脚本
+cd /stonedb/scripts
+vim stonedb_build.sh
+...
+install_target=/stonedb56/install
+...
+-DDOWNLOAD_BOOST=0 \
+-DWITH_BOOST=/usr/local/stonedb-boost/ \
+-DWITH_MARISA=/usr/local/stonedb-marisa \
+-DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb \
+2>&1 | tee -a ${build_log}
+
+###执行编译脚本
+sh stonedb_build.sh
+```
 ## 第四步：启动实例
-按照以下步骤启动StoneDB实例。
+按照以下步骤启动 StoneDB。
 ### 1. 创建用户
 ```shell
 groupadd mysql
 useradd -g mysql mysql
 passwd mysql
 ```
-### 2. 执行脚本reinstall.sh
+### 2. 手动安装 
+编译完成后，如果 StoneDB 安装目录不是 /stonedb56，不会自动生成 reinstall.sh、install.sh 和 my.cnf 文件，需要手动创建目录、初始化和启动实例。还需要配置 my.cnf 文件，如安装目录，端口等参数。
 ```shell
-cd /stonedb57/install
+###创建目录
+mkdir -p /data/stonedb56/install/data/innodb
+mkdir -p /data/stonedb56/install/binlog
+mkdir -p /data/stonedb56/install/log
+mkdir -p /data/stonedb56/install/tmp
+chown -R mysql:mysql /data
+
+###配置my.cnf
+vim /data/stonedb56/install/my.cnf
+[mysqld]
+port      = 3306
+socket    = /data/stonedb56/install/tmp/mysql.sock
+datadir   = /data/stonedb56/install/data
+pid-file  = /data/stonedb56/install/data/mysqld.pid
+log-error = /data/stonedb56/install/log/mysqld.log
+
+chown -R mysql:mysql /data/stonedb56/install/my.cnf
+
+###初始化实例
+/data/stonedb56/install/scripts/mysql_install_db --datadir=/data/stonedb56/install/data --basedir=/data/stonedb56/install --user=mysql
+
+###启动实例
+/data/stonedb56/install/bin/mysqld_safe --defaults-file=/data/stonedb56/install/my.cnf --user=mysql &
+```
+### 3. 自动安装
+编译完成后，如果 StoneDB 安装目录是 /stonedb56，会自动生成 reinstall.sh、install.sh 和 my.cnf 文件，执行 reinstall.sh 就是创建目录、初始化实例和启动实例的过程。
+```shell
+cd /stonedb56/install
 ./reinstall.sh
 ```
-执行脚本的过程就是初始化实例和启动实例。
-### 3. 执行登录
-登录前需要在/stonedb57/install/log/mysqld.log找到超级用户的密码。
+注：reinstall.sh 与 install.sh 的区别？
+
+reinstall.sh 是自动化安装脚本，执行脚本的过程是创建目录、初始化实例和启动实例的过程，只在第一次使用，其他任何时候使用都会删除整个目录，重新初始化数据库。install.sh 是手动安装提供的示例脚本，用户可根据自定义的安装目录修改路径，然后执行脚本，执行脚本的过程也是创建目录、初始化实例和启动实例。以上两个脚本都只能在第一次使用。
+### 4. 执行登录
 ```shell
-more /stonedb57/install/log/mysqld.log |grep password
-2022-07-12T06:02:17.440039Z 1 [Note] A temporary password is generated for root@localhost: 3QpW#tTDAe=U
-```
-```shell
-/stonedb57/install/bin/mysql -uroot -p -S /stonedb57/install//tmp/mysql.sock
+/stonedb56/install/bin/mysql -uroot -p -S /stonedb56/install/tmp/mysql.sock
 Enter password: 
 Welcome to the MySQL monitor.  Commands end with ; or \g.
-Your MySQL connection id is 3
-Server version: 5.7.36-StoneDB-debug-log
+Your MySQL connection id is 2
+Server version: 5.6.24-StoneDB-debug build-
 
 Copyright (c) 2000, 2022 StoneAtom Group Holding Limited
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
-
-mysql> show databases;
-ERROR 1820 (HY000): You must reset your password using ALTER USER statement before executing this statement.
-mysql> alter user 'root'@'localhost' identified by 'xxx';
-Query OK, 0 rows affected (0.00 sec)
 
 mysql> show databases;
 +--------------------+
@@ -225,10 +229,11 @@ mysql> show databases;
 +--------------------+
 | information_schema |
 | cache              |
+| innodb             |
 | mysql              |
 | performance_schema |
-| sys                |
 | sys_stonedb        |
+| test               |
 +--------------------+
-6 rows in set (0.00 sec)
+7 rows in set (0.00 sec)
 ```
