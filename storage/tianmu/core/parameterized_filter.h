@@ -78,9 +78,9 @@ class ParameterizedFilter final {
                         int desc_number, int64_t limit, int one_dim);
 
   MultiIndex *mind;
-  bool mind_shallow = false;
+  bool mind_shallow_memory;
   RoughMultiIndex *rough_mind;
-  TempTable *table = nullptr;
+  TempTable *table;
 
  private:
   Condition descriptors;

@@ -2166,7 +2166,7 @@ void TempTableForSubquery::ResetToTemplate(bool rough) {
   }
 
   filter = std::move(*template_filter); // shallow
-  filter_shallow = true;
+  filter_shallow_memory = true;
 
   for (int i = 0; i < no_global_virt_cols; i++)
     if (!virt_cols_for_having[i]) virt_cols[i]->SetMultiIndex(filter.mind);

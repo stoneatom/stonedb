@@ -40,35 +40,35 @@ TwoDimensionalJoiner::~TwoDimensionalJoiner() {
 }
 
 JoinAlgType TwoDimensionalJoiner::ChooseJoinAlgorithm([[maybe_unused]] MultiIndex &mind, Condition &cond) {
-  do {
-    if (cond[0].IsType_Exists()) {
-      break;
-    }
+  auto choose_map_or_hash = ([&tianmu_sysvar_force_hashjoin, &cond] {
+    if ((!tianmu_sysvar_force_hashjoin) && (cond.Size() == 1))
+      return JoinAlgType::JTYPE_MAP;  // available types checked inside
 
-    if (cond[0].IsType_In()) {
-      break;
-    }
+    return JoinAlgType::JTYPE_HASH;
+  });
 
-    if (!cond[0].IsType_JoinSimple()) {
-      return JoinAlgType::JTYPE_GENERAL;
-    }
+  if (cond[0].IsType_Exists()) {
+    return choose_map_or_hash();
+  }
 
-    if (cond[0].op == common::Operator::O_EQ) {
-      break;
-    }
+  if (cond[0].IsType_In()) {
+    return choose_map_or_hash();
+  }
 
-    if (cond[0].op == common::Operator::O_MORE_EQ || cond[0].op == common::Operator::O_MORE ||
-        cond[0].op == common::Operator::O_LESS_EQ || cond[0].op == common::Operator::O_LESS) {
-      return JoinAlgType::JTYPE_SORT;
-    }
-  } while (0);
+  if (!cond[0].IsType_JoinSimple()) {
+    return JoinAlgType::JTYPE_GENERAL;
+  }
 
+  if (cond[0].op == common::Operator::O_EQ) {
+    return choose_map_or_hash();
+  }
 
-  JoinAlgType join_alg = JoinAlgType::JTYPE_HASH;
-  if ((!tianmu_sysvar_force_hashjoin) && (cond.Size() == 1))
-    join_alg = JoinAlgType::JTYPE_MAP;  // available types checked inside
+  if (cond[0].op == common::Operator::O_MORE_EQ || cond[0].op == common::Operator::O_MORE ||
+      cond[0].op == common::Operator::O_LESS_EQ || cond[0].op == common::Operator::O_LESS) {
+    return JoinAlgType::JTYPE_SORT;
+  }
 
-  return join_alg;
+  return JoinAlgType::JTYPE_GENERAL;
 }
 
 JoinAlgType TwoDimensionalJoiner::ChooseJoinAlgorithm(JoinFailure join_result, JoinAlgType prev_type,

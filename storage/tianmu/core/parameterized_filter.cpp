@@ -36,19 +36,22 @@
 namespace Tianmu {
 namespace core {
 ParameterizedFilter::ParameterizedFilter(uint32_t power, CondType filter_type)
-    : rough_mind(NULL), filter_type(filter_type) {
-  mind = new MultiIndex(power);
+    : mind(new MultiIndex(power))
+    , mind_shallow_memory(false)
+    , rough_mind(nullptr)
+    , table(nullptr)
+    , filter_type(filter_type) {
 }
 
 ParameterizedFilter &ParameterizedFilter::operator=(const ParameterizedFilter &pf) {
   if (this != &pf) {
-    if (mind && (!mind_shallow)) delete mind;
+    if (mind && (!mind_shallow_memory)) delete mind;
     if (pf.mind)
       mind = new MultiIndex(*pf.mind);
     else
-      mind = NULL;  // possible e.g. for a temporary data sources
+      mind = nullptr;  // possible e.g. for a temporary data sources
     AssignInternal(pf);
-    mind_shallow = false;
+    mind_shallow_memory = false;
   }
   return *this;
 }
@@ -58,13 +61,13 @@ ParameterizedFilter &ParameterizedFilter::operator=(ParameterizedFilter &&pf) {
     return *this;
   }
 
-  if (mind && (!mind_shallow)) delete mind;
+  if (mind && (!mind_shallow_memory)) delete mind;
 
   mind = pf.mind;
   rough_mind = pf.rough_mind;
   table = pf.table;
 
-  mind_shallow = true;
+  mind_shallow_memory = true;
   return *this;
 }
 
@@ -72,20 +75,26 @@ ParameterizedFilter::ParameterizedFilter(const ParameterizedFilter &pf) {
   if (pf.mind)
     mind = new MultiIndex(*pf.mind);
   else
-    mind = NULL;  // possible e.g. for a temporary data sources
-  rough_mind = NULL;
+    mind = nullptr;  // possible e.g. for a temporary data sources
+  rough_mind = nullptr;
   AssignInternal(pf);
-  mind_shallow = false;
+  mind_shallow_memory = false;
 }
 
 ParameterizedFilter::~ParameterizedFilter() {
-
-  if (mind_shallow) {
+  if (mind_shallow_memory) {
     return;
   }
 
-  delete mind;
-  delete rough_mind;
+  if (nullptr != mind) {
+    delete mind;
+    mind = nullptr;
+  }
+
+  if (nullptr != rough_mind) {
+    delete rough_mind;
+    rough_mind = nullptr;
+  }
 }
 
 void ParameterizedFilter::AssignInternal(const ParameterizedFilter &pf) {
@@ -93,7 +102,7 @@ void ParameterizedFilter::AssignInternal(const ParameterizedFilter &pf) {
   if (pf.rough_mind)
     rough_mind = new RoughMultiIndex(*pf.rough_mind);
   else
-    rough_mind = NULL;
+    rough_mind = nullptr;
   for (uint i = 0; i < pf.descriptors.Size(); i++)
     if (!pf.descriptors[i].done) descriptors.AddDescriptor(pf.descriptors[i]);
   parametrized_desc = pf.parametrized_desc;
