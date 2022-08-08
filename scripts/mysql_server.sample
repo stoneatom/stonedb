@@ -62,14 +62,14 @@ lock_file_path="$lockdir/mysql"
 mysqld_pid_file_path=
 if test -z "$basedir"
 then
-  basedir=/stonedb57/install
-  bindir=/stonedb57/install/bin
+  basedir=YOUR_ABS_PATH
+  bindir=YOUR_ABS_PATH/bin
   if test -z "$datadir"
   then
-    datadir=/stonedb57/install/data
+    datadir=YOUR_ABS_PATH/data
   fi
-  sbindir=/stonedb57/install/bin
-  libexecdir=/stonedb57/install/bin
+  sbindir=YOUR_ABS_PATH/bin
+  libexecdir=YOUR_ABS_PATH/bin
 else
   bindir="$basedir/bin"
   if test -z "$datadir"

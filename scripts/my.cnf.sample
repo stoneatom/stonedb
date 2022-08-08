@@ -1,19 +1,19 @@
 [client]
 port = 3306
-socket          = /stonedb57/install/tmp/mysql.sock
+socket          = YOUR_ABS_PATH/tmp/mysql.sock
 
 [mysqld]
 port                            = 3306
-basedir                         = /stonedb57/install/
-character-sets-dir              = /stonedb57/install/share/charsets/
-lc-messages-dir                 = /stonedb57/install/share/
-plugin_dir                      = /stonedb57/install/lib/plugin/
-tmpdir                          = /stonedb57/install/tmp/
-socket                          = /stonedb57/install/tmp/mysql.sock
-datadir                         = /stonedb57/install/data/
-pid-file                        = /stonedb57/install/data/mysqld.pid
-log-error                       = /stonedb57/install/log/mysqld.log
-lc-messages-dir                 = /stonedb57/install/share/english/
+basedir                         = YOUR_ABS_PATH/
+character-sets-dir              = YOUR_ABS_PATH/share/charsets/
+lc-messages-dir                 = YOUR_ABS_PATH/share/
+plugin_dir                      = YOUR_ABS_PATH/lib/plugin/
+tmpdir                          = YOUR_ABS_PATH/tmp/
+socket                          = YOUR_ABS_PATH/tmp/mysql.sock
+datadir                         = YOUR_ABS_PATH/data/
+pid-file                        = YOUR_ABS_PATH/data/mysqld.pid
+log-error                       = YOUR_ABS_PATH/log/mysqld.log
+lc-messages-dir                 = YOUR_ABS_PATH/share/english/
 local-infile
 
 character-set-server = utf8mb4
@@ -45,13 +45,13 @@ concurrent_insert=2
 #deadlock_timeout_short = 5000
 
 slow-query-log = 1
-slow_query_log_file=/stonedb57/install/log/slow.log
+slow_query_log_file=YOUR_ABS_PATH/log/slow.log
 
 #binlog config
 long_query_time=5
 max_binlog_size=1024M
 sync_binlog=0
-log-bin=/stonedb57/install/binlog/binlog
+log-bin=YOUR_ABS_PATH/binlog/binlog
 expire_logs_days=1
 #log_bin_compress=1
 #log_bin_compress_min_len=256
@@ -85,7 +85,7 @@ open_files_limit = 65535
 server-id = 1
 
 # Uncomment the following if you are using innodb tables
-loose-innodb_data_home_dir = /stonedb57/install/data/
+loose-innodb_data_home_dir = YOUR_ABS_PATH/data/
 loose-innodb_data_file_path = ibdata1:2000M;ibdata2:10M:autoextend
 loose-innodb_buffer_pool_size=    512M
 loose-innodb_lru_scan_depth=      100
@@ -94,14 +94,14 @@ loose-innodb_read_io_threads=     2
 loose-innodb_log_buffer_size=     1M
 loose-innodb_log_file_size=       1024M
 loose-innodb_log_files_in_group=  2
-loose-innodb_log_group_home_dir = /stonedb57/install/redolog/
+loose-innodb_log_group_home_dir = YOUR_ABS_PATH/redolog/
 loose-innodb-stats-persistent=    OFF
 loose-innodb_lock_wait_timeout = 50
 loose-innodb_flush_method = O_DIRECT
 loose-innodb_io_capacity = 500
 loose-innodb_buffer_pool_dump_pct = 40
 loose-innodb_print_all_deadlocks = 1
-loose-innodb_undo_directory = /stonedb57/install/undolog/
+loose-innodb_undo_directory = YOUR_ABS_PATH/undolog/
 loose-innodb_undo_log_truncate = 1
 loose-innodb_undo_tablespaces = 3
 loose-innodb_undo_logs = 128
