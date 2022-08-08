@@ -8,10 +8,12 @@ CREATE DATABASE test_ignore;
 SHOW DATABASES;
 Database
 information_schema
+cache
 mtr
 mysql
 performance_schema
 sys
+sys_tianmu
 test
 test_ignore
 USE test;
@@ -38,10 +40,12 @@ include/sync_slave_sql_with_master.inc
 SHOW DATABASES;
 Database
 information_schema
+cache
 mtr
 mysql
 performance_schema
 sys
+sys_tianmu
 test
 USE test;
 SHOW TABLES;
