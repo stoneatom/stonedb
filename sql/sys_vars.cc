@@ -4913,8 +4913,7 @@ static Sys_var_ulong Sys_group_concat_max_len(
        "The maximum length of the result of function  GROUP_CONCAT()",
        SESSION_VAR(group_concat_max_len), CMD_LINE(REQUIRED_ARG),
        VALID_RANGE(4, ULONG_MAX), DEFAULT(1024), BLOCK_SIZE(1),
-	   NO_MUTEX_GUARD, NOT_IN_BINLOG, ON_CHECK(0), ON_UPDATE(upd_tianmu_group_concat_max_len),
-	   DEPRECATED(""));
+	   NO_MUTEX_GUARD, NOT_IN_BINLOG, ON_CHECK(0), ON_UPDATE(upd_tianmu_group_concat_max_len));
 //END
 static char *glob_hostname_ptr;
 static Sys_var_charptr Sys_hostname(

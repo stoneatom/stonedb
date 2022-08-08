@@ -20,7 +20,7 @@ CREATE TABLE t1 (a INT);
 CREATE TABLE t2 (a INT, b VARCHAR(10), primary key(a));
 
 --echo # test exclude-databases
---exec $MYSQL_PUMP --add-drop-table --exclude-databases=db1_extended,mysql,mtr,sys_stonedb,cache > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
+--exec $MYSQL_PUMP --add-drop-table --exclude-databases=db1_extended,mysql,mtr,sys_tianmu,cache > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
 DROP DATABASE db2_extended;
 DROP DATABASE db1_extended;
 --exec $MYSQL < $MYSQLTEST_VARDIR/tmp/db1_extended.sql
@@ -208,7 +208,7 @@ USE db4_extended;
 CREATE TABLE t1 (a INT);
 CREATE TABLE t2 (a INT, b VARCHAR(10), primary key(a));
 
---exec $MYSQL_PUMP --parallel-schemas=db2_extended,db4_extended --exclude-databases=db1_extended,db3_extended,mysql,mtr,sys_stonedb,cache > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
+--exec $MYSQL_PUMP --parallel-schemas=db2_extended,db4_extended --exclude-databases=db1_extended,db3_extended,mysql,mtr,sys_tianmu,cache > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
 
 DROP DATABASE db1_extended;
 DROP DATABASE db2_extended;
@@ -250,7 +250,7 @@ DROP DATABASE db1_extended;
 
 CREATE USER u1@localhost IDENTIFIED BY 'abc';
 CREATE USER u2;
---exec $MYSQL_PUMP --users --exclude-users=root,mysql.sys,mysql.session --exclude-databases=mysql,mtr,sys_stonedb,cache > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
+--exec $MYSQL_PUMP --users --exclude-users=root,mysql.sys,mysql.session --exclude-databases=mysql,mtr,sys_tianmu,cache > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
 DROP USER u1@localhost,u2;
 --exec $MYSQL < $MYSQLTEST_VARDIR/tmp/db1_extended.sql
 --remove_file $MYSQLTEST_VARDIR/tmp/db1_extended.sql
@@ -268,7 +268,7 @@ CREATE USER u2;
 CREATE USER u3@120.0.0.1;
 GRANT SELECT ON mysql.user to u3@120.0.0.1;
 
---exec $MYSQL_PUMP --exclude-databases=mysql,mtr,sys_stonedb,cache --include-users=u2,u1@120.0.0.1 > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
+--exec $MYSQL_PUMP --exclude-databases=mysql,mtr,sys_tianmu,cache --include-users=u2,u1@120.0.0.1 > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
 DROP USER u1@localhost,u3@120.0.0.1,u1@120.0.0.1,u2;
 --exec $MYSQL < $MYSQLTEST_VARDIR/tmp/db1_extended.sql
 --remove_file $MYSQLTEST_VARDIR/tmp/db1_extended.sql
@@ -287,7 +287,7 @@ CREATE USER u2;
 CREATE USER u3@120.0.0.1;
 GRANT SELECT ON mysql.user to u3@120.0.0.1;
 
---exec $MYSQL_PUMP --exclude-databases=mysql,mtr,sys_stonedb,cache --exclude-users=u2,u1@120.0.0.1,root,mysql.sys,mysql.session > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
+--exec $MYSQL_PUMP --exclude-databases=mysql,mtr,sys_tianmu,cache --exclude-users=u2,u1@120.0.0.1,root,mysql.sys,mysql.session > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
 DROP USER u1@localhost,u3@120.0.0.1,u1@120.0.0.1,u2;
 --exec $MYSQL < $MYSQLTEST_VARDIR/tmp/db1_extended.sql
 --remove_file $MYSQLTEST_VARDIR/tmp/db1_extended.sql
@@ -299,7 +299,7 @@ DROP USER u1@localhost,u3@120.0.0.1;
 --echo # test add-drop-user
 
 CREATE USER u1@localhost IDENTIFIED BY 'abc';
---exec $MYSQL_PUMP --exclude-databases=mysql,mtr,sys_stonedb,cache --exclude-users=root,mysql.sys,mysql.session --add-drop-user > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
+--exec $MYSQL_PUMP --exclude-databases=mysql,mtr,sys_tianmu,cache --exclude-users=root,mysql.sys,mysql.session --add-drop-user > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
 DROP USER u1@localhost;
 # if restore reports error it means db1_extended.sql has DROP USER stmt
 --error 1
@@ -322,7 +322,7 @@ CREATE DEFINER = u1@localhost VIEW v2 AS SELECT t1.a as X, t2.* FROM t1,t2 ORDER
 CREATE DEFINER = u1@localhost VIEW definer_name_view AS SELECT * FROM t1 union SELECT a FROM t2;
 
 #test without skip-definer
---exec $MYSQL_PUMP --exclude-databases=mysql,mtr,sys_stonedb,cache > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
+--exec $MYSQL_PUMP --exclude-databases=mysql,mtr,sys_tianmu,cache > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
 
 DROP DATABASE db1_extended;
 # now restore and check for view definitions
@@ -334,7 +334,7 @@ SHOW CREATE VIEW db1_extended.v2;
 SHOW CREATE VIEW db1_extended.definer_name_view;
 
 #test with skip-definer
---exec $MYSQL_PUMP --exclude-databases=mysql,mtr,sys_stonedb,cache --skip-definer > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
+--exec $MYSQL_PUMP --exclude-databases=mysql,mtr,sys_tianmu,cache --skip-definer > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
 
 DROP DATABASE db1_extended;
 # now restore and check for view definitions
@@ -388,7 +388,7 @@ CREATE DEFINER = u1@localhost PROCEDURE p2(x int)
 DELIMITER ;|
 
 #test without skip-definer
---exec $MYSQL_PUMP --exclude-databases=mysql,mtr,sys_stonedb,cache > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
+--exec $MYSQL_PUMP --exclude-databases=mysql,mtr,sys_tianmu,cache > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
 
 DROP DATABASE db1_extended;
 # now restore and check for view definitions
@@ -401,7 +401,7 @@ SHOW CREATE PROCEDURE db1_extended.p1;
 SHOW CREATE PROCEDURE db1_extended.p2;
 
 #test with skip-definer
---exec $MYSQL_PUMP --exclude-databases=mysql,mtr,sys_stonedb,cache --skip-definer > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
+--exec $MYSQL_PUMP --exclude-databases=mysql,mtr,sys_tianmu,cache --skip-definer > $MYSQLTEST_VARDIR/tmp/db1_extended.sql
 
 DROP DATABASE db1_extended;
 # now restore and check for view definitions

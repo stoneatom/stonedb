@@ -4,40 +4,32 @@ sidebar_position: 3.1
 ---
 
 # 快速部署
-
 为方便用户快速上手，安装包是已经编译好的，只需要检查自己的环境是否缺少依赖。
-
 ## 下载安装包
-点击[此处](../download.md)下载最新的安装包。
-
+点击[此处](https://static.stoneatom.com/stonedb-ce-5.6-v1.0.0.el7.x86_64.tar.gz)下载最新的安装包。
 ## 上传tar包并解压
 ```shell
 tar -zxvf stonedb-ce-5.6-v1.0.0.el7.x86_64.tar.gz
 ```
-上传至安装目录，解压出来的文件夹名是stonedb56。
+上传至安装目录，解压出来的文件夹名是 stonedb56。
 ## 检查依赖文件
 ```shell
 cd /stonedb56/install/bin
 ldd mysqld
 ldd mysql
 ```
-如果检查返回有关键字"not found"，说明缺少文件，需要安装对应的依赖包。
+如果检查返回有关键字"not found"，说明缺少文件，需要安装对应的依赖包。例如：
 
-我们可以参考如下链接寻找所需依赖包：
-https://pkgs.org/search/?q=libzstd.so.1 (这里以libzstd.so.1为例说明)
-会看到搜索结果为我们列举了不同系统版本下对应的依赖（系统版本的查看可以通过执行"cat /proc/version"等命令查看）
-；举例来说如果系统版本是"amazon linux2" ；那么安装依赖的命令是
-```shell
-sudo yum install libzstd
-```
+libsnappy.so.1 => not found
 
+在 Ubuntu 上使用命令 "sudo apt search libsnappy" 检查，说明需要安装 libsnappy-dev。在 RedHat 或者 CentOS 上使用命令 "yum search all snappy" 检查，说明需要安装 snappy-devel、snappy。
 ## 修改配置文件
 ```shell
 cd /stonedb56/install/
 cp stonedb.cnf stonedb.cnf.bak
 vi stonedb.cnf
 ```
-主要修改路径，如果安装目录就是stonedb56，只需要修改其它参数。
+主要修改路径，如果安装目录就是 stonedb56，只需要修改其它参数。
 ## 创建用户
 ```shell
 groupadd mysql
