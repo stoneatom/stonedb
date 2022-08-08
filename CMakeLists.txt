@@ -303,6 +303,29 @@ OPTION(WITH_AUTHENTICATION_LDAP
 OPTION(FORCE_UNSUPPORTED_COMPILER "Disable compiler version checks" OFF)
 MARK_AS_ADVANCED(WITHOUT_SERVER DISABLE_SHARED FORCE_UNSUPPORTED_COMPILER)
 
+#for boost, to check boost params.
+INCLUDE(cmake/boost.cmake)
+#Link directories under boost, etc.
+IF (WITH_BOOST)
+  INCLUDE_DIRECTORIES("${WITH_BOOST}/include")
+  LINK_DIRECTORIES("${WITH_BOOST}/lib/")
+ENDIF ()
+
+#for rocksdb, to check rocksdb
+INCLUDE(cmake/rocksdb.cmake)
+#Link directories under rocksdb, etc.
+IF (WITH_ROCKSDB)
+  INCLUDE_DIRECTORIES("${WITH_ROCKSDB}" "${WITH_ROCKSDB}/include")
+  LINK_DIRECTORIES("${WITH_ROCKSDB}")
+ENDIF ()
+
+#for marisa, to check marisa
+INCLUDE(cmake/marisa.cmake)
+#Link directories under marisa, etc.
+IF (WITH_MARISA)
+  INCLUDE_DIRECTORIES("${WITH_MARISA}" "${WITH_MARISA}/include")
+  LINK_DIRECTORIES("${WITH_MARISA}" "${WITH_MARISA}/lib")
+ENDIF ()
 
 include(CheckCSourceCompiles)
 include(CheckCXXSourceCompiles)
@@ -481,6 +504,11 @@ IF (USE_CXX11 AND CMAKE_COMPILER_IS_GNUCC AND CMAKE_COMPILER_IS_GNUCXX)
           "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -static-libstdc++ -static-libgcc")
 ENDIF()
 
+IF(WITH_BOOST AND WITH_ROCKSDB AND WITH_MARISA)
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${WITH_BOOST}/lib;${WITH_ROCKSDB};${WITH_MARISA}/lib")
+MESSAGE(STATUS "TO SET INSTALL RPATH FOR STONEDB: ${CMAKE_INSTALL_RPATH}")
+ENDIF()
+
 OPTION(ENABLED_LOCAL_INFILE
  "If we should enable LOAD DATA LOCAL by default" ${IF_WIN})
 MARK_AS_ADVANCED(ENABLED_LOCAL_INFILE)
@@ -565,8 +593,6 @@ ELSE()
   SET(DEFAULT_TMPDIR "\"${TMPDIR}\"")
 ENDIF()
 
-INCLUDE(cmake/boost.cmake)
-
 IF (CMAKE_SYSTEM_NAME MATCHES "Linux")
   OPTION(WITH_SYSTEMD "Enable installation of systemd support files" OFF)
   IF (WITH_SYSTEMD)
@@ -584,6 +610,7 @@ INCLUDE(configure.cmake)
 # Common defines and includes
 ADD_DEFINITIONS(-DHAVE_CONFIG_H)
 ADD_DEFINITIONS(-DTIANMU)
+ADD_DEFINITIONS(-D_GLIBCXX_USE_CXX11_ABI=1)
 INCLUDE_DIRECTORIES(
   ${CMAKE_CURRENT_BINARY_DIR}/include
   ${CMAKE_SOURCE_DIR}/extra/rapidjson/include
