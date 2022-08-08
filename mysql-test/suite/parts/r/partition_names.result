@@ -108,6 +108,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_tianmu.column_ttl                              OK
+sys_tianmu.columns                                 OK
+sys_tianmu.decomposition_dictionary                OK
+sys_tianmu.logs                                    OK
 show create table mysql.innodb_index_stats;
 Table	Create Table
 innodb_index_stats	CREATE TABLE `innodb_index_stats` (

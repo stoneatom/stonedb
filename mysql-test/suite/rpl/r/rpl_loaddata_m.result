@@ -21,11 +21,13 @@ include/sync_slave_sql_with_master.inc
 SHOW DATABASES;
 Database
 information_schema
+cache
 mtr
 mysql
 mysqltest
 performance_schema
 sys
+sys_tianmu
 test
 USE test;
 SHOW TABLES;

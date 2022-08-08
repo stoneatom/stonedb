@@ -36,7 +36,7 @@ SET GTID_NEXT= 'AUTOMATIC';
 # Create a backup using mysqlpump
 --let $server1_backup_file= backup_server1.sql
 # Use mysqlpump client to get a dump of server1
---exec $MYSQL_PUMP --user=root --host=127.0.0.1 --port=$MASTER_MYPORT --all-databases --exclude-databases=mysql,mtr > $server_1_datadir/$server1_backup_file
+--exec $MYSQL_PUMP --user=root --host=127.0.0.1 --port=$MASTER_MYPORT --all-databases --exclude-databases=mysql,mtr,sys_tianmu,cache > $server_1_datadir/$server1_backup_file
 
 # Restore the backup onto a 2nd server
 --echo

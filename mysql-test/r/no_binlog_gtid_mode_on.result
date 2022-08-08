@@ -1,7 +1,5 @@
 RESET MASTER;
 include/gtid_utils.inc
-Warnings:
-Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 include/gtid_step_reset.inc
 SET SESSION GTID_NEXT='MASTER_UUID:1';
 CREATE TABLE t1( i INT) engine=INNODB;
