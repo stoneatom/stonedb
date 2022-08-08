@@ -7,10 +7,12 @@ e,lost+found,.mysqlgui,test
 SHOW DATABASES;
 Database
 information_schema
+cache
 mtr
 mysql
 performance_schema
 sys
+sys_tianmu
 SET @@global.ignore_db_dirs = 'aha';
 ERROR HY000: Variable 'ignore_db_dirs' is a read only variable
 SET @@local.ignore_db_dirs = 'aha';
