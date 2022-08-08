@@ -106,6 +106,7 @@ ln -s /usr/local/bin/cmake /usr/bin/
 ```shell
 http://mirrors.ustc.edu.cn/gnu/make/
 tar -zxvf make-3.82.tar.gz
+cd make-3.82
 ./configure  --prefix=/usr/local/make
 make && make install
 rm -rf /usr/local/bin/make
