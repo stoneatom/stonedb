@@ -254,8 +254,10 @@ DROP DATABASE db1;
 show databases;
 Database
 information_schema
+cache
 mtr
 mysql
 performance_schema
 sys
+sys_tianmu
 test
