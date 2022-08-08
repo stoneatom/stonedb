@@ -49,13 +49,12 @@ jobs:
           
       - name: install libs
         run: |
-          sudo git clone https://github.com/hustjieke/stonedb-libs.git
+          sudo git clone https://github.com/stoneatom/stonedb-libs.git
           cd stonedb-libs
           sudo tar -zxvf stonedb-boost.tar.gz
           sudo tar -zxvf stonedb-gcc-rocksdb.tar.gz
           sudo tar -zxvf stonedb-marisa.tar.gz
           sudo cp -r stonedb-boost /usr/local/stonedb-boost
-          sudo cp -r stonedb-boost/lib /usr/local/stonedb-boost/include
           sudo cp -r stonedb-gcc-rocksdb /usr/local/stonedb-gcc-rocksdb
           sudo cp -r stonedb-marisa /usr/local/stonedb-marisa
        
