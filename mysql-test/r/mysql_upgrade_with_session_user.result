@@ -38,10 +38,10 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
-sys_stonedb.column_ttl                             OK
-sys_stonedb.columns                                OK
-sys_stonedb.decomposition_dictionary               OK
-sys_stonedb.logs                                   OK
+sys_tianmu.column_ttl                              OK
+sys_tianmu.columns                                 OK
+sys_tianmu.decomposition_dictionary                OK
+sys_tianmu.logs                                    OK
 include/assert.inc [The session user should exist after upgrade]
 #
 # Change some user privileges, making it invalid

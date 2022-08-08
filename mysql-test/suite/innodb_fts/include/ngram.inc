@@ -24,6 +24,22 @@ EVAL CREATE TABLE articles (
         FULLTEXT KEY con3 (k2) WITH PARSER ngram
         ) ENGINE=InnoDB $table_row_format;
 
+EVAL CREATE TABLE 名字 (
+        seq INT AUTO_INCREMENT NOT NULL PRIMARY KEY,
+        c1 VARCHAR(200) CHARACTER SET big5 COLLATE big5_chinese_ci,
+        c2 CHAR(200) CHARACTER SET gbk COLLATE gbk_chinese_ci,
+        c3 CHAR(200) CHARACTER SET utf8,
+        さようなら TEXT CHARACTER SET ujis COLLATE ujis_japanese_ci,
+        j2 VARCHAR(200) CHARACTER SET sjis COLLATE sjis_japanese_ci,
+        j3 VARCHAR(200) CHARACTER SET ujis,
+        행운을빈다 CHAR(200) CHARACTER SET euckr COLLATE euckr_korean_ci,
+        k2 CHAR(200) CHARACTER SET utf8,
+        e1 CHAR(200) CHARACTER SET latin1,
+        FULLTEXT KEY con1 (c1) WITH PARSER ngram,
+        FULLTEXT KEY con2 (さようなら,j3) WITH PARSER ngram,
+        FULLTEXT KEY con3 (k2) WITH PARSER ngram
+        ) ENGINE=InnoDB $table_row_format;
+
 
 SET SESSION innodb_ft_enable_stopword=0;
 --echo # Case : run ngram on english text.
@@ -296,3 +312,315 @@ SELECT * FROM articles;
 
 DROP TABLE articles;
 
+
+-- echo # Test Case : CJK charset and collation with globalized table, column names
+INSERT INTO 名字 (c1,c2,c3,さようなら,j2,j3,행운을빈다,k2,e1) VALUES
+   ('歡迎','你好','喂 ','日の長','言も言わずに','つやってみよう','제가 미국인입니다.','한국말을 공부합니다%','testing row'),
+   ('你好嗎?','我幾好，你呢','好耐冇見','左右','左右される','☆右折⇔左折','제 이름은 Charles입니다.','운동을 좋아해요*','row value'),
+   ('救命啊!','火啊! 你好','生日快樂 ','雨季','雨が降りそう つやってみよう','雨雲','저분은 영어를 잘 합니다','저는 서울에서 살고 있습니다.','recording test');
+
+-- disable_result_log
+ANALYZE TABLE 名字;
+-- enable_result_log
+
+SELECT * FROM 名字;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con4 (c3) WITH PARSER ngram;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con5 (c2) WITH PARSER ngram;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con6 (j2) WITH PARSER ngram;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con7 (j3) WITH PARSER ngram;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con8 (행운을빈다) WITH PARSER ngram;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con9 (e1) WITH PARSER ngram;
+SELECT * FROM 名字 WHERE
+        MATCH(c1) AGAINST('命啊');
+SELECT * FROM 名字 WHERE
+        MATCH(さようなら,j3) AGAINST('やっ');
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST('제가');
+SELECT * FROM 名字 WHERE
+        MATCH(e1) AGAINST('row');
+SELECT * FROM 名字 WHERE
+        MATCH(c2) AGAINST("-我幾 火啊" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(j2) AGAINST("やっ-(そう)" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(j3) AGAINST(">の長" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST("니다 -제가" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(e1) AGAINST("row -row1" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(c2) AGAINST('"我幾 火啊"@3' IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(さようなら,j3) AGAINST('"降り やっ"@4' IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST('"분은 어를"@2' IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(e1) AGAINST('"row row"@1' IN BOOLEAN MODE);
+
+EVAL CREATE TABLE tmp1 $table_row_format AS SELECT * FROM 名字 WHERE 1=2;
+DROP TABLE 名字;
+RENAME TABLE tmp1 TO 名字;
+SHOW CREATE TABLE 名字;
+
+
+-- echo # Test Case : CJK charset and collation with  FTS + transactional statements
+SELECT * FROM 名字;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con1 (c1) WITH PARSER ngram;
+SHOW CREATE TABLE 名字;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con2 (さようなら,j3) WITH PARSER ngram;
+SHOW CREATE TABLE 名字;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con3 (k2) WITH PARSER ngram;
+SHOW CREATE TABLE 名字;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con4 (c3) WITH PARSER ngram;
+SHOW CREATE TABLE 名字;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con5 (c2) WITH PARSER ngram;
+SHOW CREATE TABLE 名字;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con6 (j2) WITH PARSER ngram;
+SHOW CREATE TABLE 名字;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con7 (j3) WITH PARSER ngram;
+SHOW CREATE TABLE 名字;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con8 (행운을빈다) WITH PARSER ngram;
+SHOW CREATE TABLE 名字;
+
+START TRANSACTION;
+INSERT INTO 名字 (c1,c2,c3,さようなら,j2,j3,행운을빈다,k2,e1) VALUES
+   ('歡迎','你好','喂 ','日の長','言も言わずに','つやってみよう','제가 미국인입니다.','한국말을 공부합니다%','testing row'),
+   ('你好嗎?','我幾好，你呢','好耐冇見','左右','左右される','☆右折⇔左折','제 이름은 Charles입니다.','운동을 좋아해요*','row value'),
+   ('救命啊!','火啊! 你好','生日快樂 ','雨季','雨が降りそう つやってみよう','雨雲','저분은 영어를 잘 합니다','저는 서울에서 살고 있습니다.','recording test');
+
+SELECT * FROM 名字 WHERE
+        MATCH(c1) AGAINST('命啊');
+SELECT * FROM 名字 WHERE
+        MATCH(さようなら,j3) AGAINST('やっ');
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST('제가');
+SELECT * FROM 名字 WHERE
+        MATCH(c2) AGAINST("-我幾 火啊" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(j2) AGAINST("やっ-(そう)" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(j3) AGAINST(">の長" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST("니다 -제가" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(c2) AGAINST('"我幾 火啊"@3' IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(さようなら,j3) AGAINST('"降り やっ"@4' IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST('"분은 어를"@2' IN BOOLEAN MODE);
+COMMIT;
+
+-- disable_result_log
+ANALYZE TABLE 名字;
+-- enable_result_log
+
+SELECT * FROM 名字 WHERE
+        MATCH(c1) AGAINST('命啊');
+SELECT * FROM 名字 WHERE
+        MATCH(さようなら,j3) AGAINST('やっ');
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST('제가');
+SELECT * FROM 名字 WHERE
+        MATCH(c2) AGAINST("-我幾 火啊" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(j2) AGAINST("やっ-(そう)" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(j3) AGAINST(">の長" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST("니다 -제가" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(c2) AGAINST('"我幾 火啊"@3' IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(さようなら,j3) AGAINST('"降り やっ"@4' IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST('"분은 어를"@2' IN BOOLEAN MODE);
+DELETE FROM 名字;
+START TRANSACTION;
+INSERT INTO 名字 (c1,c2,c3,さようなら,j2,j3,행운을빈다,k2,e1) VALUES
+   ('歡迎','你好','喂 ','日の長','言も言わずに','つやってみよう','제가 미국인입니다.','한국말을 공부합니다%','testing row');
+SAVEPOINT A;
+INSERT INTO 名字 (c1,c2,c3,さようなら,j2,j3,행운을빈다,k2,e1) VALUES
+   ('你好嗎?','我幾好，你呢','好耐冇見','左右','左右される','☆右折⇔左折','제 이름은 Charles입니다.','운동을 좋아해요*','row value');
+SAVEPOINT B;
+INSERT INTO 名字 (c1,c2,c3,さようなら,j2,j3,행운을빈다,k2,e1) VALUES
+   ('救命啊!','火啊! 你好','生日快樂 ','雨季','雨が降りそう つやってみよう','雨雲','저분은 영어를 잘 합니다','저는 서울에서 살고 있습니다.','recording test');
+
+SELECT * FROM 名字 WHERE
+        MATCH(c1) AGAINST('命啊');
+SELECT * FROM 名字 WHERE
+        MATCH(さようなら,j3) AGAINST('やっ');
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST('제가');
+SELECT * FROM 名字 WHERE
+        MATCH(c2) AGAINST("-我幾 火啊" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(j2) AGAINST("やっ-(そう)" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(j3) AGAINST(">の長" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST("니다 -제가" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(c2) AGAINST('"我幾 火啊"@3' IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(さようなら,j3) AGAINST('"降り やっ"@4' IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST('"분은 어를"@2' IN BOOLEAN MODE);
+ROLLBACK TO B;
+COMMIT;
+
+SELECT * FROM 名字 WHERE
+        MATCH(c1) AGAINST('啊! ');
+SELECT * FROM 名字 WHERE
+        MATCH(さようなら,j3) AGAINST('やっ');
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST('제가');
+SELECT * FROM 名字 WHERE
+        MATCH(c2) AGAINST("-我幾 火啊" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(j2) AGAINST("やっ-(そう)" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(j3) AGAINST(">の長" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST("니다 -제가" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(c2) AGAINST('"我幾 火啊"@3' IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(さようなら,j3) AGAINST('"降り やっ"@4' IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST('"분은 어를"@2' IN BOOLEAN MODE);
+
+DELETE FROM 名字;
+START TRANSACTION;
+INSERT INTO 名字 (c1,c2,c3,さようなら,j2,j3,행운을빈다,k2,e1) VALUES
+   ('歡迎','你好','喂 ','日の長','言も言わずに','つやってみよう','제가 미국인입니다.','한국말을 공부합니다%','testing row');
+SAVEPOINT A;
+INSERT INTO 名字 (c1,c2,c3,さようなら,j2,j3,행운을빈다,k2,e1) VALUES
+   ('你好嗎?','我幾好，你呢','好耐冇見','左右','左右される','☆右折⇔左折','제 이름은 Charles입니다.','운동을 좋아해요*','row value');
+SAVEPOINT B;
+INSERT INTO 名字 (c1,c2,c3,さようなら,j2,j3,행운을빈다,k2,e1) VALUES
+   ('救命啊!','火啊! 你好','生日快樂 ','雨季','雨が降りそう つやってみよう','雨雲','저분은 영어를 잘 합니다','저는 서울에서 살고 있습니다.','recording test');
+ROLLBACK;
+COMMIT;
+
+-- disable_result_log
+ANALYZE TABLE 名字;
+-- enable_result_log
+
+SELECT * FROM 名字 WHERE
+        MATCH(c1) AGAINST('命啊');
+SELECT * FROM 名字 WHERE
+        MATCH(さようなら,j3) AGAINST('やっ');
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST('제가');
+SELECT * FROM 名字 WHERE
+        MATCH(c2) AGAINST("-我幾 火啊" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(j2) AGAINST("やっ-(そう)" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(j3) AGAINST(">の長" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST("니다 -제가" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(c2) AGAINST('"我幾 火啊"@3' IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(さようなら,j3) AGAINST('"降り やっ"@4' IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST('"분은 어를"@2' IN BOOLEAN MODE);
+
+EVAL CREATE TABLE tmp1 $table_row_format AS SELECT * FROM 名字 WHERE 1=2;
+DROP TABLE 名字;
+RENAME TABLE tmp1 TO 名字;
+SHOW CREATE TABLE 名字;
+
+ALTER TABLE 名字 ADD FULLTEXT INDEX con1 (c1) WITH PARSER ngram;
+SHOW CREATE TABLE 名字;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con2 (さようなら,j3) WITH PARSER ngram;
+SHOW CREATE TABLE 名字;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con3 (k2) WITH PARSER ngram;
+SHOW CREATE TABLE 名字;
+
+SELECT * FROM 名字;
+START TRANSACTION;
+INSERT INTO 名字 (c1,c2,c3,さようなら,j2,j3,행운을빈다,k2,e1) VALUES
+   ('歡迎','你好','喂 ','日の長','言も言わずに','つやってみよう','제가 미국인입니다.','한국말을 공부합니다%','testing row');
+SAVEPOINT A;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con5 (c2) WITH PARSER ngram;
+INSERT INTO 名字 (c1,c2,c3,さようなら,j2,j3,행운을빈다,k2,e1) VALUES
+   ('你好嗎?','我幾好，你呢','好耐冇見','左右','左右される','☆右折⇔左折','제 이름은 Charles입니다.','운동을 좋아해요*','row value');
+ALTER TABLE 名字 ADD FULLTEXT INDEX con4 (c3) WITH PARSER ngram;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con6 (j2) WITH PARSER ngram;
+SAVEPOINT B;
+INSERT INTO 名字 (c1,c2,c3,さようなら,j2,j3,행운을빈다,k2,e1) VALUES
+   ('救命啊!','火啊! 你好','生日快樂 ','雨季','雨が降りそう つやってみよう','雨雲','저분은 영어를 잘 합니다','저는 서울에서 살고 있습니다.','recording test');
+ALTER TABLE 名字 ADD FULLTEXT INDEX con7 (j3) WITH PARSER ngram;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con8 (행운을빈다) WITH PARSER ngram;
+COMMIT;
+
+-- disable_result_log
+ANALYZE TABLE 名字;
+-- enable_result_log
+
+SELECT * FROM 名字 WHERE
+        MATCH(c1) AGAINST('命啊');
+SELECT * FROM 名字 WHERE
+        MATCH(さようなら,j3) AGAINST('やっ');
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST('제가');
+SELECT * FROM 名字 WHERE
+        MATCH(c2) AGAINST("-我幾 火啊" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(j2) AGAINST("やっ-(そう)" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(j3) AGAINST(">の長" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST("니다 -제가" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(c2) AGAINST('"我幾 火啊"@3' IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(さようなら,j3) AGAINST('"降り やっ"@4' IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(행운을빈다) AGAINST('"분은 어를"@2' IN BOOLEAN MODE);
+
+EVAL CREATE TABLE tmp1 $table_row_format AS SELECT * FROM 名字 WHERE 1=2;
+DROP TABLE 名字;
+RENAME TABLE tmp1 TO 名字;
+SHOW CREATE TABLE 名字;
+
+-- echo # Test Case : CJK charset and collation , FTS query in condition of update/delete
+
+SELECT * FROM 名字;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con1 (c1) WITH PARSER ngram;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con2 (さようなら,j3) WITH PARSER ngram;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con3 (k2) WITH PARSER ngram;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con4 (c3) WITH PARSER ngram;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con5 (c2) WITH PARSER ngram;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con6 (j2) WITH PARSER ngram;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con7 (j3) WITH PARSER ngram;
+ALTER TABLE 名字 ADD FULLTEXT INDEX con8 (행운을빈다) WITH PARSER ngram;
+
+INSERT INTO 名字 (c1,c2,c3,さようなら,j2,j3,행운을빈다,k2,e1) VALUES
+   ('歡迎','你好','喂 ','日の長','言も言わずに','つやってみよう','제가 미국인입니다.','한국말을 공부합니다%','testing row'),
+   ('你好嗎?','我幾好，你呢','好耐冇見','左右','左右される','☆右折⇔左折','제 이름은 Charles입니다.','운동을 좋아해요*','row value'),
+   ('救命啊!','火啊! 你好','生日快樂 ','雨季','雨が降りそう つやってみよう','雨雲','저분은 영어를 잘 합니다','저는 서울에서 살고 있습니다.','recording test');
+
+-- disable_result_log
+ANALYZE TABLE 名字;
+-- enable_result_log
+
+SELECT * FROM 名字 WHERE
+        MATCH(c1) AGAINST('命啊');
+UPDATE 名字 SET c1 = '你好嗎?' WHERE MATCH(c2) AGAINST('啊!');
+SELECT * FROM 名字 WHERE
+        MATCH(c1) AGAINST('命啊');
+DELETE FROM 名字 WHERE
+        MATCH(さようなら,j3) AGAINST("てみ -雨が" IN BOOLEAN MODE);
+SELECT * FROM 名字 WHERE
+        MATCH(さようなら,j3) AGAINST('てみ');
+SELECT * FROM 名字;
+SELECT * FROM 名字 WHERE
+        MATCH (행운을빈다) AGAINST('니다');
+DELETE FROM 名字 WHERE
+        MATCH (행운을빈다) AGAINST('니다');
+SELECT * FROM 名字;
+
+DROP TABLE 名字;

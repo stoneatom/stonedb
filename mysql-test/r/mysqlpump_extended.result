@@ -24,7 +24,7 @@ mtr
 mysql
 performance_schema
 sys
-sys_stonedb
+sys_tianmu
 test
 DROP DATABASE db2_extended;
 # test exclude-events
@@ -180,7 +180,7 @@ mtr
 mysql
 performance_schema
 sys
-sys_stonedb
+sys_tianmu
 test
 DROP DATABASE db2_extended;
 DROP DATABASE db4_extended;

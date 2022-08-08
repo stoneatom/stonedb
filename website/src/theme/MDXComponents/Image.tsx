@@ -24,7 +24,6 @@ export default function MDXImage({className, alt, src, title, ...props}: any): J
             alt={alt}
             src={src}
             title={title}
-            {...props}
             className={props.className}
           />
         )
