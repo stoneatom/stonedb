@@ -41,6 +41,7 @@ class ParameterizedFilter final {
   ParameterizedFilter(const ParameterizedFilter &);
   virtual ~ParameterizedFilter();
   ParameterizedFilter &operator=(const ParameterizedFilter &pf);
+  ParameterizedFilter &operator=(ParameterizedFilter &&pf);
   // ParameterizedFilter & operator =(const ParameterizedFilter & pf);
   void AddConditions(const Condition *conds);
   uint NoParameterizedDescs() { return parametrized_desc.Size(); }
@@ -77,8 +78,9 @@ class ParameterizedFilter final {
                         int desc_number, int64_t limit, int one_dim);
 
   MultiIndex *mind;
+  bool mind_shallow_memory;
   RoughMultiIndex *rough_mind;
-  TempTable *table = nullptr;
+  TempTable *table;
 
  private:
   Condition descriptors;

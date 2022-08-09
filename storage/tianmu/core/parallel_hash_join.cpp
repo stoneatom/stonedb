@@ -60,7 +60,7 @@ int EvaluateMatchedFragmentsWithRows([[maybe_unused]] uint32_t pack_power, int64
 //----------------------------------------------MITaskIterator-----------------------------------------------
 MITaskIterator::MITaskIterator(MultiIndex *mind, DimensionVector &dimensions, int task_id, int task_count,
                                int64_t rows_length)
-    : iter_(new MIIterator(new MultiIndex(*mind, false), dimensions)) {
+    : iter_(new MIIterator(new MultiIndex(*mind, true), dimensions)) {
   iter_->SetTaskNum(task_count);
   iter_->SetTaskId(task_id);
   rows_length_ = rows_length * 1.5;

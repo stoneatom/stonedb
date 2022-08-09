@@ -163,7 +163,7 @@ class DimensionGroupMultiMaterialized : public DimensionGroup {
 
  public:
   // NOTE: works also for "count only" (all t[i] are NULL, only no_obj set)
-  DimensionGroupMultiMaterialized(int64_t obj, DimensionVector &dims, uint32_t power);
+  DimensionGroupMultiMaterialized(int64_t obj, DimensionVector &dims, uint32_t power, bool is_shallow_memory = false);
   ~DimensionGroupMultiMaterialized() override;
 
   // The table will be added (as a pointer to be deleted by destructor) on a
@@ -196,6 +196,7 @@ class DimensionGroupMultiMaterialized : public DimensionGroup {
   int dims_count_ = 0;
   // NULL for not used (natural numbering).
   std::vector<MultiIndexTable *> dim_tables_;
+  bool is_shallow_memory;
 };
 }  // namespace core
 }  // namespace Tianmu
