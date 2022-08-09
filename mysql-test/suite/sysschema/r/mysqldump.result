@@ -4,9 +4,11 @@ DROP DATABASE sys;
 SHOW DATABASES;
 Database
 information_schema
+cache
 mtr
 mysql
 performance_schema
+sys_tianmu
 test
 mysql.columns_priv                                 OK
 mysql.db                                           OK
@@ -42,13 +44,19 @@ mysql.user                                         OK
 mtr.global_suppressions                            OK
 mtr.test_suppressions                              OK
 sys.sys_config                                     OK
+sys_tianmu.column_ttl                              OK
+sys_tianmu.columns                                 OK
+sys_tianmu.decomposition_dictionary                OK
+sys_tianmu.logs                                    OK
 SHOW DATABASES;
 Database
 information_schema
+cache
 mtr
 mysql
 performance_schema
 sys
+sys_tianmu
 test
 TRUNCATE TABLE mysql.tables_priv;
 INSERT INTO mysql.tables_priv (SELECT * FROM tmp_backup_tables_priv);
