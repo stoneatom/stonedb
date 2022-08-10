@@ -20,7 +20,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-# We want boost 1.59.0 in order to build our boost/geometry code.
+# We want boost 1.66.0 in order to build our boost/geometry code.
 # The boost tarball is fairly big, and takes several minutes
 # to download. So we recommend downloading/unpacking it
 # only once, in a place visible from any bzr sandbox.
@@ -149,9 +149,8 @@ IF (WITH_BOOST)
            )
   ## Did we get a path name to an unzippped version?
   FIND_PATH(LOCAL_BOOST_DIR
-            NAMES "boost/version.hpp"
+            NAMES "include/boost/version.hpp"
             PATHS ${WITH_BOOST}
-                  ${WITH_BOOST}/include
             NO_DEFAULT_PATH
            )
   IF(LOCAL_BOOST_DIR)
@@ -165,7 +164,7 @@ ENDIF()
 # There is a similar option in unittest/gunit.
 # But the boost tarball is much bigger, so we have a separate option.
 OPTION(DOWNLOAD_BOOST "Download boost from sourceforge." OFF)
-SET(DOWNLOAD_BOOST_TIMEOUT 600 CACHE STRING
+SET(DOWNLOAD_BOOST_TIMEOUT 6000 CACHE STRING
   "Timeout in seconds when downloading boost.")
 
 # If we could not find it, then maybe download it.
@@ -229,24 +228,23 @@ ENDIF()
 
 # Search for the version file, first in LOCAL_BOOST_DIR or WITH_BOOST
 FIND_PATH(BOOST_INCLUDE_DIR
-  NAMES boost/version.hpp
+  NAMES include/boost/version.hpp
   NO_DEFAULT_PATH
   PATHS ${LOCAL_BOOST_DIR}
         ${LOCAL_BOOST_DIR}/${BOOST_PACKAGE_NAME}
         ${WITH_BOOST}
-        ${WITH_BOOST}/include
 )
 # Then search in standard places (if not found above).
 FIND_PATH(BOOST_INCLUDE_DIR
-  NAMES boost/version.hpp
+  NAMES include/boost/version.hpp
 )
 
 IF(NOT BOOST_INCLUDE_DIR)
   MESSAGE(STATUS
-    "Looked for boost/version.hpp in ${LOCAL_BOOST_DIR} and ${WITH_BOOST}")
+    "Looked for include/boost/version.hpp in ${LOCAL_BOOST_DIR} and ${WITH_BOOST}")
   COULD_NOT_FIND_BOOST()
 ELSE()
-  MESSAGE(STATUS "Found ${BOOST_INCLUDE_DIR}/boost/version.hpp ")
+  MESSAGE(STATUS "Found ${BOOST_INCLUDE_DIR}/include/boost/version.hpp ")
 ENDIF()
 
 # Verify version number. Version information looks like:
@@ -254,7 +252,7 @@ ENDIF()
 # //  BOOST_VERSION / 100 % 1000 is the minor version
 # //  BOOST_VERSION / 100000 is the major version
 # #define BOOST_VERSION 105900
-FILE(STRINGS "${BOOST_INCLUDE_DIR}/boost/version.hpp"
+FILE(STRINGS "${BOOST_INCLUDE_DIR}/include/boost/version.hpp"
   BOOST_VERSION_NUMBER
   REGEX "^#define[\t ]+BOOST_VERSION[\t ][0-9]+.*"
 )
