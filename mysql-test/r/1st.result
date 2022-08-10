@@ -4,7 +4,7 @@ information_schema
 cache
 mtr
 mysql
-sys_stonedb
+sys_tianmu
 test
 show tables in mysql;
 Tables_in_mysql

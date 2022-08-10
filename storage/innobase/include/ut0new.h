@@ -898,7 +898,7 @@ ut_delete_array(
 		ptr, n_bytes, __FILE__))
 
 #define ut_free(ptr)	ut_allocator<byte>(PSI_NOT_INSTRUMENTED).deallocate( \
-	reinterpret_cast<byte*>(ptr))
+	reinterpret_cast<::byte*>(ptr))
 
 #else /* UNIV_PFS_MEMORY */
 

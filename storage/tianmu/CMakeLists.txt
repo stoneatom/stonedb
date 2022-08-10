@@ -28,15 +28,15 @@ SET(BOOST_ROOT ${WITH_BOOST})
 SET(MARISA_ROOT /usr/local/stonedb-marisa)
 SET(ROCKSDB_ROOT /usr/local/stonedb-gcc-rocksdb)
 
-SET(LINK_LIBS ${BOOST_ROOT}/lib/libboost_system.a
+SET(LINK_LIBS boost_system
               stdc++fs
               snappy
               bz2
               lz4
               zstd
-              ${MARISA_ROOT}/lib/libmarisa.a
-              ${ROCKSDB_ROOT}/lib/librocksdb.a
-              ${BOOST_ROOT}/lib/libboost_thread.a)
+              marisa
+              rocksdb
+              boost_thread)
 
 AUX_SOURCE_DIRECTORY(common SOURCE_common)
 AUX_SOURCE_DIRECTORY(compress SOURCE_compress)

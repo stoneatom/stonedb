@@ -36,19 +36,38 @@
 namespace Tianmu {
 namespace core {
 ParameterizedFilter::ParameterizedFilter(uint32_t power, CondType filter_type)
-    : rough_mind(NULL), filter_type(filter_type) {
-  mind = new MultiIndex(power);
+    : mind(new MultiIndex(power))
+    , mind_shallow_memory(false)
+    , rough_mind(nullptr)
+    , table(nullptr)
+    , filter_type(filter_type) {
 }
 
 ParameterizedFilter &ParameterizedFilter::operator=(const ParameterizedFilter &pf) {
   if (this != &pf) {
-    if (mind) delete mind;
+    if (mind && (!mind_shallow_memory)) delete mind;
     if (pf.mind)
       mind = new MultiIndex(*pf.mind);
     else
-      mind = NULL;  // possible e.g. for a temporary data sources
+      mind = nullptr;  // possible e.g. for a temporary data sources
     AssignInternal(pf);
+    mind_shallow_memory = false;
   }
+  return *this;
+}
+
+ParameterizedFilter &ParameterizedFilter::operator=(ParameterizedFilter &&pf) {
+  if (this == &pf) {
+    return *this;
+  }
+
+  if (mind && (!mind_shallow_memory)) delete mind;
+
+  mind = pf.mind;
+  rough_mind = pf.rough_mind;
+  table = pf.table;
+
+  mind_shallow_memory = true;
   return *this;
 }
 
@@ -56,14 +75,26 @@ ParameterizedFilter::ParameterizedFilter(const ParameterizedFilter &pf) {
   if (pf.mind)
     mind = new MultiIndex(*pf.mind);
   else
-    mind = NULL;  // possible e.g. for a temporary data sources
-  rough_mind = NULL;
+    mind = nullptr;  // possible e.g. for a temporary data sources
+  rough_mind = nullptr;
   AssignInternal(pf);
+  mind_shallow_memory = false;
 }
 
 ParameterizedFilter::~ParameterizedFilter() {
-  delete mind;
-  delete rough_mind;
+  if (mind_shallow_memory) {
+    return;
+  }
+
+  if (nullptr != mind) {
+    delete mind;
+    mind = nullptr;
+  }
+
+  if (nullptr != rough_mind) {
+    delete rough_mind;
+    rough_mind = nullptr;
+  }
 }
 
 void ParameterizedFilter::AssignInternal(const ParameterizedFilter &pf) {
@@ -71,7 +102,7 @@ void ParameterizedFilter::AssignInternal(const ParameterizedFilter &pf) {
   if (pf.rough_mind)
     rough_mind = new RoughMultiIndex(*pf.rough_mind);
   else
-    rough_mind = NULL;
+    rough_mind = nullptr;
   for (uint i = 0; i < pf.descriptors.Size(); i++)
     if (!pf.descriptors[i].done) descriptors.AddDescriptor(pf.descriptors[i]);
   parametrized_desc = pf.parametrized_desc;
@@ -1017,7 +1048,11 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
   int no_of_delayed_conditions = 0;
   for (uint i = 0; i < descriptors.Size(); i++) {
     if (!descriptors[i].done)
-      if (descriptors[i].IsType_Join() || descriptors[i].IsDelayed() || descriptors[i].IsOuter()) {
+      if (descriptors[i].IsType_Join() 
+          || descriptors[i].IsDelayed() 
+          || descriptors[i].IsOuter() 
+          || descriptors[i].IsType_In() 
+          || descriptors[i].IsType_Exists()) {
         if (!descriptors[i].IsDelayed())
           no_of_join_conditions++;
         else
@@ -1033,13 +1068,17 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
   int no_desc = 0;
   for (uint i = 0; i < descriptors.Size(); i++)
     if (!descriptors[i].done && descriptors[i].IsInner() && !descriptors[i].IsType_Join() &&
-        !descriptors[i].IsDelayed())
+        !descriptors[i].IsDelayed() && !descriptors[i].IsType_Exists() && !descriptors[i].IsType_In())
       ++no_desc;
 
   int desc_no = 0;
   for (uint i = 0; i < descriptors.Size(); i++) {
-    if (!descriptors[i].done && descriptors[i].IsInner() && !descriptors[i].IsType_Join() &&
-        !descriptors[i].IsDelayed()) {
+    if (!descriptors[i].done 
+        && descriptors[i].IsInner() 
+        && !descriptors[i].IsType_Join() 
+        && !descriptors[i].IsDelayed() 
+        && !descriptors[i].IsType_In() 
+        && !descriptors[i].IsType_Exists()) {
       ++desc_no;
       if (descriptors[i].attr.vc) {
         cur_dim = descriptors[i].attr.vc->GetDim();

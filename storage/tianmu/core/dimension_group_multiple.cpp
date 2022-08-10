@@ -181,8 +181,8 @@ int MultiIndexTable::NumOfLocks() {
 //----------------------------DimensionGroupMultiMaterialized-------------------------------------------
 // The no_obj need to preset, because AddDimensionContent maybe not called on
 // uninvolved scenes.
-DimensionGroupMultiMaterialized::DimensionGroupMultiMaterialized(int64_t obj, DimensionVector &dims, uint32_t power)
-    : power_(power), dims_used_(dims) {
+DimensionGroupMultiMaterialized::DimensionGroupMultiMaterialized(int64_t obj, DimensionVector &dims, uint32_t power, bool is_shallow_memory)
+    : power_(power), dims_used_(dims), is_shallow_memory(is_shallow_memory) {
   dim_group_type = DGType::DG_INDEX_TABLE;
   no_obj = obj;
   dims_count_ = dims_used_.Size();
@@ -190,17 +190,25 @@ DimensionGroupMultiMaterialized::DimensionGroupMultiMaterialized(int64_t obj, Di
 }
 
 DimensionGroupMultiMaterialized::~DimensionGroupMultiMaterialized() {
+  if (is_shallow_memory) {
+    return;
+  }
+
   for (auto it : dim_tables_) delete it;
 }
 
 DimensionGroup *DimensionGroupMultiMaterialized::Clone(bool shallow) {
-  DimensionGroupMultiMaterialized *new_value = new DimensionGroupMultiMaterialized(no_obj, dims_used_, power_);
-  if (shallow) return new_value;
+  DimensionGroupMultiMaterialized *new_value = new DimensionGroupMultiMaterialized(no_obj, dims_used_, power_, shallow);
   for (int index = 0; index < dims_count_; ++index) {
     MultiIndexTable *tables = dim_tables_[index];
     if (tables) {
       tables->Lock();
-      new_value->dim_tables_[index] = new MultiIndexTable(*tables);
+      if (shallow) {
+        new_value->dim_tables_[index] = tables;
+      } else {
+        new_value->dim_tables_[index] = new MultiIndexTable(*tables);
+      }
+
       tables->Unlock();
     }
   }
