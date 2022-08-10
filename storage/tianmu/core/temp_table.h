@@ -319,8 +319,16 @@ class TempTable : public JustATable {
   uint GetDisplayableAttrIndex(uint attr);
   MultiIndex *GetMultiIndexP() { return filter.mind; }
   void ClearMultiIndexP() {
+    if (nullptr == filter.mind) {
+      return;
+    }
+
+    if (filter_shallow_memory) {
+      return;
+    }
+
     delete filter.mind;
-    filter.mind = NULL;
+    filter.mind = nullptr;
   }
   MultiIndex *GetOutputMultiIndexP() { return &output_mind; }
   ParameterizedFilter *GetFilterP() { return &filter; }
@@ -393,6 +401,7 @@ class TempTable : public JustATable {
   std::vector<JoinType> join_types;                 // vector of types of joins, one less than tables
   ParameterizedFilter filter;                       // multidimensional filter, contains multiindex,
                                                     // can be parametrized
+  bool filter_shallow_memory = false;               // is filter shallow memory
   MultiIndex output_mind;                           // one dimensional MultiIndex used for operations on
                                                     // output columns of TempTable
   std::vector<SortDescriptor> order_by;             // indexes of order by columns
