@@ -27,7 +27,7 @@
 namespace Tianmu {
 namespace core {
 RCMemTable::RCMemTable(const std::string name, const uint32_t mem_id, const uint32_t cf_id)
-    : fullname_(name), mem_id_(mem_id), cf_handle_(kvstore->GetCfHandleByID(cf_id)) {
+    : fullname_(name), mem_id_(mem_id), cf_handle_(ha_kvstore_->GetCfHandleByID(cf_id)) {
   ASSERT(cf_handle_, "column family handle not exist " + name);
 
   index::KVTransaction kv_trans;
@@ -70,16 +70,16 @@ std::shared_ptr<RCMemTable> RCMemTable::CreateMemTable(std::shared_ptr<TableShar
     throw common::Exception("Normalized rowstore name failed " + table_name);
     return nullptr;
   }
-  std::shared_ptr<RCMemTable> tb_mem = kvstore->FindMemTable(normalized_name);
+  std::shared_ptr<RCMemTable> tb_mem = ha_kvstore_->FindMemTable(normalized_name);
   if (tb_mem) return tb_mem;
 
   if (mem_name == index::DEFAULT_SYSTEM_CF_NAME)
     throw common::Exception("Insert rowstore name should not be " + index::DEFAULT_SYSTEM_CF_NAME);
   std::string cf_name = mem_name.empty() ? index::DEFAULT_ROWSTORE_NAME : index::DEFAULT_ROWSTORE_PREFIX + mem_name;
-  uint32_t cf_id = kvstore->GetCfHandle(cf_name)->GetID();
-  uint32_t mem_id = kvstore->GetNextIndexId();
+  uint32_t cf_id = ha_kvstore_->GetCfHandle(cf_name)->GetID();
+  uint32_t mem_id = ha_kvstore_->GetNextIndexId();
   tb_mem = std::make_shared<RCMemTable>(normalized_name, mem_id, cf_id);
-  kvstore->KVWriteMemTableMeta(tb_mem);
+  ha_kvstore_->KVWriteMemTableMeta(tb_mem);
   TIANMU_LOG(LogCtl_Level::INFO, "Create RowStore: %s, CF ID: %d, RowStore ID: %u", normalized_name.c_str(), cf_id,
               mem_id);
 
@@ -91,11 +91,11 @@ common::ErrorCode RCMemTable::Rename(const std::string &to) {
   if (!index::NormalizeName(to, dname)) {
     return common::ErrorCode::FAILED;
   }
-  if (kvstore->FindMemTable(dname)) {
+  if (ha_kvstore_->FindMemTable(dname)) {
     return common::ErrorCode::FAILED;
   }
 
-  kvstore->KVRenameMemTableMeta(fullname_, dname);
+  ha_kvstore_->KVRenameMemTableMeta(fullname_, dname);
   fullname_ = dname;
   return common::ErrorCode::SUCCESS;
 }
@@ -106,12 +106,12 @@ common::ErrorCode RCMemTable::DropMemTable(std::string table_name) {
     throw common::Exception("Normalized memtable name failed " + table_name);
     return common::ErrorCode::FAILED;
   }
-  auto tb_mem = kvstore->FindMemTable(normalized_name);
+  auto tb_mem = ha_kvstore_->FindMemTable(normalized_name);
   if (!tb_mem) return common::ErrorCode::SUCCESS;
 
   TIANMU_LOG(LogCtl_Level::INFO, "Dropping RowStore: %s, CF ID: %d, RowStore ID: %u", normalized_name.c_str(),
               tb_mem->GetCFHandle()->GetID(), tb_mem->GetMemID());
-  return kvstore->KVDelMemTableMeta(normalized_name);
+  return ha_kvstore_->KVDelMemTableMeta(normalized_name);
 }
 
 void RCMemTable::InsertRow(std::unique_ptr<char[]> buf, uint32_t size) {

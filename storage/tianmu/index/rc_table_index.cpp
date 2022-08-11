@@ -38,7 +38,7 @@ const std::string generate_cf_name(uint index, TABLE *table) {
 }
 
 void create_rdbkey(TABLE *table, uint i, std::shared_ptr<RdbKey> &new_key_def, rocksdb::ColumnFamilyHandle *cf_handle) {
-  uint index_id = kvstore->GetNextIndexId();
+  uint index_id = ha_kvstore_->GetNextIndexId();
   std::vector<ColAttr> vcols;
   KEY *key_info = &table->key_info[i];
   bool unsigned_flag;
@@ -77,7 +77,7 @@ common::ErrorCode create_keys_and_cf(TABLE *table, std::shared_ptr<RdbTable> rdb
     if (cf_name == DEFAULT_SYSTEM_CF_NAME)
       throw common::Exception("column family not valid for storing index data. cf: " + DEFAULT_SYSTEM_CF_NAME);
 
-    rocksdb::ColumnFamilyHandle *cf_handle = kvstore->GetCfHandle(cf_name);
+    rocksdb::ColumnFamilyHandle *cf_handle = ha_kvstore_->GetCfHandle(cf_name);
 
     if (!cf_handle) {
       return common::ErrorCode::FAILED;
@@ -100,7 +100,7 @@ RCTableIndex::RCTableIndex(const std::string &name, TABLE *table) {
     TIANMU_LOG(LogCtl_Level::WARN, "normalize tablename %s fail!", name.c_str());
     return;
   }
-  tbl_ = kvstore->FindTable(fullname);
+  tbl_ = ha_kvstore_->FindTable(fullname);
   if (tbl_ == nullptr) {
     TIANMU_LOG(LogCtl_Level::WARN, "find table %s fail!", fullname.c_str());
     return;
@@ -120,7 +120,7 @@ bool RCTableIndex::FindIndexTable(const std::string &name) {
   if (!NormalizeName(name, str)) {
     throw common::Exception("Normalization wrong of table  " + name);
   }
-  if (kvstore->FindTable(str)) {
+  if (ha_kvstore_->FindTable(str)) {
     return true;
   }
 
@@ -149,7 +149,7 @@ common::ErrorCode RCTableIndex::CreateIndexTable(const std::string &name, TABLE 
     return common::ErrorCode::FAILED;
   }
 
-  return kvstore->KVWriteTableMeta(tbl);
+  return ha_kvstore_->KVWriteTableMeta(tbl);
 }
 
 common::ErrorCode RCTableIndex::DropIndexTable(const std::string &name) {
@@ -159,7 +159,7 @@ common::ErrorCode RCTableIndex::DropIndexTable(const std::string &name) {
   }
 
   //  Find the table in the hash
-  return kvstore->KVDelTableMeta(str);
+  return ha_kvstore_->KVDelTableMeta(str);
 }
 
 common::ErrorCode RCTableIndex::RefreshIndexTable(const std::string &name) {
@@ -168,7 +168,7 @@ common::ErrorCode RCTableIndex::RefreshIndexTable(const std::string &name) {
   if (!NormalizeName(name, fullname)) {
     return common::ErrorCode::FAILED;
   }
-  tbl_ = kvstore->FindTable(fullname);
+  tbl_ = ha_kvstore_->FindTable(fullname);
   if (tbl_ == nullptr) {
     TIANMU_LOG(LogCtl_Level::WARN, "table %s init ddl error", fullname.c_str());
     return common::ErrorCode::FAILED;
@@ -187,7 +187,7 @@ common::ErrorCode RCTableIndex::RenameIndexTable(const std::string &from, const 
     return common::ErrorCode::FAILED;
   }
 
-  return kvstore->KVRenameTableMeta(sname, dname);
+  return ha_kvstore_->KVRenameTableMeta(sname, dname);
 }
 
 void RCTableIndex::TruncateIndexTable() {
@@ -198,7 +198,7 @@ void RCTableIndex::TruncateIndexTable() {
   for (auto &rdbkey_ : tbl_->m_rdbkeys) {
     be_store_index(key_buf, rdbkey_->get_gl_index_id().index_id);
     auto cf = rdbkey_->get_cf();
-    std::unique_ptr<rocksdb::Iterator> it(kvstore->GetScanIter(ropts, cf));
+    std::unique_ptr<rocksdb::Iterator> it(ha_kvstore_->GetScanIter(ropts, cf));
     it->Seek({(const char *)key_buf, INDEX_NUMBER_SIZE});
 
     while (it->Valid()) {
@@ -206,7 +206,7 @@ void RCTableIndex::TruncateIndexTable() {
       if (!rdbkey_->covers_key(key)) {
         break;
       }
-      if (!kvstore->KVDeleteKey(wopts, cf, key)) {
+      if (!ha_kvstore_->KVDeleteKey(wopts, cf, key)) {
         throw common::Exception("Rdb delete key fail!");
       }
       it->Next();

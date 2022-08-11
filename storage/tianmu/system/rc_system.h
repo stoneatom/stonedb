@@ -25,25 +25,36 @@
 #include "util/log_ctl.h"
 
 namespace Tianmu {
+
 namespace core {
 class Engine;
 class Transaction;
 }  // namespace core
+
 namespace index {
 class KVStore;
 }  // namespace index
 
-extern system::Channel rccontrol;  // Channel for debugging information, not
-                                   // displayed in the standard running mode.
-extern system::Channel rcquerylog;
-extern char glob_hostip[FN_REFLEN];
-extern char glob_serverInfo[FN_REFLEN];
+// Channel for debugging information, not 
+// displayed in the standard running mode.
+extern system::Channel rc_control_;
+//the channel for query log.
+extern system::Channel rc_querylog_;
+//host ip addr.
+extern char global_hostIP_[FN_REFLEN];
+//host server info string.
+extern char global_serverinfo_[FN_REFLEN];
 
-extern core::Engine *rceng;
-extern index::KVStore *kvstore;
-extern std::mutex global_mutex;
-extern std::shared_mutex drop_rename_mutex;
-extern thread_local core::Transaction *current_tx;
+//row-column engine handler.
+extern core::Engine *ha_rcengine_;
+//key-value store handler.
+extern index::KVStore *ha_kvstore_;
+//global mutex.
+extern std::mutex global_mutex_;
+//drop or rename mutex.
+extern std::shared_mutex drop_rename_mutex_;
+//current transaction handler.
+extern thread_local core::Transaction *current_txn_;
 
 }  // namespace Tianmu
 

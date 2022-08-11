@@ -29,7 +29,7 @@
 namespace Tianmu {
 namespace core {
 TempTable::TempTable(JustATable *t, int alias, Query *q)
-    : mem_scale(-1), filter(t->Getpackpower()), output_mind(t->Getpackpower()), m_conn(current_tx) {
+    : mem_scale(-1), filter(t->Getpackpower()), output_mind(t->Getpackpower()), m_conn(current_txn_) {
   p_power = t->Getpackpower();
   filter.table = this;
   tables.push_back(t);

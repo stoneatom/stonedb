@@ -32,7 +32,7 @@ KVTransaction::~KVTransaction() {
 rocksdb::Status KVTransaction::Get(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
                                    std::string *value) {
   read_opts_.total_order_seek = false;
-  return index_batch_->GetFromBatchAndDB(kvstore->GetRdb(), read_opts_, column_family, key, value);
+  return index_batch_->GetFromBatchAndDB(ha_kvstore_->GetRdb(), read_opts_, column_family, key, value);
 }
 
 rocksdb::Status KVTransaction::Put(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
@@ -53,13 +53,13 @@ rocksdb::Iterator *KVTransaction::GetIterator(rocksdb::ColumnFamilyHandle *const
     read_opts_.total_order_seek = false;
     read_opts_.prefix_same_as_start = true;
   }
-  return index_batch_->NewIteratorWithBase(kvstore->GetRdb()->NewIterator(read_opts_, column_family));
+  return index_batch_->NewIteratorWithBase(ha_kvstore_->GetRdb()->NewIterator(read_opts_, column_family));
 }
 
 rocksdb::Status KVTransaction::GetData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
                                        std::string *value) {
   read_opts_.total_order_seek = false;
-  return kvstore->GetRdb()->Get(read_opts_, column_family, key, value);
+  return ha_kvstore_->GetRdb()->Get(read_opts_, column_family, key, value);
 }
 
 rocksdb::Status KVTransaction::PutData(rocksdb::ColumnFamilyHandle *column_family, const rocksdb::Slice &key,
@@ -77,16 +77,16 @@ rocksdb::Status KVTransaction::SingleDeleteData(rocksdb::ColumnFamilyHandle *col
 
 rocksdb::Iterator *KVTransaction::GetDataIterator(rocksdb::ReadOptions &ropts,
                                                   rocksdb::ColumnFamilyHandle *const column_family) {
-  return kvstore->GetRdb()->NewIterator(ropts, column_family);
+  return ha_kvstore_->GetRdb()->NewIterator(ropts, column_family);
 }
 
 void KVTransaction::Acquiresnapshot() {
-  if (read_opts_.snapshot == nullptr) read_opts_.snapshot = kvstore->GetRdbSnapshot();
+  if (read_opts_.snapshot == nullptr) read_opts_.snapshot = ha_kvstore_->GetRdbSnapshot();
 }
 
 void KVTransaction::Releasesnapshot() {
   if (read_opts_.snapshot != nullptr) {
-    kvstore->ReleaseRdbSnapshot(read_opts_.snapshot);
+    ha_kvstore_->ReleaseRdbSnapshot(read_opts_.snapshot);
     read_opts_.snapshot = nullptr;
   }
 }
@@ -95,10 +95,10 @@ bool KVTransaction::Commit() {
   bool res = true;
   Releasesnapshot();
   auto index_write_batch = index_batch_->GetWriteBatch();
-  if (index_write_batch && index_write_batch->Count() > 0 && !kvstore->KVWriteBatch(write_opts_, index_write_batch)) {
+  if (index_write_batch && index_write_batch->Count() > 0 && !ha_kvstore_->KVWriteBatch(write_opts_, index_write_batch)) {
     res = false;
   }
-  if (res && data_batch_->Count() > 0 && !kvstore->KVWriteBatch(write_opts_, data_batch_.get())) {
+  if (res && data_batch_->Count() > 0 && !ha_kvstore_->KVWriteBatch(write_opts_, data_batch_.get())) {
     res = false;
   }
   index_batch_->Clear();

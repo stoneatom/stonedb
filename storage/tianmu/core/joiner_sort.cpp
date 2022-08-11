@@ -176,10 +176,10 @@ void JoinerSort::ExecuteJoinConditions(Condition &cond) {
   new_mind.Init(actual_s1_size * actual_s2_size / 2);
 
   if (packrows_omitted > 0)
-    rccontrol.lock(m_conn->GetThreadID())
+    rc_control_.lock(m_conn->GetThreadID())
         << "Roughly omitted " << int(packrows_omitted / double(packrows_matched) * 10000.0) / 100.0 << "% packrows."
         << system::unlock;
-  rccontrol.lock(m_conn->GetThreadID()) << "Joining sorters created for " << actual_s1_size << " and " << actual_s2_size
+  rc_control_.lock(m_conn->GetThreadID()) << "Joining sorters created for " << actual_s1_size << " and " << actual_s2_size
                                         << " tuples." << system::unlock;
 
   // the main joiner loop
@@ -194,7 +194,7 @@ void JoinerSort::ExecuteJoinConditions(Condition &cond) {
     if (m_conn->Killed()) throw common::KilledException();
     if (cur_matched == NULL) {  // the first pass or the end of matched sorter
       if (cache_full) {
-        rccontrol.lock(m_conn->GetThreadID())
+        rc_control_.lock(m_conn->GetThreadID())
             << "Traversed " << no_of_traversed << "/" << actual_s1_size << " tuples, produced " << result_size
             << " tuples so far." << system::unlock;
         cache_full = false;
@@ -239,7 +239,7 @@ void JoinerSort::ExecuteJoinConditions(Condition &cond) {
   if (watch_traversed && !outer_filter->IsEmpty()) outer_tuples += AddOuterTuples(new_mind, sort_encoder, dims1);
   if (watch_matched && !outer_filter->IsEmpty()) outer_tuples += AddOuterTuples(new_mind, sort_encoder, dims2);
   if (outer_tuples > 0)
-    rccontrol.lock(m_conn->GetThreadID())
+    rc_control_.lock(m_conn->GetThreadID())
         << "Added " << outer_tuples << " null tuples by outer join." << system::unlock;
   result_size += outer_tuples;
 

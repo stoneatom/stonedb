@@ -24,7 +24,7 @@
 namespace Tianmu {
 namespace core {
 IndexTable::IndexTable(int64_t _size, int64_t _orig_size, [[maybe_unused]] int mem_modifier)
-    : system::CacheableItem("JW", "INT"), m_conn(current_tx) {
+    : system::CacheableItem("JW", "INT"), m_conn(current_txn_) {
   // Note: buffer size should be 2^n
   DEBUG_ASSERT(_orig_size >= 0);
   orig_size = _orig_size;

@@ -292,7 +292,7 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   std::vector<int64_t> GetListOfDistinctValuesInPack(int pack) override;
 
   void LoadData(loader::ValueCache *nvs, Transaction *conn_info = NULL);
-  void LoadPackInfo(Transaction *trans_ = current_tx);
+  void LoadPackInfo(Transaction *trans_ = current_txn_);
   void LoadProcessedData([[maybe_unused]] std::unique_ptr<system::Stream> &s,
                          [[maybe_unused]] size_t no_rows){/* TODO */};
   void PreparePackForLoad();

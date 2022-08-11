@@ -25,7 +25,7 @@
 namespace Tianmu {
 namespace core {
 Item_tianmufield::Item_tianmufield(Item_field *ifield, VarID varID)
-    : Item_field(current_tx->Thd(), ifield), ifield(ifield), buf(NULL), ivalue(NULL) {
+    : Item_field(current_txn_->Thd(), ifield), ifield(ifield), buf(NULL), ivalue(NULL) {
   this->varID.push_back(varID);
   if (ifield->type() == Item::SUM_FUNC_ITEM) {
     was_aggregation = true;

@@ -105,7 +105,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex(MIUpdatingIterator &mit, int dim, Desc
 }
 common::ErrorCode RCAttr::EvaluateOnIndex_BetweenInt(MIUpdatingIterator &mit, int dim, Descriptor &d, int64_t limit) {
   common::ErrorCode rv = common::ErrorCode::FAILED;
-  auto indextab = rceng->GetTableIndex(m_share->owner->Path());
+  auto indextab = ha_rcengine_->GetTableIndex(m_share->owner->Path());
   if (!indextab) return rv;
 
   int64_t pv1 = d.val1.vc->GetValueInt64(mit);
@@ -116,7 +116,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenInt(MIUpdatingIterator &mit, in
   std::vector<uint> keycols = indextab->KeyCols();
   if (keycols.size() > 0 && keycols[0] == ColId()) {
     int64_t passed = 0;
-    index::KeyIterator iter(&current_tx->KVTrans());
+    index::KeyIterator iter(&current_txn_->KVTrans());
     std::vector<std::string_view> fields;
     fields.emplace_back((const char *)&pv1, sizeof(int64_t));
 
@@ -164,7 +164,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenInt(MIUpdatingIterator &mit, in
 common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString(MIUpdatingIterator &mit, int dim, Descriptor &d,
                                                         int64_t limit) {
   common::ErrorCode rv = common::ErrorCode::FAILED;
-  auto indextab = rceng->GetTableIndex(m_share->owner->Path());
+  auto indextab = ha_rcengine_->GetTableIndex(m_share->owner->Path());
   if (!indextab) return rv;
 
   types::BString pv1, pv2;
@@ -176,7 +176,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString(MIUpdatingIterator &mit,
   std::vector<uint> keycols = indextab->KeyCols();
   if (keycols.size() > 0 && keycols[0] == ColId()) {
     int64_t passed = 0;
-    index::KeyIterator iter(&current_tx->KVTrans());
+    index::KeyIterator iter(&current_txn_->KVTrans());
     std::vector<std::string_view> fields;
     fields.emplace_back(pv1.GetDataBytesPointer(), pv1.size());
 
@@ -226,7 +226,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString(MIUpdatingIterator &mit,
 common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString_UTF(MIUpdatingIterator &mit, int dim, Descriptor &d,
                                                             int64_t limit) {
   common::ErrorCode rv = common::ErrorCode::FAILED;
-  auto indextab = rceng->GetTableIndex(m_share->owner->Path());
+  auto indextab = ha_rcengine_->GetTableIndex(m_share->owner->Path());
   if (!indextab) return rv;
 
   types::BString pv1, pv2;
@@ -238,7 +238,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString_UTF(MIUpdatingIterator &
   std::vector<uint> keycols = indextab->KeyCols();
   if (keycols.size() > 0 && keycols[0] == ColId()) {
     int64_t passed = 0;
-    index::KeyIterator iter(&current_tx->KVTrans());
+    index::KeyIterator iter(&current_txn_->KVTrans());
     std::vector<std::string_view> fields;
     fields.emplace_back(pv1.GetDataBytesPointer(), pv1.size());
     iter.ScanToKey(indextab, fields, (d.sharp ? common::Operator::O_MORE : common::Operator::O_MORE_EQ));
@@ -513,7 +513,7 @@ void RCAttr::EvaluatePack_InString(MIUpdatingIterator &mit, int dim, Descriptor 
       if (d.op == common::Operator::O_NOT_IN) res = !res;
       if (res != true) mit.ResetCurrent();
     }
-    if (current_tx->Killed()) throw common::KilledException();
+    if (current_txn_->Killed()) throw common::KilledException();
     ++mit;
   } while (mit.IsValid() && !mit.PackrowStarted());
 }
@@ -560,7 +560,7 @@ void RCAttr::EvaluatePack_InString_UTF(MIUpdatingIterator &mit, int dim, Descrip
       if (d.op == common::Operator::O_NOT_IN) res = !res;
       if (res != true) mit.ResetCurrent();
     }
-    if (current_tx->Killed()) throw common::KilledException();
+    if (current_txn_->Killed()) throw common::KilledException();
     ++mit;
   } while (mit.IsValid() && !mit.PackrowStarted());
 }
@@ -648,7 +648,7 @@ void RCAttr::EvaluatePack_InNum(MIUpdatingIterator &mit, int dim, Descriptor &d)
       }
       ++mit;
     } while (mit.IsValid() && !mit.PackrowStarted());
-    if (current_tx->Killed()) throw common::KilledException();
+    if (current_txn_->Killed()) throw common::KilledException();
   }
 }
 
