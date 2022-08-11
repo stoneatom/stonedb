@@ -62,7 +62,7 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
   bool loc_result;
   bool stop_execution = false;  // early stop for LIMIT
 
-  rccontrol.lock(m_conn->GetThreadID()) << "Starting joiner loop (" << mit.NumOfTuples() << " rows)." << system::unlock;
+  rc_control_.lock(m_conn->GetThreadID()) << "Starting joiner loop (" << mit.NumOfTuples() << " rows)." << system::unlock;
   // The main loop for checking conditions
   int64_t rows_passed = 0;
   int64_t rows_omitted = 0;
@@ -114,7 +114,7 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
     }
   }
   if (rows_passed > 0 && rows_omitted > 0)
-    rccontrol.lock(m_conn->GetThreadID())
+    rc_control_.lock(m_conn->GetThreadID())
         << "Roughly omitted " << int(rows_omitted / double(rows_passed) * 1000) / 10.0 << "% rows." << system::unlock;
   // Postprocessing and cleanup
   if (tips.count_only)

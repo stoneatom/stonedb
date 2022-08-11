@@ -29,7 +29,7 @@ namespace Tianmu {
 namespace core {
 TwoDimensionalJoiner::TwoDimensionalJoiner(MultiIndex *_mind,  // multi-index to be updated
                                            TempTable *_table, JoinTips &_tips)
-    : tips(_tips), m_conn(current_tx) {
+    : tips(_tips), m_conn(current_txn_) {
   mind = _mind;
   table = _table;
   why_failed = JoinFailure::NOT_FAILED;

@@ -39,7 +39,7 @@ MysqlExpression::MysqlExpression(Item *item, Item2VarID &item2varid) {
       std::string s =
           "Precision of an expression result was reduced due to DECIMAL type "
           "limitations";
-      push_warning(current_tx->Thd(), Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE, s.c_str());
+      push_warning(current_txn_->Thd(), Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE, s.c_str());
     }
   } else {
     decimal_precision = 0;

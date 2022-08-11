@@ -35,7 +35,7 @@ void DataExporter::Init(std::shared_ptr<system::LargeBuffer> buffer, std::vector
   this->no_attrs = int(deas.size());
 
   for (size_t i = 0; i < deas.size(); ++i) {
-    common::CT f_at = rceng->GetCorrespondingType(fields[i]);
+    common::CT f_at = ha_rcengine_->GetCorrespondingType(fields[i]);
     if (core::ATI::IsStringType(deas[i].Type()) && !core::ATI::IsStringType(f_at))
       this->deas[i] = core::AttributeTypeInfo(f_at, deas[i].NotNull());
   }

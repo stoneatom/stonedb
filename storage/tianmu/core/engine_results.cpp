@@ -208,7 +208,7 @@ void ResultSender::Init([[maybe_unused]] TempTable *t) {
 
 void ResultSender::Send(TempTable::RecordIterator &iter) {
   if ((iter.currentRowNumber() & 0x7fff) == 0)
-    if (current_tx->Killed()) throw common::KilledException();
+    if (current_txn_->Killed()) throw common::KilledException();
 
   TempTable *owner(iter.Owner());
   if (!is_initialized) {
@@ -237,7 +237,7 @@ void ResultSender::Send(TempTable::RecordIterator &iter) {
 }
 
 void ResultSender::SendRow(const std::vector<std::unique_ptr<types::RCDataType>> &record, TempTable *owner) {
-  if (current_tx->Killed()) throw common::KilledException();
+  if (current_txn_->Killed()) throw common::KilledException();
 
   if (!is_initialized) {
     owner->CreateDisplayableAttrP();
@@ -376,10 +376,10 @@ void ResultSender::Finalize(TempTable *result_table) {
   SendEof();
   ulonglong cost_time = (thd->current_utime() - thd->start_utime) / 1000;
   auto &sctx = thd->m_main_security_ctx;
-  if (rcquerylog.isOn())
-    rcquerylog << system::lock << "\tClientIp:" << (sctx.ip().length ? sctx.ip().str : "unkownn")
+  if (rc_querylog_.isOn())
+    rc_querylog_ << system::lock << "\tClientIp:" << (sctx.ip().length ? sctx.ip().str : "unkownn")
                << "\tClientHostName:" << (sctx.host().length ? sctx.host().str : "unknown")
-               << "\tClientPort:" << thd->peer_port << "\tUser:" << sctx.user().str << glob_serverInfo
+               << "\tClientPort:" << thd->peer_port << "\tUser:" << sctx.user().str << global_serverinfo_
                << "\tAffectRows:" << affect_rows << "\tResultRows:" << rows_sent << "\tDBName:" << thd->db().str
                << "\tCosttime(ms):" << cost_time << "\tSQL:" << thd->query().str << system::unlock;
   TIANMU_LOG(LogCtl_Level::DEBUG, "Result: %" PRId64 " Costtime(ms): %" PRId64, rows_sent, cost_time);

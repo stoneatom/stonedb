@@ -50,13 +50,13 @@ char *strmov_str(char *dst, const char *src)
 static int rcbase_done_func([[maybe_unused]] void *p) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
-  if (rceng) {
-    delete rceng;
-    rceng = nullptr;
+  if (ha_rcengine_) {
+    delete ha_rcengine_;
+    ha_rcengine_ = nullptr;
   }
-  if (kvstore) {
-    delete kvstore;
-    kvstore = nullptr;
+  if (ha_kvstore_) {
+    delete ha_kvstore_;
+    ha_kvstore_ = nullptr;
   }
 
   DBUG_RETURN(0);
@@ -70,10 +70,10 @@ int rcbase_panic_func([[maybe_unused]] handlerton *hton, enum ha_panic_function 
   if (tianmu_bootstrap) return 0;
 
   if (flag == HA_PANIC_CLOSE) {
-    delete rceng;
-    rceng = nullptr;
-    delete kvstore;
-    kvstore = nullptr;
+    delete ha_rcengine_;
+    ha_rcengine_ = nullptr;
+    delete ha_kvstore_;
+    ha_kvstore_ = nullptr;
   }
   return 0;
 }
@@ -83,7 +83,7 @@ int rcbase_rollback([[maybe_unused]] handlerton *hton, THD *thd, bool all) {
 
   int ret = 1;
   try {
-    rceng->Rollback(thd, all);
+    ha_rcengine_->Rollback(thd, all);
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
@@ -102,7 +102,7 @@ int rcbase_close_connection(handlerton *hton, THD *thd) {
   int ret = 1;
   try {
     rcbase_rollback(hton, thd, true);
-    rceng->ClearTx(thd);
+    ha_rcengine_->ClearTx(thd);
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
@@ -123,7 +123,7 @@ int rcbase_commit([[maybe_unused]] handlerton *hton, THD *thd, bool all) {
 
   if (!(thd->no_errors != 0 || thd->killed || thd->transaction_rollback_request)) {
     try {
-      rceng->CommitTx(thd, all);
+      ha_rcengine_->CommitTx(thd, all);
       ret = 0;
     } catch (std::exception &e) {
       error_message = std::string("Error: ") + e.what();
@@ -134,7 +134,7 @@ int rcbase_commit([[maybe_unused]] handlerton *hton, THD *thd, bool all) {
 
   if (ret) {
     try {
-      rceng->Rollback(thd, all, true);
+      ha_rcengine_->Rollback(thd, all, true);
       if (!error_message.empty()) {
         TIANMU_LOG(LogCtl_Level::ERROR, "%s", error_message.c_str());
         my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), error_message.c_str(), MYF(0));
@@ -206,22 +206,22 @@ int rcbase_init_func(void *p) {
   if (tianmu_bootstrap) DBUG_RETURN(0);
 
   int ret = 1;
-  rceng = NULL;
+  ha_rcengine_ = NULL;
 
   try {
     std::string log_file = mysql_home_ptr;
     log_setup(log_file + "/log/tianmu.log");
-    rccontrol.addOutput(new system::FileOut(log_file + "/log/trace.log"));
-    rcquerylog.addOutput(new system::FileOut(log_file + "/log/query.log"));
+    rc_control_.addOutput(new system::FileOut(log_file + "/log/trace.log"));
+    rc_querylog_.addOutput(new system::FileOut(log_file + "/log/query.log"));
     struct hostent *hent = NULL;
     hent = gethostbyname(glob_hostname);
-    if (hent) strmov_str(glob_hostip, inet_ntoa(*(struct in_addr *)(hent->h_addr_list[0])));
-    my_snprintf(glob_serverInfo, sizeof(glob_serverInfo), "\tServerIp:%s\tServerHostName:%s\tServerPort:%d",
-                glob_hostip, glob_hostname, mysqld_port);
-    kvstore = new index::KVStore();
-    kvstore->Init();
-    rceng = new core::Engine();
-    ret = rceng->Init(total_ha);
+    if (hent) strmov_str(global_hostIP_, inet_ntoa(*(struct in_addr *)(hent->h_addr_list[0])));
+    my_snprintf(global_serverinfo_, sizeof(global_serverinfo_), "\tServerIp:%s\tServerHostName:%s\tServerPort:%d",
+                global_hostIP_, glob_hostname, mysqld_port);
+    ha_kvstore_ = new index::KVStore();
+    ha_kvstore_->Init();
+    ha_rcengine_ = new core::Engine();
+    ret = ha_rcengine_->Init(total_ha);
     {
       TIANMU_LOG(LogCtl_Level::INFO,
                   "\n"
@@ -263,7 +263,7 @@ struct st_mysql_storage_engine tianmu_storage_engine = {MYSQL_HANDLERTON_INTERFA
 int get_DelayedBufferUsage_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *var, char *buff) {
   var->type = SHOW_CHAR;
   var->value = buff;
-  std::string str = rceng->DelayedBufferStat();
+  std::string str = ha_rcengine_->DelayedBufferStat();
   std::memcpy(buff, str.c_str(), str.length() + 1);
   return 0;
 }
@@ -271,27 +271,27 @@ int get_DelayedBufferUsage_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *v
 int get_RowStoreUsage_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *var, char *buff) {
   var->type = SHOW_CHAR;
   var->value = buff;
-  std::string str = rceng->RowStoreStat();
+  std::string str = ha_rcengine_->RowStoreStat();
   std::memcpy(buff, str.c_str(), str.length() + 1);
   return 0;
 }
 
 int get_InsertPerMinute_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = rceng->GetIPM();
+  *((int64_t *)tmp) = ha_rcengine_->GetIPM();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
 }
 
 int get_QueryPerMinute_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = rceng->GetQPM();
+  *((int64_t *)tmp) = ha_rcengine_->GetQPM();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
 }
 
 int get_LoadPerMinute_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = rceng->GetLPM();
+  *((int64_t *)tmp) = ha_rcengine_->GetLPM();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
@@ -319,49 +319,49 @@ int get_MemoryScale_StatusVar([[maybe_unused]] MYSQL_THD thd, struct st_mysql_sh
 }
 
 int get_InsertTotal_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = rceng->GetIT();
+  *((int64_t *)tmp) = ha_rcengine_->GetIT();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
 }
 
 int get_QueryTotal_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = rceng->GetQT();
+  *((int64_t *)tmp) = ha_rcengine_->GetQT();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
 }
 
 int get_LoadTotal_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = rceng->GetLT();
+  *((int64_t *)tmp) = ha_rcengine_->GetLT();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
 }
 
 int get_LoadDupTotal_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = rceng->GetLDT();
+  *((int64_t *)tmp) = ha_rcengine_->GetLDT();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
 }
 
 int get_LoadDupPerMinute_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = rceng->GetLDPM();
+  *((int64_t *)tmp) = ha_rcengine_->GetLDPM();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
 }
 
 int get_UpdateTotal_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = rceng->GetUT();
+  *((int64_t *)tmp) = ha_rcengine_->GetUT();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
 }
 
 int get_UpdatePerMinute_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
-  *((int64_t *)tmp) = rceng->GetUPM();
+  *((int64_t *)tmp) = ha_rcengine_->GetUPM();
   outvar->value = tmp;
   outvar->type = SHOW_LONG;
   return 0;
@@ -410,7 +410,7 @@ extern void async_join_update(MYSQL_THD thd, struct st_mysql_sys_var *var, void 
 
 #define STATUS_FUNCTION(name, showtype, member)                                                             \
   int get_##name##_StatusVar([[maybe_unused]] MYSQL_THD thd, struct st_mysql_show_var *outvar, char *tmp) { \
-    *((int64_t *)tmp) = rceng->cache.member();                                                              \
+    *((int64_t *)tmp) = ha_rcengine_->cache.member();                                                              \
     outvar->value = tmp;                                                                                    \
     outvar->type = showtype;                                                                                \
     return 0;                                                                                               \
@@ -619,8 +619,8 @@ static MYSQL_SYSVAR_UINT(result_sender_rows, tianmu_sysvar_result_sender_rows, P
                          NULL, NULL, 65536, 1024, 131072, 0);
 
 void debug_update(MYSQL_THD thd, [[maybe_unused]] struct st_mysql_sys_var *var, void *var_ptr, const void *save) {
-  if (rceng) {
-    auto cur_conn = rceng->GetTx(thd);
+  if (ha_rcengine_) {
+    auto cur_conn = ha_rcengine_->GetTx(thd);
     // set debug_level for connection level
     cur_conn->SetDebugLevel(*((int *)save));
   }
@@ -631,8 +631,8 @@ void trace_update(MYSQL_THD thd, [[maybe_unused]] struct st_mysql_sys_var *var, 
   *((int *)var_ptr) = *((int *)save);
   // get global mysql_sysvar_control_trace
   tianmu_sysvar_controltrace = THDVAR(nullptr, control_trace);
-  if (rceng) {
-    core::Transaction *cur_conn = rceng->GetTx(thd);
+  if (ha_rcengine_) {
+    core::Transaction *cur_conn = ha_rcengine_->GetTx(thd);
     cur_conn->SetSessionTrace(*((int *)save));
     ConfigureRCControl();
   }
@@ -642,11 +642,8 @@ void controlquerylog_update([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] str
                             void *var_ptr, const void *save) {
   *((int *)var_ptr) = *((int *)save);
   int control = *((int *)var_ptr);
-  if (rceng) {
-    if (control)
-      rcquerylog.setOn();
-    else
-      rcquerylog.setOff();
+  if (ha_rcengine_) {
+    control ? rc_querylog_.setOn() : rc_querylog_.setOff();
   }
 }
 
@@ -654,8 +651,8 @@ void start_async_update([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] struct 
                         const void *save) {
   int percent = *((int *)save);
   *((int *)var_ptr) = percent;
-  if (rceng) {
-    rceng->ResetTaskExecutor(percent);
+  if (ha_rcengine_) {
+    ha_rcengine_->ResetTaskExecutor(percent);
   }
 }
 

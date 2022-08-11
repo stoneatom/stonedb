@@ -37,11 +37,11 @@ void log_setup(const std::string &log_file) { tianmulog.addOutput(new system::Fi
 
 namespace utils {
 logger::LogCtl_Level LogCtl::GetSessionLevel() {
-  if (current_tx == nullptr) {
-    tianmulog << system::lock << "ERROR" << __PRETTY_FUNCTION__ << " current_tx invalid" << system::unlock;
+  if (current_txn_ == nullptr) {
+    tianmulog << system::lock << "ERROR" << __PRETTY_FUNCTION__ << " current_txn_ invalid" << system::unlock;
     return logger::LogCtl_Level::DISABLED;
   }
-  return static_cast<logger::LogCtl_Level>(current_tx->DebugLevel());
+  return static_cast<logger::LogCtl_Level>(current_txn_->DebugLevel());
 }
 
 logger::LogCtl_Level LogCtl::GetGlobalLevel() {
@@ -51,15 +51,7 @@ logger::LogCtl_Level LogCtl::GetGlobalLevel() {
 bool LogCtl::LogEnabled(logger::LogCtl_Level level) {
 // there is issue with TLS in thread pool so we disable session log level until
 // a fix is available.
-#if 0
-    if (current_tx == nullptr) {
-        //the session is not setup, will use tianmu_sysvar_global_debug_level only
-        return (tianmu_sysvar_global_debug_level >= level);
-    }
-    return ((current_tx->DebugLevel() >= level ) || (tianmu_sysvar_global_debug_level >= level));
-#else
   return tianmu_sysvar_global_debug_level >= static_cast<int>(level);
-#endif
 }
 
 void LogCtl::LogMsg(logger::LogCtl_Level level, const char *file, int line, const char *format, ...) {

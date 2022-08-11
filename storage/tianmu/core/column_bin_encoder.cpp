@@ -280,7 +280,7 @@ ColumnBinEncoder::EncoderInt::EncoderInt(vcolumn::VirtualColumn *vc, bool decoda
 
 bool ColumnBinEncoder::EncoderInt::SecondColumn(vcolumn::VirtualColumn *vc) {
   if (!vc->Type().IsFixed() && !(this->vc_type.IsDateTime() && vc->Type().IsDateTime())) {
-    rccontrol.lock(vc->ConnInfo()->GetThreadID())
+    rc_control_.lock(vc->ConnInfo()->GetThreadID())
         << "Nontrivial comparison: date/time with non-date/time" << system::unlock;
     return false;
   }
@@ -531,7 +531,7 @@ ColumnBinEncoder::EncoderDate::EncoderDate(vcolumn::VirtualColumn *vc, bool deco
 bool ColumnBinEncoder::EncoderDate::SecondColumn(vcolumn::VirtualColumn *vc) {
   // Possible conversions: only dates.
   if (vc->Type().GetTypeName() != common::CT::DATE) {
-    rccontrol.lock(vc->ConnInfo()->GetThreadID()) << "Nontrivial comparison: date with non-date" << system::unlock;
+    rc_control_.lock(vc->ConnInfo()->GetThreadID()) << "Nontrivial comparison: date with non-date" << system::unlock;
     return false;
   }
   int64_t new_min_val = types::DT::DateSortEncoding(vc->RoughMin());
@@ -615,7 +615,7 @@ ColumnBinEncoder::EncoderYear::EncoderYear(vcolumn::VirtualColumn *vc, bool deco
 bool ColumnBinEncoder::EncoderYear::SecondColumn(vcolumn::VirtualColumn *vc) {
   // Possible conversions: only years.
   if (vc->Type().GetTypeName() != common::CT::YEAR) {
-    rccontrol.lock(vc->ConnInfo()->GetThreadID()) << "Nontrivial comparison: year with non-year" << system::unlock;
+    rc_control_.lock(vc->ConnInfo()->GetThreadID()) << "Nontrivial comparison: year with non-year" << system::unlock;
     return false;
   }
 
@@ -702,7 +702,7 @@ ColumnBinEncoder::EncoderDouble::EncoderDouble(vcolumn::VirtualColumn *vc, bool 
 bool ColumnBinEncoder::EncoderDouble::SecondColumn(vcolumn::VirtualColumn *vc) {
   // Possible conversions: all numericals.
   if (!vc->Type().IsFixed() && !vc->Type().IsFloat()) {
-    rccontrol.lock(vc->ConnInfo()->GetThreadID())
+    rc_control_.lock(vc->ConnInfo()->GetThreadID())
         << "Nontrivial comparison: floating-point with non-numeric" << system::unlock;
     return false;
   }
@@ -909,7 +909,7 @@ ColumnBinEncoder::EncoderText_UTF::~EncoderText_UTF() {}
 
 bool ColumnBinEncoder::EncoderText_UTF::SecondColumn(vcolumn::VirtualColumn *vc2) {
   if (vc_type.IsString() && vc2->Type().IsString() && collation.collation != vc2->GetCollation().collation) {
-    rccontrol.lock(vc2->ConnInfo()->GetThreadID()) << "Nontrivial comparison: " << collation.collation->name << " with "
+    rc_control_.lock(vc2->ConnInfo()->GetThreadID()) << "Nontrivial comparison: " << collation.collation->name << " with "
                                                    << vc2->GetCollation().collation->name << system::unlock;
     return false;
   }

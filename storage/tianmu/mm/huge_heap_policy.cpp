@@ -43,7 +43,7 @@ HugeHeap::HugeHeap(std::string hugedir, size_t size) : TCMHeap(0) {
     fd_ = open(huge_filename_, O_CREAT | O_RDWR, 0700);
     if (fd_ < 0) {
       heap_status_ = HEAP_STATUS::HEAP_OUT_OF_MEMORY;
-      rccontrol << system::lock << "Memory Manager Error: Unable to create hugepage file: " << huge_filename_
+      rc_control_ << system::lock << "Memory Manager Error: Unable to create hugepage file: " << huge_filename_
                 << system::unlock;
       return;
     }
@@ -54,12 +54,12 @@ HugeHeap::HugeHeap(std::string hugedir, size_t size) : TCMHeap(0) {
     if (heap_frame_ == MAP_FAILED) {
       unlink(huge_filename_);
       heap_status_ = HEAP_STATUS::HEAP_OUT_OF_MEMORY;
-      rccontrol << system::lock << "Memory Manager Error: hugepage file mmap error: " << std::strerror(errno)
+      rc_control_ << system::lock << "Memory Manager Error: hugepage file mmap error: " << std::strerror(errno)
                 << system::unlock;
       return;
     }
 
-    rccontrol << system::lock << "Huge Heap size (MB) " << (int)(size) << system::unlock;
+    rc_control_ << system::lock << "Huge Heap size (MB) " << (int)(size) << system::unlock;
     // size_ = size;
     // manage the region as a normal 4k pagesize heap
     m_heap.RegisterArea(heap_frame_, size_ >> kPageShift);

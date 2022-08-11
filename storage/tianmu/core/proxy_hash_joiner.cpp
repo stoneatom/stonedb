@@ -329,7 +329,7 @@ class ProxyHashJoiner::Action {
 
       int64_t outer_tuples = outer_tuples_traversed_ + outer_tuples_matched_;
       if (outer_tuples > 0) {
-        rccontrol.lock(parent_->m_conn->GetThreadID())
+        rc_control_.lock(parent_->m_conn->GetThreadID())
             << "Added " << outer_tuples << " null tuples by outer join." << system::unlock;
       }
       actually_matched_rows_ += outer_tuples;
@@ -337,7 +337,7 @@ class ProxyHashJoiner::Action {
       // Revert multiindex to the updated tables.
       if (packrows_omitted_ > 0) {
         int ommitted = int(packrows_omitted_ / double(packrows_matched_) * 10000.0) / 100.0;
-        rccontrol.lock(parent_->m_conn->GetThreadID())
+        rc_control_.lock(parent_->m_conn->GetThreadID())
             << "Roughly omitted " << ommitted << "% packrows." << system::unlock;
       }
 
@@ -515,7 +515,7 @@ class ProxyHashJoiner::Action {
       try {
         f.get();
       } catch (std::exception &ex) {
-        rccontrol.lock(parent_->m_conn->GetThreadID())
+        rc_control_.lock(parent_->m_conn->GetThreadID())
             << "Exception on traversing pack: " << ex.what() << system::unlock;
         result = stdexp::optional<bool>(false);
       }
@@ -711,7 +711,7 @@ class ProxyHashJoiner::Action {
     std::shared_ptr<MIIterator> miter(new MIIterator(mind_, traversed_dims_));
     std::shared_ptr<MIIteratorPoller> miter_poller(new MIIteratorPoller(miter));
 
-    rccontrol.lock(parent_->m_conn->GetThreadID())
+    rc_control_.lock(parent_->m_conn->GetThreadID())
         << "Start traverse " << miter->NumOfTuples() << " rows with " << slice_count << " threads using "
         << miter_poller->GetSliceType() << system::unlock;
     auto start_traversing = base::steady_clock_type::now();
@@ -729,7 +729,7 @@ class ProxyHashJoiner::Action {
                 try {
                   f.get();
                 } catch (std::exception &ex) {
-                  rccontrol.lock(parent_->m_conn->GetThreadID())
+                  rc_control_.lock(parent_->m_conn->GetThreadID())
                       << "Exception on traversing: " << ex.what() << system::unlock;
                 }
               });
@@ -737,7 +737,7 @@ class ProxyHashJoiner::Action {
 
     return traverse_future.then([this, start_traversing, temp_locker = std::move(temp_locker)] {
       auto elapsed = base::steady_clock_type::now() - start_traversing;
-      rccontrol.lock(parent_->m_conn->GetThreadID())
+      rc_control_.lock(parent_->m_conn->GetThreadID())
           << "Traversed " << actually_traversed_rows_ << " completed, cost "
           << static_cast<double>(elapsed.count() / 1000000000.0) << " s" << system::unlock;
       for (auto &vc : vc1_) {
@@ -753,7 +753,7 @@ class ProxyHashJoiner::Action {
 
     std::shared_ptr<MIIterator> miter(new MIIterator(mind_, matched_dims_));
     std::shared_ptr<MIIteratorPoller> miter_poller(new MIIteratorPoller(miter));
-    rccontrol.lock(parent_->m_conn->GetThreadID())
+    rc_control_.lock(parent_->m_conn->GetThreadID())
         << "Start match " << miter->NumOfTuples() << " rows with " << slice_count << " threads using "
         << miter_poller->GetSliceType() << system::unlock;
     auto start_matching = base::steady_clock_type::now();
@@ -775,7 +775,7 @@ class ProxyHashJoiner::Action {
                 try {
                   f.get();
                 } catch (std::exception &ex) {
-                  rccontrol.lock(parent_->m_conn->GetThreadID())
+                  rc_control_.lock(parent_->m_conn->GetThreadID())
                       << "Exception on matching: " << ex.what() << system::unlock;
                 }
               });
@@ -783,7 +783,7 @@ class ProxyHashJoiner::Action {
 
     return match_future.then([this, start_matching, temp_locker = std::move(temp_locker)] {
       auto elapsed = base::steady_clock_type::now() - start_matching;
-      rccontrol.lock(parent_->m_conn->GetThreadID())
+      rc_control_.lock(parent_->m_conn->GetThreadID())
           << "Produced " << actually_matched_rows_ << " rows, cost "
           << static_cast<double>(elapsed.count() / 1000000000.0) << " s" << system::unlock;
       for (auto &vc : vc2_) {
@@ -883,7 +883,7 @@ void ProxyHashJoiner::ExecuteJoinConditions(Condition &cond) {
     if (action_->Init(cond)) join_ready = action_->Execute();
     return join_ready.then([this, started]() mutable {
       auto elapsed = base::steady_clock_type::now() - started;
-      rccontrol.lock(m_conn->GetThreadID())
+      rc_control_.lock(m_conn->GetThreadID())
           << "Join task cost " << static_cast<double>(elapsed.count() / 1000000000.0) << " s" << system::unlock;
 
       action_.reset();
