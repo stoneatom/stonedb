@@ -99,7 +99,7 @@ Application Options:
 --load-data
 --fields-terminated-by
 --fields-enclosed-by
---fields-escaped-by             Single character that is going to be used to escape characters in theLOAD DATA stament, default: '\'
+--fields-escaped-by             Single character that is going to be used to escape characters in the LOAD DATA stament, default: '\'
 --lines-starting-by             Adds the string at the begining of each row. When --load-data is usedit is added to the LOAD DATA statement. Its affects INSERT INTO statementsalso when it is used.
 --lines-terminated-by           Adds the string at the end of each row. When --load-data is used it isadded to the LOAD DATA statement. Its affects INSERT INTO statementsalso when it is used.
 --statement-terminated-by       This might never be used, unless you know what are you doing
@@ -249,6 +249,24 @@ Each table has two backup files:
 - **database.table.00000.sql**: records table data.
 - **database.table-metadata**: records table metadata.
 
+***Extensions***
+
+If you want to import data to StoneDB, you must replace **engine=innodb** with **engine=stonedb** in table schema file **database.table-schema.sql** and check whether the syntax of the table schema is compatible with StoneDB. For example, if the syntax contain keyword **unsigned**, it is incompatible. Following is a schema example after modification:
+```
+[root@dev-myos dumper]# cat zz.t_user-schema.sql
+/*!40101 SET NAMES binary*/;
+/*!40014 SET FOREIGN_KEY_CHECKS=0*/;
+/*!40103 SET TIME_ZONE='+00:00' */;
+CREATE TABLE `t_user` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `c_user_id` varchar(36) NOT NULL DEFAULT '',
+  `c_name` varchar(22) NOT NULL DEFAULT '',
+  `c_province_id` int(11) NOT NULL,
+  `c_city_id` int(11) NOT NULL,
+  `create_time` datetime NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=STONEDB AUTO_INCREMENT=10001 DEFAULT CHARSET=utf8;
+```
 
 ### Backup principles
 

@@ -105,7 +105,8 @@ The installation directory of marisa in the example is** /usr/local/stonedb-mari
 
 1. Install RocksDB.
 ```shell
-wget https://github.com/facebook/rocksdb/archive/refs/tags/v6.12.6.tar.gz 
+wget shell
+wget https://github.com/facebook/rocksdb/archive/refs/tags/v6.12.6.tar.gz
 tar -zxvf v6.12.6.tar.gz
 cd rocksdb-6.12.6
 

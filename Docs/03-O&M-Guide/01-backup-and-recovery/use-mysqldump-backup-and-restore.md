@@ -414,10 +414,29 @@ mysql> select * from dumpdb.dumptb;
 /stonedb56/install/bin/mysqldump  -uroot -p***** -P3306 --skip-opt --master-data=2 --single-transaction --set-gtid-purged=off  --databases dumpdb > /tmp/dumpdb.sql
 ```
 
+#### Back up the table schema of a specific database
+```
+/stonedb56/install/bin/mysqldump  -uroot -p***** -P3306   -d --databases dumpdb > /tmp/dumpdb_table.sql
+```
+
+#### Back up data in a table of a specific database, excluding the schema
+```
+/stonedb56/install/bin/mysqldump  -uroot -p***** -P3306 --skip-opt --master-data=2 --single-transaction --set-gtid-purged=off  -t dumpdb > /tmp/dumpdb_table.sql
+```
+
 #### Use mysqldump to back up all databases, except system databases mysql, performation_schema, and information_schema
 ```bash
 /stonedb56/install/bin/mysql  -uroot -p****** -P3306 -e "show databases;" | grep -Ev "sys|performance_schema|information_schema|Database|test" | xargs /stonedb56/install/bin/mysqldump  -uroot -p****** -P3306 --master-data=1 --skip-opt --databases > /tmp/ig_sysdb.sql
 ```
+
+***Extensions***
+
+The previous method is suitable for backing up small tables from InnoDB. If you want to back up a large table, we recommend that you back up the schema and the data file separately, and then run the `sed -i 's/<Original character string>/<New character string>/g' <File name>` to change the engine setting in the backup file. For example:
+```
+sed -i 's/ENGINE=InnoDB/ENGINE=STONEDB/g' <File name>
+```
+Then, perform recovery to import the table to StoneDB.
+
 
 ### Recovery
 
