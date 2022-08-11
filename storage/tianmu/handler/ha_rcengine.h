@@ -31,6 +31,8 @@ int TIANMU_HandleSelect(THD *thd, LEX *lex, Query_result *&result_output, ulong 
                      int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false);
 bool tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
 
+bool TianmuDeleteMultiTbl(THD *thd, TABLE_LIST *table_list, ha_rows &deleted);
+
 }  // namespace dbhandler
 }  //  namespace Tianmu
 

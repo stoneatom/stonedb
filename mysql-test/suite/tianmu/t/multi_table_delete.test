@@ -1,0 +1,314 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # DELETE tb1_name,tb2_name FROM table_references
+--echo #
+
+use test;
+CREATE TABLE `t1` (
+ `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
+  `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
+  `c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
+  `c_int` int(11) DEFAULT NULL COMMENT 'int',
+  `c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
+  `c_float` float DEFAULT NULL COMMENT 'float',
+  `c_double` double DEFAULT NULL COMMENT 'double',
+  `c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+  `c_date` date DEFAULT NULL COMMENT 'date',
+  `c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
+  `c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+  `c_time` time DEFAULT NULL COMMENT 'time',
+  `c_char` char(10) DEFAULT NULL COMMENT 'char',
+  `c_varchar` varchar(10) DEFAULT NULL COMMENT 'varchar',
+  `c_blob` blob COMMENT 'blob',
+  `c_text` text COMMENT 'text',
+  `c_longblob` longblob COMMENT 'longblob'
+) ENGINE=TIANMU;
+
+CREATE TABLE `t2` (
+ `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
+  `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
+  `c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
+  `c_int` int(11) DEFAULT NULL COMMENT 'int',
+  `c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
+  `c_float` float DEFAULT NULL COMMENT 'float',
+  `c_double` double DEFAULT NULL COMMENT 'double',
+  `c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+  `c_date` date DEFAULT NULL COMMENT 'date',
+  `c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
+  `c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+  `c_time` time DEFAULT NULL COMMENT 'time',
+  `c_char` char(10) DEFAULT NULL COMMENT 'char',
+  `c_varchar` varchar(10) DEFAULT NULL COMMENT 'varchar',
+  `c_blob` blob COMMENT 'blob',
+  `c_text` text COMMENT 'text',
+  `c_longblob` longblob COMMENT 'longblob'
+) ENGINE=TIANMU;
+
+--echo #
+--echo # DELETE tb1_name,tb2_name FROM table_references for Large amount of data
+--echo #
+
+load data infile '../../std_data/tianmu/bigdata4load' into table t1 fields terminated by '|';
+select count(*) from t1;
+select max(c_int) from t1;
+select min(c_int) from t1;
+select avg(c_int) from t1;
+select sum(c_int) from t1;
+load data infile '../../std_data/tianmu/bigdata4load' into table t2 fields terminated by '|';
+select count(*) from t2;
+select max(c_int) from t2;
+select min(c_int) from t2;
+select avg(c_int) from t2;
+select sum(c_int) from t2;
+
+delete t1,t2 from t1,t2;
+
+select count(*) from t1;
+select max(c_int) from t1;
+select min(c_int) from t1;
+select avg(c_int) from t1;
+select sum(c_int) from t1;
+
+select count(*) from t2;
+select max(c_int) from t2;
+select min(c_int) from t2;
+select avg(c_int) from t2;
+select sum(c_int) from t2;
+
+--echo #
+--echo # DELETE tb1_name,tb2_name FROM table_references for select/insert/Aggregate query
+--echo #
+
+insert into t1(c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
+values(105,105,105,105,105,5.2,10.88,105.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom','hello','bcdefghijklmn');
+select * from t1;
+select count(*) from t1;
+select max(c_int) from t1;
+select min(c_int) from t1;
+select avg(c_int) from t1;
+select sum(c_int) from t1;
+
+insert into t2(c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
+values(105,105,105,105,105,5.2,10.88,105.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom','hello','bcdefghijklmn');
+select * from t2;
+select count(*) from t2;
+select max(c_int) from t2;
+select min(c_int) from t2;
+select avg(c_int) from t2;
+select sum(c_int) from t2;
+
+--echo #
+--echo # Duplicate deletion
+--echo #
+delete t1,t2 from t1,t2;
+delete t1,t2 from t1,t2;
+
+select * from t1;
+select count(*) from t1;
+select max(c_int) from t1;
+select min(c_int) from t1;
+select avg(c_int) from t1;
+select sum(c_int) from t1;
+
+select * from t2;
+select count(*) from t2;
+select max(c_int) from t2;
+select min(c_int) from t2;
+select avg(c_int) from t2;
+select sum(c_int) from t2;
+
+drop table t1,t2;
+
+--echo #
+--echo # DELETE tb1_name,tb2_name FROM table_references for primary key
+--echo #
+
+CREATE TABLE t1(c1 int,c2 varchar(255),primary key(c1))ENGINE=TIANMU;
+insert into t1 values(1,'test1');
+insert into t1 values(2,'test2');
+CREATE TABLE t2(c1 int,c2 varchar(255),primary key(c1))ENGINE=TIANMU;
+insert into t2 values(1,'test1');
+insert into t2 values(2,'test2');
+
+delete t1,t2 from t1,t2;
+
+select * from t1;
+insert into t1 values(1,'test1');
+insert into t1 values(2,'test2');
+select * from t1;
+delete from t1;
+drop table t1,t2;
+
+
+CREATE DATABASE db1;
+CREATE DATABASE db2;
+
+CREATE TABLE db1.t1 (a INT, b INT);
+INSERT INTO db1.t1 VALUES (1,1),(2,2),(3,3);
+CREATE TABLE db1.t2 AS SELECT * FROM db1.t1;
+CREATE TABLE db2.t1 AS SELECT * FROM db1.t2;
+CREATE TABLE db2.t2 AS SELECT * FROM db2.t1;
+CREATE TABLE t1 AS SELECT * FROM db2.t2;
+CREATE TABLE t2 AS SELECT * FROM t1;
+
+delimiter |;
+CREATE PROCEDURE count_rows()
+BEGIN
+  SELECT COUNT(*) AS "COUNT(db1.t1)" FROM db1.t1;
+  SELECT COUNT(*) AS "COUNT(db1.t2)" FROM db1.t2;
+  SELECT COUNT(*) AS "COUNT(db2.t1)" FROM db2.t1;
+  SELECT COUNT(*) AS "COUNT(db2.t2)" FROM db2.t2;
+  SELECT COUNT(*) AS "COUNT(test.t1)" FROM test.t1;
+  SELECT COUNT(*) AS "COUNT(test.t2)" FROM test.t2;
+END|
+delimiter ;|
+
+#
+# Testing without a selected database
+#
+
+CREATE DATABASE db3;
+USE db3;
+DROP DATABASE db3;
+--error ER_NO_DB_ERROR
+SELECT * FROM t1;
+
+# Detect missing table references
+
+--error ER_NO_DB_ERROR
+DELETE a1,a2 FROM db1.t1, db2.t2;
+--error ER_NO_DB_ERROR
+DELETE a1,a2 FROM db1.t1, db2.t2;
+--error ER_NO_DB_ERROR
+DELETE a1,a2 FROM db1.t1 AS a1, db2.t2;
+--error ER_NO_DB_ERROR
+DELETE a1,a2 FROM db1.t1, db2.t2 AS a2;
+--error ER_NO_DB_ERROR
+DELETE a1,a2 FROM db3.t1 AS a1, db4.t2 AS a2;
+--error ER_NO_DB_ERROR
+DELETE a1,a2 FROM db3.t1 AS a1, db4.t2 AS a2;
+
+--error ER_NO_DB_ERROR
+DELETE FROM a1,a2 USING db1.t1, db2.t2;
+--error ER_NO_DB_ERROR
+DELETE FROM a1,a2 USING db1.t1, db2.t2;
+--error ER_NO_DB_ERROR
+DELETE FROM a1,a2 USING db1.t1 AS a1, db2.t2;
+--error ER_NO_DB_ERROR
+DELETE FROM a1,a2 USING db1.t1, db2.t2 AS a2;
+--error ER_NO_DB_ERROR
+DELETE FROM a1,a2 USING db3.t1 AS a1, db4.t2 AS a2;
+--error ER_NO_DB_ERROR
+DELETE FROM a1,a2 USING db3.t1 AS a1, db4.t2 AS a2;
+
+# Ambiguous table references
+
+--error ER_NO_DB_ERROR
+DELETE a1 FROM db1.t1 AS a1, db2.t2 AS a1;
+--error ER_NO_DB_ERROR
+DELETE a1 FROM db1.a1, db2.t2 AS a1;
+--error ER_NO_DB_ERROR
+DELETE a1 FROM a1, db1.t1 AS a1;
+--error ER_NO_DB_ERROR
+DELETE t1 FROM db1.t1, db2.t1 AS a1;
+--error ER_NO_DB_ERROR
+DELETE t1 FROM db1.t1 AS a1, db2.t1 AS a2;
+--error ER_NO_DB_ERROR
+DELETE t1 FROM db1.t1, db2.t1;
+
+# Test all again, now with a selected database
+
+USE test;
+
+# Detect missing table references
+
+--error ER_UNKNOWN_TABLE
+DELETE a1,a2 FROM db1.t1, db2.t2;
+--error ER_UNKNOWN_TABLE
+DELETE a1,a2 FROM db1.t1, db2.t2;
+--error ER_UNKNOWN_TABLE
+DELETE a1,a2 FROM db1.t1 AS a1, db2.t2;
+--error ER_UNKNOWN_TABLE
+DELETE a1,a2 FROM db1.t1, db2.t2 AS a2;
+--error ER_NO_SUCH_TABLE
+DELETE a1,a2 FROM db3.t1 AS a1, db4.t2 AS a2;
+--error ER_NO_SUCH_TABLE
+DELETE a1,a2 FROM db3.t1 AS a1, db4.t2 AS a2;
+
+--error ER_UNKNOWN_TABLE
+DELETE FROM a1,a2 USING db1.t1, db2.t2;
+--error ER_UNKNOWN_TABLE
+DELETE FROM a1,a2 USING db1.t1, db2.t2;
+--error ER_UNKNOWN_TABLE
+DELETE FROM a1,a2 USING db1.t1 AS a1, db2.t2;
+--error ER_UNKNOWN_TABLE
+DELETE FROM a1,a2 USING db1.t1, db2.t2 AS a2;
+--error ER_NO_SUCH_TABLE
+DELETE FROM a1,a2 USING db3.t1 AS a1, db4.t2 AS a2;
+--error ER_NO_SUCH_TABLE
+DELETE FROM a1,a2 USING db3.t1 AS a1, db4.t2 AS a2;
+
+# Ambiguous table references
+
+--error ER_NONUNIQ_TABLE
+DELETE a1 FROM db1.t1 AS a1, db2.t2 AS a1;
+--error ER_NO_SUCH_TABLE
+DELETE a1 FROM db1.a1, db2.t2 AS a1;
+--error ER_NONUNIQ_TABLE
+DELETE a1 FROM a1, db1.t1 AS a1;
+--error ER_UNKNOWN_TABLE
+DELETE t1 FROM db1.t1, db2.t1 AS a1;
+--error ER_UNKNOWN_TABLE
+DELETE t1 FROM db1.t1 AS a1, db2.t1 AS a2;
+--error ER_UNKNOWN_TABLE
+DELETE t1 FROM db1.t1, db2.t1;
+
+DROP DATABASE db1;
+DROP DATABASE db2;
+DROP TABLE t1, t2;
+
+
+--echo #
+--echo # Bug#46958: Assertion in Diagnostics_area::set_ok_status, trigger, 
+--echo # merge table
+--echo #
+CREATE TABLE t1 ( a INT );
+CREATE TABLE t2 ( a INT );
+CREATE TABLE t3 ( a INT );
+
+INSERT INTO t1 VALUES (1), (2);
+INSERT INTO t2 VALUES (1), (2);
+INSERT INTO t3 VALUES (1), (2);
+
+CREATE TRIGGER tr1 BEFORE DELETE ON t2
+FOR EACH ROW INSERT INTO no_such_table VALUES (1);
+
+--error ER_NO_SUCH_TABLE
+DELETE t1, t2, t3 FROM t1, t2, t3;
+
+SELECT * FROM t1;
+SELECT * FROM t2;
+SELECT * FROM t3;
+
+DROP TABLE t1, t2, t3;
+
+CREATE TABLE t1 ( a INT );
+CREATE TABLE t2 ( a INT );
+CREATE TABLE t3 ( a INT );
+
+INSERT INTO t1 VALUES (1), (2);
+INSERT INTO t2 VALUES (1), (2);
+INSERT INTO t3 VALUES (1), (2);
+
+CREATE TRIGGER tr1 AFTER DELETE ON t2
+FOR EACH ROW INSERT INTO no_such_table VALUES (1);
+
+--error ER_NO_SUCH_TABLE
+DELETE t1, t2, t3 FROM t1, t2, t3;
+
+SELECT * FROM t1;
+SELECT * FROM t2;
+SELECT * FROM t3;
+
+DROP TABLE t1, t2, t3;

@@ -44,7 +44,7 @@ namespace {
 bool AtLeastOneTIANMUTableInvolved(LEX *lex) {
   for (TABLE_LIST *table_list = lex->query_tables; table_list; table_list = table_list->next_global) {
     TABLE *table = table_list->table;
-    if (core::Engine::IsTIANMUTable(table)) return TRUE;
+    if (core::Engine::IsTianmuTbl(table)) return TRUE;
   }
   return FALSE;
 }
@@ -103,7 +103,7 @@ int TIANMU_LoadData(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *ar
   common::TIANMUError tianmu_error;
   int ret = static_cast<int>(TIANMUEngineReturnValues::LD_Failed);
 
-  if (!core::Engine::IsTIANMUTable(table_list->table)) return static_cast<int>(TIANMUEngineReturnValues::LD_Continue);
+  if (!core::Engine::IsTianmuTbl(table_list->table)) return static_cast<int>(TIANMUEngineReturnValues::LD_Continue);
 
   try {
     tianmu_error = rceng->RunLoader(thd, ex, table_list, arg);
@@ -142,6 +142,48 @@ bool tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) 
       break;
   }
   return false;
+}
+
+bool TianmuDeleteMultiTbl(THD *thd, TABLE_LIST *table_list, ha_rows &deleted){
+
+  if (!core::Engine::IsTianmuTbl(table_list->table)) return true;
+ 
+  //If there is no where clause 
+  bool const_cond_result, const_cond;
+  Item* conds;
+  if (thd->lex->select_lex->get_optimizable_conditions(thd, &conds, NULL))
+      return true;
+  const_cond = (!conds || conds->const_item());
+  const_cond_result = const_cond && (!conds || conds->val_int());
+
+  // Do not allow deletion of all records if safe_update is set.
+  const bool safe_update= thd->variables.option_bits & OPTION_SAFE_UPDATES;
+  
+  if (const_cond_result && !safe_update &&
+      !(specialflag & SPECIAL_NO_NEW_FUNC))
+  {
+      if (lock_tables(thd, table_list, thd->lex->table_count, 0))
+          return true;
+      TABLE_LIST* delete_table_ref;
+      for (delete_table_ref = table_list; delete_table_ref; delete_table_ref = delete_table_ref->next_local)
+      {
+          TABLE *const table= delete_table_ref->table;
+          if (table && table->file)
+          {
+              // Update the table->file->stats.records number
+              table->file->info(HA_STATUS_VARIABLE | HA_STATUS_NO_LOCK);
+              ha_rows const maybe_deleted= table->file->stats.records;
+              if(!table->file->ha_truncate())
+              {
+                deleted +=maybe_deleted;
+                delete_table_ref->table= NULL;
+                query_cache.invalidate_single(thd, delete_table_ref, false);
+              }
+          }
+      }
+      return false;
+  }
+  return true;
 }
 
 }  // namespace dbhandler

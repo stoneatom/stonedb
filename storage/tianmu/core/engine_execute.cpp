@@ -396,7 +396,7 @@ int Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_
   try {
     std::shared_ptr<RCTable> rct;
     if (lex->sql_command == SQLCOM_INSERT_SELECT &&
-        Engine::IsTIANMUTable(((Query_tables_list *)lex)->query_tables->table)) {
+        Engine::IsTianmuTbl(((Query_tables_list *)lex)->query_tables->table)) {
       std::string table_path = Engine::GetTablePath(((Query_tables_list *)lex)->query_tables->table);
       rct = current_tx->GetTableByPathIfExists(table_path);
     }

@@ -43,6 +43,7 @@
 #include "probes_mysql.h"
 #include "auth_common.h"
 
+#include "../storage/tianmu/handler/ha_rcengine.h" // tianmu code
 
 /**
   Implement DELETE SQL word.
@@ -1422,6 +1423,8 @@ bool Sql_cmd_delete_multi::execute(THD *thd)
   uint del_table_count;
   Query_result_delete *del_result;
 
+  ha_rows deleted = 0;
+
   if (multi_delete_precheck(thd, all_tables))
     return true;
 
@@ -1443,6 +1446,15 @@ bool Sql_cmd_delete_multi::execute(THD *thd)
   {
     MYSQL_MULTI_DELETE_DONE(1, 0);
     return true;
+  }
+
+  // Tianmu engine multi table data clearing
+  if (!(res = Tianmu::dbhandler::TianmuDeleteMultiTbl(thd, all_tables,
+                                                      deleted))) {
+    my_ok(thd, deleted);
+    DBUG_PRINT("info", ("%ld records deleted", (long)deleted));
+    MYSQL_MULTI_DELETE_DONE(res, deleted);
+    return res;
   }
 
   if (!thd->is_fatal_error &&

@@ -1,0 +1,360 @@
+#
+# DELETE tb1_name,tb2_name FROM table_references
+#
+use test;
+CREATE TABLE `t1` (
+`c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
+`c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
+`c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
+`c_int` int(11) DEFAULT NULL COMMENT 'int',
+`c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
+`c_float` float DEFAULT NULL COMMENT 'float',
+`c_double` double DEFAULT NULL COMMENT 'double',
+`c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+`c_date` date DEFAULT NULL COMMENT 'date',
+`c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
+`c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+`c_time` time DEFAULT NULL COMMENT 'time',
+`c_char` char(10) DEFAULT NULL COMMENT 'char',
+`c_varchar` varchar(10) DEFAULT NULL COMMENT 'varchar',
+`c_blob` blob COMMENT 'blob',
+`c_text` text COMMENT 'text',
+`c_longblob` longblob COMMENT 'longblob'
+) ENGINE=TIANMU;
+CREATE TABLE `t2` (
+`c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
+`c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
+`c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
+`c_int` int(11) DEFAULT NULL COMMENT 'int',
+`c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
+`c_float` float DEFAULT NULL COMMENT 'float',
+`c_double` double DEFAULT NULL COMMENT 'double',
+`c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+`c_date` date DEFAULT NULL COMMENT 'date',
+`c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
+`c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+`c_time` time DEFAULT NULL COMMENT 'time',
+`c_char` char(10) DEFAULT NULL COMMENT 'char',
+`c_varchar` varchar(10) DEFAULT NULL COMMENT 'varchar',
+`c_blob` blob COMMENT 'blob',
+`c_text` text COMMENT 'text',
+`c_longblob` longblob COMMENT 'longblob'
+) ENGINE=TIANMU;
+#
+# DELETE tb1_name,tb2_name FROM table_references for Large amount of data
+#
+load data infile '../../std_data/tianmu/bigdata4load' into table t1 fields terminated by '|';
+select count(*) from t1;
+count(*)
+100000
+select max(c_int) from t1;
+max(c_int)
+104
+select min(c_int) from t1;
+min(c_int)
+100
+select avg(c_int) from t1;
+avg(c_int)
+102.0000
+select sum(c_int) from t1;
+sum(c_int)
+10200000
+load data infile '../../std_data/tianmu/bigdata4load' into table t2 fields terminated by '|';
+select count(*) from t2;
+count(*)
+100000
+select max(c_int) from t2;
+max(c_int)
+104
+select min(c_int) from t2;
+min(c_int)
+100
+select avg(c_int) from t2;
+avg(c_int)
+102.0000
+select sum(c_int) from t2;
+sum(c_int)
+10200000
+delete t1,t2 from t1,t2;
+select count(*) from t1;
+count(*)
+0
+select max(c_int) from t1;
+max(c_int)
+NULL
+select min(c_int) from t1;
+min(c_int)
+NULL
+select avg(c_int) from t1;
+avg(c_int)
+NULL
+select sum(c_int) from t1;
+sum(c_int)
+NULL
+select count(*) from t2;
+count(*)
+0
+select max(c_int) from t2;
+max(c_int)
+NULL
+select min(c_int) from t2;
+min(c_int)
+NULL
+select avg(c_int) from t2;
+avg(c_int)
+NULL
+select sum(c_int) from t2;
+sum(c_int)
+NULL
+#
+# DELETE tb1_name,tb2_name FROM table_references for select/insert/Aggregate query
+#
+insert into t1(c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
+values(105,105,105,105,105,5.2,10.88,105.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom','hello','bcdefghijklmn');
+select * from t1;
+c_tinyint	c_smallint	c_mediumint	c_int	c_bigint	c_float	c_double	c_decimal	c_date	c_datetime	c_timestamp	c_time	c_char	c_varchar	c_blob	c_text	c_longblob
+105	105	105	105	105	5.2	10.88	105.08300	2016-02-25	2016-02-25 10:20:01	2016-02-25 05:20:01	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+select count(*) from t1;
+count(*)
+1
+select max(c_int) from t1;
+max(c_int)
+105
+select min(c_int) from t1;
+min(c_int)
+105
+select avg(c_int) from t1;
+avg(c_int)
+105.0000
+select sum(c_int) from t1;
+sum(c_int)
+105
+insert into t2(c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
+values(105,105,105,105,105,5.2,10.88,105.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom','hello','bcdefghijklmn');
+select * from t2;
+c_tinyint	c_smallint	c_mediumint	c_int	c_bigint	c_float	c_double	c_decimal	c_date	c_datetime	c_timestamp	c_time	c_char	c_varchar	c_blob	c_text	c_longblob
+105	105	105	105	105	5.2	10.88	105.08300	2016-02-25	2016-02-25 10:20:01	2016-02-25 05:20:01	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+select count(*) from t2;
+count(*)
+1
+select max(c_int) from t2;
+max(c_int)
+105
+select min(c_int) from t2;
+min(c_int)
+105
+select avg(c_int) from t2;
+avg(c_int)
+105.0000
+select sum(c_int) from t2;
+sum(c_int)
+105
+#
+# Duplicate deletion
+#
+delete t1,t2 from t1,t2;
+delete t1,t2 from t1,t2;
+select * from t1;
+c_tinyint	c_smallint	c_mediumint	c_int	c_bigint	c_float	c_double	c_decimal	c_date	c_datetime	c_timestamp	c_time	c_char	c_varchar	c_blob	c_text	c_longblob
+select count(*) from t1;
+count(*)
+0
+select max(c_int) from t1;
+max(c_int)
+NULL
+select min(c_int) from t1;
+min(c_int)
+NULL
+select avg(c_int) from t1;
+avg(c_int)
+NULL
+select sum(c_int) from t1;
+sum(c_int)
+NULL
+select * from t2;
+c_tinyint	c_smallint	c_mediumint	c_int	c_bigint	c_float	c_double	c_decimal	c_date	c_datetime	c_timestamp	c_time	c_char	c_varchar	c_blob	c_text	c_longblob
+select count(*) from t2;
+count(*)
+0
+select max(c_int) from t2;
+max(c_int)
+NULL
+select min(c_int) from t2;
+min(c_int)
+NULL
+select avg(c_int) from t2;
+avg(c_int)
+NULL
+select sum(c_int) from t2;
+sum(c_int)
+NULL
+drop table t1,t2;
+#
+# DELETE tb1_name,tb2_name FROM table_references for primary key
+#
+CREATE TABLE t1(c1 int,c2 varchar(255),primary key(c1))ENGINE=TIANMU;
+insert into t1 values(1,'test1');
+insert into t1 values(2,'test2');
+CREATE TABLE t2(c1 int,c2 varchar(255),primary key(c1))ENGINE=TIANMU;
+insert into t2 values(1,'test1');
+insert into t2 values(2,'test2');
+delete t1,t2 from t1,t2;
+select * from t1;
+c1	c2
+insert into t1 values(1,'test1');
+insert into t1 values(2,'test2');
+select * from t1;
+c1	c2
+1	test1
+2	test2
+delete from t1;
+drop table t1,t2;
+CREATE DATABASE db1;
+CREATE DATABASE db2;
+CREATE TABLE db1.t1 (a INT, b INT);
+INSERT INTO db1.t1 VALUES (1,1),(2,2),(3,3);
+CREATE TABLE db1.t2 AS SELECT * FROM db1.t1;
+CREATE TABLE db2.t1 AS SELECT * FROM db1.t2;
+CREATE TABLE db2.t2 AS SELECT * FROM db2.t1;
+CREATE TABLE t1 AS SELECT * FROM db2.t2;
+CREATE TABLE t2 AS SELECT * FROM t1;
+CREATE PROCEDURE count_rows()
+BEGIN
+SELECT COUNT(*) AS "COUNT(db1.t1)" FROM db1.t1;
+SELECT COUNT(*) AS "COUNT(db1.t2)" FROM db1.t2;
+SELECT COUNT(*) AS "COUNT(db2.t1)" FROM db2.t1;
+SELECT COUNT(*) AS "COUNT(db2.t2)" FROM db2.t2;
+SELECT COUNT(*) AS "COUNT(test.t1)" FROM test.t1;
+SELECT COUNT(*) AS "COUNT(test.t2)" FROM test.t2;
+END|
+CREATE DATABASE db3;
+USE db3;
+DROP DATABASE db3;
+SELECT * FROM t1;
+ERROR 3D000: No database selected
+DELETE a1,a2 FROM db1.t1, db2.t2;
+ERROR 3D000: No database selected
+DELETE a1,a2 FROM db1.t1, db2.t2;
+ERROR 3D000: No database selected
+DELETE a1,a2 FROM db1.t1 AS a1, db2.t2;
+ERROR 3D000: No database selected
+DELETE a1,a2 FROM db1.t1, db2.t2 AS a2;
+ERROR 3D000: No database selected
+DELETE a1,a2 FROM db3.t1 AS a1, db4.t2 AS a2;
+ERROR 3D000: No database selected
+DELETE a1,a2 FROM db3.t1 AS a1, db4.t2 AS a2;
+ERROR 3D000: No database selected
+DELETE FROM a1,a2 USING db1.t1, db2.t2;
+ERROR 3D000: No database selected
+DELETE FROM a1,a2 USING db1.t1, db2.t2;
+ERROR 3D000: No database selected
+DELETE FROM a1,a2 USING db1.t1 AS a1, db2.t2;
+ERROR 3D000: No database selected
+DELETE FROM a1,a2 USING db1.t1, db2.t2 AS a2;
+ERROR 3D000: No database selected
+DELETE FROM a1,a2 USING db3.t1 AS a1, db4.t2 AS a2;
+ERROR 3D000: No database selected
+DELETE FROM a1,a2 USING db3.t1 AS a1, db4.t2 AS a2;
+ERROR 3D000: No database selected
+DELETE a1 FROM db1.t1 AS a1, db2.t2 AS a1;
+ERROR 3D000: No database selected
+DELETE a1 FROM db1.a1, db2.t2 AS a1;
+ERROR 3D000: No database selected
+DELETE a1 FROM a1, db1.t1 AS a1;
+ERROR 3D000: No database selected
+DELETE t1 FROM db1.t1, db2.t1 AS a1;
+ERROR 3D000: No database selected
+DELETE t1 FROM db1.t1 AS a1, db2.t1 AS a2;
+ERROR 3D000: No database selected
+DELETE t1 FROM db1.t1, db2.t1;
+ERROR 3D000: No database selected
+USE test;
+DELETE a1,a2 FROM db1.t1, db2.t2;
+ERROR 42S02: Unknown table 'a1' in MULTI DELETE
+DELETE a1,a2 FROM db1.t1, db2.t2;
+ERROR 42S02: Unknown table 'a1' in MULTI DELETE
+DELETE a1,a2 FROM db1.t1 AS a1, db2.t2;
+ERROR 42S02: Unknown table 'a2' in MULTI DELETE
+DELETE a1,a2 FROM db1.t1, db2.t2 AS a2;
+ERROR 42S02: Unknown table 'a1' in MULTI DELETE
+DELETE a1,a2 FROM db3.t1 AS a1, db4.t2 AS a2;
+ERROR 42S02: Table 'db3.t1' doesn't exist
+DELETE a1,a2 FROM db3.t1 AS a1, db4.t2 AS a2;
+ERROR 42S02: Table 'db3.t1' doesn't exist
+DELETE FROM a1,a2 USING db1.t1, db2.t2;
+ERROR 42S02: Unknown table 'a1' in MULTI DELETE
+DELETE FROM a1,a2 USING db1.t1, db2.t2;
+ERROR 42S02: Unknown table 'a1' in MULTI DELETE
+DELETE FROM a1,a2 USING db1.t1 AS a1, db2.t2;
+ERROR 42S02: Unknown table 'a2' in MULTI DELETE
+DELETE FROM a1,a2 USING db1.t1, db2.t2 AS a2;
+ERROR 42S02: Unknown table 'a1' in MULTI DELETE
+DELETE FROM a1,a2 USING db3.t1 AS a1, db4.t2 AS a2;
+ERROR 42S02: Table 'db3.t1' doesn't exist
+DELETE FROM a1,a2 USING db3.t1 AS a1, db4.t2 AS a2;
+ERROR 42S02: Table 'db3.t1' doesn't exist
+DELETE a1 FROM db1.t1 AS a1, db2.t2 AS a1;
+ERROR 42000: Not unique table/alias: 'a1'
+DELETE a1 FROM db1.a1, db2.t2 AS a1;
+ERROR 42S02: Table 'db1.a1' doesn't exist
+DELETE a1 FROM a1, db1.t1 AS a1;
+ERROR 42000: Not unique table/alias: 'a1'
+DELETE t1 FROM db1.t1, db2.t1 AS a1;
+ERROR 42S02: Unknown table 't1' in MULTI DELETE
+DELETE t1 FROM db1.t1 AS a1, db2.t1 AS a2;
+ERROR 42S02: Unknown table 't1' in MULTI DELETE
+DELETE t1 FROM db1.t1, db2.t1;
+ERROR 42S02: Unknown table 't1' in MULTI DELETE
+DROP DATABASE db1;
+DROP DATABASE db2;
+DROP TABLE t1, t2;
+#
+# Bug#46958: Assertion in Diagnostics_area::set_ok_status, trigger, 
+# merge table
+#
+CREATE TABLE t1 ( a INT );
+CREATE TABLE t2 ( a INT );
+CREATE TABLE t3 ( a INT );
+INSERT INTO t1 VALUES (1), (2);
+INSERT INTO t2 VALUES (1), (2);
+INSERT INTO t3 VALUES (1), (2);
+CREATE TRIGGER tr1 BEFORE DELETE ON t2
+FOR EACH ROW INSERT INTO no_such_table VALUES (1);
+DELETE t1, t2, t3 FROM t1, t2, t3;
+ERROR 42S02: Table 'test.no_such_table' doesn't exist
+SELECT * FROM t1;
+a
+1
+2
+SELECT * FROM t2;
+a
+1
+2
+SELECT * FROM t3;
+a
+1
+2
+DROP TABLE t1, t2, t3;
+CREATE TABLE t1 ( a INT );
+CREATE TABLE t2 ( a INT );
+CREATE TABLE t3 ( a INT );
+INSERT INTO t1 VALUES (1), (2);
+INSERT INTO t2 VALUES (1), (2);
+INSERT INTO t3 VALUES (1), (2);
+CREATE TRIGGER tr1 AFTER DELETE ON t2
+FOR EACH ROW INSERT INTO no_such_table VALUES (1);
+DELETE t1, t2, t3 FROM t1, t2, t3;
+ERROR 42S02: Table 'test.no_such_table' doesn't exist
+SELECT * FROM t1;
+a
+1
+2
+SELECT * FROM t2;
+a
+1
+2
+SELECT * FROM t3;
+a
+1
+2
+DROP TABLE t1, t2, t3;
