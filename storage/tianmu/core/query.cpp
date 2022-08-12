@@ -1147,6 +1147,42 @@ CondID Query::ConditionNumberFromMultipleEquality(Item_equal *conds, const TabID
   return filter;
 }
 
+CondID Query::ConditionNewNumberFromMultipleEquality(Item_equal *conds, const TabID &tmp_table, CondType filter_type,
+                                                  CondID *and_me_filter, bool is_or_subtree) {
+  Item_equal_iterator li(*conds);
+
+  CQTerm zero_term, first_term, next_term;
+  Item_field *ifield;
+  Item *const_item = conds->get_const();
+  if (const_item) {
+    if (!Item2CQTerm(const_item, zero_term, tmp_table, filter_type)) return CondID(-1);
+  } else {
+    ifield = li++;
+    if (!Item2CQTerm(ifield, zero_term, tmp_table, filter_type)) return CondID(-1);
+  }
+  ifield = li++;
+  if (!Item2CQTerm(ifield, first_term, tmp_table, filter_type)) return CondID(-1);
+  CondID filter;
+  cq->CreateConds(filter, tmp_table, first_term, common::Operator::O_EQ, zero_term, CQTerm(),
+                    is_or_subtree || filter_type == CondType::HAVING_COND);
+
+  while ((ifield = li++) != nullptr) {
+    if (!Item2CQTerm(ifield, next_term, tmp_table, filter_type)) return CondID(-1);
+    cq->And(filter, tmp_table, next_term, common::Operator::O_EQ, zero_term);
+  }
+
+  if (and_me_filter) {
+    if (is_or_subtree) {
+      cq->Or(*and_me_filter, tmp_table, filter);
+    } else {
+      cq->And(*and_me_filter, tmp_table, filter);
+    }
+  }
+
+  if (and_me_filter) filter = *and_me_filter;
+  return filter;
+}
+
 Item *Query::FindOutAboutNot(Item *it, bool &is_there_not) {
   is_there_not = false;
 
@@ -1184,7 +1220,9 @@ CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table,
   ExtractOperatorType(conds, op, negative, like_esc);
   Item_func *cond_func = (Item_func *)conds;
   if (op == common::Operator::O_MULT_EQUAL_FUNC)
-    return ConditionNumberFromMultipleEquality((Item_equal *)conds, tmp_table, filter_type, and_me_filter,
+    //return ConditionNumberFromMultipleEquality((Item_equal *)conds, tmp_table, filter_type, and_me_filter,
+    //                                           is_or_subtree);
+    return ConditionNewNumberFromMultipleEquality((Item_equal *)conds, tmp_table, filter_type, and_me_filter,
                                                is_or_subtree);
   else if (op == common::Operator::O_NOT_FUNC) {
     if (cond_func->arg_count != 1 || dynamic_cast<Item_in_optimizer *>(cond_func->arguments()[0]) == NULL)

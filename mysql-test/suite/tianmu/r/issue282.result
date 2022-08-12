@@ -1,0 +1,82 @@
+use test;
+CREATE TABLE issue282_t1 (sku int PRIMARY KEY, pr int)engine=tianmu;
+CREATE TABLE issue282_t2 (sku int PRIMARY KEY, sppr int, name varchar(255))engine=tianmu;
+INSERT INTO issue282_t1 VALUES
+(10, 10), (20, 10), (30, 20), (40, 30), (50, 10), (60, 10);
+INSERT INTO issue282_t2 VALUES 
+(10, 10, 'aaa'), (20, 10, 'bbb'), (30, 10, 'ccc'), (40, 20, 'ddd'),
+(50, 10, 'eee'), (60, 20, 'fff'), (70, 20, 'ggg'), (80, 30, 'hhh');
+SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, issue282_t1.pr
+FROM issue282_t2, issue282_t1 WHERE issue282_t2.sku=20 AND (issue282_t2.sku=issue282_t1.sku OR issue282_t2.sppr=issue282_t1.sku);
+sku	sppr	name	sku	pr
+20	10	bbb	10	10
+20	10	bbb	20	10
+SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, issue282_t1.pr
+FROM issue282_t2, issue282_t1 WHERE issue282_t2.sku=20 OR (issue282_t2.sku=issue282_t1.sku OR issue282_t2.sppr=issue282_t1.sku) order by issue282_t2.sku asc;
+sku	sppr	name	sku	pr
+10	10	aaa	10	10
+20	10	bbb	10	10
+20	10	bbb	20	10
+20	10	bbb	30	20
+20	10	bbb	40	30
+20	10	bbb	50	10
+20	10	bbb	60	10
+30	10	ccc	10	10
+30	10	ccc	30	20
+40	20	ddd	20	10
+40	20	ddd	40	30
+50	10	eee	10	10
+50	10	eee	50	10
+60	20	fff	20	10
+60	20	fff	60	10
+70	20	ggg	20	10
+80	30	hhh	30	20
+SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, issue282_t1.pr
+FROM issue282_t2, issue282_t1 WHERE issue282_t2.sku=20 AND (issue282_t2.sku=issue282_t1.sku AND issue282_t2.sppr=issue282_t1.sku);
+sku	sppr	name	sku	pr
+SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, issue282_t1.pr
+FROM issue282_t2, issue282_t1 WHERE issue282_t2.sku=20 OR (issue282_t2.sku=issue282_t1.sku AND issue282_t2.sppr=issue282_t1.sku);
+sku	sppr	name	sku	pr
+10	10	aaa	10	10
+20	10	bbb	10	10
+20	10	bbb	20	10
+20	10	bbb	30	20
+20	10	bbb	40	30
+20	10	bbb	50	10
+20	10	bbb	60	10
+SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, issue282_t1.pr
+FROM issue282_t2, issue282_t1 WHERE issue282_t2.sku=20 OR issue282_t2.sku=issue282_t1.sku AND issue282_t2.sppr=issue282_t1.sku;
+sku	sppr	name	sku	pr
+10	10	aaa	10	10
+20	10	bbb	10	10
+20	10	bbb	20	10
+20	10	bbb	30	20
+20	10	bbb	40	30
+20	10	bbb	50	10
+20	10	bbb	60	10
+SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, issue282_t1.pr
+FROM issue282_t2, issue282_t1 WHERE (issue282_t2.sku>20 OR issue282_t2.sku=issue282_t1.sku) AND issue282_t2.sppr=issue282_t1.sku;
+sku	sppr	name	sku	pr
+10	10	aaa	10	10
+30	10	ccc	10	10
+40	20	ddd	20	10
+50	10	eee	10	10
+60	20	fff	20	10
+70	20	ggg	20	10
+80	30	hhh	30	20
+SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, issue282_t1.pr
+FROM issue282_t2, issue282_t1 WHERE (issue282_t2.sku<=20 OR issue282_t2.sku=issue282_t1.sku) AND issue282_t2.sppr=issue282_t1.sku;
+sku	sppr	name	sku	pr
+10	10	aaa	10	10
+20	10	bbb	10	10
+SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, issue282_t1.pr
+FROM issue282_t2, issue282_t1 WHERE (issue282_t2.sku<=20 AND issue282_t2.sku>issue282_t1.sku) OR issue282_t2.sppr=issue282_t1.sku;
+sku	sppr	name	sku	pr
+10	10	aaa	10	10
+20	10	bbb	10	10
+30	10	ccc	10	10
+50	10	eee	10	10
+40	20	ddd	20	10
+60	20	fff	20	10
+70	20	ggg	20	10
+80	30	hhh	30	20

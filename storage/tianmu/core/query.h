@@ -142,6 +142,12 @@ class Query final {
                                   bool is_or_subtree = false);
   CondID ConditionNumberFromMultipleEquality(Item_equal *conds, const TabID &tmp_table, CondType filter_type,
                                              CondID *and_me_filter = 0, bool is_or_subtree = false);
+
+  CondID ConditionNewNumberFromMultipleEquality(Item_equal *conds, const TabID &tmp_table, CondType filter_type,
+                                             CondID *and_me_filter = 0, bool is_or_subtree = false);
+
+  CondID ConditionNumberAndFromMultipleEquality(Item_equal *conds, const TabID &tmp_table, CondType filter_type,
+                                             CondID *and_me_filter = 0, bool is_or_subtree = false);
   CondID ConditionNumberFromComparison(Item *conds, const TabID &tmp_table, CondType filter_type,
                                        CondID *and_me_filter = 0, bool is_or_subtree = false, bool negative = false);
 
