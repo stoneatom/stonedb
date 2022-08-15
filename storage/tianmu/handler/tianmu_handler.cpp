@@ -1097,8 +1097,11 @@ int TianmuHandler::extra(enum ha_extra_function operation) {
 int TianmuHandler::start_stmt(THD *thd, thr_lock_type lock_type) {
   try {
     if (lock_type == TL_WRITE_CONCURRENT_INSERT || lock_type == TL_WRITE_DEFAULT || lock_type == TL_WRITE) {
-      trans_register_ha(thd, true, rcbase_hton,NULL);
       trans_register_ha(thd, false, rcbase_hton,NULL);
+      if (thd_test_options(thd, OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN)) {
+        trans_register_ha(thd, true, rcbase_hton,NULL);
+      }
+      current_txn_ = ha_rcengine_->GetTx(thd);
       current_txn_->AddTableWRIfNeeded(share);
     }
   } catch (std::exception &e) {
