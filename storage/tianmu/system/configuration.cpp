@@ -79,5 +79,5 @@ async_join_setting tianmu_sysvar_async_join_setting;
 void ConfigureRCControl() {
   using namespace Tianmu;
   int control_level = tianmu_sysvar_controltrace;
-  (control_level > 0) ? rccontrol.setOn() : rccontrol.setOff();
+  (control_level > 0) ? rc_control_.setOn() : rc_control_.setOff();
 }

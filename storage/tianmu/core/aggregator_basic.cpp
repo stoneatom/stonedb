@@ -15,6 +15,7 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
+#include <limits>
 #include "aggregator_basic.h"
 
 #include "core/transaction.h"
@@ -29,7 +30,8 @@ void AggregatorSum64::PutAggregatedValue(unsigned char *buf, int64_t v, int64_t 
     *p = 0;
   }
   double overflow_check = double(*p) + double(v) * factor;
-  if (overflow_check > 9.223372037e+18 || overflow_check < -9.223372037e+18)
+  if (overflow_check > std::numeric_limits<std::streamsize>::max() || 
+      overflow_check < std::numeric_limits<std::streamsize>::min())
     throw common::NotImplementedException("Aggregation overflow.");
   *p += v * factor;
 }
@@ -43,14 +45,16 @@ void AggregatorSum64::Merge(unsigned char *buf, unsigned char *src_buf) {
     *p = 0;
   }
   double overflow_check = double(*p) + double(*ps);
-  if (overflow_check > 9.223372037e+18 || overflow_check < -9.223372037e+18)
+  if (overflow_check > std::numeric_limits<std::streamsize>::max() || 
+      overflow_check < std::numeric_limits<std::streamsize>::min())
     throw common::NotImplementedException("Aggregation overflow.");
   *p += *ps;
 }
 
 void AggregatorSum64::SetAggregatePackSum(int64_t par1, int64_t factor) {
   double overflow_check = double(par1) * factor;
-  if (overflow_check > 9.223372037e+18 || overflow_check < -9.223372037e+18)
+  if (overflow_check > std::numeric_limits<std::streamsize>::max() || 
+      overflow_check < std::numeric_limits<std::streamsize>::min())
     throw common::NotImplementedException("Aggregation overflow.");
   pack_sum = par1 * factor;
 }
@@ -104,42 +108,44 @@ bool AggregatorSumD::AggregatePack(unsigned char *buf) {
 void AggregatorAvg64::PutAggregatedValue(unsigned char *buf, int64_t v, int64_t factor) {
   stats_updated = false;
   *((double *)buf) += double(v) * factor;
-  if (!warning_issued && (*((double *)buf) > 9.223372037e+18 || *((double *)buf) < -9.223372037e+18)) {
-    common::PushWarning(current_tx->Thd(), Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
+  if (!warning_issued && (*((double *)buf) > std::numeric_limits<std::streamsize>::max() || 
+      *((double *)buf) < std::numeric_limits<std::streamsize>::min())) {
+    common::PushWarning(current_txn_->Thd(), Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
                         "Values rounded in average()");
     warning_issued = true;
   }
-  *((int64_t *)(buf + 8)) += factor;
+  *((int64_t *)(buf + sizeof(int64_t))) += factor;
 }
 
 void AggregatorAvg64::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (*((int64_t *)(src_buf + 8)) == 0) return;
+  if (*((int64_t *)(src_buf + sizeof(int64_t))) == 0) return;
   stats_updated = false;
   *((double *)buf) += *((double *)src_buf);
-  if (!warning_issued && (*((double *)buf) > 9.223372037e+18 || *((double *)buf) < -9.223372037e+18)) {
-    common::PushWarning(current_tx->Thd(), Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
+  if (!warning_issued && (*((double *)buf) > std::numeric_limits<std::streamsize>::max() || 
+      *((double *)buf) < std::numeric_limits<std::streamsize>::min())) {
+    common::PushWarning(current_txn_->Thd(), Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
                         "Values rounded in average()");
     warning_issued = true;
   }
-  *((int64_t *)(buf + 8)) += *((int64_t *)(src_buf + 8));
+  *((int64_t *)(buf + sizeof(int64_t))) += *((int64_t *)(src_buf + sizeof(int64_t)));
 }
 
 double AggregatorAvg64::GetValueD(unsigned char *buf) {
-  if (*((int64_t *)(buf + 8)) == 0) return NULL_VALUE_D;
-  return *((double *)buf) / *((int64_t *)(buf + 8)) / prec_factor;
+  if (*((int64_t *)(buf + sizeof(int64_t))) == 0) return NULL_VALUE_D;
+  return *((double *)buf) / *((int64_t *)(buf + sizeof(int64_t))) / prec_factor;
 }
 
 bool AggregatorAvg64::AggregatePack(unsigned char *buf) {
   stats_updated = false;
   *((double *)buf) += pack_sum;
-  *((int64_t *)(buf + 8)) += pack_not_nulls;
+  *((int64_t *)(buf + sizeof(int64_t))) += pack_not_nulls;
   return true;
 }
 
 void AggregatorAvgD::PutAggregatedValue(unsigned char *buf, int64_t v, int64_t factor) {
   stats_updated = false;
   *((double *)buf) += *((double *)(&v)) * factor;
-  *((int64_t *)(buf + 8)) += factor;
+  *((int64_t *)(buf + sizeof(int64_t))) += factor;
 }
 
 void AggregatorAvgD::PutAggregatedValue(unsigned char *buf, const types::BString &v, int64_t factor) {
@@ -155,35 +161,35 @@ void AggregatorAvgD::PutAggregatedValue(unsigned char *buf, const types::BString
 }
 
 void AggregatorAvgD::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (*((int64_t *)(src_buf + 8)) == 0) return;
+  if (*((int64_t *)(src_buf + sizeof(int64_t))) == 0) return;
   stats_updated = false;
   *((double *)buf) += *((double *)src_buf);
-  *((int64_t *)(buf + 8)) += *((int64_t *)(src_buf + 8));
+  *((int64_t *)(buf + sizeof(int64_t))) += *((int64_t *)(src_buf + sizeof(int64_t)));
 }
 
 double AggregatorAvgD::GetValueD(unsigned char *buf) {
-  if (*((int64_t *)(buf + 8)) == 0) return NULL_VALUE_D;
-  return *((double *)buf) / *((int64_t *)(buf + 8));
+  if (*((int64_t *)(buf + sizeof(int64_t))) == 0) return NULL_VALUE_D;
+  return *((double *)buf) / *((int64_t *)(buf + sizeof(int64_t)));
 }
 
 bool AggregatorAvgD::AggregatePack(unsigned char *buf) {
   stats_updated = false;
   *((double *)buf) += pack_sum;
-  *((int64_t *)(buf + 8)) += pack_not_nulls;
+  *((int64_t *)(buf + sizeof(int64_t))) += pack_not_nulls;
   return true;
 }
 
 void AggregatorAvgYear::PutAggregatedValue(unsigned char *buf, int64_t v, int64_t factor) {
   stats_updated = false;
   *((double *)buf) += double(types::DT::YearSortEncoding(v)) * factor;
-  *((int64_t *)(buf + 8)) += factor;
+  *((int64_t *)(buf + sizeof(int64_t))) += factor;
 }
 
 void AggregatorAvgYear::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (*((int64_t *)(src_buf + 8)) == 0) return;
+  if (*((int64_t *)(src_buf + sizeof(int64_t))) == 0) return;
   stats_updated = false;
   *((double *)buf) += *((double *)src_buf);
-  *((int64_t *)(buf + 8)) += *((int64_t *)(src_buf + 8));
+  *((int64_t *)(buf + sizeof(int64_t))) += *((int64_t *)(src_buf + sizeof(int64_t)));
 }
 
 void AggregatorAvgYear::PutAggregatedValue(unsigned char *buf, const types::BString &v, int64_t factor) {
@@ -191,7 +197,7 @@ void AggregatorAvgYear::PutAggregatedValue(unsigned char *buf, const types::BStr
   types::RCNum val(common::CT::INT);
   if (!v.IsEmpty() && types::RCNum::ParseNum(v, val, 0) == common::ErrorCode::SUCCESS && !val.IsNull()) {
     *((double *)buf) += double(val.GetValueInt64()) * factor;
-    *((int64_t *)(buf + 8)) += factor;
+    *((int64_t *)(buf + sizeof(int64_t))) += factor;
   }
 }
 

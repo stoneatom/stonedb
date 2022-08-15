@@ -115,12 +115,12 @@ void GroupDistinctTable::InitializeB(int max_len, int64_t max_no_rows)  // char*
 
 void GroupDistinctTable::InitializeBuffers(int64_t max_no_rows)  // max_no_rows = 0   =>  limit not known
 {
-  Transaction *m_conn = current_tx;
+  Transaction *m_conn = current_txn_;
   if (filter_implementation) {  // special case of filter
     f = new Filter(max_no_rows, pack_power);
     f->Reset();
     rows_limit = max_no_rows + 1;  // limits do not apply
-    rccontrol.lock(m_conn->GetThreadID())
+    rc_control_.lock(m_conn->GetThreadID())
         << "GroupDistinctTable initialized as Filter for up to " << max_no_rows << " positions." << system::unlock;
     return;
   }
@@ -137,7 +137,7 @@ void GroupDistinctTable::InitializeBuffers(int64_t max_no_rows)  // max_no_rows 
   t = (unsigned char *)alloc(total_width * no_rows, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
   //	t = new BlockedRowMemStorage(total_width, &mem_mngr, no_rows);
   input_buffer = (unsigned char *)(new int[total_width / 4 + 1]);  // ensure proper memory alignment
-  rccontrol.lock(m_conn->GetThreadID()) << "GroupDistinctTable initialized as Hash(" << no_rows << "), " << group_bytes
+  rc_control_.lock(m_conn->GetThreadID()) << "GroupDistinctTable initialized as Hash(" << no_rows << "), " << group_bytes
                                         << "+" << value_bytes << " bytes." << system::unlock;
   Clear();
 }

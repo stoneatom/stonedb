@@ -127,13 +127,6 @@ void JoinerHash::ExecuteJoinConditions(Condition &cond) {
                  double(dim2_distinct) / dim2_size)  // switch if dim1 has more repeating values
         switch_sides = true;
     }
-    // Check whether the join may be easily optimized on rough level
-    /*	// NOTE: verified negatively (no example of positive influence found)
-    double dpn_density1 = cond[hash_descriptors[0]].attr.vc->RoughSelectivity();
-    double dpn_density2 = cond[hash_descriptors[0]].val1.vc->RoughSelectivity();
-    if(dpn_density1 < 0.2 && dpn_density2 < 0.2)
-            easy_roughable = true;
-    */
   } else if (dim1_size > dim2_size)
     switch_sides = true;
 
@@ -236,19 +229,19 @@ void JoinerHash::ExecuteJoin() {
     while (tr_mit.IsValid()) {
       traversed_tuples += TraverseDim(new_mind, tr_mit, outer_tuples);
       if (tr_mit.IsValid())
-        rccontrol.lock(m_conn->GetThreadID())
+        rc_control_.lock(m_conn->GetThreadID())
             << "Traversed " << traversed_tuples << "/" << dim1_size << " rows." << system::unlock;
       else
-        rccontrol.lock(m_conn->GetThreadID()) << "Traversed all " << dim1_size << " rows." << system::unlock;
+        rc_control_.lock(m_conn->GetThreadID()) << "Traversed all " << dim1_size << " rows." << system::unlock;
 
       if (too_many_conflicts) {
-        rccontrol.lock(m_conn->GetThreadID()) << "Too many hash conflicts: restarting join." << system::unlock;
+        rc_control_.lock(m_conn->GetThreadID()) << "Too many hash conflicts: restarting join." << system::unlock;
         return;  // without committing new_mind
       }
       joined_tuples += MatchDim(new_mind, match_mit);
       if (watch_traversed) outer_tuples += SubmitOuterTraversed(new_mind);
 
-      rccontrol.lock(m_conn->GetThreadID()) << "Produced " << joined_tuples << " tuples." << system::unlock;
+      rc_control_.lock(m_conn->GetThreadID()) << "Produced " << joined_tuples << " tuples." << system::unlock;
       if (!outer_nulls_only) {
         if (tips.limit != -1 && tips.limit <= joined_tuples) break;
       }
@@ -258,12 +251,12 @@ void JoinerHash::ExecuteJoin() {
   if (watch_matched && !outer_filter->IsEmpty()) outer_tuples_matched = SubmitOuterMatched(match_mit, new_mind);
   outer_tuples += outer_tuples_matched;
   if (outer_tuples > 0)
-    rccontrol.lock(m_conn->GetThreadID())
+    rc_control_.lock(m_conn->GetThreadID())
         << "Added " << outer_tuples << " null tuples by outer join." << system::unlock;
   joined_tuples += outer_tuples;
   // revert multiindex to the updated tables
   if (packrows_omitted > 0)
-    rccontrol.lock(m_conn->GetThreadID())
+    rc_control_.lock(m_conn->GetThreadID())
         << "Roughly omitted " << int(packrows_omitted / double(packrows_matched) * 10000.0) / 100.0 << "% packrows."
         << system::unlock;
   if (tips.count_only)
@@ -579,7 +572,7 @@ int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *ta
   TIANMU_LOG(LogCtl_Level::INFO, "NewMatchDim start, taskid %d, tianmu_sysvar_jointhreadpool %d",
               task_mit1->GetTaskId(), tianmu_sysvar_jointhreadpool);
   common::SetMySQLTHD(ci->Thd());
-  current_tx = ci;
+  current_txn_ = ci;
   for (int i = 0; i < cond_hashed; i++) {
     tmp_jhash.AddKeyColumn(vc1[i], vc2[i]);
   }
@@ -638,27 +631,9 @@ int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *ta
   int64_t hash_row;
   int64_t no_of_matching_rows;
   int64_t matching_row = 0;
-  /*
-    if( task_mit1->GetTaskId() != 0 )
-    {
-      MIIterator mit(mind, matched_dims);
-      mit.Rewind();
-      int no_dims=mit.NumOfDimensions();
-      int64_t no_obj=0;
-      for(int i=0;i<no_dims;i++)
-      {
-        if( mit.DimUsed(i) )
-          no_obj=mit.OrigSize(i);
-      }
-      int packs_no = (int)((no_obj + (1 << p_power) - 1) >> mind->ValueOfPower());
-      int mod = packs_no%tianmu_sysvar_jointhreadpool;
-      int num = packs_no/tianmu_sysvar_jointhreadpool;
-      //benq: why recalculate the matching row? consider make it a one
-      matching_row = 65536*(mod +task_mit1->GetTaskId()*num);
-    }
-  */
+
   MIDummyIterator combined_mit(mind);
-  current_tx = ci;
+  current_txn_ = ci;
   while (task_mit.IsValid()) {
     if (m_conn->Killed()) throw common::KilledException();
     // Rough and locking part

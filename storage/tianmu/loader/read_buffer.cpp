@@ -23,7 +23,7 @@ namespace Tianmu {
 namespace loader {
 
 ReadBuffer::ReadBuffer(int num, int requested_size) : size_(requested_size), bufs_(num) {
-  thd_ = current_tx->Thd();
+  thd_ = current_txn_->Thd();
 
   for (auto &b : bufs_) {
     b = std::unique_ptr<char[]>(new char[size_]);

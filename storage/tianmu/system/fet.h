@@ -32,7 +32,8 @@ extern FunctionsExecutionTimes *fet;
 using LoadedDataPackCounter = std::set<core::PackCoordinate>;
 extern LoadedDataPackCounter count_distinct_dp_loads;
 extern LoadedDataPackCounter count_distinct_dp_decompressions;
-extern uint64_t NoBytesReadByDPs;
+
+extern uint64_t NumOfBytesReadByDPs;
 extern uint64_t SizeOfUncompressedDP;
 
 void NotifyDataPackLoad(const core::PackCoordinate &coord);
@@ -122,7 +123,7 @@ class FunctionsExecutionTimes {
     TIANMU_LOG(LogCtl_Level::INFO, "Number of distinct Data Packs loads: %u", (uint)count_distinct_dp_loads.size());
     TIANMU_LOG(LogCtl_Level::INFO, "Number of distinct Data Packs decompressions: %u",
                 (uint)count_distinct_dp_decompressions.size());
-    TIANMU_LOG(LogCtl_Level::INFO, "Size of DP read from disk: %fMB", ((double)NoBytesReadByDPs / 1_MB));
+    TIANMU_LOG(LogCtl_Level::INFO, "Size of DP read from disk: %fMB", ((double)NumOfBytesReadByDPs / 1_MB));
     TIANMU_LOG(LogCtl_Level::INFO, "Size of uncompressed DPs: %fMB", ((double)SizeOfUncompressedDP / 1_MB));
     TIANMU_LOG(LogCtl_Level::INFO,
                 "**************************************************************"

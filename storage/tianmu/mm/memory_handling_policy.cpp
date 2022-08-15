@@ -211,7 +211,7 @@ void *MemoryHandling::alloc(size_t size, BLOCK_TYPE type, TraceableObject *owner
       res = m_system->alloc(size);
       if (res == NULL) {
         if (nothrow) return res;
-        rccontrol.lock(current_tx->GetThreadID())
+        rc_control_.lock(current_txn_->GetThreadID())
             << "Failed to alloc block of size " << static_cast<int>(size) << system::unlock;
         throw common::OutOfMemoryException(size);
       } else {

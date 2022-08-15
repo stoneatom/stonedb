@@ -91,7 +91,7 @@ static core::Value GetValueFromField(Field *f) {
       // convert to UTC
       if (!common::IsTimeStampZero(my_time)) {
         my_bool myb;
-        my_time_t secs_utc = current_tx->Thd()->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
+        my_time_t secs_utc = current_txn_->Thd()->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
         common::GMTSec2GMTTime(&my_time, secs_utc);
       }
       types::DT dt = {};
@@ -252,17 +252,17 @@ int TianmuHandler::external_lock(THD *thd, int lock_type) {
 
   try {
     if (lock_type == F_UNLCK) {
-      if (thd->lex->sql_command == SQLCOM_UNLOCK_TABLES) current_tx->ExplicitUnlockTables();
+      if (thd->lex->sql_command == SQLCOM_UNLOCK_TABLES) current_txn_->ExplicitUnlockTables();
 
-      if (thd->killed) rceng->Rollback(thd, true);
-      if (current_tx) {
-        current_tx->RemoveTable(share);
-        if (current_tx->Empty()) {
-          rceng->ClearTx(thd);
+      if (thd->killed) ha_rcengine_->Rollback(thd, true);
+      if (current_txn_) {
+        current_txn_->RemoveTable(share);
+        if (current_txn_->Empty()) {
+          ha_rcengine_->ClearTx(thd);
         }
       }
     } else {
-      auto tx = rceng->GetTx(thd);
+      auto tx = ha_rcengine_->GetTx(thd);
       if (thd->lex->sql_command == SQLCOM_LOCK_TABLES) tx->ExplicitLockTables();
 
       if (lock_type == F_RDLCK) {
@@ -283,7 +283,7 @@ int TianmuHandler::external_lock(THD *thd, int lock_type) {
   }
 
   // destroy the tx on failure
-  if (ret != 0) rceng->ClearTx(thd);
+  if (ret != 0) ha_rcengine_->ClearTx(thd);
 
   DBUG_RETURN(ret);
 }
@@ -381,7 +381,7 @@ inline bool has_dup_key(std::shared_ptr<index::RCTableIndex> &indextab, TABLE *t
     }
   }
 
-  ret = indextab->GetRowByKey(current_tx, records, row);
+  ret = indextab->GetRowByKey(current_txn_, records, row);
   return (ret == common::ErrorCode::SUCCESS);
 }
 }  // namespace
@@ -411,14 +411,14 @@ int TianmuHandler::write_row([[maybe_unused]] uchar *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
     if (ha_thd()->lex->duplicates == DUP_UPDATE) {
-      if (auto indextab = rceng->GetTableIndex(m_table_name)) {
+      if (auto indextab = ha_rcengine_->GetTableIndex(m_table_name)) {
         if (size_t row; has_dup_key(indextab, table, row)) {
           m_dupkey_pos = row;
           DBUG_RETURN(HA_ERR_FOUND_DUPP_KEY);
         }
       }
     }
-    ret = rceng->InsertRow(m_table_name, current_tx, table, share);
+    ret = ha_rcengine_->InsertRow(m_table_name, current_txn_, table, share);
   } catch (common::OutOfMemoryException &e) {
     DBUG_RETURN(ER_LOCK_WAIT_TIMEOUT);
   } catch (common::DatabaseException &e) {
@@ -468,7 +468,7 @@ int TianmuHandler::update_row(const uchar *old_data, uchar *new_data) {
                               [org_bitmap, this](...) { dbug_tmp_restore_column_map(table->write_set, org_bitmap); });
 
   try {
-    auto tab = current_tx->GetTableByPath(m_table_name);
+    auto tab = current_txn_->GetTableByPath(m_table_name);
 
     for (uint i = 0; i < table->s->fields; i++) {
       if (!bitmap_is_set(table->write_set, i)) {
@@ -496,7 +496,7 @@ int TianmuHandler::update_row(const uchar *old_data, uchar *new_data) {
         tab->UpdateItem(current_position, i, v);
       }
     }
-    rceng->IncTianmuStatUpdate();
+    ha_rcengine_->IncTianmuStatUpdate();
     DBUG_RETURN(0);
   } catch (common::DatabaseException &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Update exception: %s.", e.what());
@@ -551,7 +551,7 @@ int TianmuHandler::delete_all_rows() {
 
 int TianmuHandler::rename_table(const char *from, const char *to) {
   try {
-    rceng->RenameTable(current_tx, from, to, ha_thd());
+    ha_rcengine_->RenameTable(current_txn_, from, to, ha_thd());
     return 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
@@ -614,13 +614,13 @@ int TianmuHandler::info(uint flag) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int ret = 1;
   try {
-    std::scoped_lock guard(global_mutex);
+    std::scoped_lock guard(global_mutex_);
     if (flag & HA_STATUS_VARIABLE) {
       std::shared_ptr<core::RCTable> tab;
-      if (current_tx != nullptr) {
-        tab = current_tx->GetTableByPath(m_table_name);
+      if (current_txn_ != nullptr) {
+        tab = current_txn_->GetTableByPath(m_table_name);
       } else
-        tab = rceng->GetTableRD(m_table_name);
+        tab = ha_rcengine_->GetTableRD(m_table_name);
       stats.records = (ha_rows)tab->NumOfValues();
       stats.data_file_length = 0;
       stats.mean_rec_length = 0;
@@ -677,13 +677,13 @@ int TianmuHandler::open(const char *name, [[maybe_unused]] int mode, [[maybe_unu
     // Keeping the share together with mysql handler cache makes
     // more sense that would mean once a table is opened the TableShare
     // would be kept.
-    if (!(share = rceng->GetTableShare(table_share))) DBUG_RETURN(ret);
+    if (!(share = ha_rcengine_->GetTableShare(table_share))) DBUG_RETURN(ret);
 
     thr_lock_data_init(&share->thr_lock, &m_lock, NULL);
     share->thr_lock.check_status = tianmu_check_status;
     // have primary key, use table index
-    if (table->s->primary_key != MAX_INDEXES) rceng->AddTableIndex(name, table, ha_thd());
-    rceng->AddMemTable(table, share);
+    if (table->s->primary_key != MAX_INDEXES) ha_rcengine_->AddTableIndex(name, table, ha_thd());
+    ha_rcengine_->AddMemTable(table, share);
     ret = 0;
   } catch (common::Exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Error from Tianmu engine", MYF(0));
@@ -725,7 +725,7 @@ int TianmuHandler::fill_row_by_id([[maybe_unused]] uchar *buf, uint64_t rowid) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int rc = HA_ERR_KEY_NOT_FOUND;
   try {
-    auto tab = current_tx->GetTableByPath(m_table_name);
+    auto tab = current_txn_->GetTableByPath(m_table_name);
     if (tab) {
       my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->write_set);
       std::shared_ptr<void> defer(
@@ -765,18 +765,18 @@ int TianmuHandler::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] cons
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int rc = HA_ERR_KEY_NOT_FOUND;
   try {
-    auto index = rceng->GetTableIndex(m_table_name);
+    auto index = ha_rcengine_->GetTableIndex(m_table_name);
     if (index && (active_index == table_share->primary_key)) {
       std::vector<std::string_view> keys;
       key_convert(key, key_len, index->KeyCols(), keys);
       // support equality fullkey lookup over primary key, using full tuple
       if (find_flag == HA_READ_KEY_EXACT) {
         uint64_t rowid;
-        if (index->GetRowByKey(current_tx, keys, rowid) == common::ErrorCode::SUCCESS) {
+        if (index->GetRowByKey(current_txn_, keys, rowid) == common::ErrorCode::SUCCESS) {
           rc = fill_row_by_id(buf, rowid);
         }
       } else if (find_flag == HA_READ_AFTER_KEY || find_flag == HA_READ_KEY_OR_NEXT) {
-        auto iter = current_tx->KVTrans().KeyIter();
+        auto iter = current_txn_->KVTrans().KeyIter();
         common::Operator op = (find_flag == HA_READ_AFTER_KEY) ? common::Operator::O_MORE : common::Operator::O_MORE_EQ;
         iter->ScanToKey(index, keys, op);
         uint64_t rowid;
@@ -810,7 +810,7 @@ int TianmuHandler::index_next([[maybe_unused]] uchar *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int rc = HA_ERR_END_OF_FILE;
   try {
-    auto iter = current_tx->KVTrans().KeyIter();
+    auto iter = current_txn_->KVTrans().KeyIter();
     ++(*iter);
     if (iter->IsValid()) {
       uint64_t rowid;
@@ -833,7 +833,7 @@ int TianmuHandler::index_prev([[maybe_unused]] uchar *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int rc = HA_ERR_END_OF_FILE;
   try {
-    auto iter = current_tx->KVTrans().KeyIter();
+    auto iter = current_txn_->KVTrans().KeyIter();
     --(*iter);
     if (iter->IsValid()) {
       uint64_t rowid;
@@ -859,10 +859,10 @@ int TianmuHandler::index_first([[maybe_unused]] uchar *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int rc = HA_ERR_END_OF_FILE;
   try {
-    auto index = rceng->GetTableIndex(m_table_name);
-    if (index && current_tx) {
+    auto index = ha_rcengine_->GetTableIndex(m_table_name);
+    if (index && current_txn_) {
       uint64_t rowid;
-      auto iter = current_tx->KVTrans().KeyIter();
+      auto iter = current_txn_->KVTrans().KeyIter();
       iter->ScanToEdge(index, true);
       if (iter->IsValid()) {
         iter->GetRowid(rowid);
@@ -888,10 +888,10 @@ int TianmuHandler::index_last([[maybe_unused]] uchar *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int rc = HA_ERR_END_OF_FILE;
   try {
-    auto index = rceng->GetTableIndex(m_table_name);
-    if (index && current_tx) {
+    auto index = ha_rcengine_->GetTableIndex(m_table_name);
+    if (index && current_txn_) {
       uint64_t rowid;
-      auto iter = current_tx->KVTrans().KeyIter();
+      auto iter = current_txn_->KVTrans().KeyIter();
       iter->ScanToEdge(index, false);
       if (iter->IsValid()) {
         iter->GetRowid(rowid);
@@ -944,7 +944,7 @@ int TianmuHandler::rnd_init(bool scan) {
         table_new_iter = ((core::RCTable *)table_ptr)->Begin(GetAttrsUseIndicator(table), *filter);
         table_new_iter_end = ((core::RCTable *)table_ptr)->End();
       } catch (common::Exception const &e) {
-        rccontrol << system::lock << "Error in push-down execution, push-down execution aborted: " << e.what()
+        rc_control_ << system::lock << "Error in push-down execution, push-down execution aborted: " << e.what()
                   << system::unlock;
         TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in push-down execution: %s", e.what());
       }
@@ -956,7 +956,7 @@ int TianmuHandler::rnd_init(bool scan) {
         table_new_iter_end = ((core::RCTable *)table_ptr)->End();
       } else {
         std::shared_ptr<core::RCTable> rctp;
-        rceng->GetTableIterator(m_table_name, table_new_iter, table_new_iter_end, rctp, GetAttrsUseIndicator(table),
+        ha_rcengine_->GetTableIterator(m_table_name, table_new_iter, table_new_iter_end, rctp, GetAttrsUseIndicator(table),
                                 table->in_use);
         table_ptr = rctp.get();
         filter_ptr.reset();
@@ -1053,7 +1053,7 @@ int TianmuHandler::rnd_pos(uchar *buf, uchar *pos) {
     filter_ptr->Reset();
     filter_ptr->Set(position);
 
-    auto tab_ptr = rceng->GetTx(table->in_use)->GetTableByPath(m_table_name);
+    auto tab_ptr = ha_rcengine_->GetTx(table->in_use)->GetTableByPath(m_table_name);
     table_new_iter = tab_ptr->Begin(GetAttrsUseIndicator(table), *filter_ptr);
     table_new_iter_end = tab_ptr->End();
     table_ptr = tab_ptr.get();
@@ -1097,9 +1097,12 @@ int TianmuHandler::extra(enum ha_extra_function operation) {
 int TianmuHandler::start_stmt(THD *thd, thr_lock_type lock_type) {
   try {
     if (lock_type == TL_WRITE_CONCURRENT_INSERT || lock_type == TL_WRITE_DEFAULT || lock_type == TL_WRITE) {
-      trans_register_ha(thd, true, rcbase_hton,NULL);
       trans_register_ha(thd, false, rcbase_hton,NULL);
-      current_tx->AddTableWRIfNeeded(share);
+      if (thd_test_options(thd, OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN)) {
+        trans_register_ha(thd, true, rcbase_hton,NULL);
+      }
+      current_txn_ = ha_rcengine_->GetTx(thd);
+      current_txn_->AddTableWRIfNeeded(share);
     }
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
@@ -1141,7 +1144,7 @@ int TianmuHandler::delete_table(const char *name) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int ret = 1;
   try {
-    rceng->DeleteTable(name, ha_thd());
+    ha_rcengine_->DeleteTable(name, ha_thd());
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
@@ -1180,7 +1183,7 @@ ha_rows TianmuHandler::records_in_range([[maybe_unused]] uint inx, [[maybe_unuse
 int TianmuHandler::create(const char *name, TABLE *table_arg, [[maybe_unused]] HA_CREATE_INFO *create_info) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
-    rceng->CreateTable(name, table_arg);
+    ha_rcengine_->CreateTable(name, table_arg);
     DBUG_RETURN(0);
   } catch (common::AutoIncException &e) {
     my_message(ER_WRONG_AUTO_KEY, e.what(), MYF(0));
@@ -1203,7 +1206,7 @@ int TianmuHandler::create(const char *name, TABLE *table_arg, [[maybe_unused]] H
 int TianmuHandler::truncate() {
   int ret = 0;
   try {
-    rceng->TruncateTable(m_table_name, ha_thd());
+    ha_rcengine_->TruncateTable(m_table_name, ha_thd());
   } catch (std::exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
     ret = 1;
@@ -1258,7 +1261,7 @@ char *TianmuHandler::update_table_comment(const char *comment) {
 
     //  get size & ratio
     int64_t sum_c = 0, sum_u = 0;
-    std::vector<core::AttrInfo> attr_info = rceng->GetTableAttributesInfo(m_table_name, table_share);
+    std::vector<core::AttrInfo> attr_info = ha_rcengine_->GetTableAttributesInfo(m_table_name, table_share);
     for (uint j = 0; j < attr_info.size(); j++) {
       sum_c += attr_info[j].comp_size;
       sum_u += attr_info[j].uncomp_size;
@@ -1294,9 +1297,9 @@ char *TianmuHandler::update_table_comment(const char *comment) {
 
 bool TianmuHandler::explain_message(const Item *a_cond, String *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
-  if (current_tx->Explain()) {
+  if (current_txn_->Explain()) {
     cond_push(a_cond);
-    std::string str = current_tx->GetExplainMsg();
+    std::string str = current_txn_->GetExplainMsg();
     buf->append(str.c_str(), str.length());
   }
   DBUG_RETURN(TRUE);
@@ -1327,7 +1330,7 @@ int TianmuHandler::set_cond_iter() {
       table_new_iter_end = ((core::RCTable *)table_ptr)->End();
       ret = 0;
     } catch (common::Exception const &e) {
-      rccontrol << system::lock << "Error in push-down execution, push-down execution aborted: " << e.what()
+      rc_control_ << system::lock << "Error in push-down execution, push-down execution aborted: " << e.what()
                 << system::unlock;
       TIANMU_LOG(LogCtl_Level::ERROR, "Error in push-down execution, push-down execution aborted: %s", e.what());
     }
@@ -1344,10 +1347,10 @@ const Item *TianmuHandler::cond_push(const Item *a_cond) {
   try {
     if (!m_query) {
       std::shared_ptr<core::RCTable> rctp;
-      rceng->GetTableIterator(m_table_name, table_new_iter, table_new_iter_end, rctp, GetAttrsUseIndicator(table),
+      ha_rcengine_->GetTableIterator(m_table_name, table_new_iter, table_new_iter_end, rctp, GetAttrsUseIndicator(table),
                               table->in_use);
       table_ptr = rctp.get();
-      m_query.reset(new core::Query(current_tx));
+      m_query.reset(new core::Query(current_txn_));
       m_cq.reset(new core::CompiledQuery);
       m_result = false;
 
@@ -1447,7 +1450,7 @@ bool TianmuHandler::inplace_alter_table(TABLE *altered_table, Alter_inplace_info
     if (!(ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)) {
       std::vector<Field *> v_old(table_share->field, table_share->field + table_share->fields);
       std::vector<Field *> v_new(altered_table->s->field, altered_table->s->field + altered_table->s->fields);
-      rceng->PrepareAlterTable(m_table_name, v_new, v_old, ha_thd());
+      ha_rcengine_->PrepareAlterTable(m_table_name, v_new, v_old, ha_thd());
       return false;
     } else if (ha_alter_info->handler_flags == TIANMU_SUPPORTED_ALTER_COLUMN_NAME) {
       return false;
