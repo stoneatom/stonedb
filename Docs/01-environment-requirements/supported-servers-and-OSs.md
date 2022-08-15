@@ -12,9 +12,7 @@ The following table lists the servers on which StoneDB can run.
 | x86_64 | Common x86_64 servers with AVX instruction sets enabled |
 
 :::info
-
 Support for the ARM64 or Power architecture is under testing.
-
 :::
 ## Supported OSs
 The following table lists the OSs supported by StoneDB.
@@ -26,8 +24,6 @@ The following table lists the OSs supported by StoneDB.
 | Ubuntu LTS | 20.04 or higher |
 
 :::info
-
 Compatibilities with other OSs such as Debian and Fedora are under testing.
-
 :::
 

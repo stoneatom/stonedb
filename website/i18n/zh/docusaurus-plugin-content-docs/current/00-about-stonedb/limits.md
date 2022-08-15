@@ -3,6 +3,7 @@ id: limits
 sidebar_position: 1.3
 ---
 
+# 使用限制
 StoneDB 100% 兼容 MySQL 5.6、5.7 协议和 MySQL 生态等重要特性，支持 MySQL 常用的功能及语法，但由于 StoneDB 本身的一些特性，部分操作和功能尚未得到支持，以下列出的是不兼容 MySQL 的操作和功能。
 ## 不支持的 DDL
 
