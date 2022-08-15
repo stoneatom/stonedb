@@ -5,8 +5,10 @@ sidebar_position: 1.4
 
 # Terms
 
+The following table provides descriptions of common terms.
+
 | **Term** | **Description** |
-| :-- | :-- |
+| --- | --- |
 | **row** | A series of data that makes up a record. |
 | **column** | Also referred to as field. In a relational database, a field must be associated with a data type when the field is being created. |
 | **table** | Consists of rows and columns. Databases use tables to store data. Tables are essential objects in databases. |

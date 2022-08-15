@@ -341,9 +341,9 @@ bool ParameterizedFilter::RoughUpdateMultiIndex() {
 
   // Displaying statistics
 
-  if (rccontrol.isOn() || mind->m_conn->Explain()) {
+  if (rc_control_.isOn() || mind->m_conn->Explain()) {
     int pack_full = 0, pack_some = 0, pack_all = 0;
-    rccontrol.lock(mind->m_conn->GetThreadID()) << "Packs/packrows after KN evaluation:" << system::unlock;
+    rc_control_.lock(mind->m_conn->GetThreadID()) << "Packs/packrows after KN evaluation:" << system::unlock;
     for (int dim = 0; dim < rough_mind->NumOfDimensions(); dim++) {
       std::stringstream ss;
       pack_full = 0;
@@ -362,7 +362,7 @@ bool ParameterizedFilter::RoughUpdateMultiIndex() {
       if (mind->m_conn->Explain()) {
         mind->m_conn->SetExplainMsg(ss.str());
       } else {
-        rccontrol.lock(mind->m_conn->GetThreadID()) << ss.str() << system::unlock;
+        rc_control_.lock(mind->m_conn->GetThreadID()) << ss.str() << system::unlock;
       }
     }
   }
@@ -492,7 +492,7 @@ void ParameterizedFilter::RoughMakeProjections(int to_dim, bool update_reduced) 
     local_desc.clear();
   }
   if (total_excluded > 0) {
-    rccontrol.lock(mind->m_conn->GetThreadID())
+    rc_control_.lock(mind->m_conn->GetThreadID())
         << "Packrows excluded by rough multidimensional projections: " << total_excluded << system::unlock;
     rough_mind->UpdateLocalRoughFilters(to_dim);
 
@@ -627,7 +627,7 @@ void ParameterizedFilter::UpdateJoinCondition(Condition &cond, JoinTips &tips)
 
 void ParameterizedFilter::DisplayJoinResults(DimensionVector &all_involved_dims, JoinAlgType join_performed,
                                              bool is_outer, int conditions_used) {
-  if (rccontrol.isOn()) {
+  if (rc_control_.isOn()) {
     int64_t tuples_after_join = mind->NumOfTuples(all_involved_dims);
 
     char buf[30];
@@ -655,7 +655,7 @@ void ParameterizedFilter::DisplayJoinResults(DimensionVector &all_involved_dims,
           std::sprintf(buf_dims + std::strlen(buf_dims), "-%d", i);
       }
 
-    rccontrol.lock(mind->m_conn->GetThreadID())
+    rc_control_.lock(mind->m_conn->GetThreadID())
         << "Tuples after " << buf << "join " << buf_dims
         << (join_performed == JoinAlgType::JTYPE_SORT
                 ? " [sort]: "
@@ -890,8 +890,8 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
       }
     }
   }
-  if (!added_cond.empty() && rccontrol.isOn())
-    rccontrol.lock(mind->m_conn->GetThreadID())
+  if (!added_cond.empty() && rc_control_.isOn())
+    rc_control_.lock(mind->m_conn->GetThreadID())
         << "Adding " << int(added_cond.size()) << " conditions..." << system::unlock;
   for (uint i = 0; i < added_cond.size(); i++) {
     descriptors.AddDescriptor(added_cond[i]);
@@ -923,7 +923,7 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
             descriptors[jj].IsDelayed())
           continue;
         if (TryToMerge(descriptors[i], descriptors[jj])) {
-          rccontrol.lock(mind->m_conn->GetThreadID()) << "Merging conditions..." << system::unlock;
+          rc_control_.lock(mind->m_conn->GetThreadID()) << "Merging conditions..." << system::unlock;
           descriptors[jj].done = true;
         }
       }
@@ -980,18 +980,18 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
   DescriptorListOrdering();
 
   // descriptor display
-  if (rccontrol.isOn()) {
-    rccontrol.lock(mind->m_conn->GetThreadID()) << "Initial execution plan (non-join):" << system::unlock;
+  if (rc_control_.isOn()) {
+    rc_control_.lock(mind->m_conn->GetThreadID()) << "Initial execution plan (non-join):" << system::unlock;
     for (uint i = 0; i < descriptors.Size(); i++)
       if (!descriptors[i].done && !descriptors[i].IsType_Join() && descriptors[i].IsInner()) {
         char buf[1000];
         std::strcpy(buf, " ");
         descriptors[i].ToString(buf, 1000);
         if (descriptors[i].IsDelayed())
-          rccontrol.lock(mind->m_conn->GetThreadID())
+          rc_control_.lock(mind->m_conn->GetThreadID())
               << "Delayed: " << buf << " \t(" << int(descriptors[i].evaluation * 100) / 100.0 << ")" << system::unlock;
         else
-          rccontrol.lock(mind->m_conn->GetThreadID())
+          rc_control_.lock(mind->m_conn->GetThreadID())
               << "Cnd(" << i << "):  " << buf << " \t(" << int(descriptors[i].evaluation * 100) / 100.0 << ")"
               << system::unlock;
       }
@@ -1093,8 +1093,8 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
       if (!descriptors[i].attr.vc) continue;  // probably desc got simplified and is true or false
       if (cur_dim >= 0 && mind->GetFilter(cur_dim) && mind->GetFilter(cur_dim)->IsEmpty() && empty_cannot_grow) {
         mind->Empty();
-        if (rccontrol.isOn()) {
-          rccontrol.lock(mind->m_conn->GetThreadID())
+        if (rc_control_.isOn()) {
+          rc_control_.lock(mind->m_conn->GetThreadID())
               << "Empty result set after non-join condition evaluation (WHERE)" << system::unlock;
         }
         rough_mind->ClearLocalDescFilters();
@@ -1114,9 +1114,9 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
 
   // Some displays
 
-  if (rccontrol.isOn()) {
+  if (rc_control_.isOn()) {
     int pack_full = 0, pack_some = 0, pack_all = 0;
-    rccontrol.lock(mind->m_conn->GetThreadID())
+    rc_control_.lock(mind->m_conn->GetThreadID())
         << "Packrows after exact evaluation (execute WHERE end):" << system::unlock;
     for (uint i = 0; i < (uint)mind->NumOfDimensions(); i++)
       if (mind->GetFilter(i)) {
@@ -1130,7 +1130,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
           else if (!f->IsEmpty(b))
             pack_some++;
         }
-        rccontrol.lock(mind->m_conn->GetThreadID())
+        rc_control_.lock(mind->m_conn->GetThreadID())
             << "(t" << i << "): " << pack_all << " all packrows, " << pack_full + pack_some << " to open (including "
             << pack_full << " full)" << system::unlock;
       }
@@ -1139,22 +1139,22 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
   DescriptorJoinOrdering();
 
   // descriptor display for joins
-  if (rccontrol.isOn()) {
+  if (rc_control_.isOn()) {
     bool first_time = true;
     for (uint i = 0; i < descriptors.Size(); i++)
       if (!descriptors[i].done && (descriptors[i].IsType_Join() || descriptors[i].IsOuter())) {
         if (first_time) {
-          rccontrol.lock(mind->m_conn->GetThreadID()) << "Join execution plan:" << system::unlock;
+          rc_control_.lock(mind->m_conn->GetThreadID()) << "Join execution plan:" << system::unlock;
           first_time = false;
         }
         char buf[1000];
         std::strcpy(buf, " ");
         descriptors[i].ToString(buf, 1000);
         if (descriptors[i].IsDelayed())
-          rccontrol.lock(mind->m_conn->GetThreadID())
+          rc_control_.lock(mind->m_conn->GetThreadID())
               << "Delayed: " << buf << " \t(" << int(descriptors[i].evaluation * 100) / 100.0 << ")" << system::unlock;
         else
-          rccontrol.lock(mind->m_conn->GetThreadID())
+          rc_control_.lock(mind->m_conn->GetThreadID())
               << "Cnd(" << i << "):  " << buf << " \t(" << int(descriptors[i].evaluation * 100) / 100.0 << ")"
               << system::unlock;
       }
@@ -1225,7 +1225,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
   // Execute all delayed conditions
   for (uint i = 0; i < descriptors.Size(); i++) {
     if (!descriptors[i].done) {
-      rccontrol.lock(mind->m_conn->GetThreadID()) << "Executing delayed Cnd(" << i << ")" << system::unlock;
+      rc_control_.lock(mind->m_conn->GetThreadID()) << "Executing delayed Cnd(" << i << ")" << system::unlock;
       descriptors[i].CoerceColumnTypes();
       descriptors[i].Simplify();
       ApplyDescriptor(i);
@@ -1292,10 +1292,10 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
   MIUpdatingIterator mit(mind, dims);
   desc.CopyDesCond(mit);
   if (desc.EvaluateOnIndex(mit, limit) == common::ErrorCode::SUCCESS) {
-    rccontrol.lock(mind->m_conn->GetThreadID())
+    rc_control_.lock(mind->m_conn->GetThreadID())
         << "EvaluateOnIndex done, desc number " << desc_number << system::unlock;
   } else {
-    int poolsize = rceng->query_thread_pool.size();
+    int poolsize = ha_rcengine_->query_thread_pool.size();
     if ((tianmu_sysvar_threadpoolsize > 0) && (packs_no / poolsize > 0) && !desc.IsType_Subquery() &&
         !desc.ExsitTmpTable()) {
       int step = 0;
@@ -1332,8 +1332,8 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
 
       utils::result_set<void> res;
       for (int i = 0; i < task_num; ++i) {
-        res.insert(rceng->query_thread_pool.add_task(&ParameterizedFilter::TaskProcessPacks, this, &taskIterator[i],
-                                                     current_tx, rf, &dims, desc_number, limit, one_dim));
+        res.insert(ha_rcengine_->query_thread_pool.add_task(&ParameterizedFilter::TaskProcessPacks, this, &taskIterator[i],
+                                                     current_txn_, rf, &dims, desc_number, limit, one_dim));
       }
       res.get_all_with_except();
 
@@ -1396,7 +1396,7 @@ void ParameterizedFilter::TaskProcessPacks(MIUpdatingIterator *taskIterator, Tra
   uint64_t passed = 0;
   int pack = -1;
   Descriptor &desc = descriptors[desc_number];
-  current_tx = ci;
+  current_txn_ = ci;
   common::SetMySQLTHD(ci->Thd());
   while (taskIterator->IsValid()) {
     if (limit != -1 && rf) {

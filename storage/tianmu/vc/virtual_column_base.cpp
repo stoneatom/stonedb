@@ -28,7 +28,7 @@ namespace vcolumn {
 VirtualColumnBase::VirtualColumnBase(core::ColumnType const &ct, core::MultiIndex *mind)
     : Column(ct),
       mind(mind),
-      conn_info(current_tx),
+      conn_info(current_txn_),
       last_val(std::make_shared<core::ValueOrNull>()),
       first_eval(true),
       dim(-1) {

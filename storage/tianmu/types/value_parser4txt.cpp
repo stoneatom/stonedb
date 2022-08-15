@@ -623,7 +623,7 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
       myt.time_type = MYSQL_TIMESTAMP_DATETIME;
       if (!common::IsTimeStampZero(myt)) {
         my_bool myb;
-        my_time_t secs_utc = current_tx->Thd()->variables.time_zone->TIME_to_gmt_sec(&myt, &myb);
+        my_time_t secs_utc = current_txn_->Thd()->variables.time_zone->TIME_to_gmt_sec(&myt, &myb);
         common::GMTSec2GMTTime(&myt, secs_utc);
         myt.second_part = rcv.MicroSecond();
       }
@@ -763,7 +763,7 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
         myt.time_type = MYSQL_TIMESTAMP_DATETIME;
         if (!common::IsTimeStampZero(myt)) {
           my_bool myb;
-          my_time_t secs_utc = current_tx->Thd()->variables.time_zone->TIME_to_gmt_sec(&myt, &myb);
+          my_time_t secs_utc = current_txn_->Thd()->variables.time_zone->TIME_to_gmt_sec(&myt, &myb);
           common::GMTSec2GMTTime(&myt, secs_utc);
           myt.second_part = microsecond;
         }

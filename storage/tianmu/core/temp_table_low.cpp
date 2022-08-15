@@ -173,7 +173,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
 
       local_row++;
       if (local_row % 10000000 == 0)
-        rccontrol.lock(m_conn->GetThreadID())
+        rc_control_.lock(m_conn->GetThreadID())
             << "Preparing values to sort (" << int(local_row / double(filter.mind->NumOfTuples()) * 100) << "% done)."
             << system::unlock;
     }
@@ -209,7 +209,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
 
     utils::result_set<size_t> res;
     for (int i = 0; i < task_num; i++)
-      res.insert(rceng->query_thread_pool.add_task(&TempTable::TaskPutValueInST, this, &taskIterator[i], current_tx,
+      res.insert(ha_rcengine_->query_thread_pool.add_task(&TempTable::TaskPutValueInST, this, &taskIterator[i], current_txn_,
                                                    &subsorted_table[i]));
     if (filter.mind->m_conn->Killed()) throw common::KilledException("Query killed by user");
 
@@ -275,7 +275,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
         local_row++;
         ++produced_rows;
         if ((global_row - offset + 1) % 10000000 == 0)
-          rccontrol.lock(m_conn->GetThreadID())
+          rc_control_.lock(m_conn->GetThreadID())
               << "Retrieving sorted rows (" << int((global_row - offset) / double(limit - offset) * 100) << "% done)."
               << system::unlock;
       } else if (valid)
@@ -295,7 +295,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
       local_row = 0;
     }
   } while (valid && global_row < limit + offset);
-  rccontrol.lock(m_conn->GetThreadID()) << "Sorted end, rows retrieved." << system::unlock;
+  rc_control_.lock(m_conn->GetThreadID()) << "Sorted end, rows retrieved." << system::unlock;
 
   // TIANMU_LOG(LogCtl_Level::INFO, "OrderByAndMaterialize complete global_row %d, limit %d,
   // offset %d", global_row, limit, offset);
@@ -393,14 +393,14 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
     utils::result_set<void> res;
     for (uint i = 1; i < attrs.size(); i++) {
       if (!skip_parafilloutput[i]) {
-        res.insert(rceng->query_thread_pool.add_task(&TempTable::FillbufferTask, this, attrs[i], current_tx,
+        res.insert(ha_rcengine_->query_thread_pool.add_task(&TempTable::FillbufferTask, this, attrs[i], current_txn_,
                                                      &page_start, start_row, page_end));
       }
     }
     res.get_all_with_except();
 
     for (uint i = 1; i < attrs.size(); i++)
-      if (skip_parafilloutput[i]) FillbufferTask(attrs[i], current_tx, &page_start, start_row, page_end);
+      if (skip_parafilloutput[i]) FillbufferTask(attrs[i], current_txn_, &page_start, start_row, page_end);
 
     if (lazy) break;
   }
@@ -534,7 +534,7 @@ void TempTable::FillbufferTask(Attr *attr, Transaction *ci, MIIterator *page_sta
                                int64_t page_end) {
   // save TLS for mysql function
   common::SetMySQLTHD(m_conn->Thd());
-  current_tx = ci;
+  current_txn_ = ci;
   if (attr->NeedFill()) {
     MIIterator i(*page_start);
     attr->FillValues(i, start_row, page_end - start_row);
@@ -544,7 +544,7 @@ void TempTable::FillbufferTask(Attr *attr, Transaction *ci, MIIterator *page_sta
 size_t TempTable::TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrapper *st) {
   size_t local_row = 0;
   bool continue_now = true;
-  current_tx = ci;
+  current_txn_ = ci;
   while (it->IsValid() && continue_now) {
     if (m_conn->Killed()) throw common::KilledException();
     if (it->PackrowStarted()) {
@@ -561,7 +561,7 @@ size_t TempTable::TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrappe
 
     local_row++;
     if (local_row % 10000000 == 0)
-      rccontrol.lock(m_conn->GetThreadID())
+      rc_control_.lock(m_conn->GetThreadID())
           << "Preparing values to sort (" << int(local_row / double(filter.mind->NumOfTuples()) * 100) << "% done)."
           << system::unlock;
   }

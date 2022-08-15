@@ -453,7 +453,7 @@ int Engine::Convert(int &is_null, String *value, types::RCDataType &rcitem, enum
           MYSQL_TIME local_time;
           my_time_t secs = tianmu_sec_since_epoch(rcdt->Year(), rcdt->Month(), rcdt->Day(), rcdt->Hour(),
                                                    rcdt->Minute(), rcdt->Second());
-          current_tx->Thd()->variables.time_zone->gmt_sec_to_TIME(&local_time, secs);
+          current_txn_->Thd()->variables.time_zone->gmt_sec_to_TIME(&local_time, secs);
           char buf[32];
           local_time.second_part = rcdt->MicroSecond();
           my_datetime_to_str(&local_time, buf, 0);

@@ -622,7 +622,7 @@ int RCDateTime::compare(const RCNum &rcv) const {
 void RCDateTime::AdjustTimezone(RCDateTime &dt) {
   // timezone conversion
   if (!dt.IsZero()) {
-    auto thd = current_tx->Thd();
+    auto thd = current_txn_->Thd();
     MYSQL_TIME t;
     t.year = dt.Year();
     t.month = dt.Month();

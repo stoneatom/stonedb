@@ -45,7 +45,7 @@ ConstColumn::ConstColumn(core::ValueOrNull const &val, core::ColumnType const &c
     if (!common::IsTimeStampZero(myt)) {
       my_bool myb;
       // convert local time to UTC seconds from beg. of EPOCHE
-      my_time_t secs_utc = current_tx->Thd()->variables.time_zone->TIME_to_gmt_sec(&myt, &myb);
+      my_time_t secs_utc = current_txn_->Thd()->variables.time_zone->TIME_to_gmt_sec(&myt, &myb);
       // UTC seconds converted to UTC TIME
       common::GMTSec2GMTTime(&myt, secs_utc);
       myt.second_part = rcdt.MicroSecond();
