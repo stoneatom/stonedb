@@ -218,8 +218,7 @@ int rcbase_init_func(void *p) {
     if (hent) strmov_str(global_hostIP_, inet_ntoa(*(struct in_addr *)(hent->h_addr_list[0])));
     my_snprintf(global_serverinfo_, sizeof(global_serverinfo_), "\tServerIp:%s\tServerHostName:%s\tServerPort:%d",
                 global_hostIP_, glob_hostname, mysqld_port);
-    ha_kvstore_ = new index::KVStore();
-    ha_kvstore_->Init();
+    //startup tianmu engine.
     ha_rcengine_ = new core::Engine();
     ret = ha_rcengine_->Init(total_ha);
     {
@@ -367,7 +366,7 @@ int get_UpdatePerMinute_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outv
   return 0;
 }
 
-char masteslave_info[8192];
+char masteslave_info[8192]={0};
 
 SHOW_VAR tianmu_masterslave_dump[] = {{"info", masteslave_info, SHOW_CHAR, SHOW_SCOPE_UNDEF}, {NullS, NullS, SHOW_LONG, SHOW_SCOPE_UNDEF}};
 
