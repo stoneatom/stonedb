@@ -10,21 +10,22 @@ Navicat is a database management tool that allows you to connect to databases. Y
 This topic shows you how to use Navicat to connect to StoneDB.
 ## Prerequisites
 Navicat has been installed.
-
 ## Procedure
 
 1. Open Navicat and choose **File** > **New Connection** > **MySQL**.
 
-*Here's a picture to add*
+![](./navicat-step1.png)
 
-2. In the dialog box that appears, click the **General** tab, and enter the connection name, server IP address, port, username, and password. The following figure provides an example.
+1. In the dialog box that appears, click the **General** tab, and enter the connection name, server IP address, port, username, and password. The following figure provides an example.
 
-*Here's a picture to add*
+![](./navicat-step2.png)
 
-3. Click **Test Connection**. If message "Connection successful" appears, the connection to StoneDB is established.
+1. Click **Test Connection**. If message "Connection successful" appears, the connection to StoneDB is established.
 
-*Here's a picture to add*
+![](./navicat-step3.png)
 
 :::info
+
 You cannot use Navicat to connect to StoneDB as a super administrator ('root'@'localhost').
+
 :::

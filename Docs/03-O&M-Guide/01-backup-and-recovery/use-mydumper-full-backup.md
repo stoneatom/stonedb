@@ -4,49 +4,39 @@ sidebar_position: 4.32
 ---
 
 # Use Mydumper for Full Backup
-
-## Mydumper introduction
+# mydumper **introduction**
 Mydumper is a logical backup tool for MySQL. It consists of two parts:
 
-- mydumper: exports consistent backup files of MySQL databases.
+- mydumper: exports back files from database.
 - myloader: reads backups from mydumper, connects to destination databases, and imports backups. 
 
 Both parts require multithreading capacities.
-### Benefits
+## Benefits
 
 - Parallelism and performance: The tool provides high backup rate. Expensive character set conversion routines are avoided and the overall high efficiency of code is ensured.
 - Simplified output management: Separate files are used for tables and metadata is dumped, simplifying data view and parse.
 - High consistency: The tool maintains snapshots across all threads and provides accurate positions of primary and secondary logs.
 - Manageability: Perl Compatible Regular Expressions (PCRE) can be used to specify whether to include or exclude tables or databases.
-### Features
+## **Features**
 
 - Multi-threaded backup, which generates multiple backup files
 - Consistent snapshots for transactional and non-transactional tables 
 
-:::info
-This feature is supported by versions later than 0.2.2.
-:::
+NOTE: This feature is supported by versions later than 0.2.2.
 
 - Fast file compression
 - Export of binlogs
 - Multi-threaded recovery
 
-:::info
-This feature is supported by versions later than 0.2.1.
-:::
+NOTE: This feature is supported by versions later than 0.2.1.
 
 - Function as a daemon to periodically perform snapshots and consistently records binlogs
 
-:::info
-
-This feature is supported by versions later than 0.5.0.
-
-:::
+NOTE: This feature is supported by versions later than 0.5.0.
 
 - Open source (license: GNU GPLv3)
-## Use Mydumper
-### Parameters for mydumer
-
+# Use Mydumper
+## Parameters for mydumer
 ```bash
 mydumper --help
 Usage:
@@ -99,7 +89,7 @@ Application Options:
 --load-data
 --fields-terminated-by
 --fields-enclosed-by
---fields-escaped-by             Single character that is going to be used to escape characters in the LOAD DATA stament, default: '\'
+--fields-escaped-by             Single character that is going to be used to escape characters in theLOAD DATA stament, default: '\'
 --lines-starting-by             Adds the string at the begining of each row. When --load-data is usedit is added to the LOAD DATA statement. Its affects INSERT INTO statementsalso when it is used.
 --lines-terminated-by           Adds the string at the end of each row. When --load-data is used it isadded to the LOAD DATA statement. Its affects INSERT INTO statementsalso when it is used.
 --statement-terminated-by       This might never be used, unless you know what are you doing
@@ -125,7 +115,7 @@ Application Options:
 -S, --socket                    UNIX domain socket file to use for connection
   -x, --regex                     Regular expression for 'db.table' matching
 ```
-### Parameters for myloader
+## **Parameters for myloader**
 ```bash
 myloader --help
 Usage:
@@ -172,7 +162,7 @@ Application Options:
   --skip-definer                    Removes DEFINER from the CREATE statement. By default, statements are not modified
 
 ```
-### Install and use Mydumper
+## Install and use **Mydumper**
 ```bash
 # On GitHub, download the RPM package or source code package that corresponds to the machine that you use. We recommend you download the RPM package because it can be directly used while the source code package requires compilation. The OS used in the following example is CentOS 7. Therefore, download an el7 version.
 [root@dev tmp]# wget https://github.com/mydumper/mydumper/releases/download/v0.12.1/mydumper-0.12.1-1-zstd.el7.x86_64.rpm
@@ -189,7 +179,7 @@ Updating / installing...
 [root@dev home]# myloader -u root -p ******** -P 3306 -h 127.0.0.1 -S /stonedb/install/tmp/mysql.sock -B zz -d /home/dumper
 ```
 
-#### Generated backup files 
+### **Generated backup files** 
 ```bash
 [root@dev home]# ll dumper/
 total 112
@@ -236,7 +226,7 @@ CREATE TABLE `t_user` (
 
 The directory contains the following files:
 
-**metadata**: records the name and position of the binlog file of the backup database at the backup point in time.
+**metadata:** records the name and position of the binlog file of the backup database at the backup point in time.
 
 :::info
 If the backup is performed on the standby library, this file also records the name and position of the binlog file that has been synchronized from the active libary when the backup is performed.
@@ -248,27 +238,7 @@ Each table has two backup files:
 - **database.table-schema.sql**: records the table schemas.
 - **database.table.00000.sql**: records table data.
 - **database.table-metadata**: records table metadata.
-
-***Extensions***
-
-If you want to import data to StoneDB, you must replace **engine=innodb** with **engine=stonedb** in table schema file **database.table-schema.sql** and check whether the syntax of the table schema is compatible with StoneDB. For example, if the syntax contain keyword **unsigned**, it is incompatible. Following is a schema example after modification:
-```
-[root@dev-myos dumper]# cat zz.t_user-schema.sql
-/*!40101 SET NAMES binary*/;
-/*!40014 SET FOREIGN_KEY_CHECKS=0*/;
-/*!40103 SET TIME_ZONE='+00:00' */;
-CREATE TABLE `t_user` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `c_user_id` varchar(36) NOT NULL DEFAULT '',
-  `c_name` varchar(22) NOT NULL DEFAULT '',
-  `c_province_id` int(11) NOT NULL,
-  `c_city_id` int(11) NOT NULL,
-  `create_time` datetime NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=STONEDB AUTO_INCREMENT=10001 DEFAULT CHARSET=utf8;
-```
-
-### Backup principles
+## **Backup principles**
 
 1. The main thread executes **FLUSH TABLES WITH READ LOCK** to add a global read-only lock to ensure data consistency.
 2. The name and position of the binlog file at the current point in time are obtained and recorded to the **metadata **file to support recovery performed later.
