@@ -16,11 +16,11 @@ Navicat has been installed.
 
 ![](./navicat-step1.png)
 
-1. In the dialog box that appears, click the **General** tab, and enter the connection name, server IP address, port, username, and password. The following figure provides an example.
+2. In the dialog box that appears, click the **General** tab, and enter the connection name, server IP address, port, username, and password. The following figure provides an example.
 
 ![](./navicat-step2.png)
 
-1. Click **Test Connection**. If message "Connection successful" appears, the connection to StoneDB is established.
+3. Click **Test Connection**. If message "Connection successful" appears, the connection to StoneDB is established.
 
 ![](./navicat-step3.png)
 
