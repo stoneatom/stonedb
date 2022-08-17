@@ -155,7 +155,7 @@ git clone https://github.com/stoneatom/stonedb.git
 cd stonedb
 git checkout remotes/origin/stonedb-5.6
 ```
-在执行编译脚本前，需要修改编译脚本的三处内容：
+在执行编译脚本前，需要修改编译脚本的两处内容：
 
 1）StoneDB 安装目录，可根据实际情况修改，示例中的安装目录是 /stonedb56/install；
 
