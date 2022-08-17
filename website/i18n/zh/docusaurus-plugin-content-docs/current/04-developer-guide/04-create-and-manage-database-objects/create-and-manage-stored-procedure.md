@@ -6,6 +6,7 @@ sidebar_position: 5.54
 # 创建和管理存储过程
 
 创建一个存储过程，用于随机插入100万条数据。
+
 创建表
 ```sql
 CREATE TABLE t_user(
@@ -16,8 +17,12 @@ CREATE TABLE t_user(
   score INT NOT NULL,
   copy_id INT NOT NULL,
   PRIMARY KEY (`id`)
-) engine=STONEDB;
+) engine=stonedb;
 ```
+:::tip
+StoneDB 5.6 的存储引擎名是 stonedb，5.7 的存储引擎名是 tianmu。
+:::
+
 创建存储过程
 ```sql
 DELIMITER //
