@@ -67,7 +67,7 @@ docker run -d  --restart=always --name=prometheus  -p 9090:9090  \
 --storage.tsdb.retention.time=30d
 
 ```
-If "http://<IP address of machine A>:9090" appears, Prometheus is successfully deployed. If the deployment fails, run the `docker logs <Container ID>` command to view logs and rectify the fault.
+If `http://<IP address of machine A>:9090` appears, Prometheus is successfully deployed. If the deployment fails, run the `docker logs <Container ID>` command to view logs and rectify the fault.
 
 ![image.png](./Prometheus.png)
 ## Step 2. **Deploy Prometheus Exporter**
