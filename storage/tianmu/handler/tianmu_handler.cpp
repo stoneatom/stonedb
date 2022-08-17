@@ -1440,7 +1440,7 @@ enum_alter_inplace_result TianmuHandler::check_if_supported_inplace_alter([[mayb
                                                                            Alter_inplace_info *ha_alter_info) {
   if ((ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER) &&
       (ha_alter_info->handler_flags != TIANMU_SUPPORTED_ALTER_COLUMN_NAME)) {
-    return HA_ALTER_ERROR;
+    return HA_ALTER_INPLACE_NOT_SUPPORTED;
   }
   return HA_ALTER_INPLACE_EXCLUSIVE_LOCK;
 }
