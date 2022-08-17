@@ -55,6 +55,7 @@ yum install -y libedit-devel
 yum install -y libaio-devel
 yum install -y libicu
 yum install -y libicu-devel
+yum install -y jemalloc-devel
 ```
 ## 第二步：安装 gcc 9.3.0
 通过执行以下语句，检查当前 gcc 版本是否符合安装要求。
@@ -79,7 +80,7 @@ scl enable devtoolset-9 bash
 gcc --version
 ```
 ## 第三步：安装第三方库
-安装第三库前需要确认 cmake 版本是3.7.2以上，make 版本是3.82以上，如果低于这两个版本，需要进行安装。StoneDB 依赖 marisa、rocksdb、boost，在编译 marisa、rocksdb、boost 时，可以不指定安装路径，默认安装路径在 /usr/local 下。如果不指定 marisa、rocksdb、boost 的安装路径，在编译安装 StoneDB 时也无需指定路径。示例中我们指定了 marisa、rocksdb、boost 的安装路径。
+安装第三库前需要确认 cmake 版本是3.7.2以上，make 版本是3.82以上，如果低于这两个版本，需要进行安装。StoneDB 依赖 marisa、rocksdb、boost，在编译 marisa、rocksdb、boost 时，建议指定安装路径。示例中我们指定了 marisa、rocksdb、boost 的安装路径。
 ### 1. 安装 cmake
 ```shell
 wget https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz
@@ -89,15 +90,18 @@ cd cmake-3.7.2
 /usr/local/bin/cmake --version
 rm -rf /usr/bin/cmake
 ln -s /usr/local/bin/cmake /usr/bin/
+cmake --version
 ```
 ### 2. 安装 make
 ```shell
-http://mirrors.ustc.edu.cn/gnu/make/
+wget http://mirrors.ustc.edu.cn/gnu/make/make-3.82.tar.gz
 tar -zxvf make-3.82.tar.gz
+cd make-3.82
 ./configure  --prefix=/usr/local/make
 make && make install
 rm -rf /usr/local/bin/make
 ln -s /usr/local/make/bin/make /usr/local/bin/make
+make --version
 ```
 ### 3. 安装 marisa 
 ```shell
@@ -142,16 +146,20 @@ cd boost_1_66_0
 ./bootstrap.sh --prefix=/usr/local/stonedb-boost
 ./b2 install --with=all
 ```
-boost 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-boost。<br />注：在编译过程中，除非有关键字 "error" 报错自动退出，否则出现关键字 "warning"、"failed"是正常的。
+boost 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-boost。<br />注：在编译过程中，除非有关键字 "error" 报错自动退出，否则出现关键字 "warning"、"failed"是正常的，安装 boost 大概需要25分钟左右。
 ## 第四步：执行编译
-StoneDB 现有 5.6 和 5.7 两个分支，下载的源码包默认是 5.7 分支。下载的源码包存放路径可根据实际情况指定，示例中的源码包存放路径是在根目录下，并且是切换为 5.6 分支的编译安装。<br />注：gcc 9.3.0以上版本已经支持 5.6 的编译，并且支持自定义指定 rocksdb 和 marisa 的安装路径。5.7 的编译还是 gcc 7.3.0版本，后续会得到支持。
+StoneDB 现有 5.6 和 5.7 两个分支，下载的源码包默认是 5.7 分支。下载的源码包存放路径可根据实际情况指定，示例中的源码包存放路径是在根目录下，并且是切换为 5.6 分支的编译安装。
 ```shell
 cd /
 git clone https://github.com/stoneatom/stonedb.git
 cd stonedb
 git checkout remotes/origin/stonedb-5.6
 ```
-在执行编译脚本前，需要修改编译脚本的两处内容：<br />1）StoneDB 安装目录，可根据实际情况修改，示例中的安装目录是 /stonedb56/install；<br />2）marisa、rocksdb、boost 的实际安装路径，必须与上文安装 marisa、rocksdb、boost 的路径保持一致。
+在执行编译脚本前，需要修改编译脚本的两处内容：
+
+1）StoneDB 安装目录，可根据实际情况修改，示例中的安装目录是 /stonedb56/install；
+
+2）marisa、rocksdb、boost 的实际安装路径，必须与上文安装 marisa、rocksdb、boost 的路径保持一致。
 ```shell
 ###修改编译脚本
 cd /stonedb/scripts
@@ -168,8 +176,9 @@ install_target=/stonedb56/install
 ###执行编译脚本
 sh stonedb_build.sh
 ```
+注：如果是 CentOS/RedHat ，需要注释 os_dist 和 os_dist_release，并且修改 build_tag ，这是因为 "lsb_release -a" 返回的结果中，Distributor、Release、Codename 显示的是 n/a。注释 os_dist 和 os_dist_release 只会影响产生的日志名和 tar 包名，不会影响编译结果。
 ## 第五步：启动实例
-按照以下步骤启动 StoneDB。
+用户可按照手动安装和自动安装两种方式启动 StoneDB。
 ### 1. 创建用户
 ```shell
 groupadd mysql

@@ -5,10 +5,7 @@ sidebar_position: 5.3
 
 # DML Statements
 
-This topic describes the DML statements supported by StoneDB.
-
-In this topic, table **t_test** created by executing the following statement is used in all code examples. 
-
+This topic describes the DML statements supported by StoneDB.<br />In this topic, table **t_test** created by executing the following statement is used in all code examples. 
 ```sql
 CREATE TABLE t_test(
   id INT NOT NULL AUTO_INCREMENT,
@@ -18,9 +15,11 @@ CREATE TABLE t_test(
   score INT NOT NULL,
   copy_id INT NOT NULL,
   PRIMARY KEY (`id`)
-) engine=STONEDB;
+) engine=stonedb;
 ```
-
+:::info
+The row-based storage engine is named StoneDB in StoneDB-5.6, and is renamed to Tianmu in StoneDB-5.7 to distinguish from the database StoneDB.
+:::
 ## INSERT
 ```sql
 insert into t_test values(1,'jack','rose','0',58,1);

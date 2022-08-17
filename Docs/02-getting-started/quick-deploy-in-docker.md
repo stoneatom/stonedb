@@ -4,7 +4,6 @@ sidebar_position: 3.2
 ---
 
 # Quick Deployment in a Docker Container
-
 ## Prerequisites
 The image of StoneDB is downloaded from Docker Hub.
 
@@ -12,12 +11,12 @@ The image of StoneDB is downloaded from Docker Hub.
 
 ## Procedure
 The username and password for login are **root** and **stonedb123**.
-### **1. Pull the image**
+### 1. Pull the image
 Run the following command:
 ```bash
 docker pull stoneatom/stonedb:v0.1
 ```
-### **2. Run the image**
+### 2. Run the image
 Run the following command:
 ```bash
 docker run -p 13306:3306 -v $stonedb_volumn_dir/data/:/stonedb56/install/data/ -it -d stoneatom/stonedb:v0.1 /bin/bash
@@ -28,8 +27,8 @@ docker run -p 13306:3306 -it -d stoneatom/stonedb:v0.1 /bin/bash
 ```
 Parameter description:
 
-- **-p**: maps ports in the *Port of the host*:*Port of the container* format.
-- **-v**: mounts directories in the *Path in the host*:*Path in the host* format.If no directories ae mounted, the container will be initialized.
+- **-p**: maps ports in the _Port of the host_:_Port of the container_ format.
+- **-v**: mounts directories in the _Path in the host_:_Path in the container_ format. If no directories ae mounted, the container will be initialized.
 - **-i**: the interaction.
 - **-t**: the terminal.
 - **-d**: Do not enter the container upon startup. If you want to enter the container upon startup, run the  docker exec command.

@@ -14,6 +14,7 @@ For more information about Prometheus, visit [https://prometheus.io/docs/introdu
 To download Prometheus, visit [https://prometheus.io/download/](https://prometheus.io/download/).
 ### Grafana introduction
 Grafana is a suite of open-source visualization and analytics tools. It enables you to query, visualize, alert on, and explore your metrics, logs, and traces wherever they are stored, as well as share them to your teams. It is most commonly used to analyze and visualize time series data collected from infrastructure and applications.
+
 For more information, visit [https://grafana.com/docs/grafana/latest/introduction/](https://grafana.com/docs/grafana/latest/introduction/).
 ### Environment introduction
 Machine A: on which Prometheus and Grafana are deployed in Docker containers
@@ -66,8 +67,9 @@ docker run -d  --restart=always --name=prometheus  -p 9090:9090  \
 --storage.tsdb.retention.time=30d
 
 ```
-If `"http://<IP address of machine A>:9090"` appears, Prometheus is successfully deployed. If the deployment fails, run the `docker logs <Container ID>` command to view logs and rectify the fault.
-![image.png](../../../website/i18n/zh/docusaurus-plugin-content-docs/current/03-O%26M-Guide/00-monitoring-and-alerting/Prometheus.png)
+If "http://<IP address of machine A>:9090" appears, Prometheus is successfully deployed. If the deployment fails, run the `docker logs <Container ID>` command to view logs and rectify the fault.
+
+![image.png](./Prometheus.png)
 ## Step 2. **Deploy Prometheus Exporter**
 The following example shows how to monitor the OS and a MySQL database.
 
@@ -163,7 +165,7 @@ stdout_logfile = /var/log/supervisor/mysqld_exporter.log
 systemctl restart supervisord
 ```
 
-# **Step 3. Configure Prometheus to monitor mysqld_exporter and node_exporter**
+## **Step 3. Configure Prometheus to monitor mysqld_exporter and node_exporter**
 
 1. Complete the following configuration:
 ```shell
@@ -217,7 +219,7 @@ docker restart 892d640f51b2
 
 3. Wait a while and view** State** on the** Targets** page of Prometheus. If the value for every metric is **up**, performance data is collected.
 
-![image.png](../../../website/i18n/zh/docusaurus-plugin-content-docs/current/03-O%26M-Guide/00-monitoring-and-alerting/Prometheus_Status_Targets.png)
+![image.png](./Prometheus_Status_Targets.png)
 ## **Step 4. Deploy Grafana**
 
 1. Deploy Grafana in a Docker container.
@@ -249,48 +251,54 @@ docker run -d  --restart=always --name=grafana  -p 13000:3000  \
 -v /home/zsp/grafana/data/grafana/:/var/lib/grafana/    grafana/grafana
 ```
 
-3. Visit `http://<IP address of machine A>:13000` and log in to Grafana. The default username and password are **admin** and **admin**.
+3. Visit http://<IP address of machine A>:13000 and log in to Grafana. The default username and password are **admin** and **admin**.
 
-![image.png](../../../website/i18n/zh/docusaurus-plugin-content-docs/current/03-O%26M-Guide/00-monitoring-and-alerting/Grafana.png)
+![image.png](./Grafana.png)
 ## **Step 5. Configure Grafana to display monitoring data from Prometheus**
 ### **Configure the Prometheus data source**
 
 1. Log in to Grafana. In the left-side navigation pane, choose **Configuration** > **Data sources**.
 
-![image.png](../../../website/i18n/zh/docusaurus-plugin-content-docs/current/03-O%26M-Guide/00-monitoring-and-alerting/Prometheus_data_source.png)
+![image.png](./Prometheus_data_source.png)
 
 2. In the **Time series databases** area, click **Prometheus**.
 
-![image.png](../../../website/i18n/zh/docusaurus-plugin-content-docs/current/03-O%26M-Guide/00-monitoring-and-alerting/Prometheus_add_data_source.png)
+![image.png](./Prometheus_add_data_source.png)
 
 3. Configure **URL** and **Scrape Interval**.
 
-![image.png](../../../website/i18n/zh/docusaurus-plugin-content-docs/current/03-O%26M-Guide/00-monitoring-and-alerting/Prometheus_settings.png)
+![image.png](./Prometheus_settings.png)
 
 4. Click **Save & test**. If message "Data source is working" is displayed, the data source is configured.
 
-![image.png](../../../website/i18n/zh/docusaurus-plugin-content-docs/current/03-O%26M-Guide/00-monitoring-and-alerting/Prometheus_save.png)
+![image.png](./Prometheus_save.png)
 ### **Configure Grafana Monitoring Dashboards**
 On the **Configuration** page, choose **+** > **Import**, and import the official dashboards. You can customize dashboards based on your needs. 
+
 Link to obtaining official dashboards: [https://grafana.com/grafana/dashboards/](https://grafana.com/grafana/dashboards/)
+
 The following procedure shows how to configure dashboard 11074 to monitor node_exporter.
 
 1. In the left-side navigation pane, choose **+** > **Import**. 
 
-![image.png](../../../website/i18n/zh/docusaurus-plugin-content-docs/current/03-O%26M-Guide/00-monitoring-and-alerting/Grafana_import1.png)
+![image.png](./Grafana_import1.png)
 
 2. In the **Import via Grafana.com** text box, enter the dashboard ID and click** Load**.  In this example, the dashboard ID is 11074 which is a dashboard for monitoring OSs.
 
-![image.png](../../../website/i18n/zh/docusaurus-plugin-content-docs/current/03-O%26M-Guide/00-monitoring-and-alerting/Grafana_import2.png)
+![image.png](./Grafana_import2.png)
 
 3. In the **VictoriaMetrics** drop-down list, select **Prometheus**.
 
-![image.png](../../../website/i18n/zh/docusaurus-plugin-content-docs/current/03-O%26M-Guide/00-monitoring-and-alerting/Grafana_import3.png)
+![image.png](./Grafana_import3.png)
+
 The procedure to configure the monitoring dashboard for a MySQL database is similar to the previous example. 
 
 Following are some example screenshots after the monitoring dashboard 1132 is configured.
 
 Screenshot 1:
-![image.png](../../../website/i18n/zh/docusaurus-plugin-content-docs/current/03-O%26M-Guide/00-monitoring-and-alerting/Mysql_setting1.png)
+
+![image.png](./Mysql_setting1.png)
+
 Screenshot 2:
-![image.png](../../../website/i18n/zh/docusaurus-plugin-content-docs/current/03-O%26M-Guide/00-monitoring-and-alerting/Mysql_setting2.png)
+
+![image.png](./Mysql_setting2.png)

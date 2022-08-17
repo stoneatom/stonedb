@@ -56,6 +56,7 @@ yum install -y libedit-devel
 yum install -y libaio-devel
 yum install -y libicu
 yum install -y libicu-devel
+yum install -y jemalloc-devel
 ```
 ### Step 2. Install GCC 9.3.0
 Before performing the follow-up steps, you must ensure the GCC version is 9.3.0.
@@ -88,7 +89,7 @@ gcc --version
 ### Step 3. Install third-party libraries
 Ensure that the CMake version in your environment is 3.7.2 or later and the Make version is 3.82 or later. Otherwise, install CMake, Make, or both of them of the correct versions.
 :::info
-StoneDB is dependent on marisa, RocksDB, and Boost. You can specify an installation directory for marisa, RocksDB, or Boost, when compiling it, or the library will be saved in **/usr/local **by default. In the following example, each directory is specified with an installation directory. There is also no need to specify the installation directory for StoneDB.
+StoneDB is dependent on marisa, RocksDB, and Boost. You are advised to specify paths for saving the these libraries when you install them, instead of using the default paths.
 :::
 
 1. Install CMake.
@@ -100,17 +101,19 @@ cd cmake-3.7.2
 /usr/local/bin/cmake --version
 rm -rf /usr/bin/cmake
 ln -s /usr/local/bin/cmake /usr/bin/
+cmake --version
 ```
 
 2. Install Make.
 ```shell
-http://mirrors.ustc.edu.cn/gnu/make/
+wget http://mirrors.ustc.edu.cn/gnu/make/make-3.82.tar.gz
 tar -zxvf make-3.82.tar.gz
 cd make-3.82
 ./configure  --prefix=/usr/local/make
 make && make install
 rm -rf /usr/local/bin/make
 ln -s /usr/local/make/bin/make /usr/local/bin/make
+make --version
 ```
 
 3. Install marisa.
@@ -160,13 +163,10 @@ cd boost_1_66_0
 ```
 The installation directory of Boost in the example is **/usr/local/stonedb-boost**. You can change it based on your actual conditions.
 :::info
-During the compilation, the occurrences of keywords **warning** and** failed** are normal, unless **error** is displayed and the CLI is automatically closed.
+During the compilation, the occurrences of keywords **warning** and** failed** are normal, unless **error** is displayed and the CLI is automatically closed.<br />It takes about 25 minutes to install Boost.
 :::
 ### Step 4. Compile StoneDB
 Currently, StoneDB has two branches: StoneDB-5.6 (for MySQL 5.6) and StoneDB-5.7 (for MySQL 5.7). The link provided in this topic is to the source code package of StoneDB-5.7. In the following example,the source code package is saved to the root directory and is switched to StoneDB-5.6 for compilation. 
-:::info
-GCC 9.3.0 or later supports the compilation of StoneDB-5.6 and allows you to specify the installation directories for RocksDB and marisa. We are working on the support for GCC 7.3.0 and for compilation of StoneDB-5.7.
-:::
 ```shell
 cd /
 git clone https://github.com/stoneatom/stonedb.git
@@ -193,8 +193,9 @@ install_target=/stonedb56/install
 ### Execute the compilation script.
 sh stonedb_build.sh
 ```
-### Step 5. Start StoneDB
-Perform the following steps to start StoneDB.
+If your OS is CentOS or RHEL, you must comment out **os_dis** and **os_dist_release**, and modify the setting of **build_tag** to exclude the **os_dist** and **os_dist_release** parts. This is because the the values of **Distributor**, **Release**, and **Codename** output of the **lsb_release -a** command are **n/a**. Commenting out **os_dist** and **os_dist_release** only affects the names of the log file and the TAR package and has no impact on the compilation results.
+## **Step 5. Start StoneDB**
+Users can start StoneDB in two ways: manual installation and automatic installation. 
 
 1. Create an account.
 ```shell
