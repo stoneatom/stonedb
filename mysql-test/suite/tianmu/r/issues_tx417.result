@@ -17,4 +17,11 @@ COMMIT;
 SELECT id FROM t_test;
 id
 1
+BEGIN;
+INSERT INTO t_test values(2,'tom','jerry',1,57,0);
+ROLLBACK;
+SELECT id FROM t_test;
+id
+1
+2
 DROP TABLE t_test;

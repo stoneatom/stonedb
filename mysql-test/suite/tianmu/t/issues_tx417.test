@@ -13,4 +13,9 @@ BEGIN;
 INSERT INTO t_test values(1,'jack1','rose1',0,56,0);
 COMMIT;
 SELECT id FROM t_test;
+BEGIN;
+INSERT INTO t_test values(2,'tom','jerry',1,57,0);
+# Now `ROLLBACK` is not working, add this to ensure the test process is complete
+ROLLBACK;
+SELECT id FROM t_test;
 DROP TABLE t_test;
