@@ -1,0 +1,16 @@
+use test;
+show variables like 'tianmu_insert_delayed';
+CREATE TABLE `t_test` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `first_name` varchar(10) NOT NULL,
+  `last_name` varchar(10) NOT NULL,
+  `sex` varchar(5) NOT NULL,
+  `score` int(11) NOT NULL,
+  `copy_id` int(11) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+BEGIN;
+INSERT INTO t_test values(1,'jack1','rose1',0,56,0);
+COMMIT;
+SELECT id FROM t_test;
+DROP TABLE t_test;
