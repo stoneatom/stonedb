@@ -1,10 +1,12 @@
 ---
-id: supported-servers-and-OSs
+id: supported-servers-and-OperatingSystems
 sidebar_position: 2.1
 ---
 
 # 软硬件环境推荐
+
 StoneDB 是由石原子科技公司自主设计、研发的国内首款基于 MySQL 内核打造的开源 HTAP（Hybrid Transactional and Analytical Processing）融合型数据库，可以很好的部署和运行在 Intel x86 架构的64位通用硬件服务器平台，并支持绝大多数的主流硬件网络设备和主流的 Linux 操作系统环境。
+
 ## 支持的硬件平台
 | 硬件平台类型 | 列表 |
 | --- | --- |

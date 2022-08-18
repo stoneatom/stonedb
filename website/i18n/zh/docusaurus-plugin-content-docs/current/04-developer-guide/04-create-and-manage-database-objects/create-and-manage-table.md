@@ -14,6 +14,10 @@ create table student(
     birthday DATE
     ) engine=stonedb;
 ```
+:::tip
+StoneDB 5.6 的存储引擎名是 stonedb，5.7 的存储引擎名是 tianmu。
+:::
+
 查看表结构，可以使用以下SQL语句：
 ```sql
 show create table student\G

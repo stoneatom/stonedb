@@ -9,7 +9,7 @@ Create a stored procedure. For example, perform the following two steps to creat
 
 1. Execute the following SQL statement to create a table:
 ```sql
-CREATE TABLE t_test(
+CREATE TABLE t_user(
   id INT NOT NULL AUTO_INCREMENT,
   first_name VARCHAR(10) NOT NULL,
   last_name VARCHAR(10) NOT NULL,
@@ -17,8 +17,11 @@ CREATE TABLE t_test(
   score INT NOT NULL,
   copy_id INT NOT NULL,
   PRIMARY KEY (`id`)
-) engine=STONEDB;
+) engine=stonedb;
 ```
+:::info
+The row-based storage engine is named StoneDB in StoneDB-5.6, and is renamed to Tianmu in StoneDB-5.7 to distinguish from the database StoneDB.
+:::
 
 2. Execute the following SQL statement to create the stored procedure:
 ```sql
@@ -51,13 +54,10 @@ END //
 DELIMITER ;
 ```
 Call a stored procedure. For example, execute the following SQL statement to call stored procedure **add_user**:
-
 ```sql
 call add_user(1000000);
 ```
-
 Drop a stored procedure. For example, execute the following SQL statement to drop stored procedure **add_user**:
-
 ```sql
 drop PROCEDURE add_user;
 ```
