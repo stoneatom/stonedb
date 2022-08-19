@@ -228,6 +228,10 @@ int Engine::Init(uint engine_slot) {
   system::ClearDirectory(cachefolder_path);
 
   m_resourceManager = new system::ResourceManager();
+  
+  //init the tianmu key-value store, aka, rocksdb engine.
+  ha_kvstore_ = new index::KVStore();
+  ha_kvstore_->Init();
 
 #ifdef FUNCTIONS_EXECUTION_TIMES
   fet = new FunctionsExecutionTimes();
@@ -1883,10 +1887,7 @@ void Engine::AddTableIndex(const std::string &table_path, TABLE *table, [[maybe_
   auto iter = m_table_keys.find(table_path);
   if (iter == m_table_keys.end()) {
     std::shared_ptr<index::RCTableIndex> tab = std::make_shared<index::RCTableIndex>(table_path, table);
-    if (tab->Enable())
-      m_table_keys[table_path] = tab;
-    else
-      tab.reset();
+    m_table_keys[table_path] = tab;
   }
 }
 
