@@ -114,3 +114,4 @@ CMakeFiles/*
 CTestTestfile.cmake
 COPYING
 .vs/
+node_modules

@@ -33,10 +33,8 @@ Mydumper 是一个 MySQL 逻辑备份工具。它有 2 个工具：
 mydumper --help
 Usage:
 mydumper [OPTION…] multi-threaded MySQL dumping
-
 Help Options:
 -?, --help                      Show help options
-
 Application Options:
 -B, --database                  Database to dump
 -o, --outputdir                 Directory to output files to
@@ -112,10 +110,8 @@ Application Options:
 myloader --help
 Usage:
   myloader [OPTION…] multi-threaded MySQL loader
-
 Help Options:
   -?, --help                        Show help options
-
 Application Options:
   -d, --directory                   Directory of the dump to import
   -q, --queries-per-transaction     Number of queries per transaction, default 1000
@@ -152,7 +148,6 @@ Application Options:
   -S, --socket                      UNIX domain socket file to use for connection
   -x, --regex                       Regular expression for 'db.table' matching
   --skip-definer                    Removes DEFINER from the CREATE statement. By default, statements are not modified
-
 ```
 ### 安装使用
 ```bash
@@ -164,13 +159,11 @@ Application Options:
 Preparing...                          ################################# [100%]
 Updating / installing...
    1:mydumper-0.12.1-1                ################################# [100%]
-
 #备份库
 [root@dev home]# mydumper -u root -p xxx -P 3306 -h 127.0.0.1 -B zz -o /home/dumper/
 #恢复库
 [root@dev home]# myloader -u root -p xxx -P 3306 -h 127.0.0.1 -S /stonedb/install/tmp/mysql.sock -B zz -d /home/dumper
 ```
-
 **备份所生成的文件** 
 ```bash
 [root@dev home]# ll dumper/
@@ -186,7 +179,6 @@ SHOW MASTER STATUS:
         Log: mysql-bin.000002
         Pos: 4737113
         GTID:
-
 Finished dump at: 2022-03-23 15:51:40
 [root@dev-myos dumper]# cat zz-schema-create.sql
 CREATE DATABASE /*!32312 IF NOT EXISTS*/ `zz` /*!40100 DEFAULT CHARACTER SET utf8 */;
@@ -202,7 +194,6 @@ INSERT INTO `t_user` VALUES(1,"e1195afd-aa7d-11ec-936e-00155d840103","kAMXjvtFJy
 [root@dev-myos dumper]# cat zz.t_user-schema.sql
 /*!40101 SET NAMES binary*/;
 /*!40014 SET FOREIGN_KEY_CHECKS=0*/;
-
 /*!40103 SET TIME_ZONE='+00:00' */;
 CREATE TABLE `t_user` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -215,27 +206,21 @@ CREATE TABLE `t_user` (
   KEY `idx_user_id` (`c_user_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10001 DEFAULT CHARSET=utf8;
 ```
-
 目录
 metadata文件
-
    - 记录了备份数据库在备份时间点的二进制日志文件名，日志的写入位置，
    - 如果是在从库进行备份，还会记录备份时同步至主库的二进制日志文件及写入位置 
 每个表有两个备份文件：
-
 database-schema-create 库创建语句文件
 database.table-schema.sql 表结构文件
 database.table.00000.sql 表数据文件
 database.table-metadata 表元数据文件
-
 ***扩展***
-
 如果要导入数据到StoneDB，需要把Mydumper的database.table-schema.sql 表结构文件中建表语句engine=innodb 改成 engine=stonedb,并检查表结构是否有StoneDB不兼容的语法：类似unsigned 之类的限制。修改后结构示例：
 ```
 [root@dev-myos dumper]# cat zz.t_user-schema.sql
 /*!40101 SET NAMES binary*/;
 /*!40014 SET FOREIGN_KEY_CHECKS=0*/;
-
 /*!40103 SET TIME_ZONE='+00:00' */;
 CREATE TABLE `t_user` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -247,10 +232,7 @@ CREATE TABLE `t_user` (
   PRIMARY KEY (`id`)
 ) ENGINE=STONEDB AUTO_INCREMENT=10001 DEFAULT CHARSET=utf8;
 ```
-
-
 ### 备份原理
-
    - 主线程 FLUSH TABLES WITH READ LOCK, 施加全局只读锁，保证数据的一致性 
    - 读取当前时间点的二进制日志文件名和日志写入的位置并记录在metadata文件中，以供全量恢复后追加binlog恢复使用 
    - N个（线程数可以指定，默认是4）dump线程把事务隔离级别改为可重复读 并开启一致性读事务
@@ -258,4 +240,3 @@ CREATE TABLE `t_user` (
    - 主线程 UNLOCK TABLES 非事物引擎备份完后，释放全局只读锁 
    - dump InnoDB tables, 基于事物导出InnoDB表 
    - 事物结束
-

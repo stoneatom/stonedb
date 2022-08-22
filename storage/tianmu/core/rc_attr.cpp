@@ -164,7 +164,7 @@ void RCAttr::LoadVersion(common::TX_ID xid) {
   SetUniqueUpdated(hdr.unique_updated);
 
   if (hdr.dict_ver != 0) {
-    m_dict = rceng->cache.GetOrFetchObject<FTree>(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), this);
+    m_dict = ha_rcengine_->cache.GetOrFetchObject<FTree>(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), this);
   }
   m_idx.resize(hdr.np);
   fattr.ReadExact(&m_idx[0], sizeof(common::PACK_INDEX) * hdr.np);
@@ -265,7 +265,7 @@ bool RCAttr::SaveVersion() {
         // trivial or already saved to disk
         if (auto p = get_pack(i); p != nullptr) {
           p->Unlock();
-          rceng->cache.DropObject(get_pc(i));
+          ha_rcengine_->cache.DropObject(get_pc(i));
           dpn.SetPackPtr(0);
         }
         continue;
@@ -317,17 +317,17 @@ void RCAttr::PostCommit() {
       auto &dpn = get_dpn(i);
       if (dpn.IsLocal()) {
         dpn.SetLocal(false);
-        if (dpn.base != common::INVALID_PACK_INDEX) m_share->get_dpn_ptr(dpn.base)->xmax = rceng->MaxXID();
+        if (dpn.base != common::INVALID_PACK_INDEX) m_share->get_dpn_ptr(dpn.base)->xmax = ha_rcengine_->MaxXID();
       }
     }
 
-    rceng->DeferRemove(Path() / common::COL_VERSION_DIR / m_version.ToString(), m_tid);
+    ha_rcengine_->DeferRemove(Path() / common::COL_VERSION_DIR / m_version.ToString(), m_tid);
     if (m_share->has_filter_bloom)
-      rceng->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_BLOOM_DIR / m_version.ToString(), m_tid);
+      ha_rcengine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_BLOOM_DIR / m_version.ToString(), m_tid);
     if (m_share->has_filter_cmap)
-      rceng->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_CMAP_DIR / m_version.ToString(), m_tid);
+      ha_rcengine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_CMAP_DIR / m_version.ToString(), m_tid);
     if (m_share->has_filter_hist)
-      rceng->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_HIST_DIR / m_version.ToString(), m_tid);
+      ha_rcengine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_HIST_DIR / m_version.ToString(), m_tid);
 
     m_version = m_tx->GetID();
   }
@@ -338,7 +338,7 @@ void RCAttr::Rollback() {
   for (size_t i = 0; i < m_idx.size(); i++) {
     auto &dpn(get_dpn(i));
     if (dpn.IsLocal()) {
-      rceng->cache.DropObject(get_pc(i));
+      ha_rcengine_->cache.DropObject(get_pc(i));
       dpn.reset();
     }
   }
@@ -347,7 +347,7 @@ void RCAttr::Rollback() {
 
 void RCAttr::LoadPackInfo([[maybe_unused]] Transaction *trans_) {
   if (hdr.dict_ver != 0 && !m_dict) {
-    m_dict = rceng->cache.GetOrFetchObject<FTree>(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), this);
+    m_dict = ha_rcengine_->cache.GetOrFetchObject<FTree>(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), this);
   }
 }
 
@@ -632,7 +632,7 @@ int RCAttr::EncodeValue_T(const types::BString &rcbs, bool new_val, common::Erro
         m_dict = sp->Clone();
         sp->Unlock();
         hdr.dict_ver++;
-        rceng->cache.PutObject(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), m_dict);
+        ha_rcengine_->cache.PutObject(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), m_dict);
       }
       vs = m_dict->Add(rcbs.val, rcbs.len);
     }
@@ -734,7 +734,7 @@ void RCAttr::LockPackForUse(common::PACK_INDEX pn) {
       // we win the chance to load data
       std::shared_ptr<Pack> sp;
       try {
-        sp = rceng->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
+        sp = ha_rcengine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
       } catch (std::exception &e) {
         dpn->SetPackPtr(0);
         TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -812,7 +812,7 @@ void RCAttr::PreparePackForLoad() {
 
 void RCAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
   no_change = false;
-  if (conn_info) current_tx = conn_info;
+  if (conn_info) current_txn_ = conn_info;
 
   PreparePackForLoad();
   int pi = SizeOfPack() - 1;
@@ -886,7 +886,7 @@ void RCAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
     // new package (also in case of expanding so-far-uniform package)
     if (dpn.Trivial()) {
       // we need a pack struct for the previous trivial dp
-      auto sp = rceng->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
+      auto sp = ha_rcengine_->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
 
       // we don't need any synchronization here because the dpn is local!
       dpn.SetPackPtr(reinterpret_cast<unsigned long>(sp.get()) + tag_one);
@@ -928,7 +928,7 @@ void RCAttr::LoadDataPackS(size_t pi, loader::ValueCache *nvs) {
 
   // new package or expanding so-far-null package
   if (dpn.nr == 0 || dpn.NullOnly()) {
-    auto sp = rceng->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
+    auto sp = ha_rcengine_->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
     dpn.SetPackPtr(reinterpret_cast<unsigned long>(sp.get()) + tag_one);
   }
 
@@ -951,7 +951,7 @@ void RCAttr::UpdateData(uint64_t row, Value &v) {
   auto dpn_save = dpn;
   if (dpn.Trivial()) {
     // need to create pack struct for previous trivial pack
-    rceng->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
+    ha_rcengine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
   }
 
   if (ct.IsLookup() && v.HasValue()) {
@@ -965,7 +965,7 @@ void RCAttr::UpdateData(uint64_t row, Value &v) {
         m_dict = sp->Clone();
         sp->Unlock();
         hdr.dict_ver++;
-        rceng->cache.PutObject(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), m_dict);
+        ha_rcengine_->cache.PutObject(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), m_dict);
       }
       code = m_dict->Add(str.data(), str.size());
     }
@@ -1022,14 +1022,14 @@ void RCAttr::CopyPackForWrite(common::PACK_INDEX pi) {
   std::shared_ptr<Pack> new_pack;
   // if the pack data is already loaded, just clone it to avoid disk IO
   // otherwise, load pack data from disk
-  auto pack = rceng->cache.GetLockedObject<Pack>(pc_old);
+  auto pack = ha_rcengine_->cache.GetLockedObject<Pack>(pc_old);
   if (pack) {
     new_pack = pack->Clone(pc_new);
     new_pack->SetDPN(&dpn);  // need to set dpn after clone
-    rceng->cache.PutObject(pc_new, new_pack);
+    ha_rcengine_->cache.PutObject(pc_new, new_pack);
     pack->Unlock();
   } else {
-    new_pack = rceng->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
+    new_pack = ha_rcengine_->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
   }
   dpn.SetPackPtr(reinterpret_cast<unsigned long>(new_pack.get()) + tag_one);
 }
@@ -1184,7 +1184,7 @@ std::shared_ptr<RSIndex_Hist> RCAttr::GetFilter_Hist() {
     return filter_hist;
   }
   if (!filter_hist)
-    filter_hist = std::static_pointer_cast<RSIndex_Hist>(rceng->filter_cache.Get(
+    filter_hist = std::static_pointer_cast<RSIndex_Hist>(ha_rcengine_->filter_cache.Get(
         FilterCoordinate(m_tid, m_cid, (int)FilterType::HIST, m_version.v1, m_version.v2), filter_creator));
   return filter_hist;
 }
@@ -1200,7 +1200,7 @@ std::shared_ptr<RSIndex_CMap> RCAttr::GetFilter_CMap() {
     if (!filter_cmap) filter_cmap = std::make_shared<RSIndex_CMap>(Path() / common::COL_FILTER_DIR, m_version);
     return filter_cmap;
   }
-  return std::static_pointer_cast<RSIndex_CMap>(rceng->filter_cache.Get(
+  return std::static_pointer_cast<RSIndex_CMap>(ha_rcengine_->filter_cache.Get(
       FilterCoordinate(m_tid, m_cid, (int)FilterType::CMAP, m_version.v1, m_version.v2), filter_creator));
 }
 
@@ -1215,13 +1215,13 @@ std::shared_ptr<RSIndex_Bloom> RCAttr::GetFilter_Bloom() {
     if (!filter_bloom) filter_bloom = std::make_shared<RSIndex_Bloom>(Path() / common::COL_FILTER_DIR, m_version);
     return filter_bloom;
   }
-  return std::static_pointer_cast<RSIndex_Bloom>(rceng->filter_cache.Get(
+  return std::static_pointer_cast<RSIndex_Bloom>(ha_rcengine_->filter_cache.Get(
       FilterCoordinate(m_tid, m_cid, (int)FilterType::BLOOM, m_version.v1, m_version.v2), filter_creator));
 }
 
 void RCAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
   auto path = m_share->owner->Path();
-  std::shared_ptr<index::RCTableIndex> tab = rceng->GetTableIndex(path);
+  std::shared_ptr<index::RCTableIndex> tab = ha_rcengine_->GetTableIndex(path);
   // col is not primary key
   if (!tab) return;
   std::vector<uint> keycols = tab->KeyCols();
@@ -1234,7 +1234,7 @@ void RCAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
     auto vold = GetValueString(row);
     std::string_view nkey(vnew.data(), vnew.length());
     std::string_view okey(vold.val, vold.size());
-    common::ErrorCode rc = tab->UpdateIndex(current_tx, nkey, okey, row);
+    common::ErrorCode rc = tab->UpdateIndex(current_txn_, nkey, okey, row);
     if (rc == common::ErrorCode::DUPP_KEY || rc == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Duplicate entry: %s for primary key", vnew.data());
       throw common::DupKeyException("Duplicate entry: " + vnew + " for primary key");
@@ -1244,7 +1244,7 @@ void RCAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
     int64_t vold = GetValueInt64(row);
     std::string_view nkey(reinterpret_cast<const char *>(&vnew), sizeof(int64_t));
     std::string_view okey(reinterpret_cast<const char *>(&vold), sizeof(int64_t));
-    common::ErrorCode rc = tab->UpdateIndex(current_tx, nkey, okey, row);
+    common::ErrorCode rc = tab->UpdateIndex(current_txn_, nkey, okey, row);
     if (rc == common::ErrorCode::DUPP_KEY || rc == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Duplicate entry :%" PRId64 " for primary key", vnew);
       throw common::DupKeyException("Duplicate entry: " + std::to_string(vnew) + " for primary key");

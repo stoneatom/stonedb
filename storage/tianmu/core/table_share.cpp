@@ -76,7 +76,7 @@ std::shared_ptr<RCTable> TableShare::GetSnapshot() {
 std::shared_ptr<RCTable> TableShare::GetTableForWrite() {
   std::unique_lock<std::mutex> lk(write_table_mtx);
   ASSERT(write_table.expired(), "Table write cannot be concurrent!");
-  auto ptr = std::make_shared<RCTable>(table_path, this, current_tx);
+  auto ptr = std::make_shared<RCTable>(table_path, this, current_txn_);
   ptr->write_lock = std::move(lk);
   write_table = ptr;
 

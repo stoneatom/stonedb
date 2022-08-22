@@ -80,4 +80,3 @@ select * from t_test1 A where exists (select 1 from t_test2 B where B.id = A.id)
 
 
 
-

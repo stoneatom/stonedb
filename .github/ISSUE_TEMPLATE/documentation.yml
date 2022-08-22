@@ -1,5 +1,5 @@
 name: 📖 Documentation issue
-about: Report something incorrect or missing in documentation adn help to improve our documentation
+description: Report something incorrect or missing in documentation and help to improve our documentation
 title: 'docs: '
 labels: ["A-documentation"]
 body:

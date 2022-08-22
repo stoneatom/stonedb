@@ -86,7 +86,7 @@ void HashTable::Initialize(int64_t max_table_size, [[maybe_unused]] bool easy_ro
   max_table_size = std::max(max_table_size, (int64_t)2);
 
   rows_count_ = int64_t((max_table_size + 1) * 1.25);
-  rccontrol.lock(current_tx->GetThreadID())
+  rc_control_.lock(current_txn_->GetThreadID())
       << "Establishing hash table need " << rows_count_ * total_width_ / 1024 / 1024 << "MB" << system::unlock;
 
   // calculate vertical size (not dividable by a set of some prime numbers)

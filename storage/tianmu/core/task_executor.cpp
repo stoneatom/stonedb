@@ -97,7 +97,7 @@ void TaskExecutor::Exit() {
 void TaskExecutor::AddTask(std::unique_ptr<Task> task) { _app_template->AddTask(std::move(task)); }
 
 #ifndef DISABLE_USED_FOR_TIANMU
-TaskExecutor *GetTaskExecutor() { return rceng->GetTaskExecutor(); }
+TaskExecutor *GetTaskExecutor() { return ha_rcengine_->GetTaskExecutor(); }
 #endif
 
 }  // namespace core

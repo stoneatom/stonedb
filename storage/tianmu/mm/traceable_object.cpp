@@ -150,7 +150,7 @@ void TraceableObject::Lock() {
   if (m_lock_count == 32766) {
     std::string message =
         "TraceableObject locked too many times. Object type: " + std::to_string((int)this->TraceableType());
-    rccontrol << system::lock << message << system::unlock;
+    rc_control_ << system::lock << message << system::unlock;
     TIANMU_ERROR(message.c_str());
   }
 }
@@ -174,7 +174,7 @@ void TraceableObject::SetNumOfLocks(int n) {
   if (m_lock_count == 32766) {
     std::string message =
         "TraceableObject locked too many times. Object type: " + std::to_string((int)this->TraceableType());
-    rccontrol << system::lock << message << system::unlock;
+    rc_control_ << system::lock << message << system::unlock;
     TIANMU_ERROR(message.c_str());
   }
 }
@@ -222,7 +222,7 @@ void TraceableObject::DestructionLock() {
   m_lock_count++;
 }
 
-int TraceableObject::MemorySettingsScale() { return rceng->getResourceManager()->GetMemoryScale(); }
+int TraceableObject::MemorySettingsScale() { return ha_rcengine_->getResourceManager()->GetMemoryScale(); }
 
 void TraceableObject::deinitialize(bool detect_leaks) {
   if (TraceableType() != TO_TYPE::TO_INITIALIZER) {

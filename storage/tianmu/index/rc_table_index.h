@@ -29,47 +29,50 @@ namespace Tianmu {
 namespace core {
 class Transaction;
 }
+
 namespace index {
 class RdbKey;
 class RdbTable;
 class KVTransaction;
+
 class RCTableIndex final {
  public:
   RCTableIndex(const RCTableIndex &) = delete;
-  RCTableIndex &operator=(RCTableIndex &) = delete;
   RCTableIndex(const std::string &name, TABLE *table);
+  
+  RCTableIndex &operator=(RCTableIndex &) = delete;
   RCTableIndex() = delete;
-  ~RCTableIndex() = default;
+  virtual ~RCTableIndex() = default;
 
-  bool Enable() const { return enable_; }
-  const std::vector<uint> &KeyCols() { return cols_; }
+  const std::vector<uint> &KeyCols() { return index_of_columns_; }
+
   static common::ErrorCode CreateIndexTable(const std::string &name, TABLE *table);
   static common::ErrorCode DropIndexTable(const std::string &name);
   static bool FindIndexTable(const std::string &name);
-  static bool NormalLizeName(const std::string &path, std::string &name);
+
+  void TruncateIndexTable();
+
   common::ErrorCode RefreshIndexTable(const std::string &name);
   common::ErrorCode RenameIndexTable(const std::string &from, const std::string &to);
-  void TruncateIndexTable();
   common::ErrorCode InsertIndex(core::Transaction *tx, std::vector<std::string_view> &fields, uint64_t row);
   common::ErrorCode UpdateIndex(core::Transaction *tx, std::string_view &nkey, std::string_view &okey, uint64_t row);
   common::ErrorCode GetRowByKey(core::Transaction *tx, std::vector<std::string_view> &fields, uint64_t &row);
 
+ public:
+  std::shared_ptr<RdbTable> rocksdb_tbl_;
+  std::shared_ptr<RdbKey> rocksdb_key_;
+  std::vector<uint> index_of_columns_;
+
+  uint keyid_ = 0;
  private:
   common::ErrorCode CheckUniqueness(core::Transaction *tx, const rocksdb::Slice &pk_slice);
-
- public:
-  std::shared_ptr<RdbTable> tbl_;
-  std::shared_ptr<RdbKey> rdbkey_;
-  std::vector<uint> cols_;
-  bool enable_ = false;
-  uint keyid_ = 0;
 };
 
 class KeyIterator final {
  public:
   KeyIterator() = delete;
-  KeyIterator(const KeyIterator &sec) : valid(sec.valid), iter_(sec.iter_), rdbkey_(sec.rdbkey_){};
-  KeyIterator(KVTransaction *tx) : trans_(tx){};
+  KeyIterator(const KeyIterator &sec) : valid(sec.valid), iter_(sec.iter_), rocksdb_key_(sec.rocksdb_key_){};
+  KeyIterator(KVTransaction *tx) : txn_(tx){};
   void ScanToKey(std::shared_ptr<RCTableIndex> tab, std::vector<std::string_view> &fields, common::Operator op);
   void ScanToEdge(std::shared_ptr<RCTableIndex> tab, bool forward);
   common::ErrorCode GetCurKV(std::vector<std::string> &keys, uint64_t &row);
@@ -84,8 +87,8 @@ class KeyIterator final {
  protected:
   bool valid = false;
   std::shared_ptr<rocksdb::Iterator> iter_;
-  std::shared_ptr<RdbKey> rdbkey_;
-  KVTransaction *trans_;
+  std::shared_ptr<RdbKey> rocksdb_key_;
+  KVTransaction *txn_;
 };
 
 }  // namespace index

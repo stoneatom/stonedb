@@ -39,7 +39,7 @@ MysqlExpression::MysqlExpression(Item *item, Item2VarID &item2varid) {
       std::string s =
           "Precision of an expression result was reduced due to DECIMAL type "
           "limitations";
-      push_warning(current_tx->Thd(), Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE, s.c_str());
+      push_warning(current_txn_->Thd(), Sql_condition::SL_WARNING, ER_WARN_DATA_OUT_OF_RANGE, s.c_str());
     }
   } else {
     decimal_precision = 0;
@@ -95,6 +95,7 @@ bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &field
     case Item::DECIMAL_ITEM:
     case Item::NULL_ITEM:
     case Item::VARBIN_ITEM:
+    case Item::CACHE_ITEM:
       return true;
 
     case static_cast<int>(Item_tianmufield::enumTIANMUFiledItem::TIANMUFIELD_ITEM):
@@ -336,6 +337,7 @@ Item *MysqlExpression::TransformTree(Item *root, TransformDirection dir) {
     case Item::DECIMAL_ITEM:
     case Item::NULL_ITEM:
     case Item::VARBIN_ITEM:
+    case Item::CACHE_ITEM:
       return root;
 
     default:

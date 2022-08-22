@@ -24,8 +24,8 @@
 #include "util/fs.h"
 
 namespace Tianmu {
-
-thread_local core::Transaction *current_tx;
+//current transaction, thread local var.
+thread_local core::Transaction *current_txn_;
 
 namespace core {
 common::SequenceGenerator Transaction::sg;
@@ -86,7 +86,7 @@ void Transaction::Commit([[maybe_unused]] THD *thd) {
 void Transaction::Rollback([[maybe_unused]] THD *thd, bool force_error_message) {
   TIANMU_LOG(LogCtl_Level::INFO, "rollback transaction %s.", tid.ToString().c_str());
 
-  std::shared_lock<std::shared_mutex> rlock(drop_rename_mutex);
+  std::shared_lock<std::shared_mutex> rlock(drop_rename_mutex_);
   if (m_modified_tables.size()) {
     if (force_error_message) {
       const char *message =

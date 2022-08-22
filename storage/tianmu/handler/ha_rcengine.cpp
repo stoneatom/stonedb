@@ -30,7 +30,7 @@ enum class TIANMUEngineReturnValues { LD_Successed = 100, LD_Failed = 101, LD_Co
 void TIANMU_UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
                                      CHARSET_INFO *cs) {
   try {
-    rceng->UpdateAndStoreColumnComment(table, field_id, source_field, source_field_id, cs);
+    ha_rcengine_->UpdateAndStoreColumnComment(table, field_id, source_field, source_field_id, cs);
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s.", e.what());
@@ -78,7 +78,7 @@ int TIANMU_HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_t
     // handle_select_ret is introduced here because in case of some exceptions
     // (e.g. thrown from ForbiddenMySQLQueryPath) we want to return
     // RCBASE_QUERY_ROUTE
-    int handle_select_ret = rceng->HandleSelect(thd, lex, result, setup_tables_done_option, res, optimize_after_tianmu,
+    int handle_select_ret = ha_rcengine_->HandleSelect(thd, lex, result, setup_tables_done_option, res, optimize_after_tianmu,
                                                 tianmu_free_join, with_insert);
     if (handle_select_ret == RETURN_QUERY_TO_MYSQL_ROUTE && AtLeastOneTIANMUTableInvolved(lex) &&
         ForbiddenMySQLQueryPath(lex)) {
@@ -106,7 +106,7 @@ int TIANMU_LoadData(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *ar
   if (!core::Engine::IsTIANMUTable(table_list->table)) return static_cast<int>(TIANMUEngineReturnValues::LD_Continue);
 
   try {
-    tianmu_error = rceng->RunLoader(thd, ex, table_list, arg);
+    tianmu_error = ha_rcengine_->RunLoader(thd, ex, table_list, arg);
     if (tianmu_error.GetErrorCode() != common::ErrorCode::SUCCESS) {
       TIANMU_LOG(LogCtl_Level::ERROR, "RunLoader Error: %s", tianmu_error.Message().c_str());
     } else {

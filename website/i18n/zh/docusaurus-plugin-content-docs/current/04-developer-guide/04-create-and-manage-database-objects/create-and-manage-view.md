@@ -11,7 +11,7 @@ create view v_s as select name from teachers where age>18;
 ```
 查看创建视图语句，可以使用以下SQL语句：
 ```sql
-show create view v_s\G
+show create view v_s
 ```
 删除视图，例如：要删除视图v_s，可以使用以下SQL语句：
 ```sql

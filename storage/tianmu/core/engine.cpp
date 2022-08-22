@@ -83,7 +83,7 @@ fs::path Engine::GetNextDataDir() {
 
   if (tianmu_data_dirs.empty()) {
     // fall back to use MySQL data directory
-    auto p = rceng->tianmu_data_dir / TIANMU_DATA_DIR;
+    auto p = ha_rcengine_->tianmu_data_dir / TIANMU_DATA_DIR;
     if (!fs::is_directory(p)) fs::create_directory(p);
     return p;
   }
@@ -195,9 +195,9 @@ int Engine::Init(uint engine_slot) {
   m_slot = engine_slot;
   ConfigureRCControl();
   if (tianmu_sysvar_controlquerylog > 0) {
-    rcquerylog.setOn();
+    rc_querylog_.setOn();
   } else {
-    rcquerylog.setOff();
+    rc_querylog_.setOff();
   }
   std::srand(unsigned(time(NULL)));
 
@@ -228,6 +228,10 @@ int Engine::Init(uint engine_slot) {
   system::ClearDirectory(cachefolder_path);
 
   m_resourceManager = new system::ResourceManager();
+  
+  //init the tianmu key-value store, aka, rocksdb engine.
+  ha_kvstore_ = new index::KVStore();
+  ha_kvstore_->Init();
 
 #ifdef FUNCTIONS_EXECUTION_TIMES
   fet = new FunctionsExecutionTimes();
@@ -361,7 +365,7 @@ Engine::~Engine() {
   } catch (...) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Unkown exception caught");
   }
-  if (rccontrol.isOn())
+  if (rc_control_.isOn())
     mm::MemoryManagerInitializer::deinit(true);
   else
     mm::MemoryManagerInitializer::deinit(false);
@@ -741,7 +745,7 @@ void Engine::CommitTx(THD *thd, bool all) {
 void Engine::Rollback(THD *thd, bool all, bool force_error_message) {
   force_error_message = force_error_message || (!all && thd_test_options(thd, OPTION_NOT_AUTOCOMMIT));
   TIANMU_LOG(LogCtl_Level::ERROR, "Roll back query '%s'", thd->query().str);
-  if (current_tx) {
+  if (current_txn_) {
     GetTx(thd)->Rollback(thd, force_error_message);
     ClearTx(thd);
   }
@@ -781,7 +785,7 @@ void Engine::TruncateTable(const std::string &table_path, [[maybe_unused]] THD *
   if (indextab != nullptr) {
     indextab->TruncateIndexTable();
   }
-  auto tab = current_tx->GetTableByPath(table_path);
+  auto tab = current_txn_->GetTableByPath(table_path);
   tab->Truncate();
   auto id = tab->GetID();
   cache.ReleaseTable(id);
@@ -802,11 +806,11 @@ std::shared_ptr<RCTable> Engine::GetTableRD(const std::string &table_path) {
 
 std::vector<AttrInfo> Engine::GetTableAttributesInfo(const std::string &table_path,
                                                      [[maybe_unused]] TABLE_SHARE *table_share) {
-  std::scoped_lock guard(global_mutex);
+  std::scoped_lock guard(global_mutex_);
 
   std::shared_ptr<RCTable> tab;
-  if (current_tx != nullptr)
-    tab = current_tx->GetTableByPath(table_path);
+  if (current_txn_ != nullptr)
+    tab = current_txn_->GetTableByPath(table_path);
   else
     tab = GetTableRD(table_path);
   // rccontrol << "Table " << table_path << " (" << tab->GetID() << ") accessed
@@ -898,14 +902,14 @@ void Engine::RemoveTx(Transaction *tx) {
 Transaction *Engine::CreateTx(THD *thd) {
   // the transaction should be created by owner THD
   ASSERT(thd->ha_data[m_slot].ha_ptr == NULL, "Nested transaction is not supported!");
-  ASSERT(current_tx == NULL, "Previous transaction is not finished!");
+  ASSERT(current_txn_ == NULL, "Previous transaction is not finished!");
 
-  current_tx = new Transaction(thd);
-  thd->ha_data[m_slot].ha_ptr = current_tx;
+  current_txn_ = new Transaction(thd);
+  thd->ha_data[m_slot].ha_ptr = current_txn_;
 
-  AddTx(current_tx);
+  AddTx(current_txn_);
 
-  return current_tx;
+  return current_txn_;
 }
 
 Transaction *Engine::GetTx(THD *thd) {
@@ -914,12 +918,12 @@ Transaction *Engine::GetTx(THD *thd) {
 }
 
 void Engine::ClearTx(THD *thd) {
-  ASSERT(current_tx == (Transaction *)thd->ha_data[m_slot].ha_ptr, "Bad transaction");
+  ASSERT(current_txn_ == (Transaction *)thd->ha_data[m_slot].ha_ptr, "Bad transaction");
 
-  if (current_tx == nullptr) return;
+  if (current_txn_ == nullptr) return;
 
-  RemoveTx(current_tx);
-  current_tx = nullptr;
+  RemoveTx(current_txn_);
+  current_txn_ = nullptr;
   thd->ha_data[m_slot].ha_ptr = NULL;
 }
 
@@ -1069,7 +1073,7 @@ void Engine::PrepareAlterTable(const std::string &table_path, std::vector<Field 
   // make sure all deffered jobs are done in case some file gets recreated.
   HandleDeferredJobs();
 
-  auto tab = current_tx->GetTableByPath(table_path);
+  auto tab = current_txn_->GetTableByPath(table_path);
   RCTable::Alter(table_path, new_cols, old_cols, tab->NumOfObj());
   cache.ReleaseTable(tab->GetID());
   UnRegisterTable(table_path);
@@ -1163,7 +1167,7 @@ static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec
 void DistributeLoad(std::unordered_map<int, std::vector<std::unique_ptr<char[]>>> &tm) {
   utils::result_set<void> res;
   for (auto &it : tm) {
-    res.insert(rceng->delay_insert_thread_pool.add_task(HandleDelayedLoad, it.first, std::ref(it.second)));
+    res.insert(ha_rcengine_->delay_insert_thread_pool.add_task(HandleDelayedLoad, it.first, std::ref(it.second)));
   }
   res.get_all();
   tm.clear();
@@ -1253,7 +1257,7 @@ void Engine::ProcessDelayedMerge() {
           int64_t record_count = mem_table->CountRecords();
           if (record_count >= tianmu_sysvar_insert_numthreshold ||
               (sleep_cnts.count(name) && sleep_cnts[name] > tianmu_sysvar_insert_cntthreshold)) {
-            auto share = rceng->getTableShare(name);
+            auto share = ha_rcengine_->getTableShare(name);
             auto tid = share->TabID();
             utils::BitSet null_mask(share->NumOfCols());
             std::unique_ptr<char[]> buf(new char[sizeof(uint32_t) + name.size() + 1 + null_mask.data_size()]);
@@ -1435,7 +1439,7 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
       }
       tianmu_stat.delayinsert++;
     } else {
-      auto rct = current_tx->GetTableByPath(table_path);
+      auto rct = current_txn_->GetTableByPath(table_path);
       ret = rct->Insert(table);
     }
     return ret;
@@ -1475,11 +1479,11 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
     table->copy_blobs = 0;
     thd->cuted_fields = 0L;
 
-    auto tab = current_tx->GetTableByPath(table_path);
+    auto tab = current_txn_->GetTableByPath(table_path);
 
     tab->LoadDataInfile(*iop);
 
-    if (current_tx->Killed()) {
+    if (current_txn_->Killed()) {
       thd->send_kill_message();
       throw common::TIANMUError(common::ErrorCode::KILLED);
     }
@@ -1609,7 +1613,7 @@ std::unique_ptr<system::IOParameters> Engine::CreateIOParameters(const std::stri
     data_dir = "";
     data_path = path;
   } else {
-    data_dir = rceng->tianmu_data_dir;
+    data_dir = ha_rcengine_->tianmu_data_dir;
     std::string db_name, tab_name;
     std::tie(db_name, tab_name) = GetNames(path);
     data_path += db_name;
@@ -1622,7 +1626,7 @@ std::unique_ptr<system::IOParameters> Engine::CreateIOParameters(const std::stri
   get_charsets_dir(fname);
   iop->SetCharsetsDir(std::string(fname));
 
-  iop->SetATIs(current_tx->GetTableByPath(path)->GetATIs());
+  iop->SetATIs(current_txn_->GetTableByPath(path)->GetATIs());
   iop->SetLogInfo(arg);
   return iop;
 }
@@ -1883,10 +1887,7 @@ void Engine::AddTableIndex(const std::string &table_path, TABLE *table, [[maybe_
   auto iter = m_table_keys.find(table_path);
   if (iter == m_table_keys.end()) {
     std::shared_ptr<index::RCTableIndex> tab = std::make_shared<index::RCTableIndex>(table_path, table);
-    if (tab->Enable())
-      m_table_keys[table_path] = tab;
-    else
-      tab.reset();
+    m_table_keys[table_path] = tab;
   }
 }
 
