@@ -737,7 +737,6 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
 void Engine::CommitTx(THD *thd, bool all) {
   if (all || !thd_test_options(thd, OPTION_NOT_AUTOCOMMIT)) {
     GetTx(thd)->Commit(thd);
-    thd->server_status &= ~SERVER_STATUS_IN_TRANS;
   }
   ClearTx(thd);
 }
@@ -749,7 +748,6 @@ void Engine::Rollback(THD *thd, bool all, bool force_error_message) {
     GetTx(thd)->Rollback(thd, force_error_message);
     ClearTx(thd);
   }
-  thd->server_status &= ~SERVER_STATUS_IN_TRANS;
   thd->transaction_rollback_request = false;
 }
 
