@@ -38,6 +38,7 @@
 #include "system/io_parameters.h"
 #include "system/rc_system.h"
 #include "log.h"
+#include "sql_table.h"
 #include "util/fs.h"
 #include "util/mapped_circular_buffer.h"
 #include "util/thread_pool.h"
@@ -338,6 +339,15 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, int64_t &value);
 int get_parameter(THD *thd, enum tianmu_var_name vn, std::string &value);
 
 bool parameter_equals(THD *thd, enum tianmu_var_name vn, longlong value);
+
+/** The maximum length of an encode table name in bytes.  The max
++table and database names are NAME_CHAR_LEN (64) characters. After the
++encoding, the max length would be NAME_CHAR_LEN (64) *
++FILENAME_CHARSET_MAXNAMLEN (5) = 320 bytes. The number does not include a
++terminating '\0'. InnoDB can handle longer names internally */
+#define MAX_TABLE_NAME_LEN     320
+
+
 }  // namespace core
 }  // namespace Tianmu
 

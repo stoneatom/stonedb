@@ -1,0 +1,5 @@
+use test;
+create table $tt (a$1 int, $b int, c$ int) engine=tianmu;
+insert into $tt values (1,2,3);
+select a$1, $b, c$ from $tt;
+drop table $tt;
