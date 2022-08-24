@@ -15,6 +15,8 @@ Ensure that the tools and third-party libraries used in your environment meet th
 - marisa 0.77
 - RocksDB 6.12.6
 - Boost 1.66
+- gtest
+
 ## Procedure
 ### Step 1. Install the dependencies
 ```shell
@@ -161,9 +163,31 @@ cd boost_1_66_0
 ./b2 install --with=all
 ```
 The installation directory of Boost in the example is **/usr/local/stonedb-boost**. You can change it based on your actual conditions.
+
+6. Install gtest.
+The operations next are following [Build Google Gtest Instructions](https://github.com/google/googletest/tree/main/googletest#build-with-cmake).
+```
+$ sudo git clone https://github.com/google/googletest.git -b release-1.12.0
+$ cd googletest
+$ sudo mkdir build
+$ cd build
+$ sudo cmake .. -DBUILD_GMOCK=OFF
+$ sudo make
+$ sudo make install
+```
+
+Install in /usr/local/ by default.
+```
+$ ls /usr/local/include/
+gtest
+$ ls /usr/local/lib/
+cmake  libgtest.a  libgtest_main.a  pkgconfig  python3.8
+```
+
 :::info
 During the compilation, the occurrences of keywords **warning** and** failed** are normal, unless **error** is displayed and the CLI is automatically closed.<br />It takes about 25 minutes to install Boost.
 :::
+
 ### Step 4. Compile StoneDB
 Currently, StoneDB has two branches: StoneDB-5.6 (for MySQL 5.6) and StoneDB-5.7 (for MySQL 5.7). The link provided in this topic is to the source code package of StoneDB-5.7. In the following example, the source code package is saved to the root directory and is switched to StoneDB-5.6 for compilation. 
 ```shell
