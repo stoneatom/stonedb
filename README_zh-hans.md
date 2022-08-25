@@ -4,6 +4,7 @@
 
 <h3 align="center"><strong>一体化实时 HTAP 数据库</strong></h3>
 
+ [English](README.md) | [**中文**](README_zh-hans.md) 
 
 </br>
 

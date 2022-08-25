@@ -4,6 +4,7 @@
 
 <h3 align="center"><strong>An One-Stop Real-Time HTAP database</strong></h3>
 
+  [**English**](README.md) | [中文](README_zh-hans.md) 
 
 </br>
 
