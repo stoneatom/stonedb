@@ -202,8 +202,8 @@ static constexpr size_t DPN_INC_CNT = ALLOC_UNIT / sizeof(DPN);
 int ColumnShare::alloc_dpn(common::TX_ID xid, const DPN *from) {
   for (uint32_t i = 0; i < cap; i++) {
     if (start[i].used == 1) {
-      if (!(start[i].xmax < rceng->MinXID())) continue;
-      rceng->cache.DropObject(PackCoordinate(owner->TabID(), col_id, i));
+      if (!(start[i].xmax < ha_rcengine_->MinXID())) continue;
+      ha_rcengine_->cache.DropObject(PackCoordinate(owner->TabID(), col_id, i));
       segs.remove_if([i](const auto &s) { return s.idx == i; });
     }
     init_dpn(start[i], xid, from);

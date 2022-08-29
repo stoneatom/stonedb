@@ -1,8 +1,3 @@
----
-id: use-mysqldump-backup-and-restore
-sidebar_position: 4.31
----
-
 # Use mysqldump to Back Up or Recover StoneDB
 
 ## mysqldump introduction
@@ -15,7 +10,6 @@ Dumping structure and contents of MySQL databases and tables.
 Usage: mysqldump [OPTIONS] database [tables]
 OR     mysqldump [OPTIONS] --databases [OPTIONS] DB1 [DB2 DB3...]
 OR     mysqldump [OPTIONS] --all-databases [OPTIONS]
-
 Default options are read from the following files in the given order:
 /etc/stonedb.cnf /etc/mysql/stonedb.cnf /stonedb56/install/stonedb.cnf ~/.stonedb.cnf
 The following groups are read: mysqldump client
@@ -266,7 +260,6 @@ The following options may be given as the first argument:
   -X, --xml           Dump a database as well formed XML.
   --plugin-dir=name   Directory for client-side plugins.
   --default-auth=name Default authentication client-side plugin to use.
-
 Variables (--variable-name=value)
 and boolean options {FALSE|TRUE}  Value (after reading options)
 --------------------------------- ----------------------------------------
@@ -348,13 +341,10 @@ where                             (No default value)
 plugin-dir                        (No default value)
 default-auth                      (No default value)
 ```
-
 ## Precautions for backing up StoneDB
 StoneDB does not support `LOCK TABLES` operations. Therefore, when you back up StoneDB, you must add the `--skip-opt` or `--skip-add-locks` parameter to remove the `LOCK TABLES… WRITE` statement from the backup file. Otherwise, backup data cannot be imported to StoneDB.
 ## Examples
-
 ### Backup
-
 #### Create databases and tables for backup and prepare test data
 ```bash
 # /stonedb56/install/bin/mysql -uroot -p***** -P3306
@@ -362,67 +352,41 @@ mysql: [Warning] Using a password on the command line interface can be insecure.
 Welcome to the MySQL monitor.  Commands end with ; or \g.
 Your MySQL connection id is 878
 Server version: 5.7.36-StoneDB-log build-
-
 Copyright (c) 2000, 2022 StoneAtom Group Holding Limited
 No entry for terminal type "xterm";
 using dumb terminal settings.
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
-
 mysql> create database dumpdb;
 Query OK, 1 row affected (0.00 sec)
-
-mysql> show databases;
-+--------------------+
-| Database           |
-+--------------------+
-| information_schema |
-| cache              |
-| dumpdb             |
-| innodb             |
-| mysql              |
-| performance_schema |
-| sys_stonedb        |
-| test               |
-+--------------------+
-8 rows in set (0.00 sec)
-
-mysql> use dumpdb
-Database changed
-
-mysql> create table dumptb(id int primary key,vname varchar(20))engine=StoneDB;
-Query OK, 0 rows affected (0.00 sec)
-
-mysql> insert into dumpdb.dumptb(id,vname) values(1,'zhangsan'),(2,'lisi'),(3,'wangwu');
-Query OK, 3 rows affected (0.00 sec)
-Records: 3  Duplicates: 0  Warnings: 0
-
-mysql> select * from dumpdb.dumptb;
-+----+----------+
-| id | vname    |
-+----+----------+
-|  1 | zhangsan |
-|  2 | lisi     |
+	@@ -405,43 +53,19 @@ mysql> select * from dumpdb.dumptb;
 |  3 | wangwu   |
 +----+----------+
 3 rows in set (0.01 sec)
-
-
 ```
-
 #### Use mysqldump to back up a given database
 ```bash
 /stonedb56/install/bin/mysqldump  -uroot -p***** -P3306 --skip-opt --master-data=2 --single-transaction --set-gtid-purged=off  --databases dumpdb > /tmp/dumpdb.sql
 ```
-
+#### Back up the table schema of a specific database
+```
+/stonedb56/install/bin/mysqldump  -uroot -p***** -P3306   -d --databases dumpdb > /tmp/dumpdb_table.sql
+```
+#### Back up data in a table of a specific database, excluding the schema
+```
+/stonedb56/install/bin/mysqldump  -uroot -p***** -P3306 --skip-opt --master-data=2 --single-transaction --set-gtid-purged=off  -t dumpdb > /tmp/dumpdb_table.sql
+```
 #### Use mysqldump to back up all databases, except system databases mysql, performation_schema, and information_schema
 ```bash
 /stonedb56/install/bin/mysql  -uroot -p****** -P3306 -e "show databases;" | grep -Ev "sys|performance_schema|information_schema|Database|test" | xargs /stonedb56/install/bin/mysqldump  -uroot -p****** -P3306 --master-data=1 --skip-opt --databases > /tmp/ig_sysdb.sql
 ```
-
+***Extensions***
+The previous method is suitable for backing up small tables from InnoDB. If you want to back up a large table, we recommend that you back up the schema and the data file separately, and then run the `sed -i 's/<Original character string>/<New character string>/g' <File name>` to change the engine setting in the backup file. For example:
+```
+sed -i 's/ENGINE=InnoDB/ENGINE=STONEDB/g' <File name>
+```
+Then, perform recovery to import the table to StoneDB.
 ### Recovery
-
 #### Import data to StoneDB
 ```bash
 /stonedb56/install/bin/mysql  -uroot -p****** -P3306 dumpdb < /tmp/dumpdb.sql
 ```
-

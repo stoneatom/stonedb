@@ -1629,8 +1629,8 @@ void Descriptor::CoerceColumnType(vcolumn::VirtualColumn *&for_typecast) {
     return;
 
   if (tcc) {
-    if (rccontrol.isOn())
-      rccontrol.lock(current_tx->GetThreadID()) << "Type conversion for VC:"
+    if (rc_control_.isOn())
+      rc_control_.lock(current_txn_->GetThreadID()) << "Type conversion for VC:"
                                                 << (for_typecast == val1.vc   ? val1.vc_id
                                                     : for_typecast == val2.vc ? val2.vc_id
                                                                               : val1.vc_id)
@@ -1809,7 +1809,7 @@ bool Descriptor::IsleftIndexSearch() const {
     if (table && table->NumOfTables() == 1 && table->GetTableP(0)->TableType() == TType::TABLE &&
         col->GetPhysical()->ColType() == PhysicalColumn::phys_col_t::RCATTR) {
       auto path = (static_cast<RCTable *>(table->GetTableP(0))->Path());
-      auto indextab = rceng->GetTableIndex(path.replace_extension().string());
+      auto indextab = ha_rcengine_->GetTableIndex(path.replace_extension().string());
       uint32_t colid = static_cast<RCAttr *>(col->GetPhysical())->ColId();
 
       if (indextab) {

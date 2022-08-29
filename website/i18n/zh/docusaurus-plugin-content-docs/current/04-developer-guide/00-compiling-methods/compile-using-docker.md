@@ -3,7 +3,7 @@ id: compile-using-docker
 sidebar_position: 5.15
 ---
 
-# Docker 编译环境搭建和使用
+# Docker 编译环境搭建和使用 StoneDB
 ## 环境简介
 由于编译环境搭建第三方库较为繁琐，且Fedora，Ubuntu等环境编译存在大量依赖缺失，需要补充安装依赖，搭建麻烦，所以搭建一个Docker  Centos 编译环境容器，可以通过Docker 容器快速编译StoneDB，解决编译环境搭建繁琐问题，也可以通过Docker 容器编译后直接启动StoneDB进行调试使用。
 
@@ -11,15 +11,34 @@ sidebar_position: 5.15
 本搭建文档需要提前安装好Docker，Docker 安装请参考Docker官方文档[https://docs.docker.com/engine/install/ubuntu/](https://docs.docker.com/engine/install/ubuntu/)。
 
 ### 下载StoneDB源码、启动docker_buildenv 镜像
-docker_buildenv镜像获取有两种方式：
+Docker hub镜像地址：[stoneatom/stonedb_buildenv](https://hub.docker.com/r/stoneatom/stonedb_buildenv)
 #### 通过docker hub 获取
 ```bash
-docker pull stoneatom/stonedb_buildenv
-```
-#### 使用docker build 创建docker 镜像
-##### 下载docker.zip文件，保存到StoneDB源码根目录下解压，可参考以下步骤。
-[docker_buildenv_v1.0.1.zip](https://stoneatom.yuque.com/attachments/yuque/0/2022/zip/26909006/1657765779060-80a9bc71-5205-475f-aaa1-b6b2302853cd.zip?_lake_card=%7B%22src%22%3A%22https%3A%2F%2Fstoneatom.yuque.com%2Fattachments%2Fyuque%2F0%2F2022%2Fzip%2F26909006%2F1657765779060-80a9bc71-5205-475f-aaa1-b6b2302853cd.zip%22%2C%22name%22%3A%22docker_buildenv_v1.0.1.zip%22%2C%22size%22%3A139304521%2C%22type%22%3A%22application%2Fx-zip-compressed%22%2C%22ext%22%3A%22zip%22%2C%22source%22%3A%22%22%2C%22status%22%3A%22done%22%2C%22mode%22%3A%22title%22%2C%22download%22%3Atrue%2C%22taskId%22%3A%22ua1e9f4fc-afd2-4851-8e7a-496ba3b57a2%22%2C%22taskType%22%3A%22upload%22%2C%22__spacing%22%3A%22both%22%2C%22id%22%3A%22hRoda%22%2C%22margin%22%3A%7B%22top%22%3Atrue%2C%22bottom%22%3Atrue%7D%2C%22card%22%3A%22file%22%7D)
+$ docker pull stoneatom/stonedb_buildenv
+Using default tag: latest
+latest: Pulling from stoneatom/stonedb_buildenv
+2d473b07cdd5: Pull complete
+6d19c47c65b7: Pull complete
+e34f2dc49119: Pull complete
+d9db1ee08930: Pull complete
+da45ca64a9a0: Pull complete
+9496927f6ea6: Pull complete
+a75697ca3a7a: Pull complete
+644ae91df978: Pull complete
+bd28f0e05bf1: Pull complete
+6f7060f9ac74: Pull complete
+fe70789b39f3: Pull complete
+bad0be27952c: Pull complete
+Digest: sha256:2a96e743759263267ae5cfbab6abee3c84e31f84d0399d326c9432568123de87
+Status: Downloaded newer image for stoneatom/stonedb_buildenv:latest
+docker.io/stoneatom/stonedb_buildenv:latest
 
+#查看docker 镜像
+$ docker images
+REPOSITORY                   TAG       IMAGE ID       CREATED       SIZE
+stoneatom/stonedb_buildenv   latest    4409a857e962   3 weeks ago   2.29GB
+```
+### 获取StoneDB源码
 ```bash
 [root@testOS src]# cd /home/src/
 [root@testOS src]# git clone https://github.com/stoneatom/stonedb.git
@@ -30,99 +49,24 @@ remote: Total 84350 (delta 19707), reused 83550 (delta 19707), pack-reused 0
 Receiving objects: 100% (84350/84350), 402.19 MiB | 13.50 MiB/s, done.
 Resolving deltas: 100% (19707/19707), done.
 
-[root@testOS src]# cd stonedb
-
-#使用ftp工具上传docker.zip到本目录下解压
-[root@testOS stonedb]# unzip docker_buildenv.zip
-[root@testOS stonedb]# tree docker_buildenv
-docker_buildenv
-├── cmake.tar.gz
-├── docker_build.sh
-├── Dockerfile
-├── README.md
-├── stonedb-boost1.66.tar.gz
-├── stonedb-gcc-rocksdb6.12.6.tar.gz
-└── stonedb-marisa.tar.gz
-
-
-0 directories, 7 files
-
 ```
-##### Docker build
 
-```bash
-[root@testOS stonedb]# cd docker
-[root@testOS docker]# chmod u+x docker_build.sh
-#之前环境内build过镜像，使用缓存较快，第一次需要进行镜像依赖安装，会久一点
-#脚本使用方法：./docker_build.sh tag  tag为打的镜像tag号
-#例如：./docker_build.sh 0.1
-[root@testOS docker]# ./docker_build.sh v0.1
-/home/src
-Sending build context to Docker daemon  99.41MB
-Step 1/14 : FROM centos:7
- ---> eeb6ee3f44bd
-Step 2/14 : ENV container docker
- ---> Using cache
- ---> dc33c0e29f61
-Step 3/14 : RUN (cd /lib/systemd/system/sysinit.target.wants/; for i in *; do [ $i == systemd-tmpfiles-setup.service ] || rm -f $i; done); rm -f /lib/systemd/system/multi-user.target.wants/*;rm -f /etc/systemd/system/*.wants/*;rm -f /lib/systemd/system/local-fs.target.wants/*; rm -f /lib/systemd/system/sockets.target.wants/*udev*; rm -f /lib/systemd/system/sockets.target.wants/*initctl*; rm -f /lib/systemd/system/basic.target.wants/*;rm -f /lib/systemd/system/anaconda.target.wants/*;
- ---> Using cache
- ---> 12ca4ee4c8b0
-Step 4/14 : RUN yum install -y epel-release.noarch
- ---> Using cache
- ---> 8b9a0d9cb423
-Step 5/14 : RUN  yum install -y snappy-devel lz4-devel bzip2-devel libzstd-devel.x86_64 ncurses-devel make bison libaio ncurses-devel perl perl-DBI perl-DBD-MySQL perl-Time-HiRes readline-devel numactl zlib-devel curldevel openssl-devel redhat-lsb-core.x86_64 git
- ---> Using cache
- ---> c7cf717b95c4
-Step 6/14 : RUN yum install -y centos-release-scl && yum install devtoolset-7-gcc* -y
- ---> Using cache
- ---> e512aca12c7e
-Step 7/14 : RUN ln -s /opt/rh/devtoolset-7/root/bin/gcc /usr/bin/gcc    && ln -s /opt/rh/devtoolset-7/root/bin/g++ /usr/bin/g++    && ln -s /opt/rh/devtoolset-7/root/bin/c++ /usr/bin/c++
- ---> Using cache
- ---> 39cb9ada4812
-Step 8/14 : RUN yum clean all
- ---> Using cache
- ---> 1370d1dc1a8e
-Step 9/14 : ADD cmake.tar.gz /usr/local/
- ---> Using cache
- ---> f93823785ade
-Step 10/14 : RUN ln -s /usr/local/cmake/bin/cmake /usr/bin/
- ---> Using cache
- ---> f5f9d2b3c35b
-Step 11/14 : ADD stonedb-marisa.tar.gz /usr/local/
- ---> Using cache
- ---> e787d2341307
-Step 12/14 : ADD stonedb-boost1.66.tar.gz /usr/local/
- ---> Using cache
- ---> 5d115e2ddb34
-Step 13/14 : ADD stonedb-gcc-rocksdb.tar.gz /usr/local/
- ---> Using cache
- ---> a338f6756d71
-Step 14/14 : CMD ["/usr/sbin/init"]
- ---> Using cache
- ---> 38381cd2bf3d
-Successfully built 38381cd2bf3d
-Successfully tagged stonedb_buildenv:v0.1
-Docker build success!you can run it:
-        docker run -d -p 23306:3306 -v /home/src:/home/ stonedb_buildenv:v0.1
-
-
-
-```
 
 ### 进入容器编译StoneDB
+StoneDB56和StoneDB57的编译都可以参考以下编译，不同的是需要切换对应分支
 ```bash
 # docker run 参数说明
 # -v 目录挂载，前面是宿主机目录，后面是容器内目录,宿主机目录为stonedb源码父目录路径，本文档以/home/src路径为示例
 # -p 端口映射，前面是宿主机端口，后面是容器端口,
 #    这里设置端口映射是为了后面容器内可以直接运行试用StoneDB，如果不需要在容器中试用可以忽略该配置
 # docker run 可以参考上面docker build 成功后的参考命令
-[root@testOS docker]# docker run -d -p 23306:3306 -v /home/src:/home/ stonedb_buildenv:v0.1
+[root@testOS docker]# docker run -d -p 23306:3306 -v /home/src:/home/ stoneatom/stonedb_buildenv
 06f1f385d3b35c86c4ed324731a13785b2a66f8ef2c3423c9b4711c56de1910f
 [root@testOS docker]# docker ps
 CONTAINER ID        IMAGE                   COMMAND             CREATED             STATUS              PORTS                     NAMES
-06f1f385d3b3        stonedb_buildenv:v0.1   "/usr/sbin/init"    18 seconds ago      Up 17 seconds       0.0.0.0:23306->3306/tcp   confident_tesla
+06f1f385d3b3        stoneatom/stonedb_buildenv   "/usr/sbin/init"    18 seconds ago      Up 17 seconds       0.0.0.0:23306->3306/tcp   confident_tesla
 
-#进入Docker 容器内部进行编译StoneDB
+#进入Docker 容器内部进行编译StoneDB（以StoneDB57为例）
 [root@testOS docker]# docker exec -it 06f1f385d3b3 bash
 [root@06f1f385d3b3 home]# cd /home/stonedb/
 [root@06f1f385d3b3 stonedb]# git branch -a
@@ -136,11 +80,11 @@ CONTAINER ID        IMAGE                   COMMAND             CREATED         
 [root@06f1f385d3b3 stonedb]# cd build/
 
 [root@06f1f385d3b3 build]# cmake ../ \
--DCMAKE_BUILD_TYPE=RelWithDebInfo \
--DCMAKE_INSTALL_PREFIX=/stonedb56/install \
--DMYSQL_DATADIR=/stonedb56/install/data \
--DSYSCONFDIR=/stonedb56/install \
--DMYSQL_UNIX_ADDR=/stonedb56/install/tmp/mysql.sock \
+-DCMAKE_BUILD_TYPE=Release \
+-DCMAKE_INSTALL_PREFIX=/stonedb57/install \
+-DMYSQL_DATADIR=/stonedb57/install/data \
+-DSYSCONFDIR=/stonedb57/install \
+-DMYSQL_UNIX_ADDR=/stonedb57/install/tmp/mysql.sock \
 -DWITH_EMBEDDED_SERVER=OFF \
 -DWITH_STONEDB_STORAGE_ENGINE=1 \
 -DWITH_MYISAM_STORAGE_ENGINE=1 \
@@ -152,25 +96,29 @@ CONTAINER ID        IMAGE                   COMMAND             CREATED         
 -DDEFAULT_CHARSET=utf8 \
 -DDEFAULT_COLLATION=utf8_general_ci \
 -DDOWNLOAD_BOOST=0 \
--DWITH_BOOST=/usr/local/stonedb-boost/
+-DWITH_BOOST=/usr/local/stonedb-boost/ \
+-DDOWNLOAD_ROCKSDB=0 \
+-DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb/ \
+-DWITH_MARISA=/usr/local/stonedb-marisa/
 
 #等待cmake 结束，然后执行make和make install
-[root@06f1f385d3b3 build]# make 
-[root@06f1f385d3b3 build]# make install
+[root@06f1f385d3b3 build]# make -j`nproc`
+[root@06f1f385d3b3 build]# make -j`nproc` install
 ```
 
 ## （可选）后续步骤
-编译make 成功后，可以将编译文件打包成tar拷贝出容器，或者直接在容器中运行。
-### tar打包导出
+编译make 成功后，可以将编译文件打包成tar拷贝出容器解包部署，或者直接在容器中部署运行。
+### 1、tar打包导出到物理机安装部署
 ```bash
-#/home目录挂载到容器外，所以直接tar打包到挂载目录即可直接打包到容器外
-[root@06f1f385d3b3 build]# tar -zcPvf /home/stonedb56.tar.gz /stonedb56/
+#/home目录挂载到容器外，所以直接tar打包到挂载目录即可直接打包到容器外（以stonedb57为例）
+[root@06f1f385d3b3 build]# tar -zcPvf /home/stonedb57.tar.gz /stonedb57/
 ```
-### 容器中直接运行试用StoneDB
-可以参考：[StoneDB快速部署手册](https://stoneatom.yuque.com/staff-ft8n1u/dghuxr/cumqaz)，
+### 2、容器中直接部署试用StoneDB
+可以参考：[StoneDB快速部署手册](https://stonedb.io/zh/docs/getting-started/quick-deployment)，
 或者在容器中参考以下方法快速部署进行试用。
 ```bash
-[root@06f1f385d3b3 build]# cd /stonedb56/install/
+#进入编译安装的StoneDB install目录，以stonedb57为例
+[root@06f1f385d3b3 build]# cd /stonedb57/install/
 
 [root@06f1f385d3b3 install]# groupadd mysql
 
@@ -196,36 +144,85 @@ drwxr-xr-x. 28 root root   4096 Jun  8 06:16 share
 drwxr-xr-x.  4 root root   4096 Jun  8 06:16 sql-bench
 -rw-r--r--.  1 root root   5526 Jun  8 03:41 stonedb.cnf
 drwxr-xr-x.  2 root root    136 Jun  8 06:16 support-files
-[root@06f1f385d3b3 install]# ./reinstall.sh
 
-...
+[root@06f1f385d3b3 install]# ll {data,binlog,log,tmp,redolog,undolog}
+[root@06f1f385d3b3 install]# mkdir -p ./{data/innodb,binlog,log,tmp,redolog,undolog}
 
-#出现以下信息即启动成功
-+ log_success_msg
-+ /etc/redhat-lsb/lsb_log_message success
-/etc/redhat-lsb/lsb_log_message: line 3: /etc/init.d/functions: No such file or directory
-/etc/redhat-lsb/lsb_log_message: line 11: success: command not found
+[root@06f1f385d3b3 install]# chown -R mysql:mysql *
+```
+StoneDB56 和StoneDB57安装部署的区别在于初始化数据和重置密码上，在初始化过程中如果遇到问题建议先自行排查log/mysqld.log ,是否有报错信息，如无法自行解决，请提供StoneDB版本信息，Docker image 版本和报错日志，StoneDB版本信息到我们社区或者github 提交issues。
+### StoneDB56参考
+```bash
+[root@06f1f385d3b3 install]# ./scripts/mysql_install_db --defaults-file=./my.cnf --user=mysql --basedir=/stonedb56/install --datadir=/stonedb56/install/data
+To do so, start the server, then issue the following commands:
+# 日志太多了，为了简洁只展示主要日志信息
+  /stonedb56/install/bin/mysqladmin -u root password 'new-password'
+  /stonedb56/install/bin/mysqladmin -u root -h 06f1f385d3b3 password 'new-password'
 
-+ return 0
-+ return_value=0
-+ test -w /var/lock/subsys
-+ touch /var/lock/subsys/mysql
-+ exit 0
+Alternatively you can run:
+
+  /stonedb56/install/bin/mysql_secure_installation
 
 
-# 修改本地root 密码
-[root@06f1f385d3b3 install]# /stonedb56/install/bin/mysqladmin flush-privileges -u root password "*******"
+# 启动StoneDB服务
+[root@06f1f385d3b3 install]# ./support-files/mysql.server start
+Starting MySQL..                                           [  OK  ]
+
+# 修改密码
+[root@06f1f385d3b3 install]# /stonedb56/install/bin/mysqladmin -u root password "********"
 Warning: Using a password on the command line interface can be insecure.
-# 创建远程链接账号密码
-[root@06f1f385d3b3 install]# /stonedb56/install/bin/mysql -uroot -p*******
-Warning: Using a password on the command line interface can be insecure.
+
+#去除skip-grant-tables参数并重启StoneDB服务
+[root@06f1f385d3b3 install]# sed -i '/skip-grant-tables/d' my.cnf
+[root@06f1f385d3b3 install]# ./support-files/mysql.server restart
+Shutting down MySQL.....                                   [  OK  ]
+Starting MySQL.                                            [  OK  ]
+
+# 使用新密码登录并创建远程登录账号
+[root@06f1f385d3b3 install]# ./bin/mysql -uroot -p
+Enter password:
 Welcome to the MySQL monitor.  Commands end with ; or \g.
-Your MySQL connection id is 5
-Server version: 5.6.24-StoneDB-log build-
+Your MySQL connection id is 1
+Server version: 5.6.24-StoneDB build-
 
 Copyright (c) 2000, 2022 StoneAtom Group Holding Limited
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
+mysql> grant all ON *.* to root@'%' identified by '********';
+Query OK, 0 rows affected (0.00 sec)
+
+mysql> flush privileges;
+Query OK, 0 rows affected (0.00 sec)
+
+
+```
+### StoneDB57参考
+```bash
+
+[root@06f1f385d3b3 install]# ./bin/mysqld --defaults-file=./my.cnf --initialize --user=mysql
+
+# 启动StoneDB
+[root@06f1f385d3b3 install]# ./support-files/mysql.server start
+Starting MySQL.                                            [  OK  ]
+
+# 查看初始化生成的临时登录密码
+[root@06f1f385d3b3 install]# cat log/mysqld.log |grep password
+2022-08-10T08:53:43.682406Z 1 [Note] A temporary password is generated for root@localhost: 30eb,hLq?x#a
+
+# 登录StoneDB 修改root@localhost 密码
+[root@06f1f385d3b3 install]# ./bin/mysql -uroot -p
+Enter password:
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 2
+Server version: 5.7.36-StoneDB-log
+
+Copyright (c) 2021, 2022 StoneAtom Group Holding Limited
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> alter user root@'localhost' identified by '********';
+Query OK, 0 rows affected (0.00 sec)
+
+# 创建远程链接账号密码
 mysql> grant all ON *.* to root@'%' identified by '********';
 Query OK, 0 rows affected (0.00 sec)
 

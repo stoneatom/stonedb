@@ -179,9 +179,9 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
   vc2->UnlockSourcePacks();
 
   // Cleaning up
-  rccontrol.lock(m_conn->GetThreadID()) << "Produced " << joined_tuples << " tuples." << system::unlock;
+  rc_control_.lock(m_conn->GetThreadID()) << "Produced " << joined_tuples << " tuples." << system::unlock;
   if (packrows_omitted > 0)
-    rccontrol.lock(m_conn->GetThreadID())
+    rc_control_.lock(m_conn->GetThreadID())
         << "Roughly omitted " << int(packrows_omitted / double(packrows_matched) * 10000.0) / 100.0 << "% packrows."
         << system::unlock;
   if (tips.count_only)
@@ -207,7 +207,7 @@ std::unique_ptr<JoinerMapFunction> JoinerMapped::GenerateFunction(vcolumn::Virtu
   auto map_function = std::make_unique<MultiMapsFunction>(m_conn);
   if (!map_function->Init(vc, mit)) return nullptr;
 
-  rccontrol.lock(m_conn->GetThreadID()) << "Join mapping (multimaps) created on " << mit.NumOfTuples() << " rows."
+  rc_control_.lock(m_conn->GetThreadID()) << "Join mapping (multimaps) created on " << mit.NumOfTuples() << " rows."
                                         << system::unlock;
   return std::move(map_function);
 }
@@ -220,7 +220,7 @@ int64_t JoinerParallelMapped::ExecuteMatchLoop(std::shared_ptr<MultiIndexBuilder
   rownums.reserve(128);
 
   common::SetMySQLTHD(m_conn->Thd());
-  current_tx = m_conn;
+  current_txn_ = m_conn;
 
   MIIterator mit(mind, matched_dims);
   mit.SetTaskId(task.dwTaskId);
@@ -295,7 +295,7 @@ int64_t JoinerParallelMapped::ExecuteMatchLoop(std::shared_ptr<MultiIndexBuilder
   }
 
   if (packrows_omitted > 0)
-    rccontrol.lock(m_conn->GetThreadID())
+    rc_control_.lock(m_conn->GetThreadID())
         << "Roughly omitted " << int(packrows_omitted / double(packrows_matched) * 10000.0) / 100.0 << "% packrows."
         << system::unlock;
 
@@ -386,7 +386,7 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
     task.dwTaskId = tid;
     task.dwStartPackno = tid * (packnums / tids);
     task.dwEndPackno = (tid == tids - 1) ? packnums : (tid + 1) * (packnums / tids);
-    res.insert(rceng->query_thread_pool.add_task(&JoinerParallelMapped::ExecuteMatchLoop, this, &indextable[tid],
+    res.insert(ha_rcengine_->query_thread_pool.add_task(&JoinerParallelMapped::ExecuteMatchLoop, this, &indextable[tid],
                                                  packrows, &matched_tuples[tid], vc2, task, map_function.get()));
   }
   res.get_all();
@@ -398,7 +398,7 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
     joined_tuples += matched_tuples[i];
     new_mind->AddBuildItem(indextable[i]);
   }
-  rccontrol.lock(m_conn->GetThreadID()) << "Produced " << joined_tuples << " tuples." << system::unlock;
+  rc_control_.lock(m_conn->GetThreadID()) << "Produced " << joined_tuples << " tuples." << system::unlock;
 
   new_mind->Commit(joined_tuples, tips.count_only);
 
@@ -494,7 +494,7 @@ bool MultiMapsFunction::Init(vcolumn::VirtualColumn *vc, MIIterator &mit) {
     return false;
   int64_t span = key_table_max - key_table_min + 1;
   if (span < 0) return false;
-  rccontrol.lock(m_conn->GetThreadID()) << "MultiMapsFunction: constructing a multimap with " << mit.NumOfTuples()
+  rc_control_.lock(m_conn->GetThreadID()) << "MultiMapsFunction: constructing a multimap with " << mit.NumOfTuples()
                                         << " tuples." << system::unlock;
   while (mit.IsValid()) {
     if (mit.PackrowStarted()) vc->LockSourcePacks(mit);
@@ -508,7 +508,7 @@ bool MultiMapsFunction::Init(vcolumn::VirtualColumn *vc, MIIterator &mit) {
     ++mit;
   }
   vc->UnlockSourcePacks();
-  rccontrol.lock(m_conn->GetThreadID()) << "MultiMapsFunction: keys_value construction done. " << system::unlock;
+  rc_control_.lock(m_conn->GetThreadID()) << "MultiMapsFunction: keys_value construction done. " << system::unlock;
   keys_value_maps.emplace_back(keys_value);
   return true;
 }

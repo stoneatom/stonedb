@@ -14,6 +14,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
+#include <limits>
 
 #include "group_table.h"
 
@@ -173,7 +174,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
 
       // COUNT(...)
       if (desc.operation == GT_Aggregation::GT_COUNT || desc.operation == GT_Aggregation::GT_COUNT_NOT_NULL) {
-        if (desc.max_no_values > 0x7FFFFFFF)
+        if (desc.max_no_values > std::numeric_limits<int>::max())
           aggregator[i] = new AggregatorCount64(desc.max_no_values);
         else
           aggregator[i] = new AggregatorCount32(int(desc.max_no_values));
@@ -205,7 +206,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
                   aggregator[i] = new AggregatorMinT(desc.size);
               } else if (ATI::IsRealType(desc.type))
                 aggregator[i] = new AggregatorMinD;
-              else if (desc.min < -(0x7FFFFFFF) || desc.max > 0x7FFFFFFF)
+              else if (desc.min < std::numeric_limits<int>::min() || desc.max > std::numeric_limits<int>::max())
                 aggregator[i] = new AggregatorMin64;
               else
                 aggregator[i] = new AggregatorMin32;
@@ -219,7 +220,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
                     aggregator[i] = new AggregatorMaxT(desc.size);
                 } else if (ATI::IsRealType(desc.type))
                   aggregator[i] = new AggregatorMaxD;
-                else if (desc.min < -(0x7FFFFFFF) || desc.max > 0x7FFFFFFF)
+                else if (desc.min < std::numeric_limits<int>::min() || desc.max > std::numeric_limits<int>::max())
                   aggregator[i] = new AggregatorMax64;
                 else
                   aggregator[i] = new AggregatorMax32;
@@ -227,7 +228,8 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
                 if (desc.operation == GT_Aggregation::GT_LIST) {
                   if (ATI::IsStringType(desc.type))
                     aggregator[i] = new AggregatorListT(desc.size);
-                  else if (ATI::IsRealType(desc.type) || (desc.min < -(0x7FFFFFFF) || desc.max > 0x7FFFFFFF))
+                  else if (ATI::IsRealType(desc.type) || (desc.min < std::numeric_limits<int>::min() 
+                            || desc.max > std::numeric_limits<int>::max()))
                     aggregator[i] = new AggregatorList64;
                   else
                     aggregator[i] = new AggregatorList32;
@@ -336,10 +338,6 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
     max_group_code = encoder[1]->MaxCode() * 256 + encoder[0]->MaxCode();  // wider than one-byte encoders are hard to
                                                                            // interpret, because of endianess swap
 
-  // TIANMU_LOG(LogCtl_Level::INFO, "primary_total_size(mem_available) %d, total_width %d,
-  // declared_max_no_groups %d", primary_total_size, total_width,
-  // declared_max_no_groups);
-
   vm_tab.reset(ValueMatchingTable::CreateNew_ValueMatchingTable(primary_total_size, declared_max_no_groups,
                                                                 max_group_code, total_width, grouping_and_UTF_width,
                                                                 grouping_buf_width, p_power));
@@ -369,11 +367,11 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
     }
 
   // initialize everything
-  Transaction *m_conn = current_tx;
+  Transaction *m_conn = current_txn_;
   double size_mb = (double)vm_tab->ByteSize();
   size_mb =
-      (size_mb > 1000 ? (size_mb > 10000000 ? int64_t(size_mb / 1000000) : int64_t(size_mb / 1000) / 1000.0) : 0.001);
-  rccontrol.lock(m_conn->GetThreadID()) << "GroupTable begin, initialized for up to " << max_no_groups << " groups, "
+      (size_mb > 1024 ? (size_mb > 1024 * 1024 ? int64_t(size_mb / 1024 * 1024) : int64_t(size_mb / 1024) / 1024.0) : 0.001);
+  rc_control_.lock(m_conn->GetThreadID()) << "GroupTable begin, initialized for up to " << max_no_groups << " groups, "
                                         << grouping_buf_width << "+" << total_width - grouping_buf_width << " bytes ("
                                         << size_mb << " MB)" << system::unlock;
   ClearAll();

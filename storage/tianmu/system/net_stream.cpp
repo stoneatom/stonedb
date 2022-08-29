@@ -25,7 +25,7 @@
 
 namespace Tianmu {
 namespace system {
-NetStream::NetStream(const IOParameters &iop) : net_(&current_tx->Thd()->net), cached_size_(0), cached_offset_(0) {
+NetStream::NetStream(const IOParameters &iop) : net_(&current_txn_->Thd()->net), cached_size_(0), cached_offset_(0) {
   //net_request_file(net_, iop.Path());
   net_write_command(net_, 251, (uchar*) iop.Path(), strlen(iop.Path()),
                     (uchar*) "", 0);

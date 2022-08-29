@@ -411,7 +411,7 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
                   tablename.c_str(), col, valueStr.c_str());
       std::stringstream err_msg;
       err_msg << "data truncate,col num" << col << " value:" << valueStr << std::endl;
-      common::PushWarning(current_tx->Thd(), Sql_condition::SL_WARNING, ER_UNKNOWN_ERROR, err_msg.str().c_str());
+      common::PushWarning(current_txn_->Thd(), Sql_condition::SL_WARNING, ER_UNKNOWN_ERROR, err_msg.str().c_str());
     }
 
     uint reserved = (uint)value_size * ati.CharsetInfo()->mbmaxlen;

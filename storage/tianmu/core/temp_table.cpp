@@ -1241,7 +1241,7 @@ void TempTable::Union(TempTable *t, int all) {
     throw common::NotImplementedException("UNION of tables with different number of columns.");
   if (this->IsParametrized() || t->IsParametrized())
     throw common::NotImplementedException("Materialize: not implemented union of parameterized queries.");
-  rccontrol.lock(m_conn->GetThreadID()) << "UNION: materializing components." << system::unlock;
+  rc_control_.lock(m_conn->GetThreadID()) << "UNION: materializing components." << system::unlock;
   this->Materialize();
   t->Materialize();
   if ((!t->NumOfObj() && all) || (!this->NumOfObj() && !t->NumOfObj()))  // no objects = no union
@@ -1253,7 +1253,7 @@ void TempTable::Union(TempTable *t, int all) {
   first_mask.Set();
   sec_mask.Set();
   if (!all) {
-    rccontrol.lock(m_conn->GetThreadID()) << "UNION: excluding repetitions." << system::unlock;
+    rc_control_.lock(m_conn->GetThreadID()) << "UNION: excluding repetitions." << system::unlock;
     Filter first_f(NumOfObj(), p_power);
     first_f.Set();
     Filter sec_f(t->NumOfObj(), p_power);
@@ -1334,7 +1334,7 @@ void TempTable::Union(TempTable *t, int all) {
   int64_t first_no_obj = first_mask.NumOfOnes();
   int64_t sec_no_obj = sec_mask.NumOfOnes();
   int64_t new_no_obj = first_no_obj + sec_no_obj;
-  rccontrol.lock(m_conn->GetThreadID()) << "UNION: generating result (" << new_no_obj << " rows)." << system::unlock;
+  rc_control_.lock(m_conn->GetThreadID()) << "UNION: generating result (" << new_no_obj << " rows)." << system::unlock;
   uint new_page_size = CalculatePageSize(new_no_obj);
   for (uint i = 0; i < NumOfDisplaybleAttrs(); i++) {
     Attr *first_attr = GetDisplayableAttrP(i);
@@ -2165,7 +2165,9 @@ void TempTableForSubquery::ResetToTemplate(bool rough) {
     (*attrs[i]).buffer = orig_buf;
   }
 
-  filter = *template_filter;
+  filter = std::move(*template_filter); // shallow
+  filter_shallow_memory = true;
+
   for (int i = 0; i < no_global_virt_cols; i++)
     if (!virt_cols_for_having[i]) virt_cols[i]->SetMultiIndex(filter.mind);
 

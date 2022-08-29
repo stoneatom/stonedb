@@ -18,10 +18,11 @@ Both parts require multithreading capacities.
 - Simplified output management: Separate files are used for tables and metadata is dumped, simplifying data view and parse.
 - High consistency: The tool maintains snapshots across all threads and provides accurate positions of primary and secondary logs.
 - Manageability: Perl Compatible Regular Expressions (PCRE) can be used to specify whether to include or exclude tables or databases.
-### Features
 
+
+### Features
 - Multi-threaded backup, which generates multiple backup files
-- Consistent snapshots for transactional and non-transactional tables 
+- Consistent snapshots for transactional and non-transactional tables
 
 :::info
 This feature is supported by versions later than 0.2.2.
@@ -51,10 +52,8 @@ This feature is supported by versions later than 0.5.0.
 mydumper --help
 Usage:
 mydumper [OPTION…] multi-threaded MySQL dumping
-
 Help Options:
 -?, --help                      Show help options
-
 Application Options:
 -B, --database                  Database to dump
 -o, --outputdir                 Directory to output files to
@@ -99,7 +98,7 @@ Application Options:
 --load-data
 --fields-terminated-by
 --fields-enclosed-by
---fields-escaped-by             Single character that is going to be used to escape characters in theLOAD DATA stament, default: '\'
+--fields-escaped-by             Single character that is going to be used to escape characters in the LOAD DATA stament, default: '\'
 --lines-starting-by             Adds the string at the begining of each row. When --load-data is usedit is added to the LOAD DATA statement. Its affects INSERT INTO statementsalso when it is used.
 --lines-terminated-by           Adds the string at the end of each row. When --load-data is used it isadded to the LOAD DATA statement. Its affects INSERT INTO statementsalso when it is used.
 --statement-terminated-by       This might never be used, unless you know what are you doing
@@ -130,10 +129,8 @@ Application Options:
 myloader --help
 Usage:
   myloader [OPTION…] multi-threaded MySQL loader
-
 Help Options:
   -?, --help                        Show help options
-
 Application Options:
   -d, --directory                   Directory of the dump to import
   -q, --queries-per-transaction     Number of queries per transaction, default 1000
@@ -170,7 +167,6 @@ Application Options:
   -S, --socket                      UNIX domain socket file to use for connection
   -x, --regex                       Regular expression for 'db.table' matching
   --skip-definer                    Removes DEFINER from the CREATE statement. By default, statements are not modified
-
 ```
 ### Install and use Mydumper
 ```bash
@@ -182,13 +178,11 @@ Application Options:
 Preparing...                          ################################# [100%]
 Updating / installing...
    1:mydumper-0.12.1-1                ################################# [100%]
-
 # Backup library
 [root@dev home]# mydumper -u root -p ******** -P 3306 -h 127.0.0.1 -B zz -o /home/dumper/
 # Recovery library
 [root@dev home]# myloader -u root -p ******** -P 3306 -h 127.0.0.1 -S /stonedb/install/tmp/mysql.sock -B zz -d /home/dumper
 ```
-
 #### Generated backup files 
 ```bash
 [root@dev home]# ll dumper/
@@ -204,7 +198,6 @@ SHOW MASTER STATUS:
         Log: mysql-bin.000002
         Pos: 4737113
         GTID:
-
 Finished dump at: 2022-03-23 15:51:40
 [root@dev-myos dumper]# cat zz-schema-create.sql
 CREATE DATABASE /*!32312 IF NOT EXISTS*/ `zz` /*!40100 DEFAULT CHARACTER SET utf8 */;
@@ -220,7 +213,6 @@ INSERT INTO `t_user` VALUES(1,"e1195afd-aa7d-11ec-936e-00155d840103","kAMXjvtFJy
 [root@dev-myos dumper]# cat zz.t_user-schema.sql
 /*!40101 SET NAMES binary*/;
 /*!40014 SET FOREIGN_KEY_CHECKS=0*/;
-
 /*!40103 SET TIME_ZONE='+00:00' */;
 CREATE TABLE `t_user` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -233,31 +225,38 @@ CREATE TABLE `t_user` (
   KEY `idx_user_id` (`c_user_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10001 DEFAULT CHARSET=utf8;
 ```
-
 The directory contains the following files:
-
 **metadata**: records the name and position of the binlog file of the backup database at the backup point in time.
-
 :::info
 If the backup is performed on the standby library, this file also records the name and position of the binlog file that has been synchronized from the active libary when the backup is performed.
 :::
-
 Each table has two backup files:
-
 - **database-schema-create**: records the statements for creating the library.
 - **database.table-schema.sql**: records the table schemas.
 - **database.table.00000.sql**: records table data.
 - **database.table-metadata**: records table metadata.
-
+***Extensions***
+If you want to import data to StoneDB, you must replace **engine=innodb** with **engine=stonedb** in table schema file **database.table-schema.sql** and check whether the syntax of the table schema is compatible with StoneDB. For example, if the syntax contain keyword **unsigned**, it is incompatible. Following is a schema example after modification:
+```
+[root@dev-myos dumper]# cat zz.t_user-schema.sql
+/*!40101 SET NAMES binary*/;
+/*!40014 SET FOREIGN_KEY_CHECKS=0*/;
+/*!40103 SET TIME_ZONE='+00:00' */;
+CREATE TABLE `t_user` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `c_user_id` varchar(36) NOT NULL DEFAULT '',
+  `c_name` varchar(22) NOT NULL DEFAULT '',
+  `c_province_id` int(11) NOT NULL,
+  `c_city_id` int(11) NOT NULL,
+  `create_time` datetime NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=STONEDB AUTO_INCREMENT=10001 DEFAULT CHARSET=utf8;
+```
 
 ### Backup principles
-
 1. The main thread executes **FLUSH TABLES WITH READ LOCK** to add a global read-only lock to ensure data consistency.
 2. The name and position of the binlog file at the current point in time are obtained and recorded to the **metadata **file to support recovery performed later.
 3. Multiple (4 by default, customizable) dump threads change the isolation level for transactions to Repeatable Read and enable read-consistent transactions.
 4. Non-InnoDB tables are exported.
 5. After data of the non-transaction engine is backed up, the main thread executes **UNLOCK TABLES** to release the global read-only lock.
 6. InnoDB tables are exported.
-
-
-

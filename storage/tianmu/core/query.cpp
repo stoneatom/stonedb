@@ -479,10 +479,10 @@ vcolumn::VirtualColumn *Query::CreateColumnFromExpression(std::vector<MysqlExpre
       } else
         vc = new vcolumn::ConstExpressionColumn(exprs[0], temp_table, temp_table_alias, mind);
     } else {
-      if (rccontrol.isOn()) {
+      if (rc_control_.isOn()) {
         if (static_cast<int>(exprs[0]->GetItem()->type()) == Item::FUNC_ITEM) {
           Item_func *ifunc = static_cast<Item_func *>(exprs[0]->GetItem());
-          rccontrol.lock(mind->m_conn->GetThreadID())
+          rc_control_.lock(mind->m_conn->GetThreadID())
               << "Unoptimized expression near '" << ifunc->func_name() << "'" << system::unlock;
         }
       }
@@ -875,10 +875,10 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           output_table = (TempTable *)ta[-step.t1.n - 1].get();
           break;
         case CompiledQuery::StepType::STEP_ERROR:
-          rccontrol.lock(m_conn->GetThreadID()) << "ERROR in step " << step.alias << system::unlock;
+          rc_control_.lock(m_conn->GetThreadID()) << "ERROR in step " << step.alias << system::unlock;
           break;
         default:
-          rccontrol.lock(m_conn->GetThreadID())
+          rc_control_.lock(m_conn->GetThreadID())
               << "ERROR: unsupported type of CQStep (" << static_cast<int>(step.type) << ")" << system::unlock;
       }
     } catch (...) {

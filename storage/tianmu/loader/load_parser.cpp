@@ -50,7 +50,7 @@ LoadParser::LoadParser(RCAttrPtrVect_t &attrs, const system::IOParameters &iop, 
   buf_end = cur_ptr + read_buffer.BufSize();
 
   timer.Print(__PRETTY_FUNCTION__);
-  tab_index = rceng->GetTableIndex("./" + ioparam.TableName());
+  tab_index = ha_rcengine_->GetTableIndex("./" + ioparam.TableName());
 }
 
 uint LoadParser::GetPackrow(uint no_of_rows, std::vector<ValueCache> &value_buffers) {
@@ -174,7 +174,7 @@ int LoadParser::ProcessInsertIndex(std::shared_ptr<index::RCTableIndex> tab, std
     fields.emplace_back(vcs[col].GetDataBytesPointer(lastrow - 1), vcs[col].Size(lastrow - 1));
   }
 
-  if (tab->InsertIndex(current_tx, fields, no_obj + no_rows) == common::ErrorCode::DUPP_KEY) {
+  if (tab->InsertIndex(current_txn_, fields, no_obj + no_rows) == common::ErrorCode::DUPP_KEY) {
     TIANMU_LOG(LogCtl_Level::INFO, "Load discard this row for duplicate key");
     return HA_ERR_FOUND_DUPP_KEY;
   }

@@ -4,10 +4,9 @@ sidebar_position: 3.4
 ---
 
 # Basic Operations
-
 Structured Query Language (SQL) is a programming language for communicating with databases. You can use it to manage relational databases by performing insert, query, update, and other operations.
 
-StoneDB is compatible with MySQL. You can use clients supported by MySQL to connect to StoneDB. In addition, StoneDB supports most SQL syntaxes. This section describes the basic SQL operations supported by StoneDB.
+StoneDB is fully compatible with MySQL. You can use clients supported by MySQL to connect to StoneDB. In addition, StoneDB supports most SQL syntaxes. This section describes the basic SQL operations supported by StoneDB.
 
 SQL can be classified into the following four parts by usage:
 
@@ -15,8 +14,6 @@ SQL can be classified into the following four parts by usage:
 - Data Manipulation Language (DML): is used to manage data in tables, such as INSERT, DELETE, and UPDATE statements.
 - Data Query Language (DQL): is used to query objects, such as SELECT statements.
 - Data Control Language (DCL): is used to control access to data, such as GRANT and REVOKE statements.
-
-
 ## Operations on databases
 This section provides examples of performing basic operations on databases.
 ### Create a database
@@ -45,20 +42,21 @@ This section provides examples of performing basic operations on tables.
 Execute the following SQL statement to create a table which is named **student** and consists of the **id**, **name**, **age**, and **birthday** fields:
 ```sql
 create table student(
-    id int(11) primary key,
-    name varchar(255),
-	age smallint,
-    birthday DATE
-    ) engine=stonedb;
+id int(11) primary key,
+name varchar(20),
+age smallint,
+birthday DATE
+) engine=stonedb;
 ```
 :::info
-If you do not specify **engine=stonedb** in the SQL statement, the storage engine on which the table is created is determined by the value of parameter **default_storage_engine**. For more information, see [Configure parameters](https://stoneatom.yuque.com/staff-ft8n1u/dghuxr/xg9czr).
-:::
 
+The row-based storage engine is named StoneDB in StoneDB-5.6, and is renamed to Tianmu in StoneDB-5.7 to distinguish from the database StoneDB.<br />If you do not specify **engine=stonedb** in the SQL statement, the storage engine on which the table is created is determined by the value of parameter **default_storage_engine**. For more information, see [Configure parameters](../04-developer-guide/05-appendix/configuration-parameters.md).
+
+:::
 ### Query the schema of a table
 Execute the following SQL statement to query the schema of table **student**:
 ```sql
-show create table student\G
+show create table student;
 ```
 ### Drop a table
 Execute the following SQL statement to drop table **student**:
@@ -83,8 +81,9 @@ Execute the following TRUNCATE statement to clear data in table **student**:
 ```sql
 truncate table student ;
 ```
-#### Remove specific data from a table
+:::info
 As a column-based storage engine, StoneDB does not support DELETE operations.
+:::
 ### Query data from a table
 Execute a SELECT statement to query data from a table.
 
@@ -104,11 +103,11 @@ Execute the following SQL statement to create a user named **tiger** and set the
 ```sql
 create user 'tiger'@'%' identified by '123456';
 ```
-
 :::info
-The username together with the hostname uniquely identify a user in the format of '_username_'@'_host_'. In this way, 'tiger'@'%' and 'tiger'@'localhost' are two users.
-:::
 
+The username together with the hostname uniquely identify a user in the format of '_username_'@'_host_'. In this way, 'tiger'@'%' and 'tiger'@'localhost' are two users.
+
+:::
 ### Grant a user permissions
 Execute the following SQL statement to grant user **tiger** the permissions to query all tables in database **test_db**:
 ```sql

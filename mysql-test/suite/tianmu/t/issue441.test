@@ -1,0 +1,13 @@
+USE test;
+CREATE TEMPORARY TABLE `t_test1`(
+`id` INT NOT NULL AUTO_INCREMENT,
+`first_name` VARCHAR(10) NOT NULL,
+`last_name` VARCHAR(10) NOT NULL,
+`sex` VARCHAR(5) NOT NULL,
+`score` INT NOT NULL,
+`copy_id` INT NOT NULL,
+PRIMARY KEY (`id`)
+) ENGINE=tianmu;
+INSERT INTO t_test1 values(1,'张','三','1',100,1);
+SELECT id FROM t_test1;
+DROP TABLE t_test1;

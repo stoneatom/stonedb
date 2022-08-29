@@ -32,7 +32,7 @@ namespace core {
 class Sorter3 : public mm::TraceableObject {
  public:
   Sorter3(uint _size, uint _key_bytes, uint _total_bytes)
-      : conn(current_tx), key_bytes(_key_bytes), total_bytes(_total_bytes), size(_size){};
+      : conn(current_txn_), key_bytes(_key_bytes), total_bytes(_total_bytes), size(_size){};
 
   static Sorter3 *CreateSorter(int64_t size, uint key_bytes, uint total_bytes, int64_t limit = -1,
                                int mem_modifier = 0);

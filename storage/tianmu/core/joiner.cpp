@@ -29,7 +29,7 @@ namespace Tianmu {
 namespace core {
 TwoDimensionalJoiner::TwoDimensionalJoiner(MultiIndex *_mind,  // multi-index to be updated
                                            TempTable *_table, JoinTips &_tips)
-    : tips(_tips), m_conn(current_tx) {
+    : tips(_tips), m_conn(current_txn_) {
   mind = _mind;
   table = _table;
   why_failed = JoinFailure::NOT_FAILED;
@@ -40,20 +40,35 @@ TwoDimensionalJoiner::~TwoDimensionalJoiner() {
 }
 
 JoinAlgType TwoDimensionalJoiner::ChooseJoinAlgorithm([[maybe_unused]] MultiIndex &mind, Condition &cond) {
-  JoinAlgType join_alg = JoinAlgType::JTYPE_GENERAL;
+  auto choose_map_or_hash = ([&tianmu_sysvar_force_hashjoin, &cond] {
+    if ((!tianmu_sysvar_force_hashjoin) && (cond.Size() == 1))
+      return JoinAlgType::JTYPE_MAP;  // available types checked inside
 
-  if (cond[0].IsType_JoinSimple() && cond[0].op == common::Operator::O_EQ) {
-    if ((cond.Size() == 1) && !tianmu_sysvar_force_hashjoin)
-      join_alg = JoinAlgType::JTYPE_MAP;  // available types checked inside
-    else
-      join_alg = JoinAlgType::JTYPE_HASH;
-  } else {
-    if (cond[0].IsType_JoinSimple() &&
-        (cond[0].op == common::Operator::O_MORE_EQ || cond[0].op == common::Operator::O_MORE ||
-         cond[0].op == common::Operator::O_LESS_EQ || cond[0].op == common::Operator::O_LESS))
-      join_alg = JoinAlgType::JTYPE_SORT;
+    return JoinAlgType::JTYPE_HASH;
+  });
+
+  if (cond[0].IsType_Exists()) {
+    return choose_map_or_hash();
   }
-  return join_alg;
+
+  if (cond[0].IsType_In()) {
+    return choose_map_or_hash();
+  }
+
+  if (!cond[0].IsType_JoinSimple()) {
+    return JoinAlgType::JTYPE_GENERAL;
+  }
+
+  if (cond[0].op == common::Operator::O_EQ) {
+    return choose_map_or_hash();
+  }
+
+  if (cond[0].op == common::Operator::O_MORE_EQ || cond[0].op == common::Operator::O_MORE ||
+      cond[0].op == common::Operator::O_LESS_EQ || cond[0].op == common::Operator::O_LESS) {
+    return JoinAlgType::JTYPE_SORT;
+  }
+
+  return JoinAlgType::JTYPE_GENERAL;
 }
 
 JoinAlgType TwoDimensionalJoiner::ChooseJoinAlgorithm(JoinFailure join_result, JoinAlgType prev_type,

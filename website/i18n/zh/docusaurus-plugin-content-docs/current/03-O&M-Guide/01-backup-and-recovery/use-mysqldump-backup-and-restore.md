@@ -15,7 +15,6 @@ Dumping structure and contents of MySQL databases and tables.
 Usage: mysqldump [OPTIONS] database [tables]
 OR     mysqldump [OPTIONS] --databases [OPTIONS] DB1 [DB2 DB3...]
 OR     mysqldump [OPTIONS] --all-databases [OPTIONS]
-
 Default options are read from the following files in the given order:
 /etc/stonedb.cnf /etc/mysql/stonedb.cnf /stonedb56/install/stonedb.cnf ~/.stonedb.cnf
 The following groups are read: mysqldump client
@@ -266,7 +265,6 @@ The following options may be given as the first argument:
   -X, --xml           Dump a database as well formed XML.
   --plugin-dir=name   Directory for client-side plugins.
   --default-auth=name Default authentication client-side plugin to use.
-
 Variables (--variable-name=value)
 and boolean options {FALSE|TRUE}  Value (after reading options)
 --------------------------------- ----------------------------------------
@@ -359,15 +357,12 @@ mysql: [Warning] Using a password on the command line interface can be insecure.
 Welcome to the MySQL monitor.  Commands end with ; or \g.
 Your MySQL connection id is 878
 Server version: 5.7.36-StoneDB-log build-
-
 Copyright (c) 2000, 2022 StoneAtom Group Holding Limited
 No entry for terminal type "xterm";
 using dumb terminal settings.
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
-
 mysql> create database dumpdb;
 Query OK, 1 row affected (0.00 sec)
-
 mysql> show databases;
 +--------------------+
 | Database           |
@@ -382,17 +377,13 @@ mysql> show databases;
 | test               |
 +--------------------+
 8 rows in set (0.00 sec)
-
 mysql> use dumpdb
 Database changed
-
 mysql> create table dumptb(id int primary key,vname varchar(20))engine=StoneDB;
 Query OK, 0 rows affected (0.00 sec)
-
 mysql> insert into dumpdb.dumptb(id,vname) values(1,'zhangsan'),(2,'lisi'),(3,'wangwu');
 Query OK, 3 rows affected (0.00 sec)
 Records: 3  Duplicates: 0  Warnings: 0
-
 mysql> select * from dumpdb.dumptb;
 +----+----------+
 | id | vname    |
@@ -402,15 +393,11 @@ mysql> select * from dumpdb.dumptb;
 |  3 | wangwu   |
 +----+----------+
 3 rows in set (0.01 sec)
-
-
 ```
-
 #### 使用mysqldump 备份指定库
 ```bash
 /stonedb56/install/bin/mysqldump  -uroot -p***** -P3306 --skip-opt --master-data=2 --single-transaction --set-gtid-purged=off  --databases dumpdb > /tmp/dumpdb.sql
 ```
-
 #### 备份指定库的表结构
 ```
 /stonedb56/install/bin/mysqldump  -uroot -p***** -P3306   -d --databases dumpdb > /tmp/dumpdb_table.sql
@@ -419,25 +406,18 @@ mysql> select * from dumpdb.dumptb;
 ```
 /stonedb56/install/bin/mysqldump  -uroot -p***** -P3306 --skip-opt --master-data=2 --single-transaction --set-gtid-purged=off  -t dumpdb > /tmp/dumpdb_table.sql
 ```
-
-
 #### 使用mysqldump 备份除系统库（mysql、performation_schema、information_schema）外其他库
 ```bash
 /stonedb56/install/bin/mysql  -uroot -p****** -P3306 -e "show databases;" | grep -Ev "sys|performance_schema|information_schema|Database|test" | xargs /stonedb56/install/bin/mysqldump  -uroot -p****** -P3306 --master-data=1 --skip-opt --databases > /tmp/ig_sysdb.sql
 ```
-
 ***扩展***
-
 使用Mysqldump 备份innodb 导入StoneDB 表小的可以基于上面的mysqldump 备份，大表建议单独备份表结构和数据备份文件，然后使用`sed -i 's/原字符串/新字符串/g' 文件` 命令修改备份文件中的引擎,例如:
 ```
 sed -i 's/ENGINE=InnoDB/ENGINE=STONEDB/g' 文件
 ```
 修改引擎后按照下面恢复方式导入到StoneDB。
-
-
 ### 恢复
 #### 数据导入到StoneDB
 ```bash
 /stonedb56/install/bin/mysql  -uroot -p****** -P3306 dumpdb < /tmp/dumpdb.sql
 ```
-

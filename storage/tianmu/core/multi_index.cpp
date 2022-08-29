@@ -28,7 +28,7 @@ namespace core {
 #define MATERIAL_TUPLES_LIMIT 150000000000LL  // = ~1 TB of cache needed for one dimension
 #define MATERIAL_TUPLES_WARNING 2500000000LL  // = 10-20 GB of cache for one dimension
 
-MultiIndex::MultiIndex(uint32_t power) : m_conn(current_tx) {
+MultiIndex::MultiIndex(uint32_t power) : m_conn(current_txn_) {
   // update Clear() on any change
   p_power = power;
   no_dimensions = 0;

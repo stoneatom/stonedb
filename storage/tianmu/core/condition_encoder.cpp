@@ -64,7 +64,7 @@ void ConditionEncoder::operator()(Descriptor &desc) {
 
   auto tab = std::static_pointer_cast<RCTable>(desc.attr.vc->GetVarMap()[0].GetTabPtr());
   attr = tab->GetAttr(desc.attr.vc->GetVarMap()[0].col_ndx);
-  attr->LoadPackInfo(current_tx);
+  attr->LoadPackInfo(current_txn_);
   in_type = attr->Type();
   this->desc = &desc;
 

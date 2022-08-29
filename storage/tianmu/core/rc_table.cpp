@@ -50,7 +50,7 @@ uint32_t RCTable::GetTableId(const fs::path &dir) {
 }
 
 void RCTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
-  uint32_t tid = rceng->GetNextTableId();
+  uint32_t tid = ha_rcengine_->GetNextTableId();
   auto &path(opt->path);
   uint32_t no_attrs = opt->atis.size();
 
@@ -106,7 +106,7 @@ void RCTable::Alter(const std::string &table_path, std::vector<Field *> &new_col
   system::TianmuFile f;
   f.OpenReadOnly(tab_dir / common::TABLE_DESC_FILE);
   f.ReadExact(&meta, sizeof(meta));
-  meta.id = rceng->GetNextTableId();  // only table id is updated
+  meta.id = ha_rcengine_->GetNextTableId();  // only table id is updated
 
   system::TianmuFile tempf;
   tempf.OpenReadWrite(tmp_dir / common::TABLE_DESC_FILE);
@@ -188,7 +188,7 @@ RCTable::RCTable(std::string const &p, TableShare *s, Transaction *tx) : share(s
   if (!index::NormalizeName(table_name, normalized_path)) {
     throw common::Exception("Normalization wrong of table  " + share->Path());
   }
-  m_mem_table = kvstore->FindMemTable(normalized_path);
+  m_mem_table = ha_kvstore_->FindMemTable(normalized_path);
 }
 
 void RCTable::LockPackInfoForUse() {
@@ -271,7 +271,7 @@ void RCTable::CommitVersion() {
 
   utils::result_set<bool> res;
   bool no_except = true;
-  for (auto &attr : m_attrs) res.insert(rceng->load_thread_pool.add_task(&RCAttr::SaveVersion, attr.get()));
+  for (auto &attr : m_attrs) res.insert(ha_rcengine_->load_thread_pool.add_task(&RCAttr::SaveVersion, attr.get()));
 
   std::vector<size_t> changed_columns;
   changed_columns.reserve(m_attrs.size());
@@ -403,7 +403,7 @@ void RCTable::DisplayRSI() {
 
     int display_limit = int(20) - si.length();
     for (int j = 0; j < display_limit; j++) ss << " ";
-    rccontrol << trivials << "\t\t";
+    rc_control_ << trivials << "\t\t";
     if (span != -1)
       ss << int(span * 10000) / 100.0 << "%\t";
     else
@@ -496,7 +496,7 @@ RCTable::Iterator RCTable::Iterator::CreateBegin(RCTable &table, std::shared_ptr
     ret.position = *(ret.it);
   else
     ret.position = -1;
-  ret.conn = current_tx;
+  ret.conn = current_txn_;
   return ret;
 }
 
@@ -613,7 +613,7 @@ void RCTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
       // convert to UTC
       if (!common::IsTimeStampZero(my_time)) {
         my_bool myb;
-        my_time_t secs_utc = current_tx->Thd()->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
+        my_time_t secs_utc = current_txn_->Thd()->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
         common::GMTSec2GMTTime(&my_time, secs_utc);
       }
       types::DT dt = {};
@@ -701,7 +701,7 @@ int RCTable::Insert(TABLE *table) {
     vcs[i].Commit();
   }
 
-  std::shared_ptr<index::RCTableIndex> tab = rceng->GetTableIndex(share->Path());
+  std::shared_ptr<index::RCTableIndex> tab = ha_rcengine_->GetTableIndex(share->Path());
   if (tab) {
     std::vector<std::string_view> fields;
     std::vector<uint> cols = tab->KeyCols();
@@ -709,7 +709,7 @@ int RCTable::Insert(TABLE *table) {
       fields.emplace_back(vcs[col].GetDataBytesPointer(0), vcs[col].Size(0));
     }
 
-    if (tab->InsertIndex(current_tx, fields, NumOfObj()) == common::ErrorCode::DUPP_KEY) {
+    if (tab->InsertIndex(current_txn_, fields, NumOfObj()) == common::ErrorCode::DUPP_KEY) {
       TIANMU_LOG(LogCtl_Level::INFO, "Insert duplicate key on row %d", NumOfObj() - 1);
       return HA_ERR_FOUND_DUPP_KEY;
     }
@@ -745,7 +745,7 @@ uint64_t RCTable::ProceedNormal(system::IOParameters &iop) {
       utils::result_set<void> res;
       for (uint att = 0; att < m_attrs.size(); ++att) {
         res.insert(
-            rceng->load_thread_pool.add_task(&RCAttr::LoadData, m_attrs[att].get(), &value_buffers[att], current_tx));
+            ha_rcengine_->load_thread_pool.add_task(&RCAttr::LoadData, m_attrs[att].get(), &value_buffers[att], current_txn_));
       }
       res.get_all();
     }
@@ -1205,7 +1205,7 @@ class DelayedInsertParser final {
       fields.emplace_back(vcs[col].GetDataBytesPointer(row_idx), vcs[col].Size(row_idx));
     }
 
-    if (index_table->InsertIndex(current_tx, fields, start_row + row_idx) == common::ErrorCode::DUPP_KEY) {
+    if (index_table->InsertIndex(current_txn_, fields, start_row + row_idx) == common::ErrorCode::DUPP_KEY) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Delay insert discard this row for duplicate key");
       return common::ErrorCode::DUPP_KEY;
     }
@@ -1224,7 +1224,7 @@ uint64_t RCTable::ProcessDelayed(system::IOParameters &iop) {
   std::string str(basename(const_cast<char *>(iop.Path())));
   auto vec = reinterpret_cast<std::vector<std::unique_ptr<char[]>> *>(std::stol(str));
 
-  DelayedInsertParser parser(m_attrs, vec, share->PackSize(), rceng->GetTableIndex(share->Path()));
+  DelayedInsertParser parser(m_attrs, vec, share->PackSize(), ha_rcengine_->GetTableIndex(share->Path()));
   long no_loaded_rows = 0;
 
   uint to_prepare, no_of_rows_returned;
@@ -1237,7 +1237,7 @@ uint64_t RCTable::ProcessDelayed(system::IOParameters &iop) {
     if (real_loaded_rows > 0) {
       utils::result_set<void> res;
       for (uint att = 0; att < m_attrs.size(); ++att) {
-        res.insert(rceng->load_thread_pool.add_task(&RCAttr::LoadData, m_attrs[att].get(), &vcs[att], current_tx));
+        res.insert(ha_rcengine_->load_thread_pool.add_task(&RCAttr::LoadData, m_attrs[att].get(), &vcs[att], current_txn_));
       }
       res.get_all();
       no_loaded_rows += real_loaded_rows;
@@ -1261,7 +1261,7 @@ void RCTable::InsertMemRow(std::unique_ptr<char[]> buf, uint32_t size) {
 int RCTable::MergeMemTable(system::IOParameters &iop) {
   ASSERT(m_tx, "Transaction not generated.");
   ASSERT(m_mem_table, "memory table not exist");
-  auto index_table = rceng->GetTableIndex(share->Path());
+  auto index_table = ha_rcengine_->GetTableIndex(share->Path());
 
   struct timespec t1, t2, t3;
   clock_gettime(CLOCK_REALTIME, &t1);
@@ -1325,7 +1325,7 @@ int RCTable::MergeMemTable(system::IOParameters &iop) {
     if (real_loaded_rows > 0) {
       utils::result_set<void> res;
       for (uint att = 0; att < m_attrs.size(); ++att) {
-        res.insert(rceng->load_thread_pool.add_task(&RCAttr::LoadData, m_attrs[att].get(), &vcs[att], m_tx));
+        res.insert(ha_rcengine_->load_thread_pool.add_task(&RCAttr::LoadData, m_attrs[att].get(), &vcs[att], m_tx));
       }
       res.get_all();
       no_loaded_rows += real_loaded_rows;
@@ -1342,13 +1342,13 @@ int RCTable::MergeMemTable(system::IOParameters &iop) {
 
   if (t2.tv_sec - t1.tv_sec > 15) {
     TIANMU_LOG(LogCtl_Level::WARN, "Latency of rowstore %s larger than 15s, compact manually.", share->Path().c_str());
-    kvstore->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), m_mem_table->GetCFHandle(), nullptr, nullptr);
+    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), m_mem_table->GetCFHandle(), nullptr, nullptr);
   }
 
   if ((t3.tv_sec - t2.tv_sec > 15) && index_table) {
     TIANMU_LOG(LogCtl_Level::WARN, "Latency of index table %s larger than 15s, compact manually.",
                 share->Path().c_str());
-    kvstore->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rdbkey_->get_cf(), nullptr, nullptr);
+    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rocksdb_key_->get_cf(), nullptr, nullptr);
   }
 
   return no_loaded_rows;
