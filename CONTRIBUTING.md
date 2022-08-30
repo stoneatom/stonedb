@@ -1,7 +1,7 @@
 # Your First Good Pull Request To StoneDB
 Once the code is merged into `StoneDB`, your name will be stored in `system.contributors` table forever!
 ## Prerequisites
-Check if  `git` has been installed. If not,  install it first.
+Check if  `git` has been installed. If not, install it first.
 
 - [Install Git](https://git-scm.com/downloads)
 

@@ -242,10 +242,17 @@ class StringWriter {
 
 inline bool NormalizeName(const std::string &path, std::string &name) {
   std::string db_name, tab_name;
-  if (path.size() < 2 || path[0] != '.' || path[1] != '/') {
+  if (path.size() < 2) {
     return false;
   }
   auto pa = fs::path(path);
+  if (path[0] != '.' || path[1] != '/') {
+    if (pa.filename().native().rfind("#sql", 0) == 0) {
+      // temporary table path
+    } else {
+      return false;
+    }
+  }
   std::tie(db_name, tab_name) = std::make_tuple(pa.parent_path().filename().native(), pa.filename().native());
   name = db_name + "." + tab_name;
   return true;
