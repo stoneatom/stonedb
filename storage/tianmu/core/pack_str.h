@@ -43,6 +43,7 @@ class PackStr final : public Pack {
   std::unique_ptr<Pack> Clone(const PackCoordinate &pc) const override;
   void LoadDataFromFile(system::Stream *fcurfile) override;
   void UpdateValue(size_t i, const Value &v) override;
+  void DeleteByRow(size_t i) override;
   void Save() override;
 
   types::BString GetValueBinary(int i) const override;

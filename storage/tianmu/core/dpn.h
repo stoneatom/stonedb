@@ -39,6 +39,7 @@ struct DPN final {
   uint8_t synced : 1;  // if the pack data in memory is up to date with the
                        // version on disk
   uint8_t null_compressed : 1;
+  uint8_t delete_compressed : 1;
   uint8_t data_compressed : 1;
   uint8_t no_compress : 1;
   uint8_t padding[3];
@@ -47,6 +48,7 @@ struct DPN final {
   uint64_t len;        // data length
   uint32_t nr;         // number of records
   uint32_t nn;         // number of nulls
+  uint32_t ndelete;    // number of deletes
   common::TX_ID xmin;  // creation trx id
   common::TX_ID xmax;  // delete trx id
   union {
@@ -75,7 +77,7 @@ struct DPN final {
   bool CAS(uint64_t &expected, uint64_t desired) { return tagged_ptr.compare_exchange_weak(expected, desired); }
   uint64_t GetPackPtr() const { return tagged_ptr.load(); }
   void SetPackPtr(uint64_t v) { tagged_ptr.store(v); }
-  bool Trivial() const { return Uniform() || NullOnly(); }
+  bool Trivial() const { return (Uniform() || NullOnly()) && ndelete == 0; }
   bool NotTrivial() const { return !Trivial(); }
   bool Uniform() const { return nn == 0 && min_i == max_i; }  // for packN, all records are the same and not null
   bool NullOnly() const { return nr == nn; }

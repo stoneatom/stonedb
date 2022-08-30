@@ -206,6 +206,24 @@ common::ErrorCode RCTableIndex::UpdateIndex(core::Transaction *tx, std::string_v
   return rc;
 }
 
+common::ErrorCode RCTableIndex::DeleteIndex(core::Transaction *tx, std::string_view &okey,
+                                            uint64_t row) {
+  StringWriter value, packkey;
+  std::vector<std::string_view> ofields;
+
+  ofields.emplace_back(okey);
+
+  rocksdb_key_->pack_key(packkey, ofields, value);
+  common::ErrorCode rc = CheckUniqueness(tx, {(const char *)packkey.ptr(), packkey.length()});
+  if (rc == common::ErrorCode::DUPP_KEY) {
+    const auto cf = rocksdb_key_->get_cf();
+    tx->KVTrans().Delete(cf, {(const char *)packkey.ptr(), packkey.length()});
+  } else {
+    TIANMU_LOG(LogCtl_Level::WARN, "RockDb: don't have the key for delete!");
+  }
+  return rc;
+}
+
 common::ErrorCode RCTableIndex::GetRowByKey(core::Transaction *tx, std::vector<std::string_view> &fields,
                                             uint64_t &row) {
   std::string value;

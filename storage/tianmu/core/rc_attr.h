@@ -92,6 +92,9 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   void UpdateData(uint64_t row, Value &v);
   void UpdateIfIndex(uint64_t row, uint64_t col, const Value &v);
   void Truncate();
+  void DeleteData(uint64_t row);
+  void DeleteIfIndex(uint64_t row, uint64_t col);
+  bool IsDelete(int64_t row);
 
   const types::RCDataType &ValuePrototype(bool lookup_to_num) const {
     if ((Type().IsLookup() && lookup_to_num) || ATI::IsNumericType(TypeName())) return types::RCNum::NullValue();
@@ -201,6 +204,7 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   int64_t CompressedSize() const { return hdr.compressed_size; };
   uint32_t ValueOfPackPower() const { return pss; }
   uint64_t NumOfObj() const { return hdr.nr; }
+  uint64_t NumOfDeleted() const { return hdr.ndelete; }
   uint64_t NumOfNulls() const { return hdr.nn; }
   uint SizeOfPack() const { return m_idx.size(); }
   int64_t GetMinInt64() const { return hdr.min; }
@@ -341,6 +345,8 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   PackStr *get_packS(size_t i) const { return reinterpret_cast<PackStr *>(get_pack(i)); }
   DPN &get_last_dpn() { return *m_share->get_dpn_ptr(m_idx.back()); }
   const DPN &get_last_dpn() const { return *m_share->get_dpn_ptr(m_idx.back()); }
+  
+  void EvaluatePack_IsNoDelete(MIUpdatingIterator &mit, int dim);
   void EvaluatePack_IsNull(MIUpdatingIterator &mit, int dim);
   void EvaluatePack_NotNull(MIUpdatingIterator &mit, int dim);
   void EvaluatePack_Like(MIUpdatingIterator &mit, int dim, Descriptor &d);

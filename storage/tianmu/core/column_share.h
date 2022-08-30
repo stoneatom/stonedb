@@ -46,6 +46,7 @@ struct alignas(128) COL_VER_HDR_V3 {
   uint64_t nr;  // no. of records
   uint64_t nn;  // no. of nulls
   uint64_t np;  // no. of packs
+  uint64_t ndelete;  //Quantity deleted
   uint64_t auto_inc_next;
   int64_t min;
   int64_t max;

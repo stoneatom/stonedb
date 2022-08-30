@@ -28,7 +28,7 @@
 namespace Tianmu {
 namespace core {
 // make sure the struct is not modified by mistake
-static_assert(sizeof(DPN) == 80, "Bad struct size of DPN");
+static_assert(sizeof(DPN) == 88, "Bad struct size of DPN");
 
 ColumnShare::~ColumnShare() {
   if (start != nullptr) {
@@ -191,8 +191,8 @@ void ColumnShare::init_dpn(DPN &dpn, const common::TX_ID xid, const DPN *from) {
 
 // should get page size at run time with sysconf(_SC_PAGE_SIZE) but for
 // efficiency...
-static constexpr size_t PAGE_SIZE = 4096;
-static constexpr size_t PAGE_CNT = 5;
+static constexpr size_t PAGE_SIZE = 2816;
+static constexpr size_t PAGE_CNT = 8;
 static constexpr size_t ALLOC_UNIT = PAGE_CNT * PAGE_SIZE;
 
 static_assert(ALLOC_UNIT % sizeof(DPN) == 0);

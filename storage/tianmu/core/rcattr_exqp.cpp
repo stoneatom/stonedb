@@ -81,7 +81,9 @@ void RCAttr::EvaluatePack(MIUpdatingIterator &mit, int dim, Descriptor &d) {
       EvaluatePack_InString(mit, dim, d);
   } else if (GetPackType() == common::PackType::INT &&
              (d.op == common::Operator::O_IN || d.op == common::Operator::O_NOT_IN))
-    EvaluatePack_InNum(mit, dim, d);
+      EvaluatePack_InNum(mit, dim, d);
+    else if (d.op == common::Operator::O_EQ_ALL)
+      EvaluatePack_IsNoDelete(mit, dim);
   else
     DEBUG_ASSERT(0);  // case not implemented!
 }
@@ -287,24 +289,56 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString_UTF(MIUpdatingIterator &
   return rv;
 }
 
+void RCAttr::EvaluatePack_IsNoDelete(MIUpdatingIterator &mit, int dim) {
+  MEASURE_FET("RCAttr::EvaluatePack_IsNoDelete(...)");
+  int64 curRow = mit[dim];
+  auto pack = row2pack(curRow);
+  auto const &dpn(get_dpn(pack));
+  if(dpn.ndelete > 0)
+  {
+    if(dpn.ndelete == dpn.nr)
+    {
+      mit.ResetCurrentPack();
+      mit.NextPackrow();
+      return;
+    }
+    FunctionExecutor fe([this, pack]() { LockPackForUse(pack); }, [this, pack]() { UnlockPackFromUse(pack); });
+    do {
+      if (mit[dim] == common::NULL_VALUE_64 || get_pack(pack)->IsDelete(mit.GetCurInpack(dim))) {
+        mit.ResetCurrent();
+      }
+      ++mit;
+    } while (mit.IsValid() && !mit.PackrowStarted());
+  }
+  else
+  {
+    mit.NextPackrow();
+  }
+
+}
+
 void RCAttr::EvaluatePack_IsNull(MIUpdatingIterator &mit, int dim) {
   MEASURE_FET("RCAttr::EvaluatePack_IsNull(...)");
   int pack = mit.GetCurPackrow(dim);
   if (pack == -1) {
-    mit.NextPackrow();
+    EvaluatePack_IsNoDelete(mit, dim);
     return;
   }
   auto const &dpn(get_dpn(pack));
   if (!dpn.Trivial() && dpn.nn != 0) {  // nontrivial pack exists
     do {
-      if (mit[dim] != common::NULL_VALUE_64 && !get_pack(pack)->IsNull(mit.GetCurInpack(dim))) mit.ResetCurrent();
+      if ((mit[dim] != common::NULL_VALUE_64 && 
+      !get_pack(pack)->IsNull(mit.GetCurInpack(dim))) ||
+      get_pack(pack)->IsDelete(mit.GetCurInpack(dim))) {
+        mit.ResetCurrent();
+      }
       ++mit;
     } while (mit.IsValid() && !mit.PackrowStarted());
   } else {  // pack is trivial - uniform or null only
     if (GetPackOntologicalStatus(pack) != PackOntologicalStatus::NULLS_ONLY) {
       if (mit.NullsPossibleInPack(dim)) {
         do {
-          if (mit[dim] != common::NULL_VALUE_64) mit.ResetCurrent();
+          if (mit[dim] != common::NULL_VALUE_64 || get_pack(pack)->IsDelete(mit.GetCurInpack(dim))) mit.ResetCurrent();
           ++mit;
         } while (mit.IsValid() && !mit.PackrowStarted());
       } else

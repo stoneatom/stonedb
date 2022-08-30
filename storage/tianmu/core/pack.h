@@ -20,6 +20,7 @@
 
 #include "core/dpn.h"
 #include "core/tools.h"
+#include "mm/mm_guard.h"
 #include "mm/traceable_object.h"
 #include "types/rc_data_types.h"
 
@@ -50,6 +51,19 @@ class Pack : public mm::TraceableObject {
   virtual void LoadDataFromFile(system::Stream *fcurfile) = 0;
   virtual void Save() = 0;
   virtual void UpdateValue(size_t i, const Value &v) = 0;
+  virtual void DeleteByRow(size_t i) = 0;
+
+ template <typename arryType>
+  void DeleteAndSwap(arryType &arry, size_t &i, uint32_t &arrylen) {
+    if (i == arrylen - 1) {
+      arry[i] = 0;
+      return;
+    } else {
+      size_t n = i;
+      for (; n < arrylen - 1; n++) arry[n] = arry[n + 1];
+    }
+    arry[arrylen - 1] = 0;
+  }
 
   virtual int64_t GetValInt(int n) const;
   virtual double GetValDouble(int n) const;
@@ -71,6 +85,24 @@ class Pack : public mm::TraceableObject {
     if (dpn->nn == dpn->nr) return true;
     return ((nulls[i >> 5] & ((uint32_t)(1) << (i % 32))) != 0);
   }
+
+  void SetDelete(int i) {
+    int mask = 1 << (i % 32);
+    ASSERT((deletes[i >> 5] & mask) == 0);
+    deletes[i >> 5] |= mask;
+  }
+
+  void UnsetDelete(int i) {
+    int mask = ~(1 << (i % 32));
+    ASSERT(IsDelete(i), "already delete!");
+    deletes[i >> 5] &= mask;
+  }
+
+  bool IsDelete(int i) const {
+    if (dpn->ndelete == dpn->nr) return true;
+    return ((deletes[i >> 5] & ((uint32_t)(1) << (i % 32))) != 0);
+  }
+
   bool NotNull(int i) const { return !IsNull(i); }
   void InitNull() {
     if (dpn->NullOnly()) {
@@ -80,6 +112,9 @@ class Pack : public mm::TraceableObject {
   PackCoordinate GetPackCoordinate() const { return m_coord.co.pack; }
   void SetDPN(DPN *new_dpn) { dpn = new_dpn; }
 
+  bool CompressedNullsOrDeletes(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size,
+                                std::unique_ptr<uint32_t[]> &ptr_buf, uint32_t &dpn_num1);
+
  protected:
   Pack(DPN *dpn, PackCoordinate pc, ColumnShare *s);
   Pack(const Pack &ap, const PackCoordinate &pc);
@@ -88,6 +123,7 @@ class Pack : public mm::TraceableObject {
 
   bool ShouldNotCompress() const;
   bool IsModeNullsCompressed() const { return dpn->null_compressed; }
+  bool IsModeDeletesCompressed() const { return dpn->delete_compressed; }
   bool IsModeDataCompressed() const { return dpn->data_compressed; }
   bool IsModeCompressionApplied() const { return IsModeDataCompressed() || IsModeNullsCompressed(); }
   bool IsModeNoCompression() const { return dpn->no_compress; }
@@ -110,12 +146,19 @@ class Pack : public mm::TraceableObject {
   }
   void ResetModeNullsCompressed() { dpn->null_compressed = 0; }
 
+  void SetModeDeletesCompressed() {
+    ResetModeNoCompression();
+    dpn->delete_compressed = 1;
+  }
+  void ResetModeDeletesCompressed() { dpn->delete_compressed = 0; }
+
  protected:
   ColumnShare *s = nullptr;
   size_t NULLS_SIZE;
   DPN *dpn = nullptr;
 
   std::unique_ptr<uint32_t[]> nulls;
+  std::unique_ptr<uint32_t[]> deletes;
 };
 }  // namespace core
 }  // namespace Tianmu

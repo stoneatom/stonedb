@@ -534,9 +534,35 @@ int TianmuHandler::update_row(const uchar *old_data, uchar *new_data) {
  */
 int TianmuHandler::delete_row([[maybe_unused]] const uchar *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
-  DBUG_RETURN(HA_ERR_WRONG_COMMAND);
-}
+  int ret = HA_ERR_INTERNAL_ERROR;
+  auto org_bitmap = dbug_tmp_use_all_columns(table, table->write_set);
 
+  std::shared_ptr<void> defer(nullptr,
+                              [org_bitmap, this](...) { dbug_tmp_restore_column_map(table->write_set, org_bitmap); });
+
+  try {
+    auto tab = current_txn_->GetTableByPath(m_table_name);
+
+    for (uint i = 0; i < table->s->fields; i++) {
+      tab->DeleteItem(current_position, i);
+    }
+    DBUG_RETURN(0);
+  } catch (common::DatabaseException &e) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "Delete exception: %s.", e.what());
+  } catch (common::FileException &e) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "Delete exception: %s.", e.what());
+  } catch (common::DupKeyException &e) {
+    ret = HA_ERR_FOUND_DUPP_KEY;
+    TIANMU_LOG(LogCtl_Level::ERROR, "Delete exception: %s.", e.what());
+  } catch (common::Exception &e) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "Delete exception: %s.", e.what());
+  } catch (std::exception &e) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "Delete exception: %s.", e.what());
+  } catch (...) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
+  }
+  DBUG_RETURN(ret);
+}
 /*
  Used to delete all rows in a table. Both for cases of truncate and
  for cases where the optimizer realizes that all rows will be
@@ -552,6 +578,7 @@ int TianmuHandler::delete_all_rows() {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   DBUG_RETURN(HA_ERR_WRONG_COMMAND);
 }
+
 
 int TianmuHandler::rename_table(const char *from, const char *to) {
   try {
@@ -625,7 +652,7 @@ int TianmuHandler::info(uint flag) {
         tab = current_txn_->GetTableByPath(m_table_name);
       } else
         tab = ha_rcengine_->GetTableRD(m_table_name);
-      stats.records = (ha_rows)tab->NumOfValues();
+      stats.records = (ha_rows)(tab->NumOfValues() - tab->NumOfDeleted());
       stats.data_file_length = 0;
       stats.mean_rec_length = 0;
       if (stats.records > 0) {

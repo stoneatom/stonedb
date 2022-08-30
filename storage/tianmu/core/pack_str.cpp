@@ -172,6 +172,7 @@ void PackStr::TransformIntoArray() {
 }
 
 void PackStr::UpdateValue(size_t i, const Value &v) {
+  if (IsDelete(i)) return; 
   TransformIntoArray();
   dpn->synced = false;
 
@@ -223,6 +224,23 @@ void PackStr::UpdateValue(size_t i, const Value &v) {
     }
   }
 
+  dpn->maxlen = CalculateMaxLen();
+}
+
+void PackStr::DeleteByRow(size_t i) {
+  if (IsDelete(i)) return; 
+  TransformIntoArray();
+  dpn->synced = false;
+  if (!IsNull(i)) {
+    data.sum_len -= GetValueBinary(i).size();
+    // note that we do not reclaim any space. The buffers will
+    // will be compacted when saving to disk
+    SetPtrSize(i, nullptr, 0);
+    SetNull(i);
+    dpn->nn++;
+  }
+  SetDelete(i);
+  dpn->ndelete++;
   dpn->maxlen = CalculateMaxLen();
 }
 
@@ -283,32 +301,24 @@ int PackStr::GetCompressBufferSize(size_t size) {
 
 std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
   uint comp_null_buf_size = 0;
-
-  mm::MMGuard<char> comp_null_buf;
+  mm::MMGuard<uchar> comp_null_buf;
   if (dpn->nn > 0) {
-    comp_null_buf_size = ((dpn->nr + 7) / 8);
-    comp_null_buf = mm::MMGuard<char>((char *)alloc((comp_null_buf_size + 2), mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
-
-    uint cnbl = comp_null_buf_size + 1;
-    comp_null_buf[cnbl] = 0xBA;  // just checking - buffer overrun
-
-    compress::BitstreamCompressor bsc;
-    CprsErr res = bsc.Compress(comp_null_buf.get(), comp_null_buf_size, (char *)nulls.get(), dpn->nr, dpn->nn);
-    if (comp_null_buf[cnbl] != char(0xBA)) {
-      TIANMU_ERROR("buffer overrun by BitstreamCompressor!");
-    }
-    if (res == CprsErr::CPRS_SUCCESS)
-      SetModeNullsCompressed();
-    else if (res == CprsErr::CPRS_ERR_BUF) {
-      comp_null_buf = mm::MMGuard<char>((char *)nulls.get(), *this, false);
-      comp_null_buf_size = ((dpn->nr + 7) / 8);
-      ResetModeNullsCompressed();
-    } else {
-      throw common::InternalException("Compression of nulls failed for column " +
-                                      std::to_string(pc_column(GetCoordinate().co.pack) + 1) + ", pack " +
-                                      std::to_string(pc_dp(GetCoordinate().co.pack) + 1) + " (error " +
-                                      std::to_string(static_cast<int>(res)) + ").");
-    }
+    if(CompressedNullsOrDeletes(comp_null_buf, comp_null_buf_size, nulls, dpn->nn)){
+		SetModeNullsCompressed();
+	}
+	else{
+		ResetModeNullsCompressed();
+	}
+  }
+  uint comp_delete_buf_size = 0;
+  mm::MMGuard<uchar> comp_delete_buf;
+  if (dpn->ndelete > 0) {
+    if(CompressedNullsOrDeletes(comp_delete_buf, comp_delete_buf_size, deletes, dpn->ndelete)){
+		SetModeDeletesCompressed();
+	}
+	else{
+		ResetModeDeletesCompressed();
+	}
   }
 
   mm::MMGuard<uint> nc_buffer((uint *)alloc((1 << s->pss) * sizeof(uint32_t), mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
@@ -387,7 +397,10 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
     dlen = 0;
   }
 
-  size_t comp_buf_size = (comp_null_buf_size > 0 ? 2 + comp_null_buf_size : 0) + comp_len_buf_size + 4 + 4 + dlen;
+  size_t comp_buf_size = (comp_null_buf_size > 0 ? 2 + comp_null_buf_size : 0);
+  comp_buf_size += (comp_delete_buf_size > 0 ? 2 + comp_delete_buf_size : 0);
+  comp_buf_size += comp_len_buf_size + 4 + 4 + dlen;
+
   UniquePtr compressed_buf = alloc_ptr(comp_buf_size, mm::BLOCK_TYPE::BLOCK_COMPRESSED);
   uchar *p = reinterpret_cast<uchar *>(compressed_buf.get());
 
@@ -396,6 +409,13 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
     p += 2;
     std::memcpy(p, comp_null_buf.get(), comp_null_buf_size);
     p += comp_null_buf_size;
+  }
+
+  if (dpn->ndelete > 0) {
+    *((ushort *)p) = (ushort)comp_delete_buf_size;
+    p += 2;
+    std::memcpy(p, comp_delete_buf.get(), comp_delete_buf_size);
+    p += comp_delete_buf_size;
   }
 
   if (comp_len_buf_size) std::memcpy(p, comp_len_buf.get(), comp_len_buf_size);
@@ -467,7 +487,7 @@ void PackStr::Save() {
                   pc_table(GetCoordinate().co.pack), pc_column(GetCoordinate().co.pack), pc_dp(GetCoordinate().co.pack),
                   data.sum_len);
       SetModeNoCompression();
-      dpn->len = NULLS_SIZE + data.sum_len + (data.len_mode * (1 << s->pss));
+      dpn->len = NULLS_SIZE*2 + data.sum_len + (data.len_mode * (1 << s->pss));
     } else if (s->ColType().GetFmt() == common::PackFmt::TRIE) {
       CompressTrie();
     } else {
@@ -477,7 +497,7 @@ void PackStr::Save() {
     }
   } else {
     SetModeNoCompression();
-    dpn->len = NULLS_SIZE + data.sum_len + (data.len_mode * (1 << s->pss));
+    dpn->len = NULLS_SIZE*2 + data.sum_len + (data.len_mode * (1 << s->pss));
   }
   s->alloc_seg(dpn);
   system::TianmuFile f;
@@ -500,6 +520,7 @@ void PackStr::Save() {
 
 void PackStr::SaveUncompressed(system::Stream *f) {
   f->WriteExact(nulls.get(), NULLS_SIZE);
+  f->WriteExact(deletes.get(), NULLS_SIZE);
   f->WriteExact(data.lens, (data.len_mode * (1 << s->pss)));
   if (data.v.empty()) return;
 
@@ -551,15 +572,33 @@ void PackStr::LoadCompressed(system::Stream *f) {
       }
     }
     cur_buf += (null_buf_size + 2);
+  }
 
-    for (uint i = 0; i < dpn->nr; i++) {
-      if (IsNull(i))
-        tmp_index[i] = nullptr;
-      else
-        tmp_index[i] = FREE_PLACE;  // special value: an object awaiting decoding
+  if (dpn->ndelete > 0) {
+    uint delete_buf_size = 0;
+    delete_buf_size = (*(ushort *)cur_buf);
+    if (delete_buf_size > NULLS_SIZE) throw common::DatabaseException("Unexpected bytes found in data pack.");
+    if (!IsModeDeletesCompressed())  // no deletes compression
+      std::memcpy(deletes.get(), (char *)cur_buf + 2, delete_buf_size);
+    else {
+      compress::BitstreamCompressor bsc;
+      CprsErr res = bsc.Decompress((char *)deletes.get(), delete_buf_size, (char *)cur_buf + 2, dpn->nr, dpn->ndelete);
+      if (res != CprsErr::CPRS_SUCCESS) {
+        throw common::DatabaseException("Decompression of deletes failed for column " +
+                                        std::to_string(pc_column(GetCoordinate().co.pack) + 1) + ", pack " +
+                                        std::to_string(pc_dp(GetCoordinate().co.pack) + 1) + " (error " +
+                                        std::to_string(static_cast<int>(res)) + ").");
+      }
     }
-  } else
-    for (uint i = 0; i < dpn->nr; i++) tmp_index[i] = FREE_PLACE;
+    cur_buf += delete_buf_size + 2;
+  }
+  
+  for (uint i = 0; i < dpn->nr; i++) {
+    if (IsNull(i))
+      tmp_index[i] = nullptr;
+    else
+      tmp_index[i] = FREE_PLACE;  // special value: an object awaiting decoding
+  }
 
   auto comp_len_buf_size = *(uint32_t *)cur_buf;
   auto maxv = *(uint32_t *)(cur_buf + 4);
@@ -670,7 +709,8 @@ types::BString PackStr::GetValueBinary(int ono) const {
 void PackStr::LoadUncompressed(system::Stream *f) {
   auto sz = dpn->len;
   f->ReadExact(nulls.get(), NULLS_SIZE);
-  sz -= NULLS_SIZE;
+  f->ReadExact(deletes.get(), NULLS_SIZE);
+  sz -= (NULLS_SIZE * 2);
   f->ReadExact(data.lens, (data.len_mode * (1 << s->pss)));
   sz -= (data.len_mode * (1 << s->pss));
 
