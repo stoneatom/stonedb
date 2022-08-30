@@ -263,7 +263,7 @@ GDTResult GroupDistinctTable::FindCurrentRow(bool find_only)  // find / insert t
       }
       return GDTResult::GBIMODE_AS_TEXT;
     }
-  } while (local_no_of_checks < 8);  // search depth
+  } while (local_no_of_checks < limit_checks);  // search depth
   return GDTResult::GDT_FULL;
 }
 

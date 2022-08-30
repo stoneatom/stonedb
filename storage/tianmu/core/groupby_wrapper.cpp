@@ -506,7 +506,7 @@ bool GroupByWrapper::PutAggregatedNull(int gr_a, int64_t pos) {
 bool GroupByWrapper::PutAggregatedValue(int gr_a, int64_t pos, MIIterator &mit, int64_t factor) {
   DEBUG_ASSERT(input_mode[gr_a] != GBInputMode::GBIMODE_NOT_SET);
   if (input_mode[gr_a] == GBInputMode::GBIMODE_NO_VALUE) return gt.PutAggregatedValue(gr_a, pos, factor);
-  return gt.PutAggregatedValue(gr_a, pos, mit, factor, (input_mode[gr_a] == GBInputMode::GBIMODE_AS_TEXT), false);
+  return gt.PutAggregatedValue(gr_a, pos, mit, factor, (input_mode[gr_a] == GBInputMode::GBIMODE_AS_TEXT));
 }
 
 types::BString GroupByWrapper::GetValueT(int col, int64_t row) {

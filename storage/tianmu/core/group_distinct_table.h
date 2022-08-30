@@ -113,6 +113,7 @@ class GroupDistinctTable : public mm::TraceableObject {
   bool filter_implementation;
   Filter *f;
   int64_t group_factor;  // (g, v)  ->  f( g + group_factor * v )
+  const int limit_checks = 1 << 8; // 256
 };
 }  // namespace core
 }  // namespace Tianmu
