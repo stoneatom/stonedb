@@ -548,10 +548,7 @@ int TianmuHandler::delete_row([[maybe_unused]] const uchar *buf) {
  Called from sql_select.cc by JOIN::rein*it.
  Called from sql_union.cc by st_select_lex_unit::exec().
  */
-int TianmuHandler::delete_all_rows() {
-  DBUG_ENTER(__PRETTY_FUNCTION__);
-  DBUG_RETURN(HA_ERR_WRONG_COMMAND);
-}
+int TianmuHandler::delete_all_rows() {return truncate(); }
 
 int TianmuHandler::rename_table(const char *from, const char *to) {
   try {
