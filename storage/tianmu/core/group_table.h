@@ -100,7 +100,7 @@ class GroupTable : public mm::TraceableObject {
 
   bool PutAggregatedValue(int col, int64_t row,
                           int64_t factor);  // for aggregations which do not need any value
-  bool PutAggregatedValue(int col, int64_t row, MIIterator &mit, int64_t factor, bool as_string);
+  bool PutAggregatedValue(int col, int64_t row, MIIterator &mit, int64_t factor, bool as_string, bool use_disct = true);
   bool PutAggregatedNull(int col, int64_t row, bool as_string);
   // mainly for numerics, and only some aggregators
   bool PutCachedValue(int col, GroupDistinctCache &cache, bool as_text);

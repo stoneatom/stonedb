@@ -164,7 +164,6 @@ int64_t VirtualColumnBase::GetApproxDistVals(bool incl_nulls, core::RoughMultiIn
 
 int64_t VirtualColumnBase::GetMaxInt64(const core::MIIterator &mit) {
   int64_t res = GetMaxInt64Impl(mit);
-  DEBUG_ASSERT(res != common::NULL_VALUE_64);
   if (Type().IsFloat()) {
     if (*(double *)&res > *(double *)&vc_max_val && vc_max_val != common::PLUS_INF_64 &&
         vc_max_val != common::NULL_VALUE_64)
@@ -176,7 +175,6 @@ int64_t VirtualColumnBase::GetMaxInt64(const core::MIIterator &mit) {
 
 int64_t VirtualColumnBase::GetMinInt64(const core::MIIterator &mit) {
   int64_t res = GetMinInt64Impl(mit);
-  DEBUG_ASSERT(res != common::NULL_VALUE_64);
   if (Type().IsFloat()) {
     if (*(double *)&res < *(double *)&vc_min_val && vc_min_val != common::MINUS_INF_64 &&
         vc_min_val != common::NULL_VALUE_64)

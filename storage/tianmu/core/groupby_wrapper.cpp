@@ -506,7 +506,7 @@ bool GroupByWrapper::PutAggregatedNull(int gr_a, int64_t pos) {
 bool GroupByWrapper::PutAggregatedValue(int gr_a, int64_t pos, MIIterator &mit, int64_t factor) {
   DEBUG_ASSERT(input_mode[gr_a] != GBInputMode::GBIMODE_NOT_SET);
   if (input_mode[gr_a] == GBInputMode::GBIMODE_NO_VALUE) return gt.PutAggregatedValue(gr_a, pos, factor);
-  return gt.PutAggregatedValue(gr_a, pos, mit, factor, (input_mode[gr_a] == GBInputMode::GBIMODE_AS_TEXT));
+  return gt.PutAggregatedValue(gr_a, pos, mit, factor, (input_mode[gr_a] == GBInputMode::GBIMODE_AS_TEXT), false);
 }
 
 types::BString GroupByWrapper::GetValueT(int col, int64_t row) {
@@ -633,6 +633,10 @@ bool GroupByWrapper::IsMaxOnly()  // true, if an attribute is max(column), and
 }
 
 void GroupByWrapper::InitTupleLeft(int64_t n) {
+  if (tuple_left) {
+    delete tuple_left;
+    tuple_left = NULL;
+  }
   DEBUG_ASSERT(tuple_left == NULL);
   tuple_left = new Filter(n, p_power);
   tuple_left->Set();

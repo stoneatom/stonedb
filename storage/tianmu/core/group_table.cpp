@@ -395,6 +395,7 @@ bool GroupTable::FindCurrentRow(int64_t &row)  // a position in the current Grou
   // return value: true if already existing, false if put as a new row
   // MEASURE_FET("GroupTable::FindCurrentRow(...)");
   // copy input_buffer into t.blocks if cannot find input_buffer in t.blocks
+  not_full = true;
   bool existed = vm_tab->FindCurrentRow(input_buffer.data(), row, not_full);
   if (!existed && row != common::NULL_VALUE_64) {
     if (vm_tab->NoMoreSpace()) not_full = false;
@@ -529,21 +530,26 @@ GDTResult GroupTable::AddDistinctValue(int col, int64_t row,
   return gdistinct[col]->Add(row, v);
 }
 
-bool GroupTable::PutAggregatedValue(int col, int64_t row, MIIterator &mit, int64_t factor, bool as_string) {
-  if (distinct[col]) {
-    // Repetition? Return without action.
-    DEBUG_ASSERT(gdistinct[col]);
-    if (vc[col]->IsNull(mit)) return true;  // omit nulls
-    GDTResult res = gdistinct[col]->Add(row, mit);
-    if (res == GDTResult::GDT_EXISTS) return true;  // value found, do not aggregate it again
-    if (res == GDTResult::GDT_FULL) {
-      if (gdistinct[col]->AlreadyFull())
-        not_full = false;  // disable also the main grouping table (if it is a
-                           // persistent rejection)
-      return false;        // value not found in DISTINCT buffer, which is already
-                           // full
+bool GroupTable::PutAggregatedValue(int col, int64_t row, MIIterator &mit, int64_t factor, bool as_string,
+                                    bool use_disct) {
+  if (use_disct) {
+    if (distinct[col]) {
+      // Repetition? Return without action.
+      DEBUG_ASSERT(gdistinct[col]);
+      if (vc[col]->IsNull(mit)) return true;  // omit nulls
+      GDTResult res = gdistinct[col]->Add(row, mit);
+      if (res == GDTResult::GDT_EXISTS) return true;  // value found, do not aggregate it again
+      if (res == GDTResult::GDT_FULL) {
+        if (gdistinct[col]->AlreadyFull()) {
+          not_full = false;  // disable also the main grouping table (if it is a
+                             // persistent rejection)
+          // TIANMU_LOG(LogCtl_Level::INFO, "PutAggregatedValue AlreadyFull col: %d row: %d", col, row);
+        }
+        return false;  // value not found in DISTINCT buffer, which is already
+                       // full
+      }
+      factor = 1;  // ignore repetitions for distinct
     }
-    factor = 1;  // ignore repetitions for distinct
   }
   TIANMUAggregator *cur_aggr = aggregator[col];
   if (factor == common::NULL_VALUE_64 && cur_aggr->FactorNeeded())
