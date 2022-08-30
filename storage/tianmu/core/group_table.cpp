@@ -395,7 +395,6 @@ bool GroupTable::FindCurrentRow(int64_t &row)  // a position in the current Grou
   // return value: true if already existing, false if put as a new row
   // MEASURE_FET("GroupTable::FindCurrentRow(...)");
   // copy input_buffer into t.blocks if cannot find input_buffer in t.blocks
-  not_full = true;
   bool existed = vm_tab->FindCurrentRow(input_buffer.data(), row, not_full);
   if (!existed && row != common::NULL_VALUE_64) {
     if (vm_tab->NoMoreSpace()) not_full = false;
