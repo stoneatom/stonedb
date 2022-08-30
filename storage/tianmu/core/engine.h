@@ -146,7 +146,7 @@ class Engine final {
   static AttributeTypeInfo GetCorrespondingATI(Field &field);
   static AttributeTypeInfo GetAttrTypeInfo(const Field &field);
   static common::CT GetCorrespondingType(const enum_field_types &eft);
-  static bool IsTIANMUTable(TABLE *table);
+  static bool IsTianmuTable(TABLE *table);
   static bool ConvertToField(Field *field, types::RCDataType &rcitem, std::vector<uchar> *blob_buf);
   static int Convert(int &is_null, my_decimal *value, types::RCDataType &rcitem, int output_scale = -1);
   static int Convert(int &is_null, int64_t &value, types::RCDataType &rcitem, enum_field_types f_type);

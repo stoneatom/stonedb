@@ -29,8 +29,13 @@
 #include "core/transaction.h"
 #include "core/value_set.h"
 #include "util/thread_pool.h"
+#include "vc/const_column.h"
+#include "vc/const_expr_column.h"
+#include "vc/expr_column.h"
 #include "vc/in_set_column.h"
 #include "vc/single_column.h"
+#include "vc/subselect_column.h"
+#include "vc/type_cast_column.h"
 #include "vc/virtual_column.h"
 
 namespace Tianmu {
@@ -185,9 +190,9 @@ double ParameterizedFilter::EvaluateConditionNonJoinWeight(Descriptor &d, bool f
     // Processing descriptor on PK firstly
     if (d.IsleftIndexSearch()) eval = 0.001;
 
-  } else if (d.IsType_AttrAttr()) {           // attr=attr on the same table
+  } else if (d.IsType_AttrAttr()) {              // attr=attr on the same table
     uint64_t no_obj = d.attr.vc->NumOfTuples();  // changed to uint64_t to prevent negative
-                                              // logarithm for common::NULL_VALUE_64
+                                                 // logarithm for common::NULL_VALUE_64
     if (!d.encoded)
       return log(1 + double(2 * no_obj)) + 5;  // +5 as a penalty for complex expression
     else if (d.op == common::Operator::O_EQ) {
@@ -963,9 +968,32 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
 
   if (descriptors.Size() < 1) {
     PrepareRoughMultiIndex();
+    FilterDeletedForSelectAll();
     rough_mind->ClearLocalDescFilters();
     return;
+  } else {  /*Judge whether there is filtering logic of the current table.
+             If not, filter the data of the current table*/
+    auto &rcTables = table->GetTables();
+    int no_dims=0;
+    for (auto rcTable : rcTables) {
+      if(rcTable->TableType() == TType::TEMP_TABLE) continue;
+      bool isVald = false;
+      for (int i = 0; i < descriptors.Size(); i++) {
+        Descriptor &desc = descriptors[i];
+        if (desc.attr.vc && 
+            desc.attr.vc->GetVarMap().size() > 1 &&
+            desc.attr.vc->GetVarMap()[0].tabp == rcTable) {
+          isVald = true;
+          break;
+        }
+      }
+      if (!isVald) {
+        FilterDeletedByTable(rcTable, no_dims);
+      }
+      no_dims++;
+    }
   }
+
   SyntacticalDescriptorListPreprocessing();
 
   bool empty_cannot_grow = true;  // if false (e.g. outer joins), then do not
@@ -1109,7 +1137,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
     if (mind->GetFilter(i))
       table->SetVCDistinctVals(i,
                                mind->GetFilter(i)->NumOfOnes());  // distinct values - not more than the
-                                                               // number of rows after WHERE
+                                                                  // number of rows after WHERE
   rough_mind->ClearLocalDescFilters();
 
   // Some displays
@@ -1232,6 +1260,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
       join_or_delayed_present = true;
     }
   }
+
   if (join_or_delayed_present) rough_mind->MakeDimensionSuspect();  // no common::RSValue::RS_ALL packs
   mind->UpdateNumOfTuples();
 }
@@ -1426,5 +1455,48 @@ void ParameterizedFilter::TaskProcessPacks(MIUpdatingIterator *taskIterator, Tra
   }
   taskIterator->Commit(false);
 }
+
+void ParameterizedFilter::FilterDeletedByTable(JustATable *rcTable , int no_dims) {
+  Descriptor desc(table, no_dims);
+  desc.op = common::Operator::O_EQ_ALL;
+  desc.encoded = true;
+
+  DimensionVector dims(mind->NumOfDimensions());
+  desc.DimensionUsed(dims);
+  mind->MarkInvolvedDimGroups(dims);  // create iterators on whole groups (important for
+                                      // multidimensional updatable iterators)
+  dims.SetAll();
+
+  MIUpdatingIterator mit(mind, dims);
+  desc.CopyDesCond(mit);
+  // Use column 0 to filter the table data
+  int firstColumn = 0;
+  PhysicalColumn *phc = rcTable->GetColumn(firstColumn);
+  vcolumn::SingleColumn *vc = new vcolumn::SingleColumn(phc, mind, 0, 0, rcTable, no_dims);
+  if (!vc) throw common::OutOfMemoryException();
+
+  vc->LockSourcePacks(mit);
+  while (mit.IsValid()) {
+    vc->EvaluatePack(mit, desc);
+    if (mind->m_conn->Killed()) throw common::KilledException();
+  }
+  vc->UnlockSourcePacks();
+  mit.Commit();
+  delete vc;
+}
+
+void ParameterizedFilter::FilterDeletedForSelectAll() {
+  if (table) {
+    auto &rcTables = table->GetTables();
+    int no_dims=0;
+    for (auto rcTable : rcTables) {
+      if(rcTable->TableType() == TType::TEMP_TABLE) continue;
+      FilterDeletedByTable(rcTable, no_dims);
+      no_dims++;
+    }
+    mind->UpdateNumOfTuples();
+  }
+}
+
 }  // namespace core
 }  // namespace Tianmu

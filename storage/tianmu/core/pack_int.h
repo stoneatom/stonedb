@@ -48,13 +48,14 @@ class PackInt final : public Pack {
   std::unique_ptr<Pack> Clone(const PackCoordinate &pc) const override;
   void LoadDataFromFile(system::Stream *fcurfile) override;
   void Save() override;
-  void UpdateValue(size_t i, const Value &v) override;
+  void UpdateValue(size_t locationInPack, const Value &v) override;
+  void DeleteByRow(size_t locationInPack) override;
 
   void LoadValues(const loader::ValueCache *vc, const std::optional<common::double_int_t> &null_value);
-  int64_t GetValInt(int n) const override { return data[n]; }
-  double GetValDouble(int n) const override {
+  int64_t GetValInt(int locationInPack) const override { return data[locationInPack]; }
+  double GetValDouble(int locationInPack) const override {
     ASSERT(is_real);
-    return data.pdouble[n];
+    return data.pdouble[locationInPack];
   }
   bool IsFixed() const { return !is_real; }
 
@@ -66,24 +67,24 @@ class PackInt final : public Pack {
   PackInt(const PackInt &apn, const PackCoordinate &pc);
 
   void AppendValue(uint64_t v) {
-    dpn->nr++;
-    SetVal64(dpn->nr - 1, v);
+    dpn->numOfRecords++;
+    SetVal64(dpn->numOfRecords - 1, v);
   }
 
   void AppendNull() {
-    SetNull(dpn->nr);
-    dpn->nn++;
-    dpn->nr++;
+    SetNull(dpn->numOfRecords);
+    dpn->numOfNulls++;
+    dpn->numOfRecords++;
   }
   void SetValD(uint n, double v) {
     dpn->synced = false;
-    ASSERT(n < dpn->nr);
+    ASSERT(n < dpn->numOfRecords);
     ASSERT(is_real);
     data.pdouble[n] = v;
   }
   void SetVal64(uint n, uint64_t v) {
     dpn->synced = false;
-    ASSERT(n < dpn->nr);
+    ASSERT(n < dpn->numOfRecords);
     switch (data.vt) {
       case 8:
         data.pint64[n] = v;
@@ -107,8 +108,8 @@ class PackInt final : public Pack {
     else
       SetNull(n);
   }
-  void UpdateValueFloat(size_t i, const Value &v);
-  void UpdateValueFixed(size_t i, const Value &v);
+  void UpdateValueFloat(size_t locationInPack, const Value &v);
+  void UpdateValueFixed(size_t locationInPack, const Value &v);
   void ExpandOrShrink(uint64_t maxv, int64_t delta);
   void SaveCompressed(system::Stream *fcurfile);
   void SaveUncompressed(system::Stream *fcurfile);
