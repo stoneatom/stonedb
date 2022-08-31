@@ -57,10 +57,22 @@ jobs:
           sudo cp -r stonedb-boost /usr/local/stonedb-boost
           sudo cp -r stonedb-gcc-rocksdb /usr/local/stonedb-gcc-rocksdb
           sudo cp -r stonedb-marisa /usr/local/stonedb-marisa
-       
+
+      - name: install gtest
+        run: |
+          sudo git clone https://github.com/google/googletest.git -b release-1.12.0
+          cd googletest        # Main directory of the cloned repository.
+          sudo mkdir build          # Create a directory to hold the build output.
+          cd build
+          sudo cmake .. -DBUILD_GMOCK=OFF # Generate native build scripts for GoogleTest.
+          sudo make
+          sudo make install    # Install in /usr/local/ by default
+
       - name: compile stonedb
         run: |
-          sudo cmake ./ \
+          sudo mkdir build
+          cd build
+          sudo cmake ../ \
           -DCMAKE_BUILD_TYPE=release \
           -DCMAKE_INSTALL_PREFIX=/stonedb57/install \
           -DMYSQL_DATADIR=/stonedb57/install/data \
@@ -81,6 +93,11 @@ jobs:
           -DWITH_MARISA=/usr/local/stonedb-marisa
           sudo make VERBOSE=1 -j`nproc`
           sudo make install -j`nproc`
+
+      - name: run gtest
+        run: |
+          cd build/storage/tianmu/unittest/
+          sudo ./testgmock
 
       - name: mtr test
         run: |
