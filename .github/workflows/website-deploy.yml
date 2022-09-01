@@ -3,7 +3,7 @@ name: Deploy to Aliyun ECS
 on:
   push:
     branches:
-      - stonedb-5.7
+      - stonedb-5.7-dev
 
 jobs:
   deploy:
