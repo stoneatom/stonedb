@@ -75,7 +75,7 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
         return common::RSValue::RS_NONE;
     }
     if (d.op == common::Operator::O_IS_NULL || d.op == common::Operator::O_NOT_NULL) {
-      if (dpn.nn == 0 && !additional_nulls_possible) {
+      if (dpn.numOfNulls == 0 && !additional_nulls_possible) {
         if (d.op == common::Operator::O_IS_NULL)
           return common::RSValue::RS_NONE;
         else
@@ -160,7 +160,7 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
         else if (res == common::RSValue::RS_NONE)
           res = common::RSValue::RS_ALL;
       }
-      if ((dpn.nn != 0 || additional_nulls_possible) && res == common::RSValue::RS_ALL) res = common::RSValue::RS_SOME;
+      if ((dpn.numOfNulls != 0 || additional_nulls_possible) && res == common::RSValue::RS_ALL) res = common::RSValue::RS_SOME;
       return res;
     } else if ((d.op == common::Operator::O_IN || d.op == common::Operator::O_NOT_IN) &&
                GetPackType() == common::PackType::STR) {
@@ -208,7 +208,7 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
         else if (res == common::RSValue::RS_NONE)
           res = common::RSValue::RS_ALL;
       }
-      if (res == common::RSValue::RS_ALL && (dpn.nn > 0 || additional_nulls_possible)) res = common::RSValue::RS_SOME;
+      if (res == common::RSValue::RS_ALL && (dpn.numOfNulls > 0 || additional_nulls_possible)) res = common::RSValue::RS_SOME;
       return res;
     } else if ((d.op == common::Operator::O_IN || d.op == common::Operator::O_NOT_IN) &&
                (GetPackType() == common::PackType::INT)) {
@@ -273,7 +273,7 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
           else if (res == common::RSValue::RS_NONE)
             res = common::RSValue::RS_ALL;
         }
-        if (res == common::RSValue::RS_ALL && (dpn.nn > 0 || additional_nulls_possible)) res = common::RSValue::RS_SOME;
+        if (res == common::RSValue::RS_ALL && (dpn.numOfNulls > 0 || additional_nulls_possible)) res = common::RSValue::RS_SOME;
         return res;
       }
     } else if (GetPackType() == common::PackType::STR) {  // Note: text operations as
@@ -339,7 +339,7 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
         else if (res == common::RSValue::RS_NONE)
           res = common::RSValue::RS_ALL;
       }
-      if ((dpn.nn != 0 || additional_nulls_possible) && res == common::RSValue::RS_ALL) {
+      if ((dpn.numOfNulls != 0 || additional_nulls_possible) && res == common::RSValue::RS_ALL) {
         res = common::RSValue::RS_SOME;
       }
       return res;
@@ -367,7 +367,7 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
           res = common::RSValue::RS_ALL;
         }
       }
-      if (res == common::RSValue::RS_ALL && (dpn.nn != 0 || additional_nulls_possible)) {
+      if (res == common::RSValue::RS_ALL && (dpn.numOfNulls != 0 || additional_nulls_possible)) {
         res = common::RSValue::RS_SOME;
       }
       return res;
@@ -489,7 +489,7 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
         }
       }
       // take nulls into account
-      if ((dpn.nn != 0 || secDpn.nn != 0 || additional_nulls_possible) && res == common::RSValue::RS_ALL)
+      if ((dpn.numOfNulls != 0 || secDpn.numOfNulls != 0 || additional_nulls_possible) && res == common::RSValue::RS_ALL)
         res = common::RSValue::RS_SOME;
       return res;
     }
@@ -554,7 +554,7 @@ common::RSValue RCAttr::RoughCheckBetween(int pack, int64_t v1, int64_t v2) {
       }
     }
   }
-  if (dpn.nn != 0 && res == common::RSValue::RS_ALL) {
+  if (dpn.numOfNulls != 0 && res == common::RSValue::RS_ALL) {
     res = common::RSValue::RS_SOME;
   }
   return res;
@@ -813,7 +813,7 @@ double RCAttr::RoughSelectivity() {
       double width_sum = 0;
       for (uint p = 0; p < SizeOfPack(); p++) {  // minimum of nonempty packs
         auto const &dpn(get_dpn(p));
-        if (dpn.nn == uint(dpn.nr) + 1) continue;
+        if (dpn.numOfNulls == uint(dpn.numOfRecords) + 1) continue;
         if (dpn.min_i < global_min) global_min = dpn.min_i;
         if (dpn.max_i > global_max) global_max = dpn.max_i;
         width_sum += double(dpn.max_i) - double(dpn.min_i) + 1;
@@ -868,7 +868,7 @@ void RCAttr::RoughStats(double &hist_density, int &trivial_packs, double &span) 
   LoadPackInfo();
   for (uint pack = 0; pack < npack; pack++) {
     auto const &dpn(get_dpn(pack));
-    if (dpn.NullOnly() || (GetPackType() == common::PackType::INT && dpn.nn == 0 && dpn.min_i == dpn.max_i))
+    if (dpn.NullOnly() || (GetPackType() == common::PackType::INT && dpn.numOfNulls == 0 && dpn.min_i == dpn.max_i))
       trivial_packs++;
     else {
       if (GetPackType() == common::PackType::INT && !ATI::IsRealType(TypeName())) {
@@ -893,7 +893,7 @@ void RCAttr::RoughStats(double &hist_density, int &trivial_packs, double &span) 
     int ones_found = 0, ones_needed = 0;
     for (uint pack = 0; pack < npack; pack++) {
       auto const &dpn(get_dpn(pack));
-      if (uint(dpn.nr + 1) != dpn.nn && dpn.min_i + 1 < dpn.max_i) {
+      if (uint(dpn.numOfRecords + 1) != dpn.numOfNulls && dpn.min_i + 1 < dpn.max_i) {
         int loc_no_ones;
         if (dpn.max_i - dpn.min_i > 1024)
           loc_no_ones = 1024;
@@ -930,11 +930,11 @@ void RCAttr::DisplayAttrStats(Filter *f)  // filter is for # of objects
     if (f)
       cur_obj = f->NumOfOnes(pack);
     else if (pack == npack - 1)
-      cur_obj = dpn.nr + 1;
+      cur_obj = dpn.numOfRecords + 1;
 
-    std::sprintf(line_buf, "%-7d %5ld %5d", pack, cur_obj, dpn.nn);
+    std::sprintf(line_buf, "%-7d %5ld %5d", pack, cur_obj, dpn.numOfNulls);
 
-    if (uint(dpn.nr + 1) != dpn.nn) {
+    if (uint(dpn.numOfRecords + 1) != dpn.numOfNulls) {
       if (GetPackType() == common::PackType::INT && !ATI::IsRealType(TypeName())) {
         int rsi_span = -1;
         int rsi_ones = 0;

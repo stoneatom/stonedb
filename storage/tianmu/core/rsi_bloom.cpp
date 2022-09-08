@@ -97,7 +97,7 @@ void RSIndex_Bloom::Update(common::PACK_INDEX pi, DPN &dpn, const PackStr *pack)
 
   bloom_builder->StartBlock(0);
 
-  for (size_t i = 0; i < dpn.nr; i++)
+  for (size_t i = 0; i < dpn.numOfRecords; i++)
     if (pack->NotNull(i)) bloom_builder->AddKey(Slice(pack->GetValueBinary(i).ToString()));
 
   Slice block = bloom_builder->Finish();

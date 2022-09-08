@@ -206,6 +206,23 @@ common::ErrorCode RCTableIndex::UpdateIndex(core::Transaction *tx, std::string_v
   return rc;
 }
 
+common::ErrorCode RCTableIndex::DeleteIndex(core::Transaction *tx, std::string_view &currentRowKey,
+                                            uint64_t row) {
+  StringWriter value, packkey;
+  std::vector<std::string_view> fields;
+
+  fields.emplace_back(currentRowKey);
+
+  rocksdb_key_->pack_key(packkey, fields, value);
+  const auto cf = rocksdb_key_->get_cf();
+  const auto rockdbStatus = tx->KVTrans().Delete(cf, {(const char *)packkey.ptr(), packkey.length()});
+  if (!rockdbStatus.ok()) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "RockDb: delete key fail!");
+    return common::ErrorCode::FAILED;
+  }
+  return common::ErrorCode::SUCCESS;
+}
+
 common::ErrorCode RCTableIndex::GetRowByKey(core::Transaction *tx, std::vector<std::string_view> &fields,
                                             uint64_t &row) {
   std::string value;

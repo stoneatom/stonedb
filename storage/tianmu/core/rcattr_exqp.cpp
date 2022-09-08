@@ -82,6 +82,8 @@ void RCAttr::EvaluatePack(MIUpdatingIterator &mit, int dim, Descriptor &d) {
   } else if (GetPackType() == common::PackType::INT &&
              (d.op == common::Operator::O_IN || d.op == common::Operator::O_NOT_IN))
     EvaluatePack_InNum(mit, dim, d);
+  else if (d.op == common::Operator::O_EQ_ALL)
+    EvaluatePack_IsNoDelete(mit, dim);
   else
     DEBUG_ASSERT(0);  // case not implemented!
 }
@@ -145,7 +147,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenInt(MIUpdatingIterator &mit, in
         ++iter;
       } else {
         TIANMU_LOG(LogCtl_Level::ERROR, "GetCurKV valid! col:[%u]=%I64d, Path:%s", ColId(), pv1,
-                    m_share->owner->Path().data());
+                   m_share->owner->Path().data());
         break;
       }
     }
@@ -207,7 +209,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString(MIUpdatingIterator &mit,
         ++iter;
       } else {
         TIANMU_LOG(LogCtl_Level::ERROR, "GetCurKV valid! col:[%u]=%s, Path:%s", ColId(), pv1.ToString().data(),
-                    m_share->owner->Path().data());
+                   m_share->owner->Path().data());
         break;
       }
     }
@@ -271,7 +273,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString_UTF(MIUpdatingIterator &
         ++iter;
       } else {
         TIANMU_LOG(LogCtl_Level::ERROR, "GetCurKV valid! col:[%u]=%s, Path:%s", ColId(), pv1.ToString().data(),
-                    m_share->owner->Path().data());
+                   m_share->owner->Path().data());
         break;
       }
     }
@@ -287,24 +289,49 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString_UTF(MIUpdatingIterator &
   return rv;
 }
 
+void RCAttr::EvaluatePack_IsNoDelete(MIUpdatingIterator &mit, int dim) {
+  MEASURE_FET("RCAttr::EvaluatePack_IsNoDelete(...)");
+  auto pack = row2pack(mit[dim]);
+  auto const &dpn(get_dpn(pack));
+  if (dpn.numOfDeleted > 0) {
+    if (dpn.numOfDeleted == dpn.numOfRecords) {
+      mit.ResetCurrentPack();
+      mit.NextPackrow();
+      return;
+    }
+    FunctionExecutor fe([this, pack]() { LockPackForUse(pack); }, [this, pack]() { UnlockPackFromUse(pack); });
+    do {
+      if (mit[dim] == common::NULL_VALUE_64 || get_pack(pack)->IsDeleted(mit.GetCurInpack(dim))) {
+        mit.ResetCurrent();
+      }
+      ++mit;
+    } while (mit.IsValid() && !mit.PackrowStarted());
+  } else {
+    mit.NextPackrow();
+  }
+}
+
 void RCAttr::EvaluatePack_IsNull(MIUpdatingIterator &mit, int dim) {
   MEASURE_FET("RCAttr::EvaluatePack_IsNull(...)");
   int pack = mit.GetCurPackrow(dim);
   if (pack == -1) {
-    mit.NextPackrow();
+    EvaluatePack_IsNoDelete(mit, dim);
     return;
   }
   auto const &dpn(get_dpn(pack));
-  if (!dpn.Trivial() && dpn.nn != 0) {  // nontrivial pack exists
+  if (!dpn.Trivial() && dpn.numOfNulls != 0) {  // nontrivial pack exists
     do {
-      if (mit[dim] != common::NULL_VALUE_64 && !get_pack(pack)->IsNull(mit.GetCurInpack(dim))) mit.ResetCurrent();
+      if ((mit[dim] != common::NULL_VALUE_64 && !get_pack(pack)->IsNull(mit.GetCurInpack(dim))) ||
+          get_pack(pack)->IsDeleted(mit.GetCurInpack(dim))) {
+        mit.ResetCurrent();
+      }
       ++mit;
     } while (mit.IsValid() && !mit.PackrowStarted());
   } else {  // pack is trivial - uniform or null only
     if (GetPackOntologicalStatus(pack) != PackOntologicalStatus::NULLS_ONLY) {
       if (mit.NullsPossibleInPack(dim)) {
         do {
-          if (mit[dim] != common::NULL_VALUE_64) mit.ResetCurrent();
+          if (mit[dim] != common::NULL_VALUE_64 || get_pack(pack)->IsDeleted(mit.GetCurInpack(dim))) mit.ResetCurrent();
           ++mit;
         } while (mit.IsValid() && !mit.PackrowStarted());
       } else
@@ -323,7 +350,7 @@ void RCAttr::EvaluatePack_NotNull(MIUpdatingIterator &mit, int dim) {
     return;
   }
   auto const &dpn(get_dpn(pack));
-  if (!dpn.Trivial() && dpn.nn != 0) {
+  if (!dpn.Trivial() && dpn.numOfNulls != 0) {
     do {
       if (mit[dim] == common::NULL_VALUE_64 || get_pack(pack)->IsNull(mit.GetCurInpack(dim))) mit.ResetCurrent();
       ++mit;
@@ -613,7 +640,7 @@ void RCAttr::EvaluatePack_InNum(MIUpdatingIterator &mit, int dim, Descriptor &d)
           res = multival_column->Contains(mit, GetValueData(mit[dim], *value, lookup_to_num));
           if (not_in) res = !res;
           if (res == true) {
-            if (dpn.nn != 0)
+            if (dpn.numOfNulls != 0)
               EvaluatePack_NotNull(mit, dim);
             else
               mit.NextPackrow();
@@ -801,15 +828,15 @@ void RCAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descripto
     // Loop without it when packs are nearly full
     if (tianmu_sysvar_filterevaluation_speedup && filter &&
         filter->NumOfOnes(pack) > static_cast<uint>(1 << (mit.GetPower() - 1))) {
-      if (d.op == common::Operator::O_BETWEEN && !mit.NullsPossibleInPack(dim) && dpn.nn == 0) {
+      if (d.op == common::Operator::O_BETWEEN && !mit.NullsPossibleInPack(dim) && dpn.numOfNulls == 0) {
         // easy and fast case - no "if"s
-        for (uint32_t n = 0; n < dpn.nr; n++) {
+        for (uint32_t n = 0; n < dpn.numOfRecords; n++) {
           auto v = p->GetValInt(n);
           if (pv1 > v || v > pv2) filter->Reset(pack, n);
         }
       } else {
         // more general case
-        for (uint32_t n = 0; n < dpn.nr; n++) {
+        for (uint32_t n = 0; n < dpn.numOfRecords; n++) {
           if (p->IsNull(n))
             filter->Reset(pack, n);
           else {
@@ -822,7 +849,7 @@ void RCAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descripto
       }
       mit.NextPackrow();
     } else {
-      if (d.op == common::Operator::O_BETWEEN && !mit.NullsPossibleInPack(dim) && dpn.nn == 0) {
+      if (d.op == common::Operator::O_BETWEEN && !mit.NullsPossibleInPack(dim) && dpn.numOfNulls == 0) {
         // easy and fast case - no "if"s
         do {
           auto v = p->GetValInt(mit.GetCurInpack(dim));
@@ -883,7 +910,7 @@ void RCAttr::EvaluatePack_BetweenReal(MIUpdatingIterator &mit, int dim, Descript
     // Loop without it when packs are nearly full
     if (tianmu_sysvar_filterevaluation_speedup && filter &&
         filter->NumOfOnes(pack) > static_cast<uint>(1 << (mit.GetPower() - 1))) {
-      for (uint32_t n = 0; n < dpn.nr; n++) {
+      for (uint32_t n = 0; n < dpn.numOfRecords; n++) {
         if (p->IsNull(n))
           filter->Reset(pack, n);
         else {
@@ -928,7 +955,8 @@ void RCAttr::EvaluatePack_AttrAttr(MIUpdatingIterator &mit, int dim, Descriptor 
     return;
   }
   RCAttr *a2 = (RCAttr *)(((vcolumn::SingleColumn *)d.val1.vc)->GetPhysical());
-  if (get_dpn(pack).nn == get_dpn(pack).nr || a2->get_dpn(pack).nn == a2->get_dpn(pack).nr) {
+  if (get_dpn(pack).numOfNulls == get_dpn(pack).numOfRecords || 
+     a2->get_dpn(pack).numOfNulls == a2->get_dpn(pack).numOfRecords) {
     mit.ResetCurrentPack();  // nulls only
     mit.NextPackrow();
     return;
@@ -989,7 +1017,8 @@ void RCAttr::EvaluatePack_AttrAttrReal(MIUpdatingIterator &mit, int dim, Descrip
     return;
   }
   RCAttr *a2 = (RCAttr *)(((vcolumn::SingleColumn *)d.val1.vc)->GetPhysical());
-  if (get_dpn(pack).nn == get_dpn(pack).nr || a2->get_dpn(pack).nn == a2->get_dpn(pack).nr) {
+  if (get_dpn(pack).numOfNulls == get_dpn(pack).numOfRecords || 
+      a2->get_dpn(pack).numOfNulls == a2->get_dpn(pack).numOfRecords) {
     mit.ResetCurrentPack();  // nulls only
     mit.NextPackrow();
     return;
@@ -1049,7 +1078,7 @@ bool RCAttr::IsDistinct(Filter *f) {
     if (f == NULL) return (NumOfNulls() == 0);                    // no nulls at all, and is_unique  => distinct
     LoadPackInfo();
     for (uint b = 0; b < SizeOfPack(); b++)
-      if (!f->IsEmpty(b) && get_dpn(b).nn > 0)  // any null in nonempty pack?
+      if (!f->IsEmpty(b) && get_dpn(b).numOfNulls > 0)  // any null in nonempty pack?
         return false;
     return true;
   }
@@ -1086,7 +1115,7 @@ uint64_t RCAttr::ApproxAnswerSize(Descriptor &d) {
         return int64_t(res);
       }
       for (uint b = 0; b < SizeOfPack(); b++) {
-        if (get_dpn(b).min_i > val2 || get_dpn(b).max_i < val1 || get_dpn(b).nn == get_dpn(b).nr)
+        if (get_dpn(b).min_i > val2 || get_dpn(b).max_i < val1 || get_dpn(b).numOfNulls == get_dpn(b).numOfRecords)
           continue;  // pack irrelevant
         span1 = get_dpn(b).max_i - get_dpn(b).min_i + 1;
         if (span1 <= 0)  // out of int64_t range
@@ -1100,7 +1129,7 @@ uint64_t RCAttr::ApproxAnswerSize(Descriptor &d) {
         else
           span2 -= get_dpn(b).min_i;
         span2 += 1;
-        res += (get_dpn(b).nr - get_dpn(b).nn) * double(span2) / span1;  // supposing uniform distribution of values
+        res += (get_dpn(b).numOfRecords - get_dpn(b).numOfNulls) * double(span2) / span1;  // supposing uniform distribution of values
       }
     } else {  // double
       double span1,
@@ -1110,15 +1139,15 @@ uint64_t RCAttr::ApproxAnswerSize(Descriptor &d) {
       for (uint b = 0; b < SizeOfPack(); b++) {
         double d_min = get_dpn(b).min_d;
         double d_max = get_dpn(b).max_d;
-        if (d_min > v_max || d_max < v_min || get_dpn(b).nn == get_dpn(b).nr) continue;  // pack irrelevant
+        if (d_min > v_max || d_max < v_min || get_dpn(b).numOfNulls == get_dpn(b).numOfRecords) continue;  // pack irrelevant
         span1 = d_max - d_min;
         span2 = std::min(v_max, d_max) - std::max(v_min, d_min);
         if (span1 == 0)
-          res += get_dpn(b).nr - get_dpn(b).nn;
+          res += get_dpn(b).numOfRecords - get_dpn(b).numOfNulls;
         else if (span2 == 0)  // just one value
           res += 1;
         else
-          res += (get_dpn(b).nr - get_dpn(b).nn) * (span2 / span1);  // supposing uniform distribution of values
+          res += (get_dpn(b).numOfRecords - get_dpn(b).numOfNulls) * (span2 / span1);  // supposing uniform distribution of values
       }
     }
     return int64_t(res);

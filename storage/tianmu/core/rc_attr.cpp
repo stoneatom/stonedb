@@ -91,6 +91,7 @@ void RCAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8_t p
       no_rows,  // no_obj
       no_rows,  // no_nulls
       no_pack,  // no of packs
+      0,        // no of deleted
       0,        // auto_inc next
       0,        // min
       0,        // max
@@ -127,10 +128,10 @@ void RCAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8_t p
     DPN dpn;
     dpn.reset();
     dpn.used = 1;
-    dpn.nn = 1 << pss;
-    dpn.nr = 1 << pss;
+    dpn.numOfNulls = 1 << pss;
+    dpn.numOfRecords = 1 << pss;
     dpn.xmax = common::MAX_XID;
-    dpn.addr = DPN_INVALID_ADDR;
+    dpn.dataAddress = DPN_INVALID_ADDR;
 
     system::TianmuFile fdn;
     fdn.OpenCreateEmpty(dir / common::COL_DN_FILE);
@@ -139,8 +140,8 @@ void RCAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8_t p
     // the last one
     auto left = no_rows % (1 << pss);
     if (left != 0) {
-      dpn.nr = left;
-      dpn.nn = left;
+      dpn.numOfRecords = left;
+      dpn.numOfNulls = left;
     }
     fdn.WriteExact(&dpn, sizeof(dpn));
     fdn.Flush();
@@ -166,8 +167,8 @@ void RCAttr::LoadVersion(common::TX_ID xid) {
   if (hdr.dict_ver != 0) {
     m_dict = ha_rcengine_->cache.GetOrFetchObject<FTree>(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), this);
   }
-  m_idx.resize(hdr.np);
-  fattr.ReadExact(&m_idx[0], sizeof(common::PACK_INDEX) * hdr.np);
+  m_idx.resize(hdr.numOfPacks);
+  fattr.ReadExact(&m_idx[0], sizeof(common::PACK_INDEX) * hdr.numOfPacks);
 }
 
 void RCAttr::Truncate() {
@@ -290,11 +291,11 @@ bool RCAttr::SaveVersion() {
 
     hdr.unique = IsUnique();
     hdr.unique_updated = IsUniqueUpdated();
-    hdr.np = m_idx.size();
+    hdr.numOfPacks = m_idx.size();
     hdr.compressed_size = std::accumulate(m_idx.begin(), m_idx.end(), size_t(0), [this](size_t sum, auto &pi) {
       auto dpn = m_share->get_dpn_ptr(pi);
-      if (dpn->addr != DPN_INVALID_ADDR)
-        return sum + dpn->len;
+      if (dpn->dataAddress != DPN_INVALID_ADDR)
+        return sum + dpn->dataLength;
       else
         return sum;
     });
@@ -304,7 +305,7 @@ bool RCAttr::SaveVersion() {
   system::TianmuFile fattr;
   fattr.OpenCreate(fname);
   fattr.WriteExact(&hdr, sizeof(hdr));
-  fattr.WriteExact(&m_idx[0], sizeof(decltype(m_idx)::value_type) * hdr.np);
+  fattr.WriteExact(&m_idx[0], sizeof(decltype(m_idx)::value_type) * hdr.numOfPacks);
 
   if (tianmu_sysvar_sync_buffers) fattr.Flush();
 
@@ -323,11 +324,14 @@ void RCAttr::PostCommit() {
 
     ha_rcengine_->DeferRemove(Path() / common::COL_VERSION_DIR / m_version.ToString(), m_tid);
     if (m_share->has_filter_bloom)
-      ha_rcengine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_BLOOM_DIR / m_version.ToString(), m_tid);
+      ha_rcengine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_BLOOM_DIR / m_version.ToString(),
+                                m_tid);
     if (m_share->has_filter_cmap)
-      ha_rcengine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_CMAP_DIR / m_version.ToString(), m_tid);
+      ha_rcengine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_CMAP_DIR / m_version.ToString(),
+                                m_tid);
     if (m_share->has_filter_hist)
-      ha_rcengine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_HIST_DIR / m_version.ToString(), m_tid);
+      ha_rcengine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_HIST_DIR / m_version.ToString(),
+                                m_tid);
 
     m_version = m_tx->GetID();
   }
@@ -357,7 +361,7 @@ PackOntologicalStatus RCAttr::GetPackOntologicalStatus(int pack_no) {
   if (pack_no < 0 || dpn->NullOnly()) return PackOntologicalStatus::NULLS_ONLY;
   if (GetPackType() == common::PackType::INT) {
     if (dpn->min_i == dpn->max_i) {
-      if (dpn->nn == 0) return PackOntologicalStatus::UNIFORM;
+      if (dpn->numOfNulls == 0) return PackOntologicalStatus::UNIFORM;
       return PackOntologicalStatus::UNIFORM_AND_NULLS;
     }
   }
@@ -504,7 +508,7 @@ types::RCDataType &RCAttr::GetValueData(size_t obj, types::RCDataType &value, bo
 int64_t RCAttr::GetNumOfNulls(int pack) {
   LoadPackInfo();
   if (pack == -1) return NumOfNulls();
-  return get_dpn(pack).nn;
+  return get_dpn(pack).numOfNulls;
 }
 
 size_t RCAttr::GetActualSize(int pack) {
@@ -801,7 +805,7 @@ std::shared_ptr<FTree> RCAttr::Fetch([[maybe_unused]] const FTreeCoordinate &coo
 }
 
 void RCAttr::PreparePackForLoad() {
-  if (SizeOfPack() == 0 || get_last_dpn().nr == (1U << pss)) {
+  if (SizeOfPack() == 0 || get_last_dpn().numOfRecords == (1U << pss)) {
     // just allocate a DPN but do not create dp for now
     auto ret = m_share->alloc_dpn(m_tx->GetID());
     m_idx.push_back(ret);
@@ -831,8 +835,8 @@ void RCAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
 
   if (!get_dpn(pi).Trivial()) get_pack(pi)->Save();
 
-  hdr.nr += nvs->NumOfValues();
-  hdr.nn += (Type().NotNull() ? 0 : nvs->NumOfNulls());
+  hdr.numOfRecords += nvs->NumOfValues();
+  hdr.numOfNulls += (Type().NotNull() ? 0 : nvs->NumOfNulls());
   hdr.natural_size += nvs->SumarizedSize();
 }
 
@@ -851,9 +855,9 @@ void RCAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
   size_t load_nulls = nv.has_value() ? 0 : nvs->NumOfNulls();
 
   // nulls only
-  if (load_nulls == load_values && (dpn.nr == 0 || dpn.NullOnly())) {
-    dpn.nr += load_values;
-    dpn.nn += load_values;
+  if (load_nulls == load_values && (dpn.numOfRecords == 0 || dpn.NullOnly())) {
+    dpn.numOfRecords += load_values;
+    dpn.numOfNulls += load_values;
     return;
   }
 
@@ -877,11 +881,11 @@ void RCAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
   // now dpn->sum has been updated
 
   // uniform package
-  if ((dpn.nn + load_nulls) == 0 && load_min == load_max &&
-      (dpn.nr == 0 || (dpn.min_i == load_min && dpn.max_i == load_max))) {
+  if ((dpn.numOfNulls + load_nulls) == 0 && load_min == load_max &&
+      (dpn.numOfRecords == 0 || (dpn.min_i == load_min && dpn.max_i == load_max))) {
     dpn.min_i = load_min;
     dpn.max_i = load_max;
-    dpn.nr += load_values;
+    dpn.numOfRecords += load_values;
   } else {
     // new package (also in case of expanding so-far-uniform package)
     if (dpn.Trivial()) {
@@ -920,14 +924,14 @@ void RCAttr::LoadDataPackS(size_t pi, loader::ValueCache *nvs) {
   auto cnt = nvs->NumOfValues();
 
   // no need to store any values - uniform package
-  if (load_nulls == cnt && (dpn.nr == 0 || dpn.NullOnly())) {
-    dpn.nr += cnt;
-    dpn.nn += cnt;
+  if (load_nulls == cnt && (dpn.numOfRecords == 0 || dpn.NullOnly())) {
+    dpn.numOfRecords += cnt;
+    dpn.numOfNulls += cnt;
     return;
   }
 
   // new package or expanding so-far-null package
-  if (dpn.nr == 0 || dpn.NullOnly()) {
+  if (dpn.numOfRecords == 0 || dpn.NullOnly()) {
     auto sp = ha_rcengine_->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
     dpn.SetPackPtr(reinterpret_cast<unsigned long>(sp.get()) + tag_one);
   }
@@ -976,8 +980,68 @@ void RCAttr::UpdateData(uint64_t row, Value &v) {
   dpn.synced = false;
 
   // update global data
-  hdr.nn -= dpn_save.nn;
-  hdr.nn += dpn.nn;
+  hdr.numOfNulls -= dpn_save.numOfNulls;
+  hdr.numOfNulls += dpn.numOfNulls;
+
+  if (GetPackType() == common::PackType::INT) {
+    if (dpn.min_i < hdr.min) {
+      hdr.min = dpn.min_i;
+    } else {
+      // re-calculate the min
+      hdr.min = std::numeric_limits<int64_t>::max();
+      for (uint i = 0; i < m_idx.size(); i++) {
+        if (!get_dpn(i).NullOnly()) hdr.min = std::min(get_dpn(i).min_i, hdr.min);
+      }
+    }
+
+    if (dpn.max_i > hdr.max) {
+      hdr.max = dpn.max_i;
+    } else {
+      // re-calculate the max
+      hdr.max = std::numeric_limits<int64_t>::min();
+      for (uint i = 0; i < m_idx.size(); i++) {
+        if (!get_dpn(i).NullOnly()) hdr.max = std::max(get_dpn(i).max_i, hdr.max);
+      }
+    }
+  } else {  // common::PackType::STR
+  }
+}
+
+bool RCAttr::IsDelete(int64_t row) {
+  if (row == common::NULL_VALUE_64) return true;
+  DEBUG_ASSERT(hdr.numOfRecords >= static_cast<uint64_t>(row));
+  auto pack = row2pack(row);
+  const auto &dpn = get_dpn(pack);
+
+  if (dpn.numOfDeleted == 0) return false;
+
+  if (dpn.numOfDeleted > 0) {
+    FunctionExecutor fe([this, pack]() { LockPackForUse(pack); }, [this, pack]() { UnlockPackFromUse(pack); });
+    return get_pack(pack)->IsDeleted(row2offset(row));
+  }
+  return false;
+}
+
+void RCAttr::DeleteData(uint64_t row) {
+  auto pn = row2pack(row);
+  FunctionExecutor fe([this, pn]() { LockPackForUse(pn); }, [this, pn]() { UnlockPackFromUse(pn); });
+
+  // primary key process
+  DeleteByPrimaryKey(row, ColId());
+
+  CopyPackForWrite(pn);
+  auto &dpn = get_dpn(pn);
+  auto dpn_save = dpn;
+  if (dpn.Trivial()) {
+    // need to create pack struct for previous trivial pack
+    ha_rcengine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
+  }
+  get_pack(pn)->DeleteByRow(row2offset(row));
+
+  // update global data
+  hdr.numOfNulls -= dpn_save.numOfNulls;
+  hdr.numOfNulls += dpn.numOfNulls;
+  hdr.numOfDeleted++;
 
   if (GetPackType() == common::PackType::INT) {
     if (dpn.min_i < hdr.min) {
@@ -1081,7 +1145,7 @@ types::BString RCAttr::MinS(Filter *f) {
            (GetPackOntologicalStatus(b) == PackOntologicalStatus::UNIFORM_AND_NULLS && f->IsFull(b)))) {
         CompareAndSetCurrentMin(DecodeValue_S(dpn.min_i), min, set);
         it.NextPack();
-      } else if (!(dpn.NullOnly() || dpn.nr == 0)) {
+      } else if (!(dpn.NullOnly() || dpn.numOfRecords == 0)) {
         while (it.IsValid() && b == (unsigned int)it.GetCurrPack()) {
           int n = it.GetCurrInPack();
           if (GetPackType() == common::PackType::STR && p->IsNull(n) == 0) {
@@ -1114,7 +1178,7 @@ types::BString RCAttr::MaxS(Filter *f) {
           (GetPackOntologicalStatus(b) == PackOntologicalStatus::UNIFORM ||
            (GetPackOntologicalStatus(b) == PackOntologicalStatus::UNIFORM_AND_NULLS && f->IsFull(b)))) {
         CompareAndSetCurrentMax(DecodeValue_S(dpn.min_i), max);
-      } else if (!(dpn.NullOnly() || dpn.nr == 0)) {
+      } else if (!(dpn.NullOnly() || dpn.numOfRecords == 0)) {
         while (it.IsValid() && b == it.GetCurrPack()) {
           int n = it.GetCurrInPack();
           if (GetPackType() == common::PackType::STR && p->IsNull(n) == 0) {
@@ -1234,8 +1298,8 @@ void RCAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
     auto vold = GetValueString(row);
     std::string_view nkey(vnew.data(), vnew.length());
     std::string_view okey(vold.val, vold.size());
-    common::ErrorCode rc = tab->UpdateIndex(current_txn_, nkey, okey, row);
-    if (rc == common::ErrorCode::DUPP_KEY || rc == common::ErrorCode::FAILED) {
+    common::ErrorCode returnCode = tab->UpdateIndex(current_txn_, nkey, okey, row);
+    if (returnCode == common::ErrorCode::DUPP_KEY || returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Duplicate entry: %s for primary key", vnew.data());
       throw common::DupKeyException("Duplicate entry: " + vnew + " for primary key");
     }
@@ -1244,12 +1308,40 @@ void RCAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
     int64_t vold = GetValueInt64(row);
     std::string_view nkey(reinterpret_cast<const char *>(&vnew), sizeof(int64_t));
     std::string_view okey(reinterpret_cast<const char *>(&vold), sizeof(int64_t));
-    common::ErrorCode rc = tab->UpdateIndex(current_txn_, nkey, okey, row);
-    if (rc == common::ErrorCode::DUPP_KEY || rc == common::ErrorCode::FAILED) {
+    common::ErrorCode returnCode = tab->UpdateIndex(current_txn_, nkey, okey, row);
+    if (returnCode == common::ErrorCode::DUPP_KEY || returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Duplicate entry :%" PRId64 " for primary key", vnew);
       throw common::DupKeyException("Duplicate entry: " + std::to_string(vnew) + " for primary key");
     }
   }
 }
+
+void RCAttr::DeleteByPrimaryKey(uint64_t row, uint64_t col) {
+  auto path = m_share->owner->Path();
+  std::shared_ptr<index::RCTableIndex> tab = ha_rcengine_->GetTableIndex(path);
+  // col is not primary key
+  if (!tab) return;
+  std::vector<uint> keycols = tab->KeyCols();
+  if (std::find(keycols.begin(), keycols.end(), col) == keycols.end()) return;
+
+  if (GetPackType() == common::PackType::STR) {
+    auto currentValue = GetValueString(row);
+    std::string_view currentRowKey(currentValue.val, currentValue.size());
+    common::ErrorCode returnCode = tab->DeleteIndex(current_txn_, currentRowKey, row);
+    if (returnCode == common::ErrorCode::FAILED) {
+      TIANMU_LOG(LogCtl_Level::DEBUG, "Delete: %s for primary key", currentValue.GetDataBytesPointer());
+      throw common::Exception("Delete: " + currentValue.ToString() + " for primary key");
+    }
+  } else {  // common::PackType::INT
+    auto currentValue = GetValueInt64(row);
+    std::string_view currentRowKey(reinterpret_cast<const char *>(&currentValue), sizeof(int64_t));
+    common::ErrorCode returnCode = tab->DeleteIndex(current_txn_, currentRowKey, row);
+    if (returnCode == common::ErrorCode::FAILED) {
+      TIANMU_LOG(LogCtl_Level::DEBUG, "Delete: %" PRId64 " for primary key", currentValue);
+      throw common::Exception("Delete: " + std::to_string(currentValue) + " for primary key");
+    }
+  }
+}
+
 }  // namespace core
 }  // namespace Tianmu
