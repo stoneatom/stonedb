@@ -21,6 +21,7 @@
 #include "core/condition.h"
 #include "core/descriptor.h"
 #include "core/mi_iterator.h"
+#include "core/ctask.h"
 
 namespace Tianmu {
 namespace core {
@@ -95,6 +96,24 @@ class JoinerGeneral : public TwoDimensionalJoiner {
  protected:
   void ExecuteOuterJoinLoop(Condition &cond, MINewContents &new_mind, DimensionVector &all_dims,
                             DimensionVector &outer_dims, int64_t &tuples_in_output, int64_t output_limit);
+
+  void ExecuteInnerJoinLoop(MIIterator &mit, Condition &cond, MINewContents &new_mind, DimensionVector &all_dims,
+                            std::vector<bool> &pack_desc_locked, int64_t &tuples_in_output, int64_t limit,
+                            bool count_only);
+
+  void ExecuteInnerJoinPackRow(MIIterator *mii, CTask *task, Condition *cond, MINewContents *new_mind,
+                               DimensionVector *all_dims,
+                               std::vector<bool> *pack_desc_locked, int64_t *tuples_in_output, int64_t limit,
+                               bool count_only,
+                               bool *stop_execution, int64_t *rows_passed, int64_t *rows_omitted);
+
+  void TaskInnerJoinPacks(MIIterator *taskIterator, CTask *task, Condition *cond, MINewContents *new_mind,
+                          DimensionVector *all_dims, std::vector<bool> *pack_desc_locked, int64_t *tuples_in_output,
+                          int64_t limit, bool count_only,
+                          bool *stop_execution, int64_t *rows_passed, int64_t *rows_omitted);
+
+ private:
+  std::mutex mtx;
 };
 }  // namespace core
 }  // namespace Tianmu
