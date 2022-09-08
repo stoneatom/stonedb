@@ -133,7 +133,6 @@ void JoinerGeneral::ExecuteInnerJoinPackRow(MIIterator *mii, CTask *task, Condit
 
     if (loc_result) {
       if (!count_only) {
-        std::scoped_lock guard(mtx);
         for (int i = 0; i < mind->NumOfDimensions(); i++)
           if ((*all_dims)[i]) new_mind->SetNewTableValue(i, (*mii)[i]);
         new_mind->CommitNewTableValues();
