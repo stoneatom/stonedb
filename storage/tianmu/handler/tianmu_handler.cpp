@@ -550,7 +550,16 @@ int TianmuHandler::delete_row([[maybe_unused]] const uchar *buf) {
  */
 int TianmuHandler::delete_all_rows() {
   DBUG_ENTER(__PRETTY_FUNCTION__);
-  DBUG_RETURN(HA_ERR_WRONG_COMMAND);
+  int ret = 1;
+  try {
+    ha_rcengine_->TruncateTable(m_table_name, ha_thd());
+    ret = 0;
+  } catch (std::exception &e) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
+  } catch (...) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
+  }
+  DBUG_RETURN(ret);
 }
 
 int TianmuHandler::rename_table(const char *from, const char *to) {
@@ -1208,18 +1217,17 @@ int TianmuHandler::create(const char *name, TABLE *table_arg, [[maybe_unused]] H
 }
 
 int TianmuHandler::truncate() {
-  int ret = 0;
+  DBUG_ENTER(__PRETTY_FUNCTION__);
+  int ret = 1;
   try {
     ha_rcengine_->TruncateTable(m_table_name, ha_thd());
+    ret = 0;
   } catch (std::exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
-    ret = 1;
   } catch (...) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
-    ret = 1;
   }
-
-  return ret;
+  DBUG_RETURN(ret);
 }
 
 int TianmuHandler::fill_row(uchar *buf) {
