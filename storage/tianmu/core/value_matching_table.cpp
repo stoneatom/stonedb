@@ -52,11 +52,13 @@ ValueMatchingTable *ValueMatchingTable::CreateNew_ValueMatchingTable(int64_t mem
   }
 
   // easy case: narrow scope of group codes, which may be used
+#if 0
   if (max_group_code < common::PLUS_INF_64 && max_group_code < max_no_groups * 1.5) {
     ValueMatching_LookupTable *new_object = new ValueMatching_LookupTable();
     new_object->Init(max_group_code, _total_width, _input_buf_width, _match_width, power);
     return new_object;
   }
+#endif
 
   // default
   ValueMatching_HashTable *new_object = new ValueMatching_HashTable();

@@ -22,6 +22,7 @@
 #include "core/descriptor.h"
 #include "core/mysql_expression.h"
 #include "types/text_stat.h"
+#include "core/pack.h"
 
 namespace Tianmu {
 namespace core {
