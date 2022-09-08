@@ -32,6 +32,7 @@ extern char tianmu_sysvar_parallel_mapjoin;
 extern char tianmu_sysvar_pushdown;
 extern char tianmu_sysvar_qps_log;
 extern char tianmu_sysvar_refresh_sys_table;
+extern char tianmu_sysvar_large_prefix;
 extern char tianmu_sysvar_usemysqlimportexportdefaults;
 extern char *tianmu_sysvar_cachefolder;
 extern char *tianmu_sysvar_hugefiledir;
