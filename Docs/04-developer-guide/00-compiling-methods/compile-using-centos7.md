@@ -15,6 +15,7 @@ Ensure that the tools and third-party libraries used in your environment meet th
 - marisa 0.77
 - RocksDB 6.12.6
 - Boost 1.66
+- gtest
 
 ## Procedure
 ### Step 1. Install the dependencies
@@ -162,6 +163,27 @@ cd boost_1_66_0
 ./b2 install --with=all
 ```
 The installation directory of Boost in the example is **/usr/local/stonedb-boost**. You can change it based on your actual conditions.
+
+6. Install gtest.
+The operations next are following [Build Google Gtest Instructions](https://github.com/google/googletest/tree/main/googletest#build-with-cmake).
+```
+$ sudo git clone https://github.com/google/googletest.git -b release-1.12.0
+$ cd googletest
+$ sudo mkdir build
+$ cd build
+$ sudo cmake .. -DBUILD_GMOCK=OFF
+$ sudo make
+$ sudo make install
+```
+
+Install in /usr/local/ by default.
+```
+$ ls /usr/local/include/
+gtest
+$ ls /usr/local/lib/
+cmake  libgtest.a  libgtest_main.a  pkgconfig  python3.8
+```
+
 :::info
 During the compilation, the occurrences of keywords **warning** and** failed** are normal, unless **error** is displayed and the CLI is automatically closed.<br />It takes about 25 minutes to install Boost.
 :::
@@ -176,7 +198,7 @@ git checkout remotes/origin/stonedb-5.6
 Before compilation, modify the compilation script as follows:
 
 1. Change the installation directory of StoneDB based on your actual conditions. In the example, **/stonedb56/install** is used.
-1. Change the installation directories of marisa, RocksDB, and Boost based on your actual conditions.
+2. Change the installation directories of marisa, RocksDB, and Boost based on your actual conditions.
 ```shell
 ### Modify the compilation script.
 cd /stonedb/scripts

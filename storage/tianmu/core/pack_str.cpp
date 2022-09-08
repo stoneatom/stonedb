@@ -21,7 +21,6 @@
 #include "zlib.h"
 
 #include "compress/bit_stream_compressor.h"
-#include "compress/lz4.h"
 #include "compress/num_compressor.h"
 #include "compress/part_dict.h"
 #include "compress/text_compressor.h"
@@ -30,9 +29,10 @@
 #include "core/tools.h"
 #include "core/value.h"
 #include "loader/value_cache.h"
+#include "lz4.h"
 #include "mm/mm_guard.h"
-#include "system/tianmu_file.h"
 #include "system/stream.h"
+#include "system/tianmu_file.h"
 #include "system/txt_utils.h"
 
 namespace Tianmu {
@@ -462,10 +462,10 @@ void PackStr::Save() {
   if (!ShouldNotCompress()) {
     if (data.sum_len > common::MAX_CMPR_SIZE) {
       TIANMU_LOG(LogCtl_Level::WARN,
-                  "pack (%d-%d-%d) size %ld exceeds supported compression "
-                  "size, will not be compressed!",
-                  pc_table(GetCoordinate().co.pack), pc_column(GetCoordinate().co.pack), pc_dp(GetCoordinate().co.pack),
-                  data.sum_len);
+                 "pack (%d-%d-%d) size %ld exceeds supported compression "
+                 "size, will not be compressed!",
+                 pc_table(GetCoordinate().co.pack), pc_column(GetCoordinate().co.pack), pc_dp(GetCoordinate().co.pack),
+                 data.sum_len);
       SetModeNoCompression();
       dpn->len = NULLS_SIZE + data.sum_len + (data.len_mode * (1 << s->pss));
     } else if (s->ColType().GetFmt() == common::PackFmt::TRIE) {
