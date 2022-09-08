@@ -12,7 +12,7 @@ SQL can be classified into the following four parts by usage:
 
 - Data Definition Language (DDL): is used to manage database objects, such as CREATE, ALTER, and DROP statements.
 - Data Manipulation Language (DML): is used to manage data in tables, such as INSERT, DELETE, and UPDATE statements.
-- Data Query Language (DQL): is used to query objects, such as SELECT statements.
+- Data Query Language (DQL): is used to query data, such as SELECT statements.
 - Data Control Language (DCL): is used to control access to data, such as GRANT and REVOKE statements.
 ## Operations on databases
 This section provides examples of performing basic operations on databases.
@@ -50,7 +50,7 @@ birthday DATE
 ```
 :::info
 
-The row-based storage engine is named StoneDB in StoneDB-5.6, and is renamed to Tianmu in StoneDB-5.7 to distinguish from the database StoneDB.<br />If you do not specify **engine=stonedb** in the SQL statement, the storage engine on which the table is created is determined by the value of parameter **default_storage_engine**. For more information, see [Configure parameters](../04-developer-guide/05-appendix/configuration-parameters.md).
+The column-based storage engine is named after StoneDB in StoneDB-5.6, and is renamed to Tianmu in StoneDB-5.7 to distinguish from the database StoneDB.<br />If you do not specify **engine=stonedb** in the SQL statement, the storage engine on which the table is created is determined by the value of parameter **default_storage_engine**. For more information, see [Configure parameters](../04-developer-guide/05-appendix/configuration-parameters.md).
 
 :::
 ### Query the schema of a table

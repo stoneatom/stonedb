@@ -21,7 +21,6 @@
 #include "zlib.h"
 
 #include "compress/bit_stream_compressor.h"
-#include "compress/lz4.h"
 #include "compress/num_compressor.h"
 #include "compress/part_dict.h"
 #include "compress/text_compressor.h"
@@ -30,6 +29,7 @@
 #include "core/tools.h"
 #include "core/value.h"
 #include "loader/value_cache.h"
+#include "lz4.h"
 #include "mm/mm_guard.h"
 #include "system/stream.h"
 #include "system/tianmu_file.h"

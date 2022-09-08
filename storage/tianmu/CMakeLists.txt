@@ -96,3 +96,4 @@ TARGET_COMPILE_OPTIONS(tianmu PRIVATE -Wunused-parameter)
 TARGET_COMPILE_OPTIONS(tianmu PRIVATE -Wsuggest-override)
 
 add_subdirectory(async_tests)
+add_subdirectory(unittest)

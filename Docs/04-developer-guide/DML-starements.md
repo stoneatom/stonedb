@@ -18,7 +18,7 @@ CREATE TABLE t_test(
 ) engine=stonedb;
 ```
 :::info
-The row-based storage engine is named StoneDB in StoneDB-5.6, and is renamed to Tianmu in StoneDB-5.7 to distinguish from the database StoneDB.
+The column-based storage engine is named after StoneDB in StoneDB-5.6, and is renamed to Tianmu in StoneDB-5.7 to distinguish from the database StoneDB.
 :::
 ## INSERT
 ```sql
