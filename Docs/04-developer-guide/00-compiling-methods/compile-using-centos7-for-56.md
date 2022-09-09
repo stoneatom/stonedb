@@ -1,11 +1,12 @@
 ---
-id: compile-using-redhat7
-sidebar_position: 5.13
+id: compile-using-centos7-foe-56
+sidebar_position: 5.12.1
 ---
 
-# Compile StoneDB on RHEL 7
+# Compile StoneDB for MySQL5.6 on CentOS 7
 
-This topic describes how to compile StoneDB on Red Hat Enterprise Linux (RHEL) 7.
+This topic describes how to compile StoneDB on CentOS 7.
+
 ## Precautions
 Ensure that the tools and third-party libraries used in your environment meet the following version requirements:
 
@@ -15,9 +16,9 @@ Ensure that the tools and third-party libraries used in your environment meet th
 - marisa 0.77
 - RocksDB 6.12.6
 - Boost 1.66
-- gtest
 
 ## Procedure
+
 ### Step 1. Install the dependencies
 ```shell
 yum install -y tree
@@ -60,9 +61,7 @@ yum install -y libicu-devel
 yum install -y jemalloc-devel
 ```
 ### Step 2. Install GCC 9.3.0
-Before performing the follow-up steps, you must ensure the GCC version is 9.3.0.
-
-You can run the following command to check the GCC version.
+Before performing the follow-up steps, you must ensure the GCC version is 9.3.0.<br />You can run the following command to check the GCC version.
 ```shell
 gcc --version
 ```
@@ -164,32 +163,12 @@ cd boost_1_66_0
 ```
 The installation directory of Boost in the example is **/usr/local/stonedb-boost**. You can change it based on your actual conditions.
 
-6. Install gtest.
-The operations next are following [Build Google Gtest Instructions](https://github.com/google/googletest/tree/main/googletest#build-with-cmake).
-```
-$ sudo git clone https://github.com/google/googletest.git -b release-1.12.0
-$ cd googletest
-$ sudo mkdir build
-$ cd build
-$ sudo cmake .. -DBUILD_GMOCK=OFF
-$ sudo make
-$ sudo make install
-```
-
-Install in /usr/local/ by default.
-```
-$ ls /usr/local/include/
-gtest
-$ ls /usr/local/lib/
-cmake  libgtest.a  libgtest_main.a  pkgconfig  python3.8
-```
-
 :::info
 During the compilation, the occurrences of keywords **warning** and** failed** are normal, unless **error** is displayed and the CLI is automatically closed.<br />It takes about 25 minutes to install Boost.
 :::
 
 ### Step 4. Compile StoneDB
-Currently, StoneDB has two branches: StoneDB-5.6 (for MySQL 5.6) and StoneDB-5.7 (for MySQL 5.7). The link provided in this topic is to the source code package of StoneDB-5.7. In the following example, the source code package is saved to the root directory and is switched to StoneDB-5.6 for compilation. 
+Currently, StoneDB has two branches: StoneDB-5.6 (for MySQL 5.6) and StoneDB-5.7 (for MySQL 5.7). The link provided in this topic is to the source code package of StoneDB-5.7. In the following example,the source code package is saved to the root directory and is switched to StoneDB-5.6 for compilation. 
 ```shell
 cd /
 git clone https://github.com/stoneatom/stonedb.git
@@ -216,7 +195,7 @@ install_target=/stonedb56/install
 ### Execute the compilation script.
 sh stonedb_build.sh
 ```
-If your OS is CentOS or RHEL, you must comment out **os_dis** and **os_dist_release**, and modify the setting of **build_tag** to exclude the **os_dist** and **os_dist_release** parts. This is because the the values of **Distributor**, **Release**, and **Codename** output of the **lsb_release -a** command are **n/a**. Commenting out **os_dist** and **os_dist_release** only affects the names of the log file and the TAR package and has no impact on the compilation results.
+If your OS is CentOS or RHEL, you must comment out **os_dis** and **os_dist_release**, and modify the setting of **build_tag** to exclude the **os_dist** and **os_dist_release** parts. This is because the the values of **Distributor**, **Release**, and **Codename **output of the **lsb_release -a** command are **n/a**. Commenting out **os_dist** and **os_dist_release** only affects the names of the log file and the TAR package and has no impact on the compilation results.
 ## **Step 5. Start StoneDB**
 Users can start StoneDB in two ways: manual installation and automatic installation. 
 
@@ -229,7 +208,7 @@ passwd mysql
 
 2. Manually install StoneDB.
 
-If the installation directory after compilation is not **/stonedb56**, files **reinstall.sh**, **install.sh**, and **my.cnf** will not automatically generated. You need to manually create directories, and then initialize and start StoneDB. You also need to configure parameters in file **my.cnf**, including the installation directories and port.
+If the installation directory after compilation is not **/stonedb56**, files **reinstall.sh**, **install.sh**, and **my.cnf **will not automatically generated. You need to manually create directories, and then initialize and start StoneDB. You also need to configure parameters in file **my.cnf**, including the installation directories and port.
 ```shell
 ### Create directories.
 mkdir -p /data/stonedb56/install/data/innodb
@@ -256,7 +235,7 @@ chown -R mysql:mysql /data/stonedb56/install/my.cnf
 /data/stonedb56/install/bin/mysqld_safe --defaults-file=/data/stonedb56/install/my.cnf --user=mysql &
 ```
 
-3. Execute **reinstall.sh** to automatically install StoneDB.
+3. Execute reinstall.sh to automatically install StoneDB.
 
 If the installation directory after compilation is **/stonedb56**, execute **reinstall.sh**. Then, StoneDB will be automatically installed.
 ```shell
@@ -267,7 +246,7 @@ cd /stonedb56/install
 Differences between **reinstall.sh** and **install.sh**:
 
 - **reinstall.sh** is the script for automatic installation. When the script is being executed, directories are created, and StoneDB is initialized and started. Therefore, do not execute the script unless for the initial startup of StoneDB. Otherwise, all directories will be deleted and StoneDB will be initialized again.
-- **install.sh** is the script for manual installation. You can specify the installation directories based on your needs and then execute the script. Same as **reinstall.sh**, when the script is being executed, directories are created, and StoneDB is initialized and started. Therefore, do not execute the script unless for the initial startup. Otherwise, all directories will be deleted and StoneDB will be initialized again.
+- **install.sh **is the script for manual installation. You can specify the installation directories based on your needs and then execute the script. Same as **reinstall.sh**, when the script is being executed, directories are created, and StoneDB is initialized and started. Therefore, do not execute the script unless for the initial startup. Otherwise, all directories will be deleted and StoneDB will be initialized again.
 :::
 
 4. Log in to StoneDB.
