@@ -57,7 +57,9 @@ sudo apt install -y libjemalloc-dev
 sudo apt install -y libssl-dev
 sudo apt install -y pkg-config
 ```
-注：依赖包必须都装上，否则后面有很多报错。
+:::info
+依赖包必须都装上，否则后面有很多报错。
+:::
 ## 第二步：安装第三方库
 安装第三库前需要确认 cmake 版本是3.7.2以上，make 版本是3.82以上，如果低于这两个版本，需要进行安装。StoneDB 依赖 marisa、rocksdb、boost，在编译 marisa、rocksdb、boost 时，建议指定安装路径。示例中我们指定了 marisa、rocksdb、boost 的安装路径。
 ### 1. 安装 cmake
@@ -250,4 +252,6 @@ Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
 mysql> alter user 'root'@'localhost' identified by 'stonedb123';
 ```
-注：管理员用户的临时密码在 mysqld.log 中，第一次登陆后需要修改管理员用户的密码。
+:::info
+管理员用户的临时密码在 mysqld.log 中，第一次登陆后需要修改管理员用户的密码。
+:::

@@ -149,7 +149,7 @@ cd boost_1_66_0
 boost 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-boost。
 
 :::info
-注：在编译过程中，除非有关键字 "error" 报错自动退出，否则出现关键字 "warning"、"failed"是正常的，安装 boost 大概需要25分钟左右。
+在编译过程中，除非有关键字 "error" 报错自动退出，否则出现关键字 "warning"、"failed"是正常的，安装 boost 大概需要25分钟左右。
 :::
 ### 6. 安装 gtest
 ```shell
@@ -191,7 +191,9 @@ install_target=/stonedb57/install
 ###执行编译脚本
 sh stonedb_build.sh
 ```
-注：如果是 CentOS/RedHat ，需要注释 os_dist 和 os_dist_release，并且修改 build_tag ，这是因为 "lsb_release -a" 返回的结果中，Distributor、Release、Codename 显示的是 n/a。注释 os_dist 和 os_dist_release 只会影响产生的日志名和 tar 包名，不会影响编译结果。
+:::info
+如果是 CentOS/RedHat ，需要注释 os_dist 和 os_dist_release，并且修改 build_tag ，这是因为 "lsb_release -a" 返回的结果中，Distributor、Release、Codename 显示的是 n/a。注释 os_dist 和 os_dist_release 只会影响产生的日志名和 tar 包名，不会影响编译结果。
+:::
 ## 第五步：启动实例
 用户可按照手动安装和自动安装两种方式启动 StoneDB。
 ### 1. 创建用户
@@ -259,4 +261,6 @@ Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
 mysql> alter user 'root'@'localhost' identified by 'stonedb123';
 ```
-注：管理员用户的临时密码在 mysqld.log 中，第一次登陆后需要修改管理员用户的密码。
+:::info
+管理员用户的临时密码在 mysqld.log 中，第一次登陆后需要修改管理员用户的密码。
+:::
