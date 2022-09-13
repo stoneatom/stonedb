@@ -5,36 +5,38 @@ sidebar_position: 4.32
 
 # MySQL全量数据备份-mydumper
 
-mydumper项目地址：[https://github.com/mydumper/mydumper](https://github.com/mydumper/mydumper)
-## Mydumper介绍
-### 什么是Mydumper？
-Mydumper 是一个 MySQL 逻辑备份工具。它有 2 个工具：
+mydumper 项目地址：[https://github.com/mydumper/mydumper](https://github.com/mydumper/mydumper)
+## mydumper 介绍
+### 什么是 mydumper？
+mydumper 是一个 MySQL 逻辑备份工具，它有 2 个工具：
 
-- mydumper负责导出 MySQL 数据库的一致备份
-- myloader从 mydumper 读取备份，连接到目标数据库并导入备份。两种工具都使用多线程功能
-### Mydumper优势
+- mydumper 负责导出数据。
+- myloader 从 mydumper 读取备份，连接到目标数据库并导入备份，两种工具都可以使用多线程。
+### mydumper 优势
 
-- 并行性（因此，速度）和性能（避免昂贵的字符集转换例程，整体高效的代码）
-- 更易于管理输出（表的单独文件、转储元数据等，易于查看/解析数据）
-- 一致性 - 维护所有线程的快照，提供准确的主从日志位置等
-- 可管理性 - 支持 PCRE 以指定数据库和表的包含和排除
-### Mydumper主要特性
+- 并行性和性能
+- 更易于管理输出，表的单独文件、转储元数据等，易于查看/解析数据
+- 一致性，维护所有线程的快照，提供准确的主从日志位置等
+- 可管理性，支持 PCRE 以指定数据库和表的包含和排除
+### mydumper 主要特性
 
 - 多线程备份，备份后会生成多个备份文件
-- 事务性和非事务性表一致的快照(适用于0.2.2以上版本)
+- 事务性和非事务性表一致的快照（适用于0.2.2以上版本）
 - 快速的文件压缩
-- 支持导出binlog
-- 多线程恢复(适用于0.2.1以上版本)
-- 以守护进程的工作方式，定时快照和连续二进制日志(适用于0.5.0以上版本)
-- 开源 (GNU GPLv3)
-## Mydumper使用
-### Mydumer 参数
+- 支持导出 binlog
+- 多线程恢复（适用于0.2.1以上版本）
+- 以守护进程的工作方式，定时快照和连续二进制日志（适用于0.5.0以上版本）
+- 开源（GNU GPLv3）
+## mydumper使用
+### mydumer 参数
 ```bash
 mydumper --help
 Usage:
 mydumper [OPTION…] multi-threaded MySQL dumping
+
 Help Options:
 -?, --help                      Show help options
+
 Application Options:
 -B, --database                  Database to dump
 -o, --outputdir                 Directory to output files to
@@ -105,13 +107,15 @@ Application Options:
 -S, --socket                    UNIX domain socket file to use for connection
   -x, --regex                     Regular expression for 'db.table' matching
 ```
-### Myloader参数
+### myloader参数
 ```bash
 myloader --help
 Usage:
   myloader [OPTION…] multi-threaded MySQL loader
+
 Help Options:
   -?, --help                        Show help options
+
 Application Options:
   -d, --directory                   Directory of the dump to import
   -q, --queries-per-transaction     Number of queries per transaction, default 1000
@@ -148,20 +152,22 @@ Application Options:
   -S, --socket                      UNIX domain socket file to use for connection
   -x, --regex                       Regular expression for 'db.table' matching
   --skip-definer                    Removes DEFINER from the CREATE statement. By default, statements are not modified
+
 ```
 ### 安装使用
 ```bash
-#到项目github 上下载机器对应的rpm包或者源码包，源码包需要进行编译，rpm包安装简单建议使用，本文以centos 7系统为例，所以下载el7版本
+# 到项目 github 上下载机器对应的 rpm 包或者源码包，源码包需要进行编译，rpm 包安装简单建议使用，本文以 CentOS 7 系统为例，所以下载 el7 版本
 [root@dev tmp]# wget https://github.com/mydumper/mydumper/releases/download/v0.12.1/mydumper-0.12.1-1-zstd.el7.x86_64.rpm
-#由于下载的mydumper是zstd类型的，所以需要下载libzstd依赖
+# 由于下载的 mydumper 是 zstd 类型的，所以需要下载 libzstd 依赖
 [root@dev tmp]# yum install libzstd.x86_64 -y
-[root@dev tmp]#rpm -ivh mydumper-0.12.1-1-zstd.el7.x86_64.rpm
+[root@dev tmp]# rpm -ivh mydumper-0.12.1-1-zstd.el7.x86_64.rpm
 Preparing...                          ################################# [100%]
 Updating / installing...
    1:mydumper-0.12.1-1                ################################# [100%]
-#备份库
+
+# 备份库
 [root@dev home]# mydumper -u root -p xxx -P 3306 -h 127.0.0.1 -B zz -o /home/dumper/
-#恢复库
+# 恢复库
 [root@dev home]# myloader -u root -p xxx -P 3306 -h 127.0.0.1 -S /stonedb/install/tmp/mysql.sock -B zz -d /home/dumper
 ```
 **备份所生成的文件** 
@@ -179,6 +185,7 @@ SHOW MASTER STATUS:
         Log: mysql-bin.000002
         Pos: 4737113
         GTID:
+
 Finished dump at: 2022-03-23 15:51:40
 [root@dev-myos dumper]# cat zz-schema-create.sql
 CREATE DATABASE /*!32312 IF NOT EXISTS*/ `zz` /*!40100 DEFAULT CHARACTER SET utf8 */;
@@ -194,6 +201,7 @@ INSERT INTO `t_user` VALUES(1,"e1195afd-aa7d-11ec-936e-00155d840103","kAMXjvtFJy
 [root@dev-myos dumper]# cat zz.t_user-schema.sql
 /*!40101 SET NAMES binary*/;
 /*!40014 SET FOREIGN_KEY_CHECKS=0*/;
+
 /*!40103 SET TIME_ZONE='+00:00' */;
 CREATE TABLE `t_user` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -206,37 +214,31 @@ CREATE TABLE `t_user` (
   KEY `idx_user_id` (`c_user_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10001 DEFAULT CHARSET=utf8;
 ```
+
 目录
-metadata文件
+
+metadata 文件
+
    - 记录了备份数据库在备份时间点的二进制日志文件名，日志的写入位置，
    - 如果是在从库进行备份，还会记录备份时同步至主库的二进制日志文件及写入位置 
+
 每个表有两个备份文件：
-database-schema-create 库创建语句文件
-database.table-schema.sql 表结构文件
-database.table.00000.sql 表数据文件
-database.table-metadata 表元数据文件
-***扩展***
-如果要导入数据到StoneDB，需要把Mydumper的database.table-schema.sql 表结构文件中建表语句engine=innodb 改成 engine=stonedb,并检查表结构是否有StoneDB不兼容的语法：类似unsigned 之类的限制。修改后结构示例：
-```
-[root@dev-myos dumper]# cat zz.t_user-schema.sql
-/*!40101 SET NAMES binary*/;
-/*!40014 SET FOREIGN_KEY_CHECKS=0*/;
-/*!40103 SET TIME_ZONE='+00:00' */;
-CREATE TABLE `t_user` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `c_user_id` varchar(36) NOT NULL DEFAULT '',
-  `c_name` varchar(22) NOT NULL DEFAULT '',
-  `c_province_id` int(11) NOT NULL,
-  `c_city_id` int(11) NOT NULL,
-  `create_time` datetime NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=STONEDB AUTO_INCREMENT=10001 DEFAULT CHARSET=utf8;
-```
+
+- database-schema-create 库创建语句文件
+
+- database.table-schema.sql 表结构文件
+
+- database.table.00000.sql 表数据文件
+
+- database.table-metadata 表元数据文件
+
 ### 备份原理
-   - 主线程 FLUSH TABLES WITH READ LOCK, 施加全局只读锁，保证数据的一致性 
-   - 读取当前时间点的二进制日志文件名和日志写入的位置并记录在metadata文件中，以供全量恢复后追加binlog恢复使用 
-   - N个（线程数可以指定，默认是4）dump线程把事务隔离级别改为可重复读 并开启一致性读事务
+
+   - 主线程 FLUSH TABLES WITH READ LOCK，施加全局只读锁，保证数据的一致性 
+   - 读取当前时间点的二进制日志文件名和日志写入的位置并记录在 metadata 文件中，以供全量恢复后追加 binlog 恢复使用 
+   - N个（线程数可以指定，默认是4）dump 线程把事务隔离级别改为可重复读 并开启一致性读事务
    - dump non-InnoDB tables, 首先导出非事物引擎的表 
    - 主线程 UNLOCK TABLES 非事物引擎备份完后，释放全局只读锁 
-   - dump InnoDB tables, 基于事物导出InnoDB表 
+   - dump InnoDB tables，基于事物导出 InnoDB 表 
    - 事物结束
+
