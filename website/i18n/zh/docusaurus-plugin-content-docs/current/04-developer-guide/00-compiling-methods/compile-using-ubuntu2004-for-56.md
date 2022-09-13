@@ -1,9 +1,9 @@
 ---
-id: compile-using-ubuntu20.04
-sidebar_position: 5.14
+id: compile-using-ubuntu20.04-for-56
+sidebar_position: 5.14.1
 ---
 
-# Ubuntu 20.04 下编译StoneDB
+# Ubuntu 20.04 下编译 StoneDB for MySQL5.6
 
 编译工具以及第三方库的版本要求如下。
 
@@ -58,11 +58,11 @@ sudo apt install -y libjemalloc-dev
 sudo apt install -y libssl-dev
 sudo apt install -y pkg-config
 ```
-:::caution
 注：依赖包必须都装上，否则后面有很多报错。
-:::
+
 ## 第二步：安装第三方库
 安装第三库前需要确认 cmake 版本是3.7.2以上，make 版本是3.82以上，如果低于这两个版本，需要进行安装。StoneDB 依赖 marisa、rocksdb、boost，在编译 marisa、rocksdb、boost 时，建议指定安装路径。示例中我们指定了 marisa、rocksdb、boost 的安装路径。
+
 ### 1. 安装 cmake
 ```shell
 wget https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz
@@ -95,7 +95,7 @@ sudo make && make install
 ```
 marisa 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-marisa。此步骤会在 /usr/local/stonedb-marisa/lib 下生成如下目录和文件。
 
-![marisa](./libmarisa.png)
+![](./5.6-marisa.png)
 
 ### 4. 安装 rocksdb 
 ```shell
@@ -124,7 +124,8 @@ sudo make install -j`nproc`
 ```
 rocksdb 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-gcc-rocksdb。此步骤会在 /usr/local/stonedb-gcc-rocksdb 下生成如下目录和文件。
 
-![rocksdb](./librocksdb.png)
+![](./5.6-rocksdb.png)
+
 ### 5. 安装 boost
 ```shell
 wget https://sourceforge.net/projects/boost/files/boost/1.66.0/boost_1_66_0.tar.gz
@@ -135,13 +136,12 @@ cd boost_1_66_0
 ```
 boost 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-boost。此步骤会在 /usr/local/stonedb-boost/lib 下生成如下目录和文件。
 
-![boost](./libboost.png)
+![image.png](./5.6-boost.png)
 
 :::info
-
 在编译过程中，除非有关键字 "error" 报错自动退出，否则出现关键字 "warning"、"failed"是正常的，安装 boost 大概需要25分钟左右。
-
 :::
+
 ## 第三步：执行编译
 StoneDB 现有 5.6 和 5.7 两个分支，下载的源码包默认是 5.7 分支。下载的源码包存放路径可根据实际情况指定，示例中的源码包存放路径是在根目录下，并且是切换为 5.6 分支的编译安装。
 ```shell
@@ -150,11 +150,7 @@ git clone https://github.com/stoneatom/stonedb.git
 cd stonedb
 git checkout remotes/origin/stonedb-5.6
 ```
-在执行编译脚本前，需要修改编译脚本的两处内容：
-
-1）StoneDB 安装目录，可根据实际情况修改，示例中的安装目录是 /stonedb56/install；
-
-2）marisa、rocksdb、boost 的实际安装路径，必须与上文安装 marisa、rocksdb、boost 的路径保持一致。
+在执行编译脚本前，需要修改编译脚本的两处内容：<br />1）StoneDB 安装目录，可根据实际情况修改，示例中的安装目录是 /stonedb56/install；<br />2）marisa、rocksdb、boost 的实际安装路径，必须与上文安装 marisa、rocksdb、boost 的路径保持一致。
 ```shell
 ###修改编译脚本
 cd /stonedb/scripts
@@ -171,7 +167,9 @@ install_target=/stonedb56/install
 ###执行编译脚本
 sh stonedb_build.sh
 ```
-注：如果是 CentOS/RedHat ，需要注释 os_dist 和 os_dist_release，并且修改 build_tag ，这是因为 "lsb_release -a" 返回的结果中，Distributor、Release、Codename 显示的是 n/a。注释 os_dist 和 os_dist_release 只会影响产生的日志名和 tar 包名，不会影响编译结果。
+:::info
+如果是 CentOS/RedHat ，需要注释 os_dist 和 os_dist_release，并且修改 build_tag ，这是因为 "lsb_release -a" 返回的结果中，Distributor、Release、Codename 显示的是 n/a。注释 os_dist 和 os_dist_release 只会影响产生的日志名和 tar 包名，不会影响编译结果。
+:::
 ## 第四步：启动实例
 用户可按照手动安装和自动安装两种方式启动 StoneDB。
 ### 1. 创建用户
@@ -213,11 +211,8 @@ chown -R mysql:mysql /data/stonedb56/install/my.cnf
 cd /stonedb56/install
 ./reinstall.sh
 ```
-
-:::note
-**注：reinstall.sh 与 install.sh 的区别？**
-
-*reinstall.sh* 是自动化安装脚本，执行脚本的过程是创建目录、初始化实例和启动实例的过程，只在第一次使用，其他任何时候使用都会删除整个目录，重新初始化数据库。install.sh 是手动安装提供的示例脚本，用户可根据自定义的安装目录修改路径，然后执行脚本，执行脚本的过程也是创建目录、初始化实例和启动实例。以上两个脚本都只能在第一次使用。
+:::info
+reinstall.sh 与 install.sh 的区别？<br />reinstall.sh 是自动化安装脚本，执行脚本的过程是创建目录、初始化实例和启动实例的过程，只在第一次使用，其他任何时候使用都会删除整个目录，重新初始化数据库。install.sh 是手动安装提供的示例脚本，用户可根据自定义的安装目录修改路径，然后执行脚本，执行脚本的过程也是创建目录、初始化实例和启动实例。以上两个脚本都只能在第一次使用。
 :::
 ### 4. 执行登录
 ```shell
