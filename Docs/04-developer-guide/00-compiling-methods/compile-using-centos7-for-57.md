@@ -1,6 +1,6 @@
 ---
 id: compile-using-centos7-for-57
-sidebar_position: 5.12.2
+sidebar_position: 5.122
 ---
 
 # Compile StoneDB for MySQL5.7 on CentOS 7

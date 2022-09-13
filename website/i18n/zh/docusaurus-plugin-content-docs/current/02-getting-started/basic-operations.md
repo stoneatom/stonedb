@@ -47,7 +47,10 @@ age smallint,
 birthday DATE
 ) engine=stonedb;
 ```
-注：1）StoneDB 5.6 的存储引擎名是 stonedb，5.7 的存储引擎名是 tianmu。<br />2）如果 SQL 语句中未指定“engine=stonedb”，则所创建的表的存储引擎由参数 default_storage_engine 决定，详情参见[设置参数](../04-developer-guide/05-appendix/configuration-parameters.md)。
+:::info
+1. StoneDB-5.6 的存储引擎名是 `stonedb`；StoneDB-5.7 的存储引擎名是 `tianmu`。
+2。 如果 SQL 语句中未指定“engine=stonedb”，则所创建的表的存储引擎由参数 default_storage_engine 决定，详情参见[设置参数](../04-developer-guide/05-appendix/configuration-parameters.md)。
+:::
 ### 2）查看表
 查看表结构使用以下 SQL 语句：
 ```sql
@@ -90,7 +93,9 @@ select name,birthday from student order by birthday;
 ```sql
 create user 'tiger'@'%' identified by '123456';
 ```
-注：用户名和主机名（'username'@'host'）唯一表示一个用户，'tiger'@'%'和'tiger'@'localhost'是两个不同的用户。
+:::info
+用户名和主机名（'username'@'host'）唯一表示一个用户，'tiger'@'%'和'tiger'@'localhost'是两个不同的用户。
+:::
 ### 2）向用户授权
 例如：向用户 tiger 授予可查询数据库 test_db 所有的表，可以使用以下 SQL 语句：
 ```sql
