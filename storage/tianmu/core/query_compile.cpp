@@ -983,7 +983,7 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       TABLE_LIST *tables = sl->leaf_tables ? sl->leaf_tables : (TABLE_LIST *)sl->table_list.first;
       for (TABLE_LIST *table_ptr = tables; table_ptr; table_ptr = table_ptr->next_leaf) {
         if (!table_ptr->is_view_or_derived()) {
-          if (!Engine::IsTIANMUTable(table_ptr->table)) throw CompilationError();
+          if (!Engine::IsTianmuTable(table_ptr->table)) throw CompilationError();
           std::string path = TablePath(table_ptr);
           if (path2num.find(path) == path2num.end()) {
             path2num[path] = NumOfTabs();

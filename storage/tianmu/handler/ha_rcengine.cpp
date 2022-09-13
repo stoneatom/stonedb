@@ -44,7 +44,7 @@ namespace {
 bool AtLeastOneTIANMUTableInvolved(LEX *lex) {
   for (TABLE_LIST *table_list = lex->query_tables; table_list; table_list = table_list->next_global) {
     TABLE *table = table_list->table;
-    if (core::Engine::IsTIANMUTable(table)) return TRUE;
+    if (core::Engine::IsTianmuTable(table)) return TRUE;
   }
   return FALSE;
 }
@@ -103,7 +103,7 @@ int TIANMU_LoadData(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *ar
   common::TIANMUError tianmu_error;
   int ret = static_cast<int>(TIANMUEngineReturnValues::LD_Failed);
 
-  if (!core::Engine::IsTIANMUTable(table_list->table)) return static_cast<int>(TIANMUEngineReturnValues::LD_Continue);
+  if (!core::Engine::IsTianmuTable(table_list->table)) return static_cast<int>(TIANMUEngineReturnValues::LD_Continue);
 
   try {
     tianmu_error = ha_rcengine_->RunLoader(thd, ex, table_list, arg);
