@@ -1,6 +1,6 @@
 ---
 id: compile-using-redhat7-for-56
-sidebar_position: 5.13.1
+sidebar_position: 5.131
 ---
 
 # Compile StoneDB for MySQL5.6 on RHEL 7

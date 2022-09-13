@@ -1,6 +1,6 @@
 ---
 id: compile-using-redhat7-for-56
-sidebar_position: 5.13.1
+sidebar_position: 5.131
 ---
 
 # RedHat 7 下编译 StoneDB for MySQL5.6

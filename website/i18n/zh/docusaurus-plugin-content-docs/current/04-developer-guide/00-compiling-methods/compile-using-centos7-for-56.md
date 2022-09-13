@@ -1,6 +1,6 @@
 ---
 id: compile-using-centos7-56
-sidebar_position: 5.12.1
+sidebar_position: 5.121
 ---
 
 # CentOS 7 下编译 StoneDB for MySQL5.6

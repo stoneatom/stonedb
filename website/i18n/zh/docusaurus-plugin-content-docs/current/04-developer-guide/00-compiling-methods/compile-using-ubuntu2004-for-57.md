@@ -1,6 +1,6 @@
 ---
 id: compile-using-ubuntu20.04-for-56
-sidebar_position: 5.14.2
+sidebar_position: 5.142
 ---
 
 # Ubuntu 20.04 下编译 StoneDB for MySQL5.7
