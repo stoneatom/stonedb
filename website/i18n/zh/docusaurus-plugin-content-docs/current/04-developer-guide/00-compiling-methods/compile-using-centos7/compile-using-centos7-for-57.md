@@ -1,9 +1,9 @@
 ---
-id: compile-using-redhat7-for-56
-sidebar_position: 5.132
+id: compile-using-centos7-57
+sidebar_position: 5.121
 ---
 
-# RedHat 7 下编译 StoneDB for MySQL5.7
+# CentOS 7 下编译 StoneDB for MySQL5.7
 
 编译工具以及第三方库的版本要求如下。
 
@@ -149,7 +149,7 @@ cd boost_1_66_0
 boost 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-boost。
 
 :::info
-在编译过程中，除非有关键字 "error" 报错自动退出，否则出现关键字 "warning"、"failed"是正常的，安装 boost 大概需要25分钟左右。
+注：在编译过程中，除非有关键字 "error" 报错自动退出，否则出现关键字 "warning"、"failed"是正常的，安装 boost 大概需要25分钟左右。
 :::
 ### 6. 安装 gtest
 ```shell
@@ -194,6 +194,7 @@ sh stonedb_build.sh
 :::info
 如果是 CentOS/RedHat ，需要注释 os_dist 和 os_dist_release，并且修改 build_tag ，这是因为 "lsb_release -a" 返回的结果中，Distributor、Release、Codename 显示的是 n/a。注释 os_dist 和 os_dist_release 只会影响产生的日志名和 tar 包名，不会影响编译结果。
 :::
+
 ## 第五步：启动实例
 用户可按照手动安装和自动安装两种方式启动 StoneDB。
 ### 1. 创建用户
@@ -238,13 +239,12 @@ chown -R mysql:mysql /stonedb57/install/my.cnf
 ### 3. 自动安装
 编译完成后，在安装目录下会自动生成 reinstall.sh、install.sh 和 my.cnf 文件，执行 reinstall.sh 就是创建目录、初始化实例和启动实例的过程。
 ```shell
-cd /stonedb56/install
+cd /stonedb57/install
 ./reinstall.sh
 ```
 :::info
 reinstall.sh 与 install.sh 的区别？<br />reinstall.sh 是自动化安装脚本，执行脚本的过程是创建目录、初始化实例和启动实例的过程，只在第一次使用，其他任何时候使用都会删除整个目录，重新初始化数据库。install.sh 是手动安装提供的示例脚本，用户可根据自定义的安装目录修改路径，然后执行脚本，执行脚本的过程也是创建目录、初始化实例和启动实例。以上两个脚本都只能在第一次使用。
 :::
-
 ### 4. 执行登录
 ```shell
 cat /stonedb57/install/log/mysqld.log |grep passwd

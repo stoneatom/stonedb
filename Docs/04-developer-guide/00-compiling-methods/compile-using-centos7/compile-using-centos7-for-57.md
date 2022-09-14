@@ -1,12 +1,11 @@
 ---
-id: compile-using-centos7-foe-56
+id: compile-using-centos7-for-57
 sidebar_position: 5.121
 ---
 
-# Compile StoneDB for MySQL5.6 on CentOS 7
+# Compile StoneDB for MySQL5.7 on CentOS 7
 
 This topic describes how to compile StoneDB on CentOS 7.
-
 ## Precautions
 Ensure that the tools and third-party libraries used in your environment meet the following version requirements:
 
@@ -18,7 +17,6 @@ Ensure that the tools and third-party libraries used in your environment meet th
 - Boost 1.66
 
 ## Procedure
-
 ### Step 1. Install the dependencies
 ```shell
 yum install -y tree
@@ -162,29 +160,43 @@ cd boost_1_66_0
 ./b2 install --with=all
 ```
 The installation directory of Boost in the example is **/usr/local/stonedb-boost**. You can change it based on your actual conditions.
-
 :::info
 During the compilation, the occurrences of keywords **warning** and** failed** are normal, unless **error** is displayed and the CLI is automatically closed.<br />It takes about 25 minutes to install Boost.
 :::
 
+6. Install Gtest.
+```shell
+git clone https://github.com/google/googletest.git -b release-1.12.0
+cd googletest
+mkdir build
+cd build
+cmake .. -DBUILD_GMOCK=OFF
+make
+make install
+```
+Install in /usr/local/ by default.
+```shell
+ls /usr/local/include/
+...... gtest
+ls /usr/local/lib/
+...... cmake  libgtest.a  libgtest_main.a
+```
 ### Step 4. Compile StoneDB
-Currently, StoneDB has two branches: StoneDB-5.6 (for MySQL 5.6) and StoneDB-5.7 (for MySQL 5.7). The link provided in this topic is to the source code package of StoneDB-5.7. In the following example,the source code package is saved to the root directory and is switched to StoneDB-5.6 for compilation. 
+Currently, StoneDB has two branches: StoneDB-5.6 (for MySQL 5.6) and StoneDB-5.7 (for MySQL 5.7). The link provided in this topic is to the source code package of StoneDB-5.7. In the following example,the source code package is saved to the root directory. 
 ```shell
 cd /
 git clone https://github.com/stoneatom/stonedb.git
-cd stonedb
-git checkout remotes/origin/stonedb-5.6
 ```
 Before compilation, modify the compilation script as follows:
 
-1. Change the installation directory of StoneDB based on your actual conditions. In the example, **/stonedb56/install** is used.
+1. Change the installation directory of StoneDB based on your actual conditions. In the example, **/stonedb57/install** is used.
 1. Change the installation directories of marisa, RocksDB, and Boost based on your actual conditions.
 ```shell
 ### Modify the compilation script.
 cd /stonedb/scripts
 vim stonedb_build.sh
 ...
-install_target=/stonedb56/install
+install_target=/stonedb57/install
 ...
 -DDOWNLOAD_BOOST=0 \
 -DWITH_BOOST=/usr/local/stonedb-boost/ \
@@ -208,38 +220,42 @@ passwd mysql
 
 2. Manually install StoneDB.
 
-If the installation directory after compilation is not **/stonedb56**, files **reinstall.sh**, **install.sh**, and **my.cnf **will not automatically generated. You need to manually create directories, and then initialize and start StoneDB. You also need to configure parameters in file **my.cnf**, including the installation directories and port.
+You need to manually create directories, and then initialize and start StoneDB. You also need to configure parameters in file **my.cnf**, including the installation directories and port.
 ```shell
 ### Create directories.
-mkdir -p /data/stonedb56/install/data/innodb
-mkdir -p /data/stonedb56/install/binlog
-mkdir -p /data/stonedb56/install/log
-mkdir -p /data/stonedb56/install/tmp
-chown -R mysql:mysql /data
+mkdir -p /stonedb57/install/data
+mkdir -p /stonedb57/install/binlog
+mkdir -p /stonedb57/install/log
+mkdir -p /stonedb57/install/tmp
+mkdir -p /stonedb57/install/redolog
+mkdir -p /stonedb57/install/undolog
+chown -R mysql:mysql /stonedb57
 
 ### Configure parameters in my.cnf.
-vim /data/stonedb56/install/my.cnf
+mv my.cnf my.cnf.bak
+vim /stonedb57/install/my.cnf
 [mysqld]
 port      = 3306
-socket    = /data/stonedb56/install/tmp/mysql.sock
-datadir   = /data/stonedb56/install/data
-pid-file  = /data/stonedb56/install/data/mysqld.pid
-log-error = /data/stonedb56/install/log/mysqld.log
+socket    = /stonedb57/install/tmp/mysql.sock
+basedir   = /stonedb57/install
+datadir   = /stonedb57/install/data
+pid_file  = /stonedb57/install/data/mysqld.pid
+log_error = /stonedb57/install/log/mysqld.log
+innodb_log_group_home_dir   = /stonedb57/install/redolog/
+innodb_undo_directory       = /stonedb57/install/undolog/
 
-chown -R mysql:mysql /data/stonedb56/install/my.cnf
+chown -R mysql:mysql /stonedb57/install/my.cnf
 
 ### Initialize StoneDB.
-/data/stonedb56/install/scripts/mysql_install_db --datadir=/data/stonedb56/install/data --basedir=/data/stonedb56/install --user=mysql
+/stonedb57/install/bin/mysqld --defaults-file=/stonedb57/install/my.cnf --initialize --user=mysql
 
 ### Start StoneDB.
-/data/stonedb56/install/bin/mysqld_safe --defaults-file=/data/stonedb56/install/my.cnf --user=mysql &
+/stonedb57/install/bin/mysqld_safe --defaults-file=/stonedb57/install/my.cnf --user=mysql &
 ```
 
 3. Execute reinstall.sh to automatically install StoneDB.
-
-If the installation directory after compilation is **/stonedb56**, execute **reinstall.sh**. Then, StoneDB will be automatically installed.
 ```shell
-cd /stonedb56/install
+cd /stonedb57/install
 ./reinstall.sh
 ```
 :::info
@@ -251,26 +267,20 @@ Differences between **reinstall.sh** and **install.sh**:
 
 4. Log in to StoneDB.
 ```shell
-/stonedb56/install/bin/mysql -uroot -p -S /stonedb56/install/tmp/mysql.sock
-Enter password: 
+cat /stonedb57/install/log/mysqld.log |grep passwd
+[Note] A temporary password is generated for root@localhost: ceMuEuj6l4+!
+
+/stonedb57/install/bin/mysql -uroot -p -S /stonedb57/install/tmp/mysql.sock
+mysql: [Warning] Using a password on the command line interface can be insecure.
 Welcome to the MySQL monitor.  Commands end with ; or \g.
 Your MySQL connection id is 2
-Server version: 5.6.24-StoneDB-debug build-
+Server version: 5.7.36-StoneDB-debug-log build-
 
-Copyright (c) 2000, 2022 StoneAtom Group Holding Limited
+Copyright (c) 2021, 2022 StoneAtom Group Holding Limited
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
-mysql> show databases;
-+--------------------+
-| Database           |
-+--------------------+
-| information_schema |
-| cache              |
-| innodb             |
-| mysql              |
-| performance_schema |
-| sys_stonedb        |
-| test               |
-+--------------------+
-7 rows in set (0.00 sec)
+mysql> alter user 'root'@'localhost' identified by 'stonedb123';
 ```
+:::info
+The temporary password of user root is recorded in mysqld.log. Upon your first login, you must change the temporary password.
+:::

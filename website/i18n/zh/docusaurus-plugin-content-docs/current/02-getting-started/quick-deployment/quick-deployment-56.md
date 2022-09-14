@@ -1,9 +1,9 @@
 ---
-id: quick-deployment
-sidebar_position: 3.1
+id: quick-deployment-56
+sidebar_position: 3.11
 ---
 
-# 快速部署
+# 快速部署 StoneDB-5.6
 为方便用户快速上手，安装包是已经编译好的，只需要检查自己的环境是否缺少依赖。
 ## 下载安装包
 点击 [此处](https://static.stoneatom.com/stonedb-ce-5.6-v1.0.0.el7.x86_64.tar.gz)下载最新的安装包。
@@ -21,17 +21,18 @@ ldd mysql
 ```
 如果检查返回有关键字"not found"，说明缺少文件，需要安装对应的依赖包。
 
-例如：
+例如：libsnappy.so.1 => not found
 
-libsnappy.so.1 => not found
+在 Ubuntu 上使用命令 "sudo apt search libsnappy" 检查，说明需要安装 libsnappy-dev。
 
-在 Ubuntu 上使用命令 "sudo apt search libsnappy" 检查，说明需要安装 libsnappy-dev。在 RedHat 或者 CentOS 上使用命令 "yum search all snappy" 检查，说明需要安装 snappy-devel、snappy。
+在 RedHat 或者 CentOS 上使用命令 "yum search all snappy" 检查，说明需要安装 snappy-devel、snappy。
 
-Ubuntu 需要安装的依赖包详见 [Ubuntu 20.04 下编译 StoneDB](../04-developer-guide/00-compiling-methods/compile-using-ubuntu2004.md)。
+- Ubuntu 需要安装的依赖包详见 [Ubuntu 20.04 下编译 StoneDB](../../04-developer-guide/00-compiling-methods/compile-using-ubuntu2004/compile-using-ubuntu2004-for-56.md)。
 
-CentOS 需要安装的依赖包详见 [CentOS 7 下编译 StoneDB](../04-developer-guide/00-compiling-methods/compile-using-centos7.md)。
+- CentOS 需要安装的依赖包详见 [CentOS 7 下编译 StoneDB](../../04-developer-guide/00-compiling-methods/compile-using-centos7/compile-using-centos7-for-56.md)。
 
-RedHat 需要安装的依赖包详见 [RedHat 7 下编译 StoneDB](../04-developer-guide/00-compiling-methods/compile-using-redhat7.md)。
+- RedHat 需要安装的依赖包详见 [RedHat 7 下编译 StoneDB](../../04-developer-guide/00-compiling-methods/compile-using-redhat7/compile-using-redhat7-for-56.md)。
+
 ## 启动实例
 用户可按照手动安装和自动安装两种方式启动 StoneDB。
 ### 1. 创建用户
