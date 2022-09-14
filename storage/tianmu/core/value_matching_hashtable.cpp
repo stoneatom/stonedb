@@ -115,8 +115,7 @@ int64_t ValueMatching_HashTable::ByteSize() {
 }
 
 bool ValueMatching_HashTable::FindCurrentRow(unsigned char *input_buffer, int64_t &row, bool add_if_new,
-                                           int match_width) 
-{
+                                           int match_width) {
   unsigned int crc_code = HashValue(input_buffer, match_width);
   unsigned int ht_pos = (crc_code & ht_mask);
   unsigned int row_no = ht[ht_pos];

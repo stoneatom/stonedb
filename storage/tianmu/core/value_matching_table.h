@@ -96,6 +96,7 @@ class ValueMatchingTable {  // abstract class: interface for value matching
                            // (e.g. UTF buffer)
 
   unsigned int no_rows;  // rows stored so far
+  bool use_lookup_table;
 };
 
 // Trivial version: just one position

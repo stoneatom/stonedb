@@ -123,11 +123,6 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
     return dpn.min_i;
   }
 
-  Pack *GetPack(int64_t obj) {
-    int pack = row2pack(obj);
-    return get_pack(pack);
-  }
-
   // Get value which we already know as not null
   int64_t GetNotNullValueInt64(int64_t obj) const override {
     int pack = row2pack(obj);
