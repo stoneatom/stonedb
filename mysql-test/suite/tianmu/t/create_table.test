@@ -7,8 +7,6 @@ insert into t1 values (""),(null);
 create table if not exists t1 (b char(0) not null)ENGINE=tianmu;
 --error 1167
 create table t1 (b char(0) not null, index(b))engine=tianmu;
---error 1050
-create table not_existing_database.test (a int);
 drop table t1;
 create table `a/a` (a int)engine=tianmu;
 show create table `a/a`;
@@ -255,16 +253,12 @@ CREATE VIEW v1 AS SELECT t1.a FROM t1, t2;
 CREATE TABLE v1 AS SELECT * FROM t1;
 DROP VIEW v1;
 DROP TABLE t1,t2;
-#
-CREATE TABLE t1(c1 TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, c2 TIMESTAMP NOT NULL DEFAULT '0000-00-00 00:00:00');
 SET sql_mode = 'NO_ZERO_DATE';
 CREATE TABLE t2(c1 TIMESTAMP, c2 TIMESTAMP DEFAULT 0);
 DROP TABLE t2;
-CREATE TABLE t2(c1 TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, c2 TIMESTAMP NOT NULL);
---error 1050
 CREATE TABLE t2(c1 TIMESTAMP NULL);
 SET sql_mode = '';
-DROP TABLE t1,t2;
+DROP TABLE t2;
 #
 CREATE TABLE t1(c1 YEAR DEFAULT 2008, c2 YEAR DEFAULT 0);
 SHOW CREATE TABLE t1;
