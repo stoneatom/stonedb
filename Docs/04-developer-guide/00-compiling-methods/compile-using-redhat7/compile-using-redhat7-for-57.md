@@ -1,11 +1,11 @@
 ---
-id: compile-using-centos7-for-57
-sidebar_position: 5.122
+id: compile-using-redhat7-for-57
+sidebar_position: 5.131
 ---
 
-# Compile StoneDB for MySQL5.7 on CentOS 7
+# Compile StoneDB for MySQL5.7 on RHEL 7
 
-This topic describes how to compile StoneDB on CentOS 7.
+This topic describes how to compile StoneDB on Red Hat Enterprise Linux (RHEL) 7.
 ## Precautions
 Ensure that the tools and third-party libraries used in your environment meet the following version requirements:
 
@@ -15,6 +15,7 @@ Ensure that the tools and third-party libraries used in your environment meet th
 - marisa 0.77
 - RocksDB 6.12.6
 - Boost 1.66
+
 
 ## Procedure
 ### Step 1. Install the dependencies
@@ -182,7 +183,7 @@ ls /usr/local/lib/
 ...... cmake  libgtest.a  libgtest_main.a
 ```
 ### Step 4. Compile StoneDB
-Currently, StoneDB has two branches: StoneDB-5.6 (for MySQL 5.6) and StoneDB-5.7 (for MySQL 5.7). The link provided in this topic is to the source code package of StoneDB-5.7. In the following example,the source code package is saved to the root directory. 
+Currently, StoneDB has two branches: StoneDB-5.6 (for MySQL 5.6) and StoneDB-5.7 (for MySQL 5.7). The link provided in this topic is to the source code package of StoneDB-5.7. In the following example, the source code package is saved to the root directory. 
 ```shell
 cd /
 git clone https://github.com/stoneatom/stonedb.git
@@ -207,8 +208,9 @@ install_target=/stonedb57/install
 ### Execute the compilation script.
 sh stonedb_build.sh
 ```
-If your OS is CentOS or RHEL, you must comment out **os_dis** and **os_dist_release**, and modify the setting of **build_tag** to exclude the **os_dist** and **os_dist_release** parts. This is because the the values of **Distributor**, **Release**, and **Codename **output of the **lsb_release -a** command are **n/a**. Commenting out **os_dist** and **os_dist_release** only affects the names of the log file and the TAR package and has no impact on the compilation results.
-## **Step 5. Start StoneDB**
+If your OS is CentOS or RHEL, you must comment out **os_dis** and **os_dist_release**, and modify the setting of **build_tag** to exclude the **os_dist** and **os_dist_release** parts. This is because the the values of **Distributor**, **Release**, and **Codename** output of the **lsb_release -a** command are **n/a**. Commenting out **os_dist** and **os_dist_release** only affects the names of the log file and the TAR package and has no impact on the compilation results.
+
+### Step 5. Start StoneDB
 Users can start StoneDB in two ways: manual installation and automatic installation. 
 
 1. Create an account.
@@ -253,7 +255,7 @@ chown -R mysql:mysql /stonedb57/install/my.cnf
 /stonedb57/install/bin/mysqld_safe --defaults-file=/stonedb57/install/my.cnf --user=mysql &
 ```
 
-3. Execute reinstall.sh to automatically install StoneDB.
+3. Execute **reinstall.sh** to automatically install StoneDB.
 ```shell
 cd /stonedb57/install
 ./reinstall.sh
@@ -262,7 +264,7 @@ cd /stonedb57/install
 Differences between **reinstall.sh** and **install.sh**:
 
 - **reinstall.sh** is the script for automatic installation. When the script is being executed, directories are created, and StoneDB is initialized and started. Therefore, do not execute the script unless for the initial startup of StoneDB. Otherwise, all directories will be deleted and StoneDB will be initialized again.
-- **install.sh **is the script for manual installation. You can specify the installation directories based on your needs and then execute the script. Same as **reinstall.sh**, when the script is being executed, directories are created, and StoneDB is initialized and started. Therefore, do not execute the script unless for the initial startup. Otherwise, all directories will be deleted and StoneDB will be initialized again.
+- **install.sh** is the script for manual installation. You can specify the installation directories based on your needs and then execute the script. Same as **reinstall.sh**, when the script is being executed, directories are created, and StoneDB is initialized and started. Therefore, do not execute the script unless for the initial startup. Otherwise, all directories will be deleted and StoneDB will be initialized again.
 :::
 
 4. Log in to StoneDB.
