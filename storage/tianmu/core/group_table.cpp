@@ -340,7 +340,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
 
   vm_tab.reset(ValueMatchingTable::CreateNew_ValueMatchingTable(primary_total_size, declared_max_no_groups,
                                                                 max_group_code, total_width, grouping_and_UTF_width,
-                                                                grouping_buf_width, p_power));
+                                                                grouping_buf_width, p_power, false));
 
   input_buffer.resize(grouping_and_UTF_width);
   // pre-allocation of distinct memory

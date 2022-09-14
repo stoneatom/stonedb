@@ -87,7 +87,8 @@ class ValueMatchingTable {  // abstract class: interface for value matching
   */
   static ValueMatchingTable *CreateNew_ValueMatchingTable(int64_t mem_available, int64_t max_no_groups,
                                                           int64_t max_group_code, int _total_width,
-                                                          int _input_buf_width, int _match_width, uint32_t power);
+                                                          int _input_buf_width, int _match_width, uint32_t power,
+                                                          bool use_lookup_table = true);
 
  protected:
   int total_width;         // whole row
@@ -96,7 +97,6 @@ class ValueMatchingTable {  // abstract class: interface for value matching
                            // (e.g. UTF buffer)
 
   unsigned int no_rows;  // rows stored so far
-  bool use_lookup_table;
 };
 
 // Trivial version: just one position

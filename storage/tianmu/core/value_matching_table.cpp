@@ -26,7 +26,6 @@ ValueMatchingTable::ValueMatchingTable() {
   matching_width = 0;
   input_buffer_width = 0;
   no_rows = 0;
-  use_lookup_table = false;
 }
 
 ValueMatchingTable::~ValueMatchingTable() {}
@@ -44,7 +43,7 @@ void ValueMatchingTable::Clear() { no_rows = 0; }
 ValueMatchingTable *ValueMatchingTable::CreateNew_ValueMatchingTable(int64_t mem_available, int64_t max_no_groups,
                                                                      int64_t max_group_code, int _total_width,
                                                                      int _input_buf_width, int _match_width,
-                                                                     uint32_t power) {
+                                                                     uint32_t power, bool use_lookup_table) {
   // trivial case: one group only
   if (_input_buf_width == 0) {
     ValueMatching_OnePosition *new_object = new ValueMatching_OnePosition();
