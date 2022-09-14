@@ -5,6 +5,7 @@ on:
     branches-ignore:
       - main
     paths-ignore:
+      - 'Docs/**'
       - 'docs/**'
       - 'website/**'
       - '**.md'
@@ -14,12 +15,13 @@ on:
     branches-ignore:
       - main
         # wait for mergify to ignore
-        #paths-ignore:
-            #- 'Docs/**'
-            #- 'website/**'
-            #- '**.md'
-            #- 'scripts/**'
-            #- 'install_scripts/**'
+    paths-ignore:
+      - 'Docs/**'
+      - 'docs/**'
+      - 'website/**'
+      - '**.md'
+      - 'scripts/**'
+      - 'install_scripts/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
