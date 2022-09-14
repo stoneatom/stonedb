@@ -1,6 +1,6 @@
 ---
 id: compile-using-ubuntu20.04-for-56
-sidebar_position: 5.14.1
+sidebar_position: 5.141
 ---
 
 # Compile StoneDB for MySQL5.6 on Ubuntu 20.04

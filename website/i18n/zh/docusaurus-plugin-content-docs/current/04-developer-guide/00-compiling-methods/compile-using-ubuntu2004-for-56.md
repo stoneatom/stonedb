@@ -1,6 +1,6 @@
 ---
 id: compile-using-ubuntu20.04-for-56
-sidebar_position: 5.14.1
+sidebar_position: 5.141
 ---
 
 # Ubuntu 20.04 下编译 StoneDB for MySQL5.6
@@ -58,8 +58,9 @@ sudo apt install -y libjemalloc-dev
 sudo apt install -y libssl-dev
 sudo apt install -y pkg-config
 ```
-注：依赖包必须都装上，否则后面有很多报错。
-
+:::info
+依赖包必须都装上，否则后面有很多报错。
+:::
 ## 第二步：安装第三方库
 安装第三库前需要确认 cmake 版本是3.7.2以上，make 版本是3.82以上，如果低于这两个版本，需要进行安装。StoneDB 依赖 marisa、rocksdb、boost，在编译 marisa、rocksdb、boost 时，建议指定安装路径。示例中我们指定了 marisa、rocksdb、boost 的安装路径。
 

@@ -1,6 +1,6 @@
 ---
 id: compile-using-centos7-57
-sidebar_position: 5.12.2
+sidebar_position: 5.122
 ---
 
 # CentOS 7 下编译 StoneDB for MySQL5.7
@@ -261,4 +261,6 @@ Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
 mysql> alter user 'root'@'localhost' identified by 'stonedb123';
 ```
-注：管理员用户的临时密码在 mysqld.log 中，第一次登陆后需要修改管理员用户的密码。
+:::info
+管理员用户的临时密码在 mysqld.log 中，第一次登陆后需要修改管理员用户的密码。
+:::
