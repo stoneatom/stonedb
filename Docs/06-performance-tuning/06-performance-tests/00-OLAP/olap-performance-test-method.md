@@ -24,7 +24,7 @@ build information as follow:
 ```
 ## **Test scheme**
 ### **1. Set up the test environment** 
-For information about how to set up the test environment,  see [Quick Deployment](..../../../../../02-getting-started/quick-deployment.md).
+For information about how to set up the test environment,  see [Quick Deployment](..../../../../../02-getting-started/quick-deployment).
 ### 2. Compile and deploy TPC-H
 
 1. Download the [TPC-H](https://www.tpc.org/tpc_documents_current_versions/current_specifications5.asp) installation package, upload the package to the test machine. 
