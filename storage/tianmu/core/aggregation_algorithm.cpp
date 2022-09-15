@@ -237,6 +237,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
 
   auto get_thd_cnt = []() {
     int hardware_concurrency = std::thread::hardware_concurrency();
+    // The original code was the number of CPU cores divided by 4, and the reason for that is to be traced further
     return hardware_concurrency > 4 ? (hardware_concurrency / 4) : 1;
   };
 
