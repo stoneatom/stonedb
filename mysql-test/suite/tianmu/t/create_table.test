@@ -1,3 +1,6 @@
+#
+# Test table name
+#
 drop table if exists t1,t2,t3,t4,t5;
 drop database if exists mysqltest;
 drop view if exists v1;
@@ -12,6 +15,11 @@ create table `a/a` (a int)engine=tianmu;
 show create table `a/a`;
 create table t1 like `a/a`;
 drop table `a/a`,`t1`;
+
+#
+# Tests the long field name table
+#
+
 --error 1059
 create table `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa` (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa int)engine=tianmu;
 --error 1059
@@ -28,9 +36,11 @@ select * from t1;
 --error 1067
 alter table t1 alter column a set default 'abcdef';
 drop table t1;
+
 #
 # test of dummy table names
 #
+
 create table 1ea10 (1a20 int,1e int)engine=tianmu;
 insert into 1ea10 values(1,1);
 select 1ea10.1a20,1e+ 1e+10 from 1ea10;
@@ -53,31 +63,37 @@ create table t1 (`` int)engine=tianmu;
 create table t1 (i int, index `` (i))engine=tianmu;
 create table t1 (i int)engine=tianmu;
 drop table t1;
+
 #
-# Test of CREATE ... SELECT with indexes
+# Test of CREATE ... select with indexes
 #
+
 create table t1 (a int auto_increment not null primary key, B CHAR(20))engine=tianmu;
 insert into t1 (b) values ("hello"),("my"),("world");
 explain select * from t1 where b="world";
 select * from t1 where b="world";
 drop table t1;
+
 #
 # Test of primary key with 32 index
 #
+
 create table t1 (a int not null, b int, primary key(a), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b))engine=tianmu;
 show create table t1;
 drop table t1;
+
 #
 # Test default table type
 #
-SET SESSION default_storage_engine="tianmu";
-SELECT @@default_storage_engine;
-CREATE TABLE t1 (a int not null);
+
+set session default_storage_engine="tianmu";
+select @@default_storage_engine;
+create table t1 (a int not null);
 show create table t1;
 drop table t1;
 --error 1286
-SET SESSION default_storage_engine="gemini";
-SET SESSION default_storage_engine=default;
+set session default_storage_engine="gemini";
+set session default_storage_engine=default;
 create table t1 ( k1 varchar(2), k2 int, primary key(k1,k2))engine=tianmu;
 insert into t1 values ("a", 1), ("b", 2);
 --error 1048
@@ -95,42 +111,52 @@ create table if not exists t1 select 1,2,3,4;
 create table if not exists t1 select 1;
 select * from t1;
 drop table t1;
+
 #
 # Test create table if not exists with duplicate key error
 #
+
 create table t1 (a int not null, b int, primary key (a));
 insert into t1 values (1,1);
 select * from t1;
 show status like "Opened_tables";
 select * from t1;
 drop table t1;
+
 #
-#   "Table truncated when creating another table name with Spaces"
+# "Table truncated when creating another table name with Spaces"
 #
+
 --error 1103
 create table `t1 `(a int)engine=tianmu;
 --error 1102
 create database `db1 `;
 --error 1166
 create table t1(`a ` int)engine=tianmu;
+
 #
-#   "Parser permits multiple commas without syntax error"
+# "Parser permits multiple commas without syntax error"
 #
+
 --error 1064
 create table t1 (a int,)engine=tianmu;
 --error 1064
 create table t1 (a int,,b int)engine=tianmu;
 --error 1064
 create table t1 (,b int)engine=tianmu;
+
 #
 # Test create with foreign keys
 #
+
 create table t1 (a int, key(a))engine=tianmu;
 create table t2 (b int, foreign key(b) references t1(a), key(b))engine=tianmu;
 drop table if exists t1,t2;
+
 #
-# Test for CREATE TABLE .. LIKE ..
+# Test for create table .. LIKE ..
 #
+
 create table t1(id int not null, name char(20))engine=tianmu;
 insert into t1 values(10,'mysql'),(20,'monty- the creator');
 create table t2(id int not null)engine=tianmu;
@@ -145,9 +171,11 @@ create table non_existing_database.t1 like t1;
 --error 1146
 create table t3 like non_existing_table;
 drop table t1,t3;
+
 #
 # Test types of data for create select with functions
 #
+
 create table t1(a int,b int,c int,d date,e char,f datetime,g time,h blob)engine=tianmu;
 insert into t1(a)values(1);
 insert into t1(a,b,c,d,e,f,g,h)values(2,-2,2,'1825-12-14','a','2003-1-1 3:2:1','4:3:2','binary data');
@@ -173,9 +201,11 @@ describe t1;
 drop table t1;
 create table t1(name varchar(10), age smallint default -1);
 describe t2;
+
 #
 # 'Naming a key "Primary" causes trouble'
 #
+
 --error 1280
 create table t1 (a int, index `primary` (a))engine=tianmu;
 --error 1280
@@ -193,9 +223,11 @@ alter table t3 add index `primary` (a);
 alter table t3 add index `PRIMARY` (a);
 create table t4 (`primary` int)engine=tianmu;
 drop table t1,t2,t3,t4;
+
 #
 #Can't use 'DEFAULT FALSE' for column of type bool
 #
+
 create table t1 (b bool not null default false)engine=tianmu;
 create table t2 (b bool not null default true)engine=tianmu;
 insert into t1 values ();
@@ -203,9 +235,11 @@ insert into t2 values ();
 select * from t1;
 select * from t2;
 drop table t1,t2;
+
 #
 # Invalid column name is not rejected
 #
+
 create database syw_mtr;
 use syw_mtr;
 --error 1103
@@ -218,16 +252,20 @@ create table t1(t1.name int)engine=tianmu;
 create table t2(syw_mtr.t2.name int)engine=tianmu;
 drop table t1,t2;
 drop database syw_mtr;
+
 #
 #create table like
 #
+
 use test;
 --error 1146
 create table test.t1 like x;
 drop table if exists test.t1;
+
 #
-#Bogus error message on attempt to CREATE TABLE t LIKE view
+#Bogus error message on attempt to create table t LIKE view
 #
+
 create database mysqltest;
 use mysqltest;
 create view v1 as select 'foo' from dual;
@@ -235,39 +273,49 @@ create view v1 as select 'foo' from dual;
 create table t1 like v1;
 drop view v1;
 drop database mysqltest;
+
 #
 #SET value having comma not correctly handled
 #
+
 use test;
 --error 1367
 create table t1(a set("a,b","c,d") not null);
+
 #
 #mysqld segfault when trying to create table with same name as existing view
 #
-CREATE TABLE t1 (a INT);
-CREATE TABLE t2 (a INT);
-INSERT INTO t1 VALUES (1),(2),(3);
-INSERT INTO t2 VALUES (1),(2),(3);
-CREATE VIEW v1 AS SELECT t1.a FROM t1, t2;
+
+create table t1 (a int);
+create table t2 (a int);
+insert into t1 values (1),(2),(3);
+insert into t2 values (1),(2),(3);
+create view v1 as select t1.a FROM t1, t2;
 --error 1050
-CREATE TABLE v1 AS SELECT * FROM t1;
-DROP VIEW v1;
-DROP TABLE t1,t2;
+create table v1 as select * FROM t1;
+drop view v1;
+drop table t1,t2;
 SET sql_mode = 'NO_ZERO_DATE';
-CREATE TABLE t2(c1 TIMESTAMP, c2 TIMESTAMP DEFAULT 0);
-DROP TABLE t2;
-CREATE TABLE t2(c1 TIMESTAMP NULL);
+create table t2(c1 TIMESTAMP, c2 TIMESTAMP DEFAULT 0);
+drop table t2;
+create table t2(c1 TIMESTAMP NULL);
 SET sql_mode = '';
-DROP TABLE t2;
+drop table t2;
+
 #
-CREATE TABLE t1(c1 YEAR DEFAULT 2008, c2 YEAR DEFAULT 0);
-SHOW CREATE TABLE t1;
-INSERT INTO t1 VALUES();
-SELECT * FROM t1;
+#Tests the default type of year for the created table and inserts a null value
+#
+
+create table t1(c1 year default 2008, c2 year default 0);
+SHOW create table t1;
+insert into t1 values();
+select * FROM t1;
 drop table t1;
+
 #
 # Attempt to create table with invalid default should fail in normal mode
 #
+
 --error 1067
 create table t1 (dt datetime default '2008-02-31 00:00:00');
 set @old_mode= @@sql_mode;
@@ -283,9 +331,11 @@ show create table t1;
 show create table t2;
 set @@sql_mode= @old_mode;
 drop tables t1,t2;
+
 #
 # Creating a base table in presence of an updatable view.
 # 
+
 create table t2 (a int unique);
 create view t1 as select a from t2;
 insert into t1 (a) values (1);
@@ -303,9 +353,11 @@ select * from t1;
 select * from t2;
 drop table t1,t2;
 drop view t1;
+
 #
 # Repeating the test with a view select a constant number
 #
+
 create view t1 as select 1 as a;
 --error 1471
 insert into t1 (a) values (1);
@@ -328,9 +380,9 @@ select * from t1;
 drop temporary table t1;
 drop view t1;
 # Test cases added for coverage.
-CREATE TABLE t1(fld1 DATETIME NOT NULL DEFAULT '1111:11:11');
+create table t1(fld1 DATETIME NOT NULL DEFAULT '1111:11:11');
 show create table t1;
 drop table t1;
-# CREATE TABLE..SELECT based on trigger fields.
-CREATE TABLE t1 (fld1 INT, fld2 DATETIME DEFAULT '1211:1:1');
+# create table..select based on trigger fields.
+create table t1 (fld1 int, fld2 DATETIME DEFAULT '1211:1:1');
 show create table t1;
