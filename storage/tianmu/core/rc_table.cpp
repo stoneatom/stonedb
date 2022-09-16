@@ -563,8 +563,15 @@ void RCTable::LoadDataInfile(system::IOParameters &iop) {
   FunctionExecutor fe(std::bind(&RCTable::LockPackInfoForUse, this), std::bind(&RCTable::UnlockPackInfoFromUse, this));
 
   if (iop.LoadDelayed()) {
-    no_loaded_rows = tianmu_sysvar_enable_rowstore ? MergeMemTable(iop) : ProcessDelayed(iop);
+    if (tianmu_sysvar_enable_rowstore) {
+      current_txn_->SetLoadSource(common::LoadSource::LS_MemRow);
+      no_loaded_rows = MergeMemTable(iop);
+    } else {
+      current_txn_->SetLoadSource(common::LoadSource::LS_InsertBuffer);
+      no_loaded_rows = ProcessDelayed(iop);
+    }
   } else {
+    current_txn_->SetLoadSource(common::LoadSource::LS_File);
     no_loaded_rows = ProceedNormal(iop);
   }
 }

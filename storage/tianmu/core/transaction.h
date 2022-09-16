@@ -44,6 +44,7 @@ class Transaction final {
   int debug_level = 0;
   std::string explain_msg;
   index::KVTransaction kv_trans;
+  common::LoadSource load_source;
 
  public:
   ulong GetThreadID() const;
@@ -67,9 +68,11 @@ class Transaction final {
   ~Transaction() = default;
 
   common::TX_ID GetID() const { return tid; }
+  common::LoadSource LoadSource() const { return load_source; }
   std::shared_ptr<RCTable> GetTableByPathIfExists(const std::string &table_path);
   std::shared_ptr<RCTable> GetTableByPath(const std::string &table_path);
 
+  void SetLoadSource(common::LoadSource ls) { load_source = ls; }
   void ExplicitLockTables() { m_explicit_lock_tables = true; };
   void ExplicitUnlockTables() { m_explicit_lock_tables = false; };
   void AddTableRD(std::shared_ptr<TableShare> &share);

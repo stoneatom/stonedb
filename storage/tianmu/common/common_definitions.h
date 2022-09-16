@@ -200,6 +200,15 @@ enum class ColOperation {
 // pack data format, stored on disk so only append new ones at the end.
 enum class PackFmt : char { DEFAULT, PPM1, PPM2, RANGECODE, LZ4, LOOKUP, NOCOMPRESS, TRIE, ZLIB };
 
+// data source
+enum class LoadSource {
+  LS_Unknown = 0,   // unknown
+  LS_Direct,        // direct insertion
+  LS_MemRow,        // insert using rocksdb
+  LS_InsertBuffer,  // insert using insert buffer
+  LS_File           // load data from file
+};
+
 class Tribool {
   // NOTE: in comparisons and assignments use the following three values:
   //
