@@ -85,6 +85,9 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
   why_failed = JoinFailure::NOT_FAILED;
 }
 
+// Handles each row in the Pack that the current iterator points to
+// TODO: Keep in mind that internal Pack reads will have cache invalidation during multithread switching,
+// leaving the second phase to continue processing the split of the house storage layer
 void JoinerGeneral::ExecuteInnerJoinPackRow(MIIterator *mii, CTask *task, Condition *cond, MINewContents *new_mind,
                                             DimensionVector *all_dims, std::vector<bool> *_pack_desc_locked,
                                             int64_t *tuples_in_output, int64_t limit, bool count_only,
@@ -153,6 +156,7 @@ void JoinerGeneral::ExecuteInnerJoinPackRow(MIIterator *mii, CTask *task, Condit
   }
 }
 
+  // The purpose of this function is to process the split task in a separate thread
 void JoinerGeneral::TaskInnerJoinPacks(MIIterator *taskIterator, CTask *task, Condition *cond, MINewContents *new_mind,
                                        DimensionVector *all_dims, std::vector<bool> *pack_desc_locked_p,
                                        int64_t *tuples_in_output, int64_t limit, bool count_only, bool *stop_execution,
@@ -184,6 +188,9 @@ void JoinerGeneral::TaskInnerJoinPacks(MIIterator *taskIterator, CTask *task, Co
   }
 }
 
+// Instead of the original inner Join function block,
+// as the top-level call of inner Join,
+// internal split multiple threads to separate different subsets for processing
 void JoinerGeneral::ExecuteInnerJoinLoop(MIIterator &mit, Condition &cond, MINewContents &new_mind,
                                          DimensionVector &all_dims, std::vector<bool> &pack_desc_locked,
                                          int64_t &tuples_in_output, int64_t limit, bool count_only) {
