@@ -43,13 +43,15 @@ struct COL_META {
 };
 
 struct alignas(128) COL_VER_HDR_V3 {
-  uint64_t nr;  // no. of records
-  uint64_t nn;  // no. of nulls
-  uint64_t np;  // no. of packs
+  uint64_t numOfRecords;  // number of records
+  uint64_t numOfNulls;    // number of nulls
+  uint64_t numOfPacks;    // number of packs
+  uint64_t numOfDeleted;  //number of deleted
+
   uint64_t auto_inc_next;
   int64_t min;
   int64_t max;
-  uint32_t dict_ver;  // dict file version name. 0 means n/a
+  uint32_t dict_ver;    // dict file version name. 0 means n/a
   uint32_t unique : 1;
   uint32_t unique_updated : 1;
   uint64_t natural_size;
@@ -92,7 +94,7 @@ class ColumnShare final {
   uint8_t pss;
   common::PACK_INDEX GetPackIndex(DPN *dpn) const {
     auto i = std::distance(start, dpn);
-    ASSERT(i >= 0 && size_t(i) < cap, "bad index " + std::to_string(i));
+    ASSERT(i >= 0 && size_t(i) < capacity, "bad index " + std::to_string(i));
     return i;
   }
 
@@ -107,7 +109,7 @@ class ColumnShare final {
   ColumnType ct;
   int dn_fd{-1};
   DPN *start;
-  size_t cap{0};  // current capacity of the dn array
+  size_t capacity{0};  // current capacity of the dn array
   common::PackType pt;
   uint32_t col_id;
 

@@ -15,7 +15,7 @@ create table student(
   ) engine=stonedb;
 ```
 :::info
-The row-based storage engine is named StoneDB in StoneDB-5.6, and is renamed to Tianmu in StoneDB-5.7 to distinguish from the database StoneDB.
+The column-based storage engine is named after StoneDB in StoneDB-5.6, and is renamed to Tianmu in StoneDB-5.7 to distinguish from the database StoneDB.
 :::
 Query the schema of a table. For example, execute the following SQL statement to query the schema of table **student**:
 ```sql

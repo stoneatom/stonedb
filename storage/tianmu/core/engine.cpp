@@ -1548,7 +1548,7 @@ bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects
       // In this list we have all views, derived tables and their
       // sources, so anyway we walk through all the source tables
       // even though we seem to reject the control of views
-      if (!IsTIANMUTable(tl->table))
+      if (!IsTianmuTable(tl->table))
         return false;
       else
         has_TIANMUTable = true;
@@ -1590,7 +1590,7 @@ bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects
   return true;
 }
 
-bool Engine::IsTIANMUTable(TABLE *table) {
+bool Engine::IsTianmuTable(TABLE *table) {
   return table && table->s->db_type() == rcbase_hton;  // table->db_type is always NULL
 }
 

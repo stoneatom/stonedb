@@ -3,7 +3,7 @@ id: create-and-manage-stored-procedure
 sidebar_position: 5.54
 ---
 
-# Create and Manage a View
+# Create and Manage a Stored Procedureiew
 
 Create a stored procedure. For example, perform the following two steps to create a stored procedure named **add_user**, used to insert 1,000,000 random data records.
 
@@ -20,7 +20,7 @@ CREATE TABLE t_user(
 ) engine=stonedb;
 ```
 :::info
-The row-based storage engine is named StoneDB in StoneDB-5.6, and is renamed to Tianmu in StoneDB-5.7 to distinguish from the database StoneDB.
+The column-based storage engine is named after StoneDB in StoneDB-5.6, and is renamed to Tianmu in StoneDB-5.7 to distinguish from the database StoneDB.
 :::
 
 2. Execute the following SQL statement to create the stored procedure:

@@ -1,0 +1,83 @@
+DROP TABLE IF EXISTS t_test;
+CREATE TABLE `t_test` (
+`id` int(11) NOT NULL AUTO_INCREMENT,
+`first_name` varchar(10),
+`last_name` varchar(10),
+`sex` varchar(5),
+`score` int(11),
+`copy_id` int(11),
+PRIMARY KEY (`id`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8;
+alter table t_test modify sex char(5);
+show create table t_test;
+Table	Create Table
+t_test	CREATE TABLE `t_test` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `first_name` varchar(10) DEFAULT NULL,
+  `last_name` varchar(10) DEFAULT NULL,
+  `sex` char(5) DEFAULT NULL,
+  `score` int(11) DEFAULT NULL,
+  `copy_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8
+alter table t_test modify first_name varchar(20);
+show create table t_test;
+Table	Create Table
+t_test	CREATE TABLE `t_test` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `first_name` varchar(20) DEFAULT NULL,
+  `last_name` varchar(10) DEFAULT NULL,
+  `sex` char(5) DEFAULT NULL,
+  `score` int(11) DEFAULT NULL,
+  `copy_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8
+alter table t_test modify first_name varchar(5);
+show create table t_test;
+Table	Create Table
+t_test	CREATE TABLE `t_test` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `first_name` varchar(5) DEFAULT NULL,
+  `last_name` varchar(10) DEFAULT NULL,
+  `sex` char(5) DEFAULT NULL,
+  `score` int(11) DEFAULT NULL,
+  `copy_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8
+set sql_mode="NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION";
+alter table t_test modify first_name char(20);
+show create table t_test;
+Table	Create Table
+t_test	CREATE TABLE `t_test` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `first_name` char(20) DEFAULT NULL,
+  `last_name` varchar(10) DEFAULT NULL,
+  `sex` char(5) DEFAULT NULL,
+  `score` int(11) DEFAULT NULL,
+  `copy_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8
+alter table t_test modify first_name char(5);
+show create table t_test;
+Table	Create Table
+t_test	CREATE TABLE `t_test` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `first_name` char(5) DEFAULT NULL,
+  `last_name` varchar(10) DEFAULT NULL,
+  `sex` char(5) DEFAULT NULL,
+  `score` int(11) DEFAULT NULL,
+  `copy_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8
+alter table t_test modify sex smallint(5);
+show create table t_test;
+Table	Create Table
+t_test	CREATE TABLE `t_test` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `first_name` char(5) DEFAULT NULL,
+  `last_name` varchar(10) DEFAULT NULL,
+  `sex` smallint(5) DEFAULT NULL,
+  `score` int(11) DEFAULT NULL,
+  `copy_id` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8

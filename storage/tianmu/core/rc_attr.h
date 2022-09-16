@@ -92,6 +92,9 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   void UpdateData(uint64_t row, Value &v);
   void UpdateIfIndex(uint64_t row, uint64_t col, const Value &v);
   void Truncate();
+  void DeleteData(uint64_t row);
+  void DeleteByPrimaryKey(uint64_t row, uint64_t col);
+  bool IsDelete(int64_t row);
 
   const types::RCDataType &ValuePrototype(bool lookup_to_num) const {
     if ((Type().IsLookup() && lookup_to_num) || ATI::IsNumericType(TypeName())) return types::RCNum::NullValue();
@@ -102,7 +105,7 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
 
   int64_t GetValueInt64(int64_t obj) const override {
     if (obj == common::NULL_VALUE_64) return common::NULL_VALUE_64;
-    DEBUG_ASSERT(hdr.nr >= static_cast<uint64_t>(obj));
+    DEBUG_ASSERT(hdr.numOfRecords >= static_cast<uint64_t>(obj));
     auto pack = row2pack(obj);
     const auto &dpn = get_dpn(pack);
     auto p = get_packN(pack);
@@ -142,11 +145,11 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
 
   bool IsNull(int64_t obj) const override {
     if (obj == common::NULL_VALUE_64) return true;
-    DEBUG_ASSERT(hdr.nr >= static_cast<uint64_t>(obj));
+    DEBUG_ASSERT(hdr.numOfRecords >= static_cast<uint64_t>(obj));
     auto pack = row2pack(obj);
     const auto &dpn = get_dpn(pack);
 
-    if (Type().NotNull() || dpn.nn == 0) return false;
+    if (Type().NotNull() || dpn.numOfNulls == 0) return false;
 
     if (!dpn.Trivial()) {
       DEBUG_ASSERT(get_pack(pack)->IsLocked());  // assuming the pack is already loaded and locked
@@ -200,8 +203,9 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   // ratio); may be slightly approximated
   int64_t CompressedSize() const { return hdr.compressed_size; };
   uint32_t ValueOfPackPower() const { return pss; }
-  uint64_t NumOfObj() const { return hdr.nr; }
-  uint64_t NumOfNulls() const { return hdr.nn; }
+  uint64_t NumOfObj() const { return hdr.numOfRecords; }
+  uint64_t NumOfDeleted() const { return hdr.numOfDeleted; }
+  uint64_t NumOfNulls() const { return hdr.numOfNulls; }
   uint SizeOfPack() const { return m_idx.size(); }
   int64_t GetMinInt64() const { return hdr.min; }
   void SetMinInt64(int64_t a_imin) { hdr.min = a_imin; }
@@ -224,8 +228,8 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   types::RCDataType &GetValueData(size_t obj, types::RCDataType &value, bool lookup_to_num = false);
 
   int64_t GetNumOfNulls(int pack) override;
-  bool IsRoughNullsOnly() const override { return hdr.nr == hdr.nn; }
-  size_t GetNumOfValues(int pack) const { return get_dpn(pack).nr; }
+  bool IsRoughNullsOnly() const override { return hdr.numOfRecords == hdr.numOfNulls; }
+  size_t GetNumOfValues(int pack) const { return get_dpn(pack).numOfRecords; }
   int64_t GetSum(int pack, bool &nonnegative) override;
   size_t GetActualSize(int pack);
   int64_t GetMinInt64(int pack) override;
@@ -341,6 +345,8 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   PackStr *get_packS(size_t i) const { return reinterpret_cast<PackStr *>(get_pack(i)); }
   DPN &get_last_dpn() { return *m_share->get_dpn_ptr(m_idx.back()); }
   const DPN &get_last_dpn() const { return *m_share->get_dpn_ptr(m_idx.back()); }
+  
+  void EvaluatePack_IsNoDelete(MIUpdatingIterator &mit, int dim);
   void EvaluatePack_IsNull(MIUpdatingIterator &mit, int dim);
   void EvaluatePack_NotNull(MIUpdatingIterator &mit, int dim);
   void EvaluatePack_Like(MIUpdatingIterator &mit, int dim, Descriptor &d);

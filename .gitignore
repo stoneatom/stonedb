@@ -117,3 +117,4 @@ CTestTestfile.cmake
 COPYING
 .vs/
 node_modules
+website/.docusaurus

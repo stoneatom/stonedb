@@ -22,7 +22,7 @@
 
 #include "common/assert.h"
 #include "compress/inc_wgraph.h"
-#include "compress/lz4.h"
+#include "lz4.h"
 #include "system/fet.h"
 
 namespace Tianmu {
@@ -425,7 +425,7 @@ CprsErr TextCompressor::CompressZlib(char *dest, int &dlen, char **index, const 
   int ret = compress2(reinterpret_cast<Bytef *>(dest + pos), &destlen, srcdata.get(), srclen, Z_DEFAULT_COMPRESSION);
   if (ret != Z_OK) {
     TIANMU_LOG(LogCtl_Level::ERROR, "compress2 failure %d, destlen: %d, srclen %d, packlen %u", ret, destlen, srclen,
-                packlen);
+               packlen);
     return CprsErr::CPRS_ERR_OTH;
   }
   *(reinterpret_cast<uint32_t *>(dest)) = static_cast<uint32_t>(destlen);

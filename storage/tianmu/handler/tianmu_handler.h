@@ -82,7 +82,8 @@ class TianmuHandler final : public handler {
   uint max_supported_record_length() const override { return HA_MAX_REC_LENGTH; }
   uint max_supported_keys() const override { return MAX_INDEXES; }
   uint max_supported_key_parts() const override { return MAX_REF_PARTS; }
-  uint max_supported_key_length() const override { return 1024; }
+  uint max_supported_key_length() const override { return 16 * 1024; }
+  uint max_supported_key_part_length([[maybe_unused]] HA_CREATE_INFO *create_info) const override;
   /*
    Called in test_quick_select to determine if indexes should be used.
    */
@@ -148,8 +149,8 @@ class TianmuHandler final : public handler {
   void cond_pop() override {}
   int reset() override;
 
- my_bool register_query_cache_table(THD *thd, char *table_key, size_t key_length,
-                                       qc_engine_callback *engine_callback, ulonglong *engine_data) override;
+  my_bool register_query_cache_table(THD *thd, char *table_key, size_t key_length, qc_engine_callback *engine_callback,
+                                     ulonglong *engine_data) override;
   void update_create_info(HA_CREATE_INFO *create_info) override;
   int fill_row_by_id(uchar *buf, uint64_t rowid);
   void key_convert(const uchar *key, uint key_len, std::vector<uint> cols, std::vector<std::string_view> &keys);
