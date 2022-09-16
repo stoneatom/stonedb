@@ -156,7 +156,7 @@ void JoinerGeneral::ExecuteInnerJoinPackRow(MIIterator *mii, CTask *task, Condit
   }
 }
 
-  // The purpose of this function is to process the split task in a separate thread
+// The purpose of this function is to process the split task in a separate thread
 void JoinerGeneral::TaskInnerJoinPacks(MIIterator *taskIterator, CTask *task, Condition *cond, MINewContents *new_mind,
                                        DimensionVector *all_dims, std::vector<bool> *pack_desc_locked_p,
                                        int64_t *tuples_in_output, int64_t limit, bool count_only, bool *stop_execution,
