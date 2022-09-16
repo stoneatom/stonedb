@@ -196,7 +196,7 @@ void JoinerGeneral::ExecuteInnerJoinLoop(MIIterator &mit, Condition &cond, MINew
   }
 
   int hardware_concurrency = std::thread::hardware_concurrency();
-  // The original code was the number of CPU cores divided by 4, and the reason for that is to be traced further
+  // TODO: The original code was the number of CPU cores divided by 4, and the reason for that is to be traced further
   int threads_num =  hardware_concurrency > 4 ? (hardware_concurrency / 4) : 1;
 
   int loopcnt = 0;
