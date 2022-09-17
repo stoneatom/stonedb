@@ -1,15 +1,15 @@
 ---
-id: compile-using-ubuntu20.04-for-56
-sidebar_position: 5.14.1
+id: compile-using-redhat7-for-56
+sidebar_position: 5.132
 ---
 
-# Ubuntu 20.04 下编译 StoneDB for MySQL5.6
+# RedHat 7 下编译 StoneDB for MySQL5.6
 
 编译工具以及第三方库的版本要求如下。
 
 | 编译工具及第三方库 | 版本要求 |
 | --- | --- |
-| gcc | 9.4.0 |
+| gcc | 9.3.0 |
 | make | 3.82 |
 | cmake | 3.7.2 |
 | marisa | 0.77 |
@@ -18,51 +18,69 @@ sidebar_position: 5.14.1
 
 ## 第一步：安装依赖包
 ```shell
-sudo apt install -y gcc
-sudo apt install -y g++
-sudo apt install -y make
-sudo apt install -y cmake
-sudo apt install -y build-essential
-sudo apt install -y autoconf
-sudo apt install -y tree
-sudo apt install -y bison
-sudo apt install -y git
-sudo apt install -y libtool
-sudo apt install -y numactl
-sudo apt install -y python3-dev
-sudo apt install -y openssl
-sudo apt install -y perl
-sudo apt install -y binutils
-sudo apt install -y libgmp-dev
-sudo apt install -y libmpfr-dev
-sudo apt install -y libmpc-dev
-sudo apt install -y libisl-dev
-sudo apt install -y zlib1g-dev
-sudo apt install -y liblz4-dev
-sudo apt install -y libbz2-dev
-sudo apt install -y libzstd-dev
-sudo apt install -y zstd
-sudo apt install -y lz4
-sudo apt install -y ncurses-dev
-sudo apt install -y libsnappy-dev
-sudo apt install -y libedit-dev
-sudo apt install -y libaio-dev
-sudo apt install -y libncurses5-dev 
-sudo apt install -y libreadline-dev
-sudo apt install -y libpam0g-dev
-sudo apt install -y zlib1g-dev
-sudo apt install -y libicu-dev
-sudo apt install -y libboost-dev
-sudo apt install -y libgflags-dev
-sudo apt install -y libjemalloc-dev
-sudo apt install -y libssl-dev
-sudo apt install -y pkg-config
+yum install -y tree
+yum install -y gcc
+yum install -y gcc-c++
+yum install -y libzstd-devel
+yum install -y make
+yum install -y ncurses
+yum install -y ncurses-devel
+yum install -y bison
+yum install -y libaio
+yum install -y perl
+yum install -y perl-DBI
+yum install -y perl-DBD-MySQL
+yum install -y perl-Time-HiRes
+yum install -y readline-devel
+yum install -y numactl
+yum install -y zlib
+yum install -y zlib-devel
+yum install -y openssl
+yum install -y openssl-devel
+yum install -y redhat-lsb-core
+yum install -y git
+yum install -y autoconf
+yum install -y automake
+yum install -y libtool
+yum install -y lrzsz
+yum install -y lz4
+yum install -y lz4-devel
+yum install -y snappy
+yum install -y snappy-devel
+yum install -y bzip2
+yum install -y bzip2-devel
+yum install -y zstd
+yum install -y libedit
+yum install -y libedit-devel
+yum install -y libaio-devel
+yum install -y libicu
+yum install -y libicu-devel
+yum install -y jemalloc-devel
 ```
-注：依赖包必须都装上，否则后面有很多报错。
-
-## 第二步：安装第三方库
+## 第二步：安装 gcc 9.3.0
+通过执行以下语句，检查当前 gcc 版本是否符合安装要求。
+```shell
+gcc --version
+```
+如果版本不符合要求，按照以下步骤将 gcc 切换为正确版本。
+### 1. 安装 scl 源
+```shell
+yum install centos-release-scl scl-utils-build -y
+```
+### 2. 安装 9.3.0 版本的 gcc、gcc-c++、gdb 
+```shell
+yum install devtoolset-9-gcc.x86_64 devtoolset-9-gcc-c++.x86_64 devtoolset-9-gcc-gdb-plugin.x86_64 -y
+```
+### 3. 切换至 9.3.0 版本
+```shell
+scl enable devtoolset-9 bash
+```
+### 4. 版本检查
+```shell
+gcc --version
+```
+## 第三步：安装第三方库
 安装第三库前需要确认 cmake 版本是3.7.2以上，make 版本是3.82以上，如果低于这两个版本，需要进行安装。StoneDB 依赖 marisa、rocksdb、boost，在编译 marisa、rocksdb、boost 时，建议指定安装路径。示例中我们指定了 marisa、rocksdb、boost 的安装路径。
-
 ### 1. 安装 cmake
 ```shell
 wget https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz
@@ -70,7 +88,7 @@ tar -zxvf cmake-3.7.2.tar.gz
 cd cmake-3.7.2
 ./bootstrap && make && make install
 /usr/local/bin/cmake --version
-apt remove cmake -y
+rm -rf /usr/bin/cmake
 ln -s /usr/local/bin/cmake /usr/bin/
 cmake --version
 ```
@@ -91,19 +109,16 @@ git clone https://github.com/s-yata/marisa-trie.git
 cd marisa-trie
 autoreconf -i
 ./configure --enable-native-code --prefix=/usr/local/stonedb-marisa
-sudo make && make install 
+make && make install 
 ```
-marisa 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-marisa。此步骤会在 /usr/local/stonedb-marisa/lib 下生成如下目录和文件。
-
-![](./5.6-marisa.png)
-
+marisa 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-marisa。
 ### 4. 安装 rocksdb 
 ```shell
-wget https://github.com/facebook/rocksdb/archive/refs/tags/v6.12.6.tar.gz 
+wget https://github.com/facebook/rocksdb/archive/refs/tags/v6.12.6.tar.gz
 tar -zxvf v6.12.6.tar.gz
 cd rocksdb-6.12.6
 
-sudo cmake ./ \
+cmake ./ \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX=/usr/local/stonedb-gcc-rocksdb \
   -DCMAKE_INSTALL_LIBDIR=/usr/local/stonedb-gcc-rocksdb \
@@ -119,13 +134,10 @@ sudo cmake ./ \
   -DWITH_BENCHMARK_TOOLS=OFF \
   -DWITH_CORE_TOOLS=OFF 
 
-sudo make -j`nproc`
-sudo make install -j`nproc`
+make -j`nproc`
+make install -j`nproc`
 ```
-rocksdb 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-gcc-rocksdb。此步骤会在 /usr/local/stonedb-gcc-rocksdb 下生成如下目录和文件。
-
-![](./5.6-rocksdb.png)
-
+rocksdb 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-gcc-rocksdb。
 ### 5. 安装 boost
 ```shell
 wget https://sourceforge.net/projects/boost/files/boost/1.66.0/boost_1_66_0.tar.gz
@@ -134,15 +146,12 @@ cd boost_1_66_0
 ./bootstrap.sh --prefix=/usr/local/stonedb-boost
 ./b2 install --with=all
 ```
-boost 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-boost。此步骤会在 /usr/local/stonedb-boost/lib 下生成如下目录和文件。
-
-![image.png](./5.6-boost.png)
+boost 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-boost。
 
 :::info
 在编译过程中，除非有关键字 "error" 报错自动退出，否则出现关键字 "warning"、"failed"是正常的，安装 boost 大概需要25分钟左右。
 :::
-
-## 第三步：执行编译
+## 第四步：执行编译
 StoneDB 现有 5.6 和 5.7 两个分支，下载的源码包默认是 5.7 分支。下载的源码包存放路径可根据实际情况指定，示例中的源码包存放路径是在根目录下，并且是切换为 5.6 分支的编译安装。
 ```shell
 cd /
@@ -150,7 +159,11 @@ git clone https://github.com/stoneatom/stonedb.git
 cd stonedb
 git checkout remotes/origin/stonedb-5.6
 ```
-在执行编译脚本前，需要修改编译脚本的两处内容：<br />1）StoneDB 安装目录，可根据实际情况修改，示例中的安装目录是 /stonedb56/install；<br />2）marisa、rocksdb、boost 的实际安装路径，必须与上文安装 marisa、rocksdb、boost 的路径保持一致。
+在执行编译脚本前，需要修改编译脚本的两处内容：
+
+1）StoneDB 安装目录，可根据实际情况修改，示例中的安装目录是 /stonedb56/install；
+
+2）marisa、rocksdb、boost 的实际安装路径，必须与上文安装 marisa、rocksdb、boost 的路径保持一致。
 ```shell
 ###修改编译脚本
 cd /stonedb/scripts
@@ -170,7 +183,7 @@ sh stonedb_build.sh
 :::info
 如果是 CentOS/RedHat ，需要注释 os_dist 和 os_dist_release，并且修改 build_tag ，这是因为 "lsb_release -a" 返回的结果中，Distributor、Release、Codename 显示的是 n/a。注释 os_dist 和 os_dist_release 只会影响产生的日志名和 tar 包名，不会影响编译结果。
 :::
-## 第四步：启动实例
+## 第五步：启动实例
 用户可按照手动安装和自动安装两种方式启动 StoneDB。
 ### 1. 创建用户
 ```shell
@@ -178,7 +191,7 @@ groupadd mysql
 useradd -g mysql mysql
 passwd mysql
 ```
-### 2. 手动安装 
+### 2. 手动安装
 编译完成后，如果 StoneDB 安装目录不是 /stonedb56，不会自动生成 reinstall.sh、install.sh 和 my.cnf 文件，需要手动创建目录、初始化和启动实例。还需要配置 my.cnf 文件，如安装目录，端口等参数。
 ```shell
 ###创建目录

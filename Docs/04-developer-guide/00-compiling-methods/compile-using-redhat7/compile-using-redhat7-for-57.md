@@ -1,22 +1,24 @@
 ---
-id: compile-using-centos7-57
-sidebar_position: 5.12.2
+id: compile-using-redhat7-for-57
+sidebar_position: 5.131
 ---
 
-# CentOS 7 下编译 StoneDB for MySQL5.7
+# Compile StoneDB for MySQL5.7 on RHEL 7
 
-编译工具以及第三方库的版本要求如下。
+This topic describes how to compile StoneDB on Red Hat Enterprise Linux (RHEL) 7.
+## Precautions
+Ensure that the tools and third-party libraries used in your environment meet the following version requirements:
 
-| 编译工具及第三方库 | 版本要求 |
-| --- | --- |
-| gcc | 9.3.0 |
-| make | 3.82 |
-| cmake | 3.7.2 |
-| marisa | 0.77 |
-| rocksdb | 6.12.6 |
-| boost | 1.66 |
+- GCC 9.3.0
+- Make 3.82 or later
+- CMake 3.7.2 or later
+- marisa 0.77
+- RocksDB 6.12.6
+- Boost 1.66
 
-## 第一步：安装依赖包
+
+## Procedure
+### Step 1. Install the dependencies
 ```shell
 yum install -y tree
 yum install -y gcc
@@ -57,31 +59,39 @@ yum install -y libicu
 yum install -y libicu-devel
 yum install -y jemalloc-devel
 ```
-## 第二步：安装 gcc 9.3.0
-通过执行以下语句，检查当前 gcc 版本是否符合安装要求。
+### Step 2. Install GCC 9.3.0
+Before performing the follow-up steps, you must ensure the GCC version is 9.3.0.<br />You can run the following command to check the GCC version.
 ```shell
 gcc --version
 ```
-如果版本不符合要求，按照以下步骤将 gcc 切换为正确版本。
-### 1. 安装 scl 源
+If the version is earlier than 9.3.0, perform the following steps to upgrade GCC.
+
+1. Install the SCL utility.
 ```shell
 yum install centos-release-scl scl-utils-build -y
 ```
-### 2. 安装 9.3.0 版本的 gcc、gcc-c++、gdb 
+
+2. Install GCC, GCC-C++, or GDB of version 9.3.0.
 ```shell
 yum install devtoolset-9-gcc.x86_64 devtoolset-9-gcc-c++.x86_64 devtoolset-9-gcc-gdb-plugin.x86_64 -y
 ```
-### 3. 切换至 9.3.0 版本
+
+3. Switch the version to 9.3.0.
 ```shell
 scl enable devtoolset-9 bash
 ```
-### 4. 版本检查
+
+4. Check that the version is switched to 9.3.0.
 ```shell
 gcc --version
 ```
-## 第三步：安装第三方库
-安装第三库前需要确认 cmake 版本是3.7.2以上，make 版本是3.82以上，如果低于这两个版本，需要进行安装。StoneDB 依赖 marisa、rocksdb、boost，在编译 marisa、rocksdb、boost 时，建议指定安装路径。示例中我们指定了 marisa、rocksdb、boost 的安装路径。
-### 1. 安装 cmake
+### Step 3. Install third-party libraries
+Ensure that the CMake version in your environment is 3.7.2 or later and the Make version is 3.82 or later. Otherwise, install CMake, Make, or both of them of the correct versions.
+:::info
+StoneDB is dependent on marisa, RocksDB, and Boost. You are advised to specify paths for saving the these libraries when you install them, instead of using the default paths.
+:::
+
+1. Install CMake.
 ```shell
 wget https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz
 tar -zxvf cmake-3.7.2.tar.gz
@@ -92,7 +102,8 @@ rm -rf /usr/bin/cmake
 ln -s /usr/local/bin/cmake /usr/bin/
 cmake --version
 ```
-### 2. 安装 make
+
+2. Install Make.
 ```shell
 wget http://mirrors.ustc.edu.cn/gnu/make/make-3.82.tar.gz
 tar -zxvf make-3.82.tar.gz
@@ -103,7 +114,8 @@ rm -rf /usr/local/bin/make
 ln -s /usr/local/make/bin/make /usr/local/bin/make
 make --version
 ```
-### 3. 安装 marisa 
+
+3. Install marisa.
 ```shell
 git clone https://github.com/s-yata/marisa-trie.git
 cd marisa-trie
@@ -111,8 +123,9 @@ autoreconf -i
 ./configure --enable-native-code --prefix=/usr/local/stonedb-marisa
 make && make install 
 ```
-marisa 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-marisa。
-### 4. 安装 rocksdb 
+The installation directory of marisa in the example is **/usr/local/stonedb-marisa**. You can change it based on your actual conditions.
+
+4. Install RocksDB.
 ```shell
 wget https://github.com/facebook/rocksdb/archive/refs/tags/v6.12.6.tar.gz
 tar -zxvf v6.12.6.tar.gz
@@ -137,8 +150,9 @@ cmake ./ \
 make -j`nproc`
 make install -j`nproc`
 ```
-rocksdb 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-gcc-rocksdb。
-### 5. 安装 boost
+The installation directory of RocksDB in the example is **/usr/local/stonedb-gcc-rocksdb**. You can change it based on your actual conditions.
+
+5. Install Boost.
 ```shell
 wget https://sourceforge.net/projects/boost/files/boost/1.66.0/boost_1_66_0.tar.gz
 tar -zxvf boost_1_66_0.tar.gz
@@ -146,12 +160,12 @@ cd boost_1_66_0
 ./bootstrap.sh --prefix=/usr/local/stonedb-boost
 ./b2 install --with=all
 ```
-boost 的安装路径可以根据实际情况指定，示例中的安装路径是 /usr/local/stonedb-boost。
-
+The installation directory of Boost in the example is **/usr/local/stonedb-boost**. You can change it based on your actual conditions.
 :::info
-注：在编译过程中，除非有关键字 "error" 报错自动退出，否则出现关键字 "warning"、"failed"是正常的，安装 boost 大概需要25分钟左右。
+During the compilation, the occurrences of keywords **warning** and** failed** are normal, unless **error** is displayed and the CLI is automatically closed.<br />It takes about 25 minutes to install Boost.
 :::
-### 6. 安装 gtest
+
+6. Install Gtest.
 ```shell
 git clone https://github.com/google/googletest.git -b release-1.12.0
 cd googletest
@@ -161,22 +175,25 @@ cmake .. -DBUILD_GMOCK=OFF
 make
 make install
 ```
-gtest 默认安装在 /usr/local
+Install in /usr/local/ by default.
 ```shell
 ls /usr/local/include/
 ...... gtest
 ls /usr/local/lib/
 ...... cmake  libgtest.a  libgtest_main.a
 ```
-## 第四步：执行编译
-StoneDB 现有 5.6 和 5.7 两个分支，下载的源码包默认是 5.7 分支。下载的源码包存放路径可根据实际情况指定，示例中的源码包存放路径是在根目录下。
+### Step 4. Compile StoneDB
+Currently, StoneDB has two branches: StoneDB-5.6 (for MySQL 5.6) and StoneDB-5.7 (for MySQL 5.7). The link provided in this topic is to the source code package of StoneDB-5.7. In the following example, the source code package is saved to the root directory. 
 ```shell
 cd /
 git clone https://github.com/stoneatom/stonedb.git
 ```
-在执行编译脚本前，需要修改编译脚本的两处内容：<br />1）StoneDB 安装目录，可根据实际情况修改，示例中的安装目录是 /stonedb57/install，目录需要提前创建；<br />2）marisa、rocksdb、boost 的实际安装路径，必须与上文安装 marisa、rocksdb、boost 的路径保持一致。
+Before compilation, modify the compilation script as follows:
+
+1. Change the installation directory of StoneDB based on your actual conditions. In the example, **/stonedb57/install** is used.
+1. Change the installation directories of marisa, RocksDB, and Boost based on your actual conditions.
 ```shell
-###修改编译脚本
+### Modify the compilation script.
 cd /stonedb/scripts
 vim stonedb_build.sh
 ...
@@ -188,25 +205,26 @@ install_target=/stonedb57/install
 -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb \
 2>&1 | tee -a ${build_log}
 
-###执行编译脚本
+### Execute the compilation script.
 sh stonedb_build.sh
 ```
-:::info
-如果是 CentOS/RedHat ，需要注释 os_dist 和 os_dist_release，并且修改 build_tag ，这是因为 "lsb_release -a" 返回的结果中，Distributor、Release、Codename 显示的是 n/a。注释 os_dist 和 os_dist_release 只会影响产生的日志名和 tar 包名，不会影响编译结果。
-:::
+If your OS is CentOS or RHEL, you must comment out **os_dis** and **os_dist_release**, and modify the setting of **build_tag** to exclude the **os_dist** and **os_dist_release** parts. This is because the the values of **Distributor**, **Release**, and **Codename** output of the **lsb_release -a** command are **n/a**. Commenting out **os_dist** and **os_dist_release** only affects the names of the log file and the TAR package and has no impact on the compilation results.
 
-## 第五步：启动实例
-用户可按照手动安装和自动安装两种方式启动 StoneDB。
-### 1. 创建用户
+### Step 5. Start StoneDB
+Users can start StoneDB in two ways: manual installation and automatic installation. 
+
+1. Create an account.
 ```shell
 groupadd mysql
 useradd -g mysql mysql
 passwd mysql
 ```
-### 2. 手动安装
-手动创建目录、初始化和启动实例，还需要配置 my.cnf 文件，如安装目录，端口等参数。
+
+2. Manually install StoneDB.
+
+You need to manually create directories, and then initialize and start StoneDB. You also need to configure parameters in file **my.cnf**, including the installation directories and port.
 ```shell
-###创建目录
+### Create directories.
 mkdir -p /stonedb57/install/data
 mkdir -p /stonedb57/install/binlog
 mkdir -p /stonedb57/install/log
@@ -215,7 +233,7 @@ mkdir -p /stonedb57/install/redolog
 mkdir -p /stonedb57/install/undolog
 chown -R mysql:mysql /stonedb57
 
-###配置my.cnf
+### Configure parameters in my.cnf.
 mv my.cnf my.cnf.bak
 vim /stonedb57/install/my.cnf
 [mysqld]
@@ -230,22 +248,26 @@ innodb_undo_directory       = /stonedb57/install/undolog/
 
 chown -R mysql:mysql /stonedb57/install/my.cnf
 
-###初始化实例
+### Initialize StoneDB.
 /stonedb57/install/bin/mysqld --defaults-file=/stonedb57/install/my.cnf --initialize --user=mysql
 
-###启动实例
+### Start StoneDB.
 /stonedb57/install/bin/mysqld_safe --defaults-file=/stonedb57/install/my.cnf --user=mysql &
 ```
-### 3. 自动安装
-编译完成后，在安装目录下会自动生成 reinstall.sh、install.sh 和 my.cnf 文件，执行 reinstall.sh 就是创建目录、初始化实例和启动实例的过程。
+
+3. Execute **reinstall.sh** to automatically install StoneDB.
 ```shell
 cd /stonedb57/install
 ./reinstall.sh
 ```
 :::info
-reinstall.sh 与 install.sh 的区别？<br />reinstall.sh 是自动化安装脚本，执行脚本的过程是创建目录、初始化实例和启动实例的过程，只在第一次使用，其他任何时候使用都会删除整个目录，重新初始化数据库。install.sh 是手动安装提供的示例脚本，用户可根据自定义的安装目录修改路径，然后执行脚本，执行脚本的过程也是创建目录、初始化实例和启动实例。以上两个脚本都只能在第一次使用。
+Differences between **reinstall.sh** and **install.sh**:
+
+- **reinstall.sh** is the script for automatic installation. When the script is being executed, directories are created, and StoneDB is initialized and started. Therefore, do not execute the script unless for the initial startup of StoneDB. Otherwise, all directories will be deleted and StoneDB will be initialized again.
+- **install.sh** is the script for manual installation. You can specify the installation directories based on your needs and then execute the script. Same as **reinstall.sh**, when the script is being executed, directories are created, and StoneDB is initialized and started. Therefore, do not execute the script unless for the initial startup. Otherwise, all directories will be deleted and StoneDB will be initialized again.
 :::
-### 4. 执行登录
+
+4. Log in to StoneDB.
 ```shell
 cat /stonedb57/install/log/mysqld.log |grep passwd
 [Note] A temporary password is generated for root@localhost: ceMuEuj6l4+!
@@ -261,4 +283,6 @@ Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
 mysql> alter user 'root'@'localhost' identified by 'stonedb123';
 ```
-注：管理员用户的临时密码在 mysqld.log 中，第一次登陆后需要修改管理员用户的密码。
+:::info
+The temporary password of user root is recorded in mysqld.log. Upon your first login, you must change the temporary password.
+:::

@@ -133,7 +133,7 @@ mysqld_safe --defaults-file=/path/to/my.cnf --user=mysql &
 ## 用 StoneDB 创建表
 
 ```sql
---The example code for creating a table with 'stonedb' engine.
+--The example code for creating a table with 'tianmu' engine.(For version 5.7 or later)
 CREATE TABLE `example_table` (
   `id1` bigint(20) NOT NULL DEFAULT '0',
   `id1_type` int(10) NOT NULL DEFAULT '0',
@@ -142,8 +142,8 @@ CREATE TABLE `example_table` (
   `data` varchar(255) NOT NULL DEFAULT '',
   `time` bigint(20) NOT NULL DEFAULT '0',
   `version` int(11) NOT NULL DEFAULT '0',
-) ENGINE=stonedb;
-
+) ENGINE=tianmu;
+-- For version 5.6, the engine should be set to 'stonedb'
 ```
 
 这个例子展示了 StoneDB 中的一些重要特性和限制。有关限制的更多信息，请参见 [StoneDB Limitations](https://stonedb.io/docs/about-stonedb/limits). 

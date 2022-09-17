@@ -248,9 +248,7 @@ int TianmuHandler::external_lock(THD *thd, int lock_type) {
 
   if (thd->lex->sql_command == SQLCOM_LOCK_TABLES) DBUG_RETURN(HA_ERR_WRONG_COMMAND);
 
-  if (is_delay_insert(thd)
-      && table_share->tmp_table == NO_TMP_TABLE
-      && lock_type == F_WRLCK) {
+  if (is_delay_insert(thd) && table_share->tmp_table == NO_TMP_TABLE && lock_type == F_WRLCK) {
     DBUG_RETURN(0);
   }
 
@@ -273,8 +271,9 @@ int TianmuHandler::external_lock(THD *thd, int lock_type) {
         tx->AddTableRD(share);
       } else {
         tx->AddTableWR(share);
-        trans_register_ha(thd, false, rcbase_hton,NULL);
-        if (thd_test_options(thd, OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN)) trans_register_ha(thd, true, rcbase_hton,NULL);
+        trans_register_ha(thd, false, rcbase_hton, NULL);
+        if (thd_test_options(thd, OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN))
+          trans_register_ha(thd, true, rcbase_hton, NULL);
       }
     }
     ret = 0;
@@ -430,7 +429,7 @@ int TianmuHandler::write_row([[maybe_unused]] uchar *buf) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
   } catch (common::FormatException &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::InsertRow: %s Row: %ld, field %u.", e.what(),
-                e.m_row_no, e.m_field_no);
+               e.m_row_no, e.m_field_no);
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
   } catch (common::FileException &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::InsertRow: %s.", e.what());
@@ -797,8 +796,8 @@ int TianmuHandler::index_end() {
  index.
  */
 int TianmuHandler::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] const uchar *key,
-                               [[maybe_unused]] uint key_len __attribute__((unused)),
-                               enum ha_rkey_function find_flag __attribute__((unused))) {
+                              [[maybe_unused]] uint key_len __attribute__((unused)),
+                              enum ha_rkey_function find_flag __attribute__((unused))) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int rc = HA_ERR_KEY_NOT_FOUND;
   try {
@@ -982,7 +981,7 @@ int TianmuHandler::rnd_init(bool scan) {
         table_new_iter_end = ((core::RCTable *)table_ptr)->End();
       } catch (common::Exception const &e) {
         rc_control_ << system::lock << "Error in push-down execution, push-down execution aborted: " << e.what()
-                  << system::unlock;
+                    << system::unlock;
         TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in push-down execution: %s", e.what());
       }
       m_query.reset();
@@ -993,8 +992,8 @@ int TianmuHandler::rnd_init(bool scan) {
         table_new_iter_end = ((core::RCTable *)table_ptr)->End();
       } else {
         std::shared_ptr<core::RCTable> rctp;
-        ha_rcengine_->GetTableIterator(m_table_name, table_new_iter, table_new_iter_end, rctp, GetAttrsUseIndicator(table),
-                                table->in_use);
+        ha_rcengine_->GetTableIterator(m_table_name, table_new_iter, table_new_iter_end, rctp,
+                                       GetAttrsUseIndicator(table), table->in_use);
         table_ptr = rctp.get();
         filter_ptr.reset();
       }
@@ -1134,9 +1133,9 @@ int TianmuHandler::extra(enum ha_extra_function operation) {
 int TianmuHandler::start_stmt(THD *thd, thr_lock_type lock_type) {
   try {
     if (lock_type == TL_WRITE_CONCURRENT_INSERT || lock_type == TL_WRITE_DEFAULT || lock_type == TL_WRITE) {
-      trans_register_ha(thd, false, rcbase_hton,NULL);
+      trans_register_ha(thd, false, rcbase_hton, NULL);
       if (thd_test_options(thd, OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN)) {
-        trans_register_ha(thd, true, rcbase_hton,NULL);
+        trans_register_ha(thd, true, rcbase_hton, NULL);
       }
       current_txn_ = ha_rcengine_->GetTx(thd);
       current_txn_->AddTableWRIfNeeded(share);
@@ -1157,8 +1156,8 @@ int TianmuHandler::start_stmt(THD *thd, thr_lock_type lock_type) {
  caching.
  */
 my_bool TianmuHandler::register_query_cache_table(THD *thd, char *table_key, size_t key_length,
-                                                   qc_engine_callback *call_back,
-                                                   [[maybe_unused]] ulonglong *engine_data) {
+                                                  qc_engine_callback *call_back,
+                                                  [[maybe_unused]] ulonglong *engine_data) {
   *call_back = rcbase_query_caching_of_table_permitted;
   return rcbase_query_caching_of_table_permitted(thd, table_key, key_length, 0);
 }
@@ -1202,7 +1201,7 @@ int TianmuHandler::delete_table(const char *name) {
  Called from opt_range.cc by check_quick_keys().
  */
 ha_rows TianmuHandler::records_in_range([[maybe_unused]] uint inx, [[maybe_unused]] key_range *min_key,
-                                         [[maybe_unused]] key_range *max_key) {
+                                        [[maybe_unused]] key_range *max_key) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   DBUG_RETURN(10);  // low number to force index usage
 }
@@ -1252,6 +1251,13 @@ int TianmuHandler::truncate() {
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
   DBUG_RETURN(ret);
+}
+
+uint TianmuHandler::max_supported_key_part_length(HA_CREATE_INFO *create_info) const {
+  if (tianmu_sysvar_large_prefix)
+    return (Tianmu::common::TIANMU_MAX_INDEX_COL_LEN_LARGE);
+  else
+    return (Tianmu::common::TIANMU_MAX_INDEX_COL_LEN_SMALL);
 }
 
 int TianmuHandler::fill_row(uchar *buf) {
@@ -1307,7 +1313,7 @@ char *TianmuHandler::update_table_comment(const char *comment) {
     int count = std::sprintf(buf, "Overall compression ratio: %.3f, Raw size=%ld MB", ratio, sum_u >> 20);
     extra_len += count;
 
-    str = (char *)my_malloc(PSI_NOT_INSTRUMENTED,length + extra_len + 3, MYF(0));
+    str = (char *)my_malloc(PSI_NOT_INSTRUMENTED, length + extra_len + 3, MYF(0));
     if (str) {
       char *pos = str + length;
       if (length) {
@@ -1367,7 +1373,7 @@ int TianmuHandler::set_cond_iter() {
       ret = 0;
     } catch (common::Exception const &e) {
       rc_control_ << system::lock << "Error in push-down execution, push-down execution aborted: " << e.what()
-                << system::unlock;
+                  << system::unlock;
       TIANMU_LOG(LogCtl_Level::ERROR, "Error in push-down execution, push-down execution aborted: %s", e.what());
     }
     m_query.reset();
@@ -1383,8 +1389,8 @@ const Item *TianmuHandler::cond_push(const Item *a_cond) {
   try {
     if (!m_query) {
       std::shared_ptr<core::RCTable> rctp;
-      ha_rcengine_->GetTableIterator(m_table_name, table_new_iter, table_new_iter_end, rctp, GetAttrsUseIndicator(table),
-                              table->in_use);
+      ha_rcengine_->GetTableIterator(m_table_name, table_new_iter, table_new_iter_end, rctp,
+                                     GetAttrsUseIndicator(table), table->in_use);
       table_ptr = rctp.get();
       m_query.reset(new core::Query(current_txn_));
       m_cq.reset(new core::CompiledQuery);
@@ -1473,12 +1479,23 @@ int TianmuHandler::reset() {
 }
 
 enum_alter_inplace_result TianmuHandler::check_if_supported_inplace_alter([[maybe_unused]] TABLE *altered_table,
-                                                                           Alter_inplace_info *ha_alter_info) {
+                                                                          Alter_inplace_info *ha_alter_info) {
+  DBUG_ENTER(__PRETTY_FUNCTION__);
   if ((ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER) &&
       (ha_alter_info->handler_flags != TIANMU_SUPPORTED_ALTER_COLUMN_NAME)) {
-    return HA_ALTER_ERROR;
+    // support alter table column type 
+    if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_STORED_COLUMN_TYPE)
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+    // support alter table column exceeded length
+    if ((ha_alter_info->handler_flags & Alter_inplace_info::ALTER_COLUMN_EQUAL_PACK_LENGTH))
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+    // support alter table column default
+    if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_COLUMN_DEFAULT)
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+
+    DBUG_RETURN(HA_ALTER_ERROR);
   }
-  return HA_ALTER_INPLACE_EXCLUSIVE_LOCK;
+  DBUG_RETURN(HA_ALTER_INPLACE_EXCLUSIVE_LOCK);
 }
 
 bool TianmuHandler::inplace_alter_table(TABLE *altered_table, Alter_inplace_info *ha_alter_info) {
@@ -1502,8 +1519,8 @@ bool TianmuHandler::inplace_alter_table(TABLE *altered_table, Alter_inplace_info
   return true;
 }
 
-bool TianmuHandler::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_table,
-                                                Alter_inplace_info *ha_alter_info, bool commit) {
+bool TianmuHandler::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_table, Alter_inplace_info *ha_alter_info,
+                                               bool commit) {
   if (!commit) {
     TIANMU_LOG(LogCtl_Level::INFO, "Alter table failed : %s%s", m_table_name.c_str(), " rollback");
     return true;
@@ -1542,7 +1559,7 @@ bool TianmuHandler::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_t
     fs::remove_all(bak_dir);
   } catch (fs::filesystem_error &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "file system error: %s %s|%s", e.what(), e.path1().string().c_str(),
-                e.path2().string().c_str());
+               e.path2().string().c_str());
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Failed to commit alter table", MYF(0));
     return true;
   }
@@ -1553,7 +1570,7 @@ bool TianmuHandler::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_t
 
  */
 void TianmuHandler::key_convert(const uchar *key, uint key_len, std::vector<uint> cols,
-                                 std::vector<std::string_view> &keys) {
+                                std::vector<std::string_view> &keys) {
   key_restore(table->record[0], (uchar *)key, &table->key_info[active_index], key_len);
 
   Field **field = table->field;

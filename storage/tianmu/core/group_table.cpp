@@ -340,7 +340,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
 
   vm_tab.reset(ValueMatchingTable::CreateNew_ValueMatchingTable(primary_total_size, declared_max_no_groups,
                                                                 max_group_code, total_width, grouping_and_UTF_width,
-                                                                grouping_buf_width, p_power));
+                                                                grouping_buf_width, p_power, false));
 
   input_buffer.resize(grouping_and_UTF_width);
   // pre-allocation of distinct memory
@@ -362,6 +362,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
       gdistinct[i]->InitializeVC(vm_tab->RowNumberScope(), vc[i], desc.max_no_values,
                                  distinct_size / no_columns_with_distinct,
                                  (operation[i] != GT_Aggregation::GT_COUNT_NOT_NULL));  // otherwise must be decodable
+      gdistinct[i]->CopyFromValueMatchingTable(vm_tab.get());
       distinct_size -= gdistinct[i]->BytesTaken();
       no_columns_with_distinct--;
     }
@@ -537,10 +538,10 @@ bool GroupTable::PutAggregatedValue(int col, int64_t row, MIIterator &mit, int64
     GDTResult res = gdistinct[col]->Add(row, mit);
     if (res == GDTResult::GDT_EXISTS) return true;  // value found, do not aggregate it again
     if (res == GDTResult::GDT_FULL) {
-      if (gdistinct[col]->AlreadyFull())
-        not_full = false;  // disable also the main grouping table (if it is a
+      //if (gdistinct[col]->AlreadyFull())
+        //not_full = false;  // disable also the main grouping table (if it is a
                            // persistent rejection)
-      return false;        // value not found in DISTINCT buffer, which is already
+      //return false;        // value not found in DISTINCT buffer, which is already
                            // full
     }
     factor = 1;  // ignore repetitions for distinct

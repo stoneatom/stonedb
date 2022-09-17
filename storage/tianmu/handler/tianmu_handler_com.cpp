@@ -19,11 +19,11 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include "binlog.h"
 #include "core/transaction.h"
 #include "handler/tianmu_handler.h"
 #include "mm/initializer.h"
 #include "system/file_out.h"
-#include "binlog.h"
 
 handlerton *rcbase_hton;
 
@@ -41,10 +41,10 @@ namespace dbhandler {
  */
 my_bool tianmu_bootstrap = 0;
 
-char *strmov_str(char *dst, const char *src)
-{
-  while ((*dst++ = *src++)) ;
-  return dst-1;
+char *strmov_str(char *dst, const char *src) {
+  while ((*dst++ = *src++))
+    ;
+  return dst - 1;
 }
 
 static int rcbase_done_func([[maybe_unused]] void *p) {
@@ -218,32 +218,32 @@ int rcbase_init_func(void *p) {
     if (hent) strmov_str(global_hostIP_, inet_ntoa(*(struct in_addr *)(hent->h_addr_list[0])));
     my_snprintf(global_serverinfo_, sizeof(global_serverinfo_), "\tServerIp:%s\tServerHostName:%s\tServerPort:%d",
                 global_hostIP_, glob_hostname, mysqld_port);
-    //startup tianmu engine.
+    // startup tianmu engine.
     ha_rcengine_ = new core::Engine();
     ret = ha_rcengine_->Init(total_ha);
     {
       TIANMU_LOG(LogCtl_Level::INFO,
-                  "\n"
-                  "------------------------------------------------------------"
-                  "----------------------------------"
-                  "-------------\n"
-                  "    ######  ########  #######  ##     ## ######## ######   "
-                  "######   \n"
-                  "   ##    ##    ##    ##     ## ####   ## ##       ##    ## "
-                  "##    ## \n"
-                  "   ##          ##    ##     ## ## ##  ## ##       ##    ## "
-                  "##    ## \n"
-                  "    ######     ##    ##     ## ##  ## ## ######   ##    ## "
-                  "######## \n"
-                  "         ##    ##    ##     ## ##   #### ##       ##    ## "
-                  "##    ## \n"
-                  "   ##    ##    ##    ##     ## ##    ### ##       ##    ## "
-                  "##    ## \n"
-                  "    ######     ##     #######  ##     ## ######## ######   "
-                  "######   \n"
-                  "------------------------------------------------------------"
-                  "----------------------------------"
-                  "-------------\n");
+                 "\n"
+                 "------------------------------------------------------------"
+                 "----------------------------------"
+                 "-------------\n"
+                 "    ######  ########  #######  ##     ## ######## ######   "
+                 "######   \n"
+                 "   ##    ##    ##    ##     ## ####   ## ##       ##    ## "
+                 "##    ## \n"
+                 "   ##          ##    ##     ## ## ##  ## ##       ##    ## "
+                 "##    ## \n"
+                 "    ######     ##    ##     ## ##  ## ## ######   ##    ## "
+                 "######## \n"
+                 "         ##    ##    ##     ## ##   #### ##       ##    ## "
+                 "##    ## \n"
+                 "   ##    ##    ##    ##     ## ##    ### ##       ##    ## "
+                 "##    ## \n"
+                 "    ######     ##     #######  ##     ## ######## ######   "
+                 "######   \n"
+                 "------------------------------------------------------------"
+                 "----------------------------------"
+                 "-------------\n");
     }
 
   } catch (std::exception &e) {
@@ -366,9 +366,10 @@ int get_UpdatePerMinute_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outv
   return 0;
 }
 
-char masteslave_info[8192]={0};
+char masteslave_info[8192] = {0};
 
-SHOW_VAR tianmu_masterslave_dump[] = {{"info", masteslave_info, SHOW_CHAR, SHOW_SCOPE_UNDEF}, {NullS, NullS, SHOW_LONG, SHOW_SCOPE_UNDEF}};
+SHOW_VAR tianmu_masterslave_dump[] = {{"info", masteslave_info, SHOW_CHAR, SHOW_SCOPE_UNDEF},
+                                      {NullS, NullS, SHOW_LONG, SHOW_SCOPE_UNDEF}};
 
 //  showtype
 //  =====================
@@ -377,7 +378,7 @@ SHOW_VAR tianmu_masterslave_dump[] = {{"info", masteslave_info, SHOW_CHAR, SHOW_
 //  SHOW_ARRAY, SHOW_FUNC, SHOW_DOUBLE
 
 int tianmu_throw_error_func([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] struct st_mysql_sys_var *var,
-                             [[maybe_unused]] void *save, struct st_mysql_value *value) {
+                            [[maybe_unused]] void *save, struct st_mysql_value *value) {
   int buffer_length = 512;
   char buff[512] = {0};
 
@@ -409,7 +410,7 @@ extern void async_join_update(MYSQL_THD thd, struct st_mysql_sys_var *var, void 
 
 #define STATUS_FUNCTION(name, showtype, member)                                                             \
   int get_##name##_StatusVar([[maybe_unused]] MYSQL_THD thd, struct st_mysql_show_var *outvar, char *tmp) { \
-    *((int64_t *)tmp) = ha_rcengine_->cache.member();                                                              \
+    *((int64_t *)tmp) = ha_rcengine_->cache.member();                                                       \
     outvar->value = tmp;                                                                                    \
     outvar->type = showtype;                                                                                \
     return 0;                                                                                               \
@@ -424,7 +425,7 @@ extern void async_join_update(MYSQL_THD thd, struct st_mysql_sys_var *var, void 
   }
 
 #define STATUS_MEMBER(name, label) \
-  { "Tianmu_" #label, (char *)get_##name##_StatusVar, SHOW_FUNC, SHOW_SCOPE_UNDEF}
+  { "Tianmu_" #label, (char *)get_##name##_StatusVar, SHOW_FUNC, SHOW_SCOPE_UNDEF }
 
 STATUS_FUNCTION(gdchits, SHOW_LONGLONG, getCacheHits)
 STATUS_FUNCTION(gdcmisses, SHOW_LONGLONG, getCacheMisses)
@@ -521,13 +522,13 @@ static MYSQL_SYSVAR_BOOL(ini_usemysqlimportexportdefaults, tianmu_sysvar_usemysq
                          PLUGIN_VAR_READONLY, "-", NULL, NULL, FALSE);
 static MYSQL_SYSVAR_INT(ini_threadpoolsize, tianmu_sysvar_threadpoolsize, PLUGIN_VAR_READONLY, "-", NULL, NULL, 1, 0,
                         1000000, 0);
-static MYSQL_SYSVAR_INT(ini_cachesizethreshold, tianmu_sysvar_cachesizethreshold, PLUGIN_VAR_INT, "-", NULL, NULL, 4,
-                        0, 1024, 0);
-static MYSQL_SYSVAR_INT(ini_cachereleasethreshold, tianmu_sysvar_cachereleasethreshold, PLUGIN_VAR_INT, "-", NULL,
-                        NULL, 100, 0, 100000, 0);
+static MYSQL_SYSVAR_INT(ini_cachesizethreshold, tianmu_sysvar_cachesizethreshold, PLUGIN_VAR_INT, "-", NULL, NULL, 4, 0,
+                        1024, 0);
+static MYSQL_SYSVAR_INT(ini_cachereleasethreshold, tianmu_sysvar_cachereleasethreshold, PLUGIN_VAR_INT, "-", NULL, NULL,
+                        100, 0, 100000, 0);
 static MYSQL_SYSVAR_BOOL(insert_delayed, tianmu_sysvar_insert_delayed, PLUGIN_VAR_READONLY, "-", NULL, NULL, TRUE);
-static MYSQL_SYSVAR_INT(insert_cntthreshold, tianmu_sysvar_insert_cntthreshold, PLUGIN_VAR_READONLY, "-", NULL, NULL,
-                        2, 0, 1000, 0);
+static MYSQL_SYSVAR_INT(insert_cntthreshold, tianmu_sysvar_insert_cntthreshold, PLUGIN_VAR_READONLY, "-", NULL, NULL, 2,
+                        0, 1000, 0);
 static MYSQL_SYSVAR_INT(insert_numthreshold, tianmu_sysvar_insert_numthreshold, PLUGIN_VAR_READONLY, "-", NULL, NULL,
                         10000, 0, 100000, 0);
 static MYSQL_SYSVAR_INT(insert_wait_ms, tianmu_sysvar_insert_wait_ms, PLUGIN_VAR_READONLY, "-", NULL, NULL, 100, 10,
@@ -536,8 +537,7 @@ static MYSQL_SYSVAR_INT(insert_wait_time, tianmu_sysvar_insert_wait_time, PLUGIN
                         600000, 0);
 static MYSQL_SYSVAR_INT(insert_max_buffered, tianmu_sysvar_insert_max_buffered, PLUGIN_VAR_READONLY, "-", NULL, NULL,
                         65536, 0, 10000000, 0);
-static MYSQL_SYSVAR_BOOL(compensation_start, tianmu_sysvar_compensation_start, PLUGIN_VAR_BOOL, "-", NULL, NULL,
-                         FALSE);
+static MYSQL_SYSVAR_BOOL(compensation_start, tianmu_sysvar_compensation_start, PLUGIN_VAR_BOOL, "-", NULL, NULL, FALSE);
 static MYSQL_SYSVAR_STR(hugefiledir, tianmu_sysvar_hugefiledir, PLUGIN_VAR_READONLY, "-", NULL, NULL, "");
 static MYSQL_SYSVAR_INT(cachinglevel, tianmu_sysvar_cachinglevel, PLUGIN_VAR_READONLY, "-", NULL, NULL, 1, 0, 512, 0);
 static MYSQL_SYSVAR_STR(mm_policy, tianmu_sysvar_mm_policy, PLUGIN_VAR_READONLY, "-", NULL, NULL, "");
@@ -549,13 +549,12 @@ static MYSQL_SYSVAR_INT(mm_largetemppool_threshold, tianmu_sysvar_mm_large_thres
                         "size threshold in MB for using large temp thread pool", NULL, NULL, 16, 0, 10240, 0);
 static MYSQL_SYSVAR_INT(sync_buffers, tianmu_sysvar_sync_buffers, PLUGIN_VAR_READONLY, "-", NULL, NULL, 0, 0, 1, 0);
 
-static MYSQL_SYSVAR_INT(query_threads, tianmu_sysvar_query_threads, PLUGIN_VAR_READONLY, "-", NULL, NULL, 0, 0, 100,
-                        0);
+static MYSQL_SYSVAR_INT(query_threads, tianmu_sysvar_query_threads, PLUGIN_VAR_READONLY, "-", NULL, NULL, 0, 0, 100, 0);
 static MYSQL_SYSVAR_INT(load_threads, tianmu_sysvar_load_threads, PLUGIN_VAR_READONLY, "-", NULL, NULL, 0, 0, 100, 0);
-static MYSQL_SYSVAR_INT(bg_load_threads, tianmu_sysvar_bg_load_threads, PLUGIN_VAR_READONLY, "-", NULL, NULL, 0, 0,
-                        100, 0);
-static MYSQL_SYSVAR_INT(insert_buffer_size, tianmu_sysvar_insert_buffer_size, PLUGIN_VAR_READONLY, "-", NULL, NULL,
-                        512, 512, 10000, 0);
+static MYSQL_SYSVAR_INT(bg_load_threads, tianmu_sysvar_bg_load_threads, PLUGIN_VAR_READONLY, "-", NULL, NULL, 0, 0, 100,
+                        0);
+static MYSQL_SYSVAR_INT(insert_buffer_size, tianmu_sysvar_insert_buffer_size, PLUGIN_VAR_READONLY, "-", NULL, NULL, 512,
+                        512, 10000, 0);
 
 static MYSQL_THDVAR_INT(session_debug_level, PLUGIN_VAR_INT, "session debug level", NULL, debug_update, 3, 0, 5, 0);
 static MYSQL_THDVAR_INT(control_trace, PLUGIN_VAR_OPCMDARG, "ini controltrace", NULL, trace_update, 0, 0, 100, 0);
@@ -611,7 +610,10 @@ static MYSQL_SYSVAR_BOOL(join_disable_switch_side, tianmu_sysvar_join_disable_sw
                          NULL, FALSE);
 static MYSQL_SYSVAR_BOOL(enable_histogram_cmap_bloom, tianmu_sysvar_enable_histogram_cmap_bloom, PLUGIN_VAR_BOOL, "-",
                          NULL, NULL, FALSE);
-
+static MYSQL_SYSVAR_BOOL(large_prefix, tianmu_sysvar_large_prefix, PLUGIN_VAR_RQCMDARG,
+                         "Support large index prefix length of 3072 bytes. If off, the maximum "
+                         "index prefix length is 767.",
+                         NULL, NULL, FALSE);
 static MYSQL_SYSVAR_UINT(result_sender_rows, tianmu_sysvar_result_sender_rows, PLUGIN_VAR_UNSIGNED,
                          "The number of rows to load at a time when processing "
                          "queries like select xxx from yyya",
@@ -678,63 +680,64 @@ void async_join_update([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] struct s
 }
 
 static struct st_mysql_sys_var *tianmu_showvars[] = {MYSQL_SYSVAR(bg_load_threads),
-                                                  MYSQL_SYSVAR(cachinglevel),
-                                                  MYSQL_SYSVAR(compensation_start),
-                                                  MYSQL_SYSVAR(control_trace),
-                                                  MYSQL_SYSVAR(data_distribution_policy),
-                                                  MYSQL_SYSVAR(disk_usage_threshold),
-                                                  MYSQL_SYSVAR(distinct_cache_size),
-                                                  MYSQL_SYSVAR(filterevaluation_speedup),
-                                                  MYSQL_SYSVAR(global_debug_level),
-                                                  MYSQL_SYSVAR(groupby_speedup),
-                                                  MYSQL_SYSVAR(hugefiledir),
-                                                  MYSQL_SYSVAR(index_cache_size),
-                                                  MYSQL_SYSVAR(index_search),
-                                                  MYSQL_SYSVAR(enable_rowstore),
-                                                  MYSQL_SYSVAR(ini_allowmysqlquerypath),
-                                                  MYSQL_SYSVAR(ini_cachefolder),
-                                                  MYSQL_SYSVAR(ini_cachereleasethreshold),
-                                                  MYSQL_SYSVAR(ini_cachesizethreshold),
-                                                  MYSQL_SYSVAR(ini_controlquerylog),
-                                                  MYSQL_SYSVAR(ini_knlevel),
-                                                  MYSQL_SYSVAR(ini_pushdown),
-                                                  MYSQL_SYSVAR(ini_servermainheapsize),
-                                                  MYSQL_SYSVAR(ini_threadpoolsize),
-                                                  MYSQL_SYSVAR(ini_usemysqlimportexportdefaults),
-                                                  MYSQL_SYSVAR(insert_buffer_size),
-                                                  MYSQL_SYSVAR(insert_cntthreshold),
-                                                  MYSQL_SYSVAR(insert_delayed),
-                                                  MYSQL_SYSVAR(insert_max_buffered),
-                                                  MYSQL_SYSVAR(insert_numthreshold),
-                                                  MYSQL_SYSVAR(insert_wait_ms),
-                                                  MYSQL_SYSVAR(insert_wait_time),
-                                                  MYSQL_SYSVAR(join_disable_switch_side),
-                                                  MYSQL_SYSVAR(enable_histogram_cmap_bloom),
-                                                  MYSQL_SYSVAR(join_parallel),
-                                                  MYSQL_SYSVAR(join_splitrows),
-                                                  MYSQL_SYSVAR(load_threads),
-                                                  MYSQL_SYSVAR(lookup_max_size),
-                                                  MYSQL_SYSVAR(max_execution_time),
-                                                  MYSQL_SYSVAR(minmax_speedup),
-                                                  MYSQL_SYSVAR(mm_hardlimit),
-                                                  MYSQL_SYSVAR(mm_largetempratio),
-                                                  MYSQL_SYSVAR(mm_largetemppool_threshold),
-                                                  MYSQL_SYSVAR(mm_policy),
-                                                  MYSQL_SYSVAR(mm_releasepolicy),
-                                                  MYSQL_SYSVAR(orderby_speedup),
-                                                  MYSQL_SYSVAR(parallel_filloutput),
-                                                  MYSQL_SYSVAR(parallel_mapjoin),
-                                                  MYSQL_SYSVAR(qps_log),
-                                                  MYSQL_SYSVAR(query_threads),
-                                                  MYSQL_SYSVAR(refresh_sys_tianmu),
-                                                  MYSQL_SYSVAR(session_debug_level),
-                                                  MYSQL_SYSVAR(sync_buffers),
-                                                  MYSQL_SYSVAR(trigger_error),
-                                                  MYSQL_SYSVAR(async_join),
-                                                  MYSQL_SYSVAR(force_hashjoin),
-                                                  MYSQL_SYSVAR(start_async),
-                                                  MYSQL_SYSVAR(result_sender_rows),
-                                                  NULL};
+                                                     MYSQL_SYSVAR(cachinglevel),
+                                                     MYSQL_SYSVAR(compensation_start),
+                                                     MYSQL_SYSVAR(control_trace),
+                                                     MYSQL_SYSVAR(data_distribution_policy),
+                                                     MYSQL_SYSVAR(disk_usage_threshold),
+                                                     MYSQL_SYSVAR(distinct_cache_size),
+                                                     MYSQL_SYSVAR(filterevaluation_speedup),
+                                                     MYSQL_SYSVAR(global_debug_level),
+                                                     MYSQL_SYSVAR(groupby_speedup),
+                                                     MYSQL_SYSVAR(hugefiledir),
+                                                     MYSQL_SYSVAR(index_cache_size),
+                                                     MYSQL_SYSVAR(index_search),
+                                                     MYSQL_SYSVAR(enable_rowstore),
+                                                     MYSQL_SYSVAR(ini_allowmysqlquerypath),
+                                                     MYSQL_SYSVAR(ini_cachefolder),
+                                                     MYSQL_SYSVAR(ini_cachereleasethreshold),
+                                                     MYSQL_SYSVAR(ini_cachesizethreshold),
+                                                     MYSQL_SYSVAR(ini_controlquerylog),
+                                                     MYSQL_SYSVAR(ini_knlevel),
+                                                     MYSQL_SYSVAR(ini_pushdown),
+                                                     MYSQL_SYSVAR(ini_servermainheapsize),
+                                                     MYSQL_SYSVAR(ini_threadpoolsize),
+                                                     MYSQL_SYSVAR(ini_usemysqlimportexportdefaults),
+                                                     MYSQL_SYSVAR(insert_buffer_size),
+                                                     MYSQL_SYSVAR(insert_cntthreshold),
+                                                     MYSQL_SYSVAR(insert_delayed),
+                                                     MYSQL_SYSVAR(insert_max_buffered),
+                                                     MYSQL_SYSVAR(insert_numthreshold),
+                                                     MYSQL_SYSVAR(insert_wait_ms),
+                                                     MYSQL_SYSVAR(insert_wait_time),
+                                                     MYSQL_SYSVAR(join_disable_switch_side),
+                                                     MYSQL_SYSVAR(enable_histogram_cmap_bloom),
+                                                     MYSQL_SYSVAR(join_parallel),
+                                                     MYSQL_SYSVAR(join_splitrows),
+                                                     MYSQL_SYSVAR(large_prefix),
+                                                     MYSQL_SYSVAR(load_threads),
+                                                     MYSQL_SYSVAR(lookup_max_size),
+                                                     MYSQL_SYSVAR(max_execution_time),
+                                                     MYSQL_SYSVAR(minmax_speedup),
+                                                     MYSQL_SYSVAR(mm_hardlimit),
+                                                     MYSQL_SYSVAR(mm_largetempratio),
+                                                     MYSQL_SYSVAR(mm_largetemppool_threshold),
+                                                     MYSQL_SYSVAR(mm_policy),
+                                                     MYSQL_SYSVAR(mm_releasepolicy),
+                                                     MYSQL_SYSVAR(orderby_speedup),
+                                                     MYSQL_SYSVAR(parallel_filloutput),
+                                                     MYSQL_SYSVAR(parallel_mapjoin),
+                                                     MYSQL_SYSVAR(qps_log),
+                                                     MYSQL_SYSVAR(query_threads),
+                                                     MYSQL_SYSVAR(refresh_sys_tianmu),
+                                                     MYSQL_SYSVAR(session_debug_level),
+                                                     MYSQL_SYSVAR(sync_buffers),
+                                                     MYSQL_SYSVAR(trigger_error),
+                                                     MYSQL_SYSVAR(async_join),
+                                                     MYSQL_SYSVAR(force_hashjoin),
+                                                     MYSQL_SYSVAR(start_async),
+                                                     MYSQL_SYSVAR(result_sender_rows),
+                                                     NULL};
 }  // namespace dbhandler
 }  // namespace Tianmu
 
@@ -748,8 +751,8 @@ mysql_declare_plugin(tianmu){
     Tianmu::dbhandler::rcbase_init_func, /* Plugin Init */
     Tianmu::dbhandler::rcbase_done_func, /* Plugin Deinit */
     0x0001 /* 0.1 */,
-    Tianmu::dbhandler::statusvars,   /* status variables  */
+    Tianmu::dbhandler::statusvars,      /* status variables  */
     Tianmu::dbhandler::tianmu_showvars, /* system variables  */
-    NULL,                             /* config options    */
-    0                                 /* flags for plugin */
+    NULL,                               /* config options    */
+    0                                   /* flags for plugin */
 } mysql_declare_plugin_end;
