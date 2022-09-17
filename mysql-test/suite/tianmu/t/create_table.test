@@ -1,6 +1,9 @@
-#
-# Test table name
-#
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test table name
+--echo #
+
 drop table if exists t1,t2,t3,t4,t5;
 drop database if exists mysqltest;
 drop view if exists v1;
@@ -16,9 +19,9 @@ show create table `a/a`;
 create table t1 like `a/a`;
 drop table `a/a`,`t1`;
 
-#
-# Tests the long field name table
-#
+--echo #
+--echo # Tests the long field name table
+--echo #
 
 --error 1059
 create table `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa` (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa int)engine=tianmu;
@@ -37,9 +40,9 @@ select * from t1;
 alter table t1 alter column a set default 'abcdef';
 drop table t1;
 
-#
-# test of dummy table names
-#
+--echo #
+--echo # test of dummy table names
+--echo #
 
 create table 1ea10 (1a20 int,1e int)engine=tianmu;
 insert into 1ea10 values(1,1);
@@ -64,9 +67,9 @@ create table t1 (i int, index `` (i))engine=tianmu;
 create table t1 (i int)engine=tianmu;
 drop table t1;
 
-#
-# Test of CREATE ... select with indexes
-#
+--echo #
+--echo # Test of CREATE ... select with indexes
+--echo #
 
 create table t1 (a int auto_increment not null primary key, B CHAR(20))engine=tianmu;
 insert into t1 (b) values ("hello"),("my"),("world");
@@ -74,17 +77,17 @@ explain select * from t1 where b="world";
 select * from t1 where b="world";
 drop table t1;
 
-#
-# Test of primary key with 32 index
-#
+--echo #
+--echo # Test of primary key with 32 index
+--echo #
 
 create table t1 (a int not null, b int, primary key(a), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b))engine=tianmu;
 show create table t1;
 drop table t1;
 
-#
-# Test default table type
-#
+--echo #
+--echo # Test default table type
+--echo #
 
 set session default_storage_engine="tianmu";
 select @@default_storage_engine;
@@ -112,9 +115,9 @@ create table if not exists t1 select 1;
 select * from t1;
 drop table t1;
 
-#
-# Test create table if not exists with duplicate key error
-#
+--echo #
+--echo # Test create table if not exists with duplicate key error
+--echo #
 
 create table t1 (a int not null, b int, primary key (a));
 insert into t1 values (1,1);
@@ -123,9 +126,9 @@ show status like "Opened_tables";
 select * from t1;
 drop table t1;
 
-#
-# "Table truncated when creating another table name with Spaces"
-#
+--echo #
+--echo # "Table truncated when creating another table name with Spaces"
+--echo #
 
 --error 1103
 create table `t1 `(a int)engine=tianmu;
@@ -134,9 +137,9 @@ create database `db1 `;
 --error 1166
 create table t1(`a ` int)engine=tianmu;
 
-#
-# "Parser permits multiple commas without syntax error"
-#
+--echo #
+--echo # "Parser permits multiple commas without syntax error"
+--echo #
 
 --error 1064
 create table t1 (a int,)engine=tianmu;
@@ -145,17 +148,17 @@ create table t1 (a int,,b int)engine=tianmu;
 --error 1064
 create table t1 (,b int)engine=tianmu;
 
-#
-# Test create with foreign keys
-#
+--echo #
+--echo # Test create with foreign keys
+--echo #
 
 create table t1 (a int, key(a))engine=tianmu;
 create table t2 (b int, foreign key(b) references t1(a), key(b))engine=tianmu;
 drop table if exists t1,t2;
 
-#
-# Test for create table .. LIKE ..
-#
+--echo #
+--echo # Test for create table .. LIKE ..
+--echo #
 
 create table t1(id int not null, name char(20))engine=tianmu;
 insert into t1 values(10,'mysql'),(20,'monty- the creator');
@@ -172,9 +175,9 @@ create table non_existing_database.t1 like t1;
 create table t3 like non_existing_table;
 drop table t1,t3;
 
-#
-# Test types of data for create select with functions
-#
+--echo #
+--echo # Test types of data for create select with functions
+--echo #
 
 create table t1(a int,b int,c int,d date,e char,f datetime,g time,h blob)engine=tianmu;
 insert into t1(a)values(1);
@@ -202,9 +205,9 @@ drop table t1;
 create table t1(name varchar(10), age smallint default -1);
 describe t2;
 
-#
-# 'Naming a key "Primary" causes trouble'
-#
+--echo #
+--echo # 'Naming a key "Primary" causes trouble'
+--echo #
 
 --error 1280
 create table t1 (a int, index `primary` (a))engine=tianmu;
@@ -224,9 +227,9 @@ alter table t3 add index `PRIMARY` (a);
 create table t4 (`primary` int)engine=tianmu;
 drop table t1,t2,t3,t4;
 
-#
-#Can't use 'DEFAULT FALSE' for column of type bool
-#
+--echo #
+--echo #Can't use 'DEFAULT FALSE' for column of type bool
+--echo #
 
 create table t1 (b bool not null default false)engine=tianmu;
 create table t2 (b bool not null default true)engine=tianmu;
@@ -236,9 +239,9 @@ select * from t1;
 select * from t2;
 drop table t1,t2;
 
-#
-# Invalid column name is not rejected
-#
+--echo #
+--echo # Invalid column name is not rejected
+--echo #
 
 create database syw_mtr;
 use syw_mtr;
@@ -253,18 +256,18 @@ create table t2(syw_mtr.t2.name int)engine=tianmu;
 drop table t1,t2;
 drop database syw_mtr;
 
-#
-#create table like
-#
+--echo #
+--echo #create table like
+--echo #
 
 use test;
 --error 1146
 create table test.t1 like x;
 drop table if exists test.t1;
 
-#
-#Bogus error message on attempt to create table t LIKE view
-#
+--echo #
+--echo #Bogus error message on attempt to create table t LIKE view
+--echo #
 
 create database mysqltest;
 use mysqltest;
@@ -274,17 +277,17 @@ create table t1 like v1;
 drop view v1;
 drop database mysqltest;
 
-#
-#SET value having comma not correctly handled
-#
+--echo #
+--echo #SET value having comma not correctly handled
+--echo #
 
 use test;
 --error 1367
 create table t1(a set("a,b","c,d") not null);
 
-#
-#mysqld segfault when trying to create table with same name as existing view
-#
+--echo #
+--echo #mysqld segfault when trying to create table with same name as existing view
+--echo #
 
 create table t1 (a int);
 create table t2 (a int);
@@ -302,9 +305,9 @@ create table t2(c1 TIMESTAMP NULL);
 SET sql_mode = '';
 drop table t2;
 
-#
-#Tests the default type of year for the created table and inserts a null value
-#
+--echo #
+--echo #Tests the default type of year for the created table and inserts a null value
+--echo #
 
 create table t1(c1 year default 2008, c2 year default 0);
 SHOW create table t1;
@@ -312,14 +315,15 @@ insert into t1 values();
 select * FROM t1;
 drop table t1;
 
-#
-# Attempt to create table with invalid default should fail in normal mode
-#
+--echo #
+--echo # Attempt to create table with invalid default should fail in normal mode
+--echo #
 
 --error 1067
 create table t1 (dt datetime default '2008-02-31 00:00:00');
 set @old_mode= @@sql_mode;
 set @@sql_mode='ALLOW_INVALID_DATES';
+
 --echo # The same should be possible in relaxed mode
 create table t1 (dt datetime default '2008-02-31 00:00:00');
 set @@sql_mode= @old_mode;
@@ -332,9 +336,9 @@ show create table t2;
 set @@sql_mode= @old_mode;
 drop tables t1,t2;
 
-#
-# Creating a base table in presence of an updatable view.
-# 
+--echo #
+--echo # Creating a base table in presence of an updatable view.
+--echo # 
 
 create table t2 (a int unique);
 create view t1 as select a from t2;
@@ -354,9 +358,9 @@ select * from t2;
 drop table t1,t2;
 drop view t1;
 
-#
-# Repeating the test with a view select a constant number
-#
+--echo #
+--echo # Repeating the test with a view select a constant number
+--echo #
 
 create view t1 as select 1 as a;
 --error 1471
@@ -379,10 +383,12 @@ create temporary table if not exists t1 (a int) select 4 as a;
 select * from t1;
 drop temporary table t1;
 drop view t1;
-# Test cases added for coverage.
+
+--echo # Test cases added for coverage.
 create table t1(fld1 DATETIME NOT NULL DEFAULT '1111:11:11');
 show create table t1;
 drop table t1;
-# create table..select based on trigger fields.
+
+--echo # create table..select based on trigger fields.
 create table t1 (fld1 int, fld2 DATETIME DEFAULT '1211:1:1');
 show create table t1;
