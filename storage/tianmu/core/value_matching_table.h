@@ -52,6 +52,10 @@ class ValueMatchingTable {  // abstract class: interface for value matching
   // already exists, false if put as a new row
   virtual bool FindCurrentRow(unsigned char *input_buffer, int64_t &row, bool add_if_new = true) = 0;
 
+  virtual bool FindCurrentRow(unsigned char *input_buffer, int64_t &row, bool add_if_new, int match_width) {
+    return FindCurrentRow(input_buffer, row, add_if_new);
+  };
+
   int64_t NoRows() { return int64_t(no_rows); }  // rows stored so far
   virtual bool IsOnePass() = 0;                  // true if the aggregator is capable of storing all groups
                                                  // up to max_no_groups declared in Init()
@@ -83,7 +87,8 @@ class ValueMatchingTable {  // abstract class: interface for value matching
   */
   static ValueMatchingTable *CreateNew_ValueMatchingTable(int64_t mem_available, int64_t max_no_groups,
                                                           int64_t max_group_code, int _total_width,
-                                                          int _input_buf_width, int _match_width, uint32_t power);
+                                                          int _input_buf_width, int _match_width, uint32_t power,
+                                                          bool use_lookup_table = true);
 
  protected:
   int total_width;         // whole row

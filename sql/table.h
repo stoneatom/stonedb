@@ -3052,6 +3052,14 @@ inline bool is_perfschema_db(const char *name)
 */
 inline bool belongs_to_p_s(TABLE_LIST *tl)
 {
+  if (!tl->db) {
+	return false;
+  }
+
+  if (!tl->table_name) {
+	  return false;
+  }
+
   return (!strcmp("performance_schema", tl->db) &&
           strcmp(tl->table_name, "threads") &&
           strstr(tl->table_name, "setup_") == NULL);

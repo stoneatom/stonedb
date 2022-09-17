@@ -633,6 +633,10 @@ bool GroupByWrapper::IsMaxOnly()  // true, if an attribute is max(column), and
 }
 
 void GroupByWrapper::InitTupleLeft(int64_t n) {
+  if (tuple_left) {
+    delete tuple_left;
+    tuple_left = NULL;
+  }
   DEBUG_ASSERT(tuple_left == NULL);
   tuple_left = new Filter(n, p_power);
   tuple_left->Set();
