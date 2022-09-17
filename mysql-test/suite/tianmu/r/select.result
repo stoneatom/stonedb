@@ -1,4 +1,8 @@
+#
+# Simple select test
+#
 drop table if exists t1,t2,t3,t4,t11;
+# The following may be left from older tests
 drop table if exists t1_1,t1_2,t9_1,t9_2,t1aa,t2aa;
 drop view if exists v1;
 CREATE TABLE t1 (
@@ -15,6 +19,9 @@ Period	Varor_period
 select t1.* from t1;
 Period	Varor_period
 9410	9412
+#
+# Create test table
+#
 CREATE TABLE t2 (
 auto int not null auto_increment,
 fld1 int(6) DEFAULT '000000' NOT NULL,
@@ -27,12 +34,21 @@ UNIQUE fld1 (fld1),
 KEY fld3 (fld3),
 PRIMARY KEY (auto)
 )engine=tianmu;
+#
+# Populate table
+#
+#
+# Search with a key
+#
 select t2.fld3 from t2 where companynr = 58 and fld3 like "%imaginable%";
 fld3
 imaginable
 select fld3 from t2 where fld3 like "%cultivation" ;
 fld3
 cultivation
+#
+# Search with a key using sorting and limit the same time
+#
 select t2.fld3,companynr from t2 where companynr = 57+1 order by fld3;
 fld3	companynr
 concoct	58
@@ -109,6 +125,10 @@ Winsett
 Willy
 willed
 wildcats
+#
+# Search with a key having a constant with each unique key.
+# The table is read directly with read-next on fld3
+#
 select t2.fld3 from t2 where fld3 = 'honeysuckle';
 fld3
 honeysuckle
@@ -128,6 +148,9 @@ select t2.fld3 from t2 where fld3 LIKE 'honeysuckle_';
 fld3
 select t2.fld3 from t2 where fld3 LIKE 'don_t_find_me_please%';
 fld3
+#
+# Test using INDEX and IGNORE INDEX
+#
 select t2.fld3 from t2 where fld3 = 'honeysuckle';
 fld3
 honeysuckle
@@ -143,10 +166,17 @@ honeysuckle
 select fld3 from t2 use index (fld1,fld3) where fld3 = 'honeysuckle';
 fld3
 honeysuckle
+#
+# NOTE NOTE NOTE
+# The next should give an error
+#
 select fld3 from t2 ignore index (fld3,not_used);
 ERROR 42000: Key 'not_used' doesn't exist in table 't2'
 select fld3 from t2 use index (not_used);
 ERROR 42000: Key 'not_used' doesn't exist in table 't2'
+#
+# Test sorting with a used key (there is no need for sorting)
+#
 select t2.fld3 from t2 where fld3 >= 'honeysuckle' and fld3 <= 'honoring' order by fld3;
 fld3
 honeysuckle
@@ -156,6 +186,11 @@ fld1	fld3
 148504	Colombo
 68305	Colombo
 0	nondecreasing
+# 
+# Search with a key having a constant with many occurrences
+# The table is read directly with read-next having fld3 to get the
+# occurrences
+#
 select fld1,fld3 from t2 where companynr = 37 and fld3 = 'appendixes';
 fld1	fld3
 232605	appendixes
@@ -164,6 +199,11 @@ fld1	fld3
 1232607	appendixes
 1232608	appendixes
 1232609	appendixes
+#
+# Search with bunched 'or's.
+# If one can limit the key to a certain interval only the possible
+# alternatives will be gone through
+#
 select fld1 from t2 where fld1=250501 or fld1="250502";
 fld1
 250501
@@ -174,6 +214,10 @@ fld1
 250502
 250505
 250601
+#
+# Search with a key with LIKE constant
+# If the like starts with a certain letter key will be used.
+#
 select fld1,fld3 from t2 where companynr = 37 and fld3 like 'f%';
 fld1	fld3
 12001	flanking
@@ -212,6 +256,12 @@ fld3
 select fld3 from t2 where (fld3 like "C%" and fld3 = "Chantilly");
 fld3
 Chantilly
+# 
+# Search using distinct. An automatic grouping will be done over all the fields,
+# if only distinct is used. In any other case a temporary table will always
+# be created. If only the field used for sorting is from the main register,
+# it will be sorted first before the distinct table is created.
+#
 select distinct companynr from t2;
 companynr
 0
@@ -422,6 +472,9 @@ Aug
 aud
 att
 Ado
+#
+#insert into....select
+#
 create database aa;
 use aa;
 create table t3 (
@@ -452,6 +505,7 @@ price2     double(11,0),
 key (period),
 key (name)
 )engine=tianmu;
+#Reverse insert data
 insert into t3_1 select * from t3;
 insert into t3 select * from t3_1;
 insert into t3_1 select * from t3;

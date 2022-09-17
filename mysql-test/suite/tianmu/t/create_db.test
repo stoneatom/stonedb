@@ -1,7 +1,52 @@
-#
-# Test incorrect database names
-#
+--source include/have_tianmu.inc
+
+--echo #
+--echo #Test creating libraries with names that are too long
+--echo #
+
 --error 1059
-CREATE DATABASE aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+create database aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
 --error 1059
-DROP DATABASE aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+drop database aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa;
+
+--echo #
+--echo #test common library creation scenarios
+--echo #
+
+create database test_db;
+--error 1007
+create database test_db;
+create database if not exists test_db;
+drop database test_db;
+
+create database 1ea10;
+drop database 1ea10;
+
+create database e$8b;
+drop database e$8b;
+
+--echo #
+--echo #Test the exception scenario use case for creating the library
+--echo #
+
+--error 1064
+create database 888;
+--error 1064
+create database "";
+--error 1064
+create database " ";
+--error 1064
+create database "test ";
+--error 1064
+create database "test...";
+--error 1064
+create database "$test$";
+--error 1064
+create database "test.test";
+--error 1064
+create database "'test'";
+--error 1064
+create database "test/test";
+
+
+

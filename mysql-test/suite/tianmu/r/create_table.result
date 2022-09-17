@@ -1,3 +1,6 @@
+#
+# Test table name
+#
 drop table if exists t1,t2,t3,t4,t5;
 Warnings:
 Note	1051	Unknown table 'test.t1'
@@ -28,6 +31,9 @@ a/a	CREATE TABLE `a/a` (
 ) ENGINE=TIANMU DEFAULT CHARSET=latin1
 create table t1 like `a/a`;
 drop table `a/a`,`t1`;
+#
+# Tests the long field name table
+#
 create table `aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa` (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa int)engine=tianmu;
 ERROR 42000: Identifier name 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' is too long
 create table a (`aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa` int)engine=tianmu;
@@ -46,6 +52,9 @@ abcde
 alter table t1 alter column a set default 'abcdef';
 ERROR 42000: Invalid default value for 'a'
 drop table t1;
+#
+# test of dummy table names
+#
 create table 1ea10 (1a20 int,1e int)engine=tianmu;
 insert into 1ea10 values(1,1);
 select 1ea10.1a20,1e+ 1e+10 from 1ea10;
@@ -70,6 +79,9 @@ create table t1 (i int, index `` (i))engine=tianmu;
 ERROR 42000: Incorrect index name ''
 create table t1 (i int)engine=tianmu;
 drop table t1;
+#
+# Test of CREATE ... select with indexes
+#
 create table t1 (a int auto_increment not null primary key, B CHAR(20))engine=tianmu;
 insert into t1 (b) values ("hello"),("my"),("world");
 explain select * from t1 where b="world";
@@ -81,6 +93,9 @@ select * from t1 where b="world";
 a	B
 3	world
 drop table t1;
+#
+# Test of primary key with 32 index
+#
 create table t1 (a int not null, b int, primary key(a), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b), key (b))engine=tianmu;
 Warnings:
 Warning	1831	Duplicate index 'b_2' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
@@ -152,20 +167,23 @@ t1	CREATE TABLE `t1` (
   KEY `b_31` (`b`)
 ) ENGINE=TIANMU DEFAULT CHARSET=latin1
 drop table t1;
-SET SESSION default_storage_engine="tianmu";
-SELECT @@default_storage_engine;
+#
+# Test default table type
+#
+set session default_storage_engine="tianmu";
+select @@default_storage_engine;
 @@default_storage_engine
 TIANMU
-CREATE TABLE t1 (a int not null);
+create table t1 (a int not null);
 show create table t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
   `a` int(11) NOT NULL
 ) ENGINE=TIANMU DEFAULT CHARSET=latin1
 drop table t1;
-SET SESSION default_storage_engine="gemini";
+set session default_storage_engine="gemini";
 ERROR 42000: Unknown storage engine 'gemini'
-SET SESSION default_storage_engine=default;
+set session default_storage_engine=default;
 create table t1 ( k1 varchar(2), k2 int, primary key(k1,k2))engine=tianmu;
 insert into t1 values ("a", 1), ("b", 2);
 insert into t1 values ("c", NULL);
@@ -191,6 +209,9 @@ select * from t1;
 x'4132'
 A2
 drop table t1;
+#
+# Test create table if not exists with duplicate key error
+#
 create table t1 (a int not null, b int, primary key (a));
 insert into t1 values (1,1);
 select * from t1;
@@ -203,21 +224,33 @@ select * from t1;
 a	b
 1	1
 drop table t1;
+#
+# "Table truncated when creating another table name with Spaces"
+#
 create table `t1 `(a int)engine=tianmu;
 ERROR 42000: Incorrect table name 't1 '
 create database `db1 `;
 ERROR 42000: Incorrect database name 'db1 '
 create table t1(`a ` int)engine=tianmu;
 ERROR 42000: Incorrect column name 'a '
+#
+# "Parser permits multiple commas without syntax error"
+#
 create table t1 (a int,)engine=tianmu;
 ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ')engine=tianmu' at line 1
 create table t1 (a int,,b int)engine=tianmu;
 ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'b int)engine=tianmu' at line 1
 create table t1 (,b int)engine=tianmu;
 ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'b int)engine=tianmu' at line 1
+#
+# Test create with foreign keys
+#
 create table t1 (a int, key(a))engine=tianmu;
 create table t2 (b int, foreign key(b) references t1(a), key(b))engine=tianmu;
 drop table if exists t1,t2;
+#
+# Test for create table .. LIKE ..
+#
 create table t1(id int not null, name char(20))engine=tianmu;
 insert into t1 values(10,'mysql'),(20,'monty- the creator');
 create table t2(id int not null)engine=tianmu;
@@ -242,6 +275,9 @@ ERROR 42000: Unknown database 'non_existing_database'
 create table t3 like non_existing_table;
 ERROR 42S02: Table 'test.non_existing_table' doesn't exist
 drop table t1,t3;
+#
+# Test types of data for create select with functions
+#
 create table t1(a int,b int,c int,d date,e char,f datetime,g time,h blob)engine=tianmu;
 insert into t1(a)values(1);
 insert into t1(a,b,c,d,e,f,g,h)values(2,-2,2,'1825-12-14','a','2003-1-1 3:2:1','4:3:2','binary data');
@@ -305,6 +341,9 @@ create table t1(name varchar(10), age smallint default -1);
 describe t2;
 Field	Type	Null	Key	Default	Extra
 id	int(11)	NO		NULL	
+#
+# 'Naming a key "Primary" causes trouble'
+#
 create table t1 (a int, index `primary` (a))engine=tianmu;
 ERROR 42000: Incorrect index name 'primary'
 create table t1 (a int, index `PRIMARY` (a))engine=tianmu;
@@ -332,6 +371,9 @@ alter table t3 add index `PRIMARY` (a);
 ERROR 42000: Incorrect index name 'PRIMARY'
 create table t4 (`primary` int)engine=tianmu;
 drop table t1,t2,t3,t4;
+#
+#Can't use 'DEFAULT FALSE' for column of type bool
+#
 create table t1 (b bool not null default false)engine=tianmu;
 create table t2 (b bool not null default true)engine=tianmu;
 insert into t1 values ();
@@ -343,6 +385,9 @@ select * from t2;
 b
 1
 drop table t1,t2;
+#
+# Invalid column name is not rejected
+#
 create database syw_mtr;
 use syw_mtr;
 create table t1(column.name int)engine=tianmu;
@@ -355,12 +400,18 @@ create table t1(t1.name int)engine=tianmu;
 create table t2(syw_mtr.t2.name int)engine=tianmu;
 drop table t1,t2;
 drop database syw_mtr;
+#
+#create table like
+#
 use test;
 create table test.t1 like x;
 ERROR 42S02: Table 'test.x' doesn't exist
 drop table if exists test.t1;
 Warnings:
 Note	1051	Unknown table 'test.t1'
+#
+#Bogus error message on attempt to create table t LIKE view
+#
 create database mysqltest;
 use mysqltest;
 create view v1 as select 'foo' from dual;
@@ -368,41 +419,53 @@ create table t1 like v1;
 ERROR HY000: 'mysqltest.v1' is not BASE TABLE
 drop view v1;
 drop database mysqltest;
+#
+#SET value having comma not correctly handled
+#
 use test;
 create table t1(a set("a,b","c,d") not null);
 ERROR 22007: Illegal set 'a,b' value found during parsing
-CREATE TABLE t1 (a INT);
-CREATE TABLE t2 (a INT);
-INSERT INTO t1 VALUES (1),(2),(3);
-INSERT INTO t2 VALUES (1),(2),(3);
-CREATE VIEW v1 AS SELECT t1.a FROM t1, t2;
-CREATE TABLE v1 AS SELECT * FROM t1;
+#
+#mysqld segfault when trying to create table with same name as existing view
+#
+create table t1 (a int);
+create table t2 (a int);
+insert into t1 values (1),(2),(3);
+insert into t2 values (1),(2),(3);
+create view v1 as select t1.a FROM t1, t2;
+create table v1 as select * FROM t1;
 ERROR 42S01: Table 'v1' already exists
-DROP VIEW v1;
-DROP TABLE t1,t2;
+drop view v1;
+drop table t1,t2;
 SET sql_mode = 'NO_ZERO_DATE';
 Warnings:
 Warning	3135	'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
 Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
-CREATE TABLE t2(c1 TIMESTAMP, c2 TIMESTAMP DEFAULT 0);
+create table t2(c1 TIMESTAMP, c2 TIMESTAMP DEFAULT 0);
 Warnings:
 Warning	1264	Out of range value for column 'c2' at row 1
-DROP TABLE t2;
-CREATE TABLE t2(c1 TIMESTAMP NULL);
+drop table t2;
+create table t2(c1 TIMESTAMP NULL);
 SET sql_mode = '';
-DROP TABLE t2;
-CREATE TABLE t1(c1 YEAR DEFAULT 2008, c2 YEAR DEFAULT 0);
-SHOW CREATE TABLE t1;
+drop table t2;
+#
+#Tests the default type of year for the created table and inserts a null value
+#
+create table t1(c1 year default 2008, c2 year default 0);
+SHOW create table t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
   `c1` year(4) DEFAULT '2008',
   `c2` year(4) DEFAULT '0000'
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
-INSERT INTO t1 VALUES();
-SELECT * FROM t1;
+insert into t1 values();
+select * FROM t1;
 c1	c2
 2008	0000
 drop table t1;
+#
+# Attempt to create table with invalid default should fail in normal mode
+#
 create table t1 (dt datetime default '2008-02-31 00:00:00');
 ERROR 42000: Invalid default value for 'dt'
 set @old_mode= @@sql_mode;
@@ -426,6 +489,9 @@ t2	CREATE TABLE `t2` (
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
 set @@sql_mode= @old_mode;
 drop tables t1,t2;
+#
+# Creating a base table in presence of an updatable view.
+# 
 create table t2 (a int unique);
 create view t1 as select a from t2;
 insert into t1 (a) values (1);
@@ -457,6 +523,9 @@ a
 1
 drop table t1,t2;
 drop view t1;
+#
+# Repeating the test with a view select a constant number
+#
 create view t1 as select 1 as a;
 insert into t1 (a) values (1);
 ERROR HY000: The target table t1 of the INSERT is not insertable-into
@@ -490,14 +559,16 @@ a
 3
 drop temporary table t1;
 drop view t1;
-CREATE TABLE t1(fld1 DATETIME NOT NULL DEFAULT '1111:11:11');
+# Test cases added for coverage.
+create table t1(fld1 DATETIME NOT NULL DEFAULT '1111:11:11');
 show create table t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
   `fld1` datetime NOT NULL DEFAULT '1111-11-11 00:00:00'
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
 drop table t1;
-CREATE TABLE t1 (fld1 INT, fld2 DATETIME DEFAULT '1211:1:1');
+# create table..select based on trigger fields.
+create table t1 (fld1 int, fld2 DATETIME DEFAULT '1211:1:1');
 show create table t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
