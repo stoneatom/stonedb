@@ -1,5 +1,8 @@
 create database select_tpch;
 use select_tpch;
+select @@tianmu_insert_delayed;
+@@tianmu_insert_delayed
+0
 CREATE TABLE `customer` (
 `C_CUSTKEY` int(11) NOT NULL,
 `C_NAME` varchar(25) NOT NULL,

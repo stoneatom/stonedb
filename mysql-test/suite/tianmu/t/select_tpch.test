@@ -5,6 +5,7 @@
 #
 create database select_tpch;
 use select_tpch;
+select @@tianmu_insert_delayed;
 
 #create 8 tables
 CREATE TABLE `customer` (
