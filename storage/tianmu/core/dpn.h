@@ -42,7 +42,8 @@ struct DPN final {
   uint8_t delete_compressed : 1;
   uint8_t data_compressed : 1;
   uint8_t no_compress : 1;
-  uint8_t padding[1];  // Memory aligned padding has no practical effect
+  uint8_t paddingBit : 1; // Memory aligned padding has no practical effect
+  uint8_t padding[7];     // Memory aligned padding has no practical effect
 
   uint32_t base;           // index of the DPN from which we copied, used by local pack
   uint32_t numOfRecords;   // number of records

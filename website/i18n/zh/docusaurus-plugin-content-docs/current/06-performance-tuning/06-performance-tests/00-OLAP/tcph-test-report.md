@@ -27,7 +27,7 @@ TPC-H通过在受控条件下对标准数据库执行一组查询来评估各种
 StoneDB 是由石原子公司自主设计、研发的国内首款基于 MySQL 的开源 HTAP(Hybrid Transactional and Analytical Processing)数据库，是一款同时支持在线事务处理与在线分析处理的融合型分布式数据库产品，可实现与 MySQL 数据库的无缝切换。StoneDB具备超高性能、金融级高可用、实时分析、分布式数据库、兼容 MySQL 5.6、MySQL 5.7 协议和 MySQL 生态等重要特性。目标是通过插件化的方式解决 MySQL 数据库本身不具备分析能力的问题，为用户提供一站式 OLTP (Online Transactional Processing)、OLAP (Online Analytical Processing)、HTAP 解决方案。
 ### 3、ClickHouse简介
 ClickHouse是一个完全的列式数据库管理系统，允许在运行时创建表和数据库，加载数据和运行查询，而无需重新配置和重新启动服务器，支持线性扩展，简单方便，高可靠性，容错。采用 Local attached storage 作为存储，它的系统在生产环境中可以应用到比较大的规模，还提供了一些 SQL 直接接口，有比较丰富的原生 client。
-## **二、**测试环境
+## 二、测试环境
 下表列出了本次性能测试所使用的环境信息。
 
 | **产品** | **架构** | **CPU** | **MEM** | **版本** |
@@ -35,11 +35,10 @@ ClickHouse是一个完全的列式数据库管理系统，允许在运行时创�
 | StoneDB | 单节点 | Intel(R) Xeon(R) CPU E5-2683 v4 @ 2.10GHz * 64 | 256GB | 5.7_0.1 |
 | ClickHouse | 单节点 | Intel(R) Xeon(R) CPU E5-2683 v4 @ 2.10GHz * 64 | 256GB |  22.5.1.2079 |
 
-## **三、**测试结论
+## 三、测试结论
 StoneDB与ClickHouse数据量同为100G，在相同的配置，相同的查询语句条件下，**依据TPC-H的基准性能指标22条SQL进行两款产品的对比测试，**根据测试数据汇总得出结论如下：
 
-| **对比维度** | **StoneDB** | **ClickHouse** | **StoneDB比ClickHouse的优势（倍）** | **ClickHouse比StoneDB的优势**
-**（倍）** | **            备注** |
+| **对比维度** | **StoneDB** | **ClickHouse** | **StoneDB比ClickHouse的优势（倍）** | **ClickHouse比StoneDB的优势（倍）** | **备注** |
 | --- | --- | --- | --- | --- | --- |
 | 查询耗时总时长 | 3387.86s | 11537.41s | **3.4** | - | 耗时越小越有优势 |
 | CPU（最大值） | 5.27% | 50.24% | ** 9.5** | - | CPU越小越有优势 |
@@ -52,9 +51,9 @@ StoneDB与ClickHouse数据量同为100G，在相同的配置，相同的查询�
 | 查询成功率 | 95% | 82% | **1.17** | - | 成功率越大越有优势 |
 | 磁盘占用 | 59G | 42G | **  -** |    ** 1.4** | 磁盘占用越小越有优势 |
 
-![](https://cdn.nlark.com/yuque/0/2022/png/483217/1654669196963-4dfd5b26-88af-4187-836b-32dbfc5bb069.png#crop=0&crop=0&crop=1&crop=1&from=url&id=UxsI4&margin=%5Bobject%20Object%5D&originHeight=411&originWidth=1575&originalType=binary&ratio=1&rotation=0&showTitle=false&status=done&style=none&title=)
+![](./stonedb-vs-clickhouse.png)
 
-## **四、**测试结果明细
+## 四、测试结果明细
 **解释说明：**每个SQL执行3次，最终计算平均值，以平均值进行性能对比。StoneDB，ClickHouse执行查询22个SQL的测试数据记录如下：
 注：
 相同配置下部分sql查询超时，没有在加载总耗时里统计(Q1,Q9,Q16,Q19,Q22）
@@ -82,19 +81,19 @@ StoneDB与ClickHouse数据量同为100G，在相同的配置，相同的查询�
 
 
 
-## **五、**测试过程
+## 五、测试过程
 
 1. 安装所测产品并配置环境
-1. 构建数据结构
-   1. StoneDB
-   1. Clickhouse
+2. 构建数据结构
+   - StoneDB
+   - Clickhouse
 3. 数据初始化
-   1. 构建数据
-   1. 导入数据
-   1. 验证数据
+   - 构建数据
+   - 导入数据
+   - 验证数据
 4. 编写测试执行脚本
-4. TPC-H测试集
-- 单次执行22条query
+5. TPC-H测试集
+  - 单次执行22条query
 
 以下为StoneDB和ClickHouse的参数配置：
 
@@ -1770,25 +1769,34 @@ nohup ./start_benchmark.sh &
 ## 九、操作系统资源使用对比
 StoneDB在IO性能消耗，CPU使用率，系统负载，IOPS上的性能明显优于ClickHouse
 ### CPU
-StoneDB
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/483217/1654568598543-214925cf-590b-428e-b91b-7ab246358731.png#clientId=u0c3dfa41-dda0-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=277&id=u50016df5&margin=%5Bobject%20Object%5D&name=image.png&originHeight=416&originWidth=865&originalType=binary&ratio=1&rotation=0&showTitle=false&size=103201&status=done&style=none&taskId=uf40b8a8e-0dc7-44a3-a721-d4f1d233e8b&title=&width=576.6666666666666)
-ClickHouse
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/483217/1654568611137-b982bc1f-9a4b-43a3-b046-8e36bc69bd22.png#clientId=u0c3dfa41-dda0-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=277&id=u938b1f0f&margin=%5Bobject%20Object%5D&name=image.png&originHeight=416&originWidth=865&originalType=binary&ratio=1&rotation=0&showTitle=false&size=110865&status=done&style=none&taskId=u0ad44ad9-ced0-45ed-be50-40461cbb04e&title=&width=576.6666666666666)
+**StoneDB**
+
+![stonedb-cpu](./stonedb-cpu.png)
+
+**ClickHouse**
+
+![clickhouse-cpu.png](./clickhouse-cpu.png)
 ### Disk IOPS
-StoneDB
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/483217/1654568637102-2e714ace-fece-43a3-9d83-2a08cccdb178.png#clientId=u0c3dfa41-dda0-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=279&id=u196cc277&margin=%5Bobject%20Object%5D&name=image.png&originHeight=418&originWidth=865&originalType=binary&ratio=1&rotation=0&showTitle=false&size=129235&status=done&style=none&taskId=u43a5f00d-c561-4341-956a-f630cd0ef4b&title=&width=576.6666666666666)
-ClickHouse
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/483217/1654568649723-b2639bd3-ccc4-4bec-84a4-d984cf65de90.png#clientId=u0c3dfa41-dda0-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=277&id=u2a40ff0d&margin=%5Bobject%20Object%5D&name=image.png&originHeight=416&originWidth=865&originalType=binary&ratio=1&rotation=0&showTitle=false&size=87178&status=done&style=none&taskId=u20cb5854-d12a-403e-8b68-86f3d27b363&title=&width=576.6666666666666)
+**StoneDB**
+![stonedb-disk-iops.pn](./stonedb-disk-iops.png)
+
+**ClickHouse**
+
+![clickhouse-disk-iops.png](./clickhouse-disk-iops.png)
 ### Memory
-StoneDB
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/483217/1654568670524-30f85a75-1578-474a-8f4c-a16deb71575b.png#clientId=u0c3dfa41-dda0-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=279&id=u3fa26688&margin=%5Bobject%20Object%5D&name=image.png&originHeight=418&originWidth=865&originalType=binary&ratio=1&rotation=0&showTitle=false&size=67793&status=done&style=none&taskId=u2c29a120-9e0e-4495-bf87-7647af82d34&title=&width=576.6666666666666)
-ClickHouse 
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/483217/1654568682032-7a384cd6-04ea-475d-b4d2-7b67f9a35031.png#clientId=u0c3dfa41-dda0-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=279&id=uc95e26c7&margin=%5Bobject%20Object%5D&name=image.png&originHeight=418&originWidth=865&originalType=binary&ratio=1&rotation=0&showTitle=false&size=91026&status=done&style=none&taskId=u7a6f7472-f4c1-42d9-8f86-43ab252a21b&title=&width=576.6666666666666)
+**StoneDB**
+
+![stonedb-memory.png](./stonedb-memory.png)
+
+**ClickHouse**
+
+![click-memory.png](./click-memory.png)
 ### System Load
-StoneDB
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/483217/1654568786483-4d4971a3-a937-4d3a-a457-0fe5b7eb3a88.png#clientId=u0c3dfa41-dda0-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=277&id=ub4de92c7&margin=%5Bobject%20Object%5D&name=image.png&originHeight=416&originWidth=865&originalType=binary&ratio=1&rotation=0&showTitle=false&size=118979&status=done&style=none&taskId=u1d0cba81-4461-4ccf-b34e-b8230549e56&title=&width=576.6666666666666)
-ClickHouse
-![image.png](https://cdn.nlark.com/yuque/0/2022/png/483217/1654568820117-3336183b-5c85-4b40-b13f-b77b7eeb5e89.png#clientId=u0c3dfa41-dda0-4&crop=0&crop=0&crop=1&crop=1&from=paste&height=279&id=u84462ee6&margin=%5Bobject%20Object%5D&name=image.png&originHeight=418&originWidth=865&originalType=binary&ratio=1&rotation=0&showTitle=false&size=168860&status=done&style=none&taskId=u12c19798-3577-4ed1-9aba-5ed93a2ded8&title=&width=576.6666666666666)
+**StoneDB**
+![stonedb-system-load.png](./stonedb-system-load.png)
+
+**ClickHouse**
+![clickhouse-system-load.png](./clickhouse-system-load.png)
 
 ## 十、测试脚本
 ### Create Table

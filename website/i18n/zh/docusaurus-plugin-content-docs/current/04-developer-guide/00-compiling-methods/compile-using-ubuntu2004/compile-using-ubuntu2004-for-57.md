@@ -238,7 +238,7 @@ reinstall.sh 与 install.sh 的区别？<br />reinstall.sh 是自动化安装脚
 
 ### 4. 执行登录
 ```shell
-cat /stonedb57/install/log/mysqld.log |grep passwd
+cat /stonedb57/install/log/mysqld.log |grep password
 [Note] A temporary password is generated for root@localhost: ceMuEuj6l4+!
 
 /stonedb57/install/bin/mysql -uroot -p -S /stonedb57/install/tmp/mysql.sock

@@ -269,7 +269,7 @@ Differences between **reinstall.sh** and **install.sh**:
 
 4. Log in to StoneDB.
 ```shell
-cat /stonedb57/install/log/mysqld.log |grep passwd
+cat /stonedb57/install/log/mysqld.log |grep password
 [Note] A temporary password is generated for root@localhost: ceMuEuj6l4+!
 
 /stonedb57/install/bin/mysql -uroot -p -S /stonedb57/install/tmp/mysql.sock
