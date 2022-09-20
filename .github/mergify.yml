@@ -39,7 +39,7 @@ pull_request_rules:
   - name: Comment PR if title not semantic
     conditions:
           - author!=Mergify
-          - 'title!=^(feat|fix|docs|workflow|style|refactor|test|website|chore)(\(.*\))?:'
+          - '-title~=^(feat|fix|docs|workflow|style|refactor|test|website|chore)(\(.*\))?:'
     actions:
       comment:
         message: |
