@@ -1,0 +1,4 @@
+create database b;
+use b;
+create table `mysql50` (f1 int primary key) engine=tianmu;
+drop database b;
