@@ -59,7 +59,8 @@ drop table t1;
 --echo # Test of duplicate key values with packed keys
 --echo #
 
-create table t1 (id int not null auto_increment primary key, username varchar(32) not null, unique (username));
+create table t1 (id int not null auto_increment primary key, username varchar(32) not null,
+ unique (username));
 insert into t1 values (0,"mysql");
 insert into t1 values (0,"mysql ab");
 insert into t1 values (0,"mysql a");
@@ -71,7 +72,10 @@ drop table t1;
 --echo # Test insert syntax
 --echo #
 
-create table t1 (a int not null auto_increment, primary key (a), t timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, c char(10) default "hello", i int)engine=tianmu;
+create table t1 (a int not null auto_increment,
+ primary key (a),
+ t timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ c char(10) default "hello", i int)engine=tianmu;
 insert into t1 values (default,default,default,default), (default,default,default,default), (4,0,"a",5),(default,default,default,default);
 select a,t>0,c,i from t1;
 
@@ -82,17 +86,6 @@ insert into t1 set a=4,t=0,c="a",i=5;
 insert into t1 set a=5,t=0,c="a",i=null;
 insert into t1 set a=default,t=default,c=default,i=default;
 select a,t>0,c,i from t1;
-drop table t1;
-
---echo #
---echo # Test problem with bulk insert and auto_increment on second part keys
---echo #
-
-create table t1 (sid char(20), id int(2) NOT NULL auto_increment, key(sid, id)) engine=myisam;
-insert into t1 values ('skr',NULL),('skr',NULL),('test',NULL);
-select * from t1;
-insert into t1 values ('rts',NULL),('rts',NULL),('test',NULL);
-select * from t1;
 drop table t1;
 
 --echo #
@@ -127,7 +120,17 @@ use test;
 
 # PS gives sligthly different numbers for max-float/max-double
 --disable_ps_protocol
-create table t1(number int auto_increment primary key, original_value varchar(50), f_double double, f_float float, f_double_7_2 double(7,2), f_float_4_3 float (4,3), f_double_u double, f_float_u float, f_double_15_1_u double(15,1), f_float_3_1_u float (3,1));
+create table t1(
+ number int auto_increment primary key,
+ original_value varchar(50),
+ f_double double,
+ f_float float,
+ f_double_7_2 double(7,2),
+ f_float_4_3 float (4,3),
+ f_double_u double,
+ f_float_u float,
+ f_double_15_1_u double(15,1),
+ f_float_3_1_u float (3,1));
 
 set @value= "aa";
 insert into t1 values(null,@value,@value,@value,@value,@value,@value,@value,@value,@value);
@@ -260,6 +263,7 @@ drop table t1;
 --echo #
 --echo # ON DUPLICATE KEY clause allows fields not from the insert table
 --echo #
+
 create table t1 (f1 int unique, f2 int);
 create table t2 (f3 int, f4 int);
 create view v1 as select * from t1, t2 where f1= f3;
@@ -421,7 +425,8 @@ INSERT IGNORE t1 (a, a) SELECT 1,1 UNION SELECT 2,2;
 DROP TABLE t1;
 
 --echo #
---echo # ASSERTION `TRANSL->ITEM->FIXED' FAILED IN SELECT_LEX::DELETE_UNUSED_MERGED_COLUMN
+--echo # ASSERTION `TRANSL->ITEM->FIXED' FAILED
+--echo # IN SELECT_LEX::DELETE_UNUSED_MERGED_COLUMN
 --echo #
 
 CREATE TABLE t1 ( pk INT, PRIMARY KEY (pk))engine=tianmu;
