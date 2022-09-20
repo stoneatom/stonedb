@@ -86,14 +86,14 @@ StoneDB 社区欢迎各种各样的贡献，如为代码库贡献代码，分享
 
 ### Ubuntu 20.04 下编译 StoneDB
 
-更多信息，可以查看 [Compile StoneDB on Ubuntu 20.04](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-ubuntu20.04).
+更多信息，可以查看 [Compile StoneDB on Ubuntu 20.04](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-ubuntu2004/compile-using-ubuntu20.04-for-57/).
 
 ### CentOS 7.x 下编译 StoneDB
 
-更多信息，可以查看 [Compile StoneDB on CentOS 7](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-centos7).
+更多信息，可以查看 [Compile StoneDB on CentOS 7](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-centos7/compile-using-centos7-for-57).
 
 ### RedHat 7.x 下编译 StoneDB
-更多信息，可以查看 [Compile StoneDB on RHEL 7](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-redhat7).
+更多信息，可以查看 [Compile StoneDB on RHEL 7](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-redhat7/compile-using-redhat7-for-57).
 
 ## 在 Docker 容器中通过源码编译 StoneDB
 
