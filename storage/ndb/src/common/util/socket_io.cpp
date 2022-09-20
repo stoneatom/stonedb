@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -39,7 +39,7 @@ poll_socket(ndb_socket_t socket, bool read, bool write,
   timeout_millis -= *total_elapsed_millis;
 
   if (timeout_millis <= 0)
-    return 0; // Timeout occured
+    return 0; // Timeout occurred
 
   const int res =
     ndb_poll(socket, read, write, false, timeout_millis);
@@ -68,7 +68,7 @@ read_socket(NDB_SOCKET_TYPE socket, int timeout_millis,
   if (res <= 0)
     return res;
 
-  return (int)my_recv(socket, &buf[0], buflen, 0);
+  return (int)ndb_recv(socket, &buf[0], buflen, 0);
 }
 
 extern "C"
@@ -95,7 +95,7 @@ readln_socket(NDB_SOCKET_TYPE socket, int timeout_millis, int *time,
   do
   {
     int t;
-    while((t = (int)my_recv(socket, ptr, len, MSG_PEEK)) == -1
+    while((t = (int)ndb_recv(socket, ptr, len, MSG_PEEK)) == -1
           && socket_errno == EINTR);
     
     if(t < 1)
@@ -113,7 +113,7 @@ readln_socket(NDB_SOCKET_TYPE socket, int timeout_millis, int *time,
 	 */
 	for (len = 1 + i; len; )
 	{
-	  while ((t = (int)my_recv(socket, ptr, len, 0)) == -1
+          while ((t = (int)ndb_recv(socket, ptr, len, 0)) == -1
                  && socket_errno == EINTR);
 	  if (t < 1)
 	    return -1;
@@ -136,7 +136,7 @@ readln_socket(NDB_SOCKET_TYPE socket, int timeout_millis, int *time,
     
     for (int tmp = t; tmp; )
     {
-      while ((t = (int)my_recv(socket, ptr, tmp, 0)) == -1 && socket_errno == EINTR);
+      while ((t = (int)ndb_recv(socket, ptr, tmp, 0)) == -1 && socket_errno == EINTR);
       if (t < 1)
       {
 	return -1;
@@ -173,7 +173,7 @@ write_socket(NDB_SOCKET_TYPE socket, int timeout_millis, int *time,
 
   const char * tmp = &buf[0];
   while(len > 0){
-    const int w = (int)my_send(socket, tmp, len, 0);
+    const int w = (int)ndb_send(socket, tmp, len, 0);
     if(w == -1){
       return -1;
     }
@@ -190,84 +190,7 @@ write_socket(NDB_SOCKET_TYPE socket, int timeout_millis, int *time,
   return 0;
 }
 
-extern "C"
-int
-print_socket(NDB_SOCKET_TYPE socket, int timeout_millis, int *time,
-	     const char * fmt, ...){
-  va_list ap;
-  va_start(ap, fmt);
-  int ret = vprint_socket(socket, timeout_millis, time, fmt, ap);
-  va_end(ap);
-
-  return ret;
-}
-
-extern "C"
-int
-println_socket(NDB_SOCKET_TYPE socket, int timeout_millis, int *time,
-	       const char * fmt, ...){
-  va_list ap;
-  va_start(ap, fmt);
-  int ret = vprintln_socket(socket, timeout_millis, time, fmt, ap);
-  va_end(ap);
-  return ret;
-}
-
-extern "C"
-int
-vprint_socket(NDB_SOCKET_TYPE socket, int timeout_millis, int *time,
-	      const char * fmt, va_list ap){
-  char buf[1000];
-  char *buf2 = buf;
-  size_t size;
-
-  if (fmt != 0 && fmt[0] != 0) {
-    size = BaseString::vsnprintf(buf, sizeof(buf), fmt, ap);
-    /* Check if the output was truncated */
-    if(size > sizeof(buf)) {
-      buf2 = (char *)malloc(size);
-      if(buf2 == NULL)
-	return -1;
-      BaseString::vsnprintf(buf2, size, fmt, ap);
-    }
-  } else
-    return 0;
-
-  int ret = write_socket(socket, timeout_millis, time, buf2, (int)size);
-  if(buf2 != buf)
-    free(buf2);
-  return ret;
-}
-
-extern "C"
-int
-vprintln_socket(NDB_SOCKET_TYPE socket, int timeout_millis, int *time,
-		const char * fmt, va_list ap){
-  char buf[1000];
-  char *buf2 = buf;
-  size_t size;
-
-  if (fmt != 0 && fmt[0] != 0) {
-    size = BaseString::vsnprintf(buf, sizeof(buf), fmt, ap)+1;// extra byte for '/n'
-    /* Check if the output was truncated */
-    if(size > sizeof(buf)) {
-      buf2 = (char *)malloc(size);
-      if(buf2 == NULL)
-	return -1;
-      BaseString::vsnprintf(buf2, size, fmt, ap);
-    }
-  } else {
-    size = 1;
-  }
-  buf2[size-1]='\n';
-
-  int ret = write_socket(socket, timeout_millis, time, buf2, (int)size);
-  if(buf2 != buf)
-    free(buf2);
-  return ret;
-}
-
-#ifdef NDB_WIN32
+#ifdef _WIN32
 
 class INIT_WINSOCK2
 {

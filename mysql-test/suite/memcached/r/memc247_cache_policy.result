@@ -1,6 +1,4 @@
-SET @tx_isolation= @@global.tx_isolation;
-Warnings:
-Warning	1287	'@@tx_isolation' is deprecated and will be removed in a future release. Please use '@@transaction_isolation' instead
+SET @transaction_isolation= @@global.transaction_isolation;
 SET GLOBAL TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 INSERT INTO cache_policies VALUES("cache_policy", "cache_only",
 "innodb_only", "innodb_only", "innodb_only");
@@ -17,39 +15,40 @@ INSERT INTO t1 VALUES ('B', 'Berlin', 0, 0, 0);
 INSERT INTO t1 VALUES ('C', 'Cottbus', 0, 0 ,0);
 INSERT INTO t1 VALUES ('H', 'Hamburg', 0, 0, 0);
 INSTALL PLUGIN daemon_memcached SONAME 'libmemcached.so';
+Warnings:
+Warning	1681	'InnoDB Memcached Plugin' is deprecated and will be removed in a future release.
 SELECT c1,c2 FROM t1;
 c1	c2
 B	Berlin
 C	Cottbus
 D	Darmstadt
 H	Hamburg
-SELECT SLEEP(2);
-SLEEP(2)
-0
 ----- Test get (cache_only) -----
-Here the memcached results with D,B,H,C:
+Here are the memcached results with D,B,H,C:
 SELECT c1,c2 FROM t1;
 c1	c2
 B	Berlin
 C	Cottbus
 D	Darmstadt
 H	Hamburg
-Here the memcached results with B:
+Here are the memcached results with B:
 SELECT c1,c2 FROM t1;
 c1	c2
 B	Berlin
 C	Cottbus
 D	Darmstadt
 H	Hamburg
-Here the memcached results with D,H:
+Here are the memcached results with D,H:
 UNINSTALL PLUGIN daemon_memcached;
 use innodb_memcache;
 DELETE FROM cache_policies;
 INSERT INTO cache_policies VALUES("cache_policy", "caching",
 "innodb_only", "innodb_only", "innodb_only");
 INSTALL PLUGIN daemon_memcached SONAME 'libmemcached.so';
+Warnings:
+Warning	1681	'InnoDB Memcached Plugin' is deprecated and will be removed in a future release.
 ----- Test get (caching) -----
-Here the memcached results with D,B,H,C:
+Here are the memcached results with D,B,H,C:
 Darmstadt
 Berlin
 Hamburg
@@ -60,6 +59,8 @@ DELETE FROM cache_policies;
 INSERT INTO cache_policies VALUES("cache_policy", "cache_only",
 "cache_only", "innodb_only", "innodb_only");
 INSTALL PLUGIN daemon_memcached SONAME 'libmemcached.so';
+Warnings:
+Warning	1681	'InnoDB Memcached Plugin' is deprecated and will be removed in a future release.
 ----- Test insert (cache_only) -----
 Add E|Essen:
 Ok.
@@ -70,11 +71,11 @@ B	Berlin
 C	Cottbus
 D	Darmstadt
 H	Hamburg
-Here the memcached results with E:
+Here are the memcached results with E:
 Essen
 Set P|Paris:
 Ok.
-Here the memcached results with P:
+Here are the memcached results with P:
 Paris
 UNINSTALL PLUGIN daemon_memcached;
 use innodb_memcache;
@@ -82,9 +83,8 @@ DELETE FROM cache_policies;
 INSERT INTO cache_policies VALUES("cache_policy", "caching",
 "caching", "innodb_only", "innodb_only");
 INSTALL PLUGIN daemon_memcached SONAME 'libmemcached.so';
-SELECT SLEEP(2);
-SLEEP(2)
-0
+Warnings:
+Warning	1681	'InnoDB Memcached Plugin' is deprecated and will be removed in a future release.
 ----- Test insert (caching) -----
 Add G|Gossen:
 Ok.
@@ -96,7 +96,7 @@ C	Cottbus
 D	Darmstadt
 G	Gossen
 H	Hamburg
-Here the memcached results with G:
+Here are the memcached results with G:
 Gossen
 Delete G|Gossen:
 Ok.
@@ -106,7 +106,7 @@ B	Berlin
 C	Cottbus
 D	Darmstadt
 H	Hamburg
-Here the memcached results with G:
+Here are the memcached results with G:
 Gossen
 UNINSTALL PLUGIN daemon_memcached;
 use innodb_memcache;
@@ -114,9 +114,8 @@ DELETE FROM cache_policies;
 INSERT INTO cache_policies VALUES("cache_policy", "caching",
 "caching", "cache_only", "innodb_only");
 INSTALL PLUGIN daemon_memcached SONAME 'libmemcached.so';
-SELECT SLEEP(2);
-SLEEP(2)
-0
+Warnings:
+Warning	1681	'InnoDB Memcached Plugin' is deprecated and will be removed in a future release.
 ----- Test delete (cache_only) -----
 Delete G|Gossen:
 Error: fail to delete.
@@ -127,7 +126,7 @@ B	Berlin
 C	Cottbus
 D	Darmstadt
 H	Hamburg
-Here the memcached results with G:
+Here are the memcached results with G:
 Delete E|Essen:
 Error: E|Essen doesn't  exist.
 SELECT c1,c2 FROM test.t1;
@@ -136,16 +135,15 @@ B	Berlin
 C	Cottbus
 D	Darmstadt
 H	Hamburg
-Here the memcached results with E:
+Here are the memcached results with E:
 UNINSTALL PLUGIN daemon_memcached;
 use innodb_memcache;
 DELETE FROM cache_policies;
 INSERT INTO cache_policies VALUES("cache_policy", "caching",
 "caching", "caching", "innodb_only");
 INSTALL PLUGIN daemon_memcached SONAME 'libmemcached.so';
-SELECT SLEEP(2);
-SLEEP(2)
-0
+Warnings:
+Warning	1681	'InnoDB Memcached Plugin' is deprecated and will be removed in a future release.
 ----- Test delete (caching) -----
 add G|Gossen:
 Ok.
@@ -157,7 +155,7 @@ C	Cottbus
 D	Darmstadt
 G	Gossen
 H	Hamburg
-Here the memcached results with G:
+Here are the memcached results with G:
 Gossen
 Delete G|Gossen:
 Ok.
@@ -167,16 +165,15 @@ B	Berlin
 C	Cottbus
 D	Darmstadt
 H	Hamburg
-Here the memcached results with G:
+Here are the memcached results with G:
 UNINSTALL PLUGIN daemon_memcached;
 use innodb_memcache;
 DELETE FROM cache_policies;
 INSERT INTO cache_policies VALUES("cache_policy", "cache_only",
 "caching", "cache_only", "cache_only");
 INSTALL PLUGIN daemon_memcached SONAME 'libmemcached.so';
-SELECT SLEEP(2);
-SLEEP(2)
-0
+Warnings:
+Warning	1681	'InnoDB Memcached Plugin' is deprecated and will be removed in a future release.
 ----- Test flush (cache_only) -----
 add G|Gossen:
 Ok.
@@ -188,7 +185,7 @@ C	Cottbus
 D	Darmstadt
 G	Gossen
 H	Hamburg
-Here the memcached results with G:
+Here are the memcached results with G:
 Gossen
 SELECT c1,c2 FROM test.t1;
 c1	c2
@@ -197,7 +194,7 @@ C	Cottbus
 D	Darmstadt
 G	Gossen
 H	Hamburg
-Here the memcached results after flush_all:
+Here are the memcached results after flush_all:
 SELECT c1,c2 FROM test.t1;
 c1	c2
 B	Berlin
@@ -205,16 +202,15 @@ C	Cottbus
 D	Darmstadt
 G	Gossen
 H	Hamburg
-Here the memcached results with G:
+Here are the memcached results with G:
 UNINSTALL PLUGIN daemon_memcached;
 use innodb_memcache;
 DELETE FROM cache_policies;
 INSERT INTO cache_policies VALUES("cache_policy", "caching",
 "caching", "caching", "caching");
 INSTALL PLUGIN daemon_memcached SONAME 'libmemcached.so';
-SELECT SLEEP(2);
-SLEEP(2)
-0
+Warnings:
+Warning	1681	'InnoDB Memcached Plugin' is deprecated and will be removed in a future release.
 ----- Test flush (cache_only) -----
 add G|Gossen:
 Error: fail to add.
@@ -226,7 +222,7 @@ C	Cottbus
 D	Darmstadt
 G	Gossen
 H	Hamburg
-Here the memcached results with G:
+Here are the memcached results with G:
 Gossen
 SELECT c1,c2 FROM test.t1;
 c1	c2
@@ -235,25 +231,24 @@ C	Cottbus
 D	Darmstadt
 G	Gossen
 H	Hamburg
-Here the memcached results after flush_all:
+Here are the memcached results after flush_all:
 SELECT c1,c2 FROM test.t1;
 c1	c2
-Here the memcached results with G:
+Here are the memcached results with G:
 UNINSTALL PLUGIN daemon_memcached;
 use innodb_memcache;
 DELETE FROM cache_policies;
 INSERT INTO cache_policies VALUES("cache_policy", "caching",
 "disabled", "disabled", "disabled");
 INSTALL PLUGIN daemon_memcached SONAME 'libmemcached.so';
+Warnings:
+Warning	1681	'InnoDB Memcached Plugin' is deprecated and will be removed in a future release.
 use test;
 delete from t1;
 INSERT INTO t1 VALUES ('D', 'Darmstadt', 0, 0, 0);
 INSERT INTO t1 VALUES ('B', 'Berlin', 0, 0, 0);
 INSERT INTO t1 VALUES ('C', 'Cottbus', 0, 0 ,0);
 INSERT INTO t1 VALUES ('H', 'Hamburg', 0, 0, 0);
-SELECT SLEEP(2);
-SLEEP(2)
-0
 ----- Test all operations disabled -----
 add G|Gossen:
 Ok.
@@ -264,21 +259,21 @@ B	Berlin
 C	Cottbus
 D	Darmstadt
 H	Hamburg
-Here the memcached results with G:
+Here are the memcached results with G:
 SELECT c1,c2 FROM test.t1;
 c1	c2
 B	Berlin
 C	Cottbus
 D	Darmstadt
 H	Hamburg
-Here the memcached results after flush_all:
+Here are the memcached results after flush_all:
 SELECT c1,c2 FROM test.t1;
 c1	c2
 B	Berlin
 C	Cottbus
 D	Darmstadt
 H	Hamburg
-Here the memcached results with G:
+Here are the memcached results with G:
 UNINSTALL PLUGIN daemon_memcached;
 use innodb_memcache;
 DELETE FROM cache_policies;
@@ -287,9 +282,8 @@ INSERT IGNORE INTO cache_policies VALUES("junk", "junk",
 Warnings:
 Warning	1265	Data truncated for column 'get_policy' at row 1
 INSTALL PLUGIN daemon_memcached SONAME 'libmemcached.so';
-SELECT SLEEP(2);
-SLEEP(2)
-0
+Warnings:
+Warning	1681	'InnoDB Memcached Plugin' is deprecated and will be removed in a future release.
 ----- Test with wrong policy name -----
 add G|Gossen:
 Ok.
@@ -301,7 +295,7 @@ C	Cottbus
 D	Darmstadt
 G	Gossen
 H	Hamburg
-Here the memcached results with G:
+Here are the memcached results with G:
 Gossen
 SELECT c1,c2 FROM test.t1;
 c1	c2
@@ -310,7 +304,7 @@ C	Cottbus
 D	Darmstadt
 G	Gossen
 H	Hamburg
-Here the memcached results after flush_all (flush disabled):
+Here are the memcached results after flush_all (flush disabled):
 Gossen
 SELECT c1,c2 FROM test.t1;
 c1	c2
@@ -319,12 +313,10 @@ C	Cottbus
 D	Darmstadt
 G	Gossen
 H	Hamburg
-Here the memcached results with G:
+Here are the memcached results with G:
 Gossen
 USE test;
 DROP TABLE t1;
 UNINSTALL PLUGIN daemon_memcached;
 DROP DATABASE innodb_memcache;
-SET @@global.tx_isolation= @tx_isolation;
-Warnings:
-Warning	1287	'@@tx_isolation' is deprecated and will be removed in a future release. Please use '@@transaction_isolation' instead
+SET @@global.transaction_isolation= @transaction_isolation;

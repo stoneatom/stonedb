@@ -1,4 +1,4 @@
-# Copyright (c) 2009, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2009, 2022, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -18,26 +18,19 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/include
-                    ${CMAKE_SOURCE_DIR}/include/mysql
-                    ${CMAKE_SOURCE_DIR}/regex
-                    ${CMAKE_SOURCE_DIR}/sql
-                    ${SSL_INCLUDE_DIRS}
-                    ${CMAKE_SOURCE_DIR}/unittest/mytap
-                    ${CMAKE_SOURCE_DIR}/storage/perfschema)
+DISABLE_MISSING_PROFILE_WARNING()
+ADD_DEFINITIONS(-DMYSQL_SERVER)
 
-ADD_DEFINITIONS(-DMYSQL_SERVER ${SSL_DEFINES})
-
-ADD_CONVENIENCE_LIBRARY(pfs_server_stubs pfs_server_stubs.cc)
+ADD_LIBRARY(pfs_server_stubs STATIC pfs_server_stubs.cc)
 
 ADD_DEPENDENCIES(pfs_server_stubs GenError)
 
 MACRO (PFS_ADD_TEST name)
-  ADD_EXECUTABLE(${name}-t ${name}-t.cc)
-  TARGET_LINK_LIBRARIES(${name}-t mytap perfschema mysys pfs_server_stubs)
-  ADD_TEST(${name} ${name}-t)
+  MYSQL_ADD_EXECUTABLE(${name}-t ${name}-t.cc ADD_TEST ${name})
+  TARGET_LINK_LIBRARIES(${name}-t
+    mytap perfschema mysys pfs_server_stubs strings ${ICU_LIBRARIES})
 ENDMACRO()
 
 SET(tests
@@ -56,29 +49,40 @@ FOREACH(testname ${tests})
   PFS_ADD_TEST(${testname})
 ENDFOREACH()
 
+SET(MYSQLD_EXTRA_SOURCES)
 IF(WIN32)
-  SET(MYSQLD_EXTRA_SOURCES ${CMAKE_SOURCE_DIR}/sql/nt_servc.cc)
+  LIST(APPEND MYSQLD_EXTRA_SOURCES ${CMAKE_SOURCE_DIR}/sql/nt_servc.cc)
+ENDIF()
+# Add sql_builtin.cc, to force linkage of plugins below.
+IF(NOT WITH_SHARED_UNITTEST_LIBRARY)
+  LIST(APPEND MYSQLD_EXTRA_SOURCES ${CMAKE_BINARY_DIR}/sql/sql_builtin.cc)
 ENDIF()
 
 # We need the server libs to test the blob parser.
-# Add sql_builtin.cc here, to force linkage of plugins below.
-# Also add mysys/string.c (see Bug#45488)
-ADD_EXECUTABLE(pfs_connect_attr-t
+MYSQL_ADD_EXECUTABLE(pfs_connect_attr-t
   pfs_connect_attr-t.cc
-  ${CMAKE_BINARY_DIR}/sql/sql_builtin.cc
-  ${CMAKE_SOURCE_DIR}/mysys/string.c
   ${MYSQLD_EXTRA_SOURCES}
+  ADD_TEST pfs_connect_attr
 )
-ADD_DEPENDENCIES(pfs_connect_attr-t GenServerSource)
-TARGET_LINK_LIBRARIES(pfs_connect_attr-t mytap perfschema)
-# We need to explicitly link in everything referenced in sql/sql_builtin.cc
-TARGET_LINK_LIBRARIES(pfs_connect_attr-t ${MYSQLD_STATIC_PLUGIN_LIBS})
-TARGET_LINK_LIBRARIES(pfs_connect_attr-t sql binlog rpl master slave sql)
-TARGET_LINK_LIBRARIES(pfs_connect_attr-t mysys mysys_ssl)
-TARGET_LINK_LIBRARIES(pfs_connect_attr-t vio ${SSL_LIBRARIES})
-TARGET_LINK_LIBRARIES(pfs_connect_attr-t strings dbug regex mysys ${ZLIB_LIBRARY})
-ADD_TEST(pfs_connect_attr pfs_connect_attr-t)
+IF(WITH_LTO OR CMAKE_COMPILER_FLAG_WITH_LTO)
+  # We get ODR violations because of multiple bison parsers.
+  MY_CHECK_CXX_COMPILER_WARNING("error=odr" HAS_WARN_FLAG)
+  IF(HAS_WARN_FLAG)
+    MY_TARGET_LINK_OPTIONS(pfs_connect_attr-t "${HAS_WARN_FLAG}")
+  ENDIF()
+ENDIF()
 
-# ADD_EXECUTABLE(pfs_benchmark-t pfs_benchmark-t.cc pfs_benchmark_helper.cc)
-# TARGET_LINK_LIBRARIES(pfs_benchmark-t mytap perfschema mysys pfs_server_stubs)
-# ADD_TEST(pfs_benchmark pfs_benchmark-t)
+ADD_DEPENDENCIES(pfs_connect_attr-t GenServerSource)
+# For static server_unittest_library we need to explicitly link in everything
+# referenced in sql/sql_builtin.cc
+IF(WITH_SHARED_UNITTEST_LIBRARY)
+  UNSET(MYSQLD_EXTRA_LIBRARIES)
+ELSE()
+  SET(MYSQLD_EXTRA_LIBRARIES ${MYSQLD_STATIC_PLUGIN_LIBS})
+ENDIF()
+
+TARGET_LINK_LIBRARIES(pfs_connect_attr-t
+  mytap
+  server_unittest_library
+  ${MYSQLD_EXTRA_LIBRARIES}
+  )

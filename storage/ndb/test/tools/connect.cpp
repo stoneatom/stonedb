@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2007, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2007, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -27,6 +27,7 @@
 #include <NDBT.hpp>
 #include <NdbApi.hpp>
 #include <NdbSleep.h>
+#include "my_alloc.h"
 
 static int opt_loop = 25;
 static int opt_sleep = 25;
@@ -38,37 +39,33 @@ static struct my_option my_long_options[] =
 {
   NDB_STD_OPTS("ndb_connect"),
   { "loop", 'l', "loops",
-    (uchar**) &opt_loop, (uchar**) &opt_loop, 0,
+    &opt_loop, &opt_loop, 0,
     GET_INT, REQUIRED_ARG, opt_loop, 0, 0, 0, 0, 0 },
   { "sleep", 's', "Sleep (ms) between connection attempt",
-    (uchar**) &opt_sleep, (uchar**) &opt_sleep, 0,
+    &opt_sleep, &opt_sleep, 0,
     GET_INT, REQUIRED_ARG, opt_sleep, 0, 0, 0, 0, 0 },
   { "drop", 'd', 
     "Drop event operations before disconnect (0 = no, 1 = yes, else rand",
-    (uchar**) &opt_drop, (uchar**) &opt_drop, 0,
+    &opt_drop, &opt_drop, 0,
     GET_INT, REQUIRED_ARG, opt_drop, 0, 0, 0, 0, 0 },
   { "subscribe-loop", NDB_OPT_NOSHORT,
     "Loop in subscribe/unsubscribe",
-    (uchar**) &opt_subloop, (uchar**) &opt_subloop, 0,
+    &opt_subloop, &opt_subloop, 0,
     GET_INT, REQUIRED_ARG, opt_subloop, 0, 0, 0, 0, 0 },
   { "wait-all", NDB_OPT_NOSHORT,
     "Wait for all ndb-nodes (i.e not only some)",
-    (uchar**) &opt_wait_all, (uchar**) &opt_wait_all, 0,
+    &opt_wait_all, &opt_wait_all, 0,
     GET_INT, REQUIRED_ARG, opt_wait_all, 0, 0, 0, 0, 0 },
   { 0, 0, 0, 0, 0, 0, GET_NO_ARG, NO_ARG, 0, 0, 0, 0, 0, 0}
 };
 
 int main(int argc, char** argv){
   NDB_INIT(argv[0]);
-
-  const char *load_default_groups[]= { "mysql_cluster",0 };
-  ndb_load_defaults(NULL, load_default_groups,&argc,&argv);
-  int ho_error;
+  Ndb_opts opts(argc, argv, my_long_options);
 #ifndef NDEBUG
   opt_debug= "d:t:O,/tmp/ndb_connect.trace";
 #endif
-  if ((ho_error=handle_options(&argc, &argv, my_long_options, 
-			       ndb_std_get_one_option)))
+  if (opts.handle_options())
     return NDBT_ProgramExit(NDBT_WRONGARGS);
 
   for (int i = 0; i<opt_loop; i++)

@@ -1,6 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -23,17 +22,16 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-
 #include <RefConvert.hpp>
 #include <signaldata/StartRec.hpp>
 #include <signaldata/StartFragReq.hpp>
 
-bool
-printSTART_REC_REQ(FILE * output, 
-		  const Uint32 * theData, 
-		  Uint32 len, 
-		  Uint16 recBlockNo){
-  StartRecReq * sig = (StartRecReq *) theData;
+bool printSTART_REC_REQ(FILE *output,
+                        const Uint32 *theData,
+                        Uint32 len,
+                        Uint16 /*recBlockNo*/)
+{
+  const StartRecReq *sig = (const StartRecReq *)theData;
 
   if (len != StartRecReq::SignalLength)
     return false;
@@ -50,22 +48,28 @@ printSTART_REC_REQ(FILE * output,
 	  sig->newestGci,
           sig->senderData);
 
-  NdbNodeBitmask mask;
-  mask.assign(NdbNodeBitmask::Size, sig->sr_nodes);
-  
-  char buf[100];
-  fprintf(output,
-          " sr_nodes: %s\n", mask.getText(buf));
+  if (len == sig->SignalLength_v1)
+  {
+    NdbNodeBitmask48 mask;
+    mask.assign(NdbNodeBitmask48::Size, sig->sr_nodes);
 
+    char buf[NdbNodeBitmask48::TextLength + 1];
+    fprintf(output,
+          " sr_nodes: %s\n", mask.getText(buf));
+  }
+  else
+  {
+    fprintf(output , "sr_nodes in signal section\n");
+  }
   return true;
 }
 
-bool
-printSTART_REC_CONF(FILE * output, 
-		    const Uint32 * theData, 
-		    Uint32 len, 
-		    Uint16 recBlockNo){
-  StartRecConf * sig = (StartRecConf *) theData;
+bool printSTART_REC_CONF(FILE *output,
+                         const Uint32 *theData,
+                         Uint32 len,
+                         Uint16 /*recBlockNo*/)
+{
+  const StartRecConf *sig = (const StartRecConf *)theData;
 
   if (len != StartRecConf::SignalLength)
     return false;
@@ -77,17 +81,17 @@ printSTART_REC_CONF(FILE * output,
   return true;
 }
 
-bool 
-printSTART_FRAG_REQ(FILE * output, 
-		    const Uint32 * theData, 
-		    Uint32 len, 
-		    Uint16 recBlockNo)
+bool printSTART_FRAG_REQ(FILE *output,
+                         const Uint32 *theData,
+                         Uint32 len,
+                         Uint16 /*recBlockNo*/)
 {
-  StartFragReq* sig = (StartFragReq*)theData;
+  const StartFragReq *sig = (const StartFragReq *)theData;
 
-  fprintf(output, " table: %d frag: %d lcpId: %d lcpNo: %d #nodes: %d \n",
+  fprintf(output, " table: %d frag: %d lcpId: %d lcpNo: %d #nodes: %d"
+                  ", reqinfo: %x \n",
 	  sig->tableId, sig->fragId, sig->lcpId, sig->lcpNo, 
-	  sig->noOfLogNodes);
+	  sig->noOfLogNodes,sig->requestInfo);
 
   for(Uint32 i = 0; i<sig->noOfLogNodes; i++)
   {
@@ -96,7 +100,14 @@ printSTART_FRAG_REQ(FILE * output,
 	    sig->startGci[i],
 	    sig->lastGci[i]);
   }
-    
+  if (len == StartFragReq::SignalLength)
+  {
+    fprintf(output, "\nnodeRestorableGci: %u", sig->nodeRestorableGci);
+  }
+  else
+  {
+    fprintf(output, "\nnodeRestorableGci: 0 (from older version)");
+  }
   fprintf(output, "\n");
   return true; 
 }

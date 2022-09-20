@@ -23,7 +23,7 @@
 #
 # $rpl_after_received_events_action
 #   Specifies what to do after receiving the events:
-#   stop  - Issue STOP SLAVE IO_THREAD and wait for it to stop.
+#   stop  - Issue STOP REPLICA IO_THREAD and wait for it to stop.
 #   flush - Issue FLUSH RELAY LOG and then continue to replicate.
 #   hang  - Leave the receiver thread hanging on a debug sync point.
 #           The caller must later release the receiver thread using:
@@ -137,7 +137,7 @@ if ($slave_timeout)
 
 if (!$rpl_continue_event_count_after_hanging)
 {
-  --eval START SLAVE IO_THREAD $_for_channel;
+  --eval START REPLICA IO_THREAD $_for_channel;
 }
 if ($rpl_continue_event_count_after_hanging)
 {
@@ -182,8 +182,19 @@ while ($_rrec_counted_events < $rpl_event_count)
     # Get the position of the event.
     if ($_rrec_file != '')
     {
+      --let $result= No such row
       # In non-first iteration, read the position of the next event.
-      --let $_rrec_pos= query_get_value("SHOW RELAYLOG EVENTS IN '$_rrec_file' FROM $_rrec_pos LIMIT 1, 1", Pos, 1)
+      while ($result == No such row)
+      {
+        --let $result= query_get_value("SHOW RELAYLOG EVENTS IN '$_rrec_file' FROM $_rrec_pos LIMIT 1, 1", Pos, 1)
+        if ($result == No such row)
+        {
+          # Unpause the receiver thread
+          SET DEBUG_SYNC= 'now SIGNAL continue_after_queue_event';
+          eval SET DEBUG_SYNC= 'now WAIT_FOR reached_after_queue_event $_rrec_timeout_clause';
+        }
+      }
+      --let $_rrec_pos= $result
     }
     if ($_rrec_file == '')
     {
@@ -281,7 +292,7 @@ if ($rpl_after_received_events_action == 'stop')
   --connect (_rrec_other_connection,127.0.0.1,root,,test,$_rrec_port,)
 
   --connection _rrec_other_connection
-  --send_eval STOP SLAVE IO_THREAD $_for_channel;
+  --send_eval STOP REPLICA IO_THREAD $_for_channel;
   --connection $_rrec_connection
 
   SET DEBUG_SYNC= 'now WAIT_FOR reached_stopping_io_thread';

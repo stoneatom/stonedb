@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -22,15 +22,23 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
+#include "util/require.h"
 #include <NDBT.hpp>
 #include <NDBT_Table.hpp>
 #include <NDBT_Tables.hpp>
 #include <NdbEnv.h>
+#include "m_ctype.h"
 
 /* ******************************************************* */
 //    Define Ndb standard tables 
 //
 //  USE ONLY UPPERLETTERS IN TAB AND COLUMN NAMES
+//
+// Tables need to have at least two Unsigned columns.
+// The first found will be used as id.
+// The last found which is not part of primary key will be used for update
+// count.  See HugoCalculator.
+//
 /* ******************************************************* */
 
 static const NdbDictionary::Column::StorageType MM=
@@ -606,6 +614,18 @@ static
 const
 NDBT_Table T16("T16", sizeof(T16Attribs)/sizeof(NDBT_Attribute), T16Attribs);
 
+static
+const
+NDBT_Attribute T17Attribs[] = {
+  NDBT_Attribute("KOL1", NdbDictionary::Column::Unsigned, 1, true, false),
+  NDBT_Attribute("KOL2", NdbDictionary::Column::Binary, 4000),
+  NDBT_Attribute("KOL99", NdbDictionary::Column::Unsigned, 1, false, false),
+};
+
+static
+const
+NDBT_Table T17("T17", sizeof(T17Attribs)/sizeof(NDBT_Attribute), T17Attribs);
+
 /*
   C2 DHCP TABLES, MAYBE THESE SHOULD BE MOVED TO THE UTIL_TABLES?
 */
@@ -770,6 +790,7 @@ NDBT_Table *test_tables[]=
   &T14,
   &T15,
   &T16,
+  &T17,
   &I1,
   &I2,
   &I3,

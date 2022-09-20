@@ -1,5 +1,5 @@
-/* Copyright (c) 2007, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+/* Copyright (c) 2007, 2022, Oracle and/or its affiliates.
+    Use is subject to license terms.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -19,7 +19,7 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA */
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #include <signaldata/SchemaTransImpl.hpp>
 #include <signaldata/DictSignal.hpp>
@@ -163,9 +163,17 @@ printSCHEMA_TRANS_IMPL_REQ(FILE* output, const Uint32* theData,
   return true;
 }
 
-bool
-printSCHEMA_TRANS_IMPL_CONF(FILE* output, const Uint32* theData, Uint32 len, Uint16 rbn)
+bool printSCHEMA_TRANS_IMPL_CONF(FILE* output,
+                                 const Uint32* theData,
+                                 Uint32 len,
+                                 Uint16 /*rbn*/)
 {
+  if (len < SchemaTransImplConf::SignalLength)
+  {
+    assert(false);
+    return false;
+  }
+
   const SchemaTransImplConf* sig = (const SchemaTransImplConf*)theData;
   fprintf(output, " senderRef: 0x%x", sig->senderRef);
   fprintf(output, " transKey: %u", sig->transKey);
@@ -173,9 +181,17 @@ printSCHEMA_TRANS_IMPL_CONF(FILE* output, const Uint32* theData, Uint32 len, Uin
   return true;
 }
 
-bool
-printSCHEMA_TRANS_IMPL_REF(FILE* output, const Uint32* theData, Uint32 len, Uint16 rbn)
+bool printSCHEMA_TRANS_IMPL_REF(FILE* output,
+                                const Uint32* theData,
+                                Uint32 len,
+                                Uint16 /*rbn*/)
 {
+  if (len < SchemaTransImplRef::SignalLength)
+  {
+    assert(false);
+    return false;
+  }
+
   const SchemaTransImplRef* sig = (const SchemaTransImplRef*)theData;
   fprintf(output, " senderRef: 0x%x", sig->senderRef);
   fprintf(output, " transKey: %u", sig->transKey);

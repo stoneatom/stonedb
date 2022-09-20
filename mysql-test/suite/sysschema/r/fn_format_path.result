@@ -1,3 +1,4 @@
+# restart: --datadir=CUSTOM_DATADIR --innodb_data_home_dir=MYSQLTEST_VARDIR/tmp/innodb --innodb_log_group_home_dir=MYSQLTEST_VARDIR/tmp/innodb_logs --innodb_undo_directory=MYSQLTEST_VARDIR/tmp/innodb_undo
 SELECT sys.format_path(NULL);
 sys.format_path(NULL)
 NULL
@@ -17,10 +18,10 @@ SET @mypath := CONCAT(@@global.innodb_data_home_dir, '/foo/bar.ibd');
 SELECT sys.format_path(@mypath);
 sys.format_path(@mypath)
 @@innodb_data_home_dir/foo/bar.ibd
-SET @mypath := CONCAT(@@global.innodb_log_group_home_dir, '/ib_logfile0');
+SET @mypath := CONCAT(@@global.innodb_log_group_home_dir, '/#innodb_redo/#ib_redo0');
 SELECT sys.format_path(@mypath);
 sys.format_path(@mypath)
-@@innodb_log_group_home_dir/ib_logfile0
+@@innodb_log_group_home_dir/#innodb_redo/#ib_redo0
 SET @mypath := CONCAT(@@global.innodb_undo_directory, '/undo0');
 SELECT sys.format_path(@mypath);
 sys.format_path(@mypath)
@@ -28,3 +29,4 @@ sys.format_path(@mypath)
 SELECT sys.format_path('/foo/bar/baz.foo');
 sys.format_path('/foo/bar/baz.foo')
 /foo/bar/baz.foo
+# restart

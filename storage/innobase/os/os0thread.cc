@@ -1,344 +1,120 @@
 /*****************************************************************************
 
-Copyright (c) 1995, 2021, Oracle and/or its affiliates.
+Copyright (c) 1995, 2022, Oracle and/or its affiliates.
 
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License, version 2.0,
-as published by the Free Software Foundation.
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License, version 2.0, as published by the
+Free Software Foundation.
 
-This program is also distributed with certain software (including
-but not limited to OpenSSL) that is licensed under separate terms,
-as designated in a particular file or component or in included license
-documentation.  The authors of MySQL hereby grant you an additional
-permission to link the program and your derivative works with the
-separately licensed software that they have included with MySQL.
+This program is also distributed with certain software (including but not
+limited to OpenSSL) that is licensed under separate terms, as designated in a
+particular file or component or in included license documentation. The authors
+of MySQL hereby grant you an additional permission to link the program and
+your derivative works with the separately licensed software that they have
+included with MySQL.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License, version 2.0, for more details.
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License, version 2.0,
+for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program; if not, write to the Free Software Foundation, Inc.,
-51 Franklin Street, Suite 500, Boston, MA 02110-1335 USA
+51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
 *****************************************************************************/
 
-/**************************************************//**
-@file os/os0thread.cc
-The interface to the operating system thread control primitives
+/** @file os/os0thread.cc
+ The interface to the operating system thread control primitives
 
-Created 9/8/1995 Heikki Tuuri
-*******************************************************/
+ Created 9/8/1995 Heikki Tuuri
+ *******************************************************/
 
-#include "ha_prototypes.h"
+#include "univ.i"
 
-#include "os0thread.h"
-#include "ut0new.h"
+#include <atomic>
+#include <ios>
+#include <sstream>
+#include <thread>
 
-#ifdef UNIV_NONINL
-#include "os0thread.ic"
-#endif
+#ifdef UNIV_LINUX
+/* include defs for CPU time priority settings */
+#include <sys/resource.h>
+#include <sys/syscall.h>
+#include <sys/time.h>
+#include <unistd.h>
+#endif /* UNIV_LINUX */
 
-#ifndef UNIV_HOTBACKUP
-#include "srv0srv.h"
-#include "os0event.h"
+#include "ut0ut.h"
 
-#include <map>
-
-/** Mutex that tracks the thread count. Used by innorwlocktest.cc
-FIXME: the unit tests should use APIs */
-SysMutex	thread_mutex;
+/** We are prepared for a situation that we have this many threads waiting for
+a semaphore inside InnoDB. innodb_init_params() sets the value. */
+uint32_t srv_max_n_threads = 0;
 
 /** Number of threads active. */
-ulint	os_thread_count;
+std::atomic_int os_thread_count;
+
+void IB_thread::start() {
+  ut_a(state() == State::NOT_STARTED);
+  m_state->store(State::ALLOWED_TO_START);
 
 #ifdef _WIN32
-typedef std::map<
-	DWORD,
-	HANDLE,
-	std::less<DWORD>,
-	ut_allocator<std::pair<const DWORD, HANDLE> > >	WinThreadMap;
-/** This STL map remembers the initial handle returned by CreateThread
-so that it can be closed when the thread exits. */
-static WinThreadMap	win_thread_map;
+  unsigned int cnt = 0;
 #endif /* _WIN32 */
 
-/***************************************************************//**
-Compares two thread ids for equality.
-@return TRUE if equal */
-ibool
-os_thread_eq(
-/*=========*/
-	os_thread_id_t	a,	/*!< in: OS thread or thread id */
-	os_thread_id_t	b)	/*!< in: OS thread or thread id */
-{
-#ifdef _WIN32
-	if (a == b) {
-		return(TRUE);
-	}
-
-	return(FALSE);
-#else
-	if (pthread_equal(a, b)) {
-		return(TRUE);
-	}
-
-	return(FALSE);
-#endif
-}
-
-/****************************************************************//**
-Converts an OS thread id to a ulint. It is NOT guaranteed that the ulint is
-unique for the thread though!
-@return thread identifier as a number */
-ulint
-os_thread_pf(
-/*=========*/
-	os_thread_id_t	a)	/*!< in: OS thread identifier */
-{
-	return((ulint) a);
-}
-
-/*****************************************************************//**
-Returns the thread identifier of current thread. Currently the thread
-identifier in Unix is the thread handle itself. Note that in HP-UX
-pthread_t is a struct of 3 fields.
-@return current thread identifier */
-os_thread_id_t
-os_thread_get_curr_id(void)
-/*=======================*/
-{
-#ifdef _WIN32
-	return(GetCurrentThreadId());
-#else
-	return(pthread_self());
-#endif
-}
-
-/****************************************************************//**
-Creates a new thread of execution. The execution starts from
-the function given.
-NOTE: We count the number of threads in os_thread_exit(). A created
-thread should always use that to exit so thatthe thread count will be
-decremented.
-We do not return an error code because if there is one, we crash here. */
-void
-os_thread_create_func(
-/*==================*/
-	os_thread_func_t	func,		/*!< in: pointer to function
-						from which to start */
-	void*			arg,		/*!< in: argument to start
-						function */
-	os_thread_id_t*		thread_id)	/*!< out: id of the created
-						thread, or NULL */
-{
-	os_thread_id_t	new_thread_id;
-
-	/* the new thread should look recent changes up here so far. */
-	os_wmb;
+  while (state() == State::ALLOWED_TO_START) {
+    UT_RELAX_CPU();
 
 #ifdef _WIN32
-	HANDLE		handle;
-
-	handle = CreateThread(NULL,	/* no security attributes */
-			      0,	/* default size stack */
-			      func,
-			      arg,
-			      0,	/* thread runs immediately */
-			      &new_thread_id);
-
-	if (!handle) {
-		/* If we cannot start a new thread, life has no meaning. */
-		ib::fatal() << "CreateThread returned " << GetLastError();
-	}
-
-	mutex_enter(&thread_mutex);
-
-	std::pair<WinThreadMap::iterator, bool> ret;
-
-	ret = win_thread_map.insert(
-		std::pair<DWORD, HANDLE>(new_thread_id, handle));
-
-	ut_ad((*ret.first).first == new_thread_id);
-	ut_ad((*ret.first).second == handle);
-	ut_a(ret.second == true);	/* true means thread_id was new */
-
-	os_thread_count++;
-
-	mutex_exit(&thread_mutex);
-
-#else /* _WIN32 else */
-
-	pthread_attr_t	attr;
-
-	pthread_attr_init(&attr);
-
-	mutex_enter(&thread_mutex);
-	++os_thread_count;
-	mutex_exit(&thread_mutex);
-
-	int	ret = pthread_create(&new_thread_id, &attr, func, arg);
-
-	if (ret != 0) {
-		ib::fatal() << "pthread_create returned " << ret;
-	}
-
-	pthread_attr_destroy(&attr);
-
-#endif /* not _WIN32 */
-
-	ut_a(os_thread_count <= OS_THREAD_MAX_N);
-
-	/* Return the thread_id if the caller requests it. */
-	if (thread_id != NULL) {
-		*thread_id = new_thread_id;
-	}
-}
-
-/** Waits until the specified thread completes and joins it.
-Its return value is ignored.
-@param[in,out]	thread	thread to join */
-void
-os_thread_join(
-	os_thread_id_t	thread)
-{
-#ifdef _WIN32
-	/* Do nothing. */
-#else
-#ifdef UNIV_DEBUG
-	const int	ret =
-#endif /* UNIV_DEBUG */
-	pthread_join(thread, NULL);
-
-	/* Waiting on already-quit threads is allowed. */
-	ut_ad(ret == 0 || ret == ESRCH);
+    /* When the number of threads to be spawned exceeds the number of cores of
+    a machine, it's seen that we cannot just rely on UT_RELAX_CPU(). So in such
+    a case, allow the thread to release its time slice to any thread wanting
+    control. */
+    if (++cnt > 500) {
+      std::this_thread::yield();
+    }
 #endif /* _WIN32 */
+  }
+  const auto state_after_start = state();
+
+  ut_a(state_after_start == State::STARTED ||
+       state_after_start == State::STOPPED);
 }
 
-/** Exits the current thread.
-@param[in]	detach	if true, the thread will be detached right before
-exiting. If false, another thread is responsible for joining this thread */
-void
-os_thread_exit(
-	bool	detach)
-{
-#ifdef UNIV_DEBUG_THREAD_CREATION
-	ib::info() << "Thread exits, id "
-		<< os_thread_pf(os_thread_get_curr_id());
-#endif
-
-#ifdef UNIV_PFS_THREAD
-	pfs_delete_thread();
-#endif
-
-	mutex_enter(&thread_mutex);
-
-	os_thread_count--;
-
-#ifdef _WIN32
-	DWORD win_thread_id = GetCurrentThreadId();
-	HANDLE handle = win_thread_map[win_thread_id];
-	CloseHandle(handle);
-	size_t ret = win_thread_map.erase(win_thread_id);
-	ut_a(ret == 1);
-
-	mutex_exit(&thread_mutex);
-
-	ExitThread(0);
-#else
-	mutex_exit(&thread_mutex);
-	if (detach) {
-		pthread_detach(pthread_self());
-	}
-	pthread_exit(NULL);
-#endif
+void IB_thread::wait(State state_to_wait_for) {
+  ut_a(state() != State::INVALID);
+  ut_a(m_shared_future.valid());
+  if (state_to_wait_for >= State::STOPPED) {
+    m_shared_future.wait();
+  }
+  while (state() < state_to_wait_for) {
+    UT_RELAX_CPU();
+  }
 }
 
-/*****************************************************************//**
-Advises the os to give up remainder of the thread's time slice. */
-void
-os_thread_yield(void)
-/*=================*/
-{
-#if defined(_WIN32)
-	SwitchToThread();
-#else
-	sched_yield();
-#endif
-}
-#endif /* !UNIV_HOTBACKUP */
+void IB_thread::join() { wait(State::STOPPED); }
 
-/*****************************************************************//**
-The thread sleeps at least the time given in microseconds. */
-void
-os_thread_sleep(
-/*============*/
-	ulint	tm)	/*!< in: time in microseconds */
-{
-#ifdef _WIN32
-	Sleep((DWORD) tm / 1000);
-#elif defined(HAVE_NANOSLEEP)
-	struct timespec	t;
-
-	t.tv_sec = tm / 1000000;
-	t.tv_nsec = (tm % 1000000) * 1000;
-
-	::nanosleep(&t, NULL);
-#else
-	struct timeval  t;
-
-	t.tv_sec = tm / 1000000;
-	t.tv_usec = tm % 1000000;
-
-	select(0, NULL, NULL, NULL, &t);
-#endif /* _WIN32 */
+void IB_thread::init(std::promise<void> &promise) {
+  m_shared_future = promise.get_future();
+  m_state.reset(new std::atomic<State>(State::NOT_STARTED));
 }
 
-/*****************************************************************//**
-Check if there are threads active.
-@return true if the thread count > 0. */
-bool
-os_thread_active()
-/*==============*/
-{
-	mutex_enter(&thread_mutex);
-
-	bool active = (os_thread_count > 0);
-
-	/* All the threads have exited or are just exiting;
-	NOTE that the threads may not have completed their
-	exit yet. Should we use pthread_join() to make sure
-	they have exited? If we did, we would have to
-	remove the pthread_detach() from
-	os_thread_exit().  Now we just sleep 0.1
-	seconds and hope that is enough! */
-
-	mutex_exit(&thread_mutex);
-
-	return(active);
+void IB_thread::set_state(State new_state) {
+  ut_a(state() != State::INVALID);
+  m_state->store(new_state);
 }
 
-/**
-Initializes OS thread management data structures. */
-void
-os_thread_init()
-/*============*/
-{
-	mutex_create(LATCH_ID_THREAD_MUTEX, &thread_mutex);
+std::string to_string(std::thread::id thread_id, bool hex_value) {
+  try {
+    std::stringstream ss;
+    if (hex_value) {
+      ss << std::hex << std::showbase;
+    }
+    /* The documentation for this says "May throw implementation-defined
+    exceptions." - we catch anything that might be thrown here. */
+    ss << thread_id;
+    return ss.str();
+  } catch (...) {
+    return "invalid_thread_id";
+  }
 }
-
-/**
-Frees OS thread management data structures. */
-void
-os_thread_free()
-/*============*/
-{
-	if (os_thread_count != 0) {
-		ib::warn() << "Some (" << os_thread_count << ") threads are"
-			" still active";
-	}
-
-	mutex_destroy(&thread_mutex);
-}
-

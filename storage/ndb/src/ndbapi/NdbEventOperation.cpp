@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -25,16 +25,18 @@
 
 #include <Ndb.hpp>
 #include <NdbError.hpp>
-#include <portlib/NdbMem.h>
 #include "NdbEventOperationImpl.hpp"
 #include "NdbDictionaryImpl.hpp"
 #include <EventLogger.hpp>
-extern EventLogger * g_eventLogger;
 
-NdbEventOperation::NdbEventOperation(Ndb *theNdb,const char* eventName) 
-  : m_impl(* new NdbEventOperationImpl(*this,theNdb,eventName))
+NdbEventOperation::NdbEventOperation(Ndb *ndb,
+                                     const NdbDictionary::Event *event)
+  : m_impl(* new NdbEventOperationImpl(*this, ndb, std::move(event)))
 {
 }
+
+NdbEventOperation::NdbEventOperation(NdbEventOperationImpl &impl)
+    : m_impl(impl) {}
 
 NdbEventOperation::~NdbEventOperation()
 {
@@ -183,9 +185,8 @@ NdbEventOperation::getEventType() const
    * Since this is called after nextEvent() returns a valid operation,
    * and nextEvent() does not return a valid operation
    * for exceptional event data
-   *  (nextEvent removes TE_EMPTY from the event queue,
-   *   it does not return a valid operation for TE_INCONSIS,
-   *   it crashes at TE_OUT_OF_MEMORY),
+   *  (nextEvent does not return a valid operation for TE_INCONSIS,
+   *   it crashes at TE_OUT_OF_MEMORY and TE_EMPTY),
    * getEventType should not see the new event types, unless getEventType
    * is called after nextEvent2().
    * Following assert will ensure that.
@@ -269,9 +270,6 @@ int NdbEventOperation::getNdbdNodeId() const
 /*
  * Private members
  */
-
-NdbEventOperation::NdbEventOperation(NdbEventOperationImpl& impl) 
-  : m_impl(impl) {}
 
 const struct NdbError & 
 NdbEventOperation::getNdbError() const {

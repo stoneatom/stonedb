@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -282,35 +282,6 @@ public:
 				int aMaxLoadFactor = 80,
 				int aMemoryType = 1,
 				bool aStoredTable = true);
-
-  /** 
-   * This is the old function declaration, don't use.
-   *
-   * @deprecated do not use!
-   */
-#ifndef NDB_WIN32
-  inline int	createTable(	const char* aTableName, 
-				Uint32 aTableSize, 
-				KeyType aTupleKey,
-				int aNrOfPages, 
-				FragmentType aFragmentType, 
-				int aKValue,
-				int aMinLoadFactor,
-				int aMaxLoadFactor,
-				int aMemoryType,
-				int aStoredTable){
-    return createTable(aTableName, 
-                       aTableSize, 
-                       aTupleKey,                        
-                       aNrOfPages, 
-                       aFragmentType, 
-                       aKValue, 
-                       aMinLoadFactor, 
-                       aMaxLoadFactor, 
-                       aMemoryType, 
-                       (aStoredTable == 1 ? true : false));
-  }
-#endif
 
   /**
    * Add a new attribute to a database table.

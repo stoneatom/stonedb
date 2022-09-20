@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -24,7 +24,9 @@
 
 #include "Trix.hpp"
 
+#include <cstring>
 #include <string.h>
+#include <time.h>
 #include <kernel_types.h>
 #include <NdbOut.hpp>
 
@@ -53,7 +55,7 @@
 
 #define CONSTRAINT_VIOLATION 893
 #define TUPLE_NOT_FOUND 626
-#define FK_NO_PARENT_ROW_EXISTS 255
+#define FK_NO_PARENT_ROW_EXISTS 21033
 
 static
 bool
@@ -153,12 +155,24 @@ Trix::execREAD_CONFIG_REQ(Signal* signal)
     m_ctx.m_config.getOwnConfigIterator();
   ndbrequire(p != 0);
 
+  c_maxUIBuildBatchSize = 64;
+  ndb_mgm_get_int_parameter(p, CFG_DB_UI_BUILD_MAX_BATCHSIZE,
+                            &c_maxUIBuildBatchSize);
+
+  c_maxFKBuildBatchSize = 64;
+  ndb_mgm_get_int_parameter(p, CFG_DB_FK_BUILD_MAX_BATCHSIZE,
+                            &c_maxFKBuildBatchSize);
+
+  c_maxReorgBuildBatchSize = 64;
+  ndb_mgm_get_int_parameter(p, CFG_DB_REORG_BUILD_MAX_BATCHSIZE,
+                            &c_maxReorgBuildBatchSize);
+
   // Allocate pool sizes
   c_theAttrOrderBufferPool.setSize(100);
   c_theSubscriptionRecPool.setSize(100);
   c_statOpPool.setSize(5);
 
-  DLList<SubscriptionRecord> subscriptions(c_theSubscriptionRecPool);
+  SubscriptionRecord_list subscriptions(c_theSubscriptionRecPool);
   SubscriptionRecPtr subptr;
   while (subscriptions.seizeFirst(subptr) == true) {
     new (subptr.p) SubscriptionRecord(c_theAttrOrderBufferPool);
@@ -229,13 +243,24 @@ void Trix::execREAD_NODESCONF(Signal* signal)
   //Uint32 noOfNodes   = readNodes->noOfNodes;
   NodeRecPtr nodeRecPtr;
 
+  {
+    ndbrequire(signal->getNoOfSections() == 1);
+    SegmentedSectionPtr ptr;
+    SectionHandle handle(this, signal);
+    ndbrequire(handle.getSection(ptr, 0));
+    ndbrequire(ptr.sz == 5 * NdbNodeBitmask::Size);
+    copy(readNodes->definedNodes.rep.data, ptr);
+    releaseSections(handle);
+  }
+
   c_masterNodeId = readNodes->masterNodeId;
   c_masterTrixRef = RNIL;
   c_noNodesFailed = 0;
 
   for(unsigned i = 0; i < MAX_NDB_NODES; i++) {
     jam();
-    if(NdbNodeBitmask::get(readNodes->allNodes, i)) {
+    if (readNodes->definedNodes.get(i))
+    {
       // Node is defined
       jam();
       ndbrequire(c_theNodes.getPool().seizeId(nodeRecPtr, i));
@@ -244,7 +269,8 @@ void Trix::execREAD_NODESCONF(Signal* signal)
       if (i == c_masterNodeId) {
         c_masterTrixRef = nodeRecPtr.p->trixRef;
       }
-      if(NdbNodeBitmask::get(readNodes->inactiveNodes, i)){
+      if (readNodes->inactiveNodes.get(i))
+      {
         // Node is not active
 	jam();
 	/**-----------------------------------------------------------------
@@ -286,6 +312,24 @@ void Trix::execNODE_FAILREP(Signal* signal)
 {
   jamEntry();
   NodeFailRep * const  nodeFail = (NodeFailRep *) signal->getDataPtr();
+
+  if(signal->getNoOfSections() >= 1)
+  {
+    ndbrequire(ndbd_send_node_bitmask_in_section(
+        getNodeInfo(refToNode(signal->getSendersBlockRef())).m_version));
+    SegmentedSectionPtr ptr;
+    SectionHandle handle(this, signal);
+    ndbrequire(handle.getSection(ptr, 0));
+    memset(nodeFail->theNodes, 0, sizeof(nodeFail->theNodes));
+    copy(nodeFail->theNodes, ptr);
+    releaseSections(handle);
+  }
+  else
+  {
+    memset(nodeFail->theNodes + NdbNodeBitmask48::Size,
+           0,
+           _NDB_NBM_DIFF_BYTES);
+  }
 
   //Uint32 failureNr    = nodeFail->failNo;
   //Uint32 numberNodes  = nodeFail->noOfNodes;
@@ -339,11 +383,11 @@ Trix::execDUMP_STATE_ORD(Signal* signal)
     // index2 -T; index2 -I -n10000; index2 -c
     // all dump 300 0 0 0 0 0 4 2
     // select_count INDEX0000
+    std::memmove(signal->theData,
+                 signal->theData + 1,
+                 BuildIndxImplReq::SignalLength * sizeof(signal->theData[0]));
     BuildIndxImplReq * buildIndxReq = (BuildIndxImplReq *)signal->getDataPtrSend();
     
-    MEMCOPY_NO_WORDS(buildIndxReq, 
-		     signal->theData + 1, 
-		     BuildIndxImplReq::SignalLength);
     buildIndxReq->senderRef = reference(); // return to me
     buildIndxReq->parallelism = 10;
     Uint32 indexColumns[1] = {1};
@@ -364,11 +408,11 @@ Trix::execDUMP_STATE_ORD(Signal* signal)
     // index2 -T; index2 -I -n10000; index2 -c -p
     // all dump 301 0 0 0 0 0 4 2
     // select_count INDEX0000
+    std::memmove(signal->theData,
+                 signal->theData + 1,
+                 BuildIndxImplReq::SignalLength * sizeof(signal->theData[0]));
     BuildIndxImplReq * buildIndxReq = (BuildIndxImplReq *)signal->getDataPtrSend();
     
-    MEMCOPY_NO_WORDS(buildIndxReq, 
-		     signal->theData + 1, 
-		     BuildIndxImplReq::SignalLength);
     buildIndxReq->senderRef = reference(); // return to me
     buildIndxReq->parallelism = 10;
     Uint32 indexColumns[2] = {0, 1};
@@ -389,11 +433,11 @@ Trix::execDUMP_STATE_ORD(Signal* signal)
     // index -T; index -I -n1000; index -c -p
     // all dump 302 0 0 0 0 0 4 2
     // select_count PNUMINDEX0000
+    std::memmove(signal->theData,
+                 signal->theData + 1,
+                 BuildIndxImplReq::SignalLength * sizeof(signal->theData[0]));
     BuildIndxImplReq * buildIndxReq = (BuildIndxImplReq *)signal->getDataPtrSend();
     
-    MEMCOPY_NO_WORDS(buildIndxReq, 
-		     signal->theData + 1, 
-		     BuildIndxImplReq::SignalLength);
     buildIndxReq->senderRef = reference(); // return to me
     buildIndxReq->parallelism = 10;
     Uint32 indexColumns[3] = {0, 3, 5};
@@ -414,11 +458,11 @@ Trix::execDUMP_STATE_ORD(Signal* signal)
     // index -T -2; index -I -2 -n1000; index -c -p
     // all dump 303 0 0 0 0 0 4 2
     // select_count PNUMINDEX0000
+    std::memmove(signal->theData,
+                 signal->theData + 1,
+                 BuildIndxImplReq::SignalLength * sizeof(signal->theData[0]));
     BuildIndxImplReq * buildIndxReq = (BuildIndxImplReq *)signal->getDataPtrSend();
     
-    MEMCOPY_NO_WORDS(buildIndxReq, 
-		     signal->theData + 1, 
-		     BuildIndxImplReq::SignalLength);
     buildIndxReq->senderRef = reference(); // return to me
     buildIndxReq->parallelism = 10;
     Uint32 indexColumns[3] = {0, 3, 5};
@@ -439,11 +483,11 @@ Trix::execDUMP_STATE_ORD(Signal* signal)
     // index -T -L; index -I -L -n1000; index -c -p
     // all dump 304 0 0 0 0 0 4 2
     // select_count PNUMINDEX0000
+    std::memmove(signal->theData,
+                 signal->theData + 1,
+                 BuildIndxImplReq::SignalLength * sizeof(signal->theData[0]));
     BuildIndxImplReq * buildIndxReq = (BuildIndxImplReq *)signal->getDataPtrSend();
     
-    MEMCOPY_NO_WORDS(buildIndxReq, 
-		     signal->theData + 1, 
-		     BuildIndxImplReq::SignalLength);
     buildIndxReq->senderRef = reference(); // return to me
     buildIndxReq->parallelism = 10;
     Uint32 indexColumns[3] = {0, 3, 5};
@@ -464,11 +508,11 @@ Trix::execDUMP_STATE_ORD(Signal* signal)
     // index -T -2 -L; index -I -2 -L -n1000; index -c -p
     // all dump 305 0 0 0 0 0 4 2
     // select_count PNUMINDEX0000
+    std::memmove(signal->theData,
+                 signal->theData + 1,
+                 BuildIndxImplReq::SignalLength * sizeof(signal->theData[0]));
     BuildIndxImplReq * buildIndxReq = (BuildIndxImplReq *)signal->getDataPtrSend();
     
-    MEMCOPY_NO_WORDS(buildIndxReq, 
-		     signal->theData + 1, 
-		     BuildIndxImplReq::SignalLength);
     buildIndxReq->senderRef = reference(); // return to me
     buildIndxReq->parallelism = 10;
     Uint32 indexColumns[3] = {0, 3, 5};
@@ -533,19 +577,23 @@ void Trix::execDBINFO_SCANREQ(Signal *signal)
         c_theAttrOrderBufferPool.getSize(),
         c_theAttrOrderBufferPool.getEntrySize(),
         c_theAttrOrderBufferPool.getUsedHi(),
-        { 0,0,0,0 }},
+        { 0,0,0,0 },
+        0},
       { "Subscription Record",
         c_theSubscriptionRecPool.getUsed(),
         c_theSubscriptionRecPool.getSize(),
         c_theSubscriptionRecPool.getEntrySize(),
         c_theSubscriptionRecPool.getUsedHi(),
-        { 0,0,0,0 }},
-      { NULL, 0,0,0,0,{0,0,0,0}}
+        { 0,0,0,0 },
+        0},
+      { NULL, 0,0,0,0,{0,0,0,0},0}
     };
 
     const size_t num_config_params =
       sizeof(pools[0].config_params) / sizeof(pools[0].config_params[0]);
+    const Uint32 numPools = NDB_ARRAY_SIZE(pools);
     Uint32 pool = cursor->data[0];
+    ndbrequire(pool < numPools);
     BlockNumber bn = blockToMain(number());
     while(pools[pool].poolname)
     {
@@ -561,6 +609,8 @@ void Trix::execDBINFO_SCANREQ(Signal *signal)
       row.write_uint64(pools[pool].entry_size);
       for (size_t i = 0; i < num_config_params; i++)
         row.write_uint32(pools[pool].config_params[i]);
+      row.write_uint32(GET_RG(pools[pool].record_type));
+      row.write_uint32(GET_TID(pools[pool].record_type));
       ndbinfo_send_row(signal, req, row, rl);
       pool++;
       if (rl.need_break(req))
@@ -594,9 +644,12 @@ void Trix:: execBUILD_INDX_IMPL_REQ(Signal* signal)
   SubscriptionRecord* subRec;
   SectionHandle handle(this, signal);
 
-  if (ERROR_INSERTED_CLEAR(18000))
+  if (ERROR_INSERTED(18000) ||
+      ERROR_INSERTED(18003))
   {
-    sendSignalWithDelay(reference(), GSN_BUILD_INDX_IMPL_REQ, signal, 1000,
+    const Uint32 delay = (ERROR_INSERTED(18003)? 20000 : 1000);
+    CLEAR_ERROR_INSERT_VALUE;
+    sendSignalWithDelay(reference(), GSN_BUILD_INDX_IMPL_REQ, signal, delay,
                         signal->getLength(), &handle);
     DBUG_VOID_RETURN;
   }
@@ -624,7 +677,7 @@ void Trix:: execBUILD_INDX_IMPL_REQ(Signal* signal)
   subRec->indexType = buildIndxReq->indexType;
   subRec->sourceTableId = buildIndxReq->tableId;
   subRec->targetTableId = buildIndxReq->indexId;
-  subRec->parallelism = buildIndxReq->parallelism;
+  subRec->parallelism = c_maxUIBuildBatchSize;
   subRec->expectedConf = 0;
   subRec->subscriptionCreated = false;
   subRec->pendingSubSyncContinueConf = false;
@@ -645,21 +698,21 @@ void Trix:: execBUILD_INDX_IMPL_REQ(Signal* signal)
   if (noOfSections > 0) {
     jam();
     SegmentedSectionPtr ptr;
-    handle.getSection(ptr, BuildIndxImplReq::INDEX_COLUMNS);
+    ndbrequire(handle.getSection(ptr, BuildIndxImplReq::INDEX_COLUMNS));
     append(subRec->attributeOrder, ptr, getSectionSegmentPool());
     subRec->noOfIndexColumns = ptr.sz;
   }
   if (noOfSections > 1) {
     jam();
     SegmentedSectionPtr ptr;
-    handle.getSection(ptr, BuildIndxImplReq::KEY_COLUMNS);
+    ndbrequire(handle.getSection(ptr, BuildIndxImplReq::KEY_COLUMNS));
     append(subRec->attributeOrder, ptr, getSectionSegmentPool());
     subRec->noOfKeyColumns = ptr.sz;
   }
 
 #if 0
   // Debugging
-  printf("Trix:: execBUILD_INDX_IMPL_REQ: Attribute order:\n");
+  g_eventLogger->info("Trix:: execBUILD_INDX_IMPL_REQ: Attribute order:");
   subRec->attributeOrder.print(stdout);
 #endif
 
@@ -670,12 +723,12 @@ void Trix:: execBUILD_INDX_IMPL_REQ(Signal* signal)
 
 void Trix:: execBUILD_INDX_IMPL_CONF(Signal* signal)
 {
-  printf("Trix:: execBUILD_INDX_IMPL_CONF\n");
+  g_eventLogger->info("Trix:: execBUILD_INDX_IMPL_CONF");
 }
 
 void Trix:: execBUILD_INDX_IMPL_REF(Signal* signal)
 {
-  printf("Trix:: execBUILD_INDX_IMPL_REF\n");
+  g_eventLogger->info("Trix:: execBUILD_INDX_IMPL_REF");
 }
 
 void Trix::execUTIL_PREPARE_CONF(Signal* signal)
@@ -687,7 +740,10 @@ void Trix::execUTIL_PREPARE_CONF(Signal* signal)
 
   subRecPtr.i = utilPrepareConf->senderData;
   if ((subRec = c_theSubscriptions.getPtr(subRecPtr.i)) == NULL) {
-    printf("Trix::execUTIL_PREPARE_CONF: Failed to find subscription data %u\n", subRecPtr.i);
+    g_eventLogger->info(
+        "Trix::execUTIL_PREPARE_CONF:"
+        " Failed to find subscription data %u",
+        subRecPtr.i);
     return;
   }
   if (subRec->requestType == STAT_UTIL)
@@ -709,7 +765,10 @@ void Trix::execUTIL_PREPARE_REF(Signal* signal)
 
   subRecPtr.i = utilPrepareRef->senderData;
   if ((subRec = c_theSubscriptions.getPtr(subRecPtr.i)) == NULL) {
-    printf("Trix::execUTIL_PREPARE_REF: Failed to find subscription data %u\n", subRecPtr.i);
+    g_eventLogger->info(
+        "Trix::execUTIL_PREPARE_REF:"
+        " Failed to find subscription data %u",
+        subRecPtr.i);
     return;
   }
   if (subRec->requestType == STAT_UTIL)
@@ -719,6 +778,19 @@ void Trix::execUTIL_PREPARE_REF(Signal* signal)
   }
   subRecPtr.p = subRec;
   subRec->errorCode = (BuildIndxRef::ErrorCode)utilPrepareRef->errorCode;
+  switch (utilPrepareRef->errorCode) {
+  case UtilPrepareRef::PREPARE_SEIZE_ERROR:
+  case UtilPrepareRef::PREPARE_PAGES_SEIZE_ERROR:
+  case UtilPrepareRef::PREPARED_OPERATION_SEIZE_ERROR:
+  case UtilPrepareRef::DICT_TAB_INFO_ERROR:
+    subRec->errorCode = BuildIndxRef::UtilBusy;
+    break;
+  case UtilPrepareRef::MISSING_PROPERTIES_SECTION:
+    subRec->errorCode = BuildIndxRef::BadRequestType;
+    break;
+  default:
+    ndbabort();
+  }
 
   UtilReleaseConf* conf = (UtilReleaseConf*)signal->getDataPtrSend();
   conf->senderData = subRecPtr.i;
@@ -738,7 +810,10 @@ void Trix::execUTIL_EXECUTE_CONF(Signal* signal)
 
   subRecPtr.i = utilExecuteConf->senderData;
   if ((subRec = c_theSubscriptions.getPtr(subRecPtr.i)) == NULL) {
-    printf("rix::execUTIL_EXECUTE_CONF: Failed to find subscription data %u\n", subRecPtr.i);
+    g_eventLogger->info(
+        "rix::execUTIL_EXECUTE_CONF:"
+        " Failed to find subscription data %u",
+        subRecPtr.i);
     return;
   }
   if (subRec->requestType == STAT_UTIL)
@@ -777,7 +852,10 @@ void Trix::execUTIL_EXECUTE_REF(Signal* signal)
 
   subRecPtr.i = utilExecuteRef->senderData;
   if ((subRec = c_theSubscriptions.getPtr(subRecPtr.i)) == NULL) {
-    printf("Trix::execUTIL_EXECUTE_REF: Failed to find subscription data %u\n", subRecPtr.i);
+    g_eventLogger->info(
+        "Trix::execUTIL_EXECUTE_REF:"
+        " Failed to find subscription data %u",
+        subRecPtr.i);
     return;
   }
   if (subRec->requestType == STAT_UTIL)
@@ -822,7 +900,10 @@ void Trix::execSUB_CREATE_CONF(Signal* signal)
 
   subRecPtr.i = subCreateConf->senderData;
   if ((subRec = c_theSubscriptions.getPtr(subRecPtr.i)) == NULL) {
-    printf("Trix::execSUB_CREATE_CONF: Failed to find subscription data %u\n", subRecPtr.i);
+    g_eventLogger->info(
+        "Trix::execSUB_CREATE_CONF:"
+        " Failed to find subscription data %u",
+        subRecPtr.i);
     DBUG_VOID_RETURN;
   }
   subRec->subscriptionCreated = true;
@@ -848,7 +929,10 @@ void Trix::execSUB_CREATE_REF(Signal* signal)
   subRecPtr.i = subCreateRef->senderData;
   if ((subRec = c_theSubscriptions.getPtr(subRecPtr.i)) == NULL)
   {
-    printf("Trix::execSUB_CREATE_REF: Failed to find subscription data %u\n", subRecPtr.i);
+    g_eventLogger->info(
+        "Trix::execSUB_CREATE_REF:"
+        " Failed to find subscription data %u",
+        subRecPtr.i);
     return;
   }
   subRecPtr.p = subRec;
@@ -874,8 +958,10 @@ void Trix::execSUB_SYNC_CONF(Signal* signal)
   
   subRecPtr.i = subSyncConf->senderData;
   if ((subRec = c_theSubscriptions.getPtr(subRecPtr.i)) == NULL) {
-    printf("Trix::execSUB_SYNC_CONF: Failed to find subscription data %u\n",
-	   subRecPtr.i);
+    g_eventLogger->info(
+        "Trix::execSUB_SYNC_CONF:"
+        " Failed to find subscription data %u",
+        subRecPtr.i);
     DBUG_VOID_RETURN;
   }
 
@@ -905,11 +991,15 @@ void Trix::execSUB_SYNC_REF(Signal* signal)
 
   subRecPtr.i = subSyncRef->senderData;
   if ((subRec = c_theSubscriptions.getPtr(subRecPtr.i)) == NULL) {
-    printf("Trix::execSUB_SYNC_REF: Failed to find subscription data %u\n", subRecPtr.i);
+    g_eventLogger->info(
+        "Trix::execSUB_SYNC_REF:"
+        " Failed to find subscription data %u",
+        subRecPtr.i);
     DBUG_VOID_RETURN;
   }
   subRecPtr.p = subRec;
-  buildFailed(signal, subRecPtr, BuildIndxRef::InternalError);
+  buildFailed(signal, subRecPtr,
+              (BuildIndxRef::ErrorCode)subSyncRef->errorCode);
   DBUG_VOID_RETURN;
 }
 
@@ -922,7 +1012,10 @@ void Trix::execSUB_SYNC_CONTINUE_REQ(Signal* signal)
   SubscriptionRecord* subRec;
   subRecPtr.i = subSyncContinueReq->subscriberData;
   if ((subRec = c_theSubscriptions.getPtr(subRecPtr.i)) == NULL) {
-    printf("Trix::execSUB_SYNC_CONTINUE_REQ: Failed to find subscription data %u\n", subRecPtr.i);
+    g_eventLogger->info(
+        "Trix::execSUB_SYNC_CONTINUE_REQ:"
+        " Failed to find subscription data %u",
+        subRecPtr.i);
     return;
   }
   subRecPtr.p = subRec;
@@ -940,7 +1033,10 @@ void Trix::execSUB_TABLE_DATA(Signal* signal)
   SubscriptionRecord* subRec;
   subRecPtr.i = subTableData->senderData;
   if ((subRec = c_theSubscriptions.getPtr(subRecPtr.i)) == NULL) {
-    printf("Trix::execSUB_TABLE_DATA: Failed to find subscription data %u\n", subRecPtr.i);
+    g_eventLogger->info(
+        "Trix::execSUB_TABLE_DATA:"
+        " Failed to find subscription data %u",
+        subRecPtr.i);
     DBUG_VOID_RETURN;
   }
   subRecPtr.p = subRec;
@@ -956,8 +1052,7 @@ void Trix::execSUB_TABLE_DATA(Signal* signal)
     executeBuildFKTransaction(signal, subRecPtr);
     break;
   case STAT_UTIL:
-    ndbrequire(false);
-    break;
+    ndbabort();
   case STAT_CLEAN:
     {
       StatOp& stat = statOpGetPtr(subRecPtr.p->m_statPtrI);
@@ -996,6 +1091,8 @@ void Trix::setupSubscription(Signal* signal, SubscriptionRecPtr subRecPtr)
 		     subRecPtr.i, subCreateReq->subscriptionId,
 		     subCreateReq->subscriptionKey));
 
+  D("SUB_CREATE_REQ tableId: " << subRec->sourceTableId);
+
   sendSignal(SUMA_REF, GSN_SUB_CREATE_REQ, 
 	     signal, SubCreateReq::SignalLength, JBB);
 
@@ -1025,7 +1122,7 @@ void Trix::startTableScan(Signal* signal, SubscriptionRecPtr subRecPtr)
   }
 
   // Merge index and key column segments
-  struct LinearSectionPtr orderPtr[3];
+  LinearSectionPtr orderPtr[3];
   Uint32 noOfSections;
   orderPtr[0].p = attributeList;
   orderPtr[0].sz = cnt;
@@ -1040,6 +1137,7 @@ void Trix::startTableScan(Signal* signal, SubscriptionRecPtr subRecPtr)
   subSyncReq->requestInfo = 0;
   subSyncReq->fragCount = subRec->fragCount;
   subSyncReq->fragId = subRec->fragId;
+  subSyncReq->batchSize = subRec->parallelism;
 
   if (subRec->m_flags & SubscriptionRecord::RF_NO_DISK)
   {
@@ -1062,13 +1160,13 @@ void Trix::startTableScan(Signal* signal, SubscriptionRecPtr subRecPtr)
   {
     jam();
     subSyncReq->requestInfo |= SubSyncReq::LM_Exclusive;
-    subSyncReq->requestInfo |= SubSyncReq::Reorg;
+    subSyncReq->requestInfo |= SubSyncReq::ReorgDelete;
   }
   else if (subRec->requestType == STAT_CLEAN)
   {
     jam();
     StatOp& stat = statOpGetPtr(subRecPtr.p->m_statPtrI);
-    StatOp::Clean clean = stat.m_clean;
+    StatOp::Clean& clean = stat.m_clean;
     orderPtr[1].p = clean.m_bound;
     orderPtr[1].sz = clean.m_boundSize;
     noOfSections = 2;
@@ -1090,6 +1188,10 @@ void Trix::startTableScan(Signal* signal, SubscriptionRecPtr subRecPtr)
   DBUG_PRINT("info",("i: %u subscriptionId: %u, subscriptionKey: %u",
 		     subRecPtr.i, subSyncReq->subscriptionId,
 		     subSyncReq->subscriptionKey));
+
+  D("SUB_SYNC_REQ fragId: " << subRec->fragId <<
+    " fragCount: " << subRec->fragCount <<
+    " requestInfo: " << hex << subSyncReq->requestInfo);
 
   sendSignal(SUMA_REF, GSN_SUB_SYNC_REQ,
 	     signal, SubSyncReq::SignalLength, JBB, orderPtr, noOfSections);
@@ -1121,7 +1223,7 @@ void Trix::prepareInsertTransactions(Signal* signal,
 #if 0
   // Debugging
   SimplePropertiesLinearReader reader(propPage, w.getWordsUsed());
-  printf("Trix::prepareInsertTransactions: Sent SimpleProperties:\n");
+  g_eventLogger->info("Trix::prepareInsertTransactions: Sent SimpleProperties");
   reader.printAll(ndbout);
 #endif
 
@@ -1145,22 +1247,23 @@ void Trix::executeBuildInsertTransaction(Signal* signal,
   utilExecuteReq->senderData = subRecPtr.i;
   utilExecuteReq->prepareId = subRec->prepareId;
 #if 0
-  printf("Header size %u\n", headerPtr.sz);
+  char logbuf[MAX_LOG_MESSAGE_SIZE] = "";
+
   for(int i = 0; i < headerPtr.sz; i++)
-    printf("H'%.8x ", headerBuffer[i]);
-  printf("\n");
-  
-  printf("Data size %u\n", dataPtr.sz);
+    BaseString::snappend(logbuf, sizeof(logbuf), "H'%.8x ", headerBuffer[i]);
+  g_eventLogger->info("Header size %u: %s", headerPtr.sz, logbuf);
+
+  logbuf = "";
   for(int i = 0; i < dataPtr.sz; i++)
-    printf("H'%.8x ", dataBuffer[i]);
-  printf("\n");
+    BaseString::snappend(logbuf, sizeof(logbuf), "H'%.8x ", dataBuffer[i]);
+  g_eventLogger->info("Data size %u: %s", dataPtr.sz, logbuf);
 #endif
   // Save scan result in linear buffers
   SectionHandle handle(this, signal);
   SegmentedSectionPtr headerPtr, dataPtr;
 
-  handle.getSection(headerPtr, 0);
-  handle.getSection(dataPtr, 1);
+  ndbrequire(handle.getSection(headerPtr, 0));
+  ndbrequire(handle.getSection(dataPtr, 1));
 
   Uint32* headerBuffer = signal->theData + 25;
   Uint32* dataBuffer = headerBuffer + headerPtr.sz;
@@ -1227,15 +1330,16 @@ void Trix::executeReorgTransaction(Signal* signal,
   utilExecuteReq->senderData = subRecPtr.i;
   utilExecuteReq->prepareId = subRec->prepareId;
 #if 0
-  printf("Header size %u\n", headerPtr.sz);
-  for(int i = 0; i < headerPtr.sz; i++)
-    printf("H'%.8x ", headerBuffer[i]);
-  printf("\n");
+  char logbuf[MAX_LOG_MESSAGE_SIZE] = "";
 
-  printf("Data size %u\n", dataPtr.sz);
+  for(int i = 0; i < headerPtr.sz; i++)
+    BaseString::snappend(logbuf, sizeof(logbuf), "H'%.8x ", headerBuffer[i]);
+  g_eventLogger->info("Header size %u: %s", headerPtr.sz, logbuf);
+
+  logbuf = "";
   for(int i = 0; i < dataPtr.sz; i++)
-    printf("H'%.8x ", dataBuffer[i]);
-  printf("\n");
+    BaseString::snappend(logbuf, sizeof(logbuf), "H'%.8x ", dataBuffer[i]);
+  g_eventLogger->info("Data size %u: %s", dataPtr.sz, logbuf);
 #endif
   // Increase expected CONF count
   subRec->expectedConf++;
@@ -1331,7 +1435,7 @@ void
 Trix::execSUB_REMOVE_REF(Signal* signal){
   jamEntry();
   //@todo
-  ndbrequire(false);
+  ndbabort();
 }
 
 void
@@ -1365,7 +1469,7 @@ Trix::execSUB_REMOVE_CONF(Signal* signal){
 void
 Trix::execUTIL_RELEASE_REF(Signal* signal){
   jamEntry();
-  ndbrequire(false);
+  ndbabort();
 }
 
 void
@@ -1549,7 +1653,7 @@ Trix::execCOPY_DATA_IMPL_REQ(Signal* signal)
   subRec->indexType = RNIL;
   subRec->sourceTableId = req->srcTableId;
   subRec->targetTableId = req->dstTableId;
-  subRec->parallelism = 16;
+  subRec->parallelism = c_maxReorgBuildBatchSize;
   subRec->expectedConf = 0;
   subRec->subscriptionCreated = false;
   subRec->pendingSubSyncContinueConf = false;
@@ -1569,7 +1673,7 @@ Trix::execCOPY_DATA_IMPL_REQ(Signal* signal)
     break;
   default:
     jamLine(req->requestType);
-    ndbrequire(false);
+    ndbabort();
   }
 
   if (req->requestInfo & CopyDataReq::TupOrder)
@@ -1583,7 +1687,7 @@ Trix::execCOPY_DATA_IMPL_REQ(Signal* signal)
   if (noOfSections > 0) {
     jam();
     SegmentedSectionPtr ptr;
-    handle.getSection(ptr, 0);
+    ndbrequire(handle.getSection(ptr, 0));
     append(subRec->attributeOrder, ptr, getSectionSegmentPool());
     subRec->noOfIndexColumns = ptr.sz;
   }
@@ -1591,10 +1695,16 @@ Trix::execCOPY_DATA_IMPL_REQ(Signal* signal)
   if (noOfSections > 1) {
     jam();
     SegmentedSectionPtr ptr;
-    handle.getSection(ptr, 1);
+    ndbrequire(handle.getSection(ptr, 1));
     append(subRec->attributeOrder, ptr, getSectionSegmentPool());
     subRec->noOfKeyColumns = ptr.sz;
   }
+
+  D("COPY_DATA_IMPL_REQ srctableId: " << subRec->sourceTableId <<
+    " targetTableId: " << subRec->targetTableId <<
+    " fragCount: " << subRec->fragCount <<
+    " requestType: " << subRec->requestType <<
+    " flags: " << hex << subRec->m_flags);
 
   releaseSections(handle);
   {
@@ -1618,7 +1728,10 @@ Trix::execCOPY_DATA_IMPL_REQ(Signal* signal)
     {
       w.add(UtilPrepareReq::OperationType, UtilPrepareReq::Delete);
     }
-    w.add(UtilPrepareReq::ScanTakeOverInd, 1);
+    if (!(req->requestInfo & CopyDataReq::NoScanTakeOver))
+    {
+      w.add(UtilPrepareReq::ScanTakeOverInd, 1);
+    }
     w.add(UtilPrepareReq::ReorgInd, 1);
     w.add(UtilPrepareReq::TableId, subRec->targetTableId);
 
@@ -1678,7 +1791,7 @@ Trix::execBUILD_FK_IMPL_REQ(Signal* signal)
   subRec->indexType = RNIL;
   subRec->sourceTableId = req->childTableId;
   subRec->targetTableId = req->parentTableId;
-  subRec->parallelism = 16;
+  subRec->parallelism = c_maxFKBuildBatchSize;
   subRec->expectedConf = 0;
   subRec->subscriptionCreated = false;
   subRec->pendingSubSyncContinueConf = false;
@@ -1699,7 +1812,7 @@ Trix::execBUILD_FK_IMPL_REQ(Signal* signal)
   // Get parent columns...
   {
     SegmentedSectionPtr ptr;
-    handle.getSection(ptr, 0);
+    ndbrequire(handle.getSection(ptr, 0));
     append(subRec->attributeOrder, ptr, getSectionSegmentPool());
     subRec->noOfKeyColumns = ptr.sz;
   }
@@ -1707,7 +1820,7 @@ Trix::execBUILD_FK_IMPL_REQ(Signal* signal)
   {
     // Get child columns...
     SegmentedSectionPtr ptr;
-    handle.getSection(ptr, 1);
+    ndbrequire(handle.getSection(ptr, 1));
     append(subRec->attributeOrder, ptr, getSectionSegmentPool());
     subRec->noOfIndexColumns = ptr.sz;
   }
@@ -1767,8 +1880,8 @@ Trix::executeBuildFKTransaction(Signal* signal,
   SectionHandle handle(this, signal);
   SegmentedSectionPtr headerPtr, dataPtr;
 
-  handle.getSection(headerPtr, 0);
-  handle.getSection(dataPtr, 1);
+  ndbrequire(handle.getSection(headerPtr, 0));
+  ndbrequire(handle.getSection(dataPtr, 1));
 
   Uint32* headerBuffer = signal->theData + 25;
   Uint32* dataBuffer = headerBuffer + headerPtr.sz;
@@ -1914,8 +2027,7 @@ Trix::execINDEX_STAT_IMPL_REQ(Signal* signal)
     stat.m_requestName = "drop head";
     break;
   default:
-    ndbrequire(false);
-    break;
+    ndbabort();
   }
 
   SubscriptionRecord* subRec = c_theSubscriptions.getPtr(stat.m_subRecPtrI);
@@ -2024,15 +2136,21 @@ Trix::statMetaGetHeadCB(Signal* signal, Uint32 statPtrI, Uint32 ret)
 {
   StatOp& stat = statOpGetPtr(statPtrI);
   D("statMetaGetHeadCB" << V(stat) << V(ret));
-  StatOp::Meta& meta = stat.m_meta;
   if (ret != 0)
   {
     jam();
-    Uint32 supress[] = { GetTabInfoRef::TableNotDefined, 0 };
-    statOpError(signal, stat, ret, __LINE__, supress);
+    Uint32 errorCode = ret;
+    if (errorCode == GetTabInfoRef::TableNotDefined)
+    {
+      // Map the generic TableNotDefined error to the more specific "Index stats
+      // system tables do not exist" error
+      errorCode = 4714;
+    }
+    const Uint32 suppress[] = { 4714, 0 };
+    statOpError(signal, stat, errorCode, __LINE__, suppress);
     return;
   }
-  g_statMetaHead.tableId = meta.m_conf.tableId;
+  g_statMetaHead.tableId = stat.m_meta.m_conf.tableId;
   statMetaGetSample(signal, stat);
 }
 
@@ -2341,8 +2459,7 @@ Trix::statUtilPrepareRef(Signal* signal, Uint32 statPtrI)
     break;
   case UtilPrepareRef::MISSING_PROPERTIES_SECTION:
   default:
-    ndbrequire(false);
-    break;
+    ndbabort();
   }
   statOpError(signal, stat, errorCode, __LINE__);
 }
@@ -2380,12 +2497,12 @@ Trix::statUtilExecuteConf(Signal* signal, Uint32 statPtrI)
     attr.m_dataSize = 0;
     {
       SegmentedSectionPtr ssPtr;
-      handle.getSection(ssPtr, 0);
+      ndbrequire(handle.getSection(ssPtr, 0));
       ::copy(rattr, ssPtr);
     }
     {
       SegmentedSectionPtr ssPtr;
-      handle.getSection(ssPtr, 1);
+      ndbrequire(handle.getSection(ssPtr, 1));
       ::copy(rdata, ssPtr);
     }
     releaseSections(handle);
@@ -2430,8 +2547,7 @@ Trix::statUtilExecuteRef(Signal* signal, Uint32 statPtrI)
     errorCode = IndexStatRef::BusyUtilExecute;
     break;
   default:
-    ndbrequire(false);
-    break;
+    ndbabort();
   }
 
   if (errorCode != 0)
@@ -2476,8 +2592,10 @@ Trix::statReadHeadDone(Signal* signal, StatOp& stat)
   switch (stat.m_requestType) {
   case IndexStatReq::RT_CLEAN_NEW:
     jam();
+    [[fallthrough]];
   case IndexStatReq::RT_CLEAN_OLD:
     jam();
+    [[fallthrough]];
   case IndexStatReq::RT_CLEAN_ALL:
     jam();
     statCleanBegin(signal, stat);
@@ -2494,8 +2612,7 @@ Trix::statReadHeadDone(Signal* signal, StatOp& stat)
     break;
 
   default:
-    ndbrequire(false);
-    break;
+    ndbabort();
   }
 }
 
@@ -2510,8 +2627,7 @@ Trix::statInsertHeadDone(Signal* signal, StatOp& stat)
     statScanEnd(signal, stat);
     break;
   default:
-    ndbrequire(false);
-    break;
+    ndbabort();
   }
 }
 
@@ -2526,8 +2642,7 @@ Trix::statUpdateHeadDone(Signal* signal, StatOp& stat)
     statScanEnd(signal, stat);
     break;
   default:
-    ndbrequire(false);
-    break;
+    ndbabort();
   }
 }
 
@@ -2542,8 +2657,7 @@ Trix::statDeleteHeadDone(Signal* signal, StatOp& stat)
     statDropEnd(signal, stat);
     break;
   default:
-    ndbrequire(false);
-    break;
+    ndbabort();
   }
 }
 
@@ -2615,7 +2729,7 @@ Trix::statCleanPrepare(Signal* signal, StatOp& stat)
   subRec->targetTableId = RNIL;
   subRec->noOfIndexColumns = ao_size;
   subRec->noOfKeyColumns = 0;
-  subRec->parallelism = 16;
+  subRec->parallelism = 16;  // remains hardcoded for now
   subRec->fragCount = 0;
   subRec->fragId = ZNIL;
   subRec->syncPtr = RNIL;
@@ -2637,30 +2751,31 @@ Trix::statCleanPrepare(Signal* signal, StatOp& stat)
   clean.m_bound[3] = TuxBoundInfo::BoundEQ;
   clean.m_bound[4] = AttributeHeader(1, 4).m_value;
   clean.m_bound[5] = data.m_indexVersion;
+  Uint32 boundCount;
   switch (stat.m_requestType) {
   case IndexStatReq::RT_CLEAN_NEW:
     D("statCleanPrepare delete sample versions > " << data.m_sampleVersion);
     clean.m_bound[6] = TuxBoundInfo::BoundLT;
     clean.m_bound[7] = AttributeHeader(2, 4).m_value;
     clean.m_bound[8] = data.m_sampleVersion;
-    clean.m_boundCount = 3;
+    boundCount = 3;
     break;
   case IndexStatReq::RT_CLEAN_OLD:
     D("statCleanPrepare delete sample versions < " << data.m_sampleVersion);
     clean.m_bound[6] = TuxBoundInfo::BoundGT;
     clean.m_bound[7] = AttributeHeader(2, 4).m_value;
     clean.m_bound[8] = data.m_sampleVersion;
-    clean.m_boundCount = 3;
+    boundCount = 3;
     break;
   case IndexStatReq::RT_CLEAN_ALL:
     D("statCleanPrepare delete all sample versions");
-    clean.m_boundCount = 2;
+    boundCount = 2;
     break;
   default:
-    ndbrequire(false);
-    break;
+    boundCount = 0; /* Silence compiler warning */
+    ndbabort();
   }
-  clean.m_boundSize = 3 * clean.m_boundCount;
+  clean.m_boundSize = 3 * boundCount;
 
   // TRIX traps the CONF
   send.m_sysTable = &g_statMetaSample;
@@ -2685,7 +2800,7 @@ Trix::statCleanExecute(Signal* signal, StatOp& stat)
   // ATTR_INFO
   AttributeHeader ah[4];
   SegmentedSectionPtr ptr0;
-  handle.getSection(ptr0, SubTableData::ATTR_INFO);
+  ndbrequire(handle.getSection(ptr0, SubTableData::ATTR_INFO));
   ndbrequire(ptr0.sz == 4);
   ::copy((Uint32*)ah, ptr0);
   ndbrequire(ah[0].getAttributeId() == 0 && ah[0].getDataSize() == 1);
@@ -2696,10 +2811,11 @@ Trix::statCleanExecute(Signal* signal, StatOp& stat)
   ndbrequire(ah[3].getAttributeId() == 3 && kz != 0);
 
   // AFTER_VALUES
-  const Uint32 avmax = 3 + MAX_INDEX_STAT_KEY_SIZE;
+  // avmax = other pk attributes + length + max index stat key size
+  const Uint32 avmax = 3 + 1 + MAX_INDEX_STAT_KEY_SIZE;
   Uint32 av[avmax];
   SegmentedSectionPtr ptr1;
-  handle.getSection(ptr1, SubTableData::AFTER_VALUES);
+  ndbrequire(handle.getSection(ptr1, SubTableData::AFTER_VALUES));
   ndbrequire(ptr1.sz <= avmax);
   ::copy(av, ptr1);
   ndbrequire(data.m_indexId == av[0]);
@@ -2822,7 +2938,7 @@ Trix::statScanPrepare(Signal* signal, StatOp& stat)
   subRec->targetTableId = RNIL;
   subRec->noOfIndexColumns = ao_size;
   subRec->noOfKeyColumns = 0;
-  subRec->parallelism = 16;
+  subRec->parallelism = 16;   // remains hardcoded for now
   subRec->fragCount = 0; // XXX Suma currently checks all frags
   subRec->fragId = req->fragId;
   subRec->syncPtr = RNIL;
@@ -2860,7 +2976,7 @@ Trix::statScanExecute(Signal* signal, StatOp& stat)
   // ATTR_INFO
   AttributeHeader ah[2];
   SegmentedSectionPtr ptr0;
-  handle.getSection(ptr0, SubTableData::ATTR_INFO);
+  ndbrequire(handle.getSection(ptr0, SubTableData::ATTR_INFO));
   ndbrequire(ptr0.sz == 2);
   ::copy((Uint32*)ah, ptr0);
   ndbrequire(ah[0].getAttributeId() == AttributeHeader::INDEX_STAT_KEY);
@@ -2871,10 +2987,11 @@ Trix::statScanExecute(Signal* signal, StatOp& stat)
   ndbrequire(kz != 0 && vz != 0);
 
   // AFTER_VALUES
-  const Uint32 avmax = MAX_INDEX_STAT_KEY_SIZE + MAX_INDEX_STAT_VALUE_SIZE;
+  // avmax = length + max key size + length + max value size
+  const Uint32 avmax = 2 + MAX_INDEX_STAT_KEY_SIZE + MAX_INDEX_STAT_VALUE_SIZE;
   Uint32 av[avmax];
   SegmentedSectionPtr ptr1;
-  handle.getSection(ptr1, SubTableData::AFTER_VALUES);
+  ndbrequire(handle.getSection(ptr1, SubTableData::AFTER_VALUES));
   ndbrequire(ptr1.sz <= avmax);
   ::copy(av, ptr1);
   data.m_statKey = &av[0];
@@ -2962,9 +3079,10 @@ Trix::statScanEnd(Signal* signal, StatOp& stat)
    * we prefer DbtuxProxy to avoid introducing MT-LQH into TRIX.
    */
 
-#if trix_index_stat_rep_to_tux_instance
+#ifdef trix_index_stat_rep_to_tux_instance
   Uint32 instanceKey = getInstanceKey(req->indexId, req->fragId);
-  BlockReference tuxRef = numberToRef(DBTUX, instanceKey, getOwnNodeId());
+  Uint32 instanceNo = getInstanceFromKey(instanceKey);
+  BlockReference tuxRef = numberToRef(DBTUX, instanceNo, getOwnNodeId());
 #else
   BlockReference tuxRef = DBTUX_REF;
 #endif
@@ -3049,8 +3167,7 @@ Trix::statSendPrepare(Signal* signal, StatOp& stat)
         w.add(UtilPrepareReq::AttributeId, i);
       break;
     default:
-      ndbrequire(false);
-      break;
+      ndbabort();
     }
   }
 
@@ -3100,8 +3217,7 @@ Trix::statSendExecute(Signal* signal, StatOp& stat)
         statDataOut(stat, i);
       break;
     default:
-      ndbrequire(false);
-      break;
+      ndbabort();
     }
   }
 
@@ -3181,8 +3297,7 @@ Trix::statDataPtr(StatOp& stat, Uint32 i, Uint32*& dptr, Uint32& bytes)
       bytes = 4;
       break;
     default:
-      ndbrequire(false);
-      break;
+      ndbabort();
     }
     return;
   }
@@ -3219,13 +3334,12 @@ Trix::statDataPtr(StatOp& stat, Uint32 i, Uint32*& dptr, Uint32& bytes)
       }
       break;
     default:
-      ndbrequire(false);
-      break;
+      ndbabort();
     }
     return;
   }
 
-  ndbrequire(false);
+  ndbabort();
 }
 
 void
@@ -3430,5 +3544,3 @@ operator<<(NdbOut& out, const Trix::StatOp& stat)
 
 
 BLOCK_FUNCTIONS(Trix)
-
-template void append(DataBuffer<15>&,SegmentedSectionPtr,SectionSegmentPool&);

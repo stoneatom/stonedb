@@ -1,4 +1,4 @@
-# Copyright (c) 2006, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2006, 2022, Oracle and/or its affiliates.
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -18,120 +18,277 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
-INCLUDE_DIRECTORIES(
-  ${CMAKE_SOURCE_DIR}/client
-  ${CMAKE_SOURCE_DIR}/include
-  ${CMAKE_SOURCE_DIR}/mysys_ssl
-  ${SSL_INCLUDE_DIRS}
-  ${CMAKE_SOURCE_DIR}/libmysql
-  ${CMAKE_SOURCE_DIR}/libbinlogevents/include
-  ${CMAKE_SOURCE_DIR}/regex
-  ${CMAKE_SOURCE_DIR}/strings
-  ${EDITLINE_INCLUDE_DIR}
-  ${CMAKE_CURRENT_BINARY_DIR}
-)
+ADD_WSHADOW_WARNING()
 
-INCLUDE(${MYSQL_CMAKE_SCRIPT_DIR}/compile_flags.cmake)
+# We are not interesting in profiling clients.
+DISABLE_MISSING_PROFILE_WARNING()
 
 ## Subdirectory with common client code.
 ADD_SUBDIRECTORY(base)
 ## Subdirectory for mysqlpump code.
 ADD_SUBDIRECTORY(dump)
+## Subdirectory for mysql_migrate_keyring code.
+ADD_SUBDIRECTORY(migrate_keyring)
 
-INCLUDE(${MYSQL_CMAKE_SCRIPT_DIR}/compile_flags.cmake)
+INCLUDE_DIRECTORIES(
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
 
-ADD_DEFINITIONS(${SSL_DEFINES})
-MYSQL_ADD_EXECUTABLE(mysql completion_hash.cc mysql.cc readline.cc ../sql-common/sql_string.cc)
-TARGET_LINK_LIBRARIES(mysql mysqlclient)
-IF(UNIX)
-  TARGET_LINK_LIBRARIES(mysql ${EDITLINE_LIBRARY})
-ENDIF(UNIX)
+MYSQL_ADD_EXECUTABLE(mysql
+  ${CMAKE_SOURCE_DIR}/sql-common/net_ns.cc
+  completion_hash.cc
+  mysql.cc
+  pattern_matcher.cc
+  readline.cc
+  client_query_attributes.cc
+  multi_factor_passwordopt-vars.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/common/user_registration.cc
+  LINK_LIBRARIES mysqlclient client_base ${EDITLINE_LIBRARY}
+  )
 
 IF(NOT WITHOUT_SERVER)
   MYSQL_ADD_EXECUTABLE(mysql_upgrade
     upgrade/program.cc
-  )
-ADD_COMPILE_FLAGS(
-  upgrade/program.cc COMPILE_FLAGS -I${BOOST_PATCHES_DIR} -I${BOOST_INCLUDE_DIR}
-)
-TARGET_LINK_LIBRARIES(mysql_upgrade mysqlclient client_base mysqlcheck_core)
-ADD_DEPENDENCIES(mysql_upgrade GenFixPrivs GenSysSchema)
-ENDIF()
-
-MYSQL_ADD_EXECUTABLE(mysqltest mysqltest.cc COMPONENT Test)
-SET_SOURCE_FILES_PROPERTIES(mysqltest.cc PROPERTIES COMPILE_FLAGS "-DTHREADS")
-TARGET_LINK_LIBRARIES(mysqltest mysqlclient regex)
-ADD_DEPENDENCIES(mysqltest GenError)
-
-ADD_CONVENIENCE_LIBRARY(mysqlcheck_core check/mysqlcheck_core.cc)
-TARGET_LINK_LIBRARIES(mysqlcheck_core mysqlclient)
-
-MYSQL_ADD_EXECUTABLE(mysqlcheck check/mysqlcheck.cc)
-TARGET_LINK_LIBRARIES(mysqlcheck mysqlcheck_core)
-
-MYSQL_ADD_EXECUTABLE(mysqldump mysqldump.c ../sql-common/my_user.c)
-TARGET_LINK_LIBRARIES(mysqldump mysqlclient)
-
-MYSQL_ADD_EXECUTABLE(mysqlimport mysqlimport.c)
-SET_SOURCE_FILES_PROPERTIES(mysqlimport.c PROPERTIES COMPILE_FLAGS "-DTHREADS")
-TARGET_LINK_LIBRARIES(mysqlimport mysqlclient)
-
-MYSQL_ADD_EXECUTABLE(mysqlshow mysqlshow.c)
-TARGET_LINK_LIBRARIES(mysqlshow mysqlclient)
-
-MYSQL_ADD_EXECUTABLE(mysql_plugin mysql_plugin.c)
-TARGET_LINK_LIBRARIES(mysql_plugin mysqlclient)
-
-MYSQL_ADD_EXECUTABLE(mysqlbinlog mysqlbinlog.cc)
-ADD_COMPILE_FLAGS(
-  mysqlbinlog.cc
-  COMPILE_FLAGS "-I${CMAKE_SOURCE_DIR}/sql" "-DHAVE_REPLICATION" "-DDISABLE_PSI_MUTEX"
-)
-TARGET_LINK_LIBRARIES(mysqlbinlog mysqlclient binlogevents_static)
-
-MYSQL_ADD_EXECUTABLE(mysqladmin mysqladmin.cc)
-TARGET_LINK_LIBRARIES(mysqladmin mysqlclient)
-
-MYSQL_ADD_EXECUTABLE(mysqlslap mysqlslap.cc)
-SET_SOURCE_FILES_PROPERTIES(mysqlslap.cc PROPERTIES COMPILE_FLAGS "-DTHREADS")
-TARGET_LINK_LIBRARIES(mysqlslap mysqlclient)
-
-MYSQL_ADD_EXECUTABLE(mysql_config_editor mysql_config_editor.cc)
-TARGET_LINK_LIBRARIES(mysql_config_editor ${FORCE_SSL_SOLARIS} mysqlclient)
-
-MYSQL_ADD_EXECUTABLE(mysql_secure_installation mysql_secure_installation.cc)
-TARGET_LINK_LIBRARIES(mysql_secure_installation mysqlclient)
-
-IF(UNIX AND NOT WITHOUT_SERVER)
-  MYSQL_ADD_EXECUTABLE(mysql_install_db
-    mysql_install_db.cc auth_utils.cc path.cc logger.cc)
-  TARGET_LINK_LIBRARIES(mysql_install_db ${FORCE_SSL_SOLARIS} mysqlclient)
-  ADD_COMPILE_FLAGS(
-    auth_utils.cc mysql_install_db.cc
-    COMPILE_FLAGS "-I${CMAKE_SOURCE_DIR}/sql/auth"
+    LINK_LIBRARIES mysqlclient client_base
     )
-  ADD_DEPENDENCIES(mysql_install_db GenBootstrapPriv GenSysSchema)
 ENDIF()
 
-MYSQL_ADD_EXECUTABLE(mysql_ssl_rsa_setup mysql_ssl_rsa_setup.cc path.cc logger.cc)
-TARGET_LINK_LIBRARIES(mysql_ssl_rsa_setup mysys mysys_ssl)
-SET_TARGET_PROPERTIES(mysql_ssl_rsa_setup PROPERTIES LINKER_LANGUAGE CXX)
+MYSQL_ADD_EXECUTABLE(mysqltest
+  mysqltest.cc
+  mysqltest/error_names.cc
+  mysqltest/expected_errors.cc
+  mysqltest/expected_warnings.cc
+  mysqltest/logfile.cc
+  mysqltest/regular_expressions.cc
+  mysqltest/secondary_engine.cc
+  mysqltest/utils.cc
+  client_query_attributes.cc
+
+  COMPONENT Test
+  DEPENDENCIES GenError GenClientError
+  ENABLE_EXPORTS
+  LINK_LIBRARIES mysqlclient
+  )
+MYSQL_ADD_EXECUTABLE(mysqlcheck
+  check/mysqlcheck.cc
+  check/mysqlcheck_core.cc
+  multi_factor_passwordopt-vars.cc
+  LINK_LIBRARIES mysqlclient
+  )
+MYSQL_ADD_EXECUTABLE(mysqldump
+  mysqldump.cc
+  multi_factor_passwordopt-vars.cc
+  LINK_LIBRARIES mysqlclient
+  )
+MYSQL_ADD_EXECUTABLE(mysqlimport
+  mysqlimport.cc
+  multi_factor_passwordopt-vars.cc
+  LINK_LIBRARIES mysqlclient
+  )
+MYSQL_ADD_EXECUTABLE(mysqlshow
+  mysqlshow.cc
+  multi_factor_passwordopt-vars.cc
+  LINK_LIBRARIES mysqlclient
+  )
+
+OPTION(WITH_JSON_BINLOG_LIBRARY
+  "Build and install standalone json_binlog library" OFF)
+
+IF(WITH_JSON_BINLOG_LIBRARY)
+  UNSET(INSTALL_JSON_BINLOG_LIBRARY)
+  INSTALL(FILES
+    ../sql-common/json_binary.h
+    ../sql-common/json_error_handler.h
+    DESTINATION ${INSTALL_INCLUDEDIR}/sql-common
+    COMPONENT Development
+    )
+ELSE()
+  SET(INSTALL_JSON_BINLOG_LIBRARY SKIP_INSTALL)
+ENDIF()
+
+# Set library version to match server version.
+IF(WIN32)
+  # Windows wants only major.minor, but our MINOR_VERSION is zero anyways:
+  SET(json_binlog_VERSION "${MAJOR_VERSION}.${PATCH_VERSION}")
+ELSE()
+  SET(json_binlog_VERSION "${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}")
+ENDIF()
+
+# This is a standalone library to de-serialize json data.
+# The public interface is in ../sql/json_binary.h which provides functions
+# for parsing binary data, and converting it to Value objects.
+# There are also utility functions to convert Value objects to JSON strings.
+# We add enough source files to make it a complete standalone library,
+# which can be tested by our ordinary mtr tests for the 'mysqlbinlog' client.
+# Some detailed interface tests are found as unit tests.
+#
+# Always build it, but do not *use* it for mysqlbinlog unless
+# WITH_JSON_BINLOG_LIBRARY=ON
+ADD_SHARED_LIBRARY(json_binlog
+  ${CMAKE_SOURCE_DIR}/sql-common/json_binary.cc
+  ${CMAKE_SOURCE_DIR}/sql-common/json_dom.cc
+  ${CMAKE_SOURCE_DIR}/sql-common/json_path.cc
+  ${CMAKE_SOURCE_DIR}/sql-common/json_syntax_check.cc
+  ${CMAKE_SOURCE_DIR}/sql-common/sql_string.cc
+
+  COMPILE_DEFINITIONS DISABLE_PSI_MUTEX EXPORT_JSON_FUNCTIONS
+  DEPENDENCIES GenError
+  ${INSTALL_JSON_BINLOG_LIBRARY}
+  LINK_LIBRARIES mysys
+  LINUX_VERSION_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/json_binlog.ver"
+  VERSION "${json_binlog_VERSION}"
+  NO_UNDEFINED
+  )
+
+ADD_CONVENIENCE_LIBRARY(json_client_library
+  ${CMAKE_SOURCE_DIR}/sql-common/json_binary.cc
+  ${CMAKE_SOURCE_DIR}/sql-common/json_dom.cc
+  ${CMAKE_SOURCE_DIR}/sql-common/json_path.cc
+  ${CMAKE_SOURCE_DIR}/sql-common/json_syntax_check.cc
+  ${CMAKE_SOURCE_DIR}/sql-common/sql_string.cc
+
+  COMPILE_DEFINITIONS DISABLE_PSI_MUTEX
+  DEPENDENCIES GenError
+  )
+
+SET(JSON_BINLOG_LIBS_TO_MERGE
+  json_client_library
+  mysys
+  mytime
+  strings
+  )
+
+MERGE_CONVENIENCE_LIBRARIES(json_binlog_static
+  ${JSON_BINLOG_LIBS_TO_MERGE}
+  COMPONENT Development
+  ${INSTALL_JSON_BINLOG_LIBRARY}
+  )
+
+# This is a test executable which verifies that Json_wrapper::seek,
+# Json_dom::seek and Json_dom::parse functions are visible and can be called.
+MYSQL_ADD_EXECUTABLE(json_client_library_main
+  json_client_library_main.cc
+  INCLUDE_DIRECTORIES ../sql
+  LINK_LIBRARIES json_client_library  strings
+  SKIP_INSTALL
+  )
+
+# A test executable which does nothing, except verify that symbols are visible.
+# To test standalone build:
+#   cmake -DINSTALL_MYSQLTESTDIR=0
+#   make install DESTDIR=/tmp/foo
+#   g++ -I/tmp/foo/usr/local/mysql/include json_binlog_main.cc
+#       -L/tmp/foo/usr/local/mysql/lib -Wl,-R,/tmp/foo/usr/local/mysql/lib
+#       -ljson_binlog
+MYSQL_ADD_EXECUTABLE(json_binlog_main
+  json_binlog_main.cc
+  INCLUDE_DIRECTORIES ../sql ../sql-common
+  LINK_LIBRARIES json_binlog
+  SKIP_INSTALL
+  )
+
+# Same test executable, linked statically.
+# To test standalone build:
+#   g++ -I/tmp/foo/usr/local/mysql/include json_binlog_main.cc
+#       -L/tmp/foo/usr/local/mysql/lib
+#       -ljson_binlog_static -lpthread
+MYSQL_ADD_EXECUTABLE(json_binlog_main_static
+  json_binlog_main.cc
+  INCLUDE_DIRECTORIES ../sql ../sql-common
+  LINK_LIBRARIES json_binlog_static
+  SKIP_INSTALL
+  )
+
+MY_CHECK_CXX_COMPILER_WARNING("-Wunused-but-set-variable" HAS_WARN_FLAG)
+IF(HAS_WARN_FLAG)
+  TARGET_COMPILE_OPTIONS(json_binlog_main PRIVATE "${HAS_WARN_FLAG}")
+  TARGET_COMPILE_OPTIONS(json_binlog_main_static PRIVATE "${HAS_WARN_FLAG}")
+ENDIF()
+MY_CHECK_CXX_COMPILER_WARNING("-Wunused-variable" HAS_WARN_FLAG)
+IF(HAS_WARN_FLAG)
+  TARGET_COMPILE_OPTIONS(json_binlog_main PRIVATE "${HAS_WARN_FLAG}")
+  TARGET_COMPILE_OPTIONS(json_binlog_main_static PRIVATE "${HAS_WARN_FLAG}")
+ENDIF()
+
+SET(MYSQLBINLOG_SOURCES
+  mysqlbinlog.cc
+  ${CMAKE_SOURCE_DIR}/sql/log_event.cc
+  ${CMAKE_SOURCE_DIR}/sql/rpl_utility.cc
+  ${CMAKE_SOURCE_DIR}/sql/rpl_gtid_sid_map.cc
+  ${CMAKE_SOURCE_DIR}/sql/rpl_gtid_misc.cc
+  ${CMAKE_SOURCE_DIR}/sql/rpl_gtid_set.cc
+  ${CMAKE_SOURCE_DIR}/sql/rpl_gtid_specification.cc
+  ${CMAKE_SOURCE_DIR}/sql/rpl_tblmap.cc
+  ${CMAKE_SOURCE_DIR}/sql/basic_istream.cc
+  ${CMAKE_SOURCE_DIR}/sql/binlog_istream.cc
+  ${CMAKE_SOURCE_DIR}/sql/binlog_reader.cc
+  ${CMAKE_SOURCE_DIR}/sql/stream_cipher.cc
+  ${CMAKE_SOURCE_DIR}/sql/rpl_log_encryption.cc
+  ${CMAKE_SOURCE_DIR}/libbinlogevents/src/trx_boundary_parser.cpp
+  )
+
+SET(MYSQLBINLOG_LIBRARIES
+  binlogevents_static
+  client_base
+  mysqlclient
+  )
+
+IF(WITH_JSON_BINLOG_LIBRARY)
+  LIST(APPEND MYSQLBINLOG_LIBRARIES json_binlog)
+ELSE()
+  LIST(APPEND MYSQLBINLOG_LIBRARIES json_binlog_static)
+ENDIF()
+
+MYSQL_ADD_EXECUTABLE(mysqlbinlog
+  ${MYSQLBINLOG_SOURCES}
+  DEPENDENCIES GenError
+  LINK_LIBRARIES ${MYSQLBINLOG_LIBRARIES}
+  )
+
+IF(WITH_JSON_BINLOG_LIBRARY)
+  IF(APPLE)
+    ADD_CUSTOM_COMMAND(TARGET mysqlbinlog POST_BUILD
+      COMMAND install_name_tool -change
+      "@rpath/$<TARGET_FILE_NAME:json_binlog>"
+      "@loader_path/../lib/$<TARGET_FILE_NAME:json_binlog>"
+      "$<TARGET_FILE:mysqlbinlog>"
+      )
+  ELSEIF(UNIX)
+    ADD_INSTALL_RPATH(mysqlbinlog "\$ORIGIN/../${INSTALL_LIBDIR}")
+  ENDIF()
+ENDIF()
+
+TARGET_COMPILE_DEFINITIONS(mysqlbinlog PRIVATE DISABLE_PSI_MUTEX)
+TARGET_INCLUDE_DIRECTORIES(mysqlbinlog PRIVATE ${CMAKE_SOURCE_DIR}/sql)
+
+MYSQL_ADD_EXECUTABLE(mysqladmin
+  mysqladmin.cc
+  multi_factor_passwordopt-vars.cc
+  LINK_LIBRARIES mysqlclient
+  )
+MYSQL_ADD_EXECUTABLE(mysqlslap
+  mysqlslap.cc
+  multi_factor_passwordopt-vars.cc
+  LINK_LIBRARIES mysqlclient
+  )
+MYSQL_ADD_EXECUTABLE(mysql_config_editor
+  mysql_config_editor.cc
+  LINK_LIBRARIES mysqlclient
+  )
+MYSQL_ADD_EXECUTABLE(mysql_secure_installation
+  mysql_secure_installation.cc
+  LINK_LIBRARIES mysqlclient
+  )
+MYSQL_ADD_EXECUTABLE(mysql_ssl_rsa_setup
+  logger.cc
+  mysql_ssl_rsa_setup.cc
+  path.cc
+  LINK_LIBRARIES mysys
+  )
 
 # "WIN32" also covers 64 bit. "echo" is used in some files below "mysql-test/".
 IF(WIN32)
-  MYSQL_ADD_EXECUTABLE(echo echo.c)
+  MYSQL_ADD_EXECUTABLE(echo echo.cc)
 ENDIF(WIN32)
-
-SET_TARGET_PROPERTIES (
-  mysql_plugin
-  mysqlcheck
-  mysqldump
-  mysqlimport
-  mysqlshow
-  mysqlslap
-PROPERTIES HAS_CXX TRUE)
-
-ADD_DEFINITIONS(-DHAVE_DLOPEN)
-

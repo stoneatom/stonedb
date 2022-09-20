@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -40,19 +40,22 @@ struct DiGetNodesConf {
    */
   friend class Dbtc;
   friend class Dbspj;
+  friend class Backup;
+  friend class Suma;
 
   /**
    * Sender(s)
    */
   friend class Dbdih;
 
-  STATIC_CONST( SignalLength = 3 + MAX_REPLICAS );
-  STATIC_CONST( REORG_MOVING = 0x80000000);
+  static constexpr Uint32 SignalLength = 4 + MAX_REPLICAS;
+  static constexpr Uint32 REORG_MOVING = 0x80000000;
 
   Uint32 zero;
   Uint32 fragId;
   Uint32 reqinfo;
-  Uint32 nodes[MAX_REPLICAS + (2 + MAX_REPLICAS)]; //+1
+  Uint32 instanceKey;
+  Uint32 nodes[MAX_REPLICAS + (3 + MAX_REPLICAS)]; //+1
 };
 /**
  * 
@@ -63,17 +66,22 @@ class DiGetNodesReq {
    */
   friend class Dbtc;
   friend class Dbspj;
+  friend class Backup;
+  friend class Suma;
   /**
    * Receiver(s)
    */
   friend class Dbdih;
 public:
-  STATIC_CONST( SignalLength = 4 + (sizeof(void*) / sizeof(Uint32)) );
+  static constexpr Uint32 SignalLength = 6 + (sizeof(void*) / sizeof(Uint32));
+  static constexpr Uint32 MAX_DIGETNODESREQS = 16;
 private:
   Uint32 tableId;
   Uint32 hashValue;
   Uint32 distr_key_indicator;
-  Uint32 unused;
+  Uint32 scan_indicator;
+  Uint32 get_next_fragid_indicator;
+  Uint32 anyNode;
   union {
     void * jamBufferPtr;
     Uint32 jamBufferStorage[2];

@@ -1,13 +1,13 @@
 # Tests for PERFORMANCE_SCHEMA
 
---source include/not_embedded.inc
---source include/have_perfschema.inc
-
 #
 # Important note:
 # this test is extremely sensitive to how threads are running inside the server,
 # so it has it's own -master.opt file, to enforce it runs alone in mysqld
 #
+
+# X plugin might increase counter thread_id_increment below
+source include/xplugin_wait_for_interfaces.inc;
 
 # Setup
 

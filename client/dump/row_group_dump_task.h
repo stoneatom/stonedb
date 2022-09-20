@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2015, 2021, Oracle and/or its affiliates.
+  Copyright (c) 2015, 2022, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License, version 2.0,
@@ -25,52 +25,57 @@
 #ifndef ROW_GROUP_DUMP_TASK_INCLUDED
 #define ROW_GROUP_DUMP_TASK_INCLUDED
 
-#include "abstract_simple_dump_task.h"
-#include "row.h"
-#include "mysql_field.h"
-#include "table.h"
 #include <vector>
 
-namespace Mysql{
-namespace Tools{
-namespace Dump{
+#include "client/dump/abstract_simple_dump_task.h"
+#include "client/dump/mysql_field.h"
+#include "client/dump/row.h"
+#include "client/dump/table.h"
+
+namespace Mysql {
+namespace Tools {
+namespace Dump {
 
 /**
   Represents single data row.
  */
-class Row_group_dump_task : public Abstract_simple_dump_task
-{
-public:
-  Row_group_dump_task(
-      Table* source_table, const std::vector<Mysql_field>& fields,
-      const bool has_generated_column);
+class Row_group_dump_task : public Abstract_simple_dump_task {
+ public:
+  Row_group_dump_task(Table *source_table,
+                      const std::vector<Mysql_field> &fields,
+                      const bool has_generated_column,
+                      const bool has_invisible_columns);
 
-  virtual I_data_object* get_related_db_object() const;
+  I_data_object *get_related_db_object() const override;
 
-  bool can_be_executed() const;
+  bool can_be_executed() const override;
 
-  void set_completed();
+  void set_completed() override;
 
   /**
     Returns a table the rows are contained in.
    */
-  const Table* m_source_table;
+  const Table *m_source_table;
   /**
     Contains all fields information.
    */
-  const std::vector<Mysql_field>& m_fields;
+  const std::vector<Mysql_field> &m_fields;
   /**
     Returns all rows.
    */
-  std::vector<Row*> m_rows;
+  std::vector<Row *> m_rows;
   /**
     Contains generated/virtual fields.
   */
   const bool m_has_generated_columns;
+  /**
+    Contains invisible columns.
+  */
+  const bool m_has_invisible_columns;
 };
 
-}
-}
-}
+}  // namespace Dump
+}  // namespace Tools
+}  // namespace Mysql
 
 #endif

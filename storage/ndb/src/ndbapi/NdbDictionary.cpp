@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -28,9 +28,8 @@
 #include <NdbOut.hpp>
 #include <signaldata/CreateHashMap.hpp>
 #include <NdbBlob.hpp>
-C_MODE_START
-#include <decimal.h>
-C_MODE_END
+#include "decimal.h"
+#include "m_ctype.h"
 
 /* NdbRecord static helper methods */
 
@@ -372,7 +371,7 @@ NdbDictionary::Column::getSizeInBytesForRecord() const {
 * for backward compatible api consideration, but is broken.
 */
 int
-NdbDictionary::Column::setDefaultValue(const char* defaultValue)
+NdbDictionary::Column::setDefaultValue(const char*)
 {
   return -1;
 }
@@ -725,26 +724,6 @@ NdbDictionary::Table::setSingleUserMode(enum NdbDictionary::Table::SingleUserMod
   m_impl.m_single_user_mode = (Uint8)mode;
 }
 
-#if 0
-int
-NdbDictionary::Table::setTablespaceNames(const void *data, Uint32 len)
-{
-  return m_impl.setTablespaceNames(data, len);
-}
-
-const void*
-NdbDictionary::Table::getTablespaceNames()
-{
-  return m_impl.getTablespaceNames();
-}
-
-Uint32
-NdbDictionary::Table::getTablespaceNamesLen() const
-{
-  return m_impl.getTablespaceNamesLen();
-}
-#endif
-
 void
 NdbDictionary::Table::setLinearFlag(Uint32 flag)
 {
@@ -769,9 +748,91 @@ NdbDictionary::Table::getFragmentCount() const
   return m_impl.getFragmentCount();
 }
 
+Uint32
+NdbDictionary::Table::getPartitionCount() const
+{
+  return m_impl.getPartitionCount();
+}
+
+void
+NdbDictionary::Table::setPartitionBalance(NdbDictionary::Object::PartitionBalance arg)
+{
+  m_impl.m_partitionBalance = arg;
+}
+
+NdbDictionary::Object::PartitionBalance
+NdbDictionary::Table::getPartitionBalance() const
+{
+  return m_impl.m_partitionBalance;
+}
+
+const char*
+NdbDictionary::Table::getPartitionBalanceString() const
+{
+  const char* name = getPartitionBalanceString(m_impl.m_partitionBalance);
+  if (name == NULL)
+    return "unknown";
+  return name;
+}
+
+static
+struct {
+  NdbDictionary::Object::PartitionBalance value;
+  const char * name;
+} partitionBalanceNames[] = {
+  {NdbDictionary::Object::PartitionBalance_Specific,         "SPECIFIC"},
+  {NdbDictionary::Object::PartitionBalance_ForRPByLDM,       "FOR_RP_BY_LDM"},
+  {NdbDictionary::Object::PartitionBalance_ForRPByNode,      "FOR_RP_BY_NODE"},
+  {NdbDictionary::Object::PartitionBalance_ForRAByLDM,       "FOR_RA_BY_LDM"},
+  {NdbDictionary::Object::PartitionBalance_ForRAByNode,      "FOR_RA_BY_NODE"},
+  {NdbDictionary::Object::PartitionBalance_ForRAByLDMx2,     "FOR_RA_BY_LDM_X_2"},
+  {NdbDictionary::Object::PartitionBalance_ForRAByLDMx3,     "FOR_RA_BY_LDM_X_3"},
+  {NdbDictionary::Object::PartitionBalance_ForRAByLDMx4,     "FOR_RA_BY_LDM_X_4"},
+};
+
+NdbDictionary::Object::PartitionBalance
+NdbDictionary::Table::getPartitionBalance(const char str[])
+{
+  for (unsigned i = 0; i < NDB_ARRAY_SIZE(partitionBalanceNames) ; i++)
+  {
+    if (strcmp(partitionBalanceNames[i].name, str) == 0)
+    {
+      return partitionBalanceNames[i].value;
+    }
+  }
+  return NdbDictionary::Object::PartitionBalance(0); /* No matching partition balance */
+}
+
+const char*
+NdbDictionary::Table::getPartitionBalanceString(PartitionBalance partition_balance)
+{
+  for (unsigned i = 0; i < NDB_ARRAY_SIZE(partitionBalanceNames) ; i++)
+  {
+    if (partitionBalanceNames[i].value == partition_balance)
+    {
+      return partitionBalanceNames[i].name;
+    }
+  }
+  return NULL;
+}
+
 int
 NdbDictionary::Table::setFrm(const void* data, Uint32 len){
   return m_impl.setFrm(data, len);
+}
+
+int
+NdbDictionary::Table::setExtraMetadata(Uint32 version,
+                                       const void* data, Uint32 data_length)
+{
+  return m_impl.setExtraMetadata(version, data, data_length);
+}
+
+int
+NdbDictionary::Table::getExtraMetadata(Uint32& version,
+                                       void** data, Uint32* data_length) const
+{
+  return m_impl.getExtraMetadata(version, data, data_length);
 }
 
 const Uint32*
@@ -865,7 +926,7 @@ NdbDictionary::Table::setTemporary(bool val) {
 }
 
 int
-NdbDictionary::Table::createTableInDb(Ndb* pNdb, bool equalOk) const {  
+NdbDictionary::Table::createTableInDb(Ndb* pNdb, bool) const {
   const NdbDictionary::Table * pTab = 
     pNdb->getDictionary()->getTable(getName());
   if(pTab != 0 && equal(* pTab))
@@ -978,6 +1039,16 @@ NdbDictionary::Table::getExtraRowAuthorBits() const
 }
 
 void
+NdbDictionary::Table::setReadBackupFlag(bool val){
+  m_impl.m_read_backup = val;
+}
+
+bool
+NdbDictionary::Table::getReadBackupFlag() const {
+  return m_impl.m_read_backup;
+}
+
+void
 NdbDictionary::Table::setForceVarPart(bool val){
   m_impl.m_force_var_part = val;
 }
@@ -998,15 +1069,15 @@ NdbDictionary::Table::getDefaultRecord() const {
 }
 
 int
-NdbDictionary::Table::aggregate(NdbError& error)
+NdbDictionary::Table::aggregate(NdbError&)
 {
-  return m_impl.aggregate(error);
+  return m_impl.aggregate();
 }
 
 int
-NdbDictionary::Table::validate(NdbError& error)
+NdbDictionary::Table::validate(NdbError&)
 {
-  return m_impl.validate(error);
+  return m_impl.validate();
 }
 
 Uint32
@@ -1059,6 +1130,30 @@ NdbDictionary::Table::getStorageType() const
   return (NdbDictionary::Column::StorageType)m_impl.m_storageType;
 }
 
+void
+NdbDictionary::Table::setFullyReplicated(bool val)
+{
+  m_impl.m_fully_replicated = val;
+}
+
+bool
+NdbDictionary::Table::getFullyReplicated() const
+{
+  return m_impl.m_fully_replicated;
+}
+
+void
+NdbDictionary::Table::setRowChecksum(Uint32 val)
+{
+  m_impl.m_row_checksum = val;
+}
+
+Uint32
+NdbDictionary::Table::getRowChecksum()
+{
+  return m_impl.m_row_checksum;
+}
+
 /*****************************************************************
  * Index facade
  */
@@ -1093,12 +1188,12 @@ NdbDictionary::Index::getName() const {
 
 int
 NdbDictionary::Index::setTable(const char * table){
-  return m_impl.setTable(table);
+  return m_impl.setTableName(table);
 }
 
 const char * 
 NdbDictionary::Index::getTable() const {
-  return m_impl.getTable();
+  return m_impl.getTableName();
 }
 
 unsigned
@@ -1240,7 +1335,7 @@ NdbDictionary::Index::getObjectId() const {
  * OptimizeTableHandle facade
  */
 NdbDictionary::OptimizeTableHandle::OptimizeTableHandle()
-  : m_impl(* new NdbOptimizeTableHandleImpl(* this))
+  : m_impl(* new NdbOptimizeTableHandleImpl())
 {}
 
 NdbDictionary::OptimizeTableHandle::OptimizeTableHandle(NdbOptimizeTableHandleImpl & impl)
@@ -1272,7 +1367,7 @@ NdbDictionary::OptimizeTableHandle::close()
  * OptimizeIndexHandle facade
  */
 NdbDictionary::OptimizeIndexHandle::OptimizeIndexHandle()
-  : m_impl(* new NdbOptimizeIndexHandleImpl(* this))
+  : m_impl(* new NdbOptimizeIndexHandleImpl())
 {}
 
 NdbDictionary::OptimizeIndexHandle::OptimizeIndexHandle(NdbOptimizeIndexHandleImpl & impl)
@@ -1912,19 +2007,19 @@ NdbDictionary::HashMap::getObjectId() const {
 
 int
 NdbDictionary::Dictionary::getDefaultHashMap(NdbDictionary::HashMap& dst,
-                                             Uint32 fragments)
+                                             Uint32 partitionCount)
 {
-  return getDefaultHashMap(dst, m_impl.getDefaultHashmapSize(), fragments);
+  return getDefaultHashMap(dst, m_impl.getDefaultHashmapSize(), partitionCount);
 }
 
 int
 NdbDictionary::Dictionary::getDefaultHashMap(NdbDictionary::HashMap& dst,
                                              Uint32 buckets,
-                                             Uint32 fragments)
+                                             Uint32 partitionCount)
 {
   BaseString tmp;
   tmp.assfmt("DEFAULT-HASHMAP-%u-%u",
-             buckets, fragments);
+             buckets, partitionCount);
 
   return getHashMap(dst, tmp.c_str());
 }
@@ -1952,26 +2047,26 @@ NdbDictionary::Dictionary::getHashMap(NdbDictionary::HashMap& dst,
 
 int
 NdbDictionary::Dictionary::initDefaultHashMap(NdbDictionary::HashMap& dst,
-                                              Uint32 fragments)
+                                              Uint32 partitionCount)
 {
-  return initDefaultHashMap(dst, m_impl.getDefaultHashmapSize(), fragments);
+  return initDefaultHashMap(dst, m_impl.getDefaultHashmapSize(), partitionCount);
 }
 
 int
 NdbDictionary::Dictionary::initDefaultHashMap(NdbDictionary::HashMap& dst,
                                               Uint32 buckets,
-                                              Uint32 fragments)
+                                              Uint32 partitionCount)
 {
   BaseString tmp;
   tmp.assfmt("DEFAULT-HASHMAP-%u-%u",
-             buckets, fragments);
+             buckets, partitionCount);
 
   dst.setName(tmp.c_str());
 
   Vector<Uint32> map;
   for (Uint32 i = 0; i < buckets; i++)
   {
-    map.push_back(i % fragments);
+    map.push_back(i % partitionCount);
   }
 
   dst.setMap(map.getBase(), map.size());
@@ -1992,6 +2087,8 @@ NdbDictionary::Dictionary::prepareHashMap(const Table& oldTableF,
 {
   if (!hasSchemaTrans())
   {
+    //Schema transaction is not started
+    m_impl.m_error.code = 4412;
     return -1;
   }
 
@@ -2008,13 +2105,37 @@ NdbDictionary::Dictionary::prepareHashMap(const Table& oldTableF,
 
     if (oldmap.getObjectVersion() != (int)oldTable.m_hash_map_version)
     {
+      m_impl.m_error.code = 241;
       return -1;
     }
 
     HashMap newmapF;
 
-    Uint32 oldcnt = oldTable.getFragmentCount();
-    Uint32 newcnt = newTable.getFragmentCount();
+    // Table definitions from data nodes always have partition count set.
+    Uint32 oldcnt = oldTable.getPartitionCount();
+    Uint32 newcnt;
+    if (newTable.getPartitionBalance() == NdbDictionary::Table::PartitionBalance_Specific)
+    {
+      if (newTable.getFullyReplicated())
+      {
+        /**
+         * Applications can not yet specify partition count only fragment
+         * count, which are different for fully replicated tables.
+         */
+        m_impl.m_error.code = 797; // WrongPartitionBalanceFullyReplicated
+        return -1;
+      }
+      /**
+       * For non fully replicated tables fragment count and partition count is
+       * the same.
+       */
+      newcnt = newTable.getFragmentCount();
+    }
+    else
+    {
+      newcnt = 0;
+    }
+    DBUG_PRINT("info", ("prepareHashMap: frag count: %u", newcnt));
     if (newcnt == 0)
     {
       /**
@@ -2022,24 +2143,30 @@ NdbDictionary::Dictionary::prepareHashMap(const Table& oldTableF,
        *   create if exist a default map...which will "know" how many fragments there are
        */
       ObjectId tmp;
+      int flags = CreateHashMapReq::CreateDefault |
+                  CreateHashMapReq::CreateIfNotExists;
+      if (newTable.getFullyReplicated())
+      {
+        flags |= CreateHashMapReq::CreateForOneNodegroup;
+      }
       int ret = m_impl.m_receiver.create_hashmap(NdbHashMapImpl::getImpl(newmapF),
                                                  &NdbDictObjectImpl::getImpl(tmp),
-                                                 CreateHashMapReq::CreateDefault |
-                                                 CreateHashMapReq::CreateIfNotExists);
+                                                 flags,
+                                                 newTable.getPartitionBalance());
       if (ret)
       {
-        return ret;
+        return -1;
       }
 
       HashMap hm;
       ret = m_impl.m_receiver.get_hashmap(NdbHashMapImpl::getImpl(hm), tmp.getObjectId());
       if (ret)
       {
-        return ret;
+        return -1;
       }
       Uint32 zero = 0;
       Vector<Uint32> values;
-      values.fill(hm.getMapLen() - 1, zero);
+      values.fill(hm.getMapLen(), zero);
       hm.getMapValues(values.getBase(), values.size());
       for (Uint32 i = 0; i<hm.getMapLen(); i++)
       {
@@ -2055,12 +2182,25 @@ NdbDictionary::Dictionary::prepareHashMap(const Table& oldTableF,
          */
         newcnt = oldcnt;
       }
-      newTable.setFragmentCount(newcnt);
+      if (!newTable.getFullyReplicated())
+      {
+        newTable.setFragmentCount(newcnt);
+      }
+      else
+      {
+        /**
+         * For fully replicated table new fragment count is still unknown.  Keep it zero.
+         */
+        assert(newTable.getFragmentCount() == 0);
+      }
+      DBUG_PRINT("info", ("prepareHashMap: New frag count: %u", newcnt));
     }
 
     /*
-     * if fragment count has not changed,
-     * dont move data and keep old hashmap.
+     * If fragment count has not changed, dont move data between partitions and
+     * keep old hashmap.
+     * For fully replicated tables copy data to copy fragments are still
+     * expected to happen, out of Ndbapi control in data nodes.
      */
 
     if (newcnt == oldcnt)
@@ -2068,6 +2208,12 @@ NdbDictionary::Dictionary::prepareHashMap(const Table& oldTableF,
       newTable.m_hash_map_id = oldTable.m_hash_map_id;
       newTable.m_hash_map_version = oldTable.m_hash_map_version;
       return 0;
+    }
+    else if (newTable.getFullyReplicated())
+    {
+      // Fully replicated tables may not change partition count.
+      m_impl.m_error.code = 797; // WrongPartitionBalanceFullyReplicated
+      return -1;
     }
 
     Uint32 newmapsize = buckets;
@@ -2966,7 +3112,7 @@ NdbDictionary::Dictionary::dropIndex(const char * indexName,
   int ret;
   DO_TRANS(
     ret,
-    m_impl.dropIndex(indexName, tableName)
+    m_impl.dropIndex(indexName, tableName, false)
   );
   return ret;
 }
@@ -2977,7 +3123,7 @@ NdbDictionary::Dictionary::dropIndexGlobal(const Index &ind)
   int ret;
   DO_TRANS(
     ret,
-    m_impl.dropIndexGlobal(NdbIndexImpl::getImpl(ind))
+    m_impl.dropIndexGlobal(NdbIndexImpl::getImpl(ind), false)
   );
   return ret;
 }
@@ -3116,20 +3262,6 @@ NdbDictionary::Dictionary::removeCachedIndex(const char * indexName,
   }
 }
 
-const NdbDictionary::Table *
-NdbDictionary::Dictionary::getIndexTable(const char * indexName, 
-					 const char * tableName) const
-{
-  NdbIndexImpl * i = m_impl.getIndex(indexName, tableName);
-  NdbTableImpl * t = m_impl.getTable(tableName);
-  if(i && t) {
-    NdbTableImpl * it = m_impl.getIndexTable(i, t);
-    return it->m_facade;
-  }
-  return 0;
-}
-
-
 int
 NdbDictionary::Dictionary::createEvent(const Event & ev)
 {
@@ -3149,6 +3281,11 @@ NdbDictionary::Dictionary::getEvent(const char * eventName)
   if(t)
     return t->m_facade;
   return 0;
+}
+
+void NdbDictionary::Dictionary::releaseEvent(
+    const NdbDictionary::Event *event) {
+  delete event;
 }
 
 int
@@ -3178,7 +3315,7 @@ NdbDictionary::Dictionary::listObjects(List& list, Object::Type type) const
 {
   // delegate to variant with FQ names param
   return listObjects(list, type, 
-                     m_impl.m_ndb.usingFullyQualifiedNames());
+                     true /* fully qualified */);
 }
 
 int
@@ -3199,21 +3336,30 @@ NdbDictionary::Dictionary::listIndexes(List& list, const char * tableName)
 
 int
 NdbDictionary::Dictionary::listIndexes(List& list,
-				       const char * tableName) const
+                                      const char * tableName) const
+{
+  // delegate to overloaded function with FQ names param
+  return listIndexes(list, tableName, true /* fully qualified */);
+}
+
+int
+NdbDictionary::Dictionary::listIndexes(List& list,
+				       const char * tableName, bool fullyQualified) const
 {
   const NdbDictionary::Table* tab= getTable(tableName);
   if(tab == 0)
   {
     return -1;
   }
-  return m_impl.listIndexes(list, tab->getTableId());
+  return m_impl.listIndexes(list, tab->getTableId(), fullyQualified);
 }
 
 int
 NdbDictionary::Dictionary::listIndexes(List& list,
 				       const NdbDictionary::Table &table) const
 {
-  return m_impl.listIndexes(list, table.getTableId());
+  return m_impl.listIndexes(list, table.getTableId(),
+                            true /* fully qualified */);
 }
 
 int
@@ -3246,17 +3392,7 @@ pretty_print_string(NdbOut& out,
 {
   const unsigned char* ref = (const unsigned char*)aref;
   int i, len, printable= 1;
-  // trailing zeroes are not printed
-  for (i=sz-1; i >= 0; i--)
-    if (ref[i] == 0) sz--;
-    else break;
-  if (!is_binary)
-  {
-    // trailing spaces are not printed
-    for (i=sz-1; i >= 0; i--)
-      if (ref[i] == 32) sz--;
-      else break;
-  }
+
   if (is_binary && f.hex_format)
   {
     if (sz == 0)
@@ -3268,6 +3404,18 @@ pretty_print_string(NdbOut& out,
     for (len = 0; len < (int)sz; len++)
       out.print("%02X", (int)ref[len]);
     return;
+  }
+
+  // trailing zeroes are not printed
+  for (i=sz-1; i >= 0; i--)
+    if (ref[i] == 0) sz--;
+    else break;
+  if (!is_binary)
+  {
+    // trailing spaces are not printed
+    for (i=sz-1; i >= 0; i--)
+      if (ref[i] == 32) sz--;
+      else break;
   }
   if (sz == 0) return; // empty
 
@@ -3386,7 +3534,7 @@ NdbDictionary::printFormattedValue(NdbOut& out,
       break;
     }
     case NdbDictionary::Column::Mediumunsigned:
-      out << (const Uint32) uint3korr(val_p);
+      out << (static_cast<Uint32>(uint3korr(val_p)));
       break;
     case NdbDictionary::Column::Smallunsigned:
       out << *((const Uint16*) val);
@@ -3402,7 +3550,7 @@ NdbDictionary::printFormattedValue(NdbOut& out,
       break;
     }
     case NdbDictionary::Column::Int:
-      out << *((Int32*)val);
+      out << *((const Int32*)val);
       break;
     case NdbDictionary::Column::Mediumint:
       out << sint3korr(val_p);
@@ -3411,7 +3559,7 @@ NdbDictionary::printFormattedValue(NdbOut& out,
       out << *((const short*) val);
       break;
     case NdbDictionary::Column::Tinyint:
-      out << *((Int8*) val);
+      out << *((const Int8*)val);
       break;
     case NdbDictionary::Column::Binary:
       if (!format.hex_format)
@@ -3501,11 +3649,7 @@ NdbDictionary::printFormattedValue(NdbOut& out,
       char decStr[MaxDecimalStrLen];
       assert(decimal_string_size(&tmpDec) <= MaxDecimalStrLen);
       int len= MaxDecimalStrLen;
-      if ((rc= decimal2string(&tmpDec, decStr, 
-                              &len,
-                              0,   // 0 = Var length output length
-                              0,   // 0 = Var length fractional part
-                              0))) // Filler char for fixed length
+      if ((rc= decimal2string(&tmpDec, decStr, &len)))
       {
         out.print("***Error : bad decimal2string conversion %d ***",
                   rc);
@@ -3655,15 +3799,15 @@ NdbDictionary::NdbDataPrintFormat::NdbDataPrintFormat()
   null_string= "[NULL]";
   hex_format= 0;
 }
-NdbDictionary::NdbDataPrintFormat::~NdbDataPrintFormat() {};
-
+NdbDictionary::NdbDataPrintFormat::~NdbDataPrintFormat() {}
 
 NdbOut&
-operator<<(NdbOut& out, const NdbDictionary::Column& col)
+NdbDictionary::printColumnTypeDescription(NdbOut& out,
+                                          const NdbDictionary::Column& col)
 {
   const CHARSET_INFO *cs = col.getCharset();
-  const char *csname = cs ? cs->name : "?";
-  out << col.getName() << " ";
+  const char *csname = cs ? cs->m_coll_name : "?";
+
   switch (col.getType()) {
   case NdbDictionary::Column::Tinyint:
     out << "Tinyint";
@@ -3791,6 +3935,15 @@ operator<<(NdbOut& out, const NdbDictionary::Column& col)
       break;
     }
   }
+  return out;
+}
+
+NdbOut&
+operator<<(NdbOut& out, const NdbDictionary::Column& col)
+{
+  out << col.getName() << " ";
+
+  NdbDictionary::printColumnTypeDescription(out, col);
 
   if (col.getPrimaryKey())
     out << " PRIMARY KEY";
@@ -4004,7 +4157,7 @@ NdbDictionary::Dictionary::invalidateDbGlobal(const char * name)
 {
   if (m_impl.m_globalHash && name != 0)
   {
-    size_t len = strlen(name);
+    const size_t len = strlen(name);
     m_impl.m_globalHash->lock();
     m_impl.m_globalHash->invalidateDb(name, len);
     m_impl.m_globalHash->unlock();
@@ -4040,7 +4193,8 @@ NdbDictionary::Dictionary::createHashMap(const HashMap& map, ObjectId * dst)
   DO_TRANS(ret,
            m_impl.m_receiver.create_hashmap(NdbHashMapImpl::getImpl(map),
                                             &NdbDictObjectImpl::getImpl(*dst),
-                                            0));
+                                            0,
+                     NdbDictionary::Object::PartitionBalance_ForRPByLDM));
   return ret;
 }
 
@@ -4088,6 +4242,50 @@ NdbDictionary::Dictionary::dropForeignKey(const ForeignKey& fk)
   DO_TRANS(ret,
            m_impl.m_receiver.drop_fk(NdbForeignKeyImpl::getImpl(fk)));
   return ret;
+}
+
+int
+NdbDictionary::Dictionary::List::Element::compareById(const void * p, const void * q)
+{
+  const Element* x = static_cast<const Element*>(p);
+  const Element* y = static_cast<const Element*>(q);
+  int cmp = (x->id < y->id) ? -1 : (x->id > y->id) ? + 1 : 0;
+  if (cmp != 0)
+    return cmp;
+  /**
+   * Trigger object can have same id as the other schema objects.
+   * Use type to give a stable ordering between trigger object and other
+   * objects.
+   */
+  cmp = (x->type < y->type) ? -1 : (x->type > y->type) ? + 1 : 0;
+  return cmp;
+}
+
+int
+NdbDictionary::Dictionary::List::Element::compareByName(const void * p, const void * q)
+{
+  const Element* x = static_cast<const Element*>(p);
+  const Element* y = static_cast<const Element*>(q);
+  int cmp = strcmp(x->database, y->database);
+  if (cmp != 0)
+    return cmp;
+  cmp = strcmp(x->schema, y->schema);
+  if (cmp != 0)
+    return cmp;
+  cmp = strcmp(x->name, y->name);
+  return cmp;
+}
+
+void
+NdbDictionary::Dictionary::List::sortById()
+{
+  qsort(elements, count, sizeof(Element), Element::compareById);
+}
+
+void
+NdbDictionary::Dictionary::List::sortByName()
+{
+  qsort(elements, count, sizeof(Element), Element::compareByName);
 }
 
 NdbOut& operator <<(NdbOut& ndbout, NdbDictionary::Object::FragmentType const fragtype)
@@ -4175,6 +4373,9 @@ NdbOut& operator <<(NdbOut& ndbout, NdbDictionary::Object::Type const type)
     break;
   case NdbDictionary::Object::ReorgTrigger:
     ndbout << "ReorgTrigger";
+    break;
+  case NdbDictionary::Object::FullyReplicatedTrigger:
+    ndbout << "FullyReplicatedTrigger";
     break;
   case NdbDictionary::Object::HashMap:
     ndbout << "HashMap";
@@ -4277,14 +4478,36 @@ NdbOut& operator <<(class NdbOut&, NdbDictionary::Table const& tab)
   ndbout << "Number of attributes: " <<  tab.getNoOfColumns() << endl;
   ndbout << "Number of primary keys: " <<  tab.getNoOfPrimaryKeys() << endl;
   ndbout << "Length of frm data: " << tab.getFrmLength() << endl;
+  ndbout << "Max Rows: " << tab.getMaxRows() << endl;
   ndbout << "Row Checksum: " << tab.getRowChecksumIndicator() << endl;
   ndbout << "Row GCI: " << tab.getRowGCIIndicator() << endl;
   ndbout << "SingleUserMode: " << (Uint32) tab.getSingleUserMode() << endl;
   ndbout << "ForceVarPart: " << tab.getForceVarPart() << endl;
+  ndbout << "PartitionCount: " << tab.getPartitionCount() << endl;
   ndbout << "FragmentCount: " << tab.getFragmentCount() << endl;
+  ndbout << "PartitionBalance: " << tab.getPartitionBalanceString() << endl;
   ndbout << "ExtraRowGciBits: " << tab.getExtraRowGciBits() << endl;
   ndbout << "ExtraRowAuthorBits: " << tab.getExtraRowAuthorBits() << endl;
   ndbout << "TableStatus: " << tab.getObjectStatus() << endl;
+
+  ndbout << "Table options:";
+  bool first = true;
+  if (NdbTableImpl::getImpl(tab).m_read_backup) {
+    if (!first)
+      ndbout << ", ";
+    else
+      ndbout << " ";
+    ndbout << "readbackup";
+    first = false;
+  }
+  if (tab.getFullyReplicated())
+  {
+    if (!first)
+      ndbout << ", ";
+    ndbout << "fullyreplicated";
+    first = false;
+  }
+  ndbout << endl;
   return ndbout;
 }
 
@@ -4353,6 +4576,21 @@ void NdbDictionary::Dictionary::print(NdbOut& ndbout, NdbDictionary::Table const
     ndbout << "HashMap: " << hashmap.getName() << endl;
   }
 
+  Uint32 tablespace_id;
+  if (tab.getTablespace(&tablespace_id))
+  {
+    ndbout << "Tablespace id: " << tablespace_id << endl;
+
+    // Look up tablespace by id and show the name
+    // NOTE! The tablespace name of a table object which
+    // has been fetched from NDB is not assigned any value.
+    const NdbDictionary::Tablespace ts = getTablespace(tablespace_id);
+    if (getNdbError().code == 0)
+    {
+      ndbout << "Tablespace: " << ts.getName() << endl;
+    }
+  }
+
   ndbout << "-- Attributes --" << endl;
   for (int col = 0; col < tab.getNoOfColumns() ; col++)
   {
@@ -4374,6 +4612,7 @@ void NdbDictionary::Dictionary::print(NdbOut& ndbout, NdbDictionary::Table const
   List list;
   if (listDependentObjects(list, tab) == 0)
   {
+    list.sortById();
     for (j= 0; j < list.count; j++) {
       List::Element& elt = list.elements[j];
       if (elt.type != NdbDictionary::Object::UniqueHashIndex &&

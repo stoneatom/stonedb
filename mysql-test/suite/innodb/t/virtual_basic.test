@@ -1,9 +1,10 @@
---source include/have_innodb.inc
+--source include/no_valgrind_without_big.inc
 --source include/have_innodb_max_16k.inc
+
 --source include/count_sessions.inc
 
 --disable_query_log
-call mtr.add_suppression("\\[Warning\\] InnoDB: Compute virtual");
+call mtr.add_suppression("\\[Warning\\] .*MY-\\d+.* Compute virtual");
 --enable_query_log
 
 CREATE TABLE t (a INT, b INT GENERATED ALWAYS AS (a), c CHAR(10), d CHAR(20), e CHAR(10) GENERATED ALWAYS AS (c), g INT);
@@ -25,15 +26,19 @@ INSERT INTO t VALUES (28, 1, DEFAULT, 'mm');
 INSERT INTO t VALUES (null, null, DEFAULT, 'mm');
 
 CREATE INDEX idx ON t(c);
+--sorted_result
 SELECT c FROM t;
 
 UPDATE t SET a = 10 WHERE a = 11;
+--sorted_result
 SELECT c FROM t;
 
+--sorted_result
 SELECT * FROM t;
 
 DELETE FROM t WHERE a = 18;
 
+--sorted_result
 SELECT c FROM t;
 
 START TRANSACTION;
@@ -42,7 +47,9 @@ INSERT INTO t VALUES (128, 22, DEFAULT, "xx");
 INSERT INTO t VALUES (1290, 212, DEFAULT, "xmx");
 ROLLBACK;
 
+--sorted_result
 SELECT c FROM t;
+--sorted_result
 SELECT * FROM t;
 
 DROP TABLE t;
@@ -53,9 +60,13 @@ INSERT INTO t VALUES(11, 22, DEFAULT, "AAA", 8, DEFAULT, "XXX", DEFAULT);
 INSERT INTO t VALUES(1, 2, DEFAULT, "uuu", 9, DEFAULT, "uu", DEFAULT);
 INSERT INTO t VALUES(3, 4, DEFAULT, "uooo", 1, DEFAULT, "umm", DEFAULT);
 
+--sorted_result
 SELECT c FROM t;
+--sorted_result
 SELECT m FROM t;
+--sorted_result
 SELECT p FROM t;
+--sorted_result
 SELECT * FROM t;
 
 update t set a = 13 where a =11;
@@ -78,6 +89,7 @@ INSERT INTO t VALUES (REPEAT('g', 16000), REPEAT('x', 16000), DEFAULT, "kk");
 
 CREATE INDEX idx ON t(c(100));
 
+--sorted_result
 SELECT length(c) FROM t;
 
 START TRANSACTION;
@@ -115,10 +127,12 @@ UPDATE t SET a =22 WHERE a = 18;
 
 UPDATE t SET a = 33 WHERE a = 22;
 
+--sorted_result
 SELECT c FROM t;
 
 ROLLBACK;
 
+--sorted_result
 SELECT c FROM t;
 DROP TABLE t;
 
@@ -128,10 +142,12 @@ INSERT INTO t VALUES (11, 3, DEFAULT, 'mm');
 INSERT INTO t VALUES (18, 1, DEFAULT, 'mm');
 INSERT INTO t VALUES (28, 1, DEFAULT, 'mm');
 CREATE INDEX idx ON t(c);
+--sorted_result
 SELECT c FROM t;
 
 CONNECT(con1,localhost,root,,test);
 START TRANSACTION;
+--sorted_result
 SELECT c FROM t;
 
 CONNECTION default;
@@ -139,10 +155,12 @@ UPDATE t SET a = 19 WHERE a = 11;
 
 # this should report the same value as previous ONe (14, 19, 29).
 CONNECTiON con1;
+--sorted_result
 SELECT c FROM t;
 
 ROLLBACK;
 
+--sorted_result
 SELECT c FROM t;
 
 CONNECTION default;
@@ -164,6 +182,7 @@ INSERT INTO t VALUES(12, 13, DEFAULT, "hhhb", 14, DEFAULT, "nnnb", DEFAULT, 15, 
 # CREATE an INDEX ON multiple virtual COLUMN
 CREATE INDEX idx6 ON t(p, c);
 
+--sorted_result
 SELECT p, c FROM t;
 
 START TRANSACTION;
@@ -183,12 +202,12 @@ CREATE TABLE t1(a INT);
 ALTER TABLE t1 add COLUMN (b INT generated always as (a+1) virtual, c INT as(5) virtual);
 ALTER TABLE t1 add COLUMN (d INT generated always as (a+1) virtual, e INT as(5) virtual);
 
-SELECT pos, base_pos FROM informatiON_schema.innodb_sys_virtual;
+SELECT pos, base_pos FROM informatiON_schema.innodb_virtual order by pos;
 
 #--error ER_UNSUPPORTED_ACTION_ON_GENERATED_COLUMN
 ALTER TABLE t1 add COLUMN (f INT generated always as (a+1) virtual, g INT as(5) virtual), DROP COLUMN e;
 
-SELECT pos, base_pos FROM informatiON_schema.innodb_sys_virtual;
+SELECT pos, base_pos FROM informatiON_schema.innodb_virtual order by pos;
 
 DROP TABLE t1;
 
@@ -214,8 +233,8 @@ CREATE TABLE t1(a INT);
 CREATE INDEX idx ON t1(a);
 CREATE TABLE t3(a INT, b INT , INDEX(b), CONSTRAINT x FOREIGN KEY(b) REFERENCES t1(a));
 #--error ER_UNSUPPORTED_ACTION_ON_GENERATED_COLUMN
---error ER_CANNOT_ADD_FOREIGN
-CREATE TABLE t2(a INT, b INT generated always as (a+1) virtual, INDEX(b), CONSTRAINT x FOREIGN KEY(b) REFERENCES t1(a));
+--error ER_FK_CANNOT_USE_VIRTUAL_COLUMN
+CREATE TABLE t2(a INT, b INT generated always as (a+1) virtual, INDEX(b), CONSTRAINT y FOREIGN KEY(b) REFERENCES t1(a));
 CREATE TABLE t2(a INT, b INT generated always as (a+1) virtual, INDEX(b));
 DROP TABLE t3;
 DROP TABLE t2;
@@ -227,7 +246,7 @@ ALTER TABLE t1 add COLUMN (b INT generated always as (a+1) virtual, c INT as(5) 
 
 ALTER TABLE t1 change b x INT generated always as (a+1) virtual;
 
-SELECT pos, base_pos FROM informatiON_schema.innodb_sys_virtual;
+SELECT pos, base_pos FROM informatiON_schema.innodb_virtual order by pos;
 
 DROP TABLE t1;
 
@@ -250,6 +269,7 @@ DROP TABLE t;
 CREATE TABLE t (a INT DEFAULT 1, b INT DEFAULT 2, c INT GENERATED ALWAYS AS(a+b), h VARCHAR(10));
 CREATE INDEX idx ON t(c);
 INSERT INTO t(h)VALUES ('mm');
+--sorted_result
 SELECT c FROM t;
 
 CREATE unique INDEX idx1 ON t(c);
@@ -275,6 +295,7 @@ INSERT INTO t1 VALUES (1, 2, DEFAULT, 3, 'mm');
 INSERT INTO t1 VALUES (11, 22, DEFAULT, 23, 'mm');
 
 START TRANSACTION;
+--sorted_result
 SELECT * FROM t1;
 
 CONNECTiON con1;
@@ -285,6 +306,7 @@ UPDATE t1 SET b = 10 WHERE b=2;
 ROLLBACK;
 
 CONNECTION default;
+--sorted_result
 SELECT c FROM t1;
 
 DISCONNECT con1;
@@ -328,13 +350,16 @@ END|
 delimiter ;|
 
 CALL UPDATE_t();
+--sorted_result
 SELECT c FROM t;
 
 CALL DELETE_insert_t();
+--sorted_result
 SELECT c FROM t;
 
 DROP INDEX idx ON t;
 CALL UPDATE_t();
+--sorted_result
 SELECT c FROM t;
 
 DROP PROCEDURE DELETE_insert_t;
@@ -383,7 +408,9 @@ INSERT INTO b (
 00:34:58.026613', 'v');
 
 EXPLAIN SELECT col_INT_key FROM b;
+--sorted_result
 SELECT col_INT_key FROM b;
+--sorted_result
 SELECT col_INT_nokey, col_INT_key FROM b;
 DELETE FROM b;
 
@@ -464,7 +491,7 @@ CREATE TABLE `t` (
   KEY `m3` (`m3`),
   KEY `c` (`c`(100)),
   KEY `e` (`e`,`d`(20))
-) ENGINE=InnoDB;
+) ENGINE=InnoDB charset latin1;
 
 INSERT INTO t VALUES (1, 2, DEFAULT, 3, "aaa", DEFAULT, REPEAT('g', 10000), REPEAT('x', 2800), DEFAULT, DEFAULT, DEFAULT, 1);
 
@@ -486,6 +513,7 @@ INSERT INTO t VALUES (28, 1, DEFAULT, 'mm');
 INSERT INTO t VALUES (null, null, DEFAULT, 'mm');
 
 CREATE INDEX idx ON t(a, c);
+--sorted_result
 SELECT a, c FROM t;
 
 START TRANSACTION;
@@ -505,12 +533,14 @@ INSERT INTO t VALUES (28, 1, DEFAULT, "c", 3 );
 INSERT INTO t VALUES (null, null, DEFAULT, "d", 4);
 
 CREATE INDEX idx ON t(a, c, h);
+--sorted_result
 SELECT a, c FROM t;
 
 START TRANSACTION;
 UPDATE t SET m =10 WHERE m = 1;
 UPDATE t SET h = "e" WHERE h="a";
 ROLLBACK;
+--sorted_result
 SELECT a, c, h FROM t;
 
 DROP TABLE t;
@@ -562,6 +592,7 @@ ALTER TABLE t DROP COLUMN p, ADD COLUMN s VARCHAR(20) GENERATED ALWAYS AS(CONCAT
 
 # This should fail
 #ALTER TABLE t ADD  x INT, DROP COLUMN m, algorithm=inplace;
+--sorted_result
 SELECT s FROM t;
 
 ALTER TABLE t ADD  x VARCHAR(20) GENERATED ALWAYS AS(CONCAT(n, h)), ADD INDEX idx (x), algorithm=inplace;
@@ -637,10 +668,12 @@ CREATE TABLE t1 (
 INSERT INTO t1 (col1, col2)
   VALUES (0,1), (1,2), (2,3), (3,4), (4,5);
 
+--sorted_result
 SELECT gcol1 FROM t1 FORCE INDEX(idx1);
 
 ALTER TABLE t1 ADD COLUMN extra INTEGER;
 
+--sorted_result
 SELECT gcol1 FROM t1 FORCE INDEX(idx1);
 
 DROP TABLE t1;
@@ -665,6 +698,7 @@ INSERT INTO t1 VALUES(4, 18, default);
 
 CREATE INDEX idx ON t1(x);
 
+--sorted_result
 SELECT x FROM t1;
 
 DROP TABLE t1;
@@ -689,6 +723,7 @@ insert into t1 values(3, 12, default);
 insert into t1 values(4, 18, default);
 
 CREATE INDEX idx ON t1(x);
+--sorted_result
 SELECT x FROM t1;
 DROP TABLE t1;
 
@@ -705,6 +740,7 @@ CREATE INDEX idx ON t1 (b);
 
 INSERT INTO t1 VALUES (5,DEFAULT,9);
 
+--sorted_result
 SELECT * FROM t1;
 
 ALTER TABLE t1 REMOVE PARTITIONING;
@@ -898,7 +934,7 @@ CREATE TABLE `t` (
   `b` INT GENERATED ALWAYS AS (1) VIRTUAL,
   `c` INT GENERATED ALWAYS AS (1) VIRTUAL,
   `d` INT GENERATED ALWAYS AS (1) VIRTUAL,
-  `e` POINT GENERATED ALWAYS AS (1) STORED NOT NULL
+  `e` POINT GENERATED ALWAYS AS (1) STORED NOT NULL SRID 0
 ) ENGINE=INNODB;
 ALTER TABLE t ADD SPATIAL INDEX (`e`);
 DROP TABLE t;
@@ -907,7 +943,7 @@ CREATE TABLE `t` (
   `b` INT GENERATED ALWAYS AS (1) VIRTUAL,
   `c` INT GENERATED ALWAYS AS (1) VIRTUAL,
   `d` INT GENERATED ALWAYS AS (1) VIRTUAL,
-  `e` POINT GENERATED ALWAYS AS (1) STORED NOT NULL,
+  `e` POINT GENERATED ALWAYS AS (1) STORED NOT NULL SRID 0,
    SPATIAL INDEX (`e`)
 ) ENGINE=INNODB;
 DROP TABLE t;
@@ -917,7 +953,7 @@ CREATE TABLE `t` (
   `c` INT GENERATED ALWAYS AS (1) VIRTUAL,
   `d` INT GENERATED ALWAYS AS (1) VIRTUAL,
   `e2` POINT GENERATED ALWAYS AS (1) STORED NOT NULL,
-  `e` POINT GENERATED ALWAYS AS (1) STORED NOT NULL
+  `e` POINT GENERATED ALWAYS AS (1) STORED NOT NULL SRID 0
 ) ENGINE=INNODB;
 ALTER TABLE t ADD SPATIAL INDEX (`e`);
 DROP TABLE t;
@@ -928,7 +964,7 @@ CREATE TABLE `t` (
   `d` INT GENERATED ALWAYS AS (1) VIRTUAL,
   `e2` POINT GENERATED ALWAYS AS (1) STORED NOT NULL,
   `d2` INT GENERATED ALWAYS AS (1) VIRTUAL,
-  `e` POINT GENERATED ALWAYS AS (1) STORED NOT NULL
+  `e` POINT GENERATED ALWAYS AS (1) STORED NOT NULL SRID 0
 ) ENGINE=INNODB;
 ALTER TABLE t ADD SPATIAL INDEX (`e`);
 DROP TABLE t;
@@ -946,6 +982,7 @@ DROP TABLE t;
 
 CREATE TABLE t (a INT GENERATED ALWAYS AS(1) VIRTUAL,KEY(a)) ENGINE=INNODB;
 INSERT INTO t VALUES(default);
+--sorted_result
 SELECT a FROM t FOR UPDATE;
 DROP TABLE t;
 
@@ -964,6 +1001,7 @@ INSERT INTO t VALUES (null, null, DEFAULT, 'mm');
 ALTER TABLE t ADD COLUMN x INT GENERATED ALWAYS AS(a+b), ADD INDEX idx (x);
 --disable_info
 
+--sorted_result
 SELECT x FROM t;
 
 DROP TABLE t;
@@ -1382,6 +1420,7 @@ CREATE INDEX idx2 ON t(e, c, d);
 # idx and idx2, so they become idx(d) and idx2(e, d) respectively.
 ALTER TABLE t DROP COLUMN c, ALGORITHM=INPLACE;
 
+--sorted_result
 SELECT d FROM t;
 
 SHOW CREATE TABLE t;
@@ -1402,19 +1441,24 @@ SHOW CREATE TABLE t;
 --error ER_ALTER_OPERATION_NOT_SUPPORTED_REASON
 ALTER TABLE t ADD COLUMN i INT GENERATED ALWAYS AS(a+a+b), ADD COLUMN j INT, ALGORITHM=INPLACE;
 
+# With instant ADD COLUMN, adding a regular column along with virtual column is allowed
+ALTER TABLE t ADD COLUMN i INT GENERATED ALWAYS AS(a+a+b), ADD COLUMN j INT, ALGORITHM=INSTANT;
+
 # Add an index along with adding a regular column is allowed.
-ALTER TABLE t ADD INDEX (x), ADD COLUMN j INT, ALGORITHM=INPLACE, LOCK=NONE;
+ALTER TABLE t ADD INDEX (x), ADD COLUMN k INT, ALGORITHM=INPLACE, LOCK=NONE;
 SHOW CREATE TABLE t;
 
 # Online add an index on newly added virtual column is not allowed.
 --error ER_ALTER_OPERATION_NOT_SUPPORTED_REASON
-ALTER TABLE t ADD COLUMN i INT GENERATED ALWAYS AS(a+a+b), ADD INDEX (i), ALGORITHM=INPLACE, LOCK=NONE;
+ALTER TABLE t ADD COLUMN l INT GENERATED ALWAYS AS(a+a+b), ADD INDEX (l), ALGORITHM=INPLACE, LOCK=NONE;
 
-ALTER TABLE t ADD COLUMN i INT GENERATED ALWAYS AS(a+a+b), ADD INDEX (i), ALGORITHM=INPLACE, LOCK=SHARED;
+ALTER TABLE t ADD COLUMN l INT GENERATED ALWAYS AS(a+a+b), ADD INDEX (l), ALGORITHM=INPLACE, LOCK=SHARED;
 SHOW CREATE TABLE t;
 
-SELECT i FROM t;
+--sorted_result
+SELECT l FROM t;
 
+--sorted_result
 SELECT * FROM t;
 
 DROP TABLE t;
@@ -1434,14 +1478,18 @@ CREATE TABLE t (
 
 INSERT INTO t (a,b) VALUES (0, 0), (1, NULL), (NULL, 2), (NULL, NULL);
 
+--sorted_result
 SELECT c, d FROM t;
 
+--sorted_result
 SELECT * FROM t;
 
 ALTER TABLE t DROP COLUMN c, ALGORITHM=INPLACE;
 
+--sorted_result
 SELECT d FROM t;
 
+--sorted_result
 SELECT * FROM t;
 
 DROP TABLE t;
@@ -1460,8 +1508,10 @@ SELECT * FROM t;
 
 ALTER TABLE t DROP COLUMN c, ADD INDEX vidx(d), ALGORITHM=INPLACE;
 
+--sorted_result
 SELECT d FROM t;
 
+--sorted_result
 SELECT * FROM t;
 
 DROP TABLE t;
@@ -1519,4 +1569,32 @@ UNIQUE KEY (b,a))ENGINE=INNODB;
 INSERT INTO t1(a) VALUES ('');
 ALTER TABLE t1 CHANGE COLUMN a a VARCHAR(85);
 SELECT * FROM t1;
+DROP TABLE t1;
+
+
+--echo #
+--echo # BUG#27712812 - ALTER TABLE TO ADD AND(OR) DROP VIRTUAL COLUMNS SHOULD BE INSTANT
+--echo #
+
+CREATE TABLE t1 (a INT NOT NULL AUTO_INCREMENT PRIMARY KEY, b INT);
+
+INSERT INTO t1 VALUES(0, 1), (0, 2), (0, 3), (0, 4), (0, 5);
+
+ALTER TABLE t1 ADD COLUMN c INT NOT NULL, ADD COLUMN d INT GENERATED ALWAYS AS ((b * 2)) VIRTUAL, ALGORITHM = INSTANT;
+SELECT instant_cols FROM information_schema.innodb_tables WHERE name LIKE '%t1%';
+ALTER TABLE t1 ADD COLUMN e INT GENERATED ALWAYS AS ((b * 2)) VIRTUAL, ALGORITHM = INSTANT;
+
+DROP TABLE t1;
+
+
+--echo #
+--echo # BUG#27755892 - CRASH IN ROW_SEL_FIELD_STORE_IN_MYSQL_FORMAT_FUNC
+--echo #
+
+CREATE TABLE t1 (b DATE, c CHAR(100) CHARACTER SET utf32 GENERATED ALWAYS AS (concat(1, b, 1)) VIRTUAL, UNIQUE KEY(c(16)));
+
+INSERT INTO t1(b) VALUES('2018-04-01');
+
+SELECT c LIKE 1 FROM t1;
+
 DROP TABLE t1;

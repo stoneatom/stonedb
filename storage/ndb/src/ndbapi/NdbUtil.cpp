@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
+    Use is subject to license terms.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -73,10 +73,7 @@ NdbCall::~NdbCall()
 {
 }
 
-
-NdbLockHandle::NdbLockHandle(Ndb*)
-{
-}
+NdbLockHandle::NdbLockHandle(Ndb*) {}
 
 NdbLockHandle::~NdbLockHandle()
 {
@@ -92,8 +89,4 @@ NdbLockHandle::init()
   thePrev = NULL;
 }
 
-void
-NdbLockHandle::release(Ndb* ndb)
-{
-  m_state = FREE;
-}
+void NdbLockHandle::release(Ndb*) { m_state = FREE; }

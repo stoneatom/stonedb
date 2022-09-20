@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -303,7 +303,7 @@ Ndb::releaseNdbCall(NdbCall* aNdbCall)
 void releaseNdbCon(NdbTransaction* aNdbCon);
 
 Parameters:     aNdbCon: The NdbTransaction object.
-Remark:         Add a Connection object into the signal idlelist.
+Remark:         Add a Connection object into the connection idlelist.
 ***************************************************************************/
 void
 Ndb::releaseNdbCon(NdbTransaction* aNdbCon)
@@ -352,7 +352,7 @@ Ndb::releaseNdbSubroutine(NdbSubroutine* aNdbSubroutine)
 void releaseOperation(NdbOperation* anOperation);
 
 Parameters:     anOperation : The released NdbOperation object.
-Remark:         Add a NdbOperation object into the signal idlelist.
+Remark:         Add a NdbOperation object into the operation idlelist.
 ***************************************************************************/
 void
 Ndb::releaseOperation(NdbOperation* anOperation)
@@ -373,13 +373,13 @@ Ndb::releaseOperation(NdbOperation* anOperation)
 void releaseScanOperation(NdbScanOperation* aScanOperation);
 
 Parameters:     aScanOperation : The released NdbScanOperation object.
-Remark:         Add a NdbScanOperation object into the signal idlelist.
+Remark:         Add a NdbScanOperation object into the scan idlelist.
 ***************************************************************************/
 void
 Ndb::releaseScanOperation(NdbIndexScanOperation* aScanOperation)
 {
   DBUG_ENTER("Ndb::releaseScanOperation");
-  DBUG_PRINT("enter", ("op: 0x%lx", (long) aScanOperation));
+  DBUG_PRINT("enter", ("op: %p", aScanOperation));
 #ifdef ndb_release_check_dup
   { NdbIndexScanOperation* tOp = theScanOpIdleList;
     while (tOp != NULL) {
@@ -465,7 +465,7 @@ Ndb::releaseLockHandle(NdbLockHandle* lh)
 {
   lh->release(this);
   theImpl->theLockHandleList.release(lh);
-};
+}
 
 /****************************************************************************
 int releaseConnectToNdb(NdbTransaction* aConnectConnection);
@@ -499,7 +499,7 @@ Ndb::releaseConnectToNdb(NdbTransaction* a_con)
                                WAIT_TC_RELEASE,
                                &tSignal,
                                conn_seq);
-  if (ret_code == 0) {
+  if (likely(ret_code == 0)) {
     ;
   } else if (ret_code == -1) {
     TRACE_DEBUG("Time-out when TCRELEASE sent");
@@ -512,7 +512,7 @@ Ndb::releaseConnectToNdb(NdbTransaction* a_con)
   } else if (ret_code == -5) {
     TRACE_DEBUG("Node stopping when TCRELEASE sent");
   } else {
-    ndbout << "Impossible return from sendRecSignal when TCRELEASE" << endl;
+    g_eventLogger->info("Impossible return from sendRecSignal when TCRELEASE");
     abort();
   }//if
   releaseNdbCon(a_con);
@@ -527,7 +527,7 @@ update(Ndb::Free_list_usage* curr,
        const char * name)
 {
   curr->m_name = name;
-  curr->m_created = list.m_alloc_cnt;
+  curr->m_created = list.m_used_cnt+list.m_free_cnt;
   curr->m_free = list.m_free_cnt;
   curr->m_sizeof = sizeof(T);
   return curr;

@@ -4,6 +4,13 @@
 
 -- disable_query_log
 -- disable_result_log
+# High values set for sampling scanning, effectively forcing full scan for
+# statistics.
+SET @innodb_stats_transient_sample_pages= @@GLOBAL.innodb_stats_transient_sample_pages;
+SET @@global.innodb_stats_transient_sample_pages=5000000000;
+SET @innodb_stats_persistent_sample_pages= @@GLOBAL.innodb_stats_persistent_sample_pages;
+SET @@global.innodb_stats_persistent_sample_pages=5000000000;
+
 SET GLOBAL innodb_stats_persistent=0;
 -- enable_result_log
 -- enable_query_log
@@ -124,9 +131,9 @@ drop table t1, t2;
 --echo # 
 --echo # BUG#42742: crash in setup_sj_materialization, Copy_field::set
 --echo # 
-create table t3 ( c1 year) engine=innodb;
+create table t3 ( c1 year) charset latin1 engine=innodb;
 insert into t3 values (2135),(2142);
-create table t2 (c1 tinytext,c2 text,c6 timestamp) engine=innodb;
+create table t2 (c1 tinytext,c2 text,c6 timestamp) charset latin1 engine=innodb;
 -- echo # The following must not crash, EXPLAIN should show one SJ strategy, not a mix:
 explain select 1 from t2 where 
   c2 in (select 1 from t3, t2) and
@@ -157,5 +164,7 @@ DROP TABLE t1, t2;
 -- disable_query_log
 -- disable_result_log
 SET GLOBAL innodb_stats_persistent=default;
+SET @@GLOBAL.innodb_stats_transient_sample_pages= @innodb_stats_transient_sample_pages;
+SET @@GLOBAL.innodb_stats_persistent_sample_pages= @innodb_stats_persistent_sample_pages;
 -- enable_result_log
 -- enable_query_log

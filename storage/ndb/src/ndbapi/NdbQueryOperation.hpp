@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2011, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2011, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -19,7 +19,7 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA */
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #ifndef NdbQueryOperation_H
 #define NdbQueryOperation_H
@@ -135,12 +135,14 @@ public:
   NdbQueryOperation* getQueryOperation(Uint32 index) const;
 //NdbQueryOperation* getQueryOperation(const NdbQueryOperationDef* def) const;
 
-  Uint32 getNoOfParameters() const;
-  const NdbParamOperand* getParameter(const char* name) const;
-  const NdbParamOperand* getParameter(Uint32 num) const;
-
   int setBound(const NdbRecord *keyRecord,
                const struct NdbIndexScanOperation::IndexBound *bound);
+
+  /**
+   * When returning results from a multi-range-read, over multiple 'bounds',
+   * we can get which 'range' (or bound) the returned row comes from.
+   */
+  int getRangeNo() const;
 
   /**
    * Get the next tuple(s) from the global cursor on the query.
@@ -440,10 +442,6 @@ public:
 
   // Result handling for this NdbQueryOperation
   bool isRowNULL() const;    // Row associated with Operation is NULL value?
-
-  bool isRowChanged() const; // Prev ::nextResult() on NdbQuery retrived a new
-                             // value for this NdbQueryOperation
-
 
 private:
   // Opaque implementation class instance.

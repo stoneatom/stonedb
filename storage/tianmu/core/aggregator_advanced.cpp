@@ -216,7 +216,7 @@ types::BString AggregatorGroupConcat::GetValueT(unsigned char *buf) {
     return res;
   }
 
-  if (si.order == ORDER::ORDER_NOT_RELEVANT)  // NO order by logic
+  if (si.order == ORDER_NOT_RELEVANT)  // NO order by logic // stonedb8
   {
     char *p = (char *)buf;
     types::BString res(p, len);
@@ -239,7 +239,7 @@ types::BString AggregatorGroupConcat::GetValueT(unsigned char *buf) {
     start_pos = pos + si.separator.length();
   }
 
-  if (si.order == ORDER::ORDER_DESC) {
+  if (si.order == ORDER_DESC) { // stonedb8
     if (ATI::IsStringType(attrtype))
       std::sort(vstr.begin(), vstr.end(), std::greater<std::string>());
     else  // numeric

@@ -1,6 +1,6 @@
 /*****************************************************************************
 
-Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+Copyright (c) 2020, 2022, Oracle and/or its affiliates.
 
 This program is free software; you can redistribute it and/or modify it under
 the terms of the GNU General Public License, version 2.0, as published by the
@@ -25,12 +25,11 @@ this program; if not, write to the Free Software Foundation, Inc.,
 *****************************************************************************/
 #ifndef buf0block_hint_h
 #define buf0block_hint_h
-#include "buf0buf.h"
+#include "buf0types.h"
 
 namespace buf {
 class Block_hint {
  public:
-  Block_hint():m_block(NULL),m_page_id(0,0){}
   /** Stores the pointer to the block, which is currently buffer-fixed.
   @param[in]  block   a pointer to a buffer-fixed block to be stored */
   void store(buf_block_t *block);
@@ -46,27 +45,21 @@ class Block_hint {
   @return the return value of f
   */
   template <typename F>
-  bool run_with_hint(const F &f) {
+  auto run_with_hint(F &&f) {
     buffer_fix_block_if_still_valid();
     /* m_block could be changed during f() call, so we use local variable to
     remember which block we need to unfix */
     buf_block_t *buffer_fixed_block = m_block;
-    bool res = f(buffer_fixed_block);
+    auto res = f(buffer_fixed_block);
     buffer_unfix_block_if_needed(buffer_fixed_block);
     return res;
   }
 
-  Block_hint &operator=(const Block_hint&other){
-    m_block=other.m_block;
-    m_page_id.copy_from(other.m_page_id);
-    return *this;
-  }
-
  private:
   /** The block pointer stored by store(). */
-  buf_block_t *m_block;
+  buf_block_t *m_block{nullptr};
   /** If m_block is non-null, the m_block->page.id at time it was stored. */
-  page_id_t m_page_id;
+  page_id_t m_page_id{0, 0};
 
   /** A helper function which checks if m_block is not a dangling pointer and
   still points to block with page with m_page_id and if so, buffer-fixes it,

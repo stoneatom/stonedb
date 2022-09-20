@@ -7,7 +7,7 @@
 #
 #  2. Transaction does not have any effect, gets logged and assigned a
 #     GTID on master because master uses binlog_format=statement, but
-#     does not get logged on slave because slave uses binlog_format=row.
+#     does not get logged on slave because slave uses binlog_format='row'.
 #
 #  3. Transaction is explicitly made empty on master by setting
 #     gtid_next and executing a COMMIT.
@@ -23,12 +23,12 @@
 # tables.
 #
 # For case 2, we use binlog_format=statement on master and
-# binlog_format=row on the first slave.  We test two cases of
+# binlog_format='row' on the first slave.  We test two cases of
 # transactions that are not logged in row format: (2A) temporary table
 # DDL and DML and (2B) an UPDATE statement that matches no row.  We
 # use a second slave where the effect of the statement would be seen,
 # if it was not logged as an empty statement.  In case (2A) we check
-# that slave_open_temp_tables is still 0 on the second slave. In case
+# that replica_open_temp_tables is still 0 on the second slave. In case
 # (2B) we do an UPDATE on master that matches no rows on master, but
 # that would match a row on the second slave.
 #
@@ -56,9 +56,7 @@
 --let $rpl_gtid_utils= 1
 --source include/rpl_init.inc
 --source include/rpl_default_connections.inc
---source include/not_embedded.inc
 --source include/have_binlog_format_mixed.inc
---source include/have_gtid.inc
 
 --source include/rpl_reset.inc
 
@@ -93,8 +91,8 @@ ALTER TABLE t_ignore_wild ADD COLUMN b INT;
 INSERT INTO t_ignore_wild VALUES (1, 2);
 DROP TEMPORARY TABLE t_ignore_wild;
 
-# Verify that 8 GTIDs were generated.
---let $gtid_step_count= 8
+# Verify that 0 GTIDs were generated.
+--let $gtid_step_count= 0
 --source include/gtid_step_assert.inc
 
 # Verify that the GTIDs make it to every slave.
@@ -162,8 +160,11 @@ DROP DATABASE db_binlog_ignore;
 
 --connection slave
 SET @save.binlog_format= @@global.binlog_format;
-SET @@global.binlog_format= row;
-source include/restart_slave_sql.inc;
+# To avoid an error 'ER_RUNNING_APPLIER_PREVENTS_SWITCH_GLOBAL_BINLOG_FORMAT',
+# which will be caused by the following include/end_replace_combination.inc
+--source include/stop_slave_sql.inc
+SET @@global.binlog_format= 'row';
+source include/start_slave_sql.inc;
 
 --echo ---- Test ----
 
@@ -178,13 +179,13 @@ source include/restart_slave_sql.inc;
 #
 # - Second slave should also not log any change, since it receives an
 #   empty transaction from the first slave.  Thus
-#   Slave_open_temp_tables should remain 0 on the second slave.
+#   Replica_open_temp_tables should remain 0 on the second slave.
 CREATE TEMPORARY TABLE t2 (a INT);
 ALTER TABLE t2 ADD COLUMN b INT;
 INSERT INTO t2 VALUES (1, 2);
 
-# assert exactly 3 GTIDs were generated
---let $gtid_step_count= 3
+# assert exactly 0 GTIDs were generated
+--let $gtid_step_count= 0
 --source include/gtid_step_assert.inc
 
 # Verify that the GTID gets replicated everywhere.
@@ -193,10 +194,10 @@ INSERT INTO t2 VALUES (1, 2);
 
 # Verify temp tables on first slave but not on second slave
 --let $assert_text= First slave should not have created any temp table
---let $assert_cond= [slave:SHOW GLOBAL STATUS LIKE 'Slave_open_temp_tables'] = 1
+--let $assert_cond= [slave:SHOW GLOBAL STATUS LIKE 'Replica_open_temp_tables'] = 1
 
 --let $assert_text= Second slave should not have created any temp table
---let $assert_cond= [server_3:SHOW GLOBAL STATUS LIKE 'Slave_open_temp_tables'] = 0
+--let $assert_cond= [server_3:SHOW GLOBAL STATUS LIKE 'Replica_open_temp_tables'] = 0
 
 --echo ---- Clean up ----
 
@@ -204,6 +205,9 @@ DROP TEMPORARY TABLE t2;
 --source include/rpl_sync.inc
 
 --connection slave
+# To avoid an error 'ER_RUNNING_APPLIER_PREVENTS_SWITCH_GLOBAL_BINLOG_FORMAT',
+# which will be caused by the following include/end_replace_combination.inc
+--source include/stop_slave_sql.inc
 SET @@global.binlog_format= @save.binlog_format;
 --connection master
 
@@ -213,8 +217,8 @@ SET @@global.binlog_format= @save.binlog_format;
 
 --connection slave
 SET @save.binlog_format= @@global.binlog_format;
-SET @@global.binlog_format= row;
-source include/restart_slave_sql.inc;
+SET @@global.binlog_format= 'row';
+source include/start_slave_sql.inc;
 
 --connection master
 SET @@session.binlog_format= statement;
@@ -252,12 +256,16 @@ DROP TABLE t1;
 --source include/rpl_sync.inc
 
 --connection slave
+# To avoid an error 'ER_RUNNING_APPLIER_PREVENTS_SWITCH_GLOBAL_BINLOG_FORMAT',
+# which will be caused by the following include/end_replace_combination.inc
+--source include/stop_slave_sql.inc
 SET @@global.binlog_format= @save.binlog_format;
+--source include/start_slave_sql.inc
 --connection master
 
 --echo ==== Case 3: explicit empty transaction on master ====
 
-SET @@SESSION.binlog_format= row;
+SET @@SESSION.binlog_format= 'row';
 --source include/gtid_step_reset.inc
 eval SET @@SESSION.GTID_NEXT = '$uuida:1';
 COMMIT;

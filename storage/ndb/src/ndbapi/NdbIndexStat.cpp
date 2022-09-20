@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2005, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2005, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -21,6 +21,9 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
+
+#include "util/require.h"
+#include <new>
 
 #include <ndb_global.h>
 #include <AttributeHeader.hpp>
@@ -128,15 +131,13 @@ NdbIndexStat::addKeyPartInfo(const NdbRecord* record,
   return 0;
 }
 
-int
-NdbIndexStat::records_in_range(const NdbDictionary::Index* index, 
-                               NdbTransaction* trans,
-                               const NdbRecord* key_record,
-                               const NdbRecord* result_record,
-                               const NdbIndexScanOperation::IndexBound* ib, 
-                               Uint64 table_rows, 
-                               Uint64* count, 
-                               int flags)
+int NdbIndexStat::records_in_range(const NdbDictionary::Index* /*index*/,
+                                   NdbTransaction* trans,
+                                   const NdbRecord* key_record,
+                                   const NdbRecord* result_record,
+                                   const NdbIndexScanOperation::IndexBound* ib,
+                                   Uint64 /*table_rows*/, Uint64* count,
+                                   int flags [[maybe_unused]])
 {
   DBUG_ENTER("NdbIndexStat::records_in_range");
   Uint64 rows;
@@ -293,8 +294,16 @@ int
 NdbIndexStat::create_systables(Ndb* ndb)
 {
   DBUG_ENTER("NdbIndexStat::create_systables");
-  if (m_impl.create_systables(ndb) == -1)
+  if (m_impl.create_systables(ndb) == -1) {
+    if (getNdbError().code == 721 || getNdbError().code == 4244) {
+      // Probably a race between applications which this app has lost. Check if
+      // the tables have been created either way and treat it as success
+      if (check_systables(ndb) == 0) {
+        DBUG_RETURN(0);
+      }
+    }
     DBUG_RETURN(-1);
+  }
   DBUG_RETURN(0);
 }
 
@@ -407,7 +416,7 @@ NdbIndexStat::get_cache_info(CacheInfo& info, CacheType type) const
     info.m_ref_count += c->m_ref_count;
     c = c->m_nextClean;
   }
-  // build and query cache have at most one instance
+  // build has at most one instance
   require(type == CacheClean || info.m_count <= 1);
   NdbMutex_Unlock(m_impl.m_query_mutex);
 }
@@ -626,6 +635,17 @@ NdbIndexStat::get_empty(const Stat& stat_f, bool* empty)
 }
 
 void
+NdbIndexStat::get_numrows(const Stat& stat_f, Uint32* rows)
+{
+  DBUG_TRACE;
+  const NdbIndexStatImpl::Stat& stat =
+    *(const NdbIndexStatImpl::Stat*)stat_f.m_impl;
+  require(rows != nullptr);
+  *rows = stat.m_value.m_num_rows;
+  DBUG_PRINT("index_stat", ("rows:%d", *rows));
+}
+
+void
 NdbIndexStat::get_rir(const Stat& stat_f, double* rir)
 {
   DBUG_ENTER("NdbIndexStat::get_rir");
@@ -645,21 +665,59 @@ NdbIndexStat::get_rir(const Stat& stat_f, double* rir)
 }
 
 void
-NdbIndexStat::get_rpk(const Stat& stat_f, Uint32 k, double* rpk)
+NdbIndexStat::get_rpk_pruned(const Stat& stat_f,
+                             Uint32 k,
+                             double* rpk)
 {
-  DBUG_ENTER("NdbIndexStat::get_rpk");
+  DBUG_ENTER("NdbIndexStat::get_rpk_pruned");
   const NdbIndexStatImpl::Stat& stat =
     *(const NdbIndexStatImpl::Stat*)stat_f.m_impl;
+  double factor = stat.m_value.m_unq_factor[k];
   double x = stat.m_value.m_rir / stat.m_value.m_unq[k];
+  assert(stat.m_value.m_num_fragments > 0);
+  double fragments = stat.m_value.m_num_fragments;
+  x = factor * x / fragments;
   if (x < 1.0)
     x = 1.0;
-  require(rpk != 0);
   *rpk = x;
 #ifndef NDEBUG
   char buf[100];
   sprintf(buf, "%.2f", *rpk);
 #endif
-  DBUG_PRINT("index_stat", ("rpk[%u]:%s", k, buf));
+  DBUG_PRINT("index_stat", ("rir: %.2f, m_unq: %.2f, k: %u, frags: %u,"
+             " rpk: %s",
+              stat.m_value.m_rir,
+              stat.m_value.m_unq[k],
+              k,
+              stat.m_value.m_num_fragments,
+              buf));
+  DBUG_VOID_RETURN;
+}
+
+void
+NdbIndexStat::get_rpk(const Stat& stat_f,
+                      Uint32 k,
+                      double* rpk)
+{
+  DBUG_ENTER("NdbIndexStat::get_rpk");
+  const NdbIndexStatImpl::Stat& stat =
+    *(const NdbIndexStatImpl::Stat*)stat_f.m_impl;
+  {
+    double x = stat.m_value.m_rir / stat.m_value.m_unq[k];
+    if (x < 1.0)
+      x = 1.0;
+    *rpk = x;
+    require(stat.m_value.m_unq_factor[k] > 0);
+  }
+#ifndef NDEBUG
+  char buf[100];
+  sprintf(buf, "%.2f", *rpk);
+#endif
+  DBUG_PRINT("index_stat", ("rir: %.2f, m_unq: %.2f, rpk[%u]: %s",
+              stat.m_value.m_rir,
+              stat.m_value.m_unq[k],
+              k,
+              buf));
   DBUG_VOID_RETURN;
 }
 
@@ -713,6 +771,15 @@ NdbIndexStat::create_listener(Ndb* ndb)
   DBUG_RETURN(0);
 }
 
+bool
+NdbIndexStat::has_listener() const
+{
+  DBUG_ENTER("NdbIndexStat::has_listener");
+  if (m_impl.m_eventOp != 0)
+    DBUG_RETURN(true);
+  DBUG_RETURN(false);
+}
+
 int
 NdbIndexStat::execute_listener(Ndb* ndb)
 {
@@ -746,8 +813,7 @@ int
 NdbIndexStat::drop_listener(Ndb* ndb)
 {
   DBUG_ENTER("NdbIndexStat::drop_listener");
-  if (m_impl.drop_listener(ndb) == -1)
-    DBUG_RETURN(-1);
+  (void)m_impl.drop_listener(ndb);
   DBUG_RETURN(0);
 }
 

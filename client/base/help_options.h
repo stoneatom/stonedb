@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2014, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2014, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -25,50 +25,50 @@
 #ifndef HELP_OPTIONS_INCLUDED
 #define HELP_OPTIONS_INCLUDED
 
-#include "abstract_options_provider.h"
+#include "client/base/abstract_options_provider.h"
+#include "my_compiler.h"
 
-namespace Mysql{
-namespace Tools{
-namespace Base{
+namespace Mysql {
+namespace Tools {
+namespace Base {
 
 class Abtract_program;
 
-namespace Options{
+namespace Options {
 
 /**
   Options provider providing --help option and handling usage printing.
  */
-class Help_options : public Abstract_options_provider
-{
-public:
+class Help_options : public Abstract_options_provider {
+ public:
   /**
     Constructs new help options provider.
     @param program Pointer to main program class, used to collect list of all
       options available in program.
    */
-  Help_options(Base::Abstract_program *program);
+  explicit Help_options(Base::Abstract_program *program);
   /**
     Creates all options that will be provided.
     Implementation of Abstract_options_provider virtual method.
    */
-  virtual void create_options();
+  void create_options() override;
   /**
     Prints program usage message.
   */
   virtual void print_usage();
 
-private:
-  void help_callback(char* argument MY_ATTRIBUTE((unused)));
-  void version_callback(char* argument MY_ATTRIBUTE((unused)));
+ private:
+  void help_callback(char *argument [[maybe_unused]]);
+  void version_callback(char *argument [[maybe_unused]]);
 
   void print_version_line();
 
   Abstract_program *m_program;
 };
 
-}
-}
-}
-}
+}  // namespace Options
+}  // namespace Base
+}  // namespace Tools
+}  // namespace Mysql
 
 #endif

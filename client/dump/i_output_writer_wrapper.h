@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2015, 2021, Oracle and/or its affiliates.
+  Copyright (c) 2015, 2022, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License, version 2.0,
@@ -25,28 +25,26 @@
 #ifndef I_OUTPUT_WRITER_WRAPPER_INCLUDED
 #define I_OUTPUT_WRITER_WRAPPER_INCLUDED
 
-#include "i_output_writer.h"
+#include "client/dump/i_output_writer.h"
 
-namespace Mysql{
-namespace Tools{
-namespace Dump{
+namespace Mysql {
+namespace Tools {
+namespace Dump {
 
 /**
   Represents class that directs execution of dump tasks to Output Writers.
  */
-class I_output_writer_wrapper
-{
-public:
-  virtual ~I_output_writer_wrapper()
-  {}
+class I_output_writer_wrapper {
+ public:
+  virtual ~I_output_writer_wrapper() = default;
   /**
     Add new Output Writer to supply formatted strings to.
    */
-  virtual void register_output_writer(I_output_writer* new_output_writer)= 0;
+  virtual void register_output_writer(I_output_writer *new_output_writer) = 0;
 };
 
-}
-}
-}
+}  // namespace Dump
+}  // namespace Tools
+}  // namespace Mysql
 
 #endif

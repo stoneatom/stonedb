@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2013, 2022, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License, version 2.0,
@@ -17,8 +17,8 @@
   GNU General Public License, version 2.0, for more details.
 
   You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software Foundation,
-  51 Franklin Street, Suite 500, Boston, MA 02110-1335 USA */
+  along with this program; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #ifndef PFS_PROGRAM_H
 #define PFS_PROGRAM_H
@@ -28,40 +28,32 @@
   Stored Program data structures (declarations).
 */
 
-#include "pfs_column_types.h"
-#include "pfs_stat.h"
+#include <sys/types.h>
 
-#define PROGRAM_HASH_KEY_LENGTH sizeof(enum_object_type) + COL_OBJECT_NAME_SIZE + 1 + COL_OBJECT_SCHEMA_SIZE + 1
+#include "storage/perfschema/pfs_column_types.h"
+#include "storage/perfschema/pfs_global.h"
+#include "storage/perfschema/pfs_instr.h"
+#include "storage/perfschema/pfs_name.h"
+#include "storage/perfschema/pfs_stat.h"
 
 extern LF_HASH program_hash;
 
 /**
   Hash key for a program.
 */
-struct PFS_program_key
-{
-  /**
-    Hash search key.
-    This has to be a string for LF_HASH,
-    the format is "<object_type><0x00><object_name><0x00><schema_name><0x00>"
-  */
-  char m_hash_key[PROGRAM_HASH_KEY_LENGTH];
-  uint m_key_length;
-};
-
-struct PFS_ALIGNED PFS_program : public PFS_instr
-{
+struct PFS_program_key {
+ public:
   /** Object type. */
   enum_object_type m_type;
 
-  /** Object name. */
-  const char *m_object_name;
-  int m_object_name_length;
-
   /** Object Schema name. */
-  const char *m_schema_name;
-  int m_schema_name_length;
+  PFS_schema_name m_schema_name;
 
+  /** Object name. */
+  PFS_routine_name m_object_name;
+};
+
+struct PFS_ALIGNED PFS_program : public PFS_instr {
   /** Hash key */
   PFS_program_key m_key;
 
@@ -71,8 +63,8 @@ struct PFS_ALIGNED PFS_program : public PFS_instr
   /** Stored program stat. */
   PFS_sp_stat m_sp_stat;
 
-  /** Referesh setup object flags. */
-  void refresh_setup_object_flags(PFS_thread* thread);
+  /** Refresh setup object flags. */
+  void refresh_setup_object_flags(PFS_thread *thread);
 
   /** Reset data for this record. */
   void reset_data();
@@ -85,19 +77,13 @@ void cleanup_program_hash(void);
 
 void reset_esms_by_program();
 
-PFS_program*
-find_or_create_program(PFS_thread *thread,
-                      enum_object_type object_type,
-                      const char *object_name,
-                      uint object_name_length,
-                      const char *schema,
-                      uint schema_length);
+PFS_program *find_or_create_program(PFS_thread *thread,
+                                    enum_object_type object_type,
+                                    const char *object_name,
+                                    uint object_name_length, const char *schema,
+                                    uint schema_length);
 
-void
-drop_program(PFS_thread *thread,
-             enum_object_type object_type,
-             const char *object_name,
-             uint object_name_length,
-             const char *schema_name,
-             uint schema_name_length);
+void drop_program(PFS_thread *thread, enum_object_type object_type,
+                  const char *object_name, uint object_name_length,
+                  const char *schema_name, uint schema_name_length);
 #endif

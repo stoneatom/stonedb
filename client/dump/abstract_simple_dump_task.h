@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2015, 2021, Oracle and/or its affiliates.
+  Copyright (c) 2015, 2022, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License, version 2.0,
@@ -25,33 +25,33 @@
 #ifndef ABSTRACT_SIMPLE_DUMP_TASK_INCLUDED
 #define ABSTRACT_SIMPLE_DUMP_TASK_INCLUDED
 
-#include "i_dump_task.h"
-#include "base/atomic.h"
+#include <atomic>
 
-namespace Mysql{
-namespace Tools{
-namespace Dump{
+#include "client/dump/i_dump_task.h"
+
+namespace Mysql {
+namespace Tools {
+namespace Dump {
 
 /**
   Base class for all individual dump process tasks.
  */
-class Abstract_simple_dump_task : public I_dump_task
-{
-public:
+class Abstract_simple_dump_task : public I_dump_task {
+ public:
   Abstract_simple_dump_task();
 
-  virtual ~Abstract_simple_dump_task();
+  ~Abstract_simple_dump_task() override;
 
-  bool is_completed() const;
+  bool is_completed() const override;
 
-  virtual void set_completed();
+  void set_completed() override;
 
-private:
-  my_boost::atomic_bool m_is_completed;
+ private:
+  std::atomic<bool> m_is_completed;
 };
 
-}
-}
-}
+}  // namespace Dump
+}  // namespace Tools
+}  // namespace Mysql
 
 #endif

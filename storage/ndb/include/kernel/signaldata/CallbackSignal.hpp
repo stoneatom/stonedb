@@ -1,4 +1,4 @@
-/* Copyright (c) 2008, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2008, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -18,7 +18,7 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA */
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #ifndef CALLBACK_SIGNAL_HPP
 #define CALLBACK_SIGNAL_HPP
@@ -34,7 +34,7 @@
  */
 
 struct CallbackConf {
-  STATIC_CONST( SignalLength = 6 );
+  static constexpr Uint32 SignalLength = 6;
   Uint32 senderData;    // callee: e.g. lgman logfile_group_id
   Uint32 senderRef;     // callee
   Uint32 callbackIndex; // caller: index into own CallbackTable passed in Req
@@ -44,7 +44,7 @@ struct CallbackConf {
 };
 
 struct CallbackAck {
-  STATIC_CONST( SignalLength = 2 );
+  static constexpr Uint32 SignalLength = 2;
   Uint32 senderData;    // from CallbackConf
   Uint32 callbackInfo;  // from CallbackConf
 };

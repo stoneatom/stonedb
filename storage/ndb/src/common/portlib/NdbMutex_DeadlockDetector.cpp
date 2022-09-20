@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2011, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2011, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -22,13 +22,14 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
+#include <cstring>
 #include <NdbMutex.h>
 #include <NdbThread.h>
 #ifdef NDB_MUTEX_DEADLOCK_DETECTOR
 
 #include "NdbMutex_DeadlockDetector.h"
 
-#define NDB_THREAD_TLS_SELF NDB_THREAD_TLS_MAX
+static thread_local ndb_mutex_thr_state* NDB_THREAD_TLS_SELF = nullptr;
 
 static NdbMutex g_mutex_no_mutex; // We need a mutex to assign numbers to mutexes...
 static nmdd_mask g_mutex_no_mask = { 0, 0 };
@@ -66,7 +67,7 @@ void
 ndb_mutex_created(NdbMutex* p)
 {
   p->m_mutex_state = (ndb_mutex_state*)malloc(sizeof(ndb_mutex_state));
-  bzero(p->m_mutex_state, sizeof(ndb_mutex_state));
+  std::memset(p->m_mutex_state, 0, sizeof(ndb_mutex_state));
 
   /**
    * Assign mutex no
@@ -124,8 +125,7 @@ static
 ndb_mutex_thr_state*
 get_thr()
 {
-  void * p = NdbThread_GetTlsKey(NDB_THREAD_TLS_SELF);
-  return (ndb_mutex_thr_state*)p;
+  return NDB_THREAD_TLS_SELF;
 }
 
 #define INC_SIZE 16
@@ -235,8 +235,8 @@ extern "C"
 void
 ndb_mutex_thread_init(struct ndb_mutex_thr_state* p)
 {
-  bzero(p, sizeof(* p));
-  NdbThread_SetTlsKey(NDB_THREAD_TLS_SELF, p);
+  std::memset(p, 0, sizeof(* p));
+  NDB_THREAD_TLS_SELF = p;
 }
 
 extern "C"
@@ -272,7 +272,7 @@ set_bit(nmdd_mask * mask, unsigned no)
       new_len = byte_no + 1;
     }
     unsigned char * new_arr = (unsigned char*)malloc(new_len);
-    bzero(new_arr, new_len);
+    std::memset(new_arr, 0, new_len);
     if (mask->m_len != 0)
     {
       memcpy(new_arr, mask->m_mask, mask->m_len);

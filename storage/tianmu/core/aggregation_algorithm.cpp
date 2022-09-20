@@ -310,7 +310,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
         for (uint i = 0; i < t->NumOfAttrs(); i++) {
           if (t->GetAttrP(i)->mode == common::ColOperation::GROUP_CONCAT) {
             t->GetAttrP(i)->SetTypeName(common::CT::VARCHAR);
-            t->GetAttrP(i)->OverrideStringSize(tianmu_group_concat_max_len);
+            t->GetAttrP(i)->OverrideStringSize(tianmu_group_concat_max_len); // TODO: stonedb8
           }
           t->GetAttrP(i)->CreateBuffer(upper_groups);  // note: may be more than needed
           if (t->GetAttrP(i)->mode == common::ColOperation::DELAYED) t->GetAttrP(i)->term.vc->LockSourcePacks(m);

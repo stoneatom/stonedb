@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2005, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2005, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -22,8 +22,11 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
+#include "util/require.h"
 #include <ndb_global.h>
 #include "tuppage.hpp"
+#include "EventLogger.hpp"
+
 
 #define JAM_FILE_ID 427
 
@@ -41,33 +44,46 @@
  *              L is len of entry
  *              P is pos of entry
  */
+#if defined(VM_TRACE) || defined(ERROR_INSERT)
+#define loc_assert(x) \
+{ \
+  if (!(x)) \
+  { \
+    g_eventLogger->info("Crash on page_idx = %u", page_idx); \
+    require((x)); \
+  } \
+}
+#define use_assert
+#else
+#define loc_assert(x)
+#endif
 
 Uint32
 Tup_fixsize_page::alloc_record()
 {
-  assert(free_space);
   Uint32 page_idx = next_free_index;
-  assert(page_idx + 1 < DATA_WORDS);
+  loc_assert(free_space);
+  loc_assert(page_idx + 1 < DATA_WORDS);
 
-#ifdef VM_TRACE
+#ifdef use_assert
   Uint32 prev = m_data[page_idx] >> 16;
 #endif
   Uint32 next = m_data[page_idx] & 0xFFFF;
 
-  assert(prev == 0xFFFF);
-  assert(m_data[page_idx + 1] == FREE_RECORD);
+  loc_assert(prev == 0xFFFF);
+  loc_assert((m_data[page_idx + 1] & FREE_RECORD) == FREE_RECORD);
   
-  m_data[page_idx + 1] = 0;
+  m_data[page_idx + 1] &= (Uint32)~FREE_RECORD;
   if (next != 0xFFFF)
   {
-    assert(free_space > 1);
+    loc_assert(free_space > 1);
     Uint32 nextP = m_data[next];
-    assert((nextP >> 16) == page_idx);
+    loc_assert((nextP >> 16) == page_idx);
     m_data[next] = 0xFFFF0000 | (nextP & 0xFFFF);
   }
   else
   {
-    assert(free_space == 1);
+    loc_assert(free_space == 1);
   }
   
   next_free_index = next;
@@ -78,13 +94,14 @@ Tup_fixsize_page::alloc_record()
 Uint32
 Tup_fixsize_page::alloc_record(Uint32 page_idx)
 {
-  assert(page_idx + 1 < DATA_WORDS);
-  if (likely(free_space && m_data[page_idx + 1] == FREE_RECORD))
+  loc_assert(page_idx + 1 < DATA_WORDS);
+  if (likely(free_space &&
+             (m_data[page_idx + 1] & FREE_RECORD) == FREE_RECORD))
   {
     Uint32 prev = m_data[page_idx] >> 16;
     Uint32 next = m_data[page_idx] & 0xFFFF;
     
-    assert(prev != 0xFFFF || (next_free_index == page_idx));
+    loc_assert(prev != 0xFFFF || (next_free_index == page_idx));
     if (prev == 0xFFFF)
     {
       next_free_index = next;
@@ -101,7 +118,7 @@ Tup_fixsize_page::alloc_record(Uint32 page_idx)
       m_data[next] = (prev << 16) | (nextP & 0xFFFF);
     }
     free_space --;
-    m_data[page_idx + 1] = 0;
+    m_data[page_idx + 1] &= (Uint32)~FREE_RECORD;
     return page_idx;
   }
   return ~0;
@@ -112,26 +129,26 @@ Tup_fixsize_page::free_record(Uint32 page_idx)
 {
   Uint32 next = next_free_index;
   
-  assert(page_idx + 1 < DATA_WORDS);
-  assert(m_data[page_idx + 1] != FREE_RECORD);
+  loc_assert(page_idx + 1 < DATA_WORDS);
+  loc_assert((m_data[page_idx + 1] & FREE_RECORD) != FREE_RECORD);
 
   if (next == 0xFFFF)
   {
-    assert(free_space == 0);
+    loc_assert(free_space == 0);
   }
   else
   {
-    assert(free_space);
-    assert(next + 1 < DATA_WORDS);
+    loc_assert(free_space);
+    loc_assert(next + 1 < DATA_WORDS);
     Uint32 nextP = m_data[next];
-    assert((nextP >> 16) == 0xFFFF);
+    loc_assert((nextP >> 16) == 0xFFFF);
     m_data[next] = (page_idx << 16) | (nextP & 0xFFFF);
-    assert(m_data[next + 1] == FREE_RECORD);
+    loc_assert((m_data[next + 1] & FREE_RECORD) == FREE_RECORD);
   }
 
   next_free_index = page_idx;
   m_data[page_idx] = 0xFFFF0000 | next;
-  m_data[page_idx + 1] = FREE_RECORD;
+  m_data[page_idx + 1] |= FREE_RECORD;
   
   return ++free_space;
 }
@@ -245,7 +262,7 @@ Tup_varsize_page::alloc_record(Uint32 page_idx, Uint32 alloc_size,
       
       * ptr++ = insert_pos + (alloc_size << LEN_SHIFT);
       * ptr = ((* ptr) & ~PREV_MASK) | (END_OF_FREE_LIST << PREV_SHIFT);
-      
+
       next_free_index = hi - 1;
     }
     high_index = hi + 1;
@@ -289,7 +306,8 @@ Tup_varsize_page::alloc_record(Uint32 alloc_size,
     assert((get_index_word(page_idx) & FREE) == FREE);
     assert(((get_index_word(page_idx) & PREV_MASK) >> PREV_SHIFT) == 
 	   END_OF_FREE_LIST);
-    next_free_index= (get_index_word(page_idx) & NEXT_MASK) >> NEXT_SHIFT;
+    Uint32 next = (get_index_word(page_idx) & NEXT_MASK) >> NEXT_SHIFT;
+    next_free_index = next;
     assert(next_free_index);
     if (next_free_index != END_OF_FREE_LIST)
     {
@@ -304,21 +322,21 @@ Tup_varsize_page::alloc_record(Uint32 alloc_size,
   
   insert_pos += alloc_size;
   free_space -= alloc_size;
-  //ndbout_c("%p->alloc_record(%d%s) -> %d", this,alloc_size, (chain ? " CHAIN" : ""),page_idx);
+  //g_eventLogger->info("%p->alloc_record(%d%s) -> %d", this,alloc_size, (chain ? " CHAIN" : ""),page_idx);
   return page_idx;
 }
   
 Uint32
 Tup_varsize_page::free_record(Uint32 page_idx, Uint32 chain)
 {
-  //ndbout_c("%p->free_record(%d%s)", this, page_idx, (chain ? " CHAIN": ""));
+  //g_eventLogger->info("%p->free_record(%d%s)", this, page_idx, (chain ? " CHAIN": ""));
   Uint32 *index_ptr= get_index_ptr(page_idx);
   Uint32 index_word= * index_ptr;
   Uint32 entry_pos= (index_word & POS_MASK) >> POS_SHIFT;
   Uint32 entry_len= (index_word & LEN_MASK) >> LEN_SHIFT;
   assert(chain == 0 || chain == CHAIN);
   assert((index_word & CHAIN) == chain);
-#ifdef VM_TRACE
+#if defined(VM_TRACE) || defined(ERROR_INSERT)
   memset(m_data + entry_pos, 0xF2, 4*entry_len);
 #endif
   if (page_idx + 1 == high_index) {
@@ -482,11 +500,27 @@ operator<< (NdbOut& out, const Tup_fixsize_page& page)
   {
     cnt++;
     out << dec << "(" << (next & 0xFFFF) << " " << hex << next << ") " << flush;
-    assert(page.m_data[(next & 0xFFFF) + 1] == Dbtup::Tuple_header::FREE);
+    //assert(page.m_data[(next & 0xFFFF) + 1] == Dbtup::Tuple_header::FREE);
     next= * (page.m_data + ( next & 0xFFFF ));
   }
   assert(cnt == page.free_space);
 #endif
   out << "]";
+#if 0
+  bool print_out = false;
+  for (Uint32 i = 1; i < 8160; i+= 123)
+  {
+    if (page.m_data[i] >= 8160)
+      print_out = true;
+  }
+  if (!print_out)
+    return out;
+  for (Uint32 i = 0; i < 8160; i++)
+  {
+    if (i % 8 == 0)
+      out << endl;
+    out << "word[" << dec << i << "] = " << hex << page.m_data[i] << " ";
+  }
+#endif
   return out;
 }

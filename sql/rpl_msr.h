@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2014, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -17,30 +17,42 @@
    GNU General Public License, version 2.0, for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA */
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #ifndef RPL_MSR_H
 #define RPL_MSR_H
 
-#ifdef HAVE_REPLICATION
+#include "my_config.h"
 
-#include "my_global.h"
-#include "rpl_channel_service_interface.h" // enum_channel_type
-#include "rpl_mi.h"                        // Master_info
-
+#include <stddef.h>
+#include <sys/types.h>
 #include <map>
 #include <string>
+#include <utility>
+#include <vector>
 
+#include "my_dbug.h"
+#include "my_psi_config.h"
+#include "sql/mysqld.h"                         // key_rwlock_channel_map_lock
+#include "sql/rpl_channel_service_interface.h"  // enum_channel_type
+#include "sql/rpl_filter.h"
+#include "sql/rpl_gtid.h"
+#include "sql/rpl_io_monitor.h"
+#include "sql/rpl_mi.h"
+
+class Master_info;
 
 /**
    Maps a channel name to it's Master_info.
 */
 
-//Maps a master info object to a channel name
-typedef std::map<std::string, Master_info*> mi_map;
-//Maps a channel type to a map of channels of that type.
+// Maps a master info object to a channel name
+typedef std::map<std::string, Master_info *> mi_map;
+// Maps a channel type to a map of channels of that type.
 typedef std::map<int, mi_map> replication_channel_map;
+// Maps a replication filter to a channel name.
+typedef std::map<std::string, Rpl_filter *> filter_map;
 
 /**
   Class to store all the Master_info objects of a slave
@@ -53,10 +65,10 @@ typedef std::map<int, mi_map> replication_channel_map;
   to a slave.
 
   The important objects for a slave are the following:
-  i) Master_info and Relay_log_info (slave_parallel_workers == 0)
-  ii) Master_info, Relay_log_info and Slave_worker(slave_parallel_workers >0 )
+  i) Master_info and Relay_log_info (replica_parallel_workers == 0)
+  ii) Master_info, Relay_log_info and Slave_worker(replica_parallel_workers >0 )
 
-  Master_info is always assosiated with a Relay_log_info per channel.
+  Master_info is always associated with a Relay_log_info per channel.
   So, it is enough to store Master_infos and call the corresponding
   Relay_log_info by mi->rli;
 
@@ -68,7 +80,8 @@ typedef std::map<int, mi_map> replication_channel_map;
   The two important data structures in this class are
   i) C++ std map to store the Master_info pointers with channel name as a key.
     These are the base channel maps.
-    @TODO: convert to boost after it's introduction.
+    @todo Convert to boost after it's introduction.
+
   ii) C++ std map to store the channel maps with a channel type as its key.
       This map stores slave channel maps, group replication channels or others
   iii) An array of Master_info pointers to access from performance schema
@@ -77,7 +90,7 @@ typedef std::map<int, mi_map> replication_channel_map;
       b) To avoid recalibration of data structure if master info is deleted.
          * Consider the following high level implementation of a pfs table
             to make a row.
-          <pseudo_code>
+          @code
           highlevel_pfs_funciton()
           {
            while(replication_table_xxxx.rnd_next())
@@ -85,7 +98,7 @@ typedef std::map<int, mi_map> replication_channel_map;
              do stuff;
            }
           }
-         </pseudo_code>
+          @endcode
          However, we lock channel_map lock for every rnd_next(); There is a gap
          where an addition/deletion of a channel would rearrange the map
          making the integer indices of the pfs table point to a wrong value.
@@ -96,12 +109,10 @@ typedef std::map<int, mi_map> replication_channel_map;
          (i.e NULL). A new master info is added to this array at the
          first NULL always.
 */
-class Multisource_info
-{
-
-private:
- /* Maximum number of channels per slave */
-  static const unsigned int MAX_CHANNELS= 256;
+class Multisource_info {
+ private:
+  /* Maximum number of channels per slave */
+  static const unsigned int MAX_CHANNELS = 256;
 
   /* A Map that maps, a channel name to a Master_info grouped by channel type */
   replication_channel_map rep_channel_map;
@@ -113,9 +124,9 @@ private:
     Default_channel for this instance, currently is predefined
     and cannot be modified.
   */
-  static const char* default_channel;
+  static const char *default_channel;
   Master_info *default_channel_mi;
-  static const char* group_replication_channel_names[];
+  static const char *group_replication_channel_names[];
 
   /**
     This lock was designed to protect the channel_map from adding or removing
@@ -130,7 +141,7 @@ private:
   /* Array for  replication performance schema related tables */
   Master_info *rpl_pfs_mi[MAX_CHANNELS];
 
-#endif  /* WITH_PERFSCHEMA_STORAGE_ENGINE */
+#endif /* WITH_PERFSCHEMA_STORAGE_ENGINE */
 
   /*
     A empty mi_map to allow Multisource_info::end() to return a
@@ -138,38 +149,33 @@ private:
   */
   mi_map empty_mi_map;
 
-public:
-
+ public:
   /* Constructor for this class.*/
-  Multisource_info()
-  {
+  Multisource_info() {
     /*
       This class should be a singleton.
       The assert below is to prevent it to be instantiated more than once.
     */
 #ifndef NDEBUG
-    static int instance_count= 0;
+    static int instance_count = 0;
     instance_count++;
     assert(instance_count == 1);
 #endif
-    current_mi_count= 0;
-    default_channel_mi= NULL;
+    current_mi_count = 0;
+    default_channel_mi = nullptr;
 #ifdef WITH_PERFSCHEMA_STORAGE_ENGINE
     init_rpl_pfs_mi();
-#endif  /* WITH_PERFSCHEMA_STORAGE_ENGINE */
+#endif /* WITH_PERFSCHEMA_STORAGE_ENGINE */
 
-    m_channel_map_lock= new Checkable_rwlock(
+    m_channel_map_lock = new Checkable_rwlock(
 #ifdef HAVE_PSI_INTERFACE
-                                             key_rwlock_channel_map_lock
+        key_rwlock_channel_map_lock
 #endif
-                                            );
+    );
   }
 
   /* Destructor for this class.*/
-  ~Multisource_info()
-  {
-    delete m_channel_map_lock;
-  }
+  ~Multisource_info() { delete m_channel_map_lock; }
 
   /**
     Adds the Master_info object to both replication_channel_map and rpl_pfs_mi
@@ -177,31 +183,29 @@ public:
     @param[in]  channel_name      channel name
     @param[in]  mi                pointer to master info corresponding
                                   to this channel
-    @return
-      @retval      false       succesfully added
-      @retval      true        couldn't add channel
+    @retval      false       successfully added
+    @retval      true        couldn't add channel
   */
-  bool add_mi(const char* channel_name, Master_info* mi);
+  bool add_mi(const char *channel_name, Master_info *mi);
 
   /**
     Find the master_info object corresponding to a channel explicitly
     from replication channel_map;
     Return if it exists, otherwise return 0
 
-    @param[in]  channel       channel name for the master info object.
+    @param[in]  channel_name  channel name for the master info object.
 
-    @retval                   pointer to the master info object if exists
+    @returns                  pointer to the master info object if exists
                               in the map. Otherwise, NULL;
   */
-  Master_info* get_mi(const char* channel_name);
+  Master_info *get_mi(const char *channel_name);
 
   /**
     Return the master_info object corresponding to the default channel.
     @retval                   pointer to the master info object if exists.
                               Otherwise, NULL;
   */
-  Master_info* get_default_channel_mi()
-  {
+  Master_info *get_default_channel_mi() {
     m_channel_map_lock->assert_some_lock();
     return default_channel_mi;
   }
@@ -211,18 +215,22 @@ public:
     replication_channel_map and sets index in the  multisource_mi to 0;
     And also delete the {mi, rli} pair corresponding to this channel
 
+    @note this requires the caller to hold the mi->channel_wrlock.
+    If the method succeeds the master info object is deleted and the lock
+    is released. If the an error occurs and the method return true, the {mi}
+    object won't be deleted and the caller should release the channel_wrlock.
+
     @param[in]    channel_name     Name of the channel for a Master_info
                                    object which must exist.
+
+    @return true if an error occurred, false otherwise
   */
-  void delete_mi(const char* channel_name);
+  bool delete_mi(const char *channel_name);
 
   /**
     Get the default channel for this multisourced_slave;
   */
-  inline const char* get_default_channel()
-  {
-    return default_channel;
-  }
+  inline const char *get_default_channel() { return default_channel; }
 
   /**
     Get the number of instances of Master_info in the map.
@@ -232,54 +240,82 @@ public:
 
     @return The number of channels or 0 if empty.
   */
-  inline uint get_num_instances(bool all=false)
-  {
-    DBUG_ENTER("Multisource_info::get_num_instances");
+  inline size_t get_num_instances(bool all = false) {
+    DBUG_TRACE;
 
     m_channel_map_lock->assert_some_lock();
 
     replication_channel_map::iterator map_it;
 
-    if (all)
-    {
-      int count = 0;
+    if (all) {
+      size_t count = 0;
 
-      for (map_it= rep_channel_map.begin();
-           map_it != rep_channel_map.end(); map_it++)
-      {
+      for (map_it = rep_channel_map.begin(); map_it != rep_channel_map.end();
+           map_it++) {
         count += map_it->second.size();
       }
-      DBUG_RETURN(count);
-    }
-    else //Return only the slave channels
+      return count;
+    } else  // Return only the slave channels
     {
-      map_it= rep_channel_map.find(SLAVE_REPLICATION_CHANNEL);
+      map_it = rep_channel_map.find(SLAVE_REPLICATION_CHANNEL);
 
       if (map_it == rep_channel_map.end())
-        DBUG_RETURN(0);
+        return 0;
       else
-        DBUG_RETURN(map_it->second.size());
+        return map_it->second.size();
     }
+  }
+
+  /**
+    Get the number of running channels which have asynchronous replication
+    failover feature, i.e. CHANGE MASTER TO option
+    SOURCE_CONNECTION_AUTO_FAILOVER, enabled.
+
+    @return The number of channels.
+  */
+  size_t get_number_of_connection_auto_failover_channels_running() {
+    DBUG_TRACE;
+    m_channel_map_lock->assert_some_lock();
+    size_t count = 0;
+
+    replication_channel_map::iterator map_it =
+        rep_channel_map.find(SLAVE_REPLICATION_CHANNEL);
+
+    for (mi_map::iterator it = map_it->second.begin();
+         it != map_it->second.end(); it++) {
+      Master_info *mi = it->second;
+      if (Master_info::is_configured(mi) &&
+          mi->is_source_connection_auto_failover()) {
+        mysql_mutex_lock(&mi->err_lock);
+        if (mi->slave_running || mi->is_error()) {
+          count++;
+        }
+        mysql_mutex_unlock(&mi->err_lock);
+      }
+    }
+
+#ifndef NDEBUG
+    if (Source_IO_monitor::get_instance()->is_monitoring_process_running()) {
+      assert(count > 0);
+    }
+#endif
+
+    return count;
   }
 
   /**
     Get max channels allowed for this map.
   */
-  inline uint get_max_channels()
-  {
-    return MAX_CHANNELS;
-  }
+  inline uint get_max_channels() { return MAX_CHANNELS; }
 
   /**
     Returns true if the current number of channels in this slave
     is less than the MAX_CHANNLES
   */
-  inline bool is_valid_channel_count()
-  {
+  inline bool is_valid_channel_count() {
     m_channel_map_lock->assert_some_lock();
-    bool is_valid= current_mi_count < MAX_CHANNELS;
-    DBUG_EXECUTE_IF("max_replication_channels_exceeded",
-                    is_valid= false;);
+    bool is_valid = current_mi_count < MAX_CHANNELS;
+    DBUG_EXECUTE_IF("max_replication_channels_exceeded", is_valid = false;);
     return (is_valid);
   }
 
@@ -289,12 +325,11 @@ public:
     @param channel    the channel name to test
     @param is_applier compare only with applier name
 
-    @return
-      @retval      true   the name is a reserved name
-      @retval      false  non reserved name
+    @retval      true   the name is a reserved name
+    @retval      false  non reserved name
   */
-  bool is_group_replication_channel_name(const char* channel,
-                                         bool is_applier= false);
+  bool is_group_replication_channel_name(const char *channel,
+                                         bool is_applier = false);
 
   /**
      Forward iterators to initiate traversing of a map.
@@ -303,43 +338,36 @@ public:
             only Master_infos or create generators when
             c++11 is introduced.
   */
-  mi_map::iterator begin(enum_channel_type channel_type=
-                             SLAVE_REPLICATION_CHANNEL)
-  {
+  mi_map::iterator begin(
+      enum_channel_type channel_type = SLAVE_REPLICATION_CHANNEL) {
     replication_channel_map::iterator map_it;
-    map_it= rep_channel_map.find(channel_type);
+    map_it = rep_channel_map.find(channel_type);
 
-    if (map_it != rep_channel_map.end())
-    {
+    if (map_it != rep_channel_map.end()) {
       return map_it->second.begin();
     }
 
     return end(channel_type);
   }
 
-  mi_map::iterator end(enum_channel_type channel_type=
-                           SLAVE_REPLICATION_CHANNEL)
-  {
+  mi_map::iterator end(
+      enum_channel_type channel_type = SLAVE_REPLICATION_CHANNEL) {
     replication_channel_map::iterator map_it;
-    map_it= rep_channel_map.find(channel_type);
+    map_it = rep_channel_map.find(channel_type);
 
-    if (map_it != rep_channel_map.end())
-    {
+    if (map_it != rep_channel_map.end()) {
       return map_it->second.end();
     }
 
     return empty_mi_map.end();
   }
 
-private:
-
+ private:
 #ifdef WITH_PERFSCHEMA_STORAGE_ENGINE
 
   /* Initialize the rpl_pfs_mi array to NULLs */
-  inline void init_rpl_pfs_mi()
-  {
-    for (uint i= 0; i< MAX_CHANNELS; i++)
-      rpl_pfs_mi[i]= 0;
+  inline void init_rpl_pfs_mi() {
+    for (uint i = 0; i < MAX_CHANNELS; i++) rpl_pfs_mi[i] = nullptr;
   }
 
   /**
@@ -353,16 +381,15 @@ private:
   bool add_mi_to_rpl_pfs_mi(Master_info *mi);
 
   /**
-     Get the index of the master info correposponding to channel name
+     Get the index of the master info corresponding to channel name
      from the rpl_pfs_mi array.
-     @param[in]       channe_name     Channel name to get the index from
+     @param[in]       channel_name     Channel name to get the index from
 
      @return         index of mi for the channel_name. Else -1;
   */
-  int get_index_from_rpl_pfs_mi(const char* channel_name);
+  int get_index_from_rpl_pfs_mi(const char *channel_name);
 
-public:
-
+ public:
   /**
     Used only by replication performance schema indices to get the master_info
     at the position 'pos' from the rpl_pfs_mi array.
@@ -371,45 +398,227 @@ public:
 
     @retval            pointer to the master info object at pos 'pos';
   */
-  Master_info* get_mi_at_pos(uint pos);
+  Master_info *get_mi_at_pos(uint pos);
 #endif /*WITH_PERFSCHEMA_STORAGE_ENGINE */
 
   /**
     Acquire the read lock.
   */
-  inline void rdlock()
-  { m_channel_map_lock->rdlock(); }
+  inline void rdlock() { m_channel_map_lock->rdlock(); }
+
+  /**
+    Try to acquire a read lock, return 0 if the read lock is held,
+    otherwise an error will be returned.
+
+    @return 0 in case of success, or 1 otherwise.
+  */
+  inline int tryrdlock() { return m_channel_map_lock->tryrdlock(); }
 
   /**
     Acquire the write lock.
   */
-  inline void wrlock()
-  { m_channel_map_lock->wrlock(); }
+  inline void wrlock() { m_channel_map_lock->wrlock(); }
+
+  /**
+    Try to acquire a write lock, return 0 if the write lock is held,
+    otherwise an error will be returned.
+
+    @return 0 in case of success, or 1 otherwise.
+  */
+  inline int trywrlock() { return m_channel_map_lock->trywrlock(); }
 
   /**
     Release the lock (whether it is a write or read lock).
   */
-  inline void unlock()
-  { m_channel_map_lock->unlock(); }
+  inline void unlock() { m_channel_map_lock->unlock(); }
 
   /**
     Assert that some thread holds either the read or the write lock.
   */
-  inline void assert_some_lock() const
-  { m_channel_map_lock->assert_some_lock(); }
+  inline void assert_some_lock() const {
+    m_channel_map_lock->assert_some_lock();
+  }
 
   /**
     Assert that some thread holds the write lock.
   */
-  inline void assert_some_wrlock() const
-  { m_channel_map_lock->assert_some_wrlock(); }
+  inline void assert_some_wrlock() const {
+    m_channel_map_lock->assert_some_wrlock();
+  }
+};
+
+/**
+  The class is a container for all the per-channel filters, both a map of
+  Rpl_filter objects and a list of Rpl_pfs_filter objects.
+  It maintains a filter map which maps a replication filter to a channel
+  name. Which is needed, because replication channels are not created and
+  channel_map is not filled in when these global and per-channel replication
+  filters are evaluated with current code frame.
+  In theory, after instantiating all channels from the repository and throwing
+  all the warnings about the filters configured for non-existent channels, we
+  can forget about its global object rpl_channel_filters and rely only on the
+  global and per channel Rpl_filter objects. But to avoid holding the
+  channel_map.rdlock() when querying P_S.replication_applier_filters table,
+  we keep the rpl_channel_filters. So that we just need to hold the small
+  rpl_channel_filters.rdlock() when querying P_S.replication_applier_filters
+  table. Many operations (RESET SLAVE [FOR CHANNEL], START SLAVE, INIT SLAVE,
+  END SLAVE, CHANGE MASTER TO, FLUSH RELAY LOGS, START CHANNEL, PURGE CHANNEL,
+  and so on) hold the channel_map.wrlock().
+
+  There is one instance, rpl_channel_filters, created globally for Multisource
+  channel filters. The rpl_channel_filters is created when the server is
+  started, destroyed when the server is stopped.
+*/
+class Rpl_channel_filters {
+ private:
+  /* Store all replication filters with channel names. */
+  filter_map channel_to_filter;
+  /* Store all Rpl_pfs_filter objects in the channel_to_filter. */
+  std::vector<Rpl_pfs_filter> rpl_pfs_filter_vec;
+  /*
+    This lock was designed to protect the channel_to_filter from reading,
+    adding, or removing its objects from the map. It is used to preventing
+    the following commands to run in parallel:
+      RESET SLAVE ALL [FOR CHANNEL '<channel_name>']
+      CHANGE MASTER TO ... FOR CHANNEL
+      SELECT FROM performance_schema.replication_applier_filters
+
+    Please acquire a wrlock when modifying the map structure (RESET SLAVE ALL
+    [FOR CHANNEL '<channel_name>'], CHANGE MASTER TO ... FOR CHANNEL).
+    Please acqurie a rdlock when querying existing filter(s) (SELECT FROM
+    performance_schema.replication_applier_filters).
+
+    Note: To modify the object from the map, please see the protection of
+    m_rpl_filter_lock in Rpl_filter.
+  */
+  Checkable_rwlock *m_channel_to_filter_lock;
+
+ public:
+  /**
+    Create a new replication filter and add it into a filter map.
+
+    @param channel_name A name of a channel.
+
+    @retval Rpl_filter A pointer to a replication filter, or NULL
+                       if we failed to add it into fiter_map.
+  */
+  Rpl_filter *create_filter(const char *channel_name);
+  /**
+    Delete the replication filter from the filter map.
+
+    @param rpl_filter A pointer to point to a replication filter.
+  */
+  void delete_filter(Rpl_filter *rpl_filter);
+  /**
+    Discard all replication filters if they are not attached to channels.
+  */
+  void discard_all_unattached_filters();
+  /**
+     discard filters on group replication channels.
+  */
+  void discard_group_replication_filters();
+  /**
+    Get a replication filter of a channel.
+
+    @param channel_name A name of a channel.
+
+    @retval Rpl_filter A pointer to a replication filter, or NULL
+                       if we failed to add a replication filter
+                       into fiter_map when creating it.
+  */
+  Rpl_filter *get_channel_filter(const char *channel_name);
+
+#ifdef WITH_PERFSCHEMA_STORAGE_ENGINE
+
+  /**
+    This member function is called every time a filter is created or deleted,
+    or its filter rules are changed. Once that happens the PFS view is
+    recreated.
+  */
+  void reset_pfs_view();
+
+  /**
+    Used only by replication performance schema indices to get the replication
+    filter at the position 'pos' from the rpl_pfs_filter_vec vector.
+
+    @param pos the index in the rpl_pfs_filter_vec vector.
+
+    @retval Rpl_filter A pointer to a Rpl_pfs_filter, or NULL if it
+                       arrived the end of the rpl_pfs_filter_vec.
+  */
+  Rpl_pfs_filter *get_filter_at_pos(uint pos);
+  /**
+    Used only by replication performance schema indices to get the count
+    of replication filters from the rpl_pfs_filter_vec vector.
+
+    @retval the count of the replication filters.
+  */
+  uint get_filter_count();
+#endif /*WITH_PERFSCHEMA_STORAGE_ENGINE */
+
+  /**
+    Traverse the filter map, build do_table and ignore_table
+    rules to hashes for every filter.
+
+    @retval
+      0    OK
+    @retval
+      -1   Error
+  */
+  bool build_do_and_ignore_table_hashes();
+
+  /* Constructor for this class.*/
+  Rpl_channel_filters() {
+    m_channel_to_filter_lock = new Checkable_rwlock(
+#ifdef HAVE_PSI_INTERFACE
+        key_rwlock_channel_to_filter_lock
+#endif
+    );
+  }
+
+  /* Destructor for this class. */
+  ~Rpl_channel_filters() { delete m_channel_to_filter_lock; }
+
+  /**
+    Traverse the filter map and free all filters. Delete all objects
+    in the rpl_pfs_filter_vec vector and then clear the vector.
+  */
+  void clean_up() {
+    /* Traverse the filter map and free all filters */
+    for (filter_map::iterator it = channel_to_filter.begin();
+         it != channel_to_filter.end(); it++) {
+      if (it->second != nullptr) {
+        delete it->second;
+        it->second = nullptr;
+      }
+    }
+
+    rpl_pfs_filter_vec.clear();
+  }
+
+  /**
+    Acquire the write lock.
+  */
+  inline void wrlock() { m_channel_to_filter_lock->wrlock(); }
+
+  /**
+    Acquire the read lock.
+  */
+  inline void rdlock() { m_channel_to_filter_lock->rdlock(); }
+
+  /**
+    Release the lock (whether it is a write or read lock).
+  */
+  inline void unlock() { m_channel_to_filter_lock->unlock(); }
 };
 
 /* Global object for multisourced slave. */
 extern Multisource_info channel_map;
 
-static bool inline is_slave_configured()
-{
+/* Global object for storing per-channel replication filters */
+extern Rpl_channel_filters rpl_channel_filters;
+
+static bool inline is_slave_configured() {
   /* Server was started with server_id == 0
      OR
      failure to load slave info repositories because of repository
@@ -419,8 +628,7 @@ static bool inline is_slave_configured()
      including the default channel one.
      Hence, channel_map.get_default_channel_mi() will return NULL.
   */
-  return (channel_map.get_default_channel_mi() != NULL);
+  return (channel_map.get_default_channel_mi() != nullptr);
 }
 
-#endif   /* HAVE_REPLICATION */
-#endif  /*RPL_MSR_H*/
+#endif /*RPL_MSR_H*/

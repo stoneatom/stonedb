@@ -1,7 +1,7 @@
 #ifndef SQL_RESOLVER_INCLUDED
 #define SQL_RESOLVER_INCLUDED
 
-/* Copyright (c) 2000, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2000, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -23,35 +23,84 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
+#include <functional>
+
+class Item;
+class THD;
+struct TABLE;
+struct TABLE_LIST;
+
+struct ORDER;
+template <typename Element_type>
+class Bounds_checked_array;
+
+typedef Bounds_checked_array<Item *> Ref_item_array;
+template <class T>
+class List;
+
+template <class T>
+class mem_root_deque;
+
 /**
-  RAII class for column privilege checking
+  @file sql/sql_resolver.h
+  Name resolution functions.
 */
-class Column_privilege_tracker
-{
-public:
-  Column_privilege_tracker(THD *thd, ulong privilege)
-  : thd(thd), saved_privilege(thd->want_privilege)
-  {
-    thd->want_privilege= privilege;
-  }
-  ~Column_privilege_tracker()
-  {
-    thd->want_privilege= saved_privilege;
-  }
-private:
-  THD *const thd;
-  const ulong saved_privilege;
+
+void propagate_nullability(mem_root_deque<TABLE_LIST *> *tables, bool nullable);
+
+bool setup_order(THD *thd, Ref_item_array ref_item_array, TABLE_LIST *tables,
+                 mem_root_deque<Item *> *fields, ORDER *order);
+bool validate_gc_assignment(const mem_root_deque<Item *> &fields,
+                            const mem_root_deque<Item *> &values, TABLE *tab);
+
+bool find_order_in_list(THD *thd, Ref_item_array ref_item_array,
+                        TABLE_LIST *tables, ORDER *order,
+                        mem_root_deque<Item *> *fields, bool is_group_field,
+                        bool is_window_order);
+
+struct ReplaceResult {
+  enum {
+    // Immediately return with an error.
+    ERROR,
+
+    // Replace the given Item with the one in “replacement”;
+    // do not traverse further.
+    REPLACE,
+
+    // Leave this item alone, but keep traversing into its children.
+    KEEP_TRAVERSING
+  } action;
+  Item *replacement;  // Only for REPLACE.
 };
 
+/**
+  Walk through the conditions and functions below the given item, and allows the
+  given functor to replace it with new items. See ReplaceResult.
 
-/** @file Name resolution functions */
+  This function is used both during resolving for making permanent changes to
+  the item tree, and during optimization for making non-permanent changes.
 
-bool setup_order(THD *thd, Ref_ptr_array ref_pointer_array, TABLE_LIST *tables,
-                 List<Item> &fields, List <Item> &all_fields, ORDER *order);
-bool subquery_allows_materialization(Item_in_subselect *predicate,
-                                     THD *thd, SELECT_LEX *select_lex,
-                                     const SELECT_LEX *outer);
-bool validate_gc_assignment(THD * thd, List<Item> *fields,
-                            List<Item> *values, TABLE *tab);
+  Note that this must not be used for permanent changes during optimization,
+  as all changes done during optimization will be rolled back if a prepared
+  statement is re-executed.
+
+  Note also that if the replaced items have different data types than the
+  original items, it may be necessary to adjust comparators in Item_bool_func2
+  objects higher up in the tree by calling set_cmp_func() on them. This is not
+  done by this function. Partly because it's generally not used for changing
+  data types, except in some special cases (at the time of writing, only in
+  resolving of ROLLUP columns). But also because of the note above about making
+  permanent changes during optimization; set_cmp_func() may make permanent
+  changes to the item, which are not rolled back at the end of execution, so
+  it's not safe to do this unconditionally under optimization. If adjusting the
+  comparators is necessary, the caller of WalkAndReplace() will have to invoke
+  set_cmp_func() manually.
+
+  @return true on error.
+ */
+bool WalkAndReplace(
+    THD *thd, Item *item,
+    const std::function<ReplaceResult(Item *item, Item *parent,
+                                      unsigned argument_idx)> &get_new_item);
 
 #endif /* SQL_RESOLVER_INCLUDED */

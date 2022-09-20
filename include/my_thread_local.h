@@ -1,4 +1,4 @@
-/* Copyright (c) 2000, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2000, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -18,19 +18,24 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA */
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #ifndef MY_THREAD_LOCAL_INCLUDED
 #define MY_THREAD_LOCAL_INCLUDED
 
+/**
+  @file include/my_thread_local.h
+*/
+
+#include "my_inttypes.h"
+#include "my_macros.h"
+
+typedef uint32 my_thread_id;
+
+// stonedb8 start.
 #ifndef _WIN32
 #include <pthread.h>
 #endif
-
-struct _db_code_state_;
-typedef uint32 my_thread_id;
-
-C_MODE_START
 
 #ifdef _WIN32
 typedef DWORD thread_local_key_t;
@@ -77,6 +82,8 @@ static inline int my_set_thread_local(thread_local_key_t key,
 #endif
 }
 
+// stonedb8 end.
+
 /**
   Retrieve the MySQL thread-local storage variant of errno.
 */
@@ -101,7 +108,8 @@ void set_thr_winerr(int winerr);
 
 #ifndef NDEBUG
 /* Return pointer to DBUG for holding current state */
-struct _db_code_state_ **my_thread_var_dbug();
+struct CODE_STATE;
+CODE_STATE **my_thread_var_dbug();
 
 my_thread_id my_thread_var_id();
 
@@ -109,6 +117,4 @@ void set_my_thread_var_id(my_thread_id id);
 
 #endif
 
-C_MODE_END
-
-#endif // MY_THREAD_LOCAL_INCLUDED
+#endif  // MY_THREAD_LOCAL_INCLUDED

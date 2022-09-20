@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2010, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2010, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -34,7 +34,7 @@ class SparseBitmask {
   Vector<unsigned> m_vec;
 
 public:
-  STATIC_CONST( NotFound = (unsigned)-1 );
+  static constexpr Uint32 NotFound = (unsigned)-1;
 
   SparseBitmask(unsigned max_size = NotFound - 1) : m_max_size(max_size) {}
 
@@ -145,6 +145,70 @@ public:
     return false;
   }
 
+  /**
+   * Bitwise OR the content of the passed bitmask
+   * into our bitmask
+   */
+  void bitOR(const SparseBitmask& obj)
+  {
+    Vector<unsigned> result;
+    
+    unsigned my_idx = 0;
+    unsigned obj_idx = 0;
+    bool done = false;
+
+    /* Merge source + obj -> result in bit order */
+    while (!done)
+    {
+      if (my_idx < count())
+      {
+        const unsigned next_from_me = m_vec[my_idx];
+        
+        if (obj_idx < obj.count())
+        {
+          /* Set lowest bit from either bitmask */
+          const unsigned next_from_obj = obj.m_vec[obj_idx];
+          
+          if (next_from_me == next_from_obj)
+          {
+            /* Same bit set in both */
+            result.push_back(next_from_me);
+            my_idx++;
+            obj_idx++;
+          }
+          else if (next_from_me < next_from_obj)
+          {
+            result.push_back(next_from_me);
+            my_idx++;
+         }
+          else
+          {
+            result.push_back(next_from_obj);
+            obj_idx++;
+          }
+        }
+        else
+        {
+          /* Finished with bits set in obj */
+          result.push_back(next_from_me);
+          my_idx++;
+        }
+      }
+      else if (obj_idx < obj.count())
+      {
+        /* Finished with my bits */
+        result.push_back(obj.m_vec[obj_idx]);
+        obj_idx++;
+      }
+      else
+      {
+        done = true;
+      }
+    }
+    /* Overwrite my bitmask with the new value */
+    m_vec.assign(result);
+  }
+      
   BaseString str() const {
     BaseString tmp;
     const char* sep="";

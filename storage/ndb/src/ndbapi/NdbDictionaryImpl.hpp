@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -39,6 +39,8 @@
 #include <Ndb.hpp>
 #include "DictCache.hpp"
 #include <signaldata/DictSignal.hpp>
+#include "my_byteorder.h"
+#include <EventLogger.hpp>
 
 class ListTablesReq;
 
@@ -56,8 +58,6 @@ public:
   Uint32 m_version;
   NdbDictionary::Object::Type m_type;
   NdbDictionary::Object::Status m_status;
-  
-  bool change();
   
   static NdbDictObjectImpl & getImpl(NdbDictionary::ObjectId & t) { 
     return t.m_impl;
@@ -139,10 +139,45 @@ public:
   int getBlobVersion() const;
   void setBlobVersion(int blobVersion);
 
+  enum supported_column_changes {
+    COLUMN_NAME = 1
+  };
+  typedef ulonglong column_change_flags;
+  static bool
+  check_change_flag(column_change_flags change_flags,
+                    enum supported_column_changes supported_change)
+  {
+    return (change_flags & (1ULL << supported_change));
+  }
+  static void
+  remove_change_flag(column_change_flags& change_flags,
+                     enum supported_column_changes supported_change)
+  {
+    change_flags &= ~(1ULL << supported_change);
+  }
+  static void
+  add_change_flag(column_change_flags& change_flags,
+                  enum supported_column_changes supported_change)
+  {
+    change_flags |= 1ULL << supported_change;
+  }
+  /**
+   * Compare two columns with optional skipping
+   * of parts of the column properties. This is
+   * to support for changing various parts of columns
+   * as part of an inplace alter table.
+   **/
+  bool equal_skip(const NdbColumnImpl&, column_change_flags&) const;
+
   /**
    * Equality/assign
    */
   bool equal(const NdbColumnImpl&) const;
+
+  /**
+   * Online column alter support
+   */
+  bool alter_supported(const NdbColumnImpl&, column_change_flags&) const;
 
   static NdbColumnImpl & getImpl(NdbDictionary::Column & t);
   static const NdbColumnImpl & getImpl(const NdbDictionary::Column & t);
@@ -160,16 +195,24 @@ class NdbTableImpl : public NdbDictionary::Table, public NdbDictObjectImpl {
 public:
   NdbTableImpl();
   NdbTableImpl(NdbDictionary::Table &);
-  ~NdbTableImpl();
+  ~NdbTableImpl() override;
   
+  static SimpleProperties::IndirectReader IndirectReader;
+  static SimpleProperties::IndirectWriter IndirectWriter;
+
   void init();
   int setName(const char * name);
   const char * getName() const;
   void setFragmentCount(Uint32 count);
   Uint32 getFragmentCount() const;
+  Uint32 getPartitionCount() const;
   int setFrm(const void* data, Uint32 len);
   const void * getFrmData() const;
   Uint32 getFrmLength() const;
+  int setExtraMetadata(Uint32 version,
+                       const void* data, Uint32 data_length);
+  int getExtraMetadata(Uint32& extra_metadata_version,
+                       void** data, Uint32* data_length) const;
 
   int setFragmentData(const Uint32* data, Uint32 cnt);
   const Uint32 * getFragmentData() const;
@@ -188,8 +231,8 @@ public:
 
   bool matchDb(const char * name, size_t len) const;
 
-  int aggregate(NdbError& error);
-  int validate(NdbError& error);
+  int aggregate();
+  int validate();
 
   Uint32 m_primaryTableId;
   BaseString m_internalName; // db/schema/table
@@ -203,6 +246,10 @@ public:
   int getDbName(char * buf, size_t len) const;
   int getSchemaName(char * buf, size_t len) const;
   void setDbSchema(const char * db, const char * schema);
+
+  // Return string with internal name format using same prefix
+  // i.e name prefixed with "db/schema/" part of the internal name
+  const BaseString get_internal_name_prefix(const char* name);
 
   /**
    * 
@@ -231,18 +278,22 @@ public:
   Uint64 m_max_rows;
   Uint64 m_min_rows;
   Uint32 m_default_no_part_flag;
+  Uint32 m_row_checksum;
   bool m_linear_flag;
   bool m_logging;
   bool m_temporary;
   bool m_row_gci;
-  bool m_row_checksum;
   bool m_force_var_part;
   bool m_has_default_values; 
+  bool m_read_backup;
+  bool m_fully_replicated;
   int m_kvalue;
   int m_minLoadFactor;
   int m_maxLoadFactor;
   Uint16 m_keyLenInWords;
+  Uint16 m_partitionCount;
   Uint16 m_fragmentCount;
+  NdbDictionary::Object::PartitionBalance m_partitionBalance;
   Uint8 m_single_user_mode;
   Uint8 m_storageType;  // NDB_STORAGETYPE_MEMORY or _DISK or DEFAULT
   Uint8 m_extra_row_gci_bits;
@@ -253,7 +304,13 @@ public:
   NdbColumnImpl * getColumn(const char * name);
   const NdbColumnImpl * getColumn(unsigned attrId) const;
   const NdbColumnImpl * getColumn(const char * name) const;
-  
+
+private:
+  NdbColumnImpl * getColumnByHash(const char * name) const;
+  void dumpColumnHash() const;
+  bool checkColumnHash() const;
+public:
+
   /**
    * Index only stuff
    */
@@ -312,13 +369,13 @@ class NdbIndexImpl : public NdbDictionary::Index, public NdbDictObjectImpl {
 public:
   NdbIndexImpl();
   NdbIndexImpl(NdbDictionary::Index &);
-  ~NdbIndexImpl();
+  ~NdbIndexImpl() override;
 
   void init();
   int setName(const char * name);
   const char * getName() const;
-  int setTable(const char * table);
-  const char * getTable() const;
+  int setTableName(const char * table);
+  const char * getTableName() const;
   const NdbTableImpl * getIndexTable() const;
 
   BaseString m_internalName;
@@ -342,6 +399,13 @@ public:
   static NdbIndexImpl & getImpl(NdbDictionary::Index & t);
   static NdbIndexImpl & getImpl(const NdbDictionary::Index & t);
   NdbDictionary::Index * m_facade;
+
+  // Return string with old internal index format (used before 5.1.12)
+  static const BaseString old_internal_index_name(const NdbTableImpl * table,
+                                                  const char * index_name);
+  // Return string with internal index name format
+  static const BaseString internal_index_name(const NdbTableImpl * table,
+                                              const char * index_name);
 };
 
 class NdbOptimizeTableHandleImpl : public NdbDictionary::OptimizeTableHandle
@@ -374,7 +438,7 @@ private:
 
   NdbDictionary::OptimizeTableHandle * m_facade;
 public:
-  NdbOptimizeTableHandleImpl(NdbDictionary::OptimizeTableHandle &);
+  NdbOptimizeTableHandleImpl();
   ~NdbOptimizeTableHandleImpl();
   static NdbOptimizeTableHandleImpl & getImpl(NdbDictionary::OptimizeTableHandle &h)
     { return h.m_impl; }
@@ -394,7 +458,7 @@ private:
   class NdbDictionary::OptimizeTableHandle m_optimize_table_handle;
   NdbDictionary::OptimizeIndexHandle * m_facade;
 public:
-  NdbOptimizeIndexHandleImpl(NdbDictionary::OptimizeIndexHandle &);
+  NdbOptimizeIndexHandleImpl();
   ~NdbOptimizeIndexHandleImpl();
   static NdbOptimizeIndexHandleImpl & getImpl(NdbDictionary::OptimizeIndexHandle &h)
     { return h.m_impl; }
@@ -415,7 +479,7 @@ class NdbEventImpl : public NdbDictionary::Event, public NdbDictObjectImpl {
 public:
   NdbEventImpl();
   NdbEventImpl(NdbDictionary::Event &);
-  ~NdbEventImpl();
+  ~NdbEventImpl() override;
 
   void init();
   int setName(const char * name);
@@ -435,10 +499,8 @@ public:
   const NdbDictionary::Column * getEventColumn(unsigned no) const;
 
   void print() {
-    ndbout_c("NdbEventImpl: id=%d, key=%d",
-	     m_eventId,
-	     m_eventKey);
-  };
+    g_eventLogger->info("NdbEventImpl: id=%d, key=%d", m_eventId, m_eventKey);
+  }
 
   Uint32 m_eventId;
   Uint32 m_eventKey;
@@ -457,7 +519,7 @@ public:
 
   static NdbEventImpl & getImpl(NdbDictionary::Event & t);
   static NdbEventImpl & getImpl(const NdbDictionary::Event & t);
-  NdbDictionary::Event * m_facade;
+  NdbDictionary::Event * const m_facade;
 private:
   NdbTableImpl *m_tableImpl;
   void setTable(NdbTableImpl *tableImpl);
@@ -485,7 +547,7 @@ class NdbTablespaceImpl : public NdbDictionary::Tablespace,
 public:
   NdbTablespaceImpl();
   NdbTablespaceImpl(NdbDictionary::Tablespace &);
-  ~NdbTablespaceImpl();
+  ~NdbTablespaceImpl() override;
 
   int assign(const NdbTablespaceImpl&);
 
@@ -499,7 +561,7 @@ class NdbLogfileGroupImpl : public NdbDictionary::LogfileGroup,
 public:
   NdbLogfileGroupImpl();
   NdbLogfileGroupImpl(NdbDictionary::LogfileGroup &);
-  ~NdbLogfileGroupImpl();
+  ~NdbLogfileGroupImpl() override;
 
   int assign(const NdbLogfileGroupImpl&);
 
@@ -524,7 +586,7 @@ class NdbDatafileImpl : public NdbDictionary::Datafile, public NdbFileImpl {
 public:
   NdbDatafileImpl();
   NdbDatafileImpl(NdbDictionary::Datafile &);
-  ~NdbDatafileImpl();
+  ~NdbDatafileImpl() override;
 
   int assign(const NdbDatafileImpl&);
 
@@ -537,7 +599,7 @@ class NdbUndofileImpl : public NdbDictionary::Undofile, public NdbFileImpl {
 public:
   NdbUndofileImpl();
   NdbUndofileImpl(NdbDictionary::Undofile &);
-  ~NdbUndofileImpl();
+  ~NdbUndofileImpl() override;
 
   int assign(const NdbUndofileImpl&);
 
@@ -551,7 +613,7 @@ class NdbHashMapImpl : public NdbDictionary::HashMap, public NdbDictObjectImpl
 public:
   NdbHashMapImpl();
   NdbHashMapImpl(NdbDictionary::HashMap &);
-  ~NdbHashMapImpl();
+  ~NdbHashMapImpl() override;
 
   int assign(const NdbHashMapImpl& src);
 
@@ -576,7 +638,7 @@ class NdbForeignKeyImpl : public NdbDictionary::ForeignKey,
 public:
   NdbForeignKeyImpl();
   NdbForeignKeyImpl(NdbDictionary::ForeignKey &);
-  ~NdbForeignKeyImpl();
+  ~NdbForeignKeyImpl() override;
 
   void init();
   int assign(const NdbForeignKeyImpl& src);
@@ -625,14 +687,17 @@ public:
       Aborted
     };
     State m_state;
-    NdbError m_error;
+    // Allow update error from const methods
+    mutable NdbError m_error;
     Uint32 m_transId;   // API
     Uint32 m_transKey;  // DICT
+    Uint32 m_requestId;
     Vector<Op> m_op;
     Tx() :
       m_state(NotStarted),
       m_transId(0),
-      m_transKey(0)
+      m_transKey(0),
+      m_requestId(0)
     {
       m_error.code = 0;
     }
@@ -641,6 +706,23 @@ public:
     }
     Uint32 transKey() const {
       return (m_state == Started) ? m_transKey : 0;
+    }
+    Uint32 nextRequestId() {
+      return ++m_requestId;
+    }
+    bool checkRequestId(Uint32 requestId,
+                        const char *signalName [[maybe_unused]])
+    {
+      /* NdbDictInterface protocols are synchronous/serial, so each
+       * NdbDictInterface object will have only one outstanding
+       * request at a time */
+      if(m_requestId != 0 && m_requestId != requestId)
+      {
+        // signal from different (possibly timed-out) transaction
+        DBUG_PRINT("info", ("Discarding %s with bad request ID, expected: %u, received: %u", signalName, m_requestId, requestId));
+        return false;
+      }
+      return true;
     }
     Uint32 requestFlags() const {
       Uint32 flags = 0;
@@ -675,32 +757,26 @@ public:
   int compChangeMask(const NdbTableImpl &old_impl,
                      const NdbTableImpl &impl,
                      Uint32 &change_mask);
-  int serializeTableDesc(Ndb & ndb,
-                         NdbTableImpl & impl,
-                         UtilBufferWriter & w);
+  int serializeTableDesc(NdbTableImpl & impl, UtilBufferWriter & w);
   int sendAlterTable(const NdbTableImpl &impl,
-                     Uint32 change_mask,
-                     UtilBufferWriter &w);
-  int sendCreateTable(const NdbTableImpl &impl, UtilBufferWriter &w);
+                     Uint32 change_mask);
+  int sendCreateTable();
 
   int dropTable(const NdbTableImpl &);
 
-  int createIndex(class Ndb & ndb, const NdbIndexImpl &, const NdbTableImpl &,
+  int createIndex(const NdbIndexImpl &, const NdbTableImpl &,
                   bool offline);
-  int dropIndex(const NdbIndexImpl &, const NdbTableImpl &);
-  int doIndexStatReq(class Ndb& ndb,
-                     const NdbIndexImpl&, const NdbTableImpl&,
+  int dropIndex(const NdbTableImpl &);
+  int doIndexStatReq(const NdbIndexImpl&, const NdbTableImpl&,
                      Uint32 requestType);
-  int doIndexStatReq(class Ndb& ndb,
-                     Uint32 indexId, Uint32 indexVersion, Uint32 tableId,
+  int doIndexStatReq(Uint32 indexId, Uint32 indexVersion, Uint32 tableId,
                      Uint32 requestType);
   
-  int createEvent(class Ndb & ndb, NdbEventImpl &, int getFlag);
+  int createEvent(NdbEventImpl &, int getFlag);
   int dropEvent(const NdbEventImpl &);
-  int dropEvent(NdbApiSignal* signal, LinearSectionPtr ptr[3], int noLSP);
 
-  int executeSubscribeEvent(class Ndb & ndb, NdbEventOperationImpl &);
-  int stopSubscribeEvent(class Ndb & ndb, NdbEventOperationImpl &);
+  int executeSubscribeEvent(NdbEventOperationImpl &);
+  int stopSubscribeEvent(NdbEventOperationImpl &, Uint64& stop_gci);
   
   int listObjects(NdbDictionary::Dictionary::List& list,
                   ListTablesReq& ltreq, bool fullyQualifiedNames);
@@ -711,11 +787,11 @@ public:
   int unpackOldListTables(NdbDictionary::Dictionary::List& list,
                           bool fullyQualifiedNames);
   
-  NdbTableImpl * getTable(int tableId, bool fullyQualifiedNames);
-  NdbTableImpl * getTable(const BaseString& name, bool fullyQualifiedNames);
+  NdbTableImpl * getTable(int tableId);
+  NdbTableImpl * getTable(const BaseString& name);
   NdbTableImpl * getTable(class NdbApiSignal * signal, 
 			  LinearSectionPtr ptr[3],
-			  Uint32 noOfSections, bool fullyQualifiedNames);
+                          Uint32 noOfSections);
 
   int forceGCPWait(int type);
   int getRestartGCI(Uint32 *);
@@ -752,7 +828,10 @@ public:
 					 NdbTableImpl* index_table,
 					 const NdbTableImpl* primary_table);
 
-  int create_hashmap(const NdbHashMapImpl&, NdbDictObjectImpl*, Uint32 flags);
+  int create_hashmap(const NdbHashMapImpl&,
+                     NdbDictObjectImpl*,
+                     Uint32 flags,
+                     Uint32 partitionBalance_Count);
   int get_hashmap(NdbHashMapImpl&, Uint32 id);
   int get_hashmap(NdbHashMapImpl&, const char * name);
 
@@ -783,80 +862,63 @@ private:
 			 const class NdbApiSignal* signal,
 			 const struct LinearSectionPtr ptr[3]);
   
-  static void execNodeStatus(void* dictImpl, Uint32, Uint32);
-  
-  void execGET_TABINFO_REF(const NdbApiSignal *, const LinearSectionPtr p[3]);
+  void execGET_TABINFO_REF(const NdbApiSignal *);
   void execGET_TABINFO_CONF(const NdbApiSignal *, const LinearSectionPtr p[3]);
-  void execCREATE_TABLE_REF(const NdbApiSignal *, const LinearSectionPtr p[3]);
-  void execCREATE_TABLE_CONF(const NdbApiSignal *, const LinearSectionPtr [3]);
-  void execALTER_TABLE_REF(const NdbApiSignal *, const LinearSectionPtr pr[3]);
-  void execALTER_TABLE_CONF(const NdbApiSignal *, const LinearSectionPtr p[3]);
+  void execCREATE_TABLE_REF(const NdbApiSignal *);
+  void execCREATE_TABLE_CONF(const NdbApiSignal *);
+  void execALTER_TABLE_REF(const NdbApiSignal *);
+  void execALTER_TABLE_CONF(const NdbApiSignal *);
 
-  void execCREATE_INDX_REF(const NdbApiSignal *, const LinearSectionPtr pr[3]);
-  void execCREATE_INDX_CONF(const NdbApiSignal *, const LinearSectionPtr p[3]);
-  void execDROP_INDX_REF(const NdbApiSignal *, const LinearSectionPtr ptr[3]);
-  void execDROP_INDX_CONF(const NdbApiSignal *, const LinearSectionPtr ptr[3]);
+  void execCREATE_INDX_REF(const NdbApiSignal *);
+  void execCREATE_INDX_CONF(const NdbApiSignal *);
+  void execDROP_INDX_REF(const NdbApiSignal *);
+  void execDROP_INDX_CONF(const NdbApiSignal *);
 
-  void execINDEX_STAT_CONF(const NdbApiSignal *, const LinearSectionPtr ptr[3]);
-  void execINDEX_STAT_REF(const NdbApiSignal *, const LinearSectionPtr ptr[3]);
+  void execINDEX_STAT_CONF(const NdbApiSignal *);
+  void execINDEX_STAT_REF(const NdbApiSignal *);
 
-  void execCREATE_EVNT_REF(const NdbApiSignal *, const LinearSectionPtr pr[3]);
+  void execCREATE_EVNT_REF(const NdbApiSignal *);
   void execCREATE_EVNT_CONF(const NdbApiSignal *, const LinearSectionPtr p[3]);
-  void execSUB_START_CONF(const NdbApiSignal*, const LinearSectionPtr ptr[3]);
-  void execSUB_START_REF(const NdbApiSignal*, const LinearSectionPtr ptr[3]);
-  void execSUB_STOP_CONF(const NdbApiSignal*, const LinearSectionPtr ptr[3]);
-  void execSUB_STOP_REF(const NdbApiSignal*, const LinearSectionPtr ptr[3]);
-  void execDROP_EVNT_REF(const NdbApiSignal*, const LinearSectionPtr ptr[3]);
-  void execDROP_EVNT_CONF(const NdbApiSignal*, const LinearSectionPtr ptr[3]);
+  void execSUB_START_CONF(const NdbApiSignal*);
+  void execSUB_START_REF(const NdbApiSignal*);
+  void execSUB_STOP_CONF(const NdbApiSignal*);
+  void execSUB_STOP_REF(const NdbApiSignal*);
+  void execDROP_EVNT_REF(const NdbApiSignal*);
+  void execDROP_EVNT_CONF();
 
-  void execDROP_TABLE_REF(const NdbApiSignal*, const LinearSectionPtr ptr[3]);
-  void execDROP_TABLE_CONF(const NdbApiSignal*, const LinearSectionPtr ptr[3]);
-  void execOLD_LIST_TABLES_CONF(const NdbApiSignal*,
-				const LinearSectionPtr ptr[3]);
-  void execLIST_TABLES_CONF(const NdbApiSignal*, const LinearSectionPtr pt[3]);
+  void execDROP_TABLE_REF(const NdbApiSignal*);
+  void execDROP_TABLE_CONF(const NdbApiSignal*);
+  void execLIST_TABLES_CONF(const NdbApiSignal*, const LinearSectionPtr ptr[]);
 
-  void execCREATE_FILE_REF(const NdbApiSignal*, const LinearSectionPtr ptr[3]);
-  void execCREATE_FILE_CONF(const NdbApiSignal*, const LinearSectionPtr pr[3]);
+  void execCREATE_FILE_REF(const NdbApiSignal*);
+  void execCREATE_FILE_CONF(const NdbApiSignal*);
 
-  void execCREATE_FILEGROUP_REF(const NdbApiSignal*,
-				const LinearSectionPtr ptr[3]);
-  void execCREATE_FILEGROUP_CONF(const NdbApiSignal*,
-				 const LinearSectionPtr ptr[3]);
+  void execCREATE_FILEGROUP_REF(const NdbApiSignal*);
+  void execCREATE_FILEGROUP_CONF(const NdbApiSignal*);
 
-  void execDROP_FILE_REF(const NdbApiSignal*, const LinearSectionPtr ptr[3]);
-  void execDROP_FILE_CONF(const NdbApiSignal*, const LinearSectionPtr ptr[3]);
+  void execDROP_FILE_REF(const NdbApiSignal*);
+  void execDROP_FILE_CONF(const NdbApiSignal*);
 
-  void execDROP_FILEGROUP_REF(const NdbApiSignal*, const LinearSectionPtr [3]);
-  void execDROP_FILEGROUP_CONF(const NdbApiSignal*,
-			       const LinearSectionPtr ptr[3]);
+  void execDROP_FILEGROUP_REF(const NdbApiSignal*);
+  void execDROP_FILEGROUP_CONF(const NdbApiSignal*);
 
-  void execSCHEMA_TRANS_BEGIN_CONF(const NdbApiSignal*,
-				   const LinearSectionPtr ptr[3]);
-  void execSCHEMA_TRANS_BEGIN_REF(const NdbApiSignal*,
-				  const LinearSectionPtr ptr[3]);
-  void execSCHEMA_TRANS_END_CONF(const NdbApiSignal*,
-				 const LinearSectionPtr ptr[3]);
-  void execSCHEMA_TRANS_END_REF(const NdbApiSignal*,
-				const LinearSectionPtr ptr[3]);
-  void execSCHEMA_TRANS_END_REP(const NdbApiSignal*, const LinearSectionPtr ptr[3]);
+  void execSCHEMA_TRANS_BEGIN_CONF(const NdbApiSignal*);
+  void execSCHEMA_TRANS_BEGIN_REF(const NdbApiSignal*);
+  void execSCHEMA_TRANS_END_CONF(const NdbApiSignal*);
+  void execSCHEMA_TRANS_END_REF(const NdbApiSignal*);
+  void execSCHEMA_TRANS_END_REP(const NdbApiSignal*);
 
-  void execWAIT_GCP_CONF(const NdbApiSignal*, const LinearSectionPtr ptr[3]);
-  void execWAIT_GCP_REF(const NdbApiSignal*, const LinearSectionPtr ptr[3]);
+  void execWAIT_GCP_CONF(const NdbApiSignal*);
+  void execWAIT_GCP_REF(const NdbApiSignal*);
 
-  void execCREATE_HASH_MAP_REF(const NdbApiSignal*,
-			       const LinearSectionPtr ptr[3]);
-  void execCREATE_HASH_MAP_CONF(const NdbApiSignal*,
-				const LinearSectionPtr ptr[3]);
+  void execCREATE_HASH_MAP_REF(const NdbApiSignal*);
+  void execCREATE_HASH_MAP_CONF(const NdbApiSignal*);
 
-  void execCREATE_FK_REF(const NdbApiSignal*,
-                         const LinearSectionPtr ptr[3]);
-  void execCREATE_FK_CONF(const NdbApiSignal*,
-                          const LinearSectionPtr ptr[3]);
+  void execCREATE_FK_REF(const NdbApiSignal*);
+  void execCREATE_FK_CONF(const NdbApiSignal*);
 
-  void execDROP_FK_REF(const NdbApiSignal*,
-                         const LinearSectionPtr ptr[3]);
-  void execDROP_FK_CONF(const NdbApiSignal*,
-                          const LinearSectionPtr ptr[3]);
+  void execDROP_FK_REF(const NdbApiSignal*);
+  void execDROP_FK_CONF(const NdbApiSignal*);
 
   Uint32 m_fragmentId;
   UtilBuffer m_buffer;
@@ -892,7 +954,6 @@ public:
   ~NdbDictionaryImpl();
 
   bool setTransporter(class Ndb * ndb, class TransporterFacade * tf);
-  bool setTransporter(class TransporterFacade * tf);
 
   int createTable(NdbTableImpl &t, NdbDictObjectImpl &);
   int optimizeTable(const NdbTableImpl &t,
@@ -903,24 +964,17 @@ public:
   bool supportedAlterTable(NdbTableImpl &old_impl, NdbTableImpl &impl);
   int alterTable(NdbTableImpl &old_impl, NdbTableImpl &impl);
   int dropTable(const char * name);
-  int dropTable(NdbTableImpl &);
-  int dropBlobTables(NdbTableImpl &);
+  int dropTable(const NdbTableImpl&);
+  int dropBlobTables(const NdbTableImpl&);
   int alterBlobTables(const NdbTableImpl &old_impl, const NdbTableImpl &impl, Uint32 tabChangeMask);
   int invalidateObject(NdbTableImpl &);
   int removeCachedObject(NdbTableImpl &);
 
   int createIndex(NdbIndexImpl &ix, bool offline);
   int createIndex(NdbIndexImpl &ix, NdbTableImpl & tab, bool offline);
-  int dropIndex(const char * indexName, 
-		const char * tableName);
-  int dropIndex(const char * indexName, 
-		const char * tableName,
+  int dropIndex(const char * indexName,  const char * tableName,
                 bool ignoreFKs);
-  int dropIndex(NdbIndexImpl &, const char * tableName);
-  int dropIndex(NdbIndexImpl &, const char * tableName,
-                bool ignoreFKs);
-  NdbTableImpl * getIndexTable(NdbIndexImpl * index, 
-			       NdbTableImpl * table);
+  int dropIndex(NdbIndexImpl &, const char * tableName, bool ignoreFKs);
 
   int updateIndexStat(const NdbIndexImpl&, const NdbTableImpl&);
   int updateIndexStat(Uint32 indexId, Uint32 indexVersion, Uint32 tableId);
@@ -935,14 +989,14 @@ public:
   int listEvents(List& list);
 
   int executeSubscribeEvent(NdbEventOperationImpl &);
-  int stopSubscribeEvent(NdbEventOperationImpl &);
+  int stopSubscribeEvent(NdbEventOperationImpl &, Uint64& stop_gci);
 
   int forceGCPWait(int type);
   int getRestartGCI(Uint32*);
 
   int listObjects(List& list, NdbDictionary::Object::Type type, 
                   bool fullyQualified);
-  int listIndexes(List& list, Uint32 indexId);
+  int listIndexes(List& list, Uint32 indexId, bool fullyQualified);
   int listDependentObjects(List& list, Uint32 tableId);
 
   NdbTableImpl * getTableGlobal(const char * tableName);
@@ -951,9 +1005,7 @@ public:
   NdbIndexImpl * getIndexGlobal(const char * indexName,
                                 const char * tableName);
   int alterTableGlobal(NdbTableImpl &orig_impl, NdbTableImpl &impl);
-  int dropTableGlobal(NdbTableImpl &);
   int dropTableGlobal(NdbTableImpl &, int flags);
-  int dropIndexGlobal(NdbIndexImpl & impl);
   int dropIndexGlobal(NdbIndexImpl &, bool ignoreFKs);
   int releaseTableGlobal(const NdbTableImpl & impl, int invalidate);
   int releaseIndexGlobal(const NdbIndexImpl & impl, int invalidate);
@@ -970,7 +1022,6 @@ public:
   NdbIndexImpl * getIndex(const char * indexName, const NdbTableImpl& prim);
   NdbEventImpl * getEvent(const char * eventName, NdbTableImpl* = NULL);
   NdbEventImpl * getBlobEvent(const NdbEventImpl& ev, uint col_no);
-  NdbEventImpl * getEventImpl(const char * internalName);
 
   int createDatafile(const NdbDatafileImpl &, bool force, NdbDictObjectImpl*);
   int dropDatafile(const NdbDatafileImpl &);
@@ -990,7 +1041,8 @@ public:
   NdbDictInterface::Tx m_tx;
 
   const NdbError & getNdbError() const;
-  NdbError m_error;
+  // Allow update error from const methods
+  mutable NdbError m_error;
   int m_warn;
   Uint32 m_local_table_data_size;
 
@@ -1009,14 +1061,6 @@ public:
   NdbDictInterface m_receiver;
   Ndb & m_ndb;
 
-  NdbIndexImpl* getIndexImpl(const char * externalName,
-                             const BaseString& internalName,
-                             NdbTableImpl &tab,
-                             NdbTableImpl &prim);
-  NdbIndexImpl * getIndexImpl(const char * name,
-                              const BaseString& internalName);
-
-
   int createDefaultNdbRecord(NdbTableImpl* tableOrIndex,
                              const NdbTableImpl* baseTableForIndex);
 
@@ -1033,7 +1077,6 @@ public:
   NdbRecord *createRecordInternal(const NdbTableImpl *table,
                                   const NdbDictionary::RecordSpecification *recSpec,
                                   Uint32 length,
-                                  Uint32 elemSize,
                                   Uint32 flags,
                                   bool defaultRecord);
   void releaseRecord_impl(NdbRecord *rec);
@@ -1073,6 +1116,9 @@ public:
   int getDefaultHashmapSize() const;
 private:
   NdbTableImpl * fetchGlobalTableImplRef(const GlobalCacheInitObject &obj);
+
+  // Check that both database and schema name is set on this Ndb object
+  bool checkDatabaseAndSchemaName();
 };
 
 inline
@@ -1160,11 +1206,11 @@ NdbColumnImpl::get_var_length(const void* value, Uint32& len) const
   Uint32 max_len = m_attrSize * m_arraySize;
   switch (m_arrayType) {
   case NDB_ARRAYTYPE_SHORT_VAR:
-    len = 1 + *((Uint8*)value);
+    len = 1 + *((const Uint8 *)value);
     DBUG_PRINT("info", ("SHORT_VAR: len=%u max_len=%u", len, max_len));
     break;
   case NDB_ARRAYTYPE_MEDIUM_VAR:
-    len = 2 + uint2korr((char*)value);
+    len = 2 + uint2korr((const char *)value);
     DBUG_PRINT("info", ("MEDIUM_VAR: len=%u max_len=%u", len, max_len));
     break;
   default:
@@ -1212,79 +1258,28 @@ NdbTableImpl::matchDb(const char * name, size_t len) const
     memcmp(name, m_internalName.c_str(), len) == 0;
 }
 
-inline
-Uint32
-Hash( const char* str ){
-  Uint32 h = 0;
-  size_t len = strlen(str);
-  while(len >= 4){
-    h = (h << 5) + h + str[0];
-    h = (h << 5) + h + str[1];
-    h = (h << 5) + h + str[2];
-    h = (h << 5) + h + str[3];
-    len -= 4;
-    str += 4;
-  }
-  
-  switch(len){
-  case 3:
-    h = (h << 5) + h + *str++;
-  case 2:
-    h = (h << 5) + h + *str++;
-  case 1:
-    h = (h << 5) + h + *str++;
-  }
-  return h + h;
-}
-
+static const Uint32 ColNameHashThresh = 5;
 
 inline
 NdbColumnImpl *
 NdbTableImpl::getColumn(const char * name){
-
-  Uint32 sz = m_columns.size();
-  NdbColumnImpl** cols = m_columns.getBase();
-  const Uint32 * hashtable = m_columnHash.getBase();
-
-  if(sz > 5 && false){
-    Uint32 hashValue = Hash(name) & 0xFFFE;
-    Uint32 bucket = hashValue & m_columnHashMask;
-    bucket = (bucket < sz ? bucket : bucket - sz);
-    hashtable += bucket;
-    Uint32 tmp = * hashtable;
-    if((tmp & 1) == 1 ){ // No chaining
-      sz = 1;
-    } else {
-      sz = (tmp >> 16);
-      hashtable += (tmp & 0xFFFE) >> 1;
-      tmp = * hashtable;
-    }
-    do {
-      if(hashValue == (tmp & 0xFFFE)){
-	NdbColumnImpl* col = cols[tmp >> 16];
-	if(strncmp(name, col->m_name.c_str(), col->m_name.length()) == 0){
-	  return col;
-	}
-      }
-      hashtable++;
-      tmp = * hashtable;
-    } while(--sz > 0);
-#if 0
-    Uint32 dir = m_columnHash[bucket];
-    Uint32 pos = bucket + ((dir & 0xFFFE) >> 1); 
-    Uint32 cnt = dir >> 16;
-    ndbout_c("col: %s hv: %x bucket: %d dir: %x pos: %d cnt: %d tmp: %d -> 0", 
-	     name, hashValue, bucket, dir, pos, cnt, tmp);
-#endif
-    return 0;
-  } else {
-    for(Uint32 i = 0; i<sz; i++){
+  const Uint32 sz = m_columns.size();
+  
+  if (sz > ColNameHashThresh)
+  {
+    return getColumnByHash(name);
+  } 
+  else 
+  {
+    NdbColumnImpl** cols = m_columns.getBase();
+    for(Uint32 i = 0; i<sz; i++)
+    {
       NdbColumnImpl* col = * cols++;
       if(col != 0 && strcmp(name, col->m_name.c_str()) == 0)
 	return col;
     }
   }
-  return 0;
+  return NULL;
 }
 
 inline
@@ -1293,20 +1288,28 @@ NdbTableImpl::getColumn(unsigned attrId) const {
   if(m_columns.size() > attrId){
     return m_columns[attrId];
   }
-  return 0;
+  return NULL;
 }
 
 inline
 const NdbColumnImpl *
 NdbTableImpl::getColumn(const char * name) const {
   Uint32 sz = m_columns.size();
-  NdbColumnImpl* const * cols = m_columns.getBase();
-  for(Uint32 i = 0; i<sz; i++, cols++){
-    NdbColumnImpl* col = * cols;
-    if(col != 0 && strcmp(name, col->m_name.c_str()) == 0)
-      return col;
+  
+  if (sz > ColNameHashThresh)
+  {
+    return getColumnByHash(name);
   }
-  return 0;
+  else
+  {
+    NdbColumnImpl* const * cols = m_columns.getBase();
+    for(Uint32 i = 0; i<sz; i++, cols++){
+      NdbColumnImpl* col = * cols;
+      if(col != 0 && strcmp(name, col->m_name.c_str()) == 0)
+        return col;
+    }
+    return NULL;
+  }
 }
 
 inline
@@ -1343,7 +1346,7 @@ public:
   InitTable(const BaseString &name) :
     GlobalCacheInitObject(name)
   {}
-  int init(NdbDictionaryImpl *dict, NdbTableImpl &tab) const
+  int init(NdbDictionaryImpl *dict, NdbTableImpl &tab) const override
   {
     int res= dict->getBlobTables(tab);
     if (res == 0)
@@ -1372,6 +1375,11 @@ NdbDictionaryImpl::getTableGlobal(const char * table_name)
     }
   }
 
+  // Don't allow opening table without database or schema name specified,
+  // the internal name format depends on those to be set
+  if (!checkDatabaseAndSchemaName())
+    return NULL;
+
   const BaseString internal_tabname(m_ndb.internalize_table_name(table_name));
   return fetchGlobalTableImplRef(InitTable(internal_tabname));
 }
@@ -1391,6 +1399,11 @@ NdbDictionaryImpl::getTable(const char * table_name, void **data)
     }
   }
 
+  // Don't allow opening table without database or schema name specified,
+  // the internal name format depends on those to be set
+  if (!checkDatabaseAndSchemaName())
+    DBUG_RETURN(NULL);
+
   const BaseString internal_tabname(m_ndb.internalize_table_name(table_name));
   Ndb_local_table_info *info=
     get_local_table_info(internal_tabname);
@@ -1408,7 +1421,7 @@ NdbDictionaryImpl::get_local_table_info(const BaseString& internalTableName)
   DBUG_ENTER("NdbDictionaryImpl::get_local_table_info");
   DBUG_PRINT("enter", ("table: %s", internalTableName.c_str()));
 
-  Ndb_local_table_info *info= m_localHash.get(internalTableName.c_str());
+  Ndb_local_table_info *info= m_localHash.get(internalTableName);
   if (info == 0)
   {
     NdbTableImpl *tab=
@@ -1418,7 +1431,7 @@ NdbDictionaryImpl::get_local_table_info(const BaseString& internalTableName)
       info= Ndb_local_table_info::create(tab, m_local_table_data_size);
       if (info)
       {
-        m_localHash.put(internalTableName.c_str(), info);
+        m_localHash.put(internalTableName, info);
       }
     }
   }
@@ -1439,7 +1452,7 @@ public:
     m_prim(prim)
     {}
   
-  int init(NdbDictionaryImpl *dict, NdbTableImpl &tab) const {
+  int init(NdbDictionaryImpl *dict, NdbTableImpl &tab) const override {
     DBUG_ENTER("InitIndex::init");
     assert(tab.m_indexType != NdbDictionary::Object::TypeUndefined);
     /**
@@ -1467,8 +1480,9 @@ NdbDictionaryImpl::getIndexGlobal(const char * index_name,
                                   NdbTableImpl &ndbtab)
 {
   DBUG_ENTER("NdbDictionaryImpl::getIndexGlobal");
-  const BaseString
-    internal_indexname(m_ndb.internalize_index_name(&ndbtab, index_name));
+
+  const BaseString internal_indexname(NdbIndexImpl::internal_index_name(&ndbtab,
+                                                          index_name));
   int retry= 2;
 
   while (retry)
@@ -1494,8 +1508,8 @@ NdbDictionaryImpl::getIndexGlobal(const char * index_name,
   {
     // Index not found, try old format
     const BaseString
-      old_internal_indexname(m_ndb.old_internalize_index_name(&ndbtab, 
-							      index_name));
+      old_internal_indexname(NdbIndexImpl::old_internal_index_name(&ndbtab,
+                                                                   index_name));
     retry= 2;
     while (retry)
     {
@@ -1518,7 +1532,11 @@ NdbDictionaryImpl::getIndexGlobal(const char * index_name,
       break;
     }
   }
-  m_error.code= 4243;
+  // Indexes are treated as tables while fetching them from the
+  // NdbDictionary. So if an index is not found, the error 723
+  // "table not found" is returned. Map 723 to 4243 "index not found"
+  if(m_error.code == 0 || m_error.code == 723)
+    m_error.code= 4243;
   DBUG_RETURN(0);
 }
 
@@ -1564,7 +1582,11 @@ NdbDictionaryImpl::getIndex(const char * index_name,
   if (table_name == 0)
   {
     assert(0);
-    m_error.code= 4243;
+    // Indexes are treated as tables while fetching them from the
+    // NdbDictionary. So if an index is not found, the error 723
+    // "table not found" is returned. Map 723 to 4243 "index not found"
+    if(m_error.code == 0 || m_error.code == 723)
+      m_error.code= 4243;
     return 0;
   }
   
@@ -1572,7 +1594,11 @@ NdbDictionaryImpl::getIndex(const char * index_name,
   NdbTableImpl* prim = getTable(table_name);
   if (prim == 0)
   {
-    m_error.code= 4243;
+    // Indexes are treated as tables while fetching them from the
+    // NdbDictionary. So if an index is not found, the error 723
+    // "table not found" is returned. Map 723 to 4243 "index not found"
+    if(m_error.code == 0 || m_error.code == 723)
+      m_error.code= 4243;
     return 0;
   }
 
@@ -1586,9 +1612,9 @@ NdbDictionaryImpl::getIndex(const char* index_name,
 {
 
   const BaseString
-    internal_indexname(m_ndb.internalize_index_name(&prim, index_name));
+      internal_indexname(NdbIndexImpl::internal_index_name(&prim, index_name));
 
-  Ndb_local_table_info *info= m_localHash.get(internal_indexname.c_str());
+  Ndb_local_table_info *info= m_localHash.get(internal_indexname);
   NdbTableImpl *tab;
   if (info == 0)
   {
@@ -1601,7 +1627,7 @@ NdbDictionaryImpl::getIndex(const char* index_name,
     info= Ndb_local_table_info::create(tab, 0);
     if (!info)
       goto retry;
-    m_localHash.put(internal_indexname.c_str(), info);
+    m_localHash.put(internal_indexname, info);
   }
   else
     tab= info->m_table_impl;
@@ -1609,11 +1635,12 @@ NdbDictionaryImpl::getIndex(const char* index_name,
   return tab->m_index;
 
 retry:
-  // Index not found, try fetching it from current database
+  // Index not found, try old format
   const BaseString
-    old_internal_indexname(m_ndb.old_internalize_index_name(&prim, index_name));
+      old_internal_indexname(NdbIndexImpl::old_internal_index_name(&prim,
+                                                                   index_name));
 
-  info= m_localHash.get(old_internal_indexname.c_str());
+  info= m_localHash.get(old_internal_indexname);
   if (info == 0)
   {
     tab= fetchGlobalTableImplRef(InitIndex(old_internal_indexname,
@@ -1625,7 +1652,7 @@ retry:
     info= Ndb_local_table_info::create(tab, 0);
     if (!info)
       goto err;
-    m_localHash.put(old_internal_indexname.c_str(), info);
+    m_localHash.put(old_internal_indexname, info);
   }
   else
     tab= info->m_table_impl;
@@ -1633,7 +1660,11 @@ retry:
   return tab->m_index;
   
 err:
-  m_error.code= 4243;
+  // Indexes are treated as tables while fetching them from the
+  // NdbDictionary. So if an index is not found, the error 723
+  // "table not found" is returned. Map 723 to 4243 "index not found"
+  if(m_error.code == 0 || m_error.code == 723)
+    m_error.code= 4243;
   return 0;
 }
 

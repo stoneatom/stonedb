@@ -7,8 +7,13 @@
 # for this test in order to get a predictable number
 # of partitions when no partition-spec is part of
 # the create table stmt.
+# Now it depends on number of log parts, but we can set
+# number of partitions per node explicitly which we do
+# here.
 #
-ThreadConfig=ldm={count=1}
+PartitionsPerNode=1
+ThreadConfig=main,rep,recv,ldm={count=1}
+TimeBetweenGlobalCheckpoints=200
 
 [ENV]
 # Test will pass some table names that includes $ to command line interpreter.

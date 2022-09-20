@@ -612,7 +612,7 @@ void RCTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
       f->get_time(&my_time);
       // convert to UTC
       if (!common::IsTimeStampZero(my_time)) {
-        my_bool myb;
+        bool myb;
         my_time_t secs_utc = current_txn_->Thd()->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
         common::GMTSec2GMTTime(&my_time, secs_utc);
       }
@@ -771,6 +771,8 @@ uint64_t RCTable::ProceedNormal(system::IOParameters &iop) {
   return no_loaded_rows;
 }
 
+// stonedb8 start TODO
+/*
 int RCTable::binlog_load_query_log_event(system::IOParameters &iop) {
   char *load_data_query, *end, *fname_start, *fname_end, *p = NULL;
   size_t pl = 0;
@@ -784,12 +786,12 @@ int RCTable::binlog_load_query_log_event(system::IOParameters &iop) {
   lf_info = (LOAD_FILE_INFO *)iop.GetLogInfo();
   THD *thd = lf_info->thd;
   sql_exchange *ex = thd->lex->exchange;
-  TABLE *table = thd->lex->select_lex->table_list.first->table;
+  TABLE *table = thd->lex->query_block->table_list.first->table;
   if (ex == nullptr || table == nullptr) return -1;
   auto pa = fs::path(iop.GetTableName());
   std::tie(db_name, tab_name) = std::make_tuple(pa.parent_path().filename().native(), pa.filename().native());
   append_identifier(thd, &string_buf, tab_name.c_str(), tab_name.length());
-  Load_log_event lle(thd, ex, db_name.c_str(), string_buf.c_ptr_safe(), fv, FALSE, DUP_ERROR, FALSE, TRUE);
+  Load_log_event lle(thd, ex, db_name.c_str(), string_buf.c_ptr_safe(), fv, false, DUP_ERROR, false, true);
   if (thd->lex->local_file) lle.set_fname_outside_temp_buf(ex->file_name, std::strlen(ex->file_name));
 
     if (!thd->lex->load_field_list.elements) {
@@ -820,7 +822,7 @@ int RCTable::binlog_load_query_log_event(system::IOParameters &iop) {
       if (item->type() == Item::FIELD_ITEM)
         append_identifier(thd, &pfields, item->item_name.ptr(), std::strlen(item->item_name.ptr()));
       else
-        item->print(&pfields, QT_ORDINARY);
+        item->print(thd, &pfields, QT_ORDINARY); // stonedb8: print() add param thd
     }
     pfields.append(")");
   }
@@ -849,16 +851,21 @@ int RCTable::binlog_load_query_log_event(system::IOParameters &iop) {
 
   if (!(load_data_query = (char *)thd->alloc(lle.get_query_buffer_length() + 1 + pl))) return -1;
 
-  lle.print_query(FALSE, ex->cs ? ex->cs->csname : NULL, load_data_query, &end, &fname_start, &fname_end);
+  lle.print_query(false, ex->cs ? ex->cs->csname : NULL, load_data_query, &end, &fname_start, &fname_end);
 
   std::strcpy(end, p);
   end += pl;
 
     Execute_load_query_log_event e(
         thd, load_data_query, end - load_data_query, static_cast<uint>(fname_start - load_data_query - 1),
-        static_cast<uint>(fname_end - load_data_query), (binary_log::enum_load_dup_handling)0, TRUE, FALSE, FALSE, 0);
+        static_cast<uint>(fname_end - load_data_query), (binary_log::enum_load_dup_handling)0, true, false, false, 0);
     return mysql_bin_log.write_event(&e);
 }
+*/
+int RCTable::binlog_load_query_log_event(system::IOParameters &iop) {
+    return 0;
+}
+// stonedb8 end
 
 size_t RCTable::max_row_length(std::vector<loader::ValueCache> &vcs, uint row, uint delimiter) {
   size_t row_len = 0;
@@ -930,7 +937,7 @@ int RCTable::binlog_insert2load_log_event(system::IOParameters &iop) {
 
   std::memcpy(load_data_query, p, pl);
   Execute_load_query_log_event e(thd, load_data_query, pl, static_cast<uint>(fname_start_pos - 1),
-                                 static_cast<uint>(fname_end_pos), (binary_log::enum_load_dup_handling)0, TRUE, FALSE, FALSE, 0);
+                                 static_cast<uint>(fname_end_pos), (binary_log::enum_load_dup_handling)0, true, false, false, 0);
   return mysql_bin_log.write_event(&e);
 }
 
@@ -1091,7 +1098,8 @@ int RCTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, uint
   buffer = block_buf.get();
   for (block_len = (uint)(ptr - block_buf.get()); block_len > 0;
        buffer += std::min(block_len, max_event_size), block_len -= std::min(block_len, max_event_size)) {
-    if (lf_info->wrote_create_file) {
+    // stonedb8 start wrote_create_file->logged_data_file from struct LOAD_FILE_INFO
+    if (lf_info->logged_data_file) {
       Append_block_log_event a(lf_info->thd, lf_info->thd->db().str, buffer, std::min(block_len, max_event_size),
                                lf_info->log_delayed);
       if (mysql_bin_log.write_event(&a)) return -1;
@@ -1099,7 +1107,8 @@ int RCTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, uint
       Begin_load_query_log_event b(lf_info->thd, lf_info->thd->db().str, buffer, std::min(block_len, max_event_size),
                                    lf_info->log_delayed);
       if (mysql_bin_log.write_event(&b)) return -1;
-      lf_info->wrote_create_file = 1;
+      lf_info->logged_data_file = 1;
+    // stonedb8 end
     }
   }
 
@@ -1348,7 +1357,7 @@ int RCTable::MergeMemTable(system::IOParameters &iop) {
   if ((t3.tv_sec - t2.tv_sec > 15) && index_table) {
     TIANMU_LOG(LogCtl_Level::WARN, "Latency of index table %s larger than 15s, compact manually.",
                 share->Path().c_str());
-    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rocksdb_key_->get_cf(), nullptr, nullptr);
+    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rdbkey_->get_cf(), nullptr, nullptr);
   }
 
   return no_loaded_rows;

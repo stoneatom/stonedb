@@ -27,7 +27,8 @@ SET GLOBAL debug= '+d,dbug.block_do_refresh';
 
 --connect (con1,localhost,root,,test,,)
 
---source suite/query_rewrite_plugins/include/show_process_list.inc
+--echo # Two root connections are supposed to show here
+SELECT COUNT(user) FROM information_schema.processlist WHERE user LIKE 'root';
 
 --echo # We have to do this in order to avoid deadlock on the memory table's
 --echo # mutex.
@@ -43,14 +44,15 @@ SET @@global.rewriter_enabled = OFF;
 SET debug_sync = 'now WAIT_FOR parked';
 --enable_warnings
 
---source suite/query_rewrite_plugins/include/show_process_list.inc
+--echo # Two root connections are supposed to show here
+SELECT COUNT(user) FROM information_schema.processlist WHERE user LIKE 'root';
 
 --echo #
 --echo # Restart the server
 --echo #
 
 --exec echo "wait" > $MYSQLTEST_VARDIR/tmp/mysqld.1.expect
---shutdown_server 10
+--shutdown_server
 --source include/wait_until_disconnected.inc
 
 --exec echo "restart" > $MYSQLTEST_VARDIR/tmp/mysqld.1.expect
@@ -59,7 +61,8 @@ SET debug_sync = 'now WAIT_FOR parked';
 
 SELECT 'Rewrite';
 
---source suite/query_rewrite_plugins/include/show_process_list.inc
+--echo # One root connection is supposed to show here, as the rewrite thread is now gone
+SELECT COUNT(user) FROM information_schema.processlist WHERE user LIKE 'root';
 
 SET @@global.rewriter_enabled = DEFAULT;
 --source suite/query_rewrite_plugins/include/uninstall_rewriter.inc

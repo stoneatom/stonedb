@@ -458,7 +458,7 @@ class rc_hash_compare {
 static inline void ConvertToBinaryForm(const BString &src, BString &dst, DTCollation coll) {
   if (!src.IsNull()) {
     coll.collation->coll->strnxfrm(coll.collation, (uchar *)dst.val, dst.len, dst.len, (uchar *)(src.val), src.len,
-                                   MY_STRXFRM_PAD_WITH_SPACE);
+                                   MY_STRXFRM_PAD_TO_MAXLEN);
     dst.null = false;
   } else {
     dst.null = true;
@@ -536,10 +536,11 @@ static inline bool IsUnicode(DTCollation coll) {
 
 static inline bool IsBinary(DTCollation coll) { return (std::strcmp(coll.collation->csname, "binary") == 0); }
 
-static inline bool IsBin(DTCollation coll) { return (std::strstr(coll.collation->csname, "_bin") == 0); }
+static inline bool IsBin(DTCollation coll) { return (std::strstr(coll.collation->m_coll_name, "_bin") == 0); }
 
+// stonedb8
 static inline bool IsCaseInsensitive(const DTCollation &coll) {
-  return (std::strstr(coll.collation->name, "_ci") != 0);
+  return (std::strstr(coll.collation->m_coll_name, "_ci") != 0); // stonedb8
 }
 
 inline DTCollation ResolveCollation(DTCollation first, DTCollation sec) {

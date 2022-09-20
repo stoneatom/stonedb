@@ -1,4 +1,4 @@
-/* Copyright (c) 2006, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2006, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -18,110 +18,66 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA */
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #ifndef SQL_DELETE_INCLUDED
 #define SQL_DELETE_INCLUDED
 
-#include "my_base.h"     // ha_rows
-#include "sql_class.h"   // Query_result_interceptor
-#include "sql_cmd_dml.h" // Sql_cmd_dml
+#include "my_sqlcommand.h"
+#include "my_table_map.h"
+#include "sql/sql_cmd_dml.h"  // Sql_cmd_dml
 
+class JOIN;
+class Select_lex_visitor;
 class THD;
-class Unique;
 struct TABLE_LIST;
+template <typename T>
+class SQL_I_List;
 
-bool mysql_prepare_delete(THD *thd);
-bool mysql_delete(THD *thd, ha_rows rows);
-int mysql_multi_delete_prepare(THD *thd, uint *table_count);
+class Sql_cmd_delete final : public Sql_cmd_dml {
+ public:
+  Sql_cmd_delete(bool multitable_arg, SQL_I_List<TABLE_LIST> *delete_tables_arg)
+      : multitable(multitable_arg), delete_tables(delete_tables_arg) {}
 
-class Query_result_delete :public Query_result_interceptor
-{
-  TABLE_LIST *delete_tables;
-  /// Pointers to temporary files used for delayed deletion of rows
-  Unique **tempfiles;
-  /// Pointers to table objects matching tempfiles
-  TABLE **tables;
-  ha_rows deleted, found;
-  uint num_of_tables;
-  int error;
-  /// Map of all tables to delete rows from
-  table_map delete_table_map;
-  /// Map of tables to delete from immediately
-  table_map delete_immediate;
-  // Map of transactional tables to be deleted from
-  table_map transactional_table_map;
-  /// Map of non-transactional tables to be deleted from
-  table_map non_transactional_table_map;
-  /// True if some delete operation has been performed (immediate or delayed)
-  bool do_delete;
-  /// True if some actual delete operation against non-transactional table done
-  bool non_transactional_deleted;
-  /*
-     error handling (rollback and binlogging) can happen in send_eof()
-     so that afterward send_error() needs to find out that.
+  enum_sql_command sql_command_code() const override {
+    return multitable ? SQLCOM_DELETE_MULTI : SQLCOM_DELETE;
+  }
+
+  bool is_single_table_plan() const override { return !multitable; }
+
+  bool accept(THD *thd, Select_lex_visitor *visitor) override;
+
+ protected:
+  bool precheck(THD *thd) override;
+  bool check_privileges(THD *thd) override;
+
+  bool prepare_inner(THD *thd) override;
+
+  bool execute_inner(THD *thd) override;
+
+ private:
+  bool delete_from_single_table(THD *thd);
+
+  bool multitable;
+  /**
+    References to tables that are deleted from in a multitable delete statement.
+    Only used to track such tables from the parser. In preparation and
+    optimization, use the TABLE_LIST::updating property instead.
   */
-  bool error_handled;
-
-public:
-  Query_result_delete(TABLE_LIST *dt, uint num_of_tables);
-  ~Query_result_delete();
-  virtual bool need_explain_interceptor() const { return true; }
-  int prepare(List<Item> &list, SELECT_LEX_UNIT *u);
-  bool send_data(List<Item> &items);
-  bool initialize_tables (JOIN *join);
-  void send_error(uint errcode,const char *err);
-  int do_deletes();
-  int do_table_deletes(TABLE *table);
-  bool send_eof();
-  inline ha_rows num_deleted()
-  {
-    return deleted;
-  }
-  virtual void abort_result_set();
+  SQL_I_List<TABLE_LIST> *delete_tables;
 };
 
+/// Find out which of the delete target tables can be deleted from immediately
+/// while scanning. This is used by the old optimizer *after* the plan has been
+/// created. The hypergraph optimizer does not use this function, as it makes
+/// the decision about immediate delete *during* planning, not after planning.
+table_map GetImmediateDeleteTables(const JOIN *join, table_map delete_tables);
 
-class Sql_cmd_delete : public Sql_cmd_dml
-{
-public:
-  virtual enum_sql_command sql_command_code() const { return SQLCOM_DELETE; }
-
-  virtual bool execute(THD *thd);
-
-  virtual bool prepared_statement_test(THD *thd);
-  virtual bool prepare(THD *thd)
-  {
-    // TODO: move the mysql_prepare_delete() call there
-    return false;
-  }
-
-private:
-  bool mysql_prepare_delete(THD *thd);
-  bool mysql_delete(THD *thd, ha_rows rows);
-};
-
-
-class Sql_cmd_delete_multi : public Sql_cmd_dml
-{
-public:
-  virtual enum_sql_command sql_command_code() const
-  {
-    return SQLCOM_DELETE_MULTI;
-  }
-
-  virtual bool execute(THD *thd);
-
-  virtual bool prepared_statement_test(THD *thd);
-  virtual bool prepare(THD *thd)
-  {
-    uint table_count;
-    return mysql_multi_delete_prepare(thd, &table_count);
-  }
-
-private:
-  int mysql_multi_delete_prepare(THD *thd, uint *table_count);
-};
-
+/// Checks if the sql_safe_updates option is enabled, and raises an error and
+/// returns true if the statement is likely to delete or update a large number
+/// of rows. Specifically, it raises an error if there is a full table scan or
+/// full index scan of one of the tables deleted from, and there is no LIMIT
+/// clause.
+bool CheckSqlSafeUpdate(THD *thd, const JOIN *join);
 
 #endif /* SQL_DELETE_INCLUDED */

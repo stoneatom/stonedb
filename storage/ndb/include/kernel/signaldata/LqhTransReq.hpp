@@ -1,4 +1,4 @@
-/* Copyright (c) 2008, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2008, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -18,7 +18,7 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA */
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #ifndef LQH_TRANS_REQ_H
 #define LQH_TRANS_REQ_H
@@ -29,8 +29,8 @@
 
 
 struct LqhTransReq {
-  STATIC_CONST( SignalLength = 4 );
-  STATIC_CONST( OldSignalLength = 3 );
+  static constexpr Uint32 SignalLength = 4;
+  static constexpr Uint32 OldSignalLength = 3;
   Uint32 senderData;
   Uint32 senderRef;
   Uint32 failedNodeId;

@@ -195,7 +195,8 @@ int LoadParser::binlog_loaded_block(const char *buf_start, const char *buf_end) 
 
   for (block_len = (uint)(buf_end - buf_start); block_len > 0;
        buffer += std::min(block_len, max_event_size), block_len -= std::min(block_len, max_event_size)) {
-    if (lf_info->wrote_create_file) {
+    // stonedb8
+    if (lf_info->logged_data_file) {
       Append_block_log_event a(lf_info->thd, lf_info->thd->db().str, buffer, std::min(block_len, max_event_size),
                                lf_info->log_delayed);
       if (mysql_bin_log.write_event(&a)) return -1;
@@ -203,8 +204,8 @@ int LoadParser::binlog_loaded_block(const char *buf_start, const char *buf_end) 
       Begin_load_query_log_event b(lf_info->thd, lf_info->thd->db().str, buffer, std::min(block_len, max_event_size),
                                    lf_info->log_delayed);
       if (mysql_bin_log.write_event(&b)) return -1;
-
-      lf_info->wrote_create_file = 1;
+      // stonedb8
+      lf_info->logged_data_file = 1;
     }
   }
 

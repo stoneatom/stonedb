@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -25,27 +25,38 @@
 #include <ndb_global.h>
 
 #include <mgmapi.h>
+#include "mgmcommon/NdbMgm.hpp"
 #include <ndbd_exit_codes.h>
 
 #include <util/BaseString.hpp>
 #include <util/Vector.hpp>
 #include <kernel/BlockNumbers.h>
+#include <kernel/signaldata/DumpStateOrd.hpp>
+#include <NdbTCP.h>
+#include "portlib/ndb_password.h"
+#include "portlib/NdbMem.h"
 
-/** 
+/**
  *  @class CommandInterpreter
  *  @brief Reads command line in management client
  *
  *  For command syntax, see the HELP command.
- */ 
+ */
 class CommandInterpreter {
 public:
   /**
    *   Constructor
-   *   @param mgmtSrvr: Management server to use when executing commands
+   *   @param host Management server to use when executing commands
    */
-  CommandInterpreter(const char *, int verbose);
+  CommandInterpreter(const char* host,
+                     const char* default_prompt,
+                     int verbose,
+                     int connect_retry_delay);
   ~CommandInterpreter();
   
+  int setDefaultBackupPassword(const char backup_password[]);
+  int setAlwaysEncryptBackup(bool on);
+
   /**
    *   Reads one line from the stream, parse the line to find 
    *   a command and then calls a suitable method which executes 
@@ -63,13 +74,13 @@ private:
   /**
    *   Analyse the command line, after the first token.
    *
-   *   @param  processId:           DB process id to send command to or -1 if
+   *   @param  processId            DB process id to send command to or -1 if
    *                                command will be sent to all DB processes.
-   *   @param  allAfterFirstToken:  What the client gave after the 
+   *   @param  allAfterFirstToken   What the client gave after the
    *                                first token on the command line
-   *   @return: 0 if analyseAfterFirstToken succeeds, otherwise -1 
+   *   @return 0 if analyseAfterFirstToken succeeds, otherwise -1
    */
-  int  analyseAfterFirstToken(int processId, char* allAfterFirstTokenCstr);
+  int  analyseAfterFirstToken(int processId, char* allAfterFirstToken);
 
   int  executeCommand(Vector<BaseString> &command_list,
                       unsigned command_pos,
@@ -78,19 +89,19 @@ private:
    *   Parse the block specification part of the LOG* commands,
    *   things after LOG*: [BLOCK = {ALL|<blockName>+}]
    *
-   *   @param  allAfterLog: What the client gave after the second token 
+   *   @param  allAfterLog  What the client gave after the second token
    *                        (LOG*) on the command line
-   *   @param  blocks, OUT: ALL or name of all the blocks
-   *   @return: true if correct syntax, otherwise false
+   *   @param[out]  blocks  ALL or name of all the blocks
+   *   @return true if correct syntax, otherwise false
    */
-  bool parseBlockSpecification(const char* allAfterLog, 
+  bool parseBlockSpecification(const char* allAfterLog,
 			       Vector<BaseString>& blocks);
-  
-  /**
+
+  /*
    *   A bunch of execute functions: Executes one of the commands
    *
-   *   @param  processId:   DB process id to send command to
-   *   @param  parameters:  What the client gave after the command name 
+   *   @param  processId    DB process id to send command to
+   *   @param  parameters   What the client gave after the command name
    *                        on the command line.
    *   For example if complete input from user is: "1 LOGLEVEL 22" then the
    *   parameters argument is the string with everything after LOGLEVEL, in
@@ -102,7 +113,12 @@ private:
   int  executePurge(char* parameters);
   int  executeConnect(char* parameters, bool interactive);
   int  executeShutdown(char* parameters);
+  int  executePrompt(char* parameters);
   void executeClusterLog(char* parameters);
+
+  int setBackupEncryptionPassword(BaseString& encryption_password,
+                                  bool& encryption_password_set,
+                                  bool interactive);
 
 public:
   int  executeStop(int processId, const char* parameters, bool all);
@@ -117,6 +133,7 @@ public:
   int  executeTestOff(int processId, const char* parameters, bool all);
   int  executeStatus(int processId, const char* parameters, bool all);
   int  executeEventReporting(int processId, const char* parameters, bool all);
+  int  executeNodeLog(int processId, const char* parameters, bool all);
   int  executeDumpState(int processId, const char* parameters, bool all);
   int  executeReport(int processId, const char* parameters, bool all);
   int  executeStartBackup(char * parameters, bool interactive);
@@ -129,6 +146,11 @@ public:
                     int *node_ids, int no_of_nodes);
   int executeCreateNodeGroup(char* parameters);
   int executeDropNodeGroup(char* parameters);
+  const char* get_current_prompt() const
+  {
+    // return the current prompt
+    return m_prompt;
+  }
 public:
   bool connect(bool interactive);
   void disconnect(void);
@@ -162,6 +184,14 @@ private:
   int m_error;
   struct NdbThread* m_event_thread;
   NdbMutex *m_print_mutex;
+  int m_connect_retry_delay;
+  const char* m_default_prompt;
+  const char* m_prompt;
+  BaseString m_prompt_copy;
+  const char* m_default_backup_password;
+  bool m_always_encrypt_backup;
+  char m_onetime_backup_password[1024];
+  bool m_onetime_backup_password_set;
 };
 
 NdbMutex* print_mutex;
@@ -172,9 +202,11 @@ NdbMutex* print_mutex;
 
 #include "ndb_mgmclient.hpp"
 
-Ndb_mgmclient::Ndb_mgmclient(const char *host,int verbose)
+Ndb_mgmclient::Ndb_mgmclient(const char *host, const char* default_prompt,
+                             int verbose, int connect_retry_delay)
 {
-  m_cmd= new CommandInterpreter(host,verbose);
+  m_cmd= new CommandInterpreter(host, default_prompt,
+                                verbose, connect_retry_delay);
 }
 Ndb_mgmclient::~Ndb_mgmclient()
 {
@@ -184,6 +216,22 @@ bool Ndb_mgmclient::execute(const char *line, int try_reconnect,
                             bool interactive, int *error)
 {
   return m_cmd->execute(line, try_reconnect, interactive, error);
+}
+const char*Ndb_mgmclient::get_current_prompt() const
+{
+  // return the current prompt
+  return m_cmd->get_current_prompt();
+}
+
+int Ndb_mgmclient::set_default_backup_password(
+                       const char backup_password[]) const
+{
+  return m_cmd->setDefaultBackupPassword(backup_password);
+}
+
+int Ndb_mgmclient::set_always_encrypt_backup(bool on) const
+{
+  return m_cmd->setAlwaysEncryptBackup(on);
 }
 
 /*
@@ -217,12 +265,14 @@ static const char* helpText =
 "SHOW                                   Print information about cluster\n"
 "CREATE NODEGROUP <id>,<id>...          Add a Nodegroup containing nodes\n"
 "DROP NODEGROUP <NG>                    Drop nodegroup with id NG\n"
-"START BACKUP [NOWAIT | WAIT STARTED | WAIT COMPLETED]\n"
-"START BACKUP [<backup id>] [NOWAIT | WAIT STARTED | WAIT COMPLETED]\n"
-"START BACKUP [<backup id>] [SNAPSHOTSTART | SNAPSHOTEND] [NOWAIT | WAIT STARTED | WAIT COMPLETED]\n"
-"                                       Start backup (default WAIT COMPLETED,SNAPSHOTEND)\n"
+"START BACKUP [<backup id>] [ENCRYPT [PASSWORD='<password>']] "
+  "[SNAPSHOTSTART | SNAPSHOTEND] [NOWAIT | WAIT STARTED | WAIT COMPLETED]\n"
+"                                       Start backup "
+  "(default WAIT COMPLETED,SNAPSHOTEND)\n"
 "ABORT BACKUP <backup id>               Abort backup\n"
 "SHUTDOWN                               Shutdown all processes in cluster\n"
+"PROMPT [<prompt-string>]               Toggle the prompt between string specified\n"
+"                                       or default prompt if no string specified\n"
 "CLUSTERLOG ON [<severity>] ...         Enable Cluster logging\n"
 "CLUSTERLOG OFF [<severity>] ...        Disable Cluster logging\n"
 "CLUSTERLOG TOGGLE [<severity>] ...     Toggle severity filter on/off\n"
@@ -230,6 +280,8 @@ static const char* helpText =
 "<id> START                             Start data node (started with -n)\n"
 "<id> RESTART [-n] [-i] [-a] [-f]       Restart data or management server node\n"
 "<id> STOP [-a] [-f]                    Stop data or management server node\n"
+"<id> NODELOG DEBUG ON                  Enable Debug logging in node log\n"
+"<id> NODELOG DEBUG OFF                 Disable Debug logging in node log\n"
 "ENTER SINGLE USER MODE <id>            Enter single user mode\n"
 "EXIT SINGLE USER MODE                  Exit single user mode\n"
 "<id> STATUS                            Print status\n"
@@ -280,7 +332,8 @@ static const char* helpTextStartBackup =
 " NDB Cluster -- Management Client -- Help for START BACKUP command\n"
 "---------------------------------------------------------------------------\n"
 "START BACKUP  Start a cluster backup\n\n"
-"START BACKUP [<backup id>] [SNAPSHOTSTART | SNAPSHOTEND] [NOWAIT | WAIT STARTED | WAIT COMPLETED]\n"
+"START BACKUP [<backup id>] [ENCRYPT [PASSWORD='<password>']]\n"
+"    [SNAPSHOTSTART | SNAPSHOTEND] [NOWAIT | WAIT STARTED | WAIT COMPLETED]\n"
 "                   Start a backup for the cluster.\n"
 "                   Each backup gets an ID number that is reported to the\n"
 "                   user. This ID number can help you find the backup on the\n"
@@ -289,6 +342,13 @@ static const char* helpTextStartBackup =
 "                   You can also start specified backup using START BACKUP <backup id> \n\n"
 "                   <backup id> \n"
 "                     Start a specified backup using <backup id> as bakcup ID number.\n" 
+"                   <password> \n"
+"                      Password for encrypting the backup files.\n"
+"                      Should be enclosed in double/single quotes, \n"
+"                      should be less than 256 characters in length and\n"
+"                      be at least one character long.\n"
+"                      Allowed characters: 0-9, A-Z, a-z, space( ), comma(,), \n"
+"                      #&()*+-./:;<=>?@[]_{|}~.\n"
 "                   SNAPSHOTSTART \n"
 "                     Backup snapshot is taken around the time the backup is started.\n" 
 "                   SNAPSHOTEND \n"
@@ -448,6 +508,14 @@ static const char* helpTextExitSingleUserMode =
 "                   (that is, all running mysqld processes) to access the database. \n" 
 ;
 
+static const char* helpTextNodelog =
+"---------------------------------------------------------------------------\n"
+" NDB Cluster -- Management Client -- Help for NODELOG command\n"
+"---------------------------------------------------------------------------\n"
+"<id> NODELOG DEBUG ON   Enable debug messages in node log\n"
+"<id> NODELOG DEBUG OFF  Disable debug messages in node log\n"
+;
+
 static const char* helpTextStatus =
 "---------------------------------------------------------------------------\n"
 " NDB Cluster -- Management Client -- Help for STATUS command\n"
@@ -555,6 +623,17 @@ static const char* helpTextQuit =
 ;
 
 
+static const char* helpTextPrompt =
+"---------------------------------------------------------------------------\n"
+" NDB Cluster -- Management Client -- Help for PROMPT command\n"
+"---------------------------------------------------------------------------\n"
+"PROMPT  Toggle the prompt between string specified\n"
+"        or default prompt if no string specified\n\n"
+"PROMPT [<prompt-string>]       Changes the prompt to <prompt-string>\n"
+"                               No string resets the prompt to default\n\n"
+;
+
+
 #ifdef VM_TRACE // DEBUG ONLY
 static const char* helpTextDebug =
 "---------------------------------------------------------------------------\n"
@@ -600,10 +679,16 @@ struct st_cmd_help {
   {"EXIT SINGLE USER MODE", helpTextExitSingleUserMode, NULL},
   {"STATUS", helpTextStatus, NULL},
   {"CLUSTERLOG", helpTextClusterlog, NULL},
+  {"NODELOG", helpTextNodelog, NULL},
+  {"NODELOG DEBUG", helpTextNodelog, NULL},
+  {"NODELOG DEBUG", helpTextNodelog, NULL},
+  {"NODELOG DEBUG ON", helpTextNodelog, NULL},
+  {"NODELOG DEBUG OFF", helpTextNodelog, NULL},
   {"PURGE STALE SESSIONS", helpTextPurgeStaleSessions, NULL},
   {"CONNECT", helpTextConnect, NULL},
   {"REPORT", helpTextReport, helpTextReportFn},
   {"QUIT", helpTextQuit, NULL},
+  {"PROMPT", helpTextPrompt, NULL},
 #ifdef VM_TRACE // DEBUG ONLY
   {"DEBUG", helpTextDebug, NULL},
 #endif //VM_TRACE
@@ -635,13 +720,21 @@ convert(const char* s, int& val) {
 /*
  * Constructor
  */
-CommandInterpreter::CommandInterpreter(const char *host,int verbose) :
+CommandInterpreter::CommandInterpreter(const char *host,
+                                       const char* default_prompt,
+                                       int verbose, int connect_retry_delay) :
   m_constr(host),
   m_connected(false),
   m_verbose(verbose),
   m_try_reconnect(0),
   m_error(-1),
-  m_event_thread(NULL)
+  m_event_thread(NULL),
+  m_connect_retry_delay(connect_retry_delay),
+  m_default_prompt(default_prompt),
+  m_prompt(default_prompt),
+  m_default_backup_password(nullptr),
+  m_always_encrypt_backup(false),
+  m_onetime_backup_password_set(false)
 {
   m_print_mutex= NdbMutex_Create();
 }
@@ -811,7 +904,7 @@ printLogEvent(struct ndb_logevent* event)
             reason_str.appfmt(" (extra info %d)", extra);
         }
         if (sphase < 255)
-          sphase_str.appfmt(" Occured during startphase %u.", sphase);
+          sphase_str.appfmt(" Occurred during startphase %u.", sphase);
         ndbout_c("Node %u: Forced node shutdown completed%s.%s%s",
                  R, action_str.c_str(), sphase_str.c_str(), 
                  reason_str.c_str());
@@ -921,6 +1014,12 @@ CommandInterpreter::connect(bool interactive)
     m_mgmsrv2 = ndb_mgm_create_handle();
     if(m_mgmsrv2 == NULL) {
       ndbout_c("Can't create 2:nd handle to management server.");
+      /**
+       * Disconnect(), in class destructor calls ndb_mgm_destroy_handle only when
+       * m_event_thread & m_connected is set. So, ndb_mgm_destroy_handle() has to be called
+       * on failures before setting m_event_thread & m_connected.
+       */
+      ndb_mgm_destroy_handle(&m_mgmsrv);
       exit(-1);
     }
   }
@@ -928,19 +1027,32 @@ CommandInterpreter::connect(bool interactive)
   if (ndb_mgm_set_connectstring(m_mgmsrv, m_constr))
   {
     printError();
+    ndb_mgm_destroy_handle(&m_mgmsrv);
+    if(interactive)
+    {
+      ndb_mgm_destroy_handle(&m_mgmsrv2);
+    }
     exit(-1);
   }
 
-  if(ndb_mgm_connect(m_mgmsrv, m_try_reconnect-1, 5, 1))
+  if(ndb_mgm_connect(m_mgmsrv, m_try_reconnect-1, m_connect_retry_delay, 1))
+  {
+    ndb_mgm_destroy_handle(&m_mgmsrv);
+    if(interactive)
+    {
+      ndb_mgm_destroy_handle(&m_mgmsrv2);
+    }
     DBUG_RETURN(m_connected); // couldn't connect, always false
+  }
+
 
   const char *host= ndb_mgm_get_connected_host(m_mgmsrv);
   unsigned port= ndb_mgm_get_connected_port(m_mgmsrv);
   if (interactive) {
     BaseString constr;
-    constr.assfmt("%s:%d",host,port);
+    constr.assfmt("%s %d",host,port);
     if(!ndb_mgm_set_connectstring(m_mgmsrv2, constr.c_str()) &&
-       !ndb_mgm_connect(m_mgmsrv2, m_try_reconnect-1, 5, 1))
+       !ndb_mgm_connect(m_mgmsrv2, m_try_reconnect-1, m_connect_retry_delay, 1))
     {
       DBUG_PRINT("info",("2:ndb connected to Management Server ok at: %s:%d",
                          host, port));
@@ -996,11 +1108,16 @@ CommandInterpreter::connect(bool interactive)
     }
   }
   m_connected= true;
-  DBUG_PRINT("info",("Connected to Management Server at: %s:%d", host, port));
+
+  char buf[512];
+  const char *sockaddr_string = Ndb_combine_address_port(buf, sizeof(buf),
+                                                   host, port);
+
+    DBUG_PRINT("info",("Connected to Management Server at: %s", sockaddr_string));
+
   if (m_verbose)
   {
-    printf("Connected to Management Server at: %s:%d\n",
-           host, port);
+      printf("Connected to Management Server at: %s\n", sockaddr_string);
   }
 
   DBUG_RETURN(m_connected);
@@ -1060,7 +1177,7 @@ class ClusterInfo {
 
 public:
   ClusterInfo() :
-    m_status(NULL) {};
+    m_status(NULL) {}
 
   ~ClusterInfo() {
     if (m_status)
@@ -1124,6 +1241,22 @@ split_args(const char* line, Vector<BaseString>& args)
   // Split the command line on space
   BaseString tmp(line);
   tmp.split(args);
+
+  // Remove any empty args which come from double
+  // spaces in the command line
+  // ie. "hello<space><space>world" becomes ("hello, "", "world")
+  //
+  for (unsigned i= 0; i < args.size(); i++)
+    if (args[i].length() == 0)
+      args.erase(i--);
+}
+
+static void
+split_args_with_quotes(const char* line, Vector<BaseString>& args)
+{
+  // Split the command line on space
+  BaseString tmp(line);
+  tmp.splitWithQuotedStrings(args);
 
   // Remove any empty args which come from double
   // spaces in the command line
@@ -1217,7 +1350,6 @@ CommandInterpreter::execute_impl(const char *_line, bool interactive)
     disconnect();
     connect(interactive);
   }
-
   if (native_strcasecmp(firstToken, "SHOW") == 0) {
     Guard g(m_print_mutex);
     m_error = executeShow(allAfterFirstToken);
@@ -1234,6 +1366,8 @@ CommandInterpreter::execute_impl(const char *_line, bool interactive)
   else if(native_strcasecmp(firstToken, "START") == 0 &&
 	  allAfterFirstToken != NULL &&
 	  native_strncasecmp(allAfterFirstToken, "BACKUP", sizeof("BACKUP") - 1) == 0){
+    // password length should be less than sizeof(line_buffer)
+    static_assert(MAX_BACKUP_ENCRYPTION_PASSWORD_LENGTH < 512);
     m_error= executeStartBackup(allAfterFirstToken, interactive);
     DBUG_RETURN(true);
   }
@@ -1274,6 +1408,10 @@ CommandInterpreter::execute_impl(const char *_line, bool interactive)
 	  native_strncasecmp(allAfterFirstToken, "NODEGROUP",
                       sizeof("NODEGROUP") - 1) == 0){
     m_error = executeDropNodeGroup(allAfterFirstToken);
+    DBUG_RETURN(true);
+  }
+  else if (native_strcasecmp(firstToken, "PROMPT") == 0) {
+    m_error = executePrompt(allAfterFirstToken);
     DBUG_RETURN(true);
   }
   else if (native_strcasecmp(firstToken, "ALL") == 0) {
@@ -1336,6 +1474,7 @@ static const CommandInterpreter::CommandFunctionPair commands[] = {
   ,{ "STATUS", &CommandInterpreter::executeStatus }
   ,{ "LOGLEVEL", &CommandInterpreter::executeLogLevel }
   ,{ "CLUSTERLOG", &CommandInterpreter::executeEventReporting }
+  ,{ "NODELOG", &CommandInterpreter::executeNodeLog }
 #ifdef ERROR_INSERT
   ,{ "ERROR", &CommandInterpreter::executeError }
 #endif
@@ -1421,13 +1560,13 @@ CommandInterpreter::executeCommand(Vector<BaseString> &command_list,
  * set to the next node_id in the list. node_id should be set
  * to 0 (zero) on the first call.
  *
- * @param handle the NDB management handle
+ * @param cl cluster state
  * @param node_id last node_id retreived, 0 at first call
  * @param type type of node to look for
  * @return 1 if a node was found, 0 if no more node exist
  */
-static 
-int 
+static
+int
 get_next_nodeid(struct ndb_mgm_cluster_state *cl,
 		int *node_id,
 		enum ndb_mgm_node_type type)
@@ -1613,8 +1752,7 @@ CommandInterpreter::executeHelp(char* parameters)
  * SHUTDOWN
  *****************************************************************************/
 
-int
-CommandInterpreter::executeShutdown(char* parameters) 
+int CommandInterpreter::executeShutdown(char* /*parameters*/)
 { 
   ndb_mgm_cluster_state *state = ndb_mgm_get_status(m_mgmsrv);
   if(state == NULL) {
@@ -1642,6 +1780,32 @@ CommandInterpreter::executeShutdown(char* parameters)
   }
   return 0;
 }
+
+/*****************************************************************************
+ * PROMPT
+ *****************************************************************************/
+
+int
+CommandInterpreter::executePrompt(char* parameters)
+{
+  if( parameters != NULL )
+  {
+    /* Assign parameter passed to the prompt */
+    m_prompt_copy.assign(parameters);
+    m_prompt_copy.append(" ");
+    m_prompt= m_prompt_copy.c_str();
+    ndbout << "Prompt set to " << m_prompt
+           << endl;
+    return 0;
+  }
+
+  /* Restore prompt to default */
+  m_prompt= m_default_prompt;
+  ndbout << "Returning to default prompt of "
+         << m_prompt << endl;
+  return 0;
+}
+
 
 /*****************************************************************************
  * SHOW
@@ -1672,7 +1836,7 @@ const char *status_string(ndb_mgm_node_status status)
 }
 
 static void
-print_nodes(ndb_mgm_cluster_state *state, ndb_mgm_configuration_iterator *it,
+print_nodes(ndb_mgm_cluster_state2 *state, ndb_mgm_configuration_iterator *it,
 	    const char *proc_name, int no_proc, ndb_mgm_node_type type,
 	    int master_id)
 { 
@@ -1680,8 +1844,8 @@ print_nodes(ndb_mgm_cluster_state *state, ndb_mgm_configuration_iterator *it,
   ndbout << "[" << proc_name
 	 << "(" << ndb_mgm_get_node_type_string(type) << ")]\t"
 	 << no_proc << " node(s)" << endl;
-  for(i=0; i < state->no_of_nodes; i++) {
-    struct ndb_mgm_node_state *node_state= &(state->node_states[i]);
+  for(i=0; i < ndb_mgm_get_status_node_count(state); i++) {
+    struct ndb_mgm_node_state2 *node_state = ndb_mgm_get_node_status(state, i);
     if(node_state->node_type == type) {
       int node_id= node_state->node_id;
       ndbout << "id=" << node_id;
@@ -1689,10 +1853,13 @@ print_nodes(ndb_mgm_cluster_state *state, ndb_mgm_configuration_iterator *it,
 	const char *hostname= node_state->connect_address;
 	if (hostname == 0
 	    || strlen(hostname) == 0
-	    || native_strcasecmp(hostname,"0.0.0.0") == 0)
+	    || native_strcasecmp(hostname,"0.0.0.0") == 0
+	    || native_strcasecmp(hostname,"::") == 0)
 	  ndbout << " ";
 	else
+	{
 	  ndbout << "\t@" << hostname;
+	}
 
 	char tmp[100];
 	ndbout << "  (" << ndbGetVersionString(node_state->version,
@@ -1714,6 +1881,13 @@ print_nodes(ndb_mgm_cluster_state *state, ndb_mgm_configuration_iterator *it,
 	    if (master_id && node_state->dynamic_id == master_id)
 	      ndbout << ", *";
         }
+        else
+        {
+          if (node_state->is_single_user)
+          {
+            ndbout << ", allowed single user";
+          }
+        }
 	ndbout << ")" << endl;
       } else {
 	ndb_mgm_first(it);
@@ -1722,8 +1896,16 @@ print_nodes(ndb_mgm_cluster_state *state, ndb_mgm_configuration_iterator *it,
 	  ndb_mgm_get_string_parameter(it, CFG_NODE_HOST, &config_hostname);
 	  if (config_hostname == 0 || config_hostname[0] == 0)
 	    config_hostname= "any host";
-	  ndbout_c(" (not connected, accepting connect from %s)",
-		   config_hostname);
+          if (type == NDB_MGM_NODE_TYPE_API && node_state->is_single_user)
+          {
+            ndbout_c(" (not connected, accepting connect from %s, "
+              "allowed single user)", config_hostname);
+          }
+          else
+          {
+            ndbout_c(" (not connected, accepting connect from %s)",
+              config_hostname);
+          }
 	}
 	else
 	{
@@ -1779,7 +1961,7 @@ CommandInterpreter::executeShow(char* parameters)
 { 
   int i;
   if (emptyString(parameters)) {
-    ndb_mgm_cluster_state *state = ndb_mgm_get_status(m_mgmsrv);
+    ndb_mgm_cluster_state2 *state = ndb_mgm_get_status3(m_mgmsrv, nullptr);
     if(state == NULL) {
       ndbout_c("Could not get status");
       printError();
@@ -1787,22 +1969,12 @@ CommandInterpreter::executeShow(char* parameters)
     }
     NdbAutoPtr<char> ap1((char*)state);
 
-    ndb_mgm_configuration * conf = ndb_mgm_get_configuration(m_mgmsrv,0);
-    if(conf == 0){
+    const ndb_mgm::config_ptr conf(ndb_mgm_get_configuration(m_mgmsrv, 0));
+    if (!conf) {
       ndbout_c("Could not get configuration");
       printError();
       return -1;
     }
-
-    ndb_mgm_configuration_iterator * it;
-    it = ndb_mgm_create_configuration_iterator((struct ndb_mgm_configuration *)conf, CFG_SECTION_NODE);
-
-    if(it == 0){
-      ndbout_c("Unable to create config iterator");
-      ndb_mgm_destroy_configuration(conf);
-      return -1;
-    }
-    NdbAutoPtr<ndb_mgm_configuration_iterator> ptr(it);
 
     int
       master_id= 0,
@@ -1810,23 +1982,25 @@ CommandInterpreter::executeShow(char* parameters)
       api_nodes= 0,
       mgm_nodes= 0;
 
-    for(i=0; i < state->no_of_nodes; i++) {
-      if(state->node_states[i].node_type == NDB_MGM_NODE_TYPE_NDB &&
-	 state->node_states[i].version != 0){
-	master_id= state->node_states[i].dynamic_id;
+    for(i=0; i < ndb_mgm_get_status_node_count(state); i++) {
+      ndb_mgm_node_state2 * ns = ndb_mgm_get_node_status(state, i);
+      if(ns->node_type == NDB_MGM_NODE_TYPE_NDB &&
+	 ns->version != 0){
+	master_id= ns->dynamic_id;
 	break;
       }
     }
     
-    for(i=0; i < state->no_of_nodes; i++) {
-      switch(state->node_states[i].node_type) {
+    for(i=0; i < ndb_mgm_get_status_node_count(state); i++) {
+      ndb_mgm_node_state2 * ns = ndb_mgm_get_node_status(state, i);
+      switch(ns->node_type) {
       case NDB_MGM_NODE_TYPE_API:
 	api_nodes++;
 	break;
       case NDB_MGM_NODE_TYPE_NDB:
-	if (state->node_states[i].dynamic_id &&
-	    state->node_states[i].dynamic_id < master_id)
-	  master_id= state->node_states[i].dynamic_id;
+	if (ns->dynamic_id &&
+	    ns->dynamic_id < master_id)
+	  master_id= ns->dynamic_id;
 	ndb_nodes++;
 	break;
       case NDB_MGM_NODE_TYPE_MGM:
@@ -1840,12 +2014,22 @@ CommandInterpreter::executeShow(char* parameters)
       }
     }
 
+    // Create iterator for nodes in the config
+    ndb_mgm_configuration_iterator *it =
+        ndb_mgm_create_configuration_iterator(conf.get(), CFG_SECTION_NODE);
+    if (!it){
+      ndbout_c("Unable to create config iterator");
+      return -1;
+    }
+
     ndbout << "Cluster Configuration" << endl
-	   << "---------------------" << endl;
+           << "---------------------" << endl;
     print_nodes(state, it, "ndbd",     ndb_nodes, NDB_MGM_NODE_TYPE_NDB, master_id);
     print_nodes(state, it, "ndb_mgmd", mgm_nodes, NDB_MGM_NODE_TYPE_MGM, 0);
     print_nodes(state, it, "mysqld",   api_nodes, NDB_MGM_NODE_TYPE_API, 0);
-    ndb_mgm_destroy_configuration(conf);
+
+    ndb_mgm_destroy_iterator(it);
+
     return 0;
   } else {
     ndbout << "Invalid argument: '" << parameters << "'" << endl;
@@ -2139,8 +2323,7 @@ CommandInterpreter::executeEnterSingleUser(char* parameters)
   return 0;
 }
 
-int
-CommandInterpreter::executeExitSingleUser(char* parameters) 
+int CommandInterpreter::executeExitSingleUser(char* /*parameters*/)
 {
   int result = ndb_mgm_exit_single_user(m_mgmsrv, 0);
   if (result != 0) {
@@ -2154,9 +2337,8 @@ CommandInterpreter::executeExitSingleUser(char* parameters)
   }
 }
 
-int
-CommandInterpreter::executeStart(int processId, const char* parameters,
-				 bool all) 
+int CommandInterpreter::executeStart(int processId, const char* /*parameters*/,
+                                     bool all)
 {
   int result;
   int retval = 0;
@@ -2180,10 +2362,9 @@ CommandInterpreter::executeStart(int processId, const char* parameters,
   return retval;
 }
 
-int
-CommandInterpreter::executeStart(Vector<BaseString> &command_list,
-                                 unsigned command_pos,
-                                 int *node_ids, int no_of_nodes)
+int CommandInterpreter::executeStart(Vector<BaseString>& /*command_list*/,
+                                     unsigned /*command_pos*/, int* node_ids,
+                                     int no_of_nodes)
 {
   int result;
   result= ndb_mgm_start(m_mgmsrv, no_of_nodes, node_ids);
@@ -2428,9 +2609,8 @@ CommandInterpreter::executeStatus(int processId,
   return 0;
 } //
 
-int
-CommandInterpreter::executeDumpState(int processId, const char* parameters,
-				     bool all) 
+int CommandInterpreter::executeDumpState(int processId, const char* parameters,
+                                         bool /*all*/)
 {
   if(emptyString(parameters))
   {
@@ -2696,11 +2876,9 @@ helpTextReportTypeOptionFn()
 //*****************************************************************************
 //*****************************************************************************
 
-int
-CommandInterpreter::executeLogLevel(int processId, const char* parameters, 
-				    bool all) 
+int CommandInterpreter::executeLogLevel(int processId, const char* parameters,
+                                        bool /*all*/)
 {
-  (void) all;
   if (emptyString(parameters)) {
     ndbout << "Expected argument" << endl;
     return -1;
@@ -2782,9 +2960,8 @@ int CommandInterpreter::executeError(int processId,
 //*****************************************************************************
 //*****************************************************************************
 
-int
-CommandInterpreter::executeLog(int processId,
-			       const char* parameters, bool all) 
+int CommandInterpreter::executeLog(int processId, const char* parameters,
+                                   bool /*all*/)
 {
   struct ndb_mgm_reply reply;
   Vector<BaseString> blocks;
@@ -2854,10 +3031,61 @@ CommandInterpreter::executeTestOff(int processId,
 //*****************************************************************************
 //*****************************************************************************
 
-int
-CommandInterpreter::executeEventReporting(int processId,
-					  const char* parameters, 
-					  bool all) 
+int CommandInterpreter::executeNodeLog(int processId, const char* parameters,
+                                       bool /*all*/)
+{
+  Vector<BaseString> command_list;
+  if (parameters)
+    split_args(parameters, command_list);
+
+  int ret_val;
+  int params[1];
+  int num_params = 1;
+  if (command_list.size() != 2)
+  {
+    ndbout_c("ERROR: Wrong number of argument(s).");
+    ret_val = -1;
+    return ret_val;
+  }
+
+  const char *item = command_list[0].c_str();
+  if (native_strcasecmp(item, "DEBUG") == 0)
+  {
+    const char *item = command_list[1].c_str();
+    if (native_strcasecmp(item, "ON") == 0)
+    {
+      DBUG_PRINT("info",("ON"));
+      params[0] = DumpStateOrd::EnableEventLoggerDebug;
+    }
+    else if (native_strcasecmp(item, "OFF") == 0)
+    {
+      DBUG_PRINT("info",("OFF"));
+      params[0] = DumpStateOrd::DisableEventLoggerDebug;
+    }
+    else
+    {
+      ndbout << "Invalid argument." << endl;
+      ret_val = -1;
+      return ret_val;
+   }
+  }
+  else
+  {
+    ndbout << "Invalid argument." << endl;
+    ret_val = -1;
+    return ret_val;
+  }
+ 
+  struct ndb_mgm_reply reply;
+  return ndb_mgm_dump_state(m_mgmsrv, processId, params, num_params, &reply);
+}
+
+//*****************************************************************************
+//*****************************************************************************
+
+int CommandInterpreter::executeEventReporting(int processId,
+                                              const char* parameters,
+                                              bool /*all*/)
 {
   int retval = 0;
   if (emptyString(parameters)) {
@@ -2921,6 +3149,38 @@ CommandInterpreter::executeEventReporting(int processId,
 /*****************************************************************************
  * Backup
  *****************************************************************************/
+int CommandInterpreter::setBackupEncryptionPassword(
+                            BaseString& encryption_password,
+                            bool& encryption_password_set,
+                            bool interactive)
+{
+  if (encryption_password_set)
+    return 0;
+  if (m_default_backup_password != nullptr)
+  {
+    encryption_password = m_default_backup_password;
+    encryption_password_set = true;
+  }
+  else if (interactive)
+  {
+    int r = ndb_get_password_from_tty("Enter backup password: ",
+                                      m_onetime_backup_password,
+                                      sizeof(m_onetime_backup_password) - 1);
+    if (r < 0)
+    {
+      return -1;
+    }
+    encryption_password = m_onetime_backup_password;
+    encryption_password_set = true;
+    m_onetime_backup_password_set = true;
+  }
+  else
+  {
+    return -1;
+  }
+  return 0;
+}
+
 int
 CommandInterpreter::executeStartBackup(char* parameters, bool interactive)
 {
@@ -2930,18 +3190,35 @@ CommandInterpreter::executeStartBackup(char* parameters, bool interactive)
   unsigned long long int tmp_backupId = 0;
 
   Vector<BaseString> args;
+  Vector<BaseString> args1;
   if (parameters)
-    split_args(parameters, args);
-
+  {
+    split_args_with_quotes(parameters, args);
+  }
+  // Retain case of password, convert the rest to uppercase
   for (unsigned i= 0; i < args.size(); i++)
-    args[i].ndb_toupper();
-
+  {
+    BaseString arg_copy = args[i];
+    arg_copy.ndb_toupper();
+    if (arg_copy.starts_with("PASSWORD="))
+    {
+      args[i] = BaseString("PASSWORD=").append(
+      args[i].substr(strlen("PASSWORD="), args[i].length()));
+    }
+    else
+    {
+      args[i].ndb_toupper();
+    }
+  }
   int sz= args.size();
 
   int result;
   int flags = 2;
   //1,snapshot at start time. 0 snapshot at end time
   unsigned int backuppoint = 0;
+  BaseString encryption_password = "";
+  bool encryption_password_set = false;
+
   bool b_log = false;
   bool b_nowait = false;
   bool b_wait_completed = false;
@@ -3026,8 +3303,74 @@ CommandInterpreter::executeStartBackup(char* parameters, bool interactive)
       }
       continue;
     }
+    if (args[i] == "ENCRYPT")
+    {
+      if (encryption_password_set)
+      {
+        // password already set
+        invalid_command(parameters);
+        return -1;
+      }
+
+      if ((i + 1) < sz)
+      {
+        BaseString key, value;
+        if ((args[i + 1].splitKeyValue(key, value)) &&
+            (key == "PASSWORD"))
+        {
+          char out[1024];
+          encryption_password = value;
+          Uint32 len = encryption_password.length();
+          const char* passwd = encryption_password.c_str();
+
+          if ((len >= 2) &&
+              (strchr("\"'", passwd[0])) &&
+              (passwd[0] == passwd[len - 1]))
+          {
+            encryption_password = encryption_password.substr(1, len - 1);
+          }
+          else
+          {
+            BaseString::snprintf(out,
+                                 sizeof(out),
+                                 "Encryption password should be within"
+                                 " quotes");
+            invalid_command(parameters, out);
+            return -1;
+          }
+          encryption_password_set = true;
+          i++;
+        }
+      }
+      else if (setBackupEncryptionPassword(encryption_password,
+                                           encryption_password_set,
+                                           interactive) != 0)
+      {
+        invalid_command(parameters, "Encryption need password");
+        return -1;
+      }
+      continue;
+    }
     invalid_command(parameters);
     return -1;
+  }
+
+  if (!encryption_password_set && m_always_encrypt_backup)
+  {
+    if (setBackupEncryptionPassword(encryption_password,
+                                    encryption_password_set,
+                                    interactive) != 0)
+    {
+      invalid_command(parameters, "Encryption need password");
+      return -1;
+    }
+  }
+  else if (!encryption_password_set &&
+           m_default_backup_password != nullptr &&
+           m_verbose > 0)
+  {
+    ndbout_c("Warning, unencrypted backup requested although backup password "
+             "is provided.");
   }
 
   //print message
@@ -3050,12 +3393,24 @@ CommandInterpreter::executeStartBackup(char* parameters, bool interactive)
     }
   }
 
-  //start backup N | start backup snapshotstart/snapshotend
-  if (input_backupId > 0 || b_log == true)
-    result = ndb_mgm_start_backup3(m_mgmsrv, flags, &backupId, &reply, input_backupId, backuppoint);
-  //start backup
-  else
-    result = ndb_mgm_start_backup(m_mgmsrv, flags, &backupId, &reply);
+  /**
+   * start backup N | start backup snapshotstart/snapshotend |
+   * start backup encrypt password=X
+   */
+  result = ndb_mgm_start_backup4(m_mgmsrv, flags, &backupId, &reply,
+                                 input_backupId, backuppoint,
+                                 encryption_password_set
+                                   ? encryption_password.c_str()
+                                   : nullptr,
+                                 encryption_password_set
+                                   ? encryption_password.length()
+                                   : 0);
+  if (m_onetime_backup_password_set)
+  {
+    NdbMem_SecureClear(m_onetime_backup_password,
+                       sizeof(m_onetime_backup_password));
+    m_onetime_backup_password_set = false;
+  }
 
   if (result != 0) {
     ndbout << "Backup failed" << endl;
@@ -3230,4 +3585,18 @@ CommandInterpreter::executeDropNodeGroup(char* parameters)
 err:
   ndbout << "Invalid arguments: expected <NG>" << endl;
   return -1;
+}
+
+int
+CommandInterpreter::setDefaultBackupPassword(const char backup_password[])
+{
+  m_default_backup_password = backup_password;
+  return 0;
+}
+
+int
+CommandInterpreter::setAlwaysEncryptBackup(bool on)
+{
+  m_always_encrypt_backup = on;
+  return 0;
 }

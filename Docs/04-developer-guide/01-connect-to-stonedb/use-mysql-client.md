@@ -7,7 +7,7 @@ sidebar_position: 5.21
 
 This topic describes how to use the MySQL command-line client named mysql to connect to StoneDB.
 ## **Prerequisites**
-MySQL has been installed and its version is 5.5, 5.6, or 5.7.
+MySQL Client(mysql) has been installed and its version is 5.5, 5.6, or 5.7.
 ## **Procedure**
 Specify required parameters according to the following format.
 ```shell

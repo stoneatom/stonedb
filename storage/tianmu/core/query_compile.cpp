@@ -44,7 +44,7 @@ int TableUnmysterify(TABLE_LIST *tab, const char *&database_name, const char *&t
   return RCBASE_QUERY_ROUTE;
 }
 
-int JudgeErrors(SELECT_LEX *sl) {
+int JudgeErrors(Query_block *sl) {
   if (!sl->join) {
     return RETURN_QUERY_TO_MYSQL_ROUTE;
   }
@@ -76,7 +76,7 @@ int JudgeErrors(SELECT_LEX *sl) {
   return RCBASE_QUERY_ROUTE;
 }
 
-void SetLimit(SELECT_LEX *sl, SELECT_LEX *gsl, int64_t &offset_value, int64_t &limit_value) {
+void SetLimit(Query_block *sl, Query_block *gsl, int64_t &offset_value, int64_t &limit_value) {
   if (sl->select_limit && (!gsl || sl->select_limit != gsl->select_limit)) {
     limit_value = sl->select_limit->val_int();
     if (limit_value == UINT_MAX) { /* this value seems to be sometimes
@@ -114,7 +114,7 @@ int Query::FieldUnmysterify(Item *item, const char *&database_name, const char *
       ifield = dynamic_cast<Item_tianmufield *>(item)->OriginalItem();
       if (IsAggregationItem(ifield)) {
         Item_sum *is = (Item_sum *)ifield;
-        if (is->get_arg_count() > 1) return RETURN_QUERY_TO_MYSQL_ROUTE;
+        if (is->arg_count > 1) return RETURN_QUERY_TO_MYSQL_ROUTE;
         Item *tmp_item = UnRef(is->get_arg(0));
         if (tmp_item->type() == Item::FIELD_ITEM)
           ifield = (Item_field *)tmp_item;
@@ -131,7 +131,7 @@ int Query::FieldUnmysterify(Item *item, const char *&database_name, const char *
 
     case Item::SUM_FUNC_ITEM: {  // min(k), max(k), count(), avg(k), sum
       Item_sum *is = (Item_sum *)item;
-      if (is->get_arg_count() > 1) {
+      if (is->arg_count > 1) {
         return RETURN_QUERY_TO_MYSQL_ROUTE;
       }
       Item *tmp_item = UnRef(is->get_arg(0));
@@ -183,7 +183,7 @@ int Query::FieldUnmysterify(Item *item, const char *&database_name, const char *
    * in a simpler way than currently.
    */
 
-  Field *f = ifield->result_field;
+  Field *f = ifield->get_result_field();
 
   ASSERT_MYSQL_STRING(f->table->s->db);
   ASSERT_MYSQL_STRING(f->table->s->table_name);
@@ -206,7 +206,7 @@ bool Query::FieldUnmysterify(Item *item, TabID &tab, AttrID &col) {
     ifield = dynamic_cast<Item_tianmufield *>(item)->OriginalItem();
     if (IsAggregationItem(ifield)) {
       Item_sum *is = (Item_sum *)ifield;
-      if (is->get_arg_count() > 1) return RETURN_QUERY_TO_MYSQL_ROUTE;
+      if (is->arg_count > 1) return RETURN_QUERY_TO_MYSQL_ROUTE;
       Item *tmp_item = UnRef(is->get_arg(0));
       if (tmp_item->type() == Item::FIELD_ITEM)
         ifield = (Item_field *)tmp_item;
@@ -223,7 +223,7 @@ bool Query::FieldUnmysterify(Item *item, TabID &tab, AttrID &col) {
   } else if (item->type() == Item::SUM_FUNC_ITEM) {  // min(k), max(k), count(), avg(k), sum(),
                                                      // group_concat()
     Item_sum *is = (Item_sum *)item;
-    if (is->get_arg_count() > 1) {
+    if (is->arg_count > 1) {
       int dir = 0;
       if (((Item_sum *)item)->sum_func() == Item_sum::GROUP_CONCAT_FUNC) {
         dir = ((Item_func_group_concat *)item)->direction();
@@ -231,7 +231,7 @@ bool Query::FieldUnmysterify(Item *item, TabID &tab, AttrID &col) {
 
       // only pass 1 group 1 order by case, which is the only case Tianmu
       // supported
-      if (dir == 0 || is->get_arg_count() != 2) return false;
+      if (dir == 0 || is->arg_count != 2) return false;
     }
     Item *tmp_item = UnRef(is->get_arg(0));
     if (tmp_item->type() == Item::FIELD_ITEM)
@@ -273,42 +273,47 @@ bool Query::FieldUnmysterify(Item *item, TabID &tab, AttrID &col) {
       // Physical table in FROM - RCTable
       int field_num;
       for (field_num = 0; mysql_table->field[field_num]; field_num++)
-        if (mysql_table->field[field_num]->field_name == ifield->result_field->field_name) break;
+        if (mysql_table->field[field_num]->field_name == ifield->get_result_field()->field_name) break;
       if (!mysql_table->field[field_num]) continue;
       col = AttrID(field_num);
       return true;
     } else {
       // subselect in FROM - TempTable
-      if (field_alias2num.find(TabIDColAlias(tab.n, ifield->result_field->field_name)) == field_alias2num.end())
+      if (field_alias2num.find(TabIDColAlias(tab.n, ifield->get_result_field()->field_name)) == field_alias2num.end())
         continue;
-      col.n = field_alias2num[TabIDColAlias(tab.n, ifield->result_field->field_name)];
+      col.n = field_alias2num[TabIDColAlias(tab.n, ifield->get_result_field()->field_name)];
       return true;
     }
   }
   return false;
 }
 
-int Query::AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vector<TabID> &left_tables,
+// stonedb8 start fix List<Item> to mem_root_deque<Item *> #49 TODO
+int Query::AddJoins(mem_root_deque<TABLE_LIST *> join, /*List<TABLE_LIST> &join,*/ TabID &tmp_table, std::vector<TabID> &left_tables,
                     std::vector<TabID> &right_tables, bool in_subquery, bool &first_table /*= true*/,
                     bool for_subq_in_where /*false*/) {
   // on first call first_table = true. It indicates if it is the first table to
   // be added is_left is true iff it is nested left join which needs to be
   // flatten (all tables regardless of their join type need to be left-joined)
-  TABLE_LIST *join_ptr;
-  List_iterator<TABLE_LIST> li(join);
-  std::vector<TABLE_LIST *> reversed;
+// stonedb8 start
+//  TABLE_LIST *join_ptr;
+//  List_iterator<TABLE_LIST> li(join);
+//  std::vector<TABLE_LIST *> reversed;
+// stonedb8 end
 
-  if (!join.elements)
+  if (join.empty()) // stonedb8
     return RETURN_QUERY_TO_MYSQL_ROUTE;  // no tables in table list in this
                                          // select
   // if the table list was empty altogether, we wouldn't even enter
   // Compilation(...) it must be sth. like `select 1 from t1 union select 2` and
   // we are in the second select in the union
-
-  while ((join_ptr = li++) != nullptr) reversed.push_back(join_ptr);
-  size_t size = reversed.size();
-  for (unsigned int i = 0; i < size; i++) {
-    join_ptr = reversed[size - i - 1];
+// stonedb8 start
+//while ((join_ptr = li++) != nullptr) reversed.push_back(join_ptr);
+//size_t size = reversed.size();
+//  for (unsigned int i = 0; i < size; i++) {
+    for (TABLE_LIST *join_ptr : join) {
+    //join_ptr = reversed[size - i - 1];
+// stonedb8 end
     if (join_ptr->nested_join) {
       std::vector<TabID> local_left, local_right;
       if (!AddJoins(join_ptr->nested_join->join_list, tmp_table, local_left, local_right, in_subquery, first_table,
@@ -338,7 +343,7 @@ int Query::AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vector<TabID>
       const char *table_path = 0;
       TabID tab(0);
       if (join_ptr->is_view_or_derived()) {
-        if (!Compile(cq, join_ptr->derived_unit()->first_select(), join_ptr->derived_unit()->union_distinct, &tab))
+        if (!Compile(cq, join_ptr->derived_query_expression()->first_query_block(), join_ptr->derived_query_expression()->union_distinct, &tab))
           return RETURN_QUERY_TO_MYSQL_ROUTE;
         table_alias = join_ptr->alias;
       } else {
@@ -435,7 +440,7 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
     else if (IsAggregationItem(item)) {
       // select AGGREGATION over EXPRESSION
       Item_sum *item_sum = (Item_sum *)item;
-      if (item_sum->get_arg_count() > 1 || HasAggregation(item_sum->get_arg(0))) return RETURN_QUERY_TO_MYSQL_ROUTE;
+      if (item_sum->arg_count > 1 || HasAggregation(item_sum->get_arg(0))) return RETURN_QUERY_TO_MYSQL_ROUTE;
       if (IsCountStar(item_sum)) {  // count(*) doesn't need any virtual column
         AttrID at;
         cq->AddColumn(at, tmp_table, CQTerm(), oper, item_sum->item_name.ptr(), false);
@@ -485,7 +490,7 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
 
 int Query::AddGroupByFields(ORDER *group_by, const TabID &tmp_table) {
   for (; group_by; group_by = group_by->next) {
-    if (group_by->direction != ORDER::ORDER_ASC) {
+    if (group_by->direction != ORDER_ASC) {
       my_message(ER_SYNTAX_ERROR,
                  "Tianmu specific error: Using DESC after GROUP BY clause not "
                  "allowed. Use "
@@ -540,7 +545,7 @@ int Query::AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const g
         cq->CreateVirtualColumn(vc.second, tmp_table, tmp_table, AttrID(col_num));
         phys2virt.insert(std::make_pair(std::make_pair(tmp_table.n, -col_num - 1), vc));
       }
-      cq->Add_Order(tmp_table, AttrID(vc.second), (order_by->direction != ORDER::ORDER_ASC));
+      cq->Add_Order(tmp_table, AttrID(vc.second), (order_by->direction != ORDER_ASC));
       continue;
     }
     if (group_by_clause) {
@@ -563,7 +568,7 @@ int Query::AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const g
           cq->CreateVirtualColumn(vc.second, tmp_table, tmp_table, AttrID(col_num));
           phys2virt.insert(std::make_pair(std::make_pair(tmp_table.n, -col_num - 1), vc));
         }
-        cq->Add_Order(tmp_table, AttrID(vc.second), (order_by->direction != ORDER::ORDER_ASC));
+        cq->Add_Order(tmp_table, AttrID(vc.second), (order_by->direction != ORDER_ASC));
         continue;
         // we can reuse transformation done in case of HAVING
         // result = Item2CQTerm(item, my_term, tmp_table, CondType::HAVING_COND);
@@ -589,7 +594,7 @@ int Query::AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const g
       vc.second = my_term.vc_id;
     }
     if (result != RCBASE_QUERY_ROUTE) return RETURN_QUERY_TO_MYSQL_ROUTE;
-    cq->Add_Order(tmp_table, AttrID(vc.second), order_by->direction != ORDER::ORDER_ASC);
+    cq->Add_Order(tmp_table, AttrID(vc.second), order_by->direction != ORDER_ASC);
   }
   return RCBASE_QUERY_ROUTE;
 }
@@ -627,7 +632,7 @@ int Query::AddGlobalOrderByFields(SQL_I_List<ORDER> *global_order, const TabID &
     int attr;
     cq->CreateVirtualColumn(attr, tmp_table, tmp_table, AttrID(col_num));
     phys2virt.insert(std::make_pair(std::make_pair(tmp_table.n, col_num), std::make_pair(tmp_table.n, attr)));
-    cq->Add_Order(tmp_table, AttrID(attr), order_by->direction != ORDER::ORDER_ASC);
+    cq->Add_Order(tmp_table, AttrID(attr), order_by->direction != ORDER_ASC);
   }
 
   return RCBASE_QUERY_ROUTE;
@@ -649,7 +654,7 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
       if (IsAggregationItem(it)) {
         // a few checkings for aggregations
         Item_sum *aggregation = (Item_sum *)it;
-        if (aggregation->get_arg_count() > 1) return WrapStatus::FAILURE;
+        if (aggregation->arg_count > 1) return WrapStatus::FAILURE;
         if (IsCountStar(aggregation))  // count(*) doesn't need any virtual column
           return WrapStatus::FAILURE;
       }
@@ -680,7 +685,7 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
     for (auto &it : ifields) {
       if (IsAggregationItem(it)) {
         Item_sum *aggregation = (Item_sum *)it;
-        if (aggregation->get_arg_count() > 1) return WrapStatus::FAILURE;
+        if (aggregation->arg_count > 1) return WrapStatus::FAILURE;
 
         if (IsCountStar(aggregation)) {  // count(*) doesn't need any virtual column
           at.n = GetAddColumnId(AttrID(common::NULL_VALUE_32), tmp_table, common::ColOperation::COUNT, false);
@@ -842,7 +847,7 @@ bool Query::IsLocalColumn(Item *item, const TabID &tmp_table) {
   return cq->ExistsInTempTable(tab, tmp_table);
 }
 
-int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELECT_LEX *last_distinct, TabID *res_tab,
+int Query::Compile(CompiledQuery *compiled_query, Query_block *selects_list, Query_block *last_distinct, TabID *res_tab,
                    bool ignore_limit, Item *left_expr_for_subselect, common::Operator *oper_for_subselect,
                    bool ignore_minmax, bool for_subq_in_where) {
   MEASURE_FET("Query::Compile(...)");
@@ -919,35 +924,40 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
   CompiledQuery *saved_cq = cq;
   cq = compiled_query;
 
-  if ((selects_list->join)&&(selects_list != selects_list->join->unit->global_parameters())) {  // only in case of unions this is set
-    SetLimit(selects_list->join->unit->global_parameters(), 0, global_offset_value, (int64_t &)global_limit_value);
-    global_order = &(selects_list->join->unit->global_parameters()->order_list);
+  if ((selects_list->join)&&(selects_list != selects_list->join->query_expression()->global_parameters())) {  // only in case of unions this is set
+    SetLimit(selects_list->join->query_expression()->global_parameters(), 0, global_offset_value, (int64_t &)global_limit_value);
+    global_order = &(selects_list->join->query_expression()->global_parameters()->order_list);
   }
 
-  for (SELECT_LEX *sl = selects_list; sl; sl = sl->next_select()) {
+  for (Query_block *sl = selects_list; sl; sl = sl->next_query_block()) {
     int64_t limit_value = -1;
     int64_t offset_value = -1;
 
 		
-        if (!sl->join) 
-		
+    if (!sl->join)
 		{
-            sl->add_active_options(SELECT_NO_UNLOCK);
-            JOIN *join = new JOIN(sl->master_unit()->thd, sl);
-                    
-            if (!join) {
+// stonedb8 start
+      TIANMU_LOG(LogCtl_Level::ERROR, "sl->join is nil!!!!");
 
-                sl->cleanup(0);
-                return TRUE;
-            }
-            sl->set_join(join);
-        }
+//            sl->add_active_options(SELECT_NO_UNLOCK);
+//            JOIN *join = new JOIN(sl->master_unit()->thd, sl);
+//
+//            if (!join) {
+//
+//                sl->cleanup(0);
+//                return true;
+//            }
+//            sl->set_join(join);
+// stonedb8 end
+     }
         
         if (!JudgeErrors(sl))
             return RETURN_QUERY_TO_MYSQL_ROUTE;
-        SetLimit(sl, sl == selects_list ? 0 : sl->join->unit->global_parameters(), offset_value, limit_value);
+        SetLimit(sl, sl == selects_list ? 0 : sl->join->query_expression()->global_parameters(), offset_value, limit_value);
 
-        List<Item> *fields = &sl->fields_list;
+        // stonedb8
+        //List<Item> *fields = &sl->fields_list; //mem_root_deque<Item *> *fields = sl->get_fields_list();
+
         Item *      conds = sl->where_cond();
         ORDER *     order = sl->order_list.first;
 
@@ -958,7 +968,8 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
 
         ORDER *           group = sl->group_list.first;
         Item *            having = sl->having_cond();
-        List<TABLE_LIST> *join_list = sl->join_list;
+        // stonedb8 start fix List<Item> to mem_root_deque<Item *> #49
+        //List<TABLE_LIST> *join_list = sl->join_list;
         bool              zero_result = sl->join->zero_result_cause != NULL;
 
     Item *field_for_subselect;
@@ -970,7 +981,8 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       // partial optimization of LOJ conditions, JOIN::optimize(part=3)
       // necessary due to already done basic transformation of conditions
       // see comments in sql_select.cc:JOIN::optimize()
-      if (IsLOJ(join_list)) sl->join->optimize(3);
+      // stonedb8
+      if (IsLOJNew(sl->join_list)) sl->join->optimize(3);
 
       if (left_expr_for_subselect)
         if (!ClearSubselectTransformation(*oper_for_subselect, field_for_subselect, conds, having, cond_to_reinsert,
@@ -994,15 +1006,19 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       }
       std::vector<TabID> left_tables, right_tables;
       bool first_table = true;
-      if (!AddJoins(*join_list, tmp_table, left_tables, right_tables, (res_tab != NULL && res_tab->n != 0), first_table,
+      // stonedb8
+      if (!AddJoins(*sl->join_list, tmp_table, left_tables, right_tables, (res_tab != NULL && res_tab->n != 0), first_table,
                     for_subq_in_where))
         throw CompilationError();
 
+      // stonedb8 start
+      List<Item> *fields = nullptr;
       List<Item> field_list_for_subselect;
       if (left_expr_for_subselect && field_for_subselect) {
         field_list_for_subselect.push_back(field_for_subselect);
         fields = &field_list_for_subselect;
       }
+      // stonedb8 end
       bool aggr_used = false;
       if (!AddFields(*fields, tmp_table, group != NULL, col_count, ignore_minmax, aggr_used)) throw CompilationError();
 
@@ -1025,7 +1041,7 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       // called recursively)
       cq = saved_cq;
       if (cond_to_reinsert && list_to_reinsert) list_to_reinsert->push_back(cond_to_reinsert);
-	  sl->cleanup(0);
+	  //sl->cleanup(0); // stonedb8
       return RETURN_QUERY_TO_MYSQL_ROUTE;
     }
 
@@ -1034,7 +1050,7 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
 
     if (sl == selects_list) {
       prev_result = tmp_table;
-      if (global_order && !selects_list->next_select()) {  // trivial union with one select and
+      if (global_order && !selects_list->next_query_block()) {  // trivial union with one select and
                                                            // ext. order by
         tmp_table = TabID();
         cq->Union(prev_result, prev_result, tmp_table, true);
@@ -1043,7 +1059,7 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       cq->Union(prev_result, prev_result, tmp_table, union_all);
     if (sl == last_distinct) union_all = true;
     if (cond_to_reinsert && list_to_reinsert) list_to_reinsert->push_back(cond_to_reinsert);
-	sl->cleanup(0);
+	//sl->cleanup(0); // stonedb8
   }
 
   cq->BuildTableIDStepsMap();
@@ -1061,6 +1077,10 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
   return RCBASE_QUERY_ROUTE;
 }
 
+// stonedb8 start  #define is deleted TODO
+#define JOIN_TYPE_LEFT	1
+#define JOIN_TYPE_RIGHT	2
+// stonedb8 end
 JoinType Query::GetJoinTypeAndCheckExpr(uint outer_join, Item *on_expr) {
   if (outer_join) ASSERT(on_expr != 0, "on_expr shouldn't be null when outer_join != 0");
 
@@ -1087,5 +1107,15 @@ bool Query::IsLOJ(List<TABLE_LIST> *join) {
   }
   return false;
 }
+
+// stonedb8 start fix List<Item> to mem_root_deque<Item *> #49 TODO
+bool Query::IsLOJNew(mem_root_deque<TABLE_LIST *> *join) {
+  for (TABLE_LIST *join_ptr : *join) {
+    JoinType join_type = GetJoinTypeAndCheckExpr(join_ptr->outer_join, join_ptr->join_cond());
+    if (join_ptr->join_cond() && (join_type == JoinType::JO_LEFT || join_type == JoinType::JO_RIGHT)) return true;
+  }
+  return false;
+}
+
 }  // namespace core
 }  // namespace Tianmu

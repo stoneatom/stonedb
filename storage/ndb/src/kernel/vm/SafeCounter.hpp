@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -78,8 +78,12 @@ public:
   Uint32 getSize() const ;
   Uint32 getNoOfFree() const;
 
-  void execNODE_FAILREP(Signal*); 
+  void execNODE_FAILREP(Signal*, const NdbNodeBitmask &failed_nodes); 
   void printNODE_FAILREP(); 
+
+#ifdef ERROR_INSERT
+  void setFakeEmpty(bool val);
+#endif
 
 private:
   struct ActiveCounter { /** sizeof = 7words = 28bytes */ 
@@ -103,17 +107,25 @@ private:
   };
 
   typedef Ptr<ActiveCounter> ActiveCounterPtr;
+  typedef ArrayPool<ActiveCounter> ActiveCounter_pool;
+  typedef DLList<ActiveCounter_pool> ActiveCounter_list;
   
   bool seize(ActiveCounterPtr& ptr);
   void release(ActiveCounterPtr& ptr);
-  void getPtr(ActiveCounterPtr& ptr, Uint32 ptrI);
+  void getPtr(ActiveCounterPtr& ptr, Uint32 ptrI) const;
 
   SimulatedBlock & m_block;
-  ArrayPool<ActiveCounter> m_counterPool;
-  DLList<ActiveCounter> m_activeCounters;
+  ActiveCounter_pool m_counterPool;
+  ActiveCounter_list m_activeCounters;
+#ifdef ERROR_INSERT
+  bool m_fakeEmpty;
+#endif
 
   BlockReference reference() const;
-  void progError(int line, int err_code, const char* extra = 0);
+  [[noreturn]] void progError(int line,
+                              int err_code,
+                              const char* extra = 0,
+                              const char* check="");
 };
 
 
@@ -303,7 +315,7 @@ SafeCounter::done() const {
 inline
 bool
 SafeCounter::clearWaitingFor(Uint32 nodeId) {
-  if(m_count > 0 && m_nodes.get(nodeId)){
+  if(m_count > 0 && nodeId <= MAX_DATA_NODE_ID && m_nodes.get(nodeId)){
     m_count--;
     m_nodes.clear(nodeId);
     return (m_count == 0);

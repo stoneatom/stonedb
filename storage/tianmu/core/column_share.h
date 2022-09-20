@@ -69,7 +69,7 @@ class ColumnShare final {
   ColumnShare(TableShare *owner, common::TX_ID ver, uint32_t i, const fs::path &p, const Field *f)
       : owner(owner), m_path(p), col_id(i) {
     ct.SetCollation({f->charset(), f->derivation()});
-    ct.SetAutoInc(f->flags & AUTO_INCREMENT_FLAG);
+    ct.SetAutoInc(f->all_flags() & AUTO_INCREMENT_FLAG); //stonedb8
     Init(ver);
   }
 

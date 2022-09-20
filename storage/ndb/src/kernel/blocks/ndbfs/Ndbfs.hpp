@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -34,8 +34,9 @@
 
 #define JAM_FILE_ID 385
 
-
 class AsyncIoThread;
+class FsReadWriteReq;
+struct FsRef;
 
 // Because one NDB Signal request can result in multiple requests to
 // AsyncFile one class must be made responsible to keep track
@@ -47,9 +48,12 @@ class Ndbfs : public SimulatedBlock
   friend class AsyncIoThread;
 public:
   Ndbfs(Block_context&);
-  virtual ~Ndbfs();
-  virtual const char* get_filename(Uint32 fd) const;
+  ~Ndbfs() override;
+  const char* get_filename(Uint32 fd) const override;
 
+  static Uint32 translateErrno(int aErrno);
+
+  void callFSWRITEREQ(BlockReference ref, FsReadWriteReq* req) const;
 protected:
   BLOCK_DEFINES(Ndbfs);
 
@@ -98,6 +102,8 @@ private:
   AsyncFile* createAsyncFile();
   AsyncFile* getIdleFile(bool bound);
   void pushIdleFile(AsyncFile*);
+  void log_file_error(GlobalSignalNumber gsn, AsyncFile* file,
+                      Request* request, FsRef* fsRef);
 
   Vector<AsyncIoThread*> theThreads;// List of all created threads
   Vector<AsyncFile*> theFiles;      // List all created AsyncFiles
@@ -120,12 +126,25 @@ private:
   void readWriteRequest(  int action, Signal * signal );
 #endif
 
-  static Uint32 translateErrno(int aErrno);
-
   Uint32 m_bound_threads_cnt;
   Uint32 m_unbounds_threads_cnt;
+
+  /**
+   * Maintaining active bound threads count in NdbFS from *before* a
+   * request is queued (getIdleFile()) until *after* it is
+   * completed (pushIdleFile()) means that idle threads which have
+   * completed requests are not available for further requests until
+   * NdbFS has received and processed their responses.
+
+   * This lag should be fairly short as a wakeup socket is used to
+   * wake NdbFs when a response is available.
+
+   * Any existing code relying on threads more 'quickly' becoming
+   * available for new requests is timing based and therefore likely
+   * to be unreliable.
+   */
   Uint32 m_active_bound_threads_cnt;
-  void cnt_active_bound(int val);
+
 public:
   const BaseString& get_base_path(Uint32 no) const;
 };
@@ -134,7 +153,7 @@ class VoidFs : public Ndbfs
 {
 public:
   VoidFs(Block_context&);
-  virtual ~VoidFs();
+  ~VoidFs() override;
 
 protected:
   BLOCK_DEFINES(VoidFs);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2000, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2000, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -25,33 +25,28 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
-#ifndef _list_h_
-#define _list_h_
+#ifndef MY_LIST_INCLUDED
+#define MY_LIST_INCLUDED
 
-#ifdef	__cplusplus
-extern "C" {
-#endif
+/**
+  @file include/my_list.h
+*/
 
-typedef struct st_list {
-  struct st_list *prev,*next;
+typedef struct LIST {
+  struct LIST *prev, *next;
   void *data;
 } LIST;
 
-typedef int (*list_walk_action)(void *,void *);
+typedef int (*list_walk_action)(void *, void *);
 
-extern LIST *list_add(LIST *root,LIST *element);
-extern LIST *list_delete(LIST *root,LIST *element);
-extern LIST *list_cons(void *data,LIST *root);
+extern LIST *list_add(LIST *root, LIST *element);
+extern LIST *list_delete(LIST *root, LIST *element);
+extern LIST *list_cons(void *data, LIST *root);
 extern LIST *list_reverse(LIST *root);
-extern void list_free(LIST *root,unsigned int free_data);
+extern void list_free(LIST *root, unsigned int free_data);
 extern unsigned int list_length(LIST *);
-extern int list_walk(LIST *,list_walk_action action,unsigned char * argument);
+extern int list_walk(LIST *, list_walk_action action, unsigned char *argument);
 
 #define list_rest(a) ((a)->next)
-#define list_push(a,b) (a)=list_cons((b),(a))
-#define list_pop(A) {LIST *old=(A); (A)=list_delete(old,old); my_free(old); }
 
-#ifdef	__cplusplus
-}
-#endif
-#endif
+#endif  // MY_LIST_INCLUDED

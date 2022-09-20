@@ -43,8 +43,8 @@ EXECUTING:[35][SELECT 'first complex command' as a]
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][.a][ 21][first complex command]
@@ -75,8 +75,8 @@ EXECUTING:[35][SELECT 'first complex command' as a]
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][.a][ 21][first complex command]
@@ -114,16 +114,16 @@ EXECUTING:[16][SELECT * FROM v1]
 			[meta][field] org table name: v1
 			[meta][field] col name: c2
 			[meta][field] org col name: c2
-			[meta][field] length: 128
-			[meta][field] charsetnr: 8
+			[meta][field] length: 512
+			[meta][field] charsetnr: 255
 			[meta][field] flags: 0
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][v1.c1][  1][1]
@@ -164,16 +164,16 @@ EXECUTING:[16][SELECT * FROM v1]
 			[meta][field] org table name: v1
 			[meta][field] col name: c2
 			[meta][field] org col name: c2
-			[meta][field] length: 128
-			[meta][field] charsetnr: 8
+			[meta][field] length: 512
+			[meta][field] charsetnr: 255
 			[meta][field] flags: 0
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][v1.c1][  1][1]
@@ -196,31 +196,31 @@ EXECUTING:[102][SELECT VIEW_DEFINITION FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE
 [CS_TEXT_REPRESENTATION]
 		[meta] rows: 1
 		[meta] cols: 1
-		[meta] server status: 34
-		[meta] server status: AUTOCOMMIT QUERY_NO_INDEX_USED 
+		[meta] server status: 2
+		[meta] server status: AUTOCOMMIT 
 		[meta] warning count: 0
 
-			[meta][field] db name: information_schema
+			[meta][field] db name: 
 			[meta][field] table name: VIEWS
 			[meta][field] org table name: VIEWS
 			[meta][field] col name: VIEW_DEFINITION
 			[meta][field] org col name: VIEW_DEFINITION
-			[meta][field] length: 196605
-			[meta][field] charsetnr: 33
-			[meta][field] flags: 17 (NOT_NULL BLOB )
-			[meta][field] decimals: 0
+			[meta][field] length: 4294967295
+			[meta][field] charsetnr: 83
+			[meta][field] flags: 128 (BINARY )
+			[meta][field] decimals: 31
 			[meta][field] type: BLOB (252)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][VIEWS.VIEW_DEFINITION][ 73][select `test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2` from `test`.`t1`]
 
-		[end] server status: 34
-		[end] server status: AUTOCOMMIT QUERY_NO_INDEX_USED 
+		[end] server status: 2
+		[end] server status: AUTOCOMMIT 
 		[end] warning count:  0
 		[end] affected rows:  0
 		[end] last insert id: 0
@@ -228,31 +228,31 @@ EXECUTING:[102][SELECT VIEW_DEFINITION FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE
 [CS_BINARY_REPRESENTATION]
 		[meta] rows: 1
 		[meta] cols: 1
-		[meta] server status: 34
-		[meta] server status: AUTOCOMMIT QUERY_NO_INDEX_USED 
+		[meta] server status: 2
+		[meta] server status: AUTOCOMMIT 
 		[meta] warning count: 0
 
-			[meta][field] db name: information_schema
+			[meta][field] db name: 
 			[meta][field] table name: VIEWS
 			[meta][field] org table name: VIEWS
 			[meta][field] col name: VIEW_DEFINITION
 			[meta][field] org col name: VIEW_DEFINITION
-			[meta][field] length: 196605
-			[meta][field] charsetnr: 33
-			[meta][field] flags: 17 (NOT_NULL BLOB )
-			[meta][field] decimals: 0
+			[meta][field] length: 4294967295
+			[meta][field] charsetnr: 83
+			[meta][field] flags: 128 (BINARY )
+			[meta][field] decimals: 31
 			[meta][field] type: BLOB (252)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][VIEWS.VIEW_DEFINITION][ 73][select `test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2` from `test`.`t1`]
 
-		[end] server status: 34
-		[end] server status: AUTOCOMMIT QUERY_NO_INDEX_USED 
+		[end] server status: 2
+		[end] server status: AUTOCOMMIT 
 		[end] warning count:  0
 		[end] affected rows:  0
 		[end] last insert id: 0
@@ -330,16 +330,16 @@ EXECUTING:[16][SELECT * FROM v1]
 			[meta][field] org table name: v1
 			[meta][field] col name: c2
 			[meta][field] org col name: c2
-			[meta][field] length: 128
-			[meta][field] charsetnr: 8
+			[meta][field] length: 512
+			[meta][field] charsetnr: 255
 			[meta][field] flags: 0
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][v1.c1][  1][1]
@@ -380,16 +380,16 @@ EXECUTING:[16][SELECT * FROM v1]
 			[meta][field] org table name: v1
 			[meta][field] col name: c2
 			[meta][field] org col name: c2
-			[meta][field] length: 128
-			[meta][field] charsetnr: 8
+			[meta][field] length: 512
+			[meta][field] charsetnr: 255
 			[meta][field] flags: 0
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][v1.c1][  1][1]
@@ -457,16 +457,16 @@ EXECUTING:[16][SELECT * FROM t2]
 			[meta][field] org table name: t2
 			[meta][field] col name: c2
 			[meta][field] org col name: c2
-			[meta][field] length: 128
-			[meta][field] charsetnr: 8
+			[meta][field] length: 512
+			[meta][field] charsetnr: 255
 			[meta][field] flags: 0
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][t2.c1][  1][1]
@@ -501,16 +501,16 @@ EXECUTING:[16][SELECT * FROM t2]
 			[meta][field] org table name: t2
 			[meta][field] col name: c2
 			[meta][field] org col name: c2
-			[meta][field] length: 128
-			[meta][field] charsetnr: 8
+			[meta][field] length: 512
+			[meta][field] charsetnr: 255
 			[meta][field] flags: 0
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][t2.c1][  1][1]
@@ -538,14 +538,14 @@ EXECUTING:[108][SELECT TRIGGER_NAME FROM INFORMATION_SCHEMA.TRIGGERS WHERE TRIGG
 			[meta][field] org col name: TRIGGER_NAME
 			[meta][field] length: 192
 			[meta][field] charsetnr: 33
-			[meta][field] flags: 1 (NOT_NULL )
+			[meta][field] flags: 20481 (NOT_NULL NO_DEFAULT_VALUE PART_KEY )
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][TRIGGERS.TRIGGER_NAME][  4][trig]
@@ -570,14 +570,14 @@ EXECUTING:[108][SELECT TRIGGER_NAME FROM INFORMATION_SCHEMA.TRIGGERS WHERE TRIGG
 			[meta][field] org col name: TRIGGER_NAME
 			[meta][field] length: 192
 			[meta][field] charsetnr: 33
-			[meta][field] flags: 1 (NOT_NULL )
+			[meta][field] flags: 20481 (NOT_NULL NO_DEFAULT_VALUE PART_KEY )
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][TRIGGERS.TRIGGER_NAME][  4][trig]
@@ -684,16 +684,16 @@ EXECUTING:[16][SELECT * FROM t2]
 			[meta][field] org table name: t2
 			[meta][field] col name: c2
 			[meta][field] org col name: c2
-			[meta][field] length: 128
-			[meta][field] charsetnr: 8
+			[meta][field] length: 512
+			[meta][field] charsetnr: 255
 			[meta][field] flags: 0
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][t2.c1][  1][1]
@@ -731,16 +731,16 @@ EXECUTING:[16][SELECT * FROM t2]
 			[meta][field] org table name: t2
 			[meta][field] col name: c2
 			[meta][field] org col name: c2
-			[meta][field] length: 128
-			[meta][field] charsetnr: 8
+			[meta][field] length: 512
+			[meta][field] charsetnr: 255
 			[meta][field] flags: 0
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][t2.c1][  1][1]
@@ -783,8 +783,8 @@ EXECUTING:[35][SELECT 'first complex command' as a]
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][.a][ 21][first complex command]
@@ -815,8 +815,8 @@ EXECUTING:[35][SELECT 'first complex command' as a]
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][.a][ 21][first complex command]
@@ -854,16 +854,16 @@ EXECUTING:[16][SELECT * FROM v1]
 			[meta][field] org table name: v1
 			[meta][field] col name: c2
 			[meta][field] org col name: c2
-			[meta][field] length: 128
-			[meta][field] charsetnr: 8
+			[meta][field] length: 512
+			[meta][field] charsetnr: 255
 			[meta][field] flags: 0
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][v1.c1][  1][1]
@@ -904,16 +904,16 @@ EXECUTING:[16][SELECT * FROM v1]
 			[meta][field] org table name: v1
 			[meta][field] col name: c2
 			[meta][field] org col name: c2
-			[meta][field] length: 128
-			[meta][field] charsetnr: 8
+			[meta][field] length: 512
+			[meta][field] charsetnr: 255
 			[meta][field] flags: 0
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][v1.c1][  1][1]
@@ -936,31 +936,31 @@ EXECUTING:[102][SELECT VIEW_DEFINITION FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE
 [CS_TEXT_REPRESENTATION]
 		[meta] rows: 1
 		[meta] cols: 1
-		[meta] server status: 34
-		[meta] server status: AUTOCOMMIT QUERY_NO_INDEX_USED 
+		[meta] server status: 2
+		[meta] server status: AUTOCOMMIT 
 		[meta] warning count: 0
 
-			[meta][field] db name: information_schema
+			[meta][field] db name: 
 			[meta][field] table name: VIEWS
 			[meta][field] org table name: VIEWS
 			[meta][field] col name: VIEW_DEFINITION
 			[meta][field] org col name: VIEW_DEFINITION
-			[meta][field] length: 196605
-			[meta][field] charsetnr: 33
-			[meta][field] flags: 17 (NOT_NULL BLOB )
-			[meta][field] decimals: 0
+			[meta][field] length: 4294967295
+			[meta][field] charsetnr: 83
+			[meta][field] flags: 128 (BINARY )
+			[meta][field] decimals: 31
 			[meta][field] type: BLOB (252)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][VIEWS.VIEW_DEFINITION][ 73][select `test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2` from `test`.`t1`]
 
-		[end] server status: 34
-		[end] server status: AUTOCOMMIT QUERY_NO_INDEX_USED 
+		[end] server status: 2
+		[end] server status: AUTOCOMMIT 
 		[end] warning count:  0
 		[end] affected rows:  0
 		[end] last insert id: 0
@@ -968,31 +968,31 @@ EXECUTING:[102][SELECT VIEW_DEFINITION FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE
 [CS_BINARY_REPRESENTATION]
 		[meta] rows: 1
 		[meta] cols: 1
-		[meta] server status: 34
-		[meta] server status: AUTOCOMMIT QUERY_NO_INDEX_USED 
+		[meta] server status: 2
+		[meta] server status: AUTOCOMMIT 
 		[meta] warning count: 0
 
-			[meta][field] db name: information_schema
+			[meta][field] db name: 
 			[meta][field] table name: VIEWS
 			[meta][field] org table name: VIEWS
 			[meta][field] col name: VIEW_DEFINITION
 			[meta][field] org col name: VIEW_DEFINITION
-			[meta][field] length: 196605
-			[meta][field] charsetnr: 33
-			[meta][field] flags: 17 (NOT_NULL BLOB )
-			[meta][field] decimals: 0
+			[meta][field] length: 4294967295
+			[meta][field] charsetnr: 83
+			[meta][field] flags: 128 (BINARY )
+			[meta][field] decimals: 31
 			[meta][field] type: BLOB (252)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][VIEWS.VIEW_DEFINITION][ 73][select `test`.`t1`.`c1` AS `c1`,`test`.`t1`.`c2` AS `c2` from `test`.`t1`]
 
-		[end] server status: 34
-		[end] server status: AUTOCOMMIT QUERY_NO_INDEX_USED 
+		[end] server status: 2
+		[end] server status: AUTOCOMMIT 
 		[end] warning count:  0
 		[end] affected rows:  0
 		[end] last insert id: 0
@@ -1070,16 +1070,16 @@ EXECUTING:[16][SELECT * FROM v1]
 			[meta][field] org table name: v1
 			[meta][field] col name: c2
 			[meta][field] org col name: c2
-			[meta][field] length: 128
-			[meta][field] charsetnr: 8
+			[meta][field] length: 512
+			[meta][field] charsetnr: 255
 			[meta][field] flags: 0
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][v1.c1][  1][1]
@@ -1120,16 +1120,16 @@ EXECUTING:[16][SELECT * FROM v1]
 			[meta][field] org table name: v1
 			[meta][field] col name: c2
 			[meta][field] org col name: c2
-			[meta][field] length: 128
-			[meta][field] charsetnr: 8
+			[meta][field] length: 512
+			[meta][field] charsetnr: 255
 			[meta][field] flags: 0
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][v1.c1][  1][1]
@@ -1197,16 +1197,16 @@ EXECUTING:[16][SELECT * FROM t2]
 			[meta][field] org table name: t2
 			[meta][field] col name: c2
 			[meta][field] org col name: c2
-			[meta][field] length: 128
-			[meta][field] charsetnr: 8
+			[meta][field] length: 512
+			[meta][field] charsetnr: 255
 			[meta][field] flags: 0
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][t2.c1][  1][1]
@@ -1247,16 +1247,16 @@ EXECUTING:[16][SELECT * FROM t2]
 			[meta][field] org table name: t2
 			[meta][field] col name: c2
 			[meta][field] org col name: c2
-			[meta][field] length: 128
-			[meta][field] charsetnr: 8
+			[meta][field] length: 512
+			[meta][field] charsetnr: 255
 			[meta][field] flags: 0
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][t2.c1][  1][1]
@@ -1290,14 +1290,14 @@ EXECUTING:[108][SELECT TRIGGER_NAME FROM INFORMATION_SCHEMA.TRIGGERS WHERE TRIGG
 			[meta][field] org col name: TRIGGER_NAME
 			[meta][field] length: 192
 			[meta][field] charsetnr: 33
-			[meta][field] flags: 1 (NOT_NULL )
+			[meta][field] flags: 20481 (NOT_NULL NO_DEFAULT_VALUE PART_KEY )
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][TRIGGERS.TRIGGER_NAME][  4][trig]
@@ -1322,14 +1322,14 @@ EXECUTING:[108][SELECT TRIGGER_NAME FROM INFORMATION_SCHEMA.TRIGGERS WHERE TRIGG
 			[meta][field] org col name: TRIGGER_NAME
 			[meta][field] length: 192
 			[meta][field] charsetnr: 33
-			[meta][field] flags: 1 (NOT_NULL )
+			[meta][field] flags: 20481 (NOT_NULL NO_DEFAULT_VALUE PART_KEY )
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][TRIGGERS.TRIGGER_NAME][  4][trig]
@@ -1436,16 +1436,16 @@ EXECUTING:[16][SELECT * FROM t2]
 			[meta][field] org table name: t2
 			[meta][field] col name: c2
 			[meta][field] org col name: c2
-			[meta][field] length: 128
-			[meta][field] charsetnr: 8
+			[meta][field] length: 512
+			[meta][field] charsetnr: 255
 			[meta][field] flags: 0
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][t2.c1][  1][1]
@@ -1489,16 +1489,16 @@ EXECUTING:[16][SELECT * FROM t2]
 			[meta][field] org table name: t2
 			[meta][field] col name: c2
 			[meta][field] org col name: c2
-			[meta][field] length: 128
-			[meta][field] charsetnr: 8
+			[meta][field] length: 512
+			[meta][field] charsetnr: 255
 			[meta][field] flags: 0
 			[meta][field] decimals: 0
 			[meta][field] type: VARCHAR (15)
 
 
 		[meta][charset result] number: 33
-		[meta][charset result] name: utf8
-		[meta][charset result] collation: utf8_general_ci
+		[meta][charset result] name: utf8mb3
+		[meta][charset result] collation: utf8mb3_general_ci
 		[meta][charset result] sort order: 
 
 		[data][t2.c1][  1][1]

@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
+    Use is subject to license terms.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -25,11 +25,12 @@
 
 #include <signaldata/IndxKeyInfo.hpp>
 
-bool 
-printINDXKEYINFO(FILE * output, const Uint32 * theData, Uint32 len, 
-		   Uint16 receiverBlockNo)
+bool printINDXKEYINFO(FILE* output,
+                      const Uint32* theData,
+                      Uint32 len,
+                      Uint16 /*receiverBlockNo*/)
 {
-//  const IndxKeyInfo * const sig = (IndxKeyInfo *) theData;
+  //  const IndxKeyInfo * const sig = (const IndxKeyInfo *) theData;
 
   Uint32 i = 0;
   while (i < len)

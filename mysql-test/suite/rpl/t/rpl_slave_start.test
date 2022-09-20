@@ -9,8 +9,8 @@ source include/master-slave.inc;
 --echo [on slave]
 connection slave;
 
-CALL mtr.add_suppression("Slave: Table 't1' already exists Error_code: 1050");
-CALL mtr.add_suppression("Slave SQL for channel '': .*Error .Table .t1. already exists. on query.* Error_code: 1050");
+CALL mtr.add_suppression("Slave: Table 't1' already exists Error_code: MY-001050");
+CALL mtr.add_suppression("Slave SQL for channel '': .*Error .Table .t1. already exists. on query.* Error_code: MY-001050");
 call mtr.add_suppression("The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state");
 
 --echo # The statement makes SQL thread to fail.
@@ -29,7 +29,7 @@ source include/wait_for_slave_sql_error.inc;
 DROP TABLE t1;
 
 --echo # Block SQL thread immediately after it starts.
-SET DEBUG_SYNC='after_start_slave WAIT_FOR signal.continue';
+SET DEBUG_SYNC='after_start_replica WAIT_FOR signal.continue';
 START SLAVE SQL_THREAD;
 source include/wait_for_slave_sql_to_start.inc;
 --echo # Check Slave_SQL_Error, there should not be an error.

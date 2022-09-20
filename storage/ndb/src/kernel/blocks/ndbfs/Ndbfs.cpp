@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -27,11 +27,15 @@
 #include "Ndbfs.hpp"
 #include "AsyncFile.hpp"
 
-#ifdef NDB_WIN
+#ifdef _WIN32
 #include "Win32AsyncFile.hpp"
 #else
 #include "PosixAsyncFile.hpp"
 #endif
+
+#include "../dblqh/Dblqh.hpp"
+#include "../lgman.hpp"
+#include "../tsman.hpp"
 
 #include <signaldata/FsOpenReq.hpp>
 #include <signaldata/FsCloseReq.hpp>
@@ -45,6 +49,7 @@
 #include <signaldata/AllocMem.hpp>
 #include <signaldata/BuildIndxImpl.hpp>
 
+#include "debugger/DebuggerNames.hpp"
 #include <RefConvert.hpp>
 #include <portlib/NdbDir.hpp>
 #include <NdbOut.hpp>
@@ -54,9 +59,80 @@
 
 #define JAM_FILE_ID 393
 
-extern EventLogger * g_eventLogger;
+#if defined(VM_TRACE) || defined(ERROR_INSERT)
+/*
+ * To be able to test different combinations of compression, encryption, and,
+ * use of ODirect enable the define below.
+ * This works ok for LCP data files there are typically several files with
+ * different table and fragment number as part of name.
+ * For other file types which only are present in a few copies with predictable
+ * names the actual combinations will not vary much, even between runs.
+ */
+//#define NAME_BASED_DISABLING_COMPRESS_ENCRYPT_ODIRECT
+#endif
 
-NdbMutex g_active_bound_threads_mutex;
+/**
+ * NDBFS has two types of async IO file threads : Bound and non-bound.
+ * These threads are kept in two distinct idle pools.
+ * Requests to be executed by any thread in an idle pool are queued onto
+ * a shared queue, which all of the idle threads in the pool attempt to
+ * dequeue work from.  Work items are processed, which may take some
+ * time, and then once the outcome is known, a response is queued on a
+ * reply queue, which the NDBFS signal execution thread polls
+ * periodically.
+ *
+ * Bound IO threads have the ability to remove themselves from the idle
+ * pool.  This happens as part of processing an OPEN request, where the
+ * thread is 'attached' to a particular file.
+ * As part of being 'attached' to a file, the thread no longer attempts
+ * to dequeue work from the shared queue, but rather starts dequeuing
+ * work just from a private queue associated with the file.
+ *
+ * This removes the thread from general use and dedicates it to servicing
+ * requests on the attached file until a CLOSE request arrives, which
+ * will cause the thread to be detached from the file and return to the
+ * idle Bound threads pool, where it will attempt to dequeue work from
+ * the Shared queue again.
+ *
+ * Non-bound IO threads are created at startup, they are not associated
+ * with a particular file and process one request at a time to
+ * completion.  They always dequeue work from the non-bound shared queue.
+
+ * Some request types use Bound IO threads in a non-bound way, where a
+ * single request is processed to completion by a single thread, which
+ * then continues to dequeue work from the shared bound
+ * queue.  Examples: build index, allocate memory, remove file.
+ * In these cases, the bound IO thread pool is being used as it
+ * effectively offers a concurrent thread for each concurrent request,
+ * and these use cases exist to get thread concurrency.
+ *
+ * Pool sizing
+ *
+ * The non-bound thread pool size is set by the DiskIoThreadPool config
+ * variable at node start, and does not change after.
+ *
+ * The bound thread pool size is set by the InitialNoOfOpenFiles
+ * config variable at node start and can grow dynamically afterwards.
+ * There is no mechanism currently for IO threads to be released.
+ * It is bound by MaxNoOfOpenFiles.
+ *
+ * Bound thread pool growth
+ *
+ * When receiving a request which requires the use of a Bound thread pool
+ * thread, the NDBFS block checks whether there are sufficient threads
+ * to ensure a quick execution of the request.  If there are not then
+ * it creates an extra thread prior to enqueuing the request on the
+ * shared bound thread pool queue.
+ *
+ *
+ * The Bound IO thread pool exists to supply enough thread concurrency to
+ * match the concurrency of requests submitted to it. Assumed goals are :
+ *  1) Avoid excessive thread creation
+ *     since each thread has a memory and resource cost and
+ *     currently they are never released until the process exits.
+ *  2) Avoid bound requests sitting on the shared bound queue for any
+ *     significant amount of time.
+*/
 
 inline
 int pageSize( const NewVARIABLE* baseAddrRef )
@@ -81,8 +157,6 @@ Ndbfs::Ndbfs(Block_context& ctx) :
   m_active_bound_threads_cnt(0)
 {
   BLOCK_CONSTRUCTOR(Ndbfs);
-
-  NdbMutex_Init(&g_active_bound_threads_mutex);
 
   // Set received signals
   addRecSignal(GSN_READ_CONFIG_REQ, &Ndbfs::execREAD_CONFIG_REQ);
@@ -182,7 +256,7 @@ validate_path(BaseString & dst,
 {
   char buf2[PATH_MAX];
   memset(buf2, 0,sizeof(buf2));
-#ifdef NDB_WIN32
+#ifdef _WIN32
   CreateDirectory(path, 0);
   char* szFilePart;
   if(!GetFullPathName(path, sizeof(buf2), buf2, &szFilePart) ||
@@ -214,6 +288,7 @@ Ndbfs::get_base_path(Uint32 no) const
 void 
 Ndbfs::execREAD_CONFIG_REQ(Signal* signal)
 {
+  LOCAL_SIGNAL(signal);
   const ReadConfigReq * req = (ReadConfigReq*)signal->getDataPtr();
 
   Uint32 ref = req->senderRef;
@@ -254,6 +329,22 @@ Ndbfs::execREAD_CONFIG_REQ(Signal* signal)
                   "FileSystemPathDataFiles");
       }
     }
+    else
+    {
+      BaseString path;
+      add_path(path, m_base_path[FsOpenReq::BP_FS].c_str());
+      do_mkdir(path.c_str());
+      BaseString tmpTS;
+      tmpTS.assfmt("TS%s", DIR_SEPARATOR);
+      add_path(path, tmpTS.c_str());
+      do_mkdir(path.c_str());
+      if (!validate_path(m_base_path[FsOpenReq::BP_DD_DF], path.c_str()))
+      {
+        ERROR_SET(fatal, NDBD_EXIT_AFS_INVALIDPATH,
+                  m_base_path[FsOpenReq::BP_DD_DF].c_str(),
+                  "FileSystemPathDataFiles");
+      }
+    }
   }
 
   {
@@ -279,6 +370,22 @@ Ndbfs::execREAD_CONFIG_REQ(Signal* signal)
                   "FileSystemPathUndoFiles");
       }
     }
+    else
+    {
+      BaseString path;
+      add_path(path, m_base_path[FsOpenReq::BP_FS].c_str());
+      do_mkdir(path.c_str());
+      BaseString tmpLG;
+      tmpLG.assfmt("LG%s", DIR_SEPARATOR);
+      add_path(path, tmpLG.c_str());
+      do_mkdir(path.c_str());
+      if (!validate_path(m_base_path[FsOpenReq::BP_DD_UF], path.c_str()))
+      {
+        ERROR_SET(fatal, NDBD_EXIT_AFS_INVALIDPATH,
+                  m_base_path[FsOpenReq::BP_DD_UF].c_str(),
+                  "FileSystemPathUndoFiles");
+      }
+    }
   }
 
   m_maxFiles = 0;
@@ -292,19 +399,43 @@ Ndbfs::execREAD_CONFIG_REQ(Signal* signal)
      * each logpart keeps up to 3 logfiles open at any given time...
      *   (bound)
      * make sure noIdleFiles is atleast 4 times #logparts
+     * In addition the LCP execution can have up to 4 files open in each
+     * LDM thread. In the LCP prepare phase we can have up to 2 files
+     * (2 CTL files first, then 1 CTL file and finally 1 CTL file and
+     *  1 data file). The LCP execution runs in parallel and can also
+     * have 2 open files (1 CTL file and 1 data file). With the
+     * introduction of Partial LCP the execution phase could even have
+     * 9 files open at a time and thus we can have up to 11 threads open
+     * at any time per LDM thread only to handle LCP execution.
+     *
+     * In addition ensure that we have at least 10 more open files
+     * available for the remainder of the tasks we need to handle.
      */
     Uint32 logParts = NDB_DEFAULT_LOG_PARTS;
     ndb_mgm_get_int_parameter(p, CFG_DB_NO_REDOLOG_PARTS, &logParts);
     Uint32 logfiles = 4 * logParts;
+    Uint32 numLDMthreads = getLqhWorkers();
+    if (numLDMthreads == 0)
+    {
+      jam();
+      numLDMthreads = 1;
+    }
+    logfiles += ((numLDMthreads * 11) + 10);
     if (noIdleFiles < logfiles)
     {
+      jam();
       noIdleFiles = logfiles;
     }
   }
 
-  // Make sure at least "noIdleFiles" files can be created
+  // Make sure at least "noIdleFiles" more files can be created
   if (noIdleFiles > m_maxFiles && m_maxFiles != 0)
-    m_maxFiles = noIdleFiles;
+  {
+    const Uint32 newMax = theFiles.size() + noIdleFiles + 1;
+    g_eventLogger->info("Resetting MaxNoOfOpenFiles %u to %u",
+                        m_maxFiles, newMax);
+    m_maxFiles = newMax;
+  }
 
   // Create idle AsyncFiles
   for (Uint32 i = 0; i < noIdleFiles; i++)
@@ -362,11 +493,52 @@ Ndbfs::execREAD_CONFIG_REQ(Signal* signal)
 void
 Ndbfs::execSTTOR(Signal* signal)
 {
+  LOCAL_SIGNAL(signal);
   jamEntry();
   
   if(signal->theData[1] == 0){ // StartPhase 0
     jam();
     
+    if (ERROR_INSERTED(2000) || ERROR_INSERTED(2001))
+    {
+      // Save(2000) or restore(2001) FileSystemPath/ndb_XX_fs/
+      BaseString& fs_path = m_base_path[FsOpenReq::BP_FS];
+      unsigned i = fs_path.length() - strlen(DIR_SEPARATOR);
+      BaseString saved_path(fs_path.c_str(), i);
+      const char * ending_separator = fs_path.c_str() + i;
+      ndbrequire(strcmp(ending_separator, DIR_SEPARATOR)==0);
+      saved_path.append(".saved");
+      saved_path.append(ending_separator);
+      BaseString& from_dir = (ERROR_INSERTED(2000) ? fs_path : saved_path);
+      BaseString& to_dir = (ERROR_INSERTED(2000) ? saved_path : fs_path);
+
+      const bool only_contents = true;
+      if (NdbDir::remove_recursive(to_dir.c_str(), !only_contents))
+      {
+        g_eventLogger->info("Cleaned destination file system at %s", to_dir.c_str());
+      }
+      else
+      {
+        g_eventLogger->warning("Failed cleaning file system at %s", to_dir.c_str());
+      }
+      if (access(to_dir.c_str(), F_OK) == 0 || errno != ENOENT)
+      {
+        g_eventLogger->error("Destination file system at %s should not be there (errno %d)!",
+                             to_dir.c_str(),
+                             errno);
+        ndbrequire(!"Destination file system already there during file system saving or restoring");
+      }
+      if (rename(from_dir.c_str(), to_dir.c_str()) == -1)
+      {
+        g_eventLogger->error("Failed renaming %s file system to %s while %s (errno %d)",
+          from_dir.c_str(),
+          to_dir.c_str(),
+          (ERROR_INSERTED(2000) ? "saving" : "restoring"),
+          errno);
+        ndbrequire(!"Failed renaming file system while saving ot restoring");
+      }
+      SET_ERROR_INSERT_VALUE2(ERROR_INSERT_EXTRA, 0);
+    }
     do_mkdir(m_base_path[FsOpenReq::BP_FS].c_str());
     
     // close all open files
@@ -376,13 +548,15 @@ Ndbfs::execSTTOR(Signal* signal)
     sendSignal(NDBCNTR_REF, GSN_STTORRY, signal,4, JBB);
     return;
   }
-  ndbrequire(0);
+  ndbabort();
 }
 
 int
 Ndbfs::forward( AsyncFile * file, Request* request)
 {
   jam();
+  request->m_startTime = getHighResTimer();
+
   AsyncIoThread* thr = file->getThread();
   if (thr) // bound
   {
@@ -402,13 +576,19 @@ Ndbfs::forward( AsyncFile * file, Request* request)
 void 
 Ndbfs::execFSOPENREQ(Signal* signal)
 {
+  LOCAL_SIGNAL(signal);
   jamEntry();
+  require(signal->getLength() >= FsOpenReq::SignalLength);
+#if defined(NAME_BASED_DISABLING_COMPRESS_ENCRYPT_ODIRECT)
+  FsOpenReq * const fsOpenReq = (FsOpenReq *)&signal->theData[0];
+#else
   const FsOpenReq * const fsOpenReq = (FsOpenReq *)&signal->theData[0];
+#endif
   const BlockReference userRef = fsOpenReq->userReference;
-
   bool bound = (fsOpenReq->fileFlags & FsOpenReq::OM_THREAD_POOL) == 0;
   AsyncFile* file = getIdleFile(bound);
   ndbrequire(file != NULL);
+  ndbrequire(local_ref(userRef));
 
   Uint32 userPointer = fsOpenReq->userPointer;
   
@@ -417,31 +597,62 @@ Ndbfs::execFSOPENREQ(Signal* signal)
   if (handle.m_cnt)
   {
     jam();
-    handle.getSection(ptr, FsOpenReq::FILENAME);
+    ndbrequire(handle.getSection(ptr, FsOpenReq::FILENAME));
   }
   file->theFileName.set(this, userRef, fsOpenReq->fileNumber, false, ptr);
+  if (handle.m_cnt > FsOpenReq::ENCRYPT_KEY_MATERIAL)
+  {
+    jam();
+    SegmentedSectionPtr ptr;
+    ndbrequire(handle.getSection(ptr, FsOpenReq::ENCRYPT_KEY_MATERIAL));
+    ndbrequire(ptr.sz * sizeof(Uint32) <= sizeof(file->m_key_material));
+    copy((Uint32*)&file->m_key_material, ptr);
+    ndbrequire(file->m_key_material.get_needed_words() <= ptr.sz);
+  }
+  else
+  {
+    file->m_key_material.length = 0;
+  }
   releaseSections(handle);
   
+  const Uint32 page_size = fsOpenReq->page_size;
+  const Uint64 file_size = (Uint64{fsOpenReq->file_size_hi} << 32) |
+                           fsOpenReq->file_size_lo;
+  const Uint32 auto_sync_size = fsOpenReq->auto_sync_size;
+
+#if defined(NAME_BASED_DISABLING_COMPRESS_ENCRYPT_ODIRECT)
+  const int name_hash = crc32(0,
+                              ((const unsigned char*)file->theFileName.c_str()),
+                              strlen(file->theFileName.c_str()));
+  const bool backup = (file->theFileName.get_base_path_spec() == FsOpenReq::BP_BACKUP);
+  const bool allow_gz = backup || (name_hash & 1);
+  const bool allow_enc = backup || (name_hash & 2);
+  const bool allow_odirect = (name_hash & 4);
+#endif
+
   if (fsOpenReq->fileFlags & FsOpenReq::OM_INIT)
   {
     jam();
     Uint32 cnt = 16; // 512k
+    // Need at least two pages when initializing encrypted REDO/TS/UNDO files
+    const Uint32 min_cnt =
+        (fsOpenReq->fileFlags & FsOpenReq::OM_ENCRYPT_CIPHER_MASK) ? 2 : 1;
     Ptr<GlobalPage> page_ptr;
-    m_ctx.m_mm.alloc_pages(RT_DBTUP_PAGE, &page_ptr.i, &cnt, 1);
+    m_ctx.m_mm.alloc_pages(RT_NDBFS_INIT_FILE_PAGE, &page_ptr.i, &cnt, min_cnt);
     if(cnt == 0)
     {
-      file->m_page_ptr.setNull();
-      file->m_page_cnt = 0;
+      ndbrequire(!file->has_buffer());
       
       FsRef * const fsRef = (FsRef *)&signal->theData[0];
       fsRef->userPointer  = userPointer; 
       fsRef->setErrorCode(fsRef->errorCode, FsRef::fsErrOutOfMemory);
       fsRef->osErrorCode  = ~0; // Indicate local error
+      log_file_error(GSN_FSOPENREF, file, nullptr, fsRef);
       sendSignal(userRef, GSN_FSOPENREF, signal, 3, JBB);
       return;
     }
     m_shared_page_pool.getPtr(page_ptr);
-    file->set_buffer(RT_DBTUP_PAGE, page_ptr, cnt);
+    file->set_buffer(RT_NDBFS_INIT_FILE_PAGE, page_ptr, cnt);
   } 
   else if (fsOpenReq->fileFlags & FsOpenReq::OM_WRITE_BUFFER)
   {
@@ -452,13 +663,13 @@ Ndbfs::execFSOPENREQ(Signal* signal)
     if (cnt == 0)
     {
       jam();
-      file->m_page_ptr.setNull();
-      file->m_page_cnt = 0;
+      ndbrequire(!file->has_buffer());
 
       FsRef * const fsRef = (FsRef *)&signal->theData[0];
       fsRef->userPointer  = userPointer;
       fsRef->setErrorCode(fsRef->errorCode, FsRef::fsErrOutOfMemory);
       fsRef->osErrorCode  = ~0; // Indicate local error
+      log_file_error(GSN_FSOPENREF, file, nullptr, fsRef);
       sendSignal(userRef, GSN_FSOPENREF, signal, 3, JBB);
       return;
     }
@@ -467,47 +678,61 @@ Ndbfs::execFSOPENREQ(Signal* signal)
   }
   else
   {
-    ndbassert(file->m_page_ptr.isNull());
-    file->m_page_ptr.setNull();
-    file->m_page_cnt = 0;
+    ndbrequire(!file->has_buffer());
   }
   
   if (getenv("NDB_TRACE_OPEN"))
-    ndbout_c("open(%s) bound: %u", file->theFileName.c_str(), bound);
-  
+    g_eventLogger->info("open(%s) bound: %u", file->theFileName.c_str(), bound);
+
   Request* request = theRequestPool->get();
   request->action = Request::open;
-  request->error = 0;
+  NDBFS_SET_REQUEST_ERROR(request, 0);
   request->set(userRef, userPointer, newId() );
   request->file = file;
   request->theTrace = signal->getTrace();
   request->par.open.flags = fsOpenReq->fileFlags;
-  request->par.open.page_size = fsOpenReq->page_size;
-  request->par.open.file_size = fsOpenReq->file_size_hi;
-  request->par.open.file_size <<= 32;
-  request->par.open.file_size |= fsOpenReq->file_size_lo;
-  request->par.open.auto_sync_size = fsOpenReq->auto_sync_size;
+#if defined(NAME_BASED_DISABLING_COMPRESS_ENCRYPT_ODIRECT)
+  if (!allow_gz)
+  {
+    request->par.open.flags &= ~(FsOpenReq::OM_GZ);
+  }
+  if (!allow_enc)
+  {
+    request->par.open.flags &= ~(FsOpenReq::OM_ENCRYPT_CIPHER_MASK |
+                                 FsOpenReq::OM_ENCRYPT_KEY_MATERIAL_MASK);
+    file->m_key_material.length = 0;
+  }
+  if (!allow_odirect)
+  {
+    request->par.open.flags &=
+        ~(FsOpenReq::OM_DIRECT|FsOpenReq::OM_DIRECT_SYNC);
+  }
+#endif
+  request->par.open.page_size = page_size;
+  request->par.open.file_size = file_size;
+  request->par.open.auto_sync_size = auto_sync_size;
   request->m_do_bind = bound;
-
   ndbrequire(forward(file, request));
 }
 
 void 
 Ndbfs::execFSREMOVEREQ(Signal* signal)
 {
+  LOCAL_SIGNAL(signal);
   jamEntry();
   const FsRemoveReq * const req = (FsRemoveReq *)signal->getDataPtr();
   const BlockReference userRef = req->userReference;
   bool bound = true;
   AsyncFile* file = getIdleFile(bound);
   ndbrequire(file != NULL);
+  ndbrequire(local_ref(userRef));
 
   SectionHandle handle(this, signal);
   SegmentedSectionPtr ptr; ptr.setNull();
   if(handle.m_cnt)
   {
     jam();
-    handle.getSection(ptr, FsOpenReq::FILENAME);
+    ndbrequire(handle.getSection(ptr, FsOpenReq::FILENAME));
   }
 
   file->theFileName.set(this, userRef, req->fileNumber, req->directory, ptr);
@@ -520,7 +745,7 @@ Ndbfs::execFSREMOVEREQ(Signal* signal)
   request->action = Request::rmrf;
   request->par.rmrf.directory = req->directory;
   request->par.rmrf.own_directory = req->ownDirectory;
-  request->error = 0;
+  NDBFS_SET_REQUEST_ERROR(request, 0);
   request->set(userRef, req->userPointer, newId() );
   request->file = file;
   request->theTrace = signal->getTrace();
@@ -548,11 +773,13 @@ ignore:
 void 
 Ndbfs::execFSCLOSEREQ(Signal * signal)
 {
+  LOCAL_SIGNAL(signal);
   jamEntry();
   const FsCloseReq * const fsCloseReq = (FsCloseReq *)&signal->theData[0];
   const BlockReference userRef = fsCloseReq->userReference;
   const Uint16 filePointer = (Uint16)fsCloseReq->filePointer;
   const UintR userPointer = fsCloseReq->userPointer; 
+  ndbrequire(local_ref(userRef));
 
   AsyncFile* openFile = theOpenFiles.find(filePointer);
   if (openFile == NULL) {
@@ -563,6 +790,7 @@ Ndbfs::execFSCLOSEREQ(Signal * signal)
     fsRef->userPointer  = userPointer; 
     fsRef->setErrorCode(fsRef->errorCode, FsRef::fsErrFileDoesNotExist);
     fsRef->osErrorCode  = ~0; // Indicate local error
+    log_file_error(GSN_FSOPENREF, openFile, nullptr, fsRef);
     sendSignal(userRef, GSN_FSCLOSEREF, signal, 3, JBB);
 
     g_eventLogger->warning("Trying to close unknown file!! %u", userPointer);
@@ -573,7 +801,7 @@ Ndbfs::execFSCLOSEREQ(Signal * signal)
   }
 
   if (getenv("NDB_TRACE_OPEN"))
-    ndbout_c("close(%s)", openFile->theFileName.c_str());
+    g_eventLogger->info("close(%s)", openFile->theFileName.c_str());
 
   Request *request = theRequestPool->get();
   if( fsCloseReq->getRemoveFileFlag(fsCloseReq->fileFlag) == true ) {
@@ -585,7 +813,7 @@ Ndbfs::execFSCLOSEREQ(Signal * signal)
   }
   request->set(userRef, fsCloseReq->userPointer, filePointer);
   request->file = openFile;
-  request->error = 0;
+  NDBFS_SET_REQUEST_ERROR(request, 0);
   request->theTrace = signal->getTrace();
   request->m_do_bind = false;
 
@@ -595,11 +823,13 @@ Ndbfs::execFSCLOSEREQ(Signal * signal)
 void 
 Ndbfs::readWriteRequest(int action, Signal * signal)
 {
-  Uint32 theData[25 + 2 * NDB_FS_RW_PAGES];
+  Uint32 theData[25 + 1 + NDB_FS_RW_PAGES];
+  ndbrequire(signal->getLength() <= NDB_ARRAY_SIZE(theData));
   memcpy(theData, signal->theData, 4 * signal->getLength());
   SectionHandle handle(this, signal);
   if (handle.m_cnt > 0)
   {
+    jam();
     SegmentedSectionPtr secPtr;
     ndbrequire(handle.getSection(secPtr, 0));
     ndbrequire(signal->getLength() + secPtr.sz < NDB_ARRAY_SIZE(theData));
@@ -613,11 +843,12 @@ Ndbfs::readWriteRequest(int action, Signal * signal)
   const BlockReference userRef = fsRWReq->userReference;
   const BlockNumber blockNumber = refToMain(userRef);
   const Uint32 instanceNumber = refToInstance(userRef);
+  ndbrequire(local_ref(userRef));
 
   AsyncFile* openFile = theOpenFiles.find(filePointer);
 
   const NewVARIABLE *myBaseAddrRef =
-    &getBat(blockNumber, instanceNumber)[fsRWReq->varIndex];
+    getBatVar(blockNumber, instanceNumber, fsRWReq->varIndex);
   UintPtr tPageSize;
   UintPtr tClusterSize;
   UintPtr tNRR;
@@ -626,7 +857,7 @@ Ndbfs::readWriteRequest(int action, Signal * signal)
   FsRef::NdbfsErrorCodeType errorCode;
 
   Request *request = theRequestPool->get();
-  request->error = 0;
+  NDBFS_SET_REQUEST_ERROR(request, 0);
   request->set(userRef, userPointer, filePointer);
   request->file = openFile;
   request->action = (Request::Action) action;
@@ -643,12 +874,7 @@ Ndbfs::readWriteRequest(int action, Signal * signal)
 
   if(format != FsReadWriteReq::fsFormatGlobalPage &&
      format != FsReadWriteReq::fsFormatSharedPage)
-  {     
-    if (fsRWReq->varIndex >= getBatSize(blockNumber, instanceNumber)) {
-      jam();// Ensure that a valid variable is used    
-      errorCode = FsRef::fsErrInvalidParameters;
-      goto error;
-    }
+  {
     if (myBaseAddrRef == NULL) {
       jam(); // Ensure that a valid variable is used
       errorCode = FsRef::fsErrInvalidParameters;
@@ -706,7 +932,7 @@ Ndbfs::readWriteRequest(int action, Signal * signal)
       // List of memory pages followed by one file page
     case FsReadWriteReq::fsFormatListOfMemPages: { 
       
-      tPageOffset = fsRWReq->data.listOfMemPages.varIndex[fsRWReq->numberOfPages];
+      tPageOffset = fsRWReq->data.listOfMemPages.fileOffset;
       tPageOffset *= tPageSize;
       
       for (unsigned int i = 0; i < fsRWReq->numberOfPages; i++) {
@@ -718,6 +944,7 @@ Ndbfs::readWriteRequest(int action, Signal * signal)
 	  errorCode = FsRef::fsErrInvalidParameters;
 	  goto error;
 	}//if
+        // NDB_FS_RW_PAGES overkill, at most 15 ! Or more via execute direct?
 	request->par.readWrite.pages[i].buf = &tWA[varIndex * tClusterSize];
 	request->par.readWrite.pages[i].size = tPageSize;
 	request->par.readWrite.pages[i].offset = (off_t)
@@ -725,9 +952,29 @@ Ndbfs::readWriteRequest(int action, Signal * signal)
       }//for
       request->par.readWrite.numberOfPages = fsRWReq->numberOfPages;
       break;
-      // make it a writev or readv
     }//case
-      
+
+    case FsReadWriteReq::fsFormatMemAddress:
+    {
+      jam();
+      ndbassert(fsRWReq->numberOfPages == 1);
+      if (fsRWReq->numberOfPages != 1)
+      {
+        jam();
+        errorCode = FsRef::fsErrInvalidParameters;
+        goto error;
+      }
+
+      const Uint32 memoryOffset = fsRWReq->data.memoryAddress.memoryOffset;
+      const Uint32 fileOffset = fsRWReq->data.memoryAddress.fileOffset;
+      const Uint32 sz = fsRWReq->data.memoryAddress.size;
+
+      request->par.readWrite.pages[0].buf = &tWA[memoryOffset];
+      request->par.readWrite.pages[0].size = sz;
+      request->par.readWrite.pages[0].offset = (off_t)(fileOffset);
+      request->par.readWrite.numberOfPages = 1;
+      break;
+    }
     default: {
       jam();
       errorCode = FsRef::fsErrInvalidParameters;
@@ -738,7 +985,7 @@ Ndbfs::readWriteRequest(int action, Signal * signal)
   else if (format == FsReadWriteReq::fsFormatGlobalPage)
   {
     Ptr<GlobalPage> ptr;
-    m_global_page_pool.getPtr(ptr, fsRWReq->data.pageData[0]);
+    ndbrequire(m_global_page_pool.getPtr(ptr, fsRWReq->data.globalPage.pageNumber));
     request->par.readWrite.pages[0].buf = (char*)ptr.p;
     request->par.readWrite.pages[0].size = ((UintPtr)GLOBAL_PAGE_SIZE)*fsRWReq->numberOfPages;
     request->par.readWrite.pages[0].offset= ((UintPtr)GLOBAL_PAGE_SIZE)*fsRWReq->varIndex;
@@ -748,7 +995,7 @@ Ndbfs::readWriteRequest(int action, Signal * signal)
   {
     ndbrequire(format == FsReadWriteReq::fsFormatSharedPage);
     Ptr<GlobalPage> ptr;
-    m_shared_page_pool.getPtr(ptr, fsRWReq->data.pageData[0]);
+    ndbrequire(m_shared_page_pool.getPtr(ptr, fsRWReq->data.sharedPage.pageNumber));
     request->par.readWrite.pages[0].buf = (char*)ptr.p;
     request->par.readWrite.pages[0].size = ((UintPtr)GLOBAL_PAGE_SIZE)*fsRWReq->numberOfPages;
     request->par.readWrite.pages[0].offset= ((UintPtr)GLOBAL_PAGE_SIZE)*fsRWReq->varIndex;
@@ -768,12 +1015,14 @@ error:
   case Request:: write:
   case Request:: writeSync: {
     jam();
+    log_file_error(GSN_FSWRITEREF, openFile, request, fsRef);
     sendSignal(userRef, GSN_FSWRITEREF, signal, 3, JBB);
     break;
   }//case
   case Request:: readPartial: 
   case Request:: read: {
     jam();
+    log_file_error(GSN_FSREADREF, openFile, request, fsRef);
     sendSignal(userRef, GSN_FSREADREF, signal, 3, JBB);
   }//case
   }//switch
@@ -792,6 +1041,7 @@ error:
 void 
 Ndbfs::execFSWRITEREQ(Signal* signal)
 {
+  LOCAL_SIGNAL(signal);
   jamEntry();
   const FsReadWriteReq * const fsWriteReq = (FsReadWriteReq *)&signal->theData[0];
   
@@ -816,12 +1066,19 @@ Ndbfs::execFSWRITEREQ(Signal* signal)
 void 
 Ndbfs::execFSREADREQ(Signal* signal)
 {
+  LOCAL_SIGNAL(signal);
   jamEntry();
   FsReadWriteReq * req = (FsReadWriteReq *)signal->getDataPtr();
   if (FsReadWriteReq::getPartialReadFlag(req->operationFlag))
+  {
+    jam();
     readWriteRequest( Request::readPartial, signal );
+  }
   else
+  {
+    jam();
     readWriteRequest( Request::read, signal );
+  }
 }
 
 /*
@@ -830,11 +1087,13 @@ Ndbfs::execFSREADREQ(Signal* signal)
 void
 Ndbfs::execFSSYNCREQ(Signal * signal)
 {
+  LOCAL_SIGNAL(signal);
   jamEntry();
   Uint16 filePointer =  (Uint16)signal->theData[0];
   BlockReference userRef = signal->theData[1];
   const UintR userPointer = signal->theData[2]; 
   AsyncFile* openFile = theOpenFiles.find(filePointer);
+  ndbrequire(local_ref(userRef));
 
   if (openFile == NULL) {
      jam(); //file not open
@@ -842,12 +1101,13 @@ Ndbfs::execFSSYNCREQ(Signal * signal)
      fsRef->userPointer = userPointer;
      fsRef->setErrorCode(fsRef->errorCode, FsRef::fsErrFileDoesNotExist);
      fsRef->osErrorCode = ~0; // Indicate local error
+     log_file_error(GSN_FSSYNCREF, openFile, nullptr, fsRef);
      sendSignal(userRef, GSN_FSSYNCREF, signal, 3, JBB);
      return;
   }
   
   Request *request = theRequestPool->get();
-  request->error = 0;
+  NDBFS_SET_REQUEST_ERROR(request, 0);
   request->action = Request::sync;
   request->set(userRef, userPointer, filePointer);
   request->file = openFile;
@@ -863,6 +1123,7 @@ Ndbfs::execFSSYNCREQ(Signal * signal)
 void
 Ndbfs::execFSSUSPENDORD(Signal * signal)
 {
+  LOCAL_SIGNAL(signal);
   jamEntry();
   Uint16 filePointer =  (Uint16)signal->theData[0];
   Uint32 millis = signal->theData[1];
@@ -875,7 +1136,7 @@ Ndbfs::execFSSUSPENDORD(Signal * signal)
   }
 
   Request *request = theRequestPool->get();
-  request->error = 0;
+  NDBFS_SET_REQUEST_ERROR(request, 0);
   request->action = Request::suspend;
   request->set(0, 0, filePointer);
   request->file = openFile;
@@ -889,65 +1150,64 @@ Ndbfs::execFSSUSPENDORD(Signal * signal)
 void 
 Ndbfs::execFSAPPENDREQ(Signal * signal)
 {
+  LOCAL_SIGNAL(signal);
+  jamEntry();
   const FsAppendReq * const fsReq = (FsAppendReq *)&signal->theData[0];
   const Uint16 filePointer =  (Uint16)fsReq->filePointer;
   const UintR userPointer = fsReq->userPointer; 
   const BlockReference userRef = fsReq->userReference;
   const BlockNumber blockNumber = refToMain(userRef);
   const Uint32 instanceNumber = refToInstance(userRef);
+  ndbrequire(local_ref(userRef));
 
   FsRef::NdbfsErrorCodeType errorCode;
 
+  Request *request = theRequestPool->get();
   AsyncFile* openFile = theOpenFiles.find(filePointer);
   const NewVARIABLE *myBaseAddrRef =
-    &getBat(blockNumber, instanceNumber)[fsReq->varIndex];
+    getBatVar(blockNumber, instanceNumber, fsReq->varIndex);
 
-  const Uint32* tWA   = (const Uint32*)myBaseAddrRef->WA;
-  const Uint32  tSz   = myBaseAddrRef->nrr;
-  const Uint32 offset = fsReq->offset;
-  const Uint32 size   = fsReq->size;
-  const Uint32 synch_flag = fsReq->synch_flag;
-  Request *request = theRequestPool->get();
-
-  if (openFile == NULL) {
-    jam();
-    errorCode = FsRef::fsErrFileDoesNotExist;
-    goto error;
-  }
-
-  if (myBaseAddrRef == NULL) {
+  if (unlikely(myBaseAddrRef == NULL))
+  {
     jam(); // Ensure that a valid variable is used
     errorCode = FsRef::fsErrInvalidParameters;
     goto error;
   }
-  
-  if (fsReq->varIndex >= getBatSize(blockNumber, instanceNumber)) {
-    jam();// Ensure that a valid variable is used    
-    errorCode = FsRef::fsErrInvalidParameters;
-    goto error;
-  }
-  
-  if(offset + size > tSz){
-    jam(); // Ensure that a valid variable is used
-    errorCode = FsRef::fsErrInvalidParameters;
-    goto error;
-  }
+  {
+    const Uint32* tWA   = (const Uint32*)myBaseAddrRef->WA;
+    const Uint32  tSz   = myBaseAddrRef->nrr;
+    const Uint32 offset = fsReq->offset;
+    const Uint32 size   = fsReq->size;
+    const Uint32 synch_flag = fsReq->synch_flag;
 
-  request->error = 0;
-  request->set(userRef, userPointer, filePointer);
-  request->file = openFile;
-  request->theTrace = signal->getTrace();
-  
-  request->par.append.buf = (const char *)(tWA + offset);
-  request->par.append.size = size << 2;
+    if (openFile == NULL) {
+      jam();
+      errorCode = FsRef::fsErrFileDoesNotExist;
+      goto error;
+    }
 
-  if (!synch_flag)
-    request->action = Request::append;
-  else
-    request->action = Request::append_synch;
-  request->m_do_bind = false;
-  ndbrequire(forward(openFile, request));
-  return;
+    if(offset + size > tSz){
+      jam(); // Ensure that a valid variable is used
+      errorCode = FsRef::fsErrInvalidParameters;
+      goto error;
+    }
+
+    NDBFS_SET_REQUEST_ERROR(request, 0);
+    request->set(userRef, userPointer, filePointer);
+    request->file = openFile;
+    request->theTrace = signal->getTrace();
+
+    request->par.append.buf = (const char *)(tWA + offset);
+    request->par.append.size = size << 2;
+
+    if (!synch_flag)
+      request->action = Request::append;
+    else
+      request->action = Request::append_synch;
+    request->m_do_bind = false;
+    ndbrequire(forward(openFile, request));
+    return;
+  }
   
 error:
   jam();
@@ -958,6 +1218,7 @@ error:
   fsRef->osErrorCode = ~0; // Indicate local error
 
   jam();
+  log_file_error(GSN_FSAPPENDREF, openFile, request, fsRef);
   sendSignal(userRef, GSN_FSAPPENDREF, signal, 3, JBB);
   return;
 }
@@ -965,17 +1226,18 @@ error:
 void
 Ndbfs::execALLOC_MEM_REQ(Signal* signal)
 {
+  LOCAL_SIGNAL(signal);
   jamEntry();
-
   AllocMemReq* req = (AllocMemReq*)signal->getDataPtr();
 
   bool bound = true;
   AsyncFile* file = getIdleFile(bound);
   ndbrequire(file != NULL);
+  ndbrequire(local_ref(req->senderRef));
 
   Request *request = theRequestPool->get();
 
-  request->error = 0;
+  NDBFS_SET_REQUEST_ERROR(request, 0);
   request->set(req->senderRef, req->senderData, 0);
   request->file = file;
   request->theTrace = signal->getTrace();
@@ -991,15 +1253,17 @@ Ndbfs::execALLOC_MEM_REQ(Signal* signal)
 void
 Ndbfs::execBUILD_INDX_IMPL_REQ(Signal* signal)
 {
+  LOCAL_SIGNAL(signal);
   jamEntry();
   mt_BuildIndxReq * req = (mt_BuildIndxReq*)signal->getDataPtr();
 
   bool bound = true;
   AsyncFile* file = getIdleFile(bound);
   ndbrequire(file != NULL);
+  ndbrequire(local_ref(req->senderRef));
 
   Request *request = theRequestPool->get();
-  request->error = 0;
+  NDBFS_SET_REQUEST_ERROR(request, 0);
   request->set(req->senderRef, req->senderData, 0);
   request->file = file;
   request->theTrace = signal->getTrace();
@@ -1007,20 +1271,18 @@ Ndbfs::execBUILD_INDX_IMPL_REQ(Signal* signal)
   Uint32 cnt = (req->buffer_size + 32768 - 1) / 32768;
   Uint32 save = cnt;
   Ptr<GlobalPage> page_ptr;
-  m_ctx.m_mm.alloc_pages(RT_DBTUP_PAGE, &page_ptr.i, &cnt, cnt);
+  m_ctx.m_mm.alloc_pages(RT_NDBFS_BUILD_INDEX_PAGE, &page_ptr.i, &cnt, cnt);
   if(cnt == 0)
   {
-    file->m_page_ptr.setNull();
-    file->m_page_cnt = 0;
-
-    ndbrequire(false); // TODO
+    ndbrequire(!file->has_buffer());
+    ndbabort(); // TODO
     return;
   }
 
   ndbrequire(cnt == save);
 
   m_shared_page_pool.getPtr(page_ptr);
-  file->set_buffer(RT_DBTUP_PAGE, page_ptr, cnt);
+  file->set_buffer(RT_NDBFS_BUILD_INDEX_PAGE, page_ptr, cnt);
 
   memcpy(&request->par.build.m_req, req, sizeof(* req));
   request->action = Request::buildindx;
@@ -1061,21 +1323,27 @@ Ndbfs::createAsyncFile()
     // Print info about all open files
     for (unsigned i = 0; i < theFiles.size(); i++){
       AsyncFile* file = theFiles[i];
-      ndbout_c("%2d (0x%lx): %s",
+      ndbout_c("%2d (%p): %s",
                i,
-               (long) file,
+               file,
                file->isOpen() ?"OPEN" : "CLOSED");
     }
-    ERROR_SET(fatal, NDBD_EXIT_AFS_MAXOPEN,""," Ndbfs::createAsyncFile");
+    g_eventLogger->info("m_maxFiles: %u, theFiles.size() = %u", m_maxFiles,
+                        theFiles.size());
+    ERROR_SET(fatal, NDBD_EXIT_AFS_MAXOPEN,""," Ndbfs::createAsyncFile: creating more than MaxNoOfOpenFiles");
   }
 
-#ifdef NDB_WIN
+#ifdef _WIN32
   AsyncFile* file = new Win32AsyncFile(* this);
 #else
   AsyncFile* file = new PosixAsyncFile(* this);
 #endif
-
-  if (file->init())
+  int err = file->init();
+  if (err == -1)
+  {
+    ERROR_SET(fatal, NDBD_EXIT_AFS_ZLIB_INIT_FAIL, "", " Ndbfs::createAsyncFile: Zlib init failure");
+  }
+  else if(err)
   {
     ERROR_SET(fatal, NDBD_EXIT_AFS_MAXOPEN,""," Ndbfs::createAsyncFile");
   }
@@ -1088,6 +1356,11 @@ void
 Ndbfs::pushIdleFile(AsyncFile* file)
 {
   assert(file->getThread() == 0);
+  if (file->thread_bound())
+  {
+    m_active_bound_threads_cnt--;
+    file->set_thread_bound(false);
+  }
   theIdleFiles.push_back(file);
 }
 
@@ -1098,7 +1371,7 @@ Ndbfs::createIoThread(bool bound)
   if (thr)
   {
 #ifdef VM_TRACE
-    ndbout_c("NDBFS: Created new file thread %d", theThreads.size());
+    g_eventLogger->info("NDBFS: Created new file thread %d", theThreads.size());
 #endif
 
     struct NdbThread* thrptr = thr->doStart();
@@ -1143,24 +1416,11 @@ Ndbfs::getIdleFile(bool bound)
         theThreads.push_back(thr);
       }
     }
+
+    file->set_thread_bound(true);
+    m_active_bound_threads_cnt++;
   }
   return file;
-}
-
-void
-Ndbfs::cnt_active_bound(int val)
-{
-  Guard g(&g_active_bound_threads_mutex);
-  if (val < 0)
-  {
-    val = -val;
-    assert(m_active_bound_threads_cnt >= (Uint32)val);
-    m_active_bound_threads_cnt -= val;
-  }
-  else
-  {
-    m_active_bound_threads_cnt += val;
-  }
 }
 
 void
@@ -1172,7 +1432,10 @@ Ndbfs::report(Request * request, Signal* signal)
 
   if (request->file->has_buffer())
   {
-    if ((request->action == Request::open && request->error) ||
+    if ((request->action == Request::open && request->error.code != 0) ||
+        // Buffer only used for initializing (OM_INIT) file during open
+        (request->action == Request::open &&
+         (request->par.open.flags & FsOpenReq::OM_WRITE_BUFFER) == 0) ||
         request->action == Request::close ||
         request->action == Request::closeRemove ||
         request->action == Request::buildindx)
@@ -1185,24 +1448,26 @@ Ndbfs::report(Request * request, Signal* signal)
     }
   }
   
-  if (request->error) {
+  if (request->error.code != 0)
+  {
     jam();
     // Initialise FsRef signal
     FsRef * const fsRef = (FsRef *)&signal->theData[0];
     fsRef->userPointer = request->theUserPointer;
-    if(request->error & FsRef::FS_ERR_BIT)
+    if(request->error.code & FsRef::FS_ERR_BIT)
     {
-      fsRef->errorCode = request->error;
+      fsRef->errorCode = request->error.code;
       fsRef->osErrorCode = 0;
     }
     else 
     {
-      fsRef->setErrorCode(fsRef->errorCode, translateErrno(request->error));
-      fsRef->osErrorCode = request->error; 
+      fsRef->setErrorCode(fsRef->errorCode, translateErrno(request->error.code));
+      fsRef->osErrorCode = request->error.code; 
     }
     switch (request->action) {
     case Request:: open: {
       jam();
+      log_file_error(GSN_FSOPENREF, nullptr, request, fsRef);
       // Put the file back in idle files list
       pushIdleFile(request->file);
       sendSignal(ref, GSN_FSOPENREF, signal, FsRef::SignalLength, JBB);
@@ -1211,6 +1476,7 @@ Ndbfs::report(Request * request, Signal* signal)
     case Request:: closeRemove:
     case Request:: close: {
       jam();
+      log_file_error(GSN_FSCLOSEREF, nullptr, request, fsRef);
       sendSignal(ref, GSN_FSCLOSEREF, signal, FsRef::SignalLength, JBB);
 
       g_eventLogger->warning("Error closing file: %s %u/%u",
@@ -1223,22 +1489,24 @@ Ndbfs::report(Request * request, Signal* signal)
       break;
     }
     case Request:: writeSync:
-    case Request:: writevSync:
     case Request:: write:
-    case Request:: writev: {
+    {
       jam();
+      log_file_error(GSN_FSWRITEREF, nullptr, request, fsRef);
       sendSignal(ref, GSN_FSWRITEREF, signal, FsRef::SignalLength, JBB);
       break;
     }
     case Request:: read: 
     case Request:: readPartial:
-    case Request:: readv: {
+    {
       jam();
+      log_file_error(GSN_FSREADREF, nullptr, request, fsRef);
       sendSignal(ref, GSN_FSREADREF, signal, FsRef::SignalLength, JBB);
       break;
     }
     case Request:: sync: {
       jam();
+      log_file_error(GSN_FSSYNCREF, nullptr, request, fsRef);
       sendSignal(ref, GSN_FSSYNCREF, signal, FsRef::SignalLength, JBB);
       break;
     }
@@ -1246,11 +1514,13 @@ Ndbfs::report(Request * request, Signal* signal)
     case Request::append_synch:
     {
       jam();
+      log_file_error(GSN_FSAPPENDREF, nullptr, request, fsRef);
       sendSignal(ref, GSN_FSAPPENDREF, signal, FsRef::SignalLength, JBB);
       break;
     }
     case Request::rmrf: {
       jam();
+      log_file_error(GSN_FSREMOVEREF, nullptr, request, fsRef);
       // Put the file back in idle files list
       pushIdleFile(request->file);
       sendSignal(ref, GSN_FSREMOVEREF, signal, FsRef::SignalLength, JBB);
@@ -1267,7 +1537,8 @@ Ndbfs::report(Request * request, Signal* signal)
       AllocMemRef* rep = (AllocMemRef*)signal->getDataPtrSend();
       rep->senderRef = reference();
       rep->senderData = request->theUserPointer;
-      rep->errorCode = request->error;
+      rep->errorCode = request->error.code;
+      log_file_error(GSN_ALLOC_MEM_REF, nullptr, request, fsRef);
       sendSignal(ref, GSN_ALLOC_MEM_REF, signal,
                  AllocMemRef::SignalLength, JBB);
       pushIdleFile(request->file);
@@ -1278,7 +1549,8 @@ Ndbfs::report(Request * request, Signal* signal)
       BuildIndxImplRef* rep = (BuildIndxImplRef*)signal->getDataPtrSend();
       rep->senderRef = reference();
       rep->senderData = request->theUserPointer;
-      rep->errorCode = (BuildIndxImplRef::ErrorCode)request->error;
+      rep->errorCode = (BuildIndxImplRef::ErrorCode)request->error.code;
+      log_file_error(GSN_BUILD_INDX_IMPL_REF, nullptr, request, fsRef);
       sendSignal(ref, GSN_BUILD_INDX_IMPL_REF, signal,
                  BuildIndxImplRef::SignalLength, JBB);
       pushIdleFile(request->file);
@@ -1299,8 +1571,10 @@ Ndbfs::report(Request * request, Signal* signal)
 	m_maxOpenedFiles = theOpenFiles.size();
 
       fsConf->filePointer = request->theFilePointer;
-      fsConf->fileInfo = request->m_fileinfo;
-      sendSignal(ref, GSN_FSOPENCONF, signal, 3, JBA);
+      fsConf->fileInfo = 0;
+      fsConf->file_size_hi = request->m_file_size_hi;
+      fsConf->file_size_lo = request->m_file_size_lo;
+      sendSignal(ref, GSN_FSOPENCONF, signal, 5, JBA);
       break;
     }
     case Request:: closeRemove:
@@ -1314,22 +1588,24 @@ Ndbfs::report(Request * request, Signal* signal)
       break;
     }
     case Request:: writeSync:
-    case Request:: writevSync:
     case Request:: write:
-    case Request:: writev: {
+    {
       jam();
       sendSignal(ref, GSN_FSWRITECONF, signal, 1, JBA);
       break;
     }
     case Request:: read:
-    case Request:: readv: {
+    {
       jam();
       sendSignal(ref, GSN_FSREADCONF, signal, 1, JBA);
       break;
     }
     case Request:: readPartial: {
       jam();
-      fsConf->bytes_read = Uint32(request->par.readWrite.pages[0].size);
+      size_t bytes_read = 0;
+      for (int i = 0; i < request->par.readWrite.numberOfPages; i++)
+        bytes_read += request->par.readWrite.pages[i].size;
+      fsConf->bytes_read = Uint32(bytes_read);
       sendSignal(ref, GSN_FSREADCONF, signal, 2, JBA);
       break;
     }
@@ -1390,7 +1666,7 @@ bool
 Ndbfs::scanIPC(Signal* signal)
 {
    Request* request = theFromThreads.tryReadChannel();
-   jam();
+   jamDebug();
    if (request) {
       jam();
       report(request, signal);
@@ -1400,7 +1676,7 @@ Ndbfs::scanIPC(Signal* signal)
    return false;
 }
 
-#if defined NDB_WIN32
+#ifdef _WIN32
 Uint32 Ndbfs::translateErrno(int aErrno)
 {
   switch (aErrno)
@@ -1422,11 +1698,16 @@ Uint32 Ndbfs::translateErrno(int aErrno)
       //none valid parameters
     case ERROR_INVALID_HANDLE:
     case ERROR_INVALID_DRIVE:
+    case ERROR_INVALID_DATA:
     case ERROR_INVALID_ACCESS:
     case ERROR_HANDLE_EOF:
     case ERROR_BUFFER_OVERFLOW:
 
       return FsRef::fsErrInvalidParameters;
+
+    case ERROR_FILE_EXISTS:
+      return FsRef::fsErrFileExists;
+
       //environment error
     case ERROR_CRC:
     case ERROR_ARENA_TRASHED:
@@ -1445,6 +1726,8 @@ Uint32 Ndbfs::translateErrno(int aErrno)
       return FsRef::fsErrNoMoreResources;
       //no file
     case ERROR_FILE_NOT_FOUND:
+    case ERROR_INVALID_NAME:
+    case ERROR_PATH_NOT_FOUND:
       return FsRef::fsErrFileDoesNotExist;
 
     case ERR_ReadUnderflow:
@@ -1487,9 +1770,11 @@ Uint32 Ndbfs::translateErrno(int aErrno)
     case EFAULT:
     case EISDIR:
     case ENOTDIR:
-    case EEXIST:
     case ETXTBSY:
       return FsRef::fsErrInvalidParameters;
+      // file exists
+    case EEXIST:
+      return FsRef::fsErrFileExists;
       //environment error
     case ELOOP:
 #ifdef ENOLINK
@@ -1529,6 +1814,7 @@ Uint32 Ndbfs::translateErrno(int aErrno)
 void 
 Ndbfs::execCONTINUEB(Signal* signal)
 {
+  LOCAL_SIGNAL(signal);
   jamEntry();
   if (signal->theData[0] == NdbfsContinueB::ZSCAN_MEMORYCHANNEL_10MS_DELAY) {
     jam();
@@ -1542,34 +1828,56 @@ Ndbfs::execCONTINUEB(Signal* signal)
       return;
     }
   }
-  if (scanIPC(signal)) {
+  if (scanIPC(signal))
+  {
     jam();
     scanningInProgress = true;
     signal->theData[0] = NdbfsContinueB::ZSCAN_MEMORYCHANNEL_NO_DELAY;    
     sendSignal(reference(), GSN_CONTINUEB, signal, 1, JBB);
-   } else {
+  }
+  else
+  {
     jam();
     scanningInProgress = false;
-   }
-   return;
+  }
+  return;
 }
 
 void
 Ndbfs::execSEND_PACKED(Signal* signal)
 {
-  jamEntry();
-  if (scanningInProgress == false && scanIPC(signal))
+  /**
+   * This function is called, but not in response to any incoming signal
+   * Skip locality checking.
+   * In future : Remove possibility for external invocation and/or
+   * initialise the passed Signal object in some way.
+   */
+  //LOCAL_SIGNAL(signal);
+  jamEntryDebug();
+
+  if (scanIPC(signal))
   {
-    jam();
-    scanningInProgress = true;
-    signal->theData[0] = NdbfsContinueB::ZSCAN_MEMORYCHANNEL_NO_DELAY;
-    sendSignal(reference(), GSN_CONTINUEB, signal, 1, JBB);
+    if (scanningInProgress == false)
+    {
+      jam();
+      scanningInProgress = true;
+      signal->theData[0] = NdbfsContinueB::ZSCAN_MEMORYCHANNEL_NO_DELAY;
+      sendSignal(reference(), GSN_CONTINUEB, signal, 1, JBB);
+    }
+    signal->theData[0] = 1;
+    return;
   }
+  if (scanningInProgress == false)
+    signal->theData[0] = 0;
+  else
+    signal->theData[0] = 1;
 }
 
 void
 Ndbfs::execDUMP_STATE_ORD(Signal* signal)
 {
+  LOCAL_SIGNAL(signal);
+  jamEntry();
   if(signal->theData[0] == 19){
     return;
   }
@@ -1596,10 +1904,10 @@ Ndbfs::execDUMP_STATE_ORD(Signal* signal)
     
     for (unsigned i = 0; i < theOpenFiles.size(); i++){
       AsyncFile* file = theOpenFiles.getFile(i);
-      infoEvent("%2d (0x%lx): %s thr: %lx", i,
-                (long)file,
+      infoEvent("%2d (%p): %s thr: %p", i,
+                file,
                 file->theFileName.c_str(),
-                (long)file->getThread());
+                file->getThread());
     }
     return;
   }
@@ -1608,7 +1916,7 @@ Ndbfs::execDUMP_STATE_ORD(Signal* signal)
     
     for (unsigned i = 0; i < theFiles.size(); i++){
       AsyncFile* file = theFiles[i];
-      infoEvent("%2d (0x%lx): %s", i, (long)file, file->isOpen()?"OPEN":"CLOSED");
+      infoEvent("%2d (%p): %s", i, file, file->isOpen()?"OPEN":"CLOSED");
     }
     return;
   }
@@ -1618,11 +1926,44 @@ Ndbfs::execDUMP_STATE_ORD(Signal* signal)
 
     for (unsigned i = 0; i < theIdleFiles.size(); i++){
       AsyncFile* file = theIdleFiles[i];
-      infoEvent("%2d (0x%lx): %s", i, (long)file, file->isOpen()?"OPEN":"CLOSED");
+      infoEvent("%2d (%p): %s", i, file, file->isOpen()?"OPEN":"CLOSED");
     }
 
     return;
   }
+  if(signal->theData[0] == DumpStateOrd::NdbfsDumpRequests)
+  {
+    g_eventLogger->info("NDBFS: Dump requests: %u",
+                        theRequestPool->inuse());
+    for (unsigned ridx=0; ridx < theRequestPool->inuse(); ridx++)
+    {
+      const Request* req = theRequestPool->peekInuseItem(ridx);
+      Uint64 duration = 0;
+
+      if (NdbTick_IsValid(req->m_startTime))
+      {
+        duration = NdbTick_Elapsed(req->m_startTime,
+                                   getHighResTimer()).microSec();
+      }
+
+      g_eventLogger->info("Request %u action %u %s userRef 0x%x "
+                          "userPtr %u filePtr %u bind %u "
+                          "duration(us) %llu filename %s",
+                          ridx,
+                          req->action,
+                          Request::actionName(req->action),
+                          req->theUserReference,
+                          req->theUserPointer,
+                          req->theFilePointer,
+                          req->m_do_bind,
+                          duration,
+                          (req->file?
+                           req->file->theFileName.c_str():
+                           "NO FILE"));
+    }
+    return;
+  }
+
 
   if(signal->theData[0] == 404)
   {
@@ -1631,7 +1972,7 @@ Ndbfs::execDUMP_STATE_ORD(Signal* signal)
     Uint32 file= signal->theData[1];
     AsyncFile* openFile = theOpenFiles.find(file);
     ndbrequire(openFile != 0);
-    ndbout_c("File: %s %p", openFile->theFileName.c_str(), openFile);
+    g_eventLogger->info("File: %s %p", openFile->theFileName.c_str(), openFile);
     Request* curr = openFile->m_current_request;
     Request* last = openFile->m_last_request;
     if(curr)
@@ -1645,7 +1986,7 @@ Ndbfs::execDUMP_STATE_ORD(Signal* signal)
     ndbout << "All files: " << endl;
     for (unsigned i = 0; i < theFiles.size(); i++){
       AsyncFile* file = theFiles[i];
-      ndbout_c("%2d (0x%lx): %s", i, (long) file, file->isOpen()?"OPEN":"CLOSED");
+      ndbout_c("%2d (%p): %s", i, file, file->isOpen()?"OPEN":"CLOSED");
     }
 #endif
   }
@@ -1657,10 +1998,10 @@ Ndbfs::execDUMP_STATE_ORD(Signal* signal)
       AsyncFile* file = theFiles[i];
       if (file == 0)
         continue;
-      ndbout_c("%u : %s %s fileInfo=%08x", i,
-               file->theFileName.c_str() ? file->theFileName.c_str() : "",
-               file->isOpen() ? "OPEN" : "CLOSED",
-               file->get_fileinfo());
+      g_eventLogger->info(
+          "%u : %s %s", i,
+          file->theFileName.c_str() ? file->theFileName.c_str() : "",
+          file->isOpen() ? "OPEN" : "CLOSED");
     }
   }
 }//Ndbfs::execDUMP_STATE_ORD()
@@ -1675,6 +2016,160 @@ Ndbfs::get_filename(Uint32 fd) const
   return "";
 }
 
+void Ndbfs::callFSWRITEREQ(BlockReference ref, FsReadWriteReq* req) const
+{
+  Uint32 block = refToMain(ref);
+  Uint32 instance = refToInstance(ref);
+
+  SimulatedBlock* main_block = globalData.getBlock(block);
+  ndbrequire(main_block != nullptr);
+  ndbrequire(instance < NDBMT_MAX_BLOCK_INSTANCES);
+  SimulatedBlock* rec_block = main_block->getInstance(instance);
+  ndbrequire(rec_block != nullptr);
+  switch (block)
+  {
+  case DBLQH:
+    static_cast<Dblqh*>(rec_block)->execFSWRITEREQ(req);
+    break;
+  case TSMAN:
+    static_cast<Tsman*>(rec_block)->execFSWRITEREQ(req);
+    break;
+  case LGMAN:
+    static_cast<Lgman*>(rec_block)->execFSWRITEREQ(req);
+    break;
+  default:
+    ndbabort();
+  }
+}
+
+#if defined(VM_TRACE) || defined(ERROR_INSERT) || !defined(NDEBUG)
+extern const char * ndb_basename(const char *path);
+
+static bool check_for_expected_errors(GlobalSignalNumber gsn, AsyncFile* file,
+                                      int error_code)
+{
+  if (gsn == GSN_FSOPENREF && error_code == FsRef::fsErrFileDoesNotExist)
+  {
+    const char* name = file->theFileName.get_base_name();
+    const char* endp = name + strlen(name);
+    size_t len = endp - name;
+    if (file->theFileName.get_base_path_spec() == FsOpenReq::BP_FS)
+    {
+      // LCP/0/T1F0.ctl
+      if (len >= 14 && strncmp(name, "LCP", 3) == 0 &&
+          strncmp(endp - 3, "ctl", 3) == 0)
+      {
+        return true;
+      }
+      // D1/DBDIH/P0.sysfile, D1/NDBCNTR/P0.sysfile
+      if (len >= 19 && strncmp(endp - 7, "sysfile", 7) == 0)
+      {
+        return true;
+      }
+      // D1/DBDIH/S1.FragList
+      if (len >= 20 && strncmp(endp - 8, "FragList", 8) == 0)
+      {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+void Ndbfs::log_file_error(GlobalSignalNumber gsn, AsyncFile* file,
+                           Request* request, FsRef* fsRef)
+{
+  const char* req_file = nullptr;
+  const char* req_func = nullptr;
+  int req_line = 0;
+  int req_code = 0;
+  if (request != nullptr)
+  {
+    req_file = ndb_basename(request->error.file);
+    req_func = request->error.func;
+    req_line = request->error.line;
+    req_code = request->error.code;
+    if (file == nullptr) file = request->file;
+  }
+  const char* file_name = nullptr;
+  unsigned file_bp = FsOpenReq::BP_MAX;
+  if (file != nullptr)
+  {
+    file_bp = file->theFileName.get_base_path_spec();
+    file_name = file->theFileName.get_base_name();
+  }
+  const char* signal_name = getSignalName(gsn);
+  /*
+   * Suppress common expected errors.
+   *
+   * TODO:
+   * Add information in request about what failures requester expects
+   * and use that information to only log if unexpected errors occur.
+   * Make message an error message and enable function also in release build.
+   */
+  bool expected_error = check_for_expected_errors(gsn, file, fsRef->errorCode);
+  if (!expected_error)
+  {
+    g_eventLogger->info("(debug) NDBFS: signal %s %d %d: file %u %s: "
+                        "request error %s %u %s %d",
+                        signal_name, fsRef->errorCode, fsRef->osErrorCode,
+                        file_bp, file_name, req_file, req_line, req_func,
+                        req_code);
+#if defined(VM_TRACE) || defined(ERROR_INSERT)
+    if (gsn == GSN_FSOPENREF &&
+        file != nullptr &&
+        file->theFileName.get_base_path_spec() == FsOpenReq::BP_BACKUP &&
+        fsRef->errorCode == FsRef::fsErrFileExists)
+    {
+      // propagate error to end user
+    }
+    else if (gsn == GSN_FSOPENREF &&
+             file_name != nullptr &&
+             (strstr(file_name, "tmp/t1.dat") ||
+              strstr(file_name, "tmp\\t1.dat")) &&
+             fsRef->errorCode == FsRef::fsErrFileExists)
+    {
+      // test ndb.ndb_dd_ddl create undofile, datafile, with already existing file
+    }
+    else if (gsn == GSN_FSOPENREF &&
+             file_name != nullptr &&
+             (strstr(file_name, "tmp/t1.dat") ||
+              strstr(file_name, "tmp\\t1.dat")) &&
+             fsRef->errorCode == FsRef::fsErrFileDoesNotExist)
+    {
+      // test ndb.ndb_dd_ddl create undofile, datafile - fail in windows
+    }
+    else if (gsn == GSN_FSOPENREF &&
+             file != nullptr &&
+             strstr(file_name, "FragLog"))
+    {
+      // D11/DBLQH/S2.FragLog
+    }
+    else if (gsn == GSN_FSOPENREF &&
+             file != nullptr &&
+             strstr(file_name, ".Data"))
+    {
+      // LCP/0/T10F1.Data does not exist FsRef::fsErrFileDoesNotExist(2815)
+    }
+    else if (gsn == GSN_FSREADREF &&
+             fsRef->errorCode == FsRef::fsErrReadUnderflow &&
+             file != nullptr &&
+             strstr(file_name, ".FragList"))
+    {
+      // OM_READWRITE existing: D1/DBDIH/S17.FragList - disk full?
+    }
+    else
+    {
+      ndbabort(); // Unexpected error?
+    }
+#endif
+  }
+}
+#else
+void Ndbfs::log_file_error(GlobalSignalNumber gsn, AsyncFile* file,
+                           Request* request, FsRef* fsRef)
+{}
+#endif
 
 BLOCK_FUNCTIONS(Ndbfs)
 

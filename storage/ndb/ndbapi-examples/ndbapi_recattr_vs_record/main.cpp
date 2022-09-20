@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2008, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2008, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -503,7 +503,7 @@ static void do_update(Ndb &myNdb, ApiType accessType)
   }
 
   std::cout << "-------\n";
-};
+}
   
 /*************************************************
  * Delete one tuple (the one with primary key 3) *
@@ -637,8 +637,8 @@ static void do_read(Ndb &myNdb, ApiType accessType)
     if (myTransaction == NULL) APIERROR(myNdb.getNdbError());
 
     RowData rowData;
-    NdbRecAttr *myRecAttr;
-    NdbRecAttr *myRecAttr2;
+    NdbRecAttr *myRecAttr = nullptr;
+    NdbRecAttr *myRecAttr2 = nullptr;
     
     switch (accessType)
     {
@@ -826,9 +826,9 @@ static void do_scan(Ndb &myNdb, ApiType accessType)
   if (myTransaction == NULL) APIERROR(myNdb.getNdbError());
 
   NdbScanOperation *psop;
-  NdbRecAttr *recAttrAttr1;
-  NdbRecAttr *recAttrAttr2;
-  NdbRecAttr *recAttrAttr3;
+  NdbRecAttr *recAttrAttr1 = nullptr;
+  NdbRecAttr *recAttrAttr2 = nullptr;
+  NdbRecAttr *recAttrAttr3 = nullptr;
 
   switch (accessType)
   {
@@ -887,8 +887,8 @@ static void do_scan(Ndb &myNdb, ApiType accessType)
   }
   case api_record :
   {
-    RowData *prowData; // Ptr to point to our data
-    
+    const RowData *prowData; // Ptr to point to our data
+
     int rc=0;
     
     /* Ask nextResult to update out ptr to point to the next 
@@ -969,7 +969,7 @@ static void do_mixed_scan(Ndb &myNdb)
   if(myTransaction->execute( NdbTransaction::NoCommit ) != 0)
     APIERROR(myTransaction->getNdbError());
    
-  RowData *prowData; // Ptr to point to our data
+  const RowData *prowData; // Ptr to point to our data
 
   int rc=0;
 
@@ -1018,9 +1018,9 @@ static void do_indexScan(Ndb &myNdb, ApiType accessType)
   NdbIndexScanOperation *psop;
   
   /* RecAttrs for NdbRecAttr Api */
-  NdbRecAttr *recAttrAttr1;
-  NdbRecAttr *recAttrAttr2;
-  NdbRecAttr *recAttrAttr3;
+  NdbRecAttr *recAttrAttr1 = nullptr;
+  NdbRecAttr *recAttrAttr2 = nullptr;
+  NdbRecAttr *recAttrAttr3 = nullptr;
 
   switch (accessType)
   {
@@ -1175,7 +1175,7 @@ static void do_indexScan(Ndb &myNdb, ApiType accessType)
     }
     case api_record :
     {
-      RowData *prowData; // Ptr to point to our data
+      const RowData *prowData; // Ptr to point to our data
 
       int rc=0;
 
@@ -1310,7 +1310,7 @@ static void do_mixed_indexScan(Ndb &myNdb)
     APIERROR(myTransaction->getNdbError());
     
 
-  RowData *prowData; // Ptr to point to our data
+  const RowData *prowData; // Ptr to point to our data
 
   int rc=0;
 
@@ -1423,9 +1423,9 @@ static void do_scan_update(Ndb &myNdb, ApiType accessType)
   if (myTransaction == NULL) APIERROR(myNdb.getNdbError());
 
   NdbScanOperation *psop;
-  NdbRecAttr *recAttrAttr1;
-  NdbRecAttr *recAttrAttr2;
-  NdbRecAttr *recAttrAttr3;
+  NdbRecAttr *recAttrAttr1 = nullptr;
+  NdbRecAttr *recAttrAttr2 = nullptr;
+  NdbRecAttr *recAttrAttr3 = nullptr;
 
   switch (accessType)
   {
@@ -1518,7 +1518,7 @@ static void do_scan_update(Ndb &myNdb, ApiType accessType)
     }
     case api_record :
     {
-      RowData *prowData; // Ptr to point to our data
+      const RowData *prowData; // Ptr to point to our data
 
       int result= NEED_TO_FETCH_ROWS;
       Uint32 processed=0;
@@ -1601,7 +1601,7 @@ static void do_scan_delete(Ndb &myNdb, ApiType accessType)
   if (myTransaction == NULL) APIERROR(myNdb.getNdbError());
 
   NdbScanOperation *psop;
-  NdbRecAttr *recAttrAttr1;
+  NdbRecAttr *recAttrAttr1 = nullptr;
 
   /* Scan, retrieving first column.
    * Delete particular records, based on first column
@@ -1701,7 +1701,7 @@ static void do_scan_delete(Ndb &myNdb, ApiType accessType)
     }
     case api_record :
     {
-      RowData *prowData; // Ptr to point to our data
+      const RowData *prowData; // Ptr to point to our data
 
       int result= NEED_TO_FETCH_ROWS;
       Uint32 processed=0;
@@ -1712,8 +1712,8 @@ static void do_scan_delete(Ndb &myNdb, ApiType accessType)
         
         const NdbOperation* theDeleteOp;
         RowData readRow;
-        NdbRecAttr* attr3;
-        NdbRecAttr* commitCount;
+        NdbRecAttr* attr3 = nullptr;
+        NdbRecAttr* commitCount = nullptr;
 
         while ((result = psop->nextResult((const char**) &prowData, 
                                           fetch,
@@ -1830,7 +1830,7 @@ static void do_scan_lock_reread(Ndb &myNdb, ApiType accessType)
   if (myTransaction == NULL) APIERROR(myNdb.getNdbError());
 
   NdbScanOperation *psop;
-  NdbRecAttr *recAttrAttr1;
+  NdbRecAttr *recAttrAttr1 = nullptr;
 
   switch (accessType)
   {
@@ -1882,7 +1882,10 @@ static void do_scan_lock_reread(Ndb &myNdb, ApiType accessType)
     {
       int result= NEED_TO_FETCH_ROWS;
       Uint32 processed=0;
-      NdbRecAttr *attr1, *attr2, *attr3, *commitCount;
+      NdbRecAttr *attr1 = nullptr;
+      NdbRecAttr *attr2 = nullptr;
+      NdbRecAttr *attr3 = nullptr;
+      NdbRecAttr *commitCount = nullptr;
 
       while (result == NEED_TO_FETCH_ROWS)
       {
@@ -1936,12 +1939,13 @@ static void do_scan_lock_reread(Ndb &myNdb, ApiType accessType)
     }
     case api_record :
     {
-      RowData *prowData; // Ptr to point to our data
+      const RowData *prowData; // Ptr to point to our data
 
       int result= NEED_TO_FETCH_ROWS;
       Uint32 processed=0;
       RowData rereadData;
-      NdbRecAttr *attr3, *commitCount;
+      NdbRecAttr *attr3 = nullptr;
+      NdbRecAttr *commitCount = nullptr;
 
       while (result == NEED_TO_FETCH_ROWS)
       {
@@ -2143,9 +2147,9 @@ static void do_secondary_indexScan(Ndb &myNdb, ApiType accessType)
   if (myTransaction == NULL) APIERROR(myNdb.getNdbError());
 
   NdbIndexScanOperation *psop;
-  NdbRecAttr *recAttrAttr1;
-  NdbRecAttr *recAttrAttr2;
-  NdbRecAttr *recAttrAttr3;
+  NdbRecAttr *recAttrAttr1 = nullptr;
+  NdbRecAttr *recAttrAttr2 = nullptr;
+  NdbRecAttr *recAttrAttr3 = nullptr;
 
   Uint32 scanFlags = 
     NdbScanOperation::SF_OrderBy |
@@ -2256,7 +2260,7 @@ static void do_secondary_indexScan(Ndb &myNdb, ApiType accessType)
     }
     case api_record :
     {
-      RowData *prowData; // Ptr to point to our data
+      const RowData *prowData; // Ptr to point to our data
 
       int rc=0;
 
@@ -2309,9 +2313,9 @@ static void do_secondary_indexScanEqual(Ndb &myNdb, ApiType accessType)
   if (myTransaction == NULL) APIERROR(myNdb.getNdbError());
 
   NdbIndexScanOperation *psop;
-  NdbRecAttr *recAttrAttr1;
-  NdbRecAttr *recAttrAttr2;
-  NdbRecAttr *recAttrAttr3;
+  NdbRecAttr *recAttrAttr1 = nullptr;
+  NdbRecAttr *recAttrAttr2 = nullptr;
+  NdbRecAttr *recAttrAttr3 = nullptr;
 
   Uint32 scanFlags = NdbScanOperation::SF_OrderBy; 
 
@@ -2409,7 +2413,7 @@ static void do_secondary_indexScanEqual(Ndb &myNdb, ApiType accessType)
     }
     case api_record :
     {
-      RowData *prowData; // Ptr to point to our data
+      const RowData *prowData; // Ptr to point to our data
 
       int rc=0;
 
@@ -2468,12 +2472,12 @@ static void do_interpreted_update(Ndb &myNdb, ApiType accessType)
   NdbTransaction *myTransaction=myNdb.startTransaction();
   if (myTransaction == NULL) APIERROR(myNdb.getNdbError());
 
-  NdbRecAttr *recAttrAttr1;
-  NdbRecAttr *recAttrAttr2;
-  NdbRecAttr *recAttrAttr3;
-  NdbRecAttr *recAttrAttr11;
-  NdbRecAttr *recAttrAttr12;
-  NdbRecAttr *recAttrAttr13;
+  NdbRecAttr *recAttrAttr1 = nullptr;
+  NdbRecAttr *recAttrAttr2 = nullptr;
+  NdbRecAttr *recAttrAttr3 = nullptr;
+  NdbRecAttr *recAttrAttr11 = nullptr;
+  NdbRecAttr *recAttrAttr12 = nullptr;
+  NdbRecAttr *recAttrAttr13 = nullptr;
   RowData rowData;
   RowData rowData2;
 
@@ -2996,9 +3000,9 @@ static void do_interpreted_scan(Ndb &myNdb, ApiType accessType)
   if (myTransaction == NULL) APIERROR(myNdb.getNdbError());
 
   NdbScanOperation *psop;
-  NdbRecAttr *recAttrAttr1;
-  NdbRecAttr *recAttrAttr2;
-  NdbRecAttr *recAttrAttr3;
+  NdbRecAttr *recAttrAttr1 = nullptr;
+  NdbRecAttr *recAttrAttr2 = nullptr;
+  NdbRecAttr *recAttrAttr3 = nullptr;
 
   /* Create some space on the stack for the program */
   const Uint32 numWords= 64;
@@ -3102,7 +3106,7 @@ static void do_interpreted_scan(Ndb &myNdb, ApiType accessType)
     }
     case api_record :
     {
-      RowData *prowData; // Ptr to point to our data
+      const RowData *prowData; // Ptr to point to our data
 
       int rc=0;
 

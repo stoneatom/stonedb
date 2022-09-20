@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -26,6 +26,8 @@
 #define Logger_H
 
 #include <ndb_global.h>
+#include "portlib/ndb_compiler.h"
+#include <time.h>
 #include <BaseString.hpp>
 #include <NdbOut.hpp>
 
@@ -172,7 +174,9 @@ public:
    *
    * @return true if successful.
    */
+#ifdef _WIN32
   bool createEventLogHandler(const char* source_name);
+#endif
 
   /**
    * Create a default handler which writes to the specified file name.
@@ -255,7 +259,7 @@ public:
    */
   virtual void alert(const char* pMsg, ...) const
     ATTRIBUTE_FORMAT(printf, 2, 3);
-  virtual void alert(BaseString &pMsg) const { alert("%s", pMsg.c_str()); };
+  virtual void alert(BaseString &pMsg) const { alert("%s", pMsg.c_str()); }
   
   /**
    * Log a critical message.
@@ -264,7 +268,7 @@ public:
    */
   virtual void critical(const char* pMsg, ...) const
     ATTRIBUTE_FORMAT(printf, 2, 3);
-  virtual void critical(BaseString &pMsg) const { critical("%s", pMsg.c_str()); };
+  virtual void critical(BaseString &pMsg) const { critical("%s", pMsg.c_str()); }
 
   /**
    * Log an error message.
@@ -273,7 +277,7 @@ public:
    */
   virtual void error(const char* pMsg, ...) const
     ATTRIBUTE_FORMAT(printf, 2, 3);
-  virtual void error(BaseString &pMsg) const { error("%s", pMsg.c_str()); };
+  virtual void error(BaseString &pMsg) const { error("%s", pMsg.c_str()); }
 
   /**
    * Log a warning message.
@@ -282,7 +286,7 @@ public:
    */
   virtual void warning(const char* pMsg, ...) const
     ATTRIBUTE_FORMAT(printf, 2, 3);
-  virtual void warning(BaseString &pMsg) const { warning("%s", pMsg.c_str()); };
+  virtual void warning(BaseString &pMsg) const { warning("%s", pMsg.c_str()); }
 
   /**
    * Log an info message.
@@ -291,7 +295,7 @@ public:
    */
   virtual void info(const char* pMsg, ...) const
     ATTRIBUTE_FORMAT(printf, 2, 3);
-  virtual void info(BaseString &pMsg) const { info("%s", pMsg.c_str()); };
+  virtual void info(BaseString &pMsg) const { info("%s", pMsg.c_str()); }
 
   /**
    * Log a debug message.
@@ -300,7 +304,7 @@ public:
    */
   virtual void debug(const char* pMsg, ...) const
     ATTRIBUTE_FORMAT(printf, 2, 3);
-  virtual void debug(BaseString &pMsg) const { debug("%s", pMsg.c_str()); };
+  virtual void debug(BaseString &pMsg) const { debug("%s", pMsg.c_str()); }
 
   /*
    * Set repeat frequency, 0 means disable special repeated message handling
@@ -311,7 +315,8 @@ protected:
 
   NdbMutex *m_mutex;
 
-  void log(LoggerLevel logLevel, const char* msg, va_list ap) const;
+  void log(LoggerLevel logLevel, const char* msg, va_list ap) const
+    ATTRIBUTE_FORMAT(printf, 3, 0);
 
 private:
   /** Prohibit */
@@ -319,7 +324,7 @@ private:
   Logger operator = (const Logger&);
   bool operator == (const Logger&);
 
-  STATIC_CONST( MAX_LOG_LEVELS = 8 );
+  static constexpr Uint32 MAX_LOG_LEVELS = 8;
 
   bool m_logLevels[MAX_LOG_LEVELS];
   

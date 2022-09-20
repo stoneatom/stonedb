@@ -94,10 +94,11 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
       uint pack_prefix;
       if (types::RequiresUTFConversions(d.GetCollation())) {
         my_match_t mm;
-        if (d.GetCollation().collation->coll->instr(d.GetCollation().collation, pat.val, pat.len, "%", 1, &mm, 1) == 2)
+        // stonedb8 instr() -> strstr()
+        if (d.GetCollation().collation->coll->strstr(d.GetCollation().collation, pat.val, pat.len, "%", 1, &mm, 1) == 2)
           pattern_prefix = pattern_fixed_prefix = mm.end;
-
-        if (d.GetCollation().collation->coll->instr(d.GetCollation().collation, pat.val, pat.len, "_", 1, &mm, 1) == 2)
+        // stonedb8
+        if (d.GetCollation().collation->coll->strstr(d.GetCollation().collation, pat.val, pat.len, "_", 1, &mm, 1) == 2)
           if (mm.end < pattern_fixed_prefix) pattern_fixed_prefix = mm.end;
 
         if ((pattern_fixed_prefix > 0) &&

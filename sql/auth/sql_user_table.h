@@ -1,4 +1,4 @@
-/* Copyright (c) 2000, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2000, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -17,48 +17,65 @@
    GNU General Public License, version 2.0, for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   51 Franklin Street, Suite 500, Boston, MA 02110-1335 USA */
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 #ifndef SQL_USER_TABLE_INCLUDED
 #define SQL_USER_TABLE_INCLUDED
 
-#include "log.h"                        /* error_log_print */
+#include "my_loglevel.h"                 // loglevel
+#include "sql/sql_system_table_check.h"  // System_table_intact
 
-extern const TABLE_FIELD_DEF mysql_db_table_def;
-extern const TABLE_FIELD_DEF mysql_user_table_def;
-extern const TABLE_FIELD_DEF mysql_proxies_priv_table_def;
-extern const TABLE_FIELD_DEF mysql_procs_priv_table_def;
-extern const TABLE_FIELD_DEF mysql_columns_priv_table_def;
-extern const TABLE_FIELD_DEF mysql_tables_priv_table_def;
+class THD;
+
+/**
+  Enum for ACL tables.
+  Keep in sync with Acl_table_names
+*/
+typedef enum ACL_TABLES {
+  TABLE_USER = 0,
+  TABLE_DB,
+  TABLE_TABLES_PRIV,
+  TABLE_COLUMNS_PRIV,
+  TABLE_PROCS_PRIV,
+  TABLE_PROXIES_PRIV,
+  TABLE_ROLE_EDGES,
+  TABLE_DEFAULT_ROLES,
+  TABLE_DYNAMIC_PRIV,
+  TABLE_PASSWORD_HISTORY,
+  LAST_ENTRY /* Must always be at the end */
+} ACL_TABLES;
 
 /**
   Class to validate the flawlessness of ACL table
   before performing ACL operations.
 */
-class Acl_table_intact : public Table_check_intact
-{
-protected:
-  void report_error(uint code, const char *fmt, ...)
-  {
-    va_list args;
-    va_start(args, fmt);
+class Acl_table_intact : public System_table_intact {
+ public:
+  Acl_table_intact(THD *c_thd, enum loglevel log_level = ERROR_LEVEL)
+      : System_table_intact(c_thd, log_level) {}
 
-    if (code == 0)
-      error_log_print(WARNING_LEVEL, fmt, args);
-    else if (code == ER_CANNOT_LOAD_FROM_TABLE_V2)
-    {
-      char *db_name, *table_name;
-      db_name=  va_arg(args, char *);
-      table_name= va_arg(args, char *);
-      my_error(code, MYF(ME_ERRORLOG), db_name, table_name);
-    }
-    else
-      my_printv_error(code, ER(code), MYF(ME_ERRORLOG), args);
+  /**
+    Checks whether an ACL table is intact.
 
-    va_end(args);
+    Works in conjunction with @ref mysql_acl_table_defs and
+    Table_check_intact::check()
+
+    @param table Table to check.
+    @param acl_table ACL Table "id"
+
+    @retval  false  OK
+    @retval  true   There was an error.
+  */
+  bool check(TABLE *table, ACL_TABLES acl_table) {
+    return Table_check_intact::check(thd(), table,
+                                     &(mysql_acl_table_defs[acl_table]));
   }
-public:
-  Acl_table_intact() { has_keys= TRUE; }
+
+ private:
+  static const TABLE_FIELD_DEF mysql_acl_table_defs[];
 };
+
+int handle_grant_table(THD *, TABLE_LIST *tables, ACL_TABLES table_no,
+                       bool drop, LEX_USER *user_from, LEX_USER *user_to);
 
 #endif /* SQL_USER_TABLE_INCLUDED */

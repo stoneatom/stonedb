@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2004, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2004, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -22,32 +22,44 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
+/*
+ * !! DO NOT ADD ANYTHING TO THIS FILE !!
+ *
+ * Header files should be included in source files that needs them.
+ * That is, follow IWYU (include-what-you-use).
+ *
+ * New symbols should be added in other relevant header files.
+ */
+
 #ifndef NDB_GLOBAL_H
 #define NDB_GLOBAL_H
 
-#ifdef _WIN32
-/* Workaround for Bug#32082: VOID refdefinition results in compile errors */
-#ifndef DONT_DEFINE_VOID
-#define DONT_DEFINE_VOID
-#endif
-#endif
-
-#include <my_global.h>
+#include <assert.h>
+#include <errno.h>
+#include <math.h>
+#include <stddef.h>
+#include <stdio.h>
+#include "my_dbug.h"
+#include "my_inttypes.h"
+#include <mysql/service_mysql_alloc.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#ifdef HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
-#ifdef _WIN32
-#include <process.h>
-#endif
 
-#if defined __GNUC__
-# define ATTRIBUTE_FORMAT(style, m, n) __attribute__((format(style, m, n)))
-#else
-# define ATTRIBUTE_FORMAT(style, m, n)
-#endif
+/*
+  Custom version of standard offsetof() macro which can be used to get
+  offsets of members in class for non-POD types (according to the current
+  version of C++ standard offsetof() macro can't be used in such cases and
+  attempt to do so causes warnings to be emitted, OTOH in many cases it is
+  still OK to assume that all instances of the class has the same offsets
+  for the same members).
+
+  This is temporary solution which should be removed once File_parser class
+  and related routines are refactored.
+*/
+
+#define my_offsetof(TYPE, MEMBER) \
+        ((size_t)((char *)&(((TYPE *)0x10)->MEMBER) - (char*)0x10))
 
 #ifdef HAVE_NDB_CONFIG_H
 #include "ndb_config.h"
@@ -61,20 +73,19 @@
 #define NDB_PORT 1186
 #endif
 
-#if defined(_WIN32)
-#define NDB_WIN32 1
-#define NDB_WIN 1
-#define PATH_MAX 256
+#ifdef _WIN32
 #define DIR_SEPARATOR "\\"
+#else
+#define DIR_SEPARATOR "/"
+#endif
+
+#if defined(_WIN32)
+#define PATH_MAX 256
 
 /* Disable a few compiler warnings on Windows */
 /* 4355: 'this': used in base member initializer list */
 #pragma warning(disable: 4355)
 
-#else
-#undef NDB_WIN32
-#undef NDB_WIN
-#define DIR_SEPARATOR "/"
 #endif
 
 #if ! (NDB_SIZEOF_CHAR == SIZEOF_CHAR)
@@ -94,35 +105,10 @@
 #ifdef _AIX
 #undef _H_STRINGS
 #endif
-#include <m_string.h>
-
-#ifndef NDB_REMOVE_BZERO
-/*
-  Make it possible to use bzero in NDB although
-  MySQL headers redefines it to an invalid symbol
-*/
-#ifdef bzero
-#undef bzero
-#endif
-
-#ifdef HAVE_STRINGS_H
-#include <strings.h>
-#endif
-
-#if !defined(bzero) && !defined(HAVE_BZERO)
-#define bzero(A,B) memset((A),0,(B))
-#endif
-#endif
-
-#include <m_ctype.h>
-#include <ctype.h>
+#include "m_string.h"
 
 #ifdef HAVE_STDARG_H
 #include <stdarg.h>
-#endif
-
-#ifdef TIME_WITH_SYS_TIME
-#include <time.h>
 #endif
 
 #ifdef HAVE_FCNTL_H
@@ -147,26 +133,20 @@
 #include <sys/mman.h>
 #endif
 
-#ifndef HAVE_STRDUP
-extern char * strdup(const char *s);
-#endif
-
 static const char table_name_separator =  '/';
-
-#if defined(_AIX) || defined(WIN32) || defined(NDB_VC98)
-#define STATIC_CONST(x) enum { x }
-#else
-#define STATIC_CONST(x) static const Uint32 x
-#endif
 
 #ifdef  __cplusplus
 extern "C" {
 #endif
 	
-#include <assert.h>
+
 
 #ifdef  __cplusplus
 }
+#endif
+
+#ifdef  __cplusplus
+#include <new>
 #endif
 
 #include "ndb_init.h"
@@ -197,60 +177,13 @@ extern "C" {
 #endif
 
 #define NDB_O_DIRECT_WRITE_ALIGNMENT 512
-
-#ifndef STATIC_ASSERT
-#if defined VM_TRACE
-/**
- * Compile-time assert for use from procedure body
- * Zero length array not allowed in C
- * Add use of array to avoid compiler warning
- */
-#define STATIC_ASSERT(expr) { char a_static_assert[(expr)? 1 : 0] = {'\0'}; if (a_static_assert[0]) {}; }
-#else
-#define STATIC_ASSERT(expr)
-#endif
-#endif
+#define NDB_O_DIRECT_WRITE_BLOCKSIZE 4096
 
 #define NDB_ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
-
-/*
-  NDB_STATIC_ASSERT(expr)
-   - Check coding assumptions during compile time
-     by laying out code that will generate a compiler error
-     if the expression is false.
-*/
-
-#if (_MSC_VER > 1500) || (defined __GXX_EXPERIMENTAL_CXX0X__)
-
-/*
-  Prefer to use the 'static_assert' function from C++0x
-  to get best error message
-*/
-#define NDB_STATIC_ASSERT(expr) static_assert(expr, #expr)
-
-#else
-
-/*
-  Fallback to use home grown solution
-  (i.e use mysys version)
-*/
-
-#define NDB_STATIC_ASSERT(expr) compile_time_assert(expr)
-
-#endif
-
-
-#if (_MSC_VER > 1500)
+#if defined(_WIN32) && (_MSC_VER > 1500)
 #define HAVE___HAS_TRIVIAL_CONSTRUCTOR
 #define HAVE___IS_POD
-#endif
-
-#ifdef HAVE___HAS_TRIVIAL_CONSTRUCTOR
-#define ASSERT_TYPE_HAS_CONSTRUCTOR(x)     \
-  NDB_STATIC_ASSERT(!__has_trivial_constructor(x))
-#else
-#define ASSERT_TYPE_HAS_CONSTRUCTOR(x)
 #endif
 
 /**
@@ -261,27 +194,9 @@ extern "C" {
  */
 #ifdef HAVE___HAS_TRIVIAL_CONSTRUCTOR
 #define NDB_ASSERT_POD(x) \
-  NDB_STATIC_ASSERT(__has_trivial_constructor(x))
+  static_assert(__has_trivial_constructor(x))
 #else
 #define NDB_ASSERT_POD(x)
-#endif
-
-/**
- *  __attribute__((noreturn)) was introduce in gcc 2.5
- */
-#if (GCC_VERSION >= 2005)
-#define ATTRIBUTE_NORETURN __attribute__((noreturn))
-#else
-#define ATTRIBUTE_NORETURN
-#endif
-
-/**
- *  __attribute__((noinline)) was introduce in gcc 3.1
- */
-#if (GCC_VERSION >= 3001)
-#define ATTRIBUTE_NOINLINE __attribute__((noinline))
-#else
-#define ATTRIBUTE_NOINLINE
 #endif
 
 /**
@@ -296,41 +211,10 @@ extern "C" {
  */
 #define NDB_CL_PADSZ(x) (NDB_CL - ((x) % NDB_CL))
 
-/*
- * require is like a normal assert, only it's always on (eg. in release)
- */
-C_MODE_START
-/** see below */
-typedef int(*RequirePrinter)(const char *fmt, ...);
-void require_failed(int exitcode, RequirePrinter p,
-                    const char* expr, const char* file, int line)
-                    ATTRIBUTE_NORETURN;
-int ndbout_printer(const char * fmt, ...);
-C_MODE_END
-/*
- *  this allows for an exit() call if exitcode is not zero
- *  and takes a Printer to print the error
- */
-#define require_exit_or_core_with_printer(v, exitcode, printer) \
-  do { if (likely(!(!(v)))) break;                                    \
-       require_failed((exitcode), (printer), #v, __FILE__, __LINE__); \
-  } while (0)
-
-/*
- *  this allows for an exit() call if exitcode is not zero
-*/
-#define require_exit_or_core(v, exitcode) \
-       require_exit_or_core_with_printer((v), (exitcode), 0)
-
-/*
- * this require is like a normal assert.  (only it's always on)
-*/
-#define require(v) require_exit_or_core_with_printer((v), 0, 0)
-
 struct LinearSectionPtr
 {
   Uint32 sz;
-  Uint32 * p;
+  const Uint32* p;
 };
 
 struct SegmentedSectionPtrPOD
@@ -385,7 +269,7 @@ SegmentedSectionPtrPOD::assign(struct SegmentedSectionPtr& src)
 #ifdef __cplusplus
 struct GenericSectionIterator
 {
-  virtual ~GenericSectionIterator() {};
+  virtual ~GenericSectionIterator() {}
   virtual void reset()=0;
   virtual const Uint32* getNextWords(Uint32& sz)=0;
 };

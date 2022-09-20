@@ -228,10 +228,6 @@ int Engine::Init(uint engine_slot) {
   system::ClearDirectory(cachefolder_path);
 
   m_resourceManager = new system::ResourceManager();
-  
-  //init the tianmu key-value store, aka, rocksdb engine.
-  ha_kvstore_ = new index::KVStore();
-  ha_kvstore_->Init();
 
 #ifdef FUNCTIONS_EXECUTION_TIMES
   fet = new FunctionsExecutionTimes();
@@ -399,7 +395,7 @@ void Engine::EncodeRecord(const std::string &table_path, int tid, Field **field,
     Field *f = field[i];
 
     size_t length;
-    if (f->flags & BLOB_FLAG)
+    if (f->is_flag_set(BLOB_FLAG)) // stonedb8
       length = dynamic_cast<Field_blob *>(f)->get_length();
     else
       length = f->row_pack_length();
@@ -506,7 +502,7 @@ void Engine::EncodeRecord(const std::string &table_path, int tid, Field **field,
         auto saved = my_time.second_part;
         // convert to UTC
         if (!common::IsTimeStampZero(my_time)) {
-          my_bool myb;
+          bool myb;
           my_time_t secs_utc = current_thd->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
           common::GMTSec2GMTTime(&my_time, secs_utc);
         }
@@ -612,7 +608,7 @@ std::shared_ptr<TableOption> Engine::GetTableOption(const std::string &table, TA
 void Engine::CreateTable(const std::string &table, TABLE *form) { RCTable::CreateNew(GetTableOption(table, form)); }
 
 AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
-  bool auto_inc = field.flags & AUTO_INCREMENT_FLAG;
+  bool auto_inc = field.is_flag_set(AUTO_INCREMENT_FLAG);
   if (auto_inc && field.part_of_key.to_ulonglong() == 0) {
     throw common::AutoIncException("AUTO_INCREMENT can be only declared on primary key column!");
   }
@@ -653,7 +649,7 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
     case MYSQL_TYPE_FLOAT:
     case MYSQL_TYPE_DOUBLE:
     case MYSQL_TYPE_LONGLONG:
-      if (field.flags & UNSIGNED_FLAG)
+      if (field.is_flag_set(UNSIGNED_FLAG))
         throw common::UnsupportedDataTypeException("UNSIGNED data types are not supported.");
       [[fallthrough]];
     case MYSQL_TYPE_YEAR:
@@ -676,7 +672,7 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
         DTCollation coll(fstr->charset(), fstr->derivation());
         if (fmt == common::PackFmt::TRIE && types::IsCaseInsensitive(coll)) {
           TIANMU_LOG(LogCtl_Level::ERROR, "TRIE can not work with case-insensitive collation: %s!",
-                      coll.collation->name);
+                      coll.collation->m_coll_name); // stonedb8
           throw common::UnsupportedDataTypeException();
         }
         if (fstr->charset() != &my_charset_bin)
@@ -693,7 +689,7 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
       throw common::UnsupportedDataTypeException();
     }
     case MYSQL_TYPE_NEWDECIMAL: {
-      if (field.flags & UNSIGNED_FLAG)
+      if (field.is_flag_set(UNSIGNED_FLAG))
         throw common::UnsupportedDataTypeException("UNSIGNED data types are not supported.");
       const Field_new_decimal *fnd = ((const Field_new_decimal *)&field);
       if (/*fnd->precision > 0 && */ fnd->precision <= 18 /*&& fnd->dec >= 0*/
@@ -820,7 +816,8 @@ std::vector<AttrInfo> Engine::GetTableAttributesInfo(const std::string &table_pa
 
 void Engine::UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
                                          CHARSET_INFO *cs) {
-  if (source_field->orig_table->s->db_type() == rcbase_hton) {  // do not use table (cont. default values)
+  // stonedb8 start convert orig_table to table, MySQL 8.0 don't have orig_table, idea from ha_innodb.cc:create_table_def
+  if (source_field->table->s->db_type() == rcbase_hton) {  // do not use table (cont. default values)
     char buf_size[256] = {0};
     char buf_ratio[256] = {0};
     uint buf_size_count = 0;
@@ -828,8 +825,9 @@ void Engine::UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *sour
     int64_t sum_c = 0, sum_u = 0;
 
     std::vector<AttrInfo> attr_info =
-        GetTableAttributesInfo(source_field->orig_table->s->path.str, source_field->orig_table->s);
-
+        GetTableAttributesInfo(source_field->table->s->path.str, source_field->table->s);
+  // stonedb8 end
+  
     bool is_unique = false;
     if (source_field_id < (int)attr_info.size()) {
       is_unique = attr_info[source_field_id].actually_unique;
@@ -901,11 +899,11 @@ void Engine::RemoveTx(Transaction *tx) {
 
 Transaction *Engine::CreateTx(THD *thd) {
   // the transaction should be created by owner THD
-  ASSERT(thd->ha_data[m_slot].ha_ptr == NULL, "Nested transaction is not supported!");
+  ASSERT(thd->get_ha_data(tianmu_hton->slot)->ha_ptr == NULL, "Nested transaction is not supported!"); // stonedb8
   ASSERT(current_txn_ == NULL, "Previous transaction is not finished!");
 
   current_txn_ = new Transaction(thd);
-  thd->ha_data[m_slot].ha_ptr = current_txn_;
+  thd->get_ha_data(tianmu_hton->slot)->ha_ptr = current_txn_; // stonedb8
 
   AddTx(current_txn_);
 
@@ -913,18 +911,18 @@ Transaction *Engine::CreateTx(THD *thd) {
 }
 
 Transaction *Engine::GetTx(THD *thd) {
-  if (thd->ha_data[m_slot].ha_ptr == nullptr) return CreateTx(thd);
-  return static_cast<Transaction *>(thd->ha_data[m_slot].ha_ptr);
+  if (thd->get_ha_data(tianmu_hton->slot)->ha_ptr == nullptr) return CreateTx(thd); // stonedb8
+  return static_cast<Transaction *>(thd->get_ha_data(tianmu_hton->slot)->ha_ptr);   // stonedb8
 }
 
 void Engine::ClearTx(THD *thd) {
-  ASSERT(current_txn_ == (Transaction *)thd->ha_data[m_slot].ha_ptr, "Bad transaction");
+  ASSERT(current_txn_ == (Transaction *)thd->get_ha_data(tianmu_hton->slot)->ha_ptr, "Bad transaction"); // stonedb8
 
   if (current_txn_ == nullptr) return;
 
   RemoveTx(current_txn_);
   current_txn_ = nullptr;
-  thd->ha_data[m_slot].ha_ptr = NULL;
+  thd->get_ha_data(tianmu_hton->slot)->ha_ptr = NULL; // stonedb8
 }
 
 int Engine::SetUpCacheFolder(const std::string &cachefolder_path) {
@@ -954,40 +952,40 @@ std::string get_parameter_name(enum tianmu_var_name vn) {
 
 int get_parameter(THD *thd, enum tianmu_var_name vn, double &value) {
   std::string var_data = get_parameter_name(vn);
-  user_var_entry *m_entry;
-  my_bool null_val;
+  // stonedb8 start
+  bool null_val;
 
-  m_entry = (user_var_entry *)my_hash_search(&thd->user_vars, (uchar *)var_data.c_str(), (uint)var_data.size());
-  if (!m_entry) return 1;
-  value = m_entry->val_real(&null_val);
+  const auto it = thd->user_vars.find(var_data);
+  if(it == thd->user_vars.end()) return 1;
+  value = it->second->val_real(&null_val);
+  // stonedb8 end
   if (null_val) return 2;
   return 0;
 }
 
 int get_parameter(THD *thd, enum tianmu_var_name vn, int64_t &value) {
   std::string var_data = get_parameter_name(vn);
-  user_var_entry *m_entry;
-  my_bool null_val;
+  // stonedb8 start
+  bool null_val;
 
-  m_entry = (user_var_entry *)my_hash_search(&thd->user_vars, (uchar *)var_data.c_str(), (uint)var_data.size());
-
-  if (!m_entry) return 1;
-  value = m_entry->val_int(&null_val);
+  const auto it = thd->user_vars.find(var_data);
+  if(it == thd->user_vars.end()) return 1;
+  it->second->val_int(&null_val);
+  // stonedb8 end
   if (null_val) return 2;
   return 0;
 }
 
 int get_parameter(THD *thd, enum tianmu_var_name vn, std::string &value) {
-  my_bool null_val;
+  // stonedb8 start
+  bool null_val;
   std::string var_data = get_parameter_name(vn);
-  user_var_entry *m_entry;
   String str;
 
-  m_entry = (user_var_entry *)my_hash_search(&thd->user_vars, (uchar *)var_data.c_str(), (uint)var_data.size());
-  if (!m_entry) return 1;
-
-  m_entry->val_str(&null_val, &str, NOT_FIXED_DEC);
-
+  const auto it = thd->user_vars.find(var_data);
+  if(it == thd->user_vars.end()) return 1;
+  it->second->val_str(&null_val, &str, DECIMAL_NOT_SPECIFIED);
+  // stonedb8 end
   if (null_val) return 2;
   value = std::string(str.ptr());
 
@@ -995,20 +993,20 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, std::string &value) {
 }
 
 int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::string &s_result) {
-  user_var_entry *m_entry;
+  // stonedb8 start
   std::string var_data = get_parameter_name(vn);
+  const auto entry = thd->user_vars.find(var_data);
+  
+  if(entry == thd->user_vars.end()) return 1;
 
-  m_entry = (user_var_entry *)my_hash_search(&thd->user_vars, (uchar *)var_data.c_str(), (uint)var_data.size());
-  if (!m_entry) return 1;
-
-  if (m_entry->type() == DECIMAL_RESULT) {
+  if (entry->second->type() == DECIMAL_RESULT) {
     switch (vn) {
       case tianmu_var_name::TIANMU_ABORT_ON_THRESHOLD: {
         double dv;
-        my_bool null_value;
+        bool null_value;
         my_decimal v;
 
-        m_entry->val_decimal(&null_value, &v);
+        entry->second->val_decimal(&null_value, &v);
         my_decimal2double(E_DEC_FATAL_ERROR, &v, &dv);
         result = *(longlong *)&dv;
         break;
@@ -1018,26 +1016,26 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::stri
         break;
     }
     return 0;
-  } else if (m_entry->type() == INT_RESULT) {
+  } else if (entry->second->type() == INT_RESULT) {
     switch (vn) {
       case tianmu_var_name::TIANMU_THROTTLE:
       case tianmu_var_name::TIANMU_TIANMUEXPRESSIONS:
       case tianmu_var_name::TIANMU_PARALLEL_AGGR:
       case tianmu_var_name::TIANMU_ABORT_ON_COUNT:
-        my_bool null_value;
-        result = m_entry->val_int(&null_value);
+        bool null_value;
+        result = entry->second->val_int(&null_value);
         break;
       default:
         result = -1;
         break;
     }
     return 0;
-  } else if (m_entry->type() == STRING_RESULT) {
+  } else if (entry->second->type() == STRING_RESULT) {
     result = -1;
-    my_bool null_value;
+    bool null_value;
     String str;
 
-    m_entry->val_str(&null_value, &str, NOT_FIXED_DEC);
+    entry->second->val_str(&null_value, &str, DECIMAL_NOT_SPECIFIED);
     var_data = std::string(str.ptr());
 
     if (vn == tianmu_var_name::TIANMU_DATAFORMAT || vn == tianmu_var_name::TIANMU_REJECT_FILE_PATH) {
@@ -1054,6 +1052,7 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::stri
     result = 0;
     return 2;
   }
+  // stonedb8 end
 }
 
 void Engine::RenameTable([[maybe_unused]] Transaction *trans_, const std::string &from, const std::string &to,
@@ -1108,10 +1107,10 @@ static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec
     
     /* Add thread to THD list so that's it's visible in 'show processlist' */
     thd->set_new_thread_id();
-    thd->set_current_time();
+    thd->set_time(); // stonedb8
     thd_manager->add_thd(thd);
     mysql_reset_thd_for_next_command(thd);
-    thd->init_for_queries();
+    thd->init_query_mem_roots(); // stonedb8
     thd->set_db(dbname);
     // Forge LOAD DATA INFILE query which will be used in SHOW PROCESS LIST
     thd->set_query(loadquery);
@@ -1120,9 +1119,8 @@ static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec
     // Usually lex_start() is called by mysql_parse(), but we need
     // it here as the present method does not call mysql_parse().
     lex_start(thd);
-    TABLE_LIST tl;
-    tl.init_one_table(thd->strmake(thd->db().str, thd->db().length), thd->db().length, tabname.str, tabname.length,
-                      tabname.str, TL_WRITE_CONCURRENT_INSERT);//TIANMU UPGRADE
+    TABLE_LIST tl(thd->strmake(thd->db().str, thd->db().length), thd->db().length, tabname.str, tabname.length,
+                  tabname.str, TL_WRITE_CONCURRENT_INSERT); // stonedb8
     tl.updating = 1;
 
     // the table will be opened in mysql_load
@@ -1130,14 +1128,27 @@ static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec
     sql_exchange ex("buffered_insert", 0, FILETYPE_MEM);
     ex.file_name = const_cast<char *>(addr.c_str());
     ex.skip_lines = tid;  // this is ugly...
-    thd->lex->select_lex->context.resolve_in_table_list_only(&tl);
+    thd->lex->query_block->context.resolve_in_table_list_only(&tl);
     if (open_temporary_tables(thd, &tl)) {
         // error/////
     }
     List<Item> tmp_list;  // dummy
+    // stonedb8 start
+    /*
     if (mysql_load(thd, &ex, &tl, tmp_list, tmp_list, tmp_list, DUP_ERROR, false)) {
         thd->is_slave_error = 1;
     }
+    */
+    thd->lex->query_tables = &tl;
+    LEX_STRING lex_str = {const_cast<char *>(ex.file_name),addr.size()};
+
+    auto cmd = new (thd->mem_root) Sql_cmd_load_table(
+        ex.filetype, false, lex_str, On_duplicate::ERROR, nullptr, nullptr, nullptr, nullptr,
+        ex.field, ex.line, ex.skip_lines, nullptr, nullptr, nullptr, nullptr);
+    if (cmd->execute(thd)) {
+      thd->is_slave_error = 1;
+    }
+    // stonedb8 end
 
     thd->set_catalog({0, 1});//TIANMU UPGRADE
     thd->set_db({NULL,0}); /* will free the current database */
@@ -1154,8 +1165,8 @@ static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec
     else
         thd->mdl_context.release_statement_locks();
 
-  free_root(thd->mem_root, MYF(MY_KEEP_PREALLOC));
-  if (thd->is_fatal_error) {
+  thd->mem_root->ClearForReuse(); // stonedb8
+  if (thd->is_fatal_error()) {
     TIANMU_LOG(LogCtl_Level::ERROR, "LOAD DATA failed on table '%s'", tab_name.c_str());
   }
   thd->release_resources();
@@ -1308,7 +1319,7 @@ void Engine::LogStat() {
     struct timespec t;
     clock_gettime(CLOCK_MONOTONIC, &t);
     last_sample_time = t.tv_sec;
-    saved_query_id = global_query_id;
+    saved_query_id = atomic_global_query_id; // stonedb8
     saved = tianmu_stat;
     return;
   }
@@ -1321,7 +1332,7 @@ void Engine::LogStat() {
     TIANMU_LOG(LogCtl_Level::ERROR, "LogStat() called too frequently. last sample time %ld ", last_sample_time);
     return;
   }
-  query_id_t query_id = global_query_id;
+  query_id_t query_id = atomic_global_query_id; // stonedb8
   long queries = query_id - saved_query_id;
 
   {
@@ -1341,7 +1352,7 @@ void Engine::LogStat() {
         SQLCOM_LOAD,
     };
 
-    STATUS_VAR sv;
+  System_status_var sv; // stonedb8
 	mysql_mutex_lock(&LOCK_status);
     calc_sum_of_all_status(&sv);
 	mysql_mutex_unlock(&LOCK_status);
@@ -1352,7 +1363,7 @@ void Engine::LogStat() {
       msg =
           msg + sql_statement_names[c].str + " " + std::to_string(delta) + "/" + std::to_string(sv.com_stat[c]) + ", ";
     }
-    msg = msg + "queries " + std::to_string(queries) + "/" + std::to_string(global_query_id);
+    msg = msg + "queries " + std::to_string(queries) + "/" + std::to_string(atomic_global_query_id); // stonedb8
     TIANMU_LOG(LogCtl_Level::INFO, msg.c_str());
   }
 
@@ -1477,7 +1488,7 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
     std::string table_path = GetTablePath(table);
 
     table->copy_blobs = 0;
-    thd->cuted_fields = 0L;
+    thd->num_truncated_fields = 0L; // stonedb8
 
     auto tab = current_txn_->GetTableByPath(table_path);
 
@@ -1490,7 +1501,7 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
 
     // We must invalidate the table in query cache before binlog writing and
     // ha_autocommit_...
-    query_cache.invalidate(thd, table_list, 0);
+    //query_cache.invalidate(thd, table_list, 0);  // stonedb8 TODO: query_cache is deleted by MySQL8
 
     COPY_INFO::Statistics stats;
     stats.records = ha_rows(tab->NoRecordsLoaded());
@@ -1499,7 +1510,7 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
     tianmu_stat.load_cnt++;
 
     char name[FN_REFLEN];
-    my_snprintf(name, sizeof(name), ER(ER_LOAD_INFO), (long)stats.records,
+    snprintf(name, sizeof(name), ER(ER_LOAD_INFO), (long)stats.records,
                 0,  // deleted
                 0,  // skipped
                 (long)thd->get_stmt_da()->current_statement_cond_count());
@@ -1530,7 +1541,8 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
   return tianmu_e;
 }
 
-bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects_list,
+// stonedb8 Query_block
+bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, Query_block *selects_list,
                         int &in_case_of_failure_can_go_to_mysql, int with_insert) {
   in_case_of_failure_can_go_to_mysql = true;
 
@@ -1591,15 +1603,28 @@ bool Engine::IsTIANMUTable(TABLE *table) {
   return table && table->s->db_type() == rcbase_hton;  // table->db_type is always NULL
 }
 
-const char *Engine::GetFilename(SELECT_LEX *selects_list, int &is_dumpfile) {
+const char *Engine::GetFilename(Query_block *selects_list, int &is_dumpfile) {  // stonedb8
   // if the function returns a filename <> NULL
   // additionally is_dumpfile indicates whether it was 'select into OUTFILE' or
   // maybe 'select into DUMPFILE' if the function returns NULL it was a regular
   // 'select' don't look into is_dumpfile in this case
+
+  // stonedb8 start
+  auto exchange =
+      static_cast<Query_result_to_file *>(selects_list->parent_lex->result)->get_sql_exchange();
+  if (exchange) {
+    is_dumpfile = exchange->dumpfile;
+    return exchange->file_name;
+  }
+
+  /* MySQL 5.7.36
   if (selects_list->parent_lex->exchange) {
     is_dumpfile = selects_list->parent_lex->exchange->dumpfile;
     return selects_list->parent_lex->exchange->file_name;
   }
+   */
+  // stonedb8 end
+
   return 0;
 }
 
@@ -1662,7 +1687,7 @@ void Engine::ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes)
   long msecs;
   sign = 1;
   minutes = 0;
-  if (calc_time_diff(&utc, &client_zone, 1, &secs, &msecs)) sign = -1;
+  if (calc_time_diff(utc, client_zone, 1, &secs, &msecs)) sign = -1;  // stonedb8
   minutes = (short)(secs / 60);
 }
 
@@ -1706,15 +1731,15 @@ common::TIANMUError Engine::GetRejectFileIOParameters(THD &thd, std::unique_ptr<
 common::TIANMUError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
                                 TABLE *table, void *arg, bool for_exporter) {
   const CHARSET_INFO *cs = ex.cs;
-  bool local_load = for_exporter ? false : (bool)(thd.lex)->local_file;
-  uint value_list_elements = (thd.lex)->load_value_list.elements;
+  bool local_load = false; // for_exporter ? false : (bool)(thd.lex)->local_file; // stonedb8 TODO: mysql_load
+  uint value_list_elements = 0; // (thd.lex)->load_value_list.elements; // stonedb8 TODO: mysql_load
   // thr_lock_type lock_option = (thd.lex)->lock_option;
 
   int io_mode = -1;
   char name[FN_REFLEN];
   char *tdb = 0;
   if (table) {
-    tdb = table->s->db.str ? table->s->db.str : (char*)thd.db().str;
+    tdb = table->s->db.str ? (char*)table->s->db.str : (char*)thd.db().str;
   } else
     tdb = (char*)thd.db().str;
 
@@ -1887,7 +1912,10 @@ void Engine::AddTableIndex(const std::string &table_path, TABLE *table, [[maybe_
   auto iter = m_table_keys.find(table_path);
   if (iter == m_table_keys.end()) {
     std::shared_ptr<index::RCTableIndex> tab = std::make_shared<index::RCTableIndex>(table_path, table);
-    m_table_keys[table_path] = tab;
+    if (tab->Enable())
+      m_table_keys[table_path] = tab;
+    else
+      tab.reset();
   }
 }
 

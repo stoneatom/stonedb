@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
+    Use is subject to license terms.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -95,7 +95,7 @@ enum {
 
 typedef struct getarg_strings {
     int num_strings;
-    char **strings;
+    const char **strings;
 } getarg_strings;
 
 typedef int (*getarg_collect_func)(int short_opt,

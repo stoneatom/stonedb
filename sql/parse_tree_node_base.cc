@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2013, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -20,28 +20,9 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
-#include "my_config.h"
-#include "parse_tree_node_base.h"
-#include "sql_parse.h"
+#include "sql/parse_tree_node_base.h"
 
-Parse_context::Parse_context(THD *thd, st_select_lex *select)
-: thd(thd),
-  mem_root(thd->mem_root),
-  select(select)
-{}
+#include "sql/sql_class.h"
 
-
-/**
-  my_syntax_error() function replacement for deferred reporting of syntax
-  errors
-
-  @param      pc      current parse context
-  @param      pos     location of the error in lexical scanner buffers
-  @param      msg     error message: NULL default means ER(ER_SYNTAX_ERROR)
-*/
-void Parse_tree_node::error(Parse_context *pc,
-                            const POS &position,
-                            const char * msg) const
-{
-  pc->thd->parse_error_at(position, msg);
-}
+Parse_context::Parse_context(THD *thd_arg, Query_block *sl_arg)
+    : thd(thd_arg), mem_root(thd->mem_root), select(sl_arg) {}

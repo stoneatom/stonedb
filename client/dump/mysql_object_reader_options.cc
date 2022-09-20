@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2015, 2021, Oracle and/or its affiliates.
+  Copyright (c) 2015, 2022, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License, version 2.0,
@@ -22,22 +22,26 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-#include "mysql_object_reader_options.h"
+#include "client/dump/mysql_object_reader_options.h"
 
 using namespace Mysql::Tools::Dump;
 
-void Mysql_object_reader_options::create_options()
-{
+void Mysql_object_reader_options::create_options() {
   this->create_new_option(&m_row_group_size, "extended-insert",
-    "Allow usage of multiple-row INSERT syntax that include several VALUES "
-    "lists. Specifies number of rows to include in single INSERT statement. "
-    "Must be greater than 0")
-    ->set_minimum_value(1)
-    ->set_maximum_value(MAX_EXTENDED_INSERT)
-    ->set_value(250);
+                          "Allow usage of multiple-row INSERT syntax that "
+                          "include several VALUES "
+                          "lists. Specifies number of rows to include in "
+                          "single INSERT statement. "
+                          "Must be greater than 0")
+      ->set_minimum_value(1)
+      ->set_maximum_value(MAX_EXTENDED_INSERT)
+      ->set_value(250);
+  this->create_new_option(&m_skip_gipk, "skip-generated-invisible-primary-key",
+                          "Controls whether generated primary key and key "
+                          "column should be dumped or not.")
+      ->set_value(false);
 }
 
 Mysql_object_reader_options::Mysql_object_reader_options(
-  const Mysql_chain_element_options* mysql_chain_element_options)
-  : m_mysql_chain_element_options(mysql_chain_element_options)
-{}
+    const Mysql_chain_element_options *mysql_chain_element_options)
+    : m_mysql_chain_element_options(mysql_chain_element_options) {}

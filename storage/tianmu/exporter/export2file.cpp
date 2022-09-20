@@ -24,9 +24,9 @@ namespace Tianmu {
 namespace exporter {
 
 select_tianmu_export::select_tianmu_export(Query_result_export *se)
-    : Query_result_export(se->get_sql_exchange()), se(se), prepared(false) {}
+: Query_result_export(se->get_sql_exchange()), se(se), prepared(false) {}
 
-int select_tianmu_export::prepare(List<Item> &list, SELECT_LEX_UNIT *u) {
+int select_tianmu_export::prepare(List<Item> &list, Query_expression *u) {
   bool blob_flag = 0;
   unit = u;
   {
@@ -61,8 +61,8 @@ void select_tianmu_export::SetRowCount(ha_rows x) { row_count = x; }
 void select_tianmu_export::SendOk(THD *thd) { ::my_ok(thd, row_count); }
 
 sql_exchange *select_tianmu_export::SqlExchange() { return exchange; }
-
-bool select_tianmu_export::send_data(List<Item> &items) { return se->send_data(items); }
+// stonedb8
+bool select_tianmu_export::send_data(THD *thd, mem_root_deque<Item *> &items) { return se->send_data(thd, items); }
 
 }  // namespace exporter
 }  // namespace Tianmu

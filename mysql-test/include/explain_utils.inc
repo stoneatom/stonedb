@@ -51,12 +51,6 @@ if ($innodb) {
 --replace_column 10 X 11 X
   }
 }
---eval EXPLAIN EXTENDED $query
-if (`SELECT ROW_COUNT() > 0`) {
---echo # Erroneous query: EXPLAIN EXTENDED $query
---die Unexpected ROW_COUNT() <> 0
-}
---echo # Status of EXPLAIN EXTENDED query
 --disable_query_log
 --disable_warnings
 SHOW STATUS WHERE (Variable_name LIKE 'Sort%' OR
@@ -89,8 +83,6 @@ if ($innodb) {
 --replace_column 10 X 11 X
   }
 }
---eval EXPLAIN EXTENDED $select
---echo # Status of EXPLAIN EXTENDED "equivalent" SELECT query execution
 --disable_query_log
 --disable_warnings
 SHOW STATUS WHERE (Variable_name LIKE 'Sort%' OR
@@ -130,8 +122,10 @@ if ($select) {
 --disable_result_log
 --eval $select
 --enable_result_log
+--echo # This line exists only to help --skip_if_hypergraph diffing.
 --echo # Status of "equivalent" SELECT query execution:
 --disable_warnings
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS WHERE (Variable_name LIKE 'Sort%' OR
                    Variable_name LIKE 'Handler_read_%' OR
                    Variable_name = 'Handler_write' OR
@@ -143,8 +137,10 @@ SHOW STATUS WHERE (Variable_name LIKE 'Sort%' OR
 FLUSH STATUS;
 FLUSH TABLES;
 --eval $query
+--echo # This line exists only to help --skip_if_hypergraph diffing.
 --echo # Status of testing query execution:
 --disable_warnings
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS WHERE (Variable_name LIKE 'Sort%' OR
                    Variable_name LIKE 'Handler_read_%' OR
                    Variable_name = 'Handler_write' OR

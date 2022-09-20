@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -25,10 +25,25 @@
 #ifndef FS_OPEN_REQ_H
 #define FS_OPEN_REQ_H
 
+#include "util/ndb_math.h"
 #include "SignalData.hpp"
 
 #define JAM_FILE_ID 148
 
+struct EncryptionKeyMaterial
+{
+  static constexpr Uint32 MAX_LENGTH = 512;
+  static_assert(MAX_LENGTH >= MAX_BACKUP_ENCRYPTION_PASSWORD_LENGTH + 4);
+
+  Uint32 length = 0;
+  alignas(Uint32) unsigned char data[MAX_LENGTH];
+
+  Uint32 get_needed_words() const
+  {
+    return ndb_ceil_div<Uint32>(sizeof(length) + length, 4);
+  }
+};
+static_assert(sizeof(EncryptionKeyMaterial) % 4 == 0);
 
 /**
  * 
@@ -46,6 +61,7 @@ class FsOpenReq {
   friend class Filename;
   friend class VoidFs;
   friend class AsyncIoThread;
+  friend class ndb_file;
 
   /**
    * Sender(s)
@@ -61,6 +77,8 @@ class FsOpenReq {
 
   friend class Dbtup;
 
+  friend class Cmvmi;
+
   /**
    * For printing
    */
@@ -70,11 +88,13 @@ public:
   /**
    * Length of signal
    */
-  STATIC_CONST( SignalLength = 11 );
+  static constexpr Uint32 SignalLength = 11;
   SECTION( FILENAME = 0 );
-  
-private:
+  SECTION(ENCRYPT_KEY_MATERIAL = 1);
 
+  static constexpr EncryptionKeyMaterial DUMMY_KEY = {5, "DUMMY"};
+
+ private:
   /**
    * DATA VARIABLES
    */
@@ -88,24 +108,40 @@ private:
   Uint32 file_size_lo;
   Uint32 auto_sync_size; // In bytes
   
-  STATIC_CONST( OM_READONLY  = 0 );
-  STATIC_CONST( OM_WRITEONLY = 1 );
-  STATIC_CONST( OM_READWRITE = 2 );
+public:
+  static constexpr Uint32 OM_READONLY = 0;
+  static constexpr Uint32 OM_WRITEONLY = 1;
+  static constexpr Uint32 OM_READWRITE = 2;
+  static constexpr Uint32 OM_READ_WRITE_MASK = 3;
 
-  STATIC_CONST( OM_APPEND    = 0x8   ); // Not Implemented on W2k
-  STATIC_CONST( OM_SYNC      = 0x10  );
-  STATIC_CONST( OM_CREATE    = 0x100 );
-  STATIC_CONST( OM_TRUNCATE  = 0x200 );
-  STATIC_CONST( OM_AUTOSYNC  = 0x400 ); 
+  static constexpr Uint32 OM_APPEND = 0x8; // Not Implemented on W2k
+  static constexpr Uint32 OM_SYNC = 0x10;
+  static constexpr Uint32 OM_CREATE = 0x100;
+  static constexpr Uint32 OM_TRUNCATE = 0x200;
+  static constexpr Uint32 OM_AUTOSYNC = 0x400; 
 
-  STATIC_CONST( OM_CREATE_IF_NONE = 0x0800 );
-  STATIC_CONST( OM_INIT           = 0x1000 ); // 
-  STATIC_CONST( OM_CHECK_SIZE     = 0x2000 );
-  STATIC_CONST( OM_DIRECT         = 0x4000 );
-  STATIC_CONST( OM_GZ             = 0x8000 );
-  STATIC_CONST( OM_THREAD_POOL    = 0x10000 );
-  STATIC_CONST( OM_WRITE_BUFFER   = 0x20000 );
-  
+  static constexpr Uint32 OM_CREATE_IF_NONE = 0x0800;
+  static constexpr Uint32 OM_INIT = 0x1000; // 
+  static constexpr Uint32 OM_CHECK_SIZE = 0x2000;
+  static constexpr Uint32 OM_DIRECT = 0x4000;
+  static constexpr Uint32 OM_GZ = 0x8000;
+  static constexpr Uint32 OM_THREAD_POOL = 0x10000;
+  static constexpr Uint32 OM_WRITE_BUFFER = 0x20000;
+  static constexpr Uint32 OM_READ_SIZE = 0x40000;
+  static constexpr Uint32 OM_DIRECT_SYNC = 0x80000;
+  static constexpr Uint32 OM_ENCRYPT_CBC = 0x100000;
+  static constexpr Uint32 OM_ENCRYPT_PASSWORD = 0x200000;
+  static constexpr Uint32 OM_READ_FORWARD = 0x400000;
+  static constexpr Uint32 OM_SPARSE_INIT = 0x800000;
+  static constexpr Uint32 OM_ZEROS_ARE_SPARSE = 0x1000000;
+  static constexpr Uint32 OM_ENCRYPT_KEY = 0x2000000;
+  static constexpr Uint32 OM_ENCRYPT_XTS = 0x4000000;
+
+  static constexpr Uint32 OM_ENCRYPT_KEY_MATERIAL_MASK =
+      OM_ENCRYPT_PASSWORD | OM_ENCRYPT_KEY;
+  static constexpr Uint32 OM_ENCRYPT_CIPHER_MASK =
+      OM_ENCRYPT_CBC | OM_ENCRYPT_XTS;
+
   enum Suffixes {
     S_DATA = 0,
     S_FRAGLOG = 1,
@@ -153,11 +189,15 @@ private:
    */
   static Uint32 v2_getSequence(const Uint32 fileNumber[]);
   static Uint32 v2_getNodeId(const Uint32 fileNumber[]);
+  static Uint32 v2_getPartNum(const Uint32 fileNumber[]);
   static Uint32 v2_getCount(const Uint32 fileNumber[]);
+  static Uint32 v2_getTotalParts(const Uint32 fileNumber[]);
 
   static void v2_setSequence(Uint32 fileNumber[], Uint32 no);
   static void v2_setNodeId(Uint32 fileNumber[], Uint32 no);
+  static void v2_setPartNum(Uint32 fileNumber[], Uint32 no);
   static void v2_setCount(Uint32 fileNumber[], Uint32 no);
+  static void v2_setTotalParts(Uint32 fileNumber[], Uint32 no);
 
   /**
    * V4 - Specified filename
@@ -220,11 +260,10 @@ private:
  * 01234567890123456789012345678901
  *                 ssssssssvvvvvvvv
  *
- * -- v3 --
+ * -- v5 --
  * File number[0] = Table
  * File number[1] = LcpNo
- * File number[2] = 
- * File number[3] =
+ * File number[2] = Fragment Id
  *   v = version   24 - 31
  *   s = v1_suffix 16 - 23
  *
@@ -319,22 +358,46 @@ void FsOpenReq::v2_setSequence(Uint32 fileNumber[], Uint32 val){
 
 inline 
 Uint32 FsOpenReq::v2_getNodeId(const Uint32 fileNumber[]){
-  return fileNumber[1];
+  return (fileNumber[1] & 0x0000FFFF);
 }
 
 inline
 void FsOpenReq::v2_setNodeId(Uint32 fileNumber[], Uint32 val){
-  fileNumber[1] = val;
+  const Uint32 t = fileNumber[1];
+  fileNumber[1] = (t & 0xFFFF0000) | (((Uint32)val) & 0x0000FFFF);
 }
 
 inline 
+Uint32 FsOpenReq::v2_getPartNum(const Uint32 fileNumber[]){
+  return ((fileNumber[1] >> 16) & 0x0000FFFF);
+}
+
+inline
+void FsOpenReq::v2_setPartNum(Uint32 fileNumber[], Uint32 val){
+  Uint32 t = fileNumber[1] ;
+  fileNumber[1] = (t & 0x0000FFFF) | ((val << 16) & 0xFFFF0000);
+}
+
+inline
 Uint32 FsOpenReq::v2_getCount(const Uint32 fileNumber[]){
-  return fileNumber[2];
+  return (fileNumber[2] & 0x0000FFFF);
 }
 
 inline
 void FsOpenReq::v2_setCount(Uint32 fileNumber[], Uint32 val){
-  fileNumber[2] = val;
+  const Uint32 t = fileNumber[2];
+  fileNumber[2] = (t & 0xFFFF0000) | (((Uint32)val) & 0x0000FFFF);
+}
+
+inline
+Uint32 FsOpenReq::v2_getTotalParts(const Uint32 fileNumber[]){
+  return ((fileNumber[2] >> 16) & 0x0000FFFF);
+}
+
+inline
+void FsOpenReq::v2_setTotalParts(Uint32 fileNumber[], Uint32 val){
+  Uint32 t = fileNumber[2] ;
+  fileNumber[2] = (t & 0x0000FFFF) | ((val << 16) & 0xFFFF0000);
 }
 
 /****************/

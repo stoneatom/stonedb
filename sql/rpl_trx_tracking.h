@@ -1,5 +1,5 @@
 #ifndef RPL_TRX_TRACKING_INCLUDED
-/* Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2017, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -18,17 +18,21 @@
    GNU General Public License, version 2.0, for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   51 Franklin Street, Suite 500, Boston, MA 02110-1335 USA */
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #define RPL_TRX_TRACKING_INCLUDED
 
-//#include <my_inttypes.h>
+#include <assert.h>
+#include <sys/types.h>
+#include <atomic>
 #include <map>
 
-#include "my_dbug.h"
-#include "sql_class.h"
+#include "libbinlogevents/include/binlog_event.h"
 
+#include "my_inttypes.h"
+
+class THD;
 
 /**
   Logical timestamp generator for logical timestamping binlog transactions.
@@ -37,10 +41,9 @@
   The class provides necessary interfaces including that of
   generating a next consecutive value for the latter.
 */
-class  Logical_clock
-{
-private:
-  int64 state;
+class Logical_clock {
+ private:
+  std::atomic<int64> state;
   /*
     Offset is subtracted from the actual "absolute time" value at
     logging a replication event. That is the event holds logical
@@ -49,8 +52,12 @@ private:
     The member is updated (incremented) per binary log rotation.
   */
   int64 offset;
-public:
+
+ public:
   Logical_clock();
+  Logical_clock(const Logical_clock &other)
+      : state(other.state.load()), offset(other.offset) {}
+
   int64 step();
   int64 set_if_greater(int64 new_val);
   int64 get_timestamp();
@@ -59,23 +66,22 @@ public:
     Updates the offset.
     This operation is invoked when binlog rotates and at that time
     there can't any concurrent step() callers so no need to guard
-    the assignement.
+    the assignment.
   */
-  void update_offset(int64 new_offset)
-  {
+  void update_offset(int64 new_offset) {
     assert(offset <= new_offset);
 
-    offset= new_offset;
+    offset = new_offset;
   }
+  ~Logical_clock() = default;
 };
 
 /**
   Generate logical timestamps for MTS using COMMIT_ORDER
   in the binlog-transaction-dependency-tracking option.
 */
-class Commit_order_trx_dependency_tracker
-{
-public:
+class Commit_order_trx_dependency_tracker {
+ public:
   /**
     Main function that gets the dependencies using the COMMIT_ORDER tracker.
 
@@ -87,33 +93,37 @@ public:
 
   void update_max_committed(int64 sequence_number);
 
-  Logical_clock get_max_committed_transaction()
-  {
+  Logical_clock get_max_committed_transaction() {
     return m_max_committed_transaction;
   }
 
   int64 step();
   void rotate();
 
-private:
+ private:
   /* Committed transactions timestamp */
   Logical_clock m_max_committed_transaction;
 
   /* "Prepared" transactions timestamp */
   Logical_clock m_transaction_counter;
+
+  /*
+    Stores the last sequence_number of the transaction which breaks the rule of
+    lock based logical clock. commit_parent of the following transactions
+    will be set to m_last_blocking_transaction if their last_committed is
+    smaller than m_last_blocking_transaction.
+  */
+  int64 m_last_blocking_transaction = SEQ_UNINIT;
 };
 
 /**
   Generate logical timestamps for MTS using WRITESET
   in the binlog-transaction-dependency-tracking option.
 */
-class Writeset_trx_dependency_tracker
-{
-public:
-  Writeset_trx_dependency_tracker(uint64 max_history_size):
-    m_opt_max_history_size(max_history_size),
-    m_writeset_history_start(0)
-  {}
+class Writeset_trx_dependency_tracker {
+ public:
+  Writeset_trx_dependency_tracker(ulong max_history_size)
+      : m_opt_max_history_size(max_history_size), m_writeset_history_start(0) {}
 
   /**
     Main function that gets the dependencies using the WRITESET tracker.
@@ -126,20 +136,10 @@ public:
 
   void rotate(int64 start);
 
-   /* option opt_binlog_transaction_dependency_history_size - atomic var */
-  int64 m_opt_max_history_size;
-  /* option opt_binlog_transaction_dependency_history_size */
-  ulong m_opt_max_history_size_base_var;
+  /* Atomic variable - opt_binlog_transaction_dependency_history_size */
+  std::atomic<ulong> m_opt_max_history_size;
 
-  /**
-    Returns the value for the max history size with an atomic read to the var
-    @return the value of opt_max_history_size
-  */
-  ulong get_opt_max_history_size(){
-    return static_cast<ulong>(my_atomic_load64(&m_opt_max_history_size));
-  }
-
-private:
+ private:
   /*
     Monitor the last transaction with write-set to use as the minimal
     commit parent when logical clock source is WRITE_SET, i.e., the most recent
@@ -156,7 +156,7 @@ private:
     Track the last transaction sequence number that changed each row
     in the database, using row hashes from the writeset as the index.
   */
-  typedef std::map<uint64,int64> Writeset_history;
+  typedef std::map<uint64, int64> Writeset_history;
   Writeset_history m_writeset_history;
 };
 
@@ -164,9 +164,8 @@ private:
   Generate logical timestamps for MTS using WRITESET_SESSION
   in the binlog-transaction-dependency-tracking option.
 */
-class Writeset_session_trx_dependency_tracker
-{
-public:
+class Writeset_session_trx_dependency_tracker {
+ public:
   /**
     Main function that gets the dependencies using the WRITESET_SESSION tracker.
 
@@ -180,8 +179,7 @@ public:
 /**
   Modes for parallel transaction dependency tracking
 */
-enum enum_binlog_transaction_dependency_tracking
-{
+enum enum_binlog_transaction_dependency_tracking {
   /**
     Tracks dependencies based on the commit order of transactions.
     The time intervals during which any transaction holds all its locks are
@@ -194,12 +192,12 @@ enum enum_binlog_transaction_dependency_tracking
     locks before trx1 released its locks, then trx2 is marked such that the
     slave can schedule it in parallel with trx1.
   */
-  DEPENDENCY_TRACKING_COMMIT_ORDER= 0,
+  DEPENDENCY_TRACKING_COMMIT_ORDER = 0,
   /**
     Tracks dependencies based on the set of rows updated. Any two transactions
     that change disjoint sets of rows, are said concurrent and non-contending.
   */
-  DEPENDENCY_TRACKING_WRITESET= 1,
+  DEPENDENCY_TRACKING_WRITESET = 1,
   /**
     Tracks dependencies based on the set of rows updated per session. Any two
     transactions that change disjoint sets of rows, on different sessions,
@@ -207,7 +205,7 @@ enum enum_binlog_transaction_dependency_tracking
     are always said to be dependent, i.e., are never concurrent and
     non-contending.
   */
-  DEPENDENCY_TRACKING_WRITESET_SESSION= 2
+  DEPENDENCY_TRACKING_WRITESET_SESSION = 2
 };
 
 /**
@@ -215,11 +213,11 @@ enum enum_binlog_transaction_dependency_tracking
   methods associated with the binlog-transaction-dependency-tracking option.
   There is a singleton instance of each of these classes.
 */
-class Transaction_dependency_tracker
-{
-public:
-  Transaction_dependency_tracker():
-    m_opt_tracking_mode(DEPENDENCY_TRACKING_COMMIT_ORDER), m_writeset(25000) {}
+class Transaction_dependency_tracker {
+ public:
+  Transaction_dependency_tracker()
+      : m_opt_tracking_mode(DEPENDENCY_TRACKING_COMMIT_ORDER),
+        m_writeset(25000) {}
 
   void get_dependency(THD *thd, int64 &sequence_number, int64 &commit_parent);
 
@@ -231,19 +229,13 @@ public:
   int64 step();
   void rotate();
 
-public:
+ public:
   /* option opt_binlog_transaction_dependency_tracking */
-  int64 m_opt_tracking_mode;
+  long m_opt_tracking_mode;
 
-  /* option opt_binlog_transaction_dependency_tracking associated with sysvar */
-  long m_opt_tracking_mode_value;
+  Writeset_trx_dependency_tracker *get_writeset() { return &m_writeset; }
 
-  Writeset_trx_dependency_tracker *get_writeset()
-  {
-    return &m_writeset;
-  }
-
-private:
+ private:
   Writeset_trx_dependency_tracker m_writeset;
   Commit_order_trx_dependency_tracker m_commit_order;
   Writeset_session_trx_dependency_tracker m_writeset_session;

@@ -1649,7 +1649,7 @@ FLUSH LOGS;
 --echo # Call mysqlbinlog to display the log file contents.
 --echo #
 let $MYSQLD_DATADIR= `select @@datadir`;
---let $mysqlbinlog_parameters= --base64-output=decode-rows -v -v $MYSQLD_DATADIR/master-bin.000001
+--let $mysqlbinlog_parameters= --base64-output=decode-rows -v -v $MYSQLD_DATADIR/binlog.000001
 --source include/mysqlbinlog.inc
 
 --echo #
@@ -1728,7 +1728,7 @@ FLUSH LOGS;
 --echo # Call mysqlbinlog to display the log file contents.
 --echo #
 let $MYSQLD_DATADIR= `select @@datadir`;
---let $mysqlbinlog_parameters=  --base64-output=decode-rows -v -v $MYSQLD_DATADIR/master-bin.000001
+--let $mysqlbinlog_parameters=  --base64-output=decode-rows -v -v $MYSQLD_DATADIR/binlog.000001
 --source include/mysqlbinlog.inc
 
 --echo #
@@ -1854,8 +1854,16 @@ FLUSH LOGS;
 --echo # Call mysqlbinlog to display the log file contents.
 --echo #
 let $MYSQLD_DATADIR= `select @@datadir`;
---let $mysqlbinlog_parameters= --base64-output=decode-rows -v -v $MYSQLD_DATADIR/master-bin.000001
---source include/mysqlbinlog.inc
+--let $mysqlbinlog_parameters= --base64-output=decode-rows -v -v $MYSQLD_DATADIR/binlog.000001
+--let $using_hypergraph = `SELECT FIND_IN_SET('hypergraph_optimizer=on', @@optimizer_switch)`
+if ($using_hypergraph) {
+  # The hypergraph optimizer performs the deletes in a different order than
+  # the old optimizer, so the output from mysqlbinlog is different.
+  --echo <ignored hypergraph optimizer error: different mysqlbinlog output>
+}
+if (!$using_hypergraph) {
+  --source include/mysqlbinlog.inc
+}
 
 --echo #
 --echo # Cleanup.
@@ -1911,7 +1919,7 @@ FLUSH LOGS;
 --echo # Call mysqlbinlog to display the log file contents.
 --echo #
 let $MYSQLD_DATADIR= `select @@datadir`;
---let $mysqlbinlog_parameters= --base64-output=decode-rows -v -v $MYSQLD_DATADIR/master-bin.000001
+--let $mysqlbinlog_parameters= --base64-output=decode-rows -v -v $MYSQLD_DATADIR/binlog.000001
 --source include/mysqlbinlog.inc
 
 --echo #

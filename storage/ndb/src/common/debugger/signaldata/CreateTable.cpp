@@ -1,4 +1,4 @@
-/* Copyright (c) 2007, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2007, 2022, Oracle and/or its affiliates.
    Use is subject to license terms
 
    This program is free software; you can redistribute it and/or modify
@@ -19,13 +19,19 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA */
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #include <signaldata/CreateTable.hpp>
 
 bool
 printCREATE_TABLE_REQ(FILE* output, const Uint32* theData, Uint32 len, Uint16)
 {
+  if (len < CreateTableReq::SignalLength)
+  {
+    assert(false);
+    return false;
+  }
+
   const CreateTableReq* sig = (const CreateTableReq*)theData;
   fprintf(output, " clientRef: 0x%x", sig->clientRef);
   fprintf(output, " clientData: %u", sig->clientData);
@@ -39,6 +45,12 @@ printCREATE_TABLE_REQ(FILE* output, const Uint32* theData, Uint32 len, Uint16)
 bool
 printCREATE_TABLE_CONF(FILE* output, const Uint32* theData, Uint32 len, Uint16)
 {
+  if (len < CreateTableConf::SignalLength)
+  {
+    assert(false);
+    return false;
+  }
+
   const CreateTableConf* sig = (const CreateTableConf*)theData;
   fprintf(output, " senderRef: 0x%x", sig->senderRef);
   fprintf(output, " clientData: %u", sig->clientData);
@@ -53,6 +65,12 @@ printCREATE_TABLE_CONF(FILE* output, const Uint32* theData, Uint32 len, Uint16)
 bool
 printCREATE_TABLE_REF(FILE* output, const Uint32* theData, Uint32 len, Uint16)
 {
+  if (len < CreateTableRef::SignalLength)
+  {
+    assert(false);
+    return false;
+  }
+
   const CreateTableRef* sig = (const CreateTableRef*)theData;
   fprintf(output, " senderRef: 0x%x", sig->senderRef);
   fprintf(output, " clientData: %u", sig->clientData);

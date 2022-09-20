@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -22,29 +22,33 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
+#include "util/require.h"
 #include <ndb_global.h>
 #include <ndb_opts.h>
 #include <NDBT.hpp>
 #include <NdbApi.hpp>
 #include <NdbSleep.h>
 
+#include "my_alloc.h"
+
 void desc_AutoGrowSpecification(struct NdbDictionary::AutoGrowSpecification ags);
-int desc_logfilegroup(Ndb *myndb, char* name);
-int desc_undofile(Ndb_cluster_connection &con, Ndb *myndb, char* name);
-int desc_datafile(Ndb_cluster_connection &con, Ndb *myndb, char* name);
-int desc_tablespace(Ndb *myndb,char* name);
-int desc_index(Ndb *myndb, char* name);
-int desc_table(Ndb *myndb,char* name);
-int desc_hashmap(Ndb_cluster_connection &con, Ndb *myndb, char* name);
+int desc_logfilegroup(Ndb *myndb, char const* name);
+int desc_undofile(Ndb_cluster_connection &con, Ndb *myndb, char const* name);
+int desc_datafile(Ndb_cluster_connection &con, Ndb *myndb, char const* name);
+int desc_tablespace(Ndb *myndb, char const* name);
+int desc_index(Ndb *myndb, char const* name);
+int desc_table(Ndb *myndb,char const* name);
+int desc_hashmap(Ndb_cluster_connection &con, Ndb *myndb, char const* name);
 
 static const char* _dbname = "TEST_DB";
 static const char* _tblname = NULL;
 static int _unqualified = 0;
 static int _partinfo = 0;
 static int _blobinfo = 0;
+static int _indexinfo = 0;
 static int _nodeinfo = 0;
-
-const char *load_default_groups[]= { "mysql_cluster",0 };
+static int _autoinc = 0;
+static int _context = 0;
 
 static int _retries = 0;
 
@@ -52,57 +56,54 @@ static struct my_option my_long_options[] =
 {
   NDB_STD_OPTS("ndb_desc"),
   { "database", 'd', "Name of database table is in",
-    (uchar**) &_dbname, (uchar**) &_dbname, 0,
+    &_dbname, &_dbname, 0,
     GET_STR, REQUIRED_ARG, 0, 0, 0, 0, 0, 0 },
   { "unqualified", 'u', "Use unqualified table names",
-    (uchar**) &_unqualified, (uchar**) &_unqualified, 0,
-    GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 }, 
+    &_unqualified, &_unqualified, 0,
+    GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "extra-partition-info", 'p', "Print more info per partition",
-    (uchar**) &_partinfo, (uchar**) &_partinfo, 0,
-    GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 }, 
+    &_partinfo, &_partinfo, 0,
+    GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "retries", 'r', "Retry every second for # retries",
-    (uchar**) &_retries, (uchar**) &_retries, 0,
-    GET_INT, REQUIRED_ARG, 0, 0, 0, 0, 0, 0 }, 
-  { "blob-info", 'b', "Show information for hidden blob tables (requires -p)",
-    (uchar**) &_blobinfo, (uchar**) &_blobinfo, 0,
+    &_retries, &_retries, 0,
+    GET_INT, REQUIRED_ARG, 0, 0, 0, 0, 0, 0 },
+  { "blob-info", 'b', "Show information for hidden blob tables",
+    &_blobinfo, &_blobinfo, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "extra-node-info", 'n', "Print node info for partitions (requires -p)",
-    (uchar**) &_nodeinfo, (uchar**) &_nodeinfo, 0,
+    &_nodeinfo, &_nodeinfo, 0,
+    GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
+  { "index-info", 'i', "Show information for indexes",
+    &_indexinfo, &_indexinfo, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "table", 't', "Base table for index",
-    (uchar**) &_tblname, (uchar**) &_tblname, 0,
+    &_tblname, &_tblname, 0,
     GET_STR, REQUIRED_ARG, 0, 0, 0, 0, 0, 0 },
+  { "autoinc", 'a', "Show autoincrement information",
+    &_autoinc, &_autoinc, 0,
+    GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
+  { "context", 'x', "Show context information",
+    &_context, &_context, 0,
+    GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { 0, 0, 0, 0, 0, 0, GET_NO_ARG, NO_ARG, 0, 0, 0, 0, 0, 0}
 };
 
-static void short_usage_sub(void)
-{
-  ndb_short_usage_sub(NULL);
-}
-
-static void usage()
-{
-  ndb_usage(short_usage_sub, load_default_groups, my_long_options);
-}
-
+static void print_context_info(Ndb* pNdb, NdbDictionary::Table const* pTab);
+static void print_autoinc_info(Ndb* pNdb, NdbDictionary::Table const* pTab);
 static void print_part_info(Ndb* pNdb, NdbDictionary::Table const* pTab);
 
 int main(int argc, char** argv){
   NDB_INIT(argv[0]);
-
-  ndb_opt_set_usage_funcs(short_usage_sub, usage);
-  ndb_load_defaults(NULL,load_default_groups,&argc,&argv);
-  int ho_error;
+  Ndb_opts opts(argc, argv, my_long_options);
 #ifndef NDEBUG
   opt_debug= "d:t:O,/tmp/ndb_desc.trace";
 #endif
-  if ((ho_error=handle_options(&argc, &argv, my_long_options, 
-			       ndb_std_get_one_option)))
+  if (opts.handle_options())
     return NDBT_ProgramExit(NDBT_WRONGARGS);
 
   Ndb_cluster_connection con(opt_ndb_connectstring, opt_ndb_nodeid);
   con.set_name("ndb_desc");
-  if(con.connect(12, 5, 1) != 0)
+  if(con.connect(opt_connect_retries - 1, opt_connect_retry_delay, 1) != 0)
   {
     ndbout << "Unable to connect to management server." << endl;
     return NDBT_ProgramExit(NDBT_FAILED);
@@ -150,7 +151,7 @@ void desc_AutoGrowSpecification(struct NdbDictionary::AutoGrowSpecification ags)
   ndbout << "AutoGrow.filename_pattern: " << ags.filename_pattern << endl;
 }
 
-int desc_logfilegroup(Ndb *myndb, char* name)
+int desc_logfilegroup(Ndb *myndb, char const* name)
 {
   NdbDictionary::Dictionary *dict= myndb->getDictionary();
   require(dict);
@@ -172,7 +173,7 @@ int desc_logfilegroup(Ndb *myndb, char* name)
   return 1;
 }
 
-int desc_tablespace(Ndb *myndb, char* name)
+int desc_tablespace(Ndb *myndb, char const* name)
 {
   NdbDictionary::Dictionary *dict= myndb->getDictionary();
   require(dict);
@@ -190,7 +191,7 @@ int desc_tablespace(Ndb *myndb, char* name)
   return 1;
 }
 
-int desc_undofile(Ndb_cluster_connection &con, Ndb *myndb, char* name)
+int desc_undofile(Ndb_cluster_connection &con, Ndb *myndb, char const* name)
 {
   unsigned id;
   NdbDictionary::Dictionary *dict= myndb->getDictionary();
@@ -227,7 +228,7 @@ int desc_undofile(Ndb_cluster_connection &con, Ndb *myndb, char* name)
   return 1;
 }
 
-int desc_datafile(Ndb_cluster_connection &con, Ndb *myndb, char* name)
+int desc_datafile(Ndb_cluster_connection &con, Ndb *myndb, char const* name)
 {
   unsigned id;
   NdbDictionary::Dictionary *dict= myndb->getDictionary();
@@ -262,7 +263,7 @@ int desc_datafile(Ndb_cluster_connection &con, Ndb *myndb, char* name)
   return 1;
 }
 
-int desc_index(Ndb *myndb, char* name)
+int desc_index(Ndb *myndb, char const* name)
 {
   NdbDictionary::Dictionary * dict= myndb->getDictionary();
   NdbDictionary::Index const* pIndex;
@@ -276,13 +277,12 @@ int desc_index(Ndb *myndb, char* name)
   if (pIndex == NULL)
     return 0;
 
-  ndbout << "-- " << pIndex->getName() << " --" << endl;
+  ndbout << "-- " << _tblname << "/" << pIndex->getName() << " --" << endl;
   dict->print(ndbout, *pIndex);
-
   return 1;
 }
 
-int desc_table(Ndb *myndb, char* name)
+int desc_table(Ndb *myndb, char const* name)
 {
   NdbDictionary::Dictionary * dict= myndb->getDictionary();
   NdbDictionary::Table const* pTab;
@@ -291,28 +291,69 @@ int desc_table(Ndb *myndb, char* name)
     return 0;
 
   ndbout << "-- " << pTab->getName() << " --" << endl;
+  if (_context)
+  {
+    print_context_info(myndb, pTab);
+  }
+
   dict->print(ndbout, *pTab);
+
+  if (_autoinc)
+  {
+    print_autoinc_info(myndb, pTab);
+  }
 
   if (_partinfo)
   {
     print_part_info(myndb, pTab);
     ndbout << endl;
-    if (_blobinfo)
+  }
+
+  if (_indexinfo)
+  {
+    NdbDictionary::Dictionary::List list;
+    if (dict->listIndexes(list, *pTab) != -1)
     {
-      int noOfAttributes = pTab->getNoOfColumns();
-      for (int i = 0; i < noOfAttributes; i++)
+      list.sortByName();
+      _tblname = name;
+      for (unsigned i = 0; i < list.count; i++)
       {
-        const NdbDictionary::Column* column = pTab->getColumn(i);
-        if ((column->getType() == NdbDictionary::Column::Blob) || 
-          (column->getType() == NdbDictionary::Column::Text))
-        {
-          print_part_info(myndb, (NDBT_Table*) column->getBlobTable());
-          ndbout << endl;
-        }
+        NdbDictionary::Dictionary::List::Element& elt = list.elements[i];
+        desc_index(myndb, elt.name);
+        ndbout << endl;
       }
     }
   }
-	
+
+  if (_blobinfo)
+  {
+    int noOfAttributes = pTab->getNoOfColumns();
+    for (int i = 0; i < noOfAttributes; i++)
+    {
+      const NdbDictionary::Column* column = pTab->getColumn(i);
+      if ((column->getType() == NdbDictionary::Column::Blob) ||
+        (column->getType() == NdbDictionary::Column::Text))
+      {
+        NDBT_Table * blobTable= (NDBT_Table*) column->getBlobTable();
+
+        if(blobTable) /* blob table present */
+        {
+          /* The check is added because TINYBLOB/TINYTEXT columns do not
+           * have blob tables , in which case the variable blobTable is NULL.
+           * print_part_info is therefore called only for non-NULL values of
+           * blobTable.  */
+          desc_table(myndb, blobTable->getName());
+        }
+        else if(column -> getPartSize() > 0) /* blob table not present and part size greater than 0 */
+        {
+          ndbout << "Error: Blob table for column \"" << column -> getName() << "\" is not present" << endl;
+        }
+
+        ndbout << endl;
+      }
+    }
+  }
+
   return 1;
 }
 
@@ -322,6 +363,47 @@ struct InfoInfo
   NdbRecAttr* m_rec_attr;
   const NdbDictionary::Column* m_column;
 };
+
+static
+void print_context_info(Ndb* pNdb, NdbDictionary::Table const* pTab)
+{
+  ndbout << "Database: " << pNdb->getDatabaseName() << endl;
+  ndbout << "Schema: " << pNdb->getSchemaName() << endl;
+  ndbout << "Name: " << pTab->getName() << endl;
+  ndbout << "Table id: " << pTab->getTableId() << endl;
+}
+
+static
+void print_autoinc_info(Ndb* pNdb, NdbDictionary::Table const* pTab)
+{
+  if (pTab->getNoOfAutoIncrementColumns() == 0)
+  {
+    return;
+  }
+
+  ndbout << "-- AutoIncrement info" << endl;
+
+
+  /**
+   * DICT Api conceptually allows > 1 autoinc column,
+   * but implementation has one value per table
+   */
+  Uint64 value = 0;
+  int rc = pNdb->readAutoIncrementValue(pTab, value);
+
+  if (rc == 0)
+  {
+    ndbout << "AutoIncrement: " << value << endl;
+  }
+  else
+  {
+    ndbout << "Error reading autoincrement value for table "
+           << pTab->getName()
+           << " : "
+           << pNdb->getNdbError()
+           << endl;
+  }
+}
 
 
 static 
@@ -368,7 +450,11 @@ void print_part_info(Ndb* pNdb, NdbDictionary::Table const* pTab)
     if (pOp == NULL)
       break;
     
-    int rs = pOp->readTuples(NdbOperation::LM_CommittedRead); 
+    int rs = pOp->readTuples(NdbOperation::LM_CommittedRead,
+                             0 /* scan_flags */,
+                             1 /* parallel */,
+                             0 /* batch */);
+
     if (rs != 0)
       break;
     
@@ -450,7 +536,7 @@ void print_part_info(Ndb* pNdb, NdbDictionary::Table const* pTab)
   pTrans->close();
 }
 
-int desc_hashmap(Ndb_cluster_connection &con, Ndb *myndb, char* name)
+int desc_hashmap(Ndb_cluster_connection &con, Ndb *myndb, char const* name)
 {
   NdbDictionary::Dictionary *dict= myndb->getDictionary();
   require(dict);

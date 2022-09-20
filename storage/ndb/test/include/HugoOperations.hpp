@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -49,7 +49,8 @@ public:
   int pkInsertRecord(Ndb*,
 		     int recordNo,
 		     int numRecords = 1,
-		     int updatesValue = 0);
+		     int updatesValue = 0,
+                     int row_step = 1);
   
   int pkWriteRecord(Ndb*,
 		    int recordNo,
@@ -64,7 +65,8 @@ public:
                    int record,
                    int numRecords = 1,
                    NdbOperation::LockMode lm = NdbOperation::LM_Read,
-                   NdbOperation::LockMode * lmused = 0);
+                   NdbOperation::LockMode * lmused = 0,
+                   bool noWait = false);
   
   int pkReadRandRecord(Ndb*,
                        int records,
@@ -92,7 +94,8 @@ public:
   
   int pkDeleteRecord(Ndb*,
 		     int recordNo,
-		     int numRecords = 1);
+		     int numRecords = 1,
+                     int step = 1);
   
   int pkRefreshRecord(Ndb*,
                       int recordNo,
@@ -145,7 +148,7 @@ public:
 
   NdbIndexScanOperation* pIndexScanOp;
 
-  NDBT_ResultRow& get_row(Uint32 idx) { return *rows[idx];}
+  NDBT_ResultRow& get_row(Uint32 index) { return *rows[index];}
 
   int execute_async(Ndb*, NdbTransaction::ExecType, NdbOperation::AbortOption = NdbOperation::AbortOnError);
   int execute_async_prepare(Ndb*, NdbTransaction::ExecType, NdbOperation::AbortOption = NdbOperation::AbortOnError);

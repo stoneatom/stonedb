@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2010, 2021, Oracle and/or its affiliates.
+  Copyright (c) 2010, 2022, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License, version 2.0,
@@ -37,14 +37,12 @@
    therefore return no error.
  */
 
-#define MYSQL_CALLBACK(OBJ, FUNC, PARAMS)         \
-  do {                                            \
-    if ((OBJ) && ((OBJ)->FUNC))                   \
-      (OBJ)->FUNC PARAMS;                         \
+#define MYSQL_CALLBACK(OBJ, FUNC, PARAMS)           \
+  do {                                              \
+    if ((OBJ) && ((OBJ)->FUNC)) (OBJ)->FUNC PARAMS; \
   } while (0)
 
-#define MYSQL_CALLBACK_ELSE(OBJ, FUNC, PARAMS, ELSE)    \
+#define MYSQL_CALLBACK_ELSE(OBJ, FUNC, PARAMS, ELSE) \
   (((OBJ) && ((OBJ)->FUNC)) ? (OBJ)->FUNC PARAMS : (ELSE))
-
 
 #endif /* SQL_CALLBACK_INCLUDED */

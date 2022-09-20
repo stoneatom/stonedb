@@ -1,5 +1,0 @@
-use test;
-create table tt (val double) ENGINE=TIANMU;
-insert into tt values (1.2345);
-select 1 from (select * from tt) as A join tt where A.val > 1 XOR tt.val > 2;
-drop table tt;

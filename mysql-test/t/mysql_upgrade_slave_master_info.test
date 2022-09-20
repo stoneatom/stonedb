@@ -12,13 +12,16 @@
  # Bug #24384561: 5.7.14 COMPLAINS ABOUT WRONG
  #                SLAVE_MASTER_INFO AFTER UPGRADE FROM 5.7.13
  #
-
+--source include/big_test.inc
+--source include/not_valgrind.inc
 --source include/mysql_upgrade_preparation.inc
 
 USE test;
 
 # Preserve the original state of the table so that it can be restored at the end of the test.
+ALTER TABLE mysql.slave_master_info TABLESPACE innodb_file_per_table;
 CREATE TABLE test.slave_master_info_backup LIKE mysql.slave_master_info;
+ALTER TABLE mysql.slave_master_info TABLESPACE mysql;
 INSERT INTO test.slave_master_info_backup SELECT * FROM mysql.slave_master_info;
 
 CREATE TABLE test.original
@@ -31,7 +34,9 @@ SELECT COLUMN_NAME, ORDINAL_POSITION
 --echo # Verify that the upgrade script works correctly when upgrading from the same version
 --echo # i.e. when both the columns Channel_name and Tls_version are in the correct order.
 --disable_result_log
---exec $MYSQL_UPGRADE --skip-verbose --skip-sys-schema --force 2>&1
+--let $restart_parameters = restart:--upgrade=FORCE
+--let $wait_counter= 10000
+--source include/restart_mysqld.inc
 --enable_result_log
 
 CREATE TABLE test.upgraded
@@ -54,7 +59,9 @@ ALTER TABLE mysql.slave_master_info
 
 --echo # Running mysql_upgrade to update slave_master_info table
 --disable_result_log
---exec $MYSQL_UPGRADE --skip-verbose --skip-sys-schema --force 2>&1
+--let $restart_parameters = restart:--upgrade=FORCE
+--let $wait_counter= 10000
+--source include/restart_mysqld.inc
 --enable_result_log
 
 --echo # Verify that the columns Channel_name and Tls_version are now in correct order.
@@ -76,7 +83,7 @@ CREATE TABLE `mysql`.`slave_master_info` (
   `Number_of_lines` int(10) unsigned NOT NULL COMMENT 'Number of lines in the file.',
   `Master_log_name` text CHARACTER SET utf8 COLLATE utf8_bin NOT NULL COMMENT 'The name of the master binary log currently being read from the master.',
   `Master_log_pos` bigint(20) unsigned NOT NULL COMMENT 'The master log position of the last read event.',
-  `Host` char(64) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '' COMMENT 'The host name of the master.',
+  `Host` varchar(64) CHARACTER SET utf8 COLLATE utf8_bin NOT NULL DEFAULT '' COMMENT 'The host name of the source.',
   `User_name` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT 'The user name used to connect to the master.',
   `User_password` text CHARACTER SET utf8 COLLATE utf8_bin COMMENT 'The password used to connect to the master.',
   `Port` int(10) unsigned NOT NULL COMMENT 'The network port used to connect to the master.',
@@ -101,7 +108,9 @@ CREATE TABLE `mysql`.`slave_master_info` (
 
 --echo #Running mysql_upgrade to update slave_master_info table
 --disable_result_log
---exec $MYSQL_UPGRADE --skip-verbose --skip-sys-schema --force 2>&1
+--let $restart_parameters = restart:--upgrade=FORCE
+--let $wait_counter= 10000
+--source include/restart_mysqld.inc
 --enable_result_log
 
 --echo #Verify that the columns Channel_name and Tls_version are added and are in correct order.
@@ -119,13 +128,14 @@ TRUNCATE TABLE mysql.slave_master_info;
 INSERT INTO mysql.slave_master_info SELECT * FROM test.slave_master_info_backup;
 
 ALTER TABLE mysql.slave_master_info
-  MODIFY Host CHAR(64) CHARACTER SET utf8 COLLATE utf8_bin NULL COMMENT 'The host name of the master.',
+  MODIFY Host VARCHAR(255) CHARACTER SET ASCII NULL COMMENT 'The host name of the source.',
   ALTER COLUMN Channel_name DROP DEFAULT;
 
 DROP TABLE test.slave_master_info_backup;
 DROP TABLE test.original;
 
+--echo #Restart the server
+--let $restart_parameters = restart
+--source include/restart_mysqld.inc
 --source include/mysql_upgrade_cleanup.inc
 
---echo #Restart the server
---source include/restart_mysqld.inc

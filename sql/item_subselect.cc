@@ -1,4 +1,4 @@
-/* Copyright (c) 2002, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2002, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -17,144 +17,329 @@
    GNU General Public License, version 2.0, for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   51 Franklin Street, Suite 500, Boston, MA 02110-1335 USA */
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 /**
   @file
 
   @brief
-  subselect Item
-
+  Implements the subselect Item, used when there is a subselect in a
+  SELECT list, WHERE, etc.
 */
 
-#include "item_subselect.h"
+#include "sql/item_subselect.h"
 
-#include "debug_sync.h"          // DEBUG_SYNC
-#include "item_sum.h"            // Item_sum_max
-#include "opt_trace.h"           // OPT_TRACE_TRANSFORM
-#include "parse_tree_nodes.h"    // PT_subselect
-#include "sql_class.h"           // THD
-#include "sql_join_buffer.h"     // JOIN_CACHE
-#include "sql_lex.h"             // st_select_lex
-#include "sql_optimizer.h"       // JOIN
-#include "sql_parse.h"           // check_stack_overrun
-#include "sql_test.h"            // print_where
-#include "sql_tmp_table.h"       // free_tmp_table
-#include "sql_union.h"           // Query_result_union
+#include <atomic>
+#include <climits>
+#include <cstdio>
+#include <cstring>
+#include <initializer_list>
+#include <string>
+#include <utility>
+#include <vector>
 
-Item_subselect::Item_subselect():
-  Item_result_field(), value_assigned(0), traced_before(false),
-  substitution(NULL), in_cond_of_tab(NO_PLAN_IDX), engine(NULL), old_engine(NULL),
-  used_tables_cache(0), have_to_be_excluded(0), const_item_cache(1),
-  changed(false)
-{
-  with_subselect= 1;
+#include "decimal.h"
+#include "lex_string.h"
+#include "m_ctype.h"
+#include "m_string.h"
+#include "my_alloc.h"
+#include "my_base.h"
+#include "my_compiler.h"
+#include "my_dbug.h"
+#include "my_pointer_arithmetic.h"
+#include "my_sys.h"
+#include "mysql_com.h"
+#include "mysqld_error.h"
+#include "scope_guard.h"
+#include "sql/check_stack.h"
+#include "sql/current_thd.h"  // current_thd
+#include "sql/debug_sync.h"   // DEBUG_SYNC
+#include "sql/derror.h"       // ER_THD
+#include "sql/field.h"
+#include "sql/handler.h"
+#include "sql/item_cmpfunc.h"
+#include "sql/item_func.h"
+#include "sql/item_sum.h"                       // Item_sum_max
+#include "sql/iterators/basic_row_iterators.h"  // ZeroRowsIterator
+#include "sql/iterators/composite_iterators.h"  // FilterIterator
+#include "sql/iterators/ref_row_iterators.h"
+#include "sql/iterators/row_iterator.h"  // RowIterator
+#include "sql/iterators/timing_iterator.h"
+#include "sql/join_optimizer/access_path.h"
+#include "sql/join_optimizer/join_optimizer.h"
+#include "sql/key.h"
+#include "sql/my_decimal.h"
+#include "sql/mysqld.h"  // in_left_expr_name
+#include "sql/opt_explain_format.h"
+#include "sql/opt_trace.h"  // OPT_TRACE_TRANSFORM
+#include "sql/opt_trace_context.h"
+#include "sql/parse_tree_nodes.h"  // PT_subquery
+#include "sql/query_options.h"
+#include "sql/query_result.h"
+#include "sql/sql_class.h"  // THD
+#include "sql/sql_const.h"
+#include "sql/sql_error.h"
+#include "sql/sql_executor.h"
+#include "sql/sql_lex.h"  // Query_block
+#include "sql/sql_list.h"
+#include "sql/sql_opt_exec_shared.h"
+#include "sql/sql_optimizer.h"  // JOIN
+#include "sql/sql_select.h"
+#include "sql/sql_test.h"       // print_where
+#include "sql/sql_tmp_table.h"  // free_tmp_table
+#include "sql/sql_union.h"      // Query_result_union
+#include "sql/system_variables.h"
+#include "sql/table.h"
+#include "sql/temp_table_param.h"
+#include "sql/thd_raii.h"
+#include "sql/window.h"
+#include "sql_string.h"
+#include "template_utils.h"
+
+class Json_wrapper;
+
+Item_subselect::Item_subselect()
+    : Item_result_field(),
+      value_assigned(false),
+      traced_before(false),
+      substitution(nullptr),
+      in_cond_of_tab(NO_PLAN_IDX),
+      used_tables_cache(0),
+      have_to_be_excluded(false),
+      changed(false) {
+  set_subquery();
   reset();
   /*
     Item value is NULL if Query_result_interceptor didn't change this value
     (i.e. some rows will be found returned)
   */
-  null_value= TRUE;
+  null_value = true;
 }
 
-
-Item_subselect::Item_subselect(const POS &pos):
-  super(pos), value_assigned(0), traced_before(false),
-  substitution(NULL), in_cond_of_tab(NO_PLAN_IDX), engine(NULL), old_engine(NULL),
-  used_tables_cache(0), have_to_be_excluded(0), const_item_cache(1),
-  changed(false)
-{
-  with_subselect= 1;
+Item_subselect::Item_subselect(const POS &pos)
+    : super(pos),
+      value_assigned(false),
+      traced_before(false),
+      substitution(nullptr),
+      in_cond_of_tab(NO_PLAN_IDX),
+      used_tables_cache(0),
+      have_to_be_excluded(false),
+      changed(false) {
+  set_subquery();
   reset();
   /*
     Item value is NULL if Query_result_interceptor didn't change this value
     (i.e. some rows will be found returned)
   */
-  null_value= TRUE;
+  null_value = true;
 }
 
-
-void Item_subselect::init(st_select_lex *select_lex,
-			  Query_result_subquery *result)
-{
+void Item_subselect::init(Query_block *query_block,
+                          Query_result_subquery *result) {
   /*
-    Please see Item_singlerow_subselect::invalidate_and_restore_select_lex(),
+    Please see Item_singlerow_subselect::invalidate_and_restore_query_block(),
     which depends on alterations to the parse tree implemented here.
   */
 
-  DBUG_ENTER("Item_subselect::init");
-  DBUG_PRINT("enter", ("select_lex: 0x%lx", (long) select_lex));
-  unit= select_lex->master_unit();
+  DBUG_TRACE;
+  DBUG_PRINT("enter", ("query_block: %p", query_block));
+  unit = query_block->master_query_expression();
 
-  if (unit->item)
-  {
-    /*
-      Item can be changed in SELECT_LEX::prepare while engine in
-      JOIN::optimize => we do not copy old_engine here
-    */
-    engine= unit->item->engine;
-    parsing_place= unit->item->parsing_place;
-    unit->item->engine= 0;
-    unit->item= this;
-    engine->change_query_result(this, result);
-  }
-  else
-  {
-    SELECT_LEX *outer_select= unit->outer_select();
+  if (unit->item) {
+    subquery = move(unit->item->subquery);
+    parsing_place = unit->item->parsing_place;
+    unit->item = this;
+    subquery->change_query_result(current_thd, this, result);
+  } else {
+    Query_block *outer_query_block = unit->outer_query_block();
     /*
       do not take into account expression inside aggregate functions because
       they can access original table fields
     */
-    parsing_place= (outer_select->in_sum_expr ?
-                    CTX_NONE :
-                    outer_select->parsing_place);
-    if (unit->is_union() || unit->fake_select_lex)
-      engine= new subselect_union_engine(unit, result, this);
-    else
-      engine= new subselect_single_select_engine(select_lex, result, this);
+    parsing_place =
+        (outer_query_block->in_sum_expr ? CTX_NONE
+                                        : outer_query_block->parsing_place);
+    subquery.reset(new (*THR_MALLOC) SubqueryWithResult(unit, result, this));
   }
   {
-    SELECT_LEX *upper= unit->outer_select();
-    if (upper->parsing_place == CTX_HAVING)
-      upper->subquery_in_having= 1;
+    Query_block *upper = unit->outer_query_block();
+    if (upper->parsing_place == CTX_HAVING) upper->subquery_in_having = true;
   }
-  DBUG_VOID_RETURN;
 }
 
+/**
+  Accumulate missing used_tables information from embedded query expression
+  into the subquery.
+  This function relies on a few other functions to accumulate information:
+    accumulate_expression(), accumulate_condition().
 
-void Item_subselect::cleanup()
-{
-  DBUG_ENTER("Item_subselect::cleanup");
-  Item_result_field::cleanup();
-  if (old_engine)
-  {
-    if (engine)
-    {
-      engine->cleanup();
-      delete engine;
+  Currently, the only property that is accumulated is INNER_TABLE_BIT.
+  Information about local tables and outer references are accumulated in
+  mark_as_dependent() (@see item.cc).
+  RAND_TABLE_BIT is currently not accumulated (but uncacheable is used instead).
+
+  @todo - maybe_null is not set properly for all types of subqueries and
+          expressions. Use this sketch as a guideline for further handling:
+
+  - When constructing an Item_subselect, maybe_null is false and null_value
+    is true. This is obviously wrong.
+
+  - When constructing an Item_in_subselect (subclass of Item_subselect),
+    maybe_null is set true and null_value is set false.
+
+  We should probably keep both maybe_null and null_value as false in
+  the constructor. Then, set maybe_null during preparation, according to
+  type of subquery:
+
+  - Scalar subquery is nullable when query block may have an empty result (not
+    DUAL or implicitly grouped).
+
+  - Scalar subquery is nullable when one of the selected expressions
+    are nullable.
+
+  - Scalar subquery is nullable when WHERE clause or HAVING clause is non-empty
+    and not always true.
+
+  - EXISTS subquery is never nullable!
+
+  - IN subquery nullability ignores subquery cardinality.
+
+  - IN subquery is nullable when one of the selected expressions are nullable.
+
+  - UNIONed query blocks may cancel out nullability.
+
+*/
+void Item_subselect::accumulate_properties() {
+  for (Query_block *select = unit->first_query_block(); select != nullptr;
+       select = select->next_query_block())
+    accumulate_properties(select);
+
+  if (unit->fake_query_block != nullptr) {
+    /*
+      This query block may only contain components with special table
+      dependencies in the ORDER BY clause, so inspect these expressions only.
+      (The SELECT list may contain table references that are valid only in
+       a local scope - references to the UNION temporary table - and should
+       not be propagated to the subquery level.)
+    */
+    for (ORDER *order = unit->fake_query_block->order_list.first;
+         order != nullptr; order = order->next)
+      accumulate_condition(*order->item);
+  }
+}
+
+/**
+  Accumulate missing used_tables information for a query block.
+
+  @param select Reference to query block
+*/
+void Item_subselect::accumulate_properties(Query_block *select) {
+  for (Item *item : select->visible_fields()) {
+    accumulate_expression(item);
+  }
+
+  if (select->where_cond()) accumulate_condition(select->where_cond());
+
+  if (select->join_list)
+    walk_join_list(*select->join_list, [this](TABLE_LIST *tr) -> bool {
+      if (tr->join_cond()) accumulate_condition(tr->join_cond());
+      return false;
+    });
+
+  for (ORDER *group = select->group_list.first; group; group = group->next)
+    accumulate_condition(*group->item);
+
+  if (select->having_cond()) accumulate_condition(select->having_cond());
+
+  for (ORDER *order = select->order_list.first; order; order = order->next)
+    accumulate_expression(*order->item);
+  if (select->table_list.elements) used_tables_cache |= INNER_TABLE_BIT;
+
+  List_iterator<Window> wi(select->m_windows);
+  Window *w;
+  while ((w = wi++)) {
+    for (ORDER *wp = w->first_partition_by(); wp != nullptr; wp = wp->next)
+      accumulate_expression(*wp->item);
+    for (ORDER *wo = w->first_order_by(); wo != nullptr; wo = wo->next)
+      accumulate_expression(*wo->item);
+  }
+}
+
+/**
+  Accumulate used_tables information for an expression from a query block.
+
+  @param item  Reference to expression.
+*/
+void Item_subselect::accumulate_expression(Item *item) {
+  if (item->used_tables() & ~OUTER_REF_TABLE_BIT)
+    used_tables_cache |= INNER_TABLE_BIT;
+  set_nullable(is_nullable() || item->is_nullable());
+}
+
+/**
+  Accumulate used_tables information for a condition from a query block.
+
+  @param item  Reference to condition.
+*/
+void Item_subselect::accumulate_condition(Item *item) {
+  if (item->used_tables() & ~OUTER_REF_TABLE_BIT)
+    used_tables_cache |= INNER_TABLE_BIT;
+}
+
+void Item_subselect::create_iterators(THD *thd) {
+  if (indexsubquery_engine != nullptr) {
+    indexsubquery_engine->create_iterators(thd);
+  }
+}
+
+Item_subselect::enum_engine_type Item_subselect::engine_type() const {
+  if (indexsubquery_engine != nullptr) {
+    switch (indexsubquery_engine->engine_type()) {
+      case subselect_indexsubquery_engine::INDEXSUBQUERY_ENGINE:
+        return Item_subselect::INDEXSUBQUERY_ENGINE;
+      case subselect_indexsubquery_engine::HASH_SJ_ENGINE:
+        return Item_subselect::HASH_SJ_ENGINE;
+      default:
+        assert(false);
     }
-    engine= old_engine;
-    old_engine= 0;
   }
-  if (engine)
-    engine->cleanup();
+  return Item_subselect::OTHER_ENGINE;
+}
+
+const TABLE *Item_subselect::get_table() const {
+  return down_cast<subselect_hash_sj_engine *>(indexsubquery_engine)
+      ->get_table();
+}
+
+const TABLE_REF &Item_subselect::get_table_ref() const {
+  return down_cast<subselect_hash_sj_engine *>(indexsubquery_engine)
+      ->get_table_ref();
+}
+
+join_type Item_subselect::get_join_type() const {
+  return down_cast<subselect_hash_sj_engine *>(indexsubquery_engine)
+      ->get_join_type();
+}
+
+void Item_subselect::cleanup() {
+  Item_result_field::cleanup();
+  if (indexsubquery_engine) {
+    indexsubquery_engine->cleanup(current_thd);
+    destroy(indexsubquery_engine);
+    indexsubquery_engine = nullptr;
+  }
+  if (subquery) subquery->cleanup(current_thd);
   reset();
-  value_assigned= 0;
-  traced_before= false;
-  in_cond_of_tab= NO_PLAN_IDX;
-  DBUG_VOID_RETURN;
+  value_assigned = false;
+  traced_before = false;
+  in_cond_of_tab = NO_PLAN_IDX;
 }
 
-
-void Item_singlerow_subselect::cleanup()
-{
-  DBUG_ENTER("Item_singlerow_subselect::cleanup");
-  value= 0; row= 0;
+void Item_singlerow_subselect::cleanup() {
+  DBUG_TRACE;
   Item_subselect::cleanup();
-  DBUG_VOID_RETURN;
 }
-
 
 /**
   Decide whether to mark the injected left expression "outer" relative to
@@ -180,390 +365,263 @@ void Item_singlerow_subselect::cleanup()
                       operator
 
   @param[in] col      The column number of the expression in the left operand
-                      to possibly mark as dependant of the outer select
+                      to possibly mark as dependent of the outer select
 
   @returns true if we should mark the injected left expression "outer"
                 relative to the subquery
 */
-bool Item_in_subselect::mark_as_outer(Item *left_row, size_t col)
-{
-  const Item *left_col= left_row->element_index(col);
+bool Item_in_subselect::mark_as_outer(Item *left_row, size_t col) {
+  const Item *left_col = left_row->element_index(col);
   return !left_col->const_item() ||
-    (!abort_on_null && left_col->maybe_null) ||
-    (left_row->type() == SUBSELECT_ITEM && !left_col->basic_const_item());
+         (!abort_on_null && left_col->is_nullable()) ||
+         (left_row->type() == SUBSELECT_ITEM && !left_col->basic_const_item());
 }
 
-
-bool Item_in_subselect::finalize_exists_transform(SELECT_LEX *select_lex)
-{
-  assert(exec_method == EXEC_EXISTS_OR_MAT ||
-         exec_method == EXEC_EXISTS);
-  /*
-    Change
-      SELECT expr1, expr2
-    to
-      SELECT 1,1
-    because EXISTS does not care about the selected expressions, only about
-    the existence of rows.
-
-    If UNION, we have to modify the SELECT list of each SELECT in the
-    UNION, fortunately this function is indeed called for each SELECT_LEX.
-
-    If this is a prepared statement, we must allow the next execution to use
-    materialization. So, we should back up the original SELECT list. If this
-    is a UNION, this means backing up the N original SELECT lists. To
-    avoid this constraint, we change the SELECT list only if this is not a
-    prepared statement.
-  */
-  if (unit->thd->stmt_arena->is_conventional()) // not prepared stmt
-  {
-    uint cnt= select_lex->item_list.elements;
-    select_lex->item_list.empty();
-    for(; cnt > 0; cnt--)
-      select_lex->item_list.push_back(new Item_int(NAME_STRING("Not_used"),
-                                                   (longlong) 1,
-                                                   MY_INT64_NUM_DECIMAL_DIGITS));
-    Opt_trace_context * const trace= &unit->thd->opt_trace;
-    OPT_TRACE_TRANSFORM(trace, oto0, oto1,
-                        select_lex->select_number,
-                        "IN (SELECT)", "EXISTS (CORRELATED SELECT)");
-    oto1.add("put_1_in_SELECT_list", true);
-  }
+bool Item_in_subselect::finalize_exists_transform(THD *thd,
+                                                  Query_block *query_block) {
+  assert(strategy == Subquery_strategy::CANDIDATE_FOR_IN2EXISTS_OR_MAT ||
+         strategy == Subquery_strategy::SUBQ_EXISTS);
   /*
     Note that if the subquery is "SELECT1 UNION SELECT2" then this is not
     working optimally (Bug#14215895).
   */
-  unit->global_parameters()->select_limit= new Item_int(1);
-  unit->set_limit(unit->global_parameters());
+  if (!(unit->global_parameters()->select_limit = new Item_int(1))) return true;
+  unit->global_parameters()->m_internal_limit = true;
 
-  select_lex->join->allow_outer_refs= true;   // for JOIN::set_prefix_tables()
-  exec_method= EXEC_EXISTS;
+  if (unit->set_limit(thd, unit->global_parameters()))
+    return true; /* purecov: inspected */
+
+  if (unit->finalize(thd)) {
+    return true;
+  }
+
+  query_block->join->allow_outer_refs = true;  // for JOIN::set_prefix_tables()
+  strategy = Subquery_strategy::SUBQ_EXISTS;
   return false;
 }
 
-
-
-/*
-  Removes every predicate injected by IN->EXISTS.
-
-  This function is different from others:
-  - it wants to remove all traces of IN->EXISTS (for
-  materialization)
-  - remove_subq_pushed_predicates() and remove_additional_cond() want to
-  remove only the conditions of IN->EXISTS which index lookup already
-  satisfies (they are just an optimization).
-
-  Code reading suggests that remove_additional_cond() is equivalent to
-  "if in_subs->left_expr->cols()==1 then remove_in2exists_conds(where)"
-  but that would still not fix Bug#13915291 of remove_additional_cond().
-
-  @param conds  condition
-  @returns      new condition
-*/
-Item *Item_in_subselect::remove_in2exists_conds(Item* conds)
-{
-  if (conds->created_by_in2exists())
-    return NULL;
-  if (conds->type() != Item::COND_ITEM)
-    return conds;
-  Item_cond *cnd= static_cast<Item_cond *>(conds);
-  /*
-    If IN->EXISTS has added something to 'conds', cnd must be AND list and we
-    must inspect each member.
-  */
-  if (cnd->functype() != Item_func::COND_AND_FUNC)
-    return conds;
-  List_iterator<Item> li(*(cnd->argument_list()));
-  Item *item;
-  while ((item= li++))
-  {
-    // remove() does not invalidate iterator.
-    if (item->created_by_in2exists())
-      li.remove();
+Item *remove_in2exists_conds(THD *thd, Item *conds) {
+  if (conds == nullptr || conds->created_by_in2exists()) {
+    return nullptr;
   }
-  switch (cnd->argument_list()->elements)
-  {
-  case 0:
-    return NULL;
-  case 1: // AND(x) is the same as x, return x
-    return cnd->argument_list()->head();
-  default: // otherwise return AND
+  if (conds->type() != Item::COND_ITEM ||
+      down_cast<Item_cond *>(conds)->functype() != Item_func::COND_AND_FUNC) {
     return conds;
   }
+
+  Mem_root_array<Item *> parts(thd->mem_root);
+  ExtractConditions(conds, &parts);
+  auto new_end = std::remove_if(parts.begin(), parts.end(), [](Item *item) {
+    return item->created_by_in2exists();
+  });
+  if (new_end == parts.end()) {
+    return conds;  // No change.
+  }
+  parts.erase(new_end, parts.end());
+  if (parts.empty()) {
+    return nullptr;
+  }
+  if (parts.size() == 1) {
+    return parts[0];
+  }
+
+  List<Item> new_conds;
+  for (Item *item : parts) {
+    new_conds.push_back(item);
+  }
+  Item_cond_and *item_and = new Item_cond_and(new_conds);
+  item_and->quick_fix_field();
+  item_and->update_used_tables();
+  return item_and;
 }
 
+bool Item_in_subselect::finalize_materialization_transform(THD *thd,
+                                                           JOIN *join) {
+  assert(strategy == Subquery_strategy::CANDIDATE_FOR_IN2EXISTS_OR_MAT);
 
-bool Item_in_subselect::finalize_materialization_transform(JOIN *join)
-{
-  assert(exec_method == EXEC_EXISTS_OR_MAT);
-  assert(engine->engine_type() == subselect_engine::SINGLE_SELECT_ENGINE);
-  THD * const thd= unit->thd;
-  subselect_single_select_engine *old_engine_derived=
-    static_cast<subselect_single_select_engine*>(engine);
-
-  assert(join == old_engine_derived->select_lex->join);
+  assert(join == subquery->single_query_block()->join);
   // No UNION in materialized subquery so this holds:
-  assert(join->select_lex == unit->first_select());
-  assert(join->unit == unit);
-  assert(unit->global_parameters()->select_limit == NULL);
+  assert(join->query_block == unit->first_query_block());
+  assert(join->query_expression() == unit);
+  assert(unit->global_parameters()->select_limit == nullptr);
 
-  exec_method= EXEC_MATERIALIZATION;
+  strategy = Subquery_strategy::SUBQ_MATERIALIZATION;
 
-  /*
-    We need to undo several changes which IN->EXISTS had done. But we first
-    back them up, so that the next execution of the statement is allowed to
-    choose IN->EXISTS.
-  */
+  // We need to undo several changes which IN->EXISTS had done:
 
   /*
-    Undo conditions injected by IN->EXISTS.
-    Condition guards, which those conditions maybe used, are not needed
-    anymore.
-    Subquery becomes 'not dependent' again, as before IN->EXISTS.
+    The conditions added by in2exists depend on the concrete value from the
+    outer query block, so they need to be removed before we materialize.
   */
+
+  // This part is not relevant for the hypergraph optimizer.
   if (join->where_cond)
-    join->where_cond= remove_in2exists_conds(join->where_cond);
+    join->where_cond = remove_in2exists_conds(thd, join->where_cond);
   if (join->having_cond)
-    join->having_cond= remove_in2exists_conds(join->having_cond);
+    join->having_cond = remove_in2exists_conds(thd, join->having_cond);
+
+  // This part is only relevant for the hypergraph optimizer.
+  unit->change_to_access_path_without_in2exists(thd);
   assert(!in2exists_info->dependent_before);
-  join->select_lex->uncacheable&= ~UNCACHEABLE_DEPENDENT;
-  unit->uncacheable&= ~UNCACHEABLE_DEPENDENT;
+  if (unit->finalize(thd)) {
+    return true;
+  }
+
+  join->query_block->uncacheable &= ~UNCACHEABLE_DEPENDENT;
+  unit->uncacheable &= ~UNCACHEABLE_DEPENDENT;
 
   OPT_TRACE_TRANSFORM(&thd->opt_trace, oto0, oto1,
-                      old_engine_derived->select_lex->select_number,
+                      subquery->single_query_block()->select_number,
                       "IN (SELECT)", "materialization");
   oto1.add("chosen", true);
 
-  subselect_hash_sj_engine * const new_engine=
-    new subselect_hash_sj_engine(thd, this, old_engine_derived);
-  if (!new_engine)
-    return true;
-  if (new_engine->setup(unit->get_unit_column_types()))
-  {
+  subselect_hash_sj_engine *const new_engine =
+      new (thd->mem_root) subselect_hash_sj_engine(this, unit);
+  if (!new_engine) return true;
+  if (new_engine->setup(thd, *unit->get_unit_column_types())) {
     /*
       For some reason we cannot use materialization for this IN predicate.
       Delete all materialization-related objects, and return error.
     */
-    new_engine->cleanup();
-    delete new_engine;
+    new_engine->cleanup(thd);
+    destroy(new_engine);
     return true;
   }
-  if (change_engine(new_engine))
-    return true;
+  indexsubquery_engine = new_engine;
 
-  join->allow_outer_refs= false;              // for JOIN::set_prefix_tables()
+  join->allow_outer_refs = false;  // for JOIN::set_prefix_tables()
   return false;
 }
 
-
-void Item_in_subselect::cleanup()
-{
-  DBUG_ENTER("Item_in_subselect::cleanup");
-  if (left_expr_cache)
-  {
-    left_expr_cache->delete_elements();
-    delete left_expr_cache;
-    left_expr_cache= NULL;
+void Item_in_subselect::cleanup() {
+  DBUG_TRACE;
+  if (left_expr_cache) {
+    left_expr_cache->destroy_elements();
+    destroy(left_expr_cache);
+    left_expr_cache = nullptr;
   }
-  left_expr_cache_filled= false;
-  need_expr_cache= TRUE;
+  left_expr_cache_filled = false;
+  need_expr_cache = true;
 
-  switch(exec_method)
-  {
-  case EXEC_MATERIALIZATION:
-    if (in2exists_info->dependent_after)
-    {
-      unit->first_select()->uncacheable|= UNCACHEABLE_DEPENDENT;
-      unit->uncacheable|= UNCACHEABLE_DEPENDENT;
-    }
-    // fall through
-  case EXEC_EXISTS:
-    /*
-      Back to EXISTS_OR_MAT, so that next execution of this statement can
-      choose between the two.
-    */
-    unit->global_parameters()->select_limit= NULL;
-    exec_method= EXEC_EXISTS_OR_MAT;
-    break;
-  default:
-    break;
+  switch (strategy) {
+    case Subquery_strategy::SUBQ_MATERIALIZATION:
+      if (in2exists_info->dependent_after) {
+        unit->first_query_block()->uncacheable |= UNCACHEABLE_DEPENDENT;
+        unit->uncacheable |= UNCACHEABLE_DEPENDENT;
+      }
+      [[fallthrough]];
+    case Subquery_strategy::SUBQ_EXISTS:
+      /*
+        Back to EXISTS_OR_MAT, so that next execution of this statement can
+        choose between the two.
+      */
+      unit->global_parameters()->select_limit = nullptr;
+      strategy = Subquery_strategy::CANDIDATE_FOR_IN2EXISTS_OR_MAT;
+      break;
+    default:
+      break;
   }
 
   Item_subselect::cleanup();
-  DBUG_VOID_RETURN;
 }
 
-Item_subselect::~Item_subselect()
-{
-  delete engine;
+AccessPath *Item_in_subselect::root_access_path() const {
+  if (strategy == Subquery_strategy::SUBQ_MATERIALIZATION &&
+      indexsubquery_engine->engine_type() ==
+          subselect_indexsubquery_engine::HASH_SJ_ENGINE) {
+    return down_cast<subselect_hash_sj_engine *>(indexsubquery_engine)
+        ->root_access_path();
+  } else {
+    // Only subselect_hash_sj_engine owns its own iterator;
+    // for subselect_indexsubquery_engine, the unit still has it, since it's a
+    // normally executed query block. Thus, we should never get called
+    // otherwise.
+    //
+    // However, in some situations where the hypergraph optimizer prints out
+    // the query to the log for debugging, it isn't fully optimized
+    // yet and might not yet have an iterator. Thus, return nullptr instead of
+    // assert-failing.
+    assert(current_thd->lex->using_hypergraph_optimizer);
+    return nullptr;
+  }
 }
 
-
-bool Item_subselect::fix_fields(THD *thd, Item **ref)
-{
-  char const *save_where= thd->where;
+bool Item_subselect::fix_fields(THD *thd, Item **ref) {
+  char const *save_where = thd->where;
   uint8 uncacheable;
   bool res;
 
   assert(fixed == 0);
-  /*
-    Pointers to THD must match. unit::thd may vary over the lifetime of the
-    item (for example triggers, and thus their Item-s, are in a cache shared
-    by all connections), but reinit_stmt_before_use() keeps it up-to-date,
-    which we check here. subselect_union_engine functions also do sanity
-    checks.
-  */
-  assert(thd == unit->thd);
+  assert(indexsubquery_engine == nullptr);
+
 #ifndef NDEBUG
   // Engine accesses THD via its 'item' pointer, check it:
-  assert(engine->get_item() == this);
+  assert(subquery->get_item() == this);
 #endif
 
-  engine->set_thd_for_result();
+  if (check_stack_overrun(thd, STACK_MIN_SIZE, (uchar *)&res)) return true;
 
-  if (check_stack_overrun(thd, STACK_MIN_SIZE, (uchar*)&res))
-    return TRUE;
-
-  if (!(res= engine->prepare()))
-  {
+  if (!(res = subquery->prepare(thd))) {
     // all transformation is done (used by prepared statements)
-    changed= 1;
+    changed = true;
+
+    // Accumulate properties referring to "inner tables"
+    accumulate_properties();
 
     /*
       Substitute the current item with an Item_in_optimizer that was
       created by Item_in_subselect::select_in_like_transformer and
       call fix_fields for the substituted item which in turn calls
-      engine->prepare for the subquery predicate.
+      subquery->prepare for the subquery predicate.
     */
-    if (substitution)
-    {
-      int ret= 0;
-      (*ref)= substitution;
-      substitution->item_name= item_name;
-      if (have_to_be_excluded)
-	engine->exclude();
-      substitution= 0;
-      thd->where= "checking transformed subquery";
-      if (!(*ref)->fixed)
-	ret= (*ref)->fix_fields(thd, ref);
-      thd->where= save_where;
+    if (substitution) {
+      int ret = 0;
+      (*ref) = substitution;
+      substitution->item_name = item_name;
+      if (have_to_be_excluded) {
+        unit->exclude_level();
+      }
+      substitution = nullptr;
+      thd->where = "checking transformed subquery";
+      if (!(*ref)->fixed) ret = (*ref)->fix_fields(thd, ref);
+      thd->where = save_where;
       return ret;
     }
     // Is it one field subselect?
-    if (engine->cols() > max_columns)
-    {
+    if (unit_cols() > max_columns) {
       my_error(ER_OPERAND_COLUMNS, MYF(0), 1);
-      return TRUE;
+      return true;
     }
-    fix_length_and_dec();
-  }
-  else
+    if (resolve_type(thd)) goto err;
+  } else
     goto err;
-  
-  if ((uncacheable= engine->uncacheable()))
-  {
-    const_item_cache= 0;
-    if (uncacheable & UNCACHEABLE_RAND)
-      used_tables_cache|= RAND_TABLE_BIT;
+
+  if ((uncacheable = unit->uncacheable)) {
+    if (uncacheable & UNCACHEABLE_RAND) used_tables_cache |= RAND_TABLE_BIT;
   }
-  fixed= 1;
+
+  /*
+    If this subquery references window functions, per the SQL standard they
+    are aggregated in the subquery's query block, and never outside of it, so:
+  */
+  assert(!has_wf());
+
+  fixed = true;
 
 err:
-  thd->where= save_where;
+  thd->where = save_where;
   return res;
 }
 
+bool Item_subselect::walk(Item_processor processor, enum_walk walk,
+                          uchar *arg) {
+  if ((walk & enum_walk::PREFIX) && (this->*processor)(arg)) return true;
 
-/**
-  Apply walk() processor to join conditions.
-
-  JOINs may be nested. Walk nested joins recursively to apply the
-  processor.
-*/
-static bool walk_join_condition(List<TABLE_LIST> *tables,
-                                Item_processor processor,
-                                Item::enum_walk walk,
-                                uchar *arg)
-{
-  TABLE_LIST *table;
-  List_iterator<TABLE_LIST> li(*tables);
-
-  while ((table= li++))
-  {
-    if (table->join_cond() &&
-        table->join_cond()->walk(processor, walk, arg))
-      return true;
-
-    if (table->nested_join != NULL &&
-        walk_join_condition(&table->nested_join->join_list, processor,
-                            walk, arg))
-      return true;
-  }
-  return false;
-}
-
-
-/**
-  Workaround for bug in gcc 4.1. @See Item_in_subselect::walk()
-*/
-bool Item_subselect::walk_body(Item_processor processor, enum_walk walk,
-                               uchar *arg)
-{
-  if ((walk & WALK_PREFIX) && (this->*processor)(arg))
+  if ((walk & enum_walk::SUBQUERY) && unit->walk(processor, walk, arg))
     return true;
 
-  if (walk & WALK_SUBQUERY)
-  {
-    for (SELECT_LEX *lex= unit->first_select(); lex; lex= lex->next_select())
-    {
-      List_iterator<Item> li(lex->item_list);
-      Item *item;
-      ORDER *order;
-
-      while ((item=li++))
-      {
-        if (item->walk(processor, walk, arg))
-          return true;
-      }
-
-      if (lex->join_list != NULL &&
-          walk_join_condition(lex->join_list, processor, walk, arg))
-        return true;
-
-      // @todo: Roy thinks that we should always use lex->where_cond.
-      Item *const where_cond= (lex->join && lex->join->is_optimized()) ?
-        lex->join->where_cond : lex->where_cond();
-
-      if (where_cond &&
-          where_cond->walk(processor, walk, arg))
-        return true;
-
-      for (order= lex->group_list.first ; order; order= order->next)
-      {
-        if ((*order->item)->walk(processor, walk, arg))
-          return true;
-      }
-
-      if (lex->having_cond() &&
-          lex->having_cond()->walk(processor, walk, arg))
-        return true;
-
-      for (order= lex->order_list.first ; order; order= order->next)
-      {
-        if ((*order->item)->walk(processor, walk, arg))
-          return true;
-      }
-    }
-  }
-
-  return (walk & WALK_POSTFIX) && (this->*processor)(arg);
+  return (walk & enum_walk::POSTFIX) && (this->*processor)(arg);
 }
-
-bool Item_subselect::walk(Item_processor processor, enum_walk walk, uchar *arg)
-{
-  return walk_body(processor, walk, arg);
-}
-
 
 /**
   Register subquery to the table where it is used within a condition.
@@ -576,139 +634,123 @@ bool Item_subselect::walk(Item_processor processor, enum_walk walk, uchar *arg)
         we explain inner subqueries in their joins contexts.
 */
 
-bool Item_subselect::explain_subquery_checker(uchar **arg)
-{
-  qep_row *qr= *reinterpret_cast<qep_row **>(arg);
+bool Item_subselect::explain_subquery_checker(uchar **arg) {
+  qep_row *qr = reinterpret_cast<qep_row *>(*arg);
 
   qr->register_where_subquery(unit);
   return false;
 }
 
-
-bool Item_subselect::exec()
-{
-  DBUG_ENTER("Item_subselect::exec");
+bool Item_subselect::exec(THD *thd) {
+  DBUG_TRACE;
   /*
     Do not execute subselect in case of a fatal error
     or if the query has been killed.
   */
-  THD * const thd= unit->thd;
-  if (thd->is_error() || thd->killed)
-    DBUG_RETURN(true);
+  if (thd->is_error() || thd->killed) return true;
 
-  assert(!thd->lex->context_analysis_only);
+  // No subqueries should be evaluated when analysing a view
+  assert(!thd->lex->is_view_context_analysis());
   /*
     Simulate a failure in sub-query execution. Used to test e.g.
     out of memory or query being killed conditions.
   */
-  DBUG_EXECUTE_IF("subselect_exec_fail", DBUG_RETURN(true););
+  DBUG_EXECUTE_IF("subselect_exec_fail", return true;);
 
   /*
     Disable tracing of subquery execution if
     1) this is not the first time the subselect is executed, and
     2) REPEATED_SUBSELECT is disabled
   */
-#ifdef OPTIMIZER_TRACE
-  Opt_trace_context * const trace= &thd->opt_trace;
-  const bool disable_trace=
-    traced_before &&
-    !trace->feature_enabled(Opt_trace_context::REPEATED_SUBSELECT);
+  Opt_trace_context *const trace = &thd->opt_trace;
+  const bool disable_trace =
+      traced_before &&
+      !trace->feature_enabled(Opt_trace_context::REPEATED_SUBSELECT);
   Opt_trace_disable_I_S disable_trace_wrapper(trace, disable_trace);
-  traced_before= true;
+  traced_before = true;
 
   Opt_trace_object trace_wrapper(trace);
   Opt_trace_object trace_exec(trace, "subselect_execution");
-  trace_exec.add_select_number(unit->first_select()->select_number);
+  trace_exec.add_select_number(unit->first_query_block()->select_number);
   Opt_trace_array trace_steps(trace, "steps");
-#endif
-  // Statements like DO and SET may still rely on lazy optimization
-  if (!unit->is_optimized() && unit->optimize(thd))
-    DBUG_RETURN(true);
-  bool res= engine->exec();
 
-  DBUG_RETURN(res);
+  // subselect_hash_sj_engine creates its own iterators; it does not call
+  // exec().
+  bool should_create_iterators =
+      !(indexsubquery_engine != nullptr &&
+        indexsubquery_engine->engine_type() ==
+            subselect_indexsubquery_engine::HASH_SJ_ENGINE);
+
+  // Normally, the unit would be optimized here, but statements like DO and SET
+  // may still rely on lazy optimization. Also, we might not have iterators,
+  // so make sure to create them if they're missing.
+  if (!unit->is_optimized()) {
+    if (unit->optimize(thd, /*materialize_destination=*/nullptr,
+                       /*create_iterators=*/false,
+                       /*finalize_access_paths=*/false))
+      return true;
+
+    // NOTE: We defer finalization and creating iterators to the statements
+    // below; asking optimize() to finalize a plan with two choices
+    // (materialization and exists) rightfully causes a failed assertion. We
+    // should probably have made a cost-based choice between the two here, but
+    // as it stands, we will always implicitly choose in2exists in these cases
+    // (DO/SET).
+  }
+  if (should_create_iterators && unit->root_access_path() != nullptr) {
+    if (unit->finalize(thd)) {
+      return true;
+    }
+    if (unit->force_create_iterators(thd)) return true;
+  }
+  if (indexsubquery_engine != nullptr) {
+    return indexsubquery_engine->exec(thd);
+  } else {
+    return subquery->exec(thd);
+  }
 }
 
-
-/**
-  Fix used tables information for a subquery after query transformations.
-  Common actions for all predicates involving subqueries.
-  Most actions here involve re-resolving information for conditions
-  and items belonging to the subquery.
-  Notice that the usage information from underlying expressions is not
-  propagated to the subquery predicate, as it belongs to inner layers
-  of the query operator structure.
-  However, when underlying expressions contain outer references into
-  a select_lex on this level, the relevant information must be updated
-  when these expressions are resolved.
-*/
-
-void Item_subselect::fix_after_pullout(st_select_lex *parent_select,
-                                       st_select_lex *removed_select)
+/// @see Query_expression::fix_after_pullout()
+void Item_subselect::fix_after_pullout(Query_block *parent_query_block,
+                                       Query_block *removed_query_block)
 
 {
   /* Clear usage information for this subquery predicate object */
-  used_tables_cache= 0;
+  used_tables_cache = 0;
 
-  /*
-    Go through all query specification objects of the subquery and re-resolve
-    all relevant expressions belonging to them.
-  */
-  for (SELECT_LEX *sel= unit->first_select(); sel; sel= sel->next_select())
-  {
-    if (sel->where_cond())
-      sel->where_cond()->fix_after_pullout(parent_select, removed_select);
+  unit->fix_after_pullout(parent_query_block, removed_query_block);
 
-    if (sel->having_cond())
-      sel->having_cond()->fix_after_pullout(parent_select, removed_select);
+  // Accumulate properties like INNER_TABLE_BIT
+  accumulate_properties();
 
-    List_iterator<Item> li(sel->item_list);
-    Item *item;
-    while ((item=li++))
-      item->fix_after_pullout(parent_select, removed_select);
-
-    /*
-      No need to call fix_after_pullout() for outer-join conditions, as these
-      cannot have outer references.
-    */
-
-    /* Re-resolve ORDER BY and GROUP BY fields */
-
-    for (ORDER *order= sel->order_list.first;
-         order;
-         order= order->next)
-      (*order->item)->fix_after_pullout(parent_select, removed_select);
-
-    for (ORDER *group= sel->group_list.first;
-         group;
-         group= group->next)
-      (*group->item)->fix_after_pullout(parent_select, removed_select);
+  const uint8 uncacheable = unit->uncacheable;
+  if (uncacheable) {
+    if (uncacheable & UNCACHEABLE_RAND) used_tables_cache |= RAND_TABLE_BIT;
   }
 }
 
 bool Item_in_subselect::walk(Item_processor processor, enum_walk walk,
-                             uchar *arg)
-{
-  if (left_expr->walk(processor, walk, arg))
-    return true;
-  /*
-    Cannot call "Item_subselect::walk(...)" because with gcc 4.1
-    Item_in_subselect::walk() was incorrectly called instead.
-    Using Item_subselect::walk_body() instead is a workaround.
-  */
-  return walk_body(processor, walk, arg);
+                             uchar *arg) {
+  if (left_expr->walk(processor, walk, arg)) return true;
+  return Item_subselect::walk(processor, walk, arg);
+}
+
+Item *Item_in_subselect::transform(Item_transformer transformer, uchar *arg) {
+  left_expr = left_expr->transform(transformer, arg);
+  if (left_expr == nullptr) return nullptr;
+
+  return (this->*transformer)(arg);
 }
 
 /*
   Compute the IN predicate if the left operand's cache changed.
 */
 
-bool Item_in_subselect::exec()
-{
-  DBUG_ENTER("Item_in_subselect::exec");
-  assert(exec_method != EXEC_MATERIALIZATION ||
-         (exec_method == EXEC_MATERIALIZATION &&
-          engine->engine_type() == subselect_engine::HASH_SJ_ENGINE));
+bool Item_in_subselect::exec(THD *thd) {
+  DBUG_TRACE;
+  assert(strategy != Subquery_strategy::SUBQ_MATERIALIZATION ||
+         indexsubquery_engine->engine_type() ==
+             subselect_indexsubquery_engine::HASH_SJ_ENGINE);
   /*
     Initialize the cache of the left predicate operand. This has to be done as
     late as now, because Cached_item directly contains a resolved field (not
@@ -723,161 +765,141 @@ bool Item_in_subselect::exec()
       lookup, the cache hit rate, and the savings per cache hit.
   */
   if (need_expr_cache && !left_expr_cache &&
-      exec_method == EXEC_MATERIALIZATION &&
-      init_left_expr_cache())
-    DBUG_RETURN(TRUE);
+      strategy == Subquery_strategy::SUBQ_MATERIALIZATION &&
+      init_left_expr_cache(thd))
+    return true;
 
-  if (left_expr_cache != NULL)
-  {
-    const int result= test_if_item_cache_changed(*left_expr_cache);
-    if (left_expr_cache_filled &&               // cache was previously filled
-        result < 0)         // new value is identical to previous cached value
+  if (left_expr_cache != nullptr) {
+    const int result = update_item_cache_if_changed(*left_expr_cache);
+    if (left_expr_cache_filled &&  // cache was previously filled
+        result < 0)  // new value is identical to previous cached value
     {
       /*
         We needn't do a full execution, can just reuse "value", "was_null",
         "null_value" of the previous execution.
       */
-      DBUG_RETURN(false);
+      return false;
     }
-    left_expr_cache_filled= true;
+    left_expr_cache_filled = true;
   }
 
-  if (unit->is_executed() && engine->uncacheable())
-    null_value= was_null= false;
-  const bool retval= Item_subselect::exec();
-  DBUG_RETURN(retval);
-}
-
-
-Item::Type Item_subselect::type() const
-{
-  return SUBSELECT_ITEM;
-}
-
-
-void Item_subselect::fix_length_and_dec()
-{
-  engine->fix_length_and_dec(0);
-}
-
-
-table_map Item_subselect::used_tables() const
-{
-  return (engine->uncacheable() ? used_tables_cache : 0ULL);
-}
-
-
-bool Item_subselect::const_item() const
-{
-  if (unit->thd->lex->context_analysis_only)
-    return false;
-  /* Not constant until tables are locked. */
-  if (!unit->thd->lex->is_query_tables_locked())
-    return false;
-  return const_item_cache;
-}
-
-Item *Item_subselect::get_tmp_table_item(THD *thd_arg)
-{
-  if (!with_sum_func && !const_item())
-    return new Item_field(result_field);
-  return copy_or_same(thd_arg);
-}
-
-void Item_subselect::update_used_tables()
-{
-  if (!engine->uncacheable())
-  {
-    // did all used tables become static?
-    if (!(used_tables_cache & ~engine->upper_select_const_tables()))
-      const_item_cache= 1;
+  const bool uncacheable = unit->uncacheable || indexsubquery_engine != nullptr;
+  if (unit->is_executed() && uncacheable) {
+    // Second or later execution (and it's actually going to be executed,
+    // not just the return the cached value from the first run), so clear out
+    // state from the previous run(s).
+    //
+    // Note that subselect_hash_sj_engine and subselect_indexsubquery_engine
+    // are both uncacheable (due to dependency on the left side), even if the
+    // underlying unit is not marked as such.
+    null_value = false;
+    was_null = false;
   }
+  return Item_subselect::exec(thd);
 }
 
+Item::Type Item_subselect::type() const { return SUBSELECT_ITEM; }
 
-void Item_subselect::print(String *str, enum_query_type query_type)
-{
-  if (engine)
-  {
+bool Item_subselect::resolve_type(THD *) {
+  subquery->fix_length_and_dec(nullptr);
+  return false;
+}
+
+Item *Item_subselect::get_tmp_table_item(THD *thd_arg) {
+  DBUG_TRACE;
+  if (!has_aggregation() && !(const_for_execution() &&
+                              evaluate_during_optimization(
+                                  this, thd_arg->lex->current_query_block()))) {
+    Item *result = new Item_field(result_field);
+    return result;
+  }
+  Item *result = copy_or_same(thd_arg);
+  return result;
+}
+
+void Item_subselect::update_used_tables() {
+  if (!unit->uncacheable)
+    // There is no expression with outer reference, randomness or side-effect,
+    // so the subquery's content depends only on its inner tables:
+    used_tables_cache &= INNER_TABLE_BIT;
+}
+
+void Item_subselect::print(const THD *thd, String *str,
+                           enum_query_type query_type) const {
+  if (subquery) {
     str->append('(');
-    engine->print(str, query_type);
+    if (query_type & QT_SUBSELECT_AS_ONLY_SELECT_NUMBER) {
+      str->append("select #");
+      uint select_number = unit->first_query_block()->select_number;
+      if (select_number >= INT_MAX) {
+        str->append("fake");
+      } else {
+        str->append_ulonglong(select_number);
+      }
+    } else if (indexsubquery_engine != nullptr) {
+      indexsubquery_engine->print(thd, str, query_type);
+    } else {
+      subquery->print(thd, str, query_type);
+    }
     str->append(')');
-  }
-  else
+  } else
     str->append("(...)");
 }
 
-
 /* Single value subselect interface class */
-class Query_result_scalar_subquery :public Query_result_subquery
-{
-public:
-  Query_result_scalar_subquery(Item_subselect *item_arg)
-    :Query_result_subquery(item_arg)
-  {}
-  bool send_data(List<Item> &items);
+class Query_result_scalar_subquery : public Query_result_subquery {
+ public:
+  explicit Query_result_scalar_subquery(Item_subselect *item_arg)
+      : Query_result_subquery(item_arg) {}
+  bool send_data(THD *thd, const mem_root_deque<Item *> &items) override;
 };
 
-
-bool Query_result_scalar_subquery::send_data(List<Item> &items)
-{
-  DBUG_ENTER("Query_result_scalar_subquery::send_data");
-  Item_singlerow_subselect *it= (Item_singlerow_subselect *)item;
-  if (it->assigned())
-  {
-    my_message(ER_SUBQUERY_NO_1_ROW, ER(ER_SUBQUERY_NO_1_ROW), MYF(0));
-    DBUG_RETURN(true);
+bool Query_result_scalar_subquery::send_data(
+    THD *thd, const mem_root_deque<Item *> &items) {
+  DBUG_TRACE;
+  Item_singlerow_subselect *it = down_cast<Item_singlerow_subselect *>(item);
+  if (it->assigned()) {
+    my_error(ER_SUBQUERY_NO_1_ROW, MYF(0));
+    return true;
   }
-  if (unit->offset_limit_cnt)
-  {				          // Using limit offset,count
-    unit->offset_limit_cnt--;
-    DBUG_RETURN(false);
+  uint i = 0;
+  for (Item *val_item : VisibleFields(items)) {
+    it->store(i++, val_item);
   }
-  List_iterator_fast<Item> li(items);
-  Item *val_item;
-  for (uint i= 0; (val_item= li++); i++)
-    it->store(i, val_item);
-  if (thd->is_error())
-    DBUG_RETURN(true);
+  if (thd->is_error()) return true;
 
   it->assigned(true);
-  DBUG_RETURN(false);
+  return false;
 }
 
-
-Item_singlerow_subselect::Item_singlerow_subselect(st_select_lex *select_lex)
-  :Item_subselect(), value(0), no_rows(false)
-{
-  DBUG_ENTER("Item_singlerow_subselect::Item_singlerow_subselect");
-  init(select_lex, new Query_result_scalar_subquery(this));
-  maybe_null= 1; // if the subquery is empty, value is NULL
-  max_columns= UINT_MAX;
-  DBUG_VOID_RETURN;
+Item_singlerow_subselect::Item_singlerow_subselect(Query_block *query_block)
+    : Item_subselect(), value(nullptr), no_rows(false) {
+  DBUG_TRACE;
+  init(query_block, new (*THR_MALLOC) Query_result_scalar_subquery(this));
+  set_nullable(true);  // if the subquery is empty, value is NULL
+  max_columns = UINT_MAX;
 }
 
-st_select_lex *
-Item_singlerow_subselect::invalidate_and_restore_select_lex()
-{
-  DBUG_ENTER("Item_singlerow_subselect::invalidate_and_restore_select_lex");
-  st_select_lex *result= unit->first_select();
+Query_block *Item_singlerow_subselect::invalidate_and_restore_query_block() {
+  DBUG_TRACE;
+  Query_block *result = unit->first_query_block();
 
   assert(result);
 
   /*
     This code restore the parse tree in it's state before the execution of
     Item_singlerow_subselect::Item_singlerow_subselect(),
-    and in particular decouples this object from the SELECT_LEX,
-    so that the SELECT_LEX can be used with a different flavor
+    and in particular decouples this object from the Query_block,
+    so that the Query_block can be used with a different flavor
     or Item_subselect instead, as part of query rewriting.
   */
-  unit->item= NULL;
+  unit->item = nullptr;
 
-  DBUG_RETURN(result);
+  return result;
 }
 
 /* used in independent ALL/ANY optimisation */
-class Query_result_max_min_subquery :public Query_result_subquery
-{
+class Query_result_max_min_subquery final : public Query_result_subquery {
   Item_cache *cache;
   bool (Query_result_max_min_subquery::*op)();
   bool fmax;
@@ -887,73 +909,70 @@ class Query_result_max_min_subquery :public Query_result_subquery
     returned as the maximum/minimum value.
   */
   bool ignore_nulls;
-public:
+
+ public:
   Query_result_max_min_subquery(Item_subselect *item_arg, bool mx,
                                 bool ignore_nulls)
-    :Query_result_subquery(item_arg), cache(0), fmax(mx),
-     ignore_nulls(ignore_nulls)
-  {}
-  void cleanup();
-  bool send_data(List<Item> &items);
-private:
+      : Query_result_subquery(item_arg),
+        cache(nullptr),
+        fmax(mx),
+        ignore_nulls(ignore_nulls) {}
+  void cleanup(THD *thd) override;
+  bool send_data(THD *thd, const mem_root_deque<Item *> &items) override;
+
+ private:
   bool cmp_real();
   bool cmp_int();
   bool cmp_decimal();
   bool cmp_str();
 };
 
-
-void Query_result_max_min_subquery::cleanup()
-{
-  DBUG_ENTER("Query_result_max_min_subquery::cleanup");
-  cache= 0;
-  DBUG_VOID_RETURN;
+void Query_result_max_min_subquery::cleanup(THD *) {
+  DBUG_TRACE;
+  cache = nullptr;
 }
 
-
-bool Query_result_max_min_subquery::send_data(List<Item> &items)
-{
-  DBUG_ENTER("Query_result_max_min_subquery::send_data");
-  Item_maxmin_subselect *it= (Item_maxmin_subselect *)item;
-  List_iterator_fast<Item> li(items);
-  Item *val_item= li++;
-  it->register_value();
-  if (it->assigned())
-  {
-    cache->store(val_item);
-    if ((this->*op)())
-      it->store(0, cache);
+bool Query_result_max_min_subquery::send_data(
+    THD *, const mem_root_deque<Item *> &items) {
+  DBUG_TRACE;
+  Item_maxmin_subselect *it = (Item_maxmin_subselect *)item;
+  Item *val_item = nullptr;
+  for (Item *item : VisibleFields(items)) {
+    val_item = item;
+    break;
   }
-  else
-  {
-    if (!cache)
-    {
-      cache= Item_cache::get_cache(val_item);
-      switch (val_item->result_type())
-      {
-      case REAL_RESULT:
-	op= &Query_result_max_min_subquery::cmp_real;
-	break;
-      case INT_RESULT:
-	op= &Query_result_max_min_subquery::cmp_int;
-	break;
-      case STRING_RESULT:
-	op= &Query_result_max_min_subquery::cmp_str;
-	break;
-      case DECIMAL_RESULT:
-        op= &Query_result_max_min_subquery::cmp_decimal;
-        break;
-      case ROW_RESULT:
-        // This case should never be choosen
-	assert(0);
-	op= 0;
+  it->register_value();
+  if (it->assigned()) {
+    cache->store(val_item);
+    if ((this->*op)()) it->store(0, cache);
+  } else {
+    if (!cache) {
+      cache = Item_cache::get_cache(val_item);
+      switch (val_item->result_type()) {
+        case REAL_RESULT:
+          op = &Query_result_max_min_subquery::cmp_real;
+          break;
+        case INT_RESULT:
+          op = &Query_result_max_min_subquery::cmp_int;
+          break;
+        case STRING_RESULT:
+          op = &Query_result_max_min_subquery::cmp_str;
+          break;
+        case DECIMAL_RESULT:
+          op = &Query_result_max_min_subquery::cmp_decimal;
+          break;
+        case ROW_RESULT:
+        case INVALID_RESULT:
+          // This case should never be chosen
+          assert(0);
+          op = nullptr;
       }
     }
     cache->store(val_item);
     it->store(0, cache);
   }
   it->assigned(true);
-  DBUG_RETURN(0);
+  return false;
 }
 
 /**
@@ -963,7 +982,7 @@ bool Query_result_max_min_subquery::send_data(List<Item> &items)
   maximum/minimum number seen this far. If fmax==true, this is a
   comparison for MAX, otherwise it is a comparison for MIN.
 
-  val1 is the new numer to compare against the current
+  val1 is the new number to compare against the current
   maximum/minimum. val2 is the current maximum/minimum.
 
   ignore_nulls is used to control behavior when comparing with a NULL
@@ -976,10 +995,9 @@ bool Query_result_max_min_subquery::send_data(List<Item> &items)
   @retval true if the new number should be the new maximum/minimum.
   @retval false if the maximum/minimum should stay unchanged.
  */
-bool Query_result_max_min_subquery::cmp_real()
-{
-  Item *maxmin= ((Item_singlerow_subselect *)item)->element_index(0);
-  double val1= cache->val_real(), val2= maxmin->val_real();
+bool Query_result_max_min_subquery::cmp_real() {
+  Item *maxmin = ((Item_singlerow_subselect *)item)->element_index(0);
+  double val1 = cache->val_real(), val2 = maxmin->val_real();
   /*
     If we're ignoring NULLs and the current maximum/minimum is NULL
     (must have been placed there as the first value iterated over) and
@@ -1001,10 +1019,9 @@ bool Query_result_max_min_subquery::cmp_real()
 
   @see Query_result_max_min_subquery::cmp_real()
 */
-bool Query_result_max_min_subquery::cmp_int()
-{
-  Item *maxmin= ((Item_singlerow_subselect *)item)->element_index(0);
-  longlong val1= cache->val_int(), val2= maxmin->val_int();
+bool Query_result_max_min_subquery::cmp_int() {
+  Item *maxmin = ((Item_singlerow_subselect *)item)->element_index(0);
+  longlong val1 = cache->val_int(), val2 = maxmin->val_int();
   if (cache->null_value || maxmin->null_value)
     return (ignore_nulls) ? !(cache->null_value) : !(maxmin->null_value);
   return (fmax) ? (val1 > val2) : (val1 < val2);
@@ -1015,16 +1032,14 @@ bool Query_result_max_min_subquery::cmp_int()
 
   @see Query_result_max_min_subquery::cmp_real()
 */
-bool Query_result_max_min_subquery::cmp_decimal()
-{
-  Item *maxmin= ((Item_singlerow_subselect *)item)->element_index(0);
-  my_decimal cval, *cvalue= cache->val_decimal(&cval);
-  my_decimal mval, *mvalue= maxmin->val_decimal(&mval);
+bool Query_result_max_min_subquery::cmp_decimal() {
+  Item *maxmin = ((Item_singlerow_subselect *)item)->element_index(0);
+  my_decimal cval, *cvalue = cache->val_decimal(&cval);
+  my_decimal mval, *mvalue = maxmin->val_decimal(&mval);
   if (cache->null_value || maxmin->null_value)
     return (ignore_nulls) ? !(cache->null_value) : !(maxmin->null_value);
-  return (fmax) 
-    ? (my_decimal_cmp(cvalue,mvalue) > 0)
-    : (my_decimal_cmp(cvalue,mvalue) < 0);
+  return (fmax) ? (my_decimal_cmp(cvalue, mvalue) > 0)
+                : (my_decimal_cmp(cvalue, mvalue) < 0);
 }
 
 /**
@@ -1032,76 +1047,63 @@ bool Query_result_max_min_subquery::cmp_decimal()
 
   @see Query_result_max_min_subquery::cmp_real()
 */
-bool Query_result_max_min_subquery::cmp_str()
-{
-  String *val1, *val2, buf1, buf2;
-  Item *maxmin= ((Item_singlerow_subselect *)item)->element_index(0);
+bool Query_result_max_min_subquery::cmp_str() {
+  Item *maxmin = down_cast<Item_singlerow_subselect *>(item)->element_index(0);
   /*
     as far as both operand is Item_cache buf1 & buf2 will not be used,
     but added for safety
   */
-  val1= cache->val_str(&buf1);
-  val2= maxmin->val_str(&buf1);
+  String buf1;
+  const String *val1 = cache->val_str(&buf1);
+  if (current_thd->is_error()) return false;
+  String buf2;
+  const String *val2 = maxmin->val_str(&buf2);
   if (cache->null_value || maxmin->null_value)
     return (ignore_nulls) ? !(cache->null_value) : !(maxmin->null_value);
-  return (fmax) 
-    ? (sortcmp(val1, val2, cache->collation.collation) > 0)
-    : (sortcmp(val1, val2, cache->collation.collation) < 0);
+  return (fmax) ? (sortcmp(val1, val2, cache->collation.collation) > 0)
+                : (sortcmp(val1, val2, cache->collation.collation) < 0);
 }
 
-Item_maxmin_subselect::Item_maxmin_subselect(THD *thd_param,
-                                             Item_subselect *parent,
-                                             st_select_lex *select_lex,
-                                             bool max_arg,
-                                             bool ignore_nulls)
-  :Item_singlerow_subselect(), was_values(false)
-{
-  DBUG_ENTER("Item_maxmin_subselect::Item_maxmin_subselect");
-  max= max_arg;
-  init(select_lex, new Query_result_max_min_subquery(this, max_arg,
-                                                     ignore_nulls));
-  max_columns= 1;
-  maybe_null= 1;
-  max_columns= 1;
+Item_maxmin_subselect::Item_maxmin_subselect(Item_subselect *parent,
+                                             Query_block *query_block,
+                                             bool max_arg, bool ignore_nulls)
+    : Item_singlerow_subselect(), was_values(false) {
+  DBUG_TRACE;
+  max = max_arg;
+  init(query_block, new (*THR_MALLOC) Query_result_max_min_subquery(
+                        this, max_arg, ignore_nulls));
+  max_columns = 1;
+  set_nullable(true);
+  max_columns = 1;
 
   /*
     Following information was collected during performing fix_fields()
     of Items belonged to subquery, which will be not repeated
   */
-  used_tables_cache= parent->get_used_tables_cache();
-  const_item_cache= parent->get_const_item_cache();
-
-  DBUG_VOID_RETURN;
+  used_tables_cache = parent->used_tables();
 }
 
-void Item_maxmin_subselect::cleanup()
-{
-  DBUG_ENTER("Item_maxmin_subselect::cleanup");
+void Item_maxmin_subselect::cleanup() {
+  DBUG_TRACE;
   Item_singlerow_subselect::cleanup();
 
-  was_values= false;
-  DBUG_VOID_RETURN;
+  was_values = false;
 }
 
-
-void Item_maxmin_subselect::print(String *str, enum_query_type query_type)
-{
-  str->append(max?"<max>":"<min>", 5);
-  Item_singlerow_subselect::print(str, query_type);
+void Item_maxmin_subselect::print(const THD *thd, String *str,
+                                  enum_query_type query_type) const {
+  str->append(max ? "<max>" : "<min>", 5);
+  Item_singlerow_subselect::print(thd, str, query_type);
 }
 
-
-void Item_singlerow_subselect::reset()
-{
-  null_value= TRUE;
-  if (value)
-    value->null_value= TRUE;
+void Item_singlerow_subselect::reset() {
+  null_value = true;
+  if (value) value->null_value = true;
 }
-
 
 /**
   @todo
-  - We cant change name of Item_field or Item_ref, because it will
+  - We can't change name of Item_field or Item_ref, because it will
   prevent it's correct resolving, but we should save name of
   removed item => we do not make optimization if top item of
   list is field or reference.
@@ -1109,661 +1111,629 @@ void Item_singlerow_subselect::reset()
   because we do not rollback this changes.
   Make rollback for it, or special name resolving mode in 5.0.
 */
-Item_subselect::trans_res
-Item_singlerow_subselect::select_transformer(SELECT_LEX *select)
-{
-  DBUG_ENTER("Item_singlerow_subselect::select_transformer");
-  if (changed)
-    DBUG_RETURN(RES_OK);
+Item_subselect::trans_res Item_singlerow_subselect::select_transformer(
+    THD *thd, Query_block *select) {
+  DBUG_TRACE;
+  if (changed) return RES_OK;
 
-  THD * const thd= unit->thd;
-  Query_arena *arena= thd->stmt_arena;
-  SELECT_LEX *outer= select->outer_select();
- 
-  if (!unit->is_union() &&
-      !select->table_list.elements &&
-      select->item_list.elements == 1 &&
-      !select->item_list.head()->with_sum_func &&
-      /*
-	We cant change name of Item_field or Item_ref, because it will
-	prevent it's correct resolving, but we should save name of
-	removed item => we do not make optimization if top item of
-	list is field or reference.
-	TODO: solve above problem
-      */
-      !(select->item_list.head()->type() == FIELD_ITEM ||
-	select->item_list.head()->type() == REF_ITEM) &&
-      !select->where_cond() && !select->having_cond() &&
-      /*
-        switch off this optimization for prepare statement,
-        because we do not rollback this changes
-        TODO: make rollback for it, or special name resolving mode in 5.0.
-      */
-      !arena->is_stmt_prepare_or_first_sp_execute()
-      )
-  {
+  Query_block *outer = select->outer_query_block();
 
-    have_to_be_excluded= 1;
-    if (thd->lex->describe)
-    {
+  Item *single_field = select->single_visible_field();
+
+  if (single_field != nullptr &&
+      single_field->type() == Item::VALUES_COLUMN_ITEM) {
+    /*
+      A subquery that is a VALUES clause can be used as a scalar subquery.
+      But VALUES clauses with a single row are transformed to their simple
+      components and will not be shown as VALUES_COLUMN_ITEM here.
+    */
+    assert(select->row_value_list->size() > 1);
+    /*
+      Since scalar subqueries can have at most one row, reject VALUES
+      clauses (with more than one row) immediately:
+    */
+    my_error(ER_SUBQUERY_NO_1_ROW, MYF(0));
+    return RES_ERROR;
+  }
+  if (!unit->is_union() && !select->table_list.elements &&
+      single_field != nullptr && !single_field->has_aggregation() &&
+      !single_field->has_wf() && !select->where_cond() &&
+      !select->having_cond()) {
+    have_to_be_excluded = true;
+    if (thd->lex->is_explain()) {
       char warn_buff[MYSQL_ERRMSG_SIZE];
-      sprintf(warn_buff, ER(ER_SELECT_REDUCED), select->select_number);
-      push_warning(thd, Sql_condition::SL_NOTE,
-		   ER_SELECT_REDUCED, warn_buff);
+      sprintf(warn_buff, ER_THD(thd, ER_SELECT_REDUCED), select->select_number);
+      push_warning(thd, Sql_condition::SL_NOTE, ER_SELECT_REDUCED, warn_buff);
     }
-    substitution= select->item_list.head();
-    if (substitution->type() == SUBSELECT_ITEM)
-    {
-      Item_subselect *subs= (Item_subselect*)substitution;
-      subs->unit->set_explain_marker_from(unit);
+    substitution = single_field;
+    if (substitution->type() == SUBSELECT_ITEM) {
+      Item_subselect *subs = (Item_subselect *)substitution;
+      subs->unit->set_explain_marker_from(thd, unit);
     }
     // Merge subquery's name resolution contexts into parent's
     outer->merge_contexts(select);
 
     // Fix query block contexts after merging the subquery
     substitution->fix_after_pullout(outer, select);
-    DBUG_RETURN(RES_REDUCE);
+    return RES_REDUCE;
   }
-  DBUG_RETURN(RES_OK);
+  return RES_OK;
 }
 
-
-void Item_singlerow_subselect::store(uint i, Item *item)
-{
+void Item_singlerow_subselect::store(uint i, Item *item) {
   row[i]->store(item);
   row[i]->cache_value();
 }
 
-enum Item_result Item_singlerow_subselect::result_type() const
-{
-  return engine->type();
+enum Item_result Item_singlerow_subselect::result_type() const {
+  return subquery->type();
 }
 
-/* 
- Don't rely on the result type to calculate field type. 
- Ask the engine instead.
-*/
-enum_field_types Item_singlerow_subselect::field_type() const
-{
-  return engine->field_type();
-}
-
-void Item_singlerow_subselect::fix_length_and_dec()
-{
-  if ((max_columns= engine->cols()) == 1)
-  {
-    engine->fix_length_and_dec(row= &value);
+bool Item_singlerow_subselect::resolve_type(THD *thd) {
+  if ((max_columns = unit_cols()) == 1) {
+    subquery->fix_length_and_dec(row = &value);
+  } else {
+    row = thd->mem_root->ArrayAlloc<Item_cache *>(max_columns);
+    if (row == nullptr) {
+      return true;
+    }
+    subquery->fix_length_and_dec(row);
+    assert(*row != nullptr);
+    value = *row;
   }
-  else
-  {
-    if (!(row= (Item_cache**) sql_alloc(sizeof(Item_cache*)*max_columns)))
-      return;
-    engine->fix_length_and_dec(row);
-    value= *row;
-  }
-  unsigned_flag= value->unsigned_flag;
+  set_data_type(subquery->field_type());
+  unsigned_flag = value->unsigned_flag;
   /*
     Check if NULL values may be returned by the subquery. Either
     because one or more of the columns could be NULL, or because the
     subquery could return an empty result.
   */
-  maybe_null= engine->may_be_null();
+  set_nullable(subquery->may_be_null());
+  return false;
 }
 
-void Item_singlerow_subselect::no_rows_in_result()
-{
+void Item_singlerow_subselect::no_rows_in_result() {
   /*
     This is only possible if we have a dependent subquery in the SELECT list
     and an aggregated outer query based on zero rows, which is an illegal query
     according to the SQL standard. ONLY_FULL_GROUP_BY rejects such queries.
   */
-  if (unit->uncacheable & UNCACHEABLE_DEPENDENT)
-    no_rows= true;
+  if (unit->uncacheable & UNCACHEABLE_DEPENDENT) no_rows = true;
 }
 
-uint Item_singlerow_subselect::cols()
-{
-  return engine->cols();
-}
-
-bool Item_singlerow_subselect::check_cols(uint c)
-{
-  if (c != engine->cols())
-  {
+bool Item_singlerow_subselect::check_cols(uint c) {
+  if (c != unit_cols()) {
     my_error(ER_OPERAND_COLUMNS, MYF(0), c);
-    return 1;
+    return true;
   }
-  return 0;
+  return false;
 }
 
-bool Item_singlerow_subselect::null_inside()
-{
-  for (uint i= 0; i < max_columns ; i++)
-  {
-    if (row[i]->null_value)
-      return 1;
+bool Item_singlerow_subselect::null_inside() {
+  for (uint i = 0; i < max_columns; i++) {
+    if (row[i]->null_value) return true;
   }
-  return 0;
+  return false;
 }
 
-void Item_singlerow_subselect::bring_value()
-{
-  if (!exec() && assigned())
-    null_value= 0;
+void Item_singlerow_subselect::bring_value() {
+  if (!exec(current_thd) && assigned())
+    null_value = false;
   else
     reset();
 }
 
-double Item_singlerow_subselect::val_real()
-{
+double Item_singlerow_subselect::val_real() {
   assert(fixed == 1);
-  if (!no_rows && !exec() && !value->null_value)
-  {
-    null_value= FALSE;
+  if (!no_rows && !exec(current_thd) && !value->null_value) {
+    null_value = false;
     return value->val_real();
-  }
-  else
-  {
+  } else {
     reset();
-    return 0;
+    return error_real();
   }
 }
 
-longlong Item_singlerow_subselect::val_int()
-{
+longlong Item_singlerow_subselect::val_int() {
   assert(fixed == 1);
-  if (!no_rows && !exec() && !value->null_value)
-  {
-    null_value= FALSE;
+  if (!no_rows && !exec(current_thd) && !value->null_value) {
+    null_value = false;
     return value->val_int();
-  }
-  else
-  {
+  } else {
     reset();
-    return 0;
+    return error_int();
   }
 }
 
-String *Item_singlerow_subselect::val_str(String *str)
-{
-  if (!no_rows && !exec() && !value->null_value)
-  {
-    null_value= FALSE;
+String *Item_singlerow_subselect::val_str(String *str) {
+  if (!no_rows && !exec(current_thd) && !value->null_value) {
+    null_value = false;
     return value->val_str(str);
-  }
-  else
-  {
+  } else {
     reset();
-    return 0;
+    return error_str();
   }
 }
 
-
-my_decimal *Item_singlerow_subselect::val_decimal(my_decimal *decimal_value)
-{
-  if (!no_rows && !exec() && !value->null_value)
-  {
-    null_value= FALSE;
-    return value->val_decimal(decimal_value);
-  }
-  else
-  {
+my_decimal *Item_singlerow_subselect::val_decimal(my_decimal *decimal_value) {
+  if (!no_rows && !exec(current_thd) && !value->null_value) {
+    my_decimal *retval = value->val_decimal(decimal_value);
+    null_value = value->null_value;
+    return retval;
+  } else {
     reset();
-    return 0;
+    return error_decimal(decimal_value);
   }
 }
 
-
-bool Item_singlerow_subselect::val_json(Json_wrapper *result)
-{
-  if (!no_rows && !exec() && !value->null_value)
-  {
-    null_value= false;
+bool Item_singlerow_subselect::val_json(Json_wrapper *result) {
+  if (!no_rows && !exec(current_thd) && !value->null_value) {
+    null_value = false;
     return value->val_json(result);
-  }
-  else
-  {
+  } else {
     reset();
     return current_thd->is_error();
   }
 }
 
-
 bool Item_singlerow_subselect::get_date(MYSQL_TIME *ltime,
-                                        my_time_flags_t fuzzydate)
-{
-  if (!no_rows && !exec() && !value->null_value)
-  {
-    null_value= false;
+                                        my_time_flags_t fuzzydate) {
+  if (!no_rows && !exec(current_thd) && !value->null_value) {
+    null_value = false;
     return value->get_date(ltime, fuzzydate);
-  }
-  else
-  {
+  } else {
     reset();
     return true;
   }
 }
 
-
-bool Item_singlerow_subselect::get_time(MYSQL_TIME *ltime)
-{
-  if (!no_rows && !exec() && !value->null_value)
-  {
-    null_value= false;
+bool Item_singlerow_subselect::get_time(MYSQL_TIME *ltime) {
+  if (!no_rows && !exec(current_thd) && !value->null_value) {
+    null_value = false;
     return value->get_time(ltime);
-  }
-  else
-  {
+  } else {
     reset();
     return true;
   }
 }
 
-
-bool Item_singlerow_subselect::val_bool()
-{
-  if (!no_rows && !exec() && !value->null_value)
-  {
-    null_value= FALSE;
+bool Item_singlerow_subselect::val_bool() {
+  if (!no_rows && !exec(current_thd) && !value->null_value) {
+    null_value = false;
     return value->val_bool();
-  }
-  else
-  {
+  } else {
     reset();
-    return 0;
+    return false;
   }
 }
-
 
 /* EXISTS subselect interface class */
-class Query_result_exists_subquery :public Query_result_subquery
-{
-public:
-  Query_result_exists_subquery(Item_subselect *item_arg)
-    :Query_result_subquery(item_arg){}
-  bool send_data(List<Item> &items);
+class Query_result_exists_subquery : public Query_result_subquery {
+ public:
+  explicit Query_result_exists_subquery(Item_subselect *item_arg)
+      : Query_result_subquery(item_arg) {}
+  bool send_data(THD *thd, const mem_root_deque<Item *> &items) override;
 };
 
-
-bool Query_result_exists_subquery::send_data(List<Item> &items)
-{
-  DBUG_ENTER("Query_result_exists_subquery::send_data");
-  Item_exists_subselect *it= (Item_exists_subselect *)item;
-  if (unit->offset_limit_cnt)
-  {				          // Using limit offset,count
-    unit->offset_limit_cnt--;
-    DBUG_RETURN(0);
-  }
+bool Query_result_exists_subquery::send_data(THD *,
+                                             const mem_root_deque<Item *> &) {
+  DBUG_TRACE;
+  Item_exists_subselect *it = (Item_exists_subselect *)item;
   /*
     A subquery may be evaluated 1) by executing the JOIN 2) by optimized
     functions (index_subquery, subquery materialization).
     It's only in (1) that we get here when we find a row. In (2) "value" is
     set elsewhere.
   */
-  it->value= 1;
+  it->value = true;
   it->assigned(true);
-  DBUG_RETURN(0);
+  return false;
 }
 
-
-Item_exists_subselect::Item_exists_subselect(st_select_lex *select):
-  Item_subselect(), value(FALSE), exec_method(EXEC_UNSPECIFIED),
-     sj_convert_priority(0), embedding_join_nest(NULL)
-{
-  DBUG_ENTER("Item_exists_subselect::Item_exists_subselect");
-  init(select, new Query_result_exists_subquery(this));
-  max_columns= UINT_MAX;
-  null_value= FALSE; //can't be NULL
-  maybe_null= 0; //can't be NULL
-  DBUG_VOID_RETURN;
+Item_exists_subselect::Item_exists_subselect(Query_block *select)
+    : Item_subselect() {
+  DBUG_TRACE;
+  init(select, new (*THR_MALLOC) Query_result_exists_subquery(this));
+  max_columns = UINT_MAX;
+  null_value = false;   // can't be NULL
+  set_nullable(false);  // can't be NULL
 }
 
-
-void Item_exists_subselect::print(String *str, enum_query_type query_type)
-{
+void Item_exists_subselect::print(const THD *thd, String *str,
+                                  enum_query_type query_type) const {
+  const char *tail = Item_bool_func::bool_transform_names[value_transform];
+  if (implicit_is_op) tail = "";
+  // Put () around NOT as it has lower associativity than IS TRUE, or '+'
+  if (value_transform == BOOL_NEGATED) str->append(STRING_WITH_LEN("(not "));
   str->append(STRING_WITH_LEN("exists"));
-  Item_subselect::print(str, query_type);
+  Item_subselect::print(thd, str, query_type);
+  if (value_transform == BOOL_NEGATED) str->append(STRING_WITH_LEN(")"));
+  if (tail[0]) {
+    str->append(STRING_WITH_LEN(" "));
+    str->append(tail, strlen(tail));
+  }
 }
 
+/**
+  Translates the value of the naked EXISTS to a value taking into account the
+  optional NULL and IS [NOT] TRUE/FALSE.
+  @param[in,out] null_v      NULL state of the value
+  @param         v           TRUE/FALSE state of the value
+*/
+bool Item_exists_subselect::translate(bool &null_v, bool v) {
+  if (null_v)  // Naked IN returns UNKNOWN
+  {
+    assert(substype() != EXISTS_SUBS);
+    switch (value_transform) {
+      case BOOL_IDENTITY:
+      case BOOL_NEGATED:
+        return false;
+      case BOOL_IS_TRUE:
+      case BOOL_IS_FALSE:
+        null_v = false;
+        return false;
+      case BOOL_NOT_TRUE:
+      case BOOL_NOT_FALSE:
+        null_v = false;
+        return true;
+      default:
+        assert(false);
+        return false;
+    }
+  }
+  // Naked IN returns 'v'
+  switch (value_transform) {
+    case BOOL_IDENTITY:
+    case BOOL_IS_TRUE:
+    case BOOL_NOT_FALSE:
+      return v;
+    case BOOL_NEGATED:
+    case BOOL_NOT_TRUE:
+    case BOOL_IS_FALSE:
+      return !v;
+    default:
+      assert(false);
+      return v;
+  }
+}
 
-bool Item_in_subselect::test_limit()
-{
-  if (unit->fake_select_lex && unit->fake_select_lex->test_limit())
+Item *Item_exists_subselect::truth_transformer(THD *, enum Bool_test test) {
+  // ALL_SUBS, ANY_SUBS are always wrapped in Item_func_{not|nop}_all
+  // so never come here. Which is good as they don't support all possible
+  // value transforms.
+  assert(substype() == EXISTS_SUBS || substype() == IN_SUBS);
+  switch (test) {
+    case BOOL_NEGATED:
+    case BOOL_IS_TRUE:
+    case BOOL_IS_FALSE:
+    case BOOL_NOT_TRUE:
+    case BOOL_NOT_FALSE:
+      break;
+    default:
+      assert(false);
+  }
+  // x IN (SELECT y FROM DUAL) may be replaced with x=y which alas doesn't
+  // support value transforms; we still want to allow this replacement, so
+  // let's not store the value transform in that case, and keep an explicit
+  // truth test Item at the outside.
+  if (!unit->is_union() &&
+      unit->first_query_block()->table_list.elements == 0 &&
+      unit->first_query_block()->where_cond() == nullptr &&
+      substype() == IN_SUBS &&
+      unit->first_query_block()->single_visible_field() != nullptr)
+    return nullptr;
+
+  // Combine requested test with already present test, if any.
+  value_transform = Item_bool_func::bool_transform[value_transform][test];
+  return this;
+}
+
+bool Item_in_subselect::test_limit() {
+  if (unit->fake_query_block && unit->fake_query_block->test_limit())
     return true;
 
-  for (SELECT_LEX *sl= unit->first_select(); sl; sl= sl->next_select())
-  {
-    if (sl->test_limit())
-      return true;
+  for (Query_block *sl = unit->first_query_block(); sl;
+       sl = sl->next_query_block()) {
+    if (sl->test_limit()) return true;
   }
   return false;
 }
 
-Item_in_subselect::Item_in_subselect(Item * left_exp,
-				     st_select_lex *select):
-  Item_exists_subselect(), left_expr(left_exp), left_expr_cache(NULL),
-  left_expr_cache_filled(false), need_expr_cache(TRUE), m_injected_left_expr(NULL),
-  optimizer(NULL), was_null(FALSE), abort_on_null(FALSE),
-  in2exists_info(NULL), pushed_cond_guards(NULL), upper_item(NULL)
-{
-  DBUG_ENTER("Item_in_subselect::Item_in_subselect");
-  init(select, new Query_result_exists_subquery(this));
-  max_columns= UINT_MAX;
-  maybe_null= 1;
+Item_in_subselect::Item_in_subselect(Item *left_exp, Query_block *select)
+    : Item_exists_subselect(),
+      left_expr(left_exp),
+      left_expr_cache(nullptr),
+      left_expr_cache_filled(false),
+      need_expr_cache(true),
+      m_injected_left_expr(nullptr),
+      optimizer(nullptr),
+      was_null(false),
+      abort_on_null(false),
+      in2exists_info(nullptr),
+      pushed_cond_guards(nullptr),
+      upper_item(nullptr) {
+  DBUG_TRACE;
+  init(select, new (*THR_MALLOC) Query_result_exists_subquery(this));
+  max_columns = UINT_MAX;
+  set_nullable(true);
   reset();
-  //if test_limit will fail then error will be reported to client
+  // if test_limit will fail then error will be reported to client
   test_limit();
-  DBUG_VOID_RETURN;
 }
 
-
-Item_in_subselect::Item_in_subselect(const POS &pos, Item * left_exp,
-				     PT_subselect *pt_subselect_arg)
-: super(pos), left_expr(left_exp), left_expr_cache(NULL),
-  left_expr_cache_filled(false), need_expr_cache(TRUE), m_injected_left_expr(NULL),
-  optimizer(NULL), was_null(FALSE), abort_on_null(FALSE),
-  in2exists_info(NULL), pushed_cond_guards(NULL), upper_item(NULL),
-  pt_subselect(pt_subselect_arg)
-{
-  DBUG_ENTER("Item_in_subselect::Item_in_subselect");
-  max_columns= UINT_MAX;
-  maybe_null= 1;
+Item_in_subselect::Item_in_subselect(const POS &pos, Item *left_exp,
+                                     PT_subquery *pt_subquery_arg)
+    : super(pos),
+      left_expr(left_exp),
+      left_expr_cache(nullptr),
+      left_expr_cache_filled(false),
+      need_expr_cache(true),
+      m_injected_left_expr(nullptr),
+      optimizer(nullptr),
+      was_null(false),
+      abort_on_null(false),
+      in2exists_info(nullptr),
+      pushed_cond_guards(nullptr),
+      upper_item(nullptr),
+      pt_subselect(pt_subquery_arg) {
+  DBUG_TRACE;
+  max_columns = UINT_MAX;
+  set_nullable(true);
   reset();
-  DBUG_VOID_RETURN;
 }
 
-
-bool Item_in_subselect::itemize(Parse_context *pc, Item **res)
-{
-  if (skip_itemize(res))
-    return false;
+bool Item_in_subselect::itemize(Parse_context *pc, Item **res) {
+  if (skip_itemize(res)) return false;
   if (super::itemize(pc, res) || left_expr->itemize(pc, &left_expr) ||
       pt_subselect->contextualize(pc))
     return true;
-  SELECT_LEX *select_lex= pt_subselect->value;
-  init(select_lex, new Query_result_exists_subquery(this));
-  if (test_limit())
-    return true;
+  Query_block *query_block = pt_subselect->value();
+  init(query_block, new (*THR_MALLOC) Query_result_exists_subquery(this));
+  if (test_limit()) return true;
   return false;
 }
 
-Item_allany_subselect::Item_allany_subselect(Item * left_exp,
+Item_allany_subselect::Item_allany_subselect(Item *left_exp,
                                              chooser_compare_func_creator fc,
-					     st_select_lex *select,
-					     bool all_arg)
-  :Item_in_subselect(), func_creator(fc), all(all_arg)
-{
-  DBUG_ENTER("Item_allany_subselect::Item_allany_subselect");
-  left_expr= left_exp;
-  func= func_creator(all_arg);
-  init(select, new Query_result_exists_subquery(this));
-  max_columns= 1;
-  abort_on_null= 0;
+                                             Query_block *select, bool all_arg)
+    : Item_in_subselect(), func_creator(fc), all(all_arg) {
+  DBUG_TRACE;
+  left_expr = left_exp;
+  func = func_creator(all_arg);
+  init(select, new (*THR_MALLOC) Query_result_exists_subquery(this));
+  max_columns = 1;
   reset();
-  //if test_limit will fail then error will be reported to client
+  // if test_limit will fail then error will be reported to client
   test_limit();
-  DBUG_VOID_RETURN;
 }
 
-
-void Item_exists_subselect::fix_length_and_dec()
-{
-   decimals= 0;
-   max_length= 1;
-   max_columns= engine->cols();
-   if (exec_method == EXEC_EXISTS)
-   {
-     /*
-       We need only 1 row to determine existence.
-       Note that if the subquery is "SELECT1 UNION SELECT2" then this is not
-       working optimally (Bug#14215895).
-     */
-     unit->global_parameters()->select_limit= new Item_int(1);
-   }
-}
-
-double Item_exists_subselect::val_real()
-{
-  assert(fixed == 1);
-  if (exec())
-  {
-    reset();
-    return 0;
+bool Item_exists_subselect::resolve_type(THD *thd) {
+  set_data_type_longlong();
+  max_length = 1;
+  max_columns = unit_cols();
+  if (strategy == Subquery_strategy::SUBQ_EXISTS) {
+    Prepared_stmt_arena_holder ps_arena_holder(thd);
+    /*
+      We need only 1 row to determine existence if LIMIT is not 0.
+      Note that if the subquery is "SELECT1 UNION SELECT2" then this is not
+      working optimally (Bug#14215895).
+    */
+    if (unit->global_parameters()->select_limit == nullptr ||
+        unit->global_parameters()->select_limit->val_uint() > 0) {
+      unit->global_parameters()->select_limit = new Item_int(1);
+      if (unit->global_parameters()->select_limit == nullptr) return true;
+      unit->global_parameters()->m_internal_limit = true;
+    }
   }
-  return (double) value;
+  return false;
 }
 
-longlong Item_exists_subselect::val_int()
-{
-  assert(fixed == 1);
-  if (exec())
-  {
-    reset();
-    return 0;
+/**
+   Helper for resolve_subquery().
+
+   @returns true if semijoin or antijoin is allowed; if returning true, also
+   records in the Item's can_do_aj member if this will be an antijoin (true)
+   or semijoin (false) nest.
+*/
+bool Item_exists_subselect::choose_semijoin_or_antijoin() {
+  can_do_aj = false;
+  [[maybe_unused]] bool might_do_sj = false, might_do_aj = false;
+  bool null_problem = false;
+  switch (value_transform) {
+    case BOOL_IS_TRUE:
+      might_do_sj = true;
+      break;
+    case BOOL_NOT_TRUE:
+      might_do_aj = true;
+      break;
+    case BOOL_IS_FALSE:
+      might_do_aj = true;
+      null_problem = true;
+      break;
+    case BOOL_NOT_FALSE:
+      might_do_sj = true;
+      null_problem = true;
+      break;
+    default:
+      return false;
   }
-  return value;
+  assert((might_do_sj ^ might_do_aj) == 1);
+  if (substype() == EXISTS_SUBS)  // never returns NULL
+    null_problem = false;
+  if (null_problem) {
+    // antijoin/semijoin cannot work with NULLs on either side of IN
+    if (down_cast<Item_in_subselect *>(this)->left_expr->is_nullable())
+      return false;
+    for (Item *inner : unit->first_query_block()->visible_fields()) {
+      if (inner->is_nullable()) return false;
+    }
+  }
+  can_do_aj = might_do_aj;
+  return true;
 }
 
+double Item_exists_subselect::val_real() { return val_bool(); }
+
+longlong Item_exists_subselect::val_int() { return val_bool(); }
 
 /**
   Return the result of EXISTS as a string value
 
   Converts the true/false result into a string value.
-  Note that currently this cannot be NULL, so if the query exection fails
-  it will return 0.
 
-  @param decimal_value[out]    buffer to hold the resulting string value
+  @param [out] str             buffer to hold the resulting string value
   @retval                      Pointer to the converted string.
-                               Can't be a NULL pointer, as currently
-                               EXISTS cannot return NULL.
+                               NULL if execution returns in error
 */
 
-String *Item_exists_subselect::val_str(String *str)
-{
-  assert(fixed == 1);
-  if (exec())
-    reset();
-  str->set((ulonglong)value,&my_charset_bin);
+String *Item_exists_subselect::val_str(String *str) {
+  longlong val = val_bool();
+  if (null_value) return nullptr;
+  str->set(val, &my_charset_bin);
   return str;
 }
-
 
 /**
   Return the result of EXISTS as a decimal value
 
   Converts the true/false result into a decimal value.
-  Note that currently this cannot be NULL, so if the query exection fails
-  it will return 0.
 
-  @param decimal_value[out]    Buffer to hold the resulting decimal value
+  @param [out] decimal_value   Buffer to hold the resulting decimal value
   @retval                      Pointer to the converted decimal.
-                               Can't be a NULL pointer, as currently
-                               EXISTS cannot return NULL.
+                               NULL if execution returns in error
 */
 
-my_decimal *Item_exists_subselect::val_decimal(my_decimal *decimal_value)
-{
-  assert(fixed == 1);
-  if (exec())
-    reset();
-  int2my_decimal(E_DEC_FATAL_ERROR, value, 0, decimal_value);
+my_decimal *Item_exists_subselect::val_decimal(my_decimal *decimal_value) {
+  longlong val = val_bool();
+  if (null_value) return nullptr;
+  int2my_decimal(E_DEC_FATAL_ERROR, val, false, decimal_value);
   return decimal_value;
 }
 
-
-bool Item_exists_subselect::val_bool()
-{
-  assert(fixed == 1);
-  if (exec())
-  {
+bool Item_exists_subselect::val_bool() {
+  assert(fixed);
+  if (exec(current_thd)) {
     reset();
-    return 0;
+    return false;
   }
-  return value != 0;
+  // EXISTS can never return NULL value
+  assert(!null_value);
+  return translate(null_value, value);
 }
 
-
-double Item_in_subselect::val_real()
-{
-  /*
-    As far as Item_in_subselect called only from Item_in_optimizer this
-    method should not be used
-  */
-  assert(0);
-  assert(fixed == 1);
-  if (exec())
-  {
-    reset();
-    return 0;
-  }
-  if (was_null && !value)
-    null_value= TRUE;
-  return (double) value;
+double Item_in_subselect::val_real() {
+  // Substituted with Item_in_optimizer, so this function is never used
+  assert(false);
+  my_error(ER_INTERNAL_ERROR, MYF(0), "Invalid function call");
+  return error_real();
 }
 
+longlong Item_in_subselect::val_int() {
+  // Substituted with Item_in_optimizer, so this function is never used
+  assert(false);
+  my_error(ER_INTERNAL_ERROR, MYF(0), "Invalid function call");
+  return error_int();
+}
 
-longlong Item_in_subselect::val_int()
-{
-  /*
-    As far as Item_in_subselect called only from Item_in_optimizer this
-    method should not be used
-  */
-  assert(0);
-  assert(fixed == 1);
-  if (exec())
-  {
+String *Item_in_subselect::val_str(String *) {
+  // Substituted with Item_in_optimizer, so this function is never used
+  assert(false);
+  my_error(ER_INTERNAL_ERROR, MYF(0), "Invalid function call");
+  return error_str();
+}
+
+bool Item_in_subselect::val_bool() {
+  // Substituted with Item_in_optimizer, so this function is never used
+  assert(false);
+  my_error(ER_INTERNAL_ERROR, MYF(0), "Invalid function call");
+  return error_int();
+}
+
+bool Item_in_subselect::val_bool_naked() {
+  assert(fixed);
+  if (exec(current_thd)) {
     reset();
-    return 0;
+    return false;
   }
-  if (was_null && !value)
-    null_value= TRUE;
+  if (was_null && !value) null_value = true;
+  /*
+    This is the value of the naked IN. Negation, or applying of IS TRUE/FALSE,
+    is left to the parent Item_in_optimizer, so make sure it's there:
+  */
+  assert(optimizer);
   return value;
 }
 
-
-String *Item_in_subselect::val_str(String *str)
-{
-  /*
-    As far as Item_in_subselect called only from Item_in_optimizer this
-    method should not be used
-  */
-  assert(0);
-  assert(fixed == 1);
-  if (exec())
-  {
-    reset();
-    return 0;
-  }
-  if (was_null && !value)
-  {
-    null_value= TRUE;
-    return 0;
-  }
-  str->set((ulonglong)value, &my_charset_bin);
-  return str;
+my_decimal *Item_in_subselect::val_decimal(my_decimal *) {
+  // Substituted with Item_in_optimizer, so this function is never used
+  assert(false);
+  my_error(ER_INTERNAL_ERROR, MYF(0), "Invalid function call");
+  return nullptr;
 }
 
-
-bool Item_in_subselect::val_bool()
-{
-  assert(fixed == 1);
-  if (exec())
-  {
-    reset();
-    return 0;
-  }
-  if (was_null && !value)
-    null_value= TRUE;
-  return value;
-}
-
-my_decimal *Item_in_subselect::val_decimal(my_decimal *decimal_value)
-{
-  /*
-    As far as Item_in_subselect called only from Item_in_optimizer this
-    method should not be used
-  */
-  assert(0);
-  assert(fixed == 1);
-  if (exec())
-  {
-    reset();
-    return 0;
-  }
-  if (was_null && !value)
-    null_value= TRUE;
-  int2my_decimal(E_DEC_FATAL_ERROR, value, 0, decimal_value);
-  return decimal_value;
-}
-
-
-/* 
+/**
   Rewrite a single-column IN/ALL/ANY subselect
-
-  SYNOPSIS
-    Item_in_subselect::single_value_transformer()
-      select Query block of the subquery
-      func  Subquery comparison creator
 
   DESCRIPTION
     Rewrite a single-column subquery using rule-based approach. The subquery
-    
+
        oe $cmp$ (SELECT ie FROM ... WHERE subq_where ... HAVING subq_having)
-    
+
     First, try to convert the subquery to scalar-result subquery in one of
     the forms:
-    
+
        - oe $cmp$ (SELECT MAX(...) )  // handled by Item_singlerow_subselect
-       - oe $cmp$ <max>(SELECT ...)   // handled by Item_maxmin_subselect
-   
+       - oe $cmp$ \<max\>(SELECT ...)   // handled by Item_maxmin_subselect
+
     If that fails, the subquery will be handled with class Item_in_optimizer.
-    There are two possibilites:
+    There are two possibilities:
     - If the subquery execution method is materialization, then the subquery is
       not transformed any further.
     - Otherwise the IN predicates is transformed into EXISTS by injecting
       equi-join predicates and possibly other helper predicates. For details
       see method single_value_in_like_transformer().
 
-  RETURN
-    RES_OK     Either subquery was transformed, or appopriate
+  @param thd    Thread handle
+  @param select Query block of the subquery
+  @param func   Subquery comparison creator
+
+  @retval RES_OK     Either subquery was transformed, or appropriate
                        predicates where injected into it.
-    RES_REDUCE The subquery was reduced to non-subquery
-    RES_ERROR  Error
+  @retval RES_REDUCE The subquery was reduced to non-subquery
+  @retval RES_ERROR  Error
 */
 
-Item_subselect::trans_res
-Item_in_subselect::single_value_transformer(SELECT_LEX *select,
-					    Comp_creator *func)
-{
-  bool subquery_maybe_null= false;
-  DBUG_ENTER("Item_in_subselect::single_value_transformer");
+Item_subselect::trans_res Item_in_subselect::single_value_transformer(
+    THD *thd, Query_block *select, Comp_creator *func) {
+  bool subquery_maybe_null = false;
+  DBUG_TRACE;
 
   /*
     Check that the right part of the subselect contains no more than one
     column. E.g. in SELECT 1 IN (SELECT * ..) the right part is (SELECT * ...)
   */
   // psergey: duplicated_subselect_card_check
-  if (select->item_list.elements > 1)
-  {
+  if (select->num_visible_fields() > 1) {
     my_error(ER_OPERAND_COLUMNS, MYF(0), 1);
-    DBUG_RETURN(RES_ERROR);
+    return RES_ERROR;
   }
-
-  THD * const thd= unit->thd;
 
   /*
     Check the nullability of the subquery. The subquery should return
     only one column, so we check the nullability of the first item in
-    SELECT_LEX::item_list. In case the subquery is a union, check the
+    Query_block::fields_list. In case the subquery is a union, check the
     nullability of the first item of each query block belonging to the
     union.
   */
-  for (SELECT_LEX *sel= unit->first_select();
-       sel != NULL;
-       sel= sel->next_select())
-  {
-    if ((subquery_maybe_null= sel->item_list.head()->maybe_null))
-      break;
+  for (Query_block *sel = unit->first_query_block(); sel != nullptr;
+       sel = sel->next_query_block()) {
+    Item *only_item = sel->single_visible_field();
+    if (only_item == nullptr) {
+      // There was more than one after all.
+      my_error(ER_OPERAND_COLUMNS, MYF(0), 1);
+      return RES_ERROR;
+    }
+    if ((subquery_maybe_null = only_item->is_nullable())) break;
   }
   /*
     If this is an ALL/ANY single-value subquery predicate, try to rewrite
@@ -1775,192 +1745,142 @@ Item_in_subselect::single_value_transformer(SELECT_LEX *select,
     A predicate may be transformed to use a MIN/MAX subquery if it:
     1. has a greater than/less than comparison operator, and
     2. is not correlated with the outer query, and
-    3. UNKNOWN results are treated as FALSE, or can never be generated, and
+    3. UNKNOWN results are treated as FALSE, by this item or the outer item,
+    or can never be generated.
   */
-  if (!func->eqne_op() &&                                             // 1
-      !unit->uncacheable &&                                           // 2
-      (abort_on_null || (upper_item && upper_item->is_top_level_item()) || // 3
-       (!left_expr->maybe_null && !subquery_maybe_null)))
-  {
-    if (substitution)
-    {
+  if (!func->eqne_op() &&                                                // 1
+      !unit->uncacheable &&                                              // 2
+      (abort_on_null || (upper_item && upper_item->ignore_unknown()) ||  // 3
+       (!left_expr->is_nullable() && !subquery_maybe_null))) {
+    if (substitution) {
       // It is second (third, ...) SELECT of UNION => All is done
-      DBUG_RETURN(RES_OK);
+      return RES_OK;
     }
 
     Item *subs;
-    if (!select->group_list.elements &&
-        !select->having_cond() &&
-        !select->with_sum_func &&
-        !(select->next_select()) &&
-        select->table_list.elements &&
-        !(substype() == ALL_SUBS && subquery_maybe_null))
-    {
-      OPT_TRACE_TRANSFORM(&thd->opt_trace, oto0, oto1,
-                          select->select_number,
+    if (!select->group_list.elements && !select->having_cond() &&
+        // MIN/MAX(agg_or_window_func) would not be valid
+        !select->with_sum_func && select->m_windows.elements == 0 &&
+        !(select->next_query_block()) && select->table_list.elements &&
+        // For ALL: MIN ignores NULL: 3<=ALL(4 and NULL) is UNKNOWN, while
+        // NOT(3>(SELECT MIN(4 and NULL)) is TRUE
+        !(substype() == ALL_SUBS && subquery_maybe_null)) {
+      OPT_TRACE_TRANSFORM(&thd->opt_trace, oto0, oto1, select->select_number,
                           "> ALL/ANY (SELECT)", "SELECT(MIN)");
       oto1.add("chosen", true);
+      thd->lex->m_subquery_to_derived_is_impossible = true;
       Item_sum_hybrid *item;
       nesting_map save_allow_sum_func;
-      if (func->l_op())
-      {
-	/*
-	  (ALL && (> || =>)) || (ANY && (< || =<))
-	  for ALL condition is inverted
-	*/
-	item= new Item_sum_max(select->ref_ptrs[0]);
-      }
-      else
-      {
-	/*
-	  (ALL && (< || =<)) || (ANY && (> || =>))
-	  for ALL condition is inverted
-	*/
-	item= new Item_sum_min(select->ref_ptrs[0]);
-      }
-      if (upper_item)
-        upper_item->set_sum_test(item);
-      select->ref_ptrs[0]= item;
-      {
-	List_iterator<Item> it(select->item_list);
-	it++;
-	it.replace(item);
-
+      if (func->l_op()) {
         /*
-          If the item in the SELECT list has gone through a temporary
-          transformation (like Item_field to Item_ref), make sure we
-          are rolling it back based on location inside Item_sum arg list.
+          (ALL && (> || =>)) || (ANY && (< || =<))
+          for ALL condition is inverted
         */
-        thd->replace_rollback_place(item->get_arg_ptr(0));
+        item = new Item_sum_max(select->base_ref_items[0]);
+      } else {
+        /*
+          (ALL && (< || =<)) || (ANY && (> || =>))
+          for ALL condition is inverted
+        */
+        item = new Item_sum_min(select->base_ref_items[0]);
+      }
+      if (upper_item) upper_item->set_sum_test(item);
+      select->base_ref_items[0] = item;
+
+      // Find the correct position in the field list, and overwrite it with the
+      // item.
+      for (auto it = select->visible_fields().begin();
+           it != select->visible_fields().end(); ++it) {
+        *it = item;
+        break;
       }
 
-      DBUG_EXECUTE("where",
-                   print_where(item, "rewrite with MIN/MAX", QT_ORDINARY););
+      DBUG_EXECUTE("where", print_where(thd, item, "rewrite with MIN/MAX",
+                                        QT_ORDINARY););
 
-      save_allow_sum_func= thd->lex->allow_sum_func;
-      thd->lex->allow_sum_func|= (nesting_map)1 << select->nest_level;
+      save_allow_sum_func = thd->lex->allow_sum_func;
+      thd->lex->allow_sum_func |= (nesting_map)1 << select->nest_level;
       /*
-	Item_sum_(max|min) can't substitute other item => we can use 0 as
+        Item_sum_(max|min) can't substitute other item => we can use 0 as
         reference, also Item_sum_(max|min) can't be fixed after creation, so
         we do not check item->fixed
       */
-      if (item->fix_fields(thd, 0))
-	DBUG_RETURN(RES_ERROR);
-      thd->lex->allow_sum_func= save_allow_sum_func; 
+      if (item->fix_fields(thd, nullptr)) return RES_ERROR;
+      thd->lex->allow_sum_func = save_allow_sum_func;
 
-      subs= new Item_singlerow_subselect(select);
-    }
-    else
-    {
-      OPT_TRACE_TRANSFORM(&thd->opt_trace, oto0, oto1,
-                          select->select_number,
+      subs = new Item_singlerow_subselect(select);
+    } else {
+      OPT_TRACE_TRANSFORM(&thd->opt_trace, oto0, oto1, select->select_number,
                           "> ALL/ANY (SELECT)", "MIN (SELECT)");
       oto1.add("chosen", true);
       Item_maxmin_subselect *item;
-      subs= item= new Item_maxmin_subselect(thd, this, select, func->l_op(),
-                                            substype()==ANY_SUBS);
-      if (upper_item)
-        upper_item->set_sub_test(item);
+      subs = item = new Item_maxmin_subselect(this, select, func->l_op(),
+                                              substype() == ANY_SUBS);
+      if (upper_item) upper_item->set_sub_test(item);
     }
-    if (upper_item)
-      upper_item->set_subselect(this);
-    /*
-      fix fields is already called for  left expression.
-      Note that real_item() should be used for all the runtime
-      created Ref items instead of original left expression
-      because these items would be deleted at the end
-      of the statement. Thus one of 'substitution' arguments
-      can be broken in case of PS.
+    if (upper_item) upper_item->set_subselect(this);
 
-      @todo
-      Why do we use real_item()/substitutional_item() instead of the plain
-      left_expr?
-      Because left_expr might be a rollbackable item, and we fail to properly
-      rollback all copies of left_expr at end of execution, so we want to
-      avoid creating copies of left_expr as much as possible, so we use
-      real_item() instead.
-      Doing a proper rollback is difficult: the change was registered for the
-      original item which was the left argument of IN. Then this item was
-      copied to left_expr, which is copied below to substitution->args[0]. To
-      do a proper rollback, we would have to restore the content
-      of both copies as well as the original item. There might be more copies,
-      if AND items have been constructed.
-      The same applies to the right expression.
-      However, using real_item()/substitutional_item() brings its own
-      problems: for example, we lose information that the item is an outer
-      reference; the item can thus wrongly be considered for a Keyuse (causing
-      bug#17766653).
-      When WL#6570 removes the "rolling back" system, all
-      real_item()/substitutional_item() in this file should be removed.
-    */
-    substitution= func->create(left_expr->substitutional_item(), subs);
-    DBUG_RETURN(RES_OK);
+    substitution = func->create(left_expr, subs);
+
+    return RES_OK;
   }
 
-  if (!substitution)
-  {
+  if (!substitution) {
     /* We're invoked for the 1st (or the only) SELECT in the subquery UNION */
-    substitution= optimizer;
+    substitution = optimizer;
 
-    thd->lex->set_current_select(select->outer_select());
-    //optimizer never use Item **ref => we can pass 0 as parameter
-    if (!optimizer || optimizer->fix_left(thd, 0))
-    {
-      thd->lex->set_current_select(select); /* purecov: inspected */
-      DBUG_RETURN(RES_ERROR); /* purecov: inspected */
+    thd->lex->set_current_query_block(select->outer_query_block());
+    // optimizer never use Item **ref => we can pass 0 as parameter
+    if (!optimizer || optimizer->fix_left(thd, nullptr)) {
+      thd->lex->set_current_query_block(select); /* purecov: inspected */
+      return RES_ERROR;                          /* purecov: inspected */
     }
-    thd->lex->set_current_select(select);
-
-    /* We will refer to upper level cache array => we have to save it for SP */
-    optimizer->keep_top_level_cache();
+    thd->lex->set_current_query_block(select);
 
     /*
       As far as  Item_ref_in_optimizer do not substitute itself on fix_fields
       we can use same item for all selects.
     */
-    Item_direct_ref *const left=
-      new Item_direct_ref(&select->context, (Item**)optimizer->get_cache(),
-			 (char *)"<no matter>", (char *)in_left_expr_name);
-    if (left == NULL)
-      DBUG_RETURN(RES_ERROR);
+    Item_ref *const left = new Item_ref(
+        &select->context, (Item **)optimizer->get_cache(), in_left_expr_name);
+    if (left == nullptr) return RES_ERROR;
 
     if (mark_as_outer(left_expr, 0))
-      left->depended_from= select->outer_select();
+      left->depended_from = select->outer_query_block();
 
-    m_injected_left_expr= left;
+    m_injected_left_expr = left;
 
-    assert(in2exists_info == NULL);
-    in2exists_info= new In2exists_info;
-    in2exists_info->dependent_before= unit->uncacheable & UNCACHEABLE_DEPENDENT;
-    if (!left_expr->const_item())
-      unit->uncacheable|= UNCACHEABLE_DEPENDENT;
-    in2exists_info->dependent_after= unit->uncacheable & UNCACHEABLE_DEPENDENT;
+    assert(in2exists_info == nullptr);
+    in2exists_info = new (thd->mem_root) In2exists_info;
+    in2exists_info->dependent_before =
+        unit->uncacheable & UNCACHEABLE_DEPENDENT;
+    if (!left_expr->const_item()) unit->uncacheable |= UNCACHEABLE_DEPENDENT;
+    in2exists_info->dependent_after = unit->uncacheable & UNCACHEABLE_DEPENDENT;
   }
 
-  if (!abort_on_null && left_expr->maybe_null && !pushed_cond_guards)
-  {
-    if (!(pushed_cond_guards= (bool*)thd->alloc(sizeof(bool))))
-      DBUG_RETURN(RES_ERROR);
-    pushed_cond_guards[0]= TRUE;
+  if (!abort_on_null && left_expr->is_nullable() && !pushed_cond_guards) {
+    if (!(pushed_cond_guards = (bool *)thd->alloc(sizeof(bool))))
+      return RES_ERROR;
+    pushed_cond_guards[0] = true;
   }
 
   /* Perform the IN=>EXISTS transformation. */
-  const trans_res retval= single_value_in_to_exists_transformer(select, func);
-  DBUG_RETURN(retval);
+  const trans_res retval =
+      single_value_in_to_exists_transformer(thd, select, func);
+  return retval;
 }
 
-
 /**
-  Transofrm an IN predicate into EXISTS via predicate injection.
+  Transform an IN predicate into EXISTS via predicate injection.
 
   @details The transformation injects additional predicates into the subquery
   (and makes the subquery correlated) as follows.
 
   - If the subquery has aggregates, GROUP BY, or HAVING, convert to
 
-    SELECT ie FROM ...  HAVING subq_having AND 
+    SELECT ie FROM ...  HAVING subq_having AND
                                trigcond(oe $cmp$ ref_or_null_helper<ie>)
-                                   
+
     the addition is wrapped into trigger only when we want to distinguish
     between NULL and FALSE results.
 
@@ -1968,322 +1888,299 @@ Item_in_subselect::single_value_transformer(SELECT_LEX *select,
     following:
 
     = If we don't need to distinguish between NULL and FALSE subquery:
-        
+
       SELECT 1 FROM ... WHERE (oe $cmp$ ie) AND subq_where
 
     = If we need to distinguish between those:
 
       SELECT 1 FROM ...
         WHERE  subq_where AND trigcond((oe $cmp$ ie) OR (ie IS NULL))
-        HAVING trigcond(<is_not_null_test>(ie))
+        HAVING trigcond(@<is_not_null_test@>(ie))
 
   At JOIN::optimize() we will compare costs of materialization and EXISTS; if
   the former is cheaper we will switch to it.
 
+    @param thd    Thread handle
     @param select Query block of the subquery
     @param func   Subquery comparison creator
 
-    @retval RES_OK     Either subquery was transformed, or appopriate
+    @retval RES_OK     Either subquery was transformed, or appropriate
                        predicates where injected into it.
     @retval RES_REDUCE The subquery was reduced to non-subquery
     @retval RES_ERROR  Error
 */
 
 Item_subselect::trans_res
-Item_in_subselect::single_value_in_to_exists_transformer(SELECT_LEX *select,
-                                                         Comp_creator *func)
-{
-  THD * const thd= unit->thd;
-  DBUG_ENTER("Item_in_subselect::single_value_in_to_exists_transformer");
+Item_in_subselect::single_value_in_to_exists_transformer(THD *thd,
+                                                         Query_block *select,
+                                                         Comp_creator *func) {
+  DBUG_TRACE;
 
-  SELECT_LEX *outer= select->outer_select();
+  Query_block *outer = select->outer_query_block();
 
   OPT_TRACE_TRANSFORM(&thd->opt_trace, oto0, oto1, select->select_number,
                       "IN (SELECT)", "EXISTS (CORRELATED SELECT)");
   oto1.add("chosen", true);
 
   // Transformation will make the subquery a dependent one.
-  if (!left_expr->const_item())
-    select->uncacheable|= UNCACHEABLE_DEPENDENT;
-  in2exists_info->added_to_where= false;
+  if (!left_expr->const_item()) select->uncacheable |= UNCACHEABLE_DEPENDENT;
+
+  in2exists_info->added_to_where = false;
 
   if (select->having_cond() || select->with_sum_func ||
-      select->group_list.elements)
-  {
+      select->group_list.elements || select->m_windows.elements > 0) {
     bool tmp;
-    Item_bool_func *item= func->create(m_injected_left_expr,
-                             new Item_ref_null_helper(&select->context,
-                                                      this,
-                                                      &select->ref_ptrs[0],
-                                                      (char *)"<ref>",
-                                                      this->full_name()));
+    Item_ref_null_helper *ref_null = new Item_ref_null_helper(
+        &select->context, this, &select->base_ref_items[0]);
+    Item_bool_func *item = func->create(m_injected_left_expr, ref_null);
     item->set_created_by_in2exists();
-    if (!abort_on_null && left_expr->maybe_null)
-    {
-      /* 
+
+    /*
+      Assume that the expression in the SELECT list, is a function of a group
+      aggregate which is aggregated in an outer query, for example
+      SELECT ... FROM t1 WHERE t1.b IN (SELECT <expr of SUM(t1.a)> FROM t2). We
+      are changing it to
+      SELECT ... FROM t1 WHERE t1.b IN (SELECT <expr of SUM(t1.a)> FROM t2
+                                        HAVING t1.b=ref-to-<expr of SUM(t1.a)>).
+      SUM is an "inner sum func", its fix_fields() has added it to
+      inner_sum_func_list of the outer query; the outer query will do
+      split_sum_func on it which will add SUM as a hidden item and replace it
+      in 'expr' with a pointer to an Item_ref.
+      If 'expr' is a function which has SUM as one of its arguments, the
+      SELECT list and HAVING access 'expr' through two different pointers, but
+      there's only one 'expr' Item, which accesses SUM through one pointer, so
+      there's a single referenced_by pointer to remember, we use
+      referenced_by[0]. But if 'expr' is directly the SUM, with no Item in
+      between, then there are two places where 'expr' should be replaced: the
+      iterator in the SELECT list, and the 'ref-to-expr' in HAVING above. So we
+      have to document those 2 places in referenced_by[0] and referenced_by[1].
+    */
+    Item *selected = select->base_ref_items[0];
+    if (selected->type() == SUM_FUNC_ITEM) {
+      Item_sum *selected_sum = static_cast<Item_sum *>(selected);
+      if (!selected_sum->referenced_by[0])
+        selected_sum->referenced_by[0] = ref_null->ref;
+      else {
+        // Slot 0 already occupied, use 1.
+        assert(!selected_sum->referenced_by[1]);
+        selected_sum->referenced_by[1] = ref_null->ref;
+      }
+    }
+    if (!abort_on_null && left_expr->is_nullable()) {
+      /*
         We can encounter "NULL IN (SELECT ...)". Wrap the added condition
         within a trig_cond.
       */
-      item= new Item_func_trig_cond(item, get_cond_guard(0), NULL, NO_PLAN_IDX,
-                                    Item_func_trig_cond::
-                                    OUTER_FIELD_IS_NOT_NULL);
+      item =
+          new Item_func_trig_cond(item, get_cond_guard(0), nullptr, NO_PLAN_IDX,
+                                  Item_func_trig_cond::OUTER_FIELD_IS_NOT_NULL);
       item->set_created_by_in2exists();
     }
 
     /*
       AND and comparison functions can't be changed during fix_fields()
-      we can assign select_lex->having_cond here, and pass NULL as last
+      we can assign query_block->having_cond here, and pass NULL as last
       argument (reference) to fix_fields()
     */
     select->set_having_cond(and_items(select->having_cond(), item));
-    if (select->having_cond() == item)
-      item->item_name.set(in_having_cond);
-    select->having_cond()->top_level_item();
-    select->having_fix_field= true;
+    select->having_cond()->apply_is_true();
+    select->having_fix_field = true;
     /*
       we do not check having_cond()->fixed, because Item_and (from and_items)
       or comparison function (from func->create) can't be fixed after creation
     */
     Opt_trace_array having_trace(&thd->opt_trace,
                                  "evaluating_constant_having_conditions");
-    tmp= select->having_cond()->fix_fields(thd, NULL);
-    select->having_fix_field= false;
-    if (tmp)
-      DBUG_RETURN(RES_ERROR);
-  }
-  else
-  {
-    /*
-      Grep for "WL#6570" to see the relevant comment about real_item.
-    */
-    Item *orig_item= select->item_list.head()->real_item();
+    tmp = select->having_cond()->fix_fields(thd, nullptr);
+    select->having_fix_field = false;
+    if (tmp) return RES_ERROR;
+  } else {
+    Item *orig_item = select->single_visible_field();
 
-    if (select->table_list.elements || select->where_cond())
-    {
+    if (!select->source_table_is_one_row() || select->where_cond()) {
       bool tmp;
-      Item_bool_func *item= func->create(m_injected_left_expr, orig_item);
+      Item_bool_func *item = func->create(m_injected_left_expr, orig_item);
       /*
         We may soon add a 'OR inner IS NULL' to 'item', but that may later be
         removed if 'inner' is not nullable, so the in2exists mark must be on
         'item' too. Not only on the OR node.
       */
       item->set_created_by_in2exists();
-      if (!abort_on_null && orig_item->maybe_null)
-      {
-	Item_bool_func *having= new Item_is_not_null_test(this, orig_item);
+      if (!abort_on_null && orig_item->is_nullable()) {
+        Item_bool_func *having = new Item_is_not_null_test(this, orig_item);
         having->set_created_by_in2exists();
-        if (left_expr->maybe_null)
-        {
-          if (!(having= new
-                Item_func_trig_cond(having, get_cond_guard(0), NULL, NO_PLAN_IDX,
-                                    Item_func_trig_cond::OUTER_FIELD_IS_NOT_NULL)))
-            DBUG_RETURN(RES_ERROR);
+        if (left_expr->is_nullable()) {
+          if (!(having = new Item_func_trig_cond(
+                    having, get_cond_guard(0), nullptr, NO_PLAN_IDX,
+                    Item_func_trig_cond::OUTER_FIELD_IS_NOT_NULL)))
+            return RES_ERROR;
           having->set_created_by_in2exists();
         }
-	/*
-          Item_is_not_null_test can't be changed during fix_fields()
-          we can assign select_lex->having_cond() here, and pass NULL as last
-          argument (reference) to fix_fields()
-	*/
-        having->item_name.set(in_having_cond);
-	select->set_having_cond(having);
-	select->having_fix_field= true;
         /*
-          No need to check select_lex->having_cond()->fixed, because Item_and
+          Item_is_not_null_test can't be changed during fix_fields()
+          we can assign query_block->having_cond() here, and pass NULL as last
+          argument (reference) to fix_fields()
+        */
+        select->set_having_cond(having);
+        select->having_fix_field = true;
+        /*
+          No need to check query_block->having_cond()->fixed, because Item_and
           (from and_items) or comparison function (from func->create)
           can't be fixed after creation.
         */
         Opt_trace_array having_trace(&thd->opt_trace,
                                      "evaluating_constant_having_conditions");
-        tmp= select->having_cond()->fix_fields(thd, NULL);
-        select->having_fix_field= false;
-        if (tmp)
-	  DBUG_RETURN(RES_ERROR);
-	item= new Item_cond_or(item,
-			       new Item_func_isnull(orig_item));
+        tmp = select->having_cond()->fix_fields(thd, nullptr);
+        select->having_fix_field = false;
+        if (tmp) return RES_ERROR;
+        item = new Item_cond_or(item, new Item_func_isnull(orig_item));
         item->set_created_by_in2exists();
       }
-      /* 
+      /*
         If we may encounter NULL IN (SELECT ...) and care whether subquery
         result is NULL or FALSE, wrap condition in a trig_cond.
       */
-      if (!abort_on_null && left_expr->maybe_null)
-      {
-        if (!(item=
-              new Item_func_trig_cond(item, get_cond_guard(0), NULL, NO_PLAN_IDX,
-                                      Item_func_trig_cond::OUTER_FIELD_IS_NOT_NULL)))
-          DBUG_RETURN(RES_ERROR);
+      if (!abort_on_null && left_expr->is_nullable()) {
+        if (!(item = new Item_func_trig_cond(
+                  item, get_cond_guard(0), nullptr, NO_PLAN_IDX,
+                  Item_func_trig_cond::OUTER_FIELD_IS_NOT_NULL)))
+          return RES_ERROR;
         item->set_created_by_in2exists();
       }
       /*
-        The following is intentionally not done in row_value_transformer(),
-        see comment of JOIN::remove_subq_pushed_predicates().
-      */
-      item->item_name.set(in_additional_cond);
-
-      /*
         AND can't be changed during fix_fields()
-        we can assign select_lex->having_cond() here, and pass NULL as last
+        we can assign query_block->having_cond() here, and pass NULL as last
         argument (reference) to fix_fields()
 
-        Note that if select_lex is the fake one of UNION, it does not make
+        Note that if query_block is the fake one of UNION, it does not make
         much sense to give it a WHERE clause below... we already give one to
         each member of the UNION.
       */
       select->set_where_cond(and_items(select->where_cond(), item));
-      select->where_cond()->top_level_item();
-      in2exists_info->added_to_where= true;
+      select->where_cond()->apply_is_true();
+      in2exists_info->added_to_where = true;
       /*
-        No need to check select_lex->where_cond()->fixed, because Item_and
+        No need to check query_block->where_cond()->fixed, because Item_and
         can't be fixed after creation.
       */
       Opt_trace_array where_trace(&thd->opt_trace,
                                   "evaluating_constant_where_conditions");
-      if (select->where_cond()->fix_fields(thd, NULL))
-	DBUG_RETURN(RES_ERROR);
-    }
-    else
-    {
+      if (select->where_cond()->fix_fields(thd, nullptr)) return RES_ERROR;
+    } else {
       bool tmp;
-      if (unit->is_union())
-      {
-	/*
+      if (unit->is_union()) {
+        /*
           comparison functions can't be changed during fix_fields()
-          we can assign select_lex->having_cond() here, and pass NULL as last
+          we can assign query_block->having_cond() here, and pass NULL as last
           argument (reference) to fix_fields()
-	*/
-        Item_bool_func *new_having=
-          func->create(m_injected_left_expr,
-                       new Item_ref_null_helper(&select->context, this,
-                                            &select->ref_ptrs[0],
-                                            (char *)"<no matter>",
-                                            (char *)"<result>"));
+        */
+        Item_bool_func *new_having =
+            func->create(m_injected_left_expr,
+                         new Item_ref_null_helper(&select->context, this,
+                                                  &select->base_ref_items[0]));
         new_having->set_created_by_in2exists();
-        if (!abort_on_null && left_expr->maybe_null)
-        {
-          if (!(new_having= new Item_func_trig_cond(new_having,
-                                                    get_cond_guard(0),
-                                                    NULL, NO_PLAN_IDX,
-                                                    Item_func_trig_cond::
-                                                    OUTER_FIELD_IS_NOT_NULL)))
-            DBUG_RETURN(RES_ERROR);
+        if (!abort_on_null && left_expr->is_nullable()) {
+          if (!(new_having = new Item_func_trig_cond(
+                    new_having, get_cond_guard(0), nullptr, NO_PLAN_IDX,
+                    Item_func_trig_cond::OUTER_FIELD_IS_NOT_NULL)))
+            return RES_ERROR;
           new_having->set_created_by_in2exists();
         }
-        new_having->item_name.set(in_having_cond);
-	select->set_having_cond(new_having);
-	select->having_fix_field= true;
-        
+        select->set_having_cond(new_having);
+        select->having_fix_field = true;
+
         /*
-          No need to check select_lex->having_cond()->fixed, because comparison
+          No need to check query_block->having_cond()->fixed, because comparison
           function (from func->create) can't be fixed after creation.
         */
         Opt_trace_array having_trace(&thd->opt_trace,
                                      "evaluating_constant_having_conditions");
-	tmp= select->having_cond()->fix_fields(thd, NULL);
-        select->having_fix_field= false;
-        if (tmp)
-	  DBUG_RETURN(RES_ERROR);
-      }
-      else
-      {
-	/*
+        tmp = select->having_cond()->fix_fields(thd, nullptr);
+        select->having_fix_field = false;
+        if (tmp) return RES_ERROR;
+      } else {
+        /*
           Single query block, without tables, without WHERE, HAVING, LIMIT:
           its content has one row and is equal to the item in the SELECT list,
           so we can replace the IN(subquery) with an equality.
+          Keep applicability conditions in sync with
+          Item_exists_subselect::truth_transformer().
           The expression is moved to the immediately outer query block, so it
           may no longer contain outer references.
         */
         outer->merge_contexts(select);
         orig_item->fix_after_pullout(outer, select);
 
-        /*
-          fix_field of substitution item will be done in time of
-          substituting.
-          Note that real_item() should be used for all the runtime
-          created Ref items instead of original left expression
-          because these items would be deleted at the end
-          of the statement. Thus one of 'substitution' arguments
-          can be broken in case of PS.
-         */
-	substitution= func->create(left_expr->substitutional_item(), orig_item);
-	have_to_be_excluded= 1;
-	if (thd->lex->describe)
-	{
-	  char warn_buff[MYSQL_ERRMSG_SIZE];
-	  sprintf(warn_buff, ER(ER_SELECT_REDUCED), select->select_number);
-	  push_warning(thd, Sql_condition::SL_NOTE,
-		       ER_SELECT_REDUCED, warn_buff);
-	}
-	DBUG_RETURN(RES_REDUCE);
+        // Resolving of substitution item will be done in time of substituting
+        substitution = func->create(left_expr, orig_item);
+        have_to_be_excluded = true;
+        if (thd->lex->is_explain()) {
+          char warn_buff[MYSQL_ERRMSG_SIZE];
+          sprintf(warn_buff, ER_THD(thd, ER_SELECT_REDUCED),
+                  select->select_number);
+          push_warning(thd, Sql_condition::SL_NOTE, ER_SELECT_REDUCED,
+                       warn_buff);
+        }
+        return RES_REDUCE;
       }
     }
   }
 
-  DBUG_RETURN(RES_OK);
+  thd->lex->m_subquery_to_derived_is_impossible = true;
+  return RES_OK;
 }
 
+Item_subselect::trans_res Item_in_subselect::row_value_transformer(
+    THD *thd, Query_block *select) {
+  uint cols_num = left_expr->cols();
 
-Item_subselect::trans_res
-Item_in_subselect::row_value_transformer(SELECT_LEX *select)
-{
-  uint cols_num= left_expr->cols();
-
-  DBUG_ENTER("Item_in_subselect::row_value_transformer");
+  DBUG_TRACE;
 
   // psergey: duplicated_subselect_card_check
-  if (select->item_list.elements != left_expr->cols())
-  {
+  if (select->num_visible_fields() != left_expr->cols()) {
     my_error(ER_OPERAND_COLUMNS, MYF(0), left_expr->cols());
-    DBUG_RETURN(RES_ERROR);
+    return RES_ERROR;
   }
 
   /*
     Wrap the current IN predicate in an Item_in_optimizer. The actual
     substitution in the Item tree takes place in Item_subselect::fix_fields.
   */
-  if (!substitution)
-  {
-    //first call for this unit
-    substitution= optimizer;
+  if (!substitution) {
+    // first call for this unit
+    substitution = optimizer;
 
-    THD * const thd= unit->thd;
-    thd->lex->set_current_select(select->outer_select());
-    //optimizer never use Item **ref => we can pass 0 as parameter
-    if (!optimizer || optimizer->fix_left(thd, 0))
-    {
-      thd->lex->set_current_select(select); /* purecov: inspected */
-      DBUG_RETURN(RES_ERROR); /* purecov: inspected */
+    thd->lex->set_current_query_block(select->outer_query_block());
+    // optimizer never use Item **ref => we can pass 0 as parameter
+    if (!optimizer || optimizer->fix_left(thd, nullptr)) {
+      thd->lex->set_current_query_block(select); /* purecov: inspected */
+      return RES_ERROR;                          /* purecov: inspected */
     }
 
-    // we will refer to upper level cache array => we have to save it in PS
-    optimizer->keep_top_level_cache();
+    thd->lex->set_current_query_block(select);
+    assert(in2exists_info == nullptr);
+    in2exists_info = new (thd->mem_root) In2exists_info;
+    in2exists_info->dependent_before =
+        unit->uncacheable & UNCACHEABLE_DEPENDENT;
+    if (!left_expr->const_item()) unit->uncacheable |= UNCACHEABLE_DEPENDENT;
+    in2exists_info->dependent_after = unit->uncacheable & UNCACHEABLE_DEPENDENT;
 
-    thd->lex->set_current_select(select);
-    assert(in2exists_info == NULL);
-    in2exists_info= new In2exists_info;
-    in2exists_info->dependent_before= unit->uncacheable & UNCACHEABLE_DEPENDENT;
-    if (!left_expr->const_item())
-      unit->uncacheable|= UNCACHEABLE_DEPENDENT;
-    in2exists_info->dependent_after= unit->uncacheable & UNCACHEABLE_DEPENDENT;
-
-    if (!abort_on_null && left_expr->maybe_null && !pushed_cond_guards)
-    {
-      if (!(pushed_cond_guards= (bool*)thd->alloc(sizeof(bool) *
-                                                  left_expr->cols())))
-        DBUG_RETURN(RES_ERROR);
-      for (uint i= 0; i < cols_num; i++)
-        pushed_cond_guards[i]= TRUE;
+    if (!abort_on_null && left_expr->is_nullable() && !pushed_cond_guards) {
+      if (!(pushed_cond_guards =
+                (bool *)thd->alloc(sizeof(bool) * left_expr->cols())))
+        return RES_ERROR;
+      for (uint i = 0; i < cols_num; i++) pushed_cond_guards[i] = true;
     }
   }
 
   // Perform the IN=>EXISTS transformation.
-  Item_subselect::trans_res res= row_value_in_to_exists_transformer(select);
-  DBUG_RETURN(res);
+  Item_subselect::trans_res res =
+      row_value_in_to_exists_transformer(thd, select);
+  return res;
 }
 
-
 /**
-  Tranform a (possibly non-correlated) IN subquery into a correlated EXISTS.
+  Transform a (possibly non-correlated) IN subquery into a correlated EXISTS.
 
   @todo
   The IF-ELSE below can be refactored so that there is no duplication of the
@@ -2300,29 +2197,26 @@ Item_in_subselect::row_value_transformer(SELECT_LEX *select)
       add the is_not_null_test to HAVING
 */
 
-Item_subselect::trans_res
-Item_in_subselect::row_value_in_to_exists_transformer(SELECT_LEX *select)
-{
-  THD * const thd= unit->thd;
-  Item *having_item= 0;
-  uint cols_num= left_expr->cols();
-  bool is_having_used= select->having_cond() ||
-                       select->with_sum_func ||
-                       select->group_list.first ||
-                       !select->table_list.elements;
+Item_subselect::trans_res Item_in_subselect::row_value_in_to_exists_transformer(
+    THD *thd, Query_block *select) {
+  thd->lex->m_subquery_to_derived_is_impossible = true;
+  Item_bool_func *having_item = nullptr;
+  uint cols_num = left_expr->cols();
+  bool is_having_used = select->having_cond() || select->with_sum_func ||
+                        select->group_list.first ||
+                        !select->table_list.elements ||
+                        select->m_windows.elements > 0;
 
-  DBUG_ENTER("Item_in_subselect::row_value_in_to_exists_transformer");
+  DBUG_TRACE;
   OPT_TRACE_TRANSFORM(&thd->opt_trace, oto0, oto1, select->select_number,
                       "IN (SELECT)", "EXISTS (CORRELATED SELECT)");
   oto1.add("chosen", true);
 
   // Transformation will make the subquery a dependent one.
-  if (!left_expr->const_item())
-    select->uncacheable|= UNCACHEABLE_DEPENDENT;
-  in2exists_info->added_to_where= false;
+  if (!left_expr->const_item()) select->uncacheable |= UNCACHEABLE_DEPENDENT;
+  in2exists_info->added_to_where = false;
 
-  if (is_having_used)
-  {
+  if (is_having_used) {
     /*
       (l1, l2, l3) IN (SELECT v1, v2, v3 ... HAVING having) =>
       EXISTS (SELECT ... HAVING having and
@@ -2336,80 +2230,58 @@ Item_in_subselect::row_value_in_to_exists_transformer(SELECT_LEX *select)
       not found matching to return correct NULL value
       TODO: say here explicitly if the order of AND parts matters or not.
     */
-    Item *item_having_part2= 0;
-    for (uint i= 0; i < cols_num; i++)
-    {
-      Item *item_i= select->ref_ptrs[i];
-      Item **pitem_i= &select->ref_ptrs[i];
+    Item_bool_func *item_having_part2 = nullptr;
+    for (uint i = 0; i < cols_num; i++) {
+      Item *item_i = select->base_ref_items[i];
+      Item **pitem_i = &select->base_ref_items[i];
       assert((left_expr->fixed && item_i->fixed) ||
              (item_i->type() == REF_ITEM &&
-              ((Item_ref*)(item_i))->ref_type() == Item_ref::OUTER_REF));
-      if (item_i-> check_cols(left_expr->element_index(i)->cols()))
-        DBUG_RETURN(RES_ERROR);
-      Item_ref *const left=
-        new Item_ref(&select->context,
-                     (*optimizer->get_cache())->addr(i),
-                     (char *)"<no matter>", (char *)in_left_expr_name);
-      if (left == NULL)
-        DBUG_RETURN(RES_ERROR);              /* purecov: inspected */
+              ((Item_ref *)(item_i))->ref_type() == Item_ref::OUTER_REF));
+      if (item_i->check_cols(left_expr->element_index(i)->cols()))
+        return RES_ERROR;
+      Item_ref *const left =
+          new Item_ref(&select->context, (*optimizer->get_cache())->addr(i),
+                       in_left_expr_name);
+      if (left == nullptr) return RES_ERROR; /* purecov: inspected */
 
       if (mark_as_outer(left_expr, i))
-        left->depended_from= select->outer_select();
+        left->depended_from = select->outer_query_block();
 
-      Item_bool_func *item_eq=
-        new Item_func_eq(left,
-                         new
-                         Item_ref(&select->context,
-                                  pitem_i,
-                                  (char *)"<no matter>",
-                                  (char *)"<list ref>")
-                        );
+      Item_bool_func *item_eq = new Item_func_eq(
+          left, new Item_ref(&select->context, pitem_i, "<list ref>"));
       item_eq->set_created_by_in2exists();
-      Item_bool_func *item_isnull=
-        new Item_func_isnull(new
-                             Item_ref(&select->context,
-                                      pitem_i,
-                                      (char *)"<no matter>",
-                                      (char *)"<list ref>")
-                            );
+      Item_bool_func *item_isnull = new Item_func_isnull(
+          new Item_ref(&select->context, pitem_i, "<list ref>"));
       item_isnull->set_created_by_in2exists();
-      Item_bool_func *col_item= new Item_cond_or(item_eq, item_isnull);
+      Item_bool_func *col_item = new Item_cond_or(item_eq, item_isnull);
       col_item->set_created_by_in2exists();
-      if (!abort_on_null && left_expr->element_index(i)->maybe_null)
-      {
-        if (!(col_item=
-              new Item_func_trig_cond(col_item, get_cond_guard(i),
-                                      NULL, NO_PLAN_IDX,
-                                      Item_func_trig_cond::OUTER_FIELD_IS_NOT_NULL)))
-          DBUG_RETURN(RES_ERROR);
+      if (!abort_on_null && left_expr->element_index(i)->is_nullable()) {
+        if (!(col_item = new Item_func_trig_cond(
+                  col_item, get_cond_guard(i), nullptr, NO_PLAN_IDX,
+                  Item_func_trig_cond::OUTER_FIELD_IS_NOT_NULL)))
+          return RES_ERROR;
         col_item->set_created_by_in2exists();
       }
-      having_item= and_items(having_item, col_item);
-      
-      Item_bool_func *item_nnull_test= 
-         new Item_is_not_null_test(this,
-                                   new Item_ref(&select->context,
-                                                pitem_i,
-                                                (char *)"<no matter>",
-                                                (char *)"<list ref>"));
+
+      having_item = and_items(having_item, col_item);
+      having_item->set_created_by_in2exists();
+      Item_bool_func *item_nnull_test = new Item_is_not_null_test(
+          this, new Item_ref(&select->context, pitem_i, "<list ref>"));
       item_nnull_test->set_created_by_in2exists();
-      if (!abort_on_null && left_expr->element_index(i)->maybe_null)
-      {
-        if (!(item_nnull_test= 
-              new Item_func_trig_cond(item_nnull_test, get_cond_guard(i),
-                                      NULL, NO_PLAN_IDX,
-                                      Item_func_trig_cond::OUTER_FIELD_IS_NOT_NULL)))
-          DBUG_RETURN(RES_ERROR);
+      if (!abort_on_null && left_expr->element_index(i)->is_nullable()) {
+        if (!(item_nnull_test = new Item_func_trig_cond(
+                  item_nnull_test, get_cond_guard(i), nullptr, NO_PLAN_IDX,
+                  Item_func_trig_cond::OUTER_FIELD_IS_NOT_NULL)))
+          return RES_ERROR;
         item_nnull_test->set_created_by_in2exists();
       }
-      item_having_part2= and_items(item_having_part2, item_nnull_test);
-      item_having_part2->top_level_item();
+      item_having_part2 = and_items(item_having_part2, item_nnull_test);
+      item_having_part2->set_created_by_in2exists();
     }
-    having_item= and_items(having_item, item_having_part2);
-    having_item->top_level_item();
-  }
-  else
-  {
+    having_item = and_items(having_item, item_having_part2);
+    having_item->set_created_by_in2exists();
+    having_item->apply_is_true();
+  } else {
     /*
       (l1, l2, l3) IN (SELECT v1, v2, v3 ... WHERE where) =>
       EXISTS (SELECT ... WHERE where and
@@ -2421,85 +2293,64 @@ Item_in_subselect::row_value_in_to_exists_transformer(SELECT_LEX *select)
                                 is_not_null_test(v3))
       where is_not_null_test register NULLs values but reject rows
 
-      in case when we do not need correct NULL, we have simplier construction:
+      in case when we do not need correct NULL, we have a simpler construction:
       EXISTS (SELECT ... WHERE where and
                                (l1 = v1) and
                                (l2 = v2) and
                                (l3 = v3)
     */
-    Item *where_item= 0;
-    for (uint i= 0; i < cols_num; i++)
-    {
-      Item *item_i= select->ref_ptrs[i];
-      Item **pitem_i= &select->ref_ptrs[i];
+    Item_bool_func *where_item = nullptr;
+    for (uint i = 0; i < cols_num; i++) {
+      Item *item_i = select->base_ref_items[i];
+      Item **pitem_i = &select->base_ref_items[i];
       assert((left_expr->fixed && item_i->fixed) ||
              (item_i->type() == REF_ITEM &&
-              ((Item_ref*)(item_i))->ref_type() == Item_ref::OUTER_REF));
+              ((Item_ref *)(item_i))->ref_type() == Item_ref::OUTER_REF));
       if (item_i->check_cols(left_expr->element_index(i)->cols()))
-        DBUG_RETURN(RES_ERROR);
-      Item_ref *const left=
-        new Item_direct_ref(&select->context,
-                            (*optimizer->get_cache())->addr(i),
-                            (char *)"<no matter>", (char *)in_left_expr_name);
-      if (left == NULL)
-        DBUG_RETURN(RES_ERROR);
+        return RES_ERROR;
+      Item_ref *const left =
+          new Item_ref(&select->context, (*optimizer->get_cache())->addr(i),
+                       in_left_expr_name);
+      if (left == nullptr) return RES_ERROR;
 
       if (mark_as_outer(left_expr, i))
-        left->depended_from= select->outer_select();
+        left->depended_from = select->outer_query_block();
 
-      Item_bool_func *item=
-        new Item_func_eq(left,
-                         new
-                         Item_direct_ref(&select->context,
-                                         pitem_i,
-                                         (char *)"<no matter>",
-                                         (char *)"<list ref>")
-                        );
+      Item_bool_func *item = new Item_func_eq(
+          left, new Item_ref(&select->context, pitem_i, "<list ref>"));
       item->set_created_by_in2exists();
-      if (!abort_on_null)
-      {
-        Item_bool_func *having_col_item=
-          new Item_is_not_null_test(this,
-                                    new
-                                    Item_ref(&select->context, 
-                                             pitem_i,
-                                             (char *)"<no matter>",
-                                             (char *)"<list ref>"));
-        
+      if (!abort_on_null) {
+        Item_bool_func *having_col_item = new Item_is_not_null_test(
+            this, new Item_ref(&select->context, pitem_i, "<list ref>"));
+
         having_col_item->set_created_by_in2exists();
-        Item_bool_func *item_isnull= new
-          Item_func_isnull(new
-                           Item_direct_ref(&select->context,
-                                           pitem_i,
-                                           (char *)"<no matter>",
-                                           (char *)"<list ref>")
-                          );
+        Item_bool_func *item_isnull = new Item_func_isnull(
+            new Item_ref(&select->context, pitem_i, "<list ref>"));
         item_isnull->set_created_by_in2exists();
-        item= new Item_cond_or(item, item_isnull);
+        item = new Item_cond_or(item, item_isnull);
         item->set_created_by_in2exists();
-        /* 
+        /*
           TODO: why we create the above for cases where the right part
-                cant be NULL?
+                can't be NULL?
         */
-        if (left_expr->element_index(i)->maybe_null)
-        {
-          if (!(item=
-                new Item_func_trig_cond(item, get_cond_guard(i), NULL, NO_PLAN_IDX,
-                                        Item_func_trig_cond::OUTER_FIELD_IS_NOT_NULL)))
-            DBUG_RETURN(RES_ERROR);
+        if (left_expr->element_index(i)->is_nullable()) {
+          if (!(item = new Item_func_trig_cond(
+                    item, get_cond_guard(i), nullptr, NO_PLAN_IDX,
+                    Item_func_trig_cond::OUTER_FIELD_IS_NOT_NULL)))
+            return RES_ERROR;
           item->set_created_by_in2exists();
-          if (!(having_col_item=
-                new Item_func_trig_cond(having_col_item, get_cond_guard(i),
-                                        NULL, NO_PLAN_IDX,
-                                        Item_func_trig_cond::
-                                        OUTER_FIELD_IS_NOT_NULL)))
-            DBUG_RETURN(RES_ERROR);
+          if (!(having_col_item = new Item_func_trig_cond(
+                    having_col_item, get_cond_guard(i), nullptr, NO_PLAN_IDX,
+                    Item_func_trig_cond::OUTER_FIELD_IS_NOT_NULL)))
+            return RES_ERROR;
           having_col_item->set_created_by_in2exists();
         }
-        having_item= and_items(having_item, having_col_item);
+        having_item = and_items(having_item, having_col_item);
+        having_item->set_created_by_in2exists();
       }
 
-      where_item= and_items(where_item, item);
+      where_item = and_items(where_item, item);
+      where_item->set_created_by_in2exists();
     }
     /*
       AND can't be changed during fix_fields()
@@ -2507,46 +2358,38 @@ Item_in_subselect::row_value_in_to_exists_transformer(SELECT_LEX *select)
       argument (reference) to fix_fields()
     */
     select->set_where_cond(and_items(select->where_cond(), where_item));
-    select->where_cond()->top_level_item();
-    in2exists_info->added_to_where= true;
+    select->where_cond()->apply_is_true();
+    in2exists_info->added_to_where = true;
     Opt_trace_array where_trace(&thd->opt_trace,
                                 "evaluating_constant_where_conditions");
-    if (select->where_cond()->fix_fields(thd, NULL))
-      DBUG_RETURN(RES_ERROR);
+    if (select->where_cond()->fix_fields(thd, nullptr)) return RES_ERROR;
   }
-  if (having_item)
-  {
+  if (having_item) {
     bool res;
     select->set_having_cond(and_items(select->having_cond(), having_item));
-    if (having_item == select->having_cond())
-      having_item->item_name.set(in_having_cond);
-    select->having_cond()->top_level_item();
+    select->having_cond()->apply_is_true();
     /*
       AND can't be changed during fix_fields()
       we can assign select->having_cond() here, and pass 0 as last
       argument (reference) to fix_fields()
     */
-    select->having_fix_field= true;
+    select->having_fix_field = true;
     Opt_trace_array having_trace(&thd->opt_trace,
                                  "evaluating_constant_having_conditions");
-    res= select->having_cond()->fix_fields(thd, NULL);
-    select->having_fix_field= false;
-    if (res)
-    {
-      DBUG_RETURN(RES_ERROR);
+    res = select->having_cond()->fix_fields(thd, nullptr);
+    select->having_fix_field = false;
+    if (res) {
+      return RES_ERROR;
     }
   }
 
-  DBUG_RETURN(RES_OK);
+  return RES_OK;
 }
 
-
-Item_subselect::trans_res
-Item_in_subselect::select_transformer(SELECT_LEX *select)
-{
-  return select_in_like_transformer(select, &eq_creator);
+Item_subselect::trans_res Item_in_subselect::select_transformer(
+    THD *thd, Query_block *select) {
+  return select_in_like_transformer(thd, select, &eq_creator);
 }
-
 
 /**
   Prepare IN/ALL/ANY/SOME subquery transformation and call appropriate
@@ -2557,6 +2400,7 @@ Item_in_subselect::select_transformer(SELECT_LEX *select)
     cols() method on it. Also this method make arena management for
     underlying transformation methods.
 
+  @param thd     Thread handle
   @param select  Query block of subquery being transformed
   @param func    creator of condition function of subquery
 
@@ -2569,16 +2413,13 @@ Item_in_subselect::select_transformer(SELECT_LEX *select)
     RES_ERROR   Error
 */
 
-Item_subselect::trans_res
-Item_in_subselect::select_in_like_transformer(SELECT_LEX *select,
-                                              Comp_creator *func)
-{
-  THD * const thd= unit->thd;
-  const char *save_where= thd->where;
-  Item_subselect::trans_res res= RES_ERROR;
+Item_subselect::trans_res Item_in_subselect::select_in_like_transformer(
+    THD *thd, Query_block *select, Comp_creator *func) {
+  const char *save_where = thd->where;
+  Item_subselect::trans_res res = RES_ERROR;
   bool result;
 
-  DBUG_ENTER("Item_in_subselect::select_in_like_transformer");
+  DBUG_TRACE;
 
 #ifndef NDEBUG
   /*
@@ -2586,47 +2427,44 @@ Item_in_subselect::select_in_like_transformer(SELECT_LEX *select,
     it, ORDER BY becomes meaningless and should already have been
     removed in resolve_subquery()
   */
-  for (SELECT_LEX *sl= unit->first_select(); sl; sl= sl->next_select())
+  for (Query_block *sl = unit->first_query_block(); sl;
+       sl = sl->next_query_block())
     assert(!sl->order_list.first);
 #endif
 
-  if (changed)
-    DBUG_RETURN(RES_OK);
+  if (changed) return RES_OK;
 
-  thd->where= "IN/ALL/ANY subquery";
+  thd->where = "IN/ALL/ANY subquery";
 
   /*
     In some optimisation cases we will not need this Item_in_optimizer
     object, but we can't know it here, but here we need address correct
-    reference on left expresion.
+    reference on left expression.
 
     //psergey: he means confluent cases like "... IN (SELECT 1)"
   */
-  if (!optimizer)
-  {
+  if (!optimizer) {
     Prepared_stmt_arena_holder ps_arena_holder(thd);
-    optimizer= new Item_in_optimizer(left_expr, this);
+    optimizer = new Item_in_optimizer(left_expr, this);
 
-    if (!optimizer)
-      goto err;
+    if (!optimizer) goto err;
   }
 
-  thd->lex->set_current_select(select->outer_select());
-  result= (!left_expr->fixed &&
-           left_expr->fix_fields(thd, optimizer->arguments()));
+  thd->lex->set_current_query_block(select->outer_query_block());
+  result =
+      (!left_expr->fixed && left_expr->fix_fields(thd, optimizer->arguments()));
   /* fix_fields can change reference to left_expr, we need reassign it */
-  left_expr= optimizer->arguments()[0];
+  left_expr = optimizer->arguments()[0];
 
-  thd->lex->set_current_select(select);
-  if (result)
-    goto err;
+  thd->lex->set_current_query_block(select);
+  if (result) goto err;
 
   /*
     If we didn't choose an execution method up to this point, we choose
     the IN=>EXISTS transformation, at least temporarily.
   */
-  if (exec_method == EXEC_UNSPECIFIED)
-    exec_method= EXEC_EXISTS_OR_MAT;
+  if (strategy == Subquery_strategy::UNSPECIFIED)
+    strategy = Subquery_strategy::CANDIDATE_FOR_IN2EXISTS_OR_MAT;
 
   /*
     Both transformers call fix_fields() only for Items created inside them,
@@ -2640,66 +2478,73 @@ Item_in_subselect::select_in_like_transformer(SELECT_LEX *select,
     Prepared_stmt_arena_holder ps_arena_holder(thd);
 
     if (left_expr->cols() == 1)
-      res= single_value_transformer(select, func);
-    else
-    {
+      res = single_value_transformer(thd, select, func);
+    else {
       /* we do not support row operation for ALL/ANY/SOME */
-      if (func != &eq_creator)
-      {
+      if (func != &eq_creator) {
         my_error(ER_OPERAND_COLUMNS, MYF(0), 1);
-        DBUG_RETURN(RES_ERROR);
+        return RES_ERROR;
       }
-      res= row_value_transformer(select);
+      res = row_value_transformer(thd, select);
     }
   }
 
 err:
-  thd->where= save_where;
-  DBUG_RETURN(res);
+  thd->where = save_where;
+  return res;
 }
 
-
-void Item_in_subselect::print(String *str, enum_query_type query_type)
-{
-  if (exec_method == EXEC_EXISTS_OR_MAT || exec_method == EXEC_EXISTS)
+void Item_in_subselect::print(const THD *thd, String *str,
+                              enum_query_type query_type) const {
+  const char *tail = Item_bool_func::bool_transform_names[value_transform];
+  if (implicit_is_op) tail = "";
+  bool paren = false;
+  if (strategy == Subquery_strategy::CANDIDATE_FOR_IN2EXISTS_OR_MAT ||
+      strategy == Subquery_strategy::SUBQ_EXISTS) {
+    if (value_transform == BOOL_NEGATED) {  // NOT has low associativity, but
+                                            // we're inside Item_in_optimizer,
+      // so () are needed only if IS TRUE/FALSE is coming.
+      if (tail[0]) {
+        paren = true;
+        str->append(STRING_WITH_LEN("("));
+      }
+      str->append(STRING_WITH_LEN("not "));
+    }
     str->append(STRING_WITH_LEN("<exists>"));
-  else
-  {
-    left_expr->print(str, query_type);
+  } else {
+    left_expr->print(thd, str, query_type);
+    if (value_transform == BOOL_NEGATED) str->append(STRING_WITH_LEN(" not"));
     str->append(STRING_WITH_LEN(" in "));
   }
-  Item_subselect::print(str, query_type);
+  Item_subselect::print(thd, str, query_type);
+  if (paren) str->append(STRING_WITH_LEN(")"));
+  if (tail[0]) {
+    str->append(STRING_WITH_LEN(" "));
+    str->append(tail, strlen(tail));
+  }
 }
 
+bool Item_in_subselect::fix_fields(THD *thd_arg, Item **ref) {
+  bool result = false;
 
-bool Item_in_subselect::fix_fields(THD *thd_arg, Item **ref)
-{
-  bool result = 0;
-
-  if (exec_method == EXEC_SEMI_JOIN)
-    return !( (*ref)= new Item_int(1));
+  abort_on_null =
+      value_transform == BOOL_IS_TRUE || value_transform == BOOL_NOT_TRUE;
 
   if ((thd_arg->lex->context_analysis_only & CONTEXT_ANALYSIS_ONLY_VIEW) &&
-      left_expr && !left_expr->fixed)
-  {
-    Disable_semijoin_flattening DSF(thd_arg->lex->current_select(), true);
+      left_expr && !left_expr->fixed) {
+    Condition_context CCT(thd_arg->lex->current_query_block());
     result = left_expr->fix_fields(thd_arg, &left_expr);
   }
 
   return result || Item_subselect::fix_fields(thd_arg, ref);
 }
 
-
-void Item_in_subselect::fix_after_pullout(st_select_lex *parent_select,
-                                          st_select_lex *removed_select)
-{
-  Item_subselect::fix_after_pullout(parent_select, removed_select);
-
-  left_expr->fix_after_pullout(parent_select, removed_select);
-
-  used_tables_cache|= left_expr->used_tables();
+void Item_in_subselect::fix_after_pullout(Query_block *parent_query_block,
+                                          Query_block *removed_query_block) {
+  // optimizer->fix_after_pullout() will handle left_expr:
+  assert(optimizer != nullptr);
+  Item_subselect::fix_after_pullout(parent_query_block, removed_query_block);
 }
-
 
 /**
   Initialize the cache of the left operand of the IN predicate.
@@ -2708,65 +2553,54 @@ void Item_in_subselect::fix_after_pullout(st_select_lex *parent_select,
   but it takes a different kind of collection of items, and the
   list we push to is dynamically allocated.
 
-  @retval TRUE  if a memory allocation error occurred
-  @retval FALSE if success
+  @retval true  if a memory allocation error occurred
+  @retval false if success
 */
 
-bool Item_in_subselect::init_left_expr_cache()
-{
+bool Item_in_subselect::init_left_expr_cache(THD *thd) {
   /*
     Check if the left operand is a subquery that yields an empty set of rows.
     If so, skip initializing a cache; for an empty set the subquery
-    exec won't read any rows and so lead to uninitalized reads if attempted.
+    exec won't read any rows and so lead to uninitialized reads if attempted.
   */
-  if (left_expr->type() == SUBSELECT_ITEM && left_expr->null_value)
-  {
+  if (left_expr->type() == SUBSELECT_ITEM && left_expr->null_value) {
     return false;
   }
 
-  JOIN *outer_join;
-  bool use_result_field= FALSE;
-
-  outer_join= unit->outer_select()->join;
+  JOIN *outer_join = unit->outer_query_block()->join;
   /*
     An IN predicate might be evaluated in a query for which all tables have
     been optimized away.
-  */ 
-  if (!(outer_join && outer_join->qep_tab))
-  {
-    need_expr_cache= FALSE;
-    return FALSE;
-  }
-
-  /*
-    If we use end_[send | write]_group to handle complete rows of the outer
-    query, make the cache of the left IN operand use Item_field::result_field
-    instead of Item_field::field.  We need this because normally
-    Cached_item_field uses Item::field to fetch field data, while
-    copy_ref_key() that copies the left IN operand into a lookup key uses
-    Item::result_field. In the case end_[send | write]_group result_field is
-    one row behind field.
   */
-  QEP_TAB *const qep_tab=
-    &outer_join->qep_tab[outer_join->primary_tables - 1];
-  Next_select_func end_select= qep_tab->next_select;
-  if (end_select == end_send_group || end_select == end_write_group)
-    use_result_field= TRUE;
-
-  if (!(left_expr_cache= new List<Cached_item>))
-    return TRUE;
-
-  for (uint i= 0; i < left_expr->cols(); i++)
-  {
-    Cached_item *cur_item_cache= new_Cached_item(unit->thd,
-                                                 left_expr->element_index(i),
-                                                 use_result_field);
-    if (!cur_item_cache || left_expr_cache->push_front(cur_item_cache))
-      return TRUE;
+  if (!(outer_join && outer_join->qep_tab)) {
+    need_expr_cache = false;
+    return false;
   }
-  return FALSE;
+
+  if (!(left_expr_cache = new (thd->mem_root) List<Cached_item>)) return true;
+
+  for (uint i = 0; i < left_expr->cols(); i++) {
+    Cached_item *cur_item_cache =
+        new_Cached_item(thd, left_expr->element_index(i));
+    if (!cur_item_cache || left_expr_cache->push_front(cur_item_cache))
+      return true;
+  }
+  return false;
 }
 
+bool IsItemInSubSelect(Item *item) {
+  if (item->type() != Item::SUBSELECT_ITEM) {
+    return false;
+  }
+  switch (down_cast<Item_subselect *>(item)->substype()) {
+    case Item_subselect::IN_SUBS:
+    case Item_subselect::ALL_SUBS:
+    case Item_subselect::ANY_SUBS:
+      return true;
+    default:
+      return false;
+  }
+}
 
 /**
   Tells an Item that it is in the condition of a JOIN_TAB of a query block.
@@ -2787,65 +2621,52 @@ bool Item_in_subselect::init_left_expr_cache()
   (Item_in_optimizer) is - that's when the Item_cache is updated. Thus, we
   will ignore JOIN_TAB in this case.
 */
-bool Item_subselect::inform_item_in_cond_of_tab(uchar *arg)
-{
-  std::pair<SELECT_LEX *, int> *pair_object=
-    pointer_cast<std::pair<SELECT_LEX *, int> * >(arg);
-  if (pair_object->first == unit->outer_select())
-    in_cond_of_tab= pair_object->second;
+bool Item_subselect::inform_item_in_cond_of_tab(uchar *arg) {
+  std::pair<Query_block *, int> *pair_object =
+      pointer_cast<std::pair<Query_block *, int> *>(arg);
+  if (pair_object->first == unit->outer_query_block())
+    in_cond_of_tab = pair_object->second;
   return false;
 }
-
 
 /**
   Mark the subquery as optimized away, for EXPLAIN.
 */
 
-bool Item_subselect::subq_opt_away_processor(uchar *arg)
-{
-  unit->set_explain_marker(CTX_OPTIMIZED_AWAY_SUBQUERY);
+bool Item_subselect::subq_opt_away_processor(uchar *) {
+  unit->set_explain_marker(current_thd, CTX_OPTIMIZED_AWAY_SUBQUERY);
   // Return false to continue marking all subqueries in the expression.
   return false;
 }
 
-
 /**
    Clean up after removing the subquery from the item tree.
 
-   Call st_select_lex_unit::exclude_tree() to unlink it from its
-   master and to unlink direct st_select_lex children from
-   all_selects_list.
+   Call Query_expression::exclude_tree() to unlink it from its
+   master and to unlink direct Query_block children from
+   all_query_blocks_list.
 
    Don't unlink subqueries that are not descendants of the starting
    point (root) of the removal and cleanup.
  */
-bool Item_subselect::clean_up_after_removal(uchar *arg)
-{
+bool Item_subselect::clean_up_after_removal(uchar *arg) {
   /*
-    Some commands still execute subqueries during resolving.
-    Make sure they are cleaned up properly.
-    @todo: Remove this code when SET is also refactored.
+    When removing a constant condition, it may reference a subselect
+    in the SELECT list via an alias.
+    In that case, do not remove this subselect.
   */
-  if (unit->is_executed())
-  {
-    assert(unit->first_select()->parent_lex->sql_command ==
-           SQLCOM_SET_OPTION);
-    unit->cleanup(true);
-  } 
+  Query_block *const root =
+      pointer_cast<Cleanup_after_removal_context *>(arg)->get_root();
 
-  st_select_lex *root=
-    static_cast<st_select_lex*>(static_cast<void*>(arg));
-
-  /*
-    Do not remove this subquery if it is a part of the select
-    list.
-  */
-  if (root != NULL &&
-      (root->resolve_place != SELECT_LEX::RESOLVE_SELECT_LIST) &&
-      root->is_in_select_list(this))
+  if ((root->resolve_place != Query_block::RESOLVE_SELECT_LIST) &&
+      root->is_in_select_list(this)) {
     return false;
+  }
 
-  st_select_lex *sl= unit->outer_select();
+  Query_block *sl = unit->outer_query_block();
+
+  // Notify flatten_subqueries() that subquery has been removed.
+  notify_removal();
 
   /*
     While traversing the item tree with Item::walk(), Item_refs may
@@ -2856,101 +2677,249 @@ bool Item_subselect::clean_up_after_removal(uchar *arg)
     Traverse the tree towards the root. Afterwards, we have:
     1) sl == root: unit is a descendant of the starting point, or
     2) sl == NULL: unit is not a descendant of the starting point
-  */    
-  while (sl != root && sl != NULL)
-    sl= sl->outer_select();
-  if (sl == root)
-    unit->exclude_tree();
+  */
+  while (sl != root && sl != nullptr) sl = sl->outer_query_block();
+  if (sl == root) {
+    unit->exclude_tree(current_thd);
+    unit->cleanup(current_thd, true);
+    unit->destroy();
+  }
   return false;
 }
 
-
-
-Item_subselect::trans_res
-Item_allany_subselect::select_transformer(SELECT_LEX *select)
-{
-  DBUG_ENTER("Item_allany_subselect::select_transformer");
-  if (upper_item)
-    upper_item->show= 1;
-  trans_res retval= select_in_like_transformer(select, func);
-  DBUG_RETURN(retval);
+bool Item_subselect::collect_subqueries(uchar *arg) {
+  Collect_subq_info *info = pointer_cast<Collect_subq_info *>(arg);
+  if (unit->outer_query_block() == info->m_query_block)
+    info->list.push_back(this);
+  return false;
 }
 
-
-bool Item_subselect::is_evaluated() const
-{
-  return unit->is_executed();
+Item_subselect::trans_res Item_allany_subselect::select_transformer(
+    THD *thd, Query_block *select) {
+  DBUG_TRACE;
+  if (upper_item) upper_item->show = true;
+  trans_res retval = select_in_like_transformer(thd, select, func);
+  return retval;
 }
 
+bool Item_subselect::is_evaluated() const { return unit->is_executed(); }
 
-void Item_allany_subselect::print(String *str, enum_query_type query_type)
-{
-  if (exec_method == EXEC_EXISTS_OR_MAT || exec_method == EXEC_EXISTS)
+void Item_allany_subselect::print(const THD *thd, String *str,
+                                  enum_query_type query_type) const {
+  if (strategy == Subquery_strategy::CANDIDATE_FOR_IN2EXISTS_OR_MAT ||
+      strategy == Subquery_strategy::SUBQ_EXISTS)
     str->append(STRING_WITH_LEN("<exists>"));
-  else
-  {
-    left_expr->print(str, query_type);
+  else {
+    left_expr->print(thd, str, query_type);
     str->append(' ');
     str->append(func->symbol(all));
     str->append(all ? " all " : " any ", 5);
   }
-  Item_subselect::print(str, query_type);
+  Item_subselect::print(thd, str, query_type);
 }
 
+bool Item_singlerow_subselect::collect_scalar_subqueries(uchar *arg) {
+  auto *info = pointer_cast<Collect_scalar_subquery_info *>(arg);
+  Item *i = unit->first_query_block()->single_visible_field();
 
-void subselect_engine::set_thd_for_result()
-{
+  if (!info->m_collect_unconditionally) {
+    // Skip transformation if more than one column is selected [1]
+    // or column contains a non-deterministic function [3]
+    // Also exclude scalar subqueries with references to outer query blocks [2]
+    // and Item_maxmin_subselect (ALL/ANY -> MAX/MIN transform artifact) [4]
+    // Merely correlation to the current query block are ok
+    if (i == nullptr ||                                    // [1]
+        info->is_stopped(this) || is_outer_reference() ||  // [2]
+        is_non_deterministic() ||                          // [3]
+        is_maxmin()) {                                     // [4]
+      return false;
+    }
+  }
+
   /*
-    Query_result's constructor sets neither Query_result::thd nor
-    Query_result::unit.
-  */
-  if (result)
-    result->set_thd(item->unit->thd);
+    Check if it has been already added. Can happen after other
+    transformations, eg. IN -> EXISTS and when aggregates are repeated in
+    HAVING clause:
+      SELECT SUM(a), (SELECT SUM(b) FROM t3) AS scalar
+      FROM t1 HAVING SUM(a) > scalar
+   */
+  for (auto &e : info->m_list) {
+    if (e.item == this) {
+      e.m_location |= info->m_location;
+      return false;
+    }
+  }
+  const table_map correlated_map = used_tables() & ~PSEUDO_TABLE_BITS;
+  info->m_list.emplace_back(Css_info{
+      info->m_location, this, correlated_map, info->m_join_condition_context,
+      /*
+        Compute if we can skip run-time cardinality check:
+        [1]   implicitly grouped queries for now, OR
+        [1.1] was implicitly grouped in a transformation on a deeper level, AND
+        [2]   no set operations are present (union)
+      */
+      ((i->has_aggregation() &&
+        unit->first_query_block()->is_implicitly_grouped()) ||    // [1]
+       (unit->first_query_block()->m_was_implicitly_grouped)) &&  // [1.1]
+          !unit->is_union(),                                      // [2]
+      false});
+  return false;
 }
 
+/**
+  Find the scalar subquery in Query_block::fields if directly present,
+  i.e., not inside an expression.
 
-subselect_single_select_engine::
-subselect_single_select_engine(st_select_lex *select,
-			       Query_result_interceptor *result_arg,
-			       Item_subselect *item_arg)
-  :subselect_engine(item_arg, result_arg), select_lex(select)
-{
-  select_lex->master_unit()->item= item_arg;
+  @param select The query block owning the transformation.
+  @param subquery The scalar subquery to look for.
+  @return the corresponding ref in Query_block::base_ref_items, or nullptr if
+    not found.
+*/
+static Item **find_subquery_in_select_list(Query_block *select,
+                                           Item_singlerow_subselect *subquery) {
+  int item_idx = 0;
+  for (Item *item : select->visible_fields()) {
+    // All comparisons are done after unwrapping rollup group item.
+    // base_ref_items might be without rollup wrappers while the fields
+    // might be.
+    item = unwrap_rollup_group(item);
+    if (item == subquery) {
+      assert(select->base_ref_items[item_idx] == item);
+      return &select->base_ref_items[item_idx];
+    }
+    ++item_idx;
+  }
+  return nullptr;
 }
 
+Item *Item_singlerow_subselect::replace_scalar_subquery(uchar *arg) {
+  auto *const info = pointer_cast<Scalar_subquery_replacement *>(arg);
+  if (info->m_target != this) return this;
 
-void subselect_single_select_engine::cleanup()
-{
-  DBUG_ENTER("subselect_single_select_engine::cleanup");
-  item->unit->reset_executed();
-  result->cleanup();
-  DBUG_VOID_RETURN;
+  auto *const scalar_item =
+      new (current_thd->mem_root) Item_field(info->m_field);
+  if (scalar_item == nullptr) return nullptr;
+
+  Item **ref = find_subquery_in_select_list(info->m_outer_query_block, this);
+
+  if (ref == nullptr) {
+    // This scalar subquery is not used directly in the select list, so we need
+    // to add it as a hidden field. (If it _is_ used directly in the list,
+    // we cannot add it; not only due to efficiency, but it would also cause
+    // a conflict in the value of item->hidden.)
+    ref = info->m_outer_query_block->add_hidden_item(scalar_item);
+  }
+  Item *result;
+  if (unit->place() == CTX_HAVING) {
+    result = new (current_thd->mem_root)
+        Item_ref(&info->m_outer_query_block->context, ref, scalar_item->db_name,
+                 scalar_item->table_name, scalar_item->field_name);
+    // nullptr is error, but no separate return needed here
+  } else {
+    result = scalar_item;
+  }
+
+  if (info->m_add_coalesce) {
+    Item_int *zero = new (current_thd->mem_root) Item_int_0();
+    if (zero == nullptr) return nullptr;
+    Item *coa = new (current_thd->mem_root) Item_func_coalesce(result, zero);
+    if (coa == nullptr) return nullptr;
+    if (coa->fix_fields(current_thd, &coa)) return nullptr;
+    result = coa;
+  }
+  return result;
 }
 
+Item *Item_subselect::replace_item(Item_transformer t, uchar *arg) {
+  auto replace_and_update = [arg, t](Item *expr, Item **ref) {
+    Item *new_expr = expr->transform(t, arg);
+    if (new_expr == nullptr) return true;
+    if (new_expr != expr) current_thd->change_item_tree(ref, new_expr);
+    new_expr->update_used_tables();
+    return false;
+  };
 
-void subselect_union_engine::cleanup()
-{
-  DBUG_ENTER("subselect_union_engine::cleanup");
-  item->unit->reset_executed();
-  result->cleanup();
-  DBUG_VOID_RETURN;
+  auto *info = pointer_cast<Item::Item_replacement *>(arg);
+  auto *old_current = info->m_curr_block;
+  for (Query_block *slave = unit->first_query_block(); slave != nullptr;
+       slave = slave->next_query_block()) {
+    info->m_curr_block = slave;
+
+    for (auto it = slave->fields.begin(); it != slave->fields.end(); ++it) {
+      Item *expr = *it;
+      if (replace_and_update(expr, &expr)) return nullptr;
+      *it = expr;
+    }
+    if (slave->where_cond() != nullptr &&
+        replace_and_update(slave->where_cond(), slave->where_cond_ref()))
+      return nullptr;
+
+    for (ORDER *ord = slave->group_list.first; ord != nullptr;
+         ord = ord->next) {
+      if (replace_and_update(*ord->item, ord->item)) return nullptr;
+    }
+    if (slave->having_cond() != nullptr &&
+        replace_and_update(slave->having_cond(), slave->having_cond_ref()))
+      return nullptr;
+
+    for (ORDER *ord = slave->order_list.first; ord != nullptr;
+         ord = ord->next) {
+      if (replace_and_update(*ord->item, ord->item)) return nullptr;
+    }
+    List_iterator<Window> wit(slave->m_windows);
+    Window *w;
+    while ((w = wit++)) {
+      for (auto itr : {w->first_order_by(), w->first_partition_by()}) {
+        if (itr != nullptr) {
+          for (ORDER *ord = itr; ord != nullptr; ord = ord->next) {
+            if (replace_and_update(*ord->item, ord->item)) return nullptr;
+          }
+        }
+      }
+    }
+  }
+
+  info->m_curr_block = old_current;
+  return this;
 }
 
-
-subselect_union_engine::subselect_union_engine(st_select_lex_unit *u,
-					       Query_result_interceptor *result_arg,
-					       Item_subselect *item_arg)
-  :subselect_engine(item_arg, result_arg)
-{
-  unit= u;
-  unit->item= item_arg;
+/**
+  Transform processor. Dives into a subquery's expressions.
+  See Item[_field]::replace_item_field for more details.
+*/
+Item *Item_subselect::replace_item_field(uchar *arg) {
+  return replace_item(&Item::replace_item_field, arg);
 }
 
+/**
+  Transform processor. Dives into a subquery's expressions.
+  See Item[_field]::replace_item_view_ref for more details.
+*/
+Item *Item_subselect::replace_item_view_ref(uchar *arg) {
+  return replace_item(&Item::replace_item_view_ref, arg);
+}
+
+void SubqueryWithResult::cleanup(THD *thd) {
+  DBUG_TRACE;
+  result->cleanup(thd);
+}
+
+SubqueryWithResult::SubqueryWithResult(Query_expression *u,
+                                       Query_result_interceptor *res,
+                                       Item_subselect *si)
+    : result(res),
+      item(si),
+      res_type(STRING_RESULT),
+      res_field_type(MYSQL_TYPE_VAR_STRING),
+      maybe_null(false),
+      unit(u) {
+  unit->item = si;
+}
 
 /**
   Prepare the query expression underlying the subquery.
 
-  @detail
+  @details
   This function is called from Item_subselect::fix_fields. If the subquery is
   transformed with an Item_in_optimizer object, this function may be called
   twice, hence we need the check on 'is_prepared()' at the start, to avoid
@@ -2959,874 +2928,284 @@ subselect_union_engine::subselect_union_engine(st_select_lex_unit *u,
   @returns false if success, true if error
 */
 
-bool subselect_single_select_engine::prepare()
-{
-  if (item->unit->is_prepared())
-    return false;
-  THD * const thd= item->unit->thd;
-
-  assert(result);
-
-  select_lex->set_query_result(result);
-  select_lex->make_active_options(SELECT_NO_UNLOCK, 0);
-
-  item->unit->set_prepared();
-  SELECT_LEX *save_select= thd->lex->current_select();
-  thd->lex->set_current_select(select_lex);
-  const bool ret= select_lex->prepare(thd);
-  thd->lex->set_current_select(save_select);
-  return ret;
-}
-
-
-bool subselect_union_engine::prepare()
-{
+bool SubqueryWithResult::prepare(THD *thd) {
   if (!unit->is_prepared())
-    return unit->prepare(unit->thd, result, SELECT_NO_UNLOCK, 0);
+    return unit->prepare(thd, result, nullptr, SELECT_NO_UNLOCK, 0);
 
   assert(result == unit->query_result());
 
   return false;
 }
 
-
-bool subselect_indexsubquery_engine::prepare()
-{
-  /* Should never be called. */
-  assert(FALSE);
-  return 1;
-}
-
-
 /**
   Makes storage for the output values for a scalar or row subquery and
-  calculates their data and column types and their nullability. Only
-  to be called on engines that represent scalar or row subqueries
-  (that is, subselect_single_select_engine and subselect_union_engine).
+  calculates their data and column types and their nullability.
 
   @param item_list       list of items in the select list of the subquery
   @param row             cache objects to hold the result row of the subquery
   @param possibly_empty  true if the subquery could return empty result
 */
-void subselect_engine::set_row(List<Item> &item_list, Item_cache **row,
-                               bool possibly_empty)
-{
-  assert(engine_type() == SINGLE_SELECT_ENGINE ||
-         engine_type() == UNION_ENGINE);
-
+void SubqueryWithResult::set_row(const mem_root_deque<Item *> &item_list,
+                                 Item_cache **row, bool possibly_empty) {
   /*
     Empty scalar or row subqueries evaluate to NULL, so if it is
     possibly empty, it is also possibly NULL.
   */
-  maybe_null= possibly_empty;
+  maybe_null = possibly_empty;
 
-  Item *sel_item;
-  List_iterator_fast<Item> li(item_list);
-  res_type= STRING_RESULT;
-  res_field_type= MYSQL_TYPE_VAR_STRING;
-  for (uint i= 0; (sel_item= li++); i++)
-  {
-    item->max_length= sel_item->max_length;
-    res_type= sel_item->result_type();
-    res_field_type= sel_item->field_type();
-    item->decimals= sel_item->decimals;
-    item->unsigned_flag= sel_item->unsigned_flag;
-    maybe_null|= sel_item->maybe_null;
-    if (!(row[i]= Item_cache::get_cache(sel_item)))
-      return;
+  res_type = STRING_RESULT;
+  res_field_type = MYSQL_TYPE_VARCHAR;
+  uint i = 0;
+  for (Item *sel_item : VisibleFields(item_list)) {
+    item->max_length = sel_item->max_length;
+    res_type = sel_item->result_type();
+    res_field_type = sel_item->data_type();
+    item->decimals = sel_item->decimals;
+    item->unsigned_flag = sel_item->unsigned_flag;
+    maybe_null |= sel_item->is_nullable();
+    if (!(row[i] = Item_cache::get_cache(sel_item))) return;
     row[i]->setup(sel_item);
     row[i]->store(sel_item);
-    row[i]->maybe_null= possibly_empty || sel_item->maybe_null;
+    row[i]->set_nullable(possibly_empty || sel_item->is_nullable());
+    ++i;
   }
-  if (item_list.elements > 1)
-    res_type= ROW_RESULT;
+  if (CountVisibleFields(item_list) > 1)
+    res_type = ROW_RESULT;
+  else
+    item->set_data_type(res_field_type);
 }
-
 
 /**
   Check if a query block is guaranteed to return one row. We know that
   this is the case if it has no tables and is not filtered with WHERE,
   HAVING or LIMIT clauses.
 
-  @param select_lex  the SELECT_LEX of the query block to check
+  @param query_block  the Query_block of the query block to check
 
   @return true if we are certain that the query block always returns
   one row, false otherwise
 */
-static bool guaranteed_one_row(const SELECT_LEX *select_lex)
-{
-  return select_lex->table_list.elements == 0 &&
-    !select_lex->where_cond() &&
-    !select_lex->having_cond() &&
-    !select_lex->select_limit;
+static bool guaranteed_one_row(const Query_block *query_block) {
+  return query_block->table_list.elements == 0 && !query_block->where_cond() &&
+         !query_block->having_cond() && !query_block->select_limit;
 }
 
-
-void subselect_single_select_engine::fix_length_and_dec(Item_cache **row)
-{
-  assert(row || select_lex->item_list.elements==1);
-  set_row(select_lex->item_list, row, !guaranteed_one_row(select_lex));
-  item->collation.set(row[0]->collation);
-}
-
-void subselect_union_engine::fix_length_and_dec(Item_cache **row)
-{
-  assert(row || unit->first_select()->item_list.elements==1);
+void SubqueryWithResult::fix_length_and_dec(Item_cache **row) {
+  assert(row || unit->first_query_block()->single_visible_field() != nullptr);
 
   // A UNION is possibly empty only if all of its SELECTs are possibly empty.
-  bool possibly_empty= true;
-  for (SELECT_LEX *sl= unit->first_select(); sl; sl= sl->next_select())
-  {
-    if (guaranteed_one_row(sl))
-    {
-      possibly_empty= false;
+  bool possibly_empty = true;
+  for (Query_block *sl = unit->first_query_block(); sl;
+       sl = sl->next_query_block()) {
+    if (guaranteed_one_row(sl)) {
+      possibly_empty = false;
       break;
     }
   }
 
-  set_row(unit->item_list, row, possibly_empty);
-  if (unit->first_select()->item_list.elements == 1)
+  if (unit->is_simple()) {
+    set_row(unit->first_query_block()->fields, row, possibly_empty);
+  } else {
+    set_row(unit->item_list, row, possibly_empty);
+  }
+
+  if (unit->first_query_block()->single_visible_field() != nullptr)
     item->collation.set(row[0]->collation);
 }
 
-void subselect_indexsubquery_engine::fix_length_and_dec(Item_cache **row)
-{
-  //this never should be called
-  assert(0);
-}
-
-int read_first_record_seq(QEP_TAB *tab);
-int rr_sequential(READ_RECORD *info);
-
-bool subselect_single_select_engine::exec()
-{
-  DBUG_ENTER("subselect_single_select_engine::exec");
-
-  int rc= 0;
-  SELECT_LEX_UNIT *const unit= item->unit;
-  THD * const thd= unit->thd;
-  char const *save_where= thd->where;
-  SELECT_LEX *save_select= thd->lex->current_select();
-  thd->lex->set_current_select(select_lex);
-
-  JOIN *const join= select_lex->join;
-
-  assert(join->is_optimized());
-
-  if (select_lex->uncacheable && unit->is_executed())
-  {
-    join->reset();
-    item->reset();
-    unit->reset_executed();
-    item->assigned(false);
-  }
-  if (!unit->is_executed())
-  {
-    item->reset_value_registration();
-    QEP_TAB *changed_tabs[MAX_TABLES];
-    QEP_TAB **last_changed_tab= changed_tabs;
-    if (item->have_guarded_conds())
-    {
-      /*
-        For at least one of the pushed predicates the following is true:
-        We should not apply optimizations based on the condition that was
-        pushed down into the subquery. Those optimizations are ref[_or_null]
-        acceses. Change them to be full table scans.
-      */
-      for (uint j= join->const_tables; j < join->tables; j++)
-      {
-        QEP_TAB *tab= join->qep_tab + j;
-        if (tab->ref().key_parts)
-        {
-          for (uint i= 0; i < tab->ref().key_parts; i++)
-          {
-            bool *cond_guard= tab->ref().cond_guards[i];
-            if (cond_guard && !*cond_guard)
-            {
-              /*
-                Can't use BKA if switching from ref to "full scan on
-                NULL key"
-
-                @see Item_in_optimizer::val_int()
-                @see TABLE_REF::cond_guards
-                @see push_index_cond()
-                @see setup_join_buffering()
-              */
-              assert(!(tab->op && tab->op->type() == QEP_operation::OT_CACHE &&
-                       static_cast<JOIN_CACHE*>(tab->op)->is_key_access()));
-
-              TABLE *table= tab->table();
-              /* Change the access method to full table scan */
-              tab->save_read_first_record= tab->read_first_record;
-              tab->save_read_record= tab->read_record.read_record;
-              tab->read_record.read_record= rr_sequential;
-              tab->read_first_record= read_first_record_seq;
-              tab->read_record.record= table->record[0];
-              tab->read_record.thd= join->thd;
-              tab->read_record.ref_length= table->file->ref_length;
-              tab->read_record.unlock_row= rr_unlock_row;
-              *(last_changed_tab++)= tab;
-              break;
-            }
-          }
-        }
-      }
-    }
-    
-    join->exec();
-
-    /* Enable the optimizations back */
-    for (QEP_TAB **ptab= changed_tabs; ptab != last_changed_tab; ptab++)
-    {
-      QEP_TAB *const tab= *ptab;
-      tab->read_record.record= 0;
-      tab->read_record.ref_length= 0;
-      tab->read_first_record= tab->save_read_first_record; 
-      tab->read_record.read_record= tab->save_read_record;
-      tab->save_read_first_record= NULL;
-    }
-    unit->set_executed();
-    
-    rc= join->error || thd->is_fatal_error;
-  }
-
-  thd->where= save_where;
-  thd->lex->set_current_select(save_select);
-  DBUG_RETURN(rc);
-}
-
-bool subselect_union_engine::exec()
-{
-  THD * const thd= unit->thd;
-  assert(thd == item->unit->thd);
+bool SubqueryWithResult::exec(THD *thd) {
   assert(unit->is_optimized());
-  char const *save_where= thd->where;
-  const bool res= unit->execute(thd);
-  thd->where= save_where;
+  char const *save_where = thd->where;
+  const bool res = unit->execute(thd);
+  thd->where = save_where;
   return res;
 }
 
-
 /**
-  Search, using a table scan, for at least one row satisfying select
-  condition.
+  Run a query to see if it returns at least one row (stops after the first
+  has been found, or on error). Unless there was an error, whether the row
+  was found in "found".
 
-  The caller must set item's 'value' to 'false' before calling this
-  function. This function will set it to 'true' if it finds a matching row.
+  @retval true on error
+ */
+bool ExecuteExistsQuery(THD *thd, Query_expression *unit, RowIterator *iterator,
+                        bool *found) {
+  Query_block *saved_query_block = thd->lex->current_query_block();
+  auto restore_query_block = create_scope_guard([thd, saved_query_block]() {
+    thd->lex->set_current_query_block(saved_query_block);
+  });
 
-  @returns false if ok, true if read error.
-*/
-bool subselect_indexsubquery_engine::scan_table()
-{
-  int error;
-  TABLE *table= tab->table();
-  DBUG_ENTER("subselect_indexsubquery_engine::scan_table");
+  Opt_trace_context *const trace = &thd->opt_trace;
+  Opt_trace_object trace_wrapper(trace);
+  Opt_trace_object trace_exec(trace, "join_execution");
+  if (unit->is_simple()) {
+    trace_exec.add_select_number(unit->first_query_block()->select_number);
+  }
+  Opt_trace_array trace_steps(trace, "steps");
 
-  // We never need to do a table scan of the materialized table.
-  assert(engine_type() != HASH_SJ_ENGINE);
-
-  if ((table->file->inited &&
-       (error= table->file->ha_index_end())) ||
-      (error= table->file->ha_rnd_init(1)))
-  {
-    (void) report_handler_error(table, error);
-    DBUG_RETURN(true);
+  if (unit->ClearForExecution(thd)) {
+    return true;
   }
 
-  table->file->extra_opt(HA_EXTRA_CACHE,
-                         item->unit->thd->variables.read_buff_size);
-  table->reset_null_row();
-  for (;;)
-  {
-    error=table->file->ha_rnd_next(table->record[0]);
-    if (error && error != HA_ERR_END_OF_FILE)
-    {
-      error= report_handler_error(table, error);
-      break;
-    }
-    /* No more rows */
-    if (table->status)
-      break;
-
-    if (!cond || cond->val_int())
-    {
-      static_cast<Item_in_subselect*>(item)->value= true;
-      break;
-    }
+  unit->set_executed();
+  thd->get_stmt_da()->reset_current_row_for_condition();
+  if (iterator->Init()) {
+    return true;
   }
 
-  table->file->ha_rnd_end();
-  DBUG_RETURN(error != 0);
+  // See if we can get at least one row.
+  int error = iterator->Read();
+  if (error == 1 || thd->is_error()) {
+    return true;
+  }
+
+  *found = (error == 0);
+  return false;
 }
-
-
-/**
-  Copy ref key and check for null parts in it
-
-  Construct a search tuple to be used for index lookup. If one of the
-  key parts have a NULL value, the following logic applies:
-
-  For top level items, e.g.
-
-     "WHERE <outer_value_list> IN (SELECT <inner_value_list>...)"
-
-  where one of the outer values are NULL, the IN predicate evaluates
-  to false/UNKNOWN (we don't care) and it's not necessary to evaluate
-  the subquery. That shortcut is taken in
-  Item_in_optimizer::val_int(). Thus, if a key part with a NULL value
-  is found here, the NULL is either not outer or this subquery is not
-  top level. Therefore we cannot shortcut subquery execution if a NULL
-  is found here.
-
-  Thus, if one of the key parts have a NULL value there are two
-  possibilities:
-
-  a) The NULL is from the outer_value_list. Since this is not a top
-     level item (see above) we need to check whether this predicate
-     evaluates to NULL or false. That is done by checking if the
-     subquery has a row if the conditions based on outer NULL values
-     are disabled. Index lookup cannot be used for this, so a table
-     scan must be done.
-
-  b) The NULL is local to the subquery, e.g.:
-
-        "WHERE ... IN (SELECT ... WHERE inner_col IS NULL)"
-
-     In this case we're looking for rows with the exact inner_col
-     value of NULL, not rows that match if the "inner_col IS NULL"
-     condition is disabled. Index lookup can be used for this.
-
-  @see subselect_indexsubquery_engine::exec()
-  @see Item_in_optimizer::val_int()
-
-  @param[out] require_scan   true if a NULL value is found that falls 
-                             into category a) above, false if index 
-                             lookup can be used.
-  @param[out] convert_error  true if an error occured during conversion
-                             of values from one type to another, false
-                             otherwise.
-  
-*/
-void subselect_indexsubquery_engine::copy_ref_key(bool *require_scan,
-                                                  bool *convert_error)
-{
-  DBUG_ENTER("subselect_indexsubquery_engine::copy_ref_key");
-
-  *require_scan= false;
-  *convert_error= false;
-  for (uint part_no= 0; part_no < tab->ref().key_parts; part_no++)
-  {
-    store_key *s_key= tab->ref().key_copy[part_no];
-    if (s_key == NULL)
-      continue; // key is const and does not need to be reevaluated
-
-    const enum store_key::store_key_result store_res= s_key->copy();
-    tab->ref().key_err= store_res;
-
-    if (s_key->null_key)
-    {
-      /*
-        If we have materialized the subquery:
-        - this NULL ref item cannot be local to the subquery (any such
-        conditions was handled during materialization)
-        - neither can it be outer, because this case is
-        separately managed in subselect_hash_sj_engine::exec().
-      */
-      if (engine_type() == HASH_SJ_ENGINE)
-      {
-        // See Bug#86975 . In 8.0 there is no problem.
-        my_printf_error(ER_UNKNOWN_ERROR,
-                        "Error when materializing subquery; "
-                        "please use \"SET OPTIMIZER_SWITCH="
-                        "'MATERIALIZATION=OFF'\".", MYF(0));
-        *convert_error= true;
-        DBUG_VOID_RETURN;
-      }
-
-      const bool *cond_guard= tab->ref().cond_guards[part_no];
-
-      /*
-        NULL value is from the outer_value_list if the key part has a
-        cond guard that deactivates the condition. @see
-        TABLE_REF::cond_guards
-
-      */
-      if (cond_guard && !*cond_guard)
-      {
-        assert(!(static_cast <Item_in_subselect*>(item)
-                 ->is_top_level_item()));
-
-        *require_scan= true;
-        DBUG_VOID_RETURN;
-      }
-    }
-
-    /*
-      Check if the error is equal to STORE_KEY_FATAL. This is not expressed 
-      using the store_key::store_key_result enum because ref().key_err is a 
-      boolean and we want to detect both TRUE and STORE_KEY_FATAL from the 
-      space of the union of the values of [TRUE, FALSE] and 
-      store_key::store_key_result.  
-      TODO: fix the variable an return types.
-    */
-    if (store_res == store_key::STORE_KEY_FATAL)
-    {
-      /*
-       Error converting the left IN operand to the column type of the right
-       IN operand. 
-      */
-      tab->table()->status= STATUS_NOT_FOUND;
-      *convert_error= true;
-      DBUG_VOID_RETURN;
-    }
-  }
-  DBUG_VOID_RETURN;
-}
-
 
 /*
   Index-lookup subselect 'engine' - run the subquery
 
-  SYNOPSIS
-    subselect_indexsubquery_engine:exec()
-      full_scan 
-
   DESCRIPTION
     The engine is used to resolve subqueries in form
 
-      oe IN (SELECT key FROM tbl WHERE subq_where) 
+      oe IN (SELECT key FROM tbl WHERE subq_where)
 
-    The value of the predicate is calculated as follows: 
-    1. If oe IS NULL, this is a special case, do a full table scan on
-       table tbl and search for row that satisfies subq_where. If such 
-       row is found, return NULL, otherwise return FALSE.
-    2. Make an index lookup via key=oe, search for a row that satisfies
-       subq_where. If found, return TRUE.
-    3. If check_null==TRUE, make another lookup via key=NULL, search for a 
-       row that satisfies subq_where. If found, return NULL, otherwise
-       return FALSE.
-    4. If unique==true, there can be only one row with key=oe and only one row
-       with key=NULL, we use that fact to shorten the search process.
-
-  TODO
-    The step #1 can be optimized further when the index has several key
-    parts. Consider a subquery:
-    
-      (oe1, oe2) IN (SELECT keypart1, keypart2 FROM tbl WHERE subq_where)
-
-    and suppose we need to evaluate it for {oe1, oe2}=={const1, NULL}.
-    Current code will do a full table scan and obtain correct result. There
-    is a better option: instead of evaluating
-
-      SELECT keypart1, keypart2 FROM tbl WHERE subq_where            (1)
-
-    and checking if it has produced any matching rows, evaluate
-    
-      SELECT keypart2 FROM tbl WHERE subq_where AND keypart1=const1  (2)
-
-    If this query produces a row, the result is NULL (as we're evaluating 
-    "(const1, NULL) IN { (const1, X), ... }", which has a value of UNKNOWN,
-    i.e. NULL).  If the query produces no rows, the result is FALSE.
-
-    We currently evaluate (1) by doing a full table scan. (2) can be
-    evaluated by doing a "ref" scan on "keypart1=const1", which can be much
-    cheaper. We can use index statistics to quickly check whether "ref" scan
-    will be cheaper than full table scan.
-
-  RETURN
-    0
-    1
+    by asking the iterator for the inner query for a single row, and then
+    immediately stopping. The iterator would usually do a simple ref lookup,
+    but could in theory be anything.
 */
 
-bool subselect_indexsubquery_engine::exec()
-{
-  DBUG_ENTER("subselect_indexsubquery_engine::exec");
-  int error;
-  bool null_finding= 0;
-  TABLE *const table= tab->table();
-  uchar *key;
-  uint key_length;
-  key_part_map key_parts_map;
-  ulonglong tmp_hash;
-
-  // 'tl' is NULL if this is a tmp table created by subselect_hash_sj_engine.
-  TABLE_LIST *const tl= tab->table_ref;
-  Item_in_subselect *const item_in= static_cast<Item_in_subselect*>(item);
-  item_in->value= false;
-  table->status= 0;
-
-  if (tl && tl->uses_materialization() && !tab->materialized)
-  {
-    THD *const thd= table->in_use;
-    bool err= tl->create_derived(thd);
-    if (!err)
-      err= tl->materialize_derived(thd);
-    err|= tl->cleanup_derived();
-    if (err)
-      DBUG_RETURN(true);            /* purecov: inspected */
-
-    tab->materialized= true;
+bool subselect_indexsubquery_engine::exec(THD *thd) {
+  Query_expression *unit = item->unit;
+  bool found;
+  if (ExecuteExistsQuery(thd, unit, unit->root_iterator(), &found)) {
+    return true;
   }
-
-  if (check_null)
-  {
-    /* We need to check for NULL if there wasn't a matching value */
-    *tab->ref().null_ref_key= 0;			// Search first for not null
-    item_in->was_null= false;
-  }
-
-  /* Copy the ref key and check for nulls... */
-  bool require_scan, convert_error;
-  hash= 0;
-  copy_ref_key(&require_scan, &convert_error);
-  if (convert_error)
-    DBUG_RETURN(0);
-
-  if (require_scan)
-  {
-    const bool scan_result= scan_table();
-    DBUG_RETURN(scan_result);
-  }
-
-  if (!table->file->inited &&
-      (error= table->file->ha_index_init(tab->ref().key, !unique /* sorted */)))
-  {
-    (void) report_handler_error(table, error);
-    DBUG_RETURN(true);
-  }
-  if (table->hash_field)
-  {
-    /*
-      Create key of proper endianness, hash_field->ptr can't be use directly
-      as it will be overwritten during read.
-    */
-    table->hash_field->store(hash, true);
-    memcpy(&tmp_hash, table->hash_field->ptr, sizeof(ulonglong));
-    key= (uchar*)&tmp_hash;
-    key_length= sizeof(hash);
-    key_parts_map= 1;
-  }
-  else
-  {
-    key= tab->ref().key_buff;
-    key_length= tab->ref().key_length;
-    key_parts_map= make_prev_keypart_map(tab->ref().key_parts);
-  }
-  error= table->file->ha_index_read_map(table->record[0],
-                                        key,
-                                        key_parts_map,
-                                        HA_READ_KEY_EXACT);
-  if (error &&
-      error != HA_ERR_KEY_NOT_FOUND && error != HA_ERR_END_OF_FILE)
-    error= report_handler_error(table, error);
-  else
-  {
-    for (;;)
-    {
-      error= 0;
-      table->reset_null_row();
-      if (!table->status)
-      {
-        if ((!cond || cond->val_int()) && (!having || having->val_int()))
-        {
-          item_in->value= true;
-          if (null_finding)
-          {
-            /*
-              This is dead code; subqueries with check_null==true are always
-              transformed with IN-to-EXISTS and thus their artificial HAVING
-              rejects NULL values...
-            */
-            assert(false);
-            item_in->was_null= true;
-          }
-          break;
-        }
-        if (unique)
-          break;
-        error= table->file->ha_index_next_same(table->record[0],
-                                               key,
-                                               key_length);
-        if (error && error != HA_ERR_END_OF_FILE)
-        {
-          error= report_handler_error(table, error);
-          break;
-        }
-      }
-      else
-      {
-        if (!check_null || null_finding)
-          break;			/* We don't need to check nulls */
-        /*
-          Check if there exists a row with a null value in the index. We come
-          here only if ref_or_null, and ref_or_null is always on a single
-          column (first keypart of the index). So we have only one NULL bit to
-          turn on:
-        */
-        *tab->ref().null_ref_key= 1;
-        null_finding= 1;
-        if ((error= (safe_index_read(tab) == 1)))
-          break;
-      }
-    }
-  }
-  item->unit->set_executed();
-  DBUG_RETURN(error != 0);
+  item->value = found;
+  item->assigned(true);
+  return false;
 }
 
-
-uint subselect_single_select_engine::cols() const
-{
-  return select_lex->item_list.elements;
-}
-
-
-uint subselect_union_engine::cols() const
-{
+uint Item_subselect::unit_cols() const {
   assert(unit->is_prepared());  // should be called after fix_fields()
-  return unit->types.elements;
+  return unit->num_visible_fields();
 }
 
+bool Item_subselect::is_uncacheable() const { return unit->uncacheable; }
 
-uint8 subselect_single_select_engine::uncacheable() const
-{
-  return select_lex->uncacheable;
+void SubqueryWithResult::print(const THD *thd, String *str,
+                               enum_query_type query_type) {
+  unit->print(thd, str, query_type);
 }
 
+void subselect_indexsubquery_engine::print(const THD *thd, String *str,
+                                           enum_query_type query_type) {
+  const bool unique = type == JT_EQ_REF;
+  const bool check_null = type == JT_REF_OR_NULL;
 
-uint8 subselect_union_engine::uncacheable() const
-{
-  return unit->uncacheable;
-}
-
-
-void subselect_single_select_engine::exclude()
-{
-  select_lex->master_unit()->exclude_level();
-}
-
-void subselect_union_engine::exclude()
-{
-  unit->exclude_level();
-}
-
-
-void subselect_indexsubquery_engine::exclude()
-{
-  //this never should be called
-  assert(0);
-}
-
-
-table_map subselect_engine::calc_const_tables(TABLE_LIST *table)
-{
-  table_map map= 0;
-  for (; table; table= table->next_leaf)
-  {
-    TABLE *tbl= table->table;
-    if (tbl && tbl->const_table)
-      map|= table->map();
-  }
-  return map;
-}
-
-
-table_map subselect_single_select_engine::upper_select_const_tables() const
-{
-  return calc_const_tables(select_lex->outer_select()->leaf_tables);
-}
-
-
-table_map subselect_union_engine::upper_select_const_tables() const
-{
-  return calc_const_tables(unit->outer_select()->leaf_tables);
-}
-
-
-void subselect_single_select_engine::print(String *str,
-                                           enum_query_type query_type)
-{
-  select_lex->print(item->unit->thd, str, query_type);
-}
-
-
-void subselect_union_engine::print(String *str, enum_query_type query_type)
-{
-  unit->print(str, query_type);
-}
-
-
-/*
-TODO:
-The ::print method below should be changed as follows. Do it after
-all other tests pass.
-
-void subselect_indexsubquery_engine::print(String *str)
-{
-  KEY *key_info= tab->table->key_info + tab->ref().key;
-  str->append(STRING_WITH_LEN("<primary_index_lookup>("));
-  for (uint i= 0; i < key_info->key_parts; i++)
-    tab->ref().items[i]->print(str);
-  str->append(STRING_WITH_LEN(" in "));
-  str->append(tab->table->s->table_name.str, tab->table->s->table_name.length);
-  str->append(STRING_WITH_LEN(" on "));
-  str->append(key_info->name);
-  if (cond)
-  {
-    str->append(STRING_WITH_LEN(" where "));
-    cond->print(str);
-  }
-  str->append(')');
-}
-*/
-
-void subselect_indexsubquery_engine::print(String *str,
-                                           enum_query_type query_type)
-{
   if (unique)
     str->append(STRING_WITH_LEN("<primary_index_lookup>("));
   else
     str->append(STRING_WITH_LEN("<index_lookup>("));
-  tab->ref().items[0]->print(str, query_type);
+  ref.items[0]->print(thd, str, query_type);
   str->append(STRING_WITH_LEN(" in "));
-  TABLE *const table= tab->table();
-  if (tab->table_ref && tab->table_ref->uses_materialization())
-  {
+  if (table_ref && table_ref->uses_materialization()) {
     /*
       For materialized derived tables/views use table/view alias instead of
       temporary table name, as it changes on each run and not acceptable for
       EXPLAIN EXTENDED.
     */
     str->append(table->alias, strlen(table->alias));
-  }
-  else if (table->s->table_category == TABLE_CATEGORY_TEMPORARY)
-  {
+  } else if (table->s->table_category == TABLE_CATEGORY_TEMPORARY) {
     // Could be from subselect_hash_sj_engine.
     str->append(STRING_WITH_LEN("<temporary table>"));
-  }
-  else
+  } else
     str->append(table->s->table_name.str, table->s->table_name.length);
-  KEY *key_info= table->key_info+ tab->ref().key;
+  KEY *key_info = table->key_info + ref.key;
   str->append(STRING_WITH_LEN(" on "));
   str->append(key_info->name);
-  if (check_null)
-    str->append(STRING_WITH_LEN(" checking NULL"));
-  if (cond)
-  {
+  if (check_null) str->append(STRING_WITH_LEN(" checking NULL"));
+  if (cond) {
     str->append(STRING_WITH_LEN(" where "));
-    cond->print(str, query_type);
+    cond->print(thd, str, query_type);
   }
-  if (having)
-  {
+  if (having) {
     str->append(STRING_WITH_LEN(" having "));
-    having->print(str, query_type);
+    having->print(thd, str, query_type);
   }
   str->append(')');
 }
 
 /**
-  change query result object of engine.
+  change query result object of subquery.
 
+  @param thd    thread handle
   @param si		new subselect Item
   @param res		new Query_result object
 
   @retval
-    FALSE OK
+    false OK
   @retval
-    TRUE  error
+    true  error
 */
 
-bool
-subselect_single_select_engine::change_query_result(Item_subselect *si,
-                                                    Query_result_subquery *res)
-{
-  item= si;
-  result= res;
-  return select_lex->change_query_result(result, NULL);
-}
-
-
-/**
-  change query result object of engine.
-
-  @param si		new subselect Item
-  @param res		new Query_result object
-
-  @retval
-    FALSE OK
-  @retval
-    TRUE  error
-*/
-
-bool subselect_union_engine::change_query_result(Item_subselect *si,
-                                                 Query_result_subquery *res)
-{
-  item= si;
-  int rc= unit->change_query_result(res, result);
-  result= res;
+bool SubqueryWithResult::change_query_result(THD *thd, Item_subselect *si,
+                                             Query_result_subquery *res) {
+  item = si;
+  int rc = unit->change_query_result(thd, res, result);
+  result = res;
   return rc;
 }
 
-
-/**
-  change query result emulation, never should be called.
-
-  @param si		new subselect Item
-  @param res		new Query_result object
-
-  @retval
-    FALSE OK
-  @retval
-    TRUE  error
-*/
-
-bool subselect_indexsubquery_engine::change_query_result(Item_subselect *si,
-                                                   Query_result_subquery *res)
-{
-  assert(0);
-  return TRUE;
+Query_block *SubqueryWithResult::single_query_block() const {
+  assert(unit->is_simple());
+  return unit->first_query_block();
 }
-
 
 /******************************************************************************
   WL#1110 - Implementation of class subselect_hash_sj_engine
 ******************************************************************************/
 
-
 /**
   Create all structures needed for subquery execution using hash semijoin.
 
-  @detail
+  @details
   - Create a temporary table to store the result of the IN subquery. The
     temporary table has one hash index on all its columns. If single-column,
     the index allows at most one NULL row.
   - Create a new result sink that sends the result stream of the subquery to
     the temporary table,
-  - Create and initialize a new JOIN_TAB, and TABLE_REF objects to perform
-    lookups into the indexed temporary table.
+  - Create and initialize TABLE_REF objects to perform lookups into the
+    indexed temporary table.
 
+  @param thd          thread handle
   @param tmp_columns  columns of temporary table
 
-  @notice:
+  @note
     Currently Item_subselect::init() already chooses and creates at parse
     time an engine with a corresponding JOIN to execute the subquery.
 
-  @retval TRUE  if error
-  @retval FALSE otherwise
+  @retval true  if error
+  @retval false otherwise
 */
 
-bool subselect_hash_sj_engine::setup(List<Item> *tmp_columns)
-{
+bool subselect_hash_sj_engine::setup(
+    THD *thd, const mem_root_deque<Item *> &tmp_columns) {
   /* The result sink where we will materialize the subquery result. */
-  Query_result_union   *tmp_result_sink;
+  Query_result_union *tmp_result_sink;
   /* The table into which the subquery is materialized. */
-  TABLE         *tmp_table;
-  KEY           *tmp_key; /* The only index on the temporary table. */
-  uint          tmp_key_parts; /* Number of keyparts in tmp_key. */
-  Item_in_subselect *item_in= (Item_in_subselect *) item;
+  TABLE *tmp_table;
+  KEY *tmp_key;       /* The only index on the temporary table. */
+  uint tmp_key_parts; /* Number of keyparts in tmp_key. */
   uint key_length;
 
-  DBUG_ENTER("subselect_hash_sj_engine::setup");
+  DBUG_TRACE;
+
+  DBUG_EXECUTE_IF("hash_semijoin_fail_in_setup", {
+    my_error(ER_UNKNOWN_ERROR, MYF(0));
+    return true;
+  });
 
   /* 1. Create/initialize materialization related objects. */
 
@@ -3835,73 +3214,59 @@ bool subselect_hash_sj_engine::setup(List<Item> *tmp_columns)
     result stream in a temporary table. The temporary table itself is
     managed (created/filled/etc) internally by the interceptor.
   */
-  if (!(tmp_result_sink= new Query_result_union))
-    DBUG_RETURN(TRUE);
-  THD * const thd= item->unit->thd;
+  if (!(tmp_result_sink = new (thd->mem_root) Query_result_union()))
+    return true;
   if (tmp_result_sink->create_result_table(
-                         thd, tmp_columns,
-                         true,                  // Eliminate duplicates
-                         thd->variables.option_bits | TMP_TABLE_ALL_COLUMNS,
-                         "materialized-subquery", true, true))
-    DBUG_RETURN(TRUE);
+          thd, tmp_columns,
+          true,  // Eliminate duplicates
+          thd->variables.option_bits | TMP_TABLE_ALL_COLUMNS,
+          "<materialized_subquery>", true, true))
+    return true;
 
-  tmp_table= tmp_result_sink->table;
-  tmp_key= tmp_table->key_info;
-  if (tmp_table->hash_field)
-  {
-    tmp_key_parts= tmp_columns->elements;
-    key_length= ALIGN_SIZE(tmp_table->s->reclength);
-    /*
-      This index over hash_field is not unique (two rows of the temporary
-      table may have a same hash value with different values of tmp_columns).
-    */
-    unique= false;
-  }
-  else
-  {
-    tmp_key_parts= tmp_key->user_defined_key_parts;
-    key_length= ALIGN_SIZE(tmp_key->key_length) * 2;
+  tmp_table = tmp_result_sink->table;
+  tmp_key = tmp_table->key_info;
+  if (tmp_table->hash_field) {
+    tmp_key_parts = CountVisibleFields(tmp_columns);
+    key_length = ALIGN_SIZE(tmp_table->s->reclength);
+  } else {
+    tmp_key_parts = tmp_key->user_defined_key_parts;
+    key_length = ALIGN_SIZE(tmp_key->key_length) * 2;
   }
 
-  result= tmp_result_sink;
+  result = tmp_result_sink;
 
   /*
     Make sure there is only one index on the temp table.
   */
-  assert(tmp_columns->elements == tmp_table->s->fields ||
+  assert(CountVisibleFields(tmp_columns) == tmp_table->s->fields ||
          // Unique constraint is used and a hash field was added
          (tmp_table->hash_field &&
-          tmp_columns->elements == (tmp_table->s->fields - 1)));
+          CountVisibleFields(tmp_columns) == tmp_table->s->fields - 1));
   /* 2. Create/initialize execution related objects. */
 
   /*
-    Create and initialize the JOIN_TAB that represents an index lookup
-    plan operator into the materialized subquery result. Notice that:
-    - this JOIN_TAB has no corresponding JOIN (and doesn't need one), and
-    - here we initialize only those members that are used by
-      subselect_indexsubquery_engine, so these objects are incomplete.
+    Create and initialize the TABLE_REF used by the index lookup
+    iterator into the materialized subquery result.
   */
 
-  QEP_TAB_standalone *tmp_tab_st= new (thd->mem_root) QEP_TAB_standalone;
-  if (tmp_tab_st == NULL)
-    DBUG_RETURN(TRUE);
-  tab= &tmp_tab_st->as_QEP_TAB();
-  tab->set_table(tmp_table);
-  tab->ref().key= 0; /* The only temp table index. */
-  tab->ref().key_length= tmp_key->key_length;
-  if (!(tab->ref().key_buff=
-        (uchar*) thd->mem_calloc(key_length)) ||
-      !(tab->ref().key_copy=
-        (store_key**) thd->alloc((sizeof(store_key*) * tmp_key_parts))) ||
-      !(tab->ref().items=
-        (Item**) thd->alloc(sizeof(Item*) * tmp_key_parts)))
-    DBUG_RETURN(TRUE);
+  table = tmp_table;
+  ref.key = 0; /* The only temp table index. */
+  ref.key_length = tmp_key->key_length;
+  type = (tmp_table->key_info[0].flags & HA_NOSAME) ? JT_EQ_REF : JT_REF;
+  if (!(ref.key_buff = (uchar *)thd->mem_calloc(key_length)) ||
+      !(ref.key_copy =
+            (store_key **)thd->alloc((sizeof(store_key *) * tmp_key_parts))) ||
+      !(ref.items = (Item **)thd->alloc(sizeof(Item *) * tmp_key_parts)))
+    return true;
 
-  uchar *cur_ref_buff= tab->ref().key_buff;
+  if (tmp_table->hash_field) {
+    ref.keypart_hash = &hash;
+  }
+
+  uchar *cur_ref_buff = ref.key_buff;
 
   /*
-    Like semijoin-materialization-lookup (see create_subquery_equalities()),
-    create an artificial condition to post-filter those rows matched by index
+    Create an artificial condition to post-filter those rows matched by index
     lookups that cannot be distinguished by the index lookup procedure, for
     example:
     - because of truncation (if the outer column type's length is bigger than
@@ -3915,178 +3280,216 @@ bool subselect_hash_sj_engine::setup(List<Item> *tmp_columns)
     table for the subquery, so that all column references to the materialized
     subquery table can be resolved correctly.
   */
-  assert(cond == NULL);
-  if (!(cond= new Item_cond_and))
-    DBUG_RETURN(TRUE);
+  assert(cond == nullptr);
+  if (!(cond = new Item_cond_and)) return true;
   /*
     Table reference for tmp_table that is used to resolve column references
     (Item_fields) to columns in tmp_table.
   */
-  TABLE_LIST *tmp_table_ref;
-  if (!(tmp_table_ref= (TABLE_LIST*) thd->mem_calloc(sizeof(TABLE_LIST))))
-    DBUG_RETURN(TRUE);
+  TABLE_LIST *tmp_table_ref =
+      new (thd->mem_root) TABLE_LIST(tmp_table, "<materialized_subquery>");
+  if (tmp_table_ref == nullptr) return true;
 
-  tmp_table_ref->init_one_table("", 0, "materialized-subquery", 21,
-                                "materialized-subquery", TL_READ);
-  tmp_table_ref->table= tmp_table;
+  // Assign TABLE_LIST pointer temporarily, while creatung fields:
+  tmp_table->pos_in_table_list = tmp_table_ref;
+  tmp_table_ref->query_block = unit->first_query_block();
 
-  /* Name resolution context for all tmp_table columns created below. */
-  Name_resolution_context *context= new Name_resolution_context;
-  context->init();
-  context->first_name_resolution_table=
-    context->last_name_resolution_table= tmp_table_ref;
-  
-  KEY_PART_INFO *key_parts= tmp_key->key_part;
-  for (uint part_no= 0; part_no < tmp_key_parts; part_no++)
-  {
+  KEY_PART_INFO *key_parts = tmp_key->key_part;
+  for (uint part_no = 0; part_no < tmp_key_parts; part_no++) {
     /* New equi-join condition for the current column. */
-    Item_func_eq *eq_cond; 
+    Item_func_eq *eq_cond;
     /* Item for the corresponding field from the materialized temp table. */
     Item_field *right_col_item;
-    Field *field= tmp_table->visible_field_ptr()[part_no];
-    const bool nullable= field->real_maybe_null();
-    tab->ref().items[part_no]= item_in->left_expr->element_index(part_no);
+    Field *field = tmp_table->visible_field_ptr()[part_no];
+    const bool nullable = field->is_nullable();
+    ref.items[part_no] = item->left_expr->element_index(part_no);
 
-    if (!(right_col_item= new Item_field(thd, context, 
-                                         field)) ||
-        !(eq_cond= new Item_func_eq(tab->ref().items[part_no],
-                                    right_col_item)) ||
-        ((Item_cond_and*)cond)->add(eq_cond))
-    {
+    if (!(right_col_item =
+              new Item_field(thd, &tmp_table_ref->query_block->context,
+                             tmp_table_ref, field)) ||
+        !(eq_cond = new Item_func_eq(ref.items[part_no], right_col_item)) ||
+        ((Item_cond_and *)cond)->add(eq_cond)) {
       delete cond;
-      cond= NULL;
-      DBUG_RETURN(TRUE);
+      cond = nullptr;
+      return true;
     }
 
-    if (tmp_table->hash_field)
-      tab->ref().key_copy[part_no]=
-        new store_key_hash_item(thd, field,
-                           cur_ref_buff,
-                           0,
-                           field->pack_length(),
-                           tab->ref().items[part_no],
-                           &hash);
-    else
-      tab->ref().key_copy[part_no]=
-        new store_key_item(thd, field,
-                           /* TODO:
-                              the NULL byte is taken into account in
-                              key_parts[part_no].store_length, so instead of
-                              cur_ref_buff + test(maybe_null), we could
-                              use that information instead.
-                           */
-                           cur_ref_buff + (nullable ? 1 : 0),
-                           nullable ? cur_ref_buff : 0,
-                           key_parts[part_no].length,
-                           tab->ref().items[part_no]);
-    if (nullable &&          // nullable column in tmp table,
-        // and UNKNOWN should not be interpreted as FALSE
-        !item_in->is_top_level_item())
-    {
+    if (tmp_table->hash_field) {
+      ref.key_copy[part_no] = new (thd->mem_root)
+          store_key_hash_item(thd, field, cur_ref_buff, nullptr,
+                              field->pack_length(), ref.items[part_no], &hash);
+    } else {
+      ref.key_copy[part_no] = new (thd->mem_root) store_key(
+          thd, field,
+          /* TODO:
+             the NULL byte is taken into account in
+             key_parts[part_no].store_length, so instead of
+             cur_ref_buff + test(maybe_null), we could
+             use that information instead.
+           */
+          cur_ref_buff + (nullable ? 1 : 0), nullable ? cur_ref_buff : nullptr,
+          key_parts[part_no].length, ref.items[part_no]);
+    }
+    if (nullable &&  // nullable column in tmp table,
+                     // and UNKNOWN should not be interpreted as FALSE
+        !item->abort_on_null) {
       // It must be the single column, or we wouldn't be here
       assert(tmp_key_parts == 1);
       // Be ready to search for NULL into inner column:
-      tab->ref().null_ref_key= cur_ref_buff;
-      mat_table_has_nulls= NEX_UNKNOWN;
-    }
-    else
-    {
-      tab->ref().null_ref_key= NULL;
-      mat_table_has_nulls= NEX_IRRELEVANT_OR_FALSE;
+      ref.null_ref_key = cur_ref_buff;
+      mat_table_has_nulls = NEX_UNKNOWN;
+    } else {
+      ref.null_ref_key = nullptr;
+      mat_table_has_nulls = NEX_IRRELEVANT_OR_FALSE;
     }
 
     if (tmp_table->hash_field)
-      cur_ref_buff+= field->pack_length();
+      cur_ref_buff += field->pack_length();
     else
-      cur_ref_buff+= key_parts[part_no].store_length;
+      cur_ref_buff += key_parts[part_no].store_length;
   }
-  tab->ref().key_err= 1;
-  tab->ref().key_parts= tmp_key_parts;
+  tmp_table->pos_in_table_list = nullptr;
+  ref.key_err = true;
+  ref.key_parts = tmp_key_parts;
+  table_ref = tmp_table_ref;
 
-  if (cond->fix_fields(thd, &cond))
-    DBUG_RETURN(TRUE);
+  if (cond->fix_fields(thd, &cond)) return true;
+
+  assert(unit->is_prepared());
+
+  return false;
+}
+
+void subselect_hash_sj_engine::create_iterators(THD *thd) {
+  if (unit->root_access_path() == nullptr) {
+    m_root_access_path =
+        NewZeroRowsAccessPath(thd, "Not optimized, outer query is empty");
+    m_iterator =
+        CreateIteratorFromAccessPath(thd, m_root_access_path, /*join=*/nullptr,
+                                     /*eligible_for_batch_mode=*/true);
+    return;
+  }
+
+  // We're only ever reading one row from the iterator, and record[1] isn't
+  // properly set up at this point, so we're not using EQRefIterator.
+  // (As a microoptimization, we add a LIMIT 1 if there's a filter and the
+  // index is unique, so that any filter added doesn't try to read a second row
+  // if the condition fails -- there wouldn't be one anyway.)
+  //
+  // Also, note that we never need to worry about searching for NULLs
+  // (which would require the AlternativeIterator); subqueries with
+  // JT_REF_OR_NULL are always transformed with IN-to-EXISTS, and thus,
+  // their artificial HAVING rejects NULL values.
+  assert(type != JT_REF_OR_NULL);
+  AccessPath *path = NewRefAccessPath(thd, table, &ref,
+                                      /*use_order=*/false, /*reverse=*/false,
+                                      /*count_examined_rows=*/false);
+
+  if (type == JT_EQ_REF && (cond != nullptr || having != nullptr)) {
+    path = NewLimitOffsetAccessPath(thd, path, /*limit=*/1, /*offset=*/0,
+                                    /*count_all_rows=*/false,
+                                    /* reject_multiple_rows=*/false,
+                                    /*send_records_override=*/nullptr);
+  }
+  if (cond != nullptr) {
+    path = NewFilterAccessPath(thd, path, cond);
+  }
+  if (having != nullptr) {
+    path = NewFilterAccessPath(thd, path, having);
+  }
 
   /*
-    Create and optimize the JOIN that will be used to materialize
-    the subquery if not yet created.
+    This impersonates the materialized table as a derived table. However, there
+    are certain aspects of a derived table that are NOT set, such as
+    effective_algorithm, so this assignment is incomplete.
+    However, it works for the time being (partially because TABLE object's
+    pos_in_table_list is nullptr).
   */
-  materialize_engine->prepare();
-  /* Let our engine reuse this query plan for materialization. */
-  materialize_engine->select_lex->change_query_result(result, NULL);
+  table_ref->set_derived_query_expression(unit);
+  if (table_ref->is_table_function()) {
+    path = NewMaterializedTableFunctionAccessPath(
+        thd, table, table_ref->table_function, path);
+  } else {
+    path = GetAccessPathForDerivedTable(
+        thd, table_ref, table, /*rematerialize=*/false,
+        /*invalidators=*/nullptr, /*need_rowid=*/false, path);
+  }
 
-  DBUG_RETURN(FALSE);
+  m_root_access_path = path;
+  JOIN *join = unit->is_union() ? nullptr : unit->first_query_block()->join;
+  unit->finalize(thd);
+  m_iterator = CreateIteratorFromAccessPath(thd, path, join,
+                                            /*eligible_for_batch_mode=*/true);
+
+  // The unit is not supposed to be executed by itself now.
+  unit->clear_root_access_path();
 }
 
-
-subselect_hash_sj_engine::~subselect_hash_sj_engine()
-{
+subselect_hash_sj_engine::~subselect_hash_sj_engine() {
   /* Assure that cleanup has been called for this engine. */
-  assert(!tab);
+  assert(!table);
 
-  delete result;
+  destroy(result);
 }
-
 
 /**
-  Cleanup performed after each PS execution.
-
-  @detail
-  Called in the end of SELECT_LEX::prepare for PS from
-  Item_subselect::cleanup.
+  Cleanup performed after each execution.
 */
 
-void subselect_hash_sj_engine::cleanup()
-{
-  DBUG_ENTER("subselect_hash_sj_engine::cleanup");
-  is_materialized= false;
-  result->cleanup(); /* Resets the temp table as well. */
-  THD * const thd= item->unit->thd;
+void subselect_hash_sj_engine::cleanup(THD *thd) {
+  DBUG_TRACE;
+  is_materialized = false;
+  if (result != nullptr)
+    result->cleanup(thd); /* Resets the temp table as well. */
   DEBUG_SYNC(thd, "before_index_end_in_subselect");
-  TABLE *const table= tab->table();
-  if (table->file->inited)
-    table->file->ha_index_end();  // Close the scan over the index
-  free_tmp_table(thd, table);
-  // Note that tab->qep_cleanup() is not called
-  tab= NULL;
-  materialize_engine->cleanup();
-  DBUG_VOID_RETURN;
+  m_root_access_path = nullptr;
+  m_iterator.reset();
+  if (table != nullptr) {
+    if (table->file->inited)
+      table->file->ha_index_end();  // Close the scan over the index
+    close_tmp_table(table);
+    free_tmp_table(table);
+    // Note that tab->qep_cleanup() is not called
+    table = nullptr;
+  }
+  if (unit->is_executed()) unit->reset_executed();
 }
 
+static int safe_index_read(TABLE *table, const TABLE_REF &ref) {
+  int error = table->file->ha_index_read_map(
+      table->record[0], ref.key_buff, make_prev_keypart_map(ref.key_parts),
+      HA_READ_KEY_EXACT);
+  if (error) return report_handler_error(table, error);
+  return 0;
+}
 
 /**
   Execute a subquery IN predicate via materialization.
 
-  @detail
   If needed materialize the subquery into a temporary table, then
-  copmpute the predicate via a lookup into this table.
+  compute the predicate via a lookup into this table.
 
-  @retval TRUE  if error
-  @retval FALSE otherwise
+  @retval true  if error
+  @retval false otherwise
 */
 
-bool subselect_hash_sj_engine::exec()
-{
-  Item_in_subselect *item_in= (Item_in_subselect *) item;
-  TABLE *const table= tab->table();
-  DBUG_ENTER("subselect_hash_sj_engine::exec");
+bool subselect_hash_sj_engine::exec(THD *thd) {
+  DBUG_TRACE;
 
   /*
     Optimize and materialize the subquery during the first execution of
     the subquery predicate.
   */
-  if (!is_materialized)
-  {
-    bool res;
-    THD * const thd= item->unit->thd;
-    SELECT_LEX *save_select= thd->lex->current_select();
-    thd->lex->set_current_select(materialize_engine->select_lex);
-    assert(materialize_engine->select_lex->master_unit()->is_optimized());
+  if (!is_materialized) {
+    thd->lex->set_current_query_block(unit->first_query_block());
+    assert(
+        unit->first_query_block()->master_query_expression()->is_optimized());
 
-    JOIN *join= materialize_engine->select_lex->join;
-
-    join->exec();
-    if ((res= join->error || thd->is_fatal_error))
-      goto err;
+    // Init() triggers materialization.
+    // (It also triggers some unneeded setup of the RefIterator, but it is
+    // cheap.)
+    bool error = m_iterator->Init();
+    if (error || thd->is_fatal_error()) return true;
 
     /*
       TODO:
@@ -4097,47 +3500,38 @@ bool subselect_hash_sj_engine::exec()
         immediately after materialization (yet it's done together with
         unlocking).
      */
-    is_materialized= true;
+    is_materialized = true;
 
-    // Calculate row count:
+    // See if we have zero rows or not.
     table->file->info(HA_STATUS_VARIABLE);
+    if (table->file->ha_table_flags() & HA_STATS_RECORDS_IS_EXACT) {
+      has_zero_rows = (table->file->stats.records == 0);
+    } else {
+      // Index must be closed before starting to scan.
+      if (table->file->inited) table->file->ha_index_or_rnd_end();
 
-    if (!(table->file->ha_table_flags() & HA_STATS_RECORDS_IS_EXACT))
-    {
-      // index must be closed before ha_records() is called
-      if (table->file->inited)
-        table->file->ha_index_or_rnd_end();
-      ha_rows num_rows= 0;
-      table->file->ha_records(&num_rows);
-      table->file->stats.records= num_rows;
-      res= thd->is_error();
+      TableScanIterator scan(thd, table, /*expected_rows=*/-1.0,
+                             /*examined_rows=*/nullptr);
+      int ret = scan.Read();
+      if (ret == 1 || thd->is_error()) {
+        return true;
+      }
+      has_zero_rows = (ret == -1);
     }
+  }  // if (!is_materialized)
 
-    /* Set tmp_param only if its usable, i.e. tmp_param->copy_field != NULL. */
-    tmp_param= &(item_in->unit->outer_select()->join->tmp_table_param);
-    if (tmp_param && !tmp_param->copy_field)
-      tmp_param= NULL;
-
-err:
-    thd->lex->set_current_select(save_select);
-    if (res)
-      DBUG_RETURN(res);
-  } // if (!is_materialized)
-
-  if (table->file->stats.records == 0)
-  {
+  if (has_zero_rows) {
     // The correct answer is FALSE.
-    item_in->value= false;
-    DBUG_RETURN(false);
+    item->value = false;
+    return false;
   }
   /*
-    Here we could be brutal and set item_in->null_value. But we prefer to be
+    Here we could be brutal and set item->null_value. But we prefer to be
     well-behaved and rather set the properties which
     Item_in_subselect::val_bool() and Item_in_optimizer::val_int() expect,
     and then those functions will set null_value based on those properties.
   */
-  if (item_in->left_expr->element_index(0)->null_value)
-  {
+  if (item->left_expr->element_index(0)->null_value) {
     /*
       The first outer expression oe1 is NULL. It is the single outer
       expression because if there would be more ((oe1,oe2,...)IN(...)) then
@@ -4147,67 +3541,64 @@ err:
       is UNKNOWN. Do as if searching with all triggered conditions disabled:
       this would surely find a row. The caller will translate this to UNKNOWN.
     */
-    assert(item_in->left_expr->element_index(0)->maybe_null);
-    assert(item_in->left_expr->cols() == 1);
-    item_in->value= true;
-    DBUG_RETURN(false);
+    assert(item->left_expr->cols() == 1);
+    item->value = true;
+    return false;
   }
 
-  if (subselect_indexsubquery_engine::exec())  // Search with index
-    DBUG_RETURN(true);
+  hash = 0;
+  bool found;
+  if (ExecuteExistsQuery(thd, item->unit, m_iterator.get(), &found)) {
+    return true;
+  }
+  item->value = found;
+  item->assigned(true);
 
-  if (!item_in->value && // no exact match
-      mat_table_has_nulls != NEX_IRRELEVANT_OR_FALSE)
-  {
+  if (!found &&  // no exact match
+      mat_table_has_nulls != NEX_IRRELEVANT_OR_FALSE) {
     /*
       There is only one outer expression. It's not NULL. exec() above has set
       the answer to FALSE, but if there exists an inner NULL in the temporary
       table, then the correct answer is UNKNOWN, so let's find out.
     */
-    if (mat_table_has_nulls == NEX_UNKNOWN)   // We do not know yet
+    if (mat_table_has_nulls == NEX_UNKNOWN)  // We do not know yet
     {
       // Search for NULL inside tmp table, and remember the outcome.
-      *tab->ref().null_ref_key= 1;
+      *ref.null_ref_key = 1;
       if (!table->file->inited &&
-          table->file->ha_index_init(tab->ref().key, false /* sorted */))
-        DBUG_RETURN(true);
-      if (safe_index_read(tab) == 1)
-        DBUG_RETURN(true);
-      *tab->ref().null_ref_key= 0; // prepare for next searches of non-NULL
-      mat_table_has_nulls=
-        (table->status == 0) ? NEX_TRUE : NEX_IRRELEVANT_OR_FALSE;
+          table->file->ha_index_init(ref.key, false /* sorted */))
+        return true;
+      if (safe_index_read(table, ref) == 1) return true;
+      *ref.null_ref_key = 0;  // prepare for next searches of non-NULL
+      mat_table_has_nulls =
+          table->has_row() ? NEX_TRUE : NEX_IRRELEVANT_OR_FALSE;
     }
-    if (mat_table_has_nulls == NEX_TRUE)
-    {
+    if (mat_table_has_nulls == NEX_TRUE) {
       /*
         There exists an inner NULL. The correct answer is UNKNOWN.
         Do as if searching with all triggered conditions enabled; that
         would not find any match, but Item_is_not_null_test would notice a
         NULL:
       */
-      item_in->value= false;
-      item_in->was_null= true;
+      item->value = false;
+      item->was_null = true;
     }
   }
-  DBUG_RETURN(false);
+  return false;
 }
-
 
 /**
   Print the state of this engine into a string for debugging and views.
 */
 
-void subselect_hash_sj_engine::print(String *str, enum_query_type query_type)
-{
+void subselect_hash_sj_engine::print(const THD *thd, String *str,
+                                     enum_query_type query_type) {
   str->append(STRING_WITH_LEN(" <materialize> ("));
-  materialize_engine->print(str, query_type);
+  unit->print(thd, str, query_type);
   str->append(STRING_WITH_LEN(" ), "));
-  if (tab)
-    subselect_indexsubquery_engine::print(str, query_type);
+  if (table)
+    subselect_indexsubquery_engine::print(thd, str, query_type);
   else
-    str->append(STRING_WITH_LEN(
-           "<the access method for lookups is not yet created>"
-         ));
+    str->append(
+        STRING_WITH_LEN("<the access method for lookups is not yet created>"));
 }
-
-

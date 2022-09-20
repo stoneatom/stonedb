@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2014, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -23,7 +23,7 @@
 #ifndef RPL_WRITE_SET_HANDLER_INCLUDED
 #define RPL_WRITE_SET_HANDLER_INCLUDED
 
-#include "my_global.h"
+#include "my_inttypes.h"
 
 extern const char *transaction_write_set_hashing_algorithms[];
 
@@ -37,13 +37,14 @@ struct TABLE;
 
   @return the algorithm name
 */
-const char* get_write_set_algorithm_string(unsigned int algorithm);
+const char *get_write_set_algorithm_string(unsigned int algorithm);
 
 /**
   Function to add the hash of the PKE to the transaction context object.
 
   @param[in] table - TABLE object
   @param[in] thd - THD object pointing to current thread.
+  @param[in] record - The record to process (record[0] or record[1]).
 
   @return true if an issues exists adding the pke, false otherwise
 */

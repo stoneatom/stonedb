@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2011, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -18,46 +18,42 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA */
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #ifndef TEST_MDL_CONTEXT_OWNER_INCLUDED
 #define TEST_MDL_CONTEXT_OWNER_INCLUDED
 
-#include <mdl.h>
+#include "sql/mdl.h"
 
-class Test_MDL_context_owner : public MDL_context_owner
-{
-public:
-  Test_MDL_context_owner()
-  {}
-  virtual void enter_cond(mysql_cond_t *cond,
-                          mysql_mutex_t* mutex,
-                          const PSI_stage_info *stage,
-                          PSI_stage_info *old_stage,
-                          const char *src_function,
-                          const char *src_file,
-                          int src_line)
-  {
+class Test_MDL_context_owner : public MDL_context_owner {
+ public:
+  Test_MDL_context_owner() = default;
+  void enter_cond(mysql_cond_t *, mysql_mutex_t *, const PSI_stage_info *,
+                  PSI_stage_info *, const char *, const char *, int) override {}
+
+  void exit_cond(const PSI_stage_info *, const char *, const char *,
+                 int) override {}
+
+  int is_killed() const final { return 0; }
+  bool is_connected() override { return true; }
+  bool might_have_commit_order_waiters() const override { return false; }
+
+  THD *get_thd() override {
+    /*
+      MDL_lock::object_lock_notify_conflicting_locks() checks THD of
+      conflicting lock on nullptr value and doesn't call the virtual
+      method MDL_context_owner::notify_shared_lock() in case condition
+      satisfied. To workaround it return the value 1 casted to THD*.
+    */
+    return (THD *)1;
   }
 
-  virtual void exit_cond(const PSI_stage_info *stage,
-                         const char *src_function,
-                         const char *src_file,
-                         int src_line)
-  {
+  bool notify_hton_pre_acquire_exclusive(const MDL_key *, bool *) override {
+    return false;
   }
+  void notify_hton_post_release_exclusive(const MDL_key *) override {}
 
-  virtual int  is_killed() { return 0; }
-  virtual bool is_connected() { return true; }
-  virtual THD* get_thd()   { return NULL; }
-
-  virtual bool notify_hton_pre_acquire_exclusive(const MDL_key *mdl_key,
-                                                 bool *victimized)
-  { return false; }
-  virtual void notify_hton_post_release_exclusive(const MDL_key *mdl_key)
-  { }
-
-  virtual uint get_rand_seed() { return 0; }
+  uint get_rand_seed() const override { return 0; }
 };
 
 #endif  // TEST_MDL_CONTEXT_OWNER_INCLUDED

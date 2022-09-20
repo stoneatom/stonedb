@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -26,8 +26,11 @@
 #define NDBT_RESTARTER_HPP
 
 #include <mgmapi.h>
+#include "mgmcommon/NdbMgm.hpp"
 #include <Vector.hpp>
 #include <BaseString.hpp>
+
+#define NDBT_NO_NODE_GROUP_ID (int(-256))
 
 class NdbRestarter {
 public:
@@ -47,14 +50,17 @@ public:
 		       bool initial = false, 
 		       bool nostart = false, 
 		       bool abort = false,
-                       bool force = false);
+                       bool force = false,
+                       bool captureError = false);
 
-  int restartOneDbNode2(int _nodeId, Uint32 flags){
+  int restartOneDbNode2(int _nodeId, Uint32 flags,
+                        bool captureError = false){
     return restartOneDbNode(_nodeId,
                             flags & NRRF_INITIAL,
                             flags & NRRF_NOSTART,
                             flags & NRRF_ABORT,
-                            flags & NRRF_FORCE);
+                            flags & NRRF_FORCE,
+                            captureError);
   }
 
   int restartAll(bool initial = false, 
@@ -69,7 +75,15 @@ public:
                       flags & NRRF_FORCE);
   }
 
-  int restartNodes(int * nodes, int num_nodes, Uint32 flags);
+  int restartAll3(bool initial = false,
+       bool nostart = false,
+       bool abort = false,
+       bool force = false);
+
+  int restartNodes(int * nodes,
+                   int num_nodes,
+                   Uint32 flags,
+                   bool captureError = false);
   
   int startAll();
   int startNodes(const int * _nodes, int _num_nodes);
@@ -85,13 +99,17 @@ public:
   int waitNodesNoStart(const int * _nodes, int _num_nodes,
 		       unsigned int _timeout = 120); 
 
+  bool checkClusterState(const int * deadnodes, int num_nodes);
+
   int checkClusterAlive(const int * deadnodes, int num_nodes);
 
   int getNumDbNodes();
   int insertErrorInNode(int _nodeId, int error);
+  int insertErrorInNodes(const int * _nodes, int _num_nodes, int error);
   int insertErrorInAllNodes(int error);
 
   int insertError2InNode(int _nodeId, int error, int extra);
+  int insertError2InNodes(const int * _nodes, int _num_nodes, int error, int extra);
   int insertError2InAllNodes(int error, int extra);
 
   int enterSingleUserMode(int _nodeId);
@@ -103,8 +121,15 @@ public:
   int getMasterNodeId();
   int getNextMasterNodeId(int nodeId);
   int getNodeGroup(int nodeId);
+  int getNodeGroups(Vector<int>& node_groups,
+                    int * max_alive_replicas_ptr = nullptr);
+  int getNumNodeGroups();
+  int getNumReplicas();
+  int getMaxConcurrentNodeFailures();
+  int getMaxFailedNodes();
   int getRandomNodeSameNodeGroup(int nodeId, int randomNumber);
   int getRandomNodeOtherNodeGroup(int nodeId, int randomNumber);
+  int getRandomNodePreferOtherNodeGroup(int nodeId, int randomNumber);
   int getRandomNotMasterNodeId(int randomNumber);
 
   int getMasterNodeVersion(int& version);
@@ -132,6 +157,8 @@ public:
   void setReconnect(bool);
 
   int rollingRestart(Uint32 flags = 0);
+
+  int getNodeConnectCount(int nodeId);
 protected:
 
   int waitClusterState(ndb_mgm_node_status _status,
@@ -153,10 +180,10 @@ protected:
   
   bool connected;
   BaseString addr;
-  ndb_mgm_configuration * m_config;
+  ndb_mgm::config_ptr m_config;
   bool m_reconnect;
 protected:
-  ndb_mgm_configuration * getConfig();
+  const ndb_mgm_configuration * getConfig();
 
   class Ndb_cluster_connection * m_cluster_connection;
   int wait_until_ready(const int * nodes = 0, int cnt = 0, int timeout = 60);

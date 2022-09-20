@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2013, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2013, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -21,7 +21,6 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
-
 #ifndef TABLE_REPLICATION_APPLIER_CONFIGURATION_H
 #define TABLE_REPLICATION_APPLIER_CONFIGURATION_H
 
@@ -30,17 +29,28 @@
   Table replication_applier_configuration (declarations).
 */
 
-#include "pfs_column_types.h"
-#include "pfs_engine_table.h"
-#include "rpl_mi.h"
-#include "mysql_com.h"
-#include "rpl_msr.h"
-#include "rpl_info.h"  /*CHANNEL_NAME_LENGTH*/
+#include <sys/types.h>
+#include <time.h>
 
+#include "my_base.h"
+#include "sql/rpl_info.h" /*CHANNEL_NAME_LENGTH*/
+#include "sql/rpl_rli.h"  /*enum_require_table_primary_key*/
+#include "storage/perfschema/pfs_engine_table.h"
+#include "storage/perfschema/table_helper.h"
+
+class Field;
 class Master_info;
+class Plugin_table;
+struct TABLE;
+struct THR_LOCK;
+
+#ifndef ENUM_RPL_YES_NO
+#define ENUM_RPL_YES_NO
+enum enum_rpl_yes_no { PS_RPL_YES = 1, PS_RPL_NO };
+#endif
 
 /**
-  @addtogroup Performance_schema_tables
+  @addtogroup performance_schema_tables
   @{
 */
 
@@ -50,30 +60,48 @@ struct st_row_applier_config {
   uint channel_name_length;
   time_t desired_delay;
   bool desired_delay_is_set;
+  std::string privilege_checks_user{""};
+  enum_rpl_yes_no requires_row_format;
+  Relay_log_info::enum_require_table_primary_key
+      require_table_primary_key_check;
+  Assign_gtids_to_anonymous_transactions_info::enum_type
+      assign_gtids_to_anonymous_transactions_type;
+  std::string assign_gtids_to_anonymous_transactions_value{""};
+};
+
+class PFS_index_rpl_applier_config : public PFS_engine_index {
+ public:
+  PFS_index_rpl_applier_config()
+      : PFS_engine_index(&m_key), m_key("CHANNEL_NAME") {}
+
+  ~PFS_index_rpl_applier_config() override = default;
+
+  virtual bool match(Master_info *mi);
+
+ private:
+  PFS_key_name m_key;
 };
 
 /** Table PERFORMANCE_SCHEMA.replication_applier_configuration */
-class table_replication_applier_configuration: public PFS_engine_table
-{
+class table_replication_applier_configuration : public PFS_engine_table {
   typedef PFS_simple_index pos_t;
 
-private:
-  void make_row(Master_info *mi);
+ private:
+  int make_row(Master_info *mi);
 
   /** Table share lock. */
   static THR_LOCK m_table_lock;
-  /** Fields definition. */
-  static TABLE_FIELD_DEF m_field_def;
+  /** Table definition. */
+  static Plugin_table m_table_def;
+
   /** Current row */
   st_row_applier_config m_row;
-  /** True is the current row exists. */
-  bool m_row_exists;
   /** Current position. */
   pos_t m_pos;
   /** Next position. */
   pos_t m_next_pos;
 
-protected:
+ protected:
   /**
     Read the current row values.
     @param table            Table handle
@@ -82,24 +110,29 @@ protected:
     @param read_all         true if all columns are read.
   */
 
-  virtual int read_row_values(TABLE *table,
-                              unsigned char *buf,
-                              Field **fields,
-                              bool read_all);
+  int read_row_values(TABLE *table, unsigned char *buf, Field **fields,
+                      bool read_all) override;
 
   table_replication_applier_configuration();
 
-public:
-  ~table_replication_applier_configuration();
+ public:
+  ~table_replication_applier_configuration() override;
 
   /** Table share. */
   static PFS_engine_table_share m_share;
-  static PFS_engine_table* create();
+  static PFS_engine_table *create(PFS_engine_table_share *);
   static ha_rows get_row_count();
-  virtual int rnd_next();
-  virtual int rnd_pos(const void *pos);
-  virtual void reset_position(void);
 
+  void reset_position(void) override;
+
+  int rnd_next() override;
+  int rnd_pos(const void *pos) override;
+
+  int index_init(uint idx, bool sorted) override;
+  int index_next() override;
+
+ private:
+  PFS_index_rpl_applier_config *m_opened_index;
 };
 
 /** @} */

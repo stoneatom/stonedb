@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2015, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -20,25 +20,21 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
-#include "my_global.h"
 #include <gtest/gtest.h>
-#include "test_utils.h"
+#include <stddef.h>
 
-#include "item_cmpfunc.h"
+#include "sql/item_cmpfunc.h"
+#include "unittest/gunit/test_utils.h"
 
 namespace item_func_case_unittest {
 
 using my_testing::Server_initializer;
 
-class ItemFuncCaseTest : public ::testing::Test
-{
-protected:
-  virtual void SetUp()
-  {
-    initializer.SetUp();
-  }
+class ItemFuncCaseTest : public ::testing::Test {
+ protected:
+  void SetUp() override { initializer.SetUp(); }
 
-  virtual void TearDown() { initializer.TearDown(); }
+  void TearDown() override { initializer.TearDown(); }
 
   THD *thd() { return initializer.thd(); }
 
@@ -46,7 +42,7 @@ protected:
 };
 
 /*
-  Bug#21381060 
+  Bug#21381060
   A "CASE WHEN" EXPRESSION WITH NULL AND AN UNSIGNED TYPE GIVES A SIGNED RESULT
 
   Original test case:
@@ -58,16 +54,15 @@ protected:
 
   This unit test verifies that the bug is fixed in 5.7 and up.
 */
-TEST_F(ItemFuncCaseTest, CaseWhenElseNull)
-{
-  Item_int *int_one= new Item_int(1);
-  Item_int *int_n= new Item_int(180ULL);
-  List<Item> list;
+TEST_F(ItemFuncCaseTest, CaseWhenElseNull) {
+  Item_int *int_one = new Item_int(1);
+  Item_int *int_n = new Item_int(180ULL);
+  mem_root_deque<Item *> list(*THR_MALLOC);
   list.push_back(int_one);
   list.push_back(int_n);
-  Item_func_case *item_case=
-    new Item_func_case(POS(), list, NULL, new Item_null());
-  EXPECT_FALSE(item_case->fix_fields(thd(), NULL));
+  Item_func_case *item_case =
+      new Item_func_case(POS(), &list, nullptr, new Item_null());
+  EXPECT_FALSE(item_case->fix_fields(thd(), nullptr));
 
   EXPECT_FALSE(int_one->unsigned_flag);
   EXPECT_TRUE(int_n->unsigned_flag);
@@ -76,5 +71,4 @@ TEST_F(ItemFuncCaseTest, CaseWhenElseNull)
   EXPECT_TRUE(item_case->unsigned_flag);
 }
 
-
-}
+}  // namespace item_func_case_unittest

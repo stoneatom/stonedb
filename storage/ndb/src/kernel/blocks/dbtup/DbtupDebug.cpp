@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -102,37 +102,43 @@ void Dbtup::execDBINFO_SCANREQ(Signal* signal)
         c_scanLockPool.getSize(),
         c_scanLockPool.getEntrySize(),
         c_scanLockPool.getUsedHi(),
-        { CFG_DB_NO_LOCAL_SCANS,CFG_DB_BATCH_SIZE,0,0 }},
+        { CFG_DB_NO_LOCAL_SCANS,CFG_DB_BATCH_SIZE,0,0 },
+        0},
       { "Scan Operation",
         c_scanOpPool.getUsed(),
         c_scanOpPool.getSize(),
         c_scanOpPool.getEntrySize(),
         c_scanOpPool.getUsedHi(),
-        { CFG_DB_NO_LOCAL_SCANS,0,0,0 }},
+        { CFG_DB_NO_LOCAL_SCANS,0,0,0 },
+        0},
       { "Trigger",
         c_triggerPool.getUsed(),
         c_triggerPool.getSize(),
         c_triggerPool.getEntrySize(),
         c_triggerPool.getUsedHi(),
-        { CFG_DB_NO_TRIGGERS,0,0,0 }},
+        { CFG_DB_NO_TRIGGERS,0,0,0 },
+        0},
       { "Stored Proc",
         c_storedProcPool.getUsed(),
         c_storedProcPool.getSize(),
         c_storedProcPool.getEntrySize(),
         c_storedProcPool.getUsedHi(),
-        { CFG_DB_NO_LOCAL_SCANS,0,0,0 }},
+        { CFG_DB_NO_LOCAL_SCANS,0,0,0 },
+        0},
       { "Build Index",
         c_buildIndexPool.getUsed(),
         c_buildIndexPool.getSize(),
         c_buildIndexPool.getEntrySize(),
         c_buildIndexPool.getUsedHi(),
-        { 0,0,0,0 }},
+        { 0,0,0,0 },
+        0},
       { "Operation",
         c_operation_pool.getUsed(),
         c_operation_pool.getSize(),
         c_operation_pool.getEntrySize(),
         c_operation_pool.getUsedHi(),
-        { CFG_DB_NO_LOCAL_OPS,CFG_DB_NO_OPS,0,0 }},
+        { CFG_DB_NO_LOCAL_OPS,CFG_DB_NO_OPS,0,0 },
+        0},
       { "L2PMap pages",
         pmpInfo.pg_count,
         0,                  /* No real limit */
@@ -142,7 +148,8 @@ void Dbtup::execDBINFO_SCANREQ(Signal* signal)
           and therefore of limited interest.
         */
         0,
-        { 0, 0, 0}},
+        { 0, 0, 0},
+        RG_DATAMEM},
       { "L2PMap nodes",
         pmpInfo.inuse_nodes,
         pmpInfo.pg_count * pmpInfo.nodes_per_page, /* Max within current pages */
@@ -152,19 +159,23 @@ void Dbtup::execDBINFO_SCANREQ(Signal* signal)
           and therefore of limited interest.
         */
         0,
-        { 0, 0, 0 }},
+        { 0, 0, 0 },
+        RT_DBTUP_PAGE_MAP},
       { "Data memory",
         m_pages_allocated,
         0, // Allocated from global resource group RG_DATAMEM
         sizeof(Page),
         m_pages_allocated_max,
-        { CFG_DB_DATA_MEM,0,0,0 }},
-      { NULL, 0,0,0,0, { 0,0,0,0 }}
+        { CFG_DB_DATA_MEM,0,0,0 },
+        0},
+      { NULL, 0,0,0,0, { 0,0,0,0 }, 0}
     };
 
     const size_t num_config_params =
       sizeof(pools[0].config_params) / sizeof(pools[0].config_params[0]);
+    const Uint32 numPools = NDB_ARRAY_SIZE(pools);
     Uint32 pool = cursor->data[0];
+    ndbrequire(pool < numPools);
     BlockNumber bn = blockToMain(number());
     while(pools[pool].poolname)
     {
@@ -181,6 +192,8 @@ void Dbtup::execDBINFO_SCANREQ(Signal* signal)
       row.write_uint64(pools[pool].entry_size);
       for (size_t i = 0; i < num_config_params; i++)
         row.write_uint32(pools[pool].config_params[i]);
+      row.write_uint32(GET_RG(pools[pool].record_type));
+      row.write_uint32(GET_TID(pools[pool].record_type));
       ndbinfo_send_row(signal, req, row, rl);
       pool++;
       if (rl.need_break(req))
@@ -312,7 +325,8 @@ Dbtup::execDUMP_STATE_ORD(Signal* signal)
     Uint32 seed = (Uint32)time(0);
     if (signal->getLength() > 1)
       seed = signal->theData[1];
-    ndbout_c("Startar modul test av Page Manager (seed: 0x%x)", seed);
+    g_eventLogger->info("Startar modul test av Page Manager (seed: 0x%x)",
+                        seed);
     srand(seed);
 
     Vector<Chunk> chunks;
@@ -341,7 +355,8 @@ Dbtup::execDUMP_STATE_ORD(Signal* signal)
       }
       
       if (type == 1211)
-        ndbout_c("loop=%d case=%d free=%d alloc=%d", i, c, free, alloc);
+        g_eventLogger->info("loop=%d case=%d free=%d alloc=%d", i, c, free,
+                            alloc);
 
       if (type == 1213)
       {
@@ -358,7 +373,6 @@ Dbtup::execDUMP_STATE_ORD(Signal* signal)
 	break;
       case 2: { // Seize(n) - fail
 	alloc += free;
-	// Fall through
         sum_req += free;
         goto doalloc;
       }
@@ -372,14 +386,15 @@ Dbtup::execDUMP_STATE_ORD(Signal* signal)
 	  chunks.push_back(chunk);
 	  if(chunk.pageCount != alloc) {
 	    if (type == 1211)
-              ndbout_c("  Tried to allocate %d - only allocated %d - free: %d",
-                       alloc, chunk.pageCount, free);
-	  }
-	} else {
-	  ndbout_c("  Failed to alloc %d pages with %d pages free",
-		   alloc, free);
-	}
-	
+              g_eventLogger->info(
+                  "  Tried to allocate %d - only allocated %d - free: %d",
+                  alloc, chunk.pageCount, free);
+          }
+        } else {
+          g_eventLogger->info("  Failed to alloc %d pages with %d pages free",
+                              alloc, free);
+        }
+
         sum_conf += chunk.pageCount;
         Uint32 tot = fc_left + fc_right + fc_remove;
         sum_loop += tot;
@@ -402,13 +417,13 @@ Dbtup::execDUMP_STATE_ORD(Signal* signal)
     }
     while(chunks.size() > 0){
       Chunk chunk = chunks.back();
-      returnCommonArea(chunk.pageId, chunk.pageCount);      
+      returnCommonArea(chunk.pageId, chunk.pageCount);
       chunks.erase(chunks.size() - 1);
     }
 
-    ndbout_c("Got %u%% of requested allocs, loops : %u 100*avg: %u max: %u",
-             (100 * sum_conf) / sum_req, sum_loop, 100*sum_loop / LOOPS,
-             max_loop);
+    g_eventLogger->info(
+        "Got %u%% of requested allocs, loops : %u 100*avg: %u max: %u",
+        (100 * sum_conf) / sum_req, sum_loop, 100 * sum_loop / LOOPS, max_loop);
   }
 #endif
 
@@ -448,6 +463,31 @@ Dbtup::execDUMP_STATE_ORD(Signal* signal)
     RSS_OP_SNAPSHOT_CHECK(cnoOfFreeTabDescrRec);
 
     RSS_AP_SNAPSHOT_CHECK2(c_storedProcPool, c_storedProcCountNonAPI);
+    return;
+  }
+#endif
+#if defined(VM_TRACE) || defined(ERROR_INSERT)
+  if (type == DumpStateOrd::TupSetTransientPoolMaxSize)
+  {
+    jam();
+    if (signal->getLength() < 3)
+      return;
+    const Uint32 pool_index = signal->theData[1];
+    const Uint32 new_size = signal->theData[2];
+    if (pool_index >= c_transient_pool_count)
+      return;
+    c_transient_pools[pool_index]->setMaxSize(new_size);
+    return;
+  }
+  if (type == DumpStateOrd::TupResetTransientPoolMaxSize)
+  {
+    jam();
+    if(signal->getLength() < 2)
+      return;
+    const Uint32 pool_index = signal->theData[1];
+    if (pool_index >= c_transient_pool_count)
+      return;
+    c_transient_pools[pool_index]->resetMaxSize();
     return;
   }
 #endif
@@ -502,7 +542,7 @@ void Dbtup::printoutTuplePage(Uint32 fragid, Uint32 pageid, Uint32 printLimit)
   FragrecordPtr tmpFragP;
   TablerecPtr tmpTableP;
 
-  c_page_pool.getPtr(tmpPageP, pageid);
+  ndbrequire(c_page_pool.getPtr(tmpPageP, pageid));
 
   tmpFragP.i = fragid;
   ptrCheckGuard(tmpFragP, cnoOfFragrec, fragrecord);
@@ -564,10 +604,18 @@ template class Vector<Chunk>;
 NdbOut&
 operator<<(NdbOut& out, const Local_key & key)
 {
-  out << "[ m_page_no: " << dec << key.m_page_no 
-      << " m_file_no: " << dec << key.m_file_no 
-      << " m_page_idx: " << dec << key.m_page_idx << "]";
+  out << "[ m_page_no: " << dec << key.m_page_no << " m_file_no: " << dec
+      << key.m_file_no << " m_page_idx: " << dec << key.m_page_idx << "]";
   return out;
+}
+
+char*
+printLocal_Key(char buf[], int bufsize, const Local_key& key)
+{
+  BaseString::snprintf(buf, bufsize,
+                       "[ m_page_no: %u m_file_no: %u m_page_idx: %u ]",
+                       key.m_page_no, key.m_file_no, key.m_page_idx);
+  return buf;
 }
 
 static

@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -34,7 +34,16 @@
 
 class NodeInfo {
 public:
-  NodeInfo();
+  NodeInfo()
+  : m_version(0),
+    m_mysql_version(0),
+    m_lqh_workers(0),
+    m_query_threads(0),
+    m_log_parts(0),
+    m_type(INVALID),
+    m_connectCount(0),
+    m_connected(false)
+  {}
 
   /**
    * NodeType
@@ -50,6 +59,8 @@ public:
   Uint32 m_version;       ///< Ndb version
   Uint32 m_mysql_version; ///< MySQL version
   Uint32 m_lqh_workers;   ///< LQH workers
+  Uint32 m_query_threads; ///< Query threads
+  Uint32 m_log_parts;     ///< REDO Log parts
   Uint32 m_type;          ///< Node type
   Uint32 m_connectCount;  ///< No of times connected
   Uint32 m_connected;     ///< Node is connected
@@ -57,15 +68,6 @@ public:
   friend NdbOut & operator<<(NdbOut&, const NodeInfo&); 
 };
 
-
-inline
-NodeInfo::NodeInfo(){
-  m_version = 0;
-  m_mysql_version = 0;
-  m_lqh_workers = 0;
-  m_type = INVALID;
-  m_connectCount = 0;
-}
 
 inline
 NodeInfo::NodeType
@@ -77,7 +79,7 @@ NodeInfo::getType() const {
 class NdbVersion {
   Uint32 m_ver;
 public:
-  NdbVersion(Uint32 ver) : m_ver(ver) {};
+  NdbVersion(Uint32 ver) : m_ver(ver) {}
 
   friend NdbOut& operator<<(NdbOut&, const NdbVersion&);
 };
@@ -125,7 +127,7 @@ operator<<(NdbOut& ndbout, const NodeInfo & info){
 
 struct NodeVersionInfo
 {
-  STATIC_CONST( DataLength = 6 );
+  static constexpr Uint32 DataLength = 6;
   struct 
   {
     Uint32 m_min_version;

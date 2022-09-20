@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2012, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -23,14 +23,13 @@
 #ifndef MY_STRING_SERVICE_INCLUDED
 #define MY_STRING_SERVICE_INCLUDED
 
-#include "sql_string.h"
+class String;
 
 /* mysql_string_itrerator structure to provide service to plugins */
-typedef struct st_string_iterator
-{
+struct st_string_iterator {
   String *iterator_str;
   const char *iterator_ptr;
   int ctype;
-} string_iterator;
+};
 
 #endif /* MY_STRING_SERVICE_INCLUDED */

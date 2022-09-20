@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -94,7 +94,7 @@ VoidFs::execSTTOR(Signal* signal)
     sendSignal(NDBCNTR_REF, GSN_STTORRY, signal, 4, JBB);
     return;
   }
-  ndbrequire(0);
+  ndbabort();
 }
 
 void
@@ -118,8 +118,12 @@ VoidFs::execFSOPENREQ(Signal* signal)
   const BlockReference userRef = fsOpenReq->userReference;
   const Uint32 userPointer = fsOpenReq->userPointer;
 
+  SectionHandle handle(this, signal);
+  releaseSections(handle);
+
   Uint32 flags = fsOpenReq->fileFlags;
-  if(flags == FsOpenReq::OM_READONLY){
+  if ((flags & FsOpenReq::OM_READ_WRITE_MASK) == FsOpenReq::OM_READONLY)
+  {
     // Initialise FsRef signal
     FsRef * const fsRef = (FsRef *)&signal->theData[0];
     fsRef->userPointer = userPointer;
@@ -193,7 +197,8 @@ VoidFs::execFSREADREQ(Signal* signal)
   releaseSections(handle);
 
   signal->theData[0] = userPointer;
-  sendSignal(userRef, GSN_FSREADCONF, signal, 1, JBB);
+  signal->theData[1] = 0; /* Bytes read 0 */
+  sendSignal(userRef, GSN_FSREADCONF, signal, 2, JBB);
 #if 0
   FsRef * const fsRef = (FsRef *)&signal->theData[0];
   fsRef->userPointer = userPointer;

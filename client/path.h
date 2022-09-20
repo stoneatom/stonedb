@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2012, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2012, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -23,8 +23,8 @@
 */
 #ifndef PATH_UTIL_INCLUDED
 #define PATH_UTIL_INCLUDED
-#include <string>
 #include <ostream>
+#include <string>
 
 /**
   A helper class for handling file paths. The class can handle the memory
@@ -34,9 +34,8 @@
   @see unittest/gunit/path-t.cc
 
 */
-class Path
-{
-public:
+class Path {
+ public:
   Path();
 
   Path(const std::string &s);
@@ -79,7 +78,8 @@ public:
 #endif
 
   friend std::ostream &operator<<(std::ostream &op, const Path &p);
-private:
+
+ private:
   std::string m_path;
   std::string m_filename;
 };

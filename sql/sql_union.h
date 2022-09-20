@@ -1,4 +1,4 @@
-/* Copyright (c) 2006, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2006, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -18,47 +18,60 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA */
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #ifndef SQL_UNION_INCLUDED
 #define SQL_UNION_INCLUDED
 
-#include "my_global.h"          // ulong
-#include "sql_class.h"          // Query_result_interceptor
+#include <sys/types.h>
 
-struct LEX;
+#include "my_inttypes.h"
+#include "sql/query_result.h"  // Query_result_interceptor
+#include "sql/table.h"
+#include "sql/temp_table_param.h"  // Temp_table_param
 
-typedef class st_select_lex_unit SELECT_LEX_UNIT;
+class Item;
+class Query_expression;
+class THD;
+template <class Element_type>
+class mem_root_deque;
 
-class Query_result_union :public Query_result_interceptor
-{
+class Query_result_union : public Query_result_interceptor {
+ protected:
   Temp_table_param tmp_table_param;
-public:
+
+ public:
   TABLE *table;
-  bool is_union_mixed_with_union_all; // Mark the mixed operation
 
-  Query_result_union() :table(0),
-  is_union_mixed_with_union_all(false){}
-  int prepare(List<Item> &list, SELECT_LEX_UNIT *u);
+  Query_result_union() : Query_result_interceptor(), table(nullptr) {}
+  bool prepare(THD *thd, const mem_root_deque<Item *> &list,
+               Query_expression *u) override;
   /**
-    Do prepare() and prepare2() if they have been postponed until
-    column type information is computed (used by Query_result_union_direct).
+    Do prepare() if preparation has been postponed until column type
+    information is computed (used by Query_result_union_direct).
 
+    @param thd   Thread handle
     @param types Column types
 
     @return false on success, true on failure
   */
-  virtual bool postponed_prepare(List<Item> &types)
-  { return false; }
-  bool send_data(List<Item> &items);
-  bool send_eof();
+  virtual bool postponed_prepare(THD *thd [[maybe_unused]],
+                                 const mem_root_deque<Item *> &types
+                                 [[maybe_unused]]) {
+    return false;
+  }
+  bool send_data(THD *thd, const mem_root_deque<Item *> &items) override;
+  bool send_eof(THD *thd) override;
   virtual bool flush();
-  void cleanup();
-  bool create_result_table(THD *thd, List<Item> *column_types,
+  void cleanup(THD *) override { (void)reset(); }
+  bool reset() override;
+  bool create_result_table(THD *thd, const mem_root_deque<Item *> &column_types,
                            bool is_distinct, ulonglong options,
                            const char *alias, bool bit_fields_as_long,
                            bool create_table);
-  friend bool TABLE_LIST::create_derived(THD *thd);
+  friend bool TABLE_LIST::create_materialized_table(THD *thd);
+  friend bool TABLE_LIST::optimize_derived(THD *thd);
+  uint get_hidden_field_count() { return tmp_table_param.hidden_field_count; }
 };
 
 #endif /* SQL_UNION_INCLUDED */

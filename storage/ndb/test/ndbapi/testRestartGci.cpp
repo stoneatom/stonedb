@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -46,7 +46,7 @@ struct SavedRecord {
   SavedRecord(){
     m_gci = 0;
     m_str = "";
-  };
+  }
 };
 Vector<SavedRecord> savedRecords;
 Uint64 highestExpectedGci;
@@ -734,7 +734,7 @@ TESTCASE("InitialNodeRestartUpdate",
   FINALIZER(runClearTable);
   FINALIZER(runDropTable);
 }
-NDBT_TESTSUITE_END(testRestartGci);
+NDBT_TESTSUITE_END(testRestartGci)
 
 int main(int argc, const char** argv){
   ndb_init();

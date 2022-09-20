@@ -1,4 +1,5 @@
-/* Copyright (c) 2008, 2021, Oracle and/or its affiliates.
+/*
+   Copyright (c) 2008, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -18,7 +19,7 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA */
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #ifndef AsyncIoThread_H
 #define AsyncIoThread_H
@@ -26,6 +27,8 @@
 #include <kernel_types.h>
 #include "MemoryChannel.hpp"
 #include <signaldata/BuildIndxImpl.hpp>
+#include <NdbTick.h>
+#include "util/ndb_openssl_evp.h"
 
 // Use this define if you want printouts from AsyncFile class
 //#define DEBUG_ASYNCFILE
@@ -46,6 +49,7 @@ void printErrorAndFlags(Uint32 used_flags);
 const int ERR_ReadUnderflow = 1000;
 
 class AsyncFile;
+class AsyncIoThread;
 struct Block_context;
 
 class Request
@@ -53,21 +57,19 @@ class Request
 public:
   Request() {}
 
-  void atGet() { m_do_bind = false; }
+  void atGet()
+  {
+    m_do_bind = false;
+    NdbTick_Invalidate(&m_startTime);
+  }
 
   enum Action {
     open,
     close,
     closeRemove,
-    read,   // Allways leave readv directly after
-            // read because SimblockAsyncFileSystem depends on it
-    readv,
-    write,// Allways leave writev directly after
-	        // write because SimblockAsyncFileSystem depends on it
-    writev,
-    writeSync,// Allways leave writevSync directly after
-    // writeSync because SimblockAsyncFileSystem depends on it
-    writevSync,
+    read,
+    write,
+    writeSync,
     sync,
     end,
     append,
@@ -79,6 +81,7 @@ public:
     suspend
   };
   Action action;
+  static const char* actionName(Action);
   union {
     struct {
       Uint32 flags;
@@ -114,8 +117,17 @@ public:
       Uint32 milliseconds;
     } suspend;
   } par;
-  int error;
-
+  struct {
+    int code;
+    int line;
+    const char* file;
+    const char* func;
+  } error;
+  void set_error(int code, int line, const char* file, const char* func) {
+    error = { code, line, file, func};
+  }
+#define NDBFS_SET_REQUEST_ERROR(req,code) \
+          ((req)->set_error((code), __LINE__, __FILE__, __func__))
   void set(BlockReference userReference,
 	   Uint32 userPointer,
 	   Uint16 filePointer);
@@ -124,13 +136,18 @@ public:
   Uint16 theFilePointer;
    // Information for open, needed if the first open action fails.
   AsyncFile* file;
+  AsyncIoThread* thread;
   Uint32 theTrace;
   bool m_do_bind;
 
   MemoryChannel<Request>::ListMember m_mem_channel;
 
   // file info for debug
-  Uint32 m_fileinfo;
+  Uint32 m_file_size_hi;
+  Uint32 m_file_size_lo;
+
+  /* More debugging info */
+  NDB_TICKS m_startTime;
 };
 
 NdbOut& operator <<(NdbOut&, const Request&);
@@ -151,7 +168,7 @@ class AsyncIoThread
   friend class AsyncFile;
 public:
   AsyncIoThread(class Ndbfs&, bool bound);
-  virtual ~AsyncIoThread() {};
+  virtual ~AsyncIoThread() {}
 
   struct NdbThread* doStart();
   void set_real_time(bool real_time)
@@ -185,6 +202,11 @@ private:
   NdbMutex* theStartMutexPtr;
   NdbCondition* theStartConditionPtr;
 
+  /*
+   * Keep an encryption context for reuse for thread unbound files since
+   * recreating EVP_CIPHER_CTX is slow.
+   */
+  ndb_openssl_evp::operation m_openssl_evp_op;
   /**
    * Alloc mem in FS thread
    */

@@ -1,6 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -30,7 +29,7 @@
 #include <NdbOut.hpp>
 
 #include <EventLogger.hpp>
-extern EventLogger * g_eventLogger;
+#include <NdbMutex.h>
 
 //#define DEBUG_OBJECTMAP
 
@@ -40,15 +39,25 @@ extern EventLogger * g_eventLogger;
 class NdbObjectIdMap
 {
 public:
-  STATIC_CONST( InvalidId = 0x7fffffff );
-  NdbObjectIdMap(Uint32 initalSize, Uint32 expandSize);
+  static constexpr Uint32 InvalidId = 0x7fffffff;
+
+private:
+  /**
+   * class NdbObjectIdMap is only intended to be used through
+   * class NdbImpl.
+   */
+  friend class NdbImpl;
+
+  NdbObjectIdMap(Uint32 initialSize, Uint32 expandSize, NdbMutex* mutex);
   ~NdbObjectIdMap();
 
   Uint32 map(void * object);
   void * unmap(Uint32 id, void *object);
   
-  void * getObject(Uint32 id);
-private:
+  void * getObject(Uint32 id) const;
+
+  // mutex belonging to the NdbImpl object that owns this object map
+  NdbMutex* m_mutex;
   const Uint32 m_expandSize;
   Uint32 m_size;
   Uint32 m_firstFree;
@@ -112,14 +121,17 @@ inline
 Uint32
 NdbObjectIdMap::map(void * object)
 {
-  if(m_firstFree == InvalidId && expand(m_expandSize))
-    return InvalidId;
+  if(m_firstFree == InvalidId)
+  {
+    if (expand(m_expandSize) != 0)
+      return InvalidId;
+  }
   
   const Uint32 ff = m_firstFree;
   m_firstFree = m_map[ff].getNext();
   m_map[ff].setObj(object);
   
-  DBUG_PRINT("info",("NdbObjectIdMap::map(0x%lx) %u", (long) object, ff<<2));
+  DBUG_PRINT("info",("NdbObjectIdMap::map(%p) %u", object, ff<<2));
 
   return ff<<2;
 }
@@ -149,15 +161,15 @@ NdbObjectIdMap::unmap(Uint32 id, void *object)
     } 
     else 
     {
-      g_eventLogger->error("NdbObjectIdMap::unmap(%u, 0x%lx) obj=0x%lx",
-                           id, (long) object, (long) obj);
-      DBUG_PRINT("error",("NdbObjectIdMap::unmap(%u, 0x%lx) obj=0x%lx",
-                          id, (long) object, (long) obj));
+      g_eventLogger->error("NdbObjectIdMap::unmap(%u, %p) obj=%p",
+                           id, object, obj);
+      DBUG_PRINT("error",("NdbObjectIdMap::unmap(%u, %p) obj=%p",
+                          id, object, obj));
       assert(false);
       return 0;
     }
     
-    DBUG_PRINT("info",("NdbObjectIdMap::unmap(%u) obj=0x%lx", id, (long) obj));
+    DBUG_PRINT("info",("NdbObjectIdMap::unmap(%u) obj=%p", id, obj));
     
     return obj;
   }
@@ -165,7 +177,7 @@ NdbObjectIdMap::unmap(Uint32 id, void *object)
 }
 
 inline void *
-NdbObjectIdMap::getObject(Uint32 id)
+NdbObjectIdMap::getObject(Uint32 id) const
 {
   // DBUG_PRINT("info",("NdbObjectIdMap::getObject(%u) obj=0x%x", id,  m_map[id>>2].m_obj));
   id >>= 2;

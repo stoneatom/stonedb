@@ -17,24 +17,32 @@
 # Gather port + serverid
 
 select @primary_server_id:=(variable_value+0)
-       from information_schema.global_variables
+       from performance_schema.global_variables
        where variable_name like 'server_id';
 let $PRIMARY_SERVER_ID= query_get_value('select @primary_server_id as v',v,1);
 select @primary_server_port:=(variable_value+0)
-       from information_schema.global_variables
+       from performance_schema.global_variables
        where variable_name like 'port';
 let $PRIMARY_SERVER_PORT= query_get_value('select @primary_server_port as v', v,1);
+
+# Suppress warnings sometimes seen
+call mtr.add_suppression("Master is configured to log replication events with checksum");
+call mtr.add_suppression("Request to stop slave SQL Thread received while applying a group that has non-transactional changes; waiting for completion of the group");
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 # Gather port + serverid
 select @secondary_server_id:=(variable_value+0)
-       from information_schema.global_variables
+       from performance_schema.global_variables
        where variable_name like 'server_id';
 let $SECONDARY_SERVER_ID= query_get_value('select @secondary_server_id as v',v,1);
 select @secondary_server_port:=(variable_value+0)
-       from information_schema.global_variables
+       from performance_schema.global_variables
        where variable_name like 'port';
 let $SECONDARY_SERVER_PORT= query_get_value('select @secondary_server_port as v', v,1);
+
+# Suppress warnings sometimes seen
+call mtr.add_suppression("Master is configured to log replication events with checksum");
+call mtr.add_suppression("Request to stop slave SQL Thread received while applying a group that has non-transactional changes; waiting for completion of the group");
 
 # Now set it up
 # Stop Slave @ Secondary
@@ -48,7 +56,7 @@ STOP SLAVE;
 # Clear Primary Binlog
 RESET MASTER;
 
---eval CHANGE MASTER TO master_host="127.0.0.1",master_port=$SECONDARY_SERVER_PORT,master_user="root"
+--eval CHANGE REPLICATION SOURCE TO SOURCE_HOST="127.0.0.1",SOURCE_PORT=$SECONDARY_SERVER_PORT,SOURCE_USER="root"
 
 # Start Primary replicating from Secondary
 START SLAVE;
@@ -62,7 +70,7 @@ START SLAVE;
 --disable_result_log
 
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
---eval CHANGE MASTER TO master_host="127.0.0.1",master_port=$PRIMARY_SERVER_PORT,master_user="root"
+--eval CHANGE REPLICATION SOURCE TO SOURCE_HOST="127.0.0.1",SOURCE_PORT=$PRIMARY_SERVER_PORT,SOURCE_USER="root"
 
 # Start Secondary replicating from Primary
 START SLAVE;
@@ -109,22 +117,22 @@ create table test.t1$EX(
    ndb$op_type           enum('write_row','update_row', 'delete_row') not null,
    ndb$cft_cause         enum('row_does_not_exist','row_already_exists','data_in_conflict','trans_in_conflict') not null,
    primary key(ndb$server_id, ndb$master_server_id, ndb$master_epoch, ndb$count)) 
-engine ndb;
+engine ndb character set latin1;
 
 create table test.t1 (
   k int primary key,
   v int,
-  c varchar(2000)) engine=ndb;
+  c varchar(2000)) engine=ndb character set latin1;
 
 --echo Setup conflict roles
 --echo --------------------
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 STOP SLAVE;
-set global ndb_slave_conflict_role="PRIMARY";
+set global ndb_applier_conflict_role="PRIMARY";
 START SLAVE;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 STOP SLAVE;
-set global ndb_slave_conflict_role="SECONDARY";
+set global ndb_applier_conflict_role="SECONDARY";
 START SLAVE;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 
@@ -578,7 +586,7 @@ if ($loop_count)
   --source suite/ndb_rpl/t/ndb_conflict_info_epoch2_init.inc
 
   # Switch Primary -> Secondary
-  set global ndb_slave_conflict_role="SECONDARY";
+  set global ndb_applier_conflict_role="SECONDARY";
   --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
   STOP SLAVE;
   # Reset exceptions table + counters on old primary
@@ -586,7 +594,7 @@ if ($loop_count)
   --source suite/ndb_rpl/t/ndb_conflict_info_epoch2_init.inc
   
   # Switch Secondary -> Primary
-  set global ndb_slave_conflict_role="PRIMARY";
+  set global ndb_applier_conflict_role="PRIMARY";
   
   # TODO : Make it work for more iterations that 1 + 0
   let $switchroles=query_get_value('SELECT $loop_count %2 as odd', odd, 1);
@@ -640,14 +648,14 @@ if ($loop_count)
 --echo Lets set it up
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 STOP SLAVE;
-set global ndb_slave_conflict_role="NONE";
-set global ndb_slave_conflict_role="PASS";
+set global ndb_applier_conflict_role="NONE";
+set global ndb_applier_conflict_role="PASS";
 --source suite/ndb_rpl/t/ndb_conflict_info_epoch2_init.inc
 START SLAVE;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 STOP SLAVE;
-set global ndb_slave_conflict_role="NONE";
-set global ndb_slave_conflict_role="PASS";
+set global ndb_applier_conflict_role="NONE";
+set global ndb_applier_conflict_role="PASS";
 --source suite/ndb_rpl/t/ndb_conflict_info_epoch2_init.inc
 START SLAVE;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
@@ -696,6 +704,8 @@ START SLAVE;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 --source suite/ndb_rpl/t/ndb_sync_primary_to_secondary.inc
 
+# Debugging for bug#28840766
+--let $EXPECT_STABILITY=1
 --echo Now look at primary content and conflict counters
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 select * from test.t1 order by k;
@@ -705,7 +715,7 @@ select * from test.t1 order by k;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 select * from test.t1 order by k;
 --source suite/ndb_rpl/t/ndb_conflict_info_epoch2.inc
-
+--let $EXPECT_STABILITY=0
 
 --echo Now look at how row existence errors are handled
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
@@ -797,13 +807,13 @@ delete from test.t1 where k in (3, 6);
 
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 STOP SLAVE;
-set global ndb_slave_conflict_role="NONE";
-set global ndb_slave_conflict_role="PRIMARY";
+set global ndb_applier_conflict_role="NONE";
+set global ndb_applier_conflict_role="PRIMARY";
 START SLAVE;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 STOP SLAVE;
-set global ndb_slave_conflict_role="NONE";
-set global ndb_slave_conflict_role="SECONDARY";
+set global ndb_applier_conflict_role="NONE";
+set global ndb_applier_conflict_role="SECONDARY";
 START SLAVE;
 
 --echo Test ndb_conflict_last_stable_epoch
@@ -854,9 +864,9 @@ while ($e_count)
 
 --disable_query_log
 --disable_result_log
-SELECT @ndb_last_conflict_epoch:= VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_CONFLICT_LAST_CONFLICT_EPOCH";
-SELECT @ndb_last_stable_epoch:=VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_CONFLICT_LAST_STABLE_EPOCH";
-SELECT @ndb_max_replicated_epoch:=VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_SLAVE_MAX_REPLICATED_EPOCH";
+SELECT @ndb_last_conflict_epoch:= VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME LIKE "NDB_CONFLICT_LAST_CONFLICT_EPOCH";
+SELECT @ndb_last_stable_epoch:=VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME LIKE "NDB_CONFLICT_LAST_STABLE_EPOCH";
+SELECT @ndb_max_replicated_epoch:=VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME LIKE "NDB_SLAVE_MAX_REPLICATED_EPOCH";
 --enable_result_log
 --enable_query_log
 # SELECT @ndb_last_conflict_epoch, @ndb_last_stable_epoch, @ndb_max_replicated_epoch;
@@ -888,9 +898,9 @@ START SLAVE;
 
 --disable_query_log
 --disable_result_log
-SELECT @ndb_last_conflict_epoch:= VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_CONFLICT_LAST_CONFLICT_EPOCH";
-SELECT @ndb_last_stable_epoch:=VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_CONFLICT_LAST_STABLE_EPOCH";
-SELECT @ndb_max_replicated_epoch:=VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_SLAVE_MAX_REPLICATED_EPOCH";
+SELECT @ndb_last_conflict_epoch:= VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME LIKE "NDB_CONFLICT_LAST_CONFLICT_EPOCH";
+SELECT @ndb_last_stable_epoch:=VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME LIKE "NDB_CONFLICT_LAST_STABLE_EPOCH";
+SELECT @ndb_max_replicated_epoch:=VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME LIKE "NDB_SLAVE_MAX_REPLICATED_EPOCH";
 --enable_result_log
 --enable_query_log
 #SELECT @ndb_last_conflict_epoch, @ndb_last_stable_epoch, @ndb_max_replicated_epoch;
@@ -918,9 +928,9 @@ delete from test.t1 where k >=10;
 
 --disable_query_log
 --disable_result_log
-SELECT @ndb_last_conflict_epoch:= VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_CONFLICT_LAST_CONFLICT_EPOCH";
-SELECT @ndb_last_stable_epoch:=VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_CONFLICT_LAST_STABLE_EPOCH";
-SELECT @ndb_max_replicated_epoch:=VARIABLE_VALUE FROM INFORMATION_SCHEMA.GLOBAL_STATUS WHERE VARIABLE_NAME LIKE "NDB_SLAVE_MAX_REPLICATED_EPOCH";
+SELECT @ndb_last_conflict_epoch:= VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME LIKE "NDB_CONFLICT_LAST_CONFLICT_EPOCH";
+SELECT @ndb_last_stable_epoch:=VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME LIKE "NDB_CONFLICT_LAST_STABLE_EPOCH";
+SELECT @ndb_max_replicated_epoch:=VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME LIKE "NDB_SLAVE_MAX_REPLICATED_EPOCH";
 --enable_result_log
 --enable_query_log
 #SELECT @ndb_last_conflict_epoch, @ndb_last_stable_epoch, @ndb_max_replicated_epoch;
@@ -937,11 +947,11 @@ SELECT (@ndb_last_stable_epoch+0) = (@ndb_max_replicated_epoch+0) AS STABLE_EPOC
 --echo --------------------
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 STOP SLAVE;
-set global ndb_slave_conflict_role="NONE";
+set global ndb_applier_conflict_role="NONE";
 START SLAVE;
 --source suite/ndb_rpl/t/ndb_connect_to_secondary.inc
 STOP SLAVE;
-set global ndb_slave_conflict_role="NONE";
+set global ndb_applier_conflict_role="NONE";
 START SLAVE;
 --source suite/ndb_rpl/t/ndb_connect_to_primary.inc
 

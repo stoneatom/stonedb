@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2015, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -18,17 +18,25 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA */
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #ifndef MYSQLD_DAEMON_INCLUDED
 #define MYSQLD_DAEMON_INCLUDED
 
-namespace mysqld
-{
-namespace runtime
-{
-  int mysqld_daemonize();
-  void signal_parent(int pipe_write_fd, char status);
-}
-}
-#endif // MYSQLD_DAEMON_INCLUDED
+namespace mysqld {
+namespace runtime {
+bool is_daemon();
+/**
+  Daemonize mysqld.
+
+  This function does sysv style of daemonization of mysqld.
+
+  @retval fd In daemon; file descriptor for the write end of the status pipe.
+  @retval -1 In parent, if successful.
+  @retval -2 In parent, in case of errors.
+ */
+int mysqld_daemonize();
+void signal_parent(int pipe_write_fd, char status);
+}  // namespace runtime
+}  // namespace mysqld
+#endif  // MYSQLD_DAEMON_INCLUDED

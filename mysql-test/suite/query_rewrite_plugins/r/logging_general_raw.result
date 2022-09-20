@@ -1,16 +1,10 @@
 #
 # Test of how rewritten queries are logged with --log-raw logging.
 #
-Warnings:
-Warning	1681	'RESET QUERY CACHE' is deprecated and will be removed in a future release.
-Warnings:
-Warning	1681	'RESET QUERY CACHE' is deprecated and will be removed in a future release.
 # Query rewrite plugin was installed.
 INSERT INTO query_rewrite.rewrite_rules ( pattern, replacement  )
 VALUES ( 'SELECT"The_original_query"', 'SELECT"The_rewritten_query"' );
 CALL query_rewrite.flush_rewrite_rules();
-Warnings:
-Warning	1681	'RESET QUERY CACHE' is deprecated and will be removed in a future release.
 SET @old_log_output=          @@global.log_output;
 SET @old_general_log=         @@global.general_log;
 SET @old_general_log_file=    @@global.general_log_file;
@@ -39,3 +33,7 @@ SET GLOBAL log_output=        @old_log_output;
 Warnings:
 Warning	1620	Plugin is busy and will be uninstalled on shutdown
 # Query rewrite plugin was queued for uninstalling.
+SET @@global.log_output = @old_log_output;
+SET @@global.general_log = @old_general_log;
+SET @@global.general_log_file = @old_general_log_file;
+TRUNCATE TABLE mysql.general_log;

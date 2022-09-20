@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -24,11 +24,19 @@
 
 #include <signaldata/LqhKey.hpp>
 
-bool
-printLQHKEYREQ(FILE * output, const Uint32 * theData, Uint32 len, Uint16 receiverBlockNo){
+bool printLQHKEYREQ(FILE *output,
+                    const Uint32 *theData,
+                    Uint32 len,
+                    Uint16 /*receiverBlockNo*/)
+{
+  if (len < LqhKeyReq::FixedSignalLength)
+  {
+    assert(false);
+    return false;
+  }
 
-  const LqhKeyReq * const sig = (LqhKeyReq *) theData;
-  
+  const LqhKeyReq *const sig = (const LqhKeyReq *)theData;
+
   fprintf(output,
     " ClientPtr = H\'%.8x hashValue = H\'%.8x tcBlockRef = H\'%.8x\n"
     " transId1 = H\'%.8x transId2 = H\'%.8x savePointId = H\'%.8x\n",
@@ -71,6 +79,8 @@ printLQHKEYREQ(FILE * output, const Uint32 * theData, Uint32 len, Uint16 receive
     fprintf(output, "Interpreted ");
   if(LqhKeyReq::getScanTakeOverFlag(attrLen))
     fprintf(output, "ScanTakeOver ");
+  if(LqhKeyReq::getReorgFlag(attrLen))
+    fprintf(output, "reorg: %u ", LqhKeyReq::getReorgFlag(attrLen));
   if(LqhKeyReq::getMarkerFlag(reqInfo))
     fprintf(output, "CommitAckMarker ");
   if(LqhKeyReq::getNoDiskFlag(reqInfo))
@@ -85,6 +95,12 @@ printLQHKEYREQ(FILE * output, const Uint32 * theData, Uint32 len, Uint16 receive
     fprintf(output, "Queue ");
   if(LqhKeyReq::getDeferredConstraints(reqInfo))
     fprintf(output, "Deferred-constraints ");
+  if(LqhKeyReq::getNoTriggersFlag(reqInfo))
+    fprintf(output, "NoTriggers ");
+  if(LqhKeyReq::getUtilFlag(reqInfo))
+    fprintf(output, "UtilFlag ");
+  if(LqhKeyReq::getNoWaitFlag(reqInfo))
+    fprintf(output, "NoWait ");
 
   fprintf(output, "ScanInfo/noFiredTriggers: H\'%x\n", sig->scanInfo);
   
@@ -149,6 +165,10 @@ printLQHKEYREQ(FILE * output, const Uint32 * theData, Uint32 len, Uint16 receive
     printed = true;
   }
 
+  /**
+   * Key info is only sent here if short signal, we assume it
+   * is a long signal.
+   *
   const UintR keyLen = LqhKeyReq::getKeyLen(reqInfo);
   if(keyLen > 0){
     fprintf(output, " KeyInfo: ");
@@ -156,6 +176,7 @@ printLQHKEYREQ(FILE * output, const Uint32 * theData, Uint32 len, Uint16 receive
       fprintf(output, "H\'%.8x ", sig->variableData[nextPos]);
     fprintf(output, "\n");
   }
+  */
 
   if (LqhKeyReq::getRowidFlag(reqInfo))
   {
@@ -199,9 +220,12 @@ printLQHKEYREQ(FILE * output, const Uint32 * theData, Uint32 len, Uint16 receive
   return true;
 }
 
-bool
-printLQHKEYCONF(FILE * output, const Uint32 * theData, Uint32 len, Uint16 receiverBlockNo){
-//  const LqhKeyConf * const sig = (LqhKeyConf *) theData;
+bool printLQHKEYCONF(FILE *output,
+                     const Uint32 *theData,
+                     Uint32 len,
+                     Uint16 /*receiverBlockNo*/)
+{
+  //  const LqhKeyConf * const sig = (const LqhKeyConf *) theData;
 
   fprintf(output, "Signal data: ");
   Uint32 i = 0;
@@ -212,9 +236,12 @@ printLQHKEYCONF(FILE * output, const Uint32 * theData, Uint32 len, Uint16 receiv
   return true;
 }
 
-bool
-printLQHKEYREF(FILE * output, const Uint32 * theData, Uint32 len, Uint16 receiverBlockNo){
-//  const LqhKeyRef * const sig = (LqhKeyRef *) theData;
+bool printLQHKEYREF(FILE *output,
+                    const Uint32 *theData,
+                    Uint32 len,
+                    Uint16 /*receiverBlockNo*/)
+{
+  //  const LqhKeyRef * const sig = (const LqhKeyRef *) theData;
 
   fprintf(output, "Signal data: ");
   Uint32 i = 0;

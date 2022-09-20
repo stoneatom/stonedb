@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2010, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2010, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -26,6 +26,9 @@
 #define EVENTLOGHANDLER_H
 
 #include "LogHandler.hpp"
+#include "portlib/ndb_compiler.h"
+
+#include <time.h>
 
 /**
  * Log messages to the Windows event log
@@ -55,7 +58,8 @@ public:
   static int printf(Logger::LoggerLevel m_level, const char* source_name,
                     const char* msg, ...) ATTRIBUTE_FORMAT(printf, 3, 4);
 private:
-  virtual void writeHeader(const char* pCategory, Logger::LoggerLevel level);
+  virtual void writeHeader(const char* pCategory, Logger::LoggerLevel level,
+                           time_t now);
   virtual void writeMessage(const char* pMsg);
   virtual void writeFooter();
 

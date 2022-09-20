@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2004, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -22,20 +22,22 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
+#include "util/require.h"
 #include <ndb_global.h>
 #include <ndb_opts.h>
 #include <time.h>
 
 #include <mgmapi.h>
-#include <NdbMain.h>
 #include <NdbOut.hpp>
 #include <NdbSleep.h>
 #include <NdbTick.h>
 #include <portlib/ndb_localtime.h>
 
-#include <NDBT.hpp>
+#include <NdbToolsProgramExitCodes.hpp>
 
 #include <kernel/NodeBitmask.hpp>
+
+#include "my_alloc.h"
 
 static int
 waitClusterStatus(const char* _addr, ndb_mgm_node_status _status);
@@ -48,43 +50,31 @@ static const char* _wait_nodes = 0;
 static const char* _nowait_nodes = 0;
 static NdbNodeBitmask nowait_nodes_bitmask;
 
-const char *load_default_groups[]= { "mysql_cluster",0 };
-
 static struct my_option my_long_options[] =
 {
   NDB_STD_OPTS("ndb_waiter"),
   { "no-contact", 'n', "Wait for cluster no contact",
-    (uchar**) &_no_contact, (uchar**) &_no_contact, 0,
+    &_no_contact, &_no_contact, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 }, 
   { "not-started", NDB_OPT_NOSHORT, "Wait for cluster not started",
-    (uchar**) &_not_started, (uchar**) &_not_started, 0,
+    &_not_started, &_not_started, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 }, 
   { "single-user", NDB_OPT_NOSHORT,
     "Wait for cluster to enter single user mode",
-    (uchar**) &_single_user, (uchar**) &_single_user, 0,
+    &_single_user, &_single_user, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 }, 
   { "timeout", 't', "Timeout to wait in seconds",
-    (uchar**) &_timeout, (uchar**) &_timeout, 0,
+    &_timeout, &_timeout, 0,
     GET_INT, REQUIRED_ARG, 120, 0, 0, 0, 0, 0 }, 
   { "wait-nodes", 'w', "Node ids to wait on, e.g. '1,2-4'",
-    (uchar**) &_wait_nodes, (uchar**) &_wait_nodes, 0,
+    &_wait_nodes, &_wait_nodes, 0,
     GET_STR, REQUIRED_ARG, 0, 0, 0, 0, 0, 0 },
   { "nowait-nodes", NDB_OPT_NOSHORT,
     "Nodes that will not be waited for, e.g. '2,3,4-7'",
-    (uchar**) &_nowait_nodes, (uchar**) &_nowait_nodes, 0,
+    &_nowait_nodes, &_nowait_nodes, 0,
     GET_STR, REQUIRED_ARG, 0, 0, 0, 0, 0, 0 },
   { 0, 0, 0, 0, 0, 0, GET_NO_ARG, NO_ARG, 0, 0, 0, 0, 0, 0}
 };
-
-static void short_usage_sub(void)
-{
-  ndb_short_usage_sub(NULL);
-}
-
-static void usage()
-{
-  ndb_usage(short_usage_sub, load_default_groups, my_long_options);
-}
 
 extern "C"
 void catch_signal(int signum)
@@ -95,8 +85,7 @@ void catch_signal(int signum)
 
 int main(int argc, char** argv){
   NDB_INIT(argv[0]);
-  ndb_opt_set_usage_funcs(short_usage_sub, usage);
-  ndb_load_defaults(NULL,load_default_groups,&argc,&argv);
+  Ndb_opts opts(argc, argv, my_long_options);
 
 #ifndef NDEBUG
   opt_debug= "d:t:O,/tmp/ndb_waiter.trace";
@@ -108,9 +97,8 @@ int main(int argc, char** argv){
   signal(SIGUSR1, catch_signal);
 #endif
 
-  if (handle_options(&argc, &argv, my_long_options,
-                     ndb_std_get_one_option))
-    return NDBT_ProgramExit(NDBT_WRONGARGS);
+  if (opts.handle_options())
+    return NdbToolsProgramExitCode::WRONG_ARGS;
 
   const char* connect_string = argv[0];
   if (connect_string == 0)
@@ -178,8 +166,9 @@ int main(int argc, char** argv){
   }
 
   if (waitClusterStatus(connect_string, wait_status) != 0)
-    return NDBT_ProgramExit(NDBT_FAILED);
-  return NDBT_ProgramExit(NDBT_OK);
+    return NdbToolsProgramExitCode::FAILED;
+
+  return NdbToolsProgramExitCode::OK;
 }
 
 #define MGMERR(h) \
@@ -206,9 +195,9 @@ getStatus(){
       MGMERR(handle);
       retries++;
       ndb_mgm_disconnect(handle);
-      if (ndb_mgm_connect(handle,0,0,1)) {
+      if (ndb_mgm_connect(handle, opt_connect_retries - 1, opt_connect_retry_delay, 1)) {
         MGMERR(handle);
-        g_err  << "Reconnect failed" << endl;
+        ndberr  << "Reconnect failed" << endl;
         break;
       }
       continue;
@@ -281,26 +270,26 @@ waitClusterStatus(const char* _addr,
 {
   int _startphase = -1;
 
-#ifndef NDB_WIN
+#ifndef _WIN32
   /* Ignore SIGPIPE */
   signal(SIGPIPE, SIG_IGN);
 #endif
 
   handle = ndb_mgm_create_handle();
   if (handle == NULL){
-    g_err << "Could not create ndb_mgm handle" << endl;
+    ndberr << "Could not create ndb_mgm handle" << endl;
     return -1;
   }
-  g_info << "Connecting to mgmsrv at " << _addr << endl;
+  ndbout << "Connecting to mgmsrv at " << _addr << endl;
   if (ndb_mgm_set_connectstring(handle, _addr))
   {
     MGMERR(handle);
-    g_err  << "Connectstring " << _addr << " invalid" << endl;
+    ndberr  << "Connectstring " << _addr << " invalid" << endl;
     return -1;
   }
-  if (ndb_mgm_connect(handle,0,0,1)) {
+  if (ndb_mgm_connect(handle, opt_connect_retries - 1, opt_connect_retry_delay, 1)) {
     MGMERR(handle);
-    g_err  << "Connection to " << _addr << " failed" << endl;
+    ndberr  << "Connection to " << _addr << " failed" << endl;
     return -1;
   }
 
@@ -343,14 +332,14 @@ waitClusterStatus(const char* _addr,
       }
 
       if (!waitMore || resetAttempts > MAX_RESET_ATTEMPTS){
-	g_err << "waitNodeState("
+	ndberr << "waitNodeState("
 	      << ndb_mgm_get_node_status_string(_status)
 	      <<", "<<_startphase<<")"
 	      << " timeout after " << attempts << " attempts" << endl;
 	return -1;
       }
 
-      g_err << "waitNodeState("
+      ndberr << "waitNodeState("
 	    << ndb_mgm_get_node_status_string(_status)
 	    <<", "<<_startphase<<")"
 	    << " resetting timeout "
@@ -376,7 +365,7 @@ waitClusterStatus(const char* _addr,
 
       require(ndbNode != NULL);
 
-      g_info << "Node " << ndbNode->node_id << ": "
+      ndbout << "Node " << ndbNode->node_id << ": "
 	     << ndb_mgm_get_node_status_string(ndbNode->node_status)<< endl;
 
       if (ndbNode->node_status !=  _status)
@@ -385,7 +374,7 @@ waitClusterStatus(const char* _addr,
 
     if (!allInState) {
       char timestamp[9];
-      g_info << "[" << getTimeAsString(timestamp, sizeof(timestamp)) << "] "
+      ndbout << "[" << getTimeAsString(timestamp, sizeof(timestamp)) << "] "
              << "Waiting for cluster enter state "
              << ndb_mgm_get_node_status_string(_status) << endl;
     }

@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2004, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2004, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -42,12 +42,14 @@ class CntrStartReq {
   friend bool printCNTR_START_REQ(FILE*, const Uint32 *, Uint32, Uint16);
   
 public:
-  STATIC_CONST( SignalLength = 3 );
+  static constexpr Uint32 OldSignalLength = 3;
+  static constexpr Uint32 SignalLength = 4;
 private:
   
   Uint32 nodeId;
   Uint32 startType;
   Uint32 lastGci;
+  Uint32 lastLcpId;
 };
 
 class CntrStartRef {
@@ -58,7 +60,7 @@ class CntrStartRef {
   
   friend bool printCNTR_START_REF(FILE*, const Uint32 *, Uint32, Uint16);
 public:
-  STATIC_CONST( SignalLength = 2 );
+  static constexpr Uint32 SignalLength = 2;
 
   enum ErrorCode {
     OK = 0,
@@ -81,7 +83,8 @@ class CntrStartConf {
   friend bool printCNTR_START_CONF(FILE*, const Uint32 *, Uint32, Uint16);
 
 public:
-  STATIC_CONST( SignalLength = 4 + 2 * NdbNodeBitmask::Size );
+  static constexpr Uint32 SignalLength = 4;
+  static constexpr Uint32 SignalLength_v1 = 4 + 2 * 2;
   
 private:
   
@@ -89,14 +92,18 @@ private:
   Uint32 startGci;
   Uint32 masterNodeId;
   Uint32 noStartNodes;
-  Uint32 startedNodes[NdbNodeBitmask::Size];
-  Uint32 startingNodes[NdbNodeBitmask::Size];
+  Uint32 startedNodes_v1[NdbNodeBitmask48::Size];
+  Uint32 startingNodes_v1[NdbNodeBitmask48::Size];
 };
 
 struct CntrWaitRep
 {
   Uint32 nodeId;
   Uint32 waitPoint;
+
+  // Below words only used for Grant not for WaitFor.
+  // WaitFor ZWAITPOINT_4_2 also pass node bitmask in section.
+  // For old versions ZWAITPOINT_4_2 pass a two word bitmask in signal here.
   Uint32 request;
   Uint32 sp;
 
@@ -106,7 +113,7 @@ struct CntrWaitRep
     Grant = 2
   };
 
-  STATIC_CONST( SignalLength = 4 );
+  static constexpr Uint32 SignalLength = 4;
 
   enum WaitPos
   {

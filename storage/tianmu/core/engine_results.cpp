@@ -25,18 +25,17 @@
 
 namespace Tianmu {
 namespace core {
-void scan_fields(List<Item> &fields, uint *&buf_lens, std::map<int, Item *> &items_backup) {
+// stonedb8 List -> mem_root_deque
+void scan_fields(mem_root_deque<Item *> &fields, uint *&buf_lens, std::map<int, Item *> &items_backup) {
   Item *item;
   Field *f;
   Item_field *ifield;
   Item_ref *iref;
   Item_sum *is;
-
   Item::Type item_type;
   Item_sum::Sumfunctype sum_type;
-  List_iterator<Item> li(fields);
 
-  buf_lens = new uint[fields.elements];
+  buf_lens = new uint[CountVisibleFields(fields)]; // stonedb8
   uint item_id = 0;
   uint field_length = 0;
   uint total_length = 0;
@@ -50,13 +49,14 @@ void scan_fields(List<Item> &fields, uint *&buf_lens, std::map<int, Item *> &ite
   types::Item_sum_sum_rcbase *isum_sum_rcbase;
   types::Item_sum_hybrid_rcbase *isum_hybrid_rcbase;
 
-  while ((item = li++)) {
+  for (auto it = fields.begin(); it != fields.end(); ++it) {  // stonedb8
+    item = *it;
     item_type = item->type();
     buf_lens[item_id] = 0;
     switch (item_type) {
       case Item::FIELD_ITEM: {  // regular select
         ifield = (Item_field *)item;
-        f = ifield->result_field;
+        f = ifield->get_result_field();
         auto iter_uf = used_fields.find((size_t)f);
         if (iter_uf == used_fields.end()) {
           used_fields.insert((size_t)f);
@@ -76,10 +76,10 @@ void scan_fields(List<Item> &fields, uint *&buf_lens, std::map<int, Item *> &ite
         tmp->decimals = item->decimals;
         tmp->hybrid_type_ = item->result_type();
         tmp->unsigned_flag = item->unsigned_flag;
-        tmp->hybrid_field_type_ = item->field_type();
+        tmp->hybrid_field_type_ = item->data_type();
         tmp->collation.set(item->collation);
         tmp->value_.set_charset(item->collation.collation);
-        li.replace(tmp);
+        fields[item_id] = tmp; // stonedb8
         break;
       }
       case Item::SUM_FUNC_ITEM: {
@@ -95,10 +95,10 @@ void scan_fields(List<Item> &fields, uint *&buf_lens, std::map<int, Item *> &ite
           isum_hybrid_rcbase->decimals = is->decimals;
           isum_hybrid_rcbase->hybrid_type_ = is->result_type();
           isum_hybrid_rcbase->unsigned_flag = is->unsigned_flag;
-          isum_hybrid_rcbase->hybrid_field_type_ = is->field_type();
+          isum_hybrid_rcbase->hybrid_field_type_ = is->data_type();
           isum_hybrid_rcbase->collation.set(is->collation);
           isum_hybrid_rcbase->value_.set_charset(is->collation.collation);
-          li.replace(isum_hybrid_rcbase);
+          fields[item_id] = isum_hybrid_rcbase; // stonedb8
           buf_lens[item_id] = 0;
           break;
         } else if (sum_type == Item_sum::COUNT_FUNC || sum_type == Item_sum::COUNT_DISTINCT_FUNC ||
@@ -106,7 +106,7 @@ void scan_fields(List<Item> &fields, uint *&buf_lens, std::map<int, Item *> &ite
           isum_int_rcbase = new types::Item_sum_int_rcbase();
           isum_int_rcbase->unsigned_flag = is->unsigned_flag;
           items_backup[item_id] = item;
-          li.replace(isum_int_rcbase);
+          fields[item_id] = isum_int_rcbase; // stonedb8
           buf_lens[item_id] = 0;
           break;
           // we can use the same type for SUM,AVG and SUM DIST, AVG DIST
@@ -120,7 +120,7 @@ void scan_fields(List<Item> &fields, uint *&buf_lens, std::map<int, Item *> &ite
           isum_sum_rcbase->decimals = is->decimals;
           isum_sum_rcbase->hybrid_type_ = is->result_type();
           isum_sum_rcbase->unsigned_flag = is->unsigned_flag;
-          li.replace(isum_sum_rcbase);
+          fields[item_id] = isum_sum_rcbase; // stonedb8
           buf_lens[item_id] = 0;
           break;
         } else {
@@ -135,19 +135,19 @@ void scan_fields(List<Item> &fields, uint *&buf_lens, std::map<int, Item *> &ite
   }  // end while
 
   item_id = 0;
-  li.rewind();
 
-  while ((item = li++)) {
+  for (auto it = fields.begin(); it != fields.end(); ++it) {  // stonedb8
+    item = *it;
     item_type = item->type();
     switch (item_type) {
       case Item::FIELD_ITEM:  // regular select
         ifield = (Item_field *)item;
-        f = ifield->result_field;
+        f = ifield->get_result_field();
         break;
       case Item::REF_ITEM:  // select from view
         iref = (Item_ref *)item;
         ifield = (Item_field *)(*iref->ref);
-        f = ifield->result_field;
+        f = ifield->get_result_field();
         break;
       default:
         break;
@@ -156,37 +156,39 @@ void scan_fields(List<Item> &fields, uint *&buf_lens, std::map<int, Item *> &ite
   }
 }
 
-void restore_fields(List<Item> &fields, std::map<int, Item *> &items_backup) {
+// stonedb8 List -> mem_root_deque
+void restore_fields(mem_root_deque<Item *> &fields, std::map<int, Item *> &items_backup) {
   // nothing to restore
   if (items_backup.size() == 0) {
     return;
   }
 
   Item *item;
-  List_iterator<Item> li(fields);
-
   int count = 0;
-  while ((item = li++)) {
-    if (items_backup.find(count) != items_backup.end()) li.replace(items_backup[count]);
+  for (auto it = fields.begin(); it != fields.end(); ++it) { // stonedb8
+    item = *it;
+    if (items_backup.find(count) != items_backup.end()) 
+      fields[count] = items_backup[count]; // stonedb8
     count++;
   }
 }
 
 inline static void SetFieldState(Field *field, bool is_null) {
   if (is_null) {
-    if (field->real_maybe_null())
+    if (field->is_nullable())
       field->set_null();
     else  // not nullable, but null needed because of outer join
       field->table->null_row = 1;
   } else {
-    if (field->real_maybe_null())
+    if (field->is_nullable())
       field->set_notnull();
     else  // not nullable, but null needed because of outer join
       field->table->null_row = 0;
   }
 }
 
-ResultSender::ResultSender(THD *thd, Query_result *res, List<Item> &fields)
+// stonedb8 List -> mem_root_deque
+ResultSender::ResultSender(THD *thd, Query_result *res, mem_root_deque<Item *> &fields)
     : thd(thd),
       res(res),
       buf_lens(NULL),
@@ -197,10 +199,9 @@ ResultSender::ResultSender(THD *thd, Query_result *res, List<Item> &fields)
       rows_sent(0) {}
 
 void ResultSender::Init([[maybe_unused]] TempTable *t) {
-  thd->proc_info = "Sending data";
-  DBUG_PRINT("info", ("%s", thd->proc_info));
-  res->send_result_set_metadata(fields, Protocol::SEND_NUM_ROWS | Protocol::SEND_EOF);
-
+  thd->set_proc_info("Sending data");
+  DBUG_PRINT("info", ("%s", thd->proc_info()));
+  res->send_result_set_metadata(thd, fields, Protocol::SEND_NUM_ROWS | Protocol::SEND_EOF);
   thd->lex->unit->offset_limit_cnt = 0;
   thd->current_found_rows = 0;
   scan_fields(fields, buf_lens, items_backup);
@@ -276,20 +277,19 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::RCDataTyp
   uint col_id = 0;
   int64_t value;
 
-  List_iterator_fast<Item> li(fields);
-  li.rewind();
-  while ((item = li++)) {
+  for (auto it = fields.begin(); it != fields.end(); ++it) { // stonedb8
+    item = *it;
     int is_null = 0;
     types::RCDataType &rcdt(*r[col_id]);
     switch (item->type()) {
       case Item::DEFAULT_VALUE_ITEM:
       case Item::FIELD_ITEM:  // regular select
         ifield = (Item_field *)item;
-        f = ifield->result_field;
+        f = ifield->get_result_field();
         // if buf_lens[col_id] is 0 means that f->ptr was not assigned
         // because it was assigned for this instance of object
         if (buf_lens[col_id] != 0) {
-          bitmap_set_bit(f->table->write_set, f->field_index);
+          bitmap_set_bit(f->table->write_set, f->field_index());
           auto is_null = Engine::ConvertToField(f, rcdt, NULL);
           SetFieldState(f, is_null);
         }
@@ -297,9 +297,9 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::RCDataTyp
       case Item::REF_ITEM:  // select from view
         iref = (Item_ref *)item;
         ifield = (Item_field *)(*iref->ref);
-        f = ifield->result_field;
+        f = ifield->get_result_field();
         if (buf_lens[col_id] != 0) {
-          bitmap_set_bit(f->table->write_set, f->field_index);
+          bitmap_set_bit(f->table->write_set, f->field_index());
           auto is_null = Engine::ConvertToField(f, rcdt, NULL);
           SetFieldState(f, is_null);
         }
@@ -330,7 +330,7 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::RCDataTyp
         // do not check COUNT_DISTINCT_FUNC, we use only this for both types
         if (sum_type == Item_sum::COUNT_FUNC || sum_type == Item_sum::SUM_BIT_FUNC) {
           isum_int_rcbase = (types::Item_sum_int_rcbase *)is;
-          Engine::Convert(is_null, value, rcdt, is->field_type());
+          Engine::Convert(is_null, value, rcdt, is->data_type());
           if (is_null) value = 0;
           isum_int_rcbase->int64_value(value);
           break;
@@ -353,7 +353,7 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::RCDataTyp
     }  // end switch
     col_id++;
   }  // end while
-  res->send_data(fields);
+  res->send_data(thd, fields);
 }
 
 void ResultSender::Send(TempTable *t) {
@@ -374,7 +374,7 @@ void ResultSender::Finalize(TempTable *result_table) {
   if (result_table && !result_table->IsSent()) Send(result_table);
   CleanUp();
   SendEof();
-  ulonglong cost_time = (thd->current_utime() - thd->start_utime) / 1000;
+  ulonglong cost_time = (my_micro_time() - thd->start_utime) / 1000;
   auto &sctx = thd->m_main_security_ctx;
   if (rc_querylog_.isOn())
     rc_querylog_ << system::lock << "\tClientIp:" << (sctx.ip().length ? sctx.ip().str : "unkownn")
@@ -387,11 +387,12 @@ void ResultSender::Finalize(TempTable *result_table) {
 
 void ResultSender::CleanUp() { restore_fields(fields, items_backup); }
 
-void ResultSender::SendEof() { res->send_eof(); }
+void ResultSender::SendEof() { res->send_eof(thd); }
 
 ResultSender::~ResultSender() { delete[] buf_lens; }
 
-ResultExportSender::ResultExportSender(THD *thd, Query_result *result, List<Item> &fields)
+// stonedb8 List -> mem_root_deque
+ResultExportSender::ResultExportSender(THD *thd, Query_result *result, mem_root_deque<Item *>  &fields)
     : ResultSender(thd, result, fields) {
   export_res = dynamic_cast<exporter::select_tianmu_export *>(result);
   DEBUG_ASSERT(export_res);
@@ -406,11 +407,11 @@ void ResultExportSender::SendEof() {
 void init_field_scan_helpers(THD *&thd, TABLE &tmp_table, TABLE_SHARE &share) {
   tmp_table.alias = 0;
   tmp_table.s = &share;
-  init_tmp_table_share(thd, &share, "", 0, "", "");
+  init_tmp_table_share(thd, &share, "", 0, "", "", nullptr);
 
   tmp_table.s->db_create_options = 0;
   tmp_table.s->db_low_byte_first = false; /* or true */
-  tmp_table.null_row = tmp_table.maybe_null = 0;
+  tmp_table.null_row = 0; // stonedb8 TABLE::maybe_null is deleted, and not use it
 }
 
 fields_t::value_type guest_field_type(THD *&thd, TABLE &tmp_table, Item *&item) {
@@ -451,8 +452,8 @@ AttributeTypeInfo create_ati(THD *&thd, TABLE &tmp_table, Item *&item) {
 }
 
 void ResultExportSender::Init(TempTable *t) {
-  thd->proc_info = "Exporting data";
-  DBUG_PRINT("info", ("%s", thd->proc_info));
+  thd->set_proc_info("Exporting data");
+  DBUG_PRINT("info", ("%s", thd->proc_info()));
   DEBUG_ASSERT(t);
 
   thd->lex->unit->offset_limit_cnt = 0;
@@ -461,22 +462,22 @@ void ResultExportSender::Init(TempTable *t) {
 
   common::TIANMUError tianmu_error;
 
-  export_res->send_result_set_metadata(fields, Protocol::SEND_NUM_ROWS | Protocol::SEND_EOF);
+  export_res->send_result_set_metadata(thd, fields, Protocol::SEND_NUM_ROWS | Protocol::SEND_EOF);
 
   if ((tianmu_error = Engine::GetIOP(iop, *thd, *export_res->SqlExchange(), 0, NULL, true)) != common::ErrorCode::SUCCESS)
     throw common::Exception("Unable to get IOP");
 
-  List_iterator_fast<Item> li(fields);
   fields_t f;
-  li.rewind();
-  Item *item(NULL);
+  Item *item;
   TABLE tmp_table;  // Used during 'Create_field()'
   TABLE_SHARE share;
   init_field_scan_helpers(thd, tmp_table, share);
 
   std::vector<AttributeTypeInfo> deas = t->GetATIs(iop->GetEDF() != common::EDF::TRI_UNKNOWN);
   int i = 0;
-  while ((item = li++) != nullptr) {
+
+  for (auto it = fields.begin(); it != fields.end(); ++it) { // stonedb8
+    item = *it;
     fields_t::value_type ft = guest_field_type(thd, tmp_table, item);
     f.push_back(ft);
     deas[i] = create_ati(thd, tmp_table, item);
@@ -492,24 +493,23 @@ void ResultExportSender::Init(TempTable *t) {
 
 // send to Exporter
 void ResultExportSender::SendRecord(const std::vector<std::unique_ptr<types::RCDataType>> &r) {
-  List_iterator_fast<Item> li(fields);
   Item *l_item;
-  li.rewind();
   uint o = 0;
-  while ((l_item = li++) != nullptr) {
+  for (auto it = fields.begin(); it != fields.end(); ++it) { // stonedb8
+    l_item = *it;
     types::RCDataType &rcdt(*r[o]);
     if (rcdt.IsNull())
       rcde->PutNull();
     else if (ATI::IsTxtType(rcdt.Type())) {
       types::BString val(rcdt.ToBString());
-      if (l_item->field_type() == MYSQL_TYPE_DATE) {
+      if (l_item->data_type() == MYSQL_TYPE_DATE) {
         types::RCDateTime dt;
         types::ValueParserForText::ParseDateTime(val, dt, common::CT::DATE);
         rcde->PutDateTime(dt.GetInt64());
-      } else if ((l_item->field_type() == MYSQL_TYPE_DATETIME) || (l_item->field_type() == MYSQL_TYPE_TIMESTAMP)) {
+      } else if ((l_item->data_type() == MYSQL_TYPE_DATETIME) || (l_item->data_type() == MYSQL_TYPE_TIMESTAMP)) {
         types::RCDateTime dt;
         types::ValueParserForText::ParseDateTime(val, dt, common::CT::DATETIME);
-        if (l_item->field_type() == MYSQL_TYPE_TIMESTAMP) {
+        if (l_item->data_type() == MYSQL_TYPE_TIMESTAMP) {
           types::RCDateTime::AdjustTimezone(dt);
         }
         rcde->PutDateTime(dt.GetInt64());

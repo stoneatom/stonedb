@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2004, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2004, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -22,6 +22,7 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
+#include "util/require.h"
 #include <ndb_global.h>
 
 #include "ndb_cluster_connection_impl.hpp"
@@ -38,6 +39,7 @@
 #include <mgmapi_internal.h>
 #include "NdbImpl.hpp"
 #include "NdbDictionaryImpl.hpp"
+#include "ProcessInfo.hpp"
 
 #include <NdbMutex.h>
 #ifdef VM_TRACE
@@ -45,7 +47,6 @@ NdbMutex *ndb_print_state_mutex= NULL;
 #endif
 
 #include <EventLogger.hpp>
-extern EventLogger *g_eventLogger;
 
 static int g_ndb_connection_count = 0;
 
@@ -69,6 +70,16 @@ Ndb_cluster_connection::Ndb_cluster_connection(const char *connect_string,
                                                main_connection)
   : m_impl(* new Ndb_cluster_connection_impl(connect_string,
                                              main_connection, 0))
+{
+}
+
+
+Ndb_cluster_connection::Ndb_cluster_connection(const char *connect_string,
+                                               Ndb_cluster_connection *
+                                               main_connection,
+                                               int force_api_nodeid)
+  : m_impl(* new Ndb_cluster_connection_impl(connect_string,
+                                             main_connection, force_api_nodeid))
 {
 }
 
@@ -96,6 +107,11 @@ const char *Ndb_cluster_connection::get_connected_host() const
   if (m_impl.m_config_retriever)
     return m_impl.m_config_retriever->get_mgmd_host();
   return 0;
+}
+
+Uint32 Ndb_cluster_connection::get_config_generation() const
+{
+  return m_impl.m_config_generation;
 }
 
 int
@@ -175,6 +191,14 @@ int Ndb_cluster_connection::start_connect_thread(int (*connect_callback)(void))
                        0, // default stack size
                        "ndb_cluster_connection",
 		       NDB_THREAD_PRIO_LOW);
+    if (m_impl.m_connect_thread == NULL)
+    {
+      g_eventLogger->info(
+          "Ndb_cluster_connection::start_connect_thread: "
+          "Failed to create thread for cluster connection.");
+      assert(m_impl.m_connect_thread != NULL);
+      DBUG_RETURN(-1);
+    }
   }
   else if (r < 0)
   {
@@ -209,17 +233,29 @@ Ndb_cluster_connection_impl::init_get_next_node
 Uint32
 Ndb_cluster_connection_impl::get_next_node(Ndb_cluster_connection_node_iter &iter)
 {
+  /**
+   * Note that iter may be out dated by changes to m_nodes_proximity.
+   * m_nodes_proximity can be changed by application calling
+   * set_data_node_neighbour() which in turn calls adjust_node_proximity that
+   * can rearrange the nodes.  This can even happen concurrently by another
+   * thread.
+   *
+   * It is assumed that each fields in the Node struct will at least be updated
+   * atomically.  And the fact that sometimes the next node selected may be the
+   * wrong one is ignored and taken as an glitch choosing a possible non
+   * optimal node once after call to set_data_node_neighbour().
+   */
   Uint32 cur_pos= iter.cur_pos;
   if (cur_pos >= no_db_nodes())
     return 0;
 
-  Ndb_cluster_connection_impl::Node *nodes= m_all_nodes.getBase();
+  Ndb_cluster_connection_impl::Node *nodes= m_nodes_proximity.getBase();
   Ndb_cluster_connection_impl::Node &node=  nodes[cur_pos];
 
   if (iter.scan_state != (Uint8)~0)
   {
     assert(iter.scan_state < no_db_nodes());
-    if (nodes[iter.scan_state].group == node.group)
+    if (nodes[iter.scan_state].adjusted_group == node.adjusted_group)
       iter.scan_state= ~0;
     else
       return nodes[iter.scan_state++].id;
@@ -229,9 +265,9 @@ Ndb_cluster_connection_impl::get_next_node(Ndb_cluster_connection_node_iter &ite
 
   cur_pos++;
   Uint32 init_pos= iter.init_pos;
-  if (cur_pos == node.next_group)
+  if (cur_pos == node.next_group_idx)
   {
-    cur_pos= nodes[init_pos].this_group;
+    cur_pos= nodes[init_pos].this_group_idx;
   }
 
   //  fprintf(stderr,"[cur_pos %d]",cur_pos);
@@ -239,8 +275,8 @@ Ndb_cluster_connection_impl::get_next_node(Ndb_cluster_connection_node_iter &ite
     iter.cur_pos= cur_pos;
   else
   {
-    iter.cur_pos= node.next_group;
-    iter.init_pos= node.next_group;
+    iter.cur_pos= node.next_group_idx;
+    iter.init_pos= node.next_group_idx;
   }
   return node.id;
 }
@@ -270,7 +306,15 @@ Ndb_cluster_connection_impl::get_next_alive_node(Ndb_cluster_connection_node_ite
 unsigned
 Ndb_cluster_connection::no_db_nodes()
 {
-  return m_impl.m_all_nodes.size();
+  assert(m_impl.m_db_nodes.count() ==
+           m_impl.m_nodes_proximity.size());
+  return m_impl.m_nodes_proximity.size();
+}
+
+Uint32
+Ndb_cluster_connection::max_api_nodeid() const
+{
+  return m_impl.m_max_api_nodeid;
 }
 
 unsigned
@@ -286,14 +330,16 @@ Ndb_cluster_connection::max_nodegroup()
   if (tp == 0 || tp->ownId() == 0)
     return 0;
 
-  Bitmask<MAX_NDB_NODES> ng;
+  NdbNodeBitmask ng;
   tp->lock_poll_mutex();
-  for(unsigned i= 0; i < no_db_nodes(); i++)
+  for (Uint32 node_id = m_impl.m_db_nodes.find_first();
+       node_id != NdbNodeBitmask::NotFound;
+       node_id = m_impl.m_db_nodes.find_next(node_id + 1))
   {
     //************************************************
     // If any node is answering, ndb is answering
     //************************************************
-    trp_node n = tp->theClusterMgr->getNodeInfo(m_impl.m_all_nodes[i].id);
+    trp_node n = tp->theClusterMgr->getNodeInfo(node_id);
     if (n.is_confirmed() && n.m_state.nodeGroup <= MAX_NDB_NODES)
       ng.set(n.m_state.nodeGroup);
   }
@@ -320,12 +366,15 @@ int Ndb_cluster_connection::get_no_ready()
 
   unsigned int foundAliveNode = 0;
   tp->lock_poll_mutex();
-  for(unsigned i= 0; i < no_db_nodes(); i++)
+  for (Uint32 node_id = m_impl.m_db_nodes.find_first();
+       node_id != NdbNodeBitmask::NotFound;
+       node_id = m_impl.m_db_nodes.find_next(node_id + 1))
   {
     //************************************************
     // If any node is answering, ndb is answering
     //************************************************
-    if (tp->get_node_alive(m_impl.m_all_nodes[i].id) != 0) {
+    if (tp->get_node_alive(node_id) != 0)
+    {
       foundAliveNode++;
     }
   }
@@ -388,6 +437,11 @@ unsigned Ndb_cluster_connection::get_min_db_version() const
   return m_impl.get_min_db_version();
 }
 
+unsigned Ndb_cluster_connection::get_min_api_version() const
+{
+  return m_impl.get_min_api_version();
+}
+
 int Ndb_cluster_connection::get_latest_error() const
 {
   return m_impl.m_latest_error;
@@ -414,11 +468,15 @@ Ndb_cluster_connection_impl(const char * connect_string,
     m_first_ndb_object(0),
     m_latest_error_msg(),
     m_latest_error(0),
-    m_max_trans_id(0),
-    m_multi_wait_group(0)
+    m_data_node_neighbour(0),
+    m_multi_wait_group(0),
+    m_uri_scheme(NULL),
+    m_uri_host(NULL),
+    m_uri_path(NULL),
+    m_uri_port(0)
 {
   DBUG_ENTER("Ndb_cluster_connection");
-  DBUG_PRINT("enter",("Ndb_cluster_connection this=0x%lx", (long) this));
+  DBUG_PRINT("enter",("Ndb_cluster_connection this=%p", this));
 
   NdbMutex_Lock(g_ndb_connection_mutex);
   if(g_ndb_connection_count++ == 0)
@@ -444,6 +502,7 @@ Ndb_cluster_connection_impl(const char * connect_string,
   m_event_add_drop_mutex= NdbMutex_Create();
   m_new_delete_ndb_mutex = NdbMutex_Create();
   m_new_delete_ndb_cond = NdbCondition_Create();
+  m_nodes_proximity_mutex = NdbMutex_Create();
 
   m_connect_thread= 0;
   m_connect_callback= 0;
@@ -460,7 +519,7 @@ Ndb_cluster_connection_impl(const char * connect_string,
     m_latest_error_msg.assfmt
       ("Could not initialize handle to management server: %s",
        m_config_retriever->getErrorString());
-    printf("%s\n", get_latest_error_msg());
+    g_eventLogger->info("%s", get_latest_error_msg());
   }
   if (!m_main_connection)
   {
@@ -474,9 +533,10 @@ Ndb_cluster_connection_impl(const char * connect_string,
     m_transporter_facade=
       new TransporterFacade(m_main_connection->m_impl.m_globalDictCache);
 
-    // The secondary connection can't use same nodeid, clear the nodeid
-    // in ConfigRetriver to avoid asking for the same nodeid again
-    m_config_retriever->setNodeId(0);
+    // The secondary connection can't use same nodeid, but it's ok
+    // to specify one to use. Use the force_api_nodeid given(although
+    // it will normally be 0 in order to allocate dynamic nodeid)
+    m_config_retriever->setNodeId(force_api_nodeid);
 
   }
 
@@ -545,6 +605,12 @@ Ndb_cluster_connection_impl::~Ndb_cluster_connection_impl()
   }
   NdbMutex_Unlock(g_ndb_connection_mutex);
 
+  if (m_nodes_proximity_mutex != NULL)
+  {
+    NdbMutex_Destroy(m_nodes_proximity_mutex);
+    m_nodes_proximity_mutex = NULL;
+  }
+
   if (m_event_add_drop_mutex)
     NdbMutex_Destroy(m_event_add_drop_mutex);
   m_event_add_drop_mutex = 0;
@@ -561,17 +627,21 @@ Ndb_cluster_connection_impl::~Ndb_cluster_connection_impl()
     delete m_multi_wait_group;
   m_multi_wait_group = 0;
 
+  m_uri_scheme.clear();
+  m_uri_path.clear();
+  m_uri_host.clear();
+
   DBUG_VOID_RETURN;
 }
 
 void
-Ndb_cluster_connection::lock_ndb_objects()
+Ndb_cluster_connection::lock_ndb_objects() const
 {
   NdbMutex_Lock(m_impl.m_new_delete_ndb_mutex);
 }
 
 void
-Ndb_cluster_connection::unlock_ndb_objects()
+Ndb_cluster_connection::unlock_ndb_objects() const
 {
   NdbMutex_Unlock(m_impl.m_new_delete_ndb_mutex);
 }
@@ -597,8 +667,6 @@ Ndb_cluster_connection_impl::link_ndb_object(Ndb* p)
   p->theImpl->m_next_ndb_object = m_first_ndb_object;
   m_first_ndb_object = p;
   
-  p->theFirstTransId += m_max_trans_id;
-
   // Wake up anyone waiting for changes to the Ndb instance list
   NdbCondition_Broadcast(m_new_delete_ndb_cond);
 
@@ -630,12 +698,6 @@ Ndb_cluster_connection_impl::unlink_ndb_object(Ndb* p)
   p->theImpl->m_prev_ndb_object = 0;
   p->theImpl->m_next_ndb_object = 0;
 
-  Uint32 transId = (Uint32)p->theFirstTransId;
-  if (transId > m_max_trans_id)
-  {
-    m_max_trans_id = transId;
-  }
-
   /* This Ndb is leaving for a better place,
    * record its contribution to global warming
    * for posterity
@@ -651,6 +713,227 @@ Ndb_cluster_connection_impl::unlink_ndb_object(Ndb* p)
   unlock_ndb_objects();  
 }
 
+Uint32
+Ndb_cluster_connection_impl::get_next_transid(Uint32 reference) const
+{    
+  Uint32 next = 0;
+  reference = m_transporter_facade->mapRefToIdx(reference);
+  
+  /* Access map with lock to avoid resize issues */
+  lock_ndb_objects();
+  {
+    if (reference < m_next_transids.size())
+    {
+      next = m_next_transids[reference];
+    }
+  }
+  unlock_ndb_objects();
+  
+  return next;
+}
+
+void 
+Ndb_cluster_connection_impl::set_next_transid(Uint32 reference, Uint32 value)
+{
+  reference = m_transporter_facade->mapRefToIdx(reference);
+  
+  /* Access map with lock to avoid resize issues */
+  lock_ndb_objects();
+  {
+    Uint32 zero = 0;
+    m_next_transids.set(value, reference, zero);
+  }
+  unlock_ndb_objects();
+}
+
+/**
+ * adjust_node_proximity
+ *
+ * A negative adjustment means nearer.
+ *
+ * May rearrange m_nodes_proximity and change links and group value.
+ * The vector m_nodes_proximity itself, including size(), is not modified
+ * only the elements within.
+ *
+ * m_nodes_proximity_mutex must be locked and m_nodes_proximity_seqlock
+ * must be locked for write.
+ */
+void
+Ndb_cluster_connection_impl::adjust_node_proximity(Uint32 node_id, Int32 adjustment)
+{
+  assert(m_db_nodes.get(node_id)); // Ensured in set_data_node_neighbour
+
+  if (adjustment == 0)
+    return; // No change
+
+  Uint32 old_idx;
+  for (old_idx = 0; old_idx < m_nodes_proximity.size(); old_idx++)
+  {
+    if (m_nodes_proximity[old_idx].id == node_id)
+      break;
+  }
+  require(old_idx < m_nodes_proximity.size());
+
+  const Int32 old_group = m_nodes_proximity[old_idx].adjusted_group;
+  const Int32 new_group = old_group + adjustment;
+  Node node = m_nodes_proximity[old_idx];
+  node.adjusted_group = new_group;
+
+  Uint32 new_idx;
+  if (adjustment < 0)
+  {
+    /**
+     * Node is moved to be new last in its new group.
+     */
+    for (new_idx = 0; new_idx < old_idx; new_idx ++)
+    {
+      if (m_nodes_proximity[new_idx].adjusted_group > new_group)
+        break;
+    }
+    /**
+     * Move nodes between new_idx (inclusive) and old_idx (exclusive) up,
+     * making room for node in its new group.
+     */
+    for (Uint32 idx = old_idx;
+         idx > new_idx;
+         idx--)
+    {
+      m_nodes_proximity[idx] = m_nodes_proximity[idx-1];
+      m_nodes_proximity[idx].this_group_idx++;
+      if (m_nodes_proximity[idx].next_group_idx > 0 &&
+          m_nodes_proximity[idx].next_group_idx <= old_idx)
+      {
+        m_nodes_proximity[idx].next_group_idx++;
+        if (m_nodes_proximity[idx].next_group_idx == m_nodes_proximity.size())
+        {
+          m_nodes_proximity[idx].next_group_idx = 0;
+        }
+      }
+    }
+    /**
+     * For elements after old place with same group, this_group_idx needs
+     * increase.
+     */
+    for (Uint32 idx = old_idx + 1;
+         idx < m_nodes_proximity.size() &&
+           m_nodes_proximity[idx].adjusted_group == old_group;
+         idx++)
+    {
+      m_nodes_proximity[idx].this_group_idx++;
+    }
+    /**
+     * Update this_group_idx and next_group_idx for node.
+     */
+    if (new_idx == 0)
+    {
+      node.this_group_idx = 0;
+    }
+    else if (m_nodes_proximity[new_idx - 1].adjusted_group == new_group)
+    {
+      node.this_group_idx = m_nodes_proximity[new_idx - 1].this_group_idx;
+    }
+    else
+    {
+      node.this_group_idx = new_idx;
+    }
+    Uint32 next_group_idx = new_idx + 1;
+    if (next_group_idx < m_nodes_proximity.size())
+    {
+      node.next_group_idx = next_group_idx;
+    }
+    else
+    {
+      node.next_group_idx = 0;
+    }
+  }
+  else
+  {
+    /**
+     * Node is moved to be first in its new group.
+     */
+    for (new_idx = old_idx; new_idx + 1 < m_nodes_proximity.size(); new_idx++)
+    {
+      if (m_nodes_proximity[new_idx + 1].adjusted_group >= new_group)
+        break;
+    }
+    /**
+     * Move nodes between old_idx (exclusive) and new_idx (inclusive) down,
+     * making room for node in its new group.
+     */
+    for (Uint32 idx = old_idx;
+         idx < new_idx;
+         idx++)
+    {
+      m_nodes_proximity[idx] = m_nodes_proximity[idx + 1];
+      if (m_nodes_proximity[idx].this_group_idx > old_idx)
+      {
+        m_nodes_proximity[idx].this_group_idx--;
+      }
+      if (m_nodes_proximity[idx].next_group_idx > 0 &&
+          m_nodes_proximity[idx].next_group_idx < new_idx)
+      {
+        m_nodes_proximity[idx].next_group_idx--;
+      }
+      else
+      {
+        m_nodes_proximity[idx].next_group_idx = new_idx;
+      }
+    }
+    /**
+     * Update this_group_idx and next_group_idx for node.
+     */
+    if (old_idx < new_idx)
+    {
+      node.this_group_idx = new_idx;
+    }
+    if (new_idx + 1 == m_nodes_proximity.size())
+    {
+      node.next_group_idx = 0;
+    }
+    else if (m_nodes_proximity[new_idx + 1].adjusted_group == new_group)
+    {
+      node.next_group_idx = m_nodes_proximity[new_idx + 1].next_group_idx;
+    }
+    else
+    {
+      node.next_group_idx = new_idx + 1;
+    }
+  }
+  m_nodes_proximity[new_idx] = node;
+
+  /**
+   * Clear hint count in new group since the node adjusted will not have a
+   * hint count in sync with its new group.
+   */
+  for (Uint32 idx = node.this_group_idx;
+       idx <= new_idx;
+       idx++)
+  {
+    m_nodes_proximity[idx].hint_count = 0;
+  }
+}
+
+void
+Ndb_cluster_connection_impl::set_data_node_neighbour(Uint32 node)
+{
+  Uint32 const old_node = m_data_node_neighbour;
+  if (old_node == node)
+    return; // No change
+
+  NdbMutex_Lock(m_nodes_proximity_mutex);
+  if (old_node != 0 && m_db_nodes.get(old_node))
+  {
+    adjust_node_proximity(old_node,
+                          -DATA_NODE_NEIGHBOUR_PROXIMITY_ADJUSTMENT);
+  }
+  if (node != 0 && m_db_nodes.get(node))
+  {
+    adjust_node_proximity(node, DATA_NODE_NEIGHBOUR_PROXIMITY_ADJUSTMENT);
+  }
+  m_data_node_neighbour = node;
+  NdbMutex_Unlock(m_nodes_proximity_mutex);
+}
+
 void
 Ndb_cluster_connection_impl::set_name(const char *name)
 {
@@ -659,17 +942,52 @@ Ndb_cluster_connection_impl::set_name(const char *name)
 }
 
 int
+Ndb_cluster_connection_impl::set_service_uri(const char * scheme,
+                                             const char * host,
+                                             int port, const char * path)
+{
+  if(! ProcessInfo::isValidUri(scheme, path))
+  {
+    return 1;
+  }
+
+  /* Clear out existing values */
+  m_uri_scheme.clear();
+  m_uri_host.clear();
+  m_uri_port = 0;
+  m_uri_path.clear();
+
+  /* If already connected, ClusterMgr will send new ProcessInfo reports.
+     Otherwise save a copy of values until connected.
+  */
+  if(m_transporter_facade->theClusterMgr->getNoOfConnectedNodes())
+  {
+    m_transporter_facade->theClusterMgr->setProcessInfoUri(scheme, host,
+                                                           port, path);
+  }
+  else
+  {
+    m_uri_scheme.assign(scheme);
+    m_uri_host.assign(host);
+    m_uri_port = port;
+    m_uri_path.assign(path);
+  }
+
+  return 0;
+}
+
+int
 Ndb_cluster_connection_impl::init_nodes_vector(Uint32 nodeid,
-					       const ndb_mgm_configuration 
-					       &config)
+                               const ndb_mgm_configuration *config)
 {
   DBUG_ENTER("Ndb_cluster_connection_impl::init_nodes_vector");
+  Uint32 my_location_domain_id = m_location_domain_id[nodeid];
   ndb_mgm_configuration_iterator iter(config, CFG_SECTION_CONNECTION);
   
   for(iter.first(); iter.valid(); iter.next())
   {
     Uint32 nodeid1, nodeid2, remoteNodeId, group= 5;
-    const char * remoteHostName= 0, * localHostName= 0;
+    const char *remoteHostName = nullptr;
     if(iter.get(CFG_CONNECTION_NODE_1, &nodeid1)) continue;
     if(iter.get(CFG_CONNECTION_NODE_2, &nodeid2)) continue;
 
@@ -682,7 +1000,6 @@ Ndb_cluster_connection_impl::init_nodes_vector(Uint32 nodeid,
       const char * host1= 0, * host2= 0;
       iter.get(CFG_CONNECTION_HOSTNAME_1, &host1);
       iter.get(CFG_CONNECTION_HOSTNAME_2, &host2);
-      localHostName  = (nodeid == nodeid1 ? host1 : host2);
       remoteHostName = (nodeid == nodeid1 ? host2 : host1);
     }
 
@@ -690,66 +1007,134 @@ Ndb_cluster_connection_impl::init_nodes_vector(Uint32 nodeid,
     if(iter.get(CFG_TYPE_OF_SECTION, &type)) continue;
 
     switch(type){
-    case CONNECTION_TYPE_SHM:{
-      break;
-    }
-    case CONNECTION_TYPE_SCI:{
-      break;
-    }
+    case CONNECTION_TYPE_SHM:
+      /**
+       * We use same algorithm also for SHM transporters.
+       * A shared memory transporter is obviously in the
+       * same location domain, but for test purposes we
+       * will still respect the location domain concept
+       * and decrease group value by 10 if we are in same
+       * location domain id and on the same host and by
+       * 5 if we are on same location domain id and not
+       * on same host and if we are only same host we will
+       * decrease it by 1.
+       */
     case CONNECTION_TYPE_TCP:{
       // connecting through localhost
       // check if config_hostname is local
-      if (SocketServer::tryBind(0,remoteHostName))
-	group--; // upgrade group value
+      // check if in same location domain
+
+      /**
+       * There is a configuration item on a communication
+       * linked called Group. This item is mostly set by
+       * other config parameters and checks of the hosts
+       * involved.
+       *
+       * By default the group is set to 55. If two nodes
+       * are in the same location domain the group is set
+       * to 50. If they are both in the same location
+       * domain and additionally on the same host the
+       * group is set to 45.
+       * If no location domain is set and we are on the
+       * same host, we set the group to 54.
+       *
+       * If the nodes are on the same host, but the test
+       * below fails, it is possible in the MySQL server
+       * to set ndb_data_node_neighbour to indicate which
+       * data node is closest to us. This will also have
+       * an impact on the group number.
+       *
+       * Finally it is possible to set the group number
+       * from the configuration to implement any type of
+       * priorities among the nodes.
+       *
+       * The changes due to location domain and hosts
+       * are only relative, so it is relative to the
+       * numbers provided in the config.
+       *
+       * One should not set the config of group to
+       * anything smaller than 50 given that data
+       * node neighbour decreases the group number
+       * by 50.
+       *
+       * If someone has set a node to be in different
+       * location domains and they are still running on the
+       * same host we trust that the user have done this for
+       * a good reason, whether it be testing or some other
+       * reason.
+       */
+      if (my_location_domain_id != 0 &&
+               my_location_domain_id ==
+               m_location_domain_id[remoteNodeId])
+      {
+        if (SocketServer::tryBind(0,remoteHostName))
+        {
+	  group -= 10; // upgrade group value
+        }
+        else
+        {
+          group -= 5;
+        }
+      }
+      else if (my_location_domain_id == 0)
+      {
+        if (SocketServer::tryBind(0,remoteHostName))
+        {
+	  group -= 1; // upgrade group value
+        }
+      }
       break;
     }
     }
-    if (m_all_nodes.push_back(Node(group,remoteNodeId)))
+    m_db_nodes.set(remoteNodeId);
+    if (m_nodes_proximity.push_back(Node(group,remoteNodeId)))
     {
       DBUG_RETURN(-1);
     }
     DBUG_PRINT("info",("saved %d %d", group,remoteNodeId));
-    for (int i= m_all_nodes.size()-2;
-	 i >= 0 && m_all_nodes[i].group > m_all_nodes[i+1].group;
+    for (int i= m_nodes_proximity.size()-2;
+	 i >= 0 &&
+           m_nodes_proximity[i].adjusted_group >
+             m_nodes_proximity[i+1].adjusted_group;
 	 i--)
     {
-      Node tmp= m_all_nodes[i];
-      m_all_nodes[i]= m_all_nodes[i+1];
-      m_all_nodes[i+1]= tmp;
+      Node tmp= m_nodes_proximity[i];
+      m_nodes_proximity[i]= m_nodes_proximity[i+1];
+      m_nodes_proximity[i+1]= tmp;
     }
   }
 
   int i;
-  Uint32 cur_group, i_group= 0;
-  cur_group= ~0;
-  for (i= (int)m_all_nodes.size()-1; i >= 0; i--)
+  Int32 cur_group= INVALID_PROXIMITY_GROUP;
+  Uint32 group_idx= 0;
+  for (i= (int)m_nodes_proximity.size()-1; i >= 0; i--)
   {
-    if (m_all_nodes[i].group != cur_group)
+    if (m_nodes_proximity[i].adjusted_group != cur_group)
     {
-      cur_group= m_all_nodes[i].group;
-      i_group= i+1;
+      cur_group= m_nodes_proximity[i].adjusted_group;
+      group_idx= i+1;
     }
-    m_all_nodes[i].next_group= i_group;
+    m_nodes_proximity[i].next_group_idx= group_idx;
   }
-  cur_group= ~0;
-  for (i= 0; i < (int)m_all_nodes.size(); i++)
+  cur_group= INVALID_PROXIMITY_GROUP;
+  for (i= 0; i < (int)m_nodes_proximity.size(); i++)
   {
-    if (m_all_nodes[i].group != cur_group)
+    if (m_nodes_proximity[i].adjusted_group != cur_group)
     {
-      cur_group= m_all_nodes[i].group;
-      i_group= i;
+      cur_group= m_nodes_proximity[i].adjusted_group;
+      group_idx= i;
     }
-    m_all_nodes[i].this_group= i_group;
+    m_nodes_proximity[i].this_group_idx= group_idx;
   }
 #if 0
-  for (i= 0; i < (int)m_all_nodes.size(); i++)
+  for (i= 0; i < (int)m_nodes_proximity.size(); i++)
   {
     fprintf(stderr, "[%d] %d %d %d %d\n",
 	   i,
-	   m_all_nodes[i].id,
-	   m_all_nodes[i].group,
-	   m_all_nodes[i].this_group,
-	   m_all_nodes[i].next_group);
+	   m_nodes_proximity[i].id,
+	   m_nodes_proximity[i].adjusted_group,
+	   m_nodes_proximity[i].this_group_idx,
+	   m_nodes_proximity[i].next_group_idx);
   }
 
   do_test();
@@ -760,11 +1145,15 @@ Ndb_cluster_connection_impl::init_nodes_vector(Uint32 nodeid,
 Uint32
 Ndb_cluster_connection_impl::get_db_nodes(Uint8 arr[MAX_NDB_NODES]) const
 {
-  Uint32 cnt = (Uint32)m_all_nodes.size();
-  assert(cnt < MAX_NDB_NODES);
-  const Node *nodes = m_all_nodes.getBase();
-  for (Uint32 i = 0; i<cnt; i++)
-    arr[i] = (Uint8)nodes[i].id;
+  require(m_db_nodes.count() < MAX_NDB_NODES);
+  Uint32 cnt = 0;
+  for (Uint32 node_id = m_db_nodes.find_first();
+       node_id != NdbNodeBitmask::NotFound;
+       node_id = m_db_nodes.find_next(node_id + 1))
+  {
+    arr[cnt] = node_id;
+    cnt++;
+  }
   return cnt;
 }
 
@@ -773,22 +1162,24 @@ Ndb_cluster_connection_impl::get_unconnected_nodes() const
 {
   TransporterFacade *tp = m_transporter_facade;
 
-  NodeBitmask db_nodes;  // All data nodes known by configuration
-  NodeBitmask connected; // All nodes connected
-  NodeBitmask started;   // All started nodes known by connected db nodes
+  NdbNodeBitmask connected; // All nodes connected
+  NdbNodeBitmask started;   // All started nodes known by connected db nodes
 
   tp->lock_poll_mutex();
-  for(unsigned i= 0; i < m_all_nodes.size(); i++)
+  for (Uint32 node_id = m_db_nodes.find_first();
+       node_id != NdbNodeBitmask::NotFound;
+       node_id = m_db_nodes.find_next(node_id + 1))
   {
-    const Uint32 node_id = m_all_nodes[i].id;
-    db_nodes.set(node_id);
     const trp_node& node = tp->theClusterMgr->getNodeInfo(node_id);
     if (!node.m_alive)
     {
       continue;
     }
     connected.set(node_id);
-    started.bitOR(node.m_state.m_connected_nodes);
+    NdbNodeBitmask nodes;
+    // Truncate NodeBitmask to NdbNodeBitmask, data nodes are in lower bits
+    nodes.assign(nodes.Size, node.m_state.m_connected_nodes.rep.data);
+    started.bitOR(nodes);
   }
   tp->unlock_poll_mutex();
 
@@ -797,19 +1188,21 @@ Ndb_cluster_connection_impl::get_unconnected_nodes() const
     /**
      * No db nodes connected, means all unconnected.
      */
-    return m_all_nodes.size();
+    assert(m_db_nodes.count() ==
+             m_nodes_proximity.size());
+    return m_nodes_proximity.size();
   }
 
   /**
    * Return count of started but not connected db nodes
    */
-  started.bitAND(db_nodes);
+  started.bitAND(m_db_nodes);
   return started.bitANDC(connected).count();
 }
 
 int
 Ndb_cluster_connection_impl::configure(Uint32 nodeId,
-                                       const ndb_mgm_configuration &config)
+                                       const ndb_mgm_configuration* config)
 {
   DBUG_ENTER("Ndb_cluster_connection_impl::configure");
   {
@@ -820,29 +1213,36 @@ Ndb_cluster_connection_impl::configure(Uint32 nodeId,
     // Configure scan settings
     Uint32 scan_batch_size= 0;
     if (!iter.get(CFG_MAX_SCAN_BATCH_SIZE, &scan_batch_size)) {
-      m_config.m_scan_batch_size= scan_batch_size;
+      m_ndbapiconfig.m_scan_batch_size= scan_batch_size;
     }
     Uint32 batch_byte_size= 0;
     if (!iter.get(CFG_BATCH_BYTE_SIZE, &batch_byte_size)) {
-      m_config.m_batch_byte_size= batch_byte_size;
+      m_ndbapiconfig.m_batch_byte_size= batch_byte_size;
     }
     Uint32 batch_size= 0;
     if (!iter.get(CFG_BATCH_SIZE, &batch_size)) {
-      m_config.m_batch_size= batch_size;
+      m_ndbapiconfig.m_batch_size= batch_size;
     }
 
     Uint32 queue = 0;
     if (!iter.get(CFG_DEFAULT_OPERATION_REDO_PROBLEM_ACTION, &queue))
     {
-      m_config.m_default_queue_option = queue;
+      m_ndbapiconfig.m_default_queue_option = queue;
     }
 
     Uint32 default_hashmap_size = 0;
     if (!iter.get(CFG_DEFAULT_HASHMAP_SIZE, &default_hashmap_size) &&
         default_hashmap_size != 0)
     {
-      m_config.m_default_hashmap_size = default_hashmap_size;
+      m_ndbapiconfig.m_default_hashmap_size = default_hashmap_size;
     }
+
+    Uint32 verbose= 0;
+    if (!iter.get(CFG_API_VERBOSE, &verbose))
+    {
+      m_ndbapiconfig.m_verbose = verbose;
+    }
+
     // If DefaultHashmapSize is not set or zero, use the minimum
     // value set (not zero) for any other node, since this size
     // should be supported by the other nodes.  Also this allows
@@ -864,26 +1264,62 @@ Ndb_cluster_connection_impl::configure(Uint32 nodeId,
       if (default_hashmap_size == 0)
         default_hashmap_size = NDB_DEFAULT_HASHMAP_BUCKETS;
 
-      m_config.m_default_hashmap_size = default_hashmap_size;
+      m_ndbapiconfig.m_default_hashmap_size = default_hashmap_size;
     }
 
+    memset(&m_location_domain_id[0], 0, sizeof(m_location_domain_id));
     // Configure timeouts
     {
       Uint32 timeout = 120000;
+      Uint32 max_node_id = 0;
       // Use new iterator to leave iter valid.
       ndb_mgm_configuration_iterator iterall(config, CFG_SECTION_NODE);
       for (; iterall.valid(); iterall.next())
       {
         Uint32 tmp1 = 0, tmp2 = 0;
+        Uint32 nodeId = 0;
+        Uint32 location_domain_id = 0;
+        Uint32 node_type;
+        const char *host_str = nullptr;
+        iterall.get(CFG_NODE_ID, &nodeId);
+        iterall.get(CFG_TYPE_OF_SECTION, &node_type);
+        if (node_type == NODE_TYPE_API)
+        {
+          if (max_node_id < nodeId)
+          {
+            max_node_id = nodeId;
+          }
+        }
         iterall.get(CFG_DB_TRANSACTION_CHECK_INTERVAL, &tmp1);
         iterall.get(CFG_DB_TRANSACTION_DEADLOCK_TIMEOUT, &tmp2);
+        iterall.get(CFG_LOCATION_DOMAIN_ID, &location_domain_id);
+        iterall.get(CFG_NODE_HOST, &host_str);
+        require(nodeId != 0);
+        if (host_str != NULL && location_domain_id != 0)
+        {
+          m_location_domain_id[nodeId] = location_domain_id;
+        }
         tmp1 += tmp2;
         if (tmp1 > timeout)
           timeout = tmp1;
       }
-      m_config.m_waitfor_timeout = timeout;
+      m_ndbapiconfig.m_waitfor_timeout = timeout;
+      m_max_api_nodeid = max_node_id;
     }
   }
+
+  m_my_node_id = nodeId;
+  m_my_location_domain_id = m_location_domain_id[nodeId];
+
+  // System name
+  ndb_mgm_configuration_iterator s_iter(config, CFG_SECTION_SYSTEM);
+  const char * tmp_system_name;
+  s_iter.get(CFG_SYS_NAME, & tmp_system_name);
+  m_system_name.assign(tmp_system_name);
+
+  // Save generation of the used config
+  (void)s_iter.get(CFG_SYS_CONFIG_GENERATION, &m_config_generation);
+
   DBUG_RETURN(init_nodes_vector(nodeId, config));
 }
 
@@ -891,57 +1327,71 @@ void
 Ndb_cluster_connection_impl::do_test()
 {
   Ndb_cluster_connection_node_iter iter;
-  int n= no_db_nodes()+5;
-  Uint32 *nodes= new Uint32[n+1];
+  int n = no_db_nodes() + 5;
+  Uint32 *nodes = new Uint32[n + 1];
 
-  for (int g= 0; g < n; g++)
+  for (int g = 0; g < n; g++)
   {
-    for (int h= 0; h < n; h++)
+    for (int h = 0; h < n; h++)
     {
       Uint32 id;
       Ndb_cluster_connection_node_iter iter2;
       {
-	for (int j= 0; j < g; j++)
-	{
-	  nodes[j]= get_next_node(iter2);
-	}
+        for (int j = 0; j < g; j++)
+        {
+          nodes[j] = get_next_node(iter2);
+        }
       }
 
-      for (int i= 0; i < n; i++)
+      for (int i = 0; i < n; i++)
       {
-	init_get_next_node(iter);
-	fprintf(stderr, "%d dead:(", g);
-	id= 0;
-	while (id == 0)
-	{
-	  if ((id= get_next_node(iter)) == 0)
-	    break;
-	  for (int j= 0; j < g; j++)
-	  {
-	    if (nodes[j] == id)
-	    {
-	      fprintf(stderr, " %d", id);
-	      id= 0;
-	      break;
-	    }
-	  }
-	}
-	fprintf(stderr, ")");
-	if (id == 0)
-	{
-	  break;
-	}
-	fprintf(stderr, " %d\n", id);
+        char logbuf[MAX_LOG_MESSAGE_SIZE] = "";
+        init_get_next_node(iter);
+        id = 0;
+        while (id == 0)
+        {
+          if ((id = get_next_node(iter)) == 0) break;
+          for (int j = 0; j < g; j++)
+          {
+            if (nodes[j] == id)
+            {
+              BaseString::snappend(logbuf, sizeof(logbuf), "%d ", id);
+              id = 0;
+              break;
+            }
+          }
+        }
+        g_eventLogger->info("%d dead: ( %s) %d", g, logbuf, id);
+        if (id == 0)
+        {
+          break;
+        }
       }
-      fprintf(stderr, "\n");
     }
   }
-  delete [] nodes;
+  delete[] nodes;
+}
+
+void Ndb_cluster_connection::set_data_node_neighbour(Uint32 node)
+{
+  m_impl.set_data_node_neighbour(node);
 }
 
 void Ndb_cluster_connection::set_name(const char *name)
 {
   m_impl.set_name(name);
+}
+
+int Ndb_cluster_connection::set_service_uri(const char * scheme,
+                                            const char * host, int port,
+                                            const char * path)
+{
+  return m_impl.set_service_uri(scheme, host, port, path);
+}
+
+const char * Ndb_cluster_connection::get_system_name() const
+{
+  return m_impl.m_system_name.c_str();
 }
 
 int Ndb_cluster_connection_impl::connect(int no_retries,
@@ -993,24 +1443,26 @@ int Ndb_cluster_connection_impl::connect(int no_retries,
       break;
     }
 
-    ndb_mgm_configuration * props = m_config_retriever->getConfig(nodeId);
-    if(props == 0)
+    const ndb_mgm::config_ptr config = m_config_retriever->getConfig(nodeId);
+    if (!config)
       break;
 
-    if (configure(nodeId, *props))
+    if (configure(nodeId, config.get()))
     {
-      ndb_mgm_destroy_configuration(props);
       DBUG_PRINT("exit", ("malloc failure, ret: -1"));
       DBUG_RETURN(-1);
     }
 
-    if (m_transporter_facade->start_instance(nodeId, props) < 0)
+    if (m_transporter_facade->start_instance(nodeId, config.get()) < 0)
     {
-      ndb_mgm_destroy_configuration(props);
       DBUG_RETURN(-1);
     }
-
-    ndb_mgm_destroy_configuration(props);
+    // NOTE! The config generation used by this API node could also be sent to
+    // the cluster in same way as other properties with setProcessInfoUri()
+    m_transporter_facade->theClusterMgr->setProcessInfoUri(m_uri_scheme.c_str(),
+                                                           m_uri_host.c_str(),
+                                                           m_uri_port,
+                                                           m_uri_path.c_str());
     m_transporter_facade->connected();
     m_latest_error = 0;
     m_latest_error_msg.assign("");
@@ -1024,7 +1476,7 @@ int Ndb_cluster_connection_impl::connect(int no_retries,
   }
   m_latest_error = 1;
   m_latest_error_msg.assfmt("Configuration error: %s", erString);
-  ndbout << get_latest_error_msg() << endl;
+  g_eventLogger->info("%s", get_latest_error_msg());
   DBUG_PRINT("exit", ("connect failed, '%s' ret: -1", erString));
   DBUG_RETURN(-1);
 }
@@ -1044,16 +1496,15 @@ void Ndb_cluster_connection_impl::connect_thread()
   DBUG_ENTER("Ndb_cluster_connection_impl::connect_thread");
   int r;
   do {
+    // Wait before making a new connect attempt
     NdbSleep_SecSleep(1);
+
     if ((r = connect(0,0,0)) == 0)
       break;
     if (r == -1) {
-      printf("Ndb_cluster_connection::connect_thread error\n");
+      g_eventLogger->info("Ndb_cluster_connection::connect_thread error");
       assert(false);
       m_run_connect_thread= 0;
-    } else {
-      // Wait before making a new connect attempt
-      NdbSleep_SecSleep(1);
     }
   } while (m_run_connect_thread);
   if (m_connect_callback)
@@ -1182,6 +1633,208 @@ Ndb_cluster_connection::release_ndb_wait_group(NdbWaitGroup *group)
   }
 }
 
+Uint32
+Ndb_cluster_connection_impl::select_any(NdbImpl *impl_ndb)
+{
+  Uint16 prospective_node_ids[MAX_NDB_NODES];
+  Uint32 num_prospective_nodes = 0;
+  Uint32 my_location_domain_id = m_my_location_domain_id;
+  if (my_location_domain_id == 0)
+  {
+    return 0;
+  }
+  for (Uint32 i = 0; i < m_nodes_proximity.size(); i++)
+  {
+    Uint32 nodeid = m_nodes_proximity[i].id;
+    if (my_location_domain_id == m_location_domain_id[nodeid] &&
+        impl_ndb->get_node_available(nodeid))
+    {
+      prospective_node_ids[num_prospective_nodes++] = nodeid;
+    }
+  }
+  if (num_prospective_nodes == 0)
+  {
+    return 0;
+  }
+  else if (num_prospective_nodes == 1)
+  {
+    return prospective_node_ids[0];
+  }
+  else
+  {
+    return select_node(impl_ndb, prospective_node_ids, num_prospective_nodes);
+  }
+}
+
+/**
+ * Select from the same location domain if possible, otherwise select
+ * primary node. If primary is in correct location domain we will pick
+ * it.
+ */
+Uint32
+Ndb_cluster_connection_impl::select_location_based(NdbImpl *impl_ndb,
+                                                   const Uint16 * nodes,
+                                                   Uint32 cnt)
+{
+  Uint16 prospective_node_ids[MAX_NDB_NODES];
+  Uint32 num_prospective_nodes = 0;
+  Uint32 my_location_domain_id = m_my_location_domain_id;
+
+  if (my_location_domain_id == 0)
+  {
+    return nodes[0];
+  }
+  for (Uint32 i = 0; i < cnt; i++)
+  {
+    if (my_location_domain_id == m_location_domain_id[nodes[i]] &&
+        impl_ndb->get_node_available(nodes[i]))
+    {
+      if (i == 0)
+      {
+        return nodes[0];
+      }
+      prospective_node_ids[num_prospective_nodes++] = nodes[i];
+    }
+  }
+  if (num_prospective_nodes == 0)
+  {
+    return nodes[0];
+  }
+  else if (num_prospective_nodes == 1)
+  {
+    return prospective_node_ids[0];
+  }
+  else
+  {
+    return select_node(impl_ndb, prospective_node_ids, num_prospective_nodes);
+  }
+}
+
+Uint32
+Ndb_cluster_connection_impl::select_node(NdbImpl *impl_ndb,
+                                         const Uint16 * nodes,
+                                         Uint32 cnt)
+{
+  if (cnt == 1)
+  {
+    return nodes[0];
+  }
+  else if (cnt == 0)
+  {
+    return 0;
+  }
+
+  NdbNodeBitmask checked;
+  Node *nodes_arr = m_nodes_proximity.getBase();
+  const Uint32 nodes_arr_cnt = m_nodes_proximity.size();
+
+  Uint32 best_node = nodes[0];
+  Uint32 best_idx = Uint32(~0);
+  Uint32 best_usage = 0;
+  Int32 best_score = MAX_PROXIMITY_GROUP; // Lower is better
+
+  if (!m_impl.m_optimized_node_selection)
+  {
+    /**
+     * optimized_node_selection is off.  Use round robin.
+     * Uses hint_count in m_nodes_proximity but not the group value.
+     */
+    for (Uint32 j = 0; j < cnt; j++)
+    {
+      Uint32 candidate_node = nodes[j];
+      if (checked.get(candidate_node))
+        continue;
+
+      checked.set(candidate_node);
+
+      if (!impl_ndb->get_node_available(candidate_node))
+      {
+        continue;
+      }
+
+      for (Uint32 i = 0; i < nodes_arr_cnt; i++)
+      {
+        if (nodes_arr[i].id == j)
+        {
+          Uint32 usage = nodes_arr[i].hint_count;
+          if (best_score == MAX_PROXIMITY_GROUP)
+          {
+            best_idx = i;
+            best_node = candidate_node;
+            best_score = 0;
+            best_usage = usage;
+          }
+          else if (best_usage - usage < HINT_COUNT_HALF)
+          {
+            best_idx = i;
+            best_node = candidate_node;
+            best_usage = usage;
+          }
+          break;
+        }
+      }
+    }
+  }
+  else
+  {
+    /**
+     * optimized_node_selection is on.  Use proximity.
+     */
+    for (Uint32 j = 0; j < cnt; j++)
+    {
+      Uint32 candidate_node = nodes[j];
+      if (checked.get(candidate_node))
+        continue;
+
+      checked.set(candidate_node);
+
+      if (!impl_ndb->get_node_available(candidate_node))
+        continue;
+
+      for (Uint32 i = 0; i < nodes_arr_cnt; i++)
+      {
+        if (nodes_arr[i].adjusted_group > best_score)
+        {
+          // We already got a better match
+          break;
+        }
+        if (nodes_arr[i].id == candidate_node)
+        {
+          if (nodes_arr[i].adjusted_group < best_score)
+          {
+            best_idx = i;
+            best_node = candidate_node;
+            best_score = nodes_arr[i].adjusted_group;
+            best_usage = nodes_arr[i].hint_count;
+          }
+          else if (nodes_arr[i].adjusted_group == best_score)
+          {
+            Uint32 usage = nodes_arr[i].hint_count;
+            if (best_usage - usage < HINT_COUNT_HALF)
+            {
+              /**
+               * hint_count may wrap, for this calculation it is assummed that
+               * the two counts should be near each other, and so if the
+               * difference is small above, best_usage is greater than usage.
+               */
+              best_idx = i;
+              best_node = candidate_node;
+              best_usage = usage;
+            }
+          }
+          break;
+        }
+      }
+    }
+  }
+  if (best_idx != Uint32(~0))
+  {
+    nodes_arr[best_idx].hint_count =
+      (nodes_arr[best_idx].hint_count + 1) & HINT_COUNT_MASK;
+  }
+  return best_node;
+}
+
 template class Vector<Ndb_cluster_connection_impl::Node>;
 
 int
@@ -1219,15 +1872,17 @@ Ndb_cluster_connection::wait_until_ready(const int * nodes, int cnt,
     dead.clear();
     alive.clear();
     tp->lock_poll_mutex();
-    for(unsigned i= 0; i < no_db_nodes(); i++)
+    for (Uint32 node_id = m_impl.m_db_nodes.find_first();
+         node_id != NdbNodeBitmask::NotFound;
+         node_id = m_impl.m_db_nodes.find_next(node_id + 1))
     {
       //************************************************
       // If any node is answering, ndb is answering
       //************************************************
-      if (tp->get_node_alive(m_impl.m_all_nodes[i].id) != 0)
-        alive.set(m_impl.m_all_nodes[i].id);
+      if (tp->get_node_alive(node_id) != 0)
+        alive.set(node_id);
       else
-        dead.set(m_impl.m_all_nodes[i].id);
+        dead.set(node_id);
     }
     tp->unlock_poll_mutex();
 

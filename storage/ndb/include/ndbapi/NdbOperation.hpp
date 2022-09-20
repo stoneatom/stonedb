@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -61,6 +61,8 @@ class NdbOperation
   friend class NdbScanFilterImpl;
   friend class NdbReceiver;
   friend class NdbBlob;
+  friend class BlobBatchChecker;
+  friend class OpList;
 #endif
 
 public:
@@ -287,7 +289,15 @@ public:
    * @return 0 if successful otherwise -1.
    */  
   virtual int			interpretedUpdateTuple();
-		
+
+  /**
+   * Write a tuple using an interpreted program.
+   * Interpreted program only executed in the UPDATE case.
+   *
+   * @return 0 if successful otherwise -1.
+   */
+  virtual int	interpretedWriteTuple();
+
   /**
    * Delete a tuple using an interpreted program.
    *
@@ -729,22 +739,21 @@ public:
    * @param  ColId   column to check
    * @param  val     search value
    * @param  len     length of search value   
-   * @param  nopad   force non-padded comparison for a Char column
    * @param  Label   label to jump to
    * @return -1 if unsuccessful
    */
-  int branch_col_eq(Uint32 ColId, const void * val, Uint32 len, 
-		    bool nopad, Uint32 Label);
-  int branch_col_ne(Uint32 ColId, const void * val, Uint32 len, 
-		    bool nopad, Uint32 Label);
-  int branch_col_lt(Uint32 ColId, const void * val, Uint32 len, 
-		    bool nopad, Uint32 Label);
-  int branch_col_le(Uint32 ColId, const void * val, Uint32 len, 
-		    bool nopad, Uint32 Label);
-  int branch_col_gt(Uint32 ColId, const void * val, Uint32 len, 
-		    bool nopad, Uint32 Label);
-  int branch_col_ge(Uint32 ColId, const void * val, Uint32 len, 
-		    bool nopad, Uint32 Label);
+  int branch_col_eq(Uint32 ColId, const void* val, Uint32 len, bool,
+                    Uint32 Label);
+  int branch_col_ne(Uint32 ColId, const void* val, Uint32 len, bool,
+                    Uint32 Label);
+  int branch_col_lt(Uint32 ColId, const void* val, Uint32 len, bool,
+                    Uint32 Label);
+  int branch_col_le(Uint32 ColId, const void* val, Uint32 len, bool,
+                    Uint32 Label);
+  int branch_col_gt(Uint32 ColId, const void* val, Uint32 len, bool,
+                    Uint32 Label);
+  int branch_col_ge(Uint32 ColId, const void* val, Uint32 len, bool,
+                    Uint32 Label);
   /**
    * LIKE/NOTLIKE wildcard comparisons
    * These instructions support SQL-style % and _ wildcards for
@@ -757,10 +766,10 @@ public:
    * @note For Scans and NdbRecord operations, use the 
    *       NdbInterpretedCode interface.
    */
-  int branch_col_like(Uint32 ColId, const void *, Uint32 len, 
-		      bool nopad, Uint32 Label);
-  int branch_col_notlike(Uint32 ColId, const void *, Uint32 len, 
-			 bool nopad, Uint32 Label);
+  int branch_col_like(Uint32 ColId, const void*, Uint32 len, bool,
+                      Uint32 Label);
+  int branch_col_notlike(Uint32 ColId, const void*, Uint32 len, bool,
+                         Uint32 Label);
 
   /**
    * Bitwise logical comparisons
@@ -786,14 +795,14 @@ public:
    *     - Column data AND Mask != 0    (Some masked bits are set in data)
    *   
    */
-  int branch_col_and_mask_eq_mask(Uint32 ColId, const void *, Uint32 len, 
-                                  bool nopad, Uint32 Label);
-  int branch_col_and_mask_ne_mask(Uint32 ColId, const void *, Uint32 len, 
-                                  bool nopad, Uint32 Label);
-  int branch_col_and_mask_eq_zero(Uint32 ColId, const void *, Uint32 len, 
-                                  bool nopad, Uint32 Label);
-  int branch_col_and_mask_ne_zero(Uint32 ColId, const void *, Uint32 len, 
-                                  bool nopad, Uint32 Label);
+  int branch_col_and_mask_eq_mask(Uint32 ColId, const void* mask, Uint32 len,
+                                  bool, Uint32 Label);
+  int branch_col_and_mask_ne_mask(Uint32 ColId, const void* mask, Uint32 len,
+                                  bool, Uint32 Label);
+  int branch_col_and_mask_eq_zero(Uint32 ColId, const void* mask, Uint32 len,
+                                  bool, Uint32 Label);
+  int branch_col_and_mask_ne_zero(Uint32 ColId, const void* mask, Uint32 len,
+                                  bool, Uint32 Label);
 
   /**
    * Interpreted program instruction: Exit with Ok
@@ -889,9 +898,9 @@ public:
   const NdbError & getNdbError() const;
 
   /**
-   * Get the method number where the error occured.
+   * Get the method number where the error occurred.
    * 
-   * @return method number where the error occured.
+   * @return method number where the error occurred.
    */
 #ifndef DOXYGEN_SHOULD_SKIP_DEPRECATED
   int getNdbErrorLine();
@@ -1065,7 +1074,8 @@ public:
                  OO_QUEUABLE     = 0x100,
                  OO_NOT_QUEUABLE = 0x200,
                  OO_DEFERRED_CONSTAINTS = 0x400,
-                 OO_DISABLE_FK   = 0x800
+                 OO_DISABLE_FK   = 0x800,
+                 OO_NOWAIT       = 0x1000
     };
 
     /* An operation-specific abort option.
@@ -1111,6 +1121,9 @@ public:
 #ifndef DOXYGEN_SHOULD_SKIP_INTERNAL
   // XXX until NdbRecord is used in ndb_restore
   void set_disable_fk() { m_flags |= OF_DISABLE_FK; }
+
+  /* Set nowait option on locking read */
+  int setNoWait();
 #endif
 
 protected:
@@ -1254,8 +1267,12 @@ protected:
  * was sent, then the connection object is told about this situation.
  *****************************************************************************/
 
-  int    doSendKeyReq(int processorId, GenericSectionPtr* secs, Uint32 numSecs);
+  int    doSendKeyReq(int processorId,
+                      GenericSectionPtr* secs,
+                      Uint32 numSecs,
+                      bool lastFlag);
   int    doSend(int ProcessorId, Uint32 lastFlag);
+  void   setRequestInfoTCKEYREQ(bool lastFlag, bool longSignal);
   virtual int	 prepareSend(Uint32  TC_ConnectPtr,
                              Uint64  TransactionId,
 			     AbortOption);
@@ -1345,6 +1362,7 @@ protected:
 		    Uint32 aStartPosition,	
 		    Uint32 aKeyLenInByte);
   void reorderKEYINFO();
+  int transferKeyInfoToAttrInfo();
   
   virtual void setErrorCode(int aErrorCode) const;
   virtual void setErrorCodeAbort(int aErrorCode) const;
@@ -1359,8 +1377,8 @@ protected:
   int	      insertCall(Uint32 aCall);
   int	      insertBranch(Uint32 aBranch);
 
-  Uint32 ptr2int() { return theReceiver.getId(); };
-  Uint32 ptr2int() const { return theReceiver.getId(); };
+  Uint32 ptr2int() { return theReceiver.getId(); }
+  Uint32 ptr2int() const { return theReceiver.getId(); }
 
   // get table or index key from prepared signals
   int getKeyFromTCREQ(Uint32* data, Uint32 & size);
@@ -1370,6 +1388,8 @@ protected:
   int prepareGetLockHandleNdbRecord();
 
   virtual void setReadLockMode(LockMode lockMode);
+  void setReadCommittedBase();
+  Uint32 getReadCommittedBase();
 
 /******************************************************************************
  * These are the private variables that are defined in the operation objects.
@@ -1379,7 +1399,8 @@ protected:
 
   NdbReceiver theReceiver;
 
-  NdbError theError;			// Errorcode	       
+  // Allow update error from const methods.
+  mutable NdbError theError;            // Errorcode
   int 	   theErrorLine;		// Error line       
 
   Ndb*		   theNdb;	      	// Point back to the Ndb object.
@@ -1428,7 +1449,7 @@ protected:
   */
   const class NdbTableImpl* m_accessTable;
 
-  // Set to TRUE when a tuple key attribute has been defined. 
+  // Set to true when a tuple key attribute has been defined.
   Uint32	    theTupleKeyDefined[NDB_MAX_NO_OF_ATTRIBUTES_IN_KEY][3];
 
   Uint32	    theTotalNrOfKeyWordInSignal;     // The total number of
@@ -1457,6 +1478,11 @@ protected:
   Uint8  theCommitIndicator;	 // Indicator of whether commit operation
   Uint8  theSimpleIndicator;	 // Indicator of whether simple operation
   Uint8  theDirtyIndicator;	 // Indicator of whether dirty operation
+  /**
+   * Indicates that the base operation is ReadCommitted although it has
+   * been upgraded to use locking read.
+   */
+  Uint8  theReadCommittedBaseIndicator;
   Uint8  theInterpretIndicator;  // Indicator of whether interpreted operation
                                  // Note that scan operations always have this
                                  // set true
@@ -1472,7 +1498,9 @@ protected:
     OF_USE_ANY_VALUE = 0x2,
     OF_QUEUEABLE = 0x4,
     OF_DEFERRED_CONSTRAINTS = 0x8,
-    OF_DISABLE_FK = 0x10
+    OF_DISABLE_FK = 0x10,
+    OF_NOWAIT = 0x20,
+    OF_BLOB_PART_READ = 0x40
   };
   Uint8  m_flags;
 
@@ -1875,6 +1903,19 @@ NdbOperation::setValue(Uint32 anAttrId, double aPar)
   return setValue(anAttrId, (const char*)&aPar, (Uint32)8);
 }
 
+inline
+void
+NdbOperation::setReadCommittedBase()
+{
+  theReadCommittedBaseIndicator = 1;
+}
+
+inline
+Uint32
+NdbOperation::getReadCommittedBase()
+{
+  return theReadCommittedBaseIndicator;
+}
 #endif // doxygen
 
 #endif

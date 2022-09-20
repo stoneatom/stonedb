@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2014, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -18,7 +18,7 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA */
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 /**
    @file
@@ -27,19 +27,46 @@
    sql_mode contains 'only_full_group_by'.
 */
 
-#include "sql_select.h"
-#include "opt_trace.h"
-#include "sql_base.h"
-#include "aggregate_check.h"
+#include "sql/aggregate_check.h"
+
+#include <assert.h>
+#include <cstdio>
+#include <initializer_list>
+#include <utility>
+
+#include "mem_root_deque.h"
+#include "my_base.h"
+
+#include "my_sys.h"
+#include "mysqld_error.h"
+#include "sql/derror.h"
+#include "sql/field.h"
+#include "sql/item_func.h"
+#include "sql/item_row.h"
+#include "sql/key.h"
+#include "sql/nested_join.h"
+#include "sql/opt_trace.h"
+#include "sql/opt_trace_context.h"
+#include "sql/parser_yystype.h"
+#include "sql/sql_base.h"
+#include "sql/sql_class.h"
+#include "sql/sql_const.h"
+#include "sql/sql_executor.h"
+#include "sql/sql_lex.h"
+#include "sql/sql_list.h"
+#include "sql/table.h"
+#include "sql/window.h"
+#include "template_utils.h"
 
 /**
   @addtogroup AGGREGATE_CHECKS
 
-  @section USED_TABLES Implementation note: used_tables_for_level() vs used_tables()
+  @section USED_TABLES Implementation note: used_tables_for_level() vs
+  used_tables()
 
   - When we are looking for items to validate, we must enter scalar/row
-  subqueries; if we find an item of our SELECT_LEX inside such subquery, for
-  example an Item_field with depended_from equal to our SELECT_LEX, we
+  subqueries; if we find an item of our Query_block inside such subquery, for
+  example an Item_field with depended_from equal to our Query_block, we
   must use used_tables_for_level(). Example: when validating t1.a in
   select (select t1.a from t1 as t2 limit 1) from t1 group by t1.pk;
   we need t1.a's map in the grouped query; used_tables() would return
@@ -65,8 +92,8 @@
   must be called prefix (to enable skipping) and postfix (to disable
   skipping).
 */
-static const Item::enum_walk walk_options=
-  Item::enum_walk(Item::WALK_PREFIX | Item::WALK_POSTFIX | Item::WALK_SUBQUERY);
+static const enum_walk walk_options =
+    enum_walk::SUBQUERY_PREFIX | enum_walk::POSTFIX;
 
 /**
    Rejects the query if it has a combination of DISTINCT and ORDER BY which
@@ -80,14 +107,11 @@ static const Item::enum_walk walk_options=
 
    @returns true if rejected (my_error() is called)
 */
-bool Distinct_check::check_query(THD *thd)
-{
-  uint number_in_list= 1;
-  for (ORDER *order= select->order_list.first;
-       order;
-       ++number_in_list, order= order->next)
-  {
-    if (order->in_field_list) // is in SELECT list
+bool Distinct_check::check_query(THD *thd) {
+  uint number_in_list = 1;
+  for (ORDER *order = select->order_list.first; order;
+       ++number_in_list, order = order->next) {
+    if (order->in_field_list)  // is in SELECT list
       continue;
     assert((*order->item)->fixed);
     uint counter;
@@ -102,7 +126,7 @@ bool Distinct_check::check_query(THD *thd)
       This query is valid because the expression in ORDER BY is the same as
       the one in SELECT list. But in setup_order():
       'b' in ORDER BY (not yet fixed) is still a 'generic' Item_field,
-      'b' in SELECT (already fixed) is Item_direct_view_ref referencing 'x*2'
+      'b' in SELECT (already fixed) is Item_view_ref referencing 'x*2'
       (so type()==REF_ITEM).
       So Item_field::eq() says the 'b's are different, so 'sin(b)' of
       ORDER BY is not found equal to 'sin(b)' of SELECT.
@@ -121,20 +145,20 @@ bool Distinct_check::check_query(THD *thd)
       differ due to white space....).
       Subqueries in ORDER BY are non-standard anyway.
     */
-    Item** const res= find_item_in_list(*order->item, select->item_list,
-                                        &counter, REPORT_EXCEPT_NOT_FOUND,
-                                        &resolution);
-    if (res == NULL)    // Other error than "not found", my_error() was called
-      return true;                              /* purecov: inspected */
-    if (res != not_found_item) // is in SELECT list
+    Item **const res =
+        find_item_in_list(thd, *order->item, &select->fields, &counter,
+                          REPORT_EXCEPT_NOT_FOUND, &resolution);
+    if (res == nullptr)  // Other error than "not found", my_error() was called
+      return true;       /* purecov: inspected */
+    if (res != not_found_item)  // is in SELECT list
       continue;
     /*
       [numbers refer to the function's comment]
       (1) is true. Check (2) and (3) inside walk().
     */
-    if ((*order->item)->walk(&Item::aggregate_check_distinct,
-                             walk_options, (uchar*)this))
-    {
+    if ((*order->item)
+            ->walk(&Item::aggregate_check_distinct, walk_options,
+                   (uchar *)this)) {
       if (failed_ident)
         my_error(ER_FIELD_IN_ORDER_NOT_SELECT, MYF(0), number_in_list,
                  failed_ident->full_name(), "DISTINCT");
@@ -147,52 +171,66 @@ bool Distinct_check::check_query(THD *thd)
   return false;
 }
 
-
 /**
    Rejects the query if it does aggregation or grouping, and expressions in
-   its SELECT list, ORDER BY clause, or HAVING condition, may vary inside a
-   group (are not "group-invariant").
+   its SELECT list, ORDER BY clause, HAVING condition, or window functions
+   may vary inside a group (are not "group-invariant").
 */
-bool Group_check::check_query(THD *thd)
-{
-  ORDER *order= select->order_list.first;
+bool Group_check::check_query(THD *thd) {
+  ORDER *order = select->order_list.first;
 
   // Validate SELECT list
-  List_iterator<Item> select_exprs_it(select->item_list);
-  Item *expr;
-  uint number_in_list= 1;
-  const char *place= "SELECT list";
-  while ((expr= select_exprs_it++))
-  {
-    if (check_expression(thd, expr, true))
-      goto err;
+  uint number_in_list = 1;
+  const char *place = "SELECT list";
+
+  for (Item *sel_expr : select->visible_fields()) {
+    if (check_expression(thd, sel_expr, true)) goto err;
     ++number_in_list;
   }
 
-  // aggregate without GROUP BY has no ORDER BY at this stage.
+  // Aggregate without GROUP BY has no ORDER BY at this stage
   assert(!(select->is_implicitly_grouped() && select->is_ordered()));
   // Validate ORDER BY list
-  if (order)
-  {
-    number_in_list= 1;
-    place= "ORDER BY clause";
-    for ( ; order ; order= order->next)
-    {
+  if (order) {
+    number_in_list = 1;
+    place = "ORDER BY clause";
+    for (; order; order = order->next) {
       // If it is in SELECT list it is already checked.
-      if (!order->in_field_list &&
-          check_expression(thd, *order->item, false))
+      if (!order->in_field_list && check_expression(thd, *order->item, false))
         goto err;
       ++number_in_list;
     }
   }
 
   // Validate HAVING condition
-  if (select->having_cond())
+  if (select->having_cond()) {
+    number_in_list = 1;
+    place = "HAVING clause";
+    if (check_expression(thd, select->having_cond(), false)) goto err;
+  }
+
+  // Validate windows' ORDER BY and PARTITION BY clauses.
+  char buff[STRING_BUFFER_USUAL_SIZE];
   {
-    number_in_list= 1;
-    place= "HAVING clause";
-    if (check_expression(thd, select->having_cond(), false))
-      goto err;
+    List_iterator<Window> li(select->m_windows);
+    for (Window *w = li++; w != nullptr; w = li++) {
+      for (auto it : {w->first_partition_by(), w->first_order_by()}) {
+        if (it != nullptr) {
+          number_in_list = 1;
+          for (ORDER *o = it; o != nullptr; o = o->next) {
+            Item *expr = *(o->item);
+            if (check_expression(thd, expr, false)) {
+              snprintf(buff, sizeof(buff),
+                       "PARTITION BY or ORDER BY clause of window '%s'",
+                       w->printable_name());
+              place = buff;
+              goto err;
+            }
+            ++number_in_list;
+          }
+        }
+      }
+    }
   }
 
   return false;
@@ -207,64 +245,51 @@ err:
     however we want to keep sending the old error codes, for pre-5.7
     applications used to it.
   */
-  if (select->is_explicitly_grouped())
-  {
-    code= ER_WRONG_FIELD_WITH_GROUP;        // old code
-    text= ER(ER_WRONG_FIELD_WITH_GROUP_V2); // new text
-  }
-  else
-  {
-    code= ER_MIX_OF_GROUP_FUNC_AND_FIELDS;        // old code
-    text= ER(ER_MIX_OF_GROUP_FUNC_AND_FIELDS_V2); // new text
+  if (select->is_explicitly_grouped()) {
+    code = ER_WRONG_FIELD_WITH_GROUP;                  // old code
+    text = ER_THD(thd, ER_WRONG_FIELD_WITH_GROUP_V2);  // new text
+  } else {
+    code = ER_MIX_OF_GROUP_FUNC_AND_FIELDS;                  // old code
+    text = ER_THD(thd, ER_MIX_OF_GROUP_FUNC_AND_FIELDS_V2);  // new text
   }
   my_printf_error(code, text, MYF(0), number_in_list, place,
                   failed_ident->full_name());
   return true;
 }
 
-
 /**
    Validates one expression (this forms one step of check_query()).
+   @param  thd   current thread
    @param  expr  expression
    @param  in_select_list  whether this expression is coming from the SELECT
    list.
 */
-bool Group_check::check_expression(THD *thd, Item *expr,
-                                   bool in_select_list)
-{
+bool Group_check::check_expression(THD *thd, Item *expr, bool in_select_list) {
   assert(!is_child());
-  if (!in_select_list)
-  {
+  if (!in_select_list) {
     uint counter;
     enum_resolution_type resolution;
     // Search if this expression is equal to one in the SELECT list.
-    Item** const res= find_item_in_list(expr,
-                                        select->item_list,
-                                        &counter, REPORT_EXCEPT_NOT_FOUND,
-                                        &resolution);
-    if (res == NULL) // Other error than "not found", my_error() was called
-      return true;   /* purecov: inspected */
-    if (res != not_found_item)
-    {
+    Item **const res = find_item_in_list(thd, expr, &select->fields, &counter,
+                                         REPORT_EXCEPT_NOT_FOUND, &resolution);
+    if (res == nullptr)  // Other error than "not found", my_error() was called
+      return true;       /* purecov: inspected */
+    if (res != not_found_item) {
       // is in SELECT list, which has already been validated.
       return false;
     }
   }
 
-  for (ORDER *grp= select->group_list.first; grp; grp= grp->next)
-  {
-    if ((*grp->item)->type() == Item::INT_ITEM &&
-        (*grp->item)->basic_const_item()) /* group by position */
-      return false;
+  expr = unwrap_rollup_group(expr);
+
+  for (ORDER *grp = select->group_list.first; grp; grp = grp->next) {
     if ((*grp->item)->eq(expr, false))
-      return false;          // Expression is in GROUP BY so is ok
+      return false;  // Expression is in GROUP BY so is ok
   }
 
   // Analyze columns/aggregates referenced by the expression
-  return
-    expr->walk(&Item::aggregate_check_group, walk_options, (uchar*)this);
+  return expr->walk(&Item::aggregate_check_group, walk_options, (uchar *)this);
 }
-
 
 /**
    Tells if 'item' is functionally dependent ("FD") on source columns.
@@ -307,13 +332,10 @@ bool Group_check::check_expression(THD *thd, Item *expr,
 
    @returns true if 'item' is functionally dependent on source columns.
 */
-bool Group_check::is_fd_on_source(Item *item)
-{
-  if (is_in_fd(item))
-    return true;
+bool Group_check::is_fd_on_source(Item *item) {
+  if (is_in_fd(item)) return true;
 
-  if (!is_child())
-  {
+  if (!is_child()) {
     /*
       If it were a child Group_check, its list of source columns
       would start empty, it would gradually be filled by the master
@@ -321,8 +343,7 @@ bool Group_check::is_fd_on_source(Item *item)
       Here it is the master Group_check, so GROUP expressions are considered
       to be known, from which we build E1.
     */
-    if (fd.empty())
-    {
+    if (fd.empty()) {
       /*
         We do a first attempt: is the column part of group columns? This
         test should be sufficient to accept any query accepted by
@@ -330,22 +351,18 @@ bool Group_check::is_fd_on_source(Item *item)
         add_to_fd() (and potentially add_to_source_of_mat_table()).
         It's just an optimization.
       */
-      for (ORDER *grp= select->group_list.first; grp; grp= grp->next)
-      {
-        if ((*grp->item)->eq(item, false))
-          return true;
+      for (ORDER *grp = select->group_list.first; grp; grp = grp->next) {
+        if ((*grp->item)->eq(item, false)) return true;
       }
       // It didn't suffice. Let's start the search for FDs: build E1.
-      for (ORDER *grp= select->group_list.first; grp; grp= grp->next)
-      {
-        Item *const grp_it= *grp->item;
+      for (ORDER *grp = select->group_list.first; grp; grp = grp->next) {
+        Item *const grp_it = *grp->item;
         add_to_fd(grp_it, local_column(grp_it));
       }
     }
   }
 
-  if (select->olap != UNSPECIFIED_OLAP_TYPE)
-  {
+  if (select->olap != UNSPECIFIED_OLAP_TYPE) {
     /*
       - the syntactical transformation of ROLLUP is to make a union of
       queries, and in each such query, some group column references are
@@ -354,59 +371,54 @@ bool Group_check::is_fd_on_source(Item *item)
       transformation. But there cannot be a key-based or equality-based
       functional dependency on a NULL literal.
       Moreover, there are no FDs in a UNION.
-      So if the query has ROLLUP, we can stop here.
+      So if the query has ROLLUP, we can stop here. Above, we have tested the
+      column against the group columns and that's enough.
+      See test group_by_fd_no_prot for examples of queries with ROLLUP which
+      are accepted or not.
     */
     return false;
   }
 
   // no need to search for keys in those tables:
-  table_map tested_map_for_keys= whole_tables_fd;
-  while (true)
-  {
+  table_map tested_map_for_keys = whole_tables_fd;
+  recheck_nullable_keys = 0;
+  while (true) {
     // build En+1
-    const table_map last_whole_tables_fd= whole_tables_fd;
-    for (uint j= 0; j < fd.size(); j++)
-    {
-      Item *const item2= fd.at(j)->real_item(); // Go down view field
-      if (item2->type() != Item::FIELD_ITEM)
-        continue;
+    const table_map last_whole_tables_fd = whole_tables_fd;
+    for (uint j = 0; j < fd.size(); j++) {
+      Item *const item2 = fd.at(j)->real_item();  // Go down view field
+      if (item2->type() != Item::FIELD_ITEM) continue;
 
-      Item_field *const item_field= down_cast<Item_field*>(item2); 
+      Item_field *const item_field = down_cast<Item_field *>(item2);
       /**
         @todo make table_ref non-NULL for gcols, then use it for 'tl'.
         Do the same in Item_field::used_tables_for_level().
       */
-      TABLE_LIST *const tl= item_field->field->table->pos_in_table_list; 
+      TABLE_LIST *const tl = item_field->field->table->pos_in_table_list;
 
-      if (tested_map_for_keys & tl->map())
-        continue;
-      tested_map_for_keys|= tl->map();
-      for (uint keyno= 0; keyno < tl->table->s->keys; keyno++)
-      {
-        KEY *const key_info= &tl->table->key_info[keyno];
-        if ((key_info->flags & (HA_NOSAME | HA_NULL_PART_KEY)) != HA_NOSAME)
-          continue;
+      if (tested_map_for_keys & tl->map()) continue;
+      tested_map_for_keys |= tl->map();
+      for (uint keyno = 0; keyno < tl->table->s->keys; keyno++) {
+        KEY *const key_info = &tl->table->key_info[keyno];
+        if (!(key_info->flags & HA_NOSAME)) continue;
         uint k;
-        for (k= 0; k < key_info->user_defined_key_parts; k++)
-        {
-          const Field * const key_field= key_info->key_part[k].field;
-          bool key_field_in_fd= false;
-          for (uint l= 0; l < fd.size(); l++)
-          {
-            Item *const item3= fd.at(l)->real_item();    // Go down view field
-            if (item3->type() != Item::FIELD_ITEM)
-              continue;
-            if (static_cast<Item_field *>(item3)->field == key_field)
-            {
-              key_field_in_fd= true;
+        for (k = 0; k < key_info->user_defined_key_parts; k++) {
+          const Field *const key_field = key_info->key_part[k].field;
+          bool key_field_in_fd = false;
+          for (uint l = 0; l < fd.size(); l++) {
+            Item *const item3 = fd.at(l)->real_item();  // Go down view field
+            if (item3->type() != Item::FIELD_ITEM) continue;
+            if (static_cast<Item_field *>(item3)->field == key_field &&
+                // Not a nullable column, or can be treated as not nullable
+                (!key_field->is_nullable() ||
+                 item3->marker == Item::MARKER_FUNC_DEP_NOT_NULL)) {
+              key_field_in_fd = true;
               break;
             }
           }
-          if (!key_field_in_fd)
-            break;
+          if (!key_field_in_fd) break;
         }
-        if (k == key_info->user_defined_key_parts)
-        {
+        if (k == key_info->user_defined_key_parts) {
           /*
             We just found that intersect(En,table.*) contains all columns of
             the key, so intersect(En,table.*) -> table.* in 'table'.
@@ -421,45 +433,49 @@ bool Group_check::is_fd_on_source(Item *item)
         }
       }
     }
-    if (last_whole_tables_fd != whole_tables_fd && // something new, check again
+    if (last_whole_tables_fd !=
+            whole_tables_fd &&  // something new, check again
         is_in_fd(item))
       return true;
 
     // Build En+2
-    uint last_fd= fd.size();
+    uint last_fd = fd.size();
 
-    find_fd_in_joined_table(select->join_list); // [OUTER] JOIN ON
+    find_fd_in_joined_table(select->join_list);  // [OUTER] JOIN ON
 
-    if (select->where_cond())                   // WHERE
+    if (select->where_cond())  // WHERE
       find_fd_in_cond(select->where_cond(), 0, false);
 
-    table_map map_of_new_fds= 0;
-    for (; last_fd < fd.size(); ++last_fd)
-      map_of_new_fds|= fd.at(last_fd)->used_tables();
+    table_map map_of_new_fds = recheck_nullable_keys;
+    recheck_nullable_keys = 0;
 
-    if (map_of_new_fds != 0)     // something new, check again
+    for (; last_fd < fd.size(); ++last_fd)
+      map_of_new_fds |= fd.at(last_fd)->used_tables();
+
+    /*
+      When we built map_of_new_fds we may have used columns from merged views.
+      Such column is properly local to 'select', and in general it
+      wraps an expression of columns of merged tables (local tables) and of
+      other objects (e.g. outer references, if this view is rather a derived
+      table containing an outer reference). Only local tables are of interest:
+    */
+    map_of_new_fds &= ~PSEUDO_TABLE_BITS;
+    if (map_of_new_fds != 0)  // something new, check again
     {
-      assert((map_of_new_fds & PSEUDO_TABLE_BITS) == 0);
-      if (is_in_fd(item))
-        return true;
-       // Recheck keys only in tables with something new:
-      tested_map_for_keys&= ~map_of_new_fds;
-    }
-    else
-    {
+      if (is_in_fd(item)) return true;
+      // Recheck keys only in tables with something new:
+      tested_map_for_keys &= ~map_of_new_fds;
+    } else {
       // If already searched in expressions underlying identifiers.
-      if (search_in_underlying)
-        return false;
+      if (search_in_underlying) return false;
 
       // Otherwise, iterate once more and dig deeper.
-      search_in_underlying= true;
+      search_in_underlying = true;
 
-      if (is_in_fd(item))
-        return true;
+      if (is_in_fd(item)) return true;
     }
-  } // while(true)
+  }  // while(true)
 }
-
 
 /*
   Record that an expression is uniquely determined by source columns.
@@ -472,8 +488,7 @@ bool Group_check::is_fd_on_source(Item *item)
   table and if so we should pass it to the child Group_check.
 */
 void Group_check::add_to_fd(Item *item, bool local_column,
-                            bool add_to_mat_table)
-{
+                            bool add_to_mat_table) {
   /*
     Because the "fd" list is limited to columns and because MySQL allows
     non-column expressions in GROUP BY (unlike the standard), we need this
@@ -492,8 +507,7 @@ void Group_check::add_to_fd(Item *item, bool local_column,
   */
   find_group_in_fd(item);
 
-  if (!local_column)
-    return;
+  if (!local_column) return;
 
   /*
     A column reference can later give more FDs, record it.
@@ -515,19 +529,17 @@ void Group_check::add_to_fd(Item *item, bool local_column,
 
   fd.push_back(down_cast<Item_ident *>(item));
 
-  if (!add_to_mat_table)
-    return;
+  if (!add_to_mat_table) return;
 
-  item= item->real_item(); // for merged view containing mat table
-  if (item->type() == Item::FIELD_ITEM)
-  {
-    Item_field *const item_field= (Item_field*)item;
-    TABLE_LIST *const tl= item_field->field->table->pos_in_table_list;
-    if (tl->uses_materialization()) // materialized table
+  item = item->real_item();  // for merged view containing mat table
+  if (item->type() == Item::FIELD_ITEM) {
+    Item_field *const item_field = (Item_field *)item;
+    TABLE_LIST *const tl = item_field->field->table->pos_in_table_list;
+    if (tl->uses_materialization() &&  // materialized table
+        !tl->is_table_function())      // there's no underlying query expr
       add_to_source_of_mat_table(item_field, tl);
   }
 }
-
 
 /**
    This function must be called every time we discover an item which is FD on
@@ -536,56 +548,50 @@ void Group_check::add_to_fd(Item *item, bool local_column,
    @param item  item which is FD; if NULL, means that we instead added a bit
    to whole_tables_fd.
 */
-void Group_check::find_group_in_fd(Item *item)
-{
-  if (group_in_fd == ~0ULL)
-    return;                                     // nothing to do
-  if (select->is_grouped())
-  {
+void Group_check::find_group_in_fd(Item *item) {
+  if (group_in_fd == ~0ULL) return;  // nothing to do
+  if (select->is_grouped()) {
     /*
       See if we now have all of query expression's GROUP BY list; an
-      implicitely grouped query has an empty group list.
+      implicitly grouped query has an empty group list.
     */
-    bool missing= false;
-    int j= 0;
-    for (ORDER *grp= select->group_list.first; grp; ++j, grp= grp->next)
-    {
-      if (!(group_in_fd & (1ULL << j)))
-      {
-        Item *grp_item= *grp->item;
+    bool missing = false;
+    int j = 0;
+    for (ORDER *grp = select->group_list.first; grp; ++j, grp = grp->next) {
+      if (!(group_in_fd & (1ULL << j))) {
+        Item *grp_item = *grp->item;
         if ((local_column(grp_item) &&
              (grp_item->used_tables() & ~whole_tables_fd) == 0) ||
             (item && grp_item->eq(item, false)))
-          group_in_fd|= (1ULL << j);
+          group_in_fd |= (1ULL << j);
         else
-          missing= true;
+          missing = true;
       }
     }
-    if (!missing)
-    {
+    if (!missing) {
       /*
         All GROUP BY exprs are FD on the source. Turn all bits on, for easy
         testing.
       */
-      group_in_fd= ~0ULL;
+      group_in_fd = ~0ULL;
     }
   }
 }
 
-
 /**
    @returns the idx-th expression in the SELECT list of our query block.
 */
-Item *Group_check::select_expression(uint idx)
-{
-  List_iterator<Item> it_select_list_of_subq(*select->get_item_list());
-  Item *expr_under;
-  for (uint k= 0; k <= idx ; k++)
-    expr_under= it_select_list_of_subq++;
-  assert(expr_under);
-  return expr_under;
+Item *Group_check::select_expression(uint idx) {
+  for (Item *item : select->visible_fields()) {
+    if (idx == 0) {
+      return item;
+    } else {
+      --idx;
+    }
+  }
+  assert(false);
+  return nullptr;
 }
-
 
 /**
    If we just added a column of a materialized table to 'fd', we record this
@@ -604,48 +610,47 @@ Item *Group_check::select_expression(uint idx)
    @param  tl          mat table
 */
 void Group_check::add_to_source_of_mat_table(Item_field *item_field,
-                                             TABLE_LIST *tl)
-{
-  SELECT_LEX_UNIT *const mat_unit= tl->derived_unit();
+                                             TABLE_LIST *tl) {
+  Query_expression *const mat_query_expression = tl->derived_query_expression();
   // Query expression underlying 'tl':
-  SELECT_LEX *const mat_select= mat_unit->first_select();
-  if (mat_unit->is_union() || mat_select->olap != UNSPECIFIED_OLAP_TYPE)
-    return;                        // If UNION or ROLLUP, no FD
+  Query_block *const mat_query_block =
+      mat_query_expression->first_query_block();
+  if (mat_query_expression->is_union() ||
+      mat_query_block->olap != UNSPECIFIED_OLAP_TYPE)
+    return;  // If UNION or ROLLUP, no FD
   // Grab Group_check for this subquery.
-  Group_check *mat_gc;
+  Group_check *mat_gc = nullptr;
   uint j;
-  for (j= 0; j < mat_tables.size(); j++)
-  {
-    mat_gc= mat_tables.at(j);
-    if (mat_gc->select == mat_select)
-      break;
+  for (j = 0; j < mat_tables.size(); j++) {
+    mat_gc = mat_tables.at(j);
+    if (mat_gc->select == mat_query_block) break;
   }
-  if (j == mat_tables.size())        // not found, create it
+  if (j == mat_tables.size())  // not found, create it
   {
-    mat_gc= new (m_root) Group_check(mat_select, m_root, tl);
+    mat_gc = new (m_root) Group_check(mat_query_block, m_root, tl);
     mat_tables.push_back(mat_gc);
   }
-  // Find underlying expression of item_field, in SELECT list of mat_select
-  Item *const expr_under=
-    mat_gc->select_expression(item_field->field->field_index);
+  // Find underlying expression of item_field, in SELECT list of mat_query_block
+  Item *const expr_under =
+      mat_gc->select_expression(item_field->field->field_index());
 
   // non-nullability of tl's column in tl, is equal to that of expr_under.
-  if (expr_under && !expr_under->maybe_null)
-      mat_gc->non_null_in_source= true;
+  if (expr_under && !expr_under->is_nullable())
+    mat_gc->non_null_in_source = true;
 
   mat_gc->add_to_fd(expr_under, mat_gc->local_column(expr_under));
 
-  if (mat_gc->group_in_fd == ~0ULL &&                       // (1)
-      (!(mat_gc->table->map() & select->outer_join) ||      // (2)
-       mat_gc->non_null_in_source))                         // (3)
+  if (mat_gc->group_in_fd == ~0ULL &&                   // (1)
+      (!(mat_gc->table->map() & select->outer_join) ||  // (2)
+       mat_gc->non_null_in_source))                     // (3)
   {
     /*
-      (1): In mat_gc, all GROUP BY expressions of mat_select are dependent on
-      source columns. Thus, all SELECT list expressions are, too (otherwise,
-      the validation of mat_select has or will fail). So, in our Group_check,
-      intersect(En, tl.*) -> tl.* .
-      This FD needs to propagate in our Group_check all the way up to the
-      result of the WHERE clause. It does, if:
+      (1): In mat_gc, all GROUP BY expressions of mat_query_block are dependent
+      on source columns. Thus, all SELECT list expressions are, too (otherwise,
+      the validation of mat_query_block has or will fail). So, in our
+      Group_check, intersect(En, tl.*) -> tl.* . This FD needs to propagate in
+      our Group_check all the way up to the result of the WHERE clause. It does,
+      if:
       - either there is no weak side above this table (2) (so NFFD is not
       needed).
       - or intersect(En, tl.*) contains a non-nullable column (3) (then
@@ -659,7 +664,6 @@ void Group_check::add_to_source_of_mat_table(Item_field *item_field,
   }
 }
 
-
 /**
    is_in_fd() is low-level compared to is_fd_on_source(). The former only
    searches through built FD information; the latter builds this information
@@ -670,10 +674,10 @@ void Group_check::add_to_source_of_mat_table(Item_field *item_field,
 
    @returns true if the expression is FD on the source.
  */
-bool Group_check::is_in_fd(Item *item)
-{
-  if (item->type() == Item::SUM_FUNC_ITEM)
-  {
+bool Group_check::is_in_fd(Item *item) {
+  if ((item->type() == Item::SUM_FUNC_ITEM && !item->m_is_window_function) ||
+      (item->type() == Item_func::FUNC_ITEM &&
+       (((Item_func *)item)->functype() == Item_func::GROUPING_FUNC))) {
     /*
       If all group expressions are FD on the source, this set function also is
       (one single value per group).
@@ -683,10 +687,9 @@ bool Group_check::is_in_fd(Item *item)
 
   assert(local_column(item));
   Used_tables ut(select);
-  (void) item->walk(&Item::used_tables_for_level, Item::WALK_POSTFIX,
-                    pointer_cast<uchar *>(&ut));
-  if ((ut.used_tables & ~whole_tables_fd) == 0)
-  {
+  (void)item->walk(&Item::used_tables_for_level, enum_walk::POSTFIX,
+                   pointer_cast<uchar *>(&ut));
+  if ((ut.used_tables & ~whole_tables_fd) == 0) {
     /*
       The item is a column from a table whose all columns are FD.
       If the table is a view, the item wraps an expression, which
@@ -699,11 +702,9 @@ bool Group_check::is_in_fd(Item *item)
     */
     return true;
   }
-  for (uint j= 0; j < fd.size(); j++)
-  {
-    Item *const item2= fd.at(j);
-    if (item2->eq(item, 0))
-      return true;
+  for (uint j = 0; j < fd.size(); j++) {
+    Item *const item2 = fd.at(j);
+    if (item2->eq(item, false)) return true;
     /*
       Say that we have view:
       create view v1 as select i, 2*i as z from t1; and we do:
@@ -716,15 +717,12 @@ bool Group_check::is_in_fd(Item *item)
       meet Item_field (t1.i). For us to find this t1.i in "fd" we have to
       reach to real_item() of v1.i.
     */
-    Item *const real_it2= item2->real_item();
-    if (real_it2 != item2 && real_it2->eq(item, 0))
-      return true;
+    Item *const real_it2 = item2->real_item();
+    if (real_it2 != item2 && real_it2->eq(item, false)) return true;
   }
-  if (!search_in_underlying)
-    return false;
+  if (!search_in_underlying) return false;
   return is_in_fd_of_underlying(down_cast<Item_ident *>(item));
 }
-
 
 /**
    See if we can derive a FD from a column which has an underlying expression.
@@ -736,10 +734,8 @@ bool Group_check::is_in_fd(Item *item)
    @param  item  column
    @returns true  if this column is FD on source
 */
-bool Group_check::is_in_fd_of_underlying(Item_ident *item)
-{
-  if (item->type() == Item::REF_ITEM)
-  {
+bool Group_check::is_in_fd_of_underlying(Item_ident *item) {
+  if (item->type() == Item::REF_ITEM) {
     /*
       It's a merged view's item.
       Consider
@@ -751,31 +747,30 @@ bool Group_check::is_in_fd_of_underlying(Item_ident *item)
     assert(static_cast<const Item_ref *>(item)->ref_type() ==
            Item_ref::VIEW_REF);
     /*
-      Refuse RAND_TABLE_BIT because:
+      Refuse non-deterministic expressions because:
       - FDs in a view are those of the underlying query expression.
       - For FDs in a query expression, expressions in the SELECT list must be
       deterministic.
       Same is true for materialized tables further down.
     */
-    if (item->used_tables() & RAND_TABLE_BIT)
-      return false;
+    if (item->is_non_deterministic()) return false;
 
-    Item *const real_it= item->real_item();
+    Item *const real_it = item->real_item();
     Used_tables ut(select);
-    (void) item->walk(&Item::used_tables_for_level, Item::WALK_POSTFIX,
-                      pointer_cast<uchar *>(&ut));
+    (void)item->walk(&Item::used_tables_for_level, enum_walk::POSTFIX,
+                     pointer_cast<uchar *>(&ut));
     /*
       todo When we eliminate all uses of cached_table, we can probably add a
-      derived_table_ref field to Item_direct_view_ref objects and use it here.
+      derived_table_ref field to Item_view_ref objects and use it here.
     */
-    TABLE_LIST *const tl= item->cached_table;
+    TABLE_LIST *const tl = item->cached_table;
     assert(tl->is_view_or_derived());
     /*
       We might find expression-based FDs in the result of the view's query
       expression; but if this view is on the weak side of an outer join,
       the FD won't propagate to that outer join's result.
     */
-    const bool weak_side_upwards= tl->is_inner_table_of_outer_join();
+    const bool weak_side_upwards = tl->is_inner_table_of_outer_join();
 
     /*
       (3) real_it is a deterministic expression of columns which are all FD on
@@ -785,60 +780,55 @@ bool Group_check::is_in_fd_of_underlying(Item_ident *item)
       (2) Or NULLness of columns implies NULLness of expression (so it's
       NFFD).
     */
-    if ((!weak_side_upwards ||                  // (1)
-         (ut.used_tables & real_it->not_null_tables())) && // (2)
+    if ((!weak_side_upwards ||                              // (1)
+         (ut.used_tables & real_it->not_null_tables())) &&  // (2)
         !real_it->walk(&Item::is_column_not_in_fd, walk_options,
-                       pointer_cast<uchar*>(this))) // (3)
+                       pointer_cast<uchar *>(this)))  // (3)
     {
       add_to_fd(item, true);
       return true;
     }
   }
 
-  else if (item->type() == Item::FIELD_ITEM)
-  {
-    Item_field *const item_field= down_cast<Item_field*>(item);
+  else if (item->type() == Item::FIELD_ITEM) {
+    Item_field *const item_field = down_cast<Item_field *>(item);
     /**
       @todo make table_ref non-NULL for gcols, then use it for 'tl'.
       Do the same in Item_field::used_tables_for_level().
     */
-    TABLE_LIST *const tl= item_field->field->table->pos_in_table_list;
-    if (item_field->field->is_gcol())         // Generated column
+    TABLE_LIST *const tl = item_field->field->table->pos_in_table_list;
+    if (item_field->field->is_gcol())  // Generated column
     {
       assert(!tl->uses_materialization());
-      Item *const expr= item_field->field->gcol_info->expr_item;
+      Item *const expr = item_field->field->gcol_info->expr_item;
       assert(expr->fixed);
       Used_tables ut(select);
       item_field->used_tables_for_level(pointer_cast<uchar *>(&ut));
-      const bool weak_side_upwards= tl->is_inner_table_of_outer_join();
-      if ((!weak_side_upwards ||
-           (ut.used_tables & expr->not_null_tables())) &&
+      const bool weak_side_upwards = tl->is_inner_table_of_outer_join();
+      if ((!weak_side_upwards || (ut.used_tables & expr->not_null_tables())) &&
           !expr->walk(&Item::is_column_not_in_fd, walk_options,
-                         pointer_cast<uchar*>(this)))
-      {
+                      pointer_cast<uchar *>(this))) {
         add_to_fd(item, true);
         return true;
       }
-    }
-    else if (tl->uses_materialization()) // Materialized derived table
-    {
-      SELECT_LEX *const mat_select= tl->derived_unit()->first_select();
+    } else if (tl->uses_materialization() &&  // Materialized derived table
+               !tl->is_table_function()) {
+      Query_block *const mat_query_block =
+          tl->derived_query_expression()->first_query_block();
       uint j;
-      for (j= 0; j < mat_tables.size() ; j++)
-      {
-        if (mat_tables.at(j)->select == mat_select)
-          break;
+      for (j = 0; j < mat_tables.size(); j++) {
+        if (mat_tables.at(j)->select == mat_query_block) break;
       }
-      if (j < mat_tables.size()) // if false, we know nothing about this table
+      if (j < mat_tables.size())  // if false, we know nothing about this table
       {
-        Group_check *const mat_gc= mat_tables.at(j);
+        Group_check *const mat_gc = mat_tables.at(j);
         /*
           'item' belongs to a materialized table, and certain fields of the
           subquery are in this->fd.
           Search if the expression inside 'item' is FD on them.
         */
-        Item *const expr_under=
-          mat_gc->select_expression(item_field->field->field_index);
+        Item *const expr_under =
+            mat_gc->select_expression(item_field->field->field_index());
         /*
           expr_under is the expression underlying 'item'.
           (1) and (4) it is a deterministic expression of mat_gc source
@@ -851,13 +841,11 @@ bool Group_check::is_in_fd_of_underlying(Item_ident *item)
           - or intersect(En, tl.*) contains a non-nullable column (3) (then
           the FD is NFFD).
         */
-        if (!(expr_under->used_tables() & RAND_TABLE_BIT) &&      // (1)
-            (!(mat_gc->table->map() & select->outer_join) ||      // (2)
-             mat_gc->non_null_in_source) &&                       // (3)
-            !expr_under->walk(&Item::aggregate_check_group,       // (4)
-                              walk_options,
-                              pointer_cast<uchar*>(mat_gc)))
-        {
+        if (!expr_under->is_non_deterministic() &&            // (1)
+            (!(mat_gc->table->map() & select->outer_join) ||  // (2)
+             mat_gc->non_null_in_source) &&                   // (3)
+            !expr_under->walk(&Item::aggregate_check_group,   // (4)
+                              walk_options, pointer_cast<uchar *>(mat_gc))) {
           /*
             We pass add_to_mat_table==false otherwise add_to_fd() may add
             expr_under (if it's a field) to mat_gc->fd, uselessly (it is
@@ -874,10 +862,24 @@ bool Group_check::is_in_fd_of_underlying(Item_ident *item)
   return false;
 }
 
+/**
+  @returns an element of 'fd' array equal to 'item', or nullptr if not found.
+  @param item Item to search for.
+*/
+Item *Group_check::get_fd_equal(Item *item) {
+  for (uint j = 0; j < fd.size(); j++) {
+    Item *const item2 = fd.at(j);
+    if (item2->eq(item, false)) return item2;
+    Item *const real_it2 = item2->real_item();
+    if (real_it2 != item2 && real_it2->eq(item, false)) return item2;
+  }
+  return nullptr;
+}
 
 /**
    Searches for equality-based functional dependences in an AND-ed part of a
    condition (a conjunct).
+   Search for columns which are known-not-nullable due to the conjunct.
 
    @param  cond        complete condition
    @param  conjunct    one AND-ed part of 'cond'
@@ -889,107 +891,153 @@ bool Group_check::is_in_fd_of_underlying(Item_ident *item)
 */
 void Group_check::analyze_conjunct(Item *cond, Item *conjunct,
                                    table_map weak_tables,
-                                   bool weak_side_upwards)
-{
-  if (conjunct->type() != Item::FUNC_ITEM)
-    return;
-  const Item_func *cnj= static_cast<const Item_func *>(conjunct);
-  if (cnj->functype() != Item_func::EQ_FUNC)
-    return;
-  Item *left_item= cnj->arguments()[0];
-  Item *right_item= cnj->arguments()[1];
-  if (left_item->type() == Item::ROW_ITEM &&
-      right_item->type() == Item::ROW_ITEM)
-  {
-    /*
-      (a,b)=(c,d) is equivalent to 'a=c and b=d', let's iterate on pairs.
-      Note that it's not recursive: we don't handle (a,(b,c))=(d,(e,f)), the
-      Standard does not seem to require it.
-    */
-    Item_row *left_row= down_cast<Item_row*>(left_item);
-    Item_row *right_row= down_cast<Item_row*>(right_item);
-    int elem= left_row->cols();
-    while (--elem >= 0)
-      analyze_scalar_eq(cond, left_row->element_index(elem),
-                        right_row->element_index(elem),
-                        weak_tables, weak_side_upwards);
+                                   bool weak_side_upwards) {
+  if (conjunct->type() != Item::FUNC_ITEM) return;
+  const Item_func *cnj = static_cast<const Item_func *>(conjunct);
+  if (cnj->functype() == Item_func::EQ_FUNC) {
+    Item *left_item = cnj->arguments()[0];
+    Item *right_item = cnj->arguments()[1];
+    if (left_item->type() == Item::ROW_ITEM &&
+        right_item->type() == Item::ROW_ITEM) {
+      /*
+        (a,b)=(c,d) is equivalent to 'a=c and b=d', let's iterate on pairs.
+        Note that it's not recursive: we don't handle (a,(b,c))=(d,(e,f)), the
+        Standard does not seem to require it.
+      */
+      Item_row *left_row = down_cast<Item_row *>(left_item);
+      Item_row *right_row = down_cast<Item_row *>(right_item);
+      int elem = left_row->cols();
+      while (--elem >= 0)
+        analyze_scalar_eq(cond, left_row->element_index(elem),
+                          right_row->element_index(elem), weak_tables,
+                          weak_side_upwards);
+    } else
+      analyze_scalar_eq(cond, left_item, right_item, weak_tables,
+                        weak_side_upwards);
   }
-  else
-    analyze_scalar_eq(cond, left_item, right_item, weak_tables,
-                      weak_side_upwards);
-}
+  /*
+    'cnj' can be a non-equality and still reject NULLs for a certain column,
+    which can help us discover known-not-null columns. @see OUTEREQ in
+    aggregate_check.h for an explanation.
+    For example: = < > <> >= <= and IS NOT NULL.
+  */
+  const table_map not_null_tables = cnj->not_null_tables();
+  if (!not_null_tables) return;
+  auto functype = cnj->functype();
+  if (functype == Item_func::NOT_FUNC ||    // to handle e.g. col NOT LIKE
+      functype == Item_func::ISTRUTH_FUNC)  // and e.g. (col>3) IS TRUE
+  {
+    conjunct = cnj->arguments()[0];
+    if (conjunct->type() != Item::FUNC_ITEM) return;
+    cnj = static_cast<const Item_func *>(conjunct);  // Dive in NOT's argument.
 
+    /*
+      We intentionally keep not_null_tables of the NOT, as we're interested in
+      what makes the NOT not true, not what makes NOT's argument not true.
+     */
+  }
+  for (Item **parg = cnj->arguments(),
+            **parg_end = parg + cnj->argument_count();
+       parg != parg_end; parg++) {
+    Item *const arg = *parg;
+    const table_map used_tables = arg->used_tables();
+    Item *arg_in_fd;
+    /*
+      Check if:
+      (1) it's a local column,
+      (2) a NULL value for this column makes the function return FALSE or
+      UNKNOWN; note that we do not dive into each argument, so will not get
+      into complicated cases like: coalesce(t1.a,2)+t1.b=3 ('cnj' is '='
+      here), and can thus be sure that not_null_tables() is a good enough
+      test; if we dove into the '+' argument, we may end up finding 'a' and
+      thinking a NULL value of 'a' makes "=" UNKNOWN (while it's a NULL
+      value of 'b' which does and explains the presence of t1 in
+      not_null_tables()). There is only one case where we dive because it's
+      easy, it's NOT and IS TRUE/FALSE.
+      (3) the condition is in WHERE, or is an outer join condition and the
+      column's table is on weak side.
+      (4) the column is represented by some Item_ident in the FD list.
+      If so, we mark the said Item as "not nullable in its base table", and
+      we ask for a re-check of unique indexes of this table.
+    */
+    if (!(used_tables & not_null_tables) ||               // (2)
+        (weak_tables && !(used_tables & weak_tables)) ||  // (3)
+        !local_column(arg) ||                             // (1)
+        !(arg_in_fd = get_fd_equal(arg)))                 // (4)
+      continue;
+    /*
+      Mark the item as "can be treated as not nullable in its
+      table".
+      We are not going to mark 'arg'; consider:
+       SELECT ... WHERE a IS NOT NULL GROUP BY a;
+      the Item 'a' in the IS NOT NULL predicate is not part of 'fd', it is
+      invisible to the rest of the FD-detection logic (e.g. the logic which
+      looks at unique keys); what matters is marking one copy
+      present in 'fd': 'arg_in_fd' (here the Item 'a' of GROUP BY).
+    */
+    if (arg_in_fd->marker != Item::MARKER_FUNC_DEP_NOT_NULL) {
+      // If a merged view's column, mark the underlying expression too
+      arg_in_fd->marker = arg_in_fd->real_item()->marker =
+          Item::MARKER_FUNC_DEP_NOT_NULL;
+      recheck_nullable_keys |= used_tables;
+    }
+  }
+}
 
 /**
    Helper function @see analyze_conjunct().
 */
-void Group_check::analyze_scalar_eq(Item *cond,
-                                    Item *left_item, Item *right_item,
-                                    table_map weak_tables,
-                                    bool weak_side_upwards)
-{
-  table_map left_tables= left_item->used_tables();
-  table_map right_tables= right_item->used_tables();
-  bool left_is_column= local_column(left_item);
-  bool right_is_column= local_column(right_item);
+void Group_check::analyze_scalar_eq(Item *cond, Item *left_item,
+                                    Item *right_item, table_map weak_tables,
+                                    bool weak_side_upwards) {
+  table_map left_tables = left_item->used_tables();
+  table_map right_tables = right_item->used_tables();
+  bool left_is_column = local_column(left_item);
+  bool right_is_column = local_column(right_item);
 
   /*
     We look for something=col_not_FD.
     If there are weak tables, this column must be weak (something=strong gives
     us nothing, in an outer join condition).
   */
-  if (right_is_column &&
-      (!weak_tables || (weak_tables & right_tables)) &&
-      !is_in_fd(right_item))
-  {}
-  else if (left_is_column &&
-           (!weak_tables || (weak_tables & left_tables)) &&
-           !is_in_fd(left_item))
-  {
+  if (right_is_column && (!weak_tables || (weak_tables & right_tables)) &&
+      !is_in_fd(right_item)) {
+  } else if (left_is_column && (!weak_tables || (weak_tables & left_tables)) &&
+             !is_in_fd(left_item)) {
     // col_not_FD=something: change to something=col_not_FD
     std::swap(left_item, right_item);
     std::swap(left_tables, right_tables);
     std::swap(left_is_column, right_is_column);
-  }
-  else
-    return;                                    // this equality brings nothing
+  } else
+    return;  // this equality brings nothing
 
   // right_item is a column not in fd, see if we can add it.
 
-  if (left_is_column && (weak_tables & left_tables) &&
-      is_in_fd(left_item))
-  {
+  if (left_is_column && (weak_tables & left_tables) && is_in_fd(left_item)) {
     // weak=weak: left->right, and this is NFFD
     add_to_fd(right_item, true);
     return;
   }
 
-  const table_map strong_tables= (~weak_tables) & ~PSEUDO_TABLE_BITS;
+  const table_map strong_tables = (~weak_tables) & ~PSEUDO_TABLE_BITS;
 
-  if ((left_is_column &&
-       (strong_tables & left_tables) &&
+  if ((left_is_column && (strong_tables & left_tables) &&
        is_in_fd(left_item)) ||
-      left_item->const_item() ||
-      (OUTER_REF_TABLE_BIT & left_tables))
-  {
+      left_item->const_item() || left_item->is_outer_reference()) {
     // strong_or_literal_or_outer_ref= right_item
 
-    if (!weak_tables)
-    {
+    if (!weak_tables) {
       /*
         It cannot be an inner join, due to transformations done in
         simplify_joins(). So it is WHERE, so right_item is strong.
         This may be constant=right_item and thus not be an NFFD, but WHERE is
         exterior to join nests so propagation is not needed.
       */
-      assert(!weak_side_upwards);          // cannot be inner join
+      assert(!weak_side_upwards);  // cannot be inner join
       add_to_fd(right_item, true);
-    }
-    else
-    {
+    } else {
       // Outer join. So condition must be deterministic.
-      if (cond->used_tables() & RAND_TABLE_BIT)
-        return;
+      if (cond->is_non_deterministic()) return;
 
       /*
         FD will have DJS as source columns, where DJS is the set of strong
@@ -1001,9 +1049,8 @@ void Group_check::analyze_scalar_eq(Item *cond,
         return;
 
       std::pair<Group_check *, table_map> p(this, strong_tables);
-      if (!cond->walk(&Item::is_strong_side_column_not_in_fd,
-                      walk_options, (uchar*)&p))
-      {
+      if (!cond->walk(&Item::is_strong_side_column_not_in_fd, walk_options,
+                      (uchar *)&p)) {
         /*
           "cond" is deterministic.
           right_item is weak.
@@ -1019,7 +1066,6 @@ void Group_check::analyze_scalar_eq(Item *cond,
   }
 }
 
-
 /**
    Searches for equality-based functional dependencies in a condition.
 
@@ -1030,29 +1076,23 @@ void Group_check::analyze_scalar_eq(Item *cond,
    true if the join nest owning this condition is embedded in the right side
    of some parent left join.
 */
-void Group_check::find_fd_in_cond(Item *cond,
-                                  table_map weak_tables,
-                                  bool weak_side_upwards)
-{
-  if (cond->type() == Item::COND_ITEM)
-  {
-    Item_cond *cnd= static_cast<Item_cond *>(cond);
+void Group_check::find_fd_in_cond(Item *cond, table_map weak_tables,
+                                  bool weak_side_upwards) {
+  if (cond->type() == Item::COND_ITEM) {
+    Item_cond *cnd = static_cast<Item_cond *>(cond);
     /*
       All ANDs already flattened, see:
       "(X1 AND X2) AND (Y1 AND Y2) ==> AND (X1, X2, Y1, Y2)"
       in sql_yacc, and also Item_cond::fix_fields().
     */
-    if (cnd->functype() != Item_func::COND_AND_FUNC)
-      return;
+    if (cnd->functype() != Item_func::COND_AND_FUNC) return;
     List_iterator<Item> li(*(cnd->argument_list()));
     Item *item;
-    while ((item= li++))
+    while ((item = li++))
       analyze_conjunct(cond, item, weak_tables, weak_side_upwards);
-  }
-  else // only one conjunct
+  } else  // only one conjunct
     analyze_conjunct(cond, cond, weak_tables, weak_side_upwards);
 }
-
 
 /**
    Searches for equality-based functional dependencies in the condition of a
@@ -1060,14 +1100,10 @@ void Group_check::find_fd_in_cond(Item *cond,
 
    @param  join_list  members of the join nest
 */
-void Group_check::find_fd_in_joined_table(List<TABLE_LIST> *join_list)
-{
-  List_iterator<TABLE_LIST> li(*join_list);
-  TABLE_LIST *table;
-  while ((table= li++))
-  {
-    if (table->sj_cond())
-    {
+void Group_check::find_fd_in_joined_table(
+    mem_root_deque<TABLE_LIST *> *join_list) {
+  for (const TABLE_LIST *table : *join_list) {
+    if (table->is_sj_or_aj_nest()) {
       /*
         We can ignore this nest as:
         - the subquery's WHERE was copied to the semi-join condition
@@ -1078,20 +1114,19 @@ void Group_check::find_fd_in_joined_table(List<TABLE_LIST> *join_list)
         link" in the graph of functional dependencies, as they are neither in
         GROUP BY (the source) nor in the SELECT list / HAVING / ORDER BY (the
         target).
+        If this is an antijoin nest, it's a NOT, which doesn't bring any
+        functional dependency.
       */
       continue;
     }
     table_map used_tables;
-    NESTED_JOIN *nested_join= table->nested_join;
-    if (nested_join)
-    {
+    NESTED_JOIN *nested_join = table->nested_join;
+    if (nested_join) {
       find_fd_in_joined_table(&nested_join->join_list);
-      used_tables= nested_join->used_tables;
-    }
-    else
-      used_tables= table->map();
-    if (table->join_cond())
-    {
+      used_tables = nested_join->used_tables;
+    } else
+      used_tables = table->map();
+    if (table->join_cond()) {
       /*
         simplify_joins() moves the ON condition of an inner join to the closest
         outer join nest or to WHERE. So this assertion should hold.
@@ -1103,28 +1138,21 @@ void Group_check::find_fd_in_joined_table(List<TABLE_LIST> *join_list)
         if this outer join is itself on the weak side of a parent outer join,
         the FD won't propagate to that parent outer join's result.
       */
-      const bool weak_side_upwards=
-        table->embedding &&
-        table->embedding->is_inner_table_of_outer_join();
+      const bool weak_side_upwards =
+          table->embedding && table->embedding->is_inner_table_of_outer_join();
       find_fd_in_cond(table->join_cond(), used_tables, weak_side_upwards);
     }
   }
 }
 
-
 /// Writes "check information" to the optimizer trace
-void Group_check::to_opt_trace(THD *thd)
-{
-#ifdef OPTIMIZER_TRACE
-  if (fd.empty() && !whole_tables_fd)
-    return;
-  Opt_trace_context *ctx= &thd->opt_trace;
-  if (!ctx->is_started())
-      return;
+void Group_check::to_opt_trace(THD *thd) {
+  if (fd.empty() && !whole_tables_fd) return;
+  Opt_trace_context *ctx = &thd->opt_trace;
+  if (!ctx->is_started()) return;
   Opt_trace_object trace_wrapper(ctx);
   Opt_trace_object trace_fds(ctx, "functional_dependencies_of_GROUP_columns");
   to_opt_trace2(ctx, &trace_fds);
-#endif
 }
 
 /**
@@ -1132,41 +1160,29 @@ void Group_check::to_opt_trace(THD *thd)
    Group_checks. to_opt_trace() only writes a one-time header.
 */
 void Group_check::to_opt_trace2(Opt_trace_context *ctx,
-                                Opt_trace_object *parent)
-{
-#ifdef OPTIMIZER_TRACE
-  if (table)
-    parent->add_utf8_table(table);
-  if (whole_tables_fd)
-  {
+                                Opt_trace_object *parent) {
+  if (table) parent->add_utf8_table(table);
+  if (whole_tables_fd) {
     Opt_trace_array array(ctx, "all_columns_of_table_map_bits");
-    for (uint j= 0; j < MAX_TABLES ; j++)
-      if (whole_tables_fd & (1ULL << j))
-        array.add(j);
+    for (uint j = 0; j < MAX_TABLES; j++)
+      if (whole_tables_fd & (1ULL << j)) array.add(j);
   }
-  if (!fd.empty())
-  {
+  if (!fd.empty()) {
     Opt_trace_array array(ctx, "columns");
-    for (uint j= 0; j < fd.size() ; j++)
-      array.add_utf8(fd.at(j)->full_name());
+    for (uint j = 0; j < fd.size(); j++) array.add_utf8(fd.at(j)->full_name());
   }
-  if (is_child())
-  {
+  if (is_child()) {
     if (group_in_fd == ~0ULL && select->is_explicitly_grouped())
       parent->add("all_group_expressions", true);
   }
-  if (!mat_tables.empty())
-  {
+  if (!mat_tables.empty()) {
     Opt_trace_array array(ctx, "searched_in_materialized_tables");
-    for (uint j= 0; j < mat_tables.size() ; j++)
-    {
+    for (uint j = 0; j < mat_tables.size(); j++) {
       Opt_trace_object trace_wrapper(ctx);
       mat_tables.at(j)->to_opt_trace2(ctx, &trace_wrapper);
     }
   }
-#endif
 }
-
 
 /**
    Does one low-level check on one Item_ident. Called by Item_ident walk
@@ -1181,47 +1197,43 @@ void Group_check::to_opt_trace2(Opt_trace_context *ctx,
    @returns false if success
 */
 bool Group_check::do_ident_check(Item_ident *i, table_map tm,
-                                 enum enum_ident_check type)
-{
-  if (is_stopped(i))
-    return false;
+                                 enum enum_ident_check type) {
+  if (is_stopped(i)) return false;
 
-  const Bool3 local= i->local_column(select);
-  if (local.is_false())
-    goto ignore_children;
+  const Bool3 local = i->local_column(select);
+  if (local.is_false()) goto ignore_children;
 
-  if (local.is_unknown())
-    return false; // dive in child item
+  if (local.is_unknown()) return false;  // dive in child item
 
-  switch (type)
-  {
-  case CHECK_GROUP:
-    if (!is_fd_on_source(i))
-    {
-      // It is not FD on source columns:
-      if (!is_child())
-        failed_ident= i;
-      return true;
+  switch (type) {
+    case CHECK_GROUP:
+      if (i->type() == Item::FIELD_ITEM &&
+          down_cast<Item_field *>(i)->table_ref->m_was_scalar_subquery) {
+        // The table has exactly one row, thus this column is FD
+        return false;
+      }
+      if (!is_fd_on_source(i)) {
+        // It is not FD on source columns:
+        if (!is_child()) failed_ident = i;
+        return true;
+      }
+      goto ignore_children;
+    case CHECK_STRONG_SIDE_COLUMN: {
+      Used_tables ut(select);
+      (void)i->walk(&Item::used_tables_for_level, enum_walk::POSTFIX,
+                    pointer_cast<uchar *>(&ut));
+      if ((ut.used_tables & tm) && !is_in_fd(i))
+        return true;  // It is a strong-side column and not FD
+      goto ignore_children;
     }
-    goto ignore_children;
-  case CHECK_STRONG_SIDE_COLUMN:
-   {
-    Used_tables ut(select);
-    (void) i->walk(&Item::used_tables_for_level, Item::WALK_POSTFIX,
-                   pointer_cast<uchar *>(&ut));
-    if ((ut.used_tables & tm) && !is_in_fd(i))
-      return true;                    // It is a strong-side column and not FD
-    goto ignore_children;
-   }
-  case CHECK_COLUMN:
-    if (!is_in_fd(i))
-      return true;                              // It is a column and not FD
-    goto ignore_children;
+    case CHECK_COLUMN:
+      if (!is_in_fd(i)) return true;  // It is a column and not FD
+      goto ignore_children;
   }
 
 ignore_children:
-    stop_at(i);
-    return false;
+  stop_at(i);
+  return false;
 }
 
 /// @} (end of group AGGREGATE_CHECKS ONLY_FULL_GROUP_BY)

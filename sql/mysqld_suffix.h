@@ -1,6 +1,6 @@
 #ifndef MYSQLD_SUFFIX_INCLUDED
 #define MYSQLD_SUFFIX_INCLUDED
-
+// stonedb8
 /* Copyright (c) 2000, 2021, Oracle and/or its affiliates.
    Use is subject to license terms.
 

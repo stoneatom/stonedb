@@ -33,7 +33,7 @@ static int String2DateTime(const BString &s, RCDateTime &rcdt, common::CT at) {
     return 1;
   }
 
-  if ((at == common::CT::TIMESTAMP) && !validate_timestamp_range(&myt)) {
+  if ((at == common::CT::TIMESTAMP) && !validate_my_time(myt)) { // stonedb8
     rcdt = RCDateTime(0, common::CT::TIMESTAMP);
     return 0;
   }
@@ -622,7 +622,7 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
       myt.second_part = rcv.MicroSecond();
       myt.time_type = MYSQL_TIMESTAMP_DATETIME;
       if (!common::IsTimeStampZero(myt)) {
-        my_bool myb;
+        bool myb;
         my_time_t secs_utc = current_txn_->Thd()->variables.time_zone->TIME_to_gmt_sec(&myt, &myb);
         common::GMTSec2GMTTime(&myt, secs_utc);
         myt.second_part = rcv.MicroSecond();
@@ -762,7 +762,7 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
         myt.second_part = microsecond;
         myt.time_type = MYSQL_TIMESTAMP_DATETIME;
         if (!common::IsTimeStampZero(myt)) {
-          my_bool myb;
+          bool myb;
           my_time_t secs_utc = current_txn_->Thd()->variables.time_zone->TIME_to_gmt_sec(&myt, &myb);
           common::GMTSec2GMTTime(&myt, secs_utc);
           myt.second_part = microsecond;

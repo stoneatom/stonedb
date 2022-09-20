@@ -1,4 +1,4 @@
-# Copyright (c) 2010, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2010, 2022, Oracle and/or its affiliates.
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -20,17 +20,30 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
-SET(CPACK_COMPONENTS_USED 
-    "Server;Client;DataFiles;Development;SharedLibraries;Documentation;IniFiles;Readme;Server_Scripts")
+SET(CPACK_COMPONENTS_USED
+  Client
+  DataFiles
+  Development
+  Documentation
+  Info
+  IniFiles
+  Meb
+  MebReadme
+  Readme
+  Router
+  Server
+  Server_Scripts
+  SharedLibraries
+  )
 
-IF("${VERSION}" MATCHES "-ndb-")
+IF(WITH_NDBCLUSTER)
   MESSAGE(STATUS "This is Cluster build, append additional components")
   SET(CPACK_COMPONENTS_USED
     "${CPACK_COMPONENTS_USED};ClusterTools;ClusterDataNode;ClusterManagementServer;ClusterManagementClient;ClusterJ;nodejs")
 ENDIF()
 
-# Some components like Embedded are optional
-# We will build MSI without embedded if it was not selected for build
+# Some components are optional
+# We will build MSI without optional components that are not selected for build
 #(need to modify CPACK_COMPONENTS_ALL for that)
 SET(CPACK_ALL)
 FOREACH(comp1 ${CPACK_COMPONENTS_USED})
@@ -66,6 +79,17 @@ SET(CPACK_COMPONENT_GROUP_MYSQLSERVER_DESCRIPTION "Install MySQL Server")
  SET(CPACK_COMPONENT_CLIENT_DISPLAY_NAME "Client Programs")
  SET(CPACK_COMPONENT_CLIENT_DESCRIPTION 
    "Various helpful (commandline) tools including the mysql command line client" )
+
+ # Subfeature "Meb" 
+ SET(CPACK_COMPONENT_GROUP_ALWAYSINSTALL_HIDDEN 1)
+ SET(CPACK_COMPONENT_MEB_GROUP "AlwaysInstall")
+ # Subfeature "MebReadme" 
+ SET(CPACK_COMPONENT_GROUP_ALWAYSINSTALL_HIDDEN 1)
+ SET(CPACK_COMPONENT_MEBREADME_GROUP "AlwaysInstall")
+
+ #Subfeature MySQL Router
+ SET(CPACK_COMPONENT_GROUP_ALWAYSINSTALL_HIDDEN 1)
+ SET(CPACK_COMPONENT_ROUTER_GROUP "AlwaysInstall")
     
  #Subfeature "Data Files" 
  SET(CPACK_COMPONENT_DATAFILES_GROUP "MySQLServer")
@@ -79,7 +103,7 @@ SET(CPACK_COMPONENT_GROUP_DEVEL_DESCRIPTION "Installs C/C++ header files and lib
  #Subfeature "Development"
  SET(CPACK_COMPONENT_DEVELOPMENT_GROUP "Devel")
  SET(CPACK_COMPONENT_DEVELOPMENT_HIDDEN 1)
- 
+  
  #Subfeature "Embedded"
  SET(CPACK_COMPONENT_EMBEDDED_GROUP "Devel")
  SET(CPACK_COMPONENT_EMBEDDED_DISPLAY_NAME "Embedded server library")
@@ -110,7 +134,7 @@ SET(CPACK_COMPONENT_GROUP_MISC_WIX_LEVEL 100)
   SET(CPACK_COMPONENT_INIFILES_GROUP "Misc")
   SET(CPACK_COMPONENT_SERVER_SCRIPTS_GROUP "Misc")
 
-IF("${VERSION}" MATCHES "-ndb-")
+IF(WITH_NDBCLUSTER)
   MESSAGE(STATUS "This is Cluster build, define additional components")
   #Feature "Cluster"
   SET(CPACK_COMPONENT_GROUP_CLUSTER_DISPLAY_NAME "MySQL Cluster")

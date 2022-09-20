@@ -1,8 +1,3 @@
-# The include statement below is a temp one for tests that are yet to
-#be ported to run with InnoDB,
-#but needs to be kept for tests that would need MyISAM in future.
---source include/force_myisam_default.inc
-
 #
 # Test engine native conflict resolution for ndb
 #
@@ -97,8 +92,9 @@ update t1 set b='Blah' where a=1 and d="1:1";
 --connection slave
 # Add suppressions to avoid MTR complaints...
 call mtr.add_suppression(".*missing info necessary for conflict detection.*");
-call mtr.add_suppression(".*Slave SQL for channel '': Could not execute.*rows event on table.*");
+call mtr.add_suppression(".Could not execute.*rows event on table.*");
 call mtr.add_suppression(".*error 1610.*");
+call mtr.add_suppression(".*coordinator and worker threads are stopped.*");
 
 --echo Wait for slave to choke on that event.
 --let $slave_sql_errno=1296
@@ -106,7 +102,7 @@ call mtr.add_suppression(".*error 1610.*");
 
 # Recover sync
 --source include/stop_slave_io.inc
-RESET SLAVE;
+RESET REPLICA;
 --let $rpl_only_running_threads= 1
 --source include/rpl_reset.inc
 
@@ -123,7 +119,7 @@ delete from t1 where a=3 and d="3:1";
 
 # Recover sync
 --source include/stop_slave_io.inc
-RESET SLAVE;
+RESET REPLICA;
 --let $rpl_only_running_threads= 1
 --source include/rpl_reset.inc
 

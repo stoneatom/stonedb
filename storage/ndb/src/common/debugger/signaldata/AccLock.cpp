@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
+    Use is subject to license terms.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -26,8 +26,10 @@
 #include <signaldata/AccLock.hpp>
 #include <SignalLoggerManager.hpp>
 
-bool
-printACC_LOCKREQ(FILE* output, const Uint32* theData, Uint32 len, Uint16 rbn)
+bool printACC_LOCKREQ(FILE* output,
+                      const Uint32* theData,
+                      Uint32 len,
+                      Uint16 /*rbn*/)
 {
   const AccLockReq* const sig = (const AccLockReq*)theData;
   Uint32 reqtype = sig->requestInfo & 0xFF;
@@ -74,6 +76,12 @@ printACC_LOCKREQ(FILE* output, const Uint32* theData, Uint32 len, Uint16 rbn)
   fprintf(output, " accOpPtr: 0x%x\n", sig->accOpPtr);
   if (reqtype == AccLockReq::LockShared ||
       reqtype == AccLockReq::LockExclusive) {
+    if (len < AccLockReq::LockSignalLength)
+    {
+      assert(false);
+      return false;
+    }
+
     fprintf(output, " userPtr: 0x%x userRef: 0x%x\n", sig->userPtr, sig->userRef);
     fprintf(output, " table: id=%u", sig->tableId);
     fprintf(output, " fragment: id=%u ptr=0x%x\n", sig->fragId, sig->fragPtrI);

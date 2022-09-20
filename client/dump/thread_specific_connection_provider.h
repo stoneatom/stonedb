@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2015, 2021, Oracle and/or its affiliates.
+  Copyright (c) 2015, 2022, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License, version 2.0,
@@ -25,36 +25,37 @@
 #ifndef THREAD_SPECIFIC_CONNECTION_PROVIDER_INCLUDED
 #define THREAD_SPECIFIC_CONNECTION_PROVIDER_INCLUDED
 
-#include "abstract_connection_provider.h"
-#include "thread_specific_ptr.h"
-#include "base/mutex.h"
+#include <functional>
+#include <mutex>
+#include <thread>
+#include <unordered_map>
 #include <vector>
 
-namespace Mysql{
-namespace Tools{
-namespace Dump{
+#include "client/dump/abstract_connection_provider.h"
 
-class Thread_specific_connection_provider : public Abstract_connection_provider
-{
-public:
-  Thread_specific_connection_provider(
-    Mysql::Tools::Base::I_connection_factory* connection_factory);
-  ~Thread_specific_connection_provider();
+namespace Mysql {
+namespace Tools {
+namespace Dump {
 
-  virtual Mysql::Tools::Base::Mysql_query_runner* get_runner(
-    Mysql::I_callable<bool, const Mysql::Tools::Base::Message_data&>*
-    message_handler);
+class Thread_specific_connection_provider
+    : public Abstract_connection_provider {
+ public:
+  explicit Thread_specific_connection_provider(
+      Mysql::Tools::Base::I_connection_factory *connection_factory);
+  ~Thread_specific_connection_provider() override;
 
-private:
-  my_boost::thread_specific_ptr<Mysql::Tools::Base::Mysql_query_runner>
-    m_runner;
+  Mysql::Tools::Base::Mysql_query_runner *get_runner(
+      std::function<bool(const Mysql::Tools::Base::Message_data &)>
+          *message_handler) override;
 
-  std::vector<Mysql::Tools::Base::Mysql_query_runner*> m_runners_created;
-  my_boost::mutex m_runners_created_lock;
+ private:
+  std::mutex mu;
+  std::unordered_map<std::thread::id, Mysql::Tools::Base::Mysql_query_runner *>
+      m_runners;
 };
 
-}
-}
-}
+}  // namespace Dump
+}  // namespace Tools
+}  // namespace Mysql
 
 #endif

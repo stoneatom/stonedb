@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -44,7 +44,7 @@ public:
     ZSCAN_CLOSE = 6,
     ZSCAN_NEXT_ABORT = 12
   };
-  STATIC_CONST( SignalLength = 3 );
+  static constexpr Uint32 SignalLength = 3;
 private:
   Uint32 accPtr;                // scan record in ACC/TUX
   Uint32 accOperationPtr;
@@ -58,8 +58,9 @@ class NextScanConf {
   friend class Dblqh;
 public:
   // length is less if no keyinfo or no next result
-  STATIC_CONST( SignalLength = 11 );
-  STATIC_CONST( SignalLengthNoKeyInfo = 6 );
+  static constexpr Uint32 SignalLengthNoKeyInfo = 6;
+  static constexpr Uint32 SignalLengthNoTuple = 3;
+  static constexpr Uint32 SignalLengthNoGCI = 5;
 private:
   Uint32 scanPtr;               // scan record in LQH
   Uint32 accOperationPtr;
@@ -70,9 +71,10 @@ private:
 
 class NextScanRef {
   friend class Dbtux;
+  friend class Dbtup;
   friend class Dblqh;
 public:
-  STATIC_CONST( SignalLength = 4 );
+  static constexpr Uint32 SignalLength = 4;
 private:
   Uint32 scanPtr;
   Uint32 accOperationPtr;

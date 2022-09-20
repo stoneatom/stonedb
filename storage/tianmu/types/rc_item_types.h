@@ -41,11 +41,14 @@ class Item_sum_int_rcbase : public Item_sum_num {
   enum Sumfunctype sum_func() const override { return COUNT_FUNC; }
   enum Item_result result_type() const override { return INT_RESULT; }
 
+  // stonedb8 mysql8 delete fix_length_and_dec(), and this func is not called
+  /*
   void fix_length_and_dec() override {
     decimals = 0;
     max_length = 21;
     maybe_null = null_value = 0;
   }
+  */
 
   void int64_value(int64_t &value_);
 
@@ -99,7 +102,8 @@ public:
 
   enum Sumfunctype sum_func() const override { return MIN_FUNC; }
   enum Item_result result_type() const override { return hybrid_type_; }
-  enum enum_field_types field_type() const override { return hybrid_field_type_; }
+  // stonedb8 mysql8 delete field_type(), and this func is not called
+  //enum enum_field_types field_type() const override { return hybrid_field_type_; } 
 
   bool any_value() { return is_values_; }
   my_decimal *dec_value();

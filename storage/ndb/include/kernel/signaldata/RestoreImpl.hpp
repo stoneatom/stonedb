@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2005, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2005, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -38,7 +38,11 @@ struct RestoreLcpReq
   Uint32 tableId;
   Uint32 fragmentId;
   Uint32 lcpId;
-  STATIC_CONST( SignalLength = 6 );
+  Uint32 restoreGcpId;
+  Uint32 maxGciCompleted;
+  Uint32 createGci;
+  Uint32 cnewestGci;
+  static constexpr Uint32 SignalLength = 10;
 };
 
 struct RestoreLcpRef
@@ -47,7 +51,7 @@ struct RestoreLcpRef
   Uint32 senderRef;
   Uint32 errorCode;
   Uint32 extra[1];
-  STATIC_CONST( SignalLength = 3 );
+  static constexpr Uint32 SignalLength = 3;
 
   enum ErrorCode 
   {
@@ -63,14 +67,19 @@ struct RestoreLcpConf
 {
   Uint32 senderData;
   Uint32 senderRef;
-  STATIC_CONST( SignalLength = 2 );
+  Uint32 restoredLcpId;
+  Uint32 restoredLocalLcpId;
+  Uint32 maxGciCompleted;
+  Uint32 afterRestore;
+  static constexpr Uint32 SignalLength = 6;
 };
 
 struct RestoreContinueB {
   
   enum {
     RESTORE_NEXT = 0, 
-    READ_FILE = 1
+    READ_FILE = 1,
+    CHECK_EXPAND_SHRINK = 2
   };
 };
 

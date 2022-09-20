@@ -187,7 +187,7 @@ class GroupTable : public mm::TraceableObject {
       size = 0;
       precision = 0;
       type = common::CT::INT;
-      si.order = ORDER::ORDER_NOT_RELEVANT;  // direction for GROUP_CONCAT order
+      si.order = ORDER_NOT_RELEVANT;         // direction for GROUP_CONCAT order // stonedb8
                                              // by 0/1-ASC/2-DESC
       si.separator = ',';                    // for GROUP_CONCAT
     }

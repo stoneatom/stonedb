@@ -1,8 +1,0 @@
-use test;
-create table tlike (val varchar(255)) ENGINE=TIANMU;
-insert into tlike values ('abcde');
-select * from tlike where val like NULL;
-val
-Warnings:
-Note	1105	Query syntax not implemented in TIANMU, executed by MySQL engine.
-drop table tlike;

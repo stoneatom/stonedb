@@ -311,8 +311,6 @@ Error	1758	Invalid condition number
 # Statement information runtime
 
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
-Warnings:
-Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 SELECT CAST(-19999999999999999999 AS SIGNED),
 CAST(-19999999999999999999 AS SIGNED);
 CAST(-19999999999999999999 AS SIGNED)	CAST(-19999999999999999999 AS SIGNED)
@@ -540,7 +538,7 @@ TABLE_NAME = 'TABLE_NAME text',
 COLUMN_NAME = 'COLUMN_NAME text',
 CURSOR_NAME = 'CURSOR_NAME text',
 MESSAGE_TEXT = 'MESSAGE_TEXT text',
-MYSQL_ERRNO = 54321;
+MYSQL_ERRNO = 9999;
 END|
 CALL p1();
 ERROR 12345: MESSAGE_TEXT text
@@ -583,7 +581,7 @@ SELECT
 @column_name	COLUMN_NAME text
 @cursor_name	CURSOR_NAME text
 @message_text	MESSAGE_TEXT text
-@mysql_errno	54321
+@mysql_errno	9999
 @returned_sqlstate	12345
 DROP PROCEDURE p1;
 #
@@ -776,10 +774,10 @@ Warning	1292	Truncated incorrect DECIMAL value: '-19999999999999999999'
 GET DIAGNOSTICS CONDITION 1 @var1 = MESSAGE_TEXT, @var2 = CLASS_ORIGIN;
 SELECT CHARSET(@var1), COLLATION(@var1), COERCIBILITY(@var1);
 CHARSET(@var1)	COLLATION(@var1)	COERCIBILITY(@var1)
-utf8	utf8_general_ci	2
+utf8mb3	utf8mb3_general_ci	2
 SELECT CHARSET(@var2), COLLATION(@var2), COERCIBILITY(@var2);
 CHARSET(@var2)	COLLATION(@var2)	COERCIBILITY(@var2)
-utf8	utf8_general_ci	2
+utf8mb3	utf8mb3_general_ci	2
 #
 # Command statistics
 #

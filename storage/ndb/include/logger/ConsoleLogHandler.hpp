@@ -1,6 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -26,6 +25,8 @@
 #ifndef CONSOLELOGHANDLER_H
 #define CONSOLELOGHANDLER_H
 
+#include <time.h>
+
 #include "LogHandler.hpp"
 #include <NdbOut.hpp>
 
@@ -45,19 +46,20 @@ public:
   /**
    * Destructor.
    */
-  virtual ~ConsoleLogHandler();
+  ~ConsoleLogHandler() override;
   
-  virtual bool open();
-  virtual bool close();
+  bool open() override;
+  bool close() override;
 
-  virtual bool is_open();
+  bool is_open() override;
 
-  virtual bool setParam(const BaseString &param, const BaseString &value);
+  bool setParam(const BaseString &param, const BaseString &value) override;
   
 protected:	
-  virtual void writeHeader(const char* pCategory, Logger::LoggerLevel level);
-  virtual void writeMessage(const char* pMsg);
-  virtual void writeFooter();
+  void writeHeader(const char* pCategory, Logger::LoggerLevel level,
+                   time_t now) override;
+  void writeMessage(const char* pMsg) override;
+  void writeFooter() override;
   NdbOut& _out;
 
 private:

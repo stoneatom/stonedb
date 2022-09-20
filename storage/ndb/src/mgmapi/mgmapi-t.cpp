@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2015, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2015, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -63,6 +63,7 @@ TAPTEST(mgmapi)
     OK(ndb_mgm_disconnect(h) == -1);
     OK(ndb_mgm_get_status(h) == NULL);
     OK(ndb_mgm_get_status2(h, NULL) == NULL);
+    OK(ndb_mgm_get_status3(h, NULL) == NULL);
     OK(ndb_mgm_enter_single_user(h, 1, NULL) == -1);
     OK(ndb_mgm_exit_single_user(h, NULL) == -1);
     OK(ndb_mgm_stop(h, 1, NULL) == -1);
@@ -106,8 +107,8 @@ TAPTEST(mgmapi)
     OK(ndb_mgm_set_string_parameter(h, 1, 2, NULL, NULL) == -1);
     OK(ndb_mgm_purge_stale_sessions(h, NULL) == -1);
     OK(ndb_mgm_check_connection(h) == -1);
-    OK(ndb_mgm_set_connection_int_parameter(h, 1, 2, 3, 4, NULL) == -1);
-    OK(ndb_mgm_get_connection_int_parameter(h, 1, 2, 3, NULL, NULL) == -1);
+    OK(ndb_mgm_set_connection_int_parameter(h, 1, 2, 3, 4) == -1);
+    OK(ndb_mgm_get_connection_int_parameter(h, 1, 2, 3, NULL) == -1);
     OK(ndb_mgm_get_mgmd_nodeid(h) == 0); // Zero is an invalid nodeid
     OK(ndb_mgm_report_event(h, NULL, 1) == -1);
     OK(ndb_mgm_end_session(h) == -1);

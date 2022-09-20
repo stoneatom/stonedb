@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2008, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2008, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -22,6 +22,7 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
+#include "util/require.h"
 #include <AtrtClient.hpp>
 #include <NDBT_Output.hpp>
 #include <NdbSleep.h>
@@ -45,7 +46,7 @@ AtrtClient::~AtrtClient(){
 
 int
 AtrtClient::writeCommand(AtrtCommandType _type,
-                         const Properties& args){
+                         const Properties& args) {
   if (!isConnected())
     return false;
 
@@ -86,17 +87,20 @@ AtrtClient::writeCommand(AtrtCommandType _type,
   }
 
   sql.appfmt("'new', %d)", _type);
-  if (!doQuery(sql)){
+  SqlResultSet res;
+  if (!doQuery(sql, res)){
     return -1;
   }
 
-  return (int)mysql_insert_id(m_mysql);
+  // Return the generated AUTO_INCREMENT id as command id
+  const uint64_t last_insert_id = res.insertId();
+  return static_cast<int>(last_insert_id);
 }
 
 
 bool
 AtrtClient::readCommand(uint command_id,
-                        SqlResultSet& result){
+                        SqlResultSet& result) {
   Properties args;
   args.put("0", command_id);
   return runQuery("SELECT * FROM command WHERE id = ?",
@@ -107,12 +111,11 @@ AtrtClient::readCommand(uint command_id,
 
 bool
 AtrtClient::doCommand(AtrtCommandType type,
-                      const Properties& args){
+                      const Properties& args) {
 
   int running_timeout= 10;
   int total_timeout= 120;
-  int commandId= writeCommand(type,
-                              args);
+  const int commandId= writeCommand(type, args);
   if (commandId == -1){
     g_err << "Failed to write command" << endl;
     return false;
@@ -160,24 +163,45 @@ AtrtClient::doCommand(AtrtCommandType type,
 
 bool
 AtrtClient::changeVersion(int process_id,
-                          const char* process_args){
+                          const char* process_args) {
   Properties args;
   args.put("process_id", process_id);
   args.put("process_args", process_args);
   return doCommand(ATCT_CHANGE_VERSION, args);
 }
 
+bool
+AtrtClient::switchConfig(int process_id,
+                         const char* process_args) {
+  Properties args;
+  args.put("process_id", process_id);
+  args.put("process_args", process_args);
+  return doCommand(ATCT_SWITCH_CONFIG, args);
+}
 
 bool
-AtrtClient::resetProc(int process_id){
+AtrtClient::stopProcess(int process_id) {
+  Properties args;
+  args.put("process_id", process_id);
+  return doCommand(ATCT_STOP_PROCESS, args);
+}
+
+bool
+AtrtClient::startProcess(int process_id) {
+  Properties args;
+  args.put("process_id", process_id);
+  return doCommand(ATCT_START_PROCESS, args);
+}
+
+bool
+AtrtClient::resetProc(int process_id) {
   Properties args;
   args.put("process_id", process_id);
   return doCommand(ATCT_RESET_PROC, args);
 }
 
-
 bool
-AtrtClient::getConnectString(int cluster_id, SqlResultSet& result){
+AtrtClient::getConnectString(int cluster_id, SqlResultSet& result) {
   Properties args;
   args.put("0", cluster_id);
   return doQuery("SELECT value as connectstring " \
@@ -191,7 +215,7 @@ AtrtClient::getConnectString(int cluster_id, SqlResultSet& result){
 
 
 bool
-AtrtClient::getClusters(SqlResultSet& result){
+AtrtClient::getClusters(SqlResultSet& result) {
   Properties args;
   return runQuery("SELECT id, name FROM cluster WHERE name != '.atrt'",
                   args,
@@ -200,7 +224,7 @@ AtrtClient::getClusters(SqlResultSet& result){
 
 
 bool
-AtrtClient::getMgmds(int cluster_id, SqlResultSet& result){
+AtrtClient::getMgmds(int cluster_id, SqlResultSet& result) {
   Properties args;
   args.put("0", cluster_id);
   return runQuery("SELECT * FROM process WHERE cluster_id=? and type='ndb_mgmd'",
@@ -209,7 +233,7 @@ AtrtClient::getMgmds(int cluster_id, SqlResultSet& result){
 }
 
 bool
-AtrtClient::getNdbds(int cluster_id, SqlResultSet& result){
+AtrtClient::getNdbds(int cluster_id, SqlResultSet& result) {
   Properties args;
   args.put("0", cluster_id);
   return runQuery("SELECT * FROM process WHERE cluster_id=? and type='ndbd'",

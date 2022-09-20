@@ -1,6 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -24,6 +23,9 @@
 */
 
 #include <ndb_global.h>
+
+#include <time.h>
+
 #include <FileLogHandler.hpp>
 #include <util/File.hpp>
 
@@ -92,10 +94,11 @@ FileLogHandler::close()
 }
 
 void 
-FileLogHandler::writeHeader(const char* pCategory, Logger::LoggerLevel level)
+FileLogHandler::writeHeader(const char* pCategory, Logger::LoggerLevel level,
+                            time_t now)
 {
-  char str[LogHandler::MAX_HEADER_LENGTH];
-  m_pLogFile->writeChar(getDefaultHeader(str, pCategory, level));
+  char str[MAX_HEADER_LENGTH];
+  m_pLogFile->writeChar(getDefaultHeader(str, pCategory, level, now));
 }
 
 void 

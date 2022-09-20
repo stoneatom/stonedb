@@ -17,7 +17,7 @@
 #ifndef TIANMU_MM_HEAP_POLICY_H_
 #define TIANMU_MM_HEAP_POLICY_H_
 #pragma once
-
+#include <cstddef>
 #include "mm/memory_block.h"
 
 namespace Tianmu {

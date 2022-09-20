@@ -1,4 +1,4 @@
-# Copyright (c) 2010, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2010, 2022, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -20,44 +20,182 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
-# Common warning flags for GCC, G++, Clang and Clang++
-SET(MY_WARNING_FLAGS "-Wall -Wextra -Wformat-security -Wvla")
-
-# The default =3 given by -Wextra is a bit too strict for our code.
-IF(CMAKE_COMPILER_IS_GNUCXX)
-  MY_CHECK_CXX_COMPILER_FLAG("-Wimplicit-fallthrough=2"
-    HAVE_IMPLICIT_FALLTHROUGH)
-  IF(HAVE_IMPLICIT_FALLTHROUGH)
-    SET(MY_WARNING_FLAGS "${MY_WARNING_FLAGS} -Wimplicit-fallthrough=2")
+MACRO(MY_ADD_C_WARNING_FLAG WARNING_FLAG)
+  MY_CHECK_C_COMPILER_FLAG("-${WARNING_FLAG}" HAVE_${WARNING_FLAG})
+  IF(HAVE_${WARNING_FLAG})
+    STRING_APPEND(MY_C_WARNING_FLAGS " -${WARNING_FLAG}")
   ENDIF()
+ENDMACRO()
+
+MACRO(MY_ADD_CXX_WARNING_FLAG WARNING_FLAG)
+  MY_CHECK_CXX_COMPILER_WARNING("-${WARNING_FLAG}" HAS_FLAG)
+  IF(HAS_FLAG)
+    STRING_APPEND(MY_CXX_WARNING_FLAGS " -${WARNING_FLAG}")
+  ENDIF()
+ENDMACRO()
+
+#
+# Common flags for all versions/compilers
+#
+
+# Common warning flags for GCC, G++, Clang and Clang++
+SET(MY_WARNING_FLAGS
+    "-Wall -Wextra -Wformat-security -Wvla -Wundef")
+
+# Gives spurious warnings on 32-bit; see GCC bug 81890.
+IF(SIZEOF_VOIDP EQUAL 8)
+  STRING_APPEND(MY_WARNING_FLAGS " -Wmissing-format-attribute")
 ENDIF()
-SET(MY_WARNING_FLAGS "${MY_WARNING_FLAGS} -Wno-unknown-pragmas")
+
+# Clang 6.0 and newer on Windows treat -Wall as -Weverything; use /W4 instead
+IF(WIN32_CLANG)
+  STRING(REPLACE "-Wall -Wextra" "/W4" MY_WARNING_FLAGS "${MY_WARNING_FLAGS}")
+ENDIF()
 
 # Common warning flags for GCC and Clang
-SET(MY_C_WARNING_FLAGS
-    "${MY_WARNING_FLAGS} -Wwrite-strings -Wdeclaration-after-statement")
+SET(MY_C_WARNING_FLAGS "${MY_WARNING_FLAGS} -Wwrite-strings")
 
 # Common warning flags for G++ and Clang++
-SET(MY_CXX_WARNING_FLAGS
-    "${MY_WARNING_FLAGS} -Woverloaded-virtual -Wno-unused-parameter")
+SET(MY_CXX_WARNING_FLAGS "${MY_WARNING_FLAGS} -Woverloaded-virtual -Wcast-qual")
 
-# Extra warning flags for Clang++
-IF(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  SET(MY_CXX_WARNING_FLAGS
-      "${MY_CXX_WARNING_FLAGS} -Wno-null-conversion -Wno-unused-private-field")
+IF(MY_COMPILER_IS_GNU)
+  # Accept only the standard [[fallthrough]] attribute, no comments.
+  MY_ADD_CXX_WARNING_FLAG("Wimplicit-fallthrough=5")
+  MY_ADD_C_WARNING_FLAG("Wjump-misses-init")
+  # This is included in -Wall on some platforms, enable it explicitly.
+  MY_ADD_C_WARNING_FLAG("Wstringop-truncation")
+  MY_ADD_CXX_WARNING_FLAG("Wstringop-truncation")
+  IF(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+    # GCC 8 has bugs with "final".
+    MY_ADD_CXX_WARNING_FLAG("Wsuggest-override")
+  ENDIF()
+  MY_ADD_C_WARNING_FLAG("Wmissing-include-dirs")
+  MY_ADD_CXX_WARNING_FLAG("Wmissing-include-dirs")
+
+  MY_ADD_CXX_WARNING_FLAG("Wextra-semi") # For gcc8 and up
 ENDIF()
+
+#
+# Extra flags not supported on all versions/compilers
+#
+
+# Only for C++ as C code has some macro usage that is difficult to avoid
+IF(MY_COMPILER_IS_GNU)
+  MY_ADD_CXX_WARNING_FLAG("Wlogical-op")
+ENDIF()
+
+# Extra warning flags for Clang
+IF(MY_COMPILER_IS_CLANG)
+  STRING_APPEND(MY_C_WARNING_FLAGS " -Wconditional-uninitialized")
+  STRING_APPEND(MY_C_WARNING_FLAGS " -Wextra-semi")
+  STRING_APPEND(MY_C_WARNING_FLAGS " -Wmissing-noreturn")
+
+  MY_ADD_C_WARNING_FLAG("Wunreachable-code-break")
+  MY_ADD_C_WARNING_FLAG("Wunreachable-code-return")
+ENDIF()
+  
+# Extra warning flags for Clang++
+IF(MY_COMPILER_IS_CLANG)
+  # Disable a few default Clang++ warnings
+  STRING_APPEND(MY_CXX_WARNING_FLAGS " -Wno-null-conversion")
+  STRING_APPEND(MY_CXX_WARNING_FLAGS " -Wno-unused-private-field")
+
+  STRING_APPEND(MY_CXX_WARNING_FLAGS " -Wconditional-uninitialized")
+  STRING_APPEND(MY_CXX_WARNING_FLAGS " -Wdeprecated")
+  STRING_APPEND(MY_CXX_WARNING_FLAGS " -Wextra-semi")
+  STRING_APPEND(MY_CXX_WARNING_FLAGS " -Wheader-hygiene")
+  STRING_APPEND(MY_CXX_WARNING_FLAGS " -Wnon-virtual-dtor")
+  STRING_APPEND(MY_CXX_WARNING_FLAGS " -Wundefined-reinterpret-cast")
+
+  MY_ADD_CXX_WARNING_FLAG("Winconsistent-missing-destructor-override")
+  MY_ADD_CXX_WARNING_FLAG("Winconsistent-missing-override")
+  MY_ADD_CXX_WARNING_FLAG("Wshadow-field")
+
+  # Other possible options that give warnings (Clang 6.0):
+  # -Wabstract-vbase-init
+  # -Wc++2a-compat
+  # -Wc++98-compat-pedantic
+  # -Wcast-align
+  # -Wclass-varargs
+  # -Wcomma
+  # -Wconversion
+  # -Wcovered-switch-default
+  # -Wdeprecated-dynamic-exception-spec
+  # -Wdisabled-macro-expansion
+  # -Wdocumentation
+  # -Wdocumentation-pedantic
+  # -Wdocumentation-unknown-command
+  # -Wdouble-promotion
+  # -Wexit-time-destructors
+  # -Wfloat-equal
+  # -Wformat-nonliteral
+  # -Wformat-pedantic
+  # -Wglobal-constructors
+  # -Wgnu-anonymous-struct
+  # -Wgnu-zero-variadic-macro-arguments
+  # -Wimplicit-fallthrough
+  # -Wkeyword-macro
+  # -Wmissing-noreturn
+  # -Wmissing-prototypes
+  # -Wmissing-variable-declarations
+  # -Wnested-anon-types
+  # -Wnewline-eof
+  # -Wold-style-cast
+  # -Wpadded
+  # -Wpedantic
+  # -Wrange-loop-analysis
+  # -Wredundant-parens
+  # -Wreserved-id-macro
+  # -Wshadow
+  # -Wshift-sign-overflow
+  # -Wsign-conversion
+  # -Wswitch-enum
+  # -Wtautological-type-limit-compare
+  # -Wtautological-unsigned-enum-zero-compare
+  # -Wundefined-func-template
+  # -Wunreachable-code
+  # -Wunreachable-code-break
+  # -Wunreachable-code-return
+  # -Wunused-exception-parameter
+  # -Wunused-macros
+  # -Wunused-member-function
+  # -Wunused-template
+  # -Wused-but-marked-unused
+  # -Wweak-template-vtables
+  # -Wweak-vtables
+  # -Wzero-as-null-pointer-constant
+ENDIF()
+
+# TIANMU UPGRADE
+SET(MY_WARNING_FLAGS "${MY_WARNING_FLAGS} -Wno-unknown-pragmas")
 
 # Turn on Werror (warning => error) when using maintainer mode.
-#IF(MYSQL_MAINTAINER_MODE)
-#  STRING_APPEND(MY_C_WARNING_FLAGS   " -Werror")
-#  STRING_APPEND(MY_CXX_WARNING_FLAGS " -Werror")
-#ENDIF()
-
-# Set warning flags for GCC/Clang
-IF(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
-  STRING_APPEND(CMAKE_C_FLAGS " ${MY_C_WARNING_FLAGS}")
+IF(MYSQL_MAINTAINER_MODE)
+  IF(MSVC)
+    STRING_APPEND(CMAKE_C_FLAGS   " /WX")
+    STRING_APPEND(CMAKE_CXX_FLAGS " /WX")
+    STRING_APPEND(CMAKE_EXE_LINKER_FLAGS    " /WX")
+    STRING_APPEND(CMAKE_MODULE_LINKER_FLAGS " /WX")
+    STRING_APPEND(CMAKE_SHARED_LINKER_FLAGS " /WX")
+  ENDIF()
+# TIANMU UPGRADE
+#  IF(MY_COMPILER_IS_GNU_OR_CLANG)
+#    STRING_APPEND(MY_C_WARNING_FLAGS   " -Werror")
+#    STRING_APPEND(MY_CXX_WARNING_FLAGS " -Werror")
+#  ENDIF()
 ENDIF()
-# Set warning flags for G++/Clang++
-IF(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+
+# Set warning flags for gcc/g++/clang/clang++
+IF(MY_COMPILER_IS_GNU_OR_CLANG)
+  STRING_APPEND(CMAKE_C_FLAGS   " ${MY_C_WARNING_FLAGS}")
   STRING_APPEND(CMAKE_CXX_FLAGS " ${MY_CXX_WARNING_FLAGS}")
 ENDIF()
+
+MACRO(ADD_WSHADOW_WARNING)
+  IF(MY_COMPILER_IS_GNU AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7)
+    ADD_COMPILE_OPTIONS("-Wshadow=local")
+  ELSEIF(MY_COMPILER_IS_CLANG AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5)
+    # added in clang-5.0
+    ADD_COMPILE_OPTIONS("-Wshadow-uncaptured-local")
+  ENDIF()
+ENDMACRO()

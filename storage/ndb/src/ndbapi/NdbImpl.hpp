@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -30,7 +30,9 @@
 #include <NdbOut.hpp>
 #include <kernel/ndb_limits.h>
 #include <NdbTick.h>
+#include <stat_utils.hpp>
 
+#include "AssembleFragments.hpp"
 #include "NdbQueryOperationImpl.hpp"
 #include "ndb_cluster_connection_impl.hpp"
 #include "NdbDictionaryImpl.hpp"
@@ -50,10 +52,100 @@ struct Ndb_free_list_t
   T* seize(Ndb*);
   void release(T*);
   void release(Uint32 cnt, T* head, T* tail);
-  void clear();
   Uint32 get_sizeof() const { return sizeof(T); }
+
+  /** Total number of objects currently in use (seized) */
+  Uint32 m_used_cnt;
+
+  /** Addition, currently unused, objects in 'm_free_list' */
+  Uint32 m_free_cnt;
+
+private:
+  /** No copying.*/
+  Ndb_free_list_t(const Ndb_free_list_t&);
+  Ndb_free_list_t& operator=(const Ndb_free_list_t&);
+
+  /**
+   * update_stats() is called whenever a new local peak of 'm_used_cnt'
+   * objects has been observed.
+   *
+   * The high usage peaks are most interesting as we want to scale the
+   * free-list to accomodate these - The smaller peaks inbetween are mostly
+   * considered as 'noise' in this statistics. Which may cause a too low
+   * usage statistics to be collected, such that the high usage peaks could
+   * not be served from the free-list.
+   *
+   * In order to implement this we use a combination of statistics and
+   * heuristics. Heuristics is based on observing free-list behavior of
+   * an instrumented version of this code.
+   *
+   * 1) A 'high peak' is any peak value above or equal to the current
+   *    sampled mean value. -> Added to the statistics immediately .
+   * 2) A sampled peak value of 2 or less is considered as 'noise' and
+   *    just ignored.
+   * 3) Other peak values, less than the current mean:
+   *    These are observed over a periode of such smaller peaks, and their
+   *    max value collected in 'm_sample_max'. When the windows size has expired,
+   *    the 'm_sample_max' value is sampled.
+   *    Intention with this heuristic is that temporary reduced usage of objects
+   *    should be ignored, but longer term changes should be acounted for.
+   *
+   * When we have taken a valid sample, we use the statistics to calculate the
+   * 95% percentile for max objects in use of 'class T'.
+   */
+  void update_stats()
+  {
+    const Uint32 mean = m_stats.getMean();
+    if (m_used_cnt >= mean)
+      // 1) A high-peak value, sample it
+      m_stats.update(m_used_cnt);
+    else if (m_used_cnt <= 2)
+      // 2) Ignore very low sampled values, is 'noise'
+      return;
+    else
+    {
+      // 3) A local peak, less than current 'mean'
+      if (m_sample_max < m_used_cnt)
+        m_sample_max = m_used_cnt;
+
+      // Use a decay function of current 'mean' to decide how many small samples
+      // we may ignore - Smaller samples are ignored for a longer time.
+      const Uint32 max_skipped = (mean*5) / m_used_cnt;
+      m_samples_skipped++;
+      if (m_samples_skipped < max_skipped && m_samples_skipped < 10)
+        return;
+
+      // Expired low-value observation periode, sample max value seen.
+      m_stats.update(m_sample_max);
+    }
+    m_sample_max = 0;
+    m_samples_skipped = 0;
+
+    // Calculate upper 95% percentile from sampled values
+    const double upper = m_stats.getMean() + (2 * m_stats.getStdDev());
+    m_estm_max_used = (Uint32)(upper+0.999);
+  }
+
+  /** Shrink m_free_list such that m_used_cnt+'free' <= 'm_estm_max_used' */
+  void shrink();
+
+  /** List of recycable free objects */
   T * m_free_list;
-  Uint32 m_alloc_cnt, m_free_cnt;
+
+  /** Last operation allocated, or grabbed a free object */
+  bool m_is_growing;
+
+  /** Number of consecuitive 'low-peak' values skipped */
+  Uint32 m_samples_skipped;
+
+  /** Max sample value seen in the 'm_samples_skipped' periode */
+  Uint32 m_sample_max;
+
+  /** Statistics of peaks in number of obj 'T' in use */
+  NdbStatistics m_stats;
+
+  /** Snapshot of last calculated 95% percentile of max 'm_used_cnt' */
+  Uint32 m_estm_max_used;
 };
 
 /**
@@ -63,7 +155,7 @@ class NdbImpl : public trp_client
 {
 public:
   NdbImpl(Ndb_cluster_connection *, Ndb&);
-  ~NdbImpl();
+  ~NdbImpl() override;
 
   int send_event_report(bool is_poll_owner, Uint32 *data, Uint32 length);
   int send_dump_state_all(Uint32 *dumpStateCodeArray, Uint32 len);
@@ -109,6 +201,7 @@ public:
 
   WakeupHandler* wakeHandler;
 
+  AssembleBatchedFragments m_suma_fragmented_signals[MAX_NDB_NODES];
   NdbEventOperationImpl *m_ev_op;
 
   int m_optimized_node_selection;
@@ -116,18 +209,6 @@ public:
   BaseString m_ndbObjectName; // Ndb name
   BaseString m_dbname; // Database name
   BaseString m_schemaname; // Schema name
-
-  BaseString m_prefix; // Buffer for preformatted internal name <db>/<schema>/
-
-  int update_prefix()
-  {
-    if (!m_prefix.assfmt("%s%c%s%c", m_dbname.c_str(), table_name_separator,
-                         m_schemaname.c_str(), table_name_separator))
-    {
-      return -1;
-    }
-    return 0;
-  }
 
 /*
   We need this friend accessor function to work around a HP compiler problem,
@@ -139,6 +220,7 @@ public:
   }
 
   bool forceShortRequests;
+  bool forceAccTableScans;
 
   static inline void setForceShortRequests(Ndb* ndb, bool val)
   {
@@ -146,14 +228,12 @@ public:
   }
 
   Uint32 get_waitfor_timeout() const {
-    return m_ndb_cluster_connection.m_config.m_waitfor_timeout;
+    return m_ndb_cluster_connection.m_ndbapiconfig.m_waitfor_timeout;
   }
   const NdbApiConfig& get_ndbapi_config_parameters() const {
-    return m_ndb_cluster_connection.m_config;
+    return m_ndb_cluster_connection.m_ndbapiconfig;
   }
 
-  BaseString m_systemPrefix; // Buffer for preformatted for <sys>/<def>/
-  
   Uint64 customData;
 
   Uint64 clientStats[ Ndb::NumClientStatistics ];
@@ -162,19 +242,19 @@ public:
     assert(stat < Ndb::NumClientStatistics);
     if (likely(stat < Ndb::NumClientStatistics))
       clientStats[ stat ] += inc;
-  };
+  }
 
   inline void decClientStat(const Ndb::ClientStatistics stat, const Uint64 dec) {
     assert(stat < Ndb::NumClientStatistics);
     if (likely(stat < Ndb::NumClientStatistics))
       clientStats[ stat ] -= dec;
-  };
+  }
   
   inline void setClientStat(const Ndb::ClientStatistics stat, const Uint64 val) {
     assert(stat < Ndb::NumClientStatistics);
     if (likely(stat < Ndb::NumClientStatistics))
       clientStats[ stat ] = val;
-  };
+  }
 
   /* We don't record the sent/received bytes of some GSNs as they are 
    * generated constantly and are not targetted to specific
@@ -225,20 +305,27 @@ public:
   /**
    * trp_client interface
    */
-  virtual void trp_deliver_signal(const NdbApiSignal*,
-                                  const LinearSectionPtr p[3]);
-  virtual void trp_wakeup();
-  virtual void recordWaitTimeNanos(Uint64 nanos);
+  void trp_deliver_signal(const NdbApiSignal*,
+                          const LinearSectionPtr p[3]) override;
+  void trp_wakeup() override;
+  void recordWaitTimeNanos(Uint64 nanos) override;
+
+  void drop_batched_fragments(AssembleBatchedFragments* batched_fragments);
+  Int32 assemble_data_event_signal(AssembleBatchedFragments* batched_fragments, NdbApiSignal* signal, LinearSectionPtr ptr[3]);
   // Is node available for running transactions
   bool   get_node_alive(NodeId nodeId) const;
   bool   get_node_stopping(NodeId nodeId) const;
+  bool   get_node_available(NodeId nodeId) const;
   bool   getIsDbNode(NodeId nodeId) const;
   bool   getIsNodeSendable(NodeId nodeId) const;
   Uint32 getNodeGrp(NodeId nodeId) const;
   Uint32 getNodeSequence(NodeId nodeId) const;
   Uint32 getNodeNdbVersion(NodeId nodeId) const;
   Uint32 getMinDbNodeVersion() const;
-  bool check_send_size(Uint32 node_id, Uint32 send_size) const { return true;}
+  bool check_send_size(Uint32 /*node_id*/, Uint32 /*send_size*/) const
+  {
+    return true;
+  }
 
   int sendSignal(NdbApiSignal*, Uint32 nodeId);
   int sendSignal(NdbApiSignal*, Uint32 nodeId,
@@ -249,12 +336,15 @@ public:
                            const LinearSectionPtr ptr[3], Uint32 secs);
   int sendFragmentedSignal(NdbApiSignal*, Uint32 nodeId,
                            const GenericSectionPtr ptr[3], Uint32 secs);
+
+  Uint32 mapRecipient(void * object);
+  void* unmapRecipient(Uint32 id, void *object);
+
   void* int2void(Uint32 val);
   static NdbReceiver* void2rec(void* val);
   static NdbTransaction* void2con(void* val);
-  static NdbOperation* void2rec_op(void* val);
-  static NdbIndexOperation* void2rec_iop(void* val);
   NdbTransaction* lookupTransactionFromOperation(const TcKeyConf* conf);
+  Uint32 select_node(NdbTableImpl *table_impl, const Uint16 *nodes, Uint32 cnt);
 };
 
 #ifdef VM_TRACE
@@ -272,6 +362,31 @@ public:
 #define CHECK_STATUS_MACRO_NULL \
    {if (checkInitState() == -1) { theError.code = 4100; DBUG_RETURN(NULL);}}
 
+/**
+ * theNdbObjectIdMap offers the translation between the object id
+ * used in the API protocol, and the object which a received signal
+ * should be delivered into.
+ * Objects are mapped using mapRecipient() function below and can be unmapped
+ * by calling unmapRecipient().
+ */
+
+inline
+Uint32
+NdbImpl::mapRecipient(void * object)
+{
+  return theNdbObjectIdMap.map(object);
+}
+
+inline
+void*
+NdbImpl::unmapRecipient(Uint32 id, void * object)
+{
+  return theNdbObjectIdMap.unmap(id, object);
+}
+
+/**
+ * Lookup of a previous mapped 'receiver'
+ */
 inline
 void *
 NdbImpl::int2void(Uint32 val)
@@ -291,20 +406,6 @@ NdbTransaction*
 NdbImpl::void2con(void* val)
 {
   return (NdbTransaction*)val;
-}
-
-inline
-NdbOperation*
-NdbImpl::void2rec_op(void* val)
-{
-  return (NdbOperation*)(void2rec(val)->getOwner());
-}
-
-inline
-NdbIndexOperation*
-NdbImpl::void2rec_iop(void* val)
-{
-  return (NdbIndexOperation*)(void2rec(val)->getOwner());
 }
 
 inline 
@@ -347,16 +448,30 @@ enum LockMode {
 template<class T>
 inline
 Ndb_free_list_t<T>::Ndb_free_list_t()
-{
-  m_free_list= 0; 
-  m_alloc_cnt= m_free_cnt= 0; 
-}
+ : m_used_cnt(0),
+   m_free_cnt(0),
+   m_free_list(NULL),
+   m_is_growing(false),
+   m_samples_skipped(0),
+   m_sample_max(0),
+   m_stats(),
+   m_estm_max_used(0)
+{}
 
 template<class T>
 inline
 Ndb_free_list_t<T>::~Ndb_free_list_t()
 {
-  clear();
+  T* obj = m_free_list;
+  while(obj)
+  {
+    T* curr = obj;
+    obj = static_cast<T*>(obj->next());
+    delete curr;
+    assert(m_free_cnt-- > 0);
+  }
+  assert(m_free_cnt == 0);
+  assert(m_used_cnt == 0);
 }
     
 template<class T>
@@ -365,10 +480,9 @@ int
 Ndb_free_list_t<T>::fill(Ndb* ndb, Uint32 cnt)
 {
 #ifndef HAVE_VALGRIND
+  m_is_growing = true;
   if (m_free_list == 0)
   {
-    m_free_cnt++;
-    m_alloc_cnt++;
     m_free_list = new T(ndb);
     if (m_free_list == 0)
     {
@@ -376,8 +490,9 @@ Ndb_free_list_t<T>::fill(Ndb* ndb, Uint32 cnt)
       assert(false);
       return -1;
     }
+    m_free_cnt++;
   }
-  while(m_alloc_cnt < cnt)
+  while(m_free_cnt < cnt)
   {
     T* obj= new T(ndb);
     if(obj == 0)
@@ -388,7 +503,6 @@ Ndb_free_list_t<T>::fill(Ndb* ndb, Uint32 cnt)
     }
     obj->next(m_free_list);
     m_free_cnt++;
-    m_alloc_cnt++;
     m_free_list = obj;
   }
   return 0;
@@ -404,23 +518,19 @@ Ndb_free_list_t<T>::seize(Ndb* ndb)
 {
 #ifndef HAVE_VALGRIND
   T* tmp = m_free_list;
-  if (tmp)
+  m_is_growing = true;
+  if (likely(tmp != NULL))
   {
     m_free_list = (T*)tmp->next();
     tmp->next(NULL);
     m_free_cnt--;
-    return tmp;
   }
-  
-  if((tmp = new T(ndb)))
-  {
-    m_alloc_cnt++;
-  }
-  else
+  else if (unlikely((tmp = new T(ndb)) == NULL))
   {
     NdbImpl::setNdbError(*ndb, 4000);
     assert(false);
   }
+  m_used_cnt++;
   return tmp;
 #else
   return new T(ndb);
@@ -433,28 +543,30 @@ void
 Ndb_free_list_t<T>::release(T* obj)
 {
 #ifndef HAVE_VALGRIND
-  obj->next(m_free_list);
-  m_free_list = obj;
-  m_free_cnt++;
+  if (m_is_growing)
+  {
+    /* Reached a usage peak, sample it, and possibly shrink free_list */
+    m_is_growing = false;
+    update_stats();
+    shrink();
+  }
+
+  /* Use statistics to decide delete or recycle of 'obj' */
+  if (m_used_cnt+m_free_cnt > m_estm_max_used)
+  {
+    delete obj;
+  }
+  else
+  {
+    obj->next(m_free_list);
+    m_free_list = obj;
+    m_free_cnt++;
+  }
+  assert(m_used_cnt > 0);
+  m_used_cnt--;
 #else
   delete obj;
 #endif
-}
-
-
-template<class T>
-inline
-void
-Ndb_free_list_t<T>::clear()
-{
-  T* obj = m_free_list;
-  while(obj)
-  {
-    T* curr = obj;
-    obj = (T*)obj->next();
-    delete curr;
-    m_alloc_cnt--;
-  }
 }
 
 template<class T>
@@ -462,19 +574,36 @@ inline
 void
 Ndb_free_list_t<T>::release(Uint32 cnt, T* head, T* tail)
 {
+#ifdef VM_TRACE
+  {
+    T* tmp = head;
+    Uint32 tmp_cnt = 0;
+    while (tmp != 0 && tmp != tail)
+    {
+      tmp = (T*)tmp->next();
+      tmp_cnt++;
+    }
+    assert(tmp == tail);
+    assert((tail==NULL && tmp_cnt==0) || tmp_cnt+1 == cnt);
+  }
+#endif
+
 #ifndef HAVE_VALGRIND
   if (cnt)
   {
-#ifdef VM_TRACE
+    if (m_is_growing)
     {
-      T* tmp = head;
-      while (tmp != 0 && tmp != tail) tmp = (T*)tmp->next();
-      assert(tmp == tail);
+      /* Reached a usage peak, sample it (shrink after lists merged) */
+      m_is_growing = false;
+      update_stats();
     }
-#endif
+
     tail->next(m_free_list);
     m_free_list = head;
     m_free_cnt += cnt;
+    assert(m_used_cnt >=  cnt);
+    m_used_cnt -= cnt;
+    shrink();
   }
 #else
   if (cnt)
@@ -489,6 +618,22 @@ Ndb_free_list_t<T>::release(Uint32 cnt, T* head, T* tail)
     delete tail;
   }
 #endif
+}
+
+template<class T>
+inline
+void
+Ndb_free_list_t<T>::shrink()
+{
+  T* obj = m_free_list;
+  while (obj && m_used_cnt+m_free_cnt > m_estm_max_used)
+  {
+    T* curr = obj;
+    obj = static_cast<T*>(obj->next());
+    delete curr;
+    m_free_cnt--;
+  }
+  m_free_list = obj;
 }
 
 inline
@@ -510,6 +655,17 @@ inline
 bool
 NdbImpl::get_node_alive(NodeId n) const {
   return getNodeInfo(n).m_alive;
+}
+
+inline
+bool
+NdbImpl::get_node_available(NodeId n) const
+{
+  const trp_node & node = getNodeInfo(n);
+  assert(node.m_info.getType() == NodeInfo::DB);
+  return (node.m_alive &&
+          !node.m_state.getSingleUserMode() &&
+          node.m_state.startLevel == NodeState::SL_STARTED);
 }
 
 inline

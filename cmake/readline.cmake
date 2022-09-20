@@ -1,4 +1,4 @@
-# Copyright (c) 2009, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2009, 2022, Oracle and/or its affiliates.
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -18,10 +18,31 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA 
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA 
 
 # cmake -DWITH_EDITLINE=system|bundled
 # bundled is the default
+
+FUNCTION(WARN_MISSING_SYSTEM_EDITLINE OUTPUT_WARNING)
+  IF(NOT EDITLINE_FOUND AND WITH_EDITLINE STREQUAL "system")
+    MESSAGE(WARNING "Cannot find EDITLINE development libraries. "
+      "You need to install the required packages:\n"
+      "  Debian/Ubuntu:              apt install libedit-dev\n"
+      "  RedHat/Fedora/Oracle Linux: yum install libedit-devel\n"
+      "  SuSE:                       zypper install libedit-devel\n"
+      )
+    SET(${OUTPUT_WARNING} 1 PARENT_SCOPE)
+  ENDIF()
+ENDFUNCTION()
+
+MACRO(RESET_EDITLINE_VARIABLES)
+  UNSET(EDITLINE_INCLUDE_DIR)
+  UNSET(EDITLINE_INCLUDE_DIR CACHE)
+  UNSET(EDITLINE_LIBRARY)
+  UNSET(EDITLINE_LIBRARY CACHE)
+  UNSET(FOUND_EDITLINE_READLINE)
+  UNSET(FOUND_EDITLINE_READLINE CACHE)
+ENDMACRO()
 
 MACRO (MYSQL_CHECK_MULTIBYTE)
   SET(CMAKE_EXTRA_INCLUDE_FILES wchar.h)
@@ -90,7 +111,7 @@ MACRO (FIND_CURSES)
  ENDIF()
 ENDMACRO()
 
-SET(CURRENT_LIBEDIT_DIRECTORY "extra/libedit/libedit-20191231-3.1")
+SET(CURRENT_LIBEDIT_DIRECTORY "extra/libedit/libedit-20210910-3.1")
 
 MACRO (MYSQL_USE_BUNDLED_EDITLINE)
   SET(WITH_EDITLINE "bundled" CACHE STRING "By default use bundled editline")
@@ -136,6 +157,7 @@ MACRO (FIND_SYSTEM_EDITLINE)
     CMAKE_PUSH_CHECK_STATE()
 
     SET(CMAKE_REQUIRED_INCLUDES ${EDITLINE_INCLUDE_DIR})
+    INCLUDE_DIRECTORIES(SYSTEM ${EDITLINE_INCLUDE_DIR})
     LIST(APPEND CMAKE_REQUIRED_LIBRARIES ${EDITLINE_LIBRARY})
     CHECK_CXX_SOURCE_COMPILES("
     #include <stdio.h>
@@ -199,7 +221,7 @@ MACRO (MYSQL_CHECK_EDITLINE)
     ELSEIF(WITH_EDITLINE STREQUAL "system")
       FIND_SYSTEM_EDITLINE()
       IF(NOT EDITLINE_FOUND)
-        MESSAGE(FATAL_ERROR "Cannot find system editline libraries.") 
+        RESET_EDITLINE_VARIABLES()
       ENDIF()
     ELSE()
       MESSAGE(FATAL_ERROR "WITH_EDITLINE must be bundled or system")

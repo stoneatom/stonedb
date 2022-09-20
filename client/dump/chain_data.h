@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2015, 2021, Oracle and/or its affiliates.
+  Copyright (c) 2015, 2022, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License, version 2.0,
@@ -25,16 +25,15 @@
 #ifndef CHAIN_DATA_INCLUDED
 #define CHAIN_DATA_INCLUDED
 
-#include "my_global.h"
+#include "my_inttypes.h"
 
-namespace Mysql{
-namespace Tools{
-namespace Dump{
+namespace Mysql {
+namespace Tools {
+namespace Dump {
 
-class Chain_data
-{
-public:
-  Chain_data(uint64 chain_id);
+class Chain_data {
+ public:
+  explicit Chain_data(uint64 chain_id);
 
   void abort();
 
@@ -44,7 +43,7 @@ public:
    */
   bool is_aborted();
 
-private:
+ private:
   /**
     ID of chain.
    */
@@ -55,8 +54,8 @@ private:
   bool m_is_aborted;
 };
 
-}
-}
-}
+}  // namespace Dump
+}  // namespace Tools
+}  // namespace Mysql
 
 #endif

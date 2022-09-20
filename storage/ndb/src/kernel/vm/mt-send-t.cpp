@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2012, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2012, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -22,7 +22,10 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-#include "mt-asm.h"
+#ifdef TEST_MT_SEND
+
+#include <cstring>
+#include "portlib/mt-asm.h"
 #include "mt-lock.hpp"
 #include <NdbTick.h>
 #include <NdbMutex.h>
@@ -113,7 +116,7 @@ typedef Bitmask<(MAX_TRANSPORTERS+31)/32> TransporterMask;
 struct Producer
 {
   Producer() {
-    bzero(val, sizeof(val));
+    std::memset(val, 0, sizeof(val));
     pendingcount = 0;
   }
 
@@ -164,7 +167,7 @@ struct Thread
 struct Consumer
 {
   Consumer() {
-    m_force_send = 0; bzero(val, sizeof(val));
+    m_force_send = 0; std::memset(val, 0, sizeof(val));
   }
 
   void init() {}
@@ -184,12 +187,12 @@ struct Consumer
   void forceConsume(unsigned D);
 };
 
-struct MY_ALIGNED(NDB_CL) Consumer_pad
+struct alignas(NDB_CL) Consumer_pad
 {
   Consumer c;
 };
 
-struct MY_ALIGNED(NDB_CL) Thread_pad
+struct alignas(NDB_CL) Thread_pad
 {
   Thread t;
 };
@@ -241,6 +244,11 @@ struct Test
     waiting_stop = 0;
     mutex = 0;
     cond = 0;
+  }
+
+  ~Test() {
+    NdbMutex_Destroy(mutex);
+    NdbCondition_Destroy(cond);
   }
 
   void init() {
@@ -391,6 +399,7 @@ main(int argc, char ** argv)
     {
       void * ret;
       NdbThread_WaitFor(rep.t[t].t.thread, &ret);
+      NdbThread_Destroy(&rep.t[t].t.thread);
     }
   }
   printf("\n"); fflush(stdout);
@@ -579,4 +588,6 @@ lookup_lock(const void * ptr)
 {
   return 0;
 }
+#endif
+
 #endif

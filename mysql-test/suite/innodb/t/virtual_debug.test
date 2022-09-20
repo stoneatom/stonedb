@@ -1,4 +1,3 @@
---source include/have_innodb.inc
 --source include/have_debug_sync.inc
 --source include/have_debug.inc
 --source include/count_sessions.inc
@@ -19,10 +18,10 @@ CREATE INDEX idx ON t(c(100));
 
 SET session debug="+d,ib_alter_add_virtual_fail";
 --error ER_WRONG_KEY_COLUMN
-ALTER TABLE t ADD COLUMN x VARCHAR(200) GENERATED ALWAYS AS (a) VIRTUAL,
+ALTER TABLE t ADD COLUMN x VARCHAR(200) GENERATED ALWAYS AS (a) VIRTUAL, ADD INDEX(h),
 ALGORITHM = INPLACE;
 --error ER_WRONG_KEY_COLUMN
-ALTER TABLE t DROP COLUMN c, ALGORITHM = INPLACE;
+ALTER TABLE t DROP COLUMN c, ADD INDEX(h), ALGORITHM = INPLACE;
 SET session debug="-d,ib_alter_add_virtual_fail";
 DROP TABLE t;
 
@@ -47,6 +46,7 @@ SET DEBUG_SYNC = 'now SIGNAL go_ahead';
 connection default;
 reap;
 
+--sorted_result
 SELECT c FROM t;
 SHOW CREATE TABLE t;
 SELECT * FROM t;
@@ -65,6 +65,7 @@ SET DEBUG_SYNC = 'now SIGNAL go_ahead';
 connection default;
 reap;
 
+--sorted_result
 SELECT c FROM t;
 
 SET DEBUG_SYNC = 'innodb_inplace_alter_table_enter SIGNAL start_create WAIT_FOR go_ahead';
@@ -82,6 +83,7 @@ SET DEBUG_SYNC = 'now SIGNAL go_ahead';
 connection default;
 reap;
 
+--sorted_result
 SELECT c FROM t;
 
 disconnect con1;
@@ -115,6 +117,7 @@ SET SESSION debug="-d,create_index_fail";
 
 SHOW CREATE TABLE t;
 
+--sorted_result
 SELECT c FROM t;
 
 DROP TABLE t;
@@ -148,6 +151,7 @@ SET DEBUG_SYNC = 'now SIGNAL go_ahead';
 connection default;
 --echo /* connection default */ optimize table t;
 reap;
+--sorted_result
 SELECT c FROM t;
 SHOW CREATE TABLE t;
 SELECT * FROM t;
@@ -177,6 +181,7 @@ connection default;
 --echo /* connection default */ optimize table t;
 reap;
 
+--sorted_result
 SELECT c FROM t;
 
 disconnect con1;
@@ -194,7 +199,7 @@ INSERT INTO t1 (id,a,b) VALUES (10,'aditya','hello');
 connect (con1,localhost,root);
 connection con1;
 
-SET DEBUG_SYNC= 'row_merge_after_scan SIGNAL opened WAIT_FOR go_ddl';
+SET DEBUG_SYNC= 'ddl_after_scan SIGNAL opened WAIT_FOR go_ddl';
 send ALTER TABLE t1 ADD CONSTRAINT  pk1 PRIMARY KEY (id);
 
 connection default;
@@ -216,7 +221,7 @@ DROP TABLE t1;
 
 # Create a table with 2 virtual column, one (vbidxcol) is indexed and
 # the other one (vbcol) is not
-create table ibstd_14 (a int not null, d int not null, b varchar(198) not null, c char(181), vadcol int as (a+length(d)) stored, vbcol char(2) as (substr(b,2,2)) virtual, vbidxcol char(3) as (substr(b,1,3)) virtual , index(d), index(a), index(vbidxcol), index(a,vbidxcol), index(vbidxcol,d), unique key (b(10), a, d), index(c(99), b(31)), index(b(5), c(10), a) , index(a,d)) engine=InnoDB stats_persistent=1 row_format=dynamic;
+create table ibstd_14 (a int not null, d int not null, b varchar(198) not null, c char(181), vadcol int as (a+length(d)) stored, vbcol char(2) as (substr(b,2,2)) virtual, vbidxcol char(3) as (substr(b,1,3)) virtual , index(d), index(a), index(vbidxcol), index(a,vbidxcol), index(vbidxcol,d), unique key (b(10), a, d), index(c(99), b(31)), index(b(5), c(10), a) , index(a,d)) engine=InnoDB stats_persistent=1 row_format=dynamic charset latin1;
 
 # Do an alter table rebuild table and also create a new index on this
 # non-indexed virtual column
@@ -244,12 +249,40 @@ select * from ibstd_14;
 
 # This will use the newly added "kn3" index, to check materialized vbcol
 # after log reapply
+--sorted_result
 select d,c,vbcol,b from  ibstd_14;
 
 # check the value is inserted into the index
+--sorted_result
 select vbcol from ibstd_14;
 
 drop table ibstd_14;
+
+--echo #
+--echo # Bug#26375771 INNODB: ASSERTION FAILURE: MACH0DATA.IC:308:VAL > 0X7F
+--echo #
+create table ibstd_07 (a int not null, d int not null, b blob not null, c text, vadcol int as (a+length(d)) stored, vbcol char(2) as (substr(b,2,2)) virtual, vbidxcol char(3) as (substr(b,1,3)) virtual , index(d  desc), index(a  desc), index(vbidxcol  desc), index(vbidxcol  desc,d  asc), unique key (b(101)  desc, a  asc, d ), index(c(255)  desc, b(255)  asc), index(b(5)  desc, c(10)  asc, a ) ) engine=InnoDB default charset=latin1 row_format=redundant;
+
+insert into ibstd_07 values (2, 2, repeat('rocalrulcrcaurcuccoolrouuocacaooaucauualcucuoucucclolcllloocuarcoorlaccarocouuaoorcolloucraoaaooc','281'),repeat('ouolrculuouocououooalcoraooaulouuacrolrocooraoaooooolaccralacalooolalocoaacoorarorcurccarocucla','317'), default, default, default);
+
+
+SET DEBUG_SYNC = 'innodb_inplace_alter_table_enter SIGNAL start_create WAIT_FOR go_ahead';
+--send alter table ibstd_07  add primary key (b(11)  desc,a  asc, d );
+
+# Do a concurrent update
+connection con1;
+SET DEBUG_SYNC = 'now WAIT_FOR start_create';
+update ibstd_07 set c=repeat('0.366710324443464crllooolarlollorlulololucrluacoorrrluroluroocouauacacruloulcurlraorcrclrolcocrrcoccolourrooclrcocruruauallo','70');
+
+
+SET DEBUG_SYNC = 'now SIGNAL go_ahead';
+
+connection default;
+reap;
+
+SELECT * FROM ibstd_07;
+
+DROP TABLE ibstd_07;
 
 --echo #
 --echo # Bug#22018745 CORRUPTION IN ONLINE TABLE REBUILD
@@ -281,38 +314,141 @@ CHECK TABLE t;
 SELECT * FROM t;
 DROP TABLE t;
 
---echo #
---echo # Bug#26375771 INNODB: ASSERTION FAILURE: MACH0DATA.IC:308:VAL > 0X7F
---echo #
-create table ibstd_07 (a int not null, d int not null, b blob not null, c text, vadcol int as (a+length(d)) stored, vbcol char(2) as (substr(b,2,2)) virtual, vbidxcol char(3) as (substr(b,1,3)) virtual , index(d  desc), index(a  desc), index(vbidxcol  desc), index(vbidxcol  desc,d  asc), unique key (b(101)  desc, a  asc, d ), index(c(255)  desc, b(255)  asc), index(b(5)  desc, c(10)  asc, a ) ) engine=InnoDB default charset=latin1 row_format=redundant;
-
-insert into ibstd_07 values (2, 2, repeat('rocalrulcrcaurcuccoolrouuocacaooaucauualcucuoucucclolcllloocuarcoorlaccarocouuaoorcolloucraoaaooc','281'),repeat('ouolrculuouocououooalcoraooaulouuacrolrocooraoaooooolaccralacalooolalocoaacoorarorcurccarocucla','317'), default, default, default);
-
-
-SET DEBUG_SYNC = 'innodb_inplace_alter_table_enter SIGNAL start_create WAIT_FOR go_ahead';
---send alter table ibstd_07  add primary key (b(11)  desc,a  asc, d );
-
-# Do a concurrent update
-connection con1;
-SET DEBUG_SYNC = 'now WAIT_FOR start_create';
-
-update ibstd_07 set c=repeat('0.366710324443464crllooolarlollorlulololucrluacoorrrluroluroocouauacacruloulcurlraorcrclrolcocrrcoccolourrooclrcocruruauallo','70');
-
-
-SET DEBUG_SYNC = 'now SIGNAL go_ahead';
-
-connection default;
-reap;
-
-SELECT * FROM ibstd_07;
-DROP TABLE ibstd_07;
-
 disconnect con1;
 
 SET DEBUG_SYNC = 'RESET';
 
 --source include/wait_until_count_sessions.inc
 
+--echo #
+--echo # Bug#24658707 ASSERT: BUF0BUF.CC:2469:BUF_BLOCK_GET_STATE(BLOCK)
+--echo # == BUF_BLOCK_FILE_PAGE#
+--echo #
+
+--connect(con1,localhost,root)
+--connect(con2,localhost,root)
+
+CREATE TABLE t1 (
+     col1 int(11) NOT NULL,
+     col2 int(11) DEFAULT NULL
+   ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+--connection con1
+SET DEBUG_SYNC='purge_wait_for_btr_search_latch WAIT_FOR go';
+--send ALTER TABLE t1 ADD COLUMN col3 INT GENERATED ALWAYS AS (col1 % col2) VIRTUAL, algorithm=inplace;
+
+--connection con2
+# Allow purge to wait for btr_search_latch
+--sleep 10
+SET DEBUG_SYNC = 'now signal go';
+
+--connection con1
+--reap
+
+SET DEBUG_SYNC = 'RESET';
+
+DROP TABLE t1;
+
+--connection default
+--disconnect con1
+--disconnect con2
+
+--echo #
+--echo # Bug#26330279 - ASSERT ON ROW_PURGE_REMOVE_SEC_IF_POSS_LEAF| INNOBASE/ROW/ROW0PURGE.CC
+--echo #
+
+SET GLOBAL innodb_purge_stop_now=ON;
+CREATE TABLE t1 (col1 INT,
+                 col2 VARCHAR(100),
+                 col3 VARCHAR(80) GENERATED ALWAYS AS (SUBSTR(col2,1,70)),
+                 PRIMARY KEY (col1), UNIQUE KEY uidx(col3(10))) ENGINE = InnoDB;
+
+INSERT INTO t1(col1, col2) VALUES(1, CONCAT(1, REPEAT('z',90)));
+
+REPLACE INTO t1(col1, col2) SELECT col1, col2 FROM t1;
+
+SET GLOBAL innodb_purge_run_now=ON;
+--source include/wait_innodb_all_purged.inc
+
+DROP TABLE t1;
+
+
+--echo #
+--echo # BUG#27319084 - INDEX CORRUPT: INNODB: FIELD 0 LEN IS NNN, SHOULD BE NNN; RECORD
+--echo #
+
+CREATE TABLE t1(a INT NOT NULL, d INT NOT NULL, b VARCHAR(198) NOT NULL, c CHAR(84), vbcol CHAR(2) AS (substr(b, 2, 2)) VIRTUAL, vbidxcol CHAR(3) AS (substr(b, 1, 3)) VIRTUAL, INDEX(vbidxcol ASC)) ROW_FORMAT = DYNAMIC;
+
+INSERT INTO t1(a, d, b, c) VALUES(200, 300, '1.3.1415926535', 'hello world');
+
+connect (conn1, localhost, root,,);
+
+connection default;
+
+SET DEBUG_SYNC = 'row_log_table_apply1_before SIGNAL altered WAIT_FOR dmls_done';
+
+--send ALTER TABLE t1 ROW_FORMAT = REDUNDANT
+
+connection conn1;
+
+SET DEBUG_SYNC = 'now WAIT_FOR altered';
+
+INSERT INTO t1(a, d, b, c) VALUES(201, 300, '3.1415926535', 'hello world');
+
+UPDATE t1 SET b = '6.1516179' WHERE a = 200;
+
+SET DEBUG_SYNC = 'now SIGNAL dmls_done';
+
+disconnect conn1;
+
+connection default;
+
+reap;
+
+SET DEBUG_SYNC = 'reset';
+
+CHECK TABLE t1;
+
+SELECT * FROM t1;
+
+DROP TABLE t1;
+
+
+CREATE TABLE t1(a INT NOT NULL, d INT NOT NULL, b VARCHAR(198) NOT NULL, c CHAR(84), vbcol CHAR(2) AS (substr(b, 2, 2)) VIRTUAL, vbidxcol CHAR(3) AS (substr(b, 1, 3)) VIRTUAL, INDEX(vbidxcol ASC)) ROW_FORMAT = REDUNDANT;
+
+INSERT INTO t1(a, d, b, c) VALUES(200, 300, '1.3.1415926535', 'hello world');
+
+connect (conn1, localhost, root,,);
+
+connection default;
+
+SET DEBUG_SYNC = 'row_log_table_apply1_before SIGNAL altered WAIT_FOR dmls_done';
+
+--send ALTER TABLE t1 ROW_FORMAT = DYNAMIC
+
+connection conn1;
+
+SET DEBUG_SYNC = 'now WAIT_FOR altered';
+
+INSERT INTO t1(a, d, b, c) VALUES(201, 300, '3.1415926535', 'hello world');
+
+UPDATE t1 SET b = '6.1516179' WHERE a = 200;
+
+SET DEBUG_SYNC = 'now SIGNAL dmls_done';
+
+disconnect conn1;
+
+connection default;
+
+reap;
+
+SET DEBUG_SYNC = 'reset';
+
+CHECK TABLE t1;
+
+SELECT * FROM t1;
+
+DROP TABLE t1;
 
 
 --echo #
@@ -489,64 +625,88 @@ UPDATE t1 SET isa = 1 WHERE a = 'test' AND isa = 0;
 SELECT j,a,isa,ab FROM t1;
 DROP TABLE t1;
 
---echo #
---echo # Bug#29451999: CRASH WITH RANGE QUERIES
---echo #
 
-CREATE TABLE t1 (c1 JSON, c2 TINYTEXT, c3 TIMESTAMP(4), c4 JSON, c5 DOUBLE, c6 TIME(4), c7 LONGTEXT GENERATED ALWAYS AS ('20:30:44') VIRTUAL NOT NULL, KEY k1 (c7(12))) ENGINE=INNODB;
-INSERT INTO t1 (c1, c2, c3, c4) VALUES('{}', 1, '1991-05-27', '{}');
-INSERT INTO t1 (c1, c2, c3, c4) SELECT c1, c2, c3, c4 FROM t1;
-INSERT INTO t1 (c1, c2, c3, c4) SELECT c1, c2, c3, c4 FROM t1;
-INSERT INTO t1 (c1, c2, c3, c4) SELECT c1, c2, c3, c4 FROM t1;
-INSERT INTO t1 (c1, c2, c3, c4) SELECT c1, c2, c3, c4 FROM t1;
-INSERT INTO t1 (c1, c2, c3, c4) SELECT c1, c2, c3, c4 FROM t1;
-INSERT INTO t1 (c1, c2, c3, c4) SELECT c1, c2, c3, c4 FROM t1;
-INSERT INTO t1 (c1, c2, c3, c4) SELECT c1, c2, c3, c4 FROM t1;
-SELECT COUNT(*) FROM t1;
 
-SET GLOBAL innodb_purge_stop_now= ON;
-DELETE FROM t1;
+# Test for the rollback scenario when both a virtual column and a virtual
+# Index are added. The in-memory dict_index_t object should be handled
+# properly, in case of any unexpected crash
 
-SELECT c4 FROM t1 WHERE c7 BETWEEN '16383' AND '2015-01-01';
+CREATE TABLE t1(a INT);
 
-#Cleanup
-SET GLOBAL innodb_purge_run_now = ON;
+INSERT INTO t1 VALUES(1), (1);
+
+set session debug = '+d, force_virtual_col_build_fail';
+
+# Prepare an index which is marked as aborted
+connect (conn1,localhost,root,,);
+connect (conn2,localhost,root,,);
+
+connection default;
+
+SET DEBUG_SYNC='innodb_commit_inplace_alter_table_enter SIGNAL rolling_back WAIT_FOR drop_created';
+--send ALTER TABLE t1 ADD COLUMN (h INT GENERATED ALWAYS AS(a+1) VIRTUAL), ADD INDEX idx(h), ALGORITHM=INPLACE;
+
+connection conn1;
+SET DEBUG_SYNC='now WAIT_FOR rolling_back';
+SET DEBUG_SYNC='row_search_for_mysql_before_return SIGNAL scanning WAIT_FOR continue_scan';
+--send SELECT * FROM t1;
+
+connection conn2;
+SET DEBUG_SYNC='now WAIT_FOR scanning';
+SET DEBUG_SYNC='now SIGNAL drop_created';
+
+connection default;
+--error ER_GET_ERRNO
+--reap
+
+connection conn2;
+SET DEBUG_SYNC='now SIGNAL continue_scan';
+
+connection conn1;
+--reap;
+
+disconnect conn1;
+disconnect conn2;
+
+connection default;
+
+set session debug = '-d, force_virtual_col_build_fail';
+
+INSERT INTO t1 VALUES(1);
+
+CHECK TABLE t1;
+
 DROP TABLE t1;
 
-CREATE TABLE t2 (
-  i INT NOT NULL,
-  gc INT GENERATED ALWAYS AS (i) VIRTUAL NOT NULL,
-  KEY (gc)
-);
+--source include/wait_until_count_sessions.inc
 
-INSERT INTO t2 (i) VALUES (-1), (0), (1), (2);
+--echo #
+--echo # Bug 31279528 - CRASH IN MYSQL SERVER, ASSERTION FAILURE: DICT0DICT.CC
+--echo #
+CREATE TABLE t1 (c1 INT);
 
-BEGIN;
---disable_query_log
---let $i = 2000
-while ($i > 0)
-{
-  INSERT INTO t2 (i) VALUES (-10);
-  dec $i;
-}
---enable_query_log
+# Create a secondary index which will cause virtual columns to be added into table
+CREATE INDEX idx ON t1 ( ( c1 = 127 ) , ( c1 + c1 ) , c1 , ( c1 + - -1 ) , (c1 > 26 ) ) ;
 
-CONNECT (con1,localhost,root,,);
-# This query used to return zero rows.
-SELECT i FROM t2 FORCE INDEX (gc) WHERE gc <= -1;
-# Similar query using covering index was correct even before.
-SELECT gc FROM t2 FORCE INDEX (gc) WHERE gc <= -1;
-DISCONNECT con1;
-CONNECTION default;
+SHOW WARNINGS;
 
-COMMIT;
+SHOW CREATE TABLE t1;
 
-DROP TABLE t2;
+SET SESSION debug= '+d,skip_dd_table_access_check';
+SELECT ID INTO @tid FROM mysql.tables WHERE NAME='t1';
+SELECT NAME, ORDINAL_POSITION, TYPE, HIDDEN, GENERATION_EXPRESSION_UTF8 FROM mysql.columns WHERE TABLE_ID=@tid ORDER BY ORDINAL_POSITION;
+
+DROP TABLE t1;
+
 
 --echo #
 --echo # Bug #30556595  FAILING ASSERTION: !CURSOR->INDEX->IS_COMMITTED()
 --echo # ON TABLE WITH GCOLS
 --echo #
+
+--echo # Set binlog_row_image = MINIMAL.
+SET @old_binlog_row_image = @@binlog_row_image;
+SET @@session.binlog_row_image = 'MINIMAL';
 
 --echo # Testcase-1
 CREATE TABLE t (pid int PRIMARY KEY,
@@ -632,6 +792,7 @@ connection con1;
 connection default;
 --echo # Read [2, 10, 10] row using idx_vid index key.
 --sleep 1
+--skip_if_hypergraph  # Hits assertion. Bug#33888263.
 select * from t where VID=10;
 disconnect con1;
 DROP TABLE t;
@@ -656,6 +817,8 @@ connection con1;
 --reap
 connection default;
 --echo # Delete a record.
+--skip_if_hypergraph  # Hits assertion. Bug#33888263.
 delete from t limit 1;
 disconnect con1;
 DROP TABLE t;
+SET @@session.binlog_row_image = @old_binlog_row_image;

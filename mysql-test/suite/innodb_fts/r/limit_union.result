@@ -12,9 +12,6 @@ INSERT INTO articles (title,body) VALUES
 ('1001 MySQL Tricks','1. Never run mysqld as root. 2. ...'),
 ('MySQL vs. YourSQL','In the following database comparison ...'),
 ('MySQL Security','When configured properly, MySQL ...');
-SET GLOBAL query_cache_size=0;
-Warnings:
-Warning	1287	'@@query_cache_size' is deprecated and will be removed in a future release.
 # Query involves Ranking
 SELECT * FROM articles
 WHERE MATCH (title,body)
@@ -154,8 +151,6 @@ id	title	body
 8	MySQL Tutorial	request support@oraclehelp.com ...
 SET DEBUG = '-d,fts_union_limit_off';
 DROP TABLE articles;
-Warnings:
-Warning	1287	'@@query_cache_size' is deprecated and will be removed in a future release.
 #
 # Bug #31228694 FTS QUERY WITH LIMIT CRASH
 #
@@ -169,6 +164,8 @@ name VARCHAR(45) NOT NULL,
 PRIMARY KEY (id) USING BTREE,
 FULLTEXT KEY search_name (name)  WITH PARSER ngram
 ) ENGINE=InnoDB;
+Warnings:
+Warning	1681	Integer display width is deprecated and will be removed in a future release.
 INSERT INTO t1(name) VALUES('x'), ('mx'), ('mx'), ('mx'), ('mx');
 SELECT * FROM t1 WHERE MATCH (`name`) AGAINST ('mx*' IN BOOLEAN MODE) LIMIT 3;
 id	name

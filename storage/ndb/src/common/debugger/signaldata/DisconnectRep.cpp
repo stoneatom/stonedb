@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
+    Use is subject to license terms.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -23,15 +23,21 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-
-
 #include <signaldata/DisconnectRep.hpp>
 
-bool
-printDISCONNECT_REP(FILE * output, const Uint32 * theData, Uint32 len, Uint16 receiverBlockNo){
-  
-  const DisconnectRep * const sig = (DisconnectRep *) theData;
-  
+bool printDISCONNECT_REP(FILE *output,
+                         const Uint32 *theData,
+                         Uint32 len,
+                         Uint16 /*receiverBlockNo*/)
+{
+  if (len < DisconnectRep::SignalLength)
+  {
+    assert(false);
+    return false;
+  }
+
+  const DisconnectRep *const sig = (const DisconnectRep *)theData;
+
   fprintf(output, " NodeId: %d, ErrorCode: %d\n", 
 	  sig->nodeId, sig->err);
   

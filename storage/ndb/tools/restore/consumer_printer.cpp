@@ -1,6 +1,5 @@
 /*
-   Copyright (c) 2004, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+   Copyright (c) 2004, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -41,7 +40,7 @@ BackupPrinter::table(const TableS & tab)
   return true;
 }
 
-void
+bool
 BackupPrinter::tuple(const TupleS & tup, Uint32 fragId)
 {
   m_dataCount++;
@@ -54,23 +53,30 @@ BackupPrinter::tuple(const TupleS & tup, Uint32 fragId)
     }
     const TableS * table = tup.getTable();
     if ((!ga_dont_ignore_systab_0) &&  table->isSYSTAB_0())
-      return;
+      return true;
     m_ndbout << tup << g_ndbrecord_print_format.lines_terminated_by;  
   }
+  return true;
 }
 
-void
+bool
 BackupPrinter::logEntry(const LogEntry & logE)
 {
   if (m_print || m_print_log)
     m_ndbout << logE << endl;
+  else if(m_print_sql_log)
+  {
+    logE.printSqlLog();
+    ndbout << endl;
+  }
   m_logCount++;
+  return true;
 }
 
 void
 BackupPrinter::endOfLogEntrys()
 {
-  if (m_print || m_print_log) 
+  if (m_print || m_print_log || m_print_sql_log)
   {
     info.setLevel(254);
     info << "Printed " << m_dataCount << " tuples and "
@@ -79,7 +85,16 @@ BackupPrinter::endOfLogEntrys()
   }
 }
 bool
-BackupPrinter::update_apply_status(const RestoreMetaData &metaData)
+BackupPrinter::update_apply_status(const RestoreMetaData &metaData, bool snapshotstart)
+{
+  if (m_print)
+  {
+  }
+  return true;
+}
+
+bool
+BackupPrinter::delete_epoch_tuple()
 {
   if (m_print)
   {

@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
+    Use is subject to license terms.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -50,12 +50,19 @@ print(char * buf, size_t buf_len, CopyGCIReq::CopyReason r){
   }
 }
 
-bool
-printCOPY_GCI_REQ(FILE * output, 
-		  const Uint32 * theData, 
-		  Uint32 len, 
-		  Uint16 recBlockNo){
-  CopyGCIReq * sig = (CopyGCIReq*)theData;
+bool printCOPY_GCI_REQ(FILE* output,
+                       const Uint32* theData,
+                       Uint32 len,
+                       Uint16 /*recBlockNo*/)
+{
+  // Use SignalLength, since the data[] of size 22 is not written out
+  if (len < CopyGCIReq::SignalLength)
+  {
+    assert(false);
+    return false;
+  }
+
+  const CopyGCIReq* sig = (const CopyGCIReq*)theData;
 
   static char buf[255];
   print(buf, sizeof(buf), (CopyGCIReq::CopyReason)sig->copyReason);

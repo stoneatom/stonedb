@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2012, 2022, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License, version 2.0,
@@ -17,8 +17,8 @@
   GNU General Public License, version 2.0, for more details.
 
   You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software Foundation,
-  51 Franklin Street, Suite 500, Boston, MA 02110-1335 USA */
+  along with this program; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #ifndef PFS_IDLE_PROVIDER_H
 #define PFS_IDLE_PROVIDER_H
@@ -28,28 +28,29 @@
   Performance schema instrumentation (declarations).
 */
 
+/* HAVE_PSI_*_INTERFACE */
+#include "my_psi_config.h"  // IWYU pragma: keep
+
 #ifdef HAVE_PSI_IDLE_INTERFACE
-#ifdef MYSQL_SERVER
-#ifndef EMBEDDED_LIBRARY
+#if defined(MYSQL_SERVER) || defined(PFS_DIRECT_CALL)
 #ifndef MYSQL_DYNAMIC_PLUGIN
+#ifndef WITH_LOCK_ORDER
 
-#include "mysql/psi/psi.h"
+#include <sys/types.h>
 
-#define PSI_IDLE_CALL(M) pfs_ ## M ## _v1
+#include "my_macros.h"
+#include "mysql/psi/psi_idle.h"
 
-C_MODE_START
+#define PSI_IDLE_CALL(M) pfs_##M##_v1
 
-PSI_idle_locker*
-pfs_start_idle_wait_v1(PSI_idle_locker_state* state, const char *src_file, uint src_line);
+PSI_idle_locker *pfs_start_idle_wait_v1(PSI_idle_locker_state *state,
+                                        const char *src_file, uint src_line);
 
-void pfs_end_idle_wait_v1(PSI_idle_locker* locker);
+void pfs_end_idle_wait_v1(PSI_idle_locker *locker);
 
-C_MODE_END
-
+#endif /* WITH_LOCK_ORDER */
 #endif /* MYSQL_DYNAMIC_PLUGIN */
-#endif /* EMBEDDED_LIBRARY */
-#endif /* MYSQL_SERVER */
+#endif /* MYSQL_SERVER || PFS_DIRECT_CALL */
 #endif /* HAVE_PSI_IDLE_INTERFACE */
 
 #endif
-

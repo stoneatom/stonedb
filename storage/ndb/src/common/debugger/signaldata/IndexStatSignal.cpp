@@ -1,4 +1,5 @@
-/* Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2003, 2022, Oracle and/or its affiliates.
+   Use is subject to license terms.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -18,7 +19,7 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA */
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #include <signaldata/IndexStatSignal.hpp>
 
@@ -52,6 +53,12 @@ get_rep_rt_name(Uint32 rt, char* rt_name)
 bool
 printINDEX_STAT_REQ(FILE* output, const Uint32* theData, Uint32 len, Uint16)
 {
+  if (len < IndexStatReq::SignalLength)
+  {
+    assert(false);
+    return false;
+  }
+
   const IndexStatReq* sig = (const IndexStatReq*)theData;
   fprintf(output, " clientRef: 0x%x", sig->clientRef);
   fprintf(output, " clientData: %u", sig->clientData);
@@ -72,6 +79,12 @@ printINDEX_STAT_REQ(FILE* output, const Uint32* theData, Uint32 len, Uint16)
 bool
 printINDEX_STAT_IMPL_REQ(FILE* output, const Uint32* theData, Uint32 len, Uint16)
 {
+  if (len < IndexStatImplReq::SignalLength)
+  {
+    assert(false);
+    return false;
+  }
+
   const IndexStatImplReq* sig = (const IndexStatImplReq*)theData;
   fprintf(output, " senderRef: 0x%x", sig->senderRef);
   fprintf(output, " senderData: %u", sig->senderData);
@@ -94,6 +107,12 @@ printINDEX_STAT_IMPL_REQ(FILE* output, const Uint32* theData, Uint32 len, Uint16
 bool
 printINDEX_STAT_CONF(FILE* output, const Uint32* theData, Uint32 len, Uint16)
 {
+  if (len < IndexStatConf::SignalLength)
+  {
+    assert(false);
+    return false;
+  }
+
   const IndexStatConf* sig = (const IndexStatConf*)theData;
   fprintf(output, " senderRef: 0x%x", sig->senderRef);
   fprintf(output, " senderData: %u", sig->senderData);
@@ -104,6 +123,12 @@ printINDEX_STAT_CONF(FILE* output, const Uint32* theData, Uint32 len, Uint16)
 bool
 printINDEX_STAT_IMPL_CONF(FILE* output, const Uint32* theData, Uint32 len, Uint16)
 {
+  if (len < IndexStatImplConf::SignalLength)
+  {
+    assert(false);
+    return false;
+  }
+
   const IndexStatImplConf* sig = (const IndexStatImplConf*)theData;
   fprintf(output, " senderRef: 0x%x", sig->senderRef);
   fprintf(output, " senderData: %u", sig->senderData);
@@ -114,6 +139,12 @@ printINDEX_STAT_IMPL_CONF(FILE* output, const Uint32* theData, Uint32 len, Uint1
 bool
 printINDEX_STAT_REF(FILE* output, const Uint32* theData, Uint32 len, Uint16)
 {
+  if (len < IndexStatRef::SignalLength)
+  {
+    assert(false);
+    return false;
+  }
+
   const IndexStatRef* sig = (const IndexStatRef*)theData;
   fprintf(output, " senderRef: 0x%x", sig->senderRef);
   fprintf(output, " senderData: %u", sig->senderData);
@@ -126,6 +157,12 @@ printINDEX_STAT_REF(FILE* output, const Uint32* theData, Uint32 len, Uint16)
 bool
 printINDEX_STAT_IMPL_REF(FILE* output, const Uint32* theData, Uint32 len, Uint16)
 {
+  if (len < IndexStatImplRef::SignalLength)
+  {
+    assert(false);
+    return false;
+  }
+
   const IndexStatImplRef* sig = (const IndexStatImplRef*)theData;
   fprintf(output, " senderRef: 0x%x", sig->senderRef);
   fprintf(output, " senderData: %u", sig->senderData);
@@ -138,6 +175,12 @@ printINDEX_STAT_IMPL_REF(FILE* output, const Uint32* theData, Uint32 len, Uint16
 bool
 printINDEX_STAT_REP(FILE* output, const Uint32* theData, Uint32 len, Uint16)
 {
+  if (len < IndexStatRep::SignalLength)
+  {
+    assert(false);
+    return false;
+  }
+
   const IndexStatRep* sig = (const IndexStatRep*)theData;
   fprintf(output, " senderRef: 0x%x", sig->senderRef);
   fprintf(output, " senderData: %u", sig->senderData);

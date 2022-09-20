@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -29,10 +29,11 @@
 #include <NdbOut.hpp>
 
 #include <NdbApi.hpp>
-#include <NdbMain.h>
 #include <NDBT.hpp> 
 #include <NdbSleep.h>
 #include <UtilTransactions.hpp>
+
+#include "my_alloc.h"
  
 static int 
 select_count(Ndb* pNdb, const NdbDictionary::Table* pTab,
@@ -44,19 +45,17 @@ static const char* _dbname = "TEST_DB";
 static int _parallelism = 240;
 static int _lock = 0;
 
-const char *load_default_groups[]= { "mysql_cluster",0 };
-
 static struct my_option my_long_options[] =
 {
   NDB_STD_OPTS("ndb_select_count"),
   { "database", 'd', "Name of database table is in",
-    (uchar**) &_dbname, (uchar**) &_dbname, 0,
+    &_dbname, &_dbname, 0,
     GET_STR, REQUIRED_ARG, 0, 0, 0, 0, 0, 0 },
   { "parallelism", 'p', "parallelism",
-    (uchar**) &_parallelism, (uchar**) &_parallelism, 0,
+    &_parallelism, &_parallelism, 0,
     GET_INT, REQUIRED_ARG, 240, 0, 0, 0, 0, 0 }, 
   { "lock", 'l', "Read(0), Read-hold(1), Exclusive(2)",
-    (uchar**) &_lock, (uchar**) &_lock, 0,
+    &_lock, &_lock, 0,
     GET_INT, REQUIRED_ARG, 0, 0, 0, 0, 0, 0 }, 
   { 0, 0, 0, 0, 0, 0, GET_NO_ARG, NO_ARG, 0, 0, 0, 0, 0, 0}
 };
@@ -66,30 +65,23 @@ static void short_usage_sub(void)
   ndb_short_usage_sub("<table name>[, <table name>[, ...]]");
 }
 
-static void usage()
-{
-  ndb_usage(short_usage_sub, load_default_groups, my_long_options);
-}
-
 int main(int argc, char** argv){
   NDB_INIT(argv[0]);
-  ndb_opt_set_usage_funcs(short_usage_sub, usage);
-  ndb_load_defaults(NULL,load_default_groups,&argc,&argv);
-  int ho_error;
+  Ndb_opts opts(argc, argv, my_long_options);
+  opts.set_usage_funcs(short_usage_sub);
 #ifndef NDEBUG
   opt_debug= "d:t:O,/tmp/ndb_select_count.trace";
 #endif
-  if ((ho_error=handle_options(&argc, &argv, my_long_options,
-			       ndb_std_get_one_option)))
+  if (opts.handle_options())
     return NDBT_ProgramExit(NDBT_WRONGARGS);
   if (argc < 1) {
-    usage();
+    opts.usage();
     return NDBT_ProgramExit(NDBT_WRONGARGS);
   }
 
   Ndb_cluster_connection con(opt_ndb_connectstring, opt_ndb_nodeid);
   con.set_name("ndb_select_count");
-  if(con.connect(12, 5, 1) != 0)
+  if(con.connect(opt_connect_retries - 1, opt_connect_retry_delay, 1) != 0)
   {
     ndbout << "Unable to connect to management server." << endl;
     return NDBT_ProgramExit(NDBT_FAILED);

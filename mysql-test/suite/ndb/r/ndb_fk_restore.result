@@ -1,4 +1,3 @@
-drop table if exists t2, t1;
 # bug#16285826
 create table t1 (
 a1 int primary key
@@ -9,22 +8,19 @@ create table t2 (
 a2 int primary key auto_increment,
 b2 int not null,
 key xb2 (b2),
-foreign key fkb2a1 (b2) references t1 (a1)
+constraint fkb2a1 foreign key (b2) references t1 (a1)
 ) engine ndb;
 # TEST: basic meta
 # show meta
 show create table t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
-  `a2` int(11) NOT NULL AUTO_INCREMENT,
-  `b2` int(11) NOT NULL,
+  `a2` int NOT NULL AUTO_INCREMENT,
+  `b2` int NOT NULL,
   PRIMARY KEY (`a2`),
   KEY `xb2` (`b2`),
-  CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=ndbcluster DEFAULT CHARSET=latin1
-
-ndb_show_tables completed.....
-
+  CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`)
+) ENGINE=ndbcluster DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 select type,name from ndb_show_tables_results
 where type in ('''ForeignKey''','''FKParentTrigger''','''FKChildTrigger''');
 type	name
@@ -47,15 +43,12 @@ drop table t2, t1;
 show create table t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
-  `a2` int(11) NOT NULL AUTO_INCREMENT,
-  `b2` int(11) NOT NULL,
+  `a2` int NOT NULL AUTO_INCREMENT,
+  `b2` int NOT NULL,
   PRIMARY KEY (`a2`),
   KEY `xb2` (`b2`),
-  CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=ndbcluster DEFAULT CHARSET=latin1
-
-ndb_show_tables completed.....
-
+  CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`)
+) ENGINE=ndbcluster DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 select type,name from ndb_show_tables_results
 where type in ('''ForeignKey''','''FKParentTrigger''','''FKChildTrigger''');
 type	name
@@ -72,22 +65,19 @@ count(*)
 # TEST: basic data
 insert into t2 (b2) select x.a1 from t1 x,t1 y;
 insert into t2 (b2) values (10);
-ERROR 23000: Cannot add or update a child row: a foreign key constraint fails (Unknown error code)
+ERROR 23000: Cannot add or update a child row: a foreign key constraint fails (`test`.`t2`, CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`) ON DELETE NO ACTION ON UPDATE NO ACTION)
 delete from t1 where a1 = 1;
-ERROR 23000: Cannot delete or update a parent row: a foreign key constraint fails (Unknown error code)
+ERROR 23000: Cannot delete or update a parent row: a foreign key constraint fails (`test`.`t2`, CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`) ON DELETE NO ACTION ON UPDATE NO ACTION)
 # show meta
 show create table t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
-  `a2` int(11) NOT NULL AUTO_INCREMENT,
-  `b2` int(11) NOT NULL,
+  `a2` int NOT NULL AUTO_INCREMENT,
+  `b2` int NOT NULL,
   PRIMARY KEY (`a2`),
   KEY `xb2` (`b2`),
-  CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=ndbcluster AUTO_INCREMENT=83 DEFAULT CHARSET=latin1
-
-ndb_show_tables completed.....
-
+  CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`)
+) ENGINE=ndbcluster AUTO_INCREMENT=83 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 select type,name from ndb_show_tables_results
 where type in ('''ForeignKey''','''FKParentTrigger''','''FKChildTrigger''');
 type	name
@@ -110,15 +100,12 @@ drop table t2, t1;
 show create table t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
-  `a2` int(11) NOT NULL AUTO_INCREMENT,
-  `b2` int(11) NOT NULL,
+  `a2` int NOT NULL AUTO_INCREMENT,
+  `b2` int NOT NULL,
   PRIMARY KEY (`a2`),
   KEY `xb2` (`b2`),
-  CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=ndbcluster AUTO_INCREMENT=97 DEFAULT CHARSET=latin1
-
-ndb_show_tables completed.....
-
+  CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`)
+) ENGINE=ndbcluster AUTO_INCREMENT=513 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 select type,name from ndb_show_tables_results
 where type in ('''ForeignKey''','''FKParentTrigger''','''FKChildTrigger''');
 type	name
@@ -133,9 +120,9 @@ select count(*) from t2;
 count(*)
 81
 insert into t2 (b2) values (10);
-ERROR 23000: Cannot add or update a child row: a foreign key constraint fails (Unknown error code)
+ERROR 23000: Cannot add or update a child row: a foreign key constraint fails (`test`.`t2`, CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`) ON DELETE NO ACTION ON UPDATE NO ACTION)
 delete from t1 where a1 = 1;
-ERROR 23000: Cannot delete or update a parent row: a foreign key constraint fails (Unknown error code)
+ERROR 23000: Cannot delete or update a parent row: a foreign key constraint fails (`test`.`t2`, CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`) ON DELETE NO ACTION ON UPDATE NO ACTION)
 # TEST: child part key
 drop table t2;
 create table t2 (
@@ -143,27 +130,24 @@ a2 int primary key auto_increment,
 b2 int not null,
 c2 int not null,
 key xb2c2 (b2,c2),
-foreign key fkb2a1 (b2) references t1 (a1)
+constraint fkb2a1 foreign key (b2) references t1 (a1)
 ) engine ndb;
 insert into t2 (b2,c2) select x.a1,99 from t1 x,t1 y;
 insert into t2 (b2,c2) values (10,99);
-ERROR 23000: Cannot add or update a child row: a foreign key constraint fails (Unknown error code)
+ERROR 23000: Cannot add or update a child row: a foreign key constraint fails (`test`.`t2`, CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`) ON DELETE NO ACTION ON UPDATE NO ACTION)
 delete from t1 where a1 = 1;
-ERROR 23000: Cannot delete or update a parent row: a foreign key constraint fails (Unknown error code)
+ERROR 23000: Cannot delete or update a parent row: a foreign key constraint fails (`test`.`t2`, CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`) ON DELETE NO ACTION ON UPDATE NO ACTION)
 # show meta
 show create table t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
-  `a2` int(11) NOT NULL AUTO_INCREMENT,
-  `b2` int(11) NOT NULL,
-  `c2` int(11) NOT NULL,
+  `a2` int NOT NULL AUTO_INCREMENT,
+  `b2` int NOT NULL,
+  `c2` int NOT NULL,
   PRIMARY KEY (`a2`),
   KEY `xb2c2` (`b2`,`c2`),
-  CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=ndbcluster AUTO_INCREMENT=83 DEFAULT CHARSET=latin1
-
-ndb_show_tables completed.....
-
+  CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`)
+) ENGINE=ndbcluster AUTO_INCREMENT=83 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 select type,name from ndb_show_tables_results
 where type in ('''ForeignKey''','''FKParentTrigger''','''FKChildTrigger''');
 type	name
@@ -186,16 +170,13 @@ drop table t2, t1;
 show create table t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
-  `a2` int(11) NOT NULL AUTO_INCREMENT,
-  `b2` int(11) NOT NULL,
-  `c2` int(11) NOT NULL,
+  `a2` int NOT NULL AUTO_INCREMENT,
+  `b2` int NOT NULL,
+  `c2` int NOT NULL,
   PRIMARY KEY (`a2`),
   KEY `xb2c2` (`b2`,`c2`),
-  CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=ndbcluster AUTO_INCREMENT=97 DEFAULT CHARSET=latin1
-
-ndb_show_tables completed.....
-
+  CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`)
+) ENGINE=ndbcluster AUTO_INCREMENT=513 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 select type,name from ndb_show_tables_results
 where type in ('''ForeignKey''','''FKParentTrigger''','''FKChildTrigger''');
 type	name
@@ -210,9 +191,9 @@ select count(*) from t2;
 count(*)
 81
 insert into t2 (b2,c2) values (10,99);
-ERROR 23000: Cannot add or update a child row: a foreign key constraint fails (Unknown error code)
+ERROR 23000: Cannot add or update a child row: a foreign key constraint fails (`test`.`t2`, CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`) ON DELETE NO ACTION ON UPDATE NO ACTION)
 delete from t1 where a1 = 1;
-ERROR 23000: Cannot delete or update a parent row: a foreign key constraint fails (Unknown error code)
+ERROR 23000: Cannot delete or update a parent row: a foreign key constraint fails (`test`.`t2`, CONSTRAINT `fkb2a1` FOREIGN KEY (`b2`) REFERENCES `t1` (`a1`) ON DELETE NO ACTION ON UPDATE NO ACTION)
 # TEST: column order
 drop table t2,t1;
 create table t1 (
@@ -228,27 +209,24 @@ a2 int primary key auto_increment,
 b2 int not null,
 c2 int not null,
 key xb2c2 (b2,c2),
-foreign key fkb2c2c1b1 (b2,c2) references t1 (c1,b1)
+constraint fkb2c2c1b1 foreign key (b2,c2) references t1 (c1,b1)
 ) engine ndb;
 insert into t2 (b2,c2) select x.c1,x.b1 from t1 x,t1 y;
 insert into t2 (b2,c2) values (61,62);
-ERROR 23000: Cannot add or update a child row: a foreign key constraint fails (Unknown error code)
+ERROR 23000: Cannot add or update a child row: a foreign key constraint fails (`test`.`t2`, CONSTRAINT `fkb2c2c1b1` FOREIGN KEY (`b2`,`c2`) REFERENCES `t1` (`c1`,`b1`) ON DELETE NO ACTION ON UPDATE NO ACTION)
 delete from t1 where b1=61 and c1=62;
-ERROR 23000: Cannot delete or update a parent row: a foreign key constraint fails (Unknown error code)
+ERROR 23000: Cannot delete or update a parent row: a foreign key constraint fails (`test`.`t2`, CONSTRAINT `fkb2c2c1b1` FOREIGN KEY (`b2`,`c2`) REFERENCES `t1` (`c1`,`b1`) ON DELETE NO ACTION ON UPDATE NO ACTION)
 # show meta
 show create table t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
-  `a2` int(11) NOT NULL AUTO_INCREMENT,
-  `b2` int(11) NOT NULL,
-  `c2` int(11) NOT NULL,
+  `a2` int NOT NULL AUTO_INCREMENT,
+  `b2` int NOT NULL,
+  `c2` int NOT NULL,
   PRIMARY KEY (`a2`),
   KEY `xb2c2` (`b2`,`c2`),
-  CONSTRAINT `fkb2c2c1b1` FOREIGN KEY (`b2`,`c2`) REFERENCES `t1` (`c1`,`b1`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=ndbcluster AUTO_INCREMENT=38 DEFAULT CHARSET=latin1
-
-ndb_show_tables completed.....
-
+  CONSTRAINT `fkb2c2c1b1` FOREIGN KEY (`b2`, `c2`) REFERENCES `t1` (`c1`, `b1`)
+) ENGINE=ndbcluster AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 select type,name from ndb_show_tables_results
 where type in ('''ForeignKey''','''FKParentTrigger''','''FKChildTrigger''');
 type	name
@@ -271,16 +249,13 @@ drop table t2, t1;
 show create table t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
-  `a2` int(11) NOT NULL AUTO_INCREMENT,
-  `b2` int(11) NOT NULL,
-  `c2` int(11) NOT NULL,
+  `a2` int NOT NULL AUTO_INCREMENT,
+  `b2` int NOT NULL,
+  `c2` int NOT NULL,
   PRIMARY KEY (`a2`),
   KEY `xb2c2` (`b2`,`c2`),
-  CONSTRAINT `fkb2c2c1b1` FOREIGN KEY (`b2`,`c2`) REFERENCES `t1` (`c1`,`b1`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=ndbcluster AUTO_INCREMENT=65 DEFAULT CHARSET=latin1
-
-ndb_show_tables completed.....
-
+  CONSTRAINT `fkb2c2c1b1` FOREIGN KEY (`b2`, `c2`) REFERENCES `t1` (`c1`, `b1`)
+) ENGINE=ndbcluster AUTO_INCREMENT=513 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 select type,name from ndb_show_tables_results
 where type in ('''ForeignKey''','''FKParentTrigger''','''FKChildTrigger''');
 type	name
@@ -295,24 +270,21 @@ select count(*) from t2;
 count(*)
 36
 insert into t2 (b2,c2) values (61,62);
-ERROR 23000: Cannot add or update a child row: a foreign key constraint fails (Unknown error code)
+ERROR 23000: Cannot add or update a child row: a foreign key constraint fails (`test`.`t2`, CONSTRAINT `fkb2c2c1b1` FOREIGN KEY (`b2`,`c2`) REFERENCES `t1` (`c1`,`b1`) ON DELETE NO ACTION ON UPDATE NO ACTION)
 delete from t1 where b1=61 and c1=62;
-ERROR 23000: Cannot delete or update a parent row: a foreign key constraint fails (Unknown error code)
+ERROR 23000: Cannot delete or update a parent row: a foreign key constraint fails (`test`.`t2`, CONSTRAINT `fkb2c2c1b1` FOREIGN KEY (`b2`,`c2`) REFERENCES `t1` (`c1`,`b1`) ON DELETE NO ACTION ON UPDATE NO ACTION)
 # TEST: disable indexes
 # show meta
 show create table t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
-  `a2` int(11) NOT NULL AUTO_INCREMENT,
-  `b2` int(11) NOT NULL,
-  `c2` int(11) NOT NULL,
+  `a2` int NOT NULL AUTO_INCREMENT,
+  `b2` int NOT NULL,
+  `c2` int NOT NULL,
   PRIMARY KEY (`a2`),
   KEY `xb2c2` (`b2`,`c2`),
-  CONSTRAINT `fkb2c2c1b1` FOREIGN KEY (`b2`,`c2`) REFERENCES `t1` (`c1`,`b1`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=ndbcluster AUTO_INCREMENT=66 DEFAULT CHARSET=latin1
-
-ndb_show_tables completed.....
-
+  CONSTRAINT `fkb2c2c1b1` FOREIGN KEY (`b2`, `c2`) REFERENCES `t1` (`c1`, `b1`)
+) ENGINE=ndbcluster AUTO_INCREMENT=514 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 select type,name from ndb_show_tables_results
 where type in ('''ForeignKey''','''FKParentTrigger''','''FKChildTrigger''');
 type	name
@@ -332,9 +304,6 @@ drop table t2, t1;
 # restore meta (disable indexes)
 # restore data (disable indexes)
 # show meta
-
-ndb_show_tables completed.....
-
 select type,name from ndb_show_tables_results
 where type in ('''ForeignKey''','''FKParentTrigger''','''FKChildTrigger''');
 type	name
@@ -352,22 +321,19 @@ a2 int primary key auto_increment,
 b2 int not null,
 c2 int not null,
 key xb2c2 (b2,c2),
-foreign key fkb2c2c1b1 (b2,c2) references t1 (c1,b1)
+constraint fkb2c2c1b1 foreign key (b2,c2) references t1 (c1,b1)
 ) engine ndb;
 # show meta
 show create table t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
-  `a2` int(11) NOT NULL AUTO_INCREMENT,
-  `b2` int(11) NOT NULL,
-  `c2` int(11) NOT NULL,
+  `a2` int NOT NULL AUTO_INCREMENT,
+  `b2` int NOT NULL,
+  `c2` int NOT NULL,
   PRIMARY KEY (`a2`),
   KEY `xb2c2` (`b2`,`c2`),
-  CONSTRAINT `fkb2c2c1b1` FOREIGN KEY (`b2`,`c2`) REFERENCES `t1` (`c1`,`b1`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=ndbcluster DEFAULT CHARSET=latin1
-
-ndb_show_tables completed.....
-
+  CONSTRAINT `fkb2c2c1b1` FOREIGN KEY (`b2`, `c2`) REFERENCES `t1` (`c1`, `b1`)
+) ENGINE=ndbcluster DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 select type,name from ndb_show_tables_results
 where type in ('''ForeignKey''','''FKParentTrigger''','''FKChildTrigger''');
 type	name
@@ -391,16 +357,13 @@ drop table t2, t1;
 show create table t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
-  `a2` int(11) NOT NULL AUTO_INCREMENT,
-  `b2` int(11) NOT NULL,
-  `c2` int(11) NOT NULL,
+  `a2` int NOT NULL AUTO_INCREMENT,
+  `b2` int NOT NULL,
+  `c2` int NOT NULL,
   PRIMARY KEY (`a2`),
   KEY `xb2c2` (`b2`,`c2`),
-  CONSTRAINT `fkb2c2c1b1` FOREIGN KEY (`b2`,`c2`) REFERENCES `t1` (`c1`,`b1`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=ndbcluster DEFAULT CHARSET=latin1
-
-ndb_show_tables completed.....
-
+  CONSTRAINT `fkb2c2c1b1` FOREIGN KEY (`b2`, `c2`) REFERENCES `t1` (`c1`, `b1`)
+) ENGINE=ndbcluster DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 select type,name from ndb_show_tables_results
 where type in ('''ForeignKey''','''FKParentTrigger''','''FKChildTrigger''');
 type	name
@@ -418,28 +381,25 @@ count(*)
 alter table t2 algorithm=inplace,
 drop foreign key fkb2c2c1b1;
 alter table t2 algorithm=inplace,
-add foreign key fkb2c2b1c1 (b2,c2) references t1 (b1,c1);
+add constraint fkb2c2b1c1 foreign key (b2,c2) references t1 (b1,c1);
 insert into t1 (a1,b1,c1) values
 (1,11,12),(2,21,22),(3,31,32),(4,41,42),(5,51,52),(6,61,62);
 insert into t2 (b2,c2) select x.b1,x.c1 from t1 x,t1 y;
 insert into t2 (b2,c2) values (62,61);
-ERROR 23000: Cannot add or update a child row: a foreign key constraint fails (Unknown error code)
+ERROR 23000: Cannot add or update a child row: a foreign key constraint fails (`test`.`t2`, CONSTRAINT `fkb2c2b1c1` FOREIGN KEY (`b2`,`c2`) REFERENCES `t1` (`b1`,`c1`) ON DELETE NO ACTION ON UPDATE NO ACTION)
 delete from t1 where b1=61 and c1=62;
-ERROR 23000: Cannot delete or update a parent row: a foreign key constraint fails (Unknown error code)
+ERROR 23000: Cannot delete or update a parent row: a foreign key constraint fails (`test`.`t2`, CONSTRAINT `fkb2c2b1c1` FOREIGN KEY (`b2`,`c2`) REFERENCES `t1` (`b1`,`c1`) ON DELETE NO ACTION ON UPDATE NO ACTION)
 # show meta
 show create table t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
-  `a2` int(11) NOT NULL AUTO_INCREMENT,
-  `b2` int(11) NOT NULL,
-  `c2` int(11) NOT NULL,
+  `a2` int NOT NULL AUTO_INCREMENT,
+  `b2` int NOT NULL,
+  `c2` int NOT NULL,
   PRIMARY KEY (`a2`),
   KEY `xb2c2` (`b2`,`c2`),
-  CONSTRAINT `fkb2c2b1c1` FOREIGN KEY (`b2`,`c2`) REFERENCES `t1` (`b1`,`c1`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=ndbcluster AUTO_INCREMENT=38 DEFAULT CHARSET=latin1
-
-ndb_show_tables completed.....
-
+  CONSTRAINT `fkb2c2b1c1` FOREIGN KEY (`b2`, `c2`) REFERENCES `t1` (`b1`, `c1`)
+) ENGINE=ndbcluster AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 select type,name from ndb_show_tables_results
 where type in ('''ForeignKey''','''FKParentTrigger''','''FKChildTrigger''');
 type	name
@@ -463,16 +423,13 @@ drop table t2, t1;
 show create table t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
-  `a2` int(11) NOT NULL AUTO_INCREMENT,
-  `b2` int(11) NOT NULL,
-  `c2` int(11) NOT NULL,
+  `a2` int NOT NULL AUTO_INCREMENT,
+  `b2` int NOT NULL,
+  `c2` int NOT NULL,
   PRIMARY KEY (`a2`),
   KEY `xb2c2` (`b2`,`c2`),
-  CONSTRAINT `fkb2c2b1c1` FOREIGN KEY (`b2`,`c2`) REFERENCES `t1` (`b1`,`c1`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=ndbcluster AUTO_INCREMENT=65 DEFAULT CHARSET=latin1
-
-ndb_show_tables completed.....
-
+  CONSTRAINT `fkb2c2b1c1` FOREIGN KEY (`b2`, `c2`) REFERENCES `t1` (`b1`, `c1`)
+) ENGINE=ndbcluster AUTO_INCREMENT=513 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 select type,name from ndb_show_tables_results
 where type in ('''ForeignKey''','''FKParentTrigger''','''FKChildTrigger''');
 type	name
@@ -487,7 +444,101 @@ select count(*) from t2;
 count(*)
 36
 insert into t2 (b2,c2) values (62,61);
-ERROR 23000: Cannot add or update a child row: a foreign key constraint fails (Unknown error code)
+ERROR 23000: Cannot add or update a child row: a foreign key constraint fails (`test`.`t2`, CONSTRAINT `fkb2c2b1c1` FOREIGN KEY (`b2`,`c2`) REFERENCES `t1` (`b1`,`c1`) ON DELETE NO ACTION ON UPDATE NO ACTION)
 delete from t1 where b1=61 and c1=62;
-ERROR 23000: Cannot delete or update a parent row: a foreign key constraint fails (Unknown error code)
+ERROR 23000: Cannot delete or update a parent row: a foreign key constraint fails (`test`.`t2`, CONSTRAINT `fkb2c2b1c1` FOREIGN KEY (`b2`,`c2`) REFERENCES `t1` (`b1`,`c1`) ON DELETE NO ACTION ON UPDATE NO ACTION)
 drop table t2, t1;
+#
+# BUG#18560951 NDB_RESTORE INCLUDES FK FOR ALL DATABASES WHEN USING --INCLUDE-* OR --EXCLUDE
+#
+# create database db1 with tables t1,t2
+create database db1;
+create table db1.t1 (
+a1 int primary key
+) engine ndb;
+create table db1.t2 (
+a1 int,
+foreign key fk1(a1) references t1(a1)
+) engine ndb;
+# create database db2 with table tb1
+create database db2;
+create table db2.t1 (
+a1 int primary key
+) engine ndb;
+# take backup and drop the tables
+drop table db1.t2, db1.t1, db2.t1;
+# now try restoring only the database db2
+# verify the tables present
+show create table db2.t1;
+Table	Create Table
+t1	CREATE TABLE `t1` (
+  `a1` int NOT NULL,
+  PRIMARY KEY (`a1`)
+) ENGINE=ndbcluster DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+drop table db2.t1;
+# restore particular table and check for fk problem
+# verify the tables present
+show create table db1.t1;
+Table	Create Table
+t1	CREATE TABLE `t1` (
+  `a1` int NOT NULL,
+  PRIMARY KEY (`a1`)
+) ENGINE=ndbcluster DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+show create table db2.t1;
+Table	Create Table
+t1	CREATE TABLE `t1` (
+  `a1` int NOT NULL,
+  PRIMARY KEY (`a1`)
+) ENGINE=ndbcluster DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+drop table db1.t1, db2.t1;
+# verify that restoring table with FK whose parent doesn't exist, fails
+# cleanup
+drop database db1;
+drop database db2;
+# Bug#26974491 FIXES DATA RESTORE WITH DISABLE INDEXES
+create database db3;
+use db3;
+create table t4 (
+id int primary key auto_increment
+) engine=ndb;
+create table t5 (
+id int primary key auto_increment,
+val int,
+constraint fkt3t2 foreign key (val) references t4 (id)
+)engine=ndb;
+insert into t4 values (1), (2), (3), (4), (5);
+insert into t5 values (1,1), (2,2), (3,3), (4,4), (5,5);
+# take backup and drop the tables
+drop table db3.t5, db3.t4;
+# Create more tables before restore in order to verify that ndb_restore restores foreign keys
+# appropriately even though the table ids of parent and child tables which make up the name
+# of the foreign key in the format, <parent_table_id>/<child_table_id>/fk_name are different
+# in backup files than the table ids restored.
+create table db3.t6 (
+id int primary key auto_increment
+) engine=ndb;
+create table db3.t7 (
+id int primary key auto_increment
+) engine=ndb;
+create table db3.t8 (
+id int primary key auto_increment
+) engine=ndb;
+create table db3.t9 (
+id int primary key auto_increment
+) engine=ndb;
+# Use case #1: Meta restore done with --disable-indexes (recommended)
+# Drop the tables to retore them again with a different use case
+drop table db3.t5, db3.t4;
+# Use case #2: Separate --disable-indexes step after metadata restore
+# Drop the tables to retore them again with a different use case
+drop table db3.t5, db3.t4;
+# Use case #3: Data restore with --disable-indexes
+# Drop the tables to retore them again with a different use case
+drop table db3.t5, db3.t4;
+# Use case #4: Data restore with --disable-indexes and Data restore with --rebuild-indexes
+# Drop the tables to retore them again with a different use case
+drop table db3.t5, db3.t4;
+# Use case #5: Both metadata and data restore with both --disable-indexes and --rebuild-indexes
+# cleanup
+drop table db3.t6, db3.t7, db3.t8, db3.t9;
+drop database db3;

@@ -1,6 +1,6 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
+    Use is subject to license terms.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -23,15 +23,15 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-
-
 #include <signaldata/FsCloseReq.hpp>
 
-bool
-printFSCLOSEREQ(FILE * output, const Uint32 * theData, Uint32 len, Uint16 receiverBlockNo){
-  
-  const FsCloseReq * const sig = (FsCloseReq *) theData;
-  
+bool printFSCLOSEREQ(FILE *output,
+                     const Uint32 *theData,
+                     Uint32 len,
+                     Uint16 /*receiverBlockNo*/)
+{
+  const FsCloseReq *const sig = (const FsCloseReq *)theData;
+
   fprintf(output, " UserPointer: %d\n", 
 	  sig->userPointer);
   fprintf(output, " FilePointer: %d\n", 

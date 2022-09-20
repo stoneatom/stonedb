@@ -1,7 +1,9 @@
 # The include statement below is a temp one for tests that are yet to
 #be ported to run with InnoDB,
 #but needs to be kept for tests that would need MyISAM in future.
+# Run the test with InnoDB engine once Bug #27422448 fixed.
 --source include/force_myisam_default.inc
+--source include/have_myisam.inc
 
 #
 # Single table specific update/delete tests (mysql_update and mysql_delete)
@@ -22,12 +24,18 @@ INSERT INTO t2 (i) SELECT i FROM t1;
 
 FLUSH STATUS;
 SELECT * FROM t2 WHERE i > 10 AND i <= 18 ORDER BY i LIMIT 1;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 FLUSH STATUS;
 DELETE FROM t2 WHERE i > 10 AND i <= 18 ORDER BY i LIMIT 1;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 SELECT * FROM t2 WHERE i > 10 AND i <= 18 ORDER BY i;
 
@@ -42,12 +50,18 @@ INSERT INTO t2 (i) SELECT i FROM t1;
 
 FLUSH STATUS;
 SELECT * FROM t2 WHERE i > 10 AND i <= 18 ORDER BY i LIMIT 1;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 FLUSH STATUS;
 DELETE FROM t2 WHERE i > 10 AND i <= 18 ORDER BY i LIMIT 1;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 SELECT * FROM t2 WHERE i > 10 AND i <= 18 ORDER BY i;
 
@@ -62,15 +76,21 @@ CREATE TABLE t2(a INT, b INT, c INT, d INT, INDEX(a, b, c));
 INSERT INTO t2 (a, b, c) SELECT i, i, i FROM t1;
 
 FLUSH STATUS;
-SELECT * FROM t2 WHERE b = 10 ORDER BY a, c LIMIT 7;
+SELECT * FROM t2 WHERE b = 10 ORDER BY a, c LIMIT 12;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 let $cnt = `SELECT COUNT(*) FROM t2 WHERE b = 10`;
 
 FLUSH STATUS;
-DELETE FROM t2 WHERE b = 10 ORDER BY a, c LIMIT 7;
+DELETE FROM t2 WHERE b = 10 ORDER BY a, c LIMIT 12;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 --echo ## should be 5 (previous LIMIT)
 eval SELECT $cnt - COUNT(*) FROM t2 WHERE b = 10;
@@ -88,17 +108,23 @@ INSERT INTO t2 (a, b, c) SELECT i, i, i FROM t1;
 INSERT INTO t2 (a, b, c) SELECT t1.i, t1.i, t1.i FROM t1, t1 x1, t1 x2;
 
 FLUSH STATUS;
-SELECT * FROM t2 WHERE b = 10 ORDER BY a, c LIMIT 7;
+SELECT * FROM t2 WHERE b = 10 ORDER BY a, c LIMIT 12;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 let $cnt = `SELECT COUNT(*) FROM t2 WHERE b = 10`;
 
 FLUSH STATUS;
-DELETE FROM t2 WHERE b = 10 ORDER BY a, c LIMIT 7;
+DELETE FROM t2 WHERE b = 10 ORDER BY a, c LIMIT 12;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
---echo ## should be 7 (previous LIMIT)
+--echo ## should be 12 (previous LIMIT)
 eval SELECT $cnt - COUNT(*) FROM t2 WHERE b = 10;
 
 DROP TABLE t2;
@@ -112,12 +138,18 @@ INSERT INTO t2 SELECT i, i, i, i FROM t1;
 
 FLUSH STATUS;
 SELECT * FROM t2 WHERE b = 10 ORDER BY a, c LIMIT 1;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 FLUSH STATUS;
 DELETE FROM t2 WHERE b = 10 ORDER BY a, c LIMIT 1;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 SELECT * FROM t2 WHERE b = 10 ORDER BY a, c;
 
@@ -132,12 +164,18 @@ INSERT INTO t2 SELECT i, i, i, i FROM t1;
 
 FLUSH STATUS;
 SELECT * FROM t2 WHERE b = 10 ORDER BY a, c LIMIT 5;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 FLUSH STATUS;
 DELETE FROM t2 WHERE b = 10 ORDER BY a, c LIMIT 5;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 SELECT * FROM t2 WHERE b = 10 ORDER BY a, c;
 
@@ -152,18 +190,24 @@ ENGINE= MyISAM;
 INSERT INTO t2 (key1, key2) SELECT i, i FROM t1;
 FLUSH STATUS;
 SELECT * FROM t2 WHERE key1 < 13 or key2 < 14 ORDER BY key1;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 --replace_column 1 x 2 x 3 x 5 x 6 x 7 x 8 x 9 x 10 x 11 x
-EXPLAIN EXTENDED SELECT * FROM t2 WHERE key1 < 13 or key2 < 14 ORDER BY key1;
+EXPLAIN SELECT * FROM t2 WHERE key1 < 13 or key2 < 14 ORDER BY key1;
 
 FLUSH STATUS;
 DELETE FROM t2 WHERE key1 < 13 or key2 < 14 ORDER BY key1;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 SELECT * FROM t2 WHERE key1 < 13 or key2 < 14 ORDER BY key1;
 --replace_column 1 x 2 x 3 x 5 x 6 x 7 x 8 x 9 x 10 x 11 x
-EXPLAIN EXTENDED SELECT * FROM t2 WHERE key1 < 13 or key2 < 14 ORDER BY key1;
+EXPLAIN SELECT * FROM t2 WHERE key1 < 13 or key2 < 14 ORDER BY key1;
 DROP TABLE t2;
 
 --echo #
@@ -175,12 +219,18 @@ INSERT INTO t2 (i) SELECT i FROM t1;
 
 FLUSH STATUS;
 SELECT * FROM t2 WHERE i > 10 AND i <= 18 ORDER BY i DESC LIMIT 1;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 FLUSH STATUS;
 DELETE FROM t2 WHERE i > 10 AND i <= 18 ORDER BY i DESC LIMIT 1;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 SELECT * FROM t2 WHERE i > 10 AND i <= 18 ORDER BY i;
 
@@ -195,12 +245,18 @@ INSERT INTO t2 SELECT i, i, i FROM t1;
 
 FLUSH STATUS;
 SELECT * FROM t2 ORDER BY a, b DESC LIMIT 5;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 FLUSH STATUS;
 DELETE FROM t2 ORDER BY a, b DESC LIMIT 5;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 SELECT * FROM t2 ORDER BY a, b DESC;
 
@@ -216,17 +272,26 @@ INSERT INTO t2 (a, b) SELECT t1.i, t1.i FROM t1, t1 x1, t1 x2;
 
 FLUSH STATUS;
 SELECT * FROM t2 ORDER BY a, b LIMIT 5;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 FLUSH STATUS;
 SELECT * FROM t2 ORDER BY a DESC, b DESC LIMIT 5;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 FLUSH STATUS;
 DELETE FROM t2 ORDER BY a DESC, b DESC LIMIT 5;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 SELECT * FROM t2 WHERE c = 10 ORDER BY a DESC, b DESC;
 
@@ -248,12 +313,18 @@ INSERT INTO t2 (i) SELECT i FROM t1;
 
 FLUSH STATUS;
 SELECT * FROM t2 WHERE i > 10 AND i <= 18 ORDER BY i LIMIT 1;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 FLUSH STATUS;
 UPDATE t2 SET a = 10 WHERE i > 10 AND i <= 18 ORDER BY i LIMIT 1;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 SELECT * FROM t2 WHERE i > 10 AND i <= 18 ORDER BY i;
 
@@ -268,12 +339,18 @@ INSERT INTO t2 (i) SELECT i FROM t1;
 
 FLUSH STATUS;
 SELECT * FROM t2 WHERE i > 10 AND i <= 18 ORDER BY i LIMIT 5;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 FLUSH STATUS;
 UPDATE t2 SET a = 10 WHERE i > 10 AND i <= 18 ORDER BY i LIMIT 5;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 SELECT * FROM t2 WHERE i > 10 AND i <= 18 ORDER BY i;
 
@@ -288,15 +365,21 @@ CREATE TABLE t2(a INT, b INT, c INT, d INT, INDEX(a, b, c));
 INSERT INTO t2 (a, b, c) SELECT i, i, i FROM t1;
 
 FLUSH STATUS;
-SELECT * FROM t2 WHERE b = 10 ORDER BY a, c LIMIT 7;
+SELECT * FROM t2 WHERE b = 10 ORDER BY a, c LIMIT 12;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 let $cnt = `SELECT COUNT(*) FROM t2 WHERE b = 10`;
 
 FLUSH STATUS;
-UPDATE t2 SET d = 10 WHERE b = 10 ORDER BY a, c LIMIT 7;
+UPDATE t2 SET d = 10 WHERE b = 10 ORDER BY a, c LIMIT 12;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 --echo ## should be 5 (previous LIMIT)
 SELECT COUNT(*) FROM t2 WHERE b = 10 AND d = 10 ORDER BY a, c;
@@ -314,17 +397,23 @@ INSERT INTO t2 (a, b, c) SELECT i, i, i FROM t1;
 INSERT INTO t2 (a, b, c) SELECT t1.i, t1.i, t1.i FROM t1, t1 x1, t1 x2;
 
 FLUSH STATUS;
-SELECT * FROM t2 WHERE b = 10 ORDER BY a, c LIMIT 7;
+SELECT * FROM t2 WHERE b = 10 ORDER BY a, c LIMIT 12;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 let $cnt = `SELECT COUNT(*) FROM t2 WHERE b = 10`;
 
 FLUSH STATUS;
-UPDATE t2 SET d = 10 WHERE b = 10 ORDER BY a, c LIMIT 7;
+UPDATE t2 SET d = 10 WHERE b = 10 ORDER BY a, c LIMIT 12;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
---echo ## should be 7 (previous LIMIT)
+--echo ## should be 12 (previous LIMIT)
 SELECT COUNT(*) FROM t2 WHERE b = 10 AND d = 10 ORDER BY a, c;
 
 DROP TABLE t2;
@@ -338,12 +427,18 @@ INSERT INTO t2 SELECT i, i, i, i FROM t1;
 
 FLUSH STATUS;
 SELECT * FROM t2 WHERE b = 10 ORDER BY a, c LIMIT 5;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 FLUSH STATUS;
 UPDATE t2 SET d = 10 WHERE b = 10 ORDER BY a, c LIMIT 5;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 SELECT * FROM t2 WHERE b = 10 ORDER BY a, c;
 
@@ -358,12 +453,18 @@ INSERT INTO t2 SELECT i, i, i, i FROM t1;
 
 FLUSH STATUS;
 SELECT * FROM t2 WHERE b = 10 ORDER BY a, c LIMIT 5;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 FLUSH STATUS;
 UPDATE t2 SET d = 10 WHERE b = 10 ORDER BY a, c LIMIT 5;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 SELECT * FROM t2 WHERE b = 10 ORDER BY a, c;
 
@@ -379,18 +480,24 @@ INSERT INTO t2 (key1, key2) SELECT i, i FROM t1;
 
 FLUSH STATUS;
 SELECT * FROM t2 WHERE key1 < 13 or key2 < 14 ORDER BY key1;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 --replace_column 1 x 2 x 3 x 5 x 6 x 7 x 8 x 9 x 10 x 11 x
-EXPLAIN EXTENDED SELECT * FROM t2 WHERE key1 < 13 or key2 < 14 ORDER BY key1;
+EXPLAIN SELECT * FROM t2 WHERE key1 < 13 or key2 < 14 ORDER BY key1;
 
 FLUSH STATUS;
 UPDATE t2 SET i = 123 WHERE key1 < 13 or key2 < 14 ORDER BY key1;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 SELECT * FROM t2 WHERE key1 < 13 or key2 < 14 ORDER BY key1;
 --replace_column 1 x 2 x 3 x 5 x 6 x 7 x 8 x 9 x 10 x 11 x
-EXPLAIN EXTENDED SELECT * FROM t2 WHERE key1 < 13 or key2 < 14 ORDER BY key1;
+EXPLAIN SELECT * FROM t2 WHERE key1 < 13 or key2 < 14 ORDER BY key1;
 
 DROP TABLE t2;
 
@@ -403,12 +510,18 @@ INSERT INTO t2 (i) SELECT i FROM t1;
 
 FLUSH STATUS;
 SELECT * FROM t2 WHERE i > 10 AND i <= 18 ORDER BY i DESC LIMIT 1;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 FLUSH STATUS;
 UPDATE t2 SET a = 10 WHERE i > 10 AND i <= 18 ORDER BY i DESC LIMIT 1;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 SELECT * FROM t2 WHERE i > 10 AND i <= 18 ORDER BY i;
 
@@ -423,12 +536,18 @@ INSERT INTO t2 SELECT i, i, i FROM t1;
 
 FLUSH STATUS;
 SELECT * FROM t2 ORDER BY a, b DESC LIMIT 5;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 FLUSH STATUS;
 UPDATE t2 SET c = 10 ORDER BY a, b DESC LIMIT 5;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 SELECT * FROM t2 WHERE c = 10 ORDER BY a, b DESC;
 
@@ -444,17 +563,26 @@ INSERT INTO t2 (a, b) SELECT t1.i, t1.i FROM t1, t1 x1, t1 x2;
 
 FLUSH STATUS;
 SELECT * FROM t2 ORDER BY a, b LIMIT 5;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 FLUSH STATUS;
 SELECT * FROM t2 ORDER BY a DESC, b DESC LIMIT 5;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 
 FLUSH STATUS;
 UPDATE t2 SET c = 10 ORDER BY a DESC, b DESC LIMIT 5;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW SESSION STATUS LIKE 'Sort%';
+--echo This line exists only to help --skip_if_hypergraph diffing.
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_%';
 SELECT * FROM t2 WHERE c = 10 ORDER BY a DESC, b DESC;
 

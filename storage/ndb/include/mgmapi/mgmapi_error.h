@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2007, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2007, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -54,12 +54,17 @@ extern "C" {
     NDB_MGM_COULD_NOT_CONNECT_TO_SOCKET = 1011,
     /** Could not bind local address */
     NDB_MGM_BIND_ADDRESS = 1012,
+    /** Supplied bind-address is illegal */
+    NDB_MGM_ILLEGAL_BIND_ADDRESS = 1013,
     
     /* Alloc node id failures */
     /** Generic error, retry may succeed */
     NDB_MGM_ALLOCID_ERROR = 1101,
     /** Non retriable error */
     NDB_MGM_ALLOCID_CONFIG_MISMATCH = 1102,
+    /** Mgmd failed to match hostname, but AllowUnresolvedHostnames=true.
+        Connecting node should retry. */
+    NDB_MGM_ALLOCID_CONFIG_RETRY = 1103,
 
     /* Service errors - Start/Stop Node or System */
     /** Start failed */
@@ -101,10 +106,6 @@ extern "C" {
   extern const int ndb_mgm_noOfErrorMsgs;
 #endif
 
-/* Include error messages when sourced from perror(or special define set) */
-#if defined PERROR_VERSION || defined MGMAPI_ERROR_INCLUDE_MESSAGES
-#include "../../src/mgmapi/mgmapi_error.c"
-#endif
 
 #ifdef __cplusplus
 }

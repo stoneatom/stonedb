@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -59,6 +59,10 @@ class FsReadWriteReq {
   friend class Pgman;
   friend class Restore;
   friend class Dblqh;
+  friend class Backup;
+  friend class Dbtup;
+  friend class Ndbcntr;
+  friend class Dbdih;
 
   /**
    * For printing
@@ -75,13 +79,14 @@ public:
     fsFormatListOfMemPages=2,
     fsFormatGlobalPage=3,
     fsFormatSharedPage=4,
+    fsFormatMemAddress=5,
     fsFormatMax
   };
   
   /**
    * Length of signal
    */
-  STATIC_CONST( FixedLength = 6 );
+  static constexpr Uint32 FixedLength = 6;
 
 private:
 
@@ -99,8 +104,7 @@ private:
 // Variable sized part. Those will contain 
 // info about memory/file pages to read/write
 //-------------------------------------------------------------  
-  union {
-    UintR pageData[16];        // DATA 6 - 21
+  union { // DATA 6 - 21
     struct {
       Uint32 varIndex;   // In unit cluster size
       Uint32 fileOffset; // In unit page size
@@ -110,9 +114,20 @@ private:
       Uint32 fileOffset;
     } arrayOfPages;
     struct {
-      Uint32 varIndex[1]; // Size = numberOfPages
       Uint32 fileOffset;
+      Uint32 memoryOffset;
+      Uint32 size;
+    } memoryAddress;
+    struct {
+      Uint32 fileOffset;
+      Uint32 varIndex[15]; // Size = numberOfPages
     } listOfMemPages;
+    struct {
+      Uint32 pageNumber;
+    } globalPage;
+    struct {
+      Uint32 pageNumber;
+    } sharedPage;
   } data;
 
   static Uint8 getSyncFlag(const UintR & opFlag);
@@ -187,7 +202,7 @@ struct FsSuspendOrd
   UintR filePointer;          // DATA 0
   Uint32 milliseconds;
 
-  STATIC_CONST(SignalLength = 2);
+  static constexpr Uint32 SignalLength = 2;
 };
 
 

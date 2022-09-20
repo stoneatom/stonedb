@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2012, 2022, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License, version 2.0,
@@ -17,8 +17,8 @@
   GNU General Public License, version 2.0, for more details.
 
   You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software Foundation,
-  51 Franklin Street, Suite 500, Boston, MA 02110-1335 USA */
+  along with this program; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #ifndef TABLE_METADATA_LOCK_H
 #define TABLE_METADATA_LOCK_H
@@ -28,20 +28,27 @@
   Table METADATA_LOCKS (declarations).
 */
 
-#include "pfs_column_types.h"
-#include "pfs_engine_table.h"
-#include "table_helper.h"
+#include <sys/types.h>
 
+#include "my_base.h"
+#include "mysql/components/services/bits/psi_mdl_bits.h"
+#include "storage/perfschema/pfs_column_types.h"
+#include "storage/perfschema/pfs_engine_table.h"
+#include "storage/perfschema/table_helper.h"
+
+class Field;
+class Plugin_table;
 struct PFS_metadata_lock;
+struct TABLE;
+struct THR_LOCK;
 
 /**
-  @addtogroup Performance_schema_tables
+  @addtogroup performance_schema_tables
   @{
 */
 
 /** A row of table PERFORMANCE_SCHEMA.MUTEX_INSTANCES. */
-struct row_metadata_lock
-{
+struct row_metadata_lock {
   /** Column OBJECT_INSTANCE_BEGIN. */
   const void *m_identity;
   opaque_mdl_type m_mdl_type;
@@ -55,51 +62,117 @@ struct row_metadata_lock
   ulong m_owner_thread_id;
   /** Column OWNER_EVENT_ID. */
   ulong m_owner_event_id;
-  /** Columns OBJECT_TYPE, OBJECT_SCHEMA, OBJECT_NAME. */
-  PFS_object_row m_object;
+  /** Columns OBJECT_TYPE, OBJECT_SCHEMA, OBJECT_NAME, COLUMN_NAME. */
+  PFS_column_row m_object;
+};
+
+class PFS_index_metadata_locks : public PFS_engine_index {
+ public:
+  explicit PFS_index_metadata_locks(PFS_engine_key *key_1)
+      : PFS_engine_index(key_1) {}
+
+  PFS_index_metadata_locks(PFS_engine_key *key_1, PFS_engine_key *key_2)
+      : PFS_engine_index(key_1, key_2) {}
+
+  PFS_index_metadata_locks(PFS_engine_key *key_1, PFS_engine_key *key_2,
+                           PFS_engine_key *key_3, PFS_engine_key *key_4)
+      : PFS_engine_index(key_1, key_2, key_3, key_4) {}
+
+  ~PFS_index_metadata_locks() override = default;
+
+  virtual bool match(const PFS_metadata_lock *pfs) = 0;
+};
+
+class PFS_index_metadata_locks_by_instance : public PFS_index_metadata_locks {
+ public:
+  PFS_index_metadata_locks_by_instance()
+      : PFS_index_metadata_locks(&m_key), m_key("OBJECT_INSTANCE_BEGIN") {}
+
+  ~PFS_index_metadata_locks_by_instance() override = default;
+
+  bool match(const PFS_metadata_lock *pfs) override;
+
+ private:
+  PFS_key_object_instance m_key;
+};
+
+class PFS_index_metadata_locks_by_object : public PFS_index_metadata_locks {
+ public:
+  PFS_index_metadata_locks_by_object()
+      : PFS_index_metadata_locks(&m_key_1, &m_key_2, &m_key_3, &m_key_4),
+        m_key_1("OBJECT_TYPE"),
+        m_key_2("OBJECT_SCHEMA"),
+        m_key_3("OBJECT_NAME"),
+        m_key_4("COLUMN_NAME") {}
+
+  ~PFS_index_metadata_locks_by_object() override = default;
+
+  bool match(const PFS_metadata_lock *pfs) override;
+
+ private:
+  PFS_key_object_type m_key_1;
+  PFS_key_object_schema m_key_2;
+  PFS_key_object_name m_key_3;
+  PFS_key_column_name m_key_4;
+};
+
+class PFS_index_metadata_locks_by_owner : public PFS_index_metadata_locks {
+ public:
+  PFS_index_metadata_locks_by_owner()
+      : PFS_index_metadata_locks(&m_key_1, &m_key_2),
+        m_key_1("OWNER_THREAD_ID"),
+        m_key_2("OWNER_EVENT_ID") {}
+
+  ~PFS_index_metadata_locks_by_owner() override = default;
+
+  bool match(const PFS_metadata_lock *pfs) override;
+
+ private:
+  PFS_key_thread_id m_key_1;
+  PFS_key_event_id m_key_2;
 };
 
 /** Table PERFORMANCE_SCHEMA.METADATA_LOCKS. */
-class table_metadata_locks : public PFS_engine_table
-{
-public:
+class table_metadata_locks : public PFS_engine_table {
+ public:
   /** Table share. */
   static PFS_engine_table_share m_share;
-  static PFS_engine_table* create();
+  static PFS_engine_table *create(PFS_engine_table_share *);
   static ha_rows get_row_count();
 
-  virtual int rnd_next();
-  virtual int rnd_pos(const void *pos);
-  virtual void reset_position(void);
+  void reset_position(void) override;
 
-private:
-  virtual int read_row_values(TABLE *table,
-                              unsigned char *buf,
-                              Field **fields,
-                              bool read_all);
+  int rnd_next() override;
+  int rnd_pos(const void *pos) override;
 
+  int index_init(uint idx, bool sorted) override;
+  int index_next() override;
+
+ private:
+  int read_row_values(TABLE *table, unsigned char *buf, Field **fields,
+                      bool read_all) override;
   table_metadata_locks();
 
-public:
-  ~table_metadata_locks()
-  {}
+ public:
+  ~table_metadata_locks() override = default;
 
-private:
-  void make_row(PFS_metadata_lock *pfs);
+ private:
+  int make_row(PFS_metadata_lock *pfs);
 
   /** Table share lock. */
   static THR_LOCK m_table_lock;
-  /** Fields definition. */
-  static TABLE_FIELD_DEF m_field_def;
+  /** Table definition. */
+  static Plugin_table m_table_def;
 
   /** Current row. */
   row_metadata_lock m_row;
-  /** True if the current row exists. */
-  bool m_row_exists;
   /** Current position. */
   PFS_simple_index m_pos;
   /** Next position. */
   PFS_simple_index m_next_pos;
+
+ protected:
+  PFS_index_metadata_locks *m_opened_index;
 };
 
 /** @} */

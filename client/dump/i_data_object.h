@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2015, 2021, Oracle and/or its affiliates.
+  Copyright (c) 2015, 2022, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License, version 2.0,
@@ -25,19 +25,17 @@
 #ifndef I_DATA_OBJECT_INCLUDED
 #define I_DATA_OBJECT_INCLUDED
 
-namespace Mysql{
-namespace Tools{
-namespace Dump{
+namespace Mysql {
+namespace Tools {
+namespace Dump {
 
-class I_data_object
-{
-public:
-  virtual ~I_data_object()
-  {}
+class I_data_object {
+ public:
+  virtual ~I_data_object() = default;
 };
 
-}
-}
-}
+}  // namespace Dump
+}  // namespace Tools
+}  // namespace Mysql
 
 #endif

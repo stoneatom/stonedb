@@ -1,4 +1,4 @@
-include/only_with_option.inc [GLOBAL.slave_transaction_retries > 2]
+include/only_with_option.inc [GLOBAL.replica_transaction_retries > 2]
 include/master-slave.inc
 Warnings:
 Note	####	Sending passwords in plain text without SSL/TLS is extremely insecure.

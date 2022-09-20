@@ -1,4 +1,4 @@
-/* Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
 
    This program is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
+#include "portlib/ndb_compiler.h"
 #include <ndb_global.h>
 
 #include <NdbOut.hpp>
@@ -180,7 +181,11 @@ NdbOut::println(const char * fmt, ...)
 }
 
 static
-void 
+void
+vndbout_c(const char * fmt, va_list ap) ATTRIBUTE_FORMAT(printf, 1, 0);
+
+static
+void
 vndbout_c(const char * fmt, va_list ap)
 {
   if (fmt == NULL)
@@ -214,17 +219,6 @@ ndbout_c(const char * fmt, ...){
   vndbout_c(fmt, ap);
   va_end(ap);
 }
-
-extern "C" int ndbout_printer(const char * fmt, ...)
-{
-  va_list ap;
-
-  va_start(ap, fmt);
-  vndbout_c(fmt, ap);
-  va_end(ap);
-  return 1;
-}
-
 
 FilteredNdbOut::FilteredNdbOut(OutputStream & out, 
 			       int threshold, int level)
@@ -276,4 +270,24 @@ NdbOut_Init()
 
   new (&ndberrs_fileoutputstream) FileOutputStream(stderr);
   new (&ndberr) NdbOut(ndberrs_fileoutputstream);
+}
+
+void
+NdbOut_ReInit(OutputStream* stdout_ostream,
+              OutputStream* stderr_ostream)
+{
+  /**
+   * Re-initialise ndbout and ndberr globals with different OutputStreams
+   * Not thread safe, should be done at process start
+   */
+
+  /**
+   * Following probably can be removed as destructors(same file) are empty,
+   * but are present to handle any future changes
+   */
+    ndbout.~NdbOut();
+    //ndberr.~NdbErr();
+
+   new (&ndbout) NdbOut(*stdout_ostream);
+   new (&ndberr) NdbOut(*stderr_ostream);
 }

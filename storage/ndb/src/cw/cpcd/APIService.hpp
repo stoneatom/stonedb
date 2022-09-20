@@ -1,6 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -26,8 +25,8 @@
 #ifndef CPCD_API_HPP
 #define CPCD_API_HPP
 
-#include <Parser.hpp>
 #include <InputStream.hpp>
+#include <Parser.hpp>
 #include <SocketServer.hpp>
 
 class CPCD;
@@ -35,38 +34,47 @@ class CPCD;
 class CPCDAPISession : public SocketServer::Session {
   typedef Parser<CPCDAPISession> Parser_t;
 
-  class CPCD & m_cpcd;
+  class CPCD &m_cpcd;
   InputStream *m_input;
   OutputStream *m_output;
   Parser_t *m_parser;
+  Uint32 m_protocol_version;
 
   Vector<int> m_temporaryProcesses;
-  
-  void printProperty(Properties *prop, const char *key);
-public:
-  CPCDAPISession(NDB_SOCKET_TYPE, class CPCD &);
-  CPCDAPISession(FILE * f, CPCD & cpcd);
-  ~CPCDAPISession();
 
-  virtual void runSession();
-  virtual void stopSession();
+  void printProperty(Properties *prop, const char *key);
+  void printLongString(const char *key, const char *value);
+
+ public:
+  CPCDAPISession(NDB_SOCKET_TYPE, class CPCD &);
+  CPCDAPISession(FILE *f, CPCD &cpcd);
+  ~CPCDAPISession() override;
+
+  void runSession() override;
+  void stopSession() override;
   void loadFile();
-  
-  void defineProcess(Parser_t::Context & ctx, const class Properties & args);
-  void undefineProcess(Parser_t::Context & ctx, const class Properties & args);
-  void startProcess(Parser_t::Context & ctx, const class Properties & args);
-  void stopProcess(Parser_t::Context & ctx, const class Properties & args);
-  void showProcess(Parser_t::Context & ctx, const class Properties & args);
-  void listProcesses(Parser_t::Context & ctx, const class Properties & args);
-  void showVersion(Parser_t::Context & ctx, const class Properties & args);
+
+  uintptr_t getSessionid() const { return reinterpret_cast<uintptr_t>(this); }
+
+  void defineProcess(Parser_t::Context &ctx, const class Properties &args);
+  void undefineProcess(Parser_t::Context &ctx, const class Properties &args);
+  void startProcess(Parser_t::Context &ctx, const class Properties &args);
+  void stopProcess(Parser_t::Context &ctx, const class Properties &args);
+  void showProcess(Parser_t::Context &ctx, const class Properties &args);
+  void listProcesses(Parser_t::Context &ctx, const class Properties &args);
+  void showVersion(Parser_t::Context &ctx, const class Properties &args);
+  void selectProtocol(Parser_t::Context &ctx, const class Properties &args);
+
+  bool may_print_process_cpuset() const { return m_protocol_version >= 2; }
 };
 
 class CPCDAPIService : public SocketServer::Service {
-  class CPCD & m_cpcd;
-public:
-  CPCDAPIService(class CPCD & cpcd) : m_cpcd(cpcd) {}
+  class CPCD &m_cpcd;
 
-  CPCDAPISession * newSession(NDB_SOCKET_TYPE theSock){
+ public:
+  CPCDAPIService(class CPCD &cpcd) : m_cpcd(cpcd) {}
+
+  CPCDAPISession *newSession(NDB_SOCKET_TYPE theSock) override {
     return new CPCDAPISession(theSock, m_cpcd);
   }
 };
