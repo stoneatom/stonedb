@@ -85,7 +85,8 @@ SELECT * FROM t1;
 a	b
 DROP TABLE t1;
 #
-# INSERT .. ON DUPLICATE was silently updating rows when it shouldn't.
+# INSERT .. ON DUPLICATE was silently
+# updating rows when it shouldn't.
 #
 create table t1(f1 int primary key,
 f2 timestamp NOT NULL default CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP);

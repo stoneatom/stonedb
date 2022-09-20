@@ -564,7 +564,8 @@ Handler_read_rnd	0
 Handler_read_rnd_next	1
 DROP TABLE t1;
 #
-# INSERT INTO SELECT inserts values even if SELECT statement itself returns empty
+# INSERT INTO SELECT inserts values even if
+# SELECT statement itself returns empty
 #
 CREATE TABLE t1 (
 f1 int(10) NOT NULL auto_increment PRIMARY KEY,
@@ -629,7 +630,8 @@ f1	f2
 101	1
 DROP TABLE t1, t2;
 #
-# Assertion fail on duplicate key error in 'INSERT ... SELECT' statements
+# Assertion fail on duplicate key
+# error in 'INSERT ... SELECT' statements
 #
 CREATE TABLE t1 ( a INT KEY, b INT );
 INSERT INTO t1 VALUES ( 0, 1 );
@@ -637,7 +639,8 @@ INSERT INTO t1 ( b ) SELECT MAX( b ) FROM t1 WHERE b = 2;
 ERROR 23000: Duplicate entry '0' for key 'PRIMARY'
 DROP TABLE t1;
 #
-#incorrect pushing of LIMIT into the temporary table ignoring ORDER BY clause
+#incorrect pushing of LIMIT into
+# the temporary table ignoring ORDER BY clause
 #
 CREATE TABLE t1 (
 id INT AUTO_INCREMENT PRIMARY KEY,

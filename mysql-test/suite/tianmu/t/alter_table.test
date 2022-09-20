@@ -22,7 +22,6 @@ CREATE TABLE `t_test` (
 #
 
 alter table t_test modify sex char(5);
-
 show create table t_test;
 
 #
@@ -30,11 +29,8 @@ show create table t_test;
 #
 
 alter table t_test modify first_name varchar(20);
-
 show create table t_test;
-
 alter table t_test modify first_name varchar(5);
-
 show create table t_test;
 
 #
@@ -42,15 +38,9 @@ show create table t_test;
 #
 
 set sql_mode="NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION";
-
 alter table t_test modify first_name char(20);
-
 show create table t_test;
-
 alter table t_test modify first_name char(5);
-
 show create table t_test;
-
 alter table t_test modify sex smallint(5);
-
 show create table t_test;
