@@ -2,7 +2,6 @@
 --echo # Bug#30594501 QUERY STALLS IN "QUERY END" STATUS FOR LONG TIME
 --echo #
 
---source include/have_innodb.inc
 --source include/have_debug.inc
 
 --connect (con1,localhost,root,,)

@@ -82,8 +82,6 @@ select a,c from t;
 
 drop table t;
 
-SET NAMES utf8;
-
 --echo #
 --echo # WL#8170: Expression analyzer for GC.
 --echo # Queries with GC and JSON_EXTRACT  compared to strings should use index
@@ -103,36 +101,101 @@ set @save_opt_sw= @@optimizer_switch;
 # Innodb has some issues with ICP & GC stuff
 set @@optimizer_switch="index_condition_pushdown=off";
 
+set @string_literal='asd';
+--sorted_result
 select f1 from t1 where gc = "asd";
 explain select f1 from t1 where gc = "asd";
+--sorted_result
+select f1 from t1 where gc = @string_literal;
+explain select f1 from t1 where gc = @string_literal;
+--sorted_result
 select f1 from t1 where json_extract(f1,"$") = "asd";
 explain select f1 from t1 where json_extract(f1,"$") = "asd";
+--sorted_result
+select f1 from t1 where json_extract(f1,"$") = @string_literal;
+explain select f1 from t1 where json_extract(f1,"$") = @string_literal;
 
+--sorted_result
 select f1 from t1 where "asd" = json_extract(f1,"$");
 explain select f1 from t1 where "asd" = json_extract(f1,"$");
+--sorted_result
+select f1 from t1 where @string_literal = json_extract(f1,"$");
+explain select f1 from t1 where @string_literal = json_extract(f1,"$");
 
+set @string_literal = 'z';
+
+--sorted_result
 select f1 from t1 where gc > "z";
 explain select f1 from t1 where gc > "z";
+--sorted_result
+select f1 from t1 where gc > @string_literal;
+explain select f1 from t1 where gc > @string_literal;
+--sorted_result
 select f1 from t1 where json_extract(f1,"$") > "z";
 explain select f1 from t1 where json_extract(f1,"$") > "z";
+--sorted_result
+select f1 from t1 where json_extract(f1,"$") > @string_literal;
+explain select f1 from t1 where json_extract(f1,"$") > @string_literal;
 
+set @string_lo = 'v';
+set @string_hi = 'z';
+
+--sorted_result
 select f1 from t1 where gc > "v" and gc < "z";
 explain select f1 from t1 where gc > "v" and gc < "z";
-select f1 from t1 where json_extract(f1,"$") > "v" and json_extract(f1,"$") < "z";
-explain select f1 from t1 where json_extract(f1,"$") > "v" and json_extract(f1,"$") < "z";
+--sorted_result
+select f1 from t1 where gc > @string_lo and gc < @string_hi;
+explain select f1 from t1 where gc > @string_lo and gc < @string_hi;
+--sorted_result
+select f1 from t1
+where json_extract(f1,"$") > "v" and json_extract(f1,"$") < "z";
+--sorted_result
+select f1 from t1
+where json_extract(f1,"$") > @string_lo and json_extract(f1,"$") < @string_hi;
+explain
+select f1 from t1
+where json_extract(f1,"$") > @string_lo and json_extract(f1,"$") < @string_hi;
 
+--sorted_result
 select f1 from t1 where gc between "v" and "z";
 explain select f1 from t1 where gc between "v" and "z";
+--sorted_result
+select f1 from t1 where gc between @string_lo and @string_hi;
+explain select f1 from t1 where gc between @string_lo and @string_hi;
+--sorted_result
 select f1 from t1 where json_extract(f1,"$") between "v" and "z";
 explain select f1 from t1 where json_extract(f1,"$") between "v" and "z";
+--sorted_result
+select f1 from t1 where json_extract(f1,"$") between @string_lo and @string_hi;
+explain
+select f1 from t1 where json_extract(f1,"$") between @string_lo and @string_hi;
 
+set @string_1 = 'asd';
+set @string_2 = 'asasas';
+set @string_3 = 'asdf';
+
+--sorted_result
 select f1 from t1 where gc in ("asd","asasas","asdf");
 explain select f1 from t1 where gc in ("asd","asasas","asdf");
+--sorted_result
+select f1 from t1 where gc in (@string_1, @string_2, @string_3);
+explain select f1 from t1 where gc in (@string_1, @string_2, @string_3);
+--sorted_result
 select f1 from t1 where json_extract(f1,"$") in ("asd","asasas","asdf");
 explain select f1 from t1 where json_extract(f1,"$") in ("asd","asasas","asdf");
 
-select f1 from t1 where json_unquote(json_extract(f1,"$"))="asd";
-explain select f1 from t1 where json_unquote(json_extract(f1,"$"))="asd";
+--sorted_result
+select f1 from t1
+where json_extract(f1,"$") in (@string_1, @string_2, @string_3);
+explain
+select f1 from t1
+where json_extract(f1,"$") in (@string_1, @string_2, @string_3);
+
+select f1 from t1 where json_unquote(json_extract(f1,"$")) = "asd";
+explain select f1 from t1 where json_unquote(json_extract(f1,"$")) = "asd";
+select f1 from t1 where json_unquote(json_extract(f1,"$")) = @string_literal;
+explain
+select f1 from t1 where json_unquote(json_extract(f1,"$")) = @string_literal;
 
 set @@optimizer_switch= @save_opt_sw;
 drop table t1;
@@ -172,3 +235,20 @@ SELECT SQL_BIG_RESULT table1.json_varchar255_utf8_key AS field1, count(*)
   GROUP  BY field1;
 DROP TABLE t1;
 
+--echo #
+--echo # Bug#26352119: WHERE JSON_EXTRACT() ON GEN KEY
+--echo #
+
+# The index should be used even if the collation is not the default
+# collation of the character set.
+SET NAMES utf8mb4 COLLATE utf8mb4_ja_0900_as_cs;
+CREATE TABLE t1 (j JSON, pk VARCHAR(10) AS (j->>'$.id') STORED PRIMARY KEY);
+INSERT INTO t1 (j) VALUES ('{"id":"a"}'), ('{"id":"b"}'), ('{"id":"c"}');
+
+# Analyze to ensure table statistics are up to date before EXPLAIN.
+ANALYZE TABLE t1;
+EXPLAIN SELECT * FROM t1 WHERE j->>'$.id'='b';
+SELECT * FROM t1 WHERE j->>'$.id'='b';
+
+DROP TABLE t1;
+SET NAMES DEFAULT;

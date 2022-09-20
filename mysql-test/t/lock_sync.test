@@ -2,15 +2,14 @@
 # Locking related tests which use DEBUG_SYNC facility.
 #
 --source include/have_debug_sync.inc
+--source include/force_myisam_default.inc
+--source include/have_myisam.inc
+
 # We need InnoDB to be able use TL_WRITE_ALLOW_WRITE type of locks in our tests.
---source include/have_innodb.inc
 # This test requires statement/mixed mode binary logging.
 # Row-based mode puts weaker serializability requirements
 # so weaker locks are acquired for it.
 --source include/have_binlog_format_mixed_or_statement.inc
-# Until bug#41971 'Thread state on embedded server is always "Writing to net"'
-# is fixed this test can't be run on embedded version of server.
---source include/not_embedded.inc
 
 # Save the initial number of concurrent sessions.
 --source include/count_sessions.inc
@@ -234,7 +233,7 @@ let $table= t1;
 --echo # Switch to connection 'con1'.
 connection con1;
 --echo # Cache all functions used in the tests below so statements
---echo # calling them won't need to open and lock mysql.proc table
+--echo # calling them won't need to open and lock data dictionary table
 --echo # and we can assume that each statement locks its tables
 --echo # once during its execution.
 --disable_result_log
@@ -322,9 +321,9 @@ connection con1;
 # The below test for SHOW CREATE TABLE is disabled until bug 52593
 # "SHOW CREATE TABLE is blocked if table is locked for write by another
 # connection" is fixed.
---disable_parsing
+--disable_testcase BUG#0000
 show create table t1;
---enable_parsing
+--enable_testcase
 --disable_result_log
 show keys from t1;
 --enable_result_log
@@ -936,7 +935,7 @@ CREATE EVENT e2 ON SCHEDULE EVERY 5 HOUR DO SELECT 2;
 
 --echo # Connection con1
 connect(con1, localhost, root);
-SET DEBUG_SYNC="before_lock_tables_takes_lock SIGNAL drop WAIT_FOR query";
+SET DEBUG_SYNC="before_lock_dictionary_tables_takes_lock SIGNAL drop WAIT_FOR query";
 --echo # Sending:
 --send DROP EVENT e1;
 
@@ -944,7 +943,7 @@ SET DEBUG_SYNC="before_lock_tables_takes_lock SIGNAL drop WAIT_FOR query";
 connection default;
 SET DEBUG_SYNC="now WAIT_FOR drop";
 #--disable_warnings # Don't mask sql_log_bin warning
-SELECT name FROM mysql.event, INFORMATION_SCHEMA.GLOBAL_VARIABLES
+SELECT event_name FROM information_schema.events, performance_schema.global_variables
   WHERE definer = VARIABLE_VALUE;
 #--enable_warnings
 SET DEBUG_SYNC="now SIGNAL query";
@@ -1032,6 +1031,12 @@ drop table if exists t2;
 set debug_sync='RESET';
 create table t1 (a int, b int, unique key t1$a (a));
 create table t2 (j int, k int);
+--echo # Warm-up data-dictionary and table definition caches
+--disable_query_log
+--disable_result_log
+select * from t1, t2;
+--enable_result_log
+--enable_query_log
 set debug_sync='after_lock_tables_takes_lock SIGNAL parked WAIT_FOR go';
 --echo # Sending: 
 --send insert into t2 select * from t1;
@@ -1121,7 +1126,7 @@ DROP TABLES t1, t2;
 
 
 --echo #
---echo #Bug#18110156: RECREATE+ANALYZE OPTIMIZE TABLE T AND ONLINE 
+--echo #Bug#18110156: RECREATE+ANALYZE OPTIMIZE TABLE T AND ONLINE
 --echo #              ALTER TABLE T MAY DEADLOCK
 
 CREATE TABLE t1 (fld1 INT) ENGINE=InnoDB;

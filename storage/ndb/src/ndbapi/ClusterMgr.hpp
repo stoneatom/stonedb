@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -37,7 +37,6 @@
 
 extern "C" void* runClusterMgr_C(void * me);
 
-
 /**
   @class ClusterMgr
   This class runs a heartbeat protocol between nodes, to detect if remote
@@ -60,12 +59,13 @@ class ClusterMgr : public trp_client
   friend void* runClusterMgr_C(void * me);
 public:
   ClusterMgr(class TransporterFacade &);
-  virtual ~ClusterMgr();
+  ~ClusterMgr() override;
   void configure(Uint32 nodeId, const ndb_mgm_configuration* config);
   
   void reportConnected(NodeId nodeId);
   void reportDisconnected(NodeId nodeId);
-  
+  void setProcessInfoUri(const char * scheme, const char * host,
+                         int port, const char * path);
   void doStop();
   void startThread();
 
@@ -136,6 +136,8 @@ public:
     Uint32 hbFrequency; // Heartbeat frequence 
     Uint32 hbCounter;   // # milliseconds passed since last hb sent
     Uint32 hbMissed;    // # missed heartbeats
+
+    bool processInfoSent;  // ProcessInfo Report has been sent to node
   };
   
   const trp_node & getNodeInfo(NodeId) const;
@@ -148,16 +150,19 @@ public:
    */
   int m_auto_reconnect;
   Uint32        m_connect_count;
+
 private:
   Uint32        m_max_api_reg_req_interval;
   Uint32        noOfAliveNodes;
   Uint32        noOfConnectedNodes;
   Uint32        noOfConnectedDBNodes;
   Uint32        minDbVersion;
+  Uint32        minApiVersion;
   Node          theNodes[MAX_NODES];
   NdbThread*    theClusterMgrThread;
 
   NdbCondition* waitForHBCond;
+  class ProcessInfo * m_process_info;
 
   enum Cluster_state m_cluster_state;
   /**
@@ -190,8 +195,7 @@ private:
   void execAPI_REGREQ    (const Uint32 * theData);
   void execAPI_REGCONF   (const NdbApiSignal*, const LinearSectionPtr ptr[]);
   void execAPI_REGREF    (const Uint32 * theData);
-  void execCONNECT_REP   (const NdbApiSignal*, const LinearSectionPtr ptr[]);
-  void execDISCONNECT_REP(const NdbApiSignal*, const LinearSectionPtr ptr[]);
+  void execDUMP_STATE_ORD(const NdbApiSignal*, const LinearSectionPtr ptr[]);
   void execNODE_FAILREP  (const NdbApiSignal*, const LinearSectionPtr ptr[]);
   void execNF_COMPLETEREP(const NdbApiSignal*, const LinearSectionPtr ptr[]);
 
@@ -220,6 +224,8 @@ private:
 
   void print_nodes(const char* where, NdbOut& out = ndbout);
   void recalcMinDbVersion();
+  void recalcMinApiVersion();
+  void sendProcessInfoReport(NodeId nodeId);
 
 public:
   /**
@@ -229,8 +235,8 @@ public:
    * main thread, we keep the clusterMgrThreadMutex when calling this method,
    * so all signal methods are protected.
    */
-  virtual void trp_deliver_signal(const NdbApiSignal*,
-                                  const LinearSectionPtr p[3]);
+  void trp_deliver_signal(const NdbApiSignal*,
+                          const LinearSectionPtr p[3]) override;
 };
 
 inline
@@ -257,13 +263,13 @@ ClusterMgr::hb_received(NodeId nodeId) {
 
 /*****************************************************************************/
 
+extern "C" void* runArbitMgr_C(void* me);
+
 /**
  * @class ArbitMgr
  * Arbitration manager.  Runs in separate thread.
  * Started only by a request from the kernel.
  */
-
-extern "C" void* runArbitMgr_C(void* me);
 
 class ArbitMgr
 {

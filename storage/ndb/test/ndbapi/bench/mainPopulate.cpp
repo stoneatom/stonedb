@@ -1,6 +1,5 @@
 /*
-   Copyright (c) 2005, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -28,9 +27,6 @@
 
 #include "userInterface.h"
 #include "dbPopulate.h"
-#include <NdbMain.h>
-#include <NdbOut.hpp>
-#include <random.h>
 #include <NDBT.hpp>
 
 int useTableLogging;
@@ -49,7 +45,8 @@ void usage(const char *prog)
   exit(1);
 }
 
-NDB_COMMAND(DbCreate, "DbCreate", "DbCreate", "DbCreate", 16384)
+
+int main(int argc, char** argv)
 {
   ndb_init();
   int i;

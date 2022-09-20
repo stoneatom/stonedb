@@ -233,24 +233,20 @@ DROP PROCEDURE p1;
 SHOW DATABASES;
 Database
 information_schema
-cache
 mtr
 mysql
 performance_schema
 sys
-sys_tianmu
 test
 # 'bug58090' database should be present.
 SHOW DATABASES;
 Database
-information_schema
 bug58090
-cache
+information_schema
 mtr
 mysql
 performance_schema
 sys
-sys_tianmu
 test
 DROP DATABASE bug58090;
 #
@@ -262,7 +258,7 @@ mysqlslap: [Warning] Using a password on the command line interface can be insec
 #
 # Bug#18430704 : MYSQLSLAP CRASHES BY FLOATING POINT EXCEPTION
 #
-mysqlslap: [Warning] option 'iterations': unsigned value 0 adjusted to 1
+mysqlslap: [Warning] option 'iterations': unsigned value 0 adjusted to 1.
 
 #WL7764 : Make STRICT mode for transactional SEs default in 5.7
 #Adding negative test for added option --sql_mode

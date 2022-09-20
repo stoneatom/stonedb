@@ -1,4 +1,4 @@
-# Copyright (c) 2015, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2015, 2022, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -18,7 +18,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
 # systemd support files shall be installed on linux if the build host machine
 # has systemd package installed.  make install will install the systemd
@@ -49,12 +49,18 @@ MACRO(MYSQL_CHECK_SYSTEMD)
         SET(SYSTEMD_TMPFILES_DIR "/usr/lib/tmpfiles.d")
       ENDIF()
       MESSAGE(STATUS "SYSTEMD_TMPFILES_DIR ${SYSTEMD_TMPFILES_DIR}")
+      IF(${SYSTEMD_VERSION} VERSION_LESS "231")
+        SET(SYSTEMD_HAS_PLUS OFF)
+      ELSE()
+        SET(SYSTEMD_HAS_PLUS ON)
+      ENDIF()
+      MESSAGE(STATUS "SYSTEMD HAS + prefix support ${SYSTEMD_HAS_PLUS}")
     ELSE()
       MESSAGE(FATAL_ERROR "Unable to detect systemd support on build machine,\
                            Aborting cmake build.")
     ENDIF()
   ELSE()
-    MESSAGE(FATAL_ERROR, "Unable to detect systemd support on build machine,\
+    MESSAGE(FATAL_ERROR, "Unable to detect pkg-config support on build machine,\
                           Aborting cmake build.")
   ENDIF()
 
@@ -64,7 +70,7 @@ MACRO(MYSQL_CHECK_SYSTEMD)
   MESSAGE(STATUS "SYSTEMD_SERVICE_NAME ${SYSTEMD_SERVICE_NAME}")
 
   IF("${SYSTEMD_PID_DIR}" STREQUAL "")
-    SET(SYSTEMD_PID_DIR "/var/run/mysqld")
+    SET(SYSTEMD_PID_DIR "/run/mysqld")
   ENDIF()
   MESSAGE(STATUS "SYSTEMD_PID_DIR ${SYSTEMD_PID_DIR}")
 ENDMACRO()

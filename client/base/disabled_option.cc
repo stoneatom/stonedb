@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2001, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2001, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -22,13 +22,15 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-#include "disabled_option.h"
+#include "client/base/disabled_option.h"
+
+#include <stddef.h>
 
 using std::string;
 using namespace Mysql::Tools::Base::Options;
 
 Disabled_option::Disabled_option(string name, string description)
-  : Abstract_option<Disabled_option>(NULL, GET_DISABLED, name, description, 0)
-{
-  this->m_option_structure.arg_type= OPT_ARG;
+    : Abstract_option<Disabled_option>(nullptr, GET_DISABLED, name, description,
+                                       0) {
+  this->m_option_structure.arg_type = OPT_ARG;
 }

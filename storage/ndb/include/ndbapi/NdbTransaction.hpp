@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -159,7 +159,6 @@ class NdbTransaction
   friend class NdbIndexOperation;
   friend class NdbIndexScanOperation;
   friend class NdbBlob;
-  friend class ha_ndbcluster;
   friend class NdbQueryImpl;
   friend class NdbQueryOperationImpl;
 #endif
@@ -641,9 +640,9 @@ public:
   const NdbOperation* getNdbErrorOperation() const;
 
   /** 
-   * Get the method number where the latest error occured.
+   * Get the method number where the latest error occurred.
    * 
-   * @return Line number where latest error occured.
+   * @return Line number where latest error occurred.
    */
   int getNdbErrorLine();
 
@@ -857,11 +856,13 @@ public:
    * parameters are specified in the 'paramValue' array. Parameter values
    * Should be supplied in the same order as the related paramValue's
    * was defined.
+   *
+   * Note, query uses LM_CommittedRead. The LockMode parameter is ignored.
    */
   NdbQuery*
   createQuery(const NdbQueryDef* query,
               const NdbQueryParamValue paramValue[]= 0,
-              NdbOperation::LockMode lock_mode= NdbOperation::LM_Read);
+              NdbOperation::LockMode= NdbOperation::LM_CommittedRead);
 
   /* LockHandle methods */
   /*
@@ -943,6 +944,18 @@ public:
    */
   void setMaxPendingBlobReadBytes(Uint32 bytes);
   void setMaxPendingBlobWriteBytes(Uint32 bytes);
+
+  /*
+   * Release completed operations and queries.
+   *
+   * NOTE! Only applications which reads/write blobs fully and does not keep
+   * blobs open/active over execute can safely use this function to release
+   * completed.
+   */
+  void releaseCompletedOpsAndQueries() {
+    releaseCompletedOperations();
+    releaseCompletedQueries();
+  }
 
 private:						
   /**
@@ -1047,7 +1060,7 @@ private:
   void		setOperationErrorCode(int anErrorCode);	
 
   // Indicate something went wrong in the definition phase
-  void		setOperationErrorCodeAbort(int anErrorCode, int abortOption = -1);
+  void          setOperationErrorCodeAbort(int anErrorCode);
 
   int		checkMagicNumber();		       // Verify correct object
   Uint32        getMagicNumberFromObject() const;
@@ -1104,7 +1117,8 @@ private:
                                              // array for this object
   TimeMillis_t       theStartTransTime;      // Start time of the transaction
 
-  NdbError theError;	      	// Errorcode on transaction
+  // Allow update error from const methods.
+  mutable NdbError theError;    // Errorcode on transaction
   int	   theErrorLine;	// Method number of last error in NdbOperation
   NdbOperation*	theErrorOperation; // The NdbOperation where the error occurred
 
@@ -1169,8 +1183,8 @@ private:
    * 1) Bitmask with used nodes
    * 2) Bitmask with nodes failed during op
    */
-  Uint32 m_db_nodes[2];
-  Uint32 m_failed_db_nodes[2];
+  Uint32 m_db_nodes[5];
+  Uint32 m_failed_db_nodes[5];
   
   int report_node_failure(Uint32 id);
 
@@ -1190,6 +1204,7 @@ private:
   Uint32 theBuddyConPtr;
   // optim: any blobs
   bool theBlobFlag;
+  bool m_userDefinedBlobOps;
   Uint8 thePendingBlobOps;
   Uint32 maxPendingBlobReadBytes;
   Uint32 maxPendingBlobWriteBytes;
@@ -1380,19 +1395,6 @@ Uint32 NdbTransaction::getBuddyConPtr()
 
 /******************************************************************************
 NdbTransaction* next();
-
-inline
-void
-NdbTransaction::setBuddyConPtr(Uint32 aBuddyConPtr)
-{
-  theBuddyConPtr = aBuddyConPtr;
-}
-
-inline
-Uint32 NdbTransaction::getBuddyConPtr()
-{
-  return theBuddyConPtr;
-}
 
 Return Value:	Return  next pointer to NdbTransaction object.
 Remark:         Get the next pointer. 

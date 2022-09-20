@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -23,7 +23,9 @@
 */
 
 #include <ndb_global.h>
-#include <my_sys.h>
+#include <cstring>
+#include "my_sys.h"
+#include "m_ctype.h"
 
 #define DBDICT_C
 #include "Dbdict.hpp"
@@ -52,8 +54,6 @@
 #include <signaldata/FsReadWriteReq.hpp>
 #include <signaldata/FsRef.hpp>
 #include <signaldata/GetTabInfo.hpp>
-#include <signaldata/GetTableId.hpp>
-#include <signaldata/HotSpareRep.hpp>
 #include <signaldata/NFCompleteRep.hpp>
 #include <signaldata/NodeFailRep.hpp>
 #include <signaldata/ReadNodesConf.hpp>
@@ -102,9 +102,6 @@
 
 #include <NdbEnv.h>
 
-#include <EventLogger.hpp>
-extern EventLogger * g_eventLogger;
-
 #include <signaldata/SchemaTrans.hpp>
 #include <DebuggerNames.hpp>
 
@@ -122,11 +119,19 @@ extern EventLogger * g_eventLogger;
 //#define EVENT_PH2_DEBUG
 //#define EVENT_PH3_DEBUG
 //#define EVENT_DEBUG
+//#define DEBUG_API_FAIL
+
+#ifdef DEBUG_API_FAIL
+#define DEB_API_FAIL(arglist) do { g_eventLogger->info arglist ; } while (0)
+#else
+#define DEB_API_FAIL(arglist) do { } while (0)
+#endif
+
 
 static const char EVENT_SYSTEM_TABLE_NAME[] = "sys/def/NDB$EVENTS_0";
 
 #define EVENT_TRACE \
-//  ndbout_c("Event debug trace: File: %s Line: %u", __FILE__, __LINE__)
+// g_eventLogger->info("Event debug trace: File: %s Line: %u", __FILE__, __LINE__)
 
 #define DIV(x,y) (((x)+(y)-1)/(y))
 #define WORDS2PAGES(x) DIV(x, (ZSIZE_OF_PAGES_IN_WORDS - ZPAGE_HEADER_SIZE))
@@ -164,6 +169,8 @@ do_swap(Uint32 & v0, Uint32 & v1)
   v0 = v1;
   v1 = save;
 }
+
+static const Uint32 SuspectGETTABINFOREQMillis = 5000;
 
 /* **************************************************************** */
 /* ---------------------------------------------------------------- */
@@ -247,10 +254,11 @@ Dbdict::execDUMP_STATE_ORD(Signal* signal)
       LocalRope name(c_rope_pool, iter.curr.p->m_name);
       char buf[1024];
       name.copy(buf);
-      ndbout_c("%s m_ref_count: %d", buf, iter.curr.p->m_ref_count);
+      g_eventLogger->info("%s m_ref_count: %d", buf, iter.curr.p->m_ref_count);
       if (iter.curr.p->m_trans_key != 0)
-        ndbout_c("- m_trans_key: %u m_op_ref_count: %u",
-                 iter.curr.p->m_trans_key, iter.curr.p->m_op_ref_count);
+        g_eventLogger->info("- m_trans_key: %u m_op_ref_count: %u",
+                            iter.curr.p->m_trans_key,
+                            iter.curr.p->m_op_ref_count);
     }
   }
   if (signal->theData[0] == DumpStateOrd::DictDumpLockQueue)
@@ -259,19 +267,97 @@ Dbdict::execDUMP_STATE_ORD(Signal* signal)
     m_dict_lock.dump_queue(m_dict_lock_pool, this);
     
     /* Space for hex form of enough words for node bitmask + \0 */
-    char buf[(((MAX_NDB_NODES + 31)/32) * 8) + 1 ];
+    char buf[NdbNodeBitmask::TextLength + 1];
     infoEvent("DICT : c_sub_startstop _outstanding %u _lock %s",
               c_outstanding_sub_startstop,
               c_sub_startstop_lock.getText(buf));
   }
 
+  if (signal->theData[0] == DumpStateOrd::DictDumpGetTabInfoQueue && g_trace >= 2)
+  {
+    jam();
+    Uint64 currElapsed = 0;
+    /* Dump GETTABINFOREQ stats */
+    g_eventLogger->info("DICT GETTABINFOREQ stats");
+    g_eventLogger->info("c_retrieveRecord totalRequests :  %llu "
+                        "busyState : %u",
+                        c_retrieveRecord.totalRequests,
+                        c_retrieveRecord.busyState);
+    g_eventLogger->info("totalWaiters : %llu totalBusy : %llu "
+                        "longestWaitMillis : %llu",
+                        c_retrieveRecord.totalWaiters,
+                        c_retrieveRecord.totalBusy,
+                        c_retrieveRecord.longestWaitMillis);
+    g_eventLogger->info("longestProcessTimeMillis : %llu",
+                        c_retrieveRecord.longestProcessTimeMillis);
+    if (c_retrieveRecord.busyState)
+    {
+      jam();
+      g_eventLogger->info("Busy : requestType : %u  tableId : %u, "
+                          "type : %u, ref : %x",
+                          c_retrieveRecord.requestType,
+                          c_retrieveRecord.tableId,
+                          c_retrieveRecord.m_table_type,
+                          c_retrieveRecord.blockRef);
+      currElapsed = NdbTick_Elapsed(c_retrieveRecord.startProcessTime,
+                                    NdbTick_getCurrentTicks()).milliSec();
+      g_eventLogger->info("Elapsed processing millis : %llu",
+                          currElapsed);
+    }
+    /* Dump GETTABINFOREQ queueing info */
+    c_gettabinforeq_q.dumpInfo();
+
+    if (signal->getLength() == 2)
+    {
+      jam();
+      ndbrequire(c_retrieveRecord.monitorRunning);
+
+      /* Monitoring signal, should we stop? */
+      if (currElapsed > SuspectGETTABINFOREQMillis)
+      {
+        jam();
+
+        sendSignalWithDelay(reference(),
+                            GSN_DUMP_STATE_ORD,
+                            signal,
+                            2000,
+                            signal->getLength());
+      }
+      else
+      {
+        jam();
+        g_eventLogger->info("GETTABINFOREQ : Monitoring stopped");
+        c_retrieveRecord.monitorRunning = false;
+      }
+    }
+  }
   if (signal->theData[0] == 8004)
   {
+    infoEvent("DICT: c_reservedCounterMgr size: %u free: %u",
+              c_reservedCounterMgr.getSize(),
+              c_reservedCounterMgr.getNoOfFree());
+    c_reservedCounterMgr.printNODE_FAILREP();
     infoEvent("DICT: c_counterMgr size: %u free: %u",
               c_counterMgr.getSize(),
               c_counterMgr.getNoOfFree());
     c_counterMgr.printNODE_FAILREP();
   }
+#ifdef ERROR_INSERT
+  if (signal->theData[0] == 8005)
+  {
+    bool val = true;
+    if (signal->getLength() == 2)
+    {
+      val = (signal->theData[1] != 0);
+    }
+    g_eventLogger->info("DICT: Setting fake empty generic SafeCounter pool to %u",
+                        val);
+    g_eventLogger->info("DICT: c_counterMgr size: %u free: %u",
+                        c_counterMgr.getSize(),
+                        c_counterMgr.getNoOfFree());
+    c_counterMgr.setFakeEmpty(val);
+  }
+#endif
 
   if (signal->theData[0] == DumpStateOrd::SchemaResourceSnapshot)
   {
@@ -294,6 +380,7 @@ Dbdict::execDUMP_STATE_ORD(Signal* signal)
     RSS_AP_SNAPSHOT_CHECK(c_hash_map_pool);
     RSS_AP_SNAPSHOT_CHECK(g_hash_map);
   }
+
 
   return;
 
@@ -319,25 +406,29 @@ void Dbdict::execDBINFO_SCANREQ(Signal *signal)
         c_attributeRecordPool.getSize(),
         c_attributeRecordPool.getEntrySize(),
         c_attributeRecordPool.getUsedHi(),
-        { CFG_DB_NO_ATTRIBUTES,0,0,0 }},
+        { CFG_DB_NO_ATTRIBUTES,0,0,0 },
+        0},
       { "Table Record",
         c_tableRecordPool_.getUsed(),
         c_noOfMetaTables,
         c_tableRecordPool_.getEntrySize(),
         c_tableRecordPool_.getUsedHi(),
-        { CFG_DB_NO_TABLES,0,0,0 }},
+        { CFG_DB_NO_TABLES,0,0,0 },
+        0},
       { "Trigger Record",
         c_triggerRecordPool_.getUsed(),
         c_triggerRecordPool_.getSize(),
         c_triggerRecordPool_.getEntrySize(),
         c_triggerRecordPool_.getUsedHi(),
-        { CFG_DB_NO_TRIGGERS,0,0,0 }},
+        { CFG_DB_NO_TRIGGERS,0,0,0 },
+        0},
       { "FS Connect Record",
         c_fsConnectRecordPool.getUsed(),
         c_fsConnectRecordPool.getSize(),
         c_fsConnectRecordPool.getEntrySize(),
         c_fsConnectRecordPool.getUsedHi(),
-        { 0,0,0,0 }},
+        { 0,0,0,0 },
+        0},
       { "DictObject",
         c_obj_pool.getUsed(),
         c_obj_pool.getSize(),
@@ -346,25 +437,30 @@ void Dbdict::execDBINFO_SCANREQ(Signal *signal)
         { CFG_DB_NO_TABLES,
           CFG_DB_NO_ORDERED_INDEXES,
           CFG_DB_NO_UNIQUE_HASH_INDEXES,
-          CFG_DB_NO_TRIGGERS }},
+          CFG_DB_NO_TRIGGERS },
+        0},
       { "Transaction Handle",
         c_txHandlePool.getUsed(),
         c_txHandlePool.getSize(),
         c_txHandlePool.getEntrySize(),
         c_txHandlePool.getUsedHi(),
-        { 0,0,0,0 }},
+        { 0,0,0,0 },
+        0},
       { "Operation Record",
         c_opRecordPool.getUsed(),
         c_opRecordPool.getSize(),
         c_opRecordPool.getEntrySize(),
         c_opRecordPool.getUsedHi(),
-        { 0,0,0,0 }},
-      { NULL, 0,0,0,0,{0,0,0,0}}
+        { 0,0,0,0 },
+        0},
+      { NULL, 0,0,0,0,{0,0,0,0},0}
     };
 
     const size_t num_config_params =
       sizeof(pools[0].config_params) / sizeof(pools[0].config_params[0]);
+    const Uint32 numPools = NDB_ARRAY_SIZE(pools);
     Uint32 pool = cursor->data[0];
+    ndbrequire(pool < numPools);
     BlockNumber bn = blockToMain(number());
     while(pools[pool].poolname)
     {
@@ -380,6 +476,8 @@ void Dbdict::execDBINFO_SCANREQ(Signal *signal)
       row.write_uint64(pools[pool].entry_size);
       for (size_t i = 0; i < num_config_params; i++)
         row.write_uint32(pools[pool].config_params[i]);
+      row.write_uint32(GET_RG(pools[pool].record_type));
+      row.write_uint32(GET_TID(pools[pool].record_type));
       ndbinfo_send_row(signal, req, row, rl);
       pool++;
       if (rl.need_break(req))
@@ -392,6 +490,7 @@ void Dbdict::execDBINFO_SCANREQ(Signal *signal)
     break;
   }
   case Ndbinfo::DICT_OBJ_INFO_TABLEID:
+  case Ndbinfo::STORED_TABLES_TABLEID:
   {
     jam();
     if (c_masterNodeId != getOwnNodeId())
@@ -458,19 +557,56 @@ void Dbdict::execDBINFO_SCANREQ(Signal *signal)
           parentObjType = ltd.getTableType(); // System or user table.
         }
       }
-      
-      Ndbinfo::Row row(signal, req);
-      
-      /* Write values */
-      row.write_uint32(ltd.getTableType());
-      row.write_uint32(ltd.getTableId());
-      row.write_uint32(version);
-      row.write_uint32(ltd.getTableState());
-      row.write_uint32(parentObjType);
-      row.write_uint32(parentObjId);
-      row.write_string(nameBuff); /* FQ name */
-      
-      ndbinfo_send_row(signal, req, row, rl);
+      if (req.tableId == Ndbinfo::DICT_OBJ_INFO_TABLEID)
+      {
+        jam(); 
+        Ndbinfo::Row row(signal, req);
+        /* Write values */
+        row.write_uint32(ltd.getTableType());
+        row.write_uint32(ltd.getTableId());
+        row.write_uint32(version);
+        row.write_uint32(ltd.getTableState());
+        row.write_uint32(parentObjType);
+        row.write_uint32(parentObjId);
+        row.write_string(nameBuff); /* FQ name */
+        ndbinfo_send_row(signal, req, row, rl);
+      }
+      else
+      {
+        jam();
+        jamLine(ltd.getTableId());
+        if (DictTabInfo::isTable(ltd.getTableType()) ||
+            DictTabInfo::isUniqueIndex(ltd.getTableType()))
+        {
+          TableRecordPtr tabPtr;
+          bool ok = find_object(tabPtr, ltd.getTableId());
+          ndbrequire(ok);
+          ndbrequire(req.tableId == Ndbinfo::STORED_TABLES_TABLEID)
+          jam();
+          Ndbinfo::Row row(signal, req);
+          row.write_uint32(getOwnNodeId());
+          row.write_uint32(ltd.getTableId());
+          row.write_uint32((tabPtr.p->m_bits & TableRecord::TR_Logged) == 0 ? 0 : 1);
+          row.write_uint32((tabPtr.p->m_bits & TableRecord::TR_RowGCI) == 0 ? 0 : 1);
+          row.write_uint32((tabPtr.p->m_bits & TableRecord::TR_RowChecksum) == 0 ? 0 : 1);
+          row.write_uint32((tabPtr.p->m_bits & TableRecord::TR_Temporary) == 0 ? 0 : 1);
+          row.write_uint32((tabPtr.p->m_bits & TableRecord::TR_ForceVarPart) == 0 ? 0 : 1);
+          row.write_uint32((tabPtr.p->m_bits & TableRecord::TR_ReadBackup) == 0 ? 0 : 1);
+          row.write_uint32((tabPtr.p->m_bits & TableRecord::TR_FullyReplicated) == 0 ? 0 : 1);
+          row.write_uint32(tabPtr.p->m_extra_row_gci_bits);
+          row.write_uint32(tabPtr.p->m_extra_row_author_bits);
+          row.write_uint32(tabPtr.p->storageType);
+          row.write_uint32(tabPtr.p->hashMapObjectId);
+          row.write_uint32(tabPtr.p->hashMapVersion);
+          row.write_uint32(tabPtr.p->tableVersion);
+          row.write_uint32(tabPtr.p->fragmentType);
+          row.write_uint32(tabPtr.p->partitionBalance);
+          row.write_uint32(tabPtr.p->gciTableCreated);
+          row.write_uint32(tabPtr.p->m_read_locked);
+          row.write_uint32(tabPtr.p->singleUserMode);
+          ndbinfo_send_row(signal, req, row, rl);
+        }
+      }
 
       const Uint32 oldBucket = iter.bucket;
       done = !c_obj_name_hash.next(iter);
@@ -515,6 +651,18 @@ void Dbdict::execCONTINUEB(Signal* signal)
   switch (signal->theData[0]) {
   case ZPACK_TABLE_INTO_PAGES :
     jam();
+    if (ERROR_INSERTED(6800))
+    {
+      jam();
+      g_eventLogger->info("Stall serialisation of a table record "
+                          "until error insert cleared");
+      sendSignalWithDelay(reference(),
+                          GSN_CONTINUEB,
+                          signal,
+                          1000,
+                          signal->getLength());
+      return;
+    }
     packTableIntoPages(signal);
     break;
 
@@ -569,8 +717,7 @@ void Dbdict::execCONTINUEB(Signal* signal)
     startNextGetTabInfoReq(signal);
     break;
   default :
-    ndbrequire(false);
-    break;
+    ndbabort();
   }//switch
   return;
 }//execCONTINUEB()
@@ -638,7 +785,7 @@ void Dbdict::packTableIntoPages(Signal* signal)
   PageRecordPtr pagePtr;
   c_pageRecordArray.getPtr(pagePtr, pageId);
 
-  memset(&pagePtr.p->word[0], 0, 4 * ZPAGE_HEADER_SIZE);
+  std::memset(&pagePtr.p->word[0], 0, 4 * ZPAGE_HEADER_SIZE);
   LinearWriter w(&pagePtr.p->word[ZPAGE_HEADER_SIZE],
 		 ZMAX_PAGES_OF_TABLE_DEFINITION * ZSIZE_OF_PAGES_IN_WORDS);
   w.first();
@@ -722,7 +869,8 @@ void Dbdict::packTableIntoPages(Signal* signal)
   case DictTabInfo::ReorgTrigger:
   case DictTabInfo::FKParentTrigger:
   case DictTabInfo::FKChildTrigger:
-    ndbrequire(false);
+  case DictTabInfo::FullyReplicatedTrigger:
+    ndbabort();
   }
 
   Uint32 wordsOfTable = w.getWordsUsed();
@@ -732,8 +880,7 @@ void Dbdict::packTableIntoPages(Signal* signal)
 
   switch (c_packTable.m_state) {
   case PackTable::PTS_IDLE:
-    ndbrequire(false);
-    break;
+    ndbabort();
   case PackTable::PTS_GET_TAB:
     jam();
     c_retrieveRecord.retrievedNoOfPages = pagesUsed;
@@ -742,18 +889,43 @@ void Dbdict::packTableIntoPages(Signal* signal)
     return;
     break;
   }//switch
-  ndbrequire(false);
-  return;
+  ndbabort();
 }//packTableIntoPages()
+
+bool
+packRopeData(SimpleProperties::Writer & w, ConstRope & rope) {
+  const int bufsize = ROPE_COPY_BUFFER_SIZE;
+  char buffer[bufsize];
+  Uint32 offset = 0;
+  int nread;
+  int status = 0;
+
+  while((nread = rope.readBuffered(buffer, bufsize, offset)) != 0) {
+    status = w.append(buffer, nread);
+  }
+  return (status != -1);  // Return true on success
+}
+
+bool
+unpackDataToRope(SimpleProperties::Reader &it, LocalRope & rope) {
+  const int bufsize = ROPE_COPY_BUFFER_SIZE;
+  char buffer[bufsize];
+  int nread;
+
+  rope.erase();
+  while((nread = it.getBuffered(buffer, bufsize)) > 0)
+    if(! rope.appendBuffer(buffer, nread))
+      return false;
+  return true;
+}
 
 void
 Dbdict::packTableIntoPages(SimpleProperties::Writer & w,
-			       TableRecordPtr tablePtr,
-			       Signal* signal){
+                           TableRecordPtr tablePtr,
+                           Signal* signal){
 
   union {
     char tableName[MAX_TAB_NAME_SIZE];
-    char frmData[MAX_FRM_DATA_SIZE];
     char rangeData[16*MAX_NDB_PARTITIONS];
     char ngData[2*MAX_NDB_PARTITIONS];
     char defaultValue[MAX_ATTR_DEFAULT_VALUE_SIZE];
@@ -780,6 +952,15 @@ Dbdict::packTableIntoPages(SimpleProperties::Writer & w,
 	!!(tablePtr.p->m_bits & TableRecord::TR_Temporary));
   w.add(DictTabInfo::ForceVarPartFlag,
 	!!(tablePtr.p->m_bits & TableRecord::TR_ForceVarPart));
+  w.add(DictTabInfo::ReadBackupFlag,
+	!!(tablePtr.p->m_bits & TableRecord::TR_ReadBackup));
+  w.add(DictTabInfo::FullyReplicatedFlag,
+        !!(tablePtr.p->m_bits & TableRecord::TR_FullyReplicated));
+
+  D("packTableIntoPages: tableId: " << tablePtr.p->tableId
+    << " tablePtr.i = " << tablePtr.i << " tableVersion = "
+    << tablePtr.p->tableVersion << " m_bits = " << hex
+    << tablePtr.p->m_bits);
 
   w.add(DictTabInfo::MinLoadFactor, tablePtr.p->minLoadFactor);
   w.add(DictTabInfo::MaxLoadFactor, tablePtr.p->maxLoadFactor);
@@ -790,6 +971,7 @@ Dbdict::packTableIntoPages(SimpleProperties::Writer & w,
   w.add(DictTabInfo::MaxRowsHigh, tablePtr.p->maxRowsHigh);
   w.add(DictTabInfo::DefaultNoPartFlag, tablePtr.p->defaultNoPartFlag);
   w.add(DictTabInfo::LinearHashFlag, tablePtr.p->linearHashFlag);
+  w.add(DictTabInfo::PartitionBalance, tablePtr.p->partitionBalance);
   w.add(DictTabInfo::FragmentCount, tablePtr.p->fragmentCount);
   w.add(DictTabInfo::MinRowsLow, tablePtr.p->minRowsLow);
   w.add(DictTabInfo::MinRowsHigh, tablePtr.p->minRowsHigh);
@@ -798,7 +980,9 @@ Dbdict::packTableIntoPages(SimpleProperties::Writer & w,
   w.add(DictTabInfo::TableStorageType, tablePtr.p->storageType);
   w.add(DictTabInfo::ExtraRowGCIBits, tablePtr.p->m_extra_row_gci_bits);
   w.add(DictTabInfo::ExtraRowAuthorBits, tablePtr.p->m_extra_row_author_bits);
-
+  w.add(DictTabInfo::PartitionCount, tablePtr.p->partitionCount);
+  w.add(DictTabInfo::FullyReplicatedTriggerId,
+        tablePtr.p->fullyReplicatedTriggerId);
 
   if (tablePtr.p->hashMapObjectId != RNIL)
   {
@@ -863,9 +1047,34 @@ Dbdict::packTableIntoPages(SimpleProperties::Writer & w,
   }
 
   ConstRope frm(c_rope_pool, tablePtr.p->frmData);
-  frm.copy(frmData);
-  w.add(DictTabInfo::FrmLen, frm.size());
-  w.add(DictTabInfo::FrmData, frmData, frm.size());
+  if (frm.size() <= NDB_SHORT_OPAQUE_METADATA_MAX_BYTES)
+  {
+    /**
+     * Compatibility:
+     * Prior to 8.0, up to 6000 bytes of opaque metadata were
+     * stored using the FrmData key with FrmLen length key
+     *
+     * In 8.0, longer values are stored under the
+     * MysqlDictMetadata key.
+     *
+     * We store metadata in FrmData if it is < 6000 bytes, or
+     * in MysqlDictMetadata if it is longer.  This 'split
+     * by length' is done so that during upgrade, older versions
+     * can still find their 'FRM' info in the 'FrmData/FrmLen'
+     * format.
+     * Once we no longer support upgrade from versions < 8.0,
+     * we can always use the MysqlDictMetadata key.
+     * FrmLen/FrmData can take up to 6000 bytes
+     */
+    w.add(DictTabInfo::FrmLen, frm.size());
+    w.addKey(DictTabInfo::FrmData, SimpleProperties::BinaryValue, frm.size());
+  }
+  else
+  {
+    w.addKey(DictTabInfo::MysqlDictMetadata, SimpleProperties::BinaryValue,
+             frm.size());
+  }
+  ndbrequire(packRopeData(w, frm));
 
   {
     jam();
@@ -997,14 +1206,14 @@ Dbdict::packFilegroupIntoPages(SimpleProperties::Writer & w,
     //fg.LF_UndoGrow = ;
     break;
   default:
-    ndbrequire(false);
+    ndbabort();
   }
 
   SimpleProperties::UnpackStatus s;
   s = SimpleProperties::pack(w,
 			     &fg,
 			     DictFilegroupInfo::Mapping,
-			     DictFilegroupInfo::MappingSize, true);
+			     DictFilegroupInfo::MappingSize);
 
   ndbrequire(s == SimpleProperties::Eof);
 }
@@ -1033,7 +1242,7 @@ Dbdict::packFileIntoPages(SimpleProperties::Writer & w,
   s = SimpleProperties::pack(w,
 			     &f,
 			     DictFilegroupInfo::FileMapping,
-			     DictFilegroupInfo::FileMappingSize, true);
+			     DictFilegroupInfo::FileMappingSize);
 
   ndbrequire(s == SimpleProperties::Eof);
 }
@@ -1041,8 +1250,9 @@ Dbdict::packFileIntoPages(SimpleProperties::Writer & w,
 void
 Dbdict::execCREATE_FRAGMENTATION_REQ(Signal* signal)
 {
+  LOCAL_SIGNAL(signal);
   CreateFragmentationReq* req = (CreateFragmentationReq*)signal->getDataPtr();
-
+  D("execCREATE_FRAGMENTATION_REQ");
   if (req->primaryTableId == RNIL) {
     jam();
     EXECUTE_DIRECT(DBDIH, GSN_CREATE_FRAGMENTATION_REQ, signal,
@@ -1055,10 +1265,10 @@ Dbdict::execCREATE_FRAGMENTATION_REQ(Signal* signal)
   if (te->m_tableState != SchemaFile::SF_CREATE)
   {
     jam();
-    if (req->requestInfo == 0)
+    if (req->requestInfo == CreateFragmentationReq::RI_CREATE_FRAGMENTATION)
     {
       jam();
-      req->requestInfo |= CreateFragmentationReq::RI_GET_FRAGMENTATION;
+      req->requestInfo = CreateFragmentationReq::RI_GET_FRAGMENTATION;
     }
     EXECUTE_DIRECT(DBDIH, GSN_CREATE_FRAGMENTATION_REQ, signal,
                    CreateFragmentationReq::SignalLength);
@@ -1078,7 +1288,8 @@ Dbdict::execCREATE_FRAGMENTATION_REQ(Signal* signal)
   Uint32 *theData = &signal->theData[0];
   const OpSection& fragSection =
     getOpSection(op_ptr, CreateTabReq::FRAGMENTATION);
-  LocalArenaPoolImpl op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena,c_opSectionBufferPool);
+  LocalArenaPool<OpSectionSegment>
+    op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena,c_opSectionBufferPool);
   copyOut(op_sec_pool, fragSection, &theData[25], ZNIL);
   theData[0] = 0;
 }
@@ -1097,7 +1308,7 @@ void Dbdict::execFSCLOSECONF(Signal* signal)
   FsConnectRecordPtr fsPtr;
   FsConf * const fsConf = (FsConf *)&signal->theData[0];
   jamEntry();
-  c_fsConnectRecordPool.getPtr(fsPtr, fsConf->userPointer);
+  ndbrequire(c_fsConnectRecordPool.getPtr(fsPtr, fsConf->userPointer));
   switch (fsPtr.p->fsState) {
   case FsConnectRecord::CLOSE_WRITE_SCHEMA:
     jam();
@@ -1123,8 +1334,7 @@ void Dbdict::execFSCLOSECONF(Signal* signal)
     break;
   default:
     jamLine((fsPtr.p->fsState & 0xFFF));
-    ndbrequire(false);
-    break;
+    ndbabort();
   }//switch
 }//execFSCLOSECONF()
 
@@ -1137,7 +1347,7 @@ void Dbdict::execFSOPENCONF(Signal* signal)
   FsConnectRecordPtr fsPtr;
   jamEntry();
   FsConf * const fsConf = (FsConf *)&signal->theData[0];
-  c_fsConnectRecordPool.getPtr(fsPtr, fsConf->userPointer);
+  ndbrequire(c_fsConnectRecordPool.getPtr(fsPtr, fsConf->userPointer));
 
   Uint32 filePointer = fsConf->filePointer;
   fsPtr.p->filePtr = filePointer;
@@ -1174,8 +1384,7 @@ void Dbdict::execFSOPENCONF(Signal* signal)
     break;
   default:
     jamLine((fsPtr.p->fsState & 0xFFF));
-    ndbrequire(false);
-    break;
+    ndbabort();
   }//switch
 }//execFSOPENCONF()
 
@@ -1187,7 +1396,7 @@ void Dbdict::execFSOPENREF(Signal* signal)
   jamEntry();
   FsRef * const fsRef = (FsRef *)&signal->theData[0];
   FsConnectRecordPtr fsPtr;
-  c_fsConnectRecordPool.getPtr(fsPtr, fsRef->userPointer);
+  ndbrequire(c_fsConnectRecordPool.getPtr(fsPtr, fsRef->userPointer));
   switch (fsPtr.p->fsState) {
   case FsConnectRecord::OPEN_READ_SCHEMA1:
     jam();
@@ -1215,7 +1424,7 @@ void Dbdict::execFSREADCONF(Signal* signal)
   jamEntry();
   FsConf * const fsConf = (FsConf *)&signal->theData[0];
   FsConnectRecordPtr fsPtr;
-  c_fsConnectRecordPool.getPtr(fsPtr, fsConf->userPointer);
+  ndbrequire(c_fsConnectRecordPool.getPtr(fsPtr, fsConf->userPointer));
   switch (fsPtr.p->fsState) {
   case FsConnectRecord::READ_SCHEMA1:
   case FsConnectRecord::READ_SCHEMA2:
@@ -1233,14 +1442,14 @@ void Dbdict::execFSREADCONF(Signal* signal)
       execFSREADREF(signal);
       return;
     }//Testing how DICT behave if read of file 1 fails (Bug#28770)
+    [[fallthrough]];
   case FsConnectRecord::READ_TAB_FILE2:
     jam();
     readTableConf(signal ,fsPtr);
     break;
   default:
     jamLine((fsPtr.p->fsState & 0xFFF));
-    ndbrequire(false);
-    break;
+    ndbabort();
   }//switch
 }//execFSREADCONF()
 
@@ -1252,7 +1461,7 @@ void Dbdict::execFSREADREF(Signal* signal)
   jamEntry();
   FsRef * const fsRef = (FsRef *)&signal->theData[0];
   FsConnectRecordPtr fsPtr;
-  c_fsConnectRecordPool.getPtr(fsPtr, fsRef->userPointer);
+  ndbrequire(c_fsConnectRecordPool.getPtr(fsPtr, fsRef->userPointer));
   switch (fsPtr.p->fsState) {
   case FsConnectRecord::READ_SCHEMA1:
     jam();
@@ -1280,7 +1489,7 @@ void Dbdict::execFSWRITECONF(Signal* signal)
   FsConf * const fsConf = (FsConf *)&signal->theData[0];
   FsConnectRecordPtr fsPtr;
   jamEntry();
-  c_fsConnectRecordPool.getPtr(fsPtr, fsConf->userPointer);
+  ndbrequire(c_fsConnectRecordPool.getPtr(fsPtr, fsConf->userPointer));
   switch (fsPtr.p->fsState) {
   case FsConnectRecord::WRITE_TAB_FILE:
     writeTableConf(signal, fsPtr);
@@ -1291,8 +1500,7 @@ void Dbdict::execFSWRITECONF(Signal* signal)
     break;
   default:
     jamLine((fsPtr.p->fsState & 0xFFF));
-    ndbrequire(false);
-    break;
+    ndbabort();
   }//switch
 }//execFSWRITECONF()
 
@@ -1318,7 +1526,7 @@ Dbdict::writeTableFile(Signal* signal, Uint32 tableId,
   c_pageRecordArray.getPtr(pageRecPtr, c_writeTableRecord.pageId);
   copy(&pageRecPtr.p->word[ZPAGE_HEADER_SIZE], tabInfoPtr);
 
-  memset(&pageRecPtr.p->word[0], 0, 4 * ZPAGE_HEADER_SIZE);
+  std::memset(&pageRecPtr.p->word[0], 0, 4 * ZPAGE_HEADER_SIZE);
   pageRecPtr.p->word[ZPOS_CHECKSUM] =
     computeChecksum(&pageRecPtr.p->word[0],
 		    pages * ZSIZE_OF_PAGES_IN_WORDS);
@@ -1349,11 +1557,11 @@ Dbdict::writeTableFile(Signal* signal, SchemaOpPtr op_ptr, Uint32 tableId,
     Uint32* dst = &pageRecPtr.p->word[ZPAGE_HEADER_SIZE];
     Uint32 dstSize = (ZMAX_PAGES_OF_TABLE_DEFINITION * ZSIZE_OF_PAGES_IN_WORDS)
       - ZPAGE_HEADER_SIZE;
-    LocalArenaPoolImpl op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena, c_opSectionBufferPool);
+    LocalArenaPool<OpSectionSegment> op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena, c_opSectionBufferPool);
     bool ok = copyOut(op_sec_pool, tabInfoSec, dst, dstSize);
     ndbrequire(ok);
 
-    memset(&pageRecPtr.p->word[0], 0, 4 * ZPAGE_HEADER_SIZE);
+    std::memset(&pageRecPtr.p->word[0], 0, 4 * ZPAGE_HEADER_SIZE);
     pageRecPtr.p->word[ZPOS_CHECKSUM] =
       computeChecksum(&pageRecPtr.p->word[0],
                       pages * ZSIZE_OF_PAGES_IN_WORDS);
@@ -1366,7 +1574,7 @@ void Dbdict::startWriteTableFile(Signal* signal, Uint32 tableId)
 {
   FsConnectRecordPtr fsPtr;
   c_writeTableRecord.tableId = tableId;
-  c_fsConnectRecordPool.getPtr(fsPtr, getFsConnRecord());
+  ndbrequire(c_fsConnectRecordPool.getPtr(fsPtr, getFsConnRecord()));
   fsPtr.p->fsState = FsConnectRecord::OPEN_WRITE_TAB_FILE;
   openTableFile(signal, 0, fsPtr.i, tableId, true);
   c_writeTableRecord.noOfTableFilesHandled = 0;
@@ -1401,6 +1609,10 @@ void Dbdict::openTableFile(Signal* signal,
   FsOpenReq::v1_setFragment(fsOpenReq->fileNumber, (Uint32)-1);
   FsOpenReq::v1_setS(fsOpenReq->fileNumber, 0);
   FsOpenReq::v1_setP(fsOpenReq->fileNumber, 255);
+  fsOpenReq->page_size = 0;
+  fsOpenReq->file_size_hi = UINT32_MAX;
+  fsOpenReq->file_size_lo = UINT32_MAX;
+  fsOpenReq->auto_sync_size = 0;
 /* ---------------------------------------------------------------- */
 // File name : D1/DBDICT/T0/S1.TableList
 // D1 means Disk 1 (set by fileNo + 1)
@@ -1457,14 +1669,13 @@ void Dbdict::closeWriteTableConf(Signal* signal,
   case WriteTableRecord::WRITE_ADD_TABLE_SLAVE :
   case WriteTableRecord::WRITE_RESTART_FROM_MASTER :
   case WriteTableRecord::WRITE_RESTART_FROM_OWN :
-    ndbrequire(false);
-    break;
+    ndbabort();
   case WriteTableRecord::TWR_CALLBACK:
     jam();
     execute(signal, c_writeTableRecord.m_callback, 0);
     return;
   }
-  ndbrequire(false);
+  ndbabort();
 }//Dbdict::closeWriteTableConf()
 
 void Dbdict::startReadTableFile(Signal* signal, Uint32 tableId)
@@ -1473,7 +1684,7 @@ void Dbdict::startReadTableFile(Signal* signal, Uint32 tableId)
   ndbrequire(!c_readTableRecord.inUse);
 
   FsConnectRecordPtr fsPtr;
-  c_fsConnectRecordPool.getPtr(fsPtr, getFsConnRecord());
+  ndbrequire(c_fsConnectRecordPool.getPtr(fsPtr, getFsConnRecord()));
   c_readTableRecord.inUse = true;
   c_readTableRecord.tableId = tableId;
   fsPtr.p->fsState = FsConnectRecord::OPEN_READ_TAB_FILE1;
@@ -1694,7 +1905,7 @@ Dbdict::updateSchemaState(Signal* signal, Uint32 tableId,
 void Dbdict::startWriteSchemaFile(Signal* signal)
 {
   FsConnectRecordPtr fsPtr;
-  c_fsConnectRecordPool.getPtr(fsPtr, getFsConnRecord());
+  ndbrequire(c_fsConnectRecordPool.getPtr(fsPtr, getFsConnRecord()));
   fsPtr.p->fsState = FsConnectRecord::OPEN_WRITE_SCHEMA;
   openSchemaFile(signal, 0, fsPtr.i, true, c_writeSchemaRecord.newFile);
   c_writeSchemaRecord.noOfSchemaFilesHandled = 0;
@@ -1730,6 +1941,10 @@ void Dbdict::openSchemaFile(Signal* signal,
   FsOpenReq::v1_setFragment(fsOpenReq->fileNumber, (Uint32)-1);
   FsOpenReq::v1_setS(fsOpenReq->fileNumber, (Uint32)-1);
   FsOpenReq::v1_setP(fsOpenReq->fileNumber, 0);
+  fsOpenReq->page_size = 0;
+  fsOpenReq->file_size_hi = UINT32_MAX;
+  fsOpenReq->file_size_lo = UINT32_MAX;
+  fsOpenReq->auto_sync_size = 0;
 /* ---------------------------------------------------------------- */
 // File name : D1/DBDICT/P0.SchemaLog
 // D1 means Disk 1 (set by fileNo + 1). Writes to both D1 and D2
@@ -1805,7 +2020,7 @@ void Dbdict::startReadSchemaFile(Signal* signal)
 {
   //globalSignalLoggers.log(number(), "startReadSchemaFile");
   FsConnectRecordPtr fsPtr;
-  c_fsConnectRecordPool.getPtr(fsPtr, getFsConnRecord());
+  ndbrequire(c_fsConnectRecordPool.getPtr(fsPtr, getFsConnRecord()));
   fsPtr.p->fsState = FsConnectRecord::OPEN_READ_SCHEMA1;
   openSchemaFile(signal, 0, fsPtr.i, false, false);
 }//Dbdict::startReadSchemaFile()
@@ -1996,9 +2211,7 @@ void Dbdict::closeReadSchemaConf(Signal* signal,
     break;
 
   default :
-    ndbrequire(false);
-    break;
-
+    ndbabort();
   }//switch
 }//Dbdict::closeReadSchemaConf()
 
@@ -2122,15 +2335,16 @@ Dbdict::Dbdict(Block_context& ctx):
   c_opSignalUtil(c_opRecordPool),
   c_opRecordSequence(0),
   c_restart_enable_fks(false),
+  c_nr_upgrade_fks_done(false),
   c_at_restart_skip_indexes(0),
-  c_at_restart_skip_fks(0)
+  c_at_restart_skip_fks(0),
+  c_reservedCounterMgr(* this)
 {
   BLOCK_CONSTRUCTOR(Dbdict);
 
   // Transit signals
   addRecSignal(GSN_DUMP_STATE_ORD, &Dbdict::execDUMP_STATE_ORD);
   addRecSignal(GSN_GET_TABINFOREQ, &Dbdict::execGET_TABINFOREQ);
-  addRecSignal(GSN_GET_TABLEID_REQ, &Dbdict::execGET_TABLEDID_REQ);
   addRecSignal(GSN_GET_TABINFOREF, &Dbdict::execGET_TABINFOREF);
   addRecSignal(GSN_GET_TABINFO_CONF, &Dbdict::execGET_TABINFO_CONF);
   addRecSignal(GSN_CONTINUEB, &Dbdict::execCONTINUEB);
@@ -2258,6 +2472,7 @@ Dbdict::Dbdict(Block_context& ctx):
   addRecSignal(GSN_WAIT_GCP_CONF, &Dbdict::execWAIT_GCP_CONF);
 
   addRecSignal(GSN_LIST_TABLES_REQ, &Dbdict::execLIST_TABLES_REQ);
+  addRecSignal(GSN_LIST_TABLES_CONF, &Dbdict::execLIST_TABLES_CONF);
 
   addRecSignal(GSN_DROP_TABLE_REQ, &Dbdict::execDROP_TABLE_REQ);
 
@@ -2405,7 +2620,14 @@ void Dbdict::initCommonData()
 
   c_outstanding_sub_startstop = 0;
   c_sub_startstop_lock.clear();
+  {
+    /* Generous guesstimate : 1 normal, 1 local, 1 recovery */
+    const Uint32 SchemaTransConcurrency = 3;
 
+    const Uint32 DictTakeoverConcurrency = 1;
+    c_reservedCounterMgr.setSize(SchemaTransConcurrency +
+                                 DictTakeoverConcurrency);
+  }
 #if defined VM_TRACE || defined ERROR_INSERT
   g_trace = 99;
 #else
@@ -2463,6 +2685,18 @@ void Dbdict::initWriteSchemaRecord()
 void Dbdict::initRetrieveRecord(Signal* signal, Uint32 i, Uint32 returnCode)
 {
   jam();
+
+  if (NdbTick_IsValid(c_retrieveRecord.startProcessTime))
+  {
+    // Completed the job...
+    const Uint64 durationMillis = NdbTick_Elapsed(c_retrieveRecord.startProcessTime,
+                                            NdbTick_getCurrentTicks()).milliSec();
+    if (durationMillis > c_retrieveRecord.longestProcessTimeMillis)
+      c_retrieveRecord.longestProcessTimeMillis = durationMillis;
+
+    NdbTick_Invalidate(&c_retrieveRecord.startProcessTime);
+  }
+
   c_retrieveRecord.blockRef = 0;
   c_retrieveRecord.m_senderData = RNIL;
   c_retrieveRecord.tableId = RNIL;
@@ -2529,7 +2763,9 @@ void Dbdict::initialiseTableRecord(TableRecordPtr tablePtr, Uint32 tableId)
   tablePtr.p->gciTableCreated = 0;
   tablePtr.p->noOfAttributes = ZNIL;
   tablePtr.p->noOfNullAttr = 0;
+  tablePtr.p->partitionBalance = NDB_DEFAULT_PARTITION_BALANCE;
   tablePtr.p->fragmentCount = 0;
+  tablePtr.p->partitionCount = 0;
   /*
     tablePtr.p->lh3PageIndexBits = 0;
     tablePtr.p->lh3DistrBits = 0;
@@ -2558,7 +2794,7 @@ void Dbdict::initialiseTableRecord(TableRecordPtr tablePtr, Uint32 tableId)
   tablePtr.p->m_read_locked= 0;
   tablePtr.p->storageType = NDB_STORAGETYPE_DEFAULT;
   tablePtr.p->indexStatFragId = ZNIL;
-  bzero(tablePtr.p->indexStatNodes, sizeof(tablePtr.p->indexStatNodes));
+  std::memset(tablePtr.p->indexStatNodes, 0, sizeof(tablePtr.p->indexStatNodes));
   tablePtr.p->indexStatBgRequest = 0;
   tablePtr.p->m_obj_ptr_i = RNIL;
 }//Dbdict::initialiseTableRecord()
@@ -2577,8 +2813,7 @@ void Dbdict::initialiseTriggerRecord(TriggerRecordPtr triggerPtr, Uint32 trigger
 Uint32 Dbdict::getFsConnRecord()
 {
   FsConnectRecordPtr fsPtr;
-  c_fsConnectRecordPool.seize(fsPtr);
-  ndbrequire(fsPtr.i != RNIL);
+  ndbrequire(c_fsConnectRecordPool.seize(fsPtr));
   fsPtr.p->filePtr = (Uint32)-1;
   fsPtr.p->ownerPtr = RNIL;
   fsPtr.p->fsState = FsConnectRecord::IDLE;
@@ -2630,8 +2865,7 @@ bool Dbdict::seizeTableRecord(TableRecordPtr& tablePtr, Uint32& schemaFileId)
     return false;
   }
 
-  c_tableRecordPool_.seize(tablePtr);
-  if (tablePtr.isNull())
+  if (!c_tableRecordPool_.seize(tablePtr))
   {
     jam();
     return false;
@@ -2678,8 +2912,7 @@ bool Dbdict::seizeTriggerRecord(TriggerRecordPtr& triggerPtr, Uint32 triggerId)
     jam();
     return false;
   }
-  c_triggerRecordPool_.seize(triggerPtr);
-  if (triggerPtr.isNull())
+  if (!c_triggerRecordPool_.seize(triggerPtr))
   {
     jam();
     return false;
@@ -2979,8 +3212,8 @@ void Dbdict::execREAD_CONFIG_REQ(Signal* signal)
     (SchemaFile*)c_schemaPageRecordArray.getPtr(1 * NDB_SF_MAX_PAGES);
   c_schemaFile[1].noOfPages = 0;
 
-  Uint32 rps = 0;
-  rps += c_noOfMetaTables * (MAX_TAB_NAME_SIZE + MAX_FRM_DATA_SIZE);
+  Uint32 rps = 0;  // Roughly calculate rope pool size:
+  rps += c_noOfMetaTables * (MAX_TAB_NAME_SIZE + ROPE_COPY_BUFFER_SIZE);
   rps += attributesize * (MAX_ATTR_NAME_SIZE + MAX_ATTR_DEFAULT_VALUE_SIZE);
   rps += c_maxNoOfTriggers * MAX_TAB_NAME_SIZE;
   rps += (10 + 10) * MAX_TAB_NAME_SIZE;
@@ -3000,7 +3233,7 @@ void Dbdict::execREAD_CONFIG_REQ(Signal* signal)
     sb = sm;
   }
 
-  sb /= (LocalRope::getSegmentSize() * sizeof(Uint32));
+  sb /= LocalRope::getSegmentSizeInBytes();
   sb += 100; // more safty
   ndbrequire(sb < (Uint64(1) << 32));
   c_rope_pool.setSize(Uint32(sb));
@@ -3067,6 +3300,7 @@ void Dbdict::execNDB_STTOR(Signal* signal)
   if (restartType == NodeState::ST_INITIAL_START) {
     jam();
     c_initialStart = true;
+    c_restartRecord.m_complete = true;
   } else if (restartType == NodeState::ST_SYSTEM_RESTART) {
     jam();
     c_systemRestart = true;
@@ -3077,7 +3311,7 @@ void Dbdict::execNDB_STTOR(Signal* signal)
     jam();
     c_nodeRestart = true;
   } else {
-    ndbrequire(false);
+    ndbabort();
   }//if
   switch (c_startPhase) {
   case 1:
@@ -3127,6 +3361,16 @@ void Dbdict::execREAD_NODESCONF(Signal* signal)
   c_numberNode   = readNodes->noOfNodes;
   c_masterNodeId = readNodes->masterNodeId;
 
+  {
+    ndbrequire(signal->getNoOfSections() == 1);
+    SegmentedSectionPtr ptr;
+    SectionHandle handle(this, signal);
+    ndbrequire(handle.getSection(ptr, 0));
+    ndbrequire(ptr.sz == 5 * NdbNodeBitmask::Size);
+    copy((Uint32*)&readNodes->definedNodes.rep.data, ptr);
+    releaseSections(handle);
+  }
+
   c_noNodesFailed = 0;
   c_aliveNodes.clear();
   for (unsigned i = 1; i < MAX_NDB_NODES; i++) {
@@ -3134,10 +3378,12 @@ void Dbdict::execREAD_NODESCONF(Signal* signal)
     NodeRecordPtr nodePtr;
     c_nodes.getPtr(nodePtr, i);
 
-    if (NdbNodeBitmask::get(readNodes->allNodes, i)) {
+    if (readNodes->definedNodes.get(i))
+    {
       jam();
       nodePtr.p->nodeState = NodeRecord::NDB_NODE_ALIVE;
-      if (NdbNodeBitmask::get(readNodes->inactiveNodes, i)) {
+      if (readNodes->inactiveNodes.get(i))
+      {
 	jam();
 	/**-------------------------------------------------------------------
 	 *
@@ -3191,7 +3437,7 @@ void Dbdict::initSchemaFile(Signal* signal)
     c_readSchemaRecord.schemaReadState = ReadSchemaRecord::INITIAL_READ_HEAD;
     startReadSchemaFile(signal);
   } else {
-    ndbrequire(false);
+    ndbabort();
   }//if
 }//Dbdict::initSchemaFile()
 
@@ -3226,8 +3472,7 @@ Dbdict::activateIndexes(Signal* signal, Uint32 id)
     requestFlags |= DictSignal::RF_NO_BUILD;
     break;
   default:
-    ndbrequire(false);
-    break;
+    ndbabort();
   }
 
   for (; id < c_noOfMetaTables; id++)
@@ -3311,10 +3556,9 @@ Dbdict::activateIndex_fromBeginTrans(Signal* signal, Uint32 tx_key, Uint32 ret)
   ndbrequire(!tx_ptr.isNull());
 
   TableRecordPtr indexPtr;
-  c_tableRecordPool_.getPtr(indexPtr, tx_ptr.p->m_userData);
-  ndbrequire(!indexPtr.isNull());
+  ndbrequire(c_tableRecordPool_.getPtr(indexPtr, tx_ptr.p->m_userData));
   DictObjectPtr index_obj_ptr;
-  c_obj_pool.getPtr(index_obj_ptr, indexPtr.p->m_obj_ptr_i);
+  ndbrequire(c_obj_pool.getPtr(index_obj_ptr, indexPtr.p->m_obj_ptr_i));
 
   AlterIndxReq* req = (AlterIndxReq*)signal->getDataPtrSend();
 
@@ -3378,9 +3622,9 @@ Dbdict::activateIndex_fromEndTrans(Signal* signal, Uint32 tx_key, Uint32 ret)
   ndbrequire(!tx_ptr.isNull());
 
   TableRecordPtr indexPtr;
-  c_tableRecordPool_.getPtr(indexPtr, tx_ptr.p->m_userData);
+  ndbrequire(c_tableRecordPool_.getPtr(indexPtr, tx_ptr.p->m_userData));
   DictObjectPtr index_obj_ptr;
-  c_obj_pool.getPtr(index_obj_ptr, indexPtr.p->m_obj_ptr_i);
+  ndbrequire(c_obj_pool.getPtr(index_obj_ptr, indexPtr.p->m_obj_ptr_i));
 
   char indexName[MAX_TAB_NAME_SIZE];
   {
@@ -3468,9 +3712,9 @@ Dbdict::rebuildIndex_fromBeginTrans(Signal* signal, Uint32 tx_key, Uint32 ret)
   ndbrequire(!tx_ptr.isNull());
 
   TableRecordPtr indexPtr;
-  c_tableRecordPool_.getPtr(indexPtr, tx_ptr.p->m_userData);
+  ndbrequire(c_tableRecordPool_.getPtr(indexPtr, tx_ptr.p->m_userData));
   DictObjectPtr index_obj_ptr;
-  c_obj_pool.getPtr(index_obj_ptr,indexPtr.p->m_obj_ptr_i);
+  ndbrequire(c_obj_pool.getPtr(index_obj_ptr, indexPtr.p->m_obj_ptr_i));
 
   BuildIndxReq* req = (BuildIndxReq*)signal->getDataPtrSend();
 
@@ -3538,7 +3782,7 @@ Dbdict::rebuildIndex_fromEndTrans(Signal* signal, Uint32 tx_key, Uint32 ret)
   ndbrequire(!tx_ptr.isNull());
 
   TableRecordPtr indexPtr;
-  c_tableRecordPool_.getPtr(indexPtr, tx_ptr.p->m_userData);
+  ndbrequire(c_tableRecordPool_.getPtr(indexPtr, tx_ptr.p->m_userData));
 
   const char* actionName;
   {
@@ -3548,7 +3792,7 @@ Dbdict::rebuildIndex_fromEndTrans(Signal* signal, Uint32 tx_key, Uint32 ret)
   }
 
   DictObjectPtr obj_ptr;
-  c_obj_pool.getPtr(obj_ptr, indexPtr.p->m_obj_ptr_i);
+  ndbrequire(c_obj_pool.getPtr(obj_ptr, indexPtr.p->m_obj_ptr_i));
 
   char indexName[MAX_TAB_NAME_SIZE];
   {
@@ -3577,6 +3821,176 @@ Dbdict::rebuildIndex_fromEndTrans(Signal* signal, Uint32 tx_key, Uint32 ret)
   rebuildIndexes(signal, id + 1);
 }
 
+void
+Dbdict::checkFkTriggerIds(Signal* signal)
+{
+  jam();
+  
+  BlockReference dictMasterRef = calcDictBlockRef(c_masterNodeId);
+  ListTablesReq* ltr = (ListTablesReq*) signal->getDataPtr();
+
+  /**
+   * Ask DICT master for everything
+   * TODO : Consider FK parents + children separately to reduce
+   * data volume
+   */
+  ltr->init();
+  ltr->senderData = RNIL; /* Marker */
+  ltr->senderRef = reference();
+  ltr->data.setListNames(1);
+  ltr->data.setTableId(RNIL);
+  ltr->data.setTableType(0);
+
+  sendSignal(dictMasterRef, 
+             GSN_LIST_TABLES_REQ,
+             signal,
+             ListTablesReq::SignalLength,
+             JBB);
+}
+
+void
+Dbdict::execLIST_TABLES_CONF(Signal* signal)
+{
+  jam();
+
+  /* Signal can arrive in chunks, not a conventional
+   * fragmented signal - chunks contain correlated 
+   * subsets of two sections rather than maximal
+   * amount of any remaining...
+   */
+
+  SectionHandle handle(this, signal);
+  
+  const ListTablesConf* ltc = (const ListTablesConf*) signal->getDataPtr();
+  ndbrequire(ltc->senderData == RNIL);
+
+  bool finished = 
+    (signal->header.m_fragmentInfo == 0) |
+    (signal->header.m_fragmentInfo == 3);
+
+  /* Clear for safety */
+  signal->header.m_fragmentInfo = 0; 
+ 
+  Uint32 numObjectsInSignal = ltc->noOfTables;
+  ndbrequire(handle.m_cnt == 2);
+  SectionReader data(handle.m_ptr[ListTablesConf::TABLE_DATA],
+                     getSectionSegmentPool());
+  SectionReader names(handle.m_ptr[ListTablesConf::TABLE_NAMES],
+                      getSectionSegmentPool());
+
+  ndbassert((sizeof(ListTablesData) % sizeof(Uint32)) == 0);
+  const Uint32 ltdWords = sizeof(ListTablesData) / sizeof(Uint32);
+  
+  while (numObjectsInSignal--)
+  {
+    jam();
+
+    /* Get object info from the long sections */
+    ListTablesData ltd;
+    Uint32 nameByteLen;
+    char nameBuff[256];
+
+    ndbrequire(data.getWords((Uint32*) &ltd, ltdWords));
+    ndbrequire(names.getWord(&nameByteLen));
+    Uint32 nameWordLen = (nameByteLen + 3) / 4;
+    Uint32 realByteLen = nameWordLen * 4;
+    // Ensure string will fit
+    ndbrequire(realByteLen <= NDB_ARRAY_SIZE(nameBuff));
+    ndbrequire(names.getWords((Uint32*) nameBuff, nameWordLen));
+    // Ensure we have string termination
+    ndbrequire(nameByteLen > 0);
+    ndbrequire(nameBuff[nameByteLen - 1] == '\0');
+
+    /* Process object */
+    switch(ltd.getTableType())
+    {
+    case DictTabInfo::FKParentTrigger:
+    {
+      jam();
+      /* NDB$FK_<fkId>_PARENT_<parentTableId> */
+      
+      /* Extract details... */
+      Vector<BaseString> components;
+      BaseString trigName(nameBuff);
+      ndbrequire(trigName.split(components, BaseString("_")) == 4);
+      ndbrequire(strcmp(components[0].c_str(), "NDB$FK") == 0);
+      ndbrequire(strcmp(components[2].c_str(), "PARENT") == 0);
+      Uint32 fkID= atoi(components[1].c_str());
+      Uint32 pTID= atoi(components[3].c_str());
+      
+      /* Now, check parent table id + update parent triggerId in FK */
+      Ptr<ForeignKeyRec> fk_ptr;
+      ndbrequire(find_object(fk_ptr, fkID));
+      ndbrequire(fk_ptr.p->m_parentTableId == pTID);
+
+      /* Todo : Check trigger id not found... */
+      
+      g_eventLogger->info("DICT : Setting FK %u parent trigger id to %u (%u) ",
+                          fkID,
+                          ltd.getTableId(),
+                          fk_ptr.p->m_parentTriggerId);
+
+      fk_ptr.p->m_parentTriggerId = ltd.getTableId();
+      break;
+    }
+    case DictTabInfo::FKChildTrigger:
+    {
+      jam();
+      /* NDB$FK_<fkId>_CHILD_<childTableId> */
+
+      /* Extract details... */
+      Vector<BaseString> components;
+      BaseString trigName(nameBuff);
+      ndbrequire(trigName.split(components, BaseString("_")) == 4);
+      ndbrequire(strcmp(components[0].c_str(), "NDB$FK") == 0);
+      ndbrequire(strcmp(components[2].c_str(), "CHILD") == 0);
+      Uint32 fkID= atoi(components[1].c_str());
+      Uint32 cTID= atoi(components[3].c_str());
+
+      /* Now, check child table id + update child triggerId in FK */
+      Ptr<ForeignKeyRec> fk_ptr;
+      ndbrequire(find_object(fk_ptr, fkID));
+      ndbrequire(fk_ptr.p->m_childTableId == cTID);
+
+      /* Todo : Check trigger id not found... */
+      
+      g_eventLogger->info("DICT : Setting FK %u child trigger id to %u (%u)",
+                          fkID,
+                          ltd.getTableId(),
+                          fk_ptr.p->m_childTriggerId);
+
+      fk_ptr.p->m_childTriggerId = ltd.getTableId();
+      break;
+    }
+    case DictTabInfo::ForeignKey:
+    {
+      jam();
+      /* <parentTableId>/<childTableId>/<fk_name> */
+
+      /* Ignore, don't need the info, and the format is only
+       * stable since 7.3.6. (bug#18824753)
+       */
+      break;
+    }
+    default:
+      jam();
+      /* Ignore */
+      break;
+    }
+  }
+
+  releaseSections(handle);
+
+  if (finished)
+  {
+    /* Option, check all FK triggers are != RNIL */
+
+    g_eventLogger->info("DICT : Checking FK trigger ids complete");
+
+    enableFKs(signal, 0);
+  }
+}
+
 /*
  * Activate FKs i.e. create child and parent triggers.
  * This is done as a local trans in both NR and SR.
@@ -3590,6 +4004,25 @@ Dbdict::enableFKs(Signal* signal, Uint32 id)
   if (id == 0)
   {
     D("enableFKs start");
+
+    /* Handle problem where NR does not use the
+     * same trigger id as the running cluster
+     */
+    if (/* TODO add version check if/when fixed  */
+        /* TODO only do this if we have FKs */
+        (c_initialNodeRestart ||
+         c_nodeRestart) &&
+        !c_nr_upgrade_fks_done)
+    {
+      jam();
+      g_eventLogger->info("DICT : Checking FK trigger ids");
+      
+      c_nr_upgrade_fks_done = true;
+
+      checkFkTriggerIds(signal);
+      return;
+    }
+
     ndbrequire(c_restart_enable_fks == false);
     c_restart_enable_fks = true;
   }
@@ -3651,10 +4084,9 @@ Dbdict::enableFK_fromBeginTrans(Signal* signal, Uint32 tx_key, Uint32 ret)
   ndbrequire(!tx_ptr.isNull());
 
   Ptr<ForeignKeyRec> fk_ptr;
-  c_fk_pool.getPtr(fk_ptr, tx_ptr.p->m_userData);
-  ndbrequire(!fk_ptr.isNull());
+  ndbrequire(c_fk_pool.getPtr(fk_ptr, tx_ptr.p->m_userData));
   DictObjectPtr fk_obj_ptr;
-  c_obj_pool.getPtr(fk_obj_ptr, fk_ptr.p->m_obj_ptr_i);
+  ndbrequire(c_obj_pool.getPtr(fk_obj_ptr, fk_ptr.p->m_obj_ptr_i));
 
   CreateFKReq* req = (CreateFKReq*)signal->getDataPtrSend();
 
@@ -3722,9 +4154,9 @@ Dbdict::enableFK_fromEndTrans(Signal* signal, Uint32 tx_key, Uint32 ret)
   ndbrequire(!tx_ptr.isNull());
 
   Ptr<ForeignKeyRec> fk_ptr;
-  c_fk_pool.getPtr(fk_ptr, tx_ptr.p->m_userData);
+  ndbrequire(c_fk_pool.getPtr(fk_ptr, tx_ptr.p->m_userData));
   DictObjectPtr fk_obj_ptr;
-  c_obj_pool.getPtr(fk_obj_ptr, fk_ptr.p->m_obj_ptr_i);
+  ndbrequire(c_obj_pool.getPtr(fk_obj_ptr, fk_ptr.p->m_obj_ptr_i));
 
   char fk_name[MAX_TAB_NAME_SIZE];
   {
@@ -3771,6 +4203,7 @@ Dbdict::enableFK_fromEndTrans(Signal* signal, Uint32 tx_key, Uint32 ret)
 void Dbdict::execDICTSTARTREQ(Signal* signal)
 {
   jamEntry();
+  D("DICTSTARTREQ");
   c_restartRecord.gciToRestart = signal->theData[0];
   c_restartRecord.returnBlockRef = signal->theData[1];
   c_restartRecord.m_senderData = signal->theData[2];
@@ -3922,7 +4355,7 @@ void Dbdict::execSCHEMA_INFO(Signal* signal)
 
   SectionHandle handle(this, signal);
   SegmentedSectionPtr schemaDataPtr;
-  handle.getSection(schemaDataPtr, 0);
+  ndbrequire(handle.getSection(schemaDataPtr, 0));
 
   XSchemaFile * xsf = &c_schemaFile[SchemaRecord::OLD_SCHEMA_FILE];
   ndbrequire(schemaDataPtr.sz % NDB_SF_PAGE_SIZE_IN_WORDS == 0);
@@ -4135,8 +4568,17 @@ void Dbdict::checkSchemaStatus(Signal* signal)
     if (c_restartRecord.activeTable >= c_noOfMetaTables)
     {
       jam();
-      ndbrequire(masterState == SchemaFile::SF_UNUSED);
-      ndbrequire(ownState == SchemaFile::SF_UNUSED);
+      if (masterState != SchemaFile::SF_UNUSED ||
+          ownState != SchemaFile::SF_UNUSED)
+      {
+        progError(__LINE__,
+                  NDBD_EXIT_RESTORE_SCHEMA,
+                  "Failed to restore schema during restart. "
+                  "Too many tables or too high id number for some table. "
+                  "Please check configuration. Have sum of MaxNoOfTables, "
+                  "MaxNoOfOrderedIndexes, and, MaxNoOfUniqueHashIndexes "
+                  "decreased?");
+      }
       continue;
     }//if
 
@@ -4261,13 +4703,13 @@ Dbdict::checkPendingSchemaTrans(XSchemaFile* xsf)
       case SchemaFile::SF_PREPARE:
       case SchemaFile::SF_ABORT:
         jam();
-        ndbout_c("Found pending trans (%u) - aborting", i);
+        g_eventLogger->info("Found pending trans (%u) - aborting", i);
         break;
       case SchemaFile::SF_COMMIT:
       case SchemaFile::SF_COMPLETE:
         jam();
         commit = true;
-        ndbout_c("Found pending trans (%u) - committing", i);
+        g_eventLogger->info("Found pending trans (%u) - committing", i);
         break;
       }
 
@@ -4280,19 +4722,20 @@ Dbdict::checkPendingSchemaTrans(XSchemaFile* xsf)
         {
           jam();
           tmp->m_transId = 0;
+          D("CheckPendingSchemaTrans, obj id = " << j << " " << V(*tmp));
           switch(tmp->m_tableState){
           case SchemaFile::SF_CREATE:
             if (commit)
             {
               jam();
               tmp->m_tableState = SchemaFile::SF_IN_USE;
-              ndbout_c("commit create %u", j);
+              g_eventLogger->info("commit create %u", j);
             }
             else
             {
               jam();
               tmp->m_tableState = SchemaFile::SF_UNUSED;
-              ndbout_c("abort create %u", j);
+              g_eventLogger->info("abort create %u", j);
             }
             break;
           case SchemaFile::SF_ALTER:
@@ -4300,12 +4743,12 @@ Dbdict::checkPendingSchemaTrans(XSchemaFile* xsf)
             if (commit)
             {
               jam();
-              ndbout_c("commit alter %u", j);
+              g_eventLogger->info("commit alter %u", j);
             }
             else
             {
               jam();
-              ndbout_c("abort alter %u", j);
+              g_eventLogger->info("abort alter %u", j);
               tmp->m_tableVersion =
                 alter_obj_dec_schema_version(tmp->m_tableVersion);
             }
@@ -4315,13 +4758,13 @@ Dbdict::checkPendingSchemaTrans(XSchemaFile* xsf)
             {
               jam();
               tmp->m_tableState = SchemaFile::SF_UNUSED;
-              ndbout_c("commit drop %u", j);
+              g_eventLogger->info("commit drop %u", j);
             }
             else
             {
               jam();
               tmp->m_tableState = SchemaFile::SF_IN_USE;
-              ndbout_c("abort drop %u", j);
+              g_eventLogger->info("abort drop %u", j);
             }
             break;
           }
@@ -4331,6 +4774,7 @@ Dbdict::checkPendingSchemaTrans(XSchemaFile* xsf)
       transEntry->m_tableType = DictTabInfo::UndefTableType;
       transEntry->m_tableState = SchemaFile::SF_UNUSED;
       transEntry->m_transId = 0;
+      D("CheckPendingSchemaTrans, obj id = " << i << " " << V(*transEntry));
     }
   }
 }
@@ -4435,7 +4879,7 @@ Dbdict::restart_fromEndTrans(Signal* signal, Uint32 tx_key, Uint32 ret)
       Fatal error while restoring shchema during restart,
       dump debug info and crash
     */
-    ndbout << "error: " << tx_ptr.p->m_error << endl;
+    tx_ptr.p->m_error.print(g_eventLogger);
 
     char msg[128];
     BaseString::snprintf(msg, sizeof(msg),
@@ -4478,7 +4922,7 @@ Dbdict::restartEndPass_fromEndTrans(Signal* signal, Uint32 tx_key, Uint32 ret)
       Fatal error while restoring shchema during restart,
       dump debug info and crash
     */
-    ndbout << "error: " << tx_ptr.p->m_error << endl;
+    tx_ptr.p->m_error.print(g_eventLogger);
 
     char msg[128];
     BaseString::snprintf(msg, sizeof(msg),
@@ -4555,6 +4999,7 @@ Dbdict::restartNextPass(Signal* signal)
   {
     jam();
 
+    c_restartRecord.m_complete = true;
     ndbrequire(c_restartRecord.m_op_cnt == 0);
 
     /**
@@ -4609,11 +5054,11 @@ Dbdict::execGET_TABINFOREF(Signal* signal)
     jam();
 
     const Uint32 senderRef = ref_copy.senderRef;
-    ndbout_c("DICT : GET_TABINFOREF(Busy)  Retained for upgrade "
-             "compatibility.  Sender node : %u block : %u version : %x",
-             refToNode(senderRef),
-             refToMain(senderRef),
-             getNodeInfo(refToNode(senderRef)).m_version);
+    g_eventLogger->info(
+        "DICT : GET_TABINFOREF(Busy)  Retained for upgrade "
+        "compatibility.  Sender node : %u block : %u version : %x",
+        refToNode(senderRef), refToMain(senderRef),
+        getNodeInfo(refToNode(senderRef)).m_version);
 
     /**
      * Master is busy. Send delayed CONTINUEB to self to add some delay, then
@@ -4623,7 +5068,7 @@ Dbdict::execGET_TABINFOREF(Signal* signal)
 
     GetTabInfoReq* const req =
       reinterpret_cast<GetTabInfoReq*>(signal->getDataPtrSend()+1);
-    memset(req, 0, sizeof *req);
+    std::memset(req, 0, sizeof *req);
     req->senderRef = reference();
     req->senderData = ref_copy.senderData;
     req->requestType =
@@ -4665,7 +5110,7 @@ Dbdict::execGET_TABINFO_CONF(Signal* signal)
   case DictTabInfo::SubscriptionTrigger:
   case DictTabInfo::ReadOnlyConstraint:
   case DictTabInfo::IndexTrigger:
-    ndbrequire(false);
+    ndbabort();
   case DictTabInfo::SystemTable:
   case DictTabInfo::UserTable:
   case DictTabInfo::UniqueHashIndex:
@@ -4738,7 +5183,8 @@ Dbdict::restartCreateObj(Signal* signal,
 
 
 #ifdef PRINT_SCHEMA_RESTART
-  ndbout_c("restartCreateObj table: %u file: %u", tableId, Uint32(file));
+  g_eventLogger->info("restartCreateObj table: %u file: %u", tableId,
+                      Uint32(file));
 #endif
 
   c_restartRecord.m_entry = *new_entry;
@@ -4777,7 +5223,7 @@ Dbdict::restartCreateObj_getTabInfoConf(Signal* signal)
 
   SectionHandle handle(this, signal);
   SegmentedSectionPtr objInfoPtr;
-  handle.getSection(objInfoPtr, GetTabInfoConf::DICT_TAB_INFO);
+  ndbrequire(handle.getSection(objInfoPtr, GetTabInfoConf::DICT_TAB_INFO));
   handle.clear();
 
   restartCreateObj_parse(signal, objInfoPtr, false);
@@ -4825,33 +5271,33 @@ Dbdict::restartCreateObj_parse(Signal* signal,
   case DictTabInfo::OrderedIndex:
   {
     CreateTableRecPtr opRecPtr;
-    seizeSchemaOp(trans_ptr, op_ptr, opRecPtr);
+    ndbrequire(seizeSchemaOp(trans_ptr, op_ptr, opRecPtr));
     break;
   }
   case DictTabInfo::Undofile:
   case DictTabInfo::Datafile:
   {
     CreateFileRecPtr opRecPtr;
-    seizeSchemaOp(trans_ptr, op_ptr, opRecPtr);
+    ndbrequire(seizeSchemaOp(trans_ptr, op_ptr, opRecPtr));
     break;
   }
   case DictTabInfo::Tablespace:
   case DictTabInfo::LogfileGroup:
   {
     CreateFilegroupRecPtr opRecPtr;
-    seizeSchemaOp(trans_ptr, op_ptr, opRecPtr);
+    ndbrequire(seizeSchemaOp(trans_ptr, op_ptr, opRecPtr));
     break;
   }
   case DictTabInfo::HashMap:
   {
     CreateHashMapRecPtr opRecPtr;
-    seizeSchemaOp(trans_ptr, op_ptr, opRecPtr);
+    ndbrequire(seizeSchemaOp(trans_ptr, op_ptr, opRecPtr));
     break;
   }
   case DictTabInfo::ForeignKey:
   {
     CreateFKRecPtr opRecPtr;
-    seizeSchemaOp(trans_ptr, op_ptr, opRecPtr);
+    ndbrequire(seizeSchemaOp(trans_ptr, op_ptr, opRecPtr));
     break;
   }
   }
@@ -4871,7 +5317,7 @@ Dbdict::restartCreateObj_parse(Signal* signal,
       Fatal error while restoring shchema during restart,
       dump debug info and crash
     */
-    ndbout << "error: " << error << endl;
+    error.print(g_eventLogger);
 
     char msg[128];
     BaseString::snprintf(msg, sizeof(msg),
@@ -4883,7 +5329,11 @@ Dbdict::restartCreateObj_parse(Signal* signal,
   }
   ndbrequire(!hasError(error));
 
-  restart_nextOp(signal);
+  /* For table objects create triggers for fully replicated, maybe */
+  if ( memcmp(info.m_opType, "CTa", 4) == 0 )
+    createSubOps(signal, op_ptr);
+  else
+    restart_nextOp(signal);
 }
 
 /**
@@ -4915,15 +5365,14 @@ Dbdict::restartDropObj(Signal* signal,
   case DictTabInfo::OrderedIndex:
   {
     DropTableRecPtr opRecPtr;
-    seizeSchemaOp(trans_ptr, op_ptr, opRecPtr);
-    ndbrequire(false);
-    break;
+    ndbrequire(seizeSchemaOp(trans_ptr, op_ptr, opRecPtr));
+    ndbabort();
   }
   case DictTabInfo::Undofile:
   case DictTabInfo::Datafile:
   {
     DropFileRecPtr opRecPtr;
-    seizeSchemaOp(trans_ptr, op_ptr, opRecPtr);
+    ndbrequire(seizeSchemaOp(trans_ptr, op_ptr, opRecPtr));
     opRecPtr.p->m_request.file_id = tableId;
     opRecPtr.p->m_request.file_version = entry->m_tableVersion;
     break;
@@ -4932,14 +5381,22 @@ Dbdict::restartDropObj(Signal* signal,
   case DictTabInfo::LogfileGroup:
   {
     DropFilegroupRecPtr opRecPtr;
-    seizeSchemaOp(trans_ptr, op_ptr, opRecPtr);
+    ndbrequire(seizeSchemaOp(trans_ptr, op_ptr, opRecPtr));
     opRecPtr.p->m_request.filegroup_id = tableId;
     opRecPtr.p->m_request.filegroup_version = entry->m_tableVersion;
     break;
   }
+  case DictTabInfo::ForeignKey:
+  {
+    DropFKRecPtr opRecPtr;
+    ndbrequire(seizeSchemaOp(trans_ptr, op_ptr, opRecPtr));
+    opRecPtr.p->m_request.fkId = tableId;
+    opRecPtr.p->m_request.fkVersion = entry->m_tableVersion;
+    break;
+  }
   }
 
-  ndbout_c("restartDropObj(%u)", tableId);
+  g_eventLogger->info("restartDropObj(%u)", tableId);
 
   op_ptr.p->m_restart = 1; //
   op_ptr.p->m_state = SchemaOp::OS_PARSE_MASTER;
@@ -4956,7 +5413,7 @@ Dbdict::restartDropObj(Signal* signal,
       Fatal error while restoring shchema during restart,
       dump debug info and crash
     */
-    ndbout << "error: " << error << endl;
+    error.print(g_eventLogger);
 
     char msg[128];
     BaseString::snprintf(msg, sizeof(msg),
@@ -5038,6 +5495,23 @@ void Dbdict::execNODE_FAILREP(Signal* signal)
   NodeFailRep * nodeFail = &nodeFailRep;
   NodeRecordPtr ownNodePtr;
 
+  if(signal->getNoOfSections() >= 1)
+  {
+    ndbrequire(getNodeInfo(refToNode(signal->getSendersBlockRef())).m_version);
+    SegmentedSectionPtr ptr;
+    SectionHandle handle(this, signal);
+    ndbrequire(handle.getSection(ptr, 0));
+    memset(nodeFail->theNodes, 0, sizeof(nodeFail->theNodes));
+    copy(nodeFail->theNodes, ptr);
+    releaseSections(handle);
+  }
+  else
+  {
+    memset(nodeFail->theNodes + NdbNodeBitmask48::Size,
+           0,
+           _NDB_NBM_DIFF_BYTES);
+  }
+
   c_nodes.getPtr(ownNodePtr, getOwnNodeId());
   c_failureNr  = nodeFail->failNo;
   const Uint32 numberOfFailedNodes  = nodeFail->noOfNodes;
@@ -5045,12 +5519,12 @@ void Dbdict::execNODE_FAILREP(Signal* signal)
   c_masterNodeId = nodeFail->masterNodeId;
 
   c_noNodesFailed += numberOfFailedNodes;
-  Uint32 theFailedNodes[NdbNodeBitmask::Size];
-  memcpy(theFailedNodes, nodeFail->theNodes, sizeof(theFailedNodes));
-  c_counterMgr.execNODE_FAILREP(signal);
 
   NdbNodeBitmask failedNodes;
-  failedNodes.assign(NdbNodeBitmask::Size, theFailedNodes);
+  failedNodes.assign(NdbNodeBitmask::Size, nodeFail->theNodes);
+  c_reservedCounterMgr.execNODE_FAILREP(signal, failedNodes);
+  c_counterMgr.execNODE_FAILREP(signal, failedNodes);
+
   c_aliveNodes.bitANDC(failedNodes);
   if (masterFailed && c_masterNodeId == getOwnNodeId())
   {
@@ -5090,7 +5564,7 @@ void Dbdict::send_nf_complete_rep(Signal* signal, const NodeFailRep* nodeFail)
       NodeRecordPtr nodePtr;
       c_nodes.getPtr(nodePtr, i);
 #ifdef VM_TRACE
-      ndbout_c("Sending NF_COMPLETEREP for node %u", i);
+      g_eventLogger->info("Sending NF_COMPLETEREP for node %u", i);
 #endif
       nodePtr.p->nodeState = NodeRecord::NDB_NODE_DEAD;
 
@@ -5128,7 +5602,7 @@ void Dbdict::handle_master_takeover(Signal* signal)
   masterNodePtr.p->m_nodes = c_aliveNodes;
   NodeReceiverGroup rg(DBDICT, masterNodePtr.p->m_nodes);
   {
-    SafeCounter sc(c_counterMgr, masterNodePtr.p->m_counter);
+    SafeCounter sc(c_reservedCounterMgr, masterNodePtr.p->m_counter);
     bool ok = sc.init<DictTakeoverRef>(rg, c_masterNodeId);
     ndbrequire(ok);
   }
@@ -5188,16 +5662,14 @@ void Dbdict::printTables()
 {
   DictObjectName_hash::Iterator iter;
   bool moreTables = c_obj_name_hash.first(iter);
-  printf("OBJECTS IN DICT:\n");
   char name[PATH_MAX];
   while (moreTables) {
     DictObjectPtr tablePtr = iter.curr;
     ConstRope r(c_rope_pool, tablePtr.p->m_name);
     r.copy(name);
-    printf("%s ", name);
     moreTables = c_obj_name_hash.next(iter);
   }
-  printf("\n");
+  g_eventLogger->info("OBJECT IN DICT:%s", name);
 }
 
 #define tabRequire(cond, error) \
@@ -5240,13 +5712,13 @@ Dbdict::release_object(Uint32 obj_ptr_i, DictObject* obj_ptr_p){
   LocalRope name(c_rope_pool, obj_name);
   name.erase();
 
-jam();
+  jam();
   c_obj_name_hash.remove(ptr);
-jam();
+  jam();
   c_obj_id_hash.remove(ptr);
-jam();
+  jam();
   c_obj_pool.release(ptr);
-jam();
+  jam();
 }
 
 void
@@ -5264,6 +5736,36 @@ Dbdict::decrease_ref_count(Uint32 obj_ptr_i)
   ptr->m_ref_count--;
 }
 
+/* TabInfoLongData provides temporary storage to unpack the data
+ * that is external to DictTabInfo.
+ */
+class TabInfoLongData {
+public:
+  TabInfoLongData(RopePool &pool, RopeHandle & handle) :
+    m_frm(pool, handle), m_valid(true)
+  {}
+
+  bool isValid() { return m_valid; }
+
+  void unpackData(SimpleProperties::Reader & it) {
+    if(it.getKey() == DictTabInfo::FrmData ||
+       it.getKey() == DictTabInfo::MysqlDictMetadata)
+      m_valid &= unpackDataToRope(it, m_frm);
+  }
+
+  static SimpleProperties::IndirectReader IndirectReader;
+
+public:
+  LocalRope m_frm;
+  bool m_valid;
+};
+
+void TabInfoLongData::IndirectReader(SimpleProperties::Reader & it,
+                                     void * dest) {
+  TabInfoLongData * info = static_cast<TabInfoLongData *>(dest);
+  info->unpackData(it);
+}
+
 void Dbdict::handleTabInfoInit(Signal * signal, SchemaTransPtr & trans_ptr,
                                SimpleProperties::Reader & it,
 			       ParseDictTabInfoRecord * parseP,
@@ -5277,19 +5779,35 @@ void Dbdict::handleTabInfoInit(Signal * signal, SchemaTransPtr & trans_ptr,
 
   it.first();
 
-  SimpleProperties::UnpackStatus status;
+  RopeHandle frmData;
   c_tableDesc.init();
-  status = SimpleProperties::unpack(it, &c_tableDesc,
-				    DictTabInfo::TableMapping,
-				    DictTabInfo::TableMappingSize,
-				    true, true);
 
-  if(status != SimpleProperties::Break){
-    parseP->errorCode = CreateTableRef::InvalidFormat;
-    parseP->status    = status;
-    parseP->errorKey  = it.getKey();
-    parseP->errorLine = __LINE__;
-    return;
+  /* Create a scope over the LocalRope in TabInfoLongData */
+  {
+    TabInfoLongData tabInfoLongData(c_rope_pool, frmData);
+    SimpleProperties::UnpackStatus status;
+    status = SimpleProperties::unpack(it, &c_tableDesc,
+                                      DictTabInfo::TableMapping,
+                                      DictTabInfo::TableMappingSize,
+                                      TabInfoLongData::IndirectReader,
+                                      & tabInfoLongData);
+    if(status != SimpleProperties::Break){
+      jam();
+      parseP->errorCode = CreateTableRef::InvalidFormat;
+      parseP->status    = status;
+      parseP->errorKey  = it.getKey();
+      parseP->errorLine = __LINE__;
+      return;
+    }
+
+    if(! tabInfoLongData.isValid())
+    {
+      jam();
+      parseP->errorCode = CreateTableRef::OutOfStringBuffer;
+      parseP->errorLine = __LINE__;
+      parseP->errorKey = it.getKey();
+      return;
+    }
   }
 
   if(parseP->requestType == DictTabInfo::AlterTableFromAPI)
@@ -5314,7 +5832,8 @@ void Dbdict::handleTabInfoInit(Signal * signal, SchemaTransPtr & trans_ptr,
 	       CreateTableRef::TableAlreadyExist);
   }
 
-  if (DictTabInfo::isIndex(c_tableDesc.TableType))
+  if (DictTabInfo::isIndex(c_tableDesc.TableType) &&
+      parseP->requestType != DictTabInfo::AlterTableFromAPI)
   {
     jam();
     parseP->requestType = DictTabInfo::AddTableFromDict;
@@ -5323,9 +5842,11 @@ void Dbdict::handleTabInfoInit(Signal * signal, SchemaTransPtr & trans_ptr,
   TableRecordPtr tablePtr;
   Uint32 schemaFileId;
   switch (parseP->requestType) {
-  case DictTabInfo::CreateTableFromAPI: {
+  case DictTabInfo::CreateTableFromAPI:
+  {
     jam();
   }
+  [[fallthrough]];
   case DictTabInfo::AlterTableFromAPI:{
     jam();
     schemaFileId = RNIL;
@@ -5359,8 +5880,7 @@ void Dbdict::handleTabInfoInit(Signal * signal, SchemaTransPtr & trans_ptr,
     break;
   }
   default:
-    ndbrequire(false);
-    break;
+    ndbabort();
   }//switch
 
   {
@@ -5385,9 +5905,68 @@ void Dbdict::handleTabInfoInit(Signal * signal, SchemaTransPtr & trans_ptr,
 
     if (g_trace)
     {
-      g_eventLogger->info("Dbdict: %u: create name=%s,id=%u,obj_ptr_i=%d",__LINE__,
+      char buf[200];
+      char *buf_ptr = &buf[0];
+      std::memset(buf, 0, sizeof(buf));
+      if (!c_tableDesc.TableLoggedFlag)
+      {
+        const char *no_log_str = " NOLOG";
+        strcpy(buf_ptr, no_log_str);
+        buf_ptr+= strlen(no_log_str);
+      }
+      {
+        const char *pb_str = NULL;
+        switch (c_tableDesc.PartitionBalance)
+        {
+          case NDB_PARTITION_BALANCE_SPECIFIC:
+            pb_str = " PB_SPEC";
+            break;
+          case NDB_PARTITION_BALANCE_FOR_RP_BY_LDM:
+            pb_str = " PB_RPL";
+            break;
+          case NDB_PARTITION_BALANCE_FOR_RA_BY_LDM:
+            pb_str = " PB_RAL";
+            break;
+          case NDB_PARTITION_BALANCE_FOR_RP_BY_NODE:
+            pb_str = " PB_RPN";
+            break;
+          case NDB_PARTITION_BALANCE_FOR_RA_BY_NODE:
+            pb_str = " PB_RPNG";
+            break;
+          case NDB_PARTITION_BALANCE_FOR_RA_BY_LDM_X_2:
+            pb_str = " PB_RAL2";
+            break;
+          case NDB_PARTITION_BALANCE_FOR_RA_BY_LDM_X_3:
+            pb_str = " PB_RAL3";
+            break;
+          case NDB_PARTITION_BALANCE_FOR_RA_BY_LDM_X_4:
+            pb_str = " PB_RAL4";
+            break;
+          default:
+            ndbabort();
+        }
+        strcpy(buf_ptr, pb_str);
+        buf_ptr+= strlen(pb_str);
+      }
+      if (c_tableDesc.FullyReplicatedFlag)
+      {
+        const char *fr_str = " FR";
+        strcpy(buf_ptr, fr_str);
+        buf_ptr+= strlen(fr_str);
+      }
+      if (c_tableDesc.ReadBackupFlag)
+      {
+        const char *rb_str = " RB";
+        strcpy(buf_ptr, rb_str);
+        buf_ptr+= strlen(rb_str);
+      }
+      g_eventLogger->info("Dbdict: %u: create name=%s,id=%u,obj_ptr_i=%d%s frm=%d",
+                          __LINE__,
                           c_tableDesc.TableName,
-                          schemaFileId, tablePtr.p->m_obj_ptr_i);
+                          schemaFileId,
+                          tablePtr.p->m_obj_ptr_i,
+                          buf,
+                          frmData.m_length);
     }
     send_event(signal, trans_ptr,
                NDB_LE_CreateSchemaObject,
@@ -5395,11 +5974,25 @@ void Dbdict::handleTabInfoInit(Signal * signal, SchemaTransPtr & trans_ptr,
                tablePtr.p->tableVersion,
                c_tableDesc.TableType);
   }
+  else
+  {
+    /**
+     * When we perform an inplace ALTER TABLE (AlterTableFrom API) we will copy all
+     * data to the new table object, but this is a bit misleading since this new
+     * object will not replace the old table object, rather in AlterTable_commit the
+     * changed parts of the new table object will be copied over to the old table
+     * object.
+     */
+    jam();
+  }
   parseP->tablePtr = tablePtr;
 
   // Disallow logging of a temporary table.
   tabRequire(!(c_tableDesc.TableTemporaryFlag && c_tableDesc.TableLoggedFlag),
              CreateTableRef::NoLoggingTemporaryTable);
+
+  tabRequire(c_tableDesc.TableLoggedFlag || c_tableDesc.TablespaceId == RNIL,
+             CreateTableRef::NoLoggingDiskTable);
 
   tablePtr.p->noOfAttributes = c_tableDesc.NoOfAttributes;
   tablePtr.p->m_bits |=
@@ -5408,17 +6001,28 @@ void Dbdict::handleTabInfoInit(Signal * signal, SchemaTransPtr & trans_ptr,
     (c_tableDesc.RowChecksumFlag ? TableRecord::TR_RowChecksum : 0);
   tablePtr.p->m_bits |=
     (c_tableDesc.RowGCIFlag ? TableRecord::TR_RowGCI : 0);
-#if DOES_NOT_WORK_CURRENTLY
+#ifdef DOES_NOT_WORK_CURRENTLY
   tablePtr.p->m_bits |=
     (c_tableDesc.TableTemporaryFlag ? TableRecord::TR_Temporary : 0);
 #endif
   tablePtr.p->m_bits |=
     (c_tableDesc.ForceVarPartFlag ? TableRecord::TR_ForceVarPart : 0);
+  tablePtr.p->m_bits |=
+    (c_tableDesc.ReadBackupFlag ? TableRecord::TR_ReadBackup : 0);
+  tablePtr.p->m_bits |=
+    (c_tableDesc.FullyReplicatedFlag ? TableRecord::TR_FullyReplicated : 0);
+
+  D("handleTabInfoInit: tableId = " << tablePtr.p->tableId
+    << " tabPtr.i = " << tablePtr.i << " tableVersion = "
+    << tablePtr.p->tableVersion << " m_bits = " << hex
+    << tablePtr.p->m_bits);
+
   tablePtr.p->minLoadFactor = c_tableDesc.MinLoadFactor;
   tablePtr.p->maxLoadFactor = c_tableDesc.MaxLoadFactor;
   tablePtr.p->fragmentType = (DictTabInfo::FragmentType)c_tableDesc.FragmentType;
   tablePtr.p->tableType = (DictTabInfo::TableType)c_tableDesc.TableType;
   tablePtr.p->kValue = c_tableDesc.TableKValue;
+  tablePtr.p->partitionBalance = c_tableDesc.PartitionBalance;
   tablePtr.p->fragmentCount = c_tableDesc.FragmentCount;
   tablePtr.p->m_tablespace_id = c_tableDesc.TablespaceId;
   tablePtr.p->maxRowsLow = c_tableDesc.MaxRowsLow;
@@ -5433,36 +6037,121 @@ void Dbdict::handleTabInfoInit(Signal * signal, SchemaTransPtr & trans_ptr,
   tablePtr.p->storageType = c_tableDesc.TableStorageType;
   tablePtr.p->m_extra_row_gci_bits = c_tableDesc.ExtraRowGCIBits;
   tablePtr.p->m_extra_row_author_bits = c_tableDesc.ExtraRowAuthorBits;
+  /**
+   * PartitionCount sent from API is ignored. This is only needed to
+   * communicate with API on the number of real fragments for fully
+   * replicated tables. For tables that are not fully replicated it is
+   * simply equal to fragmentCount. For fully replicated tables it is
+   * calculated basically as number of LDMs.
+   */
+  const bool restart = c_startPhase < 7;
+  if (restart)
+  {
+    tablePtr.p->partitionCount = c_tableDesc.PartitionCount;
+  }
 
   tabRequire(tablePtr.p->noOfAttributes <= MAX_ATTRIBUTES_IN_TABLE,
              CreateTableRef::NoMoreAttributeRecords); // bad error code!
 
+  if (!tablePtr.p->defaultNoPartFlag)
+  {
+    /**
+     * We don't use default partitioning, so must be specific.
+     */
+    if (tablePtr.p->partitionBalance !=
+        NDB_PARTITION_BALANCE_FOR_RP_BY_LDM)
+    {
+      ndbrequire(tablePtr.p->partitionBalance ==
+                 NDB_PARTITION_BALANCE_SPECIFIC);
+    }
+    else
+    {
+      /**
+       * This will happen when an old table created before partitionBalance
+       * was introduced AND also setting a specific number of partitions.
+       * We set it to specific partitioning as it should be. This is
+       * upgrade code.
+       */
+      jam();
+      tablePtr.p->partitionBalance = NDB_PARTITION_BALANCE_SPECIFIC;
+    }
+  }
+
+  /**
+   * In older version of ndb...hashMapObjectId was initialized to ~0
+   *   instead of RNIL...
+   */
+  if (tablePtr.p->hashMapObjectId == ~Uint32(0) &&
+      tablePtr.p->hashMapVersion == ~Uint32(0))
+  {
+    jam();
+    tablePtr.p->hashMapObjectId = RNIL;
+  }
+
   if (tablePtr.p->fragmentType == DictTabInfo::HashMapPartition &&
       tablePtr.p->hashMapObjectId == RNIL)
   {
-    Uint32 fragments = tablePtr.p->fragmentCount;
-    if (fragments == 0)
+    jam();
+    if (tablePtr.p->fragmentCount == 0)
     {
       jam();
-      tablePtr.p->fragmentCount = fragments = get_default_fragments(signal);
+      /**
+       * Since api only can clear fragment count, assume partition count should
+       * be cleared to.
+       */
+      tablePtr.p->partitionCount = 0;
+      /**
+       * No hashmap nor fragment count indicates default partitioning
+       */
+      assert(tablePtr.p->partitionBalance != NDB_PARTITION_BALANCE_SPECIFIC);
+      tabRequire(tablePtr.p->partitionBalance != NDB_PARTITION_BALANCE_SPECIFIC,
+                 CreateTableRef::NonDefaultPartitioningWithNoPartitions);
+      tablePtr.p->fragmentCount =
+        get_default_fragments(signal,
+                              tablePtr.p->partitionBalance,
+                              0);
     }
+    tabRequire(tablePtr.p->fragmentCount <= MAX_NDB_PARTITIONS,
+               CreateTableRef::TooManyFragments);
 
-    tabRequire(fragments <= MAX_NDB_PARTITIONS,
+    if (tablePtr.p->partitionCount == 0)
+    {
+      if ((tablePtr.p->m_bits & TableRecord::TR_FullyReplicated) == 0)
+      {
+        jam();
+        tablePtr.p->partitionCount = tablePtr.p->fragmentCount;
+      }
+      else
+      {
+        jam();
+        tablePtr.p->partitionCount =
+          get_default_partitions_fully_replicated(signal,
+                                                  tablePtr.p->partitionBalance);
+      }
+    }
+    Uint32 partitions = tablePtr.p->partitionCount;
+
+    tabRequire(partitions <= MAX_NDB_PARTITIONS,
                CreateTableRef::TooManyFragments);
 
     char buf[MAX_TAB_NAME_SIZE+1];
-    BaseString::snprintf(buf, sizeof(buf), "DEFAULT-HASHMAP-%u-%u",
-                         c_default_hashmap_size,
-                         fragments);
-    DictObject* dictObj = get_object(buf);
-    if (dictObj && dictObj->m_type == DictTabInfo::HashMap)
+    Uint32 buckets = c_default_hashmap_size;
+    if (partitions > NDB_DEFAULT_HASHMAP_MAX_FRAGMENTS)
     {
-      jam();
-      HashMapRecordPtr hm_ptr;
-      ndbrequire(find_object(hm_ptr, dictObj->m_id));
-      tablePtr.p->hashMapObjectId = hm_ptr.p->m_object_id;
-      tablePtr.p->hashMapVersion = hm_ptr.p->m_object_version;
+      buckets = NDB_MAX_HASHMAP_BUCKETS;
     }
+    BaseString::snprintf(buf, sizeof(buf), "DEFAULT-HASHMAP-%u-%u",
+                         buckets,
+                         partitions);
+    DictObject* dictObj = get_object(buf);
+    tabRequire(dictObj && dictObj->m_type == DictTabInfo::HashMap,
+               CreateTableRef::InvalidHashMap);
+
+    jam();
+    HashMapRecordPtr hm_ptr;
+    ndbrequire(find_object(hm_ptr, dictObj->m_id));
+    tablePtr.p->hashMapObjectId = hm_ptr.p->m_object_id;
+    tablePtr.p->hashMapVersion = hm_ptr.p->m_object_version;
   }
 
   if (tablePtr.p->fragmentType == DictTabInfo::HashMapPartition)
@@ -5476,24 +6165,22 @@ void Dbdict::handleTabInfoInit(Signal * signal, SchemaTransPtr & trans_ptr,
                CreateTableRef::InvalidHashMap);
 
     Ptr<Hash2FragmentMap> mapptr;
-    g_hash_map.getPtr(mapptr, hm_ptr.p->m_map_ptr_i);
+    ndbrequire(g_hash_map.getPtr(mapptr, hm_ptr.p->m_map_ptr_i));
 
     if (tablePtr.p->fragmentCount == 0)
     {
-      jam();
-      tablePtr.p->fragmentCount = mapptr.p->m_fragments;
+      tablePtr.p->fragmentCount =
+        get_default_fragments(signal,
+                              tablePtr.p->partitionBalance,
+                              0);
     }
-    else
+    if (tablePtr.p->partitionCount == 0)
     {
-      tabRequire(mapptr.p->m_fragments == tablePtr.p->fragmentCount,
-                 CreateTableRef::InvalidHashMap);
+      tablePtr.p->partitionCount = mapptr.p->m_fragments;
     }
   }
-
+  tablePtr.p->frmData = frmData;
   {
-    LocalRope frm(c_rope_pool, tablePtr.p->frmData);
-    tabRequire(frm.assign(c_tableDesc.FrmData, c_tableDesc.FrmLen),
-	       CreateTableRef::OutOfStringBuffer);
     LocalRope range(c_rope_pool, tablePtr.p->rangeData);
     tabRequire(range.assign((const char*)c_tableDesc.RangeListData,
                c_tableDesc.RangeListDataLen),
@@ -5537,11 +6224,10 @@ void Dbdict::handleTabInfoInit(Signal * signal, SchemaTransPtr & trans_ptr,
         ndbrequire(c_tableDesc.InsertTriggerId != RNIL);
         ndbrequire(c_tableDesc.UpdateTriggerId != RNIL);
         ndbrequire(c_tableDesc.DeleteTriggerId != RNIL);
-        ndbout_c("table: %u UPGRADE saving (%u/%u/%u)",
-                 schemaFileId,
-                 c_tableDesc.InsertTriggerId,
-                 c_tableDesc.UpdateTriggerId,
-                 c_tableDesc.DeleteTriggerId);
+        g_eventLogger->info("table: %u UPGRADE saving (%u/%u/%u)", schemaFileId,
+                            c_tableDesc.InsertTriggerId,
+                            c_tableDesc.UpdateTriggerId,
+                            c_tableDesc.DeleteTriggerId);
         infoEvent("table: %u UPGRADE saving (%u/%u/%u)",
                   schemaFileId,
                   c_tableDesc.InsertTriggerId,
@@ -5569,7 +6255,87 @@ void Dbdict::handleTabInfoInit(Signal * signal, SchemaTransPtr & trans_ptr,
   }
   tablePtr.p->buildTriggerId = RNIL;
 
+  if ((tablePtr.p->m_bits & TableRecord::TR_FullyReplicated) != 0)
+  {
+    jam();
+    tablePtr.p->fullyReplicatedTriggerId = c_tableDesc.FullyReplicatedTriggerId;
+  }
+
   handleTabInfo(it, parseP, c_tableDesc);
+
+  if (parseP->errorCode == 0)
+  {
+    if ((tablePtr.p->m_bits & TableRecord::TR_FullyReplicated) != 0)
+    {
+      switch (tablePtr.p->partitionBalance)
+      {
+        case NDB_PARTITION_BALANCE_FOR_RP_BY_NODE:
+        case NDB_PARTITION_BALANCE_FOR_RP_BY_LDM:
+        case NDB_PARTITION_BALANCE_FOR_RA_BY_NODE:
+        case NDB_PARTITION_BALANCE_FOR_RA_BY_LDM:
+        case NDB_PARTITION_BALANCE_FOR_RA_BY_LDM_X_2:
+        case NDB_PARTITION_BALANCE_FOR_RA_BY_LDM_X_3:
+        case NDB_PARTITION_BALANCE_FOR_RA_BY_LDM_X_4:
+        {
+          jam();
+          if (!restart)
+          {
+            tablePtr.p->fragmentCount =
+              get_default_fragments(signal,
+                                    tablePtr.p->partitionBalance,
+                                    0);
+            tablePtr.p->partitionCount =
+              get_default_partitions_fully_replicated(
+                  signal,
+                  tablePtr.p->partitionBalance);
+          }
+          D("Fully replicated table, partitionCount: " <<
+            tablePtr.p->partitionCount <<
+            " partitionBalance = " <<
+            getPartitionBalanceString(tablePtr.p->partitionBalance));
+          break;
+        }
+        default:
+        {
+          jam();
+          /**
+           * Cannot create fully replicated tables with specific fragment count
+           */
+          parseP->errorCode =
+            CreateTableRef::WrongPartitionBalanceFullyReplicated;
+          parseP->errorLine = __LINE__;
+          D("Creating fully replicated table failed. " <<
+            "Error Code " << parseP->errorCode <<
+            " Line: " << parseP->errorLine <<
+            " partitionCount: " <<
+            tablePtr.p->partitionCount <<
+            " partitionBalance = " <<
+            getPartitionBalanceString(tablePtr.p->partitionBalance));
+          break;
+        }
+      }
+    }
+    else
+    {
+      jam();
+      /**
+       * Tables with explicit partitioning could still have fragmentCount set
+       * to 0 here. So we will not check for fragmentCount != 0 until after
+       * we've also received the fragmentation parts.
+       *
+       * Explicit partitioning can for the moment not use
+       * ALTER TABLE algorithm=inplace ....
+       * so can check immediately after returning from this function in
+       * alterTable_parse.
+       */
+      tablePtr.p->partitionCount = tablePtr.p->fragmentCount;
+    }
+  }
+  D("handleTabInfoInit: tableId = " << tablePtr.i <<
+    "fragmentCount = " << tablePtr.p->fragmentCount <<
+    " partitionCount = " << tablePtr.p->partitionCount <<
+    " partitionBalance = " <<
+      getPartitionBalanceString(tablePtr.p->partitionBalance));
 
   if(parseP->errorCode != 0)
   {
@@ -5607,7 +6373,7 @@ Dbdict::upgrade_seizeTrigger(TableRecordPtr tabPtr,
   ndbrequire(deleteTriggerId == RNIL || deleteTriggerId < size);
 
   DictObjectPtr tab_obj_ptr;
-  c_obj_pool.getPtr(tab_obj_ptr, tabPtr.p->m_obj_ptr_i);
+  ndbrequire(c_obj_pool.getPtr(tab_obj_ptr, tabPtr.p->m_obj_ptr_i));
 
   TriggerRecordPtr triggerPtr;
   if (updateTriggerId != RNIL)
@@ -5647,7 +6413,7 @@ Dbdict::upgrade_seizeTrigger(TableRecordPtr tabPtr,
 
       obj_ptr.p->m_id = triggerPtr.p->triggerId;
       obj_ptr.p->m_type =TriggerInfo::getTriggerType(triggerPtr.p->triggerInfo);
-      link_object(obj_ptr, triggerPtr);
+      ndbrequire(link_object(obj_ptr, triggerPtr));
       c_obj_name_hash.add(obj_ptr);
       c_obj_id_hash.add(obj_ptr);
     }
@@ -5690,7 +6456,7 @@ Dbdict::upgrade_seizeTrigger(TableRecordPtr tabPtr,
 
       obj_ptr.p->m_id = triggerPtr.p->triggerId;
       obj_ptr.p->m_type =TriggerInfo::getTriggerType(triggerPtr.p->triggerInfo);
-      link_object(obj_ptr, triggerPtr);
+      ndbrequire(link_object(obj_ptr, triggerPtr));
       c_obj_name_hash.add(obj_ptr);
       c_obj_id_hash.add(obj_ptr);
     }
@@ -5728,8 +6494,7 @@ void Dbdict::handleTabInfo(SimpleProperties::Reader & it,
     DictTabInfo::Attribute attrDesc; attrDesc.init();
     status = SimpleProperties::unpack(it, &attrDesc,
 				      DictTabInfo::AttributeMapping,
-				      DictTabInfo::AttributeMappingSize,
-				      true, true);
+				      DictTabInfo::AttributeMappingSize);
 
     if(status != SimpleProperties::Break){
       parseP->errorCode = CreateTableRef::InvalidFormat;
@@ -5759,14 +6524,15 @@ void Dbdict::handleTabInfo(SimpleProperties::Reader & it,
       }
     }
 
-    list.seizeLast(attrPtr);
-    if(attrPtr.i == RNIL){
+    if (unlikely(!c_attributeRecordPool.seize(attrPtr)))
+    {
       jam();
       parseP->errorCode = CreateTableRef::NoMoreAttributeRecords;
       return;
     }
+    attrPtr.p = new (attrPtr.p) AttributeRecord();
+    list.addLast(attrPtr);
 
-    new (attrPtr.p) AttributeRecord();
     attrPtr.p->attributeDescriptor = 0x00012255; //Default value
     attrPtr.p->tupleKey = 0;
 
@@ -5951,35 +6717,16 @@ void Dbdict::handleTabInfo(SimpleProperties::Reader & it,
   tablePtr.p->tupKeyLength = keyLength;
   tablePtr.p->noOfNullBits = nullCount + nullBits;
 
-  tabRequire(recordLength<= MAX_TUPLE_SIZE_IN_WORDS,
+  tabRequire(recordLength <= MAX_TUPLE_SIZE_IN_WORDS,
+	     CreateTableRef::RecordTooBig);
+  tabRequire(attrCount <= MAX_ATTRIBUTES_IN_TABLE,
 	     CreateTableRef::RecordTooBig);
   tabRequire(keyLength <= MAX_KEY_SIZE_IN_WORDS,
 	     CreateTableRef::InvalidPrimaryKeySize);
   tabRequire(keyLength > 0,
 	     CreateTableRef::InvalidPrimaryKeySize);
-  tabRequire(CHECK_SUMA_MESSAGE_SIZE(keyCount, keyLength, attrCount, recordLength),
-             CreateTableRef::RecordTooBig);
-
-  /* Check that all currently running nodes data support
-   * table features
-   */
-  for (Uint32 nodeId=1; nodeId < MAX_NODES; nodeId++)
-  {
-    const NodeInfo& ni = getNodeInfo(nodeId);
-
-    if (ni.m_connected &&
-        (ni.m_type == NODE_TYPE_DB))
-    {
-      /* Check that all nodes support extra bits */
-      if (tablePtr.p->m_extra_row_gci_bits ||
-          tablePtr.p->m_extra_row_author_bits)
-      {
-        tabRequire(ndb_tup_extrabits(ni.m_version),
-                   CreateTableRef::FeatureRequiresUpgrade);
-      }
-    }
-  }
-
+  tabRequire(keyCount <= MAX_ATTRIBUTES_IN_INDEX,
+             CreateTableRef::InvalidPrimaryKeySize);
 
   if(tablePtr.p->m_tablespace_id != RNIL || counts[3] || counts[4])
   {
@@ -6057,6 +6804,7 @@ Dbdict::wait_gcp(Signal* signal, SchemaOpPtr op_ptr, Uint32 flags)
 void Dbdict::execWAIT_GCP_CONF(Signal* signal)
 {
   WaitGCPConf* conf = (WaitGCPConf*)signal->getDataPtr();
+  D("execWAIT_GCP_CONF");
   handleDictConf(signal, conf);
 }//execWAIT_GCP_CONF()
 
@@ -6066,6 +6814,7 @@ void Dbdict::execWAIT_GCP_CONF(Signal* signal)
 void Dbdict::execWAIT_GCP_REF(Signal* signal)
 {
   jamEntry();
+  D("execWAIT_GCP_REF");
   WaitGCPRef* ref = (WaitGCPRef*)signal->getDataPtr();
   handleDictRef(signal, ref);
 }//execWAIT_GCP_REF()
@@ -6098,12 +6847,14 @@ bool
 Dbdict::createTable_seize(SchemaOpPtr op_ptr)
 {
   return seizeOpRec<CreateTableRec>(op_ptr);
+  D("createTable_seize");
 }
 
 void
 Dbdict::createTable_release(SchemaOpPtr op_ptr)
 {
   CreateTableRecPtr createTabPtr;
+  D("createTable_release");
   getOpRec(op_ptr, createTabPtr);
   if (createTabPtr.p->m_tabInfoPtrI != RNIL) {
     jam();
@@ -6131,6 +6882,15 @@ Dbdict::execCREATE_TABLE_REQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  if(ERROR_INSERTED(6217))
+  {
+    g_eventLogger->info("Delaying GSN_CREATE_TABLE_REQ");
+    sendSignalWithDelay(reference(), GSN_CREATE_TABLE_REQ, signal, 1000,
+                       signal->length(),
+                       &handle);
+    return;
+  }
+
 
   if (check_sender_version(signal, MAKE_VERSION(6,4,0)) < 0)
   {
@@ -6142,6 +6902,7 @@ Dbdict::execCREATE_TABLE_REQ(Signal* signal)
     CreateTableReq* tmp = (CreateTableReq*)signal->getDataPtr();
     do_swap(tmp->senderRef, tmp->senderData);
   }
+  D("execCREATE_TABLE_REQ");
 
   const CreateTableReq req_copy =
     *(const CreateTableReq*)signal->getDataPtr();
@@ -6194,6 +6955,8 @@ Dbdict::get_fragmentation(Signal* signal, Uint32 tableId)
   req->noOfFragments = 0;
   req->primaryTableId = tableId;
   req->requestInfo = CreateFragmentationReq::RI_GET_FRAGMENTATION;
+  req->partitionBalance = 0; /* Ignored for get_fragmentation */
+  req->partitionCount = 0; /* Ignored for get_fragmentation */
   EXECUTE_DIRECT(DBDICT, GSN_CREATE_FRAGMENTATION_REQ, signal,
                  CreateFragmentationReq::SignalLength);
 
@@ -6215,6 +6978,7 @@ Dbdict::create_fragmentation(Signal* signal,
   frag_req->noOfFragments = tabPtr.p->fragmentCount;
   frag_req->fragmentationType = tabPtr.p->fragmentType;
   frag_req->requestInfo = flags;
+  frag_req->partitionBalance = tabPtr.p->partitionBalance;
 
   if (tabPtr.p->hashMapObjectId != RNIL)
   {
@@ -6240,11 +7004,12 @@ Dbdict::create_fragmentation(Signal* signal,
     return CreateTableRef::InvalidFormat;
   }
 
-  if (tabPtr.p->isOrderedIndex()) {
+  if (tabPtr.p->isOrderedIndex())
+  {
     jam();
     // ordered index has same fragmentation as the table
     frag_req->primaryTableId = tabPtr.p->primaryTableId;
-    frag_req->fragmentationType = DictTabInfo::DistrKeyOrderedIndex;
+    frag_req->fragmentationType = tabPtr.p->fragmentType;
   }
   else if (tabPtr.p->isHashIndex())
   {
@@ -6265,6 +7030,16 @@ Dbdict::create_fragmentation(Signal* signal,
      * what we wanted from it to avoid other side effects.
      */
     tabPtr.p->primaryTableId = RNIL;
+  }
+  if ((tabPtr.p->m_bits & TableRecord::TR_FullyReplicated) == 0 ||
+      frag_req->noOfFragments == 0)
+  {
+    frag_req->partitionCount = frag_req->noOfFragments;
+  }
+  else
+  {
+    assert(tabPtr.p->partitionCount != 0);
+    frag_req->partitionCount = tabPtr.p->partitionCount;
   }
 
   EXECUTE_DIRECT(DBDICT, GSN_CREATE_FRAGMENTATION_REQ, signal,
@@ -6335,8 +7110,10 @@ Dbdict::createTable_parse(Signal* signal, bool master,
         releaseTableObject(parseRecord.tablePtr.i, true);
       }
       setError(error, parseRecord);
-      BaseString::snprintf(error.errorObjectName, sizeof(error.errorObjectName),
-                           "%s", c_tableDesc.TableName);
+      BaseString::snprintf(error.errorObjectName,
+                           sizeof(error.errorObjectName),
+                           "%s",
+                           c_tableDesc.TableName);
       return;
     }
 
@@ -6371,8 +7148,12 @@ Dbdict::createTable_parse(Signal* signal, bool master,
 
     // create fragmentation via DIH (no changes in DIH)
     Uint16* frag_data = (Uint16*)(signal->getDataPtr()+25);
-    Uint32 err = create_fragmentation(signal, tabPtr,
-                                      c_fragData, c_fragDataLen / 2);
+    Uint32 err = create_fragmentation(
+                     signal,
+                     tabPtr,
+                     c_fragData,
+                     c_fragDataLen / 2,
+                     CreateFragmentationReq::RI_CREATE_FRAGMENTATION);
     if (err)
     {
       jam();
@@ -6392,6 +7173,20 @@ Dbdict::createTable_parse(Signal* signal, bool master,
 
       // save fragment count
       tabPtr.p->fragmentCount = frag_data[1];
+
+      if ((tabPtr.p->m_bits & TableRecord::TR_FullyReplicated) == 0)
+      {
+        jam();
+        tabPtr.p->partitionCount = tabPtr.p->fragmentCount;
+      }
+      /**
+       * At this point it should not be possible for partitionCount
+       * to be 0 anymore.
+       */
+      ndbrequire(tabPtr.p->partitionCount != 0);
+      D("3: tableId = " << tabPtr.i <<
+        "fragmentCount = " << tabPtr.p->fragmentCount <<
+        " partitionCount = " << tabPtr.p->partitionCount);
     }
 
     // dump table record back into DictTabInfo
@@ -6465,6 +7260,7 @@ Dbdict::createTable_parse(Signal* signal, bool master,
     }
 
     TableRecordPtr tabPtr = parseRecord.tablePtr;
+    ndbrequire(tabPtr.p->partitionCount != 0);
 
     // link operation to object seized in handleTabInfoInit
     {
@@ -6477,7 +7273,7 @@ Dbdict::createTable_parse(Signal* signal, bool master,
 
   {
     SegmentedSectionPtr ptr;
-    handle.getSection(ptr, CreateTabReq::DICT_TAB_INFO);
+    ndbrequire(handle.getSection(ptr, CreateTabReq::DICT_TAB_INFO));
     if (ptr.sz > MAX_WORDS_META_FILE)
     {
       jam();
@@ -6538,8 +7334,137 @@ bool
 Dbdict::createTable_subOps(Signal* signal, SchemaOpPtr op_ptr)
 {
   D("createTable_subOps" << V(op_ptr.i) << *op_ptr.p);
+
+  CreateTableRecPtr createTabPtr;
+  getOpRec(op_ptr, createTabPtr);
+
+  Uint32 tableId = createTabPtr.p->m_request.tableId;
+  TableRecordPtr tabPtr;
+  bool ok = find_object(tabPtr, tableId);
+  ndbrequire(ok);
+
+  if ((tabPtr.p->m_bits & TableRecord::TR_FullyReplicated) != 0)
+  {
+    jam();
+    if (createTabPtr.p->m_fully_replicated_trigger == false)
+    {
+      jam();
+      Callback c = {
+        safe_cast(&Dbdict::createTable_fromCreateTrigger),
+        op_ptr.p->op_key
+      };
+      op_ptr.p->m_callback = c;
+
+      createTabPtr.p->m_fully_replicated_trigger = true;
+      createTable_toCreateTrigger(signal, op_ptr);
+      return true;
+    }
+  }
+
   // wl3600_todo blobs
   return false;
+}
+
+void
+Dbdict::createTable_toCreateTrigger(Signal* signal, SchemaOpPtr op_ptr)
+{
+  D("createTable_toCreateTrigger");
+
+  CreateTableRecPtr createTabPtr;
+  getOpRec(op_ptr, createTabPtr);
+  SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
+  CreateTabReq* impl_req = &createTabPtr.p->m_request;
+
+  Uint32 tableId = createTabPtr.p->m_request.tableId;
+  TableRecordPtr tabPtr;
+  bool ok = find_object(tabPtr, tableId);
+  ndbrequire(ok);
+
+  const TriggerTmpl& triggerTmpl = g_fullyReplicatedTriggerTmp[0];
+
+  CreateTrigReq* req = CAST_PTR(CreateTrigReq, signal->getDataPtrSend());
+  Uint32 requestInfo = 0;
+  if (op_ptr.p->m_restart)
+  {
+    jam();
+    requestInfo |= DictSignal::RF_LOCAL_TRANS;
+  }
+  DictSignal::setRequestType(requestInfo, CreateTrigReq::CreateTriggerOnline);
+
+  req->clientRef = reference();
+  req->clientData = op_ptr.p->op_key;
+  req->transId = trans_ptr.p->m_transId;
+  req->transKey = trans_ptr.p->trans_key;
+  req->requestInfo = requestInfo;
+  req->tableId = impl_req->tableId;
+  req->tableVersion = impl_req->tableVersion;
+  req->indexId = RNIL;
+  req->indexVersion = RNIL;
+  req->triggerNo = 0;
+  Uint32 forceTriggerId = tabPtr.p->fullyReplicatedTriggerId;
+  D(V(getNodeState().startLevel) << V(NodeState::SL_STARTED));
+  if (getNodeState().startLevel == NodeState::SL_STARTED)
+  {
+    ndbrequire(forceTriggerId == RNIL);
+  }
+  req->forceTriggerId = forceTriggerId;
+
+  TriggerInfo::packTriggerInfo(req->triggerInfo, triggerTmpl.triggerInfo);
+
+  req->receiverRef = 0;
+
+  char triggerName[MAX_TAB_NAME_SIZE];
+  sprintf(triggerName, triggerTmpl.nameFormat, impl_req->tableId);
+
+  // name section
+  Uint32 buffer[2 + ((MAX_TAB_NAME_SIZE + 3) >> 2)];    // SP string
+  LinearWriter w(buffer, sizeof(buffer) >> 2);
+  w.reset();
+  w.add(DictTabInfo::TableName, triggerName);
+  LinearSectionPtr lsPtr[3];
+  lsPtr[0].p = buffer;
+  lsPtr[0].sz = w.getWordsUsed();
+
+  AttributeMask mask;
+  mask.clear();
+  lsPtr[1].p = mask.rep.data;
+  lsPtr[1].sz = mask.getSizeInWords();
+
+  sendSignal(reference(), GSN_CREATE_TRIG_REQ, signal,
+             CreateTrigReq::SignalLength, JBB, lsPtr, 2);
+}
+
+void
+Dbdict::createTable_fromCreateTrigger(Signal* signal,
+                                      Uint32 op_key,
+                                      Uint32 ret)
+{
+  jamEntry();
+
+  SchemaOpPtr op_ptr;
+  CreateTableRecPtr createTabPtr;
+
+  ndbrequire(findSchemaOp(op_ptr, createTabPtr, op_key));
+  SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
+
+  if (ret == 0)
+  {
+    const CreateTrigConf* conf =
+      (const CreateTrigConf*)signal->getDataPtr();
+
+    ndbrequire(conf->transId == trans_ptr.p->m_transId);
+
+    createSubOps(signal, op_ptr);
+  }
+  else
+  {
+    jam();
+    const CreateTrigRef* ref =
+      (const CreateTrigRef*)signal->getDataPtr();
+    ErrorInfo error;
+    setError(error, ref);
+    abortSubOps(signal, op_ptr, error);
+  }
 }
 
 void
@@ -6599,7 +7524,28 @@ Dbdict::createTable_prepare(Signal* signal, SchemaOpPtr op_ptr)
   cb.m_callbackData = op_ptr.p->op_key;
   cb.m_callbackFunction = safe_cast(&Dbdict::createTab_writeTableConf);
 
-  if (ZRESTART_NO_WRITE_AFTER_READ && op_ptr.p->m_restart == 1)
+  if (createTabPtr.p->m_modified_by_subOps)
+  {
+    jam();
+    /**
+     * The table object was modified by subop,
+     *   i.e we need to regenerate DICT_TAB_INFO
+     */
+    SimplePropertiesSectionWriter w(* this);
+    packTableIntoPages(w, tabPtr);
+
+    SegmentedSectionPtr ss_ptr;
+    w.getPtr(ss_ptr);
+    bool ok = replaceOpSection(op_ptr, CreateTabReq::DICT_TAB_INFO, ss_ptr);
+    releaseSection(ss_ptr.i);
+
+    if (!ok)
+    {
+      jam();
+      setError(op_ptr, SchemaTransBeginRef::OutOfSchemaTransMemory, __LINE__);
+    }
+  }
+  else if (ZRESTART_NO_WRITE_AFTER_READ && op_ptr.p->m_restart == 1)
   {
     jam();
     /**
@@ -6635,8 +7581,7 @@ Dbdict::createTab_writeTableConf(Signal* signal,
 
   SchemaOpPtr op_ptr;
   CreateTableRecPtr createTabPtr;
-  findSchemaOp(op_ptr, createTabPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createTabPtr, op_key));
 
   OpSection& fragSec = op_ptr.p->m_section[CreateTabReq::FRAGMENTATION];
   if (op_ptr.p->m_restart)
@@ -6691,7 +7636,8 @@ Dbdict::createTab_local(Signal* signal,
   req->forceVarPartFlag = !!(tabPtr.p->m_bits& TableRecord::TR_ForceVarPart);
   req->noOfNullAttributes = tabPtr.p->noOfNullBits;
   req->noOfKeyAttr = tabPtr.p->noOfPrimkey;
-  req->checksumIndicator = 1;
+  req->checksumIndicator =
+    ((tabPtr.p->m_bits & TableRecord::TR_RowChecksum) == 0) ? 0 : 1;
   req->GCPIndicator = 1 + tabPtr.p->m_extra_row_gci_bits;
   req->noOfAttributes = tabPtr.p->noOfAttributes;
   req->extraRowAuthorBits = tabPtr.p->m_extra_row_author_bits;
@@ -6761,12 +7707,12 @@ Dbdict::execCREATE_TAB_REF(Signal* signal)
 {
   jamEntry();
 
+  D("execCREATE_TAB_REF");
   CreateTabRef * const ref = (CreateTabRef*)signal->getDataPtr();
 
   SchemaOpPtr op_ptr;
   CreateTableRecPtr createTabPtr;
-  findSchemaOp(op_ptr, createTabPtr, ref->senderData);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createTabPtr, ref->senderData));
 
   setError(op_ptr, ref->errorCode, __LINE__);
   execute(signal, createTabPtr.p->m_callback, 0);
@@ -6777,12 +7723,12 @@ Dbdict::execCREATE_TAB_CONF(Signal* signal)
 {
   jamEntry();
 
+  D("execCREATE_TAB_CONF");
   CreateTabConf* conf = (CreateTabConf*)signal->getDataPtr();
 
   SchemaOpPtr op_ptr;
   CreateTableRecPtr createTabPtr;
-  findSchemaOp(op_ptr, createTabPtr, conf->senderData);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createTabPtr, conf->senderData));
 
   createTabPtr.p->m_lqhFragPtr = conf->lqhConnectPtr;
 
@@ -6816,7 +7762,7 @@ Dbdict::sendLQHADDATTRREQ(Signal* signal,
   for(i = 0; i<LqhAddAttrReq::MAX_ATTRIBUTES && attributePtrI != RNIL; i++){
     jam();
     AttributeRecordPtr attrPtr;
-    c_attributeRecordPool.getPtr(attrPtr, attributePtrI);
+    ndbrequire(c_attributeRecordPool.getPtr(attrPtr, attributePtrI));
     LqhAddAttrReq::Entry& entry = req->attributes[i];
     entry.attrId = attrPtr.p->attributeId;
     entry.attrDescriptor = attrPtr.p->attributeDescriptor;
@@ -6891,10 +7837,10 @@ Dbdict::execLQHADDATTCONF(Signal * signal)
   jamEntry();
   LqhAddAttrConf * const conf = (LqhAddAttrConf*)signal->getDataPtr();
 
+  D("execLQHADDATTCONF");
   SchemaOpPtr op_ptr;
   CreateTableRecPtr createTabPtr;
-  findSchemaOp(op_ptr, createTabPtr, conf->senderData);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createTabPtr, conf->senderData));
 
   const Uint32 nextAttrPtr = conf->senderAttrPtr;
   if(nextAttrPtr != RNIL){
@@ -6914,8 +7860,7 @@ Dbdict::execLQHADDATTREF(Signal * signal)
 
   SchemaOpPtr op_ptr;
   CreateTableRecPtr createTabPtr;
-  findSchemaOp(op_ptr, createTabPtr, ref->senderData);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createTabPtr, ref->senderData));
 
   setError(op_ptr, ref->errorCode, __LINE__);
 
@@ -6956,6 +7901,23 @@ Dbdict::createTab_dih(Signal* signal, SchemaOpPtr op_ptr)
   // no transaction for restart tab (should add one)
   req->schemaTransId = !trans_ptr.isNull() ? trans_ptr.p->m_transId : 0;
 
+  if (!tabPtr.p->isOrderedIndex())
+  {
+    jam();
+    req->fullyReplicated =
+      ((tabPtr.p->m_bits & TableRecord::TR_FullyReplicated) != 0);
+    req->partitionCount = tabPtr.p->partitionCount;
+  }
+  else
+  {
+    jam();
+    TableRecordPtr primTabPtr;
+    ndbrequire(find_object(primTabPtr, tabPtr.p->primaryTableId));
+    req->fullyReplicated =
+      ((primTabPtr.p->m_bits & TableRecord::TR_FullyReplicated) != 0);
+    req->partitionCount = primTabPtr.p->partitionCount;
+  }
+
   if (tabPtr.p->hashMapObjectId != RNIL)
   {
     HashMapRecordPtr hm_ptr;
@@ -6979,7 +7941,7 @@ Dbdict::createTab_dih(Signal* signal, SchemaOpPtr op_ptr)
     // wl3600_todo add ndbrequire on SR, NR
     if (size != 0) {
       jam();
-      LocalArenaPoolImpl op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena,c_opSectionBufferPool);
+      LocalArenaPool<OpSectionSegment> op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena,c_opSectionBufferPool);
       bool ok = copyOut(op_sec_pool, fragSec, page, size);
       ndbrequire(ok);
       ptr[noOfSections].sz = size;
@@ -7038,6 +8000,9 @@ Dbdict::execADD_FRAGREQ(Signal* signal)
   Uint32 startGci = req->startGci;
   Uint32 logPart = req->logPartId;
   Uint32 changeMask = req->changeMask;
+  Uint32 partitionId = req->partitionId;
+  Uint32 createGci = req->createGci;
+  D("execADD_FRAGREQ(" << tableId << "), dihPtr = " << dihPtr);
 
   ndbrequire(node == getOwnNodeId());
 
@@ -7047,12 +8012,12 @@ Dbdict::execADD_FRAGREQ(Signal* signal)
   {
     bool ok = find_object(tabPtr, tableId);
     ndbrequire(ok);
-    if (DictTabInfo::isTable(tabPtr.p->tableType))
+    if (DictTabInfo::isTable(tabPtr.p->tableType) ||
+        DictTabInfo::isUniqueIndex(tabPtr.p->tableType))
     {
       jam();
       AlterTableRecPtr alterTabPtr;
-      findSchemaOp(op_ptr, alterTabPtr, senderData);
-      ndbrequire(!op_ptr.isNull());
+      ndbrequire(findSchemaOp(op_ptr, alterTabPtr, senderData));
       alterTabPtr.p->m_dihAddFragPtr = dihPtr;
       tabPtr.i = alterTabPtr.p->m_newTablePtrI;
       c_tableRecordPool_.getPtr(tabPtr);
@@ -7062,8 +8027,7 @@ Dbdict::execADD_FRAGREQ(Signal* signal)
       jam();
       ndbrequire(DictTabInfo::isOrderedIndex(tabPtr.p->tableType));
       AlterIndexRecPtr alterIndexPtr;
-      findSchemaOp(op_ptr, alterIndexPtr, senderData);
-      ndbrequire(!op_ptr.isNull());
+      ndbrequire(findSchemaOp(op_ptr, alterIndexPtr, senderData));
       alterIndexPtr.p->m_dihAddFragPtr = dihPtr;
     }
   }
@@ -7071,8 +8035,7 @@ Dbdict::execADD_FRAGREQ(Signal* signal)
   {
     jam();
     CreateTableRecPtr createTabPtr;
-    findSchemaOp(op_ptr, createTabPtr, senderData);
-    ndbrequire(!op_ptr.isNull());
+    ndbrequire(findSchemaOp(op_ptr, createTabPtr, senderData));
     createTabPtr.p->m_dihAddFragPtr = dihPtr;
     bool ok = find_object(tabPtr, tableId);
     ndbrequire(ok);
@@ -7123,6 +8086,8 @@ Dbdict::execADD_FRAGREQ(Signal* signal)
     req->tablespace_id = tabPtr.p->m_tablespace_id;
     req->logPartId = logPart;
     req->changeMask = changeMask;
+    req->partitionId = partitionId;
+    req->createGci = createGci;
     sendSignal(DBLQH_REF, GSN_LQHFRAGREQ, signal,
 	       LqhFragReq::SignalLength, JBB);
   }
@@ -7134,6 +8099,7 @@ Dbdict::execLQHFRAGCONF(Signal * signal)
   jamEntry();
   LqhFragConf * const conf = (LqhFragConf*)signal->getDataPtr();
 
+  D("execLQHFRAGCONF");
   Uint32 dihPtr;
   Uint32 fragId = conf->fragId;
   Uint32 tableId = conf->tableId;
@@ -7145,11 +8111,11 @@ Dbdict::execLQHFRAGCONF(Signal * signal)
     TableRecordPtr tabPtr;
     bool ok = find_object(tabPtr, tableId);
     ndbrequire(ok);
-    if (DictTabInfo::isTable(tabPtr.p->tableType))
+    if (DictTabInfo::isTable(tabPtr.p->tableType) ||
+        DictTabInfo::isUniqueIndex(tabPtr.p->tableType))
     {
       AlterTableRecPtr alterTabPtr;
-      findSchemaOp(op_ptr, alterTabPtr, conf->senderData);
-      ndbrequire(!op_ptr.isNull());
+      ndbrequire(findSchemaOp(op_ptr, alterTabPtr, conf->senderData));
       dihPtr = alterTabPtr.p->m_dihAddFragPtr;
     }
     else
@@ -7157,8 +8123,7 @@ Dbdict::execLQHFRAGCONF(Signal * signal)
       jam();
       ndbrequire(DictTabInfo::isOrderedIndex(tabPtr.p->tableType));
       AlterIndexRecPtr alterIndexPtr;
-      findSchemaOp(op_ptr, alterIndexPtr, conf->senderData);
-      ndbrequire(!op_ptr.isNull());
+      ndbrequire(findSchemaOp(op_ptr, alterIndexPtr, conf->senderData));
       dihPtr = alterIndexPtr.p->m_dihAddFragPtr;
     }
   }
@@ -7167,8 +8132,7 @@ Dbdict::execLQHFRAGCONF(Signal * signal)
     jam();
     SchemaOpPtr op_ptr;
     CreateTableRecPtr createTabPtr;
-    findSchemaOp(op_ptr, createTabPtr, conf->senderData);
-    ndbrequire(!op_ptr.isNull());
+    ndbrequire(findSchemaOp(op_ptr, createTabPtr, conf->senderData));
 
     createTabPtr.p->m_lqhFragPtr = conf->lqhFragPtr;
     dihPtr = createTabPtr.p->m_dihAddFragPtr;
@@ -7189,6 +8153,7 @@ Dbdict::execLQHFRAGREF(Signal * signal)
   jamEntry();
   LqhFragRef * const ref = (LqhFragRef*)signal->getDataPtr();
 
+  D("execLQHFRAGREF");
   Uint32 dihPtr;
   Uint32 tableId = ref->tableId;
   Uint32 fragId = ref->fragId;
@@ -7199,12 +8164,12 @@ Dbdict::execLQHFRAGREF(Signal * signal)
     TableRecordPtr tabPtr;
     bool ok = find_object(tabPtr, tableId);
     ndbrequire(ok);
-    if (DictTabInfo::isTable(tabPtr.p->tableType))
+    if (DictTabInfo::isTable(tabPtr.p->tableType) ||
+        DictTabInfo::isUniqueIndex(tabPtr.p->tableType))
     {
       jam();
       AlterTableRecPtr alterTabPtr;
-      findSchemaOp(op_ptr, alterTabPtr, ref->senderData);
-      ndbrequire(!op_ptr.isNull());
+      ndbrequire(findSchemaOp(op_ptr, alterTabPtr, ref->senderData));
       setError(op_ptr, ref->errorCode, __LINE__);
       dihPtr = alterTabPtr.p->m_dihAddFragPtr;
     }
@@ -7212,8 +8177,7 @@ Dbdict::execLQHFRAGREF(Signal * signal)
     {
       jam();
       AlterIndexRecPtr alterIndexPtr;
-      findSchemaOp(op_ptr, alterIndexPtr, ref->senderData);
-      ndbrequire(!op_ptr.isNull());
+      ndbrequire(findSchemaOp(op_ptr, alterIndexPtr, ref->senderData));
       setError(op_ptr, ref->errorCode, __LINE__);
       dihPtr = alterIndexPtr.p->m_dihAddFragPtr;
     }
@@ -7223,8 +8187,7 @@ Dbdict::execLQHFRAGREF(Signal * signal)
     jam();
     SchemaOpPtr op_ptr;
     CreateTableRecPtr createTabPtr;
-    findSchemaOp(op_ptr, createTabPtr, ref->senderData);
-    ndbrequire(!op_ptr.isNull());
+    ndbrequire(findSchemaOp(op_ptr, createTabPtr, ref->senderData));
     setError(op_ptr, ref->errorCode, __LINE__);
     dihPtr = createTabPtr.p->m_dihAddFragPtr;
   }
@@ -7247,8 +8210,8 @@ Dbdict::execDIADDTABCONF(Signal* signal)
 
   SchemaOpPtr op_ptr;
   CreateTableRecPtr createTabPtr;
-  findSchemaOp(op_ptr, createTabPtr, conf->senderData);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createTabPtr, conf->senderData));
+  D("Commit (TAB_COMMITREQ) in LQH");
 
   signal->theData[0] = op_ptr.p->op_key;
   signal->theData[1] = reference();
@@ -7266,8 +8229,7 @@ Dbdict::execDIADDTABREF(Signal* signal)
 
   SchemaOpPtr op_ptr;
   CreateTableRecPtr createTabPtr;
-  findSchemaOp(op_ptr, createTabPtr, ref->senderData);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createTabPtr, ref->senderData));
 
   setError(op_ptr, ref->errorCode, __LINE__);
   execute(signal, createTabPtr.p->m_callback, 0);
@@ -7281,8 +8243,7 @@ Dbdict::execTAB_COMMITCONF(Signal* signal)
 
   SchemaOpPtr op_ptr;
   CreateTableRecPtr createTabPtr;
-  findSchemaOp(op_ptr, createTabPtr, signal->theData[0]);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createTabPtr, signal->theData[0]));
   //const CreateTabReq* impl_req = &createTabPtr.p->m_request;
 
   TableRecordPtr tabPtr;
@@ -7292,6 +8253,7 @@ Dbdict::execTAB_COMMITCONF(Signal* signal)
   if (refToBlock(signal->getSendersBlockRef()) == DBLQH)
   {
     jam();
+    D("Prepare (TC_SCHVERREQ) in SPJ");
     // prepare table in DBSPJ
     TcSchVerReq * req = (TcSchVerReq*)signal->getDataPtr();
     req->tableId = createTabPtr.p->m_request.tableId;
@@ -7304,13 +8266,26 @@ Dbdict::execTAB_COMMITCONF(Signal* signal)
     req->singleUserMode = (Uint32)tabPtr.p->singleUserMode;
     req->userDefinedPartition = (tabPtr.p->fragmentType == DictTabInfo::UserDefined);
 
-    if (DictTabInfo::isOrderedIndex(tabPtr.p->tableType))
+    if (!DictTabInfo::isOrderedIndex(tabPtr.p->tableType))
+    {
+      jam();
+      req->readBackup = 
+        (Uint32)!!(tabPtr.p->m_bits & TableRecord::TR_ReadBackup);
+      req->fullyReplicated =
+        (Uint32)((tabPtr.p->m_bits & TableRecord::TR_FullyReplicated) != 0);
+    }
+    else
     {
       jam();
       TableRecordPtr basePtr;
       bool ok = find_object(basePtr, tabPtr.p->primaryTableId);
       ndbrequire(ok);
       req->userDefinedPartition = (basePtr.p->fragmentType == DictTabInfo::UserDefined);
+
+      req->readBackup = 
+        (Uint32)!!(basePtr.p->m_bits & TableRecord::TR_ReadBackup);
+      req->fullyReplicated = (Uint32)
+        ((basePtr.p->m_bits & TableRecord::TR_FullyReplicated) != 0);
     }
 
     sendSignal(DBSPJ_REF, GSN_TC_SCHVERREQ, signal,
@@ -7322,6 +8297,7 @@ Dbdict::execTAB_COMMITCONF(Signal* signal)
   {
     jam();
     // commit table in DBSPJ
+    D("Commit (TAB_COMMITREQ) in SPJ");
     signal->theData[0] = op_ptr.p->op_key;
     signal->theData[1] = reference();
     signal->theData[2] = createTabPtr.p->m_request.tableId;
@@ -7333,6 +8309,7 @@ Dbdict::execTAB_COMMITCONF(Signal* signal)
   {
     jam();
     // commit table in DBTC
+    D("Commit (TAB_COMMITREQ) in TC");
     signal->theData[0] = op_ptr.p->op_key;
     signal->theData[1] = reference();
     signal->theData[2] = createTabPtr.p->m_request.tableId;
@@ -7343,17 +8320,18 @@ Dbdict::execTAB_COMMITCONF(Signal* signal)
   if (refToBlock(signal->getSendersBlockRef()) == DBTC)
   {
     jam();
+    D("Committed table in DIH, SPJ, TC");
     execute(signal, createTabPtr.p->m_callback, 0);
     return;
   }
 
-  ndbrequire(false);
+  ndbabort();
 }
 
 void
 Dbdict::execTAB_COMMITREF(Signal* signal) {
   jamEntry();
-  ndbrequire(false);
+  ndbabort();
 }//execTAB_COMMITREF()
 
 void
@@ -7365,8 +8343,7 @@ Dbdict::createTab_localComplete(Signal* signal,
 
   SchemaOpPtr op_ptr;
   CreateTableRecPtr createTabPtr;
-  findSchemaOp(op_ptr, createTabPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createTabPtr, op_key));
   //const CreateTabReq* impl_req = &createTabPtr.p->m_request;
 
   //@todo check for master failed
@@ -7428,6 +8405,7 @@ Dbdict::createTab_activate(Signal* signal, SchemaOpPtr op_ptr,
   getOpRec(op_ptr, createTabPtr);
   createTabPtr.p->m_callback = * c;
 
+  D("Commit (TAB_COMMITREQ) in DIH");
   signal->theData[0] = op_ptr.p->op_key;
   signal->theData[1] = reference();
   signal->theData[2] = createTabPtr.p->m_request.tableId;
@@ -7441,8 +8419,7 @@ Dbdict::execTC_SCHVERCONF(Signal* signal)
 
   SchemaOpPtr op_ptr;
   CreateTableRecPtr createTabPtr;
-  findSchemaOp(op_ptr, createTabPtr, signal->theData[1]);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createTabPtr, signal->theData[1]));
 
   if (refToBlock(signal->getSendersBlockRef()) == DBSPJ)
   {
@@ -7451,6 +8428,7 @@ Dbdict::execTC_SCHVERCONF(Signal* signal)
     TableRecordPtr tabPtr;
     bool ok = find_object(tabPtr, createTabPtr.p->m_request.tableId);
     ndbrequire(ok);
+    D("Prepare (TC_SCHVERREQ) in TC");
 
     TcSchVerReq * req = (TcSchVerReq*)signal->getDataPtr();
     req->tableId = createTabPtr.p->m_request.tableId;
@@ -7470,6 +8448,18 @@ Dbdict::execTC_SCHVERCONF(Signal* signal)
       bool ok = find_object(basePtr, tabPtr.p->primaryTableId);
       ndbrequire(ok);
       req->userDefinedPartition = (basePtr.p->fragmentType == DictTabInfo::UserDefined);
+      req->readBackup = 
+        (Uint32)!!(basePtr.p->m_bits & TableRecord::TR_ReadBackup);
+      req->fullyReplicated = (Uint32)
+        ((basePtr.p->m_bits & TableRecord::TR_FullyReplicated) != 0);
+    }
+    else
+    {
+      jam();
+      req->readBackup = 
+        (Uint32)!!(tabPtr.p->m_bits & TableRecord::TR_ReadBackup);
+      req->fullyReplicated =
+        (Uint32)((tabPtr.p->m_bits & TableRecord::TR_FullyReplicated) != 0);
     }
 
     sendSignal(DBTC_REF, GSN_TC_SCHVERREQ, signal,
@@ -7489,8 +8479,7 @@ Dbdict::createTab_alterComplete(Signal* signal,
 
   SchemaOpPtr op_ptr;
   CreateTableRecPtr createTabPtr;
-  findSchemaOp(op_ptr, createTabPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createTabPtr, op_key));
   const CreateTabReq* impl_req = &createTabPtr.p->m_request;
 
   TableRecordPtr tabPtr;
@@ -7639,8 +8628,7 @@ Dbdict::createTable_abortLocalConf(Signal* signal,
 
   SchemaOpPtr oplnk_ptr;
   DropTableRecPtr dropTabPtr;
-  findSchemaOp(oplnk_ptr, dropTabPtr, oplnk_key);
-  ndbrequire(!oplnk_ptr.isNull());
+  ndbrequire(findSchemaOp(oplnk_ptr, dropTabPtr, oplnk_key));
 
   SchemaOpPtr op_ptr = oplnk_ptr.p->m_opbck_ptr;
   CreateTableRecPtr createTabPtr;
@@ -7665,26 +8653,27 @@ void
 Dbdict::execCREATE_FRAGMENTATION_REF(Signal * signal)
 {
   // currently not received
-  ndbrequire(false);
+  ndbabort();
 }
 
 void
 Dbdict::execCREATE_FRAGMENTATION_CONF(Signal* signal)
 {
   // currently not received
-  ndbrequire(false);
+  ndbabort();
 }
 
 void
 Dbdict::execCREATE_TAB_REQ(Signal* signal)
 {
   // no longer received
-  ndbrequire(false);
+  ndbabort();
 }
 
 void Dbdict::execCREATE_TABLE_CONF(Signal* signal)
 {
   jamEntry();
+  D("execCREATE_TABLE_CONF");
   const CreateTableConf* conf = (const CreateTableConf*)signal->getDataPtr();
   handleDictConf(signal, conf);
 }
@@ -7692,6 +8681,7 @@ void Dbdict::execCREATE_TABLE_CONF(Signal* signal)
 void Dbdict::execCREATE_TABLE_REF(Signal* signal)
 {
   jamEntry();
+  D("execCREATE_TABLE_REF");
   const CreateTableRef* ref = (const CreateTableRef*)signal->getDataPtr();
   handleDictRef(signal, ref);
 }
@@ -7699,7 +8689,7 @@ void Dbdict::execCREATE_TABLE_REF(Signal* signal)
 void Dbdict::releaseTableObject(Uint32 table_ptr_i, bool removeFromHash)
 {
   TableRecordPtr tablePtr;
-  c_tableRecordPool_.getPtr(tablePtr, table_ptr_i);
+  ndbrequire(c_tableRecordPool_.getPtr(tablePtr, table_ptr_i));
   if (removeFromHash)
   {
     jam();
@@ -7826,6 +8816,14 @@ Dbdict::execDROP_TABLE_REQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  if(ERROR_INSERTED(6217))
+  {
+    g_eventLogger->info("Delaying GSN_DROP_TABLE_REQ");
+    sendSignalWithDelay(reference(), GSN_DROP_TABLE_REQ, signal, 1000,
+                       signal->length(),
+                       &handle);
+    return;
+  }
 
   if (check_sender_version(signal, MAKE_VERSION(6,4,0)) < 0)
   {
@@ -7837,6 +8835,7 @@ Dbdict::execDROP_TABLE_REQ(Signal* signal)
     DropTableReq * tmp = (DropTableReq*)signal->getDataPtr();
     do_swap(tmp->senderRef, tmp->senderData);
   }
+  D("execDROP_TABLE_REQ");
 
   const DropTableReq req_copy =
     *(const DropTableReq*)signal->getDataPtr();
@@ -7967,8 +8966,104 @@ bool
 Dbdict::dropTable_subOps(Signal* signal, SchemaOpPtr op_ptr)
 {
   D("dropTable_subOps" << V(op_ptr.i) << *op_ptr.p);
+
+  DropTableRecPtr dropTabPtr;
+  getOpRec(op_ptr, dropTabPtr);
+
+  Uint32 tableId = dropTabPtr.p->m_request.tableId;
+  TableRecordPtr tabPtr;
+  bool ok = find_object(tabPtr, tableId);
+  ndbrequire(ok);
+
+  if (dropTabPtr.p->m_fully_replicated_trigger == false)
+  {
+    jam();
+    dropTabPtr.p->m_fully_replicated_trigger = true;
+    if (((tabPtr.p->m_bits & TableRecord::TR_FullyReplicated) != 0) &&
+         tabPtr.p->fullyReplicatedTriggerId != RNIL)
+    {
+      jam();
+      Callback c = {
+        safe_cast(&Dbdict::dropTable_fromDropTrigger),
+        op_ptr.p->op_key
+      };
+      op_ptr.p->m_callback = c;
+
+      dropTable_toDropTrigger(signal, op_ptr);
+      return true;
+    }
+  }
+
   // wl3600_todo blobs, indexes, events
   return false;
+}
+
+void
+Dbdict::dropTable_toDropTrigger(Signal* signal, SchemaOpPtr op_ptr)
+{
+  D("dropTable_toDropTrigger");
+
+  SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
+  DropTableRecPtr dropTablePtr;
+  getOpRec(op_ptr, dropTablePtr);
+  const DropTabReq* impl_req = &dropTablePtr.p->m_request;
+
+  TableRecordPtr tablePtr;
+  bool ok = find_object(tablePtr, impl_req->tableId);
+  ndbrequire(ok);
+
+  DropTrigReq* req = (DropTrigReq*)signal->getDataPtrSend();
+
+  Uint32 requestInfo = 0;
+  DictSignal::setRequestType(requestInfo, 0);
+  DictSignal::addRequestFlagsGlobal(requestInfo, op_ptr.p->m_requestInfo);
+
+  req->clientRef = reference();
+  req->clientData = op_ptr.p->op_key;
+  req->transId = trans_ptr.p->m_transId;
+  req->transKey = trans_ptr.p->trans_key;
+  req->requestInfo = requestInfo;
+  req->tableId = impl_req->tableId;
+  req->tableVersion = impl_req->tableVersion;
+  req->indexId = RNIL;
+  req->indexVersion = RNIL;
+  req->triggerNo = 0;
+  req->triggerId = tablePtr.p->fullyReplicatedTriggerId;
+
+  sendSignal(reference(), GSN_DROP_TRIG_REQ, signal,
+             DropTrigReq::SignalLength, JBB);
+}
+
+void
+Dbdict::dropTable_fromDropTrigger(Signal* signal, Uint32 op_key, Uint32 ret)
+{
+  jam();
+
+  SchemaOpPtr op_ptr;
+  DropTableRecPtr dropTablePtr;
+
+  ndbrequire(findSchemaOp(op_ptr, dropTablePtr, op_key));
+  SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
+
+  D("dropTable_fromDropTrigger" << dec << V(op_key) << V(ret));
+
+  if (ret == 0)
+  {
+    jam();
+    const DropTrigConf* conf =
+      (const DropTrigConf*)signal->getDataPtr();
+
+    ndbrequire(conf->transId == trans_ptr.p->m_transId);
+    createSubOps(signal, op_ptr);
+  }
+  else
+  {
+    const DropTrigRef* ref =
+      (const DropTrigRef*)signal->getDataPtr();
+    ErrorInfo error;
+    setError(error, ref);
+    abortSubOps(signal, op_ptr, error);
+  }
 }
 
 void
@@ -8043,8 +9138,7 @@ Dbdict::dropTable_backup_mutex_locked(Signal* signal,
 
   SchemaOpPtr op_ptr;
   DropTableRecPtr dropTabPtr;
-  findSchemaOp(op_ptr, dropTabPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, dropTabPtr, op_key));
   const DropTabReq* impl_req = &dropTabPtr.p->m_request;
 
   TableRecordPtr tablePtr;
@@ -8175,13 +9269,14 @@ void
 Dbdict::execPREP_DROP_TAB_REQ(Signal* signal)
 {
   // no longer received
-  ndbrequire(false);
+  ndbabort();
 }
 
 void
 Dbdict::execPREP_DROP_TAB_CONF(Signal * signal)
 {
   jamEntry();
+  D("execPREP_DROP_TAB_CONF");
   const PrepDropTabConf* conf = (const PrepDropTabConf*)signal->getDataPtr();
 
   Uint32 nodeId = refToNode(conf->senderRef);
@@ -8195,6 +9290,7 @@ void
 Dbdict::execPREP_DROP_TAB_REF(Signal* signal)
 {
   jamEntry();
+  D("execPREP_DROP_TAB_REF");
   const PrepDropTabRef* ref = (const PrepDropTabRef*)signal->getDataPtr();
 
   Uint32 nodeId = refToNode(ref->senderRef);
@@ -8221,8 +9317,7 @@ Dbdict::dropTable_commit_fromLocal(Signal* signal, Uint32 op_key, Uint32 errorCo
 {
   SchemaOpPtr op_ptr;
   DropTableRecPtr dropTabPtr;
-  findSchemaOp(op_ptr, dropTabPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, dropTabPtr, op_key));
 
   if (errorCode != 0)
   {
@@ -8306,6 +9401,7 @@ void
 Dbdict::execDROP_TAB_CONF(Signal* signal)
 {
   jamEntry();
+  D("execDROP_TAB_CONF");
   const DropTabConf* conf = (const DropTabConf*)signal->getDataPtr();
 
   Uint32 nodeId = refToNode(conf->senderRef);
@@ -8319,6 +9415,7 @@ void
 Dbdict::execDROP_TAB_REF(Signal* signal)
 {
   jamEntry();
+  D("execDROP_TAB_REF");
   const DropTabRef* ref = (const DropTabRef*)signal->getDataPtr();
 
   Uint32 nodeId = refToNode(ref->senderRef);
@@ -8336,8 +9433,7 @@ Dbdict::dropTable_complete_fromLocal(Signal* signal, Uint32 op_key)
 
   SchemaOpPtr op_ptr;
   DropTableRecPtr dropTabPtr;
-  findSchemaOp(op_ptr, dropTabPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, dropTabPtr, op_key));
   //const DropTabReq* impl_req = &dropTabPtr.p->m_request;
 
   D("dropTable_complete_fromLocal" << *op_ptr.p);
@@ -8355,8 +9451,7 @@ Dbdict::dropTable_complete_done(Signal* signal,
 
   SchemaOpPtr op_ptr;
   DropTableRecPtr dropTabPtr;
-  findSchemaOp(op_ptr, dropTabPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, dropTabPtr, op_key));
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
 
   Uint32 tableId = dropTabPtr.p->m_request.tableId;
@@ -8413,6 +9508,7 @@ Dbdict::dropTable_abortPrepare(Signal* signal, SchemaOpPtr op_ptr)
 void Dbdict::execDROP_TABLE_CONF(Signal* signal)
 {
   jamEntry();
+  D("execDROP_TABLE_CONF");
   const DropTableConf* conf = (const DropTableConf*)signal->getDataPtr();
   handleDictConf(signal, conf);
 }
@@ -8420,6 +9516,7 @@ void Dbdict::execDROP_TABLE_CONF(Signal* signal)
 void Dbdict::execDROP_TABLE_REF(Signal* signal)
 {
   jamEntry();
+  D("execDROP_TABLE_REF");
   const DropTableRef* ref = (const DropTableRef*)signal->getDataPtr();
   handleDictRef(signal, ref);
 }
@@ -8469,7 +9566,7 @@ Dbdict::alterTable_release(SchemaOpPtr op_ptr)
     LocalRope r(c_rope_pool, alterTabPtr.p->m_oldFrmData);
     r.erase();
   }
-  LocalArenaPoolImpl op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena, c_opSectionBufferPool);
+  LocalArenaPool<OpSectionSegment> op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena, c_opSectionBufferPool);
   release(op_sec_pool, alterTabPtr.p->m_newAttrData);
   releaseOpRec<AlterTableRec>(op_ptr);
 }
@@ -8511,6 +9608,14 @@ Dbdict::execALTER_TABLE_REQ(Signal* signal)
   }
   SectionHandle handle(this, signal);
 
+  if(ERROR_INSERTED(6217))
+  {
+    g_eventLogger->info("Delaying GSN_ALTER_TABLE_REQ");
+    sendSignalWithDelay(reference(), GSN_ALTER_TABLE_REQ, signal, 1000,
+                       signal->length(),
+                       &handle);
+    return;
+  }
   if (check_sender_version(signal, MAKE_VERSION(6,4,0)) < 0)
   {
     jam();
@@ -8522,10 +9627,12 @@ Dbdict::execALTER_TABLE_REQ(Signal* signal)
     do_swap(tmp->clientRef, tmp->clientData);
   }
 
+  D("execALTER_TABLE_REQ");
   const AlterTableReq req_copy =
     *(const AlterTableReq*)signal->getDataPtr();
   const AlterTableReq* req = &req_copy;
 
+  D("ALTER_TABLE_REQ: changeMask: " << hex << req->changeMask);
   ErrorInfo error;
   do {
     SchemaOpPtr op_ptr;
@@ -8622,6 +9729,13 @@ Dbdict::alterTable_parse(Signal* signal, bool master,
     jam();
     return;
   }
+  if (AlterTableReq::getReadBackupFlag(impl_req->changeMask) &&
+      AlterTableReq::getAddFragFlag(impl_req->changeMask))
+  {
+    jam();
+    setError(error, AlterTableRef::UnsupportedChange, __LINE__);
+    return;
+  }
 
   // save it for abort code
 
@@ -8657,19 +9771,30 @@ Dbdict::alterTable_parse(Signal* signal, bool master,
     alterTabPtr.p->m_newTablePtrI = newTablePtr.i;
     alterTabPtr.p->m_newTable_realObjectId = newTablePtr.p->tableId;
     newTablePtr.p->tableId = impl_req->tableId; // set correct table id...(not the temporary)
+    ndbrequire(newTablePtr.p->partitionCount != 0);
   }
 
+  // API does not pass fullyReplicatedTriggerId, copy it here
+  if ((tablePtr.p->m_bits & TableRecord::TR_FullyReplicated) != 0)
+  {
+    Uint32 fullyReplicatedTriggerId = tablePtr.p->fullyReplicatedTriggerId;
+    ndbrequire(fullyReplicatedTriggerId != RNIL);
+    newTablePtr.p->fullyReplicatedTriggerId = fullyReplicatedTriggerId;
+  }
 
   {
     /**
      * Mark SchemaObject as in-use so that it's won't be found by other op
-     *   choose a state that will be automatically cleaned incase we crash
+     *   choose a state that will be automatically cleaned in case we crash
      */
     SchemaFile::TableEntry *
       objEntry = getTableEntry(alterTabPtr.p->m_newTable_realObjectId);
     objEntry->m_tableType = DictTabInfo::SchemaTransaction;
     objEntry->m_tableState = SchemaFile::SF_STARTED;
     objEntry->m_transId = trans_ptr.p->m_transId + 1;
+    D("alterTable_parse: obj id = " <<
+       alterTabPtr.p->m_newTable_realObjectId << " "
+       V(*objEntry));
   }
 
   // set the new version now
@@ -8741,6 +9866,54 @@ Dbdict::alterTable_parse(Signal* signal, bool master,
     }
   }
 
+  // changed attribute stuff
+  {
+    if (newTablePtr.p->noOfAttributes == tablePtr.p->noOfAttributes)
+    {
+      jam();
+      // Find the table name for debug purpose:
+      char table_name[MAX_TAB_NAME_SIZE];
+      ConstRope table_name_r(c_rope_pool, tablePtr.p->tableName);
+      table_name_r.copy(table_name);
+      // Find any changed attributes
+      bool modified_attribute = false;
+      LocalAttributeRecord_list
+        list(c_attributeRecordPool, tablePtr.p->m_attributes);
+      AttributeRecordPtr oldAttrPtr;
+      list.first(oldAttrPtr);
+      LocalAttributeRecord_list
+        newlist(c_attributeRecordPool, newTablePtr.p->m_attributes);
+      AttributeRecordPtr newAttrPtr;
+      newlist.first(newAttrPtr);
+      Uint32 i = 0;
+      char old_column_name[MAX_TAB_NAME_SIZE];
+      char new_column_name[MAX_TAB_NAME_SIZE];
+      for (i = 0; i < tablePtr.p->noOfAttributes; i++)
+      {
+        ConstRope old_name_r(c_rope_pool, oldAttrPtr.p->attributeName);
+        old_name_r.copy(old_column_name);
+        ConstRope new_name_r(c_rope_pool, newAttrPtr.p->attributeName);
+        new_name_r.copy(new_column_name);
+        if (old_name_r.compare(new_column_name))
+        {
+          jam();
+          g_eventLogger->info(
+              "DBDICT: Found renamed attribute %s(%s) for table %s",
+              new_column_name, old_column_name, table_name);
+          modified_attribute = true;
+        }
+        list.next(oldAttrPtr);
+        newlist.next(newAttrPtr);
+      }
+      if (AlterTableReq::getModifyAttrFlag(impl_req->changeMask) && !modified_attribute)
+      {
+        jam();
+        setError(error, AlterTableRef::Inconsistency, __LINE__);
+        return;
+      }
+    }
+  }
+
   // add attribute stuff
   {
     const Uint32 noOfNewAttr =
@@ -8792,7 +9965,7 @@ Dbdict::alterTable_parse(Signal* signal, bool master,
     AttributeRecordPtr attrPtr;
     list.first(attrPtr);
     Uint32 i = 0;
-    LocalArenaPoolImpl op_sec_pool(trans_ptr.p->m_arena, c_opSectionBufferPool);
+    LocalArenaPool<OpSectionSegment> op_sec_pool(trans_ptr.p->m_arena, c_opSectionBufferPool);
     for (i = 0; i < newTablePtr.p->noOfAttributes; i++) {
       if (i >= tablePtr.p->noOfAttributes) {
         jam();
@@ -8809,7 +9982,32 @@ Dbdict::alterTable_parse(Signal* signal, bool master,
       list.next(attrPtr);
     }
   }
-
+  if (tablePtr.p->partitionBalance != newTablePtr.p->partitionBalance &&
+      ((newTablePtr.p->m_bits & TableRecord::TR_FullyReplicated) != 0))
+  {
+    jam();
+    /**
+     * We don't supporting changing the number of real fragments for fully
+     * replicated tables.
+     *
+     * The issue is that when we created the table we created a number of
+     * "real" fragments, e.g. 0-3, we also created a number of copy
+     * fragments, e.g. 4-7. So when we want to increase the number of
+     * real fragments to e.g. 8 we cannot use fragment id 4-7 for those.
+     * Rather we will have to use 8-11 and 12-15 for new copy fragments.
+     *
+     * This is not a huge issue, but we need to maintain a real fragment
+     * map so that we can find the fragment id given the "real"
+     * fragment id calculated by using the hash value and the hash map.
+     *
+     * This fragment map has to be persistent as well and we have to handle
+     * it properly, so there is some amount of work needed that we push
+     * for some future release to handle. For now it isn't supported to do
+     * this change.
+     */
+    setError(error, AlterTableRef::UnsupportedChange, __LINE__);
+    return;
+  }
   if (AlterTableReq::getAddFragFlag(impl_req->changeMask))
   {
     if (newTablePtr.p->fragmentType != DictTabInfo::HashMapPartition)
@@ -8817,6 +10015,24 @@ Dbdict::alterTable_parse(Signal* signal, bool master,
       jam();
       setError(error, AlterTableRef::UnsupportedChange, __LINE__);
       return;
+    }
+
+    if (newTablePtr.p->partitionBalance != NDB_PARTITION_BALANCE_SPECIFIC)
+    {
+      jam();
+
+      /**
+       * verify that fragment count is not decreasing.
+       */
+      Uint32 cnt0 = get_default_fragments(signal,
+                                          newTablePtr.p->partitionBalance,
+                                          0);
+      if (newTablePtr.p->fragmentCount > cnt0)
+      {
+        jam();
+        setError(error, AlterTableRef::UnsupportedChange, __LINE__);
+        return;
+      }
     }
 
     /**
@@ -8841,7 +10057,30 @@ Dbdict::alterTable_parse(Signal* signal, bool master,
     if (tablePtr.p->hashMapObjectId != newTablePtr.p->hashMapObjectId)
     {
       jam();
+      D("SetReorgFragFlag");
       AlterTableReq::setReorgFragFlag(impl_req->changeMask, 1);
+    }
+    else
+    {
+      D("No hashmap change");
+      if ((newTablePtr.p->m_bits & TableRecord::TR_FullyReplicated) == 0)
+      {
+        jam();
+        // Non fully replicated tables do not need to move any data.
+      }
+      else
+      {
+        jam();
+        // Fully replicated still need to copy data to copy fragments.
+        const Uint32 newFragmentCount =
+          get_default_fragments(signal,
+                                newTablePtr.p->partitionBalance,
+                                0);
+        if (newFragmentCount != tablePtr.p->fragmentCount)
+        {
+          AlterTableReq::setReorgFragFlag(impl_req->changeMask, 1);
+        }
+      }
     }
 
     if (master)
@@ -8853,9 +10092,6 @@ Dbdict::alterTable_parse(Signal* signal, bool master,
        *    save fragmentation for new fragment op operation record
        */
       jam();
-      Uint32 save0 = newTablePtr.p->fragmentType;
-      newTablePtr.p->fragmentType = DictTabInfo::DistrKeyHash;
-
       /**
        * Here we reset all the NODEGROUPS for the new partitions
        *   i.e they can't be specified...this should change later
@@ -8869,7 +10105,7 @@ Dbdict::alterTable_parse(Signal* signal, bool master,
       }
       c_fragDataLen = 2 * newTablePtr.p->fragmentCount;
       Uint32 save1 = newTablePtr.p->primaryTableId;
-      Uint32 flags = 0;
+      Uint32 flags = CreateFragmentationReq::RI_CREATE_FRAGMENTATION;
       if (save1 == RNIL)
       {
         /**
@@ -8877,13 +10113,14 @@ Dbdict::alterTable_parse(Signal* signal, bool master,
          *   signal that this is a add-partitions
          *   by setting primaryTableId to "original" table and setting flag
          */
-        flags = CreateFragmentationReq::RI_ADD_PARTITION;
+        flags = CreateFragmentationReq::RI_ADD_FRAGMENTS;
         newTablePtr.p->primaryTableId = tablePtr.p->tableId;
       }
-      err = create_fragmentation(signal, newTablePtr,
-                                 c_fragData, c_fragDataLen / 2,
+      err = create_fragmentation(signal,
+                                 newTablePtr,
+                                 c_fragData,
+                                 c_fragDataLen / 2,
                                  flags);
-      newTablePtr.p->fragmentType = (DictTabInfo::FragmentType)save0;
       newTablePtr.p->primaryTableId = save1;
 
       if (err)
@@ -8968,7 +10205,7 @@ Dbdict::alterTable_parse(Signal* signal, bool master,
 
   {
     SegmentedSectionPtr ptr;
-    handle.getSection(ptr, AlterTabReq::DICT_TAB_INFO);
+    ndbrequire(handle.getSection(ptr, AlterTabReq::DICT_TAB_INFO));
     if (ptr.sz > MAX_WORDS_META_FILE)
     {
       jam();
@@ -9017,10 +10254,10 @@ Dbdict::check_supported_reorg(Uint32 org_map_id, Uint32 new_map_id)
   ndbrequire(find_object(newmap_ptr, new_map_id));
 
   Ptr<Hash2FragmentMap> orgptr;
-  g_hash_map.getPtr(orgptr, orgmap_ptr.p->m_map_ptr_i);
+  ndbrequire(g_hash_map.getPtr(orgptr, orgmap_ptr.p->m_map_ptr_i));
 
   Ptr<Hash2FragmentMap> newptr;
-  g_hash_map.getPtr(newptr, newmap_ptr.p->m_map_ptr_i);
+  ndbrequire(g_hash_map.getPtr(newptr, newmap_ptr.p->m_map_ptr_i));
 
   /*
    * check that old fragments maps to same old fragment
@@ -9103,9 +10340,14 @@ Dbdict::alterTable_subOps(Signal* signal, SchemaOpPtr op_ptr)
   if (AlterTableReq::getAddFragFlag(impl_req->changeMask))
   {
     jam();
-    if (alterTabPtr.p->m_sub_add_frag == false)
+    if (alterTabPtr.p->m_sub_add_ordered_index_frag == false)
     {
       jam();
+      /**
+       * We need to start with ordered indexes since they depend
+       * on being the first to add to get the base operation's
+       * ::FRAGMENTATION signal handle.
+       */
       TableRecordPtr tabPtr;
       TableRecordPtr indexPtr;
       bool ok = find_object(tabPtr, impl_req->tableId);
@@ -9124,7 +10366,6 @@ Dbdict::alterTable_subOps(Signal* signal, SchemaOpPtr op_ptr)
         list.getPtr(indexPtr, ptrI);
         list.next(indexPtr);
       }
-
       for (; !indexPtr.isNull(); list.next(indexPtr))
       {
         if (DictTabInfo::isOrderedIndex(indexPtr.p->tableType))
@@ -9136,7 +10377,107 @@ Dbdict::alterTable_subOps(Signal* signal, SchemaOpPtr op_ptr)
       if (indexPtr.isNull())
       {
         jam();
-        alterTabPtr.p->m_sub_add_frag = true;
+        alterTabPtr.p->m_sub_add_ordered_index_frag = true;
+        alterTabPtr.p->m_sub_add_frag_index_ptr = RNIL;
+      }
+      else
+      {
+        ndbrequire(DictTabInfo::isOrderedIndex(indexPtr.p->tableType));
+        jam();
+        Callback c = {
+          safe_cast(&Dbdict::alterTable_fromAlterIndex),
+          op_ptr.p->op_key
+        };
+        op_ptr.p->m_callback = c;
+
+        alterTabPtr.p->m_sub_add_frag_index_ptr = indexPtr.i;
+        alterTable_toAlterOrderedIndex(signal, op_ptr);
+        return true;
+      }
+    }
+    if (alterTabPtr.p->m_sub_add_unique_index_frag == false)
+    {
+      TableRecordPtr newTablePtr;
+      TableRecordPtr tabPtr;
+      TableRecordPtr indexPtr;
+
+      newTablePtr.i = alterTabPtr.p->m_newTablePtrI;
+      c_tableRecordPool_.getPtr(newTablePtr);
+      bool ok = find_object(tabPtr, impl_req->tableId);
+      ndbrequire(ok);
+      LocalTableRecord_list list(c_tableRecordPool_, tabPtr.p->m_indexes);
+      Uint32 ptrI = alterTabPtr.p->m_sub_add_frag_index_ptr;
+
+      if (ptrI == RNIL)
+      {
+        jam();
+        list.first(indexPtr);
+      }
+      else
+      {
+        jam();
+        list.getPtr(indexPtr, ptrI);
+        list.next(indexPtr);
+      }
+      for (; !indexPtr.isNull(); list.next(indexPtr))
+      {
+        if (DictTabInfo::isUniqueIndex(indexPtr.p->tableType))
+        {
+          jam();
+          break;
+        }
+      }
+      if (indexPtr.isNull())
+      {
+        jam();
+        alterTabPtr.p->m_sub_add_unique_index_frag = true;
+        alterTabPtr.p->m_sub_add_frag_index_ptr = RNIL;
+      }
+      else
+      {
+        ndbrequire(DictTabInfo::isUniqueIndex(indexPtr.p->tableType));
+        jam();
+        Callback c = {
+          safe_cast(&Dbdict::alterTable_fromAlterIndex),
+          op_ptr.p->op_key
+        };
+        op_ptr.p->m_callback = c;
+
+        alterTabPtr.p->m_sub_add_frag_index_ptr = indexPtr.i;
+        alterTable_toAlterUniqueIndex(signal, op_ptr, indexPtr, newTablePtr);
+        return true;
+      }
+    }
+  }
+
+  if (AlterTableReq::getReadBackupFlag(impl_req->changeMask))
+  {
+    jam();
+    if (alterTabPtr.p->m_sub_read_backup == false)
+    {
+      jam();
+      TableRecordPtr tabPtr;
+      TableRecordPtr indexPtr;
+      bool ok = find_object(tabPtr, impl_req->tableId);
+      ndbrequire(ok);
+      LocalTableRecord_list list(c_tableRecordPool_, tabPtr.p->m_indexes);
+      Uint32 ptrI = alterTabPtr.p->m_sub_read_backup_ptr;
+
+      if (ptrI == RNIL)
+      {
+        jam();
+        list.first(indexPtr);
+      }
+      else
+      {
+        jam();
+        list.getPtr(indexPtr, ptrI);
+        list.next(indexPtr);
+      }
+      if (indexPtr.isNull())
+      {
+        jam();
+        alterTabPtr.p->m_sub_read_backup = true;
       }
       else
       {
@@ -9147,8 +10488,8 @@ Dbdict::alterTable_subOps(Signal* signal, SchemaOpPtr op_ptr)
         };
         op_ptr.p->m_callback = c;
 
-        alterTabPtr.p->m_sub_add_frag_index_ptr = indexPtr.i;
-        alterTable_toAlterIndex(signal, op_ptr);
+        alterTabPtr.p->m_sub_read_backup_ptr = indexPtr.i;
+        alterTable_toReadBackup(signal, op_ptr, indexPtr, tabPtr);
         return true;
       }
     }
@@ -9199,19 +10540,36 @@ Dbdict::alterTable_subOps(Signal* signal, SchemaOpPtr op_ptr)
       return true;
     }
 
-    if (alterTabPtr.p->m_sub_trigger == false)
+    if (alterTabPtr.p->m_sub_reorg_trigger == false)
     {
       jam();
       Callback c = {
         safe_cast(&Dbdict::alterTable_fromCreateTrigger),
         op_ptr.p->op_key
       };
+      TableRecordPtr tabPtr;
+      bool ok = find_object(tabPtr, impl_req->tableId);
+      ndbrequire(ok);
       op_ptr.p->m_callback = c;
+      alterTabPtr.p->m_sub_reorg_trigger = true;
 
-      alterTable_toCreateTrigger(signal, op_ptr);
-
-      alterTabPtr.p->m_sub_trigger = true;
-      return true;
+      if ((tabPtr.p->m_bits & TableRecord::TR_FullyReplicated) == 0)
+      {
+        /**
+         * Normal tables without full replication will install a
+         * reorg trigger. When creating a reorg trigger it is defined
+         * to be dropped as part of the schema transaction.
+         *
+         * Fully replicated tables need no reorg trigger since data is
+         * only replicated to a new set of fragments on new node groups.
+         * In some future version when we support adding new main
+         * fragments to fully replicated we need a reorg trigger again
+         * since this actually performs a reorg of the table.
+         */
+        jam();
+        alterTable_toCreateTrigger(signal, op_ptr);
+        return true;
+      }
     }
 
     if (alterTabPtr.p->m_sub_copy_data == false)
@@ -9248,16 +10606,18 @@ Dbdict::alterTable_subOps(Signal* signal, SchemaOpPtr op_ptr)
 }
 
 void
-Dbdict::alterTable_toAlterIndex(Signal* signal,
-                                SchemaOpPtr op_ptr)
+Dbdict::alterTable_toAlterOrderedIndex(Signal* signal,
+                                       SchemaOpPtr op_ptr)
 {
   jam();
   AlterTableRecPtr alterTabPtr;
   getOpRec(op_ptr, alterTabPtr);
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
+  D("alterTable_toAlterOrderedIndex");
 
   TableRecordPtr indexPtr;
-  c_tableRecordPool_.getPtr(indexPtr, alterTabPtr.p->m_sub_add_frag_index_ptr);
+  ndbrequire(c_tableRecordPool_.getPtr(indexPtr,
+                 alterTabPtr.p->m_sub_add_frag_index_ptr));
   ndbrequire(!indexPtr.isNull());
 
   AlterIndxReq* req = (AlterIndxReq*)signal->getDataPtrSend();
@@ -9275,17 +10635,279 @@ Dbdict::alterTable_toAlterIndex(Signal* signal,
 }
 
 void
+Dbdict::alterTable_toReadBackup(Signal* signal,
+                                SchemaOpPtr op_ptr,
+                                TableRecordPtr indexPtr,
+                                TableRecordPtr tablePtr)
+{
+  jam();
+  SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
+  D("alterTable_toReadBackup");
+
+  // signal data writer
+  Uint32* wbuffer = &c_indexPage.word[0];
+  LinearWriter w(wbuffer, sizeof(c_indexPage) >> 2);
+  w.first();
+
+  w.add(DictTabInfo::TableId, indexPtr.p->tableId);
+  {
+    LocalRope name(c_rope_pool, indexPtr.p->tableName);
+    char tableName[MAX_TAB_NAME_SIZE];
+    name.copy(tableName);
+    w.add(DictTabInfo::TableName, tableName);
+  }
+  {
+    bool flag = indexPtr.p->m_bits & TableRecord::TR_Logged;
+    w.add(DictTabInfo::TableLoggedFlag, (Uint32)flag);
+  }
+  {
+    bool flag = indexPtr.p->m_bits & TableRecord::TR_Temporary;
+    w.add(DictTabInfo::TableTemporaryFlag, (Uint32)flag);
+  }
+  /* Toggle read backup flag since this is changed */
+  {
+    bool flag = ((indexPtr.p->m_bits & TableRecord::TR_ReadBackup) == 0);
+    w.add(DictTabInfo::ReadBackupFlag, (Uint32)flag);
+    D("ReadBackupFlag: " << flag);
+  }
+  {
+    bool flag = indexPtr.p->m_bits & TableRecord::TR_FullyReplicated;
+    w.add(DictTabInfo::FullyReplicatedFlag, (Uint32)flag);
+    D("FullyReplicatedFlag: " << flag);
+  }
+  w.add(DictTabInfo::FragmentTypeVal, indexPtr.p->fragmentType);
+  w.add(DictTabInfo::FragmentCount, indexPtr.p->fragmentCount);
+  w.add(DictTabInfo::PartitionCount, indexPtr.p->partitionCount);
+  w.add(DictTabInfo::PartitionBalance, indexPtr.p->partitionBalance);
+  w.add(DictTabInfo::HashMapObjectId, indexPtr.p->hashMapObjectId);
+  w.add(DictTabInfo::HashMapVersion, indexPtr.p->hashMapVersion);
+
+  w.add(DictTabInfo::TableTypeVal, indexPtr.p->tableType);
+  {
+    LocalRope name(c_rope_pool, tablePtr.p->tableName);
+    char tableName[MAX_TAB_NAME_SIZE];
+    name.copy(tableName);
+    w.add(DictTabInfo::PrimaryTable, tableName);
+  }
+  w.add(DictTabInfo::PrimaryTableId, tablePtr.p->tableId);
+  w.add(DictTabInfo::NoOfAttributes, indexPtr.p->noOfAttributes);
+  w.add(DictTabInfo::NoOfKeyAttr, indexPtr.p->noOfPrimkey);
+  w.add(DictTabInfo::NoOfNullable, indexPtr.p->noOfNullAttr);
+  w.add(DictTabInfo::KeyLength, indexPtr.p->tupKeyLength);
+  w.add(DictTabInfo::SingleUserMode, (Uint32)NDB_SUM_READ_WRITE);
+
+  // write index key attributes
+  {
+    AttributeRecordPtr attrPtr;
+    LocalAttributeRecord_list list(c_attributeRecordPool,
+                                   indexPtr.p->m_attributes);
+    for (list.first(attrPtr); !attrPtr.isNull(); list.next(attrPtr))
+    {
+      jam();
+      { LocalRope attrName(c_rope_pool, attrPtr.p->attributeName);
+        char attributeName[MAX_ATTR_NAME_SIZE];
+        attrName.copy(attributeName);
+        w.add(DictTabInfo::AttributeName, attributeName);
+      }
+
+      const Uint32 attrDesc = attrPtr.p->attributeDescriptor;
+      const bool isNullable = AttributeDescriptor::getNullable(attrDesc);
+      const Uint32 arrayType = AttributeDescriptor::getArrayType(attrDesc);
+      const Uint32 attrType = AttributeDescriptor::getType(attrDesc);
+
+      w.add(DictTabInfo::AttributeId, attrPtr.p->attributeId);
+      w.add(DictTabInfo::AttributeNullableFlag, (Uint32)isNullable);
+      w.add(DictTabInfo::AttributeKeyFlag, attrPtr.p->tupleKey > 0);
+      w.add(DictTabInfo::AttributeArrayType, arrayType);
+      w.add(DictTabInfo::AttributeExtType, attrType);
+      w.add(DictTabInfo::AttributeExtPrecision, attrPtr.p->extPrecision);
+      w.add(DictTabInfo::AttributeExtScale, attrPtr.p->extScale);
+      w.add(DictTabInfo::AttributeExtLength, attrPtr.p->extLength);
+      w.add(DictTabInfo::AttributeEnd, (Uint32)true);
+    }
+  }
+  // finish
+  w.add(DictTabInfo::TableEnd, (Uint32)true);
+
+  AlterTableReq* req = (AlterTableReq*)signal->getDataPtrSend();
+  req->clientRef = reference();
+  req->clientData = op_ptr.p->op_key;
+  req->transId = trans_ptr.p->m_transId;
+  req->transKey = trans_ptr.p->trans_key;
+  req->requestInfo = 0;
+  req->tableId = indexPtr.p->tableId;
+  req->tableVersion = indexPtr.p->tableVersion;
+  req->changeMask = 0;
+  AlterTableReq::setReadBackupFlag(req->changeMask, 1);
+
+  LinearSectionPtr lsPtr[3];
+  lsPtr[0].p = wbuffer;
+  lsPtr[0].sz = w.getWordsUsed();
+
+  sendSignal(reference(), GSN_ALTER_TABLE_REQ, signal,
+             AlterTableReq::SignalLength, JBB, lsPtr, 1);
+}
+
+void
+Dbdict::alterTable_toAlterUniqueIndex(Signal* signal,
+                                      SchemaOpPtr op_ptr,
+                                      TableRecordPtr indexPtr,
+                                      TableRecordPtr tablePtr)
+{
+  jam();
+  /**
+   * The base table is being reorganised, we also need to reorganise
+   * the unique indexes being part of this table. This reorganise
+   * can only reorganise the partitions of the unique index.
+   * We have the following options:
+   *
+   * 1) Base table reorganises to use a new PartitionBalance setting.
+   *    This is only allowed for settings that increase the number
+   *    partitions in the table. The unique index table will be
+   *    reorganised in the same fashion as the base table. This also
+   *    implies that the hashmap is changed.
+   *
+   * 2) Base table reorganises to use a specific number of partitions.
+   *    This is also only allowed for settings that increase the number
+   *    of partitions in the table. The unique index will perform the
+   *    same change, this also implies changing the hashmap.
+   *
+   * 3) Base table is being reorganised to fit into a set of new
+   *    node groups. This implies changing the hashmap for normal
+   *    tables. For fully replicated no change of hashmap is
+   *    performed.
+   *
+   * It is possible to combine 1) and 3) for normal tables, but not
+   * for fully replicated tables.
+   */
+  SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
+  D("alterTable_toAlterUniqueIndex");
+
+  // signal data writer
+  Uint32* wbuffer = &c_indexPage.word[0];
+  LinearWriter w(wbuffer, sizeof(c_indexPage) >> 2);
+  w.first();
+
+  w.add(DictTabInfo::TableId, indexPtr.p->tableId);
+  {
+    LocalRope name(c_rope_pool, indexPtr.p->tableName);
+    char tableName[MAX_TAB_NAME_SIZE];
+    name.copy(tableName);
+    w.add(DictTabInfo::TableName, tableName);
+  }
+  {
+    bool flag = indexPtr.p->m_bits & TableRecord::TR_Logged;
+    w.add(DictTabInfo::TableLoggedFlag, (Uint32)flag);
+  }
+  {
+    bool flag = indexPtr.p->m_bits & TableRecord::TR_Temporary;
+    w.add(DictTabInfo::TableTemporaryFlag, (Uint32)flag);
+  }
+  {
+    bool flag = indexPtr.p->m_bits & TableRecord::TR_ReadBackup;
+    w.add(DictTabInfo::ReadBackupFlag, (Uint32)flag);
+  }
+  {
+    bool flag = indexPtr.p->m_bits & TableRecord::TR_FullyReplicated;
+    w.add(DictTabInfo::FullyReplicatedFlag, (Uint32)flag);
+  }
+  /**
+   * The unique index table will always inherit fragmentCount,
+   * partitionCount, partitionBalance, hashMapObjectId and
+   * hashMapVersion from base table also when reorganising the
+   * table.
+   */
+  w.add(DictTabInfo::FragmentTypeVal, indexPtr.p->fragmentType);
+  w.add(DictTabInfo::FragmentCount, tablePtr.p->fragmentCount);
+  w.add(DictTabInfo::PartitionCount, tablePtr.p->partitionCount);
+  w.add(DictTabInfo::PartitionBalance, tablePtr.p->partitionBalance);
+  w.add(DictTabInfo::HashMapObjectId, tablePtr.p->hashMapObjectId);
+  w.add(DictTabInfo::HashMapVersion, tablePtr.p->hashMapVersion);
+
+  D("fragCount: " << tablePtr.p->fragmentCount 
+    << " partCount: " << tablePtr.p->partitionCount
+    << " partBal: " << getPartitionBalanceString(tablePtr.p->partitionBalance)
+    << " hashMapObjectId: " << tablePtr.p->hashMapObjectId);
+
+  w.add(DictTabInfo::TableTypeVal, indexPtr.p->tableType);
+  {
+    LocalRope name(c_rope_pool, tablePtr.p->tableName);
+    char tableName[MAX_TAB_NAME_SIZE];
+    name.copy(tableName);
+    w.add(DictTabInfo::PrimaryTable, tableName);
+  }
+  w.add(DictTabInfo::PrimaryTableId, tablePtr.p->tableId);
+  w.add(DictTabInfo::NoOfAttributes, indexPtr.p->noOfAttributes);
+  w.add(DictTabInfo::NoOfKeyAttr, indexPtr.p->noOfPrimkey);
+  w.add(DictTabInfo::NoOfNullable, indexPtr.p->noOfNullAttr);
+  w.add(DictTabInfo::KeyLength, indexPtr.p->tupKeyLength);
+  w.add(DictTabInfo::SingleUserMode, (Uint32)NDB_SUM_READ_WRITE);
+
+  // write index key attributes
+  {
+    AttributeRecordPtr attrPtr;
+    LocalAttributeRecord_list list(c_attributeRecordPool,
+                                   indexPtr.p->m_attributes);
+    for (list.first(attrPtr); !attrPtr.isNull(); list.next(attrPtr))
+    {
+      jam();
+      {
+        LocalRope attrName(c_rope_pool, attrPtr.p->attributeName);
+        char attributeName[MAX_ATTR_NAME_SIZE];
+        attrName.copy(attributeName);
+        w.add(DictTabInfo::AttributeName, attributeName);
+      }
+
+      const Uint32 attrDesc = attrPtr.p->attributeDescriptor;
+      const bool isNullable = AttributeDescriptor::getNullable(attrDesc);
+      const Uint32 arrayType = AttributeDescriptor::getArrayType(attrDesc);
+      const Uint32 attrType = AttributeDescriptor::getType(attrDesc);
+
+      w.add(DictTabInfo::AttributeId, attrPtr.p->attributeId);
+      w.add(DictTabInfo::AttributeNullableFlag, (Uint32)isNullable);
+      w.add(DictTabInfo::AttributeKeyFlag, attrPtr.p->tupleKey > 0);
+      w.add(DictTabInfo::AttributeArrayType, arrayType);
+      w.add(DictTabInfo::AttributeExtType, attrType);
+      w.add(DictTabInfo::AttributeExtPrecision, attrPtr.p->extPrecision);
+      w.add(DictTabInfo::AttributeExtScale, attrPtr.p->extScale);
+      w.add(DictTabInfo::AttributeExtLength, attrPtr.p->extLength);
+      w.add(DictTabInfo::AttributeEnd, (Uint32)true);
+    }
+  }
+  // finish
+  w.add(DictTabInfo::TableEnd, (Uint32)true);
+
+  AlterTableReq* req = (AlterTableReq*)signal->getDataPtrSend();
+  req->clientRef = reference();
+  req->clientData = op_ptr.p->op_key;
+  req->transId = trans_ptr.p->m_transId;
+  req->transKey = trans_ptr.p->trans_key;
+  req->requestInfo = 0;
+  req->tableId = indexPtr.p->tableId;
+  req->tableVersion = indexPtr.p->tableVersion;
+  req->changeMask = 0;
+  AlterTableReq::setAddFragFlag(req->changeMask, 1);
+
+  LinearSectionPtr lsPtr[3];
+  lsPtr[0].p = wbuffer;
+  lsPtr[0].sz = w.getWordsUsed();
+
+  sendSignal(reference(), GSN_ALTER_TABLE_REQ, signal,
+             AlterTableReq::SignalLength, JBB, lsPtr, 1);
+}
+
+void
 Dbdict::alterTable_fromAlterIndex(Signal* signal,
                                   Uint32 op_key,
                                   Uint32 ret)
 {
   jamEntry();
+  D("alterTable_fromAlterIndex");
 
   SchemaOpPtr op_ptr;
   AlterTableRecPtr alterTablePtr;
 
-  findSchemaOp(op_ptr, alterTablePtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, alterTablePtr, op_key));
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
 
   if (ret == 0) {
@@ -9328,16 +10950,18 @@ Dbdict::alterTable_toReorgTable(Signal* signal,
   {
     jam();
     AlterTableReq::setReorgCommitFlag(req->changeMask, 1);
+    D("alterTable_toReorgTable(0)");
   }
   else if (step == 1)
   {
     jam();
     AlterTableReq::setReorgCompleteFlag(req->changeMask, 1);
+    D("alterTable_toReorgTable(1)");
   }
   else
   {
     jamLine(step);
-    ndbrequire(false);
+    ndbabort();
   }
   sendSignal(reference(), GSN_ALTER_TABLE_REQ, signal,
              AlterTableReq::SignalLength, JBB);
@@ -9353,10 +10977,10 @@ Dbdict::alterTable_fromReorgTable(Signal* signal,
   SchemaOpPtr op_ptr;
   AlterTableRecPtr alterTablePtr;
 
-  findSchemaOp(op_ptr, alterTablePtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, alterTablePtr, op_key));
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
 
+  D("alterTable_fromReorgTable");
   if (ret == 0)
   {
     jam();
@@ -9385,6 +11009,7 @@ Dbdict::alterTable_toCreateTrigger(Signal* signal,
   AlterTableRecPtr alterTablePtr;
   getOpRec(op_ptr, alterTablePtr);
   const AlterTabReq* impl_req = &alterTablePtr.p->m_request;
+  D("alterTable_toCreateTrigger");
 
   const TriggerTmpl& triggerTmpl = g_reorgTriggerTmpl[0];
 
@@ -9431,8 +11056,11 @@ Dbdict::alterTable_toCreateTrigger(Signal* signal,
 }
 
 void
-Dbdict::alterTable_fromCreateTrigger(Signal* signal, Uint32 op_key, Uint32 ret)
+Dbdict::alterTable_fromCreateTrigger(Signal* signal,
+                                     Uint32 op_key,
+                                     Uint32 ret)
 {
+  D("alterTable_fromCreateReorgTrigger");
   alterTable_fromAlterIndex(signal, op_key, ret);
 }
 
@@ -9441,6 +11069,7 @@ Dbdict::alterTable_toCopyData(Signal* signal, SchemaOpPtr op_ptr)
 {
   jam();
 
+  D("alterTable_toCopyData");
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
   AlterTableRecPtr alterTablePtr;
   getOpRec(op_ptr, alterTablePtr);
@@ -9459,7 +11088,11 @@ Dbdict::alterTable_toCopyData(Signal* signal, SchemaOpPtr op_ptr)
   req->requestType = 0;
   req->srcTableId = impl_req->tableId;
   req->dstTableId = impl_req->tableId;
-  req->srcFragments = tablePtr.p->fragmentCount;
+  req->srcFragments = tablePtr.p->partitionCount;
+
+  D("COPY_DATA_REQ: srcTableId: " << req->srcTableId <<
+    " dstTableId: " << req->dstTableId <<
+    " fragmentCount: " << req->srcFragments);
 
   sendSignal(reference(), GSN_COPY_DATA_REQ, signal,
              CopyDataReq::SignalLength, JBB);
@@ -9468,6 +11101,7 @@ Dbdict::alterTable_toCopyData(Signal* signal, SchemaOpPtr op_ptr)
 void
 Dbdict::alterTable_fromCopyData(Signal* signal, Uint32 op_key, Uint32 ret)
 {
+  D("alterTable_fromCopyData");
   alterTable_fromAlterIndex(signal, op_key, ret);
 }
 
@@ -9535,15 +11169,17 @@ Dbdict::alterTable_toSumaSync(Signal* signal,
   {
     jam();
     AlterTableReq::setReorgSumaEnableFlag(req->changeMask, 1);
+    D("alterTable_toSumaSync(Enable)");
   }
   else if (step == 1)
   {
     AlterTableReq::setReorgSumaFilterFlag(req->changeMask, 1);
+    D("alterTable_toSumaSync(Filter)");
   }
   else
   {
     jamLine(step);
-    ndbrequire(false);
+    ndbabort();
   }
   sendSignal(reference(), GSN_ALTER_TABLE_REQ, signal,
              AlterTableReq::SignalLength, JBB);
@@ -9562,14 +11198,30 @@ Dbdict::alterTable_prepare(Signal* signal, SchemaOpPtr op_ptr)
   getOpRec(op_ptr, alterTabPtr);
   const AlterTabReq* impl_req = &alterTabPtr.p->m_request;
 
-  D("alterTable_prepare" << *op_ptr.p);
 
-  if (AlterTableReq::getReorgSubOp(impl_req->changeMask))
+  if (AlterTableReq::getSubOp(impl_req->changeMask))
   {
     jam();
 
+    D("alterTable_prepare(" << op_ptr.i << ") (SubOp)" << *op_ptr.p);
     /**
      * Get DIH connectPtr for future commit
+     *
+     * We need to get it from the base operation for this sub operation.
+     * This base operation might in itself also be a sub operation of
+     * an operation on a base table. This is the case when we reorg a
+     * table and we are here preparing the reorg sub operations on the
+     * unique index.
+     *
+     * We search for an ALTER TABLE operation which is also on the same
+     * table, which is not a sub operation itself. We only allow for one
+     * "real" operation per table per metadata transaction. There are
+     * a number of things preventing more than this, the below part is
+     * one of them.
+     *
+     * It would be easier to have a reference to base operation from
+     * the operation itself, we have this in the master node, but not in
+     * the client nodes.
      */
     {
       SchemaOpPtr tmp = op_ptr;
@@ -9577,10 +11229,22 @@ Dbdict::alterTable_prepare(Signal* signal, SchemaOpPtr op_ptr)
       for (list.prev(tmp); !tmp.isNull(); list.prev(tmp))
       {
         jam();
-        if (&tmp.p->m_oprec_ptr.p->m_opInfo== &Dbdict::AlterTableRec::g_opInfo)
+        if ((&tmp.p->m_oprec_ptr.p->m_opInfo ==
+             &Dbdict::AlterTableRec::g_opInfo))
         {
           jam();
-          break;
+          AlterTableRecPtr alterTabPtr;
+          getOpRec(tmp, alterTabPtr);
+          AlterTabReq *base_impl_req = &alterTabPtr.p->m_request;
+          if (!AlterTableReq::getSubOp(base_impl_req->changeMask))
+          {
+            jam();
+            if (impl_req->tableId == base_impl_req->tableId)
+            {
+              jam();
+              break;
+            }
+          }
         }
       }
       ndbrequire(!tmp.isNull());
@@ -9593,6 +11257,7 @@ Dbdict::alterTable_prepare(Signal* signal, SchemaOpPtr op_ptr)
     sendTransConf(signal, op_ptr);
     return;
   }
+  D("alterTable_prepare" << *op_ptr.p);
 
   Mutex mutex(signal, c_mutexMgr, alterTabPtr.p->m_define_backup_mutex);
   Callback c = {
@@ -9616,8 +11281,7 @@ Dbdict::alterTable_backup_mutex_locked(Signal* signal,
 
   SchemaOpPtr op_ptr;
   AlterTableRecPtr alterTabPtr;
-  findSchemaOp(op_ptr, alterTabPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, alterTabPtr, op_key));
   const AlterTabReq* impl_req = &alterTabPtr.p->m_request;
 
   TableRecordPtr tablePtr;
@@ -9659,10 +11323,11 @@ Dbdict::alterTab_writeTableConf(Signal* signal, Uint32 op_key, Uint32 ret)
 {
   jam();
   ndbrequire(ret == 0);
+  D("alterTab_writeTableConf");
 
   SchemaOpPtr op_ptr;
   AlterTableRecPtr alterTabPtr;
-  findSchemaOp(op_ptr, alterTabPtr, op_key);
+  ndbrequire(findSchemaOp(op_ptr, alterTabPtr, op_key));
 
   alterTable_toLocal(signal, op_ptr);
 }
@@ -9729,7 +11394,7 @@ Dbdict::alterTable_toLocal(Signal* signal, SchemaOpPtr op_ptr)
     Uint32 newAttrData[2 * MAX_ATTRIBUTES_IN_TABLE];
     ndbrequire(impl_req->noOfNewAttr <= MAX_ATTRIBUTES_IN_TABLE);
     ndbrequire(2 * impl_req->noOfNewAttr == alterTabPtr.p->m_newAttrData.getSize());
-    LocalArenaPoolImpl op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena, c_opSectionBufferPool);
+    LocalArenaPool<OpSectionSegment> op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena, c_opSectionBufferPool);
     bool ok = copyOut(op_sec_pool, alterTabPtr.p->m_newAttrData, newAttrData, 2 * impl_req->noOfNewAttr);
     ndbrequire(ok);
 
@@ -9744,7 +11409,7 @@ Dbdict::alterTable_toLocal(Signal* signal, SchemaOpPtr op_ptr)
     const OpSection& fragInfoSec =
       getOpSection(op_ptr, AlterTabReq::FRAGMENTATION);
     SegmentedSectionPtr fragInfoPtr;
-    LocalArenaPoolImpl op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena,c_opSectionBufferPool);
+    LocalArenaPool<OpSectionSegment> op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena,c_opSectionBufferPool);
     bool ok = copyOut(op_sec_pool, fragInfoSec, fragInfoPtr);
     ndbrequire(ok);
 
@@ -9781,8 +11446,7 @@ Dbdict::alterTable_fromLocal(Signal* signal,
 
   SchemaOpPtr op_ptr;
   AlterTableRecPtr alterTabPtr;
-  findSchemaOp(op_ptr, alterTabPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, alterTabPtr, op_key));
 
   Uint32& blockIndex = alterTabPtr.p->m_blockIndex; //ref
   ndbrequire(blockIndex < AlterTableRec::BlockCount);
@@ -9807,6 +11471,7 @@ Dbdict::alterTable_fromLocal(Signal* signal,
   case DBDIH:
     jam();
     alterTabPtr.p->m_dihAddFragPtr = conf->connectPtr;
+    D("dihPtr = " << conf->connectPtr);
     break;
   }
 
@@ -9829,11 +11494,20 @@ Dbdict::alterTable_commit(Signal* signal, SchemaOpPtr op_ptr)
   bool ok = find_object(tablePtr, impl_req->tableId);
   ndbrequire(ok);
 
+  /**
+   * When performing an inplace ALTER TABLE we don't change the table object.
+   * We only copy over the actual changed parts to ensure that the old object
+   * is updated to contain the new data.
+   *
+   * We still have to ensure in the NDB API that we throw away the old objects
+   * since those objects might have changed, but we can simply refetch a new
+   * object from DICT and we're up-to-date again.
+   */
   if (op_ptr.p->m_sections)
   {
     jam();
     // main-op
-    ndbrequire(AlterTableReq::getReorgSubOp(impl_req->changeMask) == false);
+    ndbrequire(AlterTableReq::getSubOp(impl_req->changeMask) == false);
 
     const OpSection& tabInfoSec =
       getOpSection(op_ptr, CreateTabReq::DICT_TAB_INFO);
@@ -9860,7 +11534,7 @@ Dbdict::alterTable_commit(Signal* signal, SchemaOpPtr op_ptr)
         << " new=" << copyRope<sz>(newTablePtr.p->tableName));
 
       DictObjectPtr obj_ptr;
-      c_obj_pool.getPtr(obj_ptr, tablePtr.p->m_obj_ptr_i);
+      ndbrequire(c_obj_pool.getPtr(obj_ptr, tablePtr.p->m_obj_ptr_i));
 
       // remove old name from hash
       c_obj_name_hash.remove(obj_ptr);
@@ -9880,17 +11554,23 @@ Dbdict::alterTable_commit(Signal* signal, SchemaOpPtr op_ptr)
     {
       jam();
       // save old frm and replace it by new
-      const Uint32 sz = MAX_FRM_DATA_SIZE;
-      bool ok =
-        copyRope<sz>(alterTabPtr.p->m_oldFrmData, tablePtr.p->frmData) &&
-        copyRope<sz>(tablePtr.p->frmData, newTablePtr.p->frmData);
-      ndbrequire(ok);
+      {
+        ConstRope r_frm(c_rope_pool, tablePtr.p->frmData);
+        LocalRope r_old(c_rope_pool, alterTabPtr.p->m_oldFrmData);
+        ndbrequire(r_frm.copy(r_old));
+      }
+      {
+        ConstRope r_new(c_rope_pool, newTablePtr.p->frmData);
+        LocalRope r_frm(c_rope_pool, tablePtr.p->frmData);
+        ndbrequire(r_new.copy(r_frm));
+      }
     }
 
     if (AlterTableReq::getAddAttrFlag(changeMask))
     {
       jam();
 
+      D("alterTable_commit: getAddAttrFlag set");
       /* Move the column definitions to the real table definitions. */
       LocalAttributeRecord_list
         list(c_attributeRecordPool, tablePtr.p->m_attributes);
@@ -9919,15 +11599,82 @@ Dbdict::alterTable_commit(Signal* signal, SchemaOpPtr op_ptr)
       tablePtr.p->noOfAttributes += noOfNewAttr;
     }
 
+    if (AlterTableReq::getModifyAttrFlag(impl_req->changeMask))
+    {
+      jam();
+      // Find the table name for debug purpose:
+      char table_name[MAX_TAB_NAME_SIZE];
+      ConstRope table_name_r(c_rope_pool, tablePtr.p->tableName);
+      table_name_r.copy(table_name);
+      D("alterTable_commit: getModifyAttrFlag set");
+      // Find and save any changed attributes
+      LocalAttributeRecord_list
+        list(c_attributeRecordPool, tablePtr.p->m_attributes);
+      AttributeRecordPtr oldAttrPtr;
+      list.first(oldAttrPtr);
+      LocalAttributeRecord_list
+        newlist(c_attributeRecordPool, newTablePtr.p->m_attributes);
+      AttributeRecordPtr newAttrPtr;
+      newlist.first(newAttrPtr);
+      Uint32 i = 0;
+      char old_column_name[MAX_TAB_NAME_SIZE];
+      char new_column_name[MAX_TAB_NAME_SIZE];
+      for (i = 0; i < tablePtr.p->noOfAttributes; i++)
+      {
+        ConstRope old_name_r(c_rope_pool, oldAttrPtr.p->attributeName);
+        old_name_r.copy(old_column_name);
+        ConstRope new_name_r(c_rope_pool, newAttrPtr.p->attributeName);
+        new_name_r.copy(new_column_name);
+        if (old_name_r.compare(new_column_name))
+        {
+          jam();
+          g_eventLogger->info(
+              "DBDICT: Renaming attribute %s to %s for table %s",
+              old_column_name, new_column_name, table_name);
+          LocalRope attrName(c_rope_pool, oldAttrPtr.p->attributeName);
+          attrName.assign(new_column_name);
+        }
+        list.next(oldAttrPtr);
+        newlist.next(newAttrPtr);
+      }
+    }
+
     if (AlterTableReq::getAddFragFlag(changeMask))
     {
       jam();
+      D("alterTable_commit: getAddFragFlag set");
       Uint32 save = tablePtr.p->fragmentCount;
       tablePtr.p->fragmentCount = newTablePtr.p->fragmentCount;
       newTablePtr.p->fragmentCount = save;
+      
+      Uint32 save_part_bal = tablePtr.p->partitionBalance;
+      tablePtr.p->partitionBalance = newTablePtr.p->partitionBalance;
+      newTablePtr.p->partitionBalance = save_part_bal;
+
+      Uint32 save_rfc = tablePtr.p->partitionCount;
+      tablePtr.p->partitionCount = newTablePtr.p->partitionCount;
+      newTablePtr.p->partitionCount = save_rfc;
+    }
+    if (AlterTableReq::getReadBackupFlag(changeMask))
+    {
+      jam();
+      Uint32 save_old = (tablePtr.p->m_bits & TableRecord::TR_ReadBackup);
+      Uint32 save_new = (newTablePtr.p->m_bits & TableRecord::TR_ReadBackup);
+      tablePtr.p->m_bits &= (~(TableRecord::TR_ReadBackup));
+      newTablePtr.p->m_bits &= (~(TableRecord::TR_ReadBackup));
+      tablePtr.p->m_bits |= save_new;
+      newTablePtr.p->m_bits |= save_old;
     }
   }
 
+  /**
+   * We need to commit in all blocks since all blocks need to update the
+   * table schema version. Subops is an exception to this since the main
+   * operation will take care of the setting of the schema version.
+   * Also the ReorgFragFlag is an exception as explained below.
+   * So the subops only need to commit in those blocks where they actually
+   * perform some work.
+   */
   alterTabPtr.p->m_blockIndex = 0;
   alterTabPtr.p->m_blockNo[0] = DBLQH;
   alterTabPtr.p->m_blockNo[1] = DBDIH;
@@ -9937,8 +11684,11 @@ Dbdict::alterTable_commit(Signal* signal, SchemaOpPtr op_ptr)
   if (AlterTableReq::getReorgFragFlag(impl_req->changeMask))
   {
     /**
-     * DIH is next op
+     * When ReorgFragFlag is set we have created a subop with the flag
+     * ReorgCommit set. This subop will commit in DBDIH, so we will skip
+     * DBDIH at this point.
      */
+    D("alterTable_commit: getReorgFragFlag set");
     TableRecordPtr newTablePtr;
     newTablePtr.i = alterTabPtr.p->m_newTablePtrI;
     c_tableRecordPool_.getPtr(newTablePtr);
@@ -9949,6 +11699,7 @@ Dbdict::alterTable_commit(Signal* signal, SchemaOpPtr op_ptr)
   else if (AlterTableReq::getReorgCommitFlag(impl_req->changeMask))
   {
     jam();
+    D("alterTable_commit: getReorgCommitFlag set");
     /**
      * Reorg commit, only commit at DIH
      */
@@ -9961,6 +11712,11 @@ Dbdict::alterTable_commit(Signal* signal, SchemaOpPtr op_ptr)
            AlterTableReq::getReorgSumaFilterFlag(impl_req->changeMask))
   {
     jam();
+    /**
+     * These subops only perform an action in the Complete phase, so the
+     * commit phase is empty for them.
+     */
+    D("alterTable_commit: getReorg....Flag set");
     sendTransConf(signal, op_ptr);
     return;
   }
@@ -9973,7 +11729,7 @@ Dbdict::alterTable_toCommitComplete(Signal* signal,
                                     SchemaOpPtr op_ptr,
                                     Uint32 type)
 {
-  D("alterTable_toTupCommit");
+  D("alterTable_toCommitComplete(" << op_ptr.i << ")");
 
   AlterTableRecPtr alterTabPtr;
   getOpRec(op_ptr, alterTabPtr);
@@ -9996,7 +11752,7 @@ Dbdict::alterTable_toCommitComplete(Signal* signal,
       break;
     default:
       jamLine(op_ptr.p->m_state);
-      ndbrequire(false);
+      ndbabort();
     }
   }
   else
@@ -10047,12 +11803,11 @@ Dbdict::alterTable_fromCommitComplete(Signal* signal,
                                       Uint32 op_key,
                                       Uint32 ret)
 {
-  D("alterTable_fromCommit");
+  D("alterTable_fromCommitComplete");
 
   SchemaOpPtr op_ptr;
   AlterTableRecPtr alterTabPtr;
-  findSchemaOp(op_ptr, alterTabPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, alterTabPtr, op_key));
   const AlterTabReq* impl_req = &alterTabPtr.p->m_request;
 
   ndbrequire(ret == 0); // Failure during commit is not allowed
@@ -10063,7 +11818,7 @@ Dbdict::alterTable_fromCommitComplete(Signal* signal,
     return;
   }
 
-  if (AlterTableReq::getReorgSubOp(impl_req->changeMask))
+  if (AlterTableReq::getSubOp(impl_req->changeMask))
   {
     jam();
     sendTransConf(signal, op_ptr);
@@ -10108,7 +11863,7 @@ Dbdict::alterTable_fromCommitComplete(Signal* signal,
     const OpSection& tabInfoSec =
       getOpSection(op_ptr, AlterTabReq::DICT_TAB_INFO);
     SegmentedSectionPtr tabInfoPtr;
-    LocalArenaPoolImpl op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena,c_opSectionBufferPool);
+    LocalArenaPool<OpSectionSegment> op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena,c_opSectionBufferPool);
     bool ok = copyOut(op_sec_pool, tabInfoSec, tabInfoPtr);
     ndbrequire(ok);
 
@@ -10130,7 +11885,7 @@ Dbdict::alterTable_fromCommitComplete(Signal* signal,
     rep->changeType = AlterTableRep::CT_ALTERED;
 
     char oldTableName[MAX_TAB_NAME_SIZE];
-    memset(oldTableName, 0, sizeof(oldTableName));
+    std::memset(oldTableName, 0, sizeof(oldTableName));
     {
       const RopeHandle& rh =
         AlterTableReq::getNameFlag(impl_req->changeMask)
@@ -10156,6 +11911,8 @@ Dbdict::alterTable_fromCommitComplete(Signal* signal,
     objEntry->m_tableType = DictTabInfo::UndefTableType;
     objEntry->m_tableState = SchemaFile::SF_UNUSED;
     objEntry->m_transId = 0;
+    D("alterTable_fromCommitComplete, obj id = " <<
+       alterTabPtr.p->m_newTable_realObjectId << " " << V(*objEntry));
   }
 
   releaseTableObject(alterTabPtr.p->m_newTablePtrI, false);
@@ -10182,6 +11939,7 @@ Dbdict::alterTable_complete(Signal* signal, SchemaOpPtr op_ptr)
   if (AlterTableReq::getReorgCommitFlag(impl_req->changeMask))
   {
     jam();
+    D("alterTable_complete getReorgCommitFlag set");
     alterTabPtr.p->m_blockNo[0] = DBDIH;
     alterTable_toCommitComplete(signal, op_ptr,
                                 AlterTabReq::AlterTableWaitScan);
@@ -10191,6 +11949,7 @@ Dbdict::alterTable_complete(Signal* signal, SchemaOpPtr op_ptr)
   {
     jam();
 
+    D("alterTable_complete getReorgCompleteFlag set");
     /**
      * Reorg complete, LQH/DIH
      */
@@ -10202,6 +11961,7 @@ Dbdict::alterTable_complete(Signal* signal, SchemaOpPtr op_ptr)
   else if (AlterTableReq::getReorgSumaEnableFlag(impl_req->changeMask))
   {
     jam();
+    D("alterTable_complete getReorgSumaEnableFlag set");
     alterTabPtr.p->m_blockNo[0] = DBLQH;
     alterTable_toCommitComplete(signal, op_ptr,
                                 AlterTabReq::AlterTableSumaEnable);
@@ -10210,11 +11970,13 @@ Dbdict::alterTable_complete(Signal* signal, SchemaOpPtr op_ptr)
   else if (AlterTableReq::getReorgSumaFilterFlag(impl_req->changeMask))
   {
     jam();
+    D("alterTable_complete getReorgSumaFilterFlag set");
     alterTabPtr.p->m_blockNo[0] = DBLQH;
     alterTable_toCommitComplete(signal, op_ptr,
                                 AlterTabReq::AlterTableSumaFilter);
     return;
   }
+  D("alterTable_complete no flag set");
   sendTransConf(signal, op_ptr);
 }
 
@@ -10229,7 +11991,7 @@ Dbdict::alterTable_abortParse(Signal* signal, SchemaOpPtr op_ptr)
   getOpRec(op_ptr, alterTabPtr);
   const AlterTabReq* impl_req = &alterTabPtr.p->m_request;
 
-  if (AlterTableReq::getReorgSubOp(impl_req->changeMask))
+  if (AlterTableReq::getSubOp(impl_req->changeMask))
   {
     jam();
     sendTransConf(signal, op_ptr);
@@ -10247,6 +12009,8 @@ Dbdict::alterTable_abortParse(Signal* signal, SchemaOpPtr op_ptr)
       objEntry->m_tableType = DictTabInfo::UndefTableType;
       objEntry->m_tableState = SchemaFile::SF_UNUSED;
       objEntry->m_transId = 0;
+      D("alterTable_abortParse, obj id = " << 
+         alterTabPtr.p->m_newTable_realObjectId << " " << V(*objEntry));
     }
 
     releaseTableObject(alterTabPtr.p->m_newTablePtrI, false);
@@ -10265,7 +12029,7 @@ Dbdict::alterTable_abortPrepare(Signal* signal, SchemaOpPtr op_ptr)
   getOpRec(op_ptr, alterTabPtr);
   const AlterTabReq* impl_req = &alterTabPtr.p->m_request;
 
-  if (AlterTableReq::getReorgSubOp(impl_req->changeMask))
+  if (AlterTableReq::getSubOp(impl_req->changeMask))
   {
     jam();
 
@@ -10350,8 +12114,8 @@ Dbdict::alterTable_abortFromLocal(Signal*signal, Uint32 op_key, Uint32 ret)
 {
   SchemaOpPtr op_ptr;
   AlterTableRecPtr alterTabPtr;
-  findSchemaOp(op_ptr, alterTabPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, alterTabPtr, op_key));
+  D("alterTable_abortFromLocal");
 
   const Uint32 blockCount = alterTabPtr.p->m_blockIndex;
   ndbrequire(blockCount != 0 && blockCount <= AlterTableRec::BlockCount);
@@ -10379,6 +12143,7 @@ void
 Dbdict::execALTER_TAB_CONF(Signal* signal)
 {
   jamEntry();
+  D("execALTER_TAB_CONF");
   const AlterTabConf* conf = (const AlterTabConf*)signal->getDataPtr();
   ndbrequire(refToNode(conf->senderRef) == getOwnNodeId());
   handleDictConf(signal, conf);
@@ -10388,6 +12153,7 @@ void
 Dbdict::execALTER_TAB_REF(Signal* signal)
 {
   jamEntry();
+  D("execALTER_TAB_REF");
   const AlterTabRef* ref = (const AlterTabRef*)signal->getDataPtr();
   ndbrequire(refToNode(ref->senderRef) == getOwnNodeId());
   handleDictRef(signal, ref);
@@ -10397,6 +12163,7 @@ void
 Dbdict::execALTER_TABLE_CONF(Signal* signal)
 {
   jamEntry();
+  D("execALTER_TABLE_CONF");
   const AlterTableConf* conf = (const AlterTableConf*)signal->getDataPtr();
   ndbrequire(refToNode(conf->senderRef) == getOwnNodeId());
   handleDictConf(signal, conf);
@@ -10406,6 +12173,7 @@ void
 Dbdict::execALTER_TABLE_REF(Signal* signal)
 {
   jamEntry();
+  D("execALTER_TABLE_REF");
   const AlterTableRef* ref = (const AlterTableRef*)signal->getDataPtr();
   ndbrequire(refToNode(ref->senderRef) == getOwnNodeId());
   handleDictRef(signal, ref);
@@ -10423,66 +12191,6 @@ Dbdict::execALTER_TABLE_REF(Signal* signal)
 /* ---------------------------------------------------------------- */
 /* **************************************************************** */
 
-void Dbdict::execGET_TABLEDID_REQ(Signal * signal)
-{
-  jamEntry();
-  ndbrequire(signal->getNoOfSections() == 1);
-  GetTableIdReq const * req = (GetTableIdReq *)signal->getDataPtr();
-  Uint32 senderData = req->senderData;
-  Uint32 senderRef = req->senderRef;
-  Uint32 len = req->len;
-
-  if(len>PATH_MAX)
-  {
-    jam();
-    sendGET_TABLEID_REF((Signal*)signal,
-			(GetTableIdReq *)req,
-			GetTableIdRef::TableNameTooLong);
-    return;
-  }
-
-  char tableName[PATH_MAX];
-  SectionHandle handle(this, signal);
-  SegmentedSectionPtr ssPtr;
-  handle.getSection(ssPtr,GetTableIdReq::TABLE_NAME);
-  copy((Uint32*)tableName, ssPtr);
-  releaseSections(handle);
-
-  DictObject * obj_ptr_p = get_object(tableName, len);
-  if(obj_ptr_p == 0 || !DictTabInfo::isTable(obj_ptr_p->m_type)){
-    jam();
-    sendGET_TABLEID_REF(signal,
-			(GetTableIdReq *)req,
-			GetTableIdRef::TableNotDefined);
-    return;
-  }
-
-  TableRecordPtr tablePtr;
-  c_tableRecordPool_.getPtr(tablePtr, obj_ptr_p->m_object_ptr_i);
-
-  GetTableIdConf * conf = (GetTableIdConf *)req;
-  conf->tableId = tablePtr.p->tableId;
-  conf->schemaVersion = tablePtr.p->tableVersion;
-  conf->senderData = senderData;
-  sendSignal(senderRef, GSN_GET_TABLEID_CONF, signal,
-	     GetTableIdConf::SignalLength, JBB);
-}
-
-
-void Dbdict::sendGET_TABLEID_REF(Signal* signal,
-				 GetTableIdReq * req,
-				 GetTableIdRef::ErrorCode errorCode)
-{
-  GetTableIdRef * const ref = (GetTableIdRef *)req;
-  /**
-   * The format of GetTabInfo Req/Ref is the same
-   */
-  BlockReference retRef = req->senderRef;
-  ref->err = errorCode;
-  sendSignal(retRef, GSN_GET_TABLEID_REF, signal,
-	     GetTableIdRef::SignalLength, JBB);
-}
-
 /* ---------------------------------------------------------------- */
 // Get a full table description.
 /* ---------------------------------------------------------------- */
@@ -10493,6 +12201,15 @@ void Dbdict::execGET_TABINFOREQ(Signal* signal)
   {
     return;
   }
+  if(ERROR_INSERTED(6216))
+  {
+    g_eventLogger->info("Delaying GSN_GET_TABINFOREQ");
+    SectionHandle handle(this, signal);
+    sendSignalWithDelay(reference(), GSN_GET_TABINFOREQ, signal, 1000,
+                       signal->length(),
+                       &handle);
+    return;
+  }
 
   /**
    * First stage response / queueing handled here
@@ -10500,9 +12217,10 @@ void Dbdict::execGET_TABINFOREQ(Signal* signal)
    */
 
   GetTabInfoReq * const req = (GetTabInfoReq *)&signal->theData[0];
+  NodeInfo sendersNI = getNodeInfo(refToNode(req->senderRef));
+  bool internalReq = (sendersNI.m_type == NodeInfo::DB);
 
-  if (ERROR_INSERTED(6215) &&
-      (signal->senderBlockRef() != reference()))
+  if (ERROR_INSERTED(6215) && !internalReq)
   {
     jam();
     // API tries 100 times and (80/100)^100 is quite small..
@@ -10517,13 +12235,11 @@ void Dbdict::execGET_TABINFOREQ(Signal* signal)
     // no CLEAR_ERROR_INSERT_VALUE
   }
 
-  const bool testRef = (ERROR_INSERTED(6026) &&
-                        refToMain(signal->senderBlockRef()) == DBDICT &&
-                        (signal->senderBlockRef() != reference()));
+  const bool testRef = (ERROR_INSERTED(6026) && !internalReq);
   if (testRef)
   {
-    ndbout_c("DICT : ERROR_INSERT(6026) simulating old internal "
-             "GET_TABINFOREF");
+    g_eventLogger->info(
+        "DICT : ERROR_INSERT(6026) simulating old internal GET_TABINFOREF");
     CLEAR_ERROR_INSERT_VALUE;
     SectionHandle handle(this, signal);
     releaseSections(handle);
@@ -10534,8 +12250,8 @@ void Dbdict::execGET_TABINFOREQ(Signal* signal)
   if (c_retrieveRecord.busyState)
   {
     jam();
-    NodeInfo sendersNI = getNodeInfo(refToNode(req->senderRef));
-    bool internalReq = (sendersNI.m_type == NodeInfo::DB);
+
+    c_retrieveRecord.totalWaiters++;
 
     /* Queue request
      * Will be processed later when current requests + queue are completed
@@ -10553,9 +12269,30 @@ void Dbdict::execGET_TABINFOREQ(Signal* signal)
       SectionHandle handle(this, signal);
       releaseSections(handle);
 
+      c_retrieveRecord.totalBusy++;
       sendGET_TABINFOREF(signal, req, GetTabInfoRef::Busy, __LINE__);
     }
 
+    if (!c_retrieveRecord.monitorRunning)
+    {
+      if ( NdbTick_IsValid(c_retrieveRecord.startProcessTime) &&
+           NdbTick_Elapsed(c_retrieveRecord.startProcessTime,
+                           NdbTick_getCurrentTicks()).milliSec()
+           > SuspectGETTABINFOREQMillis)
+      {
+        jam();
+
+        /* Start monitoring */
+        c_retrieveRecord.monitorRunning = true;
+        signal->theData[0] = DumpStateOrd::DictDumpGetTabInfoQueue;
+        signal->theData[1] = 0;
+        sendSignal(reference(),
+                   GSN_DUMP_STATE_ORD,
+                   signal,
+                   2,
+                   JBB);
+      }
+    }
     return;
   }
 
@@ -10570,17 +12307,10 @@ Dbdict::doGET_TABINFOREQ(Signal* signal)
 {
   jam();
   GetTabInfoReq * const req = (GetTabInfoReq *)&signal->theData[0];
-
   SectionHandle handle(this, signal);
 
-  if(ERROR_INSERTED(6216))
-  {
-    ndbout_c("Delaying GSN_GET_TABINFOREQ\n");
-    sendSignalWithDelay(reference(), GSN_GET_TABINFOREQ, signal, 10000,
-                       signal->length(),
-                       &handle);
-    return;
-  }
+  c_retrieveRecord.totalRequests++;
+  c_retrieveRecord.startProcessTime = NdbTick_getCurrentTicks();
 
   const bool useLongSig = (req->requestType & GetTabInfoReq::LongSignalConf);
   const bool byName = (req->requestType & GetTabInfoReq::RequestByName);
@@ -10601,7 +12331,8 @@ Dbdict::doGET_TABINFOREQ(Signal* signal)
 
     Uint32 tableName[(PATH_MAX + 3) / 4];
     SegmentedSectionPtr ssPtr;
-    handle.getSection(ssPtr,GetTabInfoReq::TABLE_NAME);
+    ndbrequire(handle.getSection(ssPtr, GetTabInfoReq::TABLE_NAME));
+    ndbrequire(ssPtr.sz <= NDB_ARRAY_SIZE(tableName));
     copy(tableName, ssPtr);
 
     DictObject * old_ptr_p = get_object((char*)tableName, len);
@@ -10774,7 +12505,7 @@ void Dbdict::sendGetTabResponse(Signal* signal)
     return;
   }
 
-  ndbrequire(false);
+  ndbabort();
 }//sendGetTabResponse()
 
 void Dbdict::sendGET_TABINFOREF(Signal* signal,
@@ -10804,212 +12535,17 @@ Dbdict::execLIST_TABLES_REQ(Signal* signal)
 {
   jamEntry();
   ListTablesReq * req = (ListTablesReq*)signal->getDataPtr();
-
-  Uint32 senderRef  = req->senderRef;
-  Uint32 receiverVersion = getNodeInfo(refToNode(senderRef)).m_version;
-
-  if (ndbd_LIST_TABLES_CONF_long_signal(receiverVersion))
-    sendLIST_TABLES_CONF(signal, req);
-  else
-    sendOLD_LIST_TABLES_CONF(signal, req);
-}
-
-void Dbdict::sendOLD_LIST_TABLES_CONF(Signal* signal, ListTablesReq* req)
-{
-  Uint32 senderRef  = req->senderRef;
-  Uint32 senderData = req->senderData;
-  // save req flags
-  const Uint32 reqTableId = req->oldGetTableId();
-  const Uint32 reqTableType = req->oldGetTableType();
-  const bool reqListNames = req->getListNames();
-  const bool reqListIndexes = req->getListIndexes();
-  XSchemaFile * xsf = &c_schemaFile[SchemaRecord::NEW_SCHEMA_FILE];
-  // init the confs
-  OldListTablesConf * conf = (OldListTablesConf *)signal->getDataPtrSend();
-  conf->senderData = senderData;
-  conf->counter = 0;
-  Uint32 pos = 0;
-
-  DictObjectName_hash::Iterator iter;
-  bool ok = c_obj_name_hash.first(iter);
-  for (; ok; ok = c_obj_name_hash.next(iter)){
-    Uint32 type = iter.curr.p->m_type;
-    if ((reqTableType != (Uint32)0) && (reqTableType != type))
-      continue;
-
-    if (reqListIndexes && !DictTabInfo::isIndex(type))
-      continue;
-
-    TableRecordPtr tablePtr;
-    if (DictTabInfo::isTable(type) || DictTabInfo::isIndex(type)){
-      c_tableRecordPool_.getPtr(tablePtr, iter.curr.p->m_object_ptr_i);
-
-      if(reqListIndexes && (reqTableId != tablePtr.p->primaryTableId))
-	continue;
-
-      conf->tableData[pos] = 0;
-      conf->setTableId(pos, iter.curr.p->m_id); // id
-      conf->setTableType(pos, type); // type
-      // state
-
-      if(DictTabInfo::isTable(type))
-      {
-        SchemaFile::TableEntry * te = getTableEntry(xsf, iter.curr.p->m_id);
-        switch(te->m_tableState){
-        case SchemaFile::SF_CREATE:
-          jam();
-          conf->setTableState(pos, DictTabInfo::StateBuilding);
-          break;
-        case SchemaFile::SF_ALTER:
-          jam();
-          conf->setTableState(pos, DictTabInfo::StateOnline);
-          break;
-        case SchemaFile::SF_DROP:
-          jam();
-	  conf->setTableState(pos, DictTabInfo::StateDropping);
-          break;
-        case SchemaFile::SF_IN_USE:
-        {
-          if (tablePtr.p->m_read_locked)
-          {
-            jam();
-            conf->setTableState(pos, DictTabInfo::StateBackup);
-          }
-          else
-          {
-            jam();
-            conf->setTableState(pos, DictTabInfo::StateOnline);
-          }
-	  break;
-        }
-	default:
-	  conf->setTableState(pos, DictTabInfo::StateBroken);
-	  break;
-	}
-      }
-      if (tablePtr.p->isIndex()) {
-	switch (tablePtr.p->indexState) {
-	case TableRecord::IS_OFFLINE:
-	  conf->setTableState(pos, DictTabInfo::StateOffline);
-	  break;
-	case TableRecord::IS_BUILDING:
-	  conf->setTableState(pos, DictTabInfo::StateBuilding);
-	  break;
-	case TableRecord::IS_DROPPING:
-	  conf->setTableState(pos, DictTabInfo::StateDropping);
-	  break;
-	case TableRecord::IS_ONLINE:
-	  conf->setTableState(pos, DictTabInfo::StateOnline);
-	  break;
-	default:
-	  conf->setTableState(pos, DictTabInfo::StateBroken);
-	  break;
-	}
-      }
-      // Logging status
-      if (! (tablePtr.p->m_bits & TableRecord::TR_Logged)) {
-	conf->setTableStore(pos, DictTabInfo::StoreNotLogged);
-      } else {
-	conf->setTableStore(pos, DictTabInfo::StorePermanent);
-      }
-      // Temporary status
-      if (tablePtr.p->m_bits & TableRecord::TR_Temporary) {
-	conf->setTableTemp(pos, NDB_TEMP_TAB_TEMPORARY);
-      } else {
-	conf->setTableTemp(pos, NDB_TEMP_TAB_PERMANENT);
-      }
-      pos++;
-    }
-    if(DictTabInfo::isTrigger(type)){
-      TriggerRecordPtr triggerPtr;
-      bool ok = find_object(triggerPtr, iter.curr.p->m_id);
-      conf->tableData[pos] = 0;
-      conf->setTableId(pos, iter.curr.p->m_id);
-      conf->setTableType(pos, type);
-      if (!ok)
-      {
-        conf->setTableState(pos, DictTabInfo::StateBroken);
-      }
-      else
-      {
-        switch (triggerPtr.p->triggerState) {
-        case TriggerRecord::TS_DEFINING:
-          conf->setTableState(pos, DictTabInfo::StateBuilding);
-          break;
-        case TriggerRecord::TS_OFFLINE:
-          conf->setTableState(pos, DictTabInfo::StateOffline);
-          break;
-        case TriggerRecord::TS_ONLINE:
-          conf->setTableState(pos, DictTabInfo::StateOnline);
-          break;
-        default:
-          conf->setTableState(pos, DictTabInfo::StateBroken);
-          break;
-        }
-      }
-      conf->setTableStore(pos, DictTabInfo::StoreNotLogged);
-      pos++;
-    }
-    if (DictTabInfo::isFilegroup(type)){
-      jam();
-      conf->tableData[pos] = 0;
-      conf->setTableId(pos, iter.curr.p->m_id);
-      conf->setTableType(pos, type); // type
-      conf->setTableState(pos, DictTabInfo::StateOnline);  // XXX todo
-      pos++;
-    }
-    if (DictTabInfo::isFile(type)){
-      jam();
-      conf->tableData[pos] = 0;
-      conf->setTableId(pos, iter.curr.p->m_id);
-      conf->setTableType(pos, type); // type
-      conf->setTableState(pos, DictTabInfo::StateOnline); // XXX todo
-      pos++;
-    }
-
-    if (pos >= OldListTablesConf::DataLength) {
-      sendSignal(senderRef, GSN_LIST_TABLES_CONF, signal,
-		 OldListTablesConf::SignalLength, JBB);
-      conf->counter++;
-      pos = 0;
-    }
-
-    if (! reqListNames)
-      continue;
-
-    LocalRope name(c_rope_pool, iter.curr.p->m_name);
-    const Uint32 size = name.size();
-    conf->tableData[pos] = size;
-    pos++;
-    if (pos >= OldListTablesConf::DataLength) {
-      sendSignal(senderRef, GSN_LIST_TABLES_CONF, signal,
-		 OldListTablesConf::SignalLength, JBB);
-      conf->counter++;
-      pos = 0;
-    }
-    Uint32 i = 0;
-    char tmp[PATH_MAX];
-    name.copy(tmp);
-    while (i < size) {
-      char* p = (char*)&conf->tableData[pos];
-      for (Uint32 j = 0; j < 4; j++) {
-	if (i < size)
-	  *p++ = tmp[i++];
-	else
-	  *p++ = 0;
-      }
-      pos++;
-      if (pos >= OldListTablesConf::DataLength) {
-	sendSignal(senderRef, GSN_LIST_TABLES_CONF, signal,
-		   OldListTablesConf::SignalLength, JBB);
-	conf->counter++;
-	pos = 0;
-      }
-    }
+  if(ERROR_INSERTED(6220))
+  {
+    g_eventLogger->info("Delaying LIST_TABLES_REQ");
+    SectionHandle handle(this, signal);
+    sendSignalWithDelay(reference(), GSN_LIST_TABLES_REQ, signal, 1000,
+                       signal->length(),
+                       &handle);
+    return;
   }
-  // last signal must have less than max length
-  sendSignal(senderRef, GSN_LIST_TABLES_CONF, signal,
-	     OldListTablesConf::HeaderLength + pos, JBB);
+
+  sendLIST_TABLES_CONF(signal, req);
 }
 
 bool Dbdict::buildListTablesData(const DictObject& dictObject,
@@ -11031,7 +12567,7 @@ bool Dbdict::buildListTablesData(const DictObject& dictObject,
   {
     jam();
     TableRecordPtr tablePtr;
-    c_tableRecordPool_.getPtr(tablePtr, dictObject.m_object_ptr_i);
+    ndbrequire(c_tableRecordPool_.getPtr(tablePtr, dictObject.m_object_ptr_i));
     
     if (parentTableId != RNIL && parentTableId != tablePtr.p->primaryTableId)
     {
@@ -11065,16 +12601,8 @@ bool Dbdict::buildListTablesData(const DictObject& dictObject,
         break;
       case SchemaFile::SF_IN_USE:
         {
-          if (tablePtr.p->m_read_locked)
-          {
-            jam();
-            ltd.setTableState(DictTabInfo::StateBackup);
-          }
-          else
-          {
-            jam();
-            ltd.setTableState(DictTabInfo::StateOnline);
-          }
+          jam();
+          ltd.setTableState(DictTabInfo::StateOnline);
 	  break;
         }
       default:
@@ -11115,9 +12643,17 @@ bool Dbdict::buildListTablesData(const DictObject& dictObject,
 
       ndbrequire(tablePtr.p->primaryTableId != RNIL);
       TableRecordPtr primTablePtr;
-      ndbrequire(find_object(primTablePtr, tablePtr.p->primaryTableId));
-      parentObjectType = primTablePtr.p->tableType;
-      parentObjectId = primTablePtr.p->tableId;
+      if (find_object(primTablePtr, tablePtr.p->primaryTableId))
+      {
+        jam();
+        parentObjectType = primTablePtr.p->tableType;
+        parentObjectId = primTablePtr.p->tableId;
+      }
+      else
+      {
+        jam();
+        ndbrequire(tablePtr.p->indexState == TableRecord::IS_DROPPING);
+      }
     }
     // Logging status
     if (! (tablePtr.p->m_bits & TableRecord::TR_Logged)) {
@@ -11549,6 +13085,15 @@ Dbdict::execCREATE_INDX_REQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  if(ERROR_INSERTED(6218))
+  {
+    g_eventLogger->info("Delaying GSN_CREATE_INDX_REQ");
+    sendSignalWithDelay(reference(), GSN_CREATE_INDX_REQ, signal, 1000,
+                       signal->length(),
+                       &handle);
+    return;
+  }
+
 
   if (check_sender_version(signal, MAKE_VERSION(6,4,0)) < 0)
   {
@@ -11560,6 +13105,7 @@ Dbdict::execCREATE_INDX_REQ(Signal* signal)
     CreateIndxReq * tmp = (CreateIndxReq*)signal->getDataPtr();
     do_swap(tmp->clientRef, tmp->clientData);
   }
+  D("execCREATE_INDX_REQ");
 
   const CreateIndxReq req_copy =
     *(const CreateIndxReq*)signal->getDataPtr();
@@ -11619,7 +13165,7 @@ Dbdict::createIndex_parse(Signal* signal, bool master,
   IndexAttributeList& attrList = createIndexPtr.p->m_attrList;
   {
     SegmentedSectionPtr ss_ptr;
-    handle.getSection(ss_ptr, CreateIndxReq::ATTRIBUTE_LIST_SECTION);
+    ndbrequire(handle.getSection(ss_ptr, CreateIndxReq::ATTRIBUTE_LIST_SECTION));
     SimplePropertiesSectionReader r(ss_ptr, getSectionSegmentPool());
     r.reset(); // undo implicit first()
     if (!r.getWord(&attrList.sz) ||
@@ -11635,18 +13181,17 @@ Dbdict::createIndex_parse(Signal* signal, bool master,
 
   // save name and some index table properties
   Uint32& bits = createIndexPtr.p->m_bits;
-  bits = TableRecord::TR_RowChecksum;
+  bits = 0;
   {
     SegmentedSectionPtr ss_ptr;
-    handle.getSection(ss_ptr, CreateIndxReq::INDEX_NAME_SECTION);
+    ndbrequire(handle.getSection(ss_ptr, CreateIndxReq::INDEX_NAME_SECTION));
     SimplePropertiesSectionReader r(ss_ptr, getSectionSegmentPool());
     DictTabInfo::Table tableDesc;
     tableDesc.init();
     SimpleProperties::UnpackStatus status =
       SimpleProperties::unpack(
           r, &tableDesc,
-          DictTabInfo::TableMapping, DictTabInfo::TableMappingSize,
-          true, true);
+          DictTabInfo::TableMapping, DictTabInfo::TableMappingSize);
     if (status != SimpleProperties::Eof ||
         tableDesc.TableName[0] == 0)
     {
@@ -11656,6 +13201,11 @@ Dbdict::createIndex_parse(Signal* signal, bool master,
     }
     const Uint32 bytesize = sizeof(createIndexPtr.p->m_indexName);
     memcpy(createIndexPtr.p->m_indexName, tableDesc.TableName, bytesize);
+    if (tableDesc.RowChecksumFlag)
+    {
+      jam();
+      bits |= TableRecord::TR_RowChecksum;
+    }
     if (tableDesc.TableLoggedFlag) {
       jam();
       bits |= TableRecord::TR_Logged;
@@ -11663,6 +13213,16 @@ Dbdict::createIndex_parse(Signal* signal, bool master,
     if (tableDesc.TableTemporaryFlag) {
       jam();
       bits |= TableRecord::TR_Temporary;
+    }
+    if (tableDesc.ReadBackupFlag)
+    {
+      jam();
+      bits |= TableRecord::TR_ReadBackup;
+    }
+    if (tableDesc.FullyReplicatedFlag)
+    {
+      jam();
+      bits |= TableRecord::TR_FullyReplicated;
     }
     D("index " << createIndexPtr.p->m_indexName);
   }
@@ -11911,13 +13471,30 @@ Dbdict::createIndex_toCreateTable(Signal* signal, SchemaOpPtr op_ptr)
   { bool flag = createIndexPtr.p->m_bits & TableRecord::TR_Temporary;
     w.add(DictTabInfo::TableTemporaryFlag, (Uint32)flag);
   }
+  { bool flag = createIndexPtr.p->m_bits & TableRecord::TR_ReadBackup;
+    w.add(DictTabInfo::ReadBackupFlag, (Uint32)flag);
+    D("ReadBackupFlag: " << flag);
+  }
+  { bool flag = createIndexPtr.p->m_bits & TableRecord::TR_FullyReplicated;
+    w.add(DictTabInfo::FullyReplicatedFlag, (Uint32)flag);
+    D("FullyReplicatedFlag: " << flag);
+  }
   w.add(DictTabInfo::FragmentTypeVal, createIndexPtr.p->m_fragmentType);
   // Inherit fragment count if main table is also hashmap partitioned.
+  // Also inherit partition balance of main table to ensure that it
+  // gets the same partitioning.
   // Otherwise better do use default.
-  if ((DictTabInfo::FragmentType)createIndexPtr.p->m_fragmentType == tablePtr.p->fragmentType &&
+  if ((DictTabInfo::FragmentType)createIndexPtr.p->m_fragmentType ==
+        tablePtr.p->fragmentType &&
       tablePtr.p->fragmentType == DictTabInfo::HashMapPartition)
   {
     w.add(DictTabInfo::FragmentCount, tablePtr.p->fragmentCount);
+    w.add(DictTabInfo::PartitionCount, tablePtr.p->partitionCount);
+    w.add(DictTabInfo::PartitionBalance, tablePtr.p->partitionBalance);
+    ndbrequire(tablePtr.p->hashMapObjectId != RNIL &&
+               ~tablePtr.p->hashMapObjectId != 0);
+    w.add(DictTabInfo::HashMapObjectId, tablePtr.p->hashMapObjectId);
+    w.add(DictTabInfo::HashMapVersion, tablePtr.p->hashMapVersion);
   }
 
   w.add(DictTabInfo::TableTypeVal, createIndexPtr.p->m_request.indexType);
@@ -11944,7 +13521,7 @@ Dbdict::createIndex_toCreateTable(Signal* signal, SchemaOpPtr op_ptr)
     // TODO: make sure "old_index" is stored with the table and
     // passed up to NdbDictionary
     AttributeRecordPtr attrPtr;
-    c_attributeRecordPool.getPtr(attrPtr, attrMap[k].attr_ptr_i);
+    ndbrequire(c_attributeRecordPool.getPtr(attrPtr, attrMap[k].attr_ptr_i));
 
     { LocalRope attrName(c_rope_pool, attrPtr.p->attributeName);
       char attributeName[MAX_ATTR_NAME_SIZE];
@@ -12060,8 +13637,7 @@ Dbdict::createIndex_fromCreateTable(Signal* signal, Uint32 op_key, Uint32 ret)
   SchemaOpPtr op_ptr;
   CreateIndexRecPtr createIndexPtr;
 
-  findSchemaOp(op_ptr, createIndexPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createIndexPtr, op_key));
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
   CreateIndxImplReq* impl_req = &createIndexPtr.p->m_request;
 
@@ -12126,8 +13702,7 @@ Dbdict::createIndex_fromAlterIndex(Signal* signal, Uint32 op_key, Uint32 ret)
   SchemaOpPtr op_ptr;
   CreateIndexRecPtr createIndexPtr;
 
-  findSchemaOp(op_ptr, createIndexPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createIndexPtr, op_key));
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
 
   //Uint32 errorCode = 0;
@@ -12253,6 +13828,7 @@ Dbdict::execCREATE_INDX_IMPL_CONF(Signal* signal)
   jamEntry();
   const CreateIndxImplConf* conf = (const CreateIndxImplConf*)signal->getDataPtr();
   ndbrequire(refToNode(conf->senderRef) == getOwnNodeId());
+  D("execCREATE_INDX_IMPL_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -12262,6 +13838,7 @@ Dbdict::execCREATE_INDX_IMPL_REF(Signal* signal)
   jamEntry();
   const CreateIndxImplRef* ref = (const CreateIndxImplRef*)signal->getDataPtr();
   ndbrequire(refToNode(ref->senderRef) == getOwnNodeId());
+  D("execCREATE_INDX_IMPL_REF");
   handleDictRef(signal, ref);
 }
 
@@ -12313,6 +13890,14 @@ Dbdict::execDROP_INDX_REQ(Signal* signal)
   }
   SectionHandle handle(this, signal);
 
+  if(ERROR_INSERTED(6219))
+  {
+    g_eventLogger->info("Delaying GSN_DROP_INDX_REQ");
+    sendSignalWithDelay(reference(), GSN_DROP_INDX_REQ, signal, 1000,
+                       signal->length(),
+                       &handle);
+    return;
+  }
   if (check_sender_version(signal, MAKE_VERSION(6,4,0)) < 0)
   {
     jam();
@@ -12323,6 +13908,7 @@ Dbdict::execDROP_INDX_REQ(Signal* signal)
     DropIndxReq * tmp = (DropIndxReq*)signal->getDataPtr();
     do_swap(tmp->clientRef, tmp->clientData);
   }
+  D("execDROP_INDX_REQ");
 
   const DropIndxReq req_copy =
     *(const DropIndxReq*)signal->getDataPtr();
@@ -12580,7 +14166,7 @@ void
 Dbdict::dropIndex_abortPrepare(Signal* signal, SchemaOpPtr op_ptr)
 {
   D("dropIndex_abortPrepare" << *op_ptr.p);
-  ndbrequire(false);
+  ndbabort();
   sendTransConf(signal, op_ptr);
 }
 
@@ -12620,8 +14206,7 @@ Dbdict::dropIndex_fromAlterIndex(Signal* signal, Uint32 op_key, Uint32 ret)
   SchemaOpPtr op_ptr;
   DropIndexRecPtr dropIndexPtr;
 
-  findSchemaOp(op_ptr, dropIndexPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, dropIndexPtr, op_key));
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
 
   if (ret == 0) {
@@ -12677,8 +14262,7 @@ Dbdict::dropIndex_fromDropTable(Signal* signal, Uint32 op_key, Uint32 ret)
   SchemaOpPtr op_ptr;
   DropIndexRecPtr dropIndexPtr;
 
-  findSchemaOp(op_ptr, dropIndexPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, dropIndexPtr, op_key));
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
 
   if (ret == 0) {
@@ -12707,6 +14291,7 @@ Dbdict::execDROP_INDX_IMPL_CONF(Signal* signal)
   jamEntry();
   const DropIndxImplConf* conf = (const DropIndxImplConf*)signal->getDataPtr();
   ndbrequire(refToNode(conf->senderRef) == getOwnNodeId());
+  D("execDROP_INDX_IMPL_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -12716,6 +14301,7 @@ Dbdict::execDROP_INDX_IMPL_REF(Signal* signal)
   jamEntry();
   const DropIndxImplRef* ref = (const DropIndxImplRef*)signal->getDataPtr();
   ndbrequire(refToNode(ref->senderRef) == getOwnNodeId());
+  D("execDROP_INDX_IMPL_REF");
   handleDictRef(signal, ref);
 }
 
@@ -12766,6 +14352,7 @@ Dbdict::execALTER_INDX_REQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  D("execALTER_INDX_REQ");
 
   const AlterIndxReq req_copy =
     *(const AlterIndxReq*)signal->getDataPtr();
@@ -12876,6 +14463,18 @@ Dbdict::g_fkTriggerTmpl[2] = {
   }
 };
 
+const Dbdict::TriggerTmpl
+Dbdict::g_fullyReplicatedTriggerTmp[1] = {
+  { "NDB$FULLY_REPLICATED_%u",
+    {
+      TriggerType::FULLY_REPLICATED_TRIGGER,
+      TriggerActionTime::TA_AFTER,
+      TriggerEvent::TE_CUSTOM,
+      false, true, false
+    }
+  }
+};
+
 // AlterIndex: PARSE
 
 void
@@ -12914,7 +14513,7 @@ Dbdict::alterIndex_parse(Signal* signal, bool master,
 
   // get name for system index check later
   char indexName[MAX_TAB_NAME_SIZE];
-  memset(indexName, 0, sizeof(indexName));
+  std::memset(indexName, 0, sizeof(indexName));
   {
     ConstRope r(c_rope_pool, indexPtr.p->tableName);
     r.copy(indexName);
@@ -12965,6 +14564,13 @@ Dbdict::alterIndex_parse(Signal* signal, bool master,
   TableRecordPtr tablePtr;
   ok = find_object(tablePtr, indexPtr.p->primaryTableId);
   ndbrequire(ok); // TODO:msundell set error
+
+  // Save primary table name to check for system tables later
+  char primaryTableName[MAX_TAB_NAME_SIZE];
+  {
+    ConstRope r(c_rope_pool, tablePtr.p->tableName);
+    r.copy(primaryTableName);
+  }
 
   // master sets primary table, participant verifies it agrees
   if (master)
@@ -13029,7 +14635,8 @@ Dbdict::alterIndex_parse(Signal* signal, bool master,
       }
       break;
     }
-    // else invalid request type
+    // Fall through - invalid request type
+    [[fallthrough]];
   default:
     ndbassert(false);
     setError(error, AlterIndxRef::BadRequestType, __LINE__);
@@ -13049,12 +14656,23 @@ Dbdict::alterIndex_parse(Signal* signal, bool master,
       set_index_stat_frag(signal, indexPtr);
     }
 
-    // skip system indexes (at least index stats indexes)
-    if (strstr(indexName, "/" NDB_INDEX_STAT_PREFIX) != 0) {
+    // skip system indexes
+    if (strstr(indexName, "/" NDB_INDEX_STAT_PREFIX) != 0 ||
+        strstr(primaryTableName, "/ndb_sql_metadata") != 0) {
       jam();
       D("skip index stats operations for system index");
       alterIndexPtr.p->m_sub_index_stat_dml = true;
       alterIndexPtr.p->m_sub_index_stat_mon = true;
+    }
+
+    // Disable stats if the __at_restart_skip_indexes option is enabled. Indexes
+    // are not created during system restart with this option. This includes the
+    // index belonging to the ndb_index_stat_sample table which leads to
+    // subsequent failures during index stat update
+    if (c_at_restart_skip_indexes) {
+      jam();
+      D("skip index stats ops since indexes have been skipped at restart");
+      alterIndexPtr.p->m_sub_index_stat_dml = true;
     }
 
     // disable update/delete if db not up
@@ -13092,16 +14710,26 @@ Dbdict::set_index_stat_frag(Signal* signal, TableRecordPtr indexPtr)
 {
   jam();
   DictObjectPtr index_obj_ptr;
-  c_obj_pool.getPtr(index_obj_ptr, indexPtr.p->m_obj_ptr_i);
+  ndbrequire(c_obj_pool.getPtr(index_obj_ptr, indexPtr.p->m_obj_ptr_i));
   const Uint32 indexId = index_obj_ptr.p->m_id;
   Uint32 err = get_fragmentation(signal, indexId);
   ndbrequire(err == 0);
   // format: R F { fragId node1 .. nodeR } x { F }
   // fragId: 0 1 2 .. (or whatever)
   const Uint16* frag_data = (Uint16*)(signal->theData+25);
-  const Uint32 noOfFragments = frag_data[1];
+  Uint32 noOfFragments = frag_data[1];
   const Uint32 noOfReplicas = frag_data[0];
   ndbrequire(noOfFragments != 0 && noOfReplicas != 0);
+
+  {
+    TableRecordPtr tablePtr;
+    ndbrequire(find_object(tablePtr, indexPtr.p->primaryTableId));
+    if ((tablePtr.p->m_bits & TableRecord::TR_FullyReplicated) != 0)
+    {
+      jam();
+      noOfFragments = tablePtr.p->partitionCount;
+    }
+  }
 
   // distribute by table and index id
   const Uint32 value = indexPtr.p->primaryTableId + indexId;
@@ -13110,12 +14738,31 @@ Dbdict::set_index_stat_frag(Signal* signal, TableRecordPtr indexPtr)
   const Uint32 nodeIndex = value % noOfReplicas;
 
   indexPtr.p->indexStatFragId = fragId;
-  bzero(indexPtr.p->indexStatNodes, sizeof(indexPtr.p->indexStatNodes));
+
+  /**
+   * Use the bitmask for sorting, the order of node IDs in frag_data is
+   * not the same in all the data nodes.
+   */
+  NdbNodeBitmask sortedNodes;
   for (Uint32 i = 0; i < noOfReplicas; i++)
   {
-    Uint32 idx = fragIndex + 1 + (nodeIndex + i) % noOfReplicas;
-    indexPtr.p->indexStatNodes[i] = frag_data[idx];
+    Uint32 idx = fragIndex + 1 + i;
+    sortedNodes.set(frag_data[idx]);
   }
+
+  // clear list
+  memset(indexPtr.p->indexStatNodes, 0, sizeof(indexPtr.p->indexStatNodes));
+
+  // rotate the sorted nodes into the list
+  for (Uint32 nodeId = sortedNodes.find_first(), i = 0;
+       nodeId != BitmaskImpl::NotFound;
+       nodeId = sortedNodes.find_next(nodeId + 1), i++)
+  {
+    ndbrequire(i < noOfReplicas);
+    Uint32 idx = (nodeIndex + i) % noOfReplicas;
+    indexPtr.p->indexStatNodes[idx] = nodeId;
+  }
+
   D("set_index_stat_frag" << V(indexId) << V(fragId)
     << V(indexPtr.p->indexStatNodes[0]));
 }
@@ -13162,8 +14809,7 @@ Dbdict::alterIndex_subOps(Signal* signal, SchemaOpPtr op_ptr)
       jam();
       return false;
     default:
-      ndbrequire(false);
-      break;
+      ndbabort();
     }
     return true;
   }
@@ -13270,8 +14916,7 @@ Dbdict::alterIndex_fromCreateTrigger(Signal* signal, Uint32 op_key, Uint32 ret)
   SchemaOpPtr op_ptr;
   AlterIndexRecPtr alterIndexPtr;
 
-  findSchemaOp(op_ptr, alterIndexPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, alterIndexPtr, op_key));
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
   //const AlterIndxImplReq* impl_req = &alterIndexPtr.p->m_request;
 
@@ -13339,8 +14984,7 @@ Dbdict::alterIndex_fromDropTrigger(Signal* signal, Uint32 op_key, Uint32 ret)
   SchemaOpPtr op_ptr;
   AlterIndexRecPtr alterIndexPtr;
 
-  findSchemaOp(op_ptr, alterIndexPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, alterIndexPtr, op_key));
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
   //const AlterIndxImplReq* impl_req = &alterIndexPtr.p->m_request;
 
@@ -13409,8 +15053,7 @@ Dbdict::alterIndex_fromBuildIndex(Signal* signal, Uint32 op_key, Uint32 ret)
   SchemaOpPtr op_ptr;
   AlterIndexRecPtr alterIndexPtr;
 
-  findSchemaOp(op_ptr, alterIndexPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, alterIndexPtr, op_key));
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
 
   if (ret == 0) {
@@ -13459,8 +15102,7 @@ Dbdict::alterIndex_toIndexStat(Signal* signal, SchemaOpPtr op_ptr)
       requestType = IndexStatReq::RT_STOP_MON;
     break;
   default:
-    ndbrequire(false);
-    break;
+    ndbabort();
   }
 
   Uint32 requestInfo = 0;
@@ -13494,8 +15136,7 @@ Dbdict::alterIndex_fromIndexStat(Signal* signal, Uint32 op_key, Uint32 ret)
   SchemaOpPtr op_ptr;
   AlterIndexRecPtr alterIndexPtr;
 
-  findSchemaOp(op_ptr, alterIndexPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, alterIndexPtr, op_key));
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
 
   if (ret == 0) {
@@ -13602,8 +15243,7 @@ Dbdict::alterIndex_prepare(Signal* signal, SchemaOpPtr op_ptr)
         sendTransConf(signal, op_ptr);
         break;
       default:
-        ndbrequire(false);
-        break;
+        ndbabort();
       }
     }
     break;
@@ -13622,8 +15262,7 @@ Dbdict::alterIndex_prepare(Signal* signal, SchemaOpPtr op_ptr)
     sendTransConf(signal, op_ptr);
     break;
   default:
-    ndbrequire(false);
-    break;
+    ndbabort();
   }
 }
 
@@ -13690,8 +15329,7 @@ Dbdict::alterIndex_fromLocal(Signal* signal, Uint32 op_key, Uint32 ret)
 {
   SchemaOpPtr op_ptr;
   AlterIndexRecPtr alterIndexPtr;
-  findSchemaOp(op_ptr, alterIndexPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, alterIndexPtr, op_key));
 
   D("alterIndex_fromLocal" << *op_ptr.p << V(ret));
 
@@ -13717,12 +15355,12 @@ Dbdict::alterIndex_toAddPartitions(Signal* signal, SchemaOpPtr op_ptr)
    * Get fragmentation for table table from alterTable operation
    */
   SchemaOpPtr base_op;
-  c_schemaOpPool.getPtr(base_op, op_ptr.p->m_base_op_ptr_i);
+  ndbrequire(c_schemaOpPool.getPtr(base_op, op_ptr.p->m_base_op_ptr_i));
 
   const OpSection& fragInfoSec =
     getOpSection(base_op, AlterTabReq::FRAGMENTATION);
   SegmentedSectionPtr fragInfoPtr;
-  LocalArenaPoolImpl op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena, c_opSectionBufferPool);
+  LocalArenaPool<OpSectionSegment> op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena, c_opSectionBufferPool);
   bool ok = copyOut(op_sec_pool, fragInfoSec, fragInfoPtr);
   ndbrequire(ok);
   SectionHandle handle(this, fragInfoPtr.i);
@@ -13751,8 +15389,7 @@ Dbdict::alterIndex_fromAddPartitions(Signal* signal, Uint32 op_key, Uint32 ret)
 {
   SchemaOpPtr op_ptr;
   AlterIndexRecPtr alterIndexPtr;
-  findSchemaOp(op_ptr, alterIndexPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, alterIndexPtr, op_key));
 
   if (ret == 0) {
     jam();
@@ -13834,6 +15471,22 @@ Dbdict::alterIndex_complete(Signal* signal, SchemaOpPtr op_ptr)
       jam();
       alterIndex_toDropLocal(signal, op_ptr);
       return;
+    }
+  }
+  else if (impl_req->requestType == AlterIndxImplReq::AlterIndexAddPartition)
+  {
+    jam();
+        TableRecordPtr indexPtr;
+    bool ok = find_object(indexPtr, impl_req->indexId);
+    ndbrequire(ok);
+    if (indexPtr.p->tableType == DictTabInfo::OrderedIndex)
+    {
+      jam();
+      /**
+       * Recalculate which fragment provides index statistics,
+       * due to changed # fragments
+       */
+      set_index_stat_frag(signal, indexPtr);
     }
   }
 
@@ -13947,8 +15600,7 @@ Dbdict::alterIndex_abortPrepare(Signal* signal, SchemaOpPtr op_ptr)
     alterIndex_toCreateLocal(signal, op_ptr);
     break;
   default:
-    ndbrequire(false);
-    break;
+    ndbabort();
   }
 }
 
@@ -13959,8 +15611,7 @@ Dbdict::alterIndex_abortFromLocal(Signal* signal,
 {
   SchemaOpPtr op_ptr;
   AlterIndexRecPtr alterIndexPtr;
-  findSchemaOp(op_ptr, alterIndexPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, alterIndexPtr, op_key));
 
   D("alterIndex_abortFromLocal" << V(ret) << *op_ptr.p);
 
@@ -13970,7 +15621,7 @@ Dbdict::alterIndex_abortFromLocal(Signal* signal,
     sendTransConf(signal, op_ptr);
   } else {
     // abort is not allowed to fail
-    ndbrequire(false);
+    ndbabort();
   }
 }
 
@@ -13981,6 +15632,7 @@ Dbdict::execALTER_INDX_CONF(Signal* signal)
 {
   jamEntry();
   const AlterIndxConf* conf = (const AlterIndxConf*)signal->getDataPtr();
+  D("execALTER_INDX_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -13989,6 +15641,7 @@ Dbdict::execALTER_INDX_REF(Signal* signal)
 {
   jamEntry();
   const AlterIndxRef* ref = (const AlterIndxRef*)signal->getDataPtr();
+  D("execALTER_INDX_REF");
   handleDictRef(signal, ref);
 }
 
@@ -13997,6 +15650,7 @@ Dbdict::execALTER_INDX_IMPL_CONF(Signal* signal)
 {
   jamEntry();
   const AlterIndxImplConf* conf = (const AlterIndxImplConf*)signal->getDataPtr();
+  D("execALTER_INDX_IMPL_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -14005,6 +15659,7 @@ Dbdict::execALTER_INDX_IMPL_REF(Signal* signal)
 {
   jamEntry();
   const AlterIndxImplRef* ref = (const AlterIndxImplRef*)signal->getDataPtr();
+  D("execALTER_INDX_IMPL_REF");
   handleDictRef(signal, ref);
 }
 
@@ -14055,6 +15710,7 @@ Dbdict::execBUILDINDXREQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  D("execBUILDINDXREQ");
 
   const BuildIndxReq req_copy =
     *(const BuildIndxReq*)signal->getDataPtr();
@@ -14178,7 +15834,7 @@ Dbdict::buildIndex_parse(Signal* signal, bool master,
       buildIndexPtr.p->m_attrMask.set(attrId);
       break;
     }
-    /*FALLTHRU*/
+    [[fallthrough]];
   default:
     jam();
     {
@@ -14247,8 +15903,7 @@ Dbdict::buildIndex_subOps(Signal* signal, SchemaOpPtr op_ptr)
       }
       break;
     default:
-      ndbrequire(false);
-      break;
+      ndbabort();
     }
   }
 
@@ -14316,8 +15971,7 @@ Dbdict::buildIndex_fromCreateConstraint(Signal* signal, Uint32 op_key, Uint32 re
   SchemaOpPtr op_ptr;
   BuildIndexRecPtr buildIndexPtr;
 
-  findSchemaOp(op_ptr, buildIndexPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, buildIndexPtr, op_key));
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
   //const BuildIndxImplReq* impl_req = &buildIndexPtr.p->m_request;
 
@@ -14383,8 +16037,7 @@ Dbdict::buildIndex_fromBuildIndex(Signal* signal, Uint32 op_key, Uint32 ret)
   SchemaOpPtr op_ptr;
   BuildIndexRecPtr buildIndexPtr;
 
-  findSchemaOp(op_ptr, buildIndexPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, buildIndexPtr, op_key));
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
 
   if (ret == 0) {
@@ -14463,8 +16116,7 @@ Dbdict::buildIndex_fromDropConstraint(Signal* signal, Uint32 op_key, Uint32 ret)
   SchemaOpPtr op_ptr;
   BuildIndexRecPtr buildIndexPtr;
 
-  findSchemaOp(op_ptr, buildIndexPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, buildIndexPtr, op_key));
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
   //const BuildIndxImplReq* impl_req = &buildIndexPtr.p->m_request;
 
@@ -14618,8 +16270,7 @@ Dbdict:: buildIndex_toLocalBuild(Signal* signal, SchemaOpPtr op_ptr)
     }
     break;
   default:
-    ndbrequire(false);
-    break;
+    ndbabort();
   }
 }
 
@@ -14628,8 +16279,7 @@ Dbdict::buildIndex_fromLocalBuild(Signal* signal, Uint32 op_key, Uint32 ret)
 {
   SchemaOpPtr op_ptr;
   BuildIndexRecPtr buildIndexPtr;
-  findSchemaOp(op_ptr, buildIndexPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, buildIndexPtr, op_key));
 
   D("buildIndex_fromLocalBuild");
 
@@ -14679,6 +16329,7 @@ Dbdict::buildIndex_toLocalOnline(Signal* signal, SchemaOpPtr op_ptr)
   req->tableVersion = 0; // not used
   req->indexId = impl_req->indexId;
   req->indexVersion = 0; // not used
+  req->indexType = 0; // not used
 
   Callback c = {
     safe_cast(&Dbdict::buildIndex_fromLocalOnline),
@@ -14702,8 +16353,7 @@ Dbdict::buildIndex_toLocalOnline(Signal* signal, SchemaOpPtr op_ptr)
     }
     break;
   default:
-    ndbrequire(false);
-    break;
+    ndbabort();
   }
 }
 
@@ -14712,8 +16362,7 @@ Dbdict::buildIndex_fromLocalOnline(Signal* signal, Uint32 op_key, Uint32 ret)
 {
   SchemaOpPtr op_ptr;
   BuildIndexRecPtr buildIndexPtr;
-  findSchemaOp(op_ptr, buildIndexPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, buildIndexPtr, op_key));
   const BuildIndxImplReq* impl_req = &buildIndexPtr.p->m_request;
 
   TableRecordPtr indexPtr;
@@ -14729,7 +16378,7 @@ Dbdict::buildIndex_fromLocalOnline(Signal* signal, Uint32 op_key, Uint32 ret)
     sendTransConf(signal, op_ptr);
   } else {
     //wl3600_todo
-    ndbrequire(false);
+    ndbabort();
   }
 }
 
@@ -14768,6 +16417,7 @@ Dbdict::execBUILDINDXCONF(Signal* signal)
 {
   jamEntry();
   const BuildIndxConf* conf = (const BuildIndxConf*)signal->getDataPtr();
+  D("execBUILD_INDX_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -14776,6 +16426,7 @@ Dbdict::execBUILDINDXREF(Signal* signal)
 {
   jamEntry();
   const BuildIndxRef* ref = (const BuildIndxRef*)signal->getDataPtr();
+  D("execBUILD_INDX_REF");
   handleDictRef(signal, ref);
 }
 
@@ -14784,6 +16435,7 @@ Dbdict::execBUILD_INDX_IMPL_CONF(Signal* signal)
 {
   jamEntry();
   const BuildIndxImplConf* conf = (const BuildIndxImplConf*)signal->getDataPtr();
+  D("execBUILD_INDX_IMPL_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -14792,6 +16444,7 @@ Dbdict::execBUILD_INDX_IMPL_REF(Signal* signal)
 {
   jamEntry();
   const BuildIndxImplRef* ref = (const BuildIndxImplRef*)signal->getDataPtr();
+  D("execBUILD_INDX_IMPL_REF");
   handleDictRef(signal, ref);
 }
 
@@ -14842,6 +16495,15 @@ Dbdict::execINDEX_STAT_REQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  if(ERROR_INSERTED(6221))
+  {
+    g_eventLogger->info("Delaying GSN_INDEX_STAT_REQ");
+    sendSignalWithDelay(reference(), GSN_INDEX_STAT_REQ, signal, 1000,
+                       signal->length(),
+                       &handle);
+    return;
+  }
+  D("execINDEX_STAT_REQ");
 
   const IndexStatReq req_copy =
     *(const IndexStatReq*)signal->getDataPtr();
@@ -14931,6 +16593,15 @@ Dbdict::indexStat_parse(Signal* signal, bool master,
     return;
   }
   impl_req->fragCount = indexPtr.p->fragmentCount;
+  {
+    TableRecordPtr tablePtr;
+    ndbrequire(find_object(tablePtr, indexPtr.p->primaryTableId));
+    if ((tablePtr.p->m_bits & TableRecord::TR_FullyReplicated) != 0)
+    {
+      jam();
+      impl_req->fragCount = tablePtr.p->partitionCount;
+    }
+  }
 
   switch (impl_req->requestType) {
   case IndexStatReq::RT_UPDATE_STAT:
@@ -15065,8 +16736,7 @@ Dbdict::indexStat_fromIndexStat(Signal* signal, Uint32 op_key, Uint32 ret)
   SchemaOpPtr op_ptr;
   IndexStatRecPtr indexStatPtr;
 
-  findSchemaOp(op_ptr, indexStatPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, indexStatPtr, op_key));
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
 
   if (ret == 0) {
@@ -15245,8 +16915,7 @@ Dbdict::indexStat_toLocalStat(Signal* signal, SchemaOpPtr op_ptr)
     break;
 
   default:
-    ndbrequire(false); // only sub-ops seen here
-    break;
+    ndbabort(); // only sub-ops seen here
   }
 
   sendSignal(ref, GSN_INDEX_STAT_IMPL_REQ,
@@ -15258,8 +16927,7 @@ Dbdict::indexStat_fromLocalStat(Signal* signal, Uint32 op_key, Uint32 ret)
 {
   SchemaOpPtr op_ptr;
   IndexStatRecPtr indexStatPtr;
-  findSchemaOp(op_ptr, indexStatPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, indexStatPtr, op_key));
   const IndexStatImplReq* impl_req = &indexStatPtr.p->m_request;
 
   if (ret != 0) {
@@ -15327,6 +16995,7 @@ Dbdict::execINDEX_STAT_CONF(Signal* signal)
 {
   jamEntry();
   const IndexStatConf* conf = (const IndexStatConf*)signal->getDataPtr();
+  D("execINDEX_STAT_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -15335,6 +17004,7 @@ Dbdict::execINDEX_STAT_REF(Signal* signal)
 {
   jamEntry();
   const IndexStatRef* ref = (const IndexStatRef*)signal->getDataPtr();
+  D("execINDEX_STAT_REF");
   handleDictRef(signal, ref);
 }
 
@@ -15343,6 +17013,7 @@ Dbdict::execINDEX_STAT_IMPL_CONF(Signal* signal)
 {
   jamEntry();
   const IndexStatImplConf* conf = (const IndexStatImplConf*)signal->getDataPtr();
+  D("execINDEX_STAT_IMPL_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -15351,6 +17022,7 @@ Dbdict::execINDEX_STAT_IMPL_REF(Signal* signal)
 {
   jamEntry();
   const IndexStatImplRef* ref = (const IndexStatImplRef*)signal->getDataPtr();
+  D("execINDEX_STAT_IMPL_REF");
   handleDictRef(signal, ref);
 }
 
@@ -15366,6 +17038,7 @@ void
 Dbdict::execINDEX_STAT_REP(Signal* signal)
 {
   const IndexStatRep* rep = (const IndexStatRep*)signal->getDataPtr();
+  D("execINDEX_STAT_REP");
 
   // non-master
   if (c_masterNodeId != getOwnNodeId()) {
@@ -15480,6 +17153,7 @@ Dbdict::indexStatBg_fromBeginTrans(Signal* signal, Uint32 tx_key, Uint32 ret)
 
   if (ret != 0) {
     jam();
+    releaseTxHandle(tx_ptr);
     indexStatBg_sendContinueB(signal);
     return;
   }
@@ -15620,6 +17294,7 @@ Dbdict::execCOPY_DATA_REQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  D("execCOPY_DATA_REQ");
 
   const CopyDataReq req_copy =
     *(const CopyDataReq*)signal->getDataPtr();
@@ -15771,6 +17446,16 @@ Dbdict::copyData_prepare(Signal* signal, SchemaOpPtr op_ptr)
     req->requestInfo |= CopyDataReq::TupOrder;
   }
 
+  /**
+   * Fully replicated uses COPY_DATA to copy data to copy fragment, never
+   * copy to same fragment.
+   */
+  if ((tabPtr.p->m_bits & TableRecord::TR_FullyReplicated) != 0)
+  {
+    jam();
+    req->requestInfo |=CopyDataReq::NoScanTakeOver;
+  }
+
   LinearSectionPtr ls_ptr[3];
   ls_ptr[0].sz = cnt;
   ls_ptr[0].p = tmp;
@@ -15784,8 +17469,7 @@ Dbdict::copyData_fromLocal(Signal* signal, Uint32 op_key, Uint32 ret)
 {
   SchemaOpPtr op_ptr;
   CopyDataRecPtr copyDataPtr;
-  findSchemaOp(op_ptr, copyDataPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, copyDataPtr, op_key));
 
   if (ERROR_INSERTED(6214))
   {
@@ -15900,6 +17584,7 @@ Dbdict::execCOPY_DATA_CONF(Signal* signal)
 {
   jamEntry();
   const CopyDataConf* conf = (const CopyDataConf*)signal->getDataPtr();
+  D("execCOPY_DATA_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -15908,6 +17593,7 @@ Dbdict::execCOPY_DATA_REF(Signal* signal)
 {
   jamEntry();
   const CopyDataRef* ref = (const CopyDataRef*)signal->getDataPtr();
+  D("execCOPY_DATA_REF");
   handleDictRef(signal, ref);
 }
 
@@ -15916,6 +17602,7 @@ Dbdict::execCOPY_DATA_IMPL_CONF(Signal* signal)
 {
   jamEntry();
   const CopyDataImplConf* conf = (const CopyDataImplConf*)signal->getDataPtr();
+  D("execCOPY_DATA_IMPL_CONF");
   ndbrequire(refToNode(conf->senderRef) == getOwnNodeId());
   handleDictConf(signal, conf);
 }
@@ -15925,6 +17612,7 @@ Dbdict::execCOPY_DATA_IMPL_REF(Signal* signal)
 {
   jamEntry();
   const CopyDataImplRef* ref = (const CopyDataImplRef*)signal->getDataPtr();
+  D("execCOPY_DATA_IMPL_REF");
   ndbrequire(refToNode(ref->senderRef) == getOwnNodeId());
   handleDictRef(signal, ref);
 }
@@ -16032,10 +17720,10 @@ void Dbdict::execUTIL_EXECUTE_REF(Signal *signal)
 #ifdef EVENT_DEBUG
   UtilExecuteRef * ref = (UtilExecuteRef *)signal->getDataPtrSend();
 
-  ndbout_c("execUTIL_EXECUTE_REF");
-  ndbout_c("senderData %u",ref->getSenderData());
-  ndbout_c("errorCode %u",ref->getErrorCode());
-  ndbout_c("TCErrorCode %u",ref->getTCErrorCode());
+  g_eventLogger->info("execUTIL_EXECUTE_REF");
+  g_eventLogger->info("senderData %u", ref->getSenderData());
+  g_eventLogger->info("errorCode %u", ref->getErrorCode());
+  g_eventLogger->info("TCErrorCode %u", ref->getTCErrorCode());
 #endif
 
   ndbrequire(recvSignalUtilReq(signal, 1) == 0);
@@ -16044,14 +17732,14 @@ void Dbdict::execUTIL_RELEASE_CONF(Signal *signal)
 {
   jamEntry();
   EVENT_TRACE;
-  ndbrequire(false);
+  ndbabort();
   ndbrequire(recvSignalUtilReq(signal, 0) == 0);
 }
 void Dbdict::execUTIL_RELEASE_REF(Signal *signal)
 {
   jamEntry();
   EVENT_TRACE;
-  ndbrequire(false);
+  ndbabort();
   ndbrequire(recvSignalUtilReq(signal, 1) == 0);
 }
 
@@ -16115,7 +17803,7 @@ Dbdict::prepareTransactionEventSysTable (Callback *pcallback,
 
   ndbrequire(opj_ptr_p != 0);
   TableRecordPtr tablePtr;
-  c_tableRecordPool_.getPtr(tablePtr, opj_ptr_p->m_object_ptr_i);
+  ndbrequire(c_tableRecordPool_.getPtr(tablePtr, opj_ptr_p->m_object_ptr_i));
   ndbrequire(tablePtr.i != RNIL); // system table must exist
 
   Uint32 tableId = tablePtr.p->tableId; /* System table */
@@ -16138,7 +17826,7 @@ Dbdict::prepareTransactionEventSysTable (Callback *pcallback,
     noAttr = 1; // only involves Primary key which should be the first
     break;
   case UtilPrepareReq::Probe:
-    ndbrequire(false);
+    ndbabort();
   }
   prepareUtilTransaction(pcallback, signal, senderData, tableId, NULL,
 		      prepReq, noAttr, NULL, NULL);
@@ -16225,6 +17913,7 @@ void
 Dbdict::execCREATE_EVNT_REQ(Signal* signal)
 {
   jamEntry();
+  D("execCREATE_EVNT_REQ");
 
   CreateEvntReq *req = (CreateEvntReq*)signal->getDataPtr();
 
@@ -16263,7 +17952,7 @@ Dbdict::execCREATE_EVNT_REQ(Signal* signal)
 
     CreateEvntRef * ret = (CreateEvntRef *)signal->getDataPtrSend();
     ret->senderRef = reference();
-    ret->setErrorCode(747);
+    ret->setErrorCode(CreateEvntRef::AllocationFailure);
     ret->setErrorLine(__LINE__);
     ret->setErrorNode(reference());
     sendSignal(signal->senderBlockRef(), GSN_CREATE_EVNT_REF, signal,
@@ -16272,7 +17961,8 @@ Dbdict::execCREATE_EVNT_REQ(Signal* signal)
   }
 
 #ifdef EVENT_DEBUG
-  ndbout_c("DBDICT::execCREATE_EVNT_REQ from %u evntRecId = (%d)", refToNode(signal->getSendersBlockRef()), evntRecPtr.i);
+  g_eventLogger->info("DBDICT::execCREATE_EVNT_REQ from %u evntRecId = (%d)",
+                      refToNode(signal->getSendersBlockRef()), evntRecPtr.i);
 #endif
 
   ndbrequire(req->getUserRef() == signal->getSendersBlockRef());
@@ -16341,7 +18031,7 @@ Dbdict::createEvent_RT_USER_CREATE(Signal* signal,
   char buf[128] = {0};
   AttributeMask mask = evntRecPtr.p->m_request.getAttrListBitmask();
   mask.getText(buf);
-  ndbout_c("mask = %s", buf);
+  g_eventLogger->info("mask = %s", buf);
 #endif
 
   // Interpret the long signal
@@ -16371,7 +18061,7 @@ Dbdict::createEvent_RT_USER_CREATE(Signal* signal,
   r0.getString(evntRecPtr.p->m_eventRec.NAME);
   {
     int len = (int)strlen(evntRecPtr.p->m_eventRec.NAME);
-    memset(evntRecPtr.p->m_eventRec.NAME+len, 0, MAX_TAB_NAME_SIZE-len);
+    std::memset(evntRecPtr.p->m_eventRec.NAME+len, 0, MAX_TAB_NAME_SIZE-len);
 #ifdef EVENT_DEBUG
     printf("CreateEvntReq::RT_USER_CREATE; EventName %s, len %u\n",
 	   evntRecPtr.p->m_eventRec.NAME, len);
@@ -16399,21 +18089,22 @@ sendref:
   r0.getString(evntRecPtr.p->m_eventRec.TABLE_NAME);
   {
     int len = (int)strlen(evntRecPtr.p->m_eventRec.TABLE_NAME);
-    memset(evntRecPtr.p->m_eventRec.TABLE_NAME+len, 0, MAX_TAB_NAME_SIZE-len);
+    std::memset(evntRecPtr.p->m_eventRec.TABLE_NAME+len, 0, MAX_TAB_NAME_SIZE-len);
   }
 
   if (handle.m_cnt >= CreateEvntReq::ATTRIBUTE_MASK)
   {
     jam();
-    handle.getSection(ssPtr, CreateEvntReq::ATTRIBUTE_MASK);
+    ndbrequire(handle.getSection(ssPtr, CreateEvntReq::ATTRIBUTE_MASK));
     if (ssPtr.sz >= NDB_ARRAY_SIZE(evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK2))
     {
       jam();
       evntRecPtr.p->m_errorCode = 1;
       goto sendref;
     }
-    bzero(evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK2,
-          sizeof(evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK2));
+    std::memset(evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK2,
+                0,
+                sizeof(evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK2));
     copy(evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK2, ssPtr);
     memcpy(evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK,
            evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK2,
@@ -16426,10 +18117,12 @@ sendref:
     Uint32 sz0 = m.getSizeInWords();
     Uint32 sz1 = NDB_ARRAY_SIZE(evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK);
     ndbrequire(sz1 == sz0);
-    bzero(evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK,
-          sizeof(evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK));
-    bzero(evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK2,
-          sizeof(evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK2));
+    std::memset(evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK,
+                0,
+                sizeof(evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK));
+    std::memset(evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK2,
+                0,
+                sizeof(evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK2));
     BitmaskImpl::assign(sz0, evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK,
                         m.rep.data);
     BitmaskImpl::assign(sz0, evntRecPtr.p->m_eventRec.ATTRIBUTE_MASK2,
@@ -16459,6 +18152,7 @@ sendref:
 void Dbdict::execCREATE_SUBID_REF(Signal* signal)
 {
   jamEntry();
+  D("execCREATE_SUBID_REF");
   DBUG_ENTER("Dbdict::execCREATE_SUBID_REF");
   CreateSubscriptionIdRef * const ref =
     (CreateSubscriptionIdRef *)signal->getDataPtr();
@@ -16486,6 +18180,7 @@ void Dbdict::execCREATE_SUBID_REF(Signal* signal)
 void Dbdict::execCREATE_SUBID_CONF(Signal* signal)
 {
   jamEntry();
+  D("execCREATE_SUBID_CONF");
   DBUG_ENTER("Dbdict::execCREATE_SUBID_CONF");
 
   CreateSubscriptionIdConf const * sumaIdConf =
@@ -16526,7 +18221,7 @@ void interpretUtilPrepareErrorCode(UtilPrepareRef::ErrorCode errorCode,
 {
   DBUG_ENTER("interpretUtilPrepareErrorCode");
   switch (errorCode) {
-  case UtilPrepareRef::NO_ERROR:
+  case UtilPrepareRef::PREPARE_REF_NO_ERROR:
     jamBlock(dict);
     error = 1;
     line = __LINE__;
@@ -16617,7 +18312,7 @@ Dbdict::createEventUTIL_PREPARE(Signal* signal,
       printf("bet type = %d\n", CreateEvntReq::RT_USER_GET);
       printf("create type = %d\n", CreateEvntReq::RT_USER_CREATE);
 #endif
-      ndbrequire(false);
+      ndbabort();
     }
   } else { // returnCode != 0
     UtilPrepareRef* const ref = (UtilPrepareRef*)signal->getDataPtr();
@@ -16659,7 +18354,7 @@ void Dbdict::executeTransEventSysTable(Callback *pcallback, Signal *signal,
 
   ndbrequire(opj_ptr_p != 0);
   TableRecordPtr tablePtr;
-  c_tableRecordPool_.getPtr(tablePtr, opj_ptr_p->m_object_ptr_i);
+  ndbrequire(c_tableRecordPool_.getPtr(tablePtr, opj_ptr_p->m_object_ptr_i));
   ndbrequire(tablePtr.i != RNIL); // system table must exist
 
   Uint32 noAttr = tablePtr.p->noOfAttributes;
@@ -16695,7 +18390,7 @@ void Dbdict::executeTransEventSysTable(Callback *pcallback, Signal *signal,
     EVENT_TRACE;
 
     // clear it, since NDB$EVENTS_0.ATTRIBUTE_MASK2 might not be present
-    bzero(m_eventRec.ATTRIBUTE_MASK2, sizeof(m_eventRec.ATTRIBUTE_MASK2));
+    std::memset(m_eventRec.ATTRIBUTE_MASK2, 0, sizeof(m_eventRec.ATTRIBUTE_MASK2));
 
     // no more
     while ( id < noAttr )
@@ -16732,7 +18427,7 @@ void Dbdict::executeTransEventSysTable(Callback *pcallback, Signal *signal,
         memcpy(lenbytes + 2, m_eventRec.ATTRIBUTE_MASK2, szBytes);
         if (szBytes & 3)
         {
-          bzero(lenbytes + 2 + szBytes, 4 - (szBytes & 3));
+          std::memset(lenbytes + 2 + szBytes, 0, 4 - (szBytes & 3));
         }
         szBytes += 2;
         dataPtr += (szBytes + 3) / 4;
@@ -16746,7 +18441,7 @@ void Dbdict::executeTransEventSysTable(Callback *pcallback, Signal *signal,
     ndbrequire(id == 1);
     break;
   default:
-    ndbrequire(false);
+    ndbabort();
   }
 
   LinearSectionPtr headerPtr;
@@ -16826,10 +18521,10 @@ void Dbdict::parseReadEventSys(Signal* signal, sysTab_NDBEVENTS_0& m_eventRec)
   SectionHandle handle(this, signal);
   SegmentedSectionPtr headerPtr, dataPtr;
 
-  handle.getSection(headerPtr, UtilExecuteReq::HEADER_SECTION);
+  ndbrequire(handle.getSection(headerPtr, UtilExecuteReq::HEADER_SECTION));
   SectionReader headerReader(headerPtr, getSectionSegmentPool());
 
-  handle.getSection(dataPtr, UtilExecuteReq::DATA_SECTION);
+  ndbrequire(handle.getSection(dataPtr, UtilExecuteReq::DATA_SECTION));
   SectionReader dataReader(dataPtr, getSectionSegmentPool());
 
   char *base = (char*)&m_eventRec;
@@ -16839,7 +18534,7 @@ void Dbdict::parseReadEventSys(Signal* signal, sysTab_NDBEVENTS_0& m_eventRec)
 
   ndbrequire(opj_ptr_p != 0);
   TableRecordPtr tablePtr;
-  c_tableRecordPool_.getPtr(tablePtr, opj_ptr_p->m_object_ptr_i);
+  ndbrequire(c_tableRecordPool_.getPtr(tablePtr, opj_ptr_p->m_object_ptr_i));
   ndbrequire(tablePtr.i != RNIL); // system table must exist
 
   Uint32 noAttr = tablePtr.p->noOfAttributes;
@@ -16866,7 +18561,7 @@ void Dbdict::parseReadEventSys(Signal* signal, sysTab_NDBEVENTS_0& m_eventRec)
   if (noAttr < EVENT_SYSTEM_TABLE_LENGTH)
   {
     jam();
-    bzero(m_eventRec.ATTRIBUTE_MASK2, sizeof(m_eventRec.ATTRIBUTE_MASK2));
+    std::memset(m_eventRec.ATTRIBUTE_MASK2, 0, sizeof(m_eventRec.ATTRIBUTE_MASK2));
     memcpy(m_eventRec.ATTRIBUTE_MASK2, m_eventRec.ATTRIBUTE_MASK,
            sizeof(m_eventRec.ATTRIBUTE_MASK));
   }
@@ -16876,7 +18571,7 @@ void Dbdict::parseReadEventSys(Signal* signal, sysTab_NDBEVENTS_0& m_eventRec)
     Uint8* lenbytes = (Uint8*)m_eventRec.ATTRIBUTE_MASK2;
     Uint32 szBytes  = lenbytes[0] + (lenbytes[1] * 256);
     memmove(lenbytes, lenbytes + 2, szBytes);
-    bzero(lenbytes + szBytes, sizeof(m_eventRec.ATTRIBUTE_MASK2) - szBytes);
+    std::memset(lenbytes + szBytes, 0, sizeof(m_eventRec.ATTRIBUTE_MASK2) - szBytes);
   }
 }
 
@@ -16920,7 +18615,7 @@ void Dbdict::createEventUTIL_EXECUTE(Signal *signal,
       DictObject* obj_ptr_p = get_object(evntRecPtr.p->m_eventRec.TABLE_NAME);
       if(!obj_ptr_p){
 	jam();
-	evntRecPtr.p->m_errorCode = 723;
+	evntRecPtr.p->m_errorCode = CreateEvntRef::EventTableNotFound;
 	evntRecPtr.p->m_errorLine = __LINE__;
 	evntRecPtr.p->m_errorNode = reference();
 	
@@ -16929,7 +18624,7 @@ void Dbdict::createEventUTIL_EXECUTE(Signal *signal,
       }
 
       TableRecordPtr tablePtr;
-      c_tableRecordPool_.getPtr(tablePtr, obj_ptr_p->m_object_ptr_i);
+      ndbrequire(c_tableRecordPool_.getPtr(tablePtr, obj_ptr_p->m_object_ptr_i));
       evntRec->m_request.setTableId(tablePtr.p->tableId);
       evntRec->m_request.setTableVersion(tablePtr.p->tableVersion);
 
@@ -16946,7 +18641,7 @@ void Dbdict::createEventUTIL_EXECUTE(Signal *signal,
     }
       break;
     default:
-      ndbrequire(false);
+      ndbabort();
     }
   } else { // returnCode != 0
     UtilExecuteRef * const ref = (UtilExecuteRef *)signal->getDataPtr();
@@ -16962,11 +18657,11 @@ void Dbdict::createEventUTIL_EXECUTE(Signal *signal,
       switch (ref->getTCErrorCode()) {
       case ZNOT_FOUND:
 	jam();
-	evntRecPtr.p->m_errorCode = 4710;
+	evntRecPtr.p->m_errorCode = CreateEvntRef::TableNotFound;
 	break;
       case ZALREADYEXIST:
 	jam();
-	evntRecPtr.p->m_errorCode = 746;
+	evntRecPtr.p->m_errorCode = CreateEvntRef::AlreadyExist;
 	break;
       default:
 	jam();
@@ -16997,12 +18692,15 @@ Dbdict::createEvent_RT_USER_GET(Signal* signal,
   jam();
   EVENT_TRACE;
 #ifdef EVENT_PH2_DEBUG
-  ndbout_c("DBDICT(Coordinator) got GSN_CREATE_EVNT_REQ::RT_USER_GET evntRecPtr.i = (%d), ref = %u", evntRecPtr.i, evntRecPtr.p->m_request.getUserRef());
+  g_eventLogger->info(
+      "DBDICT(Coordinator) got GSN_CREATE_EVNT_REQ::RT_USER_GET"
+      " evntRecPtr.i = (%d), ref = %u",
+      evntRecPtr.i, evntRecPtr.p->m_request.getUserRef());
 #endif
 
   SegmentedSectionPtr ssPtr;
 
-  handle.getSection(ssPtr, 0);
+  ndbrequire(handle.getSection(ssPtr, 0));
 
   SimplePropertiesSectionReader r0(ssPtr, getSectionSegmentPool());
 #ifdef EVENT_DEBUG
@@ -17024,7 +18722,7 @@ Dbdict::createEvent_RT_USER_GET(Signal* signal,
 
   r0.getString(evntRecPtr.p->m_eventRec.NAME);
   int len = (int)strlen(evntRecPtr.p->m_eventRec.NAME);
-  memset(evntRecPtr.p->m_eventRec.NAME+len, 0, MAX_TAB_NAME_SIZE-len);
+  std::memset(evntRecPtr.p->m_eventRec.NAME+len, 0, MAX_TAB_NAME_SIZE-len);
 
   releaseSections(handle);
 
@@ -17053,7 +18751,10 @@ Dbdict::createEventComplete_RT_USER_GET(Signal* signal,
   req->addRequestFlag(CreateEvntReq::RT_DICT_AFTER_GET);
 
 #ifdef EVENT_PH2_DEBUG
-  ndbout_c("DBDICT(Coordinator) sending GSN_CREATE_EVNT_REQ::RT_DICT_AFTER_GET to DBDICT participants evntRecPtr.i = (%d)", evntRecPtr.i);
+  g_eventLogger->info(
+      "DBDICT(Coordinator) sending GSN_CREATE_EVNT_REQ::RT_DICT_AFTER_GET"
+      " to DBDICT participants evntRecPtr.i = (%d)",
+      evntRecPtr.i);
 #endif
 
   NodeReceiverGroup rg(DBDICT, c_aliveNodes);
@@ -17082,6 +18783,7 @@ Dbdict::createEvent_nodeFailCallback(Signal* signal, Uint32 eventRecPtrI,
 void Dbdict::execCREATE_EVNT_REF(Signal* signal)
 {
   jamEntry();
+  D("execCREATE_EVNT_REF");
   EVENT_TRACE;
   CreateEvntRef * const ref = (CreateEvntRef *)signal->getDataPtr();
   OpCreateEventPtr evntRecPtr;
@@ -17090,7 +18792,9 @@ void Dbdict::execCREATE_EVNT_REF(Signal* signal)
   ndbrequire((evntRecPtr.p = c_opCreateEvent.getPtr(evntRecPtr.i)) != NULL);
 
 #ifdef EVENT_PH2_DEBUG
-  ndbout_c("DBDICT(Coordinator) got GSN_CREATE_EVNT_REF evntRecPtr.i = (%d)", evntRecPtr.i);
+  g_eventLogger->info(
+      "DBDICT(Coordinator) got GSN_CREATE_EVNT_REF evntRecPtr.i = (%d)",
+      evntRecPtr.i);
 #endif
 
   LinearSectionPtr ptr[2];
@@ -17140,6 +18844,7 @@ void Dbdict::execCREATE_EVNT_REF(Signal* signal)
 void Dbdict::execCREATE_EVNT_CONF(Signal* signal)
 {
   jamEntry();
+  D("execCREATE_EVNT_CONF");
   EVENT_TRACE;
   CreateEvntConf * const conf = (CreateEvntConf *)signal->getDataPtr();
   OpCreateEventPtr evntRecPtr;
@@ -17149,7 +18854,9 @@ void Dbdict::execCREATE_EVNT_CONF(Signal* signal)
   ndbrequire((evntRecPtr.p = c_opCreateEvent.getPtr(evntRecPtr.i)) != NULL);
 
 #ifdef EVENT_PH2_DEBUG
-  ndbout_c("DBDICT(Coordinator) got GSN_CREATE_EVNT_CONF evntRecPtr.i = (%d)", evntRecPtr.i);
+  g_eventLogger->info(
+      "DBDICT(Coordinator) got GSN_CREATE_EVNT_CONF evntRecPtr.i = (%d)",
+      evntRecPtr.i);
 #endif
 
   evntRecPtr.p->m_reqTracker.reportConf(c_counterMgr, refToNode(conf->senderRef));
@@ -17181,7 +18888,10 @@ Dbdict::createEvent_RT_DICT_AFTER_GET(Signal* signal, OpCreateEventPtr evntRecPt
   evntRecPtr.p->m_request.setUserRef(signal->senderBlockRef());
 
 #ifdef EVENT_PH2_DEBUG
-  ndbout_c("DBDICT(Participant) got CREATE_EVNT_REQ::RT_DICT_AFTER_GET evntRecPtr.i = (%d)", evntRecPtr.i);
+  g_eventLogger->info(
+      "DBDICT(Participant) got "
+      "CREATE_EVNT_REQ::RT_DICT_AFTER_GET evntRecPtr.i = (%d)",
+      evntRecPtr.i);
 #endif
 
   // the signal comes from the DICT block that got the first user request!
@@ -17211,7 +18921,7 @@ Dbdict::createEvent_RT_DICT_AFTER_GET(Signal* signal, OpCreateEventPtr evntRecPt
   sumaReq->schemaTransId    = 0;
 
 #ifdef EVENT_PH2_DEBUG
-  ndbout_c("sending GSN_SUB_CREATE_REQ");
+  g_eventLogger->info("sending GSN_SUB_CREATE_REQ");
 #endif
 
   sendSignal(SUMA_REF, GSN_SUB_CREATE_REQ, signal,
@@ -17222,6 +18932,7 @@ Dbdict::createEvent_RT_DICT_AFTER_GET(Signal* signal, OpCreateEventPtr evntRecPt
 void Dbdict::execSUB_CREATE_REF(Signal* signal)
 {
   jamEntry();
+  D("execSUB_CREATE_REF");
   DBUG_ENTER("Dbdict::execSUB_CREATE_REF");
 
   SubCreateRef * const ref = (SubCreateRef *)signal->getDataPtr();
@@ -17259,6 +18970,7 @@ void Dbdict::execSUB_CREATE_REF(Signal* signal)
 void Dbdict::execSUB_CREATE_CONF(Signal* signal)
 {
   jamEntry();
+  D("execSUB_CREATE_CONF");
   DBUG_ENTER("Dbdict::execSUB_CREATE_CONF");
   EVENT_TRACE;
 
@@ -17333,9 +19045,12 @@ void Dbdict::createEvent_sendReply(Signal* signal,
 
     signalLength = CreateEvntRef::SignalLength;
 #ifdef EVENT_PH2_DEBUG
-    ndbout_c("DBDICT sending GSN_CREATE_EVNT_REF to evntRecPtr.i = (%d) node = %u ref = %u", evntRecPtr.i, refToNode(senderRef), senderRef);
-    ndbout_c("errorCode = %u", evntRecPtr.p->m_errorCode);
-    ndbout_c("errorLine = %u", evntRecPtr.p->m_errorLine);
+    g_eventLogger->info(
+        "DBDICT sending GSN_CREATE_EVNT_REF to evntRecPtr.i = (%d)"
+        " node = %u ref = %u",
+        evntRecPtr.i, refToNode(senderRef), senderRef);
+    g_eventLogger->info("errorCode = %u", evntRecPtr.p->m_errorCode);
+    g_eventLogger->info("errorLine = %u", evntRecPtr.p->m_errorLine);
 #endif
     gsn = GSN_CREATE_EVNT_REF;
 
@@ -17356,7 +19071,10 @@ void Dbdict::createEvent_sendReply(Signal* signal,
 
     signalLength = CreateEvntConf::SignalLength;
 #ifdef EVENT_PH2_DEBUG
-    ndbout_c("DBDICT sending GSN_CREATE_EVNT_CONF to evntRecPtr.i = (%d) node = %u ref = %u", evntRecPtr.i, refToNode(senderRef), senderRef);
+    g_eventLogger->info(
+        "DBDICT sending GSN_CREATE_EVNT_CONF to "
+        "evntRecPtr.i = (%d) node = %u ref = %u",
+        evntRecPtr.i, refToNode(senderRef), senderRef);
 #endif
     gsn = GSN_CREATE_EVNT_CONF;
   }
@@ -17383,6 +19101,7 @@ void Dbdict::createEvent_sendReply(Signal* signal,
 void Dbdict::execSUB_START_REQ(Signal* signal)
 {
   jamEntry();
+  D("execSUB_START_REQ");
 
   Uint32 origSenderRef = signal->senderBlockRef();
 
@@ -17436,7 +19155,7 @@ busy:
     subbPtr.p->m_subscriptionKey = req->subscriptionKey;
     subbPtr.p->m_subscriberRef = req->subscriberRef;
     subbPtr.p->m_subscriberData = req->subscriberData;
-    bzero(subbPtr.p->m_buckets_per_ng, sizeof(subbPtr.p->m_buckets_per_ng));
+    std::memset(subbPtr.p->m_buckets_per_ng, 0, sizeof(subbPtr.p->m_buckets_per_ng));
   }
 
   if (refToBlock(origSenderRef) != DBDICT) {
@@ -17478,12 +19197,15 @@ busy:
     req->senderData = subbPtr.i;
 
 #ifdef EVENT_PH3_DEBUG
-    ndbout_c("DBDICT(Coordinator) sending GSN_SUB_START_REQ to DBDICT participants subbPtr.i = (%d)", subbPtr.i);
+    g_eventLogger->info(
+        "DBDICT(Coordinator) sending GSN_SUB_START_REQ to "
+        "DBDICT participants subbPtr.i = (%d)",
+        subbPtr.i);
 #endif
 
     if (ERROR_INSERTED(6011))
     {
-      ndbout_c("sending delayed to self...");
+      g_eventLogger->info("sending delayed to self...");
       if (ERROR_INSERTED(6011))
       {
         rg.m_nodes.clear(getOwnNodeId());
@@ -17516,31 +19238,19 @@ busy:
     req->senderData = subbPtr.i;
 
 #ifdef EVENT_PH3_DEBUG
-    ndbout_c("DBDICT(Participant) sending GSN_SUB_START_REQ to SUMA subbPtr.i = (%d)", subbPtr.i);
+    g_eventLogger->info(
+        "DBDICT(Participant) sending GSN_SUB_START_REQ to"
+        " SUMA subbPtr.i = (%d)",
+        subbPtr.i);
 #endif
     sendSignal(SUMA_REF, GSN_SUB_START_REQ, signal, SubStartReq::SignalLength, JBB);
   }
 }
 
-bool
-Dbdict::upgrade_suma_NotStarted(Uint32 err, Uint32 ref) const
-{
-  /**
-   * Check that receiver can handle 1428,
-   *   else return true if error code should be replaced by NF_FakeErrorREF
-   */
-  if (err == 1428)
-  {
-    jam();
-    if (!ndb_suma_not_started_ref(getNodeInfo(refToNode(ref)).m_version))
-      return true;
-  }
-  return false;
-}
-
 void Dbdict::execSUB_START_REF(Signal* signal)
 {
   jamEntry();
+  D("execSUB_START_REF");
 
   const SubStartRef* ref = (SubStartRef*) signal->getDataPtr();
   Uint32 senderRef  = ref->senderRef;
@@ -17557,14 +19267,9 @@ void Dbdict::execSUB_START_REF(Signal* signal)
     jam();
 
 #ifdef EVENT_PH3_DEBUG
-    ndbout_c("DBDICT(Participant) got GSN_SUB_START_REF = (%d)", subbPtr.i);
+    g_eventLogger->info("DBDICT(Participant) got GSN_SUB_START_REF = (%d)",
+                        subbPtr.i);
 #endif
-
-    if (upgrade_suma_NotStarted(err, subbPtr.p->m_senderRef))
-    {
-      jam();
-      err = SubStartRef::NF_FakeErrorREF;
-    }
 
     SubStartRef* ref = (SubStartRef*) signal->getDataPtrSend();
     ref->senderRef = reference();
@@ -17580,7 +19285,8 @@ void Dbdict::execSUB_START_REF(Signal* signal)
    */
   ndbrequire(refToBlock(senderRef) == DBDICT);
 #ifdef EVENT_PH3_DEBUG
-  ndbout_c("DBDICT(Coordinator) got GSN_SUB_START_REF = (%d)", subbPtr.i);
+  g_eventLogger->info("DBDICT(Coordinator) got GSN_SUB_START_REF = (%d)",
+                      subbPtr.i);
 #endif
   if (err == SubStartRef::NotStarted)
   {
@@ -17607,6 +19313,7 @@ void Dbdict::execSUB_START_REF(Signal* signal)
 void Dbdict::execSUB_START_CONF(Signal* signal)
 {
   jamEntry();
+  D("execSUB_START_CONF");
 
   const SubStartConf* conf = (SubStartConf*) signal->getDataPtr();
   Uint32 senderRef  = conf->senderRef;
@@ -17624,7 +19331,8 @@ void Dbdict::execSUB_START_CONF(Signal* signal)
     SubStartConf* conf = (SubStartConf*) signal->getDataPtrSend();
 
 #ifdef EVENT_PH3_DEBUG
-  ndbout_c("DBDICT(Participant) got GSN_SUB_START_CONF = (%d)", subbPtr.i);
+    g_eventLogger->info("DBDICT(Participant) got GSN_SUB_START_CONF = (%d)",
+                        subbPtr.i);
 #endif
 
     conf->senderRef = reference();
@@ -17642,7 +19350,8 @@ void Dbdict::execSUB_START_CONF(Signal* signal)
    */
   ndbrequire(refToBlock(senderRef) == DBDICT);
 #ifdef EVENT_PH3_DEBUG
-  ndbout_c("DBDICT(Coordinator) got GSN_SUB_START_CONF = (%d)", subbPtr.i);
+  g_eventLogger->info("DBDICT(Coordinator) got GSN_SUB_START_CONF = (%d)",
+                      subbPtr.i);
 #endif
 #define ARRAY_SIZE(x) (sizeof(x)/(sizeof(x[0])))
 
@@ -17679,7 +19388,7 @@ void Dbdict::completeSubStartReq(Signal* signal,
   {
     jam();
 #ifdef EVENT_DEBUG
-    ndbout_c("SUB_START_REF");
+    g_eventLogger->info("SUB_START_REF");
 #endif
 
     if (subbPtr.p->m_reqTracker.hasConf())
@@ -17687,6 +19396,10 @@ void Dbdict::completeSubStartReq(Signal* signal,
       jam();
       NodeReceiverGroup rg(DBDICT, subbPtr.p->m_reqTracker.m_confs);
       RequestTracker & p = subbPtr.p->m_reqTracker;
+      /**
+       * Expect to have SafeCounter available as we have just
+       * released one to the pool to get here.
+       */
       ndbrequire(p.init<SubStopRef>(c_counterMgr, rg, GSN_SUB_STOP_REF,
                                     subbPtr.i));
 
@@ -17710,7 +19423,7 @@ void Dbdict::completeSubStartReq(Signal* signal,
     }
   }
 #ifdef EVENT_DEBUG
-  ndbout_c("SUB_START_CONF");
+  g_eventLogger->info("SUB_START_CONF");
 #endif
 
   ndbrequire(c_outstanding_sub_startstop);
@@ -17737,6 +19450,7 @@ void Dbdict::completeSubStartReq(Signal* signal,
 void Dbdict::execSUB_STOP_REQ(Signal* signal)
 {
   jamEntry();
+  D("execSUB_STOP_REQ");
 
   Uint32 origSenderRef = signal->senderBlockRef();
 
@@ -17769,7 +19483,7 @@ busy:
     subbPtr.p->m_subscriptionKey = req->subscriptionKey;
     subbPtr.p->m_subscriberRef = req->subscriberRef;
     subbPtr.p->m_subscriberData = req->subscriberData;
-    bzero(&subbPtr.p->m_sub_stop_conf, sizeof(subbPtr.p->m_sub_stop_conf));
+    std::memset(&subbPtr.p->m_sub_stop_conf, 0, sizeof(subbPtr.p->m_sub_stop_conf));
 
     if (signal->getLength() < SubStopReq::SignalLength)
     {
@@ -17801,7 +19515,7 @@ busy:
     }
 
 #ifdef EVENT_DEBUG
-    ndbout_c("SUB_STOP_REQ 1");
+    g_eventLogger->info("SUB_STOP_REQ 1");
 #endif
     subbPtr.p->m_senderRef = origSenderRef; // not sure if API sets correctly
     NodeReceiverGroup rg(DBDICT, c_aliveNodes);
@@ -17827,7 +19541,7 @@ busy:
    * Participant
    */
 #ifdef EVENT_DEBUG
-  ndbout_c("SUB_STOP_REQ 2");
+  g_eventLogger->info("SUB_STOP_REQ 2");
 #endif
   ndbrequire(refToBlock(origSenderRef) == DBDICT);
 
@@ -17846,6 +19560,7 @@ busy:
 void Dbdict::execSUB_STOP_REF(Signal* signal)
 {
   jamEntry();
+  D("execSUB_STOP_REF");
   const SubStopRef* ref = (SubStopRef*) signal->getDataPtr();
   Uint32 senderRef  = ref->senderRef;
   Uint32 err = ref->errorCode;
@@ -17859,12 +19574,6 @@ void Dbdict::execSUB_STOP_REF(Signal* signal)
      * Participant
      */
     jam();
-
-    if (upgrade_suma_NotStarted(err, subbPtr.p->m_senderRef))
-    {
-      jam();
-      err = SubStopRef::NF_FakeErrorREF;
-    }
 
     SubStopRef* ref = (SubStopRef*) signal->getDataPtrSend();
     ref->senderRef = reference();
@@ -17899,6 +19608,7 @@ void Dbdict::execSUB_STOP_REF(Signal* signal)
 void Dbdict::execSUB_STOP_CONF(Signal* signal)
 {
   jamEntry();
+  D("execSUB_STOP_CONF");
 
   const SubStopConf* conf = (SubStopConf*) signal->getDataPtr();
   Uint32 senderRef  = conf->senderRef;
@@ -17981,7 +19691,7 @@ void Dbdict::completeSubStopReq(Signal* signal,
   if (subbPtr.p->m_reqTracker.hasRef()) {
     jam();
 #ifdef EVENT_DEBUG
-    ndbout_c("SUB_STOP_REF");
+    g_eventLogger->info("SUB_STOP_REF");
 #endif
     SubStopRef* ref = (SubStopRef*)signal->getDataPtrSend();
 
@@ -17998,7 +19708,7 @@ void Dbdict::completeSubStopReq(Signal* signal,
     return;
   }
 #ifdef EVENT_DEBUG
-  ndbout_c("SUB_STOP_CONF");
+  g_eventLogger->info("SUB_STOP_CONF");
 #endif
   SubStopConf* conf = (SubStopConf*)signal->getDataPtrSend();
   * conf = subbPtr.p->m_sub_stop_conf;
@@ -18019,6 +19729,7 @@ void
 Dbdict::execDROP_EVNT_REQ(Signal* signal)
 {
   jamEntry();
+  D("execDROP_EVNT_REQ");
   DBUG_ENTER("Dbdict::execDROP_EVNT_REQ");
 
   DropEvntReq *req = (DropEvntReq*)signal->getDataPtr();
@@ -18050,7 +19761,7 @@ Dbdict::execDROP_EVNT_REQ(Signal* signal)
     releaseSections(handle);
 
     DropEvntRef * ret = (DropEvntRef *)signal->getDataPtrSend();
-    ret->setErrorCode(747);
+    ret->setErrorCode(DropEvntRef::AllocationFailure);
     ret->setErrorLine(__LINE__);
     ret->setErrorNode(reference());
     sendSignal(senderRef, GSN_DROP_EVNT_REF, signal,
@@ -18059,7 +19770,8 @@ Dbdict::execDROP_EVNT_REQ(Signal* signal)
   }
 
 #ifdef EVENT_DEBUG
-  ndbout_c("DBDICT::execDROP_EVNT_REQ evntRecId = (%d)", evntRecPtr.i);
+  g_eventLogger->info("DBDICT::execDROP_EVNT_REQ evntRecId = (%d)",
+                      evntRecPtr.i);
 #endif
 
   OpDropEvent* evntRec = evntRecPtr.p;
@@ -18067,7 +19779,7 @@ Dbdict::execDROP_EVNT_REQ(Signal* signal)
 
   SegmentedSectionPtr ssPtr;
 
-  handle.getSection(ssPtr, 0);
+  ndbrequire(handle.getSection(ssPtr, 0));
 
   SimplePropertiesSectionReader r0(ssPtr, getSectionSegmentPool());
 #ifdef EVENT_DEBUG
@@ -18090,7 +19802,7 @@ Dbdict::execDROP_EVNT_REQ(Signal* signal)
   r0.getString(evntRecPtr.p->m_eventRec.NAME);
   {
     int len = (int)strlen(evntRecPtr.p->m_eventRec.NAME);
-    memset(evntRecPtr.p->m_eventRec.NAME+len, 0, MAX_TAB_NAME_SIZE-len);
+    std::memset(evntRecPtr.p->m_eventRec.NAME+len, 0, MAX_TAB_NAME_SIZE-len);
 #ifdef EVENT_DEBUG
     printf("DropEvntReq; EventName %s, len %u\n",
 	   evntRecPtr.p->m_eventRec.NAME, len);
@@ -18185,6 +19897,7 @@ void
 Dbdict::execSUB_REMOVE_REQ(Signal* signal)
 {
   jamEntry();
+  D("execSUB_REMOVE_REQ");
   DBUG_ENTER("Dbdict::execSUB_REMOVE_REQ");
 
   Uint32 origSenderRef = signal->senderBlockRef();
@@ -18231,6 +19944,7 @@ void
 Dbdict::execSUB_REMOVE_REF(Signal* signal)
 {
   jamEntry();
+  D("execSUB_REMOVE_REF");
   DBUG_ENTER("Dbdict::execSUB_REMOVE_REF");
 
   const SubRemoveRef* ref = (SubRemoveRef*) signal->getDataPtr();
@@ -18245,10 +19959,11 @@ Dbdict::execSUB_REMOVE_REF(Signal* signal)
     jam();
     OpSubEventPtr subbPtr;
     c_opSubEvent.getPtr(subbPtr, ref->senderData);
-    if (err == SubRemoveRef::NoSuchSubscription)
+    if (err == SubRemoveRef::NoSuchSubscription ||
+        err == SubRemoveRef::AlreadyDropped)
     {
       jam();
-      // conf this since this may occur if a nodefailure has occured
+      // conf this since this may occur if a nodefailure has occurred
       // earlier so that the systable was not cleared
       SubRemoveConf* conf = (SubRemoveConf*) signal->getDataPtrSend();
       conf->senderRef  = reference();
@@ -18259,12 +19974,6 @@ Dbdict::execSUB_REMOVE_REF(Signal* signal)
     else
     {
       jam();
-
-      if (upgrade_suma_NotStarted(err, subbPtr.p->m_senderRef))
-      {
-        jam();
-        err = SubRemoveRef::NF_FakeErrorREF;
-      }
 
       SubRemoveRef* ref = (SubRemoveRef*) signal->getDataPtrSend();
       ref->senderRef = reference();
@@ -18308,6 +20017,7 @@ Dbdict::execSUB_REMOVE_CONF(Signal* signal)
   jamEntry();
   const SubRemoveConf* conf = (SubRemoveConf*) signal->getDataPtr();
   Uint32 senderRef = conf->senderRef;
+  D("execSUB_REMOVE_CONF");
 
   if (refToBlock(senderRef) == SUMA) {
     /*
@@ -18331,6 +20041,9 @@ Dbdict::execSUB_REMOVE_CONF(Signal* signal)
   OpDropEventPtr eventRecPtr;
   c_opDropEvent.getPtr(eventRecPtr, conf->senderData);
   eventRecPtr.p->m_reqTracker.reportConf(c_counterMgr, refToNode(senderRef));
+
+  CRASH_INSERTION2(6125, getOwnNodeId() == c_masterNodeId);
+
   completeSubRemoveReq(signal,eventRecPtr.i,0);
 }
 
@@ -18457,7 +20170,7 @@ Dbdict::dropEventUtilExecuteRef(Signal* signal,
     switch (ref->getTCErrorCode()) {
     case ZNOT_FOUND:
       jam();
-      evntRecPtr.p->m_errorCode = 4710;
+      evntRecPtr.p->m_errorCode = DropEvntRef::TableNotFound;
       break;
     default:
       jam();
@@ -18552,6 +20265,7 @@ Dbdict::execCREATE_TRIG_REQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  D("execCREATE_TRIG_REQ");
 
   const CreateTrigReq req_copy =
     *(const CreateTrigReq*)signal->getDataPtr();
@@ -18619,6 +20333,7 @@ Dbdict::createTrigger_parse(Signal* signal, bool master,
     break;
   case CreateTrigImplReq::CreateTriggerOffline:
     jam();
+    [[fallthrough]];
   default:
     ndbassert(false);
     setError(error, CreateTrigRef::BadRequestType, __LINE__);
@@ -18651,6 +20366,7 @@ Dbdict::createTrigger_parse(Signal* signal, bool master,
     break;
   case CreateTrigReq::TriggerDst:
     jam();
+    [[fallthrough]];
   case CreateTrigReq::TriggerSrc:
     jam();
     if (handle.m_cnt)
@@ -18666,15 +20382,14 @@ Dbdict::createTrigger_parse(Signal* signal, bool master,
   }
 
   SegmentedSectionPtr ss_ptr;
-  handle.getSection(ss_ptr, CreateTrigReq::TRIGGER_NAME_SECTION);
+  ndbrequire(handle.getSection(ss_ptr, CreateTrigReq::TRIGGER_NAME_SECTION));
   SimplePropertiesSectionReader r(ss_ptr, getSectionSegmentPool());
   DictTabInfo::Table tableDesc;
   tableDesc.init();
   SimpleProperties::UnpackStatus status =
     SimpleProperties::unpack(r, &tableDesc,
 			     DictTabInfo::TableMapping,
-			     DictTabInfo::TableMappingSize,
-			     true, true);
+			     DictTabInfo::TableMappingSize);
 
   if (status != SimpleProperties::Eof ||
       tableDesc.TableName[0] == 0)
@@ -18775,7 +20490,7 @@ Dbdict::createTrigger_parse(Signal* signal, bool master,
   {
     jam();
     SegmentedSectionPtr mask_ptr;
-    handle.getSection(mask_ptr, CreateTrigReq::ATTRIBUTE_MASK_SECTION);
+    ndbrequire(handle.getSection(mask_ptr, CreateTrigReq::ATTRIBUTE_MASK_SECTION));
     if (mask_ptr.sz > triggerPtr.p->attributeMask.getSizeInWords())
     {
       jam();
@@ -18787,8 +20502,9 @@ Dbdict::createTrigger_parse(Signal* signal, bool master,
     {
       jam();
       Uint32 len = triggerPtr.p->attributeMask.getSizeInWords() - mask_ptr.sz;
-      bzero(triggerPtr.p->attributeMask.rep.data + mask_ptr.sz,
-            4 * len);
+      std::memset(triggerPtr.p->attributeMask.rep.data + mask_ptr.sz,
+                  0,
+                  4 * len);
     }
   }
   else
@@ -18815,7 +20531,7 @@ Dbdict::createTrigger_parse(Signal* signal, bool master,
     obj_ptr.p->m_id = impl_req->triggerId; // wl3600_todo id
     obj_ptr.p->m_type =
       TriggerInfo::getTriggerType(triggerPtr.p->triggerInfo);
-    link_object(obj_ptr, triggerPtr);
+    ndbrequire(link_object(obj_ptr, triggerPtr));
     c_obj_id_hash.add(obj_ptr);
   }
 
@@ -18826,9 +20542,11 @@ Dbdict::createTrigger_parse(Signal* signal, bool master,
     case TriggerType::REORG_TRIGGER:
       jam();
       createTrigger_create_drop_trigger_operation(signal, op_ptr, error);
+      [[fallthrough]];
     case TriggerType::SECONDARY_INDEX:
     case TriggerType::FK_PARENT:
     case TriggerType::FK_CHILD:
+    case TriggerType::FULLY_REPLICATED_TRIGGER:
       jam();
       createTriggerPtr.p->m_sub_dst = false;
       createTriggerPtr.p->m_sub_src = false;
@@ -18880,11 +20598,65 @@ Dbdict::createTrigger_parse(Signal* signal, bool master,
         D("fk: child" << V(impl_req->triggerId));
         break;
       default:
-        ndbrequire(false);
-        break;
+        ndbabort();
       }
     }
   }
+
+  if (TriggerInfo::getTriggerType(triggerPtr.p->triggerInfo) ==
+      TriggerType::FULLY_REPLICATED_TRIGGER)
+  {
+    jam();
+    TableRecordPtr tablePtr;
+    bool ok = find_object(tablePtr, impl_req->tableId);
+    ndbrequire(ok);
+
+    /**
+     * during NR it might be that fullyReplicatedTriggerId is already set
+     *   and in that case we don't actually modify the table...
+     */
+    bool modified = tablePtr.p->fullyReplicatedTriggerId != impl_req->triggerId;
+    tablePtr.p->fullyReplicatedTriggerId = impl_req->triggerId;
+
+    if (modified)
+    {
+      jam();
+      /**
+       * Mark table modified by subOp
+       */
+      markTableModifiedBySubOp(op_ptr, impl_req->tableId);
+    }
+  }
+}
+
+void
+Dbdict::markTableModifiedBySubOp(SchemaOpPtr op_ptr, Uint32 tableId)
+{
+  SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
+  LocalSchemaOp_list list(c_schemaOpPool, trans_ptr.p->m_op_list);
+  ndbrequire(list.prev(op_ptr));
+  do
+  {
+    jam();
+    Uint32 sz = sizeof(op_ptr.p->m_oprec_ptr.p->m_opType);
+    const char * opType = op_ptr.p->m_oprec_ptr.p->m_opType;
+    if (memcmp(opType, CreateTableRec::g_opInfo.m_opType, sz) == 0)
+    {
+      CreateTableRecPtr createTabPtr;
+      getOpRec(op_ptr, createTabPtr);
+      if (createTabPtr.p->m_request.tableId == tableId)
+      {
+        jam();
+        createTabPtr.p->m_modified_by_subOps = true;
+        return;
+      }
+    }
+  } while (list.prev(op_ptr));
+
+  /**
+   * Calling this method wo/ having a create table...is an inconsistency
+   */
+  ndbabort();
 }
 
 void
@@ -18927,6 +20699,7 @@ Dbdict::createTrigger_parse_endpoint(Signal* signal,
     jam();
     createTrigger_create_drop_trigger_operation(signal, op_ptr, error);
     return;
+  case TriggerType::FULLY_REPLICATED_TRIGGER:
   default:
     return;
   }
@@ -19090,8 +20863,7 @@ Dbdict::createTrigger_fromCreateEndpoint(Signal* signal,
 {
   SchemaOpPtr op_ptr;
   CreateTriggerRecPtr createTriggerPtr;
-  findSchemaOp(op_ptr, createTriggerPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createTriggerPtr, op_key));
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
 
   if (ret == 0)
@@ -19194,8 +20966,7 @@ Dbdict::createTrigger_prepare_fromLocal(Signal* signal,
 {
   SchemaOpPtr op_ptr;
   CreateTriggerRecPtr createTriggerPtr;
-  findSchemaOp(op_ptr, createTriggerPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createTriggerPtr, op_key));
 
   if (ret == 0)
   {
@@ -19386,8 +21157,7 @@ Dbdict::createTrigger_abortPrepare_fromLocal(Signal* signal,
 {
   SchemaOpPtr op_ptr;
   CreateTriggerRecPtr createTriggerPtr;
-  findSchemaOp(op_ptr, createTriggerPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createTriggerPtr, op_key));
 
   ndbrequire(ret == 0); // abort can't fail
 
@@ -19468,6 +21238,7 @@ Dbdict::execCREATE_TRIG_CONF(Signal* signal)
 {
   jamEntry();
   const CreateTrigConf* conf = (const CreateTrigConf*)signal->getDataPtr();
+  D("execCREATE_TRIG_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -19476,6 +21247,7 @@ Dbdict::execCREATE_TRIG_REF(Signal* signal)
 {
   jamEntry();
   const CreateTrigRef* ref = (const CreateTrigRef*)signal->getDataPtr();
+  D("execCREATE_TRIG_REF");
   handleDictRef(signal, ref);
 }
 
@@ -19484,6 +21256,7 @@ Dbdict::execCREATE_TRIG_IMPL_CONF(Signal* signal)
 {
   jamEntry();
   const CreateTrigImplConf* conf = (const CreateTrigImplConf*)signal->getDataPtr();
+  D("execCREATE_TRIG_IMPL_CONF");
   ndbrequire(refToNode(conf->senderRef) == getOwnNodeId());
   handleDictConf(signal, conf);
 }
@@ -19493,6 +21266,7 @@ Dbdict::execCREATE_TRIG_IMPL_REF(Signal* signal)
 {
   jamEntry();
   const CreateTrigImplRef* ref = (const CreateTrigImplRef*)signal->getDataPtr();
+  D("execCREATE_TRIG_IMPL_REF");
   ndbrequire(refToNode(ref->senderRef) == getOwnNodeId());
   handleDictRef(signal, ref);
 }
@@ -19544,6 +21318,7 @@ Dbdict::execDROP_TRIG_REQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  D("execDROP_TRIG_REQ");
 
   const DropTrigReq req_copy =
     *(const DropTrigReq*)signal->getDataPtr();
@@ -19611,15 +21386,14 @@ Dbdict::dropTrigger_parse(Signal* signal, bool master,
   if (reqByName) {
     jam();
     SegmentedSectionPtr ss_ptr;
-    handle.getSection(ss_ptr, DropTrigImplReq::TRIGGER_NAME_SECTION);
+    ndbrequire(handle.getSection(ss_ptr, DropTrigImplReq::TRIGGER_NAME_SECTION));
     SimplePropertiesSectionReader r(ss_ptr, getSectionSegmentPool());
     DictTabInfo::Table tableDesc;
     tableDesc.init();
     SimpleProperties::UnpackStatus status =
       SimpleProperties::unpack(
           r, &tableDesc,
-          DictTabInfo::TableMapping, DictTabInfo::TableMappingSize,
-          true, true);
+          DictTabInfo::TableMapping, DictTabInfo::TableMappingSize);
 
     if (status != SimpleProperties::Eof ||
         tableDesc.TableName[0] == 0)
@@ -19735,6 +21509,7 @@ Dbdict::dropTrigger_parse(Signal* signal, bool master,
     case TriggerType::SECONDARY_INDEX:
     case TriggerType::FK_PARENT:
     case TriggerType::FK_CHILD:
+    case TriggerType::FULLY_REPLICATED_TRIGGER:
       jam();
       dropTriggerPtr.p->m_sub_dst = false;
       dropTriggerPtr.p->m_sub_src = false;
@@ -19883,8 +21658,7 @@ Dbdict::dropTrigger_fromDropEndpoint(Signal* signal,
 {
   SchemaOpPtr op_ptr;
   DropTriggerRecPtr dropTriggerPtr;
-  findSchemaOp(op_ptr, dropTriggerPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, dropTriggerPtr, op_key));
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
 
   if (ret == 0)
@@ -20015,8 +21789,7 @@ Dbdict::dropTrigger_commit_fromLocal(Signal* signal,
 {
   SchemaOpPtr op_ptr;
   DropTriggerRecPtr dropTriggerPtr;
-  findSchemaOp(op_ptr, dropTriggerPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, dropTriggerPtr, op_key));
 
   if (ret)
   {
@@ -20096,6 +21869,7 @@ Dbdict::execDROP_TRIG_CONF(Signal* signal)
 {
   jamEntry();
   const DropTrigConf* conf = (const DropTrigConf*)signal->getDataPtr();
+  D("execDROP_TRIG_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -20104,6 +21878,7 @@ Dbdict::execDROP_TRIG_REF(Signal* signal)
 {
   jamEntry();
   const DropTrigRef* ref = (const DropTrigRef*)signal->getDataPtr();
+  D("execDROP_TRIG_REF");
   handleDictRef(signal, ref);
 }
 
@@ -20112,6 +21887,7 @@ Dbdict::execDROP_TRIG_IMPL_CONF(Signal* signal)
 {
   jamEntry();
   const DropTrigImplConf* conf = (const DropTrigImplConf*)signal->getDataPtr();
+  D("execDROP_TRIG_IMPL_CONF");
   ndbrequire(refToNode(conf->senderRef) == getOwnNodeId());
   handleDictConf(signal, conf);
 }
@@ -20121,6 +21897,7 @@ Dbdict::execDROP_TRIG_IMPL_REF(Signal* signal)
 {
   jamEntry();
   const DropTrigImplRef* ref = (const DropTrigImplRef*)signal->getDataPtr();
+  D("execDROP_TRIG_IMPL_REF");
   ndbrequire(refToNode(ref->senderRef) == getOwnNodeId());
   handleDictRef(signal, ref);
 }
@@ -20186,7 +21963,7 @@ Dbdict::getIndexAttr(TableRecordPtr indexPtr, Uint32 itAttr, Uint32* id)
       return;
     }
   }
-  ndbrequire(false);
+  ndbabort();
 }
 
 void
@@ -20194,7 +21971,7 @@ Dbdict::getIndexAttrList(TableRecordPtr indexPtr, IndexAttributeList& list)
 {
   jam();
   list.sz = 0;
-  memset(list.id, 0, sizeof(list.id));
+  std::memset(list.id, 0, sizeof(list.id));
 
   LocalAttributeRecord_list alist(c_attributeRecordPool,
                                   indexPtr.p->m_attributes);
@@ -20339,6 +22116,7 @@ Dbdict::execDICT_LOCK_REQ(Signal* signal)
 {
   jamEntry();
   const DictLockReq req = *(DictLockReq*)&signal->theData[0];
+  D("execDICT_LOCK_REQ");
 
   UtilLockReq lockReq;
   lockReq.senderRef = req.userRef;
@@ -20373,7 +22151,10 @@ Dbdict::execDICT_LOCK_REQ(Signal* signal)
 
     c_sub_startstop_lock.set(refToNode(req.userRef));
 
-    g_eventLogger->info("granting SumaStartMe dict lock to %u", refToNode(req.userRef));
+    g_eventLogger->info("granting %s dict lock to %u",
+                        req.lockType == DictLockReq::SumaStartMe ?
+                          "SumaStartMe" : "SumaHandover",
+                        refToNode(req.userRef));
     DictLockConf* conf = (DictLockConf*)signal->getDataPtrSend();
     conf->userPtr = req.userPtr;
     conf->lockType = req.lockType;
@@ -20449,7 +22230,6 @@ ref:
     ref->userPtr = lockReq.senderData;
     ref->lockType = lockReq.extra;
     ref->errorCode = err;
-
     sendSignal(lockReq.senderRef, GSN_DICT_LOCK_REF, signal,
                DictLockRef::SignalLength, JBB);
   }
@@ -20474,6 +22254,7 @@ Dbdict::execDICT_UNLOCK_ORD(Signal* signal)
 {
   jamEntry();
   const DictUnlockOrd* ord = (const DictUnlockOrd*)&signal->theData[0];
+  D("execDICT_UNLOCK_ORD");
 
   DictLockReq req;
   req.userPtr = ord->senderData;
@@ -20491,9 +22272,13 @@ Dbdict::execDICT_UNLOCK_ORD(Signal* signal)
   {
     Uint32 nodeId = refToNode(ord->senderRef);
     jam();
-    g_eventLogger->info("clearing SumaStartMe dict lock for %u", nodeId);
+    ndbrequire(nodeId <= MAX_DATA_NODE_ID);
+    g_eventLogger->info("clearing %s dict lock for %u",
+                        ord->lockType == DictLockReq::SumaStartMe ?
+                          "SumaStartMe" : "SumaHandover",
+                        nodeId);
+    ndbrequire(c_sub_startstop_lock.get(nodeId));
     c_sub_startstop_lock.clear(nodeId);
-
     if (ord->lockType == DictLockReq::SumaHandOver)
     {
       /**
@@ -20545,6 +22330,7 @@ Dbdict::execDICT_TAKEOVER_REQ(Signal* signal)
      jam();
      return;
    }
+   D("execDICT_TAKEOVER_REQ");
 
    DictTakeoverReq* req = (DictTakeoverReq*)signal->getDataPtr();
    Uint32 masterRef = req->senderRef;
@@ -20561,6 +22347,7 @@ Dbdict::execDICT_TAKEOVER_REQ(Signal* signal)
    Uint32 highest_op_impl_req_gsn = 0;
    SchemaTransPtr trans_ptr;
    bool ending = false;
+   bool restarting = false;
 
    jam();
    bool pending_trans = c_schemaTransList.first(trans_ptr);
@@ -20582,15 +22369,18 @@ Dbdict::execDICT_TAKEOVER_REQ(Signal* signal)
    {
      trans_ptr.p->m_masterRef = masterRef;
 #ifdef VM_TRACE
-      ndbout_c("Dbdict::execDICT_TAKEOVER_REQ: trans %u(0x%8x), state %u, op_list %s", trans_ptr.i, (uint)trans_ptr.p->trans_key, trans_ptr.p->m_state, (trans_ptr.p->m_op_list.in_use)?"yes":"no");
+     g_eventLogger->info(
+         "Dbdict::execDICT_TAKEOVER_REQ:"
+         " trans %u(0x%8x), state %u, op_list %s",
+         trans_ptr.i, (uint)trans_ptr.p->trans_key, trans_ptr.p->m_state,
+         (trans_ptr.p->m_op_list.in_use) ? "yes" : "no");
 #endif
 
      SchemaOpPtr op_ptr;
      LocalSchemaOp_list list(c_schemaOpPool, trans_ptr.p->m_op_list);
      bool pending_op = list.first(op_ptr);
      if (pending_op &&
-         (trans_ptr.p->m_state == SchemaTrans::TS_COMPLETING ||
-          trans_ptr.p->m_state == SchemaTrans::TS_ENDING))
+         trans_ptr.p->m_state == SchemaTrans::TS_ENDING)
      {
        jam();
        /*
@@ -20614,7 +22404,8 @@ Dbdict::execDICT_TAKEOVER_REQ(Signal* signal)
        ndbrequire(!op_ptr.isNull());
        ndbrequire(trans_ptr.i == op_ptr.p->m_trans_ptr.i);
 #ifdef VM_TRACE
-       ndbout_c("Dbdict::execDICT_TAKEOVER_REQ: op %u state %u", op_ptr.p->op_key, op_ptr.p->m_state);
+       g_eventLogger->info("Dbdict::execDICT_TAKEOVER_REQ: op %u state %u",
+                           op_ptr.p->op_key, op_ptr.p->m_state);
 #endif
 
        /*
@@ -20666,9 +22457,13 @@ Dbdict::execDICT_TAKEOVER_REQ(Signal* signal)
        }
        else
        {
+         SchemaOpPtr last_op_ptr;
          jam();
 #ifdef VM_TRACE
-         ndbout_c("Op %u, state %u, rollforward %u/%u, rollback %u/%u",op_ptr.p->op_key,op_ptr.p->m_state, rollforward_op,  rollforward_op_state, rollback_op,  rollback_op_state);
+         g_eventLogger->info(
+             "Op %u, state %u, rollforward %u/%u, rollback %u/%u",
+             op_ptr.p->op_key, op_ptr.p->m_state, rollforward_op,
+             rollforward_op_state, rollback_op, rollback_op_state);
 #endif
          /*
            Find the starting point for a roll forward, the first
@@ -20677,8 +22472,43 @@ Dbdict::execDICT_TAKEOVER_REQ(Signal* signal)
          if (SchemaOp::weight(op_ptr.p->m_state) <
              SchemaOp::weight(rollforward_op_state))
          {
+           jam();
            rollforward_op = op_ptr.p->op_key;
            rollforward_op_state = op_ptr.p->m_state;
+         }
+         list.last(last_op_ptr);
+         /*
+           Check if we didn't found any operation that hasn't completed.
+           Then it could be that we have already completed some operations,
+           then set rollforward point to first operation, if any, and inform
+           we are restarting to ensure the related gci is returned to new master
+           so it can find the operation if it has already completed that operation.
+          */
+         if ((rollforward_op == 0) && (op_ptr.i == last_op_ptr.i))
+         {
+           jam();
+           SchemaOpPtr first_op_ptr;
+           if (list.first(first_op_ptr))
+           {
+             jam();
+             rollforward_op = first_op_ptr.p->op_key;
+             rollforward_op_state = first_op_ptr.p->m_state;
+             lowest_op = first_op_ptr.p->op_key;
+             lowest_op_state = first_op_ptr.p->m_state;
+             /*
+               Find the OpInfo gsn for the first operation,
+               this might be needed by new master to create missing operation.
+             */
+             lowest_op_impl_req_gsn = getOpInfo(first_op_ptr).m_impl_req_gsn;
+#ifdef VM_TRACE
+             g_eventLogger->info(
+                 "execDICT_TAKEOVER_CONF: Transaction %u rolled forward,"
+                 " resetting rollforward to first %u(%u), gsn %u",
+                 trans_ptr.p->trans_key, rollforward_op_state, rollforward_op,
+                 lowest_op_impl_req_gsn);
+#endif
+           }
+           restarting = true;
          }
          /*
            Find the starting point for a rollback, the last
@@ -20687,6 +22517,7 @@ Dbdict::execDICT_TAKEOVER_REQ(Signal* signal)
          if (SchemaOp::weight(op_ptr.p->m_state) >=
              SchemaOp::weight(rollback_op_state))
          {
+           jam();
            rollback_op = op_ptr.p->op_key;
            rollback_op_state = op_ptr.p->m_state;
          }
@@ -20694,7 +22525,11 @@ Dbdict::execDICT_TAKEOVER_REQ(Signal* signal)
        pending_op = list.next(op_ptr);
      }
 #ifdef VM_TRACE
-     ndbout_c("Slave transaction %u has %u schema operations, rf %u/%u, rb %u/%u", trans_ptr.p->trans_key, op_count, rollforward_op, rollforward_op_state, rollback_op, rollback_op_state);
+     g_eventLogger->info(
+         "Slave transaction %u has %u schema operations,"
+         " rf %u/%u, rb %u/%u",
+         trans_ptr.p->trans_key, op_count, rollforward_op, rollforward_op_state,
+         rollback_op, rollback_op_state);
 #endif
      DictTakeoverConf* conf = (DictTakeoverConf*)signal->getDataPtrSend();
      conf->senderRef = reference();
@@ -20716,7 +22551,7 @@ Dbdict::execDICT_TAKEOVER_REQ(Signal* signal)
        conf->highest_op_state = highest_op_state;
        conf->highest_op_impl_req_gsn = highest_op_impl_req_gsn;
      }
-     if (ending)
+     if (ending || restarting)
      {
        /*
          New master might already have released lowest operation found.
@@ -20739,10 +22574,10 @@ Dbdict::execDICT_TAKEOVER_REF(Signal* signal)
   Uint32 nodeId = refToNode(senderRef);
   NodeRecordPtr masterNodePtr;
   jamEntry();
+  D("execDICT_TAKEOVER_REF");
 #ifdef VM_TRACE
-  ndbout_c("Dbdict::execDICT_TAKEOVER_REF: error %u, from %u",
-           ref->errorCode,
-           nodeId);
+  g_eventLogger->info("Dbdict::execDICT_TAKEOVER_REF: error %u, from %u",
+                      ref->errorCode, nodeId);
 #endif
   /*
     Slave has died (didn't reply) or doesn't not have any transaction
@@ -20755,7 +22590,7 @@ Dbdict::execDICT_TAKEOVER_REF(Signal* signal)
     Check if we got replies from all nodes
   */
   {
-    SafeCounter sc(c_counterMgr, masterNodePtr.p->m_counter);
+    SafeCounter sc(c_reservedCounterMgr, masterNodePtr.p->m_counter);
     if (!sc.clearWaitingFor(nodeId)) {
       jam();
       return;
@@ -20781,6 +22616,7 @@ Dbdict::execDICT_TAKEOVER_CONF(Signal* signal)
   //Uint32 rollback_op = conf->rollback_op;
   //Uint32 rollback_op_state = conf->rollback_op_state;
   NodeRecordPtr masterNodePtr;
+  D("execDICT_TAKEOVER_CONF");
 
   /*
     Accumulate all responses
@@ -20792,16 +22628,19 @@ Dbdict::execDICT_TAKEOVER_CONF(Signal* signal)
   ndbassert(getOwnNodeId() == c_masterNodeId);
   c_nodes.getPtr(masterNodePtr, c_masterNodeId);
 #ifdef VM_TRACE
-  ndbout_c("execDICT_TAKEOVER_CONF: Node %u, trans %u(%u), count %u, rollf %u/%u, rb %u/%u",
-           nodeId, conf->trans_key, conf->trans_state, conf->op_count, conf->rollforward_op,
-           conf->rollforward_op_state, conf->rollback_op, conf->rollback_op_state);
+  g_eventLogger->info(
+      "execDICT_TAKEOVER_CONF:"
+      " Node %u, trans %u(%u), count %u, rollf %u/%u, rb %u/%u",
+      nodeId, conf->trans_key, conf->trans_state, conf->op_count,
+      conf->rollforward_op, conf->rollforward_op_state, conf->rollback_op,
+      conf->rollback_op_state);
 #endif
 
   /*
     Check that we got reply from all nodes
   */
   {
-    SafeCounter sc(c_counterMgr, masterNodePtr.p->m_counter);
+    SafeCounter sc(c_reservedCounterMgr, masterNodePtr.p->m_counter);
     if (!sc.clearWaitingFor(nodeId)) {
       jam();
       return;
@@ -20848,7 +22687,8 @@ void Dbdict::check_takeover_replies(Signal* signal)
     {
       jam();
 #ifdef VM_TRACE
-      ndbout_c("New master failed locking transaction %u, error %u", trans_key, lockError);
+      g_eventLogger->info("New master failed locking transaction %u, error %u",
+                          trans_key, lockError);
 #endif
       ndbassert(false);
     }
@@ -20856,7 +22696,7 @@ void Dbdict::check_takeover_replies(Signal* signal)
     {
       jam();
 #ifdef VM_TRACE
-      ndbout_c("New master locked transaction %u", trans_key);
+      g_eventLogger->info("New master locked transaction %u", trans_key);
 #endif
     }
     trans_ptr.p->m_isMaster = true;
@@ -20904,7 +22744,7 @@ void Dbdict::check_takeover_replies(Signal* signal)
             ndbassert(false);
           }
 #ifdef VM_TRACE
-          ndbout_c("New master seized transaction %u", trans_key);
+          g_eventLogger->info("New master seized transaction %u", trans_key);
 #endif
           /*
             Take schema trans lock.
@@ -20921,7 +22761,9 @@ void Dbdict::check_takeover_replies(Signal* signal)
           {
             jam();
 #ifdef VM_TRACE
-            ndbout_c("New master failed locking transaction %u, error %u", trans_key, lockError);
+            g_eventLogger->info(
+                "New master failed locking transaction %u, error %u", trans_key,
+                lockError);
 #endif
             ndbassert(false);
           }
@@ -20929,7 +22771,7 @@ void Dbdict::check_takeover_replies(Signal* signal)
           {
             jam();
 #ifdef VM_TRACE
-            ndbout_c("New master locked transaction %u", trans_key);
+            g_eventLogger->info("New master locked transaction %u", trans_key);
 #endif
           }
           trans_ptr.p->m_nodes.clear();
@@ -20948,7 +22790,8 @@ void Dbdict::check_takeover_replies(Signal* signal)
         trans_ptr.p->m_clientRef = clientRef;
         trans_ptr.p->m_nodes.set(i);
 #ifdef VM_TRACE
-        ndbout_c("Adding node %u to transaction %u", i, trans_ptr.p->trans_key);
+        g_eventLogger->info("Adding node %u to transaction %u", i,
+                            trans_ptr.p->trans_key);
 #endif
         /*
           Save the operation with lowest state and lowest key
@@ -21004,7 +22847,10 @@ void Dbdict::check_takeover_replies(Signal* signal)
   {
     jam();
 #ifdef VM_TRACE
-    ndbout_c("Analyzing transaction progress, trans %u/%u, lowest/highest %u/%u", trans_ptr.p->trans_key, trans_ptr.p->m_state, trans_ptr.p->m_lowest_trans_state, trans_ptr.p->m_highest_trans_state);
+    g_eventLogger->info(
+        "Analyzing transaction progress, trans %u/%u, lowest/highest %u/%u",
+        trans_ptr.p->trans_key, trans_ptr.p->m_state,
+        trans_ptr.p->m_lowest_trans_state, trans_ptr.p->m_highest_trans_state);
 #endif
     switch(trans_ptr.p->m_highest_trans_state) {
     case SchemaTrans::TS_INITIAL:
@@ -21041,7 +22887,8 @@ void Dbdict::check_takeover_replies(Signal* signal)
       trans_ptr.p->check_partial_rollforward = true;
       trans_ptr.p->m_state = trans_ptr.p->m_lowest_trans_state;
 #ifdef VM_TRACE
-      ndbout_c("Setting transaction state to %u for rollforward", trans_ptr.p->m_state);
+      g_eventLogger->info("Setting transaction state to %u for rollforward",
+                          trans_ptr.p->m_state);
 #endif
     }
     else
@@ -21054,11 +22901,13 @@ void Dbdict::check_takeover_replies(Signal* signal)
       infoEvent("Pending schema transaction %u will be rolled back", trans_ptr.p->trans_key);
       trans_ptr.p->m_state = trans_ptr.p->m_highest_trans_state;
 #ifdef VM_TRACE
-      ndbout_c("Setting transaction state to %u for rollback", trans_ptr.p->m_state);
+      g_eventLogger->info("Setting transaction state to %u for rollback",
+                          trans_ptr.p->m_state);
 #endif
     }
 #ifdef VM_TRACE
-    ndbout_c("Setting start state for transaction %u to %u", trans_ptr.p->trans_key, trans_ptr.p->m_state);
+    g_eventLogger->info("Setting start state for transaction %u to %u",
+                        trans_ptr.p->trans_key, trans_ptr.p->m_state);
 #endif
     pending_trans = c_schemaTransList.next(trans_ptr);
   }
@@ -21089,7 +22938,9 @@ void Dbdict::check_takeover_replies(Signal* signal)
         jam();
         c_nodes.getPtr(nodePtr, i);
 #ifdef VM_TRACE
-        ndbout_c("Node %u had %u operations, master has %u",i , nodePtr.p->takeOverConf.op_count, masterNodePtr.p->takeOverConf.op_count);
+        g_eventLogger->info("Node %u had %u operations, master has %u", i,
+                            nodePtr.p->takeOverConf.op_count,
+                            masterNodePtr.p->takeOverConf.op_count);
 #endif
 
         /** BEWARE:
@@ -21108,7 +22959,10 @@ void Dbdict::check_takeover_replies(Signal* signal)
             */
             jam();
 #ifdef VM_TRACE
-            ndbout_c("Node %u had no operations for  transaction %u, ignore it when aborting", i, trans_ptr.p->trans_key);
+            g_eventLogger->info(
+                "Node %u had no operations for  transaction %u, ignore it when "
+                "aborting",
+                i, trans_ptr.p->trans_key);
 #endif
             nodePtr.p->start_op = 0;
             nodePtr.p->start_op_state = SchemaOp::OS_PARSED;
@@ -21157,7 +23011,9 @@ void Dbdict::check_takeover_replies(Signal* signal)
               {
                 jam();
 #ifdef VM_TRACE
-                ndbout_c("Created missing operation %u, on new master", missing_op_ptr.p->op_key);
+                g_eventLogger->info(
+                    "Created missing operation %u, on new master",
+                    missing_op_ptr.p->op_key);
 #endif
                 ndbassert(masterNodePtr.p->m_nodes.get(c_masterNodeId));
                 missing_op_ptr.p->m_state = nodePtr.p->takeOverConf.highest_op_state;
@@ -21172,7 +23028,8 @@ void Dbdict::check_takeover_replies(Signal* signal)
               }
               trans_ptr.p->m_nodes.set(c_masterNodeId);
 #ifdef VM_TRACE
-              ndbout_c("Adding master node %u to transaction %u", c_masterNodeId, trans_ptr.p->trans_key);
+              g_eventLogger->info("Adding master node %u to transaction %u",
+                                  c_masterNodeId, trans_ptr.p->trans_key);
 #endif
             }
           }
@@ -21201,7 +23058,8 @@ void Dbdict::check_takeover_replies(Signal* signal)
             {
               jam();
 #ifdef VM_TRACE
-              ndbout_c("Created ressurected operation %u, on new master", op_key);
+              g_eventLogger->info(
+                  "Created ressurected operation %u, on new master", op_key);
 #endif
               trans_ptr.p->ressurected_op = true;
               missing_op_ptr.p->m_state = op_state;
@@ -21236,7 +23094,10 @@ void Dbdict::check_takeover_replies(Signal* signal)
             */
             jam();
 #ifdef VM_TRACE
-            ndbout_c("Node %u did not have all operations for transaction %u, skip > %u", i, trans_ptr.p->trans_key, nodePtr.p->takeOverConf.highest_op);
+            g_eventLogger->info(
+                "Node %u did not have all operations for transaction %u,"
+                " skip > %u",
+                i, trans_ptr.p->trans_key, nodePtr.p->takeOverConf.highest_op);
 #endif
             nodePtr.p->recoveryState = NodeRecord::RS_PARTIAL_ROLLBACK;
             nodePtr.p->start_op = nodePtr.p->takeOverConf.highest_op;
@@ -21249,7 +23110,10 @@ void Dbdict::check_takeover_replies(Signal* signal)
             */
             jam();
 #ifdef VM_TRACE
-            ndbout_c("Node %u did not have all operations for transaction %u, skip < %u", i, trans_ptr.p->trans_key, nodePtr.p->takeOverConf.lowest_op);
+            g_eventLogger->info(
+                "Node %u did not have all operations for transaction %u,"
+                " skip < %u",
+                i, trans_ptr.p->trans_key, nodePtr.p->takeOverConf.lowest_op);
 #endif
             nodePtr.p->recoveryState = NodeRecord::RS_PARTIAL_ROLLFORWARD;
             nodePtr.p->start_op = nodePtr.p->takeOverConf.lowest_op;
@@ -21270,7 +23134,15 @@ void Dbdict::check_takeover_replies(Signal* signal)
         jam();
         c_nodes.getPtr(nodePtr, i);
 #ifdef VM_TRACE
-        ndbout_c("Comparing node %u rollforward(%u(%u)<%u(%u))/rollback(%u(%u)<%u(%u))", i, nodePtr.p->takeOverConf.rollforward_op_state, nodePtr.p->takeOverConf.rollforward_op, trans_ptr.p->m_rollforward_op_state, trans_ptr.p->m_rollforward_op, nodePtr.p->takeOverConf.rollback_op_state, nodePtr.p->takeOverConf.rollback_op, trans_ptr.p->m_rollback_op_state, trans_ptr.p->m_rollback_op);
+        g_eventLogger->info(
+            "Comparing node %u "
+            "rollforward(%u(%u)<%u(%u))/rollback(%u(%u)<%u(%u))",
+            i, nodePtr.p->takeOverConf.rollforward_op_state,
+            nodePtr.p->takeOverConf.rollforward_op,
+            trans_ptr.p->m_rollforward_op_state, trans_ptr.p->m_rollforward_op,
+            nodePtr.p->takeOverConf.rollback_op_state,
+            nodePtr.p->takeOverConf.rollback_op,
+            trans_ptr.p->m_rollback_op_state, trans_ptr.p->m_rollback_op);
 #endif
         if (trans_ptr.p->m_master_recovery_state == SchemaTrans::TRS_ROLLFORWARD)
         {
@@ -21285,7 +23157,10 @@ void Dbdict::check_takeover_replies(Signal* signal)
             jam();
             nodePtr.p->recoveryState = NodeRecord::RS_PARTIAL_ROLLFORWARD;
 #ifdef VM_TRACE
-            ndbout_c("Node %u will be partially rolled forward, skipping RT_FLUSH_COMMIT", nodePtr.i);
+            g_eventLogger->info(
+                "Node %u will be partially rolled forward,"
+                " skipping RT_FLUSH_COMMIT",
+                nodePtr.i);
 #endif
           }
           else if (SchemaOp::weight(nodePtr.p->takeOverConf.rollforward_op_state) >
@@ -21302,7 +23177,10 @@ void Dbdict::check_takeover_replies(Signal* signal)
             nodePtr.p->start_op = nodePtr.p->takeOverConf.rollforward_op;
             nodePtr.p->start_op_state = nodePtr.p->takeOverConf.rollforward_op_state;
 #ifdef VM_TRACE
-            ndbout_c("Node %u will be partially rolled forward to operation %u, state %u", nodePtr.i, nodePtr.p->start_op, nodePtr.p->start_op_state);
+            g_eventLogger->info(
+                "Node %u will be partially rolled forward to operation %u, "
+                "state %u",
+                nodePtr.i, nodePtr.p->start_op, nodePtr.p->start_op_state);
 #endif
             if (i == c_masterNodeId)
             {
@@ -21316,7 +23194,10 @@ void Dbdict::check_takeover_replies(Signal* signal)
               ndbrequire(findSchemaOp(op_ptr,
                                       trans_ptr.p->m_rollforward_op));
 #ifdef VM_TRACE
-              ndbout_c("Changed op %u from state %u to %u", trans_ptr.p->m_rollforward_op, op_ptr.p->m_state, trans_ptr.p->m_rollforward_op_state);
+              g_eventLogger->info("Changed op %u from state %u to %u",
+                                  trans_ptr.p->m_rollforward_op,
+                                  op_ptr.p->m_state,
+                                  trans_ptr.p->m_rollforward_op_state);
 #endif
               op_ptr.p->m_state = trans_ptr.p->m_rollforward_op_state;
             }
@@ -21331,7 +23212,10 @@ void Dbdict::check_takeover_replies(Signal* signal)
             jam();
             nodePtr.p->recoveryState = NodeRecord::RS_PARTIAL_ROLLFORWARD;
 #ifdef VM_TRACE
-            ndbout_c("Node %u will be partially rolled forward, skipping RT_FLUSH_COMPLETE", nodePtr.i);
+            g_eventLogger->info(
+                "Node %u will be partially rolled forward,"
+                " skipping RT_FLUSH_COMPLETE",
+                nodePtr.i);
 #endif
           }
         }
@@ -21353,7 +23237,10 @@ void Dbdict::check_takeover_replies(Signal* signal)
             nodePtr.p->start_op = nodePtr.p->takeOverConf.rollback_op;
             nodePtr.p->start_op_state = nodePtr.p->takeOverConf.rollback_op_state;
 #ifdef VM_TRACE
-            ndbout_c("Node %u will be partially rolled back from operation %u, state %u", nodePtr.i, nodePtr.p->start_op, nodePtr.p->start_op_state);
+            g_eventLogger->info(
+                "Node %u will be partially rolled back from operation %u, "
+                "state %u",
+                nodePtr.i, nodePtr.p->start_op, nodePtr.p->start_op_state);
 #endif
             if (i == c_masterNodeId &&
                 (SchemaTrans::weight(trans_ptr.p->m_state) <=
@@ -21369,7 +23256,9 @@ void Dbdict::check_takeover_replies(Signal* signal)
               ndbrequire(findSchemaOp(op_ptr,
                                       trans_ptr.p->m_rollback_op));
 #ifdef VM_TRACE
-              ndbout_c("Changed op %u from state %u to %u", trans_ptr.p->m_rollback_op, op_ptr.p->m_state, trans_ptr.p->m_rollback_op_state);
+              g_eventLogger->info("Changed op %u from state %u to %u",
+                                  trans_ptr.p->m_rollback_op, op_ptr.p->m_state,
+                                  trans_ptr.p->m_rollback_op_state);
 #endif
               op_ptr.p->m_state = trans_ptr.p->m_rollback_op_state;
             }
@@ -21388,7 +23277,11 @@ void Dbdict::check_takeover_replies(Signal* signal)
       ndbrequire(findSchemaOp(rollforward_op_ptr, trans_ptr.p->m_rollforward_op));
       trans_ptr.p->m_curr_op_ptr_i = rollforward_op_ptr.i;
 #ifdef VM_TRACE
-      ndbout_c("execDICT_TAKEOVER_CONF: Transaction %u rolled forward starting at %u(%u)", trans_ptr.p->trans_key,  trans_ptr.p->m_rollforward_op, trans_ptr.p->m_curr_op_ptr_i);
+      g_eventLogger->info(
+          "execDICT_TAKEOVER_CONF:"
+          " Transaction %u rolled forward starting at %u(%u)",
+          trans_ptr.p->trans_key, trans_ptr.p->m_rollforward_op,
+          trans_ptr.p->m_curr_op_ptr_i);
 #endif
     }
     else // if (trans_ptr.p->master_recovery_state == SchemaTrans::TRS_ROLLBACK)
@@ -21404,7 +23297,11 @@ void Dbdict::check_takeover_replies(Signal* signal)
         ndbrequire(findSchemaOp(rollback_op_ptr, trans_ptr.p->m_rollback_op));
         trans_ptr.p->m_curr_op_ptr_i = rollback_op_ptr.i;
 #ifdef VM_TRACE
-        ndbout_c("execDICT_TAKEOVER_CONF: Transaction %u rolled back starting at %u(%u)", trans_ptr.p->trans_key,  trans_ptr.p->m_rollback_op, trans_ptr.p->m_curr_op_ptr_i);
+        g_eventLogger->info(
+            "execDICT_TAKEOVER_CONF: Transaction %u rolled back"
+            " starting at %u(%u)",
+            trans_ptr.p->trans_key, trans_ptr.p->m_rollback_op,
+            trans_ptr.p->m_curr_op_ptr_i);
 #endif
       }
     }
@@ -21516,7 +23413,7 @@ Dbdict::dict_lock_unlock(Signal* signal, const DictLockReq* _req,
     {
       *type = (DictLockReq::LockType) lockReq.extra;
     }
-    /* Fall through */
+    [[fallthrough]];
   case UtilUnlockRef::NotLockOwner:
     break;
   case UtilUnlockRef::NotInLockQueue:
@@ -21564,6 +23461,7 @@ Dbdict::execBACKUP_LOCK_TAB_REQ(Signal* signal)
   Uint32 senderRef = req->m_senderRef;
   Uint32 tableId = req->m_tableId;
   Uint32 lock = req->m_lock_unlock;
+  D("execBACKUP_LOCK_TAB_REQ");
 
   TableRecordPtr tablePtr;
   bool ok = find_object(tablePtr, tableId);
@@ -21611,7 +23509,7 @@ Dbdict::initSchemaFile(XSchemaFile * xsf, Uint32 firstPage, Uint32 lastPage,
   for (Uint32 n = firstPage; n < lastPage; n++) {
     SchemaFile * sf = &xsf->schemaPage[n];
     if (initEntries)
-      memset(sf, 0, NDB_SF_PAGE_SIZE);
+      std::memset(sf, 0, NDB_SF_PAGE_SIZE);
 
     Uint32 ndb_version = NDB_VERSION;
     if (ndb_version < NDB_SF_VERSION_5_0_6)
@@ -21647,7 +23545,7 @@ Dbdict::resizeSchemaFile(XSchemaFile * xsf, Uint32 noOfPages)
       SchemaFile::TableEntry * te = getTableEntry(xsf, tableId);
       if (te->m_tableState != SchemaFile::SF_UNUSED)
       {
-        ndbrequire(false);
+        ndbabort();
       }
       tableId++;
     }
@@ -21770,6 +23668,15 @@ Dbdict::execCREATE_FILE_REQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  if(ERROR_INSERTED(6218))
+  {
+    g_eventLogger->info("Delaying GSN_CREATE_FILE_REQ");
+    sendSignalWithDelay(reference(), GSN_CREATE_FILE_REQ, signal, 1000,
+                       signal->length(),
+                       &handle);
+    return;
+  }
+  D("execCREATE_FILE_REQ");
 
   const CreateFileReq req_copy =
     *(const CreateFileReq*)signal->getDataPtr();
@@ -21857,8 +23764,7 @@ Dbdict::createFile_parse(Signal* signal, bool master,
   SimpleProperties::UnpackStatus status;
   status = SimpleProperties::unpack(it, &f,
 				    DictFilegroupInfo::FileMapping,
-				    DictFilegroupInfo::FileMappingSize,
-				    true, true);
+				    DictFilegroupInfo::FileMappingSize);
 
   if (status != SimpleProperties::Eof)
   {
@@ -22094,7 +24000,7 @@ Dbdict::createFile_parse(Signal* signal, bool master,
     break;
   }
   default:
-    ndbrequire(false);
+    ndbabort();
   }
 
   createFilePtr.p->m_parsed = true;
@@ -22296,7 +24202,7 @@ Dbdict::createFile_fromWriteObjInfo(Signal* signal,
     break;
   }
   default:
-    ndbrequire(false);
+    ndbabort();
   }
 
   char name[PATH_MAX];
@@ -22349,7 +24255,7 @@ Dbdict::createFile_abortPrepare(Signal* signal, SchemaOpPtr op_ptr)
     break;
   }
   default:
-    ndbrequire(false);
+    ndbabort();
   }
 
   sendSignal(ref, GSN_CREATE_FILE_IMPL_REQ, signal,
@@ -22406,7 +24312,7 @@ Dbdict::createFile_commit(Signal* signal, SchemaOpPtr op_ptr)
     break;
   }
   default:
-    ndbrequire(false);
+    ndbabort();
   }
   sendSignal(ref, GSN_CREATE_FILE_IMPL_REQ, signal,
 	     CreateFileImplReq::CommitLength, JBB);
@@ -22452,6 +24358,7 @@ Dbdict::execCREATE_FILE_IMPL_REF(Signal* signal)
 {
   jamEntry();
   CreateFileImplRef * ref = (CreateFileImplRef*)signal->getDataPtr();
+  D("execCREATE_FILE_IMPL_REF");
   handleDictRef(signal, ref);
 }
 
@@ -22460,6 +24367,7 @@ Dbdict::execCREATE_FILE_IMPL_CONF(Signal* signal)
 {
   jamEntry();
   CreateFileImplConf * conf = (CreateFileImplConf*)signal->getDataPtr();
+  D("execCREATE_FILE_IMPL_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -22498,6 +24406,15 @@ Dbdict::execCREATE_FILEGROUP_REQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  if(ERROR_INSERTED(6218))
+  {
+    g_eventLogger->info("Delaying CREATE_FILEGROUP_REQ");
+    sendSignalWithDelay(reference(), GSN_CREATE_FILEGROUP_REQ, signal, 1000,
+                       signal->length(),
+                       &handle);
+    return;
+  }
+  D("execCREATE_FILEGROUP_REQ");
 
   const CreateFilegroupReq req_copy =
     *(const CreateFilegroupReq*)signal->getDataPtr();
@@ -22579,8 +24496,7 @@ Dbdict::createFilegroup_parse(Signal* signal, bool master,
   SimpleProperties::UnpackStatus status =
     SimpleProperties::unpack(it, &fg,
                              DictFilegroupInfo::Mapping,
-                             DictFilegroupInfo::MappingSize,
-                             true, true);
+                             DictFilegroupInfo::MappingSize);
 
   if(status != SimpleProperties::Eof)
   {
@@ -22664,7 +24580,9 @@ Dbdict::createFilegroup_parse(Signal* signal, bool master,
       createFilegroupPtr.p->m_warningFlags |= CreateFilegroupConf::WarnExtentRoundUp;
     }
 #if defined VM_TRACE || defined ERROR_INSERT
-    ndbout << "DD dict: ts id:" << "?" << " extent bytes:" << fg_ptr.p->m_tablespace.m_extent_size << " warn:" << hex << createFilegroupPtr.p->m_warningFlags << endl;
+    g_eventLogger->info("DD dict: ts id:? extent bytes: %u warn: 0x%x",
+                        fg_ptr.p->m_tablespace.m_extent_size,
+                        createFilegroupPtr.p->m_warningFlags);
 #endif
     fg_ptr.p->m_tablespace.m_default_logfile_group_id = fg.TS_LogfileGroupId;
 
@@ -22700,14 +24618,16 @@ Dbdict::createFilegroup_parse(Signal* signal, bool master,
       createFilegroupPtr.p->m_warningFlags |= CreateFilegroupConf::WarnUndobufferRoundUp;
     }
 #if defined VM_TRACE || defined ERROR_INSERT
-    ndbout << "DD dict: fg id:" << "?" << " undo buffer bytes:" << fg_ptr.p->m_logfilegroup.m_undo_buffer_size << " warn:" << hex << createFilegroupPtr.p->m_warningFlags << endl;
+    g_eventLogger->info("DD dict: fg id:? undo buffer bytes: %u warn: 0x%x",
+                        fg_ptr.p->m_logfilegroup.m_undo_buffer_size,
+                        createFilegroupPtr.p->m_warningFlags);
 #endif
     fg_ptr.p->m_logfilegroup.m_files.init();
     //fg.LF_UndoGrow = ;
     break;
   }
   default:
-    ndbrequire(false);
+    ndbabort();
   }
 
   if (master)
@@ -22787,8 +24707,9 @@ Dbdict::createFilegroup_parse(Signal* signal, bool master,
   createFilegroupPtr.p->m_parsed = true;
 
 #if defined VM_TRACE || defined ERROR_INSERT
-  ndbout_c("Dbdict: %u: create name=%s,id=%u,obj_ptr_i=%d",__LINE__,
-           fg.FilegroupName, impl_req->filegroup_id, fg_ptr.p->m_obj_ptr_i);
+  g_eventLogger->info("Dbdict: %u: create name=%s,id=%u,obj_ptr_i=%d", __LINE__,
+                      fg.FilegroupName, impl_req->filegroup_id,
+                      fg_ptr.p->m_obj_ptr_i);
 #endif
 
   return;
@@ -22969,7 +24890,7 @@ Dbdict::createFilegroup_fromWriteObjInfo(Signal* signal,
     break;
   }
   default:
-    ndbrequire(false);
+    ndbabort();
   }
 
   sendSignal(ref, GSN_CREATE_FILEGROUP_IMPL_REQ, signal, len, JBB);
@@ -23017,7 +24938,8 @@ Dbdict::createFilegroup_abortPrepare(Signal* signal, SchemaOpPtr op_ptr)
     op_ptr.p->m_callback = c;
 
     send_drop_fg(signal, op_ptr.p->op_key, impl_req->filegroup_id,
-                 DropFilegroupImplReq::Prepare);
+                 DropFilegroupImplReq::Commit);
+    return; // wait for reply from lgman
   }
 
   sendTransConf(signal, op_ptr);
@@ -23050,6 +24972,7 @@ Dbdict::execCREATE_FILEGROUP_IMPL_REF(Signal* signal)
 {
   jamEntry();
   CreateFilegroupImplRef * ref = (CreateFilegroupImplRef*)signal->getDataPtr();
+  D("execCREATE_FILEGROUP_IMPL_REF");
   handleDictRef(signal, ref);
 }
 
@@ -23059,6 +24982,7 @@ Dbdict::execCREATE_FILEGROUP_IMPL_CONF(Signal* signal)
   jamEntry();
   CreateFilegroupImplConf * conf =
     (CreateFilegroupImplConf*)signal->getDataPtr();
+  D("execCREATE_FILEGROUP_IMPL_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -23097,6 +25021,15 @@ Dbdict::execDROP_FILE_REQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  if(ERROR_INSERTED(6219))
+  {
+    g_eventLogger->info("Delaying GSN_DROP_FILE_REQ");
+    sendSignalWithDelay(reference(), GSN_DROP_FILE_REQ, signal, 1000,
+                       signal->length(),
+                       &handle);
+    return;
+  }
+  D("execDROP_FILE_REQ");
 
   const DropFileReq req_copy =
     *(const DropFileReq*)signal->getDataPtr();
@@ -23203,9 +25136,8 @@ Dbdict::dropFile_parse(Signal* signal, bool master,
     char buf[1024];
     LocalRope name(c_rope_pool, f_ptr.p->m_path);
     name.copy(buf);
-    ndbout_c("Dbdict: drop name=%s,id=%u,obj_id=%u", buf,
-             impl_req->file_id,
-             f_ptr.p->m_obj_ptr_i);
+    g_eventLogger->info("Dbdict: drop name=%s,id=%u,obj_id=%u", buf,
+                        impl_req->file_id, f_ptr.p->m_obj_ptr_i);
   }
 #endif
 }
@@ -23367,6 +25299,7 @@ Dbdict::execDROP_FILE_IMPL_REF(Signal* signal)
 {
   jamEntry();
   DropFileImplRef * ref = (DropFileImplRef*)signal->getDataPtr();
+  D("execDROP_FILE_IMPL_REF");
   handleDictRef(signal, ref);
 }
 
@@ -23375,6 +25308,7 @@ Dbdict::execDROP_FILE_IMPL_CONF(Signal* signal)
 {
   jamEntry();
   DropFileImplConf * conf = (DropFileImplConf*)signal->getDataPtr();
+  D("execDROP_FILE_IMPL_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -23413,7 +25347,7 @@ Dbdict::send_drop_file(Signal* signal, Uint32 op_key, Uint32 fileId,
     break;
   }
   default:
-    ndbrequire(false);
+    ndbabort();
   }
   sendSignal(ref, GSN_DROP_FILE_IMPL_REQ, signal,
 	     DropFileImplReq::SignalLength, JBB);
@@ -23454,6 +25388,15 @@ Dbdict::execDROP_FILEGROUP_REQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  if(ERROR_INSERTED(6219))
+  {
+    g_eventLogger->info("Delaying DROP_FILEGROUP_REQ");
+    sendSignalWithDelay(reference(), GSN_DROP_FILEGROUP_REQ, signal, 1000,
+                       signal->length(),
+                       &handle);
+    return;
+  }
+  D("execDROP_FILEGROUP_REQ");
 
   const DropFilegroupReq req_copy =
     *(const DropFilegroupReq*)signal->getDataPtr();
@@ -23561,9 +25504,8 @@ Dbdict::dropFilegroup_parse(Signal* signal, bool master,
     char buf[1024];
     LocalRope name(c_rope_pool, fg_ptr.p->m_name);
     name.copy(buf);
-    ndbout_c("Dbdict: drop name=%s,id=%u,obj_id=%u", buf,
-             impl_req->filegroup_id,
-             fg_ptr.p->m_obj_ptr_i);
+    g_eventLogger->info("Dbdict: drop name=%s,id=%u,obj_id=%u", buf,
+                        impl_req->filegroup_id, fg_ptr.p->m_obj_ptr_i);
   }
 #endif
 }
@@ -23650,7 +25592,7 @@ Dbdict::dropFilegroup_prepare(Signal* signal, SchemaOpPtr op_ptr)
       jam();
 
       DictObjectPtr objPtr;
-      c_obj_pool.getPtr(objPtr, filePtr.p->m_obj_ptr_i);
+      ndbrequire(c_obj_pool.getPtr(objPtr, filePtr.p->m_obj_ptr_i));
       SchemaFile::TableEntry * entry = getTableEntry(xsf, objPtr.p->m_id);
       entry->m_tableState = SchemaFile::SF_DROP;
       entry->m_transId = trans_ptr.p->m_transId;
@@ -23661,7 +25603,7 @@ Dbdict::dropFilegroup_prepare(Signal* signal, SchemaOpPtr op_ptr)
 void
 Dbdict::dropFilegroup_abortPrepare(Signal* signal, SchemaOpPtr op_ptr)
 {
-  ndbrequire(false);
+  ndbabort();
   DropFilegroupRecPtr dropFilegroupPtr;
   getOpRec(op_ptr, dropFilegroupPtr);
   DropFilegroupImplReq* impl_req = &dropFilegroupPtr.p->m_request;
@@ -23688,7 +25630,7 @@ Dbdict::dropFilegroup_abortPrepare(Signal* signal, SchemaOpPtr op_ptr)
       jam();
 
       DictObjectPtr objPtr;
-      c_obj_pool.getPtr(objPtr, filePtr.p->m_obj_ptr_i);
+      ndbrequire(c_obj_pool.getPtr(objPtr, filePtr.p->m_obj_ptr_i));
       SchemaFile::TableEntry * entry = getTableEntry(xsf, objPtr.p->m_id);
       entry->m_tableState = SchemaFile::SF_IN_USE;
       entry->m_transId = 0;
@@ -23732,7 +25674,7 @@ Dbdict::dropFilegroup_commit(Signal* signal, SchemaOpPtr op_ptr)
       jam();
 
       DictObjectPtr objPtr;
-      c_obj_pool.getPtr(objPtr, filePtr.p->m_obj_ptr_i);
+      ndbrequire(c_obj_pool.getPtr(objPtr, filePtr.p->m_obj_ptr_i));
       SchemaFile::TableEntry * entry = getTableEntry(xsf, objPtr.p->m_id);
       entry->m_tableState = SchemaFile::SF_UNUSED;
       entry->m_transId = 0;
@@ -23798,6 +25740,7 @@ Dbdict::execDROP_FILEGROUP_IMPL_REF(Signal* signal)
 {
   jamEntry();
   DropFilegroupImplRef * ref = (DropFilegroupImplRef*)signal->getDataPtr();
+  D("execDROP_FILEGROUP_IMPL_REF");
   handleDictRef(signal, ref);
 }
 
@@ -23806,6 +25749,7 @@ Dbdict::execDROP_FILEGROUP_IMPL_CONF(Signal* signal)
 {
   jamEntry();
   DropFilegroupImplConf * conf = (DropFilegroupImplConf*)signal->getDataPtr();
+  D("execDROP_FILEGROUP_IMPL_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -23835,7 +25779,7 @@ Dbdict::send_drop_fg(Signal* signal, Uint32 op_key, Uint32 filegroupId,
     ref = LGMAN_REF;
     break;
   default:
-    ndbrequire(false);
+    ndbabort();
   }
 
   sendSignal(ref, GSN_DROP_FILEGROUP_IMPL_REQ, signal,
@@ -23877,6 +25821,7 @@ Dbdict::execCREATE_NODEGROUP_REQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  D("execCREATE_NODEGROUP_REQ");
 
   const CreateNodegroupReq req_copy =
     *(const CreateNodegroupReq*)signal->getDataPtr();
@@ -23990,16 +25935,47 @@ Dbdict::createNodegroup_subOps(Signal* signal, SchemaOpPtr op_ptr)
   {
     jam();
     createNodegroupRecPtr.p->m_map_created = true;
-
     /**
      * This is a bit cheating...
      *   it would be better to handle "object-exists"
      *   and still continue transaction
      *   but that i dont know how
      */
+
+    /**
+     * Creating a hashmap suitable for default.
+     *
+     * Application may either provide a hashmap when a table is created or let
+     * data nodes choose the default hashmap.
+     *
+     * For unique index on tables with user defined partitioning the
+     * application can not choose a hashmap, but the data nodes must select the
+     * default hashmap.
+     *
+     * For unique index on hashmap partitioned tables, the unique index will
+     * use the same hashmap as its base table.
+     *
+     * When a node group are added, the default hashmap changes accordingly.
+     * But to ensure that the new default hashmap do exist if an application
+     * creates a table or an unique index without specifying a hashmap it will
+     * be created here.
+     *
+     * For fully replicated tables the hashmap will be created if needed by
+     * ndbapi.
+     *
+     * And unique indexes on tables using user defined partitioning can not be
+     * fully replicated, so no need to create a hashmap for that case either.
+     */
+
     Uint32 buckets = c_default_hashmap_size;
-    Uint32 fragments = get_default_fragments(signal, 1);
+    Uint32 fragments = get_default_fragments(signal,
+                                             NDB_DEFAULT_PARTITION_BALANCE,
+                                             1);
     char buf[MAX_TAB_NAME_SIZE+1];
+    if (fragments > NDB_DEFAULT_HASHMAP_MAX_FRAGMENTS)
+    {
+      buckets = NDB_MAX_HASHMAP_BUCKETS;
+    }
     BaseString::snprintf(buf, sizeof(buf), "DEFAULT-HASHMAP-%u-%u",
                          buckets,
                          fragments);
@@ -24040,8 +26016,7 @@ Dbdict::createNodegroup_fromCreateHashMap(Signal* signal,
 {
   SchemaOpPtr op_ptr;
   CreateNodegroupRecPtr createNodegroupRecPtr;
-  findSchemaOp(op_ptr, createNodegroupRecPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createNodegroupRecPtr, op_key));
 
   if (ret == 0)
   {
@@ -24127,8 +26102,7 @@ Dbdict::createNodegroup_fromBlockSubStartStop(Signal* signal,
 {
   SchemaOpPtr op_ptr;
   CreateNodegroupRecPtr createNodegroupRecPtr;
-  findSchemaOp(op_ptr, createNodegroupRecPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createNodegroupRecPtr, op_key));
   //CreateNodegroupImplReq* impl_req = &createNodegroupRecPtr.p->m_request;
 
   if (ret == 0)
@@ -24218,8 +26192,7 @@ Dbdict::createNodegroup_fromLocal(Signal* signal,
 {
   SchemaOpPtr op_ptr;
   CreateNodegroupRecPtr createNodegroupRecPtr;
-  findSchemaOp(op_ptr, createNodegroupRecPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createNodegroupRecPtr, op_key));
   CreateNodegroupImplReq* impl_req = &createNodegroupRecPtr.p->m_request;
 
   Uint32 blockIndex = createNodegroupRecPtr.p->m_blockIndex;
@@ -24315,8 +26288,7 @@ Dbdict::createNodegroup_fromWaitGCP(Signal* signal,
   jam();
   SchemaOpPtr op_ptr;
   CreateNodegroupRecPtr createNodegroupRecPtr;
-  findSchemaOp(op_ptr, createNodegroupRecPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createNodegroupRecPtr, op_key));
 
   //CreateNodegroupImplReq* impl_req = &createNodegroupRecPtr.p->m_request;
 
@@ -24375,10 +26347,13 @@ Dbdict::createNodegroup_fromWaitGCP(Signal* signal,
   switch(ret){
   case WaitGCPRef::NoWaitGCPRecords:
     jam();
+    break;
   case WaitGCPRef::NF_CausedAbortOfProcedure:
     jam();
+    break;
   case WaitGCPRef::NF_MasterTakeOverInProgress:
     jam();
+    break;
   }
 
 retry:
@@ -24409,6 +26384,7 @@ Dbdict::execCREATE_NODEGROUP_IMPL_REF(Signal* signal)
 {
   jamEntry();
   CreateNodegroupImplRef * ref = (CreateNodegroupImplRef*)signal->getDataPtr();
+  D("execCREATE_NODEGROUP_IMPL_REF");
   handleDictRef(signal, ref);
 }
 
@@ -24417,6 +26393,7 @@ Dbdict::execCREATE_NODEGROUP_IMPL_CONF(Signal* signal)
 {
   jamEntry();
   CreateNodegroupImplConf * conf = (CreateNodegroupImplConf*)signal->getDataPtr();
+  D("execCREATE_NODEGROUP_IMPL_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -24425,6 +26402,7 @@ Dbdict::execCREATE_HASH_MAP_REF(Signal* signal)
 {
   jamEntry();
   CreateHashMapRef * ref = (CreateHashMapRef*)signal->getDataPtr();
+  D("execCREATE_HASH_MAP_REF");
   handleDictRef(signal, ref);
 }
 
@@ -24433,6 +26411,7 @@ Dbdict::execCREATE_HASH_MAP_CONF(Signal* signal)
 {
   jamEntry();
   CreateHashMapConf * conf = (CreateHashMapConf*)signal->getDataPtr();
+  D("execCREATE_HASH_MAP_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -24471,6 +26450,7 @@ Dbdict::execDROP_NODEGROUP_REQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  D("execDROP_NODEGROUP_REQ");
 
   const DropNodegroupReq req_copy =
     *(const DropNodegroupReq*)signal->getDataPtr();
@@ -24620,8 +26600,7 @@ Dbdict::dropNodegroup_fromBlockSubStartStop(Signal* signal,
 {
   SchemaOpPtr op_ptr;
   DropNodegroupRecPtr dropNodegroupRecPtr;
-  findSchemaOp(op_ptr, dropNodegroupRecPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, dropNodegroupRecPtr, op_key));
   //DropNodegroupImplReq* impl_req = &dropNodegroupRecPtr.p->m_request;
 
   if (ret == 0)
@@ -24711,8 +26690,7 @@ Dbdict::dropNodegroup_fromLocal(Signal* signal,
 {
   SchemaOpPtr op_ptr;
   DropNodegroupRecPtr dropNodegroupRecPtr;
-  findSchemaOp(op_ptr, dropNodegroupRecPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, dropNodegroupRecPtr, op_key));
   DropNodegroupImplReq* impl_req = &dropNodegroupRecPtr.p->m_request;
 
   Uint32 blockIndex = dropNodegroupRecPtr.p->m_blockIndex;
@@ -24811,8 +26789,7 @@ Dbdict::dropNodegroup_fromWaitGCP(Signal* signal,
   jam();
   SchemaOpPtr op_ptr;
   DropNodegroupRecPtr dropNodegroupRecPtr;
-  findSchemaOp(op_ptr, dropNodegroupRecPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, dropNodegroupRecPtr, op_key));
 
   //DropNodegroupImplReq* impl_req = &dropNodegroupRecPtr.p->m_request;
 
@@ -24872,10 +26849,13 @@ Dbdict::dropNodegroup_fromWaitGCP(Signal* signal,
   switch(ret){
   case WaitGCPRef::NoWaitGCPRecords:
     jam();
+    break;
   case WaitGCPRef::NF_CausedAbortOfProcedure:
     jam();
+    break;
   case WaitGCPRef::NF_MasterTakeOverInProgress:
     jam();
+    break;
   }
 
 retry:
@@ -24908,6 +26888,7 @@ Dbdict::execDROP_NODEGROUP_IMPL_REF(Signal* signal)
 {
   jamEntry();
   DropNodegroupImplRef * ref = (DropNodegroupImplRef*)signal->getDataPtr();
+  D("execDROP_NODEGROUP_IMPL_REF");
   handleDictRef(signal, ref);
 }
 
@@ -24916,6 +26897,7 @@ Dbdict::execDROP_NODEGROUP_IMPL_CONF(Signal* signal)
 {
   jamEntry();
   DropNodegroupImplConf * conf = (DropNodegroupImplConf*)signal->getDataPtr();
+  D("execDROP_NODEGROUP_IMPL_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -24955,6 +26937,15 @@ Dbdict::execCREATE_FK_REQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  if(ERROR_INSERTED(6218))
+  {
+    g_eventLogger->info("Delaying GSN_CREATE_FK_REQ");
+    sendSignalWithDelay(reference(), GSN_CREATE_FK_REQ, signal, 1000,
+                       signal->length(),
+                       &handle);
+    return;
+  }
+  D("execCREATE_FK_REQ");
 
   const CreateFKReq req_copy =
     *(const CreateFKReq*)signal->getDataPtr();
@@ -25029,8 +27020,7 @@ Dbdict::createFK_parse(Signal* signal, bool master,
   SimpleProperties::UnpackStatus status =
     SimpleProperties::unpack(it, &fk,
                              DictForeignKeyInfo::Mapping,
-                             DictForeignKeyInfo::MappingSize,
-                             true, true);
+                             DictForeignKeyInfo::MappingSize);
 
   if(status != SimpleProperties::Eof)
   {
@@ -25271,6 +27261,37 @@ Dbdict::createFK_parse(Signal* signal, bool master,
     break;
   }
 
+  /**
+   * Do not support cascade delete when the
+   * child has Blobs
+   */
+  if (fk.OnDeleteAction == NDB_FK_CASCADE &&
+      !op_ptr.p->m_restart)
+  {
+    jam();
+    TableRecordPtr childTablePtr;
+    ndbrequire(find_object(childTablePtr, fk.ChildTableId));
+
+    AttributeRecordPtr attrPtr;
+    LocalAttributeRecord_list list(c_attributeRecordPool,
+                                   childTablePtr.p->m_attributes);
+    for (list.first(attrPtr); !attrPtr.isNull(); list.next(attrPtr))
+    {
+      jam();
+      const Uint32 desc = attrPtr.p->attributeDescriptor;
+      const Uint32 attrType = AttributeDescriptor::getType(desc);
+
+      if (attrType == NDB_TYPE_BLOB ||
+          attrType == NDB_TYPE_TEXT)
+      {
+        jam();
+
+        setError(error, CreateFKRef::ChildTableHasBlobsAndCascadeDelete, __LINE__);
+        return;
+      }
+    }
+  }
+
   /*
    * Handle SR/NR activate FK in late SP. The FK object was already
    * created without triggers in early SP.
@@ -25364,6 +27385,8 @@ Dbdict::createFK_parse(Signal* signal, bool master,
   fk_ptr.p->m_parentIndexId = fk.ParentIndexId;
   fk_ptr.p->m_childIndexId = fk.ChildIndexId;
   fk_ptr.p->m_bits = bits;
+  fk_ptr.p->m_parentTriggerId = RNIL;
+  fk_ptr.p->m_childTriggerId = RNIL;
   fk_ptr.p->m_columnCount = (fk.ParentColumnsLength / 4);
 
   for (Uint32 i = 0; i < fk_ptr.p->m_columnCount; i++)
@@ -25419,8 +27442,8 @@ Dbdict::createFK_parse(Signal* signal, bool master,
   createFKRecPtr.p->m_parsed = true;
 
 #if defined VM_TRACE || defined ERROR_INSERT
-  ndbout_c("Dbdict: create name=%s,id=%u,obj_ptr_i=%d",
-           fk.Name, impl_req->fkId, fk_ptr.p->m_obj_ptr_i);
+  g_eventLogger->info("Dbdict: create name=%s,id=%u,obj_ptr_i=%d", fk.Name,
+                      impl_req->fkId, fk_ptr.p->m_obj_ptr_i);
 #endif
 
   return;
@@ -25520,7 +27543,7 @@ Dbdict::packFKIntoPages(SimpleProperties::Writer & w,
   s = SimpleProperties::pack(w,
 			     &fk,
 			     DictForeignKeyInfo::Mapping,
-			     DictForeignKeyInfo::MappingSize, true);
+			     DictForeignKeyInfo::MappingSize);
   ndbrequire(s == SimpleProperties::Eof);
 }
 
@@ -25623,20 +27646,23 @@ Dbdict::createFK_toCreateTrigger(Signal* signal,
 
   Uint32 tableId = RNIL;
   Uint32 indexId = RNIL;
+  Uint32 triggerId = RNIL;
   Uint32 triggerNo = RNIL;
   switch(createFKPtr.p->m_sub_create_trigger) {
   case 0:
     tableId = fk_ptr.p->m_parentTableId;
     indexId = fk_ptr.p->m_parentIndexId;
+    triggerId = fk_ptr.p->m_parentTriggerId;
     triggerNo = 0;
     break;
   case 1:
     tableId = fk_ptr.p->m_childTableId;
     indexId = fk_ptr.p->m_childIndexId;
+    triggerId = fk_ptr.p->m_childTriggerId;
     triggerNo = 1;
     break;
   default:
-    ndbrequire(false);
+    ndbabort();
   }
 
   TableRecordPtr tablePtr;
@@ -25657,7 +27683,7 @@ Dbdict::createFK_toCreateTrigger(Signal* signal,
   req->indexId = fk_ptr.p->m_fk_id;
   req->indexVersion = fk_ptr.p->m_version;
   req->triggerNo = triggerNo;
-  req->forceTriggerId = RNIL;
+  req->forceTriggerId = triggerId;
 
   if ((fk_ptr.p->m_bits & CreateFKImplReq::FK_ACTION_MASK) == 0)
   {
@@ -25711,8 +27737,7 @@ Dbdict::createFK_fromCreateTrigger(Signal* signal, Uint32 op_key, Uint32 ret)
   SchemaOpPtr op_ptr;
   CreateFKRecPtr createFKRecPtr;
 
-  findSchemaOp(op_ptr, createFKRecPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createFKRecPtr, op_key));
   CreateFKImplReq* impl_req = &createFKRecPtr.p->m_request;
 
   if (ret == 0)
@@ -25731,7 +27756,7 @@ Dbdict::createFK_fromCreateTrigger(Signal* signal, Uint32 op_key, Uint32 ret)
       fk_ptr.p->m_childTriggerId = conf->triggerId;
       break;
     default:
-      ndbrequire(false);
+      ndbabort();
     }
 
     createFKRecPtr.p->m_sub_create_trigger++;
@@ -25757,8 +27782,7 @@ Dbdict::createFK_fromBuildFK(Signal* signal, Uint32 op_key, Uint32 ret)
   SchemaOpPtr op_ptr;
   CreateFKRecPtr createFKRecPtr;
 
-  findSchemaOp(op_ptr, createFKRecPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createFKRecPtr, op_key));
   CreateFKImplReq* impl_req = &createFKRecPtr.p->m_request;
 
   if (ret == 0)
@@ -25880,8 +27904,7 @@ Dbdict::createFK_writeTableConf(Signal* signal,
   jam();
   SchemaOpPtr op_ptr;
   CreateFKRecPtr createFKRecPtr;
-  findSchemaOp(op_ptr, createFKRecPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createFKRecPtr, op_key));
 
   CreateFKImplReq* impl_req = &createFKRecPtr.p->m_request;
   impl_req->requestType = CreateFKImplReq::RT_PREPARE;
@@ -25996,8 +28019,7 @@ Dbdict::createFK_prepareFromLocal(Signal* signal, Uint32 op_key, Uint32 ret)
 
   SchemaOpPtr op_ptr;
   CreateFKRecPtr createFKRecPtr;
-  findSchemaOp(op_ptr, createFKRecPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createFKRecPtr, op_key));
 
   if (ret == 0)
   {
@@ -26052,8 +28074,7 @@ Dbdict::createFK_abortPrepareFromLocal(Signal* signal,
 
   SchemaOpPtr op_ptr;
   CreateFKRecPtr createFKRecPtr;
-  findSchemaOp(op_ptr, createFKRecPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createFKRecPtr, op_key));
 
   if (ret == 0)
   {
@@ -26102,6 +28123,7 @@ Dbdict::execCREATE_FK_REF(Signal* signal)
 {
   jamEntry();
   CreateFKRef * ref = (CreateFKRef*)signal->getDataPtr();
+  D("execCREATE_FK_REF");
   handleDictRef(signal, ref);
 }
 
@@ -26110,6 +28132,7 @@ Dbdict::execCREATE_FK_CONF(Signal* signal)
 {
   jamEntry();
   CreateFKConf * conf = (CreateFKConf*)signal->getDataPtr();
+  D("execCREATE_FK_IMPL_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -26118,6 +28141,7 @@ Dbdict::execCREATE_FK_IMPL_REF(Signal* signal)
 {
   jamEntry();
   CreateFKImplRef * ref = (CreateFKImplRef*)signal->getDataPtr();
+  D("execCREATE_FK_IMPL_REF");
   handleDictRef(signal, ref);
 }
 
@@ -26125,6 +28149,7 @@ void
 Dbdict::execCREATE_FK_IMPL_CONF(Signal* signal)
 {
   jamEntry();
+  D("execCREATE_FK_IMPL_CONF");
   CreateFKImplConf * conf = (CreateFKImplConf*)signal->getDataPtr();
   handleDictConf(signal, conf);
 }
@@ -26165,6 +28190,7 @@ Dbdict::execBUILD_FK_REQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  D("execBUILD_FK_REQ");
 
   const BuildFKReq req_copy =
     *(const BuildFKReq*)signal->getDataPtr();
@@ -26381,8 +28407,7 @@ Dbdict::buildFK_fromLocal(Signal* signal, Uint32 op_key, Uint32 ret)
   jam();
   SchemaOpPtr op_ptr;
   BuildFKRecPtr buildFKPtr;
-  findSchemaOp(op_ptr, buildFKPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, buildFKPtr, op_key));
 
   if (ret == 0)
   {
@@ -26430,6 +28455,7 @@ Dbdict::execBUILD_FK_REF(Signal* signal)
 {
   jamEntry();
   const BuildFKRef* ref = (const BuildFKRef*)signal->getDataPtr();
+  D("execBUILD_FK_REF");
   handleDictRef(signal, ref);
 }
 
@@ -26438,6 +28464,7 @@ Dbdict::execBUILD_FK_CONF(Signal* signal)
 {
   jamEntry();
   const BuildFKConf* conf = (const BuildFKConf*)signal->getDataPtr();
+  D("execBUILD_FK_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -26446,6 +28473,7 @@ Dbdict::execBUILD_FK_IMPL_REF(Signal* signal)
 {
   jamEntry();
   BuildFKImplRef * ref = (BuildFKImplRef*)signal->getDataPtr();
+  D("execBUILD_FK_IMPL_REF");
   handleDictRef(signal, ref);
 }
 
@@ -26454,6 +28482,7 @@ Dbdict::execBUILD_FK_IMPL_CONF(Signal* signal)
 {
   jamEntry();
   BuildFKImplConf * conf = (BuildFKImplConf*)signal->getDataPtr();
+  D("execBUILD_FK_IMPL_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -26492,6 +28521,15 @@ Dbdict::execDROP_FK_REQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  if(ERROR_INSERTED(6219))
+  {
+    g_eventLogger->info("Delaying GSN_DROP_FK_REQ");
+    sendSignalWithDelay(reference(), GSN_DROP_FK_REQ, signal, 1000,
+                       signal->length(),
+                       &handle);
+    return;
+  }
+  D("execDROP_FK_REQ");
 
   const DropFKReq req_copy =
     *(const DropFKReq*)signal->getDataPtr();
@@ -26591,9 +28629,8 @@ Dbdict::dropFK_parse(Signal* signal, bool master,
     char buf[1024];
     LocalRope name(c_rope_pool, fk_ptr.p->m_name);
     name.copy(buf);
-    ndbout_c("Dbdict: drop name=%s,id=%u,obj_id=%u", buf,
-             impl_req->fkId,
-             fk_ptr.p->m_obj_ptr_i);
+    g_eventLogger->info("Dbdict: drop name=%s,id=%u,obj_id=%u", buf,
+                        impl_req->fkId, fk_ptr.p->m_obj_ptr_i);
   }
 #endif
 }
@@ -26666,7 +28703,7 @@ Dbdict::dropFK_toDropTrigger(Signal* signal,
   }
   else
   {
-    ndbrequire(false);
+    ndbabort();
   }
 
   DropTrigReq* req = (DropTrigReq*)signal->getDataPtrSend();
@@ -26700,8 +28737,7 @@ Dbdict::dropFK_fromDropTrigger(Signal* signal, Uint32 op_key, Uint32 ret)
   SchemaOpPtr op_ptr;
   DropFKRecPtr dropFKRecPtr;
 
-  findSchemaOp(op_ptr, dropFKRecPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, dropFKRecPtr, op_key));
   DropFKImplReq* impl_req = &dropFKRecPtr.p->m_request;
 
   if (ret == 0)
@@ -26721,7 +28757,7 @@ Dbdict::dropFK_fromDropTrigger(Signal* signal, Uint32 op_key, Uint32 ret)
       jam();
       break;
     default:
-      ndbrequire(false);
+      ndbabort();
     }
 
     dropFKRecPtr.p->m_sub_drop_trigger++;
@@ -26811,8 +28847,7 @@ Dbdict::dropFK_fromLocal(Signal* signal, Uint32 op_key, Uint32 ret)
 
   SchemaOpPtr op_ptr;
   DropFKRecPtr dropFKRecPtr;
-  findSchemaOp(op_ptr, dropFKRecPtr, op_key);
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, dropFKRecPtr, op_key));
 
   if (ret == 0)
   {
@@ -26882,8 +28917,19 @@ Dbdict::dropFK_complete(Signal* signal, SchemaOpPtr op_ptr)
    *   triggers are dropped...which they are in commit
    */
   Callback c =  { safe_cast(&Dbdict::dropFK_fromLocal), op_ptr.p->op_key };
-  op_ptr.p->m_callback = c;
 
+  /*
+    During NR/SR, the signal CREATE_FK_IMPL_REQ is skipped.
+    Thus the fk won't be created in the c_fk_hash during the create old pass.
+    So, DROP_FK_IMP_REQ signal need not be sent during the NR/SR.
+  */
+  if(op_ptr.p->m_restart){
+    jam();
+    execute(signal, c, 0);
+    return;
+  }
+
+  op_ptr.p->m_callback = c;
   send_drop_fk_req(signal, op_ptr);
 }
 
@@ -26892,6 +28938,7 @@ Dbdict::execDROP_FK_IMPL_REF(Signal* signal)
 {
   jamEntry();
   DropFKImplRef * ref = (DropFKImplRef*)signal->getDataPtr();
+  D("execDROP_FK_IMPL_REF");
   handleDictRef(signal, ref);
 }
 
@@ -26900,6 +28947,7 @@ Dbdict::execDROP_FK_IMPL_CONF(Signal* signal)
 {
   jamEntry();
   DropFKImplConf * conf = (DropFKImplConf*)signal->getDataPtr();
+  D("execDROP_FK_IMPL_CONF");
   handleDictConf(signal, conf);
 }
 
@@ -27097,7 +29145,7 @@ Dbdict::findOpInfo(Uint32 gsn)
       return info;
     i++;
   }
-  ndbrequire(false);
+  ndbabort();
   return 0;
 }
 
@@ -27293,7 +29341,7 @@ Dbdict::seizeSchemaOp(SchemaTransPtr trans_ptr, SchemaOpPtr& op_ptr, Uint32 op_k
         }
 
         c_schemaOpHash.add(op_ptr);
-        D("seizeSchemaOp" << V(op_key) << V(info.m_opType));
+        D("seizeSchemaOp(" << op_ptr.i << ")" << V(op_key) << V(info.m_opType));
         return true;
       }
       c_schemaOpPool.release(op_ptr);
@@ -27312,7 +29360,7 @@ Dbdict::findSchemaOp(SchemaOpPtr& op_ptr, Uint32 op_key)
     const OpRecPtr& oprec_ptr = op_ptr.p->m_oprec_ptr;
     ndbrequire(!oprec_ptr.isNull());
     ndbrequire(op_ptr.p->m_magic == SchemaOp::DICT_MAGIC);
-    D("findSchemaOp" << V(op_key));
+    //D("findSchemaOp" << V(op_key));
     return true;
   }
   return false;
@@ -27399,10 +29447,33 @@ Dbdict::saveOpSection(SchemaOpPtr op_ptr,
   OpSection& op_sec = op_ptr.p->m_section[ss_no];
   op_ptr.p->m_sections++;
 
-  LocalArenaPoolImpl op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena, c_opSectionBufferPool);
+  LocalArenaPool<OpSectionSegment> op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena, c_opSectionBufferPool);
   bool ok =  copyIn(op_sec_pool, op_sec, ss_ptr);
   ndbrequire(ok);
   return true;
+}
+
+bool
+Dbdict::replaceOpSection(SchemaOpPtr op_ptr,
+                         Uint32 ss_no,
+                         SegmentedSectionPtr ss_ptr)
+{
+  ndbrequire(ss_no <= 2);
+  OpSection save = op_ptr.p->m_section[ss_no];
+
+  OpSection& op_sec = op_ptr.p->m_section[ss_no];
+  op_sec.init();
+
+  LocalArenaPool<OpSectionSegment> op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena,
+                                 c_opSectionBufferPool);
+  if (copyIn(op_sec_pool, op_sec, ss_ptr))
+  {
+    jam();
+    release(op_sec_pool, save);
+    return true;
+  }
+  op_sec = save;
+  return false;
 }
 
 void
@@ -27410,7 +29481,7 @@ Dbdict::releaseOpSection(SchemaOpPtr op_ptr, Uint32 ss_no)
 {
   ndbrequire(ss_no + 1 == op_ptr.p->m_sections);
   OpSection& op_sec = op_ptr.p->m_section[ss_no];
-  LocalArenaPoolImpl op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena, c_opSectionBufferPool);
+  LocalArenaPool<OpSectionSegment> op_sec_pool(op_ptr.p->m_trans_ptr.p->m_arena, c_opSectionBufferPool);
   release(op_sec_pool, op_sec);
   op_ptr.p->m_sections = ss_no;
 }
@@ -27448,7 +29519,7 @@ Dbdict::getDictObject(SchemaOpPtr op_ptr, DictObjectPtr& obj_ptr)
 {
   OpRecPtr oprec_ptr = op_ptr.p->m_oprec_ptr;
   ndbrequire(oprec_ptr.p->m_obj_ptr_i != RNIL);
-  c_obj_pool.getPtr(obj_ptr, oprec_ptr.p->m_obj_ptr_i);
+  ndbrequire(c_obj_pool.getPtr(obj_ptr, oprec_ptr.p->m_obj_ptr_i));
 }
 
 // create link from schema op to dict object
@@ -27490,7 +29561,7 @@ Dbdict::unlinkDictObject(SchemaOpPtr op_ptr)
   DictObjectPtr obj_ptr;
   OpRecPtr oprec_ptr = op_ptr.p->m_oprec_ptr;
   ndbrequire(oprec_ptr.p->m_obj_ptr_i != RNIL);
-  c_obj_pool.getPtr(obj_ptr, oprec_ptr.p->m_obj_ptr_i);
+  ndbrequire(c_obj_pool.getPtr(obj_ptr, oprec_ptr.p->m_obj_ptr_i));
 
   D("unlinkDictObject" << V(op_ptr.p->op_key) << V(obj_ptr.i));
 
@@ -27549,7 +29620,7 @@ Dbdict::findDictObject(SchemaOpPtr op_ptr,
   D("findDictObject" << *op_ptr.p << V(obj_ptr.i));
   if (obj_ptr_i != RNIL) {
     jam();
-    c_obj_pool.getPtr(obj_ptr, obj_ptr_i);
+    ndbrequire(c_obj_pool.getPtr(obj_ptr, obj_ptr_i));
     linkDictObject(op_ptr, obj_ptr);
     return true;
   }
@@ -27659,13 +29730,14 @@ Dbdict::seizeSchemaTrans(SchemaTransPtr& trans_ptr)
   Uint32 trans_key = c_opRecordSequence + 1;
   if (seizeSchemaTrans(trans_ptr, trans_key)) {
 #ifdef MARTIN
-    ndbout_c("Dbdict::seizeSchemaTrans: Seized schema trans %u", trans_key);
+    g_eventLogger->info("Dbdict::seizeSchemaTrans: Seized schema trans %u",
+                        trans_key);
 #endif
     c_opRecordSequence = trans_key;
     return true;
   }
 #ifdef MARTIN
-  ndbout_c("Dbdict::seizeSchemaTrans: Failed to seize schema trans");
+  g_eventLogger->info("Dbdict::seizeSchemaTrans: Failed to seize schema trans");
 #endif
   return false;
 }
@@ -27677,7 +29749,7 @@ Dbdict::findSchemaTrans(SchemaTransPtr& trans_ptr, Uint32 trans_key)
   if (c_schemaTransHash.find(trans_ptr, trans_rec)) {
     jam();
     ndbrequire(trans_ptr.p->m_magic == SchemaTrans::DICT_MAGIC);
-    D("findSchemaTrans" << V(trans_key));
+    //D("findSchemaTrans" << V(trans_key));
     return true;
   }
   trans_ptr.setNull();
@@ -27735,7 +29807,10 @@ Dbdict::execSCHEMA_TRANS_BEGIN_REQ(Signal* signal)
     (const SchemaTransBeginReq*)signal->getDataPtr();
   Uint32 clientRef = req->clientRef;
 #ifdef MARTIN
-  ndbout_c("Dbdict::execSCHEMA_TRANS_BEGIN_REQ: received GSN_SCHEMA_TRANS_BEGIN_REQ from 0x%8x", clientRef);
+  g_eventLogger->info(
+      "Dbdict::execSCHEMA_TRANS_BEGIN_REQ:"
+      " received GSN_SCHEMA_TRANS_BEGIN_REQ from 0x%8x",
+      clientRef);
 #endif
 
   Uint32 transId = req->transId;
@@ -27743,6 +29818,7 @@ Dbdict::execSCHEMA_TRANS_BEGIN_REQ(Signal* signal)
 
   bool localTrans = (requestInfo & DictSignal::RF_LOCAL_TRANS);
 
+  D("SCHEMA_TRANS_BEGIN_REQ: localTrans: " << localTrans);
   SchemaTransPtr trans_ptr;
   ErrorInfo error;
   do {
@@ -27841,11 +29917,12 @@ Dbdict::execSCHEMA_TRANS_BEGIN_REQ(Signal* signal)
     /**
      * Send RT_START
      */
+    D("SCHEMA_TRANS_IMPL_REQ: RT_START sent");
     {
       trans_ptr.p->m_ref_nodes.clear();
       NodeReceiverGroup rg(DBDICT, trans_ptr.p->m_nodes);
       {
-        SafeCounter sc(c_counterMgr, trans_ptr.p->m_counter);
+        SafeCounter sc(c_reservedCounterMgr, trans_ptr.p->m_counter);
         bool ok = sc.init<SchemaTransImplRef>(rg, trans_ptr.p->trans_key);
         ndbrequire(ok);
       }
@@ -27932,7 +30009,7 @@ Dbdict::trans_start_recv_reply(Signal* signal, SchemaTransPtr trans_ptr)
     break;
   default:
     jamLine(trans_ptr.p->m_state);
-    ndbrequire(false);
+    ndbabort();
   }
 }
 
@@ -27952,6 +30029,7 @@ Dbdict::execSCHEMA_TRANS_END_REQ(Signal* signal)
   ErrorInfo error;
   do {
     const bool localTrans = (requestInfo & DictSignal::RF_LOCAL_TRANS);
+    D("SCHEMA_TRANS_END_REQ: localTrans: " << localTrans);
     if (getOwnNodeId() != c_masterNodeId && !localTrans) {
       jam();
       setError(error, SchemaTransEndRef::NotMaster, __LINE__);
@@ -28004,7 +30082,8 @@ Dbdict::execSCHEMA_TRANS_END_REQ(Signal* signal)
     }
 
 #ifdef MARTIN
-    ndbout_c("Dbdict::execSCHEMA_TRANS_END_REQ: trans %u, state %u", trans_ptr.i, trans_ptr.p->m_state);
+    g_eventLogger->info("Dbdict::execSCHEMA_TRANS_END_REQ: trans %u, state %u",
+                        trans_ptr.i, trans_ptr.p->m_state);
 #endif
 
     // Assert that we are not in an inconsistent/incomplete state
@@ -28068,8 +30147,13 @@ Dbdict::handleClientReq(Signal* signal, SchemaOpPtr op_ptr,
   {
     jam();
     SchemaOpPtr baseOp;
-    c_schemaOpPool.getPtr(baseOp, trans_ptr.p->m_curr_op_ptr_i);
+    ndbrequire(c_schemaOpPool.getPtr(baseOp, trans_ptr.p->m_curr_op_ptr_i));
     op_ptr.p->m_base_op_ptr_i = baseOp.i;
+    D("m_base_op_ptr_i = " << baseOp.i << *baseOp.p);
+  }
+  else
+  {
+    D("m_base_op_ptr_i not set");
   }
 
   trans_ptr.p->m_curr_op_ptr_i = op_ptr.i;
@@ -28124,11 +30208,12 @@ Dbdict::handleClientReq(Signal* signal, SchemaOpPtr op_ptr,
 
   NodeReceiverGroup rg(DBDICT, nodes);
   {
-    SafeCounter sc(c_counterMgr, trans_ptr.p->m_counter);
+    SafeCounter sc(c_reservedCounterMgr, trans_ptr.p->m_counter);
     bool ok = sc.init<SchemaTransImplRef>(rg, trans_ptr.p->trans_key);
     ndbrequire(ok);
   }
 
+  D("SCHEMA_TRANS_IMPL_REQ: RT_PARSE sent");
   if (ERROR_INSERTED(6141))
   {
     /*
@@ -28164,7 +30249,7 @@ void
 Dbdict::trans_parse_recv_reply(Signal* signal, SchemaTransPtr trans_ptr)
 {
   SchemaOpPtr op_ptr;
-  c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i);
+  ndbrequire(c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i));
 
   op_ptr.p->m_state = SchemaOp::OS_PARSED;
 
@@ -28200,6 +30285,7 @@ Dbdict::execSCHEMA_TRANS_IMPL_CONF(Signal* signal)
 {
   jamEntry();
   ndbrequire(signal->getNoOfSections() == 0);
+  D("execSCHEMA_TRANS_IMPL_CONF");
 
   if (c_takeOverInProgress)
   {
@@ -28222,7 +30308,7 @@ Dbdict::execSCHEMA_TRANS_IMPL_CONF(Signal* signal)
   Uint32 nodeId = refToNode(senderRef);
 
   {
-    SafeCounter sc(c_counterMgr, trans_ptr.p->m_counter);
+    SafeCounter sc(c_reservedCounterMgr, trans_ptr.p->m_counter);
     if (!sc.clearWaitingFor(nodeId)) {
       jam();
       return;
@@ -28237,6 +30323,7 @@ Dbdict::execSCHEMA_TRANS_IMPL_REF(Signal* signal)
 {
   jamEntry();
   ndbrequire(signal->getNoOfSections() == 0);
+  D("execSCHEMA_TRANS_IMPL_REF");
 
   if (c_takeOverInProgress)
   {
@@ -28259,8 +30346,11 @@ Dbdict::execSCHEMA_TRANS_IMPL_REF(Signal* signal)
   Uint32 senderRef = ref->senderRef;
   Uint32 nodeId = refToNode(senderRef);
 
+  ndbrequire(nodeId <= MAX_DATA_NODE_ID);
+
 #ifdef MARTIN
-  ndbout_c("Got SCHEMA_TRANS_IMPL_REF from node %u, error %u", nodeId, ref->errorCode);
+  g_eventLogger->info("Got SCHEMA_TRANS_IMPL_REF from node %u, error %u",
+                      nodeId, ref->errorCode);
 #endif
   if (ref->errorCode == SchemaTransImplRef::NF_FakeErrorREF)
   {
@@ -28304,7 +30394,7 @@ Dbdict::execSCHEMA_TRANS_IMPL_REF(Signal* signal)
   }
 
   {
-    SafeCounter sc(c_counterMgr, trans_ptr.p->m_counter);
+    SafeCounter sc(c_reservedCounterMgr, trans_ptr.p->m_counter);
     if (!sc.clearWaitingFor(nodeId)) {
       jam();
       return;
@@ -28319,7 +30409,7 @@ Dbdict::trans_recv_reply(Signal* signal, SchemaTransPtr trans_ptr)
 {
   switch(trans_ptr.p->m_state){
   case SchemaTrans::TS_INITIAL:
-    ndbrequire(false);
+    ndbabort();
   case SchemaTrans::TS_STARTING:
     jam();
     trans_start_recv_reply(signal, trans_ptr);
@@ -28329,7 +30419,7 @@ Dbdict::trans_recv_reply(Signal* signal, SchemaTransPtr trans_ptr)
     trans_parse_recv_reply(signal, trans_ptr);
     return;
   case SchemaTrans::TS_SUBOP:
-    ndbrequire(false);
+    ndbabort();
   case SchemaTrans::TS_ROLLBACK_SP:
     jam();
     trans_rollback_sp_recv_reply(signal, trans_ptr);
@@ -28372,7 +30462,7 @@ Dbdict::trans_recv_reply(Signal* signal, SchemaTransPtr trans_ptr)
     return;
   case SchemaTrans::TS_STARTED:   // These states are waiting for client
     jam();                        // And should not get a "internal" reply
-    ndbrequire(false);
+    ndbabort();
   }
 }
 
@@ -28434,7 +30524,7 @@ Dbdict::handleTransReply(Signal* signal, SchemaTransPtr trans_ptr)
       return;
     }
     else {
-      ndbrequire(false);
+      ndbabort();
     }
   }
   else if (tLoc.m_mode == TransMode::Rollback) {
@@ -28474,7 +30564,7 @@ Dbdict::handleTransReply(Signal* signal, SchemaTransPtr trans_ptr)
       }
     }
     else {
-      ndbrequire(false);
+      ndbabort();
     }
   }
   else if (tLoc.m_mode == TransMode::Abort) {
@@ -28498,11 +30588,11 @@ Dbdict::handleTransReply(Signal* signal, SchemaTransPtr trans_ptr)
       runTransMaster(signal, trans_ptr);
     }
     else {
-      ndbrequire(false);
+      ndbabort();
     }
   }
   else {
-    ndbrequire(false);
+    ndbabort();
   }
 }
 #endif
@@ -28523,11 +30613,18 @@ Dbdict::createSubOps(Signal* signal, SchemaOpPtr op_ptr, bool first)
     return;
   }
 
-  ErrorInfo error;
-  (this->*(info.m_reply))(signal, op_ptr, error);
-
   trans_ptr.p->m_clientState = TransClient::ParseReply;
   trans_ptr.p->m_state = SchemaTrans::TS_STARTED;
+
+  if (c_restartRecord.m_complete == false)
+  {
+    jam();
+    restart_nextOp(signal);
+    return;
+  }
+
+  ErrorInfo error;
+  (this->*(info.m_reply))(signal, op_ptr, error);
 }
 
 // a sub-op create failed, roll back and send REF to client
@@ -28535,6 +30632,7 @@ void
 Dbdict::abortSubOps(Signal* signal, SchemaOpPtr op_ptr, ErrorInfo error)
 {
   D("abortSubOps" << *op_ptr.p << error);
+  ndbrequire(c_restartRecord.m_complete);
   SchemaTransPtr trans_ptr = op_ptr.p->m_trans_ptr;
   setError(trans_ptr, error);
   trans_rollback_sp_start(signal, trans_ptr);
@@ -28549,7 +30647,7 @@ Dbdict::trans_prepare_start(Signal* signal, SchemaTransPtr trans_ptr)
   NdbNodeBitmask nodes = trans_ptr.p->m_nodes;
   NodeReceiverGroup rg(DBDICT, nodes);
   {
-    SafeCounter sc(c_counterMgr, trans_ptr.p->m_counter);
+    SafeCounter sc(c_reservedCounterMgr, trans_ptr.p->m_counter);
     bool ok = sc.init<SchemaTransImplRef>(rg, trans_ptr.p->trans_key);
     ndbrequire(ok);
   }
@@ -28569,6 +30667,7 @@ Dbdict::trans_prepare_start(Signal* signal, SchemaTransPtr trans_ptr)
     return;
   }
 
+  D("SCHEMA_TRANS_IMPL_REQ: RT_FLUSH_PREPARE sent");
   if (ERROR_INSERTED(6142))
   {
     /*
@@ -28644,11 +30743,12 @@ Dbdict::trans_prepare_next(Signal* signal,
   NdbNodeBitmask nodes = trans_ptr.p->m_nodes;
   NodeReceiverGroup rg(DBDICT, nodes);
   {
-    SafeCounter sc(c_counterMgr, trans_ptr.p->m_counter);
+    SafeCounter sc(c_reservedCounterMgr, trans_ptr.p->m_counter);
     bool ok = sc.init<SchemaTransImplRef>(rg, trans_ptr.p->trans_key);
     ndbrequire(ok);
   }
 
+  D("SCHEMA_TRANS_IMPL_REQ: RT_PREPARE sent");
   if (ERROR_INSERTED(6143))
   {
     jam();
@@ -28689,7 +30789,7 @@ Dbdict::trans_prepare_recv_reply(Signal* signal, SchemaTransPtr trans_ptr)
   jam();
 
   SchemaOpPtr op_ptr;
-  c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i);
+  ndbrequire(c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i));
   if (hasError(trans_ptr.p->m_error))
   {
     jam();
@@ -28736,7 +30836,7 @@ Dbdict::trans_prepare_done(Signal* signal, SchemaTransPtr trans_ptr)
   }
 
   // prepare not currently implemted (fully)
-  ndbrequire(false);
+  ndbabort();
 }
 
 void
@@ -28766,7 +30866,7 @@ void
 Dbdict::trans_abort_parse_recv_reply(Signal* signal, SchemaTransPtr trans_ptr)
 {
   SchemaOpPtr op_ptr;
-  c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i);
+  ndbrequire(c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i));
 
   {
     SchemaOpPtr last_op = op_ptr;
@@ -28813,7 +30913,9 @@ Dbdict::check_partial_trans_abort_parse_next(SchemaTransPtr trans_ptr,
         jam();
         c_nodes.getPtr(nodePtr, i);
 #ifdef VM_TRACE
-        ndbout_c("Checking node %u(%u), %u(%u)<%u", nodePtr.i, nodePtr.p->recoveryState, nodePtr.p->start_op, nodePtr.p->start_op_state, op_ptr.p->op_key);
+        g_eventLogger->info("Checking node %u(%u), %u(%u)<%u", nodePtr.i,
+                            nodePtr.p->recoveryState, nodePtr.p->start_op,
+                            nodePtr.p->start_op_state, op_ptr.p->op_key);
 #endif
         if (nodePtr.p->recoveryState == NodeRecord::RS_PARTIAL_ROLLBACK &&
             //nodePtr.p->start_op_state == SchemaOp::OS_PARSED &&
@@ -28821,7 +30923,8 @@ Dbdict::check_partial_trans_abort_parse_next(SchemaTransPtr trans_ptr,
         {
           jam();
 #ifdef VM_TRACE
-          ndbout_c("Skip aborting operation %u on node %u", op_ptr.p->op_key, i);
+          g_eventLogger->info("Skip aborting operation %u on node %u",
+                              op_ptr.p->op_key, i);
 #endif
           nodes.clear(i);
           nodePtr.p->recoveryState = NodeRecord::RS_NORMAL;
@@ -28839,7 +30942,8 @@ Dbdict::trans_abort_parse_next(Signal* signal,
   jam();
   ndbrequire(trans_ptr.p->m_state == SchemaTrans::TS_ABORTING_PARSE);
 #ifdef MARTIN
-  ndbout_c("Dbdict::trans_abort_parse_next: op %u state %u", op_ptr.i,op_ptr.p->m_state);
+  g_eventLogger->info("Dbdict::trans_abort_parse_next: op %u state %u",
+                      op_ptr.i, op_ptr.p->m_state);
 #endif
   trans_ptr.p->m_curr_op_ptr_i = op_ptr.i;
   op_ptr.p->m_state = SchemaOp::OS_ABORTING_PARSE;
@@ -28849,11 +30953,12 @@ Dbdict::trans_abort_parse_next(Signal* signal,
   check_partial_trans_abort_parse_next(trans_ptr, nodes, op_ptr);
   NodeReceiverGroup rg(DBDICT, nodes);
   {
-    SafeCounter sc(c_counterMgr, trans_ptr.p->m_counter);
+    SafeCounter sc(c_reservedCounterMgr, trans_ptr.p->m_counter);
     bool ok = sc.init<SchemaTransImplRef>(rg, trans_ptr.p->trans_key);
     ndbrequire(ok);
   }
 
+  D("SCHEMA_TRANS_IMPL_REQ: RT_ABORT_PARSE sent");
   if (ERROR_INSERTED(6144))
   {
     jam();
@@ -28926,7 +31031,7 @@ Dbdict::trans_abort_prepare_recv_reply(Signal* signal, SchemaTransPtr trans_ptr)
   // XXX error states
 
   SchemaOpPtr op_ptr;
-  c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i);
+  ndbrequire(c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i));
 
   op_ptr.p->m_state = SchemaOp::OS_ABORTED_PREPARE;
 
@@ -28970,7 +31075,9 @@ Dbdict::check_partial_trans_abort_prepare_next(SchemaTransPtr trans_ptr,
       {
         c_nodes.getPtr(nodePtr, i);
 #ifdef VM_TRACE
-        ndbout_c("Checking node %u(%u), %u(%u)<%u", nodePtr.i, nodePtr.p->recoveryState, nodePtr.p->start_op, nodePtr.p->start_op_state, op_ptr.p->op_key);
+        g_eventLogger->info("Checking node %u(%u), %u(%u)<%u", nodePtr.i,
+                            nodePtr.p->recoveryState, nodePtr.p->start_op,
+                            nodePtr.p->start_op_state, op_ptr.p->op_key);
 #endif
         if (nodePtr.p->recoveryState == NodeRecord::RS_PARTIAL_ROLLBACK &&
             ((nodePtr.p->start_op_state == SchemaOp::OS_PARSED &&
@@ -28981,7 +31088,8 @@ Dbdict::check_partial_trans_abort_prepare_next(SchemaTransPtr trans_ptr,
               nodePtr.p->start_op >= op_ptr.p->op_key)))
         {
 #ifdef VM_TRACE
-          ndbout_c("Skip aborting operation %u on node %u", op_ptr.p->op_key, i);
+          g_eventLogger->info("Skip aborting operation %u on node %u",
+                              op_ptr.p->op_key, i);
 #endif
           nodes.clear(i);
           nodePtr.p->recoveryState = NodeRecord::RS_NORMAL;
@@ -28999,7 +31107,8 @@ Dbdict::trans_abort_prepare_next(Signal* signal,
   jam();
   ndbrequire(trans_ptr.p->m_state == SchemaTrans::TS_ABORTING_PREPARE);
 #ifdef MARTIN
-  ndbout_c("Dbdict::trans_abort_prepare_next: op %u state %u", op_ptr.p->op_key, op_ptr.p->m_state);
+  g_eventLogger->info("Dbdict::trans_abort_prepare_next: op %u state %u",
+                      op_ptr.p->op_key, op_ptr.p->m_state);
 #endif
   trans_ptr.p->m_curr_op_ptr_i = op_ptr.i;
 
@@ -29029,7 +31138,7 @@ Dbdict::trans_abort_prepare_next(Signal* signal,
   default:
 #endif
     jamLine(op_ptr.p->m_state);
-    ndbrequire(false);
+    ndbabort();
   }
 
   op_ptr.p->m_state = SchemaOp::OS_ABORTING_PREPARE;
@@ -29039,11 +31148,12 @@ Dbdict::trans_abort_prepare_next(Signal* signal,
   check_partial_trans_abort_prepare_next(trans_ptr, nodes, op_ptr);
   NodeReceiverGroup rg(DBDICT, nodes);
   {
-    SafeCounter sc(c_counterMgr, trans_ptr.p->m_counter);
+    SafeCounter sc(c_reservedCounterMgr, trans_ptr.p->m_counter);
     bool ok = sc.init<SchemaTransImplRef>(rg, trans_ptr.p->trans_key);
     ndbrequire(ok);
   }
 
+  D("SCHEMA_TRANS_IMPL_REQ: RT_ABORT_PREPARE sent");
   if (ERROR_INSERTED(6145))
   {
     jam();
@@ -29084,7 +31194,7 @@ Dbdict::trans_abort_prepare_done(Signal* signal, SchemaTransPtr trans_ptr)
   jam();
   ndbrequire(trans_ptr.p->m_state == SchemaTrans::TS_ABORTING_PREPARE);
 #ifdef MARTIN
-  ndbout_c("Dbdict::trans_abort_prepare_done");
+  g_eventLogger->info("Dbdict::trans_abort_prepare_done");
 #endif
   /**
    * Now run abort parse
@@ -29118,7 +31228,7 @@ Dbdict::trans_rollback_sp_start(Signal* signal, SchemaTransPtr trans_ptr)
     NdbNodeBitmask nodes;
     nodes.set(getOwnNodeId());
     NodeReceiverGroup rg(DBDICT, nodes);
-    SafeCounter sc(c_counterMgr, trans_ptr.p->m_counter);
+    SafeCounter sc(c_reservedCounterMgr, trans_ptr.p->m_counter);
     bool ok = sc.init<SchemaTransImplRef>(rg, trans_ptr.p->trans_key);
     ndbrequire(ok);
 
@@ -29137,7 +31247,7 @@ Dbdict::trans_rollback_sp_recv_reply(Signal* signal, SchemaTransPtr trans_ptr)
   // TODO split trans error from op_error...?
 
   SchemaOpPtr op_ptr;
-  c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i);
+  ndbrequire(c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i));
 
   if (op_ptr.p->m_base_op_ptr_i == RNIL)
   {
@@ -29174,11 +31284,12 @@ Dbdict::trans_rollback_sp_next(Signal* signal,
   trans_ptr.p->m_ref_nodes.clear();
   NodeReceiverGroup rg(DBDICT, nodes);
   {
-    SafeCounter sc(c_counterMgr, trans_ptr.p->m_counter);
+    SafeCounter sc(c_reservedCounterMgr, trans_ptr.p->m_counter);
     bool ok = sc.init<SchemaTransImplRef>(rg, trans_ptr.p->trans_key);
     ndbrequire(ok);
   }
 
+  D("SCHEMA_TRANS_IMPL_REQ: RT_ABORT_PARSE sent");
   if (ERROR_INSERTED(6144))
   {
     jam();
@@ -29258,7 +31369,7 @@ void Dbdict::check_partial_trans_commit_start(SchemaTransPtr trans_ptr,
         {
           jam();
 #ifdef VM_TRACE
-          ndbout_c("Skip flushing commit on node %u", i);
+          g_eventLogger->info("Skip flushing commit on node %u", i);
 #endif
           nodes.clear(i);
           nodePtr.p->recoveryState = NodeRecord::RS_NORMAL;
@@ -29298,11 +31409,12 @@ Dbdict::trans_commit_start(Signal* signal, SchemaTransPtr trans_ptr)
   check_partial_trans_commit_start(trans_ptr, nodes);
   NodeReceiverGroup rg(DBDICT, nodes);
   {
-    SafeCounter sc(c_counterMgr, trans_ptr.p->m_counter);
+    SafeCounter sc(c_reservedCounterMgr, trans_ptr.p->m_counter);
     bool ok = sc.init<SchemaTransImplRef>(rg, trans_ptr.p->trans_key);
     ndbrequire(ok);
   }
 
+  D("SCHEMA_TRANS_IMPL_REQ: RT_FLUSH_COMMIT sent");
   if (ERROR_INSERTED(6146))
   {
     jam();
@@ -29348,7 +31460,7 @@ Dbdict::trans_commit_first(Signal* signal, SchemaTransPtr trans_ptr)
   }
 
 #ifdef MARTIN
-  ndbout_c("trans_commit");
+  g_eventLogger->info("trans_commit");
 #endif
 
   trans_ptr.p->m_state = SchemaTrans::TS_COMMITTING;
@@ -29403,7 +31515,7 @@ Dbdict::trans_commit_wait_gci(Signal* signal)
 {
   jam();
   SchemaTransPtr trans_ptr;
-  c_schemaTransPool.getPtr(trans_ptr, signal->theData[1]);
+  ndbrequire(c_schemaTransPool.getPtr(trans_ptr, signal->theData[1]));
 
   ndbrequire(trans_ptr.p->m_state == SchemaTrans::TS_COMMITTING);
 
@@ -29452,10 +31564,10 @@ Dbdict::trans_commit_mutex_locked(Signal* signal,
 {
   jamEntry();
 #ifdef MARTIN
-  ndbout_c("trans_commit_mutex_locked");
+  g_eventLogger->info("trans_commit_mutex_locked");
 #endif
   SchemaTransPtr trans_ptr;
-  c_schemaTransPool.getPtr(trans_ptr, transPtrI);
+  ndbrequire(c_schemaTransPool.getPtr(trans_ptr, transPtrI));
 
   ndbrequire(trans_ptr.p->m_state == SchemaTrans::TS_COMMITTING);
 
@@ -29507,21 +31619,24 @@ void Dbdict::check_partial_trans_commit_next(SchemaTransPtr trans_ptr,
       jam();
       NodeRecordPtr nodePtr;
 #ifdef VM_TRACE
-      ndbout_c("Node %u", i);
+      g_eventLogger->info("Node %u", i);
 #endif
       if (trans_ptr.p->m_nodes.get(i))
       {
         jam();
         c_nodes.getPtr(nodePtr, i);
 #ifdef VM_TRACE
-        ndbout_c("Checking node %u(%u), %u<%u", nodePtr.i, nodePtr.p->recoveryState, nodePtr.p->start_op, op_ptr.p->op_key);
+        g_eventLogger->info("Checking node %u(%u), %u<%u", nodePtr.i,
+                            nodePtr.p->recoveryState, nodePtr.p->start_op,
+                            op_ptr.p->op_key);
 #endif
         if (nodePtr.p->recoveryState == NodeRecord::RS_PARTIAL_ROLLFORWARD &&
             (nodePtr.p->start_op > op_ptr.p->op_key ||
              nodePtr.p->start_op_state > op_ptr.p->m_state))
         {
 #ifdef VM_TRACE
-          ndbout_c("Skipping commit of operation %u on node %u", op_ptr.p->op_key, i);
+          g_eventLogger->info("Skipping commit of operation %u on node %u",
+                              op_ptr.p->op_key, i);
 #endif
           jam();
           nodes.clear(i);
@@ -29540,7 +31655,8 @@ Dbdict::trans_commit_next(Signal* signal,
 {
   jam();
 #ifdef MARTIN
-  ndbout_c("Dbdict::trans_commit_next: op %u state %u", op_ptr.i,op_ptr.p->m_state);
+  g_eventLogger->info("Dbdict::trans_commit_next: op %u state %u", op_ptr.i,
+                      op_ptr.p->m_state);
 #endif
   op_ptr.p->m_state = SchemaOp::OS_COMMITTING;
   trans_ptr.p->m_curr_op_ptr_i = op_ptr.i;
@@ -29550,11 +31666,12 @@ Dbdict::trans_commit_next(Signal* signal,
   check_partial_trans_commit_next(trans_ptr, nodes, op_ptr);
   NodeReceiverGroup rg(DBDICT, nodes);
   {
-    SafeCounter sc(c_counterMgr, trans_ptr.p->m_counter);
+    SafeCounter sc(c_reservedCounterMgr, trans_ptr.p->m_counter);
     bool ok = sc.init<SchemaTransImplRef>(rg, trans_ptr.p->trans_key);
     ndbrequire(ok);
   }
 
+  D("SCHEMA_TRANS_IMPL_REQ: RT_COMMIT sent");
   if (ERROR_INSERTED(6147))
   {
     LocalSchemaOp_list list(c_schemaOpPool, trans_ptr.p->m_op_list);
@@ -29621,12 +31738,12 @@ Dbdict::trans_commit_recv_reply(Signal* signal, SchemaTransPtr trans_ptr)
   {
     jam();
     // kill nodes that failed COMMIT
-    ndbrequire(false);
+    ndbabort();
     return;
   }
 
   SchemaOpPtr op_ptr;
-  c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i);
+  ndbrequire(c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i));
 
   bool next = false;
   {
@@ -29660,7 +31777,7 @@ void
 Dbdict::trans_commit_done(Signal* signal, SchemaTransPtr trans_ptr)
 {
 #ifdef MARTIN
-  ndbout_c("trans_commit_done");
+  g_eventLogger->info("trans_commit_done");
 #endif
 
   Mutex mutex(signal, c_mutexMgr, trans_ptr.p->m_commit_mutex);
@@ -29675,10 +31792,10 @@ Dbdict::trans_commit_mutex_unlocked(Signal* signal,
 {
   jamEntry();
 #ifdef MARTIN
-  ndbout_c("trans_commit_mutex_unlocked");
+  g_eventLogger->info("trans_commit_mutex_unlocked");
 #endif
   SchemaTransPtr trans_ptr;
-  c_schemaTransPool.getPtr(trans_ptr, transPtrI);
+  ndbrequire(c_schemaTransPool.getPtr(trans_ptr, transPtrI));
 
   trans_ptr.p->m_commit_mutex.release(c_mutexMgr);
 
@@ -29710,20 +31827,22 @@ Dbdict::check_partial_trans_complete_start(SchemaTransPtr trans_ptr,
       jam();
       NodeRecordPtr nodePtr;
 #ifdef VM_TRACE
-      ndbout_c("Node %u", i);
+      g_eventLogger->info("Node %u", i);
 #endif
       if (trans_ptr.p->m_nodes.get(i))
       {
         jam();
         c_nodes.getPtr(nodePtr, i);
 #ifdef VM_TRACE
-        ndbout_c("Checking node %u(%u,%u)", nodePtr.i, nodePtr.p->recoveryState, nodePtr.p->takeOverConf.trans_state);
+        g_eventLogger->info("Checking node %u(%u,%u)", nodePtr.i,
+                            nodePtr.p->recoveryState,
+                            nodePtr.p->takeOverConf.trans_state);
 #endif
         if (nodePtr.p->takeOverConf.trans_state >= SchemaTrans::TS_FLUSH_COMPLETE)
         {
           jam();
 #ifdef VM_TRACE
-          ndbout_c("Skipping TS_FLUSH_COMPLETE of node %u", i);
+          g_eventLogger->info("Skipping TS_FLUSH_COMPLETE of node %u", i);
 #endif
           nodes.clear(i);
         }
@@ -29747,7 +31866,7 @@ Dbdict::trans_complete_start(Signal* signal, SchemaTransPtr trans_ptr)
   }
 
 #ifdef MARTIN
-  ndbout_c("trans_complete_start %u", trans_ptr.p->trans_key);
+  g_eventLogger->info("trans_complete_start %u", trans_ptr.p->trans_key);
 #endif
   trans_ptr.p->m_state = SchemaTrans::TS_FLUSH_COMPLETE;
 
@@ -29756,11 +31875,12 @@ Dbdict::trans_complete_start(Signal* signal, SchemaTransPtr trans_ptr)
   check_partial_trans_complete_start(trans_ptr, nodes);
   NodeReceiverGroup rg(DBDICT, nodes);
   {
-    SafeCounter sc(c_counterMgr, trans_ptr.p->m_counter);
+    SafeCounter sc(c_reservedCounterMgr, trans_ptr.p->m_counter);
     bool ok = sc.init<SchemaTransImplRef>(rg, trans_ptr.p->trans_key);
     ndbrequire(ok);
   }
 
+  D("SCHEMA_TRANS_IMPL_REQ: RT_FLUSH_COMPLETE sent");
   if (ERROR_INSERTED(6148))
   {
     jam();
@@ -29837,11 +31957,13 @@ Dbdict::trans_complete_next(Signal* signal,
   NdbNodeBitmask nodes = trans_ptr.p->m_nodes;
   NodeReceiverGroup rg(DBDICT, nodes);
   {
-    SafeCounter sc(c_counterMgr, trans_ptr.p->m_counter);
+    SafeCounter sc(c_reservedCounterMgr, trans_ptr.p->m_counter);
     bool ok = sc.init<SchemaTransImplRef>(rg, trans_ptr.p->trans_key);
     ndbrequire(ok);
   }
 
+  const OpInfo& info = getOpInfo(op_ptr);
+  D("SCHEMA_TRANS_IMPL_REQ: RT_COMPLETE sent " << info.m_opType);
   if (ERROR_INSERTED(6149))
   {
     jam();
@@ -29868,8 +31990,18 @@ Dbdict::trans_complete_next(Signal* signal,
   req->opKey = op_ptr.p->op_key;
   req->requestInfo = SchemaTransImplReq::RT_COMPLETE;
   req->transId = trans_ptr.p->m_transId;
-  sendSignal(rg, GSN_SCHEMA_TRANS_IMPL_REQ, signal,
-             SchemaTransImplReq::SignalLength, JBB);
+  if (!ERROR_INSERTED(6223) || memcmp(info.m_opType, "DTa", 4) != 0)
+  {
+    sendSignal(rg, GSN_SCHEMA_TRANS_IMPL_REQ, signal,
+               SchemaTransImplReq::SignalLength, JBB);
+  }
+  else
+  {
+    /* Only happens for DROP_TAB_REQ operations */
+    D("7248: Only sending SCHEMA_TRANS_IMPL_REQ to self before crash");
+    sendSignal(reference(), GSN_SCHEMA_TRANS_IMPL_REQ, signal,
+               SchemaTransImplReq::SignalLength, JBB);
+  }
 }
 
 void
@@ -29879,12 +32011,12 @@ Dbdict::trans_complete_recv_reply(Signal* signal, SchemaTransPtr trans_ptr)
   {
     jam();
     // kill nodes that failed COMMIT
-    ndbrequire(false);
+    ndbabort();
     return;
   }
 
   SchemaOpPtr op_ptr;
-  c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i);
+  ndbrequire(c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i));
 
   bool next = false;
   {
@@ -29923,7 +32055,7 @@ Dbdict::trans_end_start(Signal* signal, SchemaTransPtr trans_ptr)
   NdbNodeBitmask nodes = trans_ptr.p->m_nodes;
   NodeReceiverGroup rg(DBDICT, nodes);
   {
-    SafeCounter sc(c_counterMgr, trans_ptr.p->m_counter);
+    SafeCounter sc(c_reservedCounterMgr, trans_ptr.p->m_counter);
     bool ok = sc.init<SchemaTransImplRef>(rg, trans_ptr.p->trans_key);
     ndbrequire(ok);
   }
@@ -29948,6 +32080,7 @@ Dbdict::trans_end_start(Signal* signal, SchemaTransPtr trans_ptr)
 			5000, 2);
   }
 
+  D("SCHEMA_TRANS_IMPL_REQ: RT_END sent");
   if (ERROR_INSERTED(6050))
   {
     /**
@@ -29994,14 +32127,17 @@ void Dbdict::trans_recover(Signal* signal, SchemaTransPtr trans_ptr)
 
   jam();
 #ifdef VM_TRACE
-  ndbout_c("Dbdict::trans_recover trans %u, state %u", trans_ptr.p->trans_key, trans_ptr.p->m_state);
+  g_eventLogger->info("Dbdict::trans_recover trans %u, state %u",
+                      trans_ptr.p->trans_key, trans_ptr.p->m_state);
 #endif
 
   switch(trans_ptr.p->m_state) {
   case SchemaTrans::TS_INITIAL:
     jam();
+    [[fallthrough]];
   case SchemaTrans::TS_STARTING:
     jam();
+    [[fallthrough]];
   case SchemaTrans::TS_STARTED:
     jam();
     if (trans_ptr.p->m_rollback_op == 0)
@@ -30011,12 +32147,15 @@ void Dbdict::trans_recover(Signal* signal, SchemaTransPtr trans_ptr)
        */
       jam();
 #ifdef VM_TRACE
-      ndbout_c("Dbdict::trans_recover: ENDING START, trans %u(0x%8x), state %u", trans_ptr.i, (uint)trans_ptr.p->trans_key, trans_ptr.p->m_state);
+      g_eventLogger->info(
+          "Dbdict::trans_recover: ENDING START, trans %u(0x%8x), state %u",
+          trans_ptr.i, (uint)trans_ptr.p->trans_key, trans_ptr.p->m_state);
 #endif
       setError(trans_ptr.p->m_error, SchemaTransEndRep::TransAborted, __LINE__);
       trans_end_start(signal, trans_ptr);
       return;
     }
+    [[fallthrough]];
   case SchemaTrans::TS_PARSING:
     jam();
     setError(trans_ptr.p->m_error, SchemaTransEndRep::TransAborted, __LINE__);
@@ -30026,11 +32165,13 @@ void Dbdict::trans_recover(Signal* signal, SchemaTransPtr trans_ptr)
   {
     jam();
 #ifdef VM_TRACE
-    ndbout_c("Dbdict::trans_recover: ABORTING_PARSE, trans %u(0x%8x), state %u", trans_ptr.i, (uint)trans_ptr.p->trans_key, trans_ptr.p->m_state);
+    g_eventLogger->info(
+        "Dbdict::trans_recover: ABORTING_PARSE, trans %u(0x%8x), state %u",
+        trans_ptr.i, (uint)trans_ptr.p->trans_key, trans_ptr.p->m_state);
 #endif
     setError(trans_ptr.p->m_error, SchemaTransEndRep::TransAborted, __LINE__);
     SchemaOpPtr op_ptr;
-    c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i);
+    ndbrequire(c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i));
     // Revert operation state to restart abort
     op_ptr.p->m_state = SchemaOp::OS_PREPARED;
     trans_abort_parse_next(signal, trans_ptr, op_ptr);
@@ -30049,11 +32190,13 @@ void Dbdict::trans_recover(Signal* signal, SchemaTransPtr trans_ptr)
   {
     jam();
 #ifdef VM_TRACE
-    ndbout_c("Dbdict::trans_recover: ABORTING PREPARE, trans %u(0x%8x), state %u", trans_ptr.i, (uint)trans_ptr.p->trans_key, trans_ptr.p->m_state);
+    g_eventLogger->info(
+        "Dbdict::trans_recover: ABORTING PREPARE, trans %u(0x%8x), state %u",
+        trans_ptr.i, (uint)trans_ptr.p->trans_key, trans_ptr.p->m_state);
 #endif
     setError(trans_ptr.p->m_error, SchemaTransEndRep::TransAborted, __LINE__);
     SchemaOpPtr op_ptr;
-    c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i);
+    ndbrequire(c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i));
     // Revert operation state to restart abort
     op_ptr.p->m_state = SchemaOp::OS_PREPARED;
     trans_abort_prepare_next(signal, trans_ptr, op_ptr);
@@ -30076,7 +32219,7 @@ void Dbdict::trans_recover(Signal* signal, SchemaTransPtr trans_ptr)
         Commit any uncommited operations
       */
       SchemaOpPtr op_ptr;
-      c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i);
+      ndbrequire(c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i));
       if (op_ptr.p->m_state < SchemaOp::OS_COMMITTED)
       {
         jam();
@@ -30115,7 +32258,9 @@ void Dbdict::trans_recover(Signal* signal, SchemaTransPtr trans_ptr)
   case SchemaTrans::TS_FLUSH_COMPLETE:
     jam();
 #ifdef VM_TRACE
-    ndbout_c("Dbdict::trans_recover: COMMITTING DONE, trans %u(0x%8x), state %u", trans_ptr.i, (uint)trans_ptr.p->trans_key, trans_ptr.p->m_state);
+    g_eventLogger->info(
+        "Dbdict::trans_recover: COMMITTING DONE, trans %u(0x%8x), state %u",
+        trans_ptr.i, (uint)trans_ptr.p->trans_key, trans_ptr.p->m_state);
 #endif
     trans_complete_done(signal, trans_ptr);
     return;
@@ -30126,10 +32271,12 @@ void Dbdict::trans_recover(Signal* signal, SchemaTransPtr trans_ptr)
     */
     jam();
 #ifdef VM_TRACE
-    ndbout_c("Dbdict::trans_recover: COMPLETING, trans %u(0x%8x), state %u", trans_ptr.i, (uint)trans_ptr.p->trans_key, trans_ptr.p->m_state);
+    g_eventLogger->info(
+        "Dbdict::trans_recover: COMPLETING, trans %u(0x%8x), state %u",
+        trans_ptr.i, (uint)trans_ptr.p->trans_key, trans_ptr.p->m_state);
 #endif
     SchemaOpPtr op_ptr;
-    c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i);
+    ndbrequire(c_schemaOpPool.getPtr(op_ptr, trans_ptr.p->m_curr_op_ptr_i));
     if (op_ptr.p->m_state < SchemaOp::OS_COMPLETED)
     {
       jam();
@@ -30137,13 +32284,16 @@ void Dbdict::trans_recover(Signal* signal, SchemaTransPtr trans_ptr)
       return;
     }
   }
+  [[fallthrough]];
   case SchemaTrans::TS_ENDING:
     /*
       End any pending slaves
      */
     jam();
 #ifdef VM_TRACE
-    ndbout_c("Dbdict::trans_recover: ENDING, trans %u(0x%8x), state %u", trans_ptr.i, (uint)trans_ptr.p->trans_key, trans_ptr.p->m_state);
+    g_eventLogger->info(
+        "Dbdict::trans_recover: ENDING, trans %u(0x%8x), state %u", trans_ptr.i,
+        (uint)trans_ptr.p->trans_key, trans_ptr.p->m_state);
 #endif
     trans_end_start(signal, trans_ptr);
     return;
@@ -30164,6 +32314,7 @@ Dbdict::execSCHEMA_TRANS_IMPL_REQ(Signal* signal)
     jam();
     return;
   }
+  D("execSCHEMA_TRANS_IMPL_REQ");
   SchemaTransImplReq reqCopy =
     *(const SchemaTransImplReq*)signal->getDataPtr();
   const SchemaTransImplReq *req = &reqCopy;
@@ -30268,7 +32419,7 @@ Dbdict::execSCHEMA_TRANS_IMPL_REQ(Signal* signal)
     case SchemaTransImplReq::RT_FLUSH_PREPARE:
     case SchemaTransImplReq::RT_FLUSH_COMMIT:
     case SchemaTransImplReq::RT_FLUSH_COMPLETE:
-      ndbrequire(false); // handled above
+      ndbabort(); // handled above
     case SchemaTransImplReq::RT_PREPARE:
       jam();
       op_ptr.p->m_state = SchemaOp::OS_PREPARING;
@@ -30318,7 +32469,7 @@ Dbdict::execSCHEMA_TRANS_IMPL_REQ(Signal* signal)
 
   return;
 err:
-  ndbrequire(false);
+  ndbabort();
 }
 
 void
@@ -30405,8 +32556,7 @@ Dbdict::slave_run_parse(Signal *signal,
     // this branch does nothing but is convenient for signal pong
 
     //XXX Check if op == last op in trans
-    findSchemaOp(op_ptr, op_key);
-    ndbrequire(!op_ptr.isNull());
+    ndbrequire(findSchemaOp(op_ptr, op_key));
 
     OpRecPtr oprec_ptr = op_ptr.p->m_oprec_ptr;
     const Uint32* dst = oprec_ptr.p->m_impl_req_data;
@@ -30516,7 +32666,7 @@ Dbdict::slave_run_flush(Signal *signal,
     do_flush = trans_ptr.p->m_flush_end;
     break;
   default:
-    ndbrequire(false);
+    ndbabort();
   }
 
   trans_log(trans_ptr);
@@ -30599,7 +32749,7 @@ Dbdict::slave_writeSchema_conf(Signal* signal,
       break;
     default:
       jamLine(trans_ptr.p->m_state);
-      ndbrequire(false);
+      ndbabort();
     }
   }
 
@@ -30613,10 +32763,10 @@ Dbdict::slave_commit_mutex_locked(Signal* signal,
 {
   jamEntry();
 #ifdef MARTIN
-  ndbout_c("slave_commit_mutex_locked");
+  g_eventLogger->info("slave_commit_mutex_locked");
 #endif
   SchemaTransPtr trans_ptr;
-  c_schemaTransPool.getPtr(trans_ptr, transPtrI);
+  ndbrequire(c_schemaTransPool.getPtr(trans_ptr, transPtrI));
 
   ndbrequire(trans_ptr.p->m_state == SchemaTrans::TS_COMMITTING);
   sendTransConfRelease(signal, trans_ptr);
@@ -30629,10 +32779,10 @@ Dbdict::slave_commit_mutex_unlocked(Signal* signal,
 {
   jamEntry();
 #ifdef MARTIN
-  ndbout_c("slave_commit_mutex_unlocked");
+  g_eventLogger->info("slave_commit_mutex_unlocked");
 #endif
   SchemaTransPtr trans_ptr;
-  c_schemaTransPool.getPtr(trans_ptr, transPtrI);
+  ndbrequire(c_schemaTransPool.getPtr(trans_ptr, transPtrI));
 
   trans_ptr.p->m_commit_mutex.release(c_mutexMgr);
 
@@ -30665,19 +32815,19 @@ Dbdict::update_op_state(SchemaOpPtr op_ptr)
     op_ptr.p->m_state = SchemaOp::OS_PARSED;
     break;
   case SchemaOp::OS_PARSED:
-    ndbrequire(false);
+    ndbabort();
   case SchemaOp::OS_PREPARING:
     jam();
     op_ptr.p->m_state = SchemaOp::OS_PREPARED;
     break;
   case SchemaOp::OS_PREPARED:
-    ndbrequire(false);
+    ndbabort();
   case SchemaOp::OS_ABORTING_PREPARE:
     jam();
     op_ptr.p->m_state = SchemaOp::OS_ABORTED_PREPARE;
     break;
   case SchemaOp::OS_ABORTED_PREPARE:
-    ndbrequire(false);
+    ndbabort();
   case SchemaOp::OS_ABORTING_PARSE:
     jam();
     break;
@@ -30687,13 +32837,13 @@ Dbdict::update_op_state(SchemaOpPtr op_ptr)
     op_ptr.p->m_state = SchemaOp::OS_COMMITTED;
     break;
   case SchemaOp::OS_COMMITTED:
-    ndbrequire(false);
+    ndbabort();
   case SchemaOp::OS_COMPLETING:
     jam();
     op_ptr.p->m_state = SchemaOp::OS_COMPLETED;
     break;
   case SchemaOp::OS_COMPLETED:
-    ndbrequire(false);
+    ndbabort();
   }
 }
 
@@ -30824,8 +32974,9 @@ Dbdict::trans_log(SchemaTransPtr trans_ptr)
     entry->m_tableState = SchemaFile::SF_UNUSED;
     break;
   default:
-    ndbrequire(false);
+    ndbabort();
   }
+  D("trans_log obj id = " << objectId << " " << V(*entry));
 }
 
 /**
@@ -30840,7 +32991,8 @@ Dbdict::trans_log_schema_op(SchemaOpPtr op_ptr,
 
   XSchemaFile * xsf = &c_schemaFile[SchemaRecord::NEW_SCHEMA_FILE];
   SchemaFile::TableEntry * oldEntry = getTableEntry(xsf, objectId);
-  D("trans_log_schema_op" << V(*oldEntry) << V(*newEntry));
+  D("trans_log_schema_op obj id = " << objectId << " "
+    << V(*oldEntry) << V(*newEntry));
 
   if (oldEntry->m_transId != 0)
   {
@@ -30870,7 +33022,7 @@ Dbdict::trans_log_schema_op(SchemaOpPtr op_ptr,
     break;
   default:
     jamLine(newEntry->m_tableState);
-    ndbrequire(false);
+    ndbabort();
   }
 
   tmp.m_tableState = newEntry->m_tableState;
@@ -30903,6 +33055,7 @@ Dbdict::trans_log_schema_op_abort(SchemaOpPtr op_ptr)
     XSchemaFile * xsf = &c_schemaFile[SchemaRecord::NEW_SCHEMA_FILE];
     SchemaFile::TableEntry * entry = getTableEntry(xsf, objectId);
     * entry = op_ptr.p->m_orig_entry;
+    D("trans_log_schema_op_abort obj id = " << objectId << " " << V(*entry));
   }
 }
 
@@ -30931,9 +33084,10 @@ Dbdict::trans_log_schema_op_complete(SchemaOpPtr op_ptr)
       break;
     default:
       jamLine(entry->m_tableState);
-      ndbrequire(false);
+      ndbabort();
     }
     entry->m_transId = 0;
+    D("trans_log_schema_op_complete " << V(*entry));
   }
 }
 
@@ -30990,6 +33144,7 @@ Dbdict::sendTransClientReply(Signal* signal, SchemaTransPtr trans_ptr)
   if (trans_ptr.p->m_clientState == TransClient::EndReq) {
     if (!hasError(trans_ptr.p->m_error)) {
       jam();
+      D("SCHEMA_TRANS_END_CONF");
       SchemaTransEndConf* conf =
         (SchemaTransEndConf*)signal->getDataPtrSend();
       conf->senderRef = reference();
@@ -31046,7 +33201,10 @@ Dbdict::sendTransClientReply(Signal* signal, SchemaTransPtr trans_ptr)
       }
       rep->masterNodeId = c_masterNodeId;
 #ifdef VM_TRACE
-      ndbout_c("Dbdict::sendTransClientReply: sending GSN_SCHEMA_TRANS_END_REP to 0x%8x", receiverRef);
+      g_eventLogger->info(
+          "Dbdict::sendTransClientReply:"
+          " sending GSN_SCHEMA_TRANS_END_REP to 0x%8x",
+          receiverRef);
 #endif
       sendSignal(receiverRef, GSN_SCHEMA_TRANS_END_REP, signal,
                  SchemaTransEndRep::SignalLength, JBB);
@@ -31162,6 +33320,7 @@ Dbdict::execSCHEMA_TRANS_BEGIN_CONF(Signal* signal)
   jamEntry();
   const SchemaTransBeginConf* conf =
     (const SchemaTransBeginConf*)signal->getDataPtr();
+  D("execSCHEMA_TRANS_BEGIN_CONF");
 
   TxHandlePtr tx_ptr;
   findTxHandle(tx_ptr, conf->transId);
@@ -31180,6 +33339,7 @@ Dbdict::execSCHEMA_TRANS_BEGIN_REF(Signal* signal)
   const SchemaTransBeginRef* ref =
     (const SchemaTransBeginRef*)signal->getDataPtr();
 
+  D("execSCHEMA_TRANS_BEGIN_REF");
   TxHandlePtr tx_ptr;
   findTxHandle(tx_ptr, ref->transId);
   ndbrequire(!tx_ptr.isNull());
@@ -31196,6 +33356,7 @@ Dbdict::execSCHEMA_TRANS_END_CONF(Signal* signal)
   const SchemaTransEndConf* conf =
     (const SchemaTransEndConf*)signal->getDataPtr();
 
+  D("execSCHEMA_TRANS_END_CONF");
   TxHandlePtr tx_ptr;
   findTxHandle(tx_ptr, conf->transId);
   ndbrequire(!tx_ptr.isNull());
@@ -31210,6 +33371,7 @@ Dbdict::execSCHEMA_TRANS_END_REF(Signal* signal)
   const SchemaTransEndRef* ref =
     (const SchemaTransEndRef*)signal->getDataPtr();
 
+  D("execSCHEMA_TRANS_END_REF");
   TxHandlePtr tx_ptr;
   findTxHandle(tx_ptr, ref->transId);
   ndbrequire(!tx_ptr.isNull());
@@ -31226,6 +33388,7 @@ Dbdict::execSCHEMA_TRANS_END_REP(Signal* signal)
   const SchemaTransEndRep* rep =
     (const SchemaTransEndRep*)signal->getDataPtr();
 
+  D("execSCHEMA_TRANS_END_REP");
   TxHandlePtr tx_ptr;
   findTxHandle(tx_ptr, rep->transId);
   ndbrequire(!tx_ptr.isNull());
@@ -31266,6 +33429,7 @@ Dbdict::handleApiFail(Signal* signal,
       jam();
       D("failed" << hex << V(clientRef));
 
+      DEB_API_FAIL(("API node %u failed, setting ApiFail", failedApiNode));
       ndbrequire(!(trans_ptr.p->m_clientFlags & TransClient::ApiFail));
       trans_ptr.p->m_clientFlags |= TransClient::ApiFail;
 
@@ -31391,8 +33555,7 @@ Dbdict::runTransClientTakeOver(Signal* signal,
     at_end = true;
     break;
   default:
-    ndbrequire(false);
-    break;
+    ndbabort();
   }
 
   D("set" << V(oldState) << " -> " << V(newState));
@@ -31508,7 +33671,7 @@ Dbdict::findCallback(Callback& callback, Uint32 any_key)
 
 // MODULE: CreateHashMap
 
-ArrayPool<Hash2FragmentMap> g_hash_map;
+Hash2FragmentMap_pool g_hash_map;
 
 const Dbdict::OpInfo
 Dbdict::CreateHashMapRec::g_opInfo = {
@@ -31553,6 +33716,16 @@ Dbdict::execCREATE_HASH_MAP_REQ(Signal* signal)
     return;
   }
   SectionHandle handle(this, signal);
+  if(ERROR_INSERTED(6222))
+  {
+    g_eventLogger->info("Delaying GSN_CREATE_HASH_MAP_REQ");
+    sendSignalWithDelay(reference(), GSN_CREATE_HASH_MAP_REQ, signal, 1000,
+                       signal->length(),
+                       &handle);
+    return;
+  }
+  D("execCREATE_HASH_MAP_REQ");
+
 
   const CreateHashMapReq req_copy =
     *(const CreateHashMapReq*)signal->getDataPtr();
@@ -31595,13 +33768,33 @@ Dbdict::execCREATE_HASH_MAP_REQ(Signal* signal)
 // CreateHashMap: PARSE
 
 Uint32
-Dbdict::get_default_fragments(Signal* signal, Uint32 extranodegroups)
+Dbdict::get_default_fragments(Signal* signal,
+                              Uint32 partitionBalance,
+                              Uint32 extranodegroups)
 {
   jam();
 
   CheckNodeGroups * sd = CAST_PTR(CheckNodeGroups, signal->getDataPtrSend());
   sd->extraNodeGroups = extranodegroups;
   sd->requestType = CheckNodeGroups::Direct | CheckNodeGroups::GetDefaultFragments;
+  sd->partitionBalance = partitionBalance;
+  EXECUTE_DIRECT(DBDIH, GSN_CHECKNODEGROUPSREQ, signal,
+		 CheckNodeGroups::SignalLength);
+  jamEntry();
+  return sd->output;
+}
+
+Uint32
+Dbdict::get_default_partitions_fully_replicated(Signal* signal,
+                                                Uint32 partitionBalance)
+{
+  jam();
+
+  CheckNodeGroups * sd = CAST_PTR(CheckNodeGroups, signal->getDataPtrSend());
+  sd->extraNodeGroups = 0;
+  sd->requestType = CheckNodeGroups::Direct |
+                    CheckNodeGroups::GetDefaultFragmentsFullyReplicated;
+  sd->partitionBalance = partitionBalance;
   EXECUTE_DIRECT(DBDIH, GSN_CHECKNODEGROUPSREQ, signal,
 		 CheckNodeGroups::SignalLength);
   jamEntry();
@@ -31628,12 +33821,11 @@ Dbdict::createHashMap_parse(Signal* signal, bool master,
     jam();
     SimpleProperties::UnpackStatus status;
 
-    handle.getSection(objInfoPtr, CreateHashMapReq::INFO);
+    ndbrequire(handle.getSection(objInfoPtr, CreateHashMapReq::INFO));
     SimplePropertiesSectionReader it(objInfoPtr, getSectionSegmentPool());
     status = SimpleProperties::unpack(it, &hm,
 				      DictHashMapInfo::Mapping,
-				      DictHashMapInfo::MappingSize,
-				      true, true);
+				      DictHashMapInfo::MappingSize);
 
     if (ERROR_INSERTED(6204))
     {
@@ -31659,7 +33851,7 @@ Dbdict::createHashMap_parse(Signal* signal, bool master,
   else
   {
     /**
-     * Convienienc branch...(only master)
+     * Convenience branch...(only master)
      * No info, create "default"
      */
     jam();
@@ -31667,16 +33859,71 @@ Dbdict::createHashMap_parse(Signal* signal, bool master,
     {
       jam();
       impl_req->buckets = c_default_hashmap_size;
-      impl_req->fragments = 0;
     }
 
+    /**
+     * impl_req->fragments contains either partitionBalance or
+     * the number of fragments when specific number of fragments
+     * have been specified.
+     */
     Uint32 buckets = impl_req->buckets;
-    Uint32 fragments = impl_req->fragments;
-    if (fragments == 0)
-    {
+    Uint32 fragments;
+    Uint32 partitions;
+    Uint32 partitionBalance = impl_req->fragments;
+    switch(partitionBalance) {
+    case 0:
+      /**
+       * Most likely a table is created from 7.4 or earlier version.
+       * We will replace the 0 with the default partition balance
+       * and continue as if everything is ok. All tables in 7.4 and
+       * earlier are either of type FOR_RP_BY_LDM or
+       * SPECIFIC. The other types can only be created using 7.5.2
+       * and later.
+       */
       jam();
-
-      fragments = get_default_fragments(signal);
+      partitionBalance = NDB_PARTITION_BALANCE_FOR_RP_BY_LDM;
+      [[fallthrough]];
+    case NDB_PARTITION_BALANCE_FOR_RP_BY_LDM:
+    case NDB_PARTITION_BALANCE_FOR_RA_BY_LDM:
+    case NDB_PARTITION_BALANCE_FOR_RA_BY_LDM_X_2:
+    case NDB_PARTITION_BALANCE_FOR_RA_BY_LDM_X_3:
+    case NDB_PARTITION_BALANCE_FOR_RA_BY_LDM_X_4:
+    case NDB_PARTITION_BALANCE_FOR_RP_BY_NODE:
+    case NDB_PARTITION_BALANCE_FOR_RA_BY_NODE:
+      jam();
+      fragments = get_default_fragments(signal,
+                                        partitionBalance,
+                                        0);
+      if (impl_req->requestType & CreateHashMapReq::CreateForOneNodegroup)
+      {
+        partitions = get_default_partitions_fully_replicated(signal,
+                                                             partitionBalance);
+      }
+      else
+      {
+        partitions = fragments;
+      }
+      break;
+    default:
+      if(impl_req->requestType & CreateHashMapReq::CreateForOneNodegroup)
+      {
+        jam();
+        /**
+         * PartitionBalance_Specific is not supported for fully replicated.
+         * And if it was fragment count is unknown.
+         */
+        setError(error, CreateTableRef::WrongPartitionBalanceFullyReplicated,__LINE__);
+        return;
+      }
+      partitions = fragments = impl_req->fragments;
+      partitionBalance = NDB_PARTITION_BALANCE_SPECIFIC;
+      break;
+    }
+    if (g_trace)
+    {
+      g_eventLogger->info("HashMap: fragments: %u, partitionBalance: %s",
+                          fragments,
+                          getPartitionBalanceString(partitionBalance));
     }
 
     if (fragments > MAX_NDB_PARTITIONS)
@@ -31686,11 +33933,15 @@ Dbdict::createHashMap_parse(Signal* signal, bool master,
       return;
     }
 
+    if (impl_req->requestType & CreateHashMapReq::CreateDefault &&
+        fragments > NDB_DEFAULT_HASHMAP_MAX_FRAGMENTS)
+    {
+      buckets = NDB_MAX_HASHMAP_BUCKETS;
+    }
     BaseString::snprintf(hm.HashMapName, sizeof(hm.HashMapName),
                          "DEFAULT-HASHMAP-%u-%u",
                          buckets,
-                         fragments);
-
+                         partitions);
     if (buckets == 0 || buckets > Hash2FragmentMap::MAX_MAP)
     {
       jam();
@@ -31701,7 +33952,7 @@ Dbdict::createHashMap_parse(Signal* signal, bool master,
     hm.HashMapBuckets = buckets;
     for (Uint32 i = 0; i<buckets; i++)
     {
-      hm.HashMapValues[i] = (i % fragments);
+      hm.HashMapValues[i] = (i % partitions);
     }
 
     /**
@@ -31714,7 +33965,7 @@ Dbdict::createHashMap_parse(Signal* signal, bool master,
     s = SimpleProperties::pack(w,
                                &hm,
                                DictHashMapInfo::Mapping,
-                               DictHashMapInfo::MappingSize, true);
+                               DictHashMapInfo::MappingSize);
     ndbrequire(s == SimpleProperties::Eof);
     w.getPtr(objInfoPtr);
 
@@ -31897,7 +34148,7 @@ Dbdict::createHashMap_parse(Signal* signal, bool master,
   hm_ptr.p->m_object_version = objVersion;
   hm_ptr.p->m_name = name;
   hm_ptr.p->m_map_ptr_i = map_ptr.i;
-  link_object(obj_ptr, hm_ptr);
+  ndbrequire(link_object(obj_ptr, hm_ptr));
 
   /**
    * pack is stupid...and requires bytes!
@@ -31950,8 +34201,8 @@ Dbdict::createHashMap_parse(Signal* signal, bool master,
   handle.m_cnt = 1;
 
 #if defined VM_TRACE || defined ERROR_INSERT
-  ndbout_c("Dbdict: %u: create name=%s,id=%u,obj_ptr_i=%d",__LINE__,
-           hm.HashMapName, objId, hm_ptr.p->m_obj_ptr_i);
+  g_eventLogger->info("Dbdict: %u: create name=%s,id=%u,obj_ptr_i=%d", __LINE__,
+                      hm.HashMapName, objId, hm_ptr.p->m_obj_ptr_i);
 #endif
 
   return;
@@ -32095,9 +34346,7 @@ Dbdict::createHashMap_writeObjConf(Signal* signal, Uint32 op_key, Uint32 ret)
   jam();
   SchemaOpPtr op_ptr;
   CreateHashMapRecPtr createHashMapRecordPtr;
-  findSchemaOp(op_ptr, createHashMapRecordPtr, op_key);
-
-  ndbrequire(!op_ptr.isNull());
+  ndbrequire(findSchemaOp(op_ptr, createHashMapRecordPtr, op_key));
 
   sendTransConf(signal, op_ptr);
 }
@@ -32142,7 +34391,7 @@ Dbdict::packHashMapIntoPages(SimpleProperties::Writer & w,
   DictHashMapInfo::HashMap hm; hm.init();
 
   Ptr<Hash2FragmentMap> map_ptr;
-  g_hash_map.getPtr(map_ptr, hm_ptr.p->m_map_ptr_i);
+  ndbrequire(g_hash_map.getPtr(map_ptr, hm_ptr.p->m_map_ptr_i));
 
   ConstRope r(c_rope_pool, hm_ptr.p->m_name);
   r.copy(hm.HashMapName);
@@ -32164,7 +34413,7 @@ Dbdict::packHashMapIntoPages(SimpleProperties::Writer & w,
   s = SimpleProperties::pack(w,
 			     &hm,
 			     DictHashMapInfo::Mapping,
-			     DictHashMapInfo::MappingSize, true);
+			     DictHashMapInfo::MappingSize);
 
   ndbrequire(s == SimpleProperties::Eof);
 }
@@ -32195,6 +34444,16 @@ Dbdict::ErrorInfo::print(NdbOut& out) const
   out << " key: " << errorKey;
   out << " name: '" << errorObjectName << "'";
   out << " ]";
+}
+
+void
+Dbdict::ErrorInfo::print(EventLogger *logger) const
+{
+  logger->error(
+      "error: [ code: %u line: %u node: %u count: %u"
+      " status: %u key: %u name: '%s' ]",
+      errorCode, errorLine, errorNodeId, errorCount, errorStatus, errorKey,
+      errorObjectName);
 }
 
 #ifdef VM_TRACE
@@ -32376,8 +34635,7 @@ Dbdict::check_consistency_entry(TableRecordPtr tablePtr)
     jam();
     break;
   default:
-    ndbrequire(false);
-    break;
+    ndbabort();
   }
 }
 
@@ -32393,9 +34651,11 @@ Dbdict::check_consistency_table(TableRecordPtr tablePtr)
   case DictTabInfo::UserTable: // should just be "Table"
     jam();
     break;
-  default:
-    ndbrequire(false);
+  case DictTabInfo::UniqueHashIndex:
+    jam();
     break;
+  default:
+    ndbabort();
   }
 
   DictObjectPtr obj_ptr;
@@ -32421,8 +34681,7 @@ Dbdict::check_consistency_index(TableRecordPtr indexPtr)
     jam();
     break;
   default:
-    ndbrequire(false);
-    break;
+    ndbabort();
   }
 
   TableRecordPtr tablePtr;
@@ -32440,8 +34699,7 @@ Dbdict::check_consistency_index(TableRecordPtr indexPtr)
     jam();
     break;
   default:
-    ndbrequire(false);
-    break;
+    ndbabort();
   }
 
   TriggerRecordPtr triggerPtr;
@@ -32470,6 +34728,10 @@ Dbdict::check_consistency_index(TableRecordPtr indexPtr)
 void
 Dbdict::check_consistency_trigger(TriggerRecordPtr triggerPtr)
 {
+  D("trigger for table " << triggerPtr.p->tableId << " index = " <<
+    triggerPtr.p->indexId << " name " <<
+    copyRope<SZ>(triggerPtr.p->triggerName));
+
   if (! (triggerPtr.p->triggerState == TriggerRecord::TS_FAKE_UPGRADE))
   {
     ndbrequire(triggerPtr.p->triggerState == TriggerRecord::TS_ONLINE);
@@ -32508,8 +34770,7 @@ Dbdict::check_consistency_trigger(TriggerRecordPtr triggerPtr)
         }
         break;
       default:
-        ndbrequire(false);
-        break;
+        ndbabort();
       }
     }
   }
@@ -32517,7 +34778,8 @@ Dbdict::check_consistency_trigger(TriggerRecordPtr triggerPtr)
   {
     TriggerInfo ti;
     TriggerInfo::unpackTriggerInfo(triggerPtr.p->triggerInfo, ti);
-    ndbrequire(ti.triggerType == TriggerType::REORG_TRIGGER);
+    ndbrequire(ti.triggerType == TriggerType::REORG_TRIGGER ||
+               ti.triggerType == TriggerType::FULLY_REPLICATED_TRIGGER);
   }
 }
 
@@ -32576,7 +34838,11 @@ Dbdict::startNextGetTabInfoReq(Signal* signal)
    * Prefer internalQueue, but give externalQueue entries
    * a proportional share to avoid starvation.
    */
-  ndbrequire(c_gettabinforeq_q.deqReq(signal));
+  Uint64 waitMillis = 0;
+  ndbrequire(c_gettabinforeq_q.deqReq(signal, waitMillis));
+
+  if (waitMillis > c_retrieveRecord.longestWaitMillis)
+    c_retrieveRecord.longestWaitMillis = waitMillis;
 
   signal->header.theLength = GetTabInfoReq::SignalLength;
 
@@ -32587,6 +34853,27 @@ Dbdict::startNextGetTabInfoReq(Signal* signal)
    * we are starting in trace file
    */
   doGET_TABINFOREQ(signal);
+
+  if (!c_retrieveRecord.monitorRunning)
+  {
+    if (NdbTick_IsValid(c_retrieveRecord.startProcessTime) &&
+        NdbTick_Elapsed(c_retrieveRecord.startProcessTime,
+                        NdbTick_getCurrentTicks()).milliSec()
+        > SuspectGETTABINFOREQMillis)
+    {
+      jam();
+
+      /* Start monitoring */
+      c_retrieveRecord.monitorRunning = true;
+      signal->theData[0] = DumpStateOrd::DictDumpGetTabInfoQueue;
+      signal->theData[1] = 0;
+      sendSignal(reference(),
+                 GSN_DUMP_STATE_ORD,
+                 signal,
+                 2,
+                 JBB);
+    }
+  }
 
   if (!c_retrieveRecord.busyState)
   {

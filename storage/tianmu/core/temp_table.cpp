@@ -101,7 +101,7 @@ TempTable::Attr::Attr(CQTerm t, common::ColOperation m, uint32_t power, bool dis
   if (m == common::ColOperation::GROUP_CONCAT)
     si = (*si1);
   else
-    si.order = ORDER::ORDER_NOT_RELEVANT;
+    si.order = ORDER_NOT_RELEVANT;
 
   page_size = 1;
 }

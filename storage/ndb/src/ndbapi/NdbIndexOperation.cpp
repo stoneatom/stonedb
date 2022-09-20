@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -61,7 +61,7 @@ NdbIndexOperation::indxInit(const NdbIndexImpl * anIndex,
 {
   NdbOperation::init(aTable, myConnection);
 
-  switch (anIndex->m_type) {
+  switch ((NdbDictionary::Index::Type)anIndex->m_type) {
   case(NdbDictionary::Index::UniqueHashIndex):
     break;
   case(NdbDictionary::Index::Undefined):
@@ -158,6 +158,12 @@ int NdbIndexOperation::dirtyUpdate()
   // First check that index is unique
 
   return NdbOperation::dirtyUpdate();
+}
+
+int NdbIndexOperation::interpretedWriteTuple()
+{
+  setErrorCode(4200);
+  return -1;
 }
 
 int NdbIndexOperation::interpretedUpdateTuple()

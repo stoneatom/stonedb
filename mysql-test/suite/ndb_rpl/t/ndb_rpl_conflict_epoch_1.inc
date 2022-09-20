@@ -5,7 +5,9 @@
 
 if ($extended_exceptions_table)
 {
-call mtr.add_suppression("NDB Slave: exceptions table .* has suspicious definition .*");
+--disable_query_log
+call mtr.add_suppression("NDB Replica: exceptions table .* has suspicious definition .*");
+--enable_query_log
 }
 
 if (!$extended_exceptions_table)
@@ -71,7 +73,7 @@ FLUSH LOGS;
 --disable_query_log
 --disable_result_log
 SELECT @MaxRepGCIHI:=Variable_Value >> 32
-FROM Information_schema.Global_Status
+FROM performance_schema.global_status
 WHERE Variable_Name like 'Ndb_slave_max_replicated_epoch';
 
 SELECT @MaxRepGCIHI = 0;
@@ -90,7 +92,7 @@ while (!$different)
   --sleep 1
 
   SELECT @MaxRepGCIHI:=Variable_Value >> 32
-  FROM Information_schema.Global_Status
+  FROM performance_schema.global_status
   WHERE Variable_Name like 'Ndb_slave_max_replicated_epoch';
 
   --let $current_gcihi = `SELECT @MaxRepGCIHI`
@@ -557,7 +559,7 @@ delete from test.t1 where a=5;
 select * from test.t1 order by a;
 --source suite/ndb_rpl/t/ndb_conflict_info.inc
 
-# Test runs with --log-slave-updates=1
+# Test runs with --log-replica-updates=1
 # This means that the Secondary logs reflected ops if they
 # take some effect in its binlog
 # (e.g. they go S->P --reflect--> S --logged--> P)

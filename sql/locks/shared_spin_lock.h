@@ -1,4 +1,4 @@
-/* Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2020, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -23,9 +23,12 @@
 #ifndef LOCK_SHARED_SPIN_LOCK_INCLUDED
 #define LOCK_SHARED_SPIN_LOCK_INCLUDED
 
-#include "my_thread.h"
-#include "my_thread_local.h"
-#include "my_atomic.h"
+#include <atomic>
+#include <map>
+#include <memory>
+#include <type_traits>
+
+#include "sql/memory/aligned_atomic.h"
 
 /**
   Provides atomic access in shared-exclusive modes. Shared mode allows for
@@ -34,7 +37,7 @@
 
   The implementation also provides re-entrance, meaning that a thread is
   allowed to acquire the lock in the same mode several times without
-  blocking. Reentrance is symetric, meaning, in the case the lock is
+  blocking. Re-entrance is symmetric, meaning, in the case the lock is
   acquired several times by the same thread, it should be released the same
   amount of times.
 
@@ -72,23 +75,19 @@
 
 
  */
-namespace lock
-{
-class Shared_spin_lock
-{
+namespace lock {
+class Shared_spin_lock {
  public:
-  enum enum_lock_acquisition
-  {
-    SL_EXCLUSIVE= 0,
-    SL_SHARED= 1,
-    SL_NO_ACQUISITION= 2
+  enum class enum_lock_acquisition {
+    SL_EXCLUSIVE = 0,
+    SL_SHARED = 1,
+    SL_NO_ACQUISITION = 2
   };
 
   /**
     Sentry class for `Shared_spin_lock` to deliver RAII pattern usability.
    */
-  class Guard
-  {
+  class Guard {
    public:
     friend class Shared_spin_lock;
 
@@ -105,13 +104,23 @@ class Shared_spin_lock
                           or EXCLUSIVE).
      */
     Guard(Shared_spin_lock &target,
-          enum_lock_acquisition acquisition= lock::Shared_spin_lock::SL_SHARED,
-          bool try_and_fail= false);
+          enum_lock_acquisition acquisition = enum_lock_acquisition::SL_SHARED,
+          bool try_and_fail = false);
+    // Delete copy and move constructors
+    Guard(Shared_spin_lock::Guard const &) = delete;
+    Guard(Shared_spin_lock::Guard &&) = delete;
+    //
     /**
       Destructor for the sentry. It will release any acquisition, shared or
       exclusive.
      */
     virtual ~Guard();
+
+    // Delete copy and move operators
+    Shared_spin_lock::Guard &operator=(Shared_spin_lock::Guard const &) =
+        delete;
+    Shared_spin_lock::Guard &operator=(Shared_spin_lock::Guard &&) = delete;
+    //
 
     /**
       Arrow operator to access the underlying lock.
@@ -122,7 +131,7 @@ class Shared_spin_lock
     /**
       Star operator to access the underlying lock.
 
-      @return A refernce to the underlying lock.
+      @return A reference to the underlying lock.
      */
     Shared_spin_lock &operator*();
     /**
@@ -139,7 +148,7 @@ class Shared_spin_lock
       @return A reference to `this` object, for chaining purposes.
      */
     Shared_spin_lock::Guard &acquire(enum_lock_acquisition acquisition,
-                                     bool try_and_fail= false);
+                                     bool try_and_fail = false);
     /**
       Releases the underlying lock acquisition, if any.
 
@@ -151,25 +160,18 @@ class Shared_spin_lock
     /** The underlying lock */
     Shared_spin_lock &m_target;
     /** The type of lock acquisition to be requested */
-    enum_lock_acquisition m_acquisition;
-
-    // Delete copy and move constructors
-    Guard(Shared_spin_lock::Guard const &);
-    //
-    // Delete copy and move operators
-    Shared_spin_lock::Guard &operator=(Shared_spin_lock::Guard const &);
-    //
+    enum_lock_acquisition m_acquisition{enum_lock_acquisition::SL_SHARED};
   };
   friend class Shared_spin_lock::Guard;
 
   /**
     Default class constructor.
    */
-  Shared_spin_lock();
+  Shared_spin_lock() = default;
   /**
     Default class destructor.
    */
-  virtual ~Shared_spin_lock();
+  virtual ~Shared_spin_lock() = default;
 
   /**
     Blocks until the lock is acquired in shared mode.
@@ -226,11 +228,9 @@ class Shared_spin_lock
 
  private:
   /** The total amount of threads accessing in shared mode  */
-  int32 m_shared_access;
+  memory::Aligned_atomic<long> m_shared_access{0};
   /** Whether or not any thread is accessing in or waiting for exclusive mode */
-  int32 m_exclusive_access;
-  /** The identifier of the thread holding exclusive mode */
-  int64 m_exclusive_owner;
+  memory::Aligned_atomic<bool> m_exclusive_access{false};
 
   /**
     Tries to lock or waits for locking in shared mode and increases the
@@ -273,13 +273,9 @@ class Shared_spin_lock
    */
   void spin_exclusive_lock();
   /**
-    Controls the thread spinning while waiting for resources. It performs a
-    scheduled yield, notifying that the thread available for being scheduled
-    out.
-
-    @return a reference to this object, for chaining purposes.
-  */
-  Shared_spin_lock &yield();
+    Returns the thread-local lock counter map.
+   */
+  static std::map<Shared_spin_lock *, long> &acquired_spins();
 };
 }  // namespace lock
 

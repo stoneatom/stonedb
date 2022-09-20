@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -55,10 +55,11 @@ Revision history:
 
  * *************************************************** */
 
+#include "util/require.h"
 #include <ndb_global.h>
+#include <cstring>
 #include <NdbApi.hpp>
 
-#include <NdbMain.h>
 #include <NdbThread.h>
 #include <NdbSleep.h>
 #include <NdbTick.h>
@@ -110,7 +111,7 @@ struct ThreadNdb {
 extern "C" void* flexHammerThread(void*);
 static int setAttrNames(void);
 static int setTableNames(void);
-static int readArguments(int, const char**);
+static int readArguments(int, char**);
 static int createTables(Ndb*);
 static int dropTables(Ndb*);
 static void sleepBeforeStartingTest(int seconds);
@@ -155,11 +156,11 @@ void
 resetThreads(ThreadNdb *threadArrayP) {
 
   for (int i = 0; i < tNoOfThreads ; i++)
-    {
-      threadArrayP[i].threadReady = 0;
-      threadArrayP[i].threadResult = 0;
-      threadArrayP[i].threadStart = stIdle;
-    }
+  {
+    threadArrayP[i].threadReady = 0;
+    threadArrayP[i].threadResult = 0;
+    threadArrayP[i].threadStart = stIdle;
+  }
 } // resetThreads
 
 void 
@@ -191,8 +192,7 @@ tellThreads(ThreadNdb* threadArrayP, const StartType what)
 
 static Ndb_cluster_connection *g_cluster_connection= 0;
  
-NDB_COMMAND(flexHammer, "flexHammer", "flexHammer", "flexHammer", 65535)
-//main(int argc, const char** argv)
+int main(int argc, char** argv)
 {
   ndb_init();
   ThreadNdb* pThreads = NULL; // Pointer to thread data array
@@ -226,8 +226,11 @@ NDB_COMMAND(flexHammer, "flexHammer", "flexHammer", "flexHammer", 65535)
 
   // Create thread data array
   pThreads = new ThreadNdb[tNoOfThreads];
-  // NdbThread_SetConcurrencyLevel(tNoOfThreads + 2);
-
+  if (pThreads == nullptr)
+  {
+    ndbout << "Failed to allocate pThreads" << endl;
+    return NDBT_ProgramExit(NDBT_FAILED);
+  }
   // Create and init Ndb object
   Ndb_cluster_connection con;
   if(con.connect(12, 5, 1) != 0)
@@ -361,7 +364,7 @@ flexHammerThread(void* pArg)
   int tThreadResult = 0;
   MyOpType tMyOpType = otLast;
   int pkValue = 0;
-  int readValue[MAXATTR][MAXATTRSIZE]; bzero(readValue, sizeof(readValue));
+  int readValue[MAXATTR][MAXATTRSIZE]; std::memset(readValue, 0, sizeof(readValue));
   int attrValue[MAXATTRSIZE];
   NdbRecAttr* tTmp = NULL;
   int tNoOfAttempts = 0;
@@ -642,7 +645,7 @@ flexHammerThread(void* pArg)
 
 
 int
-readArguments (int argc, const char** argv)
+readArguments (int argc, char** argv)
 {
   int i = 1;
   

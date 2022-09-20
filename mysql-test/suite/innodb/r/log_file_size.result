@@ -1,36 +1,32 @@
-call mtr.add_suppression("InnoDB: Resizing redo log");
-call mtr.add_suppression("InnoDB: Starting to delete and rewrite log files");
-call mtr.add_suppression("InnoDB: New log files created");
-call mtr.add_suppression("InnoDB: The log sequence numbers [0-9]+ and [0-9]+ in ibdata files do not match the log sequence number [0-9]+ in the ib_logfiles");
-CREATE TABLE t1(a INT PRIMARY KEY) ENGINE=InnoDB;
-BEGIN;
-INSERT INTO t1 VALUES (42);
-# Kill and restart: --innodb-log-file-size=6M
-SELECT * FROM t1;
-a
-INSERT INTO t1 VALUES (42);
-BEGIN;
-DELETE FROM t1;
-# Kill and restart: --innodb-log-files-in-group=3 --innodb-log-file-size=5M
-SELECT * FROM t1;
-a
-42
-INSERT INTO t1 VALUES (123);
-BEGIN;
-DELETE FROM t1;
-# Kill the server
---innodb-force-recovery-crash=1
---innodb-force-recovery-crash=3
---innodb-force-recovery-crash=4
---innodb-force-recovery-crash=5
---innodb-force-recovery-crash=6
---innodb-force-recovery-crash=7
---innodb-force-recovery-crash=8
---innodb-force-recovery-crash=9
---innodb-force-recovery-crash=10
-# restart: --innodb-log-files-in-group=3 --innodb-log-file-size=5M
-SELECT * FROM t1;
-a
-42
-123
-DROP TABLE t1;
+#
+# Do clean shutdown of MySQL and remove log files.
+#
+Prepared a file with size = 0 bytes
+Prepared a file with size = 1 bytes
+Prepared a file with size = 65535 bytes
+Prepared a file with size = 65537 bytes
+#
+# Create #ib_redo0 as empty file and start MySQL.
+# We should detect that #ib_redo0 is empty.
+#
+Pattern "redo log file .*#ib_redo0 is empty" found
+#
+# Create #ib_redo0 with 1 byte inside and start MySQL.
+# We should detect that #ib_redo0 is too small.
+#
+Pattern "redo log file .*#ib_redo0 is smaller than 65536 bytes" found
+#
+# Create #ib_redo0 with 64kB-1 bytes inside and start MySQL.
+# We should detect that #ib_redo0 is too small.
+#
+Pattern "redo log file .*#ib_redo0 is smaller than 65536 bytes" found
+#
+# Create #ib_redo0 with 64kB+1 bytes inside and start MySQL.
+# We should detect that #ib_redo0's size is not divisible by page size.
+#
+Pattern ".*#ib_redo0 size 65537 is not a multiple of innodb_page_size" found
+
+#
+# Start MySQL afterwards.
+#
+# restart:

@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -34,6 +34,7 @@
 #include <GlobalData.hpp>
 #include <TransporterDefinitions.hpp>
 #include <portlib/ndb_prefetch.h>
+#include <portlib/NdbTick.h>
 
 #define JAM_FILE_ID 244
 
@@ -66,18 +67,17 @@ public:
 
   void newBuffer(int size);
   
-  void insert(Signal* signal, BlockNumber bnr, GlobalSignalNumber gsn);   
+  void insert(Signal25* signal);
   void insert(const SignalHeader * const sh, const Uint32 * const theData, const Uint32 secPtrI[3]);
-  void insert(Signal* signal, BlockNumber bnr, GlobalSignalNumber gsn, 
-	      Uint32 myWPtr);   
+  void insert(Signal25* signal, Uint32 myWPtr);
   
-  Uint32 retrieve(Signal *signal);
-  void retrieve(Signal *signal, Uint32 myRptr);
+  Uint32 retrieve(Signal25 *signal);
+  void retrieve(Signal25 *signal, Uint32 myRptr);
   
   /**
    * Used when dumping to trace file
    */
-  void retrieveDump(Signal *signal, Uint32 myRptr);
+  void retrieveDump(Signal25 *signal, Uint32 myRptr);
   
   void clear();
   Uint32 getOccupancy() const;
@@ -87,8 +87,7 @@ public:
   Uint32 getBufSize() const;
   
 private:
-  void signal2buffer(Signal* signal, BlockNumber bnr,
-		     GlobalSignalNumber gsn, BufferEntry& buf);
+  void signal2buffer(Signal25* signal, BufferEntry& buf);
   Uint32 rPtr;
   Uint32 wPtr;
   Uint32 theOccupancy;
@@ -110,10 +109,7 @@ public:
 
   void activateSendPacked();
   
-  void execute(Signal* signal, 
-	       Priority prio,
-	       BlockNumber bnr, 
-	       GlobalSignalNumber gsn);
+  void execute(Signal25* signal, Priority prio);
   
   void execute(const SignalHeader * const sh, 
 	       Uint8 prio, const Uint32 * const theData, const Uint32 secPtr[3]);
@@ -125,8 +121,7 @@ public:
   Uint32 getBOccupancy() const;
   void sendPacked();
   
-  void insertTimeQueue(Signal* aSignal, BlockNumber bnr,
-		       GlobalSignalNumber gsn, Uint32 aIndex);
+  void insertTimeQueue(Signal25* aSignal, Uint32 aIndex);
   void scheduleTimeQueue(Uint32 aIndex);
   
   /*
@@ -152,6 +147,11 @@ public:
                               Uint32 *no_exec_loops, Uint32 *tot_exec_time,
                               Uint32 *no_extra_loops, Uint32 *tot_extra_time);
 
+  /* Get/Set high resolution timer in microseconds */
+  NDB_TICKS getHighResTimer() { return curr_ticks; }
+  const NDB_TICKS* getHighResTimerPtr() { return &curr_ticks; } 
+  void setHighResTimer(NDB_TICKS ticks)
+  { curr_ticks = ticks;}
 private:
   void highestAvailablePrio(Priority prio);
   void reportJob(Priority aPriority);
@@ -159,6 +159,7 @@ private:
 
   Uint32 theDoJobTotalCounter;
   Uint32 theDoJobCallCounter;
+  NDB_TICKS curr_ticks;
   Uint8 theJobPriority[4096];
   APZJobBuffer theJobBuffers[JB_LEVELS];
 
@@ -239,36 +240,31 @@ FastScheduler::execute(const SignalHeader * const sh, Uint8 prio,
 
 inline 
 void 
-FastScheduler::execute(Signal* signal, Priority prio,
-		       BlockNumber bnr, GlobalSignalNumber gsn)
+FastScheduler::execute(Signal25* signal, Priority prio)
 {
 #ifdef VM_TRACE
   if (prio >= LEVEL_IDLE)
     prio_level_error();
 #endif
-  theJobBuffers[prio].insert(signal, bnr, gsn);
+  theJobBuffers[prio].insert(signal);
   if (prio < highestAvailablePrio())
     highestAvailablePrio(prio);
 }
 
 inline 
 void 
-FastScheduler::insertTimeQueue(Signal* signal, BlockNumber bnr,
-			       GlobalSignalNumber gsn, Uint32 aIndex)
+FastScheduler::insertTimeQueue(Signal25* signal, Uint32 aIndex)
 {
-  theJobBuffers[3].insert(signal, bnr, gsn, aIndex);
+  theJobBuffers[3].insert(signal, aIndex);
 }
 
 inline 
 void 
 FastScheduler::scheduleTimeQueue(Uint32 aIndex)
 {
-  Signal* signal = getVMSignals();
+  Signal25* signal = reinterpret_cast<Signal25*>(getVMSignals());
   theJobBuffers[3].retrieve(signal, aIndex);
-  theJobBuffers[0].insert
-    (signal,
-     (BlockNumber)signal->header.theReceiversBlockNumber,
-     (GlobalSignalNumber)signal->header.theVerId_signalNumber);
+  theJobBuffers[0].insert(signal);
   if (highestAvailablePrio() > JBA)
     highestAvailablePrio(JBA);
 
@@ -305,9 +301,9 @@ APZJobBuffer::getBufSize() const
 
 inline
 void
-APZJobBuffer::retrieve(Signal* signal, Uint32 myRptr)
+APZJobBuffer::retrieve(Signal25* signal, Uint32 myRptr)
 {              
-  register BufferEntry& buf = buffer[myRptr];
+  BufferEntry& buf = buffer[myRptr];
   
   buf.header.theSignalId = globalData.theSignalId++;
 
@@ -324,13 +320,13 @@ APZJobBuffer::retrieve(Signal* signal, Uint32 myRptr)
 
 inline
 void
-APZJobBuffer::retrieveDump(Signal* signal, Uint32 myRptr)
+APZJobBuffer::retrieveDump(Signal25* signal, Uint32 myRptr)
 {              
   /**
    * Note that signal id is not taken from global data
    */
   
-  register BufferEntry& buf = buffer[myRptr];
+  BufferEntry& buf = buffer[myRptr];
   signal->header = buf.header;
   
   Uint32 *from = (Uint32*) &buf.theDataRegister[0];
@@ -343,17 +339,16 @@ APZJobBuffer::retrieveDump(Signal* signal, Uint32 myRptr)
 
 inline
 void 
-APZJobBuffer::insert(Signal* signal,
-		     BlockNumber bnr, GlobalSignalNumber gsn)
+APZJobBuffer::insert(Signal25* signal)
 {
   Uint32 tOccupancy = theOccupancy + 1;
   Uint32 myWPtr = wPtr;
   if (tOccupancy < bufSize) {
-    register BufferEntry& buf = buffer[myWPtr];
+    BufferEntry& buf = buffer[myWPtr];
     Uint32 cond =  (++myWPtr == bufSize) - 1;
     wPtr = myWPtr & cond;
     theOccupancy = tOccupancy;
-    signal2buffer(signal, bnr, gsn, buf);
+    signal2buffer(signal, buf);
     //---------------------------------------------------------
     // Prefetch of buffer[wPtr] is done here. We prefetch for
     // write both the first cache line and the next 64 byte
@@ -369,11 +364,10 @@ APZJobBuffer::insert(Signal* signal,
 
 inline
 void
-APZJobBuffer::insert(Signal* signal, BlockNumber bnr,
-		     GlobalSignalNumber gsn, Uint32 myWPtr)
+APZJobBuffer::insert(Signal25* signal, Uint32 myWPtr)
 {
-  register BufferEntry& buf = buffer[myWPtr];
-  signal2buffer(signal, bnr, gsn, buf);
+  BufferEntry& buf = buffer[myWPtr];
+  signal2buffer(signal, buf);
 }
 
 

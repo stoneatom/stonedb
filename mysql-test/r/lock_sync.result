@@ -187,6 +187,8 @@ if !(select i from v1 where i=1) then
 signal sqlstate '45000';
 end if;
 end|
+Warnings:
+Warning	1287	'!' is deprecated and will be removed in a future release. Please use NOT instead
 create trigger t5_bi before insert on t5 for each row
 begin
 set new.l= f1()+1;
@@ -203,7 +205,7 @@ end|
 #
 # Switch to connection 'con1'.
 # Cache all functions used in the tests below so statements
-# calling them won't need to open and lock mysql.proc table
+# calling them won't need to open and lock data dictionary table
 # and we can assume that each statement locks its tables
 # once during its execution.
 show create procedure p1;
@@ -658,16 +660,14 @@ DROP TABLE t1, t2;
 CREATE EVENT e1 ON SCHEDULE EVERY 5 HOUR DO SELECT 1;
 CREATE EVENT e2 ON SCHEDULE EVERY 5 HOUR DO SELECT 2;
 # Connection con1
-SET DEBUG_SYNC="before_lock_tables_takes_lock SIGNAL drop WAIT_FOR query";
+SET DEBUG_SYNC="before_lock_dictionary_tables_takes_lock SIGNAL drop WAIT_FOR query";
 # Sending:
 DROP EVENT e1;;
 # Connection default
 SET DEBUG_SYNC="now WAIT_FOR drop";
-SELECT name FROM mysql.event, INFORMATION_SCHEMA.GLOBAL_VARIABLES
+SELECT event_name FROM information_schema.events, performance_schema.global_variables
 WHERE definer = VARIABLE_VALUE;
-name
-Warnings:
-Warning	1287	'INFORMATION_SCHEMA.GLOBAL_VARIABLES' is deprecated and will be removed in a future release. Please use performance_schema.global_variables instead
+EVENT_NAME
 SET DEBUG_SYNC="now SIGNAL query";
 # Connection con1
 # Reaping: DROP EVENT t1
@@ -700,7 +700,7 @@ SET DEBUG_SYNC= 'now SIGNAL dropped';
 # Connection con1
 # Reaping: SHOW CREATE VIEW v1
 View	Create View	character_set_client	collation_connection
-v1	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS select `t1`.`a` AS `a` from `t1` where (`f1`() = 1)	latin1	latin1_swedish_ci
+v1	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v1` AS select `t1`.`a` AS `a` from `t1` where (`f1`() = 1)	utf8mb4	utf8mb4_0900_ai_ci
 Warnings:
 Warning	1356	View 'test.v1' references invalid table(s) or column(s) or function(s) or definer/invoker of view lack rights to use them
 # Connection con2
@@ -719,6 +719,7 @@ drop table if exists t2;
 set debug_sync='RESET';
 create table t1 (a int, b int, unique key t1$a (a));
 create table t2 (j int, k int);
+# Warm-up data-dictionary and table definition caches
 set debug_sync='after_lock_tables_takes_lock SIGNAL parked WAIT_FOR go';
 # Sending: 
 insert into t2 select * from t1;;
@@ -779,7 +780,7 @@ disconnect con1;
 disconnect con2;
 DROP TABLES t1, t2;
 #
-#Bug#18110156: RECREATE+ANALYZE OPTIMIZE TABLE T AND ONLINE 
+#Bug#18110156: RECREATE+ANALYZE OPTIMIZE TABLE T AND ONLINE
 #              ALTER TABLE T MAY DEADLOCK
 CREATE TABLE t1 (fld1 INT) ENGINE=InnoDB;
 connection con1;

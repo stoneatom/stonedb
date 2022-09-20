@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -52,17 +52,17 @@ class UtilExecuteReq {
   friend bool printUTIL_EXECUTE_REQ(FILE * output, const Uint32 * theData, 
 				    Uint32 len, Uint16 receiverBlockNo);
 public:
-  STATIC_CONST( SignalLength = 4 );
-  STATIC_CONST( HEADER_SECTION = 0 );
-  STATIC_CONST( DATA_SECTION = 1 );
-  STATIC_CONST( NoOfSections = 2 );
+  static constexpr Uint32 SignalLength = 4;
+  static constexpr Uint32 HEADER_SECTION = 0;
+  static constexpr Uint32 DATA_SECTION = 1;
+  static constexpr Uint32 NoOfSections = 2;
 
   GET_SET_SENDERREF
   GET_SET_SENDERDATA
-  void setPrepareId(Uint32 pId) { prepareId = pId; }; // !! unsets release flag
-  Uint32 getPrepareId() const { return prepareId & 0xFF; };
-  void setReleaseFlag() { prepareId |= 0x100; };
-  bool getReleaseFlag() const { return (prepareId & 0x100) != 0; };
+  void setPrepareId(Uint32 pId) { prepareId = pId; } // !! unsets release flag
+  Uint32 getPrepareId() const { return prepareId & 0xFF; }
+  void setReleaseFlag() { prepareId |= 0x100; }
+  bool getReleaseFlag() const { return (prepareId & 0x100) != 0; }
 
   Uint32 senderData; // MUST be no 1!
   Uint32 senderRef;
@@ -92,7 +92,7 @@ class UtilExecuteConf {
 				     Uint32 len, 
 				     Uint16 receiverBlockNo);
 public:
-  STATIC_CONST( SignalLength = 3 );
+  static constexpr Uint32 SignalLength = 3;
 
   GET_SET_SENDERDATA
 private:
@@ -125,7 +125,7 @@ class UtilExecuteRef {
 				    Uint16 receiverBlockNo);
 
 public:
-  STATIC_CONST( SignalLength = 3 );
+  static constexpr Uint32 SignalLength = 3;
 
   enum ErrorCode {
     IllegalKeyNumber = 1,

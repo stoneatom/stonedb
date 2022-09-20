@@ -19,7 +19,30 @@
 #       start libevent.sln
 #
 
-cmake_minimum_required(VERSION 2.8.12.2 FATAL_ERROR)
+MY_CHECK_CXX_COMPILER_WARNING("-Wdangling-pointer" HAS_WARN_FLAG)
+IF(HAS_WARN_FLAG)
+  STRING_APPEND(CMAKE_C_FLAGS " ${HAS_WARN_FLAG}")
+ENDIF()
+
+MY_CHECK_CXX_COMPILER_WARNING("-Wmissing-profile" HAS_MISSING_PROFILE)
+IF(HAS_MISSING_PROFILE)
+  STRING_APPEND(CMAKE_C_FLAGS " ${HAS_MISSING_PROFILE}")
+ENDIF()
+
+MY_CHECK_CXX_COMPILER_WARNING("-Wdocumentation" HAS_WARN_FLAG)
+IF(HAS_WARN_FLAG)
+  STRING_APPEND(CMAKE_C_FLAGS " ${HAS_WARN_FLAG}")
+ENDIF()
+
+#TODO(Bug#33986250): fix the deprecation for libevent
+IF(WIN32)
+  STRING_APPEND(CMAKE_C_FLAGS " /wd4996")
+  STRING_APPEND(CMAKE_CXX_FLAGS " /wd4996")
+ENDIF()
+
+
+# Don't do this here, it will load policies for an older version of cmake.
+# cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 
 if (POLICY CMP0054)
     cmake_policy(SET CMP0054 NEW)
@@ -30,9 +53,6 @@ endif()
 if (POLICY CMP0075)
     cmake_policy(SET CMP0075 NEW)
 endif()
-
-# This is only used by plugins, so we need -fPIC
-STRING_APPEND (CMAKE_C_FLAGS " ${CMAKE_SHARED_LIBRARY_C_FLAGS}")
 
 # if(NOT CMAKE_BUILD_TYPE)
 #     set(CMAKE_BUILD_TYPE Release
@@ -436,25 +456,16 @@ CHECK_INCLUDE_FILE(mach/mach_time.h EVENT__HAVE_MACH_MACH_TIME_H)
 CHECK_INCLUDE_FILE(netinet/tcp.h EVENT__HAVE_NETINET_TCP_H)
 CHECK_INCLUDE_FILE(sys/wait.h EVENT__HAVE_SYS_WAIT_H)
 CHECK_INCLUDE_FILE(sys/resource.h EVENT__HAVE_SYS_RESOURCE_H)
-CHECK_INCLUDE_FILE(sys/sysctl.h EVENT__HAVE_SYS_SYSCTL_H)
+
+# Do not use sysctl(), it has been deprecated for a long time,
+# and will actually fail consistently on some platforms.
+# CHECK_INCLUDE_FILE(sys/sysctl.h EVENT__HAVE_SYS_SYSCTL_H)
+UNSET(EVENT__HAVE_SYS_SYSCTL_H)
+UNSET(EVENT__HAVE_SYS_SYSCTL_H CACHE)
+
 CHECK_INCLUDE_FILE(sys/timerfd.h EVENT__HAVE_SYS_TIMERFD_H)
 CHECK_INCLUDE_FILE(errno.h EVENT__HAVE_ERRNO_H)
 
-IF(EVENT__HAVE_SYS_SYSCTL_H)
-  # The <sys/sysctl.h> header is deprecated and will be removed." [-W#warnings]
-  MY_CHECK_C_COMPILER_FLAG("-W#warnings" HAVE_PREPROCESSOR_WARNINGS)
-  IF(HAVE_PREPROCESSOR_WARNINGS)
-    ADD_COMPILE_FLAGS(evutil_rand.c COMPILE_FLAGS "-Wno-cpp")
-  ENDIF()
-  MY_CHECK_C_COMPILER_FLAG("-Wcpp" HAVE_CPP_WARNINGS)
-  IF(HAVE_CPP_WARNINGS)
-    ADD_COMPILE_FLAGS(evutil_rand.c COMPILE_FLAGS "-Wno-cpp")
-  ENDIF()
-  MY_CHECK_C_COMPILER_FLAG("-Wdeprecated-declarations" HAVE_DEPRECATED_DECLARATIONS)
-  IF(HAVE_DEPRECATED_DECLARATIONS)
-    ADD_COMPILE_FLAGS(evutil_rand.c COMPILE_FLAGS "-Wno-deprecated-declarations")
-  ENDIF()
-ENDIF()
 
 CHECK_FUNCTION_EXISTS_EX(epoll_create EVENT__HAVE_EPOLL)
 CHECK_FUNCTION_EXISTS_EX(epoll_ctl EVENT__HAVE_EPOLL_CTL)
@@ -662,8 +673,8 @@ CHECK_TYPE_SIZE("time_t" EVENT__SIZEOF_TIME_T)
 
 # Verify kqueue works with pipes.
 if (EVENT__HAVE_KQUEUE)
-    if ((CMAKE_CROSSCOMPILING OR APPLE) AND NOT EVENT__FORCE_KQUEUE_CHECK)
-        message(WARNING "Cannot check if kqueue works with pipes when running on APPLE or crosscompiling, use EVENT__FORCE_KQUEUE_CHECK to be sure (this requires manually running a test program on the cross compilation target)")
+    if (CMAKE_CROSSCOMPILING AND NOT EVENT__FORCE_KQUEUE_CHECK)
+        message(WARNING "Cannot check if kqueue works with pipes when crosscompiling, use EVENT__FORCE_KQUEUE_CHECK to be sure (this requires manually running a test program on the cross compilation target)")
         set(EVENT__HAVE_WORKING_KQUEUE 1)
     else()
         message(STATUS "Checking if kqueue works with pipes...")
@@ -821,6 +832,10 @@ set(SRC_CORE
     signal.c
     strlcpy.c)
 
+IF(EVENT__HAVE_STRLCPY)
+  LIST(REMOVE_ITEM SRC_CORE strlcpy.c)
+ENDIF()
+
 if(EVENT__HAVE_SELECT)
     list(APPEND SRC_CORE select.c)
 endif()
@@ -849,7 +864,6 @@ if (NOT EVENT__DISABLE_OPENSSL)
 #   SSL is configured in cmake/ssl.cmake
 #   find_package(OpenSSL REQUIRED)
 
-    INCLUDE_DIRECTORIES(BEFORE SYSTEM ${SSL_INCLUDE_DIRS})
     set(EVENT__HAVE_OPENSSL 1)
 
     list(APPEND SRC_OPENSSL bufferevent_openssl.c)
@@ -970,10 +984,15 @@ ENDIF()
 
 if (CMAKE_USE_PTHREADS_INIT)
   set(SRC_PTHREADS evthread_pthread.c)
-  add_library(event_pthreads ${SRC_PTHREADS})
+  add_library(event_pthreads STATIC ${SRC_PTHREADS})
   SET_TARGET_PROPERTIES(event_pthreads
     PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
 endif()
+
+MY_CHECK_C_COMPILER_FLAG("-Warray-parameter" HAVE_ARRAY_PARAMETER)
+IF(HAVE_ARRAY_PARAMETER)
+  TARGET_COMPILE_OPTIONS(event_core PRIVATE "-Wno-array-parameter")
+ENDIF()
 
 # Do not generate legacy event library, and do not install or test anything.
 RETURN()

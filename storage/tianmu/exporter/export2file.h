@@ -29,12 +29,12 @@ class select_tianmu_export : public Query_result_export {
   // select_tianmu_export(sql_exchange *ex);
   select_tianmu_export(Query_result_export *se);
   ~select_tianmu_export(){};
-  int prepare(List<Item> &list, SELECT_LEX_UNIT *u) override;
+  int prepare(List<Item> &list, Query_expression *u) /*override*/;
   void SetRowCount(ha_rows x);
   void SendOk(THD *thd);
   sql_exchange *SqlExchange();
   bool IsPrepared() const { return prepared; };
-  bool send_data(List<Item> &items) override;
+  bool send_data(THD *thd, mem_root_deque<Item *> &items) /*override*/; // stonedb8
 
  private:
   Query_result_export *se;

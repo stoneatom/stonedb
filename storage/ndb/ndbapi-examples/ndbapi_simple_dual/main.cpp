@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2006, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2006, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -150,6 +150,9 @@ int main(int argc, char** argv)
     // run the application code
     run_application(mysql1, cluster1_connection, "api_simple_dual_1", "ndb_examples");
     run_application(mysql2, cluster2_connection, "api_simple_dual_2", "ndb_examples");
+
+    mysql_close(&mysql1);
+    mysql_close(&mysql2);
   }
   // Note: all connections must have been destroyed before calling ndb_end()
   ndb_end(0);
@@ -162,6 +165,7 @@ static void do_insert(Ndb &, const char* table);
 static void do_update(Ndb &, const char* table);
 static void do_delete(Ndb &, const char* table);
 static void do_read(Ndb &, const char* table);
+static void drop_table(MYSQL &,const char* table);
 
 static void run_application(MYSQL &mysql,
 			    Ndb_cluster_connection &cluster_connection,
@@ -195,7 +199,7 @@ static void run_application(MYSQL &mysql,
   /*
    * Drop the table
    */
-  mysql_query(&mysql, db_stmt);
+  drop_table(mysql,table);
 }
 
 /*********************************************************
@@ -345,4 +349,15 @@ static void do_read(Ndb &myNdb, const char* table)
     }
     myNdb.closeTransaction(myTransaction);
   }
+}
+
+/**************************
+ * Drop table after usage *
+ **************************/
+static void drop_table(MYSQL &mysql, const char* table)
+{
+  char drop_stmt[75];
+  sprintf(drop_stmt, "DROP TABLE %s", table);
+  if (mysql_query(&mysql,drop_stmt))
+      MYSQLERROR(mysql);
 }

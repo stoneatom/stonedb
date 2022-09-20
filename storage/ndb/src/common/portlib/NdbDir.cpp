@@ -1,4 +1,4 @@
-/* Copyright (c) 2008, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2008, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -18,12 +18,12 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA */
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #include <ndb_global.h>
 #include <NdbDir.hpp>
 
-#include <util/basestring_vsnprintf.h>
+#include <EventLogger.hpp>
 
 #ifndef _WIN32
 
@@ -44,8 +44,8 @@ class DirIteratorImpl {
       return (dp->d_type == DT_REG);
 #endif
     /* Using stat to read more info about the file */
-    basestring_snprintf(m_buf, PATH_MAX, 
-                        "%s/%s", m_path, dp->d_name);
+    snprintf(m_buf, PATH_MAX,
+             "%s/%s", m_path, dp->d_name);
 
     struct stat buf;
     if (lstat(m_buf, &buf)) // Use lstat to not follow symlinks
@@ -59,7 +59,7 @@ public:
   DirIteratorImpl():
     m_dirp(NULL) {
      m_buf = new char[PATH_MAX];
-  };
+  }
 
   ~DirIteratorImpl() {
     close();
@@ -119,7 +119,7 @@ public:
   int open(const char* path){
     char path_buf[PATH_MAX+2];
     m_first = true;
-    basestring_snprintf(path_buf, sizeof(path_buf), "%s\\*", path);
+    snprintf(path_buf, sizeof(path_buf), "%s\\*", path);
     m_find_handle = FindFirstFile(path_buf, &m_find_data);
     if(m_find_handle == INVALID_HANDLE_VALUE)
     {
@@ -191,17 +191,17 @@ const char* NdbDir::Iterator::next_entry(void)
   return m_impl.next_entry(is_reg);
 }
 
-mode_t NdbDir::u_r(void) { return IF_WIN(0, S_IRUSR); };
-mode_t NdbDir::u_w(void) { return IF_WIN(0, S_IWUSR); };
-mode_t NdbDir::u_x(void) { return IF_WIN(0, S_IXUSR); };
+mode_t NdbDir::u_r(void) { return IF_WIN(0, S_IRUSR); }
+mode_t NdbDir::u_w(void) { return IF_WIN(0, S_IWUSR); }
+mode_t NdbDir::u_x(void) { return IF_WIN(0, S_IXUSR); }
 
-mode_t NdbDir::g_r(void) { return IF_WIN(0, S_IRGRP); };
-mode_t NdbDir::g_w(void) { return IF_WIN(0, S_IWGRP); };
-mode_t NdbDir::g_x(void) { return IF_WIN(0, S_IXGRP); };
+mode_t NdbDir::g_r(void) { return IF_WIN(0, S_IRGRP); }
+mode_t NdbDir::g_w(void) { return IF_WIN(0, S_IWGRP); }
+mode_t NdbDir::g_x(void) { return IF_WIN(0, S_IXGRP); }
 
-mode_t NdbDir::o_r(void) { return IF_WIN(0, S_IROTH); };
-mode_t NdbDir::o_w(void) { return IF_WIN(0, S_IWOTH); };
-mode_t NdbDir::o_x(void) { return IF_WIN(0, S_IXOTH); };
+mode_t NdbDir::o_r(void) { return IF_WIN(0, S_IROTH); }
+mode_t NdbDir::o_w(void) { return IF_WIN(0, S_IWOTH); }
+mode_t NdbDir::o_x(void) { return IF_WIN(0, S_IXOTH); }
 
 
 bool
@@ -214,9 +214,8 @@ NdbDir::create(const char *dir, mode_t mode, bool ignore_existing)
         GetLastError() == ERROR_ALREADY_EXISTS)
       return true;
 
-    fprintf(stderr,
-            "Failed to create directory '%s', error: %d\n",
-            dir, GetLastError());
+    g_eventLogger->info("Failed to create directory '%s', error: %d", dir,
+                        GetLastError());
     return false;
   }
 #else
@@ -228,9 +227,8 @@ NdbDir::create(const char *dir, mode_t mode, bool ignore_existing)
          error == EISDIR))
       return true;
 
-    fprintf(stderr,
-            "Failed to create directory '%s', error: %d\n",
-            dir, errno);
+    g_eventLogger->info("Failed to create directory '%s', error: %d", dir,
+                        errno);
     return false;
   }
 #endif
@@ -285,9 +283,9 @@ bool
 NdbDir::remove_recursive(const char* dir, bool only_contents)
 {
   char path[PATH_MAX];
-  if (basestring_snprintf(path, sizeof(path),
-                          "%s%s", dir, DIR_SEPARATOR) < 0) {
-    fprintf(stderr, "Too long path to remove: '%s'\n", dir);
+  if (snprintf(path, sizeof(path),
+               "%s%s", dir, DIR_SEPARATOR) < 0) {
+    g_eventLogger->info("Too long path to remove: '%s'", dir);
     return false;
   }
   int start_len = (int)strlen(path);
@@ -298,8 +296,7 @@ loop:
   {
     if (iter.open(path) != 0)
     {
-      fprintf(stderr, "Failed to open iterator for '%s'\n",
-              path);
+      g_eventLogger->info("Failed to open iterator for '%s'", path);
       return false;
     }
 
@@ -309,11 +306,10 @@ loop:
         continue;
 
       int end_len, len = (int)strlen(path);
-      if ((end_len = basestring_snprintf(path + len, sizeof(path) - len,
-                                         "%s", name)) < 0)
+      if ((end_len = snprintf(path + len, sizeof(path) - len,
+                              "%s", name)) < 0)
       {
-        fprintf(stderr, "Too long path detected: '%s'+'%s'\n",
-                path, name);
+        g_eventLogger->info("Too long path detected: '%s'+'%s'", path, name);
         return false;
       }
 
@@ -327,11 +323,11 @@ loop:
 
       // Append ending slash to the string
       int pos = len + end_len;
-      if (basestring_snprintf(path + pos, sizeof(path) - pos,
-                              "%s", DIR_SEPARATOR) < 0)
+      if (snprintf(path + pos, sizeof(path) - pos,
+                   "%s", DIR_SEPARATOR) < 0)
       {
-        fprintf(stderr, "Too long path detected: '%s'+'%s'\n",
-                path, DIR_SEPARATOR);
+        g_eventLogger->info("Too long path detected: '%s'+'%s'", path,
+                            DIR_SEPARATOR);
         return false;
       }
 
@@ -354,9 +350,8 @@ loop:
 
   if (only_contents == false && NdbDir::remove(dir) == false)
   {
-    fprintf(stderr,
-            "Failed to remove directory '%s', error: %d\n",
-            dir, errno);
+    g_eventLogger->info("Failed to remove directory '%s', error: %d", dir,
+                        errno);
     return false;
   }
 
@@ -390,18 +385,18 @@ build_tree(const char* path)
 
   // Create files in path/
   for (int i = 8; i < 14; i++){
-    basestring_snprintf(tmp, sizeof(tmp), "%s%sfile%d", path, DIR_SEPARATOR, i);
+    snprintf(tmp, sizeof(tmp), "%s%sfile%d", path, DIR_SEPARATOR, i);
     fclose(fopen(tmp, "w"));
   }
 
   // Create directories
   for (int i = 8; i < 14; i++){
-    basestring_snprintf(tmp, sizeof(tmp), "%s%sdir%d", path, DIR_SEPARATOR, i);
+    snprintf(tmp, sizeof(tmp), "%s%sdir%d", path, DIR_SEPARATOR, i);
     CHECK(NdbDir::create(tmp));
 
     // Create files in dir
     for (int j = 0; j < 6; j++){
-      basestring_snprintf(tmp, sizeof(tmp), "%s%sdir%d%sfile%d",
+      snprintf(tmp, sizeof(tmp), "%s%sdir%d%sfile%d",
 	       path, DIR_SEPARATOR, i, DIR_SEPARATOR, j);
       fclose(fopen(tmp, "w"));
     }
@@ -410,7 +405,7 @@ build_tree(const char* path)
 #ifndef _WIN32
   // Symlink the last file created to path/symlink
   char tmp2[PATH_MAX];
-  basestring_snprintf(tmp2, sizeof(tmp2), "%s%ssymlink", path, DIR_SEPARATOR);
+  snprintf(tmp2, sizeof(tmp2), "%s%ssymlink", path, DIR_SEPARATOR);
   CHECK(symlink(tmp, tmp2) == 0);
 #endif
 }
@@ -422,9 +417,10 @@ gone(const char *dir) {
 
 TAPTEST(DirIterator)
 {
+  ndb_init();
   NdbDir::Temp tempdir;
   char path[PATH_MAX];
-  basestring_snprintf(path, sizeof(path),"%s%s%s",
+  snprintf(path, sizeof(path),"%s%s%s",
                       tempdir.path(), DIR_SEPARATOR, "ndbdir_test");
 
   printf("Using directory '%s'\n", path);
@@ -505,6 +501,7 @@ TAPTEST(DirIterator)
   CHECK(NdbDir::remove_recursive(path));
   CHECK(gone(path));
 
+  ndb_end(0);
   return 1; // OK
 }
 #endif

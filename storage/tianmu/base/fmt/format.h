@@ -270,8 +270,15 @@ using intmax_t = __int64;
 // Clang doesn't have a feature check for extern templates so we check
 // for variadic templates which were introduced in the same version.
 // For GCC according to cppreference.com they were introduced in 3.3.
+
+// stonedb8 TODO: maybe boost version
+#ifdef __clang__
 #define FMT_USE_EXTERN_TEMPLATES \
   ((__clang__ && FMT_USE_VARIADIC_TEMPLATES) || (FMT_GCC_VERSION >= 303 && FMT_HAS_GXX_CXX11))
+#else
+#define FMT_USE_EXTERN_TEMPLATES \
+  ((0 && FMT_USE_VARIADIC_TEMPLATES) || (FMT_GCC_VERSION >= 303 && FMT_HAS_GXX_CXX11))
+#endif
 #endif
 
 #ifdef FMT_HEADER_ONLY

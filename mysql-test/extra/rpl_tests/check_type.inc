@@ -23,7 +23,7 @@ if (!$engine_type)
 if ($rpl_debug)
 {
   --echo source_type=$source_type target_type=$target_type source_value=$source_value target_value=$target_value can_convert=$can_convert engine_type=$engine_type
-  SELECT @@GLOBAL.SLAVE_TYPE_CONVERSIONS;
+  SELECT @@GLOBAL.REPLICA_TYPE_CONVERSIONS;
 }
 
 --source include/rpl_connection_master.inc
@@ -33,7 +33,7 @@ enable_warnings;
 eval CREATE TABLE t1(
   pk INT NOT NULL PRIMARY KEY,
   a $source_type
-) ENGINE=$engine_type;
+) ENGINE=$engine_type CHARACTER SET latin1;
 --source include/sync_slave_sql_with_master.inc
 eval ALTER TABLE t1 MODIFY a $target_type;
 
@@ -45,7 +45,7 @@ if ($can_convert) {
   eval INSERT INTO type_conversions SET
        Source = "$source_type",
        Target = "$target_type",
-       Flags = @@slave_type_conversions,
+       Flags = @@replica_type_conversions,
        On_Master = $source_value,
        Expected = $target_value,
        Compare = @compare;
@@ -60,9 +60,9 @@ if (!$can_convert) {
   eval INSERT INTO type_conversions SET
        Source = "$source_type",
        Target = "$target_type",
-       Flags = @@slave_type_conversions,
+       Flags = @@replica_type_conversions,
        On_Master = $source_value,
        Error = "$error";
-  SET GLOBAL SQL_SLAVE_SKIP_COUNTER = 1;
+  SET GLOBAL SQL_REPLICA_SKIP_COUNTER = 1;
   START SLAVE;
 }

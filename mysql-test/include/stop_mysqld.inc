@@ -33,6 +33,18 @@ if ($shutdown_server_timeout)
   --let $ss_timeout = $shutdown_server_timeout
 }
 
+--let $timeout_multiplier = 6
+
+if ($VALGRIND_TEST)
+{
+  --expr $ss_timeout = $ss_timeout * $timeout_multiplier
+}
+
+let $have_sparc = `select convert(@@version_compile_machine using latin1) IN ('sparc')`;
+if ($have_sparc)
+{
+  --expr $ss_timeout = $ss_timeout * $timeout_multiplier
+}
 --shutdown_server $ss_timeout
 
 --source include/wait_until_disconnected.inc

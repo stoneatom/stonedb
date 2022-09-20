@@ -1,4 +1,4 @@
---source include/not_embedded.inc
+--source include/xplugin_wait_for_interfaces.inc
 --disable_ps_protocol
 
 --echo # Setting general_log content empty.
@@ -119,4 +119,6 @@ TRUNCATE TABLE mysql.general_log;
 SET GLOBAL log_output = @old_log_output;
 SET GLOBAL general_log = @old_general_log;
 SET GLOBAL general_log_file = @old_general_log_file;
+TRUNCATE TABLE mysql.general_log;
+
 --enable_ps_protocol

@@ -1,6 +1,4 @@
-/*
-  Copyright (c) 2010, 2021, Oracle and/or its affiliates.
-  All rights reserved. Use is subject to license terms.
+/* Copyright (c) 2010, 2022, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License, version 2.0,
@@ -20,8 +18,8 @@
 
   You should have received a copy of the GNU General Public License
   along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
-*/
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
+/*
 /*
  * MGMAPI.java
  */
@@ -148,6 +146,8 @@ import com.mysql.jtie.Wrapper;
     int CFG_DB_MICRO_GCP_TIMEOUT = 171;
     int CFG_DB_COMPRESSED_BACKUP = 172;
     int CFG_DB_COMPRESSED_LCP = 173;
+    int CFG_DB_REQUIRE_ENCRYPTED_BACKUP = 673;
+    int CFG_DB_ENCRYPTED_FILE_SYSTEM = 680;
     int CFG_DB_SCHED_EXEC_TIME = 174;
     int CFG_DB_SCHED_SPIN_TIME = 175;
     int CFG_DB_REALTIME_SCHEDULER = 176;
@@ -210,12 +210,6 @@ import com.mysql.jtie.Wrapper;
     int CFG_SHM_KEY = 502;
     int CFG_SHM_BUFFER_MEM = 503;
     int CFG_SHM_SIGNUM = 504;
-    int CFG_SCI_HOST1_ID_0 = 550;
-    int CFG_SCI_HOST1_ID_1 = 551;
-    int CFG_SCI_HOST2_ID_0 = 552;
-    int CFG_SCI_HOST2_ID_1 = 553;
-    int CFG_SCI_SEND_LIMIT = 554;
-    int CFG_SCI_BUFFER_MEM = 555;
     int CFG_602 = 602;
     int CFG_603 = 603;
     int CFG_604 = 604;
@@ -233,8 +227,6 @@ import com.mysql.jtie.Wrapper;
     int NODE_TYPE_MGM = 2;
     int CONNECTION_TYPE_TCP = 0;
     int CONNECTION_TYPE_SHM = 1;
-    int CONNECTION_TYPE_SCI = 2;
-    int CONNECTION_TYPE_OSE = 3;
 }
 /*!public!*/ class MGMAPI implements MGMAPI_CONFIG_PARAMTERS
 {

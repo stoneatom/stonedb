@@ -3,11 +3,14 @@ Upstream-Name: @DEB_COPYRIGHT_UPSTREAMNAME@
 Upstream-Contact: MySQL Release Engineering <mysql-build@oss.oracle.com>
 Source: http://dev.mysql.com/
 
-Copyright: 2000, 2021, Oracle and/or its affiliates.
+Copyright: 2000, 2022, Oracle and/or its affiliates.
 License:
  This is a release of MySQL, an SQL database server.
  .
  License information can be found in the LICENSE file.
+ .
+ In test packages where this file is renamed README-test, the license
+ file is renamed LICENSE-test.
  .
  This distribution may include materials developed by third parties.
  For license and attribution notices for these materials,

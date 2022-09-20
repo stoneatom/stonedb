@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2013, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2013, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -25,12 +25,15 @@
 #ifndef SQL_CHANNEL_INFO_INCLUDED
 #define SQL_CHANNEL_INFO_INCLUDED
 
-#include "my_global.h"         // uint
-#include "my_sys.h"            // my_micro_time
+#include <sys/types.h>
+
+#include "my_inttypes.h"
+#include "my_systime.h"  // my_micro_time
+#include "violite.h"
 
 class THD;
-typedef struct st_vio Vio;
 
+typedef Vio Vio;
 
 /**
   This abstract base class represents connection channel information
@@ -40,35 +43,29 @@ typedef struct st_vio Vio;
   Currently we support local and TCP/IP sockets (all platforms),
   named pipes and shared memory (Windows only).
 */
-class Channel_info
-{
+class Channel_info {
   ulonglong prior_thr_create_utime;
 
-protected:
+ protected:
   /**
     Create and initialize a Vio object.
 
-    @retval   return a pointer to the initialized a vio object.
+    @returns a pointer to the initialized a vio object.
   */
-  virtual Vio* create_and_init_vio() const = 0;
+  virtual Vio *create_and_init_vio() const = 0;
 
-  Channel_info()
-  : prior_thr_create_utime(0)
-  { }
+  Channel_info() : prior_thr_create_utime(0) {}
 
-public:
-  virtual ~Channel_info() {}
+ public:
+  virtual ~Channel_info() = default;
 
   /**
     Instantiate and initialize THD object and vio.
 
-    @return
-      @retval
-        THD* pointer to initialized THD object.
-      @retval
-        NULL THD object allocation fails.
+    @returns pointer to initialized THD object.
+    @retval NULL THD object allocation fails.
   */
-  virtual THD* create_thd() = 0;
+  virtual THD *create_thd();
 
   /**
     Send error back to the client and close the channel.
@@ -78,15 +75,18 @@ public:
     @param senderror   true if the error need to be sent to
                        client else false.
   */
-  virtual void send_error_and_close_channel(uint errorcode,
-                                            int error,
-                                            bool senderror) = 0;
+  virtual void send_error_and_close_channel(uint errorcode, int error,
+                                            bool senderror);
 
-  ulonglong get_prior_thr_create_utime() const
-  { return prior_thr_create_utime; }
+  ulonglong get_prior_thr_create_utime() const {
+    return prior_thr_create_utime;
+  }
 
-  void set_prior_thr_create_utime()
-  { prior_thr_create_utime= my_micro_time(); }
+  void set_prior_thr_create_utime() {
+    prior_thr_create_utime = my_micro_time();
+  }
+
+  virtual bool is_admin_connection() const { return false; }
 };
 
-#endif // SQL_CHANNEL_INFO_INCLUDED.
+#endif  // SQL_CHANNEL_INFO_INCLUDED.

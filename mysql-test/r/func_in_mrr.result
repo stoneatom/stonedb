@@ -105,6 +105,8 @@ A
 NULL
 drop table t1;
 create table t1 (id int(10) primary key);
+Warnings:
+Warning	1681	Integer display width is deprecated and will be removed in a future release.
 insert into t1 values (1),(2),(3),(4),(5),(6),(7),(8),(9);
 select * from t1 where id in (2,5,9);
 id
@@ -133,6 +135,7 @@ select * from t1 where a in ('a');
 a	b	c
 A	B	C
 a	c	c
+set names latin1;
 select * from t1 where 'a' collate latin1_general_ci in (a,b,c);
 a	b	c
 A	B	C
@@ -143,17 +146,21 @@ a	c	c
 select * from t1 where 'a' in (a,b,c collate latin1_bin);
 a	b	c
 a	c	c
-explain extended select * from t1 where 'a' in (a,b,c collate latin1_bin);
+explain select * from t1 where 'a' in (a,b,c collate latin1_bin);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
 1	SIMPLE	t1	NULL	ALL	NULL	NULL	NULL	NULL	2	100.00	Using where
 Warnings:
-Warning	1681	'EXTENDED' is deprecated and will be removed in a future release.
 Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`b` AS `b`,`test`.`t1`.`c` AS `c` from `test`.`t1` where ('a' in (`test`.`t1`.`a`,`test`.`t1`.`b`,(`test`.`t1`.`c` collate latin1_bin)))
 drop table t1;
+set names utf8mb4;
 set names utf8;
+Warnings:
+Warning	3719	'utf8' is currently an alias for the character set UTF8MB3, but will be an alias for UTF8MB4 in a future release. Please consider using UTF8MB4 in order to be unambiguous.
 create table t1 (a char(10) character set utf8 not null);
-insert into t1 values ('bbbb'),(_koi8r'√√√√'),(_latin1'ƒƒƒƒ');
-select a from t1 where a in ('bbbb',_koi8r'√√√√',_latin1'ƒƒƒƒ') order by a;
+Warnings:
+Warning	3719	'utf8' is currently an alias for the character set UTF8MB3, but will be an alias for UTF8MB4 in a future release. Please consider using UTF8MB4 in order to be unambiguous.
+insert into t1 values ('bbbb'),(_koi8r x'C3C3C3C3'),(_latin1 x'C4C4C4C4');
+select a from t1 where a in ('bbbb',_koi8r x'C3C3C3C3',_latin1 x'C4C4C4C4') order by a;
 a
 √Ñ√Ñ√Ñ√Ñ
 bbbb
@@ -243,7 +250,7 @@ insert into t2 select C.a*2+1, 'yes' from t1 C;
 explain 
 select * from t2 where a NOT IN (0, 2,4,6,8,10,12,14,16,18);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	range	a	a	5	NULL	12	100.00	Using where; Using MRR
+1	SIMPLE	t2	NULL	range	a	a	5	NULL	11	100.00	Using where; Using MRR
 Warnings:
 Note	1003	/* select#1 */ select `test`.`t2`.`a` AS `a`,`test`.`t2`.`filler` AS `filler` from `test`.`t2` where (`test`.`t2`.`a` not in (0,2,4,6,8,10,12,14,16,18))
 select * from t2 where a NOT IN (0, 2,4,6,8,10,12,14,16,18);
@@ -260,12 +267,12 @@ a	filler
 19	yes
 explain select * from t2 force index(a) where a NOT IN (2,2,2,2,2,2);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	range	a	a	5	NULL	912	100.00	Using where; Using MRR
+1	SIMPLE	t2	NULL	range	a	a	5	NULL	910	100.00	Using where; Using MRR
 Warnings:
 Note	1003	/* select#1 */ select `test`.`t2`.`a` AS `a`,`test`.`t2`.`filler` AS `filler` from `test`.`t2` FORCE INDEX (`a`) where (`test`.`t2`.`a` not in (2,2,2,2,2,2))
 explain select * from t2 force index(a) where a <> 2;
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	range	a	a	5	NULL	912	100.00	Using where; Using MRR
+1	SIMPLE	t2	NULL	range	a	a	5	NULL	910	100.00	Using where; Using MRR
 Warnings:
 Note	1003	/* select#1 */ select `test`.`t2`.`a` AS `a`,`test`.`t2`.`filler` AS `filler` from `test`.`t2` FORCE INDEX (`a`) where (`test`.`t2`.`a` <> 2)
 drop table t2;
@@ -279,7 +286,7 @@ select * from t2 where a NOT IN (
 '2006-04-25 10:00:00','2006-04-25 10:02:00','2006-04-25 10:04:00', 
 '2006-04-25 10:06:00', '2006-04-25 10:08:00');
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	range	a	a	6	NULL	12	100.00	Using where; Using MRR
+1	SIMPLE	t2	NULL	range	a	a	6	NULL	11	100.00	Using where; Using MRR
 Warnings:
 Note	1003	/* select#1 */ select `test`.`t2`.`a` AS `a`,`test`.`t2`.`filler` AS `filler` from `test`.`t2` where (`test`.`t2`.`a` not in ('2006-04-25 10:00:00','2006-04-25 10:02:00','2006-04-25 10:04:00','2006-04-25 10:06:00','2006-04-25 10:08:00'))
 select * from t2 where a NOT IN (
@@ -305,7 +312,7 @@ insert into t2 values ('fon', '1'), ('fop','1'), ('barbaq','1'),
 ('barbas','1'), ('bazbazbay', '1'),('zz','1');
 explain select * from t2 where a not in('foo','barbar', 'bazbazbaz');
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	range	a	a	13	NULL	7	100.00	Using where; Using MRR
+1	SIMPLE	t2	NULL	range	a	a	13	NULL	6	100.00	Using where; Using MRR
 Warnings:
 Note	1003	/* select#1 */ select `test`.`t2`.`a` AS `a`,`test`.`t2`.`filler` AS `filler` from `test`.`t2` where (`test`.`t2`.`a` not in ('foo','barbar','bazbazbaz'))
 drop table t2;
@@ -318,7 +325,7 @@ insert into t2 values (0, '1'), (22334.123,'1'), (33333,'1'),
 explain
 select * from t2 where a not in (345.67890, 43245.34, 64224.56344);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t2	NULL	range	a	a	7	NULL	7	100.00	Using where; Using MRR
+1	SIMPLE	t2	NULL	range	a	a	7	NULL	5	100.00	Using where; Using MRR
 Warnings:
 Note	1003	/* select#1 */ select `test`.`t2`.`a` AS `a`,`test`.`t2`.`filler` AS `filler` from `test`.`t2` where (`test`.`t2`.`a` not in (345.67890,43245.34,64224.56344))
 select * from t2 where a not in (345.67890, 43245.34, 64224.56344);
@@ -338,6 +345,9 @@ select @str:=concat(@str, @cnt:=@cnt+1, ",")
 from t1 A, t1 B, t1 C, t1 D) Z;
 count(*)
 10000
+Warnings:
+Warning	1287	Setting user variables within expressions is deprecated and will be removed in a future release. Consider alternatives: 'SET variable=expression, ...', or 'SELECT expression(s) INTO variables(s)'.
+Warning	1287	Setting user variables within expressions is deprecated and will be removed in a future release. Consider alternatives: 'SET variable=expression, ...', or 'SELECT expression(s) INTO variables(s)'.
 set @str:=concat(@str, "10000)");
 select substr(@str, 1, 50);
 substr(@str, 1, 50)
@@ -352,6 +362,8 @@ create table t1 (
 some_id smallint(5) unsigned,
 key (some_id)
 );
+Warnings:
+Warning	1681	Integer display width is deprecated and will be removed in a future release.
 insert into t1 values (1),(2);
 select some_id from t1 where some_id not in(2,-1);
 some_id
@@ -516,12 +528,15 @@ DROP TABLE t1;
 End of 5.0 tests
 create table t1(f1 char(1));
 insert into t1 values ('a'),('b'),('1');
+ANALYZE TABLE t1;
+Table	Op	Msg_type	Msg_text
+test.t1	analyze	status	OK
 select f1 from t1 where f1 in ('a',1);
 f1
-a
 1
-Warnings:
 Warning	1292	Truncated incorrect DOUBLE value: 'b'
+Warnings:
+a
 select f1, case f1 when 'a' then '+' when 1 then '-' end from t1;
 f1	case f1 when 'a' then '+' when 1 then '-' end
 a	+
@@ -533,9 +548,9 @@ create index t1f1_idx on t1(f1);
 select f1 from t1 where f1 in ('a',1);
 f1
 1
-a
-Warnings:
 Warning	1292	Truncated incorrect DOUBLE value: 'b'
+Warnings:
+a
 explain select f1 from t1 where f1 in ('a',1);
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
 1	SIMPLE	t1	NULL	index	t1f1_idx	t1f1_idx	2	NULL	3	50.00	Using where; Using index
@@ -659,7 +674,7 @@ c_datetime DATETIME NOT NULL,
 c_timestamp TIMESTAMP NOT NULL,
 c_time TIME NOT NULL,
 c_year YEAR NOT NULL,
-c_char CHAR(10) NOT NULL,
+c_char CHAR(10) character set utf8mb4 NOT NULL,
 INDEX(c_int), INDEX(c_decimal), INDEX(c_float), INDEX(c_bit), INDEX(c_date),
 INDEX(c_datetime), INDEX(c_timestamp), INDEX(c_time), INDEX(c_year),
 INDEX(c_char));
@@ -844,12 +859,12 @@ Warnings:
 Note	1003	/* select#1 */ select `test`.`t1`.`c_int` AS `c_int`,`test`.`t1`.`c_decimal` AS `c_decimal`,`test`.`t1`.`c_float` AS `c_float`,`test`.`t1`.`c_bit` AS `c_bit`,`test`.`t1`.`c_date` AS `c_date`,`test`.`t1`.`c_datetime` AS `c_datetime`,`test`.`t1`.`c_timestamp` AS `c_timestamp`,`test`.`t1`.`c_time` AS `c_time`,`test`.`t1`.`c_year` AS `c_year`,`test`.`t1`.`c_char` AS `c_char` from `test`.`t1` where (`test`.`t1`.`c_year` in (NULL,NULL))
 EXPLAIN SELECT * FROM t1 WHERE c_char IN ('1', '2', '3');
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t1	NULL	range	c_char	c_char	10	NULL	3	100.00	Using where; Using MRR
+1	SIMPLE	t1	NULL	range	c_char	c_char	40	NULL	3	100.00	Using where; Using MRR
 Warnings:
 Note	1003	/* select#1 */ select `test`.`t1`.`c_int` AS `c_int`,`test`.`t1`.`c_decimal` AS `c_decimal`,`test`.`t1`.`c_float` AS `c_float`,`test`.`t1`.`c_bit` AS `c_bit`,`test`.`t1`.`c_date` AS `c_date`,`test`.`t1`.`c_datetime` AS `c_datetime`,`test`.`t1`.`c_timestamp` AS `c_timestamp`,`test`.`t1`.`c_time` AS `c_time`,`test`.`t1`.`c_year` AS `c_year`,`test`.`t1`.`c_char` AS `c_char` from `test`.`t1` where (`test`.`t1`.`c_char` in ('1','2','3'))
 EXPLAIN SELECT * FROM t1 WHERE c_char IN (NULL, '1', '2', '3');
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t1	NULL	range	c_char	c_char	10	NULL	3	100.00	Using where; Using MRR
+1	SIMPLE	t1	NULL	range	c_char	c_char	40	NULL	3	100.00	Using where; Using MRR
 Warnings:
 Note	1003	/* select#1 */ select `test`.`t1`.`c_int` AS `c_int`,`test`.`t1`.`c_decimal` AS `c_decimal`,`test`.`t1`.`c_float` AS `c_float`,`test`.`t1`.`c_bit` AS `c_bit`,`test`.`t1`.`c_date` AS `c_date`,`test`.`t1`.`c_datetime` AS `c_datetime`,`test`.`t1`.`c_timestamp` AS `c_timestamp`,`test`.`t1`.`c_time` AS `c_time`,`test`.`t1`.`c_year` AS `c_year`,`test`.`t1`.`c_char` AS `c_char` from `test`.`t1` where (`test`.`t1`.`c_char` in (NULL,'1','2','3'))
 EXPLAIN SELECT * FROM t1 WHERE c_char IN (NULL);
@@ -922,7 +937,7 @@ DROP TABLE t1,subq;
 #
 # Bug #11766270  59343: YEAR(4): INCORRECT RESULT AND VALGRIND WARNINGS WITH MIN/MAX, UNION
 #
-CREATE TABLE t1(f1 YEAR(4));
+CREATE TABLE t1(f1 YEAR);
 INSERT INTO t1 VALUES (0000),(2001);
 (SELECT MAX(f1) FROM t1) UNION (SELECT MAX(f1) FROM t1);
 Catalog	Database	Table	Table_alias	Column	Column_alias	Type	Length	Max length	Is_null	Flags	Decimals	Charsetnr
@@ -933,11 +948,11 @@ DROP TABLE t1;
 #
 # Bug #11764651-57510: IN(string,real,string) causes invalid read in sort function
 #
-SELECT LEFT(ST_GEOMFROMTEXT("POINT(0 0)"),1) IN (@@global.query_cache_type,1,"");
-LEFT(ST_GEOMFROMTEXT("POINT(0 0)"),1) IN (@@global.query_cache_type,1,"")
+SELECT LEFT(ST_GEOMFROMTEXT("POINT(0 0)"),1) IN (@@global.max_allowed_packet,1,"");
+LEFT(ST_GEOMFROMTEXT("POINT(0 0)"),1) IN (@@global.max_allowed_packet,1,"")
 0
 Warnings:
-Warning	1287	'@@query_cache_type' is deprecated and will be removed in a future release.
+Warning	1292	Truncated incorrect DOUBLE value: '\x00'
 # End of test BUG#11764651-57510
 End of 5.1 tests
 set optimizer_switch=default;

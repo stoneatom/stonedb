@@ -1,13 +1,12 @@
 # WL#6745 InnoDB R-tree support
 # This test case will test R-tree multi level split.
 
---source include/have_innodb.inc
 --source include/big_test.inc
 --source include/not_valgrind.inc
 --source include/have_debug.inc
 
 # Create table with R-tree index.
-create table t1 (c1 int, c2 geometry not null, spatial index (c2))engine=innodb;
+create table t1 (c1 int, c2 geometry not null SRID 0, spatial index (c2))engine=innodb;
 
 # Insert enough values to let R-tree split.
 delimiter |;
@@ -49,10 +48,10 @@ create spatial index idx on t1(c2);
 
 show create table t1;
 
-SET DEBUG='+d,row_merge_ins_spatial_fail';
+SET DEBUG='+d,ddl_ins_spatial_fail';
 --error ER_GET_ERRNO
 create spatial index idx2 on t1(c2);
-SET DEBUG='-d,row_merge_ins_spatial_fail';
+SET DEBUG='-d,ddl_ins_spatial_fail';
 show create table t1;
 
 # Check table.

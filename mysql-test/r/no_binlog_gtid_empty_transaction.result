@@ -1,6 +1,4 @@
 include/gtid_utils.inc
-Warnings:
-Warning	1287	'@@group_concat_max_len' is deprecated and will be removed in a future release.
 RESET MASTER;
 include/gtid_step_reset.inc
 SET @@SESSION.GTID_NEXT = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa:1';

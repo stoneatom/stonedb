@@ -1,11 +1,18 @@
-# The include statement below is a temp one for tests that are yet to
-#be ported to run with InnoDB,
-#but needs to be kept for tests that would need MyISAM in future.
---source include/force_myisam_default.inc
-
--- source include/have_binlog_format_row.inc
+# Binlog compression does merge all events, except the
+# Gtid_log_event, of a transaction into a single one, thence a
+# transaction only has 2 events. This test relies on
+# slave_skip_counter, which expected skipped events count will not
+# match the number of events on a compressed binlog.
+-- source include/not_binlog_transaction_compression_on.inc
+-- source include/have_binlog_format_mixed_or_row.inc
 -- source include/have_ndb.inc
--- source include/master-slave.inc
+-- source suite/ndb_rpl/ndb_master-slave.inc
+CALL mtr.add_suppression("Slave: .*Duplicate column name");
+
+connection slave;
+--source suite/ndb/include/turn_off_ndb_read_backup.inc
+connection master;
+--source suite/ndb/include/turn_off_ndb_read_backup.inc
 
 #
 # This is a disgrace...but slave randomly spits out these warnings
@@ -19,4 +26,10 @@ call mtr.add_suppression("Slave: Got error 120 during COMMIT Error_code: 1180");
 let $engine_type = 'NDB';
 -- source extra/rpl_tests/rpl_extra_col_slave.test
 
+connection slave;
+--source suite/ndb/include/restore_ndb_read_backup.inc
+connection master;
+--source suite/ndb/include/restore_ndb_read_backup.inc
+
 --source include/rpl_end.inc
+

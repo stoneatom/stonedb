@@ -161,13 +161,13 @@ class Engine final {
  private:
   void AddTx(Transaction *tx);
   void RemoveTx(Transaction *tx);
-  int Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_UNIT *unit_for_union = NULL);
+  int Execute(THD *thd, LEX *lex, Query_result *result_output, Query_expression *unit_for_union = NULL); //stonedb8
   int SetUpCacheFolder(const std::string &cachefolder_path);
 
   static bool AreConvertible(types::RCDataType &rcitem, enum_field_types my_type, uint length = 0);
-  static bool IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects_list,
-                         int &in_case_of_failure_can_go_to_mysql, int with_insert);
-  static const char *GetFilename(SELECT_LEX *selects_list, int &is_dumpfile);
+  static bool IsTIANMURoute(THD *thd, TABLE_LIST *table_list, Query_block *selects_list,
+                         int &in_case_of_failure_can_go_to_mysql, int with_insert); //stonedb8
+  static const char *GetFilename(Query_block *selects_list, int &is_dumpfile); //stonedb8
   static std::unique_ptr<system::IOParameters> CreateIOParameters(const std::string &path, void *arg);
   static std::unique_ptr<system::IOParameters> CreateIOParameters(THD *thd, TABLE *table, void *arg);
   void LogStat();
@@ -257,7 +257,8 @@ class Engine final {
 
 class ResultSender {
  public:
-  ResultSender(THD *thd, Query_result *res, List<Item> &fields);
+  // stonedb8 List -> mem_root_deque
+  ResultSender(THD *thd, Query_result *res, mem_root_deque<Item *> &fields); 
   virtual ~ResultSender();
 
   void Send(TempTable *t);
@@ -280,7 +281,8 @@ class ResultSender {
   Query_result *res;
   std::map<int, Item *> items_backup;
   uint *buf_lens;
-  List<Item> &fields;
+  // stonedb8 List -> mem_root_deque
+  mem_root_deque<Item *> &fields;
   bool is_initialized;
   int64_t *offset;
   int64_t *limit;
@@ -293,7 +295,8 @@ class ResultSender {
 
 class ResultExportSender final : public ResultSender {
  public:
-  ResultExportSender(THD *thd, Query_result *result, List<Item> &fields);
+  // stonedb8 List -> mem_root_deque
+  ResultExportSender(THD *thd, Query_result *result, mem_root_deque<Item *> &fields);
 
   void CleanUp() override {}
   void SendEof() override;

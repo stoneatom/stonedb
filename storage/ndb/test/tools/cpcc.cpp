@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -29,9 +29,11 @@
 
 #include <portlib/NdbEnv.h>
 #include <util/NdbOut.hpp>
+#include <ndb_version.h>
 
 #define DEFAULT_PORT 1234
 #define ENV_HOSTS "NDB_CPCC_HOSTS"
+#define CPCC_VERSION_NUMBER 1
 
 struct settings {
   int m_longl;
@@ -53,8 +55,8 @@ int start_stop(const char * cmd, Vector<SimpleCpcClient*>& list,
 
 class True : public Expression {
 public:
-  virtual ~True() {}
-  virtual bool evaluate(SimpleCpcClient*, const SimpleCpcClient::Process & p){
+  ~True() override {}
+  bool evaluate(SimpleCpcClient*, const SimpleCpcClient::Process & p) override {
     return true;
   }
 };
@@ -67,9 +69,9 @@ public:
     m_field = field;
     m_value = value;
   }
-  virtual ~FieldEQ(){}
+  ~FieldEQ() override {}
 
-  virtual bool evaluate(SimpleCpcClient*, const SimpleCpcClient::Process & p){
+  bool evaluate(SimpleCpcClient*, const SimpleCpcClient::Process & p) override{
     BaseString v;
     if(m_field == "name") v = p.m_name;
   
@@ -97,9 +99,9 @@ public:
   Match(Expression& condition, Expression & rule)
     : m_cond(condition), m_apply(rule) {
   }
-  virtual ~Match(){}
+  ~Match() override {}
 
-  virtual bool evaluate(SimpleCpcClient* c,const SimpleCpcClient::Process & p){
+  bool evaluate(SimpleCpcClient* c,const SimpleCpcClient::Process & p) override{
     if(m_cond.evaluate(c, p))
       return m_apply.evaluate(c, p);
     return false;
@@ -115,9 +117,9 @@ public:
     cmd = c;
     host = 0;
   }
-  virtual ~Operate() {}
+  ~Operate() override {}
   
-  virtual bool evaluate(SimpleCpcClient*, const SimpleCpcClient::Process & p);
+  bool evaluate(SimpleCpcClient*, const SimpleCpcClient::Process & p) override;
 };
 
 class ProcEQ : public Expression {
@@ -127,8 +129,8 @@ public:
   ProcEQ(SimpleCpcClient* h, Uint32 i){
     host = h; id = i;
   }
-  virtual ~ProcEQ() {}
-  virtual bool evaluate(SimpleCpcClient* c,const SimpleCpcClient::Process & p){
+  ~ProcEQ() override {}
+  bool evaluate(SimpleCpcClient* c,const SimpleCpcClient::Process & p) override{
     return p.m_id == (int)id && c == host;
   }
 };
@@ -143,9 +145,9 @@ public:
     on_empty = onEmp;
   }
 
-  virtual ~OrExpr(){}
+  ~OrExpr() override {}
 
-  virtual bool evaluate(SimpleCpcClient* c, const SimpleCpcClient::Process & p){
+  bool evaluate(SimpleCpcClient* c, const SimpleCpcClient::Process & p) override{
     bool run = on_empty;
     for(unsigned i = 0; i<m_cond.size(); i++){
       if(m_cond[i]->evaluate(c, p)){
@@ -184,12 +186,22 @@ add_hosts(Vector<SimpleCpcClient*> & hosts, BaseString list){
   }
 }
 
+std::string getCpccVersion()
+{
+  int mysql_version = ndbGetOwnVersion();
+  std::string version = std::to_string(ndbGetMajor(mysql_version))
+                   + "." + std::to_string(ndbGetMinor(mysql_version))
+                   + "." + std::to_string(ndbGetBuild(mysql_version))
+                   + "." + std::to_string(CPCC_VERSION_NUMBER);
+  return version;
+}
+
 int 
 main(int argc, const char** argv){
   ndb_init();
   int help = 0;
   const char *cmd=0, *name=0, *group=0, *owner=0;
-  int list = 0, start = 0, stop = 0, rm = 0;
+  int list = 0, start = 0, stop = 0, rm = 0, show_version = 0;
   struct getargs args[] = {
     { "cmd", 'c', arg_string, &cmd, "command", "command to run (default ls)" }
     ,{ "name", 'n', arg_string, &name, 
@@ -201,11 +213,12 @@ main(int argc, const char** argv){
     ,{ "long", 'l', arg_flag, &g_settings.m_longl, "long", "long listing"}
     ,{ "usage", '?', arg_flag, &help, "Print help", "" }
     ,{ "ls",  0, arg_flag, &list, "-c list", "list process(es)" }
+    ,{ "version", 'V', arg_flag, &show_version, "Print the version and exit", "" }
     ,{ "start", 0, arg_flag, &start, "-c start", "start process(es)" }
     ,{ "stop",  0, arg_flag, &stop, "-c stop", "stop process(es)" }
     ,{ "rm",    0, arg_flag, &rm, "-c rm", "undefine process(es)" }
   };
-  const int num_args = 10;
+  const int num_args = 11;
   int i; 
   int optind = 0;
   char desc[] = "[host:[port]]\n";
@@ -214,6 +227,13 @@ main(int argc, const char** argv){
     arg_printusage(args, num_args, argv[0], desc);
     return 1;
   }
+
+  if (show_version == 1) {
+    ndbout << getCpccVersion().c_str() << endl;
+    return 0;
+  }
+
+  ndbout.print("Starting CPCC version %s\n", getCpccVersion().c_str());
 
   if(list + start + stop + rm > 1){
     ndbout_c("Can only specify one command");
@@ -313,13 +333,13 @@ Operate::evaluate(SimpleCpcClient* c, const SimpleCpcClient::Process & pp){
   Properties p;
   int res;
 
-  if(strcasecmp(cmd, "start") == 0)
+  if(native_strcasecmp(cmd, "start") == 0)
     res = c->start_process(id, p);
-  else if(strcasecmp(cmd, "stop") == 0)
+  else if(native_strcasecmp(cmd, "stop") == 0)
     res = c->stop_process(id, p);
-  else if(strcasecmp(cmd, "rm") == 0)
+  else if(native_strcasecmp(cmd, "rm") == 0)
     res = c->undefine_process(id, p);
-  else if(strcasecmp(cmd, "list") == 0){
+  else if(native_strcasecmp(cmd, "list") == 0){
     if(!sets.m_longl){
       if(host != c){
 	ndbout_c("--- %s:%d", c->getHost(), c->getPort());

@@ -60,7 +60,7 @@ class Query final {
 
   void SetRoughQuery(bool set_rough) { rough_query = set_rough; }
   bool IsRoughQuery() { return rough_query; }
-  int Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELECT_LEX *last_distinct, TabID *res_tab = NULL,
+  int Compile(CompiledQuery *compiled_query, Query_block *selects_list, Query_block *last_distinct, TabID *res_tab = NULL,
               bool ignore_limit = false, Item *left_expr_for_subselect = NULL,
               common::Operator *oper_for_subselect = NULL, bool ignore_minmax = false, bool for_subq_in_where = false);
   TempTable *Preexecute(CompiledQuery &qu, ResultSender *sender, bool display_now = true);
@@ -226,6 +226,8 @@ class Query final {
    * \return bool - true if contains left or right outer join
    */
   static bool IsLOJ(List<TABLE_LIST> *join);
+  // stonedb8 List -> mem_root_deque
+  static bool IsLOJNew(mem_root_deque<TABLE_LIST *> *join);
 
   const std::string GetItemName(Item *item);
 
@@ -333,7 +335,8 @@ class Query final {
   bool IsLocalColumn(Item *item, const TabID &tmp_table);
   int AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const group_by_clause);
   int AddGlobalOrderByFields(SQL_I_List<ORDER> *global_order, const TabID &tmp_table, int max_col);
-  int AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vector<TabID> &left_tables,
+  // stonedb8 List -> mem_root_deque
+  int AddJoins(const mem_root_deque<TABLE_LIST *> join, TabID &tmp_table, std::vector<TabID> &left_tables,
                std::vector<TabID> &right_tables, bool in_subquery, bool &first_table, bool for_subq = false);
   static bool ClearSubselectTransformation(common::Operator &oper_for_subselect, Item *&field_for_subselect,
                                            Item *&conds, Item *&having, Item *&cond_removed,

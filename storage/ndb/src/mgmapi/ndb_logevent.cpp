@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2005, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2005, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -26,7 +26,6 @@
 #include <mgmapi.h>
 #include <mgmapi_internal.h>
 
-#include <NdbOut.hpp>
 #include <Properties.hpp>
 #include <InputStream.hpp>
 #include <NdbTick.h>
@@ -100,19 +99,11 @@ ndb_mgm_create_logevent_handle(NdbMgmHandle mh,
 }
 
 extern "C"
-#ifdef NDB_WIN
-SOCKET
+ndb_native_socket_t
 ndb_logevent_get_fd(const NdbLogEventHandle h)
 {
-  return h->socket.s;
+  return ndb_socket_get_native(h->socket);
 }
-#else
-int
-ndb_logevent_get_fd(const NdbLogEventHandle h)
-{
-  return h->socket.fd;
-}
-#endif
 
 extern "C"
 void ndb_mgm_destroy_logevent_handle(NdbLogEventHandle * h)
@@ -121,7 +112,7 @@ void ndb_mgm_destroy_logevent_handle(NdbLogEventHandle * h)
     return;
 
   if ( *h )
-    my_socket_close((*h)->socket);
+    ndb_socket_close((*h)->socket);
 
   free(*h);
   * h = 0;
@@ -209,6 +200,8 @@ struct Ndb_logevent_body_row ndb_logevent_body[]= {
   ROW( NDBStopForced, "extra",          5, extra),
 
 //  ROW( NDBStopAborted),
+
+  ROW( LCPRestored, "restored_lcp_id", 1, restored_lcp_id),
 
   ROW( StartREDOLog, "node",           1, node),
   ROW( StartREDOLog, "keep_gci",       2, keep_gci),
@@ -354,10 +347,10 @@ struct Ndb_logevent_body_row ndb_logevent_body[]= {
   ROW( BackupCompleted,     "n_records",     6, n_records), 
   ROW( BackupCompleted,     "n_log_bytes",   7, n_log_bytes),
   ROW( BackupCompleted,     "n_log_records", 8, n_log_records),
-  ROW( BackupCompleted,     "n_bytes_hi",    9+NdbNodeBitmask::Size, n_bytes_hi),
-  ROW( BackupCompleted,     "n_records_hi", 10+NdbNodeBitmask::Size, n_records_hi), 
-  ROW( BackupCompleted,     "n_log_bytes_hi",   11+NdbNodeBitmask::Size, n_log_bytes_hi),
-  ROW( BackupCompleted,     "n_log_records_hi", 12+NdbNodeBitmask::Size, n_log_records_hi), 
+  ROW( BackupCompleted,     "n_bytes_hi",    11, n_bytes_hi),
+  ROW( BackupCompleted,     "n_records_hi", 12, n_records_hi),
+  ROW( BackupCompleted,     "n_log_bytes_hi",   13, n_log_bytes_hi),
+  ROW( BackupCompleted,     "n_log_records_hi", 14, n_log_records_hi),
 
   ROW_FN( BackupStatus,     "starting_node",    1, starting_node, ref_to_node),
   ROW( BackupStatus,        "backup_id",        2, backup_id), 
@@ -424,6 +417,29 @@ struct Ndb_logevent_body_row ndb_logevent_body[]= {
   ROW( RedoStatus,          "no_logfiles",  10, no_logfiles),
   ROW( RedoStatus,          "logfilesize",  11, logfilesize),
  
+  ROW( EventBufferStatus2, "usage",        1, usage),
+  ROW( EventBufferStatus2, "alloc",        2, alloc),
+  ROW( EventBufferStatus2, "max",          3, max),
+  ROW( EventBufferStatus2, "latest_consumed_epoch_l", 4, latest_consumed_epoch_l),
+  ROW( EventBufferStatus2, "latest_consumed_epoch_h", 5, latest_consumed_epoch_h),
+  ROW( EventBufferStatus2, "latest_buffered_epoch_l",  6, latest_buffered_epoch_l),
+  ROW( EventBufferStatus2, "latest_buffered_epoch_h",  7, latest_buffered_epoch_h),
+  ROW( EventBufferStatus2, "ndb_reference", 8, ndb_reference),
+  ROW( EventBufferStatus2, "report_reason", 9, report_reason),
+
+  ROW( EventBufferStatus3, "usage_l",        1, usage_l),
+  ROW( EventBufferStatus3, "alloc_l",        2, alloc_l),
+  ROW( EventBufferStatus3, "max_l",          3, max_l),
+  ROW( EventBufferStatus3, "latest_consumed_epoch_l", 4, latest_consumed_epoch_l),
+  ROW( EventBufferStatus3, "latest_consumed_epoch_h", 5, latest_consumed_epoch_h),
+  ROW( EventBufferStatus3, "latest_buffered_epoch_l",  6, latest_buffered_epoch_l),
+  ROW( EventBufferStatus3, "latest_buffered_epoch_h",  7, latest_buffered_epoch_h),
+  ROW( EventBufferStatus3, "ndb_reference", 8, ndb_reference),
+  ROW( EventBufferStatus3, "report_reason", 9, report_reason),
+  ROW( EventBufferStatus3, "usage_h",     10, usage_h),
+  ROW( EventBufferStatus3, "alloc_h",     11, alloc_h),
+  ROW( EventBufferStatus3, "max_h",       12, max_h),
+
   { NDB_LE_ILLEGAL_TYPE, 0, 0, 0, 0, 0}
 };
 
@@ -511,7 +527,7 @@ int ndb_logevent_get_next(const NdbLogEventHandle h,
     Uint32 category = (Uint32) dst->category;
     switch(category)
     {
-    case NDB_MGM_ILLEGAL_EVENT_CATEGORY:
+    case (Uint32) NDB_MGM_ILLEGAL_EVENT_CATEGORY:
       category = (Uint32) LogLevel::llInvalid;
       break;
     default:
@@ -561,7 +577,7 @@ int ndb_logevent_get_next2(const NdbLogEventHandle h,
       break;
 
     if ( strcmp("<PING>\n", buf) )
-      ndbout_c("skipped: %s", buf);
+      g_eventLogger->info("skipped: %s", buf);
 
     if(in.timedout())
       return 0;
@@ -604,7 +620,7 @@ int ndb_logevent_get_next2(const NdbLogEventHandle h,
   {
     if ( p.get(ndb_logevent_header[i].token, &val) == 0 )
     {
-      ndbout_c("missing: %s\n", ndb_logevent_header[i].token);
+      g_eventLogger->info("missing: %s", ndb_logevent_header[i].token);
       h->m_error= NDB_LEH_MISSING_EVENT_SPECIFIER;
       return -1;
     }
@@ -624,7 +640,7 @@ int ndb_logevent_get_next2(const NdbLogEventHandle h,
   /* fill in rest of header info event_lookup */
   if (EventLoggerBase::event_lookup(dst->type,category,level,severity,text_fn))
   {
-    ndbout_c("unknown type: %d\n", dst->type);
+    g_eventLogger->info("unknown type: %d", dst->type);
     h->m_error= NDB_LEH_UNKNOWN_EVENT_TYPE;
     return -1;
   }
@@ -678,7 +694,7 @@ int ndb_logevent_get_next2(const NdbLogEventHandle h,
     tmp.split(list);
     for (unsigned j = 0; j<list.size(); j++)
     {
-      dst->Data[j] = atoi(list[j].c_str());
+      dst->Data[j] = (unsigned)atoll(list[j].c_str());
     }
   }
   return 1;

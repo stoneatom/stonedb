@@ -73,6 +73,7 @@ drop table t1;
 create table t1 (i int);
 insert into t1 values(1),(2),(1),(2),(1),(2),(3);
 select distinct i from t1;
+--sorted_result  # By nature nondeterministic.
 select distinct i from t1 order by rand(5);
 select distinct i from t1 order by i desc;
 select distinct i from t1 order by 1-i;
@@ -151,22 +152,26 @@ INSERT INTO t2 VALUES (2,25);
 INSERT INTO t3 VALUES (1,'123 Park Place');
 INSERT INTO t3 VALUES (2,'453 Boardwalk');
 
+--sorted_result
 SELECT    a,b,if(b = 1,i,if(b = 2,v,''))
 FROM      t1
 LEFT JOIN t2 USING(c)
 LEFT JOIN t3 ON t3.c = t1.c;
 
+--sorted_result
 SELECT    a,b,if(b = 1,i,if(b = 2,v,''))
 FROM      t1
 LEFT JOIN t2 ON t1.c = t2.c
 LEFT JOIN t3 ON t3.c = t1.c;
 
+--sorted_result
 SELECT    a,b,if(b = 1,i,if(b = 2,v,''))
 FROM      t1
 LEFT JOIN t2 USING(c)
 LEFT JOIN t3 ON t3.c = t1.c
 ORDER BY a;
 
+--sorted_result
 SELECT    a,b,if(b = 1,i,if(b = 2,v,''))
 FROM      t1
 LEFT JOIN t2 ON t1.c = t2.c
@@ -220,7 +225,7 @@ CREATE TABLE t1 (
   info text NOT NULL default '',
   ipnr varchar(30) NOT NULL default '',
   PRIMARY KEY  (member_id)
-) ENGINE=MyISAM PACK_KEYS=1;
+) charset utf8mb4 ENGINE=MyISAM PACK_KEYS=1;
 
 insert into t1 (member_id) values (1),(2),(3);
 select member_id, nickname, voornaam FROM t1
@@ -231,16 +236,20 @@ drop table t1;
 # Test optimization of ORDER BY DESC
 #
 
-create table t1 (a int not null, b int, c varchar(10), key (a, b, c));
+create table t1 (a int not null, b int, c varchar(10), key (a, b, c)) charset utf8mb4;
 insert into t1 values (1, NULL, NULL), (1, NULL, 'b'), (1, 1, NULL), (1, 1, 'b'), (1, 1, 'b'), (2, 1, 'a'), (2, 1, 'b'), (2, 2, 'a'), (2, 2, 'b'), (2, 3, 'c'),(1,3,'b');
-
+ANALYZE TABLE t1;
 explain select * from t1 where (a = 1 and b is null and c = 'b') or (a > 2) order by a desc;
 select * from t1 where (a = 1 and b is null and c = 'b') or (a > 2) order by a desc;
 explain select * from t1 where a >= 1 and a < 3 order by a desc;
+explain format=json select * from t1 where a >= 1 and a < 3 order by a desc;
+--partially_sorted_result 1
 select * from t1 where a >= 1 and a < 3 order by a desc;
 explain select * from t1 where a = 1 order by a desc, b desc;
+--partially_sorted_result 2
 select * from t1 where a = 1 order by a desc, b desc;
 explain select * from t1 where a = 1 and b is null order by a desc, b desc;
+--partially_sorted_result 2
 select * from t1 where a = 1 and b is null order by a desc, b desc;
 explain select * from t1 where a >= 1 and a < 3 and b >0 order by a desc,b desc;
 explain select * from t1 where a = 2 and b >0 order by a desc,b desc;
@@ -250,12 +259,14 @@ desc,b desc;
 explain select * from t1 where a = 2 and b > 0 order by a desc,b desc;
 explain select * from t1 where a = 2 and b < 2 order by a desc,b desc;
 explain select * from t1 where a = 1 order by b desc;
+--partially_sorted_result 2
 select * from t1 where a = 1 order by b desc;
 #
 # Test things when we don't have NULL keys
 #
 
 alter table t1 modify b int not null, modify c varchar(10) not null;
+ANALYZE TABLE t1;
 explain select * from t1 order by a, b, c;
 select * from t1 order by a, b, c;
 explain select * from t1 order by a desc, b desc, c desc;
@@ -265,14 +276,18 @@ explain select * from t1 where (a = 1 and b = 1 and c = 'b') or (a > 2) order by
 select * from t1 where (a = 1 and b = 1 and c = 'b') or (a > 2) order by a desc;
 # test NEAR_MAX, NO_MIN_RANGE
 explain select * from t1 where a < 2 and b <= 1 order by a desc, b desc;
+--partially_sorted_result 2
 select * from t1 where a < 2 and b <= 1 order by a desc, b desc;
 select count(*) from t1 where a < 5 and b > 0;
+--partially_sorted_result 2
 select * from t1 where a < 5 and b > 0 order by a desc,b desc;
 # test HA_READ_AFTER_KEY (at the end of the file), NEAR_MIN
 explain select * from t1 where a between 1 and 3 and b <= 1 order by a desc, b desc;
+--partially_sorted_result 2
 select * from t1 where a between 1 and 3 and b <= 1 order by a desc, b desc;
 # test HA_READ_AFTER_KEY (in the middle of the file)
 explain select * from t1 where a between 0 and 1 order by a desc, b desc;
+--partially_sorted_result 2
 select * from t1 where a between 0 and 1 order by a desc, b desc;
 drop table t1;
 
@@ -302,7 +317,7 @@ CREATE TABLE t3 (
 ) ENGINE=MyISAM;
 INSERT INTO t3 VALUES (1),(15),(27),(75),(117),(250);
 ALTER TABLE t3 add skr int(10) not null;
-
+ANALYZE TABLE t1, t2, t3;
 select t1.gid, t2.sid, t3.uid from t2, t1, t3 where t2.gid = t1.gid and t2.uid = t3.uid order by t3.uid, t1.gid;
 select t1.gid, t2.sid, t3.uid from t3, t2, t1 where t2.gid = t1.gid and t2.uid = t3.uid order by t3.uid, t1.gid;
 
@@ -382,6 +397,7 @@ while ($1)
   dec $1;
  }
 enable_query_log;
+ANALYZE TABLE t1;
 explain select id,t from t1 order by id;
 explain select id,t from t1 force index (primary) order by id;
 drop table t1;
@@ -396,7 +412,7 @@ CREATE TABLE t1 (
   KEY FieldKey (FieldKey),
   KEY LongField (FieldKey,LongVal),
   KEY StringField (FieldKey,StringVal(32))
-);
+) charset utf8mb4;
 INSERT INTO t1 VALUES ('0',3,'0'),('0',2,'1'),('0',1,'2'),('1',2,'1'),('1',1,'3'), ('1',0,'2'),('2',3,'0'),('2',2,'1'),('2',1,'2'),('2',3,'0'),('2',2,'1'),('2',1,'2'),('3',2,'1'),('3',1,'2'),('3','3','3');
 EXPLAIN SELECT * FROM t1 WHERE FieldKey = '1' ORDER BY LongVal;
 SELECT * FROM t1 WHERE FieldKey = '1' ORDER BY LongVal;
@@ -424,11 +440,19 @@ drop table t1;
 
 #
 # REF_OR_NULL optimization + filesort (bug #2419)
+# Also tests printing of RefOrNullIterator with index condition pushdown.
+# Do note, however, that this given index condition pushdown is pretty
+# nonsensical (the condition should have been removed when setting up
+# the ref_or_null, so that there was nothing left to push); if that issue
+# is fixed, you'll need to make a new test.
 #
 
 create table t1(a int, b int, index(b));
 insert into t1 values (2, 1), (1, 1), (4, NULL), (3, NULL), (6, 2), (5, 2);
+ANALYZE TABLE t1;
 explain select * from t1 where b=1 or b is null order by a;
+--skip_if_hypergraph  # Depends on the query plan.
+explain format=tree select * from t1 where b=1 or b is null order by a;
 select * from t1 where b=1 or b is null order by a;
 explain select * from t1 where b=2 or b is null order by a;
 select * from t1 where b=2 or b is null order by a;
@@ -456,6 +480,7 @@ optimize table t1;
 set @row=10;
 insert into t1 select 1, b, c + (@row:=@row - 1) * 10, d - @row from t2 limit 10;
 select * from t1 where a=1 and b in (1) order by c, b, a;
+--sorted_result
 select * from t1 where a=1 and b in (1);
 drop table t1, t2;
 
@@ -505,7 +530,8 @@ drop table t1, t2;
 # Bug #5428: a problem with small max_sort_length value
 #
 
-create table t1 (a char(25));
+# max_sort_length is in number of bytes, use latin1 to avoid strnxfrm.
+create table t1 (a char(25)) charset latin1;
 insert into t1 set a = repeat('x', 20);
 insert into t1 set a = concat(repeat('x', 19), 'z');
 insert into t1 set a = concat(repeat('x', 19), 'ab');
@@ -580,11 +606,14 @@ CREATE TABLE t1 (a INT); INSERT INTO t1 VALUES (1),(2);
 SELECT a + 1 AS num FROM t1 ORDER BY 30 - num;
 SELECT CONCAT('test', a) AS str FROM t1 ORDER BY UPPER(str);
 --source include/turn_off_only_full_group_by.inc
+--sorted_result
 SELECT a + 1 AS num FROM t1 GROUP BY 30 - num;
 --source include/restore_sql_mode_after_turn_off_only_full_group_by.inc
+--sorted_result
 SELECT a + 1 AS num FROM t1 HAVING 30 - num;
 --error ER_BAD_FIELD_ERROR
 SELECT a + 1 AS num, num + 1 FROM t1;
+--sorted_result
 SELECT a + 1 AS num, (select num + 2 FROM t1 LIMIT 1) FROM t1;
 --error ER_BAD_FIELD_ERROR
 SELECT a.a + 1 AS num FROM t1 a JOIN t1 b ON num = b.a;
@@ -655,8 +684,10 @@ SELECT a, IF(a NOT BETWEEN 2 AND 3, a, a+10) FROM t1
 SELECT a, IF(a BETWEEN 2 AND 3, a, a+10) FROM t1 
   ORDER BY IF(a NOT BETWEEN 2 AND 3, a, a+10);
 
+--sorted_result
 SELECT IF(a IN (1,2), a, '') as x1, IF(a NOT IN (1,2), a, '') as x2
   FROM t1 GROUP BY x1, x2;
+--sorted_result
 SELECT IF(a IN (1,2), a, '') as x1, IF(a NOT IN (1,2), a, '') as x2
   FROM t1 GROUP BY x1, IF(a NOT IN (1,2), a, '');
 
@@ -680,7 +711,7 @@ drop table t1;
 #
 CREATE TABLE t1 (a int, b int, PRIMARY KEY  (a));
 INSERT INTO t1 VALUES (1,1), (2,2), (3,3);
-
+ANALYZE TABLE t1, t2;
 explain SELECT t1.b as a, t2.b as c FROM 
  t1 LEFT JOIN t1 t2 ON (t1.a = t2.a AND t2.a = 2) 
 ORDER BY c;
@@ -772,13 +803,15 @@ SELECT COUNT(*) FROM t1;
 
 CREATE TABLE t2 LIKE t1;
 INSERT INTO t2 SELECT * FROM t1 ORDER BY id;
-
+ANALYZE TABLE t1, t2;
+--replace_column 10 # 11 #
 EXPLAIN SELECT id,c3 FROM t2 WHERE c2=11 ORDER BY c3 LIMIT 20;
 EXPLAIN SELECT id,c3 FROM t2 WHERE c2=11 ORDER BY c3 LIMIT 4000;
 EXPLAIN SELECT id,c3 FROM t2 WHERE c2 BETWEEN 10 AND 12 ORDER BY c3 LIMIT 20;
 EXPLAIN SELECT id,c3 FROM t2 WHERE c2 BETWEEN 20 AND 30 ORDER BY c3 LIMIT 4000;
 
-SELECT id,c3 FROM t2 WHERE c2=11 ORDER BY c3 LIMIT 20;
+--partially_sorted_result 1
+SELECT c3,id FROM t2 WHERE c2=11 ORDER BY c3 LIMIT 20;
 
 DROP TABLE t1,t2;
 
@@ -797,43 +830,48 @@ INSERT INTO t1 SELECT a + 8, b + 8 FROM t1;
 INSERT INTO t1 SELECT a +16, b +16 FROM t1;
 INSERT INTO t1 SELECT a +32, b +32 FROM t1;
 INSERT INTO t1 SELECT a +64, b +64 FROM t1;
-
+ANALYZE TABLE t1;
 let $query=
 SELECT a FROM t1 IGNORE INDEX FOR GROUP BY (PRIMARY, ab) GROUP BY a;
 
 eval EXPLAIN $query;
 flush status;
+--sorted_result
 eval $query;
+--skip_if_hypergraph  # Depends on the query plan.
 show status like 'Created_tmp_tables';
 
 let $query=
 SELECT a FROM t1 IGNORE INDEX FOR ORDER BY (PRIMARY, ab) ORDER BY a;
-
+ANALYZE TABLE t1;
 eval EXPLAIN $query;
 flush status;
 eval $query;
+--skip_if_hypergraph  # Depends on the query plan.
 show status like 'Created_tmp_tables';
 
 flush status;
+ANALYZE TABLE t1;
 let $query=
 SELECT a FROM t1 IGNORE INDEX (PRIMARY, ab) GROUP BY a;
 eval EXPLAIN $query;
+--sorted_result
 eval $query;
-
+ANALYZE TABLE t1;
 let $query=
 SELECT a FROM t1 IGNORE INDEX (PRIMARY, ab) ORDER BY a;
 eval EXPLAIN $query;
 eval $query;
+--skip_if_hypergraph  # Depends on the query plan.
 show status like 'Created_tmp_tables';
 
 DROP TABLE t1;
 --echo #
 --echo # Bug#31590: Wrong error message on sort buffer being too small.
 --echo #
-create table t1(a int, b tinytext);
-insert into t1 values (1,2),(3,2);
-set session sort_buffer_size= 30000;
-set session max_sort_length= 2180;
+create table t1(a int, b text);
+insert into t1 values (1,REPEAT('x', 60000)),(3,REPEAT('y', 60000));
+set session sort_buffer_size= 32768;
 CALL mtr.add_suppression("Out of sort memory");
 --error ER_OUT_OF_SORTMEMORY
 select * from t1 order by b;
@@ -897,10 +935,12 @@ DROP TABLE t1;
 #
 
 CREATE TABLE t2 (a varchar(32), b int(11), c float, d double, 
-  UNIQUE KEY a (a,b,c), KEY b (b), KEY c (c));
+  UNIQUE KEY a (a,b,c), KEY b (b), KEY c (c)) charset utf8mb4;
 
-CREATE TABLE t1 (a varchar(32), b char(3), UNIQUE KEY a (a,b), KEY b (b));
-CREATE TABLE t3 (a varchar(32), b char(3), UNIQUE KEY a (a,b));
+CREATE TABLE t1 (a varchar(32), b char(3), UNIQUE KEY a (a,b), KEY b (b))
+charset utf8mb4;
+CREATE TABLE t3 (a varchar(32), b char(3), UNIQUE KEY a (a,b))
+charset utf8mb4;
 
 --disable_query_log
 INSERT INTO t1 (a, b) VALUES
@@ -1336,7 +1376,7 @@ INSERT INTO t2 (a, b, c, d) VALUES
 --enable_query_log
 
 INSERT INTO t3 SELECT * FROM t1;
-
+ANALYZE TABLE t1, t2, t3;
 EXPLAIN
 SELECT d FROM t1, t2
 WHERE t2.b=14 AND t2.a=t1.a AND 5.1<t2.c AND t1.b='DE'
@@ -1359,7 +1399,7 @@ DROP TABLE t1,t2,t3;
 --echo # WL#1393 - Optimizing filesort with small limit
 --echo #
 
-CREATE TABLE t1(f0 int auto_increment primary key, f1 int, f2 varchar(200));
+CREATE TABLE t1(f0 int auto_increment primary key, f1 int, f2 varchar(200)) charset latin1;
 INSERT INTO t1(f1, f2) VALUES 
 (0,"0"),(1,"1"),(2,"2"),(3,"3"),(4,"4"),(5,"5"),
 (6,"6"),(7,"7"),(8,"8"),(9,"9"),(10,"10"),
@@ -1538,6 +1578,7 @@ CREATE TABLE where_subselect
   GROUP BY field1, field2
 ;
 
+--sorted_result
 SELECT * 
 FROM where_subselect
 WHERE (field1, field2) IN (  
@@ -1606,15 +1647,15 @@ INSERT INTO t1 VALUES
 (8,  8, 8),
 (9,  9, 9);
 
-INSERT INTO t1 SELECT a + 10,  b, c FROM t1;
-INSERT INTO t1 SELECT a + 20,  b, c FROM t1;
-INSERT INTO t1 SELECT a + 40,  b, c FROM t1;
-INSERT INTO t1 SELECT a + 80,  b, c FROM t1;
-INSERT INTO t1 SELECT a + 160, b, c FROM t1;
-INSERT INTO t1 SELECT a + 320, b, c FROM t1;
-INSERT INTO t1 SELECT a + 640, b, c FROM t1;
-INSERT INTO t1 SELECT a + 1280, b, c FROM t1 LIMIT 80;
-
+INSERT INTO t1 SELECT a + 10,  b, c  + 10   FROM t1;
+INSERT INTO t1 SELECT a + 20,  b, c  + 20   FROM t1;
+INSERT INTO t1 SELECT a + 40,  b, c  + 40   FROM t1;
+INSERT INTO t1 SELECT a + 80,  b, c  + 80   FROM t1;
+INSERT INTO t1 SELECT a + 160, b, c  + 160  FROM t1;
+INSERT INTO t1 SELECT a + 320, b, c  + 320  FROM t1;
+INSERT INTO t1 SELECT a + 640, b, c  + 640  FROM t1;
+INSERT INTO t1 SELECT a + 1280, b, c + 1280 FROM t1 LIMIT 80;
+ANALYZE TABLE t1;
 EXPLAIN
 SELECT a FROM t1 WHERE b = 1 ORDER BY c DESC LIMIT 9;
 SELECT a FROM t1 WHERE b = 1 ORDER BY c DESC LIMIT 9;
@@ -1670,7 +1711,7 @@ CREATE TABLE t2( a INT PRIMARY KEY, b INT );
 
 INSERT INTO t2 VALUES (1, 1), (2, 2), (3, 3), (4, 4), (5, 5);
 INSERT INTO t2 SELECT a + 5, b + 5 FROM t2;
-
+ANALYZE TABLE t1, t2;
 EXPLAIN
 SELECT count(*) AS c, t1.a
 FROM t1 JOIN t2 ON t1.b = t2.a
@@ -1693,7 +1734,7 @@ DROP TABLE t1, t2;
 
 CREATE TABLE t1 (a INT,KEY (a));
 INSERT INTO t1 VALUES (1),(2),(3),(4),(5),(6),(7),(8),(9),(10);
-
+ANALYZE TABLE t1;
 EXPLAIN SELECT DISTINCT a,1 FROM t1 WHERE a <> 1 ORDER BY a DESC;
 SELECT DISTINCT a,1 FROM t1 WHERE a <> 1 ORDER BY a DESC;
 
@@ -1720,8 +1761,8 @@ CREATE TABLE t3 (i3 integer);
 
 INSERT INTO t1 VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10), (11), (12);
 INSERT INTO t2 SELECT * FROM t1;
-
-EXPLAIN EXTENDED
+ANALYZE TABLE t1, t2, t3;
+EXPLAIN
 SELECT t1.*, t2.* FROM t1 JOIN t2 ON t1.i1 = t2.i2 
                      LEFT JOIN t3 ON t2.i2 = t3.i3
   ORDER BY t1.i1 LIMIT 5;
@@ -1863,3 +1904,56 @@ SELECT
  )
 FROM t3;
 DROP TABLE t1,t2,t3;
+
+--echo #
+--echo # Bug#16833464: Presence of ORDER BY changes data type of column in
+--echo #               CREATE TABLE SELECT
+
+CREATE TABLE z1 (c05 TIME);
+(SELECT * FROM z1 ORDER BY '1') ORDER BY '1';
+
+CREATE TABLE z2 (SELECT * FROM z1 ORDER BY '1') ORDER BY '1';
+CREATE TABLE z3 (SELECT * FROM z1) ORDER BY '1';
+
+#Column in z2 and z3 should be of same type.
+SHOW CREATE TABLE z2;
+SHOW CREATE TABLE z3;
+
+DROP TABLE z1, z2, z3;
+
+--echo #
+--echo # Bug#32695670: ASSERTION `M_CURRENT_ROLLUP_LEVEL >= 0 && M_CURRENT_ROLLUP_LEVEL < M_NUM_LEVELS'
+--echo #
+CREATE TABLE t(
+  m MEDIUMTEXT,   # must be blob, CHAR(1), TEXT works....
+  pk INT PRIMARY KEY
+);
+
+INSERT INTO t VALUES ('s',1);
+
+# Used to hit assert in debug mode
+SELECT MIN(alias2.m) AS field2,
+       alias2.pk AS field3
+FROM t AS alias1
+     LEFT JOIN
+     t AS alias2
+     ON alias1.m = alias2.m
+GROUP BY field3 WITH ROLLUP
+ORDER BY UPPER(field2); # The alias must be a function argument
+
+DROP TABLE t;
+
+CREATE TABLE t1 ( a INTEGER, b LONGTEXT );
+INSERT INTO t1 VALUES (1,'z');
+INSERT INTO t1 VALUES (2,'y');
+INSERT INTO t1 VALUES (3,'x');
+
+# Used to give correct result
+SELECT MIN(b) AS min_b FROM t1 GROUP BY a ORDER BY COALESCE(MIN(b), 'a');
+# Used to give wrong result
+SELECT MIN(b) AS min_b FROM t1 GROUP BY a ORDER BY COALESCE(min_b, 'a');
+
+SELECT MIN(b) AS min_b FROM t1 GROUP BY a ORDER BY COALESCE(MIN(b), 'a') DESC;
+SELECT MIN(b) AS min_b FROM t1 GROUP BY a ORDER BY COALESCE(min_b, 'a') DESC;
+
+DROP TABLE t1;

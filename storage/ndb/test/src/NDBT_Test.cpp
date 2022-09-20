@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -22,15 +22,23 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
+#include "util/require.h"
 #include <ndb_global.h>
+
+#include <time.h>
+
 #include <ndb_opts.h>
 
+#include <NdbIndexStat.hpp>
 #include "NDBT.hpp"
 #include "NDBT_Test.hpp"
+#include "my_thread_local.h"
 #include <portlib/NdbEnv.h>
 #include <logger/Logger.hpp>
 
-static int opt_stop_on_error = 0;
+#include "my_alloc.h"
+
+static bool opt_stop_on_error = false;
 
 NDBT_Context::NDBT_Context(Ndb_cluster_connection& con)
   : m_cluster_connection(con)
@@ -279,10 +287,36 @@ void NDBT_Context::setNumLoops(int _loops){
   loops = _loops;
 }
 
+void NDBT_Context::getRecordSubRange(int records,
+                                     int rangeCount,
+                                     int rangeId,
+                                     int& startRecord,
+                                     int& stopRecord)
+{
+  int recordsPerStep = records / rangeCount;
+  if (recordsPerStep == 0)
+  {
+    recordsPerStep = 1;
+  }
+  startRecord = rangeId * recordsPerStep;
+  stopRecord = startRecord + recordsPerStep;
+
+  if (stopRecord > records)
+  {
+    stopRecord = records;
+  }
+  if (startRecord >= records)
+  {
+    startRecord = stopRecord = 0;
+  }
+}
+
+
 NDBT_Step::NDBT_Step(NDBT_TestCase* ptest, const char* pname,
                      NDBT_TESTFUNC* pfunc) :
   m_ctx(NULL), name(pname), func(pfunc),
-  testcase(ptest), step_no(-1), m_ndb(NULL)
+  testcase(ptest), step_no(-1), step_type_no(0),
+  step_type_count(1), m_ndb(NULL)
 {
 }
 
@@ -350,9 +384,18 @@ int NDBT_Step::execute(NDBT_Context* ctx) {
   result = func(ctx, this);
 
   if (result != NDBT_OK) {
-    g_err << "  |- " << name << " FAILED ["
+    if (result == NDBT_SKIPPED)
+    {
+      g_err << "  |- " << name << " SKIPPED ["
           << ctx->suite->getDate(buf, sizeof(buf))
           << "]" << endl;
+    }
+    else
+    {
+      g_err << "  |- " << name << " FAILED ["
+            << ctx->suite->getDate(buf, sizeof(buf))
+            << "]" << endl;
+    }
   }	 
    else {
     g_info << "  |- " << name << " PASSED ["
@@ -378,8 +421,13 @@ NDBT_Context* NDBT_Step::getContext(){
 
 NDBT_ParallelStep::NDBT_ParallelStep(NDBT_TestCase* ptest, 
 				     const char* pname, 
-				     NDBT_TESTFUNC* pfunc)
+				     NDBT_TESTFUNC* pfunc,
+                                     int num,
+                                     int count)
   : NDBT_Step(ptest, pname, pfunc) {
+  require(num < count);
+  step_type_no = num;
+  step_type_count = count;
 }
 NDBT_Verifier::NDBT_Verifier(NDBT_TestCase* ptest, 
 			     const char* pname, 
@@ -590,7 +638,7 @@ void NDBT_TestCaseImpl1::waitSteps(){
       completedSteps++;
       if (results[i] == NDBT_OK)
 	numStepsOk++;
-      else
+      else if (results[i] == NDBT_FAILED)
 	numStepsFail++;
     }       
   }
@@ -695,9 +743,18 @@ int NDBT_TestCase::execute(NDBT_Context* ctx)
            << "]" << endl;
   }
   else {
-    ndbout << "- " << _name << " FAILED ["
+    if (res == NDBT_SKIPPED)
+    {
+      ndbout << "- " << _name << " SKIPPED ["
            << ctx->suite->getDate(buf, sizeof(buf))
            << "]" << endl;
+    }
+    else
+    {
+      ndbout << "- " << _name << " FAILED ["
+             << ctx->suite->getDate(buf, sizeof(buf))
+             << "]" << endl;
+    }
   }
   return res;
 }
@@ -746,7 +803,7 @@ int NDBT_TestCaseImpl1::runSteps(NDBT_Context* ctx){
     if (results[i] != NDBT_OK)
     {
       // Found one step which had failed -> report failed
-      res = NDBT_FAILED;
+      res = results[i];
       break;
     }
   }
@@ -799,6 +856,8 @@ void NDBT_TestCaseImpl1::printTestResult(){
       res = "FAILED TO CREATE TABLE";
     else if (tcr->getResult() == FAILED_TO_DISCOVER)
       res = "FAILED TO DISCOVER TABLE";
+    else if (tcr->getResult() == NDBT_SKIPPED)
+      res = "SKIPPED";
     BaseString::snprintf(buf, 255," %-10s %-5s %-20s",
                          tcr->getName(), 
                          res, 
@@ -821,6 +880,7 @@ NDBT_TestSuite::NDBT_TestSuite(const char* pname) :
 {
    numTestsOk = 0;
    numTestsFail = 0;
+   numTestsSkipped = 0;
    numTestsExecuted = 0;
    records = 0;
    loops = 0;
@@ -830,6 +890,7 @@ NDBT_TestSuite::NDBT_TestSuite(const char* pname) :
    runonce = false;
    m_noddl = false;
    m_forceShort = false;
+   m_ensureIndexStatTables = true;
 }
 
 
@@ -877,6 +938,10 @@ bool NDBT_TestSuite::getLogging() const {
 
 bool NDBT_TestSuite::getForceShort() const {
   return m_forceShort;
+}
+
+void NDBT_TestSuite::setEnsureIndexStatTables(bool val) {
+  m_ensureIndexStatTables = val;
 }
 
 bool NDBT_TestSuite::timerIsOn(){
@@ -961,6 +1026,11 @@ int NDBT_TestSuite::executeAll(Ndb_cluster_connection& con,
   return reportAllTables(_testname);
 }
 
+static ndb_password_state opt_backup_password_state("backup", nullptr);
+static ndb_password_option opt_backup_password(opt_backup_password_state);
+static ndb_password_from_stdin_option opt_backup_password_from_stdin(
+                                          opt_backup_password_state);
+
 void
 NDBT_TestSuite::execute(Ndb_cluster_connection& con,
                         NDBT_TestCase * pTest,
@@ -973,6 +1043,11 @@ NDBT_TestSuite::execute(Ndb_cluster_connection& con,
   ctx->setNumLoops(loops);
   ctx->setSuite(this);
   ctx->setProperty("NoDDL", (Uint32) m_noddl);
+  if (opt_backup_password_state.get_password() != NULL)
+  {
+    ctx->setProperty("BACKUP_PASSWORD",
+                     opt_backup_password_state.get_password());
+  }
   if (pTab)
   {
     ctx->setTab(pTab);
@@ -980,7 +1055,16 @@ NDBT_TestSuite::execute(Ndb_cluster_connection& con,
   int result = pTest->execute(ctx);
   pTest->saveTestResult("", result);
   if (result != NDBT_OK)
-    numTestsFail++;
+  {
+    if (result == NDBT_SKIPPED)
+    {
+      numTestsSkipped++;
+    }
+    else
+    {
+      numTestsFail++;
+    }
+  }
   else
     numTestsOk++;
   numTestsExecuted++;
@@ -1227,6 +1311,43 @@ runCreateTable(NDBT_Context* ctx, NDBT_Step* step)
 }
 
 
+static int
+runEnsureIndexStatTables(NDBT_Context* ctx, NDBT_Step* step)
+{
+  Ndb ndb(&ctx->m_cluster_connection, "mysql");
+  ndb.init(1);
+
+  NdbIndexStat index_stat;
+  if (index_stat.check_systables(&ndb) == 0) {
+    return NDBT_OK;
+  }
+
+  if (index_stat.create_systables(&ndb) != 0) {
+    g_err << "runEnsureIndexStatTables: Failed to create index stat tables. "
+          << "Error = " << index_stat.getNdbError().code << ": "
+          << index_stat.getNdbError().message << endl;
+    return NDBT_FAILED;
+  }
+  // Index stat tables created successfully
+  return NDBT_OK;
+}
+
+
+static bool indexStatTablesExist(Ndb_cluster_connection *connection)
+{
+  Ndb ndb(connection, "mysql");
+  ndb.init(1);
+
+  NdbIndexStat index_stat;
+  if (index_stat.check_systables(&ndb) == 0)
+  {
+    // Stat tables exist
+    return true;
+  }
+  return false;
+}
+
+
 int
 NDBT_TestSuite::dropTables(Ndb_cluster_connection& con) const
 {
@@ -1314,6 +1435,10 @@ NDBT_TestSuite::report(const char* _tcname){
   ndbout << numTestsExecuted << " test(s) executed" << endl;
   ndbout << numTestsOk << " test(s) OK" 
 	 << endl;
+  if(numTestsSkipped > 0)
+  {
+    ndbout << numTestsSkipped << " test(s) skipped" << endl;
+  }
   if(numTestsFail > 0)
     ndbout << numTestsFail << " test(s) failed"
 	   << endl;
@@ -1321,7 +1446,15 @@ NDBT_TestSuite::report(const char* _tcname){
   if (numTestsFail > 0 || numTestsExecuted == 0){
     result = NDBT_FAILED;
   }else{
-    result = NDBT_OK;
+    if (numTestsSkipped > 0)
+    {
+      /* Any skipped tests summarise run to 'skipped' */
+      result = NDBT_SKIPPED;
+    }
+    else
+    {
+      result = NDBT_OK;
+    }
   }
   return result;
 }
@@ -1357,6 +1490,12 @@ int NDBT_TestSuite::reportAllTables(const char* _testname){
   ndbout << numTestsOk << " test(s) OK("
 	 <<(int)(((float)numTestsOk/totalNumTests)*100.0) <<"%)" 
 	 << endl;
+  if(numTestsSkipped > 0)
+  {
+    ndbout << numTestsSkipped << " test(s) skipped("
+           <<(int)(((float)numTestsSkipped/totalNumTests)*100.0) <<"%)"
+	   << endl;
+  }
   if(numTestsFail > 0)
     ndbout << numTestsFail << " test(s) failed("
 	   <<(int)(((float)numTestsFail/totalNumTests)*100.0) <<"%)" 
@@ -1366,7 +1505,15 @@ int NDBT_TestSuite::reportAllTables(const char* _testname){
     if (numTestsFail > 0){
       result = NDBT_FAILED;
     }else{
-      result = NDBT_OK;
+      if (numTestsSkipped > 0)
+      {
+        /* Any skipped tests summarise run to 'skipped' */
+        result = NDBT_SKIPPED;
+      }
+      else
+      {
+        result = NDBT_OK;
+      }
     }
   } else {
     result = NDBT_FAILED;
@@ -1374,84 +1521,93 @@ int NDBT_TestSuite::reportAllTables(const char* _testname){
   return result;
 }
 
-static int opt_print = false;
-static int opt_print_html = false;
-static int opt_print_cases = false;
+static bool opt_print = false;
+static bool opt_print_html = false;
+static bool opt_print_cases = false;
 static int opt_records;
 static int opt_loops;
-static int opt_timer;
+static bool opt_timer;
 static char * opt_testname = NULL;
-static int opt_verbose;
+static bool opt_verbose;
 unsigned opt_seed = 0;
-static int opt_nologging = 0;
-static int opt_temporary = 0;
-static int opt_noddl = 0;
-static int opt_forceShort = 0;
+static bool opt_nologging = false;
+static bool opt_temporary = false;
+static bool opt_noddl = false;
+static bool opt_forceShort = false;
+
+static const char *load_default_groups[]= {
+                       "mysql_cluster",
+                       "NDBT",
+                       nullptr /* placeholder for program name */,
+                       nullptr };
 
 static struct my_option my_long_options[] =
 {
   NDB_STD_OPTS(""),
+  { "backup-password", NDB_OPT_NOSHORT,
+    "Password to use for encrypted backup files",
+    NULL, NULL, 0,
+    GET_PASSWORD, OPT_ARG, 0, 0, 0, NULL, 0, &opt_backup_password },
+  { "backup-password-from-stdin", NDB_OPT_NOSHORT,
+    "Password to use for encrypted backup files",
+    &opt_backup_password_from_stdin.opt_value, NULL, 0,
+    GET_BOOL, NO_ARG, 0, 0, 0, NULL, 0, &opt_backup_password_from_stdin },
   { "print", NDB_OPT_NOSHORT, "Print execution tree",
-    (uchar **) &opt_print, (uchar **) &opt_print, 0,
+    &opt_print, &opt_print, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "print_html", NDB_OPT_NOSHORT, "Print execution tree in html table format",
-    (uchar **) &opt_print_html, (uchar **) &opt_print_html, 0,
+    &opt_print_html, &opt_print_html, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "print_cases", NDB_OPT_NOSHORT, "Print list of test cases",
-    (uchar **) &opt_print_cases, (uchar **) &opt_print_cases, 0,
+    &opt_print_cases, &opt_print_cases, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "records", 'r', "Number of records", 
-    (uchar **) &opt_records, (uchar **) &opt_records, 0,
+    &opt_records, &opt_records, 0,
     GET_INT, REQUIRED_ARG, 1000, 0, 0, 0, 0, 0 },
   { "loops", 'l', "Number of loops",
-    (uchar **) &opt_loops, (uchar **) &opt_loops, 0,
+    &opt_loops, &opt_loops, 0,
     GET_INT, REQUIRED_ARG, 5, 0, 0, 0, 0, 0 },
   { "seed", NDB_OPT_NOSHORT, "Random seed",
-    (uchar **) &opt_seed, (uchar **) &opt_seed, 0,
+    &opt_seed, &opt_seed, 0,
     GET_UINT, REQUIRED_ARG, 0, 0, 0, 0, 0, 0 },
   { "testname", 'n', "Name of test to run",
-    (uchar **) &opt_testname, (uchar **) &opt_testname, 0,
+    &opt_testname, &opt_testname, 0,
     GET_STR, REQUIRED_ARG, 0, 0, 0, 0, 0, 0 },
   { "timer", 't', "Print execution time",
-    (uchar **) &opt_timer, (uchar **) &opt_timer, 0,
+    &opt_timer, &opt_timer, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "verbose", 'v', "Print verbose status",
-    (uchar **) &opt_verbose, (uchar **) &opt_verbose, 0,
+    &opt_verbose, &opt_verbose, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "temporary-tables", 'T', "Create temporary table(s)",
-    (uchar **) &opt_temporary, (uchar **) &opt_temporary, 0,
+    &opt_temporary, &opt_temporary, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "nologging", NDB_OPT_NOSHORT, "Create table(s) wo/ logging",
-    (uchar **) &opt_nologging, (uchar **) &opt_nologging, 0,
+    &opt_nologging, &opt_nologging, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "noddl", NDB_OPT_NOSHORT,
     "Don't create/drop tables as part of running tests",
-    (uchar**) &opt_noddl, (uchar**) &opt_noddl, 0,
+    &opt_noddl, &opt_noddl, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "forceshortreqs", NDB_OPT_NOSHORT, "Use short signals for NdbApi requests",
-    (uchar**) &opt_forceShort, (uchar**) &opt_forceShort, 0,
+    &opt_forceShort, &opt_forceShort, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "stop-on-error", NDB_OPT_NOSHORT,
     "Don't run any more tests after one has failed",
-    (uchar**) &opt_stop_on_error, (uchar**) &opt_stop_on_error, 0,
+    &opt_stop_on_error, &opt_stop_on_error, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { 0, 0, 0, 0, 0, 0, GET_NO_ARG, NO_ARG, 0, 0, 0, 0, 0, 0}
 };
 
 extern int global_flag_skip_invalidate_cache;
 
-const char *load_default_groups[]= { "mysql_cluster",0 };
-
 static void short_usage_sub(void)
 {
   ndb_short_usage_sub("[tabname1 tabname2 ... tabnameN]");
 }
-static void usage()
-{
-  ndb_usage(short_usage_sub, load_default_groups, my_long_options);
-}
 
 int NDBT_TestSuite::execute(int argc, const char** argv){
+  NDB_INIT(argv[0]);
   int res = NDBT_FAILED;
   /* Arguments:
        Run only a subset of tests
@@ -1475,24 +1631,30 @@ int NDBT_TestSuite::execute(int argc, const char** argv){
 
   char **_argv= (char **)argv;
 
-  if (!my_progname)
-    my_progname= _argv[0];
+  // Use program name as one of the defaults group name
+  static_assert(NDB_ARRAY_SIZE(load_default_groups) == 4);
+  require(load_default_groups[2] == nullptr);
+  load_default_groups[2] = argv[0];
 
-  ndb_opt_set_usage_funcs(short_usage_sub, usage);
+  Ndb_opts opts(argc, _argv, my_long_options, load_default_groups);
+  opts.set_usage_funcs(short_usage_sub);
 
-  ndb_load_defaults(NULL, load_default_groups,&argc,&_argv);
-  // Save pointer to memory allocated by 'ndb_load_defaults'
-  char** defaults_argv= _argv;
-
-  int ho_error;
 #ifndef NDEBUG
   opt_debug= "d:t:i:F:L";
 #endif
-  if ((ho_error=handle_options(&argc, &_argv, my_long_options,
-			       ndb_std_get_one_option)))
+  if (opts.handle_options())
   {
-    usage();
-    ndb_free_defaults(defaults_argv);
+    opts.usage();
+    return NDBT_ProgramExit(NDBT_WRONGARGS);
+  }
+  if (ndb_option::post_process_options())
+  {
+    BaseString err_msg = opt_backup_password_state.get_error_message();
+    if (!err_msg.empty())
+    {
+      ndbout_c("Error: %s", err_msg.c_str());
+    }
+    opts.usage();
     return NDBT_ProgramExit(NDBT_WRONGARGS);
   }
 
@@ -1516,7 +1678,9 @@ int NDBT_TestSuite::execute(int argc, const char** argv){
   }
   ndbout_c("random seed: %u", opt_seed);
   srand(opt_seed);
+#ifndef _WIN32
   srandom(opt_seed);
+#endif
 
   global_flag_skip_invalidate_cache = 1;
 
@@ -1543,7 +1707,7 @@ int NDBT_TestSuite::execute(int argc, const char** argv){
 
       if (!m_noddl)
       {
-        createFuncName= m_createAll ? "runCreateTable" : "runCreateTable";
+        createFuncName= m_createAll ? "runCreateTables" : "runCreateTable";
         createFunc=   m_createAll ? &runCreateTables : &runCreateTable;
         dropFuncName= m_createAll ? "runDropTables" : "runDropTable";
         dropFunc= m_createAll ? &runDropTables : &runDropTable;
@@ -1581,7 +1745,7 @@ int NDBT_TestSuite::execute(int argc, const char** argv){
 
       if (!m_noddl)
       {
-        createFuncName= m_createAll ? "runCreateTable" : "runCreateTable";
+        createFuncName= m_createAll ? "runCreateTables" : "runCreateTable";
         createFunc=   m_createAll ? &runCreateTables : &runCreateTable;
         dropFuncName= m_createAll ? "runDropTables" : "runDropTable";
         dropFunc= m_createAll ? &runDropTables : &runDropTable;
@@ -1611,29 +1775,59 @@ int NDBT_TestSuite::execute(int argc, const char** argv){
     }
   }
 
+  if (m_ensureIndexStatTables && !m_noddl)
+  {
+    /* Ensure that the index stat system tables are present. This is done in an
+     * initializer which checks if the tables are present and creates them if
+     * needed
+     */
+    for (unsigned t = 0; t < tests.size(); t++)
+    {
+      NDBT_TestCaseImpl1* pt= (NDBT_TestCaseImpl1*)tests[t];
+      NDBT_Initializer* pti =
+        new NDBT_Initializer(pt,
+                             "runEnsureIndexStatTables",
+                             &runEnsureIndexStatTables);
+      pt->addInitializer(pti, true);
+    }
+
+    for (unsigned t = 0; t < explicitTests.size(); t++)
+    {
+      NDBT_TestCaseImpl1* pt= (NDBT_TestCaseImpl1*)tests[t];
+      NDBT_Initializer* pti =
+        new NDBT_Initializer(pt,
+                             "runEnsureIndexStatTables",
+                             &runEnsureIndexStatTables);
+      pt->addInitializer(pti, true);
+    }
+  }
+
   if (opt_print == true){
     printExecutionTree();
-    ndb_free_defaults(defaults_argv);
     return 0;
   }
 
   if (opt_print_html == true){
     printExecutionTreeHTML();
-    ndb_free_defaults(defaults_argv);
     return 0;
   }
 
   if (opt_print_cases == true){
     printCases();
-    ndb_free_defaults(defaults_argv);
     return 0;
   }
 
   Ndb_cluster_connection con(opt_ndb_connectstring, opt_ndb_nodeid);
   if(m_connect_cluster && con.connect(12, 5, 1))
   {
-    ndb_free_defaults(defaults_argv);
     return NDBT_ProgramExit(NDBT_FAILED);
+  }
+  con.set_optimized_node_selection(opt_ndb_optimized_node_selection);
+
+  if (m_ensureIndexStatTables && m_noddl && !indexStatTablesExist(&con))
+  {
+    ndbout << "Index stat system tables are missing and can't be created "
+           << "since --noddl is enabled." << endl;
   }
 
   if(argc == 0){
@@ -1648,7 +1842,6 @@ int NDBT_TestSuite::execute(int argc, const char** argv){
     res = report(opt_testname);
   }
 
-  ndb_free_defaults(defaults_argv);
   return NDBT_ProgramExit(res);
 }
 
@@ -1816,7 +2009,7 @@ NDBT_Context::closeToTimeout(int safety)
 NdbApiConfig const&
 NDBT_Context::getConfig() const
 {
-  return m_cluster_connection.m_impl.m_config;
+  return m_cluster_connection.m_impl.m_ndbapiconfig;
 }
 
 template class Vector<NDBT_TestCase*>;

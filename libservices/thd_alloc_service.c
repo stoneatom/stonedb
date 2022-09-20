@@ -1,4 +1,4 @@
-/* Copyright (c) 2009, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2009, 2022, Oracle and/or its affiliates.
    Use is subject to license terms.
 
    This program is free software; you can redistribute it and/or modify
@@ -21,5 +21,6 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
-#include <service_versions.h>
-SERVICE_VERSION *thd_alloc_service= (void*)VERSION_thd_alloc;
+#include "service_versions.h"
+
+SERVICE_VERSION *thd_alloc_service = (void **)VERSION_thd_alloc;

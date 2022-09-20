@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -23,6 +23,7 @@
 */
 
 #include <ndb_global.h>
+#include <cstring>
 #include <NdbTick.h>
 #include <NdbOut.hpp>
 #include "API.hpp"
@@ -36,6 +37,302 @@
 #include <signaldata/TcRollbackRep.hpp>
 
 static const Uint64 InvalidTransactionId = ~Uint64(0);
+
+/**
+ * Blob operation prep checks
+ * Check that a batch of blob operations can be
+ * safely prepared together in a single batch.
+ */
+class BlobBatchChecker
+{
+  /* Type of ops defined in the batch so far */
+  Uint32 m_batchOpTypes;
+
+  /**
+   * Keep track of how tables are accessed
+   */
+  struct AccessMethod
+  {
+    Uint32 m_tableId;
+    Uint32 m_indexId;
+  };
+
+  static const Uint32 NoIndexId = 0;
+  static const Uint32 MultiIndexId = ~Uint32(0);
+
+  Vector<AccessMethod> m_tables;
+
+  /**
+   * findIndexForTable
+   *
+   * Check which index(es) (if any) have been used
+   * to access the given table in this batch
+   */
+  Uint32 findIndexForTable(const Uint32 tableId) const
+  {
+    DBUG_ENTER("BlobBatchChecker::findIndexForTable");
+    assert(tableId != 0);
+    /* Linear list */
+    for (Uint32 t=0; t < m_tables.size(); t++)
+    {
+      if (m_tables[t].m_tableId == tableId)
+      {
+        assert(m_tables[t].m_indexId != NoIndexId);
+        DBUG_PRINT("info", ("found tableId %u indexId %u",
+                            m_tables[t].m_tableId,
+                            m_tables[t].m_indexId));
+        DBUG_RETURN(m_tables[t].m_indexId);
+      }
+    }
+    DBUG_PRINT("info", ("Table %u not found", tableId));
+    DBUG_RETURN(NoIndexId); /* Not found */
+  }
+
+  /**
+   * Add table to batch checker, with access via given index
+   */
+  void addIndexForTable(const Uint32 tableId, const Uint32 indexId)
+  {
+    DBUG_ENTER("BlobBatchChecker::addIndexForTable");
+    assert(tableId != 0);
+    assert(indexId != 0);
+#ifdef VM_TRACE
+    // Must not already be in the table list
+    for (Uint32 i=0; i < m_tables.size(); i++)
+    {
+      assert(m_tables[i].m_tableId != tableId);
+    }
+#endif
+
+    AccessMethod am;
+    am.m_tableId = tableId;
+    am.m_indexId = indexId;
+
+    m_tables.push_back(am);
+    DBUG_PRINT("info", ("Added tableId %u indexId %u as entry %u",
+                        tableId,
+                        indexId,
+                        m_tables.size()-1));
+    DBUG_VOID_RETURN;
+  }
+
+  /**
+   * Indicate that table is accessed via multiple indices
+   */
+  void setMultiIndexForTable(const Uint32 tableId)
+  {
+    DBUG_ENTER("BlobBatchChecker::setMultiIndexForTable");
+    for (Uint32 t=0; t < m_tables.size(); t++)
+    {
+      if (m_tables[t].m_tableId == tableId)
+      {
+        DBUG_PRINT("info", ("Setting tableId %u index to Multi",
+                            tableId));
+        m_tables[t].m_indexId = MultiIndexId;
+        DBUG_VOID_RETURN;
+      }
+    }
+    abort();
+    DBUG_VOID_RETURN;
+  }
+
+  /**
+   * Keep track of keys used for blob operations
+   */
+  static const Uint32 NumBuckets = 50;
+  NdbBlob* m_buckets[NumBuckets];
+
+  /**
+   * Check whether the batch contains another blob
+   * operation with the same table, index + key
+   *
+   * Returns:
+   * 0 - found
+   * 1 - not found
+   * -1 - error
+   */
+  int findKey(NdbBlob* blob) const
+  {
+    DBUG_ENTER("BlobBatchChecker::findKey");
+    const Uint32 hash = blob->getBlobKeyHash();
+    const Uint32 bucketIdx = hash % NumBuckets;
+
+    NdbBlob* candidate = m_buckets[bucketIdx];
+    while (candidate != NULL)
+    {
+      if (candidate->getBlobKeyHash() == hash)
+      {
+        int ret = candidate->getBlobKeysEqual(blob);
+        if (ret <= 0)
+        {
+          /* Found or error */
+          DBUG_RETURN(ret);
+        }
+      }
+
+      candidate = candidate->getBlobHashNext();
+    }
+
+    /* Not found */
+    DBUG_RETURN(1);
+  }
+
+  /**
+   * Add Blob to hash of table, index, key
+   */
+  void addKey(NdbBlob* blob)
+  {
+    DBUG_ENTER("BlobBatchChecker::addKey");
+    const Uint32 hash = blob->getBlobKeyHash();
+    const Uint32 bucketIdx = hash % NumBuckets;
+
+    DBUG_PRINT("info", ("Adding blob %p to bucket idx %u current blob %p",
+                        blob,
+                        bucketIdx,
+                        m_buckets[bucketIdx]));
+
+    /* Add to head of bucket */
+    blob->setBlobHashNext(m_buckets[bucketIdx]);
+    m_buckets[bucketIdx] = blob;
+    DBUG_VOID_RETURN;
+  }
+
+
+public:
+  BlobBatchChecker():
+    m_batchOpTypes(0),
+    m_tables(10)
+  {
+    DBUG_ENTER("BlobBatchChecker::BlobBatchChecker");
+    /* TODO : Avoid dynamic allocation
+     *        Allow hash bucket count growth
+     */
+    reset();
+    DBUG_VOID_RETURN;
+  }
+
+  ~BlobBatchChecker()
+  {
+  }
+
+  /**
+   * Reset, ready for next (sub) batch
+   */
+  void reset()
+  {
+    DBUG_ENTER("BlobBatchChecker::reset");
+    m_batchOpTypes = 0;
+    m_tables.clear();
+    for (Uint32 b=0; b < NumBuckets; b++)
+    {
+      m_buckets[b] = NULL;
+    }
+    DBUG_VOID_RETURN;
+  }
+
+  /**
+   * Determine whether the nextOp can safely be added
+   * to the current batch
+   */
+  bool includeNextOpInBatch(NdbOperation* nextOp)
+  {
+    DBUG_ENTER("BlobBatchChecker::includeNextOpInBatch");
+
+    /**
+     * Prefer to use cheaper checks (type safety, first op on table
+     * etc) to avoid full key comparison.
+     */
+    bool include = false;
+    if (!nextOp->theBlobList)
+    {
+      DBUG_PRINT("info", ("Non-blob op, including"));
+      include = true;
+    }
+    else
+    {
+      DBUG_PRINT("info", ("Blob op, checking"));
+      NdbBlob* firstBlob = nextOp->theBlobList;
+      const Uint32 opType = firstBlob->getOpType();
+      const Uint32 tableId = firstBlob->theTable->m_id;
+      const Uint32 indexId = (Uint32) firstBlob->theAccessTable->m_id;
+
+      /**
+       * Lookup index used for any previous ops on this table in
+       * this batch
+       */
+      const Uint32 existingIndexId = findIndexForTable(tableId);
+
+      const bool firstAccess = (existingIndexId == NoIndexId);
+      const bool singleIndex = (existingIndexId == indexId);
+
+      DBUG_PRINT("info", ("opType %u tableId %u indexId %u typeSafe %u "
+                          "firstAccess %u singleIndex %u",
+                          opType,
+                          tableId,
+                          indexId,
+                          NdbBlob::isOpTypeSafeWithBatch(m_batchOpTypes,
+                                                         opType),
+                          firstAccess,
+                          singleIndex));
+
+      if (firstAccess)
+      {
+        /* First blob op on this table in this batch : ok */
+        DBUG_PRINT("info", ("Including as this is the first op"));
+        include = true;
+      }
+      else
+      {
+        /**
+         * Check type safety - in some cases this is
+         * enough to proceed
+         */
+        if (NdbBlob::isOpTypeSafeWithBatch(m_batchOpTypes,
+                                           opType))
+        {
+          DBUG_PRINT("info", ("Including as op is type safe"));
+          include = true;
+        }
+        else
+        {
+          if (singleIndex)
+          {
+            /* Check whether key has been seen before */
+            include = (findKey(firstBlob) == 1);  // Not found, ok to include
+            DBUG_PRINT("info", ("Checked key : include : %u", include));
+          }
+        }
+      }
+
+      if (include)
+      {
+        m_batchOpTypes |= opType;
+        /* Update tables list */
+        if (firstAccess)
+        {
+          addIndexForTable(tableId,
+                           indexId);
+        }
+        else if (!singleIndex)
+        {
+          /* Record multi-index access */
+          setMultiIndexForTable(tableId);
+        }
+        /* else index already set */
+
+        /* Potential optimisation :
+         * if opTypeSafe then defer adding the key to the hash
+         * until someone tries to lookup the hash (!opTypeSafe)
+         */
+        /* Add key */
+        addKey(firstBlob);
+      }
+    }
+
+    DBUG_PRINT("info", ("include = %u", include));
+    DBUG_RETURN(include);
+  }
+};
 
 /*****************************************************************************
 NdbTransaction( Ndb* aNdb );
@@ -83,6 +380,7 @@ NdbTransaction::NdbTransaction( Ndb* aNdb ) :
   theScanningOp(NULL),
   theBuddyConPtr(0xFFFFFFFF),
   theBlobFlag(false),
+  m_userDefinedBlobOps(false),
   thePendingBlobOps(0),
   maxPendingBlobReadBytes(~Uint32(0)),
   maxPendingBlobWriteBytes(~Uint32(0)),
@@ -103,7 +401,7 @@ NdbTransaction::NdbTransaction( Ndb* aNdb ) :
   theListState = NotInList;
   theError.code = 0;
   //theId = NdbObjectIdMap::InvalidId;
-  theId = theNdb->theImpl->theNdbObjectIdMap.map(this);
+  theId = theNdb->theImpl->mapRecipient(this);
 
 #define CHECK_SZ(mask, sz) assert((sizeof(mask)/sizeof(mask[0])) == sz)
 
@@ -119,7 +417,7 @@ Remark:        Deletes the connection object.
 NdbTransaction::~NdbTransaction()
 {
   DBUG_ENTER("NdbTransaction::~NdbTransaction");
-  theNdb->theImpl->theNdbObjectIdMap.unmap(theId, this);
+  theNdb->theImpl->unmapRecipient(theId, this);
   DBUG_VOID_RETURN;
 }//NdbTransaction::~NdbTransaction()
 
@@ -176,6 +474,7 @@ NdbTransaction::init()
   theBuddyConPtr          = 0xFFFFFFFF;
   //
   theBlobFlag = false;
+  m_userDefinedBlobOps = false;
   thePendingBlobOps = 0;
   m_theFirstLockHandle    = NULL;
   m_theLastLockHandle     = NULL;
@@ -183,7 +482,7 @@ NdbTransaction::init()
   pendingBlobWriteBytes = 0;
   if (theId == NdbObjectIdMap::InvalidId)
   {
-    theId = theNdb->theImpl->theNdbObjectIdMap.map(this);
+    theId = theNdb->theImpl->mapRecipient(this);
     if (theId == NdbObjectIdMap::InvalidId)
     {
       theError.code = 4000;
@@ -214,8 +513,7 @@ setOperationErrorCodeAbort(int error);
 Remark:        Sets an error code on the connection object from an 
                operation object. 
 *****************************************************************************/
-void
-NdbTransaction::setOperationErrorCodeAbort(int error, int abortOption)
+void NdbTransaction::setOperationErrorCodeAbort(int error)
 {
   DBUG_ENTER("NdbTransaction::setOperationErrorCodeAbort");
   if (theTransactionIsStarted == false) {
@@ -290,6 +588,209 @@ NdbTransaction::handleExecuteCompletion()
   return;
 }//NdbTransaction::handleExecuteCompletion()
 
+/**
+ * OpList
+ *
+ * Class using RAII to more safely / clearly do
+ * operation list manipulations
+ * Potential improvement :  implement as template parameterised by
+ * NdbTransaction* list first/last vars
+ */
+class OpList
+{
+  NdbOperation*& m_listFirst;
+  NdbOperation*& m_listLast;
+
+  NdbOperation* m_savedFirst;
+  NdbOperation* m_savedLast;
+
+  // Restore saved list items after or
+  // before main list items
+  bool m_savedAfter;
+
+public:
+#ifdef VM_TRACE
+  void checkOpInList(const NdbOperation* op)
+  {
+    const NdbOperation* lop = m_listFirst;
+    do
+    {
+      if (op == lop)
+      {
+        return;
+      }
+    } while (lop != NULL &&
+             lop != m_listLast &&
+             (lop = lop->next()) != NULL);
+    abort();
+  }
+#endif
+  /**
+   * OpList
+   *
+   * Create OpList with pointers to list source
+   */
+  OpList(NdbOperation*& listFirst,
+         NdbOperation*& listLast):
+    m_listFirst(listFirst),
+    m_listLast(listLast),
+    m_savedFirst(NULL),
+    m_savedLast(NULL),
+    m_savedAfter(true)
+  {
+#ifdef VM_TRACE
+    checkOpInList(m_listLast);
+#endif
+  }
+
+  /**
+   * ~OpList
+   *
+   * On going out of scope return the saved operations to the
+   * list that they came from.
+   */
+  ~OpList()
+  {
+    /* Restore list */
+    if (m_savedFirst)
+    {
+      assert(m_savedLast);
+
+      if (m_listFirst != NULL)
+      {
+        assert(m_listLast != NULL);
+        if (m_savedAfter)
+        {
+          /* Add saved to end of list */
+          m_listLast->next(m_savedFirst);
+          m_listLast = m_savedLast;
+        }
+        else
+        {
+          /* Add saved to start of list */
+          m_savedLast->next(m_listFirst);
+          m_listFirst = m_savedFirst;
+        }
+      }
+      else
+      {
+        /* Replace Whole list */
+        assert(m_listLast == NULL);
+        m_listFirst = m_savedFirst;
+        m_listLast = m_savedLast;
+      }
+    }
+  }
+
+  /**
+   * Anything saved attm
+   */
+  bool isEmpty() const
+  {
+    return (m_savedFirst == NULL);
+  }
+
+
+  /**
+   * Save everything after passed op
+   * Will be restored to end of list
+   * on going out of scope
+   */
+  void saveAfter(NdbOperation* op)
+  {
+    assert(m_savedFirst == NULL);
+    assert(m_savedLast == NULL);
+#ifdef VM_TRACE
+    checkOpInList(op);
+#endif
+    m_savedFirst = op->next();
+    m_savedLast = m_listLast;
+
+    op->next(NULL);
+    m_listLast = op;
+    m_savedAfter = true;
+  }
+
+  /**
+   * Save everything up to and including
+   * passed op.
+   * Will be restored to start of list
+   * on going out of scope
+   */
+  void saveBeforeAndIncluding(NdbOperation* op)
+  {
+    assert(m_savedFirst == NULL);
+    assert(m_savedLast == NULL);
+#ifdef VM_TRACE
+    checkOpInList(op);
+#endif
+    m_savedFirst = m_listFirst;
+    m_savedLast = op;
+
+    m_listFirst = op->next();
+    op->next(NULL);
+    m_savedAfter = false;
+  }
+
+  /**
+   * Save everything in the list
+   * Will be restored to end of list
+   * on going out of scope
+   */
+  void save()
+  {
+    if (m_savedFirst != NULL)
+    {
+      assert(m_savedLast != NULL);
+      m_savedLast->next(m_listFirst);
+      m_savedLast = m_listLast;
+    }
+    else
+    {
+      assert(m_savedLast == NULL);
+      m_savedFirst = m_listFirst;
+      m_savedLast = m_listLast;
+    }
+    m_listFirst = m_listLast = NULL;
+    m_savedAfter = true;
+  }
+
+  /**
+   * allOpsHaveFlagsSet
+   *
+   * Checks that all operations in the supplied list
+   * have all of the given flags set
+   */
+  static bool allOpsHaveFlagsSet(const NdbOperation* opFirst,
+                                 const NdbOperation* opLast,
+                                 Uint8 flags)
+  {
+    if (opFirst)
+    {
+      assert(opLast);
+
+      const NdbOperation* op = opFirst;
+
+      do
+      {
+        if ((op->m_flags & flags) != flags)
+        {
+          break;
+        }
+
+        if (op == opLast)
+        {
+          return true;
+        }
+
+        op = op->next();
+      } while (true);
+    }
+
+    return false;
+  }
+};
+
 /*****************************************************************************
 int execute(ExecType aTypeOfExec, CommitType aTypeOfCommit, int forceSend);
 
@@ -311,6 +812,9 @@ NdbTransaction::execute(ExecType aTypeOfExec,
 
   if (! theBlobFlag)
     DBUG_RETURN(executeNoBlobs(aTypeOfExec, abortOption, forceSend));
+
+  /* Blob specific exec path taken */
+  m_userDefinedBlobOps = false;
 
   /*
    * execute prepared ops in batches, as requested by blobs
@@ -359,64 +863,94 @@ NdbTransaction::execute(ExecType aTypeOfExec,
 
 
   ExecType tExecType;
-  NdbOperation* tCompletedFirstOp = NULL;
-  NdbOperation* tCompletedLastOp = NULL;
+  OpList completedOps(theCompletedFirstOp,
+                      theCompletedLastOp);
+
+  BlobBatchChecker batchChecker;
 
   int ret = 0;
   do {
-    NdbOperation* firstSavedOp= NULL;
-    NdbOperation* lastSavedOp= NULL;
+    OpList nextBatchOps(theFirstOpInList,
+                        theLastOpInList);
+    NdbOperation* prevOp = NULL;
 
     tExecType = aTypeOfExec;
     tPrepOp = theFirstOpInList;
     while (tPrepOp != NULL) {
       if (tPrepOp->theError.code == 0) {
-        bool batch = false;
         NdbBlob* tBlob = tPrepOp->theBlobList;
         if (tBlob !=NULL) {
-          /* We split the operation list just after this
-           * operation, in case it adds extra ops
-           */
-          firstSavedOp = tPrepOp->next(); // Could be NULL
-          lastSavedOp = theLastOpInList;
-          DBUG_PRINT("info", ("Splitting ops list between %p and %p",
-                              firstSavedOp, lastSavedOp));
-          tPrepOp->next(NULL);
-          theLastOpInList= tPrepOp;
-        }
-        while (tBlob != NULL) {
-          if (tBlob->preExecute(tExecType, batch) == -1)
-	  {
-            ret = -1;
-	    if (firstTransError.code==0)
-	      firstTransError= theError;
-	  }
-          tBlob = tBlob->theNext;
-        }
-        if (batch) {
-          // blob asked to execute all up to lastOpInBatch now
-          tExecType = NoCommit;
-          break;
-        }
-        else {
-          /* No batching yet - rejoin the current and
-           * saved operation lists
-           */
-          DBUG_PRINT("info", ("Rejoining ops list after preExecute between %p and %p",
-                              theLastOpInList,
-                              firstSavedOp));
-          if (firstSavedOp != NULL && lastSavedOp != NULL) {
-            if (theFirstOpInList == NULL)
-              theFirstOpInList = firstSavedOp;
-            else
-              theLastOpInList->next(firstSavedOp);
-            theLastOpInList = lastSavedOp;
+          if (!batchChecker.includeNextOpInBatch(tPrepOp))
+          {
+            DBUG_PRINT("info", ("Next op cannot be included in batch - "
+                                "split list after %p and before %p",
+                                prevOp,
+                                tPrepOp));
+            assert(prevOp != NULL);
+            /* Execute what we have prepared so far */
+            /* Save any remainder for later */
+            assert(nextBatchOps.isEmpty());
+            nextBatchOps.saveAfter(prevOp);
+
+            tExecType = NoCommit;
+            /* Break out of loop to execute now... */
+            break;
           }
-          firstSavedOp= lastSavedOp= NULL;
+
+          /* Prepare this operation + blob ops now */
+          {
+            /* Remove already defined ops from consideration for now
+             * for more efficient operation reordering in
+             * Blob preExecute
+             */
+            OpList precedingOps(theFirstOpInList,
+                                theLastOpInList);
+            if (prevOp)
+            {
+              precedingOps.saveBeforeAndIncluding(prevOp);
+            }
+            /**
+             * Hide following user defined ops for now so that
+             * internal blob operations are logically placed
+             * before them
+             */
+            OpList followingOps(theFirstOpInList,
+                                theLastOpInList);
+            followingOps.saveAfter(tPrepOp);
+
+            while (tBlob != NULL) {
+              NdbBlob::BlobAction ba = tBlob->preExecute(tExecType);
+
+              if (ba == NdbBlob::BA_ERROR)
+              {
+                ret = -1;
+                if (firstTransError.code==0)
+                  firstTransError= theError;
+              }
+              else if (ba == NdbBlob::BA_EXEC)
+              {
+                DBUG_PRINT("info",
+                           ("Op needs execution, setting execType from %u to %u",
+                            tExecType,
+                            NoCommit));
+                tExecType = NoCommit;
+              }
+              else
+              {
+                assert(ba == NdbBlob::BA_DONE);
+              }
+              tBlob = tBlob->theNext;
+            } // while tBlob
+          } // ops lists
         }
       }
+
+      prevOp = tPrepOp;
       tPrepOp = tPrepOp->next();
     }
+
+    /* Will execute now with what we have so far */
+    batchChecker.reset();
 
     if (tExecType == Commit) {
       NdbOperation* tOp = theCompletedFirstOp;
@@ -437,46 +971,37 @@ NdbTransaction::execute(ExecType aTypeOfExec,
       }
     }
 
-    // completed ops are in unspecified order
-    if (theCompletedFirstOp != NULL) {
-      if (tCompletedFirstOp == NULL) {
-        tCompletedFirstOp = theCompletedFirstOp;
-        tCompletedLastOp = theCompletedLastOp;
-      } else {
-        tCompletedLastOp->next(theCompletedFirstOp);
-        tCompletedLastOp = theCompletedLastOp;
-      }
-      theCompletedFirstOp = NULL;
-      theCompletedLastOp = NULL;
-    }
+    // Save completed ops so far...
+    completedOps.save();
 
-    if (executeNoBlobs(tExecType, 
-		       NdbOperation::DefaultAbortOption,
-		       forceSend) == -1)
     {
-      /**
-       * We abort the execute here. But we still need to put the split-off
-       * operation list back into the transaction object, or we will get a
-       * memory leak.
-       */
-      if (firstSavedOp != NULL && lastSavedOp != NULL) {
-        DBUG_PRINT("info", ("Rejoining ops list after postExecute between "
-                            "%p and %p", theLastOpInList, firstSavedOp));
-        if (theFirstOpInList == NULL)
-          theFirstOpInList = firstSavedOp;
-        else
-          theLastOpInList->next(firstSavedOp);
-        theLastOpInList = lastSavedOp;
-      }
-      if (tCompletedFirstOp != NULL) {
-        tCompletedLastOp->next(theCompletedFirstOp);
-        theCompletedFirstOp = tCompletedFirstOp;
-        if (theCompletedLastOp == NULL)
-          theCompletedLastOp = tCompletedLastOp;
-      }
+      const NdbOperation* execOpFirst = theFirstOpInList;
+      const NdbOperation* execOpLast = theLastOpInList;
 
-      /* executeNoBlobs will have set transaction error */
-      DBUG_RETURN(-1);
+      if (executeNoBlobs(tExecType,
+                         NdbOperation::DefaultAbortOption,
+                         forceSend) == -1)
+      {
+        if (theError.code == 626)
+        {
+          DBUG_PRINT("info", ("Got error 626 in main exec, "
+                              "checking for part reads "
+                              "indicating Blob corruption."));
+
+          if (OpList::allOpsHaveFlagsSet(execOpFirst,
+                                         execOpLast,
+                                         NdbOperation::OF_BLOB_PART_READ))
+          {
+            DBUG_PRINT("info", ("Blob corruption"));
+            theError.code = NdbBlobImpl::ErrCorrupt;
+          }
+        }
+
+        /* Capture any trans error left by the execute() in case it gets trampled */
+        if (firstTransError.code != 0)
+          theError = firstTransError;
+        DBUG_RETURN(-1);
+      }
     }
 
     /* Capture any trans error left by the execute() in case it gets trampled */
@@ -489,52 +1014,79 @@ NdbTransaction::execute(ExecType aTypeOfExec,
     theFirstOpInList = theLastOpInList = NULL;
 #endif
 
+    bool postexec_again;
+    do
     {
+      postexec_again = false;
       NdbOperation* tOp = theCompletedFirstOp;
       while (tOp != NULL) {
         if (tOp->theError.code == 0) {
           NdbBlob* tBlob = tOp->theBlobList;
           while (tBlob != NULL) {
             // may add new operations if batch
-            if (tBlob->postExecute(tExecType) == -1)
+            NdbBlob::BlobAction ba = tBlob->postExecute(tExecType);
+            if (ba == NdbBlob::BA_ERROR)
 	    {
               ret = -1;
 	      if (firstTransError.code==0)
 		firstTransError= theError;
 	    }
+            else if (ba == NdbBlob::BA_EXEC)
+            {
+              DBUG_PRINT("info", ("postExec requested further exec"));
+              postexec_again = true;
+              /**
+               * Potential improvements :
+               * - Resume postExec from first op requesting it?
+               * - Early exit if batch is full
+               */
+            }
+            else
+            {
+              assert(ba == NdbBlob::BA_DONE);
+            }
             tBlob = tBlob->theNext;
           }
         }
         tOp = tOp->next();
       }
-    }
 
-    // Restore any saved prepared ops if we batched
-    if (firstSavedOp != NULL && lastSavedOp != NULL) {
-      DBUG_PRINT("info", ("Rejoining ops list after postExecute between %p and %p",
-                          theLastOpInList,
-                          firstSavedOp));
-      if (theFirstOpInList == NULL)
-        theFirstOpInList = firstSavedOp;
-      else
-        theLastOpInList->next(firstSavedOp);
-      theLastOpInList = lastSavedOp;
-    }
-    assert(theFirstOpInList == NULL || tExecType == NoCommit);
+      const bool have_dependent_ops = !nextBatchOps.isEmpty();
+      const bool have_pending_ops = (theFirstOpInList != NULL);
+      const bool exec_now =
+        postexec_again ||                           // More to do
+        (have_dependent_ops && have_pending_ops);   // Flush
+
+      if (exec_now)
+      {
+        const NdbOperation* execOpFirst = theFirstOpInList;
+        const NdbOperation* execOpLast = theLastOpInList;
+
+        if (executeNoBlobs(NdbTransaction::NoCommit,
+                           NdbOperation::DefaultAbortOption,
+                           forceSend) == -1)
+        {
+          /* executeNoBlobs will have set transaction error */
+          if (theError.code == 626)
+          {
+            DBUG_PRINT("info", ("Got error 626 in postExec, "
+                                "checking for part reads "
+                                "indicating Blob corruption."));
+            if (OpList::allOpsHaveFlagsSet(execOpFirst,
+                                           execOpLast,
+                                           NdbOperation::OF_BLOB_PART_READ))
+            {
+              DBUG_PRINT("info", ("Blob corruption"));
+              theError.code = NdbBlobImpl::ErrCorrupt;
+            }
+          }
+          DBUG_RETURN(-1);
+        }
+      }
+    } while (postexec_again);
+    assert((theFirstOpInList == NULL && nextBatchOps.isEmpty()) ||
+           tExecType == NoCommit);
   } while (theFirstOpInList != NULL || tExecType != aTypeOfExec);
-
-  if (tCompletedFirstOp != NULL) {
-    tCompletedLastOp->next(theCompletedFirstOp);
-    theCompletedFirstOp = tCompletedFirstOp;
-    if (theCompletedLastOp == NULL)
-      theCompletedLastOp = tCompletedLastOp;
-  }
-#if ndb_api_count_completed_ops_after_blob_execute
-  { NdbOperation* tOp; unsigned n = 0;
-    for (tOp = theCompletedFirstOp; tOp != NULL; tOp = tOp->next()) n++;
-    ndbout << "completed ops: " << n << endl;
-  }
-#endif
 
   /* Sometimes the original error is trampled by 'Trans already aborted',
    * detect this case and attempt to restore the original error
@@ -579,6 +1131,13 @@ NdbTransaction::executeNoBlobs(NdbTransaction::ExecType aTypeOfExec,
   DBUG_ENTER("NdbTransaction::executeNoBlobs");
   DBUG_PRINT("enter", ("aTypeOfExec: %d, abortOption: %d", 
 		       aTypeOfExec, abortOption));
+
+  if (unlikely(m_userDefinedBlobOps))
+  {
+    // "Pending Blob Operations must be executed before this call"
+    theError.code = 4558;
+    DBUG_RETURN(-1);
+  }
 
 //------------------------------------------------------------------------
 // We will start by preparing all operations in the transaction defined
@@ -637,7 +1196,7 @@ NdbTransaction::executeNoBlobs(NdbTransaction::ExecType aTypeOfExec,
       for (unsigned i = 0; i < theNdb->theNoOfCompletedTransactions; i++)
         anyway += theNdb->theCompletedTransactionsArray[i] == this;
       if (anyway) {
-        theNdb->printState("execute %lx", (long)this);
+        theNdb->printState("execute %p", this);
         abort();
       }
 #endif
@@ -705,8 +1264,8 @@ NdbTransaction::executeAsynchPrepare(NdbTransaction::ExecType aTypeOfExec,
                                      NdbOperation::AbortOption abortOption)
 {
   DBUG_ENTER("NdbTransaction::executeAsynchPrepare");
-  DBUG_PRINT("enter", ("aTypeOfExec: %d, aCallback: 0x%lx, anyObject: Ox%lx",
-		       aTypeOfExec, (long) aCallback, (long) anyObject));
+  DBUG_PRINT("enter", ("aTypeOfExec: %d, aCallback: %p, anyObject: %p",
+		       aTypeOfExec, aCallback, anyObject));
 
   /**
    * Reset error.code on execute
@@ -787,6 +1346,16 @@ NdbTransaction::executeAsynchPrepare(NdbTransaction::ExecType aTypeOfExec,
     }
     DBUG_VOID_RETURN;
   }//if
+
+  /**
+   * Perform scan finalisation here
+   */
+  NdbScanOperation* tScanOp = m_theFirstScanOperation;
+  while (tScanOp)
+  {
+    tScanOp->finaliseScan();
+    tScanOp = (NdbScanOperation*)tScanOp->next();
+  }
 
   NdbQueryImpl* const lastLookupQuery = getLastLookupQuery(m_firstQuery);
 
@@ -989,6 +1558,7 @@ NdbTransaction::sendTC_HBREP()		// Send a TC_HBREP signal;
   }
 
   if (tSignal->setSignal(GSN_TC_HBREP, refToBlock(m_tcRef)) == -1) {
+    tNdb->releaseSignal(tSignal);
     return -1;
   }
 
@@ -1130,8 +1700,8 @@ NdbTransaction::doSend()
     theNdb->insert_completed_list(this); 
     DBUG_RETURN(0);
   default:
-    ndbout << "Inconsistent theSendStatus = "
-	   << (Uint32) theSendStatus << endl;
+    g_eventLogger->info("Inconsistent theSendStatus = %d",
+                        (Uint32)theSendStatus);
     abort();
     break;
   }//switch
@@ -1261,8 +1831,8 @@ NdbTransaction::release(){
   theMagicNumber = 0xFE11DC;
   theInUseState = false;
 #ifdef VM_TRACE
-  if (theListState != NotInList) {
-    theNdb->printState("release %lx", (long)this);
+  if (theListState != NotInList && theListState != InPreparedList) {
+    theNdb->printState("release %p", this);
     abort();
   }
 #endif
@@ -1303,8 +1873,6 @@ NdbTransaction::releaseOperations()
   theFirstExecOpInList = NULL;
   theLastOpInList = NULL;
   theLastExecOpInList = NULL;
-  theScanningOp = NULL;
-  m_scanningQuery = NULL;
   m_theFirstScanOperation = NULL;
   m_theLastScanOperation = NULL;
   m_firstExecutedScanOp = NULL;
@@ -1320,6 +1888,8 @@ NdbTransaction::releaseCompletedOperations()
   releaseOps(theCompletedFirstOp);
   theCompletedFirstOp = NULL;
   theCompletedLastOp = NULL;
+  theErrorLine = 0;
+  theErrorOperation = NULL;
 }//NdbTransaction::releaseCompletedOperations()
 
 
@@ -1420,6 +1990,12 @@ NdbTransaction::releaseScanOperation(NdbIndexScanOperation** listhead,
   
   if (op != NULL)
   {
+    if (unlikely(theErrorOperation == op))
+    {
+      /* Remove ref to scan op before release */
+      theErrorLine = 0;
+      theErrorOperation = NULL;
+    }
     op->release();
     theNdb->releaseScanOperation(op);
     return true;
@@ -1524,16 +2100,20 @@ NdbTransaction::checkSchemaObjects(const NdbTableImpl *tab,
                && (dictTab->getObjectVersion() == tab->getObjectVersion())
                && (tab != &(NdbTableImpl::getImpl(*dictTab))))
     {
-      ndbout << "Schema object ownership check failed: table " << tab->getName() 
-             << " not owned by connection" << endl;
+      g_eventLogger->info(
+          "Schema object ownership check failed:"
+          " table %s not owned by connection",
+          tab->getName());
       ret = false;
     }
     if(idx && dictIdx && (dictTab->getObjectId() == idx->getObjectId())
                && (dictIdx->getObjectVersion() == idx->getObjectVersion())
                && (idx != &(NdbIndexImpl::getImpl(*dictIdx))))
     {
-      ndbout << "Schema object ownership check failed: index " 
-             << idx->getName() << " not owned by connection" << endl;
+      g_eventLogger->info(
+          "Schema object ownership check failed:"
+          " index %s not owned by connection",
+          idx->getName());
       ret = false;
     }
   }
@@ -1542,8 +2122,7 @@ NdbTransaction::checkSchemaObjects(const NdbTableImpl *tab,
 
 
 /*****************************************************************************
-NdbOperation* getNdbOperation(const NdbTableImpl* tab, NdbOperation* aNextOp,
-                              bool useRec)
+NdbOperation* getNdbOperation(const NdbTableImpl* tab, NdbOperation* aNextOp)
 
 Return Value    Return a pointer to a NdbOperation object if getNdbOperation 
                 was succesful.
@@ -1559,22 +2138,20 @@ NdbOperation*
 NdbTransaction::getNdbOperation(const NdbTableImpl * tab,
                                 NdbOperation* aNextOp)
 { 
-  NdbOperation* tOp;
-
   if (theScanningOp != NULL || m_scanningQuery != NULL){
     setErrorCode(4607);
     return NULL;
   }
-  
-  tOp = theNdb->getOperation();
-  if (tOp == NULL)
-    goto getNdbOp_error1;
-
   if (!checkSchemaObjects(tab))
   {
     setErrorCode(1231);
     return NULL;
-  } 
+  }
+  
+  NdbOperation* tOp = theNdb->getOperation();
+  if (tOp == NULL)
+    goto getNdbOp_error1;
+
   if (aNextOp == NULL) {
     if (theLastOpInList != NULL) {
        theLastOpInList->next(tOp);
@@ -1685,12 +2262,12 @@ NdbTransaction::getNdbIndexScanOperation(const NdbIndexImpl* index,
   if (theCommitStatus == Started){
     const NdbTableImpl * indexTable = index->getIndexTable();
     if (indexTable != 0){
-      NdbIndexScanOperation* tOp = getNdbScanOperation(indexTable);
       if (!checkSchemaObjects(table, index))
       {
         setErrorCode(1231);
         return NULL;
       } 
+      NdbIndexScanOperation* tOp = getNdbScanOperation(indexTable);
       if(tOp)
       {
 	tOp->m_currentTable = table;
@@ -1751,23 +2328,23 @@ Remark:         Get an operation from NdbScanOperation object idlelist and get t
 NdbIndexScanOperation*
 NdbTransaction::getNdbScanOperation(const NdbTableImpl * tab)
 { 
-  NdbIndexScanOperation* tOp;
-  
-  tOp = theNdb->getScanOperation();
-  if (tOp == NULL)
-    goto getNdbOp_error1;
   if (!checkSchemaObjects(tab))
   {
     setErrorCode(1231);
     return NULL;
   } 
   
+  NdbIndexScanOperation* tOp = theNdb->getScanOperation();
+  if (tOp == NULL)
+    goto getNdbOp_error1;
+
   if (tOp->init(tab, this) != -1) {
     define_scan_op(tOp);
     // Mark that this NdbIndexScanOperation is used as NdbScanOperation
     tOp->m_type = NdbOperation::TableScan; 
     return tOp;
   } else {
+    tOp->release();
     theNdb->releaseScanOperation(tOp);
   }//if
   return NULL;
@@ -1883,17 +2460,15 @@ NdbTransaction::getNdbIndexOperation(const NdbIndexImpl * anIndex,
                                      const NdbTableImpl * aTable,
                                      NdbOperation* aNextOp)
 { 
-  NdbIndexOperation* tOp;
-  
-  tOp = theNdb->getIndexOperation();
-  if (tOp == NULL)
-    goto getNdbOp_error1;
-
   if (!checkSchemaObjects(aTable, anIndex))
   {
     setErrorCode(1231);
     return NULL;
   } 
+  NdbIndexOperation* tOp = theNdb->getIndexOperation();
+  if (tOp == NULL)
+    goto getNdbOp_error1;
+
   if (aNextOp == NULL) {
     if (theLastOpInList != NULL) {
        theLastOpInList->next(tOp);
@@ -2026,8 +2601,7 @@ Return Value:  Return 0 : receiveTCRELEASECONF was successful.
 Parameters:    aSignal: The signal object pointer.
 Remark:         DisConnect TC Connect pointer to NDBAPI. 
 *******************************************************************************/
-int			
-NdbTransaction::receiveTCRELEASECONF(const NdbApiSignal* aSignal)
+int NdbTransaction::receiveTCRELEASECONF(const NdbApiSignal* /*aSignal*/)
 {
   if (theStatus != DisConnecting)
   {
@@ -2201,7 +2775,7 @@ transactions.
     }
 
     /**********************************************************************/
-    /*	A serious error has occured. This could be due to deadlock or */
+    /*	A serious error has occurred. This could be due to deadlock or */
     /*	lack of resources or simply a programming error in NDB. This  */
     /*	transaction will be aborted. Actually it has already been     */
     /*	and we only need to report completion and return with the     */
@@ -2243,7 +2817,7 @@ from other transactions.
     const Uint32 tNoOfOperations = TcKeyConf::getNoOfOperations(tTemp);
     const Uint32 tCommitFlag = TcKeyConf::getCommitFlag(tTemp);
 
-    const Uint32* tPtr = (Uint32 *)&keyConf->operations[0];
+    const Uint32* tPtr = (const Uint32*)&keyConf->operations[0];
     Uint32 tNoComp = theNoOfOpCompleted;
     for (Uint32 i = 0; i < tNoOfOperations ; i++) {
       NdbReceiver* const tReceiver = 
@@ -2335,7 +2909,7 @@ NdbTransaction::receiveTCKEY_FAILCONF(const TcKeyFailConf * failConf)
   */
   if(checkState_TransId(&failConf->transId1)){
     /*
-      A node failure of the TC node occured. The transaction has
+      A node failure of the TC node occurred. The transaction has
       been committed.
     */
     theCommitStatus = Committed;
@@ -2375,7 +2949,7 @@ NdbTransaction::receiveTCKEY_FAILCONF(const TcKeyFailConf * failConf)
     return 0;
   } else {
 #ifdef VM_TRACE
-    ndbout_c("Recevied TCKEY_FAILCONF wo/ operation");
+    g_eventLogger->info("Recevied TCKEY_FAILCONF wo/ operation");
 #endif
   }
   return -1;
@@ -2420,7 +2994,7 @@ NdbTransaction::receiveTCKEY_FAILREF(const NdbApiSignal* aSignal)
     return 0;
   } else {
 #ifdef VM_TRACE
-    ndbout_c("Recevied TCKEY_FAILREF wo/ operation");
+    g_eventLogger->info("Recevied TCKEY_FAILREF wo/ operation");
 #endif
   }
   return -1;
@@ -2676,6 +3250,7 @@ NdbTransaction::readTuple(const NdbRecord *key_rec, const char *key_row,
                           const NdbOperation::OperationOptions *opts,
                           Uint32 sizeOfOptions)
 {
+  bool upgraded_lock = false;
   /* Check that the NdbRecord specifies the full primary key. */
   if (!(key_rec->flags & NdbRecord::RecHasAllKeys))
   {
@@ -2683,10 +3258,12 @@ NdbTransaction::readTuple(const NdbRecord *key_rec, const char *key_row,
     return NULL;
   }
 
-  /* It appears that unique index operations do no support readCommitted. */
   if (key_rec->flags & NdbRecord::RecIsIndex &&
       lock_mode == NdbOperation::LM_CommittedRead)
+  {
     lock_mode= NdbOperation::LM_Read;
+    upgraded_lock = true;
+  }
 
   NdbOperation::OperationType opType=
     (lock_mode == NdbOperation::LM_Exclusive ?
@@ -2700,6 +3277,11 @@ NdbTransaction::readTuple(const NdbRecord *key_rec, const char *key_row,
   if (!op)
     return NULL;
 
+  if (upgraded_lock)
+  {
+    DBUG_PRINT("info", ("Set ReadCommittedBase true"));
+    op->setReadCommittedBase();
+  }
   if (op->theLockMode == NdbOperation::LM_CommittedRead)
   {
     op->theDirtyIndicator= 1;
@@ -2864,17 +3446,6 @@ NdbTransaction::refreshTuple(const NdbRecord *key_rec, const char *key_row,
                              const NdbOperation::OperationOptions *opts,
                              Uint32 sizeOfOptions)
 {
-  /* Check TC node version lockless */
-  {
-    Uint32 tcVer = theNdb->theImpl->getNodeInfo(theDBnode).m_info.m_version;
-    if (unlikely(! ndb_refresh_tuple(tcVer)))
-    {
-      /* Function not implemented yet */
-      setOperationErrorCodeAbort(4003);
-      return NULL;
-    }
-  }
-
   /* Check that the NdbRecord specifies the full primary key. */
   if (!(key_rec->flags & NdbRecord::RecHasAllKeys))
   {
@@ -2882,8 +3453,15 @@ NdbTransaction::refreshTuple(const NdbRecord *key_rec, const char *key_row,
     return NULL;
   }
 
+  if (key_rec->flags & NdbRecord::RecTableHasBlob)
+  {
+    // Table with blobs does not support refreshTuple()
+    setOperationErrorCodeAbort(4343);
+    return NULL;
+  }
+
   Uint8 keymask[NDB_MAX_ATTRIBUTES_IN_TABLE/8];
-  bzero(keymask, sizeof(keymask));
+  std::memset(keymask, 0, sizeof(keymask));
   for (Uint32 i = 0; i<key_rec->key_index_length; i++)
   {
     Uint32 id = key_rec->columns[key_rec->key_indexes[i]].attrId;
@@ -2996,7 +3574,7 @@ NdbTransaction::getMaxPendingBlobReadBytes() const
   /* 0 == max */
   return (maxPendingBlobReadBytes == 
           (~Uint32(0)) ? 0 : maxPendingBlobReadBytes);
-};
+}
 
 Uint32
 NdbTransaction::getMaxPendingBlobWriteBytes() const
@@ -3004,7 +3582,7 @@ NdbTransaction::getMaxPendingBlobWriteBytes() const
   /* 0 == max */
   return (maxPendingBlobWriteBytes == 
           (~Uint32(0)) ? 0 : maxPendingBlobWriteBytes);
-};
+}
 
 void
 NdbTransaction::setMaxPendingBlobReadBytes(Uint32 bytes)
@@ -3016,6 +3594,8 @@ NdbTransaction::setMaxPendingBlobReadBytes(Uint32 bytes)
 void
 NdbTransaction::setMaxPendingBlobWriteBytes(Uint32 bytes)
 {
+  DBUG_PRINT("info", ("Setting Blob max pending bytes %d",
+                      bytes));
   /* 0 == max */
   maxPendingBlobWriteBytes = (bytes?bytes : (~ Uint32(0)));
 }
@@ -3139,7 +3719,7 @@ NdbTransaction::report_node_failure(Uint32 id){
 NdbQuery*
 NdbTransaction::createQuery(const NdbQueryDef* def,
                             const NdbQueryParamValue paramValues[],
-                            NdbOperation::LockMode lock_mode)
+                            NdbOperation::LockMode)
 {
   NdbQueryImpl* query = NdbQueryImpl::buildQuery(*this, def->getImpl());
   if (unlikely(query == NULL)) {
@@ -3204,7 +3784,7 @@ NdbTransaction::unlock(const NdbLockHandle* lockHandle,
       /* Looks ok */
       break;
     }
-    /* Fall through */
+    [[fallthrough]];
   case NdbLockHandle::ALLOCATED:
     /* NdbLockHandle original operation not executed successfully */
     setErrorCode(4553);
@@ -3296,7 +3876,7 @@ NdbTransaction::releaseLockHandle(const NdbLockHandle* lockHandle)
       setErrorCode(4550);
       return -1;
     }
-    /* Fall through */
+    [[fallthrough]];
   case NdbLockHandle::ALLOCATED:
     /* Ok to release */
     break;

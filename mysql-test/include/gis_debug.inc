@@ -48,7 +48,9 @@ CALL p1(1, 'MultiLineString((0 0,2 2,0 4))');
 CALL p1(1, 'MultiLineString((0 0,2 2),(0 2,2 0))');
 CALL p1(1, 'MultiLineString((2 2,2 8,-2 8),(-6 -6, 6 6),(10 10, 14 14))');
 CALL p1(1, 'MultiLineString((0 0,0 1),(3 0,3 1))');
+--echo # Invalid geometry in input
 CALL p1(1, 'MultiPolygon(((2 2,2 8,8 8,8 2,2 2)), ((9 9,8 1,1 5,9 9)))');
+--echo # Invalid geometry in input
 CALL p1(1, 'MultiPolygon(((2 2,2 8,8 8,8 2,2 2), (4 4,4 6,6 6,6 4,4 4)),((9 9,8 1,1 5,9 9)))');
 CALL p1(1, 'GeometryCollection(Point(0 0))');
 --error ER_GIS_INVALID_DATA
@@ -67,34 +69,20 @@ CALL p1(1, 'GeometryCollection(Point(9 9),LineString(1 5,0 0),Polygon((2 2,2 8,8
 --echo # Testing ST_BUFFER with zero distance
 --echo #
 
---error ER_GIS_INVALID_DATA
-CALL p1(0, 'POINT(0 0))');
-CALL p1(0, 'POINT(0 0)');
---error ER_GIS_INVALID_DATA
-CALL p1(0, 'LineString(0 1, 1 1))');
-CALL p1(0, 'LineString(0 1, 1 1)');
-CALL p1(0, 'LineString(9 9,8 1,1 5,0 0)');
+# Be careful so as to not apply ST_AREA to something that is not a
+# (multi)polygon since that is not valid in SQL.
 CALL p1(0, 'Polygon((2 2,2 8,8 8,8 2,2 2))');
 CALL p1(0, 'Polygon((0 0,0 8,8 8,8 0,0 0),(2 2,6 2,6 6,2 6,2 2))');
 CALL p1(0, 'Polygon((0 0, 0 8, 8 8, 8 10, -10 10, -10 0, 0 0))');
-CALL p1(0, 'MultiPoint(9 9,8 1,1 5)');
-CALL p1(0, 'MultiLineString((0 0,2 2))');
-CALL p1(0, 'MultiLineString((0 0,2 2,0 4))');
-CALL p1(0, 'MultiLineString((0 0,2 2),(0 2,2 0))');
-CALL p1(0, 'MultiLineString((2 2,2 8,-2 8),(-6 -6, 6 6),(10 10, 14 14))');
+--echo # Invalid geometry in input
 CALL p1(0, 'MultiPolygon(((2 2,2 8,8 8,8 2,2 2)), ((9 9,8 1,1 5,9 9)))');
+--echo # Invalid geometry in input
 CALL p1(0, 'MultiPolygon(((2 2,2 8,8 8,8 2,2 2), (4 4,4 6,6 6,6 4,4 4)),((9 9,8 1,1 5,9 9)))');
-CALL p1(0, 'GeometryCollection(Point(0 0))');
---error ER_GIS_INVALID_DATA
-CALL p1(0, 'GeometryCollection(LineString(0 0, 2 2)))');
-CALL p1(0, 'GeometryCollection(LineString(0 0, 2 2))');
 --error ER_GIS_INVALID_DATA
 CALL p1(0, 'GeometryCollection(Polygon((2 2,2 8,8 8,8 2,2 2))))');
-CALL p1(0, 'GeometryCollection(Polygon((2 2,2 8,8 8,8 2,2 2)))');
-CALL p1(0, 'GeometryCollection(MultiPoint(9 9,8 1,1 5))');
-CALL p1(0, 'GeometryCollection(MultiLineString((0 0,0 1),(3 0,3 1)))');
-CALL p1(0, 'GeometryCollection(MultiPolygon(((0 0, 3 0, 3 3, 0 3, 0 0)),((6 6,6 9,9 9,9 6,6 6))))');
-CALL p1(0, 'GeometryCollection(Point(9 9),LineString(1 5,0 0),Polygon((2 2,2 8,8 8,8 2,2 2)))');
+# Distance is zero so ST_Buffer returns input geometry unchanged. ST_Area only supports (multi)polygon.
+#CALL p1(0, 'GeometryCollection(Polygon((2 2,2 8,8 8,8 2,2 2)))');
+#CALL p1(0, 'GeometryCollection(MultiPolygon(((0 0, 3 0, 3 3, 0 3, 0 0)),((6 6,6 9,9 9,9 6,6 6))))');
 
 
 --echo #
@@ -126,7 +114,9 @@ CALL p1(-1, 'MultiLineString((0 0,2 2),(0 2,2 0))');
 CALL p1(-1, 'MultiLineString((2 2,2 8,-2 8),(-6 -6, 6 6),(10 10, 14 14))');
 #
 # Wrong shape
+--echo # Invalid geometry in input
 CALL p1(-1, 'MultiPolygon(((2 2,2 8,8 8,8 2,2 2)), ((9 9,8 1,1 5,9 9)))');
+--echo # Invalid geometry in input
 CALL p1(-1, 'MultiPolygon(((2 2,2 8,8 8,8 2,2 2), (4 4,4 6,6 6,6 4,4 4)),((9 9,8 1,1 5,9 9)))');
 #
 --error ER_WRONG_ARGUMENTS
@@ -176,7 +166,7 @@ SELECT ST_GeometryType(ST_BUFFER(ST_MULTIPOLYGONFROMTEXT('MULTIPOLYGON(((3 5,2 5
 --echo # Bug#13358363 - ASSERTION: N > 0 && N < SINUSES_CALCULATED*2+1 | GET_N_SINCOS/ADD_EDGE_BUFFER
 --echo #
 
-DO ST_BUFFER(ST_GEOMCOLLFROMTEXT('linestring(1 1,2 2)'),'');
+DO ST_BUFFER(ST_LINEFROMTEXT('linestring(1 1,2 2)'),'');
 
 SELECT ST_WITHIN(
         ST_LINESTRINGFROMTEXT(' LINESTRING(3 8,9 2,3 8,3 3,7 6,4 7,4 7,8 1) '),
@@ -201,8 +191,10 @@ SELECT ST_ASTEXT(ST_BUFFER(ST_POLYGONFROMTEXT(' POLYGON((9 9,5 2,4 5,9 9))'),
 CREATE TABLE t1 (a INT) engine=innodb;
 INSERT INTO t1 VALUES (1);
 SELECT * FROM t1 ORDER BY cast(st_distance(1,1) as DECIMAL);
+--skip_if_hypergraph  # Elides ORDER BY <constant>, and does not get the error.
 --error ER_GIS_INVALID_DATA
 DELETE FROM t1 ORDER BY cast(st_distance(1,1) as DECIMAL);
+--skip_if_hypergraph  # Elides ORDER BY <constant>, and does not get the error.
 --error ER_GIS_INVALID_DATA
 UPDATE t1 SET a=1 ORDER BY cast(st_distance(1,1) as DECIMAL);
 DROP TABLE t1;

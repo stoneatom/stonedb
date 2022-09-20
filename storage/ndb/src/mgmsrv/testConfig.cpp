@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2008, 2021, Oracle and/or its affiliates.
+  Copyright (c) 2008, 2022, Oracle and/or its affiliates.
 
 
    This program is free software; you can redistribute it and/or modify
@@ -22,6 +22,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
+
+#ifdef TEST_MGMCONFIG
 
 #include <ndb_global.h>
 #include "InitConfigFileParser.hpp"
@@ -102,7 +104,7 @@ check_param(const ConfigInfo::ParamInfo & param)
 bool
 check_params(void)
 {
-  bool ok= true;
+  bool ok [[maybe_unused]] = true;
   for (int j=0; j<g_info.m_NoOfParams; j++) {
     const ConfigInfo::ParamInfo & param= g_info.m_ParamInfo[j];
     printf("Checking %s...\n", param._fname);
@@ -150,7 +152,7 @@ create_config(const char* first, ...)
 }
 
 // Global variable for my_getopt
-extern "C" const char* my_defaults_file;
+extern const char* my_defaults_file;
 
 static
 unsigned
@@ -199,7 +201,8 @@ create_mycnf(const char* first, ...)
   my_defaults_file = mycnf_file.c_str();
 
   InitConfigFileParser parser;
-  Config* conf = parser.parse_mycnf();
+  const char* const cluster_config_suffix = nullptr;
+  Config* conf = parser.parse_mycnf(cluster_config_suffix);
 
   // Restore the global variable
   my_defaults_file = save_defaults_file;
@@ -290,7 +293,7 @@ diff_config(void)
 }
 
 
-void
+static void
 print_restart_info(void)
 {
   Vector<const char*> initial_node;
@@ -363,6 +366,44 @@ checksum_config(void)
   delete c2;
 }
 
+
+static void
+test_config_v1_with_dyn_ports(void)
+{
+  Config* c1=
+    create_config("[ndbd]", "[ndbd]",
+                  "[ndb_mgmd]", "HostName=localhost",
+                  "[mysqld]", NULL);
+  CHECK(c1);
+
+  ndbout_c("== check config v1 ==");
+
+  // Set all dynamic ports
+  ConfigIter iter(c1, CFG_SECTION_CONNECTION);
+  for(;iter.valid();iter.next()) {
+    Uint32 port = 0;
+    if (iter.get(CFG_CONNECTION_SERVER_PORT, &port) != 0 ||
+        port != 0)
+      continue; // Not configured as dynamic port
+    ConfigValues::Iterator i2(c1->m_configuration->m_config_values,
+                              iter.m_config);
+    const Uint32 dummy_port = 37;
+    CHECK(i2.set(CFG_CONNECTION_SERVER_PORT, dummy_port));
+  }
+
+  // c1->print();
+
+  UtilBuffer buf;
+  c1->pack(buf, false /* v2 */);
+
+  ConfigValuesFactory cvf;
+  CHECK(cvf.unpack_v1_buf(buf));
+
+  delete c1;
+
+  ndbout_c("==================");
+}
+
 static void
 test_param_values(void)
 {
@@ -396,14 +437,14 @@ test_param_values(void)
   {
     ndbout_c("testing %s", t->param);
     {
-      const Config* c =
-        create_config("[ndbd]", "NoOfReplicas=1",
+ const Config* c =
+   create_config("[ndbd]", "NoOfReplicas=1",
                       t->param,
-                      "[ndb_mgmd]", "HostName=localhost",
-                      "[mysqld]", NULL);
+                 "[ndb_mgmd]", "HostName=localhost",
+                 "[mysqld]", NULL);
       if (t->result)
       {
-        CHECK(c);
+  CHECK(c);
         delete c;
       }
       else
@@ -437,6 +478,7 @@ test_param_values(void)
 static void
 test_hostname_mycnf(void)
 {
+  ndbout_c("test_hostname_mycnf");
   // Check the special rule for my.cnf that says
   // the two hostname specs must match
   {
@@ -472,7 +514,6 @@ test_hostname_mycnf(void)
 #include <NdbTap.hpp>
 
 #include <EventLogger.hpp>
-extern EventLogger* g_eventLogger;
 
 TAPTEST(MgmConfig)
 {
@@ -483,9 +524,10 @@ TAPTEST(MgmConfig)
   checksum_config();
   test_param_values();
   test_hostname_mycnf();
-#if 0
-  print_restart_info();
-#endif
+  if (false)
+    print_restart_info();
+  test_config_v1_with_dyn_ports();
   ndb_end(0);
   return 1; // OK
 }
+#endif

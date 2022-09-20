@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -32,8 +32,8 @@
 
 struct CreateTabReq
 {
-  STATIC_CONST( SignalLength = 6 );
-  STATIC_CONST( SignalLengthLDM = 6 + 11 );
+  static constexpr Uint32 SignalLength = 6;
+  static constexpr Uint32 SignalLengthLDM = 6 + 11;
 
   enum RequestType {
   };
@@ -65,7 +65,7 @@ struct CreateTabReq
 };
 
 struct CreateTabConf {
-  STATIC_CONST( SignalLength = 3 );
+  static constexpr Uint32 SignalLength = 3;
 
   Uint32 senderRef;
   Uint32 senderData;
@@ -78,7 +78,7 @@ struct CreateTabConf {
 };
 
 struct CreateTabRef {
-  STATIC_CONST( SignalLength = 6 );
+  static constexpr Uint32 SignalLength = 6;
 
   Uint32 senderRef;
   Uint32 senderData;
@@ -103,14 +103,16 @@ struct TcSchVerReq
   Uint32 noOfPrimaryKeys;
   Uint32 singleUserMode;
   Uint32 userDefinedPartition;
-  STATIC_CONST( SignalLength = 9 );
+  Uint32 readBackup;
+  Uint32 fullyReplicated;
+  static constexpr Uint32 SignalLength = 11;
 };
 
 struct TcSchVerConf
 {
   Uint32 senderRef;
   Uint32 senderData;
-  STATIC_CONST( SignalLength = 2 );
+  static constexpr Uint32 SignalLength = 2;
 };
 
 

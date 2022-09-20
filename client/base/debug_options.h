@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2014, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2014, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -25,51 +25,51 @@
 #ifndef DEBUG_OPTIONS_INCLUDED
 #define DEBUG_OPTIONS_INCLUDED
 
-#include "abstract_options_provider.h"
-#include "nullable.h"
+#include <optional>
 
-namespace Mysql{
-namespace Tools{
-namespace Base{
+#include "client/base/abstract_options_provider.h"
+#include "my_compiler.h"
+
+namespace Mysql {
+namespace Tools {
+namespace Base {
 
 class Abstract_program;
 
-namespace Options{
+namespace Options {
 
 /**
   Options provider providing debugging options.
  */
-class Debug_options : public Abstract_options_provider
-{
-public:
+class Debug_options : public Abstract_options_provider {
+ public:
   /**
     Constructs new debug options provider.
     @param program Pointer to main program class.
    */
-  Debug_options(Abstract_program* program);
+  explicit Debug_options(Abstract_program *program);
   /**
     Creates all options that will be provided.
     Implementation of Abstract_options_provider virtual method.
    */
-  virtual void create_options();
+  void create_options() override;
   /**
     Callback to be called when command-line options parsing have finished.
   */
-  virtual void options_parsed();
+  void options_parsed() override;
 
-private:
+ private:
+  void debug_option_callback(char *argument [[maybe_unused]]);
 
-  void debug_option_callback(char *argument MY_ATTRIBUTE((unused)));
-
-  Abstract_program* m_program;
-  bool m_debug_info_flag;
-  bool m_debug_check_flag;
-  Nullable<std::string> m_dbug_option;
+  Abstract_program *m_program;
+  bool m_debug_info_flag{false};
+  bool m_debug_check_flag{false};
+  std::optional<std::string> m_dbug_option;
 };
 
-}
-}
-}
-}
+}  // namespace Options
+}  // namespace Base
+}  // namespace Tools
+}  // namespace Mysql
 
 #endif

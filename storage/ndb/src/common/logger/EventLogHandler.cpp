@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2010, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2010, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -25,6 +25,9 @@
 #ifdef _WIN32
 
 #include "EventLogHandler.hpp"
+
+#include <time.h>
+
 #include "message.h"
 
 EventLogHandler::EventLogHandler(const char* source_name)
@@ -110,8 +113,20 @@ setup_eventlogging(const char* source_name)
   if (error != ERROR_SUCCESS)
   {
     // Could neither create or open key
-    fprintf(stderr, "Could neither create or open key '%s', error: %u\n",
-            sub_key, error);
+    if (error == ERROR_ACCESS_DENIED)
+    {
+      fprintf(stderr, "WARNING: Could not create or access the registry key needed for the application\n"
+          "to log to the Windows EventLog. Run the application with sufficient\n"
+          "privileges once to create the key, or add the key manually, or turn off\n"
+          "logging for that application. [HKLM] key '%s', error: %u\n", sub_key, error);
+    }
+    else
+    {
+      fprintf(stderr, "WARNING: Could neither create or open key '%s', error: %u\n",
+          sub_key, error);
+
+    }
+
     return false;
   }
 
@@ -181,7 +196,8 @@ EventLogHandler::is_open()
 }
 
 void 
-EventLogHandler::writeHeader(const char* pCategory, Logger::LoggerLevel level)
+EventLogHandler::writeHeader(const char* pCategory, Logger::LoggerLevel level,
+                             time_t now)
 {
   m_level = level;
 }

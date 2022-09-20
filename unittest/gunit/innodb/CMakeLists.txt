@@ -1,4 +1,4 @@
-# Copyright (c) 2013, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2013, 2022, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -18,84 +18,85 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
 INCLUDE_DIRECTORIES(
-  ${GTEST_INCLUDE_DIRS}
-  ${CMAKE_SOURCE_DIR}/include
   ${CMAKE_SOURCE_DIR}/sql
-  ${CMAKE_SOURCE_DIR}/sql/auth
   ${CMAKE_SOURCE_DIR}/storage/innobase/include
-  ${CMAKE_SOURCE_DIR}/unittest/gunit
 )
 
 INCLUDE(${CMAKE_SOURCE_DIR}/storage/innobase/innodb.cmake)
 
 SET(TESTS
   #example
+  fil_path
   ha_innodb
+  log0log
   mem0mem
+  os0file
+  os0thread-create
+  srv0conc
+  sync0rw
   ut0crc32
+  ut0lock_free_hash
+  ut0math
   ut0mem
   ut0new
+  ut0rnd
 )
 
-IF (MERGE_UNITTESTS)
-  SET(MERGE_INNODB_TESTS ${CMAKE_CURRENT_BINARY_DIR}/merge_innodb_tests-t.cc)
-  SET_SOURCE_FILES_PROPERTIES(MERGE_INNODB_TESTS PROPERTIES GENERATED 1)
+ADD_COMPILE_FLAGS(
+  ut0rnd-t.cc
+  COMPILE_FLAGS -I${CMAKE_SOURCE_DIR}/extra/lz4 -I${BUNDLED_LZ4_PATH}
+  )
 
-  INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
+# Treat warnings as errors on MSVC for InnoDB's unittests
+IF(MSVC AND NOT WIN32_CLANG)
+  ADD_COMPILE_OPTIONS("/WX")
+ENDIF()
 
-  FILE(WRITE ${MERGE_INNODB_TESTS} "// Merging InnoDB unit tests\n")
-  FILE(APPEND ${MERGE_INNODB_TESTS} "#include \"my_config.h\"\n")
-  FILE(APPEND ${MERGE_INNODB_TESTS} "#include \"univ.i\"\n")
+# Fixes "C1128: number of sections exceeded object file format limit" in MSVC
+IF(MSVC)
+  ADD_COMPILE_FLAGS(
+    ut0new-t.cc
+    COMPILE_FLAGS "/bigobj"
+    )
+ENDIF()
 
-  FOREACH(test ${TESTS})
-    FILE(APPEND ${MERGE_INNODB_TESTS} "#include \"${test}-t.cc\"\n")
-  ENDFOREACH()
+SET(ALL_INNODB_TESTS)
+FOREACH(test ${TESTS})
+  LIST(APPEND ALL_INNODB_TESTS ${test}-t.cc)
+ENDFOREACH()
 
-  SET(SRC_FILES ${MERGE_INNODB_TESTS})
+IF(WIN32)
+  LIST(APPEND ALL_INNODB_TESTS ../../../sql/nt_servc.cc)
+ENDIF()
+MYSQL_ADD_EXECUTABLE(merge_innodb_tests-t ${ALL_INNODB_TESTS}
+  ENABLE_EXPORTS
+  ADD_TEST merge_innodb_tests-t
+  LINK_LIBRARIES gunit_large server_unittest_library
+  )
+
+# Download TBB from https://www.threadingbuildingblocks.org
+#SET(TBB_INCDIR /path/to/tbb43_20150611oss/include)
+#SET(TBB_LIBDIR /path/to/tbb43_20150611oss/build/linux_intel64_gcc_cc4.9.1_libc2.12_kernel2.6.39_release)
+#TARGET_LINK_LIBRARIES(merge_innodb_tests-t tbb -L${TBB_LIBDIR} -Wl,-rpath=${TBB_LIBDIR})
+#INCLUDE_DIRECTORIES(${TBB_INCDIR})
+
+ADD_DEPENDENCIES(merge_innodb_tests-t GenError)
+
+FOREACH(test ${TESTS})
+  SET(SRC_FILES ${test}-t.cc)
   IF(WIN32)
     LIST(APPEND SRC_FILES ../../../sql/nt_servc.cc)
   ENDIF()
+  MYSQL_ADD_EXECUTABLE(${test}-t ${SRC_FILES}
+    ENABLE_EXPORTS
+    EXCLUDE_FROM_ALL
+    SKIP_INSTALL
+    LINK_LIBRARIES gunit_large server_unittest_library
+    DEPENDENCIES GenError
+    )
+ENDFOREACH()
 
-  ADD_EXECUTABLE(merge_innodb_tests-t ${SRC_FILES})
-
-  TARGET_LINK_LIBRARIES(merge_innodb_tests-t
-    sql binlog rpl master slave sql)
-  TARGET_LINK_LIBRARIES(merge_innodb_tests-t
-    gunit_large strings dbug regex mysys)
-  TARGET_LINK_LIBRARIES(merge_innodb_tests-t
-    sql binlog rpl master slave sql)
-
-  IF(WITH_PERFSCHEMA_STORAGE_ENGINE)
-    TARGET_LINK_LIBRARIES(merge_innodb_tests-t perfschema)
-  ENDIF()
-
-  ADD_DEPENDENCIES(merge_innodb_tests-t GenError)
-
-  ADD_TEST(merge_innodb_tests merge_innodb_tests-t)
-
-ELSE()
-
-  FOREACH(test ${TESTS})
-    SET(SRC_FILES ${test}-t.cc)
-    IF(WIN32)
-      LIST(APPEND SRC_FILES ../../../sql/nt_servc.cc)
-    ENDIF()
-    ADD_EXECUTABLE(${test}-t ${SRC_FILES})
-
-    TARGET_LINK_LIBRARIES(${test}-t sql binlog rpl master slave sql)
-    TARGET_LINK_LIBRARIES(${test}-t gunit_large strings dbug regex mysys)
-    TARGET_LINK_LIBRARIES(${test}-t sql binlog rpl master slave sql)
-
-    IF(WITH_PERFSCHEMA_STORAGE_ENGINE)
-      TARGET_LINK_LIBRARIES(${test}-t perfschema)
-    ENDIF()
-
-    ADD_DEPENDENCIES(${test}-t GenError)
-
-    ADD_TEST(${test} ${test}-t)
-  ENDFOREACH()
-
-ENDIF()
+ADD_SUBDIRECTORY(lob)

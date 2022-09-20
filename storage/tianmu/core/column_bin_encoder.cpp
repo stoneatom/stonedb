@@ -909,8 +909,8 @@ ColumnBinEncoder::EncoderText_UTF::~EncoderText_UTF() {}
 
 bool ColumnBinEncoder::EncoderText_UTF::SecondColumn(vcolumn::VirtualColumn *vc2) {
   if (vc_type.IsString() && vc2->Type().IsString() && collation.collation != vc2->GetCollation().collation) {
-    rc_control_.lock(vc2->ConnInfo()->GetThreadID()) << "Nontrivial comparison: " << collation.collation->name << " with "
-                                                   << vc2->GetCollation().collation->name << system::unlock;
+    rc_control_.lock(vc2->ConnInfo()->GetThreadID()) << "Nontrivial comparison: " << collation.collation->m_coll_name << " with "
+                                                   << vc2->GetCollation().collation->m_coll_name << system::unlock; // stonedb8
     return false;
   }
   size_t coded_len = types::CollationBufLen(collation, vc2->MaxStringSize());

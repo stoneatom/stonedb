@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -47,6 +47,7 @@ struct TriggerType {
     
     SUBSCRIPTION_BEFORE   = 9, // Only used by TUP/SUMA, should be REMOVED!!
     REORG_TRIGGER         = DictTabInfo::ReorgTrigger
+    ,FULLY_REPLICATED_TRIGGER = DictTabInfo::FullyReplicatedTrigger
   };
 };
 
@@ -160,6 +161,10 @@ struct TriggerInfo {
     switch (val) {
     case TriggerType::SECONDARY_INDEX:
       return "SECONDARY_INDEX";
+    case TriggerType::FK_PARENT:
+      return "FK_PARENT";
+    case TriggerType::FK_CHILD:
+      return "FK_CHILD";
     case TriggerType::SUBSCRIPTION:
       return "SUBSCRIPTION";
     case TriggerType::READ_ONLY_CONSTRAINT:
@@ -168,6 +173,10 @@ struct TriggerInfo {
       return "ORDERED_INDEX";
     case TriggerType::SUBSCRIPTION_BEFORE:
       return "SUBSCRIPTION_BEFORE";
+    case TriggerType::REORG_TRIGGER:
+      return "REORG_TRIGGER";
+    case TriggerType::FULLY_REPLICATED_TRIGGER:
+      return "FULLY_REPLICATED";
     }
     return "UNKNOWN";
   }
@@ -205,9 +214,9 @@ struct TriggerInfo {
 
 struct NoOfFiredTriggers
 {
-  STATIC_CONST( DeferredUKBit = (Uint32(1) << 31) );
-  STATIC_CONST( DeferredFKBit = (Uint32(1) << 30) );
-  STATIC_CONST( DeferredBits = (DeferredUKBit | DeferredFKBit));
+  static constexpr Uint32 DeferredUKBit = (Uint32(1) << 31);
+  static constexpr Uint32 DeferredFKBit = (Uint32(1) << 30);
+  static constexpr Uint32 DeferredBits = (DeferredUKBit | DeferredFKBit);
 
   static Uint32 getFiredCount(Uint32 v) {
     return v & ~(Uint32(DeferredBits));

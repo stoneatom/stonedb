@@ -1,5 +1,4 @@
-/* Copyright (c) 2009, 2021, Oracle and/or its affiliates.
-     All rights reserved. Use is subject to license terms.
+/* Copyright (c) 2009, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -19,11 +18,12 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA */
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #ifndef Defragger_H
 #define Defragger_H
 
+#include "util/ndb_math.h"
 
 /*
   reception of fragmented signals
@@ -67,7 +67,7 @@ class Defragger {
   }
 
 public:
-  Defragger() {};
+  Defragger() {}
   ~Defragger()
   {
     for (unsigned i = m_buffers.size(); i > 0; --i)
@@ -75,7 +75,7 @@ public:
       delete m_buffers[i-1]; // free the memory of the fragment
     }
     // m_buffers will be freed by ~Vector
-  };
+  }
 
   /*
     return true when complete signal received
@@ -111,11 +111,13 @@ public:
       return false;
 
     // Copy defragmented data into signal...
-    int length = dbuf->m_buffer.length();
     delete[] sig->ptr[0].p;
-    sig->ptr[0].sz = (length+3)/4;
-    sig->ptr[0].p = new Uint32[sig->ptr[0].sz];
-    memcpy(sig->ptr[0].p, dbuf->m_buffer.get_data(), length);
+    int length = dbuf->m_buffer.length();
+    int words = ndb_ceil_div(length, 4);
+    Uint32* p = new Uint32[words];
+    memcpy(p, dbuf->m_buffer.get_data(), length);
+    sig->ptr[0].p = p;
+    sig->ptr[0].sz = words;
 
     // erase the buffer data
     erase_buffer(dbuf);

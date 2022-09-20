@@ -44,9 +44,9 @@ namespace {
 bool AtLeastOneTIANMUTableInvolved(LEX *lex) {
   for (TABLE_LIST *table_list = lex->query_tables; table_list; table_list = table_list->next_global) {
     TABLE *table = table_list->table;
-    if (core::Engine::IsTIANMUTable(table)) return TRUE;
+    if (core::Engine::IsTIANMUTable(table)) return true;
   }
-  return FALSE;
+  return false;
 }
 
 bool ForbiddenMySQLQueryPath([[maybe_unused]] LEX *lex) { return (tianmu_sysvar_allowmysqlquerypath == 0); }

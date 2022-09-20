@@ -1,4 +1,4 @@
---source include/not_embedded.inc
+--source include/not_valgrind.inc
 
 --echo ------ Run plugin ------------------------------------------------
 --replace_result $TEST_SQL_COMPLEX TEST_SQL_COMPLEX

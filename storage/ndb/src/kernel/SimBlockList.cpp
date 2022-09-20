@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -60,43 +60,25 @@
 #include <DbspjProxy.hpp>
 #include <thrman.hpp>
 #include <trpman.hpp>
+#include <Dbqlqh.hpp>
+#include <Dbqacc.hpp>
+#include <Dbqtup.hpp>
+#include <Dbqtux.hpp>
+#include <QBackup.hpp>
+#include <QRestore.hpp>
+#include <DbqlqhProxy.hpp>
+#include <DbqaccProxy.hpp>
+#include <DbqtupProxy.hpp>
+#include <DbqtuxProxy.hpp>
+#include <QBackupProxy.hpp>
+#include <QRestoreProxy.hpp>
 #include <mt.hpp>
+#include "portlib/NdbMem.h"
 
 #define JAM_FILE_ID 492
 
 
-#ifndef VM_TRACE
 #define NEW_BLOCK(B) new B
-#else
-enum SIMBLOCKLIST_DUMMY { A_VALUE = 0 };
-
-void * operator new (size_t sz, SIMBLOCKLIST_DUMMY dummy){
-  char * tmp = (char *)malloc(sz);
-  if (!tmp)
-    abort();
-
-#ifndef NDB_PURIFY
-#ifdef VM_TRACE
-  const int initValue = 0xf3;
-#else
-  const int initValue = 0x0;
-#endif
-  
-  const int p = (sz / 4096);
-  const int r = (sz % 4096);
-  
-  for(int i = 0; i<p; i++)
-    memset(tmp+(i*4096), initValue, 4096);
-  
-  if(r > 0)
-    memset(tmp+p*4096, initValue, r);
-
-#endif
-  
-  return tmp;
-}
-#define NEW_BLOCK(B) new(A_VALUE) B
-#endif
 
 void
 SimBlockList::load(EmulatorData& data){
@@ -142,7 +124,7 @@ SimBlockList::load(EmulatorData& data){
     theList[8]  = NEW_BLOCK(Dblqh)(ctx);
   else
     theList[8]  = NEW_BLOCK(DblqhProxy)(ctx);
-  if (globalData.ndbMtTcThreads == 0)
+  if (globalData.ndbMtTcWorkers == 0)
     theList[9]  = NEW_BLOCK(Dbtc)(ctx);
   else
     theList[9] = NEW_BLOCK(DbtcProxy)(ctx);
@@ -168,7 +150,7 @@ SimBlockList::load(EmulatorData& data){
   else
     theList[18] = NEW_BLOCK(RestoreProxy)(ctx);
   theList[19] = NEW_BLOCK(Dbinfo)(ctx);
-  if (globalData.ndbMtTcThreads == 0)
+  if (globalData.ndbMtTcWorkers == 0)
     theList[20]  = NEW_BLOCK(Dbspj)(ctx);
   else
     theList[20]  = NEW_BLOCK(DbspjProxy)(ctx);
@@ -180,7 +162,15 @@ SimBlockList::load(EmulatorData& data){
     theList[22] = NEW_BLOCK(Trpman)(ctx);
   else
     theList[22] = NEW_BLOCK(TrpmanProxy)(ctx);
-  assert(NO_OF_BLOCKS == 23);
+
+  /* Create Query/Recover Blocks */
+  theList[23] = NEW_BLOCK(DbqlqhProxy)(ctx);
+  theList[24] = NEW_BLOCK(DbqaccProxy)(ctx);
+  theList[25] = NEW_BLOCK(DbqtupProxy)(ctx);
+  theList[26] = NEW_BLOCK(DbqtuxProxy)(ctx);
+  theList[27] = NEW_BLOCK(QBackupProxy)(ctx);
+  theList[28] = NEW_BLOCK(QRestoreProxy)(ctx);
+  assert(NO_OF_BLOCKS == 29);
 
   // Check that all blocks could be created
   for (int i = 0; i < noOfBlocks; i++)
@@ -208,7 +198,10 @@ SimBlockList::load(EmulatorData& data){
     */
     mt_init_thr_map();
     for (int i = 0; i < noOfBlocks; i++)
-      theList[i]->loadWorkers();
+    {
+      if (theList[i])
+        theList[i]->loadWorkers();
+    }
     mt_finalize_thr_map();
   }
 }
@@ -232,3 +225,38 @@ SimBlockList::unload(){
     noOfBlocks = 0;
   }
 }
+
+Uint64 SimBlockList::getTransactionMemoryNeed(
+  const Uint32 dbtc_instance_count,
+  const Uint32 ldm_instance_count,
+  const ndb_mgm_configuration_iterator * mgm_cfg,
+  const bool use_reserved) const
+{
+  Uint64 byte_count = Dbtc::getTransactionMemoryNeed(
+    dbtc_instance_count,
+    mgm_cfg,
+    use_reserved);
+  byte_count += Dbacc::getTransactionMemoryNeed(
+    ldm_instance_count,
+    mgm_cfg,
+    use_reserved);
+  byte_count += Dblqh::getTransactionMemoryNeed(
+    ldm_instance_count,
+    mgm_cfg,
+    use_reserved);
+  byte_count += Dbtup::getTransactionMemoryNeed(
+    ldm_instance_count,
+    mgm_cfg,
+    use_reserved);
+  byte_count += Dbtux::getTransactionMemoryNeed(
+    ldm_instance_count,
+    mgm_cfg,
+    use_reserved);
+
+  byte_count += Dbqacc::getTransactionMemoryNeed();
+  byte_count += Dbqlqh::getTransactionMemoryNeed();
+  byte_count += Dbqtup::getTransactionMemoryNeed();
+  byte_count += Dbqtux::getTransactionMemoryNeed();
+  return byte_count;
+}
+

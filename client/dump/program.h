@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2015, 2021, Oracle and/or its affiliates.
+  Copyright (c) 2015, 2022, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License, version 2.0,
@@ -25,58 +25,59 @@
 #ifndef PROGRAM_INCLUDED
 #define PROGRAM_INCLUDED
 
-#include "base/abstract_connection_program.h"
-#include "mysql_chain_element_options.h"
-#include "mysqldump_tool_chain_maker_options.h"
-#include "base/atomic.h"
+#include <atomic>
+#include <optional>
 
-namespace Mysql{
-namespace Tools{
-namespace Dump{
+#include "client/base/abstract_connection_program.h"
+#include "client/dump/mysql_chain_element_options.h"
+#include "client/dump/mysqldump_tool_chain_maker_options.h"
 
-class Program : public Mysql::Tools::Base::Abstract_connection_program
-{
-public:
+namespace Mysql {
+namespace Tools {
+namespace Dump {
+
+class Program : public Mysql::Tools::Base::Abstract_connection_program {
+ public:
   Program();
 
-  ~Program();
+  ~Program() override;
 
-  std::string get_version();
+  std::string get_version() override;
 
-  int get_first_release_year();
+  int get_first_release_year() override;
 
-  std::string get_description();
+  std::string get_description() override;
 
-  int execute(std::vector<std::string> positional_options);
+  int execute(const std::vector<std::string> &positional_options) override;
 
-  void create_options();
+  void create_options() override;
 
-  void error(const Mysql::Tools::Base::Message_data& message);
+  void error(const Mysql::Tools::Base::Message_data &message) override;
 
-  void short_usage();
+  void short_usage() override;
 
   void check_mutually_exclusive_options();
 
   int get_total_connections();
 
-  int get_error_code();
+  int get_error_code() override;
 
-private:
-  bool message_handler(const Mysql::Tools::Base::Message_data& message);
-  void error_log_file_callback(char*);
+ private:
+  bool message_handler(const Mysql::Tools::Base::Message_data &message);
+  void error_log_file_callback(char *);
   void close_redirected_stderr();
 
-  Mysql_chain_element_options* m_mysql_chain_element_options;
-  Mysqldump_tool_chain_maker_options* m_mysqldump_tool_chain_maker_options;
+  Mysql_chain_element_options *m_mysql_chain_element_options;
+  Mysqldump_tool_chain_maker_options *m_mysqldump_tool_chain_maker_options;
   bool m_single_transaction;
   bool m_watch_progress;
-  Mysql::Nullable<std::string> m_error_log_file;
-  FILE* m_stderr;
-  my_boost::atomic_uint32_t m_error_code;
+  std::optional<std::string> m_error_log_file;
+  FILE *m_stderr;
+  std::atomic<uint32_t> m_error_code;
 };
 
-}
-}
-}
+}  // namespace Dump
+}  // namespace Tools
+}  // namespace Mysql
 
 #endif

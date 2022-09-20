@@ -25,7 +25,7 @@ namespace Tianmu {
 namespace core {
 bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector<uchar> *blob_buf) {
   if (rcitem.IsNull()) {
-    std::memset(field->ptr, 0, 2);
+    std::memset(field->field_ptr(), 0, 2);
     field->set_null();
     return true;
   }
@@ -456,7 +456,7 @@ int Engine::Convert(int &is_null, String *value, types::RCDataType &rcitem, enum
           current_txn_->Thd()->variables.time_zone->gmt_sec_to_TIME(&local_time, secs);
           char buf[32];
           local_time.second_part = rcdt->MicroSecond();
-          my_datetime_to_str(&local_time, buf, 0);
+          my_datetime_to_str(local_time, buf, 0); // stonedb8
           value->set_ascii(buf, 19);
         } else {
           value->set_ascii("0000-00-00 00:00:00", 19);
@@ -621,12 +621,12 @@ AttributeTypeInfo Engine::GetCorrespondingATI(Field &field) {
     DEBUG_ASSERT(dynamic_cast<Field_num *>(&field));
     if (at == common::CT::NUM) {
       DEBUG_ASSERT(dynamic_cast<Field_new_decimal *>(&field));
-      return AttributeTypeInfo(at, !field.maybe_null(), static_cast<Field_new_decimal &>(field).precision,
+      return AttributeTypeInfo(at, !field.is_nullable(), static_cast<Field_new_decimal &>(field).precision,
                                static_cast<Field_num &>(field).decimals());
     }
-    return AttributeTypeInfo(at, !field.maybe_null(), field.field_length, static_cast<Field_num &>(field).decimals());
+    return AttributeTypeInfo(at, !field.is_nullable(), field.field_length, static_cast<Field_num &>(field).decimals());
   }
-  return AttributeTypeInfo(at, !field.maybe_null(), field.field_length);
+  return AttributeTypeInfo(at, !field.is_nullable(), field.field_length);
 }
 }  // namespace core
 }  // namespace Tianmu

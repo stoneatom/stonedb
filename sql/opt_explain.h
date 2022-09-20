@@ -1,4 +1,4 @@
-/* Copyright (c) 2011, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2011, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -17,16 +17,17 @@
    GNU General Public License, version 2.0, for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   51 Franklin Street, Suite 500, Boston, MA 02110-1335 USA */
-
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #ifndef OPT_EXPLAIN_INCLUDED
 #define OPT_EXPLAIN_INCLUDED
 
-/** @file "EXPLAIN <command>" 
+/**
+  @file sql/opt_explain.h
+  EXPLAIN @<command@>.
 
-Single table UPDATE/DELETE commands are explained by the 
+Single table UPDATE/DELETE commands are explained by the
 explain_single_table_modification() function.
 
 A query expression (complete SELECT query possibly including
@@ -35,71 +36,82 @@ commands are explained like this:
 
 (1) explain_query_expression()
 
-Is the entry point. Forwards the job to explain_unit().
+Is the entry point. Forwards the job to explain_query_expression().
 
-(2) explain_unit()
+(2) explain_query_expression()
 
-Is for a SELECT_LEX_UNIT, prepares, optimizes, explains one JOIN for
-each "top-level" SELECT_LEXs of the unit (like: all SELECTs of a
-UNION; but not subqueries), and one JOIN for the fake SELECT_LEX of
+Is for a Query_expression, prepares, optimizes, explains one JOIN for
+each "top-level" Query_blocks of the unit (like: all SELECTs of a
+UNION; but not subqueries), and one JOIN for the fake Query_block of
 UNION); each JOIN explain (JOIN::exec()) calls explain_query_specification()
 
 (3) explain_query_specification()
 
-Is for a single SELECT_LEX (fake or not). It needs a prepared and
+Is for a single Query_block (fake or not). It needs a prepared and
 optimized JOIN, for which it builds the EXPLAIN rows. But it also
 launches the EXPLAIN process for "inner units" (==subqueries of this
-SELECT_LEX), by calling explain_unit() for each of them. 
+Query_block), by calling explain_query_expression() for each of them.
 */
 
-#include <my_base.h>
-#include "opt_explain_format.h"
+#include "my_base.h"
+#include "my_sqlcommand.h"
+#include "my_thread_local.h"
+#include "sql/iterators/row_iterator.h"
+#include "sql/opt_explain_format.h"
+#include "sql/parse_tree_node_base.h"
+#include "sql/query_result.h"  // Query_result_send
+#include "sql/sql_cmd.h"       // Sql_cmd
+#include "sql/sql_opt_exec_shared.h"
+#include "sys/types.h"
 
+class Item;
 class JOIN;
-class Query_result;
-class Query_result_interceptor;
-struct TABLE;
+class QEP_TAB;
+class Query_block;
+class Query_expression;
 class THD;
-typedef class st_select_lex_unit SELECT_LEX_UNIT;
-typedef class st_select_lex SELECT_LEX;
+struct AccessPath;
+struct TABLE;
+template <class T>
+class List;
 
 extern const char *join_type_str[];
 
 /** Table modification plan for JOIN-less statements (update/delete) */
-class Modification_plan
-{
-public:
-  THD *const thd;           ///< Owning thread
-  const enum_mod_type mod_type;///< Modification type - MT_INSERT/MT_UPDATE/etc
-  TABLE *table;             ///< Table to modify
+class Modification_plan {
+ public:
+  THD *const thd;  ///< Owning thread
+  const enum_mod_type
+      mod_type;  ///< Modification type - MT_INSERT/MT_UPDATE/etc
+  TABLE *table;  ///< Table to modify
 
-  QEP_TAB *tab;             ///< QUICK access method + WHERE clause
-  uint key;                 ///< Key to use
-  ha_rows limit;            ///< Limit
-  bool need_tmp_table;      ///< Whether tmp table needs to be used
-  bool need_sort;           ///< Whether to use filesort
-  bool used_key_is_modified;///< Whether the key used to scan is modified
-  const char *message;      ///< Arbitrary message
-  bool zero_result;         ///< TRUE <=> plan will not be executed
-  ha_rows examined_rows;    ///< # of rows expected to be examined in the table
+  enum join_type type = JT_UNKNOWN;
+  AccessPath *range_scan{nullptr};
+  Item *condition{nullptr};
+  uint key;                   ///< Key to use
+  ha_rows limit;              ///< Limit
+  bool need_tmp_table;        ///< Whether tmp table needs to be used
+  bool need_sort;             ///< Whether to use filesort
+  bool used_key_is_modified;  ///< Whether the key used to scan is modified
+  const char *message;        ///< Arbitrary message
+  bool zero_result;           ///< true <=> plan will not be executed
+  ha_rows examined_rows;  ///< # of rows expected to be examined in the table
 
-  Modification_plan(THD *thd_arg,
-                    enum_mod_type mt, QEP_TAB *qep_tab,
-                    uint key_arg, ha_rows limit_arg, bool need_tmp_table_arg,
-                    bool need_sort_arg, bool used_key_is_modified_arg,
-                    ha_rows rows);
+  Modification_plan(THD *thd_arg, enum_mod_type mt, TABLE *table_arg,
+                    enum join_type type_arg, AccessPath *quick_arg,
+                    Item *condition_arg, uint key_arg, ha_rows limit_arg,
+                    bool need_tmp_table_arg, bool need_sort_arg,
+                    bool used_key_is_modified_arg, ha_rows rows);
 
-  Modification_plan(THD *thd_arg,
-                    enum_mod_type mt, TABLE *table_arg,
+  Modification_plan(THD *thd_arg, enum_mod_type mt, TABLE *table_arg,
                     const char *message_arg, bool zero_result_arg,
                     ha_rows rows);
 
   ~Modification_plan();
 
-private:
+ private:
   void register_in_thd();
 };
-
 
 /**
   EXPLAIN functionality for Query_result_insert, Query_result_update and
@@ -109,88 +121,76 @@ private:
   Query_result_delete data interceptor objects to implement EXPLAIN for INSERT,
   REPLACE and multi-table UPDATE and DELETE queries.
   Query_result_explain class object initializes tables like Query_result_insert,
-  Query_result_update or Query_result_delete data interceptor do, but it suppress
-  table data modification by the underlying interceptor object.
+  Query_result_update or Query_result_delete data interceptor do, but it
+  suppresses table data modification by the underlying interceptor object.
   Thus, we can use Query_result_explain object in the context of EXPLAIN INSERT/
   REPLACE/UPDATE/DELETE query like we use Query_result_send in the context of
   EXPLAIN SELECT command:
-    1) in presence of lex->describe flag we pass Query_result_explain object to the
-       handle_query() function,
-    2) it call prepare(), prepare2() and initialize_tables() functions to
-       mark modified tables etc.
-
+  1) in presence of lex->describe flag, pass Query_result_explain object to
+     execution function,
+  2) it calls prepare(), optimize() and start_execution() functions
+     to mark modified tables etc.
 */
 
-class Query_result_explain : public Query_result_send {
-protected:
-  /*
-    As far as we use Query_result_explain object in a place of Query_result_send,
-    Query_result_explain have to pass multiple invocation of its prepare(),
-    prepare2() and initialize_tables() functions, since JOIN::exec() of
-    subqueries runs these functions of Query_result_send multiple times by design.
-    Query_result_insert, Query_result_update and Query_result_delete class
-    functions are not intended for multiple invocations, so "prepared",
-    "prepared2" and "initialized" flags guard data interceptor object from
-    function re-invocation.
-  */
-  bool prepared;    ///< prepare() is done
-  bool prepared2;   ///< prepare2() is done
-  bool initialized; ///< initialize_tables() is done
-
+class Query_result_explain final : public Query_result_send {
+ protected:
   /**
     Pointer to underlying Query_result_insert, Query_result_update or
     Query_result_delete object.
   */
   Query_result *interceptor;
 
-public:
-  Query_result_explain(st_select_lex_unit *unit_arg, Query_result *interceptor_arg)
-  : prepared(false), prepared2(false), initialized(false),
-    interceptor(interceptor_arg)
-  { unit= unit_arg; }
-
-protected:
-  virtual int prepare(List<Item> &list, SELECT_LEX_UNIT *u)
-  {
-    if (prepared)
-      return false;
-    prepared= true;
-    return Query_result_send::prepare(list, u) || interceptor->prepare(list, u);
+ public:
+  Query_result_explain(Query_expression *unit_arg,
+                       Query_result *interceptor_arg)
+      : Query_result_send(), interceptor(interceptor_arg) {
+    unit = unit_arg;
   }
 
-  virtual int prepare2(void)
-  {
-    if (prepared2)
-      return false;
-    prepared2= true;
-    return Query_result_send::prepare2() || interceptor->prepare2();
+ protected:
+  bool prepare(THD *thd, const mem_root_deque<Item *> &list,
+               Query_expression *u) override {
+    return Query_result_send::prepare(thd, list, u) ||
+           interceptor->prepare(thd, list, u);
   }
 
-  virtual bool initialize_tables(JOIN *join)
-  {
-    if (initialized)
-      return false;
-    initialized= true;
-    return Query_result_send::initialize_tables(join) ||
-           interceptor->initialize_tables(join);
+  bool start_execution(THD *thd) override {
+    return Query_result_send::start_execution(thd) ||
+           interceptor->start_execution(thd);
   }
 
-  virtual void cleanup()
-  {
-    Query_result_send::cleanup();
-    interceptor->cleanup();
+  void cleanup(THD *thd) override {
+    Query_result_send::cleanup(thd);
+    interceptor->cleanup(thd);
   }
 };
 
-
-bool explain_no_table(THD *thd, SELECT_LEX *select_lex, const char *message,
+bool explain_no_table(THD *explain_thd, const THD *query_thd,
+                      Query_block *query_block, const char *message,
                       enum_parsing_context ctx);
-bool explain_single_table_modification(THD *ethd,
+bool explain_single_table_modification(THD *explain_thd, const THD *query_thd,
                                        const Modification_plan *plan,
-                                       SELECT_LEX *select);
-bool explain_query(THD *thd, SELECT_LEX_UNIT *unit);
-bool explain_query_specification(THD *ethd, SELECT_LEX *select_lex,
+                                       Query_block *select);
+bool explain_query(THD *explain_thd, const THD *query_thd,
+                   Query_expression *unit);
+bool explain_query_specification(THD *explain_thd, const THD *query_thd,
+                                 Query_block *query_block,
                                  enum_parsing_context ctx);
-void mysql_explain_other(THD *thd);
+
+class Sql_cmd_explain_other_thread final : public Sql_cmd {
+ public:
+  explicit Sql_cmd_explain_other_thread(my_thread_id thread_id)
+      : m_thread_id(thread_id) {}
+
+  enum_sql_command sql_command_code() const override {
+    return SQLCOM_EXPLAIN_OTHER;
+  }
+
+  bool execute(THD *thd) override;
+
+ private:
+  /// connection_id in EXPLAIN FOR CONNECTION \<connection_id\>
+  my_thread_id m_thread_id;
+};
 
 #endif /* OPT_EXPLAIN_INCLUDED */

@@ -1,6 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -25,7 +24,10 @@
 
 #include "LogHandler.hpp"
 
+#include <time.h>
+
 #include <NdbTick.h>
+#include "util/cstrbuf.h"
 
 //
 // PUBLIC
@@ -39,7 +41,6 @@ LogHandler::LogHandler() :
   m_last_category[0]= 0;
   m_last_message[0]= 0;
   m_last_log_time= 0;
-  m_now= 0;
   m_last_level= (Logger::LoggerLevel)-1;
 }
 
@@ -49,44 +50,44 @@ LogHandler::~LogHandler()
 
 void 
 LogHandler::append(const char* pCategory, Logger::LoggerLevel level,
-		   const char* pMsg)
+		   const char* pMsg, time_t now)
 {
-  time_t now;
-  now= ::time((time_t*)NULL);
-
   if (m_max_repeat_frequency == 0 ||
       level != m_last_level ||
       strcmp(pCategory, m_last_category) ||
       strcmp(pMsg, m_last_message))
   {
     if (m_count_repeated_messages > 0) // print that message
-      append_impl(m_last_category, m_last_level, m_last_message);
+      append_impl(m_last_category, m_last_level, m_last_message, now);
 
     m_last_level= level;
-    strncpy(m_last_category, pCategory, sizeof(m_last_category));
-    strncpy(m_last_message, pMsg, sizeof(m_last_message));
+    if (cstrbuf_copy(m_last_category, pCategory) == 1)
+    {
+      // truncated category
+    }
+    if (cstrbuf_copy(m_last_message, pMsg) == 1)
+    {
+      // truncated message
+    }
   }
   else // repeated message
   {
     if (now < (time_t) (m_last_log_time+m_max_repeat_frequency))
     {
       m_count_repeated_messages++;
-      m_now= now;
       return;
     }
   }
 
-  m_now= now;
-
-  append_impl(pCategory, level, pMsg);
+  append_impl(pCategory, level, pMsg, now);
   m_last_log_time= now;
 }
 
 void 
 LogHandler::append_impl(const char* pCategory, Logger::LoggerLevel level,
-			const char* pMsg)
+			const char* pMsg, time_t now)
 {
-  writeHeader(pCategory, level);
+  writeHeader(pCategory, level, now);
   if (m_count_repeated_messages <= 1)
     writeMessage(pMsg);
   else
@@ -101,10 +102,10 @@ LogHandler::append_impl(const char* pCategory, Logger::LoggerLevel level,
 
 const char* 
 LogHandler::getDefaultHeader(char* pStr, const char* pCategory, 
-			     Logger::LoggerLevel level) const
+			     Logger::LoggerLevel level, time_t now) const
 {
   char timestamp[64];
-  Logger::format_timestamp(m_now, timestamp, sizeof(timestamp));
+  Logger::format_timestamp(now, timestamp, sizeof(timestamp));
 
   BaseString::snprintf(pStr, MAX_HEADER_LENGTH, "%s [%s] %s -- ", 
                        timestamp,
@@ -133,18 +134,9 @@ LogHandler::setErrorCode(int code)
   m_errorCode = code;
 }
 
+const char* LogHandler::getErrorStr() const { return m_errorStr; }
 
-char*
-LogHandler::getErrorStr()
-{
-  return m_errorStr;
-}
-
-void
-LogHandler::setErrorStr(const char* str)
-{
-  m_errorStr= (char*) str;
-}
+void LogHandler::setErrorStr(const char* str) { m_errorStr = str; }
 
 bool
 LogHandler::parseParams(const BaseString &_params) {

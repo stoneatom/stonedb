@@ -1,5 +1,4 @@
-# Copyright (c) 2008, 2021, Oracle and/or its affiliates.
-#  All rights reserved. Use is subject to license terms.
+# Copyright (c) 2008, 2022, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -19,11 +18,33 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
+
+# Disable specific types of warnings for current directory
+# if the compiler supports the flag
+
+INCLUDE(ndb_downgrade_warnings)
+
+IF(MY_COMPILER_IS_GNU_OR_CLANG)
+  INCLUDE(CheckCXXCompilerFlag)
+  FOREACH(warning
+      "cast-qual"
+      "maybe-uninitialized"
+      "restrict"
+      "unused-but-set-variable"
+      "unused-parameter"
+      )
+    MY_CHECK_CXX_COMPILER_WARNING("${warning}" HAS_WARN_FLAG)
+    IF(HAS_WARN_FLAG)
+      SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-${warning}")
+      SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-${warning}")
+    ENDIF()
+  ENDFOREACH()
+ENDIF()
 
 ADD_SUBDIRECTORY(src)
 IF(WITH_NDB_TEST)
-ADD_SUBDIRECTORY(tools)
-ADD_SUBDIRECTORY(ndbapi)
-ADD_SUBDIRECTORY(run-test)
+  ADD_SUBDIRECTORY(tools)
+  ADD_SUBDIRECTORY(ndbapi)
+  ADD_SUBDIRECTORY(run-test)
 ENDIF(WITH_NDB_TEST)

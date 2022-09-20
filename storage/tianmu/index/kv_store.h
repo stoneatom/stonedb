@@ -21,6 +21,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <condition_variable> // stonedb8 for centos7.9, gcc 11.2.1
 
 #include "common/common_definitions.h"
 #include "index/rdb_meta_manager.h"
@@ -67,41 +68,34 @@ class KVStore final {
   bool IndexDroping(GlobalId &index) {
     return dict_manager_.is_drop_index_ongoing(index, MetaType::DDL_DROP_INDEX_ONGOING);
   }
-  //kv table meta operation
-  //find a table by table name returns this table handler
+  // kv table meta operation
+  // find a table by table name returns this table handler
   std::shared_ptr<RdbTable> FindTable(std::string &name) { return ddl_manager_.find(name); }
-  //Put table definition of `tbl` into the mapping, and also write it to the
-  //on-disk data dictionary. 
+  // Put table definition of `tbl` into the mapping, and also write it to the
+  // on-disk data dictionary. 
   common::ErrorCode KVWriteTableMeta(std::shared_ptr<RdbTable> tbl);
   common::ErrorCode KVDelTableMeta(const std::string &tablename);
   common::ErrorCode KVRenameTableMeta(const std::string &s_name, const std::string &d_name);
 
-  //kv memory table meta operation
-  //as KVWriteTableMeta does, but not to on-disk but in-mem
+  // kv memory table meta operation
+  // as KVWriteTableMeta does, but not to on-disk but in-mem
   std::shared_ptr<core::RCMemTable> FindMemTable(std::string &name) { return ddl_manager_.find_mem(name); }
   common::ErrorCode KVWriteMemTableMeta(std::shared_ptr<core::RCMemTable> tb_mem);
   common::ErrorCode KVDelMemTableMeta(std::string table_name);
   common::ErrorCode KVRenameMemTableMeta(std::string s_name, std::string d_name);
 
-  //kv data operation
+  // kv data operation
   bool KVDeleteKey(rocksdb::WriteOptions &wopts, rocksdb::ColumnFamilyHandle *cf, rocksdb::Slice &key);
   rocksdb::Iterator *GetScanIter(rocksdb::ReadOptions &ropts, rocksdb::ColumnFamilyHandle *cf) {
     return txn_db_->NewIterator(ropts, cf);
   }
-  //write mult-rows in batch mode with write options.
+
   bool KVWriteBatch(rocksdb::WriteOptions &wopts, rocksdb::WriteBatch *batch);
   //gets snapshot from rocksdb.
   const rocksdb::Snapshot *GetRdbSnapshot() { return txn_db_->GetSnapshot(); }
   //release the specific snapshot
   void ReleaseRdbSnapshot(const rocksdb::Snapshot *snapshot) { txn_db_->ReleaseSnapshot(snapshot); }
-  //gets the column family name by table handler.
-  static std::string generate_cf_name(uint index, TABLE *table);
-  //creates a ith key of rocksdb table.
-  static void create_rdbkey(TABLE *table, uint pos, std::shared_ptr<RdbKey> &new_key_def, rocksdb::ColumnFamilyHandle *cf_handle);
-  //create keys and column family for a rocksdb table.
-  static common::ErrorCode create_keys_and_cf(TABLE *table, std::shared_ptr<RdbTable> rdb_tbl);
-  //Returns index of primary key
-  static uint pk_index(const TABLE *const table, std::shared_ptr<RdbTable> tbl_def);
+
  private:
   //initializationed?
   bool inited_ = false;

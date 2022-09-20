@@ -54,12 +54,13 @@ const Alter_inplace_info::HA_ALTER_FLAGS TianmuHandler::TIANMU_SUPPORTED_ALTER_C
  pieces that are used for locking, and they are needed to function.
  */
 
-my_bool rcbase_query_caching_of_table_permitted(THD *thd, [[maybe_unused]] char *full_name,
+bool rcbase_query_caching_of_table_permitted(THD *thd, [[maybe_unused]] char *full_name,
                                                 [[maybe_unused]] uint full_name_len,
                                                 [[maybe_unused]] ulonglong *unused) {
-  if (!thd_test_options(thd, (OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN))) return ((my_bool)TRUE);
-  return ((my_bool)FALSE);
+  if (!thd_test_options(thd, (OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN))) return ((bool)true);
+  return ((bool)false);
 }
+
 
 static core::Value GetValueFromField(Field *f) {
   core::Value v;
@@ -90,7 +91,7 @@ static core::Value GetValueFromField(Field *f) {
       f->get_time(&my_time);
       // convert to UTC
       if (!common::IsTimeStampZero(my_time)) {
-        my_bool myb;
+        bool myb;
         my_time_t secs_utc = current_txn_->Thd()->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
         common::GMTSec2GMTTime(&my_time, secs_utc);
       }
@@ -159,10 +160,13 @@ TianmuHandler::TianmuHandler(handlerton *hton, TABLE_SHARE *table_arg) : handler
   ref_length = sizeof(uint64_t);
 }
 
+// stonedb8
+/*
 const char **TianmuHandler::bas_ext() const {
   static const char *ha_rcbase_exts[] = {common::TIANMU_EXT, 0};
   return ha_rcbase_exts;
 }
+*/
 
 namespace {
 std::vector<bool> GetAttrsUseIndicator(TABLE *table) {
@@ -295,7 +299,7 @@ inline bool has_dup_key(std::shared_ptr<index::RCTableIndex> &indextab, TABLE *t
   KEY *key = table->key_info + table->s->primary_key;
 
   for (uint i = 0; i < key->actual_key_parts; i++) {
-    uint col = key->key_part[i].field->field_index;
+    uint col = key->key_part[i].field->field_index();
     Field *f = table->field[col];
     switch (f->type()) {
       case MYSQL_TYPE_TINY:
@@ -342,7 +346,7 @@ inline bool has_dup_key(std::shared_ptr<index::RCTableIndex> &indextab, TABLE *t
         auto saved = my_time.second_part;
         // convert to UTC
         if (!common::IsTimeStampZero(my_time)) {
-          my_bool myb;
+          bool myb;
           my_time_t secs_utc = current_thd->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
           common::GMTSec2GMTTime(&my_time, secs_utc);
         }
@@ -475,7 +479,7 @@ int TianmuHandler::update_row(const uchar *old_data, uchar *new_data) {
         continue;
       }
       auto field = table->field[i];
-      if (field->real_maybe_null()) {
+      if (field->is_nullable()) {
         if (field->is_null_in_record(old_data) && field->is_null_in_record(new_data)) {
           continue;
         }
@@ -549,7 +553,7 @@ int TianmuHandler::delete_all_rows() {
   DBUG_RETURN(HA_ERR_WRONG_COMMAND);
 }
 
-int TianmuHandler::rename_table(const char *from, const char *to) {
+int TianmuHandler::rename_table(const char *from, const char *to, const dd::Table *from_table_def, dd::Table *to_table_def) {   // stonedb8 TODO
   try {
     ha_rcengine_->RenameTable(current_txn_, from, to, ha_thd());
     return 0;
@@ -654,7 +658,7 @@ int TianmuHandler::info(uint flag) {
 }
 
 /* this should return 0 for concurrent insert to work */
-my_bool tianmu_check_status([[maybe_unused]] void *param) { return 0; }
+bool tianmu_check_status([[maybe_unused]] void *param) { return 0; }
 
 /*
  Used for opening tables. The name will be the name of the file.
@@ -665,7 +669,7 @@ my_bool tianmu_check_status([[maybe_unused]] void *param) { return 0; }
  Called from handler.cc by handler::ha_open(). The server opens all tables by
  calling ha_open() which then calls the handler specific open().
  */
-int TianmuHandler::open(const char *name, [[maybe_unused]] int mode, [[maybe_unused]] uint test_if_locked) {
+int TianmuHandler::open(const char *name, [[maybe_unused]] int mode, [[maybe_unused]] uint test_if_locked, [[maybe_unused]] const dd::Table *table_def) { // stonedb8 TODO
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
   m_table_name = name;
@@ -996,9 +1000,9 @@ int TianmuHandler::rnd_next(uchar *buf) {
 
   int ret = HA_ERR_END_OF_FILE;
   try {
-    table->status = 0;
+    table->set_found_row(); // stonedb8
     if (fill_row(buf) == HA_ERR_END_OF_FILE) {
-      table->status = STATUS_NOT_FOUND;
+      table->set_no_row(); // stonedb8
       DBUG_RETURN(ret);
     }
     ret = 0;
@@ -1059,10 +1063,10 @@ int TianmuHandler::rnd_pos(uchar *buf, uchar *pos) {
     table_ptr = tab_ptr.get();
 
     table_new_iter.MoveToRow(position);
-    table->status = 0;
+    table->set_found_row(); // stonedb8
     blob_buffers.resize(table->s->fields);
     if (fill_row(buf) == HA_ERR_END_OF_FILE) {
-      table->status = STATUS_NOT_FOUND;
+      table->set_no_row(); // stonedb8
       DBUG_RETURN(ret);
     }
     ret = 0;
@@ -1087,10 +1091,13 @@ int TianmuHandler::extra(enum ha_extra_function operation) {
   /* This preemptive delete might cause problems here.
    * Other place where it can be put is TianmuHandler::external_lock().
    */
+  // stonedb8 TODO: HA_EXTRA_NO_CACHE is deleted
+  /* 
   if (operation == HA_EXTRA_NO_CACHE) {
     m_cq.reset();
     m_query.reset();
   }
+  */
   DBUG_RETURN(0);
 }
 
@@ -1119,12 +1126,15 @@ int TianmuHandler::start_stmt(THD *thd, thr_lock_type lock_type) {
  If current thread is in non-autocommit, we don't permit any mysql query
  caching.
  */
-my_bool TianmuHandler::register_query_cache_table(THD *thd, char *table_key, size_t key_length,
+// stonedb8 TODO: register_query_cache_table is deleted
+/*
+bool TianmuHandler::register_query_cache_table(THD *thd, char *table_key, size_t key_length,
                                                    qc_engine_callback *call_back,
                                                    [[maybe_unused]] ulonglong *engine_data) {
   *call_back = rcbase_query_caching_of_table_permitted;
   return rcbase_query_caching_of_table_permitted(thd, table_key, key_length, 0);
 }
+*/
 
 /*
  Used to delete a table. By the time delete_table() has been called all
@@ -1140,7 +1150,7 @@ my_bool TianmuHandler::register_query_cache_table(THD *thd, char *table_key, siz
  during create if the table_flag HA_DROP_BEFORE_CREATE was specified for
  the storage engine.
  */
-int TianmuHandler::delete_table(const char *name) {
+int TianmuHandler::delete_table(const char *name, const dd::Table *table_def) { // stonedb8 TODO
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int ret = 1;
   try {
@@ -1178,9 +1188,9 @@ ha_rows TianmuHandler::records_in_range([[maybe_unused]] uint inx, [[maybe_unuse
  point if you wish to change the table definition, but there are no methods
  currently provided for doing that.
 
- Called from handle.cc by ha_create_table().
+ Called from handle.cc by ha_create_table(). 
  */
-int TianmuHandler::create(const char *name, TABLE *table_arg, [[maybe_unused]] HA_CREATE_INFO *create_info) {
+int TianmuHandler::create(const char *name, TABLE *table_arg, [[maybe_unused]] HA_CREATE_INFO *info, dd::Table *table_def) { // stonedb8 TODO
   DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
     ha_rcengine_->CreateTable(name, table_arg);
@@ -1203,7 +1213,7 @@ int TianmuHandler::create(const char *name, TABLE *table_arg, [[maybe_unused]] H
   DBUG_RETURN(1);
 }
 
-int TianmuHandler::truncate() {
+int TianmuHandler::truncate(dd::Table *table_def) { // stonedb8 TODO
   int ret = 0;
   try {
     ha_rcengine_->TruncateTable(m_table_name, ha_thd());
@@ -1302,7 +1312,7 @@ bool TianmuHandler::explain_message(const Item *a_cond, String *buf) {
     std::string str = current_txn_->GetExplainMsg();
     buf->append(str.c_str(), str.length());
   }
-  DBUG_RETURN(TRUE);
+  DBUG_RETURN(true);
 }
 
 int TianmuHandler::set_cond_iter() {
@@ -1445,7 +1455,8 @@ enum_alter_inplace_result TianmuHandler::check_if_supported_inplace_alter([[mayb
   return HA_ALTER_INPLACE_EXCLUSIVE_LOCK;
 }
 
-bool TianmuHandler::inplace_alter_table(TABLE *altered_table, Alter_inplace_info *ha_alter_info) {
+bool TianmuHandler::inplace_alter_table(TABLE *altered_table [[maybe_unused]], Alter_inplace_info *ha_alter_info [[maybe_unused]],
+                                   const dd::Table *old_table_def [[maybe_unused]], dd::Table *new_table_def [[maybe_unused]]) {  // stonedb8 TODO
   try {
     if (!(ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)) {
       std::vector<Field *> v_old(table_share->field, table_share->field + table_share->fields);
@@ -1466,8 +1477,9 @@ bool TianmuHandler::inplace_alter_table(TABLE *altered_table, Alter_inplace_info
   return true;
 }
 
-bool TianmuHandler::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_table,
-                                                Alter_inplace_info *ha_alter_info, bool commit) {
+bool TianmuHandler::commit_inplace_alter_table(TABLE *altered_table [[maybe_unused]], Alter_inplace_info *ha_alter_info [[maybe_unused]],
+                                          bool commit [[maybe_unused]], const dd::Table *old_table_def [[maybe_unused]],
+                                          dd::Table *new_table_def [[maybe_unused]]) {  // stonedb8 TODO
   if (!commit) {
     TIANMU_LOG(LogCtl_Level::INFO, "Alter table failed : %s%s", m_table_name.c_str(), " rollback");
     return true;
@@ -1528,7 +1540,7 @@ void TianmuHandler::key_convert(const uchar *key, uint key_len, std::vector<uint
     if (f->is_null()) {
       throw common::Exception("Priamry key part can not be NULL");
     }
-    if (f->flags & BLOB_FLAG)
+    if (f->is_flag_set(BLOB_FLAG)) // stonedb8
       length = dynamic_cast<Field_blob *>(f)->get_length();
     else
       length = f->row_pack_length();
@@ -1616,7 +1628,7 @@ void TianmuHandler::key_convert(const uchar *key, uint key_len, std::vector<uint
         auto saved = my_time.second_part;
         // convert to UTC
         if (!common::IsTimeStampZero(my_time)) {
-          my_bool myb;
+          bool myb;
           my_time_t secs_utc = current_thd->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
           common::GMTSec2GMTTime(&my_time, secs_utc);
         }

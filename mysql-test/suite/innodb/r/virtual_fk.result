@@ -69,12 +69,12 @@ id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered
 x	x	t2	x	index	x	fld2	x	x	x	x	x
 SELECT fld2 FROM t2;
 fld2
-NULL
 2
+NULL
 SELECT * FROM t2;
 fld1	fld2
-NULL	NULL
 2	2
+NULL	NULL
 DROP TABLE t2, t1;
 # VIRTUAL INDEX CONTAINS FK CONSTRAINT COLUMN
 CREATE TABLE t1(fld1 INT NOT NULL PRIMARY KEY);
@@ -435,14 +435,13 @@ id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered
 x	x	t2	x	index	x	fld2	x	x	x	x	x
 SELECT fld2 FROM t2;
 fld2
-50
 100
+50
 DROP TABLE t2, t1;
 # CHANGE SQL_MODE and try the ERROR_FOR_DIVISION_BY_ZERO
 SET sql_mode = STRICT_ALL_TABLES;
 Warnings:
 Warning	3135	'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
-Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 CREATE TABLE t1(fld1 INT NOT NULL PRIMARY KEY);
 CREATE TABLE t2(fld1 INT NOT NULL,
 fld2 INT AS (100/fld1) VIRTUAL,
@@ -457,8 +456,8 @@ id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered
 x	x	t2	x	index	x	fld2	x	x	x	x	x
 SELECT fld2 FROM t2;
 fld2
-NULL
 100
+NULL
 SELECT * FROM t2;
 fld1	fld2
 1	100
@@ -837,6 +836,8 @@ CREATE TABLE `emails` (
 PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ROW_FORMAT=DYNAMIC;
+Warnings:
+Warning	1681	Integer display width is deprecated and will be removed in a future release.
 CREATE TABLE `email_stats` (
 `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 `email_id` int(10) unsigned DEFAULT NULL,
@@ -852,6 +853,9 @@ CONSTRAINT `FK_ES1` FOREIGN KEY (`email_id`) REFERENCES
 `emails` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ROW_FORMAT=DYNAMIC;
+Warnings:
+Warning	1681	Integer display width is deprecated and will be removed in a future release.
+Warning	1681	Integer display width is deprecated and will be removed in a future release.
 CREATE TABLE `emails_metadata` (
 `email_id` int(10) unsigned NOT NULL,
 PRIMARY KEY (`email_id`),
@@ -859,6 +863,8 @@ CONSTRAINT `FK_EM1` FOREIGN KEY (`email_id`) REFERENCES
 `emails` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 ROW_FORMAT=DYNAMIC;
+Warnings:
+Warning	1681	Integer display width is deprecated and will be removed in a future release.
 INSERT INTO `emails` VALUES (1);
 INSERT INTO `email_stats` (`id`, `email_id`,  `date_sent`) VALUES
 (1,1,'2020-10-22 13:32:41');

@@ -1,4 +1,4 @@
-/* Copyright (c) 2007, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2007, 2022, Oracle and/or its affiliates.
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License, version 2.0,
@@ -23,14 +23,23 @@
 #ifndef included_sha2_h
 #define included_sha2_h
 
-#include <my_config.h>
+/**
+  @file include/sha2.h
+*/
 
-#if defined(HAVE_OPENSSL)
-
+#include <openssl/evp.h>
 #include <stddef.h>
 
 #include <openssl/sha.h>
 
+#define GEN_OPENSSL_EVP_SHA2_BRIDGE(size)                      \
+  unsigned char *SHA_EVP##size(const unsigned char *input_ptr, \
+                               size_t input_length,            \
+                               char unsigned *output_ptr);
+GEN_OPENSSL_EVP_SHA2_BRIDGE(512)
+GEN_OPENSSL_EVP_SHA2_BRIDGE(384)
+GEN_OPENSSL_EVP_SHA2_BRIDGE(256)
+GEN_OPENSSL_EVP_SHA2_BRIDGE(224)
+#undef GEN_OPENSSL_EVP_SHA2_BRIDGE
 
-#endif /* HAVE_OPENSSL */
 #endif /* included_sha2_h */

@@ -1,4 +1,4 @@
-# Copyright (c) 2013, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2013, 2022, Oracle and/or its affiliates.
 # 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -18,11 +18,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
 IF(NOT WIN32)
 	# MSI building is not relvant on other platforms
 	RETURN()
+ENDIF()
+
+INCLUDE(${CMAKE_SOURCE_DIR}/packaging/WiX/wix_setup.cmake)
+
+IF(NOT WIX_DIR)
+  RETURN()
 ENDIF()
 
 # This is copied from packaging/Wix. Not sure if it is possible to build the msi with something 
@@ -108,7 +114,7 @@ ADD_CUSTOM_COMMAND(OUTPUT "${WXS_BASENAME}.wixobj"
 # Run WiX-tool light.exe on "object code" to produce .msi file
 ADD_CUSTOM_COMMAND(OUTPUT "${CPACK_PACKAGE_FILE_NAME}.msi"
 	COMMAND "${LIGHT_EXECUTABLE}" -nologo -sw1076 -ss -ext WixUIExtension -ext WixUtilExtension "${WXS_BASENAME}.wixobj" -out "${CPACK_PACKAGE_FILE_NAME}.msi" "$ENV{EXTRA_LIGHT_ARGS}"
-	DEPENDS "${WXS_BASENAME}.wixobj" wixca
+	DEPENDS "${WXS_BASENAME}.wixobj"
 	COMMENT "light( ${WXS_BASENAME}.wixobj ) -> ${CPACK_PACKAGE_FILE_NAME}.msi"
 	VERBATIM)
 
@@ -149,3 +155,21 @@ ELSE(WIX_DONT_SET_CPACK_MONOLITHIC_INSTALL)
 		COMMENT "Run cmake on cache to turn CPACK_MONOLITHIC_INSTALL back on"
 		VERBATIM)
 ENDIF(WIX_DONT_SET_CPACK_MONOLITHIC_INSTALL)
+ADD_DEPENDENCIES(NDB_MSI configure_mysql_server_extra configure_redist_check)
+
+# The 'dist' target will create Docs/INFO_SRC, and our top level cmake file does:
+# INSTALL(DIRECTORY Docs/ DESTINATION ${INSTALL_DOCDIR}
+# We install only the copy in ${CMAKE_BINARY_DIR}/Docs/INFO_SRC
+# There is a similar target in packaging/WiX/CMakeLists.txt
+# but we have not seen that yet when processing this file.
+IF(DEFINED ENV{PB2WORKDIR})
+  IF(EXISTS ${CMAKE_SOURCE_DIR}/Docs/INFO_SRC)
+    ADD_CUSTOM_TARGET(ndb_remove_INFO_SRC_from_bs
+      COMMAND ${CMAKE_COMMAND} -E remove -f ${CMAKE_SOURCE_DIR}/Docs/INFO_SRC
+      )
+  ENDIF()
+ENDIF()
+
+IF(TARGET ndb_remove_INFO_SRC_from_bs)
+  ADD_DEPENDENCIES(NDB_MSI ndb_remove_INFO_SRC_from_bs)
+ENDIF()

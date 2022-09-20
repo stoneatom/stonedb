@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -22,10 +22,10 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-/* -*- c-basic-offset: 4; -*- */
+#include <cstring>
+
 #include <ndb_global.h>
 #include <BaseString.hpp>
-#include "basestring_vsnprintf.h"
 
 BaseString::BaseString()
 {
@@ -136,6 +136,32 @@ BaseString::assign(const char* s)
     return *this;
 }
 
+BaseString& BaseString::assign(char c) { return assign(1, c); }
+
+BaseString& BaseString::assign(size_t n, char c)
+{
+  if (m_len != n)
+  {
+    if (n >= UINT_MAX)
+    {
+      errno = EINVAL;
+      return *this;
+    }
+    char* new_chr = new (std::nothrow) char[n + 1];
+    if (new_chr == nullptr)
+    {
+      errno = ENOMEM;
+      return *this;
+    }
+    delete[] m_chr;
+    m_chr = new_chr;
+    m_len = n;
+  }
+  memset(m_chr, c, n);
+  m_chr[n] = '\0';
+  return *this;
+}
+
 BaseString&
 BaseString::assign(const char* s, size_t n)
 {
@@ -189,9 +215,32 @@ BaseString::append(const char* s)
     return *this;
 }
 
-BaseString&
-BaseString::append(char c) {
-    return appfmt("%c", c);
+BaseString& BaseString::append(char c) { return append(1, c); }
+
+BaseString& BaseString::append(size_t n, char c)
+{
+  if (n == 0) return *this;
+  unsigned old_len = m_len;
+  const size_t new_len = old_len + n;
+  if (new_len >= UINT_MAX)
+  {
+    errno = EINVAL;
+    return *this;
+  }
+  char* new_chr = new (std::nothrow) char[new_len + 1];
+  if (new_chr == nullptr)
+  {
+    errno = ENOMEM;
+    return *this;
+  }
+
+  memcpy(new_chr, m_chr, old_len);
+  memset(new_chr + old_len, c, n);
+  new_chr[new_len] = '\0';
+  delete[] m_chr;
+  m_chr = new_chr;
+  m_len = new_len;
+  return *this;
 }
 
 BaseString&
@@ -223,7 +272,7 @@ BaseString::assfmt(const char *fmt, ...)
      * when called as vsnprintf(NULL, 0, ...).
      */
     va_start(ap, fmt);
-    l = basestring_vsnprintf(buf, sizeof(buf), fmt, ap) + 1;
+    l = std::vsnprintf(buf, sizeof(buf), fmt, ap) + 1;
     va_end(ap);
     if(l > (int)m_len) {
         char *t = new char[l];
@@ -236,7 +285,7 @@ BaseString::assfmt(const char *fmt, ...)
 	m_chr = t;
     }
     va_start(ap, fmt);
-    l = basestring_vsnprintf(m_chr, l, fmt, ap);
+    l = std::vsnprintf(m_chr, l, fmt, ap);
     assert(l == (int)strlen(m_chr));
     va_end(ap);
     m_len = (unsigned)strlen(m_chr);
@@ -255,7 +304,7 @@ BaseString::appfmt(const char *fmt, ...)
      * when called as vsnprintf(NULL, 0, ...).
      */
     va_start(ap, fmt);
-    l = basestring_vsnprintf(buf, sizeof(buf), fmt, ap) + 1;
+    l = std::vsnprintf(buf, sizeof(buf), fmt, ap) + 1;
     va_end(ap);
     char *tmp = new char[l];
     if (tmp == NULL)
@@ -264,7 +313,7 @@ BaseString::appfmt(const char *fmt, ...)
       return *this;
     }
     va_start(ap, fmt);
-    basestring_vsnprintf(tmp, l, fmt, ap);
+    std::vsnprintf(tmp, l, fmt, ap);
     va_end(ap);
     append(tmp);
     delete[] tmp;
@@ -303,49 +352,137 @@ BaseString::split(Vector<BaseString> &v,
     return num;
 }
 
-ssize_t
-BaseString::indexOf(char c, size_t pos) const {
+bool
+BaseString::splitKeyValue(BaseString& key, BaseString& value) const
+{
+  for (Uint32 i = 0; i < length(); i++)
+  {
+    if (m_chr[i] == '=')
+    {
+      if (i == 0)
+        key = BaseString();
+      else
+        key = BaseString(m_chr, i);
 
-  if (pos >= m_len)
-    return -1;
+      value = BaseString(m_chr + i + 1);
+      return true;
+    }
+  }
+  return false;
+}
 
-    char *p = strchr(m_chr + pos, c);
-    if(p == NULL)
-	return -1;
-    return (ssize_t)(p-m_chr);
+int
+BaseString::splitWithQuotedStrings(Vector<BaseString> &v,
+      const BaseString &separator,
+      int maxSize) const
+{
+  char *str = strdup(m_chr);
+  int i, start, len, num = 0;
+  len = (int)strlen(str);
+  const char* opening_quote = nullptr;
+
+  for(start = i = 0;
+      (i <= len) && ((maxSize < 0) || ((int)v.size() <= maxSize - 1));
+      i++)
+  {
+    if (str[i] != '\0')
+    {
+      const char* curr_quote = strchr("'\"", str[i]);
+      if (curr_quote != nullptr)
+      {
+        if (opening_quote == nullptr)
+        {
+          // Opening quote found, ignore separator till closing quote is found
+          opening_quote = curr_quote;
+        }
+        else if (*opening_quote ==  *curr_quote)
+        {
+          // Closing quote found, check for separator from now
+          opening_quote = nullptr;
+        }
+        continue;
+      }
+    }
+    if ((strchr(separator.c_str(), str[i]) && (opening_quote == nullptr)) ||
+        (i == len))
+    {
+      if ((maxSize < 0) || ((int)v.size() < (maxSize - 1)))
+        str[i] = '\0';
+      v.push_back(BaseString(str+start));
+      num++;
+      start = i+1;
+    }
+  }
+  free(str);
+
+  return num;
 }
 
 ssize_t
-BaseString::indexOf(const char * needle, size_t pos) const {
-
+BaseString::indexOf(char c, size_t pos) const
+{
   if (pos >= m_len)
     return -1;
 
-    char *p = strstr(m_chr + pos, needle);
-    if(p == NULL)
-	return -1;
-    return (ssize_t)(p-m_chr);
+  char *p = strchr(m_chr + pos, c);
+  if(p == NULL)
+    return -1;
+  return (ssize_t)(p-m_chr);
 }
 
 ssize_t
-BaseString::lastIndexOf(char c) const {
-    char *p;
-    p = strrchr(m_chr, c);
-    if(p == NULL)
-	return -1;
-    return (ssize_t)(p-m_chr);
+BaseString::indexOf(const char * needle, size_t pos) const
+{
+  if (pos >= m_len)
+    return -1;
+
+  char *p = strstr(m_chr + pos, needle);
+  if(p == NULL)
+    return -1;
+  return (ssize_t)(p-m_chr);
+}
+
+ssize_t
+BaseString::lastIndexOf(char c) const
+{
+  char *p;
+  p = strrchr(m_chr, c);
+  if(p == NULL)
+    return -1;
+  return (ssize_t)(p-m_chr);
+}
+
+bool
+BaseString::starts_with(const BaseString& str) const
+{
+  if (str.m_len > m_len) return false;
+  return std::strncmp(m_chr, str.m_chr, str.m_len) == 0;
+}
+
+bool
+BaseString::starts_with(const char* str) const
+{
+  const char* p = m_chr;
+  const char* q = str;
+  while (*q != 0 && *p != 0 && *p == *q)
+  {
+    p++;
+    q++;
+  }
+  return *q == 0;
 }
 
 BaseString
-BaseString::substr(ssize_t start, ssize_t stop) const {
-    if(stop < 0)
-	stop = length();
-    ssize_t len = stop-start;
-    if(len <= 0)
-	return BaseString("");
-    BaseString s;
-    s.assign(m_chr+start, len);
-    return s;
+BaseString::substr(ssize_t start, ssize_t stop) const
+{
+  if(stop < 0)
+    stop = length();
+  ssize_t len = stop-start;
+  if(len <= 0)
+    return BaseString("");
+  BaseString s;
+  s.assign(m_chr+start, len);
+  return s;
 }
 
 static bool
@@ -510,7 +647,7 @@ BaseString::trim(char * str, const char * delim){
 int
 BaseString::vsnprintf(char *str, size_t size, const char *format, va_list ap)
 {
-  return(basestring_vsnprintf(str, size, format, ap));
+  return(std::vsnprintf(str, size, format, ap));
 }
 
 int
@@ -518,9 +655,21 @@ BaseString::snprintf(char *str, size_t size, const char *format, ...)
 {
   va_list ap;
   va_start(ap, format);
-  int ret= basestring_vsnprintf(str, size, format, ap);
+  int ret= std::vsnprintf(str, size, format, ap);
   va_end(ap);
   return(ret);
+}
+
+int
+BaseString::snappend(char *str, size_t size, const char *format, ...)
+{
+  size_t n = strlen(str);
+  if (n >= size - 1) return -1;
+  va_list ap;
+  va_start(ap, format);
+  int ret = std::vsnprintf(str + n, size - n, format, ap);
+  va_end(ap);
+  return (ret);
 }
 
 BaseString
@@ -624,7 +773,7 @@ BaseString::hexdump(char * buf, size_t len, const Uint32 * wordbuf, size_t numwo
   return offset;
 }
 
-#ifdef TEST_BASE_STRING
+#ifdef TEST_BASESTRING
 
 #include <NdbTap.hpp>
 
@@ -636,6 +785,9 @@ TAPTEST(BaseString)
     t.append("123");
     OK(s == "def");
     OK(t == "abc123");
+    s.assign(3, 'a');
+    s.append(2, 'b');
+    OK(s == "aaabb");
     s.assign("");
     t.assign("");
     for (unsigned i = 0; i < 1000; i++) {
@@ -686,6 +838,29 @@ TAPTEST(BaseString)
     }
 
     {
+      BaseString base("123abcdef");
+      BaseString sub("123abc");
+      OK(base.starts_with(sub) == true);
+
+      BaseString base1("123abc");
+      BaseString sub1("123abcdef");
+      OK(base1.starts_with(sub1) == false);
+
+      BaseString base2("123abcdef");
+      BaseString sub2("");
+      OK(base2.starts_with(sub2) == true);
+
+      BaseString base3("");
+      BaseString sub3("123abcdef");
+      OK(base3.starts_with(sub3) == false);
+
+      OK(base.starts_with("123abc") == true);
+      OK(base1.starts_with("123abcdef") == false);
+      OK(base2.starts_with("") == true);
+      OK(base3.starts_with("123abcdef") == false);
+    }
+
+    {
 	OK(BaseString(" 1").trim(" ") == "1");
 	OK(BaseString("1 ").trim(" ") == "1");
 	OK(BaseString(" 1 ").trim(" ") == "1");
@@ -722,6 +897,45 @@ TAPTEST(BaseString)
       BIG_ASSFMT_OK(20*1024*1024);
     }
 
+    {
+      printf("Testing splitWithQuotedStrings\n");
+      Vector<BaseString> v;
+
+      BaseString("key=value").splitWithQuotedStrings(v, "=");
+      OK(v[0] == "key");
+      v.clear();
+
+      BaseString("abcdef=\"ghi\"").splitWithQuotedStrings(v, "=");
+      OK(v[0] == "abcdef");
+      v.clear();
+
+      BaseString("abc=\"de=f\"").splitWithQuotedStrings(v, "=");
+      OK(v[1] == "\"de=f\"");
+      v.clear();
+
+      BaseString("abc=\"\"de=f\"\"").splitWithQuotedStrings(v, "=");
+      OK(v[1] == "\"\"de");
+      v.clear();
+
+      BaseString("abc=\"\'de=f\'\"").splitWithQuotedStrings(v, "=");
+      OK(v[1] == "\"\'de=f\'\"");
+      v.clear();
+    }
+
+    {
+      printf("Testing snappend\n");
+      char strnbuf[10];
+      strnbuf[0] = '\0';
+
+      BaseString::snappend(strnbuf, 10, "123");
+      OK(!strncmp(strnbuf, "123", 10));
+      BaseString::snappend(strnbuf, 10, "4567");
+      OK(!strncmp(strnbuf, "1234567", 10));
+      BaseString::snappend(strnbuf, 10, "89");
+      OK(!strncmp(strnbuf, "123456789", 10));
+      BaseString::snappend(strnbuf, 10, "extra");
+      OK(!strncmp(strnbuf, "123456789", 10));
+    }
     return 1; // OK
 }
 

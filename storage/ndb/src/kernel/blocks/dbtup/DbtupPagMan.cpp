@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -28,6 +28,7 @@
 #include <RefConvert.hpp>
 #include <ndb_limits.h>
 #include <pc.hpp>
+#include <dblqh/Dblqh.hpp>
 
 #define JAM_FILE_ID 407
 
@@ -140,33 +141,123 @@ void Dbtup::allocConsPages(EmulatedJamBuffer* jamBuf,
     return;
   }//if
 
-  Resource_limit rl;
-  m_ctx.m_mm.get_resource_limit_nolock(RG_DATAMEM, rl);
-  if (rl.m_curr + m_minFreePages + noOfPagesToAllocate > rl.m_max)
+  if (noOfPagesToAllocate == 1)
   {
-    thrjam(jamBuf);
-    noOfPagesAllocated = 0;
-    return;
+    void* p = m_ctx.m_mm.alloc_page(RT_DBTUP_PAGE,
+                                    &allocPageRef,
+                                    Ndbd_mem_manager::NDB_ZONE_LE_30);
+    if (p != NULL)
+    {
+      noOfPagesAllocated = 1;
+    }
+    else
+    {
+      noOfPagesAllocated = 0;
+    }
+  }
+  else
+  {
+#ifndef VM_TRACE
+    ndbrequire(noOfPagesToAllocate == 1);
+#else
+    /* For DUMP_STATE_ORD 1211, 1212, and, 1213 */
+    noOfPagesAllocated = noOfPagesToAllocate;
+    m_ctx.m_mm.alloc_pages(RT_DBTUP_PAGE,
+                           &allocPageRef,
+                           &noOfPagesAllocated,
+                           1);
+#endif
+  }
+  if(noOfPagesAllocated == 0 && c_allow_alloc_spare_page)
+  {
+    void* p = m_ctx.m_mm.alloc_spare_page(RT_DBTUP_PAGE,
+                                          &allocPageRef,
+                                          Ndbd_mem_manager::NDB_ZONE_LE_30);
+    if (p != NULL)
+    {
+      noOfPagesAllocated = 1;
+    }
   }
 
-  m_ctx.m_mm.alloc_pages(RT_DBTUP_PAGE, &allocPageRef,
-			 &noOfPagesToAllocate, 1);
-  noOfPagesAllocated = noOfPagesToAllocate;
-
   // Count number of allocated pages
-  m_pages_allocated += noOfPagesAllocated;
-  if (m_pages_allocated > m_pages_allocated_max)
-    m_pages_allocated_max = m_pages_allocated;
+  update_pages_allocated(noOfPagesAllocated);
 
   return;
 }//allocConsPages()
 
-void Dbtup::returnCommonArea(Uint32 retPageRef, Uint32 retNo) 
+void Dbtup::returnCommonArea(Uint32 retPageRef, Uint32 retNo)
 {
   m_ctx.m_mm.release_pages(RT_DBTUP_PAGE, retPageRef, retNo);
 
   // Count number of allocated pages
-  m_pages_allocated -= retNo;
-
+  update_pages_allocated(-retNo);
 }//Dbtup::returnCommonArea()
 
+bool Dbtup::returnCommonArea_for_reuse(Uint32 retPageRef, Uint32 retNo)
+{
+  if (!m_ctx.m_mm.give_up_pages(RT_DBTUP_PAGE, retNo))
+  {
+    return false;
+  }
+
+  // Count number of allocated pages
+  update_pages_allocated(-retNo);
+  return true;
+}
+
+void
+Dbtup::update_pages_allocated(int retNo)
+{
+  /**
+   * In normal operation mode we only update m_pages_allocated
+   * and m_pages_allocated_max from the LDM thread and this
+   * requires no protection.
+   * However during restore operations we can update this from
+   * both recover threads and LDM threads and thus we need to
+   * protect those changes with a mutex.
+   *
+   * Query threads should not be used here, only recover threads.
+   * When restore phase is done we no longer need to use a mutex.
+   */
+  bool lock_flag = false;
+  Dblqh *lqh_block;
+  Dbtup *tup_block;
+  if (m_is_query_block)
+  {
+    Uint32 instanceNo = c_lqh->m_current_ldm_instance;
+    ndbrequire(instanceNo != 0);
+    tup_block = (Dbtup*) globalData.getBlock(DBTUP, instanceNo);
+    lqh_block = (Dblqh*) globalData.getBlock(DBLQH, instanceNo);
+    ndbrequire(!lqh_block->is_restore_phase_done());
+    ndbrequire(c_lqh->m_is_recover_block);
+    lock_flag = true;
+  }
+  else
+  {
+    lqh_block = c_lqh;
+    tup_block = this;
+    if (!c_lqh->is_restore_phase_done() &&
+        (globalData.ndbMtRecoverThreads +
+         globalData.ndbMtQueryThreads) > 0)
+    {
+      lock_flag = true;
+    }
+  }
+  if (lock_flag)
+  {
+    NdbMutex_Lock(lqh_block->m_lock_tup_page_mutex);
+  }
+
+  tup_block->m_pages_allocated += retNo;
+  if (retNo > 0 &&
+      tup_block->m_pages_allocated >
+        tup_block->m_pages_allocated_max)
+  {
+    tup_block->m_pages_allocated_max = tup_block->m_pages_allocated;
+  }
+
+  if (lock_flag)
+  {
+    NdbMutex_Unlock(lqh_block->m_lock_tup_page_mutex);
+  }
+}

@@ -64,8 +64,8 @@ CHANGE REPLICATION FILTER REPLICATE_DO_DB=();
 --echo ####################################################################
 --echo # Test Case3: CHANGE MASTER command
 --echo ####################################################################
-CHANGE MASTER TO MASTER_CONNECT_RETRY=20;
-CHANGE MASTER TO MASTER_HOST='dummy' FOR CHANNEL 'aaa';
+CHANGE REPLICATION SOURCE TO SOURCE_CONNECT_RETRY=20;
+CHANGE REPLICATION SOURCE TO SOURCE_HOST='dummy' FOR CHANNEL 'aaa';
 
 --echo ####################################################################
 --echo # Test Case4: RESET SLAVE FOR CHANNEL/RESET SLAVE ALL/RESET SLAVE
@@ -82,10 +82,11 @@ RESET SLAVE;
 --source include/rpl_connection_master.inc
 --source include/sync_slave_sql_with_master.inc
 
-# Check that mysql.gtid_executed table is empty.
---let $assert_text= mysql.gtid_executed table must have zero records
---let $assert_cond= [SELECT count(*) FROM mysql.gtid_executed] = 0
---source include/assert.inc
+# After wl#9211, GTID is persisted periodically by background thread and
+# mysql.gtid_executed table is not necessarily empty. Commenting check/assert.
+#--let $assert_text= mysql.gtid_executed table must have zero records
+#--let $assert_cond= [SELECT count(*) FROM mysql.gtid_executed] = 0
+#--source include/assert.inc
 
 --echo ####################################################################
 --echo # Test Case6: FLUSH BINARY LOGS command
@@ -150,7 +151,7 @@ RESET MASTER;
 --source include/stop_slave.inc
 --replace_result $MASTER_MYPORT MASTER_PORT
 --replace_column 2 ####
---eval CHANGE MASTER TO MASTER_HOST='127.0.0.1', MASTER_PORT=$MASTER_MYPORT, MASTER_USER='root'
+--eval CHANGE REPLICATION SOURCE TO SOURCE_HOST='127.0.0.1', SOURCE_PORT=$MASTER_MYPORT, SOURCE_USER='root'
 --source include/start_slave.inc
 
 --source include/rpl_connection_master.inc

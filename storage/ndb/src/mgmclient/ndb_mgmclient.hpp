@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -29,10 +29,16 @@ class CommandInterpreter;
 class Ndb_mgmclient
 {
 public:
-  Ndb_mgmclient(const char*,int verbose=0);
+  Ndb_mgmclient(const char* host,
+                const char* default_prompt,
+                int verbose,
+                int connect_retry_delay);
   ~Ndb_mgmclient();
   bool execute(const char *line, int try_reconnect = -1,
                bool interactive = true, int *error = NULL);
+  const char* get_current_prompt() const;
+  int set_default_backup_password(const char backup_password[]) const;
+  int set_always_encrypt_backup(bool on) const;
 private:
   CommandInterpreter *m_cmd;
 };

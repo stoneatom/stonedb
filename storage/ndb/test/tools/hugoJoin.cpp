@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2011, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2011, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -33,6 +33,7 @@
 #include <HugoQueryBuilder.hpp>
 #include <HugoQueries.hpp>
 #include <NdbTick.h>
+#include "my_alloc.h"
 
 int _verbose = 1;
 int _help = 0;
@@ -45,36 +46,35 @@ unsigned int _seed = 0;
 static const char * _options = "";
 static const char * _db = "TEST_DB";
 
-extern const char *load_default_groups[];
 static struct my_option my_long_options[] =
 {
   NDB_STD_OPTS("hugoJoin"),
   { "database", 'd', "Database",
-    (uchar**) &_db, (uchar**) &_db,
+    &_db, &_db,
     0, GET_STR, REQUIRED_ARG, 0, 0, 0, 0, 0, 0},
   { "options", 'o', "comma separated list of options",
-    (uchar**) &_options, (uchar**) &_options,
+    &_options, &_options,
     0, GET_STR, REQUIRED_ARG, 0, 0, 0, 0, 0, 0},
   { "loops", 'l', "Loops",
-    (uchar**) &_loops, 0,
+    &_loops, 0,
     0, GET_INT, REQUIRED_ARG, _loops, 0, 0, 0, 0, 0},
   { "verbose", 'v', "verbosity",
-    (uchar**) &_verbose, 0,
+    &_verbose, 0,
     0, GET_INT, REQUIRED_ARG, _verbose, 0, 0, 0, 0, 0},
   { "loops_per_query", 'q', "Recreate query each #loops",
-    (uchar**) &_loops_per_query, 0,
+    &_loops_per_query, 0,
     0, GET_INT, REQUIRED_ARG, _loops_per_query, 0, 0, 0, 0, 0},
   { "batch", 'b', "Batch size (for lookups)",
-    (uchar**) &_batch, 0,
+    &_batch, 0,
     0, GET_INT, REQUIRED_ARG, _batch, 0, 0, 0, 0, 0},
   { "records", 'r', "Records (for lookups)",
-    (uchar**) &_records, 0,
+    &_records, 0,
     0, GET_INT, REQUIRED_ARG, _records, 0, 0, 0, 0, 0},
   { "join-depth", 'j', "Join depth",
-    (uchar**) &_depth, 0,
+    &_depth, 0,
     0, GET_INT, REQUIRED_ARG, _depth, 0, 0, 0, 0, 0},
   { "seed", NDB_OPT_NOSHORT, "Random seed",
-    (uchar **) &_seed, (uchar **) &_seed, 0,
+    &_seed, &_seed, 0,
     GET_UINT, REQUIRED_ARG, 0, 0, 0, 0, 0, 0 },
   { 0, 0, 0, 0, 0, 0, GET_NO_ARG, NO_ARG, 0, 0, 0, 0, 0, 0}
 };
@@ -84,23 +84,19 @@ static void short_usage_sub(void)
   ndb_short_usage_sub(NULL);
 }
 
-static void usage()
+static void usage_extra()
 {
   char desc[] =
     "This run random joins on table-list\n";
   puts(desc);
-  ndb_usage(short_usage_sub, load_default_groups, my_long_options);
 }
 
 int main(int argc, char** argv){
   NDB_INIT(argv[0]);
-  ndb_opt_set_usage_funcs(short_usage_sub, usage);
-  ndb_load_defaults(NULL, load_default_groups, &argc, &argv);
-  int ho_error;
-  if ((ho_error=handle_options(&argc, &argv, my_long_options,
-			       ndb_std_get_one_option)))
+  Ndb_opts opts(argc, argv, my_long_options);
+  opts.set_usage_funcs(short_usage_sub, usage_extra);
+  if (opts.handle_options())
     return -1;
-
 
   // Connect to Ndb
   Ndb_cluster_connection con;
@@ -165,7 +161,7 @@ int main(int argc, char** argv){
     bool found = false;
     for (int o = 0; _ops[o].name != 0; o++)
     {
-      if (strcasecmp(list[i].c_str(), _ops[o].name) == 0)
+      if (native_strcasecmp(list[i].c_str(), _ops[o].name) == 0)
       {
         found = true;
         mask |= _ops[o].option;

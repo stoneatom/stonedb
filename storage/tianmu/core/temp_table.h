@@ -47,7 +47,7 @@ class Transaction;
 // Sepecial Instruction
 struct SI {
   std::string separator;  // group_concat separator
-  ORDER::enum_order order;
+  enum_order order; // stonedb8
 };
 
 //  TempTable - for storing a definition or content of a temporary table (view)

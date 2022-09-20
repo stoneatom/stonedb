@@ -35,20 +35,21 @@ class TianmuHandler final : public handler {
    Get the row type from the storage engine.  If this method returns
    ROW_TYPE_NOT_USED, the information in HA_CREATE_INFO should be used.
    */
-  enum row_type get_row_type() const override { return ROW_TYPE_COMPRESSED; }
+  //enum row_type get_row_type() const override { return ROW_TYPE_COMPRESSED; }   // stonedb8  get_row_type() is deleted
   /*
    The name of the index type that will be used for display
    don't implement this method unless you really have indexes
    */
-  const char *index_type([[maybe_unused]] uint inx) override { return "LSMTREE"; }
-  const char **bas_ext() const override;
+  // const char *index_type([[maybe_unused]] uint inx) override { return "LSMTREE"; }  // stonedb8 index_type() is deleted
+  // const char **bas_ext() const override; // stonedb8 bas_ext() is deleted
   /*
    This is a list of flags that says what the storage engine
    implements. The current table flags are documented in
    handler.h
    */
   ulonglong table_flags() const override {
-    return HA_NON_KEY_AUTO_INC | HA_REC_NOT_IN_SEQ | HA_PARTIAL_COLUMN_READ | HA_BINLOG_STMT_CAPABLE |
+    // stonedb8 HA_REC_NOT_IN_SEQ is deleted
+    return HA_NON_KEY_AUTO_INC | /*HA_REC_NOT_IN_SEQ |*/ HA_PARTIAL_COLUMN_READ | HA_BINLOG_STMT_CAPABLE |
            HA_BLOCK_CONST_TABLE | HA_PRIMARY_KEY_REQUIRED_FOR_POSITION | HA_NULL_IN_KEY | HA_DUPLICATE_POS |
            HA_PRIMARY_KEY_IN_READ_INDEX;
   }
@@ -91,9 +92,8 @@ class TianmuHandler final : public handler {
   double read_time([[maybe_unused]] uint index, [[maybe_unused]] uint ranges, ha_rows rows) override {
     return (double)rows / 20.0 + 1;
   }
-
-  int open(const char *name, int mode,
-           uint test_if_locked) override;  // required
+  int open(const char *name, int mode, uint test_if_locked,
+           const dd::Table *table_def) override;  // stonedb8
   int close() override;                    // required
 
   int write_row(uchar *buf __attribute__((unused))) override;
@@ -127,29 +127,36 @@ class TianmuHandler final : public handler {
   int start_stmt(THD *thd, thr_lock_type lock_type) override;
   int delete_all_rows() override;
   ha_rows records_in_range(uint inx, key_range *min_key, key_range *max_key) override;
-  int delete_table(const char *from) override;
-  int rename_table(const char *from, const char *to) override;
-  int create(const char *name, TABLE *form,
-             HA_CREATE_INFO *create_info) override;  // required
-  int truncate() override;
+  int delete_table(const char *from, const dd::Table *table_def) override;  // stonedb8
+  int rename_table(const char *from, const char *to, const dd::Table *from_table_def, dd::Table *to_table_def) override; // stonedb8
+  int create(const char *name, TABLE *table_arg, HA_CREATE_INFO *info, dd::Table *table_def) override;  // stonedb8
+  int truncate(dd::Table *table_def) override;  // stonedb8
 
   enum_alter_inplace_result check_if_supported_inplace_alter(TABLE *altered_table,
                                                              Alter_inplace_info *ha_alter_info) override;
-  bool inplace_alter_table(TABLE *altered_table, Alter_inplace_info *ha_alter_info) override;
-  bool commit_inplace_alter_table(TABLE *altered_table, Alter_inplace_info *ha_alter_info, bool commit) override;
+  bool inplace_alter_table(TABLE *altered_table [[maybe_unused]],
+                                   Alter_inplace_info *ha_alter_info
+                                   [[maybe_unused]],
+                                   const dd::Table *old_table_def
+                                   [[maybe_unused]],
+                                   dd::Table *new_table_def [[maybe_unused]]) override; // stonedb8
+  bool commit_inplace_alter_table(TABLE *altered_table [[maybe_unused]], Alter_inplace_info *ha_alter_info [[maybe_unused]],
+                                          bool commit [[maybe_unused]], const dd::Table *old_table_def [[maybe_unused]],
+                                          dd::Table *new_table_def [[maybe_unused]]) override;  // stonedb8
 
   THR_LOCK_DATA **store_lock(THD *thd, THR_LOCK_DATA **to,
                              enum thr_lock_type lock_type) override;  // required
 
   char *update_table_comment(const char *comment);
-  bool explain_message(const Item *a_cond, String *buf) override;
+  bool explain_message(const Item *a_cond, String *buf);  // stonedb8 explain_message() is deleted
   /* Condition push-down operation */
   const Item *cond_push(const Item *cond) override;
-  void cond_pop() override {}
+  // void cond_pop() override {}  // stonedb8 cond_pop() is deleted
   int reset() override;
 
- my_bool register_query_cache_table(THD *thd, char *table_key, size_t key_length,
-                                       qc_engine_callback *engine_callback, ulonglong *engine_data) override;
+  // stonedb8 register_query_cache_table() is deleted
+  /* bool register_query_cache_table(THD *thd, char *table_key, size_t key_length,
+                                       qc_engine_callback *engine_callback, ulonglong *engine_data) override; */
   void update_create_info(HA_CREATE_INFO *create_info) override;
   int fill_row_by_id(uchar *buf, uint64_t rowid);
   void key_convert(const uchar *key, uint key_len, std::vector<uint> cols, std::vector<std::string_view> &keys);

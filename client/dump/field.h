@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2015, 2021, Oracle and/or its affiliates.
+  Copyright (c) 2015, 2022, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License, version 2.0,
@@ -27,24 +27,23 @@
 
 #include <string>
 
-namespace Mysql{
-namespace Tools{
-namespace Dump{
+namespace Mysql {
+namespace Tools {
+namespace Dump {
 
-class Field
-{
-public:
+class Field {
+ public:
   Field(std::string name, std::string type_string);
-  const std::string& get_name() const;
-  const std::string& get_type_string() const;
+  const std::string &get_name() const;
+  const std::string &get_type_string() const;
 
-private:
+ private:
   std::string m_name;
   std::string m_type_string;
 };
 
-}
-}
-}
+}  // namespace Dump
+}  // namespace Tools
+}  // namespace Mysql
 
 #endif

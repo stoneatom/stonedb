@@ -2,6 +2,17 @@
 # Find string "NOTE NOTE NOTE" in order to find some 'unsure' tests
 #
 
+-- disable_query_log
+-- disable_result_log
+# High values set for sampling scanning, effectively forcing full scan for
+# statistics.
+SET @innodb_stats_transient_sample_pages= @@GLOBAL.innodb_stats_transient_sample_pages;
+SET @@global.innodb_stats_transient_sample_pages=5000000000;
+SET @innodb_stats_persistent_sample_pages= @@GLOBAL.innodb_stats_persistent_sample_pages;
+SET @@global.innodb_stats_persistent_sample_pages=5000000000;
+-- enable_result_log
+-- enable_query_log
+
 #
 # Simple select test
 #
@@ -39,7 +50,7 @@ CREATE TABLE t2 (
   UNIQUE fld1 (fld1),
   KEY fld3 (fld3),
   PRIMARY KEY (auto)
-);  
+) charset utf8mb4;  
 
 #
 # Populate table
@@ -1246,7 +1257,7 @@ INSERT INTO t2 VALUES (1191,068504,00,'bonfire','corresponds','positively','');
 INSERT INTO t2 VALUES (1192,068305,00,'Colombo','hardware','colicky','');
 INSERT INTO t2 VALUES (1193,000000,00,'nondecreasing','implant','thrillingly','');
 --enable_query_log
-
+ANALYZE TABLE t2;
 #
 # Search with a key
 #
@@ -1347,17 +1358,22 @@ select fld1,fld3 from t2 where fld1 like "25050_";
 # it will be sorted first before the distinct table is created.
 #
 
+--sorted_result
 select distinct companynr from t2;
 select distinct companynr from t2 order by companynr;
 select distinct companynr from t2 order by companynr desc;
-select distinct t2.fld3,period from t2,t1 where companynr=37 and fld3 like "O%";
+select distinct t2.fld3,period from t2,t1  where companynr=37 and fld3 like "O%" order by fld3;
 
 select distinct fld3 from t2 where companynr = 34 order by fld3;
 select distinct fld3 from t2 limit 10;
 select distinct fld3 from t2 having fld3 like "A%" limit 10;
+--replace_result ann Ann abr Abr art Art ant Ant
 select distinct substring(fld3,1,3) from t2 where fld3 like "A%";
+--replace_result abr Abr
 select distinct substring(fld3,1,3) as a from t2 having a like "A%" order by a limit 10;
+--replace_result abr Abr
 select distinct substring(fld3,1,3) from t2 where fld3 like "A%" limit 10;
+--replace_result abr Abr
 select distinct substring(fld3,1,3) as a from t2 having a like "A%" limit 10;
 
 # make a big table.
@@ -1385,7 +1401,7 @@ INSERT INTO t3 (period,name,companynr,price,price2) VALUES (1009,"gems",447,2374
 INSERT INTO t3 (period,name,companynr,price,price2) VALUES (1010,"clinker",512,786542,76234234);
 --enable_query_log
 
-create temporary table tmp engine = myisam select * from t3;
+create temporary table tmp  select * from t3;
 
 insert into t3 select * from tmp;
 insert into tmp select * from t3;
@@ -1407,6 +1423,8 @@ insert into t3 select * from tmp;
 #insert into tmp select * from t3;
 #insert into t3 select * from tmp;
 
+# The test assumes a 1-1 correspondence of autoinc values to  fields tested.
+set session innodb_parallel_read_threads = 1;
 alter table t3 add t2nr int not null auto_increment primary key first;
 
 drop table tmp;
@@ -1419,17 +1437,21 @@ SET BIG_TABLES=0;
 --source include/turn_off_only_full_group_by.inc
 select distinct concat(fld3," ",fld3) from t2,t3 where t2.fld1=t3.t2nr order by fld3 limit 10;
 --source include/restore_sql_mode_after_turn_off_only_full_group_by.inc
+--skip_if_hypergraph   # Nondeterministic (depends on which rows DISTINCT outputs first).
 select distinct fld5 from t2 limit 10;
 
 #
 # Force use of remove_dupp
 #
+# NOTE: Returned records may be selected randomly depending on storage engine
+#       used due to bug#27716329 (not all sort columns are selected).
+#
 
-select distinct fld3,count(*) from t2 group by companynr,fld3 limit 10;
-SET BIG_TABLES=1; # Force use of MyISAM
-select distinct fld3,count(*) from t2 group by companynr,fld3 limit 10;
+select distinct companynr, fld3,count(*) from t2 group by companynr, fld3 order by companynr, fld3 limit 10;
+SET BIG_TABLES=1; # Force use of INNODB
+select distinct companynr, fld3,count(*) from t2 group by companynr, fld3 order by companynr, fld3 limit 10;
 SET BIG_TABLES=0;
-select distinct fld3,repeat("a",length(fld3)),count(*) from t2 group by companynr,fld3 limit 100,10;
+select distinct companynr, fld3,repeat("a",length(fld3)),count(*) from t2 group by companynr ,fld3 order by companynr, fld3 limit 100,10;
 
 #
 # A big order by that should trigger a merge in filesort
@@ -1478,12 +1500,17 @@ explain select fld3,period from t2,t3 where t2.fld1 = 011401 and t3.t2nr=t2.fld1
 # Search with a constant table and several rows from another table
 #
 
-select fld3,period from t2,t1 where companynr*10 = 37*10;
+select fld3,period from t2,t1 where companynr*10 = 37*10 order by fld3;
 
 #
 # Search with a table reference and without a key.
 # t3 will be the main table.
 #
+
+analyze table t2, t3;
+
+--skip_if_hypergraph  # Depends on query plan.
+EXPLAIN  select fld3,period,price,price2 from t2,t3 where t2.fld1=t3.t2nr and period >= 1001 and period <= 1002 and t2.companynr = 37 order by fld3,period, price;  # Tests how to print out BKA iterators.
 
 select fld3,period,price,price2 from t2,t3 where t2.fld1=t3.t2nr and period >= 1001 and period <= 1002 and t2.companynr = 37 order by fld3,period, price;
 
@@ -1504,7 +1531,7 @@ create table t4 (
   companyname char(30) NOT NULL default '',
   PRIMARY KEY (companynr),
   UNIQUE KEY companyname(companyname)
-) ENGINE=MyISAM MAX_ROWS=50 PACK_KEYS=1 COMMENT='companynames';
+) ENGINE=INNODB MAX_ROWS=50 PACK_KEYS=1 COMMENT='companynames';
 
 --disable_query_log
 INSERT INTO t4 (companynr, companyname) VALUES (29,'company 1');
@@ -1527,8 +1554,10 @@ INSERT INTO t4 (companynr, companyname) VALUES (00,'Unknown');
 
 # We see the functional dependency implied by WHERE and primary key of t4!
 
+--sorted_result
 select STRAIGHT_JOIN t2.companynr,companyname from t4,t2 where t2.companynr=t4.companynr group by t2.companynr;
 
+--sorted_result
 select SQL_SMALL_RESULT t2.companynr,companyname from t4,t2 where t2.companynr=t4.companynr group by t2.companynr;
 
 #
@@ -1536,12 +1565,14 @@ select SQL_SMALL_RESULT t2.companynr,companyname from t4,t2 where t2.companynr=t
 #
 
 select * from t1,t1 t12;
+--sorted_result
 select t2.fld1,t22.fld1 from t2,t2 t22 where t2.fld1 >= 250501 and t2.fld1 <= 250505 and t22.fld1 >= 250501 and t22.fld1 <= 250505;
 
 #
 # Test of left join.
 #
 insert into t2 (fld1, companynr) values (999999,99);
+ANALYZE TABLE t2, t4;
 
 select t2.companynr,companyname from t2 left join t4 using (companynr) where t4.companynr is null;
 select count(*) from t2 left join t4 using (companynr) where t4.companynr is not null;
@@ -1606,6 +1637,7 @@ select fld1 from t2 where fld1 in (250502,98005,98006,250503,250605,250606) and 
 
 select fld1 from t2 where fld1 between 250502 and 250504;
 
+--sorted_result
 select fld3 from t2 where (((fld3 like "_%L%" ) or (fld3 like "%ok%")) and ( fld3 like "L%" or fld3 like "G%")) and fld3 like "L%" ;
 
 #
@@ -1614,22 +1646,36 @@ select fld3 from t2 where (((fld3 like "_%L%" ) or (fld3 like "%ok%")) and ( fld
 #
 
 select count(*) from t1;
+--sorted_result
 select companynr,count(*),sum(fld1) from t2 group by companynr;
 select companynr,count(*) from t2 group by companynr order by companynr desc limit 5;
 select count(*),min(fld4),max(fld4),sum(fld1),avg(fld1),std(fld1),variance(fld1) from t2 where companynr = 34 and fld4<>"";
-explain extended select count(*),min(fld4),max(fld4),sum(fld1),avg(fld1),std(fld1),variance(fld1) from t2 where companynr = 34 and fld4<>"";
-select companynr,count(*),min(fld4),max(fld4),sum(fld1),avg(fld1),std(fld1),variance(fld1) from t2 group by companynr limit 3;
-select companynr,t2nr,count(price),sum(price),min(price),max(price),avg(price) from t3 where companynr = 37 group by companynr,t2nr limit 10;
-select /*! SQL_SMALL_RESULT */ companynr,t2nr,count(price),sum(price),min(price),max(price),avg(price) from t3 where companynr = 37 group by companynr,t2nr limit 10;
+explain select count(*),min(fld4),max(fld4),sum(fld1),avg(fld1),std(fld1),variance(fld1) from t2 where companynr = 34 and fld4<>"";
+select companynr,count(*),min(fld4),max(fld4),sum(fld1),avg(fld1),std(fld1),variance(fld1) from t2 group by companynr order by companynr limit 3;
+select
+companynr,t2nr,count(price),sum(price),min(price),max(price),avg(price) from
+t3 where companynr = 37 group by companynr,t2nr order by companynr, t2nr limit 10;
+select /*! SQL_SMALL_RESULT */
+companynr,t2nr,count(price),sum(price),min(price),max(price),avg(price) from
+t3 where companynr = 37 group by companynr,t2nr order by companynr, t2nr limit 10;
+--sorted_result
 select companynr,count(price),sum(price),min(price),max(price),avg(price) from t3 group by companynr ;
+--sorted_result
 select distinct mod(companynr,10) from t4 group by companynr;
+--sorted_result
 select distinct 1 from t4 group by companynr;
 select count(distinct fld1) from t2;
+--sorted_result
 select companynr,count(distinct fld1) from t2 group by companynr;
+--sorted_result
 select companynr,count(*) from t2 group by companynr;
+--sorted_result
 select companynr,count(distinct concat(fld1,repeat(65,1000))) from t2 group by companynr;
+--sorted_result
 select companynr,count(distinct concat(fld1,repeat(65,200))) from t2 group by companynr;
+--sorted_result
 select companynr,count(distinct floor(fld1/100)) from t2 group by companynr;
+--sorted_result
 select companynr,count(distinct concat(repeat(65,1000),floor(fld1/100))) from t2 group by companynr;
 
 #
@@ -1652,6 +1698,7 @@ select t2.fld3,count(*) from t2,t3 where t2.fld1=158402 and t3.name=t2.fld3 grou
 #
 
 --source include/turn_off_only_full_group_by.inc
+--sorted_result
 select companynr|0,companyname from t4 group by 1;
 --source include/restore_sql_mode_after_turn_off_only_full_group_by.inc
 
@@ -1664,6 +1711,7 @@ select t2.fld1,count(*) from t2,t3 where t2.fld1=158402 and t3.name=t2.fld3 grou
 #
 
 select sum(Period)/count(*) from t1;
+--sorted_result
 select companynr,count(price) as "count",sum(price) as "sum" ,abs(sum(price)/count(price)-avg(price)) as "diff",(0+count(price))*companynr as func from t3 group by companynr;
 select companynr,sum(price)/count(price) as avg from t3 group by companynr having avg > 70000000 order by avg;
 
@@ -1675,6 +1723,7 @@ select companynr,sum(price)/count(price) as avg from t3 group by companynr havin
 
 select companynr,count(*) from t2 group by companynr order by 2 desc;
 select companynr,count(*) from t2 where companynr > 40 group by companynr order by 2 desc;
+--sorted_result
 select t2.fld4,t2.fld1,count(price),sum(price),min(price),max(price),avg(price) from t3,t2 where t3.companynr = 37 and t2.fld1 = t3.t2nr group by fld1,t2.fld4;
 
 #
@@ -1685,7 +1734,9 @@ select t2.fld4,t2.fld1,count(price),sum(price),min(price),max(price),avg(price) 
 #	    send rows
 #
 
+--sorted_result
 select t3.companynr,fld3,sum(price) from t3,t2 where t2.fld1 = t3.t2nr and t3.companynr = 512 group by companynr,fld3;
+--sorted_result
 select t2.companynr,count(*),min(fld3),max(fld3),sum(price),avg(price) from t2,t3 where t3.companynr >= 30 and t3.companynr <= 58 and t3.t2nr = t2.fld1 and 1+1=2 group by t2.companynr;
 
 #
@@ -1722,11 +1773,16 @@ explain select fld3 from t2 where fld1=fld1;
 # HAVING
 #
 
+--sorted_result
 select companynr,fld1 from t2 HAVING fld1=250501 or fld1=250502; 
+--sorted_result
 select companynr,fld1 from t2 WHERE fld1>=250501 HAVING fld1<=250502;
+--sorted_result
 select companynr,count(*) as count,sum(fld1) as sum from t2 group by companynr having count > 40 and sum/count >= 120000;
+--sorted_result
 select companynr from t2 group by companynr having count(*) > 40 and sum(fld1)/count(*) >= 120000 ;
 
+--sorted_result
 select t2.companynr,companyname,count(*) from t2,t4 where t2.companynr=t4.companynr group by companyname having t2.companynr >= 40;
 
 #
@@ -1743,6 +1799,11 @@ select max(fld1) from t2 where fld1>= 098024;
 select count(*) from t3 where price2=76234234;
 select count(*) from t3 where companynr=512 and price2=76234234;
 explain select min(fld1),max(fld1),count(*) from t2;
+--skip_if_hypergraph  # Depends on query plan.
+explain format=tree select min(fld1),max(fld1),count(*) from t2;  # Should be computed at optimize time.
+ANALYZE TABLE t2;
+--skip_if_hypergraph  # Depends on query plan.
+explain format=tree select min(fld1),max(fld1),count(*) from t2 where rand() > 0.5;  # Should _not_ be computed at optimize time.
 # PS does correct pre-zero here. MySQL can't do it as it returns a number.
 --disable_ps_protocol
 select min(fld1),max(fld1),count(*) from t2;
@@ -1756,7 +1817,7 @@ select max(t2nr) from t3 where price=983543950;
 # Test of alias
 #
 
-select t1.period from t3 = t1 limit 1;
+select t1.period from t3 t1 limit 1;
 select t1.period from t1 as t1 limit 1;
 select t1.period as "Nuvarande period" from t1 as t1 limit 1;
 select period as ok_period from t1 limit 1;
@@ -1775,13 +1836,10 @@ select period as "Nuvarande period" from t1 group by "Nuvarande period" limit 1;
 show tables;
 show tables from test like "s%";
 show tables from test like "t?";
-# We mask out the Privileges column because it differs with embedded server
---replace_column 8 #
 show full columns from t2;
---replace_column 8 #
 show full columns from t2 from test like 'f%';
---replace_column 8 #
 show full columns from t2 from test like 's%';
+analyze table t2;
 show keys from t2;
 
 drop table t4, t3, t2, t1;
@@ -1821,12 +1879,13 @@ DROP TABLE t1;
 # Test of bug with SUM(CASE...)
 #
 
-CREATE TABLE t1 (gvid int(10) unsigned default NULL,  hmid int(10) unsigned default NULL,  volid int(10) unsigned default NULL,  mmid int(10) unsigned default NULL,  hdid int(10) unsigned default NULL,  fsid int(10) unsigned default NULL,  ctid int(10) unsigned default NULL,  dtid int(10) unsigned default NULL,  cost int(10) unsigned default NULL,  performance int(10) unsigned default NULL,  serialnumber bigint(20) unsigned default NULL,  monitored tinyint(3) unsigned default '1',  removed tinyint(3) unsigned default '0',  target tinyint(3) unsigned default '0',  dt_modified timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,  name varchar(255) binary default NULL,  description varchar(255) default NULL,  UNIQUE KEY hmid (hmid,volid)) ENGINE=MyISAM;
+CREATE TABLE t1 (gvid int(10) unsigned default NULL,  hmid int(10) unsigned default NULL,  volid int(10) unsigned default NULL,  mmid int(10) unsigned default NULL,  hdid int(10) unsigned default NULL,  fsid int(10) unsigned default NULL,  ctid int(10) unsigned default NULL,  dtid int(10) unsigned default NULL,  cost int(10) unsigned default NULL,  performance int(10) unsigned default NULL,  serialnumber bigint(20) unsigned default NULL,  monitored tinyint(3) unsigned default '1',  removed tinyint(3) unsigned default '0',  target tinyint(3) unsigned default '0',  dt_modified timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,  name varchar(255) binary default NULL,  description varchar(255) default NULL,  UNIQUE KEY hmid (hmid,volid)) ENGINE=INNODB;
 INSERT INTO t1 VALUES (200001,2,1,1,100,1,1,1,0,0,0,1,0,1,20020425060057,'\\\\ARKIVIO-TESTPDC\\E$',''),(200002,2,2,1,101,1,1,1,0,0,0,1,0,1,20020425060057,'\\\\ARKIVIO-TESTPDC\\C$',''),(200003,1,3,2,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,0,1,20020425060427,'c:',NULL);
-CREATE TABLE t2 (  hmid int(10) unsigned default NULL,  volid int(10) unsigned default NULL,  sampletid smallint(5) unsigned default NULL,  sampletime datetime default NULL,  samplevalue bigint(20) unsigned default NULL,  KEY idx1 (hmid,volid,sampletid,sampletime)) ENGINE=MyISAM;
+CREATE TABLE t2 (  hmid int(10) unsigned default NULL,  volid int(10) unsigned default NULL,  sampletid smallint(5) unsigned default NULL,  sampletime datetime default NULL,  samplevalue bigint(20) unsigned default NULL,  KEY idx1 (hmid,volid,sampletid,sampletime)) ENGINE=INNODB;
 INSERT INTO t2 VALUES (1,3,10,'2002-06-01 08:00:00',35),(1,3,1010,'2002-06-01 12:00:01',35);
 # Disable PS becasue we get more warnings from PS than from normal execution
 --disable_ps_protocol
+--error ER_WRONG_VALUE
 SELECT a.gvid, (SUM(CASE b.sampletid WHEN 140 THEN b.samplevalue ELSE 0 END)) as the_success,(SUM(CASE b.sampletid WHEN 141 THEN b.samplevalue ELSE 0 END)) as the_fail,(SUM(CASE b.sampletid WHEN 142 THEN b.samplevalue ELSE 0 END)) as the_size,(SUM(CASE b.sampletid WHEN 143 THEN b.samplevalue ELSE 0 END)) as the_time FROM t1 a, t2 b WHERE a.hmid = b.hmid AND a.volid = b.volid AND b.sampletime >= 'wrong-date-value' AND b.sampletime < 'wrong-date-value' AND b.sampletid IN (140, 141, 142, 143) GROUP BY a.gvid;
 --enable_ps_protocol
 # Testing the same select with NULL's instead of invalid datetime values
@@ -1861,45 +1920,64 @@ insert into t1 values ();
 insert into t1 values ();
 insert into t1 values ();
 # ,
+--sorted_result
 select * from (t1 as t2 left join t1 as t3 using (a)), t1;
+--sorted_result
 select * from t1, (t1 as t2 left join t1 as t3 using (a));
 # stright_join
+--sorted_result
 select * from (t1 as t2 left join t1 as t3 using (a)) straight_join t1;
+--sorted_result
 select * from t1 straight_join (t1 as t2 left join t1 as t3 using (a));
 # inner join on
+--sorted_result
 select * from (t1 as t2 left join t1 as t3 using (a)) inner join t1 on t1.a>1;
+--sorted_result
 select * from t1 inner join (t1 as t2 left join t1 as t3 using (a)) on t1.a>1;
 # inner join using
+--sorted_result
 select * from (t1 as t2 left join t1 as t3 using (a)) inner join t1 using ( a );
+--sorted_result
 select * from t1 inner join (t1 as t2 left join t1 as t3 using (a)) using ( a );
 # left [outer] join on
 --sorted_result
 select * from (t1 as t2 left join t1 as t3 using (a)) left outer join t1 on t1.a>1;
+--sorted_result
 select * from t1 left outer join (t1 as t2 left join t1 as t3 using (a)) on t1.a>1;
 # left join using
+--sorted_result
 select * from (t1 as t2 left join t1 as t3 using (a)) left join t1 using ( a );
+--sorted_result
 select * from t1 left join (t1 as t2 left join t1 as t3 using (a)) using ( a );
 # natural left join
 select * from (t1 as t2 left join t1 as t3 using (a)) natural left join t1;
+--sorted_result
 select * from t1 natural left join (t1 as t2 left join t1 as t3 using (a));
 # right join on
+--sorted_result
 select * from (t1 as t2 left join t1 as t3 using (a)) right join t1 on t1.a>1;
 --sorted_result
 select * from t1 right join (t1 as t2 left join t1 as t3 using (a)) on t1.a>1;
 # right [outer] joing using
+--sorted_result
 select * from (t1 as t2 left join t1 as t3 using (a)) right outer join t1 using ( a );
+--sorted_result
 select * from t1 right outer join (t1 as t2 left join t1 as t3 using (a)) using ( a );
 # natural right join
+--sorted_result
 select * from (t1 as t2 left join t1 as t3 using (a)) natural right join t1;
+--sorted_result
 select * from t1 natural right join (t1 as t2 left join t1 as t3 using (a));
 # natural join
+--sorted_result
 select * from t1 natural join (t1 as t2 left join t1 as t3 using (a));
+--sorted_result
 select * from (t1 as t2 left join t1 as t3 using (a)) natural join t1;
 drop table t1;
 
-CREATE TABLE t1 (  aa char(2),  id int(11) NOT NULL auto_increment,  t2_id int(11) NOT NULL default '0',  PRIMARY KEY  (id),  KEY replace_id (t2_id)) ENGINE=MyISAM;
+CREATE TABLE t1 (  aa char(2),  id int(11) NOT NULL auto_increment,  t2_id int(11) NOT NULL default '0',  PRIMARY KEY  (id),  KEY replace_id (t2_id));
 INSERT INTO t1 VALUES ("1",8264,2506),("2",8299,2517),("3",8301,2518),("4",8302,2519),("5",8303,2520),("6",8304,2521),("7",8305,2522);
-CREATE TABLE t2 ( id int(11) NOT NULL auto_increment,  PRIMARY KEY  (id)) ENGINE=MyISAM;
+CREATE TABLE t2 ( id int(11) NOT NULL auto_increment,  PRIMARY KEY  (id)) ENGINE=INNODB;
 INSERT INTO t2 VALUES (2517), (2518), (2519), (2520), (2521), (2522);
 select * from t1, t2 WHERE t1.t2_id = t2.id and t1.t2_id > 0   order by t1.id   LIMIT 0, 5;
 drop table t1,t2;
@@ -1932,7 +2010,7 @@ create table t2(s varchar(10) not null primary key);
 create table t3(s varchar(10) not null primary key);
 insert into t1 values ('one\t'), ('two\t');
 insert into t2 values ('one\r'), ('two\t');
-insert into t3 values ('one '), ('two\t');
+insert into t3 values ('one\b'), ('two\t');
 select * from t1 where s = 'one';
 select * from t2 where s = 'one';
 select * from t3 where s = 'one';
@@ -1948,6 +2026,7 @@ create table t1 (a integer,  b integer, index(a), index(b));
 create table t2 (c integer,  d integer, index(c), index(d));
 insert into t1 values (1,2), (2,2), (3,2), (4,2);
 insert into t2 values (1,3), (2,3), (3,4), (4,4);
+ANALYZE TABLE t1, t2;
 explain select * from t1 left join t2 on a=c where d in (4);
 select * from t1 left join t2 on a=c where d in (4);
 explain select * from t1 left join t2 on a=c where d = 4;
@@ -1963,7 +2042,7 @@ CREATE TABLE t1 (
   c char(10) NOT NULL default '',
   PRIMARY KEY  (i),
   UNIQUE KEY c (c)
-) ENGINE=MyISAM;
+) ;
 
 INSERT INTO t1 VALUES (1,'a');
 INSERT INTO t1 VALUES (2,'b');
@@ -1982,7 +2061,7 @@ CREATE TABLE t2 ( a BLOB, INDEX (a(20)) );
 
 INSERT INTO t1 VALUES ('one'),('two'),('three'),('four'),('five');
 INSERT INTO t2 VALUES ('one'),('two'),('three'),('four'),('five');
-
+ANALYZE TABLE t1, t2;
 EXPLAIN SELECT * FROM t1 LEFT JOIN t2 USE INDEX (a) ON t1.a=t2.a;
 EXPLAIN SELECT * FROM t1 LEFT JOIN t2 FORCE INDEX (a) ON t1.a=t2.a;
 
@@ -1992,7 +2071,7 @@ DROP TABLE t1, t2;
 # Test case for bug 7098: substitution of a constant for a string field 
 #
 
-CREATE TABLE t1 ( city char(30) );
+CREATE TABLE t1 ( city char(30) ) charset utf8mb4;
 INSERT INTO t1 VALUES ('London');
 INSERT INTO t1 VALUES ('Paris');
 
@@ -2010,7 +2089,7 @@ DROP TABLE t1;
 #
 
 create table t1 (a int(11) unsigned, b int(11) unsigned);
-insert into t1 values (1,0), (1,1), (18446744073709551615,0);
+insert into t1 values (1,0), (1,1), (4294967295,1);
 select a-b  from t1 order by 1;
 select a-b , (a-b < 0)  from t1 order by 1;
 --source include/turn_off_only_full_group_by.inc
@@ -2176,6 +2255,7 @@ drop table t1,t2;
 create table t2 (a tinyint unsigned);
 create index t2i on t2(a);
 insert into t2 values (0), (254), (255);
+ANALYZE TABLE t2;
 explain select * from t2 where a > -1;
 select * from t2 where a > -1;
 drop table t2;
@@ -2235,7 +2315,8 @@ drop table t1,t2;
 create table t1 (f1 int not null auto_increment primary key, f2 varchar(10));
 create table t11 like t1;
 insert into t1 values(1,""),(2,"");
---replace_column 7 X 8 X 9 X 10 X 11 X 12 X 13 X 14 X
+analyze table t1, t11;
+--replace_column 7 X 8 X 9 X 10 X 11 X 12 X 13 X 14 X 15 X
 show table status like 't1%';
 select 123 as a from t1 where f1 is null;
 drop table t1,t11;
@@ -2248,14 +2329,18 @@ CREATE TABLE t1 ( a INT NOT NULL, b INT NOT NULL, UNIQUE idx (a,b) );
 INSERT INTO t1 VALUES (1,1),(1,2),(1,3),(1,4);
 CREATE TABLE t2 ( a INT NOT NULL, b INT NOT NULL, e INT );
 INSERT INTO t2 VALUES ( 1,10,1), (1,10,2), (1,11,1), (1,11,2), (1,2,1), (1,2,2),(1,2,3);
+--sorted_result
 SELECT t2.a, t2.b, IF(t1.b IS NULL,'',e) AS c, COUNT(*) AS d FROM t2 LEFT JOIN
 t1 ON t2.a = t1.a AND t2.b = t1.b GROUP BY a, b, c;
 --source include/turn_off_only_full_group_by.inc
+--sorted_result
 SELECT t2.a, t2.b, IF(t1.b IS NULL,'',e) AS c, COUNT(*) AS d FROM t2 LEFT JOIN
 t1 ON t2.a = t1.a AND t2.b = t1.b GROUP BY t1.a, t1.b, c;
 --source include/restore_sql_mode_after_turn_off_only_full_group_by.inc
+--sorted_result
 SELECT t2.a, t2.b, IF(t1.b IS NULL,'',e) AS c, COUNT(*) AS d FROM t2 LEFT JOIN
 t1 ON t2.a = t1.a AND t2.b = t1.b GROUP BY t2.a, t2.b, c;
+--sorted_result
 SELECT t2.a, t2.b, IF(t1.b IS NULL,'',e) AS c, COUNT(*) AS d FROM t2,t1
 WHERE t2.a = t1.a AND t2.b = t1.b GROUP BY a, b, c;
 DROP TABLE IF EXISTS t1, t2;
@@ -2301,7 +2386,7 @@ DROP TABLE t1,t2,t3;
 
 CREATE TABLE t1 (a int, INDEX idx(a));
 INSERT INTO t1 VALUES (2), (3), (1);
-
+ANALYZE TABLE t1;
 EXPLAIN SELECT * FROM t1 IGNORE INDEX (idx);
 --error 1176
 EXPLAIN SELECT * FROM t1 IGNORE INDEX (a);
@@ -2320,21 +2405,27 @@ CREATE TABLE t2 (a int PRIMARY KEY, b int, KEY b (b));
 INSERT INTO t2 VALUES (1,NULL), (2,10);
 ALTER TABLE t1 ENABLE KEYS;
 
-EXPLAIN SELECT STRAIGHT_JOIN SQL_NO_CACHE COUNT(*) FROM t2, t1 WHERE t1.b = t2.b OR t2.b IS NULL;
-SELECT STRAIGHT_JOIN SQL_NO_CACHE * FROM t2, t1 WHERE t1.b = t2.b OR t2.b IS NULL;
-EXPLAIN SELECT STRAIGHT_JOIN SQL_NO_CACHE COUNT(*) FROM t2, t1 WHERE t1.b = t2.b OR t2.b IS NULL;
-SELECT STRAIGHT_JOIN SQL_NO_CACHE * FROM t2, t1 WHERE t1.b = t2.b OR t2.b IS NULL;
+ANALYZE TABLE t1, t2;
+
+EXPLAIN SELECT STRAIGHT_JOIN COUNT(*) FROM t2, t1 WHERE t1.b = t2.b OR t2.b IS NULL;
+--sorted_result
+SELECT STRAIGHT_JOIN * FROM t2, t1 WHERE t1.b = t2.b OR t2.b IS NULL;
+EXPLAIN SELECT STRAIGHT_JOIN COUNT(*) FROM t2, t1 WHERE t1.b = t2.b OR t2.b IS NULL;
+--sorted_result
+SELECT STRAIGHT_JOIN * FROM t2, t1 WHERE t1.b = t2.b OR t2.b IS NULL;
 DROP TABLE IF EXISTS t1,t2;
 
 #
 # Bug #20954 "avg(keyval) retuns 0.38 but max(keyval) returns an empty set"
 #
---disable_ps_protocol
-CREATE TABLE t1 (key1 float default NULL, UNIQUE KEY key1 (key1));
-CREATE TABLE t2 (key2 float default NULL, UNIQUE KEY key2 (key2));
+# TODO: Change double in the table definition back to float after bug #29931596 is fixed.
+#
+CREATE TABLE t1 (key1 double default NULL, UNIQUE KEY key1 (key1));
+CREATE TABLE t2 (key2 double default NULL, UNIQUE KEY key2 (key2));
 INSERT INTO t1 VALUES (0.3762),(0.3845),(0.6158),(0.7941);
 INSERT INTO t2 VALUES (1.3762),(1.3845),(1.6158),(1.7941);
 
+ANALYZE TABLE t1, t2;
 explain select max(key1) from t1 where key1 <= 0.6158;
 explain select max(key2) from t2 where key2 <= 1.6158;
 explain select min(key1) from t1 where key1 >= 0.3762;
@@ -2354,7 +2445,6 @@ select max(key1) from t1 where key1 <= 0.6158 and rand() + 0.5 >= 0.5;
 select min(key1) from t1 where key1 >= 0.3762 and rand() + 0.5 >= 0.5;
 
 DROP TABLE t1,t2;
---enable_ps_protocol
 
 #
 # Bug #18759 "Incorrect string to numeric conversion"
@@ -2417,7 +2507,7 @@ CREATE TABLE t1 (
 K2C4 varchar(4) character set latin1 collate latin1_bin NOT NULL default '', 
 K4N4 varchar(4) character set latin1 collate latin1_bin NOT NULL default '0000', 
 F2I4 int(11) NOT NULL default '0' 
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) DEFAULT CHARSET=latin1;
 
 INSERT INTO t1 VALUES 
 ('W%RT', '0100',  1), 
@@ -2466,7 +2556,7 @@ drop table t1;
 # Bug#9799
 #
 
-create table t1 (s1 int) engine=myisam;
+create table t1 (s1 int);
 insert into t1 values (0);
 select avg(distinct s1) from t1 group by s1 with rollup;
 drop table t1;
@@ -2478,7 +2568,6 @@ drop table t1;
 create table t1 (s1 int);
 insert into t1 values (null),(1);
 select avg(s1) as x from t1 group by s1 with rollup;
---error ER_WRONG_USAGE
 select distinct avg(s1) as x from t1 group by s1 with rollup;
 drop table t1;
 
@@ -2491,7 +2580,7 @@ CREATE TABLE t1 (a int);
 CREATE TABLE t2 (a int);
 INSERT INTO t1 VALUES (1), (2), (3), (4), (5);
 INSERT INTO t2 VALUES (2), (4), (6);
-
+ANALYZE TABLE t1, t2;
 SELECT t1.a FROM t1 STRAIGHT_JOIN t2 ON t1.a=t2.a;
 
 EXPLAIN SELECT t1.a FROM t1 STRAIGHT_JOIN t2 ON t1.a=t2.a;
@@ -2512,6 +2601,7 @@ create table t1 (f1 varchar(6) default NULL, f2 int(6) primary key not null);
 create table t2 (f3 varchar(5) not null, f4 varchar(5) not null, UNIQUE KEY UKEY (f3,f4));
 insert into t1 values (" 2", 2);
 insert into t2 values (" 2", " one "),(" 2", " two ");
+--sorted_result
 select * from t1 left join t2 on f1 = f3;
 drop table t1,t2;
 
@@ -2524,6 +2614,7 @@ create table t2 (empnum int, name char(5));
 insert into t1 values(1,1);
 insert into t2 values(1,'bob');
 create view v1 as select * from t2 inner join t1 using (empnum);
+--sorted_result
 select * from v1;
 drop table t1,t2;
 drop view v1;
@@ -2535,6 +2626,7 @@ drop view v1;
 
 create table t1 (pk int primary key, b int);
 create table t2 (pk int primary key, c int);
+--sorted_result
 select pk from t1 inner join t2 using (pk);
 drop table t1,t2;
 
@@ -2587,7 +2679,9 @@ insert into t1 values (1,1),(2,2);
 insert into t2 values (1,1),(2,2),(3,3);
 insert into t3 values (1,1),(2,1),(3,1),(4,1);
 # the following two queries must return the same result
+--sorted_result
 select * from t1 natural join t2 natural join t3;
+--sorted_result
 select * from t1 natural join t3 natural join t2;
 drop table t1, t2, t3;
 
@@ -2607,7 +2701,7 @@ SELECT IFNULL(NULL, NULL);
 SET @OLD_SQL_MODE12595=@@SQL_MODE, @@SQL_MODE='';
 SHOW LOCAL VARIABLES LIKE 'SQL_MODE';
 
-CREATE TABLE BUG_12595(a varchar(100));
+CREATE TABLE BUG_12595(a varchar(100)) charset latin1;
 INSERT INTO BUG_12595 VALUES ('hakan%'), ('hakank'), ("ha%an");
 SELECT * FROM BUG_12595 WHERE a LIKE 'hakan\%';
 SELECT * FROM BUG_12595 WHERE a LIKE 'hakan*%' ESCAPE '*';
@@ -2719,6 +2813,7 @@ create table t3(x int, primary key(x));
 insert into t1 values (1, 1), (2, 1), (3, 1), (4, 3), (5, 6), (6, 6);
 insert into t2 values (1, 1), (2, 1), (3, 3), (4, 6), (5, 6);
 insert into t3 values (1), (2), (3), (4), (5);
+--sorted_result
 select t1.x, t3.x from t1, t2, t3  where t1.x = t2.x and t3.x >= t1.y and t3.x <= t2.y;
 drop table t1,t2,t3;
 
@@ -2800,11 +2895,14 @@ insert into t1 values(1,'2005-01-01'),(2,'2005-09-01'),(3,'2005-09-30'),
   (4,'2005-10-01'),(5,'2005-12-30');
 # should return all records
 select * from t1 where f2 >= 0            order by f2;
+--error ER_WRONG_VALUE
 select * from t1 where f2 >= '0000-00-00' order by f2;
 # should return 4,5
+--error ER_WRONG_VALUE
 select * from t1 where f2 >= '2005-09-31' order by f2;
 select * from t1 where f2 >= '2005-09-3a' order by f2;
 # should return 1,2,3
+--error ER_WRONG_VALUE
 select * from t1 where f2 <= '2005-09-31' order by f2;
 select * from t1 where f2 <= '2005-09-3a' order by f2;
 drop table t1;
@@ -2931,6 +3029,7 @@ INSERT INTO t2 VALUES
   (10, 10, 'aaa'), (20, 10, 'bbb'), (30, 10, 'ccc'), (40, 20, 'ddd'),
   (50, 10, 'eee'), (60, 20, 'fff'), (70, 20, 'ggg'), (80, 30, 'hhh');
 
+--sorted_result
 SELECT t2.sku, t2.sppr, t2.name, t1.sku, t1.pr
   FROM t2, t1 WHERE t2.sku=20 AND (t2.sku=t1.sku OR t2.sppr=t1.sku);
 EXPLAIN
@@ -2962,7 +3061,18 @@ SET SQL_MODE=default;
 create table t1 (a int);
 insert into t1 values (0),(1),(2),(3),(4),(5),(6),(7),(8),(9);
 create table t2 (a int, b int, c int, e int, primary key(a,b,c));
-insert into t2 select A.a, B.a, C.a, C.a from t1 A, t1 B, t1 C;
+
+--echo # The "ANALYZE TABLE"-command that is executed further down will get
+--echo # different results depending on the order of rows in table t2. Since the
+--echo # INSERT INTO ... SELECT may be executed using different execution plans,
+--echo # we've added ORDER BY to ensure that we rows has the same order every
+--echo # time. If not, the estimated number of rows for t2 (alias 'a') in the
+--echo # EXPLAIN may change on different platforms. Note that both table t1 and
+--echo # t2 may be MYISAM, since many of the test files that includes this file
+--echo # forces MYISAM as the default storage engine.
+
+insert into t2 select A.a, B.a, C.a, C.a from t1 A, t1 B, t1 C
+  ORDER BY A.a, B.a, C.a;
 analyze table t2;
 select 'In next EXPLAIN, B.rows must be exactly 10:' Z;
 
@@ -2983,7 +3093,7 @@ INSERT INTO t2 VALUES
  (1,0,0), (1,0,1), (2,0,0), (2,0,1), (3,0,0), (4,0,1),
  (5,0,0), (5,0,1), (6,0,0), (0,0,1), (7,0,0), (7,0,1),
  (0,0,0), (0,0,1), (8,0,0), (8,0,1), (9,0,0), (9,0,1);
-
+ANALYZE TABLE t1, t2;
 EXPLAIN
 SELECT a, c, d, f FROM t1,t2 WHERE a=c AND b BETWEEN 4 AND 6;
 EXPLAIN
@@ -3041,6 +3151,7 @@ INSERT INTO t2 VALUES
   (2), (2), (2), (2),
   (3), (3),
   (4);
+ANALYZE TABLE t1, t2;
 
 EXPLAIN SELECT b FROM t1, t2 WHERE b=c AND a=1;
 EXPLAIN SELECT b FROM t1, t2 WHERE b=c AND a=4;
@@ -3063,6 +3174,7 @@ INSERT INTO t3 VALUES (2,10), (2,20), (1,30), (2,40), (2,50);
 EXPLAIN
 SELECT * FROM t1 LEFT JOIN t2 ON t2.b=t1.a INNER JOIN t3 ON t3.d=t1.id
   WHERE t1.id=2;
+--sorted_result
 SELECT * FROM t1 LEFT JOIN t2 ON t2.b=t1.a INNER JOIN t3 ON t3.d=t1.id
   WHERE t1.id=2;
 
@@ -3082,8 +3194,8 @@ drop table t1;
 # Bug #22735: no equality propagation for BETWEEN and IN with STRING arguments
 #
 
-CREATE TABLE t1 (pk varchar(10) PRIMARY KEY, fk varchar(16));
-CREATE TABLE t2 (pk varchar(16) PRIMARY KEY, fk varchar(10));
+CREATE TABLE t1 (pk varchar(10) PRIMARY KEY, fk varchar(16)) charset utf8mb4;
+CREATE TABLE t2 (pk varchar(16) PRIMARY KEY, fk varchar(10)) charset utf8mb4;
 
 INSERT INTO t1 VALUES
   ('d','dddd'), ('i','iii'), ('a','aa'), ('b','bb'), ('g','gg'), 
@@ -3094,6 +3206,7 @@ INSERT INTO t2 VALUES
   ('bbb','b'), ('ff','f'), ('cccc','c'), ('dddd','d'), ('jj','j'),
   ('aaaa','a'), ('bb','b'), ('eeee','e'), ('aa','a'), ('hh','h');
 
+ANALYZE TABLE t1, t2;
 EXPLAIN SELECT t2.* 
   FROM t1 JOIN t2 ON t2.fk=t1.pk
     WHERE t2.fk < 'c' AND t2.pk=t1.fk;
@@ -3110,9 +3223,9 @@ DROP TABLE t1,t2;
 # Bug #22367: Optimizer uses ref join type instead of eq_ref for simple 
 #               join on strings
 #
-CREATE TABLE t1 (a int, b varchar(20) NOT NULL, PRIMARY KEY(a));
+CREATE TABLE t1 (a int, b varchar(20) NOT NULL, PRIMARY KEY(a)) charset utf8mb4;
 CREATE TABLE t2 (a int, b varchar(20) NOT NULL,
-                 PRIMARY KEY (a), UNIQUE KEY (b));
+                 PRIMARY KEY (a), UNIQUE KEY (b)) charset utf8mb4;
 INSERT INTO t1 VALUES (1,'a'),(2,'b'),(3,'c');
 INSERT INTO t2 VALUES (1,'a'),(2,'b'),(3,'c');
 
@@ -3142,11 +3255,13 @@ INSERT INTO t3 VALUES
   (440,'gg'), (310,'eg'), (380,'ee'), (840,'bb'), (830,'ff'),
   (230,'aa'), (960,'ii'), (410,'aa'), (510,'ee'), (290,'bb'),
   (450,'gg'), (320,'dd'), (390,'hh'), (850,'jj'), (860,'ff');
+ANALYZE TABLE t1, t2, t3;
 
 EXPLAIN
 SELECT t3.a FROM t1,t2 FORCE INDEX (si),t3
   WHERE t1.id = 8 AND t2.i BETWEEN t1.b AND t1.e AND 
         t3.a=t2.a AND t3.c IN ('bb','ee');
+
 EXPLAIN
 SELECT t3.a FROM t1,t2,t3
   WHERE t1.id = 8 AND t2.i BETWEEN t1.b AND t1.e AND
@@ -3199,7 +3314,7 @@ DROP TABLE t1;
 #
 # 25407: wrong estimate of NULL keys for unique indexes
 #
-
+set optimizer_switch='index_merge=off';
 CREATE TABLE t1 (
   ID_with_null int NULL,
   ID_better int NOT NULL,
@@ -3207,13 +3322,14 @@ CREATE TABLE t1 (
   INDEX idx2 (ID_better)
 );
 
+
 INSERT INTO t1 VALUES (1,1), (2,1), (null,3), (null,3), (null,3), (null,3);
 INSERT INTO t1 SELECT * FROM t1 WHERE ID_with_null IS NULL;
 INSERT INTO t1 SELECT * FROM t1 WHERE ID_with_null IS NULL;
 INSERT INTO t1 SELECT * FROM t1 WHERE ID_with_null IS NULL;
 INSERT INTO t1 SELECT * FROM t1 WHERE ID_with_null IS NULL;
 INSERT INTO t1 SELECT * FROM t1 WHERE ID_with_null IS NULL;
-
+ANALYZE TABLE t1;
 SELECT COUNT(*) FROM t1 WHERE ID_with_null IS NULL;
 SELECT COUNT(*) FROM t1 WHERE ID_better=1;
 
@@ -3221,6 +3337,7 @@ EXPLAIN SELECT * FROM t1 WHERE ID_better=1 AND ID_with_null IS NULL;
 
 DROP INDEX idx1 ON t1;
 CREATE UNIQUE INDEX idx1 ON t1(ID_with_null);
+ANALYZE TABLE t1;
 
 EXPLAIN SELECT * FROM t1 WHERE ID_better=1 AND ID_with_null IS NULL;
 
@@ -3232,7 +3349,7 @@ CREATE TABLE t1 (
   ID_better int NOT NULL,
   INDEX idx1 (ID1_with_null, ID2_with_null),
   INDEX idx2 (ID_better)
-);
+) ;
 
 INSERT INTO t1 VALUES (1,1,1), (2,2,1), (3,null,3), (null,3,3), (null,null,3),
   (3,null,3), (null,3,3), (null,null,3), (3,null,3), (null,3,3), (null,null,3);
@@ -3248,7 +3365,7 @@ SELECT COUNT(*) FROM t1 WHERE ID1_with_null IS NULL AND ID2_with_null=3;
 SELECT COUNT(*) FROM t1 WHERE ID1_with_null=3 AND ID2_with_null IS NULL;
 SELECT COUNT(*) FROM t1 WHERE ID1_with_null IS NULL AND ID2_with_null IS NULL;
 SELECT COUNT(*) FROM t1 WHERE ID_better=1;
-
+ANALYZE TABLE t1;
 EXPLAIN SELECT * FROM t1
   WHERE ID_better=1 AND ID1_with_null IS NULL AND ID2_with_null=3 ;
 EXPLAIN SELECT * FROM t1
@@ -3258,7 +3375,7 @@ EXPLAIN SELECT * FROM t1
 
 DROP INDEX idx1 ON t1;
 CREATE UNIQUE INDEX idx1 ON t1(ID1_with_null,ID2_with_null);
-
+ANALYZE TABLE t1;
 EXPLAIN SELECT * FROM t1
   WHERE ID_better=1 AND ID1_with_null IS NULL AND ID2_with_null=3 ;
 EXPLAIN SELECT * FROM t1
@@ -3270,6 +3387,7 @@ EXPLAIN SELECT * FROM t1
         (ID2_with_null=1 OR ID2_with_null=2);
 
 DROP TABLE t1;
+set optimizer_switch='index_merge=on';
 
 #
 # Bug #22344: InnoDB keys act strange on datetime vs timestamp comparison
@@ -3288,6 +3406,7 @@ SELECT * FROM t1 LEFT JOIN t2 ON (t1.a=t2.a) WHERE t1.a=30
   AND t1.ts BETWEEN t2.dt1 AND t2.dt2
   AND t1.ts BETWEEN "2006-01-01" AND "2006-12-31";
 
+--skip_if_hypergraph   # Different warnings.
 SELECT * FROM t1 LEFT JOIN t2 ON (t1.a=t2.a) WHERE t1.a=30
   AND t1.ts BETWEEN t2.dt1 AND t2.dt2
   AND t1.ts BETWEEN "2006-01-01" AND "2006-12-31";
@@ -3303,7 +3422,7 @@ insert into t1 values
   (coalesce(9223372036854775808, 1));
 select * from t1;
 drop table t1;
-create table t1 select
+create table t1 charset utf8mb4 select
   if(1, 9223372036854775808, 1) i,
   case when 1 then 9223372036854775808 else 1 end c,
   coalesce(9223372036854775808, 1) co;
@@ -3319,12 +3438,13 @@ select
 # Bug #22971: indexes on text columns are ignored for ref accesses 
 #
 
-CREATE TABLE t1 (name varchar(255));
-CREATE TABLE t2 (name varchar(255), n int, KEY (name(3)));
+CREATE TABLE t1 (name varchar(255)) charset latin1;
+CREATE TABLE t2 (name varchar(255), n int, KEY (name(3))) charset latin1;
 INSERT INTO t1 VALUES ('ccc'), ('bb'), ('cc '), ('aa  '), ('aa');
 INSERT INTO t2 VALUES ('bb',1), ('aa',2), ('cc   ',3);
-INSERT INTO t2 VALUES (concat('cc ', 0x06), 4);
+INSERT INTO t2 VALUES (concat('cc ', '!'), 4);
 INSERT INTO t2 VALUES ('cc',5), ('bb ',6), ('cc ',7);
+ANALYZE TABLE t1, t2;
 SELECT * FROM t2;
 SELECT * FROM t2 ORDER BY name;
 SELECT name, LENGTH(name), n FROM t2 ORDER BY name;
@@ -3336,16 +3456,18 @@ SELECT name , LENGTH(name), n FROM t2 WHERE name LIKE 'cc%';
 EXPLAIN SELECT name , LENGTH(name), n FROM t2 WHERE name LIKE 'cc%' ORDER BY name;
 SELECT name , LENGTH(name), n FROM t2 WHERE name LIKE 'cc%' ORDER BY name;
 EXPLAIN SELECT * FROM t1 LEFT JOIN t2 ON t1.name=t2.name;
+--sorted_result
 SELECT * FROM t1 LEFT JOIN t2 ON t1.name=t2.name;
 
 DROP TABLE t1,t2;
 
-CREATE TABLE t1 (name text);
-CREATE TABLE t2 (name text, n int, KEY (name(3)));
+CREATE TABLE t1 (name text) charset latin1;
+CREATE TABLE t2 (name text, n int, KEY (name(3))) charset latin1;
 INSERT INTO t1 VALUES ('ccc'), ('bb'), ('cc '), ('aa  '), ('aa');
 INSERT INTO t2 VALUES ('bb',1), ('aa',2), ('cc   ',3);
-INSERT INTO t2 VALUES (concat('cc ', 0x06), 4);
+INSERT INTO t2 VALUES (concat('cc ', '!'), 4);
 INSERT INTO t2 VALUES ('cc',5), ('bb ',6), ('cc ',7);
+ANALYZE TABLE t1, t2;
 SELECT * FROM t2;
 SELECT * FROM t2 ORDER BY name;
 SELECT name, LENGTH(name), n FROM t2 ORDER BY name;
@@ -3357,6 +3479,7 @@ SELECT name , LENGTH(name), n FROM t2 WHERE name LIKE 'cc%';
 EXPLAIN SELECT name , LENGTH(name), n FROM t2 WHERE name LIKE 'cc%' ORDER BY name;
 SELECT name , LENGTH(name), n FROM t2 WHERE name LIKE 'cc%' ORDER BY name;
 EXPLAIN SELECT * FROM t1 LEFT JOIN t2 ON t1.name=t2.name;
+--sorted_result
 SELECT * FROM t1 LEFT JOIN t2 ON t1.name=t2.name;
 
 DROP TABLE t1,t2;
@@ -3370,7 +3493,7 @@ DROP TABLE t1,t2;
 CREATE TABLE t1 (
  access_id int NOT NULL default '0',
  name varchar(20) default NULL,
- rank int NOT NULL default '0',
+ `rank` int NOT NULL default '0',
  KEY idx (access_id)
 );
 
@@ -3416,6 +3539,7 @@ DROP TABLE t1,t2;
 CREATE TABLE t1 (a INT, b INT, KEY inx (b,a));
 
 INSERT INTO t1 VALUES (1,1), (1,2), (1,3), (1,4), (1,5), (1, 6), (1,7);
+ANALYZE TABLE t1;
 EXPLAIN SELECT COUNT(*) FROM t1 f1 INNER JOIN t1 f2
     ON ( f1.b=f2.b AND f1.a<f2.a ) 
     WHERE 1 AND f1.b NOT IN (100,2232,3343,51111);
@@ -3465,9 +3589,11 @@ CREATE TABLE t1 (
   c3 bigint(20) DEFAULT NULL,
   c4 bigint(20) DEFAULT NULL,
   PRIMARY KEY (c1)
-);
+) charset utf8mb4;
 
-EXPLAIN EXTENDED 
+ANALYZE TABLE t1;
+--replace_column 9 # 12 #
+EXPLAIN
 SELECT  join_2.c1  
 FROM 
 	t1 AS join_0, 
@@ -3509,7 +3635,8 @@ GROUP BY
 	join_7.c1,
 	join_1.c1,
 	join_0.c1;
-	
+
+--skip_if_hypergraph   # Non-tree EXPLAIN is skipped, so need to skip this, too.
 SHOW WARNINGS;
 
 DROP TABLE t1;
@@ -3557,6 +3684,7 @@ DROP VIEW v1;
 select str_to_date('2007-10-09','%Y-%m-%d') between '2007/10/01 00:00:00 GMT'
                                                 and '2007/10/20 00:00:00 GMT';
 select str_to_date('2007-10-09','%Y-%m-%d') > '2007/10/01 00:00:00 GMT-6';
+--error ER_WRONG_VALUE
 select str_to_date('2007-10-09','%Y-%m-%d') <= '2007/10/2000:00:00 GMT-6';
 
 # We have all we need -- and trailing garbage:
@@ -3580,16 +3708,21 @@ select str_to_date('2007-10-01','%Y-%m-%d') = '2007-10-01 12:00:00';
 select str_to_date('2007-10-01 12','%Y-%m-%d %H') = '2007-10-01 12:00:00';
 # succeed, but warn for "trailing garbage" (":34"):
 select str_to_date('2007-10-01 12:34','%Y-%m-%d %H') = '2007-10-01 12:00:00';
-# invalid date (Feb 30) succeeds
-select str_to_date('2007-02-30 12:34','%Y-%m-%d %H:%i') = '2007-02-30 12:34';
+# invalid date (Feb 30) succeeds because date comparison fails and
+# it falls back to string comparison
+--error ER_WRONG_VALUE
+select str_to_date('2007-02-30 12:34','%Y-%m-%d %H:%i') = '2007-02-30 12:34:00';
 # 0-day for both, just works in default SQL mode.
+--error ER_WRONG_VALUE
 select str_to_date('2007-10-00 12:34','%Y-%m-%d %H:%i') = '2007-10-00 12:34';
 # 0-day, succeed
 select str_to_date('2007-10-00','%Y-%m-%d') between '2007/09/01 00:00:00'
                                                 and '2007/10/20 00:00:00';
 set SQL_MODE=TRADITIONAL;
 # 0-day throws warning in traditional mode, and fails
+--error ER_WRONG_VALUE
 select str_to_date('2007-10-00 12:34','%Y-%m-%d %H:%i') = '2007-10-00 12:34';
+--error ER_WRONG_VALUE
 select str_to_date('2007-10-01 12:34','%Y-%m-%d %H:%i') = '2007-10-00 12:34';
 # different code-path: get_datetime_value() with 0-day
 select str_to_date('2007-10-00 12:34','%Y-%m-%d %H:%i') = '2007-10-01 12:34';
@@ -3600,10 +3733,14 @@ select str_to_date('2007-10-00','%Y-%m-%d') between '' and '2007/10/20';
 select str_to_date('','%Y-%m-%d') between '2007/10/01' and '2007/10/20';
 select str_to_date('','%Y-%m-%d %H:%i') = '2007-10-01 12:34';
 select str_to_date(NULL,'%Y-%m-%d %H:%i') = '2007-10-01 12:34';
+--error ER_WRONG_VALUE
 select str_to_date('2007-10-00 12:34','%Y-%m-%d %H:%i') = '';
 
+--error ER_WRONG_VALUE
 select str_to_date('1','%Y-%m-%d') = '1';
+--error ER_WRONG_VALUE
 select str_to_date('1','%Y-%m-%d') = '1';
+--error ER_WRONG_VALUE
 select str_to_date('','%Y-%m-%d') = '';
 
 # these three should work!
@@ -3731,6 +3868,7 @@ INSERT INTO t2 VALUES (1, 1), (1, 2), (1, 3), (1, 4), (1, 5),
 
 FLUSH STATUS;
 SELECT DISTINCT b FROM t1 LEFT JOIN t2 USING(a) WHERE c <= 3;
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read%';
 DROP TABLE t1, t2;
 
@@ -3743,15 +3881,15 @@ CREATE TABLE t1 (f1 bigint(20) NOT NULL default '0',
                  f4 varchar(255) NOT NULL default '',
                  PRIMARY KEY (f1),
                  KEY key1 (f4),
-                 KEY key2 (f2));
+                 KEY key2 (f2)) charset latin1;
 CREATE TABLE t2 (f1 int(11) NOT NULL default '0',
                  f2 enum('A1','A2','A3') NOT NULL default 'A1',
                  f3 int(11) NOT NULL default '0',
                  PRIMARY KEY (f1),
-                 KEY key1 (f3));
+                 KEY key1 (f3)) charset latin1;
 CREATE TABLE t3 (f1 bigint(20) NOT NULL default '0',
                  f2 datetime NOT NULL default '1980-01-01 00:00:00',
-                 PRIMARY KEY (f1));
+                 PRIMARY KEY (f1)) charset latin1;
 
 insert into t1 values (1, 1, 1, 'abc');
 insert into t1 values (2, 1, 2, 'def');
@@ -3759,6 +3897,7 @@ insert into t1 values (3, 1, 2, 'def');
 insert into t2 values (1, 'A1', 1);
 insert into t3 values (1, '1980-01-01');
 
+--sorted_result
 SELECT a.f3, cr.f4, count(*) count
 FROM t2 a
 STRAIGHT_JOIN t1 cr ON cr.f2 = a.f1
@@ -3778,9 +3917,9 @@ drop table t1, t2, t3;
 
 CREATE TABLE t1 (a INT KEY, b INT);
 INSERT INTO t1 VALUES (1,1), (2,2), (3,3), (4,4);
-
-EXPLAIN EXTENDED SELECT a, b FROM t1 WHERE a > 1 AND a = b LIMIT 2;
-EXPLAIN EXTENDED SELECT a, b FROM t1 WHERE a > 1 AND b = a LIMIT 2;
+ANALYZE TABLE t1;
+EXPLAIN SELECT a, b FROM t1 WHERE a > 1 AND a = b LIMIT 2;
+EXPLAIN SELECT a, b FROM t1 WHERE a > 1 AND b = a LIMIT 2;
 
 DROP TABLE t1;
 
@@ -3789,7 +3928,7 @@ DROP TABLE t1;
 --echo # Bug#47019: Assertion failed: 0, file .\rt_mbr.c, line 138 when 
 --echo # forcing a spatial index
 --echo #
-CREATE TABLE t1(a LINESTRING NOT NULL, SPATIAL KEY(a));
+CREATE TABLE t1(a LINESTRING NOT NULL SRID 0, SPATIAL KEY(a));
 INSERT INTO t1 VALUES
   (ST_GEOMFROMTEXT('LINESTRING(-1 -1, 1 -1, -1 -1, -1 1, 1 1)')),
   (ST_GEOMFROMTEXT('LINESTRING(-1 -1, 1 -1, -1 -1, -1 1, 1 1)'));
@@ -3837,34 +3976,34 @@ SET sql_mode = default;
 CREATE TABLE t1(a DATETIME NOT NULL);
 INSERT INTO t1 VALUES('2001-01-01');
 SELECT * FROM t1 WHERE a='2001-01-01' AND a='2001-01-01 00:00:00';
-EXPLAIN EXTENDED SELECT * FROM t1 WHERE a='2001-01-01' AND a='2001-01-01 00:00:00';
+EXPLAIN SELECT * FROM t1 WHERE a='2001-01-01' AND a='2001-01-01 00:00:00';
 DROP TABLE t1;
 
 CREATE TABLE t1(a DATE NOT NULL);
 INSERT INTO t1 VALUES('2001-01-01');
 SELECT * FROM t1 WHERE a='2001-01-01' AND a='2001-01-01 00:00:00';
-EXPLAIN EXTENDED SELECT * FROM t1 WHERE a='2001-01-01' AND a='2001-01-01 00:00:00';
+EXPLAIN SELECT * FROM t1 WHERE a='2001-01-01' AND a='2001-01-01 00:00:00';
 DROP TABLE t1;
 
 CREATE TABLE t1(a TIMESTAMP NOT NULL NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);
 INSERT INTO t1 VALUES('2001-01-01');
 SELECT * FROM t1 WHERE a='2001-01-01' AND a='2001-01-01 00:00:00';
-EXPLAIN EXTENDED SELECT * FROM t1 WHERE a='2001-01-01' AND a='2001-01-01 00:00:00';
+EXPLAIN SELECT * FROM t1 WHERE a='2001-01-01' AND a='2001-01-01 00:00:00';
 DROP TABLE t1;
 
 CREATE TABLE t1(a DATETIME NOT NULL, b DATE NOT NULL);
 INSERT INTO t1 VALUES('2001-01-01', '2001-01-01');
 SELECT * FROM t1 WHERE a='2001-01-01' AND a=b AND b='2001-01-01 00:00:00';
-EXPLAIN EXTENDED SELECT * FROM t1 WHERE a='2001-01-01' AND a=b AND b='2001-01-01 00:00:00';
+EXPLAIN SELECT * FROM t1 WHERE a='2001-01-01' AND a=b AND b='2001-01-01 00:00:00';
 DROP TABLE t1;
 
-CREATE TABLE t1(a DATETIME NOT NULL, b VARCHAR(20) NOT NULL);
+CREATE TABLE t1(a DATETIME NOT NULL, b VARCHAR(20) NOT NULL) charset utf8mb4;
 INSERT INTO t1 VALUES('2001-01-01', '2001-01-01');
 SELECT * FROM t1 WHERE a='2001-01-01' AND a=b AND b='2001-01-01 00:00:00';
-EXPLAIN EXTENDED SELECT * FROM t1 WHERE a='2001-01-01' AND a=b AND b='2001-01-01 00:00:00';
+EXPLAIN SELECT * FROM t1 WHERE a='2001-01-01' AND a=b AND b='2001-01-01 00:00:00';
 
 SELECT * FROM t1 WHERE a='2001-01-01 00:00:00' AND a=b AND b='2001-01-01';
-EXPLAIN EXTENDED SELECT * FROM t1 WHERE a='2001-01-01 00:00:00' AND a=b AND b='2001-01-01';
+EXPLAIN SELECT * FROM t1 WHERE a='2001-01-01 00:00:00' AND a=b AND b='2001-01-01';
 DROP TABLE t1;
 
 CREATE TABLE t1(a DATETIME NOT NULL, b DATE NOT NULL);
@@ -3873,7 +4012,7 @@ SELECT x.a, y.a, z.a FROM t1 x
   JOIN t1 y ON x.a=y.a 
   JOIN t1 z ON y.a=z.a 
   WHERE x.a='2001-01-01' AND z.a='2001-01-01 00:00:00';
-EXPLAIN EXTENDED SELECT x.a, y.a, z.a FROM t1 x 
+EXPLAIN SELECT x.a, y.a, z.a FROM t1 x
   JOIN t1 y ON x.a=y.a 
   JOIN t1 z ON y.a=z.a 
   WHERE x.a='2001-01-01' AND z.a='2001-01-01 00:00:00';
@@ -3894,6 +4033,7 @@ INSERT INTO t1 VALUES (0), (0), (0);
 INSERT INTO t1 SELECT t11.a FROM t1 t11, t1 t12;
 INSERT INTO t1 SELECT t11.a FROM t1 t11, t1 t12;
 INSERT INTO t1 SELECT t11.a FROM t1 t11, t1 t12;
+ANALYZE TABLE t1;
 EXPLAIN SELECT a FROM t1 ORDER BY a;
 --disable_result_log
 SELECT a FROM t1 ORDER BY a;
@@ -3904,12 +4044,26 @@ CREATE TABLE t1(a CHAR(0) NOT NULL, b CHAR(0) NOT NULL, c int);
 --disable_warnings
 INSERT INTO t1 VALUES (0, 0, 0), (0, 0, 2), (0, 0, 1);
 --enable_warnings
-INSERT INTO t1 SELECT t11.a, t11.b, t11.c FROM t1 t11, t1 t12;
-INSERT INTO t1 SELECT t11.a, t11.b, t11.c FROM t1 t11, t1 t12;
-INSERT INTO t1 SELECT t11.a, t11.b, t11.c FROM t1 t11, t1 t12;
+
+--echo # Since ANALYZE TABLE only reads a subset of the data, the statistics for
+--echo # table t1 depends on the row order. And since the INSERT INTO ... SELECT
+--echo # may be executed using different execution plans, we've added ORDER BY
+--echo # to ensure that we rows has the same order every time. If not, the
+--echo # estimated number of rows in EXPLAIN may change on different platforms.
+--echo # Note that the tables may MYISAM, since many of the test files that
+--echo # includes this file forces MYISAM as the default storage engine.
+
+INSERT INTO t1 SELECT t11.a, t11.b, t11.c FROM t1 t11, t1 t12
+  ORDER BY t11.a, t11.b, t11.c;
+INSERT INTO t1 SELECT t11.a, t11.b, t11.c FROM t1 t11, t1 t12
+  ORDER BY t11.a, t11.b, t11.c;
+INSERT INTO t1 SELECT t11.a, t11.b, t11.c FROM t1 t11, t1 t12
+  ORDER BY t11.a, t11.b, t11.c;
+ANALYZE TABLE t1;
 EXPLAIN SELECT a FROM t1 ORDER BY a LIMIT 5;
 SELECT a FROM t1 ORDER BY a LIMIT 5;
 EXPLAIN SELECT * FROM t1 ORDER BY a, b LIMIT 5;
+--replace_regex /0$/2/ /1$/2/  # The order of the rows along the c column is undefined.
 SELECT * FROM t1 ORDER BY a, b LIMIT 5;
 EXPLAIN SELECT * FROM t1 ORDER BY a, b, c LIMIT 5;
 SELECT * FROM t1 ORDER BY a, b, c LIMIT 5;
@@ -3955,7 +4109,8 @@ INSERT IGNORE INTO C VALUES
 SELECT 1 FROM C WHERE pk > ANY (SELECT 1 FROM C);
 
 SELECT COUNT(DISTINCT 1) FROM C 
-  WHERE date_key = (SELECT 1 FROM A WHERE C.date_key IS NULL) GROUP BY pk; 
+  WHERE date_key = (SELECT 1 FROM A WHERE C.date_key IS NULL) GROUP BY pk;
+--error ER_WRONG_VALUE
 SELECT date_nokey FROM C 
   WHERE int_key IN (SELECT 1 FROM A) 
   HAVING date_nokey = '10:41:7' 
@@ -3969,14 +4124,14 @@ DROP TABLE A,C;
 #
 CREATE TABLE t1 (a INT NOT NULL, b INT);
 INSERT INTO t1 VALUES (1, 1);
-EXPLAIN EXTENDED SELECT * FROM t1 WHERE (a=a AND a=a) OR b > 2;
+EXPLAIN SELECT * FROM t1 WHERE (a=a AND a=a) OR b > 2;
 SELECT * FROM t1 WHERE (a=a AND a=a) OR b > 2;
 DROP TABLE t1;
 
 CREATE TABLE t1 (a INT NOT NULL, b INT NOT NULL, c INT NOT NULL);
-EXPLAIN EXTENDED SELECT * FROM t1 WHERE (a=a AND b=b AND c=c) OR b > 20;
-EXPLAIN EXTENDED SELECT * FROM t1 WHERE (a=a AND a=a AND b=b) OR b > 20;
-EXPLAIN EXTENDED SELECT * FROM t1 WHERE (a=a AND b=b AND a=a) OR b > 20;
+EXPLAIN SELECT * FROM t1 WHERE (a=a AND b=b AND c=c) OR b > 20;
+EXPLAIN SELECT * FROM t1 WHERE (a=a AND a=a AND b=b) OR b > 20;
+EXPLAIN SELECT * FROM t1 WHERE (a=a AND b=b AND a=a) OR b > 20;
 DROP TABLE t1;
 
 
@@ -4074,14 +4229,15 @@ INSERT INTO t1 VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
 CREATE TABLE t2 (b INT);
 INSERT INTO t2 VALUES (2);
 SELECT * FROM t1 WHERE a = 1 + 1;
-EXPLAIN EXTENDED SELECT * FROM t1 WHERE a = 1 + 1;
+ANALYZE TABLE t1, t2;
+EXPLAIN SELECT * FROM t1 WHERE a = 1 + 1;
 SELECT * FROM t1 HAVING a = 1 + 1;
-EXPLAIN EXTENDED SELECT * FROM t1 HAVING a = 1 + 1;
+EXPLAIN SELECT * FROM t1 HAVING a = 1 + 1;
 SELECT * FROM t1, t2 WHERE a = b + (1 + 1);
-EXPLAIN EXTENDED SELECT * FROM t1, t2 WHERE a = b + (1 + 1);
+EXPLAIN SELECT * FROM t1, t2 WHERE a = b + (1 + 1);
 SELECT * FROM t2 LEFT JOIN t1 ON a = b + 1;
-EXPLAIN EXTENDED SELECT * FROM t2 LEFT JOIN t1 ON a = b + 1;
-EXPLAIN EXTENDED SELECT * FROM t1 WHERE a > UNIX_TIMESTAMP('2009-03-10 00:00:00');
+EXPLAIN SELECT * FROM t2 LEFT JOIN t1 ON a = b + 1;
+EXPLAIN SELECT * FROM t1 WHERE a > UNIX_TIMESTAMP('2009-03-10 00:00:00');
 
 delimiter |;
 CREATE FUNCTION f1() RETURNS INT DETERMINISTIC
@@ -4093,8 +4249,9 @@ delimiter ;|
 
 SET @cnt := 0;
 SELECT * FROM t1 WHERE a = f1();
+--skip_if_hypergraph  # Depends on the query plan.
 SELECT @cnt;
-EXPLAIN EXTENDED SELECT * FROM t1 WHERE a = f1();
+EXPLAIN SELECT * FROM t1 WHERE a = f1();
 DROP TABLE t1, t2;
 DROP FUNCTION f1;
 --echo # End of bug#33546
@@ -4161,8 +4318,9 @@ DROP TABLE t1;
 --echo # Bug #54459: Assertion failed: param.sort_length, 
 --echo # file .\filesort.cc, line 149 (part II)
 --echo #
-CREATE TABLE t1(a ENUM('') NOT NULL);
+CREATE TABLE t1(a ENUM('') NOT NULL) charset latin1;
 INSERT INTO t1 VALUES (), (), ();
+ANALYZE TABLE t1;
 EXPLAIN SELECT 1 FROM t1 ORDER BY a COLLATE latin1_german2_ci;
 SELECT 1 FROM t1 ORDER BY a COLLATE latin1_german2_ci;
 DROP TABLE t1;
@@ -4174,12 +4332,12 @@ DROP TABLE t1;
 --echo # with an empty table
 --echo #
 
-CREATE TABLE t_empty(pk INT PRIMARY KEY, i INT) ENGINE = MYISAM;
-CREATE TABLE t1(pk INT PRIMARY KEY, i INT) ENGINE = MYISAM;
+CREATE TABLE t_empty(pk INT PRIMARY KEY, i INT);
+CREATE TABLE t1(pk INT PRIMARY KEY, i INT);
 INSERT INTO t1 VALUES (1,1), (2,2), (3,3);
-CREATE TABLE t2(pk INT PRIMARY KEY, i INT) ENGINE = MYISAM;
+CREATE TABLE t2(pk INT PRIMARY KEY, i INT) ;
 INSERT INTO t2 VALUES (1,1), (2,2), (3,3);
-
+ANALYZE TABLE t_empty, t1, t2;
 EXPLAIN
 SELECT *
   FROM 
@@ -4259,6 +4417,7 @@ INSERT INTO `cc` VALUES
 EXPLAIN SELECT `varchar_nokey` g1  FROM cc  WHERE `int_nokey` AND `int_key`  <= 4
   HAVING g1  ORDER  BY `varchar_key` LIMIT  6   ;
 
+--sorted_result  # Actually just to sort the warnings.
 SELECT `varchar_nokey` g1  FROM cc  WHERE `int_nokey` AND `int_key`  <= 4
   HAVING g1  ORDER  BY `varchar_key` LIMIT  6   ;
 
@@ -4355,4 +4514,58 @@ FROM  t1, t2
 GROUP BY a;
 
 DROP TABLE t1,t2;
-echo # End of test BUG#18766378
+--echo # End of test BUG#18766378
+
+--echo #
+--echo # WL#13002: RESULTSET DIFFERENT NUMBER OF ROWS
+--echo #
+
+#
+# Verify that BKA does proper NULL rejection. Normally, we insert NULL checks in WHERE
+# before the join, but occasionally, they can be optimized away as redundant due to
+# other conditions.
+#
+# Note that this test will also be run under non-BKA conditions, since
+# select.inc is run under many different optimizer switches. If so, naturally
+# the query plan won't show BKA, but the test should of course still pass.
+#
+
+CREATE TABLE t1 (
+  f1 INTEGER,
+  f2 INTEGER,
+  INDEX i1 (f2)
+);
+
+INSERT INTO t1 VALUES (NULL,1);
+INSERT INTO t1 VALUES (2,NULL);
+INSERT INTO t1 VALUES (3,1);
+INSERT INTO t1 VALUES (4,6);
+INSERT INTO t1 VALUES (NULL,5);
+INSERT INTO t1 VALUES (NULL,NULL);
+INSERT INTO t1 VALUES (13,1);
+INSERT INTO t1 VALUES (NULL,0);
+INSERT INTO t1 VALUES (5,2);
+INSERT INTO t1 VALUES (NULL,8);
+INSERT INTO t1 VALUES (NULL,7);
+INSERT INTO t1 VALUES (NULL,NULL);
+INSERT INTO t1 VALUES (NULL,NULL);
+INSERT INTO t1 VALUES (NULL,4);
+ANALYZE TABLE t1;
+
+let $query =
+  SELECT *
+    FROM t1 AS alias1 LEFT JOIN t1 AS alias2 ON alias1.f1 = alias2.f2
+    WHERE alias2.f1 NOT BETWEEN 4 AND 12;
+
+--skip_if_hypergraph  # Depends on query plan.
+eval EXPLAIN FORMAT=tree $query;  # Verify that we get BKA, and no NULL rejection in WHERE on alias1.
+eval $query;
+
+DROP TABLE t1;
+
+-- disable_query_log
+-- disable_result_log
+SET @@GLOBAL.innodb_stats_transient_sample_pages= @innodb_stats_transient_sample_pages;
+SET @@GLOBAL.innodb_stats_persistent_sample_pages= @innodb_stats_persistent_sample_pages;
+-- enable_result_log
+-- enable_query_log

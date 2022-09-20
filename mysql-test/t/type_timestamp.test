@@ -245,7 +245,7 @@ drop table t1;
 # Test for TIMESTAMP columns which are able to store NULLs
 #
 
-# Unlike for default TIMESTAMP fields we don't interpret first field
+# Unlike for default TIMESTAMP fields we do not interpret first field
 # in this table as TIMESTAMP with DEFAULT NOW() ON UPDATE NOW() properties.
 create table t1 (a timestamp null, b timestamp null);
 
@@ -306,21 +306,6 @@ select max(t) from t1 group by a;
 drop table t1;
 
 #
-# Test for bug #7418 "TIMESTAMP not always converted to DATETIME in MAXDB
-# mode". TIMESTAMP columns should be converted DATETIME columns in MAXDB
-# mode regardless of whether a display width is given.
-#
-set sql_mode='maxdb';
-create table t1 (a timestamp, b timestamp);
-
-#Replace default engine value with static engine string 
---replace_result $DEFAULT_ENGINE ENGINE
-show create table t1;
-# restore default mode
-set sql_mode='';
-drop table t1;
-
-#
 # Bug#7806 - insert on duplicate key and auto-update of timestamp
 #
 create table t1 (a int auto_increment primary key, b int, c timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP);
@@ -344,36 +329,6 @@ drop table t1;
 
 # Restore timezone to default
 set time_zone= @@global.time_zone;
-
-CREATE TABLE t1 (
-`id` int(11) NOT NULL auto_increment,
-`username` varchar(80) NOT NULL default '',
-`posted_on` timestamp NOT NULL default '0000-00-00 00:00:00',
-PRIMARY KEY (`id`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1;
-
-show fields from t1;
-select is_nullable from INFORMATION_SCHEMA.COLUMNS where TABLE_NAME='t1' and COLUMN_NAME='posted_on';
-drop table t1;
-
-#
-# Bug#41370: TIMESTAMP field does not accepts NULL from FROM_UNIXTIME()
-#
-
-CREATE TABLE t1 ( f1 INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
-                  f2 TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                  f3 TIMESTAMP NOT NULL default '0000-00-00 00:00:00');
-INSERT INTO t1 (f2,f3) VALUES (NOW(), "0000-00-00 00:00:00");
-if (!$explicit_defaults_for_timestamp)
-{
- INSERT INTO t1 (f2,f3) VALUES (NOW(), NULL);
- INSERT INTO t1 (f2,f3) VALUES (NOW(), ASCII(NULL));
- INSERT INTO t1 (f2,f3) VALUES (NOW(), FROM_UNIXTIME('9999999999'));
- INSERT INTO t1 (f2,f3) VALUES (NOW(), TIME(NULL));
-}
-UPDATE t1 SET f2=NOW(), f3=FROM_UNIXTIME('9999999999') WHERE f1=1;
-SELECT f1,f2-f3 FROM t1;
-DROP TABLE t1;
 
 --echo End of 5.0 tests
 
@@ -403,18 +358,13 @@ INSERT INTO t1 VALUES( '2010-02-01 09:31:02' );
 INSERT INTO t1 VALUES( '2010-02-01 09:31:03' );
 INSERT INTO t1 VALUES( '2010-02-01 09:31:04' );
 
-ANALYZE TABLE t1;
 SELECT * FROM t1 WHERE a >= '2010-02-01 09:31:02.0';
 SELECT * FROM t1 WHERE '2010-02-01 09:31:02.0' <= a;
 SELECT * FROM t1 WHERE a <= '2010-02-01 09:31:02.0';
 SELECT * FROM t1 WHERE '2010-02-01 09:31:02.0' >= a;
-
---replace_column 1 x 2 x 3 x 6 x 7 x 8 x 9 x 10 x 12 x
-EXPLAIN
-SELECT * FROM t1 WHERE a >= '2010-02-01 09:31:02.0';
 SELECT * FROM t1 WHERE a >= '2010-02-01 09:31:02.0';
 
-CREATE TABLE t2 ( a TIMESTAMP, KEY ( a DESC ) );
+CREATE TABLE t2 ( a TIMESTAMP, KEY ( a ) );
 
 INSERT INTO t2 VALUES( '2010-02-01 09:31:01' );
 INSERT INTO t2 VALUES( '2010-02-01 09:31:02' );
@@ -428,16 +378,12 @@ INSERT INTO t2 VALUES( '2010-02-01 09:31:09' );
 INSERT INTO t2 VALUES( '2010-02-01 09:31:10' );
 INSERT INTO t2 VALUES( '2010-02-01 09:31:11' );
 
-
-ANALYZE TABLE t2;
 --echo # The bug would cause the range optimizer's comparison to use an open
 --echo # interval here. This reveals itself only in the number of reads 
 --echo # performed.
 FLUSH STATUS;
---replace_column 1 x 2 x 3 x 6 x 7 x 8 x 9 x 10 x 12 x
-EXPLAIN
 SELECT * FROM t2 WHERE a < '2010-02-01 09:31:02.0';
-SELECT * FROM t2 WHERE a < '2010-02-01 09:31:02.0';
+--skip_if_hypergraph  # Depends on the query plan.
 SHOW STATUS LIKE 'Handler_read_next';
 
 DROP TABLE t1, t2;

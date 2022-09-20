@@ -1,4 +1,4 @@
-/* Copyright (c) 2008, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2008, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -18,7 +18,7 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA */
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #ifndef NDB_DBTUX_PROXY_HPP
 #define NDB_DBTUX_PROXY_HPP
@@ -34,11 +34,11 @@
 class DbtuxProxy : public LocalProxy {
 public:
   DbtuxProxy(Block_context& ctx);
-  virtual ~DbtuxProxy();
+  ~DbtuxProxy() override;
   BLOCK_DEFINES(DbtuxProxy);
 
 protected:
-  virtual SimulatedBlock* newWorker(Uint32 instanceNo);
+  SimulatedBlock* newWorker(Uint32 instanceNo) override;
 
   // GSN_ALTER_INDX_IMPL_REQ
   struct Ss_ALTER_INDX_IMPL_REQ : SsParallel {

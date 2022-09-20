@@ -18,21 +18,21 @@
 #define TIANMU_SYSTEM_CONFIGURATION_H_
 #pragma once
 
-extern char tianmu_sysvar_compensation_start;
-extern char tianmu_sysvar_filterevaluation_speedup;
-extern char tianmu_sysvar_groupby_speedup;
+extern bool tianmu_sysvar_compensation_start;
+extern bool tianmu_sysvar_filterevaluation_speedup;
+extern bool tianmu_sysvar_groupby_speedup;
 extern unsigned int tianmu_sysvar_index_cache_size;
-extern char tianmu_sysvar_index_search;
-extern char tianmu_sysvar_enable_rowstore;
-extern char tianmu_sysvar_insert_delayed;
-extern char tianmu_sysvar_minmax_speedup;
-extern char tianmu_sysvar_orderby_speedup;
-extern char tianmu_sysvar_parallel_filloutput;
-extern char tianmu_sysvar_parallel_mapjoin;
-extern char tianmu_sysvar_pushdown;
-extern char tianmu_sysvar_qps_log;
-extern char tianmu_sysvar_refresh_sys_table;
-extern char tianmu_sysvar_usemysqlimportexportdefaults;
+extern bool tianmu_sysvar_index_search;
+extern bool tianmu_sysvar_enable_rowstore;
+extern bool tianmu_sysvar_insert_delayed;
+extern bool tianmu_sysvar_minmax_speedup;
+extern bool tianmu_sysvar_orderby_speedup;
+extern bool tianmu_sysvar_parallel_filloutput;
+extern bool tianmu_sysvar_parallel_mapjoin;
+extern bool tianmu_sysvar_pushdown;
+extern bool tianmu_sysvar_qps_log;
+extern bool tianmu_sysvar_refresh_sys_table;
+extern bool tianmu_sysvar_usemysqlimportexportdefaults;
 extern char *tianmu_sysvar_cachefolder;
 extern char *tianmu_sysvar_hugefiledir;
 extern char *tianmu_sysvar_mm_policy;
@@ -67,7 +67,7 @@ extern int tianmu_sysvar_servermainheapsize;
 extern int tianmu_sysvar_sync_buffers;
 extern int tianmu_sysvar_threadpoolsize;
 extern unsigned long tianmu_sysvar_dist_policy;
-extern char tianmu_sysvar_force_hashjoin;
+extern bool tianmu_sysvar_force_hashjoin;
 extern int tianmu_sysvar_start_async;
 // Format: a;b;c;d
 // a : iterator pack count one step,default 1, 0 is disable
@@ -79,9 +79,9 @@ extern char *tianmu_sysvar_async_join;
 // will automatically switching another table to make a hash table,
 // tianmu_sysvar_join_disable_switch_side is the option to avoid this switching
 // process.
-extern char tianmu_sysvar_join_disable_switch_side;
+extern bool tianmu_sysvar_join_disable_switch_side;
 // enable histogram/cmap/bloom filtering
-extern char tianmu_sysvar_enable_histogram_cmap_bloom;
+extern bool tianmu_sysvar_enable_histogram_cmap_bloom;
 // The number of rows to load at a time when processing queries like select xxx
 // from yyy
 extern unsigned int tianmu_sysvar_result_sender_rows;

@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2015, 2021, Oracle and/or its affiliates.
+  Copyright (c) 2015, 2022, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License, version 2.0,
@@ -27,25 +27,24 @@
 
 #include <string>
 
-namespace Mysql{
-namespace Tools{
-namespace Dump{
-namespace Detail{
+namespace Mysql {
+namespace Tools {
+namespace Dump {
+namespace Detail {
 
-class Pattern_matcher
-{
-public:
-  static bool is_pattern_matched(
-    const std::string& to_match, const std::string& pattern, size_t i= 0,
-    size_t j= 0);
+class Pattern_matcher {
+ public:
+  static bool is_pattern_matched(const std::string &to_match,
+                                 const std::string &pattern, size_t i = 0,
+                                 size_t j = 0);
 
-private:
+ private:
   Pattern_matcher();
 };
 
-}
-}
-}
-}
+}  // namespace Detail
+}  // namespace Dump
+}  // namespace Tools
+}  // namespace Mysql
 
 #endif

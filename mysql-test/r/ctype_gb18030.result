@@ -71,6 +71,8 @@ select 1 from t1 order by cast(a as char(1));
 1
 drop table t1;
 set names utf8;
+Warnings:
+Warning	3719	'utf8' is currently an alias for the character set UTF8MB3, but will be an alias for UTF8MB4 in a future release. Please consider using UTF8MB4 in order to be unambiguous.
 create table t1 (
 name varchar(10),
 level smallint unsigned);
@@ -78,7 +80,7 @@ show create table t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
   `name` varchar(10) DEFAULT NULL,
-  `level` smallint(5) unsigned DEFAULT NULL
+  `level` smallint unsigned DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=gb18030
 insert into t1 values ('string',1);
 select concat(name,space(level)), concat(name, repeat(' ',level)) from t1;
@@ -92,6 +94,8 @@ SET collation_server= @safe_collation_server;
 SET character_set_client= @safe_character_set_client;
 SET character_set_results= @safe_character_set_results;
 SET NAMES utf8;
+Warnings:
+Warning	3719	'utf8' is currently an alias for the character set UTF8MB3, but will be an alias for UTF8MB4 in a future release. Please consider using UTF8MB4 in order to be unambiguous.
 SET collation_connection='gb18030_chinese_ci';
 create table t1 select repeat('a',4000) a;
 delete from t1;
@@ -168,78 +172,86 @@ insert into t1 values (0x40),(0x41),(0x42),(0x43),(0x44),(0x45),(0x46),(0x47),(0
 insert into t1 values (0x50),(0x51),(0x52),(0x53),(0x54),(0x55),(0x56),(0x57),(0x58),(0x59),(0x5A),(0x5B),(0x5C),(0x5D),(0x5E),(0x5F);
 insert into t1 values (0x60),(0x61),(0x62),(0x63),(0x64),(0x65),(0x66),(0x67),(0x68),(0x69),(0x6A),(0x6B),(0x6C),(0x6D),(0x6E),(0x6F);
 insert into t1 values (0x70),(0x71),(0x72),(0x73),(0x74),(0x75),(0x76),(0x77),(0x78),(0x79),(0x7A),(0x7B),(0x7C),(0x7D),(0x7E),(0x7F);
-SELECT GROUP_CONCAT(c1 ORDER BY binary c1 SEPARATOR ''), GROUP_CONCAT(hex(c1) ORDER BY BINARY c1) FROM t1 GROUP BY c1;
-GROUP_CONCAT(c1 ORDER BY binary c1 SEPARATOR '')	GROUP_CONCAT(hex(c1) ORDER BY BINARY c1)
- 	20
-!	21
-"	22
-#	23
-$	24
-%	25
-&	26
-'	27
-(	28
-)	29
-*	2A
-+	2B
-,	2C
--	2D
-.	2E
-/	2F
-0	30
-1	31
-2	32
-3	33
-4	34
-5	35
-6	36
-7	37
-8	38
-9	39
-:	3A
-;	3B
-<	3C
-=	3D
->	3E
-?	3F
-@	40
-Aa	41,61
-Bb	42,62
-Cc	43,63
-Dd	44,64
-Ee	45,65
-Ff	46,66
-Gg	47,67
-Hh	48,68
-Ii	49,69
-Jj	4A,6A
-Kk	4B,6B
-Ll	4C,6C
-Mm	4D,6D
-Nn	4E,6E
-Oo	4F,6F
-Pp	50,70
-Qq	51,71
-Rr	52,72
-Ss	53,73
-Tt	54,74
-Uu	55,75
-Vv	56,76
-Ww	57,77
-Xx	58,78
-Yy	59,79
-Zz	5A,7A
-[	5B
-\	5C
-]	5D
-^	5E
-_	5F
-`	60
-{	7B
-|	7C
-}	7D
-~	7E
-	7F
+SELECT HEX(cx), cy
+FROM (SELECT GROUP_CONCAT(c1 ORDER BY binary c1 SEPARATOR '') AS cx,
+GROUP_CONCAT(HEX(c1) ORDER BY BINARY c1) AS cy
+FROM t1
+GROUP BY c1
+) AS dt;
+HEX(cx)	cy
+20	20
+21	21
+22	22
+23	23
+24	24
+25	25
+26	26
+27	27
+28	28
+29	29
+2A	2A
+2B	2B
+2C	2C
+2D	2D
+2E	2E
+2F	2F
+30	30
+31	31
+32	32
+33	33
+34	34
+35	35
+36	36
+37	37
+38	38
+39	39
+3A	3A
+3B	3B
+3C	3C
+3D	3D
+3E	3E
+3F	3F
+40	40
+4161	41,61
+4262	42,62
+4363	43,63
+4464	44,64
+4565	45,65
+4666	46,66
+4767	47,67
+4868	48,68
+4969	49,69
+4A6A	4A,6A
+4B6B	4B,6B
+4C6C	4C,6C
+4D6D	4D,6D
+4E6E	4E,6E
+4F6F	4F,6F
+5070	50,70
+5171	51,71
+5272	52,72
+5373	53,73
+5474	54,74
+5575	55,75
+5676	56,76
+5777	57,77
+5878	58,78
+5979	59,79
+5A7A	5A,7A
+5B	5B
+5C	5C
+5D	5D
+5E	5E
+5F	5F
+60	60
+7B	7B
+7C	7C
+7D	7D
+7E	7E
+7F	7F
+Warnings:
+Warning	1287	'BINARY expr' is deprecated and will be removed in a future release. Please use CAST instead
+Warning	1287	'BINARY expr' is deprecated and will be removed in a future release. Please use CAST instead
 drop table t1;
 SET collation_connection='gb18030_bin';
 create table t1 select repeat('a',4000) a;
@@ -311,9 +323,13 @@ DROP TABLE t1;
 SELECT HEX(CONVERT(_gb18030 0xA14041 USING ucs2));
 HEX(CONVERT(_gb18030 0xA14041 USING ucs2))
 E4C60041
+Warnings:
+Warning	1287	'ucs2' is deprecated and will be removed in a future release. Please use utf8mb4 instead
 SELECT HEX(CONVERT(_gb18030 0xA14041 USING utf8));
 HEX(CONVERT(_gb18030 0xA14041 USING utf8))
 EE938641
+Warnings:
+Warning	3719	'utf8' is currently an alias for the character set UTF8MB3, but will be an alias for UTF8MB4 in a future release. Please consider using UTF8MB4 in order to be unambiguous.
 SELECT HEX(CONVERT(_gb18030 0xFEFEFEFD814040 USING utf32));
 HEX(CONVERT(_gb18030 0xFEFEFEFD814040 USING utf32))
 0000E4C50000E4C400004E0200000040
@@ -335,15 +351,23 @@ HEX(CONVERT(_gb18030 0xFE39FE39 USING utf32))
 SELECT HEX(CONVERT(_ucs2 0xD800 USING gb18030));
 HEX(CONVERT(_ucs2 0xD800 USING gb18030))
 3F
+Warnings:
+Warning	1287	'ucs2' is deprecated and will be removed in a future release. Please use utf8mb4 instead
 SELECT HEX(CONVERT(_ucs2 0xDFFF USING gb18030));
 HEX(CONVERT(_ucs2 0xDFFF USING gb18030))
 3F
+Warnings:
+Warning	1287	'ucs2' is deprecated and will be removed in a future release. Please use utf8mb4 instead
 SELECT HEX(CONVERT(_ucs2 0xE000 USING gb18030));
 HEX(CONVERT(_ucs2 0xE000 USING gb18030))
 AAA1
+Warnings:
+Warning	1287	'ucs2' is deprecated and will be removed in a future release. Please use utf8mb4 instead
 SELECT HEX(CONVERT(_ucs2 0xF8FF USING gb18030));
 HEX(CONVERT(_ucs2 0xF8FF USING gb18030))
 84308130
+Warnings:
+Warning	1287	'ucs2' is deprecated and will be removed in a future release. Please use utf8mb4 instead
 SELECT HEX(CONVERT(_gb18030 0xA13941 USING ucs2));
 ERROR HY000: Invalid gb18030 character string: 'A13941'
 SELECT HEX(CONVERT(_gb18030 0xFFFE USING ucs2));
@@ -370,7 +394,7 @@ ALTER TABLE t1 CHANGE c1 c1 MEDIUMTEXT CHARACTER SET gb18030 NOT NULL;
 SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
-  `c1` mediumtext NOT NULL,
+  `c1` mediumtext CHARACTER SET gb18030 COLLATE gb18030_chinese_ci NOT NULL,
   `c2` text NOT NULL
 ) ENGINE=default_engine DEFAULT CHARSET=gb18030
 DROP TABLE t1;
@@ -458,36 +482,6 @@ hex(weight_string('abc', 5, 4, 0xC0))
 select hex(weight_string('abc',25, 4, 0xC0));
 hex(weight_string('abc',25, 4, 0xC0))
 41424320202020202020202020202020202020202020202020
-select @@collation_connection;
-@@collation_connection
-gb18030_chinese_ci
-select hex(weight_string('a' LEVEL 1));
-hex(weight_string('a' LEVEL 1))
-41
-select hex(weight_string('A' LEVEL 1));
-hex(weight_string('A' LEVEL 1))
-41
-select hex(weight_string('abc' LEVEL 1));
-hex(weight_string('abc' LEVEL 1))
-414243
-select hex(weight_string('abc' as char(2) LEVEL 1));
-hex(weight_string('abc' as char(2) LEVEL 1))
-4142
-select hex(weight_string('abc' as char(3) LEVEL 1));
-hex(weight_string('abc' as char(3) LEVEL 1))
-414243
-select hex(weight_string('abc' as char(5) LEVEL 1));
-hex(weight_string('abc' as char(5) LEVEL 1))
-4142432020
-select hex(weight_string('abc' as char(5) LEVEL 1 REVERSE));
-hex(weight_string('abc' as char(5) LEVEL 1 REVERSE))
-2020434241
-select hex(weight_string('abc' as char(5) LEVEL 1 DESC));
-hex(weight_string('abc' as char(5) LEVEL 1 DESC))
-BEBDBCDFDF
-select hex(weight_string('abc' as char(5) LEVEL 1 DESC REVERSE));
-hex(weight_string('abc' as char(5) LEVEL 1 DESC REVERSE))
-DFDFBCBDBE
 select collation(cast(0xA1A1 as char));
 collation(cast(0xA1A1 as char))
 gb18030_chinese_ci
@@ -825,36 +819,6 @@ hex(weight_string('abc', 5, 4, 0xC0))
 select hex(weight_string('abc',25, 4, 0xC0));
 hex(weight_string('abc',25, 4, 0xC0))
 61626320202020202020202020202020202020202020202020
-select @@collation_connection;
-@@collation_connection
-gb18030_bin
-select hex(weight_string('a' LEVEL 1));
-hex(weight_string('a' LEVEL 1))
-61
-select hex(weight_string('A' LEVEL 1));
-hex(weight_string('A' LEVEL 1))
-41
-select hex(weight_string('abc' LEVEL 1));
-hex(weight_string('abc' LEVEL 1))
-616263
-select hex(weight_string('abc' as char(2) LEVEL 1));
-hex(weight_string('abc' as char(2) LEVEL 1))
-6162
-select hex(weight_string('abc' as char(3) LEVEL 1));
-hex(weight_string('abc' as char(3) LEVEL 1))
-616263
-select hex(weight_string('abc' as char(5) LEVEL 1));
-hex(weight_string('abc' as char(5) LEVEL 1))
-6162632020
-select hex(weight_string('abc' as char(5) LEVEL 1 REVERSE));
-hex(weight_string('abc' as char(5) LEVEL 1 REVERSE))
-2020636261
-select hex(weight_string('abc' as char(5) LEVEL 1 DESC));
-hex(weight_string('abc' as char(5) LEVEL 1 DESC))
-9E9D9CDFDF
-select hex(weight_string('abc' as char(5) LEVEL 1 DESC REVERSE));
-hex(weight_string('abc' as char(5) LEVEL 1 DESC REVERSE))
-DFDF9C9D9E
 select collation(cast(0xA1A1 as char));
 collation(cast(0xA1A1 as char))
 gb18030_bin
@@ -1121,36 +1085,28 @@ HEX(WEIGHT_STRING(CAST(0x81309D3081309D3081309D30 AS CHAR), 25, 4, 0xC0))
 # INETTO_NTOA + MULTIBYTE CHARSET.
 #
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
-Warnings:
-Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 SELECT is_ipv4(inet_ntoa('1'));
 is_ipv4(inet_ntoa('1'))
 1
 SELECT is_ipv6(inet_ntoa('1'));
 is_ipv6(inet_ntoa('1'))
 0
-SELECT inet6_aton(inet_ntoa('1'));
-inet6_aton(inet_ntoa('1'))
-   
+SELECT HEX(inet6_aton(inet_ntoa('1')));
+HEX(inet6_aton(inet_ntoa('1')))
+00000001
 SELECT inet6_ntoa(inet_ntoa('1'));
 inet6_ntoa(inet_ntoa('1'))
 NULL
-Warnings:
-Warning	1411	Incorrect string value: 'inet_ntoa('1')' for function inet6_ntoa
 #
 # Bug#14040277 UNINITIALIZED VALUE REFERENCED IN STR_TO_IPV6
 #
 SELECT inet6_aton(soundex('a'));
 inet6_aton(soundex('a'))
 NULL
-Warnings:
-Warning	1411	Incorrect string value: 'soundex('a')' for function inet6_aton
 #
 # Bug#19047425 UNINITIALISED VALUE IN STR_TO_IPV6
 #
 do is_ipv4_mapped(inet6_aton(convert(_ascii "a:" using utf8mb4)));
-Warnings:
-Warning	1411	Incorrect string value: 'convert(_ascii'a:' using utf8mb4)' for function inet6_aton
 #
 # Test for gb18030_unicode_520_ci collation.
 #
@@ -1161,7 +1117,7 @@ SHOW CREATE TABLE t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
   `c` varchar(10) CHARACTER SET gb18030 COLLATE gb18030_unicode_520_ci NOT NULL DEFAULT ''
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 INSERT INTO t1 VALUES (_utf32 0x0180),(_utf32 0x023A);
 INSERT INTO t1 VALUES (_utf32 0x023B),(_utf32 0x023C);
 INSERT INTO t1 VALUES (_utf32 0x023D),(_utf32 0x023E);
@@ -1412,6 +1368,8 @@ hex(c)	hex(lower(c))	hex(upper(c))	hex(weight_string(c))	c
 9030EC30	A7F0	A7C0	30D8	𐐮
 9030E831	8130D335	8130D230	30D9	𐐇
 9030EC31	A7F1	A7C1	30D9	𐐯
+Warnings:
+Warning	1287	'BINARY expr' is deprecated and will be removed in a future release. Please use CAST instead
 INSERT INTO t1 VALUES ('a');
 INSERT INTO t1 VALUES (concat(_utf32 0x61, _utf32 0xFFFF));
 INSERT INTO t1 VALUES (concat(_utf32 0x61, _utf32 0x10FFFF));
@@ -1426,10 +1384,14 @@ SELECT hex(c), hex(weight_string(c)), c FROM t1 WHERE c LIKE _utf32 0x10400 ORDE
 hex(c)	hex(weight_string(c))	c
 9030E734	30D2	𐐀
 9030EB34	30D2	𐐨
+Warnings:
+Warning	1287	'BINARY expr' is deprecated and will be removed in a future release. Please use CAST instead
 SELECT hex(c), hex(weight_string(c)), c FROM t1 WHERE c LIKE _utf32 0x10428 ORDER BY c, BINARY c;
 hex(c)	hex(weight_string(c))	c
 9030E734	30D2	𐐀
 9030EB34	30D2	𐐨
+Warnings:
+Warning	1287	'BINARY expr' is deprecated and will be removed in a future release. Please use CAST instead
 ALTER TABLE t1 ADD KEY(c);
 EXPLAIN SELECT hex(c) FROM t1 WHERE c LIKE 'a%' ORDER BY c;
 id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
@@ -1446,10 +1408,14 @@ SELECT hex(c), hex(weight_string(c)), c FROM t1 WHERE c LIKE _utf32 0x10400 ORDE
 hex(c)	hex(weight_string(c))	c
 9030E734	30D2	𐐀
 9030EB34	30D2	𐐨
+Warnings:
+Warning	1287	'BINARY expr' is deprecated and will be removed in a future release. Please use CAST instead
 SELECT hex(c), hex(weight_string(c)), c FROM t1 WHERE c LIKE _utf32 0x10428 ORDER BY c, BINARY c;
 hex(c)	hex(weight_string(c))	c
 9030E734	30D2	𐐀
 9030EB34	30D2	𐐨
+Warnings:
+Warning	1287	'BINARY expr' is deprecated and will be removed in a future release. Please use CAST instead
 DROP TABLE t1;
 SET NAMES gb18030 COLLATE gb18030_unicode_520_ci;
 SELECT 1 gb18030_unicode_520_ci;
@@ -1794,12 +1760,12 @@ CREATE TABLE t1 (c VARCHAR(10) CHARACTER SET gb18030);
 INSERT INTO t1 VALUES (_gb18030 0x8BF5819AEDC3), (_gb18030 0x99CC), (_gb18030 0x90459958), (_gb18030 0xAA95C0E59E509AED), (_gb18030 0xCCE7), (_gb18030 0x9068), (_gb18030 0x90459958);
 SELECT ANY_VALUE(HEX(c)), COUNT(c) FROM t1 GROUP BY c COLLATE gb18030_chinese_ci;
 ANY_VALUE(HEX(c))	COUNT(c)
+8BF5819AEDC3	1
 90459958	2
 9068	1
+99CC	1
 AA95C0E59E509AED	1
 CCE7	1
-99CC	1
-8BF5819AEDC3	1
 DROP TABLE t1;
 CREATE TABLE t1 (a int) ENGINE=InnoDB;
 LOAD DATA INFILE '../../std_data/bug21542698.dat' INTO TABLE t1 CHARACTER SET gb18030;

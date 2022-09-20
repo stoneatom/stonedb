@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2006, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2006, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -25,8 +25,13 @@
 #ifndef DYNARR256_HPP
 #define DYNARR256_HPP
 
+#include "util/require.h"
 #include "Pool.hpp"
 #include <NdbMutex.h>
+
+#ifdef ERROR_INSERT
+#include "SimulatedBlock.hpp" // For cerrorInsert
+#endif
 
 #define JAM_FILE_ID 299
 
@@ -37,6 +42,7 @@ struct DA256Page;
 class DynArr256Pool
 {
   friend class DynArr256;
+  friend class Dbtup;
 public:
   DynArr256Pool();
   
@@ -82,6 +88,9 @@ protected:
 private:
   Uint32 seize();
   void release(Uint32);
+#ifdef ERROR_INSERT
+  Uint32 get_ERROR_INSERT_VALUE() const;
+#endif
 };
 
 class DynArr256
@@ -117,7 +126,7 @@ public:
 #endif
   };
   
-  DynArr256(DynArr256Pool & pool, Head& head) : 
+  DynArr256(DynArr256Pool * pool, Head& head) : 
     m_head(head), m_pool(pool){}
   
   Uint32* set(Uint32 pos);
@@ -142,10 +151,15 @@ public:
   Uint32 truncate(Uint32 trunc_pos, ReleaseIterator&, Uint32* retptr);
 protected:
   Head & m_head;
-  DynArr256Pool & m_pool;
+  DynArr256Pool * m_pool;
   
   bool expand(Uint32 pos);
   void handle_invalid_ptr(Uint32 pos, Uint32 ptrI, Uint32 p0);
+
+private:
+#ifdef ERROR_INSERT
+  Uint32 get_ERROR_INSERT_VALUE() const;
+#endif
 };
 
 inline
@@ -171,6 +185,20 @@ Uint32 * DynArr256::get(Uint32 pos) const
 #endif
   return get_dirty(pos);
 }
+
+#ifdef ERROR_INSERT
+inline
+Uint32 DynArr256Pool::get_ERROR_INSERT_VALUE() const
+{
+  return m_ctx.m_block->cerrorInsert;
+}
+
+inline
+Uint32 DynArr256::get_ERROR_INSERT_VALUE() const
+{
+  return m_pool->get_ERROR_INSERT_VALUE();
+}
+#endif
 
 #undef JAM_FILE_ID
 

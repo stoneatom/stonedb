@@ -1,6 +1,5 @@
 /*
-   Copyright (c) 2005, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+  Copyright (c) 2005, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -23,13 +22,8 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-/***************************************************************
-* I N C L U D E D   F I L E S                                  *
-***************************************************************/
-
-#include <ndb_global.h>
-
 #include "dbGenerator.h"
+#include "my_byteorder.h"
 #include <NdbApi.hpp>
 #include <NdbOut.hpp>
 #include <NdbSleep.h>
@@ -155,7 +149,7 @@ static void insertSession(SessionList     *list,
 
    e = &list->list[list->writeIndex];
 
-   strcpy(e->subscriberNumber, number);
+   memcpy(e->subscriberNumber, number, SUBSCRIBER_NUMBER_LENGTH);
    e->serverId = serverId;
 
    list->writeIndex = (list->writeIndex + 1) % SESSION_LIST_LENGTH;
@@ -306,7 +300,8 @@ doTransaction_T3(Ndb * pNDB, ThreadData * td, int async)
   /*----------------*/
   se = getNextSession(&td->generator.activeSessions);
   if( se ) {
-    strcpy(td->transactionData.number, se->subscriberNumber);
+    memcpy(td->transactionData.number, se->subscriberNumber,
+           SUBSCRIBER_NUMBER_LENGTH);
     td->transactionData.server_id = se->serverId;
     td->transactionData.sessionElement = 1;
   } else {
@@ -359,7 +354,8 @@ doTransaction_T5(Ndb * pNDB, ThreadData * td, int async)
   SessionElement * se;
   se = getNextSession(&td->generator.activeSessions);
   if( se ) {
-    strcpy(td->transactionData.number, se->subscriberNumber);
+    memcpy(td->transactionData.number, se->subscriberNumber,
+            SUBSCRIBER_NUMBER_LENGTH);
     td->transactionData.server_id = se->serverId;
     td->transactionData.sessionElement = 1;
   }

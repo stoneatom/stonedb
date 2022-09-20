@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2005, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2005, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -43,6 +43,8 @@
 #include <signaldata/BackupSignalData.hpp>
 #include <signaldata/AllocNodeId.hpp>
 
+struct trp_node;
+
 struct SimpleSignal {
 public:
   SimpleSignal(bool dealloc = false);
@@ -55,7 +57,7 @@ public:
   NdbApiSignal header;
   LinearSectionPtr ptr[3];
 
-  int readSignalNumber() const { return header.readSignalNumber(); };
+  int readSignalNumber() const { return header.readSignalNumber(); }
   Uint32 *getDataPtrSend() { return header.getDataPtrSend(); }
   const Uint32 *getDataPtr() const { return header.getDataPtr(); }
   Uint32 getLength() const { return header.getLength(); }
@@ -65,8 +67,8 @@ public:
    */
   bool isFragmented() const { return header.isFragmented(); }
   bool isFirstFragment() const { return header.isFirstFragment(); }
-  bool isLastFragment() const { return header.isLastFragment(); };
-  Uint32 getFragmentId() const { return header.getFragmentId(); };
+  bool isLastFragment() const { return header.isLastFragment(); }
+  Uint32 getFragmentId() const { return header.getFragmentId(); }
 
   void print(FILE * out = stdout) const;
   SimpleSignal& operator=(const SimpleSignal&);
@@ -76,9 +78,15 @@ private:
 
 class SignalSender  : public trp_client {
 public:
-  SignalSender(TransporterFacade *facade, int blockNo = -1);
-  SignalSender(Ndb_cluster_connection* connection);
-  virtual ~SignalSender();
+  /**
+   * deliverAll option set to true also delivers signals which may be
+   * frequent.
+   * Care should be taken to ensure that these are handled promptly to
+   * avoid excessive buffering
+   */
+  SignalSender(TransporterFacade *facade, int blockNo = -1, bool deliverAll = false);
+  SignalSender(Ndb_cluster_connection* connection, bool deliverAll = false);
+  ~SignalSender() override;
   
   int lock();
   int unlock();
@@ -107,22 +115,22 @@ private:
   int m_blockNo;
   TransporterFacade * theFacade;
   bool m_locked;
-  
-public:
+  bool m_deliverAll;
+
+  NodeId find_node(const NodeBitmask& mask, bool (*cond)(const trp_node&));
+
+ public:
   /**
    * trp_client interface
    */
-  virtual void trp_deliver_signal(const NdbApiSignal* signal,
-                                  const struct LinearSectionPtr ptr[3]);
+  void trp_deliver_signal(const NdbApiSignal* signal,
+                          const struct LinearSectionPtr ptr[3]) override;
   
   Vector<SimpleSignal *> m_jobBuffer;
   Vector<SimpleSignal *> m_usedBuffer;
 
   template<class T>
   SimpleSignal * waitFor(Uint32 timeOutMillis, T & t);
-
-  template<class T>
-  NodeId find_node(const NodeBitmask& mask, T & t);
 };
 
 #endif

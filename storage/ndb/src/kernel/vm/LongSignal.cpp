@@ -1,4 +1,4 @@
-/* Copyright (c) 2008, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2008, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -18,19 +18,18 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA */
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #include "LongSignal.hpp"
 #include "LongSignalImpl.hpp"
 #include <EventLogger.hpp>
 
-extern EventLogger * g_eventLogger;
 
 #define JAM_FILE_ID 262
 
 // Static function.
 void 
-SectionSegmentPool::handleOutOfSegments(ArrayPool<SectionSegment>& pool)
+SectionSegmentPool::handleOutOfSegments(SectionSegment_basepool& pool)
 {
   g_eventLogger
     ->warning("The long message buffer is out of free elements. This may "
@@ -40,7 +39,7 @@ SectionSegmentPool::handleOutOfSegments(ArrayPool<SectionSegment>& pool)
               "the state of this buffer via the ndbinfo.memoryusage table.", 
               static_cast<unsigned long>
               (pool.getSize() * sizeof(SectionSegment)));
-};
+}
 
 /**
  * verifySection
@@ -66,7 +65,9 @@ verifySection(Uint32 firstIVal, SectionSegmentPool& thePool)
    * Nature abhors a segmented section with length 0
    */
   //assert(totalSize != 0);
-  assert(lastSegIVal != RNIL); /* Should never be == RNIL */
+#ifdef VM_TRACE
+  require(lastSegIVal != RNIL); /* Should never be == RNIL */
+#endif
   /* We ignore m_ownerRef */
 
   if (totalSize <= SectionSegment::DataLength)
@@ -98,7 +99,9 @@ verifySection(Uint32 firstIVal, SectionSegmentPool& thePool)
     /* Once we are here, we are on the last Segment of this Section
      * Check that last segment is as stated in the first segment
      */
-    assert(currIVal == lastSegIVal);
+#ifdef VM_TRACE
+    require(currIVal == lastSegIVal);
+#endif
     // m_nextSegment not always set properly on last segment
     //assert(curr->m_nextSegment == RNIL);
     /* Ignore m_ownerRef, m_sz, m_lastSegment of last segment */
@@ -208,8 +211,7 @@ dupSection(SPC_ARG Uint32& copyFirstIVal, Uint32 srcFirstIVal)
 }
 
 bool ErrorImportActive = false;
-extern int ErrorSignalReceive;
-extern int ErrorMaxSegmentsToSeize;
+extern Uint32 ErrorMaxSegmentsToSeize;
 
 /**
  * appendToSection
@@ -241,16 +243,21 @@ appendToSection(SPC_ARG Uint32& firstSegmentIVal, const Uint32* src, Uint32 len)
   Uint32 remain= SectionSegment::DataLength;
   Uint32 segmentLen= 0;
 
+#ifdef NDB_DEBUG_RES_OWNERSHIP
+  const Uint32 owner = getResOwner();
+#else
+  const Uint32 owner = 0;
+#endif
+
   if (firstSegmentIVal == RNIL)
   {
 #ifdef ERROR_INSERT
     /* Simulate running out of segments */
     if (ErrorImportActive)
     {
-      if ((ErrorSignalReceive == 1) && 
-          (ErrorMaxSegmentsToSeize == 0))
+      if (ErrorMaxSegmentsToSeize == 0)
       {
-        ndbout_c("append exhausted on first segment");
+        g_eventLogger->info("append exhausted on first segment");
         return false;
       }
     }
@@ -262,7 +269,7 @@ appendToSection(SPC_ARG Uint32& firstSegmentIVal, const Uint32* src, Uint32 len)
       return false;
 
     firstPtr.p->m_sz= 0;
-    firstPtr.p->m_ownerRef= 0;
+    firstPtr.p->m_ownerRef= owner;
     firstSegmentIVal= firstPtr.i;
 
     currPtr= firstPtr;
@@ -270,8 +277,8 @@ appendToSection(SPC_ARG Uint32& firstSegmentIVal, const Uint32* src, Uint32 len)
   else
   {
     /* Section has at least one segment with data already */
-    g_sectionSegmentPool.getPtr(firstPtr, firstSegmentIVal);
-    g_sectionSegmentPool.getPtr(currPtr, firstPtr.p->m_lastSegment);
+    require(g_sectionSegmentPool.getPtr(firstPtr, firstSegmentIVal));
+    require(g_sectionSegmentPool.getPtr(currPtr, firstPtr.p->m_lastSegment));
 
     Uint32 existingLen= firstPtr.p->m_sz;
     assert(existingLen > 0);
@@ -306,10 +313,10 @@ appendToSection(SPC_ARG Uint32& firstSegmentIVal, const Uint32* src, Uint32 len)
     /* Simulate running out of segments */
     if (ErrorImportActive)
     {
-      if ((ErrorSignalReceive == 1) && 
-          (0 == remainSegs--))
+      if (0 == remainSegs--)
       {
-        ndbout_c("Append exhausted on segment %d", ErrorMaxSegmentsToSeize);
+        g_eventLogger->info("Append exhausted on segment %d",
+                            ErrorMaxSegmentsToSeize);
         firstPtr.p->m_lastSegment= prevPtr.i;
         firstPtr.p->m_sz-= len;
         return false;
@@ -328,7 +335,7 @@ appendToSection(SPC_ARG Uint32& firstSegmentIVal, const Uint32* src, Uint32 len)
     }
     prevPtr.p->m_nextSegment = currPtr.i;
     currPtr.p->m_sz= 0;
-    currPtr.p->m_ownerRef= 0;
+    currPtr.p->m_ownerRef= owner;
 
     segmentLen= 0;
     remain= SectionSegment::DataLength;
@@ -348,25 +355,30 @@ import(SPC_ARG Ptr<SectionSegment> & first, const Uint32 * src, Uint32 len){
   /* Simulate running out of segments */
   if (ErrorImportActive)
   {
-    if ((ErrorSignalReceive == 1) &&
-        (ErrorMaxSegmentsToSeize == 0))
+    if (ErrorMaxSegmentsToSeize == 0)
     {
-      ndbout_c("Import exhausted on first segment");
+      g_eventLogger->info("Import exhausted on first segment");
       return false;
     }
   }
+#endif
+
+#ifdef NDB_DEBUG_RES_OWNERSHIP
+  const Uint32 owner = getResOwner();
+#else
+  const Uint32 owner = 0;
 #endif
 
   first.p = 0;
   if(g_sectionSegmentPool.seize(SPC_SEIZE_ARG first)){
     ;
   } else {
-    ndbout_c("No Segmented Sections for import");
+    g_eventLogger->info("No Segmented Sections for import");
     return false;
   }
 
   first.p->m_sz = len;
-  first.p->m_ownerRef = 0;
+  first.p->m_ownerRef = owner;
 
   Ptr<SectionSegment> currPtr = first;
 
@@ -384,11 +396,10 @@ import(SPC_ARG Ptr<SectionSegment> & first, const Uint32 * src, Uint32 len){
     /* Simulate running out of segments */
     if (ErrorImportActive)
     {
-      if ((ErrorSignalReceive == 1) &&
-          (0 == remainSegs--))
+      if (0 == remainSegs--)
       {
-        ndbout_c("Import exhausted on segment %d", 
-                 ErrorMaxSegmentsToSeize);
+        g_eventLogger->info("Import exhausted on segment %d",
+                            ErrorMaxSegmentsToSeize);
         first.p->m_lastSegment= prevPtr.i;
         first.p->m_sz-= len;
         prevPtr.p->m_nextSegment = RNIL;
@@ -399,13 +410,14 @@ import(SPC_ARG Ptr<SectionSegment> & first, const Uint32 * src, Uint32 len){
 
     if(g_sectionSegmentPool.seize(SPC_SEIZE_ARG currPtr)){
       prevPtr.p->m_nextSegment = currPtr.i;
+      currPtr.p->m_ownerRef = owner;
       ;
     } else {
       /* Leave segment chain in ok condition for release */
       first.p->m_lastSegment = prevPtr.i;
       first.p->m_sz-= len;
       prevPtr.p->m_nextSegment = RNIL;
-      ndbout_c("Not enough Segmented Sections during import");
+      g_eventLogger->info("Not enough Segmented Sections during import");
       return false;
     }
   }
@@ -458,7 +470,7 @@ writeToSection(Uint32 firstSegmentIVal, Uint32 offset,
   else
   {
     /* Section has at least one segment with data already */
-    g_sectionSegmentPool.getPtr(segPtr, firstSegmentIVal);
+    require(g_sectionSegmentPool.getPtr(segPtr, firstSegmentIVal));
 
     Uint32 existingLen= segPtr.p->m_sz;
 
@@ -471,7 +483,7 @@ writeToSection(Uint32 firstSegmentIVal, Uint32 offset,
     /* Advance through segments to the one containing the start offset */
     while (offset >= SectionSegment::DataLength)
     {
-      g_sectionSegmentPool.getPtr(segPtr, segPtr.p->m_nextSegment);
+      require(g_sectionSegmentPool.getPtr(segPtr, segPtr.p->m_nextSegment));
       offset-= SectionSegment::DataLength;
     }
 
@@ -490,10 +502,24 @@ writeToSection(Uint32 firstSegmentIVal, Uint32 offset,
       }
 
       offset = 0;
-      g_sectionSegmentPool.getPtr(segPtr, segPtr.p->m_nextSegment);
+      require(g_sectionSegmentPool.getPtr(segPtr, segPtr.p->m_nextSegment));
     }
   }
 }
+
+#ifdef NDB_DEBUG_RES_OWNERSHIP
+
+void setResOwner(Uint32 id)
+{
+  NDB_THREAD_TLS_RES_OWNER = id;
+}
+
+Uint32 getResOwner()
+{
+  return NDB_THREAD_TLS_RES_OWNER;
+}
+
+#endif
 
 /** 
  * #undef is needed since this file is included by LongSignal_nonmt.cpp

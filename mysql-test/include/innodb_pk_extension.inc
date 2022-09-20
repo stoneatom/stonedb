@@ -1,4 +1,3 @@
---source include/have_innodb.inc
 
 CREATE TABLE t1
 (
@@ -60,12 +59,14 @@ ANALYZE TABLE t1;
 EXPLAIN SELECT count(*) FROM t1 WHERE pk_1 = 3 and f1 = '2000-01-03';
 FLUSH STATUS;
 SELECT count(*) FROM t1 WHERE pk_1 = 3 and f1 = '2000-01-03';
+--skip_if_hypergraph  # No support for these access methods yet.
 SHOW STATUS LIKE 'handler_read%';
 
 --replace_column 10 #
 EXPLAIN SELECT pk_2 FROM t1 WHERE pk_1 = 3 and f1 = '2000-01-03';
 FLUSH STATUS;
 SELECT pk_2 FROM t1 WHERE pk_1 = 3 and f1 = '2000-01-03';
+--skip_if_hypergraph  # No support for these access methods yet.
 SHOW STATUS LIKE 'handler_read%';
 
 --echo #
@@ -76,12 +77,14 @@ SHOW STATUS LIKE 'handler_read%';
 EXPLAIN SELECT count(*) FROM t1 WHERE pk_1 BETWEEN 3 AND 5 AND f1 = '2000-01-03';
 FLUSH STATUS;
 SELECT count(*) FROM t1 WHERE pk_1 BETWEEN 3 AND 5 AND f1 = '2000-01-03';
+--skip_if_hypergraph  # No support for these access methods yet.
 SHOW STATUS LIKE 'handler_read%';
 
 --replace_column 10 #
 EXPLAIN SELECT pk_1, pk_2 FROM t1 WHERE pk_1 BETWEEN 3 AND 5 AND f1 = '2000-01-03';
 FLUSH STATUS;
 SELECT pk_1, pk_2 FROM t1 WHERE pk_1 BETWEEN 3 AND 5 AND f1 = '2000-01-03';
+--skip_if_hypergraph  # No support for these access methods yet.
 SHOW STATUS LIKE 'handler_read%';
 
 --echo #
@@ -92,24 +95,28 @@ SHOW STATUS LIKE 'handler_read%';
 EXPLAIN SELECT MIN(pk_1) FROM t1 WHERE f1 = '2000-01-03';
 FLUSH STATUS;
 SELECT MIN(pk_1) FROM t1 WHERE f1 = '2000-01-03';
+--skip_if_hypergraph  # No support for these access methods yet.
 SHOW STATUS LIKE 'handler_read%';
 
 --replace_column 10 #
 EXPLAIN SELECT MIN(pk_1) FROM t1 WHERE pk_1 BETWEEN 3 AND 5 AND f1 = '2000-01-03';
 FLUSH STATUS;
 SELECT MIN(pk_1) FROM t1 WHERE pk_1 BETWEEN 3 AND 5 AND f1 = '2000-01-03';
+--skip_if_hypergraph  # No support for these access methods yet.
 SHOW STATUS LIKE 'handler_read%';
 
 --replace_column 10 #
 EXPLAIN SELECT MAX(pk_1) FROM t1 WHERE f1 = '2000-01-03';
 FLUSH STATUS;
 SELECT MAX(pk_1) FROM t1 WHERE f1 = '2000-01-03';
+--skip_if_hypergraph  # No support for these access methods yet.
 SHOW STATUS LIKE 'handler_read%';
 
 --replace_column 10 #
 EXPLAIN SELECT MAX(pk_1) FROM t1 WHERE pk_1 BETWEEN 3 AND 5 AND f1 = '2000-01-03';
 FLUSH STATUS;
 SELECT MAX(pk_1) FROM t1 WHERE pk_1 BETWEEN 3 AND 5 AND f1 = '2000-01-03';
+--skip_if_hypergraph  # No support for these access methods yet.
 SHOW STATUS LIKE 'handler_read%';
 
 --echo #
@@ -120,12 +127,14 @@ SHOW STATUS LIKE 'handler_read%';
 EXPLAIN SELECT MIN(pk_1) FROM t1 WHERE f2 BETWEEN 13 AND 14 GROUP BY f2;
 FLUSH STATUS;
 SELECT MIN(pk_1) FROM t1 WHERE f2 BETWEEN 13 AND 14 GROUP BY f2;
+--skip_if_hypergraph  # No support for these access methods yet.
 SHOW STATUS LIKE 'handler_read%';
 
 --replace_column 10 #
 EXPLAIN SELECT MIN(pk_1) FROM t1 WHERE f2 IN (1, 2) GROUP BY f2;
 FLUSH STATUS;
 SELECT MIN(pk_1) FROM t1 WHERE f2 IN (1, 2) GROUP BY f2;
+--skip_if_hypergraph  # No support for these access methods yet.
 SHOW STATUS LIKE 'handler_read%';
 
 --echo #
@@ -138,18 +147,24 @@ ON t2.pk_1 = t1.pk_1 WHERE t1.f1 = '2000-01-03' AND t2.f1 = '2000-01-03';
 FLUSH STATUS;
 SELECT count(*) FROM t1 AS t1 JOIN t1 AS t2
 ON t2.pk_1 = t1.pk_1 WHERE t1.f1 = '2000-01-03' AND t2.f1 = '2000-01-03';
+--skip_if_hypergraph  # No support for these access methods yet.
 SHOW STATUS LIKE 'handler_read%';
 
 --echo #
 --echo # Optimization of sorting
+--echo # Also verifies FORMAT=tree for reverse ref access.
 --echo #
 
 --replace_column 10 #
 EXPLAIN SELECT f1, pk_1, pk_2 FROM t1 WHERE pk_1 = 3 AND f1 = '2000-01-03'
 ORDER BY pk_2 DESC LIMIT 5;
+--skip_if_hypergraph  # No support for these access methods yet.
+EXPLAIN FORMAT=tree SELECT f1, pk_1, pk_2 FROM t1 WHERE pk_1 = 3 AND f1 = '2000-01-03'
+ORDER BY pk_2 DESC LIMIT 5;
 FLUSH STATUS;
 SELECT f1, pk_1, pk_2 FROM t1 WHERE pk_1 = 3 AND f1 = '2000-01-03'
 ORDER BY pk_2 DESC LIMIT 5;
+--skip_if_hypergraph  # No support for these access methods yet.
 SHOW STATUS LIKE 'handler_read%';
 
 --replace_column 10 #
@@ -158,6 +173,7 @@ ORDER BY pk_2 DESC LIMIT 5;
 FLUSH STATUS;
 SELECT f1, pk_1, pk_2 FROM t1 WHERE pk_1 BETWEEN 3 AND 5 AND f1 = '2000-01-03'
 ORDER BY pk_2 DESC LIMIT 5;
+--skip_if_hypergraph  # No support for these access methods yet.
 SHOW STATUS LIKE 'handler_read%';
 
 DROP TABLE t1;
@@ -201,7 +217,7 @@ CREATE TABLE t1
   f7 VARCHAR(500),
   PRIMARY KEY (f1, f2, f3, f4),
   KEY k1 (f5, f6, f7)
-) ENGINE = InnoDB;
+) charset latin1 ENGINE = InnoDB;
 
 --replace_column 10 #
 EXPLAIN SELECT f5 FROM t1 FORCE INDEX (k1) WHERE
@@ -248,6 +264,7 @@ INSERT INTO t2 VALUES (1,1), (2,2);
 EXPLAIN SELECT t2.f1 FROM t2 JOIN t1 IGNORE INDEX(primary) ON t2.f1 = t1.pk and t2.f2 = t1.f1;
 FLUSH STATUS;
 SELECT t2.f1 FROM t2 JOIN t1 IGNORE INDEX(primary) ON t2.f1 = t1.pk and t2.f2 = t1.f1;
+--skip_if_hypergraph  # No support for these access methods yet.
 SHOW STATUS LIKE 'Handler_read%';
 
 DROP TABLE t1, t2;
@@ -258,7 +275,7 @@ DROP TABLE t1, t2;
 --echo #
 
 CREATE TABLE t1
-(a GEOMETRY NOT NULL, PRIMARY KEY (a(1)), SPATIAL KEY(a)) ENGINE=INNODB;
+(a GEOMETRY NOT NULL SRID 0, SPATIAL KEY(a)) ENGINE=INNODB;
 
 INSERT INTO t1 VALUES (point(7, 7));
 SELECT st_astext(a) FROM t1 WHERE st_equals(a, point(7, 7));
@@ -270,9 +287,9 @@ DROP TABLE t1;
 
 CREATE TABLE t(
 a VARCHAR(256) NOT NULL,
-i VARCHAR(1024) NOT NULL,
+i VARCHAR(512) NOT NULL,
 PRIMARY KEY (a),
-KEY (i)) DEFAULT CHARSET=utf8;
+KEY (i)) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 INSERT INTO t VALUES
 ('aaa12345678','aaa'), ('aaa2','aaa'), ('aaa4','aaa'),

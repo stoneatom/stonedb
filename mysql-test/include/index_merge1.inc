@@ -618,6 +618,11 @@ if ($index_merge_random_rows_in_EXPLAIN)
 }
 explain select * from t1 WHERE cola = 'foo' AND colb = 'bar';
 
+# Demonstrates printing index merge in EXPLAIN FORMAT=tree.
+--skip_if_hypergraph   # Different query plan.
+--replace_regex /\(cost=[0-9. ]*/(/
+explain format=tree select * from t1 WHERE cola = 'foo' AND colb = 'bar';
+
 if ($index_merge_random_rows_in_EXPLAIN)
 {
   --replace_column 10 # 11 #
@@ -810,7 +815,7 @@ drop table t0, t1, t2, t3;
 --echo # BUG#44810: index merge and order by with low sort_buffer_size 
 --echo # crashes server!
 --echo #
-CREATE TABLE t1(a VARCHAR(128),b VARCHAR(128),KEY(A),KEY(B));
+CREATE TABLE t1(a VARCHAR(128),b VARCHAR(128),KEY(A),KEY(B)) charset latin1;
 INSERT INTO t1 VALUES (REPEAT('a',128),REPEAT('b',128));
 INSERT INTO t1 SELECT * FROM t1;
 INSERT INTO t1 SELECT * FROM t1;

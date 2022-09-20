@@ -3,6 +3,7 @@
 --echo #
 
 --source suite/query_rewrite_plugins/include/have_plugin_rewriter.inc
+
 SET sql_mode = 'PIPES_AS_CONCAT';
 CALL mtr.add_suppression("Plugin rewriter reported: " ||
                          "'Some rules failed to load.'");
@@ -132,7 +133,7 @@ DELETE FROM query_rewrite.rewrite_rules
 WHERE pattern = 'SELECT c1 FROM test.t1 WHERE c2 = ?';
 
 ALTER TABLE query_rewrite.rewrite_rules
-MODIFY COLUMN replacement VARCHAR(10000) CHARACTER SET utf8 COLLATE utf8_bin;
+MODIFY COLUMN replacement VARCHAR(10000) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 
 INSERT INTO query_rewrite.rewrite_rules ( pattern )
 VALUES ( 'SELECT c1 FROM test.t1 WHERE c2 = ?' );
@@ -149,7 +150,7 @@ DELETE FROM query_rewrite.rewrite_rules
 WHERE pattern = 'SELECT c1 FROM test.t1 WHERE c2 = ?';
 
 ALTER TABLE query_rewrite.rewrite_rules
-MODIFY COLUMN pattern VARCHAR(10000) CHARACTER SET utf8 COLLATE utf8_bin;
+MODIFY COLUMN pattern VARCHAR(5000) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 
 INSERT INTO query_rewrite.rewrite_rules ( replacement )
 VALUES ( 'SELECT c1 FROM test.t1 WHERE c2 = ?' );

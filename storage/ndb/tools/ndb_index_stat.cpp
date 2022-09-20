@@ -1,4 +1,4 @@
-/* Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -18,7 +18,7 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA */
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #include <ndb_global.h>
 #include <ndb_opts.h>
@@ -31,22 +31,22 @@
 
 // stats options
 static const char* _dbname = 0;
-static my_bool _delete = false;
-static my_bool _update = false;
-static my_bool _dump = false;
+static bool _delete = false;
+static bool _update = false;
+static bool _dump = false;
 static int _query = 0;
 static int _stats_any = 0;
 // sys options
-static my_bool _sys_drop = false;
-static my_bool _sys_create = false;
-static my_bool _sys_create_if_not_exist = false;
-static my_bool _sys_create_if_not_valid = false;
-static my_bool _sys_check = false;
-static my_bool _sys_skip_tables = false;
-static my_bool _sys_skip_events = false;
+static bool _sys_drop = false;
+static bool _sys_create = false;
+static bool _sys_create_if_not_exist = false;
+static bool _sys_create_if_not_valid = false;
+static bool _sys_check = false;
+static bool _sys_skip_tables = false;
+static bool _sys_skip_events = false;
 static int _sys_any = 0;
 // other
-static my_bool _verbose = false;
+static bool _verbose = false;
 static int _loops = 1;
 
 static Ndb_cluster_connection* g_ncc = 0;
@@ -94,7 +94,7 @@ doconnect()
   do
   {
     g_ncc = new Ndb_cluster_connection(opt_ndb_connectstring);
-    CHK2(g_ncc->connect(6, 5) == 0, getNdbError(g_ncc));
+    CHK2(g_ncc->connect(opt_connect_retries - 1, opt_connect_retry_delay) == 0, getNdbError(g_ncc));
     CHK2(g_ncc->wait_until_ready(30, 10) == 0, getNdbError(g_ncc));
 
     if (!_sys_any)
@@ -576,63 +576,63 @@ my_long_options[] =
   // stats options
   { "database", 'd',
     "Name of database table is in",
-    (uchar**) &_dbname, (uchar**) &_dbname, 0,
+    &_dbname, &_dbname, 0,
     GET_STR, REQUIRED_ARG, 0, 0, 0, 0, 0, 0 },
   { "delete", NDB_OPT_NOSHORT,
     "Delete index stats of given table"
      " and stop any configured auto update",
-    (uchar **)&_delete, (uchar **)&_delete, 0,
+    &_delete, &_delete, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "update", NDB_OPT_NOSHORT,
     "Update index stats of given table"
      " and restart any configured auto update",
-    (uchar **)&_update, (uchar **)&_update, 0,
+    &_update, &_update, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "dump", NDB_OPT_NOSHORT,
     "Dump query cache",
-    (uchar **)&_dump, (uchar **)&_dump, 0,
+    &_dump, &_dump, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "query", NDB_OPT_NOSHORT,
     "Perform random range queries on first key attr (must be int unsigned)",
-    (uchar **)&_query, (uchar **)&_query, 0,
+    &_query, &_query, 0,
     GET_INT, REQUIRED_ARG, 0, 0, 0, 0, 0, 0 },
   // sys options
   { "sys-drop", NDB_OPT_NOSHORT,
     "Drop any stats tables and events in NDB kernel (all stats is lost)",
-    (uchar **)&_sys_drop, (uchar **)&_sys_drop, 0,
+    &_sys_drop, &_sys_drop, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "sys-create", NDB_OPT_NOSHORT,
     "Create stats tables and events in NDB kernel (must not exist)",
-    (uchar **)&_sys_create, (uchar **)&_sys_create, 0,
+    &_sys_create, &_sys_create, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "sys-create-if-not-exist", NDB_OPT_NOSHORT,
     "Like --sys-create but do nothing if correct objects exist",
-    (uchar **)&_sys_create_if_not_exist, (uchar **)&_sys_create_if_not_exist, 0,
+    &_sys_create_if_not_exist, &_sys_create_if_not_exist, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "sys-create-if-not-valid", NDB_OPT_NOSHORT,
     "Like --sys-create-if-not-exist but first drop any invalid objects",
-    (uchar **)&_sys_create_if_not_valid, (uchar **)&_sys_create_if_not_valid, 0,
+    &_sys_create_if_not_valid, &_sys_create_if_not_valid, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "sys-check", NDB_OPT_NOSHORT,
     "Check that correct stats tables and events exist in NDB kernel",
-    (uchar **)&_sys_check, (uchar **)&_sys_check, 0,
+    &_sys_check, &_sys_check, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "sys-skip-tables", NDB_OPT_NOSHORT,
     "Do not apply sys options to tables",
-    (uchar **)&_sys_skip_tables, (uchar **)&_sys_skip_tables, 0,
+    &_sys_skip_tables, &_sys_skip_tables, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "sys-skip-events", NDB_OPT_NOSHORT,
     "Do not apply sys options to events",
-    (uchar **)&_sys_skip_events, (uchar **)&_sys_skip_events, 0,
+    &_sys_skip_events, &_sys_skip_events, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   // other
   { "verbose", 'v',
     "Verbose messages",
-    (uchar **)&_verbose, (uchar **)&_verbose, 0,
+    &_verbose, &_verbose, 0,
     GET_BOOL, NO_ARG, 0, 0, 0, 0, 0, 0 },
   { "loops", NDB_OPT_NOSHORT,
     "Repeat same commands a number of times (for testing)",
-    (uchar **)&_loops, (uchar **)&_loops, 0,
+    &_loops, &_loops, 0,
     GET_INT, REQUIRED_ARG, 1, 0, 0, 0, 0, 0 },
   { 0, 0,
     0,
@@ -650,10 +650,9 @@ short_usage_sub(void)
 }
 
 static void
-usage()
+usage_extra()
 {
   printf("%s: ordered index stats tool and test\n", my_progname);
-  ndb_usage(short_usage_sub, load_default_groups, my_long_options);
 }
 
 static int
@@ -709,15 +708,15 @@ checkopts(int argc, char** argv)
 int
 main(int argc, char** argv)
 {
-  my_progname = "ndb_index_stat";
+  NDB_INIT(argv[0]);
   int ret;
-
-  ndb_init();
-  ndb_opt_set_usage_funcs(short_usage_sub, usage);
-  ret = handle_options(&argc, &argv, my_long_options, ndb_std_get_one_option);
+  Ndb_opts opts(argc, argv, my_long_options);
+  opts.set_usage_funcs(short_usage_sub, usage_extra);
+  ret = opts.handle_options();
   if (ret != 0 || checkopts(argc, argv) != 0)
-    return NDBT_ProgramExit(NDBT_WRONGARGS);
-
+  {
+    exit(NDBT_ProgramExit(NDBT_WRONGARGS));
+  }
   setOutputLevel(_verbose ? 2 : 0);
 
   unsigned seed = (unsigned)time(0);
@@ -726,6 +725,8 @@ main(int argc, char** argv)
 
   ret = doall();
   if (ret == -1)
-    return NDBT_ProgramExit(NDBT_FAILED);
-  return NDBT_ProgramExit(NDBT_OK);
+  {
+    exit(NDBT_ProgramExit(NDBT_FAILED));
+  }
+  exit(NDBT_ProgramExit(NDBT_OK));
 }

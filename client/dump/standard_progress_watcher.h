@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2015, 2021, Oracle and/or its affiliates.
+  Copyright (c) 2015, 2022, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License, version 2.0,
@@ -25,24 +25,27 @@
 #ifndef STANDARD_PROGRESS_WATCHER_INCLUDED
 #define STANDARD_PROGRESS_WATCHER_INCLUDED
 
-#include "abstract_progress_watcher.h"
+#include <functional>
 
-namespace Mysql{
-namespace Tools{
-namespace Dump{
+#include "client/dump/abstract_progress_watcher.h"
 
-class Standard_progress_watcher : public Abstract_progress_watcher
-{
-public:
+namespace Mysql {
+namespace Tools {
+namespace Dump {
+
+class Standard_progress_watcher : public Abstract_progress_watcher {
+ public:
   Standard_progress_watcher(
-    Mysql::I_callable<bool, const Mysql::Tools::Base::Message_data&>*
-      message_handler, Simple_id_generator* object_id_generator);
+      std::function<bool(const Mysql::Tools::Base::Message_data &)>
+          *message_handler,
+      Simple_id_generator *object_id_generator);
 
-  void process_progress_step(Abstract_progress_watcher::Progress_data& change);
+  void process_progress_step(
+      Abstract_progress_watcher::Progress_data &change) override;
 };
 
-}
-}
-}
+}  // namespace Dump
+}  // namespace Tools
+}  // namespace Mysql
 
 #endif

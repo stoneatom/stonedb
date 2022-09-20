@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2012, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -18,14 +18,15 @@
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
 #ifndef MT_LOCK_HPP
 #define MT_LOCK_HPP
 
 #include <ndb_global.h>
-#include "mt-asm.h"
+#include "portlib/ndb_compiler.h"
+#include "portlib/mt-asm.h"
 #include <NdbMutex.h>
 
 #define JAM_FILE_ID 323
@@ -87,8 +88,8 @@ loop:
     Uint32 freq = (count > 10000 ? 5000 : (count > 20 ? 200 : 1));
 
     if ((count % freq) == 0)
-      printf("%s waiting for lock, contentions: %u spins: %u\n",
-             s->m_name, count, s->m_spin_count);
+      g_eventLogger->info("%s waiting for lock, contentions: %u spins: %u",
+                          s->m_name, count, s->m_spin_count);
   }
 }
 
@@ -143,6 +144,22 @@ struct thr_mutex
 
   NdbMutex m_mutex;
 };
+
+/**
+ * For receive threads we have an array of thr_spin_lock, they need all be
+ * aligned with NDB_CL.
+ *
+ * thr_aligned_spin_lock is defined as an aligned and therefore padded version
+ * of thr_spin_lock.
+ *
+ * Beware not to use pointer arithmetic on thr_spin_lock pointer pointing to a
+ * thr_spin_aligned_lock object, although they look logical the same the
+ * padding is different.
+ *
+ * A proper solution would be to define thr_spin_aligned_lock as its own type
+ * and do needed refactoring of code.
+ */
+struct alignas(NDB_CL) thr_aligned_spin_lock: public thr_spin_lock { };
 
 static
 inline

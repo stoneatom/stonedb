@@ -1,6 +1,5 @@
 # Test for Bug#31205266 : CONCURRENT UPDATE CAUSE CRASH IN ROW_SEARCH_MVCC
 
---source include/have_innodb.inc
 --source include/have_debug.inc
 --source include/have_debug_sync.inc
 

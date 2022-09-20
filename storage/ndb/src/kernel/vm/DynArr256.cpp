@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2006, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2006, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -22,10 +22,22 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
+#include "util/require.h"
 #include "DynArr256.hpp"
+#include "pc.hpp"
 #include <stdio.h>
 #include <assert.h>
 #include <NdbOut.hpp>
+#include <NdbTick.h>
+
+/**
+ * Trick to be able to use ERROR_INSERTED macro inside DynArr256 and
+ * DynArr256Pool by directing to member function implemented inline in
+ * DynArr256.hpp where cerrorInsert is not hidden by below macro definition.
+ */
+#ifdef ERROR_INSERT
+#define cerrorInsert get_ERROR_INSERT_VALUE()
+#endif
 
 #define DA256_BITS  5
 #define DA256_MASK 31
@@ -91,13 +103,11 @@ Uint32 DA256Page::last_free() const
 }
 
 
-#undef require
-#define require(x) require_exit_or_core_with_printer((x), 0, ndbout_printer)
 //#define DA256_USE_PX
 //#define DA256_USE_PREFETCH
 #define DA256_EXTRA_SAFE
 
-#ifdef TAP_TEST
+#ifdef TEST_DYNARR256
 #define UNIT_TEST
 #include "NdbTap.hpp"
 #endif
@@ -123,17 +133,6 @@ inline
 Uint32 div15(Uint32 x)
 {
   return ((x << 8) + (x << 4) + x + 255) >> 12;
-}
-
-inline
-void
-require_impl(bool x, int line)
-{
-  if (!x)
-  {
-    ndbout_c("LINE: %d", line);
-    abort();
-  }
 }
 
 DynArr256Pool::DynArr256Pool()
@@ -212,8 +211,8 @@ DynArr256::get_dirty(Uint32 pos) const
 {
   Uint32 sz = m_head.m_sz;
   Uint32 ptrI = m_head.m_ptr_i;
-  DA256Page * memroot = m_pool.m_memroot;
-  Uint32 type_id = (~m_pool.m_type_id) & 0xFFFF;
+  DA256Page * memroot = m_pool->m_memroot;
+  Uint32 type_id = (~m_pool->m_type_id) & 0xFFFF;
   
   if (unlikely(pos >= g_max_sizes[sz]))
   {
@@ -260,8 +259,8 @@ Uint32 *
 DynArr256::set(Uint32 pos)
 {
   Uint32 sz = m_head.m_sz;
-  Uint32 type_id = (~m_pool.m_type_id) & 0xFFFF;  
-  DA256Page * memroot = m_pool.m_memroot;
+  Uint32 type_id = (~m_pool->m_type_id) & 0xFFFF;
+  DA256Page * memroot = m_pool->m_memroot;
   
   if (unlikely(pos >= g_max_sizes[sz]))
   {
@@ -291,7 +290,13 @@ DynArr256::set(Uint32 pos)
 #endif
     if (ptrI == RNIL)
     {
-      if (unlikely((ptrI = m_pool.seize()) == RNIL))
+      if(ERROR_INSERTED(3005))
+      {
+        // Demonstrate Bug#25851801 7.6.2(DMR2):: COMPLETE CLUSTER CRASHED DURING UNIQUE KEY CREATION ...
+        // Simulate m_pool->seize() failed.
+        return 0;
+      }
+      if (unlikely((ptrI = m_pool->seize()) == RNIL))
       {
 	return 0;
       }
@@ -388,7 +393,7 @@ DynArr256::expand(Uint32 pos)
   sz =  m_head.m_sz;
   for (; pos >= g_max_sizes[sz]; sz++)
   {
-    Uint32 ptrI = m_pool.seize();
+    Uint32 ptrI = m_pool->seize();
     if (unlikely(ptrI == RNIL))
       goto err;
     m_head.m_no_of_nodes++;
@@ -411,7 +416,7 @@ DynArr256::expand(Uint32 pos)
   
 err:
   for (i = 0; i<idx; i++)
-    m_pool.release(alloc[i]);
+    m_pool->release(alloc[i]);
 
   m_head.m_no_of_nodes -= idx;
   assert(m_head.m_no_of_nodes >= 0);
@@ -442,20 +447,27 @@ DynArr256::init(ReleaseIterator &iter)
 Uint32
 DynArr256::truncate(Uint32 trunc_pos, ReleaseIterator& iter, Uint32* ptrVal)
 {
-  Uint32 type_id = (~m_pool.m_type_id) & 0xFFFF;
-  DA256Page * memroot = m_pool.m_memroot;
+  Uint32 type_id = (~m_pool->m_type_id) & 0xFFFF;
+  DA256Page * memroot = m_pool->m_memroot;
 
   for (;;)
   {
     if (iter.m_sz == 0 ||
         iter.m_pos < trunc_pos ||
-        m_head.m_sz == 0)
+        m_head.m_sz == 0 ||
+        m_head.m_no_of_nodes == 0)
     {
+      if (m_head.m_sz == 1 && m_head.m_ptr_i == RNIL)
+      {
+        assert(m_head.m_no_of_nodes == 0);
+        m_head.m_sz = 0;
+      }
       return 0;
     }
 
     Uint32* refPtr;
     Uint32 ptrI = iter.m_ptr_i[iter.m_sz];
+    assert(ptrI != RNIL);
     Uint32 page_no = ptrI >> DA256_BITS;
     Uint32 page_idx = (ptrI & DA256_MASK) ;
     DA256Page* page = memroot + page_no;
@@ -483,7 +495,7 @@ DynArr256::truncate(Uint32 trunc_pos, ReleaseIterator& iter, Uint32* ptrVal)
       assert(iter.m_ptr_i[iter.m_sz] == m_head.m_ptr_i);
       assert(iter.m_ptr_i[iter.m_sz + 1] == RNIL);
       iter.m_ptr_i[iter.m_sz] = is_value ? RNIL : *refPtr;
-      m_pool.release(m_head.m_ptr_i);
+      m_pool->release(m_head.m_ptr_i);
       m_head.m_sz --;
       m_head.m_no_of_nodes--;
       assert(m_head.m_no_of_nodes >= 0);
@@ -498,7 +510,7 @@ DynArr256::truncate(Uint32 trunc_pos, ReleaseIterator& iter, Uint32* ptrVal)
       {
         if (ptrI != RNIL)
         {
-          m_pool.release(ptrI);
+          m_pool->release(ptrI);
           m_head.m_no_of_nodes--;
           assert(m_head.m_no_of_nodes >= 0);
           *refPtr = iter.m_ptr_i[iter.m_sz+1] = RNIL;
@@ -655,7 +667,7 @@ DynArr256Pool::seize()
   if (ff == RNIL)
   { 
     Uint32 page_no;
-    if (likely((page = (DA256Page*)m_ctx.alloc_page(type_id, &page_no)) != 0))
+    if (likely((page = (DA256Page*)m_ctx.alloc_page27(type_id, &page_no)) != 0))
     {
       initpage(page, page_no, type_id);
       m_pg_count++;
@@ -798,7 +810,7 @@ DynArr256Pool::getInfo() const
   info.nodes_per_page = 30;
   
   return info;
-};
+}
 
 #ifdef UNIT_TEST
 
@@ -810,17 +822,17 @@ release(DynArr256& arr)
   arr.init(iter);
   Uint32 val;
   Uint32 cnt=0;
-  Uint64 start;
   if (verbose > 2)
     ndbout_c("allocatedpages: %d (max %d) releasedpages: %d allocatednodes: %d (max %d) releasednodes: %d",
            allocatedpages, maxallocatedpages,
            releasedpages,
            allocatednodes, maxallocatednodes,
            releasednodes);
-  start = my_micro_time();
+  const NDB_TICKS start = NdbTick_getCurrentTicks();
   while (arr.release(iter, &val))
     cnt++;
-  start = my_micro_time() - start;
+  const NDB_TICKS stop = NdbTick_getCurrentTicks();
+  const Uint64 micros = NdbTick_Elapsed(start, stop).microSec();
   if (verbose > 1)
     ndbout_c("allocatedpages: %d (max %d) releasedpages: %d allocatednodes: %d (max %d) releasednodes: %d (%llu us)"
              " releasecnt: %d",
@@ -828,7 +840,7 @@ release(DynArr256& arr)
              releasedpages,
              allocatednodes, maxallocatednodes,
              releasednodes,
-             start, cnt);
+             micros, cnt);
   return true;
 }
 
@@ -988,7 +1000,7 @@ read(DynArr256& arr, int argc, char ** argv)
   for (Uint32 i = 0; i<10; i++)
   {
     Uint32 sum0 = 0, sum1 = 0;
-    Uint64 start = my_micro_time();
+    const NDB_TICKS start = NdbTick_getCurrentTicks();
     for (Uint32 i = 0; i<cnt; i++)
     {
       Uint32 idx = ((rand() & (~seqmask)) + ((i + seq) & seqmask)) % maxidx;
@@ -996,10 +1008,12 @@ read(DynArr256& arr, int argc, char ** argv)
       sum0 += idx;
       sum1 += *ptr;
     }
-    start = my_micro_time() - start;
-    float uspg = (float)start; uspg /= cnt;
+    const NDB_TICKS stop = NdbTick_getCurrentTicks();
+    const Uint64 micros = NdbTick_Elapsed(start, stop).microSec();
+    float uspg = (float)micros;
+    uspg /= cnt;
     if (verbose)
-      ndbout_c("Elapsed %lldus diff: %d -> %f us/get", start, sum0 - sum1, uspg);
+      ndbout_c("Elapsed %lldus diff: %d -> %f us/get", micros, sum0 - sum1, uspg);
   }
   return true;
 }
@@ -1061,7 +1075,7 @@ write(DynArr256& arr, int argc, char ** argv)
 	   seq ? "sequential" : "random", seed);
   for (Uint32 i = 0; i<10; i++)
   {
-    Uint64 start = my_micro_time();
+    const NDB_TICKS start = NdbTick_getCurrentTicks();
     for (Uint32 i = 0; i<cnt; i++)
     {
       Uint32 idx = ((rand() & (~seqmask)) + ((i + seq) & seqmask)) % maxidx;
@@ -1069,10 +1083,11 @@ write(DynArr256& arr, int argc, char ** argv)
       if (ptr == NULL) break; /* out of memory */
       *ptr = i;
     }
-    start = my_micro_time() - start;
-    float uspg = (float)start; uspg /= cnt;
+    const NDB_TICKS stop = NdbTick_getCurrentTicks();
+    const Uint64 micros = NdbTick_Elapsed(start, stop).microSec();
+    float uspg = (float)micros; uspg /= cnt;
     if (verbose)
-      ndbout_c("Elapsed %lldus -> %f us/set", start, uspg);
+      ndbout_c("Elapsed %lldus -> %f us/set", micros, uspg);
     if (!release(arr))
       return false;
   }
@@ -1094,7 +1109,7 @@ usage(FILE *f, int argc, char **argv)
 
 # include "test_context.hpp"
 
-#ifdef TAP_TEST
+#ifdef TEST_DYNARR256
 static
 char* flatten(int argc, char** argv) /* NOT MT-SAFE */
 {
@@ -1116,7 +1131,7 @@ char* flatten(int argc, char** argv) /* NOT MT-SAFE */
 int
 main(int argc, char** argv)
 {
-#ifndef TAP_TEST
+#ifndef TEST_DYNARR256
   verbose = 1;
   if (argc == 1) {
     usage(stderr, argc, argv);
@@ -1138,9 +1153,9 @@ main(int argc, char** argv)
   pool.init(0x2001, pc);
 
   DynArr256::Head head;
-  DynArr256 arr(pool, head);
+  DynArr256 arr(& pool, head);
 
-#ifdef TAP_TEST
+#ifdef TEST_DYNARR256
   if (argc == 1)
   {
     char *argv[2] = { (char*)"dummy", NULL };
@@ -1199,7 +1214,7 @@ main(int argc, char** argv)
            allocatednodes, maxallocatednodes,
            releasednodes);
 
-#ifdef TAP_TEST
+#ifdef TEST_DYNARR256
   ok(allocatednodes == releasednodes &&
      allocatedpages == releasedpages,
      "release");

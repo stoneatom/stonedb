@@ -125,7 +125,7 @@ double Item_sum_hybrid_rcbase::val_real() {
   if (null_value) return 0.0;
   switch (hybrid_type_) {
     case STRING_RESULT: {
-      char *end_not_used;
+      const char *end_not_used;
       int err_not_used;
       String *res;
       res = val_str(&str_value);
@@ -168,7 +168,9 @@ my_decimal *Item_sum_hybrid_rcbase::val_decimal(my_decimal *val) {
   if (null_value) return 0;
   switch (hybrid_type_) {
     case STRING_RESULT:
-      string2my_decimal(E_DEC_FATAL_ERROR, &value_, val);
+      // stonedb8
+      str2my_decimal(E_DEC_FATAL_ERROR,  value_.ptr(), value_.length(),
+                     value_.charset(), val);
       break;
     case REAL_RESULT:
       double2my_decimal(E_DEC_FATAL_ERROR, sum_, val);
@@ -198,7 +200,8 @@ String *Item_sum_hybrid_rcbase::val_str(String *str) {
       str->set_real(sum_, decimals, &my_charset_bin);
       break;
     case DECIMAL_RESULT:
-      my_decimal2string(E_DEC_FATAL_ERROR, &sum_decimal_, 0, 0, 0, str);
+      // stonedb8
+      my_decimal2string(E_DEC_FATAL_ERROR, &sum_decimal_, 0, 0, str);
       return str;
     case INT_RESULT:
       if (unsigned_flag)

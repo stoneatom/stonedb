@@ -1,5 +1,5 @@
 /* -*- C++ -*- */
-/* Copyright (c) 2002, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2002, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -18,13 +18,15 @@
    GNU General Public License, version 2.0, for more details.
 
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software Foundation,
-   51 Franklin Street, Suite 500, Boston, MA 02110-1335 USA */
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #ifndef _SP_CACHE_H_
 #define _SP_CACHE_H_
 
-#include "my_global.h"                          /* ulong */
+#include <sys/types.h>
+
+#include "my_inttypes.h"
 
 /*
   Stored procedures/functions cache. This is used as follows:
@@ -33,8 +35,8 @@
      then remains in the cache until deleted.
 */
 
-class sp_head;
 class sp_cache;
+class sp_head;
 class sp_name;
 
 /*
@@ -57,7 +59,7 @@ class sp_name;
 
 void sp_cache_clear(sp_cache **cp);
 void sp_cache_insert(sp_cache **cp, sp_head *sp);
-sp_head *sp_cache_lookup(sp_cache **cp, sp_name *name);
+sp_head *sp_cache_lookup(sp_cache **cp, const sp_name *name);
 void sp_cache_invalidate();
 void sp_cache_flush_obsolete(sp_cache **cp, sp_head **sp);
 int64 sp_cache_version();

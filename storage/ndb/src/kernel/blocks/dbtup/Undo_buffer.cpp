@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2005, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2005, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -22,16 +22,12 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
+#include "util/require.h"
 #include "Undo_buffer.hpp"
 #define DBTUP_C
 #include "Dbtup.hpp"
 
 #define JAM_FILE_ID 429
-
-
-#if ZPAGE_STATE_POS != 0
-#error "PROBLEM!"
-#endif
 
 struct UndoPage
 {
@@ -39,7 +35,7 @@ struct UndoPage
   Uint32 m_ref_count;
   Uint32 m_data[GLOBAL_PAGE_SIZE_WORDS-2];
   
-  STATIC_CONST( DATA_WORDS = GLOBAL_PAGE_SIZE_WORDS-2 );
+  static constexpr Uint32 DATA_WORDS = GLOBAL_PAGE_SIZE_WORDS-2;
 };
 
 #if defined VM_TRACE || defined ERROR_INSERT
@@ -64,29 +60,39 @@ Undo_buffer::Undo_buffer(Ndbd_mem_manager* mm)
 Uint32 *
 Undo_buffer::alloc_copy_tuple(Local_key* dst, Uint32 words)
 {
-  UndoPage* page;
+  UndoPage* page = nullptr;
   assert(words);
 #ifdef SAFE_UB
   words += 2; // header + footer
 #endif
+  assert(words <= UndoPage::DATA_WORDS);
+  if (unlikely(words > UndoPage::DATA_WORDS))
+  {
+    return nullptr;
+  }
+  Uint32 pos = 0;
+  if (m_first_free != RNIL)
+  {
+    page = get_page(m_mm, m_first_free);
+
+    pos = page->m_words_used;
+
+    if (words + pos > UndoPage::DATA_WORDS)
+    {
+      m_first_free = RNIL;
+    }
+  }
   if (m_first_free == RNIL)
   {
-    page= (UndoPage*)m_mm->alloc_page(RG_DATAMEM, 
-                                      &m_first_free,
-                                      Ndbd_mem_manager::NDB_ZONE_ANY);
-    if(page == 0)
-      return 0;
-    page->m_words_used= 0;
-    page->m_ref_count= 0;
-  }
-  
-  page = get_page(m_mm, m_first_free);
-  Uint32 pos= page->m_words_used;
+    page = (UndoPage*)m_mm->alloc_page(RT_DBTUP_COPY_PAGE,
+                                       &m_first_free,
+                                       Ndbd_mem_manager::NDB_ZONE_LE_32);
+    if (page == 0)
+      return nullptr;
 
-  if (words + pos > UndoPage::DATA_WORDS)
-  {
-    m_first_free= RNIL;
-    return alloc_copy_tuple(dst, words);
+    page->m_words_used = 0;
+    pos = 0;
+    page->m_ref_count = 0;
   }
   
   dst->m_page_no = m_first_free;
@@ -100,6 +106,22 @@ Undo_buffer::alloc_copy_tuple(Local_key* dst, Uint32 words)
   pos ++;
 #endif
   return page->m_data + pos;
+}
+
+bool
+Undo_buffer::reuse_page_for_copy_tuple(Uint32 reuse_page)
+{
+  require(reuse_page != RNIL);
+  if (!m_mm->take_pages(RT_DBTUP_COPY_PAGE, 1))
+  {
+    return false;
+  }
+  require(m_first_free == RNIL);
+  m_first_free = reuse_page;
+  UndoPage* page = get_page(m_mm, m_first_free);
+  page->m_words_used = 0;
+  page->m_ref_count = 0;
+  return true;
 }
 
 void
@@ -125,12 +147,12 @@ Undo_buffer::free_copy_tuple(Local_key* key)
     page->m_words_used= 0;
     if (m_first_free == key->m_page_no)
     {
-      //ndbout_c("resetting page");
+      // g_eventLogger->info("resetting page");
     }
     else 
     {
-      //ndbout_c("returning page");
-      m_mm->release_page(RG_DATAMEM, key->m_page_no);
+      // g_eventLogger->info("returning page");
+      m_mm->release_page(RT_DBTUP_COPY_PAGE, key->m_page_no);
     }
   }
   key->setNull();

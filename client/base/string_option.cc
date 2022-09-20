@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2001, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2001, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -22,12 +22,14 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-#include "string_option.h"
+#include "client/base/string_option.h"
+
+#include <optional>
 
 using namespace Mysql::Tools::Base::Options;
-using Mysql::Nullable;
 using std::string;
 
-String_option::String_option(Nullable<string>* value, string name, string description)
-  : Abstract_string_option<String_option>(value, GET_STR, name, description)
-{}
+String_option::String_option(std::optional<string> *value, string name,
+                             string description)
+    : Abstract_string_option<String_option>(value, GET_STR, name, description) {
+}

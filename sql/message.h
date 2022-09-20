@@ -1,6 +1,6 @@
 #ifndef MESSAGE_INCLUDED
 #define MESSAGE_INCLUDED
-/* Copyright (c) 2008, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2008, 2022, Oracle and/or its affiliates.
    Use is subject to license terms.
 
    This program is free software; you can redistribute it and/or modify
@@ -26,15 +26,14 @@
 /*
   To change or add messages mysqld writes to the Windows error log, run
    mc.exe message.mc
-  and checkin generated messages.h, messages.rc and msg000001.bin under the 
+  and checkin generated messages.h, messages.rc and msg000001.bin under the
   source control.
-  mc.exe can be installed with Windows SDK, some Visual Studio distributions 
+  mc.exe can be installed with Windows SDK, some Visual Studio distributions
   do not include it.
 */
 
-
 //
-//  Values are 32 bit values layed out as follows:
+//  Values are 32 bit values laid out as follows:
 //
 //   3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
 //   1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
@@ -63,11 +62,9 @@
 // Define the facility codes
 //
 
-
 //
 // Define the severity codes
 //
-
 
 //
 // MessageId: MSG_DEFAULT
@@ -75,10 +72,9 @@
 // MessageText:
 //
 //  %1For more information, see Help and Support Center at http://www.mysql.com.
-//  
-//  
 //
-#define MSG_DEFAULT                      0xC0000064L
+//
+//
+#define MSG_DEFAULT 0xC0000064L
 
 #endif /* MESSAGE_INCLUDED */
-

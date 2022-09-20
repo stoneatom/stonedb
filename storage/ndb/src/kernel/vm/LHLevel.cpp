@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2012, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2012, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -22,8 +22,10 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-#ifdef TAP_TEST
+#ifdef TEST_LHLEVEL
 
+#include <cstdint>
+#include <cstring>
 #include <ndb_global.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -33,10 +35,6 @@
 #include "md5_hash.hpp"
 #include "random.h"
 #include "LHLevel.hpp"
-
-#ifndef UINT32_MAX
-#define UINT32_MAX (4294967295U)
-#endif
 
 #define BUCKSIZE 3
 
@@ -67,8 +65,8 @@ int main(int argc, char *argv[])
 {
   unsigned int nelem = argc > 1 ? atoi(argv[1]) : 1000000;
   plan(4);
-  elem(*arr)[BUCKSIZE] = new elem[nelem][BUCKSIZE];
-  bzero(arr, nelem * sizeof(elem[BUCKSIZE]));
+  elem (*arr)[BUCKSIZE] = new elem[nelem][BUCKSIZE];
+  std::memset(arr, 0, nelem * sizeof(elem[BUCKSIZE]));
   LHLevel lh;
   lh.clear();
   expand(lh, arr);
@@ -120,6 +118,7 @@ int main(int argc, char *argv[])
   }
   ok((c_inserts == c_deletes), "inserts (%llu) equals deletes (%llu)", c_inserts, c_deletes);
   ok((c_expands == c_shrinks), "expands (%llu) equals shrinks (%llu)", c_expands, c_shrinks);
+  delete[] arr;
   return exit_status();
 }
 
@@ -144,7 +143,7 @@ bool delete_elem(LHLevel& lh, elem(*arr)[BUCKSIZE], Uint32 w)
     c_deletes += arr[addr][i].head;
     for (j = i + 1; j < BUCKSIZE; j++, i++)
       arr[addr][i] = arr[addr][j];
-    bzero(&arr[addr][i], sizeof(arr[addr][i]));
+    std::memset(&arr[addr][i], 0, sizeof(arr[addr][i]));
     return true;
   }
   else if (i < BUCKSIZE)
@@ -187,7 +186,7 @@ bool shrink(LHLevel& lh, elem(*arr)[BUCKSIZE])
     {
       assert(i<BUCKSIZE);
       arr[to][i] = arr[from][j];
-      bzero(&arr[from][j], sizeof(arr[from][j]));
+      std::memset(&arr[from][j], 0, sizeof(arr[from][j]));
       i++;
     }
     c_shrinks++;
@@ -228,9 +227,9 @@ void expand(LHLevel& lh, elem(*arr)[BUCKSIZE])
     }
   }
   for (; j < BUCKSIZE; j++)
-    bzero(&arr[to][j], sizeof(arr[to][j]));
+    std::memset(&arr[to][j], 0, sizeof(arr[to][j]));
   for (; k < BUCKSIZE; k++)
-    bzero(&arr[from][k], sizeof(arr[from][k]));
+    std::memset(&arr[from][k], 0, sizeof(arr[from][k]));
   lh.expand();
   c_expands++;
 }

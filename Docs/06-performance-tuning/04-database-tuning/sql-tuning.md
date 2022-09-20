@@ -3,8 +3,7 @@ id: sql-tuning
 sidebar_position: 7.42
 ---
 
-# Optimize SQL Statements
-
+# SQL Tuning
 When an SQL statement passes through the optimizer, the optimizer analyzes the SQL statement to generate an execution plan. Then, the executor calls API operations to read data from the relevant tables and returns the query result. An SQL statement can have multiple execution plans, each of which describes a sequence of steps to access data for the SQL statement.
 
 Though the query results retuned by the execution plans are the same, but the performance varies. The performance of an execution plan depends on many factors such as statistics information, whether to use temporary tables, offset of pagination query, and optimizer parameter settings. This topic describes how to optimize SQL statements from the following points:
@@ -26,8 +25,10 @@ The following table describes the columns included in a StoneDB execution plan.
 
 | **Column** | **Description** |
 | --- | --- |
-| id | The sequence number of an operation. <br />info - A higher `_id_` indicates higher priority for execution. <br /> - If two or more operations have the same `_id_`, first come, first served.|
-| select_type | The query type, used to categorize simple queries, JOIN queries, and subqueries. The value can be:<br />- **SIMPLE**: simple query.<br />- **PRIMARY**: outmost `SELECT`. If a query contains subqueries, the outermost `SELECT` is marked with **PRIMARY**.<br />- **SUBQUERY**: subquery, normally placed after a `SELECT` or `WHERE` clause.<br />- **DEPENDENT SUBQUERY**: first `SELECT` statement in subquery, dependent on the outer query. The number of times that the subquery is executed is equal to the number of records contained in the result set of the outer query.<br />- **DERIVED**: derived query, normally placed after a `FROM` clause.<br />- **UNION**: second or later `SELECT` statement in a `UNION` operation.<br />- **UNION RESULT**: result of a `UNION` operation.<br />|
+| id | The sequence number of an operation. :::info
+A higher _id_ indicates higher priority for execution.<br/>
+If two or more operations have the same _id_, first come, first served.:::|
+| select_type | The query type, used to categorize simple queries, JOIN queries, and subqueries. The value can be:<br />- **SIMPLE**: simple query.<br />- **PRIMARY**: outmost `SELECT`. If a query contains subqueries, the outermost `SELECT` is marked with **PRIMARY**.<br />- **SUBQUERY**: subquery, normally placed after a `SELECT` or `WHERE` clause.<br />- **DEPENDENT SUBQUERY**: first `SELECT` statement in subquery, dependent on the outer query. The number of times that the subquery is executed is equal to the number of records contained in the result set of the outer query.<br />- **DERIVED**: derived query, normally placed after a `FROM` clause.<br />- **UNION**: second or later `SELECT` statement in a `UNION` operation.<br />- **UNION RESULT**: result of a `UNION` operation.<br /> |
 | table | The name of the table to access in the current step. |
 | partitions | The partitions from which records would be matched by the query. |
 | type | The join type. The value can be:<br />- **eq_ref**: One record is read from the table for each combination of rows from the previous tables. It is used when all parts of an index are used by the join and the index is a PRIMARY KEY or UNIQUE NOT NULL index.<br />- **ref**: All rows with matching index values are read from this table for each combination of rows from the previous tables. **ref** is used if the join uses only a leftmost prefix of the key or if the key is not a PRIMARY KEY or UNIQUE index.<br />- **range**: **range** can be used when a key column is compared to a constant using any of the `=`, `<>`, `>`, `>=`, `<`, `<=`, `IS NULL`, `<=>`, `BETWEEN`, `LIKE`, or `IN()` operators.<br />- **index_merge**: Indexes are merged.<br />- **index_subquery**: The outer query is associated with the subquery. Some of the join fields of the subquery contain are indexed.<br />- **all**: The full table is scaned.<br /> |
@@ -39,8 +40,8 @@ The following table describes the columns included in a StoneDB execution plan.
 | filtered | An estimated percentage of records that are filtered to read. The maximum value is 100, which means no filtering of rows occurred. For MySQL 5.7 and later, this column is returned by default. For MySQL versions earlier than 5.7, this column is not returned unless you execute `EXPLAIN EXTENDED`. |
 | Extra | The additional information about the execution. The value can be:<br />- **Using where with pushed condition**: The data returned by the storage engine is filtered on the server, regardless whether indexes are used.<br />- **Using filesort**: Sorting is required. <br />- **Using temporary**: A temporary table needs to be created to store the result set. In most cases, this happens if the query contains `UNION`, `DISTINC`, `GROUP BY`, or `ORDER BY` clauses that list columns differently.<br />- **Using union**: The result set is obtained by using at least two indexes and the indexed fields are joined by using `OR`.<br />- **Using join buffer (Block Nested Loop)**: The Block Nested-Loop algorithm is used, which indicates that the join fields of the driven table are not indexed.<br /> |
 
-## **Common StoneDB execution plans**
-### **Execution plans for index scans**
+# **Common StoneDB execution plans**
+## **Execution plans for index scans**
 In an execution plan, the index scan type can be **eq_ref**, **ref**, **range**, **index_merge**, or **index_subquery**.
 ```sql
 > explain select * from t_atomstore where id=1;
@@ -65,7 +66,7 @@ Note: In this execution plan, the value in the "Extra" column is "NULL" instead 
 |  1 | SIMPLE      | t_atomstore | NULL       | range | idx_firstname | idx_firstname | 32      | NULL |   20 |   100.00 | Using where with pushed condition (`test`.`t_atomstore`.`first_name` in ('zhou','liu'))(t0) Pckrows: 2, susp. 2 (0 empty 0 full). Conditions: 1   |
 +----+-------------+-------------+------------+-------+---------------+---------------+---------+------+------+----------+----------------------------------------------------------------------------------------------------------------------------------------------------+
 ```
-### **Execution plans for full table scans**
+## **Execution plans for full table scans**
 In an execution plan, the type of a full table scan can be only **ALL**. This is because StoneDB is a column-based storage engine and its data is highly compressed. Most queries involve full table scans.
 ```sql
 > explain select first_name,count(*) from t_atomstore group by first_name;
@@ -79,7 +80,7 @@ In an execution plan, the type of a full table scan can be only **ALL**. This is
 In this execution plan, though field **first_name** is indexed so that sorting is eliminated and temporary tables do not need to be created, the optimizer still chooses full table scans instead of full index scans.
 
 A warning message is displayed here because StoneDB rewrites the SQL statement by including `ORDER BY NULL` in the statement. This rewrite eliminates sorting on the returned grouping field. On InnoDB, if the returned grouping field is not indexed, sorting is performed.
-### **Execution plans for aggregate operations**
+## **Execution plans for aggregate operations**
 Data in StoneDB is highly compressed. StoneDB uses the knowledge grid technique to record metadata of data packs in data pack nodes. When processing a statistical or aggregate query, StoneDB can quickly obtain the result set based on the metadata, ensuring optimal performance.
 ```sql
 > explain select first_name,sum(score) from t_test1 group by first_name;
@@ -89,7 +90,7 @@ Data in StoneDB is highly compressed. StoneDB uses the knowledge grid technique 
 |  1 | SIMPLE      | t_test1 | NULL       | ALL  | NULL          | NULL | NULL    | NULL | 1000000 |   100.00 | Using temporary; Using filesort |
 +----+-------------+---------+------------+------+---------------+------+---------+------+---------+----------+---------------------------------+
 ```
-### **Execution plans for JOIN queries**
+## **Execution plans for JOIN queries**
 ```sql
 > explain select t1.id,t1.first_name,t2.first_name from t_test1 t1,t_test2 t2 where t1.id=t2.id and t1.first_name='zhou';
 +----+-------------+-------+------------+--------+---------------+---------+---------+----------+---------+----------+------------------------------------------------------------------------------------------------------------------------------+
@@ -109,7 +110,7 @@ mysql> explain select t1.id,t1.first_name,t2.first_name from t_test1 t1,t_test2 
 +----+-------------+-------+------------+------+---------------+------+---------+------+---------+----------+------------------------------------------------------------------------------------------------------------------------------------+
 Note: If no join field of the driven table is indexed, the Block Nested-Loop algorithm is used to join the two tables. In this case, the performance is poor.
 ```
-### **Execution plans for subqueries**
+## **Execution plans for subqueries**
 ```sql
 > explain select t1.first_name from t_test1 t1 where t1.id in (select t2.id from t_test2 t2 where t2.first_name='zhou');
 +----+-------------+-------+------------+------+---------------+------+---------+------+---------+----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -127,10 +128,10 @@ Note: If no join field of the driven table is indexed, the Block Nested-Loop alg
 |  2 | DEPENDENT SUBQUERY | t2    | NULL       | eq_ref | PRIMARY       | PRIMARY | 4       | xx.t1.id       |       1 |    10.00 | Using where with pushed condition (`xx`.`t2`.`first_name` = 'zhou')(t0) Pckrows: 16, susp. 16 (0 empty 0 full). Conditions: 1                                                                                                                                 |
 +----+--------------------+-------+------------+--------+---------------+---------+---------+----------------+---------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 ```
-## **Common optimization methods**
-### GROUP BY
+# **Common optimization methods**
+## GROUP BY
 In MySQL, the GROUP BY operation sorts data first and then group the data. If you want to prevent temporary tables from being created and sorting, you must ensure that the field used for grouping is indexed. However, StoneDB uses the knowledge grid technique so that it can quickly filter needed data for statistical and aggregate queries based on the metadata recorded in data pack nodes. In this way, you do not need to create indexes.
-### IN/EXISTS
+## IN/EXISTS
 In a join query, ensure that the table with smaller result set is used to drive the table with the larger result set. For example:
 ```sql
 select * from A where id in (select id from B);
@@ -205,9 +206,11 @@ If the result set of table A is smaller than that of table B, `EXISTS` is superi
 1 row in set (0.03 sec)
 ```
 :::info
+
 If `IN` is used in this example, table B is used to drive table A and the execution time is 0.55s.
+
 :::
-### **Use IN and EXISTS interchangeably**
+## **Use IN and EXISTS interchangeably**
 Only when the join fields of the subquery are not null, `IN` can be converted to or from `EXISTS`. If you want the join fields of your subquery to use indexes, you can convert `IN` to `EXISTS`, as shown in the following example:
 ```sql
 mysql> explain select * from t_test1 t1 where t1.id in (select t2.id from t_test2 t2 where t2.first_name='zhou');
@@ -228,7 +231,7 @@ mysql> explain select * from t_test1 t1 where exists (select 1 from t_test2 t2 w
 +----+--------------------+-------+------------+--------+---------------+---------+---------+----------------+---------+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 2 rows in set, 2 warnings (0.00 sec)
 ```
-### **Pagination**
+## **Pagination**
 Convert parts of pagination queries to subqueries and specify that only the primary keys are queried. This method ensures high performance and associates the subqueries with the main query as result set. The following code provides an example:
 ```sql
 > select * from t_test1 order by id asc limit 949420,10;
@@ -265,16 +268,20 @@ Convert parts of pagination queries to subqueries and specify that only the prim
 +--------+------------+-----------+-----+-------+---------+
 10 rows in set (0.13 sec)
 ```
-## Table joins
-### Nested loop joins
+# Table joins
+## Nested loop joins
 The execution process is as follows:
 
 1. The optimizer determines which table (table T1 or T2) is the driving table and which is the driven table based on certain rules. The driving table is used for the outer loop, and the driven table is used for the inner loop. In this example, the driving table is T1 and the driven table is T2.
 2. Access driving table T1 based on the predicate condition specified in the SQL statement and record the result set as 1.
 3. Traverse result set 1 and driven table T2: Read the records in result set 1 one by one. After reading each record, use the record to traverse driven table T2, checking whether a matching record exists in T2 based on the join condition.
 
-If the join fields are indexed, use indexes to obtain rows that match the condition. For example, T1 has 100 rows and T2 has 1000 rows. T2 will be run for 100 times, and each time one row is scanned. The total number of rows scanned during the whole process is 200 rows.<br />If the fields that are joined are not indexed, the full table is scanned to obtain rows that match the condition. For example, T1 has 100 rows and T2 has 1000 rows. T2 will be run 100 times, and each time 1000 rows are scanned. The total number of rows scanned during the whole process is 100100.<br />Nested loop joins are suitable for join queries with small result sets.
-### Hash joins
+If the join fields are indexed, use indexes to obtain rows that match the condition. For example, T1 has 100 rows and T2 has 1000 rows. T2 will be run for 100 times, and each time one row is scanned. The total number of rows scanned during the whole process is 200 rows.
+
+If the fields that are joined are not indexed, the full table is scanned to obtain rows that match the condition. For example, T1 has 100 rows and T2 has 1000 rows. T2 will be run 100 times, and each time 1000 rows are scanned. The total number of rows scanned during the whole process is 100100.
+
+Nested loop joins are suitable for join queries with small result sets.
+## Hash joins
 Suppose two tables A and B exist. Table A contains 100,000 records of data and table B contains 1,000,000 records of data. The range of IDs of table A is 1 to 100000 and that of table B is 1 to 1000000. The tables are joined based on IDs. 
 
 SQL statement example:
@@ -282,12 +289,13 @@ SQL statement example:
 SELECT * FROM A,B WHERE A.ID=B.ID
 ```
 
-1. Perform a full table scan on table A and use the hash function to hash the values of the join fields to buckets.
-2. Perform a full table scan on table B and use the hash function to hash the values of the join fields to buckets.
-3. Compare the hash values in each bucket and return only the hash values that are duplicate. Because the values are evenly hashed to each bucket, this method is efficient and effective.
+1. The optimizer selects table A as the driving table and table B as the driven table, and then creates a hash table in the memory.
+2. The optimizer scans all content in table A and uses the hash function to calculate the hash value of each field, and then saves the hash value to the hash table.
+3. The optimizer scans all content in table B and uses the hash function to calculate the hash value of each field.
+4. The optimizer compares each hash value in table B with hash values stored in the hash table. If a matching record is found, the corresponding data is returned. Otherwise, the data is discarded.
 
 Hash joins are suitable for join queries with large result sets.
-### Sort-merge joins
+## Sort-merge joins
 The execution process is as follows:
 
 1. Access table T1 based on the predicate condition specified in the SQL statement, sort the result set based on the column in table T1 used for join, and then mark the result set as result set 1.

@@ -236,8 +236,8 @@ class AggregatorGroupConcat : public TIANMUAggregator {
   types::BString GetValueT(unsigned char *buf) override;
 
  private:
-  const SI si{",", ORDER::ORDER_NOT_RELEVANT};
-  const uint gconcat_maxlen = tianmu_group_concat_max_len;
+  const SI si{",", ORDER_NOT_RELEVANT}; // stonedb8
+  const uint gconcat_maxlen = tianmu_group_concat_max_len; // stonedb8
   std::map<unsigned char *, unsigned int> lenmap;  // store aggregation column length
   common::CT attrtype = common::CT::STRING;
 };

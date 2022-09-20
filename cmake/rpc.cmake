@@ -1,4 +1,4 @@
-# Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2018, 2022, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -18,26 +18,37 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA 
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
 IF(WIN32)
   RETURN()
 ENDIF()
 
+FUNCTION(WARN_MISSING_RPCGEN_EXECUTABLE)
+  IF(NOT RPCGEN_EXECUTABLE)
+    MESSAGE(WARNING "Cannot find rpcgen executable. "
+      "You need to install the required packages:\n"
+      "  Debian/Ubuntu:              apt install rpcsvc-proto\n"
+      "  RedHat/Fedora/Oracle Linux: yum install rpcgen\n"
+      "  SuSE:                       zypper install glibc-devel\n"
+      )
+  ENDIF()
+ENDFUNCTION()
+
+FUNCTION(WARN_MISSING_SYSTEM_TIRPC)
+  IF(NOT RPC_INCLUDE_DIRS)
+    MESSAGE(WARNING "Cannot find RPC development libraries. "
+      "You need to install the required packages:\n"
+      "  Debian/Ubuntu:              apt install libtirpc-dev\n"
+      "  RedHat/Fedora/Oracle Linux: yum install libtirpc-devel\n"
+      "  SuSE:                       zypper install glibc-devel\n"
+      )
+  ENDIF()
+ENDFUNCTION()
+
 MACRO(MYSQL_CHECK_RPC)
   IF(LINUX AND NOT LIBTIRPC_VERSION_TOO_OLD)
-    # Do a sanity check, before bailing out in FIND_PACKAGE below.
-    FIND_PROGRAM(MY_PKG_CONFIG_EXECUTABLE NAMES pkg-config
-      DOC "pkg-config executable")
-    IF(NOT MY_PKG_CONFIG_EXECUTABLE)
-      MESSAGE(WARNING "Cannot find pkg-config. You need to "
-        "install the required package:\n"
-        "  Debian/Ubuntu:              apt install pkg-config\n"
-        "  RedHat/Fedora/Oracle Linux: yum install pkg-config\n"
-        "  SuSE:                       zypper install pkg-config\n"
-        )
-    ENDIF()
-    FIND_PACKAGE(PkgConfig REQUIRED)
+    MYSQL_CHECK_PKGCONFIG()
     PKG_CHECK_MODULES(TIRPC libtirpc)
   ENDIF()
 
@@ -73,6 +84,7 @@ MACRO(MYSQL_CHECK_RPC)
   ENDIF()
 
   IF(NOT RPC_INCLUDE_DIRS)
+    WARN_MISSING_SYSTEM_TIRPC()
     MESSAGE(FATAL_ERROR
       "Could not find rpc/rpc.h in /usr/include or /usr/include/tirpc")
   ENDIF()

@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2010, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2010, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -22,9 +22,8 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-#include <util/SparseBitmask.hpp>
-
 #ifdef TEST_SPARSEBITMASK
+#include <util/SparseBitmask.hpp>
 #include <util/NdbTap.hpp>
 
 #include "parse_mask.hpp"
@@ -93,7 +92,48 @@ TAPTEST(SparseBitmask)
   OK(parse_mask("257", mask) == -2);
   OK(parse_mask("1-256,257", mask) == -2);
 
+  {
+    SparseBitmask mask1;
+    SparseBitmask mask2;
+        
+    /* Same */
+    OK(parse_mask("20-125", mask1));
+    OK(parse_mask("20-125", mask2));
+    mask1.bitOR(mask2);
+    OK(mask1.equal(mask2));
+    
+    /* Disjoint */
+    OK(parse_mask("1000-1500", mask1));
+    OK(parse_mask("810-999", mask2));
+    mask2.bitOR(mask1);
+    OK(parse_mask("810-1500", mask1));
+    OK(mask1.equal(mask2));
+    
+    /* Overlapping */
+    OK(parse_mask("14-89, 130-155", mask1));
+    OK(parse_mask("3-8, 190-222", mask2));
+    mask1.bitOR(mask2);
+    OK(parse_mask("3-8,14-89,130-155,190-222", mask2));
+    OK(mask2.equal(mask1));
 
+    /* Empty */
+    mask1.clear();
+    mask2.clear();
+    mask2.bitOR(mask1);
+    OK(mask2.equal(mask1));
+    
+    /* Empty source */
+    OK(parse_mask("9999", mask2));
+    mask1.bitOR(mask2);
+    OK(mask1.equal(mask2));
+    
+    /* Empty object */
+    mask1.clear();
+    mask2.bitOR(mask1);
+    OK(parse_mask("9999", mask1));
+    OK(mask1.equal(mask2));
+  }
+ 
   return 1; // OK
 }
 

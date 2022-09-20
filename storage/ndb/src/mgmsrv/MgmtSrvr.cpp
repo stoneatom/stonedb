@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -22,7 +22,9 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
+#include "util/require.h"
 #include <ndb_global.h>
+#include <cstring>
 
 #include "MgmtSrvr.hpp"
 #include "ndb_mgmd_error.h"
@@ -31,9 +33,11 @@
 #include "Defragger.hpp"
 
 #include <NdbOut.hpp>
+#include "NdbTCP.h"
 #include <NdbApiSignal.hpp>
 #include <kernel_types.h>
 #include <GlobalSignalNumbers.h>
+#include <signaldata/FsOpenReq.hpp>
 #include <signaldata/TestOrd.hpp>
 #include <signaldata/TamperOrd.hpp>
 #include <signaldata/StartOrd.hpp>
@@ -60,6 +64,7 @@
 #include <logger/SysLogHandler.hpp>
 #include <DebuggerNames.hpp>
 #include <ndb_version.h>
+#include <OwnProcessInfo.hpp>
 
 #include <SocketServer.hpp>
 #include <NdbConfig.h>
@@ -74,6 +79,9 @@
 
 #include <SignalSender.hpp>
 
+#include <LogBuffer.hpp>
+#include <BufferedLogHandler.hpp>
+
 int g_errorInsert = 0;
 #define ERROR_INSERTED(x) (g_errorInsert == x)
 
@@ -87,7 +95,7 @@ int g_errorInsert = 0;
     }\
   }
 
-extern "C" my_bool opt_core;
+extern "C" bool opt_core;
 
 void *
 MgmtSrvr::logLevelThread_C(void* m)
@@ -97,7 +105,6 @@ MgmtSrvr::logLevelThread_C(void* m)
   return 0;
 }
 
-extern EventLogger * g_eventLogger;
 
 #ifdef NOT_USED
 static NdbOut&
@@ -237,7 +244,7 @@ translateStopRef(Uint32 errCode)
 
 MgmtSrvr::MgmtSrvr(const MgmtOpts& opts) :
   m_opts(opts),
-  _blockNumber(-1),
+  _blockNumber(0),
   _ownNodeId(0),
   m_port(0),
   m_local_config(NULL),
@@ -250,7 +257,8 @@ MgmtSrvr::MgmtSrvr(const MgmtOpts& opts) :
   m_event_listner(this),
   m_master_node(0),
   _logLevelThread(NULL),
-  m_version_string(ndbGetOwnVersionString())
+  m_version_string(ndbGetOwnVersionString()),
+  m_async_cluster_logging(false)
 {
   DBUG_ENTER("MgmtSrvr::MgmtSrvr");
 
@@ -271,7 +279,7 @@ MgmtSrvr::MgmtSrvr(const MgmtOpts& opts) :
   /* Setup clusterlog as client[0] in m_event_listner */
   {
     Ndb_mgmd_event_service::Event_listener se;
-    my_socket_invalidate(&(se.m_socket));
+    ndb_socket_invalidate(&(se.m_socket));
     for(size_t t = 0; t<LogLevel::LOGLEVEL_CATEGORIES; t++){
       se.m_logLevel.setLogLevel((LogLevel::EventCategory)t, 7);
     }
@@ -400,7 +408,7 @@ MgmtSrvr::start_transporter(const Config* config)
     DBUG_RETURN(false);
   }
 
-  assert(_blockNumber == -1); // Blocknumber shouldn't been allocated yet
+  assert(_blockNumber == 0); // Blocknumber shouldn't been allocated yet
 
   /*
     Register ourself at TransporterFacade to be able to receive signals
@@ -416,6 +424,7 @@ MgmtSrvr::start_transporter(const Config* config)
     DBUG_RETURN(false);
   }
   _blockNumber = refToBlock(res);
+  assert(_blockNumber > 0);
 
   /**
    * Need to call ->open() prior to actually starting TF
@@ -423,7 +432,7 @@ MgmtSrvr::start_transporter(const Config* config)
   m_config_manager->set_facade(theFacade);
 
   if (theFacade->start_instance(_ownNodeId,
-                                config->m_configValues) < 0)
+                                config->m_configuration) < 0)
   {
     g_eventLogger->error("Failed to start transporter");
     delete theFacade;
@@ -485,6 +494,10 @@ MgmtSrvr::start_mgm_service(const Config* config)
     DBUG_RETURN(false);
   }
 
+  char buf[512];
+  char *sockaddr_string = Ndb_combine_address_port(buf, sizeof(buf),
+                                                   m_opts.bind_address,
+                                                   port);
   {
     int count= 5; // no of retries for tryBind
     while(!m_socket_server.tryBind(port, m_opts.bind_address))
@@ -494,12 +507,11 @@ MgmtSrvr::start_mgm_service(const Config* config)
 	NdbSleep_SecSleep(1);
 	continue;
       }
-      g_eventLogger->error("Unable to bind management service port: %s:%d!\n"
+      g_eventLogger->error("Unable to bind management service to address %s!\n"
                            "Please check if the port is already used,\n"
                            "(perhaps a ndb_mgmd is already running),\n"
                            "and if you are executing on the correct computer",
-                           (m_opts.bind_address ? m_opts.bind_address : "*"),
-                           port);
+                           sockaddr_string);
       DBUG_RETURN(false);
     }
   }
@@ -515,12 +527,11 @@ MgmtSrvr::start_mgm_service(const Config* config)
     if(!m_socket_server.setup(mapi, &port, m_opts.bind_address))
     {
       delete mapi; // Will be deleted by SocketServer in all other cases
-      g_eventLogger->error("Unable to setup management service port: %s:%d!\n"
+      g_eventLogger->error("Unable to setup management service port: %s!\n"
                            "Please check if the port is already used,\n"
                            "(perhaps a ndb_mgmd is already running),\n"
                            "and if you are executing on the correct computer",
-                           (m_opts.bind_address ? m_opts.bind_address : "*"),
-                           port);
+                           sockaddr_string);
       DBUG_RETURN(false);
     }
 
@@ -532,13 +543,13 @@ MgmtSrvr::start_mgm_service(const Config* config)
       DBUG_RETURN(false);
     }
   }
+  setOwnProcessInfoPort(port);
 
   m_socket_server.startServer();
 
-  g_eventLogger->info("Id: %d, Command port: %s:%d",
+  g_eventLogger->info("Id: %d, Command port: %s",
                       _ownNodeId,
-                      m_opts.bind_address ? m_opts.bind_address : "*",
-                      port);
+                      sockaddr_string);
   DBUG_RETURN(true);
 }
 
@@ -569,6 +580,7 @@ MgmtSrvr::start()
     DBUG_RETURN(false);
   }
 
+  set_async_cluster_logging(true);
   /* Start config manager */
   if (!m_config_manager->start())
   {
@@ -587,6 +599,11 @@ MgmtSrvr::start()
   DBUG_RETURN(true);
 }
 
+void
+MgmtSrvr::set_async_cluster_logging(bool async_cluster_logging)
+{
+  m_async_cluster_logging = true;
+}
 
 void
 MgmtSrvr::configure_eventlogger(const BaseString& logdestination) const
@@ -613,8 +630,30 @@ MgmtSrvr::configure_eventlogger(const BaseString& logdestination) const
     if(type == "FILE")
     {
       char *default_file_name= NdbConfig_ClusterLogFileName(_ownNodeId);
-      handler = new FileLogHandler(default_file_name);
+      FileLogHandler* file_handler = new FileLogHandler(default_file_name);
       free(default_file_name);
+
+      if(m_async_cluster_logging)
+      {
+        /**
+         *  Log to a buffered log handler, and pass the file log handler
+         *  as the destination log handler.
+         */
+        file_handler->parseParams(params);
+        if (!file_handler->is_open() &&
+            !file_handler->open())
+        {
+          ndbout_c("INTERNAL ERROR: Could not create log handler for: '%s'",
+                   logdestinations[i].c_str());
+          continue;
+        }
+
+        handler = new BufferedLogHandler(file_handler);
+      }
+      else
+      {
+        handler = file_handler;
+      }
     }
     else if(type == "CONSOLE")
     {
@@ -766,7 +805,7 @@ MgmtSrvr::config_changed(NodeId node_id, const Config* new_config)
   if (theFacade)
   {
     if (!theFacade->configure(_ownNodeId,
-                              m_local_config->m_configValues))
+                              m_local_config->m_configuration))
     {
       g_eventLogger->warning("Could not reconfigure everything online, "
                              "this node need a restart");
@@ -780,14 +819,23 @@ MgmtSrvr::config_changed(NodeId node_id, const Config* new_config)
 
 bool
 MgmtSrvr::get_packed_config(ndb_mgm_node_type node_type,
-                            BaseString& buf64, BaseString& error)
+                            BaseString& buf64,
+                            BaseString& error,
+                            bool v2,
+                            Uint32 node_id)
 {
-  return m_config_manager->get_packed_config(node_type, &buf64, error);
+  return m_config_manager->get_packed_config(node_type,
+                                             &buf64,
+                                             error,
+                                             v2,
+                                             node_id);
 }
 
 bool
 MgmtSrvr::get_packed_config_from_node(NodeId nodeId,
-                            BaseString& buf64, BaseString& error)
+                            BaseString& buf64,
+                            BaseString& error,
+                            bool v2_requester)
 {
   DBUG_ENTER("get_packed_config_from_node");
 
@@ -819,15 +867,7 @@ MgmtSrvr::get_packed_config_from_node(NodeId nodeId,
   }
 
   const Uint32 version = node.m_info.m_version;
-
-  if (!ndbd_get_config_supported(version))
-  {
-    error.assfmt("Data node %d (version %d.%d.%d) does not support getting config. ",
-                 nodeId, ndbGetMajor(version),
-                 ndbGetMinor(version), ndbGetBuild(version));
-    DBUG_RETURN(false);
-  }
-
+  bool v2_data_node = ndb_config_version_v2(version);
   INIT_SIGNAL_SENDER(ss,nodeId);
 
   SimpleSignal ssig;
@@ -875,10 +915,18 @@ MgmtSrvr::get_packed_config_from_node(NodeId nodeId,
       if (defragger.defragment(signal))
       {
         ConfigValuesFactory cf;
-        require(cf.unpack(signal->ptr[0].p, conf->configLength));
+        if (v2_data_node)
+          require(cf.unpack_v2(signal->ptr[0].p, conf->configLength));
+        else
+          require(cf.unpack_v1(signal->ptr[0].p, conf->configLength));
 
         Config received_config(cf.getConfigValues());
-        if (!received_config.pack64(buf64))
+        bool ret;
+        if (v2_requester)
+          ret = received_config.pack64_v2(buf64);
+        else
+          ret = received_config.pack64_v1(buf64);
+        if (!ret)
         {
           error.assign("Failed to pack64");
           DBUG_RETURN(false);
@@ -981,6 +1029,8 @@ MgmtSrvr::~MgmtSrvr()
 
   delete m_local_config;
 
+  if (m_opts.bind_address != nullptr)
+    free(const_cast<char*>(m_opts.bind_address));
   NdbMutex_Destroy(m_local_config_mutex);
   NdbMutex_Destroy(m_reserved_nodes_mutex);
 }
@@ -1042,7 +1092,8 @@ MgmtSrvr::status_api(int nodeId,
                      Uint32& version, Uint32& mysql_version,
                      const char **address,
                      char *addr_buf,
-                     size_t addr_buf_size)
+                     size_t addr_buf_size,
+                     bool& is_single_user)
 {
   assert(getNodeType(nodeId) == NDB_MGM_NODE_TYPE_API);
   assert(version == 0 && mysql_version == 0);
@@ -1052,7 +1103,8 @@ MgmtSrvr::status_api(int nodeId,
                      mysql_version,
                      address,
                      addr_buf,
-                     addr_buf_size) != 0)
+                     addr_buf_size,
+                     is_single_user) != 0)
   {
     // Couldn't get version from any NDB node.
     assert(version == 0);
@@ -1080,7 +1132,8 @@ MgmtSrvr::sendVersionReq(int v_nodeId,
 			 Uint32& mysql_version,
 			 const char **address,
                          char *addr_buf,
-                         size_t addr_buf_size)
+                         size_t addr_buf_size,
+                         bool& is_single_user)
 {
   SignalSender ss(theFacade);
   ss.lock();
@@ -1123,15 +1176,29 @@ MgmtSrvr::sendVersionReq(int v_nodeId,
 
       version = conf->version;
       mysql_version = conf->mysql_version;
-      if (version < NDBD_SPLIT_VERSION)
-	mysql_version = 0;
-      struct in_addr in;
-      in.s_addr= conf->m_inet_addr;
-      *address= Ndb_inet_ntop(AF_INET,
-                              static_cast<void*>(&in),
-                              addr_buf,
-                              (socklen_t)addr_buf_size);
-
+      if (signal->getLength() <= ApiVersionConf::SignalLengthIPv4)
+      {
+        struct in_addr in;
+        in.s_addr = conf->m_inet_addr;
+        *address= Ndb_inet_ntop(AF_INET,
+                                static_cast<void*>(&in),
+                                addr_buf,
+                                addr_buf_size);
+      }
+      else
+      {
+        struct in6_addr in;
+        memcpy(in.s6_addr, conf->m_inet6_addr, sizeof(in.s6_addr));
+        *address= Ndb_inet_ntop(AF_INET6,
+                                static_cast<void*>(&in),
+                                addr_buf,
+                                addr_buf_size);
+      }
+      is_single_user = false;
+      if (signal->getLength() > ApiVersionConf::SignalLengthWithoutSingleUser) {
+        // New nodes will return info about single user
+        is_single_user = conf->isSingleUser;
+      }
       return 0;
     }
 
@@ -1147,10 +1214,23 @@ MgmtSrvr::sendVersionReq(int v_nodeId,
       const NodeFailRep * const rep =
 	CAST_CONSTPTR(NodeFailRep, signal->getDataPtr());
       Uint32 len = NodeFailRep::getNodeMaskLength(signal->getLength());
-      assert(len == NodeBitmask::Size); // only full length in ndbapi
-      if (BitmaskImpl::safe_get(len, rep->theAllNodes, nodeId))
+      assert(len == NodeBitmask::Size ||
+             len == 0); // only full length in ndbapi
+      if (signal->header.m_noOfSections >= 1)
       {
-	do_send = true; // retry with other node
+        len = signal->ptr[0].sz;
+        if (BitmaskImpl::safe_get(len, signal->ptr[0].p, nodeId))
+        {
+          do_send = true;
+        }
+      }
+      else
+      {
+        assert(len > 0);
+        if (BitmaskImpl::safe_get(len, rep->theAllNodes, nodeId))
+        {
+	  do_send = true; // retry with other node
+        }
       }
       continue;
     }
@@ -1202,7 +1282,7 @@ int MgmtSrvr::sendStopMgmd(NodeId nodeId,
       return SEND_OR_RECEIVE_FAILED;
 
   }
-  connect_string.assfmt("%s:%u",hostname,port);
+  connect_string.assfmt("%s %u",hostname,port);
 
   DBUG_PRINT("info",("connect string: %s",connect_string.c_str()));
 
@@ -1261,6 +1341,17 @@ MgmtSrvr::sendall_STOP_REQ(NodeBitmask &stoppedNodes,
                        "nostart: %d  initialStart: %d",
                        abort, stop, restart, nostart, initialStart));
 
+  if (ERROR_INSERTED(10006))
+  {
+    /*
+     * This error insert is for Bug #11757421. Error
+     * 10006 is used to skip the STOP_REQ call sent by
+     * the restart command thus ensuring that the nodes
+     * do not start the shut down process.
+     */
+    DBUG_RETURN(error);
+  }
+
   stoppedNodes.clear();
 
   SignalSender ss(theFacade);
@@ -1283,6 +1374,17 @@ MgmtSrvr::sendall_STOP_REQ(NodeBitmask &stoppedNodes,
   StopReq::setStopAbort(stopReq->requestInfo, abort);
   StopReq::setNoStart(stopReq->requestInfo, nostart);
   StopReq::setInitialStart(stopReq->requestInfo, initialStart);
+
+  if (ERROR_INSERTED(10007))
+  {
+    /*
+     * This error insert is for Bug #11757421. Error
+     * 10007 is used to hard code a value of false to
+     * the nostart flag in the signal. This ensures
+     * that the nodes do not reach NOT_STARTED state.
+     */
+    StopReq::setNoStart(stopReq->requestInfo, false);
+  }
 
   // send the signals
   int failed = 0;
@@ -1348,9 +1450,17 @@ MgmtSrvr::sendall_STOP_REQ(NodeBitmask &stoppedNodes,
       const NodeFailRep * rep = CAST_CONSTPTR(NodeFailRep,
                                               signal->getDataPtr());
       Uint32 len = NodeFailRep::getNodeMaskLength(signal->getLength());
-      assert(len == NodeBitmask::Size); // only full length in ndbapi
+      assert(len == NodeBitmask::Size || // only full length in ndbapi
+             len == 0);
       NodeBitmask mask;
-      mask.assign(len, rep->theAllNodes);
+      if (signal->header.m_noOfSections >= 1)
+      {
+        mask.assign(signal->ptr[0].sz, signal->ptr[0].p);
+      }
+      else
+      {
+        mask.assign(len, rep->theAllNodes);
+      }
       nodes.bitANDC(mask);
       stoppedNodes.bitOR(mask);
       break;
@@ -1458,6 +1568,17 @@ int MgmtSrvr::sendSTOP_REQ(const Vector<NodeId> &node_ids,
                        node_ids.size(),
                        abort, stop, restart, nostart, initialStart));
 
+  if (ERROR_INSERTED(10006))
+  {
+    /*
+     * This error insert is for Bug #11757421. Error
+     * 10006 is used to skip the STOP_REQ call sent by
+     * the restart command thus ensuring that the node
+     * does not start the shut down process.
+     */
+    DBUG_RETURN(error);
+  }
+
   stoppedNodes.clear();
   *stopSelf= 0;
 
@@ -1513,7 +1634,7 @@ int MgmtSrvr::sendSTOP_REQ(const Vector<NodeId> &node_ids,
    */
   SimpleSignal ssig;
   StopReq* const stopReq = CAST_PTR(StopReq, ssig.getDataPtrSend());
-  ssig.set(ss, TestOrd::TraceAPI, NDBCNTR, GSN_STOP_REQ, StopReq::SignalLength);
+  ssig.set(ss, TestOrd::TraceAPI, NDBCNTR, GSN_STOP_REQ, StopReq::SignalLength_v1);
 
   stopReq->requestInfo = 0;
   stopReq->apiTimeout = 5000;
@@ -1529,13 +1650,26 @@ int MgmtSrvr::sendSTOP_REQ(const Vector<NodeId> &node_ids,
   StopReq::setNoStart(stopReq->requestInfo, nostart);
   StopReq::setInitialStart(stopReq->requestInfo, initialStart);
 
+  if (ERROR_INSERTED(10007))
+  {
+    /*
+     * This error insert is for Bug #11757421. Error
+     * 10007 is used to hard code a value of false to
+     * the nostart flag in the signal. This ensures
+     * that the node does not reach NOT_STARTED state.
+     */
+    StopReq::setNoStart(stopReq->requestInfo, false);
+  }
+
   int use_master_node = 0;
   int do_send = 0;
+  Uint32 packed_length = 0;
   if (ndb_nodes_to_stop.count() > 1)
   {
     do_send = 1;
     use_master_node = 1;
     ndb_nodes_to_stop.copyto(NdbNodeBitmask::Size, stopReq->nodes);
+    packed_length = ndb_nodes_to_stop.getPackedLengthInWords();
     StopReq::setStopNodes(stopReq->requestInfo, 1);
   }
   else if (ndb_nodes_to_stop.count() == 1)
@@ -1543,6 +1677,20 @@ int MgmtSrvr::sendSTOP_REQ(const Vector<NodeId> &node_ids,
     Uint32 nodeId = ndb_nodes_to_stop.find(0);
     if (okToSendTo(nodeId, true) == 0)
     {
+      if (ndbd_send_node_bitmask_in_section(getNodeInfo(nodeId).m_info.m_version))
+      {
+        ssig.ptr[0].p = stopReq->nodes;
+        ssig.ptr[0].sz = packed_length;
+        ssig.header.m_noOfSections = 1;
+        ssig.header.theLength = StopReq::SignalLength;
+      }
+      else
+      {
+        assert(packed_length <= NdbNodeBitmask48::Size);
+        ssig.header.m_noOfSections = 0;
+        ssig.header.theLength = StopReq::SignalLength_v1;
+      }
+
       SendStatus result = ss.sendSignal(nodeId, &ssig);
       if (result != SEND_OK)
       {
@@ -1567,6 +1715,20 @@ int MgmtSrvr::sendSTOP_REQ(const Vector<NodeId> &node_ids,
       if (okToSendTo(sendNodeId, true) != 0)
       {
         DBUG_RETURN(SEND_OR_RECEIVE_FAILED);
+      }
+
+      if (ndbd_send_node_bitmask_in_section(getNodeInfo(sendNodeId).m_info.m_version))
+      {
+        ssig.ptr[0].p = stopReq->nodes;
+        ssig.ptr[0].sz = packed_length;
+        ssig.header.m_noOfSections = 1;
+        ssig.header.theLength = StopReq::SignalLength;
+      }
+      else
+      {
+        assert(packed_length <= NdbNodeBitmask48::Size);
+        ssig.header.m_noOfSections = 0;
+        ssig.header.theLength = StopReq::SignalLength_v1;
       }
 
       if (ss.sendSignal(sendNodeId, &ssig) != SEND_OK)
@@ -1613,9 +1775,17 @@ int MgmtSrvr::sendSTOP_REQ(const Vector<NodeId> &node_ids,
       const NodeFailRep * const rep =
 	CAST_CONSTPTR(NodeFailRep, signal->getDataPtr());
       Uint32 len = NodeFailRep::getNodeMaskLength(signal->getLength());
-      require(len == NodeBitmask::Size); // only full length in ndbapi
+      require(len == NodeBitmask::Size || // only full length in ndbapi
+              len == 0); // bitmask sent in signal section
       NodeBitmask mask;
-      mask.assign(len, rep->theAllNodes);
+      if (len == 0)
+      {
+        mask.assign(signal->ptr[0].sz, signal->ptr[0].p);
+      }
+      else
+      {
+        mask.assign(len, rep->theAllNodes);
+      }
       stoppedNodes.bitOR(mask);
       break;
     }
@@ -1810,9 +1980,18 @@ int MgmtSrvr::enterSingleUser(int * stopCount, Uint32 apiNodeId)
       const NodeFailRep * rep = CAST_CONSTPTR(NodeFailRep,
                                               signal->getDataPtr());
       Uint32 len = NodeFailRep::getNodeMaskLength(signal->getLength());
-      assert(len == NodeBitmask::Size); // only full length in ndbapi
+      assert(len == NodeBitmask::Size || // only full length in ndbapi
+             len == 0);
       NodeBitmask mask;
-      mask.assign(len, rep->theAllNodes);
+
+      if (signal->header.m_noOfSections >= 1)
+      {
+        mask.assign(signal->ptr[0].sz, signal->ptr[0].p);
+      }
+      else
+      {
+        mask.assign(len, rep->theAllNodes);
+      }
       nodes.bitANDC(mask);
       break;
     }
@@ -1866,6 +2045,56 @@ bool MgmtSrvr::is_any_node_starting()
       return true; // At least one node was starting
   }
   return false; // No node was starting
+}
+
+bool MgmtSrvr::is_any_node_alive()
+{
+  NodeId nodeId = 0;
+  while (getNextNodeId(&nodeId, NDB_MGM_NODE_TYPE_NDB))
+  {
+    if (getNodeInfo(nodeId).m_alive == true)
+      return true; // At least one node in alive state
+  }
+  return false; // No node in alive state
+}
+
+bool MgmtSrvr::is_any_node_in_started_state()
+{
+  NodeId nodeId = 0;
+  trp_node node;
+  while(getNextNodeId(&nodeId, NDB_MGM_NODE_TYPE_NDB))
+  {
+    node = getNodeInfo(nodeId);
+    if (node.m_state.startLevel == NodeState::SL_STARTED)
+      return true; // At least one node is in started state
+  }
+  return false; // No node is in started state
+}
+
+bool MgmtSrvr::are_all_nodes_in_cmvmi_state()
+{
+  NodeId nodeId = 0;
+  trp_node node;
+  while(getNextNodeId(&nodeId, NDB_MGM_NODE_TYPE_NDB))
+  {
+    node = getNodeInfo(nodeId);
+    if (node.m_state.startLevel != NodeState::SL_CMVMI)
+      return false; // At least one node is not in CMVMI state
+  }
+  return true; // All nodes are in CMVMI state
+}
+
+bool MgmtSrvr::isTimeUp(const NDB_TICKS startTime,
+                        const Uint64 delay,
+                        const Uint64 sleepInterval)
+{
+  if(NdbTick_Elapsed(startTime, NdbTick_getCurrentTicks()).milliSec()
+      < delay)
+  {
+    NdbSleep_MilliSleep(sleepInterval);
+    return false;
+  }
+  return true;
 }
 
 bool MgmtSrvr::is_cluster_single_user()
@@ -1927,30 +2156,116 @@ int MgmtSrvr::restartNodes(const Vector<NodeId> &node_ids,
     *stopCount = nodes.count();
   
   // start up the nodes again
-  const Uint64 waitTime = 12000;
-  const NDB_TICKS startTime = NdbTick_getCurrentTicks();
-  for (unsigned i = 0; i < node_ids.size(); i++)
+
+  /*
+   * The wait for all nodes to reach NOT_STARTED state is
+   * split into 2 separate checks:
+   * 1. Wait for ndbd to start shutting down
+   * 2. Wait for ndbd to shutdown and reach NOT_STARTED
+   *    state
+   *
+   * Wait 1: Wait for ndbd to start shutting down. A short
+   * wait duration of 12 seconds is being used.
+   *
+   * During shutdown the nodes traverse the 4 stopping
+   * levels namely, SL_STOPPING_1 through SL_STOPPING_4.
+   *
+   * Thus, waiting for all the nodes to enter one of these
+   * levels would be the obvious and intuitive approach for
+   * this wait. However, the nodes pass these levels in
+   * exec_STOP_REQ before the flow of execution reaches
+   * here. An alternate approach adopted here is to check if
+   * the nodes leave the SL_STARTED state in the first place.
+   * A failure to leave this state would indicate that for
+   * some reason the shutdown process failed to start and
+   * can be considered the equivalent of checking if the
+   * nodes have transitioned to any of the stopping levels.
+   *
+   * The immediate question that arises is how can one be sure
+   * that the nodes have not gone from STARTED -> STOPPED ->
+   * STARTED. This scenario is not an issue since we are waiting
+   * for NOT_STARTED state and only once that state is reached is
+   * the START_ORD fired which makes the node transition from
+   * SL_NOTHING to further states.
+   *
+   * To summarize, the first of the two waits will wait a short
+   * (12s) time to check if the shutdown process has been initiated
+   * and exit in case any of the nodes have not left the
+   * SL_STARTED state.
+   */
+  Uint64 waitTime = 12000;
+  NDB_TICKS startTime = NdbTick_getCurrentTicks();
+  bool any_node_in_started_state;
+  do
   {
-    NodeId nodeId= node_ids[i];
-    enum ndb_mgm_node_status s;
-    s = NDB_MGM_NODE_STATUS_NO_CONTACT;
-#ifdef VM_TRACE
-    ndbout_c("Waiting for %d not started", nodeId);
-#endif
-    while (s != NDB_MGM_NODE_STATUS_NOT_STARTED &&
-           NdbTick_Elapsed(startTime,NdbTick_getCurrentTicks()).milliSec() < waitTime)
+    /*
+     * Check if any of the data nodes are still
+     * stuck in STARTED state
+     */
+    any_node_in_started_state = false;
+    for (unsigned i = 0; i < node_ids.size(); i++)
     {
-      Uint32 startPhase = 0, version = 0, dynamicId = 0, nodeGroup = 0;
-      Uint32 mysql_version = 0;
-      Uint32 connectCount = 0;
-      bool system;
-      const char *address= NULL;
-      char addr_buf[NDB_ADDR_STRLEN];
-      status(nodeId, &s, &version, &mysql_version, &startPhase, 
-             &system, &dynamicId, &nodeGroup, &connectCount,
-             &address, addr_buf, sizeof(addr_buf));
-      NdbSleep_MilliSleep(100);  
+      NodeId nodeId = node_ids[i];
+      /*
+       * Check performed only for data nodes
+       */
+      if(getNodeType(nodeId) == NDB_MGM_NODE_TYPE_NDB)
+      {
+        trp_node node = getNodeInfo(nodeId);
+        any_node_in_started_state |= (node.m_state.startLevel ==
+                  NodeState::SL_STARTED);
+      }
     }
+  } while(any_node_in_started_state && !isTimeUp(startTime,waitTime,100));
+
+  if(any_node_in_started_state)
+  {
+    return WAIT_FOR_NDBD_TO_START_SHUTDOWN_FAILED;
+  }
+
+  /*
+   * Wait 2: Wait for ndbd to shutdown and reach NOT_STARTED state
+   *
+   * Having confirmed that the shutdown is on its way, the
+   * second wait involves simply waiting for the shutdown to complete
+   * and the nodes to enter the NOT_STARTED state.
+   *
+   * Once the nodes reach the NOT_STARTED state, they are ready for the
+   * START_ORD signal. It must be noted that while NOT_STARTED state has
+   * been mentioned throughout the comments since it is better known from
+   * a user's perspective, since we are dealing with data nodes, it is
+   * quicker and more efficient to check if the state is SL_CMVMI which is
+   * the equivalent of the MGMAPI state of NOT_STARTED.
+   *
+   * The wait time in this case is the value of num_secs_to_wait_for_node
+   */
+
+  startTime = NdbTick_getCurrentTicks();
+  waitTime = num_secs_to_wait_for_node * 1000;
+  bool all_nodes_in_cmvmi_state;
+  do
+  {
+    /*
+     * Check if all the data nodes are in
+     * SL_CMVMI state
+     */
+    all_nodes_in_cmvmi_state = true;
+    for (unsigned i = 0; i < node_ids.size(); i++)
+    {
+      NodeId nodeId= node_ids[i];
+      if(getNodeType(nodeId) == NDB_MGM_NODE_TYPE_NDB)
+      {
+        trp_node node = getNodeInfo(nodeId);
+        all_nodes_in_cmvmi_state &= (node.m_state.startLevel ==
+                  NodeState::SL_CMVMI);
+      }
+    }
+  } while(!all_nodes_in_cmvmi_state &&
+          !isTimeUp(startTime,waitTime,1000));
+
+  if(!all_nodes_in_cmvmi_state)
+  {
+    return WAIT_FOR_NDBD_SHUTDOWN_FAILED;
   }
 
   if (nostart)
@@ -2004,6 +2319,14 @@ int MgmtSrvr::restartDB(bool nostart, bool initialStart,
 {
   NodeBitmask nodes;
 
+  /*
+  * Restart cannot be performed without any data nodes being started.
+  */
+  if (!is_any_node_alive())
+  {
+    return 0;
+  }
+
   int ret = sendall_STOP_REQ(nodes,
                              abort,
                              true,
@@ -2020,37 +2343,83 @@ int MgmtSrvr::restartDB(bool nostart, bool initialStart,
 #ifdef VM_TRACE
     ndbout_c("Stopped %d nodes", nodes.count());
 #endif
-  /**
-   * Here all nodes were correctly stopped,
-   * so we wait for all nodes to be contactable
+
+
+  /*
+   * The wait for all nodes to reach NOT_STARTED state is
+   * split into 2 separate checks:
+   * 1. Wait for ndbd to start shutting down
+   * 2. Wait for ndbd to shutdown and reach NOT_STARTED
+   *    state
+   *
+   * Wait 1: Wait for ndbd to start shutting down. A short
+   * wait duration of 12 seconds is being used.
+   *
+   * During shutdown the nodes traverse the 4 stopping
+   * levels namely, SL_STOPPING_1 through SL_STOPPING_4.
+   *
+   * Thus, waiting for all the nodes to enter one of these
+   * levels would be the obvious and intuitive approach for
+   * this wait. However, the nodes pass these levels in
+   * exec_STOP_REQ before the flow of execution reaches
+   * here. An alternate approach adopted here is to check if
+   * the nodes leave the SL_STARTED state in the first place.
+   * A failure to leave this state would indicate that for
+   * some reason the shutdown process failed to start and
+   * can be considered the equivalent of checking if the
+   * nodes have transitioned to any of the stopping levels.
+   *
+   * The immediate question that arises is how can one be sure
+   * that the nodes have not gone from STARTED -> STOPPED ->
+   * STARTED. This scenario is not an issue since we are waiting
+   * for NOT_STARTED state and only once that state is reached is
+   * the START_ORD fired which makes the node transition from
+   * SL_NOTHING to further states.
+   *
+   * To summarize, the first of the two waits will wait a short
+   * (12s) time to check if the shutdown process has been initiated
+   * and exit in case any of the nodes have not left the
+   * SL_STARTED state.
    */
-  NodeId nodeId = 0;
-  const Uint64 waitTime = 12000;
-  const NDB_TICKS startTime = NdbTick_getCurrentTicks();
+  Uint64 waitTime = 12000;
+  NDB_TICKS startTime = NdbTick_getCurrentTicks();
 
+  /*
+   * Check if any of the data nodes are still
+   * stuck in STARTED state
+   */
+  while(is_any_node_in_started_state() &&
+      !isTimeUp(startTime,waitTime,100));
 
-  while(getNextNodeId(&nodeId, NDB_MGM_NODE_TYPE_NDB)) {
-    if (!nodes.get(nodeId))
-      continue;
-    enum ndb_mgm_node_status s;
-    s = NDB_MGM_NODE_STATUS_NO_CONTACT;
-#ifdef VM_TRACE
-    ndbout_c("Waiting for %d not started", nodeId);
-#endif
-    while (s != NDB_MGM_NODE_STATUS_NOT_STARTED &&
-           NdbTick_Elapsed(startTime,NdbTick_getCurrentTicks()).milliSec() < waitTime)
-    {
-      Uint32 startPhase = 0, version = 0, dynamicId = 0, nodeGroup = 0;
-      Uint32 mysql_version = 0;
-      Uint32 connectCount = 0;
-      bool system;
-      const char *address;
-      char addr_buf[NDB_ADDR_STRLEN];
-      status(nodeId, &s, &version, &mysql_version, &startPhase, 
-	     &system, &dynamicId, &nodeGroup, &connectCount,
-             &address, addr_buf, sizeof(addr_buf));
-      NdbSleep_MilliSleep(100);  
-    }
+  if(is_any_node_in_started_state())
+  {
+    return WAIT_FOR_NDBD_TO_START_SHUTDOWN_FAILED;
+  }
+
+  /*
+   * Wait 2: Wait for ndbd to shutdown and reach NOT_STARTED state
+   *
+   * Having confirmed that the shutdown is on its way, the
+   * second wait involves simply waiting for the shutdown to complete
+   * and the nodes to enter the NOT_STARTED state.
+   *
+   * Once the nodes reach the NOT_STARTED state, they are ready for the
+   * START_ORD signal. It must be noted that while NOT_STARTED state has
+   * been mentioned throughout the comments since it is better known from
+   * a user's perspective, since we are dealing with data nodes, it is
+   * quicker and more efficient to check if the state is SL_CMVMI which is
+   * the equivalent of the MGMAPI state of NOT_STARTED.
+   *
+   * The wait time in this case is the value of num_secs_to_wait_for_node
+   */
+  startTime = NdbTick_getCurrentTicks();
+  waitTime = num_secs_to_wait_for_node * 1000;
+  while(!are_all_nodes_in_cmvmi_state() &&
+          !isTimeUp(startTime,waitTime,1000));
+
+  if(!are_all_nodes_in_cmvmi_state())
+  {
+    return WAIT_FOR_NDBD_SHUTDOWN_FAILED;
   }
   
   if(nostart)
@@ -2060,7 +2429,7 @@ int MgmtSrvr::restartDB(bool nostart, bool initialStart,
    * Now we start all database nodes (i.e. we make them non-idle)
    * We ignore the result we get from the start command.
    */
-  nodeId = 0;
+  NodeId nodeId = 0;
   while(getNextNodeId(&nodeId, NDB_MGM_NODE_TYPE_NDB)) {
     if (!nodes.get(nodeId))
       continue;
@@ -2131,7 +2500,8 @@ MgmtSrvr::status_mgmd(NodeId node_id,
                       Uint32& version, Uint32& mysql_version,
                       const char **address,
                       char *addr_buf,
-                      size_t addr_buf_size)
+                      size_t addr_buf_size,
+                      bool& is_single_user)
 {
   assert(getNodeType(node_id) == NDB_MGM_NODE_TYPE_MGM);
 
@@ -2149,7 +2519,8 @@ MgmtSrvr::status_mgmd(NodeId node_id,
                    tmp_mysql_version,
                    address,
                    addr_buf,
-                   addr_buf_size);
+                   addr_buf_size,
+                   is_single_user);
     // Check that the version returned is equal to compiled in version
     assert(tmp_version == 0 ||
            (tmp_version == NDB_VERSION &&
@@ -2169,13 +2540,13 @@ MgmtSrvr::status_mgmd(NodeId node_id,
         Try to convert HostName to numerical ip address
         (to get same output as if ndbd had replied)
       */
-      struct in_addr addr;
-      if (Ndb_getInAddr(&addr, *address) == 0)
+      struct in6_addr addr;
+      if (Ndb_getInAddr6(&addr, *address) == 0)
       {
-        *address = Ndb_inet_ntop(AF_INET,
+        *address = Ndb_inet_ntop(AF_INET6,
                                  static_cast<void*>(&addr),
                                  addr_buf,
-                                 (socklen_t)addr_buf_size);
+                                 addr_buf_size);
       }
     }
 
@@ -2219,7 +2590,8 @@ MgmtSrvr::status(int nodeId,
 		 Uint32 * connectCount,
 		 const char **address,
                  char *addr_buf,
-                 size_t addr_buf_size)
+                 size_t addr_buf_size,
+                 bool* is_single_user)
 {
   switch(getNodeType(nodeId)){
   case NDB_MGM_NODE_TYPE_API:
@@ -2229,7 +2601,8 @@ MgmtSrvr::status(int nodeId,
                *mysql_version,
                address,
                addr_buf,
-               addr_buf_size);
+               addr_buf_size,
+               *is_single_user);
     return 0;
     break;
 
@@ -2240,7 +2613,8 @@ MgmtSrvr::status(int nodeId,
                 *mysql_version,
                 address,
                 addr_buf,
-                addr_buf_size);
+                addr_buf_size,
+                *is_single_user);
     return 0;
     break;
 
@@ -2428,10 +2802,18 @@ MgmtSrvr::setEventReportingLevelImpl(int nodeId_arg,
       const NodeFailRep * const rep =
 	CAST_CONSTPTR(NodeFailRep, signal->getDataPtr());
       Uint32 len = NodeFailRep::getNodeMaskLength(signal->getLength());
-      require(len == NodeBitmask::Size); // only full length in ndbapi
+      require(len == NodeBitmask::Size || // only full length in ndbapi
+              len == 0);
       NdbNodeBitmask mask;
       // only care about data nodes
-      mask.assign(NdbNodeBitmask::Size, rep->theNodes);
+      if (signal->header.m_noOfSections >= 1)
+      {
+        mask.assign(signal->ptr[0].sz, signal->ptr[0].p);
+      }
+      else
+      {
+        mask.assign(NdbNodeBitmask::Size, rep->theNodes);
+      }
       nodes.bitANDC(mask);
       break;
     }
@@ -2479,7 +2861,7 @@ MgmtSrvr::setNodeLogLevelImpl(int nodeId, const SetLogLevelOrd & ll)
 int 
 MgmtSrvr::insertError(int nodeId, int errorNo, Uint32 * extra)
 {
-  int block;
+  BlockNumber block;
 
   if (errorNo < 0) {
     return INVALID_ERROR_NUMBER;
@@ -2592,8 +2974,18 @@ retry:
       const NodeFailRep * const rep =
         CAST_CONSTPTR(NodeFailRep, signal->getDataPtr());
       Uint32 len = NodeFailRep::getNodeMaskLength(signal->getLength());
-      assert(len == NodeBitmask::Size); // only full length in ndbapi
-      if (BitmaskImpl::safe_get(len, rep->theAllNodes, nodeId))
+      assert(len == NodeBitmask::Size || // only full length in ndbapi
+             len == 0);
+      if (signal->header.m_noOfSections >= 1)
+      {
+        if (BitmaskImpl::safe_get(NodeBitmask::getPackedLengthInWords(signal->ptr[0].p),
+                                  signal->ptr[0].p, nodeId))
+        {
+          nodeId++;
+          goto retry;
+        }
+      }
+      else if (BitmaskImpl::safe_get(len, rep->theAllNodes, nodeId))
       {
         nodeId++;
         goto retry;
@@ -2655,8 +3047,18 @@ MgmtSrvr::endSchemaTrans(SignalSender& ss, NodeId nodeId,
       const NodeFailRep * const rep =
         CAST_CONSTPTR(NodeFailRep, signal->getDataPtr());
       Uint32 len = NodeFailRep::getNodeMaskLength(signal->getLength());
-      assert(len == NodeBitmask::Size); // only full length in ndbapi
-      if (BitmaskImpl::safe_get(len, rep->theAllNodes, nodeId))
+      assert(len == NodeBitmask::Size || // only full length in ndbapi
+             len == 0);
+
+      if (signal->header.m_noOfSections >= 1)
+      {
+        if (BitmaskImpl::safe_get(NodeBitmask::getPackedLengthInWords(signal->ptr[0].p),
+                                  signal->ptr[0].p, nodeId))
+        {
+          return -1;
+        }
+      }
+      else if (BitmaskImpl::safe_get(len, rep->theAllNodes, nodeId))
       {
         return -1;
       }
@@ -2701,7 +3103,7 @@ MgmtSrvr::createNodegroup(int *nodes, int count, int *ng)
   req->nodegroupId = RNIL;
   req->senderData = 77;
   req->senderRef = ss.getOwnRef();
-  bzero(req->nodes, sizeof(req->nodes));
+  std::memset(req->nodes, 0, sizeof(req->nodes));
 
   if (ng)
   {
@@ -2753,8 +3155,18 @@ MgmtSrvr::createNodegroup(int *nodes, int count, int *ng)
       const NodeFailRep * const rep =
         CAST_CONSTPTR(NodeFailRep, signal->getDataPtr());
       Uint32 len = NodeFailRep::getNodeMaskLength(signal->getLength());
-      assert(len == NodeBitmask::Size); // only full length in ndbapi
-      if (BitmaskImpl::safe_get(len, rep->theAllNodes, nodeId))
+      assert(len == NodeBitmask::Size || // only full length in ndbapi
+             len == 0);
+
+      if (signal->header.m_noOfSections >= 1)
+      {
+        if (BitmaskImpl::safe_get(NodeBitmask::getPackedLengthInWords(signal->ptr[0].p),
+                                  signal->ptr[0].p, nodeId))
+        {
+          return SchemaTransBeginRef::Nodefailure;
+        }
+      }
+      else if (BitmaskImpl::safe_get(len, rep->theAllNodes, nodeId))
       {
         return SchemaTransBeginRef::Nodefailure;
       }
@@ -2774,7 +3186,7 @@ MgmtSrvr::createNodegroup(int *nodes, int count, int *ng)
 }
 
 int
-MgmtSrvr::dropNodegroup(int ng)
+MgmtSrvr::dropNodegroup(unsigned ng)
 {
   int res;
   SignalSender ss(theFacade);
@@ -2831,8 +3243,18 @@ MgmtSrvr::dropNodegroup(int ng)
       const NodeFailRep * const rep =
         CAST_CONSTPTR(NodeFailRep, signal->getDataPtr());
       Uint32 len = NodeFailRep::getNodeMaskLength(signal->getLength());
-      assert(len == NodeBitmask::Size); // only full length in ndbapi
-      if (BitmaskImpl::safe_get(len, rep->theAllNodes, nodeId))
+      assert(len == NodeBitmask::Size || // only full length in ndbapi
+             len == 0);
+
+      if (signal->header.m_noOfSections >= 1)
+      {
+        if (BitmaskImpl::safe_get(NodeBitmask::getPackedLengthInWords(signal->ptr[0].p),
+                                  signal->ptr[0].p, nodeId))
+        {
+          return SchemaTransBeginRef::Nodefailure;
+        }
+      }
+      else if (BitmaskImpl::safe_get(len, rep->theAllNodes, nodeId))
       {
         return SchemaTransBeginRef::Nodefailure;
       }
@@ -2848,7 +3270,32 @@ MgmtSrvr::dropNodegroup(int ng)
     }
   }
 
-  return endSchemaTrans(ss, nodeId, transId, transKey, 0);
+  int ret = endSchemaTrans(ss, nodeId, transId, transKey, 0);
+  if (ret == 0)
+  {
+    // Check whether nodegroup is dropped using the current cached node states
+    bool ng_is_empty = true;
+    NodeId node_id = 0;
+    while (getNextNodeId(&node_id, NDB_MGM_NODE_TYPE_NDB))
+    {
+      const trp_node& node = getNodeInfo(node_id);
+      if (node.is_connected() && node.m_state.nodeGroup == ng)
+      {
+        ng_is_empty = false;
+        break;
+      }
+    }
+    if (!ng_is_empty)
+    {
+      /*
+       * Some node is still reported to belong to dropped nodegroup.
+       * Wait for 4 heartbeats, when either the heartbeat with new nodegroup
+       * information should have arrived, or node should been declared failed.
+       */
+      NdbSleep_MilliSleep(4 * 100);
+    }
+  }
+  return ret;
 }
 
 
@@ -2983,14 +3430,24 @@ MgmtSrvr::dumpState(int nodeId, const char* args)
   Uint32 args_array[25];
   Uint32 numArgs = 0;
 
-  char buf[10];  
+  const int BufSz = 12; /* 32 bit signed = 10 digits + sign + trailing \0 */
+  char buf[BufSz];  
   int b  = 0;
-  memset(buf, 0, 10);
+  std::memset(buf, 0, BufSz);
   for (size_t i = 0; i <= strlen(args); i++){
+    if (b == NDB_ARRAY_SIZE(buf))
+    {
+      return -1;
+    }
+    if (numArgs == NDB_ARRAY_SIZE(args_array))
+    {
+      return -1;
+    }
     if (args[i] == ' ' || args[i] == 0){
+      assert(buf[b] == 0);
       args_array[numArgs] = atoi(buf);
       numArgs++;
-      memset(buf, 0, 10);
+      std::memset(buf, 0, BufSz);
       b = 0;
     } else {
       buf[b] = args[i];
@@ -3004,6 +3461,11 @@ MgmtSrvr::dumpState(int nodeId, const char* args)
 int
 MgmtSrvr::dumpState(int nodeId, const Uint32 args[], Uint32 no)
 {
+  if (nodeId == _ownNodeId)
+  {
+    return dumpStateSelf(args, no);
+  }
+
   INIT_SIGNAL_SENDER(ss,nodeId);
 
   const Uint32 len = no > 25 ? 25 : no;
@@ -3034,6 +3496,70 @@ MgmtSrvr::dumpState(int nodeId, const Uint32 args[], Uint32 no)
 
 }
 
+int
+MgmtSrvr::dumpStateSelf(const Uint32 args[], Uint32 no)
+{
+  if (no < 1)
+    return -1;
+
+#ifdef ERROR_INSERT
+  switch(args[0])
+  {
+  case 9994:
+  {
+    /* Transporter send blocking */
+    if (no >= 2)
+    {
+      Uint32 nodeId = args[1];
+      ndbout_c("Blocking send to node %u",
+               nodeId);
+      TransporterRegistry* tr = theFacade->get_registry();
+      tr->blockSend(*theFacade, nodeId);
+    }
+    break;
+  }
+  case 9995:
+  {
+    /* Transporter send unblocking */
+    if (no >= 2)
+    {
+      Uint32 nodeId = args[1];
+      ndbout_c("Unblocking send to node %u",
+               nodeId);
+      TransporterRegistry* tr = theFacade->get_registry();
+      tr->unblockSend(*theFacade, nodeId);
+    }
+    break;
+  }
+
+  case 9996:
+  {
+    /* Sendbuffer consumption */
+    if (no >= 2)
+    {
+      Uint64 remain_bytes = args[1];
+      ndbout_c("Consuming sendbuffer except for %llu bytes",
+               remain_bytes);
+      theFacade->consume_sendbuffer(remain_bytes);
+    }
+    break;
+  }
+  case 9997:
+  {
+    /* Sendbuffer release */
+    ndbout_c("Releasing consumed sendbuffer");
+    theFacade->release_consumed_sendbuffer();
+    break;
+  }
+  default:
+    ;
+  }
+#endif
+
+  return 0;
+}
+
+
 
 //****************************************************************************
 //****************************************************************************
@@ -3055,7 +3581,21 @@ MgmtSrvr::trp_deliver_signal(const NdbApiSignal* signal,
   switch (gsn) {
   case GSN_EVENT_REP:
   {
-    eventReport(signal->getDataPtr(), signal->getLength());
+    /**
+     * This EVENT_REP receives all infoEvent and eventLog messages that
+     * are NOT generated through a DUMP command.
+     */
+    const Uint32 *data = signal->getDataPtr();
+    Uint32 sz = signal->getLength();
+    if (signal->getNoOfSections() > 0)
+    {
+      /**
+       * Data comes in segmented part.
+       */
+      data = ptr[0].p;
+      sz = ptr[0].sz;
+    }
+    eventReport(signal->getDataPtr(), sz, data);
     break;
   }
 
@@ -3097,7 +3637,7 @@ MgmtSrvr::trp_deliver_signal(const NdbApiSignal* signal,
     }
     rep->setEventType(NDB_LE_Connected);
     rep->setNodeId(_ownNodeId);
-    eventReport(theData, 1);
+    eventReport(theData, 1, theData);
     return;
   }
   case GSN_NODE_FAILREP:
@@ -3106,7 +3646,7 @@ MgmtSrvr::trp_deliver_signal(const NdbApiSignal* signal,
       Uint32 theData[25];
       EventReport repData;
     };
-    bzero(theData, sizeof(theData));
+    std::memset(theData, 0, sizeof(theData));
     EventReport * event = &repData;
     event->setEventType(NDB_LE_Disconnected);
     event->setNodeId(_ownNodeId);
@@ -3114,13 +3654,26 @@ MgmtSrvr::trp_deliver_signal(const NdbApiSignal* signal,
     const NodeFailRep *rep = CAST_CONSTPTR(NodeFailRep,
                                            signal->getDataPtr());
     Uint32 len = NodeFailRep::getNodeMaskLength(signal->getLength());
-    assert(len == NodeBitmask::Size); // only full length in ndbapi
-    for (Uint32 i = BitmaskImpl::find_first(len, rep->theAllNodes);
+
+    const Uint32* nbm;
+    if (signal->m_noOfSections >= 1)
+    {
+      assert (len == 0);
+      nbm = ptr[0].p;
+      len = ptr[0].sz;
+    }
+    else
+    {
+      assert(len == NodeBitmask::Size); // only full length in ndbapi
+      nbm = rep->theAllNodes;
+    }
+
+    for (Uint32 i = BitmaskImpl::find_first(len, nbm);
          i != BitmaskImpl::NotFound;
-         i = BitmaskImpl::find_next(len, rep->theAllNodes, i + 1))
+         i = BitmaskImpl::find_next(len, nbm, i + 1))
     {
       theData[1] = i;
-      eventReport(theData, 1);
+      eventReport(theData, 1, theData);
 
       /* Clear local nodeid reservation(if any) */
       release_local_nodeid_reservation(i);
@@ -3167,7 +3720,7 @@ MgmtSrvr::get_connect_address(NodeId node_id,
 {
   assert(node_id < NDB_ARRAY_SIZE(m_connect_address));
 
-  if (m_connect_address[node_id].s_addr == 0)
+  if (IN6_IS_ADDR_UNSPECIFIED(&m_connect_address[node_id]))
   {
     // No cached connect address available
     const trp_node &node= getNodeInfo(node_id);
@@ -3180,10 +3733,10 @@ MgmtSrvr::get_connect_address(NodeId node_id,
   }
 
   // Return the cached connect address
-  return Ndb_inet_ntop(AF_INET,
+  return Ndb_inet_ntop(AF_INET6,
                        static_cast<void*>(&m_connect_address[node_id]),
                        addr_buf,
-                       (socklen_t)addr_buf_size);
+                       addr_buf_size);
 }
 
 
@@ -3193,7 +3746,7 @@ MgmtSrvr::clear_connect_address_cache(NodeId nodeid)
   assert(nodeid < NDB_ARRAY_SIZE(m_connect_address));
   if (nodeid < NDB_ARRAY_SIZE(m_connect_address))
   {
-    m_connect_address[nodeid].s_addr = 0;
+    m_connect_address[nodeid] = IN6ADDR_ANY_INIT;
   }
 }
 
@@ -3202,8 +3755,8 @@ MgmtSrvr::clear_connect_address_cache(NodeId nodeid)
  ***************************************************************************/
 
 MgmtSrvr::NodeIdReservations::NodeIdReservations()
+    : m_reservations()  // zero fill using value initialization
 {
-  memset(m_reservations, 0, sizeof(m_reservations));
 }
 
 
@@ -3357,14 +3910,38 @@ MgmtSrvr::alloc_node_id_req(NodeId free_node_id,
           refToNode(ref->masterRef) == 0xFFFF)
       {
         /*
-          The data nodes haven't decided who is the president (yet)
-          and thus can't allocate nodeids -> return "no contact"
+          This data node is not aware of who is the president (yet)
+          and thus cannot allocate nodeids.
+          If all data nodes are in the same state, then there's
+          effectively 'no contact'.
+          However, some other data nodes might be 'up' (node(s) in
+          NOT_STARTED state).
         */
-        g_eventLogger->info("Alloc node id %u failed, no new president yet",
+        bool next;
+        while((next = getNextNodeId(&nodeId, NDB_MGM_NODE_TYPE_NDB)) == true &&
+              getNodeInfo(nodeId).is_confirmed() == false)
+          ;
+        if (!next)
+        {
+          /* No viable node(s) */
+          g_eventLogger->info("Alloc node id %u rejected, no new president yet",
+                              free_node_id);
+          return NO_CONTACT_WITH_DB_NODES;
+        }
+
+        /* Found another node, try to allocate a nodeid from it */
+        do_send = 1;
+        continue;
+      }
+
+      if (ref->errorCode == AllocNodeIdRef::NotReady)
+      {
+        g_eventLogger->info("Alloc node id %u request rejected, cluster not ready yet",
                             free_node_id);
         return NO_CONTACT_WITH_DB_NODES;
       }
 
+      const bool refFromMaster = (refToNode(ref->masterRef) == nodeId);
       if (ref->errorCode == AllocNodeIdRef::NotMaster ||
           ref->errorCode == AllocNodeIdRef::Busy ||
           ref->errorCode == AllocNodeIdRef::NodeFailureHandlingNotCompleted)
@@ -3373,20 +3950,38 @@ MgmtSrvr::alloc_node_id_req(NodeId free_node_id,
         nodeId = refToNode(ref->masterRef);
 	if (!getNodeInfo(nodeId).is_confirmed())
 	  nodeId = 0;
-        if (ref->errorCode != AllocNodeIdRef::NotMaster)
+        if (first_attempt && (ref->errorCode != AllocNodeIdRef::NotMaster))
         {
-          if (first_attempt)
-          {
-            first_attempt = false;
-            g_eventLogger->info("Alloc node id %u failed with error code %u, will retry",
-                                free_node_id,
-                                ref->errorCode);
-          }
-          /* sleep for a while (100ms) before retrying */
-          ss.unlock();
-          NdbSleep_MilliSleep(100);  
-          ss.lock();
+          first_attempt = false;
+          g_eventLogger->info("Alloc node id %u rejected with error code %u, will retry",
+                              free_node_id,
+                              ref->errorCode);
         }
+        /* sleep for a while before retrying */
+        ss.unlock();
+        if (ref->errorCode == AllocNodeIdRef::Busy)
+        {
+          NdbSleep_MilliSleep(100);  
+        }
+        else if (ref->errorCode == AllocNodeIdRef::NotMaster)
+        {
+          if (refFromMaster)
+          {
+            /* AllocNodeIdReq sent to master node, but master not ready
+             * to alloc node ID. Sleep before retrying. */
+            NdbSleep_SecSleep(1);
+          }
+          else
+          {
+            /* AllocNodeIdReq sent to non-master node, retry by sending
+             * AllocNodeIdReq to ref->masterRef. No sleep before retrying */
+          }
+        }
+        else /* AllocNodeIdRef::NodeFailureHandlingNotCompleted */
+        {
+          NdbSleep_SecSleep(1);
+        }
+        ss.lock();
         continue;
       }
       return ref->errorCode;
@@ -3403,8 +3998,20 @@ MgmtSrvr::alloc_node_id_req(NodeId free_node_id,
       const NodeFailRep * const rep =
 	CAST_CONSTPTR(NodeFailRep, signal->getDataPtr());
       Uint32 len = NodeFailRep::getNodeMaskLength(signal->getLength());
-      assert(len == NodeBitmask::Size); // only full length in ndbapi
-      if (BitmaskImpl::safe_get(len, rep->theAllNodes, nodeId))
+      const Uint32* nbm;
+      if (signal->header.m_noOfSections >= 1)
+      {
+        assert (len == 0);
+        nbm = signal->ptr[0].p;
+        len = signal->ptr[0].sz;
+      }
+      else
+      {
+        assert(len == NodeBitmask::Size); // only full length in ndbapi
+        nbm = rep->theAllNodes;
+      }
+
+      if (BitmaskImpl::safe_get(len, nbm, nodeId))
       {
         do_send = 1;
         nodeId = 0;
@@ -3423,159 +4030,241 @@ MgmtSrvr::alloc_node_id_req(NodeId free_node_id,
   return 0;
 }
 
-static int
-match_hostname(const struct sockaddr *clnt_addr,
-               const char *config_hostname)
-{
-  struct in_addr config_addr= {0};
-  if (clnt_addr)
-  {
-    const struct in_addr *clnt_in_addr = &((sockaddr_in*)clnt_addr)->sin_addr;
-
-    if (Ndb_getInAddr(&config_addr, config_hostname) != 0
-        || memcmp(&config_addr, clnt_in_addr, sizeof(config_addr)) != 0)
-    {
-      struct in_addr tmp_addr;
-      if (Ndb_getInAddr(&tmp_addr, "localhost") != 0
-          || memcmp(&tmp_addr, clnt_in_addr, sizeof(config_addr)) != 0)
-      {
-        // not localhost
-        return -1;
-      }
-
-      // connecting through localhost
-      // check if config_hostname is local
-      if (!SocketServer::tryBind(0, config_hostname))
-        return -1;
-    }
-  }
-  else
-  {
-    if (!SocketServer::tryBind(0, config_hostname))
-      return -1;
-  }
-  return 0;
+static inline bool is_loopback(const struct in6_addr *addr) {
+  return (IN6_IS_ADDR_LOOPBACK(addr) ||
+         (IN6_IS_ADDR_V4MAPPED(addr) && addr->s6_addr[12] == 0x7f));
 }
 
-int
-MgmtSrvr::find_node_type(NodeId node_id,
-                         ndb_mgm_node_type type,
-                         const struct sockaddr* client_addr,
-                         Vector<PossibleNode>& nodes,
-                         int& error_code, BaseString& error_string)
+enum class HostnameMatch
 {
-  const char* found_config_hostname= 0;
-  unsigned type_c= (unsigned)type;
+   no_resolve,       // failure: could not resolve hostname
+   no_match,         // failure: hostname does not match socket address
+   ok_exact_match,   // success: exact match
+   ok_wildcard,      // success: match not required
+};
 
+static HostnameMatch
+match_hostname(const in6_addr *client_in6_addr,
+               const char *config_hostname)
+{
+  if (config_hostname == nullptr || config_hostname[0] == 0) {
+    return HostnameMatch::ok_wildcard;
+  }
+
+  // Check if the configured hostname can be resolved.
+  // NOTE! Without this step it's not possible to:
+  // - try to bind() the socket (since that requires resolve)
+  // - compare the resolved address with the clients.
+  struct in6_addr resolved_addr;
+  if (Ndb_getInAddr6(&resolved_addr, config_hostname) != 0)
+    return HostnameMatch::no_resolve;
+
+  // Special case for client connecting on loopback address, check if it
+  // can use this hostname by trying to bind the configured hostname. If this
+  // process can bind it also means the client can use it (is on same machine).
+  if (is_loopback(client_in6_addr)) {
+    if (SocketServer::tryBind(0, config_hostname)) {
+      // Match clients connecting on loopback address by trying to bind the
+      // configured hostname, if it binds the client could use it as well.
+      return HostnameMatch::ok_exact_match;
+    }
+    return HostnameMatch::no_match;
+  }
+
+  // Bitwise comparison of the two IPv6 addresses
+  if (memcmp(&resolved_addr, client_in6_addr, sizeof(resolved_addr)) != 0)
+    return HostnameMatch::no_match;
+
+  return HostnameMatch::ok_exact_match;
+}
+
+
+/**
+   @brief Build list of nodes in configuration
+
+   @param config_nodes List of nodes
+   @return true if list was filled properly, false otherwise
+ */
+bool
+MgmtSrvr::build_node_list_from_config(NodeId node_id,
+                                      ndb_mgm_node_type type,
+                                      Vector<ConfigNode>& config_nodes,
+                                      int& error_code,
+                                      BaseString& error_string) const
+{
   Guard g(m_local_config_mutex);
 
   ConfigIter iter(m_local_config, CFG_SECTION_NODE);
   for(iter.first(); iter.valid(); iter.next())
   {
-    unsigned id;
-    if (iter.get(CFG_NODE_ID, &id))
-      require(false);
-    if (node_id && node_id != id)
+    // Check current nodeid, the caller either asks to find any
+    // nodeid (nodeid=0) or a specific node (nodeid=x)
+    unsigned current_node_id;
+    require(iter.get(CFG_NODE_ID, &current_node_id) == 0);
+    if (node_id && node_id != current_node_id) continue;
+
+    // Check the optional Dedicated setting
+    unsigned dedicated_node = 0;
+    iter.get(CFG_NODE_DEDICATED, &dedicated_node);
+    if (dedicated_node && current_node_id != node_id) {
+      // This node id is only handed out if explicitly requested.
       continue;
-    if (iter.get(CFG_TYPE_OF_SECTION, &type_c))
-      require(false);
-    if (type_c != (unsigned)type)
-    {
-      if (!node_id)
-        continue;
-      goto error;
     }
-    bool exact_match = false;
-    const char *config_hostname= 0;
-    if (iter.get(CFG_NODE_HOST, &config_hostname))
-      require(false);
-    if (config_hostname == 0 || config_hostname[0] == 0)
-    {
-      config_hostname= "";
-    }
-    else
-    {
-      found_config_hostname= config_hostname;
-      if (match_hostname(client_addr, config_hostname))
-      {
-        if (!node_id)
-          continue;
-        goto error;
+
+    // Check type of node, the caller will ask for API, MGM or NDB
+    unsigned current_node_type;
+    require(iter.get(CFG_TYPE_OF_SECTION, &current_node_type) == 0);
+    if (current_node_type != (unsigned)type) {
+      if (node_id) {
+        // Caller asked for this exact nodeid, but it is not the correct type.
+        BaseString type_string, current_type_string;
+        const char *alias, *str = nullptr;
+        alias = ndb_mgm_get_node_type_alias_string(type, &str);
+        type_string.assfmt("%s(%s)", alias, str);
+        alias = ndb_mgm_get_node_type_alias_string(
+            (enum ndb_mgm_node_type)current_node_type, &str);
+        current_type_string.assfmt("%s(%s)", alias, str);
+        error_string.appfmt("Id %d configured as %s, connect attempted as %s.",
+                            node_id, current_type_string.c_str(),
+                            type_string.c_str());
+        error_code= NDB_MGM_ALLOCID_CONFIG_MISMATCH;
+        return false;
       }
-      exact_match = true;
+      continue;
     }
-    /*
-      Insert this node in the nodes list sorted with the
-      exact matches ahead of the open nodes
-    */
-    PossibleNode possible_node= {id, config_hostname, exact_match};
-    if (exact_match)
+
+    // Get configured HostName of this node
+    const char *config_hostname;
+    require(iter.get(CFG_NODE_HOST, &config_hostname) == 0);
+
+    if (config_nodes.push_back({current_node_id,
+                               config_hostname}) != 0)
     {
-      // Find the position of first !exact match
-      unsigned position = 0;
-      for (unsigned j = 0; j < nodes.size(); j++)
+      error_string.assfmt("Failed to build config_nodes list");
+      error_code = NDB_MGM_ALLOCID_ERROR;
+      return false;
+    }
+  }
+  return true;
+}
+
+int
+MgmtSrvr::find_node_type(NodeId node_id,
+                         ndb_mgm_node_type type,
+                         const sockaddr_in6* client_addr,
+                         const Vector<ConfigNode>& config_nodes,
+                         Vector<PossibleNode>& nodes,
+                         int& error_code, BaseString& error_string)
+{
+  const char* found_config_hostname = nullptr;
+  bool found_unresolved_hosts = false;
+
+  for (unsigned i = 0; i < config_nodes.size(); i++)
+  {
+    const ConfigNode& node = config_nodes[i];
+
+    // Get current nodeid
+    const unsigned current_node_id = node.nodeid;
+
+    // Get configured HostName of this node
+    const char *config_hostname = node.hostname.c_str();
+
+    // Check if the connecting clients address matches the configured hostname
+    const HostnameMatch matchType = match_hostname(&(client_addr->sin6_addr),
+                                                   config_hostname);
+    switch(matchType)
+    {
+      case HostnameMatch::no_resolve:
+        found_config_hostname = config_hostname;
+        found_unresolved_hosts = true;
+        break;
+
+      case HostnameMatch::no_match:
+        found_config_hostname = config_hostname;
+        break;
+
+      case HostnameMatch::ok_wildcard:
+        nodes.push_back({current_node_id, "", false});
+        break;
+
+      case HostnameMatch::ok_exact_match:
       {
-        if (nodes[j].exact_match)
-          position++;
+        found_config_hostname = config_hostname;
+
+        unsigned int pos = 0;
+        // Insert this node into the list ahead of the non-exact matches
+        for(; pos < nodes.size() && nodes[pos].exact_match ; pos++);
+        nodes.push({current_node_id, config_hostname, true}, pos);
+        break;
       }
-      nodes.push(possible_node, position);
-    }
-    else
-    {
-      nodes.push_back(possible_node);
     }
 
     if (node_id)
       break;
   }
+
   if (nodes.size() != 0)
   {
     return 0;
   }
 
- error:
+  if(found_unresolved_hosts) {
+    error_code= NDB_MGM_ALLOCID_CONFIG_RETRY;
+
+    BaseString type_string;
+    const char *alias, *str = nullptr;
+    char addr_buf[NDB_ADDR_STRLEN];
+    alias= ndb_mgm_get_node_type_alias_string(type, &str);
+    type_string.assfmt("%s(%s)", alias, str);
+
+    struct in6_addr conn_addr = client_addr->sin6_addr;
+    char* addr_str =
+        Ndb_inet_ntop(AF_INET6,
+                      static_cast<void*>(&conn_addr),
+                      addr_buf,
+                      sizeof(addr_buf));
+
+    error_string.appfmt("No configured host found of node type %s for "
+                        "connection from ip %s. Some hostnames are currently "
+                        "unresolvable. Can be retried.",
+                        type_string.c_str(), addr_str);
+    return -1;
+  }
+
   /*
     lock on m_configMutex held because found_config_hostname may have
-    reference inot config structure
+    reference into config structure
   */
   error_code= NDB_MGM_ALLOCID_CONFIG_MISMATCH;
   if (node_id)
   {
-    if (type_c != (unsigned) type)
-    {
-      BaseString type_string, type_c_string;
-      const char *alias, *str;
-      alias= ndb_mgm_get_node_type_alias_string(type, &str);
-      type_string.assfmt("%s(%s)", alias, str);
-      alias= ndb_mgm_get_node_type_alias_string((enum ndb_mgm_node_type)type_c,
-                                                &str);
-      type_c_string.assfmt("%s(%s)", alias, str);
-      error_string.appfmt("Id %d configured as %s, connect attempted as %s.",
-                          node_id, type_c_string.c_str(),
-                          type_string.c_str());
-      return -1;
-    }
     if (found_config_hostname)
     {
       char addr_buf[NDB_ADDR_STRLEN];
-      char *addr_str;
-      struct in_addr config_addr= {0};
-      struct in_addr conn_addr =
-        ((struct sockaddr_in*)(client_addr))->sin_addr;
-      int r_config_addr= Ndb_getInAddr(&config_addr, found_config_hostname);
-      addr_str = Ndb_inet_ntop(AF_INET,
-                               static_cast<void*>(&conn_addr),
-                               addr_buf,
-                               (socklen_t)sizeof(addr_buf));
-      error_string.appfmt("Connection with id %d done from wrong host ip %s,",
-                          node_id, addr_str);
-      addr_str = Ndb_inet_ntop(AF_INET,
-                               static_cast<void*>(&config_addr),
-                               addr_buf,
-                               (socklen_t)sizeof(addr_buf));
-      error_string.appfmt(" expected %s(%s).", found_config_hostname,
-                          r_config_addr ?
-                          "lookup failed" : addr_str);
+      {
+        // Append error describing which host the faulty connection was from
+        struct in6_addr conn_addr = client_addr->sin6_addr;
+        char* addr_str =
+            Ndb_inet_ntop(AF_INET6,
+                          static_cast<void*>(&conn_addr),
+                          addr_buf,
+                          sizeof(addr_buf));
+        error_string.appfmt("Connection with id %d done from wrong host ip %s,",
+                            node_id, addr_str);
+      }
+      {
+        // Append error describing which was the expected host
+        struct in6_addr config_addr;
+        int r_config_addr= Ndb_getInAddr6(&config_addr, found_config_hostname);
+        char* addr_str =
+            Ndb_inet_ntop(AF_INET6,
+                          static_cast<void*>(&config_addr),
+                          addr_buf,
+                          sizeof(addr_buf));
+        error_string.appfmt(" expected %s(%s).", found_config_hostname,
+                            r_config_addr ?
+                            "lookup failed" : addr_str);
+      }
       return -1;
     }
     error_string.appfmt("No node defined with id=%d in config file.", node_id);
@@ -3586,12 +4275,11 @@ MgmtSrvr::find_node_type(NodeId node_id,
   if (found_config_hostname)
   {
     char addr_buf[NDB_ADDR_STRLEN];
-    struct in_addr conn_addr =
-      ((struct sockaddr_in*)(client_addr))->sin_addr;
-    char *addr_str = Ndb_inet_ntop(AF_INET,
+    struct in6_addr conn_addr = client_addr->sin6_addr;
+    char *addr_str = Ndb_inet_ntop(AF_INET6,
                                    static_cast<void*>(&conn_addr),
                                    addr_buf,
-                                   (socklen_t)sizeof(addr_buf));
+                                   sizeof(addr_buf));
     error_string.appfmt("Connection done from wrong host ip %s.",
                         (client_addr) ? addr_str : "");
     return -1;
@@ -3605,7 +4293,9 @@ MgmtSrvr::find_node_type(NodeId node_id,
 int
 MgmtSrvr::try_alloc(NodeId id,
                     ndb_mgm_node_type type,
-                    Uint32 timeout_ms)
+                    Uint32 timeout_ms,
+                    int& error_code,
+                    BaseString& error_string)
 {
   assert(type == NDB_MGM_NODE_TYPE_NDB ||
          type == NDB_MGM_NODE_TYPE_API);
@@ -3634,14 +4324,17 @@ MgmtSrvr::try_alloc(NodeId id,
           Have waited long enough time for data nodes to
           decide on a master, return error
         */
-        g_eventLogger->debug("Failed to allocate nodeid %u for API node " \
+        g_eventLogger->debug("Unable to allocate nodeid %u for API node " \
                              "in cluster (retried during %u milliseconds)",
                              id, (unsigned)elapsed);
+        error_string.appfmt("No contact with data nodes to get node id %u",
+                            id);
+        error_code = NDB_MGM_ALLOCID_ERROR;
         return -1;
       }
 
       g_eventLogger->debug("Retrying allocation of nodeid %u...", id);
-      NdbSleep_MilliSleep(100);
+      NdbSleep_MilliSleep(1000);
       continue;
     }
 
@@ -3665,12 +4358,21 @@ MgmtSrvr::try_alloc(NodeId id,
   return 0;
 }
 
-
-bool
+/**
+ * try_alloc_from_list
+ *
+ * returns :
+ *    0 : Nodeid allocated
+ *   -1 : Nodeid not available
+ *   -2 : No contact with cluster
+ */
+int
 MgmtSrvr::try_alloc_from_list(NodeId& nodeid,
                               ndb_mgm_node_type type,
                               Uint32 timeout_ms,
-                              Vector<PossibleNode>& nodes)
+                              const Vector<PossibleNode>& nodes,
+                              int& error_code,
+                              BaseString& error_string)
 {
   for (unsigned i = 0; i < nodes.size(); i++)
   {
@@ -3696,7 +4398,11 @@ MgmtSrvr::try_alloc_from_list(NodeId& nodeid,
     m_reserved_nodes.set(id, timeout_ms);
 
     NdbMutex_Unlock(m_reserved_nodes_mutex);
-    int res = try_alloc(id, type, timeout_ms);
+    int res = try_alloc(id,
+                        type,
+                        timeout_ms,
+                        error_code,
+                        error_string);
     if (res > 0)
     {
       // Nodeid allocation succeeded
@@ -3712,7 +4418,7 @@ MgmtSrvr::try_alloc_from_list(NodeId& nodeid,
         release_local_nodeid_reservation(id);
       }
 
-      return true;
+      return 0; /* Nodeid allocated */
     }
 
     /* Release the local reservation */
@@ -3721,17 +4427,17 @@ MgmtSrvr::try_alloc_from_list(NodeId& nodeid,
     if (res < 0)
     {
       // Don't try any more nodes from the list
-      return false;
+      return -2; /* No contact with cluster */
     }
   }
-  return false;
+  return -1; /* Nodeid not available */
 }
 
 
 bool
 MgmtSrvr::alloc_node_id_impl(NodeId& nodeid,
                              enum ndb_mgm_node_type type,
-                             const struct sockaddr* client_addr,
+                             const sockaddr_in6* client_addr,
                              int& error_code, BaseString& error_string,
                              Uint32 timeout_s)
 {
@@ -3746,7 +4452,6 @@ MgmtSrvr::alloc_node_id_impl(NodeId& nodeid,
     }
     return true;
   }
-
   /* Don't allow allocation of this ndb_mgmd's nodeid */
   assert(_ownNodeId);
   if (nodeid == _ownNodeId)
@@ -3756,10 +4461,10 @@ MgmtSrvr::alloc_node_id_impl(NodeId& nodeid,
     if (type != NDB_MGM_NODE_TYPE_MGM)
     {
       /**
-       * be backwards compatile wrt error messages
+       * be backwards compatible wrt error messages
        */
       BaseString type_string, type_c_string;
-      const char *alias, *str;
+      const char *alias, *str = nullptr;
       alias= ndb_mgm_get_node_type_alias_string(type, &str);
       type_string.assfmt("%s(%s)", alias, str);
       alias= ndb_mgm_get_node_type_alias_string(NDB_MGM_NODE_TYPE_MGM, &str);
@@ -3781,7 +4486,11 @@ MgmtSrvr::alloc_node_id_impl(NodeId& nodeid,
   {
     const NDB_TICKS start = NdbTick_getCurrentTicks();
     BaseString getconfig_message;
-    while (!m_config_manager->get_packed_config(type, 0, getconfig_message))
+    while (!m_config_manager->get_packed_config(type,
+                                                0,
+                                                getconfig_message,
+                                                true,
+                                                nodeid))
     {
       const NDB_TICKS now = NdbTick_getCurrentTicks();
       if (NdbTick_Elapsed(start,now).milliSec() > timeout_ms)
@@ -3796,9 +4505,19 @@ MgmtSrvr::alloc_node_id_impl(NodeId& nodeid,
     }
   }
 
+  // Build list of nodes fom configuration, this is done as a separate step
+  // in order to hold the config mutex only for a short time and also
+  // avoid holding it while resolving addresses.
+  Vector<ConfigNode> config_nodes;
+  if (!build_node_list_from_config(nodeid, type, config_nodes,
+                                   error_code, error_string)) {
+    assert(error_string.length() > 0);
+    return false;
+  }
+
   /* Find possible nodeids */
   Vector<PossibleNode> nodes;
-  if (find_node_type(nodeid, type, client_addr,
+  if (find_node_type(nodeid, type, client_addr, config_nodes,
                      nodes, error_code, error_string))
     return false;
 
@@ -3851,7 +4570,14 @@ MgmtSrvr::alloc_node_id_impl(NodeId& nodeid,
     }
   }
 
-  if (try_alloc_from_list(nodeid, type, timeout_ms, nodes))
+  const int try_alloc_rc =
+    try_alloc_from_list(nodeid,
+                        type,
+                        timeout_ms,
+                        nodes,
+                        error_code,
+                        error_string);
+  if (try_alloc_rc == 0)
   {
     if (type == NDB_MGM_NODE_TYPE_NDB)
     {
@@ -3862,43 +4588,60 @@ MgmtSrvr::alloc_node_id_impl(NodeId& nodeid,
     return true;
   }
 
-  /*
-    there are nodes with correct type available but
-    allocation failed for some reason
-  */
-  if (nodeid)
+
+  if (try_alloc_rc == -1)
   {
-    error_string.appfmt("Id %d already allocated by another node.",
-                        nodeid);
+    /*
+      there are nodes with correct type available but
+      allocation failed for some reason
+    */
+    if (nodeid)
+    {
+      if (error_code == 0)
+      {
+        error_string.appfmt("Id %d already allocated by another node.",
+                            nodeid);
+      }
+    }
+    else
+    {
+      if (error_code == 0)
+      {
+        const char *alias, *str = nullptr;
+        alias = ndb_mgm_get_node_type_alias_string(type, &str);
+        error_string.appfmt("No free node id found for %s(%s).",
+                            alias,
+                            str);
+      }
+    }
+    error_code = NDB_MGM_ALLOCID_ERROR;
   }
   else
   {
-    const char *alias, *str;
-    alias= ndb_mgm_get_node_type_alias_string(type, &str);
-    error_string.appfmt("No free node id found for %s(%s).",
-                        alias, str);
+    assert(try_alloc_rc == -2); /* No contact with cluster */
+    error_string.assfmt("Cluster not ready for nodeid allocation.");
   }
-  error_code = NDB_MGM_ALLOCID_ERROR;
   return false;
 }
 
 
 bool
 MgmtSrvr::alloc_node_id(NodeId& nodeid,
-			enum ndb_mgm_node_type type,
-			const struct sockaddr* client_addr,
-			int& error_code, BaseString& error_string,
+                        enum ndb_mgm_node_type type,
+                        const sockaddr_in6* client_addr,
+                        int& error_code, BaseString& error_string,
                         bool log_event,
                         Uint32 timeout_s)
 {
   char addr_buf[NDB_ADDR_STRLEN];
-  struct in_addr conn_addr = ((sockaddr_in*)client_addr)->sin_addr;
+  struct in6_addr conn_addr = client_addr->sin6_addr;
   const char* type_str = ndb_mgm_get_node_type_string(type);
-  char* addr_str = Ndb_inet_ntop(AF_INET,
+  char* addr_str = Ndb_inet_ntop(AF_INET6,
                                  static_cast<void*>(&conn_addr),
                                  addr_buf,
-                                 (socklen_t)sizeof(addr_buf));
+                                 sizeof(addr_buf));
 
+  error_code = 0;
   g_eventLogger->debug("Trying to allocate nodeid for %s" \
                        "(nodeid: %u, type: %s)",
                        addr_str, (unsigned)nodeid, type_str);
@@ -3916,7 +4659,7 @@ MgmtSrvr::alloc_node_id(NodeId& nodeid,
   if (!log_event)
     return false;
 
-  g_eventLogger->warning("Failed to allocate nodeid for %s at %s. "
+  g_eventLogger->warning("Unable to allocate nodeid for %s at %s. "
                          "Returned error: '%s'",
                          type_str, addr_str, error_string.c_str());
 
@@ -3944,14 +4687,16 @@ MgmtSrvr::getNextNodeId(NodeId * nodeId, enum ndb_mgm_node_type type) const
 #include "Services.hpp"
 
 void
-MgmtSrvr::eventReport(const Uint32 * theData, Uint32 len)
+MgmtSrvr::eventReport(const Uint32 *theSignalData,
+                      Uint32 len,
+                      const Uint32 *theData)
 {
-  const EventReport * const eventReport = (EventReport *)&theData[0];
-  
+  const EventReport* const eventReport = (const EventReport*)&theSignalData[0];
+
   NodeId nodeId = eventReport->getNodeId();
   Ndb_logevent_type type = eventReport->getEventType();
   // Log event
-  g_eventLogger->log(type, theData, len, nodeId, 
+  g_eventLogger->log(type, theData, len, nodeId,
                      &m_event_listner[0].m_logLevel);
   m_event_listner.log(type, theData, len, nodeId);
 }
@@ -3961,7 +4706,10 @@ MgmtSrvr::eventReport(const Uint32 * theData, Uint32 len)
  ***************************************************************************/
 
 int
-MgmtSrvr::startBackup(Uint32& backupId, int waitCompleted, Uint32 input_backupId, Uint32 backuppoint)
+MgmtSrvr::startBackup(Uint32& backupId, int waitCompleted,
+                      Uint32 input_backupId, Uint32 backuppoint,
+                      const char* encryption_password,
+                      Uint32 password_length)
 {
   SignalSender ss(theFacade);
   ss.lock(); // lock will be released on exit
@@ -3979,6 +4727,7 @@ MgmtSrvr::startBackup(Uint32& backupId, int waitCompleted, Uint32 input_backupId
 
   SimpleSignal ssig;
   BackupReq* req = CAST_PTR(BackupReq, ssig.getDataPtrSend());
+  EncryptionKeyMaterial epd;
   /*
    * Single-threaded backup.  Set instance key 1.  In the kernel
    * this maps to main instance 0 or worker instance 1 (if MT LQH).
@@ -4000,6 +4749,50 @@ MgmtSrvr::startBackup(Uint32& backupId, int waitCompleted, Uint32 input_backupId
   req->flags = waitCompleted & 0x3;
   if(backuppoint == 1)
     req->flags |= BackupReq::USE_UNDO_LOG;
+
+  if (encryption_password != nullptr)
+  {
+    if (ndbd_support_backup_file_encryption(
+        getNodeInfo(nodeId).m_info.m_version))
+    {
+      epd.length = password_length;
+      Uint32 section_size;
+      if (ndbd_support_encryption_key_material(
+              getNodeInfo(nodeId).m_info.m_version))
+      {
+        if (password_length > epd.MAX_LENGTH)
+          return BackupRef::EncryptionPasswordTooLong;
+        memcpy(epd.data, encryption_password, password_length);
+        section_size = epd.get_needed_words();
+      }
+      else
+      {
+        /*
+         * For sending to old data nodes, version 8.0.28 and older, password
+         * need to be null-terminated, and also need to have a nul in position
+         * MAX_BACKUP_ENCRYPTION_PASSWORD_LENGTH.
+         * And the section size must be exact
+         * MAX_BACKUP_ENCRYPTION_PASSWORD_LENGTH + 8 bytes.
+         */
+        if (password_length > MAX_BACKUP_ENCRYPTION_PASSWORD_LENGTH)
+          return BackupRef::EncryptionPasswordTooLong;
+        memcpy(epd.data, encryption_password, password_length + 1);
+        epd.data[MAX_BACKUP_ENCRYPTION_PASSWORD_LENGTH] = 0;
+
+        section_size =
+            ndb_ceil_div(4 + MAX_BACKUP_ENCRYPTION_PASSWORD_LENGTH + 4, 4);
+      }
+
+      ssig.ptr[0].p = (Uint32*)&epd;
+      ssig.ptr[0].sz = section_size;
+      ssig.header.m_noOfSections = 1;
+      req->flags |= BackupReq::ENCRYPTED_BACKUP;
+    }
+    else
+    {
+      return BackupRef::EncryptionNotSupported;
+    }
+  }
 
   int do_send = 1;
   while (1) {
@@ -4078,8 +4871,20 @@ MgmtSrvr::startBackup(Uint32& backupId, int waitCompleted, Uint32 input_backupId
       const NodeFailRep * const rep =
 	CAST_CONSTPTR(NodeFailRep, signal->getDataPtr());
       Uint32 len = NodeFailRep::getNodeMaskLength(signal->getLength());
-      assert(len == NodeBitmask::Size); // only full length in ndbapi
-      if (BitmaskImpl::safe_get(len, rep->theAllNodes,nodeId) ||
+      const Uint32* nbm;
+       if (signal->header.m_noOfSections >= 1)
+       {
+         assert (len == 0);
+         nbm = signal->ptr[0].p;
+         len = signal->ptr[0].sz;
+       }
+       else
+       {
+         assert(len == NodeBitmask::Size); // only full length in ndbapi
+         nbm = rep->theAllNodes;
+       }
+
+      if (BitmaskImpl::safe_get(len, nbm, nodeId) ||
 	  waitCompleted == 1)
 	return 1326;
       // wait for next signal
@@ -4178,7 +4983,7 @@ MgmtSrvr::setDbParameter(int node, int param, const char * value,
 
   int p_type;
   unsigned val_32;
-  Uint64 val_64;
+  Uint64 val_64 = 0;
   const char * val_char;
   do {
     p_type = 0;
@@ -4213,7 +5018,7 @@ MgmtSrvr::setDbParameter(int node, int param, const char * value,
     ret = iter.get(CFG_NODE_ID, &node);
     assert(ret == 0);
 
-    ConfigValues::Iterator i2(m_local_config->m_configValues->m_config, 
+    ConfigValues::Iterator i2(m_local_config->m_configuration->m_config_values, 
 			      iter.m_config);
     switch(p_type){
     case 0:
@@ -4231,7 +5036,7 @@ MgmtSrvr::setDbParameter(int node, int param, const char * value,
     default:
       require(false);
     }
-    assert(res);
+    require(res);
   } while(node == 0 && iter.next() == 0);
 
   msg.assign("Success");
@@ -4303,7 +5108,8 @@ MgmtSrvr::transporter_connect(NDB_SOCKET_TYPE sockfd,
 {
   DBUG_ENTER("MgmtSrvr::transporter_connect");
   TransporterRegistry* tr= theFacade->get_registry();
-  if (!tr->connect_server(sockfd, msg, close_with_reset))
+  bool dummy_log_failure = false;
+  if (!tr->connect_server(sockfd, msg, close_with_reset, dummy_log_failure))
     DBUG_RETURN(false);
 
   /**
@@ -4325,7 +5131,7 @@ bool MgmtSrvr::connect_to_self()
   BaseString buf;
   NdbMgmHandle mgm_handle= ndb_mgm_create_handle();
 
-  buf.assfmt("%s:%u",
+  buf.assfmt("%s %u",
              m_opts.bind_address ? m_opts.bind_address : "localhost",
              m_port);
   ndb_mgm_set_connectstring(mgm_handle, buf.c_str());
@@ -4351,16 +5157,6 @@ MgmtSrvr::change_config(Config& new_config, BaseString& msg)
   SignalSender ss(theFacade);
   ss.lock();
 
-  SimpleSignal ssig;
-  UtilBuffer buf;
-  new_config.pack(buf);
-  ssig.ptr[0].p = (Uint32*)buf.get_data();
-  ssig.ptr[0].sz = (buf.length() + 3) / 4;
-  ssig.header.m_noOfSections = 1;
-
-  ConfigChangeReq *req= CAST_PTR(ConfigChangeReq, ssig.getDataPtrSend());
-  req->length = buf.length();
-
   NodeBitmask mgm_nodes;
   {
     Guard g(m_local_config_mutex);
@@ -4373,6 +5169,21 @@ MgmtSrvr::change_config(Config& new_config, BaseString& msg)
     msg = "INTERNAL ERROR Could not find any mgmd!";
     return false;
   }
+
+  bool v2;
+  {
+    const trp_node node = ss.getNodeInfo(nodeId);
+    v2 = ndb_config_version_v2(node.m_info.m_version);
+  }
+  SimpleSignal ssig;
+  UtilBuffer buf;
+  new_config.pack(buf, v2);
+  ssig.ptr[0].p = (Uint32*)buf.get_data();
+  ssig.ptr[0].sz = (buf.length() + 3) / 4;
+  ssig.header.m_noOfSections = 1;
+
+  ConfigChangeReq *req= CAST_PTR(ConfigChangeReq, ssig.getDataPtrSend());
+  req->length = buf.length();
 
   if (ss.sendFragmentedSignal(nodeId, ssig,
                               MGM_CONFIG_MAN, GSN_CONFIG_CHANGE_REQ,
@@ -4400,7 +5211,8 @@ MgmtSrvr::change_config(Config& new_config, BaseString& msg)
       g_eventLogger->debug("Got CONFIG_CHANGE_REF, error: %d", ref->errorCode);
       switch(ref->errorCode)
       {
-      case ConfigChangeRef::NotMaster:{
+      case ConfigChangeRef::NotMaster:
+      {
         // Retry with next node if any
         NodeId nodeId= ss.find_confirmed_node(mgm_nodes);
         if (nodeId == 0)
@@ -4408,7 +5220,23 @@ MgmtSrvr::change_config(Config& new_config, BaseString& msg)
           msg = "INTERNAL ERROR Could not find any mgmd!";
           return false;
         }
-
+        {
+          const trp_node node = ss.getNodeInfo(nodeId);
+          bool v2_new = ndb_config_version_v2(node.m_info.m_version);
+          if (v2 != v2_new)
+          {
+            /**
+             * Free old buffer and create a new one.
+             */
+            buf.assign(nullptr, 0);
+            require(new_config.pack(buf, v2_new));
+            v2 = v2_new;
+          }
+        }
+        req->length = buf.length();
+        ssig.ptr[0].p = (Uint32*)buf.get_data();
+        ssig.ptr[0].sz = (buf.length() + 3) / 4;
+        ssig.header.m_noOfSections = 1;
         if (ss.sendFragmentedSignal(nodeId, ssig,
                                     MGM_CONFIG_MAN, GSN_CONFIG_CHANGE_REQ,
                                     ConfigChangeReq::SignalLength) != 0)
@@ -4523,9 +5351,12 @@ MgmtSrvr::reload_config(const char* config_filename, bool mycnf,
     }
   }
 
-  Config* new_conf_ptr;
-  if ((new_conf_ptr= ConfigManager::load_config(config_filename,
-                                                mycnf, msg)) == NULL)
+  Config* new_conf_ptr =
+      ConfigManager::load_config(config_filename,
+                                 mycnf,
+                                 msg,
+                                 m_opts.cluster_config_suffix);
+  if (new_conf_ptr == nullptr)
     return false;
   Config new_conf(new_conf_ptr);
 
@@ -4576,13 +5407,6 @@ MgmtSrvr::show_variables(NdbOut& out)
 void
 MgmtSrvr::make_sync_req(SignalSender& ss, Uint32 nodeId)
 {
-  const trp_node node = ss.getNodeInfo(nodeId);
-  if (!ndbd_sync_req_support(node.m_info.m_version))
-  {
-    /* The node hasn't got SYNC_REQ support */
-    return;
-  }
-
   /**
    * This subroutine is used to make a async request(error insert/dump)
    *   "more" syncronous, i.e increasing the likelyhood that
@@ -4626,8 +5450,20 @@ MgmtSrvr::make_sync_req(SignalSender& ss, Uint32 nodeId)
       const NodeFailRep * const rep =
 	CAST_CONSTPTR(NodeFailRep, signal->getDataPtr());
       Uint32 len = NodeFailRep::getNodeMaskLength(signal->getLength());
-      assert(len == NodeBitmask::Size); // only full length in ndbapi
-      if (BitmaskImpl::safe_get(len, rep->theAllNodes,nodeId))
+      const Uint32* nbm;
+       if (signal->header.m_noOfSections >= 1)
+       {
+         assert (len == 0);
+         nbm = signal->ptr[0].p;
+         len = signal->ptr[0].sz;
+       }
+       else
+       {
+         assert(len == NodeBitmask::Size); // only full length in ndbapi
+         nbm = rep->theAllNodes;
+       }
+
+      if (BitmaskImpl::safe_get(len, nbm, nodeId))
 	return;
       break;
     }
@@ -4694,6 +5530,10 @@ MgmtSrvr::request_events(NdbNodeBitmask nodes, Uint32 reports_per_node,
     SimpleSignal *signal = ss.waitFor();
     switch (signal->readSignalNumber()) {
     case GSN_EVENT_REP:{
+      /**
+       * This EVENT_REP receives all infoEvent and eventLog messages that
+       * ARE generated through a DUMP command.
+       */
       const NodeId nodeid = refToNode(signal->header.theSendersBlockRef);
       const EventReport * const event =
         (const EventReport*)signal->getDataPtr();
@@ -4731,10 +5571,19 @@ MgmtSrvr::request_events(NdbNodeBitmask nodes, Uint32 reports_per_node,
     case GSN_NODE_FAILREP:{
       const NodeFailRep * const rep =
         (const NodeFailRep*)signal->getDataPtr();
+      const Uint32* theNodes = NULL;
+      if (signal->header.m_noOfSections >= 1)
+      {
+        theNodes = signal->ptr[0].p;
+      }
+      else
+      {
+        theNodes = rep->theNodes;
+      }
       // only care about data-nodes
       for (NodeId i = 1; i < MAX_NDB_NODES; i++)
       {
-        if (NdbNodeBitmask::get(rep->theNodes, i))
+        if (NdbNodeBitmask::get(theNodes, i))
         {
           nodes.clear(i);
 

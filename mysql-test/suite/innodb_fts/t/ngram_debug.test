@@ -3,12 +3,9 @@
 #
 #
 
---source include/have_innodb.inc
 
 # Must have debug code to use SET DEBUG
 --source include/have_debug.inc
-# Embedded server does not support restarting
---source include/not_embedded.inc
 
 # Enable diag print to print query parse tree
 SET GLOBAL innodb_ft_enable_diag_print = 1;
@@ -44,6 +41,7 @@ SELECT * FROM articles WHERE
 SELECT * FROM articles WHERE
 	MATCH(title) AGAINST('+(mind thing) -idea' IN BOOLEAN MODE);
 
+--sorted_result
 SELECT * FROM articles WHERE
 	MATCH(title) AGAINST('mysql');
 
@@ -60,7 +58,7 @@ SET DEBUG="-d,fts_instrument_ignore_ngram_check";
 
 DROP TABLE articles;
 
-SET NAMES utf8;
+SET NAMES utf8mb4;
 
 -- echo # Test Case 2: Test Stopwords
 # Compare with results without stopword check.
@@ -82,6 +80,7 @@ INSERT INTO articles (title, body) VALUES
   ('要想将数据添加到数据库','或访问、处理计算机数据库中保存的数据'),
   ('数据库是数据的结构化集合','它可以是任何东西');
 
+--sorted_result
 SELECT * FROM articles WHERE
 	MATCH(title, body) AGAINST('的* 或* 东西' IN BOOLEAN MODE);
 
@@ -142,6 +141,7 @@ SELECT * FROM articles WHERE
 	MATCH(title, body) AGAINST('"ab"' );
 SELECT * FROM articles WHERE
 	MATCH(title, body) AGAINST('数据 +ab' IN BOOLEAN MODE);
+--sorted_result
 SELECT * FROM articles WHERE
 	MATCH(title, body) AGAINST('数据 (+xyz -bc)' IN BOOLEAN MODE);
 

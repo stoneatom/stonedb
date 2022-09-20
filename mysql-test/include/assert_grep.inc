@@ -103,7 +103,8 @@ if ($assert_match != '')
   open(FILE, "$file") or die("Error $? opening $file: $!\n");
   while (<FILE>) {
     my $line = $_;
-    if ($assert_only_after && $line =~ /$assert_only_after/) {
+    if (($line =~ /^CURRENT_TEST: /) ||
+        ($assert_only_after && $line =~ /$assert_only_after/)) {
       $result = "";
       $count = 0;
     }
@@ -153,6 +154,6 @@ if ($_ag_outcome != 'assert_grep.inc ok')
   --die assert_grep.inc failed.
 }
 
-
+--remove_file $_AG_OUT
 --let $include_filename= include/assert_grep.inc [$assert_text]
 --source include/end_include_file.inc

@@ -196,7 +196,7 @@ void PrintItemTree(Item *item, int indent) {
       break;
   }
   std::fprintf(stderr, "%s %s @%p %s %s max_length=%d", name, item->full_name(), (void *)item,
-               FieldType(item->field_type()), result, item->max_length);
+               FieldType(item->data_type()), result, item->max_length); // stonedb8 item::field_type()->data_type()
 
   if (item->result_type() == DECIMAL_RESULT)
     std::fprintf(stderr, " [prec=%d,dec=%d,int=%d]", item->decimal_precision(), (int)item->decimals,
@@ -210,7 +210,7 @@ void PrintItemTree(Item *item, int indent) {
       String str;
       // GA, print function takes extra argument but do not use it in the base
       // class.
-      func->print(&str, QT_ORDINARY);
+      // func->print(&str, QT_ORDINARY); // stonedb8
       std::fprintf(stderr, " f contents: %s\n", str.c_ptr_safe());
 
       Item **args = func->arguments();
@@ -239,7 +239,7 @@ void PrintItemTree(Item *item, int indent) {
 
       std::fprintf(stderr, "  %s\n", sumname);
 
-      uint args_count = sum_func->get_arg_count();
+      uint args_count = sum_func->argument_count(); // stonedb8
       for (uint i = 0; i < args_count; i++) PrintItemTree(sum_func->get_arg(i), indent);
       return;
     }

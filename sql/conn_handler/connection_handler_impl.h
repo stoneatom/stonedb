@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2013, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2013, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -25,11 +25,11 @@
 #ifndef CONNECTION_HANDLER_IMPL_INCLUDED
 #define CONNECTION_HANDLER_IMPL_INCLUDED
 
-#include "my_global.h"
-#include "mysql/psi/mysql_thread.h" // mysql_mutex_t
-#include "connection_handler.h"     // Connection_handler
-
 #include <list>
+
+#include "mysql/psi/mysql_cond.h"                 // mysql_cond_t
+#include "mysql/psi/mysql_mutex.h"                // mysql_mutex_t
+#include "sql/conn_handler/connection_handler.h"  // Connection_handler
 
 class Channel_info;
 class THD;
@@ -38,11 +38,10 @@ class THD;
   This class represents the connection handling functionality
   that each connection is being handled in a single thread
 */
-class Per_thread_connection_handler : public Connection_handler
-{
-  Per_thread_connection_handler(const Per_thread_connection_handler&);
-  Per_thread_connection_handler&
-    operator=(const Per_thread_connection_handler&);
+class Per_thread_connection_handler : public Connection_handler {
+  Per_thread_connection_handler(const Per_thread_connection_handler &);
+  Per_thread_connection_handler &operator=(
+      const Per_thread_connection_handler &);
 
   /**
     Check if idle threads to handle connection in
@@ -51,22 +50,23 @@ class Per_thread_connection_handler : public Connection_handler
 
     @retval false if idle pthread was found, else true.
   */
-  bool check_idle_thread_and_enqueue_connection(Channel_info* channel_info);
+  bool check_idle_thread_and_enqueue_connection(Channel_info *channel_info);
 
   /**
     List of pending channel info objects to be picked by idle
     threads. Protected by LOCK_thread_cache.
   */
-  static std::list<Channel_info*> *waiting_channel_info_list;
+  static std::list<Channel_info *> *waiting_channel_info_list;
 
   static mysql_mutex_t LOCK_thread_cache;
   static mysql_cond_t COND_thread_cache;
   static mysql_cond_t COND_flush_thread_cache;
 
-public:
+ public:
   // Status variables related to Per_thread_connection_handler
-  static ulong blocked_pthread_count;    // Protected by LOCK_thread_cache.
+  static ulong blocked_pthread_count;  // Protected by LOCK_thread_cache.
   static ulong slow_launch_threads;
+  static bool shrink_cache;  // Protected by LOCK_thread_cache
   // System variable
   static ulong max_blocked_pthreads;
 
@@ -81,36 +81,41 @@ public:
   /**
     Block until a new connection arrives.
   */
-  static Channel_info* block_until_new_connection();
+  static Channel_info *block_until_new_connection();
 
-  Per_thread_connection_handler() {}
-  virtual ~Per_thread_connection_handler() { }
+  /**
+    Modify the thread cache size.
 
-protected:
-  virtual bool add_connection(Channel_info* channel_info);
+    @param thread_cache_size size of thread cache.
+  */
+  static void modify_thread_cache_size(const ulong thread_cache_size);
 
-  virtual uint get_max_threads() const;
+  Per_thread_connection_handler() = default;
+  ~Per_thread_connection_handler() override = default;
+
+ protected:
+  bool add_connection(Channel_info *channel_info) override;
+
+  uint get_max_threads() const override;
 };
-
 
 /**
   This class represents the connection handling functionality
   of all connections being handled in a single worker thread.
 */
-class One_thread_connection_handler : public Connection_handler
-{
-  One_thread_connection_handler(const One_thread_connection_handler&);
-  One_thread_connection_handler&
-    operator=(const One_thread_connection_handler&);
+class One_thread_connection_handler : public Connection_handler {
+  One_thread_connection_handler(const One_thread_connection_handler &);
+  One_thread_connection_handler &operator=(
+      const One_thread_connection_handler &);
 
-public:
-  One_thread_connection_handler() {}
-  virtual ~One_thread_connection_handler() {}
+ public:
+  One_thread_connection_handler() = default;
+  ~One_thread_connection_handler() override = default;
 
-protected:
-  virtual bool add_connection(Channel_info* channel_info);
+ protected:
+  bool add_connection(Channel_info *channel_info) override;
 
-  virtual uint get_max_threads() const { return 1; }
+  uint get_max_threads() const override { return 1; }
 };
 
-#endif // CONNECTION_HANDLER_IMPL_INCLUDED
+#endif  // CONNECTION_HANDLER_IMPL_INCLUDED

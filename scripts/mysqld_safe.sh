@@ -195,6 +195,7 @@ eval_log_error () {
   esac
 
   #echo "Running mysqld: [$cmd]"
+  cmd="env MYSQLD_PARENT_PID=$$ $cmd"
   eval "$cmd"
 }
 
@@ -588,11 +589,37 @@ then
     err_log_append="$err_log"
     case "$err_log" in
       /* ) ;;
+      ./*|../*)
+          # Preparing absolute path from the relative path value specified for the
+          # --log-error argument.
+          #
+          # Absolute path will be prepared for the value of following form
+          #    ./bar/foo OR
+          #   ../old_bar/foo
+          # for --log-error argument.
+          #
+          # Note: If directory of log file name does not exists or
+          #       if write or execute permissions are missing on directory then
+          #       --log-error is set  $DATADIR/`hostname`.err
+
+          log_dir_name="$(dirname "$err_log")";
+          if [ ! -d "$log_dir_name" ]
+          then
+            log_notice "Directory "$log_dir_name" does not exists.";
+            err_log=$DATADIR/`hostname`.err
+          elif [ ! -x "$log_dir_name" -o ! -w "$log_dir_name" ]
+          then
+            log_notice "Do not have Execute or Write permissions on directory "$log_dir_name".";
+            err_log=$DATADIR/`hostname`.err
+          else
+            err_log=$(cd $log_dir_name && pwd -P)/$(basename "$err_log")
+          fi
+          ;;
       * ) err_log="$DATADIR/$err_log" ;;
     esac
   else
-    err_log=$DATADIR/`@HOSTNAME@`.err
-    err_log_append=`@HOSTNAME@`.err
+    err_log=$DATADIR/`hostname`.err
+    err_log_append=`hostname`.err
   fi
 
   append_arg_to_args "--log-error=$err_log_append"
@@ -692,8 +719,8 @@ fi
 
 if test -z "$pid_file"
 then
-  pid_file="$DATADIR/`@HOSTNAME@`.pid"
-  pid_file_append="`@HOSTNAME@`.pid"
+  pid_file="$DATADIR/`hostname`.pid"
+  pid_file_append="`hostname`.pid"
 else
   pid_file_append="$pid_file"
   case "$pid_file" in
@@ -850,16 +877,20 @@ log_notice "Starting $MYSQLD daemon with databases from $DATADIR"
 
 # variable to track the current number of "fast" (a.k.a. subsecond) restarts
 fast_restart=0
-# maximum number of restarts before trottling kicks in
+# maximum number of restarts before throttling kicks in
 max_fast_restarts=5
 # flag whether a usable sleep command exists
 have_sleep=1
-
 while true
 do
   start_time=`date +%M%S`
-
   eval_log_error "$cmd"
+  if [ $? -eq 16 ] ; then
+    dont_restart_mysqld=false
+    echo "Restarting mysqld..."
+  else
+    dont_restart_mysqld=true
+  fi
 
   # hypothetical: log was renamed but not
   # flushed yet. we'd recreate it with
@@ -889,15 +920,17 @@ do
 
   end_time=`date +%M%S`
 
-  if test ! -f "$pid_file"		# This is removed if normal shutdown
-  then
-    break
-  else                                  # self's mysqld crashed or other's mysqld running
-    PID=`cat "$pid_file"`
-    if @CHECK_PID@
-    then                                # true when above pid belongs to a running mysqld process
-      log_error "A mysqld process with pid=$PID is already running. Aborting!!"
-      exit 1
+  if $dont_restart_mysqld; then
+    if test ! -f "$pid_file"		# This is removed if normal shutdown
+    then
+      break
+    else                                  # self's mysqld crashed or other's mysqld running
+        PID=`cat "$pid_file"`
+        if @CHECK_PID@
+        then                                # true when above pid belongs to a running mysqld process
+          log_error "A mysqld process with pid=$PID is already running. Aborting!!"
+          exit 1
+        fi
     fi
   fi
 
@@ -922,7 +955,7 @@ do
         sleep_state=$?
         if test $sleep_state -gt 0
         then
-          log_notice "The server is respawning too fast and no working sleep command. Turning off trottling."
+          log_notice "The server is respawning too fast and in addition no working 'sleep' command was found. Turning off throttling."
           have_sleep=0
         fi
 

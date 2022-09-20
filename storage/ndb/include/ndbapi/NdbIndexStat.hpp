@@ -1,6 +1,5 @@
 /*
-   Copyright (c) 2005, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+   Copyright (c) 2005, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -47,10 +46,6 @@ class NdbIndexStat {
 public:
   NdbIndexStat();
   ~NdbIndexStat();
-
-  // dummy defs to make handler compile at "ndb api" patch level
-  int alloc_cache(Uint32 entries) { return 0; }
-  enum { RR_UseDb = 1, RR_NoUpdate = 2 };
 
   /*
    * Get latest error.  Can be printed like any NdbError instance and
@@ -101,6 +96,7 @@ public:
    */
 
   enum {
+    InvalidKeySize = 911, // index has an unsupported key size
     NoSysTables = 4714,   // all sys tables missing
     NoIndexStats = 4715,  // given index has no stored stats
     UsageError = 4716,    // wrong state, invalid input
@@ -331,6 +327,12 @@ public:
   static void get_empty(const Stat& stat, bool* empty);
 
   /*
+   * Get number of rows the statistcs is sampled over.
+   * Could be used as a metric for the quality of the statistic.
+   */
+  static void get_numrows(const Stat& stat, Uint32* rows);
+
+  /*
    * Get estimated RIR (records in range).  Value is always >= 1.0 since
    * no exact 0 rows can be returned.
    */
@@ -340,7 +342,16 @@ public:
    * Get estimated RPK (records per key) at given level k (from 0 to
    * NK-1 where NK = number of index keys).  Value is >= 1.0.
    */
-  static void get_rpk(const Stat& stat, Uint32 k, double* rpk);
+  static void get_rpk(const Stat& stat,
+                      Uint32 k,
+                      double* rpk);
+  /*
+   * Similar as above, with the range being 'pruned' to a single
+   * fragment due the entire partitioned key being specified.
+   */
+  static void get_rpk_pruned(const Stat& stat,
+                             Uint32 k,
+                             double* rpk);
 
   /*
    * Get a short string summarizing the rules used.
@@ -362,6 +373,11 @@ public:
   int create_listener(Ndb* ndb);
 
   /*
+   * Check if the listener has been created.
+   */
+  bool has_listener() const;
+
+  /*
    * Start listening for events (call NdbEventOperation::execute).
    */
   int execute_listener(Ndb* ndb);
@@ -380,7 +396,7 @@ public:
   int next_listener(Ndb* ndb);
 
   /*
-   * Drop the listener.
+   * Drop the listener if it exists.  Always succeeds.
    */
   int drop_listener(Ndb* ndb);
 

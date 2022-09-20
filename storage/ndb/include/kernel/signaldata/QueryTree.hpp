@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2004, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2004, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -40,14 +40,21 @@ struct QueryNode  // Effectively used as a base class for QN_xxxNode
 
   enum OpType
   {
-    QN_LOOKUP     = 0x1,
-    QN_SCAN_FRAG  = 0x2,
-    QN_SCAN_INDEX = 0x3,
+    QN_LOOKUP        = 0x1,
+    QN_SCAN_FRAG_v1  = 0x2,  //deprecated
+    QN_SCAN_INDEX_v1 = 0x3,  //deprecated
+    QN_SCAN_FRAG     = 0x4,  //Replaces both SCAN_*_v1's above
     QN_END = 0
   };
 
   static Uint32 getOpType(Uint32 op_len) { return op_len & 0xFFFF;}
   static Uint32 getLength(Uint32 op_len) { return op_len >> 16;}
+
+  static const QueryNode* nextQueryNode(const QueryNode* node)
+  {
+    const Uint32 len = QueryNode::getLength(node->len);
+    return (const QueryNode *)((const Uint32 *)node + len);
+  }
 
   static void setOpLen(Uint32 &d, Uint32 o, Uint32 l) { d = (l << 16) | o;}
 
@@ -65,9 +72,10 @@ struct QueryNodeParameters  // Effectively used as a base class for QN_xxxParame
 
   enum OpType
   {
-    QN_LOOKUP     = 0x1,
-    QN_SCAN_FRAG  = 0x2,
-    QN_SCAN_INDEX = 0x3,
+    QN_LOOKUP        = 0x1,
+    QN_SCAN_FRAG_v1  = 0x2,  //deprecated
+    QN_SCAN_INDEX_v1 = 0x3,  //deprecated
+    QN_SCAN_FRAG     = 0x4,  //Replaces both SCAN_*_v1's above
     QN_END = 0
   };
 
@@ -99,7 +107,7 @@ struct DABits
     NI_LINKED_ATTR    = 0x10,  // List of attributes to be used by children
 
     NI_ATTR_INTERPRET = 0x20,  // Is attr-info a interpreted program
-    NI_ATTR_PARAMS    = 0x40,  // Does attrinfo contain parameters
+    //NI_ATTR_PARAMS    = 0x40,  // Does attrinfo contain parameters
     NI_ATTR_LINKED    = 0x80,  // Does attrinfo contain linked values
 
     /**
@@ -120,6 +128,33 @@ struct DABits
      */
     NI_REPEAT_SCAN_RESULT = 0x200,
 
+    /**
+     * If INNER_JOIN is set, we need only to return rows if there
+     * is a (equality-) match on both tables.
+     * For non-matches the parent tuple will eventually be removed from the
+     * result set. This implies that other join-siblings of this parent
+     * tuple also will effectively be eliminated. Thus, producing further
+     * results having this tuple as a parent could be skipped.
+     *
+     * In Sql terms this is an INNER JOIN. Not setting an INNER_JOIN 
+     * is similar to 'LEFT OUTER JOIN' result being produced.
+     */
+    NI_INNER_JOIN = 0x400,
+
+    /**
+     * A FIRST_MATCH may return only a single matching row for each
+     * key / range specified.
+     */
+    NI_FIRST_MATCH = 0x800,
+
+    /**
+     * A ANTI_JOIN return only the rows not having a match on the right side.
+     * .. it is the inverse of NI_INNER_JOIN.
+     * It also implies FIRST_MATCH like behaviour as we can conclude that
+     * the row should not be returned as soon as a FIRST_MATCH has been found.
+     */
+    NI_ANTI_JOIN = 0x1000,
+
     NI_END = 0
   };
 
@@ -134,7 +169,7 @@ struct DABits
     /**
      * These 2 must match their resp. QueryNode-definitions
      */
-    PI_ATTR_PARAMS = 0x2, // attr-info parameters (NI_ATTR_PARAMS)
+    //PI_ATTR_PARAMS = 0x2, // attr-info parameters (NI_ATTR_PARAMS)
     PI_KEY_PARAMS  = 0x4, // key-info parameters  (NI_KEY_PARAMS)
 
     /**
@@ -163,7 +198,7 @@ struct QN_LookupNode // Is a QueryNode subclass
   Uint32 requestInfo;
   Uint32 tableId;      // 16-bit
   Uint32 tableVersion;
-  STATIC_CONST ( NodeSize = 4 );
+  static constexpr Uint32 NodeSize = 4;
 
   /**
    * See DABits::NodeInfoBits
@@ -193,7 +228,7 @@ struct QN_LookupParameters // Is a QueryNodeParameters subclass
   Uint32 len;
   Uint32 requestInfo;
   Uint32 resultData;   // Api connect ptr
-  STATIC_CONST ( NodeSize = 3 );
+  static constexpr Uint32 NodeSize = 3;
 
   /**
    * See DABits::ParamInfoBits
@@ -202,15 +237,15 @@ struct QN_LookupParameters // Is a QueryNodeParameters subclass
 };
 
 /**
- * This node describes a table/index-fragment scan
+ * This node describes a table/index-fragment scan, Deprecated
  */
-struct QN_ScanFragNode // Is a QueryNode subclass
+struct QN_ScanFragNode_v1 // Is a QueryNode subclass
 {
   Uint32 len;
   Uint32 requestInfo;
   Uint32 tableId;      // 16-bit
   Uint32 tableVersion;
-  STATIC_CONST ( NodeSize = 4 );
+  static constexpr Uint32 NodeSize = 4;
 
   /**
    * See DABits::NodeInfoBits
@@ -220,14 +255,14 @@ struct QN_ScanFragNode // Is a QueryNode subclass
 
 /**
  * This struct describes parameters that are associated with
- *  a QN_ScanFragNode
+ *  a QN_ScanFragNode. Deprecated, was used for QN_SCAN_FRAG_v1
  */
-struct QN_ScanFragParameters // Is a QueryNodeParameters subclass
+struct QN_ScanFragParameters_v1 // Is a QueryNodeParameters subclass
 {
   Uint32 len;
   Uint32 requestInfo;
   Uint32 resultData;   // Api connect ptr
-  STATIC_CONST ( NodeSize = 3 );
+  static constexpr Uint32 NodeSize = 3;
 
   /**
    * See DABits::ParamInfoBits
@@ -236,15 +271,15 @@ struct QN_ScanFragParameters // Is a QueryNodeParameters subclass
 };
 
 /**
- * This node describes a IndexScan
+ * This node describes a IndexScan, Deprecated
  */
-struct QN_ScanIndexNode
+struct QN_ScanIndexNode_v1
 {
   Uint32 len;
   Uint32 requestInfo;
   Uint32 tableId;      // 16-bit
   Uint32 tableVersion;
-  STATIC_CONST( NodeSize = 4 );
+  static constexpr Uint32 NodeSize = 4;
 
   enum ScanIndexBits
   {
@@ -275,17 +310,17 @@ struct QN_ScanIndexNode
 
 /**
  * This struct describes parameters that are associated with
- *  a QN_ScanIndexNode
+ *  a QN_ScanIndexNode. Deprecated, was used with QN_SCAN_INDEX_v1
  */
-struct QN_ScanIndexParameters
+struct QN_ScanIndexParameters_v1
 {
   Uint32 len;
   Uint32 requestInfo;
   Uint32 batchSize;    // (bytes << 11) | (rows)
   Uint32 resultData;   // Api connect ptr
-  STATIC_CONST ( NodeSize = 4 );
+  static constexpr Uint32 NodeSize = 4;
   // Number of bits for representing row count in 'batchSize'.
-  STATIC_CONST ( BatchRowBits = 11 );
+  static constexpr Uint32 BatchRowBits = 11;
 
   enum ScanIndexParamBits
   {
@@ -309,6 +344,94 @@ struct QN_ScanIndexParameters
    */
   Uint32 optional[1];
 };
+
+
+/**
+ * This node describes a Fragment scan (QN_SCAN_FRAG)
+ */
+struct QN_ScanFragNode // Note: Same layout as old QN_ScanIndexNode_v1
+{
+  Uint32 len;
+  Uint32 requestInfo;
+  Uint32 tableId;      // 16-bit
+  Uint32 tableVersion;
+  static constexpr Uint32 NodeSize = 4;
+
+  enum ScanFragBits    // Note: Same enum as old ScanIndexBits_v1
+  {
+    /**
+     * If doing equality search that can be pruned
+     *   a pattern that creates the key to hash with is stored before
+     *   the DA optional part
+     */
+    SF_PRUNE_PATTERN = 0x10000,
+
+    // Do pattern contain parameters
+    SF_PRUNE_PARAMS = 0x20000,
+
+    // Is prune pattern dependant on parent key (or only on parameters / constants)
+    SF_PRUNE_LINKED = 0x40000,
+
+    // Should it be parallel scan (can also be set as in parameters)
+    SF_PARALLEL = 0x80000,
+
+    SF_END = 0
+  };
+
+  /**
+   * See DABits::NodeInfoBits
+   */
+  Uint32 optional[1];
+};
+
+/**
+ * This struct describes parameters that are associated with
+ *  the new QN_ScanFragNode. (QN_SCAN_FRAG)
+ */
+struct QN_ScanFragParameters
+{
+  Uint32 len;
+  Uint32 requestInfo;
+  Uint32 resultData;   // Api connect ptr
+  Uint32 batch_size_rows;
+  Uint32 batch_size_bytes;
+
+  Uint32 unused0;      // Future
+  Uint32 unused1;
+  Uint32 unused2;
+
+  static constexpr Uint32 NodeSize = 8;
+
+  enum ScanFragParamBits
+  {
+    /**
+     * Do arguments contain parameters for prune-pattern
+     */
+    SFP_PRUNE_PARAMS = 0x10000,
+
+    /**
+     * Should it scan fragments in parallel
+     *   This is needed for "multi-cursor" semantics
+     *   with (partial) ordering
+     */
+    SFP_PARALLEL = 0x20000,
+
+    /**
+     * Should it produce result rows strictly in
+     *   the order defined by the ordered index being used.
+     *   (Also require SFP_PARALLEL)
+     */
+    SFP_SORTED_ORDER = 0x40000,
+
+    SFP_END = 0
+  };
+
+  /**
+   * See DABits::ParamInfoBits
+   */
+  Uint32 optional[1];
+};
+
 
 /**
  * This is the definition of a QueryTree

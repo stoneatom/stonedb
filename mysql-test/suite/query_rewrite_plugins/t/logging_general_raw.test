@@ -2,6 +2,9 @@
 --echo # Test of how rewritten queries are logged with --log-raw logging.
 --echo #
 
+# X plugin might add rows to general_log
+--source include/xplugin_wait_for_interfaces.inc
+
 --source suite/query_rewrite_plugins/include/have_plugin_rewriter.inc
 --source suite/query_rewrite_plugins/include/install_rewriter.inc
 
@@ -18,3 +21,5 @@ SELECT 'The_original_query';
 
 --source suite/query_rewrite_plugins/include/uninstall_rewriter.inc
 --remove_file $MYSQLTEST_VARDIR/log/rewrite_general.log
+
+--source suite/query_rewrite_plugins/include/restore_general_log.inc

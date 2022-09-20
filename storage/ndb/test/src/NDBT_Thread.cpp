@@ -1,6 +1,5 @@
 /*
-   Copyright (c) 2007, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+   Copyright (c) 2007, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -23,6 +22,7 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
+#include "util/require.h"
 #include <ndb_global.h>
 #include <NDBT_Thread.hpp>
 #include <NdbApi.hpp>
@@ -82,6 +82,8 @@ NDBT_Thread::~NDBT_Thread()
     NdbMutex_Destroy(m_mutex);
     m_mutex = 0;
   }
+
+  disconnect();
 }
 
 void*
@@ -119,6 +121,7 @@ void
 NDBT_Thread::start()
 {
   lock();
+  clear_err();
   m_state = Start;
   signal();
   unlock();

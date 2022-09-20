@@ -1,6 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
-    All rights reserved. Use is subject to license terms.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -24,6 +23,8 @@
 */
 
 #include "ConsoleLogHandler.hpp"
+
+#include <time.h>
 
 ConsoleLogHandler::ConsoleLogHandler(NdbOut& out)
  : LogHandler(), _out(out)
@@ -57,10 +58,11 @@ ConsoleLogHandler::is_open()
 // PROTECTED
 //
 void 
-ConsoleLogHandler::writeHeader(const char* pCategory, Logger::LoggerLevel level)
+ConsoleLogHandler::writeHeader(const char* pCategory, Logger::LoggerLevel level,
+                               time_t now)
 {
-  char str[LogHandler::MAX_HEADER_LENGTH];
-  _out << getDefaultHeader(str, pCategory, level);	
+  char str[MAX_HEADER_LENGTH];
+  _out << getDefaultHeader(str, pCategory, level, now);
 }
 
 void 
@@ -77,6 +79,7 @@ ConsoleLogHandler::writeFooter()
 
   
 bool
-ConsoleLogHandler::setParam(const BaseString &param, const BaseString &value) {
+ConsoleLogHandler::setParam(const BaseString &/*param*/,
+			    const BaseString &/*value*/) {
   return false;
 }

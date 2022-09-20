@@ -1,4 +1,4 @@
-/* Copyright (c) 2006, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2006, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -21,67 +21,67 @@
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 */
 
-#include "my_config.h"
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include <stddef.h>
 
-#include "parsertest.h"
-#include "test_utils.h"
-#include "select_lex_visitor.h"
-#include "sql_optimizer.h"
-#include "sql_lex.h"
+#include "my_inttypes.h"
+#include "sql/current_thd.h"
+#include "sql/select_lex_visitor.h"
+#include "sql/sql_lex.h"
+#include "sql/sql_optimizer.h"
+#include "unittest/gunit/parsertest.h"
+#include "unittest/gunit/test_utils.h"
 
 namespace select_lex_visitor_unittest {
 
 using my_testing::Server_initializer;
 using std::vector;
 
-class SelectLexVisitorTest : public ParserTest
-{
-protected:
-  virtual void SetUp() { initializer.SetUp(); }
-  virtual void TearDown() { initializer.TearDown(); }
+class SelectLexVisitorTest : public ParserTest {
+ protected:
+  void SetUp() override { initializer.SetUp(); }
+  void TearDown() override { initializer.TearDown(); }
 };
-
 
 /// A visitor that remembers what it has seen.
-class Remembering_visitor : public Select_lex_visitor
-{
-public:
+class Remembering_visitor : public Select_lex_visitor {
+ public:
   vector<int> seen_items;
+  vector<const char *> field_names;
 
-  Remembering_visitor() :
-    m_saw_select_lex(false),
-    m_saw_select_lex_unit(false)
-  {}
+  Remembering_visitor()
+      : m_saw_query_block(false), m_saw_query_block_query_expression(false) {}
 
-  virtual bool visit_union(SELECT_LEX_UNIT *)
-  {
-    m_saw_select_lex_unit= true;
+  bool visit_union(Query_expression *) override {
+    m_saw_query_block_query_expression = true;
     return false;
   }
 
-  virtual bool visit_query_block(SELECT_LEX *)
-  {
-    m_saw_select_lex= true;
+  bool visit_query_block(Query_block *) override {
+    m_saw_query_block = true;
     return false;
   }
 
-  virtual bool visit_item(Item *item)
-  {
-    seen_items.push_back(item->val_int());
+  bool visit_item(Item *item) override {
+    // Not possible to call val_XXX on item_field. So just store the name.
+    if (item->type() == Item::FIELD_ITEM)
+      field_names.push_back(item->full_name());
+    else
+      seen_items.push_back(item->val_int());
     return false;
   }
 
-  bool saw_select_lex() { return m_saw_select_lex; }
-  bool saw_select_lex_unit() { return m_saw_select_lex_unit; }
+  bool saw_query_block() { return m_saw_query_block; }
+  bool saw_query_block_query_expression() {
+    return m_saw_query_block_query_expression;
+  }
 
-  ~Remembering_visitor() {}
+  ~Remembering_visitor() override = default;
 
-private:
-  bool m_saw_select_lex, m_saw_select_lex_unit;
+ private:
+  bool m_saw_query_block, m_saw_query_block_query_expression;
 };
-
 
 /**
   Google mock only works for objects allocated on the stack, and the Item
@@ -91,29 +91,23 @@ private:
   how to use it.
 */
 template <class Item_class>
-class Stack_allocated_item : public Item_class
-{
-public:
-  Stack_allocated_item(int value) : Item_class(value)
-  {
+class Stack_allocated_item : public Item_class {
+ public:
+  Stack_allocated_item(int value_arg) : Item_class(value_arg) {
     // Undo what Item::Item() does.
-    THD *thd= current_thd;
-    thd->free_list= this->next;
-    this->next= NULL;
+    THD *thd = current_thd;
+    thd->set_item_list(this->next_free);
+    this->next_free = nullptr;
   }
 };
 
-
-class Mock_item_int : public Stack_allocated_item<Item_int>
-{
-public:
+class Mock_item_int : public Stack_allocated_item<Item_int> {
+ public:
   Mock_item_int() : Stack_allocated_item<Item_int>(42) {}
-  MOCK_METHOD3(walk, bool(Item_processor, Item::enum_walk, uchar *));
+  MOCK_METHOD3(walk, bool(Item_processor, enum_walk, uchar *));
 };
 
-
-TEST_F(SelectLexVisitorTest, SelectLex)
-{
+TEST_F(SelectLexVisitorTest, SelectLex) {
   using ::testing::_;
 
   Mock_item_int where;
@@ -121,31 +115,29 @@ TEST_F(SelectLexVisitorTest, SelectLex)
   EXPECT_CALL(where, walk(_, _, _)).Times(1);
   EXPECT_CALL(having, walk(_, _, _)).Times(1);
 
-  SELECT_LEX query_block(NULL, NULL, &where, &having, NULL, NULL);
-  Item *ref_ptrs[5]= { NULL, NULL, NULL, NULL, NULL };
-  query_block.ref_pointer_array= Ref_ptr_array(ref_ptrs, 5);
+  Query_block query_block(thd()->mem_root, &where, &having);
 
-  SELECT_LEX_UNIT unit(CTX_NONE);
+  Query_expression unit(CTX_NONE);
 
   LEX lex;
   query_block.include_down(&lex, &unit);
   List<Item> items;
   JOIN join(thd(), &query_block);
-  join.where_cond= &where;
-  join.having_for_explain= &having;
+  join.where_cond = &where;
+  join.having_for_explain = &having;
 
-  query_block.join= &join;
+  query_block.join = &join;
+  query_block.parent_lex = &lex;
+
   Remembering_visitor visitor;
   unit.accept(&visitor);
-  EXPECT_TRUE(visitor.saw_select_lex());
-  EXPECT_TRUE(visitor.saw_select_lex_unit());
+  EXPECT_TRUE(visitor.saw_query_block());
+  EXPECT_TRUE(visitor.saw_query_block_query_expression());
 }
 
-
-TEST_F(SelectLexVisitorTest, InsertList)
-{
-  SELECT_LEX *select_lex= parse("INSERT INTO t VALUES (1, 2, 3)", 0);
-  ASSERT_FALSE(select_lex == NULL);
+TEST_F(SelectLexVisitorTest, InsertList) {
+  Query_block *query_block = parse("INSERT INTO t VALUES (1, 2, 3)", 0);
+  ASSERT_FALSE(query_block == nullptr);
 
   Remembering_visitor visitor;
   thd()->lex->accept(&visitor);
@@ -155,11 +147,9 @@ TEST_F(SelectLexVisitorTest, InsertList)
   EXPECT_EQ(3, visitor.seen_items[2]);
 }
 
-
-TEST_F(SelectLexVisitorTest, InsertList2)
-{
-  SELECT_LEX *select_lex= parse("INSERT INTO t VALUES (1, 2), (3, 4)", 0);
-  ASSERT_FALSE(select_lex == NULL);
+TEST_F(SelectLexVisitorTest, InsertList2) {
+  Query_block *query_block = parse("INSERT INTO t VALUES (1, 2), (3, 4)", 0);
+  ASSERT_FALSE(query_block == nullptr);
 
   Remembering_visitor visitor;
   thd()->lex->accept(&visitor);
@@ -170,11 +160,9 @@ TEST_F(SelectLexVisitorTest, InsertList2)
   EXPECT_EQ(4, visitor.seen_items[3]);
 }
 
-
-TEST_F(SelectLexVisitorTest, InsertSet)
-{
-  SELECT_LEX *select_lex= parse("INSERT INTO t SET a=1, b=2, c=3", 0);
-  ASSERT_FALSE(select_lex == NULL);
+TEST_F(SelectLexVisitorTest, InsertSet) {
+  Query_block *query_block = parse("INSERT INTO t SET a=1, b=2, c=3", 0);
+  ASSERT_FALSE(query_block == nullptr);
 
   Remembering_visitor visitor;
   thd()->lex->accept(&visitor);
@@ -182,6 +170,60 @@ TEST_F(SelectLexVisitorTest, InsertSet)
   EXPECT_EQ(1, visitor.seen_items[0]);
   EXPECT_EQ(2, visitor.seen_items[1]);
   EXPECT_EQ(3, visitor.seen_items[2]);
+
+  ASSERT_EQ(3U, visitor.field_names.size());
+  EXPECT_STREQ("a", visitor.field_names[0]);
+  EXPECT_STREQ("b", visitor.field_names[1]);
+  EXPECT_STREQ("c", visitor.field_names[2]);
 }
 
+TEST_F(SelectLexVisitorTest, ReplaceList) {
+  Query_block *query_block =
+      parse("REPLACE INTO t(a, b, c) VALUES (1,2,3), (4,5,6)", 0);
+  ASSERT_FALSE(query_block == nullptr);
+
+  Remembering_visitor visitor;
+  thd()->lex->accept(&visitor);
+  ASSERT_EQ(6U, visitor.seen_items.size());
+  EXPECT_EQ(1, visitor.seen_items[0]);
+  EXPECT_EQ(4, visitor.seen_items[3]);
+  EXPECT_EQ(6, visitor.seen_items[5]);
+
+  ASSERT_EQ(3U, visitor.field_names.size());
+  EXPECT_STREQ("a", visitor.field_names[0]);
+  EXPECT_STREQ("b", visitor.field_names[1]);
+  EXPECT_STREQ("c", visitor.field_names[2]);
 }
+
+TEST_F(SelectLexVisitorTest, InsertOnDuplicateKey) {
+  Query_block *query_block = parse(
+      "INSERT INTO t VALUES (1,2) ON DUPLICATE KEY UPDATE c= 44, a= 55", 0);
+  ASSERT_FALSE(query_block == nullptr);
+
+  Remembering_visitor visitor;
+  thd()->lex->accept(&visitor);
+  ASSERT_EQ(4U, visitor.seen_items.size());
+  EXPECT_EQ(1, visitor.seen_items[0]);
+  EXPECT_EQ(44, visitor.seen_items[2]);
+  EXPECT_EQ(55, visitor.seen_items[3]);
+
+  ASSERT_EQ(2U, visitor.field_names.size());
+  EXPECT_STREQ("c", visitor.field_names[0]);
+  EXPECT_STREQ("a", visitor.field_names[1]);
+}
+
+TEST_F(SelectLexVisitorTest, Update) {
+  Query_block *query_block = parse("UPDATE t SET a= 0, c= 25", 0);
+  ASSERT_FALSE(query_block == nullptr);
+
+  Remembering_visitor visitor;
+  thd()->lex->accept(&visitor);
+  ASSERT_EQ(2U, visitor.seen_items.size());
+  EXPECT_EQ(0, visitor.seen_items[0]);
+  EXPECT_EQ(25, visitor.seen_items[1]);
+
+  ASSERT_EQ(2U, visitor.field_names.size());
+  EXPECT_STREQ("a", visitor.field_names[0]);
+  EXPECT_STREQ("c", visitor.field_names[1]);
+}
+}  // namespace select_lex_visitor_unittest

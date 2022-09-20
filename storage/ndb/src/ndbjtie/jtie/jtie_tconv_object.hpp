@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2010, 2021, Oracle and/or its affiliates.
+ Copyright (c) 2010, 2022, Oracle and/or its affiliates.
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License, version 2.0,
@@ -186,9 +186,9 @@ struct _jtie_ObjectMapper : _jtie_Object {
 // XXX to document
 // XXX cleanup: symmetry with JTIE_DEFINE_METHOD_MEMBER_INFO( ctor ) above
 #define JTIE_INSTANTIATE_PEER_CLASS_MAPPING( T, JCN )                   \
-    template struct _jtie_ObjectMapper< T >;                            \
     JTIE_INSTANTIATE_CLASS_MEMBER_INFO_1(_jtie_ObjectMapper< T >::ctor, \
-                                         JCN, "<init>", "()V")
+                                         JCN, "<init>", "()V")          \
+    template struct _jtie_ObjectMapper< T >;                            
 
 // ---------------------------------------------------------------------------
 

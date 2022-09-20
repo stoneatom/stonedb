@@ -1,4 +1,4 @@
-# Copyright (c) 2006, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2006, 2022, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -18,26 +18,33 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
+
+ADD_DEFINITIONS(-DLOG_COMPONENT_TAG="mecab")
 
 # Example parser
-MYSQL_ADD_PLUGIN(ftexample ./example/plugin_example.c
-                MODULE_ONLY MODULE_OUTPUT_NAME "mypluglib")
+MYSQL_ADD_PLUGIN(ftexample
+  example/plugin_example.cc
+  MODULE_ONLY
+  MODULE_OUTPUT_NAME "mypluglib"
+  )
 
 # Ngram parser
-INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/storage/innobase/include
-                    ${CMAKE_SOURCE_DIR}/include)
+MYSQL_ADD_PLUGIN(ngram_parser
+  ngram_parser/plugin_ngram.cc
+  DEFAULT
+  MODULE_OUTPUT_NAME "libpluginngram"
+  )
 
-MYSQL_ADD_PLUGIN(ngram_parser ./ngram_parser/plugin_ngram.cc
-                 DEFAULT MODULE_OUTPUT_NAME "libpluginngram")
-
-# Mecab parser
-SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}")
+# Mecab parser, OFF by default.
+LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}")
 INCLUDE(mecab)
 MYSQL_CHECK_MECAB()
 
-IF(BUNDLE_MECAB)
-  ADD_DEFINITIONS(-DBUNDLE_MECAB)
+SET(MECAB_WARN_GIVEN)
+WARN_MISSING_SYSTEM_MECAB(MECAB_WARN_GIVEN)
+IF(MECAB_WARN_GIVEN)
+  MESSAGE(FATAL_ERROR "-DWITH_MECAB=system, but missing system libraries")
 ENDIF()
 
 IF(WITH_DEBUG)
@@ -45,12 +52,12 @@ IF(WITH_DEBUG)
 ENDIF()
 
 IF(WITH_MECAB)
-  INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/storage/innobase/include
-                      ${CMAKE_SOURCE_DIR}/include
-                      ${MECAB_INCLUDE_DIR})
+  INCLUDE_DIRECTORIES(${MECAB_INCLUDE_DIR})
 
-  MYSQL_ADD_PLUGIN(mecab_parser ./mecab_parser/plugin_mecab.cc
-                   MODULE_ONLY MODULE_OUTPUT_NAME "libpluginmecab")
-
-  TARGET_LINK_LIBRARIES(mecab_parser ${MECAB_LIBRARY})
+  MYSQL_ADD_PLUGIN(mecab_parser
+    mecab_parser/plugin_mecab.cc
+    LINK_LIBRARIES ${MECAB_LIBRARY}
+    MODULE_ONLY
+    MODULE_OUTPUT_NAME "libpluginmecab"
+    )
 ENDIF()

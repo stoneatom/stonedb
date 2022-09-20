@@ -1,4 +1,4 @@
-/* Copyright (c) 2013, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2013, 2022, Oracle and/or its affiliates.
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License, version 2.0,
@@ -18,7 +18,7 @@
 
   You should have received a copy of the GNU General Public License
   along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin Street, Suite 500, Boston, MA 02110-1335 USA */
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA */
 
 #ifndef TABLE_ESMS_BY_PROGRAM_H
 #define TABLE_ESMS_BY_PROGRAM_H
@@ -28,28 +28,45 @@
   Table EVENTS_STATEMENTS_SUMMARY_BY_PROGRAM (declarations).
 */
 
-#include "table_helper.h"
-#include "pfs_program.h"
+#include <sys/types.h>
+
+#include "storage/perfschema/pfs_program.h"
+#include "storage/perfschema/table_helper.h"
 
 /**
-  @addtogroup Performance_schema_tables
+  @addtogroup performance_schema_tables
   @{
 */
+
+class PFS_index_esms_by_program : public PFS_engine_index {
+ public:
+  PFS_index_esms_by_program()
+      : PFS_engine_index(&m_key_1, &m_key_2, &m_key_3),
+        m_key_1("OBJECT_TYPE"),
+        m_key_2("OBJECT_SCHEMA"),
+        m_key_3("OBJECT_NAME") {}
+
+  ~PFS_index_esms_by_program() override = default;
+
+  virtual bool match(PFS_program *pfs);
+
+ private:
+  PFS_key_object_type_enum m_key_1;
+  PFS_key_object_schema m_key_2;
+  PFS_key_object_name m_key_3;
+};
 
 /**
   A row of table
   PERFORMANCE_SCHEMA.EVENTS_STATEMENTS_SUMMARY_BY_PROGRAM.
 */
-struct row_esms_by_program
-{
+struct row_esms_by_program {
   /** Column OBJECT_TYPE. */
   enum_object_type m_object_type;
   /** Column OBJECT_SCHEMA. */
-  char m_schema_name[COL_OBJECT_SCHEMA_SIZE];
-  int m_schema_name_length;
+  PFS_schema_name m_schema_name;
   /** Column OBJECT_NAME. */
-  char m_object_name[COL_OBJECT_NAME_SIZE];
-  int m_object_name_length;
+  PFS_routine_name m_object_name;
 
   /**
     Columns COUNT_STAR
@@ -65,48 +82,48 @@ struct row_esms_by_program
 };
 
 /** Table PERFORMANCE_SCHEMA.EVENTS_STATEMENTS_SUMMARY_BY_PROGRAM. */
-class table_esms_by_program : public PFS_engine_table
-{
-public:
+class table_esms_by_program : public PFS_engine_table {
+ public:
   /** Table share */
   static PFS_engine_table_share m_share;
-  static PFS_engine_table* create();
+  static PFS_engine_table *create(PFS_engine_table_share *);
   static int delete_all_rows();
   static ha_rows get_row_count();
 
-  virtual int rnd_next();
-  virtual int rnd_pos(const void *pos);
-  virtual void reset_position(void);
+  void reset_position(void) override;
 
-protected:
-  virtual int read_row_values(TABLE *table,
-                              unsigned char *buf,
-                              Field **fields,
-                              bool read_all);
+  int rnd_next() override;
+  int rnd_pos(const void *pos) override;
+
+  int index_init(uint idx, bool sorted) override;
+  int index_next() override;
+
+ protected:
+  int read_row_values(TABLE *table, unsigned char *buf, Field **fields,
+                      bool read_all) override;
 
   table_esms_by_program();
 
-public:
-  ~table_esms_by_program()
-  {}
+ public:
+  ~table_esms_by_program() override = default;
 
-protected:
-  void make_row(PFS_program*);
+ protected:
+  int make_row(PFS_program *);
 
-private:
+ private:
   /** Table share lock. */
   static THR_LOCK m_table_lock;
-  /** Fields definition. */
-  static TABLE_FIELD_DEF m_field_def;
+  /** Table definition. */
+  static Plugin_table m_table_def;
 
   /** Current row. */
   row_esms_by_program m_row;
-  /** True is the current row exists. */
-  bool m_row_exists;
   /** Current position. */
   PFS_simple_index m_pos;
   /** Next position. */
   PFS_simple_index m_next_pos;
+
+  PFS_index_esms_by_program *m_opened_index;
 };
 
 /** @} */

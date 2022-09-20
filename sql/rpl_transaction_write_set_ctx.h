@@ -1,4 +1,4 @@
-/* Copyright (c) 2014, 2021, Oracle and/or its affiliates.
+/* Copyright (c) 2014, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -23,18 +23,20 @@
 #ifndef RPL_TRANSACTION_WRITE_SET_CTX_H
 #define RPL_TRANSACTION_WRITE_SET_CTX_H
 
-#include "my_global.h"
-#include <vector>
-#include <map>
+#include <stddef.h>
+#include <atomic>
 #include <list>
-#include <set>
+#include <map>
 #include <string>
+#include <vector>
+
+#include "my_inttypes.h"
 
 /**
   Thread class responsible for the collection of write sets associated
   to a transaction.
 
-  It also includes suport for save points where information will be discarded
+  It also includes support for save points where information will be discarded
   on rollbacks to a savepoint.
 
   Write set and flags are reset on
@@ -95,25 +97,26 @@
   recovery threads as group_replication_transaction_size_limit only applies
   to client sessions and non group replication replica threads.
 */
-class Rpl_transaction_write_set_ctx
-{
-public:
+class Rpl_transaction_write_set_ctx {
+ public:
   Rpl_transaction_write_set_ctx();
-  virtual ~Rpl_transaction_write_set_ctx() {}
+  virtual ~Rpl_transaction_write_set_ctx() = default;
 
   /**
     Function to add the write set of the hash of the PKE in the std::vector
     in the transaction_ctx object.
 
     @param[in] hash - the uint64 type hash value of the PKE.
+
+    @return true if it can't add the write set entry, false if successful
   */
   bool add_write_set(uint64 hash);
 
   /*
-    Function to get the pointer of the write set in the
+    Function to get the pointer of the write set vector in the
     transaction_ctx object.
   */
-  std::set<uint64> *get_write_set();
+  std::vector<uint64> *get_write_set();
 
   /**
     Reset the object so it can be used for a new transaction.
@@ -141,7 +144,8 @@ public:
   /*
     function to check if the transaction was marked as having missing keys.
 
-    @retval true  If the transaction was marked as being referenced by a foreign key
+    @retval true  If the transaction was marked as being referenced by a foreign
+    key
   */
   bool get_has_related_foreign_keys();
 
@@ -164,7 +168,7 @@ public:
 
     @param[in] name - the identifier name of the SAVEPOINT.
   */
-  void add_savepoint(char* name);
+  void add_savepoint(char *name);
 
   /**
     Function to delete a SAVEPOINT identifier in the savepoint map in the
@@ -172,7 +176,7 @@ public:
 
     @param[in] name - the identifier name of the SAVEPOINT.
   */
-  void del_savepoint(char* name);
+  void del_savepoint(char *name);
 
   /**
     Function to delete all data added to write set and savepoint since
@@ -180,7 +184,7 @@ public:
 
     @param[in] name - the identifier name of the SAVEPOINT.
   */
-  void rollback_to_savepoint(char* name);
+  void rollback_to_savepoint(char *name);
 
   /**
     Function to push savepoint data to a list and clear the savepoint map in
@@ -201,7 +205,7 @@ public:
 
     @param limit the limit to be added
   */
-  static void set_global_write_set_memory_size_limit(int64 limit);
+  static void set_global_write_set_memory_size_limit(uint64 limit);
 
   /**
     Updates the memory limit for write sets.
@@ -210,7 +214,7 @@ public:
 
     @param limit the limit to be added
   */
-  static void update_global_write_set_memory_size_limit(int64 limit);
+  static void update_global_write_set_memory_size_limit(uint64 limit);
 
   /**
     Prevent or allow this class to discard writesets exceeding a size limit
@@ -235,7 +239,7 @@ public:
   */
   void set_local_allow_drop_write_set(bool allow_drop_write_set);
 
-private:
+ private:
   /*
     Clear the vector that stores the PKEs, and clear the savepoints, but do not
     restore all the flags. Outside transaction cleanup, this is used when
@@ -244,8 +248,6 @@ private:
   void clear_write_set();
 
   std::vector<uint64> write_set;
-  std::set<uint64> write_set_unique;
-
   bool m_has_missing_keys;
   bool m_has_related_foreign_keys;
 
@@ -260,14 +262,14 @@ private:
     Create a savepoint context hierarchy to support encapsulation of
     identifier name when function or trigger are executed.
   */
-  std::list<std::map<std::string, size_t> > savepoint_list;
+  std::list<std::map<std::string, size_t>> savepoint_list;
 
   // Write set restriction variables
 
   /** There is a component requiring write sets on transactions */
-  static int32 m_global_component_requires_write_sets;
+  static std::atomic<bool> m_global_component_requires_write_sets;
   /** Memory size limit enforced for write set collection */
-  static int64 m_global_write_set_memory_size_limit;
+  static std::atomic<uint64> m_global_write_set_memory_size_limit;
 
   /**
     If the thread should or not ignore the set limit for
@@ -285,4 +287,4 @@ private:
   bool m_local_has_reached_write_set_limit;
 };
 
-#endif	/* RPL_TRANSACTION_WRITE_SET_CTX_H */
+#endif /* RPL_TRANSACTION_WRITE_SET_CTX_H */

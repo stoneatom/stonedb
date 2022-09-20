@@ -372,7 +372,7 @@ Num2DateTimeCastColumn::Num2DateTimeCastColumn(VirtualColumn *from, core::Column
           myt.second = rcdt.Second();
           myt.time_type = MYSQL_TIMESTAMP_DATETIME;
           if (!common::IsTimeStampZero(myt)) {
-            my_bool myb;
+            bool myb;
             // convert local time to UTC seconds from beg. of EPOCHE
             my_time_t secs_utc = current_txn_->Thd()->variables.time_zone->TIME_to_gmt_sec(&myt, &myb);
             // UTC seconds converted to UTC TIME

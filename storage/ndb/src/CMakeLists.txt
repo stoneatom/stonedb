@@ -1,4 +1,4 @@
-# Copyright (c) 2008, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2008, 2022, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -18,13 +18,65 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 
 INCLUDE(libutils)
+
+INCLUDE(ndb_downgrade_warnings)
+
+# Disable specific types of warnings for current directory
+# if the compiler supports the flag
+FOREACH(warning
+    )
+  MY_CHECK_CXX_COMPILER_WARNING("${warning}" HAS_WARN_FLAG)
+  IF(HAS_WARN_FLAG)
+    STRING_APPEND(CMAKE_CXX_FLAGS " ${HAS_WARN_FLAG}")
+    STRING_APPEND(CMAKE_C_FLAGS " ${HAS_WARN_FLAG}")
+  ENDIF()
+ENDFOREACH()
 
 ADD_SUBDIRECTORY(common)
 ADD_SUBDIRECTORY(mgmapi)
 ADD_SUBDIRECTORY(ndbapi)
+
+#
+# Build static ndbclient library
+#
+SET(LIBS_TO_MERGE
+  mysys
+  mytime
+  ndbapi
+  ndbgeneral
+  ndblogger
+  ndbmgmapi
+  ndbmgmcommon
+  ndbportlib
+  ndbsignaldata
+  ndbtrace
+  ndbtransport
+  strings
+  )
+
+SET(LIBS_TO_LINK)
+
+IF(WITH_ZLIB STREQUAL "bundled")
+  LIST(APPEND LIBS_TO_MERGE ${ZLIB_LIBRARY})
+ELSE()
+  LIST(APPEND LIBS_TO_LINK ${ZLIB_LIBRARY})
+ENDIF()
+
+
+MESSAGE(STATUS "LIBS_TO_MERGE ${LIBS_TO_MERGE}")
+
+MERGE_CONVENIENCE_LIBRARIES(ndbclient_static ${LIBS_TO_MERGE}
+  COMPONENT Development
+  LINK_LIBRARIES ${SSL_LIBRARIES} ${LIBS_TO_LINK}
+  )
+
+# Build test program to check linking against ndclient_static
+ADD_EXECUTABLE(ndbclient_static_link_test ndbclient_link_test.cpp)
+SET_TARGET_PROPERTIES(ndbclient_static_link_test PROPERTIES ENABLE_EXPORTS TRUE)
+TARGET_LINK_LIBRARIES(ndbclient_static_link_test ndbclient_static)
 
 IF(NOT WITHOUT_SERVER)
   ADD_SUBDIRECTORY(kernel)
@@ -32,157 +84,90 @@ ENDIF()
 ADD_SUBDIRECTORY(mgmclient)
 ADD_SUBDIRECTORY(mgmsrv)
 
+IF(BUILD_IS_SINGLE_CONFIG)
+  SET(JAVA_SUBDIR)
+ELSE()
+  SET(JAVA_SUBDIR $<CONFIG>)
+ENDIF()
+
+IF(WIN32)
+  SET(JAVA_SEPARATOR ";")
+ELSE()
+  set(JAVA_SEPARATOR :)
+ENDIF()
+
 SET(NDBJTIE_LIB)
-IF(HAVE_JDK)
+IF(WITH_NDB_JAVA)
   ADD_SUBDIRECTORY(ndbjtie)
   SET(NDBJTIE_LIB ndbjtie)
   ADD_DEFINITIONS(-DNDB_WITH_NDBJTIE)
 ENDIF()
 
 #
-# Build static ndbclient library
-#
-SET(NDBCLIENT_LIBS
-  mysys dbug strings mysys_ssl
-  ${SSL_LIBRARIES} ${ZLIB_LIBRARY}
-  ndbapi
-  ndbtransport
-  ndbtrace
-  ndbsignaldata
-  ndbmgmapi
-  ndbmgmcommon
-  ndblogger
-  ndbportlib
-  ndbgeneral
-  ndbconf)
-
-SET(LIBS_TO_MERGE
-  mysys dbug strings mysys_ssl
-  ndbapi
-  ndbtransport
-  ndbtrace
-  ndbsignaldata
-  ndbmgmapi
-  ndbmgmcommon
-  ndblogger
-  ndbportlib
-  ndbgeneral
-  ndbconf)
-
-IF(WITH_ZLIB STREQUAL "bundled")
-  LIST(APPEND LIBS_TO_MERGE ${ZLIB_LIBRARY})
-ENDIF()
-IF(NOT APPLE AND NOT WITH_SSL STREQUAL "system")
-  LIST(APPEND LIBS_TO_MERGE ${SSL_LIBRARIES})
-ENDIF()
-
-
-MESSAGE(STATUS "LIBS_TO_MERGE ${LIBS_TO_MERGE}")
-MESSAGE(STATUS "NDBCLIENT_LIBS ${NDBCLIENT_LIBS}")
-
-MERGE_CONVENIENCE_LIBRARIES(
-  ndbclient_static ${LIBS_TO_MERGE} COMPONENT Development)
-TARGET_LINK_LIBRARIES(ndbclient_static ${SSL_LIBRARIES})
-
-SET(KNOWN_CONVENIENCE_LIBRARIES
-  ${KNOWN_CONVENIENCE_LIBRARIES} ndbclient_static CACHE INTERNAL "" FORCE)
-
-# Generate a cmake file which will save the name of the library.
-CONFIGURE_FILE(
-  ${MYSQL_CMAKE_SCRIPT_DIR}/save_archive_location.cmake.in
-  ${CMAKE_BINARY_DIR}/archive_output_directory/lib_location_ndbclient_static.cmake
-  @ONLY)
-ADD_CUSTOM_COMMAND(TARGET ndbclient_static POST_BUILD
-  COMMAND ${CMAKE_COMMAND}
-  -DTARGET_NAME=ndbclient_static
-  -DTARGET_LOC=$<TARGET_FILE:ndbclient_static>
-  -DCFG_INTDIR=${CMAKE_CFG_INTDIR}
-  -P ${CMAKE_BINARY_DIR}/archive_output_directory/lib_location_ndbclient_static.cmake
-  )
-
-# Build test program to check linking against ndclient_static
-ADD_EXECUTABLE(ndbclient_static_link_test ndbclient_link_test.cpp)
-TARGET_LINK_LIBRARIES(ndbclient_static_link_test ndbclient_static)
-
-#
 # Build shared ndbclient library
 #
 SET(NDBCLIENT_SO_LIBS ${LIBS_TO_MERGE} ${NDBJTIE_LIB})
+SET(NDB_SHARED_LIB_VERSION "6.1.0")
 
-# Extract version from storage/ndb/VERSION
-INCLUDE(ndb_get_config_value)
-NDB_GET_CONFIG_VALUE(NDB_SHARED_LIB_VERSION_MAJOR major)
-NDB_GET_CONFIG_VALUE(NDB_SHARED_LIB_VERSION_MINOR minor)
-NDB_GET_CONFIG_VALUE(NDB_SHARED_LIB_VERSION_BUILD build)
-SET(NDB_SHARED_LIB_VERSION "${major}.${minor}.${build}")
+CONFIGURE_FILE(
+  ${CMAKE_CURRENT_SOURCE_DIR}/libndbclient.ver.in
+  ${CMAKE_CURRENT_BINARY_DIR}/libndbclient.ver)
 
-ADD_LIBRARY(ndbclient_so SHARED ndbclient_exports.cpp)
-TARGET_LINK_LIBRARIES(ndbclient_so ${NDBCLIENT_SO_LIBS})
+# This is needed for java-based unit tests.
+IF(MY_COMPILER_IS_CLANG AND WITH_UBSAN)
+  LIST(APPEND LIBS_TO_LINK -lubsan)
+ENDIF()
 
-IF(MSVC)
-# All "convenience" libraries are now well-known, we *could* do this:
-#  SET(_PLATFORM  x64)
-#
-#  ADD_CUSTOM_COMMAND(TARGET ndbclient_so PRE_LINK
-#    COMMAND cscript ARGS //nologo ${PROJECT_SOURCE_DIR}/win/create_def_file.js
-#                         ${_PLATFORM}
-#                         "$<TARGET_FILE:lib1>"
-#                         "$<TARGET_FILE:lib2>"
-#                         ...
-#                         > ndbclient_exports.def
-#    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-#	
-#  # Modify link flags to use the generated module definition file
-#  GET_TARGET_PROPERTY(ndbclient_so_link_flags ndbclient_so LINK_FLAGS)
-#  SET_TARGET_PROPERTIES(ndbclient_so PROPERTIES LINK_FLAGS
-#                        "${ndbclient_link_flags} /DEF:ndbclient_exports.def")
+# This contains a dummy function _ndbclient_exports() which calls
+# enough symbols to pull in everything we need.
+# libndbclient.ver will export everything, except mysys functions
+# handle_options my_init my_load_defaults
+ADD_CONVENIENCE_LIBRARY(ndbclient_exports ndbclient_exports.cpp)
+
+IF(WIN32)
+  # We have no explicit list of symbols to EXPORT in a .def file.
+  # So instead we create a shared library from ndbclient_exports.cpp.
+  # It will pull in, and make visible, all the rest.
+  ADD_SHARED_LIBRARY(ndbclient_so ndbclient_exports.cpp
+    COMPONENT Development
+    DESTINATION "${INSTALL_LIBDIR}"
+    LINK_LIBRARIES ${NDBCLIENT_SO_LIBS} ${NDBJTIE_LIB} ${LIBS_TO_LINK}
+    OUTPUT_NAME ndbclient
+    SOVERSION ${NDB_SHARED_LIB_VERSION}
+    )
 ELSE()
-  # Turn off cmake's transitive link behaviour so that the shared
-  # ndbclient library contains everything except functions from
-  # system libs
+  # Merge libraries, tag _ndbclient_exports as explicitly needed,
+  # and it will transitively pull in the rest.
+  MERGE_LIBRARIES_SHARED(ndbclient_so ndbclient_exports ${NDBCLIENT_SO_LIBS}
+    EXPORTS _ndbclient_exports
+    COMPONENT Development
+    DESTINATION "${INSTALL_LIBDIR}"
+    LINK_LIBRARIES ${NDBJTIE_LIB} ${LIBS_TO_LINK}
+    OUTPUT_NAME ndbclient
+    SOVERSION ${NDB_SHARED_LIB_VERSION}
+    )
+ENDIF()
+
+IF(NOT WIN32)
   SET(NDBCLIENT_SYSTEM_LIBS)
   FOREACH(lib ${NDBCLIENT_SO_LIBS})
-    SET(deps ${${lib}_LIB_DEPENDS})
-    FOREACH(dep_lib ${deps})
-    SET(ignore_dep_lib)
-
-      # The list of dependent libs contains keywords used for debug vs optimized
-      # builds, ignore them 
-      IF(dep_lib MATCHES "general" OR
-         dep_lib MATCHES "debug" OR
-         dep_lib MATCHES "optimized")
-        # MESSAGE(STATUS "Ignoring keyword ${dep_lib}")
-        SET(ignore_dep_lib 1)
-      ENDIF()
-
-      # Ignore libs already in NDBCLIENT_SO_LIBS list, manily used
-      # to ignore mysys, strings etc. since those targets have not
-      # been added yet
-      LIST(FIND NDBCLIENT_SO_LIBS ${dep_lib} dep_lib_found)
-      IF(dep_lib_found GREATER -1)
-        # MESSAGE(STATUS "Ignoring lib ${dep_lib} since it's already in NDBCLIENT_SO_LIBS")
-        SET(ignore_dep_lib 1)
-      ENDIF()
-
-      # Ignore libs where location is known(this means it's built locally)
-      LIST(FIND KNOWN_CONVENIENCE_LIBRARIES ${dep_lib} FOUNDIT)
-      IF(FOUNDIT GREATER -1)
-        # MESSAGE(STATUS "Ignoring ${dep_lib} since location is known")
-        SET(ignore_dep_lib 1)
-      ENDIF()
-
-      IF(NOT ignore_dep_lib)
-        LIST(APPEND NDBCLIENT_SYSTEM_LIBS ${dep_lib})
-      ENDIF()
-
-    ENDFOREACH()
+    LIST(FIND KNOWN_CONVENIENCE_LIBRARIES ${lib} FOUNDIT)
+    IF(FOUNDIT LESS 0)
+      MESSAGE(STATUS "Known libs : ${KNOWN_CONVENIENCE_LIBRARIES}")
+      MESSAGE(FATAL_ERROR "Unknown static library ${lib} FOUNDIT ${FOUNDIT}")
+    ENDIF()
+    GET_DEPENDEND_OS_LIBS(${lib} LIB_OSLIBS)
+    IF(LIB_OSLIBS)
+      LIST(APPEND NDBCLIENT_SYSTEM_LIBS ${LIB_OSLIBS})
+    ENDIF()
   ENDFOREACH()
+
   IF(NDBCLIENT_SYSTEM_LIBS)
     LIST(REMOVE_DUPLICATES NDBCLIENT_SYSTEM_LIBS)
+    MESSAGE(STATUS "System libs used by ndbclient_so: ${NDBCLIENT_SYSTEM_LIBS}")
+    TARGET_LINK_LIBRARIES(ndbclient_so INTERFACE
+      ${NDBCLIENT_SYSTEM_LIBS})
   ENDIF()
-  MESSAGE(STATUS "System libs used by ndbclient_so: ${NDBCLIENT_SYSTEM_LIBS}")
-  TARGET_LINK_LIBRARIES(ndbclient_so LINK_INTERFACE_LIBRARIES
-    ${NDBCLIENT_SYSTEM_LIBS})
 
   # Prepend any special linker flags(like -m64) for shared library
   GET_TARGET_PROPERTY(ndbclient_so_link_flags ndbclient_so LINK_FLAGS)
@@ -190,17 +175,21 @@ ELSE()
     # Avoid LINK_FLAGS-NOTFOUND
     SET(ndbclient_so_link_flags)
   ENDIF()
-  SET_TARGET_PROPERTIES(ndbclient_so PROPERTIES
-    LINK_FLAGS "${CMAKE_SHARED_LIBRARY_C_FLAGS} ${ndbclient_so_link_flags}")
+  SET(ndbclient_so_link_flags
+    "${CMAKE_SHARED_LIBRARY_C_FLAGS} ${ndbclient_so_link_flags}")
+  IF(LINK_FLAG_NO_UNDEFINED)
+    STRING_APPEND(ndbclient_so_link_flags " ${LINK_FLAG_NO_UNDEFINED}")
+    STRING_APPEND(ndbclient_so_link_flags
+      " -Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/libndbclient.ver")
+  ENDIF()
+  IF(SOLARIS)
+    STRING_APPEND(ndbclient_so_link_flags " ${CMAKE_CXX_LINK_FLAGS}")
+  ENDIF()
+  SET_TARGET_PROPERTIES(ndbclient_so
+    PROPERTIES LINK_FLAGS "${ndbclient_so_link_flags}")
 ENDIF()
 
-
-SET_TARGET_PROPERTIES(ndbclient_so PROPERTIES
-  OUTPUT_NAME "ndbclient"
-  SOVERSION ${NDB_SHARED_LIB_VERSION})
-MYSQL_INSTALL_TARGETS(ndbclient_so
-  DESTINATION "${INSTALL_LIBDIR}"
-  COMPONENT Development)
 # Build test program to check linking against ndclient_so
 ADD_EXECUTABLE(ndbclient_shared_link_test ndbclient_link_test.cpp)
+SET_TARGET_PROPERTIES(ndbclient_shared_link_test PROPERTIES ENABLE_EXPORTS TRUE)
 TARGET_LINK_LIBRARIES(ndbclient_shared_link_test ndbclient_so)

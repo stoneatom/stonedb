@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -518,7 +518,7 @@
   
    There are four conditions leading to the transfer of database 
    operations from Ndb object buffers to the NDB kernel:
-   -# The NDB Transporter (TCP/IP, SCI or shared memory)
+   -# The NDB Transporter (TCP/IP or shared memory)
       decides that a buffer is full and sends it off. 
       The buffer size is implementation-dependent and
       may change between MySQL Cluster releases.
@@ -601,7 +601,6 @@
    The default method is to select the transaction co-ordinator (TC) determined to be
    the "closest" storage node, using a heuristic for proximity based on
    the type of transporter connection. In order of closest to most distant, these are
-   - SCI 
    - SHM
    - TCP/IP (localhost)
    - TCP/IP (remote host)
@@ -679,17 +678,8 @@
 
    This means that if we can ensure that we use "popular" links we increase
    buffering and thus drastically reduce the communication cost.
-   The same system using SCI has a different cost model:
-
-     <code>[5 microseconds] + ([10 nanoseconds] * [<var>number of bytes</var>])</code>
-
-   Thus, the efficiency of an SCI system is much less dependent on selection of 
-   transaction co-ordinators. 
-   Typically, TCP/IP systems spend 30-60% of their working time on communication,
-   whereas for SCI systems this figure is closer to 5-10%. 
-   Thus, employing SCI for data transport means that less care from the NDB API 
-   programmer is required and greater scalability can be achieved, even for 
-   applications using data from many different parts of the database.
+ 
+   Typically, TCP/IP systems spend 30-60% of their working time on communication.
 
    A simple example is an application that uses many simple updates where
    a transaction needs to update one record. 
@@ -1228,8 +1218,8 @@ public:
   /**
    * Set/get maximum memory size for event buffer
    */
-  void set_eventbuf_max_alloc(unsigned sz);
-  unsigned get_eventbuf_max_alloc();
+  void set_eventbuf_max_alloc(Uint64 sz);
+  Uint64 get_eventbuf_max_alloc();
 
   /**
    * Set/get free_percent- the % of event buffer memory
@@ -1247,8 +1237,8 @@ public:
       usage_percent(0)
     {}
 
-    Uint32 allocated_bytes;
-    Uint32 used_bytes;
+    Uint64 allocated_bytes;
+    Uint64 used_bytes;
     Uint32 usage_percent; // (used_bytes)*100/eventbuf_max_alloc
   };
   /**
@@ -1264,6 +1254,18 @@ public:
    * and thus should be avoided.
    */
   void get_event_buffer_memory_usage(EventBufferMemoryUsage&);
+
+  void setEventBufferQueueEmptyEpoch(bool queue_empty_epoch);
+  
+  /** Note: The getter function getEventBufferQueueEmptyEpoch() is
+   * not provided intentionally to avoid wrong usage, for e.g.,
+   * consuming empty epochs based on the getter. Reason:
+   * setter option applies to queuing *newer* epochs
+   * and the queue may reflect the state before the setting.
+   * Therefore, during a transition period, consumption may find
+   * an empty epoch in the queue even if the getter shows that
+   * the queuing is turned off.
+   */
 
 #ifndef DOXYGEN_SHOULD_SKIP_DEPRECATED
   /**
@@ -1341,13 +1343,13 @@ public:
    *        maximum time to wait
    * aMillisecondNumber < 0 : returns -1
    *
-   * @param OUT highestQueuedEpoch: if highestQueuedEpoch is non-null and
+   * @param[OUT] highestQueuedEpoch if highestQueuedEpoch is non-null and
    * there is some new event data available in the event queue,
    * it will be set to the highest epoch among the available event data.
    *
    * @return > 0 if events available, 0 if no events available, < 0 on failure.
    *
-   * @pollEvents2 will also return >0 when there is an event data
+   * pollEvents2 will also return >0 when there is an event data
    * representing empty or error epoch available on the head of the event queue.
    */
   int pollEvents2(int aMillisecondNumber, Uint64 *highestQueuedEpoch= 0);
@@ -1447,7 +1449,7 @@ public:
    * If node failure occurs during resource exaustion events
    * may be lost and the delivered event data might thus be incomplete.
    *
-   * @param OUT aGCI
+   * @param[OUT] gci
    *        any inconsistent GCI found
    *
    * @return true if all received events are consistent, false if possible
@@ -1460,12 +1462,27 @@ public:
    * If node failure occurs during resource exaustion events
    * may be lost and the delivered event data might thus be incomplete.
    *
-  * @param aGCI
+  * @param gci
    *        the GCI to check
    *
    * @return true if GCI is consistent, false if possible inconsistency
    */
   bool isConsistentGCI(Uint64 gci);
+
+  /**
+   * Iterate over distinct event operations which are part of current
+   * GCI.  Valid after nextEvent.  Used to get summary information for
+   * the epoch (e.g. list of all tables) before processing event data.
+   *
+   * Set *iter=0 to start.  Returns NULL when no more.  If event_types
+   * is not NULL, it returns bitmask of received event types.
+   *
+   * This is a wrapper for getNextEventOpInEpoch3, but retains the
+   * old name in order to preserve backward compatibility.
+   */
+  const NdbEventOperation*
+    getGCIEventOperations(Uint32* iter,
+                          Uint32* event_types);
 
   /**
    * Iterate over distinct event operations which are part of current
@@ -1486,12 +1503,14 @@ public:
    *
    * Set *iter=0 to start.  Returns NULL when no more.  If event_types
    * is not NULL, it returns bitmask of received event types.
-   *
-   * This is a wrapper for getNextEventOpInEpoch2, but retains the
-   * old name in order to preserve backward compatibility.
+   * If cumulative_any_value is not NULL, it returns a merged value of
+   * received any_value(s) to show what bits are set for all operations of a
+   * specific table.
    */
   const NdbEventOperation*
-    getGCIEventOperations(Uint32* iter, Uint32* event_types);
+    getNextEventOpInEpoch3(Uint32* iter,
+                           Uint32* event_types,
+                           Uint32* cumulative_any_value);
   
   /** Get the highest epoch that have entered into the event queue.
    * This value can be higher than the epoch returned by the last
@@ -1708,7 +1727,7 @@ public:
    *         else - fail, return error code
    */
   static int computeHash(Uint32* hashvalueptr,
-                         const NdbDictionary::Table*, 
+                         const NdbDictionary::Table* table,
                          const struct Key_part_ptr * keyData,
                          void* xfrmbuf = 0, Uint32 xfrmbuflen = 0);
 #ifndef DOXYGEN_SHOULD_SKIP_INTERNAL
@@ -1866,14 +1885,28 @@ public:
    * Different types of tampering with the NDB Cluster.
    * <b>Only for debugging purposes only.</b>
    */
-  enum TamperType	{ 
+  enum TamperType	{
     LockGlbChp = 1,           ///< Lock GCP
     UnlockGlbChp,             ///< Unlock GCP
     CrashNode,                ///< Crash an NDB node
     ReadRestartGCI,           ///< Request the restart GCI id from NDB Cluster
-    InsertError               ///< Execute an error in NDB Cluster 
+    InsertError               ///< Execute an error in NDB Cluster
                               ///< (may crash system)
   };
+
+  struct TupleIdRange {
+    TupleIdRange() {}
+    Uint64 m_first_tuple_id;
+    Uint64 m_last_tuple_id;
+    Uint64 m_highest_seen;
+    void reset() {
+      m_first_tuple_id = ~(Uint64)0;
+      m_last_tuple_id = ~(Uint64)0;
+      m_highest_seen = 0;
+    }
+  };
+
+  int initAutoIncrement();
 
   /**
    * Return a unique tuple id for a table.  The id sequence is
@@ -1887,20 +1920,6 @@ public:
    *
    * @return 0 or -1 on error, and tupleId in out parameter
    */
-  struct TupleIdRange {
-    TupleIdRange() {}
-    Uint64 m_first_tuple_id;
-    Uint64 m_last_tuple_id;
-    Uint64 m_highest_seen;
-    void reset() {
-      m_first_tuple_id = ~(Uint64)0;
-      m_last_tuple_id = ~(Uint64)0;
-      m_highest_seen = 0;
-    };
-  };
-
-  int initAutoIncrement();
-
   int getAutoIncrementValue(const char* aTableName, 
                             Uint64 & autoValue, Uint32 cacheSize,
                             Uint64 step = 1, Uint64 start = 1);
@@ -1925,7 +1944,7 @@ public:
                             TupleIdRange & range, Uint64 autoValue,
                             bool modify);
 #ifdef NDBAPI_50_COMPAT
-  Uint64 getAutoIncrementValue(const NdbDictionary::Table * aTable, 
+  Uint64 getAutoIncrementValue(const NdbDictionary::Table * aTable,
 			       Uint32 cacheSize = 1)
     {
       Uint64 val;
@@ -2169,17 +2188,11 @@ private:
   static
   const char * externalizeTableName(const char * internalTableName,
                                     bool fullyQualifiedNames);
-  const char * externalizeTableName(const char * internalTableName);
   const BaseString internalize_table_name(const char * external_name) const;
 
   static
   const char * externalizeIndexName(const char * internalIndexName,
                                     bool fullyQualifiedNames);
-  const char * externalizeIndexName(const char * internalIndexName);
-  const BaseString old_internalize_index_name(const NdbTableImpl * table,
-					      const char * external_name) const;
-  const BaseString internalize_index_name(const NdbTableImpl * table,
-                                          const char * external_name) const;
 
   static
   const BaseString getDatabaseFromInternalName(const char * internalName);
@@ -2204,7 +2217,7 @@ private:
 
   Uint32                theNextConnectNode;
 
-  bool fullyQualifiedNames;
+  bool deleted_v8_0_24;
 
 
 
@@ -2225,8 +2238,9 @@ private:
   const NdbDictionary::Table *m_sys_tab_0;
 
   Uint32		theRestartGCI;	// the Restart GCI used by DIHNDBTAMPER
-  
-  NdbError              theError;
+
+  // Allow updating error also from const member functions
+  mutable NdbError theError;
 
   Int32        	        theNdbBlockNumber;
 

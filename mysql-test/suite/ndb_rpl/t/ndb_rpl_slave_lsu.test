@@ -1,16 +1,11 @@
-# The include statement below is a temp one for tests that are yet to
-#be ported to run with InnoDB,
-#but needs to be kept for tests that would need MyISAM in future.
---source include/force_myisam_default.inc
-
 ###############################################################################
 # Description: Checks if DDL and DML statements are correctly logged by
-#              servers and slave servers according to log-slave-updates,
+#              servers and slave servers according to log-replica-updates,
 #              and independent of their settings on the particular MySQLD
 #              acting in the slave role
 #
 # Testing scenario: Cluster 1 replicates to Cluster 2
-#   Key : BL = log-bin, LSU = log-slave-updates
+#   Key : BL = log-bin, LSU = log-replica-updates
 #
 #                       BL                        BL
 #  cluster 1 [  srv_master  srv_master1  srv_master2  ]

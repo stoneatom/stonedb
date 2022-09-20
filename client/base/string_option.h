@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2014, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2014, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -25,36 +25,36 @@
 #ifndef STRING_OPTION_INCLUDED
 #define STRING_OPTION_INCLUDED
 
+#include <optional>
 #include <string>
-#include <my_getopt.h>
-#include "abstract_string_option.h"
-#include "nullable.h"
 
-namespace Mysql{
-namespace Tools{
-namespace Base{
-namespace Options{
+#include "client/base/abstract_string_option.h"
+#include "my_getopt.h"
+
+namespace Mysql {
+namespace Tools {
+namespace Base {
+namespace Options {
 
 /**
   String value option.
  */
-class String_option : public Abstract_string_option<String_option>
-{
-public:
+class String_option : public Abstract_string_option<String_option> {
+ public:
   /**
     Constructs new string option.
     @param value Pointer to string object to receive option value.
     @param name Name of option. It is used in command line option name as
       --name.
-    @param desription Description of option to be printed in --help.
+    @param description Description of option to be printed in --help.
    */
-  String_option(
-    Nullable<std::string>* value, std::string name, std::string description);
+  String_option(std::optional<std::string> *value, std::string name,
+                std::string description);
 };
 
-}
-}
-}
-}
+}  // namespace Options
+}  // namespace Base
+}  // namespace Tools
+}  // namespace Mysql
 
 #endif

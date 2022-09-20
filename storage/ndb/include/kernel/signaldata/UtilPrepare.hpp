@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -29,13 +29,6 @@
 #include <SimpleProperties.hpp>
 
 #define JAM_FILE_ID 18
-
-
-#ifdef NDB_WIN32
-#ifdef NO_ERROR
-#undef NO_ERROR
-#endif
-#endif
 
 /**
  * UTIL_PREPARE_REQ, UTIL_PREPARE_CONF, UTIL_PREPARE_REF
@@ -85,9 +78,9 @@ public:
   };
 
   // Signal constants
-  STATIC_CONST( SignalLength = 3 );
-  STATIC_CONST( PROPERTIES_SECTION = 0 );
-  STATIC_CONST( NoOfSections = 1 );
+  static constexpr Uint32 SignalLength = 3;
+  static constexpr Uint32 PROPERTIES_SECTION = 0;
+  static constexpr Uint32 NoOfSections = 1;
 
   GET_SET_SENDERREF
   GET_SET_SENDERDATA
@@ -120,7 +113,7 @@ class UtilPrepareConf {
 				     Uint16 receiverBlockNo);
 
 public:
-  STATIC_CONST( SignalLength = 2 );
+  static constexpr Uint32 SignalLength = 2;
 
   GET_SET_SENDERDATA
   GET_SET_PREPAREID
@@ -155,7 +148,7 @@ class UtilPrepareRef {
 
 public:
   enum ErrorCode {
-    NO_ERROR = 0,
+    PREPARE_REF_NO_ERROR = 0,
     PREPARE_SEIZE_ERROR = 1,
     PREPARE_PAGES_SEIZE_ERROR = 2,
     PREPARED_OPERATION_SEIZE_ERROR = 3,
@@ -163,7 +156,7 @@ public:
     MISSING_PROPERTIES_SECTION = 5
   };
 
-  STATIC_CONST( SignalLength = 3 );
+  static constexpr Uint32 SignalLength = 3;
 
   GET_SET_SENDERDATA
   GET_SET_ERRORCODE

@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2010, 2021, Oracle and/or its affiliates.
+ *  Copyright (c) 2010, 2022, Oracle and/or its affiliates.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License, version 2.0,
@@ -37,6 +37,8 @@ public interface ClusterConnection {
 
     public void waitUntilReady(int connectTimeoutBefore, int connectTimeoutAfter);
 
+    public void closing();
+
     public void close();
 
     public int dbCount();
@@ -50,4 +52,10 @@ public interface ClusterConnection {
     public void initializeAutoIncrement(long[] autoIncrement);
 
     public void setByteBufferPoolSizes(int[] poolSizes);
+
+    public void setRecvThreadCPUid(short cpuid);
+
+    public void unsetRecvThreadCPUid();
+
+    public void setRecvThreadActivationThreshold(int threshold);
 }

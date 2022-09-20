@@ -30,7 +30,7 @@ namespace Tianmu {
 namespace core {
 // damn it... should be C linkage.
 // this is not exported yet in msyql 5.6
-extern "C" int decimal_shift(decimal_t *dec, int shift);
+///*extern "C" */int decimal_shift(decimal_t *dec, int shift);
 
 static inline int my_decimal_shift(uint mask, my_decimal *res, int shift) {
   return check_result_and_overflow(mask, decimal_shift((decimal_t *)res, shift), res);
@@ -58,36 +58,36 @@ class Item_tianmufield : public Item_field {
   static Type get_tianmuitem_type() { return (Type)enumTIANMUFiledItem::TIANMUFIELD_ITEM; }
   Type type() const override { return (Type)enumTIANMUFiledItem::TIANMUFIELD_ITEM; }
   bool is_null() override { return buf->IsNull(); }
-  bool is_null_result() override { return buf->IsNull(); }
+  bool is_null_result() /*override*/ { return buf->IsNull(); }
   double val_real() override;
-  double val_result() override { return val_real(); }
+  double val_result() /*override*/ { return val_real(); }
   longlong val_int() override;
   longlong val_time_temporal() override {
     MYSQL_TIME ltime;
     if (get_time(&ltime) == 1) return 0;
-    return TIME_to_longlong_time_packed(&ltime);
+    return TIME_to_longlong_time_packed(ltime);
   }
   longlong val_date_temporal() override {
     MYSQL_TIME ltime;
     get_date(&ltime, 0);
-    return TIME_to_longlong_datetime_packed(&ltime);
+    return TIME_to_longlong_datetime_packed(ltime);
   }
-  longlong val_int_result() override { return val_int(); }
-  bool val_bool_result() override { return (val_int() ? true : false); }
+  longlong val_int_result() /*override*/ { return val_int(); }
+  bool val_bool_result() /*override*/ { return (val_int() ? true : false); }
   String *val_str(String *s) override;
-  String *str_result(String *s) override { return val_str(s); }
+  String *str_result(String *s) /*override*/ { return val_str(s); }
   my_decimal *val_decimal(my_decimal *d) override;
-  my_decimal *val_decimal_result(my_decimal *d) override { return val_decimal(d); }
+  my_decimal *val_decimal_result(my_decimal *d) /*override*/ { return val_decimal(d); }
   bool get_date(MYSQL_TIME *ltime, uint fuzzydate) override;
-  bool get_date_result(MYSQL_TIME *ltime, uint fuzzydate) override { return get_date(ltime, fuzzydate); }
+  bool get_date_result(MYSQL_TIME *ltime, uint fuzzydate) /*override*/ { return get_date(ltime, fuzzydate); }
   bool get_time(MYSQL_TIME *ltime) override;
-  bool get_timeval(struct timeval *tm, int *warnings) override;
+  bool get_timeval(struct my_timeval *tm, int *warnings) /*override*/;
   table_map used_tables() const override { return ifield->used_tables(); }
   enum Item_result result_type() const override {
     return was_aggregation ? aggregation_result : Item_field::result_type();
   }
-  enum_field_types field_type() const override { return ifield->field_type(); }
-  bool const_item() const override { return false; }
+  enum_field_types field_type() const /*override*/ { return ifield->data_type(); }
+  bool const_item() const /*override*/ { return false; }
   const char *full_name() const override { return fullname; }
   bool operator==(Item_tianmufield const &) const;
   bool IsAggregation() { return was_aggregation; }

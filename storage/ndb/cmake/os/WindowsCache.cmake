@@ -1,4 +1,4 @@
-# Copyright (c) 2011, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2011, 2022, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -18,7 +18,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
 #
 
 # Avoid system checks on Windows by pre-caching  results. Most of the system checks
@@ -42,7 +42,7 @@ SET(HAVE_EPOLL_CREATE CACHE INTERNAL "")
 SET(HAVE_MEMALIGN CACHE INTERNAL "")
 SET(HAVE_SYSCONF CACHE INTERNAL "")
 SET(HAVE_DIRECTIO CACHE INTERNAL "")
-SET(HAVE_ATOMIC_SWAP32 CACHE INTERNAL "")
+SET(HAVE_ATOMIC_SWAP_32 CACHE INTERNAL "")
 SET(HAVE_MLOCK CACHE INTERNAL "")
 SET(HAVE_FFS CACHE INTERNAL "")
 SET(HAVE_PTHREAD_MUTEXATTR_INIT CACHE INTERNAL "")

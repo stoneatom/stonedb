@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2003, 2021, Oracle and/or its affiliates.
+   Copyright (c) 2003, 2022, Oracle and/or its affiliates.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License, version 2.0,
@@ -26,6 +26,7 @@
 #define GLOBAL_DATA_H
 
 #include <ndb_global.h>
+#include <cstring>
 #include <kernel_types.h>
 #include "Prio.hpp"
 #include "VMSignal.hpp"
@@ -35,6 +36,7 @@
 #include <NodeInfo.hpp>
 #include "ArrayPool.hpp"
 #include <NdbTick.h>
+#include <NdbMutex.h>
 
 // #define GCP_TIMER_HACK
 
@@ -48,12 +50,15 @@ enum  restartStates {initial_state,
                      system_started, 
                      perform_stop};
 
+typedef ArrayPool<GlobalPage> GlobalPage_pool;
+typedef SafeArrayPool<GlobalPage> GlobalPage_safepool;
+
 struct GlobalData {
   Uint32     m_hb_count[MAX_NODES];   // hb counters
   NodeInfo   m_nodeInfo[MAX_NODES];   // At top to ensure cache alignment
   Signal     VMSignals[1];            // Owned by FastScheduler::
-  Uint32     m_restart_seq;           //
   NodeVersionInfo m_versionInfo;
+  Uint32     m_restart_seq;           //
   
   NDB_TICKS  internalTicksCounter;    // Owned by ThreadConfig::
   Uint32     highestAvailablePrio;    // Owned by FastScheduler::
@@ -70,7 +75,7 @@ struct GlobalData {
   Uint32     theCountTimer;           // Owned by TimeQueue::
   Uint32     theFirstFreeTQIndex;     // Owned by TimeQueue::
   Uint32     testOn;                  // Owned by the Signal Loggers
-  
+ 
   NodeId     ownId;                   // Own processor id
   
   Uint32     theStartLevel;
@@ -84,11 +89,25 @@ struct GlobalData {
   bool       isNdbMtLqh; // ndbd multithreaded, LQH workers
   Uint32     ndbMtLqhWorkers;
   Uint32     ndbMtLqhThreads;
+  Uint32     ndbMtTcWorkers;
   Uint32     ndbMtTcThreads;
+  Uint32     ndbMtQueryThreads;
+  Uint32     ndbMtRecoverThreads;
   Uint32     ndbMtSendThreads;
   Uint32     ndbMtReceiveThreads;
+  Uint32     ndbMtMainThreads;
   Uint32     ndbLogParts;
+  Uint32     ndbRRGroups;
+  Uint32     num_io_laggers; // Protected by theIO_lag_mutex
+  Uint32     QueryThreadsPerLdm;
   
+  Uint64     theMicrosSleep;
+  Uint64     theBufferFullMicrosSleep;
+  Uint64     theMicrosSend;
+  Uint64     theMicrosSpin;
+
+  NdbMutex   *theIO_lag_mutex;
+
   GlobalData(){ 
     theSignalId = 0; 
     theStartLevel = NodeState::SL_NOTHING;
@@ -97,16 +116,34 @@ struct GlobalData {
     isNdbMtLqh = false;
     ndbMtLqhWorkers = 0;
     ndbMtLqhThreads = 0;
+    ndbMtTcWorkers = 0;
     ndbMtTcThreads = 0;
+    ndbMtQueryThreads = 0;
+    ndbMtRecoverThreads = 0;
     ndbMtSendThreads = 0;
     ndbMtReceiveThreads = 0;
+    ndbMtMainThreads = 0;
     ndbLogParts = 0;
-    bzero(m_hb_count, sizeof(m_hb_count));
+    ndbRRGroups = 1;
+    num_io_laggers = 0;
+    QueryThreadsPerLdm = 0;
+    theMicrosSleep = 0;
+    theBufferFullMicrosSleep = 0;
+    theMicrosSend = 0;
+    theMicrosSpin = 0;
+    std::memset(m_hb_count, 0, sizeof(m_hb_count));
 #ifdef GCP_TIMER_HACK
     gcp_timer_limit = 0;
 #endif
+    theIO_lag_mutex = NdbMutex_Create();
   }
-  ~GlobalData() { m_global_page_pool.clear(); m_shared_page_pool.clear();}
+
+  ~GlobalData()
+  {
+    m_global_page_pool.clear();
+    m_shared_page_pool.clear();
+    NdbMutex_Destroy(theIO_lag_mutex);
+  }
   
   void             setBlock(BlockNumber blockNo, SimulatedBlock * block);
   SimulatedBlock * getBlock(BlockNumber blockNo);
@@ -130,12 +167,30 @@ struct GlobalData {
   Uint32& set_hb_count(Uint32 nodeId) {
     return m_hb_count[nodeId];
   }
+
+  void lock_IO_lag()
+  {
+    NdbMutex_Lock(theIO_lag_mutex);
+  }
+  void unlock_IO_lag()
+  {
+    NdbMutex_Unlock(theIO_lag_mutex);
+  }
+  Uint32 get_io_laggers()
+  {
+    return num_io_laggers;
+  }
+  void set_io_laggers(Uint32 new_val)
+  {
+    num_io_laggers = new_val;
+  }
+
 private:
   Uint32     watchDog;
   SimulatedBlock* blockTable[NO_OF_BLOCKS]; // Owned by Dispatcher::
 public:
-  SafeArrayPool<GlobalPage> m_global_page_pool;
-  ArrayPool<GlobalPage> m_shared_page_pool;
+  GlobalPage_safepool m_global_page_pool;
+  GlobalPage_pool m_shared_page_pool;
 
 #ifdef GCP_TIMER_HACK
   // timings are local to the node
