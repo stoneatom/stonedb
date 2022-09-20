@@ -83,7 +83,8 @@ SELECT * FROM t1;
 DROP TABLE t1;
 
 --echo #
---echo # INSERT .. ON DUPLICATE was silently updating rows when it shouldn't.
+--echo # INSERT .. ON DUPLICATE was silently
+--echo # updating rows when it shouldn't.
 --echo #
 
 create table t1(f1 int primary key,

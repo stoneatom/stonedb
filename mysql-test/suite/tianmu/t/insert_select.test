@@ -81,7 +81,8 @@ show status like 'Handler_read%';
 DROP TABLE t1;
 
 --echo #
---echo # INSERT INTO SELECT inserts values even if SELECT statement itself returns empty
+--echo # INSERT INTO SELECT inserts values even if
+--echo # SELECT statement itself returns empty
 --echo #
 
 CREATE TABLE t1 (
@@ -136,6 +137,7 @@ USE test;
 --echo #
 --echo # wrong result, when INSERT t1 SELECT ... FROM t1 ON DUPLICATE
 --echo #
+
 CREATE TABLE t1 (f1 INT, f2 INT );
 CREATE TABLE t2  (f1 INT PRIMARY KEY, f2 INT);
 INSERT INTO t1 VALUES (1,1),(2,2),(10,10);
@@ -147,8 +149,10 @@ SELECT * FROM t2;
 DROP TABLE t1, t2;
 
 --echo #
---echo # Assertion fail on duplicate key error in 'INSERT ... SELECT' statements
+--echo # Assertion fail on duplicate key
+--echo # error in 'INSERT ... SELECT' statements
 --echo #
+
 CREATE TABLE t1 ( a INT KEY, b INT );
 INSERT INTO t1 VALUES ( 0, 1 );
 --error ER_DUP_ENTRY
@@ -156,7 +160,8 @@ INSERT INTO t1 ( b ) SELECT MAX( b ) FROM t1 WHERE b = 2;
 DROP TABLE t1;
 
 --echo #
---echo #incorrect pushing of LIMIT into the temporary table ignoring ORDER BY clause
+--echo #incorrect pushing of LIMIT into
+--echo # the temporary table ignoring ORDER BY clause
 --echo #
 
 CREATE TABLE t1 (
