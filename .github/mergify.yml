@@ -8,21 +8,32 @@ pull_request_rules:
     conditions:
       - "#approved-reviews-by>=2"
       - label=A-bug
+      - label!=PR-Docs
       - check-success=stonedb-build
     actions:
       queue:
         name: shared_queue
-        method: squash
+        method: rebase
 
   - name: put other pr to merge queue
     conditions:
       - "#approved-reviews-by>=2"
       - label!=A-bug
+      - label!=PR-Docs
       - check-success=stonedb-build
     actions:
       queue:
         name: shared_queue
-        method: squash
+        method: rebase
+
+  - name: put docs to merge queue
+    conditions:
+      - "#approved-reviews-by>=2"
+      - label=PR-Docs
+    actions:
+      queue:
+        name: shared_queue
+        method: rebase
 
   # Check if PR title contain valid types
   - name: Comment PR if title not semantic
