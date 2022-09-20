@@ -44,19 +44,19 @@ StoneDB 是一个兼容 MySQL 的高性能混合事务/分析处理(HTAP)数据�
 
 <p align="center"> <b>概览</b> </p>
 
-[![logo](Docs/stonedb_overview.png)](https://stonedb.io/docs/about-stonedb/intro)
+[![logo](Docs/stonedb_overview.png)](https://stonedb.io/zh/docs/about-stonedb/intro)
 
 
 <p align="center"> <b>架构图 2.0</b> </p>
 
-[![logo](Docs/stonedb_architecture.png)](https://stonedb.io/docs/about-stonedb/architecture)
+[![logo](Docs/stonedb_architecture.png)](https://stonedb.io/zh/docs/about-stonedb/architecture)
 
 
-想获取更多关于 StoneDB 的信息，可以前往官网： [stonedb.io](https://stonedb.io/).
+想获取更多关于 StoneDB 的信息，可以前往官网： [stonedb.io](https://stonedb.io/zh/).
 
 # 贡献指南
 
-StoneDB 社区欢迎各种各样的贡献，如为代码库贡献代码，分享您如何使用StoneDB的经验，并在论坛上在社区中提供见解，或贡献项目，使 StoneDB 成为一个更好的开源项目。想获取更多的细节，可以看这里：[contributing guide](https://stonedb.io/community/main) 
+StoneDB 社区欢迎各种各样的贡献，如为代码库贡献代码，分享您如何使用StoneDB的经验，并在论坛上在社区中提供见解，或贡献项目，使 StoneDB 成为一个更好的开源项目。想获取更多的细节，可以看这里：[contributing guide](https://stonedb.io/zh/community/main/) 
 
 # 快速开始
 
@@ -86,18 +86,18 @@ StoneDB 社区欢迎各种各样的贡献，如为代码库贡献代码，分享
 
 ### Ubuntu 20.04 下编译 StoneDB
 
-更多信息，可以查看 [Compile StoneDB on Ubuntu 20.04](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-ubuntu2004/compile-using-ubuntu20.04-for-57/).
+更多信息，可以查看 [Compile StoneDB on Ubuntu 20.04](https://stonedb.io/zh/docs/developer-guide/compiling-methods/compile-using-ubuntu2004/compile-using-ubuntu20.04-for-57/).
 
 ### CentOS 7.x 下编译 StoneDB
 
-更多信息，可以查看 [Compile StoneDB on CentOS 7](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-centos7/compile-using-centos7-for-57).
+更多信息，可以查看 [Compile StoneDB on CentOS 7](https://stonedb.io/zh/docs/developer-guide/compiling-methods/compile-using-centos7/compile-using-centos7-57).
 
 ### RedHat 7.x 下编译 StoneDB
-更多信息，可以查看 [Compile StoneDB on RHEL 7](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-redhat7/compile-using-redhat7-for-57).
+更多信息，可以查看 [Compile StoneDB on RHEL 7](https://stonedb.io/zh/docs/developer-guide/compiling-methods/compile-using-redhat7/compile-using-redhat7-for-57).
 
 ## 在 Docker 容器中通过源码编译 StoneDB
 
-更多信息，可以查看 [Compile StoneDB in a Docker Container](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-docker).
+更多信息，可以查看 [Compile StoneDB in a Docker Container](https://stonedb.io/zh/docs/developer-guide/compiling-methods/compile-using-docker).
 
 ## 配置 StoneDB
 
@@ -146,10 +146,10 @@ CREATE TABLE `example_table` (
 -- For version 5.6, the engine should be set to 'stonedb'
 ```
 
-这个例子展示了 StoneDB 中的一些重要特性和限制。有关限制的更多信息，请参见 [StoneDB Limitations](https://stonedb.io/docs/about-stonedb/limits). 
+这个例子展示了 StoneDB 中的一些重要特性和限制。有关限制的更多信息，请参见 [StoneDB Limitations](https://stonedb.io/zh/docs/about-stonedb/limits). 
 
 - StoneDB 数据以列格式存储，并持久化到 RocksDB 中，RocksDB 作为磁盘按列存储格式化后的数据。所有数据会被压缩，压缩比为10:1 ~ 40:1。
-- 在处理特殊查询时，即使不创建任何索引，StoneDB 也能达到具有竞争力的性能。要了解更多信息，请点击[这里](http://stonedb.io/)
+- 在处理特殊查询时，即使不创建任何索引，StoneDB 也能达到具有竞争力的性能。要了解更多信息，请点击[这里](https://stonedb.io/zh/)
 
 --- 
 
@@ -174,10 +174,10 @@ CREATE TABLE `example_table` (
 
 # 文档
 
-相关文档可在[https://stonedb.io](https://stonedb.io/docs/about-stonedb/intro)上找到。该文档为您提供了 StoneDB 基础知识，使用 StoneDB 的广泛示例，以及您在使用 StoneDB 期间可能需要的其他信息。
+相关文档可在[https://stonedb.io](https://stonedb.io/zh/docs/about-stonedb/intro) 上找到。该文档为您提供了 StoneDB 基础知识，使用 StoneDB 的广泛示例，以及您在使用 StoneDB 期间可能需要的其他信息。
 
 # 论坛
-[GitHub讨论](https://github.com/stoneatom/stonedb/discussions)是大多数关于 StoneDB 项目的讨论和交流的主页。欢迎您的参与。欢迎并重视您的每一个意见或建议。我们期待 StoneDB 成为一个开放且有影响力的项目。
+[GitHub讨论](https://github.com/stoneatom/stonedb/discussions) 是大多数关于 StoneDB 项目的讨论和交流的主页。欢迎您的参与。欢迎并重视您的每一个意见或建议。我们期待 StoneDB 成为一个开放且有影响力的项目。
 
 # 加入 StoneDB 用户群
 您可以扫码加入我们的微信用户群：
@@ -186,5 +186,5 @@ CREATE TABLE `example_table` (
 
 
 # 行为准则
-参加StoneDB项目时，请确保您的所有行为都符合[行为准则](https://stonedb.io/community/main)。
+参加StoneDB项目时，请确保您的所有行为都符合[行为准则](https://stonedb.io/zh/community/main/) 。
 
