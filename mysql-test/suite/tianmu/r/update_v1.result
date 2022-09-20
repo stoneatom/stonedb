@@ -1,0 +1,269 @@
+#
+# test of updating of keys
+#
+drop table if exists t1,t2;
+create table t1 (a int auto_increment , primary key (a))engine=tianmu;
+insert into t1 values (NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL);
+update t1 set a=a+10 where a > 34;
+update t1 set a=a+100 where a > 0;
+update t1 set a=a+100 where a=1 and a=2;
+update t1 set a=b+100 where a=1 and a=2;
+ERROR 42S22: Unknown column 'b' in 'field list'
+update t1 set a=b+100 where c=1 and a=2;
+ERROR 42S22: Unknown column 'c' in 'where clause'
+update t1 set d=a+100 where a=1;
+ERROR 42S22: Unknown column 'd' in 'field list'
+select * from t1;
+a
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+145
+146
+drop table t1;
+CREATE TABLE t1
+(
+place_id int (10) NOT NULL,
+shows int(10) DEFAULT '0' NOT NULL,
+ishows int(10) DEFAULT '0' NOT NULL,
+ushows int(10) DEFAULT '0' NOT NULL,
+clicks int(10) DEFAULT '0' NOT NULL,
+iclicks int(10) DEFAULT '0' NOT NULL,
+uclicks int(10) DEFAULT '0' NOT NULL,
+ts timestamp,
+PRIMARY KEY (place_id,ts)
+);
+INSERT INTO t1 (place_id,shows,ishows,ushows,clicks,iclicks,uclicks,ts)
+VALUES (1,0,0,0,0,0,0,20000928174434);
+UPDATE t1 SET shows=shows+1,ishows=ishows+1,ushows=ushows+1,clicks=clicks+1,iclicks=iclicks+1,uclicks=uclicks+1 WHERE place_id=1 AND ts>="2000-09-28 00:00:00";
+select place_id,shows from t1;
+place_id	shows
+1	1
+drop table t1;
+#
+# Test bug with update reported by Jan Legenhausen
+#
+CREATE TABLE t1 (
+lfdnr int(10) NOT NULL default '0',
+ticket int(10) NOT NULL default '0',
+client varchar(255) NOT NULL default '',
+replyto varchar(255) NOT NULL default '',
+subject varchar(100) NOT NULL default '',
+timestamp int(10) NOT NULL default '0',
+tstamp timestamp NOT NULL,
+status int(3) NOT NULL default '0',
+type varchar(15) NOT NULL default '',
+assignment int(10) NOT NULL default '0',
+fupcount int(4) NOT NULL default '0',
+parent int(10) NOT NULL default '0',
+activity int(10) NOT NULL default '0',
+priority tinyint(1) NOT NULL default '1',
+cc varchar(255) NOT NULL default '',
+bcc varchar(255) NOT NULL default '',
+body text NOT NULL,
+comment text,
+header text,
+PRIMARY KEY  (lfdnr),
+KEY k1 (timestamp),
+KEY k2 (type),
+KEY k3 (parent),
+KEY k4 (assignment),
+KEY ticket (ticket)
+) ENGINE=tianmu;
+INSERT INTO t1 VALUES (773,773,'','','',980257344,20010318180652,0,'Open',10,0,0,0,1,'','','','','');
+update t1 set status=1 where type='Open';
+select status from t1;
+status
+1
+drop table t1;
+#
+# Test with limit (Bug #393)
+#
+CREATE TABLE t1 (
+`id_param` smallint(3) NOT NULL default '0',
+`nom_option` char(40) NOT NULL default '',
+`valid` tinyint(1) NOT NULL default '0',
+KEY `id_param` (`id_param`,`nom_option`)
+) ENGINE=tianmu;
+INSERT INTO t1 (id_param,nom_option,valid) VALUES (185,'600x1200',1);
+UPDATE t1 SET nom_option='test' WHERE id_param=185 AND nom_option='600x1200' AND valid=1 LIMIT 1;
+select * from t1;
+id_param	nom_option	valid
+185	test	1
+drop table t1;
+#
+# update..left join...set
+#
+create table t1 (c1 int, c2 char(6), c3 int)engine=tianmu;
+create table t2 (c1 int, c2 char(6))engine=tianmu;
+insert into t1 values (1, "t1c2-1", 10), (2, "t1c2-2", 20);
+update t1 left join t2 on t1.c1 = t2.c1 set t2.c2 = "t2c2-1";
+update t1 left join t2 on t1.c1 = t2.c1 set t2.c2 = "t2c2-1" where t1.c3 = 10;
+select * from t1;
+c1	c2	c3
+1	t1c2-1	10
+2	t1c2-2	20
+select * from t2;
+c1	c2
+drop table t1, t2;
+#
+# update...set..where
+#
+create table t1 (id int not null auto_increment primary key, id_str varchar(32));
+insert into t1 (id_str) values ("test");
+update t1 set id_str = concat(id_str, id) where id = last_insert_id();
+select * from t1;
+id	id_str
+1	test1
+drop table t1;
+#
+#  a problem with update and partial key part
+#
+create table t1 (a int, b char(255), key(a, b(20)));
+insert into t1 values (0, '1');
+update t1 set b = b + 1 where a = 0;
+select * from t1;
+a	b
+0	2
+drop table t1;
+#
+# Update with subquery with ref built with a key from the updated table crashes server
+#
+create table t1(f1 int, f2 int);
+create table t2(f3 int, f4 int);
+insert into t1 values(1,0),(2,0);
+insert into t2 values(1,1),(2,2);
+UPDATE t1 SET t1.f2=(SELECT MAX(t2.f4) FROM t2 WHERE t2.f3=t1.f1);
+select * from t1;
+f1	f2
+1	1
+2	2
+drop table t1,t2;
+#
+# sometimes server accepts sum func in update/delete where condition
+#
+create table t1(f1 int);
+select DATABASE();
+DATABASE()
+test
+update t1 set f1=1 where count(*)=1;
+ERROR HY000: Invalid use of group function
+select DATABASE();
+DATABASE()
+test
+delete from t1 where count(*)=1;
+ERROR HY000: Invalid use of group function
+drop table t1;
+#
+# select datefield is null not updated
+#
+create table t1 (f1 date not null) engine=tianmu;
+insert into t1 values('2000-01-01'),('2001-01-01');
+update t1 set f1='2002-02-02' where f1 is null;
+select * from t1;
+f1
+2000-01-01
+2001-01-01
+drop table t1;
+#
+# Updating field named like '*name'
+#
+create table t1(f1 int, `*f2` int)engine=tianmu;
+insert into t1 values (1,1);
+update t1 set `*f2`=1;
+select * from t1;
+f1	*f2
+1	1
+drop table t1;
+#
+#INSERT INTO ... on unique constraint with data
+#
+CREATE TABLE t1 (
+a INT(11),
+quux decimal(17, 10),
+UNIQUE KEY bar (a),
+KEY quux (quux)
+)engine=tianmu;
+INSERT INTO
+t1 ( a, quux )
+VALUES
+( 1,    1 ),
+( 2,  0.1 );
+INSERT INTO t1( a )
+SELECT @newA := 1 + a FROM t1 WHERE quux <= 0.1;
+SELECT * FROM t1;
+a	quux
+1	1.0000000000
+2	0.1000000000
+3	NULL
+DROP TABLE t1;
+#
+#UPDATE ON VARCHAR AND TEXT COLUMNS
+#
+CREATE TABLE t1 (a VARCHAR(50), b TEXT, c CHAR(50)) ENGINE=tianmu;
+INSERT INTO t1 (a, b, c) VALUES ('start trail', '', 'even longer string');
+UPDATE t1 SET b = a, a = 'inject';
+SELECT a, b FROM t1;
+a	b
+inject	start trail
+UPDATE t1 SET b = c, c = 'inject';
+SELECT c, b FROM t1;
+c	b
+inject	even longer string
+DROP TABLE t1;
+#
+#UPDATE DOES NOT USE INDEX
+#
+CREATE TABLE t1(
+id INTEGER NOT NULL AUTO_INCREMENT,
+token VARCHAR(255) DEFAULT NULL,
+PRIMARY KEY (id),
+KEY token (token)
+)engine=tianmu;
+INSERT INTO t1 VALUES (1, "abc"), (2, "def");
+SELECT * FROM t1;
+id	token
+1	abc
+2	def
+UPDATE t1 SET token = X'ad';
+SELECT * FROM t1;
+id	token
+1	­
+2	­
+UPDATE t1 SET token = NULL WHERE token = X'ad';
+SELECT * FROM t1;
+id	token
+1	­
+2	­
+DROP TABLE t1;
