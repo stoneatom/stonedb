@@ -63,7 +63,8 @@ drop table t1;
 #
 # Test of duplicate key values with packed keys
 #
-create table t1 (id int not null auto_increment primary key, username varchar(32) not null, unique (username));
+create table t1 (id int not null auto_increment primary key, username varchar(32) not null,
+unique (username));
 insert into t1 values (0,"mysql");
 insert into t1 values (0,"mysql ab");
 insert into t1 values (0,"mysql a");
@@ -73,7 +74,10 @@ drop table t1;
 #
 # Test insert syntax
 #
-create table t1 (a int not null auto_increment, primary key (a), t timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, c char(10) default "hello", i int)engine=tianmu;
+create table t1 (a int not null auto_increment,
+primary key (a),
+t timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+c char(10) default "hello", i int)engine=tianmu;
 insert into t1 values (default,default,default,default), (default,default,default,default), (4,0,"a",5),(default,default,default,default);
 select a,t>0,c,i from t1;
 a	t>0	c	i
@@ -94,26 +98,6 @@ a	t>0	c	i
 4	0	a	5
 5	0	a	NULL
 6	1	hello	NULL
-drop table t1;
-#
-# Test problem with bulk insert and auto_increment on second part keys
-#
-create table t1 (sid char(20), id int(2) NOT NULL auto_increment, key(sid, id)) engine=myisam;
-insert into t1 values ('skr',NULL),('skr',NULL),('test',NULL);
-select * from t1;
-sid	id
-skr	1
-skr	2
-test	1
-insert into t1 values ('rts',NULL),('rts',NULL),('test',NULL);
-select * from t1;
-sid	id
-rts	1
-rts	2
-skr	1
-skr	2
-test	1
-test	2
 drop table t1;
 #
 #Test of behaviour with INSERT VALUES (NULL)
@@ -143,7 +127,17 @@ use test;
 #
 # Test of wrong values for float data 
 #
-create table t1(number int auto_increment primary key, original_value varchar(50), f_double double, f_float float, f_double_7_2 double(7,2), f_float_4_3 float (4,3), f_double_u double, f_float_u float, f_double_15_1_u double(15,1), f_float_3_1_u float (3,1));
+create table t1(
+number int auto_increment primary key,
+original_value varchar(50),
+f_double double,
+f_float float,
+f_double_7_2 double(7,2),
+f_float_4_3 float (4,3),
+f_double_u double,
+f_float_u float,
+f_double_15_1_u double(15,1),
+f_float_3_1_u float (3,1));
 set @value= "aa";
 insert into t1 values(null,@value,@value,@value,@value,@value,@value,@value,@value,@value);
 Warnings:
@@ -614,7 +608,8 @@ INSERT IGNORE t1 (a, a) SELECT 1,1 UNION SELECT 2,2;
 ERROR 42000: Column 'a' specified twice
 DROP TABLE t1;
 #
-# ASSERTION `TRANSL->ITEM->FIXED' FAILED IN SELECT_LEX::DELETE_UNUSED_MERGED_COLUMN
+# ASSERTION `TRANSL->ITEM->FIXED' FAILED
+# IN SELECT_LEX::DELETE_UNUSED_MERGED_COLUMN
 #
 CREATE TABLE t1 ( pk INT, PRIMARY KEY (pk))engine=tianmu;
 CREATE TABLE t2 LIKE t1;
