@@ -267,6 +267,7 @@ order by
     p_partkey
 limit 100;
 
+--sleep 1
 #q3,Optimized SQL
 select
     l_orderkey,
