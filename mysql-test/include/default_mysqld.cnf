@@ -23,6 +23,8 @@ loose-innodb_log_file_size=       5M
 loose-innodb_log_files_in_group=  2
 default-storage-engine=InnoDB
 
+tianmu_insert_delayed=off
+
 slave-net-timeout=120
 
 log-bin=mysqld-bin

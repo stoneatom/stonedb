@@ -43,7 +43,7 @@ void ValueMatchingTable::Clear() { no_rows = 0; }
 ValueMatchingTable *ValueMatchingTable::CreateNew_ValueMatchingTable(int64_t mem_available, int64_t max_no_groups,
                                                                      int64_t max_group_code, int _total_width,
                                                                      int _input_buf_width, int _match_width,
-                                                                     uint32_t power) {
+                                                                     uint32_t power, bool use_lookup_table) {
   // trivial case: one group only
   if (_input_buf_width == 0) {
     ValueMatching_OnePosition *new_object = new ValueMatching_OnePosition();
@@ -52,10 +52,12 @@ ValueMatchingTable *ValueMatchingTable::CreateNew_ValueMatchingTable(int64_t mem
   }
 
   // easy case: narrow scope of group codes, which may be used
-  if (max_group_code < common::PLUS_INF_64 && max_group_code < max_no_groups * 1.5) {
-    ValueMatching_LookupTable *new_object = new ValueMatching_LookupTable();
-    new_object->Init(max_group_code, _total_width, _input_buf_width, _match_width, power);
-    return new_object;
+  if (use_lookup_table) {
+    if (max_group_code < common::PLUS_INF_64 && max_group_code < max_no_groups * 1.5) {
+      ValueMatching_LookupTable *new_object = new ValueMatching_LookupTable();
+      new_object->Init(max_group_code, _total_width, _input_buf_width, _match_width, power);
+      return new_object;
+    }
   }
 
   // default

@@ -19,6 +19,7 @@
 
 #include "core/mi_iterator.h"
 #include "core/transaction.h"
+#include "core/value_matching_hashtable.h"
 
 namespace Tianmu {
 namespace core {
@@ -175,7 +176,8 @@ GDTResult GroupDistinctTable::Add(int64_t group, MIIterator &mit) {
   group += 1;  // offset; 0 means empty position
   std::memmove(input_buffer, (unsigned char *)(&group), group_bytes);
   encoder->Encode(input_buffer + group_bytes, mit, NULL, true);
-  return FindCurrentRow();
+  // return FindCurrentRow();
+  return FindCurrentRowByVMTable();
 }
 
 GDTResult GroupDistinctTable::Add(int64_t group, int64_t val)  // numeric values
@@ -236,6 +238,18 @@ void GroupDistinctTable::ValueFromInput(types::BString &v)  // decode original v
 {
   MIDummyIterator mit(1);
   v = encoder->GetValueT(input_buffer + group_bytes, mit);
+}
+
+GDTResult GroupDistinctTable::FindCurrentRowByVMTable() 
+{
+  int64_t row = 0;
+  bool existed = vm_tab->FindCurrentRow(input_buffer, row, true, total_width);
+
+  if (existed) {
+    return GDTResult::GDT_EXISTS;
+  }
+
+  return GDTResult::GBIMODE_AS_TEXT;
 }
 
 GDTResult GroupDistinctTable::FindCurrentRow(bool find_only)  // find / insert the current buffer
