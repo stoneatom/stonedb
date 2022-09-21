@@ -22,8 +22,8 @@ drop table t1;
 
 CREATE TABLE t1
 (
-  a   BIGINT UNSIGNED,
-  b   BIGINT UNSIGNED,
+  a   BIGINT,
+  b   BIGINT,
   PRIMARY KEY (a)
 );
 

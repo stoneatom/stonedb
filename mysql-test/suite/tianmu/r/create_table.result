@@ -470,7 +470,7 @@ Table	Create Table
 t1	CREATE TABLE `t1` (
   `c1` year(4) DEFAULT '2008',
   `c2` year(4) DEFAULT '0000'
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
 insert into t1 values();
 select * FROM t1;
 c1	c2
@@ -494,12 +494,12 @@ show create table t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
   `dt` datetime DEFAULT '2008-02-31 00:00:00'
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
 show create table t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
   `dt` datetime DEFAULT '2008-02-31 00:00:00'
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
 set @@sql_mode= @old_mode;
 drop tables t1,t2;
 #
@@ -578,7 +578,7 @@ show create table t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
   `fld1` datetime NOT NULL DEFAULT '1111-11-11 00:00:00'
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
 drop table t1;
 # create table..select based on trigger fields.
 create table t1 (fld1 int, fld2 DATETIME DEFAULT '1211:1:1');
@@ -587,4 +587,4 @@ Table	Create Table
 t1	CREATE TABLE `t1` (
   `fld1` int(11) DEFAULT NULL,
   `fld2` datetime DEFAULT '1211-01-01 00:00:00'
-) ENGINE=InnoDB DEFAULT CHARSET=latin1
+) ENGINE=TIANMU DEFAULT CHARSET=latin1

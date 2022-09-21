@@ -4,21 +4,17 @@
 create table t1 (bandID MEDIUMINT NOT NULL PRIMARY KEY, payoutID SMALLINT NOT NULL);
 insert into t1 (bandID,payoutID) VALUES (1,6),(2,6),(3,4),(4,9),(5,10),(6,1),(7,12),(8,12);
 alter table t1 add column new_col int, order by payoutid,bandid;
-Warnings:
-Warning	1105	ORDER BY ignored as there is a user-defined clustered index in the table 't1'
 select * from t1;
 bandID	payoutID	new_col
+6	1	NULL
+3	4	NULL
 1	6	NULL
 2	6	NULL
-3	4	NULL
 4	9	NULL
 5	10	NULL
-6	1	NULL
 7	12	NULL
 8	12	NULL
 alter table t1 order by bandid,payoutid;
-Warnings:
-Warning	1105	ORDER BY ignored as there is a user-defined clustered index in the table 't1'
 select * from t1;
 bandID	payoutID	new_col
 1	6	NULL
@@ -48,7 +44,6 @@ drop table t1;
 #
 create table t1 (i int not null auto_increment primary key);
 insert into t1 values (null),(null),(null),(null);
-alter table t1 drop i,add i int unsigned not null auto_increment, drop primary key, add primary key (i);
 select * from t1;
 i
 1

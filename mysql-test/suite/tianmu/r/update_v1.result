@@ -145,7 +145,7 @@ insert into t1 (id_str) values ("test");
 update t1 set id_str = concat(id_str, id) where id = last_insert_id();
 select * from t1;
 id	id_str
-1	test1
+1	test
 drop table t1;
 #
 #  a problem with update and partial key part

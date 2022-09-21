@@ -28,7 +28,7 @@ drop table t1;
 
 create table t1 (i int not null auto_increment primary key);
 insert into t1 values (null),(null),(null),(null);
-alter table t1 drop i,add i int unsigned not null auto_increment, drop primary key, add primary key (i);
+#alter table t1 drop i,add i int unsigned not null auto_increment, drop primary key, add primary key (i);
 select * from t1;
 drop table t1;
 
