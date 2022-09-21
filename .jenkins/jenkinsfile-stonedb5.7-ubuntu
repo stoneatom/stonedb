@@ -1,0 +1,602 @@
+pipeline {
+    agent {
+        label 'agent-30-119'
+    }
+
+    options{
+        disableConcurrentBuilds()
+        timeout(time:2, unit: 'HOURS')
+    }
+
+    stages {
+
+        stage('InstallDeb') {
+
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    exit 0
+
+                    sudo apt install -y gcc-7
+                    sudo apt install -y g++-7
+                    sudo apt install -y make
+                    sudo apt install -y build-essential
+                    sudo apt install -y autoconf
+                    sudo apt install -y tree
+                    sudo apt install -y bison
+                    sudo apt install -y git
+                    sudo apt install -y cmake
+                    sudo apt install -y libtool
+                    sudo apt install -y numactl
+                    sudo apt install -y python
+                    sudo apt install -y openssl
+                    sudo apt install -y perl
+                    sudo apt install -y binutils
+                    sudo apt install -y libgmp-dev
+                    sudo apt install -y libmpfr-dev
+                    sudo apt install -y libmpc-dev
+                    sudo apt install -y libisl-dev
+                    sudo apt install -y zlib1g-dev
+                    sudo apt install -y liblz4-dev
+                    sudo apt install -y libbz2-dev
+                    sudo apt install -y libzstd-dev
+                    sudo apt install -y lz4
+                    sudo apt install -y ncurses-dev
+                    sudo apt install -y libsnappy-dev
+                    sudo apt install -y pkg-config
+                    sudo apt install -y pigz
+                    sudo apt install -y unzip
+                    sudo apt install -y libgflags-dev
+
+                    """
+            }
+        }
+
+        stage('InstallMariadb') {
+
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    if [ -d /usr/local/stonedb-marisa ]; then
+                        echo "marisadb installed"
+                        exit 0
+                    fi
+
+                    # git clone https://github.com/s-yata/marisa-trie.git
+                    
+                    cd .jenkins
+                    rm marisa-trie -rf
+                    unzip marisa-trie.zip
+
+                    cd marisa-trie
+                    autoreconf -i
+                    ./configure --enable-native-code --prefix=/usr/local/stonedb-marisa
+                    make && make install 
+
+                    """
+            }
+        }
+
+        stage('InstallRocksdb') {
+
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    if [ -d /usr/local/stonedb-gcc-rocksdb ]; then
+                        echo "rocksdb installed"
+                        exit 0
+                    fi
+
+                    # wget https://github.com/facebook/rocksdb/archive/refs/tags/v4.13.tar.gz
+
+                    cd .jenkins
+
+                    rm rocksdb-4.13 -rf
+                    rm rocksdb-6.12.6 -rf
+
+                    wget http://192.168.30.30/nginx_html/rocksdb-6.12.6.tar.gz
+
+                    tar -zxvf rocksdb-6.12.6.tar.gz
+
+                    cd rocksdb-6.12.6
+                    make -j`nproc` shared_lib
+                    make install-shared INSTALL_PATH=/usr/local/stonedb-gcc-rocksdb
+                    make -j`nproc` static_lib
+                    make install-static INSTALL_PATH=/usr/local/stonedb-gcc-rocksdb
+
+                    """
+            }
+        }
+
+        stage('InstallBoost') {
+
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    if [ -d /usr/local/stonedb-boost ]; then
+                        echo "boost installed"
+                        exit 0
+                    fi
+ 
+                    # wget https://nchc.dl.sourceforge.net/project/boost/boost/1.66.0/boost_1_66_0.tar.gz
+                    
+                    cd .jenkins
+
+                    rm boost_1_66_0.tar.gz
+
+                    wget http://192.168.20.235/boost_1_66_0.tar.gz
+
+                    tar -xzvf boost_1_66_0.tar.gz
+                    
+                    cd boost_1_66_0
+                    
+                    ./bootstrap.sh
+                    
+                    ./b2 -j`nproc`
+
+                    ./b2 install --prefix=/usr/local/stonedb-boost
+                    
+                    ldconfig -v
+                                        
+                    """
+            }
+        }
+
+        stage('CreeateDir') {
+
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    pkill -9 mysqld && set ?=0
+                    sleep 5s
+
+                    rm /stonedb56 -rf
+                    rm /var/lib/mysql -rf
+
+                    rm /data/stonedb56 -rf
+                    mkdir -p /data/stonedb56
+                    ln -s /data/stonedb56 /stonedb56
+                    mkdir -p /stonedb56/install
+
+                    groupadd mysql && set ?=0
+                    useradd -g mysql mysql && set ?=0
+
+                    mkdir -p /stonedb56/install/{log/,tmp/,binlog/,data/innodb}
+                    mkdir -p /var/lib/mysql/
+                    mkdir -p /stonedb56/install/log
+                    mkdir -p /stonedb56/install/tmp
+                    mkdir -p /stonedb56/install/binlog
+                    mkdir -p /stonedb56/install/data
+                    mkdir -p /stonedb56/install/innodb
+                    touch /stonedb56/install/log/stonedb.log
+
+                    chown -R mysql:mysql /data/*
+                    chown -R mysql:mysql /stonedb56
+                    chown -R mysql:mysql /stonedb56/*
+                    chown -R mysql:mysql /var/lib/mysql/
+
+                """
+            }
+        }
+
+        stage('CompileStonedb') {
+
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    rm /usr/bin/gcc -rf
+                    rm /usr/bin/g++ -rf
+
+                    ln -s /usr/bin/gcc-7 /usr/bin/gcc
+                    ln -s /usr/bin/g++-7 /usr/bin/g++
+
+                    gcc -v
+
+                    cd scripts
+                    bash stonedb_build.sh
+                    """
+            }
+        }
+
+        stage('ReFixDir') {
+
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    pkill -9 mysqld && set ?=0
+                    sleep 5s
+
+                    mkdir -p /data/stonedb56
+                    ln -s /data/stonedb56 /stonedb56
+                    mkdir -p /stonedb56/install
+
+                    groupadd mysql && set ?=0
+                    useradd -g mysql mysql && set ?=0
+
+                    mkdir -p /var/lib/mysql/
+                    mkdir -p /stonedb56/install/log
+                    mkdir -p /stonedb56/install/tmp
+                    mkdir -p /stonedb56/install/binlog
+                    mkdir -p /stonedb56/install/data
+                    mkdir -p /stonedb56/install/innodb
+                    touch /stonedb56/install/log/stonedb.log
+
+                    chown -R mysql:mysql /data/*
+                    chown -R mysql:mysql /stonedb56
+                    chown -R mysql:mysql /stonedb56/*
+                    chown -R mysql:mysql /var/lib/mysql/
+
+                """
+            }
+        }
+
+        stage('ReStartStonedb') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    /stonedb56/install/bin/mysqld --user=mysql stop && set ?=0
+ 
+                    pkill -9 mysqld && set ?=0
+
+                    sleep 5s
+
+                    /stonedb56/install/scripts/mysql_install_db.sh  --user=mysql  --basedir=/stonedb56/install --datadir=/stonedb56/install/data && set ?=0
+
+                    sleep 3s
+
+                    /stonedb56/install/bin/mysqld --user=mysql --skip-grant-tables &
+
+                    echo "restart ok"
+
+                '''
+            }
+        }
+
+        stage('RunMtrTest') {
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd /stonedb56/install/mysql-test
+                    sudo ./mysql-test-run.pl --suite=stonedb --nowarnings --force
+
+                """
+            }
+        }
+
+        stage('ImportTPCHData') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    # exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    TB_TPCH_NUM=`/stonedb57/install/bin/mysql -e "show databases;" | grep tpch | grep -v grep | wc -l`
+
+                    if [ "0" != "$TB_TPCH_NUM" ]; then
+                        echo "tpch data has imported"
+                        # exit 0
+                    fi
+
+                    cd .jenkins
+
+                    rm tpc-h.tar.gz -rf
+
+                    wget http://192.168.30.30/nginx_html/tpc-h.tar.gz
+
+                    rm tpc-h -rf
+                    tar --use-compress-program=pigz -xvpf tpc-h.tar.gz
+                    cd tpc-h
+                    cd dbgen
+
+                    make -j`nproc`
+                    
+                    # GB
+                    # ./dbgen -s 10
+                    # mkdir -p stonedb/
+                    # mv *.tbl stonedb/
+                    # cp dss.ddl stonedb/dss_stonedb.ddl		
+
+                    /stonedb57/install/bin/mysql -e "create database tpch;" && set ?=0
+
+                    /stonedb57/install/bin/mysql -D tpch -e "source ./stonedb/dss_stonedb.ddl "  && set ?=0
+
+                    /stonedb57/install/bin/mysql -D tpch < ./stonedb.sql  && set ?=0
+
+                    /stonedb57/install/bin/mysql -D tpch -e " show tables; "
+
+                    bash ./split_file2db.sh 
+
+                    cd ../..
+                    rm tpc-h -rf
+                    rm tpc-h.tar.gz -rf
+
+                '''
+            }
+        }
+
+        stage('RunTestQueryToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd tests/tpc-h
+                    rm FlameGraph -rf
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    yum install perf -y
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) -- /stonedb56/install/bin/mysql -D tpch -e "select
+                            o_orderpriority,
+                            count(*) as order_count
+                        from
+                            orders
+                        where
+                            o_orderdate >= date '1993-07-01'
+                            and o_orderdate < date '1993-07-01' + interval '3' month
+                        group by
+                            o_orderpriority
+                        order by
+                            o_orderpriority ;"
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=query-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+
+        stage('RunTestSubQueryQuickToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd tests/tpc-h
+                    rm FlameGraph -rf
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    yum install perf -y
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) -- /stonedb56/install/bin/mysql -D tpch -e "select
+                            o_orderpriority,
+                            count(*) as order_count
+                        from
+                            orders
+                        where
+                            o_orderdate >= date '1993-07-01'
+                            and o_orderdate < date '1993-07-01' + interval '3' month
+                            and exists (
+                                select
+                                    *
+                                from
+                                    lineitem
+                                where
+                                    l_shipdate < date '1993-07-01'
+                            )
+                        group by
+                            o_orderpriority
+                        order by
+                            o_orderpriority ;"
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=subquery-quick-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+
+        stage('RunTestSubQuerySlowToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd tests/tpc-h
+                    rm FlameGraph -rf
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    yum install perf -y
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) -- /stonedb56/install/bin/mysql -D tpch -e "select
+                            o_orderpriority,
+                            count(*) as order_count
+                        from
+                            orders
+                        where
+                            o_orderdate >= date '1993-07-01'
+                            and o_orderdate < date '1993-07-01' + interval '3' month
+                            and exists (
+                                select
+                                    *
+                                from
+                                    lineitem
+                                where
+                                    l_orderkey = o_orderkey
+                                    and l_commitdate < l_receiptdate
+                            )
+                        group by
+                            o_orderpriority
+                        order by
+                            o_orderpriority ;"
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=subquery-slow-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+
+        stage('RunTestSubQueryExplain') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+                    
+                    /stonedb56/install/bin/mysql -D tpch -e " explain select
+                            o_orderpriority,
+                            count(*) as order_count
+                        from
+                            orders
+                        where
+                            o_orderdate >= date '1993-07-01'
+                            and o_orderdate < date '1993-07-01' + interval '3' month
+                            and exists (
+                                select
+                                    *
+                                from
+                                    lineitem
+                                where
+                                    l_shipdate < date '1993-07-01'
+                            )
+                        group by
+                            o_orderpriority
+                        order by
+                            o_orderpriority ;"
+
+                    echo -e "\n"
+
+                    /stonedb56/install/bin/mysql -D tpch -e "explain select
+                            o_orderpriority,
+                            count(*) as order_count
+                        from
+                            orders
+                        where
+                            o_orderdate >= date '1993-07-01'
+                            and o_orderdate < date '1993-07-01' + interval '3' month
+                            and exists (
+                                select
+                                    *
+                                from
+                                    lineitem
+                                where
+                                    l_orderkey = o_orderkey
+                                    and l_commitdate < l_receiptdate
+                            )
+                        group by
+                            o_orderpriority
+                        order by
+                            o_orderpriority ;"
+
+
+                '''
+            }
+        }
+    } // stages
+
+    post { 
+        failure { 
+            sh label: '', 
+            script:'''
+               echo "failure"
+            '''
+        }
+
+		unstable { 
+            sh label: '', 
+            script:'''
+                echo "unstable"    
+            '''
+        }
+
+        success { 
+            sh label: '', 
+            script:'''
+               echo "success"
+            '''
+        }
+    }
+}

@@ -1,0 +1,1745 @@
+pipeline {
+    agent {
+        label 'agent-30-208'
+    }
+
+    options{
+        disableConcurrentBuilds()
+        timeout(time:2000, unit: 'HOURS')
+    }
+
+    stages {
+
+
+        stage('InstallDeb') {
+
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    exit 0
+
+                    yum install -y epel-release
+                    yum install -y tree
+                    yum install -y gcc
+                    yum install -y gcc-c++
+                    yum install -y libzstd-devel
+                    yum install -y make
+                    yum install -y ncurses
+                    yum install -y ncurses-devel
+                    yum install -y bison
+                    yum install -y libaio
+                    yum install -y perl
+                    yum install -y perl-DBI
+                    yum install -y perl-DBD-MySQL
+                    yum install -y perl-Time-HiRes
+                    yum install -y readline-devel
+                    yum install -y numactl
+                    yum install -y zlib
+                    yum install -y zlib-devel
+                    yum install -y curl-devel
+                    yum install -y openssl
+                    yum install -y openssl-devel
+                    yum install -y redhat-lsb-core
+                    yum install -y git
+                    yum install -y autoconf
+                    yum install -y automake
+                    yum install -y libtool
+                    yum install -y lrzsz
+                    yum install -y lz4
+                    yum install -y lz4-devel
+                    yum install -y snappy
+                    yum install -y snappy-devel
+                    yum install -y bzip2
+                    yum install -y bzip2-devel
+                    yum install -y zstd
+                    yum install -y python3
+                    yum install -y python-devel
+                    yum install -y pigz
+                    yum install -y unzip
+                    yum install -y iotop
+                    yum install -y sysstat 
+                    yum install -y fontconfig java-11-openjdk
+                    yum install -y libasan 
+                    yum install -y wget
+                    yum install -y perf
+
+                    set ?=0
+                    
+                    """
+            }
+        }
+
+
+        stage('InstallMariadb') {
+
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    if [ -d /usr/local/stonedb-marisa ]; then
+                        echo "marisadb installed"
+                        exit 0
+                    fi
+
+                    # git clone https://github.com/s-yata/marisa-trie.git
+                    
+                    cd .jenkins
+
+                    rm marisa-trie.zip -rf
+                    rm marisa-trie -rf
+
+                    wget http://192.168.30.30/nginx_html/marisa-trie.zip
+
+                    unzip marisa-trie.zip
+
+                    cd marisa-trie
+                    autoreconf -i
+                    ./configure --enable-native-code --prefix=/usr/local/stonedb-marisa
+                    make && make install 
+
+                    """
+            }
+        }
+
+        stage('InstallRocksdb') {
+
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    if [ -d /usr/local/stonedb-gcc-rocksdb ]; then
+                        echo "rocksdb installed"
+                        exit 0
+                    fi
+
+                    # wget https://github.com/facebook/rocksdb/archive/refs/tags/v4.13.tar.gz
+
+                    cd .jenkins
+
+                    rm rocksdb-4.13 -rf
+                    rm rocksdb-6.12.6 -rf
+                    rm rocksdb-6.12.6.tar.gz -rf
+
+                    wget http://192.168.30.30/nginx_html/rocksdb-6.12.6.tar.gz
+
+                    tar -zxvf rocksdb-6.12.6.tar.gz
+
+                    cd rocksdb-6.12.6
+                    make -j`nproc` shared_lib
+                    make install-shared INSTALL_PATH=/usr/local/stonedb-gcc-rocksdb
+                    make -j`nproc` static_lib
+                    make install-static INSTALL_PATH=/usr/local/stonedb-gcc-rocksdb
+
+                    """
+            }
+        }
+
+        stage('InstallBoost') {
+
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    if [ -d /usr/local/stonedb-boost ]; then
+                        echo "boost installed"
+                        exit 0
+                    fi
+ 
+                    # wget https://nchc.dl.sourceforge.net/project/boost/boost/1.66.0/boost_1_66_0.tar.gz
+
+                    cd .jenkins
+
+                    rm boost_1_66_0.tar.gz -rf
+
+                    wget http://192.168.30.30/nginx_html/boost_1_66_0.tar.gz
+
+                    tar -xzvf boost_1_66_0.tar.gz
+                    
+                    cd boost_1_66_0
+                    
+                    ./bootstrap.sh
+                    
+                    ./b2 -j`nproc`
+
+                    ./b2 install --prefix=/usr/local/stonedb-boost
+                    
+                    ldconfig -v
+                                        
+                    """
+            }
+        }
+
+        stage('InstallCmake') {
+
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    if [ "0" != "`which cmake | wc -l`" ]; then
+                        echo "cmake installed"
+                        exit 0
+                    fi
+
+                    # wget https://cmake.org/files/v3.7/cmake-3.7.2.tar.gz
+                    
+                    cd .jenkins
+
+                    rm cmake-3.7.2 -rf
+                    rm cmake-3.7.2.tar.gz -rf
+
+                    wget http://192.168.30.30/nginx_html/cmake-3.7.2.tar.gz
+
+                    tar -zxvf cmake-3.7.2.tar.gz
+                    cd cmake-3.7.2
+                    ./bootstrap && make -j`nproc` && make install
+                    /usr/local/bin/cmake --version
+                    yum remove cmake -y
+                    ln -s /usr/local/bin/cmake /usr/bin/
+                                        
+                    """
+            }
+        }
+
+        stage('CreeateDir') {
+
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    exit 0
+            
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    pkill -9 mysqld && set ?=0
+                    sleep 0.1s
+
+                    rm /stonedb57 -rf
+                    rm /var/lib/mysql -rf
+
+                    rm /data/stonedb57 -rf
+
+                    mkdir -p /home/data
+                    ln -s /home/data /data && set ?=0
+                    mkdir -p /data/stonedb57
+                    ln -s /data/stonedb57 /stonedb57
+                    mkdir -p /stonedb57/install
+
+                    groupadd mysql && set ?=0
+                    useradd -g mysql mysql && set ?=0
+
+                    mkdir -p /stonedb57/install/{log/,tmp/,binlog/,data/innodb}
+                    mkdir -p /var/lib/mysql/
+                    mkdir -p /stonedb57/install/log
+                    mkdir -p /stonedb57/install/tmp
+                    mkdir -p /stonedb57/install/binlog
+                    mkdir -p /stonedb57/install/data
+                    mkdir -p /stonedb57/install/innodb
+                    mkdir -p /var/lib/mysql/
+                    touch /stonedb57/install/log/stonedb.log
+
+                    chown -R mysql:mysql /data/*
+                    chown -R mysql:mysql /stonedb57
+                    chown -R mysql:mysql /stonedb57/*
+                    chown -R mysql:mysql /var/lib/mysql/
+
+                """
+            }
+        }
+
+        stage('CompileStonedb') {
+
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    # exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    groupadd mysql && set ?=0
+                    useradd -g mysql mysql && set ?=0
+
+                    pkill -9 gdb && set ?=0
+
+                    pkill -9 mysql && set ?=0
+
+                    sleep 0.1s
+
+                    # rm build -rf
+
+                    gcc -v
+
+                    cd scripts
+                    bash stonedb_build.sh
+
+
+                    if [ "0" == "`grep stonedb57 -rn /etc/profile  | wc -l`" ]; then
+                        echo -e '\n\nexport PATH=/stonedb57/install/bin:$PATH\n' >> /etc/profile
+                        source /etc/profile
+                    fi
+
+                    """
+            }
+        }
+
+        stage('ReFixDir') {
+
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    pkill -9 mysqld && set ?=0
+                    sleep 0.1s
+
+                    mkdir -p /home/data
+                    ln -s /home/data /data && set ?=0
+                    mkdir -p /data/stonedb57
+                    ln -s /data/stonedb57 /stonedb57 && set ?=0
+                    mkdir -p /stonedb57/install
+
+                    groupadd mysql && set ?=0
+                    useradd -g mysql mysql && set ?=0
+
+                    mkdir -p /stonedb57/install/{log/,tmp/,binlog/,data/innodb}
+                    mkdir -p /var/lib/mysql/
+                    mkdir -p /stonedb57/install/log
+                    mkdir -p /stonedb57/install/tmp
+                    mkdir -p /stonedb57/install/binlog
+                    mkdir -p /stonedb57/install/data
+                    mkdir -p /stonedb57/install/innodb
+                    mkdir -p /var/lib/mysql/
+                    touch /stonedb57/install/log/stonedb.log
+
+                    chown -R mysql:mysql /data/*
+                    chown -R mysql:mysql /stonedb57
+                    chown -R mysql:mysql /stonedb57/*
+                    chown -R mysql:mysql /var/lib/mysql/
+
+                """
+            }
+        }
+
+        stage('Reinstall') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    pkill -9 mysql && set ?=0
+
+                    sleep 0.1s
+
+                    cd /stonedb57/install
+                    bash ./reinstall.sh
+
+                    echo "reinstall ok"
+
+                '''
+            }
+        }
+
+        stage('Install') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    # exit 0
+
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+                    
+                    pkill -9 mysql && set ?=0
+
+                    sleep 0.1s
+
+                    cd /stonedb57/install
+                    bash ./install.sh
+
+                    sleep 0.1s
+
+                    echo "install ok"
+
+                '''
+            }
+        }
+
+        stage('RunMtrTest') {
+            steps {
+                sh label: 'make', 
+                script: """set -e
+
+                    exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd /stonedb57/install/mysql-test
+                    sudo ./mysql-test-run.pl --suite=tianmu --nowarnings --force
+
+                """
+            }
+        }
+
+        stage('ImportTPCHData') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    /stonedb57/install/bin/mysql -e "set global tianmu_force_hashjoin=ON"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_join_parallel=1;"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_groupby_speedup=ON;"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_enable_histogram_cmap_bloom=ON;"
+
+                    TB_TPCH_NUM=`/stonedb57/install/bin/mysql -e "show databases;" | grep tpch | grep -v grep | wc -l`
+
+                    if [ "0" != "$TB_TPCH_NUM" ]; then
+                        echo "tpch data has imported"
+                        # exit 0
+                    fi
+
+                    cd .jenkins
+
+                    rm tpc-h.tar.gz -rf
+
+                    wget http://192.168.30.30/nginx_html/tpc-h.tar.gz
+
+                    rm tpc-h -rf
+                    tar --use-compress-program=pigz -xvpf tpc-h.tar.gz
+                    cd tpc-h
+                    cd dbgen
+
+                    make -j`nproc`
+                    
+                    # GB
+                    # ./dbgen -s 10
+                    # mkdir -p stonedb/
+                    # mv *.tbl stonedb/
+                    # cp dss.ddl stonedb/dss_stonedb.ddl		
+
+                    /stonedb57/install/bin/mysql -e "create database tpch;" && set ?=0
+
+                    /stonedb57/install/bin/mysql -D tpch -e "source ./stonedb/dss_stonedb.ddl "  && set ?=0
+
+                    /stonedb57/install/bin/mysql -D tpch < ./stonedb.sql  && set ?=0
+
+                    /stonedb57/install/bin/mysql -D tpch -e " show tables; "
+
+                    bash ./split_file2db.sh 
+
+                    cd ../..
+                    rm tpc-h -rf
+                    rm tpc-h.tar.gz -rf
+
+                '''
+            }
+        }
+
+        stage('RunTestSubQueryExistsUseHahParalToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    # exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd .jenkins
+                    rm FlameGraph -rf
+
+                    rm FlameGraph.tar.gz -rf
+                    wget http://192.168.30.30/nginx_html/FlameGraph.tar.gz
+
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    # yum install perf -y
+
+                    /stonedb57/install/bin/mysql -e "set global tianmu_force_hashjoin=ON"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_join_parallel=1;"
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) -- /stonedb57/install/bin/mysql -D tpch -e "select
+                            o_orderpriority,
+                            count(*) as order_count
+                        from
+                            orders
+                        where
+                            o_orderdate >= date '1993-07-01'
+                            and o_orderdate < date '1993-07-01' + interval '3' month
+                            and exists (
+                                select
+                                    *
+                                from
+                                    lineitem
+                                where
+                                    l_orderkey = o_orderkey
+                                    and l_commitdate < l_receiptdate
+                            )
+                        group by
+                            o_orderpriority
+                        order by
+                            o_orderpriority ;"
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=subquery-Exists-paral-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    #cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    #cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    #cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+
+        stage('RunTestSubQueryExistsUseHahSeriaToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd .jenkins
+                    rm FlameGraph -rf
+
+                    rm FlameGraph.tar.gz -rf
+                    wget http://192.168.30.30/nginx_html/FlameGraph.tar.gz
+
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    # yum install perf -y
+
+                    /stonedb57/install/bin/mysql -e "set global tianmu_force_hashjoin=ON"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_join_parallel=0;"
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) -- /stonedb57/install/bin/mysql -D tpch -e "select
+                            o_orderpriority,
+                            count(*) as order_count
+                        from
+                            orders
+                        where
+                            o_orderdate >= date '1993-07-01'
+                            and o_orderdate < date '1993-07-01' + interval '3' month
+                            and exists (
+                                select
+                                    *
+                                from
+                                    lineitem
+                                where
+                                    l_orderkey = o_orderkey
+                                    and l_commitdate < l_receiptdate
+                            )
+                        group by
+                            o_orderpriority
+                        order by
+                            o_orderpriority ;"
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=subquery-Exists-seria-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    #cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    #cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    #cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+
+        stage('RunTestSubQueryOnlyToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd .jenkins
+                    rm FlameGraph -rf
+
+                    rm FlameGraph.tar.gz -rf
+                    wget http://192.168.30.30/nginx_html/FlameGraph.tar.gz
+
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    # yum install perf -y
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) -- /stonedb57/install/bin/mysql -D tpch -e " select
+                                    *
+                                from
+                                    lineitem
+                                where
+                                    l_commitdate < l_receiptdate 
+                                limit 100000; "
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=subquery-only-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    #cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    #cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    #cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+
+
+        stage('RunTestSubQueryHashJoinParalToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd .jenkins
+                    rm FlameGraph -rf
+
+                    rm FlameGraph.tar.gz -rf
+                    wget http://192.168.30.30/nginx_html/FlameGraph.tar.gz
+
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    # yum install perf -y
+
+                    /stonedb57/install/bin/mysql -e "set global tianmu_force_hashjoin=ON"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_join_parallel=1;"
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) --  /stonedb57/install/bin/mysql -D tpch -e " select 
+                        o_orderpriority, count(*) as order_count
+                        from orders,lineitem
+                        where o_orderdate >= date '1993-07-01'
+                        and o_orderdate < date '1993-07-01' + interval '3' month
+                        and o_orderkey = l_orderkey 
+                        group by o_orderpriority
+                        order by o_orderpriority;"
+
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=subquery-hashjoin-paral-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    #cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    #cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    #cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+
+        stage('RunTestSubQueryHashJoinSeriaToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd .jenkins
+                    rm FlameGraph -rf
+
+                    rm FlameGraph.tar.gz -rf
+                    wget http://192.168.30.30/nginx_html/FlameGraph.tar.gz
+
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    # yum install perf -y
+
+                    /stonedb57/install/bin/mysql -e "set global tianmu_force_hashjoin=ON"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_join_parallel=0;"
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) --  /stonedb57/install/bin/mysql -D tpch -e " select 
+                        o_orderpriority, count(*) as order_count
+                        from orders,lineitem
+                        where o_orderdate >= date '1993-07-01'
+                        and o_orderdate < date '1993-07-01' + interval '3' month
+                        and o_orderkey = l_orderkey 
+                        group by o_orderpriority
+                        order by o_orderpriority;"
+
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=subquery-hashjoin-seria-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    #cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    #cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    #cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+
+        stage('RunTestSlowQ2HashParalToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd .jenkins
+                    rm FlameGraph -rf
+
+                    rm FlameGraph.tar.gz -rf
+                    wget http://192.168.30.30/nginx_html/FlameGraph.tar.gz
+
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    # yum install perf -y
+
+                    /stonedb57/install/bin/mysql -e "set global tianmu_force_hashjoin=ON"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_join_parallel=1;"
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) --  /stonedb57/install/bin/mysql -D tpch -e " 
+                        select
+                            s_acctbal,
+                            s_name,
+                            n_name,
+                            p_partkey,
+                            p_mfgr,
+                            s_address,
+                            s_phone,
+                            s_comment
+                        from
+                            part,
+                            supplier,
+                            partsupp,
+                            nation,
+                            region
+                        where
+                            p_partkey = ps_partkey
+                            and s_suppkey = ps_suppkey
+                            and p_size = 15
+                            and p_type like '%BRASS'
+                            and s_nationkey = n_nationkey
+                            and n_regionkey = r_regionkey
+                            and r_name = 'EUROPE'
+                            and ps_supplycost = (
+                            select
+                                    min(ps_supplycost)
+                                from
+                                    partsupp,
+                                    supplier,
+                                    nation,
+                                    region
+                                where
+                                    p_partkey = ps_partkey
+                                    and s_suppkey = ps_suppkey
+                                    and s_nationkey = n_nationkey
+                                    and n_regionkey = r_regionkey
+                                    and r_name = 'EUROPE'
+                            )
+                        order by
+                            s_acctbal desc,
+                            n_name,
+                            s_name,
+                            p_partkey
+                        limit 100; 
+                    "
+
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=slow-q2-hash-paral-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    #cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    #cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    #cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+
+        stage('RunTestSlowQ2HashSeraiToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd .jenkins
+                    rm FlameGraph -rf
+
+                    rm FlameGraph.tar.gz -rf
+                    wget http://192.168.30.30/nginx_html/FlameGraph.tar.gz
+
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    # yum install perf -y
+
+                    /stonedb57/install/bin/mysql -e "set global tianmu_force_hashjoin=ON"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_join_parallel=0;"
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) --  /stonedb57/install/bin/mysql -D tpch -e " 
+                        select
+                            s_acctbal,
+                            s_name,
+                            n_name,
+                            p_partkey,
+                            p_mfgr,
+                            s_address,
+                            s_phone,
+                            s_comment
+                        from
+                            part,
+                            supplier,
+                            partsupp,
+                            nation,
+                            region
+                        where
+                            p_partkey = ps_partkey
+                            and s_suppkey = ps_suppkey
+                            and p_size = 15
+                            and p_type like '%BRASS'
+                            and s_nationkey = n_nationkey
+                            and n_regionkey = r_regionkey
+                            and r_name = 'EUROPE'
+                            and ps_supplycost = (
+                            select
+                                    min(ps_supplycost)
+                                from
+                                    partsupp,
+                                    supplier,
+                                    nation,
+                                    region
+                                where
+                                    p_partkey = ps_partkey
+                                    and s_suppkey = ps_suppkey
+                                    and s_nationkey = n_nationkey
+                                    and n_regionkey = r_regionkey
+                                    and r_name = 'EUROPE'
+                            )
+                        order by
+                            s_acctbal desc,
+                            n_name,
+                            s_name,
+                            p_partkey
+                        limit 100; 
+                    "
+
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=slow-q2-hash-seria-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    #cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    #cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    #cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+
+        stage('RunTestSlowQ2MapSeraiToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd .jenkins
+                    rm FlameGraph -rf
+
+                    rm FlameGraph.tar.gz -rf
+                    wget http://192.168.30.30/nginx_html/FlameGraph.tar.gz
+
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    # yum install perf -y
+
+                    /stonedb57/install/bin/mysql -e "set global tianmu_force_hashjoin=OFF"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_join_parallel=0;"
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) --  /stonedb57/install/bin/mysql -D tpch -e " 
+                        select
+                            s_acctbal,
+                            s_name,
+                            n_name,
+                            p_partkey,
+                            p_mfgr,
+                            s_address,
+                            s_phone,
+                            s_comment
+                        from
+                            part,
+                            supplier,
+                            partsupp,
+                            nation,
+                            region
+                        where
+                            p_partkey = ps_partkey
+                            and s_suppkey = ps_suppkey
+                            and p_size = 15
+                            and p_type like '%BRASS'
+                            and s_nationkey = n_nationkey
+                            and n_regionkey = r_regionkey
+                            and r_name = 'EUROPE'
+                            and ps_supplycost = (
+                            select
+                                    min(ps_supplycost)
+                                from
+                                    partsupp,
+                                    supplier,
+                                    nation,
+                                    region
+                                where
+                                    p_partkey = ps_partkey
+                                    and s_suppkey = ps_suppkey
+                                    and s_nationkey = n_nationkey
+                                    and n_regionkey = r_regionkey
+                                    and r_name = 'EUROPE'
+                            )
+                        order by
+                            s_acctbal desc,
+                            n_name,
+                            s_name,
+                            p_partkey
+                        limit 100; 
+                    "
+
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=slow-q2-map-seria-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    #cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    #cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    #cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+
+        stage('RunTestSlowQ16HashParalToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd .jenkins
+                    rm FlameGraph -rf
+
+                    rm FlameGraph.tar.gz -rf
+                    wget http://192.168.30.30/nginx_html/FlameGraph.tar.gz
+
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    # yum install perf -y
+
+                    /stonedb57/install/bin/mysql -e "set global tianmu_force_hashjoin=ON"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_join_parallel=1;"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_groupby_speedup=ON;"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_enable_histogram_cmap_bloom=OFF;"
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) --  /stonedb57/install/bin/mysql -D tpch -e " 
+                        select
+                            p_brand,
+                            p_type,
+                            p_size,
+                            count(distinct ps_suppkey) as supplier_cnt
+                        from
+                            partsupp,
+                            part
+                        where
+                            p_partkey = ps_partkey
+                            and p_brand <> 'Brand#45'
+                            and p_type not like 'MEDIUM POLISHED%'
+                            and p_size in (49, 14, 23, 45, 19, 3, 36, 9)
+                            and ps_suppkey not in (
+                                select
+                                    s_suppkey
+                                from
+                                    supplier
+                                where
+                                    s_comment like '%Customer%Complaints%'
+                            )
+                        group by
+                            p_brand,
+                            p_type,
+                            p_size
+                        order by
+                            supplier_cnt desc,
+                            p_brand,
+                            p_type,
+                            p_size;
+                    "
+
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=slow-16-hash-paral-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    #cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    #cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    #cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+
+
+        stage('RunTestSlowQ16HashParalAggreToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd .jenkins
+                    rm FlameGraph -rf
+
+                    rm FlameGraph.tar.gz -rf
+                    wget http://192.168.30.30/nginx_html/FlameGraph.tar.gz
+
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    # yum install perf -y
+
+                    /stonedb57/install/bin/mysql -e "set global tianmu_force_hashjoin=ON"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_join_parallel=1;"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_groupby_speedup=ON;"
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) --  /stonedb57/install/bin/mysql -D tpch -e " 
+                    select
+                        p_brand,
+                        p_type,
+                        p_size,
+                        count(distinct p_size) as supplier_cnt
+                    from
+                        part
+                    where
+                        p_brand <> 'Brand#45'
+                        and p_type like 'MEDIUM POLISHED%'
+                        and p_size in (49, 14, 23, 45, 19, 3, 36, 9)
+                    group by
+                        p_brand,
+                        p_type,
+                        p_size
+                    order by
+                        supplier_cnt desc,
+                        p_brand,
+                        p_type,
+                        p_size
+                    limit 10;
+
+                    "
+
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=slow-16-aggre-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    #cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    #cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    #cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+
+        stage('RunTestSlowQ17HashParalToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd .jenkins
+                    rm FlameGraph -rf
+
+                    rm FlameGraph.tar.gz -rf
+                    wget http://192.168.30.30/nginx_html/FlameGraph.tar.gz
+
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    # yum install perf -y
+
+                    /stonedb57/install/bin/mysql -e "set global tianmu_force_hashjoin=ON"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_join_parallel=1;"
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) --  /stonedb57/install/bin/mysql -D tpch -e " 
+                        select
+                            sum(l_extendedprice) / 7.0 as avg_yearly
+                        from
+                            lineitem,
+                            part
+                        where
+                            p_partkey = l_partkey
+                            and p_brand = 'Brand#23'
+                            and p_container = 'MED BOX'
+                            and l_quantity < (
+                                select
+                                    0.2 * avg(l_quantity)
+                                from
+                                    lineitem
+                                where
+                                    l_partkey = p_partkey
+                            );
+                    "
+
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=slow-q17-hash-paral-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    #cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    #cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    #cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+
+        stage('RunTestSlowQ18HashSeraiToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd .jenkins
+                    rm FlameGraph -rf
+
+                    rm FlameGraph.tar.gz -rf
+                    wget http://192.168.30.30/nginx_html/FlameGraph.tar.gz
+
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    # yum install perf -y
+
+                    /stonedb57/install/bin/mysql -e "set global tianmu_force_hashjoin=ON"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_join_parallel=1;"
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) --  /stonedb57/install/bin/mysql -D tpch -e " 
+                            select
+                                c_name,
+                                c_custkey,
+                                o_orderkey,
+                                o_orderdate,
+                                o_totalprice,
+                                sum(l_quantity)
+                            from
+                                customer,
+                                orders,
+                                lineitem
+                            where
+                                o_orderkey in (
+                                    select
+                                        l_orderkey
+                                    from
+                                        lineitem
+                                    group by
+                                        l_orderkey having
+                                            sum(l_quantity) > 300
+                                )
+                                and c_custkey = o_custkey
+                                and o_orderkey = l_orderkey
+                            group by
+                                c_name,
+                                c_custkey,
+                                o_orderkey,
+                                o_orderdate,
+                                o_totalprice
+                            order by
+                                o_totalprice desc,
+                                o_orderdate
+                            limit 100;
+                    "
+
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=slow-q18-hash-seria-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    #cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    #cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    #cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+
+        stage('RunTestSlowQ18HashParalToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd .jenkins
+                    rm FlameGraph -rf
+
+                    rm FlameGraph.tar.gz -rf
+                    wget http://192.168.30.30/nginx_html/FlameGraph.tar.gz
+
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    # yum install perf -y
+
+                    /stonedb57/install/bin/mysql -e "set global tianmu_force_hashjoin=ON"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_join_parallel=1;"
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) --  /stonedb57/install/bin/mysql -D tpch -e " 
+                            select
+                                c_name,
+                                c_custkey,
+                                o_orderkey,
+                                o_orderdate,
+                                o_totalprice,
+                                sum(l_quantity)
+                            from
+                                customer,
+                                orders,
+                                lineitem
+                            where
+                                o_orderkey in (
+                                    select
+                                        l_orderkey
+                                    from
+                                        lineitem
+                                    group by
+                                        l_orderkey having
+                                            sum(l_quantity) > 300
+                                )
+                                and c_custkey = o_custkey
+                                and o_orderkey = l_orderkey
+                            group by
+                                c_name,
+                                c_custkey,
+                                o_orderkey,
+                                o_orderdate,
+                                o_totalprice
+                            order by
+                                o_totalprice desc,
+                                o_orderdate
+                            limit 100;
+                    "
+
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=slow-q18-hash-paral-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    #cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    #cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    #cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+
+        stage('RunTestSlowQ20HashParalToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    # exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd .jenkins
+                    rm FlameGraph -rf
+
+                    rm FlameGraph.tar.gz -rf
+                    wget http://192.168.30.30/nginx_html/FlameGraph.tar.gz
+
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    # yum install perf -y
+
+                    /stonedb57/install/bin/mysql -e "set global tianmu_force_hashjoin=ON"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_join_parallel=1;"
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) --  /stonedb57/install/bin/mysql -D tpch -e " 
+                        select
+                        s_name,
+                        s_address
+                        from
+                        supplier,
+                        nation
+                        where
+                        s_suppkey in (
+                            select
+                            ps_suppkey
+                            from
+                            partsupp
+                            where
+                            ps_partkey in (
+                                select
+                                p_partkey
+                                from
+                                part
+                                where
+                                p_name like 'puff%'
+                            )
+                            and ps_availqty > (
+                                select
+                                0.5 * sum(l_quantity)
+                                from
+                                lineitem
+                                where
+                                l_partkey = ps_partkey
+                                and l_suppkey = ps_suppkey
+                                and l_shipdate >= date '1997-01-01'
+                                and l_shipdate < date '1997-01-01' + interval '1' year
+                            )
+                        )
+                        and s_nationkey = n_nationkey
+                        and n_name = 'UNITED KINGDOM'
+                        order by
+                        s_name;
+                    "
+
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=slow-q20-hash-paral-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    #cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    #cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    #cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+
+        stage('RunTestSlowQ21HashParalToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    # exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd .jenkins
+                    rm FlameGraph -rf
+
+                    rm FlameGraph.tar.gz -rf
+                    wget http://192.168.30.30/nginx_html/FlameGraph.tar.gz
+
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    # yum install perf -y
+
+                    /stonedb57/install/bin/mysql -e "set global tianmu_force_hashjoin=ON"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_join_parallel=1;"
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) --  /stonedb57/install/bin/mysql -D tpch -e " 
+                        select
+                            s_name,
+                            count(*) as numwait
+                        from
+                            supplier,
+                            lineitem l1,
+                            orders,
+                            nation,lineitem l2,lineitem l3
+                        where
+                            s_suppkey = l1.l_suppkey
+                            and o_orderkey = l1.l_orderkey
+                            and o_orderstatus = 'F'
+                            and l1.l_receiptdate > l1.l_commitdate
+                            and l1.l_orderkey=l2.l_orderkey  
+                            and l2.l_orderkey = l1.l_orderkey
+                            and l2.l_suppkey <> l1.l_suppkey
+                            and l1.l_orderkey<> l3.l_orderkey  
+                            AND l3.l_orderkey = l1.l_orderkey
+                            and l3.l_suppkey <> l1.l_suppkey
+                            and l3.l_receiptdate > l3.l_commitdate
+                            and s_nationkey = n_nationkey
+                            and n_name = 'SAUDI ARABIA'
+                        group by
+                            s_name
+                        order by
+                            numwait desc,
+                            s_name
+                        limit 100;
+                    "
+
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=slow-q21-hash-paral-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    #cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    #cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    #cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+        
+        stage('RunTestSlowQ22HashParalToSVG') {
+            steps {
+                sh label: '', 
+                script: '''
+
+                    # exit 0
+
+                    JENKINS_NODE_COOKIE=dontKillMe
+                    export JENKINS_NODE_COOKIE=dontKillMe
+
+                    cd .jenkins
+                    rm FlameGraph -rf
+
+                    rm FlameGraph.tar.gz -rf
+                    wget http://192.168.30.30/nginx_html/FlameGraph.tar.gz
+
+                    tar -xzvf FlameGraph.tar.gz
+                    cd FlameGraph
+
+                    # yum install perf -y
+
+                    /stonedb57/install/bin/mysql -e "set global tianmu_force_hashjoin=ON"
+                    /stonedb57/install/bin/mysql -e "set global tianmu_join_parallel=1;"
+
+                    perf record -a -F 99 -g -p $(pgrep -x mysqld) --  /stonedb57/install/bin/mysql -D tpch -e " 
+                            select
+                                cntrycode,
+                                count(*) as numcust,
+                                sum(c_acctbal) as totacctbal
+                            from
+                                (
+                                    select
+                                        substring(c_phone from 1 for 2) as cntrycode,
+                                        c_acctbal
+                                    from
+                                        customer,orders
+                                    where
+                                        substring(c_phone from 1 for 2) in
+                                            ('13', '31', '23', '29', '30', '18', '17')
+                                        and c_acctbal > (
+                                            select
+                                                avg(c_acctbal)
+                                            from
+                                                customer
+                                            where
+                                                c_acctbal > 0.00
+                                                and substring(c_phone from 1 for 2) in
+                                                    ('13', '31', '23', '29', '30', '18', '17')
+                                        )
+                                        and o_custkey = c_custkey
+                                        and c_custkey <> o_custkey 
+                                ) as custsale
+                            group by
+                                cntrycode
+                            order by
+                                cntrycode;
+                    "
+
+
+                    perf script -i perf.data > out.perf
+                    ./stackcollapse-perf.pl out.perf > out.floded
+                    ./flamegraph.pl out.floded > mysql.svg
+
+                    NAME=slow-q22-hash-paral-"`date -d yesterday +%Y%m%d%h%m%s`"
+
+                    mkdir -p /data/perf
+                    mkdir -p /data/perf/$NAME
+                    cp ./mysql.svg /data/perf/$NAME/$NAME.mysql.svg  
+                    #cp ./perf.data /data/perf/$NAME/$NAME.perf.data
+                    #cp ./out.perf /data/perf/$NAME/$NAME.out.perf  
+                    #cp ./out.floded /data/perf/$NAME/$NAME.out.floded
+
+                    cd /data/perf
+                    tar -czvf $NAME.tar.gz $NAME
+
+                    cp $NAME.tar.gz /usr/share/nginx/html/$NAME.tar.gz
+
+                    IP=`hostname -I |awk '{print $1}'`
+                    echo http://$IP/$NAME.tar.gz
+
+                '''
+            }
+        }
+
+
+    } // stages
+
+    post { 
+        failure { 
+            sh label: '', 
+            script:'''
+               echo "failure"
+            '''
+        }
+
+		unstable { 
+            sh label: '', 
+            script:'''
+                echo "unstable"    
+            '''
+        }
+
+        success { 
+            sh label: '', 
+            script:'''
+               echo "success"
+            '''
+        }
+    }
+}
