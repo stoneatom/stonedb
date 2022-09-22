@@ -397,7 +397,9 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
     WrapStatus ws;
     common::ColOperation oper;
     bool distinct;
-    if (!OperationUnmysterify(item, oper, distinct, group_by_clause)) return RETURN_QUERY_TO_MYSQL_ROUTE;
+    if (!OperationUnmysterify(item, oper, distinct, group_by_clause)) {
+      return RETURN_QUERY_TO_MYSQL_ROUTE;
+    }
 
     if (IsAggregationItem(item)) aggregation_used = true;
 
@@ -435,7 +437,9 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
     else if (IsAggregationItem(item)) {
       // select AGGREGATION over EXPRESSION
       Item_sum *item_sum = (Item_sum *)item;
-      if (item_sum->get_arg_count() > 1 || HasAggregation(item_sum->get_arg(0))) return RETURN_QUERY_TO_MYSQL_ROUTE;
+      if (item_sum->get_arg_count() > 1 || HasAggregation(item_sum->get_arg(0))) {
+        return RETURN_QUERY_TO_MYSQL_ROUTE;
+      }
       if (IsCountStar(item_sum)) {  // count(*) doesn't need any virtual column
         AttrID at;
         cq->AddColumn(at, tmp_table, CQTerm(), oper, item_sum->item_name.ptr(), false);
@@ -443,7 +447,9 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
       } else {
         MysqlExpression *expr;
         ws = WrapMysqlExpression(item_sum->get_arg(0), tmp_table, expr, false, false);
-        if (ws == WrapStatus::FAILURE) return RETURN_QUERY_TO_MYSQL_ROUTE;
+        if (ws == WrapStatus::FAILURE) {
+          return RETURN_QUERY_TO_MYSQL_ROUTE;
+        }
         AddColumnForMysqlExpression(expr, tmp_table,
                                     ignore_minmax ? item_sum->get_arg(0)->item_name.ptr() : item_sum->item_name.ptr(),
                                     oper, distinct);
@@ -452,8 +458,9 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
       CQTerm term;
       AttrID at;
       if (Item2CQTerm(item, term, tmp_table,
-                      /*group_by_clause ? HAVING_FILTER :*/ CondType::WHERE_COND) == RETURN_QUERY_TO_MYSQL_ROUTE)
+                      /*group_by_clause ? HAVING_FILTER :*/ CondType::WHERE_COND) == RETURN_QUERY_TO_MYSQL_ROUTE) {
         return RETURN_QUERY_TO_MYSQL_ROUTE;
+      }
       cq->AddColumn(at, tmp_table, term, common::ColOperation::LISTING, item->item_name.ptr(), distinct);
       field_alias2num[TabIDColAlias(tmp_table.n, item->item_name.ptr())] = at.n;
     } else {
@@ -464,7 +471,9 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
       }
       MysqlExpression *expr(NULL);
       ws = WrapMysqlExpression(item, tmp_table, expr, false, oper == common::ColOperation::DELAYED);
-      if (ws == WrapStatus::FAILURE) return RETURN_QUERY_TO_MYSQL_ROUTE;
+      if (ws == WrapStatus::FAILURE) {
+        return RETURN_QUERY_TO_MYSQL_ROUTE;
+      }
       if (!item->item_name.ptr()) {
         Item_func_conv_charset *item_conv = dynamic_cast<Item_func_conv_charset *>(item);
         if (item_conv) {
