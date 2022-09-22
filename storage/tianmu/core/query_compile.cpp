@@ -648,7 +648,9 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
   // want to see. By the way, collect references to all Item_field objects.
   std::set<Item *> ifields;
   MysqlExpression::Item2VarID item2varid;
-  if (!MysqlExpression::SanityAggregationCheck(item, ifields)) return WrapStatus::FAILURE;
+  if (!MysqlExpression::SanityAggregationCheck(item, ifields)) {
+    return WrapStatus::FAILURE;
+  }
 
   // this large "if" can be removed to use common code, but many small "ifs"
   // must be created then
@@ -658,20 +660,26 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
       if (IsAggregationItem(it)) {
         // a few checkings for aggregations
         Item_sum *aggregation = (Item_sum *)it;
-        if (aggregation->get_arg_count() > 1) return WrapStatus::FAILURE;
+        if (aggregation->get_arg_count() > 1) {
+          return WrapStatus::FAILURE;
+        }
         if (IsCountStar(aggregation))  // count(*) doesn't need any virtual column
           return WrapStatus::FAILURE;
       }
       AttrID col, at;
       TabID tab;
       // find [tab] and [col] which identify column in TIANMU
-      if (!FieldUnmysterify(it, tab, col)) return WrapStatus::FAILURE;
+      if (!FieldUnmysterify(it, tab, col)) {
+        return WrapStatus::FAILURE;
+      }
       if (!cq->ExistsInTempTable(tab, tmp_table)) {
         bool is_group_by;
         TabID params_table = cq->FindSourceOfParameter(tab, tmp_table, is_group_by);
         common::ColOperation oper;
         bool distinct;
-        if (!OperationUnmysterify(it, oper, distinct, true)) return WrapStatus::FAILURE;
+        if (!OperationUnmysterify(it, oper, distinct, true)) {
+          return WrapStatus::FAILURE;
+        }
         if (is_group_by && !IsParameterFromWhere(params_table)) {
           col.n = AddColumnForPhysColumn(it, params_table, oper, distinct, true);
           item2varid[it] = VarID(params_table.n, col.n);
@@ -689,7 +697,9 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
     for (auto &it : ifields) {
       if (IsAggregationItem(it)) {
         Item_sum *aggregation = (Item_sum *)it;
-        if (aggregation->get_arg_count() > 1) return WrapStatus::FAILURE;
+        if (aggregation->get_arg_count() > 1) {
+          return WrapStatus::FAILURE;
+        }
 
         if (IsCountStar(aggregation)) {  // count(*) doesn't need any virtual column
           at.n = GetAddColumnId(AttrID(common::NULL_VALUE_32), tmp_table, common::ColOperation::COUNT, false);
@@ -698,7 +708,9 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
         } else {
           common::ColOperation oper;
           bool distinct;
-          if (!OperationUnmysterify(aggregation, oper, distinct, true)) return WrapStatus::FAILURE;
+          if (!OperationUnmysterify(aggregation, oper, distinct, true)) {
+            return WrapStatus::FAILURE;
+          }
           AttrID col;
           TabID tab;
           if (IsFieldItem(aggregation->get_arg(0)) && FieldUnmysterify(aggregation, tab, col) &&
@@ -708,7 +720,9 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
           } else {
             // EXPRESSION
             ws = WrapMysqlExpression(aggregation->get_arg(0), tmp_table, expr, in_where, false);
-            if (ws == WrapStatus::FAILURE) return ws;
+            if (ws == WrapStatus::FAILURE) {
+              return ws;
+            }
             at.n = AddColumnForMysqlExpression(expr, tmp_table, aggregation->item_name.ptr(), oper, distinct, true);
           }
         }
@@ -716,13 +730,17 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
       } else if (IsFieldItem(it)) {
         AttrID col;
         TabID tab;
-        if (!FieldUnmysterify(it, tab, col)) return WrapStatus::FAILURE;
+        if (!FieldUnmysterify(it, tab, col)) {
+          return WrapStatus::FAILURE;
+        }
         if (!cq->ExistsInTempTable(tab, tmp_table)) {
           bool is_group_by;
           TabID params_table = cq->FindSourceOfParameter(tab, tmp_table, is_group_by);
           common::ColOperation oper;
           bool distinct;
-          if (!OperationUnmysterify(it, oper, distinct, true)) return WrapStatus::FAILURE;
+          if (!OperationUnmysterify(it, oper, distinct, true)) {
+            return WrapStatus::FAILURE;
+          }
           if (is_group_by && !IsParameterFromWhere(params_table)) {
             col.n = AddColumnForPhysColumn(it, params_table, oper, distinct, true);
             item2varid[it] = VarID(params_table.n, col.n);
@@ -731,7 +749,9 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
         } else if (aggr_used) {
           common::ColOperation oper;
           bool distinct;
-          if (!OperationUnmysterify(it, oper, distinct, true)) return WrapStatus::FAILURE;
+          if (!OperationUnmysterify(it, oper, distinct, true)) {
+            return WrapStatus::FAILURE;
+          }
           at.n = AddColumnForPhysColumn(it, tmp_table, oper, distinct, true);
           item2varid[it] = VarID(tmp_table.n, at.n);
         } else {
