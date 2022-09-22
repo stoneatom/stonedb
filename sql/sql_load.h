@@ -118,7 +118,7 @@ class Sql_cmd_load_table final : public Sql_cmd {
 
   bool read_xml_field(THD *thd, COPY_INFO &info, TABLE_LIST *table_list,
                       READ_INFO &read_info, ulong skip_lines);
-
+public: // stonedb8
   bool write_execute_load_query_log_event(
       THD *thd, const char *db, const char *table_name, bool is_concurrent,
       enum enum_duplicates duplicates, bool transactional_table, int errocode);
