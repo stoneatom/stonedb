@@ -1460,20 +1460,19 @@ void ParameterizedFilter::FilterDeletedByTable(JustATable *rcTable , int no_dims
   Descriptor desc(table, no_dims);
   desc.op = common::Operator::O_EQ_ALL;
   desc.encoded = true;
-
-  DimensionVector dims(mind->NumOfDimensions());
-  desc.DimensionUsed(dims);
-  mind->MarkInvolvedDimGroups(dims);  // create iterators on whole groups (important for
-                                      // multidimensional updatable iterators)
-  dims.SetAll();
-
-  MIUpdatingIterator mit(mind, dims);
-  desc.CopyDesCond(mit);
   // Use column 0 to filter the table data
   int firstColumn = 0;
   PhysicalColumn *phc = rcTable->GetColumn(firstColumn);
   vcolumn::SingleColumn *vc = new vcolumn::SingleColumn(phc, mind, 0, 0, rcTable, no_dims);
   if (!vc) throw common::OutOfMemoryException();
+  
+  DimensionVector dims(mind->NumOfDimensions());
+  vc->MarkUsedDims(dims);
+  mind->MarkInvolvedDimGroups(dims);  // create iterators on whole groups (important for
+                                      // multidimensional updatable iterators)
+
+  MIUpdatingIterator mit(mind, dims);
+  desc.CopyDesCond(mit);
 
   vc->LockSourcePacks(mit);
   while (mit.IsValid()) {
