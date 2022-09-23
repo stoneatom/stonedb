@@ -271,7 +271,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
     } else
       res = select_lex->join->error;
   }
-  if (select_lex->join /*&& *Query::IsLOJ(select_lex->join_list)*/) // stonedb8 TODO
+  if (select_lex->join && Query::IsLOJNew(select_lex->join_list))
     optimize_after_tianmu = 2;     // optimize partially (part=4), since part of LOJ
                                 // optimization was already done
   res |= (int)thd->is_error();  // the ending of original handle_select(...) */

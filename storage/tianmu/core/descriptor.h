@@ -128,7 +128,7 @@ class Descriptor {
   bool IsType_JoinComplex() const;
   bool IsType_Join() const { return (IsType_JoinSimple() || IsType_JoinComplex()); }
   bool IsDelayed() const { return delayed; }
-  bool IsInner() { return right_dims.IsEmpty(); }   // join_type == JoinType::JO_INNER; }
+  bool IsInner() { return right_dims.IsEmpty(); }
   bool IsOuter() { return !right_dims.IsEmpty(); }  // (IsLeftJoin() || IsRightJoin() || IsFullOuterJoin()); }
   char *ToString(char buf[], size_t buf_ct);
   void CoerceColumnTypes();
