@@ -1536,6 +1536,8 @@ void TianmuHandler::key_convert(const uchar *key, uint key_len, std::vector<uint
   std::vector<std::string> records;
   for (auto &i : cols) {
     Field *f = field[i];
+    // stonedb8 init for union primary key
+    bitmap_set_bit(table->read_set, f->field_index());
     size_t length;
     if (f->is_null()) {
       throw common::Exception("Priamry key part can not be NULL");
