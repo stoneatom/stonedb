@@ -1803,13 +1803,14 @@ int Query::PrefixCheck(Item *conds) {
 int Query::BuildCondsIfPossible(Item *conds, CondID &cond_id, const TabID &tmp_table, JoinType join_type) {
   conds = UnRef(conds);
   if (conds) {
-    CondType filter_type =
-        (join_type == JoinType::JO_LEFT
-             ? CondType::ON_LEFT_FILTER
-             : (join_type == JoinType::JO_RIGHT ? CondType::ON_RIGHT_FILTER : CondType::ON_INNER_FILTER));
+    CondType filter_type = CondType::ON_LEFT_FILTER;
     // in case of Right join MySQL changes order of tables. Right must be
     // switched back to left!
-    if (filter_type == CondType::ON_RIGHT_FILTER) filter_type = CondType::ON_LEFT_FILTER;
+    if (join_type == JoinType::JO_LEFT || join_type == JoinType::JO_RIGHT) {
+      filter_type = CondType::ON_LEFT_FILTER;
+    } else {
+      filter_type = CondType::ON_INNER_FILTER;
+    }
     DEBUG_ASSERT(PrefixCheck(conds) != TABLE_YET_UNSEEN_INVOLVED &&
                  "Table not yet seen was involved in this condition");
 

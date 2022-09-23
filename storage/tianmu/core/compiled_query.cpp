@@ -285,27 +285,6 @@ void CompiledQuery::CQStep::Print(Query *query) {
       std::strcpy(b_tmpar, "???");
   }
 
-  char b_jt[20];  // enum JoinType		{	JoinType::JO_INNER, JoinType::JO_LEFT,
-                  // JoinType::JO_RIGHT, JoinType::JO_FULL
-                  // };
-
-  switch (jt) {
-    case JoinType::JO_INNER:
-      std::strcpy(b_jt, "INNER");
-      break;
-    case JoinType::JO_LEFT:
-      std::strcpy(b_jt, "LEFT");
-      break;
-    case JoinType::JO_RIGHT:
-      std::strcpy(b_jt, "RIGHT");
-      break;
-    case JoinType::JO_FULL:
-      std::strcpy(b_jt, "FULL");
-      break;
-    default:
-      std::strcpy(b_jt, "????");
-  }
-
   switch (type) {
     case StepType::TABLE_ALIAS:
       if (alias)

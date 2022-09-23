@@ -225,7 +225,6 @@ class Query final {
    * \param join - join to be checked
    * \return bool - true if contains left or right outer join
    */
-  static bool IsLOJ(List<TABLE_LIST> *join);
   // stonedb8 List -> mem_root_deque
   static bool IsLOJNew(mem_root_deque<TABLE_LIST *> *join);
 
@@ -356,7 +355,7 @@ class Query final {
   // val2_vars, std::vector<int>& aliases, std::map<int,ValueOrNull>& columns,
   // DataType& attr_eval_type);
 
-  static JoinType GetJoinTypeAndCheckExpr(uint outer_join, Item *on_expr);
+  static JoinType GetJoinTypeAndCheckExpr(bool outer_join, Item *on_expr);
 
   void DisplayJoinResults(MultiIndex &mind, DimensionVector &all_involved_dims, JoinAlgType cur_join_type,
                           bool is_outer, int conditions_used);

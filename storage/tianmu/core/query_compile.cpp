@@ -366,9 +366,6 @@ int Query::AddJoins(mem_root_deque<TABLE_LIST *> join, /*List<TABLE_LIST> &join,
       } else {
         cq->Join(tmp_table, tab);
         JoinType join_type = GetJoinTypeAndCheckExpr(join_ptr->outer_join, join_ptr->join_cond());
-        // if(join_type == JoinType::JO_LEFT && join_ptr->join_cond() &&
-        // dynamic_cast<Item_cond_or*>(join_ptr->join_cond()))
-        //	return RETURN_QUERY_TO_MYSQL_ROUTE;
         CondID cond_id;
         if (!BuildCondsIfPossible(join_ptr->join_cond(), cond_id, tmp_table, join_type))
           return RETURN_QUERY_TO_MYSQL_ROUTE;
@@ -1077,42 +1074,22 @@ int Query::Compile(CompiledQuery *compiled_query, Query_block *selects_list, Que
   return RCBASE_QUERY_ROUTE;
 }
 
-// stonedb8 start  #define is deleted TODO
-#define JOIN_TYPE_LEFT	1
-#define JOIN_TYPE_RIGHT	2
-// stonedb8 end
-JoinType Query::GetJoinTypeAndCheckExpr(uint outer_join, Item *on_expr) {
+JoinType Query::GetJoinTypeAndCheckExpr(bool outer_join, Item *on_expr) {
   if (outer_join) ASSERT(on_expr != 0, "on_expr shouldn't be null when outer_join != 0");
 
   JoinType join_type;
-
-  if ((outer_join & JOIN_TYPE_LEFT) && (outer_join & JOIN_TYPE_RIGHT))
-    join_type = JoinType::JO_FULL;
-  else if (outer_join & JOIN_TYPE_LEFT)
+  if (outer_join)
     join_type = JoinType::JO_LEFT;
-  else if (outer_join & JOIN_TYPE_RIGHT)
-    join_type = JoinType::JO_RIGHT;
   else
     join_type = JoinType::JO_INNER;
 
   return join_type;
 }
 
-bool Query::IsLOJ(List<TABLE_LIST> *join) {
-  TABLE_LIST *join_ptr;
-  List_iterator<TABLE_LIST> li(*join);
-  while ((join_ptr = li++) != nullptr) {
-    JoinType join_type = GetJoinTypeAndCheckExpr(join_ptr->outer_join, join_ptr->join_cond());
-    if (join_ptr->join_cond() && (join_type == JoinType::JO_LEFT || join_type == JoinType::JO_RIGHT)) return true;
-  }
-  return false;
-}
-
-// stonedb8 start fix List<Item> to mem_root_deque<Item *> #49 TODO
 bool Query::IsLOJNew(mem_root_deque<TABLE_LIST *> *join) {
   for (TABLE_LIST *join_ptr : *join) {
     JoinType join_type = GetJoinTypeAndCheckExpr(join_ptr->outer_join, join_ptr->join_cond());
-    if (join_ptr->join_cond() && (join_type == JoinType::JO_LEFT || join_type == JoinType::JO_RIGHT)) return true;
+    if (join_ptr->join_cond() && (join_type == JoinType::JO_LEFT)) return true;
   }
   return false;
 }
