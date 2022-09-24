@@ -134,8 +134,6 @@ select min(t2.D) from t1,t2 where t1.B=t2.C and t1.A>15;
 ![knowledgegrid-3](./KnowledgeGrid-3.png)
 ### StoneDB Loader Parser
 数据导入导出模块，即处理 LOAD DATA INFILE 与 SELECT … INTO FILE 任务。StoneDB 提供独立的数据导入客户端，支持不同的数据源环境，支持多语言架构。数据在导入前，首先会进行预处理，如数据压缩和知识节点的构建。数据经过预处理后，进入存储引擎无需再次执行解析、数据验证以及事务处理等操作。
-### Replication Manager
-StoneDB 复制管理模块，与 MySQL 的主从复制架构类似，StoneDB 为了保证数据的一致性，会在 Master 上执行写操作，然后通过复制技术传输到 Slave。与 MySQL 不同的是 StoneDB 存储的不是原始数据，而是压缩后的数据。如果使用 binlog 的方式来复制，会导致网络上产生大量数据流量，为了解决这个问题，StoneDB 实现了基于压缩后数据包的高效数据复制支持，相对于 binlog 复制，该技术可以大大降低网络传输所需的数据量。
 ### Compress
 数据压缩模块，在 StoneDB 中，数据是按照列模式进行组织的，这种数据组织形式对各类压缩算法十分友好，可依据数据类型选择合适的高效压缩算法。StoneDB 可以支持多达20多种自适应压缩算法，目前主要使用的有PPM、LZ4、B2、Delta 等。如果列的重复值越高，压缩效果越好。数据压缩后，不仅可以节约存储成本，还可以节约IO和内存。
 ### Decompress
