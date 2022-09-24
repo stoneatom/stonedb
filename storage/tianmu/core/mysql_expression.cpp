@@ -80,9 +80,15 @@ bool MysqlExpression::HandledFieldType(Item_result type) {
 bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &fields, bool toplevel /*= true*/,
                                              bool *has_aggregation /*= NULL*/) {
   // printItemTree(item);
-  if (!item) return false;
-  if (toplevel && !HandledResultType(item)) return false;
-  if (toplevel && has_aggregation) *has_aggregation = false;
+  if (!item) {
+    return false;
+  }
+  if (toplevel && !HandledResultType(item)) {
+    return false;
+  }
+  if (toplevel && has_aggregation) {
+    *has_aggregation = false;
+  }
 
   /*
    * *FIXME*
@@ -105,16 +111,22 @@ bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &field
       fields.insert(((Item_tianmufield *)item)->OriginalItem());
       return true;
     case Item::FIELD_ITEM:
-      if (((Item_field *)item)->field && !HandledFieldType(item->result_type())) return false;
+      if (((Item_field *)item)->field && !HandledFieldType(item->result_type())) {
+        return false;
+      }
       fields.insert(item);
       return true;
     case Item::FUNC_ITEM: {
-      if (dynamic_cast<Item_func_trig_cond *>(item) != NULL) return false;
+      if (dynamic_cast<Item_func_trig_cond *>(item) != NULL) {
+        return false;
+      }
 
       // currently stored procedures not supported
       if (dynamic_cast<Item_func_sp *>(item) != NULL) {
         Item_func_sp *ifunc = dynamic_cast<Item_func_sp *>(item);
-        if (ifunc->argument_count() != 0) return false;
+        if (ifunc->argument_count() != 0) {
+          return false;
+        }
         return true;
       }
 
@@ -140,14 +152,18 @@ bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &field
       return correct;
     }
     case Item::SUM_FUNC_ITEM: {
-      if (!HandledFieldType(item->result_type())) return false;
+      if (!HandledFieldType(item->result_type())) {
+        return false;
+      }
       if (has_aggregation) *has_aggregation = true;
       fields.insert(item);
       return true;
     }
     case Item::REF_ITEM: {
       Item_ref *iref = dynamic_cast<Item_ref *>(item);
-      if (!iref->ref) return false;
+      if (!iref->ref) {
+        return false;
+      }
       Item *arg = *(iref->ref);
       return SanityAggregationCheck(arg, fields, toplevel, has_aggregation);
     }
