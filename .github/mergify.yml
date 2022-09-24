@@ -7,7 +7,7 @@ pull_request_rules:
   - name: automatic merge of hotfix (high priority)
     conditions:
       - "#approved-reviews-by>=2"
-      - label=A-bug
+      - label=PR-bug
       - label!=PR-docs
       - check-success=stonedb-build
     actions:
@@ -18,8 +18,8 @@ pull_request_rules:
   - name: put other pr to merge queue
     conditions:
       - "#approved-reviews-by>=2"
-      - label!=A-bug
-      - label!=PR-Docs
+      - label!=PR-bug
+      - label!=PR-docs
       - check-success=stonedb-build
     actions:
       queue:
@@ -29,7 +29,7 @@ pull_request_rules:
   - name: put docs to merge queue
     conditions:
       - "#approved-reviews-by>=2"
-      - label=PR-Docs
+      - label=PR-docs
     actions:
       queue:
         name: shared_queue
