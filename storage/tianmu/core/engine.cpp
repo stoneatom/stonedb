@@ -1609,23 +1609,19 @@ const char *Engine::GetFilename(Query_block *selects_list, int &is_dumpfile) {  
   // maybe 'select into DUMPFILE' if the function returns NULL it was a regular
   // 'select' don't look into is_dumpfile in this case
 
-  // stonedb8 start
+  if(selects_list->parent_lex->result == nullptr) {
+    return nullptr;
+  }
+
   auto exchange =
       static_cast<Query_result_to_file *>(selects_list->parent_lex->result)->get_sql_exchange();
+
   if (exchange) {
     is_dumpfile = exchange->dumpfile;
     return exchange->file_name;
   }
 
-  /* MySQL 5.7.36
-  if (selects_list->parent_lex->exchange) {
-    is_dumpfile = selects_list->parent_lex->exchange->dumpfile;
-    return selects_list->parent_lex->exchange->file_name;
-  }
-   */
-  // stonedb8 end
-
-  return 0;
+  return nullptr;
 }
 
 std::unique_ptr<system::IOParameters> Engine::CreateIOParameters(const std::string &path, void *arg) {
