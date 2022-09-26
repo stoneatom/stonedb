@@ -122,7 +122,7 @@ int rcbase_commit([[maybe_unused]] handlerton *hton, THD *thd, bool all) {
   int ret = 1;
   std::string error_message;
 
-  if (!( /*thd->no_errors != 0 || */ thd->killed || thd->transaction_rollback_request)) { // stonedb8 TODO: no_errors is deleted
+  if (!( thd->is_error() || thd->killed || thd->transaction_rollback_request)) {
     try {
       ha_rcengine_->CommitTx(thd, all);
       ret = 0;
