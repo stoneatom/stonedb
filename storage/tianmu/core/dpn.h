@@ -48,7 +48,7 @@ struct DPN final {
   uint32_t base;           // index of the DPN from which we copied, used by local pack
   uint32_t numOfRecords;   // number of records
   uint32_t numOfNulls;     // number of nulls
-  uint32_t numOfDeleted;   // number of deletes
+  uint32_t numOfDeleted;   // number of deleted
   
   uint64_t dataAddress;       // data start address
   uint64_t dataLength;        // data length
