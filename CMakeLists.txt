@@ -193,6 +193,30 @@ ENDIF()
 OPTION(FORCE_UNSUPPORTED_COMPILER "Disable compiler version checks" OFF)
 MARK_AS_ADVANCED(WITHOUT_SERVER FORCE_UNSUPPORTED_COMPILER)
 
+#for boost, to check boost params.
+INCLUDE(cmake/boost.cmake)
+#Link directories under boost, etc.
+IF (WITH_BOOST)
+  INCLUDE_DIRECTORIES("${WITH_BOOST}/include")
+  LINK_DIRECTORIES("${WITH_BOOST}/lib/")
+ENDIF ()
+
+#for rocksdb, to check rocksdb
+INCLUDE(cmake/rocksdb.cmake)
+#Link directories under rocksdb, etc.
+IF (WITH_ROCKSDB)
+  INCLUDE_DIRECTORIES("${WITH_ROCKSDB}" "${WITH_ROCKSDB}/include")
+  LINK_DIRECTORIES("${WITH_ROCKSDB}")
+ENDIF ()
+
+#for marisa, to check marisa
+INCLUDE(cmake/marisa.cmake)
+#Link directories under marisa, etc.
+IF (WITH_MARISA)
+  INCLUDE_DIRECTORIES("${WITH_MARISA}" "${WITH_MARISA}/include")
+  LINK_DIRECTORIES("${WITH_MARISA}" "${WITH_MARISA}/lib")
+ENDIF ()
+
 # Use 'uname -r' and 'rpm -qf /' to figure out host system.
 # For Docker images we cannot trust uname, so use rpm instead.
 IF(UNIX)
@@ -1455,6 +1479,13 @@ IF(REPRODUCIBLE_BUILD)
     "${CMAKE_SOURCE_DIR}/scripts/invoke-with-relative-paths.pl")
 ENDIF()
 
+IF(WITH_BOOST AND WITH_ROCKSDB AND WITH_MARISA)
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${WITH_BOOST}/lib;${WITH_ROCKSDB};${WITH_MARISA}/lib")
+ELSE()
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${BOOST_INCLUDE_DIR};${ROCKSDB_INCLUDE_DIR};${MARISA_INCLUDE_DIR}")
+ENDIF()
+MESSAGE(STATUS "TO SET INSTALL RPATH FOR STONEDB: ${CMAKE_INSTALL_RPATH}")
+
 OPTION(ENABLED_LOCAL_INFILE
  "If we should enable LOAD DATA LOCAL by default" OFF)
 MARK_AS_ADVANCED(ENABLED_LOCAL_INFILE)
@@ -1540,7 +1571,7 @@ ELSE()
   SET(DEFAULT_TMPDIR "\"${TMPDIR}\"")
 ENDIF()
 
-INCLUDE(cmake/boost.cmake)
+#INCLUDE(cmake/boost.cmake)
 
 IF (LINUX)
   OPTION(WITH_SYSTEMD "Enable installation of systemd support files" OFF)
@@ -1568,6 +1599,8 @@ ADD_DEFINITIONS(-D__STDC_LIMIT_MACROS)     # Enable C99 limit macros
 ADD_DEFINITIONS(-D__STDC_FORMAT_MACROS)    # Enable C99 printf format macros
 ADD_DEFINITIONS(-D_USE_MATH_DEFINES)       # Get access to M_PI, M_E, etc. in math.h
 ADD_DEFINITIONS(-DLZ4_DISABLE_DEPRECATE_WARNINGS) # C++14 deprecation warnings in LZ4.
+ADD_DEFINITIONS(-DTIANMU)
+ADD_DEFINITIONS(-D_GLIBCXX_USE_CXX11_ABI=1)
 
 OPTION(ENABLE_EXPERIMENT_SYSVARS "Expose ussually hidden system variables to allow experiments" OFF)
 IF(ENABLE_EXPERIMENT_SYSVARS)
