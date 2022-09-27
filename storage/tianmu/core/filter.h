@@ -60,7 +60,7 @@ class Filter final : public mm::TraceableObject {
   // original), but it ok as the copy uses pools and mutexes from the original
   static Filter *ShallowCopy(Filter &f);
 
-  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_FILTER; };
+  mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_FILTER; }
   // Copying operation
   std::unique_ptr<Filter> Clone() const;
 
@@ -152,7 +152,7 @@ class Filter final : public mm::TraceableObject {
                         // nonempty block.
   // Otherwise it is an average number of ones in nonempty blocks.
 
-  boost::pool<HeapAllocator> *GetBitBlockPool() { return bit_block_pool; };
+  boost::pool<HeapAllocator> *GetBitBlockPool() { return bit_block_pool; }
   friend class FilterOnesIterator;
   friend class FilterOnesIteratorOrdered;
 
@@ -161,12 +161,12 @@ class Filter final : public mm::TraceableObject {
   Block *GetBlock(size_t b) const {
     DEBUG_ASSERT(b < no_blocks);
     return blocks[b];
-  };
+  }
   uchar GetBlockStatus(size_t i) {
     DEBUG_ASSERT(i < no_blocks);
     return block_status[i];
-  };
-  uint32_t GetPower() { return no_power; };
+  }
+  uint32_t GetPower() { return no_power; }
   bool GetBlockChangeStatus(uint32_t n) const {
     DEBUG_ASSERT(n < no_blocks);
     return block_changed[n];

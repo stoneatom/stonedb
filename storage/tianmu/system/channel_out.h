@@ -56,7 +56,7 @@ class ChannelOut {
   ChannelOut &operator<<(const std::exception &exc) {
     (*this) << exc.what();
     return *this;
-  };
+  }
 
   virtual void setf(std::ios_base::fmtflags _Mask) = 0;
   virtual void precision(std::streamsize prec) = 0;
@@ -66,7 +66,7 @@ class ChannelOut {
   virtual void close() = 0;
 
   virtual ChannelOut &operator<<(ChannelOut &(*_Pfn)(ChannelOut &)) = 0;
-  virtual ~ChannelOut(){};
+  virtual ~ChannelOut(){}
 };
 
 inline ChannelOut &endl(ChannelOut &inout) {

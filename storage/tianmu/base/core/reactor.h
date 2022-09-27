@@ -349,7 +349,7 @@ class smp_message_queue {
 // OSv-specific file-descriptor-less mechanisms (reactor_backend_osv).
 class reactor_backend {
  public:
-  virtual ~reactor_backend(){};
+  virtual ~reactor_backend(){}
   // wait_and_process() waits for some events to become available, and
   // processes one or more of them. If block==false, it doesn't wait,
   // and just processes events that have already happened, if any.

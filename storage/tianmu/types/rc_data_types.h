@@ -169,7 +169,7 @@ template <typename T>
 class ValueBasic : public RCDataType {
  public:
   ValueTypeEnum GetValueType() const override { return T::value_type; }
-  std::unique_ptr<RCDataType> Clone() const override { return std::unique_ptr<RCDataType>(new T((T &)*this)); };
+  std::unique_ptr<RCDataType> Clone() const override { return std::unique_ptr<RCDataType>(new T((T &)*this)); }
   static T null_value;
   static T &NullValue() { return T::null_value; }
   using RCDataType::operator=;
@@ -306,7 +306,7 @@ class RCDateTime : public ValueBasic<RCDateTime> {
   bool GetInt64(int64_t &value) const {
     value = GetInt64();
     return true;
-  };
+  }
 
   /** Convert RCDateTime to 64 bit integer in the following format:
    * YEAR: 				YYYY
@@ -441,14 +441,14 @@ class rc_hash_compare {
   using Key = T;
 
  public:
-  size_t operator()(const Key k) const { return k->GetHashCode() & 1048575; };
+  size_t operator()(const Key k) const { return k->GetHashCode() & 1048575; }
   bool operator()(const Key &k1, const Key &k2) const {
     if (dynamic_cast<RCNum *>(k1)) {
       if (dynamic_cast<RCNum *>(k2)) return *k1 == *k2;
     } else if (AreComparable(k1->Type(), k2->Type()))
       return *k1 == *k2;
     return false;
-  };
+  }
 };
 
 /*! \brief Converts BString according to a given collation to the binary form

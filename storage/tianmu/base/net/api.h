@@ -92,7 +92,7 @@ class get_impl;
 
 class udp_datagram_impl {
  public:
-  virtual ~udp_datagram_impl(){};
+  virtual ~udp_datagram_impl(){}
   virtual ipv4_addr get_src() = 0;
   virtual ipv4_addr get_dst() = 0;
   virtual uint16_t get_dst_port() = 0;
@@ -104,7 +104,7 @@ class udp_datagram final {
   std::unique_ptr<udp_datagram_impl> _impl;
 
  public:
-  udp_datagram(std::unique_ptr<udp_datagram_impl> &&impl) : _impl(std::move(impl)){};
+  udp_datagram(std::unique_ptr<udp_datagram_impl> &&impl) : _impl(std::move(impl)){}
   ipv4_addr get_src() { return _impl->get_src(); }
   ipv4_addr get_dst() { return _impl->get_dst(); }
   uint16_t get_dst_port() { return _impl->get_dst_port(); }

@@ -242,7 +242,7 @@ class DICTManager {
   bool init(rocksdb::DB *const rdb_dict, CFManager *const cf_manager_);
   inline void lock() { m_mutex.lock(); }
   inline void unlock() { m_mutex.unlock(); }
-  void cleanup(){};
+  void cleanup(){}
   inline rocksdb::ColumnFamilyHandle *get_system_cf() const { return m_system_cfh; }
   std::unique_ptr<rocksdb::WriteBatch> begin() const;
   bool commit(rocksdb::WriteBatch *const batch, const bool &sync = true) const;

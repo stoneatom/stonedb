@@ -38,96 +38,96 @@ class FileOut : public ChannelOut {
   ChannelOut &operator<<(short value) override {
     out_stream_ << value;
     return *this;
-  };
+  }
 
   ChannelOut &operator<<(int value) override {
     out_stream_ << value;
     return *this;
-  };
+  }
 
   ChannelOut &operator<<(long value) override {
     out_stream_ << value;
     return *this;
-  };
+  }
 
   ChannelOut &operator<<(float value) override {
     out_stream_ << value;
     return *this;
-  };
+  }
 
   ChannelOut &operator<<(double value) override {
     out_stream_ << value;
     return *this;
-  };
+  }
 
   ChannelOut &operator<<(long double value) override {
     out_stream_ << value;
     return *this;
-  };
+  }
 
   ChannelOut &operator<<(unsigned short value) override {
     out_stream_ << value;
     return *this;
-  };
+  }
 
   ChannelOut &operator<<(unsigned int value) override {
     out_stream_ << value;
     return *this;
-  };
+  }
 
   ChannelOut &operator<<(unsigned long value) override {
     out_stream_ << value;
     return *this;
-  };
+  }
 
   ChannelOut &operator<<(int long long value) override {
     out_stream_ << value;
     return *this;
-  };
+  }
 
   ChannelOut &operator<<(int long long unsigned value) override {
     out_stream_ << value;
     return *this;
-  };
+  }
 
   ChannelOut &operator<<(char c) override {
     out_stream_ << c;
     return *this;
-  };
+  }
 
   ChannelOut &operator<<(const char *buffer) override {
     out_stream_ << buffer;
     return *this;
-  };
+  }
 
   ChannelOut &operator<<(const wchar_t *buffer) override {
     out_stream_ << buffer;
     return *this;
-  };
+  }
 
   ChannelOut &operator<<(const std::string &str) override {
     out_stream_ << str.c_str();
     return *this;
-  };
+  }
 
-  void setf(std::ios_base::fmtflags _Mask) override { out_stream_.setf(_Mask); };
-  void precision(std::streamsize prec) override { out_stream_.precision(prec); };
+  void setf(std::ios_base::fmtflags _Mask) override { out_stream_.setf(_Mask); }
+  void precision(std::streamsize prec) override { out_stream_.precision(prec); }
 
   ChannelOut &flush() override {
     out_stream_.flush();
     return *this;
-  };
+  }
 
   ChannelOut &fixed() override {
     out_stream_.setf(std::ios_base::fixed, std::ios_base::floatfield);
     return *this;
-  };
+  }
 
   void close() override {
     if (out_stream_.is_open()) out_stream_.close();
-  };
+  }
 
-  ChannelOut &operator<<(ChannelOut &(*_Pfn)(ChannelOut &)) override { return _Pfn(*this); };
+  ChannelOut &operator<<(ChannelOut &(*_Pfn)(ChannelOut &)) override { return _Pfn(*this); }
 
  private:
   std::ofstream out_stream_;

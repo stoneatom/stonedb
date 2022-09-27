@@ -33,9 +33,9 @@ class Channel {
   ~Channel();
 
   void addOutput(ChannelOut *output);
-  void setOn() { enabled_ = true; };
-  void setOff() { enabled_ = false; };
-  void setTimeStamp(bool _on = true) { time_stamp_at_lock_ = _on; };
+  void setOn() { enabled_ = true; }
+  void setOff() { enabled_ = false; }
+  void setTimeStamp(bool _on = true) { time_stamp_at_lock_ = _on; }
   bool isOn();
 
   Channel &lock(uint optional_sess_id = 0xFFFFFFFF);
@@ -62,7 +62,7 @@ class Channel {
   Channel &operator<<(const std::string &str);
 
   Channel &operator<<(const std::exception &exc);
-  Channel &operator<<(Channel &(*_Pfn)(Channel &)) { return _Pfn(*this); };
+  Channel &operator<<(Channel &(*_Pfn)(Channel &)) { return _Pfn(*this); }
   Channel &flush();
 
  private:

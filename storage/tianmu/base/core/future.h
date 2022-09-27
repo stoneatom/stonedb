@@ -976,7 +976,7 @@ class future {
       } catch (...) {
         return result.rethrow_with_nested();
       }
-    };
+    }
   };
 
   /// \brief Terminate the program if this future fails.

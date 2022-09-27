@@ -170,7 +170,7 @@ class execution_stage {
     }));
     _flush_scheduled = true;
     return true;
-  };
+  }
 
   /// Checks whether there are pending operations.
   ///

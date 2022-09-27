@@ -37,12 +37,12 @@ namespace base {
 
 template <typename T>
 struct dummy_expiry {
-  void operator()(T &) noexcept {};
+  void operator()(T &) noexcept {}
 };
 
 template <typename... T>
 struct promise_expiry {
-  void operator()(promise<T...> &pr) noexcept { pr.set_exception(std::make_exception_ptr(timed_out_error())); };
+  void operator()(promise<T...> &pr) noexcept { pr.set_exception(std::make_exception_ptr(timed_out_error())); }
 };
 
 /// Container for elements with support for expiration of entries.
