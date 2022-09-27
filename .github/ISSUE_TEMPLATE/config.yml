@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: StoneDB Discussion
+    url: https://github.com/stoneatom/stonedb/discussions
+    about: Discuss ideas for new features of changes
+  # - name: Questions & Help
+  #   url: http://forum.stonedb.io/
+  #   about: Please ask and answer questions here.
