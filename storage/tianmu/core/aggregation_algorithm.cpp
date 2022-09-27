@@ -194,7 +194,7 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
     }
   } else {
     int64_t local_limit = limit == -1 ? upper_approx_of_groups : limit;
-    MultiDimensionalGroupByScan(gbw, local_limit, offset, sender, limit_less_than_no_groups, true);
+    MultiDimensionalGroupByScan(gbw, local_limit, offset, sender, limit_less_than_no_groups, false);
     if (limit != -1) limit = local_limit;
   }
   t->ClearMultiIndexP();  // cleanup (i.e. regarded as materialized,
