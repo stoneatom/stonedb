@@ -61,7 +61,7 @@ class JustATable : public std::enable_shared_from_this<JustATable> {
   //! Returns column value in the form required by complex expressions
   ValueOrNull GetComplexValue(const int64_t obj, const int attr);
 
-  virtual ~JustATable(){};
+  virtual ~JustATable(){}
 };
 
 }  // namespace core

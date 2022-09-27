@@ -31,12 +31,12 @@ class RoughMultiIndex {
   RoughMultiIndex(const RoughMultiIndex &);
   ~RoughMultiIndex();
 
-  common::RSValue GetPackStatus(int dim, int pack) { return rf[dim][pack]; };
-  void SetPackStatus(int dim, int pack, common::RSValue v) { rf[dim][pack] = v; };
+  common::RSValue GetPackStatus(int dim, int pack) { return rf[dim][pack]; }
+  void SetPackStatus(int dim, int pack, common::RSValue v) { rf[dim][pack] = v; }
 
-  int NumOfDimensions() { return no_dims; };
-  int NoPacks(int dim) { return no_packs[dim]; };
-  int NoConditions(int dim) { return int(local_desc[dim].size()); };
+  int NumOfDimensions() { return no_dims; }
+  int NoPacks(int dim) { return no_packs[dim]; }
+  int NoConditions(int dim) { return int(local_desc[dim].size()); }
   int GlobalDescNum(int dim, int local_desc_num) { return (local_desc[dim])[local_desc_num]->desc_num; }
   /*
           Example of query processing steps:
@@ -47,7 +47,7 @@ class RoughMultiIndex {
      optimize access for next conditions.
   */
 
-  common::RSValue *GetRSValueTable(int dim) { return rf[dim]; };
+  common::RSValue *GetRSValueTable(int dim) { return rf[dim]; }
   common::RSValue *GetLocalDescFilter(int dim, int desc_num, bool read_only = false);
   // if not exists, create one (unless read_only is set)
   void ClearLocalDescFilters();  // clear all desc info, for reusing the rough

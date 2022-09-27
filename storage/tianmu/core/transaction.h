@@ -70,8 +70,8 @@ class Transaction final {
   std::shared_ptr<RCTable> GetTableByPathIfExists(const std::string &table_path);
   std::shared_ptr<RCTable> GetTableByPath(const std::string &table_path);
 
-  void ExplicitLockTables() { m_explicit_lock_tables = true; };
-  void ExplicitUnlockTables() { m_explicit_lock_tables = false; };
+  void ExplicitLockTables() { m_explicit_lock_tables = true; }
+  void ExplicitUnlockTables() { m_explicit_lock_tables = false; }
   void AddTableRD(std::shared_ptr<TableShare> &share);
   void AddTableWR(std::shared_ptr<TableShare> &share);
   void AddTableWRIfNeeded(std::shared_ptr<TableShare> &share);

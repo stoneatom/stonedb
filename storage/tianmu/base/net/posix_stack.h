@@ -176,7 +176,7 @@ class posix_network_stack : public network_stack {
   static future<std::unique_ptr<network_stack>> create() {
     return make_ready_future<std::unique_ptr<network_stack>>(std::unique_ptr<network_stack>(new posix_network_stack()));
   }
-  virtual bool has_per_core_namespace() override { return _reuseport; };
+  virtual bool has_per_core_namespace() override { return _reuseport; }
 };
 
 class posix_ap_network_stack : public posix_network_stack {

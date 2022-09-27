@@ -100,7 +100,7 @@ class CompiledQuery final {
           alias(NULL),
           n1(common::NULL_VALUE_64),
           n2(common::NULL_VALUE_64),
-          si(){};
+          si(){}
 
     CQStep(const CQStep &);
 

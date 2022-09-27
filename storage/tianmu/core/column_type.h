@@ -93,7 +93,7 @@ struct ColumnType {
   uint GetInternalSize() const { return internal_size; }
   // Use in cases where actual string length is less then declared, before
   // materialization of Attr
-  void OverrideInternalSize(uint size) { internal_size = size; };
+  void OverrideInternalSize(uint size) { internal_size = size; }
   int GetDisplaySize() const { return display_size; }
   bool IsLookup() const { return fmt == common::PackFmt::LOOKUP; }
   ColumnType RemovedLookup() const;
@@ -112,9 +112,9 @@ struct ColumnType {
     }
   }
 
-  bool IsKnown() const { return type != common::CT::UNK; };
-  bool IsFixed() const { return ATI::IsFixedNumericType(type); };
-  bool IsFloat() const { return ATI::IsRealType(type); };
+  bool IsKnown() const { return type != common::CT::UNK; }
+  bool IsFixed() const { return ATI::IsFixedNumericType(type); }
+  bool IsFloat() const { return ATI::IsRealType(type); }
   bool IsInt() const { return IsFixed() && scale == 0; }
   bool IsString() const { return ATI::IsStringType(type); }
   bool IsDateTime() const { return ATI::IsDateTimeType(type); }

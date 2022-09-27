@@ -62,7 +62,7 @@ class JoinerMapped : public TwoDimensionalJoiner {
 
 class JoinerParallelMapped : public JoinerMapped {
  public:
-  JoinerParallelMapped(MultiIndex *_mind, TempTable *_table, JoinTips &_tips) : JoinerMapped(_mind, _table, _tips){};
+  JoinerParallelMapped(MultiIndex *_mind, TempTable *_table, JoinTips &_tips) : JoinerMapped(_mind, _table, _tips){}
 
   void ExecuteJoinConditions(Condition &cond) override;
 
@@ -126,7 +126,7 @@ class OffsetMapFunction : public JoinerMapFunction {
 class MultiMapsFunction : public JoinerMapFunction {
  public:
   MultiMapsFunction(Transaction *_m_conn) : JoinerMapFunction(_m_conn) {}
-  ~MultiMapsFunction(){};
+  ~MultiMapsFunction(){}
 
   bool Init(vcolumn::VirtualColumn *vc, MIIterator &mit);
 

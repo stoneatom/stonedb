@@ -192,7 +192,7 @@ class SortDescriptor {
  public:
   vcolumn::VirtualColumn *vc;
   int dir;  // ordering direction: 0 - ascending, 1 - descending
-  SortDescriptor() : vc(NULL), dir(0){};
+  SortDescriptor() : vc(NULL), dir(0){}
   int operator==(const SortDescriptor &sec) { return (dir == sec.dir) && (vc == sec.vc); }
 };
 

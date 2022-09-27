@@ -160,7 +160,7 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
       return true;
     }
     return true;
-  };
+  }
 
   /*! \brief Get a non null-terminated String from a column
    *
@@ -198,7 +198,7 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   size_t ComputeNaturalSize();  // natural size of data (i.e. without any compression)
   // the compressed size of the attribute (for e.g. calculating compression
   // ratio); may be slightly approximated
-  int64_t CompressedSize() const { return hdr.compressed_size; };
+  int64_t CompressedSize() const { return hdr.compressed_size; }
   uint32_t ValueOfPackPower() const { return pss; }
   uint64_t NumOfObj() const { return hdr.nr; }
   uint64_t NumOfNulls() const { return hdr.nn; }
@@ -294,7 +294,7 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   void LoadData(loader::ValueCache *nvs, Transaction *conn_info = NULL);
   void LoadPackInfo(Transaction *trans_ = current_txn_);
   void LoadProcessedData([[maybe_unused]] std::unique_ptr<system::Stream> &s,
-                         [[maybe_unused]] size_t no_rows){/* TODO */};
+                         [[maybe_unused]] size_t no_rows){/* TODO */}
   void PreparePackForLoad();
 
   bool SaveVersion();  // return true iff there was any change

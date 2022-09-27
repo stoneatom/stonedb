@@ -55,7 +55,7 @@ class Item_sum_int_rcbase : public Item_sum_num {
   void clear() override;
   bool add() override;
   void update_field() override;
-  const char *func_name() const override { return "count("; };
+  const char *func_name() const override { return "count("; }
 
 public:
   int64_t count_;
