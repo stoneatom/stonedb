@@ -490,8 +490,8 @@ int TianmuHandler::update_row(const uchar *old_data, uchar *new_data) {
           continue;
         }
       }
-      auto o_ptr = field->ptr - table->record[0] + old_data;
-      auto n_ptr = field->ptr - table->record[0] + new_data;
+      auto o_ptr = field->field_ptr() - table->record[0] + old_data;
+      auto n_ptr = field->field_ptr() - table->record[0] + new_data;
       if (field->is_null_in_record(old_data) || std::memcmp(o_ptr, n_ptr, field->pack_length()) != 0) {
         my_bitmap_map *org_bitmap2 = dbug_tmp_use_all_columns(table, table->read_set);
         std::shared_ptr<void> defer(
