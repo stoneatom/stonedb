@@ -632,9 +632,7 @@ class Field {
     return (auto_flags & (GENERATED_FROM_EXPRESSION | DEFAULT_NOW)) == 0;
   }
 
-  // stonedb8 TODO: fix engine_convert.cpp #42
- //protected:
- public:
+ protected:
   /// Holds the position to the field in record
   uchar *ptr;
 

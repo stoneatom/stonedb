@@ -24,8 +24,9 @@
 namespace Tianmu {
 namespace core {
 bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector<uchar> *blob_buf) {
+  uchar *field_ptr = field->field_ptr();
   if (rcitem.IsNull()) {
-    std::memset(field->field_ptr(), 0, 2);
+    std::memset(field_ptr, 0, 2);
     field->set_null();
     return true;
   }
@@ -39,16 +40,16 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
       if (str_val.size() > field->field_length)
         throw common::DatabaseException("Incorrect field size: " + std::to_string(str_val.size()));
       if (field->field_length <= 255)
-        str_val.PutVarchar((char *&)field->ptr, 1, false);
+        str_val.PutVarchar(reinterpret_cast<char *&>(field_ptr), 1, false);
       else if (field->field_length <= SHORT_MAX)
-        str_val.PutVarchar((char *&)field->ptr, 2, false);
+        str_val.PutVarchar(reinterpret_cast<char *&>(field_ptr), 2, false);
       break;
     }
     case MYSQL_TYPE_STRING:
       if (dynamic_cast<types::BString *>(&rcitem)) {
-        ((types::BString &)rcitem).PutString((char *&)field->ptr, (ushort)field->field_length, false);
+        ((types::BString &)rcitem).PutString(reinterpret_cast<char *&>(field_ptr), (ushort)field->field_length, false);
       } else {
-        rcitem.ToBString().PutString((char *&)field->ptr, (ushort)field->field_length, false);
+        rcitem.ToBString().PutString(reinterpret_cast<char *&>(field_ptr), (ushort)field->field_length, false);
       }
       break;
     case MYSQL_TYPE_BLOB: {
@@ -62,13 +63,13 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
         uchar *src, *tgt;
 
         uint packlength = blob->pack_length_no_ptr();
-        uint length = blob->get_length(blob->ptr);
-        std::memcpy(&src, blob->ptr + packlength, sizeof(char *));
+        uint length = blob->get_length(field_ptr);
+        std::memcpy(&src, field_ptr + packlength, sizeof(char *));
         if (src) {
           blob_buf->resize(length);
           tgt = &((*blob_buf)[0]);
           memmove(tgt, src, length);
-          std::memcpy(blob->ptr + packlength, &tgt, sizeof(char *));
+          std::memcpy(field_ptr + packlength, &tgt, sizeof(char *));
         }
       }
       break;
@@ -83,7 +84,7 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
         Engine::Convert(is_null, &md, rcitem);
       }
       decimal_round(&md, &md, ((Field_new_decimal *)field)->decimals(), HALF_UP);
-      decimal2bin(&md, (uchar *)field->ptr, ((Field_new_decimal *)field)->precision,
+      decimal2bin(&md, field_ptr, ((Field_new_decimal *)field)->precision,
                   ((Field_new_decimal *)field)->decimals());
       break;
     }
@@ -99,25 +100,25 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
         case common::CT::NUM:
           switch (field->type()) {
             case MYSQL_TYPE_TINY:
-              *(char *)field->ptr = (char)(int64_t)((types::RCNum &)(rcitem));
+              *(reinterpret_cast<char *>(field_ptr)) = static_cast<char>(static_cast<int64_t>(static_cast<types::RCNum &>(rcitem)));
               break;
             case MYSQL_TYPE_SHORT:
-              *(short *)field->ptr = (short)(int64_t)((types::RCNum &)(rcitem));
+              *(reinterpret_cast<short *>(field_ptr)) = static_cast<short>(static_cast<int64_t>(static_cast<types::RCNum &>(rcitem)));
               break;
             case MYSQL_TYPE_INT24:
-              int3store((char *)field->ptr, (int)(int64_t)((types::RCNum &)(rcitem)));
+              int3store(reinterpret_cast<char *>(field_ptr), static_cast<int>(static_cast<int64_t>(static_cast<types::RCNum &>(rcitem))));
               break;
             case MYSQL_TYPE_LONG:
-              *(int *)field->ptr = (int)(int64_t)((types::RCNum &)(rcitem));
+              *(reinterpret_cast<int *>(field_ptr)) = static_cast<int>(static_cast<int64_t>(static_cast<types::RCNum &>(rcitem)));
               break;
             case MYSQL_TYPE_LONGLONG:
-              *(int64_t *)field->ptr = (int64_t)((types::RCNum &)(rcitem));
+              *(reinterpret_cast<int64_t *>(field_ptr)) = static_cast<int64_t>(static_cast<types::RCNum &>(rcitem));
               break;
             case MYSQL_TYPE_FLOAT:
-              *(float *)field->ptr = (float)((types::RCNum &)(rcitem));
+              *(reinterpret_cast<float *>(field_ptr)) = static_cast<float>(static_cast<types::RCNum &>(rcitem));
               break;
             case MYSQL_TYPE_DOUBLE:
-              *(double *)field->ptr = (double)((types::RCNum &)(rcitem));
+              *(reinterpret_cast<double *>(field_ptr)) = static_cast<double>(static_cast<types::RCNum &>(rcitem));
               break;
             default:
               DEBUG_ASSERT(!"No data types conversion available!");
@@ -131,14 +132,14 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
               if (str_val.size() > field->field_length)
                 throw common::DatabaseException("Incorrect field size " + std::to_string(str_val.size()));
               if (field->field_length <= 255) {
-                str_val.PutVarchar((char *&)field->ptr, 1, false);
+                str_val.PutVarchar(reinterpret_cast<char *&>(field_ptr), 1, false);
               } else if (field->field_length <= SHORT_MAX) {  // PACK_SIZE - 1
-                str_val.PutVarchar((char *&)field->ptr, 2, false);
+                str_val.PutVarchar(reinterpret_cast<char *&>(field_ptr), 2, false);
               }
               break;
             }
             case MYSQL_TYPE_STRING:
-              ((types::BString &)rcitem).PutString((char *&)field->ptr, (ushort)field->field_length, false);
+              ((types::BString &)rcitem).PutString(reinterpret_cast<char *&>(field_ptr), (ushort)field->field_length, false);
               break;
             case MYSQL_TYPE_BLOB: {
               Field_blob *blob = (Field_blob *)field;
@@ -150,13 +151,13 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
                 uchar *src, *tgt;
 
                 uint packlength = blob->pack_length_no_ptr();
-                uint length = blob->get_length(blob->ptr);
-                std::memcpy(&src, blob->ptr + packlength, sizeof(char *));
+                uint length = blob->get_length(field_ptr);
+                std::memcpy(&src, field_ptr + packlength, sizeof(char *));
                 if (src) {
                   blob_buf->resize(length);
                   tgt = &((*blob_buf)[0]);
                   memmove(tgt, src, length);
-                  std::memcpy(blob->ptr + packlength, &tgt, sizeof(char *));
+                  std::memcpy(field_ptr + packlength, &tgt, sizeof(char *));
                 }
               }
               break;
@@ -183,7 +184,7 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
               break;
             }
             default:
-              ((types::BString &)rcitem).PutString((char *&)field->ptr, (ushort)field->field_length, false);
+              ((types::BString &)rcitem).PutString(reinterpret_cast<char *&>(field_ptr), (ushort)field->field_length, false);
               break;
           }
 
