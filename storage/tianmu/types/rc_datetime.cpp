@@ -70,7 +70,7 @@ RCDateTime::RCDateTime(short yh, short mm, short ds, common::CT at) : at(at) {
 
 RCDateTime::RCDateTime(short year, short month, short day, short hour, short minute, short second, common::CT at)
     : at(at) {
-  ASSERT(at == common::CT::DATETIME || at == common::CT::TIMESTAMP,
+  ASSERT(at == common::CT::DATETIME || at == common::CT::TIMESTAMP || at == common::CT::DATE,
          "should be 'at == common::CT::DATETIME || at == common::CT::TIMESTAMP'");
   null = false;
   dt.year = std::abs(year);
@@ -82,8 +82,8 @@ RCDateTime::RCDateTime(short year, short month, short day, short hour, short min
 }
 
 RCDateTime::RCDateTime(const MYSQL_TIME &myt, common::CT at) {
-  ASSERT(at == common::CT::DATETIME || at == common::CT::TIMESTAMP,
-         "should be 'at == common::CT::DATETIME || at == common::CT::TIMESTAMP'");
+  ASSERT(at == common::CT::DATETIME || at == common::CT::TIMESTAMP || at == common::CT::DATE,
+         "should be 'at == common::CT::DATETIME || at == common::CT::TIMESTAMP || common::CT::DATE'");
   null = false;
 
   dt.year = myt.year;

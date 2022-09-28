@@ -670,14 +670,16 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
 
   if (!EatWhiteSigns(buf, buflen) && !system::EatDTSeparators(buf, buflen)) {
     if ((at == common::CT::DATETIME &&
-         RCDateTime::IsCorrectTIANMUDatetime((short)year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
-                                          RCDateTime::GetSpecialValue(at).Minute(),
-                                          RCDateTime::GetSpecialValue(at).Second())) ||
+        RCDateTime::IsCorrectTIANMUDatetime((short) year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
+                                            RCDateTime::GetSpecialValue(at).Minute(),
+                                            RCDateTime::GetSpecialValue(at).Second())) ||
         (at == common::CT::TIMESTAMP &&
-         RCDateTime::IsCorrectTIANMUTimestamp((short)year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
-                                           RCDateTime::GetSpecialValue(at).Minute(),
-                                           RCDateTime::GetSpecialValue(at).Second())))
-      rcv = RCDateTime((short)year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
+            RCDateTime::IsCorrectTIANMUTimestamp((short) year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
+                                                 RCDateTime::GetSpecialValue(at).Minute(),
+                                                 RCDateTime::GetSpecialValue(at).Second())) ||
+        (at == common::CT::DATE &&
+            RCDateTime::IsCorrectTIANMUDate((short) year, month, day)))
+      rcv = RCDateTime((short) year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
                        RCDateTime::GetSpecialValue(at).Minute(), RCDateTime::GetSpecialValue(at).Second(), at);
     return common::ErrorCode::OUT_OF_RANGE;
   }
@@ -1051,11 +1053,10 @@ common::ErrorCode ValueParserForText::ParseDateTime(const BString &rcs, RCDateTi
   switch (at) {
     case common::CT::TIMESTAMP:
     case common::CT::DATETIME:
+    case common::CT::DATE:
       return ValueParserForText::ParseDateTimeOrTimestamp(rcs, rcv, at);
     case common::CT::TIME:
       return ValueParserForText::ParseTime(rcs, rcv);
-    case common::CT::DATE:
-      return ValueParserForText::ParseDate(rcs, rcv);
     default:  // case common::CT::YEAR :
       return ValueParserForText::ParseYear(rcs, rcv);
   }
