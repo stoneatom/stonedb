@@ -14,7 +14,7 @@ To simplify deployment, the installation package provided here is pre-compiled t
 cd /
 tar -zxvf stonedb-ce-5.7-v1.0.0.el7.x86_64.tar.gz
 ```
-You can upload the installation package to the server. The name of the folder extracted from the package is **stonedb56**. In this topic, **/stonedb56** is used as the installation package.
+You can upload the installation package to the server. The name of the folder extracted from the package is **stonedb57**. In this topic, **/stonedb57** is used as the installation package.
 ## 3. Check dependencies
 ```shell
 cd /stonedb57/install/bin
@@ -81,7 +81,7 @@ Differences between **reinstall.sh** and **install.sh**:
 
 ### 5. Log in to StoneDB
 ```shell
-cat /stonedb57/install/log/mysqld.log |grep passwd
+cat /stonedb57/install/log/mysqld.log |grep passwrod
 [Note] A temporary password is generated for root@localhost: ceMuEuj6l4+!
 
 /stonedb57/install/bin/mysql -uroot -p -S /stonedb57/install/tmp/mysql.sock

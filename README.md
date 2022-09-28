@@ -85,14 +85,14 @@ The following packages we verify our builds with:
 
 ### On Ubuntu 20.04
 
-For more information, see [Compile StoneDB on Ubuntu 20.04](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-ubuntu20.04).
+For more information, see [Compile StoneDB on Ubuntu 20.04](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-ubuntu2004/compile-using-ubuntu20.04-for-57/).
 
 ### On CentOS 7.X
 
-For more information, see [Compile StoneDB on CentOS 7.x](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-centos7).
+For more information, see [Compile StoneDB on CentOS 7.x](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-centos7/compile-using-centos7-for-57).
 
 ### On RedHat 7.X
-For more information, see [Compile StoneDB on RedHat 7.x](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-redhat7/).
+For more information, see [Compile StoneDB on RedHat 7.x](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-redhat7/compile-using-redhat7-for-57/).
 ## Build StoneDB from Source Code in a Docker Container
 
 For more information, see [Compile StoneDB in a Docker Container](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-docker).

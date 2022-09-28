@@ -100,9 +100,16 @@ class JoinerGeneral : public TwoDimensionalJoiner {
   // Instead of the original inner Join function block, 
   // as the top-level call of inner Join, 
   // internal split multiple threads to separate different subsets for processing
-  void ExecuteInnerJoinLoop(MIIterator &mit, Condition &cond, MINewContents &new_mind, DimensionVector &all_dims,
+  void ExecuteInnerJoinLoopMultiThread(MIIterator &mit, Condition &cond, MINewContents &new_mind,
+                                          DimensionVector &all_dims,
                             std::vector<bool> &pack_desc_locked, int64_t &tuples_in_output, int64_t limit,
                             bool count_only);
+
+  // A single thread handles nested loop. 
+  // The purpose of this function is to provide an option that can be handled by a single thread
+  void ExecuteInnerJoinLoopSingleThread(MIIterator &mit, Condition &cond, MINewContents &new_mind,
+                                          DimensionVector &all_dims, std::vector<bool> &pack_desc_locked,
+                                          int64_t &tuples_in_output, int64_t limit, bool count_only);
 
   // Handles each row in the Pack that the current iterator points to
   // TODO: Keep in mind that internal Pack reads will have cache invalidation during multithread switching, 
