@@ -35,7 +35,11 @@ drop table account;
 --echo #
 --echo # simple trigger
 --echo #
+
+--disable_warnings
 drop table if exists t1;
+--enable_warnings
+
 create table t1 (i int)engine=tianmu;
 create trigger trg before insert on t1 for each row set @a:=1;
 set @a:=0;
@@ -146,7 +150,9 @@ drop table t1;
 --echo # test triggers which access other tables
 --echo # Trivial trigger which inserts data into another table
 --echo #
+--disable_warnings
 drop table if exists t2;
+--enable_warnings
 create table t1 (id int primary key, data varchar(10), fk int)engine=tianmu;
 create table t2 (event varchar(100))engine=tianmu;
 create table t3 (id int primary key)engine=tianmu;
