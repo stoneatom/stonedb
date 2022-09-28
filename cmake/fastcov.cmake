@@ -115,7 +115,7 @@ ENDFOREACH()
 SET(FASTCOV_EXCLUDE_LIST "--exclude")
 FOREACH(FASTCOV_EXCLUDE
     "/usr/include"
-    "${BOOST_INCLUDE_DIR}"
+    "${BOOST_INCLUDE_DIR}/include"
     "${BOOST_PATCHES_DIR}"
     ${GMOCK_INCLUDE_DIRS}
     "${CMAKE_SOURCE_DIR}/extra/duktape"
