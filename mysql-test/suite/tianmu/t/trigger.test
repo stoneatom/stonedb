@@ -146,7 +146,7 @@ drop table t1;
 --echo # test triggers which access other tables
 --echo # Trivial trigger which inserts data into another table
 --echo #
-
+drop table if exists t2;
 create table t1 (id int primary key, data varchar(10), fk int)engine=tianmu;
 create table t2 (event varchar(100))engine=tianmu;
 create table t3 (id int primary key)engine=tianmu;
