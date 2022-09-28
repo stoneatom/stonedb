@@ -546,7 +546,7 @@ void RCTable::FillRowByRowid(TABLE *table, int64_t obj) {
     if (bitmap_is_set(table->read_set, col_id)) {
       Engine::ConvertToField(*field, *value, nullptr);
     } else {
-      std::memset((*field)->ptr, 0, 2);
+      std::memset((*field)->field_ptr(), 0, 2);
       (*field)->set_null();
     }
   }
