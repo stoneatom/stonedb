@@ -361,7 +361,7 @@ int optimize_select(THD *thd, ulong select_options, Query_result *result,
         }       
         if (!(join = new JOIN(thd, select_lex)))
             return true; /* purecov: inspected */
-        select_lex->set_join(join); // stonedb8 TODO
+        select_lex->set_join(thd, join);
         
 	}
     join->best_rowcount = 2;
@@ -564,7 +564,7 @@ int Query_expression::optimize_for_tianmu(THD *thd) {
                     cleanup(thd, 0); // stonedb8
                     return true;
                 }
-                sl->set_join(join);
+                sl->set_join(thd, join);
             }           
             if (is_optimized())
                 sl->join->reset();
@@ -651,7 +651,7 @@ int Query_expression::optimize_after_tianmu(THD *thd)
                 cleanup(thd, 0);  // stonedb8
                 return true;
             }
-            sl->set_join(join);
+            sl->set_join(thd, join);
         }           
         int res = sl->join->optimize(2);
         if (res) {
