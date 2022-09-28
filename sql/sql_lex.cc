@@ -4398,22 +4398,12 @@ void Query_block::include_chain_in_global(Query_block **start) {
   *start = this;
 }
 
-// stonedb8 start TODO: a better way.
-//
-// follows: from MySQL 5.7.36
-//void st_select_lex::set_join(JOIN *join_arg)
-//{
-//  master_unit()->thd->lock_query_plan();
-//  join= join_arg;
-//  master_unit()->thd->unlock_query_plan();
-//}
-//
-void Query_block::set_join(JOIN *join_arg)
+void Query_block::set_join(THD *thd, JOIN *join_arg)
 {
+  thd->lock_query_plan();
   join= join_arg;
+  thd->unlock_query_plan();
 }
-
-// stonedb8 end
 
 /**
    Helper function which handles the "ON conditions" part of

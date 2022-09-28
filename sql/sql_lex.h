@@ -1797,7 +1797,7 @@ class Query_block {
    The function sets the pointer only after acquiring THD::LOCK_query_plan
    mutex. This is needed to avoid races when EXPLAIN FOR CONNECTION is used.
 */
-  void set_join(JOIN *join_arg);
+  void set_join(THD *thd, JOIN *join_arg);
 
   /**
     Does permanent transformations which are local to a query block (which do
