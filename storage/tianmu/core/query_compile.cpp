@@ -397,7 +397,9 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
     WrapStatus ws;
     common::ColOperation oper;
     bool distinct;
-    if (!OperationUnmysterify(item, oper, distinct, group_by_clause)) return RETURN_QUERY_TO_MYSQL_ROUTE;
+    if (!OperationUnmysterify(item, oper, distinct, group_by_clause)) {
+      return RETURN_QUERY_TO_MYSQL_ROUTE;
+    }
 
     if (IsAggregationItem(item)) aggregation_used = true;
 
@@ -435,7 +437,9 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
     else if (IsAggregationItem(item)) {
       // select AGGREGATION over EXPRESSION
       Item_sum *item_sum = (Item_sum *)item;
-      if (item_sum->get_arg_count() > 1 || HasAggregation(item_sum->get_arg(0))) return RETURN_QUERY_TO_MYSQL_ROUTE;
+      if (item_sum->get_arg_count() > 1 || HasAggregation(item_sum->get_arg(0))) {
+        return RETURN_QUERY_TO_MYSQL_ROUTE;
+      }
       if (IsCountStar(item_sum)) {  // count(*) doesn't need any virtual column
         AttrID at;
         cq->AddColumn(at, tmp_table, CQTerm(), oper, item_sum->item_name.ptr(), false);
@@ -443,7 +447,9 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
       } else {
         MysqlExpression *expr;
         ws = WrapMysqlExpression(item_sum->get_arg(0), tmp_table, expr, false, false);
-        if (ws == WrapStatus::FAILURE) return RETURN_QUERY_TO_MYSQL_ROUTE;
+        if (ws == WrapStatus::FAILURE) {
+          return RETURN_QUERY_TO_MYSQL_ROUTE;
+        }
         AddColumnForMysqlExpression(expr, tmp_table,
                                     ignore_minmax ? item_sum->get_arg(0)->item_name.ptr() : item_sum->item_name.ptr(),
                                     oper, distinct);
@@ -452,8 +458,9 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
       CQTerm term;
       AttrID at;
       if (Item2CQTerm(item, term, tmp_table,
-                      /*group_by_clause ? HAVING_FILTER :*/ CondType::WHERE_COND) == RETURN_QUERY_TO_MYSQL_ROUTE)
+                      /*group_by_clause ? HAVING_FILTER :*/ CondType::WHERE_COND) == RETURN_QUERY_TO_MYSQL_ROUTE) {
         return RETURN_QUERY_TO_MYSQL_ROUTE;
+      }
       cq->AddColumn(at, tmp_table, term, common::ColOperation::LISTING, item->item_name.ptr(), distinct);
       field_alias2num[TabIDColAlias(tmp_table.n, item->item_name.ptr())] = at.n;
     } else {
@@ -464,7 +471,9 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
       }
       MysqlExpression *expr(NULL);
       ws = WrapMysqlExpression(item, tmp_table, expr, false, oper == common::ColOperation::DELAYED);
-      if (ws == WrapStatus::FAILURE) return RETURN_QUERY_TO_MYSQL_ROUTE;
+      if (ws == WrapStatus::FAILURE) {
+        return RETURN_QUERY_TO_MYSQL_ROUTE;
+      }
       if (!item->item_name.ptr()) {
         Item_func_conv_charset *item_conv = dynamic_cast<Item_func_conv_charset *>(item);
         if (item_conv) {
@@ -473,8 +482,9 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
         } else {
           AddColumnForMysqlExpression(expr, tmp_table, item->item_name.ptr(), oper, distinct);
         }
-      } else
+      } else {
         AddColumnForMysqlExpression(expr, tmp_table, item->item_name.ptr(), oper, distinct);
+      }
     }
     added++;
     item = li++;
@@ -639,7 +649,9 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
   // want to see. By the way, collect references to all Item_field objects.
   std::set<Item *> ifields;
   MysqlExpression::Item2VarID item2varid;
-  if (!MysqlExpression::SanityAggregationCheck(item, ifields)) return WrapStatus::FAILURE;
+  if (!MysqlExpression::SanityAggregationCheck(item, ifields)) {
+    return WrapStatus::FAILURE;
+  }
 
   // this large "if" can be removed to use common code, but many small "ifs"
   // must be created then
@@ -649,20 +661,26 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
       if (IsAggregationItem(it)) {
         // a few checkings for aggregations
         Item_sum *aggregation = (Item_sum *)it;
-        if (aggregation->get_arg_count() > 1) return WrapStatus::FAILURE;
+        if (aggregation->get_arg_count() > 1) {
+          return WrapStatus::FAILURE;
+        }
         if (IsCountStar(aggregation))  // count(*) doesn't need any virtual column
           return WrapStatus::FAILURE;
       }
       AttrID col, at;
       TabID tab;
       // find [tab] and [col] which identify column in TIANMU
-      if (!FieldUnmysterify(it, tab, col)) return WrapStatus::FAILURE;
+      if (!FieldUnmysterify(it, tab, col)) {
+        return WrapStatus::FAILURE;
+      }
       if (!cq->ExistsInTempTable(tab, tmp_table)) {
         bool is_group_by;
         TabID params_table = cq->FindSourceOfParameter(tab, tmp_table, is_group_by);
         common::ColOperation oper;
         bool distinct;
-        if (!OperationUnmysterify(it, oper, distinct, true)) return WrapStatus::FAILURE;
+        if (!OperationUnmysterify(it, oper, distinct, true)) {
+          return WrapStatus::FAILURE;
+        }
         if (is_group_by && !IsParameterFromWhere(params_table)) {
           col.n = AddColumnForPhysColumn(it, params_table, oper, distinct, true);
           item2varid[it] = VarID(params_table.n, col.n);
@@ -680,7 +698,9 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
     for (auto &it : ifields) {
       if (IsAggregationItem(it)) {
         Item_sum *aggregation = (Item_sum *)it;
-        if (aggregation->get_arg_count() > 1) return WrapStatus::FAILURE;
+        if (aggregation->get_arg_count() > 1) {
+          return WrapStatus::FAILURE;
+        }
 
         if (IsCountStar(aggregation)) {  // count(*) doesn't need any virtual column
           at.n = GetAddColumnId(AttrID(common::NULL_VALUE_32), tmp_table, common::ColOperation::COUNT, false);
@@ -689,7 +709,9 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
         } else {
           common::ColOperation oper;
           bool distinct;
-          if (!OperationUnmysterify(aggregation, oper, distinct, true)) return WrapStatus::FAILURE;
+          if (!OperationUnmysterify(aggregation, oper, distinct, true)) {
+            return WrapStatus::FAILURE;
+          }
           AttrID col;
           TabID tab;
           if (IsFieldItem(aggregation->get_arg(0)) && FieldUnmysterify(aggregation, tab, col) &&
@@ -699,7 +721,9 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
           } else {
             // EXPRESSION
             ws = WrapMysqlExpression(aggregation->get_arg(0), tmp_table, expr, in_where, false);
-            if (ws == WrapStatus::FAILURE) return ws;
+            if (ws == WrapStatus::FAILURE) {
+              return ws;
+            }
             at.n = AddColumnForMysqlExpression(expr, tmp_table, aggregation->item_name.ptr(), oper, distinct, true);
           }
         }
@@ -707,13 +731,17 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
       } else if (IsFieldItem(it)) {
         AttrID col;
         TabID tab;
-        if (!FieldUnmysterify(it, tab, col)) return WrapStatus::FAILURE;
+        if (!FieldUnmysterify(it, tab, col)) {
+          return WrapStatus::FAILURE;
+        }
         if (!cq->ExistsInTempTable(tab, tmp_table)) {
           bool is_group_by;
           TabID params_table = cq->FindSourceOfParameter(tab, tmp_table, is_group_by);
           common::ColOperation oper;
           bool distinct;
-          if (!OperationUnmysterify(it, oper, distinct, true)) return WrapStatus::FAILURE;
+          if (!OperationUnmysterify(it, oper, distinct, true)) {
+            return WrapStatus::FAILURE;
+          }
           if (is_group_by && !IsParameterFromWhere(params_table)) {
             col.n = AddColumnForPhysColumn(it, params_table, oper, distinct, true);
             item2varid[it] = VarID(params_table.n, col.n);
@@ -722,7 +750,9 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
         } else if (aggr_used) {
           common::ColOperation oper;
           bool distinct;
-          if (!OperationUnmysterify(it, oper, distinct, true)) return WrapStatus::FAILURE;
+          if (!OperationUnmysterify(it, oper, distinct, true)) {
+            return WrapStatus::FAILURE;
+          }
           at.n = AddColumnForPhysColumn(it, tmp_table, oper, distinct, true);
           item2varid[it] = VarID(tmp_table.n, at.n);
         } else {
@@ -928,38 +958,35 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
     int64_t limit_value = -1;
     int64_t offset_value = -1;
 
-		
-        if (!sl->join) 
-		
-		{
-            sl->add_active_options(SELECT_NO_UNLOCK);
-            JOIN *join = new JOIN(sl->master_unit()->thd, sl);
+    if (!sl->join) {
+        sl->add_active_options(SELECT_NO_UNLOCK);
+        JOIN *join = new JOIN(sl->master_unit()->thd, sl);
                     
-            if (!join) {
+        if (!join) {
 
-                sl->cleanup(0);
-                return TRUE;
-            }
-            sl->set_join(join);
+            sl->cleanup(0);
+            return TRUE;
         }
+        sl->set_join(join);
+    }
         
-        if (!JudgeErrors(sl))
-            return RETURN_QUERY_TO_MYSQL_ROUTE;
-        SetLimit(sl, sl == selects_list ? 0 : sl->join->unit->global_parameters(), offset_value, limit_value);
+    if (!JudgeErrors(sl))
+        return RETURN_QUERY_TO_MYSQL_ROUTE;
+    SetLimit(sl, sl == selects_list ? 0 : sl->join->unit->global_parameters(), offset_value, limit_value);
 
-        List<Item> *fields = &sl->fields_list;
-        Item *      conds = sl->where_cond();
-        ORDER *     order = sl->order_list.first;
+    List<Item> *fields = &sl->fields_list;
+    Item *      conds = sl->where_cond();
+    ORDER *     order = sl->order_list.first;
 
     // if (order) global_order = 0;   //we want to zero global order (which
     // seems to be always present) if we find a local order by clause
     //  The above is not necessary since global_order is set only in case of
     //  real UNIONs
 
-        ORDER *           group = sl->group_list.first;
-        Item *            having = sl->having_cond();
-        List<TABLE_LIST> *join_list = sl->join_list;
-        bool              zero_result = sl->join->zero_result_cause != NULL;
+    ORDER *           group = sl->group_list.first;
+    Item *            having = sl->having_cond();
+    List<TABLE_LIST> *join_list = sl->join_list;
+    bool              zero_result = sl->join->zero_result_cause != NULL;
 
     Item *field_for_subselect;
     Item *cond_to_reinsert = NULL;
@@ -974,16 +1001,20 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
 
       if (left_expr_for_subselect)
         if (!ClearSubselectTransformation(*oper_for_subselect, field_for_subselect, conds, having, cond_to_reinsert,
-                                          list_to_reinsert, left_expr_for_subselect))
+                                          list_to_reinsert, left_expr_for_subselect)) {
           throw CompilationError();
+        }
 
-      if (having && !group)  // we cannot handle the case of a having without a group by
+      if (having && !group) {  // we cannot handle the case of a having without a group by
         throw CompilationError();
+      }
 
       TABLE_LIST *tables = sl->leaf_tables ? sl->leaf_tables : (TABLE_LIST *)sl->table_list.first;
       for (TABLE_LIST *table_ptr = tables; table_ptr; table_ptr = table_ptr->next_leaf) {
         if (!table_ptr->is_view_or_derived()) {
-          if (!Engine::IsTianmuTable(table_ptr->table)) throw CompilationError();
+          if (!Engine::IsTianmuTable(table_ptr->table)) {
+            throw CompilationError();
+          }
           std::string path = TablePath(table_ptr);
           if (path2num.find(path) == path2num.end()) {
             path2num[path] = NumOfTabs();
@@ -995,8 +1026,9 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       std::vector<TabID> left_tables, right_tables;
       bool first_table = true;
       if (!AddJoins(*join_list, tmp_table, left_tables, right_tables, (res_tab != NULL && res_tab->n != 0), first_table,
-                    for_subq_in_where))
+                    for_subq_in_where)) {
         throw CompilationError();
+      }
 
       List<Item> field_list_for_subselect;
       if (left_expr_for_subselect && field_for_subselect) {
@@ -1004,19 +1036,28 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
         fields = &field_list_for_subselect;
       }
       bool aggr_used = false;
-      if (!AddFields(*fields, tmp_table, group != NULL, col_count, ignore_minmax, aggr_used)) throw CompilationError();
-
-      if (!AddGroupByFields(group, tmp_table)) throw CompilationError();
-
-      if (!AddOrderByFields(order, tmp_table, group != NULL || sl->join->select_distinct || aggr_used))
+      if (!AddFields(*fields, tmp_table, group != NULL, col_count, ignore_minmax, aggr_used)) {
         throw CompilationError();
+      }
+
+      if (!AddGroupByFields(group, tmp_table)) {
+        throw CompilationError();
+      }
+
+      if (!AddOrderByFields(order, tmp_table, group != NULL || sl->join->select_distinct || aggr_used)) {
+        throw CompilationError();
+      }
       CondID cond_id;
-      if (!BuildConditions(conds, cond_id, cq, tmp_table, CondType::WHERE_COND, zero_result)) throw CompilationError();
+      if (!BuildConditions(conds, cond_id, cq, tmp_table, CondType::WHERE_COND, zero_result)) {
+        throw CompilationError();
+      }
 
       cq->AddConds(tmp_table, cond_id, CondType::WHERE_COND);
 
       cond_id = CondID();
-      if (!BuildConditions(having, cond_id, cq, tmp_table, CondType::HAVING_COND)) throw CompilationError();
+      if (!BuildConditions(having, cond_id, cq, tmp_table, CondType::HAVING_COND)) {
+        throw CompilationError();
+      }
       cq->AddConds(tmp_table, cond_id, CondType::HAVING_COND);
 
       cq->ApplyConds(tmp_table);
@@ -1048,7 +1089,9 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
 
   cq->BuildTableIDStepsMap();
 
-  if (!AddGlobalOrderByFields(global_order, prev_result, col_count)) return RETURN_QUERY_TO_MYSQL_ROUTE;
+  if (!AddGlobalOrderByFields(global_order, prev_result, col_count)) {
+    return RETURN_QUERY_TO_MYSQL_ROUTE;
+  }
 
   if (!ignore_limit && global_limit_value >= 0)
     cq->Mode(prev_result, TMParameter::TM_TOP, global_offset_value, global_limit_value);
