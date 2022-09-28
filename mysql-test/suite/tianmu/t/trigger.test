@@ -35,7 +35,7 @@ drop table account;
 --echo #
 --echo # simple trigger
 --echo #
-
+drop table if exists t1;
 create table t1 (i int)engine=tianmu;
 create trigger trg before insert on t1 for each row set @a:=1;
 set @a:=0;
