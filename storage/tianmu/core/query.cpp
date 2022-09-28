@@ -1107,21 +1107,18 @@ int Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_table, CondT
 CondID Query::ConditionNumberFromMultipleEquality(Item_equal *conds, const TabID &tmp_table, CondType filter_type,
                                                   CondID *and_me_filter, bool is_or_subtree) {
   CQTerm zero_term, first_term, next_term;
-  // stonedb8 start
-  List_STL_Iterator<Item_field> ifield;
-  List_STL_Iterator<Item_field> li;
-  li = conds->get_fields().begin();
-  // stonedb8 end
+  Item_field *ifield{nullptr};
+  auto li = conds->get_fields().begin();
 
   Item *const_item = conds->get_const();
   if (const_item) {
     if (!Item2CQTerm(const_item, zero_term, tmp_table, filter_type)) return CondID(-1);
   } else {
-    ifield = li++;
-    if (!Item2CQTerm(&*ifield, zero_term, tmp_table, filter_type)) return CondID(-1); // stonedb8 TODO
+    ifield = &*(li++);
+    if (!Item2CQTerm(ifield, zero_term, tmp_table, filter_type)) return CondID(-1);
   }
-  ifield = li++;
-  if (!Item2CQTerm(&*ifield, first_term, tmp_table, filter_type)) return CondID(-1); // stonedb8 TODO
+  ifield = &*(li++);
+  if (!Item2CQTerm(ifield, first_term, tmp_table, filter_type)) return CondID(-1);
   CondID filter;
   if (!and_me_filter)
     cq->CreateConds(filter, tmp_table, first_term, common::Operator::O_EQ, zero_term, CQTerm(),
@@ -1132,8 +1129,9 @@ CondID Query::ConditionNumberFromMultipleEquality(Item_equal *conds, const TabID
     else
       cq->And(*and_me_filter, tmp_table, first_term, common::Operator::O_EQ, zero_term);
   }
-  while ((ifield = li++) != conds->get_fields().end()) {  // stonedb8
-    if (!Item2CQTerm(&*ifield, next_term, tmp_table, filter_type)) return CondID(-1); // stonedb8 TODO
+  while (li != conds->get_fields().end()) {
+    ifield = &*(li++);
+    if (!Item2CQTerm(ifield, next_term, tmp_table, filter_type)) return CondID(-1);
     if (!and_me_filter) {
       if (is_or_subtree)
         cq->Or(filter, tmp_table, next_term, common::Operator::O_EQ, zero_term);

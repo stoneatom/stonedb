@@ -428,7 +428,7 @@ class posix_udp_channel : public udp_channel_impl {
   }
   virtual ~posix_udp_channel() {
     if (!_closed) close();
-  };
+  }
   virtual future<udp_datagram> receive() override;
   future<> send(ipv4_addr dst, const char *msg) override;
   future<> send(ipv4_addr dst, packet p) override;

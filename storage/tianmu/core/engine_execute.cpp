@@ -581,7 +581,7 @@ int Query_expression::optimize_for_tianmu(THD *thd) {
                 // When using braces, SQL_CALC_FOUND_ROWS affects the whole query:
                 // we don't calculate found_rows() per union part.
                 // Otherwise, SQL_CALC_FOUND_ROWS should be done on all sub parts.
-                sl->join->select_options = (select_limit_cnt == HA_POS_ERROR /*|| sl->braces*/) // stonedb8 TODO
+                sl->join->select_options = (select_limit_cnt == HA_POS_ERROR || thd->lex->unit->is_union())
                                                ? sl->active_options() & ~OPTION_FOUND_ROWS
                                                : sl->active_options() | found_rows_for_union;
                 saved_error = sl->join->optimize(1);

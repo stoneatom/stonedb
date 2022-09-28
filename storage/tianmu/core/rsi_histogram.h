@@ -57,7 +57,7 @@ class RSIndex_Hist final : public RSIndex {
 
   void SaveToFile(common::TX_ID ver) override;
 
-  bool Fixed() { return hdr.fixed == 1; };
+  bool Fixed() { return hdr.fixed == 1; }
 
  private:
   void AppendKNs(unsigned int no_kns_to_add);  // append new KNs

@@ -42,7 +42,7 @@ class KVStore final {
  public:
   KVStore(const KVStore &) = delete;
   //mysql_real_data_home, pls refer to the system params.
-  KVStore() : kv_data_dir_(mysql_real_data_home){};
+  KVStore() : kv_data_dir_(mysql_real_data_home){}
 
   KVStore &operator=(const KVStore &) = delete;
   virtual ~KVStore() { UnInit(); }

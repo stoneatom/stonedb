@@ -49,7 +49,7 @@ class Query final {
    */
   void RemoveFromManagedList(const std::shared_ptr<RCTable> tab);
 
-  int NumOfTabs() const { return t.size(); };
+  int NumOfTabs() const { return t.size(); }
   std::shared_ptr<RCTable> Table(size_t table_num) const {
     ASSERT(table_num < t.size(), "table_num out of range: " + std::to_string(table_num));
     return t[table_num];

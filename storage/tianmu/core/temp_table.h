@@ -504,7 +504,7 @@ class TempTable : public JustATable {
 class TempTableForSubquery : public TempTable {
  public:
   TempTableForSubquery(JustATable *const t, int alias, Query *q)
-      : TempTable(t, alias, q), template_filter(0), is_attr_for_rough(false), rough_materialized(false){};
+      : TempTable(t, alias, q), template_filter(0), is_attr_for_rough(false), rough_materialized(false){}
   ~TempTableForSubquery();
 
   void CreateTemplateIfNotExists();

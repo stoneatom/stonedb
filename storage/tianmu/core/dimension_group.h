@@ -71,7 +71,7 @@ class DimensionGroup {
     // note: retrieving a value depends on DimensionGroup type
     Iterator() { valid = false; }
     Iterator(const Iterator &sec) { valid = sec.valid; }
-    virtual ~Iterator(){};
+    virtual ~Iterator(){}
 
     virtual void operator++() = 0;
     virtual void Rewind() = 0;

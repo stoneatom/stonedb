@@ -1609,23 +1609,19 @@ const char *Engine::GetFilename(Query_block *selects_list, int &is_dumpfile) {  
   // maybe 'select into DUMPFILE' if the function returns NULL it was a regular
   // 'select' don't look into is_dumpfile in this case
 
-  // stonedb8 start
+  if(selects_list->parent_lex->result == nullptr) {
+    return nullptr;
+  }
+
   auto exchange =
       static_cast<Query_result_to_file *>(selects_list->parent_lex->result)->get_sql_exchange();
+
   if (exchange) {
     is_dumpfile = exchange->dumpfile;
     return exchange->file_name;
   }
 
-  /* MySQL 5.7.36
-  if (selects_list->parent_lex->exchange) {
-    is_dumpfile = selects_list->parent_lex->exchange->dumpfile;
-    return selects_list->parent_lex->exchange->file_name;
-  }
-   */
-  // stonedb8 end
-
-  return 0;
+  return nullptr;
 }
 
 std::unique_ptr<system::IOParameters> Engine::CreateIOParameters(const std::string &path, void *arg) {
@@ -1729,19 +1725,25 @@ common::TIANMUError Engine::GetRejectFileIOParameters(THD &thd, std::unique_ptr<
 }
 
 common::TIANMUError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
-                                TABLE *table, void *arg, bool for_exporter) {
+                                   TABLE *table, void *arg, bool for_exporter) {
   const CHARSET_INFO *cs = ex.cs;
-  bool local_load = false; // for_exporter ? false : (bool)(thd.lex)->local_file; // stonedb8 TODO: mysql_load
-  uint value_list_elements = 0; // (thd.lex)->load_value_list.elements; // stonedb8 TODO: mysql_load
-  // thr_lock_type lock_option = (thd.lex)->lock_option;
+  // stonedb8 start
+  bool local_load = false;
+  uint value_list_elements = 0;
 
+  if (!for_exporter) {
+    auto cmd = down_cast<Sql_cmd_load_table *>(thd.lex->m_sql_cmd);
+    local_load = cmd->m_is_local_file;
+    value_list_elements = cmd->m_opt_set_exprs.size();
+  }
+  // stonedb8 end
   int io_mode = -1;
-  char name[FN_REFLEN];
-  char *tdb = 0;
+  char name[FN_REFLEN] = {0};
+  char *tdb = nullptr;
   if (table) {
-    tdb = table->s->db.str ? (char*)table->s->db.str : (char*)thd.db().str;
+    tdb = table->s->db.str ? const_cast<char*>(table->s->db.str) : const_cast<char*>(thd.db().str);
   } else
-    tdb = (char*)thd.db().str;
+    tdb = const_cast<char*>(thd.db().str);
 
   io_params = CreateIOParameters(&thd, table, arg);
   short sign, minutes;
