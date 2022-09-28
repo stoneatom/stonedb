@@ -4,7 +4,7 @@ Stonedb prepares the rules to be followed by MTR
 - <font color=blue>Test Case Coding Guidelines  </font>
 
 ## <font color=blue>Test Case Coding Guidelines  </font>
-- 测试用例文件名可以使用字母数字字符（AZ、az、0-9）、下划线（'_'）或破折号（'-'），但不应以下划线或破折号开头  
+- Test case file names may use alphanumeric characters (A-Z, a-z, 0-9), underscore ('_') or dash ('-'), but should not start with underscore or dash
 
 ## Test Case Content-Formatting Guidelines  
 - To write a test case file, use any text editor that uses linefeed (newline) as the end-of-line character.  
