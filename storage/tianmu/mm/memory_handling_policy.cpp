@@ -401,7 +401,7 @@ void MemoryHandling::EnsureNoLeakedTraceableObject() {
     if (it.first->IsLocked() && (it.first->NumOfLocks() > 1 || it.first->TraceableType() == TO_TYPE::TO_PACK)) {
       error_found = true;
       TIANMU_LOG(LogCtl_Level::ERROR, "Object @[%ld] locked too many times. Object type: %d, no. locks: %d",
-                  long(it.first), int(it.first->TraceableType()), int(it.first->NumOfLocks()));
+                 long(it.first), int(it.first->TraceableType()), int(it.first->NumOfLocks()));
     }
   }
   ASSERT(!error_found, "Objects locked too many times found.");

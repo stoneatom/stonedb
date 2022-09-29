@@ -33,7 +33,7 @@ static int String2DateTime(const BString &s, RCDateTime &rcdt, common::CT at) {
     return 1;
   }
 
-  if ((at == common::CT::TIMESTAMP) && !validate_my_time(myt)) { // stonedb8
+  if ((at == common::CT::TIMESTAMP) && !validate_my_time(myt)) {  // stonedb8
     rcdt = RCDateTime(0, common::CT::TIMESTAMP);
     return 0;
   }
@@ -671,12 +671,12 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
   if (!EatWhiteSigns(buf, buflen) && !system::EatDTSeparators(buf, buflen)) {
     if ((at == common::CT::DATETIME &&
          RCDateTime::IsCorrectTIANMUDatetime((short)year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
-                                          RCDateTime::GetSpecialValue(at).Minute(),
-                                          RCDateTime::GetSpecialValue(at).Second())) ||
+                                             RCDateTime::GetSpecialValue(at).Minute(),
+                                             RCDateTime::GetSpecialValue(at).Second())) ||
         (at == common::CT::TIMESTAMP &&
          RCDateTime::IsCorrectTIANMUTimestamp((short)year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
-                                           RCDateTime::GetSpecialValue(at).Minute(),
-                                           RCDateTime::GetSpecialValue(at).Second())))
+                                              RCDateTime::GetSpecialValue(at).Minute(),
+                                              RCDateTime::GetSpecialValue(at).Second())))
       rcv = RCDateTime((short)year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
                        RCDateTime::GetSpecialValue(at).Minute(), RCDateTime::GetSpecialValue(at).Second(), at);
     return common::ErrorCode::OUT_OF_RANGE;
@@ -738,7 +738,7 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
   try {
     if (at == common::CT::DATETIME) {
       if (RCDateTime::IsCorrectTIANMUDatetime((short)year, (short)month, (short)day, (short)hour, (short)minute,
-                                           (short)second)) {
+                                              (short)second)) {
         rcv = RCDateTime((short)year, (short)month, (short)day, (short)hour, (short)minute, (short)second, at);
         return tianmu_rc;
       } else {
@@ -749,7 +749,7 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
       }
     } else if (at == common::CT::TIMESTAMP) {
       if (RCDateTime::IsCorrectTIANMUTimestamp((short)year, (short)month, (short)day, (short)hour, (short)minute,
-                                            (short)second)) {
+                                               (short)second)) {
         // convert to UTC
         MYSQL_TIME myt;
         std::memset(&myt, 0, sizeof(MYSQL_TIME));

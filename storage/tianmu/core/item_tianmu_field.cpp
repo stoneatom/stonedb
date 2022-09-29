@@ -183,9 +183,10 @@ bool Item_tianmufield::get_date(MYSQL_TIME *ltime, uint fuzzydate) {
 }
 
 bool Item_tianmufield::get_time(MYSQL_TIME *ltime) {
-  if ((null_value = buf->null) || ((tianmu_type.attrtype == common::CT::DATETIME || tianmu_type.attrtype == common::CT::DATE) &&
-                                   buf->x == 0))  // zero date is illegal
-    return 1;                                     // like in Item_field::get_time - return 1 on null value.
+  if ((null_value = buf->null) ||
+      ((tianmu_type.attrtype == common::CT::DATETIME || tianmu_type.attrtype == common::CT::DATE) &&
+       buf->x == 0))  // zero date is illegal
+    return 1;         // like in Item_field::get_time - return 1 on null value.
   FeedValue();
   return ivalue->get_time(ltime);
 }

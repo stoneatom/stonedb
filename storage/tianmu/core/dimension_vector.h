@@ -27,7 +27,7 @@ namespace core {
 class DimensionVector {
  public:
   DimensionVector() = default;
-  DimensionVector(int no_dims) : v(no_dims){}
+  DimensionVector(int no_dims) : v(no_dims) {}
   DimensionVector(const DimensionVector &sec) = default;
   ~DimensionVector() = default;
 

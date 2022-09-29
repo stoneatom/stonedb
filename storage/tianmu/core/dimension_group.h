@@ -35,8 +35,8 @@ class DimensionGroup {
   virtual DimensionGroup *Clone(bool shallow) = 0;  // create a new group with the same (copied) contents
   virtual ~DimensionGroup() {}
   int64_t NumOfTuples() { return no_obj; }
-  virtual void UpdateNumOfTuples() {}          // may be not needed for some group types
-  DGType Type() { return dim_group_type; }     // type selector
+  virtual void UpdateNumOfTuples() {}       // may be not needed for some group types
+  DGType Type() { return dim_group_type; }  // type selector
   virtual Filter *GetFilter([[maybe_unused]] int dim) const {
     return NULL;
   }  // Get the pointer to a filter attached to a dimension. NOTE: will be NULL
@@ -71,7 +71,7 @@ class DimensionGroup {
     // note: retrieving a value depends on DimensionGroup type
     Iterator() { valid = false; }
     Iterator(const Iterator &sec) { valid = sec.valid; }
-    virtual ~Iterator(){}
+    virtual ~Iterator() {}
 
     virtual void operator++() = 0;
     virtual void Rewind() = 0;

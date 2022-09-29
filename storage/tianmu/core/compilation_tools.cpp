@@ -116,8 +116,8 @@ int OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct,
         case Item_sum::GROUP_CONCAT_FUNC:
           distinct = ((Item_func_group_concat *)item)->get_distinct();
           TIANMU_LOG(LogCtl_Level::DEBUG, "group_concat distinct %d, sepertator %s, direction %d", distinct,
-                      ((Item_func_group_concat *)item)->get_separator()->c_ptr(),
-                      ((Item_func_group_concat *)item)->direction());
+                     ((Item_func_group_concat *)item)->get_separator()->c_ptr(),
+                     ((Item_func_group_concat *)item)->direction());
           oper = common::ColOperation::GROUP_CONCAT;
           break;
         default:
@@ -196,7 +196,7 @@ void PrintItemTree(Item *item, int indent) {
       break;
   }
   std::fprintf(stderr, "%s %s @%p %s %s max_length=%d", name, item->full_name(), (void *)item,
-               FieldType(item->data_type()), result, item->max_length); // stonedb8 item::field_type()->data_type()
+               FieldType(item->data_type()), result, item->max_length);  // stonedb8 item::field_type()->data_type()
 
   if (item->result_type() == DECIMAL_RESULT)
     std::fprintf(stderr, " [prec=%d,dec=%d,int=%d]", item->decimal_precision(), (int)item->decimals,
@@ -239,7 +239,7 @@ void PrintItemTree(Item *item, int indent) {
 
       std::fprintf(stderr, "  %s\n", sumname);
 
-      uint args_count = sum_func->argument_count(); // stonedb8
+      uint args_count = sum_func->argument_count();  // stonedb8
       for (uint i = 0; i < args_count; i++) PrintItemTree(sum_func->get_arg(i), indent);
       return;
     }

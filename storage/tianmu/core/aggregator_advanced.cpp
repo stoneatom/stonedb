@@ -194,9 +194,9 @@ void AggregatorGroupConcat::PutAggregatedValue(unsigned char *buf, const types::
       it->second = it->second + copylen;             // update the length of the buffer
     } else {
       TIANMU_LOG(LogCtl_Level::ERROR,
-                  "Internal error for AggregatorGroupConcat: buffer length is "
-                  "%d, which beyond threshold %d.",
-                  pos, gconcat_maxlen);
+                 "Internal error for AggregatorGroupConcat: buffer length is "
+                 "%d, which beyond threshold %d.",
+                 pos, gconcat_maxlen);
     }
   }
 }
@@ -239,7 +239,7 @@ types::BString AggregatorGroupConcat::GetValueT(unsigned char *buf) {
     start_pos = pos + si.separator.length();
   }
 
-  if (si.order == ORDER_DESC) { // stonedb8
+  if (si.order == ORDER_DESC) {  // stonedb8
     if (ATI::IsStringType(attrtype))
       std::sort(vstr.begin(), vstr.end(), std::greater<std::string>());
     else  // numeric

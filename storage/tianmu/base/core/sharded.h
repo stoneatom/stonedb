@@ -147,7 +147,7 @@ class sharded {
   /// \return a \ref future<> that becomes ready when all instances have been
   ///         constructed.
   template <typename... Args>
-  future<> start(Args &&...args);
+  future<> start(Args &&... args);
 
   /// Starts \c Service by constructing an instance on a single logical core
   /// with a copy of \c args passed to the constructor.
@@ -156,7 +156,7 @@ class sharded {
   /// \return a \ref future<> that becomes ready when the instance has been
   ///         constructed.
   template <typename... Args>
-  future<> start_single(Args &&...args);
+  future<> start_single(Args &&... args);
 
   /// Stops all started instances and destroys them.
   ///
@@ -196,14 +196,14 @@ class sharded {
   /// \see map_reduce(Iterator begin, Iterator end, Mapper&& mapper, Reducer&&
   /// r)
   template <typename Reducer, typename Ret, typename... FuncArgs, typename... Args>
-  inline auto map_reduce(Reducer &&r, Ret (Service::*func)(FuncArgs...), Args &&...args) ->
+  inline auto map_reduce(Reducer &&r, Ret (Service::*func)(FuncArgs...), Args &&... args) ->
       typename reducer_traits<Reducer>::future_type {
     return base::map_reduce(
         boost::make_counting_iterator<unsigned>(0), boost::make_counting_iterator<unsigned>(_instances.size()),
         [this, func, args = std::make_tuple(std::forward<Args>(args)...)](unsigned c) mutable {
           return smp::submit_to(c, [this, func, args]() mutable {
             return apply(
-                [this, func](Args &&...args) mutable {
+                [this, func](Args &&... args) mutable {
                   auto inst = _instances[engine().cpu_id()].service;
                   if (inst) {
                     return ((*inst).*func)(std::forward<Args>(args)...);
@@ -299,7 +299,7 @@ class sharded {
   /// \param args arguments to be passed to `func`
   /// \return result of calling `func(args)` on the designated instance
   template <typename Ret, typename... FuncArgs, typename... Args, typename FutureRet = futurize_t<Ret>>
-  FutureRet invoke_on(unsigned id, Ret (Service::*func)(FuncArgs...), Args &&...args) {
+  FutureRet invoke_on(unsigned id, Ret (Service::*func)(FuncArgs...), Args &&... args) {
     using futurator = futurize<Ret>;
     return smp::submit_to(id, [this, func, args = std::make_tuple(std::forward<Args>(args)...)]() mutable {
       auto inst = get_local_service();
@@ -341,7 +341,7 @@ class sharded {
   }
 
   template <typename... Args>
-  shared_ptr<Service> create_local_service(Args &&...args) {
+  shared_ptr<Service> create_local_service(Args &&... args) {
     auto s = base::make_shared<Service>(std::forward<Args>(args)...);
     set_container(*s);
     track_deletion(s, std::is_base_of<async_sharded_service<Service>, Service>());
@@ -393,7 +393,7 @@ sharded<Service>::sharded(sharded &&x) noexcept : _instances(std::move(x._instan
 
 template <typename Service>
 template <typename... Args>
-future<> sharded<Service>::start(Args &&...args) {
+future<> sharded<Service>::start(Args &&... args) {
   _instances.resize(smp::count);
   return parallel_for_each(
              boost::irange<unsigned>(0, _instances.size()),
@@ -418,7 +418,7 @@ future<> sharded<Service>::start(Args &&...args) {
 
 template <typename Service>
 template <typename... Args>
-future<> sharded<Service>::start_single(Args &&...args) {
+future<> sharded<Service>::start_single(Args &&... args) {
   assert(_instances.empty());
   _instances.resize(1);
   return smp::submit_to(0,

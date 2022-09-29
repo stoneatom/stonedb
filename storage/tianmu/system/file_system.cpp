@@ -42,7 +42,7 @@ int ClearDirectory(std::string const &path) {
     }
   } catch (fs::filesystem_error &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Failed to ClearDirectory(%s). filesystem_error: %s %s %s", path.c_str(), e.what(),
-                e.path1().native().c_str(), e.path2().native().c_str());
+               e.path1().native().c_str(), e.path2().native().c_str());
     return 1;
   } catch (std::exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Failed to ClearDirectory(%s). error: %s", path.c_str(), e.what());
@@ -69,7 +69,7 @@ void DeleteDirectory(std::string const &path) {
     }
   } catch (fs::filesystem_error &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Failed to delete directory(%s). filesystem_error: %s %s %s", path.c_str(),
-                e.what(), e.path1().native().c_str(), e.path2().native().c_str());
+               e.what(), e.path1().native().c_str(), e.path2().native().c_str());
   } catch (std::exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Failed to delete directory(%s). error: %s", path.c_str(), e.what());
   }

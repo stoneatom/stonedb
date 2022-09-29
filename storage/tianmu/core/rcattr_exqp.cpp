@@ -145,7 +145,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenInt(MIUpdatingIterator &mit, in
         ++iter;
       } else {
         TIANMU_LOG(LogCtl_Level::ERROR, "GetCurKV valid! col:[%u]=%I64d, Path:%s", ColId(), pv1,
-                    m_share->owner->Path().data());
+                   m_share->owner->Path().data());
         break;
       }
     }
@@ -207,7 +207,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString(MIUpdatingIterator &mit,
         ++iter;
       } else {
         TIANMU_LOG(LogCtl_Level::ERROR, "GetCurKV valid! col:[%u]=%s, Path:%s", ColId(), pv1.ToString().data(),
-                    m_share->owner->Path().data());
+                   m_share->owner->Path().data());
         break;
       }
     }
@@ -271,7 +271,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString_UTF(MIUpdatingIterator &
         ++iter;
       } else {
         TIANMU_LOG(LogCtl_Level::ERROR, "GetCurKV valid! col:[%u]=%s, Path:%s", ColId(), pv1.ToString().data(),
-                    m_share->owner->Path().data());
+                   m_share->owner->Path().data());
         break;
       }
     }

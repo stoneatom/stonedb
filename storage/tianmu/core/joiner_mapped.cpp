@@ -207,8 +207,8 @@ std::unique_ptr<JoinerMapFunction> JoinerMapped::GenerateFunction(vcolumn::Virtu
   auto map_function = std::make_unique<MultiMapsFunction>(m_conn);
   if (!map_function->Init(vc, mit)) return nullptr;
 
-  rc_control_.lock(m_conn->GetThreadID()) << "Join mapping (multimaps) created on " << mit.NumOfTuples() << " rows."
-                                        << system::unlock;
+  rc_control_.lock(m_conn->GetThreadID())
+      << "Join mapping (multimaps) created on " << mit.NumOfTuples() << " rows." << system::unlock;
   return std::move(map_function);
 }
 
@@ -387,7 +387,7 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
     task.dwStartPackno = tid * (packnums / tids);
     task.dwEndPackno = (tid == tids - 1) ? packnums : (tid + 1) * (packnums / tids);
     res.insert(ha_rcengine_->query_thread_pool.add_task(&JoinerParallelMapped::ExecuteMatchLoop, this, &indextable[tid],
-                                                 packrows, &matched_tuples[tid], vc2, task, map_function.get()));
+                                                        packrows, &matched_tuples[tid], vc2, task, map_function.get()));
   }
   res.get_all();
 
@@ -494,8 +494,8 @@ bool MultiMapsFunction::Init(vcolumn::VirtualColumn *vc, MIIterator &mit) {
     return false;
   int64_t span = key_table_max - key_table_min + 1;
   if (span < 0) return false;
-  rc_control_.lock(m_conn->GetThreadID()) << "MultiMapsFunction: constructing a multimap with " << mit.NumOfTuples()
-                                        << " tuples." << system::unlock;
+  rc_control_.lock(m_conn->GetThreadID())
+      << "MultiMapsFunction: constructing a multimap with " << mit.NumOfTuples() << " tuples." << system::unlock;
   while (mit.IsValid()) {
     if (mit.PackrowStarted()) vc->LockSourcePacks(mit);
     int64_t val = vc->GetValueInt64(mit);

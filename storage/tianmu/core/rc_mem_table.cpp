@@ -81,7 +81,7 @@ std::shared_ptr<RCMemTable> RCMemTable::CreateMemTable(std::shared_ptr<TableShar
   tb_mem = std::make_shared<RCMemTable>(normalized_name, mem_id, cf_id);
   ha_kvstore_->KVWriteMemTableMeta(tb_mem);
   TIANMU_LOG(LogCtl_Level::INFO, "Create RowStore: %s, CF ID: %d, RowStore ID: %u", normalized_name.c_str(), cf_id,
-              mem_id);
+             mem_id);
 
   return tb_mem;
 }
@@ -110,7 +110,7 @@ common::ErrorCode RCMemTable::DropMemTable(std::string table_name) {
   if (!tb_mem) return common::ErrorCode::SUCCESS;
 
   TIANMU_LOG(LogCtl_Level::INFO, "Dropping RowStore: %s, CF ID: %d, RowStore ID: %u", normalized_name.c_str(),
-              tb_mem->GetCFHandle()->GetID(), tb_mem->GetMemID());
+             tb_mem->GetCFHandle()->GetID(), tb_mem->GetMemID());
   return ha_kvstore_->KVDelMemTableMeta(normalized_name);
 }
 

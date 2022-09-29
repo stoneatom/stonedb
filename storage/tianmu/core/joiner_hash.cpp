@@ -75,7 +75,7 @@ void JoinerHash::ExecuteJoinConditions(Condition &cond) {
         first_found = false;
       } else {
         DimensionVector sec_dims1(mind->NumOfDimensions());  // Make sure the local descriptions are
-                                                          // compatible
+                                                             // compatible
         DimensionVector sec_dims2(mind->NumOfDimensions());
         cond[i].attr.vc->MarkUsedDims(sec_dims1);
         cond[i].val1.vc->MarkUsedDims(sec_dims2);
@@ -570,7 +570,7 @@ int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *ta
                                 JoinerHashTable *hash_table, int *join_tuple, int tianmu_sysvar_jointhreadpool) {
   JoinerHashTable &tmp_jhash = *hash_table;
   TIANMU_LOG(LogCtl_Level::INFO, "NewMatchDim start, taskid %d, tianmu_sysvar_jointhreadpool %d",
-              task_mit1->GetTaskId(), tianmu_sysvar_jointhreadpool);
+             task_mit1->GetTaskId(), tianmu_sysvar_jointhreadpool);
   common::SetMySQLTHD(ci->Thd());
   current_txn_ = ci;
   for (int i = 0; i < cond_hashed; i++) {

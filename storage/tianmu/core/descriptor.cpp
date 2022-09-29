@@ -1630,11 +1630,10 @@ void Descriptor::CoerceColumnType(vcolumn::VirtualColumn *&for_typecast) {
 
   if (tcc) {
     if (rc_control_.isOn())
-      rc_control_.lock(current_txn_->GetThreadID()) << "Type conversion for VC:"
-                                                << (for_typecast == val1.vc   ? val1.vc_id
-                                                    : for_typecast == val2.vc ? val2.vc_id
-                                                                              : val1.vc_id)
-                                                << system::unlock;
+      rc_control_.lock(current_txn_->GetThreadID())
+          << "Type conversion for VC:"
+          << (for_typecast == val1.vc ? val1.vc_id : for_typecast == val2.vc ? val2.vc_id : val1.vc_id)
+          << system::unlock;
     table->AddVirtColumn(tcc);
     if (!tstamp)
       for_typecast = tcc;

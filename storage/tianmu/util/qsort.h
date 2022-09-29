@@ -110,6 +110,8 @@ static void __quicksort_tianmu(char *b, int lo, int hi, int s, comp_func_tianmu 
 }
 
 // buf, total elements, element size, compare function
-static void qsort_tianmu(void *b, int l, int s, comp_func_tianmu cmpsrt) { __quicksort_tianmu((char *)b, 0, l - 1, s, cmpsrt, 0); }
+static void qsort_tianmu(void *b, int l, int s, comp_func_tianmu cmpsrt) {
+  __quicksort_tianmu((char *)b, 0, l - 1, s, cmpsrt, 0);
+}
 
 #endif  // TIANMU_UTIL_QSORT_H_

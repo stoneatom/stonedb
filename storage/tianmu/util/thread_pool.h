@@ -77,7 +77,7 @@ class thread_pool final {
   bool is_owner() const { return tp_owner_ == this; }
 
   template <class F, class... Args>
-  auto add_task(F &&f, Args &&...args) -> std::future<typename std::result_of<F(Args...)>::type> {
+  auto add_task(F &&f, Args &&... args) -> std::future<typename std::result_of<F(Args...)>::type> {
     if (tp_owner_ == this) throw std::logic_error("add task in worker thread");
 
     auto task = std::make_shared<std::packaged_task<typename std::result_of<F(Args...)>::type()>>(

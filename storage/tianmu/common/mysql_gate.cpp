@@ -42,13 +42,13 @@ int wildcmp(const DTCollation &collation, const char *str, const char *str_end, 
 
 size_t strnxfrm(const DTCollation &collation, uchar *src, size_t src_len, const uchar *dest, size_t dest_len) {
   return collation.collation->coll->strnxfrm(collation.collation, src, src_len, src_len, dest, dest_len,
-                                             MY_STRXFRM_PAD_TO_MAXLEN); // stonedb8
+                                             MY_STRXFRM_PAD_TO_MAXLEN);  // stonedb8
 }
 
 // stonedb8 start
 void SetMySQLTHD(THD *thd) {
-  //my_thread_set_THR_THD(thd);
-  //my_thread_set_THR_MALLOC(&thd->mem_root);
+  // my_thread_set_THR_THD(thd);
+  // my_thread_set_THR_MALLOC(&thd->mem_root);
   mysql_thread_set_psi_THD(thd);
   THR_MALLOC = &thd->mem_root;
 }

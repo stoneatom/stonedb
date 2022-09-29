@@ -36,7 +36,7 @@ void IncAlloc::clear() {
   blk = 0;
   used = 0;
   while (!blocks.empty()) {
-    delete[] (char *)(blocks.back().mem);
+    delete[](char *)(blocks.back().mem);
     blocks.pop_back();
   }
   clearfrag();

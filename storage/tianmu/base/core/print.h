@@ -40,25 +40,25 @@ namespace Tianmu {
 namespace base {
 
 template <typename... A>
-std::ostream &fprint(std::ostream &os, const char *fmt, A &&...a) {
+std::ostream &fprint(std::ostream &os, const char *fmt, A &&... a) {
   Tianmu::fmt::fprintf(os, fmt, std::forward<A>(a)...);
   return os;
 }
 
 template <typename... A>
-void print(const char *fmt, A &&...a) {
+void print(const char *fmt, A &&... a) {
   Tianmu::fmt::printf(fmt, std::forward<A>(a)...);
 }
 
 template <typename... A>
-std::string sprint(const char *fmt, A &&...a) {
+std::string sprint(const char *fmt, A &&... a) {
   std::ostringstream os;
   Tianmu::fmt::fprintf(os, fmt, std::forward<A>(a)...);
   return os.str();
 }
 
 template <typename... A>
-std::string sprint(const sstring &fmt, A &&...a) {
+std::string sprint(const sstring &fmt, A &&... a) {
   std::ostringstream os;
   Tianmu::fmt::fprintf(os, fmt.c_str(), std::forward<A>(a)...);
   return os.str();
@@ -98,7 +98,7 @@ std::ostream &operator<<(std::ostream &os,
 }
 
 template <typename... A>
-void log(A &&...a) {
+void log(A &&... a) {
   std::cout << usecfmt(std::chrono::high_resolution_clock::now()) << " ";
   print(std::forward<A>(a)...);
 }
@@ -113,7 +113,7 @@ void log(A &&...a) {
  *         parameters on a given format string.
  */
 template <typename... A>
-sstring format(const char *fmt, A &&...a) {
+sstring format(const char *fmt, A &&... a) {
   fmt::MemoryWriter out;
   out.write(fmt, std::forward<A>(a)...);
   return sstring{out.data(), out.size()};

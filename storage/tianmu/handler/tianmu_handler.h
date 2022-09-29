@@ -35,13 +35,14 @@ class TianmuHandler final : public handler {
    Get the row type from the storage engine.  If this method returns
    ROW_TYPE_NOT_USED, the information in HA_CREATE_INFO should be used.
    */
-  //enum row_type get_row_type() const override { return ROW_TYPE_COMPRESSED; }   // stonedb8  get_row_type() is deleted
+  // enum row_type get_row_type() const override { return ROW_TYPE_COMPRESSED; }   // stonedb8  get_row_type() is
+  // deleted
   /*
    The name of the index type that will be used for display
    don't implement this method unless you really have indexes
    */
-  // const char *index_type([[maybe_unused]] uint inx) override { return "LSMTREE"; }  // stonedb8 index_type() is deleted
-  // const char **bas_ext() const override; // stonedb8 bas_ext() is deleted
+  // const char *index_type([[maybe_unused]] uint inx) override { return "LSMTREE"; }  // stonedb8 index_type() is
+  // deleted const char **bas_ext() const override; // stonedb8 bas_ext() is deleted
   /*
    This is a list of flags that says what the storage engine
    implements. The current table flags are documented in
@@ -94,7 +95,7 @@ class TianmuHandler final : public handler {
   }
   int open(const char *name, int mode, uint test_if_locked,
            const dd::Table *table_def) override;  // stonedb8
-  int close() override;                    // required
+  int close() override;                           // required
 
   int write_row(uchar *buf __attribute__((unused))) override;
   int update_row(const uchar *old_data, uchar *new_data) override;
@@ -128,21 +129,20 @@ class TianmuHandler final : public handler {
   int delete_all_rows() override;
   ha_rows records_in_range(uint inx, key_range *min_key, key_range *max_key) override;
   int delete_table(const char *from, const dd::Table *table_def) override;  // stonedb8
-  int rename_table(const char *from, const char *to, const dd::Table *from_table_def, dd::Table *to_table_def) override; // stonedb8
+  int rename_table(const char *from, const char *to, const dd::Table *from_table_def,
+                   dd::Table *to_table_def) override;                                                   // stonedb8
   int create(const char *name, TABLE *table_arg, HA_CREATE_INFO *info, dd::Table *table_def) override;  // stonedb8
-  int truncate(dd::Table *table_def) override;  // stonedb8
+  int truncate(dd::Table *table_def) override;                                                          // stonedb8
 
   enum_alter_inplace_result check_if_supported_inplace_alter(TABLE *altered_table,
                                                              Alter_inplace_info *ha_alter_info) override;
-  bool inplace_alter_table(TABLE *altered_table [[maybe_unused]],
-                                   Alter_inplace_info *ha_alter_info
-                                   [[maybe_unused]],
-                                   const dd::Table *old_table_def
-                                   [[maybe_unused]],
-                                   dd::Table *new_table_def [[maybe_unused]]) override; // stonedb8
-  bool commit_inplace_alter_table(TABLE *altered_table [[maybe_unused]], Alter_inplace_info *ha_alter_info [[maybe_unused]],
-                                          bool commit [[maybe_unused]], const dd::Table *old_table_def [[maybe_unused]],
-                                          dd::Table *new_table_def [[maybe_unused]]) override;  // stonedb8
+  bool inplace_alter_table(TABLE *altered_table [[maybe_unused]], Alter_inplace_info *ha_alter_info [[maybe_unused]],
+                           const dd::Table *old_table_def [[maybe_unused]],
+                           dd::Table *new_table_def [[maybe_unused]]) override;  // stonedb8
+  bool commit_inplace_alter_table(TABLE *altered_table [[maybe_unused]],
+                                  Alter_inplace_info *ha_alter_info [[maybe_unused]], bool commit [[maybe_unused]],
+                                  const dd::Table *old_table_def [[maybe_unused]],
+                                  dd::Table *new_table_def [[maybe_unused]]) override;  // stonedb8
 
   THR_LOCK_DATA **store_lock(THD *thd, THR_LOCK_DATA **to,
                              enum thr_lock_type lock_type) override;  // required

@@ -76,7 +76,7 @@ void SorterWrapper::InitOrderByVector(std::vector<int> &order_by) {
 void SorterWrapper::InitSorter(MultiIndex &mind, bool implicit_logic) {
   DimensionVector implicit_dims(mind.NumOfDimensions());  // these dimensions will be implicit
   DimensionVector one_pack_dims(mind.NumOfDimensions());  // these dimensions contain only one used pack
-                                                       // (potentially implicit)
+                                                          // (potentially implicit)
 
   // Prepare optimization guidelines
   for (int dim = 0; dim < mind.NumOfDimensions(); dim++) {
@@ -233,7 +233,7 @@ bool SorterWrapper::InitPackrow(MIIterator &mit)  // return true if the packrow 
   }
 
   TIANMU_LOG(LogCtl_Level::DEBUG, "InitPackrow: no_values_encoded %d, begin to loadpacks scol size %d ",
-              no_values_encoded, scol.size());
+             no_values_encoded, scol.size());
   // Not excluded: lock packs
   if (!ha_rcengine_->query_thread_pool.is_owner()) {
     utils::result_set<void> res;

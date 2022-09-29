@@ -408,7 +408,7 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
       std::string valueStr(value_ptr, value_size);
       value_size = ati.CharLen();
       TIANMU_LOG(LogCtl_Level::DEBUG, "Data format error. DbName:%s ,TableName:%s ,Col %d, value:%s", dbname.c_str(),
-                  tablename.c_str(), col, valueStr.c_str());
+                 tablename.c_str(), col, valueStr.c_str());
       std::stringstream err_msg;
       err_msg << "data truncate,col num" << col << " value:" << valueStr << std::endl;
       common::PushWarning(current_txn_->Thd(), Sql_condition::SL_WARNING, ER_UNKNOWN_ERROR, err_msg.str().c_str());

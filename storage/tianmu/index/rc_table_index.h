@@ -68,8 +68,8 @@ class RCTableIndex final {
 class KeyIterator final {
  public:
   KeyIterator() = delete;
-  KeyIterator(const KeyIterator &sec) : valid(sec.valid), iter_(sec.iter_), rdbkey_(sec.rdbkey_){}
-  KeyIterator(KVTransaction *tx) : trans_(tx){}
+  KeyIterator(const KeyIterator &sec) : valid(sec.valid), iter_(sec.iter_), rdbkey_(sec.rdbkey_) {}
+  KeyIterator(KVTransaction *tx) : trans_(tx) {}
   void ScanToKey(std::shared_ptr<RCTableIndex> tab, std::vector<std::string_view> &fields, common::Operator op);
   void ScanToEdge(std::shared_ptr<RCTableIndex> tab, bool forward);
   common::ErrorCode GetCurKV(std::vector<std::string> &keys, uint64_t &row);

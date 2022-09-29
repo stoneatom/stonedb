@@ -141,11 +141,11 @@ class Filter final : public mm::TraceableObject {
 
   // Statistics etc.
   int64_t NumOfOnes() const;
-  uint NumOfOnes(int b);         // block b
+  uint NumOfOnes(int b);            // block b
   uint NumOfOnesUncommited(int b);  // with uncommitted Set/Reset
   int64_t NumOfOnesBetween(int64_t n1,
                            int64_t n2);  // no of 1 between n1 and n2, inclusively
-  int64_t NumOfObj() const;           // number of objects (table size)
+  int64_t NumOfObj() const;              // number of objects (table size)
   size_t NumOfBlocks() const { return no_blocks; }
   int NumOfAddBits() const;
   int DensityWeight();  // = 65537 for empty filter or a filter with only one

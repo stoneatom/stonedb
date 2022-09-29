@@ -18,10 +18,10 @@
 #include "load_parser.h"
 
 #include "binlog.h"
-#include "log_event.h"
 #include "core/engine.h"
 #include "core/rc_attr.h"
 #include "loader/value_cache.h"
+#include "log_event.h"
 #include "system/io_parameters.h"
 #include "util/timer.h"
 

@@ -27,7 +27,6 @@
 namespace Tianmu {
 namespace index {
 
-
 const std::string generate_cf_name(uint index, TABLE *table) {
   const char *comment = table->key_info[index].comment.str;
   std::string key_comment = comment ? comment : "";
@@ -50,7 +49,7 @@ void create_rdbkey(TABLE *table, uint i, std::shared_ptr<RdbKey> &new_key_def, r
       case MYSQL_TYPE_INT24:
       case MYSQL_TYPE_SHORT:
       case MYSQL_TYPE_TINY: {
-        unsigned_flag = ((Field_num *)f)->is_unsigned(); // stonedb8
+        unsigned_flag = ((Field_num *)f)->is_unsigned();  // stonedb8
 
       } break;
       default:

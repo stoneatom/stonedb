@@ -35,7 +35,7 @@ void JoinerSort::ExecuteJoinConditions(Condition &cond) {
   if (vc1 == NULL || vc2 == NULL) {
     why_failed = JoinFailure::FAIL_COMPLEX;
     return;
-  } else {                                        // Normalize: let vc1 = a smaller table
+  } else {                                           // Normalize: let vc1 = a smaller table
     DimensionVector dims1(mind->NumOfDimensions());  // Initial dimension descriptions
     DimensionVector dims2(mind->NumOfDimensions());
     vc1->MarkUsedDims(dims1);
@@ -179,8 +179,8 @@ void JoinerSort::ExecuteJoinConditions(Condition &cond) {
     rc_control_.lock(m_conn->GetThreadID())
         << "Roughly omitted " << int(packrows_omitted / double(packrows_matched) * 10000.0) / 100.0 << "% packrows."
         << system::unlock;
-  rc_control_.lock(m_conn->GetThreadID()) << "Joining sorters created for " << actual_s1_size << " and " << actual_s2_size
-                                        << " tuples." << system::unlock;
+  rc_control_.lock(m_conn->GetThreadID())
+      << "Joining sorters created for " << actual_s1_size << " and " << actual_s2_size << " tuples." << system::unlock;
 
   // the main joiner loop
   int64_t no_of_traversed = 1;

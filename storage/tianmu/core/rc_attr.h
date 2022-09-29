@@ -294,7 +294,8 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   void LoadData(loader::ValueCache *nvs, Transaction *conn_info = NULL);
   void LoadPackInfo(Transaction *trans_ = current_txn_);
   void LoadProcessedData([[maybe_unused]] std::unique_ptr<system::Stream> &s,
-                         [[maybe_unused]] size_t no_rows){/* TODO */}
+                         [[maybe_unused]] size_t no_rows) { /* TODO */
+  }
   void PreparePackForLoad();
 
   bool SaveVersion();  // return true iff there was any change

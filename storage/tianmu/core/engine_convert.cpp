@@ -84,8 +84,7 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
         Engine::Convert(is_null, &md, rcitem);
       }
       decimal_round(&md, &md, ((Field_new_decimal *)field)->decimals(), HALF_UP);
-      decimal2bin(&md, field_ptr, ((Field_new_decimal *)field)->precision,
-                  ((Field_new_decimal *)field)->decimals());
+      decimal2bin(&md, field_ptr, ((Field_new_decimal *)field)->precision, ((Field_new_decimal *)field)->decimals());
       break;
     }
     default:
@@ -100,16 +99,20 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
         case common::CT::NUM:
           switch (field->type()) {
             case MYSQL_TYPE_TINY:
-              *(reinterpret_cast<char *>(field_ptr)) = static_cast<char>(static_cast<int64_t>(static_cast<types::RCNum &>(rcitem)));
+              *(reinterpret_cast<char *>(field_ptr)) =
+                  static_cast<char>(static_cast<int64_t>(static_cast<types::RCNum &>(rcitem)));
               break;
             case MYSQL_TYPE_SHORT:
-              *(reinterpret_cast<short *>(field_ptr)) = static_cast<short>(static_cast<int64_t>(static_cast<types::RCNum &>(rcitem)));
+              *(reinterpret_cast<short *>(field_ptr)) =
+                  static_cast<short>(static_cast<int64_t>(static_cast<types::RCNum &>(rcitem)));
               break;
             case MYSQL_TYPE_INT24:
-              int3store(reinterpret_cast<char *>(field_ptr), static_cast<int>(static_cast<int64_t>(static_cast<types::RCNum &>(rcitem))));
+              int3store(reinterpret_cast<char *>(field_ptr),
+                        static_cast<int>(static_cast<int64_t>(static_cast<types::RCNum &>(rcitem))));
               break;
             case MYSQL_TYPE_LONG:
-              *(reinterpret_cast<int *>(field_ptr)) = static_cast<int>(static_cast<int64_t>(static_cast<types::RCNum &>(rcitem)));
+              *(reinterpret_cast<int *>(field_ptr)) =
+                  static_cast<int>(static_cast<int64_t>(static_cast<types::RCNum &>(rcitem)));
               break;
             case MYSQL_TYPE_LONGLONG:
               *(reinterpret_cast<int64_t *>(field_ptr)) = static_cast<int64_t>(static_cast<types::RCNum &>(rcitem));
@@ -139,7 +142,8 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
               break;
             }
             case MYSQL_TYPE_STRING:
-              ((types::BString &)rcitem).PutString(reinterpret_cast<char *&>(field_ptr), (ushort)field->field_length, false);
+              ((types::BString &)rcitem)
+                  .PutString(reinterpret_cast<char *&>(field_ptr), (ushort)field->field_length, false);
               break;
             case MYSQL_TYPE_BLOB: {
               Field_blob *blob = (Field_blob *)field;
@@ -184,7 +188,8 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
               break;
             }
             default:
-              ((types::BString &)rcitem).PutString(reinterpret_cast<char *&>(field_ptr), (ushort)field->field_length, false);
+              ((types::BString &)rcitem)
+                  .PutString(reinterpret_cast<char *&>(field_ptr), (ushort)field->field_length, false);
               break;
           }
 
@@ -453,11 +458,11 @@ int Engine::Convert(int &is_null, String *value, types::RCDataType &rcitem, enum
         if (*rcdt != types::RC_TIMESTAMP_SPEC) {
           MYSQL_TIME local_time;
           my_time_t secs = tianmu_sec_since_epoch(rcdt->Year(), rcdt->Month(), rcdt->Day(), rcdt->Hour(),
-                                                   rcdt->Minute(), rcdt->Second());
+                                                  rcdt->Minute(), rcdt->Second());
           current_txn_->Thd()->variables.time_zone->gmt_sec_to_TIME(&local_time, secs);
           char buf[32];
           local_time.second_part = rcdt->MicroSecond();
-          my_datetime_to_str(local_time, buf, 0); // stonedb8
+          my_datetime_to_str(local_time, buf, 0);  // stonedb8
           value->set_ascii(buf, 19);
         } else {
           value->set_ascii("0000-00-00 00:00:00", 19);
@@ -496,8 +501,9 @@ bool Engine::AreConvertible(types::RCDataType &rcitem, enum_field_types my_type,
     case MYSQL_TYPE_TINY_BLOB:
     case MYSQL_TYPE_MEDIUM_BLOB:
     case MYSQL_TYPE_LONG_BLOB:
-      return (tianmu_type == common::CT::STRING || tianmu_type == common::CT::VARCHAR || tianmu_type == common::CT::BYTE ||
-              tianmu_type == common::CT::VARBYTE || tianmu_type == common::CT::LONGTEXT || tianmu_type == common::CT::BIN);
+      return (tianmu_type == common::CT::STRING || tianmu_type == common::CT::VARCHAR ||
+              tianmu_type == common::CT::BYTE || tianmu_type == common::CT::VARBYTE ||
+              tianmu_type == common::CT::LONGTEXT || tianmu_type == common::CT::BIN);
     case MYSQL_TYPE_YEAR:
       return tianmu_type == common::CT::YEAR;
     case MYSQL_TYPE_SHORT:

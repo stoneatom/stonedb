@@ -482,10 +482,10 @@ bool SorterLimit::PutValue(Sorter3 *s) {
       std::memcpy(buf + no_obj * total_bytes, buf1, tmp_noobj * total_bytes);
       no_obj += tmp_noobj;
       TIANMU_LOG(LogCtl_Level::DEBUG, "PutValue: no_obj %ld, tmp_noobj %ld, total_bytes %ld buf %s", no_obj, tmp_noobj,
-                  total_bytes, buf);
+                 total_bytes, buf);
     } else {
       TIANMU_LOG(LogCtl_Level::ERROR, "error in Putvalue, out of  boundary size %d no_obj+tmp_noobj %d", size,
-                  no_obj + tmp_noobj);
+                 no_obj + tmp_noobj);
       throw common::OutOfMemoryException("Out of boundary after merge sorters together.");
       return false;
     }

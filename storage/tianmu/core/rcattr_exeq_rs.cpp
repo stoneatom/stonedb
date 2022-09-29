@@ -192,7 +192,8 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
       }
 
       // add bloom filter for in/not in
-      if (res == common::RSValue::RS_SOME && (mvc->IsConst()) && (mvc->NumOfValues(mit) > 0 && mvc->NumOfValues(mit) < 64)) {
+      if (res == common::RSValue::RS_SOME && (mvc->IsConst()) &&
+          (mvc->NumOfValues(mit) > 0 && mvc->NumOfValues(mit) < 64)) {
         if (auto sp = GetFilter_Bloom()) {
           res = common::RSValue::RS_NONE;
           for (vcolumn::MultiValColumn::Iterator it = mvc->begin(mit), end = mvc->end(mit);

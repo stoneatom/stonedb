@@ -35,7 +35,7 @@ namespace system {
 */
 
 class TianmuFile : public Stream {
-private:
+ private:
   int fd_;
 
  public:

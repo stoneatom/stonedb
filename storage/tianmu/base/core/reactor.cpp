@@ -103,7 +103,7 @@ constexpr std::chrono::milliseconds lowres_clock_impl::_granularity;
 static bool sched_debug() { return false; }
 
 template <typename... Args>
-void sched_print(const char *fmt, Args &&...args) {
+void sched_print(const char *fmt, Args &&... args) {
   if (sched_debug()) {
     sched_logger.trace(fmt, std::forward<Args>(args)...);
   }

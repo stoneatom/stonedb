@@ -72,7 +72,7 @@ bool TIANMU_SetStatementAllowed(THD *thd, LEX *lex) {
 }
 
 int TIANMU_HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
-                        int &optimize_after_tianmu, int &tianmu_free_join, int with_insert ) {
+                        int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
   int ret = RCBASE_QUERY_ROUTE;
   try {
     // handle_select_ret is introduced here because in case of some exceptions

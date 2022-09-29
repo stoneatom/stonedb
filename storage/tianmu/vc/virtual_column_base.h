@@ -72,7 +72,7 @@ class VirtualColumnBase : public core::Column {
 
   enum class single_col_t { SC_NOT = 0, SC_ATTR, SC_RCATTR };
 
-  virtual ~VirtualColumnBase(){}
+  virtual ~VirtualColumnBase() {}
 
   /////////////// Data access //////////////////////
 
@@ -321,7 +321,7 @@ class VirtualColumnBase : public core::Column {
   //! \brief Assign a value to a parameter
   //! It is up the to column user to set values of all the parameters before
   //! requesting any value from the column
-  virtual void SetParamTypes([[maybe_unused]] core::MysqlExpression::TypOfVars *types){}
+  virtual void SetParamTypes([[maybe_unused]] core::MysqlExpression::TypOfVars *types) {}
 
   /*! Mark as true each dimension used as source for variables in this
    * VirtualColumn

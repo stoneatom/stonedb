@@ -540,7 +540,7 @@ static inline bool IsBin(DTCollation coll) { return (std::strstr(coll.collation-
 
 // stonedb8
 static inline bool IsCaseInsensitive(const DTCollation &coll) {
-  return (std::strstr(coll.collation->m_coll_name, "_ci") != 0); // stonedb8
+  return (std::strstr(coll.collation->m_coll_name, "_ci") != 0);  // stonedb8
 }
 
 inline DTCollation ResolveCollation(DTCollation first, DTCollation sec) {

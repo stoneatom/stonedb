@@ -145,7 +145,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
     sorted_table.InitSorter(*(filter.mind), false);
   if (sorted_table.GetSorter() && std::strcmp(sorted_table.GetSorter()->Name(), "Heap Sort") != 0) {
     TIANMU_LOG(LogCtl_Level::DEBUG, "Multi-thread order by is not supported for %s table.",
-                sorted_table.GetSorter()->Name());
+               sorted_table.GetSorter()->Name());
     task_num = 1;
   }
   // Put data
@@ -209,8 +209,8 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
 
     utils::result_set<size_t> res;
     for (int i = 0; i < task_num; i++)
-      res.insert(ha_rcengine_->query_thread_pool.add_task(&TempTable::TaskPutValueInST, this, &taskIterator[i], current_txn_,
-                                                   &subsorted_table[i]));
+      res.insert(ha_rcengine_->query_thread_pool.add_task(&TempTable::TaskPutValueInST, this, &taskIterator[i],
+                                                          current_txn_, &subsorted_table[i]));
     if (filter.mind->m_conn->Killed()) throw common::KilledException("Query killed by user");
 
     for (int i = 0; i < task_num; ++i) {
@@ -220,9 +220,9 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
   }
 
   TIANMU_LOG(LogCtl_Level::DEBUG,
-              "SortTable preparation done. row num %d, offset %d, limit %d, "
-              "task_num %d",
-              local_row, offset, limit, task_num);
+             "SortTable preparation done. row num %d, offset %d, limit %d, "
+             "task_num %d",
+             local_row, offset, limit, task_num);
 
   // Create output
   for (uint i = 0; i < NumOfAttrs(); i++) {
@@ -283,7 +283,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
       global_row++;
     } while (valid && global_row < limit + offset &&
              !(sender && local_row >= tianmu_sysvar_result_sender_rows));  // a limit for
-                                                                            // streaming buffer
+                                                                           // streaming buffer
     // Note: what about SetNumOfMaterialized()? Only no_obj is set now.
     if (sender) {
       TempTable::RecordIterator iter = begin();
@@ -394,7 +394,7 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
     for (uint i = 1; i < attrs.size(); i++) {
       if (!skip_parafilloutput[i]) {
         res.insert(ha_rcengine_->query_thread_pool.add_task(&TempTable::FillbufferTask, this, attrs[i], current_txn_,
-                                                     &page_start, start_row, page_end));
+                                                            &page_start, start_row, page_end));
       }
     }
     res.get_all_with_except();

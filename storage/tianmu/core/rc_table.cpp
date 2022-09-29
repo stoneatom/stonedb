@@ -19,15 +19,18 @@
 #include <time.h>
 #include <fstream>
 
+#include "binlog.h"
 #include "common/common_definitions.h"
 #include "common/exception.h"
 #include "core/engine.h"
 #include "core/pack_guardian.h"
 #include "core/rc_attr.h"
+#include "core/rc_table.h"
 #include "core/table_share.h"
 #include "core/transaction.h"
 #include "handler/tianmu_handler.h"
 #include "loader/load_parser.h"
+#include "log_event.h"
 #include "system/channel.h"
 #include "system/file_system.h"
 #include "system/net_stream.h"
@@ -35,9 +38,6 @@
 #include "util/bitset.h"
 #include "util/timer.h"
 #include "vc/virtual_column.h"
-#include "binlog.h"
-#include "log_event.h"
-#include "core/rc_table.h"
 
 namespace Tianmu {
 namespace core {
@@ -554,8 +554,9 @@ void RCTable::FillRowByRowid(TABLE *table, int64_t obj) {
 
 void RCTable::LoadDataInfile(system::IOParameters &iop) {
   if (iop.LoadDelayed() && GetID() != iop.TableID()) {
-    throw common::TIANMUError(common::ErrorCode::DATA_ERROR, "Invalid table ID(" + std::to_string(GetID()) + "/" +
-                                                              std::to_string(iop.TableID()) + "): " + m_path.string());
+    throw common::TIANMUError(
+        common::ErrorCode::DATA_ERROR,
+        "Invalid table ID(" + std::to_string(GetID()) + "/" + std::to_string(iop.TableID()) + "): " + m_path.string());
   }
 
   FunctionExecutor fe(std::bind(&RCTable::LockPackInfoForUse, this), std::bind(&RCTable::UnlockPackInfoFromUse, this));
@@ -744,8 +745,8 @@ uint64_t RCTable::ProceedNormal(system::IOParameters &iop) {
     if (parser.GetNoRow() > 0) {
       utils::result_set<void> res;
       for (uint att = 0; att < m_attrs.size(); ++att) {
-        res.insert(
-            ha_rcengine_->load_thread_pool.add_task(&RCAttr::LoadData, m_attrs[att].get(), &value_buffers[att], current_txn_));
+        res.insert(ha_rcengine_->load_thread_pool.add_task(&RCAttr::LoadData, m_attrs[att].get(), &value_buffers[att],
+                                                           current_txn_));
       }
       res.get_all();
     }
@@ -780,11 +781,9 @@ int RCTable::binlog_load_query_log_event(system::IOParameters &iop) {
   TABLE_LIST *const table_list = thd->lex->query_tables;
   TABLE *table = thd->lex->query_block->table_list.first->table;
   bool transactional_table = table->file->has_transactions();
-  bool is_concurrent =
-      (table_list->lock_descriptor().type == TL_WRITE_CONCURRENT_INSERT);
-  return cmd->write_execute_load_query_log_event(
-            thd, table_list->db, table_list->table_name, is_concurrent,
-            thd->lex->duplicates, transactional_table, errcode);
+  bool is_concurrent = (table_list->lock_descriptor().type == TL_WRITE_CONCURRENT_INSERT);
+  return cmd->write_execute_load_query_log_event(thd, table_list->db, table_list->table_name, is_concurrent,
+                                                 thd->lex->duplicates, transactional_table, errcode);
 }
 // stonedb8 end
 
@@ -858,7 +857,8 @@ int RCTable::binlog_insert2load_log_event(system::IOParameters &iop) {
 
   std::memcpy(load_data_query, p, pl);
   Execute_load_query_log_event e(thd, load_data_query, pl, static_cast<uint>(fname_start_pos - 1),
-                                 static_cast<uint>(fname_end_pos), (binary_log::enum_load_dup_handling)0, true, false, false, 0);
+                                 static_cast<uint>(fname_end_pos), (binary_log::enum_load_dup_handling)0, true, false,
+                                 false, 0);
   return mysql_bin_log.write_event(&e);
 }
 
@@ -1029,7 +1029,7 @@ int RCTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, uint
                                    lf_info->log_delayed);
       if (mysql_bin_log.write_event(&b)) return -1;
       lf_info->logged_data_file = 1;
-    // stonedb8 end
+      // stonedb8 end
     }
   }
 
@@ -1167,7 +1167,8 @@ uint64_t RCTable::ProcessDelayed(system::IOParameters &iop) {
     if (real_loaded_rows > 0) {
       utils::result_set<void> res;
       for (uint att = 0; att < m_attrs.size(); ++att) {
-        res.insert(ha_rcengine_->load_thread_pool.add_task(&RCAttr::LoadData, m_attrs[att].get(), &vcs[att], current_txn_));
+        res.insert(
+            ha_rcengine_->load_thread_pool.add_task(&RCAttr::LoadData, m_attrs[att].get(), &vcs[att], current_txn_));
       }
       res.get_all();
       no_loaded_rows += real_loaded_rows;
@@ -1277,8 +1278,9 @@ int RCTable::MergeMemTable(system::IOParameters &iop) {
 
   if ((t3.tv_sec - t2.tv_sec > 15) && index_table) {
     TIANMU_LOG(LogCtl_Level::WARN, "Latency of index table %s larger than 15s, compact manually.",
-                share->Path().c_str());
-    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rdbkey_->get_cf(), nullptr, nullptr);
+               share->Path().c_str());
+    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rdbkey_->get_cf(), nullptr,
+                                        nullptr);
   }
 
   return no_loaded_rows;

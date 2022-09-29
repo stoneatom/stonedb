@@ -40,7 +40,7 @@ class PackOrderer {
   enum class State { INIT_VAL = -1, END = -2 };
 
   struct OrderStat {
-    OrderStat(int n, int o) : neutral(n), ordered(o){}
+    OrderStat(int n, int o) : neutral(n), ordered(o) {}
     int neutral;
     int ordered;
   };

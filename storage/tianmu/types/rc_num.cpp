@@ -30,14 +30,22 @@ namespace types {
 
 RCNum::RCNum(common::CT attrt) : value_(0), scale_(0), is_double_(false), is_dot_(false), attr_type_(attrt) {}
 
-RCNum::RCNum(int64_t value_, short scale, bool is_double_, common::CT attrt) { Assign(value_, scale, is_double_, attrt); }
+RCNum::RCNum(int64_t value_, short scale, bool is_double_, common::CT attrt) {
+  Assign(value_, scale, is_double_, attrt);
+}
 
-RCNum::RCNum(double value_) : value_(*(int64_t *)&value_), scale_(0), is_double_(true), is_dot_(false), attr_type_(common::CT::REAL) {
+RCNum::RCNum(double value_)
+    : value_(*(int64_t *)&value_), scale_(0), is_double_(true), is_dot_(false), attr_type_(common::CT::REAL) {
   null = (value_ == NULL_VALUE_D ? true : false);
 }
 
 RCNum::RCNum(const RCNum &rcn)
-    : ValueBasic<RCNum>(rcn), value_(rcn.value_), scale_(rcn.scale_), is_double_(rcn.is_double_), is_dot_(rcn.is_dot_), attr_type_(rcn.attr_type_) {
+    : ValueBasic<RCNum>(rcn),
+      value_(rcn.value_),
+      scale_(rcn.scale_),
+      is_double_(rcn.is_double_),
+      is_dot_(rcn.is_dot_),
+      attr_type_(rcn.attr_type_) {
   null = rcn.null;
 }
 
@@ -57,7 +65,8 @@ RCNum &RCNum::Assign(int64_t value_, short scale, bool is_double_, common::CT at
   }
   if (scale <= -1 && !is_double_) scale_ = 0;
   if (is_double_) {
-    if (!(this->attr_type_ == common::CT::REAL || this->attr_type_ == common::CT::FLOAT)) this->attr_type_ = common::CT::REAL;
+    if (!(this->attr_type_ == common::CT::REAL || this->attr_type_ == common::CT::FLOAT))
+      this->attr_type_ = common::CT::REAL;
     this->is_dot_ = false;
     scale_ = 0;
     null = (value_ == *(int64_t *)&NULL_VALUE_D ? true : false);
@@ -441,7 +450,8 @@ int RCNum::compare(const RCNum &rcn) const {
   if (IsNull() || rcn.IsNull()) return false;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
-      return (*(double *)&value_ > *(double *)&rcn.value_ ? 1 : (*(double *)&value_ == *(double *)&rcn.value_ ? 0 : -1));
+      return (*(double *)&value_ > *(double *)&rcn.value_ ? 1
+                                                          : (*(double *)&value_ == *(double *)&rcn.value_ ? 0 : -1));
     else {
       if (IsReal())
         return (*this > rcn.ToReal() ? 1 : (*this == rcn.ToReal() ? 0 : -1));
