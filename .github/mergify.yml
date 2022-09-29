@@ -2,13 +2,14 @@ queue_rules:
   - name: shared_queue
     conditions:
       - "#approved-reviews-by>=2"
+      - check-success~=^stonedb-build-(.*)
 
 pull_request_rules:
   - name: automatic merge of hotfix (high priority)
     conditions:
       - "#approved-reviews-by>=2"
       - label=A-bug
-      - check-success=stonedb-build
+        #- check-success=stonedb-build
     actions:
       queue:
         name: shared_queue
@@ -18,7 +19,7 @@ pull_request_rules:
     conditions:
       - "#approved-reviews-by>=2"
       - label!=A-bug
-      - check-success=stonedb-build
+        #- check-success=stonedb-build
     actions:
       queue:
         name: shared_queue
