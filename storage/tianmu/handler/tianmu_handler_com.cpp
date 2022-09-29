@@ -63,9 +63,8 @@ static int rcbase_done_func([[maybe_unused]] void *p) {
   DBUG_RETURN(0);
 }
 
-handler *rcbase_create_handler(handlerton *hton, TABLE_SHARE *table, bool partitioned,
-                               MEM_ROOT *mem_root) {  // stonedb8 TODO
-  return new (mem_root) TianmuHandler(hton, table);
+handler *rcbase_create_handler(handlerton *hton, TABLE_SHARE *table, bool partitioned, MEM_ROOT *mem_root) {
+  return new (mem_root) TianmuHandler(hton, table, partitioned);
 }
 
 int rcbase_panic_func([[maybe_unused]] handlerton *hton, enum ha_panic_function flag) {

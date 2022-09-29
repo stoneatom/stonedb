@@ -154,7 +154,8 @@ static core::Value GetValueFromField(Field *f) {
   return v;
 }
 
-TianmuHandler::TianmuHandler(handlerton *hton, TABLE_SHARE *table_arg) : handler(hton, table_arg) {
+TianmuHandler::TianmuHandler(handlerton *hton, TABLE_SHARE *table_arg, bool partitioned)
+    : handler(hton, table_arg), m_partitioned(partitioned) {
   ref_length = sizeof(uint64_t);
 }
 
