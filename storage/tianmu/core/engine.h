@@ -76,10 +76,11 @@ class Engine final {
   ~Engine();
 
   int Init(uint engine_slot);
-  void CreateTable(const std::string &table, TABLE *from);
-  void DeleteTable(const char *table, THD *thd);
-  void TruncateTable(const std::string &table_path, THD *thd);
-  void RenameTable(Transaction *trans_, const std::string &from, const std::string &to, THD *thd);
+  void CreateTable(const std::string &table, TABLE *from, dd::Table *table_def);
+  void DeleteTable(const char *table, const dd::Table *table_def, THD *thd);
+  void TruncateTable(const std::string &table_path, dd::Table *table_def, THD *thd);
+  void RenameTable(Transaction *trans_, const std::string &from, const std::string &to, const dd::Table *from_table_def,
+                   dd::Table *to_table_def, THD *thd);
   void PrepareAlterTable(const std::string &table_path, std::vector<Field *> &new_cols, std::vector<Field *> &old_cols,
                          THD *thd);
 
@@ -171,7 +172,7 @@ class Engine final {
   static std::unique_ptr<system::IOParameters> CreateIOParameters(const std::string &path, void *arg);
   static std::unique_ptr<system::IOParameters> CreateIOParameters(THD *thd, TABLE *table, void *arg);
   void LogStat();
-  std::shared_ptr<TableOption> GetTableOption(const std::string &table, TABLE *form);
+  std::shared_ptr<TableOption> GetTableOption(const std::string &table, TABLE *form, dd::Table *table_def);
   std::shared_ptr<TableShare> getTableShare(const std::string &table_path);
   void ProcessDelayedInsert();
   void ProcessDelayedMerge();

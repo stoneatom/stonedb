@@ -583,7 +583,8 @@ uint32_t Engine::GetNextTableId() {
   return seq;
 }
 
-std::shared_ptr<TableOption> Engine::GetTableOption(const std::string &table, TABLE *form) {
+std::shared_ptr<TableOption> Engine::GetTableOption(const std::string &table, TABLE *form,
+                                                    [[maybe_unused]] dd::Table *table_def) {
   auto opt = std::make_shared<TableOption>();
 
   int power = has_pack(form->s->comment);
@@ -604,7 +605,9 @@ std::shared_ptr<TableOption> Engine::GetTableOption(const std::string &table, TA
   return opt;
 }
 
-void Engine::CreateTable(const std::string &table, TABLE *form) { RCTable::CreateNew(GetTableOption(table, form)); }
+void Engine::CreateTable(const std::string &table, TABLE *form, [[maybe_unused]] dd::Table *table_def) {
+  RCTable::CreateNew(GetTableOption(table, form, table_def));
+}
 
 AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
   bool auto_inc = field.is_flag_set(AUTO_INCREMENT_FLAG);
@@ -748,7 +751,7 @@ void Engine::Rollback(THD *thd, bool all, bool force_error_message) {
   thd->transaction_rollback_request = false;
 }
 
-void Engine::DeleteTable(const char *table, [[maybe_unused]] THD *thd) {
+void Engine::DeleteTable(const char *table, [[maybe_unused]] const dd::Table *table_def, [[maybe_unused]] THD *thd) {
   {
     std::unique_lock<std::shared_mutex> index_guard(tables_keys_mutex);
     index::RCTableIndex::DropIndexTable(table);
@@ -775,7 +778,8 @@ void Engine::DeleteTable(const char *table, [[maybe_unused]] THD *thd) {
   TIANMU_LOG(LogCtl_Level::INFO, "Drop table %s, ID = %u", table, id);
 }
 
-void Engine::TruncateTable(const std::string &table_path, [[maybe_unused]] THD *thd) {
+void Engine::TruncateTable(const std::string &table_path, [[maybe_unused]] dd::Table *table_def,
+                           [[maybe_unused]] THD *thd) {
   auto indextab = GetTableIndex(table_path);
   if (indextab != nullptr) {
     indextab->TruncateIndexTable();
@@ -1056,6 +1060,7 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::stri
 }
 
 void Engine::RenameTable([[maybe_unused]] Transaction *trans_, const std::string &from, const std::string &to,
+                         [[maybe_unused]] const dd::Table *from_table_def, [[maybe_unused]] dd::Table *to_table_def,
                          [[maybe_unused]] THD *thd) {
   UnRegisterTable(from);
   auto id = RCTable::GetTableId(from + common::TIANMU_EXT);
