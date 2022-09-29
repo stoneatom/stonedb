@@ -1,0 +1,124 @@
+name: StoneDB 8.0 Compile & MTR
+
+on:
+  push:
+    branches-ignore:
+      - main
+    paths-ignore:
+      - 'Docs/**'
+      - 'docs/**'
+      - 'website/**'
+      - '**.md'
+      - 'scripts/setup/**'
+      - '.devcontainer/**'
+  pull_request:
+    branches-ignore:
+      - main
+        # wait for mergify to ignore
+    paths-ignore:
+      - 'Docs/**'
+      - 'docs/**'
+      - 'website/**'
+      - '**.md'
+            #- 'scripts/**'
+            #- 'install_scripts/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  PROTOC: protoc
+
+defaults:
+  run:
+    shell: bash
+
+
+jobs:
+  lint:
+    name: lint
+    #if: ${{ contains(github.event.pull_request.labels.*.name, 'ready-for-testing') && github.event.pull_request.merged != true }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+      - uses: actions/checkout@v3
+        with:
+          clean: false
+      # - name: Check License Header
+      #   uses: apache/skywalking-eyes/header@main 
+      - name: Ensure clang-format-10 is available
+        run: |
+          command -v clang-format-10 > /dev/null || (apt-get update && apt-get install -y clang-format-10)
+      - name: Format check
+        run: |
+          git diff -U0 --no-color ${{ github.event.pull_request.base.sha }} HEAD | /usr/share/clang/clang-format-10/clang-format-diff.py -p1 | tee /tmp/.clang-format-diff
+          [ -s /tmp/.clang-format-diff ] && exit 1 || true
+  
+  stonedb-build:
+    name: stonedb-build
+    needs: lint
+    runs-on: self-hosted
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu2004_1.0.1
+          - centos7_1.0.3
+        compiler:
+          - gcc-9.3
+        exclude:
+          - os: centos7_1.0.3
+            compiler: gcc-9.3
+    env:
+      CCACHE_DIR: /tmp/ccache/stonedb/${{ matrix.os }}-${{ matrix.compiler }}
+      CCACHE_MAXSIZE: 8G
+    container:
+      image: stoneatom/stonedb80_buildenv:${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: compile stonedb
+        id: compile
+        run: |
+          # cp -rf include/boost_1_77_0/patches/boost/* /usr/local/stonedb-boost/include/boost/
+          mkdir build && cd build
+          git config --global --add safe.directory /__w/GGDB/GGDB
+          cmake ../ \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=/stonedb80/install \
+          -DMYSQL_DATADIR=/stonedb80/install/data \
+          -DSYSCONFDIR=/stonedb80/install \
+          -DMYSQL_UNIX_ADDR=/stonedb80/install/tmp/mysql.sock \
+          -DWITH_EMBEDDED_SERVER=OFF \
+          -DWITH_TIANMU_STORAGE_ENGINE=1 \
+          -DWITH_MYISAM_STORAGE_ENGINE=1 \
+          -DWITH_INNOBASE_STORAGE_ENGINE=1 \
+          -DWITH_PARTITION_STORAGE_ENGINE=1 \
+          -DMYSQL_TCP_PORT=3306 \
+          -DENABLED_LOCAL_INFILE=1 \
+          -DEXTRA_CHARSETS=all \
+          -DDEFAULT_CHARSET=utf8 \
+          -DDEFAULT_COLLATION=utf8_general_ci \
+          -DDOWNLOAD_BOOST=0 \
+          -DWITH_BOOST=/usr/local/stonedb-boost/ \
+          -DDOWNLOAD_ROCKSDB=0 \
+          -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb/ \
+          -DWITH_MARISA=/usr/local/stonedb-marisa/ \
+          -DDOWNLOAD_ROCKSDB=0 \
+          -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb && make -j32 && make install
+
+      # - name: run gtest
+      #   run: |
+      #     cd build/storage/tianmu/unittest/
+      #     ./testgmock
+
+      # - name: mtr test
+      #   run: |
+      #     mkdir -p /stonedb80/install/log
+      #     groupadd mysql && useradd -g mysql mysql
+      #     chown -R mysql:mysql /stonedb80
+      #     cd /stonedb80/install/mysql-test
+      #     ./mysql-test-run.pl --suite=tianmu --nowarnings --force --nocheck-testcases --parallel=10
