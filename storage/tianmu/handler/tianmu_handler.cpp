@@ -556,7 +556,7 @@ int TianmuHandler::delete_all_rows() {
 int TianmuHandler::rename_table(const char *from, const char *to, const dd::Table *from_table_def,
                                 dd::Table *to_table_def) {  // stonedb8 TODO
   try {
-    ha_rcengine_->RenameTable(current_txn_, from, to, ha_thd());
+    ha_rcengine_->RenameTable(current_txn_, from, to, from_table_def, to_table_def, ha_thd());
     return 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
@@ -1156,7 +1156,7 @@ int TianmuHandler::delete_table(const char *name, const dd::Table *table_def) { 
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int ret = 1;
   try {
-    ha_rcengine_->DeleteTable(name, ha_thd());
+    ha_rcengine_->DeleteTable(name, table_def, ha_thd());
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
@@ -1196,7 +1196,7 @@ int TianmuHandler::create(const char *name, TABLE *table_arg, [[maybe_unused]] H
                           dd::Table *table_def) {  // stonedb8 TODO
   DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
-    ha_rcengine_->CreateTable(name, table_arg);
+    ha_rcengine_->CreateTable(name, table_arg, table_def);
     DBUG_RETURN(0);
   } catch (common::AutoIncException &e) {
     my_message(ER_WRONG_AUTO_KEY, e.what(), MYF(0));
@@ -1219,7 +1219,7 @@ int TianmuHandler::create(const char *name, TABLE *table_arg, [[maybe_unused]] H
 int TianmuHandler::truncate(dd::Table *table_def) {  // stonedb8 TODO
   int ret = 0;
   try {
-    ha_rcengine_->TruncateTable(m_table_name, ha_thd());
+    ha_rcengine_->TruncateTable(m_table_name, table_def, ha_thd());
   } catch (std::exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
     ret = 1;
