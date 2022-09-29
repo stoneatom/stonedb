@@ -396,9 +396,9 @@ bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager_) {
     const int version = be_read_uint16(&ptr);
     if (version != static_cast<uint>(enumVersion::DDL_VERSION)) {
       TIANMU_LOG(LogCtl_Level::ERROR,
-                  "RocksDB: DDL ENTRY Version was not expected.Expected: %d, "
-                  "Actual: %d",
-                  static_cast<uint>(enumVersion::DDL_VERSION), version);
+                 "RocksDB: DDL ENTRY Version was not expected.Expected: %d, "
+                 "Actual: %d",
+                 static_cast<uint>(enumVersion::DDL_VERSION), version);
       return false;
     }
     ptr_end = ptr + real_val_size;
@@ -411,32 +411,32 @@ bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager_) {
       std::vector<ColAttr> vcols;
       if (!m_dict->get_index_info(gl_index_id, index_ver, index_type, vcols)) {
         TIANMU_LOG(LogCtl_Level::ERROR,
-                    "RocksDB: Could not get INDEXINFO for Index Number "
-                    "(%u,%u), table %s",
-                    gl_index_id.cf_id, gl_index_id.index_id, tdef->fullname().c_str());
+                   "RocksDB: Could not get INDEXINFO for Index Number "
+                   "(%u,%u), table %s",
+                   gl_index_id.cf_id, gl_index_id.index_id, tdef->fullname().c_str());
         return false;
       }
       if (max_index_id < gl_index_id.index_id) {
         TIANMU_LOG(LogCtl_Level::ERROR,
-                    "RocksDB: Found MetaType::MAX_INDEX_ID %u, but also found larger "
-                    "index %u from INDEXINFO.",
-                    max_index_id, gl_index_id.index_id);
+                   "RocksDB: Found MetaType::MAX_INDEX_ID %u, but also found larger "
+                   "index %u from INDEXINFO.",
+                   max_index_id, gl_index_id.index_id);
         return false;
       }
       // In some abnormal condition, gl_index_id.cf_id(CF Number) is greater
       // than 0 like 3 or 4 just log it and set the CF to 0.
       if (gl_index_id.cf_id != 0) {
         TIANMU_LOG(LogCtl_Level::ERROR,
-                    "Tianmu-RocksDB: Could not get Column Family Flags for CF "
-                    "Number %d, table %s",
-                    gl_index_id.cf_id, tdef->fullname().c_str());
+                   "Tianmu-RocksDB: Could not get Column Family Flags for CF "
+                   "Number %d, table %s",
+                   gl_index_id.cf_id, tdef->fullname().c_str());
         gl_index_id.cf_id = 0;
       }
       if (!m_dict->get_cf_flags(gl_index_id.cf_id, flags)) {
         TIANMU_LOG(LogCtl_Level::ERROR,
-                    "RocksDB: Could not get Column Family Flags for CF Number "
-                    "%d, table %s",
-                    gl_index_id.cf_id, tdef->fullname().c_str());
+                   "RocksDB: Could not get Column Family Flags for CF Number "
+                   "%d, table %s",
+                   gl_index_id.cf_id, tdef->fullname().c_str());
         return false;
       }
       rocksdb::ColumnFamilyHandle *const cfh = cf_manager_->get_cf_by_id(gl_index_id.cf_id);
@@ -466,9 +466,9 @@ bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager_) {
     const int version = be_read_uint16(&ptr);
     if (version != static_cast<uint>(enumVersion::DDL_VERSION)) {
       TIANMU_LOG(LogCtl_Level::ERROR,
-                  "RocksDB: DDL MEMTABLE ENTRY Version was not expected or "
-                  "currupt.Expected: %d, Actual: %d",
-                  static_cast<uint>(enumVersion::DDL_VERSION), version);
+                 "RocksDB: DDL MEMTABLE ENTRY Version was not expected or "
+                 "currupt.Expected: %d, Actual: %d",
+                 static_cast<uint>(enumVersion::DDL_VERSION), version);
       return false;
     }
 
@@ -477,7 +477,7 @@ bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager_) {
     std::string table_name = std::string(key.data() + INDEX_NUMBER_SIZE, key.size() - INDEX_NUMBER_SIZE);
     if (max_index_id < memtable_id) {
       TIANMU_LOG(LogCtl_Level::ERROR, "RocksDB: Found MAX_MEM_ID %u, but also found larger memtable id %u.",
-                  max_index_id, memtable_id);
+                 max_index_id, memtable_id);
       return false;
     }
     std::shared_ptr<core::RCMemTable> tb_mem = std::make_shared<core::RCMemTable>(table_name, memtable_id, cf_id);
@@ -862,7 +862,7 @@ bool DICTManager::update_max_index_id(rocksdb::WriteBatch *const batch, const ui
   if (get_max_index_id(&old_index_id)) {
     if (old_index_id > index_id) {
       TIANMU_LOG(LogCtl_Level::ERROR, "RocksDB: Found max index id %u but trying to update to %u.", old_index_id,
-                  index_id);
+                 index_id);
       return true;
     }
   }

@@ -23,12 +23,12 @@ namespace Tianmu {
 namespace dbhandler {
 
 void TIANMU_UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
-                                     CHARSET_INFO *cs);
+                                        CHARSET_INFO *cs);
 
 bool TIANMU_SetStatementAllowed(THD *thd, LEX *lex);
 
 int TIANMU_HandleSelect(THD *thd, LEX *lex, Query_result *&result_output, ulong setup_tables_done_option, int &res,
-                     int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false);
+                        int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false);
 bool tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
 
 }  // namespace dbhandler

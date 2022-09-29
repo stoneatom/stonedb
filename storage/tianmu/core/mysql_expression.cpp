@@ -20,8 +20,8 @@
 #include "common/assert.h"
 #include "core/compilation_tools.h"
 #include "core/engine.h"
-#include "item_timefunc.h"
 #include "core/transaction.h"
+#include "item_timefunc.h"
 #include "types/value_parser4txt.h"
 
 namespace Tianmu {
@@ -411,7 +411,8 @@ DataType MysqlExpression::EvalType(TypOfVars *tv) {
         type = DataType(common::CT::DATETIME, 17, 0, item->collation);
       else if ((item->type() != Item_tianmufield::get_tianmuitem_type() && item->data_type() == MYSQL_TYPE_DATE) ||
                (item->type() == Item_tianmufield::get_tianmuitem_type() &&
-                static_cast<Item_tianmufield *>(item)->IsAggregation() == false && item->data_type() == MYSQL_TYPE_DATE))
+                static_cast<Item_tianmufield *>(item)->IsAggregation() == false &&
+                item->data_type() == MYSQL_TYPE_DATE))
         type = DataType(common::CT::DATE, 17, 0, item->collation);
       else
         // type = DataType(common::CT::STRING, item->max_length, 0,
@@ -560,18 +561,20 @@ bool SameTIANMUField(Item_tianmufield *const &l, Item_tianmufield *const &r) {
 }
 
 bool SameTIANMUFieldSet(MysqlExpression::tianmu_fields_cache_t::value_type const &l,
-                     MysqlExpression::tianmu_fields_cache_t::value_type const &r) {
-  return l.second.size() == r.second.size() && equal(l.second.begin(), l.second.end(), r.second.begin(), SameTIANMUField);
+                        MysqlExpression::tianmu_fields_cache_t::value_type const &r) {
+  return l.second.size() == r.second.size() &&
+         equal(l.second.begin(), l.second.end(), r.second.begin(), SameTIANMUField);
 }
 
 bool operator==(Item const &, Item const &);
 
 namespace {
 bool generic_item_same(Item const &l_, Item const &r_) {
-  return ((&l_ == &r_) || ((l_.type() == r_.type()) && (l_.result_type() == r_.result_type()) &&
-                           (l_.cast_to_int_type() == r_.cast_to_int_type()) &&
-                           (l_.string_field_type(l_.max_length) == r_.string_field_type(l_.max_length)) && (l_.data_type() == r_.data_type()) &&
-                           (l_.const_for_execution() == r_.const_for_execution()) && (l_ == r_)));
+  return ((&l_ == &r_) ||
+          ((l_.type() == r_.type()) && (l_.result_type() == r_.result_type()) &&
+           (l_.cast_to_int_type() == r_.cast_to_int_type()) &&
+           (l_.string_field_type(l_.max_length) == r_.string_field_type(l_.max_length)) &&
+           (l_.data_type() == r_.data_type()) && (l_.const_for_execution() == r_.const_for_execution()) && (l_ == r_)));
 }
 }  // namespace
 
@@ -617,7 +620,8 @@ bool operator==(Item const &l_, Item const &r_) {
             const Item_date_add_interval *l = static_cast<const Item_date_add_interval *>(&l_);
             const Item_date_add_interval *r = static_cast<const Item_date_add_interval *>(&r_);
             same = same && dynamic_cast<const Item_date_add_interval *>(&r_);
-            same = same && ((l->get_interval_type() == r->get_interval_type()) && (l->is_subtract() == r->is_subtract()));
+            same =
+                same && ((l->get_interval_type() == r->get_interval_type()) && (l->is_subtract() == r->is_subtract()));
           }
           if (l->functype() == Item_func::IN_FUNC) {
             const Item_func_in *l = static_cast<const Item_func_in *>(&l_);
@@ -671,8 +675,10 @@ bool operator==(Item const &l_, Item const &r_) {
 bool MysqlExpression::operator==(MysqlExpression const &other) const {
   return ((mysql_type == other.mysql_type) && (decimal_precision == other.decimal_precision) &&
           (decimal_scale == other.decimal_scale) && (deterministic == other.deterministic) &&
-          (*item == *(other.item)) && (tianmu_fields_cache.size() == other.tianmu_fields_cache.size()) && vars == other.vars &&
-          equal(tianmu_fields_cache.begin(), tianmu_fields_cache.end(), other.tianmu_fields_cache.begin(), SameTIANMUFieldSet));
+          (*item == *(other.item)) && (tianmu_fields_cache.size() == other.tianmu_fields_cache.size()) &&
+          vars == other.vars &&
+          equal(tianmu_fields_cache.begin(), tianmu_fields_cache.end(), other.tianmu_fields_cache.begin(),
+                SameTIANMUFieldSet));
 }
 }  // namespace core
 }  // namespace Tianmu

@@ -258,7 +258,7 @@ bool ParallelHashJoiner::PrepareBeforeJoin(Condition &cond) {
         first_found = false;
       } else {
         DimensionVector sec_dims1(mind->NumOfDimensions());  // Make sure the local descriptions are
-                                                          // compatible
+                                                             // compatible
         DimensionVector sec_dims2(mind->NumOfDimensions());
         cond[i].attr.vc->MarkUsedDims(sec_dims1);
         cond[i].val1.vc->MarkUsedDims(sec_dims2);
@@ -518,7 +518,7 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
 
   int traversed_fragment_count = (int)task_iterators.size();
   rc_control_.lock(m_conn->GetThreadID()) << "Begin traversed with " << traversed_fragment_count << " threads with "
-                                        << splitting_type << " type." << system::unlock;
+                                          << splitting_type << " type." << system::unlock;
 
   std::vector<TraverseTaskParams> traverse_task_params;
   traverse_task_params.reserve(task_iterators.size());
@@ -567,8 +567,8 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
 
   if (m_conn->Killed()) throw common::KilledException();
 
-  rc_control_.lock(m_conn->GetThreadID()) << "End traversed " << traversed_rows << "/" << rows_count << " rows."
-                                        << system::unlock;
+  rc_control_.lock(m_conn->GetThreadID())
+      << "End traversed " << traversed_rows << "/" << rows_count << " rows." << system::unlock;
 
   for (auto &params : traverse_task_params) {
     if (params.too_many_conflicts && !tianmu_sysvar_join_disable_switch_side) {
@@ -703,7 +703,7 @@ bool ParallelHashJoiner::CreateMatchingTasks(MIIterator &mit, int64_t rows_count
     if (packs_count > kJoinSplittedMinPacks) {
       // Splitting using packs.
       int split_count = (tianmu_sysvar_join_parallel > 1) ? tianmu_sysvar_join_parallel
-                                                           : EvaluateMatchedFragmentsWithPacks(packs_count);
+                                                          : EvaluateMatchedFragmentsWithPacks(packs_count);
       int packs_per_fragment = (packs_count + kJoinSplittedMinPacks) / split_count;
       for (int index = 0; index < split_count; ++index) {
         int packs_started = index * packs_per_fragment;
@@ -756,9 +756,9 @@ int64_t ParallelHashJoiner::MatchDim(MIIterator &mit) {
   std::vector<MITaskIterator *> task_iterators;
   CreateMatchingTasks(mit, rows_count, &task_iterators, &splitting_type);
 
-  rc_control_.lock(m_conn->GetThreadID()) << "Begin match dim of " << rows_count << " rows, spliting into "
-                                        << task_iterators.size() << " threads with " << splitting_type << " type."
-                                        << system::unlock;
+  rc_control_.lock(m_conn->GetThreadID())
+      << "Begin match dim of " << rows_count << " rows, spliting into " << task_iterators.size() << " threads with "
+      << splitting_type << " type." << system::unlock;
 
   auto &ftht = traversed_hash_tables_[0];
 
@@ -810,8 +810,8 @@ int64_t ParallelHashJoiner::MatchDim(MIIterator &mit) {
 
   if (m_conn->Killed()) throw common::KilledException();
 
-  rc_control_.lock(m_conn->GetThreadID()) << "End match dim. Produced tuples:" << matched_rows << "/" << rows_count
-                                        << system::unlock;
+  rc_control_.lock(m_conn->GetThreadID())
+      << "End match dim. Produced tuples:" << matched_rows << "/" << rows_count << system::unlock;
 
   for (auto &params : match_task_params) {
     multi_index_builder_->AddBuildItem(params.build_item);
@@ -1150,7 +1150,7 @@ int64_t ParallelHashJoiner::SubmitOuterMatched(MIIterator &miter) {
       params.build_item = multi_index_builder_->CreateBuildItem();
 
       res.insert(ha_rcengine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncSubmitOuterMatched, this, &params,
-                                                   outer_matched_filter_.get()));
+                                                          outer_matched_filter_.get()));
     }
   } catch (std::exception &e) {
     res.get_all_with_except();

@@ -73,7 +73,7 @@ template <typename T>
 class enable_shared_from_this;
 
 template <typename T, typename... A>
-lw_shared_ptr<T> make_lw_shared(A &&...a);
+lw_shared_ptr<T> make_lw_shared(A &&... a);
 
 template <typename T>
 lw_shared_ptr<T> make_lw_shared(T &&a);
@@ -82,7 +82,7 @@ template <typename T>
 lw_shared_ptr<T> make_lw_shared(T &a);
 
 template <typename T, typename... A>
-shared_ptr<T> make_shared(A &&...a);
+shared_ptr<T> make_shared(A &&... a);
 
 template <typename T>
 shared_ptr<T> make_shared(T &&a);
@@ -160,7 +160,7 @@ struct shared_ptr_no_esft : private lw_shared_ptr_counter_base {
   shared_ptr_no_esft(const T &x) : _value(x) {}
   shared_ptr_no_esft(T &&x) : _value(std::move(x)) {}
   template <typename... A>
-  shared_ptr_no_esft(A &&...a) : _value(std::forward<A>(a)...) {}
+  shared_ptr_no_esft(A &&... a) : _value(std::forward<A>(a)...) {}
 
   template <typename X>
   friend class lw_shared_ptr;
@@ -243,7 +243,7 @@ class lw_shared_ptr {
     }
   }
   template <typename... A>
-  static lw_shared_ptr make(A &&...a) {
+  static lw_shared_ptr make(A &&... a) {
     auto p = new concrete_type(std::forward<A>(a)...);
     accessors::instantiate_to_value(p);
     return lw_shared_ptr(p);
@@ -339,7 +339,7 @@ class lw_shared_ptr {
 };
 
 template <typename T, typename... A>
-inline lw_shared_ptr<T> make_lw_shared(A &&...a) {
+inline lw_shared_ptr<T> make_lw_shared(A &&... a) {
   return lw_shared_ptr<T>::make(std::forward<A>(a)...);
 }
 
@@ -383,7 +383,7 @@ template <typename T>
 struct shared_ptr_count_for : shared_ptr_count_base {
   T data;
   template <typename... A>
-  shared_ptr_count_for(A &&...a) : data(std::forward<A>(a)...) {}
+  shared_ptr_count_for(A &&... a) : data(std::forward<A>(a)...) {}
 };
 
 template <typename T>
@@ -494,7 +494,7 @@ class shared_ptr {
   struct make_helper;
 
   template <typename U, typename... A>
-  friend shared_ptr<U> make_shared(A &&...a);
+  friend shared_ptr<U> make_shared(A &&... a);
 
   template <typename U>
   friend shared_ptr<U> make_shared(U &&a);
@@ -509,7 +509,7 @@ class shared_ptr {
   friend shared_ptr<V> const_pointer_cast(const shared_ptr<U> &p);
 
   template <bool esft, typename... A>
-  static shared_ptr make(A &&...a);
+  static shared_ptr make(A &&... a);
 
   template <typename U>
   friend class enable_shared_from_this;
@@ -527,7 +527,7 @@ struct shared_ptr_make_helper;
 template <typename T>
 struct shared_ptr_make_helper<T, false> {
   template <typename... A>
-  static shared_ptr<T> make(A &&...a) {
+  static shared_ptr<T> make(A &&... a) {
     return shared_ptr<T>(new shared_ptr_count_for<T>(std::forward<A>(a)...));
   }
 };
@@ -535,14 +535,14 @@ struct shared_ptr_make_helper<T, false> {
 template <typename T>
 struct shared_ptr_make_helper<T, true> {
   template <typename... A>
-  static shared_ptr<T> make(A &&...a) {
+  static shared_ptr<T> make(A &&... a) {
     auto p = new T(std::forward<A>(a)...);
     return shared_ptr<T>(p, p);
   }
 };
 
 template <typename T, typename... A>
-inline shared_ptr<T> make_shared(A &&...a) {
+inline shared_ptr<T> make_shared(A &&... a) {
   using helper = shared_ptr_make_helper<T, std::is_base_of<shared_ptr_count_base, T>::value>;
   return helper::make(std::forward<A>(a)...);
 }

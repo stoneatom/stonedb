@@ -36,12 +36,11 @@
 namespace Tianmu {
 namespace core {
 ParameterizedFilter::ParameterizedFilter(uint32_t power, CondType filter_type)
-    : mind(new MultiIndex(power))
-    , mind_shallow_memory(false)
-    , rough_mind(nullptr)
-    , table(nullptr)
-    , filter_type(filter_type) {
-}
+    : mind(new MultiIndex(power)),
+      mind_shallow_memory(false),
+      rough_mind(nullptr),
+      table(nullptr),
+      filter_type(filter_type) {}
 
 ParameterizedFilter &ParameterizedFilter::operator=(const ParameterizedFilter &pf) {
   if (this != &pf) {
@@ -185,9 +184,9 @@ double ParameterizedFilter::EvaluateConditionNonJoinWeight(Descriptor &d, bool f
     // Processing descriptor on PK firstly
     if (d.IsleftIndexSearch()) eval = 0.001;
 
-  } else if (d.IsType_AttrAttr()) {           // attr=attr on the same table
+  } else if (d.IsType_AttrAttr()) {              // attr=attr on the same table
     uint64_t no_obj = d.attr.vc->NumOfTuples();  // changed to uint64_t to prevent negative
-                                              // logarithm for common::NULL_VALUE_64
+                                                 // logarithm for common::NULL_VALUE_64
     if (!d.encoded)
       return log(1 + double(2 * no_obj)) + 5;  // +5 as a penalty for complex expression
     else if (d.op == common::Operator::O_EQ) {
@@ -1048,11 +1047,8 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
   int no_of_delayed_conditions = 0;
   for (uint i = 0; i < descriptors.Size(); i++) {
     if (!descriptors[i].done)
-      if (descriptors[i].IsType_Join() 
-          || descriptors[i].IsDelayed() 
-          || descriptors[i].IsOuter() 
-          || descriptors[i].IsType_In() 
-          || descriptors[i].IsType_Exists()) {
+      if (descriptors[i].IsType_Join() || descriptors[i].IsDelayed() || descriptors[i].IsOuter() ||
+          descriptors[i].IsType_In() || descriptors[i].IsType_Exists()) {
         if (!descriptors[i].IsDelayed())
           no_of_join_conditions++;
         else
@@ -1073,12 +1069,8 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
 
   int desc_no = 0;
   for (uint i = 0; i < descriptors.Size(); i++) {
-    if (!descriptors[i].done 
-        && descriptors[i].IsInner() 
-        && !descriptors[i].IsType_Join() 
-        && !descriptors[i].IsDelayed() 
-        && !descriptors[i].IsType_In() 
-        && !descriptors[i].IsType_Exists()) {
+    if (!descriptors[i].done && descriptors[i].IsInner() && !descriptors[i].IsType_Join() &&
+        !descriptors[i].IsDelayed() && !descriptors[i].IsType_In() && !descriptors[i].IsType_Exists()) {
       ++desc_no;
       if (descriptors[i].attr.vc) {
         cur_dim = descriptors[i].attr.vc->GetDim();
@@ -1109,7 +1101,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
     if (mind->GetFilter(i))
       table->SetVCDistinctVals(i,
                                mind->GetFilter(i)->NumOfOnes());  // distinct values - not more than the
-                                                               // number of rows after WHERE
+                                                                  // number of rows after WHERE
   rough_mind->ClearLocalDescFilters();
 
   // Some displays
@@ -1332,8 +1324,9 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
 
       utils::result_set<void> res;
       for (int i = 0; i < task_num; ++i) {
-        res.insert(ha_rcengine_->query_thread_pool.add_task(&ParameterizedFilter::TaskProcessPacks, this, &taskIterator[i],
-                                                     current_txn_, rf, &dims, desc_number, limit, one_dim));
+        res.insert(ha_rcengine_->query_thread_pool.add_task(&ParameterizedFilter::TaskProcessPacks, this,
+                                                            &taskIterator[i], current_txn_, rf, &dims, desc_number,
+                                                            limit, one_dim));
       }
       res.get_all_with_except();
 

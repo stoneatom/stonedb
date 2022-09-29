@@ -118,7 +118,8 @@ int Query::FieldUnmysterify(Item *item, const char *&database_name, const char *
         Item *tmp_item = UnRef(is->get_arg(0));
         if (tmp_item->type() == Item::FIELD_ITEM)
           ifield = (Item_field *)tmp_item;
-        else if (static_cast<int>(tmp_item->type()) == static_cast<int>(Item_tianmufield::enumTIANMUFiledItem::TIANMUFIELD_ITEM))
+        else if (static_cast<int>(tmp_item->type()) ==
+                 static_cast<int>(Item_tianmufield::enumTIANMUFiledItem::TIANMUFIELD_ITEM))
           ifield = dynamic_cast<Item_tianmufield *>(tmp_item)->OriginalItem();
         else {
           return RETURN_QUERY_TO_MYSQL_ROUTE;
@@ -289,31 +290,31 @@ bool Query::FieldUnmysterify(Item *item, TabID &tab, AttrID &col) {
 }
 
 // stonedb8 start fix List<Item> to mem_root_deque<Item *> #49 TODO
-int Query::AddJoins(mem_root_deque<TABLE_LIST *> join, /*List<TABLE_LIST> &join,*/ TabID &tmp_table, std::vector<TabID> &left_tables,
-                    std::vector<TabID> &right_tables, bool in_subquery, bool &first_table /*= true*/,
-                    bool for_subq_in_where /*false*/) {
+int Query::AddJoins(mem_root_deque<TABLE_LIST *> join, /*List<TABLE_LIST> &join,*/ TabID &tmp_table,
+                    std::vector<TabID> &left_tables, std::vector<TabID> &right_tables, bool in_subquery,
+                    bool &first_table /*= true*/, bool for_subq_in_where /*false*/) {
   // on first call first_table = true. It indicates if it is the first table to
   // be added is_left is true iff it is nested left join which needs to be
   // flatten (all tables regardless of their join type need to be left-joined)
-// stonedb8 start
-//  TABLE_LIST *join_ptr;
-//  List_iterator<TABLE_LIST> li(join);
-//  std::vector<TABLE_LIST *> reversed;
-// stonedb8 end
+  // stonedb8 start
+  //  TABLE_LIST *join_ptr;
+  //  List_iterator<TABLE_LIST> li(join);
+  //  std::vector<TABLE_LIST *> reversed;
+  // stonedb8 end
 
-  if (join.empty()) // stonedb8
+  if (join.empty())                      // stonedb8
     return RETURN_QUERY_TO_MYSQL_ROUTE;  // no tables in table list in this
                                          // select
-  // if the table list was empty altogether, we wouldn't even enter
-  // Compilation(...) it must be sth. like `select 1 from t1 union select 2` and
-  // we are in the second select in the union
-// stonedb8 start
-//while ((join_ptr = li++) != nullptr) reversed.push_back(join_ptr);
-//size_t size = reversed.size();
-//  for (unsigned int i = 0; i < size; i++) {
-    for (TABLE_LIST *join_ptr : join) {
-    //join_ptr = reversed[size - i - 1];
-// stonedb8 end
+                                         // if the table list was empty altogether, we wouldn't even enter
+                                         // Compilation(...) it must be sth. like `select 1 from t1 union select 2` and
+                                         // we are in the second select in the union
+                                         // stonedb8 start
+                                         // while ((join_ptr = li++) != nullptr) reversed.push_back(join_ptr);
+  // size_t size = reversed.size();
+  //  for (unsigned int i = 0; i < size; i++) {
+  for (TABLE_LIST *join_ptr : join) {
+    // join_ptr = reversed[size - i - 1];
+    // stonedb8 end
     if (join_ptr->nested_join) {
       std::vector<TabID> local_left, local_right;
       if (!AddJoins(join_ptr->nested_join->join_list, tmp_table, local_left, local_right, in_subquery, first_table,
@@ -343,7 +344,8 @@ int Query::AddJoins(mem_root_deque<TABLE_LIST *> join, /*List<TABLE_LIST> &join,
       const char *table_path = 0;
       TabID tab(0);
       if (join_ptr->is_view_or_derived()) {
-        if (!Compile(cq, join_ptr->derived_query_expression()->first_query_block(), join_ptr->derived_query_expression()->union_distinct, &tab))
+        if (!Compile(cq, join_ptr->derived_query_expression()->first_query_block(),
+                     join_ptr->derived_query_expression()->union_distinct, &tab))
           return RETURN_QUERY_TO_MYSQL_ROUTE;
         table_alias = join_ptr->alias;
       } else {
@@ -921,8 +923,11 @@ int Query::Compile(CompiledQuery *compiled_query, Query_block *selects_list, Que
   CompiledQuery *saved_cq = cq;
   cq = compiled_query;
 
-  if ((selects_list->join)&&(selects_list != selects_list->join->query_expression()->global_parameters())) {  // only in case of unions this is set
-    SetLimit(selects_list->join->query_expression()->global_parameters(), 0, global_offset_value, (int64_t &)global_limit_value);
+  if ((selects_list->join) &&
+      (selects_list !=
+       selects_list->join->query_expression()->global_parameters())) {  // only in case of unions this is set
+    SetLimit(selects_list->join->query_expression()->global_parameters(), 0, global_offset_value,
+             (int64_t &)global_limit_value);
     global_order = &(selects_list->join->query_expression()->global_parameters()->order_list);
   }
 
@@ -930,44 +935,41 @@ int Query::Compile(CompiledQuery *compiled_query, Query_block *selects_list, Que
     int64_t limit_value = -1;
     int64_t offset_value = -1;
 
-		
-    if (!sl->join)
-		{
-// stonedb8 start
+    if (!sl->join) {
+      // stonedb8 start
       TIANMU_LOG(LogCtl_Level::ERROR, "sl->join is nil!!!!");
 
-//            sl->add_active_options(SELECT_NO_UNLOCK);
-//            JOIN *join = new JOIN(sl->master_unit()->thd, sl);
-//
-//            if (!join) {
-//
-//                sl->cleanup(0);
-//                return true;
-//            }
-//            sl->set_join(join);
-// stonedb8 end
-     }
-        
-        if (!JudgeErrors(sl))
-            return RETURN_QUERY_TO_MYSQL_ROUTE;
-        SetLimit(sl, sl == selects_list ? 0 : sl->join->query_expression()->global_parameters(), offset_value, limit_value);
+      //            sl->add_active_options(SELECT_NO_UNLOCK);
+      //            JOIN *join = new JOIN(sl->master_unit()->thd, sl);
+      //
+      //            if (!join) {
+      //
+      //                sl->cleanup(0);
+      //                return true;
+      //            }
+      //            sl->set_join(join);
+      // stonedb8 end
+    }
 
-        // stonedb8
-        //List<Item> *fields = &sl->fields_list; //mem_root_deque<Item *> *fields = sl->get_fields_list();
+    if (!JudgeErrors(sl)) return RETURN_QUERY_TO_MYSQL_ROUTE;
+    SetLimit(sl, sl == selects_list ? 0 : sl->join->query_expression()->global_parameters(), offset_value, limit_value);
 
-        Item *      conds = sl->where_cond();
-        ORDER *     order = sl->order_list.first;
+    // stonedb8
+    // List<Item> *fields = &sl->fields_list; //mem_root_deque<Item *> *fields = sl->get_fields_list();
+
+    Item *conds = sl->where_cond();
+    ORDER *order = sl->order_list.first;
 
     // if (order) global_order = 0;   //we want to zero global order (which
     // seems to be always present) if we find a local order by clause
     //  The above is not necessary since global_order is set only in case of
     //  real UNIONs
 
-        ORDER *           group = sl->group_list.first;
-        Item *            having = sl->having_cond();
-        // stonedb8 start fix List<Item> to mem_root_deque<Item *> #49
-        //List<TABLE_LIST> *join_list = sl->join_list;
-        bool              zero_result = sl->join->zero_result_cause != NULL;
+    ORDER *group = sl->group_list.first;
+    Item *having = sl->having_cond();
+    // stonedb8 start fix List<Item> to mem_root_deque<Item *> #49
+    // List<TABLE_LIST> *join_list = sl->join_list;
+    bool zero_result = sl->join->zero_result_cause != NULL;
 
     Item *field_for_subselect;
     Item *cond_to_reinsert = NULL;
@@ -1004,8 +1006,8 @@ int Query::Compile(CompiledQuery *compiled_query, Query_block *selects_list, Que
       std::vector<TabID> left_tables, right_tables;
       bool first_table = true;
       // stonedb8
-      if (!AddJoins(*sl->join_list, tmp_table, left_tables, right_tables, (res_tab != NULL && res_tab->n != 0), first_table,
-                    for_subq_in_where))
+      if (!AddJoins(*sl->join_list, tmp_table, left_tables, right_tables, (res_tab != NULL && res_tab->n != 0),
+                    first_table, for_subq_in_where))
         throw CompilationError();
 
       // stonedb8 start
@@ -1038,7 +1040,7 @@ int Query::Compile(CompiledQuery *compiled_query, Query_block *selects_list, Que
       // called recursively)
       cq = saved_cq;
       if (cond_to_reinsert && list_to_reinsert) list_to_reinsert->push_back(cond_to_reinsert);
-	  //sl->cleanup(0); // stonedb8
+      // sl->cleanup(0); // stonedb8
       return RETURN_QUERY_TO_MYSQL_ROUTE;
     }
 
@@ -1048,7 +1050,7 @@ int Query::Compile(CompiledQuery *compiled_query, Query_block *selects_list, Que
     if (sl == selects_list) {
       prev_result = tmp_table;
       if (global_order && !selects_list->next_query_block()) {  // trivial union with one select and
-                                                           // ext. order by
+                                                                // ext. order by
         tmp_table = TabID();
         cq->Union(prev_result, prev_result, tmp_table, true);
       }
@@ -1056,7 +1058,7 @@ int Query::Compile(CompiledQuery *compiled_query, Query_block *selects_list, Que
       cq->Union(prev_result, prev_result, tmp_table, union_all);
     if (sl == last_distinct) union_all = true;
     if (cond_to_reinsert && list_to_reinsert) list_to_reinsert->push_back(cond_to_reinsert);
-	//sl->cleanup(0); // stonedb8
+    // sl->cleanup(0); // stonedb8
   }
 
   cq->BuildTableIDStepsMap();

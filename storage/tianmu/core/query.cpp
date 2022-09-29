@@ -522,17 +522,18 @@ bool Query::IsParameterFromWhere(const TabID &params_table) {
   return true;
 }
 
-const char *Query::GetTableName(Item_field *ifield)
-{
-    const char *table_name = NULL;
-    if (ifield->cached_table && !ifield->cached_table->is_view() && !ifield->cached_table->is_view_or_derived())//TIANMU UPGRADE
-        if (ifield->cached_table->referencing_view)
-            table_name = ifield->cached_table->referencing_view->table_name;
-        else
-            table_name = ifield->cached_table->table_name;
-    else if (ifield->get_result_field() && ifield->get_result_field()->table && ifield->get_result_field()->table->s->table_category != TABLE_CATEGORY_TEMPORARY)
-        table_name = ifield->get_result_field()->table->s->table_name.str;
-    return table_name;
+const char *Query::GetTableName(Item_field *ifield) {
+  const char *table_name = NULL;
+  if (ifield->cached_table && !ifield->cached_table->is_view() &&
+      !ifield->cached_table->is_view_or_derived())  // TIANMU UPGRADE
+    if (ifield->cached_table->referencing_view)
+      table_name = ifield->cached_table->referencing_view->table_name;
+    else
+      table_name = ifield->cached_table->table_name;
+  else if (ifield->get_result_field() && ifield->get_result_field()->table &&
+           ifield->get_result_field()->table->s->table_category != TABLE_CATEGORY_TEMPORARY)
+    table_name = ifield->get_result_field()->table->s->table_name.str;
+  return table_name;
 }
 
 void Query::GetPrecisionScale(Item *item, int &precision, int &scale, bool max_scale) {
@@ -682,7 +683,8 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
             common::LogicalOperator lop = (step.type == CompiledQuery::StepType::AND_F ? common::LogicalOperator::O_AND
                                                                                        : common::LogicalOperator::O_OR);
             static_cast<SingleTreeCondition *>(conds[step.c1.n])
-                ->AddTree(lop, static_cast<SingleTreeCondition *>(conds[step.c2.n])->GetTree(), qu.GetNumOfDimens(step.t1));
+                ->AddTree(lop, static_cast<SingleTreeCondition *>(conds[step.c2.n])->GetTree(),
+                          qu.GetNumOfDimens(step.t1));
           } else {
             DEBUG_ASSERT(conds[step.c2.n]->IsType_Tree());
             conds[step.c1.n]->AddDescriptor(static_cast<SingleTreeCondition *>(conds[step.c2.n])->GetTree(),
@@ -1673,8 +1675,9 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
   // expression with subselect
   Item *left_ref = ((Item_func *)cond_removed)->arguments()[0];
   if (dynamic_cast<Item_int_with_ref *>(left_ref) != NULL) left_ref = ((Item_int_with_ref *)left_ref)->real_item();
-  if (left_ref->type() != Item::REF_ITEM || /*((Item_ref *)left_ref)->ref_type() != Item_ref::DIRECT_REF ||*/ // stonedb8 DIRECT_REF is deleted
-      ((Item_ref *)left_ref)->real_item() != left_expr_for_subselect)
+  if (left_ref->type() != Item::REF_ITEM ||
+      /*((Item_ref *)left_ref)->ref_type() != Item_ref::DIRECT_REF ||*/  // stonedb8 DIRECT_REF is deleted
+          ((Item_ref *)left_ref)->real_item() != left_expr_for_subselect)
     return false;
   // set the operation type
   switch (((Item_func *)cond_removed)->functype()) {

@@ -66,7 +66,7 @@ class ChannelOut {
   virtual void close() = 0;
 
   virtual ChannelOut &operator<<(ChannelOut &(*_Pfn)(ChannelOut &)) = 0;
-  virtual ~ChannelOut(){}
+  virtual ~ChannelOut() {}
 };
 
 inline ChannelOut &endl(ChannelOut &inout) {

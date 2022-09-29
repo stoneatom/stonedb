@@ -599,7 +599,7 @@ static inline size_type str_len(const basic_sstring<char_type, size_type, max_si
 }
 
 template <typename First, typename Second, typename... Tail>
-static inline size_t str_len(const First &first, const Second &second, const Tail &...tail) {
+static inline size_t str_len(const First &first, const Second &second, const Tail &... tail) {
   return str_len(first) + str_len(second, tail...);
 }
 
@@ -642,12 +642,12 @@ namespace base {
 static inline char *copy_str_to(char *dst) { return dst; }
 
 template <typename Head, typename... Tail>
-static inline char *copy_str_to(char *dst, const Head &head, const Tail &...tail) {
+static inline char *copy_str_to(char *dst, const Head &head, const Tail &... tail) {
   return copy_str_to(std::copy(str_begin(head), str_end(head), dst), tail...);
 }
 
 template <typename String = sstring, typename... Args>
-static String make_sstring(Args &&...args) {
+static String make_sstring(Args &&... args) {
   String ret(sstring::initialized_later(), str_len(args...));
   copy_str_to(ret.begin(), args...);
   return ret;

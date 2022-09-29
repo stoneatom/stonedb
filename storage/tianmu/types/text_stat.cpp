@@ -68,8 +68,7 @@ void TextStat::AddLen(int pos)  // value of len n puts 0 on position n (starting
 }
 
 // return false if cannot create encoding (too wide), do not actually create anything
-bool TextStat::CheckIfCreatePossible()
-{
+bool TextStat::CheckIfCreatePossible() {
   if (chars_found_for_decoding_) {
     valid_ = false;
     return false;
@@ -110,7 +109,7 @@ bool TextStat::CreateEncoding() {
     for (int i = 0; i < 256; i++) {
       if (chars_found_[256 * pos + i] == 1) {
         encode_table_[i + 256 * pos] = len_table_[pos];  // Encoding a string: Code(character c) =
-                                                       // encode_table_[c][pos]
+                                                         // encode_table_[c][pos]
         // Note: initial value of 255 means "illegal character", so we must not
         // allow to use such code value
         if (len_table_[pos] == 255) {

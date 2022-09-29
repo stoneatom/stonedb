@@ -310,7 +310,7 @@ common::ErrorCode RCDateTime::Parse(const int64_t &v, RCDateTime &rcv, common::C
       return common::ErrorCode::SUCCESS;
     if (sign == 1 && at == common::CT::TIMESTAMP &&
         IsCorrectTIANMUTimestamp(short(rcv.dt.year), short(rcv.dt.month), short(rcv.dt.day), short(rcv.dt.hour),
-                              short(rcv.dt.minute), short(rcv.dt.second)))
+                                 short(rcv.dt.minute), short(rcv.dt.second)))
       return common::ErrorCode::SUCCESS;
   } else
     TIANMU_ERROR("type not supported");
@@ -643,7 +643,7 @@ void RCDateTime::AdjustTimezone(RCDateTime &dt) {
       thd->variables.time_zone->gmt_sec_to_TIME(
           &time_tmp, tianmu_sec_since_epoch(t.year, t.month, t.day, t.hour, t.minute, t.second));
       secs = tianmu_sec_since_epoch(time_tmp.year, time_tmp.month, time_tmp.day, time_tmp.hour, time_tmp.minute,
-                                     time_tmp.second);
+                                    time_tmp.second);
 
     } else {
       // time in client time zone is converted into UTC and expressed as seconds

@@ -308,7 +308,7 @@ void MultiIndex::UpdateNumOfTuples() {
 }
 
 int64_t MultiIndex::NumOfTuples(DimensionVector &dimensions,
-                             bool fail_on_overflow)  // for a given subset of dimensions
+                                bool fail_on_overflow)  // for a given subset of dimensions
 {
   std::vector<int> dg = ListInvolvedDimGroups(dimensions);
   if (dg.size() == 0) return 0;
@@ -322,7 +322,7 @@ int64_t MultiIndex::NumOfTuples(DimensionVector &dimensions,
 }
 
 int MultiIndex::MaxNumOfPacks(int dim)  // maximal (upper approx.) number of different nonempty data
-                                     // packs for the given dimension
+                                        // packs for the given dimension
 {
   int max_packs = 0;
   Filter *f = group_for_dim[dim]->GetFilter(dim);

@@ -54,7 +54,7 @@ class MultiIndex {
     return 0;
   }
   int64_t NumOfTuples(DimensionVector &dimensions,
-                   bool fail_on_overflow = true);  // for a given subset of dimensions
+                      bool fail_on_overflow = true);  // for a given subset of dimensions
 
   bool ZeroTuples() { return (!no_tuples_too_big && no_tuples == 0); }
   bool TooManyTuples() { return no_tuples_too_big; }
@@ -135,8 +135,8 @@ class MultiIndex {
   // material_no_tuples and the dimensions from the list are deleted
 
   int MaxNumOfPacks(int dim);  // maximal (upper approx.) number of different
-                            // nonempty data packs for the given dimension
-  std::string Display();    // MultiIndex structure: f - Filter, i - IndexTable
+                               // nonempty data packs for the given dimension
+  std::string Display();       // MultiIndex structure: f - Filter, i - IndexTable
 
   Transaction &ConnInfo() const { return *m_conn; }
 

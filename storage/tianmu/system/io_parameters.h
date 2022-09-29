@@ -46,7 +46,9 @@ enum class Parameter {
 class IOParameters {
  public:
   IOParameters() { Init(); }
-  IOParameters(std::string base_path, std::string table_name) : base_path_(base_path), table_name_(table_name) { Init(); }
+  IOParameters(std::string base_path, std::string table_name) : base_path_(base_path), table_name_(table_name) {
+    Init();
+  }
   IOParameters &operator=(const IOParameters &rhs) = delete;
   IOParameters(const IOParameters &io_params) = delete;
 
@@ -158,7 +160,8 @@ class IOParameters {
   std::string GetTableName() const { return table_name_; }
   void SetLogInfo(void *logptr) { loginfo_ptr_ = logptr; }
   void *GetLogInfo() const { return loginfo_ptr_; }
-public:
+
+ public:
   bool load_delayed_insert_ = false;
 
  private:

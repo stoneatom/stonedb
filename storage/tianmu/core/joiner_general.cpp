@@ -62,7 +62,8 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
   bool loc_result;
   bool stop_execution = false;  // early stop for LIMIT
 
-  rc_control_.lock(m_conn->GetThreadID()) << "Starting joiner loop (" << mit.NumOfTuples() << " rows)." << system::unlock;
+  rc_control_.lock(m_conn->GetThreadID())
+      << "Starting joiner loop (" << mit.NumOfTuples() << " rows)." << system::unlock;
   // The main loop for checking conditions
   int64_t rows_passed = 0;
   int64_t rows_omitted = 0;

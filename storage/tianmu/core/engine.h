@@ -35,9 +35,9 @@
 #include "exporter/data_exporter.h"
 #include "exporter/export2file.h"
 #include "index/rc_table_index.h"
+#include "log.h"
 #include "system/io_parameters.h"
 #include "system/rc_system.h"
-#include "log.h"
 #include "util/fs.h"
 #include "util/mapped_circular_buffer.h"
 #include "util/thread_pool.h"
@@ -154,20 +154,20 @@ class Engine final {
   static void ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes);
   static std::string GetTablePath(TABLE *table);
   static common::TIANMUError GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
-                                 TABLE *table = 0, void *arg = NULL, bool for_exporter = false);
+                                    TABLE *table = 0, void *arg = NULL, bool for_exporter = false);
   static common::TIANMUError GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params);
   static fs::path GetNextDataDir();
 
  private:
   void AddTx(Transaction *tx);
   void RemoveTx(Transaction *tx);
-  int Execute(THD *thd, LEX *lex, Query_result *result_output, Query_expression *unit_for_union = NULL); //stonedb8
+  int Execute(THD *thd, LEX *lex, Query_result *result_output, Query_expression *unit_for_union = NULL);  // stonedb8
   int SetUpCacheFolder(const std::string &cachefolder_path);
 
   static bool AreConvertible(types::RCDataType &rcitem, enum_field_types my_type, uint length = 0);
   static bool IsTIANMURoute(THD *thd, TABLE_LIST *table_list, Query_block *selects_list,
-                         int &in_case_of_failure_can_go_to_mysql, int with_insert); //stonedb8
-  static const char *GetFilename(Query_block *selects_list, int &is_dumpfile); //stonedb8
+                            int &in_case_of_failure_can_go_to_mysql, int with_insert);  // stonedb8
+  static const char *GetFilename(Query_block *selects_list, int &is_dumpfile);          // stonedb8
   static std::unique_ptr<system::IOParameters> CreateIOParameters(const std::string &path, void *arg);
   static std::unique_ptr<system::IOParameters> CreateIOParameters(THD *thd, TABLE *table, void *arg);
   void LogStat();
@@ -258,7 +258,7 @@ class Engine final {
 class ResultSender {
  public:
   // stonedb8 List -> mem_root_deque
-  ResultSender(THD *thd, Query_result *res, mem_root_deque<Item *> &fields); 
+  ResultSender(THD *thd, Query_result *res, mem_root_deque<Item *> &fields);
   virtual ~ResultSender();
 
   void Send(TempTable *t);
@@ -324,10 +324,10 @@ enum class tianmu_var_name {
 };
 
 static std::string tianmu_var_name_strings[] = {"TIANMU_LOAD_TIMEOUT",        "TIANMU_LOAD_DATAFORMAT",
-                                             "TIANMU_LOAD_PIPEMODE",       "TIANMU_LOAD_NULL",
-                                             "TIANMU_LOAD_THROTTLE",       "TIANMU_LOAD_TIANMUEXPRESSIONS",
-                                             "TIANMU_LOAD_PARALLEL_AGGR",  "TIANMU_LOAD_REJECT_FILE",
-                                             "TIANMU_LOAD_ABORT_ON_COUNT", "TIANMU_LOAD_ABORT_ON_THRESHOLD"};
+                                                "TIANMU_LOAD_PIPEMODE",       "TIANMU_LOAD_NULL",
+                                                "TIANMU_LOAD_THROTTLE",       "TIANMU_LOAD_TIANMUEXPRESSIONS",
+                                                "TIANMU_LOAD_PARALLEL_AGGR",  "TIANMU_LOAD_REJECT_FILE",
+                                                "TIANMU_LOAD_ABORT_ON_COUNT", "TIANMU_LOAD_ABORT_ON_THRESHOLD"};
 
 std::string get_parameter_name(enum tianmu_var_name vn);
 

@@ -187,9 +187,9 @@ class GroupTable : public mm::TraceableObject {
       size = 0;
       precision = 0;
       type = common::CT::INT;
-      si.order = ORDER_NOT_RELEVANT;         // direction for GROUP_CONCAT order // stonedb8
-                                             // by 0/1-ASC/2-DESC
-      si.separator = ',';                    // for GROUP_CONCAT
+      si.order = ORDER_NOT_RELEVANT;  // direction for GROUP_CONCAT order // stonedb8
+                                      // by 0/1-ASC/2-DESC
+      si.separator = ',';             // for GROUP_CONCAT
     }
 
     vcolumn::VirtualColumn *vc;
@@ -214,7 +214,7 @@ class GroupTable : public mm::TraceableObject {
   std::vector<bool> distinct;
   std::vector<vcolumn::VirtualColumn *> vc;
   std::vector<TIANMUAggregator *> aggregator;  // a table of actual aggregators
-  std::vector<ColumnBinEncoder *> encoder;      // encoders for grouping columns
+  std::vector<ColumnBinEncoder *> encoder;     // encoders for grouping columns
 
   // "distinct" part
   std::vector<std::shared_ptr<GroupDistinctTable>> gdistinct;  // Empty if not used

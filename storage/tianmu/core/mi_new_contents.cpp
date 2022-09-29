@@ -186,7 +186,7 @@ void MINewContents::Commit([[maybe_unused]] int64_t joined_tuples)  // commit ch
     dims_to_forget[optimized_dim_stay] = false;
     DimensionGroupMaterialized *ng = new DimensionGroupMaterialized(dims_to_forget);  // forgotten dimensions
     mind->dim_groups.push_back(ng);
-    ng->SetNumOfObj(1);                                           // set a dummy size 1 for a group containing forgotten
+    ng->SetNumOfObj(1);                                        // set a dummy size 1 for a group containing forgotten
                                                                // dimensions only
   } else if (content_type == enumMINCType::MCT_VIRTUAL_DIM) {  // optimized version: virtual dimension group
     DimensionGroupVirtual *nv = new DimensionGroupVirtual(dim_involved, optimized_dim_stay, f_opt,

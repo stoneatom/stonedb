@@ -137,8 +137,8 @@ void GroupDistinctTable::InitializeBuffers(int64_t max_no_rows)  // max_no_rows 
   t = (unsigned char *)alloc(total_width * no_rows, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
   //	t = new BlockedRowMemStorage(total_width, &mem_mngr, no_rows);
   input_buffer = (unsigned char *)(new int[total_width / 4 + 1]);  // ensure proper memory alignment
-  rc_control_.lock(m_conn->GetThreadID()) << "GroupDistinctTable initialized as Hash(" << no_rows << "), " << group_bytes
-                                        << "+" << value_bytes << " bytes." << system::unlock;
+  rc_control_.lock(m_conn->GetThreadID()) << "GroupDistinctTable initialized as Hash(" << no_rows << "), "
+                                          << group_bytes << "+" << value_bytes << " bytes." << system::unlock;
   Clear();
 }
 

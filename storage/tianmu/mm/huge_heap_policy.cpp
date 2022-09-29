@@ -44,7 +44,7 @@ HugeHeap::HugeHeap(std::string hugedir, size_t size) : TCMHeap(0) {
     if (fd_ < 0) {
       heap_status_ = HEAP_STATUS::HEAP_OUT_OF_MEMORY;
       rc_control_ << system::lock << "Memory Manager Error: Unable to create hugepage file: " << huge_filename_
-                << system::unlock;
+                  << system::unlock;
       return;
     }
     // MAP_SHARED to have mmap fail immediately if not enough pages
@@ -55,7 +55,7 @@ HugeHeap::HugeHeap(std::string hugedir, size_t size) : TCMHeap(0) {
       unlink(huge_filename_);
       heap_status_ = HEAP_STATUS::HEAP_OUT_OF_MEMORY;
       rc_control_ << system::lock << "Memory Manager Error: hugepage file mmap error: " << std::strerror(errno)
-                << system::unlock;
+                  << system::unlock;
       return;
     }
 

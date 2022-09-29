@@ -276,8 +276,7 @@ using intmax_t = __int64;
 #define FMT_USE_EXTERN_TEMPLATES \
   ((__clang__ && FMT_USE_VARIADIC_TEMPLATES) || (FMT_GCC_VERSION >= 303 && FMT_HAS_GXX_CXX11))
 #else
-#define FMT_USE_EXTERN_TEMPLATES \
-  ((0 && FMT_USE_VARIADIC_TEMPLATES) || (FMT_GCC_VERSION >= 303 && FMT_HAS_GXX_CXX11))
+#define FMT_USE_EXTERN_TEMPLATES ((0 && FMT_USE_VARIADIC_TEMPLATES) || (FMT_GCC_VERSION >= 303 && FMT_HAS_GXX_CXX11))
 #endif
 #endif
 
@@ -2188,7 +2187,7 @@ struct ArgArray<N, false /*IsPacked*/> {
 
 #if FMT_USE_VARIADIC_TEMPLATES
 template <typename Arg, typename... Args>
-inline uint64_t make_type(const Arg &first, const Args &...tail) {
+inline uint64_t make_type(const Arg &first, const Args &... tail) {
   return make_type(first) | (make_type(tail...) << 4);
 }
 
@@ -2223,7 +2222,7 @@ inline uint64_t make_type(FMT_GEN15(FMT_ARG_TYPE_DEFAULT)) {
 // Defines a variadic function returning void.
 #define FMT_VARIADIC_VOID(func, arg_type)                                                       \
   template <typename... Args>                                                                   \
-  void func(arg_type arg0, const Args &...args) {                                               \
+  void func(arg_type arg0, const Args &... args) {                                              \
     typedef fmt::internal::ArgArray<sizeof...(Args)> ArgArray;                                  \
     typename ArgArray::Type array{ArgArray::template make<fmt::BasicFormatter<Char>>(args)...}; \
     func(arg0, fmt::ArgList(fmt::internal::make_type(args...), array));                         \
@@ -2232,7 +2231,7 @@ inline uint64_t make_type(FMT_GEN15(FMT_ARG_TYPE_DEFAULT)) {
 // Defines a variadic constructor.
 #define FMT_VARIADIC_CTOR(ctor, func, arg0_type, arg1_type)                                     \
   template <typename... Args>                                                                   \
-  ctor(arg0_type arg0, arg1_type arg1, const Args &...args) {                                   \
+  ctor(arg0_type arg0, arg1_type arg1, const Args &... args) {                                  \
     typedef fmt::internal::ArgArray<sizeof...(Args)> ArgArray;                                  \
     typename ArgArray::Type array{ArgArray::template make<fmt::BasicFormatter<Char>>(args)...}; \
     func(arg0, arg1, fmt::ArgList(fmt::internal::make_type(args...), array));                   \
@@ -3364,7 +3363,7 @@ void arg(WStringRef, const internal::NamedArg<Char> &) FMT_DELETED_OR_UNDEFINED;
 #if FMT_USE_VARIADIC_TEMPLATES
 #define FMT_VARIADIC_(Char, ReturnType, func, call, ...)                                                       \
   template <typename... Args>                                                                                  \
-  ReturnType func(FMT_FOR_EACH(FMT_ADD_ARG_NAME, __VA_ARGS__), const Args &...args) {                          \
+  ReturnType func(FMT_FOR_EACH(FMT_ADD_ARG_NAME, __VA_ARGS__), const Args &... args) {                         \
     typedef fmt::internal::ArgArray<sizeof...(Args)> ArgArray;                                                 \
     typename ArgArray::Type array{ArgArray::template make<fmt::BasicFormatter<Char>>(args)...};                \
     call(FMT_FOR_EACH(FMT_GET_ARG_NAME, __VA_ARGS__), fmt::ArgList(fmt::internal::make_type(args...), array)); \
@@ -3782,7 +3781,7 @@ struct UdlFormat {
   const Char *str;
 
   template <typename... Args>
-  auto operator()(Args &&...args) const -> decltype(format(str, std::forward<Args>(args)...)) {
+  auto operator()(Args &&... args) const -> decltype(format(str, std::forward<Args>(args)...)) {
     return format(str, std::forward<Args>(args)...);
   }
 };

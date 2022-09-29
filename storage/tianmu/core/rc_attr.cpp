@@ -323,11 +323,14 @@ void RCAttr::PostCommit() {
 
     ha_rcengine_->DeferRemove(Path() / common::COL_VERSION_DIR / m_version.ToString(), m_tid);
     if (m_share->has_filter_bloom)
-      ha_rcengine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_BLOOM_DIR / m_version.ToString(), m_tid);
+      ha_rcengine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_BLOOM_DIR / m_version.ToString(),
+                                m_tid);
     if (m_share->has_filter_cmap)
-      ha_rcengine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_CMAP_DIR / m_version.ToString(), m_tid);
+      ha_rcengine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_CMAP_DIR / m_version.ToString(),
+                                m_tid);
     if (m_share->has_filter_hist)
-      ha_rcengine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_HIST_DIR / m_version.ToString(), m_tid);
+      ha_rcengine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_HIST_DIR / m_version.ToString(),
+                                m_tid);
 
     m_version = m_tx->GetID();
   }

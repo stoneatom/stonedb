@@ -57,7 +57,7 @@ class Transaction final {
   void SetDebugLevel(int dbg_lev) { debug_level = dbg_lev; }
   int DebugLevel() { return debug_level; }
   void SetSessionTrace(int trace) { session_trace = trace; }
-  bool Explain() { return (thd ? thd->lex->is_explain() : false); } // stonedb8
+  bool Explain() { return (thd ? thd->lex->is_explain() : false); }  // stonedb8
   std::string GetExplainMsg() { return explain_msg; }
   void SetExplainMsg(const std::string &msg) { explain_msg = msg; }
   bool m_explicit_lock_tables = false;

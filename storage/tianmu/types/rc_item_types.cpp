@@ -17,8 +17,8 @@
 
 #include "rc_item_types.h"
 
-#include "item_sum.h"
 #include "common/common_definitions.h"
+#include "item_sum.h"
 
 namespace Tianmu {
 namespace types {
@@ -28,7 +28,7 @@ Item_sum_int_rcbase::~Item_sum_int_rcbase() {}
 
 longlong Item_sum_int_rcbase::val_int() {
   DEBUG_ASSERT(fixed == 1);
-  return (longlong) count_;
+  return (longlong)count_;
 }
 
 String *Item_sum_int_rcbase::val_str([[maybe_unused]] String *str) { return NULL; }
@@ -42,7 +42,6 @@ void Item_sum_int_rcbase::int64_value(int64_t &value) {
 void Item_sum_int_rcbase::clear() {}
 bool Item_sum_int_rcbase::add() { return 0; }
 void Item_sum_int_rcbase::update_field() {}
-
 
 Item_sum_sum_rcbase::Item_sum_sum_rcbase() : Item_sum_num() { sum_ = 0; }
 Item_sum_sum_rcbase::~Item_sum_sum_rcbase() {}
@@ -169,8 +168,7 @@ my_decimal *Item_sum_hybrid_rcbase::val_decimal(my_decimal *val) {
   switch (hybrid_type_) {
     case STRING_RESULT:
       // stonedb8
-      str2my_decimal(E_DEC_FATAL_ERROR,  value_.ptr(), value_.length(),
-                     value_.charset(), val);
+      str2my_decimal(E_DEC_FATAL_ERROR, value_.ptr(), value_.length(), value_.charset(), val);
       break;
     case REAL_RESULT:
       double2my_decimal(E_DEC_FATAL_ERROR, sum_, val);

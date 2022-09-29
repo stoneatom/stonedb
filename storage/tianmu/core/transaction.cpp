@@ -24,7 +24,7 @@
 #include "util/fs.h"
 
 namespace Tianmu {
-//current transaction, thread local var.
+// current transaction, thread local var.
 thread_local core::Transaction *current_txn_;
 
 namespace core {

@@ -570,7 +570,8 @@ int64_t TempTable::Attr::GetMaxInt64(int pack) {
   for (int64_t i = start; i < stop; i++) {
     if (!IsNull(i)) {
       val = GetNotNullValueInt64(i);
-      if ((ATI::IsRealType(ct.GetTypeName()) && (max == common::TIANMU_BIGINT_MIN || *(double *)&val > *(double *)&max)) ||
+      if ((ATI::IsRealType(ct.GetTypeName()) &&
+           (max == common::TIANMU_BIGINT_MIN || *(double *)&val > *(double *)&max)) ||
           (!ATI::IsRealType(ct.GetTypeName()) && val > max))
         max = val;
     }
@@ -588,7 +589,8 @@ int64_t TempTable::Attr::GetMinInt64(int pack) {
   for (int64_t i = start; i < stop; i++) {
     if (!IsNull(i)) {
       val = GetNotNullValueInt64(i);
-      if ((ATI::IsRealType(ct.GetTypeName()) && (min == common::TIANMU_BIGINT_MAX || *(double *)&val < *(double *)&min)) ||
+      if ((ATI::IsRealType(ct.GetTypeName()) &&
+           (min == common::TIANMU_BIGINT_MAX || *(double *)&val < *(double *)&min)) ||
           (!ATI::IsRealType(ct.GetTypeName()) && val < min))
         min = val;
     }
@@ -1248,7 +1250,7 @@ void TempTable::Union(TempTable *t, int all) {
     return;
 
   Filter first_f(NumOfObj(), p_power), first_mask(NumOfObj(),
-                                               p_power);  // mask of objects to be added to the final result set
+                                                  p_power);  // mask of objects to be added to the final result set
   Filter sec_f(t->NumOfObj(), p_power), sec_mask(t->NumOfObj(), p_power);
   first_mask.Set();
   sec_mask.Set();
@@ -1290,8 +1292,8 @@ void TempTable::Union(TempTable *t, int all) {
       }
       input_buf = new uchar[size];
       dist_table.InitializeB(size, NumOfObj() + t->NumOfObj() / 2);  // optimization assumption: a
-                                                               // half of values in the second
-                                                               // table will be repetitions
+                                                                     // half of values in the second
+                                                                     // table will be repetitions
       MIIterator first_mit(&output_mind, p_power);
       MIIterator sec_mit(t->GetOutputMultiIndexP(), p_power);
       // check all objects from the first table
@@ -2165,7 +2167,7 @@ void TempTableForSubquery::ResetToTemplate(bool rough) {
     (*attrs[i]).buffer = orig_buf;
   }
 
-  filter = std::move(*template_filter); // shallow
+  filter = std::move(*template_filter);  // shallow
   filter_shallow_memory = true;
 
   for (int i = 0; i < no_global_virt_cols; i++)

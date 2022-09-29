@@ -47,7 +47,8 @@ class AggregationAlgorithm {
 
   // No parallel for subquery/join/distinct cases
   bool ParallelAllowed(GroupByWrapper &gbw) {
-    return (tianmu_sysvar_groupby_speedup && !t->HasTempTable() && (mind->NumOfDimensions() == 1) && gbw.MayBeParallel());
+    return (tianmu_sysvar_groupby_speedup && !t->HasTempTable() && (mind->NumOfDimensions() == 1) &&
+            gbw.MayBeParallel());
   }
   void TaskFillOutput(GroupByWrapper *gbw, Transaction *ci, int64_t offset, int64_t limit);
   void ParallelFillOutputWrapper(GroupByWrapper &gbw, int64_t offset, int64_t limit, MIIterator &mit);

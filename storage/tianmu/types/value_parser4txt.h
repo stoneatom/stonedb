@@ -27,8 +27,8 @@ namespace Tianmu {
 namespace types {
 class ValueParserForText {
  public:
-  ValueParserForText(){}
-  virtual ~ValueParserForText(){}
+  ValueParserForText() {}
+  virtual ~ValueParserForText() {}
 
   static auto GetParsingFuntion(const core::AttributeTypeInfo &at)
       -> std::function<common::ErrorCode(BString const &, int64_t &)> {

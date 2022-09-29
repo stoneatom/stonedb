@@ -115,8 +115,8 @@ class JoinerHashTable : public mm::TraceableObject {
     }
   }
 
-  int NumOfAttrs() { return no_attr; }         // total number of columns
-  int64_t NoRows() { return no_rows; }     // buffer size (max. number of rows)
+  int NumOfAttrs() { return no_attr; }  // total number of columns
+  int64_t NoRows() { return no_rows; }  // buffer size (max. number of rows)
   int64_t GetTupleValue(int col,
                         int64_t row) {  // columns have common numbering
     DEBUG_ASSERT(col >= no_key_attr);

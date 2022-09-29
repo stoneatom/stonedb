@@ -61,7 +61,7 @@ void MIUpdatingIterator::Commit(bool recalculate_no_tuples) {
                                     // (special case)
     if (recalculate_no_tuples)
       mind->UpdateNumOfTuples();  // not for parallel WHERE - shallow copy of
-                               // MultiIndex/Filter
+                                  // MultiIndex/Filter
   } else {
     multi_dim_filter->Commit();
     mind->IteratorUnlock();  // unlock to allow creating the iterator below

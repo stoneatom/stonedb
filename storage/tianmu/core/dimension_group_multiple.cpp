@@ -181,7 +181,8 @@ int MultiIndexTable::NumOfLocks() {
 //----------------------------DimensionGroupMultiMaterialized-------------------------------------------
 // The no_obj need to preset, because AddDimensionContent maybe not called on
 // uninvolved scenes.
-DimensionGroupMultiMaterialized::DimensionGroupMultiMaterialized(int64_t obj, DimensionVector &dims, uint32_t power, bool is_shallow_memory)
+DimensionGroupMultiMaterialized::DimensionGroupMultiMaterialized(int64_t obj, DimensionVector &dims, uint32_t power,
+                                                                 bool is_shallow_memory)
     : power_(power), dims_used_(dims), is_shallow_memory(is_shallow_memory) {
   dim_group_type = DGType::DG_INDEX_TABLE;
   no_obj = obj;

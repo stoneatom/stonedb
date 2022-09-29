@@ -156,8 +156,8 @@ size_t SubSelectColumn::MaxStringSizeImpl()  // maximal byte string length in co
   return ct.GetPrecision();
 }
 
-core::PackOntologicalStatus SubSelectColumn::GetPackOntologicalStatusImpl(
-    [[maybe_unused]] const core::MIIterator &mit) {
+core::PackOntologicalStatus SubSelectColumn::GetPackOntologicalStatusImpl([
+    [maybe_unused]] const core::MIIterator &mit) {
   return core::PackOntologicalStatus::NORMAL;
 }
 

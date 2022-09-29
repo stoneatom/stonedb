@@ -70,13 +70,13 @@ void MemBlockManager::FreeBlock(void *b) {
       } else
         free_blocks.push_back(b);
     } else
-      // often freed block are immediately required by other - keep some of them
-      // above the limit in the pool
-      if (current_size > size_limit + block_size * (no_threads + 1)) {
-        dealloc(b);
-        current_size -= block_size;
-      } else
-        free_blocks.push_back(b);
+        // often freed block are immediately required by other - keep some of them
+        // above the limit in the pool
+        if (current_size > size_limit + block_size * (no_threads + 1)) {
+      dealloc(b);
+      current_size -= block_size;
+    } else
+      free_blocks.push_back(b);
   }  // else not found (already erased)
 }
 

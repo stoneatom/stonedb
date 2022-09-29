@@ -77,7 +77,8 @@ void LargeBuffer::BufFlush() {
     TIANMU_LOG(LogCtl_Level::ERROR, "Write operation to file or pipe failed_.");
     throw common::FileException("Write operation to file or pipe failed_.");
   }
-  flush_thread_ = std::thread(std::bind(&LargeBuffer::BufFlushThread, this, tianmu_stream_.get(), buf_, buf_used_, &failed_));
+  flush_thread_ =
+      std::thread(std::bind(&LargeBuffer::BufFlushThread, this, tianmu_stream_.get(), buf_, buf_used_, &failed_));
   UseNextBuf();
 }
 

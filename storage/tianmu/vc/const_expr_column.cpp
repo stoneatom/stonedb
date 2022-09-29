@@ -118,8 +118,8 @@ size_t ConstExpressionColumn::MaxStringSizeImpl()  // maximal byte string length
   return ct.GetPrecision();
 }
 
-core::PackOntologicalStatus ConstExpressionColumn::GetPackOntologicalStatusImpl(
-    [[maybe_unused]] const core::MIIterator &mit) {
+core::PackOntologicalStatus ConstExpressionColumn::GetPackOntologicalStatusImpl([
+    [maybe_unused]] const core::MIIterator &mit) {
   if (last_val->IsNull()) return core::PackOntologicalStatus::NULLS_ONLY;
   return core::PackOntologicalStatus::UNIFORM;
 }

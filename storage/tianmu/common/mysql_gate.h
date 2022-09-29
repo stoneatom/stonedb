@@ -23,25 +23,24 @@
 
 #define MYSQL_SERVER 1
 
-
 #include "key.h"
 #include "lock.h"
 //#include "mysqld_suffix.h" // stonedb8 "mysqld_suffix.h" deleted by 8 about MYSQL_SERVER_SUFFIX
-#include "rpl_replica.h"
-#include "sp_rcontext.h"
 #include "item_strfunc.h"
 #include "item_sum.h"
+#include "rpl_replica.h"
+#include "sp_rcontext.h"
 #include "sql_array.h"
 #include "sql_base.h"
 #include "sql_class.h"
 #include "sql_load.h"
+#include "sql_optimizer.h"
 #include "sql_parse.h"
 #include "sql_plugin.h"
 #include "sql_select.h"
 #include "sql_show.h"
 #include "sql_time.h"
 #include "sql_tmp_table.h"
-#include "sql_optimizer.h"
 #include "transaction.h"
 #include "tztime.h"
 
@@ -51,14 +50,14 @@
 #include "mysql_com.h"
 //#include "probes_mysql.h" // stonedb8 deleted by MySQL 8.0
 // stonedb8 start
+#include "include/my_inttypes.h"
+#include "include/my_systime.h"
+#include "mysql/plugin.h"
+#include "sql/derror.h"
+#include "sql/mysqld.h"
 #include "sql/nested_join.h"
 #include "sql/protocol.h"
 #include "sql/sql_locale.h"
-#include "sql/derror.h"
-#include "mysql/plugin.h"
-#include "sql/mysqld.h"
-#include "include/my_inttypes.h"
-#include "include/my_systime.h"
 // stonedb8 end
 
 /* Putting macros named like `max', `min' or `test'

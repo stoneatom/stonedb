@@ -240,9 +240,9 @@ void GroupByWrapper::AddAggregatedColumn(int orig_attr_no, TempTable::Attr &a, i
              : GBInputMode::GBIMODE_AS_INT64);
 
   TIANMU_LOG(LogCtl_Level::DEBUG,
-              "attr_no %d, input_mode[attr_no] %d, a.alias %s, a.si.separator "
-              "%s, direction %d, ag_type %d, ag_size %d",
-              attr_no, input_mode[attr_no], a.alias, a.si.separator.c_str(), a.si.order, ag_type, ag_size);
+             "attr_no %d, input_mode[attr_no] %d, a.alias %s, a.si.separator "
+             "%s, direction %d, ag_type %d, ag_size %d",
+             attr_no, input_mode[attr_no], a.alias, a.si.separator.c_str(), a.si.order, ag_type, ag_size);
 
   gt.AddAggregatedColumn(virt_col[attr_no], ag_oper, ag_distinct, ag_type, ag_size, ag_prec, ag_collation,
                          a.si);  // note: size will be automatically calculated for all numericals

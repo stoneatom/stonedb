@@ -185,7 +185,8 @@ class DataTypeConversionException : public Exception {
 class UnsupportedDataTypeException : public Exception {
  public:
   UnsupportedDataTypeException(std::string const &msg) : Exception(msg) {}
-  UnsupportedDataTypeException(TIANMUError tianmu_error = ErrorCode::UNSUPPORTED_DATATYPE) : Exception(tianmu_error.Message()) {}
+  UnsupportedDataTypeException(TIANMUError tianmu_error = ErrorCode::UNSUPPORTED_DATATYPE)
+      : Exception(tianmu_error.Message()) {}
 };
 
 class NetStreamException : public Exception {

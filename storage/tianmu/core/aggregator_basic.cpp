@@ -15,8 +15,8 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include <limits>
 #include "aggregator_basic.h"
+#include <limits>
 
 #include "core/transaction.h"
 #include "system/rc_system.h"
@@ -30,7 +30,7 @@ void AggregatorSum64::PutAggregatedValue(unsigned char *buf, int64_t v, int64_t 
     *p = 0;
   }
   double overflow_check = double(*p) + double(v) * factor;
-  if (overflow_check > std::numeric_limits<std::streamsize>::max() || 
+  if (overflow_check > std::numeric_limits<std::streamsize>::max() ||
       overflow_check < std::numeric_limits<std::streamsize>::min())
     throw common::NotImplementedException("Aggregation overflow.");
   *p += v * factor;
@@ -45,7 +45,7 @@ void AggregatorSum64::Merge(unsigned char *buf, unsigned char *src_buf) {
     *p = 0;
   }
   double overflow_check = double(*p) + double(*ps);
-  if (overflow_check > std::numeric_limits<std::streamsize>::max() || 
+  if (overflow_check > std::numeric_limits<std::streamsize>::max() ||
       overflow_check < std::numeric_limits<std::streamsize>::min())
     throw common::NotImplementedException("Aggregation overflow.");
   *p += *ps;
@@ -53,7 +53,7 @@ void AggregatorSum64::Merge(unsigned char *buf, unsigned char *src_buf) {
 
 void AggregatorSum64::SetAggregatePackSum(int64_t par1, int64_t factor) {
   double overflow_check = double(par1) * factor;
-  if (overflow_check > std::numeric_limits<std::streamsize>::max() || 
+  if (overflow_check > std::numeric_limits<std::streamsize>::max() ||
       overflow_check < std::numeric_limits<std::streamsize>::min())
     throw common::NotImplementedException("Aggregation overflow.");
   pack_sum = par1 * factor;
@@ -108,10 +108,9 @@ bool AggregatorSumD::AggregatePack(unsigned char *buf) {
 void AggregatorAvg64::PutAggregatedValue(unsigned char *buf, int64_t v, int64_t factor) {
   stats_updated = false;
   *((double *)buf) += double(v) * factor;
-  if (!warning_issued && (*((double *)buf) > std::numeric_limits<std::streamsize>::max() || 
-      *((double *)buf) < std::numeric_limits<std::streamsize>::min())) {
-    common::PushWarning(current_txn_->Thd(), Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
-                        "Values rounded in average()");
+  if (!warning_issued && (*((double *)buf) > std::numeric_limits<std::streamsize>::max() ||
+                          *((double *)buf) < std::numeric_limits<std::streamsize>::min())) {
+    common::PushWarning(current_txn_->Thd(), Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR, "Values rounded in average()");
     warning_issued = true;
   }
   *((int64_t *)(buf + sizeof(int64_t))) += factor;
@@ -121,10 +120,9 @@ void AggregatorAvg64::Merge(unsigned char *buf, unsigned char *src_buf) {
   if (*((int64_t *)(src_buf + sizeof(int64_t))) == 0) return;
   stats_updated = false;
   *((double *)buf) += *((double *)src_buf);
-  if (!warning_issued && (*((double *)buf) > std::numeric_limits<std::streamsize>::max() || 
-      *((double *)buf) < std::numeric_limits<std::streamsize>::min())) {
-    common::PushWarning(current_txn_->Thd(), Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
-                        "Values rounded in average()");
+  if (!warning_issued && (*((double *)buf) > std::numeric_limits<std::streamsize>::max() ||
+                          *((double *)buf) < std::numeric_limits<std::streamsize>::min())) {
+    common::PushWarning(current_txn_->Thd(), Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR, "Values rounded in average()");
     warning_issued = true;
   }
   *((int64_t *)(buf + sizeof(int64_t))) += *((int64_t *)(src_buf + sizeof(int64_t)));

@@ -23,7 +23,6 @@ namespace Tianmu {
 namespace index {
 
 void KVStore::Init() {
-
   rocksdb::Options options;
   options.create_if_missing = true;
 
@@ -40,8 +39,8 @@ void KVStore::Init() {
   std::vector<rocksdb::ColumnFamilyDescriptor> cf_descr;
   std::vector<rocksdb::ColumnFamilyHandle *> cf_handles;
   rocksdb::DBOptions db_option(options);
-  
-  //set the DBOptions's params.
+
+  // set the DBOptions's params.
   auto rocksdb_datadir = kv_data_dir_ / ".index";
   int max_compact_threads = std::thread::hardware_concurrency() / 4;
   max_compact_threads = (max_compact_threads > 1) ? max_compact_threads : 1;
@@ -50,10 +49,10 @@ void KVStore::Init() {
   db_option.env->SetBackgroundThreads(max_compact_threads, rocksdb::Env::Priority::LOW);
   db_option.statistics = rocksdb::CreateDBStatistics();
   rocksdb::Status status = rocksdb::DB::ListColumnFamilies(db_option, rocksdb_datadir, &cf_names);
-  if (!status.ok() && ( (status.subcode() == rocksdb::Status::kNone) || (status.subcode() == rocksdb::Status::kPathNotFound)) ) 
-  {
-      TIANMU_LOG(LogCtl_Level::INFO, "First init rocksdb, create default cloum family");
-      cf_names.push_back(DEFAULT_CF_NAME);
+  if (!status.ok() &&
+      ((status.subcode() == rocksdb::Status::kNone) || (status.subcode() == rocksdb::Status::kPathNotFound))) {
+    TIANMU_LOG(LogCtl_Level::INFO, "First init rocksdb, create default cloum family");
+    cf_names.push_back(DEFAULT_CF_NAME);
   }
 
   // Disable compactions to prevent compaction start before compaction filter is ready.
@@ -62,8 +61,7 @@ void KVStore::Init() {
   index_cf_option.disable_auto_compactions = true;
   index_cf_option.compaction_filter_factory.reset(new IndexCompactFilterFactory);
   for (auto &cfn : cf_names) {
-    IsRowStoreCF(cfn)? cf_descr.emplace_back(cfn, rs_cf_option) 
-                     : cf_descr.emplace_back(cfn, index_cf_option);
+    IsRowStoreCF(cfn) ? cf_descr.emplace_back(cfn, rs_cf_option) : cf_descr.emplace_back(cfn, index_cf_option);
   }
 
   // open db, get column family handles
@@ -71,7 +69,7 @@ void KVStore::Init() {
   if (!status.ok()) {
     throw common::Exception("Error opening rocks instance. status msg: " + status.ToString());
   }
-  //init the cf manager and ddl manager with dict manager.
+  // init the cf manager and ddl manager with dict manager.
   cf_manager_.init(cf_handles);
   if (!dict_manager_.init(txn_db_->GetBaseDB(), &cf_manager_)) {
     throw common::Exception("RocksDB: Failed to initialize data dictionary.");
@@ -108,11 +106,11 @@ void KVStore::UnInit() {
   ddl_manager_.cleanup();
   dict_manager_.cleanup();
   cf_manager_.cleanup();
-  
-  //earase unref entries in single cache shard.
+
+  // earase unref entries in single cache shard.
   if (bb_table_option_.block_cache) bb_table_option_.block_cache->EraseUnRefEntries();
 
-  //release the rocksdb handler, txn_db_.
+  // release the rocksdb handler, txn_db_.
   if (txn_db_) {
     delete txn_db_;
     txn_db_ = nullptr;
@@ -122,14 +120,14 @@ void KVStore::UnInit() {
 void KVStore::AsyncDropData() {
   while (inited_) {
     std::unique_lock<std::mutex> lk(cv_drop_mtx_);
-    //wait for 5 seconds.
+    // wait for 5 seconds.
     cv_drop_.wait_for(lk, std::chrono::seconds(5 * 60));
 
-    //id set of index wich will be deleted.
+    // id set of index wich will be deleted.
     std::vector<GlobalId> del_index_ids;
     dict_manager_.get_ongoing_index(del_index_ids, MetaType::DDL_DROP_INDEX_ONGOING);
     for (auto id : del_index_ids) {
-      //set compaction options.
+      // set compaction options.
       rocksdb::CompactRangeOptions options;
       options.bottommost_level_compaction = rocksdb::BottommostLevelCompaction::kForce;
       options.exclusive_manual_compaction = false;
@@ -139,13 +137,12 @@ void KVStore::AsyncDropData() {
       be_store_index(buf_begin, id.index_id);
       be_store_index(buf_end, id.index_id + 1);
 
-      rocksdb::Range range =
-          rocksdb::Range({reinterpret_cast<const char *>(buf_begin), INDEX_NUMBER_SIZE}, 
-                         {reinterpret_cast<const char *>(buf_end), INDEX_NUMBER_SIZE});
+      rocksdb::Range range = rocksdb::Range({reinterpret_cast<const char *>(buf_begin), INDEX_NUMBER_SIZE},
+                                            {reinterpret_cast<const char *>(buf_end), INDEX_NUMBER_SIZE});
       rocksdb::ColumnFamilyHandle *cfh = cf_manager_.get_cf_by_id(id.cf_id);
       DEBUG_ASSERT(cfh);
-      //delete files by range, [start_index, end_index]
-      //for more info: http://rocksdb.org/blog/2018/11/21/delete-range.html
+      // delete files by range, [start_index, end_index]
+      // for more info: http://rocksdb.org/blog/2018/11/21/delete-range.html
       rocksdb::Status status = rocksdb::DeleteFilesInRange(txn_db_->GetBaseDB(), cfh, &range.start, &range.limit);
       if (!status.ok()) {
         TIANMU_LOG(LogCtl_Level::ERROR, "RocksDB: delete file range fail, status: %s ", status.ToString().c_str());
@@ -153,7 +150,7 @@ void KVStore::AsyncDropData() {
           break;
         }
       }
-      //star to do compaction.
+      // star to do compaction.
       status = txn_db_->CompactRange(options, cfh, &range.start, &range.limit);
       if (!status.ok()) {
         TIANMU_LOG(LogCtl_Level::ERROR, "RocksDB: Compact range index fail, status: %s ", status.ToString().c_str());
@@ -176,7 +173,7 @@ common::ErrorCode KVStore::KVWriteTableMeta(std::shared_ptr<RdbTable> tbl) {
   dict_manager_.lock();
   std::shared_ptr<void> defer(nullptr, [this](...) { dict_manager_.unlock(); });
 
-  //writes the tbl defs in batch.
+  // writes the tbl defs in batch.
   ddl_manager_.put_and_write(tbl, batch);
   if (!dict_manager_.commit(batch)) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Commit table metadata fail!");
@@ -204,8 +201,8 @@ common::ErrorCode KVStore::KVDelTableMeta(const std::string &tablename) {
   if (!dict_manager_.commit(batch)) {
     return common::ErrorCode::FAILED;
   }
-  
-  //notify Delete data signal.
+
+  // notify Delete data signal.
   DeleteDataSignal();
 
   return common::ErrorCode::SUCCESS;
@@ -218,23 +215,23 @@ common::ErrorCode KVStore::KVRenameTableMeta(const std::string &s_name, const st
   dict_manager_.lock();
   std::shared_ptr<void> defer(nullptr, [this](...) { dict_manager_.unlock(); });
 
-  //start to rename.
+  // start to rename.
   if (!ddl_manager_.rename(s_name, d_name, batch)) {
     TIANMU_LOG(LogCtl_Level::ERROR, "rename table %s not exsit", s_name.c_str());
     return common::ErrorCode::FAILED;
   }
 
-  return dict_manager_.commit(batch)? common::ErrorCode::SUCCESS : common::ErrorCode::FAILED;
+  return dict_manager_.commit(batch) ? common::ErrorCode::SUCCESS : common::ErrorCode::FAILED;
 }
 
 common::ErrorCode KVStore::KVWriteMemTableMeta(std::shared_ptr<core::RCMemTable> tb_mem) {
   const std::unique_ptr<rocksdb::WriteBatch> wb = dict_manager_.begin();
   rocksdb::WriteBatch *const batch = wb.get();
-  
+
   dict_manager_.lock();
   std::shared_ptr<void> defer(nullptr, [this](...) { dict_manager_.unlock(); });
-  
-  //put the tb_mem into mem cache and stores into dict data.
+
+  // put the tb_mem into mem cache and stores into dict data.
   ddl_manager_.put_mem(tb_mem, batch);
   if (!dict_manager_.commit(batch)) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Commit memory table metadata fail!");
@@ -256,17 +253,17 @@ common::ErrorCode KVStore::KVDelMemTableMeta(std::string table_name) {
 
   std::vector<GlobalId> dropped_index_ids;
   GlobalId gid;
-  //gets column family id.
+  // gets column family id.
   gid.cf_id = tb_mem->GetCFHandle()->GetID();
-  //gets index id.
+  // gets index id.
   gid.index_id = tb_mem->GetMemID();
   dropped_index_ids.push_back(gid);
   dict_manager_.add_drop_index(dropped_index_ids, batch);
-  //removes from mem cache and dict data.
+  // removes from mem cache and dict data.
   ddl_manager_.remove_mem(tb_mem, batch);
   if (!dict_manager_.commit(batch)) return common::ErrorCode::FAILED;
 
-  //notify the drop data signal.
+  // notify the drop data signal.
   DeleteDataSignal();
 
   return common::ErrorCode::SUCCESS;
@@ -278,7 +275,7 @@ common::ErrorCode KVStore::KVRenameMemTableMeta(std::string s_name, std::string 
 
   dict_manager_.lock();
   std::shared_ptr<void> defer(nullptr, [this](...) { dict_manager_.unlock(); });
-  //rename the memtable.
+  // rename the memtable.
   if (!ddl_manager_.rename_mem(s_name, d_name, batch)) {
     TIANMU_LOG(LogCtl_Level::ERROR, "rename table %s failed", s_name.c_str());
     return common::ErrorCode::FAILED;

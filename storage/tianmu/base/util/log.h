@@ -99,7 +99,7 @@ class logger {
     virtual void append(std::ostream &os) override { os << arg; }
   };
   template <typename... Args>
-  void do_log(log_level level, const char *fmt, Args &&...args);
+  void do_log(log_level level, const char *fmt, Args &&... args);
   void really_do_log(log_level level, const char *fmt, stringer **stringers, size_t n);
   void failed_to_log(std::exception_ptr ex);
 
@@ -122,7 +122,7 @@ class logger {
   /// \param args - args to print string
   ///
   template <typename... Args>
-  void log(log_level level, const char *fmt, Args &&...args) {
+  void log(log_level level, const char *fmt, Args &&... args) {
     if (is_enabled(level)) {
       try {
         do_log(level, fmt, std::forward<Args>(args)...);
@@ -139,7 +139,7 @@ class logger {
   /// \param args - args to print string
   ///
   template <typename... Args>
-  void error(const char *fmt, Args &&...args) {
+  void error(const char *fmt, Args &&... args) {
     log(log_level::error, fmt, std::forward<Args>(args)...);
   }
   /// Log with warning tag:
@@ -149,7 +149,7 @@ class logger {
   /// \param args - args to print string
   ///
   template <typename... Args>
-  void warn(const char *fmt, Args &&...args) {
+  void warn(const char *fmt, Args &&... args) {
     log(log_level::warn, fmt, std::forward<Args>(args)...);
   }
   /// Log with info tag:
@@ -159,7 +159,7 @@ class logger {
   /// \param args - args to print string
   ///
   template <typename... Args>
-  void info(const char *fmt, Args &&...args) {
+  void info(const char *fmt, Args &&... args) {
     log(log_level::info, fmt, std::forward<Args>(args)...);
   }
   /// Log with info tag on shard zero only:
@@ -169,7 +169,7 @@ class logger {
   /// \param args - args to print string
   ///
   template <typename... Args>
-  void info0(const char *fmt, Args &&...args) {
+  void info0(const char *fmt, Args &&... args) {
     if (is_shard_zero()) {
       log(log_level::info, fmt, std::forward<Args>(args)...);
     }
@@ -181,7 +181,7 @@ class logger {
   /// \param args - args to print string
   ///
   template <typename... Args>
-  void debug(const char *fmt, Args &&...args) {
+  void debug(const char *fmt, Args &&... args) {
     log(log_level::debug, fmt, std::forward<Args>(args)...);
   }
   /// Log with trace tag:
@@ -191,7 +191,7 @@ class logger {
   /// \param args - args to print string
   ///
   template <typename... Args>
-  void trace(const char *fmt, Args &&...args) {
+  void trace(const char *fmt, Args &&... args) {
     log(log_level::trace, fmt, std::forward<Args>(args)...);
   }
 
@@ -305,8 +305,8 @@ class logger_for : public logger {
 };
 
 template <typename... Args>
-void logger::do_log(log_level level, const char *fmt, Args &&...args) {
-  [&](auto &&...stringers) {
+void logger::do_log(log_level level, const char *fmt, Args &&... args) {
+  [&](auto &&... stringers) {
     stringer *s[sizeof...(stringers)] = {&stringers...};
     this->really_do_log(level, fmt, s, sizeof...(stringers));
   }(stringer_for<Args>(std::forward<Args>(args))...);

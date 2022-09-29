@@ -33,15 +33,15 @@
 #include "core/tools.h"
 #include "core/transaction.h"
 #include "mm/initializer.h"
+#include "mysql/thread_pool_priv.h"
+#include "mysqld_thd_manager.h"
 #include "system/file_out.h"
 #include "system/res_manager.h"
 #include "system/stdout.h"
+#include "thr_lock.h"
 #include "util/bitset.h"
 #include "util/fs.h"
 #include "util/thread_pool.h"
-#include "mysqld_thd_manager.h"
-#include "mysql/thread_pool_priv.h"
-#include "thr_lock.h"
 
 namespace Tianmu {
 namespace dbhandler {
@@ -241,12 +241,11 @@ int Engine::Init(uint engine_slot) {
     for (auto &dir : tianmu_data_dirs) {
       auto si = fs::space(dir);
       TIANMU_LOG(LogCtl_Level::INFO, "    %s  capacity/available: %ld/%ld", dir.native().c_str(), si.capacity,
-                  si.available);
+                 si.available);
     }
   TIANMU_LOG(LogCtl_Level::INFO, "  }");
 
-  TIANMU_LOG(LogCtl_Level::INFO, "Tianmu thread pool for background load, size = %ld",
-              delay_insert_thread_pool.size());
+  TIANMU_LOG(LogCtl_Level::INFO, "Tianmu thread pool for background load, size = %ld", delay_insert_thread_pool.size());
   TIANMU_LOG(LogCtl_Level::INFO, "Tianmu thread pool for load, size = %ld", load_thread_pool.size());
   TIANMU_LOG(LogCtl_Level::INFO, "Tianmu thread pool for query, size = %ld", query_thread_pool.size());
 
@@ -395,7 +394,7 @@ void Engine::EncodeRecord(const std::string &table_path, int tid, Field **field,
     Field *f = field[i];
 
     size_t length;
-    if (f->is_flag_set(BLOB_FLAG)) // stonedb8
+    if (f->is_flag_set(BLOB_FLAG))  // stonedb8
       length = dynamic_cast<Field_blob *>(f)->get_length();
     else
       length = f->row_pack_length();
@@ -672,7 +671,7 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
         DTCollation coll(fstr->charset(), fstr->derivation());
         if (fmt == common::PackFmt::TRIE && types::IsCaseInsensitive(coll)) {
           TIANMU_LOG(LogCtl_Level::ERROR, "TRIE can not work with case-insensitive collation: %s!",
-                      coll.collation->m_coll_name); // stonedb8
+                     coll.collation->m_coll_name);  // stonedb8
           throw common::UnsupportedDataTypeException();
         }
         if (fstr->charset() != &my_charset_bin)
@@ -816,7 +815,8 @@ std::vector<AttrInfo> Engine::GetTableAttributesInfo(const std::string &table_pa
 
 void Engine::UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
                                          CHARSET_INFO *cs) {
-  // stonedb8 start convert orig_table to table, MySQL 8.0 don't have orig_table, idea from ha_innodb.cc:create_table_def
+  // stonedb8 start convert orig_table to table, MySQL 8.0 don't have orig_table, idea from
+  // ha_innodb.cc:create_table_def
   if (source_field->table->s->db_type() == rcbase_hton) {  // do not use table (cont. default values)
     char buf_size[256] = {0};
     char buf_ratio[256] = {0};
@@ -824,10 +824,9 @@ void Engine::UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *sour
     uint buf_ratio_count = 0;
     int64_t sum_c = 0, sum_u = 0;
 
-    std::vector<AttrInfo> attr_info =
-        GetTableAttributesInfo(source_field->table->s->path.str, source_field->table->s);
-  // stonedb8 end
-  
+    std::vector<AttrInfo> attr_info = GetTableAttributesInfo(source_field->table->s->path.str, source_field->table->s);
+    // stonedb8 end
+
     bool is_unique = false;
     if (source_field_id < (int)attr_info.size()) {
       is_unique = attr_info[source_field_id].actually_unique;
@@ -899,11 +898,11 @@ void Engine::RemoveTx(Transaction *tx) {
 
 Transaction *Engine::CreateTx(THD *thd) {
   // the transaction should be created by owner THD
-  ASSERT(thd->get_ha_data(tianmu_hton->slot)->ha_ptr == NULL, "Nested transaction is not supported!"); // stonedb8
+  ASSERT(thd->get_ha_data(tianmu_hton->slot)->ha_ptr == NULL, "Nested transaction is not supported!");  // stonedb8
   ASSERT(current_txn_ == NULL, "Previous transaction is not finished!");
 
   current_txn_ = new Transaction(thd);
-  thd->get_ha_data(tianmu_hton->slot)->ha_ptr = current_txn_; // stonedb8
+  thd->get_ha_data(tianmu_hton->slot)->ha_ptr = current_txn_;  // stonedb8
 
   AddTx(current_txn_);
 
@@ -911,18 +910,18 @@ Transaction *Engine::CreateTx(THD *thd) {
 }
 
 Transaction *Engine::GetTx(THD *thd) {
-  if (thd->get_ha_data(tianmu_hton->slot)->ha_ptr == nullptr) return CreateTx(thd); // stonedb8
-  return static_cast<Transaction *>(thd->get_ha_data(tianmu_hton->slot)->ha_ptr);   // stonedb8
+  if (thd->get_ha_data(tianmu_hton->slot)->ha_ptr == nullptr) return CreateTx(thd);  // stonedb8
+  return static_cast<Transaction *>(thd->get_ha_data(tianmu_hton->slot)->ha_ptr);    // stonedb8
 }
 
 void Engine::ClearTx(THD *thd) {
-  ASSERT(current_txn_ == (Transaction *)thd->get_ha_data(tianmu_hton->slot)->ha_ptr, "Bad transaction"); // stonedb8
+  ASSERT(current_txn_ == (Transaction *)thd->get_ha_data(tianmu_hton->slot)->ha_ptr, "Bad transaction");  // stonedb8
 
   if (current_txn_ == nullptr) return;
 
   RemoveTx(current_txn_);
   current_txn_ = nullptr;
-  thd->get_ha_data(tianmu_hton->slot)->ha_ptr = NULL; // stonedb8
+  thd->get_ha_data(tianmu_hton->slot)->ha_ptr = NULL;  // stonedb8
 }
 
 int Engine::SetUpCacheFolder(const std::string &cachefolder_path) {
@@ -946,7 +945,8 @@ int Engine::SetUpCacheFolder(const std::string &cachefolder_path) {
 }
 
 std::string get_parameter_name(enum tianmu_var_name vn) {
-  DEBUG_ASSERT(static_cast<int>(vn) >= 0 && static_cast<int>(vn) <= static_cast<int>(tianmu_var_name::TIANMU_VAR_LIMIT));
+  DEBUG_ASSERT(static_cast<int>(vn) >= 0 &&
+               static_cast<int>(vn) <= static_cast<int>(tianmu_var_name::TIANMU_VAR_LIMIT));
   return tianmu_var_name_strings[static_cast<int>(vn)];
 }
 
@@ -956,7 +956,7 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, double &value) {
   bool null_val;
 
   const auto it = thd->user_vars.find(var_data);
-  if(it == thd->user_vars.end()) return 1;
+  if (it == thd->user_vars.end()) return 1;
   value = it->second->val_real(&null_val);
   // stonedb8 end
   if (null_val) return 2;
@@ -969,7 +969,7 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, int64_t &value) {
   bool null_val;
 
   const auto it = thd->user_vars.find(var_data);
-  if(it == thd->user_vars.end()) return 1;
+  if (it == thd->user_vars.end()) return 1;
   it->second->val_int(&null_val);
   // stonedb8 end
   if (null_val) return 2;
@@ -983,7 +983,7 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, std::string &value) {
   String str;
 
   const auto it = thd->user_vars.find(var_data);
-  if(it == thd->user_vars.end()) return 1;
+  if (it == thd->user_vars.end()) return 1;
   it->second->val_str(&null_val, &str, DECIMAL_NOT_SPECIFIED);
   // stonedb8 end
   if (null_val) return 2;
@@ -996,8 +996,8 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::stri
   // stonedb8 start
   std::string var_data = get_parameter_name(vn);
   const auto entry = thd->user_vars.find(var_data);
-  
-  if(entry == thd->user_vars.end()) return 1;
+
+  if (entry == thd->user_vars.end()) return 1;
 
   if (entry->second->type() == DECIMAL_RESULT) {
     switch (vn) {
@@ -1087,85 +1087,85 @@ static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec
   std::tie(db_name, tab_name) = GetNames(table_path);
   std::string load_data_query = "LOAD DELAYED INSERT DATA INTO TABLE " + db_name + "." + tab_name;
 
-    LEX_CSTRING dbname,tabname,loadquery;
-    dbname.str=const_cast<char *>(db_name.c_str());
-    dbname.length=db_name.length();
-    loadquery.str=const_cast<char *>(load_data_query.c_str());
-    loadquery.length=load_data_query.length();
-    tabname.str=const_cast<char *>(tab_name.c_str());
-    tabname.length=tab_name.length();
-    // END
-	
-	//TIANMU UPGRADE
-    Global_THD_manager *thd_manager = Global_THD_manager::get_instance();//global thread manager
-    
-	THD *thd = new THD;
-    thd->thread_stack = (char *)&thd;
-    my_thread_init();
-    thd->store_globals();
-    thd->m_security_ctx->skip_grants();
-    
-    /* Add thread to THD list so that's it's visible in 'show processlist' */
-    thd->set_new_thread_id();
-    thd->set_time(); // stonedb8
-    thd_manager->add_thd(thd);
-    mysql_reset_thd_for_next_command(thd);
-    thd->init_query_mem_roots(); // stonedb8
-    thd->set_db(dbname);
-    // Forge LOAD DATA INFILE query which will be used in SHOW PROCESS LIST
-    thd->set_query(loadquery);
-    thd->set_query_id(next_query_id());
-    thd->update_charset();  // for the charset change to take effect
-    // Usually lex_start() is called by mysql_parse(), but we need
-    // it here as the present method does not call mysql_parse().
-    lex_start(thd);
-    TABLE_LIST tl(thd->strmake(thd->db().str, thd->db().length), thd->db().length, tabname.str, tabname.length,
-                  tabname.str, TL_WRITE_CONCURRENT_INSERT); // stonedb8
-    tl.updating = 1;
+  LEX_CSTRING dbname, tabname, loadquery;
+  dbname.str = const_cast<char *>(db_name.c_str());
+  dbname.length = db_name.length();
+  loadquery.str = const_cast<char *>(load_data_query.c_str());
+  loadquery.length = load_data_query.length();
+  tabname.str = const_cast<char *>(tab_name.c_str());
+  tabname.length = tab_name.length();
+  // END
 
-    // the table will be opened in mysql_load
-    thd->lex->sql_command = SQLCOM_LOAD;
-    sql_exchange ex("buffered_insert", 0, FILETYPE_MEM);
-    ex.file_name = const_cast<char *>(addr.c_str());
-    ex.skip_lines = tid;  // this is ugly...
-    thd->lex->query_block->context.resolve_in_table_list_only(&tl);
-    if (open_temporary_tables(thd, &tl)) {
-        // error/////
-    }
-    List<Item> tmp_list;  // dummy
-    // stonedb8 start
-    /*
-    if (mysql_load(thd, &ex, &tl, tmp_list, tmp_list, tmp_list, DUP_ERROR, false)) {
-        thd->is_slave_error = 1;
-    }
-    */
-    thd->lex->query_tables = &tl;
-    LEX_STRING lex_str = {const_cast<char *>(ex.file_name),addr.size()};
+  // TIANMU UPGRADE
+  Global_THD_manager *thd_manager = Global_THD_manager::get_instance();  // global thread manager
 
-    auto cmd = new (thd->mem_root) Sql_cmd_load_table(
-        ex.filetype, false, lex_str, On_duplicate::ERROR, nullptr, nullptr, nullptr, nullptr,
-        ex.field, ex.line, ex.skip_lines, nullptr, nullptr, nullptr, nullptr);
-    if (cmd->execute(thd)) {
+  THD *thd = new THD;
+  thd->thread_stack = (char *)&thd;
+  my_thread_init();
+  thd->store_globals();
+  thd->m_security_ctx->skip_grants();
+
+  /* Add thread to THD list so that's it's visible in 'show processlist' */
+  thd->set_new_thread_id();
+  thd->set_time();  // stonedb8
+  thd_manager->add_thd(thd);
+  mysql_reset_thd_for_next_command(thd);
+  thd->init_query_mem_roots();  // stonedb8
+  thd->set_db(dbname);
+  // Forge LOAD DATA INFILE query which will be used in SHOW PROCESS LIST
+  thd->set_query(loadquery);
+  thd->set_query_id(next_query_id());
+  thd->update_charset();  // for the charset change to take effect
+  // Usually lex_start() is called by mysql_parse(), but we need
+  // it here as the present method does not call mysql_parse().
+  lex_start(thd);
+  TABLE_LIST tl(thd->strmake(thd->db().str, thd->db().length), thd->db().length, tabname.str, tabname.length,
+                tabname.str, TL_WRITE_CONCURRENT_INSERT);  // stonedb8
+  tl.updating = 1;
+
+  // the table will be opened in mysql_load
+  thd->lex->sql_command = SQLCOM_LOAD;
+  sql_exchange ex("buffered_insert", 0, FILETYPE_MEM);
+  ex.file_name = const_cast<char *>(addr.c_str());
+  ex.skip_lines = tid;  // this is ugly...
+  thd->lex->query_block->context.resolve_in_table_list_only(&tl);
+  if (open_temporary_tables(thd, &tl)) {
+    // error/////
+  }
+  List<Item> tmp_list;  // dummy
+  // stonedb8 start
+  /*
+  if (mysql_load(thd, &ex, &tl, tmp_list, tmp_list, tmp_list, DUP_ERROR, false)) {
       thd->is_slave_error = 1;
-    }
-    // stonedb8 end
+  }
+  */
+  thd->lex->query_tables = &tl;
+  LEX_STRING lex_str = {const_cast<char *>(ex.file_name), addr.size()};
 
-    thd->set_catalog({0, 1});//TIANMU UPGRADE
-    thd->set_db({NULL,0}); /* will free the current database */
-    thd->reset_query();
-    thd->get_stmt_da()->set_overwrite_status(true);
-    thd->is_error() ? trans_rollback_stmt(thd) : trans_commit_stmt(thd);
-    thd->get_stmt_da()->set_overwrite_status(false);
-    close_thread_tables(thd);
-    if (thd->transaction_rollback_request) {
-        trans_rollback_implicit(thd);
-        thd->mdl_context.release_transactional_locks();
-    } else if (!thd->in_multi_stmt_transaction_mode())
-        thd->mdl_context.release_transactional_locks();
-    else
-        thd->mdl_context.release_statement_locks();
+  auto cmd = new (thd->mem_root)
+      Sql_cmd_load_table(ex.filetype, false, lex_str, On_duplicate::ERROR, nullptr, nullptr, nullptr, nullptr, ex.field,
+                         ex.line, ex.skip_lines, nullptr, nullptr, nullptr, nullptr);
+  if (cmd->execute(thd)) {
+    thd->is_slave_error = 1;
+  }
+  // stonedb8 end
 
-  thd->mem_root->ClearForReuse(); // stonedb8
+  thd->set_catalog({0, 1});  // TIANMU UPGRADE
+  thd->set_db({NULL, 0});    /* will free the current database */
+  thd->reset_query();
+  thd->get_stmt_da()->set_overwrite_status(true);
+  thd->is_error() ? trans_rollback_stmt(thd) : trans_commit_stmt(thd);
+  thd->get_stmt_da()->set_overwrite_status(false);
+  close_thread_tables(thd);
+  if (thd->transaction_rollback_request) {
+    trans_rollback_implicit(thd);
+    thd->mdl_context.release_transactional_locks();
+  } else if (!thd->in_multi_stmt_transaction_mode())
+    thd->mdl_context.release_transactional_locks();
+  else
+    thd->mdl_context.release_statement_locks();
+
+  thd->mem_root->ClearForReuse();  // stonedb8
   if (thd->is_fatal_error()) {
     TIANMU_LOG(LogCtl_Level::ERROR, "LOAD DATA failed on table '%s'", tab_name.c_str());
   }
@@ -1319,7 +1319,7 @@ void Engine::LogStat() {
     struct timespec t;
     clock_gettime(CLOCK_MONOTONIC, &t);
     last_sample_time = t.tv_sec;
-    saved_query_id = atomic_global_query_id; // stonedb8
+    saved_query_id = atomic_global_query_id;  // stonedb8
     saved = tianmu_stat;
     return;
   }
@@ -1332,7 +1332,7 @@ void Engine::LogStat() {
     TIANMU_LOG(LogCtl_Level::ERROR, "LogStat() called too frequently. last sample time %ld ", last_sample_time);
     return;
   }
-  query_id_t query_id = atomic_global_query_id; // stonedb8
+  query_id_t query_id = atomic_global_query_id;  // stonedb8
   long queries = query_id - saved_query_id;
 
   {
@@ -1352,10 +1352,10 @@ void Engine::LogStat() {
         SQLCOM_LOAD,
     };
 
-  System_status_var sv; // stonedb8
-	mysql_mutex_lock(&LOCK_status);
+    System_status_var sv;  // stonedb8
+    mysql_mutex_lock(&LOCK_status);
     calc_sum_of_all_status(&sv);
-	mysql_mutex_unlock(&LOCK_status);
+    mysql_mutex_unlock(&LOCK_status);
     std::string msg("Command: ");
     for (auto &c : cmds) {
       auto delta = sv.com_stat[c] - saved_com_stat[c];
@@ -1363,20 +1363,20 @@ void Engine::LogStat() {
       msg =
           msg + sql_statement_names[c].str + " " + std::to_string(delta) + "/" + std::to_string(sv.com_stat[c]) + ", ";
     }
-    msg = msg + "queries " + std::to_string(queries) + "/" + std::to_string(atomic_global_query_id); // stonedb8
+    msg = msg + "queries " + std::to_string(queries) + "/" + std::to_string(atomic_global_query_id);  // stonedb8
     TIANMU_LOG(LogCtl_Level::INFO, msg.c_str());
   }
 
   TIANMU_LOG(LogCtl_Level::INFO,
-              "Select: %lu/%lu, Loaded: %lu/%lu(%lu/%lu), dup: %lu/%lu, insert: "
-              "%lu/%lu, failed insert: %lu/%lu, update: "
-              "%lu/%lu",
-              tianmu_stat.select - saved.select, tianmu_stat.select, tianmu_stat.loaded - saved.loaded,
-              tianmu_stat.loaded, tianmu_stat.load_cnt - saved.load_cnt, tianmu_stat.load_cnt,
-              tianmu_stat.loaded_dup - saved.loaded_dup, tianmu_stat.loaded_dup,
-              tianmu_stat.delayinsert - saved.delayinsert, tianmu_stat.delayinsert,
-              tianmu_stat.failed_delayinsert - saved.failed_delayinsert, tianmu_stat.failed_delayinsert,
-              tianmu_stat.update - saved.update, tianmu_stat.update);
+             "Select: %lu/%lu, Loaded: %lu/%lu(%lu/%lu), dup: %lu/%lu, insert: "
+             "%lu/%lu, failed insert: %lu/%lu, update: "
+             "%lu/%lu",
+             tianmu_stat.select - saved.select, tianmu_stat.select, tianmu_stat.loaded - saved.loaded,
+             tianmu_stat.loaded, tianmu_stat.load_cnt - saved.load_cnt, tianmu_stat.load_cnt,
+             tianmu_stat.loaded_dup - saved.loaded_dup, tianmu_stat.loaded_dup,
+             tianmu_stat.delayinsert - saved.delayinsert, tianmu_stat.delayinsert,
+             tianmu_stat.failed_delayinsert - saved.failed_delayinsert, tianmu_stat.failed_delayinsert,
+             tianmu_stat.update - saved.update, tianmu_stat.update);
 
   if (tianmu_stat.loaded == saved.loaded && tianmu_stat.delayinsert > saved.delayinsert) {
     TIANMU_LOG(LogCtl_Level::ERROR, "No data loaded from insert buffer");
@@ -1488,7 +1488,7 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
     std::string table_path = GetTablePath(table);
 
     table->copy_blobs = 0;
-    thd->num_truncated_fields = 0L; // stonedb8
+    thd->num_truncated_fields = 0L;  // stonedb8
 
     auto tab = current_txn_->GetTableByPath(table_path);
 
@@ -1501,7 +1501,7 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
 
     // We must invalidate the table in query cache before binlog writing and
     // ha_autocommit_...
-    //query_cache.invalidate(thd, table_list, 0);  // stonedb8 TODO: query_cache is deleted by MySQL8
+    // query_cache.invalidate(thd, table_list, 0);  // stonedb8 TODO: query_cache is deleted by MySQL8
 
     COPY_INFO::Statistics stats;
     stats.records = ha_rows(tab->NoRecordsLoaded());
@@ -1511,9 +1511,9 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
 
     char name[FN_REFLEN];
     snprintf(name, sizeof(name), ER(ER_LOAD_INFO), (long)stats.records,
-                0,  // deleted
-                0,  // skipped
-                (long)thd->get_stmt_da()->current_statement_cond_count());
+             0,  // deleted
+             0,  // skipped
+             (long)thd->get_stmt_da()->current_statement_cond_count());
 
     /* ok to client */
     my_ok(thd, stats.records, 0L, name);
@@ -1523,8 +1523,8 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
     tianmu_e = e;
   }
 
-    //if (thd->transaction.stmt.cannot_safely_rollback())
-    //    thd->transaction.all.mark_modified_non_trans_table();
+  // if (thd->transaction.stmt.cannot_safely_rollback())
+  //    thd->transaction.all.mark_modified_non_trans_table();
 
   if (transactional_table) {
     if (tianmu_e == common::ErrorCode::SUCCESS)
@@ -1537,13 +1537,13 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
     mysql_unlock_tables(thd, thd->lock);
     thd->lock = 0;
   }
-  //thd->abort_on_warning = 0;
+  // thd->abort_on_warning = 0;
   return tianmu_e;
 }
 
 // stonedb8 Query_block
 bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, Query_block *selects_list,
-                        int &in_case_of_failure_can_go_to_mysql, int with_insert) {
+                           int &in_case_of_failure_can_go_to_mysql, int with_insert) {
   in_case_of_failure_can_go_to_mysql = true;
 
   if (!table_list) return false;
@@ -1609,12 +1609,11 @@ const char *Engine::GetFilename(Query_block *selects_list, int &is_dumpfile) {  
   // maybe 'select into DUMPFILE' if the function returns NULL it was a regular
   // 'select' don't look into is_dumpfile in this case
 
-  if(selects_list->parent_lex->result == nullptr) {
+  if (selects_list->parent_lex->result == nullptr) {
     return nullptr;
   }
 
-  auto exchange =
-      static_cast<Query_result_to_file *>(selects_list->parent_lex->result)->get_sql_exchange();
+  auto exchange = static_cast<Query_result_to_file *>(selects_list->parent_lex->result)->get_sql_exchange();
 
   if (exchange) {
     is_dumpfile = exchange->dumpfile;
@@ -1700,25 +1699,26 @@ common::TIANMUError Engine::GetRejectFileIOParameters(THD &thd, std::unique_ptr<
     return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_ABORT_ON_COUNT parameter.");
 
   if (get_parameter(&thd, tianmu_var_name::TIANMU_ABORT_ON_THRESHOLD, abort_on_threshold) == 2)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_ABORT_ON_THRESHOLD parameter.");
+    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
+                               "Wrong value of TIANMU_ABORT_ON_THRESHOLD parameter.");
 
   if (abort_on_count != 0 && abort_on_threshold != 0)
     return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
-                            "TIANMU_ABORT_ON_COUNT and TIANMU_ABORT_ON_THRESHOLD "
-                            "parameters are mutualy exclusive.");
+                               "TIANMU_ABORT_ON_COUNT and TIANMU_ABORT_ON_THRESHOLD "
+                               "parameters are mutualy exclusive.");
 
   if (!(abort_on_threshold >= 0.0 && abort_on_threshold < 1.0))
     return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
-                            "TIANMU_ABORT_ON_THRESHOLD parameter value must be in range (0,1).");
+                               "TIANMU_ABORT_ON_THRESHOLD parameter value must be in range (0,1).");
 
   if ((abort_on_count != 0 || abort_on_threshold != 0) && reject_file.empty())
     return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
-                            "TIANMU_ABORT_ON_COUNT or TIANMU_ABORT_ON_THRESHOLD can by only specified with "
-                            "TIANMU_REJECT_FILE_PATH parameter.");
+                               "TIANMU_ABORT_ON_COUNT or TIANMU_ABORT_ON_THRESHOLD can by only specified with "
+                               "TIANMU_REJECT_FILE_PATH parameter.");
 
   if (!reject_file.empty() && fs::exists(reject_file))
     return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
-                            "Can not create the reject file, the file already exists.");
+                               "Can not create the reject file, the file already exists.");
 
   io_params->SetRejectFile(reject_file, abort_on_count, abort_on_threshold);
   return common::ErrorCode::SUCCESS;
@@ -1741,9 +1741,9 @@ common::TIANMUError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
   char name[FN_REFLEN] = {0};
   char *tdb = nullptr;
   if (table) {
-    tdb = table->s->db.str ? const_cast<char*>(table->s->db.str) : const_cast<char*>(thd.db().str);
+    tdb = table->s->db.str ? const_cast<char *>(table->s->db.str) : const_cast<char *>(thd.db().str);
   } else
-    tdb = const_cast<char*>(thd.db().str);
+    tdb = const_cast<char *>(thd.db().str);
 
   io_params = CreateIOParameters(&thd, table, arg);
   short sign, minutes;
@@ -1791,7 +1791,8 @@ common::TIANMUError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
   if (ex.field.escaped->length() > 1)
     return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter escape std::string not supported.");
 
-  if (ex.field.enclosed->length() > 1 && (ex.field.enclosed->length() != 4 || strcasecmp(ex.field.enclosed->ptr(), "NULL") != 0))
+  if (ex.field.enclosed->length() > 1 &&
+      (ex.field.enclosed->length() != 4 || strcasecmp(ex.field.enclosed->ptr(), "NULL") != 0))
     return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter enclose std::string not supported.");
 
   if (!for_exporter) {
@@ -1826,12 +1827,12 @@ common::TIANMUError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
   if (io_params->EscapeCharacter() != 0 &&
       io_params->Delimiter().find(io_params->EscapeCharacter()) != std::string::npos)
     return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
-                            "Field terminator containing the escape character not supported.");
+                               "Field terminator containing the escape character not supported.");
 
   if (io_params->EscapeCharacter() != 0 && io_params->StringQualifier() != 0 &&
       io_params->EscapeCharacter() == io_params->StringQualifier())
     return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
-                            "The same enclose and escape characters not supported.");
+                               "The same enclose and escape characters not supported.");
 
   bool unsupported_syntax = false;
   if (cs != 0)
