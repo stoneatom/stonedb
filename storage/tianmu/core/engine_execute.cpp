@@ -112,9 +112,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
   Query_block *save_current_select = lex->current_query_block();
   List<Query_expression> derived_optimized;  // collection to remember derived
                                              // tables that are optimized
-  // stonedb8 TODO
-  // if (thd->fill_derived_tables() && lex->derived_tables)
-  if (0) {
+  if (lex->unit->derived_table) {
     // Derived tables are processed completely in the function
     // open_and_lock_tables(...). To avoid execution of derived tables in
     // open_and_lock_tables(...) the function mysql_derived_filling(..)
