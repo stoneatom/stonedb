@@ -27,7 +27,7 @@ namespace dbhandler {
 // Class definition for the storage engine
 class TianmuHandler final : public handler {
  public:
-  TianmuHandler(handlerton *hton, TABLE_SHARE *table_arg);
+  TianmuHandler(handlerton *hton, TABLE_SHARE *table_arg, bool partitioned);
   virtual ~TianmuHandler() = default;
   /* The name that will be used for display purposes */
   const char *table_type() const override { return "TIANMU"; }
@@ -188,6 +188,7 @@ class TianmuHandler final : public handler {
   std::unique_ptr<core::CompiledQuery> m_cq;
   bool m_result = false;
   std::vector<std::vector<uchar>> blob_buffers;
+  bool m_partitioned = false;
 };
 
 }  // namespace dbhandler
