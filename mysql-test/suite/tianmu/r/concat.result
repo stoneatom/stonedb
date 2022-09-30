@@ -3,11 +3,12 @@ CREATE TABLE `test_case` (
 `id` int(11) DEFAULT NULL,
 `name` text
 ) ENGINE=TIANMU;
-Warnings:
-Warning	1681	Integer display width is deprecated and will be removed in a future release.
 insert into test_case values(1,'test');
 insert into test_case (name) values('test2');
 insert into test_case values(3,'test3');
 select concat(id,name) from test_case;
 concat(id,name)
+1test
+NULL
+3test3
 drop table test_case;
