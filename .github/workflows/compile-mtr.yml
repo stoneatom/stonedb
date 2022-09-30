@@ -115,10 +115,10 @@ jobs:
       #     cd build/storage/tianmu/unittest/
       #     ./testgmock
 
-      # - name: mtr test
-      #   run: |
-      #     mkdir -p /stonedb80/install/log
-      #     groupadd mysql && useradd -g mysql mysql
-      #     chown -R mysql:mysql /stonedb80
-      #     cd /stonedb80/install/mysql-test
-      #     ./mysql-test-run.pl --suite=tianmu --nowarnings --force --nocheck-testcases --parallel=10
+      - name: mtr test
+        run: |
+          mkdir -p /stonedb80/install/log
+          groupadd mysql && useradd -g mysql mysql
+          chown -R mysql:mysql /stonedb80
+          cd /stonedb80/install/mysql-test
+          ./mysql-test-run.pl --suite=tianmu --nowarnings --force --nocheck-testcases --parallel=10
