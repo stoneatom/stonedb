@@ -21,7 +21,7 @@
 
 #include "common/common_definitions.h"
 #include "core/transaction.h"
-#include "handler/tianmu_handler.h"
+#include "handler/ha_tianmu.h"
 #include "index/rdb_meta_manager.h"
 
 namespace Tianmu {
