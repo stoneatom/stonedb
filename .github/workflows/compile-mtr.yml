@@ -121,4 +121,4 @@ jobs:
           groupadd mysql && useradd -g mysql mysql
           chown -R mysql:mysql /stonedb80
           cd /stonedb80/install/mysql-test
-          ./mysql-test-run.pl --suite=tianmu --nowarnings --force --nocheck-testcases --parallel=10
+          ./mysql-test-run.pl --suite=tianmu --nowarnings --force --nocheck-testcases --parallel=10 --record
