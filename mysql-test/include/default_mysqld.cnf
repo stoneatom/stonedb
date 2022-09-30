@@ -11,6 +11,8 @@ connect-timeout=            60
 # Set it to 1 so that no restrictions are enforced on
 # stored function creation.
 log-bin-trust-function-creators=1
+binlog-format=statement
+character-set-server=utf8mb4
 
 # Running MTR with --mem causes var directories to be created in memory.
 # Set innodb-buffer-pool-size and innodb-redo-log-capacity to a lower

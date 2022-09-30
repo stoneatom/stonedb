@@ -1,0 +1,7 @@
+use test;
+CREATE TABLE `abcÿdef` (i int)engine=tianmu;
+INSERT INTO `abcÿdef` VALUES (1);
+INSERT INTO abcÿdef VALUES (2);
+SELECT * FROM `abcÿdef`;
+SELECT * FROM abcÿdef;
+DROP TABLE `abcÿdef`;
