@@ -37,6 +37,7 @@
 #include <atomic>
 #include <limits>
 
+#include "../storage/tianmu/handler/ha_my_tianmu.h"
 #include "libbinlogevents/include/load_data_events.h"
 #include "m_ctype.h"
 #include "m_string.h"
@@ -60,38 +61,37 @@
 #include "sql/auth/auth_common.h"
 #include "sql/binlog.h"
 #include "sql/derror.h"
-#include "sql/error_handler.h"  // Ignore_error_handler
+#include "sql/error_handler.h" // Ignore_error_handler
 #include "sql/field.h"
 #include "sql/handler.h"
 #include "sql/item.h"
 #include "sql/item_func.h"
-#include "sql/item_timefunc.h"  // Item_func_now_local
+#include "sql/item_timefunc.h" // Item_func_now_local
 #include "sql/log.h"
-#include "sql/log_event.h"  // Delete_file_log_event,
-#include "sql/mysqld.h"     // mysql_real_data_home
+#include "sql/log_event.h" // Delete_file_log_event,
+#include "sql/mysqld.h"    // mysql_real_data_home
 #include "sql/protocol.h"
 #include "sql/protocol_classic.h"
 #include "sql/psi_memory_key.h"
 #include "sql/query_result.h"
 #include "sql/rpl_replica.h"
-#include "sql/rpl_rli.h"   // Relay_log_info
-#include "sql/sql_base.h"  // fill_record_n_invoke_before_triggers
+#include "sql/rpl_rli.h"  // Relay_log_info
+#include "sql/sql_base.h" // fill_record_n_invoke_before_triggers
 #include "sql/sql_class.h"
 #include "sql/sql_error.h"
-#include "sql/sql_insert.h"  // check_that_all_fields_are_given_values,
+#include "sql/sql_insert.h" // check_that_all_fields_are_given_values,
 #include "sql/sql_lex.h"
 #include "sql/sql_list.h"
 #include "sql/sql_show.h"
-#include "sql/sql_view.h"  // check_key_in_view
+#include "sql/sql_view.h" // check_key_in_view
 #include "sql/system_variables.h"
 #include "sql/table.h"
-#include "sql/table_trigger_dispatcher.h"  // Table_trigger_dispatcher
+#include "sql/table_trigger_dispatcher.h" // Table_trigger_dispatcher
 #include "sql/thr_malloc.h"
 #include "sql/transaction_info.h"
 #include "sql/trigger_def.h"
 #include "sql_string.h"
 #include "thr_lock.h"
-#include "../storage/tianmu/handler/ha_rcengine.h" // stonedb8
 
 class READ_INFO;
 
@@ -99,7 +99,7 @@ using std::max;
 using std::min;
 
 class XML_TAG {
- public:
+public:
   int level;
   String field;
   String value;
@@ -141,7 +141,7 @@ class READ_INFO {
                                                              : new_length);
   }
 
- public:
+public:
   bool error, line_truncated, found_null, enclosed;
   uchar *row_start, /* Found row starts here */
       *row_end;     /* Found row ends here */
@@ -214,19 +214,18 @@ bool Sql_cmd_load_table::execute_inner(THD *thd,
   bool is_concurrent;
   bool transactional_table;
   TABLE_LIST *const table_list = thd->lex->query_tables;
-  const char *db = table_list->db;  // This is never null
+  const char *db = table_list->db; // This is never null
   /*
     If path for file is not defined, we will use the current database.
     If this is not set, we will use the directory where the table to be
     loaded is located
   */
-  const char *tdb = thd->db().str ? thd->db().str : db;  // Result is never null
+  const char *tdb = thd->db().str ? thd->db().str : db; // Result is never null
   ulong skip_lines = m_exchange.skip_lines;
   DBUG_TRACE;
 
   // TIANMU UPGRADE BEGIN
-  if (mysql_bin_log.is_open())
-  {
+  if (mysql_bin_log.is_open()) {
     lf_info.thd = thd;
     lf_info.logged_data_file = false;
     lf_info.last_pos_in_file = HA_POS_ERROR;
@@ -255,22 +254,25 @@ bool Sql_cmd_load_table::execute_inner(THD *thd,
                  ER_THD(thd, WARN_NON_ASCII_SEPARATOR_NOT_IMPLEMENTED));
   }
 
-  if (open_and_lock_tables(thd, table_list, 0)) return true;
+  if (open_and_lock_tables(thd, table_list, 0))
+    return true;
 
   THD_STAGE_INFO(thd, stage_executing);
-  if (select->setup_tables(thd, table_list, false)) return true;
+  if (select->setup_tables(thd, table_list, false))
+    return true;
 
-  if (run_before_dml_hook(thd)) return true;
+  if (run_before_dml_hook(thd))
+    return true;
 
   if (table_list->is_view() && select->resolve_placeholder_tables(thd, false))
     return true; /* purecov: inspected */
 
   TABLE_LIST *const insert_table_ref =
-      table_list->is_updatable() &&  // View must be updatable
+      table_list->is_updatable() && // View must be updatable
               !table_list
-                   ->is_multiple_tables() &&  // Multi-table view not allowed
+                   ->is_multiple_tables() && // Multi-table view not allowed
               !table_list->is_derived()
-          ?  // derived tables not allowed
+          ? // derived tables not allowed
           table_list->updatable_base_table()
           : nullptr;
 
@@ -284,7 +286,8 @@ bool Sql_cmd_load_table::execute_inner(THD *thd,
     return true; /* purecov: inspected */
 
   if (table_list->is_merged()) {
-    if (table_list->prepare_check_option(thd)) return true;
+    if (table_list->prepare_check_option(thd))
+      return true;
 
     if (handle_duplicates == DUP_REPLACE &&
         table_list->prepare_replace_filter(thd))
@@ -306,7 +309,8 @@ bool Sql_cmd_load_table::execute_inner(THD *thd,
     return true;
   }
   // TIANMU UPGRADE BEGIN
-  if (!Tianmu::dbhandler::tianmu_load(thd, &m_exchange, table_list, (void*) &lf_info)) {
+  if (!Tianmu::dbhandler::tianmu_load(thd, &m_exchange, table_list,
+                                      (void *)&lf_info)) {
     return false;
   }
   // END
@@ -330,7 +334,8 @@ bool Sql_cmd_load_table::execute_inner(THD *thd,
         continue;
 
       Item *item;
-      if (!(item = field_iterator.create_item(thd))) return true;
+      if (!(item = field_iterator.create_item(thd)))
+        return true;
 
       if (item->field_for_view_update() == nullptr) {
         my_error(ER_NONUPDATEABLE_COLUMN, MYF(0), item->item_name.ptr());
@@ -352,7 +357,7 @@ bool Sql_cmd_load_table::execute_inner(THD *thd,
                      /*column_update=*/false, /*typed_items=*/nullptr,
                      &m_opt_set_exprs, Ref_item_array()))
       return true;
-  } else {  // Part field list
+  } else { // Part field list
     /*
       Because m_opt_fields_or_vars may contain user variables,
       pass false for column_update in first call below.
@@ -387,7 +392,8 @@ bool Sql_cmd_load_table::execute_inner(THD *thd,
         */
         Item_func_set_user_var *user_var =
             new (thd->mem_root) Item_func_set_user_var(item->item_name, item);
-        if (user_var == nullptr) return true;
+        if (user_var == nullptr)
+          return true;
         thd->lex->set_var_list.push_back(user_var);
       }
     }
@@ -441,10 +447,12 @@ bool Sql_cmd_load_table::execute_inner(THD *thd,
                  &m_opt_set_fields, manage_defaults, handle_duplicates,
                  escape_char);
 
-  if (info.add_function_default_columns(table, table->write_set)) return true;
+  if (info.add_function_default_columns(table, table->write_set))
+    return true;
 
   if (table->triggers) {
-    if (table->triggers->mark_fields(TRG_EVENT_INSERT)) return true;
+    if (table->triggers->mark_fields(TRG_EVENT_INSERT))
+      return true;
   }
 
   prepare_triggers_for_insert_stmt(thd, table);
@@ -459,7 +467,7 @@ bool Sql_cmd_load_table::execute_inner(THD *thd,
       const Field *field = down_cast<const Item_field *>(real_item)->field;
       if (field->is_flag_set(BLOB_FLAG)) {
         use_blobs = true;
-        tot_length += 4096;  // Will be extended if needed
+        tot_length += 4096; // Will be extended if needed
       } else {
         tot_length += field->field_length;
       }
@@ -487,9 +495,9 @@ bool Sql_cmd_load_table::execute_inner(THD *thd,
       (void)fn_format(name, m_exchange.file_name, name, "",
                       MY_RELATIVE_PATH | MY_UNPACK_FILENAME);
     } else {
-      (void)fn_format(
-          name, m_exchange.file_name, mysql_real_data_home, "",
-          MY_RELATIVE_PATH | MY_UNPACK_FILENAME | MY_RETURN_REAL_PATH);
+      (void)fn_format(name, m_exchange.file_name, mysql_real_data_home, "",
+                      MY_RELATIVE_PATH | MY_UNPACK_FILENAME |
+                          MY_RETURN_REAL_PATH);
     }
 
     if ((thd->system_thread &
@@ -515,18 +523,20 @@ bool Sql_cmd_load_table::execute_inner(THD *thd,
 
 #if !defined(_WIN32)
     MY_STAT stat_info;
-    if (!my_stat(name, &stat_info, MYF(MY_WME))) return true;
+    if (!my_stat(name, &stat_info, MYF(MY_WME)))
+      return true;
 
     // if we are not in slave thread, the file must be:
     if (!thd->slave_thread &&
-        !((stat_info.st_mode & S_IFLNK) != S_IFLNK &&   // symlink
-          ((stat_info.st_mode & S_IFREG) == S_IFREG ||  // regular file
-           (stat_info.st_mode & S_IFIFO) == S_IFIFO)))  // named pipe
+        !((stat_info.st_mode & S_IFLNK) != S_IFLNK &&  // symlink
+          ((stat_info.st_mode & S_IFREG) == S_IFREG || // regular file
+           (stat_info.st_mode & S_IFIFO) == S_IFIFO))) // named pipe
     {
       my_error(ER_TEXTFILE_NOT_READABLE, MYF(0), name);
       return true;
     }
-    if ((stat_info.st_mode & S_IFIFO) == S_IFIFO) is_fifo = true;
+    if ((stat_info.st_mode & S_IFIFO) == S_IFIFO)
+      is_fifo = true;
 #endif
     if ((file = mysql_file_open(key_file_load, name, O_RDONLY, MYF(MY_WME))) <
         0)
@@ -540,8 +550,9 @@ bool Sql_cmd_load_table::execute_inner(THD *thd,
       *field_term, *m_exchange.line.line_start, *m_exchange.line.line_term,
       *enclosed, info.escape_char, m_is_local_file, is_fifo);
   if (read_info.error) {
-    if (file >= 0) mysql_file_close(file, MYF(0));  // no files in net reading
-    return true;                                    // Can't allocate buffers
+    if (file >= 0)
+      mysql_file_close(file, MYF(0)); // no files in net reading
+    return true;                      // Can't allocate buffers
   }
 
   if (mysql_bin_log.is_open()) {
@@ -560,7 +571,8 @@ bool Sql_cmd_load_table::execute_inner(THD *thd,
     /* m_exchange.skip_lines needs to be preserved for logging */
     while (skip_lines > 0) {
       skip_lines--;
-      if (read_info.next_line()) break;
+      if (read_info.next_line())
+        break;
     }
   }
 
@@ -591,7 +603,8 @@ bool Sql_cmd_load_table::execute_inner(THD *thd,
     }
     table->next_number_field = nullptr;
   }
-  if (file >= 0) mysql_file_close(file, MYF(0));
+  if (file >= 0)
+    mysql_file_close(file, MYF(0));
   free_blobs(table); /* if pack_blob was used */
   table->copy_blobs = false;
   thd->check_for_truncated_fields = CHECK_FIELD_IGNORE;
@@ -607,7 +620,8 @@ bool Sql_cmd_load_table::execute_inner(THD *thd,
   killed_status = error ? thd->killed.load() : THD::NOT_KILLED;
 
   if (error) {
-    if (m_is_local_file) read_info.skip_data_till_eof();
+    if (m_is_local_file)
+      read_info.skip_data_till_eof();
 
     if (mysql_bin_log.is_open()) {
       {
@@ -652,7 +666,7 @@ bool Sql_cmd_load_table::execute_inner(THD *thd,
         }
       }
     }
-    error = true;  // Error on read
+    error = true; // Error on read
     goto err;
   }
 
@@ -686,7 +700,8 @@ bool Sql_cmd_load_table::execute_inner(THD *thd,
             handle_duplicates, transactional_table, errcode);
       }
     }
-    if (error) goto err;
+    if (error)
+      goto err;
   }
 
   /* ok to client sent only after binlog write and engine commit */
@@ -761,7 +776,7 @@ inline bool is_hidden_generated_column(TABLE *table, Item *item) {
   }
   return false;
 }
-}  // namespace
+} // namespace
 
 /**
   Read of rows of fixed size + optional garbage + optional newline
@@ -814,7 +829,8 @@ bool Sql_cmd_load_table::read_fixed_length(THD *thd, COPY_INFO &info,
 
     for (Item *item : m_opt_fields_or_vars) {
       // Skip hidden generated columns.
-      if (is_hidden_generated_column(table, item)) continue;
+      if (is_hidden_generated_column(table, item))
+        continue;
       /*
         There is no variables in fields_vars list in this format so
         this conversion is safe (no need to check for STRING_ITEM).
@@ -847,7 +863,7 @@ bool Sql_cmd_load_table::read_fixed_length(THD *thd, COPY_INFO &info,
         if ((length = (uint)(read_info.row_end - pos)) > field->field_length)
           length = field->field_length;
         save_chr = pos[length];
-        pos[length] = '\0';  // Safeguard aganst malloc
+        pos[length] = '\0'; // Safeguard aganst malloc
         field->store((char *)pos, length, read_info.read_charset);
         pos[length] = save_chr;
         if ((pos += length) > read_info.row_end)
@@ -868,28 +884,30 @@ bool Sql_cmd_load_table::read_fixed_length(THD *thd, COPY_INFO &info,
       return true;
 
     switch (table_list->view_check_option(thd)) {
-      case VIEW_CHECK_SKIP:
-        read_info.next_line();
-        goto continue_loop;
-      case VIEW_CHECK_ERROR:
-        return true;
+    case VIEW_CHECK_SKIP:
+      read_info.next_line();
+      goto continue_loop;
+    case VIEW_CHECK_ERROR:
+      return true;
     }
 
     if (invoke_table_check_constraints(thd, table)) {
-      if (thd->is_error()) return true;
+      if (thd->is_error())
+        return true;
       // continue when IGNORE clause is used.
       read_info.next_line();
       goto continue_loop;
     }
 
     err = write_record(thd, table, &info, nullptr);
-    if (err) return true;
+    if (err)
+      return true;
 
     /*
       We don't need to reset auto-increment field since we are restoring
       its default value at the beginning of each loop iteration.
     */
-    if (read_info.next_line())  // Skip to next line
+    if (read_info.next_line()) // Skip to next line
       break;
     if (read_info.line_truncated) {
       thd->num_truncated_fields++; /* Too long row */
@@ -905,7 +923,7 @@ bool Sql_cmd_load_table::read_fixed_length(THD *thd, COPY_INFO &info,
 }
 
 class Field_tmp_nullability_guard {
- public:
+public:
   explicit Field_tmp_nullability_guard(Item *item) : m_field(nullptr) {
     if (item->type() == Item::FIELD_ITEM) {
       m_field = ((Item_field *)item)->field;
@@ -918,10 +936,11 @@ class Field_tmp_nullability_guard {
   }
 
   ~Field_tmp_nullability_guard() {
-    if (m_field) m_field->reset_tmp_nullable();
+    if (m_field)
+      m_field->reset_tmp_nullable();
   }
 
- private:
+private:
   Field *m_field;
 };
 
@@ -976,12 +995,15 @@ bool Sql_cmd_load_table::read_sep_field(THD *thd, COPY_INFO &info,
       Item *real_item;
 
       // Skip hidden generated columns.
-      if (is_hidden_generated_column(table, item)) continue;
+      if (is_hidden_generated_column(table, item))
+        continue;
 
-      if (read_info.read_field()) break;
+      if (read_info.read_field())
+        break;
 
       /* If this line is to be skipped we don't want to fill field or var */
-      if (skip_lines) continue;
+      if (skip_lines)
+        continue;
 
       pos = read_info.row_start;
       length = (uint)(read_info.row_end - pos);
@@ -995,7 +1017,7 @@ bool Sql_cmd_load_table::read_sep_field(THD *thd, COPY_INFO &info,
           (length == 1 && read_info.found_null)) {
         if (real_item->type() == Item::FIELD_ITEM) {
           Field *field = ((Item_field *)real_item)->field;
-          if (field->reset())  // Set to 0
+          if (field->reset()) // Set to 0
           {
             my_error(ER_WARN_NULL_TO_NOTNULL, MYF(0), field->field_name,
                      thd->get_stmt_da()->current_row_for_condition());
@@ -1023,7 +1045,7 @@ bool Sql_cmd_load_table::read_sep_field(THD *thd, COPY_INFO &info,
       if (real_item->type() == Item::FIELD_ITEM) {
         Field *field = ((Item_field *)real_item)->field;
         field->set_notnull();
-        read_info.row_end[0] = 0;  // Safe to change end marker
+        read_info.row_end[0] = 0; // Safe to change end marker
         if (field == table->next_number_field)
           table->autoinc_field_has_explicit_non_null_value = true;
         field->store((char *)pos, length, read_info.read_charset);
@@ -1034,16 +1056,19 @@ bool Sql_cmd_load_table::read_sep_field(THD *thd, COPY_INFO &info,
       }
     }
 
-    if (thd->is_error()) read_info.error = true;
+    if (thd->is_error())
+      read_info.error = true;
 
-    if (read_info.error) break;
+    if (read_info.error)
+      break;
     if (skip_lines) {
       skip_lines--;
       continue;
     }
     if (it != m_opt_fields_or_vars.end()) {
       /* Have not read any field, thus input file is simply ended */
-      if (it == m_opt_fields_or_vars.begin()) break;
+      if (it == m_opt_fields_or_vars.begin())
+        break;
 
       for (; it != m_opt_fields_or_vars.end(); ++it) {
         Item *item = *it;
@@ -1104,30 +1129,33 @@ bool Sql_cmd_load_table::read_sep_field(THD *thd, COPY_INFO &info,
       }
     }
 
-    if (thd->is_error()) return true;
+    if (thd->is_error())
+      return true;
 
     switch (table_list->view_check_option(thd)) {
-      case VIEW_CHECK_SKIP:
-        read_info.next_line();
-        goto continue_loop;
-      case VIEW_CHECK_ERROR:
-        return true;
+    case VIEW_CHECK_SKIP:
+      read_info.next_line();
+      goto continue_loop;
+    case VIEW_CHECK_ERROR:
+      return true;
     }
 
     if (invoke_table_check_constraints(thd, table)) {
-      if (thd->is_error()) return true;
+      if (thd->is_error())
+        return true;
       // continue when IGNORE clause is used.
       read_info.next_line();
       goto continue_loop;
     }
 
     err = write_record(thd, table, &info, nullptr);
-    if (err) return true;
+    if (err)
+      return true;
     /*
       We don't need to reset auto-increment field since we are restoring
       its default value at the beginning of each loop iteration.
     */
-    if (read_info.next_line())  // Skip to next line
+    if (read_info.next_line()) // Skip to next line
       break;
     if (read_info.line_truncated) {
       thd->num_truncated_fields++; /* Too long row */
@@ -1135,7 +1163,8 @@ bool Sql_cmd_load_table::read_sep_field(THD *thd, COPY_INFO &info,
                           ER_WARN_TOO_MANY_RECORDS,
                           ER_THD(thd, ER_WARN_TOO_MANY_RECORDS),
                           thd->get_stmt_da()->current_row_for_condition());
-      if (thd->killed) return true;
+      if (thd->killed)
+        return true;
     }
     thd->get_stmt_da()->inc_current_row_for_condition();
   continue_loop:;
@@ -1170,7 +1199,8 @@ bool Sql_cmd_load_table::read_xml_field(THD *thd, COPY_INFO &info,
     }
 
     // read row tag and save values into tag list
-    if (read_info.read_xml()) break;
+    if (read_info.read_xml())
+      break;
 
     List_iterator_fast<XML_TAG> xmlit(read_info.taglist);
     xmlit.rewind();
@@ -1201,10 +1231,12 @@ bool Sql_cmd_load_table::read_xml_field(THD *thd, COPY_INFO &info,
     for (; it != m_opt_fields_or_vars.end(); ++it) {
       item = *it;
       /* If this line is to be skipped we don't want to fill field or var */
-      if (skip_lines) continue;
+      if (skip_lines)
+        continue;
 
       // Skip hidden generated columns.
-      if (is_hidden_generated_column(table, item)) continue;
+      if (is_hidden_generated_column(table, item))
+        continue;
 
       /* find field in tag list */
       xmlit.rewind();
@@ -1215,7 +1247,7 @@ bool Sql_cmd_load_table::read_xml_field(THD *thd, COPY_INFO &info,
 
       item = item->real_item();
 
-      if (!tag)  // found null
+      if (!tag) // found null
       {
         if (item->type() == Item::FIELD_ITEM) {
           Field *field = (static_cast<Item_field *>(item))->field;
@@ -1251,7 +1283,8 @@ bool Sql_cmd_load_table::read_xml_field(THD *thd, COPY_INFO &info,
       }
     }
 
-    if (read_info.error) break;
+    if (read_info.error)
+      break;
 
     if (skip_lines) {
       skip_lines--;
@@ -1260,7 +1293,8 @@ bool Sql_cmd_load_table::read_xml_field(THD *thd, COPY_INFO &info,
 
     if (item != nullptr) {
       /* Have not read any field, thus input file is simply ended */
-      if (it == m_opt_fields_or_vars.begin()) break;
+      if (it == m_opt_fields_or_vars.begin())
+        break;
 
       for (; it != m_opt_fields_or_vars.end(); item = *it++) {
         if (item->type() == Item::FIELD_ITEM) {
@@ -1288,19 +1322,21 @@ bool Sql_cmd_load_table::read_xml_field(THD *thd, COPY_INFO &info,
       return true;
 
     switch (table_list->view_check_option(thd)) {
-      case VIEW_CHECK_SKIP:
-        goto continue_loop;
-      case VIEW_CHECK_ERROR:
-        return true;
+    case VIEW_CHECK_SKIP:
+      goto continue_loop;
+    case VIEW_CHECK_ERROR:
+      return true;
     }
 
     if (invoke_table_check_constraints(thd, table)) {
-      if (thd->is_error()) return true;
+      if (thd->is_error())
+        return true;
       // continue when IGNORE clause is used.
       goto continue_loop;
     }
 
-    if (write_record(thd, table, &info, nullptr)) return true;
+    if (write_record(thd, table, &info, nullptr))
+      return true;
 
     /*
       We don't need to reset auto-increment field since we are restoring
@@ -1317,24 +1353,24 @@ bool Sql_cmd_load_table::read_xml_field(THD *thd, COPY_INFO &info,
 char READ_INFO::unescape(char chr) {
   /* keep this switch synchornous with the ESCAPE_CHARS macro */
   switch (chr) {
-    case 'n':
-      return '\n';
-    case 't':
-      return '\t';
-    case 'r':
-      return '\r';
-    case 'b':
-      return '\b';
-    case '0':
-      return 0;  // Ascii null
-    case 'Z':
-      return '\032';  // Win32 end of file
-    case 'N':
-      found_null = true;
+  case 'n':
+    return '\n';
+  case 't':
+    return '\t';
+  case 'r':
+    return '\r';
+  case 'b':
+    return '\b';
+  case '0':
+    return 0; // Ascii null
+  case 'Z':
+    return '\032'; // Win32 end of file
+  case 'N':
+    found_null = true;
 
-      [[fallthrough]];
-    default:
-      return chr;
+    [[fallthrough]];
+  default:
+    return chr;
   }
 }
 
@@ -1347,16 +1383,9 @@ READ_INFO::READ_INFO(File file_par, size_t tot_length, const CHARSET_INFO *cs,
                      const String &field_term, const String &line_start,
                      const String &line_term, const String &enclosed_par,
                      int escape, bool get_it_from_net, bool is_fifo)
-    : file(file_par),
-      buff_length(tot_length),
-      escape_char(escape),
-      found_end_of_line(false),
-      eof(false),
-      need_end_io_cache(false),
-      error(false),
-      line_truncated(false),
-      found_null(false),
-      read_charset(cs) {
+    : file(file_par), buff_length(tot_length), escape_char(escape),
+      found_end_of_line(false), eof(false), need_end_io_cache(false),
+      error(false), line_truncated(false), found_null(false), read_charset(cs) {
   /*
     Field and line terminators must be interpreted as sequence of unsigned char.
     Otherwise, non-ascii terminators will be negative on some platforms,
@@ -1402,10 +1431,10 @@ READ_INFO::READ_INFO(File file_par, size_t tot_length, const CHARSET_INFO *cs,
     error = true; /* purecov: inspected */
   } else {
     end_of_buff = buffer + buff_length;
-    if (init_io_cache(
-            &cache, (get_it_from_net) ? -1 : file, 0,
-            (get_it_from_net) ? READ_NET : (is_fifo ? READ_FIFO : READ_CACHE),
-            0L, true, MYF(MY_WME))) {
+    if (init_io_cache(&cache, (get_it_from_net) ? -1 : file, 0,
+                      (get_it_from_net) ? READ_NET
+                                        : (is_fifo ? READ_FIFO : READ_CACHE),
+                      0L, true, MYF(MY_WME))) {
       my_free(buffer); /* purecov: inspected */
       buffer = nullptr;
       error = true;
@@ -1417,7 +1446,8 @@ READ_INFO::READ_INFO(File file_par, size_t tot_length, const CHARSET_INFO *cs,
       */
       need_end_io_cache = true;
 
-      if (get_it_from_net) cache.read_function = _my_b_net_read;
+      if (get_it_from_net)
+        cache.read_function = _my_b_net_read;
 
       if (mysql_bin_log.is_open())
         cache.pre_read = cache.pre_close = (IO_CACHE_CALLBACK)log_loaded_block;
@@ -1426,12 +1456,15 @@ READ_INFO::READ_INFO(File file_par, size_t tot_length, const CHARSET_INFO *cs,
 }
 
 READ_INFO::~READ_INFO() {
-  if (need_end_io_cache) ::end_io_cache(&cache);
+  if (need_end_io_cache)
+    ::end_io_cache(&cache);
 
-  if (buffer != nullptr) my_free(buffer);
+  if (buffer != nullptr)
+    my_free(buffer);
   List_iterator<XML_TAG> xmlit(taglist);
   XML_TAG *t;
-  while ((t = xmlit++)) delete (t);
+  while ((t = xmlit++))
+    delete (t);
 }
 
 /**
@@ -1441,18 +1474,19 @@ READ_INFO::~READ_INFO() {
   @param[in]  chr the first char of sequence
   @param[out] len the length of multi-byte char
 */
-#define GET_MBCHARLEN(cs, chr, len)                     \
-  do {                                                  \
-    len = my_mbcharlen((cs), (chr));                    \
-    if (len == 0 && my_mbmaxlenlen((cs)) == 2) {        \
-      int chr1 = GET;                                   \
-      if (chr1 != my_b_EOF) {                           \
-        len = my_mbcharlen_2((cs), (chr), chr1);        \
-        /* Character is gb18030 or invalid (len = 0) */ \
-        assert(len == 0 || len == 2 || len == 4);       \
-      }                                                 \
-      if (len != 0) PUSH(chr1);                         \
-    }                                                   \
+#define GET_MBCHARLEN(cs, chr, len)                                            \
+  do {                                                                         \
+    len = my_mbcharlen((cs), (chr));                                           \
+    if (len == 0 && my_mbmaxlenlen((cs)) == 2) {                               \
+      int chr1 = GET;                                                          \
+      if (chr1 != my_b_EOF) {                                                  \
+        len = my_mbcharlen_2((cs), (chr), chr1);                               \
+        /* Character is gb18030 or invalid (len = 0) */                        \
+        assert(len == 0 || len == 2 || len == 4);                              \
+      }                                                                        \
+      if (len != 0)                                                            \
+        PUSH(chr1);                                                            \
+    }                                                                          \
   } while (0)
 
 /**
@@ -1473,9 +1507,11 @@ inline bool READ_INFO::terminator(const uchar *ptr, size_t length) {
       break;
     }
   }
-  if (i == length) return true;
+  if (i == length)
+    return true;
   PUSH(chr);
-  while (i-- > 1) PUSH(*--ptr);
+  while (i-- > 1)
+    PUSH(*--ptr);
   return false;
 }
 
@@ -1489,13 +1525,15 @@ bool READ_INFO::read_field() {
   uchar *to, *new_buffer;
 
   found_null = false;
-  if (found_end_of_line) return true;  // One have to call next_line
+  if (found_end_of_line)
+    return true; // One have to call next_line
 
   /* Skip until we find 'line_start' */
 
-  if (start_of_line) {  // Skip until line_start
+  if (start_of_line) { // Skip until line_start
     start_of_line = false;
-    if (find_start_of_fields()) return true;
+    if (find_start_of_fields())
+      return true;
   }
   if ((chr = GET) == my_b_EOF) {
     found_end_of_line = eof = true;
@@ -1504,7 +1542,7 @@ bool READ_INFO::read_field() {
   to = buffer;
   if (chr == enclosed_char) {
     found_enclosed_char = enclosed_char;
-    *to++ = (uchar)chr;  // If error
+    *to++ = (uchar)chr; // If error
   } else {
     found_enclosed_char = INT_MAX;
     PUSH(chr);
@@ -1514,7 +1552,8 @@ bool READ_INFO::read_field() {
     bool escaped_mb = false;
     while (to < end_of_buff) {
       chr = GET;
-      if (chr == my_b_EOF) goto found_eof;
+      if (chr == my_b_EOF)
+        goto found_eof;
       if (chr == escape_char) {
         if ((chr = GET) == my_b_EOF) {
           *to++ = (uchar)escape_char;
@@ -1551,7 +1590,7 @@ bool READ_INFO::read_field() {
       }
       if (chr == line_term_char && found_enclosed_char == INT_MAX) {
         if (terminator(line_term_ptr,
-                       line_term_length)) {  // Maybe unexpected linefeed
+                       line_term_length)) { // Maybe unexpected linefeed
           enclosed = false;
           found_end_of_line = true;
           row_start = buffer;
@@ -1560,7 +1599,7 @@ bool READ_INFO::read_field() {
         }
       }
       if (chr == found_enclosed_char) {
-        if ((chr = GET) == found_enclosed_char) {  // Remove duplicated
+        if ((chr = GET) == found_enclosed_char) { // Remove duplicated
           *to++ = (uchar)chr;
           continue;
         }
@@ -1568,7 +1607,7 @@ bool READ_INFO::read_field() {
         if (chr == my_b_EOF ||
             (chr == line_term_char &&
              terminator(line_term_ptr,
-                        line_term_length))) {  // Maybe unexpected linefeed
+                        line_term_length))) { // Maybe unexpected linefeed
           enclosed = true;
           found_end_of_line = true;
           row_start = buffer + 1;
@@ -1628,10 +1667,12 @@ bool READ_INFO::read_field() {
           }
           *to++ = chr;
         }
-        if (escaped_mb) escaped_mb = false;
+        if (escaped_mb)
+          escaped_mb = false;
         if (my_ismbchar(read_charset, (const char *)p, (const char *)to))
           continue;
-        for (uint i = 0; i < ml; i++) PUSH(*--to);
+        for (uint i = 0; i < ml; i++)
+          PUSH(*--to);
         chr = GET;
       } else if (ml > 1) {
         // Buffer is too small, exit while loop, and reallocate.
@@ -1679,16 +1720,19 @@ found_eof:
 bool READ_INFO::read_fixed_length() {
   int chr;
   uchar *to;
-  if (found_end_of_line) return true;  // One have to call next_line
+  if (found_end_of_line)
+    return true; // One have to call next_line
 
-  if (start_of_line) {  // Skip until line_start
+  if (start_of_line) { // Skip until line_start
     start_of_line = false;
-    if (find_start_of_fields()) return true;
+    if (find_start_of_fields())
+      return true;
   }
 
   to = row_start = buffer;
   while (to < end_of_buff) {
-    if ((chr = GET) == my_b_EOF) goto found_eof;
+    if ((chr = GET) == my_b_EOF)
+      goto found_eof;
     if (chr == escape_char) {
       if ((chr = GET) == my_b_EOF) {
         *to++ = (uchar)escape_char;
@@ -1699,7 +1743,7 @@ bool READ_INFO::read_fixed_length() {
     }
     if (chr == line_term_char) {
       if (terminator(line_term_ptr,
-                     line_term_length)) {  // Maybe unexpected linefeed
+                     line_term_length)) { // Maybe unexpected linefeed
         found_end_of_line = true;
         row_end = to;
         return false;
@@ -1707,7 +1751,7 @@ bool READ_INFO::read_fixed_length() {
     }
     *to++ = (uchar)chr;
   }
-  row_end = to;  // Found full line
+  row_end = to; // Found full line
   return false;
 
 found_eof:
@@ -1728,7 +1772,8 @@ bool READ_INFO::next_line() {
     return eof;
   }
   found_end_of_line = false;
-  if (!line_term_length) return false;  // No lines
+  if (!line_term_length)
+    return false; // No lines
   for (;;) {
     int chr = GET;
     uint ml;
@@ -1738,8 +1783,10 @@ bool READ_INFO::next_line() {
     }
     GET_MBCHARLEN(read_charset, chr, ml);
     if (ml > 1) {
-      for (uint i = 1; chr != my_b_EOF && i < ml; i++) chr = GET;
-      if (chr == escape_char) continue;
+      for (uint i = 1; chr != my_b_EOF && i < ml; i++)
+        chr = GET;
+      if (chr == escape_char)
+        continue;
     }
     if (chr == my_b_EOF) {
       eof = true;
@@ -1747,7 +1794,8 @@ bool READ_INFO::next_line() {
     }
     if (chr == escape_char) {
       line_truncated = true;
-      if (GET == my_b_EOF) return true;
+      if (GET == my_b_EOF)
+        return true;
       continue;
     }
     if (chr == line_term_char && terminator(line_term_ptr, line_term_length))
@@ -1769,10 +1817,10 @@ try_again:
     }
   } while ((char)chr != line_start_ptr[0]);
   for (const char *ptr = line_start_ptr + 1; ptr != line_start_end; ptr++) {
-    chr = GET;                // Eof will be checked later
-    if ((char)chr != *ptr) {  // Can't be line_start
+    chr = GET;               // Eof will be checked later
+    if ((char)chr != *ptr) { // Can't be line_start
       PUSH(chr);
-      while (--ptr != line_start_ptr) {  // Restart with next char
+      while (--ptr != line_start_ptr) { // Restart with next char
         PUSH(*ptr);
       }
       goto try_again;
@@ -1804,13 +1852,18 @@ void READ_INFO::clear_level(int level_arg) {
 */
 static int my_xml_entity_to_char(const char *name, size_t length) {
   if (length == 2) {
-    if (!memcmp(name, "gt", length)) return '>';
-    if (!memcmp(name, "lt", length)) return '<';
+    if (!memcmp(name, "gt", length))
+      return '>';
+    if (!memcmp(name, "lt", length))
+      return '<';
   } else if (length == 3) {
-    if (!memcmp(name, "amp", length)) return '&';
+    if (!memcmp(name, "amp", length))
+      return '&';
   } else if (length == 4) {
-    if (!memcmp(name, "quot", length)) return '"';
-    if (!memcmp(name, "apos", length)) return '\'';
+    if (!memcmp(name, "quot", length))
+      return '"';
+    if (!memcmp(name, "apos", length))
+      return '\'';
   }
   return -1;
 }
@@ -1862,13 +1915,15 @@ int READ_INFO::read_value(int delim, String *val) {
           TODO: check that the multi-byte sequence is valid.
         */
         chr = GET;
-        if (chr == my_b_EOF) return chr;
+        if (chr == my_b_EOF)
+          return chr;
       }
     }
     if (chr == '&') {
       tmp.length(0);
       for (chr = my_tospace(GET); chr != ';'; chr = my_tospace(GET)) {
-        if (chr == my_b_EOF) return chr;
+        if (chr == my_b_EOF)
+          return chr;
         tmp.append(chr);
       }
       if ((chr = my_xml_entity_to_char(tmp.ptr(), tmp.length())) >= 0)
@@ -1911,7 +1966,8 @@ int READ_INFO::read_cdata(String *val, bool *have_cdata) {
       */
       PUSH(chr);
       /* and all matched from the head. */
-      while (i--) PUSH(*--head_ptr);
+      while (i--)
+        PUSH(*--head_ptr);
 
       *have_cdata = false;
       return '<';
@@ -1962,166 +2018,172 @@ bool READ_INFO::read_xml() {
 
   for (chr = my_tospace(GET); chr != my_b_EOF;) {
     switch (chr) {
-      case '<': /* read tag */
-        /* TODO: check if this is a comment <!-- comment -->  */
-        chr = my_tospace(GET);
-        if (chr == '!') {
-          chr2 = GET;
-          chr3 = GET;
+    case '<': /* read tag */
+      /* TODO: check if this is a comment <!-- comment -->  */
+      chr = my_tospace(GET);
+      if (chr == '!') {
+        chr2 = GET;
+        chr3 = GET;
 
-          if (chr2 == '-' && chr3 == '-') {
-            chr2 = 0;
-            chr3 = 0;
-            chr = my_tospace(GET);
+        if (chr2 == '-' && chr3 == '-') {
+          chr2 = 0;
+          chr3 = 0;
+          chr = my_tospace(GET);
 
-            while (chr != '>' || chr2 != '-' || chr3 != '-') {
-              if (chr == '-') {
-                chr3 = chr2;
-                chr2 = chr;
-              } else if (chr2 == '-') {
-                chr2 = 0;
-                chr3 = 0;
-              }
-              chr = my_tospace(GET);
-              if (chr == my_b_EOF) goto found_eof;
+          while (chr != '>' || chr2 != '-' || chr3 != '-') {
+            if (chr == '-') {
+              chr3 = chr2;
+              chr2 = chr;
+            } else if (chr2 == '-') {
+              chr2 = 0;
+              chr3 = 0;
             }
-            break;
+            chr = my_tospace(GET);
+            if (chr == my_b_EOF)
+              goto found_eof;
           }
-        }
-
-        tag.length(0);
-        while (chr != '>' && chr != ' ' && chr != '/' && chr != my_b_EOF) {
-          if (chr != delim) /* fix for the '<field name =' format */
-            tag.append(chr);
-          chr = my_tospace(GET);
-        }
-
-        // row tag should be in ROWS IDENTIFIED BY '<row>' - stored in line_term
-        if ((tag.length() == line_term_length - 2) &&
-            (memcmp(tag.ptr(), line_term_ptr + 1, tag.length()) == 0)) {
-          DBUG_PRINT("read_xml", ("start-of-row: %i %s %s", level,
-                                  tag.c_ptr_safe(), line_term_ptr));
-        }
-
-        if (chr == ' ' || chr == '>') {
-          level++;
-          clear_level(level + 1);
-        }
-
-        if (chr == ' ')
-          in_tag = true;
-        else
-          in_tag = false;
-        break;
-
-      case ' ':            /* read attribute */
-        while (chr == ' ') /* skip blanks */
-          chr = my_tospace(GET);
-
-        if (!in_tag) break;
-
-        while (chr != '=' && chr != '/' && chr != '>' && chr != my_b_EOF) {
-          attribute.append(chr);
-          chr = my_tospace(GET);
-        }
-        break;
-
-      case '>': /* end tag - read tag value */
-        in_tag = false;
-        /* Skip all whitespaces */
-        while (' ' == (chr = my_tospace(GET))) {
-        }
-        /*
-          Push the first non-whitespace char back to Stack. This char would be
-          read in the upcoming call to read_value()
-         */
-        PUSH(chr);
-
-        /* Read <![CDATA[ ... ]]> and tag's value. */
-        bool have_cdata;
-        do {
-          chr = read_value('<', &value);
-          if (chr == my_b_EOF) goto found_eof;
-
-          chr = read_cdata(&value, &have_cdata);
-          if (chr == my_b_EOF) goto found_eof;
-        } while (have_cdata);
-
-        /* save value to list */
-        if (tag.length() > 0 && value.length() > 0) {
-          DBUG_PRINT("read_xml", ("lev:%i tag:%s val:%s", level,
-                                  tag.c_ptr_safe(), value.c_ptr_safe()));
-          taglist.push_front(new XML_TAG(level, tag, value));
-        }
-        tag.length(0);
-        value.length(0);
-        attribute.length(0);
-        break;
-
-      case '/': /* close tag */
-        chr = my_tospace(GET);
-        /* Decrease the 'level' only when (i) It's not an */
-        /* (without space) empty tag i.e. <tag/> or, (ii) */
-        /* It is of format <row col="val" .../>           */
-        if (chr != '>' || in_tag) {
-          level--;
-          in_tag = false;
-        }
-        if (chr != '>')  /* if this is an empty tag <tag   /> */
-          tag.length(0); /* we should keep tag value          */
-        while (chr != '>' && chr != my_b_EOF) {
-          tag.append(chr);
-          chr = my_tospace(GET);
-        }
-
-        if ((tag.length() == line_term_length - 2) &&
-            (memcmp(tag.ptr(), line_term_ptr + 1, tag.length()) == 0)) {
-          DBUG_PRINT("read_xml",
-                     ("found end-of-row %i %s", level, tag.c_ptr_safe()));
-          return false;  // normal return
-        }
-        chr = my_tospace(GET);
-        break;
-
-      case '=': /* attribute name end - read the value */
-        // check for tag field and attribute name
-        if (!memcmp(tag.c_ptr_safe(), STRING_WITH_LEN("field")) &&
-            !memcmp(attribute.c_ptr_safe(), STRING_WITH_LEN("name"))) {
-          /*
-            this is format <field name="xx">xx</field>
-            where actual fieldname is in attribute
-          */
-          delim = my_tospace(GET);
-          tag.length(0);
-          attribute.length(0);
-          chr = '<'; /* we pretend that it is a tag */
-          level--;
           break;
         }
+      }
 
-        // check for " or '
-        chr = GET;
-        if (chr == my_b_EOF) goto found_eof;
-        if (chr == '"' || chr == '\'') {
-          delim = chr;
-        } else {
-          delim = ' '; /* no delimiter, use space */
-          PUSH(chr);
-        }
+      tag.length(0);
+      while (chr != '>' && chr != ' ' && chr != '/' && chr != my_b_EOF) {
+        if (chr != delim) /* fix for the '<field name =' format */
+          tag.append(chr);
+        chr = my_tospace(GET);
+      }
 
-        chr = read_value(delim, &value);
-        if (attribute.length() > 0 && value.length() > 0) {
-          DBUG_PRINT("read_xml", ("lev:%i att:%s val:%s\n", level + 1,
-                                  attribute.c_ptr_safe(), value.c_ptr_safe()));
-          taglist.push_front(new XML_TAG(level + 1, attribute, value));
-        }
-        attribute.length(0);
-        value.length(0);
-        if (chr != ' ') chr = my_tospace(GET);
+      // row tag should be in ROWS IDENTIFIED BY '<row>' - stored in line_term
+      if ((tag.length() == line_term_length - 2) &&
+          (memcmp(tag.ptr(), line_term_ptr + 1, tag.length()) == 0)) {
+        DBUG_PRINT("read_xml", ("start-of-row: %i %s %s", level,
+                                tag.c_ptr_safe(), line_term_ptr));
+      }
+
+      if (chr == ' ' || chr == '>') {
+        level++;
+        clear_level(level + 1);
+      }
+
+      if (chr == ' ')
+        in_tag = true;
+      else
+        in_tag = false;
+      break;
+
+    case ' ':            /* read attribute */
+      while (chr == ' ') /* skip blanks */
+        chr = my_tospace(GET);
+
+      if (!in_tag)
         break;
 
-      default:
+      while (chr != '=' && chr != '/' && chr != '>' && chr != my_b_EOF) {
+        attribute.append(chr);
         chr = my_tospace(GET);
+      }
+      break;
+
+    case '>': /* end tag - read tag value */
+      in_tag = false;
+      /* Skip all whitespaces */
+      while (' ' == (chr = my_tospace(GET))) {
+      }
+      /*
+        Push the first non-whitespace char back to Stack. This char would be
+        read in the upcoming call to read_value()
+       */
+      PUSH(chr);
+
+      /* Read <![CDATA[ ... ]]> and tag's value. */
+      bool have_cdata;
+      do {
+        chr = read_value('<', &value);
+        if (chr == my_b_EOF)
+          goto found_eof;
+
+        chr = read_cdata(&value, &have_cdata);
+        if (chr == my_b_EOF)
+          goto found_eof;
+      } while (have_cdata);
+
+      /* save value to list */
+      if (tag.length() > 0 && value.length() > 0) {
+        DBUG_PRINT("read_xml", ("lev:%i tag:%s val:%s", level, tag.c_ptr_safe(),
+                                value.c_ptr_safe()));
+        taglist.push_front(new XML_TAG(level, tag, value));
+      }
+      tag.length(0);
+      value.length(0);
+      attribute.length(0);
+      break;
+
+    case '/': /* close tag */
+      chr = my_tospace(GET);
+      /* Decrease the 'level' only when (i) It's not an */
+      /* (without space) empty tag i.e. <tag/> or, (ii) */
+      /* It is of format <row col="val" .../>           */
+      if (chr != '>' || in_tag) {
+        level--;
+        in_tag = false;
+      }
+      if (chr != '>')  /* if this is an empty tag <tag   /> */
+        tag.length(0); /* we should keep tag value          */
+      while (chr != '>' && chr != my_b_EOF) {
+        tag.append(chr);
+        chr = my_tospace(GET);
+      }
+
+      if ((tag.length() == line_term_length - 2) &&
+          (memcmp(tag.ptr(), line_term_ptr + 1, tag.length()) == 0)) {
+        DBUG_PRINT("read_xml",
+                   ("found end-of-row %i %s", level, tag.c_ptr_safe()));
+        return false; // normal return
+      }
+      chr = my_tospace(GET);
+      break;
+
+    case '=': /* attribute name end - read the value */
+      // check for tag field and attribute name
+      if (!memcmp(tag.c_ptr_safe(), STRING_WITH_LEN("field")) &&
+          !memcmp(attribute.c_ptr_safe(), STRING_WITH_LEN("name"))) {
+        /*
+          this is format <field name="xx">xx</field>
+          where actual fieldname is in attribute
+        */
+        delim = my_tospace(GET);
+        tag.length(0);
+        attribute.length(0);
+        chr = '<'; /* we pretend that it is a tag */
+        level--;
+        break;
+      }
+
+      // check for " or '
+      chr = GET;
+      if (chr == my_b_EOF)
+        goto found_eof;
+      if (chr == '"' || chr == '\'') {
+        delim = chr;
+      } else {
+        delim = ' '; /* no delimiter, use space */
+        PUSH(chr);
+      }
+
+      chr = read_value(delim, &value);
+      if (attribute.length() > 0 && value.length() > 0) {
+        DBUG_PRINT("read_xml", ("lev:%i att:%s val:%s\n", level + 1,
+                                attribute.c_ptr_safe(), value.c_ptr_safe()));
+        taglist.push_front(new XML_TAG(level + 1, attribute, value));
+      }
+      attribute.length(0);
+      value.length(0);
+      if (chr != ' ')
+        chr = my_tospace(GET);
+      break;
+
+    default:
+      chr = my_tospace(GET);
     } /* end switch */
   }   /* end while */
 
@@ -2146,7 +2208,8 @@ bool Sql_cmd_load_table::execute(THD *thd) {
     }
   }
 
-  if (check_one_table_access(thd, privilege, lex->query_tables)) return true;
+  if (check_one_table_access(thd, privilege, lex->query_tables))
+    return true;
 
   /* Push strict / ignore error handler */
   Ignore_error_handler ignore_handler;

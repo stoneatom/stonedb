@@ -14,8 +14,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
-#ifndef TIANMU_HANDLER_HA_RCENGINE_H_
-#define TIANMU_HANDLER_HA_RCENGINE_H_
+#ifndef HA_MY_TIANMU_H_
+#define HA_MY_TIANMU_H_
 #pragma once
 
 // mysql <--> tianmu interface functions
@@ -34,4 +34,4 @@ bool tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
 }  // namespace dbhandler
 }  //  namespace Tianmu
 
-#endif  // TIANMU_HANDLER_HA_RCENGINE_H_
+#endif  // HA_MY_TIANMU_H_

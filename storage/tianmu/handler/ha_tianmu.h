@@ -14,8 +14,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
-#ifndef TIANMU_HANDLER_TIANMU_HANDLER_H_
-#define TIANMU_HANDLER_TIANMU_HANDLER_H_
+#ifndef HA_TIANMU_H_
+#define HA_TIANMU_H_
 #pragma once
 
 #include "common/common_definitions.h"
@@ -194,4 +194,4 @@ class TianmuHandler final : public handler {
 }  // namespace dbhandler
 }  // namespace Tianmu
 
-#endif  // TIANMU_HANDLER_TIANMU_HANDLER_H_
+#endif  // HA_TIANMU_H_

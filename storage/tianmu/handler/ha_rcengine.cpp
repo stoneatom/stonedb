@@ -14,137 +14,745 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
+#include <arpa/inet.h>
+#include <netdb.h>  // stonedb8 for gethostbyname()
 
-#include "common/mysql_gate.h"
-#include "core/compilation_tools.h"
-#include "core/engine.h"
-#include "system/configuration.h"
-#include "util/log_ctl.h"
-#include "vc/virtual_column.h"
+#include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
+
+#include "binlog.h"
+#include "core/transaction.h"
+#include "handler/ha_tianmu.h"
+#include "mm/initializer.h"
+#include "system/file_out.h"
+
+handlerton *rcbase_hton;
+
+struct SYS_VAR {
+  MYSQL_PLUGIN_VAR_HEADER;
+};
 
 namespace Tianmu {
 namespace dbhandler {
 
-enum class TIANMUEngineReturnValues { LD_Successed = 100, LD_Failed = 101, LD_Continue = 102 };
+/*
+ If frm_error() is called then we will use this to to find out what file
+ extentions exist for the storage engine. This is also used by the default
+ rename_table and delete_table method in handler.cc.
+ */
+bool tianmu_bootstrap = 0;
 
-void TIANMU_UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
-                                        CHARSET_INFO *cs) {
+char *strmov_str(char *dst, const char *src) {
+  while ((*dst++ = *src++))
+    ;
+  return dst - 1;
+}
+
+static int rcbase_done_func([[maybe_unused]] void *p) {
+  DBUG_ENTER(__PRETTY_FUNCTION__);
+
+  if (ha_rcengine_) {
+    delete ha_rcengine_;
+    ha_rcengine_ = nullptr;
+  }
+  if (ha_kvstore_) {
+    delete ha_kvstore_;
+    ha_kvstore_ = nullptr;
+  }
+
+  DBUG_RETURN(0);
+}
+
+handler *rcbase_create_handler(handlerton *hton, TABLE_SHARE *table, bool partitioned, MEM_ROOT *mem_root) {
+  return new (mem_root) TianmuHandler(hton, table, partitioned);
+}
+
+int rcbase_panic_func([[maybe_unused]] handlerton *hton, enum ha_panic_function flag) {
+  if (tianmu_bootstrap) return 0;
+
+  if (flag == HA_PANIC_CLOSE) {
+    delete ha_rcengine_;
+    ha_rcengine_ = nullptr;
+    delete ha_kvstore_;
+    ha_kvstore_ = nullptr;
+  }
+  return 0;
+}
+
+int rcbase_rollback([[maybe_unused]] handlerton *hton, THD *thd, bool all) {
+  DBUG_ENTER(__PRETTY_FUNCTION__);
+
+  int ret = 1;
   try {
-    ha_rcengine_->UpdateAndStoreColumnComment(table, field_id, source_field, source_field_id, cs);
+    ha_rcengine_->Rollback(thd, all);
+    ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s.", e.what());
+    TIANMU_LOG(LogCtl_Level::ERROR, "An exception error is caught: %s.", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
+
+  DBUG_RETURN(ret);
 }
 
-namespace {
-bool AtLeastOneTIANMUTableInvolved(LEX *lex) {
-  for (TABLE_LIST *table_list = lex->query_tables; table_list; table_list = table_list->next_global) {
-    TABLE *table = table_list->table;
-    if (core::Engine::IsTIANMUTable(table)) return true;
-  }
-  return false;
-}
+int rcbase_close_connection(handlerton *hton, THD *thd) {
+  DBUG_ENTER(__PRETTY_FUNCTION__);
 
-bool ForbiddenMySQLQueryPath([[maybe_unused]] LEX *lex) { return (tianmu_sysvar_allowmysqlquerypath == 0); }
-}  // namespace
-
-bool TIANMU_SetStatementAllowed(THD *thd, LEX *lex) {
-  if (AtLeastOneTIANMUTableInvolved(lex)) {
-    if (ForbiddenMySQLQueryPath(lex)) {
-      my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
-                 "Queries inside SET statements are not supported. "
-                 "Enable the MySQL core::Query Path in my.cnf to execute the query "
-                 "with reduced "
-                 "performance.",
-                 MYF(0));
-      return false;
-    } else
-      push_warning(thd, Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
-                   "SET statement not supported by the Tianmu Optimizer. The "
-                   "query executed "
-                   "by MySQL engine.");
-  }
-  return true;
-}
-
-int TIANMU_HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
-                        int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
-  int ret = RCBASE_QUERY_ROUTE;
+  int ret = 1;
   try {
-    // handle_select_ret is introduced here because in case of some exceptions
-    // (e.g. thrown from ForbiddenMySQLQueryPath) we want to return
-    // RCBASE_QUERY_ROUTE
-    int handle_select_ret = ha_rcengine_->HandleSelect(thd, lex, result, setup_tables_done_option, res,
-                                                       optimize_after_tianmu, tianmu_free_join, with_insert);
-    if (handle_select_ret == RETURN_QUERY_TO_MYSQL_ROUTE && AtLeastOneTIANMUTableInvolved(lex) &&
-        ForbiddenMySQLQueryPath(lex)) {
-      my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
-                 "The query includes syntax that is not supported by the storage engine. \
-Either restructure the query with supported syntax, or enable the MySQL core::Query Path in config file to execute the query with reduced performance.",
-                 MYF(0));
-      handle_select_ret = RCBASE_QUERY_ROUTE;
-    }
-    ret = handle_select_ret;
+    rcbase_rollback(hton, thd, true);
+    ha_rcengine_->ClearTx(thd);
+    ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    TIANMU_LOG(LogCtl_Level::ERROR, "HandleSelect Error: %s", e.what());
+    TIANMU_LOG(LogCtl_Level::ERROR, "An exception error is caught: %s.", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
-  return ret;
+
+  DBUG_RETURN(ret);
 }
 
-int TIANMU_LoadData(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg, char *errmsg, int len,
-                    int &errcode) {
-  common::TIANMUError tianmu_error;
-  int ret = static_cast<int>(TIANMUEngineReturnValues::LD_Failed);
+int rcbase_commit([[maybe_unused]] handlerton *hton, THD *thd, bool all) {
+  DBUG_ENTER(__PRETTY_FUNCTION__);
 
-  if (!core::Engine::IsTIANMUTable(table_list->table)) return static_cast<int>(TIANMUEngineReturnValues::LD_Continue);
+  int ret = 1;
+  std::string error_message;
 
-  try {
-    tianmu_error = ha_rcengine_->RunLoader(thd, ex, table_list, arg);
-    if (tianmu_error.GetErrorCode() != common::ErrorCode::SUCCESS) {
-      TIANMU_LOG(LogCtl_Level::ERROR, "RunLoader Error: %s", tianmu_error.Message().c_str());
-    } else {
-      ret = static_cast<int>(TIANMUEngineReturnValues::LD_Successed);
+  if (!(thd->is_error() || thd->killed || thd->transaction_rollback_request)) {
+    try {
+      ha_rcengine_->CommitTx(thd, all);
+      ret = 0;
+    } catch (std::exception &e) {
+      error_message = std::string("Error: ") + e.what();
+    } catch (...) {
+      error_message = std::string(__func__) + " An unknown system exception error caught.";
     }
-  } catch (std::exception &e) {
-    tianmu_error = common::TIANMUError(common::ErrorCode::UNKNOWN_ERROR, e.what());
-    TIANMU_LOG(LogCtl_Level::ERROR, "RunLoader Error: %s", tianmu_error.Message().c_str());
-  } catch (...) {
-    tianmu_error = common::TIANMUError(common::ErrorCode::UNKNOWN_ERROR, "An unknown system exception error caught.");
-    TIANMU_LOG(LogCtl_Level::ERROR, "RunLoader Error: %s", tianmu_error.Message().c_str());
   }
-  std::strncpy(errmsg, tianmu_error.Message().c_str(), len - 1);
-  errmsg[len - 1] = '\0';
-  errcode = (int)tianmu_error.GetErrorCode();
-  return ret;
+
+  if (ret) {
+    try {
+      ha_rcengine_->Rollback(thd, all, true);
+      if (!error_message.empty()) {
+        TIANMU_LOG(LogCtl_Level::ERROR, "%s", error_message.c_str());
+        my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), error_message.c_str(), MYF(0));
+      }
+    } catch (std::exception &e) {
+      if (!error_message.empty()) {
+        TIANMU_LOG(LogCtl_Level::ERROR, "%s", error_message.c_str());
+        my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), error_message.c_str(), MYF(0));
+      }
+      my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
+                 (std::string("Failed to rollback transaction. Error: ") + e.what()).c_str(), MYF(0));
+      TIANMU_LOG(LogCtl_Level::ERROR, "Failed to rollback transaction. Error: %s.", e.what());
+    } catch (...) {
+      if (!error_message.empty()) {
+        TIANMU_LOG(LogCtl_Level::ERROR, "%s", error_message.c_str());
+        my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), error_message.c_str(), MYF(0));
+      }
+      my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Failed to rollback transaction. Unknown error.",
+                 MYF(0));
+      TIANMU_LOG(LogCtl_Level::ERROR, "Failed to rollback transaction. Unknown error.");
+    }
+  }
+
+  DBUG_RETURN(ret);
 }
 
-// returning true means 'to continue'
-bool tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) {
-  char tianmumsg[256];
-  int tianmu_errcode;
-  switch (static_cast<TIANMUEngineReturnValues>(
-      TIANMU_LoadData(thd, ex, table_list, arg, tianmumsg, 256, tianmu_errcode))) {
-    case TIANMUEngineReturnValues::LD_Continue:
-      return true;
-    case TIANMUEngineReturnValues::LD_Failed:
-      my_message(tianmu_errcode, tianmumsg, MYF(0));
-      [[fallthrough]];
-    case TIANMUEngineReturnValues::LD_Successed:
-      return false;
-    default:
-      my_message(tianmu_errcode, tianmumsg, MYF(0));
-      break;
+bool rcbase_show_status([[maybe_unused]] handlerton *hton, THD *thd, stat_print_fn *pprint, enum ha_stat_type stat) {
+  const static char *hton_name = "TIANMU";
+
+  std::ostringstream buf(std::ostringstream::out);
+
+  buf << std::endl;
+
+  if (stat == HA_ENGINE_STATUS) {
+    mm::TraceableObject::Instance()->HeapHistogram(buf);
+    return pprint(thd, hton_name, uint(std::strlen(hton_name)), "Heap Histograms", uint(std::strlen("Heap Histograms")),
+                  buf.str().c_str(), uint(buf.str().length()));
   }
   return false;
 }
 
+extern bool tianmu_bootstrap;
+
+static int init_variables() {
+  opt_binlog_order_commits = false;
+  return 0;
+}
+
+int rcbase_init_func(void *p) {
+  DBUG_ENTER(__PRETTY_FUNCTION__);
+  rcbase_hton = (handlerton *)p;
+
+  if (init_variables()) {
+    DBUG_RETURN(1);
+  }
+
+  rcbase_hton->state = SHOW_OPTION_YES;
+  rcbase_hton->db_type = DB_TYPE_TIANMU;
+  rcbase_hton->create = rcbase_create_handler;
+  rcbase_hton->flags = HTON_NO_FLAGS;
+  rcbase_hton->panic = rcbase_panic_func;
+  rcbase_hton->close_connection = rcbase_close_connection;
+  rcbase_hton->commit = rcbase_commit;
+  rcbase_hton->rollback = rcbase_rollback;
+  rcbase_hton->show_status = rcbase_show_status;
+
+  // When mysqld runs as bootstrap mode, we do not need to initialize
+  // memmanager.
+  if (tianmu_bootstrap) DBUG_RETURN(0);
+
+  int ret = 1;
+  ha_rcengine_ = NULL;
+
+  try {
+    std::string log_file = mysql_home_ptr;
+    log_setup(log_file + "/log/tianmu.log");
+    rc_control_.addOutput(new system::FileOut(log_file + "/log/trace.log"));
+    rc_querylog_.addOutput(new system::FileOut(log_file + "/log/query.log"));
+    struct hostent *hent = NULL;
+    hent = gethostbyname(glob_hostname);
+    if (hent) strmov_str(global_hostIP_, inet_ntoa(*(struct in_addr *)(hent->h_addr_list[0])));
+    snprintf(global_serverinfo_, sizeof(global_serverinfo_), "\tServerIp:%s\tServerHostName:%s\tServerPort:%d",
+             global_hostIP_, glob_hostname, mysqld_port);
+    ha_kvstore_ = new index::KVStore();
+    ha_kvstore_->Init();
+    ha_rcengine_ = new core::Engine();
+    ret = ha_rcengine_->Init(rcbase_hton->slot);  // stonedb8
+    {
+      TIANMU_LOG(LogCtl_Level::INFO,
+                 "\n"
+                 "------------------------------------------------------------"
+                 "----------------------------------"
+                 "-------------\n"
+                 "    ######  ########  #######  ##     ## ######## ######   "
+                 "######   \n"
+                 "   ##    ##    ##    ##     ## ####   ## ##       ##    ## "
+                 "##    ## \n"
+                 "   ##          ##    ##     ## ## ##  ## ##       ##    ## "
+                 "##    ## \n"
+                 "    ######     ##    ##     ## ##  ## ## ######   ##    ## "
+                 "######## \n"
+                 "         ##    ##    ##     ## ##   #### ##       ##    ## "
+                 "##    ## \n"
+                 "   ##    ##    ##    ##     ## ##    ### ##       ##    ## "
+                 "##    ## \n"
+                 "    ######     ##     #######  ##     ## ######## ######   "
+                 "######   \n"
+                 "------------------------------------------------------------"
+                 "----------------------------------"
+                 "-------------\n");
+    }
+
+  } catch (std::exception &e) {
+    my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
+    TIANMU_LOG(LogCtl_Level::ERROR, "An exception error is caught: %s.", e.what());
+  } catch (...) {
+    my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
+    TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
+  }
+
+  DBUG_RETURN(ret);
+}
+
+struct st_mysql_storage_engine tianmu_storage_engine = {MYSQL_HANDLERTON_INTERFACE_VERSION};
+
+int get_DelayedBufferUsage_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *var, char *buff) {
+  var->type = SHOW_CHAR;
+  var->value = buff;
+  std::string str = ha_rcengine_->DelayedBufferStat();
+  std::memcpy(buff, str.c_str(), str.length() + 1);
+  return 0;
+}
+
+int get_RowStoreUsage_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *var, char *buff) {
+  var->type = SHOW_CHAR;
+  var->value = buff;
+  std::string str = ha_rcengine_->RowStoreStat();
+  std::memcpy(buff, str.c_str(), str.length() + 1);
+  return 0;
+}
+
+int get_InsertPerMinute_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
+  *((int64_t *)tmp) = ha_rcengine_->GetIPM();
+  outvar->value = tmp;
+  outvar->type = SHOW_LONG;
+  return 0;
+}
+
+int get_QueryPerMinute_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
+  *((int64_t *)tmp) = ha_rcengine_->GetQPM();
+  outvar->value = tmp;
+  outvar->type = SHOW_LONG;
+  return 0;
+}
+
+int get_LoadPerMinute_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
+  *((int64_t *)tmp) = ha_rcengine_->GetLPM();
+  outvar->value = tmp;
+  outvar->type = SHOW_LONG;
+  return 0;
+}
+
+int get_Freeable_StatusVar([[maybe_unused]] MYSQL_THD thd, struct SHOW_VAR *outvar, char *tmp) {
+  *((int64_t *)tmp) = mm::TraceableObject::GetFreeableSize();
+  outvar->value = tmp;
+  outvar->type = SHOW_LONGLONG;
+  return 0;
+}
+
+int get_UnFreeable_StatusVar([[maybe_unused]] MYSQL_THD thd, struct SHOW_VAR *outvar, char *tmp) {
+  *((int64_t *)tmp) = mm::TraceableObject::GetUnFreeableSize();
+  outvar->value = tmp;
+  outvar->type = SHOW_LONGLONG;
+  return 0;
+}
+
+int get_MemoryScale_StatusVar([[maybe_unused]] MYSQL_THD thd, struct SHOW_VAR *outvar, char *tmp) {
+  *((int64_t *)tmp) = mm::TraceableObject::MemorySettingsScale();
+  outvar->value = tmp;
+  outvar->type = SHOW_LONGLONG;
+  return 0;
+}
+
+int get_InsertTotal_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
+  *((int64_t *)tmp) = ha_rcengine_->GetIT();
+  outvar->value = tmp;
+  outvar->type = SHOW_LONG;
+  return 0;
+}
+
+int get_QueryTotal_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
+  *((int64_t *)tmp) = ha_rcengine_->GetQT();
+  outvar->value = tmp;
+  outvar->type = SHOW_LONG;
+  return 0;
+}
+
+int get_LoadTotal_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
+  *((int64_t *)tmp) = ha_rcengine_->GetLT();
+  outvar->value = tmp;
+  outvar->type = SHOW_LONG;
+  return 0;
+}
+
+int get_LoadDupTotal_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
+  *((int64_t *)tmp) = ha_rcengine_->GetLDT();
+  outvar->value = tmp;
+  outvar->type = SHOW_LONG;
+  return 0;
+}
+
+int get_LoadDupPerMinute_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
+  *((int64_t *)tmp) = ha_rcengine_->GetLDPM();
+  outvar->value = tmp;
+  outvar->type = SHOW_LONG;
+  return 0;
+}
+
+int get_UpdateTotal_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
+  *((int64_t *)tmp) = ha_rcengine_->GetUT();
+  outvar->value = tmp;
+  outvar->type = SHOW_LONG;
+  return 0;
+}
+
+int get_UpdatePerMinute_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *outvar, char *tmp) {
+  *((int64_t *)tmp) = ha_rcengine_->GetUPM();
+  outvar->value = tmp;
+  outvar->type = SHOW_LONG;
+  return 0;
+}
+
+char masteslave_info[8192];
+
+SHOW_VAR tianmu_masterslave_dump[] = {{"info", masteslave_info, SHOW_CHAR, SHOW_SCOPE_UNDEF},
+                                      {NullS, NullS, SHOW_LONG, SHOW_SCOPE_UNDEF}};
+
+//  showtype
+//  =====================
+//  SHOW_UNDEF, SHOW_BOOL, SHOW_INT, SHOW_LONG,
+//  SHOW_LONGLONG, SHOW_CHAR, SHOW_CHAR_PTR,
+//  SHOW_ARRAY, SHOW_FUNC, SHOW_DOUBLE
+
+int tianmu_throw_error_func([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] struct SYS_VAR *var,
+                            [[maybe_unused]] void *save, struct st_mysql_value *value) {
+  int buffer_length = 512;
+  char buff[512] = {0};
+
+  DEBUG_ASSERT(value->value_type(value) == MYSQL_VALUE_TYPE_STRING);
+
+  my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), value->val_str(value, buff, &buffer_length), MYF(0));
+  return -1;
+}
+
+static void update_func_str([[maybe_unused]] THD *thd, struct SYS_VAR *var, void *tgt, const void *save) {
+  char *old = *(char **)tgt;
+  *(char **)tgt = *(char **)save;
+  if (var->flags & PLUGIN_VAR_MEMALLOC) {
+    *(char **)tgt = my_strdup(PSI_NOT_INSTRUMENTED, *(char **)save, MYF(0));
+    my_free(old);
+  }
+}
+
+void refresh_sys_table_func([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] struct SYS_VAR *var, void *tgt,
+                            const void *save) {
+  *(bool *)tgt = *(bool *)save ? true : false;
+}
+
+void debug_update(MYSQL_THD thd, struct SYS_VAR *var, void *var_ptr, const void *save);
+void trace_update(MYSQL_THD thd, struct SYS_VAR *var, void *var_ptr, const void *save);
+void controlquerylog_update(MYSQL_THD thd, struct SYS_VAR *var, void *var_ptr, const void *save);
+void start_async_update(MYSQL_THD thd, struct SYS_VAR *var, void *var_ptr, const void *save);
+extern void async_join_update(MYSQL_THD thd, struct SYS_VAR *var, void *var_ptr, const void *save);
+
+#define STATUS_FUNCTION(name, showtype, member)                                                    \
+  int get_##name##_StatusVar([[maybe_unused]] MYSQL_THD thd, struct SHOW_VAR *outvar, char *tmp) { \
+    *((int64_t *)tmp) = ha_rcengine_->cache.member();                                              \
+    outvar->value = tmp;                                                                           \
+    outvar->type = showtype;                                                                       \
+    return 0;                                                                                      \
+  }
+
+#define MM_STATUS_FUNCTION(name, showtype, member)                                                 \
+  int get_##name##_StatusVar([[maybe_unused]] MYSQL_THD thd, struct SHOW_VAR *outvar, char *tmp) { \
+    *((int64_t *)tmp) = mm::TraceableObject::Instance()->member();                                 \
+    outvar->value = tmp;                                                                           \
+    outvar->type = showtype;                                                                       \
+    return 0;                                                                                      \
+  }
+
+#define STATUS_MEMBER(name, label) \
+  { "Tianmu_" #label, (char *)get_##name##_StatusVar, SHOW_FUNC, SHOW_SCOPE_UNDEF }
+
+STATUS_FUNCTION(gdchits, SHOW_LONGLONG, getCacheHits)
+STATUS_FUNCTION(gdcmisses, SHOW_LONGLONG, getCacheMisses)
+STATUS_FUNCTION(gdcreleased, SHOW_LONGLONG, getReleased)
+STATUS_FUNCTION(gdcreadwait, SHOW_LONGLONG, getReadWait)
+STATUS_FUNCTION(gdcfalsewakeup, SHOW_LONGLONG, getFalseWakeup)
+STATUS_FUNCTION(gdcreadwaitinprogress, SHOW_LONGLONG, getReadWaitInProgress)
+STATUS_FUNCTION(gdcpackloads, SHOW_LONGLONG, getPackLoads)
+STATUS_FUNCTION(gdcloaderrors, SHOW_LONGLONG, getLoadErrors)
+STATUS_FUNCTION(gdcredecompress, SHOW_LONGLONG, getReDecompress)
+
+MM_STATUS_FUNCTION(mmallocblocks, SHOW_LONGLONG, getAllocBlocks)
+MM_STATUS_FUNCTION(mmallocobjs, SHOW_LONGLONG, getAllocObjs)
+MM_STATUS_FUNCTION(mmallocsize, SHOW_LONGLONG, getAllocSize)
+MM_STATUS_FUNCTION(mmallocpack, SHOW_LONGLONG, getAllocPack)
+MM_STATUS_FUNCTION(mmalloctemp, SHOW_LONGLONG, getAllocTemp)
+MM_STATUS_FUNCTION(mmalloctempsize, SHOW_LONGLONG, getAllocTempSize)
+MM_STATUS_FUNCTION(mmallocpacksize, SHOW_LONGLONG, getAllocPackSize)
+MM_STATUS_FUNCTION(mmfreeblocks, SHOW_LONGLONG, getFreeBlocks)
+MM_STATUS_FUNCTION(mmfreepacks, SHOW_LONGLONG, getFreePacks)
+MM_STATUS_FUNCTION(mmfreetemp, SHOW_LONGLONG, getFreeTemp)
+MM_STATUS_FUNCTION(mmfreepacksize, SHOW_LONGLONG, getFreePackSize)
+MM_STATUS_FUNCTION(mmfreetempsize, SHOW_LONGLONG, getFreeTempSize)
+MM_STATUS_FUNCTION(mmfreesize, SHOW_LONGLONG, getFreeSize)
+MM_STATUS_FUNCTION(mmrelease1, SHOW_LONGLONG, getReleaseCount1)
+MM_STATUS_FUNCTION(mmrelease2, SHOW_LONGLONG, getReleaseCount2)
+MM_STATUS_FUNCTION(mmrelease3, SHOW_LONGLONG, getReleaseCount3)
+MM_STATUS_FUNCTION(mmrelease4, SHOW_LONGLONG, getReleaseCount4)
+MM_STATUS_FUNCTION(mmreloaded, SHOW_LONGLONG, getReloaded)
+MM_STATUS_FUNCTION(mmreleasecount, SHOW_LONGLONG, getReleaseCount)
+MM_STATUS_FUNCTION(mmreleasetotal, SHOW_LONGLONG, getReleaseTotal)
+
+static struct SHOW_VAR statusvars[] = {
+    STATUS_MEMBER(gdchits, gdc_hits),
+    STATUS_MEMBER(gdcmisses, gdc_misses),
+    STATUS_MEMBER(gdcreleased, gdc_released),
+    STATUS_MEMBER(gdcreadwait, gdc_readwait),
+    STATUS_MEMBER(gdcfalsewakeup, gdc_false_wakeup),
+    STATUS_MEMBER(gdcreadwaitinprogress, gdc_read_wait_in_progress),
+    STATUS_MEMBER(gdcpackloads, gdc_pack_loads),
+    STATUS_MEMBER(gdcloaderrors, gdc_load_errors),
+    STATUS_MEMBER(gdcredecompress, gdc_redecompress),
+    STATUS_MEMBER(mmrelease1, mm_release1),
+    STATUS_MEMBER(mmrelease2, mm_release2),
+    STATUS_MEMBER(mmrelease3, mm_release3),
+    STATUS_MEMBER(mmrelease4, mm_release4),
+    STATUS_MEMBER(mmallocblocks, mm_alloc_blocs),
+    STATUS_MEMBER(mmallocobjs, mm_alloc_objs),
+    STATUS_MEMBER(mmallocsize, mm_alloc_size),
+    STATUS_MEMBER(mmallocpack, mm_alloc_packs),
+    STATUS_MEMBER(mmalloctemp, mm_alloc_temp),
+    STATUS_MEMBER(mmalloctempsize, mm_alloc_temp_size),
+    STATUS_MEMBER(mmallocpacksize, mm_alloc_pack_size),
+    STATUS_MEMBER(mmfreeblocks, mm_free_blocks),
+    STATUS_MEMBER(mmfreepacks, mm_free_packs),
+    STATUS_MEMBER(mmfreetemp, mm_free_temp),
+    STATUS_MEMBER(mmfreepacksize, mm_free_pack_size),
+    STATUS_MEMBER(mmfreetempsize, mm_free_temp_size),
+    STATUS_MEMBER(mmfreesize, mm_free_size),
+    STATUS_MEMBER(mmreloaded, mm_reloaded),
+    STATUS_MEMBER(mmreleasecount, mm_release_count),
+    STATUS_MEMBER(mmreleasetotal, mm_release_total),
+    STATUS_MEMBER(DelayedBufferUsage, delay_buffer_usage),
+    STATUS_MEMBER(RowStoreUsage, row_store_usage),
+    STATUS_MEMBER(Freeable, mm_freeable),
+    STATUS_MEMBER(InsertPerMinute, insert_per_minute),
+    STATUS_MEMBER(LoadPerMinute, load_per_minute),
+    STATUS_MEMBER(QueryPerMinute, query_per_minute),
+    STATUS_MEMBER(MemoryScale, mm_scale),
+    STATUS_MEMBER(UnFreeable, mm_unfreeable),
+    STATUS_MEMBER(InsertTotal, insert_total),
+    STATUS_MEMBER(LoadTotal, load_total),
+    STATUS_MEMBER(QueryTotal, query_total),
+    STATUS_MEMBER(LoadDupPerMinute, load_dup_per_minute),
+    STATUS_MEMBER(LoadDupTotal, load_dup_total),
+    STATUS_MEMBER(UpdatePerMinute, update_per_minute),
+    STATUS_MEMBER(UpdateTotal, update_total),
+    {0, 0, SHOW_UNDEF, SHOW_SCOPE_UNDEF},
+};
+
+static MYSQL_SYSVAR_BOOL(refresh_sys_tianmu, tianmu_sysvar_refresh_sys_table, PLUGIN_VAR_BOOL, "-", NULL,
+                         refresh_sys_table_func, true);
+static MYSQL_THDVAR_STR(trigger_error, PLUGIN_VAR_STR | PLUGIN_VAR_THDLOCAL, "-", tianmu_throw_error_func,
+                        update_func_str, NULL);
+
+static MYSQL_SYSVAR_INT(ini_allowmysqlquerypath, tianmu_sysvar_allowmysqlquerypath, PLUGIN_VAR_READONLY, "-", NULL,
+                        NULL, 0, 0, 1, 0);
+static MYSQL_SYSVAR_STR(ini_cachefolder, tianmu_sysvar_cachefolder, PLUGIN_VAR_READONLY, "-", NULL, NULL, "cache");
+static MYSQL_SYSVAR_INT(ini_knlevel, tianmu_sysvar_knlevel, PLUGIN_VAR_READONLY, "-", NULL, NULL, 99, 0, 99, 0);
+static MYSQL_SYSVAR_BOOL(ini_pushdown, tianmu_sysvar_pushdown, PLUGIN_VAR_READONLY, "-", NULL, NULL, true);
+static MYSQL_SYSVAR_INT(ini_servermainheapsize, tianmu_sysvar_servermainheapsize, PLUGIN_VAR_READONLY, "-", NULL, NULL,
+                        0, 0, 1000000, 0);
+static MYSQL_SYSVAR_BOOL(ini_usemysqlimportexportdefaults, tianmu_sysvar_usemysqlimportexportdefaults,
+                         PLUGIN_VAR_READONLY, "-", NULL, NULL, false);
+static MYSQL_SYSVAR_INT(ini_threadpoolsize, tianmu_sysvar_threadpoolsize, PLUGIN_VAR_READONLY, "-", NULL, NULL, 1, 0,
+                        1000000, 0);
+static MYSQL_SYSVAR_INT(ini_cachesizethreshold, tianmu_sysvar_cachesizethreshold, PLUGIN_VAR_INT, "-", NULL, NULL, 4, 0,
+                        1024, 0);
+static MYSQL_SYSVAR_INT(ini_cachereleasethreshold, tianmu_sysvar_cachereleasethreshold, PLUGIN_VAR_INT, "-", NULL, NULL,
+                        100, 0, 100000, 0);
+static MYSQL_SYSVAR_BOOL(insert_delayed, tianmu_sysvar_insert_delayed, PLUGIN_VAR_READONLY, "-", NULL, NULL, true);
+static MYSQL_SYSVAR_INT(insert_cntthreshold, tianmu_sysvar_insert_cntthreshold, PLUGIN_VAR_READONLY, "-", NULL, NULL, 2,
+                        0, 1000, 0);
+static MYSQL_SYSVAR_INT(insert_numthreshold, tianmu_sysvar_insert_numthreshold, PLUGIN_VAR_READONLY, "-", NULL, NULL,
+                        10000, 0, 100000, 0);
+static MYSQL_SYSVAR_INT(insert_wait_ms, tianmu_sysvar_insert_wait_ms, PLUGIN_VAR_READONLY, "-", NULL, NULL, 100, 10,
+                        10000, 0);
+static MYSQL_SYSVAR_INT(insert_wait_time, tianmu_sysvar_insert_wait_time, PLUGIN_VAR_INT, "-", NULL, NULL, 1000, 0,
+                        600000, 0);
+static MYSQL_SYSVAR_INT(insert_max_buffered, tianmu_sysvar_insert_max_buffered, PLUGIN_VAR_READONLY, "-", NULL, NULL,
+                        65536, 0, 10000000, 0);
+static MYSQL_SYSVAR_BOOL(compensation_start, tianmu_sysvar_compensation_start, PLUGIN_VAR_BOOL, "-", NULL, NULL, false);
+static MYSQL_SYSVAR_STR(hugefiledir, tianmu_sysvar_hugefiledir, PLUGIN_VAR_READONLY, "-", NULL, NULL, "");
+static MYSQL_SYSVAR_INT(cachinglevel, tianmu_sysvar_cachinglevel, PLUGIN_VAR_READONLY, "-", NULL, NULL, 1, 0, 512, 0);
+static MYSQL_SYSVAR_STR(mm_policy, tianmu_sysvar_mm_policy, PLUGIN_VAR_READONLY, "-", NULL, NULL, "");
+static MYSQL_SYSVAR_INT(mm_hardlimit, tianmu_sysvar_mm_hardlimit, PLUGIN_VAR_READONLY, "-", NULL, NULL, 0, 0, 1, 0);
+static MYSQL_SYSVAR_STR(mm_releasepolicy, tianmu_sysvar_mm_releasepolicy, PLUGIN_VAR_READONLY, "-", NULL, NULL, "2q");
+static MYSQL_SYSVAR_INT(mm_largetempratio, tianmu_sysvar_mm_largetempratio, PLUGIN_VAR_READONLY, "-", NULL, NULL, 0, 0,
+                        99, 0);
+static MYSQL_SYSVAR_INT(mm_largetemppool_threshold, tianmu_sysvar_mm_large_threshold, PLUGIN_VAR_INT,
+                        "size threshold in MB for using large temp thread pool", NULL, NULL, 16, 0, 10240, 0);
+static MYSQL_SYSVAR_INT(sync_buffers, tianmu_sysvar_sync_buffers, PLUGIN_VAR_READONLY, "-", NULL, NULL, 0, 0, 1, 0);
+
+static MYSQL_SYSVAR_INT(query_threads, tianmu_sysvar_query_threads, PLUGIN_VAR_READONLY, "-", NULL, NULL, 0, 0, 100, 0);
+static MYSQL_SYSVAR_INT(load_threads, tianmu_sysvar_load_threads, PLUGIN_VAR_READONLY, "-", NULL, NULL, 0, 0, 100, 0);
+static MYSQL_SYSVAR_INT(bg_load_threads, tianmu_sysvar_bg_load_threads, PLUGIN_VAR_READONLY, "-", NULL, NULL, 0, 0, 100,
+                        0);
+static MYSQL_SYSVAR_INT(insert_buffer_size, tianmu_sysvar_insert_buffer_size, PLUGIN_VAR_READONLY, "-", NULL, NULL, 512,
+                        512, 10000, 0);
+
+static MYSQL_THDVAR_INT(session_debug_level, PLUGIN_VAR_INT, "session debug level", NULL, debug_update, 3, 0, 5, 0);
+static MYSQL_THDVAR_INT(control_trace, PLUGIN_VAR_OPCMDARG, "ini controltrace", NULL, trace_update, 0, 0, 100, 0);
+static MYSQL_SYSVAR_INT(global_debug_level, tianmu_sysvar_global_debug_level, PLUGIN_VAR_INT, "global debug level",
+                        NULL, NULL, 4, 0, 5, 0);
+
+static MYSQL_SYSVAR_INT(distinct_cache_size, tianmu_sysvar_distcache_size, PLUGIN_VAR_INT,
+                        "Upper byte limit for GroupDistinctCache buffer", NULL, NULL, 64, 64, 256, 0);
+static MYSQL_SYSVAR_BOOL(filterevaluation_speedup, tianmu_sysvar_filterevaluation_speedup, PLUGIN_VAR_BOOL, "-", NULL,
+                         NULL, true);
+static MYSQL_SYSVAR_BOOL(groupby_speedup, tianmu_sysvar_groupby_speedup, PLUGIN_VAR_BOOL, "-", NULL, NULL, true);
+static MYSQL_SYSVAR_BOOL(orderby_speedup, tianmu_sysvar_orderby_speedup, PLUGIN_VAR_BOOL, "-", NULL, NULL, false);
+static MYSQL_SYSVAR_INT(join_parallel, tianmu_sysvar_join_parallel, PLUGIN_VAR_INT,
+                        "join matching parallel: 0-Disabled, 1-Auto, N-specify count", NULL, NULL, 1, 0, 1000, 0);
+static MYSQL_SYSVAR_INT(join_splitrows, tianmu_sysvar_join_splitrows, PLUGIN_VAR_INT,
+                        "join split rows:0-Disabled, 1-Auto, N-specify count", NULL, NULL, 0, 0, 1000, 0);
+static MYSQL_SYSVAR_BOOL(minmax_speedup, tianmu_sysvar_minmax_speedup, PLUGIN_VAR_BOOL, "-", NULL, NULL, true);
+static MYSQL_SYSVAR_UINT(index_cache_size, tianmu_sysvar_index_cache_size, PLUGIN_VAR_READONLY,
+                         "Index cache size in MB", NULL, NULL, 0, 0, 65536, 0);
+static MYSQL_SYSVAR_BOOL(index_search, tianmu_sysvar_index_search, PLUGIN_VAR_BOOL, "-", NULL, NULL, true);
+static MYSQL_SYSVAR_BOOL(enable_rowstore, tianmu_sysvar_enable_rowstore, PLUGIN_VAR_BOOL, "-", NULL, NULL, true);
+static MYSQL_SYSVAR_BOOL(parallel_filloutput, tianmu_sysvar_parallel_filloutput, PLUGIN_VAR_BOOL, "-", NULL, NULL,
+                         true);
+static MYSQL_SYSVAR_BOOL(parallel_mapjoin, tianmu_sysvar_parallel_mapjoin, PLUGIN_VAR_BOOL, "-", NULL, NULL, false);
+
+static MYSQL_SYSVAR_INT(max_execution_time, tianmu_sysvar_max_execution_time, PLUGIN_VAR_INT,
+                        "max query execution time in seconds", NULL, NULL, 0, 0, 10000, 0);
+static MYSQL_SYSVAR_INT(ini_controlquerylog, tianmu_sysvar_controlquerylog, PLUGIN_VAR_INT, "global controlquerylog",
+                        NULL, controlquerylog_update, 1, 0, 100, 0);
+
+static const char *dist_policy_names[] = {"round-robin", "random", "space", 0};
+static TYPELIB policy_typelib_t = {array_elements(dist_policy_names) - 1, "dist_policy_names", dist_policy_names, 0};
+static MYSQL_SYSVAR_ENUM(data_distribution_policy, tianmu_sysvar_dist_policy, PLUGIN_VAR_RQCMDARG,
+                         "Specifies the policy to distribute column data among multiple data "
+                         "directories."
+                         "Possible values are round-robin(default), random, and space",
+                         NULL, NULL, 2, &policy_typelib_t);
+
+static MYSQL_SYSVAR_INT(disk_usage_threshold, tianmu_sysvar_disk_usage_threshold, PLUGIN_VAR_INT,
+                        "Specifies the disk usage threshold for data diretories.", NULL, NULL, 85, 10, 99, 0);
+
+static MYSQL_SYSVAR_UINT(lookup_max_size, tianmu_sysvar_lookup_max_size, PLUGIN_VAR_RQCMDARG | PLUGIN_VAR_READONLY,
+                         "Lookup dictionary max size", NULL, NULL, 100000, 1000, 1000000, 0);
+
+static MYSQL_SYSVAR_BOOL(qps_log, tianmu_sysvar_qps_log, PLUGIN_VAR_BOOL, "-", NULL, NULL, true);
+
+static MYSQL_SYSVAR_BOOL(force_hashjoin, tianmu_sysvar_force_hashjoin, PLUGIN_VAR_BOOL, "-", NULL, NULL, false);
+static MYSQL_SYSVAR_INT(start_async, tianmu_sysvar_start_async, PLUGIN_VAR_INT,
+                        "Enable async, specifies async threads x/100 * cpus", NULL, start_async_update, 0, 0, 100, 0);
+static MYSQL_SYSVAR_STR(async_join, tianmu_sysvar_async_join, PLUGIN_VAR_STR,
+                        "Set async join params: packStep;traverseCount;matchCount", NULL, async_join_update, "1;0;0;0");
+static MYSQL_SYSVAR_BOOL(join_disable_switch_side, tianmu_sysvar_join_disable_switch_side, PLUGIN_VAR_BOOL, "-", NULL,
+                         NULL, false);
+static MYSQL_SYSVAR_BOOL(enable_histogram_cmap_bloom, tianmu_sysvar_enable_histogram_cmap_bloom, PLUGIN_VAR_BOOL, "-",
+                         NULL, NULL, false);
+
+static MYSQL_SYSVAR_UINT(result_sender_rows, tianmu_sysvar_result_sender_rows, PLUGIN_VAR_UNSIGNED,
+                         "The number of rows to load at a time when processing "
+                         "queries like select xxx from yyya",
+                         NULL, NULL, 65536, 1024, 131072, 0);
+
+void debug_update(MYSQL_THD thd, [[maybe_unused]] struct SYS_VAR *var, void *var_ptr, const void *save) {
+  if (ha_rcengine_) {
+    auto cur_conn = ha_rcengine_->GetTx(thd);
+    // set debug_level for connection level
+    cur_conn->SetDebugLevel(*((int *)save));
+  }
+  *((int *)var_ptr) = *((int *)save);
+}
+
+void trace_update(MYSQL_THD thd, [[maybe_unused]] struct SYS_VAR *var, void *var_ptr, const void *save) {
+  *((int *)var_ptr) = *((int *)save);
+  // get global mysql_sysvar_control_trace
+  tianmu_sysvar_controltrace = THDVAR(nullptr, control_trace);
+  if (ha_rcengine_) {
+    core::Transaction *cur_conn = ha_rcengine_->GetTx(thd);
+    cur_conn->SetSessionTrace(*((int *)save));
+    ConfigureRCControl();
+  }
+}
+
+void controlquerylog_update([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] struct SYS_VAR *var, void *var_ptr,
+                            const void *save) {
+  *((int *)var_ptr) = *((int *)save);
+  int control = *((int *)var_ptr);
+  if (ha_rcengine_) {
+    control ? rc_querylog_.setOn() : rc_querylog_.setOff();
+  }
+}
+
+void start_async_update([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] struct SYS_VAR *var, void *var_ptr,
+                        const void *save) {
+  int percent = *((int *)save);
+  *((int *)var_ptr) = percent;
+  if (ha_rcengine_) {
+    ha_rcengine_->ResetTaskExecutor(percent);
+  }
+}
+
+void resolve_async_join_settings(const std::string &settings) {
+  std::vector<std::string> splits_vec;
+  boost::split(splits_vec, settings, boost::is_any_of(";"));
+  if (splits_vec.size() >= 4) {
+    try {
+      tianmu_sysvar_async_join_setting.pack_per_step = boost::lexical_cast<int>(splits_vec[0]);
+      tianmu_sysvar_async_join_setting.rows_per_step = boost::lexical_cast<int>(splits_vec[1]);
+      tianmu_sysvar_async_join_setting.traverse_slices = boost::lexical_cast<int>(splits_vec[2]);
+      tianmu_sysvar_async_join_setting.match_slices = boost::lexical_cast<int>(splits_vec[3]);
+    } catch (...) {
+      TIANMU_LOG(LogCtl_Level::ERROR, "Failed resolve async join settings");
+    }
+  }
+}
+
+void async_join_update([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] struct SYS_VAR *var,
+                       [[maybe_unused]] void *var_ptr, const void *save) {
+  const char *str = *static_cast<const char *const *>(save);
+  std::string settings(str);
+  resolve_async_join_settings(settings);
+}
+
+// stonedb8
+static struct SYS_VAR *tianmu_showvars[] = {MYSQL_SYSVAR(bg_load_threads),
+                                            MYSQL_SYSVAR(cachinglevel),
+                                            MYSQL_SYSVAR(compensation_start),
+                                            MYSQL_SYSVAR(control_trace),
+                                            MYSQL_SYSVAR(data_distribution_policy),
+                                            MYSQL_SYSVAR(disk_usage_threshold),
+                                            MYSQL_SYSVAR(distinct_cache_size),
+                                            MYSQL_SYSVAR(filterevaluation_speedup),
+                                            MYSQL_SYSVAR(global_debug_level),
+                                            MYSQL_SYSVAR(groupby_speedup),
+                                            MYSQL_SYSVAR(hugefiledir),
+                                            MYSQL_SYSVAR(index_cache_size),
+                                            MYSQL_SYSVAR(index_search),
+                                            MYSQL_SYSVAR(enable_rowstore),
+                                            MYSQL_SYSVAR(ini_allowmysqlquerypath),
+                                            MYSQL_SYSVAR(ini_cachefolder),
+                                            MYSQL_SYSVAR(ini_cachereleasethreshold),
+                                            MYSQL_SYSVAR(ini_cachesizethreshold),
+                                            MYSQL_SYSVAR(ini_controlquerylog),
+                                            MYSQL_SYSVAR(ini_knlevel),
+                                            MYSQL_SYSVAR(ini_pushdown),
+                                            MYSQL_SYSVAR(ini_servermainheapsize),
+                                            MYSQL_SYSVAR(ini_threadpoolsize),
+                                            MYSQL_SYSVAR(ini_usemysqlimportexportdefaults),
+                                            MYSQL_SYSVAR(insert_buffer_size),
+                                            MYSQL_SYSVAR(insert_cntthreshold),
+                                            MYSQL_SYSVAR(insert_delayed),
+                                            MYSQL_SYSVAR(insert_max_buffered),
+                                            MYSQL_SYSVAR(insert_numthreshold),
+                                            MYSQL_SYSVAR(insert_wait_ms),
+                                            MYSQL_SYSVAR(insert_wait_time),
+                                            MYSQL_SYSVAR(join_disable_switch_side),
+                                            MYSQL_SYSVAR(enable_histogram_cmap_bloom),
+                                            MYSQL_SYSVAR(join_parallel),
+                                            MYSQL_SYSVAR(join_splitrows),
+                                            MYSQL_SYSVAR(load_threads),
+                                            MYSQL_SYSVAR(lookup_max_size),
+                                            MYSQL_SYSVAR(max_execution_time),
+                                            MYSQL_SYSVAR(minmax_speedup),
+                                            MYSQL_SYSVAR(mm_hardlimit),
+                                            MYSQL_SYSVAR(mm_largetempratio),
+                                            MYSQL_SYSVAR(mm_largetemppool_threshold),
+                                            MYSQL_SYSVAR(mm_policy),
+                                            MYSQL_SYSVAR(mm_releasepolicy),
+                                            MYSQL_SYSVAR(orderby_speedup),
+                                            MYSQL_SYSVAR(parallel_filloutput),
+                                            MYSQL_SYSVAR(parallel_mapjoin),
+                                            MYSQL_SYSVAR(qps_log),
+                                            MYSQL_SYSVAR(query_threads),
+                                            MYSQL_SYSVAR(refresh_sys_tianmu),
+                                            MYSQL_SYSVAR(session_debug_level),
+                                            MYSQL_SYSVAR(sync_buffers),
+                                            MYSQL_SYSVAR(trigger_error),
+                                            MYSQL_SYSVAR(async_join),
+                                            MYSQL_SYSVAR(force_hashjoin),
+                                            MYSQL_SYSVAR(start_async),
+                                            MYSQL_SYSVAR(result_sender_rows),
+                                            NULL};
 }  // namespace dbhandler
 }  // namespace Tianmu
+
+mysql_declare_plugin(tianmu){
+    MYSQL_STORAGE_ENGINE_PLUGIN,
+    &Tianmu::dbhandler::tianmu_storage_engine,
+    "TIANMU",
+    "StoneAtom Group Holding Limited",
+    "Tianmu storage engine",
+    PLUGIN_LICENSE_GPL,
+    Tianmu::dbhandler::rcbase_init_func, /* Plugin Init */
+    nullptr,                             /* Plugin Check uninstall */
+    Tianmu::dbhandler::rcbase_done_func, /* Plugin Deinit */
+    0x0001 /* 0.1 */,
+    Tianmu::dbhandler::statusvars,      /* status variables  */
+    Tianmu::dbhandler::tianmu_showvars, /* system variables  */
+    nullptr,                            /* config options    */
+    0                                   /* flags for plugin */
+} mysql_declare_plugin_end;
