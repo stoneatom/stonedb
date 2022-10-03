@@ -27,6 +27,7 @@
 
 namespace Tianmu {
 namespace core {
+
 int TableUnmysterify(TABLE_LIST *tab, const char *&database_name, const char *&table_name, const char *&table_alias,
                      const char *&table_path) {
   ASSERT_MYSQL_STRING(tab->table->s->db);
@@ -34,10 +35,7 @@ int TableUnmysterify(TABLE_LIST *tab, const char *&database_name, const char *&t
   ASSERT_MYSQL_STRING(tab->table->s->path);
 
   database_name = tab->table->s->db.str;
-  if (tab->referencing_view)
-    table_name = tab->referencing_view->table_name;
-  else
-    table_name = tab->table->s->table_name.str;
+  table_name = (tab->referencing_view) ? tab->referencing_view->table_name : tab->table->s->table_name.str;
   table_alias = tab->alias;
   table_path = tab->table->s->path.str;
 
@@ -83,8 +81,8 @@ void SetLimit(Query_block *sl, Query_block *gsl, int64_t &offset_value, int64_t 
                                       automatically set by MYSQL to UINT_MAX*/
       limit_value = -1;            // no limit set
       offset_value = -1;
-    };
-  };
+    }
+  }
 
   if (limit_value) offset_value = 0;
 
@@ -99,12 +97,13 @@ int Query::FieldUnmysterify(Item *item, const char *&database_name, const char *
                             const char *&table_path, const TABLE *&table_ptr, const char *&field_name,
                             const char *&field_alias) {
   table_alias = EMPTY_TABLE_CONST_INDICATOR;
-  database_name = NULL;
-  table_name = NULL;
-  table_path = NULL;
-  table_ptr = NULL;
-  field_name = NULL;
-  field_alias = NULL;
+  database_name = nullptr;
+  table_name = nullptr;
+  table_path = nullptr;
+  field_name = nullptr;
+  field_alias = nullptr;
+
+  table_ptr = nullptr;
 
   item = UnRef(item);
 
@@ -148,15 +147,9 @@ int Query::FieldUnmysterify(Item *item, const char *&database_name, const char *
       break;
     }
     case Item::FUNC_ITEM:  // complex expressions
-      // if(WrapMysqlExpression(item, &not_a_table_column) ==
-      // WrapStatus::SUCCESS)
       return RCBASE_QUERY_ROUTE;
-      return RETURN_QUERY_TO_MYSQL_ROUTE;
     default:
-      // if(WrapMysqlExpression(item, &not_a_table_column) ==
-      // WrapStatus::SUCCESS)
       return RCBASE_QUERY_ROUTE;
-      return RETURN_QUERY_TO_MYSQL_ROUTE;
   };
 
   /*
@@ -417,25 +410,15 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
     else if (item->type() == Item::REF_ITEM) {
       item = UnRef(item);
       continue;
-    }
-    //			if ((UnRef(item)->type() == Item_tianmufield::enumTIANMUFiledItem::TIANMUFIELD_ITEM
-    //||
-    // UnRef(item)->type() == Item_tianmufield::FIELD_ITEM ) &&
-    // IsLocalColumn(UnRef(item), tmp_table)
-    //)
-    //				AddColumnForPhysColumn(UnRef(item), tmp_table,
-    // oper, distinct,
-    // false, false);
-    //			else {
-    //				//
-    //			}
-    else if (IsAggregationItem(item) && (((Item_sum *)item)->get_arg(0))->type() == Item::REF_ITEM &&
-             (UnRef(((Item_sum *)item)->get_arg(0))->type() == Item_tianmufield::get_tianmuitem_type() ||
-              (UnRef(((Item_sum *)item)->get_arg(0))->type() == Item_tianmufield::FIELD_ITEM)) &&
-             IsLocalColumn(UnRef(((Item_sum *)item)->get_arg(0)), tmp_table))
+
+    } else if (IsAggregationItem(item) && (((Item_sum *)item)->get_arg(0))->type() == Item::REF_ITEM &&
+               (UnRef(((Item_sum *)item)->get_arg(0))->type() == Item_tianmufield::get_tianmuitem_type() ||
+                (UnRef(((Item_sum *)item)->get_arg(0))->type() == Item_tianmufield::FIELD_ITEM)) &&
+               IsLocalColumn(UnRef(((Item_sum *)item)->get_arg(0)), tmp_table))
       // AGGR on REF to FIELD_ITEM
       AddColumnForPhysColumn(UnRef(((Item_sum *)item)->get_arg(0)), tmp_table, oper, distinct, false,
                              item->item_name.ptr());
+
     else if (IsAggregationItem(item)) {
       // select AGGREGATION over EXPRESSION
       Item_sum *item_sum = (Item_sum *)item;
@@ -452,6 +435,7 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
                                     ignore_minmax ? item_sum->get_arg(0)->item_name.ptr() : item_sum->item_name.ptr(),
                                     oper, distinct);
       }
+
     } else if (item->type() == Item::SUBSELECT_ITEM) {
       CQTerm term;
       AttrID at;
@@ -466,6 +450,7 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
         oper = common::ColOperation::DELAYED;
         aggregation_used = true;
       }
+
       MysqlExpression *expr(NULL);
       ws = WrapMysqlExpression(item, tmp_table, expr, false, oper == common::ColOperation::DELAYED);
       if (ws == WrapStatus::FAILURE) return RETURN_QUERY_TO_MYSQL_ROUTE;
@@ -480,9 +465,11 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
       } else
         AddColumnForMysqlExpression(expr, tmp_table, item->item_name.ptr(), oper, distinct);
     }
+
     added++;
     item = li++;
   }
+
   num_of_added_fields = added;
   return RCBASE_QUERY_ROUTE;
 }
@@ -935,20 +922,9 @@ int Query::Compile(CompiledQuery *compiled_query, Query_block *selects_list, Que
     int64_t limit_value = -1;
     int64_t offset_value = -1;
 
+    // according the meaning of `part`, which describs in JOIN::optimize
     if (!sl->join) {
-      // stonedb8 start
       TIANMU_LOG(LogCtl_Level::ERROR, "sl->join is nil!!!!");
-
-      //            sl->add_active_options(SELECT_NO_UNLOCK);
-      //            JOIN *join = new JOIN(sl->master_unit()->thd, sl);
-      //
-      //            if (!join) {
-      //
-      //                sl->cleanup(0);
-      //                return true;
-      //            }
-      //            sl->set_join(join);
-      // stonedb8 end
     }
 
     if (!JudgeErrors(sl)) return RETURN_QUERY_TO_MYSQL_ROUTE;
