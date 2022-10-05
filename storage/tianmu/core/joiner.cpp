@@ -48,7 +48,7 @@ JoinAlgType TwoDimensionalJoiner::ChooseJoinAlgorithm([[maybe_unused]] MultiInde
   });
 
   if (cond[0].IsType_Exists()) {
-    return choose_map_or_hash();
+    return JoinAlgType::JTYPE_GENERAL;  // nested loop
   }
 
   if (cond[0].IsType_In()) {
