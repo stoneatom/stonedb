@@ -286,7 +286,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
     // free the tianmu export object,
     // restore the original mysql export object
     // and prepare if it is expected to be prepared
-    if (!select_lex->next_query_block() && select_lex->join != 0 && select_lex->query_result() == result) {
+    if (!select_lex->next_query_block() && select_lex->join != nullptr && select_lex->query_result() == result) {
       select_lex->set_query_result(se);
       if (((exporter::select_tianmu_export *)result)->IsPrepared())
         se->prepare(thd, *(select_lex->join->fields), unit);  // stonedb8
@@ -322,15 +322,13 @@ int optimize_select(THD *thd, ulong select_options, Query_result *result, Query_
   int err = 0;
   free_join = 1;
   select_lex->context.resolve_in_select_list = true;
-  JOIN *join;
-  if (select_lex->join != 0) {
+  JOIN *join = nullptr;
+  if (select_lex->join != nullptr) {
     join = select_lex->join;
     // here is EXPLAIN of subselect or derived table
     if (select_lex->linkage != DERIVED_TABLE_TYPE || (select_options & (1ULL << 2))) {
       if (select_lex->linkage != GLOBAL_OPTIONS_TYPE) {
-        if (result->prepare(thd, *select_lex->join->fields,
-                            select_lex->master_query_expression()) /*|| result->prepare2()*/)  // stonedb8
-        {
+        if (result->prepare(thd, *select_lex->join->fields, select_lex->master_query_expression())) {
           return true;
         }
       } else {
@@ -349,8 +347,7 @@ int optimize_select(THD *thd, ulong select_options, Query_result *result, Query_
     {
       return err;
     }
-    if (result->prepare(thd, select_lex->fields,
-                        select_lex->master_query_expression()) /*|| result->prepare2()*/) {  // stonedb8
+    if (result->prepare(thd, select_lex->fields, select_lex->master_query_expression())) {
       return true;
     }
     if (!(join = new JOIN(thd, select_lex))) return true; /* purecov: inspected */
@@ -380,6 +377,8 @@ int Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, Query_expre
 
   Query query(current_txn_);
   CompiledQuery cqu;
+
+  if (result_output->start_execution(thd)) return RETURN_QUERY_TO_MYSQL_ROUTE;
 
   current_txn_->ResetDisplay();  // switch display on
   query.SetRoughQuery(selects_list->active_options() & SELECT_ROUGHLY);
@@ -547,7 +546,7 @@ int Query_expression::optimize_for_tianmu(THD *thd) {
         select commands (DELETE/INSERT/...) and they use only very first
         SELECT (for union it can be only INSERT ... SELECT).
       */
-      if (!sl->join) {
+      if (sl->join == nullptr) {
         JOIN *join = new JOIN(thd, sl);
         if (!join) {
           thd->lex->set_current_query_block(lex_select_save);
@@ -593,8 +592,8 @@ int Query_expression::optimize_for_tianmu(THD *thd) {
       if (!is_prepared()) {
         if (prepare_fake_query_block(thd)) return saved_error;
       }
-      JOIN *join;
-      if (fake_query_block->join)
+      JOIN *join = nullptr;
+      if (fake_query_block->join != nullptr)
         join = fake_query_block->join;
       else {
         if (!(join = new JOIN(thd, fake_query_block))) DEBUG_ASSERT(0);
