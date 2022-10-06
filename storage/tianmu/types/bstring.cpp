@@ -77,7 +77,7 @@ BString &BString::operator=(const RCDataType &rcdt) {
   if (this == &rcdt) return *this;
 
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
-    *this = (BString &)rcdt;
+    *this = reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt));
   else
     TIANMU_ERROR("bad cast");
 
@@ -385,7 +385,8 @@ bool BString::IsNullOrEmpty() const { return ((len == 0 || null) ? true : false)
 
 bool BString::operator==(const RCDataType &rcdt) const {
   if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) == 0;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith(reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt))) == 0;
   return CompareWith(rcdt.ToBString()) == 0;
 }
 
@@ -396,31 +397,36 @@ bool BString::operator==(const BString &rcs) const {
 
 bool BString::operator<(const RCDataType &rcdt) const {
   if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) < 0;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith(reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt))) < 0;
   return CompareWith(rcdt.ToBString()) < 0;
 }
 
 bool BString::operator>(const RCDataType &rcdt) const {
   if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) > 0;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith(reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt))) > 0;
   return CompareWith(rcdt.ToBString()) > 0;
 }
 
 bool BString::operator>=(const RCDataType &rcdt) const {
   if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) >= 0;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith(reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt))) >= 0;
   return CompareWith(rcdt.ToBString()) >= 0;
 }
 
 bool BString::operator<=(const RCDataType &rcdt) const {
   if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) <= 0;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith(reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt))) <= 0;
   return CompareWith(rcdt.ToBString()) <= 0;
 }
 
 bool BString::operator!=(const RCDataType &rcdt) const {
   if (null || rcdt.IsNull()) return true;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) != 0;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith(reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt))) != 0;
   return CompareWith(rcdt.ToBString()) != 0;
 }
 

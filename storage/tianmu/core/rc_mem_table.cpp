@@ -54,9 +54,10 @@ RCMemTable::RCMemTable(const std::string name, const uint32_t mem_id, const uint
   iter->Seek(entry_slice);
 
   if (iter->Valid() && iter->key().starts_with(entry_slice)) {
-    next_load_id_ = index::be_to_uint64((uchar *)iter->key().data() + entry_pos);
+    next_load_id_ = index::be_to_uint64(reinterpret_cast<uchar *>(const_cast<char *>(iter->key().data())) + entry_pos);
     iter->SeekToLast();
-    next_insert_id_ = index::be_to_uint64((uchar *)iter->key().data() + entry_pos) + 1;
+    next_insert_id_ =
+        index::be_to_uint64(reinterpret_cast<uchar *>(const_cast<char *>(iter->key().data())) + entry_pos) + 1;
   } else {
     next_load_id_ = next_insert_id_ = 0;
   }

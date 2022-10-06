@@ -630,7 +630,7 @@ int64_t TempTable::Attr::GetValueInt64(int64_t obj) const {
       if (!IsNull(obj))
         res = *(int64_t *)&(*(AttrBuffer<double> *)buffer)[obj];
       else
-        res = *(int64_t *)&NULL_VALUE_D;
+        res = *(reinterpret_cast<const int64_t *>(&NULL_VALUE_D));
       break;
     case common::CT::BIN:
     case common::CT::BYTE:

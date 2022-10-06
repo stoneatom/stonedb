@@ -69,7 +69,9 @@ class TopBitDict : public DataFilt<T> {
  public:
   TopBitDict(bool top) : topbottom(top ? TopBottom::tbTop : TopBottom::tbBottom) {}
   virtual ~TopBitDict() = default;
-  char const *GetName() override { return topbottom == TopBottom::tbTop ? (char *)"top" : (char *)"low"; }
+  char const *GetName() override {
+    return topbottom == TopBottom::tbTop ? const_cast<char *>("top") : const_cast<char *>("low");
+  }
   bool Encode(RangeCoder *coder, DataSet<T> *dataset) override;
   void Decode(RangeCoder *coder, DataSet<T> *dataset) override;
   void Merge(DataSet<T> *dataset) override;

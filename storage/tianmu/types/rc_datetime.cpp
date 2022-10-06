@@ -113,7 +113,7 @@ RCDateTime::RCDateTime(const RCDateTime &rcdt) : ValueBasic<RCDateTime>(rcdt) { 
 RCDateTime::~RCDateTime() {}
 
 RCDateTime &RCDateTime::operator=(const RCDateTime &rcv) {
-  *(int64_t *)&dt = *(int64_t *)&rcv.dt;
+  *(int64_t *)&dt = *reinterpret_cast<int64_t *>(const_cast<DT *>(&rcv.dt));
   this->at = rcv.at;
   this->null = rcv.null;
   return *this;
@@ -121,7 +121,7 @@ RCDateTime &RCDateTime::operator=(const RCDateTime &rcv) {
 
 RCDateTime &RCDateTime::operator=(const RCDataType &rcv) {
   if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
-    *this = (RCDateTime &)rcv;
+    *this = dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcv));
   else {
     TIANMU_ERROR("bad cast");
     null = true;
@@ -141,7 +141,7 @@ RCDateTime &RCDateTime::Assign(int64_t v, common::CT at) {
 
 int64_t RCDateTime::GetInt64() const {
   if (null) return common::NULL_VALUE_64;
-  return *(int64_t *)&dt;
+  return *reinterpret_cast<int64_t *>(const_cast<DT *>(&dt));
 }
 
 bool RCDateTime::ToInt64(int64_t &value) const {
@@ -506,9 +506,9 @@ RCDateTime RCDateTime::GetCurrent() {
 bool RCDateTime::operator==(const RCDataType &rcv) const {
   if (!AreComparable(at, rcv.Type()) || IsNull() || rcv.IsNull()) return false;
   if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
-    return compare((RCDateTime &)rcv) == 0;
+    return compare(dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcv))) == 0;
   else if (rcv.GetValueType() == ValueTypeEnum::NUMERIC_TYPE) {
-    return compare((RCNum &)rcv) == 0;
+    return compare(dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcv))) == 0;
   }
   return false;
 }
@@ -516,45 +516,45 @@ bool RCDateTime::operator==(const RCDataType &rcv) const {
 bool RCDateTime::operator<(const RCDataType &rcv) const {
   if (!AreComparable(at, rcv.Type()) || IsNull() || rcv.IsNull()) return false;
   if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
-    return compare((RCDateTime &)rcv) < 0;
+    return compare(dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcv))) < 0;
   else if (rcv.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
-    return compare((RCNum &)rcv) < 0;
+    return compare(dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcv))) < 0;
   return false;
 }
 
 bool RCDateTime::operator>(const RCDataType &rcv) const {
   if (!AreComparable(at, rcv.Type()) || IsNull() || rcv.IsNull()) return false;
   if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
-    return compare((RCDateTime &)rcv) > 0;
+    return compare(dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcv))) > 0;
   else if (rcv.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
-    return compare((RCNum &)rcv) > 0;
+    return compare(dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcv))) > 0;
   return false;
 }
 
 bool RCDateTime::operator>=(const RCDataType &rcv) const {
   if (!AreComparable(at, rcv.Type()) || IsNull() || rcv.IsNull()) return false;
   if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
-    return compare((RCDateTime &)rcv) >= 0;
+    return compare(dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcv))) >= 0;
   else if (rcv.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
-    return compare((RCNum &)rcv) >= 0;
+    return compare(dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcv))) >= 0;
   return false;
 }
 
 bool RCDateTime::operator<=(const RCDataType &rcv) const {
   if (!AreComparable(at, rcv.Type()) || IsNull() || rcv.IsNull()) return false;
   if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
-    return compare((RCDateTime &)rcv) <= 0;
+    return compare(dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcv))) <= 0;
   else if (rcv.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
-    return compare((RCNum &)rcv) <= 0;
+    return compare(dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcv))) <= 0;
   return false;
 }
 
 bool RCDateTime::operator!=(const RCDataType &rcv) const {
   if (!AreComparable(at, rcv.Type()) || IsNull() || rcv.IsNull()) return false;
   if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
-    return compare((RCDateTime &)rcv) != 0;
+    return compare(dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcv))) != 0;
   else if (rcv.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
-    return compare((RCNum &)rcv) != 0;
+    return compare(dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcv))) != 0;
   return false;
 }
 
@@ -602,13 +602,13 @@ int64_t RCDateTime::operator-(const RCDateTime &sec) const {
 common::CT RCDateTime::Type() const { return at; }
 
 uint RCDateTime::GetHashCode() const {
-  uint64_t v = *(uint64_t *)&dt;
+  uint64_t v = *reinterpret_cast<uint64_t *>(const_cast<DT *>(&dt));
   return (uint)(v >> 32) + (uint)(v) /*+ *(short*)&tz*/;
 }
 
 int RCDateTime::compare(const RCDateTime &rcv) const {
-  int64_t v1 = *(int64_t *)&dt;
-  int64_t v2 = *(int64_t *)&rcv.dt;
+  int64_t v1 = *reinterpret_cast<int64_t *>(const_cast<DT *>(&dt));
+  int64_t v2 = *reinterpret_cast<int64_t *>(const_cast<DT *>(&rcv.dt));
   return (v1 < v2 ? -1 : (v1 > v2 ? 1 : 0));
 }
 
@@ -616,7 +616,7 @@ int RCDateTime::compare(const RCNum &rcv) const {
   if (IsNull() || rcv.IsNull()) return false;
   int64_t tmp;
   ToInt64(tmp);
-  return int(tmp - ((RCNum &)rcv).GetIntPart());
+  return int(tmp - (const_cast<RCNum &>(rcv)).GetIntPart());
 }
 
 void RCDateTime::AdjustTimezone(RCDateTime &dt) {

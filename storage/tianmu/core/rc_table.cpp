@@ -980,7 +980,7 @@ int RCTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, uint
           } else {
             types::BString s;
             if (m_attrs[att]->Type().IsLookup()) {
-              s = m_attrs[att]->DecodeValue_S(*(int64_t *)v);
+              s = m_attrs[att]->DecodeValue_S(*(reinterpret_cast<int64_t *>(const_cast<char *>((v)))));
               v = s.GetDataBytesPointer();
               size = s.size();
             }
@@ -1237,7 +1237,8 @@ int RCTable::MergeMemTable(system::IOParameters &iop) {
     }
 
     if (iter->Valid() && iter->key().starts_with(entry_slice)) {
-      m_mem_table->next_load_id_ = index::be_to_uint64((uchar *)iter->key().data() + key_pos);
+      m_mem_table->next_load_id_ =
+          index::be_to_uint64(reinterpret_cast<uchar *>(const_cast<char *>(iter->key().data())) + key_pos);
     }
   }
   if (vec.empty()) return 0;

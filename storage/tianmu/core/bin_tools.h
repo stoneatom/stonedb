@@ -61,7 +61,9 @@ void HashMD5(unsigned char const *buf, int n, unsigned char *hash);
 common::RSValue Or(common::RSValue f, common::RSValue s);
 common::RSValue And(common::RSValue f, common::RSValue s);
 
-inline bool IsDoubleNull(const double d) { return *(int64_t *)&d == common::NULL_VALUE_64; }
+inline bool IsDoubleNull(const double d) {
+  return *reinterpret_cast<int64_t *>(const_cast<double *>(&d)) == common::NULL_VALUE_64;
+}
 
 inline uint GetBitLen(uint x) {
 #ifdef __x86_64__

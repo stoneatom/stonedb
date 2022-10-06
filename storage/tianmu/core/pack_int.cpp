@@ -399,7 +399,7 @@ void PackInt::LoadValuesDouble(const loader::ValueCache *vc, const std::optional
 
   for (size_t i = 0; i < vc->NumOfValues(); i++) {
     if (!vc->IsNull(i)) {
-      AppendValue(*(uint64_t *)vc->GetDataBytesPointer(i));
+      AppendValue(*reinterpret_cast<uint64_t *>(const_cast<char *>(vc->GetDataBytesPointer(i))));
     } else {
       if (nv.has_value())
         AppendValue(nv->i);
@@ -472,7 +472,7 @@ void PackInt::LoadValuesFixed(const loader::ValueCache *vc, const std::optional<
 
   for (size_t i = 0; i < vc->NumOfValues(); i++) {
     if (vc->NotNull(i)) {
-      AppendValue(*(uint64_t *)vc->GetDataBytesPointer(i) - new_min);
+      AppendValue(*(reinterpret_cast<uint64_t *>(const_cast<char *>(vc->GetDataBytesPointer(i)))) - new_min);
     } else {
       if (nv.has_value())
         AppendValue(nv->i - new_min);

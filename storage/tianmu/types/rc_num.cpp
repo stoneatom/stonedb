@@ -69,7 +69,7 @@ RCNum &RCNum::Assign(int64_t value_, short scale, bool is_double_, common::CT at
       this->attr_type_ = common::CT::REAL;
     this->is_dot_ = false;
     scale_ = 0;
-    null = (value_ == *(int64_t *)&NULL_VALUE_D ? true : false);
+    null = (value_ == *(reinterpret_cast<const int64_t *>(&NULL_VALUE_D)) ? true : false);
   } else
     null = (value_ == common::NULL_VALUE_64 ? true : false);
   return *this;
@@ -109,7 +109,7 @@ RCNum &RCNum::operator=(const RCNum &rcn) {
 
 RCNum &RCNum::operator=(const RCDataType &rcdt) {
   if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
-    *this = (RCNum &)rcdt;
+    *this = dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcdt));
   else {
     RCNum rcn1;
     if (common::IsError(RCNum::Parse(rcdt.ToBString(), rcn1, this->attr_type_))) {
@@ -155,7 +155,7 @@ RCNum RCNum::ToDecimal(int scale) const {
 
   if (is_double_) {
     double intpart(0);
-    double fracpart(modf(*(double *)&value_, &intpart));
+    double fracpart(modf(*reinterpret_cast<double *>(const_cast<int64_t *>(&value_)), &intpart));
 
     if (intpart < 0 || fracpart < 0) {
       sign = -1;
@@ -195,7 +195,7 @@ RCNum RCNum::ToDecimal(int scale) const {
 
 RCNum RCNum::ToReal() const {
   if (core::ATI::IsRealType(attr_type_)) {
-    return RCNum(*(double *)&value_);
+    return RCNum(*reinterpret_cast<double *>(const_cast<int64_t *>(&value_)));
   }
   return RCNum((double)((double)(this->value_ / PowOfTen(scale_))));
 }
@@ -240,7 +240,7 @@ BString RCNum::ToBString() const {
     static int const SIZE(24);
     char buf[SIZE];
     if (core::ATI::IsRealType(attr_type_)) {
-      gcvt(*(double *)&value_, 15, buf);
+      gcvt(*reinterpret_cast<double *>(const_cast<int64_t *>(&value_)), 15, buf);
       size_t s = std::strlen(buf);
       if (s && buf[s - 1] == '.') buf[s - 1] = 0;
     } else if (core::ATI::IsIntegerType(attr_type_))
@@ -254,14 +254,17 @@ BString RCNum::ToBString() const {
 }
 
 RCNum::operator double() const {
-  return (core::ATI::IsRealType(Type()) || Type() == common::CT::FLOAT) ? *(double *)&value_
-                                                                        : GetIntPart() + GetFractPart();
+  return (core::ATI::IsRealType(Type()) || Type() == common::CT::FLOAT)
+             ? *reinterpret_cast<double *>(const_cast<int64_t *>(&value_))
+             : GetIntPart() + GetFractPart();
 }
 
 bool RCNum::operator==(const RCDataType &rcdt) const {
   if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE) return (compare((RCNum &)rcdt) == 0);
-  if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) == 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
+    return (compare(dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcdt))) == 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
+    return (compare(dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcdt))) == 0);
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (rcdt == this->ToBString());
   TIANMU_ERROR("Bad cast inside RCNum");
   return false;
@@ -269,8 +272,10 @@ bool RCNum::operator==(const RCDataType &rcdt) const {
 
 bool RCNum::operator!=(const RCDataType &rcdt) const {
   if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE) return (compare((RCNum &)rcdt) != 0);
-  if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) != 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
+    return (compare(dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcdt))) != 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
+    return (compare(dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcdt))) != 0);
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (rcdt != this->ToBString());
   TIANMU_ERROR("Bad cast inside RCNum");
   return false;
@@ -278,8 +283,10 @@ bool RCNum::operator!=(const RCDataType &rcdt) const {
 
 bool RCNum::operator<(const RCDataType &rcdt) const {
   if (IsNull() || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE) return (compare((RCNum &)rcdt) < 0);
-  if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) < 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
+    return (compare(dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcdt))) < 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
+    return (compare(dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcdt))) < 0);
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (this->ToBString() < rcdt);
   TIANMU_ERROR("Bad cast inside RCNum");
   return false;
@@ -287,8 +294,10 @@ bool RCNum::operator<(const RCDataType &rcdt) const {
 
 bool RCNum::operator>(const RCDataType &rcdt) const {
   if (IsNull() || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE) return (compare((RCNum &)rcdt) > 0);
-  if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) > 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
+    return (compare(dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcdt))) > 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
+    return (compare(dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcdt))) > 0);
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (this->ToBString() > rcdt);
   TIANMU_ERROR("Bad cast inside RCNum");
   return false;
@@ -296,8 +305,10 @@ bool RCNum::operator>(const RCDataType &rcdt) const {
 
 bool RCNum::operator<=(const RCDataType &rcdt) const {
   if (IsNull() || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE) return (compare((RCNum &)rcdt) <= 0);
-  if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) <= 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
+    return (compare(dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcdt))) <= 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
+    return (compare(dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcdt))) <= 0);
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (this->ToBString() <= rcdt);
   TIANMU_ERROR("Bad cast inside RCNum");
   return false;
@@ -305,8 +316,10 @@ bool RCNum::operator<=(const RCDataType &rcdt) const {
 
 bool RCNum::operator>=(const RCDataType &rcdt) const {
   if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE) return (compare((RCNum &)rcdt) >= 0);
-  if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) >= 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
+    return (compare(dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcdt))) >= 0);
+  if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
+    return (compare(dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcdt))) >= 0);
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (this->ToBString() >= rcdt);
   TIANMU_ERROR("Bad cast inside RCNum");
   return false;
@@ -317,7 +330,7 @@ RCNum &RCNum::operator-=(const RCNum &rcn) {
   if (rcn.IsNull() || rcn.IsNull()) return *this;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
-      *(double *)&value_ -= *(double *)&rcn.value_;
+      *(double *)&value_ -= *reinterpret_cast<double *>(const_cast<int64_t *>(&rcn.value_));
     else {
       if (IsReal())
         *this -= rcn.ToReal();
@@ -340,7 +353,7 @@ RCNum &RCNum::operator+=(const RCNum &rcn) {
   if (rcn.IsNull() || rcn.IsNull()) return *this;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
-      *(double *)&value_ -= *(double *)&rcn.value_;
+      *(double *)&value_ -= *reinterpret_cast<double *>(const_cast<int64_t *>(&rcn.value_));
     else {
       if (IsReal())
         *this += rcn.ToReal();
@@ -363,7 +376,7 @@ RCNum &RCNum::operator*=(const RCNum &rcn) {
   if (rcn.IsNull() || rcn.IsNull()) return *this;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
-      *(double *)&value_ -= *(double *)&rcn.value_;
+      *(double *)&value_ -= *reinterpret_cast<double *>(const_cast<int64_t *>(&rcn.value_));
     else {
       if (IsReal())
         *this /= rcn.ToReal();
@@ -399,7 +412,7 @@ RCNum &RCNum::operator/=(const RCNum &rcn) {
   if (rcn.IsNull() || rcn.IsNull()) return *this;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
-      *(double *)&value_ -= *(double *)&rcn.value_;
+      *(double *)&value_ -= *reinterpret_cast<double *>(const_cast<int64_t *>(&rcn.value_));
     else {
       if (IsReal())
         *this /= rcn.ToReal();
@@ -450,8 +463,13 @@ int RCNum::compare(const RCNum &rcn) const {
   if (IsNull() || rcn.IsNull()) return false;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
-      return (*(double *)&value_ > *(double *)&rcn.value_ ? 1
-                                                          : (*(double *)&value_ == *(double *)&rcn.value_ ? 0 : -1));
+      return (*reinterpret_cast<double *>(const_cast<int64_t *>(&value_)) >
+                      *reinterpret_cast<double *>(const_cast<int64_t *>(&rcn.value_))
+                  ? 1
+                  : (*reinterpret_cast<double *>(const_cast<int64_t *>(&value_)) ==
+                             *reinterpret_cast<double *>(const_cast<int64_t *>(&rcn.value_))
+                         ? 0
+                         : -1));
     else {
       if (IsReal())
         return (*this > rcn.ToReal() ? 1 : (*this == rcn.ToReal() ? 0 : -1));
@@ -491,7 +509,7 @@ int RCNum::compare(const RCDateTime &rcdt) const {
 double RCNum::GetIntPartAsDouble() const {
   if (is_double_) {
     double integer;
-    modf(*(double *)&value_, &integer);
+    modf(*reinterpret_cast<double *>(const_cast<int64_t *>(&value_)), &integer);
     return integer;
   } else {
     return (double)(value_ / (int64_t)Uint64PowOfTen(scale_));
@@ -501,7 +519,7 @@ double RCNum::GetIntPartAsDouble() const {
 double RCNum::GetFractPart() const {
   if (is_double_) {
     double fract, integer;
-    fract = modf(*(double *)&value_, &integer);
+    fract = modf(*reinterpret_cast<double *>(const_cast<int64_t *>(&value_)), &integer);
     return fract;
   } else {
     double tmpv = ((double)value_ / Uint64PowOfTen(scale_));

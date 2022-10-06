@@ -279,7 +279,7 @@ uint HashValue(const void *data,
 {
   uint val = 0;
   int i = 0;
-  uint *d = (uint *)data;
+  uint *d = reinterpret_cast<uint *>(const_cast<void *>(data));
   int len4 = (len / 4) * 4;  // whole 4-byte chunks - it is faster to operate on
                              // uint as long as possible
   if (len4 == 4) {
@@ -288,9 +288,10 @@ uint HashValue(const void *data,
     for (; i < len4; i += 4) val ^= *(d++) + 0x9e3779b9 + (val << 10) + (val >> 2);
   }
   for (; i < len; i++)
-    val ^= uint(((char *)data)[i]) + 0x9e3779b9 + (val << 10) + (val >> 2);  // in boost... there is "<< 6" here, but it
-                                                                             // lead to too many collisions
-  val ^= (val >> 11) + (val << 21);                                          // more hashing to prevent collisions
+    val ^= uint(reinterpret_cast<char *>(const_cast<void *>(data))[i]) + 0x9e3779b9 + (val << 10) +
+           (val >> 2);               // in boost... there is "<< 6" here, but it
+                                     // lead to too many collisions
+  val ^= (val >> 11) + (val << 21);  // more hashing to prevent collisions
   return val;
 }
 

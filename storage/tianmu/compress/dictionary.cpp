@@ -85,9 +85,11 @@ void Dictionary<T>::SetLows() {
 template <class T>
 int Dictionary<T>::compare(const void *p1, const void *p2) {
   using KR = KeyRange;
-  if (((*(KR **)p1)->count) < ((*(KR **)p2)->count))
+  if ((*reinterpret_cast<KR **>(const_cast<void *>(p1)))->count <
+      (*reinterpret_cast<KR **>(const_cast<void *>(p2)))->count)
     return 1;
-  else if (((*(KR **)p1)->count) > ((*(KR **)p2)->count))
+  else if ((*reinterpret_cast<KR **>(const_cast<void *>(p1)))->count >
+           (*reinterpret_cast<KR **>(const_cast<void *>(p2)))->count)
     return -1;
   else
     return 0;

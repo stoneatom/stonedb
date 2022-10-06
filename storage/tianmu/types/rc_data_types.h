@@ -169,7 +169,9 @@ template <typename T>
 class ValueBasic : public RCDataType {
  public:
   ValueTypeEnum GetValueType() const override { return T::value_type; }
-  std::unique_ptr<RCDataType> Clone() const override { return std::unique_ptr<RCDataType>(new T((T &)*this)); }
+  std::unique_ptr<RCDataType> Clone() const override {
+    return std::unique_ptr<RCDataType>(new T(const_cast<T &>(reinterpret_cast<const T &>(*this))));
+  }
   static T null_value;
   static T &NullValue() { return T::null_value; }
   using RCDataType::operator=;
@@ -317,7 +319,7 @@ class RCDateTime : public ValueBasic<RCDateTime> {
    * \return false if it is NULL, true otherwise
    */
   bool ToInt64(int64_t &value) const;
-  char *GetDataBytesPointer() const override { return (char *)&dt; }
+  char *GetDataBytesPointer() const override { return reinterpret_cast<char *>(const_cast<DT *>(&dt)); }
   BString ToBString() const override;
   common::CT Type() const override;
   uint GetHashCode() const override;

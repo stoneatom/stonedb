@@ -80,9 +80,9 @@ class MysqlExpression {
   static int64_t &AsValue(int64_t &x) { return x; }
   static int64_t &AsValue(double &x) { return *(int64_t *)&x; }
   static const int64_t &AsInt(const int64_t &x) { return x; }
-  static const double &AsReal(const int64_t &x) { return *(double *)&x; }
+  static const double &AsReal(const int64_t &x) { return *reinterpret_cast<const double *>(&x); }
   static const int64_t &AsValue(const int64_t &x) { return x; }
-  static const int64_t &AsValue(const double &x) { return *(int64_t *)&x; }
+  static const int64_t &AsValue(const double &x) { return *reinterpret_cast<const int64_t *>(&x); }
 
  private:
   DataType type;  // type of result of the expression

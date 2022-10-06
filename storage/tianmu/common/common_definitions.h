@@ -89,7 +89,7 @@ constexpr int64_t MAX_ROW_NUMBER = 0x00007FFFFFFFFFFFULL;  // 2^47 - 1
 constexpr int64_t TIANMU_BIGINT_MAX = PLUS_INF_64;
 constexpr int64_t TIANMU_BIGINT_MIN = NULL_VALUE_64;
 
-#define NULL_VALUE_D (*(double *)("\x01\x00\x00\x00\x00\x00\x00\x80"))
+#define NULL_VALUE_D (*reinterpret_cast<const double *>("\x01\x00\x00\x00\x00\x00\x00\x80"))
 #define TIANMU_INT_MIN (-2147483647)
 #define TIANMU_MEDIUMINT_MAX ((1 << 23) - 1)
 #define TIANMU_MEDIUMINT_MIN (-((1 << 23)))

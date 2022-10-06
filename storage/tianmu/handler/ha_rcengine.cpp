@@ -392,16 +392,16 @@ int tianmu_throw_error_func([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] str
 
 static void update_func_str([[maybe_unused]] THD *thd, struct SYS_VAR *var, void *tgt, const void *save) {
   char *old = *(char **)tgt;
-  *(char **)tgt = *(char **)save;
+  *(char **)tgt = *reinterpret_cast<char **>(const_cast<void *>(save));
   if (var->flags & PLUGIN_VAR_MEMALLOC) {
-    *(char **)tgt = my_strdup(PSI_NOT_INSTRUMENTED, *(char **)save, MYF(0));
+    *(char **)tgt = my_strdup(PSI_NOT_INSTRUMENTED, *reinterpret_cast<char **>(const_cast<void *>(save)), MYF(0));
     my_free(old);
   }
 }
 
 void refresh_sys_table_func([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] struct SYS_VAR *var, void *tgt,
                             const void *save) {
-  *(bool *)tgt = *(bool *)save ? true : false;
+  *(bool *)tgt = *reinterpret_cast<bool *>(const_cast<void *>(save)) ? true : false;
 }
 
 void debug_update(MYSQL_THD thd, struct SYS_VAR *var, void *var_ptr, const void *save);
@@ -622,25 +622,25 @@ void debug_update(MYSQL_THD thd, [[maybe_unused]] struct SYS_VAR *var, void *var
   if (ha_rcengine_) {
     auto cur_conn = ha_rcengine_->GetTx(thd);
     // set debug_level for connection level
-    cur_conn->SetDebugLevel(*((int *)save));
+    cur_conn->SetDebugLevel(*(reinterpret_cast<int *>(const_cast<void *>(save))));
   }
-  *((int *)var_ptr) = *((int *)save);
+  *((int *)var_ptr) = *(reinterpret_cast<int *>(const_cast<void *>(save)));
 }
 
 void trace_update(MYSQL_THD thd, [[maybe_unused]] struct SYS_VAR *var, void *var_ptr, const void *save) {
-  *((int *)var_ptr) = *((int *)save);
+  *((int *)var_ptr) = *(reinterpret_cast<int *>(const_cast<void *>(save)));
   // get global mysql_sysvar_control_trace
   tianmu_sysvar_controltrace = THDVAR(nullptr, control_trace);
   if (ha_rcengine_) {
     core::Transaction *cur_conn = ha_rcengine_->GetTx(thd);
-    cur_conn->SetSessionTrace(*((int *)save));
+    cur_conn->SetSessionTrace(*(reinterpret_cast<int *>(const_cast<void *>(save))));
     ConfigureRCControl();
   }
 }
 
 void controlquerylog_update([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] struct SYS_VAR *var, void *var_ptr,
                             const void *save) {
-  *((int *)var_ptr) = *((int *)save);
+  *((int *)var_ptr) = *(reinterpret_cast<int *>(const_cast<void *>(save)));
   int control = *((int *)var_ptr);
   if (ha_rcengine_) {
     control ? rc_querylog_.setOn() : rc_querylog_.setOff();
@@ -649,7 +649,7 @@ void controlquerylog_update([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] str
 
 void start_async_update([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] struct SYS_VAR *var, void *var_ptr,
                         const void *save) {
-  int percent = *((int *)save);
+  int percent = *(reinterpret_cast<int *>(const_cast<void *>(save)));
   *((int *)var_ptr) = percent;
   if (ha_rcengine_) {
     ha_rcengine_->ResetTaskExecutor(percent);

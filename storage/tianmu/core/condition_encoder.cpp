@@ -318,7 +318,7 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
     } else {
       if (*(double *)&v1 > common::MINUS_INF_DBL)
         v2 = (AttrTypeName() == common::CT::REAL) ? DoubleMinusEpsilon(v1) : FloatMinusEpsilon(v1);
-      v1 = *(int64_t *)&common::MINUS_INF_DBL;
+      v1 = *(reinterpret_cast<int64_t *>(const_cast<double *>(&common::MINUS_INF_DBL)));
     }
   }
 
@@ -329,7 +329,7 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
     } else {
       if (*(double *)&(v1) != common::PLUS_INF_DBL)
         v1 = (AttrTypeName() == common::CT::REAL) ? DoublePlusEpsilon(v1) : FloatPlusEpsilon(v1);
-      v2 = *(int64_t *)&common::PLUS_INF_DBL;
+      v2 = *(reinterpret_cast<int64_t *>(const_cast<double *>(&common::PLUS_INF_DBL)));
     }
   }
 
@@ -338,14 +338,14 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
     if (!ATI::IsRealType(AttrTypeName()))
       v1 = common::MINUS_INF_64;
     else
-      v1 = *(int64_t *)&common::MINUS_INF_DBL;
+      v1 = *(reinterpret_cast<int64_t *>(const_cast<double *>(&common::MINUS_INF_DBL)));
   }
 
   if (ISTypeOfMoreEqualOperator(desc->op)) {
     if (!ATI::IsRealType(AttrTypeName()))
       v2 = common::PLUS_INF_64;
     else
-      v2 = *(int64_t *)&common::PLUS_INF_DBL;
+      v2 = *(reinterpret_cast<int64_t *>(const_cast<double *>(&common::PLUS_INF_DBL)));
   }
 
   desc->sharp = false;

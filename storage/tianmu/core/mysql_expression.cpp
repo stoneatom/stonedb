@@ -615,7 +615,9 @@ bool operator==(Item const &l_, Item const &r_) {
           // longlong zzz = lll->val_int_result();
           // longlong vvv = mmm->val_int_result();
           same = same && (l->const_item() == r->const_item());
-          if (same && l->const_item()) same = ((Item_func *)&l_)->val_int() == ((Item_func *)&r_)->val_int();
+          if (same && l->const_item())
+            same = ((dynamic_cast<Item_func *>(const_cast<Item *>(&l_)))->val_int() ==
+                    (dynamic_cast<Item_func *>(const_cast<Item *>(&r_)))->val_int());
           if (dynamic_cast<const Item_date_add_interval *>(&l_)) {
             const Item_date_add_interval *l = static_cast<const Item_date_add_interval *>(&l_);
             const Item_date_add_interval *r = static_cast<const Item_date_add_interval *>(&r_);
