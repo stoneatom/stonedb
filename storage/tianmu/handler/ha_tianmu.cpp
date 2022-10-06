@@ -1269,7 +1269,7 @@ char *TianmuHandler::update_table_comment(const char *comment) {
     uint extra_len = 0;
 
     if (length > 64000 - 3) {
-      return ((char *)comment);  // string too long
+      return (const_cast<char *>(comment));  // string too long
     }
 
     //  get size & ratio
@@ -1537,7 +1537,7 @@ bool TianmuHandler::commit_inplace_alter_table(TABLE *altered_table [[maybe_unus
  */
 void TianmuHandler::key_convert(const uchar *key, uint key_len, std::vector<uint> cols,
                                 std::vector<std::string_view> &keys) {
-  key_restore(table->record[0], (uchar *)key, &table->key_info[active_index], key_len);
+  key_restore(table->record[0], const_cast<uchar *>(key), &table->key_info[active_index], key_len);
 
   Field **field = table->field;
   std::vector<std::string> records;

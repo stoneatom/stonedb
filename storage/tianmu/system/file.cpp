@@ -85,7 +85,8 @@ void TianmuFile::WriteExact(const void *buf, size_t count) {
   DEBUG_ASSERT(fd_ != -1);
   size_t total_writen_bytes = 0;
   while (total_writen_bytes < count) {
-    auto writen_bytes = write(fd_, ((char *)buf) + total_writen_bytes, count - total_writen_bytes);
+    auto writen_bytes = write(fd_, (reinterpret_cast<char *>(const_cast<void *>(buf))) + total_writen_bytes,
+                              count - total_writen_bytes);
     if (writen_bytes == -1) ThrowError(errno);
     total_writen_bytes += writen_bytes;
   }

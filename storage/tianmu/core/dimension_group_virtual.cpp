@@ -170,7 +170,7 @@ DimensionGroupVirtual::DGVirtualIterator::~DGVirtualIterator() {
 
 DimensionGroupVirtual::DGVirtualIterator::DGVirtualIterator(const Iterator &sec, [[maybe_unused]] uint32_t power)
     : DimensionGroup::Iterator(sec) {
-  DGVirtualIterator *s = (DGVirtualIterator *)(&sec);
+  DGVirtualIterator *s = dynamic_cast<DGVirtualIterator *>(const_cast<Iterator *>(&sec));
   fi = s->fi;
   dim_pos = s->dim_pos;
   cur_pack_start = s->cur_pack_start;
@@ -266,7 +266,7 @@ DimensionGroupVirtual::DGVirtualOrderedIterator::DGVirtualOrderedIterator(Filter
 DimensionGroupVirtual::DGVirtualOrderedIterator::DGVirtualOrderedIterator(const Iterator &sec,
                                                                           [[maybe_unused]] uint32_t power)
     : DimensionGroup::Iterator(sec) {
-  DGVirtualOrderedIterator *s = (DGVirtualOrderedIterator *)(&sec);
+  DGVirtualOrderedIterator *s = dynamic_cast<DGVirtualOrderedIterator *>(const_cast<Iterator *>(&sec));
   fi = s->fi;
   f = s->f;
   dim_pos = s->dim_pos;

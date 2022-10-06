@@ -989,7 +989,7 @@ bool Descriptor::CheckCondition_UTF(const MIIterator &mit) {
       return !result;
   } else if (IsType_OrTree()) {
     DEBUG_ASSERT(tree);
-    return tree->root->CheckCondition((MIIterator &)mit);
+    return tree->root->CheckCondition(const_cast<MIIterator &>(mit));
   } else {  // all other logical operators: >, >=, <, <=
     DEBUG_ASSERT(attr.vc && val1.vc);
     if (attr.vc->IsNull(mit) || val1.vc->IsNull(mit)) return false;
@@ -1069,7 +1069,7 @@ bool Descriptor::CheckCondition(const MIIterator &mit) {
     return CheckSetCondition(mit, op);
   } else if (IsType_OrTree()) {
     DEBUG_ASSERT(tree);
-    return tree->root->CheckCondition((MIIterator &)mit);
+    return tree->root->CheckCondition((const_cast<MIIterator &>(mit)));
   } else {  // all other logical operators: >, >=, <, <=
     DEBUG_ASSERT(attr.vc && val1.vc);
     if (attr.vc->IsNull(mit) || val1.vc->IsNull(mit)) return false;
@@ -1131,7 +1131,7 @@ bool Descriptor::IsNull(const MIIterator &mit) {
     return IsNull_Set(mit, op);
   } else if (IsType_OrTree()) {
     DEBUG_ASSERT(tree);
-    return tree->root->CheckCondition((MIIterator &)mit);
+    return tree->root->CheckCondition(const_cast<MIIterator &>(mit));
   } else {  // all other logical operators: >, >=, <, <=
     DEBUG_ASSERT(attr.vc && val1.vc);
     if (attr.vc->IsNull(mit) || val1.vc->IsNull(mit)) return true;

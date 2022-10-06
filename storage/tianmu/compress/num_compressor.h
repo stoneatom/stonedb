@@ -187,7 +187,7 @@ class NumCompressor : public NumCompressorBase {
   CprsErr Compress(char *dest, uint &len, const void *src, uint nrec, uint64_t maxval,
                    CprsAttrType cat = CprsAttrType::CAT_OTHER) override {
     MEASURE_FET("NumCompressor::Compress(...)");
-    return CompressT(dest, len, (T *)src, nrec, (T)maxval, cat);
+    return CompressT(dest, len, reinterpret_cast<const T *>(src), nrec, (T)maxval, cat);
   }
 
   CprsErr Decompress(void *dest, char *src, uint len, uint nrec, uint64_t maxval,

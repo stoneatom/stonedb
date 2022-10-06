@@ -356,8 +356,8 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
         if (v1 == common::MINUS_INF_64) v1 = dpn.min_i;
         if (v2 == common::PLUS_INF_64) v2 = dpn.max_i;
       } else {
-        if (v1 == *(int64_t *)&common::MINUS_INF_DBL) v1 = dpn.min_i;
-        if (v2 == *(int64_t *)&common::PLUS_INF_DBL) v2 = dpn.max_i;
+        if (v1 == *reinterpret_cast<int64_t *>(const_cast<double *>(&common::MINUS_INF_DBL))) v1 = dpn.min_i;
+        if (v2 == *reinterpret_cast<int64_t *>(const_cast<double *>(&common::PLUS_INF_DBL))) v2 = dpn.max_i;
       }
       common::RSValue res =
           RoughCheckBetween(pack, v1,
@@ -531,7 +531,8 @@ common::RSValue RCAttr::RoughCheckBetween(int pack, int64_t v1, int64_t v2) {
   auto const &dpn(get_dpn(pack));
   if (!is_float && (v1 == common::PLUS_INF_64 || v2 == common::MINUS_INF_64)) {
     res = common::RSValue::RS_NONE;
-  } else if (is_float && (v1 == *(int64_t *)&common::PLUS_INF_DBL || v2 == *(int64_t *)&common::MINUS_INF_DBL)) {
+  } else if (is_float && (v1 == *(reinterpret_cast<int64_t *>(const_cast<double *>(&common::PLUS_INF_DBL))) ||
+                          v2 == *(reinterpret_cast<int64_t *>(const_cast<double *>(&common::MINUS_INF_DBL))))) {
     res = common::RSValue::RS_NONE;
   } else if (!is_float && (v1 > dpn.max_i || v2 < dpn.min_i)) {
     res = common::RSValue::RS_NONE;
@@ -844,7 +845,7 @@ void RCAttr::GetTextStat(types::TextStat &s, Filter *f) {
           }
           size_t pack_prefix = GetPrefixLength(p);
           size_t i = 0;
-          uchar *prefix = (uchar *)dpn.min_s;
+          uchar *prefix = reinterpret_cast<uchar *>(const_cast<char *>(dpn.min_s));
           for (i = 0; i < pack_prefix; i++) s.AddChar(prefix[i], i);
           for (i = pack_prefix; i < len; i++) {
             s.AddLen(i);  // end of value is always possible (except a prefix)

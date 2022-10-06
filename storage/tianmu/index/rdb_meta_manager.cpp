@@ -509,7 +509,7 @@ void DDLManager::put_and_write(std::shared_ptr<RdbTable> tbl, rocksdb::WriteBatc
   key.write_uint32(static_cast<uint32_t>(MetaType::DDL_INDEX));
 
   const std::string &dbname_tablename = tbl->fullname();
-  key.write((uchar *)dbname_tablename.data(), dbname_tablename.length());
+  key.write(reinterpret_cast<uchar *>(const_cast<char *>(dbname_tablename.data())), dbname_tablename.length());
 
   tbl->put_dict(m_dict, batch, key.ptr(), key.length());
   put(tbl);
@@ -557,7 +557,7 @@ bool DDLManager::rename(const std::string &from, const std::string &to, rocksdb:
   key.write_uint32(static_cast<uint32_t>(MetaType::DDL_INDEX));
 
   const std::string &dbname_tablename = new_rec->fullname();
-  key.write((uchar *)dbname_tablename.data(), dbname_tablename.length());
+  key.write(reinterpret_cast<uchar *>(const_cast<char *>(dbname_tablename.data())), dbname_tablename.length());
   if (rec->if_exist_cf(m_dict)) {
     remove(rec, batch);
     new_rec->put_dict(m_dict, batch, key.ptr(), key.length());
@@ -844,7 +844,8 @@ bool DICTManager::get_max_index_id(uint32_t *const index_id) const {
   bool found = false;
   std::string value;
 
-  const rocksdb::Status status = get_value({(char *)m_max_index, INDEX_NUMBER_SIZE}, &value);
+  const rocksdb::Status status =
+      get_value({reinterpret_cast<char *>(const_cast<uchar *>(m_max_index)), INDEX_NUMBER_SIZE}, &value);
   if (status.ok()) {
     uint16_t version = 0;
     StringReader reader({value.data(), value.length()});
@@ -869,7 +870,8 @@ bool DICTManager::update_max_index_id(rocksdb::WriteBatch *const batch, const ui
   StringWriter value;
   value.write_uint16(static_cast<uint>(enumVersion::MAX_INDEX_ID_VERSION));
   value.write_uint32(index_id);
-  batch->Put(m_system_cfh, {(char *)m_max_index, INDEX_NUMBER_SIZE}, {(char *)value.ptr(), value.length()});
+  batch->Put(m_system_cfh, {reinterpret_cast<char *>(const_cast<uchar *>(m_max_index)), INDEX_NUMBER_SIZE},
+             {(char *)value.ptr(), value.length()});
 
   return false;
 }

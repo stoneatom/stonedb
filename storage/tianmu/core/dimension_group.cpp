@@ -56,7 +56,7 @@ DimensionGroup::Iterator *DimensionGroupFilter::NewOrderedIterator([[maybe_unuse
 
 DimensionGroupFilter::DGFilterIterator::DGFilterIterator(const Iterator &sec, [[maybe_unused]] uint32_t power)
     : DimensionGroup::Iterator(sec) {
-  DGFilterIterator *s = (DGFilterIterator *)(&sec);
+  DGFilterIterator *s = dynamic_cast<DGFilterIterator *>(const_cast<Iterator *>(&sec));
   fi = s->fi;
   f = s->f;
 }
@@ -64,7 +64,7 @@ DimensionGroupFilter::DGFilterIterator::DGFilterIterator(const Iterator &sec, [[
 DimensionGroupFilter::DGFilterOrderedIterator::DGFilterOrderedIterator(const Iterator &sec,
                                                                        [[maybe_unused]] uint32_t power)
     : DimensionGroup::Iterator(sec) {
-  DGFilterOrderedIterator *s = (DGFilterOrderedIterator *)(&sec);
+  DGFilterOrderedIterator *s = dynamic_cast<DGFilterOrderedIterator *>(const_cast<Iterator *>(&sec));
   fi = s->fi;
   f = s->f;
 }
@@ -179,7 +179,7 @@ DimensionGroupMaterialized::DGMaterializedIterator::DGMaterializedIterator(int64
 DimensionGroupMaterialized::DGMaterializedIterator::DGMaterializedIterator(const Iterator &sec, uint32_t power)
     : DimensionGroup::Iterator(sec) {
   p_power = power;
-  DGMaterializedIterator *s = (DGMaterializedIterator *)(&sec);
+  DGMaterializedIterator *s = dynamic_cast<DGMaterializedIterator *>(const_cast<Iterator *>(&sec));
   no_obj = s->no_obj;
   cur_pack_start = s->cur_pack_start;
   no_dims = s->no_dims;

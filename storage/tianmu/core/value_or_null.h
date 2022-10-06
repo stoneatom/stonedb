@@ -67,7 +67,7 @@ class ValueOrNull final {
     x = *(int64_t *)&v;
     null = false;
   }
-  double GetDouble() const { return *(double *)&x; }
+  double GetDouble() const { return *reinterpret_cast<double *>(const_cast<int64_t *>(&x)); }
   //! assign an externally allocated string value
   void SetString(char *s, uint n) {
     Clear();
