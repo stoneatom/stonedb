@@ -33,7 +33,7 @@ struct SYS_VAR {
 };
 
 namespace Tianmu {
-namespace dbhandler {
+namespace DBHandler {
 
 /*
  If frm_error() is called then we will use this to to find out what file
@@ -737,22 +737,22 @@ static struct SYS_VAR *tianmu_showvars[] = {MYSQL_SYSVAR(bg_load_threads),
                                             MYSQL_SYSVAR(start_async),
                                             MYSQL_SYSVAR(result_sender_rows),
                                             NULL};
-}  // namespace dbhandler
+}  // namespace DBHandler
 }  // namespace Tianmu
 
 mysql_declare_plugin(tianmu){
     MYSQL_STORAGE_ENGINE_PLUGIN,
-    &Tianmu::dbhandler::tianmu_storage_engine,
+    &Tianmu::DBHandler::tianmu_storage_engine,
     "TIANMU",
     "StoneAtom Group Holding Limited",
     "Tianmu storage engine",
     PLUGIN_LICENSE_GPL,
-    Tianmu::dbhandler::rcbase_init_func, /* Plugin Init */
+    Tianmu::DBHandler::rcbase_init_func, /* Plugin Init */
     nullptr,                             /* Plugin Check uninstall */
-    Tianmu::dbhandler::rcbase_done_func, /* Plugin Deinit */
+    Tianmu::DBHandler::rcbase_done_func, /* Plugin Deinit */
     0x0001 /* 0.1 */,
-    Tianmu::dbhandler::statusvars,      /* status variables  */
-    Tianmu::dbhandler::tianmu_showvars, /* system variables  */
+    Tianmu::DBHandler::statusvars,      /* status variables  */
+    Tianmu::DBHandler::tianmu_showvars, /* system variables  */
     nullptr,                            /* config options    */
     0                                   /* flags for plugin */
 } mysql_declare_plugin_end;

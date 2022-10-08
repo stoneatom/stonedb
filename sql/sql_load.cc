@@ -309,7 +309,7 @@ bool Sql_cmd_load_table::execute_inner(THD *thd,
     return true;
   }
   // TIANMU UPGRADE BEGIN
-  if (!Tianmu::dbhandler::tianmu_load(thd, &m_exchange, table_list,
+  if (!Tianmu::DBHandler::Tianmu_Load(thd, &m_exchange, table_list,
                                       (void *)&lf_info)) {
     return false;
   }

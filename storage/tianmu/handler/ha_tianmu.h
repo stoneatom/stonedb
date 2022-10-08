@@ -22,7 +22,7 @@
 #include "core/engine.h"
 
 namespace Tianmu {
-namespace dbhandler {
+namespace DBHandler {
 
 // Class definition for the storage engine
 class TianmuHandler final : public handler {
@@ -191,7 +191,7 @@ class TianmuHandler final : public handler {
   bool m_partitioned = false;
 };
 
-}  // namespace dbhandler
+}  // namespace DBHandler
 }  // namespace Tianmu
 
 #endif  // HA_TIANMU_H_
