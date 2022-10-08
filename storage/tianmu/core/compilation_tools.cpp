@@ -23,6 +23,7 @@
 
 namespace Tianmu {
 namespace core {
+
 Item *UnRef(Item *item) {
   if (!item) return 0;
   bool changed;
@@ -46,8 +47,8 @@ const char *TablePath(TABLE_LIST *tab) {
   return tab->table->s->path.str;
 }
 
-int OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct,
-                         [[maybe_unused]] const int group_by_clause) {
+Query_Route_To OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct,
+                                    [[maybe_unused]] const int group_by_clause) {
   distinct = false;
 
   item = UnRef(item);
@@ -121,13 +122,13 @@ int OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct,
           oper = common::ColOperation::GROUP_CONCAT;
           break;
         default:
-          return RETURN_QUERY_TO_MYSQL_ROUTE;
+          return Query_Route_To::TO_MYSQL;
       }
       break;
     default:
-      return RETURN_QUERY_TO_MYSQL_ROUTE;
+      return Query_Route_To::TO_MYSQL;
   }
-  return RCBASE_QUERY_ROUTE;
+  return Query_Route_To::TO_TIANMU;
 }
 
 const char *FieldType(enum_field_types ft) {

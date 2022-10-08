@@ -34,6 +34,7 @@
 #include "core/temp_table.h"
 #include "exporter/data_exporter.h"
 #include "exporter/export2file.h"
+#include "handler/ha_my_tianmu.h"
 #include "index/rc_table_index.h"
 #include "log.h"
 #include "system/io_parameters.h"
@@ -63,6 +64,8 @@ class select_tianmu_export;
 }  // namespace exporter
 
 namespace core {
+
+using Tianmu::DBHandler::Query_Route_To;
 struct AttrInfo;
 class TableShare;
 class Transaction;
@@ -128,8 +131,8 @@ class Engine final {
   void ClearTx(THD *thd);
 
   // processing the queries which routed to Tianmu.
-  int Handle_Query(THD *thd, LEX *lex, Query_result *&result_output, ulong setup_tables_done_option, int &res,
-                   int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false);
+  Query_Route_To Handle_Query(THD *thd, LEX *lex, Query_result *&result_output, ulong setup_tables_done_option,
+                              int &res, int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false);
 
   system::ResourceManager *getResourceManager() const { return m_resourceManager; }
 
@@ -178,9 +181,11 @@ class Engine final {
  private:
   void AddTx(Transaction *tx);
   void RemoveTx(Transaction *tx);
-  int Execute(THD *thd, LEX *lex, Query_result *result_output, Query_expression *unit_for_union = NULL);  // stonedb8
-  int SetUpCacheFolder(const std::string &cachefolder_path);
 
+  Query_Route_To Execute(THD *thd, LEX *lex, Query_result *result_output,
+                         Query_expression *unit_for_union = NULL);  // stonedb8
+
+  int SetUpCacheFolder(const std::string &cachefolder_path);
   static bool AreConvertible(types::RCDataType &rcitem, enum_field_types my_type, uint length = 0);
   static bool IsTIANMURoute(THD *thd, TABLE_LIST *table_list, Query_block *selects_list,
                             int &in_case_of_failure_can_go_to_mysql, int with_insert);  // stonedb8

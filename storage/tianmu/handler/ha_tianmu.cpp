@@ -1404,10 +1404,12 @@ const Item *TianmuHandler::cond_push(const Item *a_cond) {
 
     std::unique_ptr<core::CompiledQuery> tmp_cq(new core::CompiledQuery(*m_cq));
     core::CondID cond_id;
-    if (!m_query->BuildConditions(cond, cond_id, tmp_cq.get(), m_tmp_table, core::CondType::WHERE_COND, false)) {
+    if (m_query->BuildConditions(cond, cond_id, tmp_cq.get(), m_tmp_table, core::CondType::WHERE_COND, false) ==
+        Query_Route_To::TO_MYSQL) {
       m_query.reset();
       return a_cond;
     }
+
     tmp_cq->AddConds(m_tmp_table, cond_id, core::CondType::WHERE_COND);
     tmp_cq->ApplyConds(m_tmp_table);
     m_cq.reset(tmp_cq.release());
