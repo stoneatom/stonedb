@@ -71,24 +71,25 @@ bool Tianmu_SetStatementAllowed(THD *thd, LEX *lex) {
   return true;
 }
 
-int Tianm_Handle_Query(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
-                       int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
-  int ret = RCBASE_QUERY_ROUTE;
+Query_Route_To Tianm_Handle_Query(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
+                                  int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
+  Query_Route_To ret = Query_Route_To::TO_TIANMU;
   try {
     // handle_select_ret is introduced here because in case of some exceptions
     // (e.g. thrown from ForbiddenMySQLQueryPath) we want to return
     // RCBASE_QUERY_ROUTE
-    int handle_select_ret = ha_rcengine_->Handle_Query(thd, lex, result, setup_tables_done_option, res,
-                                                       optimize_after_tianmu, tianmu_free_join, with_insert);
-    if (handle_select_ret == RETURN_QUERY_TO_MYSQL_ROUTE && AtLeastOneTIANMUTableInvolved(lex) &&
+    ret = ha_rcengine_->Handle_Query(thd, lex, result, setup_tables_done_option, res, optimize_after_tianmu,
+                                     tianmu_free_join, with_insert);
+
+    if (ret == DBHandler::Query_Route_To::TO_MYSQL && AtLeastOneTIANMUTableInvolved(lex) &&
         ForbiddenMySQLQueryPath(lex)) {
       my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
                  "The query includes syntax that is not supported by the storage engine. \
-Either restructure the query with supported syntax, or enable the MySQL core::Query Path in config file to execute the query with reduced performance.",
+                 Either restructure the query with supported syntax, or enable the MySQL core::Query Path \ 
+                 in config file to execute the query with reduced performance.",
                  MYF(0));
-      handle_select_ret = RCBASE_QUERY_ROUTE;
+      ret = Query_Route_To::TO_TIANMU;
     }
-    ret = handle_select_ret;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "Handle_Query Error: %s", e.what());

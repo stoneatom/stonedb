@@ -18,10 +18,18 @@
 #define TIANMU_CORE_COMPILATION_TOOLS_H_
 #pragma once
 
-#include "core/query.h"
+#include "sql/item.h"
+#include "sql/table.h"
+
+#include "common/common_definitions.h"
+#include "handler/ha_my_tianmu.h"
 
 namespace Tianmu {
 namespace core {
+
+using Tianmu::common::ColOperation;
+using Tianmu::DBHandler::Query_Route_To;
+
 #define ASSERT_MYSQL_STRING(x)                           \
   DEBUG_ASSERT(!x.str[x.length] &&                       \
                "Verification that LEX_STRING ends with " \
@@ -32,10 +40,13 @@ namespace core {
 class ReturnMeToMySQLWithError {};
 
 const char *TablePath(TABLE_LIST *tab);
+
 Item *UnRef(Item *item);
-int OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct, const int group_by_clause);
+Query_Route_To OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct, const int group_by_clause);
+
 void PrintItemTree(Item *item, int indent = 0);
 void PrintItemTree(char const *info, Item *item);
+
 }  // namespace core
 }  // namespace Tianmu
 

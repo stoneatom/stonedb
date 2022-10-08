@@ -22,11 +22,12 @@
 #include "core/item_tianmu_field.h"
 #include "core/joiner.h"
 #include "core/mysql_expression.h"
+#include "handler/ha_my_tianmu.h"
 
 namespace Tianmu {
 namespace core {
-#define RETURN_QUERY_TO_MYSQL_ROUTE 0
-#define RCBASE_QUERY_ROUTE 1
+
+using Tianmu::DBHandler::Query_Route_To;
 
 class CompiledQuery;
 class MysqlExpression;
@@ -34,6 +35,8 @@ class ResultSender;
 class JustATable;
 class RCTable;
 class Transaction;
+
+enum class Table_Status : int { TALE_SEEN_INVOLVED = 0, TABLE_YET_UNSEEN_INVOLVED = 1, TABLE_UNKONWN_ERROR = -1 };
 
 class Query final {
  public:
@@ -60,12 +63,14 @@ class Query final {
 
   void SetRoughQuery(bool set_rough) { rough_query = set_rough; }
   bool IsRoughQuery() { return rough_query; }
-  int Compile(CompiledQuery *compiled_query, Query_block *selects_list, Query_block *last_distinct,
-              TabID *res_tab = NULL, bool ignore_limit = false, Item *left_expr_for_subselect = NULL,
-              common::Operator *oper_for_subselect = NULL, bool ignore_minmax = false, bool for_subq_in_where = false);
+  Query_Route_To Compile(CompiledQuery *compiled_query, Query_block *selects_list, Query_block *last_distinct,
+                         TabID *res_tab = NULL, bool ignore_limit = false, Item *left_expr_for_subselect = NULL,
+                         common::Operator *oper_for_subselect = NULL, bool ignore_minmax = false,
+                         bool for_subq_in_where = false);
   TempTable *Preexecute(CompiledQuery &qu, ResultSender *sender, bool display_now = true);
-  int BuildConditions(Item *conds, CondID &cond_id, CompiledQuery *cq, const TabID &tmp_table, CondType filter_type,
-                      bool is_zero_result = false, JoinType join_type = JoinType::JO_INNER);
+  Query_Route_To BuildConditions(Item *conds, CondID &cond_id, CompiledQuery *cq, const TabID &tmp_table,
+                                 CondType filter_type, bool is_zero_result = false,
+                                 JoinType join_type = JoinType::JO_INNER);
 
   std::multimap<std::string, std::pair<int, TABLE *>> table_alias2index_ptr;
 
@@ -92,12 +97,12 @@ class Query final {
   bool rough_query = false;  // set as true to enable rough execution
 
   bool FieldUnmysterify(Item *item, TabID &tab, AttrID &col);
-  int FieldUnmysterify(Item *item, const char *&database_name, const char *&table_name, const char *&table_alias,
-                       const char *&table_path, const TABLE *&table_ptr, const char *&field_name,
-                       const char *&field_alias);
+  Query_Route_To FieldUnmysterify(Item *item, const char *&database_name, const char *&table_name,
+                                  const char *&table_alias, const char *&table_path, const TABLE *&table_ptr,
+                                  const char *&field_name, const char *&field_alias);
 
   const char *GetTableName(Item_field *ifield);
-  int PrefixCheck(Item *conds);
+  Table_Status PrefixCheck(Item *conds);
 
   /*! \brief Checks if exists virtual column defined by physical column:
    * \param tmp_table - id of TempTable for which VC is searched for
@@ -126,8 +131,9 @@ class Query final {
 
   int VirtualColumnAlreadyExists(const TabID &tmp_table, const std::vector<int> &vcs, const AttrID &at);
 
-  int Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_table, CondType filter_type, bool negative = false,
-                  Item *left_expr_for_subselect = NULL, common::Operator *oper_for_subselect = NULL);
+  Query_Route_To Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_table, CondType filter_type,
+                             bool negative = false, Item *left_expr_for_subselect = NULL,
+                             common::Operator *oper_for_subselect = NULL);
 
   // int FilterNotSubselect(Item *conds, const TabID& tmp_table, FilterType
   // filter_type, FilterID *and_me_filter = 0);
@@ -168,7 +174,7 @@ class Query final {
 
   CondID ConditionNumber(Item *conds, const TabID &tmp_table, CondType filter_type, CondID *and_me_filter = 0,
                          bool is_or_subtree = false);
-  int BuildCondsIfPossible(Item *conds, CondID &cond_id, const TabID &tmp_table, JoinType join_type);
+  Query_Route_To BuildCondsIfPossible(Item *conds, CondID &cond_id, const TabID &tmp_table, JoinType join_type);
 
  public:
   /*! \brief Removes ALL/ANY modifier from an operator
@@ -315,28 +321,30 @@ class Query final {
    * for which AddColumn steps are added \param group_by_clause - indicates
    * whether it is group by query \param ignore_minmax - indicates if field of
    * typy Min/Max should be transformed to LISTING \return returns
-   * RETURN_QUERY_TO_MYSQL_ROUTE in case of any problem and RCBASE_QUERY_ROUTE
+   * Query_Route_To::to_mysql in case of any problem and Query_Route_To::to_tianmu
    * otherwise
    */
-  int AddFields(List<Item> &fields, const TabID &tmp_table, const bool group_by_clause, int &num_of_added_fields,
-                bool ignore_minmax, bool &aggr_used);
+  Query_Route_To AddFields(List<Item> &fields, const TabID &tmp_table, const bool group_by_clause,
+                           int &num_of_added_fields, bool ignore_minmax, bool &aggr_used);
 
   /*! \brief Generates AddColumn compilation steps for every field on GROUP BY
    * list \param fields - pointer to GROUP BY fields \param tmp_table - alias of
    * TempTable for which AddColumn steps are added \return returns
-   * RETURN_QUERY_TO_MYSQL_ROUTE in case of any problem and RCBASE_QUERY_ROUTE
+   * Query_Route_To::to_mysql in case of any problem and Query_Route_To::to_tianmu
    * otherwise
    */
-  int AddGroupByFields(ORDER *group_by, const TabID &tmp_table);
+  Query_Route_To AddGroupByFields(ORDER *group_by, const TabID &tmp_table);
 
   //! is this item representing a column local to the temp table (not a
   //! parameter)
   bool IsLocalColumn(Item *item, const TabID &tmp_table);
-  int AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const group_by_clause);
-  int AddGlobalOrderByFields(SQL_I_List<ORDER> *global_order, const TabID &tmp_table, int max_col);
+  Query_Route_To AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const group_by_clause);
+  Query_Route_To AddGlobalOrderByFields(SQL_I_List<ORDER> *global_order, const TabID &tmp_table, int max_col);
+
   // stonedb8 List -> mem_root_deque
-  int AddJoins(const mem_root_deque<TABLE_LIST *> join, TabID &tmp_table, std::vector<TabID> &left_tables,
-               std::vector<TabID> &right_tables, bool in_subquery, bool &first_table, bool for_subq = false);
+  Query_Route_To AddJoins(const mem_root_deque<TABLE_LIST *> join, TabID &tmp_table, std::vector<TabID> &left_tables,
+                          std::vector<TabID> &right_tables, bool in_subquery, bool &first_table, bool for_subq = false);
+
   static bool ClearSubselectTransformation(common::Operator &oper_for_subselect, Item *&field_for_subselect,
                                            Item *&conds, Item *&having, Item *&cond_removed,
                                            List<Item> *&list_to_reinsert, Item *left_expr_for_subselect);
