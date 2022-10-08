@@ -695,7 +695,7 @@ int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *ta
           }
         }
         if (no_of_matching_rows > 65536 || no_of_matching_rows < 0)
-          TIANMU_LOG(LogCtl_Level::DEBUG, "no_of_matching_rows %d", no_of_matching_rows);
+          TIANMU_LOG(LogCtl_Level::DEBUG, "no_of_matching_rows %ld", no_of_matching_rows);
         joined_tuples += no_of_matching_rows;
         omit_this_packrow = true;
       }
@@ -771,7 +771,7 @@ int64_t JoinerHash::NewMatchDim(MINewContents *new_mind1, MIUpdatingIterator *ta
     matching_row++;
   }
   if (outer_nulls_only) joined_tuples = 0;  // outer tuples added later
-  TIANMU_LOG(LogCtl_Level::DEBUG, "JoinerHash::test %d,matching_row %d", joined_tuples, matching_row);
+  TIANMU_LOG(LogCtl_Level::DEBUG, "JoinerHash::test %ld,matching_row %ld", joined_tuples, matching_row);
   *join_tuple = joined_tuples;
   return joined_tuples;
 }

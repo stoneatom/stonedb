@@ -66,7 +66,7 @@ class TaskExecutor {
     auto task = std::make_unique<FuncTask<Func>>(std::move(func));
     auto ret = task->get_future();
     AddTask(std::move(task));
-    return std::move(ret);
+    return ret;
   }
 
   void Exit();

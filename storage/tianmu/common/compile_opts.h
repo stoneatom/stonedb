@@ -20,16 +20,16 @@
 
 namespace Tianmu {
 
-#ifdef __clang__
+#if defined(__clang__)
 // in clang
-#elif __GNUC__
+#elif defined(__GNUC__)
 //
 //__GNUC__              // major
 //__GNUC_MINOR__        // minor
 //__GNUC_PATCHLEVEL__     // patch
 // C++0x features
 //
-#if (__GNUC__ > 4 && __GUNC__ < 7) || (__GNUC__ == 4 && __GNUC_MINOR__ > 2)
+#if (__GNUC__ > 4 && __GNUC__ < 7) || (__GNUC__ == 4 && __GNUC_MINOR__ > 2)
 // C++0x features are only enabled when -std=c++0x or -std=gnu++0x are
 // passed on the command line, which in turn defines
 // __GXX_EXPERIMENTAL_CXX0X__.

@@ -424,7 +424,7 @@ CprsErr TextCompressor::CompressZlib(char *dest, int &dlen, char **index, const 
   uint64_t destlen = dlen - pos;
   int ret = compress2(reinterpret_cast<Bytef *>(dest + pos), &destlen, srcdata.get(), srclen, Z_DEFAULT_COMPRESSION);
   if (ret != Z_OK) {
-    TIANMU_LOG(LogCtl_Level::ERROR, "compress2 failure %d, destlen: %d, srclen %d, packlen %u", ret, destlen, srclen,
+    TIANMU_LOG(LogCtl_Level::ERROR, "compress2 failure %d, destlen: %lu, srclen %lu, packlen %u", ret, destlen, srclen,
                packlen);
     return CprsErr::CPRS_ERR_OTH;
   }
@@ -442,7 +442,7 @@ CprsErr TextCompressor::DecompressZlib(char *dest, int dlen, char *src, int slen
   const int ret =
       uncompress(reinterpret_cast<Bytef *>(dest), &destlen, reinterpret_cast<const Bytef *>(src + spos), srclen);
   if (ret != Z_OK) {
-    TIANMU_LOG(LogCtl_Level::ERROR, "uncompress error: %d, srclen: %d destlen = %d", ret, srclen, dlen);
+    TIANMU_LOG(LogCtl_Level::ERROR, "uncompress error: %d, srclen: %lu destlen = %d", ret, srclen, dlen);
     return CprsErr::CPRS_ERR_OTH;
   }
   size_t sumlen = 0;

@@ -334,7 +334,7 @@ void KeyIterator::ScanToKey(std::shared_ptr<RCTableIndex> tab, std::vector<std::
       if (!iter_->Valid() || !rdbkey_->covers_key(iter_->key())) valid = false;
       break;
     default:
-      TIANMU_LOG(LogCtl_Level::ERROR, "key not support this op:%d", op);
+      TIANMU_LOG(LogCtl_Level::ERROR, "key not support this op:%d", static_cast<int>(op));
       valid = false;
       break;
   }
