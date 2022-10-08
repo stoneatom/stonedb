@@ -4,6 +4,10 @@
 --echo #create temporary...like...
 --echo #
 
+--disable_warnings
+drop table if exists t1;
+--enable_warnings
+
 CREATE TABLE t1 (f1 INTEGER AUTO_INCREMENT, PRIMARY KEY (f1))engine=tianmu;
 CREATE TEMPORARY TABLE t2 LIKE t1;
 INSERT INTO t1 VALUES (1);
