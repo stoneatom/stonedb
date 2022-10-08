@@ -104,7 +104,6 @@ SubSelectColumn::SubSelectColumn(const SubSelectColumn &c)
       var_buf_for_exact(),
       no_cached_values(c.no_cached_values),
       out_of_date_rough(c.out_of_date_rough) {
-  var_types.empty();
   if (c.cache.get()) {
     cache = std::make_shared<core::ValueSet>(*c.cache.get());
     // core::ValueSet* vs = new core::ValueSet(*c.cache.get());

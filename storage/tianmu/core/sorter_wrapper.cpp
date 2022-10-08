@@ -232,7 +232,7 @@ bool SorterWrapper::InitPackrow(MIIterator &mit)  // return true if the packrow 
     }
   }
 
-  TIANMU_LOG(LogCtl_Level::DEBUG, "InitPackrow: no_values_encoded %d, begin to loadpacks scol size %d ",
+  TIANMU_LOG(LogCtl_Level::DEBUG, "InitPackrow: no_values_encoded %ld, begin to loadpacks scol size %lu ",
              no_values_encoded, scol.size());
   // Not excluded: lock packs
   if (!ha_rcengine_->query_thread_pool.is_owner()) {
@@ -264,7 +264,7 @@ bool SorterWrapper::PutValues(MIIterator &mit) {
 bool SorterWrapper::PutValues(SorterWrapper &sw) {
   if (s == NULL) return false;  // trivial sorter (constant values)
   no_values_encoded += sw.GetEncodedValNum();
-  TIANMU_LOG(LogCtl_Level::DEBUG, "PutValues: no_values_encoded %d \n", no_values_encoded);
+  TIANMU_LOG(LogCtl_Level::DEBUG, "PutValues: no_values_encoded %lu \n", no_values_encoded);
   return s->PutValue(sw.GetSorter());
 }
 

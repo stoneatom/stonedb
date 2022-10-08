@@ -429,7 +429,7 @@ int TianmuHandler::write_row([[maybe_unused]] uchar *buf) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::InsertRow: %s.", e.what());
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
   } catch (common::FormatException &e) {
-    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::InsertRow: %s Row: %ld, field %u.", e.what(),
+    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::InsertRow: %s Row: %llu, field %u.", e.what(),
                e.m_row_no, e.m_field_no);
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
   } catch (common::FileException &e) {
@@ -1088,7 +1088,7 @@ int TianmuHandler::rnd_pos(uchar *buf, uchar *pos) {
  the storage engine. The myisam engine implements the most hints.
  ha_innodb.cc has the most exhaustive list of these hints.
  */
-int TianmuHandler::extra(enum ha_extra_function operation) {
+int TianmuHandler::extra([[maybe_unused]] enum ha_extra_function operation) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   /* This preemptive delete might cause problems here.
    * Other place where it can be put is TianmuHandler::external_lock().
@@ -1495,7 +1495,7 @@ bool TianmuHandler::commit_inplace_alter_table(TABLE *altered_table [[maybe_unus
     return false;
   }
   if ((ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)) {
-    TIANMU_LOG(LogCtl_Level::INFO, "Altered table not support type %lu", ha_alter_info->handler_flags);
+    TIANMU_LOG(LogCtl_Level::INFO, "Altered table not support type %llu", ha_alter_info->handler_flags);
     return true;
   }
   fs::path tmp_dir(m_table_name + ".tmp");

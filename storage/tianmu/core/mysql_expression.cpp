@@ -432,6 +432,9 @@ DataType MysqlExpression::EvalType(TypOfVars *tv) {
     case ROW_RESULT:
       DEBUG_ASSERT(0 && "unexpected type: ROW_RESULT");
       break;
+    default:
+      DEBUG_ASSERT(0 && "unexpected type: INVALID_RESULT");
+      break;
   }
   return type;
 }

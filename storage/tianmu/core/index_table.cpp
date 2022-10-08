@@ -49,7 +49,7 @@ IndexTable::IndexTable(int64_t _size, int64_t _orig_size, [[maybe_unused]] int m
   buf = (unsigned char *)alloc(buffer_size_in_bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
   if (!buf) {
     Unlock();
-    TIANMU_LOG(LogCtl_Level::ERROR, "Could not allocate memory for IndexTable, size :%u", buffer_size_in_bytes);
+    TIANMU_LOG(LogCtl_Level::ERROR, "Could not allocate memory for IndexTable, size :%lu", buffer_size_in_bytes);
     throw common::OutOfMemoryException();
   }
   std::memset(buf, 0, buffer_size_in_bytes);

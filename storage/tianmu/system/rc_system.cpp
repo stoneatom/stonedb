@@ -31,7 +31,7 @@ system::Channel rc_querylog_(true);
 // global host ip addr.
 char global_hostIP_[FN_REFLEN];
 // global server info.
-char global_serverinfo_[FN_REFLEN];
+char global_serverinfo_[FN_REFLEN + FN_REFLEN + 512];
 // key-value engine handler.
 core::Engine *ha_rcengine_ = nullptr;
 // key-value store handler.

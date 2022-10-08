@@ -127,7 +127,7 @@ class MIIteratorPoller {
       no_more_ = true;
     }
 
-    return std::move(pack_iter);
+    return pack_iter;
   }
 
  private:

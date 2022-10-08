@@ -220,7 +220,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
   }
 
   TIANMU_LOG(LogCtl_Level::DEBUG,
-             "SortTable preparation done. row num %d, offset %d, limit %d, "
+             "SortTable preparation done. row num %ld, offset %ld, limit %ld, "
              "task_num %d",
              local_row, offset, limit, task_num);
 
@@ -552,7 +552,7 @@ size_t TempTable::TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrappe
         local_row += it->GetPackSizeLeft();
         it->NextPackrow();
 
-        TIANMU_LOG(LogCtl_Level::DEBUG, "skip this pack it %x", it);
+        TIANMU_LOG(LogCtl_Level::DEBUG, "skip this pack it: %p", it);
         continue;
       }
     }

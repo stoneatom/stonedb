@@ -163,7 +163,7 @@ void TestSubmitRandom(std::shared_ptr<core::TaskExecutor> task_executor) {
   ready_future.wait();
 }
 
-int main(int argc, char **argv) {
+int main([[maybe_unused]] int argc, [[maybe_unused]] char **argv) {
   auto started = Tianmu::base::steady_clock_type::now();
   std::shared_ptr<core::TaskExecutor> task_executor(new core::TaskExecutor);
   std::future<void> ready_future = task_executor->Init(std::thread::hardware_concurrency());
