@@ -468,7 +468,9 @@ void RCTable::Iterator::MoveToRow(int64_t row_id) {
 void RCTable::Iterator::FetchValues() {
   if (!current_record_fetched) {
     LockPacks();
-    for (auto &func : values_fetchers) func(position);
+    for (auto &func : values_fetchers) {
+      func(position);
+    }
     current_record_fetched = true;
   }
 }
