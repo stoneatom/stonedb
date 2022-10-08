@@ -1370,7 +1370,7 @@ void Engine::LogStat() {
           msg + sql_statement_names[c].str + " " + std::to_string(delta) + "/" + std::to_string(sv.com_stat[c]) + ", ";
     }
     msg = msg + "queries " + std::to_string(queries) + "/" + std::to_string(atomic_global_query_id);  // stonedb8
-    TIANMU_LOG(LogCtl_Level::INFO, msg.c_str());
+    TIANMU_LOG(LogCtl_Level::INFO, "%s", msg.c_str());
   }
 
   TIANMU_LOG(LogCtl_Level::INFO,
