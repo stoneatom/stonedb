@@ -1,6 +1,6 @@
 use test;
 CREATE TABLE `test_case` (
-  `id` int(11) DEFAULT NULL,
+  `id` int DEFAULT NULL,
   `name` text
 ) ENGINE=TIANMU;
 insert into test_case values(1,'test');
