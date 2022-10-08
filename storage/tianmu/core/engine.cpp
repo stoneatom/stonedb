@@ -44,7 +44,7 @@
 #include "util/thread_pool.h"
 
 namespace Tianmu {
-namespace dbhandler {
+namespace DBHandler {
 extern void resolve_async_join_settings(const std::string &settings);
 }
 namespace core {
@@ -303,7 +303,7 @@ int Engine::Init(uint engine_slot) {
   }
 
   if (tianmu_sysvar_start_async > 0) ResetTaskExecutor(tianmu_sysvar_start_async);
-  dbhandler::resolve_async_join_settings(tianmu_sysvar_async_join);
+  DBHandler::resolve_async_join_settings(tianmu_sysvar_async_join);
 
   return 0;
 }

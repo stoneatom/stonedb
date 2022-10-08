@@ -75,7 +75,7 @@ error through res'. If the query can not be compiled by Tianmu engine
 RETURN_QUERY_TO_MYSQL_ROUTE is returned and MySQL engine continues query
 execution.
 */
-int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
+int Engine::Handle_Query(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
                          int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
   KillTimer timer(thd, tianmu_sysvar_max_execution_time);
 
@@ -327,11 +327,13 @@ int optimize_select(THD *thd, ulong select_options, Query_result *result, Query_
     join = select_lex->join;
     // here is EXPLAIN of subselect or derived table
     if (select_lex->linkage != DERIVED_TABLE_TYPE || (select_options & (1ULL << 2))) {
+      // global_options_type means a global option, such as limit order by, etc., of a union query. refer to
+      // Query_expression::add_fake_query_block
       if (select_lex->linkage != GLOBAL_OPTIONS_TYPE) {
         if (result->prepare(thd, *select_lex->join->fields, select_lex->master_query_expression())) {
           return true;
         }
-      } else {
+      } else {  // it is a global_opton query block, such as limit, order by, etc.
         if ((err = select_lex->prepare(thd, nullptr)))  // stonedb8
         {
           return err;
@@ -353,8 +355,11 @@ int optimize_select(THD *thd, ulong select_options, Query_result *result, Query_
     if (!(join = new JOIN(thd, select_lex))) return true; /* purecov: inspected */
     select_lex->set_join(thd, join);
   }
+
   join->best_rowcount = 2;
   optimize_after_tianmu = true;
+  // all the preparation operations are done, therefore, we set the `part` to 1, then pass it to JOIN::optimize.
+  // 1 means we have done the preparation.
   if ((err = join->optimize(1))) return err;
   return false;
 }

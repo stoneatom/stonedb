@@ -35,7 +35,7 @@
 #define MYSQL_SERVER 1
 
 namespace Tianmu {
-namespace dbhandler {
+namespace DBHandler {
 
 const Alter_inplace_info::HA_ALTER_FLAGS TianmuHandler::TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER =
     Alter_inplace_info::ADD_COLUMN | Alter_inplace_info::DROP_COLUMN | Alter_inplace_info::ALTER_STORED_COLUMN_ORDER;
@@ -1684,5 +1684,5 @@ void TianmuHandler::key_convert(const uchar *key, uint key_len, std::vector<uint
   }
 }
 
-}  // namespace dbhandler
+}  // namespace DBHandler
 }  // namespace Tianmu
