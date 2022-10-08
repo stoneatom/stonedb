@@ -425,7 +425,18 @@ bool Sql_cmd_delete::mysql_delete(THD *thd, ha_rows limit)
       err= true;
       goto exit_without_my_ok;
     }
-
+#ifdef TIANMU
+    if (table->s->db_type()->db_type == DB_TYPE_TIANMU
+        && table->triggers
+        && table->triggers->has_triggers(TRG_EVENT_DELETE, TRG_ACTION_AFTER)) {
+      /*
+      The table has AFTER DELETE triggers, trigger might need OLD records,
+       but RCTable of tianmu engine is only load required columns. So here
+       we set to all columns to be used.
+      */
+      bitmap_set_all(table->read_set);
+    }
+#endif
     if (usable_index==MAX_KEY || qep_tab.quick())
       error= init_read_record(&info, thd, NULL, &qep_tab, 1, 1, FALSE);
     else
