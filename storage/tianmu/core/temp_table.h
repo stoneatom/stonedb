@@ -112,11 +112,11 @@ class TempTable : public JustATable {
     uint64_t ExactDistinctVals([[maybe_unused]] Filter *f) override { return common::NULL_VALUE_64; }
     bool IsDistinct([[maybe_unused]] Filter *f) override { return false; }
     size_t MaxStringSize(Filter *f = NULL) override;  // maximal byte string length in column
-    int64_t RoughMin(Filter *f = NULL, common::RSValue *rf = NULL) override {
+    int64_t RoughMin([[maybe_unused]] Filter *f = NULL, [[maybe_unused]] common::RSValue *rf = NULL) override {
       return common::MINUS_INF_64;
     }  // for numerical: best rough approximation of min for a given filter (or
        // global min if filter is NULL)
-    int64_t RoughMax(Filter *f = NULL, common::RSValue *rf = NULL) override {
+    int64_t RoughMax([[maybe_unused]] Filter *f = NULL, [[maybe_unused]] common::RSValue *rf = NULL) override {
       return common::PLUS_INF_64;
     }  // for numerical: best rough approximation of max for a given filter (or
        // global max if filter is NULL)
@@ -265,10 +265,10 @@ class TempTable : public JustATable {
   bool IsNull(int64_t obj,
               int attr) override;  // return true if the value of attr. is null
 
-  int64_t RoughMin([[maybe_unused]] int n_a, Filter *f = NULL) { return common::MINUS_INF_64; }
-  int64_t RoughMax([[maybe_unused]] int n_a, Filter *f = NULL) { return common::PLUS_INF_64; }
+  int64_t RoughMin([[maybe_unused]] int n_a, [[maybe_unused]] Filter *f = NULL) { return common::MINUS_INF_64; }
+  int64_t RoughMax([[maybe_unused]] int n_a, [[maybe_unused]] Filter *f = NULL) { return common::PLUS_INF_64; }
 
-  uint MaxStringSize(int n_a, Filter *f = NULL) override {
+  uint MaxStringSize(int n_a, [[maybe_unused]] Filter *f = NULL) override {
     if (n_a < 0) return GetFieldSize(-n_a - 1);
     return GetFieldSize(n_a);
   }

@@ -60,8 +60,10 @@ void select_tianmu_export::SetRowCount(ha_rows x) { row_count = x; }
 void select_tianmu_export::SendOk(THD *thd) { ::my_ok(thd, row_count); }
 
 sql_exchange *select_tianmu_export::SqlExchange() { return exchange; }
-// stonedb8
-bool select_tianmu_export::send_data(THD *thd, mem_root_deque<Item *> &items) { return se->send_data(thd, items); }
+
+bool select_tianmu_export::send_data(THD *thd, const mem_root_deque<Item *> &items) {
+  return se->send_data(thd, items);
+}
 
 }  // namespace exporter
 }  // namespace Tianmu

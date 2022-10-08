@@ -35,8 +35,9 @@ class LogCtl {
 
   static bool LogEnabled(logger::LogCtl_Level level);
 
-  static void LogMsg(logger::LogCtl_Level level, const char *format, ...);
-  static void LogMsg(logger::LogCtl_Level level, const char *file, int line, const char *format, ...);
+  static void LogMsg(logger::LogCtl_Level level, const char *format, ...) __attribute__((format(printf, 2, 3)));
+  static void LogMsg(logger::LogCtl_Level level, const char *file, int line, const char *format, ...)
+      __attribute__((format(printf, 4, 5)));
   static void LogMsg(logger::LogCtl_Level level, const std::string &msg);
   static void LogMsg(logger::LogCtl_Level level, const char *file, int line, const std::string &msg);
   static void LogMsg(logger::LogCtl_Level level, std::stringstream &msg_ss);
@@ -47,7 +48,6 @@ constexpr size_t MAX_LOG_LEN = 4096;
 
 // Tianmu logger API
 #define TIANMU_LOG(_level, ...) Tianmu::utils::LogCtl::LogMsg(logger::_level, __FILE__, __LINE__, ##__VA_ARGS__)
-
 #define TIANMU_LOGCHECK(_level) (Tianmu::utils::LogCtl::LogEnabled(logger::_level))
 #define LOG_MSG(_level, msg) Tianmu::utils::LogCtl::LogMsg(logger::_level, __FILE__, __LINE__, msg);
 

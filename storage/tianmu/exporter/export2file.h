@@ -34,7 +34,7 @@ class select_tianmu_export : public Query_result_export {
   void SendOk(THD *thd);
   sql_exchange *SqlExchange();
   bool IsPrepared() const { return prepared; }
-  bool send_data(THD *thd, mem_root_deque<Item *> &items) /*override*/;  // stonedb8
+  bool send_data(THD *thd, const mem_root_deque<Item *> &items) override;
 
  private:
   Query_result_export *se;

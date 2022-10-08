@@ -397,7 +397,7 @@ void CompiledQuery::CQStep::Print(Query *query) {
       std::sprintf(buf, "RESULT(T:%d)", N(t1.n));
       break;
     default:
-      std::sprintf(buf, "Unsupported type of CQStep: %d", type);
+      std::sprintf(buf, "Unsupported type of CQStep: %d", static_cast<int>(type));
   }
   TIANMU_LOG(LogCtl_Level::DEBUG, "%s", buf);
 }

@@ -475,13 +475,13 @@ bool SorterLimit::PutValue(Sorter3 *s) {
   // not called
   uint tmp_noobj = sl->GetObjNo();
   unsigned char *buf1 = sl->Getbuf();
-  TIANMU_LOG(LogCtl_Level::DEBUG, "PutValue: total bytes %d, tmp_noobj %ld ", total_bytes, tmp_noobj);
+  TIANMU_LOG(LogCtl_Level::DEBUG, "PutValue: total bytes %d, tmp_noobj %u ", total_bytes, tmp_noobj);
 
   if (tmp_noobj) {
     if (no_obj + tmp_noobj <= size) {
       std::memcpy(buf + no_obj * total_bytes, buf1, tmp_noobj * total_bytes);
       no_obj += tmp_noobj;
-      TIANMU_LOG(LogCtl_Level::DEBUG, "PutValue: no_obj %ld, tmp_noobj %ld, total_bytes %ld buf %s", no_obj, tmp_noobj,
+      TIANMU_LOG(LogCtl_Level::DEBUG, "PutValue: no_obj %u, tmp_noobj %u, total_bytes %u buf %s", no_obj, tmp_noobj,
                  total_bytes, buf);
     } else {
       TIANMU_LOG(LogCtl_Level::ERROR, "error in Putvalue, out of  boundary size %d no_obj+tmp_noobj %d", size,

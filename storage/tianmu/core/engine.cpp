@@ -103,7 +103,7 @@ fs::path Engine::GetNextDataDir() {
                              auto si = fs::space(s);
                              auto usage = 100 - ((si.available * 100) / si.capacity);
                              if (usage > static_cast<size_t>(tianmu_sysvar_disk_usage_threshold)) {
-                               TIANMU_LOG(LogCtl_Level::WARN, "disk %s usage %d%%", s.native().c_str(), usage);
+                               TIANMU_LOG(LogCtl_Level::WARN, "disk %s usage %lu%%", s.native().c_str(), usage);
                                return true;
                              }
                              return false;
@@ -259,8 +259,8 @@ int Engine::Init(uint engine_slot) {
          []() {
            TIANMU_LOG(
                LogCtl_Level::INFO,
-               "Memory: release [%llu %llu %llu %llu] %llu, total "
-               "%llu. (un)freeable %lu/%lu, total alloc/free "
+               "Memory: release [%llu %llu %llu %llu] %lu, total "
+               "%lu. (un)freeable %lu/%lu, total alloc/free "
                "%lu/%lu",
                mm::TraceableObject::Instance()->getReleaseCount1(), mm::TraceableObject::Instance()->getReleaseCount2(),
                mm::TraceableObject::Instance()->getReleaseCount3(), mm::TraceableObject::Instance()->getReleaseCount4(),
@@ -318,7 +318,8 @@ void Engine::HandleDeferredJobs() {
       fs::remove(t.file, ec);
       // Ignore ENOENT since files might be deleted by 'drop table'.
       if (ec && ec != std::errc::no_such_file_or_directory) {
-        TIANMU_LOG(LogCtl_Level::ERROR, "Failed to remove file %s Error:%s", t.file.string().c_str(), ec.message());
+        TIANMU_LOG(LogCtl_Level::ERROR, "Failed to remove file %s Error:%s", t.file.string().c_str(),
+                   ec.message().c_str());
       }
     } else {
       gc_tasks.emplace_back(t);
@@ -589,7 +590,7 @@ std::shared_ptr<TableOption> Engine::GetTableOption(const std::string &table, TA
 
   int power = has_pack(form->s->comment);
   if (power < 5 || power > 16) {
-    TIANMU_LOG(LogCtl_Level::ERROR, "create table comment: pack size shift(%d) should be >=5 and <= 16");
+    TIANMU_LOG(LogCtl_Level::ERROR, "create table comment: pack size shift(%d) should be >=5 and <= 16", power);
     throw common::SyntaxException("Unexpected data pack size.");
   }
 
@@ -967,7 +968,7 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, double &value) {
   return 0;
 }
 
-int get_parameter(THD *thd, enum tianmu_var_name vn, int64_t &value) {
+int get_parameter(THD *thd, enum tianmu_var_name vn, [[maybe_unused]] int64_t &value) {
   std::string var_data = get_parameter_name(vn);
   // stonedb8 start
   bool null_val;
