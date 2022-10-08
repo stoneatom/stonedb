@@ -29,7 +29,7 @@ class select_tianmu_export : public Query_result_export {
   // select_tianmu_export(sql_exchange *ex);
   select_tianmu_export(Query_result_export *se);
   ~select_tianmu_export() {}
-  int prepare(List<Item> &list, Query_expression *u) /*override*/;
+  bool prepare([[maybe_unused]] THD *, const mem_root_deque<Item *> &list, Query_expression *u) override;
   void SetRowCount(ha_rows x);
   void SendOk(THD *thd);
   sql_exchange *SqlExchange();
