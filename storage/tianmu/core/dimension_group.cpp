@@ -100,7 +100,7 @@ DimensionGroup *DimensionGroupMaterialized::Clone(bool shallow) {
         new_value->t[i] = t[i];
       } else {
         new_value->t[i] = new IndexTable(*t[i]);
-      }s
+      }
       t[i]->Unlock();
     }
   }
