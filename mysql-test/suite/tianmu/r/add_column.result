@@ -16,7 +16,7 @@ CREATE TABLE `column_type_test` (
 `c_blob` blob COMMENT 'blob',
 `c_text` text COMMENT 'text',
 `c_longblob` longblob COMMENT 'longblob'
-) ENGINE=TIANMU;
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 load data infile '../../std_data/tianmu/bigdata4load' into table column_type_test fields terminated by '|';
 select count(*) from column_type_test;
 count(*)
@@ -37,13 +37,13 @@ column_type_test	CREATE TABLE `column_type_test` (
   `c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
   `c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
   `c_time` time DEFAULT NULL COMMENT 'time',
-  `c_char` char(10) DEFAULT NULL COMMENT 'char',
-  `c_varchar` varchar(10) DEFAULT NULL COMMENT 'varchar',
+  `c_char` char(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'char',
+  `c_varchar` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'varchar',
   `c_blob` blob COMMENT 'blob',
-  `c_text` text COMMENT 'text',
+  `c_text` text COLLATE utf8mb4_unicode_ci COMMENT 'text',
   `c_longblob` longblob COMMENT 'longblob',
   `ex_column` int DEFAULT NULL
-) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 insert into column_type_test(c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text,ex_column)
 values(105,105,105,105,105,5.2,10.88,105.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom','hello','bcdefghijklmn',105);
 select count(*) from column_type_test;
