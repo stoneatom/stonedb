@@ -156,18 +156,15 @@ void scan_fields(mem_root_deque<Item *> &fields, uint *&buf_lens, std::map<int, 
   }
 }
 
-// stonedb8 List -> mem_root_deque
 void restore_fields(mem_root_deque<Item *> &fields, std::map<int, Item *> &items_backup) {
   // nothing to restore
   if (items_backup.size() == 0) {
     return;
   }
 
-  Item *item;
   int count = 0;
-  for (auto it = fields.begin(); it != fields.end(); ++it) {  // stonedb8
-    item = *it;
-    if (items_backup.find(count) != items_backup.end()) fields[count] = items_backup[count];  // stonedb8
+  for (auto it = fields.begin(); it != fields.end(); ++it) {
+    if (items_backup.find(count) != items_backup.end()) fields[count] = items_backup[count];
     count++;
   }
 }
@@ -381,7 +378,7 @@ void ResultSender::Finalize(TempTable *result_table) {
                  << "\tClientPort:" << thd->peer_port << "\tUser:" << sctx.user().str << global_serverinfo_
                  << "\tAffectRows:" << affect_rows << "\tResultRows:" << rows_sent << "\tDBName:" << thd->db().str
                  << "\tCosttime(ms):" << cost_time << "\tSQL:" << thd->query().str << system::unlock;
-  TIANMU_LOG(LogCtl_Level::DEBUG, "Result: %" PRId64 " Costtime(ms): %" PRId64, rows_sent, cost_time);
+  TIANMU_LOG(LogCtl_Level::DEBUG, "Result: %ld Costtime(ms): %llu", rows_sent, cost_time);
 }
 
 void ResultSender::CleanUp() { restore_fields(fields, items_backup); }

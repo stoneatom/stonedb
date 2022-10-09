@@ -28,8 +28,8 @@
 namespace Tianmu {
 namespace core {
 
-int TableUnmysterify(TABLE_LIST *tab, const char *&database_name, const char *&table_name, const char *&table_alias,
-                     const char *&table_path) {
+Query_Route_To TableUnmysterify(TABLE_LIST *tab, const char *&database_name, const char *&table_name,
+                                const char *&table_alias, const char *&table_path) {
   ASSERT_MYSQL_STRING(tab->table->s->db);
   ASSERT_MYSQL_STRING(tab->table->s->table_name);
   ASSERT_MYSQL_STRING(tab->table->s->path);
@@ -39,12 +39,12 @@ int TableUnmysterify(TABLE_LIST *tab, const char *&database_name, const char *&t
   table_alias = tab->alias;
   table_path = tab->table->s->path.str;
 
-  return RCBASE_QUERY_ROUTE;
+  return Query_Route_To::TO_TIANMU;
 }
 
-int JudgeErrors(Query_block *sl) {
+Query_Route_To JudgeErrors(Query_block *sl) {
   if (!sl->join) {
-    return RETURN_QUERY_TO_MYSQL_ROUTE;
+    return Query_Route_To::TO_MYSQL;
   }
 
   /* gone with mysql5.6
@@ -68,10 +68,10 @@ int JudgeErrors(Query_block *sl) {
   if (sl->olap == ROLLUP_TYPE) {
     /*my_message(ER_SYNTAX_ERROR, "Tianmu specific error: WITH ROLLUP not
      supported", MYF(0)); throw ReturnMeToMySQLWithError();*/
-    return RETURN_QUERY_TO_MYSQL_ROUTE;
+    return Query_Route_To::TO_MYSQL;
   }
 
-  return RCBASE_QUERY_ROUTE;
+  return Query_Route_To::TO_TIANMU;
 }
 
 void SetLimit(Query_block *sl, Query_block *gsl, int64_t &offset_value, int64_t &limit_value) {
@@ -93,9 +93,9 @@ void SetLimit(Query_block *sl, Query_block *gsl, int64_t &offset_value, int64_t 
 // before returning
 class CompilationError {};
 
-int Query::FieldUnmysterify(Item *item, const char *&database_name, const char *&table_name, const char *&table_alias,
-                            const char *&table_path, const TABLE *&table_ptr, const char *&field_name,
-                            const char *&field_alias) {
+Query_Route_To Query::FieldUnmysterify(Item *item, const char *&database_name, const char *&table_name,
+                                       const char *&table_alias, const char *&table_path, const TABLE *&table_ptr,
+                                       const char *&field_name, const char *&field_alias) {
   table_alias = EMPTY_TABLE_CONST_INDICATOR;
   database_name = nullptr;
   table_name = nullptr;
@@ -113,7 +113,7 @@ int Query::FieldUnmysterify(Item *item, const char *&database_name, const char *
       ifield = dynamic_cast<Item_tianmufield *>(item)->OriginalItem();
       if (IsAggregationItem(ifield)) {
         Item_sum *is = (Item_sum *)ifield;
-        if (is->arg_count > 1) return RETURN_QUERY_TO_MYSQL_ROUTE;
+        if (is->arg_count > 1) return Query_Route_To::TO_MYSQL;
         Item *tmp_item = UnRef(is->get_arg(0));
         if (tmp_item->type() == Item::FIELD_ITEM)
           ifield = (Item_field *)tmp_item;
@@ -121,7 +121,7 @@ int Query::FieldUnmysterify(Item *item, const char *&database_name, const char *
                  static_cast<int>(Item_tianmufield::enumTIANMUFiledItem::TIANMUFIELD_ITEM))
           ifield = dynamic_cast<Item_tianmufield *>(tmp_item)->OriginalItem();
         else {
-          return RETURN_QUERY_TO_MYSQL_ROUTE;
+          return Query_Route_To::TO_MYSQL;
         }
       }
       break;
@@ -132,7 +132,7 @@ int Query::FieldUnmysterify(Item *item, const char *&database_name, const char *
     case Item::SUM_FUNC_ITEM: {  // min(k), max(k), count(), avg(k), sum
       Item_sum *is = (Item_sum *)item;
       if (is->arg_count > 1) {
-        return RETURN_QUERY_TO_MYSQL_ROUTE;
+        return Query_Route_To::TO_MYSQL;
       }
       Item *tmp_item = UnRef(is->get_arg(0));
       if (tmp_item->type() == Item::FIELD_ITEM)
@@ -143,13 +143,13 @@ int Query::FieldUnmysterify(Item *item, const char *&database_name, const char *
                                                                 enums */
         ifield = dynamic_cast<Item_tianmufield *>(tmp_item)->OriginalItem();
       else
-        return RETURN_QUERY_TO_MYSQL_ROUTE;
+        return Query_Route_To::TO_MYSQL;
       break;
     }
     case Item::FUNC_ITEM:  // complex expressions
-      return RCBASE_QUERY_ROUTE;
+      return Query_Route_To::TO_TIANMU;
     default:
-      return RCBASE_QUERY_ROUTE;
+      return Query_Route_To::TO_TIANMU;
   };
 
   /*
@@ -191,7 +191,7 @@ int Query::FieldUnmysterify(Item *item, const char *&database_name, const char *
   field_name = f->field_name;
   field_alias = ifield->item_name.ptr();
 
-  return RCBASE_QUERY_ROUTE;
+  return Query_Route_To::TO_TIANMU;
 }
 
 bool Query::FieldUnmysterify(Item *item, TabID &tab, AttrID &col) {
@@ -200,7 +200,7 @@ bool Query::FieldUnmysterify(Item *item, TabID &tab, AttrID &col) {
     ifield = dynamic_cast<Item_tianmufield *>(item)->OriginalItem();
     if (IsAggregationItem(ifield)) {
       Item_sum *is = (Item_sum *)ifield;
-      if (is->arg_count > 1) return RETURN_QUERY_TO_MYSQL_ROUTE;
+      if (is->arg_count > 1) return false;
       Item *tmp_item = UnRef(is->get_arg(0));
       if (tmp_item->type() == Item::FIELD_ITEM)
         ifield = (Item_field *)tmp_item;
@@ -283,9 +283,9 @@ bool Query::FieldUnmysterify(Item *item, TabID &tab, AttrID &col) {
 }
 
 // stonedb8 start fix List<Item> to mem_root_deque<Item *> #49 TODO
-int Query::AddJoins(mem_root_deque<TABLE_LIST *> join, /*List<TABLE_LIST> &join,*/ TabID &tmp_table,
-                    std::vector<TabID> &left_tables, std::vector<TabID> &right_tables, bool in_subquery,
-                    bool &first_table /*= true*/, bool for_subq_in_where /*false*/) {
+Query_Route_To Query::AddJoins(mem_root_deque<TABLE_LIST *> join, /*List<TABLE_LIST> &join,*/ TabID &tmp_table,
+                               std::vector<TabID> &left_tables, std::vector<TabID> &right_tables, bool in_subquery,
+                               bool &first_table /*= true*/, bool for_subq_in_where /*false*/) {
   // on first call first_table = true. It indicates if it is the first table to
   // be added is_left is true iff it is nested left join which needs to be
   // flatten (all tables regardless of their join type need to be left-joined)
@@ -295,14 +295,14 @@ int Query::AddJoins(mem_root_deque<TABLE_LIST *> join, /*List<TABLE_LIST> &join,
   //  std::vector<TABLE_LIST *> reversed;
   // stonedb8 end
 
-  if (join.empty())                      // stonedb8
-    return RETURN_QUERY_TO_MYSQL_ROUTE;  // no tables in table list in this
-                                         // select
-                                         // if the table list was empty altogether, we wouldn't even enter
-                                         // Compilation(...) it must be sth. like `select 1 from t1 union select 2` and
-                                         // we are in the second select in the union
-                                         // stonedb8 start
-                                         // while ((join_ptr = li++) != nullptr) reversed.push_back(join_ptr);
+  if (join.empty())                   // stonedb8
+    return Query_Route_To::TO_MYSQL;  // no tables in table list in this
+                                      // select
+                                      // if the table list was empty altogether, we wouldn't even enter
+                                      // Compilation(...) it must be sth. like `select 1 from t1 union select 2` and
+                                      // we are in the second select in the union
+                                      // stonedb8 start
+                                      // while ((join_ptr = li++) != nullptr) reversed.push_back(join_ptr);
   // size_t size = reversed.size();
   //  for (unsigned int i = 0; i < size; i++) {
   for (TABLE_LIST *join_ptr : join) {
@@ -310,19 +310,22 @@ int Query::AddJoins(mem_root_deque<TABLE_LIST *> join, /*List<TABLE_LIST> &join,
     // stonedb8 end
     if (join_ptr->nested_join) {
       std::vector<TabID> local_left, local_right;
-      if (!AddJoins(join_ptr->nested_join->join_list, tmp_table, local_left, local_right, in_subquery, first_table,
-                    for_subq_in_where))
-        return RETURN_QUERY_TO_MYSQL_ROUTE;
+      if (AddJoins(join_ptr->nested_join->join_list, tmp_table, local_left, local_right, in_subquery, first_table,
+                   for_subq_in_where) == Query_Route_To::TO_MYSQL)
+        return Query_Route_To::TO_MYSQL;
+
       JoinType join_type = GetJoinTypeAndCheckExpr(join_ptr->outer_join, join_ptr->join_cond());
       CondID cond_id;
-      if (!BuildCondsIfPossible(join_ptr->join_cond(), cond_id, tmp_table, join_type))
-        return RETURN_QUERY_TO_MYSQL_ROUTE;
+      if (BuildCondsIfPossible(join_ptr->join_cond(), cond_id, tmp_table, join_type) == Query_Route_To::TO_MYSQL)
+        return Query_Route_To::TO_MYSQL;
+
       left_tables.insert(left_tables.end(), right_tables.begin(), right_tables.end());
       local_left.insert(local_left.end(), local_right.begin(), local_right.end());
       if (join_ptr->outer_join)
         right_tables = local_left;
       else
         left_tables.insert(left_tables.end(), local_left.begin(), local_left.end());
+
       if (join_ptr->join_cond() && join_ptr->outer_join) {
         cq->LeftJoinOn(tmp_table, left_tables, right_tables, cond_id);
         left_tables.insert(left_tables.end(), right_tables.begin(), right_tables.end());
@@ -336,19 +339,23 @@ int Query::AddJoins(mem_root_deque<TABLE_LIST *> join, /*List<TABLE_LIST> &join,
       const char *table_alias = 0;
       const char *table_path = 0;
       TabID tab(0);
+
       if (join_ptr->is_view_or_derived()) {
-        if (!Compile(cq, join_ptr->derived_query_expression()->first_query_block(),
-                     join_ptr->derived_query_expression()->union_distinct, &tab))
-          return RETURN_QUERY_TO_MYSQL_ROUTE;
+        if (Compile(cq, join_ptr->derived_query_expression()->first_query_block(),
+                    join_ptr->derived_query_expression()->union_distinct, &tab) == Query_Route_To::TO_MYSQL)
+          return Query_Route_To::TO_MYSQL;
+
         table_alias = join_ptr->alias;
       } else {
-        if (!TableUnmysterify(join_ptr, database_name, table_name, table_alias, table_path))
-          return RETURN_QUERY_TO_MYSQL_ROUTE;
+        if (TableUnmysterify(join_ptr, database_name, table_name, table_alias, table_path) == Query_Route_To::TO_MYSQL)
+          return Query_Route_To::TO_MYSQL;
+
         int tab_num = path2num[table_path];  // number of a table on a list in
                                              // `this` QUERY object
         int id = t[tab_num]->GetID();
         cq->TableAlias(tab, TabID(tab_num), table_name, id);
       }
+
       std::string ext_alias = std::string(table_name ? table_name : "") + std::string(":") + std::string(table_alias);
       table_alias2index_ptr.insert(std::make_pair(ext_alias, std::make_pair(tab.n, join_ptr->table)));
       if (first_table) {
@@ -362,8 +369,8 @@ int Query::AddJoins(mem_root_deque<TABLE_LIST *> join, /*List<TABLE_LIST> &join,
         cq->Join(tmp_table, tab);
         JoinType join_type = GetJoinTypeAndCheckExpr(join_ptr->outer_join, join_ptr->join_cond());
         CondID cond_id;
-        if (!BuildCondsIfPossible(join_ptr->join_cond(), cond_id, tmp_table, join_type))
-          return RETURN_QUERY_TO_MYSQL_ROUTE;
+        if (BuildCondsIfPossible(join_ptr->join_cond(), cond_id, tmp_table, join_type) == Query_Route_To::TO_MYSQL)
+          return Query_Route_To::TO_MYSQL;
         if (join_ptr->join_cond() && join_ptr->outer_join) {
           right_tables.push_back(tab);
           cq->LeftJoinOn(tmp_table, left_tables, right_tables, cond_id);
@@ -381,11 +388,12 @@ int Query::AddJoins(mem_root_deque<TABLE_LIST *> join, /*List<TABLE_LIST> &join,
       }
     }
   }
-  return RCBASE_QUERY_ROUTE;
+
+  return Query_Route_To::TO_TIANMU;
 }
 
-int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const group_by_clause, int &num_of_added_fields,
-                     bool ignore_minmax, bool &aggregation_used) {
+Query_Route_To Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const group_by_clause,
+                                int &num_of_added_fields, bool ignore_minmax, bool &aggregation_used) {
   List_iterator_fast<Item> li(fields);
   Item *item;
   int added = 0;
@@ -394,7 +402,8 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
     WrapStatus ws;
     common::ColOperation oper;
     bool distinct;
-    if (!OperationUnmysterify(item, oper, distinct, group_by_clause)) return RETURN_QUERY_TO_MYSQL_ROUTE;
+    if (OperationUnmysterify(item, oper, distinct, group_by_clause) == Query_Route_To::TO_MYSQL)
+      return Query_Route_To::TO_MYSQL;
 
     if (IsAggregationItem(item)) aggregation_used = true;
 
@@ -422,7 +431,7 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
     else if (IsAggregationItem(item)) {
       // select AGGREGATION over EXPRESSION
       Item_sum *item_sum = (Item_sum *)item;
-      if (item_sum->arg_count > 1 || HasAggregation(item_sum->get_arg(0))) return RETURN_QUERY_TO_MYSQL_ROUTE;
+      if (item_sum->arg_count > 1 || HasAggregation(item_sum->get_arg(0))) return Query_Route_To::TO_MYSQL;
       if (IsCountStar(item_sum)) {  // count(*) doesn't need any virtual column
         AttrID at;
         cq->AddColumn(at, tmp_table, CQTerm(), oper, item_sum->item_name.ptr(), false);
@@ -430,7 +439,7 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
       } else {
         MysqlExpression *expr;
         ws = WrapMysqlExpression(item_sum->get_arg(0), tmp_table, expr, false, false);
-        if (ws == WrapStatus::FAILURE) return RETURN_QUERY_TO_MYSQL_ROUTE;
+        if (ws == WrapStatus::FAILURE) return Query_Route_To::TO_MYSQL;
         AddColumnForMysqlExpression(expr, tmp_table,
                                     ignore_minmax ? item_sum->get_arg(0)->item_name.ptr() : item_sum->item_name.ptr(),
                                     oper, distinct);
@@ -440,8 +449,8 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
       CQTerm term;
       AttrID at;
       if (Item2CQTerm(item, term, tmp_table,
-                      /*group_by_clause ? HAVING_FILTER :*/ CondType::WHERE_COND) == RETURN_QUERY_TO_MYSQL_ROUTE)
-        return RETURN_QUERY_TO_MYSQL_ROUTE;
+                      /*group_by_clause ? HAVING_FILTER :*/ CondType::WHERE_COND) == Query_Route_To::TO_MYSQL)
+        return Query_Route_To::TO_MYSQL;
       cq->AddColumn(at, tmp_table, term, common::ColOperation::LISTING, item->item_name.ptr(), distinct);
       field_alias2num[TabIDColAlias(tmp_table.n, item->item_name.ptr())] = at.n;
     } else {
@@ -453,7 +462,7 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
 
       MysqlExpression *expr(NULL);
       ws = WrapMysqlExpression(item, tmp_table, expr, false, oper == common::ColOperation::DELAYED);
-      if (ws == WrapStatus::FAILURE) return RETURN_QUERY_TO_MYSQL_ROUTE;
+      if (ws == WrapStatus::FAILURE) return Query_Route_To::TO_MYSQL;
       if (!item->item_name.ptr()) {
         Item_func_conv_charset *item_conv = dynamic_cast<Item_func_conv_charset *>(item);
         if (item_conv) {
@@ -471,10 +480,10 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
   }
 
   num_of_added_fields = added;
-  return RCBASE_QUERY_ROUTE;
+  return Query_Route_To::TO_TIANMU;
 }
 
-int Query::AddGroupByFields(ORDER *group_by, const TabID &tmp_table) {
+Query_Route_To Query::AddGroupByFields(ORDER *group_by, const TabID &tmp_table) {
   for (; group_by; group_by = group_by->next) {
     if (group_by->direction != ORDER_ASC) {
       my_message(ER_SYNTAX_ERROR,
@@ -494,8 +503,8 @@ int Query::AddGroupByFields(ORDER *group_by, const TabID &tmp_table) {
     else if (item->type() == Item::SUBSELECT_ITEM) {
       CQTerm term;
       AttrID at;
-      if (Item2CQTerm(item, term, tmp_table, CondType::WHERE_COND) == RETURN_QUERY_TO_MYSQL_ROUTE)
-        return RETURN_QUERY_TO_MYSQL_ROUTE;
+      if (Item2CQTerm(item, term, tmp_table, CondType::WHERE_COND) == Query_Route_To::TO_MYSQL)
+        return Query_Route_To::TO_MYSQL;
       cq->AddColumn(at, tmp_table, term, common::ColOperation::GROUP_BY, 0);
       //			field_alias2num[TabIDColAlias(tmp_table.n,
       // item->item_name.ptr())] =
@@ -503,26 +512,26 @@ int Query::AddGroupByFields(ORDER *group_by, const TabID &tmp_table) {
     } else {  // group by COMPLEX EXPRESSION
       MysqlExpression *expr = 0;
       if (WrapStatus::FAILURE == WrapMysqlExpression(item, tmp_table, expr, true, true))
-        return RETURN_QUERY_TO_MYSQL_ROUTE;
+        return Query_Route_To::TO_MYSQL;
       AddColumnForMysqlExpression(expr, tmp_table, item->item_name.ptr(), common::ColOperation::GROUP_BY, false, true);
     }
   }
-  return RCBASE_QUERY_ROUTE;
+  return Query_Route_To::TO_TIANMU;
 }
 
-int Query::AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const group_by_clause) {
+Query_Route_To Query::AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const group_by_clause) {
   for (; order_by; order_by = order_by->next) {
     std::pair<int, int> vc;
     Item *item = *(order_by->item);
     CQTerm my_term;
-    int result;
+    Query_Route_To result{Query_Route_To::TO_MYSQL};
     // at first we need to check if we don't have non-deterministic expression
     // (e.g., rand()) in such case we should order by output column in TempTable
     if (!IsFieldItem(item) && !IsAggregationItem(item) && !IsDeterministic(item) &&
         item->type() != Item::SUBSELECT_ITEM) {
       MysqlExpression *expr = NULL;
       WrapStatus ws = WrapMysqlExpression(item, tmp_table, expr, false, false);
-      if (ws == WrapStatus::FAILURE) return RETURN_QUERY_TO_MYSQL_ROUTE;
+      if (ws == WrapStatus::FAILURE) return Query_Route_To::TO_MYSQL;
       DEBUG_ASSERT(!expr->IsDeterministic());
       int col_num = AddColumnForMysqlExpression(expr, tmp_table, NULL, common::ColOperation::LISTING, false, true);
       vc = VirtualColumnAlreadyExists(tmp_table, tmp_table, AttrID(-col_num - 1));
@@ -543,7 +552,7 @@ int Query::AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const g
         }
 
         WrapStatus ws = WrapMysqlExpression(item, tmp_table, expr, false, delayed);
-        if (ws == WrapStatus::FAILURE) return RETURN_QUERY_TO_MYSQL_ROUTE;
+        if (ws == WrapStatus::FAILURE) return Query_Route_To::TO_MYSQL;
         DEBUG_ASSERT(expr->IsDeterministic());
         int col_num = AddColumnForMysqlExpression(
             expr, tmp_table, NULL, delayed ? common::ColOperation::DELAYED : common::ColOperation::LISTING, false,
@@ -579,14 +588,14 @@ int Query::AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const g
       result = Item2CQTerm(item, my_term, tmp_table, CondType::WHERE_COND);
       vc.second = my_term.vc_id;
     }
-    if (result != RCBASE_QUERY_ROUTE) return RETURN_QUERY_TO_MYSQL_ROUTE;
+    if (result != Query_Route_To::TO_TIANMU) return Query_Route_To::TO_MYSQL;
     cq->Add_Order(tmp_table, AttrID(vc.second), order_by->direction != ORDER_ASC);
   }
-  return RCBASE_QUERY_ROUTE;
+  return Query_Route_To::TO_TIANMU;
 }
 
-int Query::AddGlobalOrderByFields(SQL_I_List<ORDER> *global_order, const TabID &tmp_table, int max_col) {
-  if (!global_order) return RCBASE_QUERY_ROUTE;
+Query_Route_To Query::AddGlobalOrderByFields(SQL_I_List<ORDER> *global_order, const TabID &tmp_table, int max_col) {
+  if (!global_order) return Query_Route_To::TO_TIANMU;
 
   ORDER *order_by;
   for (uint i = 0; i < global_order->elements; i++) {
@@ -594,17 +603,17 @@ int Query::AddGlobalOrderByFields(SQL_I_List<ORDER> *global_order, const TabID &
     // the way to traverse 'global_order' list maybe is not very orthodox, but
     // it works
 
-    if (order_by == nullptr) return RETURN_QUERY_TO_MYSQL_ROUTE;
+    if (order_by == nullptr) return Query_Route_To::TO_MYSQL;
 
     int col_num = common::NULL_VALUE_32;
     if ((*(order_by->item))->type() == Item::INT_ITEM) {
       col_num = int((*(order_by->item))->val_int());
-      if (col_num < 1 || col_num > max_col) return RETURN_QUERY_TO_MYSQL_ROUTE;
+      if (col_num < 1 || col_num > max_col) return Query_Route_To::TO_MYSQL;
       col_num--;
       col_num = -col_num - 1;  // make it negative as are columns in TempTable
     } else {
       Item *item = *(order_by->item);
-      if (!item->item_name.ptr()) return RETURN_QUERY_TO_MYSQL_ROUTE;
+      if (!item->item_name.ptr()) return Query_Route_To::TO_MYSQL;
       bool found = false;
       for (auto &it : field_alias2num) {
         if (tmp_table.n == it.first.first && strcasecmp(it.first.second.c_str(), item->item_name.ptr()) == 0) {
@@ -613,7 +622,7 @@ int Query::AddGlobalOrderByFields(SQL_I_List<ORDER> *global_order, const TabID &
           break;
         }
       }
-      if (!found) return RETURN_QUERY_TO_MYSQL_ROUTE;
+      if (!found) return Query_Route_To::TO_MYSQL;
     }
     int attr;
     cq->CreateVirtualColumn(attr, tmp_table, tmp_table, AttrID(col_num));
@@ -621,7 +630,7 @@ int Query::AddGlobalOrderByFields(SQL_I_List<ORDER> *global_order, const TabID &
     cq->Add_Order(tmp_table, AttrID(attr), order_by->direction != ORDER_ASC);
   }
 
-  return RCBASE_QUERY_ROUTE;
+  return Query_Route_To::TO_TIANMU;
 }
 
 Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table, MysqlExpression *&expr, bool in_where,
@@ -653,7 +662,7 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
         TabID params_table = cq->FindSourceOfParameter(tab, tmp_table, is_group_by);
         common::ColOperation oper;
         bool distinct;
-        if (!OperationUnmysterify(it, oper, distinct, true)) return WrapStatus::FAILURE;
+        if (OperationUnmysterify(it, oper, distinct, true) == Query_Route_To::TO_MYSQL) return WrapStatus::FAILURE;
         if (is_group_by && !IsParameterFromWhere(params_table)) {
           col.n = AddColumnForPhysColumn(it, params_table, oper, distinct, true);
           item2varid[it] = VarID(params_table.n, col.n);
@@ -680,7 +689,8 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
         } else {
           common::ColOperation oper;
           bool distinct;
-          if (!OperationUnmysterify(aggregation, oper, distinct, true)) return WrapStatus::FAILURE;
+          if (OperationUnmysterify(aggregation, oper, distinct, true) == Query_Route_To::TO_MYSQL)
+            return WrapStatus::FAILURE;
           AttrID col;
           TabID tab;
           if (IsFieldItem(aggregation->get_arg(0)) && FieldUnmysterify(aggregation, tab, col) &&
@@ -704,7 +714,7 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
           TabID params_table = cq->FindSourceOfParameter(tab, tmp_table, is_group_by);
           common::ColOperation oper;
           bool distinct;
-          if (!OperationUnmysterify(it, oper, distinct, true)) return WrapStatus::FAILURE;
+          if (OperationUnmysterify(it, oper, distinct, true) == Query_Route_To::TO_MYSQL) return WrapStatus::FAILURE;
           if (is_group_by && !IsParameterFromWhere(params_table)) {
             col.n = AddColumnForPhysColumn(it, params_table, oper, distinct, true);
             item2varid[it] = VarID(params_table.n, col.n);
@@ -713,7 +723,7 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
         } else if (aggr_used) {
           common::ColOperation oper;
           bool distinct;
-          if (!OperationUnmysterify(it, oper, distinct, true)) return WrapStatus::FAILURE;
+          if (OperationUnmysterify(it, oper, distinct, true) == Query_Route_To::TO_MYSQL) return WrapStatus::FAILURE;
           at.n = AddColumnForPhysColumn(it, tmp_table, oper, distinct, true);
           item2varid[it] = VarID(tmp_table.n, at.n);
         } else {
@@ -833,9 +843,9 @@ bool Query::IsLocalColumn(Item *item, const TabID &tmp_table) {
   return cq->ExistsInTempTable(tab, tmp_table);
 }
 
-int Query::Compile(CompiledQuery *compiled_query, Query_block *selects_list, Query_block *last_distinct, TabID *res_tab,
-                   bool ignore_limit, Item *left_expr_for_subselect, common::Operator *oper_for_subselect,
-                   bool ignore_minmax, bool for_subq_in_where) {
+Query_Route_To Query::Compile(CompiledQuery *compiled_query, Query_block *selects_list, Query_block *last_distinct,
+                              TabID *res_tab, bool ignore_limit, Item *left_expr_for_subselect,
+                              common::Operator *oper_for_subselect, bool ignore_minmax, bool for_subq_in_where) {
   MEASURE_FET("Query::Compile(...)");
   // at this point all tables are in RCBase engine, so we can proceed with the
   // query
@@ -927,7 +937,7 @@ int Query::Compile(CompiledQuery *compiled_query, Query_block *selects_list, Que
       TIANMU_LOG(LogCtl_Level::ERROR, "sl->join is nil!!!!");
     }
 
-    if (!JudgeErrors(sl)) return RETURN_QUERY_TO_MYSQL_ROUTE;
+    if (JudgeErrors(sl) == Query_Route_To::TO_MYSQL) return Query_Route_To::TO_MYSQL;
     SetLimit(sl, sl == selects_list ? 0 : sl->join->query_expression()->global_parameters(), offset_value, limit_value);
 
     // stonedb8
@@ -982,8 +992,8 @@ int Query::Compile(CompiledQuery *compiled_query, Query_block *selects_list, Que
       std::vector<TabID> left_tables, right_tables;
       bool first_table = true;
       // stonedb8
-      if (!AddJoins(*sl->join_list, tmp_table, left_tables, right_tables, (res_tab != NULL && res_tab->n != 0),
-                    first_table, for_subq_in_where))
+      if (AddJoins(*sl->join_list, tmp_table, left_tables, right_tables, (res_tab != NULL && res_tab->n != 0),
+                   first_table, for_subq_in_where) == Query_Route_To::TO_MYSQL)
         throw CompilationError();
 
       // stonedb8 start
@@ -995,21 +1005,25 @@ int Query::Compile(CompiledQuery *compiled_query, Query_block *selects_list, Que
       }
       // stonedb8 end
       bool aggr_used = false;
-      if (!AddFields(*fields, tmp_table, group != NULL, col_count, ignore_minmax, aggr_used)) throw CompilationError();
-
-      if (!AddGroupByFields(group, tmp_table)) throw CompilationError();
-
-      if (!AddOrderByFields(order, tmp_table, group != NULL || sl->join->select_distinct || aggr_used))
+      if (AddFields(*fields, tmp_table, group != NULL, col_count, ignore_minmax, aggr_used) == Query_Route_To::TO_MYSQL)
         throw CompilationError();
+
+      if (AddGroupByFields(group, tmp_table) == Query_Route_To::TO_MYSQL) throw CompilationError();
+
+      if (AddOrderByFields(order, tmp_table, group != NULL || sl->join->select_distinct || aggr_used) ==
+          Query_Route_To::TO_MYSQL)
+        throw CompilationError();
+
       CondID cond_id;
-      if (!BuildConditions(conds, cond_id, cq, tmp_table, CondType::WHERE_COND, zero_result)) throw CompilationError();
+      if (BuildConditions(conds, cond_id, cq, tmp_table, CondType::WHERE_COND, zero_result) == Query_Route_To::TO_MYSQL)
+        throw CompilationError();
 
       cq->AddConds(tmp_table, cond_id, CondType::WHERE_COND);
 
       cond_id = CondID();
-      if (!BuildConditions(having, cond_id, cq, tmp_table, CondType::HAVING_COND)) throw CompilationError();
+      if (BuildConditions(having, cond_id, cq, tmp_table, CondType::HAVING_COND) == Query_Route_To::TO_MYSQL)
+        throw CompilationError();
       cq->AddConds(tmp_table, cond_id, CondType::HAVING_COND);
-
       cq->ApplyConds(tmp_table);
     } catch (...) {
       // restore original values of class fields (necessary if this method is
@@ -1017,7 +1031,7 @@ int Query::Compile(CompiledQuery *compiled_query, Query_block *selects_list, Que
       cq = saved_cq;
       if (cond_to_reinsert && list_to_reinsert) list_to_reinsert->push_back(cond_to_reinsert);
       // sl->cleanup(0); // stonedb8
-      return RETURN_QUERY_TO_MYSQL_ROUTE;
+      return Query_Route_To::TO_MYSQL;
     }
 
     if (sl->join->select_distinct) cq->Mode(tmp_table, TMParameter::TM_DISTINCT);
@@ -1039,7 +1053,8 @@ int Query::Compile(CompiledQuery *compiled_query, Query_block *selects_list, Que
 
   cq->BuildTableIDStepsMap();
 
-  if (!AddGlobalOrderByFields(global_order, prev_result, col_count)) return RETURN_QUERY_TO_MYSQL_ROUTE;
+  if (AddGlobalOrderByFields(global_order, prev_result, col_count) == Query_Route_To::TO_MYSQL)
+    return Query_Route_To::TO_MYSQL;
 
   if (!ignore_limit && global_limit_value >= 0)
     cq->Mode(prev_result, TMParameter::TM_TOP, global_offset_value, global_limit_value);
@@ -1048,8 +1063,9 @@ int Query::Compile(CompiledQuery *compiled_query, Query_block *selects_list, Que
     *res_tab = prev_result;
   else
     cq->Result(prev_result);
+
   cq = saved_cq;
-  return RCBASE_QUERY_ROUTE;
+  return Query_Route_To::TO_TIANMU;
 }
 
 JoinType Query::GetJoinTypeAndCheckExpr(bool outer_join, Item *on_expr) {

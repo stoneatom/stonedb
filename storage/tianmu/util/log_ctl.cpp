@@ -91,25 +91,3 @@ void LogCtl::LogMsg(logger::LogCtl_Level level, std::stringstream &msg_ss) {
 }
 }  // namespace utils
 }  // namespace Tianmu
-
-void tianmu_log(enum loglevel mysql_level, const char *buffer, [[maybe_unused]] size_t length) {
-  using namespace Tianmu;
-  logger::LogCtl_Level level;
-
-  // mapping mysql log level to tianmu log level
-  switch (mysql_level) {
-    case ERROR_LEVEL:
-      level = logger::LogCtl_Level::ERROR;
-      break;
-    case WARNING_LEVEL:
-      level = logger::LogCtl_Level::WARN;
-      break;
-    case INFORMATION_LEVEL:
-      level = logger::LogCtl_Level::WARN;
-      break;
-    default:
-      level = logger::LogCtl_Level::ERROR;
-      break;
-  }
-  utils::LogCtl::LogMsg(level, "MYSQL", 0, buffer);
-}

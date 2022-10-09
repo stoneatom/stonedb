@@ -34,6 +34,7 @@
 #include "core/temp_table.h"
 #include "exporter/data_exporter.h"
 #include "exporter/export2file.h"
+#include "handler/ha_my_tianmu.h"
 #include "index/rc_table_index.h"
 #include "log.h"
 #include "system/io_parameters.h"
@@ -63,6 +64,8 @@ class select_tianmu_export;
 }  // namespace exporter
 
 namespace core {
+
+using Tianmu::DBHandler::Query_Route_To;
 struct AttrInfo;
 class TableShare;
 class Transaction;
@@ -75,6 +78,7 @@ class Engine final {
   Engine();
   ~Engine();
 
+  // The basic operations.
   int Init(uint engine_slot);
   void CreateTable(const std::string &table, TABLE *from, dd::Table *table_def);
   void DeleteTable(const char *table, const dd::Table *table_def, THD *thd);
@@ -96,43 +100,58 @@ class Engine final {
   unsigned long GetLDT() const { return LDT; }
   unsigned long GetUPM() const { return UPM; }
   unsigned long GetUT() const { return UT; }
+
   void IncTianmuStatUpdate() { ++tianmu_stat.update; }
+
   std::vector<AttrInfo> GetTableAttributesInfo(const std::string &table_path, TABLE_SHARE *table_share);
   void UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
                                    CHARSET_INFO *cs);
+
+  // table operations.
+  std::shared_ptr<RCTable> GetTableRD(const std::string &table_path);
+  std::shared_ptr<TableShare> GetTableShare(const TABLE_SHARE *table_share);
+  void UnRegisterTable(const std::string &table_path);
   void GetTableIterator(const std::string &table_path, RCTable::Iterator &iter_begin, RCTable::Iterator &iter_end,
                         std::shared_ptr<RCTable> &table, const std::vector<bool> &, THD *thd);
+  void AddTableIndex(const std::string &table_path, TABLE *table, THD *thd);
+  std::shared_ptr<index::RCTableIndex> GetTableIndex(const std::string &table_path);
+  bool has_pk(TABLE *table) const { return table->s->primary_key != MAX_INDEXES; }
+  void RenameRdbTable(const std::string &from, const std::string &to);
+  void AddMemTable(TABLE *form, std::shared_ptr<TableShare> share);
+  void UnregisterMemTable(const std::string &from, const std::string &to);
+
+  // For Load Data.
   common::TIANMUError RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
+
+  // transaction operations.
   void CommitTx(THD *thd, bool all);
   void Rollback(THD *thd, bool all, bool force_error_message = false);
   Transaction *CreateTx(THD *thd);
   Transaction *GetTx(THD *thd);
   void ClearTx(THD *thd);
-  int HandleSelect(THD *thd, LEX *lex, Query_result *&result_output, ulong setup_tables_done_option, int &res,
-                   int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false);
+
+  // processing the queries which routed to Tianmu.
+  Query_Route_To Handle_Query(THD *thd, LEX *lex, Query_result *&result_output, ulong setup_tables_done_option,
+                              int &res, int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false);
+
   system::ResourceManager *getResourceManager() const { return m_resourceManager; }
-  std::shared_ptr<RCTable> GetTableRD(const std::string &table_path);
+
+  // row operations.
   int InsertRow(const std::string &tablename, Transaction *trans_, TABLE *table, std::shared_ptr<TableShare> &share);
   void InsertDelayed(const std::string &table_path, int tid, TABLE *table);
   void InsertMemRow(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table);
   std::string DelayedBufferStat() { return insert_buffer.Status(); }
   std::string RowStoreStat();
-  void UnRegisterTable(const std::string &table_path);
-  std::shared_ptr<TableShare> GetTableShare(const TABLE_SHARE *table_share);
+
   common::TX_ID MinXID() const { return min_xid; }
   common::TX_ID MaxXID() const { return max_xid; }
+
   void DeferRemove(const fs::path &file, int32_t cookie);
   void HandleDeferredJobs();
-  // support for primary key
-  void AddTableIndex(const std::string &table_path, TABLE *table, THD *thd);
-  std::shared_ptr<index::RCTableIndex> GetTableIndex(const std::string &table_path);
-  bool has_pk(TABLE *table) const { return table->s->primary_key != MAX_INDEXES; }
-  void RenameRdbTable(const std::string &from, const std::string &to);
+
   void DropSignal() { cv_drop_.notify_one(); }
   void ResetTaskExecutor(int percent);
   TaskExecutor *GetTaskExecutor() const { return task_executor.get(); }
-  void AddMemTable(TABLE *form, std::shared_ptr<TableShare> share);
-  void UnregisterMemTable(const std::string &from, const std::string &to);
 
  public:
   utils::thread_pool delay_insert_thread_pool;
@@ -162,9 +181,11 @@ class Engine final {
  private:
   void AddTx(Transaction *tx);
   void RemoveTx(Transaction *tx);
-  int Execute(THD *thd, LEX *lex, Query_result *result_output, Query_expression *unit_for_union = NULL);  // stonedb8
-  int SetUpCacheFolder(const std::string &cachefolder_path);
 
+  Query_Route_To Execute(THD *thd, LEX *lex, Query_result *result_output,
+                         Query_expression *unit_for_union = NULL);  // stonedb8
+
+  int SetUpCacheFolder(const std::string &cachefolder_path);
   static bool AreConvertible(types::RCDataType &rcitem, enum_field_types my_type, uint length = 0);
   static bool IsTIANMURoute(THD *thd, TABLE_LIST *table_list, Query_block *selects_list,
                             int &in_case_of_failure_can_go_to_mysql, int with_insert);  // stonedb8
@@ -342,6 +363,7 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, int64_t &value);
 int get_parameter(THD *thd, enum tianmu_var_name vn, std::string &value);
 
 bool parameter_equals(THD *thd, enum tianmu_var_name vn, longlong value);
+
 }  // namespace core
 }  // namespace Tianmu
 

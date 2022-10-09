@@ -28,8 +28,12 @@
 #include "util/log_ctl.h"
 #include "vc/virtual_column.h"
 
+#include "handler/ha_my_tianmu.h"
+
 namespace Tianmu {
 namespace core {
+
+using Tianmu::DBHandler::Query_Route_To;
 
 int optimize_select(THD *thd, ulong select_options, Query_result *result, Query_block *select_lex,
                     int &optimize_after_tianmu, int &free_join);
@@ -72,11 +76,11 @@ Handles a single query
 If an error appears during query preparation/optimization
 query structures are cleaned up and the function returns information about the
 error through res'. If the query can not be compiled by Tianmu engine
-RETURN_QUERY_TO_MYSQL_ROUTE is returned and MySQL engine continues query
+Query_Route_To::TO_MYSQL is returned and MySQL engine continues query
 execution.
 */
-int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
-                         int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
+Query_Route_To Engine::Handle_Query(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
+                                    int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
   KillTimer timer(thd, tianmu_sysvar_max_execution_time);
 
   int in_case_of_failure_can_go_to_mysql;
@@ -90,12 +94,12 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
 
   if (tianmu_sysvar_pushdown) thd->variables.optimizer_switch |= OPTIMIZER_SWITCH_ENGINE_CONDITION_PUSHDOWN;
   if (!IsTIANMURoute(thd, lex->query_tables, lex->query_block, in_case_of_failure_can_go_to_mysql, with_insert)) {
-    return RETURN_QUERY_TO_MYSQL_ROUTE;
+    return Query_Route_To::TO_MYSQL;
   }
 
   if (lock_tables(thd, thd->lex->query_tables, thd->lex->table_count, 0)) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Failed to lock tables for query '%s'", thd->query().str);
-    return RCBASE_QUERY_ROUTE;
+    return Query_Route_To::TO_TIANMU;
   }
   /*
     Only register query in cache if it tables were locked above.
@@ -108,7 +112,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
   // at this point all tables are in RCBase engine, so we can proceed with the
   // query and we know that if the result goes to the file, the TIANMU_DATAFORMAT is
   // one of TIANMU formats
-  int route = RCBASE_QUERY_ROUTE;
+  Query_Route_To route = Query_Route_To::TO_TIANMU;
   Query_block *save_current_select = lex->current_query_block();
   List<Query_expression> derived_optimized;  // collection to remember derived
                                              // tables that are optimized
@@ -130,7 +134,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
               first_select->next_query_block()->linkage == UNION_TYPE) {          //?? only if union
             if (lex->is_explain() || cursor->derived_query_expression()->item) {  //??called for explain
               // OR there is subselect(?)
-              route = RETURN_QUERY_TO_MYSQL_ROUTE;
+              route = Query_Route_To::TO_MYSQL;
               goto ret_derived;
             }
             if (!cursor->derived_query_expression()->is_executed() ||
@@ -154,8 +158,8 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
           }
           lex->set_current_query_block(save_current_select);
           if (!res && free_join)  // no error &
-            route = RETURN_QUERY_TO_MYSQL_ROUTE;
-          if (res || route == RETURN_QUERY_TO_MYSQL_ROUTE) goto ret_derived;
+            route = Query_Route_To::TO_MYSQL;
+          if (res || route == Query_Route_To::TO_MYSQL) goto ret_derived;
         }
     lex->thd->derived_tables_processing = false;
   }
@@ -177,7 +181,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
          sc->create_table->table_name); res = 1; } else
        */
       if (lex->is_explain() || unit->item)  // explain or sth was already computed - go to mysql
-        route = RETURN_QUERY_TO_MYSQL_ROUTE;
+        route = Query_Route_To::TO_MYSQL;
       else {
         int old_executed = unit->is_executed();
         res = unit->optimize_for_tianmu(thd);  //====exec()
@@ -185,7 +189,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
         if (!res) {
           try {
             route = ha_rcengine_->Execute(thd, thd->lex, result, unit);  // stonedb8
-            if (route == RETURN_QUERY_TO_MYSQL_ROUTE) {
+            if (route == Query_Route_To::TO_MYSQL) {
               if (in_case_of_failure_can_go_to_mysql)
                 if (old_executed)
                   unit->set_executed();
@@ -197,19 +201,19 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
                     "Error: Query syntax not implemented in Tianmu, can "
                     "export "
                     "only to MySQL format (set TIANMU_DATAFORMAT to 'MYSQL').";
-                TIANMU_LOG(LogCtl_Level::ERROR, err_msg);
+                TIANMU_LOG(LogCtl_Level::ERROR, "%s", err_msg);
                 my_message(ER_SYNTAX_ERROR, err_msg, MYF(0));
                 throw ReturnMeToMySQLWithError();
               }
             }
           } catch (ReturnMeToMySQLWithError &) {
-            route = RCBASE_QUERY_ROUTE;
+            route = Query_Route_To::TO_TIANMU;
             res = true;
           }
         }
       }
     }
-    if (res || route == RCBASE_QUERY_ROUTE) {
+    if (res || route == Query_Route_To::TO_TIANMU) {
       // stonedb8 start
       // res |= (int)unit->cleanup(thd, 0);
       unit->cleanup(thd, 0);
@@ -236,7 +240,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
     if (!err) {
       try {
         route = Execute(thd, lex, result);
-        if (route == RETURN_QUERY_TO_MYSQL_ROUTE && !in_case_of_failure_can_go_to_mysql) {
+        if (route == Query_Route_To::TO_MYSQL && !in_case_of_failure_can_go_to_mysql) {
           TIANMU_LOG(LogCtl_Level::ERROR,
                      "Error: Query syntax not implemented in Tianmu, can export "
                      "only to MySQL format (set TIANMU_DATAFORMAT to 'MYSQL').");
@@ -248,13 +252,13 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
           throw ReturnMeToMySQLWithError();
         }
       } catch (ReturnMeToMySQLWithError &) {
-        route = RCBASE_QUERY_ROUTE;
+        route = Query_Route_To::TO_TIANMU;
         err = true;
       }
     }
     if (tianmu_free_join) {  // there was a join created in an upper function
       // so an upper function will do the cleanup
-      if (err || route == RCBASE_QUERY_ROUTE) {
+      if (err || route == Query_Route_To::TO_TIANMU) {
         thd->set_proc_info("end");  // stonedb8
 
         // stonedb8 start
@@ -299,7 +303,7 @@ ret_derived:
   // if the query is redirected to MySQL engine
   // optimization of derived tables must be completed
   // and derived tables must be filled
-  if (route == RETURN_QUERY_TO_MYSQL_ROUTE) {
+  if (route == Query_Route_To::TO_MYSQL) {
     for (Query_block *sl = lex->all_query_blocks_list; sl; sl = sl->next_select_in_list())
       for (TABLE_LIST *cursor = sl->get_table_list(); cursor; cursor = cursor->next_local)
         if (cursor->table && cursor->is_derived()) {
@@ -327,11 +331,13 @@ int optimize_select(THD *thd, ulong select_options, Query_result *result, Query_
     join = select_lex->join;
     // here is EXPLAIN of subselect or derived table
     if (select_lex->linkage != DERIVED_TABLE_TYPE || (select_options & (1ULL << 2))) {
+      // global_options_type means a global option, such as limit order by, etc., of a union query. refer to
+      // Query_expression::add_fake_query_block
       if (select_lex->linkage != GLOBAL_OPTIONS_TYPE) {
         if (result->prepare(thd, *select_lex->join->fields, select_lex->master_query_expression())) {
           return true;
         }
-      } else {
+      } else {  // it is a global_opton query block, such as limit, order by, etc.
         if ((err = select_lex->prepare(thd, nullptr)))  // stonedb8
         {
           return err;
@@ -353,15 +359,18 @@ int optimize_select(THD *thd, ulong select_options, Query_result *result, Query_
     if (!(join = new JOIN(thd, select_lex))) return true; /* purecov: inspected */
     select_lex->set_join(thd, join);
   }
+
   join->best_rowcount = 2;
   optimize_after_tianmu = true;
+  // all the preparation operations are done, therefore, we set the `part` to 1, then pass it to JOIN::optimize.
+  // 1 means we have done the preparation.
   if ((err = join->optimize(1))) return err;
   return false;
 }
 
-int handle_exceptions(THD *, Transaction *, bool with_error = false);
+Query_Route_To handle_exceptions(THD *, Transaction *, bool with_error = false);
 
-int Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, Query_expression *unit_for_union) {
+Query_Route_To Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, Query_expression *unit_for_union) {
   DEBUG_ASSERT(thd->lex == lex);
   Query_block *selects_list = lex->query_block;
   Query_block *last_distinct = NULL;
@@ -372,22 +381,22 @@ int Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, Query_expre
   if (is_dumpfile) {
     push_warning(thd, Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
                  "Dumpfile not implemented in Tianmu, executed by MySQL engine.");
-    return RETURN_QUERY_TO_MYSQL_ROUTE;
+    return Query_Route_To::TO_MYSQL;
   }
 
   Query query(current_txn_);
   CompiledQuery cqu;
 
-  if (result_output->start_execution(thd)) return RETURN_QUERY_TO_MYSQL_ROUTE;
+  if (result_output->start_execution(thd)) return Query_Route_To::TO_MYSQL;
 
   current_txn_->ResetDisplay();  // switch display on
   query.SetRoughQuery(selects_list->active_options() & SELECT_ROUGHLY);
 
   try {
-    if (!query.Compile(&cqu, selects_list, last_distinct)) {
+    if (query.Compile(&cqu, selects_list, last_distinct) == Query_Route_To::TO_MYSQL) {
       push_warning(thd, Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
                    "Query syntax not implemented in Tianmu, executed by MySQL engine.");
-      return RETURN_QUERY_TO_MYSQL_ROUTE;
+      return Query_Route_To::TO_MYSQL;
     }
   } catch (common::Exception const &x) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Query Compile Error: %s", x.what());
@@ -457,10 +466,10 @@ int Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, Query_expre
     }
     return (handle_exceptions(thd, current_txn_, with_error));
   }
-  return RCBASE_QUERY_ROUTE;
+  return Query_Route_To::TO_TIANMU;
 }
 
-int handle_exceptions(THD *thd, Transaction *cur_connection, bool with_error) {
+Query_Route_To handle_exceptions(THD *thd, Transaction *cur_connection, bool with_error) {
   try {
     std::string msg = "Query terminated with exception: ";
     msg += thd->query().str;
@@ -479,42 +488,51 @@ int handle_exceptions(THD *thd, Transaction *cur_connection, bool with_error) {
       msg.append(" Can't switch to MySQL execution path");
       throw common::InternalException(msg);
     }
-    return RETURN_QUERY_TO_MYSQL_ROUTE;
+    return Query_Route_To::TO_MYSQL;
+
   } catch (common::OutOfMemoryException const &x) {
     rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
     my_message(static_cast<int>(common::ErrorCode::OUT_OF_MEMORY),
                (std::string("Tianmu out of resources error: ") + x.what()).c_str(), MYF(0));
     throw ReturnMeToMySQLWithError();
+
   } catch (common::DataTypeConversionException const &x) {
     rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
     my_message(static_cast<int>(common::ErrorCode::DATACONVERSION),
                (std::string("Tianmu specific error: ") + x.what()).c_str(), MYF(0));
     throw ReturnMeToMySQLWithError();
+
   } catch (common::DBObjectException const &x) {  // the subselect had more than one row in a comparison
                                                   // without ANY or ALL
     rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
     my_message(ER_SYNTAX_ERROR, (std::string("Tianmu specific error: ") + x.what()).c_str(), MYF(0));
     throw ReturnMeToMySQLWithError();
+
   } catch (common::KilledException const &) {
     rc_control_.lock(cur_connection->GetThreadID()) << "Stopped by user. " << system::unlock;
     my_message(ER_UNKNOWN_ERROR, (std::string("Stopped by user.")).c_str(), MYF(0));
     throw ReturnMeToMySQLWithError();
+
   } catch (common::FileException const &e) {
     rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << e.what() << system::unlock;
     my_message(static_cast<int>(common::ErrorCode::CANNOT_OPEN_FILE_OR_PIPE),
                (std::string("Tianmu specific error: ") + e.what()).c_str(), MYF(0));
     throw ReturnMeToMySQLWithError();
+
   } catch (common::Exception const &x) {
     rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
     my_message(ER_UNKNOWN_ERROR, "Tianmu other specific error", MYF(0));
     throw ReturnMeToMySQLWithError();
+
   } catch (std::bad_alloc const &) {
     rc_control_.lock(cur_connection->GetThreadID()) << "Error: std::bad_alloc caught" << system::unlock;
     my_message(ER_UNKNOWN_ERROR, (std::string("Tianmu out of memory error")).c_str(), MYF(0));
     throw ReturnMeToMySQLWithError();
   }
-  return RETURN_QUERY_TO_MYSQL_ROUTE;
+
+  return Query_Route_To::TO_MYSQL;
 }
+
 }  // namespace core
 }  // namespace Tianmu
 
@@ -636,19 +654,23 @@ int Query_expression::optimize_after_tianmu(THD *thd) {
       }
       sl->set_join(thd, join);
     }
-    int res = sl->join->optimize(2);
-    if (res) {
+
+    // int res = sl->join->optimize(2);
+    if (int res = sl->join->optimize(2)) {
       thd->lex->set_current_query_block(lex_select_save);
       return res;
     }
   }
+
   if (fake_query_block && fake_query_block->join) {
     // fake_query_block->join must be cleaned up before returning to
     // MySQL route, otherwise sub select + union would coredump.
     thd->lex->set_current_query_block(fake_query_block);
     fake_query_block->cleanup(thd, 0);  // stonedb8
   }
+
   executed = 0;
   thd->lex->set_current_query_block(lex_select_save);
+
   return false;
 }

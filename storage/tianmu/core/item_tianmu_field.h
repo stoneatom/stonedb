@@ -81,7 +81,7 @@ class Item_tianmufield : public Item_field {
   bool get_date(MYSQL_TIME *ltime, uint fuzzydate) override;
   bool get_date_result(MYSQL_TIME *ltime, uint fuzzydate) /*override*/ { return get_date(ltime, fuzzydate); }
   bool get_time(MYSQL_TIME *ltime) override;
-  bool get_timeval(struct my_timeval *tm, int *warnings) /*override*/;
+  bool get_timeval(struct my_timeval *tm, int *warnings) override;
   table_map used_tables() const override { return ifield->used_tables(); }
   enum Item_result result_type() const override {
     return was_aggregation ? aggregation_result : Item_field::result_type();

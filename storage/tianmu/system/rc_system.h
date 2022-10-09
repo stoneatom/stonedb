@@ -43,7 +43,7 @@ extern system::Channel rc_querylog_;
 // host ip addr.
 extern char global_hostIP_[FN_REFLEN];
 // host server info string.
-extern char global_serverinfo_[FN_REFLEN];
+extern char global_serverinfo_[FN_REFLEN + FN_REFLEN + 512];
 
 // row-column engine handler.
 extern core::Engine *ha_rcengine_;

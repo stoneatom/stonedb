@@ -18,20 +18,28 @@
 #define HA_MY_TIANMU_H_
 #pragma once
 
+#include "sql/sql_class.h"
+#include "sql/sql_exchange.h"  // sql_exchange
+
 // mysql <--> tianmu interface functions
 namespace Tianmu {
-namespace dbhandler {
+namespace DBHandler {
 
-void TIANMU_UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
+enum class Query_Route_To : unsigned int { TO_MYSQL = 0, TO_TIANMU = 1 };
+
+void Tianmu_UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
                                         CHARSET_INFO *cs);
 
-bool TIANMU_SetStatementAllowed(THD *thd, LEX *lex);
+bool Tianmu_SetStatementAllowed(THD *thd, LEX *lex);
 
-int TIANMU_HandleSelect(THD *thd, LEX *lex, Query_result *&result_output, ulong setup_tables_done_option, int &res,
-                        int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false);
-bool tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
+// processing the queries which routed to Tianmu Engine.
+Query_Route_To Tianm_Handle_Query(THD *thd, LEX *lex, Query_result *&result_output, ulong setup_tables_done_option,
+                                  int &res, int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false);
 
-}  // namespace dbhandler
+// processing the load operation.
+bool Tianmu_Load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
+
+}  // namespace DBHandler
 }  //  namespace Tianmu
 
 #endif  // HA_MY_TIANMU_H_

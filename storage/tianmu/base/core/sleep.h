@@ -56,7 +56,7 @@ future<> sleep(std::chrono::duration<Rep, Period> dur) {
 class sleep_aborted : public std::exception {
  public:
   /// Reports the exception reason.
-  virtual const char *what() const noexcept { return "Sleep is aborted"; }
+  virtual const char *what() const noexcept override { return "Sleep is aborted"; }
 };
 
 /// Returns a future which completes after a specified time has elapsed

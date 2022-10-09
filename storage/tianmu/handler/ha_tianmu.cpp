@@ -35,7 +35,7 @@
 #define MYSQL_SERVER 1
 
 namespace Tianmu {
-namespace dbhandler {
+namespace DBHandler {
 
 const Alter_inplace_info::HA_ALTER_FLAGS TianmuHandler::TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER =
     Alter_inplace_info::ADD_COLUMN | Alter_inplace_info::DROP_COLUMN | Alter_inplace_info::ALTER_STORED_COLUMN_ORDER;
@@ -429,7 +429,7 @@ int TianmuHandler::write_row([[maybe_unused]] uchar *buf) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::InsertRow: %s.", e.what());
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
   } catch (common::FormatException &e) {
-    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::InsertRow: %s Row: %ld, field %u.", e.what(),
+    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::InsertRow: %s Row: %llu, field %u.", e.what(),
                e.m_row_no, e.m_field_no);
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
   } catch (common::FileException &e) {
@@ -1088,7 +1088,7 @@ int TianmuHandler::rnd_pos(uchar *buf, uchar *pos) {
  the storage engine. The myisam engine implements the most hints.
  ha_innodb.cc has the most exhaustive list of these hints.
  */
-int TianmuHandler::extra(enum ha_extra_function operation) {
+int TianmuHandler::extra([[maybe_unused]] enum ha_extra_function operation) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   /* This preemptive delete might cause problems here.
    * Other place where it can be put is TianmuHandler::external_lock().
@@ -1404,10 +1404,12 @@ const Item *TianmuHandler::cond_push(const Item *a_cond) {
 
     std::unique_ptr<core::CompiledQuery> tmp_cq(new core::CompiledQuery(*m_cq));
     core::CondID cond_id;
-    if (!m_query->BuildConditions(cond, cond_id, tmp_cq.get(), m_tmp_table, core::CondType::WHERE_COND, false)) {
+    if (m_query->BuildConditions(cond, cond_id, tmp_cq.get(), m_tmp_table, core::CondType::WHERE_COND, false) ==
+        Query_Route_To::TO_MYSQL) {
       m_query.reset();
       return a_cond;
     }
+
     tmp_cq->AddConds(m_tmp_table, cond_id, core::CondType::WHERE_COND);
     tmp_cq->ApplyConds(m_tmp_table);
     m_cq.reset(tmp_cq.release());
@@ -1495,7 +1497,7 @@ bool TianmuHandler::commit_inplace_alter_table(TABLE *altered_table [[maybe_unus
     return false;
   }
   if ((ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)) {
-    TIANMU_LOG(LogCtl_Level::INFO, "Altered table not support type %lu", ha_alter_info->handler_flags);
+    TIANMU_LOG(LogCtl_Level::INFO, "Altered table not support type %llu", ha_alter_info->handler_flags);
     return true;
   }
   fs::path tmp_dir(m_table_name + ".tmp");
@@ -1684,5 +1686,5 @@ void TianmuHandler::key_convert(const uchar *key, uint key_len, std::vector<uint
   }
 }
 
-}  // namespace dbhandler
+}  // namespace DBHandler
 }  // namespace Tianmu

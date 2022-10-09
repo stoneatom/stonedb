@@ -209,7 +209,7 @@ std::unique_ptr<JoinerMapFunction> JoinerMapped::GenerateFunction(vcolumn::Virtu
 
   rc_control_.lock(m_conn->GetThreadID())
       << "Join mapping (multimaps) created on " << mit.NumOfTuples() << " rows." << system::unlock;
-  return std::move(map_function);
+  return map_function;
 }
 
 int64_t JoinerParallelMapped::ExecuteMatchLoop(std::shared_ptr<MultiIndexBuilder::BuildItem> *indextable,

@@ -711,7 +711,7 @@ int RCTable::Insert(TABLE *table) {
     }
 
     if (tab->InsertIndex(current_txn_, fields, NumOfObj()) == common::ErrorCode::DUPP_KEY) {
-      TIANMU_LOG(LogCtl_Level::INFO, "Insert duplicate key on row %d", NumOfObj() - 1);
+      TIANMU_LOG(LogCtl_Level::INFO, "Insert duplicate key on row %ld", NumOfObj() - 1);
       return HA_ERR_FOUND_DUPP_KEY;
     }
   }

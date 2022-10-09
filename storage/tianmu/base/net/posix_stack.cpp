@@ -443,7 +443,7 @@ class posix_udp_channel : public udp_channel_impl {
 
 future<> posix_udp_channel::send(ipv4_addr dst, const char *message) {
   auto len = strlen(message);
-  return _fd->sendto(make_ipv4_address(dst), message, len).then([len](size_t size TIANMU_UNUSED) {
+  return _fd->sendto(make_ipv4_address(dst), message, len).then([len]([[maybe_unused]] size_t size) {
     assert(size == len);
   });
 }

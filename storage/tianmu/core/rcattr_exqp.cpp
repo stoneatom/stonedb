@@ -144,7 +144,7 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenInt(MIUpdatingIterator &mit, in
 
         ++iter;
       } else {
-        TIANMU_LOG(LogCtl_Level::ERROR, "GetCurKV valid! col:[%u]=%I64d, Path:%s", ColId(), pv1,
+        TIANMU_LOG(LogCtl_Level::ERROR, "GetCurKV valid! col:[%u]=%ld, Path:%s", ColId(), pv1,
                    m_share->owner->Path().data());
         break;
       }

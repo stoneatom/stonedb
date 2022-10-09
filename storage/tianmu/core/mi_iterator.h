@@ -348,6 +348,7 @@ class MIInpackIterator : public MIIterator {
  public:
   MIInpackIterator(const MIIterator &sec) : MIIterator(sec) {}
   MIInpackIterator() : MIIterator() {}
+  MIInpackIterator(const MIInpackIterator &) = default;
   void swap(MIInpackIterator &i);
   MIInpackIterator &operator=(const MIInpackIterator &m) {
     MIInpackIterator tmp(m);
