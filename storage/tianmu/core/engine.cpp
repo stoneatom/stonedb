@@ -1148,12 +1148,14 @@ static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec
   thd->lex->query_tables = &tl;
   LEX_STRING lex_str = {const_cast<char *>(ex.file_name), addr.size()};
 
-  auto cmd = new (thd->mem_root)
+  thd->lex->m_sql_cmd = new (thd->mem_root)
       Sql_cmd_load_table(ex.filetype, false, lex_str, On_duplicate::ERROR, nullptr, nullptr, nullptr, nullptr, ex.field,
                          ex.line, ex.skip_lines, nullptr, nullptr, nullptr, nullptr);
-  if (cmd->execute(thd)) {
+
+  if (thd->lex->m_sql_cmd->execute(thd)) {
     thd->is_slave_error = 1;
   }
+
   // stonedb8 end
 
   thd->set_catalog({0, 1});  // TIANMU UPGRADE
