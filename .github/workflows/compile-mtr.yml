@@ -61,7 +61,7 @@ jobs:
   stonedb-build:
     name: stonedb-build
     needs: lint
-    runs-on: self-hosted
+    runs-on: [self-hosted, stonedb105]
     strategy:
       fail-fast: false
       matrix:
