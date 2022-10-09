@@ -1489,7 +1489,7 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
   try {
     std::unique_ptr<system::IOParameters> iop;
 
-    auto tianmu_error = Engine::GetIOP(iop, *thd, *ex, table, arg);
+    auto tianmu_error = Engine::GetIOParams(iop, *thd, *ex, table, arg);
 
     if (tianmu_error != common::ErrorCode::SUCCESS) throw tianmu_error;
 
@@ -1550,29 +1550,26 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
 }
 
 // stonedb8 Query_block
-bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, Query_block *selects_list,
-                           int &in_case_of_failure_can_go_to_mysql, int with_insert) {
+Query_Route_To Engine::RouteTo(THD *thd, TABLE_LIST *table_list, Query_block *selects_list,
+                               int &in_case_of_failure_can_go_to_mysql, int with_insert) {
   in_case_of_failure_can_go_to_mysql = true;
 
-  if (!table_list) return false;
-  if (with_insert) table_list = table_list->next_global;  // we skip one
+  if (!table_list) return Query_Route_To::TO_MYSQL;
 
-  if (!table_list) return false;
+  if (with_insert && !table_list->next_global) return Query_Route_To::TO_MYSQL;
 
-  bool has_TIANMUTable = false;
-  for (TABLE_LIST *tl = table_list; tl; tl = tl->next_global) {  // SZN:we go through tables
+  bool has_TianmuTable = false;
+  for (TABLE_LIST *tl = table_list; tl; tl = tl->next_global) {  // we go through tables
     if (!tl->is_view_or_derived() && !tl->is_view()) {
-      // In this list we have all views, derived tables and their
-      // sources, so anyway we walk through all the source tables
+      // In this list we have all views, derived tables and their sources,
+      // so anyway we walk through all the source tables
       // even though we seem to reject the control of views
-      if (!IsTIANMUTable(tl->table))
-        return false;
-      else
-        has_TIANMUTable = true;
+      if (!(has_TianmuTable = IsTianmuTable(tl->table))) return Query_Route_To::TO_MYSQL;
     }
   }
-  if (!has_TIANMUTable)  // No Tianmu table is involved. Return to MySQL.
-    return false;
+
+  if (!has_TianmuTable)  // No Tianmu table is involved. Return to MySQL.
+    return Query_Route_To::TO_MYSQL;
 
   // then we check the parameter of file format.
   // if it is MYSQL_format AND we write to a file, it is a MYSQL route.
@@ -1582,32 +1579,36 @@ bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, Query_block *select
   if (file) {  // it writes to a file
     longlong param = 0;
     std::string s_res;
-    if (!get_parameter(thd, tianmu_var_name::TIANMU_DATAFORMAT, param, s_res)) {
-      if (boost::iequals(boost::trim_copy(s_res), "MYSQL")) return false;
 
-      common::DataFormatPtr df = common::DataFormat::GetDataFormat(s_res);
-      if (!df) {  // parameter is UNKNOWN VALUE
-        my_message(ER_SYNTAX_ERROR, "Histgore specific error: Unknown value of TIANMU_DATAFORMAT parameter", MYF(0));
-        return true;
-      } else if (!df->CanExport()) {
-        my_message(ER_SYNTAX_ERROR,
-                   (std::string("Tianmu specific error: Export in '") + df->GetName() + ("' format is not supported."))
-                       .c_str(),
-                   MYF(0));
-        return true;
-      } else
-        in_case_of_failure_can_go_to_mysql = false;  // in case of failure
-                                                     // it cannot go to MYSQL - it writes to a file,
-                                                     // but the file format is not MYSQL
-    } else                                           // param not set - we assume it is (deprecated: MYSQL)
-                                                     // common::EDF::TRI_UNKNOWN
-      return true;
-  }
+    if (get_parameter(thd, tianmu_var_name::TIANMU_DATAFORMAT, param, s_res)) return Query_Route_To::TO_TIANMU;
 
-  return true;
+    if (boost::iequals(boost::trim_copy(s_res), "MYSQL")) return Query_Route_To::TO_MYSQL;
+
+    common::DataFormatPtr df = common::DataFormat::GetDataFormat(s_res);
+    if (!df) {  // parameter is UNKNOWN VALUE
+
+      my_message(ER_SYNTAX_ERROR, "Histgore specific error: Unknown value of TIANMU_DATAFORMAT parameter", MYF(0));
+      return Query_Route_To::TO_TIANMU;
+
+    } else if (!df->CanExport()) {
+      my_message(
+          ER_SYNTAX_ERROR,
+          (std::string("Tianmu specific error: Export in '") + df->GetName() + ("' format is not supported.")).c_str(),
+          MYF(0));
+      return Query_Route_To::TO_TIANMU;
+
+    } else
+      in_case_of_failure_can_go_to_mysql = false;  // in case of failure
+                                                   // it cannot go to MYSQL - it writes to a file,
+                                                   // but the file format is not MYSQL
+                                                   // param not set - we assume it is (deprecated: MYSQL)
+                                                   // common::EDF::TRI_UNKNOWN
+  }                                                // if(file)
+
+  return Query_Route_To::TO_TIANMU;
 }
 
-bool Engine::IsTIANMUTable(TABLE *table) {
+bool Engine::IsTianmuTable(TABLE *table) {
   return table && table->s->db_type() == rcbase_hton;  // table->db_type is always NULL
 }
 
@@ -1732,8 +1733,8 @@ common::TIANMUError Engine::GetRejectFileIOParameters(THD &thd, std::unique_ptr<
   return common::ErrorCode::SUCCESS;
 }
 
-common::TIANMUError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
-                                   TABLE *table, void *arg, bool for_exporter) {
+common::TIANMUError Engine::GetIOParams(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
+                                        TABLE *table, void *arg, bool for_exporter) {
   const CHARSET_INFO *cs = ex.cs;
   // stonedb8 start
   bool local_load = false;

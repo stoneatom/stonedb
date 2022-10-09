@@ -462,7 +462,7 @@ void ResultExportSender::Init(TempTable *t) {
 
   export_res->send_result_set_metadata(thd, fields, Protocol::SEND_NUM_ROWS | Protocol::SEND_EOF);
 
-  if ((tianmu_error = Engine::GetIOP(iop, *thd, *export_res->SqlExchange(), 0, NULL, true)) !=
+  if ((tianmu_error = Engine::GetIOParams(iop, *thd, *export_res->SqlExchange(), 0, NULL, true)) !=
       common::ErrorCode::SUCCESS)
     throw common::Exception("Unable to get IOP");
 

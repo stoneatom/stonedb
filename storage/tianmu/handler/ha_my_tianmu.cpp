@@ -41,15 +41,17 @@ void Tianmu_UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *sourc
 }
 
 namespace {
+
 bool AtLeastOneTIANMUTableInvolved(LEX *lex) {
   for (TABLE_LIST *table_list = lex->query_tables; table_list; table_list = table_list->next_global) {
     TABLE *table = table_list->table;
-    if (core::Engine::IsTIANMUTable(table)) return true;
+    if (core::Engine::IsTianmuTable(table)) return true;
   }
   return false;
 }
 
 bool ForbiddenMySQLQueryPath([[maybe_unused]] LEX *lex) { return (tianmu_sysvar_allowmysqlquerypath == 0); }
+
 }  // namespace
 
 bool Tianmu_SetStatementAllowed(THD *thd, LEX *lex) {
@@ -97,6 +99,7 @@ Query_Route_To Tianm_Handle_Query(THD *thd, LEX *lex, Query_result *&result, ulo
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
+
   return ret;
 }
 
@@ -105,15 +108,17 @@ static int Tianmu_LoadData(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, v
   common::TIANMUError tianmu_error;
   int ret = static_cast<int>(TIANMUEngineReturnValues::LD_Failed);
 
-  if (!core::Engine::IsTIANMUTable(table_list->table)) return static_cast<int>(TIANMUEngineReturnValues::LD_Continue);
+  if (!core::Engine::IsTianmuTable(table_list->table)) return static_cast<int>(TIANMUEngineReturnValues::LD_Continue);
 
   try {
     tianmu_error = ha_rcengine_->RunLoader(thd, ex, table_list, arg);
+
     if (tianmu_error.GetErrorCode() != common::ErrorCode::SUCCESS) {
       TIANMU_LOG(LogCtl_Level::ERROR, "RunLoader Error: %s", tianmu_error.Message().c_str());
     } else {
       ret = static_cast<int>(TIANMUEngineReturnValues::LD_Successed);
     }
+
   } catch (std::exception &e) {
     tianmu_error = common::TIANMUError(common::ErrorCode::UNKNOWN_ERROR, e.what());
     TIANMU_LOG(LogCtl_Level::ERROR, "RunLoader Error: %s", tianmu_error.Message().c_str());
@@ -121,9 +126,11 @@ static int Tianmu_LoadData(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, v
     tianmu_error = common::TIANMUError(common::ErrorCode::UNKNOWN_ERROR, "An unknown system exception error caught.");
     TIANMU_LOG(LogCtl_Level::ERROR, "RunLoader Error: %s", tianmu_error.Message().c_str());
   }
+
   std::strncpy(errmsg, tianmu_error.Message().c_str(), len - 1);
   errmsg[len - 1] = '\0';
   errcode = (int)tianmu_error.GetErrorCode();
+
   return ret;
 }
 

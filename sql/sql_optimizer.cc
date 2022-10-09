@@ -295,7 +295,7 @@ static void SaveCondEqualLists(COND_EQUAL *cond_equal) {
   @retval false Success.
   @retval true Error, error code saved in member JOIN::error.
 */
-bool JOIN::optimize(bool finalize_access_paths) {
+bool JOIN::optimize(bool finalize_access_paths, OptimizePhase phase) {
   DBUG_TRACE;
 
   uint no_jbuf_after = UINT_MAX;

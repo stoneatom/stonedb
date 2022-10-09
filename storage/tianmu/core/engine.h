@@ -165,7 +165,9 @@ class Engine final {
   static AttributeTypeInfo GetCorrespondingATI(Field &field);
   static AttributeTypeInfo GetAttrTypeInfo(const Field &field);
   static common::CT GetCorrespondingType(const enum_field_types &eft);
-  static bool IsTIANMUTable(TABLE *table);
+
+  static bool IsTianmuTable(TABLE *table);
+
   static bool ConvertToField(Field *field, types::RCDataType &rcitem, std::vector<uchar> *blob_buf);
   static int Convert(int &is_null, my_decimal *value, types::RCDataType &rcitem, int output_scale = -1);
   static int Convert(int &is_null, int64_t &value, types::RCDataType &rcitem, enum_field_types f_type);
@@ -173,8 +175,8 @@ class Engine final {
   static int Convert(int &is_null, String *value, types::RCDataType &rcitem, enum_field_types f_type);
   static void ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes);
   static std::string GetTablePath(TABLE *table);
-  static common::TIANMUError GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
-                                    TABLE *table = 0, void *arg = NULL, bool for_exporter = false);
+  static common::TIANMUError GetIOParams(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
+                                         TABLE *table = 0, void *arg = NULL, bool for_exporter = false);
   static common::TIANMUError GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params);
   static fs::path GetNextDataDir();
 
@@ -187,9 +189,11 @@ class Engine final {
 
   int SetUpCacheFolder(const std::string &cachefolder_path);
   static bool AreConvertible(types::RCDataType &rcitem, enum_field_types my_type, uint length = 0);
-  static bool IsTIANMURoute(THD *thd, TABLE_LIST *table_list, Query_block *selects_list,
-                            int &in_case_of_failure_can_go_to_mysql, int with_insert);  // stonedb8
-  static const char *GetFilename(Query_block *selects_list, int &is_dumpfile);          // stonedb8
+
+  static Query_Route_To RouteTo(THD *thd, TABLE_LIST *table_list, Query_block *selects_list,
+                                int &in_case_of_failure_can_go_to_mysql, int with_insert);  // stonedb8
+
+  static const char *GetFilename(Query_block *selects_list, int &is_dumpfile);  // stonedb8
   static std::unique_ptr<system::IOParameters> CreateIOParameters(const std::string &path, void *arg);
   static std::unique_ptr<system::IOParameters> CreateIOParameters(THD *thd, TABLE *table, void *arg);
   void LogStat();
