@@ -43,12 +43,12 @@
 #include "sql/item.h"
 #include "sql/iterators/row_iterator.h"
 #include "sql/mem_root_array.h"
-#include "sql/opt_explain_format.h"  // Explain_sort_clause
+#include "sql/opt_explain_format.h" // Explain_sort_clause
 #include "sql/sql_executor.h"
 #include "sql/sql_lex.h"
 #include "sql/sql_list.h"
 #include "sql/sql_opt_exec_shared.h"
-#include "sql/sql_select.h"  // Key_use
+#include "sql/sql_select.h" // Key_use
 #include "sql/table.h"
 #include "sql/temp_table_param.h"
 
@@ -63,8 +63,7 @@ struct AccessPath;
 struct MYSQL_LOCK;
 
 class Item_equal;
-template <class T>
-class mem_root_deque;
+template <class T> class mem_root_deque;
 
 // Key_use has a trivial destructor, no need to run it from Mem_root_array.
 typedef Mem_root_array<Key_use> Key_use_array;
@@ -93,19 +92,18 @@ struct SARGABLE_PARAM {
   the whole ORDER list.
 */
 class ORDER_with_src {
- public:
-  ORDER *order;  ///< ORDER expression that we are wrapping with this class
-  Explain_sort_clause src;  ///< origin of order list
+public:
+  ORDER *order; ///< ORDER expression that we are wrapping with this class
+  Explain_sort_clause src; ///< origin of order list
 
- private:
-  int flags;  ///< bitmap of Explain_sort_property
+private:
+  int flags; ///< bitmap of Explain_sort_property
 
- public:
+public:
   ORDER_with_src() { clean(); }
 
   ORDER_with_src(ORDER *order_arg, Explain_sort_clause src_arg)
-      : order(order_arg),
-        src(src_arg),
+      : order(order_arg), src(src_arg),
         flags(order_arg ? ESP_EXISTS : ESP_none) {}
 
   bool empty() const { return order == nullptr; }
@@ -123,7 +121,7 @@ class ORDER_with_src {
 };
 
 class JOIN {
- public:
+public:
   JOIN(THD *thd_arg, Query_block *select);
   JOIN(const JOIN &rhs) = delete;
   JOIN &operator=(const JOIN &rhs) = delete;
@@ -140,7 +138,7 @@ class JOIN {
 
   // TIANMU
   List<TABLE_LIST> *join_list;
-  ulonglong  select_options;
+  ulonglong select_options;
   // TIANMU
 
   /**
@@ -209,10 +207,10 @@ class JOIN {
      4. possible holes in array
      5. semi-joined tables used with materialization strategy
   */
-  uint tables{0};          ///< Total number of tables in query block
-  uint primary_tables{0};  ///< Number of primary input tables in query block
-  uint const_tables{0};    ///< Number of primary tables deemed constant
-  uint tmp_tables{0};      ///< Number of temporary tables used by query
+  uint tables{0};         ///< Total number of tables in query block
+  uint primary_tables{0}; ///< Number of primary input tables in query block
+  uint const_tables{0};   ///< Number of primary tables deemed constant
+  uint tmp_tables{0};     ///< Number of temporary tables used by query
   uint send_group_parts{0};
   /**
     Indicates that the data will be aggregated (typically GROUP BY),
@@ -236,7 +234,7 @@ class JOIN {
   bool do_send_rows{true};
   /// Set of tables contained in query
   table_map all_table_map{0};
-  table_map const_table_map;  ///< Set of tables found to be const
+  table_map const_table_map; ///< Set of tables found to be const
   /**
      Const tables which are either:
      - not empty
@@ -355,7 +353,7 @@ class JOIN {
 
   enum class RollupState { NONE, INITED, READY };
   RollupState rollup_state;
-  bool implicit_grouping;  ///< True if aggregated but no GROUP BY
+  bool implicit_grouping; ///< True if aggregated but no GROUP BY
 
   /**
     At construction time, set if SELECT DISTINCT. May be reset to false
@@ -388,9 +386,9 @@ class JOIN {
     ORDER/GROUP BY.
   */
   enum {
-    ORDERED_INDEX_VOID,      // No ordered index avail.
-    ORDERED_INDEX_GROUP_BY,  // Use index for GROUP BY
-    ORDERED_INDEX_ORDER_BY   // Use index for ORDER BY
+    ORDERED_INDEX_VOID,     // No ordered index avail.
+    ORDERED_INDEX_GROUP_BY, // Use index for GROUP BY
+    ORDERED_INDEX_ORDER_BY  // Use index for ORDER BY
   } m_ordered_index_usage{ORDERED_INDEX_VOID};
 
   /**
@@ -429,7 +427,7 @@ class JOIN {
   */
   mem_root_deque<Item *> *tmp_fields = nullptr;
 
-  int error{0};  ///< set in optimize(), exec(), prepare_result()
+  int error{0}; ///< set in optimize(), exec(), prepare_result()
 
   /**
     Incremented each time clear_hash_tables() is run, signaling to
@@ -504,7 +502,7 @@ class JOIN {
     Initialized by Query_block::get_optimizable_conditions().
   */
   Item *having_cond;
-  Item *having_for_explain;  ///< Saved optimized HAVING for EXPLAIN
+  Item *having_for_explain; ///< Saved optimized HAVING for EXPLAIN
   /**
     Pointer set to query_block->get_table_list() at the start of
     optimization. May be changed (to NULL) only if optimize_aggregated_query()
@@ -546,7 +544,7 @@ class JOIN {
     the slice size used when allocating the other slices.
    */
   Ref_item_array *ref_items{
-      nullptr};  // cardinality: REF_SLICE_SAVED_BASE + 1 + #windows*2
+      nullptr}; // cardinality: REF_SLICE_SAVED_BASE + 1 + #windows*2
 
   /**
     The slice currently stored in ref_items[0].
@@ -614,7 +612,17 @@ class JOIN {
   */
   bool plan_is_single_table() { return primary_tables - const_tables == 1; }
 
-  bool optimize(bool finalize_access_paths);
+  enum class OptimizePhase { // for Tianmu to indicate which optimization phase
+                             // we are.
+    Beginning = 0,
+    Before_LOJ_Transform = 1,
+    After_LOJ_Transform = 2,
+    Finish_LOJ_Transform = 3,
+    Done_Optimization = 4
+  };
+
+  bool optimize(bool finalize_access_paths,
+                OptimizePhase phase = OptimizePhase::Beginning);
   void reset();
   bool prepare_result();
   void destroy();
@@ -710,18 +718,19 @@ class JOIN {
   bool get_best_combination();
   bool attach_join_conditions(plan_idx last_tab);
 
- private:
+private:
   bool attach_join_condition_to_nest(plan_idx first_inner, plan_idx last_tab,
                                      Item *join_cond, bool is_sj_mat_cond);
 
- public:
+public:
   bool update_equalities_for_sjm();
   bool add_sorting_to_table(uint idx, ORDER_with_src *order,
                             bool sort_before_group);
   bool decide_subquery_strategy();
   void refine_best_rowcount();
-  table_map calculate_deps_of_remaining_lateral_derived_tables(
-      table_map plan_tables, uint idx) const;
+  table_map
+  calculate_deps_of_remaining_lateral_derived_tables(table_map plan_tables,
+                                                     uint idx) const;
   bool clear_sj_tmp_tables();
   bool clear_corr_derived_tmp_tables();
   void clear_hash_tables() { ++hash_table_generation; }
@@ -729,10 +738,10 @@ class JOIN {
   void mark_const_table(JOIN_TAB *table, Key_use *key);
   /// State of execution plan. Currently used only for EXPLAIN
   enum enum_plan_state {
-    NO_PLAN,      ///< No plan is ready yet
-    ZERO_RESULT,  ///< Zero result cause is set
-    NO_TABLES,    ///< Plan has no tables
-    PLAN_READY    ///< Plan is ready
+    NO_PLAN,     ///< No plan is ready yet
+    ZERO_RESULT, ///< Zero result cause is set
+    NO_TABLES,   ///< Plan has no tables
+    PLAN_READY   ///< Plan is ready
   };
   /// See enum_plan_state
   enum_plan_state get_plan_state() const { return plan_state; }
@@ -799,8 +808,8 @@ class JOIN {
    */
   bool needs_finalize{false};
 
- private:
-  bool optimized{false};  ///< flag to avoid double optimization in EXPLAIN
+private:
+  bool optimized{false}; ///< flag to avoid double optimization in EXPLAIN
 
   /**
     Set by exec(), reset by reset(). Note that this needs to be set
@@ -813,7 +822,7 @@ class JOIN {
   /// Final execution plan state. Currently used only for EXPLAIN
   enum_plan_state plan_state{NO_PLAN};
 
- public:
+public:
   /*
     When join->select_count is set, tables will not be optimized away.
     The call to records() will be delayed until the execution phase and
@@ -823,7 +832,7 @@ class JOIN {
   */
   bool select_count{false};
 
- private:
+private:
   /**
     Create a temporary table to be used for processing DISTINCT/ORDER
     BY/GROUP BY.
@@ -872,7 +881,7 @@ class JOIN {
       tab->key_dependent = tab->dependent;
   }
 
- private:
+private:
   void set_prefix_tables();
   void cleanup_item_list(const mem_root_deque<Item *> &items) const;
   void set_semijoin_embedding();
@@ -1036,9 +1045,9 @@ class JOIN {
   final join order. If 'tables==0', one is not expected to consult best_ref
   cells, and best_ref may not even have been allocated.
 */
-#define ASSERT_BEST_REF_IN_JOIN_ORDER(join)                                 \
-  do {                                                                      \
-    assert((join)->tables == 0 || ((join)->best_ref && !(join)->join_tab)); \
+#define ASSERT_BEST_REF_IN_JOIN_ORDER(join)                                    \
+  do {                                                                         \
+    assert((join)->tables == 0 || ((join)->best_ref && !(join)->join_tab));    \
   } while (0)
 
 /**
@@ -1049,10 +1058,11 @@ class Switch_ref_item_slice {
   JOIN *join;
   uint saved;
 
- public:
+public:
   Switch_ref_item_slice(JOIN *join_arg, uint new_v)
       : join(join_arg), saved(join->get_ref_item_slice()) {
-    if (!join->ref_items[new_v].is_null()) join->set_ref_item_slice(new_v);
+    if (!join->ref_items[new_v].is_null())
+      join->set_ref_item_slice(new_v);
   }
   ~Switch_ref_item_slice() { join->set_ref_item_slice(saved); }
 };
@@ -1073,9 +1083,9 @@ bool build_equal_items(THD *thd, Item *cond, Item **retcond,
                        COND_EQUAL **cond_equal_ref);
 bool is_indexed_agg_distinct(JOIN *join,
                              mem_root_deque<Item_field *> *out_args);
-Key_use_array *create_keyuse_for_table(
-    THD *thd, uint keyparts, Item_field **fields,
-    const mem_root_deque<Item *> &outer_exprs);
+Key_use_array *
+create_keyuse_for_table(THD *thd, uint keyparts, Item_field **fields,
+                        const mem_root_deque<Item *> &outer_exprs);
 Item_field *get_best_field(Item_field *item_field, COND_EQUAL *cond_equal);
 Item *make_cond_for_table(THD *thd, Item *cond, table_map tables,
                           table_map used_table, bool exclude_expensive_cond);
@@ -1124,7 +1134,7 @@ class Table_map_restorer final {
   /** The original value to restore.*/
   const table_map m_saved_value;
 
- public:
+public:
   /**
      Constructor.
      @param map The table map that we wish to restore.

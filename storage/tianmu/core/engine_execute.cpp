@@ -72,12 +72,9 @@ class KillTimer {
 };
 
 /*
-Handles a single query
-If an error appears during query preparation/optimization
-query structures are cleaned up and the function returns information about the
-error through res'. If the query can not be compiled by Tianmu engine
-Query_Route_To::TO_MYSQL is returned and MySQL engine continues query
-execution.
+Handles a single query If an error appears during query preparation/optimization query structures are cleaned up
+and the function returns information about the error through res'. If the query can not be compiled by Tianmu engine
+Query_Route_To::TO_MYSQL is returned and MySQL engine continues query execution.
 */
 Query_Route_To Engine::Handle_Query(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
                                     int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
@@ -88,12 +85,14 @@ Query_Route_To Engine::Handle_Query(THD *thd, LEX *lex, Query_result *&result, u
   optimize_after_tianmu = false;
   tianmu_free_join = 0;
 
-  Query_expression *unit = NULL;
-  Query_block *select_lex = NULL;
-  Query_result_export *se = NULL;
+  Query_expression *unit = nullptr;
+  Query_block *select_lex = nullptr;
+  Query_result_export *se = nullptr;
 
   if (tianmu_sysvar_pushdown) thd->variables.optimizer_switch |= OPTIMIZER_SWITCH_ENGINE_CONDITION_PUSHDOWN;
-  if (!IsTIANMURoute(thd, lex->query_tables, lex->query_block, in_case_of_failure_can_go_to_mysql, with_insert)) {
+
+  if (RouteTo(thd, lex->query_tables, lex->query_block, in_case_of_failure_can_go_to_mysql, with_insert) ==
+      Query_Route_To::TO_MYSQL) {
     return Query_Route_To::TO_MYSQL;
   }
 
@@ -101,11 +100,6 @@ Query_Route_To Engine::Handle_Query(THD *thd, LEX *lex, Query_result *&result, u
     TIANMU_LOG(LogCtl_Level::ERROR, "Failed to lock tables for query '%s'", thd->query().str);
     return Query_Route_To::TO_TIANMU;
   }
-  /*
-    Only register query in cache if it tables were locked above.
-    Tables must be locked before storing the query in the query cache.
-  */
-  // query_cache.store_query(thd, thd->lex->query_tables); // stonedb8
 
   tianmu_stat.select++;
 
@@ -113,27 +107,27 @@ Query_Route_To Engine::Handle_Query(THD *thd, LEX *lex, Query_result *&result, u
   // query and we know that if the result goes to the file, the TIANMU_DATAFORMAT is
   // one of TIANMU formats
   Query_Route_To route = Query_Route_To::TO_TIANMU;
+
   Query_block *save_current_select = lex->current_query_block();
-  List<Query_expression> derived_optimized;  // collection to remember derived
-                                             // tables that are optimized
-  if (lex->unit->derived_table) {
-    // Derived tables are processed completely in the function
-    // open_and_lock_tables(...). To avoid execution of derived tables in
-    // open_and_lock_tables(...) the function mysql_derived_filling(..)
-    // optimizing and executing derived tables is passed over, then optimization
-    // of derived tables must go here.
-    res = false;
-    int free_join = false;
+  List<Query_expression> derived_optimized;  // collection to remember derived tables that are optimized
+
+  if (lex->unit->derived_table) {  // Derived tables are processed completely in the function open_and_lock_tables(...).
+    res = false;                   // To avoid execution of derived tables in open_and_lock_tables(...) the function
+                                   // mysql_derived_filling(..)
+    int free_join = false;  // optimizing and executing derived tables is passed over, then optimization of derived
+                            // tables must go here.
     lex->thd->derived_tables_processing = true;
+
     for (Query_block *sl = lex->all_query_blocks_list; sl; sl = sl->next_select_in_list())  // for all selects
       for (TABLE_LIST *cursor = sl->get_table_list(); cursor; cursor = cursor->next_local)  // for all tables
-        if (cursor->table && cursor->is_view_or_derived()) {  // data source (view or FROM subselect)
-          // optimize derived table
+        if (cursor->table &&
+            cursor->is_view_or_derived()) {  // data source (view or FROM subselect), then do derived table optim.
+
           Query_block *first_select = cursor->derived_query_expression()->first_query_block();
           if (first_select->next_query_block() &&
-              first_select->next_query_block()->linkage == UNION_TYPE) {          //?? only if union
-            if (lex->is_explain() || cursor->derived_query_expression()->item) {  //??called for explain
-              // OR there is subselect(?)
+              first_select->next_query_block()->linkage == UNION_TYPE) {  //?? only if union
+            if (lex->is_explain() ||
+                cursor->derived_query_expression()->item) {  //??called for explain OR there is subselect(?)
               route = Query_Route_To::TO_MYSQL;
               goto ret_derived;
             }
@@ -273,6 +267,7 @@ Query_Route_To Engine::Handle_Query(THD *thd, LEX *lex, Query_result *&result, u
     } else
       res = select_lex->join->error;
   }
+
   if (select_lex->join && Query::IsLOJNew(select_lex->join_list))
     optimize_after_tianmu = 2;  // optimize partially (part=4), since part of LOJ
                                 // optimization was already done
@@ -286,6 +281,7 @@ Query_Route_To Engine::Handle_Query(THD *thd, LEX *lex, Query_result *&result, u
     result->abort_result_set(thd);
     // stonedb8 end
   }
+
   if (se != NULL) {
     // free the tianmu export object,
     // restore the original mysql export object
@@ -300,9 +296,8 @@ Query_Route_To Engine::Handle_Query(THD *thd, LEX *lex, Query_result *&result, u
     result = se;
   }
 ret_derived:
-  // if the query is redirected to MySQL engine
-  // optimization of derived tables must be completed
-  // and derived tables must be filled
+  // if the query is redirected to MySQL engine optimization of derived tables must be completed and derived tables must
+  // be filled
   if (route == Query_Route_To::TO_MYSQL) {
     for (Query_block *sl = lex->all_query_blocks_list; sl; sl = sl->next_select_in_list())
       for (TABLE_LIST *cursor = sl->get_table_list(); cursor; cursor = cursor->next_local)
@@ -312,6 +307,7 @@ ret_derived:
         }
     lex->set_current_query_block(save_current_select);
   }
+
   lex->thd->derived_tables_processing = false;
 
   return route;
@@ -412,10 +408,11 @@ Query_Route_To Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, 
   try {
     std::shared_ptr<RCTable> rct;
     if (lex->sql_command == SQLCOM_INSERT_SELECT &&
-        Engine::IsTIANMUTable(((Query_tables_list *)lex)->query_tables->table)) {
+        Engine::IsTianmuTable(((Query_tables_list *)lex)->query_tables->table)) {
       std::string table_path = Engine::GetTablePath(((Query_tables_list *)lex)->query_tables->table);
       rct = current_txn_->GetTableByPathIfExists(table_path);
     }
+
     if (unit_for_union != NULL && !unit_for_union->is_prepared()) {
       int res = result_output->prepare(thd, unit_for_union->item_list, unit_for_union);  // stonedb8 add thd
       if (res) {
@@ -466,6 +463,7 @@ Query_Route_To Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, 
     }
     return (handle_exceptions(thd, current_txn_, with_error));
   }
+
   return Query_Route_To::TO_TIANMU;
 }
 
