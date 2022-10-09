@@ -201,7 +201,7 @@ Query_Route_To Engine::Handle_Query(THD *thd, LEX *lex, Query_result *&result, u
                     "Error: Query syntax not implemented in Tianmu, can "
                     "export "
                     "only to MySQL format (set TIANMU_DATAFORMAT to 'MYSQL').";
-                TIANMU_LOG(LogCtl_Level::ERROR, err_msg);
+                TIANMU_LOG(LogCtl_Level::ERROR, "%s", err_msg);
                 my_message(ER_SYNTAX_ERROR, err_msg, MYF(0));
                 throw ReturnMeToMySQLWithError();
               }

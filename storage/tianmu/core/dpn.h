@@ -91,12 +91,14 @@ struct DPN final {
 
   // as we are not POD with the atomic long
   DPN() { reset(); }
-  DPN(const DPN &dpn) { std::memcpy(this, &dpn, sizeof(DPN)); }
+  DPN(const DPN &dpn) {
+    std::memcpy(reinterpret_cast<void *>(this), const_cast<void *>(reinterpret_cast<const void *>(&dpn)), sizeof(DPN));
+  }
   DPN &operator=(const DPN &dpn) {
-    std::memcpy(this, &dpn, sizeof(DPN));
+    std::memcpy(reinterpret_cast<void *>(this), const_cast<void *>(reinterpret_cast<const void *>(&dpn)), sizeof(DPN));
     return *this;
   }
-  void reset() { std::memset(this, 0, sizeof(DPN)); }
+  void reset() { std::memset(reinterpret_cast<void *>(this), 0, sizeof(DPN)); }
 };
 
 const uint64_t DPN_INVALID_ADDR = -1;

@@ -993,7 +993,7 @@ void RCAttr::DisplayAttrStats(Filter *f)  // filter is for # of objects
   ss << "----------------------------------------------------------------------"
         "---------"
      << std::endl;
-  TIANMU_LOG(LogCtl_Level::DEBUG, ss.str().c_str());
+  TIANMU_LOG(LogCtl_Level::DEBUG, "%s", ss.str().c_str());
 }
 }  // namespace core
 }  // namespace Tianmu
