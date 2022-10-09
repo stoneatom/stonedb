@@ -55,7 +55,7 @@ jobs:
           command -v clang-format-10 > /dev/null || (apt-get update && apt-get install -y clang-format-10)
       - name: Format check
         run: |
-          git diff -U0 --no-color ${{ github.event.pull_request.base.sha }} HEAD | /usr/share/clang/clang-format-10/clang-format-diff.py -p1 | tee /tmp/.clang-format-diff
+          git diff -U0 --no-color ${{ github.event.pull_request.base.sha }} HEAD storage/tianmu/* | /usr/share/clang/clang-format-10/clang-format-diff.py -p1 | tee /tmp/.clang-format-diff
           [ -s /tmp/.clang-format-diff ] && exit 1 || true
   
   stonedb-build:
