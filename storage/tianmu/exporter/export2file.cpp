@@ -26,19 +26,17 @@ namespace exporter {
 select_tianmu_export::select_tianmu_export(Query_result_export *se)
     : Query_result_export(se->get_sql_exchange()), se(se), prepared(false) {}
 
-int select_tianmu_export::prepare(List<Item> &list, Query_expression *u) {
+bool select_tianmu_export::prepare(THD *, const mem_root_deque<Item *> &list, Query_expression *u) {
   bool blob_flag = 0;
   unit = u;
-  {
-    List_iterator_fast<Item> li(list);
-    Item *item;
-    while ((item = li++)) {
-      if (item->max_length >= MAX_BLOB_WIDTH) {
-        blob_flag = 1;
-        break;
-      }
+
+  for (auto &it : list) {
+    if (it->max_length >= MAX_BLOB_WIDTH) {
+      blob_flag = 1;
+      break;
     }
   }
+
   field_term_length = exchange->field.field_term->length();
   if (!exchange->line.line_term->length())
     exchange->line.line_term = exchange->field.field_term;  // Use this if it exists
@@ -52,7 +50,7 @@ int select_tianmu_export::prepare(List<Item> &list, Query_expression *u) {
   fixed_row_size = (!field_term_length && !exchange->field.enclosed->length() && !blob_flag);
 
   prepared = true;
-  return 0;
+  return false;
 }
 
 void select_tianmu_export::SetRowCount(ha_rows x) { row_count = x; }
