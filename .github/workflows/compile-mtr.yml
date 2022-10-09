@@ -25,7 +25,7 @@ on:
 
 concurrency:
         #group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.head_ref }}
   cancel-in-progress: true
 
 env:
