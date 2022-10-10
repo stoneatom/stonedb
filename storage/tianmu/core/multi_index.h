@@ -181,6 +181,7 @@ class MultiIndex {
 
   int iterator_lock;  // 0 - unlocked, >0 - normal iterator exists, -1 -
                       // updating iterator exists
+  bool shallow_dim_groups;  // Indicates whether dim_groups is a shallow copy
 };
 }  // namespace core
 }  // namespace Tianmu
