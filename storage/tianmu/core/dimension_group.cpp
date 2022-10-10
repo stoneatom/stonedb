@@ -94,13 +94,13 @@ DimensionGroup *DimensionGroupMaterialized::Clone(bool shallow) {
   for (int i = 0; i < no_dims; i++) {
     if (t[i]) {
       new_value->nulls_possible[i] = nulls_possible[i];
-      t[i]->Lock();
       if (shallow) {
         new_value->t[i] = t[i];
       } else {
+        t[i]->Lock();
         new_value->t[i] = new IndexTable(*t[i]);
+        t[i]->Unlock();
       }
-      t[i]->Unlock();
     }
   }
   return new_value;
