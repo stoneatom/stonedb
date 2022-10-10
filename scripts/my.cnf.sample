@@ -16,6 +16,10 @@ log-error                       = YOUR_ABS_PATH/log/mysqld.log
 lc-messages-dir                 = YOUR_ABS_PATH/share/english/
 local-infile
 
+tianmu_insert_delayed=0
+tianmu_ini_allowmysqlquerypath=0
+log_bin_trust_function_creators=1
+
 character-set-server = utf8mb4
 collation-server = utf8mb4_general_ci
 init_connect='SET NAMES utf8mb4'
