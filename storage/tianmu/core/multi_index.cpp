@@ -255,7 +255,8 @@ void MultiIndex::LockForGetIndex(int dim) {
   if (shallow_dim_groups) {
     return;
   }
-  group_for_dim[dim]->Lock(dim); }
+  group_for_dim[dim]->Lock(dim); 
+}
 
 void MultiIndex::UnlockFromGetIndex(int dim) {
   if (shallow_dim_groups) {
