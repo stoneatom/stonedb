@@ -37,6 +37,7 @@ my_decimal *Item_sum_int_rcbase::val_decimal(my_decimal *) { return NULL; }
 void Item_sum_int_rcbase::int64_value(int64_t &value) {
   fixed = 1;
   count_ = value;
+  set_data_type(MYSQL_TYPE_LONGLONG);
 }
 
 void Item_sum_int_rcbase::clear() {}

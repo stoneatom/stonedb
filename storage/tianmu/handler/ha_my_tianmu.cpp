@@ -85,7 +85,7 @@ Query_route_to Tianm_Handle_Query(THD *thd, Query_expression *qe, Query_result *
   try {
     // handle_select_ret is introduced here because in case of some exceptions
     // (e.g. thrown from ForbiddenMySQLQueryPath) we want to return
-    // Query_Route_To::TO_TIANMU
+    // Query_route_to::TO_TIANMU
     ret = ha_rcengine_->Handle_Query(thd, qe, result, setup_tables_done_option, res, optimize_after_tianmu,
                                      tianmu_free_join, with_insert);
 

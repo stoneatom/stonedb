@@ -392,13 +392,12 @@ Query_route_to Query::AddJoins(mem_root_deque<TABLE_LIST *> join, /*List<TABLE_L
   return Query_route_to::TO_TIANMU;
 }
 
-Query_route_to Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const group_by_clause,
+Query_route_to Query::AddFields(mem_root_deque<Item *> &fields, TabID const &tmp_table, bool const group_by_clause,
                                 int &num_of_added_fields, bool ignore_minmax, bool &aggregation_used) {
-  List_iterator_fast<Item> li(fields);
   Item *item;
   int added = 0;
-  item = li++;
-  while (item) {
+  for (auto it = fields.begin(); it != fields.end(); ++it) {
+    item = *it;
     WrapStatus ws;
     common::ColOperation oper;
     bool distinct;
@@ -476,7 +475,6 @@ Query_route_to Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool
     }
 
     added++;
-    item = li++;
   }
 
   num_of_added_fields = added;
@@ -940,11 +938,9 @@ Query_route_to Query::Compile(CompiledQuery *compiled_query, Query_block *select
     if (JudgeErrors(sl) == Query_route_to::TO_MYSQL) return Query_route_to::TO_MYSQL;
     SetLimit(sl, sl == selects_list ? 0 : sl->join->query_expression()->global_parameters(), offset_value, limit_value);
 
-    // stonedb8
-    // List<Item> *fields = &sl->fields_list; //mem_root_deque<Item *> *fields = sl->get_fields_list();
-
     Item *conds = sl->where_cond();
     ORDER *order = sl->order_list.first;
+    mem_root_deque<Item *> *fields = sl->get_fields_list();
 
     // if (order) global_order = 0;   //we want to zero global order (which
     // seems to be always present) if we find a local order by clause
@@ -997,14 +993,10 @@ Query_route_to Query::Compile(CompiledQuery *compiled_query, Query_block *select
                    first_table, for_subq_in_where) == Query_route_to::TO_MYSQL)
         throw CompilationError();
 
-      // stonedb8 start
-      List<Item> *fields = nullptr;
-      List<Item> field_list_for_subselect;
       if (left_expr_for_subselect && field_for_subselect) {
-        field_list_for_subselect.push_back(field_for_subselect);
-        fields = &field_list_for_subselect;
+        fields->clear();
+        fields->push_back(field_for_subselect);
       }
-      // stonedb8 end
       bool aggr_used = false;
       if (AddFields(*fields, tmp_table, group != NULL, col_count, ignore_minmax, aggr_used) == Query_route_to::TO_MYSQL)
         throw CompilationError();
