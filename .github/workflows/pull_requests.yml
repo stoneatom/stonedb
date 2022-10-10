@@ -63,7 +63,7 @@ jobs:
   stonedb-build:
     name: stonedb-build
     needs: lint
-    runs-on: fgdb
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
