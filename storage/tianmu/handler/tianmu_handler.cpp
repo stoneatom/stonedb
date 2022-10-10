@@ -584,7 +584,6 @@ int TianmuHandler::delete_all_rows() {
   DBUG_RETURN(ret);
 }
 
-
 int TianmuHandler::rename_table(const char *from, const char *to) {
   try {
     ha_rcengine_->RenameTable(current_txn_, from, to, ha_thd());
@@ -1483,7 +1482,7 @@ enum_alter_inplace_result TianmuHandler::check_if_supported_inplace_alter([[mayb
   DBUG_ENTER(__PRETTY_FUNCTION__);
   if ((ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER) &&
       (ha_alter_info->handler_flags != TIANMU_SUPPORTED_ALTER_COLUMN_NAME)) {
-    // support alter table column type 
+    // support alter table column type
     if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_STORED_COLUMN_TYPE)
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
     // support alter table column exceeded length
