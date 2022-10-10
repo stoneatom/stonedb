@@ -54,7 +54,7 @@ class MultiIndex {
     return 0;
   }
   int64_t NumOfTuples(DimensionVector &dimensions,
-                   bool fail_on_overflow = true);  // for a given subset of dimensions
+                      bool fail_on_overflow = true);  // for a given subset of dimensions
 
   bool ZeroTuples() { return (!no_tuples_too_big && no_tuples == 0); }
   bool TooManyTuples() { return no_tuples_too_big; }
@@ -135,8 +135,8 @@ class MultiIndex {
   // material_no_tuples and the dimensions from the list are deleted
 
   int MaxNumOfPacks(int dim);  // maximal (upper approx.) number of different
-                            // nonempty data packs for the given dimension
-  std::string Display();    // MultiIndex structure: f - Filter, i - IndexTable
+                               // nonempty data packs for the given dimension
+  std::string Display();       // MultiIndex structure: f - Filter, i - IndexTable
 
   Transaction &ConnInfo() const { return *m_conn; }
 
@@ -179,8 +179,8 @@ class MultiIndex {
   void MultiplyNoTuples(uint64_t factor);  // the same as "no_tuples*=factor", but set
                                            // no_tuples_too_big whenever needed
 
-  int iterator_lock;  // 0 - unlocked, >0 - normal iterator exists, -1 -
-                      // updating iterator exists
+  int iterator_lock;        // 0 - unlocked, >0 - normal iterator exists, -1 -
+                            // updating iterator exists
   bool shallow_dim_groups;  // Indicates whether dim_groups is a shallow copy
 };
 }  // namespace core
