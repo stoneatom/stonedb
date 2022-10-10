@@ -324,7 +324,7 @@ class Query final {
    * Query_route_to::to_mysql in case of any problem and Query_route_to::to_tianmu
    * otherwise
    */
-  Query_route_to AddFields(List<Item> &fields, const TabID &tmp_table, const bool group_by_clause,
+  Query_route_to AddFields(mem_root_deque<Item *> &fields, const TabID &tmp_table, const bool group_by_clause,
                            int &num_of_added_fields, bool ignore_minmax, bool &aggr_used);
 
   /*! \brief Generates AddColumn compilation steps for every field on GROUP BY

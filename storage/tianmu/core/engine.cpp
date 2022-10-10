@@ -2131,8 +2131,10 @@ Query_route_to Engine::Handle_Query(THD *thd, Query_expression *qe, Query_result
   select_lex = lex->query_block;
   unit = lex->unit;
   if (select_lex->next_query_block()) {  // it is union
-    if (!(res = unit->prepare(thd, result, nullptr, (ulong)(SELECT_NO_UNLOCK | setup_tables_done_option), 0))) {
-      // similar to mysql_union(...) from sql_union.cpp
+    if (!unit->is_prepared())
+      res = unit->prepare(thd, result, nullptr, (ulong)(SELECT_NO_UNLOCK | setup_tables_done_option), 0);
+    // similar to mysql_union(...) from sql_union.cpp
+    if (!res) {
       if (lex->is_explain() || unit->item)  // explain or sth was already computed - go to mysql
         route = Query_route_to::TO_MYSQL;
       else {
