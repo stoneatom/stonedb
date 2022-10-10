@@ -1,0 +1,28 @@
+name: Deploy Website
+
+on:
+  push:
+    branches:
+      - stonedb-5.7-dev
+
+jobs:
+  deploy:
+    name: Deploy to Aliyun ECS
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+      - name: Install dependencies and build website
+        run: cd website &&  yarn install --frozen-lockfile && yarn build
+
+      - name: Deploy with Rsync
+        uses: burnett01/rsync-deployments@5.2.1
+        with:
+          switches: -avz --delete
+          path: website/build/
+          remote_path: ${{ secrets.TARGET }}
+          remote_host: ${{ secrets.REMOTE_HOST }}
+          remote_user: ${{ secrets.REMOTE_USER }}
+          remote_key: ${{ secrets.ACCESS_TOKEN }}
