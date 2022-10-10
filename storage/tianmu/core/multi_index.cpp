@@ -251,14 +251,16 @@ void MultiIndex::CheckIfVirtualCanBeDistinct()  // updates can_be_distinct table
   }
 }
 
-void MultiIndex::LockForGetIndex(int dim) {
+void MultiIndex::LockForGetIndex(int dim) 
+{
   if (shallow_dim_groups) {
     return;
   }
   group_for_dim[dim]->Lock(dim); 
 }
 
-void MultiIndex::UnlockFromGetIndex(int dim) {
+void MultiIndex::UnlockFromGetIndex(int dim) 
+{
   if (shallow_dim_groups) {
     return;
   }
@@ -271,14 +273,16 @@ uint64_t MultiIndex::DimSize(int dim)  // the size of one dimension: material_no
   return group_for_dim[dim]->NumOfTuples();
 }
 
-void MultiIndex::LockAllForUse() {
+void MultiIndex::LockAllForUse() 
+{
   if (shallow_dim_groups) {
     return;
   }
   for (int dim = 0; dim < no_dimensions; dim++) LockForGetIndex(dim);
 }
 
-void MultiIndex::UnlockAllFromUse() {
+void MultiIndex::UnlockAllFromUse() 
+{
   if (shallow_dim_groups) {
     return;
   }
