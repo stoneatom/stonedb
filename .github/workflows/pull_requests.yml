@@ -108,7 +108,7 @@ jobs:
           -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb/ \
           -DWITH_MARISA=/usr/local/stonedb-marisa/ \
           -DDOWNLOAD_ROCKSDB=0 \
-          -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb && make -j32 && make install
+          -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb && make -j`nproc` && make install
 
       # - name: run gtest
       #   run: |
