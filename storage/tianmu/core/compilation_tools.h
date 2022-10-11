@@ -28,7 +28,7 @@ namespace Tianmu {
 namespace core {
 
 using Tianmu::common::ColOperation;
-using Tianmu::DBHandler::Query_Route_To;
+using Tianmu::DBHandler::Query_route_to;
 
 #define ASSERT_MYSQL_STRING(x)                           \
   DEBUG_ASSERT(!x.str[x.length] &&                       \
@@ -42,7 +42,7 @@ class ReturnMeToMySQLWithError {};
 const char *TablePath(TABLE_LIST *tab);
 
 Item *UnRef(Item *item);
-Query_Route_To OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct, const int group_by_clause);
+Query_route_to OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct, const int group_by_clause);
 
 void PrintItemTree(Item *item, int indent = 0);
 void PrintItemTree(char const *info, Item *item);

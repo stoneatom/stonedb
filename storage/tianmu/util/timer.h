@@ -23,6 +23,8 @@
 
 #include "util/log_ctl.h"
 
+class THD;
+
 namespace Tianmu {
 namespace utils {
 
@@ -38,6 +40,20 @@ class Timer {
   void DoPrint(const std::string &msg) const;
 
   std::chrono::high_resolution_clock::time_point start_ = std::chrono::high_resolution_clock::now();
+};
+
+class KillTimer {
+ public:
+  KillTimer(THD *thd [[mamybe_unused]], long secs);
+  KillTimer() = delete;
+
+  ~KillTimer() {
+    if (armed) timer_delete(id);
+  }
+
+ private:
+  timer_t id;
+  bool armed = false;
 };
 
 }  // namespace utils
