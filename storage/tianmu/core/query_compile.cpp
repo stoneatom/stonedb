@@ -99,12 +99,12 @@ int Query::FieldUnmysterify(Item *item, const char *&database_name, const char *
                             const char *&table_path, const TABLE *&table_ptr, const char *&field_name,
                             const char *&field_alias) {
   table_alias = EMPTY_TABLE_CONST_INDICATOR;
-  database_name = NULL;
-  table_name = NULL;
-  table_path = NULL;
-  table_ptr = NULL;
-  field_name = NULL;
-  field_alias = NULL;
+  database_name = nullptr;
+  table_name = nullptr;
+  table_path = nullptr;
+  table_ptr = nullptr;
+  field_name = nullptr;
+  field_alias = nullptr;
 
   item = UnRef(item);
 
@@ -118,7 +118,8 @@ int Query::FieldUnmysterify(Item *item, const char *&database_name, const char *
         Item *tmp_item = UnRef(is->get_arg(0));
         if (tmp_item->type() == Item::FIELD_ITEM)
           ifield = (Item_field *)tmp_item;
-        else if (static_cast<int>(tmp_item->type()) == static_cast<int>(Item_tianmufield::enumTIANMUFiledItem::TIANMUFIELD_ITEM))
+        else if (static_cast<int>(tmp_item->type()) ==
+                 static_cast<int>(Item_tianmufield::enumTIANMUFiledItem::TIANMUFIELD_ITEM))
           ifield = dynamic_cast<Item_tianmufield *>(tmp_item)->OriginalItem();
         else {
           return RETURN_QUERY_TO_MYSQL_ROUTE;
@@ -462,7 +463,7 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
         oper = common::ColOperation::DELAYED;
         aggregation_used = true;
       }
-      MysqlExpression *expr(NULL);
+      MysqlExpression *expr(nullptr);
       ws = WrapMysqlExpression(item, tmp_table, expr, false, oper == common::ColOperation::DELAYED);
       if (ws == WrapStatus::FAILURE) return RETURN_QUERY_TO_MYSQL_ROUTE;
       if (!item->item_name.ptr()) {
@@ -529,11 +530,11 @@ int Query::AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const g
     // (e.g., rand()) in such case we should order by output column in TempTable
     if (!IsFieldItem(item) && !IsAggregationItem(item) && !IsDeterministic(item) &&
         item->type() != Item::SUBSELECT_ITEM) {
-      MysqlExpression *expr = NULL;
+      MysqlExpression *expr = nullptr;
       WrapStatus ws = WrapMysqlExpression(item, tmp_table, expr, false, false);
       if (ws == WrapStatus::FAILURE) return RETURN_QUERY_TO_MYSQL_ROUTE;
       DEBUG_ASSERT(!expr->IsDeterministic());
-      int col_num = AddColumnForMysqlExpression(expr, tmp_table, NULL, common::ColOperation::LISTING, false, true);
+      int col_num = AddColumnForMysqlExpression(expr, tmp_table, nullptr, common::ColOperation::LISTING, false, true);
       vc = VirtualColumnAlreadyExists(tmp_table, tmp_table, AttrID(-col_num - 1));
       if (vc.first == common::NULL_VALUE_32) {
         vc.first = tmp_table.n;
@@ -545,7 +546,7 @@ int Query::AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const g
     }
     if (group_by_clause) {
       if (item->type() == Item::FUNC_ITEM) {
-        MysqlExpression *expr = NULL;
+        MysqlExpression *expr = nullptr;
         bool delayed = false;
         if (HasAggregation(item)) {
           delayed = true;
@@ -555,7 +556,7 @@ int Query::AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const g
         if (ws == WrapStatus::FAILURE) return RETURN_QUERY_TO_MYSQL_ROUTE;
         DEBUG_ASSERT(expr->IsDeterministic());
         int col_num = AddColumnForMysqlExpression(
-            expr, tmp_table, NULL, delayed ? common::ColOperation::DELAYED : common::ColOperation::LISTING, false,
+            expr, tmp_table, nullptr, delayed ? common::ColOperation::DELAYED : common::ColOperation::LISTING, false,
             true);
         vc = VirtualColumnAlreadyExists(tmp_table, tmp_table, AttrID(-col_num - 1));
         if (vc.first == common::NULL_VALUE_32) {
@@ -572,7 +573,7 @@ int Query::AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const g
         result = Item2CQTerm(item, my_term, tmp_table, CondType::HAVING_COND);
         if (item->type() == Item::SUBSELECT_ITEM) {
           // create a materialized column with subsel results for the ordering
-          cq->AddColumn(at, tmp_table, my_term, common::ColOperation::DELAYED, NULL, false);
+          cq->AddColumn(at, tmp_table, my_term, common::ColOperation::DELAYED, nullptr, false);
           vc = VirtualColumnAlreadyExists(tmp_table, tmp_table, at);
           if (vc.first == common::NULL_VALUE_32) {
             vc.first = tmp_table.n;
@@ -685,7 +686,7 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
         if (IsCountStar(aggregation)) {  // count(*) doesn't need any virtual column
           at.n = GetAddColumnId(AttrID(common::NULL_VALUE_32), tmp_table, common::ColOperation::COUNT, false);
           if (at.n == common::NULL_VALUE_32)  // doesn't exist yet
-            cq->AddColumn(at, tmp_table, CQTerm(), common::ColOperation::COUNT, NULL, false);
+            cq->AddColumn(at, tmp_table, CQTerm(), common::ColOperation::COUNT, nullptr, false);
         } else {
           common::ColOperation oper;
           bool distinct;
@@ -777,7 +778,7 @@ int Query::AddColumnForPhysColumn(Item *item, const TabID &tmp_table, const comm
   }
   if (!item->item_name.ptr() && item->type() == Item::SUM_FUNC_ITEM) {
     cq->AddColumn(at, tmp_table, CQTerm(vc.second), oper,
-                  group_by ? NULL : ((Item_field *)(((Item_sum *)item)->get_arg(0)))->item_name.ptr(), distinct);
+                  group_by ? nullptr : ((Item_field *)(((Item_sum *)item)->get_arg(0)))->item_name.ptr(), distinct);
   } else {
     if (item->type() == Item::SUM_FUNC_ITEM && ((Item_sum *)item)->sum_func() == Item_sum::GROUP_CONCAT_FUNC) {
       // pass the seprator to construct the special instruction
@@ -785,9 +786,9 @@ int Query::AddColumnForPhysColumn(Item *item, const TabID &tmp_table, const comm
       SI si;
       si.separator.assign(ptr, std::strlen(ptr));
       si.order = ((Item_func_group_concat *)item)->direction();
-      cq->AddColumn(at, tmp_table, CQTerm(vc.second), oper, group_by ? NULL : item->item_name.ptr(), distinct, &si);
+      cq->AddColumn(at, tmp_table, CQTerm(vc.second), oper, group_by ? nullptr : item->item_name.ptr(), distinct, &si);
     } else {
-      cq->AddColumn(at, tmp_table, CQTerm(vc.second), oper, group_by ? NULL : item->item_name.ptr(), distinct);
+      cq->AddColumn(at, tmp_table, CQTerm(vc.second), oper, group_by ? nullptr : item->item_name.ptr(), distinct);
     }
   }
   if (!group_by && item->item_name.ptr())
@@ -826,10 +827,10 @@ int Query::AddColumnForMysqlExpression(MysqlExpression *mysql_expression, const 
   }
 
   // if (parametrized)
-  //	cq->AddColumn(at, tmp_table, CQTerm(vc.n), DELAYED, group_by ? NULL :
+  //	cq->AddColumn(at, tmp_table, CQTerm(vc.n), DELAYED, group_by ? nullptr :
   // alias, distinct);
   // else
-  cq->AddColumn(at, tmp_table, CQTerm(vc.n), oper, group_by ? NULL : alias, distinct);
+  cq->AddColumn(at, tmp_table, CQTerm(vc.n), oper, group_by ? nullptr : alias, distinct);
   if (!group_by && alias) field_alias2num[TabIDColAlias(tmp_table.n, alias)] = at.n;
   return at.n;
 }
@@ -865,7 +866,7 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
    get_const() ) |   |           (multiple equality) |   | |   ---Item_func_not
    |   |            (???)
    |   |
-   |   ---Item func_isnull     <- when negated IS NOT NULL is created
+   |   ---Item func_isnull     <- when negated IS NOT nullptr is created
    |
    --Item_func_opt_neg  <-  arguments are kept in an array accessible through
    arguments(), if negated |   |                     this information is kept
@@ -907,10 +908,10 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
    value) Item_func_equal -> ??? Item_func_eq -> pairwise equality
    */
 
-  bool union_all = (last_distinct == NULL);
+  bool union_all = (last_distinct == nullptr);
   TabID prev_result;
 
-  SQL_I_List<ORDER> *global_order = NULL;
+  SQL_I_List<ORDER> *global_order = nullptr;
   int col_count = 0;
   int64_t global_limit_value = -1;
   int64_t global_offset_value = -1;
@@ -919,7 +920,8 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
   CompiledQuery *saved_cq = cq;
   cq = compiled_query;
 
-  if ((selects_list->join)&&(selects_list != selects_list->join->unit->global_parameters())) {  // only in case of unions this is set
+  if ((selects_list->join) &&
+      (selects_list != selects_list->join->unit->global_parameters())) {  // only in case of unions this is set
     SetLimit(selects_list->join->unit->global_parameters(), 0, global_offset_value, (int64_t &)global_limit_value);
     global_order = &(selects_list->join->unit->global_parameters()->order_list);
   }
@@ -927,43 +929,44 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
   for (SELECT_LEX *sl = selects_list; sl; sl = sl->next_select()) {
     int64_t limit_value = -1;
     int64_t offset_value = -1;
+    /*
+      Increase the identification of whether to create a JOIN object,
+      which is used to release the JOIN object later.
+      See #669 for the problems solved.
+    */
+    bool ifNewJoinForTianmu = false;
+    if (!sl->join) {
+      sl->add_active_options(SELECT_NO_UNLOCK);
+      JOIN *join = new JOIN(sl->master_unit()->thd, sl);
 
-		
-        if (!sl->join) 
-		
-		{
-            sl->add_active_options(SELECT_NO_UNLOCK);
-            JOIN *join = new JOIN(sl->master_unit()->thd, sl);
-                    
-            if (!join) {
+      if (!join) {
+        sl->cleanup(0);
+        return TRUE;
+      }
+      ifNewJoinForTianmu = true;
+      sl->set_join(join);
+    }
 
-                sl->cleanup(0);
-                return TRUE;
-            }
-            sl->set_join(join);
-        }
-        
-        if (!JudgeErrors(sl))
-            return RETURN_QUERY_TO_MYSQL_ROUTE;
-        SetLimit(sl, sl == selects_list ? 0 : sl->join->unit->global_parameters(), offset_value, limit_value);
+    if (!JudgeErrors(sl)) return RETURN_QUERY_TO_MYSQL_ROUTE;
+    SetLimit(sl, sl == selects_list ? 0 : sl->join->unit->global_parameters(), offset_value, limit_value);
 
-        List<Item> *fields = &sl->fields_list;
-        Item *      conds = sl->where_cond();
-        ORDER *     order = sl->order_list.first;
+    List<Item> *fields = &sl->fields_list;
+    Item *conds = sl->where_cond();
+    ORDER *order = sl->order_list.first;
 
     // if (order) global_order = 0;   //we want to zero global order (which
     // seems to be always present) if we find a local order by clause
     //  The above is not necessary since global_order is set only in case of
     //  real UNIONs
 
-        ORDER *           group = sl->group_list.first;
-        Item *            having = sl->having_cond();
-        List<TABLE_LIST> *join_list = sl->join_list;
-        bool              zero_result = sl->join->zero_result_cause != NULL;
+    ORDER *group = sl->group_list.first;
+    Item *having = sl->having_cond();
+    List<TABLE_LIST> *join_list = sl->join_list;
+    bool zero_result = sl->join->zero_result_cause != nullptr;
 
     Item *field_for_subselect;
-    Item *cond_to_reinsert = NULL;
-    List<Item> *list_to_reinsert = NULL;
+    Item *cond_to_reinsert = nullptr;
+    List<Item> *list_to_reinsert = nullptr;
 
     TabID tmp_table;
     try {
@@ -994,8 +997,8 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       }
       std::vector<TabID> left_tables, right_tables;
       bool first_table = true;
-      if (!AddJoins(*join_list, tmp_table, left_tables, right_tables, (res_tab != NULL && res_tab->n != 0), first_table,
-                    for_subq_in_where))
+      if (!AddJoins(*join_list, tmp_table, left_tables, right_tables, (res_tab != nullptr && res_tab->n != 0),
+                    first_table, for_subq_in_where))
         throw CompilationError();
 
       List<Item> field_list_for_subselect;
@@ -1004,11 +1007,12 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
         fields = &field_list_for_subselect;
       }
       bool aggr_used = false;
-      if (!AddFields(*fields, tmp_table, group != NULL, col_count, ignore_minmax, aggr_used)) throw CompilationError();
+      if (!AddFields(*fields, tmp_table, group != nullptr, col_count, ignore_minmax, aggr_used))
+        throw CompilationError();
 
       if (!AddGroupByFields(group, tmp_table)) throw CompilationError();
 
-      if (!AddOrderByFields(order, tmp_table, group != NULL || sl->join->select_distinct || aggr_used))
+      if (!AddOrderByFields(order, tmp_table, group != nullptr || sl->join->select_distinct || aggr_used))
         throw CompilationError();
       CondID cond_id;
       if (!BuildConditions(conds, cond_id, cq, tmp_table, CondType::WHERE_COND, zero_result)) throw CompilationError();
@@ -1025,7 +1029,11 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       // called recursively)
       cq = saved_cq;
       if (cond_to_reinsert && list_to_reinsert) list_to_reinsert->push_back(cond_to_reinsert);
-	  sl->cleanup(0);
+      sl->cleanup(0);
+      if (ifNewJoinForTianmu) {
+        delete sl->join;
+        sl->join = nullptr;
+      }
       return RETURN_QUERY_TO_MYSQL_ROUTE;
     }
 
@@ -1043,7 +1051,11 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       cq->Union(prev_result, prev_result, tmp_table, union_all);
     if (sl == last_distinct) union_all = true;
     if (cond_to_reinsert && list_to_reinsert) list_to_reinsert->push_back(cond_to_reinsert);
-	sl->cleanup(0);
+    sl->cleanup(0);
+    if (ifNewJoinForTianmu) {
+      delete sl->join;
+      sl->join = nullptr;
+    }
   }
 
   cq->BuildTableIDStepsMap();
@@ -1053,7 +1065,7 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
   if (!ignore_limit && global_limit_value >= 0)
     cq->Mode(prev_result, TMParameter::TM_TOP, global_offset_value, global_limit_value);
 
-  if (res_tab != NULL)
+  if (res_tab != nullptr)
     *res_tab = prev_result;
   else
     cq->Result(prev_result);
