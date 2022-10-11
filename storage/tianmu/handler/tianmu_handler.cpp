@@ -1203,7 +1203,7 @@ int TianmuHandler::delete_table(const char *name) {
 ha_rows TianmuHandler::records_in_range([[maybe_unused]] uint inx, [[maybe_unused]] key_range *min_key,
                                         [[maybe_unused]] key_range *max_key) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
-  DBUG_RETURN(10);  // low number to force index usage
+  DBUG_RETURN(stats.records);  // low number to force index usage
 }
 
 /*
