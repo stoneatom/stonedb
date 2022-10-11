@@ -9,7 +9,7 @@ pull_request_rules:
       - "#approved-reviews-by>=2"
       - label=PR-bug
       - label!=PR-docs
-      - check-success=stonedb-build
+      - check-success~=^stonedb-build(.*)
     actions:
       queue:
         name: shared_queue
@@ -20,7 +20,7 @@ pull_request_rules:
       - "#approved-reviews-by>=2"
       - label!=PR-bug
       - label!=PR-docs
-      - check-success=stonedb-build
+      - check-success~=^stonedb-build(.*)
     actions:
       queue:
         name: shared_queue
