@@ -43,7 +43,6 @@
 #include "util/mapped_circular_buffer.h"
 #include "util/thread_pool.h"
 
-extern handlerton *rcbase_hton;
 class Field;
 
 namespace Tianmu {

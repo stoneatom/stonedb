@@ -26,7 +26,6 @@
 #include "mm/initializer.h"
 #include "system/file_out.h"
 
-handlerton *rcbase_hton;
 
 struct SYS_VAR {
   MYSQL_PLUGIN_VAR_HEADER;
@@ -184,23 +183,32 @@ static int init_variables() {
   return 0;
 }
 
+// Gives the file extension of an Tianmu single-table tablespace.
+static const char *ha_tianmu_exts[] = {common::TIANMU_EXT, NullS};
+
 int rcbase_init_func(void *p) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
-  rcbase_hton = (handlerton *)p;
+
+  // move hton here, just like other storate like innodb, myisam, csv... does.
+  // handlerton is a singleton structure - one instance per storage engine.
+  // defined in sql/handler.h
+  handlerton *tianmu_hton;
+  tianmu_hton = (handlerton *)p;
 
   if (init_variables()) {
     DBUG_RETURN(1);
   }
 
-  rcbase_hton->state = SHOW_OPTION_YES;
-  rcbase_hton->db_type = DB_TYPE_TIANMU;
-  rcbase_hton->create = rcbase_create_handler;
-  rcbase_hton->flags = HTON_NO_FLAGS;
-  rcbase_hton->panic = rcbase_panic_func;
-  rcbase_hton->close_connection = rcbase_close_connection;
-  rcbase_hton->commit = rcbase_commit;
-  rcbase_hton->rollback = rcbase_rollback;
-  rcbase_hton->show_status = rcbase_show_status;
+  tianmu_hton->state = SHOW_OPTION_YES;
+  tianmu_hton->db_type = DB_TYPE_TIANMU;
+  tianmu_hton->create = rcbase_create_handler;
+  tianmu_hton->flags = HTON_NO_FLAGS;
+  tianmu_hton->panic = rcbase_panic_func;
+  tianmu_hton->close_connection = rcbase_close_connection;
+  tianmu_hton->commit = rcbase_commit;
+  tianmu_hton->rollback = rcbase_rollback;
+  tianmu_hton->show_status = rcbase_show_status;
+  tianmu_hton->file_extensions = ha_tianmu_exts;
 
   // When mysqld runs as bootstrap mode, we do not need to initialize
   // memmanager.
@@ -222,7 +230,7 @@ int rcbase_init_func(void *p) {
     ha_kvstore_ = new index::KVStore();
     ha_kvstore_->Init();
     ha_rcengine_ = new core::Engine();
-    ret = ha_rcengine_->Init(rcbase_hton->slot);  // stonedb8
+    ret = ha_rcengine_->Init(tianmu_hton->slot);
     {
       TIANMU_LOG(LogCtl_Level::INFO,
                  "\n"

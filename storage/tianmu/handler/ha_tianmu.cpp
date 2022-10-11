@@ -159,14 +159,6 @@ TianmuHandler::TianmuHandler(handlerton *hton, TABLE_SHARE *table_arg, bool part
   ref_length = sizeof(uint64_t);
 }
 
-// stonedb8
-/*
-const char **TianmuHandler::bas_ext() const {
-  static const char *ha_rcbase_exts[] = {common::TIANMU_EXT, 0};
-  return ha_rcbase_exts;
-}
-*/
-
 namespace {
 std::vector<bool> GetAttrsUseIndicator(TABLE *table) {
   int col_id = 0;
@@ -272,9 +264,9 @@ int TianmuHandler::external_lock(THD *thd, int lock_type) {
         tx->AddTableRD(share);
       } else {
         tx->AddTableWR(share);
-        trans_register_ha(thd, false, rcbase_hton, NULL);
+        trans_register_ha(thd, false, tianmu_hton, NULL);
         if (thd_test_options(thd, OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN))
-          trans_register_ha(thd, true, rcbase_hton, NULL);
+          trans_register_ha(thd, true, tianmu_hton, NULL);
       }
     }
     ret = 0;
@@ -1106,9 +1098,9 @@ int TianmuHandler::extra([[maybe_unused]] enum ha_extra_function operation) {
 int TianmuHandler::start_stmt(THD *thd, thr_lock_type lock_type) {
   try {
     if (lock_type == TL_WRITE_CONCURRENT_INSERT || lock_type == TL_WRITE_DEFAULT || lock_type == TL_WRITE) {
-      trans_register_ha(thd, false, rcbase_hton, NULL);
+      trans_register_ha(thd, false, tianmu_hton, NULL);
       if (thd_test_options(thd, OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN)) {
-        trans_register_ha(thd, true, rcbase_hton, NULL);
+        trans_register_ha(thd, true, tianmu_hton, NULL);
       }
       current_txn_ = ha_rcengine_->GetTx(thd);
       current_txn_->AddTableWRIfNeeded(share);
@@ -1146,7 +1138,7 @@ bool TianmuHandler::register_query_cache_table(THD *thd, char *table_key, size_t
 
  If you do not implement this, the default delete_table() is called from
  handler.cc and it will delete all files with the file extentions returned
- by bas_ext().
+ by bas_ext(). // stonedb8 TODO bas_ext() has been deleted in mysql8.0
 
  Called from handler.cc by delete_table and  ha_create_table(). Only used
  during create if the table_flag HA_DROP_BEFORE_CREATE was specified for
