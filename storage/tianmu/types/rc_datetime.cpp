@@ -71,7 +71,7 @@ RCDateTime::RCDateTime(short yh, short mm, short ds, common::CT at) : at(at) {
 RCDateTime::RCDateTime(short year, short month, short day, short hour, short minute, short second, common::CT at)
     : at(at) {
   ASSERT(at == common::CT::DATETIME || at == common::CT::TIMESTAMP || at == common::CT::DATE,
-         "should be 'at == common::CT::DATETIME || at == common::CT::TIMESTAMP'");
+         "should be 'at == common::CT::DATETIME || at == common::CT::TIMESTAMP || at == common::CT::DATE'");
   null = false;
   dt.year = std::abs(year);
   dt.month = std::abs(month);
