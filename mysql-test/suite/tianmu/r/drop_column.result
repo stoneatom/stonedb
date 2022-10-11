@@ -17,7 +17,7 @@ CREATE TABLE `column_type_test` (
 `c_blob` blob COMMENT 'blob',
 `c_text` text COMMENT 'text',
 `c_longblob` longblob COMMENT 'longblob'
-) ENGINE=TIANMU;
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 alter table column_type_test drop column c_char;
 show create table column_type_test;
 Table	Create Table
@@ -34,9 +34,9 @@ column_type_test	CREATE TABLE `column_type_test` (
   `c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
   `c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
   `c_time` time DEFAULT NULL COMMENT 'time',
-  `c_varchar` varchar(10) DEFAULT NULL COMMENT 'varchar',
+  `c_varchar` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'varchar',
   `c_blob` blob COMMENT 'blob',
-  `c_text` text COMMENT 'text',
+  `c_text` text COLLATE utf8mb4_unicode_ci COMMENT 'text',
   `c_longblob` longblob COMMENT 'longblob'
-) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 drop table column_type_test;
