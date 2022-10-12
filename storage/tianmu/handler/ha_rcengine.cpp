@@ -26,7 +26,6 @@
 #include "mm/initializer.h"
 #include "system/file_out.h"
 
-
 struct SYS_VAR {
   MYSQL_PLUGIN_VAR_HEADER;
 };
@@ -435,7 +434,7 @@ extern void async_join_update(MYSQL_THD thd, struct SYS_VAR *var, void *var_ptr,
   }
 
 #define STATUS_MEMBER(name, label) \
-  { "Tianmu_" #label, (char *)get_##name##_StatusVar, SHOW_FUNC, SHOW_SCOPE_UNDEF }
+  { "Tianmu_" #label, (char *)get_##name##_StatusVar, SHOW_FUNC, SHOW_SCOPE_GLOBAL }
 
 STATUS_FUNCTION(gdchits, SHOW_LONGLONG, getCacheHits)
 STATUS_FUNCTION(gdcmisses, SHOW_LONGLONG, getCacheMisses)
