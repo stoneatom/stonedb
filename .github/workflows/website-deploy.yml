@@ -7,7 +7,7 @@ on:
 
 jobs:
   deploy:
-    name: Deploy to Aliyun ECS
+    name: Deploy Website
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
