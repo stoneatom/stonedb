@@ -32,7 +32,6 @@ static bool AtLeastOneTianmuTableInvolved(Query_expression *qe) {
   for (Query_expression *expr = qe; expr; expr = expr->next_query_expression()) {
     for (Query_block *sl = expr->first_query_block(); sl; sl = sl->next_query_block()) {
       TABLE_LIST *tb = sl->get_table_list();
-      assert(tb != nullptr);
       for (; tb; tb = tb->next_global) {
         TABLE *table = tb->table;
         if (core::Engine::IsTianmuTable(table)) return true;

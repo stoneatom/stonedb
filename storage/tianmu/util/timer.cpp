@@ -28,7 +28,7 @@ void Timer::DoPrint(const std::string &msg) const {
   TIANMU_LOG(LogCtl_Level::INFO, "Timer %f seconds: %s", diff.count(), msg.c_str());
 }
 
-KillTimer::KillTimer(THD *thd [[maybe_unused]], long secs) {
+KillTimer::KillTimer(THD *thd, long secs) {
   if (secs == 0) return;
   struct sigevent sev;
   sev.sigev_notify = SIGEV_THREAD_ID;
