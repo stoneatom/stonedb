@@ -1,0 +1,293 @@
+/* Copyright (c) 2022 StoneAtom, Inc. All rights reserved.
+   Use is subject to license terms
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; version 2 of the License.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
+*/
+
+#include <signal.h>
+#include <sys/syscall.h>
+#include <time.h>
+
+#include "core/compilation_tools.h"
+#include "core/compiled_query.h"
+#include "core/engine.h"
+#include "core/query.h"
+#include "core/transaction.h"
+#include "exporter/export2file.h"
+#include "util/log_ctl.h"
+#include "util/timer.h"
+#include "vc/virtual_column.h"
+
+#include "handler/ha_my_tianmu.h"
+
+namespace Tianmu {
+namespace core {
+
+/*
+Prepares and optimizes a single select for Tianmu engine
+*/
+static int optimize_select(THD *thd, ulong select_options, Query_result *result, Query_block *select_lex,
+                           int &optimize_after_tianmu, int &free_join) {
+  // copied from sql_select.cpp from the beginning of mysql_select(...)
+  int err = 0;
+  free_join = 1;
+  select_lex->context.resolve_in_select_list = true;
+  JOIN *join = nullptr;
+  if (select_lex->join != nullptr) {
+    join = select_lex->join;
+    // here is EXPLAIN of subselect or derived table
+    if (select_lex->linkage != DERIVED_TABLE_TYPE || (select_options & (1ULL << 2))) {
+      // global_options_type means a global option, such as limit order by, etc., of a union query. refer to
+      // Query_expression::add_fake_query_block
+      if (select_lex->linkage != GLOBAL_OPTIONS_TYPE) {
+        if (result->prepare(thd, *select_lex->join->fields, select_lex->master_query_expression())) {
+          return true;
+        }
+      } else {  // it is a global_opton query block, such as limit, order by, etc.
+        if ((err = select_lex->prepare(thd, nullptr)))  // stonedb8
+        {
+          return err;
+        }
+      }
+    }
+    free_join = 0;
+    join->select_options = select_options;
+  } else {
+    thd_proc_info(thd, "init");
+
+    if ((err = select_lex->prepare(thd, nullptr)))  // stonedb8
+    {
+      return err;
+    }
+    if (result->prepare(thd, select_lex->fields, select_lex->master_query_expression())) {
+      return true;
+    }
+    if (!(join = new JOIN(thd, select_lex))) return true; /* purecov: inspected */
+    select_lex->set_join(thd, join);
+  }
+
+  join->best_rowcount = 2;
+  optimize_after_tianmu = true;
+  // all the preparation operations are done, therefore, we set the `part` to 1, then pass it to JOIN::optimize.
+  // 1 means we have done the preparation.
+  if ((err = join->optimize(1))) return err;
+  return false;
+}
+
+static Query_route_to handle_exceptions(THD *thd, Transaction *cur_connection, bool with_error) {
+  try {
+    std::string msg = "Query terminated with exception: ";
+    msg += thd->query().str;
+    TIANMU_LOG(LogCtl_Level::INFO, msg);
+    throw;
+  } catch (common::NotImplementedException const &x) {
+    rc_control_.lock(cur_connection->GetThreadID()) << "Switched to MySQL: " << x.what() << system::unlock;
+    my_message(ER_UNKNOWN_ERROR,
+               (std::string("The query includes syntax that is not supported "
+                            "by the storage engine. Tianmu: ") +
+                x.what())
+                   .c_str(),
+               MYF(0));
+    if (with_error) {
+      std::string msg(x.what());
+      msg.append(" Can't switch to MySQL execution path");
+      throw common::InternalException(msg);
+    }
+    return Query_route_to::TO_MYSQL;
+
+  } catch (common::OutOfMemoryException const &x) {
+    rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
+    my_message(static_cast<int>(common::ErrorCode::OUT_OF_MEMORY),
+               (std::string("Tianmu out of resources error: ") + x.what()).c_str(), MYF(0));
+    throw ReturnMeToMySQLWithError();
+
+  } catch (common::DataTypeConversionException const &x) {
+    rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
+    my_message(static_cast<int>(common::ErrorCode::DATACONVERSION),
+               (std::string("Tianmu specific error: ") + x.what()).c_str(), MYF(0));
+    throw ReturnMeToMySQLWithError();
+
+  } catch (common::DBObjectException const &x) {  // the subselect had more than one row in a comparison
+                                                  // without ANY or ALL
+    rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
+    my_message(ER_SYNTAX_ERROR, (std::string("Tianmu specific error: ") + x.what()).c_str(), MYF(0));
+    throw ReturnMeToMySQLWithError();
+
+  } catch (common::KilledException const &) {
+    rc_control_.lock(cur_connection->GetThreadID()) << "Stopped by user. " << system::unlock;
+    my_message(ER_UNKNOWN_ERROR, (std::string("Stopped by user.")).c_str(), MYF(0));
+    throw ReturnMeToMySQLWithError();
+
+  } catch (common::FileException const &e) {
+    rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << e.what() << system::unlock;
+    my_message(static_cast<int>(common::ErrorCode::CANNOT_OPEN_FILE_OR_PIPE),
+               (std::string("Tianmu specific error: ") + e.what()).c_str(), MYF(0));
+    throw ReturnMeToMySQLWithError();
+
+  } catch (common::Exception const &x) {
+    rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
+    my_message(ER_UNKNOWN_ERROR, "Tianmu other specific error", MYF(0));
+    throw ReturnMeToMySQLWithError();
+
+  } catch (std::bad_alloc const &) {
+    rc_control_.lock(cur_connection->GetThreadID()) << "Error: std::bad_alloc caught" << system::unlock;
+    my_message(ER_UNKNOWN_ERROR, (std::string("Tianmu out of memory error")).c_str(), MYF(0));
+    throw ReturnMeToMySQLWithError();
+  }
+
+  return Query_route_to::TO_MYSQL;
+}
+
+}  // namespace core
+}  // namespace Tianmu
+
+// the declaration in sql/sql_lex.h
+int Query_expression::optimize_for_tianmu(THD *thd) {
+  // copied from sql_union.cpp from the beginning of st_select_lex_unit::exec()
+  Query_block *lex_select_save = thd->lex->current_query_block();
+  Query_block *select_cursor = first_query_block();
+
+  if (is_executed() && !uncacheable && !thd->lex->is_explain()) return false;
+  executed = 1;
+
+  if (uncacheable || !item || !item->assigned() || thd->lex->is_explain()) {
+    if (item) item->reset_value_registration();
+    if (is_optimized() && item) {
+      if (item->assigned()) {
+        item->assigned(0);  // We will reinit & rexecute unit
+        item->reset();
+        table->file->ha_delete_all_rows();
+      }
+      // re-enabling indexes for next subselect iteration
+      if (union_distinct && table->file->ha_enable_indexes(HA_KEY_SWITCH_ALL)) DEBUG_ASSERT(0);
+    }
+    for (Query_block *sl = select_cursor; sl; sl = sl->next_query_block()) {
+      thd->lex->set_current_query_block(sl);
+      sl->add_active_options(SELECT_NO_UNLOCK);
+      /*
+        setup_tables_done_option should be set only for very first SELECT,
+        because it protect from secont setup_tables call for select-like non
+        select commands (DELETE/INSERT/...) and they use only very first
+        SELECT (for union it can be only INSERT ... SELECT).
+      */
+      if (sl->join == nullptr) {
+        JOIN *join = new JOIN(thd, sl);
+        if (!join) {
+          thd->lex->set_current_query_block(lex_select_save);
+          cleanup(thd, 0);  // stonedb8
+          return true;
+        }
+        sl->set_join(thd, join);
+      }
+      if (is_optimized())
+        sl->join->reset();
+      else {
+        set_limit(thd, sl);  // stonedb8
+        if (sl == global_parameters() || thd->lex->is_explain()) {
+          offset_limit_cnt = 0;
+          // We can't use LIMIT at this stage if we are using ORDER BY for the
+          // whole query
+          if (sl->order_list.first || thd->lex->is_explain()) select_limit_cnt = HA_POS_ERROR;
+        }
+
+        // When using braces, SQL_CALC_FOUND_ROWS affects the whole query:
+        // we don't calculate found_rows() per union part.
+        // Otherwise, SQL_CALC_FOUND_ROWS should be done on all sub parts.
+        sl->join->select_options = (select_limit_cnt == HA_POS_ERROR || thd->lex->unit->is_union())
+                                       ? sl->active_options() & ~OPTION_FOUND_ROWS
+                                       : sl->active_options() | found_rows_for_union;
+        saved_error = sl->join->optimize(1);
+      }
+
+      // HERE ends the code from bool st_select_lex_unit::exec()
+      if (saved_error) {
+        thd->lex->set_current_query_block(lex_select_save);
+        return saved_error;
+      }
+    }
+  }
+  /* code from st_select_lex_unit::exec*/
+  if (!saved_error && !thd->is_fatal_error()) {
+    /* Send result to 'result' */
+    saved_error = true;
+    set_limit(thd, global_parameters());  // stonedb8 add thd
+    if (fake_query_block != NULL) {
+      thd->lex->set_current_query_block(fake_query_block);
+      if (!is_prepared()) {
+        if (prepare_fake_query_block(thd)) return saved_error;
+      }
+      JOIN *join = nullptr;
+      if (fake_query_block->join != nullptr)
+        join = fake_query_block->join;
+      else {
+        if (!(join = new JOIN(thd, fake_query_block))) DEBUG_ASSERT(0);
+        // fake_query_block->set_join(join);
+      }
+
+      if (!join->is_optimized()) {
+        //    saved_error = join->prepare(fake_query_block->table_list.first, 0, 0,
+        //                                global_parameters->order_list.elements,
+        //                                global_parameters->order_list.first, NULL, NULL, fake_query_block,
+        //                                this); //STONEDB UPGRADE
+        if (!is_prepared()) {
+          if (fake_query_block->prepare(thd, nullptr))  // stonedb8 add nullptr from m8
+            return saved_error;
+        }
+      } else {
+        join->examined_rows = 0;
+        join->reset();
+      }
+
+      fake_query_block->table_list.clear();
+    }
+  }
+
+  optimized = 1;
+  thd->lex->set_current_query_block(lex_select_save);
+  return false;
+}
+
+int Query_expression::optimize_after_tianmu(THD *thd) {
+  Query_block *lex_select_save = thd->lex->current_query_block();
+  for (Query_block *sl = first_query_block(); sl; sl = sl->next_query_block()) {
+    thd->lex->set_current_query_block(sl);
+    if (!sl->join) {
+      JOIN *join = new JOIN(thd, sl);
+      if (!join) {
+        thd->lex->set_current_query_block(lex_select_save);
+        cleanup(thd, 0);  // stonedb8
+        return true;
+      }
+      sl->set_join(thd, join);
+    }
+
+    // int res = sl->join->optimize(2);
+    if (int res = sl->join->optimize(2)) {
+      thd->lex->set_current_query_block(lex_select_save);
+      return res;
+    }
+  }
+
+  if (fake_query_block && fake_query_block->join) {
+    // fake_query_block->join must be cleaned up before returning to
+    // MySQL route, otherwise sub select + union would coredump.
+    thd->lex->set_current_query_block(fake_query_block);
+    fake_query_block->cleanup(thd, 0);  // stonedb8
+  }
+
+  executed = 0;
+  thd->lex->set_current_query_block(lex_select_save);
+
+  return false;
+}

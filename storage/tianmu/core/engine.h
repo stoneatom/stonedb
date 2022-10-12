@@ -64,7 +64,7 @@ class select_tianmu_export;
 
 namespace core {
 
-using Tianmu::DBHandler::Query_Route_To;
+using Tianmu::DBHandler::Query_route_to;
 struct AttrInfo;
 class TableShare;
 class Transaction;
@@ -130,8 +130,9 @@ class Engine final {
   void ClearTx(THD *thd);
 
   // processing the queries which routed to Tianmu.
-  Query_Route_To Handle_Query(THD *thd, LEX *lex, Query_result *&result_output, ulong setup_tables_done_option,
-                              int &res, int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false);
+  Query_route_to Handle_Query(THD *thd, Query_expression *qe, Query_result *&result_output,
+                              ulong setup_tables_done_option, int &res, int &optimize_after_tianmu,
+                              int &tianmu_free_join, int with_insert = false);
 
   system::ResourceManager *getResourceManager() const { return m_resourceManager; }
 
@@ -183,13 +184,13 @@ class Engine final {
   void AddTx(Transaction *tx);
   void RemoveTx(Transaction *tx);
 
-  Query_Route_To Execute(THD *thd, LEX *lex, Query_result *result_output,
+  Query_route_to Execute(THD *thd, LEX *lex, Query_result *result_output,
                          Query_expression *unit_for_union = NULL);  // stonedb8
 
   int SetUpCacheFolder(const std::string &cachefolder_path);
   static bool AreConvertible(types::RCDataType &rcitem, enum_field_types my_type, uint length = 0);
 
-  static Query_Route_To RouteTo(THD *thd, TABLE_LIST *table_list, Query_block *selects_list,
+  static Query_route_to RouteTo(THD *thd, TABLE_LIST *table_list, Query_block *selects_list,
                                 int &in_case_of_failure_can_go_to_mysql, int with_insert);  // stonedb8
 
   static const char *GetFilename(Query_block *selects_list, int &is_dumpfile);  // stonedb8
@@ -364,8 +365,6 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::stri
 int get_parameter(THD *thd, enum tianmu_var_name vn, double &value);
 int get_parameter(THD *thd, enum tianmu_var_name vn, int64_t &value);
 int get_parameter(THD *thd, enum tianmu_var_name vn, std::string &value);
-
-bool parameter_equals(THD *thd, enum tianmu_var_name vn, longlong value);
 
 }  // namespace core
 }  // namespace Tianmu

@@ -28,5 +28,27 @@ void Timer::DoPrint(const std::string &msg) const {
   TIANMU_LOG(LogCtl_Level::INFO, "Timer %f seconds: %s", diff.count(), msg.c_str());
 }
 
+KillTimer::KillTimer(THD *thd [[maybe_unused]], long secs) {
+  if (secs == 0) return;
+  struct sigevent sev;
+  sev.sigev_notify = SIGEV_THREAD_ID;
+  sev.sigev_signo = SIGRTMIN;
+  sev._sigev_un._tid = syscall(SYS_gettid);
+  sev.sigev_value.sival_ptr = thd;
+  if (timer_create(CLOCK_MONOTONIC, &sev, &id)) {
+    TIANMU_LOG(LogCtl_Level::INFO, "Failed to create timer. error =%d[%s]", errno, std::strerror(errno));
+    return;
+  }
+
+  struct itimerspec interval;
+  std::memset(&interval, 0, sizeof(interval));
+  interval.it_value.tv_sec = secs;
+  if (timer_settime(id, 0, &interval, NULL)) {
+    TIANMU_LOG(LogCtl_Level::INFO, "Failed to set up timer. error =%d[%s]", errno, std::strerror(errno));
+    return;
+  }
+  armed = true;
+}
+
 }  // namespace utils
 }  // namespace Tianmu

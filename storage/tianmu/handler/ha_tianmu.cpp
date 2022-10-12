@@ -1397,7 +1397,7 @@ const Item *TianmuHandler::cond_push(const Item *a_cond) {
     std::unique_ptr<core::CompiledQuery> tmp_cq(new core::CompiledQuery(*m_cq));
     core::CondID cond_id;
     if (m_query->BuildConditions(cond, cond_id, tmp_cq.get(), m_tmp_table, core::CondType::WHERE_COND, false) ==
-        Query_Route_To::TO_MYSQL) {
+        Query_route_to::TO_MYSQL) {
       m_query.reset();
       return a_cond;
     }

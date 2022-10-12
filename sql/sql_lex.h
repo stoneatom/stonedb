@@ -940,10 +940,10 @@ class Query_expression {
   bool optimize(THD *thd, TABLE *materialize_destination, bool create_iterators,
                 bool finalize_access_paths);
 
-  //TIANMU UPGRADE BEGIN
+  //For Tianmu, the defintion in storage/tianmu/core/engine.inc.
   int optimize_for_tianmu(THD *thd);
   int optimize_after_tianmu(THD *thd);
-  //END
+
   /**
     For any non-finalized query block, finalize it so that we are allowed to
     create iterators. Must be called after the final access path is chosen
