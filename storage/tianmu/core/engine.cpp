@@ -823,7 +823,7 @@ void Engine::UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *sour
                                          CHARSET_INFO *cs) {
   // stonedb8 start convert orig_table to table, MySQL 8.0 don't have orig_table, idea from
   // ha_innodb.cc:create_table_def
-  if (source_field->table->s->db_type() == rcbase_hton) {  // do not use table (cont. default values)
+  if (source_field->table->s->db_type() == tianmu_hton) {  // do not use table (cont. default values)
     char buf_size[256] = {0};
     char buf_ratio[256] = {0};
     uint buf_size_count = 0;
@@ -1610,7 +1610,7 @@ Query_route_to Engine::RouteTo(THD *thd, TABLE_LIST *table_list, Query_block *se
 }
 
 bool Engine::IsTianmuTable(TABLE *table) {
-  return table && table->s->db_type() == rcbase_hton;  // table->db_type is always NULL
+  return table && table->s->db_type() == tianmu_hton;  // table->db_type is always NULL
 }
 
 const char *Engine::GetFilename(Query_block *selects_list, int &is_dumpfile) {  // stonedb8

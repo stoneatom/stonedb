@@ -854,8 +854,8 @@ int ha_initialize_handlerton(st_plugin_int *plugin) {
     case DB_TYPE_INNODB:
       innodb_hton = hton;
       break;
-    case DB_TYPE_TIANMU:   // stonedb8
-      tianmu_hton = hton;  // stonedb8
+    case DB_TYPE_TIANMU:
+      tianmu_hton = hton;
       break;
     default:
       break;
