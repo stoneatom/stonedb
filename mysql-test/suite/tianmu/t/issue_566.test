@@ -1,3 +1,4 @@
+--source include/have_tianmu.inc
 USE test;
 CREATE TABLE `lineitem_i342` (
 `l_orderkey` int(11) NOT NULL,
