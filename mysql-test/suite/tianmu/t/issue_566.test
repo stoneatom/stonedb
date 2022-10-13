@@ -1,0 +1,37 @@
+--source include/have_tianmu.inc
+USE test;
+CREATE TABLE `lineitem_i342` (
+`l_orderkey` int(11) NOT NULL,
+`l_partkey` int(11) NOT NULL,
+`l_suppkey` int(11) NOT NULL,
+`l_linenumber` int(11) NOT NULL,
+`l_quantity` decimal(15,2) NOT NULL,
+`l_extendedprice` decimal(15,2) NOT NULL,
+`l_discount` decimal(15,2) NOT NULL,
+`l_tax` decimal(15,2) NOT NULL,
+`l_returnflag` char(1) NOT NULL,
+`l_linestatus` char(1) NOT NULL,
+`l_shipdate` date NOT NULL,
+`l_commitdate` date NOT NULL,
+`l_receiptdate` date NOT NULL,
+`l_shipinstruct` char(25) NOT NULL,
+`l_shipmode` char(10) NOT NULL,
+`l_comment` varchar(44) NOT NULL,
+PRIMARY KEY (`l_orderkey`,`l_linenumber`)
+) ENGINE=tianmu;
+INSERT INTO lineitem_i342 (l_orderkey, l_partkey, l_suppkey, l_linenumber, l_quantity, l_extendedprice, l_discount, l_tax, l_returnflag, l_linestatus, l_shipdate, l_commitdate, l_receiptdate, l_shipinstruct, l_shipmode, l_comment) VALUES(842980, 1881559, 56614, 4, 5.00, 7702.30, 0.01, 0.03, 'A', 'F', '1992-01-02', '1992-03-20', '1992-01-20', 'COLLECT COD', 'REG AIR', 'lly regular asymptotes. unu');
+INSERT INTO lineitem_i342 (l_orderkey, l_partkey, l_suppkey, l_linenumber, l_quantity, l_extendedprice, l_discount, l_tax, l_returnflag, l_linestatus, l_shipdate, l_commitdate, l_receiptdate, l_shipinstruct, l_shipmode, l_comment) VALUES(1111877, 1341765, 16805, 3, 20.00, 36134.00, 0.10, 0.07, 'A', 'F', '1992-01-02', '1992-02-28', '1992-01-07', 'TAKE BACK RETURN', 'FOB', 're. ideas wake');
+INSERT INTO lineitem_i342 (l_orderkey, l_partkey, l_suppkey, l_linenumber, l_quantity, l_extendedprice, l_discount, l_tax, l_returnflag, l_linestatus, l_shipdate, l_commitdate, l_receiptdate, l_shipinstruct, l_shipmode, l_comment) VALUES(1332613, 539811, 14827, 1, 14.00, 25911.06, 0.08, 0.07, 'A', 'F', '1992-01-02', '1992-02-11', '1992-01-18', 'TAKE BACK RETURN', 'TRUCK', 'y against the furiously regular');
+INSERT INTO lineitem_i342 (l_orderkey, l_partkey, l_suppkey, l_linenumber, l_quantity, l_extendedprice, l_discount, l_tax, l_returnflag, l_linestatus, l_shipdate, l_commitdate, l_receiptdate, l_shipinstruct, l_shipmode, l_comment) VALUES(2184032, 1394196, 44223, 5, 14.00, 18061.82, 0.06, 0.02, 'A', 'F', '1992-01-02', '1992-02-25', '1992-01-15', 'DELIVER IN PERSON', 'RAIL', 'even ideas breach slyly above the d');
+INSERT INTO lineitem_i342 (l_orderkey, l_partkey, l_suppkey, l_linenumber, l_quantity, l_extendedprice, l_discount, l_tax, l_returnflag, l_linestatus, l_shipdate, l_commitdate, l_receiptdate, l_shipinstruct, l_shipmode, l_comment) VALUES(5018977, 820387, 20388, 1, 20.00, 26146.80, 0.00, 0.00, 'A', 'F', '1992-01-02', '1992-03-19', '1992-01-15', 'NONE', 'SHIP', 'packages detect furiously quick');
+INSERT INTO lineitem_i342 (l_orderkey, l_partkey, l_suppkey, l_linenumber, l_quantity, l_extendedprice, l_discount, l_tax, l_returnflag, l_linestatus, l_shipdate, l_commitdate, l_receiptdate, l_shipinstruct, l_shipmode, l_comment) VALUES(8478693, 842913, 92930, 5, 13.00, 24126.31, 0.01, 0.03, 'A', 'F', '1992-01-02', '1992-02-02', '1992-01-05', 'DELIVER IN PERSON', 'REG AIR', 'y silent decoys');
+INSERT INTO lineitem_i342 (l_orderkey, l_partkey, l_suppkey, l_linenumber, l_quantity, l_extendedprice, l_discount, l_tax, l_returnflag, l_linestatus, l_shipdate, l_commitdate, l_receiptdate, l_shipinstruct, l_shipmode, l_comment) VALUES(9838337, 201251, 26254, 1, 10.00, 11522.40, 0.03, 0.05, 'A', 'F', '1992-01-02', '1992-03-27', '1992-01-22', 'NONE', 'RAIL', 'pending pinto beans. boldly unusual de');
+INSERT INTO lineitem_i342 (l_orderkey, l_partkey, l_suppkey, l_linenumber, l_quantity, l_extendedprice, l_discount, l_tax, l_returnflag, l_linestatus, l_shipdate, l_commitdate, l_receiptdate, l_shipinstruct, l_shipmode, l_comment) VALUES(11174723, 851066, 76075, 1, 41.00, 41697.82, 0.07, 0.02, 'A', 'F', '1992-01-02', '1992-03-28', '1992-01-08', 'NONE', 'MAIL', 's detect blithely entic');
+INSERT INTO lineitem_i342 (l_orderkey, l_partkey, l_suppkey, l_linenumber, l_quantity, l_extendedprice, l_discount, l_tax, l_returnflag, l_linestatus, l_shipdate, l_commitdate, l_receiptdate, l_shipinstruct, l_shipmode, l_comment) VALUES(12493984, 912626, 87654, 4, 6.00, 9831.48, 0.02, 0.08, 'A', 'F', '1992-01-02', '1992-02-13', '1992-01-29', 'TAKE BACK RETURN', 'REG AIR', 'e the slyly e');
+INSERT INTO lineitem_i342 (l_orderkey, l_partkey, l_suppkey, l_linenumber, l_quantity, l_extendedprice, l_discount, l_tax, l_returnflag, l_linestatus, l_shipdate, l_commitdate, l_receiptdate, l_shipinstruct, l_shipmode, l_comment) VALUES(12575687, 330833, 30834, 4, 41.00, 76416.62, 0.02, 0.04, 'A', 'F', '1992-01-02', '1992-03-10', '1992-01-28', 'DELIVER IN PERSON', 'RAIL', 'ecial frets. carefully sly depo');
+INSERT INTO lineitem_i342 (l_orderkey, l_partkey, l_suppkey, l_linenumber, l_quantity, l_extendedprice, l_discount, l_tax, l_returnflag, l_linestatus, l_shipdate, l_commitdate, l_receiptdate, l_shipinstruct, l_shipmode, l_comment) VALUES(12753441, 1023833, 98864, 4, 35.00, 61487.30, 0.10, 0.08, 'A', 'F', '1992-01-02', '1992-02-18', '1992-01-23', 'COLLECT COD', 'FOB', 'encies haggle. regular, r');
+INSERT INTO lineitem_i342 (l_orderkey, l_partkey, l_suppkey, l_linenumber, l_quantity, l_extendedprice, l_discount, l_tax, l_returnflag, l_linestatus, l_shipdate, l_commitdate, l_receiptdate, l_shipinstruct, l_shipmode, l_comment) VALUES(15413986, 1799270, 99271, 4, 14.00, 19168.66, 0.05, 0.05, 'A', 'F', '1992-01-02', '1992-01-31', '1992-01-04', 'COLLECT COD', 'TRUCK', 'structions. blithely pending asymptotes');
+CREATE VIEW revenue_i05 AS SELECT l_suppkey AS supplier_no, sum(l_extendedprice * (1 - l_discount)) AS total_revenue FROM lineitem_i342 WHERE l_shipdate >= '1992-01-01' AND l_shipdate < DATE_ADD('1992-01-01',INTERVAL '1 1:1:1' DAY_SECOND) GROUP BY l_suppkey;
+SELECT * FROM revenue_i05 order by supplier_no;
+drop view revenue_i05;
+drop table lineitem_i342;

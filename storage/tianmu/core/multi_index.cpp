@@ -38,6 +38,7 @@ MultiIndex::MultiIndex(uint32_t power) : m_conn(current_txn_) {
   group_for_dim = NULL;
   group_num_for_dim = NULL;
   iterator_lock = 0;
+  shallow_dim_groups = false;
 }
 
 MultiIndex::MultiIndex(const MultiIndex &s) : m_conn(s.m_conn) {
@@ -62,6 +63,7 @@ MultiIndex::MultiIndex(const MultiIndex &s) : m_conn(s.m_conn) {
     group_num_for_dim = NULL;
   }
   iterator_lock = 0;
+  shallow_dim_groups = false;
 }
 
 MultiIndex::MultiIndex(MultiIndex &s, bool shallow) : m_conn(s.m_conn) {
@@ -86,12 +88,15 @@ MultiIndex::MultiIndex(MultiIndex &s, bool shallow) : m_conn(s.m_conn) {
     group_num_for_dim = NULL;
   }
   iterator_lock = 0;
+  shallow_dim_groups = shallow;
 }
 
 MultiIndex::~MultiIndex() {
-  for (uint i = 0; i < dim_groups.size(); i++) {
-    delete dim_groups[i];
-    dim_groups[i] = NULL;
+  if (!shallow_dim_groups) {
+    for (uint i = 0; i < dim_groups.size(); i++) {
+      delete dim_groups[i];
+      dim_groups[i] = NULL;
+    }
   }
   delete[] dim_size;
   delete[] group_for_dim;
@@ -246,9 +251,19 @@ void MultiIndex::CheckIfVirtualCanBeDistinct()  // updates can_be_distinct table
   }
 }
 
-void MultiIndex::LockForGetIndex(int dim) { group_for_dim[dim]->Lock(dim); }
+void MultiIndex::LockForGetIndex(int dim) {
+  if (shallow_dim_groups) {
+    return;
+  }
+  group_for_dim[dim]->Lock(dim);
+}
 
-void MultiIndex::UnlockFromGetIndex(int dim) { group_for_dim[dim]->Unlock(dim); }
+void MultiIndex::UnlockFromGetIndex(int dim) {
+  if (shallow_dim_groups) {
+    return;
+  }
+  group_for_dim[dim]->Unlock(dim);
+}
 
 uint64_t MultiIndex::DimSize(int dim)  // the size of one dimension: material_no_tuples for materialized,
                                        // NumOfOnes for virtual
@@ -257,10 +272,16 @@ uint64_t MultiIndex::DimSize(int dim)  // the size of one dimension: material_no
 }
 
 void MultiIndex::LockAllForUse() {
+  if (shallow_dim_groups) {
+    return;
+  }
   for (int dim = 0; dim < no_dimensions; dim++) LockForGetIndex(dim);
 }
 
 void MultiIndex::UnlockAllFromUse() {
+  if (shallow_dim_groups) {
+    return;
+  }
   for (int dim = 0; dim < no_dimensions; dim++) UnlockFromGetIndex(dim);
 }
 
@@ -308,7 +329,7 @@ void MultiIndex::UpdateNumOfTuples() {
 }
 
 int64_t MultiIndex::NumOfTuples(DimensionVector &dimensions,
-                             bool fail_on_overflow)  // for a given subset of dimensions
+                                bool fail_on_overflow)  // for a given subset of dimensions
 {
   std::vector<int> dg = ListInvolvedDimGroups(dimensions);
   if (dg.size() == 0) return 0;
@@ -322,7 +343,7 @@ int64_t MultiIndex::NumOfTuples(DimensionVector &dimensions,
 }
 
 int MultiIndex::MaxNumOfPacks(int dim)  // maximal (upper approx.) number of different nonempty data
-                                     // packs for the given dimension
+                                        // packs for the given dimension
 {
   int max_packs = 0;
   Filter *f = group_for_dim[dim]->GetFilter(dim);
