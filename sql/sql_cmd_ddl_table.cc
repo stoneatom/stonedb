@@ -402,7 +402,7 @@ bool Sql_cmd_create_table::execute(THD *thd) {
     else if (thd->is_strict_mode())
       thd->push_internal_handler(&strict_handler);
 
-    int sdb_res, free_join_from_sdb, optimize_after_sdb;
+    int sdb_res = 0, free_join_from_sdb = 0, optimize_after_sdb = 0;
     Query_result * result_tianmu = dynamic_cast<Query_result *>(result);
     if (Tianmu::DBHandler::Tianm_Handle_Query(thd, query_expression, result_tianmu, 0, sdb_res, optimize_after_sdb,
         free_join_from_sdb, (int)true) == Tianmu::DBHandler::Query_route_to::TO_MYSQL)

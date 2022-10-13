@@ -55,21 +55,22 @@ static int optimize_select(THD *thd, ulong select_options, Query_result *result,
           return true;
         }
       } else {  // it is a global_opton query block, such as limit, order by, etc.
-        if ((err = select_lex->prepare(thd, nullptr)))  // stonedb8
-        {
-          return err;
-        }
+        if (!select_lex->master_query_expression()->is_prepared())
+          if (err = select_lex->prepare(thd, nullptr))  // stonedb8
+          {
+            return err;
+          }
       }
     }
     free_join = 0;
     join->select_options = select_options;
   } else {
     thd_proc_info(thd, "init");
-
-    if ((err = select_lex->prepare(thd, nullptr)))  // stonedb8
-    {
-      return err;
-    }
+    if (!select_lex->master_query_expression()->is_prepared())
+      if (err = select_lex->prepare(thd, nullptr))  // stonedb8
+      {
+        return err;
+      }
     if (result->prepare(thd, select_lex->fields, select_lex->master_query_expression())) {
       return true;
     }
