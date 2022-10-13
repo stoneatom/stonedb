@@ -1,0 +1,3 @@
+use test;
+create table `#mysql50#q.q` (f1 int primary key) engine=tianmu;
+ERROR HY000: Got error 1103 from storage engine

@@ -425,7 +425,7 @@ extern void async_join_update(MYSQL_THD thd, struct st_mysql_sys_var *var, void 
   }
 
 #define STATUS_MEMBER(name, label) \
-  { "Tianmu_" #label, (char *)get_##name##_StatusVar, SHOW_FUNC, SHOW_SCOPE_UNDEF }
+  { "Tianmu_" #label, (char *)get_##name##_StatusVar, SHOW_FUNC, SHOW_SCOPE_GLOBAL }
 
 STATUS_FUNCTION(gdchits, SHOW_LONGLONG, getCacheHits)
 STATUS_FUNCTION(gdcmisses, SHOW_LONGLONG, getCacheMisses)
