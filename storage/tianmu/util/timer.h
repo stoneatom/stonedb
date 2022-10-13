@@ -44,7 +44,7 @@ class Timer {
 
 class KillTimer {
  public:
-  KillTimer(THD *thd [[mamybe_unused]], long secs);
+  KillTimer(THD *thd, long secs);
   KillTimer() = delete;
 
   ~KillTimer() {

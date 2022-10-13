@@ -66,7 +66,14 @@ inline bool IsDoubleNull(const double d) {
 }
 
 inline uint GetBitLen(uint x) {
-#ifdef __x86_64__
+#if defined(__x86_64__)
+  uint position;
+  if (!x) return 0;
+  asm("bsrl %1, %0" : "=r"(position) : "r"(x));
+  return position + 1;
+#elif (defined(__arm64__) && defined(__APPLE__)) || defined(__aarch64__)  ///* CPU(ARM64) - Apple */
+  // in case of arm uses diff instruction, therefore, here we just have a copy code of x86.
+  // you can modify these according to your own requirement.
   uint position;
   if (!x) return 0;
   asm("bsrl %1, %0" : "=r"(position) : "r"(x));
@@ -78,6 +85,13 @@ inline uint GetBitLen(uint x) {
 
 inline uint GetBitLen(uint64_t x) {
 #ifdef __x86_64__
+  uint64_t position;
+  if (!x) return 0;
+  asm("bsr %1, %0" : "=r"(position) : "r"(x));
+  return (uint)position + 1;
+#elif (defined(__arm64__) && defined(__APPLE__)) || defined(__aarch64__)  ///* CPU(ARM64) - Apple */
+  // in case of arm uses diff instruction, therefore, here we just have a copy code of x86.
+  // you can modify these according to your own requirement.
   uint64_t position;
   if (!x) return 0;
   asm("bsr %1, %0" : "=r"(position) : "r"(x));
