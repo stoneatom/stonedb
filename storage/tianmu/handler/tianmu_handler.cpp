@@ -1219,6 +1219,15 @@ ha_rows TianmuHandler::records_in_range([[maybe_unused]] uint inx, [[maybe_unuse
 int TianmuHandler::create(const char *name, TABLE *table_arg, [[maybe_unused]] HA_CREATE_INFO *create_info) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
+
+    //fix issue 487: bug for create table #mysql50#q.q should return failure and actually return success
+    const size_t	table_name_len = strlen(name);
+    if (name[table_name_len - 1] == '/') 
+    {
+        TIANMU_LOG(LogCtl_Level::ERROR, "Table name is empty");
+        DBUG_RETURN(ER_WRONG_TABLE_NAME);
+    }
+
     ha_rcengine_->CreateTable(name, table_arg);
     DBUG_RETURN(0);
   } catch (common::AutoIncException &e) {
