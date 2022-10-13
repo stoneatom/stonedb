@@ -36,6 +36,10 @@ static constexpr size_t cache_line_size =
     256;
 #elif defined(__ppc64__)
     128;
+#elif (defined(__arm64__) && defined(__APPLE__)) || defined(__aarch64__)
+    // sysctl -a: we read is: 128, in future we get this at cmake file.
+    // hw.cachelinesize: 128
+    128;
 #else
 #error "cache_line_size not defined for this architecture"
 #endif
