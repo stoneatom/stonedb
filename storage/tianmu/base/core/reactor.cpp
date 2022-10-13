@@ -77,8 +77,15 @@
 #include "base/util/print_safe.h"
 #include "base/util/spinlock.h"
 
+// Here, if your want to support xmm instruction on apple m1 or ARM arch.
+// can ref to: https://github.com/oddconcepts/n2o/commit/fe6214dcc06a1b13be60733c53ac25bca3c2b4d0
+// It needs a lot of work to finish.And there are some repos with the SIMD translations between two architectures.
+// https://github.com/intel/ARM_NEON_2_x86_SSE
+
 #if defined(__x86_64__) || defined(__i386__)
 #include <xmmintrin.h>
+#elif (defined(__arm64__) && defined(__APPLE__)) || defined(__aarch64__)
+
 #endif
 
 #include "base/core/exception_hacks.h"
@@ -1488,6 +1495,8 @@ int reactor::run() {
       if (go_to_sleep) {
 #if defined(__x86_64__) || defined(__i386__)
         _mm_pause();
+#elif (defined(__arm64__) && defined(__APPLE__)) || defined(__aarch64__)
+        __asm__ __volatile__("isb\n");
 #endif
         if (idle_end - idle_start > _max_poll_time) {
           // Turn off the task quota timer to avoid spurious wakeups
