@@ -2037,7 +2037,7 @@ Query_route_to Engine::Handle_Query(THD *thd, Query_expression *qe, Query_result
                                     int &tianmu_free_join, int with_insert) {
   utils::KillTimer timer(thd, tianmu_sysvar_max_execution_time);
 
-  LEX *lex{nullptr};
+  LEX *lex{thd->lex};
   if (qe->is_simple()) lex = qe->first_query_block()->parent_lex;
 
   int in_case_of_failure_can_go_to_mysql{1};

@@ -557,7 +557,7 @@ bool Sql_cmd_dml::execute(THD *thd) {
   }
 
   if (lex->sql_command == SQLCOM_SELECT) {
-    int sdb_res, free_join_from_sdb, optimize_after_sdb;
+    int sdb_res = 0, free_join_from_sdb = 0, optimize_after_sdb = 0;
     if (Tianmu::DBHandler::Tianm_Handle_Query(thd, unit, result, 0, sdb_res, optimize_after_sdb,
       free_join_from_sdb) != Tianmu::DBHandler::Query_route_to::TO_MYSQL) {
         if (sdb_res) goto err; else goto clean;
