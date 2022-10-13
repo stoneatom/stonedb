@@ -265,10 +265,13 @@ void thread_context::s_main(int lo, int hi) {
 }
 
 void thread_context::main() {
-#ifdef __x86_64__
+#if defined(__x86_64__)
   // There is no caller of main() in this context. We need to annotate this
   // frame like this so that unwinders don't try to trace back past this frame.
   // See https://github.com/scylladb/scylla/issues/1909.
+  asm(".cfi_undefined rip");
+#elif (defined(__arm64__) && defined(__APPLE__)) || defined(__aarch64__)  ///* CPU(ARM64) - Apple */
+  // for on arm arch.
   asm(".cfi_undefined rip");
 #else
 #warning "Backtracing from seastar threads may be broken"

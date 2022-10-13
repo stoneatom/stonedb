@@ -1337,7 +1337,6 @@ const Listen_socket *Mysqld_socket_listener::get_listen_socket() const {
 
 #endif  // HAVE_POLL
   return nullptr;
-  ;
 }
 
 Channel_info *Mysqld_socket_listener::listen_for_connection_event() {

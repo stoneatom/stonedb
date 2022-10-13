@@ -125,6 +125,8 @@
 #include "template_utils.h"
 #include "thr_lock.h"
 
+#include "../storage/tianmu/handler/ha_my_tianmu.h" // tianmu header file
+
 using std::max;
 using std::min;
 
@@ -554,6 +556,14 @@ bool Sql_cmd_dml::execute(THD *thd) {
     }
   }
 
+  if (lex->sql_command == SQLCOM_SELECT) {
+    int sdb_res, free_join_from_sdb, optimize_after_sdb;
+    if (Tianmu::DBHandler::Tianm_Handle_Query(thd, unit, result, 0, sdb_res, optimize_after_sdb,
+      free_join_from_sdb) != Tianmu::DBHandler::Query_route_to::TO_MYSQL) {
+        if (sdb_res) goto err; else goto clean;
+    }
+  }
+
   if (validate_use_secondary_engine(lex)) goto err;
 
   lex->set_exec_started();
@@ -596,6 +606,7 @@ bool Sql_cmd_dml::execute(THD *thd) {
 
   THD_STAGE_INFO(thd, stage_end);
 
+clean:
   // Do partial cleanup (preserve plans for EXPLAIN).
   lex->cleanup(thd, false);
   lex->clear_values_map();

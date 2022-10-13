@@ -1,0 +1,2 @@
+--replace_column 2 #
+show status like "Tianmu%";

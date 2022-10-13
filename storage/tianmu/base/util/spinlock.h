@@ -27,6 +27,7 @@
 
 #if defined(__x86_64__) || defined(__i386__)
 #include <xmmintrin.h>
+#elif (defined(__arm64__) && defined(__APPLE__)) || defined(__aarch64__)  // apple arm arch.
 #endif
 
 namespace Tianmu {
@@ -53,6 +54,8 @@ class spinlock {
     while (_busy.exchange(true, std::memory_order_acquire)) {
 #if defined(__x86_64__) || defined(__i386__)
       _mm_pause();
+#elif (defined(__arm64__) && defined(__APPLE__)) || defined(__aarch64__)
+      __asm__ __volatile__("isb\n");
 #endif
     }
   }

@@ -32,7 +32,7 @@ class TianmuHandler final : public handler {
   /* The name that will be used for display purposes */
   const char *table_type() const override { return "TIANMU"; }
   /*
-   Get the row type from the storage engine.  If this method returns
+   Get the row type from the storage engine. If this method returns
    ROW_TYPE_NOT_USED, the information in HA_CREATE_INFO should be used.
    */
   // enum row_type get_row_type() const override { return ROW_TYPE_COMPRESSED; }   // stonedb8  get_row_type() is

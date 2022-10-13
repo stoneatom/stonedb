@@ -1231,7 +1231,7 @@ handlerton *heap_hton;
 handlerton *temptable_hton;
 handlerton *myisam_hton;
 handlerton *innodb_hton;
-handlerton *tianmu_hton;  // stonedb8
+handlerton *tianmu_hton;
 
 char *opt_disabled_storage_engines;
 uint opt_server_id_bits = 0;
