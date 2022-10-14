@@ -1,7 +1,7 @@
 use test;
 CREATE TABLE `test_or` (
-  `id` int(11) DEFAULT NULL,
-  `age` int(11) DEFAULT NULL
+  `id` int DEFAULT NULL,
+  `age` int DEFAULT NULL
 ) ENGINE=TIANMU;
 insert into test_or values(1,1);
 insert into test_or values(2,2);

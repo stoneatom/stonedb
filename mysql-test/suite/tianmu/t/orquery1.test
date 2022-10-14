@@ -1,6 +1,6 @@
 use test;
 CREATE TABLE `test_or` (
-  `id` int(11) DEFAULT NULL,
+  `id` int DEFAULT NULL,
   `name` varchar(11) DEFAULT NULL
 ) ENGINE=TIANMU;
 insert into test_or values(1,'1');
