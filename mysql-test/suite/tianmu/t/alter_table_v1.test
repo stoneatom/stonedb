@@ -64,6 +64,7 @@ create table t1 (n1 int not null, n2 int, n3 int, n4 float,
                 
 alter table t1 disable keys;
 show keys from t1;
+call mtr.add_suppression(".*Statement is unsafe because it uses a system function that may return a different value on the slave.*");
 insert into t1 values(RAND()*100,RAND()*100,RAND()*10,RAND()*10);
 
 alter table t1 enable keys;
