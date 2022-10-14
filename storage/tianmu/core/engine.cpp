@@ -2056,6 +2056,8 @@ Query_route_to Engine::Handle_Query(THD *thd, Query_expression *qe, Query_result
     return Query_route_to::TO_MYSQL;
   }
 
+  if (with_insert) result->create_table_for_query_block(thd);  // used for CTAS
+
   if (lock_tables(thd, thd->lex->query_tables, thd->lex->table_count, 0)) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Failed to lock tables for query '%s'", thd->query().str);
     return Query_route_to::TO_TIANMU;

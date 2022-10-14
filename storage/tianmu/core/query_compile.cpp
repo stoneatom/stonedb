@@ -483,9 +483,9 @@ Query_route_to Query::AddFields(mem_root_deque<Item *> &fields, TabID const &tmp
 
 Query_route_to Query::AddGroupByFields(ORDER *group_by, const TabID &tmp_table) {
   for (; group_by; group_by = group_by->next) {
-    if (group_by->direction != ORDER_ASC) {
+    if (group_by->direction != ORDER_NOT_RELEVANT) {
       my_message(ER_SYNTAX_ERROR,
-                 "Tianmu specific error: Using DESC after GROUP BY clause not "
+                 "Tianmu specific error: Using ASC/DESC after GROUP BY clause not "
                  "allowed. Use "
                  "ORDER BY to order the result",
                  MYF(0));
