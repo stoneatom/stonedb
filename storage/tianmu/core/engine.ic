@@ -56,7 +56,7 @@ static int optimize_select(THD *thd, ulong select_options, Query_result *result,
         }
       } else {  // it is a global_opton query block, such as limit, order by, etc.
         if (!select_lex->master_query_expression()->is_prepared())
-          if (err = select_lex->prepare(thd, nullptr))  // stonedb8
+          if ((err = select_lex->prepare(thd, nullptr)))
           {
             return err;
           }
@@ -67,7 +67,7 @@ static int optimize_select(THD *thd, ulong select_options, Query_result *result,
   } else {
     thd_proc_info(thd, "init");
     if (!select_lex->master_query_expression()->is_prepared())
-      if (err = select_lex->prepare(thd, nullptr))  // stonedb8
+      if ((err = select_lex->prepare(thd, nullptr)))
       {
         return err;
       }
