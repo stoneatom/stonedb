@@ -1,6 +1,6 @@
 use test;
 CREATE TABLE `auto_20` (
-`pk` bigint(11) NOT NULL AUTO_INCREMENT,
+`pk` bigint NOT NULL AUTO_INCREMENT,
 `varchar_test` varchar(255) DEFAULT NULL,
 PRIMARY KEY (`pk`)
 ) ENGINE=TIANMU DEFAULT CHARSET=gbk;
