@@ -2924,7 +2924,8 @@ int handler::ha_rnd_init(bool scan)
   DBUG_ENTER("ha_rnd_init");
   assert(table_share->tmp_table != NO_TMP_TABLE ||
          m_lock_type != F_UNLCK);
-  assert(inited == NONE || (inited == RND && scan));
+  assert(inited == NONE || (inited == RND && scan) ||
+      (inited == INDEX && ht->db_type == DB_TYPE_TIANMU));
   inited= (result= rnd_init(scan)) ? NONE : RND;
   end_range= NULL;
   DBUG_RETURN(result);
