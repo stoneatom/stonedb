@@ -15,10 +15,9 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-
 #include <arpa/inet.h>
-#include <iostream>
 #include <netdb.h>  // stonedb8 for gethostbyname()
+#include <iostream>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
