@@ -2224,7 +2224,7 @@ Query_route_to Engine::Handle_Query(THD *thd, Query_expression *qe, Query_result
 
   }  // end of not a union
 
-  if (select_lex->join && Query::IsLOJNew(select_lex->join_list))
+  if (select_lex->join && Query::IsLOJ(select_lex->join_list))
     optimize_after_tianmu = 2;  // optimize partially (part=4), since part of LOJ
                                 // optimization was already done
   res |= (int)thd->is_error();  // the ending of original handle_select(...) */
