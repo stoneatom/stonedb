@@ -56,8 +56,7 @@ static int optimize_select(THD *thd, ulong select_options, Query_result *result,
         }
       } else {  // it is a global_opton query block, such as limit, order by, etc.
         if (!select_lex->master_query_expression()->is_prepared())
-          if ((err = select_lex->prepare(thd, nullptr)))
-          {
+          if ((err = select_lex->prepare(thd, nullptr))) {
             return err;
           }
       }
@@ -67,8 +66,7 @@ static int optimize_select(THD *thd, ulong select_options, Query_result *result,
   } else {
     thd_proc_info(thd, "init");
     if (!select_lex->master_query_expression()->is_prepared())
-      if ((err = select_lex->prepare(thd, nullptr)))
-      {
+      if (err = select_lex->prepare(thd, nullptr)) {
         return err;
       }
     if (result->prepare(thd, select_lex->fields, select_lex->master_query_expression())) {
@@ -82,7 +80,7 @@ static int optimize_select(THD *thd, ulong select_options, Query_result *result,
   optimize_after_tianmu = true;
   // all the preparation operations are done, therefore, we set the `part` to 1, then pass it to JOIN::optimize.
   // 1 means we have done the preparation.
-  if ((err = join->optimize(1))) return err;
+  if ((err = join->optimize(false, JOIN::OptimizePhase::Before_LOJ_Transform))) return err;
   return false;
 }
 
@@ -208,7 +206,7 @@ int Query_expression::optimize_for_tianmu(THD *thd) {
         sl->join->select_options = (select_limit_cnt == HA_POS_ERROR || thd->lex->unit->is_union())
                                        ? sl->active_options() & ~OPTION_FOUND_ROWS
                                        : sl->active_options() | found_rows_for_union;
-        saved_error = sl->join->optimize(1);
+        saved_error = sl->join->optimize(false, JOIN::OptimizePhase::Before_LOJ_Transform);
       }
 
       // HERE ends the code from bool st_select_lex_unit::exec()
@@ -274,7 +272,7 @@ int Query_expression::optimize_after_tianmu(THD *thd) {
     }
 
     // int res = sl->join->optimize(2);
-    if (int res = sl->join->optimize(2)) {
+    if (int res = sl->join->optimize(false, JOIN::OptimizePhase::After_LOJ_Transform)) {
       thd->lex->set_current_query_block(lex_select_save);
       return res;
     }

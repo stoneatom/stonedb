@@ -963,7 +963,7 @@ Query_route_to Query::Compile(CompiledQuery *compiled_query, Query_block *select
       // necessary due to already done basic transformation of conditions
       // see comments in sql_select.cc:JOIN::optimize()
       // stonedb8
-      if (IsLOJNew(sl->join_list)) sl->join->optimize(3);
+      if (IsLOJNew(sl->join_list)) sl->join->optimize(false, JOIN::OptimizePhase::Finish_LOJ_Transform);
 
       if (left_expr_for_subselect)
         if (!ClearSubselectTransformation(*oper_for_subselect, field_for_subselect, conds, having, cond_to_reinsert,
