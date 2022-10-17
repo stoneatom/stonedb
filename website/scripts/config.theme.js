@@ -20,6 +20,6 @@ module.exports = {
   'btn-default-bg': '#F2F3F7',
   'border-color-base': '#E5E8F0',
   'btn-default-color': '#646A7D',
-  'btn-primary-bg': '#373C43',
+  'btn-primary-bg': '#00A6FB',
   'select-border-color': 'transparent',
 }
