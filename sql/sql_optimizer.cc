@@ -10150,6 +10150,9 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
 
     *cond_value=Item::COND_UNDEF;
     Item *item;
+
+    bool is_cond_or =
+      (cond && dynamic_cast<Item_cond_or*>(cond)) ? true : false;
     while ((item=li++))
     {
       Item *new_item;
@@ -10158,7 +10161,18 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
         return true;
 
       if (new_item == NULL)
-        li.remove();
+      {
+        if (is_cond_or)
+        {
+          Item* cond_true =
+            new (thd->mem_root) Item_int((longlong)1, 1); // Always true
+          (void)li.replace(cond_true);
+        }
+        else
+        {
+          li.remove();
+        }
+      }
       else if (item != new_item)
       {
         (void) li.replace(new_item);
