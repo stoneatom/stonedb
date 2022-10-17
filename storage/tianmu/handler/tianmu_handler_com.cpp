@@ -425,7 +425,7 @@ extern void async_join_update(MYSQL_THD thd, struct st_mysql_sys_var *var, void 
   }
 
 #define STATUS_MEMBER(name, label) \
-  { "Tianmu_" #label, (char *)get_##name##_StatusVar, SHOW_FUNC, SHOW_SCOPE_UNDEF }
+  { "Tianmu_" #label, (char *)get_##name##_StatusVar, SHOW_FUNC, SHOW_SCOPE_GLOBAL }
 
 STATUS_FUNCTION(gdchits, SHOW_LONGLONG, getCacheHits)
 STATUS_FUNCTION(gdcmisses, SHOW_LONGLONG, getCacheMisses)
@@ -613,7 +613,7 @@ static MYSQL_SYSVAR_BOOL(enable_histogram_cmap_bloom, tianmu_sysvar_enable_histo
 static MYSQL_SYSVAR_BOOL(large_prefix, tianmu_sysvar_large_prefix, PLUGIN_VAR_RQCMDARG,
                          "Support large index prefix length of 3072 bytes. If off, the maximum "
                          "index prefix length is 767.",
-                         NULL, NULL, FALSE);
+                         NULL, NULL, TRUE);
 static MYSQL_SYSVAR_UINT(result_sender_rows, tianmu_sysvar_result_sender_rows, PLUGIN_VAR_UNSIGNED,
                          "The number of rows to load at a time when processing "
                          "queries like select xxx from yyya",

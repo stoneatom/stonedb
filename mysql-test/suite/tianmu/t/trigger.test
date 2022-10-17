@@ -1,0 +1,1134 @@
+--echo #writer:shangyanwen
+
+--echo #
+--echo # Trigger is not activated by LOAD DATA"
+--echo # syw test result
+
+#create table t1 (i int, j int, k int)engine=tianmu;
+#create trigger trg1 before insert on t1 for each row set new.k = new.i;
+#create trigger trg2 after insert on t1 for each row set @b:= "Fired"; 
+#set @b:="";
+# Test triggers with file with separators
+#load data infile '../../std_data/rpl_loaddata.dat' into table t1 (@a, i);
+#select *, @b from t1;
+#set @b:="";
+# Test triggers with fixed size row file
+#load data infile '../../std_data/loaddata5.dat' into table t1 fields terminated by '' enclosed by '' (i, j);
+#select *, @b from t1;
+# This also will drop triggers
+#drop table t1;
+
+--echo #
+--echo # Trigger activation INSERT
+--echo #
+
+CREATE TABLE account (acct_num INT, amount DECIMAL(10,2))engine=tianmu;
+CREATE TRIGGER ins_sum BEFORE INSERT ON account FOR EACH ROW SET @sum = @sum + NEW.amount;
+
+SET @sum = 0;
+INSERT INTO account VALUES(137,14.98),(141,1937.50),(97,-100.00);
+SELECT @sum AS 'Total amount inserted';
+DROP TRIGGER test.ins_sum;
+drop table account;
+
+
+--echo #
+--echo # simple trigger
+--echo #
+
+--disable_warnings
+drop table if exists t1;
+--enable_warnings
+
+create table t1 (i int)engine=tianmu;
+create trigger trg before insert on t1 for each row set @a:=1;
+set @a:=0;
+select @a;
+insert into t1 values (1);
+select @a;
+drop trigger trg;
+
+--echo #
+--echo #simple trigger reading some values 
+--echo #
+
+create trigger trg before insert on t1 for each row set @a:=new.i;
+insert into t1 values (123);
+select @a;
+
+drop trigger trg;
+drop table t1;
+
+--echo #
+--echo ## After insert trigger
+--echo # Useful for aggregating data
+
+create table t1 (i int not null primary key)engine=tianmu;
+create trigger trg after insert on t1 for each row
+  set @a:= if(@a,concat(@a, ":", new.i), new.i);
+set @a:="";
+insert into t1 values (2),(3),(4),(5);
+select @a;
+drop trigger trg;
+drop table t1;
+
+--echo #
+--echo # Several triggers on one table
+--echo #
+
+create table t1 (i int, j int)engine=tianmu;
+
+delimiter |;
+create trigger trg1 before insert on t1 for each row 
+begin
+  if new.j > 10 then
+    set new.j := 10;
+  end if;
+end|
+create trigger trg2 before update on t1 for each row 
+begin
+  if old.i % 2 = 0 then
+    set new.j := -1;
+  end if;
+end|
+create trigger trg3 after update on t1 for each row 
+begin
+  if new.j = -1 then
+    set @fired:= "Yes";
+  end if;
+end|
+delimiter ;|
+
+set @fired:="";
+insert into t1 values (1,2),(2,3),(3,14);
+select @fired;
+select * from t1;
+update t1 set j= 20;
+select @fired;
+select * from t1;
+
+drop trigger trg1;
+drop trigger trg2;
+drop trigger trg3;
+drop table t1;
+
+--echo #
+--echo # Let us test how triggers work for special forms of INSERT such as
+--echo # INSERT ... ON DUPLICATE KEY UPDATE
+--echo #
+
+create table t1 (id int not null primary key, data int)engine=tianmu;
+create trigger t1_bi before insert on t1 for each row
+  set @log:= concat(@log, "(BEFORE_INSERT: new=(id=", new.id, ", data=", new.data,"))");
+create trigger t1_ai after insert on t1 for each row
+  set @log:= concat(@log, "(AFTER_INSERT: new=(id=", new.id, ", data=", new.data,"))");
+create trigger t1_bu before update on t1 for each row
+  set @log:= concat(@log, "(BEFORE_UPDATE: old=(id=", old.id, ", data=", old.data,
+                                        ") new=(id=", new.id, ", data=", new.data,"))");
+create trigger t1_au after update on t1 for each row
+  set @log:= concat(@log, "(AFTER_UPDATE: old=(id=", old.id, ", data=", old.data,
+                                       ") new=(id=", new.id, ", data=", new.data,"))");
+
+# Simple INSERT - both triggers should be called
+set @log:= "";
+insert into t1 values (1, 1);
+select @log;
+# INSERT IGNORE for already existing key - only before trigger should fire
+set @log:= "";
+insert ignore t1 values (1, 2);
+select @log;
+# INSERT ... ON DUPLICATE KEY UPDATE ...
+set @log:= "";
+insert into t1 (id, data) values (1, 3), (2, 2) on duplicate key update data= data + 1;
+select @log;
+
+drop table t1;
+
+
+
+--echo #
+--echo # test triggers which access other tables
+--echo # Trivial trigger which inserts data into another table
+--echo #
+--disable_warnings
+drop table if exists t2;
+--enable_warnings
+create table t1 (id int primary key, data varchar(10), fk int)engine=tianmu;
+create table t2 (event varchar(100))engine=tianmu;
+create table t3 (id int primary key)engine=tianmu;
+create trigger t1_ai after insert on t1 for each row 
+insert into t2 values (concat("INSERT INTO t1 id=", new.id, " data='", new.data, "'"));
+insert into t1 (id, data) values (1, "one"), (2, "two");
+select * from t1;
+select * from t2;
+drop trigger t1_ai;
+# Trigger which uses couple of tables (and partially emulates FK constraint)
+delimiter |;
+create trigger t1_bi before insert on t1 for each row
+begin
+  if exists (select id from t3 where id=new.fk) then
+    insert into t2 values (concat("INSERT INTO t1 id=", new.id, " data='", new.data, "' fk=", new.fk));
+  else
+    insert into t2 values (concat("INSERT INTO t1 FAILED id=", new.id, " data='", new.data, "' fk=", new.fk));
+    set new.id= NULL;
+  end if;
+end|
+delimiter ;|
+insert into t3 values (1);
+--error ER_BAD_NULL_ERROR
+insert into t1 values (4, "four", 1), (5, "five", 2);
+select * from t1;
+select * from t2;
+drop table t1, t2, t3;
+
+--echo #
+--echo # Trigger which invokes function
+--echo #
+
+#tianmu need setting：log_bin_trust_function_creators=on
+create table t1 (id int primary key, data varchar(10))engine=tianmu;
+create table t2 (seq int)engine=tianmu;
+insert into t2 values (10);
+create function f1 () returns int return (select max(seq) from t2);
+
+delimiter |;
+create trigger t1_bi before insert on t1 for each row
+begin
+  if new.id > f1() then
+    set new.id:= f1();
+  end if;
+end|
+delimiter ;|
+insert into t1 values (1, "first");
+insert into t1 values (f1(), "max");
+select * from t1;
+drop table t1, t2;
+drop function f1;
+
+--echo #
+--echo # test before insert trigger
+--echo # Such triggers can be used for setting complex default values
+--echo #
+
+create table t1 (i int not null, j int)engine=tianmu;
+
+delimiter |;
+create trigger trg before insert on t1 for each row
+begin
+  if isnull(new.j) then
+    set new.j:= new.i * 10;
+  end if;
+end|
+delimiter ;|
+insert into t1 (i) values (1);
+insert into t1 (i,j) values (2, 3);
+select * from t1;
+drop trigger trg;
+drop table t1;
+
+--echo #
+--echo # Test of wrong column specifiers in triggers
+--echo #
+
+create table t1 (i int)engine=tianmu;
+create table t3 (i int)engine=tianmu;
+
+--error 1363
+create trigger trg before insert on t1 for each row set @a:= old.i;
+--error 1363
+create trigger trg before delete on t1 for each row set @a:= new.i;
+--error 1362
+create trigger trg before update on t1 for each row set old.i:=1;
+--error 1363
+create trigger trg before delete on t1 for each row set new.i:=1;
+--error 1362
+create trigger trg after update on t1 for each row set new.i:=1;
+--error 1054
+create trigger trg before update on t1 for each row set new.j:=1;
+--error 1054
+create trigger trg before update on t1 for each row set @a:=old.j;
+
+
+--echo #
+--echo # test various trigger creation errors
+--echo # Also quickly test table namespace (bug#5892/6182)
+--echo # 
+
+--error 1146
+create trigger trg before insert on t2 for each row set @a:=1;
+
+create trigger trg before insert on t1 for each row set @a:=1;
+--error 1359
+create trigger trg after insert on t1 for each row set @a:=1;
+--error 1359
+create trigger trg before insert on t3 for each row set @a:=1;
+create trigger trg2 before insert on t3 for each row set @a:=1;
+drop trigger trg2;
+drop trigger trg;
+
+--error 1360
+drop trigger trg;
+
+create view v1 as select * from t1;
+--error 1347
+create trigger trg before insert on v1 for each row set @a:=1;
+drop view v1;
+
+drop table t1;
+drop table t3;
+
+create temporary table t1 (i int)engine=tianmu;
+--error 1361
+create trigger trg before insert on t1 for each row set @a:=1;
+drop table t1;
+
+--echo #
+--echo # Triggers with string literals
+--echo #
+
+create table t1 (x1col char)engine=innodb;  
+create trigger tx1 before insert on t1 for each row set new.x1col = 'x';
+insert into t1 values ('y');
+select * from t1;
+drop trigger tx1;
+drop table t1;
+
+--echo #
+--echo # DROP TABLE ，drop triggers
+--echo #
+
+create table t1 (a int)engine=innodb;
+create trigger trg1 before insert on t1 for each row set new.a= 10;
+drop table t1;
+create table t1 (a int)engine=tianmu;
+insert into t1 values ();
+select * from t1;
+drop table t1;
+
+--echo #
+--echo # DROP DATABASE，drop triggers.
+--echo #
+
+create database mysqltest;
+use mysqltest;
+create table t1 (i int)engine=tianmu;
+create trigger trg1 before insert on t1 for each row set @a:= 1;
+# This should succeed
+drop database mysqltest;
+use test;
+
+--echo #
+--echo # "Triggers: Allowed to create triggers on a subject table in a different DB". 
+--echo #
+
+create database mysqltest;
+create table mysqltest.t1 (i int);
+--error 1435
+create trigger trg1 before insert on mysqltest.t1 for each row set @a:= 1;
+use mysqltest;
+--error 1146
+create trigger test.trg1 before insert on t1 for each row set @a:= 1;
+drop database mysqltest;
+use test;
+
+--echo #
+--echo # Multi-table UPDATE does not activate update triggers
+--echo # We will also test how delete triggers wor for multi-table DELETE.
+--echo #
+
+create table t1 (i int, j int default 10, k int not null, key (k))engine=tianmu;
+create table t2 (i int)engine=tianmu;
+insert into t1 (i, k) values (1, 1);
+insert into t2 values (1);
+create trigger trg1 before update on t1 for each row set @a:= @a + new.j - old.j;
+create trigger trg2 after update on t1 for each row set @b:= "Fired";
+set @a:= 0, @b:= "";
+# Check that trigger works in case of update on the fly
+update t1, t2 set j = j + 10 where t1.i = t2.i;
+select @a, @b;
+insert into t1 values (2, 13, 2);
+insert into t2 values (2);
+set @a:= 0, @b:= "";
+# And now let us check that triggers work in case of multi-update which
+# is done through temporary tables...
+update t1, t2 set j = j + 15 where t1.i = t2.i and t1.k >= 2;
+select @a, @b;
+# Let us test delete triggers for multi-delete now.
+# We create triggers for both tables because we want test how they
+# work in both on-the-fly and via-temp-tables cases.
+create trigger trg3 before delete on t1 for each row set @c:= @c + old.j;
+create trigger trg4 before delete on t2 for each row set @d:= @d + old.i;
+create trigger trg5 after delete on t1 for each row set @e:= "After delete t1 fired";
+create trigger trg6 after delete on t2 for each row set @f:= "After delete t2 fired";
+set @c:= 0, @d:= 0, @e:= "", @f:= "";
+delete t1, t2 from t1, t2 where t1.i = t2.i;
+select @c, @d, @e, @f;
+# This also will drop triggers
+drop table t1, t2;
+
+--echo #
+--echo #Triggers are not activated for INSERT ... SELECT".
+--echo # (We also check the fact that trigger modifies some field does not affect
+--echo #  value of next record inserted).
+--echo #
+
+delimiter |;
+create table t1 (i int, j int default 10)|
+create table t2 (i int)|
+insert into t2 values (1), (2)|
+create trigger trg1 before insert on t1 for each row 
+begin
+  if new.i = 1 then
+    set new.j := 1;
+  end if;
+end|
+create trigger trg2 after insert on t1 for each row set @a:= 1|
+set @a:= 0|
+insert into t1 (i) select * from t2|
+select * from t1|
+select @a|
+# This also will drop triggers
+drop table t1, t2|
+delimiter ;|
+
+--echo #
+--echo # trigger...SELECT .union... INTO var_name
+--echo #
+
+create table t1 (id int, data int, username varchar(16))engine=innodb;
+insert into t1 (id, data) values (1, 0);
+
+delimiter |;
+create trigger t1_whoupdated before update on t1 for each row
+begin
+  declare user varchar(32);
+  declare i int;
+  select user() into user;
+  set NEW.username = user;
+  select count(*) from ((select 1) union (select 2)) as d1 into i;
+end|
+
+delimiter ;|
+update t1 set data = 2;
+select * from t1;
+drop table t1;
+
+--echo #
+--echo # trigger....stored procedures
+--echo #
+
+create table t1 (a int)engine=tianmu;
+DELIMITER //;
+CREATE PROCEDURE `p1`()
+begin
+  insert into t1 values (1);
+end//
+create trigger trg before insert on t1 for each row 
+begin 
+  declare done int default 0;
+  set done= not done;
+end//
+DELIMITER ;//
+CALL p1();
+drop procedure p1;
+drop table t1;
+
+
+--echo #
+--echo # Rename table.... triggers"
+--echo #
+
+create table t1 (id int)engine=tianmu;
+create trigger t1_bi before insert on t1 for each row set @a:=new.id;
+create trigger t1_ai after insert on test.t1 for each row set @b:=new.id;
+insert into t1 values (101);
+select @a, @b;
+select trigger_schema, trigger_name, event_object_schema,
+       event_object_table, action_statement from information_schema.triggers
+       where event_object_schema = 'test';
+rename table t1 to t2;
+# Trigger should work after rename
+insert into t2 values (102);
+select @a, @b;
+
+
+--echo #
+--echo # Triggers/Traditional : SET @ 
+--echo #
+
+DROP  TRIGGER t1_ai;
+CREATE TABLE t1 (i1 INT)engine=tianmu;
+
+SET @save_sql_mode=@@sql_mode;
+
+SET SQL_MODE='';
+
+CREATE TRIGGER t1_ai AFTER INSERT ON t1 FOR EACH ROW
+  SET @x = 5/0;
+
+SET SQL_MODE='traditional';
+
+CREATE TRIGGER t1_au AFTER UPDATE ON t1 FOR EACH ROW
+  SET @x = 5/0;
+
+SET @x=1;
+INSERT INTO t1 VALUES (@x);
+SELECT @x;
+
+SET @x=2;
+UPDATE t1 SET i1 = @x;
+SELECT @x;
+
+SET SQL_MODE='';
+
+SET @x=3;
+INSERT INTO t1 VALUES (@x);
+SELECT @x;
+
+SET @x=4;
+UPDATE t1 SET i1 = @x;
+SELECT @x;
+
+SET @@sql_mode=@save_sql_mode;
+
+DROP TRIGGER t1_ai;
+DROP TRIGGER t1_au;
+DROP TABLE t1;
+
+--echo #
+--echo # Check that NEW.x pseudo variable is accepted as INOUT and OUT
+--echo # parameter to stored routine.
+--echo #
+CREATE TABLE t1 (i1 INT)engine=tianmu;
+INSERT INTO t1 VALUES (3);
+CREATE PROCEDURE p1(OUT i1 INT) DETERMINISTIC NO SQL SET i1 = 5;
+CREATE PROCEDURE p2(INOUT i1 INT) DETERMINISTIC NO SQL SET i1 = i1 * 7;
+delimiter //;
+CREATE TRIGGER t1_bu BEFORE UPDATE ON t1 FOR EACH ROW
+BEGIN
+  CALL p1(NEW.i1);
+  CALL p2(NEW.i1);
+END//
+delimiter ;//
+UPDATE t1 SET i1 = 11 WHERE i1 = 3;
+select * from t1;
+DROP TRIGGER t1_bu;
+DROP PROCEDURE p2;
+DROP PROCEDURE p1;
+drop table t1;
+
+--echo #
+--echo # UPDATE using key and invoking trigger that modifies
+--echo #            this key does not stop"
+--echo #
+
+drop table if exists t1;
+create table t1 (i int, j int key)engine=tianmu;
+insert into t1 values (1,1), (2,2), (3,3);
+create trigger t1_bu before update on t1 for each row
+  set new.j = new.j + 10;
+# This should not work indefinitely and should cause
+# expected result
+update t1 set i= i+ 10 where j > 2;
+select * from t1;
+drop table t1;
+
+
+--echo #
+--echo # TRUNCATE TABLE still maps to DELETE
+--echo #
+
+DROP TABLE IF EXISTS t2;
+CREATE TABLE t1 (a INT PRIMARY KEY)engine=tianmu;
+CREATE TABLE t2 (a INT PRIMARY KEY)engine=tianmu;
+INSERT INTO t1 VALUES (1),(2),(3),(4),(5),(6),(7),(8);
+
+CREATE TRIGGER trg_t1 BEFORE DELETE on t1 FOR EACH ROW 
+  INSERT INTO t2 VALUES (OLD.a);
+
+FLUSH STATUS;
+TRUNCATE t1;
+SHOW STATUS LIKE 'handler_delete';
+SELECT COUNT(*) FROM t2;
+
+INSERT INTO t1 VALUES (1),(2),(3),(4),(5),(6),(7),(8);
+DELETE FROM t2;
+
+FLUSH STATUS;
+#DELETE FROM t1;
+SHOW STATUS LIKE 'handler_delete';
+SELECT COUNT(*) FROM t2;
+
+DROP TRIGGER trg_t1;
+DROP TABLE t1,t2;
+
+
+#
+# DROP TRIGGER needs an IF EXISTS
+#
+create table t1(a int, b varchar(50))engine=tianmu;
+-- error 1360
+drop trigger not_a_trigger;
+drop trigger if exists not_a_trigger;
+
+create trigger t1_bi before insert on t1
+for each row set NEW.b := "In trigger t1_bi";
+
+insert into t1 values (1, "a");
+drop trigger if exists t1_bi;
+insert into t1 values (2, "b");
+drop trigger if exists t1_bi;
+insert into t1 values (3, "c");
+
+select * from t1;
+drop table t1;
+
+
+--echo #
+--echo # BDROP TABLE in nested stored procedure
+--echo #
+
+CREATE TABLE bug22580_t1 (a INT, b INT)engine=tianmu;
+
+DELIMITER ||;
+
+CREATE PROCEDURE bug22580_proc_2()
+BEGIN
+  DROP TABLE IF EXISTS bug22580_tmp;
+  CREATE TEMPORARY TABLE bug22580_tmp (a INT);
+  DROP TABLE bug22580_tmp;
+END||
+
+CREATE PROCEDURE bug22580_proc_1()
+BEGIN
+  CALL bug22580_proc_2();
+END||
+
+CREATE TRIGGER t1bu BEFORE UPDATE ON bug22580_t1
+FOR EACH ROW 
+BEGIN
+  CALL bug22580_proc_1();
+END||
+
+DELIMITER ;||
+
+# Must pass, the actions of the update trigger should not matter
+INSERT INTO bug22580_t1 VALUES (1,1);
+
+DROP TABLE bug22580_t1;
+DROP PROCEDURE bug22580_proc_1;
+DROP PROCEDURE bug22580_proc_2;
+
+--echo #
+--echo # REATE TABLE .. SELECT and triggers
+--echo #
+
+create table t1 (i int)engine=tianmu;
+create trigger t1_bi before insert on t1 for each row set new.i = 7;
+create trigger t1_ai after insert on t1 for each row set @a := 7;
+create table t2 (j int)engine=tianmu;
+insert into t2 values (1), (2);
+set @a:="";
+insert into t1 select * from t2;
+select * from t1;
+select @a;
+# Let us check that trigger that involves table also works ok.
+drop trigger t1_bi;
+drop trigger t1_ai;
+
+create table t3 (isave int)engine=tianmu;
+create trigger t1_bi before insert on t1 for each row insert into t3 values (new.i);
+insert into t1 select * from t2;
+select * from t1;
+select * from t3;
+drop table t1, t2, t3;
+
+--echo #
+--echo #trigger code truncated
+--echo #
+
+create table table_25411_a(a int)engine=tianmu;
+create table table_25411_b(b int)engine=tianmu;
+
+create trigger trg_25411a_ai after insert on table_25411_a
+for each row
+  insert into table_25411_b select new.*;
+
+select * from table_25411_a;
+
+--error 1051
+insert into table_25411_a values (1);
+
+select * from table_25411_a;
+
+drop table table_25411_a;
+drop table table_25411_b;
+
+
+--echo #
+--echo #AFTER UPDATE trigger changes of the data
+--echo #
+
+--disable_warnings
+drop table if exists t1, t2;
+drop trigger if exists trg1;
+drop trigger if exists trg2;
+--enable_warnings
+create table t1 (a int)engine=tianmu;
+create table t2 (b int)engine=tianmu;
+create trigger trg1 after update on t1 for each row set @a= @a+1;
+create trigger trg2 after update on t2 for each row set @b= @b+1;
+insert into t1 values (1), (2), (3);
+insert into t2 values (1), (2), (3);
+set @a= 0;
+set @b= 0;
+update t1, t2 set t1.a= t1.a, t2.b= t2.b;
+select @a, @b;
+update t1, t2 set t1.a= t2.b, t2.b= t1.a;
+select @a, @b;
+update t1 set a= a;
+select @a, @b;
+update t2 set b= b;
+select @a, @b;
+update t1 set a= 1;
+select @a, @b;
+update t2 set b= 1;
+select @a, @b;
+drop trigger trg1;
+drop trigger trg2;
+drop table t1, t2;
+
+--echo
+--echo #
+--echo # SP INOUT HANDLING IS BROKEN FOR TEXT TYPE.
+--echo #
+
+--disable_warnings ONCE
+DROP TABLE IF EXISTS t1;
+
+CREATE TABLE t1(c TEXT)engine=tianmu;
+
+delimiter |;
+CREATE TRIGGER t1_bi BEFORE INSERT ON t1 FOR EACH ROW
+BEGIN
+  DECLARE v TEXT;
+  SET v = 'aaa';
+  SET NEW.c = v;
+END|
+delimiter ;|
+
+INSERT INTO t1 VALUES('qazwsxedc');
+
+SELECT c FROM t1;
+
+DROP TABLE t1;
+
+--echo #
+--echo # Trigger On Truncated Tables
+--echo #
+CREATE TABLE t1(id INT)engine=tianmu;
+CREATE TABLE t2(id INT)engine=tianmu;
+
+CREATE TRIGGER trigger1 BEFORE INSERT ON t1 FOR EACH ROW
+  SET NEW.id= (SELECT * FROM t2);
+
+INSERT INTO t2 VALUES(0);
+INSERT INTO t1 VALUES(0);
+
+TRUNCATE TABLE t2;
+
+INSERT INTO t2 VALUES(0);
+INSERT INTO t1 VALUES(0);
+
+DROP TABLE t2;
+--error 1146
+INSERT INTO t1 VALUES(0);
+DROP TABLE t1;
+
+--echo #
+--echo #UPDATE TRIGGER INVOKED WHEN UPDATE IGNORE MEANS
+--echo #  THAT NO UPDATE IS PERFORMED
+--echo #
+CREATE TABLE t1 (a INT PRIMARY KEY)engine=tianmu;
+CREATE TABLE t2 (after_update CHAR(50))engine=tianmu;
+CREATE TABLE t3(b INT PRIMARY KEY)engine=tianmu;
+INSERT INTO t1 VALUES (1), (2);
+INSERT INTO t3 VALUES (1);
+
+DELIMITER |;
+CREATE TRIGGER post_update_t1 AFTER UPDATE ON t1
+FOR EACH ROW BEGIN
+  INSERT INTO t2 VALUES("POST UPDATE TRIGGER FOR UPDATE IGNORE ON t1 FIRED");
+END|
+DELIMITER ;|
+
+UPDATE IGNORE t1 SET a=2 WHERE a=1;
+SELECT * FROM t2;
+UPDATE IGNORE t1,t3 SET t1.a=2 WHERE t1.a=1;
+SELECT * FROM t2;
+UPDATE IGNORE t3,t1 SET t1.a=2 WHERE t1.a=1;
+SELECT * FROM t1;
+SELECT * FROM t2;
+DROP TRIGGER post_update_t1;
+DROP TABLE t1,t2,t3;
+
+--echo #
+--echo # CURRENT_TIMESTAMP PRODUCES ZEROS IN TRIGGER
+--echo #
+
+--echo # Case 1: With BEFORE INSERT triggers
+--echo # Scenario 1.1: Normal INSERT
+SET TIMESTAMP= UNIX_TIMESTAMP("2017-05-15 07:07:07");
+CREATE TABLE t1( a TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP )engine=tianmu;
+
+CREATE TRIGGER trigger_for_normal_insert BEFORE INSERT ON t1 FOR EACH ROW
+SET @x:= NEW.a;
+
+INSERT INTO t1() VALUES();
+
+SELECT * FROM t1;
+--echo # Without the patch, x contained zero timestamp.
+SELECT @x;
+DROP TABLE t1;
+
+--echo #
+--echo # Scenario 1.2: INSERT INTO... SELECT
+CREATE TABLE t1(a DATETIME NOT NULL DEFAULT NOW(), b INT);
+
+CREATE TRIGGER trigger_for_insert_select BEFORE INSERT ON t1 FOR EACH ROW
+SET @x:= NEW.a;
+
+INSERT INTO t1(b) SELECT 1;
+
+SELECT * FROM t1;
+--echo # Without the patch, x contained zero timestamp.
+SELECT @x;
+DROP TABLE t1;
+
+--echo
+--echo # Scenario 1.3: Normal REPLACE
+CREATE TABLE t1( a TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP );
+
+CREATE TRIGGER trigger_for_normal_replace BEFORE INSERT ON t1 FOR EACH ROW
+SET @x:= NEW.a;
+
+REPLACE INTO t1() VALUES();
+
+SELECT * FROM t1;
+--echo # Without the patch, x contained zero timestamp.
+SELECT @x;
+DROP TABLE t1;
+
+--echo
+--echo # Scenario 1.4: REPLACE INTO... SELECT
+CREATE TABLE t1(a DATETIME NOT NULL DEFAULT NOW(), b INT);
+
+CREATE TRIGGER trigger_for_replace_select BEFORE INSERT ON t1 FOR EACH ROW
+SET @x:= NEW.a;
+
+REPLACE INTO t1(b) SELECT 1;
+
+SELECT * FROM t1;
+--echo # Without the patch, x contained zero timestamp.
+SELECT @x;
+DROP TABLE t1;
+
+--echo
+--echo # Case 2: With BEFORE UPDATE triggers
+--echo # Scenario 2.1: Normal UPDATE with ON UPDATE NOW() clause for
+--echo #               the timestamp field.
+SET TIMESTAMP= UNIX_TIMESTAMP("2017-04-11 09:09:09");
+CREATE TABLE t1( a TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                 ON UPDATE NOW(), b INT DEFAULT 1 );
+
+CREATE TRIGGER trigger_before_update BEFORE UPDATE ON t1 FOR EACH ROW
+SET @x:= NEW.a;
+
+INSERT INTO t1 VALUES();
+SELECT * FROM t1;
+
+SET TIMESTAMP= UNIX_TIMESTAMP("2017-04-12 10:10:10");
+UPDATE t1 SET b= 2;
+
+SELECT * FROM t1;
+--echo # Without the patch, x contained the old timestamp.
+SELECT @x;
+
+DROP TABLE t1;
+
+--echo
+--echo # Scenario 2.2: Normal UPDATE without ON UPDATE NOW() clause for
+--echo #               the timestamp field.
+SET TIMESTAMP= UNIX_TIMESTAMP("2017-04-13 08:08:08");
+CREATE TABLE t1( a TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                 b INT DEFAULT 1 );
+
+CREATE TRIGGER trigger_before_update BEFORE UPDATE ON t1 FOR EACH ROW
+SET @x:= NEW.a;
+
+INSERT INTO t1 VALUES();
+SELECT * FROM t1;
+
+SET TIMESTAMP= UNIX_TIMESTAMP("2017-05-04 05:05:05");
+UPDATE t1 SET b= 2;
+
+SELECT * FROM t1;
+--echo # x contains the old timestamp because of the absence of
+--echo # ON UPDATE clause for the timestamp field.
+SELECT @x;
+
+DROP TABLE t1;
+
+--echo
+--echo # Scenario 2.3: UPDATE with join
+SET TIMESTAMP= UNIX_TIMESTAMP("2017-04-25 11:11:11");
+CREATE TABLE t1( a DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                 ON UPDATE CURRENT_TIMESTAMP, b INT);
+CREATE TABLE t2( d INT);
+
+INSERT INTO t1(b) VALUES(1);
+INSERT INTO t2 VALUES(2);
+
+SELECT * FROM t1;
+SELECT * FROM t2;
+
+CREATE TRIGGER trigger_before_update_with_join BEFORE UPDATE ON t1 FOR EACH ROW
+SET @x:= NEW.a;
+
+SET TIMESTAMP= UNIX_TIMESTAMP("2017-04-25 01:01:01");
+UPDATE t1, t2 SET t1.b= t2.d;
+
+SELECT * FROM t1;
+--echo # Without the patch, x contained old timestamp
+SELECT @x;
+
+DROP TABLE t1, t2;
+
+--echo #
+--echo # BUG IN "INSERT... ON DUPLICATE KEY UPDATE" QUERY
+--echo #
+
+--echo # Setup.
+CREATE TABLE t1 (fld1 VARCHAR(64) NOT NULL,
+fld2 INT DEFAULT 0, PRIMARY KEY (fld1));
+
+CREATE TABLE t2 (fld1 VARCHAR(64) NOT NULL,
+fld2 INT(11) DEFAULT NULL, PRIMARY KEY (fld1));
+
+INSERT INTO t1(fld1) VALUES (1100);
+INSERT INTO t2 VALUES (1100, 40);
+
+DELIMITER $$;
+
+CREATE TRIGGER update_after_update
+AFTER UPDATE ON t2 FOR EACH ROW
+BEGIN
+  UPDATE t1 SET t1.fld2 = t1.fld2 + 1
+  WHERE t1.fld1 = NEW.fld1;
+END$$
+
+DELIMITER ;$$
+
+SELECT * FROM t1;
+SELECT * FROM t2;
+
+INSERT INTO t2 (fld1) values (1100) ON DUPLICATE KEY UPDATE
+fld2= 50;
+
+SELECT * FROM t1;
+SELECT * FROM t2;
+
+--echo # Without patch, the after update trigger is not invoked.
+INSERT INTO t2 (fld1) values (1100) ON DUPLICATE KEY UPDATE
+fld2= 50;
+
+SELECT * FROM t1;
+SELECT * FROM t2;
+
+--echo # Tests covering before update trigger.
+
+--echo # Setup.
+TRUNCATE TABLE t1;
+DROP TRIGGER update_after_update;
+INSERT INTO t1(fld1) VALUES (1100);
+
+DELIMITER $$;
+
+CREATE TRIGGER update_before_update
+BEFORE UPDATE ON t2 FOR EACH ROW
+BEGIN
+  UPDATE t1 SET t1.fld2 = t1.fld2 + 1
+  WHERE t1.fld1 = NEW.fld1;
+END$$
+
+DELIMITER ;$$
+
+SELECT * FROM t1;
+SELECT * FROM t2;
+
+INSERT INTO t2 (fld1) values (1100) ON DUPLICATE KEY UPDATE
+fld2= 50;
+
+SELECT * FROM t1;
+SELECT * FROM t2;
+
+INSERT INTO t2 (fld1) values (1100) ON DUPLICATE KEY UPDATE
+fld2= 50;
+
+SELECT * FROM t1;
+SELECT * FROM t2;
+
+--echo # Cleanup
+DROP TRIGGER update_before_update;
+DROP TABLE t1, t2;
+
+--echo #
+--echo #There are bugs in the following use cases. 
+--echo #Cancel the comment run after the problem is solved
+--echo #
+
+--echo #
+--echo #bug569:After update trigger
+--echo #
+
+create table t1 (i int)engine=tianmu;
+insert into t1 values (1),(2),(3),(4);
+create trigger trg after update on t1 for each row
+  set @total_change:=@total_change + new.i - old.i;
+set @total_change:=0;
+update t1 set i=3;
+select @total_change;
+drop trigger trg;
+drop table t1;
+
+--echo #
+--echo #bug 570:Before delete trigger
+--echo #
+
+create table t1 (i int)engine=innodb;
+insert into t1 values (1),(2),(3),(4);
+create trigger trg before delete on t1 for each row
+  set @del_sum:= @del_sum + old.i;
+set @del_sum:= 0;
+delete from t1 where i <= 3;
+select @del_sum;
+drop trigger trg;
+drop table t1;
+
+--echo #
+--echo #bug 571:After delete trigger
+--echo #
+
+create table t1 (i int)engine=innodb;
+insert into t1 values (1),(2),(3),(4);
+create trigger trg after delete on t1 for each row set @del:= 1;
+set @del:= 0;
+delete from t1 where i <> 0;
+select @del;
+drop trigger trg;
+drop table t1;
+
+--echo #
+--echo # bug 580:Trigger.....delete
+--echo #
+
+# Trigger which forces invocation of another trigger
+# (emulation of FK on delete cascade policy)
+
+create table t1 (id int primary key, fk_t2 int)engine=tianmu;
+create table t2 (id int primary key, fk_t3 int)engine=tianmu;
+create table t3 (id int primary key)engine=tianmu;
+insert into t1 values (1,1), (2,1), (3,2);
+insert into t2 values (1,1), (2,2);
+insert into t3 values (1), (2);
+create trigger t3_ad after delete on t3 for each row
+  delete from t2 where fk_t3=old.id;
+create trigger t2_ad after delete on t2 for each row
+  delete from t1 where fk_t2=old.id;
+delete from t3 where id = 1;
+select * from t1 left join (t2 left join t3 on t2.fk_t3 = t3.id) on t1.fk_t2 = t2.id;
+drop table t1;
+drop table t2;
+drop table t3;
+
+--echo #
+--echo # bug 581: Trigger....inserted/updated
+--echo #
+
+# Trigger which assigns value selected from table to field of row
+# being inserted/updated.
+
+#create table t1 (id int primary key, copy int)engine=tianmu;
+#create table t2 (id int primary key, data int)engine=tianmu;
+#insert into t2 values (1,1), (2,2);
+#create trigger t1_bi before insert on t1 for each row
+#  set new.copy= (select data from t2 where id = new.id);
+#create trigger t1_bu before update on t1 for each row
+#  set new.copy= (select data from t2 where id = new.id);
+#insert into t1 values (1,3), (2,4), (3,3);
+#update t1 set copy= 1 where id = 2;
+#select * from t1;
+#drop table t1, t2;
+
+--echo #
+--echo # bug 586: trigger contains a SELECT with trigger fields in the select list under DISTINCT
+--echo #
+#SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
+#CREATE TABLE t1 (
+#  id int NOT NULL DEFAULT '0',
+#  a  varchar(10) NOT NULL,
+#  b  varchar(10),
+#  c  varchar(10),
+#  d  timestamp NOT NULL,
+#  PRIMARY KEY (id, a)
+#)engine=tianmu;
+#
+#CREATE TABLE t2 (
+#  fubar_id         int  NOT NULL DEFAULT '0',
+#  last_change_time datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
+#  PRIMARY KEY  (fubar_id)
+#)engine=tianmu;
+#
+#DELIMITER |;
+#CREATE TRIGGER fubar_change
+#  AFTER UPDATE ON t1
+#    FOR EACH ROW
+#      BEGIN
+#        INSERT INTO t2 (fubar_id, last_change_time)
+#          SELECT DISTINCT NEW.id AS fubar_id, NOW() AS last_change_time
+#            FROM t1 WHERE (id = NEW.id) AND (OLD.c != NEW.c)
+#        ON DUPLICATE KEY UPDATE
+#          last_change_time =
+#            IF((fubar_id = NEW.id)AND(OLD.c != NEW.c),NOW(),last_change_time);
+#      END|
+#
+#DELIMITER ;|
+#INSERT INTO t1 (id,a, b,c,d) VALUES
+# (1,'a','b','c',now()),(2,'a','b','c',now());
+#
+#UPDATE t1 SET c='Bang!' WHERE id=1;
+#SELECT fubar_id FROM t2;
+#
+#DROP TABLE t1,t2;
+#SET sql_mode = default;
+
+--echo #
+--echo # bug 589: create temporary table inside trigger
+--echo #
+CREATE TABLE t1 (a INT, b INT DEFAULT 150)engine=tianmu;
+
+delimiter |;
+CREATE TRIGGER t1_bi BEFORE INSERT ON t1
+FOR EACH ROW
+BEGIN
+  CREATE TEMPORARY TABLE t2 AS SELECT NEW.a, NEW.b;
+  INSERT INTO t2(a) VALUES (10);
+  INSERT INTO t2 VALUES (100, 500);
+  INSERT INTO t2(a) VALUES (1000);
+END|
+delimiter ;|
+
+INSERT INTO t1 VALUES (1, 2);
+SELECT * FROM t2;
+DROP TABLE t1;
+DROP TEMPORARY TABLE t2;

@@ -14,7 +14,7 @@ body:
     attributes:
       label: Please confirm if bug report does NOT exists already ?
       description: We kindly ask that you [search](https://github.com/stoneatom/stonedb/issues?q=is%3Aissue+is%3Aclosed) to see if an issue already exists for your bug
-    options:
+      options:
         - label: I confirm there is no existing issue for this
           required: true
 
