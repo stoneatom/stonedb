@@ -671,12 +671,13 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
   if (!EatWhiteSigns(buf, buflen) && !system::EatDTSeparators(buf, buflen)) {
     if ((at == common::CT::DATETIME &&
          RCDateTime::IsCorrectTIANMUDatetime((short)year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
-                                          RCDateTime::GetSpecialValue(at).Minute(),
-                                          RCDateTime::GetSpecialValue(at).Second())) ||
+                                             RCDateTime::GetSpecialValue(at).Minute(),
+                                             RCDateTime::GetSpecialValue(at).Second())) ||
         (at == common::CT::TIMESTAMP &&
          RCDateTime::IsCorrectTIANMUTimestamp((short)year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
-                                           RCDateTime::GetSpecialValue(at).Minute(),
-                                           RCDateTime::GetSpecialValue(at).Second())))
+                                              RCDateTime::GetSpecialValue(at).Minute(),
+                                              RCDateTime::GetSpecialValue(at).Second())) ||
+        (at == common::CT::DATE && RCDateTime::IsCorrectTIANMUDate((short)year, month, day)))
       rcv = RCDateTime((short)year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
                        RCDateTime::GetSpecialValue(at).Minute(), RCDateTime::GetSpecialValue(at).Second(), at);
     return common::ErrorCode::OUT_OF_RANGE;
@@ -738,7 +739,7 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
   try {
     if (at == common::CT::DATETIME) {
       if (RCDateTime::IsCorrectTIANMUDatetime((short)year, (short)month, (short)day, (short)hour, (short)minute,
-                                           (short)second)) {
+                                              (short)second)) {
         rcv = RCDateTime((short)year, (short)month, (short)day, (short)hour, (short)minute, (short)second, at);
         return tianmu_rc;
       } else {
@@ -749,7 +750,7 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
       }
     } else if (at == common::CT::TIMESTAMP) {
       if (RCDateTime::IsCorrectTIANMUTimestamp((short)year, (short)month, (short)day, (short)hour, (short)minute,
-                                            (short)second)) {
+                                               (short)second)) {
         // convert to UTC
         MYSQL_TIME myt;
         std::memset(&myt, 0, sizeof(MYSQL_TIME));
@@ -1051,11 +1052,10 @@ common::ErrorCode ValueParserForText::ParseDateTime(const BString &rcs, RCDateTi
   switch (at) {
     case common::CT::TIMESTAMP:
     case common::CT::DATETIME:
+    case common::CT::DATE:
       return ValueParserForText::ParseDateTimeOrTimestamp(rcs, rcv, at);
     case common::CT::TIME:
       return ValueParserForText::ParseTime(rcs, rcv);
-    case common::CT::DATE:
-      return ValueParserForText::ParseDate(rcs, rcv);
     default:  // case common::CT::YEAR :
       return ValueParserForText::ParseYear(rcs, rcv);
   }
