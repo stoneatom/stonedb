@@ -1,0 +1,22 @@
+reset master;
+show variables like 'tianmu_insert_delayed';
+Variable_name	Value
+tianmu_insert_delayed	ON
+use test;
+create table t1 (a int, b int) engine=tianmu DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+insert into t1 values(1,1);
+insert into t1 values(2,2);
+insert into t1 values(3,3);
+insert into t1 values(4,4);
+show binlog events;
+Log_name	Pos	Event_type	Server_id	End_log_pos	Info
+binlog.000001	4	Format_desc	1	126	#
+binlog.000001	126	Previous_gtids	1	157	#
+binlog.000001	157	Anonymous_Gtid	1	236	#
+binlog.000001	236	Query	1	410	#
+binlog.000001	410	Anonymous_Gtid	1	489	#
+binlog.000001	489	Query	1	571	#
+binlog.000001	571	Begin_load_query	1	614	#
+binlog.000001	614	Execute_load_query	1	835	#
+binlog.000001	835	Query	1	918	#
+drop table t1;

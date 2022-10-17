@@ -35,6 +35,7 @@
 #include <map>
 #include <utility>
 
+#include "../storage/tianmu/handler/ha_my_tianmu.h"
 #include "field_types.h"
 #include "lex_string.h"
 #include "m_ctype.h"
@@ -681,7 +682,9 @@ bool Sql_cmd_insert_values::execute_inner(THD *thd) {
 
     if (!has_error ||
         thd->get_transaction()->cannot_safely_rollback(Transaction_ctx::STMT)) {
-      if (mysql_bin_log.is_open()) {
+      bool tianmu_engine = insert_table->s->db_type() ? insert_table->s->db_type()->db_type == DB_TYPE_TIANMU: false;
+      bool tianmu_engier_insert_delayed = tianmu_engine ? Tianmu::DBHandler::Tianmu_Get_Insert_Delayed_Flag(thd): false;
+      if (!tianmu_engier_insert_delayed && mysql_bin_log.is_open()) {
         int errcode = 0;
         if (!has_error) {
           /*

@@ -160,5 +160,6 @@ bool Tianmu_Load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) 
   return false;
 }
 
+bool Tianmu_Get_Insert_Delayed_Flag(THD *thd) { return tianmu_sysvar_insert_delayed; }
 }  // namespace DBHandler
 }  // namespace Tianmu
