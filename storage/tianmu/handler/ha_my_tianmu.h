@@ -38,6 +38,8 @@ void Tianmu_UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *sourc
 // processing the load operation.
 bool Tianmu_Load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
 
+bool Tianmu_Get_Insert_Delayed_Flag(THD *thd);
+
 }  // namespace DBHandler
 }  //  namespace Tianmu
 
