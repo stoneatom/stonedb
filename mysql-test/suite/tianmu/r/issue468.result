@@ -5,4 +5,5 @@ select * from tt where (e1 AND ((e2 AND e3 AND (e4 OR e5)) OR e6) OR (e7 AND e8 
 e1	e2	e3	e4	e5	e6	e7	e8	e9
 select * from tt where (e1 AND ((e2 AND e3 AND (e4 OR e5)) OR 0) OR (e7 AND e8 AND e9));
 e1	e2	e3	e4	e5	e6	e7	e8	e9
+1	1	1	0	0	0	0	1	0
 drop table tt;
