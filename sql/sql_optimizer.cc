@@ -10167,6 +10167,7 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
           Item* cond_true =
             new (thd->mem_root) Item_int((longlong)1, 1); // Always true
           (void)li.replace(cond_true);
+          should_fix_fields = true;
         }
         else
         {
