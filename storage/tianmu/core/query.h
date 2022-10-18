@@ -232,7 +232,7 @@ class Query final {
    * \return bool - true if contains left or right outer join
    */
   // stonedb8 List -> mem_root_deque
-  static bool IsLOJNew(mem_root_deque<TABLE_LIST *> *join);
+  static bool IsLOJ(mem_root_deque<TABLE_LIST *> *join);
 
   const std::string GetItemName(Item *item);
 

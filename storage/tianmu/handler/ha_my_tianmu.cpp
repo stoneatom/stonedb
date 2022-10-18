@@ -78,13 +78,18 @@ void Tianmu_UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *sourc
   }
 }
 
-Query_route_to Tianm_Handle_Query(THD *thd, Query_expression *qe, Query_result *&result, ulong setup_tables_done_option,
-                                  int &res, int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
+Query_route_to Tianmu_Handle_Query(THD *thd, Query_expression *qe, Query_result *&result,
+                                   ulong setup_tables_done_option, int &res, int &optimize_after_tianmu,
+                                   int &tianmu_free_join, int with_insert) {
   Query_route_to ret = Query_route_to::TO_TIANMU;
   try {
-    // handle_select_ret is introduced here because in case of some exceptions
+    // ret is introduced here because in case of some exceptions
     // (e.g. thrown from ForbiddenMySQLQueryPath) we want to return
-    // Query_route_to::TO_TIANMU
+
+    // is explain, route to MySQL
+    if (thd->lex->is_explain()) return Query_route_to::TO_MYSQL;
+
+    // is query, route to Tianmu
     ret = ha_rcengine_->Handle_Query(thd, qe, result, setup_tables_done_option, res, optimize_after_tianmu,
                                      tianmu_free_join, with_insert);
 

@@ -963,7 +963,7 @@ Query_route_to Query::Compile(CompiledQuery *compiled_query, Query_block *select
       // necessary due to already done basic transformation of conditions
       // see comments in sql_select.cc:JOIN::optimize()
       // stonedb8
-      if (IsLOJNew(sl->join_list)) sl->join->optimize(false, JOIN::OptimizePhase::Finish_LOJ_Transform);
+      if (IsLOJ(sl->join_list)) sl->join->optimize(false, JOIN::OptimizePhase::Finish_LOJ_Transform);
 
       if (left_expr_for_subselect)
         if (!ClearSubselectTransformation(*oper_for_subselect, field_for_subselect, conds, having, cond_to_reinsert,
@@ -1073,7 +1073,7 @@ JoinType Query::GetJoinTypeAndCheckExpr(bool outer_join, Item *on_expr) {
   return join_type;
 }
 
-bool Query::IsLOJNew(mem_root_deque<TABLE_LIST *> *join) {
+bool Query::IsLOJ(mem_root_deque<TABLE_LIST *> *join) {
   for (TABLE_LIST *join_ptr : *join) {
     JoinType join_type = GetJoinTypeAndCheckExpr(join_ptr->outer_join, join_ptr->join_cond());
     if (join_ptr->join_cond() && (join_type == JoinType::JO_LEFT)) return true;
