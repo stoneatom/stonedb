@@ -1,0 +1,12 @@
+reset master;
+show variables like 'tianmu_insert_delayed';
+use test;
+create table t1 (a int, b int) engine=tianmu DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+insert into t1 values(1,1);
+insert into t1 values(2,2);
+insert into t1 values(3,3);
+insert into t1 values(4,4);
+sleep 1;
+--replace_column 6 #
+show binlog events;
+drop table t1;
