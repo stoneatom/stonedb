@@ -10176,16 +10176,29 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
 
       if (new_item == NULL)
       {
+        bool replace_always_true = false;
         if (is_cond_or)
         {
-          Item* cond_true =
-            new (thd->mem_root) Item_int((longlong)1, 1); // Always true
-          (void)li.replace(cond_true);
-          should_fix_fields = true;
+          if (dynamic_cast<Item_int*>(item))
+          {
+            Item_int* item_int = dynamic_cast<Item_int*>(item);
+            replace_always_true = item_int->value ? true : false;
+          }
+          else if (dynamic_cast<Item_bool_func2*>(item))
+          {
+            Item_bool_func2* func = dynamic_cast<Item_bool_func2*>(item);
+            Item** args = func->arguments();
+            Item* left_item = args[0];
+            Item* right_item = args[1];
+            replace_always_true = left_item->eq(right_item, 0) ? true : false;
+          }
         }
-        else
-        {
-          li.remove();
+
+        if (replace_always_true)
+        {					
+          *cond_value = tmp_cond_value;
+          *retcond = NULL;
+          return false;
         }
       }
       else if (item != new_item)
