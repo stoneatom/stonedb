@@ -3,9 +3,9 @@ import {Row, Divider, Image} from 'antd';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Translate from '@docusaurus/Translate';
 import { useHistory } from '@docusaurus/router';
-import { IconFont } from "../icon";
+import { IconFont } from "../iconFont";
 import {EmailModal} from '../emailModal';
-import {Title, Context} from '../styles'
+import {Title, Context, Panel} from '../styles'
 import {DL, DT, DD, Item, US, Link, FT} from './styles';
 
 const Concat = () => {
@@ -21,6 +21,7 @@ const Concat = () => {
   }
 
   return (
+    <Panel>
     <Context>
       <Title>
         <Translate id="home.contact.title">
@@ -115,6 +116,7 @@ const Concat = () => {
         }
       </Row>
     </Context>
+    </Panel>
   )
 }
 export default Concat;
