@@ -201,8 +201,8 @@ class TempTable : public JustATable {
   void TranslateBackVCs();
   // Query execution (CompiledQuery language implementation)
   void AddConds(Condition *cond, CondType type);
-  void AddInnerConds(Condition *cond, std::vector<TabID> &dims);
-  void AddLeftConds(Condition *cond, std::vector<TabID> &dims1, std::vector<TabID> &dims2);
+  void AddInnerConds(Condition *cond, std::vector<TableID> &dims);
+  void AddLeftConds(Condition *cond, std::vector<TableID> &dims1, std::vector<TableID> &dims2);
   void SetMode(TMParameter mode, int64_t mode_param1 = 0, int64_t mode_param2 = -1);
   void JoinT(JustATable *t, int alias, JoinType jt);
   int AddColumn(CQTerm, common::ColOperation, char *alias, bool distinct, SI si);
@@ -274,7 +274,7 @@ class TempTable : public JustATable {
   }
 
   uint NumOfDimensions() { return filter.mind ? (uint)filter.mind->NumOfDimensions() : 1; }
-  int GetDimension(TabID alias);
+  int GetDimension(TableID alias);
   std::vector<AttributeTypeInfo> GetATIs(bool orig = false) override;
   int GetAttrScale(int a) {
     DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());

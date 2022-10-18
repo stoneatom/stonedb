@@ -1376,9 +1376,9 @@ const Item *TianmuHandler::cond_push(const Item *a_cond) {
       m_result = false;
 
       m_query->AddTable(rctp);
-      core::TabID t_out;
+      core::TableID t_out;
       m_cq->TableAlias(t_out,
-                       core::TabID(0));  // we apply it to the only table in this query
+                       core::TableID(0));  // we apply it to the only table in this query
       m_cq->TmpTable(m_tmp_table, t_out);
 
       std::string ext_alias;
@@ -1391,7 +1391,7 @@ const Item *TianmuHandler::cond_push(const Item *a_cond) {
 
       int col_no = 0;
       core::AttrID col, vc;
-      core::TabID tab(m_tmp_table);
+      core::TableID tab(m_tmp_table);
 
       my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->read_set);
       for (Field **field = table->field; *field; field++) {
@@ -1412,13 +1412,13 @@ const Item *TianmuHandler::cond_push(const Item *a_cond) {
 
     std::unique_ptr<core::CompiledQuery> tmp_cq(new core::CompiledQuery(*m_cq));
     core::CondID cond_id;
-    if (m_query->BuildConditions(cond, cond_id, tmp_cq.get(), m_tmp_table, core::CondType::WHERE_COND, false) ==
+    if (m_query->BuildConditions(cond, cond_id, tmp_cq.get(), m_tmp_table, core::CondType::CT_WHERE_COND, false) ==
         Query_route_to::TO_MYSQL) {
       m_query.reset();
       return a_cond;
     }
 
-    tmp_cq->AddConds(m_tmp_table, cond_id, core::CondType::WHERE_COND);
+    tmp_cq->AddConds(m_tmp_table, cond_id, core::CondType::CT_WHERE_COND);
     tmp_cq->ApplyConds(m_tmp_table);
     m_cq.reset(tmp_cq.release());
     // reset  table_new_iter with push condition

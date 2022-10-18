@@ -32,20 +32,21 @@ class Hash64;
 }  // namespace utils
 
 namespace core {
+
 struct AttrID {
   int n;
   AttrID() : n(common::NULL_VALUE_32) {}
   explicit AttrID(int _n) : n(_n) {}
 };
 
-struct TabID {
+struct TableID {
   int n;
-  TabID() : n(common::NULL_VALUE_32) {}
-  explicit TabID(int _n) : n(_n) {}
+  TableID() : n(common::NULL_VALUE_32) {}
+  explicit TableID(int _n) : n(_n) {}
   bool IsNullID() const { return (n == common::NULL_VALUE_32); }
-  bool operator==(const TabID &other) const { return (n == other.n) && (!IsNullID()); }
-  bool operator<(const TabID &other) const { return (n < other.n) && (!IsNullID()); }
-  bool operator!=(const TabID &other) const { return !(operator==(other)); }
+  bool operator==(const TableID &other) const { return (n == other.n) && (!IsNullID()); }
+  bool operator<(const TableID &other) const { return (n < other.n) && (!IsNullID()); }
+  bool operator!=(const TableID &other) const { return !(operator==(other)); }
 };
 
 struct CondID {
@@ -58,15 +59,17 @@ struct CondID {
 };
 
 enum class JoinType { JO_INNER, JO_LEFT, JO_RIGHT, JO_FULL };
+
 enum class TMParameter { TM_DISTINCT, TM_TOP, TM_EXISTS };  // Table Mode Parameter
+
 enum class CondType {
-  WHERE_COND,
-  HAVING_COND,
-  ON_INNER_FILTER,
-  ON_LEFT_FILTER,
-  ON_RIGHT_FILTER,
-  OR_SUBTREE,
-  AND_SUBTREE
+  CT_WHERE_COND,       // where cond.
+  CT_HAVING_COND,      // having cond.
+  CT_ON_INNER_FILTER,  // inner...on filter.
+  CT_ON_LEFT_FILTER,   // left join...on filter.
+  CT_ON_RIGHT_FILTER,  // right join...on filter.
+  CT_OR_SUBTREE,       // or cond.
+  CT_AND_SUBTREE       // and cond.
 };
 
 /**

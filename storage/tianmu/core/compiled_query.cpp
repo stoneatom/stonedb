@@ -22,6 +22,7 @@
 
 namespace Tianmu {
 namespace core {
+
 CompiledQuery::CompiledQuery() {
   no_tabs = 0;
   no_conds = 0;
@@ -68,7 +69,7 @@ CompiledQuery::CQStep::CQStep(const CompiledQuery::CQStep &s)
     alias = new char[alias_ct];
     std::strcpy(alias, s.alias);
   } else
-    alias = NULL;
+    alias = nullptr;
 }
 
 CompiledQuery::CQStep &CompiledQuery::CQStep::operator=(const CompiledQuery::CQStep &s) {
@@ -76,8 +77,10 @@ CompiledQuery::CQStep &CompiledQuery::CQStep::operator=(const CompiledQuery::CQS
     CQStep tmp_step(s);
     swap(tmp_step);
   }
+
   return *this;
 }
+
 void CompiledQuery::CQStep::swap(CQStep &s) {
   if (&s != this) {
     std::swap(type, s.type);
@@ -286,16 +289,16 @@ void CompiledQuery::CQStep::Print(Query *query) {
   }
 
   switch (type) {
-    case StepType::TABLE_ALIAS:
+    case StepType::ST_TABLE_ALIAS:
       if (alias)
-        std::sprintf(buf, "T:%d = TABLE_ALIAS(T:%d,\"%s\")", N(t1.n), N(t2.n), alias);
+        std::sprintf(buf, "T:%d = ST_TABLE_ALIAS(T:%d,\"%s\")", N(t1.n), N(t2.n), alias);
       else
-        std::sprintf(buf, "T:%d = TABLE_ALIAS(T:%d)", N(t1.n), N(t2.n));
+        std::sprintf(buf, "T:%d = ST_TABLE_ALIAS(T:%d)", N(t1.n), N(t2.n));
       break;
-    case StepType::CREATE_CONDS:
+    case StepType::ST_CREATE_CONDS:
       if (c2.IsNull()) {
         std::sprintf(buf, "C:%d = CREATE_%sCONDS(T:%d,%s,%s,%s,%s)", N(c1.n),
-                     n1 == static_cast<int64_t>(CondType::OR_SUBTREE) ? "TREE_" : "", N(t1.n),
+                     n1 == static_cast<int64_t>(CondType::CT_OR_SUBTREE) ? "TREE_" : "", N(t1.n),
                      e1.ToString(b1, _countof(b1), t1.n), b_op, e2.ToString(b2, _countof(b2), t1.n),
                      e3.ToString(b3, _countof(b3), t1.n)
                      // n1 == 0 ? "WHERE" : (n1 == 1 ? "HAVING" : (n1 == 2 ? "ON
@@ -304,10 +307,10 @@ void CompiledQuery::CQStep::Print(Query *query) {
       } else
         std::sprintf(buf, "C:%d = CREATE_CONDS(T:%d, C:%d)", N(c1.n), N(t1.n), N(c2.n));
       break;
-    case StepType::AND_F:
+    case StepType::ST_AND_F:
       std::sprintf(buf, "C:%d.AND(C:%d)", N(c1.n), N(c2.n));
       break;
-    case StepType::OR_F:
+    case StepType::ST_OR_F:
       std::sprintf(buf, "C:%d.OR(C:%d)", N(c1.n), N(c2.n));
       break;
     // case NOT_F:
@@ -316,22 +319,21 @@ void CompiledQuery::CQStep::Print(Query *query) {
     // case COPY_F:
     //	std::sprintf(buf,"C:%d = COPY(C:%d)", N(c2.n), N(c1.n));
     //	break;
-    case StepType::AND_DESC:
+    case StepType::ST_AND_DESC:
       std::sprintf(buf, "C:%d.AND(%s,%s,%s,%s)", N(c1.n), e1.ToString(b1, _countof(b1), t1.n), b_op,
                    e2.ToString(b2, _countof(b2), t1.n), e3.ToString(b3, _countof(b3), t1.n));
       break;
-    case StepType::OR_DESC:
+    case StepType::ST_OR_DESC:
       std::sprintf(buf, "C:%d.OR(%s,%s,%s,%s)", N(c1.n), e1.ToString(b1, _countof(b1), t1.n), b_op,
                    e2.ToString(b2, _countof(b2), t1.n), e3.ToString(b3, _countof(b3), t1.n));
       break;
-    case StepType::TMP_TABLE: {
+    case StepType::ST_TMP_TABLE: {
       std::sprintf(buf, "T:%d = TMP_TABLE(", N(t1.n));
       unsigned int i = 0;
       for (; i < tables1.size() - 1; i++) std::sprintf(buf + std::strlen(buf), "T:%d,", N(tables1[i].n));
       std::sprintf(buf + std::strlen(buf), "T:%u)", N(tables1[i].n));
-      break;
-    }
-    case StepType::CREATE_VC:
+    } break;
+    case StepType::ST_CREATE_VC:
       if (mysql_expr.size() == 1) {
         char s1[200];
         std::strncpy(s1, query->GetItemName(mysql_expr[0]->GetItem()).c_str(), 199);
@@ -354,13 +356,13 @@ void CompiledQuery::CQStep::Print(Query *query) {
       else
         std::sprintf(buf, "VC:%d.%d = CREATE_VC(T:%d,SUBQUERY(T:%d))", N(t1.n), N(a1.n), N(t1.n), N(t2.n));
       break;
-    case StepType::T_MODE:
+    case StepType::ST_T_MODE:
       std::sprintf(buf, "T:%d.MODE(%s,%ld,%ld)", N(t1.n), b_tmpar, n1, n2);
       break;
-    case StepType::JOIN_T:
+    case StepType::ST_JOIN_T:
       // This step exists but should not be displayed
       return;
-    case StepType::LEFT_JOIN_ON: {
+    case StepType::ST_LEFT_JOIN_ON: {
       std::sprintf(buf, "T:%d.LEFT_JOIN_ON({", N(t1.n));
       int i = 0;
       for (; i < (int)tables1.size() - 1; i++) std::sprintf(buf + std::strlen(buf), "T:%d,", N(tables1[i].n));
@@ -370,30 +372,30 @@ void CompiledQuery::CQStep::Print(Query *query) {
       std::sprintf(buf + std::strlen(buf), "T:%d},C:%d)", N(tables2[i].n), N(c1.n));
       break;
     }
-    case StepType::INNER_JOIN_ON: {
+    case StepType::ST_INNER_JOIN_ON: {
       std::sprintf(buf, "T:%d.INNER_JOIN_ON({", N(t1.n));
       unsigned int i = 0;
       for (; i < tables1.size() - 1; i++) std::sprintf(buf + std::strlen(buf), "T:%d,", N(tables1[i].n));
       std::sprintf(buf + std::strlen(buf), "T:%d},C:%d)", N(tables1[i].n), N(c1.n));
       break;
     }
-    case StepType::ADD_CONDS:
+    case StepType::ST_ADD_CONDS:
       std::sprintf(buf, "T:%d.ADD_CONDS(C:%d,%s)", N(t1.n), N(c1.n), n1 == 0 ? "WHERE" : (n1 == 1 ? "HAVING" : "?!?"));
       break;
-    case StepType::APPLY_CONDS:
+    case StepType::ST_APPLY_CONDS:
       std::sprintf(buf, "T:%d.APPLY_CONDS()", N(t1.n));
       break;
-    case StepType::ADD_COLUMN:
+    case StepType::ST_ADD_COLUMN:
       std::sprintf(buf, "A:%d = T:%d.ADD_COLUMN(%s,%s,\"%s\",\"%s\")", N(a1.n), N(t1.n),
                    e1.ToString(b1, _countof(b1), t1.n), b_cop, (alias) ? alias : "null", n1 ? "DISTINCT" : "ALL");
       break;
-    case StepType::ADD_ORDER:
+    case StepType::ST_ADD_ORDER:
       std::sprintf(buf, "T:%d.ADD_ORDER(VC:%d.%d,%s)", N(t1.n), N(t1.n), N(a1.n), n1 ? "DESC" : "ASC");
       break;
-    case StepType::UNION:
+    case StepType::ST_UNION:
       std::sprintf(buf, "T:%d = UNION(T:%d,T:%d,%ld)", N(t1.n), N(t2.n), N(t3.n), n1);
       break;
-    case StepType::RESULT:
+    case StepType::ST_RESULT:
       std::sprintf(buf, "RESULT(T:%d)", N(t1.n));
       break;
     default:
@@ -402,84 +404,89 @@ void CompiledQuery::CQStep::Print(Query *query) {
   TIANMU_LOG(LogCtl_Level::DEBUG, "%s", buf);
 }
 
-void CompiledQuery::TableAlias(TabID &t_out, const TabID &n, const char *name, [[maybe_unused]] int id) {
+void CompiledQuery::TableAlias(TableID &t_out, const TableID &n, const char *name, [[maybe_unused]] int cf_id) {
   CompiledQuery::CQStep s;
-  s.type = StepType::TABLE_ALIAS;
+  s.type = StepType::ST_TABLE_ALIAS;
   s.t1 = t_out = NextTabID();
   s.t2 = n;
+
   if (name) {
     s.alias = new char[std::strlen(name) + 1];
+    memset(s.alias, std::strlen(name) + 1, '0');
     std::strcpy(s.alias, name);
   }
   steps.push_back(s);
 }
 
-void CompiledQuery::TmpTable(TabID &t_out, const TabID &t1, bool for_subq_in_where) {
+void CompiledQuery::TmpTable(TableID &t_out, const TableID &t1, bool for_subq_in_where) {
   CompiledQuery::CQStep s;
   if (for_subq_in_where)
     s.n1 = 1;
   else
     s.n1 = 0;
+
   DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
-  s.type = StepType::TMP_TABLE;
+  s.type = StepType::ST_TMP_TABLE;
   s.t1 = t_out = NextTabID();  // was s.t2!!!
   s.tables1.push_back(t1);
   steps_tmp_tables.push_back(s);
   steps.push_back(s);
 }
 
-void CompiledQuery::CreateConds(CondID &c_out, const TabID &t1, CQTerm e1, common::Operator pr, CQTerm e2, CQTerm e3,
+void CompiledQuery::CreateConds(CondID &c_out, const TableID &t1, CQTerm e1, common::Operator pr, CQTerm e2, CQTerm e3,
                                 bool is_or_subtree, char like_esc) {
   CompiledQuery::CQStep s;
-  s.type = StepType::CREATE_CONDS;
+  s.type = StepType::ST_CREATE_CONDS;
   s.c1 = c_out = NextCondID();
   s.t1 = t1;
   s.e1 = e1;
   s.op = pr;
   s.e2 = e2;
   s.e3 = e3;
-  s.n1 = is_or_subtree ? static_cast<int64_t>(CondType::OR_SUBTREE) : 0;
+  s.n1 = is_or_subtree ? static_cast<int64_t>(CondType::CT_OR_SUBTREE) : 0;
   s.n2 = like_esc;
   steps.push_back(s);
 }
 
-void CompiledQuery::CreateConds(CondID &c_out, const TabID &t1, const CondID &c1, bool is_or_subtree) {
+void CompiledQuery::CreateConds(CondID &c_out, const TableID &t1, const CondID &c1, bool is_or_subtree) {
   CompiledQuery::CQStep s;
-  s.type = StepType::CREATE_CONDS;
+  s.type = StepType::ST_CREATE_CONDS;
   s.c2 = c1;
   s.c1 = c_out = NextCondID();
   s.t1 = t1;
-  s.n1 = is_or_subtree ? static_cast<int64_t>(CondType::OR_SUBTREE) : 0;
+  s.n1 = is_or_subtree ? static_cast<int64_t>(CondType::CT_OR_SUBTREE) : 0;
   steps.push_back(s);
 }
 
-void CompiledQuery::And(const CondID &c1, const TabID &t, const CondID &c2) {
+void CompiledQuery::And(const CondID &c1, const TableID &t, const CondID &c2) {
   if (c1.IsNull()) {
     return;
   }
+
   CompiledQuery::CQStep s;
-  s.type = StepType::AND_F;
+  s.type = StepType::ST_AND_F;
   s.c1 = c1;
   s.t1 = t;
   s.c2 = c2;
   steps.push_back(s);
 }
 
-void CompiledQuery::Or(const CondID &c1, const TabID &t, const CondID &c2) {
+void CompiledQuery::Or(const CondID &c1, const TableID &t, const CondID &c2) {
   if (c1.IsNull()) {
     return;
   }
+
   CompiledQuery::CQStep s;
-  s.type = StepType::OR_F;
+  s.type = StepType::ST_OR_F;
   s.c1 = c1;
   s.t1 = t;
   s.c2 = c2;
   steps.push_back(s);
 }
 
-void CompiledQuery::And(const CondID &c1, const TabID &t, CQTerm e1, common::Operator pr, CQTerm e2, CQTerm e3) {
+void CompiledQuery::And(const CondID &c1, const TableID &t, CQTerm e1, common::Operator pr, CQTerm e2, CQTerm e3) {
   CompiledQuery::CQStep s;
-  s.type = StepType::AND_DESC;
+  s.type = StepType::ST_AND_DESC;
   s.t1 = t;
   s.c1 = c1;
   s.e1 = e1;
@@ -489,9 +496,9 @@ void CompiledQuery::And(const CondID &c1, const TabID &t, CQTerm e1, common::Ope
   steps.push_back(s);
 }
 
-void CompiledQuery::Or(const CondID &c1, const TabID &t, CQTerm e1, common::Operator pr, CQTerm e2, CQTerm e3) {
+void CompiledQuery::Or(const CondID &c1, const TableID &t, CQTerm e1, common::Operator pr, CQTerm e2, CQTerm e3) {
   CompiledQuery::CQStep s;
-  s.type = StepType::OR_DESC;
+  s.type = StepType::ST_OR_DESC;
   s.t1 = t;
   s.c1 = c1;
   s.e1 = e1;
@@ -501,16 +508,17 @@ void CompiledQuery::Or(const CondID &c1, const TabID &t, CQTerm e1, common::Oper
   steps.push_back(s);
 }
 
-void CompiledQuery::Mode(const TabID &t1, TMParameter mode, int64_t n1, int64_t n2) {
+void CompiledQuery::Mode(const TableID &t1, TMParameter mode, int64_t n1, int64_t n2) {
   CompiledQuery::CQStep s;
   if (s.t1.n >= 0) {
     size_t const alias_ct(100);
-    s.type = StepType::STEP_ERROR;
+    s.type = StepType::ST_STEP_ERROR;
     s.alias = new char[alias_ct];
     std::strcpy(s.alias, "T_MODE: can't be applied to RCTable");
     return;
   }
-  s.type = StepType::T_MODE;
+
+  s.type = StepType::ST_T_MODE;
   s.t1 = t1;
   s.tmpar = mode;
   s.n1 = n1;
@@ -518,9 +526,9 @@ void CompiledQuery::Mode(const TabID &t1, TMParameter mode, int64_t n1, int64_t 
   steps.push_back(s);
 }
 
-void CompiledQuery::Join(const TabID &t1, const TabID &t2) {
-  for (auto &step : steps)
-    if (step.type == StepType::TMP_TABLE && step.t1 == t1) {
+void CompiledQuery::Join(const TableID &t1, const TableID &t2) {
+  for (auto &step : steps) {
+    if (step.type == StepType::ST_TMP_TABLE && step.t1 == t1) {
       step.tables1.push_back(t2);
       for (auto &it : steps_tmp_tables) {
         if (it.t1 == t1) {
@@ -530,17 +538,19 @@ void CompiledQuery::Join(const TabID &t1, const TabID &t2) {
       }
       break;
     }
+  }
+
   CompiledQuery::CQStep s;
-  s.type = StepType::JOIN_T;
+  s.type = StepType::ST_JOIN_T;
   s.t1 = t1;
   s.t2 = t2;
   steps.push_back(s);
 }
 
-void CompiledQuery::LeftJoinOn(const TabID &temp_table, std::vector<TabID> &left_tables,
-                               std::vector<TabID> &right_tables, const CondID &cond_id) {
+void CompiledQuery::LeftJoinOn(const TableID &temp_table, std::vector<TableID> &left_tables,
+                               std::vector<TableID> &right_tables, const CondID &cond_id) {
   CompiledQuery::CQStep s;
-  s.type = StepType::LEFT_JOIN_ON;
+  s.type = StepType::ST_LEFT_JOIN_ON;
   s.t1 = temp_table;
   s.c1 = cond_id;
   s.tables1 = left_tables;
@@ -548,10 +558,10 @@ void CompiledQuery::LeftJoinOn(const TabID &temp_table, std::vector<TabID> &left
   steps.push_back(s);
 }
 
-void CompiledQuery::InnerJoinOn(const TabID &temp_table, std::vector<TabID> &left_tables,
-                                std::vector<TabID> &right_tables, const CondID &cond_id) {
+void CompiledQuery::InnerJoinOn(const TableID &temp_table, std::vector<TableID> &left_tables,
+                                std::vector<TableID> &right_tables, const CondID &cond_id) {
   CompiledQuery::CQStep s;
-  s.type = StepType::INNER_JOIN_ON;
+  s.type = StepType::ST_INNER_JOIN_ON;
   s.t1 = temp_table;
   s.c1 = cond_id;
   s.tables1 = left_tables;
@@ -559,32 +569,33 @@ void CompiledQuery::InnerJoinOn(const TabID &temp_table, std::vector<TabID> &lef
   steps.push_back(s);
 }
 
-void CompiledQuery::AddConds(const TabID &t1, const CondID &c1, CondType cond_type) {
+void CompiledQuery::AddConds(const TableID &t1, const CondID &c1, CondType cond_type) {
   if (c1.IsNull()) return;
   CompiledQuery::CQStep s;
-  s.type = StepType::ADD_CONDS;
+  s.type = StepType::ST_ADD_CONDS;
   s.t1 = t1;
   s.c1 = c1;
   s.n1 = static_cast<int64_t>(cond_type);
   steps.push_back(s);
 }
 
-void CompiledQuery::ApplyConds(const TabID &t1) {
+void CompiledQuery::ApplyConds(const TableID &t1) {
   CompiledQuery::CQStep s;
-  s.type = StepType::APPLY_CONDS;
+  s.type = StepType::ST_APPLY_CONDS;
   s.t1 = t1;
   steps.push_back(s);
 }
 
-void CompiledQuery::AddColumn(AttrID &a_out, const TabID &t1, CQTerm e1, common::ColOperation op, char const alias[],
+void CompiledQuery::AddColumn(AttrID &a_out, const TableID &t1, CQTerm e1, common::ColOperation op, char const alias[],
                               bool distinct, SI *si) {
   DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
   CompiledQuery::CQStep s;
-  s.type = StepType::ADD_COLUMN;
+  s.type = StepType::ST_ADD_COLUMN;
   s.a1 = a_out = NextAttrID(t1);
   s.t1 = t1;
   s.e1 = e1;
   s.cop = op;
+
   if (op == common::ColOperation::GROUP_CONCAT && si != NULL) s.si = *si;
   if (alias) {
     size_t const alias_ct(std::strlen(alias) + 1);
@@ -597,10 +608,11 @@ void CompiledQuery::AddColumn(AttrID &a_out, const TabID &t1, CQTerm e1, common:
   if (op == common::ColOperation::GROUP_BY) steps_group_by_cols.push_back(s);
 }
 
-void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TabID &t1, MysqlExpression *expr, const TabID &src_tab) {
+void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TableID &t1, MysqlExpression *expr,
+                                        const TableID &src_tab) {
   DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
   CompiledQuery::CQStep s;
-  s.type = StepType::CREATE_VC;
+  s.type = StepType::ST_CREATE_VC;
   s.a1 = a_out = NextVCID(t1);
   s.t1 = t1;
   s.t2 = src_tab;
@@ -608,10 +620,10 @@ void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TabID &t1, MysqlExp
   steps.push_back(s);
 }
 
-void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TabID &t1, const TabID &subquery, bool on_result) {
+void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TableID &t1, const TableID &subquery, bool on_result) {
   DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
   CompiledQuery::CQStep s;
-  s.type = StepType::CREATE_VC;
+  s.type = StepType::ST_CREATE_VC;
   s.a1 = a_out = NextVCID(t1);
   s.t1 = t1;
   s.t2 = subquery;
@@ -619,10 +631,10 @@ void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TabID &t1, const Ta
   steps.push_back(s);
 }
 
-void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TabID &t1, std::vector<int> &vcs, const AttrID &vc_id) {
+void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TableID &t1, std::vector<int> &vcs, const AttrID &vc_id) {
   DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
   CompiledQuery::CQStep s;
-  s.type = StepType::CREATE_VC;
+  s.type = StepType::ST_CREATE_VC;
   s.a1 = a_out = NextVCID(t1);
   s.a2 = vc_id;
   s.t1 = t1;
@@ -630,11 +642,11 @@ void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TabID &t1, std::vec
   steps.push_back(s);
 }
 
-void CompiledQuery::CreateVirtualColumn(int &a_out, const TabID &t1, const TabID &table_alias,
+void CompiledQuery::CreateVirtualColumn(int &a_out, const TableID &t1, const TableID &table_alias,
                                         const AttrID &col_number) {
   DEBUG_ASSERT(t1.n < 0 && NumOfTabs() > 0);
   CompiledQuery::CQStep s;
-  s.type = StepType::CREATE_VC;
+  s.type = StepType::ST_CREATE_VC;
   s.a1 = NextVCID(t1);
   a_out = s.a1.n;
   s.a2 = col_number;
@@ -643,33 +655,34 @@ void CompiledQuery::CreateVirtualColumn(int &a_out, const TabID &t1, const TabID
   steps.push_back(s);
 }
 
-void CompiledQuery::Add_Order(const TabID &t1, const AttrID &vc,
+void CompiledQuery::Add_Order(const TableID &t1, const AttrID &vc,
                               int d)  // d=1 for descending
 {
   CompiledQuery::CQStep s;
-  s.type = StepType::ADD_ORDER;
+  s.type = StepType::ST_ADD_ORDER;
   s.t1 = t1;
   s.a1 = vc;
   s.n1 = d;
   steps.push_back(s);
 }
 
-void CompiledQuery::Union(TabID &t_out, const TabID &t2, const TabID &t3, int all) {
+void CompiledQuery::Union(TableID &t_out, const TableID &t2, const TableID &t3, int all) {
   CompiledQuery::CQStep s;
-  s.type = StepType::UNION;
+  s.type = StepType::ST_UNION;
   if (t_out.n != t2.n)
     s.t1 = t_out = NextTabID();
   else
     s.t1 = t2;
+
   s.t2 = t2;
   s.t3 = t3;
   s.n1 = all;
   steps.push_back(s);
 }
 
-void CompiledQuery::Result(const TabID &t1) {
+void CompiledQuery::Result(const TableID &t1) {
   CompiledQuery::CQStep s;
-  s.type = StepType::RESULT;
+  s.type = StepType::ST_RESULT;
   s.t1 = t1;
   steps.push_back(s);
 }
@@ -678,20 +691,21 @@ void CompiledQuery::Print(Query *query) {
   for (size_t i = 0; i < steps.size(); i++) steps[i].Print(query);
 }
 
-bool CompiledQuery::CountColumnOnly(const TabID &table) {
+bool CompiledQuery::CountColumnOnly(const TableID &table) {
   CompiledQuery::CQStep step;
   bool count_only = false;
   for (int i = 0; i < NumOfSteps(); i++) {
     step = Step(i);
-    if (step.type == CompiledQuery::StepType::ADD_COLUMN && step.t1 == table &&
+    if (step.type == CompiledQuery::StepType::ST_ADD_COLUMN && step.t1 == table &&
         step.cop == common::ColOperation::COUNT && step.e1.IsNull())
       count_only = true;
-    if (step.type == CompiledQuery::StepType::ADD_COLUMN && step.t1 == table &&
+    if (step.type == CompiledQuery::StepType::ST_ADD_COLUMN && step.t1 == table &&
         (step.cop != common::ColOperation::COUNT || (step.cop == common::ColOperation::COUNT && !step.e1.IsNull()))) {
       count_only = false;
       break;
     }
   }
+
   return count_only;
 }
 
@@ -699,13 +713,16 @@ bool CompiledQuery::NoAggregationOrderingAndDistinct(int table) {
   CompiledQuery::CQStep step;
   for (int i = 0; i < NumOfSteps(); i++) {
     step = Step(i);
-    if (step.type == CompiledQuery::StepType::ADD_ORDER && step.t1.n == table) return false;  // exclude ordering
-    if (step.type == CompiledQuery::StepType::ADD_COLUMN && step.t1.n == table &&
+    if (step.type == CompiledQuery::StepType::ST_ADD_ORDER && step.t1.n == table) return false;  // exclude ordering
+
+    if (step.type == CompiledQuery::StepType::ST_ADD_COLUMN && step.t1.n == table &&
         step.cop != common::ColOperation::LISTING)
       return false;  // exclude all kinds of aggregations
-    if (step.type == CompiledQuery::StepType::T_MODE && step.t1.n == table && step.tmpar == TMParameter::TM_DISTINCT)
+
+    if (step.type == CompiledQuery::StepType::ST_T_MODE && step.t1.n == table && step.tmpar == TMParameter::TM_DISTINCT)
       return false;  // exclude DISTINCT
   }
+
   return true;
 }
 
@@ -713,10 +730,11 @@ int64_t CompiledQuery::FindLimit(int table) {
   CompiledQuery::CQStep step;
   for (int i = 0; i < NumOfSteps(); i++) {
     step = Step(i);
-    if (step.type == CompiledQuery::StepType::T_MODE && step.t1.n == table && step.tmpar == TMParameter::TM_TOP)
+    if (step.type == CompiledQuery::StepType::ST_T_MODE && step.t1.n == table && step.tmpar == TMParameter::TM_TOP)
       return step.n1 + step.n2;  // n1 - omitted, n2 - displayed, i.e. either
                                  // ...LIMIT n2; or  ...LIMIT n1, n2;
   }
+
   return -1;
 }
 
@@ -724,18 +742,20 @@ bool CompiledQuery::FindDistinct(int table) {
   CompiledQuery::CQStep step;
   for (int i = 0; i < NumOfSteps(); i++) {
     step = Step(i);
-    if (step.type == CompiledQuery::StepType::T_MODE && step.t1.n == table && step.tmpar == TMParameter::TM_DISTINCT)
+    if (step.type == CompiledQuery::StepType::ST_T_MODE && step.t1.n == table && step.tmpar == TMParameter::TM_DISTINCT)
       return true;
   }
+
   return false;
 }
 
-std::set<int> CompiledQuery::GetUsedDims(const TabID &table_id, std::vector<std::shared_ptr<JustATable>> &ta) {
+std::set<int> CompiledQuery::GetUsedDims(const TableID &table_id, std::vector<std::shared_ptr<JustATable>> &ta) {
   std::set<int> result;
   auto itsteps = TabIDSteps.equal_range(table_id);
+
   for (auto it = itsteps.first; it != itsteps.second; ++it) {
     CompiledQuery::CQStep step = it->second;
-    if (step.type == CompiledQuery::StepType::ADD_COLUMN && step.t1 == table_id &&
+    if (step.type == CompiledQuery::StepType::ST_ADD_COLUMN && step.t1 == table_id &&
         step.e1.vc_id != common::NULL_VALUE_32) {
       vcolumn::VirtualColumn *vc = ((TempTable *)ta[-table_id.n - 1].get())->GetVirtualColumn(step.e1.vc_id);
       if (vc) {
@@ -750,7 +770,7 @@ std::set<int> CompiledQuery::GetUsedDims(const TabID &table_id, std::vector<std:
       }
     } else {
       bool is_group_by = IsGroupByQuery(table_id);
-      if (!is_group_by && step.type == CompiledQuery::StepType::ADD_ORDER && step.t1 == table_id &&
+      if (!is_group_by && step.type == CompiledQuery::StepType::ST_ADD_ORDER && step.t1 == table_id &&
           step.a1.n != common::NULL_VALUE_32) {
         vcolumn::VirtualColumn *vc = ((TempTable *)ta[-table_id.n - 1].get())->GetVirtualColumn(step.a1.n);
         if (vc) {
@@ -761,11 +781,13 @@ std::set<int> CompiledQuery::GetUsedDims(const TabID &table_id, std::vector<std:
           // temporary solution is to skip optimization
           result.clear();
           result.insert(common::NULL_VALUE_32);
+
           return result;
         }
       }
     }
   }
+
   return result;
 }
 
@@ -777,14 +799,14 @@ void CompiledQuery::BuildTableIDStepsMap() {
   }
 }
 
-bool CompiledQuery::IsGroupByQuery(const TabID &tab_id) {
+bool CompiledQuery::IsGroupByQuery(const TableID &tab_id) {
   for (auto &i : steps_group_by_cols) {
     if (i.t1 == tab_id) return true;
   }
   return false;
 }
 
-bool CompiledQuery::ExistsInTempTable(const TabID &tab_id, const TabID &tmp_table) {
+bool CompiledQuery::ExistsInTempTable(const TableID &tab_id, const TableID &tmp_table) {
   CompiledQuery::CQStep step;
   if (tab_id == tmp_table) return true;
   for (auto &i : steps_tmp_tables) {
@@ -797,50 +819,56 @@ bool CompiledQuery::ExistsInTempTable(const TabID &tab_id, const TabID &tmp_tabl
   return false;
 }
 
-TabID CompiledQuery::FindSourceOfParameter(const TabID &tab_id, const TabID &tmp_table, bool &is_group_by) {
+TableID CompiledQuery::FindSourceOfParameter(const TableID &tab_id, const TableID &tmp_table, bool &is_group_by) {
   DEBUG_ASSERT(tmp_table.n < 0);
   is_group_by = false;
+
   for (int x = tmp_table.n + 1; x < 0; x++) {
-    if (IsTempTable(TabID(x)) && ExistsInTempTable(tab_id, TabID(x))) {
+    if (IsTempTable(TableID(x)) && ExistsInTempTable(tab_id, TableID(x))) {
       x = FindRootTempTable(x);
-      is_group_by = IsGroupByQuery(TabID(x));
-      return TabID(x);
+      is_group_by = IsGroupByQuery(TableID(x));
+      return TableID(x);
     }
   }
+
   DEBUG_ASSERT(!"Invalid parameter");
-  return TabID(0);
+  return TableID(0);
 }
 
-bool CompiledQuery::IsTempTable(const TabID &t) {
+bool CompiledQuery::IsTempTable(const TableID &t) {
   for (int i = 0; i < NumOfSteps(); i++) {
-    if (Step(i).type == CompiledQuery::StepType::TMP_TABLE && Step(i).t1 == t) return true;
+    if (Step(i).type == CompiledQuery::StepType::ST_TMP_TABLE && Step(i).t1 == t) return true;
   }
+
   return false;
 }
 
 int CompiledQuery::FindRootTempTable(int tab_id) {
   DEBUG_ASSERT(tab_id < 0);
   for (int x = tab_id + 1; x < 0; x++) {
-    if (IsTempTable(TabID(x)) && ExistsInTempTable(TabID(tab_id), TabID(x))) return FindRootTempTable(x);
+    if (IsTempTable(TableID(x)) && ExistsInTempTable(TableID(tab_id), TableID(x))) return FindRootTempTable(x);
   }
+
   return tab_id;
 }
 
-bool CompiledQuery::IsResultTable(const TabID &t) {
+bool CompiledQuery::IsResultTable(const TableID &t) {
   for (int i = 0; i < NumOfSteps(); i++) {
-    if (Step(i).type == CompiledQuery::StepType::RESULT && Step(i).t1 == t) {
+    if (Step(i).type == CompiledQuery::StepType::ST_RESULT && Step(i).t1 == t) {
       return true;
     }
   }
+
   return false;
 }
 
-bool CompiledQuery::IsOrderedBy(const TabID &t) {
+bool CompiledQuery::IsOrderedBy(const TableID &t) {
   for (int i = 0; i < NumOfSteps(); i++) {
-    if (Step(i).type == CompiledQuery::StepType::ADD_ORDER && Step(i).t1 == t) {
+    if (Step(i).type == CompiledQuery::StepType::ST_ADD_ORDER && Step(i).t1 == t) {
       return true;
     }
   }
+
   return false;
 }
 
@@ -850,32 +878,38 @@ std::pair<int64_t, int64_t> CompiledQuery::GetGlobalLimit() {
 
   int i;
   for (i = 0; i < NumOfSteps(); i++) {
-    if (Step(i).type == CompiledQuery::StepType::RESULT) {
+    if (Step(i).type == CompiledQuery::StepType::ST_RESULT) {
       break;
     }
   }
+
   DEBUG_ASSERT(i < NumOfSteps());
-  TabID res = Step(i).t1;
-  if (i > 0 && Step(i - 1).type == CompiledQuery::StepType::T_MODE && Step(i - 1).t1 == res) {
+
+  TableID res = Step(i).t1;
+  if (i > 0 && Step(i - 1).type == CompiledQuery::StepType::ST_T_MODE && Step(i - 1).t1 == res) {
     return std::pair<int64_t, int64_t>(Step(i - 1).n1, Step(i - 1).n2);
   }
+
   return std::pair<int64_t, int64_t>(0, -1);
 }
 
-int CompiledQuery::GetNumOfDimens(const TabID &tab_id) {
+int CompiledQuery::GetNumOfDimens(const TableID &tab_id) {
   for (int i = 0; i < NumOfSteps(); i++) {
-    if (Step(i).type == CompiledQuery::StepType::TMP_TABLE && Step(i).t1 == tab_id) {
+    if (Step(i).type == CompiledQuery::StepType::ST_TMP_TABLE && Step(i).t1 == tab_id) {
       return int(Step(i).tables1.size());
     }
   }
+
   return -1;
 }
 
-TabID CompiledQuery::GetTableOfCond(const CondID &cond_id) {
+TableID CompiledQuery::GetTableOfCond(const CondID &cond_id) {
   for (int i = 0; i < NumOfSteps(); i++) {
-    if (Step(i).type == CompiledQuery::StepType::CREATE_CONDS && Step(i).c1 == cond_id) return Step(i).t1;
+    if (Step(i).type == CompiledQuery::StepType::ST_CREATE_CONDS && Step(i).c1 == cond_id) return Step(i).t1;
   }
-  return TabID();
+
+  return TableID();
 }
+
 }  // namespace core
 }  // namespace Tianmu

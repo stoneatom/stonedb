@@ -64,11 +64,11 @@ class Query final {
   void SetRoughQuery(bool set_rough) { rough_query = set_rough; }
   bool IsRoughQuery() { return rough_query; }
   Query_route_to Compile(CompiledQuery *compiled_query, Query_block *selects_list, Query_block *last_distinct,
-                         TabID *res_tab = NULL, bool ignore_limit = false, Item *left_expr_for_subselect = NULL,
+                         TableID *res_tab = NULL, bool ignore_limit = false, Item *left_expr_for_subselect = NULL,
                          common::Operator *oper_for_subselect = NULL, bool ignore_minmax = false,
                          bool for_subq_in_where = false);
   TempTable *Preexecute(CompiledQuery &qu, ResultSender *sender, bool display_now = true);
-  Query_route_to BuildConditions(Item *conds, CondID &cond_id, CompiledQuery *cq, const TabID &tmp_table,
+  Query_route_to BuildConditions(Item *conds, CondID &cond_id, CompiledQuery *cq, const TableID &tmp_table,
                                  CondType filter_type, bool is_zero_result = false,
                                  JoinType join_type = JoinType::JO_INNER);
 
@@ -76,18 +76,18 @@ class Query final {
 
  private:
   CompiledQuery *cq = nullptr;
-  std::vector<std::pair<TabID, bool>> subqueries_in_where;
+  std::vector<std::pair<TableID, bool>> subqueries_in_where;
   using TabIDColAlias = std::pair<int, std::string>;
   std::map<TabIDColAlias, int> field_alias2num;
   std::map<std::string, unsigned> path2num;
 
   // all expression based virtual columns for a given table
-  std::multimap<TabID, std::pair<int, MysqlExpression *>> tab_id2expression;
-  std::multimap<TabID, std::pair<int, std::pair<std::vector<int>, AttrID>>> tab_id2inset;
+  std::multimap<TableID, std::pair<int, MysqlExpression *>> tab_id2expression;
+  std::multimap<TableID, std::pair<int, std::pair<std::vector<int>, AttrID>>> tab_id2inset;
 
   std::vector<MysqlExpression *> gc_expressions;
   std::multimap<std::pair<int, int>, std::pair<int, int>> phys2virt;
-  std::multimap<TabID, std::pair<int, TabID>> tab_id2subselect;
+  std::multimap<TableID, std::pair<int, TableID>> tab_id2subselect;
   std::map<Item_tianmufield *, int> tianmuitems_cur_var_ids;
 
   std::vector<std::shared_ptr<JustATable>> ta;  // table aliases - sometimes point to TempTables (maybe to the
@@ -96,7 +96,7 @@ class Query final {
 
   bool rough_query = false;  // set as true to enable rough execution
 
-  bool FieldUnmysterify(Item *item, TabID &tab, AttrID &col);
+  bool FieldUnmysterify(Item *item, TableID &tab, AttrID &col);
   Query_route_to FieldUnmysterify(Item *item, const char *&database_name, const char *&table_name,
                                   const char *&table_alias, const char *&table_path, const TABLE *&table_ptr,
                                   const char *&field_name, const char *&field_alias);
@@ -111,7 +111,7 @@ class Query final {
    * \return table id and number of virtual column if it exists or
    * common::NULL_VALUE_32 otherwise
    */
-  std::pair<int, int> VirtualColumnAlreadyExists(const TabID &tmp_table, const TabID &tab, const AttrID &col);
+  std::pair<int, int> VirtualColumnAlreadyExists(const TableID &tmp_table, const TableID &tab, const AttrID &col);
 
   /*! \brief Checks if exists virtual column defined by expression:
    * \param tmp_table - id of table for which column is supposed to be created
@@ -119,7 +119,7 @@ class Query final {
    * \return number of virtual column if it exists or common::NULL_VALUE_32
    * otherwise
    */
-  int VirtualColumnAlreadyExists(const TabID &tmp_table, MysqlExpression *expression);
+  int VirtualColumnAlreadyExists(const TableID &tmp_table, MysqlExpression *expression);
 
   /*! \brief Checks if exists virtual column defined by subquery
    * \param tmp_table - id of table for which column is supposed to be created
@@ -127,15 +127,15 @@ class Query final {
    * \return number of virtual column if it exists or common::NULL_VALUE_32
    * otherwise
    */
-  int VirtualColumnAlreadyExists(const TabID &tmp_table, const TabID &subquery);
+  int VirtualColumnAlreadyExists(const TableID &tmp_table, const TableID &subquery);
 
-  int VirtualColumnAlreadyExists(const TabID &tmp_table, const std::vector<int> &vcs, const AttrID &at);
+  int VirtualColumnAlreadyExists(const TableID &tmp_table, const std::vector<int> &vcs, const AttrID &at);
 
-  Query_route_to Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_table, CondType filter_type,
+  Query_route_to Item2CQTerm(Item *an_arg, CQTerm &term, const TableID &tmp_table, CondType filter_type,
                              bool negative = false, Item *left_expr_for_subselect = NULL,
                              common::Operator *oper_for_subselect = NULL);
 
-  // int FilterNotSubselect(Item *conds, const TabID& tmp_table, FilterType
+  // int FilterNotSubselect(Item *conds, const TableID& tmp_table, FilterType
   // filter_type, FilterID *and_me_filter = 0);
 
   /*! \brief Create filter from field or function that has no condition
@@ -144,11 +144,11 @@ class Query final {
    * (WHERE, HAVING). \param and_me_filter - ? \return filter number
    * (non-negative) or error indication (negative)
    */
-  CondID ConditionNumberFromNaked(Item *conds, const TabID &tmp_table, CondType filter_type, CondID *and_me_filter,
+  CondID ConditionNumberFromNaked(Item *conds, const TableID &tmp_table, CondType filter_type, CondID *and_me_filter,
                                   bool is_or_subtree = false);
-  CondID ConditionNumberFromMultipleEquality(Item_equal *conds, const TabID &tmp_table, CondType filter_type,
+  CondID ConditionNumberFromMultipleEquality(Item_equal *conds, const TableID &tmp_table, CondType filter_type,
                                              CondID *and_me_filter = 0, bool is_or_subtree = false);
-  CondID ConditionNumberFromComparison(Item *conds, const TabID &tmp_table, CondType filter_type,
+  CondID ConditionNumberFromComparison(Item *conds, const TableID &tmp_table, CondType filter_type,
                                        CondID *and_me_filter = 0, bool is_or_subtree = false, bool negative = false);
 
   /*! \brief Checks type of operator involved in condition
@@ -172,9 +172,9 @@ class Query final {
    */
   static void MarkWithAll(common::Operator &op);
 
-  CondID ConditionNumber(Item *conds, const TabID &tmp_table, CondType filter_type, CondID *and_me_filter = 0,
+  CondID ConditionNumber(Item *conds, const TableID &tmp_table, CondType filter_type, CondID *and_me_filter = 0,
                          bool is_or_subtree = false);
-  Query_route_to BuildCondsIfPossible(Item *conds, CondID &cond_id, const TabID &tmp_table, JoinType join_type);
+  Query_route_to BuildCondsIfPossible(Item *conds, CondID &cond_id, const TableID &tmp_table, JoinType join_type);
 
  public:
   /*! \brief Removes ALL/ANY modifier from an operator
@@ -247,7 +247,7 @@ class Query final {
    * \param group_by - indicates if it is column for group by query
    * \return column number
    */
-  int AddColumnForPhysColumn(Item *item, const TabID &tmp_table, const common::ColOperation oper, const bool distinct,
+  int AddColumnForPhysColumn(Item *item, const TableID &tmp_table, const common::ColOperation oper, const bool distinct,
                              bool group_by, const char *alias = NULL);
 
   /*! \brief Creates AddColumn step in compilation by creating, if does not
@@ -257,7 +257,7 @@ class Query final {
    * distinct - flag for AddColumn operation \param group_by - indicates if it
    * is column for group by query \return column number
    */
-  int AddColumnForMysqlExpression(MysqlExpression *mysql_expression, const TabID &tmp_table, const char *alias,
+  int AddColumnForMysqlExpression(MysqlExpression *mysql_expression, const TableID &tmp_table, const char *alias,
                                   const common::ColOperation oper, const bool distinct, bool group_by = false);
 
   /*! \brief Computes identifier of a column created by AddColumn operation
@@ -267,13 +267,13 @@ class Query final {
    * \param distinct - modifier of AddColumn
    * \return column number if it exists or common::NULL_VALUE_32 otherwise
    */
-  int GetAddColumnId(const AttrID &vc, const TabID &tmp_table, const common::ColOperation oper, const bool distinct);
+  int GetAddColumnId(const AttrID &vc, const TableID &tmp_table, const common::ColOperation oper, const bool distinct);
 
   /*! \brief Changes type of AddColumn step in compilation from LISTING to
    * GROUP_BY \param tmp_table - for which TempTable \param attr - for which
    * column
    */
-  void CQChangeAddColumnLIST2GROUP_BY(const TabID &tmp_table, int attr);
+  void CQChangeAddColumnLIST2GROUP_BY(const TableID &tmp_table, int attr);
 
   /*! \brief Creates MysqlExpression object that wraps expression tree of MySQL
    * not containing aggregations. All Item_field items are substituted with
@@ -287,7 +287,7 @@ class Query final {
    * there was any problem with wrapping, e.g., not acceptable type of
    * expression
    */
-  WrapStatus WrapMysqlExpression(Item *item, const TabID &tmp_table, MysqlExpression *&expr, bool in_where,
+  WrapStatus WrapMysqlExpression(Item *item, const TableID &tmp_table, MysqlExpression *&expr, bool in_where,
                                  bool aggr_used);
   //
   //	/*! \brief Creates MysqlExpression object that wraps full expression
@@ -313,7 +313,7 @@ class Query final {
   // wrapping,
   //	 *  e.g., not acceptable type of expression
   //	 */
-  //	WrapStatus WrapMysqlExpressionWithAggregations(Item *item, const TabID&
+  //	WrapStatus WrapMysqlExpressionWithAggregations(Item *item, const TableID&
   // tmp_table, MysqlExpression*& expr, bool* is_const_or_aggr = NULL);
 
   /*! \brief Generates AddColumn compilation steps for every field on SELECT
@@ -324,7 +324,7 @@ class Query final {
    * Query_route_to::to_mysql in case of any problem and Query_route_to::to_tianmu
    * otherwise
    */
-  Query_route_to AddFields(mem_root_deque<Item *> &fields, const TabID &tmp_table, const bool group_by_clause,
+  Query_route_to AddFields(mem_root_deque<Item *> &fields, const TableID &tmp_table, const bool group_by_clause,
                            int &num_of_added_fields, bool ignore_minmax, bool &aggr_used);
 
   /*! \brief Generates AddColumn compilation steps for every field on GROUP BY
@@ -333,17 +333,18 @@ class Query final {
    * Query_route_to::to_mysql in case of any problem and Query_route_to::to_tianmu
    * otherwise
    */
-  Query_route_to AddGroupByFields(ORDER *group_by, const TabID &tmp_table);
+  Query_route_to AddGroupByFields(ORDER *group_by, const TableID &tmp_table);
 
   //! is this item representing a column local to the temp table (not a
   //! parameter)
-  bool IsLocalColumn(Item *item, const TabID &tmp_table);
-  Query_route_to AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const group_by_clause);
-  Query_route_to AddGlobalOrderByFields(SQL_I_List<ORDER> *global_order, const TabID &tmp_table, int max_col);
+  bool IsLocalColumn(Item *item, const TableID &tmp_table);
+  Query_route_to AddOrderByFields(ORDER *order_by, TableID const &tmp_table, int const group_by_clause);
+  Query_route_to AddGlobalOrderByFields(SQL_I_List<ORDER> *global_order, const TableID &tmp_table, int max_col);
 
   // stonedb8 List -> mem_root_deque
-  Query_route_to AddJoins(const mem_root_deque<TABLE_LIST *> join, TabID &tmp_table, std::vector<TabID> &left_tables,
-                          std::vector<TabID> &right_tables, bool in_subquery, bool &first_table, bool for_subq = false);
+  Query_route_to AddJoins(const mem_root_deque<TABLE_LIST *> join, TableID &tmp_table,
+                          std::vector<TableID> &left_tables, std::vector<TableID> &right_tables, bool in_subquery,
+                          bool &first_table, bool for_subq = false);
 
   static bool ClearSubselectTransformation(common::Operator &oper_for_subselect, Item *&field_for_subselect,
                                            Item *&conds, Item *&having, Item *&cond_removed,
@@ -353,7 +354,7 @@ class Query final {
    * \brief Are the variables constant (i.e. they are parameters) in the context
    * of the query represented by TempTable t
    */
-  bool IsConstExpr(MysqlExpression::SetOfVars &vars, const TabID &t);
+  bool IsConstExpr(MysqlExpression::SetOfVars &vars, const TableID &t);
 
   Transaction *m_conn;
 
@@ -378,7 +379,7 @@ class Query final {
   vcolumn::VirtualColumn *CreateColumnFromExpression(std::vector<MysqlExpression *> const &exprs, TempTable *temp_table,
                                                      int temp_table_alias, MultiIndex *mind);
 
-  bool IsParameterFromWhere(const TabID &params_table);
+  bool IsParameterFromWhere(const TableID &params_table);
 };
 }  // namespace core
 }  // namespace Tianmu
