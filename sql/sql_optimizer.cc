@@ -5126,7 +5126,19 @@ bool JOIN::make_join_plan()
   // Build the key access information, which is the basis for ref access.
   if (where_cond || select_lex->outer_join)
   {
-    if (update_ref_and_keys(thd, &keyuse_array, join_tab, tables, where_cond,
+    /*
+      The primary key of the tianmu engine does not support delete and update statements.
+      The following codes can be deleted after subsequent support
+    */
+    TABLE *const table= join_tab->table();
+    bool tianmu_engine = table->s->db_type() ? table->s->db_type()->db_type == DB_TYPE_TIANMU: false;
+    enum_sql_command sqlCommand = thd->lex->sql_command;
+    bool tianmuDeleteOrUpdate = (tianmu_engine && (sqlCommand == SQLCOM_DELETE ||
+                                          sqlCommand == SQLCOM_DELETE_MULTI ||
+                                          sqlCommand == SQLCOM_UPDATE ||
+                                          sqlCommand == SQLCOM_UPDATE_MULTI));
+
+    if (!tianmuDeleteOrUpdate && update_ref_and_keys(thd, &keyuse_array, join_tab, tables, where_cond,
                             cond_equal, ~select_lex->outer_join, select_lex,
                             &sargables))
       DBUG_RETURN(true);
