@@ -1,6 +1,6 @@
 import React from 'react';
 import { useHistory } from '@docusaurus/router';
-import { IconFont } from '../icon';
+import { IconFont } from '../iconFont';
 import {ILink} from './interface';
 import {LinkStyle, LinkIconStyle, LinkBtnStyle, LinkSocialStyle} from './styles';
 
