@@ -1,0 +1,35 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # SELECT..DISTINCT
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS mc_db;
+--enable_warnings
+
+CREATE DATABASE mc_db;
+USE mc_db;
+
+CREATE TABLE t1(col1 INT, col2 CHAR(5))ENGINE=tianmu;
+INSERT INTO t1 VALUES(NULL,''),(1,'a'),(1,'b'),(1,'c'),(2,'dd'),(3,'eee');
+SELECT COUNT(DISTINCT col1) FROM t1;
+#736 For bugs to solve
+#SELECT COUNT(DISTINCT col2) FROM t1;
+
+SELECT DISTINCT col1 FROM t1;
+SELECT DISTINCT col1 FROM t1 ORDER BY col1 DESC;
+SELECT DISTINCT col2 FROM t1;
+
+CREATE TABLE t2(col1 INT)ENGINE=tianmu;
+INSERT INTO t2 SELECT DISTINCT col1 FROM t1;
+SELECT * FROM t2;
+
+CREATE TABLE t3 (name varchar(255))engine=tianmu;
+INSERT INTO t3 VALUES ('aa'),('ab'),('ac'),('ad'),('ae');
+SELECT DISTINCT * FROM t3;
+SELECT DISTINCT name FROM t3 LIMIT 2;
+SELECT DISTINCT 1 FROM t3 LIMIT 3;
+
+# Clean UP
+DROP DATABASE mc_db;
