@@ -16,7 +16,7 @@
 */
 
 #include "condition_encoder.h"
-#include "core/cq_term.h"
+#include "core/compiled_query_term.h"
 #include "core/descriptor.h"
 #include "core/just_a_table.h"
 #include "core/query.h"

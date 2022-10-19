@@ -16,7 +16,7 @@
 */
 
 // This is a part of RCAttr implementation concerned with the KNs and its usage
-#include "core/cq_term.h"
+#include "core/compiled_query_term.h"
 #include "core/engine.h"
 #include "core/pack.h"
 #include "core/pack_guardian.h"

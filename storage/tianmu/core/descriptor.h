@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "common/common_definitions.h"
-#include "core/cq_term.h"
+#include "core/compiled_query_term.h"
 #include "core/dimension_group.h"
 
 namespace Tianmu {

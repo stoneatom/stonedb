@@ -19,7 +19,7 @@
 #pragma once
 
 #include "core/bin_tools.h"
-#include "core/cq_term.h"
+#include "core/compiled_query_term.h"
 #include "core/filter.h"
 
 namespace Tianmu {

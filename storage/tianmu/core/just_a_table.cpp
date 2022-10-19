@@ -18,7 +18,7 @@
 #include "just_a_table.h"
 
 #include "common/assert.h"
-#include "core/cq_term.h"
+#include "core/compiled_query_term.h"
 #include "core/filter.h"
 #include "core/temp_table.h"
 

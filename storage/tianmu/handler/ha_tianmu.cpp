@@ -1376,9 +1376,9 @@ const Item *TianmuHandler::cond_push(const Item *a_cond) {
       m_result = false;
 
       m_query->AddTable(rctp);
-      core::TabID t_out;
+      core::TableID t_out;
       m_cq->TableAlias(t_out,
-                       core::TabID(0));  // we apply it to the only table in this query
+                       core::TableID(0));  // we apply it to the only table in this query
       m_cq->TmpTable(m_tmp_table, t_out);
 
       std::string ext_alias;
@@ -1391,7 +1391,7 @@ const Item *TianmuHandler::cond_push(const Item *a_cond) {
 
       int col_no = 0;
       core::AttrID col, vc;
-      core::TabID tab(m_tmp_table);
+      core::TableID tab(m_tmp_table);
 
       my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->read_set);
       for (Field **field = table->field; *field; field++) {
