@@ -184,7 +184,7 @@ class TianmuHandler final : public handler {
   core::RCTable::Iterator table_new_iter_end;
 
   std::unique_ptr<core::Query> m_query;
-  core::TabID m_tmp_table;
+  core::TableID m_tmp_table;
   std::unique_ptr<core::CompiledQuery> m_cq;
   bool m_result = false;
   std::vector<std::vector<uchar>> blob_buffers;

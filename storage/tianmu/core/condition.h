@@ -20,11 +20,12 @@
 
 #include <set>
 
-#include "core/cq_term.h"
+#include "core/compiled_query_term.h"
 #include "core/descriptor.h"
 
 namespace Tianmu {
 namespace core {
+
 class Condition {
  protected:
   std::vector<Descriptor> descriptors;
@@ -59,6 +60,7 @@ class SingleTreeCondition : public Condition {
   DescTree *GetTree() { return tree; }
   bool IsType_Tree() override { return true; }
 };
+
 }  // namespace core
 }  // namespace Tianmu
 

@@ -20,7 +20,7 @@
 #include "common/common_definitions.h"
 #include "compiled_query.h"
 #include "core/compilation_tools.h"
-#include "core/cq_term.h"
+#include "core/compiled_query_term.h"
 #include "core/engine.h"
 #include "core/mysql_expression.h"
 #include "core/parameterized_filter.h"
@@ -132,7 +132,7 @@ bool Query::HasAggregation(Item *item) {
   return has;
 }
 
-int Query::VirtualColumnAlreadyExists(const TabID &tmp_table, MysqlExpression *expression) {
+int Query::VirtualColumnAlreadyExists(const TableID &tmp_table, MysqlExpression *expression) {
   int exists = common::NULL_VALUE_32;
   for (auto it = tab_id2expression.lower_bound(tmp_table), end = tab_id2expression.upper_bound(tmp_table); it != end;
        ++it) {
@@ -144,7 +144,7 @@ int Query::VirtualColumnAlreadyExists(const TabID &tmp_table, MysqlExpression *e
   return exists;
 }
 
-int Query::VirtualColumnAlreadyExists(const TabID &tmp_table, const TabID &subselect) {
+int Query::VirtualColumnAlreadyExists(const TableID &tmp_table, const TableID &subselect) {
   int exists = common::NULL_VALUE_32;
   for (auto it = tab_id2subselect.lower_bound(tmp_table), end = tab_id2subselect.upper_bound(tmp_table); it != end;
        ++it) {
@@ -156,7 +156,7 @@ int Query::VirtualColumnAlreadyExists(const TabID &tmp_table, const TabID &subse
   return exists;
 }
 
-int Query::VirtualColumnAlreadyExists(const TabID &tmp_table, const std::vector<int> &vcs, const AttrID &at) {
+int Query::VirtualColumnAlreadyExists(const TableID &tmp_table, const std::vector<int> &vcs, const AttrID &at) {
   int exists = common::NULL_VALUE_32;
   for (auto it = tab_id2inset.lower_bound(tmp_table), end = tab_id2inset.upper_bound(tmp_table); it != end; ++it) {
     if (it->second.second.second.n == at.n) {
@@ -172,7 +172,7 @@ int Query::VirtualColumnAlreadyExists(const TabID &tmp_table, const std::vector<
   return exists;
 }
 
-std::pair<int, int> Query::VirtualColumnAlreadyExists(const TabID &tmp_table, const TabID &tab, const AttrID &at) {
+std::pair<int, int> Query::VirtualColumnAlreadyExists(const TableID &tmp_table, const TableID &tab, const AttrID &at) {
   for (auto it = phys2virt.lower_bound(std::make_pair(tab.n, at.n)),
             end = phys2virt.upper_bound(std::make_pair(tab.n, at.n));
        it != end; ++it) {
@@ -269,7 +269,7 @@ const std::string Query::GetItemName(Item *item) {
   return "UNKNOWN";
 }
 
-int Query::GetAddColumnId(const AttrID &vc, const TabID &tmp_table, const common::ColOperation oper,
+int Query::GetAddColumnId(const AttrID &vc, const TableID &tmp_table, const common::ColOperation oper,
                           const bool distinct) {
   for (int i = 0; i < cq->NumOfSteps(); i++) {
     CompiledQuery::CQStep *step = &cq->Step(i);
@@ -281,7 +281,7 @@ int Query::GetAddColumnId(const AttrID &vc, const TabID &tmp_table, const common
   return common::NULL_VALUE_32;
 }
 
-void Query::CQChangeAddColumnLIST2GROUP_BY(const TabID &tmp_table, int attr) {
+void Query::CQChangeAddColumnLIST2GROUP_BY(const TableID &tmp_table, int attr) {
   for (int i = 0; i < cq->NumOfSteps(); i++) {
     CompiledQuery::CQStep *step = &cq->Step(i);
     if (step->type == CompiledQuery::StepType::ADD_COLUMN && step->t1 == tmp_table && step->a1.n == attr &&
@@ -470,7 +470,7 @@ vcolumn::VirtualColumn *Query::CreateColumnFromExpression(std::vector<MysqlExpre
         // a special case when a naked column is a parameter
         // without this column type would be a seen by mysql, not TIANMU.
         // e.g. timestamp would be string 19
-        TabID tab;
+        TableID tab;
         AttrID col;
         tab.n = exprs[0]->GetVars().begin()->tab;
         col.n = exprs[0]->GetVars().begin()->col;
@@ -507,15 +507,15 @@ vcolumn::VirtualColumn *Query::CreateColumnFromExpression(std::vector<MysqlExpre
   return vc;
 }
 
-bool Query::IsConstExpr(MysqlExpression::SetOfVars &sv, const TabID &t) {
+bool Query::IsConstExpr(MysqlExpression::SetOfVars &sv, const TableID &t) {
   bool res = false;
   for (auto &iter : sv) {
-    res |= cq->ExistsInTempTable(TabID(iter.tab), t);
+    res |= cq->ExistsInTempTable(TableID(iter.tab), t);
   }
   return !res;
 }
 
-bool Query::IsParameterFromWhere(const TabID &params_table) {
+bool Query::IsParameterFromWhere(const TableID &params_table) {
   for (auto &it : subqueries_in_where) {
     if (it.first == params_table) return it.second;
   }
@@ -899,7 +899,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
   return output_table;
 }
 
-Query_route_to Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_table, CondType filter_type,
+Query_route_to Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TableID &tmp_table, CondType filter_type,
                                   bool negative, Item *left_expr_for_subselect, common::Operator *oper_for_subselect) {
   an_arg = UnRef(an_arg);
   if (an_arg->type() == Item::SUBSELECT_ITEM) {
@@ -924,7 +924,7 @@ Query_route_to Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_t
     // subqueries. Once subquery is compiled we can get rid of its aliases since
     // they are not needed any longer and stay with aliases of outer query only
     auto outer_map_copy = table_alias2index_ptr;
-    TabID subselect;
+    TableID subselect;
     Query_route_to res = Compile(cq, select_unit->first_query_block(), select_unit->union_distinct, &subselect,
                                  ignore_limit, left_expr_for_subselect, oper_for_subselect, ignore_minmax, true);
     // restore outer query aliases
@@ -974,7 +974,7 @@ Query_route_to Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_t
       return Query_route_to::TO_MYSQL;
 
     AttrID col, vc;
-    TabID tab;
+    TableID tab;
     if ((IsFieldItem(an_arg) || IsAggregationOverFieldItem(an_arg)) && !FieldUnmysterify(an_arg, tab, col))
       return Query_route_to::TO_MYSQL;
     if (IsAggregationItem(an_arg) && HasAggregation(((Item_sum *)an_arg)->get_arg(0))) return Query_route_to::TO_MYSQL;
@@ -1060,7 +1060,7 @@ Query_route_to Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_t
 
     AttrID vc;
     AttrID col;
-    TabID tab;
+    TableID tab;
     if (IsFieldItem(an_arg) && !FieldUnmysterify(an_arg, tab, col)) return Query_route_to::TO_MYSQL;
     if (IsFieldItem(an_arg) && cq->ExistsInTempTable(tab, tmp_table)) {
       auto phys_vc = VirtualColumnAlreadyExists(tmp_table, tab, col);
@@ -1106,7 +1106,7 @@ Query_route_to Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_t
   return Query_route_to::TO_MYSQL;
 }
 
-CondID Query::ConditionNumberFromMultipleEquality(Item_equal *conds, const TabID &tmp_table, CondType filter_type,
+CondID Query::ConditionNumberFromMultipleEquality(Item_equal *conds, const TableID &tmp_table, CondType filter_type,
                                                   CondID *and_me_filter, bool is_or_subtree) {
   CQTerm zero_term, first_term, next_term;
   Item_field *ifield{nullptr};
@@ -1178,7 +1178,7 @@ Item *Query::FindOutAboutNot(Item *it, bool &is_there_not) {
   return it;
 }
 
-CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table, CondType filter_type,
+CondID Query::ConditionNumberFromComparison(Item *conds, const TableID &tmp_table, CondType filter_type,
                                             CondID *and_me_filter, bool is_or_subtree, bool negative) {
   CondID filter;
   common::Operator op; /*{    common::Operator::O_EQ, common::Operator::O_NOT_EQ, common::Operator::O_LESS,
@@ -1337,8 +1337,8 @@ CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table,
   return filter;
 }
 
-CondID Query::ConditionNumberFromNaked(Item *conds, const TabID &tmp_table, CondType filter_type, CondID *and_me_filter,
-                                       bool is_or_subtree) {
+CondID Query::ConditionNumberFromNaked(Item *conds, const TableID &tmp_table, CondType filter_type,
+                                       CondID *and_me_filter, bool is_or_subtree) {
   CondID filter;
   CQTerm naked_col;
   if (Item2CQTerm(conds, naked_col, tmp_table, filter_type,
@@ -1379,7 +1379,7 @@ struct ItemFieldCompare {
   bool operator()(Item_field *const &f1, Item_field *const &f2) const { return f1->field < f2->field; }
 };
 
-CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filter_type, CondID *and_me_filter,
+CondID Query::ConditionNumber(Item *conds, const TableID &tmp_table, CondType filter_type, CondID *and_me_filter,
                               bool is_or_subtree) {
   // we know, that conds != 0
   // returns -1 on error
@@ -1561,7 +1561,7 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
   return cond_id;
 }
 
-Query_route_to Query::BuildConditions(Item *conds, CondID &cond_id, CompiledQuery *cq, const TabID &tmp_table,
+Query_route_to Query::BuildConditions(Item *conds, CondID &cond_id, CompiledQuery *cq, const TableID &tmp_table,
                                       CondType filter_type, bool is_zero_result, [[maybe_unused]] JoinType join_type) {
   conds = UnRef(conds);
   PrintItemTree("BuildFiler(), item tree passed in 'conds':", conds);
@@ -1817,7 +1817,7 @@ Table_Status Query::PrefixCheck(Item *conds) {
   return Table_Status::TALE_SEEN_INVOLVED;
 }
 
-Query_route_to Query::BuildCondsIfPossible(Item *conds, CondID &cond_id, const TabID &tmp_table, JoinType join_type) {
+Query_route_to Query::BuildCondsIfPossible(Item *conds, CondID &cond_id, const TableID &tmp_table, JoinType join_type) {
   conds = UnRef(conds);
   if (conds) {
     CondType filter_type = CondType::ON_LEFT_FILTER;
