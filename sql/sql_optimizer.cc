@@ -50,6 +50,8 @@
 #include "opt_hints.h"           // hint_table_state
 
 #include <algorithm>
+#include <sstream> 
+
 using std::max;
 using std::min;
 
@@ -10158,15 +10160,17 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
   if (cond->type() == Item::COND_ITEM)
   {
     Item_cond *const item_cond= down_cast<Item_cond *>(cond);
-    const bool and_level= item_cond->functype() == Item_func::COND_AND_FUNC;
+    const auto& item_func_type = item_cond->functype();
+    const bool and_level = Item_func::COND_AND_FUNC == item_func_type;
     List_iterator<Item> li(*item_cond->argument_list());
     bool should_fix_fields= false;
 
     *cond_value=Item::COND_UNDEF;
     Item *item;
 
-    bool is_cond_or =
-      (cond && dynamic_cast<Item_cond_or*>(cond)) ? true : false;
+    bool is_cond_or = Item_func::Functype::COND_OR_FUNC == item_func_type;
+    bool is_cond_and = Item_func::Functype::COND_AND_FUNC == item_func_type;
+
     while ((item=li++))
     {
       Item *new_item;
@@ -10176,29 +10180,131 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
 
       if (new_item == NULL)
       {
-        bool replace_always_true = false;
-        if (is_cond_or)
+        bool cond_replace = false;
+        bool cond_value_equivalent = false;
+        switch (item->type())
         {
-          if (dynamic_cast<Item_int*>(item))
+        case Item::Type::INT_ITEM:
+        {
+          cond_replace = true;
+          cond_value_equivalent = down_cast<Item_int*>(item)->value;
+          break;
+        }
+
+        case Item::Type::FUNC_ITEM:
+        {
+          Item_func* item_func = down_cast<Item_func*>(item);
+          const Item_func::Functype& func_type = item_func->functype();
+          String left_value;
+          String right_value;
+
+          bool check_value = false;
+          switch (func_type)
           {
-            Item_int* item_int = dynamic_cast<Item_int*>(item);
-            replace_always_true = item_int->value ? true : false;
-          }
-          else if (dynamic_cast<Item_bool_func2*>(item))
+          case Item_func::Functype::EQ_FUNC:
+          case Item_func::Functype::EQUAL_FUNC:
+          case Item_func::Functype::NE_FUNC:
+          case Item_func::Functype::GT_FUNC:
+          case Item_func::Functype::GE_FUNC:
+          case Item_func::Functype::LT_FUNC:
+          case Item_func::Functype::LE_FUNC:
           {
-            Item_bool_func2* func = dynamic_cast<Item_bool_func2*>(item);
+            check_value = true;
+            Item_bool_func2* func = down_cast<Item_bool_func2*>(item);
             Item** args = func->arguments();
-            Item* left_item = args[0];
-            Item* right_item = args[1];
-            replace_always_true = left_item->eq(right_item, 0) ? true : false;
+            args[0]->val_str(&left_value);
+            args[1]->val_str(&right_value);
+            break;
+          }
+
+          default:
+            break;
+          }
+
+          if (!check_value)
+          {
+            break;
+          }
+
+          switch (func_type)
+          {
+          case Item_func::Functype::EQ_FUNC:
+          case Item_func::Functype::EQUAL_FUNC:
+          {
+            cond_replace = true;
+            cond_value_equivalent = !stringcmp(&left_value, &right_value);
+            break;
+          }
+
+          case Item_func::Functype::NE_FUNC:
+          {
+            cond_replace = true;
+            cond_value_equivalent = stringcmp(&left_value, &right_value);
+            break;
+          }
+
+          case Item_func::Functype::GT_FUNC:
+          case Item_func::Functype::GE_FUNC:
+          case Item_func::Functype::LT_FUNC:
+          case Item_func::Functype::LE_FUNC:
+          {
+            std::stringstream left_sin(std::string(left_value.ptr(), left_value.length()));
+            double left_d;
+            if (!(left_sin >> left_d))
+            {
+              break;
+            }
+
+            std::stringstream right_sin(std::string(right_value.ptr(), right_value.length()));
+            double right_d;
+            if (!(right_sin >> right_d))
+            {
+              break;
+            }
+
+            cond_replace = true;
+            if (Item_func::Functype::GT_FUNC == func_type)
+            {
+              cond_value_equivalent = left_d > right_d;
+            }
+            else if (Item_func::Functype::GE_FUNC == func_type)
+            {
+              cond_value_equivalent = left_d >= right_d;
+            }
+            else if (Item_func::Functype::LT_FUNC == func_type)
+            {
+              cond_value_equivalent = left_d < right_d;
+            }
+            else if (Item_func::Functype::LE_FUNC == func_type)
+            {
+              cond_value_equivalent = left_d <= right_d;
+            }
+
+            break;
+          }
+
+          default:
+            break;
           }
         }
 
-        if (replace_always_true)
-        {					
-          *cond_value = tmp_cond_value;
-          *retcond = NULL;
-          return false;
+        default:
+          break;
+        }
+
+        if (cond_replace)
+        {
+          if ((is_cond_or && cond_value_equivalent)
+            || (is_cond_and && (!cond_value_equivalent)))
+          {
+            *cond_value = tmp_cond_value;
+            *retcond = NULL;
+            return false;
+          }
+          else
+          {
+            li.remove();
+          }
         }
       }
       else if (item != new_item)
@@ -10330,11 +10436,11 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
     {
       if (part!=1 || cond->type()!=Item::SUBSELECT_ITEM)
       {//TIANMU UPGRADE
-      bool value;
-      if (eval_const_cond(thd, cond, &value))
-        return true;
-      *cond_value= value ? Item::COND_TRUE : Item::COND_FALSE;
-      *retcond= NULL;
+        bool value;
+        if (eval_const_cond(thd, cond, &value))
+          return true;
+        *cond_value= value ? Item::COND_TRUE : Item::COND_FALSE;
+        *retcond= NULL;
       }//END
       return false;
     }
