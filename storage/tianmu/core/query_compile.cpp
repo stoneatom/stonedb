@@ -267,7 +267,7 @@ bool Query::FieldUnmysterify(Item *item, TabID &tab, AttrID &col) {
       // Physical table in FROM - RCTable
       int field_num;
       for (field_num = 0; mysql_table->field[field_num]; field_num++)
-        if (mysql_table->field[field_num]->field_name == ifield->get_result_field()->field_name) break;
+        if (std::strcmp(mysql_table->field[field_num]->field_name, ifield->original_field_name()) == 0) break;
       if (!mysql_table->field[field_num]) continue;
       col = AttrID(field_num);
       return true;
