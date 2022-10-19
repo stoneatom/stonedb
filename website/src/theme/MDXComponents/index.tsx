@@ -5,7 +5,6 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import React from 'react';
 import MDXComponentsOriginal from '@theme-original/MDXComponents';
 import type {MDXComponentsObject} from '@theme/MDXComponents';
 import MDXImage from './Image';

@@ -4,17 +4,19 @@ import { DownloadOutlined, RightOutlined } from '@ant-design/icons';
 import Translate from '@docusaurus/Translate';
 import { useHistory, useLocation } from '@docusaurus/router';
 import {loadScript} from '@site/src/utils';
+import BgDownload from '@site/static/resource/BgDownload.png';
 import { Context } from '../styles';
-import { Item, DownLoadBtn } from './styles';
+import { Item, DownLoadBtn, PanelWrap } from './styles';
 
-const Download: React.FC = () => {
+const Download: React.FC = (props: any) => {
+  const strs = props.children.split('\n');
   const history = useHistory();
   const location = useLocation()
   const renderAd = async () => {    
     // 实例化 PAG
     const PAG = await (window as any).libpag.PAGInit();
     // 获取 PAG 素材数据
-    const buffer = await fetch("https://static.stoneatom.com/assets/12342342424331324.pag").then(
+    const buffer = await fetch("https://static.stoneatom.com/assets/stonedb.pag").then(
       (response) => response.arrayBuffer()
     );
     // 加载 PAG 素材为 PAGFile 对象
@@ -49,19 +51,16 @@ const Download: React.FC = () => {
   }, [location.pathname]);
 
   return (
+    <PanelWrap bg={BgDownload}>
     <Context>
       <Space size={10}>
         <Item>
-          <h2>
-            <Translate id="home.download.title">StoneDB for MySQL</Translate>
-          </h2>
-          <p>
-            <Translate id="home.download.desc">一个基于MySQL的开源实时HTAP数据库</Translate>
-          </p>
+          <h2>{strs[0]}</h2>
+          <p>{strs[1]}</p>
           <Space>
             <DownLoadBtn size="large" type="primary" onClick={gotoDownload}>
+              <b><DownloadOutlined /></b>
               <Translate id="home.download.btn">下载</Translate>
-              <DownloadOutlined />
             </DownLoadBtn>
             <Button type="text" onClick={gotoStart}>
               <Translate id="home.download.start">快速上手</Translate>
@@ -75,6 +74,8 @@ const Download: React.FC = () => {
         </Item>
       </Space>
     </Context>
+    </PanelWrap>
   );
 };
+
 export default Download;

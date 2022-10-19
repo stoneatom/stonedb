@@ -5,7 +5,7 @@ const modifyVars = require('./scripts/config.theme.js');
 // const ulRemark = require('./src/remark/ul');
 // const math = require('./src/remark/remark-math');
 // const imageList = require('./src/remark/imageList');
-
+const path = require('path');
 const isDev = process.env.NODE_ENV === 'development';
 
 const isDeployPreview =
@@ -59,11 +59,26 @@ const config = {
           showLastUpdateAuthor: true,
           showLastUpdateTime: true,
           editLocalizedFiles: true,
-          editUrl: ({versionDocsDirPath, docPath, locale}) => {
+          editUrl: ({docPath, locale}) => {
             if(locale !== 'en') {
               return `https://github.com/stoneatom/stonedb/edit/stonedb-5.7-dev/website/i18n/${locale}/docusaurus-plugin-content-docs/current/${docPath}`
             }
             return `https://github.com/stoneatom/stonedb/edit/stonedb-5.7-dev/Docs/${docPath}`
+          },
+        },
+        blog: {
+          // routeBasePath: '/',
+          path: 'blog',
+          // editUrl: ({locale, blogDirPath, blogPath}) => {
+          //   if(locale !== 'en') {
+          //     return `https://github.com/stoneatom/stonedb/edit/stonedb-5.7-dev/website/i18n/${locale}/docusaurus-plugin-content-blog/current/${docPath}`
+          //   }
+          //   return `https://github.com/stoneatom/stonedb/edit/stonedb-5.7-dev/website/blog/${docPath}`
+          // },
+          postsPerPage: 5,
+          feedOptions: {
+            type: 'all',
+            copyright: `Copyright © The StoneAtom-tech ALL Rights Reserved`,
           },
         },
         theme: {
@@ -99,10 +114,26 @@ const config = {
             key: 'Docs',
           },
           {
-            to: '/community/main',
+            label: 'Discussion',
+            to: 'https://github.com/stoneatom/stonedb/discussions',
+            key: 'Discussion',
+          },
+          {
             label: 'Community',
+            to: '/community',
             key: 'Community',
           },
+          {
+            label: 'Blog',
+            to: '/blog',
+            key: 'Blog',
+          },
+          {
+            label: 'Forum',
+            to: 'https://forum.stonedb.io',
+            key: 'Forum',
+          },
+          
           {
             type: 'custom-github',
             position: 'right'
@@ -146,6 +177,7 @@ const config = {
   //   'https://unpkg.com/libpag@latest/lib/libpag.min.js',
   // ],
   plugins: [
+    '@docusaurus/plugin-ideal-image',
     [
       "docusaurus-plugin-less", 
       {
@@ -155,15 +187,7 @@ const config = {
         }
       }
     ],
-    [
-      '@docusaurus/plugin-content-blog',
-      {
-        path: 'community',
-        id: 'community',
-        routeBasePath: 'community',
-        blogSidebarCount: 0,
-      }
-    ],
+    
     [
       'pwa',
       {
@@ -217,6 +241,17 @@ const config = {
             content: '#000',
           },
         ],
+      },
+    ],
+  ],
+  themes: [
+    [
+      "@easyops-cn/docusaurus-search-local",
+      {
+        hashed: true,
+        language: ["en", "zh"],
+        highlightSearchTermsOnTargetPage: true,
+        explicitSearchResultPath: true,
       },
     ],
   ],

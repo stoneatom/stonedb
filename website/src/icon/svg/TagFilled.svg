@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1024px" height="1024px" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>TagFilled</title>
+    <g id="TagFilled" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <path d="M204.8,204.8 L665.6,204.8 C750.430938,204.8 819.2,273.569062 819.2,358.4 L819.2,819.2 L819.2,819.2 L358.4,819.2 C273.569062,819.2 204.8,750.430938 204.8,665.6 L204.8,204.8 L204.8,204.8 Z" id="矩形" fill="#000000" fill-rule="nonzero" transform="translate(512.000000, 512.000000) rotate(-315.000000) translate(-512.000000, -512.000000) "></path>
+    </g>
+</svg>
