@@ -23,7 +23,6 @@ SET(TIANMU_PLUGIN_MANDATORY  TRUE)
 MESSAGE(STATUS "Using cmake version ${CMAKE_VERSION}")
 MESSAGE(STATUS "Building Tianmu")
 
-#lihao Here, the dependency libs will be moved to 'third_party' directory.
 SET(BOOST_ROOT ${WITH_BOOST})
 SET(MARISA_ROOT ${WITH_MARISA})
 SET(ROCKSDB_ROOT ${WITH_ROCKSDB})
