@@ -127,7 +127,8 @@ bool Query::HasAggregation(Item *item) {
     Item *item;
     while (!has && (item = li++)) has = HasAggregation(item);
   } else if (i->type() == Item_tianmufield::get_tianmuitem_type())
-    if (static_cast<Item_tianmufield *>(i)->IsAggregation()) has = true;
+    if (static_cast<Item_tianmufield *>(i)->IsAggregation())
+      has = true;
   return has;
 }
 
@@ -232,7 +233,8 @@ const std::string Query::GetItemName(Item *item) {
     case Item::REF_ITEM: {
       Item_ref *ref = static_cast<Item_ref *>(item);
       Item *real = ref->real_item();
-      if (ref != real) return GetItemName(real);
+      if (ref != real)
+        return GetItemName(real);
       return "REF_ITEM";
     }
     case Item::NULL_ITEM:
@@ -261,7 +263,8 @@ const std::string Query::GetItemName(Item *item) {
     case static_cast<int>(Item_tianmufield::enumTIANMUFiledItem::TIANMUFIELD_ITEM):
       Item_tianmufield *tianmu = static_cast<Item_tianmufield *>(item);
       size_t cur_var_id = tianmuitems_cur_var_ids[tianmu]++;
-      if (cur_var_id >= tianmu->varID.size()) cur_var_id = 0;
+      if (cur_var_id >= tianmu->varID.size())
+        cur_var_id = 0;
       std::sprintf(buf, "TIANMU_FIELD(T:%d,A:%d)", tianmu->varID[cur_var_id].tab, tianmu->varID[cur_var_id].col);
       return buf;
   }
@@ -516,7 +519,8 @@ bool Query::IsConstExpr(MysqlExpression::SetOfVars &sv, const TabID &t) {
 
 bool Query::IsParameterFromWhere(const TabID &params_table) {
   for (auto &it : subqueries_in_where) {
-    if (it.first == params_table) return it.second;
+    if (it.first == params_table)
+      return it.second;
   }
   DEBUG_ASSERT(!"Subquery not properly placed on compilation stack");
   return true;
@@ -548,12 +552,14 @@ void Query::GetPrecisionScale(Item *item, int &precision, int &scale, bool max_s
     precision -= (scale - 18);
     scale = 18;
   }
-  if (precision > 18) precision = 18;
+  if (precision > 18)
+    precision = 18;
 
   Item_func *item_func = dynamic_cast<Item_func *>(item);
   if (max_scale && precision < 18 && item_func && std::strcmp(item_func->func_name(), "/") == 0) {
     scale += 18 - precision;
-    if (scale > 15) scale = 15;
+    if (scale > 15)
+      scale = 15;
     precision = 18;
   }
 }
@@ -731,20 +737,24 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           break;
         case CompiledQuery::StepType::ADD_CONDS: {
           DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
-          if (step.c1.n == common::NULL_VALUE_32) break;
-          if (step.n1 != static_cast<int64_t>(CondType::HAVING_COND)) conds[step.c1.n]->Simplify();
+          if (step.c1.n == common::NULL_VALUE_32)
+            break;
+          if (step.n1 != static_cast<int64_t>(CondType::HAVING_COND))
+            conds[step.c1.n]->Simplify();
           ((TempTable *)ta[-step.t1.n - 1].get())->AddConds(conds[step.c1.n], (CondType)step.n1);
           break;
         }
         case CompiledQuery::StepType::LEFT_JOIN_ON: {
           DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
-          if (step.c1.n == common::NULL_VALUE_32) break;
+          if (step.c1.n == common::NULL_VALUE_32)
+            break;
           ((TempTable *)ta[-step.t1.n - 1].get())->AddLeftConds(conds[step.c1.n], step.tables1, step.tables2);
           break;
         }
         case CompiledQuery::StepType::INNER_JOIN_ON: {
           DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
-          if (step.c1.n == common::NULL_VALUE_32) break;
+          if (step.c1.n == common::NULL_VALUE_32)
+            break;
           ((TempTable *)ta[-step.t1.n - 1].get())->AddInnerConds(conds[step.c1.n], step.tables1);
           break;
         }
@@ -752,12 +762,15 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           int64_t cur_limit = -1;
           auto *tb = (TempTable *)ta[-step.t1.n - 1].get();
 
-          if (qu.FindDistinct(step.t1.n)) tb->SetMode(TMParameter::TM_DISTINCT, 0, 0);
-          if (qu.NoAggregationOrderingAndDistinct(step.t1.n)) cur_limit = qu.FindLimit(step.t1.n);
+          if (qu.FindDistinct(step.t1.n))
+            tb->SetMode(TMParameter::TM_DISTINCT, 0, 0);
+          if (qu.NoAggregationOrderingAndDistinct(step.t1.n))
+            cur_limit = qu.FindLimit(step.t1.n);
 
           ParameterizedFilter *filter = tb->GetFilterP();
 
-          if (cur_limit != -1 && filter->NoParameterizedDescs()) cur_limit = -1;
+          if (cur_limit != -1 && filter->NoParameterizedDescs())
+            cur_limit = -1;
 
           std::set<int> used_dims = qu.GetUsedDims(step.t1, ta);
 
@@ -1062,7 +1075,8 @@ int Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_table, CondT
     AttrID vc;
     AttrID col;
     TabID tab;
-    if (IsFieldItem(an_arg) && !FieldUnmysterify(an_arg, tab, col)) return RETURN_QUERY_TO_MYSQL_ROUTE;
+    if (IsFieldItem(an_arg) && !FieldUnmysterify(an_arg, tab, col))
+      return RETURN_QUERY_TO_MYSQL_ROUTE;
     if (IsFieldItem(an_arg) && cq->ExistsInTempTable(tab, tmp_table)) {
       auto phys_vc = VirtualColumnAlreadyExists(tmp_table, tab, col);
       if (phys_vc.first == common::NULL_VALUE_32) {
@@ -1094,7 +1108,8 @@ int Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_table, CondT
     } else {
       MysqlExpression *expr;
       WrapStatus ws = WrapMysqlExpression(an_arg, tmp_table, expr, true, false);
-      if (ws != WrapStatus::SUCCESS) return RETURN_QUERY_TO_MYSQL_ROUTE;
+      if (ws != WrapStatus::SUCCESS)
+        return RETURN_QUERY_TO_MYSQL_ROUTE;
       vc.n = VirtualColumnAlreadyExists(tmp_table, expr);
       if (vc.n == common::NULL_VALUE_32) {
         cq->CreateVirtualColumn(vc, tmp_table, expr);
@@ -1115,21 +1130,25 @@ CondID Query::ConditionNumberFromMultipleEquality(Item_equal *conds, const TabID
   Item_field *ifield;
   Item *const_item = conds->get_const();
   if (const_item) {
-    if (!Item2CQTerm(const_item, zero_term, tmp_table, filter_type)) return CondID(-1);
+    if (!Item2CQTerm(const_item, zero_term, tmp_table, filter_type))
+      return CondID(-1);
   } else {
     ifield = li++;
-    if (!Item2CQTerm(ifield, zero_term, tmp_table, filter_type)) return CondID(-1);
+    if (!Item2CQTerm(ifield, zero_term, tmp_table, filter_type))
+      return CondID(-1);
   }
 
   ifield = li++;
-  if (!Item2CQTerm(ifield, first_term, tmp_table, filter_type)) return CondID(-1);
+  if (!Item2CQTerm(ifield, first_term, tmp_table, filter_type))
+    return CondID(-1);
 
   CondID filter;
   cq->CreateConds(filter, tmp_table, first_term, common::Operator::O_EQ, zero_term, CQTerm(),
                   is_or_subtree || filter_type == CondType::HAVING_COND);
 
   while ((ifield = li++) != nullptr) {
-    if (!Item2CQTerm(ifield, next_term, tmp_table, filter_type)) return CondID(-1);
+    if (!Item2CQTerm(ifield, next_term, tmp_table, filter_type))
+      return CondID(-1);
     cq->And(filter, tmp_table, next_term, common::Operator::O_EQ, zero_term);
   }
   if (and_me_filter) {
@@ -1140,7 +1159,8 @@ CondID Query::ConditionNumberFromMultipleEquality(Item_equal *conds, const TabID
     }
   }
 
-  if (and_me_filter) filter = *and_me_filter;
+  if (and_me_filter)
+    filter = *and_me_filter;
   return filter;
 }
 
@@ -1189,12 +1209,14 @@ CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table,
     return ConditionNumberFromComparison(cond_func->arguments()[0], tmp_table, filter_type, and_me_filter,
                                          is_or_subtree, true);
   } else if (op == common::Operator::O_NOT_ALL_FUNC) {
-    if (cond_func->arg_count != 1) return CondID(-1);
+    if (cond_func->arg_count != 1)
+      return CondID(-1);
     return ConditionNumberFromComparison(cond_func->arguments()[0], tmp_table, filter_type, and_me_filter,
                                          is_or_subtree, dynamic_cast<Item_func_nop_all *>(cond_func) == nullptr);
   } else if (op == common::Operator::O_UNKNOWN_FUNC) {
     in_opt = dynamic_cast<Item_in_optimizer *>(cond_func);
-    if (in_opt == nullptr || cond_func->arg_count != 2 || in_opt->arguments()[0]->cols() != 1) return CondID(-2);
+    if (in_opt == nullptr || cond_func->arg_count != 2 || in_opt->arguments()[0]->cols() != 1)
+      return CondID(-2);
     op = common::Operator::O_IN;
   } else if (op == common::Operator::O_ERROR)
     return CondID(-2);  // unknown function type
@@ -1213,7 +1235,8 @@ CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table,
       if (i == 1 && in_opt) {
         if (!Item2CQTerm(an_arg, terms[i], tmp_table, filter_type, negative, *in_opt->get_cache(), &op))
           return CondID(-1);
-        if (negative) switch (op) {
+        if (negative)
+          switch (op) {
             case common::Operator::O_EQ:
               op = common::Operator::O_NOT_EQ;
               break;
@@ -1391,8 +1414,10 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
                                          down once filter is created we pass 'false' to indicate AND
                                        */
                                        and_cond.get() ? false : is_or_subtree);
-          if (res.IsInvalid()) return res;
-          if (!and_cond.get()) and_cond = std::unique_ptr<CondID>(new CondID(res.n));
+          if (res.IsInvalid())
+            return res;
+          if (!and_cond.get())
+            and_cond = std::unique_ptr<CondID>(new CondID(res.n));
         }
 
         if (and_cond.get() != nullptr) {
@@ -1417,16 +1442,19 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
         while ((item = li++) != nullptr) {
           is_transformed[item] = false;
           Item_func_eq *item_func = dynamic_cast<Item_func_eq *>(item);
-          if (!item_func) continue;
+          if (!item_func)
+            continue;
           Item **args = item_func->arguments();
           DEBUG_ASSERT(item_func->arg_count == 2);
           Item *first_arg = UnRef(args[0]);
           Item *sec_arg = UnRef(args[1]);
-          if (IsConstItem(first_arg) && IsFieldItem(sec_arg)) std::swap(first_arg, sec_arg);
+          if (IsConstItem(first_arg) && IsFieldItem(sec_arg))
+            std::swap(first_arg, sec_arg);
           if (IsFieldItem(first_arg) && IsConstItem(sec_arg)) {
             is_transformed[item] = true;
             CQTerm t;
-            if (!Item2CQTerm(sec_arg, t, tmp_table, filter_type)) return CondID(-1);
+            if (!Item2CQTerm(sec_arg, t, tmp_table, filter_type))
+              return CondID(-1);
             value_map[static_cast<Item_field *>(first_arg)].insert(t.vc_id);
           }
         }
@@ -1434,18 +1462,22 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
         li.rewind();
         // generate non-transformed conditions
         while ((item = li++) != nullptr) {
-          if (is_transformed[item] == true) continue;
+          if (is_transformed[item] == true)
+            continue;
           create_or_subtree = true;
           CondID res = ConditionNumber(item, tmp_table, filter_type, or_cond.get(), true /*CondType::OR_SUBTREE*/);
-          if (res.IsInvalid()) return res;
-          if (!or_cond) or_cond.reset(new CondID(res.n));
+          if (res.IsInvalid())
+            return res;
+          if (!or_cond)
+            or_cond.reset(new CondID(res.n));
         }
         create_or_subtree = create_or_subtree || (value_map.size() > 1);
         // generate re-written INs
         // one IN for every element of value_map
         for (auto &it : value_map) {
           CQTerm terms[2];
-          if (!Item2CQTerm(it.first, terms[0], tmp_table, filter_type)) return CondID(-1);
+          if (!Item2CQTerm(it.first, terms[0], tmp_table, filter_type))
+            return CondID(-1);
           AttrID vc;
           std::vector<int> vcv(it.second.begin(), it.second.end());
           CondID c_id;
@@ -1505,11 +1537,13 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
     Item_func *cond_func = (Item_func *)conds;
     Item_func::Functype func_type = cond_func->functype();
     Item *arg = nullptr;
-    if (cond_func->arg_count == 1) arg = cond_func->arguments()[0];
+    if (cond_func->arg_count == 1)
+      arg = cond_func->arguments()[0];
     if (func_type == Item_func::NOT_FUNC && arg != nullptr && arg->type() == Item::SUBSELECT_ITEM &&
         ((Item_subselect *)arg)->substype() == Item_subselect::EXISTS_SUBS) {
       CQTerm term;
-      if (!Item2CQTerm(arg, term, tmp_table, filter_type)) return CondID(-1);
+      if (!Item2CQTerm(arg, term, tmp_table, filter_type))
+        return CondID(-1);
       if (!and_me_filter)
         cq->CreateConds(cond_id, tmp_table, term, common::Operator::O_NOT_EXISTS, CQTerm(), CQTerm(),
                         is_or_subtree || filter_type == CondType::HAVING_COND);
@@ -1524,13 +1558,15 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
       return CondID(-1);
     } else {
       CondID val = ConditionNumberFromComparison(cond_func, tmp_table, filter_type, and_me_filter, is_or_subtree);
-      if (val.n == -2) val = ConditionNumberFromNaked(conds, tmp_table, filter_type, and_me_filter, is_or_subtree);
+      if (val.n == -2)
+        val = ConditionNumberFromNaked(conds, tmp_table, filter_type, and_me_filter, is_or_subtree);
       return val;
     }
   } else if (cond_type == Item::SUBSELECT_ITEM &&
              ((Item_subselect *)conds)->substype() == Item_subselect::EXISTS_SUBS) {
     CQTerm term;
-    if (!Item2CQTerm(conds, term, tmp_table, filter_type)) return CondID(-1);
+    if (!Item2CQTerm(conds, term, tmp_table, filter_type))
+      return CondID(-1);
     if (!and_me_filter) {
       cq->CreateConds(cond_id, tmp_table, term, common::Operator::O_EXISTS, CQTerm(), CQTerm(),
                       is_or_subtree || filter_type == CondType::HAVING_COND);
@@ -1559,7 +1595,8 @@ int Query::BuildConditions(Item *conds, CondID &cond_id, CompiledQuery *cq, cons
     cond_id = fi;
     return RCBASE_QUERY_ROUTE;
   }
-  if (!conds) return RCBASE_QUERY_ROUTE;  // No Conditions - no filters. OK
+  if (!conds)
+    return RCBASE_QUERY_ROUTE;  // No Conditions - no filters. OK
 
   // keep local copies of class fields to be changed
   CompiledQuery *saved_cq = this->cq;
@@ -1568,7 +1605,8 @@ int Query::BuildConditions(Item *conds, CondID &cond_id, CompiledQuery *cq, cons
   this->cq = cq;
 
   CondID res = ConditionNumber(conds, tmp_table, filter_type);
-  if (res.IsInvalid()) return RETURN_QUERY_TO_MYSQL_ROUTE;
+  if (res.IsInvalid())
+    return RETURN_QUERY_TO_MYSQL_ROUTE;
 
   if (filter_type == CondType::HAVING_COND) {
     cq->CreateConds(res, tmp_table, res, false);
@@ -1577,7 +1615,8 @@ int Query::BuildConditions(Item *conds, CondID &cond_id, CompiledQuery *cq, cons
   // restore original values of class fields (may be necessary if this method is
   // called recursively)
   this->cq = saved_cq;
-  if (res.IsInvalid()) return RETURN_QUERY_TO_MYSQL_ROUTE;
+  if (res.IsInvalid())
+    return RETURN_QUERY_TO_MYSQL_ROUTE;
   cond_id = res;
   return RCBASE_QUERY_ROUTE;
 }
@@ -1597,9 +1636,11 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
     if (having->type() == Item::COND_ITEM) {
       Item_cond *having_cond = (Item_cond *)having;
       // if the condition is a complex formula it must be AND
-      if (having_cond->functype() != Item_func::COND_AND_FUNC) return false;
+      if (having_cond->functype() != Item_func::COND_AND_FUNC)
+        return false;
       // the extra condition is in the last argument
-      if (having_cond->argument_list()->elements < 2) return false;
+      if (having_cond->argument_list()->elements < 2)
+        return false;
       List_iterator<Item> li(*(having_cond->argument_list()));
       while (li++ != nullptr) cond_to_reinsert = *li.ref();
       li.rewind();
@@ -1620,18 +1661,22 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
       cond_removed = UnRef(cond_removed);
     }
     // check if the extra condition is a comparison
-    if (cond_removed->type() != Item::FUNC_ITEM || ((Item_func *)cond_removed)->arg_count != 2) return false;
+    if (cond_removed->type() != Item::FUNC_ITEM || ((Item_func *)cond_removed)->arg_count != 2)
+      return false;
     // the right side of equality is the field of the original subselect
-    if (dynamic_cast<Item_ref_null_helper *>(((Item_func *)cond_removed)->arguments()[1]) == nullptr) return false;
+    if (dynamic_cast<Item_ref_null_helper *>(((Item_func *)cond_removed)->arguments()[1]) == nullptr)
+      return false;
     field_for_subselect = nullptr;
   } else if (!having || (having->type() == Item::FUNC_ITEM &&
                          (((Item_func *)having)->functype() == Item_func::ISNOTNULLTEST_FUNC ||
                           ((Item_func *)having)->functype() == Item_func::TRIG_COND_FUNC))) {
-    if (!conds) return false;
+    if (!conds)
+      return false;
     if (conds->type() == Item::COND_ITEM && ((Item_cond *)conds)->functype() == Item_func::COND_AND_FUNC) {
       // if the condition is a conjunctive formula
       // the extra condition should be in the last argument
-      if (((Item_cond *)conds)->argument_list()->elements < 2) return false;
+      if (((Item_cond *)conds)->argument_list()->elements < 2)
+        return false;
       List_iterator<Item> li(*(((Item_cond *)conds)->argument_list()));
       while (li++ != nullptr) cond_to_reinsert = *li.ref();
       li.rewind();
@@ -1655,14 +1700,18 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
       Item_cond *cond_cond = (Item_cond *)cond_removed;
       List_iterator_fast<Item> li(*(cond_cond->argument_list()));
       cond_removed = li++;
-      if (cond_removed == nullptr) return false;
-      if (li++ == nullptr) return false;
-      if (li++ != nullptr) return false;
+      if (cond_removed == nullptr)
+        return false;
+      if (li++ == nullptr)
+        return false;
+      if (li++ != nullptr)
+        return false;
       // the original having was empty
       having = nullptr;
     }
     // check if the extra condition is a comparison
-    if (cond_removed->type() != Item::FUNC_ITEM || ((Item_func *)cond_removed)->arg_count != 2) return false;
+    if (cond_removed->type() != Item::FUNC_ITEM || ((Item_func *)cond_removed)->arg_count != 2)
+      return false;
     // the right side of equality is the field of the original subselect
     field_for_subselect = ((Item_func *)cond_removed)->arguments()[1];
   } else
@@ -1670,7 +1719,8 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
   // the left side of equality should be the left side of the original
   // expression with subselect
   Item *left_ref = ((Item_func *)cond_removed)->arguments()[0];
-  if (dynamic_cast<Item_int_with_ref *>(left_ref) != nullptr) left_ref = ((Item_int_with_ref *)left_ref)->real_item();
+  if (dynamic_cast<Item_int_with_ref *>(left_ref) != nullptr)
+    left_ref = ((Item_int_with_ref *)left_ref)->real_item();
   if (left_ref->type() != Item::REF_ITEM || ((Item_ref *)left_ref)->ref_type() != Item_ref::DIRECT_REF ||
       ((Item_ref *)left_ref)->real_item() != left_expr_for_subselect)
     return false;
@@ -1705,7 +1755,8 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
 // used only in assert macro
 int Query::PrefixCheck(Item *conds) {
   conds = UnRef(conds);
-  if (!conds) return RCBASE_QUERY_ROUTE;
+  if (!conds)
+    return RCBASE_QUERY_ROUTE;
   Item::Type cond_type = conds->type();
   CondID filter;
   switch (cond_type) {
@@ -1721,8 +1772,10 @@ int Query::PrefixCheck(Item *conds) {
           Item *item;
           while ((item = li++) /*|| (item = list_equal++)*/) {
             int ret = PrefixCheck(item);
-            if (!ret) return RETURN_QUERY_TO_MYSQL_ROUTE;
-            if (ret == TABLE_YET_UNSEEN_INVOLVED) return TABLE_YET_UNSEEN_INVOLVED;
+            if (!ret)
+              return RETURN_QUERY_TO_MYSQL_ROUTE;
+            if (ret == TABLE_YET_UNSEEN_INVOLVED)
+              return TABLE_YET_UNSEEN_INVOLVED;
             // for RETURN_TO_RCBASE_ROUTE the next item is evaluated
           }
           break;
@@ -1752,8 +1805,10 @@ int Query::PrefixCheck(Item *conds) {
             Item **args = cond_func->arguments();
             Item *an_arg = UnRef(args[i]);
             int ret = PrefixCheck(an_arg);
-            if (!ret) return RETURN_QUERY_TO_MYSQL_ROUTE;
-            if (ret == TABLE_YET_UNSEEN_INVOLVED) return TABLE_YET_UNSEEN_INVOLVED;
+            if (!ret)
+              return RETURN_QUERY_TO_MYSQL_ROUTE;
+            if (ret == TABLE_YET_UNSEEN_INVOLVED)
+              return TABLE_YET_UNSEEN_INVOLVED;
           }
           break;
         }
@@ -1762,8 +1817,10 @@ int Query::PrefixCheck(Item *conds) {
           Item_field *ifield;
           while ((ifield = li++) != nullptr) {
             int ret = PrefixCheck(ifield);
-            if (!ret) return RETURN_QUERY_TO_MYSQL_ROUTE;
-            if (ret == TABLE_YET_UNSEEN_INVOLVED) return TABLE_YET_UNSEEN_INVOLVED;
+            if (!ret)
+              return RETURN_QUERY_TO_MYSQL_ROUTE;
+            if (ret == TABLE_YET_UNSEEN_INVOLVED)
+              return TABLE_YET_UNSEEN_INVOLVED;
           }
           break;
         }
@@ -1808,7 +1865,8 @@ int Query::BuildCondsIfPossible(Item *conds, CondID &cond_id, const TabID &tmp_t
              : (join_type == JoinType::JO_RIGHT ? CondType::ON_RIGHT_FILTER : CondType::ON_INNER_FILTER));
     // in case of Right join MySQL changes order of tables. Right must be
     // switched back to left!
-    if (filter_type == CondType::ON_RIGHT_FILTER) filter_type = CondType::ON_LEFT_FILTER;
+    if (filter_type == CondType::ON_RIGHT_FILTER)
+      filter_type = CondType::ON_LEFT_FILTER;
     DEBUG_ASSERT(PrefixCheck(conds) != TABLE_YET_UNSEEN_INVOLVED &&
                  "Table not yet seen was involved in this condition");
 
