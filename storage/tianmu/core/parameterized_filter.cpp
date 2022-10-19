@@ -1028,7 +1028,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
         so only the first element in the (var_map) is judged here.*/
         if (desc.attr.vc && desc.attr.vc->GetVarMap().size() >= 1 &&
             // Use the tab object in VarMap to compare with the corresponding table
-            desc.attr.vc->GetVarMap()[0].tab.lock().get() == rcTable) {
+            desc.attr.vc->GetVarMap()[0].tabp == rcTable) {
           isVald = true;
           break;
         }

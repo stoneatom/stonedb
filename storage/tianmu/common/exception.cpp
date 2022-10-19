@@ -27,18 +27,19 @@ namespace Tianmu {
 namespace common {
 
 Exception::Exception(std::string const &msg) : std::runtime_error(msg) {
-  stack_trace = "\n";
-  stack_trace += "STACK TRACE BEGIN\n";
+  exception_msg_ = msg;
+  stack_trace_ = "\n";
+  stack_trace_ += "STACK TRACE BEGIN\n";
 
   std::vector<std::string> trace;
   utils::GetStackTrace(trace, 2);
   for (auto &it : trace) {
-    stack_trace += "        ";
-    stack_trace += it;
-    stack_trace += "\n";
+    stack_trace_ += "        ";
+    stack_trace_ += it;
+    stack_trace_ += "\n";
   }
-  stack_trace += "STACK TRACE END\n";
-  TIANMU_LOG(LogCtl_Level::WARN, "Exception: %s.\n%s", msg.c_str(), stack_trace.c_str());
+  stack_trace_ += "STACK TRACE END\n";
+  TIANMU_LOG(LogCtl_Level::WARN, "Exception: %s.\n%s", msg.c_str(), stack_trace_.c_str());
 }
 
 AssertException::AssertException(const char *cond, const char *file, int line, const std::string &msg)
