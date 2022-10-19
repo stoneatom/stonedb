@@ -31,13 +31,14 @@
 namespace Tianmu {
 namespace core {
 
-int optimize_select(THD *thd, ulong select_options, Query_result *result,
-                    SELECT_LEX *select_lex, int &optimize_after_tianmu, int &free_join);
+int optimize_select(THD *thd, ulong select_options, Query_result *result, SELECT_LEX *select_lex,
+                    int &optimize_after_tianmu, int &free_join);
 
 class KillTimer {
  public:
   KillTimer(THD *thd, long secs) {
-    if (secs == 0) return;
+    if (secs == 0)
+      return;
     struct sigevent sev;
     sev.sigev_notify = SIGEV_THREAD_ID;
     sev.sigev_signo = SIGRTMIN;
@@ -59,7 +60,8 @@ class KillTimer {
   }
   KillTimer() = delete;
   ~KillTimer() {
-    if (armed) timer_delete(id);
+    if (armed)
+      timer_delete(id);
   }
 
  private:
@@ -88,8 +90,8 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
   SELECT_LEX *select_lex = NULL;
   Query_result_export *se = NULL;
 
-  	if (tianmu_sysvar_pushdown)
-        thd->variables.optimizer_switch|=OPTIMIZER_SWITCH_ENGINE_CONDITION_PUSHDOWN;
+  if (tianmu_sysvar_pushdown)
+    thd->variables.optimizer_switch |= OPTIMIZER_SWITCH_ENGINE_CONDITION_PUSHDOWN;
   if (!IsTIANMURoute(thd, lex->query_tables, lex->select_lex, in_case_of_failure_can_go_to_mysql, with_insert)) {
     return RETURN_QUERY_TO_MYSQL_ROUTE;
   }
@@ -133,8 +135,9 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
               route = RETURN_QUERY_TO_MYSQL_ROUTE;
               goto ret_derived;
             }
-            if (!cursor->derived_unit()->is_executed() || cursor->derived_unit()->uncacheable) {  //??not already executed (not
-                                                                               // materialized?)
+            if (!cursor->derived_unit()->is_executed() ||
+                cursor->derived_unit()->uncacheable) {  //??not already executed (not
+                                                        // materialized?)
               // OR not cacheable (meaning not yet in cache, i.e. not
               // materialized it seems to boil down to NOT MATERIALIZED(?)
               res = cursor->derived_unit()->optimize_for_tianmu();  //===exec()
@@ -142,30 +145,33 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
             }
           } else {  //??not union
             cursor->derived_unit()->set_limit(first_select);
-            if (cursor->derived_unit()->select_limit_cnt == HA_POS_ERROR) first_select->remove_base_options(OPTION_FOUND_ROWS);
+            if (cursor->derived_unit()->select_limit_cnt == HA_POS_ERROR)
+              first_select->remove_base_options(OPTION_FOUND_ROWS);
             lex->set_current_select(first_select);
             int optimize_derived_after_tianmu = FALSE;
             res = optimize_select(
-                            thd, ulong(first_select->active_options() | thd->variables.option_bits | SELECT_NO_UNLOCK),
-                            (Query_result*)cursor->derived_result, first_select, optimize_derived_after_tianmu,
-                            free_join);
-            if (optimize_derived_after_tianmu) derived_optimized.push_back(cursor->derived_unit());
+                thd, ulong(first_select->active_options() | thd->variables.option_bits | SELECT_NO_UNLOCK),
+                (Query_result *)cursor->derived_result, first_select, optimize_derived_after_tianmu, free_join);
+            if (optimize_derived_after_tianmu)
+              derived_optimized.push_back(cursor->derived_unit());
           }
           lex->set_current_select(save_current_select);
           if (!res && free_join)  // no error &
             route = RETURN_QUERY_TO_MYSQL_ROUTE;
-          if (res || route == RETURN_QUERY_TO_MYSQL_ROUTE) goto ret_derived;
+          if (res || route == RETURN_QUERY_TO_MYSQL_ROUTE)
+            goto ret_derived;
         }
     lex->thd->derived_tables_processing = FALSE;
   }
 
   se = dynamic_cast<Query_result_export *>(result);
-  if (se != NULL) result = new exporter::select_tianmu_export(se);
+  if (se != NULL)
+    result = new exporter::select_tianmu_export(se);
   // prepare, optimize and execute the main query
   select_lex = lex->select_lex;
   unit = lex->unit;
   if (select_lex->next_select()) {  // it is union
-    if (!(res = unit->prepare(thd, result, (ulong)(SELECT_NO_UNLOCK | setup_tables_done_option),0))) {
+    if (!(res = unit->prepare(thd, result, (ulong)(SELECT_NO_UNLOCK | setup_tables_done_option), 0))) {
       // similar to mysql_union(...) from sql_union.cpp
 
       /* FIXME: create_table is private in mysql5.6
@@ -185,10 +191,10 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
             route = ha_rcengine_->Execute(unit->thd, unit->thd->lex, result, unit);
             if (route == RETURN_QUERY_TO_MYSQL_ROUTE) {
               if (in_case_of_failure_can_go_to_mysql)
-                                if(old_executed)
-                                   unit->set_executed();
-                                else
-                                   unit->reset_executed();
+                if (old_executed)
+                  unit->set_executed();
+                else
+                  unit->reset_executed();
 
               else {
                 const char *err_msg =
@@ -213,7 +219,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
     }
   } else {
     unit->set_limit(unit->global_parameters());  // the fragment of original
-                                               // handle_select(...)
+                                                 // handle_select(...)
     //(until the first part of optimization)
     // used for non-union select
 
@@ -222,9 +228,9 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
     // setup_tables_done_option changed for next rexecution
 
     int err;
-        err = optimize_select(
-            thd, ulong(select_lex->active_options() | thd->variables.option_bits | setup_tables_done_option), result,
-            select_lex, optimize_after_tianmu, tianmu_free_join);
+    err = optimize_select(thd,
+                          ulong(select_lex->active_options() | thd->variables.option_bits | setup_tables_done_option),
+                          result, select_lex, optimize_after_tianmu, tianmu_free_join);
 
     // RCBase query engine entry point
     if (!err) {
@@ -232,8 +238,8 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
         route = Execute(thd, lex, result);
         if (route == RETURN_QUERY_TO_MYSQL_ROUTE && !in_case_of_failure_can_go_to_mysql) {
           TIANMU_LOG(LogCtl_Level::ERROR,
-                      "Error: Query syntax not implemented in Tianmu, can export "
-                      "only to MySQL format (set TIANMU_DATAFORMAT to 'MYSQL').");
+                     "Error: Query syntax not implemented in Tianmu, can export "
+                     "only to MySQL format (set TIANMU_DATAFORMAT to 'MYSQL').");
           my_message(ER_SYNTAX_ERROR,
                      "Query syntax not implemented in Tianmu, can export only "
                      "to MySQL "
@@ -259,7 +265,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
       res = select_lex->join->error;
   }
   if (select_lex->join && Query::IsLOJ(select_lex->join_list))
-    optimize_after_tianmu = 2;     // optimize partially (part=4), since part of LOJ
+    optimize_after_tianmu = 2;  // optimize partially (part=4), since part of LOJ
                                 // optimization was already done
   res |= (int)thd->is_error();  // the ending of original handle_select(...) */
   if (unlikely(res)) {
@@ -271,11 +277,11 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
     // free the tianmu export object,
     // restore the original mysql export object
     // and prepare if it is expected to be prepared
-        if (!select_lex->next_select() && select_lex->join != 0 && select_lex->query_result() == result) {
-            select_lex->set_query_result(se);
-            if (((exporter::select_tianmu_export *)result)->IsPrepared())
-                se->prepare(select_lex->join->fields_list, unit);
-        }
+    if (!select_lex->next_select() && select_lex->join != 0 && select_lex->query_result() == result) {
+      select_lex->set_query_result(se);
+      if (((exporter::select_tianmu_export *)result)->IsPrepared())
+        se->prepare(select_lex->join->fields_list, unit);
+    }
 
     delete result;
     result = se;
@@ -301,57 +307,47 @@ ret_derived:
 /*
 Prepares and optimizes a single select for Tianmu engine
 */
-int optimize_select(THD *thd, ulong select_options, Query_result *result,
-                    SELECT_LEX *select_lex, int &optimize_after_tianmu, int &free_join)
-{
-    // copied from sql_select.cpp from the beginning of mysql_select(...)
-    int err = 0;
-    free_join = 1;
-    select_lex->context.resolve_in_select_list = TRUE;
-    JOIN *join;
-    if (select_lex->join != 0) {
-        join = select_lex->join;
-        // here is EXPLAIN of subselect or derived table
-		if (select_lex->linkage != DERIVED_TABLE_TYPE || (select_options & (1ULL << 2))) {
+int optimize_select(THD *thd, ulong select_options, Query_result *result, SELECT_LEX *select_lex,
+                    int &optimize_after_tianmu, int &free_join) {
+  // copied from sql_select.cpp from the beginning of mysql_select(...)
+  int err = 0;
+  free_join = 1;
+  select_lex->context.resolve_in_select_list = TRUE;
+  JOIN *join;
+  if (select_lex->join != 0) {
+    join = select_lex->join;
+    // here is EXPLAIN of subselect or derived table
+    if (select_lex->linkage != DERIVED_TABLE_TYPE || (select_options & (1ULL << 2))) {
+      if (select_lex->linkage != GLOBAL_OPTIONS_TYPE) {
+        if (result->prepare(select_lex->join->fields_list, select_lex->master_unit()) || result->prepare2()) {
+          return TRUE;
+        }
+      } else {
+        if ((err = select_lex->prepare(thd))) {
+          return err;
+        }
+      }
+    }
+    free_join = 0;
+    join->select_options = select_options;
+  } else {
+    thd_proc_info(thd, "init");
 
-			if (select_lex->linkage != GLOBAL_OPTIONS_TYPE) {
-				
-				if (result->prepare(select_lex->join->fields_list, select_lex->master_unit()) || result->prepare2())
-				{
-                    return TRUE;
-
-				}
-			} else {
-				if ((err = select_lex->prepare(thd))) 
-				{
-					return err;
-				}				
-			}
-		}
-		free_join = 0;
-		join->select_options = select_options;
-    }       
-	else
-	{		
-		thd_proc_info(thd, "init");
-
-		if ((err = select_lex->prepare(thd))) 
-		{
-			return err;
-		}
-        if (result->prepare(select_lex->fields_list, select_lex->master_unit()) || result->prepare2()) {
-            return TRUE;
-        }       
-        if (!(join = new JOIN(thd, select_lex)))
-            return TRUE; /* purecov: inspected */
-        select_lex->set_join(join);
-        
-	}
-    join->best_rowcount = 2;
-    optimize_after_tianmu = TRUE;
-	if ((err = join->optimize(1)))
-        return err;
-	return FALSE;
+    if ((err = select_lex->prepare(thd))) {
+      return err;
+    }
+    if (result->prepare(select_lex->fields_list, select_lex->master_unit()) || result->prepare2()) {
+      return TRUE;
+    }
+    if (!(join = new JOIN(thd, select_lex)))
+      return TRUE; /* purecov: inspected */
+    select_lex->set_join(join);
+  }
+  join->best_rowcount = 2;
+  optimize_after_tianmu = TRUE;
+  if ((err = join->optimize(1)))
+    return err;
+  return FALSE;
 }
 
 int handle_exceptions(THD *, Transaction *, bool with_error = false);
@@ -360,7 +356,8 @@ int Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_
   DEBUG_ASSERT(thd->lex == lex);
   SELECT_LEX *selects_list = lex->select_lex;
   SELECT_LEX *last_distinct = NULL;
-  if (unit_for_union != NULL) last_distinct = unit_for_union->union_distinct;
+  if (unit_for_union != NULL)
+    last_distinct = unit_for_union->union_distinct;
 
   int is_dumpfile = 0;
   const char *export_file_name = GetFilename(selects_list, is_dumpfile);
@@ -497,7 +494,7 @@ int handle_exceptions(THD *thd, Transaction *cur_connection, bool with_error) {
     throw ReturnMeToMySQLWithError();
   } catch (common::Exception const &x) {
     rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
-    my_message(ER_UNKNOWN_ERROR, "Tianmu other specific error", MYF(0));
+    my_message(ER_UNKNOWN_ERROR, x.getExceptionMsg().data(), MYF(0));
     throw ReturnMeToMySQLWithError();
   } catch (std::bad_alloc const &) {
     rc_control_.lock(cur_connection->GetThreadID()) << "Error: std::bad_alloc caught" << system::unlock;
@@ -514,11 +511,13 @@ int st_select_lex_unit::optimize_for_tianmu() {
   SELECT_LEX *lex_select_save = thd->lex->current_select();
   SELECT_LEX *select_cursor = first_select();
 
-  if (is_executed() && !uncacheable && !thd->lex->is_explain()) return FALSE;
+  if (is_executed() && !uncacheable && !thd->lex->is_explain())
+    return FALSE;
   executed = 1;
 
   if (uncacheable || !item || !item->assigned() || thd->lex->is_explain()) {
-    if (item) item->reset_value_registration();
+    if (item)
+      item->reset_value_registration();
     if (is_optimized() && item) {
       if (item->assigned()) {
         item->assigned(0);  // We will reinit & rexecute unit
@@ -526,127 +525,124 @@ int st_select_lex_unit::optimize_for_tianmu() {
         table->file->ha_delete_all_rows();
       }
       // re-enabling indexes for next subselect iteration
-      if (union_distinct && table->file->ha_enable_indexes(HA_KEY_SWITCH_ALL)) DEBUG_ASSERT(0);
+      if (union_distinct && table->file->ha_enable_indexes(HA_KEY_SWITCH_ALL))
+        DEBUG_ASSERT(0);
     }
-        for (SELECT_LEX *sl = select_cursor; sl; sl = sl->next_select()) {
-       thd->lex->set_current_select(sl);
-            sl->add_active_options(SELECT_NO_UNLOCK);
-            /*
-              setup_tables_done_option should be set only for very first SELECT,
-              because it protect from secont setup_tables call for select-like non
-              select commands (DELETE/INSERT/...) and they use only very first
-              SELECT (for union it can be only INSERT ... SELECT).
-            */
-            if (!sl->join)
-			{
-                JOIN *join = new JOIN(thd, sl);
-                if (!join) {
-                    thd->lex->set_current_select(lex_select_save);
-                    cleanup(0);
-                    return TRUE;
-                }
-                sl->set_join(join);
-            }           
-            if (is_optimized())
-                sl->join->reset();
-            else {
-                set_limit(sl);
-                if (sl == global_parameters() || thd->lex->is_explain()) {
-                    offset_limit_cnt = 0;
-                    // We can't use LIMIT at this stage if we are using ORDER BY for the
-                    // whole query
-                    if (sl->order_list.first || thd->lex->is_explain())
-                        select_limit_cnt = HA_POS_ERROR;
-                }
-
-                // When using braces, SQL_CALC_FOUND_ROWS affects the whole query:
-                // we don't calculate found_rows() per union part.
-                // Otherwise, SQL_CALC_FOUND_ROWS should be done on all sub parts.
-                sl->join->select_options = (select_limit_cnt == HA_POS_ERROR || sl->braces)
-                                               ? sl->active_options() & ~OPTION_FOUND_ROWS
-                                               : sl->active_options() | found_rows_for_union;
-                saved_error = sl->join->optimize(1);
-            }
-
-            // HERE ends the code from bool st_select_lex_unit::exec()
-            if (saved_error) {
-                thd->lex->set_current_select(lex_select_save);
-                return saved_error;
-            }
+    for (SELECT_LEX *sl = select_cursor; sl; sl = sl->next_select()) {
+      thd->lex->set_current_select(sl);
+      sl->add_active_options(SELECT_NO_UNLOCK);
+      /*
+        setup_tables_done_option should be set only for very first SELECT,
+        because it protect from secont setup_tables call for select-like non
+        select commands (DELETE/INSERT/...) and they use only very first
+        SELECT (for union it can be only INSERT ... SELECT).
+      */
+      if (!sl->join) {
+        JOIN *join = new JOIN(thd, sl);
+        if (!join) {
+          thd->lex->set_current_select(lex_select_save);
+          cleanup(0);
+          return TRUE;
         }
-    }
-    /* code from st_select_lex_unit::exec*/
-    if (!saved_error && !thd->is_fatal_error) {
-        /* Send result to 'result' */
-        saved_error = true;
-        set_limit(global_parameters());
-        if (fake_select_lex != NULL) 
-		{
-            thd->lex->set_current_select(fake_select_lex);
-            if(!is_prepared()) {
-              if (prepare_fake_select_lex(thd))
-                  return saved_error;
-            }
-            JOIN *join;
-            if (fake_select_lex->join)
-                join = fake_select_lex->join;
-            else {
-                if (!(join = new JOIN(thd, fake_select_lex)))
-                    DEBUG_ASSERT(0);
-                // fake_select_lex->set_join(join);
-            }
-
-            if (!join->is_optimized()) {
-                //    saved_error = join->prepare(fake_select_lex->table_list.first, 0, 0,
-                //                                global_parameters->order_list.elements,
-                //                                global_parameters->order_list.first, NULL, NULL, fake_select_lex,
-                //                                this); //STONEDB UPGRADE
-                if(!is_prepared()) {
-                  if (fake_select_lex->prepare(thd))
-                      return saved_error;
-                }
-            } else {
-                join->examined_rows = 0;
-                join->reset();
-            }
-
-            fake_select_lex->table_list.empty();
+        sl->set_join(join);
+      }
+      if (is_optimized())
+        sl->join->reset();
+      else {
+        set_limit(sl);
+        if (sl == global_parameters() || thd->lex->is_explain()) {
+          offset_limit_cnt = 0;
+          // We can't use LIMIT at this stage if we are using ORDER BY for the
+          // whole query
+          if (sl->order_list.first || thd->lex->is_explain())
+            select_limit_cnt = HA_POS_ERROR;
         }
-       
-    }
 
-    optimized = 1;
-    thd->lex->set_current_select(lex_select_save);
-    return FALSE;
+        // When using braces, SQL_CALC_FOUND_ROWS affects the whole query:
+        // we don't calculate found_rows() per union part.
+        // Otherwise, SQL_CALC_FOUND_ROWS should be done on all sub parts.
+        sl->join->select_options = (select_limit_cnt == HA_POS_ERROR || sl->braces)
+                                       ? sl->active_options() & ~OPTION_FOUND_ROWS
+                                       : sl->active_options() | found_rows_for_union;
+        saved_error = sl->join->optimize(1);
+      }
+
+      // HERE ends the code from bool st_select_lex_unit::exec()
+      if (saved_error) {
+        thd->lex->set_current_select(lex_select_save);
+        return saved_error;
+      }
+    }
+  }
+  /* code from st_select_lex_unit::exec*/
+  if (!saved_error && !thd->is_fatal_error) {
+    /* Send result to 'result' */
+    saved_error = true;
+    set_limit(global_parameters());
+    if (fake_select_lex != NULL) {
+      thd->lex->set_current_select(fake_select_lex);
+      if (!is_prepared()) {
+        if (prepare_fake_select_lex(thd))
+          return saved_error;
+      }
+      JOIN *join;
+      if (fake_select_lex->join)
+        join = fake_select_lex->join;
+      else {
+        if (!(join = new JOIN(thd, fake_select_lex)))
+          DEBUG_ASSERT(0);
+        // fake_select_lex->set_join(join);
+      }
+
+      if (!join->is_optimized()) {
+        //    saved_error = join->prepare(fake_select_lex->table_list.first, 0, 0,
+        //                                global_parameters->order_list.elements,
+        //                                global_parameters->order_list.first, NULL, NULL, fake_select_lex,
+        //                                this); //STONEDB UPGRADE
+        if (!is_prepared()) {
+          if (fake_select_lex->prepare(thd))
+            return saved_error;
+        }
+      } else {
+        join->examined_rows = 0;
+        join->reset();
+      }
+
+      fake_select_lex->table_list.empty();
+    }
+  }
+
+  optimized = 1;
+  thd->lex->set_current_select(lex_select_save);
+  return FALSE;
 }
 
-int st_select_lex_unit::optimize_after_tianmu()
-{
-    SELECT_LEX *lex_select_save = thd->lex->current_select();
-    for (SELECT_LEX *sl = first_select(); sl; sl = sl->next_select()) {
-        thd->lex->set_current_select(sl);
-        if (!sl->join) {
-            JOIN *join = new JOIN(thd, sl);
-            if (!join) {
-                thd->lex->set_current_select(lex_select_save);
-                cleanup(0);
-                return TRUE;
-            }
-            sl->set_join(join);
-        }           
-        int res = sl->join->optimize(2);
-        if (res) {
-            thd->lex->set_current_select(lex_select_save);
-            return res;
-        }
+int st_select_lex_unit::optimize_after_tianmu() {
+  SELECT_LEX *lex_select_save = thd->lex->current_select();
+  for (SELECT_LEX *sl = first_select(); sl; sl = sl->next_select()) {
+    thd->lex->set_current_select(sl);
+    if (!sl->join) {
+      JOIN *join = new JOIN(thd, sl);
+      if (!join) {
+        thd->lex->set_current_select(lex_select_save);
+        cleanup(0);
+        return TRUE;
+      }
+      sl->set_join(join);
     }
-    if (fake_select_lex && fake_select_lex->join) {
-        // fake_select_lex->join must be cleaned up before returning to
-        // MySQL route, otherwise sub select + union would coredump.
-        thd->lex->set_current_select(fake_select_lex);
-        fake_select_lex->cleanup(0);
+    int res = sl->join->optimize(2);
+    if (res) {
+      thd->lex->set_current_select(lex_select_save);
+      return res;
     }
-    executed = 0;
-    thd->lex->set_current_select(lex_select_save);
-    return FALSE;
+  }
+  if (fake_select_lex && fake_select_lex->join) {
+    // fake_select_lex->join must be cleaned up before returning to
+    // MySQL route, otherwise sub select + union would coredump.
+    thd->lex->set_current_select(fake_select_lex);
+    fake_select_lex->cleanup(0);
+  }
+  executed = 0;
+  thd->lex->set_current_select(lex_select_save);
+  return FALSE;
 }
