@@ -26,11 +26,11 @@
 namespace Tianmu {
 namespace compress {
 
-FILE *PPM::dump = NULL;
+FILE *PPM::dump = nullptr;
 bool PPM::printstat = false;
 
 PPM::PPM(const Symb *data, int dlen, ModelType mt, PPMParam param, uchar method) {
-  if ((data == NULL) || (dlen <= 0) || (mt == ModelType::ModelNull)) return;
+  if ((data == nullptr) || (dlen <= 0) || (mt == ModelType::ModelNull)) return;
 
   switch (mt) {
     case ModelType::ModelSufTree:
@@ -60,11 +60,11 @@ CprsErr PPM::CompressArith(char *dest, int &dlen, Symb *src, int slen) {
     dlen = slen + 1;
     return CprsErr::CPRS_SUCCESS;
   }
-  WordGraph *wg = NULL;
+  WordGraph *wg = nullptr;
   try {
     wg = dynamic_cast<WordGraph *>(model.get());
   } catch (...) {
-    wg = NULL;
+    wg = nullptr;
   }
   if (wg) ASSERT(wg->insatend == false, "should be 'wg->insatend == false'");
 
@@ -167,11 +167,11 @@ CprsErr PPM::DecompressArith(Symb *dest, int dlen, char *src, int slen) {
   //}
   // if(method != 1) return CprsErr::CPRS_ERR_VER;
 
-  WordGraph *wg = NULL;
+  WordGraph *wg = nullptr;
   try {
     wg = dynamic_cast<WordGraph *>(model.get());
   } catch (...) {
-    wg = NULL;
+    wg = nullptr;
   }
   if (wg) ASSERT(wg->insatend == false, "should be 'wg->insatend == false'");
 
@@ -246,11 +246,11 @@ CprsErr PPM::Compress(char *dest, int &dlen, Symb *src, int slen) {
   if (dlen < 1) return CprsErr::CPRS_ERR_BUF;
   dest[0] = 2;  // compression method: with RangeCoder
 
-  WordGraph *wg = NULL;
+  WordGraph *wg = nullptr;
   try {
     wg = dynamic_cast<WordGraph *>(model.get());
   } catch (...) {
-    wg = NULL;
+    wg = nullptr;
   }
 
   if (wg) ASSERT(wg->insatend, "'wg->insatend' should be true");
@@ -310,11 +310,11 @@ CprsErr PPM::Decompress(Symb *dest, int dlen, char *src, int slen) {
     return DecompressArith(dest, dlen, src, slen);
   if (method != 2) return CprsErr::CPRS_ERR_VER;
 
-  WordGraph *wg = NULL;
+  WordGraph *wg = nullptr;
   try {
     wg = dynamic_cast<WordGraph *>(model.get());
   } catch (...) {
-    wg = NULL;
+    wg = nullptr;
   }
 
   if (wg) ASSERT(wg->insatend, "'wg->insatend' should be true");

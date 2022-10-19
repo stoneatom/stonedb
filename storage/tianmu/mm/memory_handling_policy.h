@@ -59,7 +59,7 @@ class MemoryHandling {
   void DumpObjs(std::ostream &out);
 
  public:
-  MemoryHandling(size_t comp_heap_size, size_t uncomp_heap_size, std::string hugedir = "", core::DataCache *d = NULL,
+  MemoryHandling(size_t comp_heap_size, size_t uncomp_heap_size, std::string hugedir = "", core::DataCache *d = nullptr,
                  size_t hugesize = 0);
   virtual ~MemoryHandling();
 

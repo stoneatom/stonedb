@@ -369,7 +369,7 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
       if (*value_ptr == '\\' && (value_ptr[1] == 'N' || (!is_enclosed && value_ptr[1] == 'n'))) isnull = true;
       break;
     case 4:
-      if (!is_enclosed && strncasecmp(value_ptr, "NULL", 4) == 0) isnull = true;
+      if (!is_enclosed && strncasecmp(value_ptr, "nullptr", 4) == 0) isnull = true;
       break;
     default:
       break;

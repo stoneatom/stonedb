@@ -187,11 +187,11 @@ inline static void SetFieldState(Field *field, bool is_null) {
 ResultSender::ResultSender(THD *thd, Query_result *res, mem_root_deque<Item *> &fields)
     : thd(thd),
       res(res),
-      buf_lens(NULL),
+      buf_lens(nullptr),
       fields(fields),
       is_initialized(false),
-      offset(NULL),
-      limit(NULL),
+      offset(nullptr),
+      limit(nullptr),
       rows_sent(0) {}
 
 void ResultSender::Init([[maybe_unused]] TempTable *t) {
@@ -286,7 +286,7 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::RCDataTyp
         // because it was assigned for this instance of object
         if (buf_lens[col_id] != 0) {
           bitmap_set_bit(f->table->write_set, f->field_index());
-          auto is_null = Engine::ConvertToField(f, rcdt, NULL);
+          auto is_null = Engine::ConvertToField(f, rcdt, nullptr);
           SetFieldState(f, is_null);
         }
         break;
@@ -296,7 +296,7 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::RCDataTyp
         f = ifield->get_result_field();
         if (buf_lens[col_id] != 0) {
           bitmap_set_bit(f->table->write_set, f->field_index());
-          auto is_null = Engine::ConvertToField(f, rcdt, NULL);
+          auto is_null = Engine::ConvertToField(f, rcdt, nullptr);
           SetFieldState(f, is_null);
         }
         break;
@@ -411,9 +411,9 @@ void init_field_scan_helpers(THD *&thd, TABLE &tmp_table, TABLE_SHARE &share) {
 }
 
 fields_t::value_type guest_field_type(THD *&thd, TABLE &tmp_table, Item *&item) {
-  Field *field = NULL;
-  Field *tmp_field = NULL;
-  Field *def_field = NULL;
+  Field *field = nullptr;
+  Field *tmp_field = nullptr;
+  Field *def_field = nullptr;
   if (item->type() == Item::FUNC_ITEM) {
     if (item->result_type() != STRING_RESULT)
       field = item->tmp_table_field(&tmp_table);
@@ -432,9 +432,9 @@ fields_t::value_type guest_field_type(THD *&thd, TABLE &tmp_table, Item *&item) 
 }
 
 AttributeTypeInfo create_ati(THD *&thd, TABLE &tmp_table, Item *&item) {
-  Field *field = NULL;
-  Field *tmp_field = NULL;
-  Field *def_field = NULL;
+  Field *field = nullptr;
+  Field *tmp_field = nullptr;
+  Field *def_field = nullptr;
   if (item->type() == Item::FUNC_ITEM) {
     if (item->result_type() != STRING_RESULT)
       field = item->tmp_table_field(&tmp_table);
@@ -462,7 +462,7 @@ void ResultExportSender::Init(TempTable *t) {
 
   export_res->send_result_set_metadata(thd, fields, Protocol::SEND_NUM_ROWS | Protocol::SEND_EOF);
 
-  if ((tianmu_error = Engine::GetIOParams(iop, *thd, *export_res->SqlExchange(), 0, NULL, true)) !=
+  if ((tianmu_error = Engine::GetIOParams(iop, *thd, *export_res->SqlExchange(), 0, nullptr, true)) !=
       common::ErrorCode::SUCCESS)
     throw common::Exception("Unable to get IOP");
 

@@ -33,7 +33,7 @@ TypeCastColumn::TypeCastColumn(const TypeCastColumn &c) : VirtualColumn(c) {
 }
 
 String2NumCastColumn::String2NumCastColumn(VirtualColumn *from, core::ColumnType const &to) : TypeCastColumn(from, to) {
-  core::MIIterator mit(NULL, PACK_INVALID);
+  core::MIIterator mit(nullptr, PACK_INVALID);
   full_const = vc->IsFullConst();
   if (full_const) {
     types::BString rs;
@@ -194,7 +194,7 @@ String2DateTimeCastColumn::String2DateTimeCastColumn(VirtualColumn *from, core::
   full_const = vc->IsFullConst();
   if (full_const) {
     types::BString rbs;
-    core::MIIterator mit(NULL, PACK_INVALID);
+    core::MIIterator mit(nullptr, PACK_INVALID);
     vc->GetValueString(rbs, mit);
     if (rbs.IsNull()) {
       val = common::NULL_VALUE_64;
@@ -332,10 +332,10 @@ int64_t String2DateTimeCastColumn::GetMaxInt64Impl(const core::MIIterator &m) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Num2DateTimeCastColumn::Num2DateTimeCastColumn(VirtualColumn *from, core::ColumnType const &to)
     : String2DateTimeCastColumn(from, to) {
-  core::MIIterator mit(NULL, PACK_INVALID);
+  core::MIIterator mit(nullptr, PACK_INVALID);
   full_const = vc->IsFullConst();
   if (full_const) {
-    core::MIIterator mit(NULL, PACK_INVALID);
+    core::MIIterator mit(nullptr, PACK_INVALID);
     val = vc->GetValueInt64(mit);
     // rcv = from->GetValue(mit);
     types::RCDateTime rcdt;
@@ -438,7 +438,7 @@ int64_t Num2DateTimeCastColumn::GetValueInt64Impl(const core::MIIterator &mit) {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DateTime2VarcharCastColumn::DateTime2VarcharCastColumn(VirtualColumn *from, core::ColumnType const &to)
     : TypeCastColumn(from, to) {
-  core::MIIterator mit(NULL, PACK_INVALID);
+  core::MIIterator mit(nullptr, PACK_INVALID);
   full_const = vc->IsFullConst();
   if (full_const) {
     int64_t i = vc->GetValueInt64(mit);
@@ -467,7 +467,7 @@ types::RCValueObject DateTime2VarcharCastColumn::GetValueImpl(const core::MIIter
 
 Num2VarcharCastColumn::Num2VarcharCastColumn(VirtualColumn *from, core::ColumnType const &to)
     : TypeCastColumn(from, to) {
-  core::MIIterator mit(NULL, PACK_INVALID);
+  core::MIIterator mit(nullptr, PACK_INVALID);
   full_const = vc->IsFullConst();
   if (full_const) {
     rcv = vc->GetValue(mit);
@@ -509,7 +509,7 @@ void Num2VarcharCastColumn::GetValueStringImpl(types::BString &s, const core::MI
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DateTime2NumCastColumn::DateTime2NumCastColumn(VirtualColumn *from, core::ColumnType const &to)
     : TypeCastColumn(from, to) {
-  core::MIIterator mit(NULL, PACK_INVALID);
+  core::MIIterator mit(nullptr, PACK_INVALID);
   full_const = vc->IsFullConst();
   if (full_const) {
     rcv = vc->GetValue(mit);
@@ -598,7 +598,7 @@ types::RCValueObject DateTime2NumCastColumn::GetValueImpl(const core::MIIterator
 TimeZoneConversionCastColumn::TimeZoneConversionCastColumn(VirtualColumn *from)
     : TypeCastColumn(from, core::ColumnType(common::CT::DATETIME)) {
   DEBUG_ASSERT(from->TypeName() == common::CT::TIMESTAMP);
-  core::MIIterator mit(NULL, PACK_INVALID);
+  core::MIIterator mit(nullptr, PACK_INVALID);
   full_const = vc->IsFullConst();
   if (full_const) {
     int64_t v = vc->GetValueInt64(mit);

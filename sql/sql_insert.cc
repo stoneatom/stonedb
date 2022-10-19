@@ -683,8 +683,8 @@ bool Sql_cmd_insert_values::execute_inner(THD *thd) {
     if (!has_error ||
         thd->get_transaction()->cannot_safely_rollback(Transaction_ctx::STMT)) {
       bool tianmu_engine = insert_table->s->db_type() ? insert_table->s->db_type()->db_type == DB_TYPE_TIANMU: false;
-      bool tianmu_engier_insert_delayed = tianmu_engine ? Tianmu::DBHandler::Tianmu_Get_Insert_Delayed_Flag(thd): false;
-      if (!tianmu_engier_insert_delayed && mysql_bin_log.is_open()) {
+      bool if_tianmu_engine_insert_delayed = tianmu_engine ? Tianmu::handler::ha_my_tianmu_get_insert_delayed_flag(thd): false;
+      if (!if_tianmu_engine_insert_delayed && mysql_bin_log.is_open()) {
         int errcode = 0;
         if (!has_error) {
           /*

@@ -43,7 +43,7 @@ KillTimer::KillTimer(THD *thd, long secs) {
   struct itimerspec interval;
   std::memset(&interval, 0, sizeof(interval));
   interval.it_value.tv_sec = secs;
-  if (timer_settime(id, 0, &interval, NULL)) {
+  if (timer_settime(id, 0, &interval, nullptr)) {
     TIANMU_LOG(LogCtl_Level::INFO, "Failed to set up timer. error =%d[%s]", errno, std::strerror(errno));
     return;
   }

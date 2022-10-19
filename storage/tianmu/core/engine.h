@@ -64,7 +64,7 @@ class select_tianmu_export;
 
 namespace core {
 
-using Tianmu::DBHandler::Query_route_to;
+using Tianmu::handler::Query_route_to;
 struct AttrInfo;
 class TableShare;
 class Transaction;
@@ -176,7 +176,7 @@ class Engine final {
   static void ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes);
   static std::string GetTablePath(TABLE *table);
   static common::TIANMUError GetIOParams(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
-                                         TABLE *table = 0, void *arg = NULL, bool for_exporter = false);
+                                         TABLE *table = 0, void *arg = nullptr, bool for_exporter = false);
   static common::TIANMUError GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params);
   static fs::path GetNextDataDir();
 
@@ -185,7 +185,7 @@ class Engine final {
   void RemoveTx(Transaction *tx);
 
   Query_route_to Execute(THD *thd, LEX *lex, Query_result *result_output,
-                         Query_expression *unit_for_union = NULL);  // stonedb8
+                         Query_expression *unit_for_union = nullptr);  // stonedb8
 
   int SetUpCacheFolder(const std::string &cachefolder_path);
   static bool AreConvertible(types::RCDataType &rcitem, enum_field_types my_type, uint length = 0);

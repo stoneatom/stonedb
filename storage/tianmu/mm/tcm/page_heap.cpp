@@ -68,12 +68,12 @@ Span *PageHeap::New(Length n) {
   }
 
   Span *result = AllocLarge(n);
-  // if (result != NULL) return result;
+  // if (result != nullptr) return result;
 
   // Grow the heap and try again
   // if (!GrowHeap(n)) {
   //  ASSERT(Check());
-  //  return NULL;
+  //  return nullptr;
   //}
   return result;
 }
@@ -81,12 +81,12 @@ Span *PageHeap::New(Length n) {
 Span *PageHeap::AllocLarge(Length n) {
   // find the best span (closest to n in size).
   // The following loops implements address-ordered best-fit.
-  Span *best = NULL;
+  Span *best = nullptr;
 
   // Search through normal list
   for (Span *span = large_.normal.next; span != &large_.normal; span = span->next) {
     if (span->length >= n) {
-      if ((best == NULL) || (span->length < best->length) ||
+      if ((best == nullptr) || (span->length < best->length) ||
           ((span->length == best->length) && (span->start < best->start))) {
         best = span;
         ASSERT(best->location == static_cast<unsigned int>(Span::enumSpanType::ON_NORMAL_FREELIST));
@@ -97,7 +97,7 @@ Span *PageHeap::AllocLarge(Length n) {
   // Search through released list in case it has a better fit
   for (Span *span = large_.returned.next; span != &large_.returned; span = span->next) {
     if (span->length >= n) {
-      if ((best == NULL) || (span->length < best->length) ||
+      if ((best == nullptr) || (span->length < best->length) ||
           ((span->length == best->length) && (span->start < best->start))) {
         best = span;
         ASSERT(best->location == static_cast<unsigned int>(Span::enumSpanType::ON_RETURNED_FREELIST));
@@ -105,7 +105,7 @@ Span *PageHeap::AllocLarge(Length n) {
     }
   }
 
-  return best == NULL ? NULL : Carve(best, n);
+  return best == nullptr ? nullptr : Carve(best, n);
 }
 
 Span *PageHeap::Carve(Span *span, Length n) {
@@ -160,7 +160,7 @@ void PageHeap::MergeIntoFreeList(Span *span) {
   const PageID p = span->start;
   const Length n = span->length;
   Span *prev = GetDescriptor(p - 1);
-  if (prev != NULL && prev->location == span->location) {
+  if (prev != nullptr && prev->location == span->location) {
     // Merge preceding span into this span
     ASSERT(prev->start + prev->length == p);
     const Length len = prev->length;
@@ -172,7 +172,7 @@ void PageHeap::MergeIntoFreeList(Span *span) {
     Event(span, 'L', len);
   }
   Span *next = GetDescriptor(p + n);
-  if (next != NULL && next->location == span->location) {
+  if (next != nullptr && next->location == span->location) {
     // Merge next span into this span
     ASSERT(next->start == p + n);
     const Length len = next->length;
@@ -295,16 +295,16 @@ bool PageHeap::GrowHeap(Length n) {
   if (n > kMaxValidPages) return false;
   Length ask = (n > kMinSystemAlloc) ? n : static_cast<Length>(kMinSystemAlloc);
   size_t actual_size;
-  void *ptr = NULL;
-  ptr = TCMalloc_SystemAlloc(ask << kPageShift, NULL, kPageSize);
+  void *ptr = nullptr;
+  ptr = TCMalloc_SystemAlloc(ask << kPageShift, nullptr, kPageSize);
 
-  if (ptr == NULL) {
+  if (ptr == nullptr) {
     if (n < ask) {
       // Try growing just "n" pages
       ask = n;
-      ptr = TCMalloc_SystemAlloc(ask << kPageShift, NULL, kPageSize);
+      ptr = TCMalloc_SystemAlloc(ask << kPageShift, nullptr, kPageSize);
     }
-    if (ptr == NULL) return false;
+    if (ptr == nullptr) return false;
   }
   system_alloc_list.push_back(ptr);
   actual_size = ask << kPageShift;

@@ -122,7 +122,7 @@ void LargeBuffer::FlushAndClose() {
 char *LargeBuffer::BufAppend(unsigned int len) {
   if ((int)len > size_) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Error: LargeBuffer buffer overrun (BufAppend)");
-    return NULL;
+    return nullptr;
   }
   int buf_pos = buf_used_;
   if (size_ > (int)(buf_used_ + len))

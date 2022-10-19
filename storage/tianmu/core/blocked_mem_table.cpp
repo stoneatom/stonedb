@@ -28,7 +28,7 @@ MemBlockManager::~MemBlockManager() {
 void *MemBlockManager::GetBlock() {
   DEBUG_ASSERT(block_size != -1);
 
-  if (hard_size_limit != -1 && hard_size_limit <= current_size) return NULL;
+  if (hard_size_limit != -1 && hard_size_limit <= current_size) return nullptr;
 
   {
     std::scoped_lock g(mx);
@@ -58,7 +58,7 @@ int MemBlockManager::MemoryBlocksLeft() {
 }
 
 void MemBlockManager::FreeBlock(void *b) {
-  if (b == NULL) return;
+  if (b == nullptr) return;
   std::scoped_lock g(mx);
   size_t r = used_blocks.erase(b);
   if (r == 1) {
@@ -101,7 +101,7 @@ void BlockedRowMemStorage::Init(int rowl, std::shared_ptr<MemBlockManager> mbm, 
 }
 
 void BlockedRowMemStorage::Clear() {
-  for (auto &b : blocks) bman->FreeBlock(b);  // may be NULL already
+  for (auto &b : blocks) bman->FreeBlock(b);  // may be nullptr already
   blocks.clear();
   no_rows = 0;
   release = false;
@@ -170,7 +170,7 @@ bool BlockedRowMemStorage::NextRow() {
   if (release) {
     if ((current & ndx_mask) == 0) {
       bman->FreeBlock(blocks[(current >> npower) - 1]);
-      blocks[(current >> npower) - 1] = NULL;
+      blocks[(current >> npower) - 1] = nullptr;
     }
   }
 

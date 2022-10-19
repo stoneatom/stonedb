@@ -64,22 +64,22 @@ FTree::FTree(const FTree &ft)
 void FTree::Destroy() {
   if (mem) {
     dealloc(mem);
-    mem = NULL;
+    mem = nullptr;
   }
 
   if (len) {
     dealloc(len);
-    len = NULL;
+    len = nullptr;
   }
 
   if (value_offset) {
     dealloc(value_offset);
-    value_offset = NULL;
+    value_offset = nullptr;
   }
 
   if (hash_table) {
     dealloc(hash_table);
-    hash_table = NULL;
+    hash_table = nullptr;
   }
 }
 
@@ -101,11 +101,11 @@ types::BString FTree::GetRealValue(int v) {
 
 char *FTree::GetBuffer(int v) {
   if (v >= 0 && v < hdr.size) return (mem + value_offset[v]);
-  return NULL;
+  return nullptr;
 }
 
 int FTree::GetEncodedValue(const char *str, size_t sz) {
-  if (mem == NULL) return -1;
+  if (mem == nullptr) return -1;
   int local_last_code = last_code;  // for multithread safety
 
   if (local_last_code > -1 && sz == len[local_last_code] &&
@@ -122,8 +122,8 @@ void FTree::Init(int width) {
   total_buf_size = hdr.max_len * 10 + 10;
   if (mem) dealloc(mem);
   mem = (char *)alloc(total_buf_size, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
-  if (len == NULL) len = (uint16_t *)alloc(total_dic_size * sizeof(uint16_t), mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
-  if (value_offset == NULL)
+  if (len == nullptr) len = (uint16_t *)alloc(total_dic_size * sizeof(uint16_t), mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
+  if (value_offset == nullptr)
     value_offset = (uint32_t *)alloc(total_dic_size * sizeof(uint32_t), mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
 
   std::memset(mem, 0, total_buf_size);
@@ -149,7 +149,7 @@ int FTree::Add(const char *str, size_t sz) {
     len = (uint16_t *)rc_realloc(len, new_dic_size * sizeof(uint16_t), mm::BLOCK_TYPE::BLOCK_TEMPORARY);
     value_offset =
         (uint32_t *)rc_realloc(value_offset, new_dic_size * sizeof(uint32_t), mm::BLOCK_TYPE::BLOCK_TEMPORARY);
-    if (len == NULL || value_offset == NULL) throw common::OutOfMemoryException("Too many lookup values");
+    if (len == nullptr || value_offset == nullptr) throw common::OutOfMemoryException("Too many lookup values");
     for (int i = total_dic_size; i < new_dic_size; i++) {
       len[i] = 0;
       value_offset[i] = common::NULL_VALUE_32;
@@ -283,7 +283,7 @@ void FTree::InitHash() {
   while (hash_size % 2 == 0 || hash_size % 3 == 0 || hash_size % 5 == 0 || hash_size % 7 == 0) hash_size++;
   dealloc(hash_table);
   hash_table = (int *)alloc(hash_size * sizeof(int), mm::BLOCK_TYPE::BLOCK_TEMPORARY);  // 2 GB max.
-  if (hash_table == NULL) throw common::OutOfMemoryException("Too many lookup values");
+  if (hash_table == nullptr) throw common::OutOfMemoryException("Too many lookup values");
 
   std::memset(hash_table, 0xFF,
               hash_size * sizeof(int));  // set -1 for all positions
@@ -291,7 +291,7 @@ void FTree::InitHash() {
 }
 
 int FTree::HashFind(const char *v, int v_len, int position_if_not_found) {
-  if (hash_table == NULL) InitHash();
+  if (hash_table == nullptr) InitHash();
   unsigned int crc_code = (v_len == 0 ? 0 : HashValue((const unsigned char *)v, v_len));
   int row = crc_code % hash_size;
   int step = 3 + crc_code % 8;  // step: 3, 4, 5, 6, 7, 8, 9, 10  => hash_size

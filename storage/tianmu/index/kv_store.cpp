@@ -33,7 +33,7 @@ void KVStore::Init() {
     options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(bb_table_option_));
   }
 
-  // get column family names from manfest file
+  // get column family names from manifest file
   rocksdb::TransactionDBOptions txn_db_options;
   std::vector<std::string> cf_names;
   std::vector<rocksdb::ColumnFamilyDescriptor> cf_descr;

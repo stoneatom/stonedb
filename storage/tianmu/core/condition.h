@@ -50,7 +50,7 @@ class SingleTreeCondition : public Condition {
   DescTree *tree;
 
  public:
-  SingleTreeCondition() { tree = NULL; }
+  SingleTreeCondition() { tree = nullptr; }
   SingleTreeCondition(CQTerm e1, common::Operator op, CQTerm e2, CQTerm e3, TempTable *t, int no_dims, char like_esc);
   virtual ~SingleTreeCondition();
   using Condition::AddDescriptor;

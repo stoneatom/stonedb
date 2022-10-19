@@ -24,7 +24,7 @@
 #include "vc/virtual_column.h"
 
 namespace Tianmu {
-namespace DBHandler {
+namespace handler {
 
 enum class TianmuEngineReturnValues : int { LD_SUCCEED = 100, LD_FAILED = 101, LD_CONTINUE = 102 };
 
@@ -65,7 +65,7 @@ static bool Tianmu_SetStatementAllowed(THD *thd, Query_expression *qe) {
   return true;
 }
 
-void Tianmu_UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
+void ha_my_tianmu_update_and_store_col_comment(TABLE *table, int field_id, Field *source_field, int source_field_id,
                                         CHARSET_INFO *cs) {
   try {
     ha_rcengine_->UpdateAndStoreColumnComment(table, field_id, source_field, source_field_id, cs);
@@ -78,7 +78,7 @@ void Tianmu_UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *sourc
   }
 }
 
-Query_route_to Tianmu_Handle_Query(THD *thd, Query_expression *qe, Query_result *&result,
+Query_route_to ha_my_tianmu_query(THD *thd, Query_expression *qe, Query_result *&result,
                                    ulong setup_tables_done_option, int &res, int &optimize_after_tianmu,
                                    int &tianmu_free_join, int with_insert) {
   Query_route_to ret = Query_route_to::TO_TIANMU;
@@ -93,7 +93,7 @@ Query_route_to Tianmu_Handle_Query(THD *thd, Query_expression *qe, Query_result 
     ret = ha_rcengine_->Handle_Query(thd, qe, result, setup_tables_done_option, res, optimize_after_tianmu,
                                      tianmu_free_join, with_insert);
 
-    if (ret == DBHandler::Query_route_to::TO_MYSQL && AtLeastOneTianmuTableInvolved(qe) &&
+    if (ret == handler::Query_route_to::TO_MYSQL && AtLeastOneTianmuTableInvolved(qe) &&
         ForbiddenMySQLQueryPath(qe)) {
       my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
                  "The query includes syntax that is not supported by the storage engine. "
@@ -144,7 +144,7 @@ static int Tianmu_LoadData(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, v
 }
 
 // returning true means 'to continue'
-bool Tianmu_Load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) {
+bool ha_my_tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) {
   char tianmumsg[256] = {0};
   int tianmu_errcode{0};
 
@@ -165,6 +165,6 @@ bool Tianmu_Load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) 
   return false;
 }
 
-bool Tianmu_Get_Insert_Delayed_Flag([[maybe_unused]] THD *thd) { return tianmu_sysvar_insert_delayed; }
-}  // namespace DBHandler
+bool ha_my_tianmu_get_insert_delayed_flag([[maybe_unused]] THD *thd) { return tianmu_sysvar_insert_delayed; }
+}  // namespace handler
 }  // namespace Tianmu

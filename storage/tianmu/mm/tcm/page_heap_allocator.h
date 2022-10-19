@@ -56,9 +56,9 @@ class PageHeapAllocator {
   // other static variable tries to allocate memory.
   void Init() {
     ASSERT(kAlignedSize <= (size_t)kAllocIncrement);
-    free_area_ = NULL;
+    free_area_ = nullptr;
     free_avail_ = 0;
-    free_list_ = NULL;
+    free_list_ = nullptr;
     // Reserve some space at the beginning to avoid fragmentation.
     Delete(New());
   }
@@ -66,17 +66,17 @@ class PageHeapAllocator {
   T *New() {
     // Consult free list
     void *result;
-    if (free_list_ != NULL) {
+    if (free_list_ != nullptr) {
       result = free_list_;
       free_list_ = *(reinterpret_cast<void **>(result));
     } else {
       if (free_avail_ < kAlignedSize) {
         // Need more room
-        // free_area_ = (char *)TCMalloc_SystemAlloc(kAllocIncrement, NULL,
+        // free_area_ = (char *)TCMalloc_SystemAlloc(kAllocIncrement, nullptr,
         // kPageSize);
         free_area_ = reinterpret_cast<char *>(MetaDataAlloc(kAllocIncrement));
-        if (free_area_ == NULL) {
-          return NULL;
+        if (free_area_ == nullptr) {
+          return nullptr;
         }
         system_alloc_list.push_back(free_area_);
         free_avail_ = kAllocIncrement;

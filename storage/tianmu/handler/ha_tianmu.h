@@ -22,13 +22,13 @@
 #include "core/engine.h"
 
 namespace Tianmu {
-namespace DBHandler {
+namespace handler {
 
 // Class definition for the storage engine
-class TianmuHandler final : public handler {
+class ha_tianmu final : public handler {
  public:
-  TianmuHandler(handlerton *hton, TABLE_SHARE *table_arg, bool partitioned);
-  virtual ~TianmuHandler() = default;
+  ha_tianmu(handlerton *hton, TABLE_SHARE *table_arg, bool partitioned);
+  virtual ~ha_tianmu() = default;
   /* The name that will be used for display purposes */
   const char *table_type() const override { return "TIANMU"; }
   /*
@@ -191,7 +191,7 @@ class TianmuHandler final : public handler {
   bool m_partitioned = false;
 };
 
-}  // namespace DBHandler
+}  // namespace handler
 }  // namespace Tianmu
 
 #endif  // HA_TIANMU_H_

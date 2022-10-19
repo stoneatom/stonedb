@@ -53,13 +53,13 @@ class PhysicalColumn : public Column {
   virtual int64_t GetValueInt64(int64_t row) const = 0;
   virtual int64_t GetNotNullValueInt64(int64_t row) const = 0;
 
-  /*! \brief Is the column value NULL ?
+  /*! \brief Is the column value nullptr ?
    *
    * \pre necessary datapacks (containing rows pointed by \e mit) are loaded and
    * locked
    *
    * \param row identifies a row
-   * \return \b true if column value is NULL, \b false otherwise
+   * \return \b true if column value is nullptr, \b false otherwise
    */
   virtual bool IsNull(int64_t row) const = 0;
 
@@ -186,7 +186,7 @@ class PhysicalColumn : public Column {
                                                       // non-null values, if possible, or
                                                       // common::NULL_VALUE_64
 
-  virtual size_t MaxStringSize(Filter *f = NULL) = 0;  // maximal byte string length in column
+  virtual size_t MaxStringSize(Filter *f = nullptr) = 0;  // maximal byte string length in column
 
   // Are all the values unique?
   bool IsUnique() const { return is_unique; }
@@ -204,19 +204,19 @@ class PhysicalColumn : public Column {
     return (IsUniqueUpdated() ? (IsUnique() ? common::RSValue::RS_ALL : common::RSValue::RS_NONE)
                               : common::RSValue::RS_UNKNOWN);
   }
-  virtual int64_t RoughMin(Filter *f = NULL,
-                           common::RSValue *rf = NULL) = 0;  // for numerical: best
+  virtual int64_t RoughMin(Filter *f = nullptr,
+                           common::RSValue *rf = nullptr) = 0;  // for numerical: best
                                                              // rough approximation of
                                                              // min for a given filter
                                                              // (or global min if filter
-                                                             // is NULL)
-  virtual int64_t RoughMax(Filter *f = NULL,
-                           common::RSValue *rf = NULL) = 0;  // for numerical: best
+                                                             // is nullptr)
+  virtual int64_t RoughMax(Filter *f = nullptr,
+                           common::RSValue *rf = nullptr) = 0;  // for numerical: best
                                                              // rough approximation of
                                                              // max for a given filter
                                                              // (or global max if filter
-                                                             // is NULL)
-  virtual void GetTextStat(types::TextStat &s, [[maybe_unused]] Filter *f = NULL) { s.Invalidate(); }
+                                                             // is nullptr)
+  virtual void GetTextStat(types::TextStat &s, [[maybe_unused]] Filter *f = nullptr) { s.Invalidate(); }
   virtual double RoughSelectivity() { return 1; }
   /*! \brief Return true if the column (filtered) contain only non-null distinct
    * values

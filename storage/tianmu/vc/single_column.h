@@ -135,7 +135,7 @@ class SingleColumn : public VirtualColumn {
     return dummy;
   }
 
-  core::PhysicalColumn *col_;  //!= NULL if SingleColumn encapsulates a single
+  core::PhysicalColumn *col_;  //!= nullptr if SingleColumn encapsulates a single
                                //! column only (no expression)
                                //	this an easily accessible copy
                                // var_map[0].tab->GetColumn(var_map[0].col_ndx)

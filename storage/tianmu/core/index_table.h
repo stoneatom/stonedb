@@ -102,7 +102,7 @@ class IndexTable : private system::CacheableItem, public mm::TraceableObject {
 
   int64_t OrigSize() {
     return orig_size;
-  }                                         // the size of the original table, or the largest (incl. 0 = NULL) value
+  }                                         // the size of the original table, or the largest (incl. 0 = nullptr) value
                                             // which may occur in table
   uint64_t N() { return size; }             // note: this is the upper size, the table can be used partially!
   int BlockShift() { return block_shift; }  // block = int( tuple >> block_shift )
@@ -124,7 +124,7 @@ class IndexTable : private system::CacheableItem, public mm::TraceableObject {
   uint64_t block_mask;
   uint64_t size;
   int64_t orig_size;  // the size of the original table, or the largest value
-                      // (incl. 0 = NULL) which may occur in the table
+                      // (incl. 0 = nullptr) which may occur in the table
 
   int cur_block;
   bool block_changed;

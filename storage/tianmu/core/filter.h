@@ -96,7 +96,7 @@ class Filter final : public mm::TraceableObject {
                                         // then reset a part of it
         else
           new (blocks[b]) Block(block_filter, pack_def, true);  // block_filter->this
-        if (blocks[b] == NULL) throw common::OutOfMemoryException();
+        if (blocks[b] == nullptr) throw common::OutOfMemoryException();
       }
     }
     if (blocks[b]) {

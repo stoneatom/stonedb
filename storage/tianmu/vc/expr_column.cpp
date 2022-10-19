@@ -62,7 +62,7 @@ ExpressionColumn::ExpressionColumn(core::MysqlExpression *expr, core::TempTable 
         // parameter
         // parameter type is not available here, must be set later (EvalType())
         params.insert(v);
-        //				param_buf[v].second = NULL; //assigned
+        //				param_buf[v].second = nullptr; //assigned
         // by
         // SetBufs()
       }

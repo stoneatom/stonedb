@@ -72,9 +72,9 @@ class TempTable : public JustATable {
     bool not_complete;  // does not contain all the column elements - some
                         // functions cannot be computed
 
-    Attr(CQTerm t, common::ColOperation m, uint32_t power, bool distinct = false, char *alias = NULL, int dim = -1,
+    Attr(CQTerm t, common::ColOperation m, uint32_t power, bool distinct = false, char *alias = nullptr, int dim = -1,
          common::CT type = common::CT::INT, uint scale = 0, uint precision = 10, bool notnull = true,
-         DTCollation collation = DTCollation(), SI *si1 = NULL);
+         DTCollation collation = DTCollation(), SI *si1 = nullptr);
     Attr(const Attr &);
     Attr &operator=(const Attr &);
     int operator==(const Attr &);
@@ -96,7 +96,7 @@ class TempTable : public JustATable {
     }
     void SetPrecision(int prec) { ct.SetPrecision(prec); }
     void SetScale(int sc) { ct.SetScale(sc); }
-    void CreateBuffer(uint64_t size, Transaction *conn = NULL, bool not_completed = false);
+    void CreateBuffer(uint64_t size, Transaction *conn = nullptr, bool not_completed = false);
     void FillValue(const MIIterator &mii, size_t idx);
     size_t FillValues(MIIterator &mii, size_t start, size_t count);
     void SetNewPageSize(uint new_page_size);
@@ -111,15 +111,15 @@ class TempTable : public JustATable {
                                                                       // values (incl. null, if flag set)
     uint64_t ExactDistinctVals([[maybe_unused]] Filter *f) override { return common::NULL_VALUE_64; }
     bool IsDistinct([[maybe_unused]] Filter *f) override { return false; }
-    size_t MaxStringSize(Filter *f = NULL) override;  // maximal byte string length in column
-    int64_t RoughMin([[maybe_unused]] Filter *f = NULL, [[maybe_unused]] common::RSValue *rf = NULL) override {
+    size_t MaxStringSize(Filter *f = nullptr) override;  // maximal byte string length in column
+    int64_t RoughMin([[maybe_unused]] Filter *f = nullptr, [[maybe_unused]] common::RSValue *rf = nullptr) override {
       return common::MINUS_INF_64;
     }  // for numerical: best rough approximation of min for a given filter (or
-       // global min if filter is NULL)
-    int64_t RoughMax([[maybe_unused]] Filter *f = NULL, [[maybe_unused]] common::RSValue *rf = NULL) override {
+       // global min if filter is nullptr)
+    int64_t RoughMax([[maybe_unused]] Filter *f = nullptr, [[maybe_unused]] common::RSValue *rf = nullptr) override {
       return common::PLUS_INF_64;
     }  // for numerical: best rough approximation of max for a given filter (or
-       // global max if filter is NULL)
+       // global max if filter is nullptr)
     void DisplayAttrStats([[maybe_unused]] Filter *f) override {}
     bool TryToMerge([[maybe_unused]] Descriptor &d1, [[maybe_unused]] Descriptor &d2) override { return false; }
     PackOntologicalStatus GetPackOntologicalStatus([[maybe_unused]] int pack_no) override {
@@ -215,7 +215,7 @@ class TempTable : public JustATable {
   // Maintenance and low-level functions
 
   bool OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t limit, int64_t offset,
-                             ResultSender *sender = NULL);  // Sort data contained in
+                             ResultSender *sender = nullptr);  // Sort data contained in
                                                             // ParameterizedFilter by using some
                                                             // attributes (usually specified by
                                                             // AddOrder, but in general -
@@ -223,8 +223,8 @@ class TempTable : public JustATable {
   // just materialize as SELECT *
   void FillMaterializedBuffers(int64_t local_limit, int64_t local_offset, ResultSender *sender, bool pagewise);
 
-  virtual void RoughMaterialize(bool in_subq = false, ResultSender *sender = NULL, bool lazy = false);
-  virtual void Materialize(bool in_subq = false, ResultSender *sender = NULL, bool lazy = false);
+  virtual void RoughMaterialize(bool in_subq = false, ResultSender *sender = nullptr, bool lazy = false);
+  virtual void Materialize(bool in_subq = false, ResultSender *sender = nullptr, bool lazy = false);
 
   // just_distinct = 'select distinct' but no 'group by'
   // Set no_obj = no. of groups in result
@@ -251,7 +251,7 @@ class TempTable : public JustATable {
   TType TableType() const override { return TType::TEMP_TABLE; }  // type of JustATable - TempTable
   uint NumOfAttrs() const override { return (uint)attrs.size(); }
   uint NumOfDisplaybleAttrs() const override { return no_cols; }  // no. of columns with defined alias
-  bool IsDisplayAttr(int i) { return attrs[i]->alias != NULL; }
+  bool IsDisplayAttr(int i) { return attrs[i]->alias != nullptr; }
   int64_t GetTable64(int64_t obj, int attr) override;
   void GetTable_S(types::BString &s, int64_t obj, int attr) override;
   void GetTableString(types::BString &s, int64_t obj, uint attr);
@@ -265,10 +265,10 @@ class TempTable : public JustATable {
   bool IsNull(int64_t obj,
               int attr) override;  // return true if the value of attr. is null
 
-  int64_t RoughMin([[maybe_unused]] int n_a, [[maybe_unused]] Filter *f = NULL) { return common::MINUS_INF_64; }
-  int64_t RoughMax([[maybe_unused]] int n_a, [[maybe_unused]] Filter *f = NULL) { return common::PLUS_INF_64; }
+  int64_t RoughMin([[maybe_unused]] int n_a, [[maybe_unused]] Filter *f = nullptr) { return common::MINUS_INF_64; }
+  int64_t RoughMax([[maybe_unused]] int n_a, [[maybe_unused]] Filter *f = nullptr) { return common::PLUS_INF_64; }
 
-  uint MaxStringSize(int n_a, [[maybe_unused]] Filter *f = NULL) override {
+  uint MaxStringSize(int n_a, [[maybe_unused]] Filter *f = nullptr) override {
     if (n_a < 0) return GetFieldSize(-n_a - 1);
     return GetFieldSize(n_a);
   }
@@ -439,8 +439,8 @@ class TempTable : public JustATable {
 
  public:
   class RecordIterator;
-  virtual RecordIterator begin(Transaction *conn = NULL);
-  virtual RecordIterator end(Transaction *conn = NULL);
+  virtual RecordIterator begin(Transaction *conn = nullptr);
+  virtual RecordIterator end(Transaction *conn = nullptr);
 
  public:
   Transaction *m_conn;  // external pointer
@@ -508,8 +508,8 @@ class TempTableForSubquery : public TempTable {
   ~TempTableForSubquery();
 
   void CreateTemplateIfNotExists();
-  void Materialize(bool in_subq = false, ResultSender *sender = NULL, bool lazy = false) override;
-  void RoughMaterialize(bool in_subq = false, ResultSender *sender = NULL, bool lazy = false) override;
+  void Materialize(bool in_subq = false, ResultSender *sender = nullptr, bool lazy = false) override;
+  void RoughMaterialize(bool in_subq = false, ResultSender *sender = nullptr, bool lazy = false) override;
   void ResetToTemplate(bool rough);
   void SetAttrsForRough();
   void SetAttrsForExact();

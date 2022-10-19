@@ -219,7 +219,7 @@ using intmax_t = __int64;
 #if FMT_HAS_FEATURE(cxx_nullptr) || (FMT_GCC_VERSION >= 408 && FMT_HAS_GXX_CXX11) || FMT_MSC_VER >= 1600
 #define FMT_NULL nullptr
 #else
-#define FMT_NULL NULL
+#define FMT_NULL nullptr
 #endif
 #endif
 

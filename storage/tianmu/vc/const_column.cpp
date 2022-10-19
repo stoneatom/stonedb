@@ -26,7 +26,7 @@ namespace Tianmu {
 namespace vcolumn {
 
 ConstColumn::ConstColumn(core::ValueOrNull const &val, core::ColumnType const &c, bool shift_to_UTC)
-    : VirtualColumn(c, NULL), value(val) {
+    : VirtualColumn(c, nullptr), value(val) {
   dim = -1;
   if (ct.IsString()) ct.SetPrecision(c.GetPrecision());
   if (c.GetTypeName() == common::CT::TIMESTAMP && shift_to_UTC) {
@@ -55,7 +55,7 @@ ConstColumn::ConstColumn(core::ValueOrNull const &val, core::ColumnType const &c
   }
 }
 
-ConstColumn::ConstColumn(const types::RCValueObject &v, const core::ColumnType &c) : VirtualColumn(c, NULL), value() {
+ConstColumn::ConstColumn(const types::RCValueObject &v, const core::ColumnType &c) : VirtualColumn(c, nullptr), value() {
   dim = -1;
   if (c.IsString()) {
     value = core::ValueOrNull(v.ToBString());

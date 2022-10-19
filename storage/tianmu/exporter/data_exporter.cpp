@@ -41,8 +41,8 @@ void DataExporter::Init(std::shared_ptr<system::LargeBuffer> buffer, std::vector
   }
 
   cur_attr = 0;
-  row = NULL;
-  row_ptr = NULL;
+  row = nullptr;
+  row_ptr = nullptr;
   nulls_indicator = 0;
 }
 

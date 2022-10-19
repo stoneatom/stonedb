@@ -59,7 +59,7 @@ class ConstExpressionColumn : public ExpressionColumn {
     ct = ct.RemovedLookup();
   }
 
-  ConstExpressionColumn(ConstExpressionColumn const &cc) : ExpressionColumn(NULL, NULL, common::NULL_VALUE_32, NULL) {
+  ConstExpressionColumn(ConstExpressionColumn const &cc) : ExpressionColumn(nullptr, nullptr, common::NULL_VALUE_32, nullptr) {
     DEBUG_ASSERT(params.size() == 0 && "cannot copy expressions");
     last_val = cc.last_val;
     ct = cc.ct;

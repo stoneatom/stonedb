@@ -81,7 +81,7 @@ class PPMModel {
   // file for making logs during compression or decompression
   FILE *logfile;
 
-  PPMModel() : logfile(NULL) {}
+  PPMModel() : logfile(nullptr) {}
   virtual ~PPMModel() {}
 };
 

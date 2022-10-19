@@ -57,7 +57,7 @@ std::set<int> VirtualColumnBase::GetDimensions() {
 }
 
 int64_t VirtualColumnBase::NumOfTuples() {
-  if (mind == NULL)  // constant
+  if (mind == nullptr)  // constant
     return 1;
   core::DimensionVector dims(mind->NumOfDimensions());
   MarkUsedDims(dims);
@@ -235,8 +235,8 @@ common::RSValue VirtualColumnBase::RoughCheckImpl(const core::MIIterator &mit, c
   }
 
   common::RSValue res = common::RSValue::RS_SOME;
-  if (d.val1.vc == NULL ||
-      ((d.op == common::Operator::O_BETWEEN || d.op == common::Operator::O_NOT_BETWEEN) && d.val2.vc == NULL))
+  if (d.val1.vc == nullptr ||
+      ((d.op == common::Operator::O_BETWEEN || d.op == common::Operator::O_NOT_BETWEEN) && d.val2.vc == nullptr))
     return common::RSValue::RS_SOME;  // irregular descriptor - cannot use VirtualColumn
                                       // rough statistics
   // In all other situations: common::RSValue::RS_NONE for nulls only

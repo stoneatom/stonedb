@@ -47,13 +47,13 @@
 
 namespace Tianmu {
 
-namespace DBHandler {
+namespace handler {
 extern void resolve_async_join_settings(const std::string &settings);
 }
 
 namespace core {
 
-using Tianmu::DBHandler::Query_route_to;
+using Tianmu::handler::Query_route_to;
 
 #ifdef PROFILE_LOCK_WAITING
 LockProfiler lock_profiler;
@@ -78,7 +78,7 @@ static int setup_sig_handler() {
   sa.sa_sigaction = signal_handler;
   sigemptyset(&sa.sa_mask);
 
-  if (sigaction(SIGRTMIN, &sa, NULL) == -1) {
+  if (sigaction(SIGRTMIN, &sa, nullptr) == -1) {
     TIANMU_LOG(LogCtl_Level::INFO, "Failed to set up signal handler. error =%d[%s]", errno, std::strerror(errno));
     return 1;
   }
@@ -196,7 +196,7 @@ int Engine::Init(uint engine_slot) {
   } else {
     rc_querylog_.setOff();
   }
-  std::srand(unsigned(time(NULL)));
+  std::srand(unsigned(time(nullptr)));
 
   if (tianmu_sysvar_servermainheapsize == 0) {
     long pages = sysconf(_SC_PHYS_PAGES);
@@ -300,7 +300,7 @@ int Engine::Init(uint engine_slot) {
   }
 
   if (tianmu_sysvar_start_async > 0) ResetTaskExecutor(tianmu_sysvar_start_async);
-  DBHandler::resolve_async_join_settings(tianmu_sysvar_async_join);
+  handler::resolve_async_join_settings(tianmu_sysvar_async_join);
 
   return 0;
 }
@@ -904,8 +904,8 @@ void Engine::RemoveTx(Transaction *tx) {
 
 Transaction *Engine::CreateTx(THD *thd) {
   // the transaction should be created by owner THD
-  ASSERT(thd->get_ha_data(tianmu_hton->slot)->ha_ptr == NULL, "Nested transaction is not supported!");  // stonedb8
-  ASSERT(current_txn_ == NULL, "Previous transaction is not finished!");
+  ASSERT(thd->get_ha_data(tianmu_hton->slot)->ha_ptr == nullptr, "Nested transaction is not supported!");  // stonedb8
+  ASSERT(current_txn_ == nullptr, "Previous transaction is not finished!");
 
   current_txn_ = new Transaction(thd);
   thd->get_ha_data(tianmu_hton->slot)->ha_ptr = current_txn_;  // stonedb8
@@ -927,7 +927,7 @@ void Engine::ClearTx(THD *thd) {
 
   RemoveTx(current_txn_);
   current_txn_ = nullptr;
-  thd->get_ha_data(tianmu_hton->slot)->ha_ptr = NULL;  // stonedb8
+  thd->get_ha_data(tianmu_hton->slot)->ha_ptr = nullptr;  // stonedb8
 }
 
 int Engine::SetUpCacheFolder(const std::string &cachefolder_path) {
@@ -1160,7 +1160,7 @@ static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec
   // stonedb8 end
 
   thd->set_catalog({0, 1});  // TIANMU UPGRADE
-  thd->set_db({NULL, 0});    /* will free the current database */
+  thd->set_db({nullptr, 0});    /* will free the current database */
   thd->reset_query();
   thd->get_stmt_da()->set_overwrite_status(true);
   thd->is_error() ? trans_rollback_stmt(thd) : trans_commit_stmt(thd);
@@ -1610,13 +1610,13 @@ Query_route_to Engine::RouteTo(THD *thd, TABLE_LIST *table_list, Query_block *se
 }
 
 bool Engine::IsTianmuTable(TABLE *table) {
-  return table && table->s->db_type() == tianmu_hton;  // table->db_type is always NULL
+  return table && table->s->db_type() == tianmu_hton;  // table->db_type is always nullptr
 }
 
 const char *Engine::GetFilename(Query_block *selects_list, int &is_dumpfile) {  // stonedb8
-  // if the function returns a filename <> NULL
+  // if the function returns a filename <> nullptr
   // additionally is_dumpfile indicates whether it was 'select into OUTFILE' or
-  // maybe 'select into DUMPFILE' if the function returns NULL it was a regular
+  // maybe 'select into DUMPFILE' if the function returns nullptr it was a regular
   // 'select' don't look into is_dumpfile in this case
 
   if (selects_list->parent_lex->result == nullptr) {
@@ -1662,7 +1662,7 @@ std::unique_ptr<system::IOParameters> Engine::CreateIOParameters(const std::stri
 }
 
 std::unique_ptr<system::IOParameters> Engine::CreateIOParameters([[maybe_unused]] THD *thd, TABLE *table, void *arg) {
-  if (table == NULL) return CreateIOParameters("", arg);
+  if (table == nullptr) return CreateIOParameters("", arg);
 
   return CreateIOParameters(GetTablePath(table), arg);
 }
@@ -1802,7 +1802,7 @@ common::TIANMUError Engine::GetIOParams(std::unique_ptr<system::IOParameters> &i
     return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter escape std::string not supported.");
 
   if (ex.field.enclosed->length() > 1 &&
-      (ex.field.enclosed->length() != 4 || strcasecmp(ex.field.enclosed->ptr(), "NULL") != 0))
+      (ex.field.enclosed->length() != 4 || strcasecmp(ex.field.enclosed->ptr(), "nullptr") != 0))
     return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter enclose std::string not supported.");
 
   if (!for_exporter) {
@@ -1814,7 +1814,7 @@ common::TIANMUError Engine::GetIOParams(std::unique_ptr<system::IOParameters> &i
     io_params->SetEscapeCharacter(*ex.field.escaped->ptr());
     io_params->SetDelimiter(ex.field.field_term->ptr());
     io_params->SetLineTerminator(ex.line.line_term->ptr());
-    if (ex.field.enclosed->length() == 4 && strcasecmp(ex.field.enclosed->ptr(), "NULL") == 0)
+    if (ex.field.enclosed->length() == 4 && strcasecmp(ex.field.enclosed->ptr(), "nullptr") == 0)
       io_params->SetParameter(system::Parameter::STRING_QUALIFIER, '\0');
     else
       io_params->SetParameter(system::Parameter::STRING_QUALIFIER, *ex.field.enclosed->ptr());
@@ -1827,7 +1827,7 @@ common::TIANMUError Engine::GetIOParams(std::unique_ptr<system::IOParameters> &i
     if (ex.line.line_term->alloced_length() != 0) io_params->SetLineTerminator(ex.line.line_term->ptr());
 
     if (ex.field.enclosed->length()) {
-      if (ex.field.enclosed->length() == 4 && strcasecmp(ex.field.enclosed->ptr(), "NULL") == 0)
+      if (ex.field.enclosed->length() == 4 && strcasecmp(ex.field.enclosed->ptr(), "nullptr") == 0)
         io_params->SetParameter(system::Parameter::STRING_QUALIFIER, '\0');
       else
         io_params->SetParameter(system::Parameter::STRING_QUALIFIER, *ex.field.enclosed->ptr());
@@ -2128,7 +2128,7 @@ Query_route_to Engine::Handle_Query(THD *thd, Query_expression *qe, Query_result
 
   // prepare, optimize and execute the main query
   se = dynamic_cast<Query_result_export *>(result);
-  if (se != NULL) result = new exporter::select_tianmu_export(se);
+  if (se != nullptr) result = new exporter::select_tianmu_export(se);
 
   select_lex = lex->query_block;
   unit = lex->unit;
@@ -2275,8 +2275,8 @@ ret_derived:
 Query_route_to Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, Query_expression *unit_for_union) {
   DEBUG_ASSERT(thd->lex == lex);
   Query_block *selects_list = lex->query_block;
-  Query_block *last_distinct = NULL;
-  if (unit_for_union != NULL) last_distinct = unit_for_union->union_distinct;
+  Query_block *last_distinct = nullptr;
+  if (unit_for_union != nullptr) last_distinct = unit_for_union->union_distinct;
 
   int is_dumpfile = 0;
   const char *export_file_name = GetFilename(selects_list, is_dumpfile);
@@ -2319,7 +2319,7 @@ Query_route_to Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, 
       rct = current_txn_->GetTableByPathIfExists(table_path);
     }
 
-    if (unit_for_union != NULL && !unit_for_union->is_prepared()) {
+    if (unit_for_union != nullptr && !unit_for_union->is_prepared()) {
       int res = result_output->prepare(thd, unit_for_union->item_list, unit_for_union);  // stonedb8 add thd
       if (res) {
         TIANMU_LOG(LogCtl_Level::ERROR, "Error: Unsupported UNION");
@@ -2340,7 +2340,7 @@ Query_route_to Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, 
     }
 
     TempTable *result = query.Preexecute(cqu, sender.get());
-    ASSERT(result != NULL, "Query execution returned no result object");
+    ASSERT(result != nullptr, "Query execution returned no result object");
     if (query.IsRoughQuery())
       result->RoughMaterialize(false, sender.get());
     else

@@ -43,7 +43,7 @@ static inline bool DemangelSymbol(char *name, std::string &result) {
   char *end = p++;
   *end = '\0';
   int status;
-  char *func = abi::__cxa_demangle(begin, NULL, NULL, &status);
+  char *func = abi::__cxa_demangle(begin, nullptr, nullptr, &status);
   if (!func) return false;
 
   *end = '+';
@@ -64,7 +64,7 @@ bool GetStackTrace(std::vector<std::string> &v, int skip_level, bool demangle) {
   char **str;
 
   str = backtrace_symbols(buffer, n);
-  if (str == NULL) {
+  if (str == nullptr) {
     return false;
   }
 

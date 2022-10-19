@@ -28,7 +28,7 @@ void ReleaseFIFO::Access(TraceableObject *o) { tracker.touch(o); }
 void ReleaseFIFO::Remove(TraceableObject *o) { tracker.remove(o); }
 
 void ReleaseFIFO::Release(unsigned num) {
-  TraceableObject *o = NULL;
+  TraceableObject *o = nullptr;
   for (uint i = 0; i < num; i++) {
     o = tracker.removeTail();
     if (o->IsLocked()) {
@@ -40,7 +40,7 @@ void ReleaseFIFO::Release(unsigned num) {
 }
 
 void ReleaseFIFO::ReleaseFull() {
-  TraceableObject *o = NULL;
+  TraceableObject *o = nullptr;
   int num = tracker.size();
   for (int i = 0; i < num; i++) {
     o = tracker.removeTail();

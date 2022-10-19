@@ -319,7 +319,7 @@ class RCDateTime : public ValueBasic<RCDateTime> {
    * Date: 				YYYYMMDD
    * DATETIME/TIMESTAM:	YYYYMMDDHHMMSS
    * \param value result of the conversion
-   * \return false if it is NULL, true otherwise
+   * \return false if it is nullptr, true otherwise
    */
   bool ToInt64(int64_t &value) const;
   char *GetDataBytesPointer() const override { return reinterpret_cast<char *>(const_cast<DT *>(&dt)); }

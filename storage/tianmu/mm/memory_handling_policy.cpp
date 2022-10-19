@@ -99,25 +99,25 @@ MemoryHandling::MemoryHandling([[maybe_unused]] size_t comp_heap_size, size_t un
     m_main_heap = new SystemHeap(uncomp_heap_size);
     m_huge_heap = new HugeHeap(hugedir, hugesize);
     m_system = new SystemHeap(0);
-    m_large_temp = NULL;
+    m_large_temp = nullptr;
   } else if (hpolicy == "mysql") {
     m_main_heap = new MySQLHeap(uncomp_heap_size);
     m_huge_heap = new HugeHeap(hugedir, hugesize);
     m_system = new SystemHeap(0);
-    m_large_temp = NULL;
+    m_large_temp = nullptr;
   } else {  // default or ""
 #ifdef USE_NUMA
     m_main_heap = new NUMAHeap(adj_mh_size);
     if (lt_size != 0)
       m_large_temp = new NUMAHeap(lt_size);
     else
-      m_large_temp = NULL;
+      m_large_temp = nullptr;
 #else
     m_main_heap = new TCMHeap(adj_mh_size);
     if (lt_size != 0)
       m_large_temp = new TCMHeap(lt_size);
     else
-      m_large_temp = NULL;
+      m_large_temp = nullptr;
 #endif
     m_huge_heap = new HugeHeap(hugedir, hugesize);
     m_system = new SystemHeap(0);
@@ -178,7 +178,7 @@ void *MemoryHandling::alloc(size_t size, BLOCK_TYPE type, TraceableObject *owner
       // 2. it is hardcoded off
       // if (m_huge_heap->getHeapStatus() == HEAP_STATUS::HEAP_SUCCESS)
       //    heap = m_huge_heap;
-      if ((m_large_temp != NULL) && (size >= (tianmu_sysvar_mm_large_threshold * 1_MB)))
+      if ((m_large_temp != nullptr) && (size >= (tianmu_sysvar_mm_large_threshold * 1_MB)))
         switch (owner->TraceableType()) {
           case TO_TYPE::TO_SORTER:
           case TO_TYPE::TO_CACHEDBUFFER:
@@ -198,18 +198,18 @@ void *MemoryHandling::alloc(size_t size, BLOCK_TYPE type, TraceableObject *owner
   };
 
   void *res = heap->alloc(size);
-  if (res == NULL) {
+  if (res == nullptr) {
     heap = m_main_heap;
-    ReleaseMemory(size, NULL);
+    ReleaseMemory(size, nullptr);
     res = heap->alloc(size);
 
-    if (res == NULL) {
+    if (res == nullptr) {
       if (m_hard_limit) {
         if (nothrow) return res;
         throw common::OutOfMemoryException(size);
       }
       res = m_system->alloc(size);
-      if (res == NULL) {
+      if (res == nullptr) {
         if (nothrow) return res;
         rc_control_.lock(current_txn_->GetThreadID())
             << "Failed to alloc block of size " << static_cast<int>(size) << system::unlock;
@@ -232,7 +232,7 @@ void *MemoryHandling::alloc(size_t size, BLOCK_TYPE type, TraceableObject *owner
   size_t bsize = heap->getBlockSize(res);
   m_alloc_blocks++;
   m_alloc_size += bsize;
-  if (owner != NULL)
+  if (owner != nullptr)
     if (owner->TraceableType() == TO_TYPE::TO_PACK) {
       m_alloc_pack_size += bsize;
       m_alloc_pack++;
@@ -255,7 +255,7 @@ size_t MemoryHandling::rc_msize(void *mh, TraceableObject *owner) {
   MEASURE_FET("MemoryHandling::rc_msize");
 
   std::scoped_lock guard(m_mutex);
-  // if( owner == NULL || mh == 0 )
+  // if( owner == nullptr || mh == 0 )
   if (mh == 0) return 0;
   auto it = m_objs.find(owner);
   ASSERT(it != m_objs.end(), "MSize Owner not found");
@@ -270,7 +270,7 @@ void MemoryHandling::dealloc(void *mh, TraceableObject *owner) {
 
   std::scoped_lock guard(m_mutex);
 
-  if (mh == NULL) return;
+  if (mh == nullptr) return;
 
   auto it = m_objs.find(owner);
   ASSERT(it != m_objs.end(), "DeAlloc owner not found");
@@ -283,7 +283,7 @@ void MemoryHandling::dealloc(void *mh, TraceableObject *owner) {
 #endif
   m_free_blocks++;
   m_free_size += bsize;
-  if (owner != NULL)
+  if (owner != nullptr)
     if (owner->TraceableType() == TO_TYPE::TO_PACK) {
       m_free_pack_size += bsize;
       m_free_pack++;
@@ -327,7 +327,7 @@ bool MemoryHandling::ReleaseMemory(size_t size, [[maybe_unused]] TraceableObject
     std::vector<TraceableObject *> dps;
 
     for (auto &it : m_objs) {
-      if (it.first == NULL) continue;
+      if (it.first == nullptr) continue;
       if (it.first->IsLocked() || it.first->TraceableType() != TO_TYPE::TO_PACK) continue;
 
       for (auto &mit : *it.second) {
@@ -351,7 +351,7 @@ bool MemoryHandling::ReleaseMemory(size_t size, [[maybe_unused]] TraceableObject
     std::vector<TraceableObject *> dps;
     auto it = m_objs.begin();
     while (it != m_objs.end()) {
-        if ( (*it).first != NULL )
+        if ( (*it).first != nullptr )
             if ((*it).first->TraceableType() == TO_TYPE::TO_PACK && (*it).first->IsLocked() == false) {
                 if ( (*it).first->IsPrefetchUnused() )
                     (*it).first->clearPrefetchUnused();
@@ -375,7 +375,7 @@ void *MemoryHandling::rc_realloc(void *mh, size_t size, TraceableObject *owner, 
   std::scoped_lock guard(m_mutex);
   void *res = alloc(size, type, owner);
 
-  if (mh == NULL) return res;
+  if (mh == nullptr) return res;
 
   size_t oldsize = rc_msize(mh, owner);
   std::memcpy(res, mh, std::min(oldsize, size));
@@ -516,7 +516,7 @@ void MemoryHandling::HeapHistogram(std::ostream &out) {
 
         if (hist != used_blocks.end()) {
           hist->second->accumulate(hp->getBlockSize(ptr));
-          if (block_type != NULL) block_type->accumulate(hp->getBlockSize(ptr));
+          if (block_type != nullptr) block_type->accumulate(hp->getBlockSize(ptr));
         }
       }
     }

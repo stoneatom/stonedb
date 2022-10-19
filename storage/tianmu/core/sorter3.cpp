@@ -55,15 +55,15 @@ SorterOnePass::SorterOnePass(uint _size, uint _key_bytes, uint _total_bytes)
   bound_queue_size = 2 + size / 10;
   if (bound_queue_size < 10) bound_queue_size = 10;
 
-  buf = NULL;
-  bound_queue = NULL;
-  buf_tmp = NULL;
+  buf = nullptr;
+  bound_queue = nullptr;
+  buf_tmp = nullptr;
   if (size > 0) {
     buf = (unsigned char *)alloc(size * total_bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
-    if (buf == NULL) throw common::OutOfMemoryException();
+    if (buf == nullptr) throw common::OutOfMemoryException();
     bound_queue =
         (unsigned char **)alloc(bound_queue_size * 2 * sizeof(unsigned char *), mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
-    if (bound_queue == NULL) {
+    if (bound_queue == nullptr) {
       dealloc(buf);
       throw common::OutOfMemoryException();
     }
@@ -110,7 +110,7 @@ unsigned char *SorterOnePass::GetNextValue() {
     QuickSort();
     already_sorted = true;
   }
-  if (buf_output_pos == buf_input_pos) return NULL;
+  if (buf_output_pos == buf_input_pos) return nullptr;
   unsigned char *res = buf_output_pos;
   buf_output_pos += total_bytes;
   return res;
@@ -200,7 +200,7 @@ void SorterOnePass::BubbleSort(unsigned char *s1,
   unsigned char *pom;
   j = s2;
   do {
-    pom = NULL;
+    pom = nullptr;
     for (unsigned char *i = s1; i < s2; i += total_bytes) {
       if (std::memcmp(i, i + total_bytes, key_bytes) > 0) {
         Switch(i, i + total_bytes);
@@ -208,7 +208,7 @@ void SorterOnePass::BubbleSort(unsigned char *s1,
       }
     }
     j = pom;
-  } while (j != NULL);
+  } while (j != nullptr);
 }
 
 SorterMultiPass::SorterMultiPass(uint _size, uint _key_bytes, uint _total_bytes)
@@ -248,7 +248,7 @@ unsigned char *SorterMultiPass::GetNextValue() {
     already_sorted = true;
   }
   // merge
-  if (heap.empty()) return NULL;
+  if (heap.empty()) return nullptr;
   SorterMultiPass::Keyblock cur_val = heap.top();
   unsigned char *res = cur_val.rec;
   heap.pop();
@@ -277,7 +277,7 @@ void SorterMultiPass::InitHeap() {
     rows_in_small_buffer = 3;
     dealloc(buf);
     buf = (unsigned char *)alloc(3 * total_bytes * no_blocks, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
-    if (buf == NULL) throw common::OutOfMemoryException();
+    if (buf == nullptr) throw common::OutOfMemoryException();
   }
   int standard_buf_size = rows_in_small_buffer * total_bytes;
   int last_buf_size =
@@ -295,7 +295,7 @@ void SorterMultiPass::InitHeap() {
 }
 
 SorterMultiPass::Keyblock SorterMultiPass::GetFromBlock(int b, bool &reloaded) {
-  if (blocks[b].read_offset == -2) return SorterMultiPass::Keyblock(-1, NULL, 0);  // end of block
+  if (blocks[b].read_offset == -2) return SorterMultiPass::Keyblock(-1, nullptr, 0);  // end of block
   if (blocks[b].read_offset == -1) {                                               // new buffer, to be read
     if (blocks[b].file_offset > 0) {  // preserve the last row before overwriting the whole buffer
       std::memcpy(last_row, blocks[b].block_start + blocks[b].buf_size - total_bytes, total_bytes);
@@ -304,7 +304,7 @@ SorterMultiPass::Keyblock SorterMultiPass::GetFromBlock(int b, bool &reloaded) {
     int bytes_to_load = std::min(blocks[b].block_size - blocks[b].file_offset, blocks[b].buf_size);
     if (bytes_to_load <= 0) {
       blocks[b].read_offset = -2;
-      return SorterMultiPass::Keyblock(-1, NULL, 0);  // end of block
+      return SorterMultiPass::Keyblock(-1, nullptr, 0);  // end of block
     }
     CI_Get(b, blocks[b].block_start, bytes_to_load, blocks[b].file_offset);
     blocks[b].file_offset += bytes_to_load;
@@ -324,9 +324,9 @@ SorterMultiPass::Keyblock SorterMultiPass::GetFromBlock(int b, bool &reloaded) {
 SorterCounting::SorterCounting(uint _size, uint _key_bytes, uint _total_bytes)
     : Sorter3(_size, _key_bytes, _total_bytes) {
   buf = (unsigned char *)alloc(size * total_bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
-  if (buf == NULL) throw common::OutOfMemoryException();
+  if (buf == nullptr) throw common::OutOfMemoryException();
   buf_output = (unsigned char *)alloc(size * total_bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
-  if (buf_output == NULL) {
+  if (buf_output == nullptr) {
     dealloc(buf);
     throw common::OutOfMemoryException();
   }
@@ -338,7 +338,7 @@ SorterCounting::SorterCounting(uint _size, uint _key_bytes, uint _total_bytes)
   buf_input_pos = buf;
   buf_output_pos = buf_output;
   buf_end = buf + size * total_bytes;
-  buf_output_end = NULL;  // to be calculated
+  buf_output_end = nullptr;  // to be calculated
 }
 
 SorterCounting::~SorterCounting() {
@@ -366,7 +366,7 @@ unsigned char *SorterCounting::GetNextValue() {
     CountingSort();
     already_sorted = true;
   }
-  if (buf_output_pos == buf_output_end) return NULL;
+  if (buf_output_pos == buf_output_end) return nullptr;
   unsigned char *res = buf_output_pos;
   buf_output_pos += total_bytes;
   return res;
@@ -404,7 +404,7 @@ void SorterCounting::CountingSort() {
 SorterLimit::SorterLimit(uint _size, uint _key_bytes, uint _total_bytes)
     : SorterOnePass(_size, _key_bytes, _total_bytes) {
   buf_input_pos = buf + size * total_bytes;  // simulate the end of buffer
-  zero_buf = NULL;
+  zero_buf = nullptr;
   if (key_bytes > 0) {
     zero_buf = new unsigned char[key_bytes];
     std::memset(zero_buf, 0, key_bytes);

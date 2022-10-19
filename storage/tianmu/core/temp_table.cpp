@@ -44,7 +44,7 @@ namespace core {
 template <class T>
 class AttrBuffer : public CachedBuffer<T> {
  public:
-  explicit AttrBuffer(uint page_size, uint elem_size = 0, Transaction *conn = NULL)
+  explicit AttrBuffer(uint page_size, uint elem_size = 0, Transaction *conn = nullptr)
       : CachedBuffer<T>(page_size, elem_size, conn) {}
   ~AttrBuffer() = default;
 
@@ -68,15 +68,15 @@ TempTable::Attr::Attr(const Attr &a) : PhysicalColumn(a) {
   term = a.term;
   if (term.vc) term.vc->ResetLocalStatistics();
   dim = a.dim;
-  // DEBUG_ASSERT(a.buffer == NULL); // otherwise we cannot copy Attr !
-  buffer = NULL;
+  // DEBUG_ASSERT(a.buffer == nullptr); // otherwise we cannot copy Attr !
+  buffer = nullptr;
   no_obj = a.no_obj;
   no_power = a.no_power;
   if (a.alias) {
     alias = new char[std::strlen(a.alias) + 1];
     std::strcpy(alias, a.alias);
   } else
-    alias = NULL;
+    alias = nullptr;
 
   page_size = a.page_size;
   orig_precision = a.orig_precision;
@@ -89,7 +89,7 @@ TempTable::Attr::Attr(CQTerm t, common::ColOperation m, uint32_t power, bool dis
     : mode(m), distinct(dis), term(t), dim(dim), not_complete(true) {
   ct.Initialize(type, notnull, common::PackFmt::DEFAULT, no_digits, scale, collation);
   orig_precision = no_digits;
-  buffer = NULL;
+  buffer = nullptr;
   no_obj = 0;
   no_power = power;
   no_materialized = 0;
@@ -97,7 +97,7 @@ TempTable::Attr::Attr(CQTerm t, common::ColOperation m, uint32_t power, bool dis
     alias = new char[std::strlen(a) + 1];
     std::strcpy(alias, a);
   } else
-    alias = NULL;
+    alias = nullptr;
   if (m == common::ColOperation::GROUP_CONCAT)
     si = (*si1);
   else
@@ -118,8 +118,8 @@ TempTable::Attr &TempTable::Attr::operator=(const TempTable::Attr &a) {
   term = a.term;
   if (term.vc) term.vc->ResetLocalStatistics();
   dim = a.dim;
-  // DEBUG_ASSERT(a.buffer == NULL); // otherwise we cannot copy Attr !
-  buffer = NULL;
+  // DEBUG_ASSERT(a.buffer == nullptr); // otherwise we cannot copy Attr !
+  buffer = nullptr;
   no_obj = a.no_obj;
   no_power = a.no_power;
   delete[] alias;
@@ -127,7 +127,7 @@ TempTable::Attr &TempTable::Attr::operator=(const TempTable::Attr &a) {
     alias = new char[std::strlen(a.alias) + 1];
     std::strcpy(alias, a.alias);
   } else
-    alias = NULL;
+    alias = nullptr;
 
   page_size = a.page_size;
   orig_precision = a.orig_precision;
@@ -258,7 +258,7 @@ void TempTable::Attr::DeleteBuffer() {
     default:
       break;
   }
-  buffer = NULL;
+  buffer = nullptr;
   no_obj = 0;
 }
 
@@ -392,7 +392,7 @@ void TempTable::Attr::SetValueString(int64_t obj, const types::BString &val) {
       ((AttrBuffer<short> *)buffer)->Set(obj, (short)std::atoi(val.GetDataBytesPointer()));
       break;
     case common::CT::BIGINT:
-      ((AttrBuffer<int64_t> *)buffer)->Set(obj, std::strtoll(val.GetDataBytesPointer(), NULL, 10));
+      ((AttrBuffer<int64_t> *)buffer)->Set(obj, std::strtoll(val.GetDataBytesPointer(), nullptr, 10));
       break;
     case common::CT::BIN:
     case common::CT::BYTE:
@@ -447,7 +447,7 @@ void TempTable::Attr::GetValueString(types::BString &s, int64_t obj) {
     s = types::BString();
     return;
   }
-  double *d_p = NULL;
+  double *d_p = nullptr;
   switch (TypeName()) {
     case common::CT::BIN:
     case common::CT::BYTE:
@@ -732,7 +732,7 @@ void TempTable::Attr::ApplyFilter(MultiIndex &mind, int64_t offset, int64_t last
   if (last_index > mind.NumOfTuples()) last_index = mind.NumOfTuples();
 
   void *old_buffer = buffer;
-  buffer = NULL;
+  buffer = nullptr;
   CreateBuffer(last_index - offset, mind.m_conn);
 
   MIIterator mit(&mind, mind.ValueOfPower());
@@ -942,13 +942,13 @@ std::shared_ptr<TempTable> TempTable::CreateMaterializedCopy(bool translate_orde
   std::map<PhysicalColumn *, PhysicalColumn *> attr_translation;  // new attr (this), old attr (working_copy)
   for (uint i = 0; i < attrs.size(); i++) {
     copy_buf.push_back(attrs[i]->buffer);
-    attrs[i]->buffer = NULL;
+    attrs[i]->buffer = nullptr;
   }
   if (no_global_virt_cols != -1) {
     // this is a TempTable copy
     for (uint i = no_global_virt_cols; i < virt_cols.size(); i++) {
       delete virt_cols[i];
-      virt_cols[i] = NULL;
+      virt_cols[i] = nullptr;
     }
     virt_cols.resize(no_global_virt_cols);
   }
@@ -972,7 +972,7 @@ std::shared_ptr<TempTable> TempTable::CreateMaterializedCopy(bool translate_orde
   filter.mind = new MultiIndex(p_power);
   filter.mind->AddDimension_cross(no_obj);
   if (virt_cols.size() < attrs.size()) virt_cols.resize(attrs.size());
-  fill(virt_cols.begin(), virt_cols.end(), (vcolumn::VirtualColumn *)NULL);
+  fill(virt_cols.begin(), virt_cols.end(), (vcolumn::VirtualColumn *)nullptr);
   for (uint i = 0; i < attrs.size(); i++) {
     vcolumn::VirtualColumn *new_vc =
         new vcolumn::SingleColumn(working_copy->attrs[i], filter.mind, 0, 0, working_copy.get(), 0);
@@ -1036,9 +1036,9 @@ void TempTable::DeleteMaterializedCopy(std::shared_ptr<TempTable> &old_t)  // de
 {
   MEASURE_FET("TempTable::DeleteMaterializedCopy(...)");
   for (uint i = 0; i < attrs.size(); i++) {  // Make sure VCs are deleted before the source table is deleted
-    attrs[i]->term.vc = NULL;
+    attrs[i]->term.vc = nullptr;
     delete virt_cols[i];
-    virt_cols[i] = NULL;
+    virt_cols[i] = nullptr;
   }
   old_t.reset();
 }
@@ -1047,7 +1047,7 @@ void TempTable::MoveVC(int colnum, std::vector<vcolumn::VirtualColumn *> &from,
                        std::vector<vcolumn::VirtualColumn *> &to) {
   vcolumn::VirtualColumn *vc = from[colnum];
   to.push_back(vc);
-  from[colnum] = NULL;
+  from[colnum] = nullptr;
   std::vector<vcolumn::VirtualColumn *> vv = vc->GetChildren();
   for (size_t i = 0; i < vv.size(); i++) MoveVC(vv[i], from, to);
 }
@@ -1079,7 +1079,7 @@ void TempTable::CreateDisplayableAttrP() {
       idx++;
     }
   }
-  for (uint i = idx; i < attrs.size(); i++) displayable_attr[i] = NULL;
+  for (uint i = idx; i < attrs.size(); i++) displayable_attr[i] = nullptr;
 }
 
 uint TempTable::GetDisplayableAttrIndex(uint attr) {
@@ -1264,7 +1264,7 @@ void TempTable::Union(TempTable *t, int all) {
     using vc_ptr_t = std::shared_ptr<vcolumn::VirtualColumn>;
     std::vector<vc_ptr_t> first_vcs;
     std::vector<vc_ptr_t> sec_vcs;
-    uchar *input_buf = NULL;
+    uchar *input_buf = nullptr;
     {
       // block to ensure deleting encoder before deleting first_vcs, sec_vcs
       int size = 0;
@@ -1528,7 +1528,7 @@ void TempTable::Display(std::ostream &out) {
         GetTable_S(s, i, j);
         out << s << " ";
       } else
-        out << "NULL"
+        out << "nullptr"
             << " ";
     }
     out << system::endl;
@@ -1835,7 +1835,7 @@ bool TempTable::SubqueryInFrom() {
 
 void TempTable::LockPackForUse([[maybe_unused]] unsigned attr, unsigned pack_no) {
   while (lazy && no_materialized < std::min(((int64_t)pack_no << p_power) + (1 << p_power), no_obj))
-    Materialize(false, NULL, true);
+    Materialize(false, nullptr, true);
 }
 
 bool TempTable::CanOrderSources() {
@@ -1958,7 +1958,7 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
         FillMaterializedBuffers(local_limit, local_offset, sender, lazy);
       else  // in case of order by we need to materialize all rows to be next
             // ordered
-        FillMaterializedBuffers(no_obj, 0, NULL, lazy);
+        FillMaterializedBuffers(no_obj, 0, nullptr, lazy);
     }
   } else {
     // GROUP BY or DISTINCT -  compute aggregations
@@ -1969,7 +1969,7 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
     }
     if (HasHavingConditions() && in_subq) having_conds[0].tree->Simplify(true);
 
-    ResultSender *local_sender = (distinct_on_materialized || order_by.size() > 0 ? NULL : sender);
+    ResultSender *local_sender = (distinct_on_materialized || order_by.size() > 0 ? nullptr : sender);
     AggregationAlgorithm aggr(this);
     aggr.Aggregate(table_distinct, local_limit, local_offset,
                    local_sender);  // this->tree (HAVING) used inside
@@ -2001,7 +2001,7 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
       local_limit = no_obj;
     if (exists_only) local_limit = 1;
     std::shared_ptr<TempTable> temporary_source_table = CreateMaterializedCopy(false, in_subq);
-    ResultSender *local_sender = (order_by.size() > 0 ? NULL : sender);
+    ResultSender *local_sender = (order_by.size() > 0 ? nullptr : sender);
 
     AggregationAlgorithm aggr(this);
     aggr.Aggregate(true, local_limit, local_offset,
@@ -2099,7 +2099,7 @@ TempTable::RecordIterator TempTable::begin(Transaction *conn) { return (RecordIt
 
 TempTable::RecordIterator TempTable::end(Transaction *conn) { return (RecordIterator(this, conn, NumOfObj())); }
 
-TempTable::RecordIterator::RecordIterator() : table(NULL), _currentRNo(0), _conn(NULL), is_prepared(false) {}
+TempTable::RecordIterator::RecordIterator() : table(nullptr), _currentRNo(0), _conn(nullptr), is_prepared(false) {}
 
 TempTable::RecordIterator::RecordIterator(TempTable *table_, Transaction *conn_, uint64_t rowNo_)
     : table(table_), _currentRNo(rowNo_), _conn(conn_), is_prepared(false) {

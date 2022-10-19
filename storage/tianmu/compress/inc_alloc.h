@@ -37,7 +37,7 @@ class IncAlloc {
   struct Block {
     void *mem;
     uint size;
-    Block() : mem(NULL), size(0) {}
+    Block() : mem(nullptr), size(0) {}
     Block(void *m, uint s) : mem(m), size(s) {}
   };
 

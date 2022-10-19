@@ -42,8 +42,12 @@
 
 #define MYSQL_SERVER 1
 
+handler *rcbase_create_handler(handlerton *hton, TABLE_SHARE *table, bool partitioned, MEM_ROOT *mem_root) {
+  return new (mem_root) Tianmu::handler::ha_tianmu(hton, table, partitioned);
+}
+
 namespace Tianmu {
-namespace DBHandler {
+namespace handler {
 
 char *strmov_str(char *dst, const char *src) {
   while ((*dst++ = *src++))
@@ -51,9 +55,9 @@ char *strmov_str(char *dst, const char *src) {
   return dst - 1;
 }
 
-const Alter_inplace_info::HA_ALTER_FLAGS TianmuHandler::TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER =
+const Alter_inplace_info::HA_ALTER_FLAGS ha_tianmu::TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER =
     Alter_inplace_info::ADD_COLUMN | Alter_inplace_info::DROP_COLUMN | Alter_inplace_info::ALTER_STORED_COLUMN_ORDER;
-const Alter_inplace_info::HA_ALTER_FLAGS TianmuHandler::TIANMU_SUPPORTED_ALTER_COLUMN_NAME =
+const Alter_inplace_info::HA_ALTER_FLAGS ha_tianmu::TIANMU_SUPPORTED_ALTER_COLUMN_NAME =
     Alter_inplace_info::ALTER_COLUMN_DEFAULT | Alter_inplace_info::ALTER_COLUMN_NAME;
 /////////////////////////////////////////////////////////////////////
 //
@@ -168,7 +172,7 @@ static core::Value GetValueFromField(Field *f) {
   return v;
 }
 
-TianmuHandler::TianmuHandler(handlerton *hton, TABLE_SHARE *table_arg, bool partitioned)
+ha_tianmu::ha_tianmu(handlerton *hton, TABLE_SHARE *table_arg, bool partitioned)
     : handler(hton, table_arg), m_partitioned(partitioned) {
   ref_length = sizeof(uint64_t);
 }
@@ -222,7 +226,7 @@ static bool is_delay_insert(THD *thd) {
 
  Called from lock.cc by get_lock_data().
  */
-THR_LOCK_DATA **TianmuHandler::store_lock(THD *thd, THR_LOCK_DATA **to, enum thr_lock_type lock_type) {
+THR_LOCK_DATA **ha_tianmu::store_lock(THD *thd, THR_LOCK_DATA **to, enum thr_lock_type lock_type) {
   if (lock_type >= TL_WRITE_CONCURRENT_INSERT && lock_type <= TL_WRITE) {
     if (is_delay_insert(thd))
       lock_type = TL_READ;
@@ -246,7 +250,7 @@ THR_LOCK_DATA **TianmuHandler::store_lock(THD *thd, THR_LOCK_DATA **to, enum thr
  Called from lock.cc by lock_external() and unlock_external(). Also called
  from sql_table.cc by copy_data_between_tables().
  */
-int TianmuHandler::external_lock(THD *thd, int lock_type) {
+int ha_tianmu::external_lock(THD *thd, int lock_type) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
   int ret = 1;
@@ -278,9 +282,9 @@ int TianmuHandler::external_lock(THD *thd, int lock_type) {
         tx->AddTableRD(share);
       } else {
         tx->AddTableWR(share);
-        trans_register_ha(thd, false, tianmu_hton, NULL);
+        trans_register_ha(thd, false, tianmu_hton, nullptr);
         if (thd_test_options(thd, OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN))
-          trans_register_ha(thd, true, tianmu_hton, NULL);
+          trans_register_ha(thd, true, tianmu_hton, nullptr);
       }
     }
     ret = 0;
@@ -416,7 +420,7 @@ inline bool has_dup_key(std::shared_ptr<index::RCTableIndex> &indextab, TABLE *t
  Called from item_sum.cc, item_sum.cc, sql_acl.cc, sql_insert.cc,
  sql_insert.cc, sql_select.cc, sql_table.cc, sql_udf.cc, and sql_update.cc.
  */
-int TianmuHandler::write_row([[maybe_unused]] uchar *buf) {
+int ha_tianmu::write_row([[maybe_unused]] uchar *buf) {
   int ret = 1;
   DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
@@ -469,7 +473,7 @@ int TianmuHandler::write_row([[maybe_unused]] uchar *buf) {
 
  Called from sql_select.cc, sql_acl.cc, sql_update.cc, and sql_insert.cc.
  */
-int TianmuHandler::update_row(const uchar *old_data, uchar *new_data) {
+int ha_tianmu::update_row(const uchar *old_data, uchar *new_data) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int ret = HA_ERR_INTERNAL_ERROR;
   auto org_bitmap = dbug_tmp_use_all_columns(table, table->write_set);
@@ -538,7 +542,7 @@ int TianmuHandler::update_row(const uchar *old_data, uchar *new_data) {
  Called in sql_delete.cc, sql_insert.cc, and sql_select.cc. In sql_select it is
  used for removing duplicates while in insert it is used for REPLACE calls.
  */
-int TianmuHandler::delete_row([[maybe_unused]] const uchar *buf) {
+int ha_tianmu::delete_row([[maybe_unused]] const uchar *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   DBUG_RETURN(HA_ERR_WRONG_COMMAND);
 }
@@ -554,12 +558,12 @@ int TianmuHandler::delete_row([[maybe_unused]] const uchar *buf) {
  Called from sql_select.cc by JOIN::rein*it.
  Called from sql_union.cc by st_select_lex_unit::exec().
  */
-int TianmuHandler::delete_all_rows() {
+int ha_tianmu::delete_all_rows() {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   DBUG_RETURN(HA_ERR_WRONG_COMMAND);
 }
 
-int TianmuHandler::rename_table(const char *from, const char *to, const dd::Table *from_table_def,
+int ha_tianmu::rename_table(const char *from, const char *to, const dd::Table *from_table_def,
                                 dd::Table *to_table_def) {  // stonedb8 TODO
   try {
     ha_rcengine_->RenameTable(current_txn_, from, to, from_table_def, to_table_def, ha_thd());
@@ -574,7 +578,7 @@ int TianmuHandler::rename_table(const char *from, const char *to, const dd::Tabl
   return 1;
 }
 
-void TianmuHandler::update_create_info([[maybe_unused]] HA_CREATE_INFO *create_info) {}
+void ha_tianmu::update_create_info([[maybe_unused]] HA_CREATE_INFO *create_info) {}
 
 /*
  ::info() is used to return information to the optimizer.
@@ -621,7 +625,7 @@ void TianmuHandler::update_create_info([[maybe_unused]] HA_CREATE_INFO *create_i
  sql_update.cc
 
  */
-int TianmuHandler::info(uint flag) {
+int ha_tianmu::info(uint flag) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int ret = 1;
   try {
@@ -676,7 +680,7 @@ bool tianmu_check_status([[maybe_unused]] void *param) { return 0; }
  Called from handler.cc by handler::ha_open(). The server opens all tables by
  calling ha_open() which then calls the handler specific open().
  */
-int TianmuHandler::open(const char *name, [[maybe_unused]] int mode, [[maybe_unused]] uint test_if_locked,
+int ha_tianmu::open(const char *name, [[maybe_unused]] int mode, [[maybe_unused]] uint test_if_locked,
                         [[maybe_unused]] const dd::Table *table_def) {  // stonedb8 TODO
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
@@ -691,7 +695,7 @@ int TianmuHandler::open(const char *name, [[maybe_unused]] int mode, [[maybe_unu
     // would be kept.
     if (!(share = ha_rcengine_->GetTableShare(table_share))) DBUG_RETURN(ret);
 
-    thr_lock_data_init(&share->thr_lock, &m_lock, NULL);
+    thr_lock_data_init(&share->thr_lock, &m_lock, nullptr);
     share->thr_lock.check_status = tianmu_check_status;
     // have primary key, use table index
     if (table->s->primary_key != MAX_INDEXES) ha_rcengine_->AddTableIndex(name, table, ha_thd());
@@ -713,7 +717,7 @@ int TianmuHandler::open(const char *name, [[maybe_unused]] int mode, [[maybe_unu
   DBUG_RETURN(ret);
 }
 
-int TianmuHandler::free_share() {
+int ha_tianmu::free_share() {
   share.reset();
   return 0;
 }
@@ -728,12 +732,12 @@ int TianmuHandler::free_share() {
  myisam table.
  For sql_base.cc look at close_data_tables().
  */
-int TianmuHandler::close() {
+int ha_tianmu::close() {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   DBUG_RETURN(free_share());
 }
 
-int TianmuHandler::fill_row_by_id([[maybe_unused]] uchar *buf, uint64_t rowid) {
+int ha_tianmu::fill_row_by_id([[maybe_unused]] uchar *buf, uint64_t rowid) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int rc = HA_ERR_KEY_NOT_FOUND;
   try {
@@ -754,13 +758,13 @@ int TianmuHandler::fill_row_by_id([[maybe_unused]] uchar *buf, uint64_t rowid) {
   DBUG_RETURN(rc);
 }
 
-int TianmuHandler::index_init(uint index, [[maybe_unused]] bool sorted) {
+int ha_tianmu::index_init(uint index, [[maybe_unused]] bool sorted) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   active_index = index;
   DBUG_RETURN(0);
 }
 
-int TianmuHandler::index_end() {
+int ha_tianmu::index_end() {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   active_index = MAX_KEY;
   DBUG_RETURN(0);
@@ -771,7 +775,7 @@ int TianmuHandler::index_end() {
  row if available. If the key value is null, begin at the first key of the
  index.
  */
-int TianmuHandler::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] const uchar *key,
+int ha_tianmu::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] const uchar *key,
                               [[maybe_unused]] uint key_len __attribute__((unused)),
                               enum ha_rkey_function find_flag __attribute__((unused))) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
@@ -818,7 +822,7 @@ int TianmuHandler::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] cons
 /*
  Used to read forward through the index.
  */
-int TianmuHandler::index_next([[maybe_unused]] uchar *buf) {
+int ha_tianmu::index_next([[maybe_unused]] uchar *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int rc = HA_ERR_END_OF_FILE;
   try {
@@ -841,7 +845,7 @@ int TianmuHandler::index_next([[maybe_unused]] uchar *buf) {
 /*
  Used to read backwards through the index.
  */
-int TianmuHandler::index_prev([[maybe_unused]] uchar *buf) {
+int ha_tianmu::index_prev([[maybe_unused]] uchar *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int rc = HA_ERR_END_OF_FILE;
   try {
@@ -867,7 +871,7 @@ int TianmuHandler::index_prev([[maybe_unused]] uchar *buf) {
  Called from opt_range.cc, opt_sum.cc, sql_handler.cc,
  and sql_select.cc.
  */
-int TianmuHandler::index_first([[maybe_unused]] uchar *buf) {
+int ha_tianmu::index_first([[maybe_unused]] uchar *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int rc = HA_ERR_END_OF_FILE;
   try {
@@ -896,7 +900,7 @@ int TianmuHandler::index_first([[maybe_unused]] uchar *buf) {
  Called from opt_range.cc, opt_sum.cc, sql_handler.cc,
  and sql_select.cc.
  */
-int TianmuHandler::index_last([[maybe_unused]] uchar *buf) {
+int ha_tianmu::index_last([[maybe_unused]] uchar *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int rc = HA_ERR_END_OF_FILE;
   try {
@@ -928,7 +932,7 @@ int TianmuHandler::index_last([[maybe_unused]] uchar *buf) {
  Called from filesort.cc, records.cc, sql_handler.cc, sql_select.cc,
  sql_table.cc, and sql_update.cc.
  */
-int TianmuHandler::rnd_init(bool scan) {
+int ha_tianmu::rnd_init(bool scan) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
   int ret = 1;
@@ -941,7 +945,7 @@ int TianmuHandler::rnd_init(bool scan) {
         core::FunctionExecutor fe(std::bind(&core::Query::LockPackInfoForUse, std::ref(m_query)),
                                   std::bind(&core::Query::UnlockPackInfoFromUse, std::ref(m_query)));
 
-        core::TempTable *push_down_result = m_query->Preexecute(*m_cq, NULL, false);
+        core::TempTable *push_down_result = m_query->Preexecute(*m_cq, nullptr, false);
         if (!push_down_result || push_down_result->NumOfTables() != 1)
           throw common::InternalException("core::Query execution returned no result object");
 
@@ -976,7 +980,7 @@ int TianmuHandler::rnd_init(bool scan) {
     }
     ret = 0;
     blob_buffers.resize(0);
-    if (table_ptr != NULL) blob_buffers.resize(table_ptr->NumOfDisplaybleAttrs());
+    if (table_ptr != nullptr) blob_buffers.resize(table_ptr->NumOfDisplaybleAttrs());
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -988,7 +992,7 @@ int TianmuHandler::rnd_init(bool scan) {
   DBUG_RETURN(ret);
 }
 
-int TianmuHandler::rnd_end() {
+int ha_tianmu::rnd_end() {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   reset();
   DBUG_RETURN(0);
@@ -1003,7 +1007,7 @@ int TianmuHandler::rnd_end() {
  Called from filesort.cc, records.cc, sql_handler.cc, sql_select.cc,
  sql_table.cc, and sql_update.cc.
  */
-int TianmuHandler::rnd_next(uchar *buf) {
+int ha_tianmu::rnd_next(uchar *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
   int ret = HA_ERR_END_OF_FILE;
@@ -1039,7 +1043,7 @@ int TianmuHandler::rnd_next(uchar *buf) {
 
  Called from filesort.cc, sql_select.cc, sql_delete.cc and sql_update.cc.
  */
-void TianmuHandler::position([[maybe_unused]] const uchar *record) {
+void ha_tianmu::position([[maybe_unused]] const uchar *record) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
   my_store_ptr(ref, ref_length, current_position);
@@ -1054,7 +1058,7 @@ void TianmuHandler::position([[maybe_unused]] const uchar *record) {
  or position you saved when position() was called.
  Called from filesort.cc records.cc sql_insert.cc sql_select.cc sql_update.cc.
  */
-int TianmuHandler::rnd_pos(uchar *buf, uchar *pos) {
+int ha_tianmu::rnd_pos(uchar *buf, uchar *pos) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
   int ret = HA_ERR_END_OF_FILE;
@@ -1094,10 +1098,10 @@ int TianmuHandler::rnd_pos(uchar *buf, uchar *pos) {
  the storage engine. The myisam engine implements the most hints.
  ha_innodb.cc has the most exhaustive list of these hints.
  */
-int TianmuHandler::extra([[maybe_unused]] enum ha_extra_function operation) {
+int ha_tianmu::extra([[maybe_unused]] enum ha_extra_function operation) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   /* This preemptive delete might cause problems here.
-   * Other place where it can be put is TianmuHandler::external_lock().
+   * Other place where it can be put is ha_tianmu::external_lock().
    */
   // stonedb8 TODO: HA_EXTRA_NO_CACHE is deleted
   /*
@@ -1109,12 +1113,12 @@ int TianmuHandler::extra([[maybe_unused]] enum ha_extra_function operation) {
   DBUG_RETURN(0);
 }
 
-int TianmuHandler::start_stmt(THD *thd, thr_lock_type lock_type) {
+int ha_tianmu::start_stmt(THD *thd, thr_lock_type lock_type) {
   try {
     if (lock_type == TL_WRITE_CONCURRENT_INSERT || lock_type == TL_WRITE_DEFAULT || lock_type == TL_WRITE) {
-      trans_register_ha(thd, false, tianmu_hton, NULL);
+      trans_register_ha(thd, false, tianmu_hton, nullptr);
       if (thd_test_options(thd, OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN)) {
-        trans_register_ha(thd, true, tianmu_hton, NULL);
+        trans_register_ha(thd, true, tianmu_hton, nullptr);
       }
       current_txn_ = ha_rcengine_->GetTx(thd);
       current_txn_->AddTableWRIfNeeded(share);
@@ -1136,7 +1140,7 @@ int TianmuHandler::start_stmt(THD *thd, thr_lock_type lock_type) {
  */
 // stonedb8 TODO: register_query_cache_table is deleted
 /*
-bool TianmuHandler::register_query_cache_table(THD *thd, char *table_key, size_t key_length,
+bool ha_tianmu::register_query_cache_table(THD *thd, char *table_key, size_t key_length,
                                                    qc_engine_callback *call_back,
                                                    [[maybe_unused]] ulonglong *engine_data) {
   *call_back = rcbase_query_caching_of_table_permitted;
@@ -1158,7 +1162,7 @@ bool TianmuHandler::register_query_cache_table(THD *thd, char *table_key, size_t
  during create if the table_flag HA_DROP_BEFORE_CREATE was specified for
  the storage engine.
  */
-int TianmuHandler::delete_table(const char *name, const dd::Table *table_def) {  // stonedb8 TODO
+int ha_tianmu::delete_table(const char *name, const dd::Table *table_def) {  // stonedb8 TODO
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int ret = 1;
   try {
@@ -1182,7 +1186,7 @@ int TianmuHandler::delete_table(const char *name, const dd::Table *table_def) { 
 
  Called from opt_range.cc by check_quick_keys().
  */
-ha_rows TianmuHandler::records_in_range([[maybe_unused]] uint inx, [[maybe_unused]] key_range *min_key,
+ha_rows ha_tianmu::records_in_range([[maybe_unused]] uint inx, [[maybe_unused]] key_range *min_key,
                                         [[maybe_unused]] key_range *max_key) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   DBUG_RETURN(10);  // low number to force index usage
@@ -1198,7 +1202,7 @@ ha_rows TianmuHandler::records_in_range([[maybe_unused]] uint inx, [[maybe_unuse
 
  Called from handle.cc by ha_create_table().
  */
-int TianmuHandler::create(const char *name, TABLE *table_arg, [[maybe_unused]] HA_CREATE_INFO *info,
+int ha_tianmu::create(const char *name, TABLE *table_arg, [[maybe_unused]] HA_CREATE_INFO *info,
                           dd::Table *table_def) {  // stonedb8 TODO
   DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
@@ -1222,7 +1226,7 @@ int TianmuHandler::create(const char *name, TABLE *table_arg, [[maybe_unused]] H
   DBUG_RETURN(1);
 }
 
-int TianmuHandler::truncate(dd::Table *table_def) {  // stonedb8 TODO
+int ha_tianmu::truncate(dd::Table *table_def) {  // stonedb8 TODO
   int ret = 0;
   try {
     ha_rcengine_->TruncateTable(m_table_name, table_def, ha_thd());
@@ -1237,7 +1241,7 @@ int TianmuHandler::truncate(dd::Table *table_def) {  // stonedb8 TODO
   return ret;
 }
 
-int TianmuHandler::fill_row(uchar *buf) {
+int ha_tianmu::fill_row(uchar *buf) {
   if (table_new_iter == table_new_iter_end) return HA_ERR_END_OF_FILE;
 
   my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->write_set);
@@ -1267,11 +1271,11 @@ int TianmuHandler::fill_row(uchar *buf) {
   return 0;
 }
 
-char *TianmuHandler::update_table_comment(const char *comment) {
+char *ha_tianmu::update_table_comment(const char *comment) {
   char *ret = const_cast<char *>(comment);
   try {
     uint length = (uint)std::strlen(comment);
-    char *str = NULL;
+    char *str = nullptr;
     uint extra_len = 0;
 
     if (length > 64000 - 3) {
@@ -1314,7 +1318,7 @@ char *TianmuHandler::update_table_comment(const char *comment) {
   return ret;
 }
 
-bool TianmuHandler::explain_message(const Item *a_cond, String *buf) {
+bool ha_tianmu::explain_message(const Item *a_cond, String *buf) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   if (current_txn_->Explain()) {
     cond_push(a_cond);
@@ -1324,7 +1328,7 @@ bool TianmuHandler::explain_message(const Item *a_cond, String *buf) {
   DBUG_RETURN(true);
 }
 
-int TianmuHandler::set_cond_iter() {
+int ha_tianmu::set_cond_iter() {
   int ret = 1;
   if (m_query && !m_result && table_ptr->NumOfObj() != 0) {
     m_cq->Result(m_tmp_table);  // it is ALWAYS -2 though....
@@ -1334,7 +1338,7 @@ int TianmuHandler::set_cond_iter() {
       core::FunctionExecutor fe(std::bind(&core::Query::LockPackInfoForUse, std::ref(m_query)),
                                 std::bind(&core::Query::UnlockPackInfoFromUse, std::ref(m_query)));
 
-      core::TempTable *push_down_result = m_query->Preexecute(*m_cq, NULL, false);
+      core::TempTable *push_down_result = m_query->Preexecute(*m_cq, nullptr, false);
       if (!push_down_result || push_down_result->NumOfTables() != 1)
         throw common::InternalException("core::Query execution returned no result object");
 
@@ -1359,7 +1363,7 @@ int TianmuHandler::set_cond_iter() {
   return ret;
 }
 
-const Item *TianmuHandler::cond_push(const Item *a_cond) {
+const Item *ha_tianmu::cond_push(const Item *a_cond) {
   Item const *ret = a_cond;
   Item *cond = const_cast<Item *>(a_cond);
 
@@ -1432,14 +1436,14 @@ const Item *TianmuHandler::cond_push(const Item *a_cond) {
   return ret;
 }
 
-int TianmuHandler::reset() {
+int ha_tianmu::reset() {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
   int ret = 1;
   try {
     table_new_iter = core::RCTable::Iterator();
     table_new_iter_end = core::RCTable::Iterator();
-    table_ptr = NULL;
+    table_ptr = nullptr;
     filter_ptr.reset();
     m_query.reset();
     m_cq.reset();
@@ -1457,7 +1461,7 @@ int TianmuHandler::reset() {
   DBUG_RETURN(ret);
 }
 
-enum_alter_inplace_result TianmuHandler::check_if_supported_inplace_alter([[maybe_unused]] TABLE *altered_table,
+enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_unused]] TABLE *altered_table,
                                                                           Alter_inplace_info *ha_alter_info) {
   if ((ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER) &&
       (ha_alter_info->handler_flags != TIANMU_SUPPORTED_ALTER_COLUMN_NAME)) {
@@ -1466,7 +1470,7 @@ enum_alter_inplace_result TianmuHandler::check_if_supported_inplace_alter([[mayb
   return HA_ALTER_INPLACE_EXCLUSIVE_LOCK;
 }
 
-bool TianmuHandler::inplace_alter_table(TABLE *altered_table [[maybe_unused]],
+bool ha_tianmu::inplace_alter_table(TABLE *altered_table [[maybe_unused]],
                                         Alter_inplace_info *ha_alter_info [[maybe_unused]],
                                         const dd::Table *old_table_def [[maybe_unused]],
                                         dd::Table *new_table_def [[maybe_unused]]) {  // stonedb8 TODO
@@ -1490,7 +1494,7 @@ bool TianmuHandler::inplace_alter_table(TABLE *altered_table [[maybe_unused]],
   return true;
 }
 
-bool TianmuHandler::commit_inplace_alter_table(TABLE *altered_table [[maybe_unused]],
+bool ha_tianmu::commit_inplace_alter_table(TABLE *altered_table [[maybe_unused]],
                                                Alter_inplace_info *ha_alter_info [[maybe_unused]],
                                                bool commit [[maybe_unused]],
                                                const dd::Table *old_table_def [[maybe_unused]],
@@ -1543,7 +1547,7 @@ bool TianmuHandler::commit_inplace_alter_table(TABLE *altered_table [[maybe_unus
  key: mysql format, may be union key, need changed to kvstore key format
 
  */
-void TianmuHandler::key_convert(const uchar *key, uint key_len, std::vector<uint> cols,
+void ha_tianmu::key_convert(const uchar *key, uint key_len, std::vector<uint> cols,
                                 std::vector<std::string_view> &keys) {
   key_restore(table->record[0], const_cast<uchar *>(key), &table->key_info[active_index], key_len);
 
@@ -1555,7 +1559,7 @@ void TianmuHandler::key_convert(const uchar *key, uint key_len, std::vector<uint
     bitmap_set_bit(table->read_set, f->field_index());
     size_t length;
     if (f->is_null()) {
-      throw common::Exception("Priamry key part can not be NULL");
+      throw common::Exception("Priamry key part can not be nullptr");
     }
     if (f->is_flag_set(BLOB_FLAG))  // stonedb8
       length = dynamic_cast<Field_blob *>(f)->get_length();
@@ -1705,10 +1709,6 @@ static int rcbase_done_func([[maybe_unused]] void *p) {
   }
 
   DBUG_RETURN(0);
-}
-
-handler *rcbase_create_handler(handlerton *hton, TABLE_SHARE *table, bool partitioned, MEM_ROOT *mem_root) {
-  return new (mem_root) TianmuHandler(hton, table, partitioned);
 }
 
 int rcbase_panic_func([[maybe_unused]] handlerton *hton, enum ha_panic_function flag) {
@@ -2397,22 +2397,22 @@ static struct SYS_VAR *tianmu_system_variables[] = {MYSQL_SYSVAR(bg_load_threads
                                                     MYSQL_SYSVAR(result_sender_rows),
                                                     nullptr};
 
-}  // namespace DBHandler
+}  // namespace handler
 }  // namespace Tianmu
 
 mysql_declare_plugin(tianmu){
     MYSQL_STORAGE_ENGINE_PLUGIN,
-    &Tianmu::DBHandler::tianmu_storage_engine,
+    &Tianmu::handler::tianmu_storage_engine,
     "TIANMU",
     "StoneAtom Group Holding Limited",
     "Tianmu storage engine",
     PLUGIN_LICENSE_GPL,
-    Tianmu::DBHandler::rcbase_init_func, /* Plugin Init */
+    Tianmu::handler::rcbase_init_func, /* Plugin Init */
     nullptr,                             /* Plugin Check uninstall */
-    Tianmu::DBHandler::rcbase_done_func, /* Plugin Deinit */
+    Tianmu::handler::rcbase_done_func, /* Plugin Deinit */
     0x0001 /* tianmu version 0.1 */,
-    Tianmu::DBHandler::statusvars,              /* status variables  */
-    Tianmu::DBHandler::tianmu_system_variables, /* system variables  */
+    Tianmu::handler::statusvars,              /* status variables  */
+    Tianmu::handler::tianmu_system_variables, /* system variables  */
     nullptr,                                    /* config options    */
     0                                           /* flags for plugin */
 } mysql_declare_plugin_end;

@@ -23,24 +23,24 @@
 
 // mysql <--> tianmu interface functions
 namespace Tianmu {
-namespace DBHandler {
+namespace handler {
 
 enum class Query_route_to : unsigned int { TO_MYSQL = 0, TO_TIANMU = 1 };
 
 // processing the queries which routed to Tianmu Engine.
-Query_route_to Tianmu_Handle_Query(THD *thd, Query_expression *qe, Query_result *&result_output,
+Query_route_to ha_my_tianmu_query(THD *thd, Query_expression *qe, Query_result *&result_output,
                                    ulong setup_tables_done_option, int &res, int &optimize_after_tianmu,
                                    int &tianmu_free_join, int with_insert = false);
 
 // update the comment for a column.
-void Tianmu_UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
+void ha_my_tianmu_update_and_store_col_comment(TABLE *table, int field_id, Field *source_field, int source_field_id,
                                         CHARSET_INFO *cs);
 // processing the load operation.
-bool Tianmu_Load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
+bool ha_my_tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
 
-bool Tianmu_Get_Insert_Delayed_Flag([[maybe_unused]] THD *thd);
+bool ha_my_tianmu_get_insert_delayed_flag([[maybe_unused]] THD *thd);
 
-}  // namespace DBHandler
+}  // namespace handler
 }  //  namespace Tianmu
 
 #endif  // HA_MY_TIANMU_H_

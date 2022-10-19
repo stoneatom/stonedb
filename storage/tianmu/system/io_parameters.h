@@ -123,7 +123,7 @@ class IOParameters {
   void SetNullsStr(const std::string &null_str) { this->null_str_ = null_str; }
   void SetOutput(int mode,
                  const char *fname)  // mode: 0 - standard console-style output with header
-  // fname: NULL for console
+  // fname: nullptr for console
   // These settings will work until the next change
   {
     curr_output_mode_ = mode;

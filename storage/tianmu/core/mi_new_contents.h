@@ -63,7 +63,7 @@ class MINewContents final {
   void InitTnew(int dim, int64_t initial_size);  // create t_new of proper size
   void DisableOptimized();                       // switch from optimized mode to normal mode
 
-  MINewContentsRSorter *roughsorter;  // NULL if not needed
+  MINewContentsRSorter *roughsorter;  // nullptr if not needed
 
   MultiIndex *mind;              // external pointer
   IndexTable **t_new;            // new tables

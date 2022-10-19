@@ -28,7 +28,7 @@ void ReleaseLRU::Access(TraceableObject *o) { tracker.touch(o); }
 void ReleaseLRU::Remove(TraceableObject *o) { tracker.remove(o); }
 
 void ReleaseLRU::Release(unsigned num) {
-  TraceableObject *o = NULL;
+  TraceableObject *o = nullptr;
   for (uint i = 0; i < num; i++) {
     o = tracker.removeMax();
     if (o->IsLocked()) {
@@ -40,7 +40,7 @@ void ReleaseLRU::Release(unsigned num) {
 }
 
 void ReleaseLRU::ReleaseFull() {
-  TraceableObject *o = NULL;
+  TraceableObject *o = nullptr;
   int num = tracker.size();
   for (int i = 0; i < num; i++) {
     o = tracker.removeMax();

@@ -354,7 +354,7 @@ void RCTable::CommitVersion() {
   // directory containing the file has also reached disk.  For that an
   // explicit fsync() on a file descriptor for the directory is also needed.
   auto dir = ::opendir(m_path.c_str());
-  if (dir == NULL) {
+  if (dir == nullptr) {
     throw std::system_error(errno, std::system_category(), "opendir() " + p.string());
   }
 
@@ -811,7 +811,7 @@ size_t RCTable::max_row_length(std::vector<loader::ValueCache> &vcs, uint row, u
 }
 
 int RCTable::binlog_insert2load_log_event(system::IOParameters &iop) {
-  char *load_data_query, *p = NULL;
+  char *load_data_query, *p = nullptr;
   size_t pl = 0;
   List<Item> fv;
 
@@ -896,7 +896,7 @@ int RCTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, uint
     }
     for (uint att = 0; att < m_attrs.size(); ++att) {
       if (vcs[att].IsNull(i)) {
-        std::memcpy(ptr, "NULL", 4);
+        std::memcpy(ptr, "nullptr", 4);
         ptr += 4;
         if (att < cols - 1) {
           *ptr = FIELDS_DELIMITER;

@@ -30,7 +30,7 @@ Filter::Filter(int64_t no_obj, uint32_t power, bool all_ones, bool shallow)
       block_allocator(0),
       no_of_bits_in_last_block(0),
       shallow(shallow),
-      block_last_one(NULL),
+      block_last_one(nullptr),
       delayed_stats(-1),
       delayed_block(-1),
       delayed_stats_set(-1),
@@ -56,7 +56,7 @@ Filter::Filter(Filter *f, int64_t no_obj, uint32_t power, bool all_ones, bool sh
       block_allocator(0),
       no_of_bits_in_last_block(0),
       shallow(shallow),
-      block_last_one(NULL),
+      block_last_one(nullptr),
       delayed_stats(-1),
       delayed_block(-1),
       delayed_stats_set(-1),
@@ -86,7 +86,7 @@ Filter::Filter(const Filter &filter)
       blocks(0),
       no_of_bits_in_last_block(0),
       shallow(false),
-      block_last_one(NULL),
+      block_last_one(nullptr),
       delayed_stats(-1),
       delayed_block(-1),
       delayed_stats_set(-1) {
@@ -105,7 +105,7 @@ Filter::Filter(const Filter &filter)
       new (blocks[i]) Block(*(tmp_filter.GetBlock(i)),
                             block_filter);  // block_filter<->this
     } else
-      blocks[i] = NULL;
+      blocks[i] = nullptr;
   }
   block_status = new uchar[no_blocks];
   std::memcpy(block_status, filter.block_status, no_blocks);
@@ -124,7 +124,7 @@ void Filter::Construct(bool all_ones, bool shallow) {
       block_last_one = new ushort[no_blocks];
       for (size_t i = 0; i < no_blocks; i++) {
         block_last_one[i] = pack_def - 1;
-        blocks[i] = NULL;
+        blocks[i] = nullptr;
       }
       block_last_one[no_blocks - 1] = no_of_bits_in_last_block - 1;
       // No idea how to create an allocator for the pool below to use TIANMU heap,
@@ -165,13 +165,13 @@ Filter::~Filter() {
     }
 
     delete[] block_status;
-    block_status = NULL;
+    block_status = nullptr;
     delete[] block_last_one;
-    block_last_one = NULL;
+    block_last_one = nullptr;
     delete bit_block_pool;
-    bit_block_pool = NULL;
+    bit_block_pool = nullptr;
     delete block_allocator;
-    block_allocator = NULL;
+    block_allocator = nullptr;
   }
 }
 
@@ -258,7 +258,7 @@ void Filter::Set(size_t b, int n) {
       block_status[b] = FB_MIXED;
       blocks[b] = block_allocator->Alloc();
       new (blocks[b]) Block(block_filter, new_block_size);  // block_filter<->this
-      if (blocks[b] == NULL) throw common::OutOfMemoryException();
+      if (blocks[b] == nullptr) throw common::OutOfMemoryException();
     }
     if (make_mixed) {
       blocks[b]->Set(0, block_last_one[b]);  // create a block with a contents before Set
@@ -296,7 +296,7 @@ void Filter::SetBetween(size_t b1, int n1, size_t b2, int n2) {
           blocks[b1] = block_allocator->Alloc();
           new (blocks[b1]) Block(block_filter, pack_def);  // block_filter->this
         }
-        if (blocks[b1] == NULL) throw common::OutOfMemoryException();
+        if (blocks[b1] == nullptr) throw common::OutOfMemoryException();
         if (block_status[b1] == FB_FULL)
           blocks[b1]->Set(0,
                           block_last_one[b1]);  // create a block with a contents before Set
@@ -359,12 +359,12 @@ void Filter::ResetBetween(size_t b1, int n1, size_t b2, int n2) {
           new (blocks[b1]) Block(block_filter, new_block_size,
                                  true);  // block_filter->this // set as full,
                                          // then reset a part of it
-          if (blocks[b1] == NULL) throw common::OutOfMemoryException();
+          if (blocks[b1] == nullptr) throw common::OutOfMemoryException();
         } else {
           new (blocks[b1]) Block(block_filter, new_block_size,
                                  false);  // block_filter->this// set as empty,
                                           // then set the beginning
-          if (blocks[b1] == NULL) throw common::OutOfMemoryException();
+          if (blocks[b1] == nullptr) throw common::OutOfMemoryException();
           blocks[b1]->Set(0, block_last_one[b1]);  // create a block with a
                                                    // contents before Reset
         }
@@ -510,7 +510,7 @@ void Filter::CopyBlock(Filter &f, size_t block) {
   if (f.GetBlock(block)) {
     if (bit_block_pool == f.bit_block_pool) {                              // f is a shallow copy of this
       blocks[block] = f.blocks[block]->MoveFromShallowCopy(block_filter);  // block_filter->this
-      f.blocks[block] = NULL;
+      f.blocks[block] = nullptr;
     } else {
       if (blocks[block])
         blocks[block]->CopyFrom(*f.blocks[block],
@@ -523,7 +523,7 @@ void Filter::CopyBlock(Filter &f, size_t block) {
   } else {
     // no block, just status to copy
     if (bit_block_pool == f.bit_block_pool)  // f is a shallow copy of this
-      blocks[block] = NULL;
+      blocks[block] = nullptr;
     else if (blocks[block])
       DeleteBlock(block);
   }
@@ -534,7 +534,7 @@ void Filter::CopyBlock(Filter &f, size_t block) {
 void Filter::DeleteBlock(int pack) {
   blocks[pack]->~Block();
   block_allocator->Dealloc(blocks[pack]);
-  blocks[pack] = NULL;
+  blocks[pack] = nullptr;
 }
 
 bool Filter::IsEqual(Filter &sec) {
@@ -813,7 +813,7 @@ void Filter::AddNewBlocks(int new_blocks, bool value, int new_no_bits_last) {
     block_last_one = tmp_block_size;
 
     for (size_t i = no_blocks; i < no_blocks + new_blocks; i++) {
-      blocks[i] = NULL;
+      blocks[i] = nullptr;
       if (value) {
         block_status[i] = FB_FULL;
         block_last_one[i] = (i == no_blocks + new_blocks - 1 ? new_no_bits_last - 1 : (pack_def - 1));
@@ -832,7 +832,7 @@ char *HeapAllocator::malloc(const size_type bytes) {
   try {
     r = the_filter_block_owner->alloc(bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
   } catch (...) {
-    return NULL;
+    return nullptr;
   }
   return (char *)r;
 }
