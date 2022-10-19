@@ -45,8 +45,6 @@
 namespace Tianmu {
 namespace DBHandler {
 
-extern bool tianmu_bootstrap = 0;
-
 char *strmov_str(char *dst, const char *src) {
   while ((*dst++ = *src++))
     ;
@@ -1714,8 +1712,6 @@ handler *rcbase_create_handler(handlerton *hton, TABLE_SHARE *table, bool partit
 }
 
 int rcbase_panic_func([[maybe_unused]] handlerton *hton, enum ha_panic_function flag) {
-  if (tianmu_bootstrap) return 0;
-
   if (flag == HA_PANIC_CLOSE) {
     delete ha_rcengine_;
     ha_rcengine_ = nullptr;
@@ -1823,8 +1819,6 @@ bool rcbase_show_status([[maybe_unused]] handlerton *hton, THD *thd, stat_print_
   return false;
 }
 
-extern bool tianmu_bootstrap;
-
 static int init_variables() {
   opt_binlog_order_commits = false;
   return 0;
@@ -1856,10 +1850,6 @@ int rcbase_init_func(void *p) {
   tianmu_hton->rollback = rcbase_rollback;
   tianmu_hton->show_status = rcbase_show_status;
   tianmu_hton->file_extensions = ha_tianmu_exts;
-
-  // When mysqld runs as bootstrap mode, we do not need to initialize
-  // memmanager.
-  if (tianmu_bootstrap) DBUG_RETURN(0);
 
   int ret = 1;
   ha_rcengine_ = nullptr;

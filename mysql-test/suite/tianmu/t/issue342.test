@@ -1,9 +1,9 @@
 USE test;
 CREATE TABLE `lineitem_i342` (
-`l_orderkey` int(11) NOT NULL,
-`l_partkey` int(11) NOT NULL,
-`l_suppkey` int(11) NOT NULL,
-`l_linenumber` int(11) NOT NULL,
+`l_orderkey` int NOT NULL,
+`l_partkey` int NOT NULL,
+`l_suppkey` int NOT NULL,
+`l_linenumber` int NOT NULL,
 `l_quantity` decimal(15,2) NOT NULL,
 `l_extendedprice` decimal(15,2) NOT NULL,
 `l_discount` decimal(15,2) NOT NULL,

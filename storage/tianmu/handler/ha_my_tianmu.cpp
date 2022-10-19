@@ -96,9 +96,9 @@ Query_route_to Tianmu_Handle_Query(THD *thd, Query_expression *qe, Query_result 
     if (ret == DBHandler::Query_route_to::TO_MYSQL && AtLeastOneTianmuTableInvolved(qe) &&
         ForbiddenMySQLQueryPath(qe)) {
       my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
-                 "The query includes syntax that is not supported by the storage engine. \
-                 Either restructure the query with supported syntax, or enable the MySQL core::Query Path \ 
-                 in config file to execute the query with reduced performance.",
+                 "The query includes syntax that is not supported by the storage engine. "
+                 "Either restructure the query with supported syntax, or enable the MySQL core::Query Path "
+                 "in config file to execute the query with reduced performance.",
                  MYF(0));
       ret = Query_route_to::TO_TIANMU;
     }
@@ -165,6 +165,6 @@ bool Tianmu_Load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) 
   return false;
 }
 
-bool Tianmu_Get_Insert_Delayed_Flag(THD *thd) { return tianmu_sysvar_insert_delayed; }
+bool Tianmu_Get_Insert_Delayed_Flag([[maybe_unused]] THD *thd) { return tianmu_sysvar_insert_delayed; }
 }  // namespace DBHandler
 }  // namespace Tianmu

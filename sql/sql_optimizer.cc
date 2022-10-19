@@ -9710,6 +9710,17 @@ static bool make_join_query_block(JOIN *join, Item *cond) {
                                                 NO_PLAN_IDX)))
             return true;
           tab->set_condition(tmp);
+          //tianmu begin
+          /* Push condition to storage engine if this is enabled
+             and the condition is not guarded */
+          if (thd->optimizer_switch_flag(OPTIMIZER_SWITCH_ENGINE_CONDITION_PUSHDOWN) && first_inner == NO_PLAN_IDX) {
+            Item *push_cond = make_cond_for_table(thd, tmp, tab->table_ref->map(), tab->table_ref->map(), 0);
+            if (push_cond) {
+              /* Push condition to handler */
+              if (!tab->table()->file->cond_push(push_cond)) tab->table()->file->pushed_cond = push_cond;
+            }
+          }
+          //tianmu end
         } else {
           tab->set_condition(nullptr);
         }
@@ -10381,7 +10392,7 @@ bool optimize_cond(THD *thd, Item **cond, COND_EQUAL **cond_equal,
   /*
     change field = field to field = const for each found field = const
     Note: Since we disable multi-equalities in the hypergraph optimizer for now,
-    we also cannot run this optimization; it causes spurious “Impossible WHERE”
+    we also cannot run this optimization; it causes spurious "Impossible WHERE"
     in e.g. main.select_none.
    */
   if (*cond && !thd->lex->using_hypergraph_optimizer) {
@@ -10761,7 +10772,7 @@ ORDER *create_order_from_distinct(THD *thd, Ref_item_array ref_item_array,
           BIT type and will be returned to a client.
           @note setup_ref_array() needs to account for the extra space.
           @note We need to defer the actual adding to after the loop,
-            or we will invalidate the iterator to “fields”.
+            or we will invalidate the iterator to "fields".
         */
         Item_field *new_item = new Item_field(thd, (Item_field *)item);
         ord->item = &item; // Temporary; for the duplicate check above.
