@@ -49,7 +49,7 @@ RdbKey::RdbKey(uint indexnr, uint keyno, rocksdb::ColumnFamilyHandle *cf_handle,
       cols_(cols) {
   be_store_index(m_index_nr_be, m_indexnr);
 
-  ASSERT(m_cf_handle != nullptr, "m_cf_handle is NULL");
+  ASSERT(m_cf_handle != nullptr, "m_cf_handle is nullptr");
 }
 
 RdbKey::RdbKey(const RdbKey &k)
@@ -736,7 +736,7 @@ void DICTManager::save_index_info(rocksdb::WriteBatch *batch, uint16_t index_ver
 
 void DICTManager::add_cf_flags(rocksdb::WriteBatch *const batch, const uint32_t &cf_id,
                                const uint32_t &cf_flags) const {
-  ASSERT(batch != nullptr, "batch is NULL");
+  ASSERT(batch != nullptr, "batch is nullptr");
   StringWriter key;
   key.write_uint32(static_cast<uint32_t>(MetaType::CF_INFO));
   key.write_uint32(cf_id);
@@ -944,7 +944,7 @@ uint SeqGenerator::get_and_update_next_number(DICTManager *const dict) {
 
   const std::unique_ptr<rocksdb::WriteBatch> wb = dict->begin();
   rocksdb::WriteBatch *const batch = wb.get();
-  ASSERT(batch != nullptr, "batch is NULL");
+  ASSERT(batch != nullptr, "batch is nullptr");
   dict->update_max_index_id(batch, res);
   dict->commit(batch);
   return res;
@@ -1003,7 +1003,7 @@ std::vector<rocksdb::ColumnFamilyHandle *> CFManager::get_all_cf(void) {
   std::scoped_lock guard(m_mutex);
 
   for (auto it : m_cf_id_map) {
-    ASSERT(it.second != nullptr, "it.second is NULL");
+    ASSERT(it.second != nullptr, "it.second is nullptr");
     list.push_back(it.second);
   }
   return list;

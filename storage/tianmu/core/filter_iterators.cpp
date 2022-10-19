@@ -22,7 +22,7 @@ namespace Tianmu {
 namespace core {
 FilterOnesIterator::FilterOnesIterator() : buffer(max_ahead) {
   valid = false;
-  f = NULL;
+  f = nullptr;
   cur_position = -1;
   b = 0;
   bln = 0;
@@ -334,7 +334,7 @@ FilterOnesIterator *FilterOnesIterator::Copy(int packs_to_go) {
   return f;
 }
 
-FilterOnesIteratorOrdered::FilterOnesIteratorOrdered() : FilterOnesIterator(), po(NULL){};
+FilterOnesIteratorOrdered::FilterOnesIteratorOrdered() : FilterOnesIterator(), po(nullptr){};
 
 FilterOnesIteratorOrdered::FilterOnesIteratorOrdered(Filter *ff, PackOrderer *po, uint32_t power) {
   Init(ff, po, power);

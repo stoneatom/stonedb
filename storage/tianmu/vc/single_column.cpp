@@ -135,7 +135,7 @@ types::BString SingleColumn::GetMaxStringImpl(const core::MIIterator &mit) {
 int64_t SingleColumn::GetApproxDistValsImpl(bool incl_nulls, core::RoughMultiIndex *rough_mind) {
   if (rough_mind)
     return col_->ApproxDistinctVals(incl_nulls, mind->GetFilter(dim), rough_mind->GetRSValueTable(dim), true);
-  return col_->ApproxDistinctVals(incl_nulls, mind->GetFilter(dim), NULL, mind->NullsExist(dim));
+  return col_->ApproxDistinctVals(incl_nulls, mind->GetFilter(dim), nullptr, mind->NullsExist(dim));
 }
 
 int64_t SingleColumn::GetExactDistVals() { return col_->ExactDistinctVals(mind->GetFilter(dim)); }
@@ -156,7 +156,7 @@ bool SingleColumn::TryToMerge(core::Descriptor &d1, core::Descriptor &d2) { retu
 
 size_t SingleColumn::MaxStringSizeImpl()  // maximal byte string length in column
 {
-  return col_->MaxStringSize(mind->NumOfDimensions() == 0 ? NULL : mind->GetFilter(dim));
+  return col_->MaxStringSize(mind->NumOfDimensions() == 0 ? nullptr : mind->GetFilter(dim));
 }
 
 core::PackOntologicalStatus SingleColumn::GetPackOntologicalStatusImpl(const core::MIIterator &mit) {
@@ -170,7 +170,7 @@ void SingleColumn::EvaluatePackImpl(core::MIUpdatingIterator &mit, core::Descrip
 common::RSValue SingleColumn::RoughCheckImpl(const core::MIIterator &mit, core::Descriptor &d) {
   if (mit.GetCurPackrow(dim) >= 0) {
     // check whether isn't it a join
-    SingleColumn *sc = NULL;
+    SingleColumn *sc = nullptr;
     if (d.val1.vc && static_cast<int>(d.val1.vc->IsSingleColumn())) sc = static_cast<SingleColumn *>(d.val1.vc);
     if (sc && sc->dim != dim)  // Pack2Pack rough check
       return col_->RoughCheck(mit.GetCurPackrow(dim), mit.GetCurPackrow(sc->dim), d);

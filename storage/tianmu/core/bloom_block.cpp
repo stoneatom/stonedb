@@ -188,7 +188,7 @@ void FilterBlockBuilder::GenerateFilter() {
 }
 
 FilterBlockReader::FilterBlockReader(const FilterPolicy *policy, const Slice &contents)
-    : policy_(policy), data_(NULL), offset_(NULL), num_(0), base_lg_(0) {
+    : policy_(policy), data_(nullptr), offset_(nullptr), num_(0), base_lg_(0) {
   size_t n = contents.size();
   if (n < 5) return;  // 1 byte for base_lg_ and 4 for start of offset array
   base_lg_ = contents[n - 1];

@@ -204,7 +204,7 @@ void AggregatorGroupConcat::PutAggregatedValue(unsigned char *buf, const types::
 types::BString AggregatorGroupConcat::GetValueT(unsigned char *buf) {
   auto it = lenmap.find(buf);
   if (it == lenmap.end()) {
-    // cases that grouping value is NULL
+    // cases that grouping value is nullptr
     return types::BString();
   }
 

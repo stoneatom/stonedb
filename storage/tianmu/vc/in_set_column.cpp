@@ -32,7 +32,7 @@ InSetColumn::InSetColumn(core::ColumnType const &ct, core::MultiIndex *mind,
       full_cache(false),
       cache(mind->ValueOfPower()),
       expected_type(ct),
-      last_mit(NULL),
+      last_mit(nullptr),
       last_mit_size(0) {
   std::set<VarMap> uvms;
   for (auto &it : columns) {
@@ -54,7 +54,7 @@ InSetColumn::InSetColumn(core::ColumnType const &ct, core::MultiIndex *mind,
 }
 
 InSetColumn::InSetColumn(core::ColumnType const &ct, core::MultiIndex *mind, core::ValueSet &external_valset)
-    : MultiValColumn(ct, mind), cache(external_valset), expected_type(ct), last_mit(NULL), last_mit_size(0) {
+    : MultiValColumn(ct, mind), cache(external_valset), expected_type(ct), last_mit(nullptr), last_mit_size(0) {
   dim = -1;
   is_const = true;
   full_cache = true;
@@ -206,7 +206,7 @@ void InSetColumn::PrepareCache(const core::MIIterator &mit, const int64_t &at_le
     int max_str_size = 0;
     for (; (it != end) && (bin_cache.NoVals() <= at_least); ++it) max_str_size += (*it)->MaxStringSize();
     it = columns.begin();
-    types::BString buf(NULL, types::CollationBufLen(GetCollation(), max_str_size), true);
+    types::BString buf(nullptr, types::CollationBufLen(GetCollation(), max_str_size), true);
     for (; (it != end) && (bin_cache.NoVals() <= at_least); ++it) {
       types::BString s;
       (*it)->GetValueString(s, mit);
@@ -289,7 +289,7 @@ bool InSetColumn::CopyCondImpl(const core::MIIterator &mit, types::CondArray &co
       types::BString s;
       it->GetValueString(s, mit);
       if (s.IsNull()) {
-        TIANMU_LOG(LogCtl_Level::WARN, "DoCopyCond condition is NULL");
+        TIANMU_LOG(LogCtl_Level::WARN, "DoCopyCond condition is nullptr");
         condition.clear();
         success = false;
         break;

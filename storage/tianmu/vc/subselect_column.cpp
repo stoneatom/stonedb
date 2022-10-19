@@ -170,7 +170,7 @@ common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types
   // If the sub-select is something like 'select null from xxx' then there
   // is no need to execute the sub-select, just return common::TRIBOOL_UNKNOWN.
   VirtualColumn *vc = subq->GetAttrP(col_idx)->term.vc;
-  if (vc->IsFullConst() && vc->IsNull(core::MIIterator(NULL, mind->ValueOfPower()))) return common::TRIBOOL_UNKNOWN;
+  if (vc->IsFullConst() && vc->IsNull(core::MIIterator(nullptr, mind->ValueOfPower()))) return common::TRIBOOL_UNKNOWN;
 
   PrepareSubqResult(mit, false);
   common::Tribool res = false;
@@ -310,7 +310,7 @@ int64_t SubSelectColumn::AtLeastNoDistinctValuesImpl(core::MIIterator const &mit
   vals.Prepare(expected_type_.GetTypeName(), expected_type_.GetScale(), expected_type_.GetCollation());
 
   if (types::RequiresUTFConversions(GetCollation()) && Type().IsString()) {
-    types::BString buf(NULL, types::CollationBufLen(GetCollation(), subq->MaxStringSize(col_idx)), true);
+    types::BString buf(nullptr, types::CollationBufLen(GetCollation(), subq->MaxStringSize(col_idx)), true);
     for (int64_t i = 0; vals.NoVals() < at_least && i < subq->NumOfObj(); i++) {
       if (!subq->IsNull(i, col_idx)) {
         types::BString s;

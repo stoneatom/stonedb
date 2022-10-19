@@ -107,14 +107,14 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
 
   int sort_order = 0;
   for (auto &j : attrs) {
-    if (j->alias != NULL) {
+    if (j->alias != nullptr) {
       vcolumn::VirtualColumn *vc = j->term.vc;
       DEBUG_ASSERT(vc);
       sort_order = 0;
       for (uint i = 0; i < ord.size(); i++)
         if (ord[i].vc == vc) {
           sort_order = (ord[i].dir == 0 ? (i + 1) : -(i + 1));
-          ord[i].vc = NULL;  // annotate this entry as already added
+          ord[i].vc = nullptr;  // annotate this entry as already added
         }
       sorted_table.AddSortedColumn(vc, sort_order, true);
       if (task_num != 1) {
@@ -128,7 +128,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
 
   // find all columns not added yet (i.e. not visible in output)
   for (uint i = 0; i < ord.size(); i++) {
-    if (ord[i].vc != NULL) {
+    if (ord[i].vc != nullptr) {
       sort_order = (ord[i].dir == 0 ? (i + 1) : -(i + 1));
       if (task_num != 1) {
         for (int j = 0; j < task_num; j++)
@@ -226,7 +226,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
 
   // Create output
   for (uint i = 0; i < NumOfAttrs(); i++) {
-    if (attrs[i]->alias != NULL) {
+    if (attrs[i]->alias != nullptr) {
       if (sender)
         attrs[i]->CreateBuffer(no_obj > tianmu_sysvar_result_sender_rows ? tianmu_sysvar_result_sender_rows : no_obj,
                                m_conn, no_obj > tianmu_sysvar_result_sender_rows);
@@ -243,14 +243,14 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
   int64_t produced_rows = 0;
   bool null_value;
   bool valid = true;
-  do {  // outer loop - through streaming buffers (if sender != NULL)
+  do {  // outer loop - through streaming buffers (if sender != nullptr)
     do {
       valid = sorted_table.FetchNextRow();
       if (valid && global_row >= offset) {
         int col = 0;
         if (m_conn->Killed()) throw common::KilledException();
         for (auto &attr : attrs) {
-          if (attr->alias != NULL) {
+          if (attr->alias != nullptr) {
             switch (attr->TypeName()) {
               case common::CT::STRING:
               case common::CT::VARCHAR:

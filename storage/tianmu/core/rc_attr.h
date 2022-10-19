@@ -53,7 +53,7 @@ class TextStat;
 
 // ENCODING LEVELS
 // 0 - text values of attributes
-//     NULL represented as '\0' string or null pointer
+//     nullptr represented as '\0' string or null pointer
 // 1 - int encoded:
 //		common::CT::INT,common::CT::NUM   - int64_t value,
 // common::NULL_VALUE_64 for null, may be also
@@ -263,12 +263,12 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   uint64_t ApproxAnswerSize(Descriptor &d) override;
 
   // maximal byte string length in column
-  size_t MaxStringSize(Filter *f = NULL) override;
+  size_t MaxStringSize(Filter *f = nullptr) override;
   bool IsDistinct(Filter *f) override;
   // for numerical: best rough approximation of min/max for a given filter (or
-  // global min if filter is NULL) or rough filter
-  int64_t RoughMin(Filter *f, common::RSValue *rf = NULL) override;
-  int64_t RoughMax(Filter *f, common::RSValue *rf = NULL) override;
+  // global min if filter is nullptr) or rough filter
+  int64_t RoughMin(Filter *f, common::RSValue *rf = nullptr) override;
+  int64_t RoughMax(Filter *f, common::RSValue *rf = nullptr) override;
 
   // Rough queries and indexes
   // Note that you should release all indexes after using a series of
@@ -287,11 +287,11 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   void RoughStats(double &hist_density, int &trivial_packs, double &span);
   void DisplayAttrStats(Filter *f) override;  // filter is for # of objects in packs
   double RoughSelectivity() override;
-  void GetTextStat(types::TextStat &s, Filter *f = NULL) override;
+  void GetTextStat(types::TextStat &s, Filter *f = nullptr) override;
 
   std::vector<int64_t> GetListOfDistinctValuesInPack(int pack) override;
 
-  void LoadData(loader::ValueCache *nvs, Transaction *conn_info = NULL);
+  void LoadData(loader::ValueCache *nvs, Transaction *conn_info = nullptr);
   void LoadPackInfo(Transaction *trans_ = current_txn_);
   void LoadProcessedData([[maybe_unused]] std::unique_ptr<system::Stream> &s,
                          [[maybe_unused]] size_t no_rows) { /* TODO */

@@ -108,7 +108,7 @@ class ValueMatching_OnePosition : public ValueMatchingTable {
   ValueMatchingTable *Clone() override { return new ValueMatching_OnePosition(*this); }
   void Clear() override;
 
-  unsigned char *GetGroupingRow([[maybe_unused]] int64_t row) override { return NULL; }
+  unsigned char *GetGroupingRow([[maybe_unused]] int64_t row) override { return nullptr; }
   unsigned char *GetAggregationRow([[maybe_unused]] int64_t row) override { return t_aggr; }
   bool FindCurrentRow(unsigned char *input_buffer, int64_t &row, bool add_if_new = true) override;
 

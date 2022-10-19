@@ -27,7 +27,7 @@ DimensionGroupVirtual::DimensionGroupVirtual(DimensionVector &dims, int bdim, Fi
   dims_used = dims;
   base_dim = bdim;
   no_dims = dims.Size();
-  f = NULL;
+  f = nullptr;
   if (copy_mode == 0)
     f = new Filter(*f_source);
   else if (copy_mode == 1)
@@ -36,11 +36,11 @@ DimensionGroupVirtual::DimensionGroupVirtual(DimensionVector &dims, int bdim, Fi
     f = f_source;
   dim_group_type = DGType::DG_VIRTUAL;
   no_obj = f->NumOfOnes();
-  pack_pos = NULL;  // created if needed
+  pack_pos = nullptr;  // created if needed
   t = new IndexTable *[no_dims];
   nulls_possible = new bool[no_dims];
   for (int i = 0; i < no_dims; i++) {
-    t[i] = NULL;
+    t[i] = nullptr;
     nulls_possible[i] = false;
   }
 }
@@ -71,7 +71,7 @@ void DimensionGroupVirtual::Empty() {
   f->Reset();
   for (int i = 0; i < no_dims; i++) {
     delete t[i];
-    t[i] = NULL;
+    t[i] = nullptr;
   }
   no_obj = 0;
 }
@@ -92,7 +92,7 @@ DimensionGroup::Iterator *DimensionGroupVirtual::NewIterator(DimensionVector &di
 
 DimensionGroup::Iterator *DimensionGroupVirtual::NewOrderedIterator(DimensionVector &dim, PackOrderer *po,
                                                                     uint32_t power) {
-  if (pack_pos == NULL) {  // not used yet - create
+  if (pack_pos == nullptr) {  // not used yet - create
     int no_packs = f->NumOfBlocks();
     pack_pos = new int64_t[no_packs];
     int64_t cur_pack_start = 0;

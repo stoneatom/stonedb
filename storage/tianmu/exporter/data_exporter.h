@@ -29,7 +29,7 @@ namespace exporter {
 
 class DataExporter {
  public:
-  DataExporter() : progressout(NULL), row(NULL), row_ptr(NULL), nulls_indicator(NULL) {}
+  DataExporter() : progressout(nullptr), row(nullptr), row_ptr(nullptr), nulls_indicator(nullptr) {}
   virtual void Init(std::shared_ptr<system::LargeBuffer> buffer, std::vector<core::AttributeTypeInfo> source_deas,
                     fields_t const &fields, std::vector<core::AttributeTypeInfo> &result_deas);
   virtual ~DataExporter();

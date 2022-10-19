@@ -28,7 +28,7 @@ namespace Tianmu {
 namespace core {
 
 using Tianmu::common::ColOperation;
-using Tianmu::DBHandler::Query_route_to;
+using Tianmu::handler::Query_route_to;
 
 #define ASSERT_MYSQL_STRING(x)                           \
   DEBUG_ASSERT(!x.str[x.length] &&                       \

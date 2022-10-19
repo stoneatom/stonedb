@@ -93,13 +93,13 @@ class VirtualColumnBase : public core::Column {
   inline int64_t GetValueInt64(const core::MIIterator &mit) { return GetValueInt64Impl(mit); }
   virtual int64_t GetNotNullValueInt64(const core::MIIterator &mit) = 0;
 
-  /*! \brief Is the column value NULL ?
+  /*! \brief Is the column value nullptr ?
    *
    * \pre necessary datapacks (containing rows pointed by \e mit) are loaded and
    * locked
    *
    * \param mit points to a row in an Multiindex, requested column value comes
-   * from this row \return \b true if column value is NULL, \b false otherwise
+   * from this row \return \b true if column value is nullptr, \b false otherwise
    */
   inline bool IsNull(const core::MIIterator &mit) { return IsNullImpl(mit); }
   /*! \brief Get a non null-terminated String from a column
@@ -265,7 +265,7 @@ class VirtualColumnBase : public core::Column {
    * incl. nulls (or not) Depends on the current multiindex state, e.g. KNs, if
    * there are nulls etc.
    */
-  int64_t GetApproxDistVals(bool incl_nulls, core::RoughMultiIndex *rough_mind = NULL);
+  int64_t GetApproxDistVals(bool incl_nulls, core::RoughMultiIndex *rough_mind = nullptr);
 
   /*! \brief Return the exact number of distinct values of the whole column,
    * without nulls. If the exact number is unsure, return common::NULL_VALUE_64.
@@ -418,7 +418,7 @@ class VirtualColumnBase : public core::Column {
    */
   virtual VirtualColumn *Copy() {
     DEBUG_ASSERT(0 && "not implemented");
-    return NULL;
+    return nullptr;
   }
 
   virtual bool IsThreadSafe() { return false; }

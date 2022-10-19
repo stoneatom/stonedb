@@ -33,7 +33,7 @@ BString::BString()  // null string
 }
 
 BString::BString(const char *v, size_t length, bool persistent) : persistent(persistent) {
-  // NOTE: we allow val to be NULL. In this case, no value will be copied (just
+  // NOTE: we allow val to be nullptr. In this case, no value will be copied (just
   // reserve a place for future use). Only persistent!
   pos = 0;
   null = false;
@@ -225,8 +225,8 @@ bool BString::Like(const BString &pattern, char escape_character) {
     }
   }
   if (escaped) {  // redefine the pattern by processing escape characters
-    processed_pattern = BString(NULL, pattern_len, true);
-    processed_wildcards = BString(NULL, pattern_len, true);
+    processed_pattern = BString(nullptr, pattern_len, true);
+    processed_wildcards = BString(nullptr, pattern_len, true);
     uint i = 0;  // position of the processed pattern
     uint j = 0;  // position of the original pattern
     while (j < pattern_len) {

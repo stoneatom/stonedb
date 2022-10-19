@@ -134,7 +134,7 @@ void TempTable::RoughAggregateSum(vcolumn::VirtualColumn *vc, int64_t &min_val, 
                                          // possible)
       for (uint j = 0; j < group_by_attrs.size(); j++) {
         vcolumn::VirtualColumn *vc_gb = group_by_attrs[j]->term.vc;
-        if (vc_gb == NULL || vc_gb->GetNumOfNulls(mit) != 0 || vc_gb->GetMinInt64(mit) == common::NULL_VALUE_64 ||
+        if (vc_gb == nullptr || vc_gb->GetNumOfNulls(mit) != 0 || vc_gb->GetMinInt64(mit) == common::NULL_VALUE_64 ||
             vc_gb->GetMinInt64(mit) != vc_gb->GetMaxInt64(mit))
           no_groups_or_uniform = false;  // leave it true only when we are sure the
                                          // grouping columns are uniform for this packrow
@@ -260,7 +260,7 @@ void TempTable::RoughAggregateSum(vcolumn::VirtualColumn *vc, int64_t &min_val, 
 
 bool IsTempTableColumn(vcolumn::VirtualColumn *vc) {
   vcolumn::SingleColumn *sc =
-      ((vc && static_cast<int>(vc->IsSingleColumn())) ? static_cast<vcolumn::SingleColumn *>(vc) : NULL);
+      ((vc && static_cast<int>(vc->IsSingleColumn())) ? static_cast<vcolumn::SingleColumn *>(vc) : nullptr);
   return (sc && sc->IsTempTableColumn());
 }
 
@@ -277,7 +277,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
 
         Interpretation of the result:
         Minimal and maximal possible value for a given column, if executed as
-        exact. NULL if not known (unable to determine).
+        exact. nullptr if not known (unable to determine).
   */
 
   // filter.Prepare();
@@ -353,7 +353,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
         bool double_vals = vc->Type().IsFloat();
         int64_t cutoff_value = common::NULL_VALUE_64;
         int64_t certain_rows = 0;
-        bool cutoff_is_null = false;  // true if all values up to limit are NULL for ascending
+        bool cutoff_is_null = false;  // true if all values up to limit are nullptr for ascending
         while (mit.IsValid()) {
           common::RSValue res = filter.rough_mind->GetPackStatus(0, mit.GetCurPackrow(0));
           if (res == common::RSValue::RS_ALL) {
@@ -423,7 +423,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
     vcolumn::VirtualColumn *vc = attrs[i]->term.vc;
     bool nulls_only = vc ? (vc->GetLocalNullsOnly() || vc->IsRoughNullsOnly()) : false;
     types::BString vals;
-    bool double_vals = (vc != NULL && vc->Type().IsFloat());
+    bool double_vals = (vc != nullptr && vc->Type().IsFloat());
     if (vc && vc->IsConst() && !vc->IsSubSelect() && attrs[i]->mode != common::ColOperation::SUM &&
         attrs[i]->mode != common::ColOperation::COUNT && attrs[i]->mode != common::ColOperation::BIT_XOR) {
       if (attrs[i]->mode == common::ColOperation::STD_POP || attrs[i]->mode == common::ColOperation::VAR_POP ||
@@ -634,7 +634,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
               if (attrs[j]->mode == common::ColOperation::GROUP_BY) group_by_attrs.push_back(attrs[j]);
             RoughAggregateSum(vc, min_val, max_val, group_by_attrs, nulls_only, attrs[i]->distinct);
             if (min_val == common::NULL_VALUE_64 || max_val == common::NULL_VALUE_64) {
-              attrs[i]->SetNull(0);  // NULL as a result of empty set or non-computable sum
+              attrs[i]->SetNull(0);  // nullptr as a result of empty set or non-computable sum
               attrs[i]->SetNull(1);
             } else {
               attrs[i]->SetValueInt64(0, min_val);

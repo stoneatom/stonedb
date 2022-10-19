@@ -50,7 +50,7 @@ class JustATable : public std::enable_shared_from_this<JustATable> {
 
   virtual bool IsNull(int64_t obj, int attr) = 0;
 
-  virtual uint MaxStringSize(int n_a, Filter *f = NULL) = 0;
+  virtual uint MaxStringSize(int n_a, Filter *f = nullptr) = 0;
 
   virtual std::vector<AttributeTypeInfo> GetATIs(bool orig = false) = 0;
 

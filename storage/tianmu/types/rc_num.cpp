@@ -431,7 +431,7 @@ RCNum &RCNum::operator/=(const RCNum &rcn) {
     while (lz >= 0 && buf[lz--] == '0')
       ;
     buf[lz + 2] = 0;
-    value_ = std::strtoll(buf, NULL, 10) * (sign == 1 ? -1 : 1);
+    value_ = std::strtoll(buf, nullptr, 10) * (sign == 1 ? -1 : 1);
     scale_ = (short)((lz + 2) - decimal);
   }
   return *this;

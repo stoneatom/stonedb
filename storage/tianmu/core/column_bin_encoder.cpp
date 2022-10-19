@@ -33,7 +33,7 @@ ColumnBinEncoder::ColumnBinEncoder(int flags) {
   implicit = false;
   disabled = false;
 
-  vc = NULL;
+  vc = nullptr;
   val_offset = 0;
   val_sec_offset = 0;
   val_size = 0;
@@ -85,9 +85,9 @@ ColumnBinEncoder::~ColumnBinEncoder() {
 }
 
 bool ColumnBinEncoder::PrepareEncoder(vcolumn::VirtualColumn *_vc, vcolumn::VirtualColumn *_vc2) {
-  if (_vc == NULL) return false;
+  if (_vc == nullptr) return false;
   bool nulls_possible = false;
-  if (!ignore_nulls) nulls_possible = _vc->IsNullsPossible() || (_vc2 != NULL && _vc2->IsNullsPossible());
+  if (!ignore_nulls) nulls_possible = _vc->IsNullsPossible() || (_vc2 != nullptr && _vc2->IsNullsPossible());
   vc = _vc;
   ColumnType vct = vc->Type();
   ColumnType vct2 = _vc2 ? _vc2->Type() : ColumnType();
@@ -104,11 +104,11 @@ bool ColumnBinEncoder::PrepareEncoder(vcolumn::VirtualColumn *_vc, vcolumn::Virt
     my_encoder.reset(new ColumnBinEncoder::EncoderDate(vc, decodable, nulls_possible, descending));
   } else if (vct.GetTypeName() == common::CT::YEAR) {
     my_encoder.reset(new ColumnBinEncoder::EncoderYear(vc, decodable, nulls_possible, descending));
-  } else if (!monotonic_encoding && vct.IsLookup() && _vc2 == NULL &&
+  } else if (!monotonic_encoding && vct.IsLookup() && _vc2 == nullptr &&
              !types::RequiresUTFConversions(vc->GetCollation())) {  // Lookup encoding: only non-UTF
     my_encoder.reset(new ColumnBinEncoder::EncoderLookup(vc, decodable, nulls_possible, descending));
     lookup_encoder = true;
-  } else if (!monotonic_encoding && vct.IsLookup() && _vc2 != NULL &&
+  } else if (!monotonic_encoding && vct.IsLookup() && _vc2 != nullptr &&
              vct2.IsLookup()) {  // Lookup in joining - may be UTF
     my_encoder.reset(new ColumnBinEncoder::EncoderLookup(vc, decodable, nulls_possible, descending));
     lookup_encoder = true;
@@ -140,7 +140,7 @@ bool ColumnBinEncoder::PrepareEncoder(vcolumn::VirtualColumn *_vc, vcolumn::Virt
                                                             // implemented yet
     my_encoder.reset(new ColumnBinEncoder::EncoderText(vc, decodable, nulls_possible, descending));
   }
-  if (_vc2 != NULL) {  // multiple column encoding?
+  if (_vc2 != nullptr) {  // multiple column encoding?
     bool encoding_possible = my_encoder->SecondColumn(_vc2);
     if (!encoding_possible) {
       bool second_try = false;
@@ -416,7 +416,7 @@ int64_t ColumnBinEncoder::EncoderInt::GetValue64(uchar *buf, [[maybe_unused]] uc
 }
 
 void ColumnBinEncoder::EncoderInt::UpdateStatistics(unsigned char *buf) {
-  int64_t v = GetValue64(buf, NULL);
+  int64_t v = GetValue64(buf, nullptr);
   if (null_status > 0 && v == common::NULL_VALUE_64) return;
   if (v > max_found) max_found = v;
   if (v < min_found) min_found = v;
@@ -580,7 +580,7 @@ int64_t ColumnBinEncoder::EncoderDate::GetValue64(uchar *buf, uchar *buf_sec) {
 }
 
 void ColumnBinEncoder::EncoderDate::UpdateStatistics(unsigned char *buf) {
-  int64_t v = EncoderInt::GetValue64(buf, NULL);
+  int64_t v = EncoderInt::GetValue64(buf, nullptr);
   if (null_status > 0 && v == common::NULL_VALUE_64) return;
   if (v > max_found)  // min/max_found as types::DT::DateSortEncoding
                       // values
@@ -665,7 +665,7 @@ int64_t ColumnBinEncoder::EncoderYear::GetValue64(uchar *buf, uchar *buf_sec) {
 }
 
 void ColumnBinEncoder::EncoderYear::UpdateStatistics(unsigned char *buf) {
-  int64_t v = EncoderInt::GetValue64(buf, NULL);
+  int64_t v = EncoderInt::GetValue64(buf, nullptr);
   if (null_status > 0 && v == common::NULL_VALUE_64) return;
   if (v > max_found)  // min/max_found as types::DT::YearSortEncoding
                       // values
@@ -1020,14 +1020,14 @@ ColumnBinEncoder::EncoderLookup::EncoderLookup(vcolumn::VirtualColumn *vc, bool 
   int64_t pmax = vc->RoughMax();
   min_val = pmin;
   max_code = uint64_t(pmax - pmin);
-  // 0 is always NULL for lookup (because we must encode non-existing strings)
+  // 0 is always nullptr for lookup (because we must encode non-existing strings)
   null_status = 1;  // 0 is null
   max_code++;
   size = CalculateByteSize(max_code);
   size_sec = 0;
   first_vc = vc;
-  sec_vc = NULL;
-  translate2 = NULL;
+  sec_vc = nullptr;
+  translate2 = nullptr;
   no_sec_values = -1;
 }
 
@@ -1039,7 +1039,7 @@ ColumnBinEncoder::EncoderLookup::EncoderLookup(const EncoderLookup &sec) : Encod
     translate2 = new int[no_sec_values];
     std::memcpy(translate2, sec.translate2, no_sec_values * sizeof(int));
   } else
-    translate2 = NULL;
+    translate2 = nullptr;
 }
 
 ColumnBinEncoder::EncoderLookup::~EncoderLookup() { delete[] translate2; }
@@ -1140,7 +1140,7 @@ ColumnBinEncoder::EncoderTextStat::EncoderTextStat(vcolumn::VirtualColumn *vc, b
   coder.CreateEncoding();
   valid = coder.IsValid();
   min_val = 0;
-  max_code = coder.MaxCode() + 2;  // +1 for a PLUS_INF value, +1 for NULL or MINUS_INF value
+  max_code = coder.MaxCode() + 2;  // +1 for a PLUS_INF value, +1 for nullptr or MINUS_INF value
   null_status = 1;                 // 0 is null
   size = CalculateByteSize(max_code);
   size_sec = 0;
@@ -1152,7 +1152,7 @@ bool ColumnBinEncoder::EncoderTextStat::SecondColumn(vcolumn::VirtualColumn *vc)
                            // in the meantime
   valid = coder.IsValid();
   min_val = 0;
-  max_code = coder.MaxCode() + 2;  // +1 for a PLUS_INF value, +1 for NULL or MINUS_INF value
+  max_code = coder.MaxCode() + 2;  // +1 for a PLUS_INF value, +1 for nullptr or MINUS_INF value
   size = CalculateByteSize(max_code);
   return valid;
 }

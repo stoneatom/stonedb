@@ -59,7 +59,7 @@ uint TxtDataFormat::StaticExtrnalSize(CT attrt, uint precision, int scale, const
     return 23;
   else if (attrt == CT::FLOAT)
     return 15;
-  if (col == NULL)
+  if (col == nullptr)
     return precision;
   else
     return precision / col->collation->mbmaxlen;  // at creation, the charlen was multiplicated by

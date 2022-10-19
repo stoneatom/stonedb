@@ -24,16 +24,16 @@
 namespace Tianmu {
 namespace core {
 GroupDistinctCache::GroupDistinctCache() : system::CacheableItem("JW", "GDC") {
-  t = NULL;
-  t_write = NULL;
-  cur_pos = NULL;
+  t = nullptr;
+  t_write = nullptr;
+  cur_pos = nullptr;
   cur_obj = 0;
   buf_size = 0;
   no_obj = 0;
   orig_no_obj = 0;
   width = 0;
   upper_byte_limit = 0;
-  cur_write_pos = NULL;
+  cur_write_pos = nullptr;
 }
 
 GroupDistinctCache::~GroupDistinctCache() {
@@ -61,10 +61,10 @@ void GroupDistinctCache::Initialize() {
 }
 
 void GroupDistinctCache::SetCurrentValue(unsigned char *val) {
-  if (t == NULL)  // not initialized yet!
+  if (t == nullptr)  // not initialized yet!
     Initialize();
   ASSERT(cur_pos,
-         "cur_pos buffer overflow, GroupDistinctCache OOM");  // cur_pos==NULL  =>
+         "cur_pos buffer overflow, GroupDistinctCache OOM");  // cur_pos==nullptr  =>
                                                               // no more place
   std::memcpy(cur_pos, val, width);
 }
@@ -82,11 +82,11 @@ void GroupDistinctCache::Rewind()  // rewind iterator, start from object 0
       CI_Put(int(cur_obj / buf_size), t);  // save the last block
       CI_Get(0, t);                        // load the first block
     }
-    cur_pos = t;  // may be NULL, will be initialized on the first SetCurrentValue
+    cur_pos = t;  // may be nullptr, will be initialized on the first SetCurrentValue
     cur_write_pos = t_write;
   } else {
-    cur_pos = NULL;  // invalid from the beginning
-    cur_write_pos = NULL;
+    cur_pos = nullptr;  // invalid from the beginning
+    cur_write_pos = nullptr;
   }
   cur_obj = 0;
   cur_write_obj = 0;
@@ -98,7 +98,7 @@ bool GroupDistinctCache::NextRead()  // go to the next position, return false if
   cur_obj++;
   if (cur_obj >= no_obj) {
     cur_obj--;
-    cur_pos = NULL;  // indicator of buffer overflow
+    cur_pos = nullptr;  // indicator of buffer overflow
     return false;
   }
   if (cur_obj % buf_size == 0) {         // a boundary between buffers
@@ -115,7 +115,7 @@ bool GroupDistinctCache::NextWrite()  // go to the next position, return false
   cur_obj++;
   if (cur_obj > no_obj) {
     cur_obj--;
-    cur_pos = NULL;  // indicator of buffer overflow
+    cur_pos = nullptr;  // indicator of buffer overflow
     return false;
   }
   if (cur_obj % buf_size == 0) {               // a boundary between buffers
@@ -128,7 +128,7 @@ bool GroupDistinctCache::NextWrite()  // go to the next position, return false
 
 void GroupDistinctCache::MarkCurrentAsPreserved() {
   DEBUG_ASSERT(cur_obj >= cur_write_obj);
-  if (t_write == NULL) {
+  if (t_write == nullptr) {
     t_write = (unsigned char *)alloc(upper_byte_limit,
                                      mm::BLOCK_TYPE::BLOCK_TEMPORARY);  // switch writing to the new buffer
     cur_write_pos = t_write;
@@ -166,7 +166,7 @@ void GroupDistinctCache::Omit(int64_t obj_to_omit) {
   cur_obj += obj_to_omit;
   if (cur_obj >= no_obj) {
     cur_obj = no_obj;
-    cur_pos = NULL;  // indicator of buffer overflow
+    cur_pos = nullptr;  // indicator of buffer overflow
   } else if (cur_obj / buf_size != prev_block) {
     CI_Get(int(cur_obj / buf_size), t);  // load the proper block
     cur_pos = t + width * (cur_obj % buf_size);

@@ -27,7 +27,7 @@
 namespace Tianmu {
 namespace core {
 
-using Tianmu::DBHandler::Query_route_to;
+using Tianmu::handler::Query_route_to;
 
 class CompiledQuery;
 class MysqlExpression;
@@ -64,8 +64,8 @@ class Query final {
   void SetRoughQuery(bool set_rough) { rough_query = set_rough; }
   bool IsRoughQuery() { return rough_query; }
   Query_route_to Compile(CompiledQuery *compiled_query, Query_block *selects_list, Query_block *last_distinct,
-                         TableID *res_tab = NULL, bool ignore_limit = false, Item *left_expr_for_subselect = NULL,
-                         common::Operator *oper_for_subselect = NULL, bool ignore_minmax = false,
+                         TableID *res_tab = nullptr, bool ignore_limit = false, Item *left_expr_for_subselect = nullptr,
+                         common::Operator *oper_for_subselect = nullptr, bool ignore_minmax = false,
                          bool for_subq_in_where = false);
   TempTable *Preexecute(CompiledQuery &qu, ResultSender *sender, bool display_now = true);
   Query_route_to BuildConditions(Item *conds, CondID &cond_id, CompiledQuery *cq, const TableID &tmp_table,
@@ -132,8 +132,8 @@ class Query final {
   int VirtualColumnAlreadyExists(const TableID &tmp_table, const std::vector<int> &vcs, const AttrID &at);
 
   Query_route_to Item2CQTerm(Item *an_arg, CQTerm &term, const TableID &tmp_table, CondType filter_type,
-                             bool negative = false, Item *left_expr_for_subselect = NULL,
-                             common::Operator *oper_for_subselect = NULL);
+                             bool negative = false, Item *left_expr_for_subselect = nullptr,
+                             common::Operator *oper_for_subselect = nullptr);
 
   // int FilterNotSubselect(Item *conds, const TableID& tmp_table, FilterType
   // filter_type, FilterID *and_me_filter = 0);
@@ -248,7 +248,7 @@ class Query final {
    * \return column number
    */
   int AddColumnForPhysColumn(Item *item, const TableID &tmp_table, const common::ColOperation oper, const bool distinct,
-                             bool group_by, const char *alias = NULL);
+                             bool group_by, const char *alias = nullptr);
 
   /*! \brief Creates AddColumn step in compilation by creating, if does not
    * exist, Virtual Column based on expression \param mysql_expression - pointer
@@ -314,7 +314,7 @@ class Query final {
   //	 *  e.g., not acceptable type of expression
   //	 */
   //	WrapStatus WrapMysqlExpressionWithAggregations(Item *item, const TableID&
-  // tmp_table, MysqlExpression*& expr, bool* is_const_or_aggr = NULL);
+  // tmp_table, MysqlExpression*& expr, bool* is_const_or_aggr = nullptr);
 
   /*! \brief Generates AddColumn compilation steps for every field on SELECT
    * list \param fields - list of fields \param tmp_table - alias of TempTable

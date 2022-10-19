@@ -23,8 +23,8 @@
 namespace Tianmu {
 namespace core {
 GroupDistinctTable::GroupDistinctTable(uint32_t power)
-    : input_buffer(NULL),
-      t(NULL),
+    : input_buffer(nullptr),
+      t(nullptr),
       group_bytes(0),
       value_bytes(0),
       total_width(0),
@@ -35,10 +35,10 @@ GroupDistinctTable::GroupDistinctTable(uint32_t power)
       initialized(false),
       use_CRC(false),
       filter_implementation(false),
-      f(NULL),
+      f(nullptr),
       group_factor(0) {
   max_total_size = 64_MB;
-  encoder = NULL;
+  encoder = nullptr;
   input_length = 0;
   pack_power = power;
 }
@@ -174,7 +174,7 @@ GDTResult GroupDistinctTable::Add(int64_t group, MIIterator &mit) {
   }
   group += 1;  // offset; 0 means empty position
   std::memmove(input_buffer, (unsigned char *)(&group), group_bytes);
-  encoder->Encode(input_buffer + group_bytes, mit, NULL, true);
+  encoder->Encode(input_buffer + group_bytes, mit, nullptr, true);
   return FindCurrentRow();
 }
 

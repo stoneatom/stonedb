@@ -135,7 +135,7 @@ void ParameterizedFilter::PrepareRoughMultiIndex() {
     for (uint d = 0; d < (uint)mind->NumOfDimensions(); d++) {
       Filter *f = mind->GetFilter(d);
       for (int p = 0; p < rough_mind->NoPacks(d); p++) {
-        if (f == NULL)
+        if (f == nullptr)
           rough_mind->SetPackStatus(d, p, common::RSValue::RS_UNKNOWN);
         else if (f->IsFull(p))
           rough_mind->SetPackStatus(d, p, common::RSValue::RS_ALL);
@@ -170,7 +170,7 @@ double ParameterizedFilter::EvaluateConditionNonJoinWeight(Descriptor &d, bool f
     int64_t no_in_values = 1;
     if (d.op == common::Operator::O_IN || d.op == common::Operator::O_NOT_IN) {
       vcolumn::MultiValColumn *iscol = static_cast<vcolumn::MultiValColumn *>(d.val1.vc);
-      MIIterator mitor(NULL, d.table->Getpackpower());
+      MIIterator mitor(nullptr, d.table->Getpackpower());
       no_in_values = iscol->NumOfValues(mitor);
     }
     eval = log(1 + double(answer_size));  // approximate size of the result
@@ -798,7 +798,7 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
         // now, the second part
         Descriptor dd(table, mind->NumOfDimensions());
         dd.attr = descriptors[i].val2;
-        descriptors[i].val2.vc = NULL;
+        descriptors[i].val2.vc = nullptr;
         dd.op = common::Operator::O_MORE_EQ;
         dd.val1 = descriptors[i].val1;
         dd.done = false;
@@ -814,7 +814,7 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
         Descriptor dd(table, mind->NumOfDimensions());
         dd.attr = descriptors[i].attr;
         dd.val1 = descriptors[i].val2;
-        descriptors[i].val2.vc = NULL;
+        descriptors[i].val2.vc = nullptr;
         dd.op = common::Operator::O_LESS_EQ;
         dd.done = false;
         dd.left_dims = descriptors[i].left_dims;
@@ -904,7 +904,7 @@ void ParameterizedFilter::SyntacticalDescriptorListPreprocessing(bool for_rough_
       descriptors[i].DimensionUsed(all_dims);
       bool additional_nulls_possible = false;
       for (int d = 0; d < mind->NumOfDimensions(); d++)
-        if (all_dims[d] && mind->GetFilter(d) == NULL) additional_nulls_possible = true;
+        if (all_dims[d] && mind->GetFilter(d) == nullptr) additional_nulls_possible = true;
       if (descriptors[i].IsOuter()) additional_nulls_possible = true;
       ConditionEncoder::EncodeIfPossible(descriptors[i], for_rough_query, additional_nulls_possible);
 
@@ -1261,7 +1261,7 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
   if (no_dims == 0 && !desc.IsDeterministic()) dims.SetAll();
   // Check the easy case (one-dim, parallelizable)
   int one_dim = -1;
-  common::RSValue *rf = NULL;
+  common::RSValue *rf = nullptr;
   if (no_dims == 1) {
     for (int i = 0; i < mind->NumOfDimensions(); i++) {
       if (dims[i]) {

@@ -25,7 +25,7 @@
 namespace Tianmu {
 namespace core {
 Item_tianmufield::Item_tianmufield(Item_field *ifield, VarID varID)
-    : Item_field(current_txn_->Thd(), ifield), ifield(ifield), buf(NULL), ivalue(NULL) {
+    : Item_field(current_txn_->Thd(), ifield), ifield(ifield), buf(nullptr), ivalue(nullptr) {
   this->varID.push_back(varID);
   if (ifield->type() == Item::SUM_FUNC_ITEM) {
     was_aggregation = true;
@@ -37,7 +37,7 @@ Item_tianmufield::Item_tianmufield(Item_field *ifield, VarID varID)
 }
 
 Item_tianmufield::~Item_tianmufield() {
-  // if(ivalue != NULL) delete ivalue;	// done by MySQL not TIANMU, for each Item
+  // if(ivalue != nullptr) delete ivalue;	// done by MySQL not TIANMU, for each Item
   // subclass
   ClearBuf();
 }
@@ -45,12 +45,12 @@ Item_tianmufield::~Item_tianmufield() {
 void Item_tianmufield::ClearBuf() {
   if (isBufOwner) {
     delete buf;
-    buf = NULL;
+    buf = nullptr;
   }
 }
 
 void Item_tianmufield::SetBuf(ValueOrNull *&b) {
-  if (buf == NULL) {
+  if (buf == nullptr) {
     isBufOwner = true;
     buf = new ValueOrNull;
   }
@@ -58,9 +58,9 @@ void Item_tianmufield::SetBuf(ValueOrNull *&b) {
 }
 
 void Item_tianmufield::SetType(DataType t) {
-  if (ivalue != NULL) {
+  if (ivalue != nullptr) {
     // delete ivalue;		// done by MySQL not TIANMU, for each Item subclass
-    ivalue = NULL;
+    ivalue = nullptr;
   }
 
   tianmu_type = t;

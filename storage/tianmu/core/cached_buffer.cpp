@@ -43,7 +43,7 @@ CachedBuffer<types::BString>::CachedBuffer(uint page_size, uint elem_size, Trans
     buf = (char *)alloc(buf_size, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
     std::memset(buf, 0, buf_size);
   } else
-    buf = NULL;
+    buf = nullptr;
   loaded_page = 0;
   page_changed = false;
 }
@@ -66,7 +66,7 @@ void CachedBuffer<types::BString>::Get(types::BString &s, uint64_t idx) {
   if (idx / page_size != loaded_page) LoadPage((uint)(idx / page_size));
   uint64_t pos = (idx % page_size) * (elem_size + 4);
   uint size = *(uint *)&buf[pos];
-  if (size == common::NULL_VALUE_U)  // 0 -NULL, 1 -NOT NULL
+  if (size == common::NULL_VALUE_U)  // 0 -nullptr, 1 -NOT nullptr
     s = types::BString();
   else if (size == 0)
     s = types::BString(ZERO_LENGTH_STRING, 0);

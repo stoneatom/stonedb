@@ -53,8 +53,8 @@ Descriptor::Descriptor()
       done(false),
       evaluation(0),
       delayed(false),
-      table(NULL),
-      tree(NULL),
+      table(nullptr),
+      tree(nullptr),
       left_dims(0),
       right_dims(0),
       rv(common::RSValue::RS_UNKNOWN),
@@ -75,7 +75,7 @@ Descriptor::Descriptor(TempTable *t, int no_dims)  // no_dims is a destination n
       evaluation(0),
       delayed(false),
       table(t),
-      tree(NULL),
+      tree(nullptr),
       left_dims(no_dims),
       right_dims(no_dims),
       rv(common::RSValue::RS_UNKNOWN),
@@ -102,7 +102,7 @@ Descriptor::Descriptor(const Descriptor &desc) {
   delayed = desc.delayed;
   table = desc.table;
   collation = desc.collation;
-  tree = NULL;
+  tree = nullptr;
   if (desc.tree) tree = new DescTree(*desc.tree);
   left_dims = desc.left_dims;
   right_dims = desc.right_dims;
@@ -120,7 +120,7 @@ Descriptor::Descriptor(CQTerm e1, common::Operator pr, CQTerm e2, CQTerm e3, Tem
       evaluation(0),
       delayed(false),
       table(t),
-      tree(NULL),
+      tree(nullptr),
       left_dims(no_dims),
       right_dims(no_dims),
       rv(common::RSValue::RS_UNKNOWN),
@@ -150,7 +150,7 @@ Descriptor::Descriptor(DescTree *sec_tree, TempTable *t, int no_dims)
       desc_t(DescriptorJoinType::DT_NOT_KNOWN_YET),
       collation(DTCollation()),
       null_after_simplify(false) {
-  tree = NULL;
+  tree = nullptr;
   if (sec_tree) tree = new DescTree(*sec_tree);
   CalculateJoinType();
 }
@@ -164,7 +164,7 @@ Descriptor::Descriptor(TempTable *t, vcolumn::VirtualColumn *v1, common::Operato
       evaluation(0),
       delayed(false),
       table(t),
-      tree(NULL),
+      tree(nullptr),
       left_dims(0),
       right_dims(0),
       rv(common::RSValue::RS_UNKNOWN),
@@ -220,7 +220,7 @@ Descriptor &Descriptor::operator=(const Descriptor &d) {
   like_esc = d.like_esc;
   table = d.table;
   delete tree;
-  tree = NULL;
+  tree = nullptr;
   if (d.tree) tree = new DescTree(*d.tree);
   left_dims = d.left_dims;
   right_dims = d.right_dims;
@@ -344,8 +344,8 @@ void Descriptor::SwitchSides()  // change "a<b" into "b>a" etc; throw error if
 
 bool Descriptor::IsType_AttrValOrAttrValVal() const  // true if "phys column op val or column between val and val or "
 {
-  // or "phys_column IS NULL/NOT NULL"
-  if (attr.vc == NULL || !static_cast<int>(attr.vc->IsSingleColumn())) return false;
+  // or "phys_column IS nullptr/NOT nullptr"
+  if (attr.vc == nullptr || !static_cast<int>(attr.vc->IsSingleColumn())) return false;
   return ((val1.vc && val1.vc->IsConst()) ||
           (op == common::Operator::O_IS_NULL || op == common::Operator::O_NOT_NULL)) &&
          (!val2.vc || (val2.vc && val2.vc->IsConst()));
@@ -369,7 +369,7 @@ bool Descriptor::IsType_JoinSimple() const  // true if more than one table invol
 
 bool Descriptor::IsType_AttrAttr() const  // true if "column op column" from one table
 {
-  if (attr.vc == NULL || val1.vc == NULL || !static_cast<int>(attr.vc->IsSingleColumn()) ||
+  if (attr.vc == nullptr || val1.vc == nullptr || !static_cast<int>(attr.vc->IsSingleColumn()) ||
       !static_cast<int>(val1.vc->IsSingleColumn()) || val2.vc || IsType_Join())
     return false;
 
@@ -378,10 +378,10 @@ bool Descriptor::IsType_AttrAttr() const  // true if "column op column" from one
 
 bool Descriptor::IsType_TIANMUExpression() const  // only columns, constants and TIANMUExpressions
 {
-  if (attr.vc == NULL) return false;
+  if (attr.vc == nullptr) return false;
   if ((static_cast<int>(attr.vc->IsSingleColumn()) || attr.vc->IsConst()) &&
-      (val1.vc == NULL || static_cast<int>(val1.vc->IsSingleColumn()) || val1.vc->IsConst()) &&
-      (val2.vc == NULL || static_cast<int>(val2.vc->IsSingleColumn()) || val2.vc->IsConst()))
+      (val1.vc == nullptr || static_cast<int>(val1.vc->IsSingleColumn()) || val1.vc->IsConst()) &&
+      (val2.vc == nullptr || static_cast<int>(val2.vc->IsSingleColumn()) || val2.vc->IsConst()))
     return true;
   return false;
 }
@@ -441,7 +441,7 @@ common::RSValue Descriptor::EvaluateRoughlyPack(const MIIterator &mit) {
 
 void Descriptor::Simplify(bool in_having) {
   MEASURE_FET("Descriptor::Simplify(...)");
-  static MIIterator const mit(NULL, table->Getpackpower());
+  static MIIterator const mit(nullptr, table->Getpackpower());
   if (op == common::Operator::O_FALSE || op == common::Operator::O_TRUE) return;
 
   if (IsType_OrTree()) {
@@ -466,7 +466,7 @@ void Descriptor::Simplify(bool in_having) {
        op == common::Operator::O_LESS_EQ || op == common::Operator::O_MORE || op == common::Operator::O_MORE_EQ)) {
     SwitchSides();
   }
-  if (Query::IsAllAny(op) && dynamic_cast<vcolumn::MultiValColumn *>(val1.vc) == NULL) Query::UnmarkAllAny(op);
+  if (Query::IsAllAny(op) && dynamic_cast<vcolumn::MultiValColumn *>(val1.vc) == nullptr) Query::UnmarkAllAny(op);
   if ((attr.vc && (!attr.vc->IsConst() || (in_having && attr.vc->IsParameterized()))) ||
       (val1.vc && (!val1.vc->IsConst() || (in_having && val1.vc->IsParameterized()))) ||
       (val2.vc && (!val2.vc->IsConst() || (in_having && val2.vc->IsParameterized())))) {
@@ -676,8 +676,8 @@ const QueryOperator *Descriptor::CreateQueryOperator(common::Operator type) cons
       ">=",           // common::Operator::O_MORE_EQ
       ">=ALL",        // common::Operator::O_MORE_EQ_ALL
       ">=ANY",        // common::Operator::O_MORE_EQ_ANY
-      "IS NULL",      // common::Operator::O_IS_NULL
-      "IS NOT NULL",  // common::Operator::O_NOT_NULL
+      "IS nullptr",      // common::Operator::O_IS_NULL
+      "IS NOT nullptr",  // common::Operator::O_NOT_NULL
       "BET.",         // common::Operator::O_BETWEEN
       "NOT BET.",     // common::Operator::O_NOT_BETWEEN
       "LIKE",         // common::Operator::O_LIKE
@@ -873,7 +873,7 @@ void Descriptor::UpdateVCStatistics()  // Apply all the information from
                                        // constants etc. to involved VC
 {
   MEASURE_FET("Descriptor::UpdateVCStatistics(...)");
-  if (attr.vc == NULL) return;
+  if (attr.vc == nullptr) return;
   if (op == common::Operator::O_IS_NULL) {
     attr.vc->SetLocalNullsOnly(true);
     return;
@@ -960,7 +960,7 @@ bool Descriptor::CheckCondition_UTF(const MIIterator &mit) {
     bool attr_ge_val1 = (sharp ? CollationStrCmp(collation, s1, s2) > 0 : CollationStrCmp(collation, s1, s2) >= 0);
     bool attr_le_val2 = (sharp ? CollationStrCmp(collation, s1, s3) < 0 : CollationStrCmp(collation, s1, s3) <= 0);
     common::Tribool val1_res, val2_res;
-    if (encoded) {  // Rare case: for encoded conditions treat NULL as +/- inf.
+    if (encoded) {  // Rare case: for encoded conditions treat nullptr as +/- inf.
       val1_res = val1.vc->IsNull(mit) ? true : common::Tribool(attr_ge_val1);
       val2_res = val2.vc->IsNull(mit) ? true : common::Tribool(attr_le_val2);
     } else {
@@ -1043,7 +1043,7 @@ bool Descriptor::CheckCondition(const MIIterator &mit) {
             val1.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(val >= val1.vc->GetNotNullValueInt64(mit));
         val2_res =
             val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(val <= val2.vc->GetNotNullValueInt64(mit));
-      } else {  // Rare case: for encoded conditions treat NULL as +/- inf.
+      } else {  // Rare case: for encoded conditions treat nullptr as +/- inf.
         types::RCValueObject rcvo1 = attr.vc->GetValue(mit, false);
         val1_res = val1.vc->IsNull(mit) ? true
                                         : (sharp ? common::Tribool(rcvo1 > val1.vc->GetValue(mit, false))
@@ -1109,7 +1109,7 @@ bool Descriptor::IsNull(const MIIterator &mit) {
             val1.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(val >= val1.vc->GetNotNullValueInt64(mit));
         val2_res =
             val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(val <= val2.vc->GetNotNullValueInt64(mit));
-      } else {  // Rare case: for encoded conditions treat NULL as +/- inf.
+      } else {  // Rare case: for encoded conditions treat nullptr as +/- inf.
         types::RCValueObject rcvo1 = attr.vc->GetValue(mit, false);
         val1_res = val1.vc->IsNull(mit) ? true
                                         : (sharp ? common::Tribool(rcvo1 > val1.vc->GetValue(mit, false))
@@ -1602,7 +1602,7 @@ common::Tribool Descriptor::RoughCheckSetSubSelectCondition(const MIIterator &mi
 
 void Descriptor::CoerceColumnType(vcolumn::VirtualColumn *&for_typecast) {
   vcolumn::VirtualColumn *vc = attr.vc;
-  vcolumn::TypeCastColumn *tcc = NULL;
+  vcolumn::TypeCastColumn *tcc = nullptr;
   bool tstamp = false;
   if (ATI::IsNumericType(vc->TypeName())) {
     if (ATI::IsTxtType(for_typecast->TypeName()))
@@ -1890,7 +1890,7 @@ DescTree::DescTree(CQTerm e1, common::Operator op, CQTerm e2, CQTerm e3, TempTab
 DescTree::DescTree(DescTree &t) { curr = root = Copy(t.root); }
 
 DescTreeNode *DescTree::Copy(DescTreeNode *node) {
-  if (!node) return NULL;
+  if (!node) return nullptr;
   DescTreeNode *res = new DescTreeNode(*node);
   if (node->left) {
     res->left = Copy(node->left);
@@ -1910,7 +1910,7 @@ DescTreeNode *DescTree::Copy(DescTreeNode *node) {
 //	if(node && node->right)
 //		Release(node->right);
 //	delete node;
-//	node = NULL;
+//	node = nullptr;
 //}
 
 // make _lop the root, make current tree the left child, make descriptor the
@@ -1935,15 +1935,15 @@ void DescTree::AddTree(common::LogicalOperator lop, DescTree *tree, int no_dims)
     curr->right = tree->root;
     tree->root->parent = curr;
     root = curr;
-    tree->root = NULL;
-    tree->curr = NULL;
+    tree->root = nullptr;
+    tree->curr = nullptr;
   }
 }
 
 void DescTree::Display() { Display(root); }
 
 void DescTree::Display(DescTreeNode *node) {
-  if (node == NULL) return;
+  if (node == nullptr) return;
   if (node->left) Display(node->left);
   if (node->right) Display(node->right);
   std::cout << "------------------------" << std::endl;
@@ -2002,38 +2002,38 @@ common::Tribool DescTreeNode::Simplify(DescTreeNode *&root, bool in_having) {
     if (res == true) {
       desc.op = common::Operator::O_TRUE;
       delete left;
-      left = NULL;
+      left = nullptr;
       delete right;
-      right = NULL;
+      right = nullptr;
     } else if (res == false) {
       desc.op = common::Operator::O_FALSE;
       delete left;
-      left = NULL;
+      left = nullptr;
       delete right;
-      right = NULL;
+      right = nullptr;
     } else if (!left->left && !right->right && desc.lop == common::LogicalOperator::O_AND) {
       bool merged = ParameterizedFilter::TryToMerge(left->desc, right->desc);
       if (merged) {
         delete right;
-        right = NULL;
+        right = nullptr;
         res = ReplaceNode(this, left, root);
       }
     } else if (desc.lop == common::LogicalOperator::O_OR) {
       if (left->desc.op == common::Operator::O_FALSE) {
         delete left;
-        left = NULL;
+        left = nullptr;
         res = ReplaceNode(this, right, root);
       } else if (left->desc.op == common::Operator::O_TRUE) {
         delete right;
-        right = NULL;
+        right = nullptr;
         res = ReplaceNode(this, left, root);
       } else if (right->desc.op == common::Operator::O_FALSE) {
         delete right;
-        right = NULL;
+        right = nullptr;
         res = ReplaceNode(this, left, root);
       } else if (right->desc.op == common::Operator::O_TRUE) {
         delete left;
-        left = NULL;
+        left = nullptr;
         res = ReplaceNode(this, right, root);
       }
     }
@@ -2307,7 +2307,7 @@ void DescTreeNode::ExtractDescriptor(Descriptor &searched_desc, DescTreeNode *&r
                     (desc.lop == common::LogicalOperator::O_OR && */
         left->desc == searched_desc /*)*/) {
       delete left;
-      left = NULL;
+      left = nullptr;
       DescTreeNode *old_right = right;
       bool parent_is_or = (desc.lop == common::LogicalOperator::O_OR);
       ReplaceNode(this, right, root);
@@ -2334,7 +2334,7 @@ void DescTreeNode::ExtractDescriptor(Descriptor &searched_desc, DescTreeNode *&r
                     (desc.lop == common::LogicalOperator::O_OR &&*/
         right->desc == searched_desc /*)*/) {
       delete right;
-      right = NULL;
+      right = nullptr;
       DescTreeNode *old_left = left;
       bool parent_is_or = (desc.lop == common::LogicalOperator::O_OR);
       ReplaceNode(this, left, root);
@@ -2364,8 +2364,8 @@ common::Tribool DescTreeNode::ReplaceNode(DescTreeNode *src, DescTreeNode *dst, 
     root = dst;
   if (src->left == dst || src->right == dst) {
     // src's children are reused - prevent deleting them
-    src->left = NULL;
-    src->right = NULL;
+    src->left = nullptr;
+    src->right = nullptr;
   }
   delete src;
   if (dst->desc.op == common::Operator::O_FALSE) return false;

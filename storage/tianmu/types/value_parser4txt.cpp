@@ -91,7 +91,7 @@ common::ErrorCode ValueParserForText::ParseNum(const BString &rcs, RCNum &rcn, s
   val = val_ptr = rcs.val;
   int len = rcs.len;
   EatWhiteSigns(val, len);
-  if (rcs.Equals("NULL", 4)) {
+  if (rcs.Equals("nullptr", 4)) {
     rcn.null = true;
     return common::ErrorCode::SUCCESS;
   }
@@ -294,7 +294,7 @@ common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, comm
   rcn.scale_ = 0;
   rcn.is_double_ = false;
 
-  if (rcs.Equals("NULL", 4)) {
+  if (rcs.Equals("nullptr", 4)) {
     rcn.null = true;
     return common::ErrorCode::SUCCESS;
   }
@@ -353,7 +353,7 @@ common::ErrorCode ValueParserForText::ParseReal(const BString &rcbs, RCNum &rcn,
   if (at == common::CT::UNK) at = common::CT::REAL;
   if (!core::ATI::IsRealType(at)) return common::ErrorCode::FAILED;
 
-  if (rcbs.Equals("NULL", 4) || rcbs.IsNull()) {
+  if (rcbs.Equals("nullptr", 4) || rcbs.IsNull()) {
     rcn.null = true;
     return common::ErrorCode::SUCCESS;
   }
@@ -470,7 +470,7 @@ common::ErrorCode ValueParserForText::ParseBigInt(const BString &rcs, RCNum &rcn
   rcn.scale_ = 0;
   rcn.is_double_ = false;
 
-  if (rcs.Equals("NULL", 4)) {
+  if (rcs.Equals("nullptr", 4)) {
     rcn.null = true;
     return common::ErrorCode::SUCCESS;
   }
@@ -594,7 +594,7 @@ common::ErrorCode ValueParserForText::ParseDecimal(BString const &rcs, int64_t &
 }
 
 common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rcs, RCDateTime &rcv, common::CT at) {
-  if (rcs.IsNull() || rcs.Equals("NULL", 4)) {
+  if (rcs.IsNull() || rcs.Equals("nullptr", 4)) {
     rcv.at = at;
     rcv.null = true;
     return common::ErrorCode::SUCCESS;
@@ -785,7 +785,7 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
 }
 
 common::ErrorCode ValueParserForText::ParseTime(const BString &rcs, RCDateTime &rcv) {
-  if (rcs.IsNull() || rcs.Equals("NULL", 4)) {
+  if (rcs.IsNull() || rcs.Equals("nullptr", 4)) {
     rcv.at = common::CT::TIME;
     rcv.null = true;
     return common::ErrorCode::SUCCESS;
@@ -945,7 +945,7 @@ common::ErrorCode ValueParserForText::ParseTime(const BString &rcs, RCDateTime &
 }
 
 common::ErrorCode ValueParserForText::ParseDate(const BString &rcs, RCDateTime &rcv) {
-  if (rcs.IsNull() || rcs.Equals("NULL", 4)) {
+  if (rcs.IsNull() || rcs.Equals("nullptr", 4)) {
     rcv.at = common::CT::DATE;
     rcv.null = true;
     return common::ErrorCode::SUCCESS;
@@ -1005,7 +1005,7 @@ common::ErrorCode ValueParserForText::ParseDate(const BString &rcs, RCDateTime &
 }
 
 common::ErrorCode ValueParserForText::ParseYear(const BString &rcs, RCDateTime &rcv) {
-  if (rcs.IsNull() || rcs.Equals("NULL", 4)) {
+  if (rcs.IsNull() || rcs.Equals("nullptr", 4)) {
     rcv.at = common::CT::YEAR;
     rcv.null = true;
     return common::ErrorCode::SUCCESS;

@@ -221,7 +221,7 @@ int Query_expression::optimize_for_tianmu(THD *thd) {
     /* Send result to 'result' */
     saved_error = true;
     set_limit(thd, global_parameters());  // stonedb8 add thd
-    if (fake_query_block != NULL) {
+    if (fake_query_block != nullptr) {
       thd->lex->set_current_query_block(fake_query_block);
       if (!is_prepared()) {
         if (prepare_fake_query_block(thd)) return saved_error;
@@ -237,7 +237,7 @@ int Query_expression::optimize_for_tianmu(THD *thd) {
       if (!join->is_optimized()) {
         //    saved_error = join->prepare(fake_query_block->table_list.first, 0, 0,
         //                                global_parameters->order_list.elements,
-        //                                global_parameters->order_list.first, NULL, NULL, fake_query_block,
+        //                                global_parameters->order_list.first, nullptr, nullptr, fake_query_block,
         //                                this); //STONEDB UPGRADE
         if (!is_prepared()) {
           if (fake_query_block->prepare(thd, nullptr))  // stonedb8 add nullptr from m8

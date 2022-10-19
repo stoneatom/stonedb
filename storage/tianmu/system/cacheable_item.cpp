@@ -25,10 +25,10 @@ namespace Tianmu {
 namespace system {
 CacheableItem::CacheableItem(char const *owner_name, char const *object_id, int _default_block_size) {
   default_block_size = _default_block_size;
-  DEBUG_ASSERT(owner_name != NULL);
-  DEBUG_ASSERT(object_id != NULL);
+  DEBUG_ASSERT(owner_name != nullptr);
+  DEBUG_ASSERT(object_id != nullptr);
   // copy the temporary folder first
-  filename = NULL;
+  filename = nullptr;
 
   {
     // read the configuration parameter
@@ -43,7 +43,7 @@ CacheableItem::CacheableItem(char const *owner_name, char const *object_id, int 
     filename_n_position += 6;
   }
 
-  if (filename == NULL) {
+  if (filename == nullptr) {
     // if the temporary path is not set, use the current folder
     filename = new char[36];  // "XXXXXXnnnnnnAAAAAAAABBBBBBBB.tianmu_tmp"
     filename_n_position = 6;

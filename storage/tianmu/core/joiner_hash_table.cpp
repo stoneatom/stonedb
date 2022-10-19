@@ -39,7 +39,7 @@ JoinerHashTable::JoinerHashTable() {
   for_count_only = false;
   initialized = false;
   no_of_occupied = 0;
-  t = NULL;
+  t = nullptr;
   key_buf_width = 0;
   total_width = 0;
   mult_offset = 0;

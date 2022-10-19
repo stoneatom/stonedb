@@ -64,7 +64,7 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
   if (d.IsType_AttrValOrAttrValVal()) {
     if (!d.encoded) return common::RSValue::RS_SOME;
     vcolumn::VirtualColumn *vc1 = d.val1.vc;
-    static MIIterator const mit(NULL, pss);
+    static MIIterator const mit(nullptr, pss);
     LoadPackInfo();  // just in case, although the condition was encoded and
                      // this function should be executed earlier
     auto const &dpn(get_dpn(pack));
@@ -125,7 +125,7 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
           pattern_fixed_prefix++;
 
         if ((pattern_fixed_prefix > 0) && types::BString(pat.val, pattern_fixed_prefix).LessEqThanMax(dpn.max_s) ==
-                                              false)  // val_t==NULL means +/-infty
+                                              false)  // val_t==nullptr means +/-infty
           res = common::RSValue::RS_NONE;
         if (pattern_fixed_prefix > GetActualSize(pack)) res = common::RSValue::RS_NONE;
         pack_prefix = GetPrefixLength(pack);
@@ -303,11 +303,11 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
         res = common::RSValue::RS_NONE;
       } else if ((vmax.val && vmax.GreaterEqThanMinUTF(dpn.min_s, Type().GetCollation()) == false) ||
                  (vmin.val &&
-                  vmin.LessEqThanMaxUTF(dpn.max_s, Type().GetCollation()) == false))  // val_t==NULL means +/-infty
+                  vmin.LessEqThanMaxUTF(dpn.max_s, Type().GetCollation()) == false))  // val_t==nullptr means +/-infty
         res = common::RSValue::RS_NONE;
-      else if ((vmin.val == NULL || vmin.GreaterEqThanMinUTF(dpn.min_s, Type().GetCollation()) == false) &&
-               (vmax.val == NULL ||
-                vmax.LessEqThanMaxUTF(dpn.max_s, Type().GetCollation()) == false))  // val_t==NULL means +/-infty
+      else if ((vmin.val == nullptr || vmin.GreaterEqThanMinUTF(dpn.min_s, Type().GetCollation()) == false) &&
+               (vmax.val == nullptr ||
+                vmax.LessEqThanMaxUTF(dpn.max_s, Type().GetCollation()) == false))  // val_t==nullptr means +/-infty
         res = common::RSValue::RS_ALL;
       else if (pack_prefix == GetActualSize(pack) && vmin == vmax) {  // exact case for short texts
         if (vmin.GreaterEqThanMinUTF(dpn.min_s, Type().GetCollation()) &&
@@ -377,8 +377,8 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
   } else {
     if (!d.encoded) return common::RSValue::RS_SOME;
     vcolumn::SingleColumn *sc =
-        (static_cast<int>(d.val1.vc->IsSingleColumn()) ? static_cast<vcolumn::SingleColumn *>(d.val1.vc) : NULL);
-    RCAttr *sec = NULL;
+        (static_cast<int>(d.val1.vc->IsSingleColumn()) ? static_cast<vcolumn::SingleColumn *>(d.val1.vc) : nullptr);
+    RCAttr *sec = nullptr;
     if (sc) sec = dynamic_cast<RCAttr *>(sc->GetPhysical());
     if (d.IsType_AttrAttr() && d.op != common::Operator::O_BETWEEN && d.op != common::Operator::O_NOT_BETWEEN && sec) {
       common::RSValue res = common::RSValue::RS_SOME;
@@ -504,13 +504,13 @@ common::RSValue RCAttr::RoughCheck(int pack1, int pack2, Descriptor &d) {
   vcolumn::VirtualColumn *vc2 = d.val2.vc;
 
   // Limitations for now: only the easiest numerical cases
-  if (vc1 == NULL || vc2 != NULL || d.op != common::Operator::O_EQ || pack1 == -1 || pack2 == -1)
+  if (vc1 == nullptr || vc2 != nullptr || d.op != common::Operator::O_EQ || pack1 == -1 || pack2 == -1)
     return common::RSValue::RS_SOME;
-  vcolumn::SingleColumn *sc = NULL;
+  vcolumn::SingleColumn *sc = nullptr;
   if (static_cast<int>(vc1->IsSingleColumn())) sc = static_cast<vcolumn::SingleColumn *>(vc1);
-  if (sc == NULL) return common::RSValue::RS_SOME;
+  if (sc == nullptr) return common::RSValue::RS_SOME;
   RCAttr *sec = dynamic_cast<RCAttr *>(sc->GetPhysical());
-  if (sec == NULL || !Type().IsNumComparable(sec->Type())) return common::RSValue::RS_SOME;
+  if (sec == nullptr || !Type().IsNumComparable(sec->Type())) return common::RSValue::RS_SOME;
 
   LoadPackInfo();
   sec->LoadPackInfo();
@@ -563,11 +563,11 @@ common::RSValue RCAttr::RoughCheckBetween(int pack, int64_t v1, int64_t v2) {
   return res;
 }
 
-int64_t RCAttr::RoughMin(Filter *f, common::RSValue *rf)  // f == NULL is treated as full filter
+int64_t RCAttr::RoughMin(Filter *f, common::RSValue *rf)  // f == nullptr is treated as full filter
 {
   LoadPackInfo();
   if (GetPackType() == common::PackType::STR) return common::MINUS_INF_64;
-  if (f && f->IsEmpty() && rf == NULL) return 0;
+  if (f && f->IsEmpty() && rf == nullptr) return 0;
   int64_t res;
   if (ATI::IsRealType(TypeName())) {
     union {
@@ -577,7 +577,7 @@ int64_t RCAttr::RoughMin(Filter *f, common::RSValue *rf)  // f == NULL is treate
     di.d = DBL_MAX;
     for (uint p = 0; p < SizeOfPack(); p++) {  // minimum of nonempty packs
       auto const &dpn(get_dpn(p));
-      if ((f == NULL || !f->IsEmpty(p)) && (rf == NULL || rf[p] != common::RSValue::RS_NONE)) {
+      if ((f == nullptr || !f->IsEmpty(p)) && (rf == nullptr || rf[p] != common::RSValue::RS_NONE)) {
         if (di.d > dpn.min_d) di.i = dpn.min_i;
       }
     }
@@ -587,7 +587,7 @@ int64_t RCAttr::RoughMin(Filter *f, common::RSValue *rf)  // f == NULL is treate
     res = common::PLUS_INF_64;
     for (uint p = 0; p < SizeOfPack(); p++) {  // minimum of nonempty packs
       auto const &dpn(get_dpn(p));
-      if ((f == NULL || !f->IsEmpty(p)) && (rf == NULL || rf[p] != common::RSValue::RS_NONE) && res > dpn.min_i)
+      if ((f == nullptr || !f->IsEmpty(p)) && (rf == nullptr || rf[p] != common::RSValue::RS_NONE) && res > dpn.min_i)
         res = dpn.min_i;
     }
     if (res == common::PLUS_INF_64) res = common::MINUS_INF_64;  // NULLS only
@@ -595,11 +595,11 @@ int64_t RCAttr::RoughMin(Filter *f, common::RSValue *rf)  // f == NULL is treate
   return res;
 }
 
-int64_t RCAttr::RoughMax(Filter *f, common::RSValue *rf)  // f == NULL is treated as full filter
+int64_t RCAttr::RoughMax(Filter *f, common::RSValue *rf)  // f == nullptr is treated as full filter
 {
   LoadPackInfo();
   if (GetPackType() == common::PackType::STR) return common::PLUS_INF_64;
-  if (f && f->IsEmpty() && rf == NULL) return 0;
+  if (f && f->IsEmpty() && rf == nullptr) return 0;
   int64_t res;
   if (ATI::IsRealType(TypeName())) {
     union {
@@ -609,7 +609,7 @@ int64_t RCAttr::RoughMax(Filter *f, common::RSValue *rf)  // f == NULL is treate
     di.d = -(DBL_MAX);
     for (uint p = 0; p < SizeOfPack(); p++) {  // minimum of nonempty packs
       auto const &dpn(get_dpn(p));
-      if ((f == NULL || !f->IsEmpty(p)) && (rf == NULL || rf[p] != common::RSValue::RS_NONE)) {
+      if ((f == nullptr || !f->IsEmpty(p)) && (rf == nullptr || rf[p] != common::RSValue::RS_NONE)) {
         if (di.d < dpn.max_d) di.i = dpn.max_i;
       }
     }
@@ -619,7 +619,7 @@ int64_t RCAttr::RoughMax(Filter *f, common::RSValue *rf)  // f == NULL is treate
     res = common::MINUS_INF_64;
     for (uint p = 0; p < SizeOfPack(); p++) {  // maximum of nonempty packs
       auto const &dpn(get_dpn(p));
-      if ((f == NULL || !f->IsEmpty(p)) && (rf == NULL || rf[p] != common::RSValue::RS_NONE) && res < dpn.max_i)
+      if ((f == nullptr || !f->IsEmpty(p)) && (rf == nullptr || rf[p] != common::RSValue::RS_NONE) && res < dpn.max_i)
         res = dpn.max_i;
     }
     if (res == common::MINUS_INF_64) res = common::PLUS_INF_64;  // NULLS only
@@ -697,7 +697,7 @@ uint64_t RCAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue 
       values_present.Reset();
       for (uint p = 0; p < SizeOfPack(); p++) {
         auto const &dpn(get_dpn(p));
-        if ((f == NULL || !f->IsEmpty(p)) && (rf == NULL || rf[p] != common::RSValue::RS_NONE) &&
+        if ((f == nullptr || !f->IsEmpty(p)) && (rf == nullptr || rf[p] != common::RSValue::RS_NONE) &&
             dpn.min_i <= dpn.max_i) {
           // dpn.min <= dpn.max is not true e.g. when the pack contains nulls
           // only
@@ -728,7 +728,7 @@ uint64_t RCAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue 
              TypeName() == common::CT::LONGTEXT) {
     size_t max_len = 0;
     for (uint p = 0; p < SizeOfPack(); p++) {  // max len of nonempty packs
-      if (f == NULL || !f->IsEmpty(p)) max_len = std::max(max_len, GetActualSize(p));
+      if (f == nullptr || !f->IsEmpty(p)) max_len = std::max(max_len, GetActualSize(p));
     }
     if (max_len > 0 && max_len < 6)
       no_dist += int64_t(256) << ((max_len - 1) * 8);
@@ -746,11 +746,11 @@ uint64_t RCAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue 
 uint64_t RCAttr::ExactDistinctVals(Filter *f)  // provide the exact number of diff. non-null values, if
                                                // possible, or common::NULL_VALUE_64
 {
-  if (f == NULL)  // no exact information about tuples => nothing can be
+  if (f == nullptr)  // no exact information about tuples => nothing can be
                   // determined for sure
     return common::NULL_VALUE_64;
   LoadPackInfo();
-  if (Type().IsLookup() && !types::RequiresUTFConversions(GetCollation()) && f->IsFull()) return RoughMax(NULL) + 1;
+  if (Type().IsLookup() && !types::RequiresUTFConversions(GetCollation()) && f->IsFull()) return RoughMax(nullptr) + 1;
   bool nulls_only = true;
   for (uint p = 0; p < SizeOfPack(); p++)
     if (!f->IsEmpty(p) && GetPackOntologicalStatus(p) != PackOntologicalStatus::NULLS_ONLY) {
@@ -835,7 +835,7 @@ void RCAttr::GetTextStat(types::TextStat &s, Filter *f) {
     if (auto sp = GetFilter_CMap()) {
       success = true;
       for (uint p = 0; p < SizeOfPack(); p++)
-        if (f == NULL || !f->IsEmpty(p)) {
+        if (f == nullptr || !f->IsEmpty(p)) {
           auto const &dpn(get_dpn(p));
           if (dpn.NullOnly()) continue;
           size_t len = GetActualSize(p);
