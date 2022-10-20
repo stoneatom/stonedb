@@ -66,7 +66,7 @@ static bool Tianmu_SetStatementAllowed(THD *thd, Query_expression *qe) {
 }
 
 void ha_my_tianmu_update_and_store_col_comment(TABLE *table, int field_id, Field *source_field, int source_field_id,
-                                        CHARSET_INFO *cs) {
+                                               CHARSET_INFO *cs) {
   try {
     ha_rcengine_->UpdateAndStoreColumnComment(table, field_id, source_field, source_field_id, cs);
   } catch (std::exception &e) {
@@ -78,9 +78,8 @@ void ha_my_tianmu_update_and_store_col_comment(TABLE *table, int field_id, Field
   }
 }
 
-Query_route_to ha_my_tianmu_query(THD *thd, Query_expression *qe, Query_result *&result,
-                                   ulong setup_tables_done_option, int &res, int &optimize_after_tianmu,
-                                   int &tianmu_free_join, int with_insert) {
+Query_route_to ha_my_tianmu_query(THD *thd, Query_expression *qe, Query_result *&result, ulong setup_tables_done_option,
+                                  int &res, int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
   Query_route_to ret = Query_route_to::TO_TIANMU;
   try {
     // ret is introduced here because in case of some exceptions
@@ -93,8 +92,7 @@ Query_route_to ha_my_tianmu_query(THD *thd, Query_expression *qe, Query_result *
     ret = ha_rcengine_->Handle_Query(thd, qe, result, setup_tables_done_option, res, optimize_after_tianmu,
                                      tianmu_free_join, with_insert);
 
-    if (ret == handler::Query_route_to::TO_MYSQL && AtLeastOneTianmuTableInvolved(qe) &&
-        ForbiddenMySQLQueryPath(qe)) {
+    if (ret == handler::Query_route_to::TO_MYSQL && AtLeastOneTianmuTableInvolved(qe) && ForbiddenMySQLQueryPath(qe)) {
       my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
                  "The query includes syntax that is not supported by the storage engine. "
                  "Either restructure the query with supported syntax, or enable the MySQL core::Query Path "

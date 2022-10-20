@@ -599,8 +599,8 @@ void CompiledQuery::AddColumn(AttrID &a_out, const TableID &t1, CQTerm e1, commo
     std::strcpy(s.alias, alias);
   } else
     s.alias = nullptr;
-    s.n1 = distinct ? 1 : 0;
-    steps.push_back(s);
+  s.n1 = distinct ? 1 : 0;
+  steps.push_back(s);
   if (op == common::ColOperation::GROUP_BY) steps_group_by_cols.push_back(s);
 }
 

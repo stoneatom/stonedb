@@ -206,16 +206,16 @@ class PhysicalColumn : public Column {
   }
   virtual int64_t RoughMin(Filter *f = nullptr,
                            common::RSValue *rf = nullptr) = 0;  // for numerical: best
-                                                             // rough approximation of
-                                                             // min for a given filter
-                                                             // (or global min if filter
-                                                             // is nullptr)
+                                                                // rough approximation of
+                                                                // min for a given filter
+                                                                // (or global min if filter
+                                                                // is nullptr)
   virtual int64_t RoughMax(Filter *f = nullptr,
                            common::RSValue *rf = nullptr) = 0;  // for numerical: best
-                                                             // rough approximation of
-                                                             // max for a given filter
-                                                             // (or global max if filter
-                                                             // is nullptr)
+                                                                // rough approximation of
+                                                                // max for a given filter
+                                                                // (or global max if filter
+                                                                // is nullptr)
   virtual void GetTextStat(types::TextStat &s, [[maybe_unused]] Filter *f = nullptr) { s.Invalidate(); }
   virtual double RoughSelectivity() { return 1; }
   /*! \brief Return true if the column (filtered) contain only non-null distinct

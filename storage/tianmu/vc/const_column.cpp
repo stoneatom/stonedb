@@ -55,7 +55,8 @@ ConstColumn::ConstColumn(core::ValueOrNull const &val, core::ColumnType const &c
   }
 }
 
-ConstColumn::ConstColumn(const types::RCValueObject &v, const core::ColumnType &c) : VirtualColumn(c, nullptr), value() {
+ConstColumn::ConstColumn(const types::RCValueObject &v, const core::ColumnType &c)
+    : VirtualColumn(c, nullptr), value() {
   dim = -1;
   if (c.IsString()) {
     value = core::ValueOrNull(v.ToBString());

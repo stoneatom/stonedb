@@ -85,7 +85,7 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
       continue;
     }
     if ((!just_distinct && cur_a.mode != common::ColOperation::GROUP_BY) ||  // aggregation
-        (just_distinct && cur_a.alias == nullptr)) {                            // special case: hidden column for DISTINCT
+        (just_distinct && cur_a.alias == nullptr)) {                         // special case: hidden column for DISTINCT
       bool already_added = false;
       for (uint j = 0; j < i; j++) {
         if (*(t->GetAttrP(j)) == cur_a) {

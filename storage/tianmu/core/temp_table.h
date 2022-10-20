@@ -216,10 +216,10 @@ class TempTable : public JustATable {
 
   bool OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t limit, int64_t offset,
                              ResultSender *sender = nullptr);  // Sort data contained in
-                                                            // ParameterizedFilter by using some
-                                                            // attributes (usually specified by
-                                                            // AddOrder, but in general -
-                                                            // arbitrary)
+                                                               // ParameterizedFilter by using some
+                                                               // attributes (usually specified by
+                                                               // AddOrder, but in general -
+                                                               // arbitrary)
   // just materialize as SELECT *
   void FillMaterializedBuffers(int64_t local_limit, int64_t local_offset, ResultSender *sender, bool pagewise);
 

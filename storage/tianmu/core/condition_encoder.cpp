@@ -758,9 +758,10 @@ void ConditionEncoder::EncodeIfPossible(Descriptor &desc, bool for_rough_query, 
     vcolumn::ExpressionColumn *vcec = dynamic_cast<vcolumn::ExpressionColumn *>(desc.attr.vc);
     if (vcec == nullptr && (vcsc == nullptr || vcsc->GetVarMap()[0].GetTabPtr()->TableType() != TType::TABLE)) return;
     if (vcec != nullptr) {
-      encode_now = (vcec->ExactlyOneLookup() &&
-                    (desc.op == common::Operator::O_IS_NULL || desc.op == common::Operator::O_NOT_NULL ||
-                     (desc.val1.vc && desc.val1.vc->IsConst() && (desc.val2.vc == nullptr || desc.val2.vc->IsConst()))));
+      encode_now =
+          (vcec->ExactlyOneLookup() &&
+           (desc.op == common::Operator::O_IS_NULL || desc.op == common::Operator::O_NOT_NULL ||
+            (desc.val1.vc && desc.val1.vc->IsConst() && (desc.val2.vc == nullptr || desc.val2.vc->IsConst()))));
     } else {
       encode_now = (desc.IsType_AttrValOrAttrValVal() || desc.IsType_AttrMultiVal() ||
                     desc.op == common::Operator::O_IS_NULL || desc.op == common::Operator::O_NOT_NULL) &&

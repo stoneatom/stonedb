@@ -1160,7 +1160,7 @@ static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec
   // stonedb8 end
 
   thd->set_catalog({0, 1});  // TIANMU UPGRADE
-  thd->set_db({nullptr, 0});    /* will free the current database */
+  thd->set_db({nullptr, 0}); /* will free the current database */
   thd->reset_query();
   thd->get_stmt_da()->set_overwrite_status(true);
   thd->is_error() ? trans_rollback_stmt(thd) : trans_commit_stmt(thd);
