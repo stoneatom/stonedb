@@ -5131,8 +5131,10 @@ bool JOIN::make_join_plan()
       The following codes can be deleted after subsequent support
     */
     TABLE *const table= join_tab->table();
-    bool tianmu_engine = table->s->db_type() ? table->s->db_type()->db_type == DB_TYPE_TIANMU: false;
-    enum_sql_command sqlCommand = thd->lex->sql_command;
+    bool tianmu_engine = table && table->s && 
+                        (table->s->db_type() ? table->s->db_type()->db_type == DB_TYPE_TIANMU: false);
+    enum_sql_command sqlCommand = SQLCOM_END;
+    if(thd->lex) sqlCommand = thd->lex->sql_command;
     bool tianmuDeleteOrUpdate = (tianmu_engine && (sqlCommand == SQLCOM_DELETE ||
                                           sqlCommand == SQLCOM_DELETE_MULTI ||
                                           sqlCommand == SQLCOM_UPDATE ||
