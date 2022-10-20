@@ -23,6 +23,7 @@ BEGIN
 INSERT INTO t_test2(id,first_name,last_name,sex,score,copy_id) VALUES (new.id,new.first_name,new.last_name,new.sex,new.score,new.copy_id);
 END|
 DELIMITER ;|
+CALL mtr.add_suppression(".*Statement is unsafe because it invokes a trigger or a stored function that inserts into an AUTO_INCREMENT column.*");
 INSERT INTO t_test1 values(1,'张','三','1',100,1);
 SELECT id FROM t_test2;
 DROP TRIGGER insert_trigger_t_test2;
