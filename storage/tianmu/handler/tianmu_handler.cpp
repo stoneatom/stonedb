@@ -1377,8 +1377,7 @@ int TianmuHandler::set_cond_iter() {
         filter_ptr.reset(new core::Filter(*filter));
 
       table_ptr = push_down_result->GetTableP(0);
-      table_new_iter = ((core::RCTable *)table_ptr)->Begin(GetAttrsUseIndicator(table), *filter);
-//      table_new_iter = ((core::RCTable *)table_ptr)->Begin(GetAttrsUseIndicator(table), *filter_ptr);
+      table_new_iter = ((core::RCTable *)table_ptr)->Begin(GetAttrsUseIndicator(table), *filter_ptr);
       table_new_iter_end = ((core::RCTable *)table_ptr)->End();
       ret = 0;
     } catch (common::Exception const &e) {
