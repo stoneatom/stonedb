@@ -18,10 +18,10 @@ CREATE TABLE `select_base_with_primary_key` (
 `year_test` year(4) DEFAULT NULL,
 PRIMARY KEY (`pk`)
 ) ENGINE=TIANMU DEFAULT CHARSET=gbk;
-insert into select_base_with_primary_key values (11, 'abcde', 123, 'char', 3, 1, 23, 32, 332, 1.4, 25, '2017-11-11', '11:11:11', '2017-11-11 11:11:11', 1, 2017);
-Warnings:
-Warning	1265	Data truncated for column 'timestamp_test' at row 1
+insert into select_base_with_primary_key values (11, 'abcde', 123, 'char', 3, 1, 23, 32, 332, 1.4, 25, '2017-11-11', '11:11:11', '2017-11-11 11:11:11','2017-11-11 11:11:11', 2017);
 select 'aa' as ag_column1,  !( tinyint_1bit_test )as ag_column2, 1 as ag_column3,min((smallint_test +  smallint_test) =11)as ag_column_fun  from select_base_with_primary_key    GROUP BY  ag_column1,ag_column2  asc,ag_column3   having ag_column_fun<= 37 order by  ag_column1    ,ag_column2    asc,ag_column3    asc,ag_column_fun;
 ag_column1	ag_column2	ag_column3	ag_column_fun
 aa	0	1	0
+Warnings:
+Warning	1287	'GROUP BY with ASC/DESC' is deprecated and will be removed in a future release. Please use GROUP BY ... ORDER BY ... ASC/DESC instead
 drop table select_base_with_primary_key;
