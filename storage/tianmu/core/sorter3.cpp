@@ -296,7 +296,7 @@ void SorterMultiPass::InitHeap() {
 
 SorterMultiPass::Keyblock SorterMultiPass::GetFromBlock(int b, bool &reloaded) {
   if (blocks[b].read_offset == -2) return SorterMultiPass::Keyblock(-1, nullptr, 0);  // end of block
-  if (blocks[b].read_offset == -1) {                                               // new buffer, to be read
+  if (blocks[b].read_offset == -1) {                                                  // new buffer, to be read
     if (blocks[b].file_offset > 0) {  // preserve the last row before overwriting the whole buffer
       std::memcpy(last_row, blocks[b].block_start + blocks[b].buf_size - total_bytes, total_bytes);
       reloaded = true;

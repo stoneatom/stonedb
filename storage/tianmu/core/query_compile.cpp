@@ -998,7 +998,8 @@ Query_route_to Query::Compile(CompiledQuery *compiled_query, Query_block *select
         fields->push_back(field_for_subselect);
       }
       bool aggr_used = false;
-      if (AddFields(*fields, tmp_table, group != nullptr, col_count, ignore_minmax, aggr_used) == Query_route_to::TO_MYSQL)
+      if (AddFields(*fields, tmp_table, group != nullptr, col_count, ignore_minmax, aggr_used) ==
+          Query_route_to::TO_MYSQL)
         throw CompilationError();
 
       if (AddGroupByFields(group, tmp_table) == Query_route_to::TO_MYSQL) throw CompilationError();

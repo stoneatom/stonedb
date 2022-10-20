@@ -855,7 +855,8 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
             ta[-step.t1.n - 1] = TempTable::Create(*(TempTable *)ta[-step.t2.n - 1].get(), false);
           if (IsRoughQuery()) {
             if (step.t3.n == common::NULL_VALUE_32)
-              ((TempTable *)ta[-step.t1.n - 1].get())->RoughUnion(nullptr, qu.IsResultTable(step.t1) ? sender : nullptr);
+              ((TempTable *)ta[-step.t1.n - 1].get())
+                  ->RoughUnion(nullptr, qu.IsResultTable(step.t1) ? sender : nullptr);
             else
               ((TempTable *)ta[-step.t1.n - 1].get())
                   ->RoughUnion((TempTable *)ta[-step.t3.n - 1].get(), qu.IsResultTable(step.t1) ? sender : nullptr);
@@ -943,7 +944,8 @@ Query_route_to Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TableID &tmp
             dynamic_cast<Item_in_subselect *>(item_subs) != nullptr) {
           if (negative) {
             MarkWithAll(*oper_for_subselect);
-            if (dynamic_cast<Item_in_subselect *>(item_subs) != nullptr && *oper_for_subselect == common::Operator::O_IN)
+            if (dynamic_cast<Item_in_subselect *>(item_subs) != nullptr &&
+                *oper_for_subselect == common::Operator::O_IN)
               *oper_for_subselect = common::Operator::O_EQ_ALL;
           } else {
             MarkWithAny(*oper_for_subselect);
@@ -1304,7 +1306,8 @@ CondID Query::ConditionNumberFromComparison(Item *conds, const TableID &tmp_tabl
       }
     } else {
       if (Item2CQTerm(an_arg, terms[i], tmp_table, filter_type,
-                      an_arg->type() == Item::SUBSELECT_ITEM ? negative : false, nullptr, &op) == Query_route_to::TO_MYSQL)
+                      an_arg->type() == Item::SUBSELECT_ITEM ? negative : false, nullptr,
+                      &op) == Query_route_to::TO_MYSQL)
         return CondID(-1);
       if ((op == common::Operator::O_LIKE || op == common::Operator::O_NOT_LIKE) &&
           !(an_arg->data_type() == MYSQL_TYPE_VARCHAR || an_arg->data_type() == MYSQL_TYPE_STRING ||
@@ -1342,7 +1345,8 @@ CondID Query::ConditionNumberFromNaked(Item *conds, const TableID &tmp_table, Co
   CondID filter;
   CQTerm naked_col;
   if (Item2CQTerm(conds, naked_col, tmp_table, filter_type,
-                  conds->type() == Item::SUBSELECT_ITEM ? (and_me_filter != nullptr) : false) == Query_route_to::TO_MYSQL)
+                  conds->type() == Item::SUBSELECT_ITEM ? (and_me_filter != nullptr) : false) ==
+      Query_route_to::TO_MYSQL)
     return CondID(-1);
 
   bool is_string = conds->result_type() == STRING_RESULT;

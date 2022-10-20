@@ -1046,7 +1046,7 @@ bool RCAttr::IsDistinct(Filter *f) {
   MEASURE_FET("RCAttr::IsDistinct(...)");
   if (ct.IsLookup() && types::RequiresUTFConversions(GetCollation())) return false;
   if (PhysicalColumn::IsDistinct() == common::RSValue::RS_ALL) {  // = is_unique_updated && is_unique
-    if (f == nullptr) return (NumOfNulls() == 0);                    // no nulls at all, and is_unique  => distinct
+    if (f == nullptr) return (NumOfNulls() == 0);                 // no nulls at all, and is_unique  => distinct
     LoadPackInfo();
     for (uint b = 0; b < SizeOfPack(); b++)
       if (!f->IsEmpty(b) && get_dpn(b).nn > 0)  // any null in nonempty pack?

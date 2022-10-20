@@ -658,38 +658,38 @@ to that effect.
 */
 const QueryOperator *Descriptor::CreateQueryOperator(common::Operator type) const {
   const char *string_rep[static_cast<int>(common::Operator::OPERATOR_ENUM_COUNT)] = {
-      "=",            // common::Operator::O_EQ
-      "=ALL",         // common::Operator::O_EQ_ALL
-      "=ANY",         // common::Operator::O_EQ_ANY
-      "<>",           // common::Operator::O_NOT_EQ
-      "<>ALL",        // common::Operator::O_NOT_EQ_ALL
-      "<>ANY",        // common::Operator::O_NOT_EQ_ANY
-      "<",            // common::Operator::O_LESS
-      "<ALL",         // common::Operator::O_LESS_ALL
-      "<ANY",         // common::Operator::O_LESS_ANY
-      ">",            // common::Operator::O_MORE
-      ">ALL",         // common::Operator::O_MORE_ALL
-      ">ANY",         // common::Operator::O_MORE_ANY
-      "<=",           // common::Operator::O_LESS_EQ
-      "<=ALL",        // common::Operator::O_LESS_EQ_ALL
-      "<=ANY",        // common::Operator::O_LESS_EQ_ANY
-      ">=",           // common::Operator::O_MORE_EQ
-      ">=ALL",        // common::Operator::O_MORE_EQ_ALL
-      ">=ANY",        // common::Operator::O_MORE_EQ_ANY
+      "=",               // common::Operator::O_EQ
+      "=ALL",            // common::Operator::O_EQ_ALL
+      "=ANY",            // common::Operator::O_EQ_ANY
+      "<>",              // common::Operator::O_NOT_EQ
+      "<>ALL",           // common::Operator::O_NOT_EQ_ALL
+      "<>ANY",           // common::Operator::O_NOT_EQ_ANY
+      "<",               // common::Operator::O_LESS
+      "<ALL",            // common::Operator::O_LESS_ALL
+      "<ANY",            // common::Operator::O_LESS_ANY
+      ">",               // common::Operator::O_MORE
+      ">ALL",            // common::Operator::O_MORE_ALL
+      ">ANY",            // common::Operator::O_MORE_ANY
+      "<=",              // common::Operator::O_LESS_EQ
+      "<=ALL",           // common::Operator::O_LESS_EQ_ALL
+      "<=ANY",           // common::Operator::O_LESS_EQ_ANY
+      ">=",              // common::Operator::O_MORE_EQ
+      ">=ALL",           // common::Operator::O_MORE_EQ_ALL
+      ">=ANY",           // common::Operator::O_MORE_EQ_ANY
       "IS nullptr",      // common::Operator::O_IS_NULL
       "IS NOT nullptr",  // common::Operator::O_NOT_NULL
-      "BET.",         // common::Operator::O_BETWEEN
-      "NOT BET.",     // common::Operator::O_NOT_BETWEEN
-      "LIKE",         // common::Operator::O_LIKE
-      "NOT LIKE",     // common::Operator::O_NOT_LIKE
-      "IN",           // common::Operator::O_IN
-      "NOT IN",       // common::Operator::O_NOT_IN
-      "EXISTS",       // common::Operator::O_EXISTS
-      "NOT EXISTS",   // common::Operator::O_NOT_EXISTS
-      "FALSE",        // common::Operator::O_FALSE
-      "TRUE",         // common::Operator::O_TRUE
-      "ESCAPE",       // common::Operator::O_ESCAPE
-      "OR TREE"       // common::Operator::O_OR_TREE
+      "BET.",            // common::Operator::O_BETWEEN
+      "NOT BET.",        // common::Operator::O_NOT_BETWEEN
+      "LIKE",            // common::Operator::O_LIKE
+      "NOT LIKE",        // common::Operator::O_NOT_LIKE
+      "IN",              // common::Operator::O_IN
+      "NOT IN",          // common::Operator::O_NOT_IN
+      "EXISTS",          // common::Operator::O_EXISTS
+      "NOT EXISTS",      // common::Operator::O_NOT_EXISTS
+      "FALSE",           // common::Operator::O_FALSE
+      "TRUE",            // common::Operator::O_TRUE
+      "ESCAPE",          // common::Operator::O_ESCAPE
+      "OR TREE"          // common::Operator::O_OR_TREE
   };
 
   return new QueryOperator(type, string_rep[static_cast<int>(type)]);

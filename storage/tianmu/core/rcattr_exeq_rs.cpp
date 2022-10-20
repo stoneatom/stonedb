@@ -747,7 +747,7 @@ uint64_t RCAttr::ExactDistinctVals(Filter *f)  // provide the exact number of di
                                                // possible, or common::NULL_VALUE_64
 {
   if (f == nullptr)  // no exact information about tuples => nothing can be
-                  // determined for sure
+                     // determined for sure
     return common::NULL_VALUE_64;
   LoadPackInfo();
   if (Type().IsLookup() && !types::RequiresUTFConversions(GetCollation()) && f->IsFull()) return RoughMax(nullptr) + 1;

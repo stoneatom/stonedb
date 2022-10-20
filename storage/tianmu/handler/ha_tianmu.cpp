@@ -564,7 +564,7 @@ int ha_tianmu::delete_all_rows() {
 }
 
 int ha_tianmu::rename_table(const char *from, const char *to, const dd::Table *from_table_def,
-                                dd::Table *to_table_def) {  // stonedb8 TODO
+                            dd::Table *to_table_def) {  // stonedb8 TODO
   try {
     ha_rcengine_->RenameTable(current_txn_, from, to, from_table_def, to_table_def, ha_thd());
     return 0;
@@ -681,7 +681,7 @@ bool tianmu_check_status([[maybe_unused]] void *param) { return 0; }
  calling ha_open() which then calls the handler specific open().
  */
 int ha_tianmu::open(const char *name, [[maybe_unused]] int mode, [[maybe_unused]] uint test_if_locked,
-                        [[maybe_unused]] const dd::Table *table_def) {  // stonedb8 TODO
+                    [[maybe_unused]] const dd::Table *table_def) {  // stonedb8 TODO
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
   m_table_name = name;
@@ -776,8 +776,8 @@ int ha_tianmu::index_end() {
  index.
  */
 int ha_tianmu::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] const uchar *key,
-                              [[maybe_unused]] uint key_len __attribute__((unused)),
-                              enum ha_rkey_function find_flag __attribute__((unused))) {
+                          [[maybe_unused]] uint key_len __attribute__((unused)),
+                          enum ha_rkey_function find_flag __attribute__((unused))) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int rc = HA_ERR_KEY_NOT_FOUND;
   try {
@@ -1187,7 +1187,7 @@ int ha_tianmu::delete_table(const char *name, const dd::Table *table_def) {  // 
  Called from opt_range.cc by check_quick_keys().
  */
 ha_rows ha_tianmu::records_in_range([[maybe_unused]] uint inx, [[maybe_unused]] key_range *min_key,
-                                        [[maybe_unused]] key_range *max_key) {
+                                    [[maybe_unused]] key_range *max_key) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   DBUG_RETURN(10);  // low number to force index usage
 }
@@ -1203,7 +1203,7 @@ ha_rows ha_tianmu::records_in_range([[maybe_unused]] uint inx, [[maybe_unused]] 
  Called from handle.cc by ha_create_table().
  */
 int ha_tianmu::create(const char *name, TABLE *table_arg, [[maybe_unused]] HA_CREATE_INFO *info,
-                          dd::Table *table_def) {  // stonedb8 TODO
+                      dd::Table *table_def) {  // stonedb8 TODO
   DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
     ha_rcengine_->CreateTable(name, table_arg, table_def);
@@ -1462,7 +1462,7 @@ int ha_tianmu::reset() {
 }
 
 enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_unused]] TABLE *altered_table,
-                                                                          Alter_inplace_info *ha_alter_info) {
+                                                                      Alter_inplace_info *ha_alter_info) {
   if ((ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER) &&
       (ha_alter_info->handler_flags != TIANMU_SUPPORTED_ALTER_COLUMN_NAME)) {
     return HA_ALTER_ERROR;
@@ -1471,9 +1471,9 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
 }
 
 bool ha_tianmu::inplace_alter_table(TABLE *altered_table [[maybe_unused]],
-                                        Alter_inplace_info *ha_alter_info [[maybe_unused]],
-                                        const dd::Table *old_table_def [[maybe_unused]],
-                                        dd::Table *new_table_def [[maybe_unused]]) {  // stonedb8 TODO
+                                    Alter_inplace_info *ha_alter_info [[maybe_unused]],
+                                    const dd::Table *old_table_def [[maybe_unused]],
+                                    dd::Table *new_table_def [[maybe_unused]]) {  // stonedb8 TODO
   try {
     if (!(ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)) {
       std::vector<Field *> v_old(table_share->field, table_share->field + table_share->fields);
@@ -1495,10 +1495,10 @@ bool ha_tianmu::inplace_alter_table(TABLE *altered_table [[maybe_unused]],
 }
 
 bool ha_tianmu::commit_inplace_alter_table(TABLE *altered_table [[maybe_unused]],
-                                               Alter_inplace_info *ha_alter_info [[maybe_unused]],
-                                               bool commit [[maybe_unused]],
-                                               const dd::Table *old_table_def [[maybe_unused]],
-                                               dd::Table *new_table_def [[maybe_unused]]) {  // stonedb8 TODO
+                                           Alter_inplace_info *ha_alter_info [[maybe_unused]],
+                                           bool commit [[maybe_unused]],
+                                           const dd::Table *old_table_def [[maybe_unused]],
+                                           dd::Table *new_table_def [[maybe_unused]]) {  // stonedb8 TODO
   if (!commit) {
     TIANMU_LOG(LogCtl_Level::INFO, "Alter table failed : %s%s", m_table_name.c_str(), " rollback");
     return true;
@@ -1548,7 +1548,7 @@ bool ha_tianmu::commit_inplace_alter_table(TABLE *altered_table [[maybe_unused]]
 
  */
 void ha_tianmu::key_convert(const uchar *key, uint key_len, std::vector<uint> cols,
-                                std::vector<std::string_view> &keys) {
+                            std::vector<std::string_view> &keys) {
   key_restore(table->record[0], const_cast<uchar *>(key), &table->key_info[active_index], key_len);
 
   Field **field = table->field;
@@ -2408,11 +2408,11 @@ mysql_declare_plugin(tianmu){
     "Tianmu storage engine",
     PLUGIN_LICENSE_GPL,
     Tianmu::handler::rcbase_init_func, /* Plugin Init */
-    nullptr,                             /* Plugin Check uninstall */
+    nullptr,                           /* Plugin Check uninstall */
     Tianmu::handler::rcbase_done_func, /* Plugin Deinit */
     0x0001 /* tianmu version 0.1 */,
     Tianmu::handler::statusvars,              /* status variables  */
     Tianmu::handler::tianmu_system_variables, /* system variables  */
-    nullptr,                                    /* config options    */
-    0                                           /* flags for plugin */
+    nullptr,                                  /* config options    */
+    0                                         /* flags for plugin */
 } mysql_declare_plugin_end;
