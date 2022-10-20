@@ -18,8 +18,8 @@
 #define TIANMU_CORE_PARAMETERIZED_FILTER_H_
 #pragma once
 
+#include "core/compiled_query_term.h"
 #include "core/condition.h"
-#include "core/cq_term.h"
 #include "core/joiner.h"
 #include "core/multi_index.h"
 

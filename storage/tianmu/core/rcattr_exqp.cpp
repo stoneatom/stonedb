@@ -21,7 +21,7 @@
 */
 
 #include "common/assert.h"
-#include "core/cq_term.h"
+#include "core/compiled_query_term.h"
 #include "core/pack_guardian.h"
 #include "core/pack_str.h"
 #include "core/rc_attr.h"

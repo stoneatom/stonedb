@@ -1106,13 +1106,13 @@ void TempTable::AddConds(Condition *cond, CondType type) {
     DEBUG_ASSERT(0);
 }
 
-void TempTable::AddInnerConds(Condition *cond, std::vector<TabID> &dim_aliases) {
+void TempTable::AddInnerConds(Condition *cond, std::vector<TableID> &dim_aliases) {
   for (uint i = 0; i < cond->Size(); i++)
     for (uint j = 0; j < dim_aliases.size(); j++) (*cond)[i].left_dims[GetDimension(dim_aliases[j])] = true;
   filter.AddConditions(cond);
 }
 
-void TempTable::AddLeftConds(Condition *cond, std::vector<TabID> &left_aliases, std::vector<TabID> &right_aliases) {
+void TempTable::AddLeftConds(Condition *cond, std::vector<TableID> &left_aliases, std::vector<TableID> &right_aliases) {
   for (uint i = 0; i < cond->Size(); i++) {
     for (int d = 0; d < (*cond)[i].left_dims.Size(); d++) (*cond)[i].left_dims[d] = (*cond)[i].right_dims[d] = false;
     for (uint j = 0; j < left_aliases.size(); j++) (*cond)[i].left_dims[GetDimension(left_aliases[j])] = true;
@@ -1536,7 +1536,7 @@ void TempTable::Display(std::ostream &out) {
   out << "-----------" << system::endl;
 }
 
-int TempTable::GetDimension(TabID alias) {
+int TempTable::GetDimension(TableID alias) {
   for (uint i = 0; i < aliases.size(); i++) {
     if (aliases[i] == alias.n) return i;
   }

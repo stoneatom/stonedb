@@ -23,7 +23,7 @@
 #include <vector>
 
 #include "core/bin_tools.h"
-#include "core/cq_term.h"
+#include "core/compiled_query_term.h"
 #include "core/dimension_group.h"
 #include "core/filter.h"
 #include "core/index_table.h"

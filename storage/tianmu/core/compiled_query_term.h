@@ -32,20 +32,21 @@ class Hash64;
 }  // namespace utils
 
 namespace core {
+
 struct AttrID {
   int n;
   AttrID() : n(common::NULL_VALUE_32) {}
   explicit AttrID(int _n) : n(_n) {}
 };
 
-struct TabID {
+struct TableID {
   int n;
-  TabID() : n(common::NULL_VALUE_32) {}
-  explicit TabID(int _n) : n(_n) {}
+  TableID() : n(common::NULL_VALUE_32) {}
+  explicit TableID(int _n) : n(_n) {}
   bool IsNullID() const { return (n == common::NULL_VALUE_32); }
-  bool operator==(const TabID &other) const { return (n == other.n) && (!IsNullID()); }
-  bool operator<(const TabID &other) const { return (n < other.n) && (!IsNullID()); }
-  bool operator!=(const TabID &other) const { return !(operator==(other)); }
+  bool operator==(const TableID &other) const { return (n == other.n) && (!IsNullID()); }
+  bool operator<(const TableID &other) const { return (n < other.n) && (!IsNullID()); }
+  bool operator!=(const TableID &other) const { return !(operator==(other)); }
 };
 
 struct CondID {
