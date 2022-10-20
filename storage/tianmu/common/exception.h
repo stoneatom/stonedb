@@ -71,7 +71,8 @@ class TIANMUError {
   ErrorCode GetErrorCode() { return ec; }
   bool operator==(ErrorCode tianmu_ec) { return tianmu_ec == ec; }
   const std::string &Message() {
-    if (!message.empty()) return message;
+    if (!message.empty())
+      return message;
     return error_messages[static_cast<int>(ec)];
   }
 
@@ -84,10 +85,12 @@ class Exception : public std::runtime_error {
  public:
   Exception(std::string const &msg);
   virtual ~Exception() {}
-  virtual const std::string &trace() const { return stack_trace; }
+  virtual const std::string &trace() const { return stack_trace_; }
+  virtual const std::string &getExceptionMsg() const { return exception_msg_; }
 
  protected:
-  std::string stack_trace;
+  std::string stack_trace_;
+  std::string exception_msg_;
 };
 
 // internal error
@@ -185,7 +188,8 @@ class DataTypeConversionException : public Exception {
 class UnsupportedDataTypeException : public Exception {
  public:
   UnsupportedDataTypeException(std::string const &msg) : Exception(msg) {}
-  UnsupportedDataTypeException(TIANMUError tianmu_error = ErrorCode::UNSUPPORTED_DATATYPE) : Exception(tianmu_error.Message()) {}
+  UnsupportedDataTypeException(TIANMUError tianmu_error = ErrorCode::UNSUPPORTED_DATATYPE)
+      : Exception(tianmu_error.Message()) {}
 };
 
 class NetStreamException : public Exception {
