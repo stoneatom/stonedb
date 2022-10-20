@@ -1,0 +1,15 @@
+--source include/have_tianmu.inc
+create database test_tmp;
+use test_tmp;
+create table t1(a1 integer primary key, b1 integer,c1 varchar(255) charset utf8 collate utf8_bin not null) engine=tianmu default CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+create table t2(a2 integer primary key, b2 integer,c2 varchar(255) charset utf8 collate utf8_bin not null) engine=tianmu default CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+create view v as select * from t1 join t2 on true;
+insert into v(a1,b1,c1) values (11, 0, "你好，世界!Hello,world!") on duplicate key update b1=b1+1,c1="杭州亚运会，杭州，hangzhou！";
+insert into v(a1,b1,c1) values (11, 0, "你好，世界!Hello,world!") on duplicate key update b1=b1+1,c1="杭州亚运会，杭州，hangzhou！";
+insert into v(a2,b2,c2) values (21, 0, "谢谢你！Thank you") on duplicate key update b2=b2+1,c2="不客气，you are welcome~";
+insert into v(a2,b2,c2) values (21, 0, "谢谢你！Thank you") on duplicate key update b2=b2+1,c2="不客气，you are welcome~";
+select * from v;
+drop view v;
+drop table t2;
+drop table t1;
+drop database test_tmp;
