@@ -1621,6 +1621,54 @@ int Query::BuildConditions(Item *conds, CondID &cond_id, CompiledQuery *cq, cons
   return RCBASE_QUERY_ROUTE;
 }
 
+bool Query::internalDataTimeIsNullToEq(THD *thd, Item *cond, Item **retcond) {
+  if (!thd || !cond)
+    return true;
+  if (cond->type() == Item::COND_ITEM) {
+    Item_cond *const item_cond = down_cast<Item_cond *>(cond);
+    List_iterator<Item> li(*item_cond->argument_list());
+    Item *item;
+
+    bool is_cond_or = (cond && dynamic_cast<Item_cond_or *>(cond)) ? true : false;
+    while ((item = li++)) {
+      Item *new_item;
+      if (internalDataTimeIsNullToEq(thd, item, &new_item))
+        return true;
+    }
+  } else if (cond->type() == Item::FUNC_ITEM && down_cast<Item_func *>(cond)->functype() == Item_func::ISNULL_FUNC) {
+    Item_func_isnull *const func = down_cast<Item_func_isnull *>(cond);
+    Item **args = func->arguments();
+    if (args[0]->type() == Item::FIELD_ITEM) {
+      Field *const field = down_cast<Item_field *>(args[0])->field;
+      switch (field->type()) {
+        case MYSQL_TYPE_TIME:
+        case MYSQL_TYPE_TIME2:
+        case MYSQL_TYPE_DATE:
+        case MYSQL_TYPE_DATETIME:
+        case MYSQL_TYPE_NEWDATE:
+        case MYSQL_TYPE_TIMESTAMP2:
+        case MYSQL_TYPE_DATETIME2: {
+          Item *item0 = new (thd->mem_root) Item_int((longlong)0, 1);
+          if (item0 == NULL)
+            return true;
+          Item *eq_cond = new (thd->mem_root) Item_func_eq(args[0], item0);
+          if (eq_cond == NULL)
+            return true;
+          // Convert isnull to eq whenever it is of date type
+          cond = eq_cond;
+
+          if (cond->fix_fields(thd, &cond))
+            return true;
+        } break;
+        default:
+          break;
+      }
+    }
+  }
+  *retcond = cond;
+  return false;
+}
+
 bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, Item *&field_for_subselect, Item *&conds,
                                          Item *&having, Item *&cond_to_reinsert, List<Item> *&list_to_reinsert,
                                          Item *left_expr_for_subselect) {

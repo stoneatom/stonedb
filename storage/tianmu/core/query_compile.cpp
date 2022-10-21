@@ -1078,6 +1078,7 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       if (!AddOrderByFields(order, tmp_table, group != nullptr || sl->join->select_distinct || aggr_used))
         throw CompilationError();
       CondID cond_id;
+      internalDataTimeIsNullToEq(sl->master_unit()->thd, conds, &conds);
       if (!BuildConditions(conds, cond_id, cq, tmp_table, CondType::WHERE_COND, zero_result))
         throw CompilationError();
 
