@@ -1348,9 +1348,12 @@ bool Protocol_text::store_long(longlong from)
 {
 #ifndef NDEBUG
   // field_types check is needed because of the embedded protocol
+  // tianmu, TODO, add "MYSQL_TYPE_VAR_STRING" assertion,refer to
+  // send_field_metadata,line 1194
   assert(send_metadata || field_types == 0 ||
          field_types[field_pos] == MYSQL_TYPE_INT24 ||
-         field_types[field_pos] == MYSQL_TYPE_LONG);
+         field_types[field_pos] == MYSQL_TYPE_LONG ||
+         field_types[field_pos] == MYSQL_TYPE_VAR_STRING);
   field_pos++;
 #endif
   char buff[20];
