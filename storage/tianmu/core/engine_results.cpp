@@ -79,6 +79,7 @@ void scan_fields(mem_root_deque<Item *> &fields, uint *&buf_lens, std::map<int, 
         tmp->hybrid_field_type_ = item->data_type();
         tmp->collation.set(item->collation);
         tmp->value_.set_charset(item->collation.collation);
+        tmp->set_data_type(item->data_type());
         fields[item_id] = tmp;  // stonedb8
         break;
       }
