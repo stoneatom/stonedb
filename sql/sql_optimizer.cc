@@ -10162,14 +10162,12 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
     Item_cond *const item_cond= down_cast<Item_cond *>(cond);
     const auto& item_func_type = item_cond->functype();
     const bool and_level = Item_func::COND_AND_FUNC == item_func_type;
+    const bool or_level = Item_func::COND_OR_FUNC == item_func_type;
     List_iterator<Item> li(*item_cond->argument_list());
     bool should_fix_fields= false;
 
     *cond_value=Item::COND_UNDEF;
     Item *item;
-
-    bool is_cond_or = Item_func::Functype::COND_OR_FUNC == item_func_type;
-    bool is_cond_and = Item_func::Functype::COND_AND_FUNC == item_func_type;
 
     while ((item=li++))
     {
@@ -10294,16 +10292,12 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
 
         if (cond_replace)
         {
-          if ((is_cond_or && cond_value_equivalent)
-            || (is_cond_and && (!cond_value_equivalent)))
+          if ((or_level && cond_value_equivalent)
+            || (and_level && (!cond_value_equivalent)))
           {
-            *cond_value = tmp_cond_value;
+            *cond_value = Item::COND_OK;
             *retcond = NULL;
             return false;
-          }
-          else
-          {
-            li.remove();
           }
         }
       }
