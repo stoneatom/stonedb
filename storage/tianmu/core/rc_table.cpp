@@ -598,7 +598,6 @@ void RCTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
       case MYSQL_TYPE_NEWDATE:
       case MYSQL_TYPE_TIMESTAMP2:
       case MYSQL_TYPE_DATETIME2: {
-        f->store(0);
       } break;
       default: {
         vc.ExpectedNull(true);
@@ -678,7 +677,6 @@ void RCTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
       dt.hour = my_time.hour;
       dt.minute = my_time.minute;
       dt.second = my_time.second;
-
       *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = dt.val;
       vc.ExpectedSize(sizeof(int64_t));
     } break;

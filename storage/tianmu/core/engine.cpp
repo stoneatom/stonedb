@@ -432,7 +432,6 @@ void Engine::EncodeRecord(const std::string &table_path, int tid, Field **field,
       std::memcpy(buf.get(), old_buf.get(), used);
       ptr = buf.get() + used;
     }
-
     if (f->is_null()) {
       switch (f->type()) {
         case MYSQL_TYPE_TIME:
@@ -442,7 +441,6 @@ void Engine::EncodeRecord(const std::string &table_path, int tid, Field **field,
         case MYSQL_TYPE_NEWDATE:
         case MYSQL_TYPE_TIMESTAMP2:
         case MYSQL_TYPE_DATETIME2: {
-          f->store(0);
         } break;
         default: {
           null_mask.set(i);
