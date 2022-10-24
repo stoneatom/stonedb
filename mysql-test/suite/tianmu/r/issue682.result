@@ -123,6 +123,52 @@ delete from t1 where a ='12:13:14';
 select * from t1;
 a
 drop table t1;
+CREATE TABLE t1 (a varchar(10));
+CREATE TABLE t2 (a varchar(10), b date  not null);
+CREATE TABLE t3 (a varchar(10), b TIME  not null);
+INSERT INTO t1 VALUES ('test1');
+INSERT  ignore  INTO t2 VALUES
+('test1','2016-12-13'),('test1','2016-12-14'),('test1','2016-12-15'),('test1',null);
+Warnings:
+Warning	1048	Column 'b' cannot be null
+INSERT ignore INTO t3 VALUES
+('test1','11:13:14'), ('test1','12:13:14'), ('test1','10:13:14'),('test1',null);
+Warnings:
+Warning	1048	Column 'b' cannot be null
+SELECT *
+FROM t1 LEFT JOIN t2
+ON t2.a = 'test1' AND t2.b = '20161213'
+WHERE t1.a = 'test1';
+a	a	b
+test1	test1	2016-12-13
+SELECT *
+FROM t1 LEFT JOIN t2
+ON t2.a = 'test1' 
+WHERE t1.a = 'test1' 
+or t2.b is null;
+a	a	b
+test1	test1	2016-12-13
+test1	test1	2016-12-14
+test1	test1	2016-12-15
+test1	test1	0000-00-00
+SELECT *
+FROM t1 LEFT JOIN t3
+ON t3.a = 'test1' 
+AND t3.b = '12:13:14'
+WHERE t1.a = 'test1';
+a	a	b
+test1	test1	12:13:14
+SELECT *
+FROM t1 LEFT JOIN t3
+ON t3.a = 'test1' 
+WHERE t1.a = 'test1' 
+or t3.b is null;
+a	a	b
+test1	test1	11:13:14
+test1	test1	12:13:14
+test1	test1	10:13:14
+test1	test1	00:00:00
+drop table t1,t2,t3;
 set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,NO_ZERO_IN_DATE,NO_ZERO_DATE';
 Warnings:
 Warning	3135	'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
