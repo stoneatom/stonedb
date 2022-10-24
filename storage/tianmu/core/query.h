@@ -69,7 +69,6 @@ class Query final {
 
   std::multimap<std::string, std::pair<int, TABLE *>> table_alias2index_ptr;
 
-
  private:
   CompiledQuery *cq = nullptr;
   std::vector<std::pair<TabID, bool>> subqueries_in_where;

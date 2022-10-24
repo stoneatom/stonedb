@@ -988,7 +988,7 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
 
     List<Item> *fields = &sl->fields_list;
     Item *conds = nullptr;
-    if(!sl->join->where_cond)
+    if (!sl->join->where_cond)
       conds = sl->where_cond();
     else
       conds = sl->join->where_cond;
