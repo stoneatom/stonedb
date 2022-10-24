@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - stonedb-5.7-dev
+    paths:
+      - 'Docs/**'
+      - 'docs/**'
+      - 'website/**'
 
 jobs:
   deploy:
@@ -15,7 +19,7 @@ jobs:
         with:
           node-version: 16.x
       - name: Install dependencies and build website
-        run: cd website &&  yarn install --frozen-lockfile && yarn build
+        run: cd website &&  yarn install && yarn build
 
       - name: Deploy with Rsync
         uses: burnett01/rsync-deployments@5.2.1
