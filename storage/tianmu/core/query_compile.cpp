@@ -394,10 +394,14 @@ Query_route_to Query::AddJoins(mem_root_deque<TABLE_LIST *> join, /*List<TABLE_L
 
 Query_route_to Query::AddFields(mem_root_deque<Item *> &fields, TableID const &tmp_table, bool const group_by_clause,
                                 int &num_of_added_fields, bool ignore_minmax, bool &aggregation_used) {
-  Item *item;
+  Item *item = nullptr;
   int added = 0;
-  for (auto it = fields.begin(); it != fields.end(); ++it) {
-    item = *it;
+  auto it = fields.begin();
+  if (it != fields.end()) {
+    item = *(it++);
+  }
+
+  while (item != nullptr) {
     WrapStatus ws;
     common::ColOperation oper;
     bool distinct;
@@ -473,7 +477,11 @@ Query_route_to Query::AddFields(mem_root_deque<Item *> &fields, TableID const &t
       } else
         AddColumnForMysqlExpression(expr, tmp_table, item->item_name.ptr(), oper, distinct);
     }
-
+    if (it != fields.end()) {
+      item = *(it++);
+    } else {
+      item = nullptr;
+    }
     added++;
   }
 
