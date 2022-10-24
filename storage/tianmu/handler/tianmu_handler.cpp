@@ -1453,9 +1453,8 @@ const Item *TianmuHandler::cond_push(const Item *a_cond) {
 
     std::unique_ptr<core::CompiledQuery> tmp_cq(new core::CompiledQuery(*m_cq));
     core::CondID cond_id;
-    if(!m_query->internalDataTimeIsNullToEq(table->in_use, cond, &cond) &&
-      table->reginfo.qep_tab){
-      table->reginfo.qep_tab->set_condition(cond); // Reset Item
+    if (!m_query->internalDataTimeIsNullToEq(table->in_use, cond, &cond) && table->reginfo.qep_tab) {
+      table->reginfo.qep_tab->set_condition(cond);  // Reset Item
     }
     if (!m_query->BuildConditions(cond, cond_id, tmp_cq.get(), m_tmp_table, core::CondType::WHERE_COND, false)) {
       m_query.reset();
