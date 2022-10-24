@@ -91,9 +91,11 @@ static int has_pack(const LEX_STRING &comment) {
   boost::to_upper(str);
   std::string val;
   auto pos = str.find("PACK");
-  if (pos == std::string::npos) return ret;
+  if (pos == std::string::npos)
+    return ret;
   size_t val_pos = str.find(':', pos);
-  if (val_pos == std::string::npos) return ret;
+  if (val_pos == std::string::npos)
+    return ret;
   size_t term_pos = str.find(';', val_pos);
   if (term_pos == std::string::npos) {
     val = str.substr(val_pos + 1);
@@ -102,7 +104,8 @@ static int has_pack(const LEX_STRING &comment) {
   }
   boost::trim(val);
   ret = atoi(val.c_str());
-  if (ret > common::DFT_PSS || ret <= 0) ret = common::DFT_PSS;
+  if (ret > common::DFT_PSS || ret <= 0)
+    ret = common::DFT_PSS;
   return ret;
 }
 
@@ -111,9 +114,11 @@ static std::string has_mem_name(const LEX_STRING &comment) {
   std::string str(comment.str, comment.length);
   boost::to_upper(str);
   auto pos = str.find("ROWSTORE");
-  if (pos == std::string::npos) return name;
+  if (pos == std::string::npos)
+    return name;
   size_t val_pos = str.find(':', pos);
-  if (val_pos == std::string::npos) return name;
+  if (val_pos == std::string::npos)
+    return name;
   size_t term_pos = str.find(';', val_pos);
   if (term_pos == std::string::npos) {
     name = str.substr(val_pos + 1);
@@ -152,7 +157,8 @@ fs::path Engine::GetNextDataDir() {
   if (tianmu_data_dirs.empty()) {
     // fall back to use MySQL data directory
     auto p = ha_rcengine_->tianmu_data_dir / TIANMU_DATA_DIR;
-    if (!fs::is_directory(p)) fs::create_directory(p);
+    if (!fs::is_directory(p))
+      fs::create_directory(p);
     return p;
   }
 
@@ -221,7 +227,8 @@ int Engine::Init(uint engine_slot) {
   std::string cachefolder_path = tianmu_sysvar_cachefolder;
   boost::trim(cachefolder_path);
   boost::trim_if(cachefolder_path, boost::is_any_of("\""));
-  if (SetUpCacheFolder(cachefolder_path) != 0) return 1;
+  if (SetUpCacheFolder(cachefolder_path) != 0)
+    return 1;
   system::ClearDirectory(cachefolder_path);
 
   m_resourceManager = new system::ResourceManager();
@@ -274,9 +281,11 @@ int Engine::Init(uint engine_slot) {
       counter++;
       std::unique_lock<std::mutex> lk(cv_mtx);
       if (cv.wait_for(lk, std::chrono::seconds(loop_interval)) == std::cv_status::timeout) {
-        if (!tianmu_sysvar_qps_log) continue;
+        if (!tianmu_sysvar_qps_log)
+          continue;
         for (auto &j : jobs) {
-          if (counter % (j.interval / loop_interval) == 0) j.func();
+          if (counter % (j.interval / loop_interval) == 0)
+            j.func();
         }
       }
     }
@@ -290,7 +299,8 @@ int Engine::Init(uint engine_slot) {
     do {
       std::this_thread::sleep_for(std::chrono::seconds(3));
       std::unique_lock<std::mutex> lk(cv_mtx);
-      if (cv.wait_for(lk, std::chrono::seconds(3)) == std::cv_status::timeout) HandleDeferredJobs();
+      if (cv.wait_for(lk, std::chrono::seconds(3)) == std::cv_status::timeout)
+        HandleDeferredJobs();
     } while (!exiting);
     TIANMU_LOG(LogCtl_Level::INFO, "Tianmu file purge thread exiting...");
   });
@@ -299,7 +309,8 @@ int Engine::Init(uint engine_slot) {
     return -1;
   }
 
-  if (tianmu_sysvar_start_async > 0) ResetTaskExecutor(tianmu_sysvar_start_async);
+  if (tianmu_sysvar_start_async > 0)
+    ResetTaskExecutor(tianmu_sysvar_start_async);
   handler::resolve_async_join_settings(tianmu_sysvar_async_join);
 
   return 0;
@@ -327,7 +338,8 @@ void Engine::HandleDeferredJobs() {
 
 void Engine::DeferRemove(const fs::path &file, int32_t cookie) {
   std::scoped_lock lk(gc_tasks_mtx);
-  if (fs::exists(file)) gc_tasks.emplace_back(purge_task{file, MaxXID(), cookie});
+  if (fs::exists(file))
+    gc_tasks.emplace_back(purge_task{file, MaxXID(), cookie});
 }
 
 Engine::~Engine() {
@@ -563,7 +575,8 @@ uint32_t Engine::GetNextTableId() {
   if (!fs::exists(p)) {
     TIANMU_LOG(LogCtl_Level::INFO, "Creating table id file");
     std::ofstream seq_file(p.string());
-    if (seq_file) seq_file << 0;
+    if (seq_file)
+      seq_file << 0;
     if (!seq_file) {
       throw common::FileException("Failed to write to table id file");
     }
@@ -571,7 +584,8 @@ uint32_t Engine::GetNextTableId() {
 
   uint32_t seq;
   std::fstream seq_file(p.string());
-  if (seq_file) seq_file >> seq;
+  if (seq_file)
+    seq_file >> seq;
   if (!seq_file) {
     throw common::FileException("Failed to read from table id file");
   }
@@ -671,7 +685,8 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
         throw common::UnsupportedDataTypeException("Length of STRING or VARCHAR exceeds 65535 bytes.");
       // Trie column only supports String/VARCHAR column and it
       // doesn't work for case-insensitive collations.
-      if (str.find("TRIE") != std::string::npos) fmt = common::PackFmt::TRIE;
+      if (str.find("TRIE") != std::string::npos)
+        fmt = common::PackFmt::TRIE;
       if (const Field_str *fstr = dynamic_cast<const Field_string *>(&field)) {
         DTCollation coll(fstr->charset(), fstr->derivation());
         if (fmt == common::PackFmt::TRIE && types::IsCaseInsensitive(coll)) {
@@ -839,9 +854,11 @@ void Engine::UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *sour
     }
 
     double d_comp = int(sum_c / 104857.6) / 10.0;  // 1 MB = 2^20 bytes
-    if (d_comp < 0.1) d_comp = 0.1;
+    if (d_comp < 0.1)
+      d_comp = 0.1;
     double ratio = (sum_c > 0 ? sum_u / double(sum_c) : 0);
-    if (ratio > 1000) ratio = 999.99;
+    if (ratio > 1000)
+      ratio = 999.99;
 
     buf_size_count = std::snprintf(buf_size, 256, "Size[MB]: %.1f", d_comp);
     if (is_unique)
@@ -914,14 +931,16 @@ Transaction *Engine::CreateTx(THD *thd) {
 }
 
 Transaction *Engine::GetTx(THD *thd) {
-  if (thd->get_ha_data(tianmu_hton->slot)->ha_ptr == nullptr) return CreateTx(thd);  // stonedb8
-  return static_cast<Transaction *>(thd->get_ha_data(tianmu_hton->slot)->ha_ptr);    // stonedb8
+  if (thd->get_ha_data(tianmu_hton->slot)->ha_ptr == nullptr)
+    return CreateTx(thd);                                                          // stonedb8
+  return static_cast<Transaction *>(thd->get_ha_data(tianmu_hton->slot)->ha_ptr);  // stonedb8
 }
 
 void Engine::ClearTx(THD *thd) {
   ASSERT(current_txn_ == (Transaction *)thd->get_ha_data(tianmu_hton->slot)->ha_ptr, "Bad transaction");  // stonedb8
 
-  if (current_txn_ == nullptr) return;
+  if (current_txn_ == nullptr)
+    return;
 
   RemoveTx(current_txn_);
   current_txn_ = nullptr;
@@ -960,10 +979,12 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, double &value) {
   bool null_val;
 
   const auto it = thd->user_vars.find(var_data);
-  if (it == thd->user_vars.end()) return 1;
+  if (it == thd->user_vars.end())
+    return 1;
   value = it->second->val_real(&null_val);
   // stonedb8 end
-  if (null_val) return 2;
+  if (null_val)
+    return 2;
   return 0;
 }
 
@@ -973,10 +994,12 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, [[maybe_unused]] int64_t &v
   bool null_val;
 
   const auto it = thd->user_vars.find(var_data);
-  if (it == thd->user_vars.end()) return 1;
+  if (it == thd->user_vars.end())
+    return 1;
   it->second->val_int(&null_val);
   // stonedb8 end
-  if (null_val) return 2;
+  if (null_val)
+    return 2;
   return 0;
 }
 
@@ -987,10 +1010,12 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, std::string &value) {
   String str;
 
   const auto it = thd->user_vars.find(var_data);
-  if (it == thd->user_vars.end()) return 1;
+  if (it == thd->user_vars.end())
+    return 1;
   it->second->val_str(&null_val, &str, DECIMAL_NOT_SPECIFIED);
   // stonedb8 end
-  if (null_val) return 2;
+  if (null_val)
+    return 2;
   value = std::string(str.ptr());
 
   return 0;
@@ -1001,7 +1026,8 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::stri
   std::string var_data = get_parameter_name(vn);
   const auto entry = thd->user_vars.find(var_data);
 
-  if (entry == thd->user_vars.end()) return 1;
+  if (entry == thd->user_vars.end())
+    return 1;
 
   if (entry->second->type() == DECIMAL_RESULT) {
     switch (vn) {
@@ -1046,8 +1072,10 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::stri
       s_result = var_data;
     } else if (vn == tianmu_var_name::TIANMU_PIPEMODE) {
       boost::to_upper(var_data);
-      if (var_data == "SERVER") result = 1;
-      if (var_data == "CLIENT") result = 0;
+      if (var_data == "SERVER")
+        result = 1;
+      if (var_data == "CLIENT")
+        result = 0;
     } else if (vn == tianmu_var_name::TIANMU_NULL) {
       s_result = var_data;
     }
@@ -1477,8 +1505,8 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
   return ret;
 }
 
-common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) {
-  common::TIANMUError tianmu_e;
+common::TianmuError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) {
+  common::TianmuError tianmu_e;
   TABLE *table;
   int transactional_table = 0;
 
@@ -1490,7 +1518,8 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
 
     auto tianmu_error = Engine::GetIOParams(iop, *thd, *ex, table, arg);
 
-    if (tianmu_error != common::ErrorCode::SUCCESS) throw tianmu_error;
+    if (tianmu_error != common::ErrorCode::SUCCESS)
+      throw tianmu_error;
 
     std::string table_path = GetTablePath(table);
 
@@ -1503,7 +1532,7 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
 
     if (current_txn_->Killed()) {
       thd->send_kill_message();
-      throw common::TIANMUError(common::ErrorCode::KILLED);
+      throw common::TianmuError(common::ErrorCode::KILLED);
     }
 
     // We must invalidate the table in query cache before binlog writing and
@@ -1525,8 +1554,8 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
     /* ok to client */
     my_ok(thd, stats.records, 0L, name);
   } catch (common::Exception &e) {
-    tianmu_e = common::TIANMUError(common::ErrorCode::UNKNOWN_ERROR, "Tianmu internal error");
-  } catch (common::TIANMUError &e) {
+    tianmu_e = common::TianmuError(common::ErrorCode::UNKNOWN_ERROR, "Tianmu internal error");
+  } catch (common::TianmuError &e) {
     tianmu_e = e;
   }
 
@@ -1553,9 +1582,11 @@ Query_route_to Engine::RouteTo(THD *thd, TABLE_LIST *table_list, Query_block *se
                                int &in_case_of_failure_can_go_to_mysql, int with_insert) {
   in_case_of_failure_can_go_to_mysql = true;
 
-  if (!table_list) return Query_route_to::TO_MYSQL;
+  if (!table_list)
+    return Query_route_to::TO_MYSQL;
 
-  if (with_insert && !table_list->next_global) return Query_route_to::TO_MYSQL;
+  if (with_insert && !table_list->next_global)
+    return Query_route_to::TO_MYSQL;
 
   bool has_TianmuTable = false;
   for (TABLE_LIST *tl = table_list; tl; tl = tl->next_global) {  // we go through tables
@@ -1563,7 +1594,8 @@ Query_route_to Engine::RouteTo(THD *thd, TABLE_LIST *table_list, Query_block *se
       // In this list we have all views, derived tables and their sources,
       // so anyway we walk through all the source tables
       // even though we seem to reject the control of views
-      if (!(has_TianmuTable = IsTianmuTable(tl->table))) return Query_route_to::TO_MYSQL;
+      if (!(has_TianmuTable = IsTianmuTable(tl->table)))
+        return Query_route_to::TO_MYSQL;
     }
   }
 
@@ -1579,9 +1611,11 @@ Query_route_to Engine::RouteTo(THD *thd, TABLE_LIST *table_list, Query_block *se
     longlong param = 0;
     std::string s_res;
 
-    if (get_parameter(thd, tianmu_var_name::TIANMU_DATAFORMAT, param, s_res)) return Query_route_to::TO_TIANMU;
+    if (get_parameter(thd, tianmu_var_name::TIANMU_DATAFORMAT, param, s_res))
+      return Query_route_to::TO_TIANMU;
 
-    if (boost::iequals(boost::trim_copy(s_res), "MYSQL")) return Query_route_to::TO_MYSQL;
+    if (boost::iequals(boost::trim_copy(s_res), "MYSQL"))
+      return Query_route_to::TO_MYSQL;
 
     common::DataFormatPtr df = common::DataFormat::GetDataFormat(s_res);
     if (!df) {  // parameter is UNKNOWN VALUE
@@ -1632,7 +1666,8 @@ const char *Engine::GetFilename(Query_block *selects_list, int &is_dumpfile) {  
 }
 
 std::unique_ptr<system::IOParameters> Engine::CreateIOParameters(const std::string &path, void *arg) {
-  if (path.empty()) return std::unique_ptr<system::IOParameters>(new system::IOParameters());
+  if (path.empty())
+    return std::unique_ptr<system::IOParameters>(new system::IOParameters());
 
   std::string data_dir;
   std::string data_path;
@@ -1660,7 +1695,8 @@ std::unique_ptr<system::IOParameters> Engine::CreateIOParameters(const std::stri
 }
 
 std::unique_ptr<system::IOParameters> Engine::CreateIOParameters([[maybe_unused]] THD *thd, TABLE *table, void *arg) {
-  if (table == nullptr) return CreateIOParameters("", arg);
+  if (table == nullptr)
+    return CreateIOParameters("", arg);
 
   return CreateIOParameters(GetTablePath(table), arg);
 }
@@ -1690,49 +1726,50 @@ void Engine::ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes)
   long msecs;
   sign = 1;
   minutes = 0;
-  if (calc_time_diff(utc, client_zone, 1, &secs, &msecs)) sign = -1;  // stonedb8
+  if (calc_time_diff(utc, client_zone, 1, &secs, &msecs))
+    sign = -1;  // stonedb8
   minutes = (short)(secs / 60);
 }
 
-common::TIANMUError Engine::GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params) {
+common::TianmuError Engine::GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params) {
   std::string reject_file;
   int64_t abort_on_count = 0;
   double abort_on_threshold = 0;
 
   get_parameter(&thd, tianmu_var_name::TIANMU_REJECT_FILE_PATH, reject_file);
   if (get_parameter(&thd, tianmu_var_name::TIANMU_REJECT_FILE_PATH, reject_file) == 2)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_LOAD_REJECT_FILE parameter.");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_LOAD_REJECT_FILE parameter.");
 
   if (get_parameter(&thd, tianmu_var_name::TIANMU_ABORT_ON_COUNT, abort_on_count) == 2)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_ABORT_ON_COUNT parameter.");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_ABORT_ON_COUNT parameter.");
 
   if (get_parameter(&thd, tianmu_var_name::TIANMU_ABORT_ON_THRESHOLD, abort_on_threshold) == 2)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "Wrong value of TIANMU_ABORT_ON_THRESHOLD parameter.");
 
   if (abort_on_count != 0 && abort_on_threshold != 0)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "TIANMU_ABORT_ON_COUNT and TIANMU_ABORT_ON_THRESHOLD "
                                "parameters are mutualy exclusive.");
 
   if (!(abort_on_threshold >= 0.0 && abort_on_threshold < 1.0))
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "TIANMU_ABORT_ON_THRESHOLD parameter value must be in range (0,1).");
 
   if ((abort_on_count != 0 || abort_on_threshold != 0) && reject_file.empty())
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "TIANMU_ABORT_ON_COUNT or TIANMU_ABORT_ON_THRESHOLD can by only specified with "
                                "TIANMU_REJECT_FILE_PATH parameter.");
 
   if (!reject_file.empty() && fs::exists(reject_file))
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "Can not create the reject file, the file already exists.");
 
   io_params->SetRejectFile(reject_file, abort_on_count, abort_on_threshold);
   return common::ErrorCode::SUCCESS;
 }
 
-common::TIANMUError Engine::GetIOParams(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
+common::TianmuError Engine::GetIOParams(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
                                         TABLE *table, void *arg, bool for_exporter) {
   const CHARSET_INFO *cs = ex.cs;
   // stonedb8 start
@@ -1771,7 +1808,7 @@ common::TIANMUError Engine::GetIOParams(std::unique_ptr<system::IOParameters> &i
     if (!get_parameter(&thd, tianmu_var_name::TIANMU_DATAFORMAT, param, s_res)) {
       common::DataFormatPtr df = common::DataFormat::GetDataFormat(s_res);
       if (!df)
-        return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Unknown value of TIANMU_DATAFORMAT parameter.");
+        return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Unknown value of TIANMU_DATAFORMAT parameter.");
       else
         io_mode = df->GetId();
     } else
@@ -1779,7 +1816,8 @@ common::TIANMUError Engine::GetIOParams(std::unique_ptr<system::IOParameters> &i
   } else
     io_mode = common::DataFormat::GetDataFormat(0)->GetId();
 
-  if (!get_parameter(&thd, tianmu_var_name::TIANMU_NULL, param, s_res)) io_params->SetNullsStr(s_res);
+  if (!get_parameter(&thd, tianmu_var_name::TIANMU_NULL, param, s_res))
+    io_params->SetNullsStr(s_res);
 
   if (io_params->LoadDelayed()) {
     std::strcpy(name, ex.file_name);
@@ -1797,15 +1835,16 @@ common::TIANMUError Engine::GetIOParams(std::unique_ptr<system::IOParameters> &i
   io_params->SetOutput(io_mode, name);
 
   if (ex.field.escaped->length() > 1)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter escape std::string not supported.");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter escape std::string not supported.");
 
   if (ex.field.enclosed->length() > 1 &&
       (ex.field.enclosed->length() != 4 || strcasecmp(ex.field.enclosed->ptr(), "nullptr") != 0))
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter enclose std::string not supported.");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter enclose std::string not supported.");
 
   if (!for_exporter) {
-    common::TIANMUError tianmu_err = GetRejectFileIOParameters(thd, io_params);
-    if (tianmu_err.GetErrorCode() != common::ErrorCode::SUCCESS) return tianmu_err;
+    common::TianmuError tianmu_err = GetRejectFileIOParameters(thd, io_params);
+    if (tianmu_err.GetErrorCode() != common::ErrorCode::SUCCESS)
+      return tianmu_err;
   }
 
   if (tianmu_sysvar_usemysqlimportexportdefaults) {
@@ -1818,11 +1857,14 @@ common::TIANMUError Engine::GetIOParams(std::unique_ptr<system::IOParameters> &i
       io_params->SetParameter(system::Parameter::STRING_QUALIFIER, *ex.field.enclosed->ptr());
 
   } else {
-    if (ex.field.escaped->alloced_length() != 0) io_params->SetEscapeCharacter(*ex.field.escaped->ptr());
+    if (ex.field.escaped->alloced_length() != 0)
+      io_params->SetEscapeCharacter(*ex.field.escaped->ptr());
 
-    if (ex.field.field_term->alloced_length() != 0) io_params->SetDelimiter(ex.field.field_term->ptr());
+    if (ex.field.field_term->alloced_length() != 0)
+      io_params->SetDelimiter(ex.field.field_term->ptr());
 
-    if (ex.line.line_term->alloced_length() != 0) io_params->SetLineTerminator(ex.line.line_term->ptr());
+    if (ex.line.line_term->alloced_length() != 0)
+      io_params->SetLineTerminator(ex.line.line_term->ptr());
 
     if (ex.field.enclosed->length()) {
       if (ex.field.enclosed->length() == 4 && strcasecmp(ex.field.enclosed->ptr(), "nullptr") == 0)
@@ -1834,12 +1876,12 @@ common::TIANMUError Engine::GetIOParams(std::unique_ptr<system::IOParameters> &i
 
   if (io_params->EscapeCharacter() != 0 &&
       io_params->Delimiter().find(io_params->EscapeCharacter()) != std::string::npos)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "Field terminator containing the escape character not supported.");
 
   if (io_params->EscapeCharacter() != 0 && io_params->StringQualifier() != 0 &&
       io_params->EscapeCharacter() == io_params->StringQualifier())
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "The same enclose and escape characters not supported.");
 
   bool unsupported_syntax = false;
@@ -2036,7 +2078,8 @@ Query_route_to Engine::Handle_Query(THD *thd, Query_expression *qe, Query_result
   utils::KillTimer timer(thd, tianmu_sysvar_max_execution_time);
 
   LEX *lex{thd->lex};
-  if (qe->is_simple()) lex = qe->first_query_block()->parent_lex;
+  if (qe->is_simple())
+    lex = qe->first_query_block()->parent_lex;
 
   int in_case_of_failure_can_go_to_mysql{1};
 
@@ -2047,14 +2090,16 @@ Query_route_to Engine::Handle_Query(THD *thd, Query_expression *qe, Query_result
   Query_block *select_lex = nullptr;
   Query_result_export *se = nullptr;
 
-  if (tianmu_sysvar_pushdown) thd->variables.optimizer_switch |= OPTIMIZER_SWITCH_ENGINE_CONDITION_PUSHDOWN;
+  if (tianmu_sysvar_pushdown)
+    thd->variables.optimizer_switch |= OPTIMIZER_SWITCH_ENGINE_CONDITION_PUSHDOWN;
 
   if (RouteTo(thd, lex->query_tables, lex->query_block, in_case_of_failure_can_go_to_mysql, with_insert) ==
       Query_route_to::TO_MYSQL) {
     return Query_route_to::TO_MYSQL;
   }
 
-  if (with_insert) result->create_table_for_query_block(thd);  // used for CTAS
+  if (with_insert)
+    result->create_table_for_query_block(thd);  // used for CTAS
 
   if (lock_tables(thd, thd->lex->query_tables, thd->lex->table_count, 0)) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Failed to lock tables for query '%s'", thd->query().str);
@@ -2098,7 +2143,8 @@ Query_route_to Engine::Handle_Query(THD *thd, Query_expression *qe, Query_result
             // materialized it seems to boil down to NOT MATERIALIZED(?)
             if (!tl->derived_query_expression()->is_executed() || tl->derived_query_expression()->uncacheable) {
               res = tl->derived_query_expression()->optimize_for_tianmu(thd);
-              if (!res) derived_optimized.push_back(tl->derived_query_expression());
+              if (!res)
+                derived_optimized.push_back(tl->derived_query_expression());
             }
           } else {                                                         //??not union
             tl->derived_query_expression()->set_limit(thd, first_select);  // stonedb8
@@ -2111,14 +2157,16 @@ Query_route_to Engine::Handle_Query(THD *thd, Query_expression *qe, Query_result
                 thd, ulong(first_select->active_options() | thd->variables.option_bits | SELECT_NO_UNLOCK),
                 (Query_result *)tl->derived_result, first_select, optimize_derived_after_tianmu, free_join);
 
-            if (optimize_derived_after_tianmu) derived_optimized.push_back(tl->derived_query_expression());
+            if (optimize_derived_after_tianmu)
+              derived_optimized.push_back(tl->derived_query_expression());
           }
 
           lex->set_current_query_block(save_current_select);
 
           if (!res && free_join)  // no error &
             route = Query_route_to::TO_MYSQL;
-          if (res || route == Query_route_to::TO_MYSQL) goto ret_derived;
+          if (res || route == Query_route_to::TO_MYSQL)
+            goto ret_derived;
         }
 
     lex->thd->derived_tables_processing = false;
@@ -2126,7 +2174,8 @@ Query_route_to Engine::Handle_Query(THD *thd, Query_expression *qe, Query_result
 
   // prepare, optimize and execute the main query
   se = dynamic_cast<Query_result_export *>(result);
-  if (se != nullptr) result = new exporter::select_tianmu_export(se);
+  if (se != nullptr)
+    result = new exporter::select_tianmu_export(se);
 
   select_lex = lex->query_block;
   unit = lex->unit;
@@ -2274,7 +2323,8 @@ Query_route_to Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, 
   DEBUG_ASSERT(thd->lex == lex);
   Query_block *selects_list = lex->query_block;
   Query_block *last_distinct = nullptr;
-  if (unit_for_union != nullptr) last_distinct = unit_for_union->union_distinct;
+  if (unit_for_union != nullptr)
+    last_distinct = unit_for_union->union_distinct;
 
   int is_dumpfile = 0;
   const char *export_file_name = GetFilename(selects_list, is_dumpfile);
@@ -2287,7 +2337,8 @@ Query_route_to Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, 
   Query query(current_txn_);
   CompiledQuery cqu;
 
-  if (result_output->start_execution(thd)) return Query_route_to::TO_MYSQL;
+  if (result_output->start_execution(thd))
+    return Query_route_to::TO_MYSQL;
 
   current_txn_->ResetDisplay();  // switch display on
   query.SetRoughQuery(selects_list->active_options() & SELECT_ROUGHLY);

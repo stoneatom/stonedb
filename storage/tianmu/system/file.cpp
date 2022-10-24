@@ -27,14 +27,17 @@ int TianmuFile::Open(std::string const &file, int flags, mode_t mode) {
   name_ = file;
 
   fd_ = open(file.c_str(), flags, mode);
-  if (fd_ == -1) ThrowError(errno);
+  if (fd_ == -1)
+    throw common::TianmuError(common::ErrorCode::FAILED,
+                              "ErrorCode: " + std::to_string(errno) + " - " + strerror(errno));
   return fd_;
 }
 
 size_t TianmuFile::Read(void *buf, size_t count) {
   DEBUG_ASSERT(fd_ != -1);
   auto read_bytes = read(fd_, buf, count);
-  if (read_bytes == -1) ThrowError(errno);
+  if (read_bytes == -1)
+    ThrowError(errno);
   return read_bytes;
 }
 
@@ -72,7 +75,8 @@ void TianmuFile::ReadExact(void *buf, size_t count) {
   size_t read_bytes = 0;
   while (read_bytes < count) {
     auto rb = Read((char *)buf + read_bytes, count - read_bytes);
-    if (rb == 0) break;
+    if (rb == 0)
+      break;
     read_bytes += rb;
   }
   if (read_bytes != count) {
@@ -87,7 +91,8 @@ void TianmuFile::WriteExact(const void *buf, size_t count) {
   while (total_writen_bytes < count) {
     auto writen_bytes = write(fd_, (reinterpret_cast<char *>(const_cast<void *>(buf))) + total_writen_bytes,
                               count - total_writen_bytes);
-    if (writen_bytes == -1) ThrowError(errno);
+    if (writen_bytes == -1)
+      ThrowError(errno);
     total_writen_bytes += writen_bytes;
   }
 }
@@ -98,7 +103,8 @@ off_t TianmuFile::Seek(off_t pos, int whence) {
 
   new_pos = lseek(fd_, pos, whence);
 
-  if (new_pos == (off_t)-1) ThrowError(errno);
+  if (new_pos == (off_t)-1)
+    ThrowError(errno);
   return new_pos;
 }
 
@@ -106,7 +112,8 @@ off_t TianmuFile::Tell() {
   off_t pos;
   DEBUG_ASSERT(fd_ != -1);
   pos = lseek(fd_, 0, SEEK_CUR);
-  if (pos == (off_t)-1) ThrowError(errno);
+  if (pos == (off_t)-1)
+    ThrowError(errno);
   return pos;
 }
 
