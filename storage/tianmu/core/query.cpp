@@ -1640,8 +1640,7 @@ bool Query::internalDataTimeIsNullToEq(THD *thd, Item *cond, Item **retcond) {
     Item **args = func->arguments();
     if (args[0]->type() == Item::FIELD_ITEM) {
       Field *const field = down_cast<Item_field *>(args[0])->field;
-      if(field->flags & NOT_NULL_FLAG)
-      {
+      if (field->flags & NOT_NULL_FLAG) {
         switch (field->type()) {
           case MYSQL_TYPE_TIME:
           case MYSQL_TYPE_TIME2:
