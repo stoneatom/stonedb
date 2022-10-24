@@ -69,19 +69,6 @@ class Query final {
 
   std::multimap<std::string, std::pair<int, TABLE *>> table_alias2index_ptr;
 
-  /**
-  Under the attribute that the date type column is not null
-  Convert isnull to eq whenever it is of date type
-
-  @param thd             Thread handler
-  @param cond            the condition to handle.
-  @param[out] retcond    Modified condition after removal
-
-  @see remove_eq_conds() for more details on argument
-
-  @returns false if success, true if error
-*/
-  bool internalDataTimeIsNullToEq(THD *thd, Item *cond, Item **retcond);
 
  private:
   CompiledQuery *cq = nullptr;

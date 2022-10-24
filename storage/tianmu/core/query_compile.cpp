@@ -987,7 +987,11 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
     SetLimit(sl, sl == selects_list ? 0 : sl->join->unit->global_parameters(), offset_value, limit_value);
 
     List<Item> *fields = &sl->fields_list;
-    Item *conds = sl->where_cond();
+    Item *conds = nullptr;
+    if(!sl->join->where_cond)
+      conds = sl->where_cond();
+    else
+      conds = sl->join->where_cond;
     ORDER *order = sl->order_list.first;
 
     // if (order) global_order = 0;   //we want to zero global order (which
@@ -1078,7 +1082,6 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       if (!AddOrderByFields(order, tmp_table, group != nullptr || sl->join->select_distinct || aggr_used))
         throw CompilationError();
       CondID cond_id;
-      internalDataTimeIsNullToEq(sl->master_unit()->thd, conds, &conds);
       if (!BuildConditions(conds, cond_id, cq, tmp_table, CondType::WHERE_COND, zero_result))
         throw CompilationError();
 
