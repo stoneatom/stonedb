@@ -567,7 +567,7 @@ void RCTable::FillRowByRowid(TABLE *table, int64_t obj) {
 
 void RCTable::LoadDataInfile(system::IOParameters &iop) {
   if (iop.LoadDelayed() && GetID() != iop.TableID()) {
-    throw common::TIANMUError(
+    throw common::TianmuError(
         common::ErrorCode::DATA_ERROR,
         "Invalid table ID(" + std::to_string(GetID()) + "/" + std::to_string(iop.TableID()) + "): " + m_path.string());
   }

@@ -29,10 +29,9 @@ jobs:
       image: stoneatom/stonedb_buildenv:${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
-        with:
-          run: sh -c "find . -name pkg_outdir -delete"
       - name: package
         run: |
+          find . -name pkg_outdir -delete
           mkdir {build,pkg_outdir} && cd build
           git config --global --add safe.directory /__w/stonedb/stonedb
           cmake ../ \
@@ -59,7 +58,15 @@ jobs:
           -DDOWNLOAD_ROCKSDB=0 \
           -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb && make -j`nproc` && make -j`nproc` install
 
-          tar -zcPvf ../pkg_outdir/stonedb57_nightly-`date +%y%m%d%H%M`.tar.gz /stonedb57
+          tar -zcPvf ../pkg_outdir/stonedb57_nightly-`date +%y%m%d%H%M`.tar.gz /stonedb57/
+
+      - name: mtr test
+        run: |
+          mkdir -p /stonedb57/install/log
+          groupadd mysql && useradd -g mysql mysql
+          chown -R mysql:mysql /stonedb57
+          cd /stonedb57/install/mysql-test
+          ./mysql-test-run.pl --suite=tianmu --nowarnings --force --nocheck-testcases --retry=0
 
       - name: output some vars
         id: vars

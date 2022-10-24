@@ -35,10 +35,10 @@
 #include "exporter/data_exporter.h"
 #include "exporter/export2file.h"
 #include "index/rc_table_index.h"
-#include "system/io_parameters.h"
-#include "system/rc_system.h"
 #include "log.h"
 #include "sql_table.h"
+#include "system/io_parameters.h"
+#include "system/rc_system.h"
 #include "util/fs.h"
 #include "util/mapped_circular_buffer.h"
 #include "util/thread_pool.h"
@@ -102,7 +102,7 @@ class Engine final {
                                    CHARSET_INFO *cs);
   void GetTableIterator(const std::string &table_path, RCTable::Iterator &iter_begin, RCTable::Iterator &iter_end,
                         std::shared_ptr<RCTable> &table, const std::vector<bool> &, THD *thd);
-  common::TIANMUError RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
+  common::TianmuError RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
   void CommitTx(THD *thd, bool all);
   void Rollback(THD *thd, bool all, bool force_error_message = false);
   Transaction *CreateTx(THD *thd);
@@ -154,9 +154,9 @@ class Engine final {
   static int Convert(int &is_null, String *value, types::RCDataType &rcitem, enum_field_types f_type);
   static void ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes);
   static std::string GetTablePath(TABLE *table);
-  static common::TIANMUError GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
-                                 TABLE *table = 0, void *arg = NULL, bool for_exporter = false);
-  static common::TIANMUError GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params);
+  static common::TianmuError GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
+                                    TABLE *table = 0, void *arg = NULL, bool for_exporter = false);
+  static common::TianmuError GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params);
   static fs::path GetNextDataDir();
 
  private:
@@ -167,7 +167,7 @@ class Engine final {
 
   static bool AreConvertible(types::RCDataType &rcitem, enum_field_types my_type, uint length = 0);
   static bool IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects_list,
-                         int &in_case_of_failure_can_go_to_mysql, int with_insert);
+                            int &in_case_of_failure_can_go_to_mysql, int with_insert);
   static const char *GetFilename(SELECT_LEX *selects_list, int &is_dumpfile);
   static std::unique_ptr<system::IOParameters> CreateIOParameters(const std::string &path, void *arg);
   static std::unique_ptr<system::IOParameters> CreateIOParameters(THD *thd, TABLE *table, void *arg);
@@ -322,10 +322,10 @@ enum class tianmu_var_name {
 };
 
 static std::string tianmu_var_name_strings[] = {"TIANMU_LOAD_TIMEOUT",        "TIANMU_LOAD_DATAFORMAT",
-                                             "TIANMU_LOAD_PIPEMODE",       "TIANMU_LOAD_NULL",
-                                             "TIANMU_LOAD_THROTTLE",       "TIANMU_LOAD_TIANMUEXPRESSIONS",
-                                             "TIANMU_LOAD_PARALLEL_AGGR",  "TIANMU_LOAD_REJECT_FILE",
-                                             "TIANMU_LOAD_ABORT_ON_COUNT", "TIANMU_LOAD_ABORT_ON_THRESHOLD"};
+                                                "TIANMU_LOAD_PIPEMODE",       "TIANMU_LOAD_NULL",
+                                                "TIANMU_LOAD_THROTTLE",       "TIANMU_LOAD_TIANMUEXPRESSIONS",
+                                                "TIANMU_LOAD_PARALLEL_AGGR",  "TIANMU_LOAD_REJECT_FILE",
+                                                "TIANMU_LOAD_ABORT_ON_COUNT", "TIANMU_LOAD_ABORT_ON_THRESHOLD"};
 
 std::string get_parameter_name(enum tianmu_var_name vn);
 
@@ -345,8 +345,7 @@ bool parameter_equals(THD *thd, enum tianmu_var_name vn, longlong value);
 +encoding, the max length would be NAME_CHAR_LEN (64) *
 +FILENAME_CHARSET_MAXNAMLEN (5) = 320 bytes. The number does not include a
 +terminating '\0'. InnoDB can handle longer names internally */
-#define MAX_TABLE_NAME_LEN     320
-
+#define MAX_TABLE_NAME_LEN 320
 
 }  // namespace core
 }  // namespace Tianmu

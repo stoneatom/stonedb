@@ -28,7 +28,7 @@ namespace dbhandler {
 enum class TIANMUEngineReturnValues { LD_Successed = 100, LD_Failed = 101, LD_Continue = 102 };
 
 void TIANMU_UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
-                                     CHARSET_INFO *cs) {
+                                        CHARSET_INFO *cs) {
   try {
     ha_rcengine_->UpdateAndStoreColumnComment(table, field_id, source_field, source_field_id, cs);
   } catch (std::exception &e) {
@@ -44,7 +44,8 @@ namespace {
 bool AtLeastOneTIANMUTableInvolved(LEX *lex) {
   for (TABLE_LIST *table_list = lex->query_tables; table_list; table_list = table_list->next_global) {
     TABLE *table = table_list->table;
-    if (core::Engine::IsTianmuTable(table)) return TRUE;
+    if (core::Engine::IsTianmuTable(table))
+      return TRUE;
   }
   return FALSE;
 }
@@ -72,14 +73,14 @@ bool TIANMU_SetStatementAllowed(THD *thd, LEX *lex) {
 }
 
 int TIANMU_HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
-                     int &optimize_after_tianmu, int &tianmu_free_join, int with_insert=false) {
+                        int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false) {
   int ret = RCBASE_QUERY_ROUTE;
   try {
     // handle_select_ret is introduced here because in case of some exceptions
     // (e.g. thrown from ForbiddenMySQLQueryPath) we want to return
     // RCBASE_QUERY_ROUTE
-    int handle_select_ret = ha_rcengine_->HandleSelect(thd, lex, result, setup_tables_done_option, res, optimize_after_tianmu,
-                                                tianmu_free_join, with_insert);
+    int handle_select_ret = ha_rcengine_->HandleSelect(thd, lex, result, setup_tables_done_option, res,
+                                                       optimize_after_tianmu, tianmu_free_join, with_insert);
     if (handle_select_ret == RETURN_QUERY_TO_MYSQL_ROUTE && AtLeastOneTIANMUTableInvolved(lex) &&
         ForbiddenMySQLQueryPath(lex)) {
       my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
@@ -99,11 +100,13 @@ Either restructure the query with supported syntax, or enable the MySQL core::Qu
   return ret;
 }
 
-int TIANMU_LoadData(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg, char *errmsg, int len, int &errcode) {
-  common::TIANMUError tianmu_error;
+int TIANMU_LoadData(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg, char *errmsg, int len,
+                    int &errcode) {
+  common::TianmuError tianmu_error;
   int ret = static_cast<int>(TIANMUEngineReturnValues::LD_Failed);
 
-  if (!core::Engine::IsTianmuTable(table_list->table)) return static_cast<int>(TIANMUEngineReturnValues::LD_Continue);
+  if (!core::Engine::IsTianmuTable(table_list->table))
+    return static_cast<int>(TIANMUEngineReturnValues::LD_Continue);
 
   try {
     tianmu_error = ha_rcengine_->RunLoader(thd, ex, table_list, arg);
@@ -113,10 +116,10 @@ int TIANMU_LoadData(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *ar
       ret = static_cast<int>(TIANMUEngineReturnValues::LD_Successed);
     }
   } catch (std::exception &e) {
-    tianmu_error = common::TIANMUError(common::ErrorCode::UNKNOWN_ERROR, e.what());
+    tianmu_error = common::TianmuError(common::ErrorCode::UNKNOWN_ERROR, e.what());
     TIANMU_LOG(LogCtl_Level::ERROR, "RunLoader Error: %s", tianmu_error.Message().c_str());
   } catch (...) {
-    tianmu_error = common::TIANMUError(common::ErrorCode::UNKNOWN_ERROR, "An unknown system exception error caught.");
+    tianmu_error = common::TianmuError(common::ErrorCode::UNKNOWN_ERROR, "An unknown system exception error caught.");
     TIANMU_LOG(LogCtl_Level::ERROR, "RunLoader Error: %s", tianmu_error.Message().c_str());
   }
   std::strncpy(errmsg, tianmu_error.Message().c_str(), len - 1);
@@ -129,7 +132,8 @@ int TIANMU_LoadData(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *ar
 bool tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) {
   char tianmumsg[256];
   int tianmu_errcode;
-  switch (static_cast<TIANMUEngineReturnValues>(TIANMU_LoadData(thd, ex, table_list, arg, tianmumsg, 256, tianmu_errcode))) {
+  switch (static_cast<TIANMUEngineReturnValues>(
+      TIANMU_LoadData(thd, ex, table_list, arg, tianmumsg, 256, tianmu_errcode))) {
     case TIANMUEngineReturnValues::LD_Continue:
       return true;
     case TIANMUEngineReturnValues::LD_Failed:
