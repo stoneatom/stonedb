@@ -239,10 +239,12 @@ NumCompressor<T>::~NumCompressor() {}
 
 template <class T>
 void NumCompressor<T>::DumpData(DataSet<T> *ds, uint f) {
-  if (!dump) return;
+  if (!dump)
+    return;
   uint nbit = core::GetBitLen(ds->maxval);
   std::fprintf(dump, "%u:  %u %I64u %u ;  ", f, ds->nrec, (uint64_t)ds->maxval, nbit);
-  if (f) filters[f - 1]->LogCompress(dump);
+  if (f)
+    filters[f - 1]->LogCompress(dump);
   std::fprintf(dump, "\n");
 }
 //-------------------------------------------------------------------------
@@ -250,7 +252,8 @@ void NumCompressor<T>::DumpData(DataSet<T> *ds, uint f) {
 template <class T>
 CprsErr NumCompressor<T>::CopyCompress(char *dest, uint &len, const T *src, uint nrec) {
   uint datalen = nrec * sizeof(T);
-  if (len < 1 + datalen) return CprsErr::CPRS_ERR_BUF;
+  if (len < 1 + datalen)
+    return CprsErr::CPRS_ERR_BUF;
   *dest = 0;  // ID of copy compression
   std::memcpy(dest + 1, src, datalen);
   len = 1 + datalen;
@@ -260,7 +263,8 @@ CprsErr NumCompressor<T>::CopyCompress(char *dest, uint &len, const T *src, uint
 template <class T>
 CprsErr NumCompressor<T>::CopyDecompress(T *dest, char *src, uint len, uint nrec) {
   uint datalen = nrec * sizeof(T);
-  if (len < 1 + datalen) throw CprsErr::CPRS_ERR_BUF;
+  if (len < 1 + datalen)
+    throw CprsErr::CPRS_ERR_BUF;
   std::memcpy(dest, src + 1, datalen);
   return CprsErr::CPRS_SUCCESS;
 }
@@ -272,10 +276,13 @@ CprsErr NumCompressor<T>::CompressT(char *dest, uint &len, const T *src, uint nr
   // <ver>=0  - copy compression
   // <ver>=1  - current version
 
-  if (!dest || !src || (len < 3)) return CprsErr::CPRS_ERR_BUF;
-  if ((nrec == 0) || (maxval == 0)) return CprsErr::CPRS_ERR_PAR;
+  if (!dest || !src || (len < 3))
+    return CprsErr::CPRS_ERR_BUF;
+  if ((nrec == 0) || (maxval == 0))
+    return CprsErr::CPRS_ERR_PAR;
 
-  if (copy_only) return CopyCompress(dest, len, src, nrec);
+  if (copy_only)
+    return CopyCompress(dest, len, src, nrec);
 
   *dest = 1;                // version
   uint posID = 1, pos = 3;  // 1 byte reserved for compression ID
@@ -296,7 +303,8 @@ CprsErr NumCompressor<T>::CompressT(char *dest, uint &len, const T *src, uint nr
     IFSTAT(DumpData(&dataset, f));
     for (; (f < filters.size()) && dataset.nrec; f++) {
       IFSTAT(clock_t t1 = clock());
-      if (filters[f]->Encode(&coder, &dataset)) ID |= 1 << f;
+      if (filters[f]->Encode(&coder, &dataset))
+        ID |= 1 << f;
       IFSTAT(stats[f].tc += clock() - t1);
       IFSTAT(if (ID & (1 << f)) DumpData(&dataset, f + 1));
     }
@@ -311,7 +319,8 @@ CprsErr NumCompressor<T>::CompressT(char *dest, uint &len, const T *src, uint nr
 
   // if compression failed or the size is bigger than the raw data, use copy
   // compression
-  if (static_cast<int>(err) || (pos >= 0.98 * nrec * sizeof(T))) return CopyCompress(dest, len, src, nrec);
+  if (static_cast<int>(err) || (pos >= 0.98 * nrec * sizeof(T)))
+    return CopyCompress(dest, len, src, nrec);
 
   len = pos;
   return CprsErr::CPRS_SUCCESS;
@@ -320,12 +329,16 @@ CprsErr NumCompressor<T>::CompressT(char *dest, uint &len, const T *src, uint nr
 template <class T>
 CprsErr NumCompressor<T>::DecompressT(T *dest, char *src, uint len, uint nrec, T maxval,
                                       [[maybe_unused]] CprsAttrType cat) {
-  if (!src || (len < 1)) return CprsErr::CPRS_ERR_BUF;
-  if ((nrec == 0) || (maxval == 0)) return CprsErr::CPRS_ERR_PAR;
+  if (!src || (len < 1))
+    return CprsErr::CPRS_ERR_BUF;
+  if ((nrec == 0) || (maxval == 0))
+    return CprsErr::CPRS_ERR_PAR;
 
   uchar ver = (uchar)src[0];
-  if (ver == 0) return CopyDecompress(dest, src, len, nrec);
-  if (len < 3) return CprsErr::CPRS_ERR_BUF;
+  if (ver == 0)
+    return CopyDecompress(dest, src, len, nrec);
+  if (len < 3)
+    return CprsErr::CPRS_ERR_BUF;
   ushort ID = *(ushort *)(src + 1);
   uint pos = 3;
 
@@ -340,14 +353,16 @@ CprsErr NumCompressor<T>::DecompressT(T *dest, char *src, uint len, uint nrec, T
     // 1st stage of decompression
     for (; (f < nfilt) && dataset.nrec; f++) {
       IFSTAT(clock_t t1 = clock());
-      if (ID & (1 << f)) filters[f]->Decode(&coder, &dataset);
+      if (ID & (1 << f))
+        filters[f]->Decode(&coder, &dataset);
       IFSTAT(stats[f].td += clock() - t1);
     }
 
     // 2nd stage
     for (; f > 0;) {
       IFSTAT(clock_t t1 = clock());
-      if (ID & (1 << --f)) filters[f]->Merge(&dataset);
+      if (ID & (1 << --f))
+        filters[f]->Merge(&dataset);
       IFSTAT(stats[f].td += clock() - t1);
     }
   } catch (CprsErr &err) {

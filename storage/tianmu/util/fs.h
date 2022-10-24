@@ -22,6 +22,6 @@
 
 namespace Tianmu {
 namespace fs = std::experimental::filesystem;
-}  //namespace Tianmu
+}  // namespace Tianmu
 
 #endif  // TIANMU_UTIL_FS_H_

@@ -40,7 +40,8 @@ void ValueOrNull::SetBString(const types::BString &rcs) {
 }
 
 void ValueOrNull::MakeStringOwner() {
-  if (!sp || string_owner) return;
+  if (!sp || string_owner)
+    return;
   char *tmp = new char[len + 1];
   std::memcpy(tmp, sp, len);
   tmp[len] = 0;
@@ -49,7 +50,8 @@ void ValueOrNull::MakeStringOwner() {
 }
 
 std::optional<std::string> ValueOrNull::ToString() const {
-  if (null) return {};
+  if (null)
+    return {};
 
   return std::string(sp, len);
 }

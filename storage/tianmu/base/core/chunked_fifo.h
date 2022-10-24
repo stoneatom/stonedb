@@ -138,7 +138,7 @@ class chunked_fifo {
   T &back();
   const T &back() const;
   template <typename... A>
-  inline void emplace_back(A &&...args);
+  inline void emplace_back(A &&... args);
   inline T &front() const noexcept;
   inline void pop_front() noexcept;
   inline bool empty() const noexcept;
@@ -328,7 +328,7 @@ void chunked_fifo<T, items_per_chunk>::undo_room_back() {
 
 template <typename T, size_t items_per_chunk>
 template <typename... Args>
-inline void chunked_fifo<T, items_per_chunk>::emplace_back(Args &&...args) {
+inline void chunked_fifo<T, items_per_chunk>::emplace_back(Args &&... args) {
   ensure_room_back();
   auto p = &_back_chunk->items[mask(_back_chunk->end)].data;
   try {

@@ -39,7 +39,8 @@ SingleColumn::SingleColumn(const SingleColumn &sc) : VirtualColumn(sc), col_(sc.
 SingleColumn::~SingleColumn() {}
 
 void SingleColumn::TranslateSourceColumns(std::map<core::PhysicalColumn *, core::PhysicalColumn *> &attr_translation) {
-  if (attr_translation.find(col_) != attr_translation.end()) col_ = attr_translation[col_];
+  if (attr_translation.find(col_) != attr_translation.end())
+    col_ = attr_translation[col_];
 }
 
 double SingleColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
@@ -82,14 +83,16 @@ types::RCValueObject SingleColumn::GetValueImpl(const core::MIIterator &mit, boo
 
 int64_t SingleColumn::GetSumImpl(const core::MIIterator &mit, bool &nonnegative) {
   // DEBUG_ASSERT(!core::ATI::IsStringType(TypeName()));
-  if (mit.WholePack(dim) && mit.GetCurPackrow(dim) >= 0) return col_->GetSum(mit.GetCurPackrow(dim), nonnegative);
+  if (mit.WholePack(dim) && mit.GetCurPackrow(dim) >= 0)
+    return col_->GetSum(mit.GetCurPackrow(dim), nonnegative);
   nonnegative = false;
   return common::NULL_VALUE_64;
 }
 
 int64_t SingleColumn::GetApproxSumImpl(const core::MIIterator &mit, bool &nonnegative) {
   // DEBUG_ASSERT(!core::ATI::IsStringType(TypeName()));
-  if (mit.GetCurPackrow(dim) >= 0) return col_->GetSum(mit.GetCurPackrow(dim), nonnegative);
+  if (mit.GetCurPackrow(dim) >= 0)
+    return col_->GetSum(mit.GetCurPackrow(dim), nonnegative);
   nonnegative = false;
   return common::NULL_VALUE_64;
 }
@@ -111,7 +114,8 @@ int64_t SingleColumn::GetMaxInt64Impl(const core::MIIterator &mit) {
 int64_t SingleColumn::GetMinInt64ExactImpl(const core::MIIterator &mit) {
   if (mit.GetCurPackrow(dim) >= 0 && mit.WholePack(dim) && !(col_->Type().IsString() && !col_->Type().IsLookup())) {
     int64_t val = col_->GetMinInt64(mit.GetCurPackrow(dim));
-    if (val != common::MINUS_INF_64) return val;
+    if (val != common::MINUS_INF_64)
+      return val;
   }
   return common::NULL_VALUE_64;
 }
@@ -119,7 +123,8 @@ int64_t SingleColumn::GetMinInt64ExactImpl(const core::MIIterator &mit) {
 int64_t SingleColumn::GetMaxInt64ExactImpl(const core::MIIterator &mit) {
   if (mit.GetCurPackrow(dim) >= 0 && mit.WholePack(dim) && !(col_->Type().IsString() && !col_->Type().IsLookup())) {
     int64_t val = col_->GetMaxInt64(mit.GetCurPackrow(dim));
-    if (val != common::PLUS_INF_64) return val;
+    if (val != common::PLUS_INF_64)
+      return val;
   }
   return common::NULL_VALUE_64;
 }
@@ -171,7 +176,8 @@ common::RSValue SingleColumn::RoughCheckImpl(const core::MIIterator &mit, core::
   if (mit.GetCurPackrow(dim) >= 0) {
     // check whether isn't it a join
     SingleColumn *sc = NULL;
-    if (d.val1.vc && static_cast<int>(d.val1.vc->IsSingleColumn())) sc = static_cast<SingleColumn *>(d.val1.vc);
+    if (d.val1.vc && static_cast<int>(d.val1.vc->IsSingleColumn()))
+      sc = static_cast<SingleColumn *>(d.val1.vc);
     if (sc && sc->dim != dim)  // Pack2Pack rough check
       return col_->RoughCheck(mit.GetCurPackrow(dim), mit.GetCurPackrow(sc->dim), d);
     else  // One-dim rough check

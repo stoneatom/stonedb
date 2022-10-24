@@ -23,7 +23,8 @@ namespace types {
 RCValueObject::RCValueObject() {}
 
 RCValueObject::RCValueObject(const RCValueObject &rcvo) {
-  if (rcvo.value.get()) construct(*rcvo.value);
+  if (rcvo.value.get())
+    construct(*rcvo.value);
 }
 
 RCValueObject::RCValueObject(const RCDataType &rcdt) { construct(rcdt); }
@@ -53,62 +54,74 @@ bool RCValueObject::compare(const RCValueObject &rcvo, common::Operator op, char
 }
 
 bool RCValueObject::operator==(const RCValueObject &rcvo) const {
-  if (IsNull() || rcvo.IsNull()) return false;
+  if (IsNull() || rcvo.IsNull())
+    return false;
   return *value == *rcvo.value;
 }
 
 bool RCValueObject::operator<(const RCValueObject &rcvo) const {
-  if (IsNull() || rcvo.IsNull()) return false;
+  if (IsNull() || rcvo.IsNull())
+    return false;
   return *value < *rcvo.value;
 }
 
 bool RCValueObject::operator>(const RCValueObject &rcvo) const {
-  if (IsNull() || rcvo.IsNull()) return false;
+  if (IsNull() || rcvo.IsNull())
+    return false;
   return *value > *rcvo.value;
 }
 
 bool RCValueObject::operator>=(const RCValueObject &rcvo) const {
-  if (IsNull() || rcvo.IsNull()) return false;
+  if (IsNull() || rcvo.IsNull())
+    return false;
   return *value >= *rcvo.value;
 }
 
 bool RCValueObject::operator<=(const RCValueObject &rcvo) const {
-  if (IsNull() || rcvo.IsNull()) return false;
+  if (IsNull() || rcvo.IsNull())
+    return false;
   return *value <= *rcvo.value;
 }
 
 bool RCValueObject::operator!=(const RCValueObject &rcvo) const {
-  if (IsNull() || rcvo.IsNull()) return false;
+  if (IsNull() || rcvo.IsNull())
+    return false;
   return *value != *rcvo.value;
 }
 
 bool RCValueObject::operator==(const RCDataType &rcn) const {
-  if (IsNull() || rcn.IsNull()) return false;
+  if (IsNull() || rcn.IsNull())
+    return false;
   return *value == rcn;
 }
 
 bool RCValueObject::operator<(const RCDataType &rcn) const {
-  if (IsNull() || rcn.IsNull()) return false;
+  if (IsNull() || rcn.IsNull())
+    return false;
   return *value < rcn;
 }
 
 bool RCValueObject::operator>(const RCDataType &rcn) const {
-  if (IsNull() || rcn.IsNull()) return false;
+  if (IsNull() || rcn.IsNull())
+    return false;
   return *value > rcn;
 }
 
 bool RCValueObject::operator>=(const RCDataType &rcn) const {
-  if (IsNull() || rcn.IsNull()) return false;
+  if (IsNull() || rcn.IsNull())
+    return false;
   return *value >= rcn;
 }
 
 bool RCValueObject::operator<=(const RCDataType &rcdt) const {
-  if (IsNull() || rcdt.IsNull()) return false;
+  if (IsNull() || rcdt.IsNull())
+    return false;
   return *value <= rcdt;
 }
 
 bool RCValueObject::operator!=(const RCDataType &rcn) const {
-  if (IsNull() || rcn.IsNull()) return false;
+  if (IsNull() || rcn.IsNull())
+    return false;
   return *value != rcn;
 }
 
@@ -117,7 +130,8 @@ bool RCValueObject::IsNull() const { return value.get() ? value->IsNull() : true
 RCDataType &RCValueObject::operator*() const { return value.get() ? *value.get() : RCNum::NullValue(); }
 
 RCValueObject::operator RCNum &() const {
-  if (IsNull()) return RCNum::NullValue();
+  if (IsNull())
+    return RCNum::NullValue();
   if (GetValueType() == ValueTypeEnum::NUMERIC_TYPE || GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
     return static_cast<RCNum &>(*value);
 
@@ -126,20 +140,24 @@ RCValueObject::operator RCNum &() const {
 }
 
 RCValueObject::operator RCDateTime &() const {
-  if (IsNull()) return RCDateTime::NullValue();
-  if (GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return static_cast<RCDateTime &>(*value);
+  if (IsNull())
+    return RCDateTime::NullValue();
+  if (GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
+    return static_cast<RCDateTime &>(*value);
 
   TIANMU_ERROR("Bad cast in RCValueObject::RCDateTime&()");
   return static_cast<RCDateTime &>(*value);
 }
 
 BString RCValueObject::ToBString() const {
-  if (IsNull()) return BString();
+  if (IsNull())
+    return BString();
   return value->ToBString();
 }
 
 uint RCValueObject::GetHashCode() const {
-  if (IsNull()) return 0;
+  if (IsNull())
+    return 0;
   return value->GetHashCode();
 }
 

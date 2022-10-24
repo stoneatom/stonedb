@@ -95,9 +95,11 @@ class SingleColumn : public VirtualColumn {
     int64_t res;
     if (mit.GetCurPackrow(dim) >= 0 && !mit.NullsPossibleInPack(dim)) {  // if outer nulls possible - cannot
                                                                          // calculate precise result
-      if (!val_nulls_possible) return 0;
+      if (!val_nulls_possible)
+        return 0;
       res = col_->GetNumOfNulls(mit.GetCurPackrow(dim));
-      if (res == 0 || mit.WholePack(dim)) return res;
+      if (res == 0 || mit.WholePack(dim))
+        return res;
     }
 
     return common::NULL_VALUE_64;
@@ -105,8 +107,10 @@ class SingleColumn : public VirtualColumn {
 
   bool IsRoughNullsOnlyImpl() const override { return col_->IsRoughNullsOnly(); }
   bool IsNullsPossibleImpl(bool val_nulls_possible) override {
-    if (mind->NullsExist(dim)) return true;
-    if (val_nulls_possible && col_->GetNumOfNulls(-1) != 0) return true;
+    if (mind->NullsExist(dim))
+      return true;
+    if (val_nulls_possible && col_->GetNumOfNulls(-1) != 0)
+      return true;
     return false;
   }
 

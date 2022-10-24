@@ -113,7 +113,7 @@ class StdOut : public ChannelOut {
     return *this;
   }
 
-  void close() override{}
+  void close() override {}
 
   ChannelOut &operator<<(ChannelOut &(*_Pfn)(ChannelOut &)) override { return _Pfn(*this); }
 };

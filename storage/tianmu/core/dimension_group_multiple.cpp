@@ -20,7 +20,8 @@
 namespace Tianmu {
 namespace core {
 bool IndexTableItem::FindPackEnd(int64_t pos, int64_t *cur_pack, int64_t *next_pack_pos) {
-  if (pos < 0 || pos >= count_) return false;
+  if (pos < 0 || pos >= count_)
+    return false;
 
   // Initial set next_pack_pos to the last pos.
   *next_pack_pos = count_;
@@ -76,14 +77,16 @@ void MultiIndexTable::Iterator::Increment() {
   cur_pos_++;
   pack_size_left_--;
 
-  if (pack_size_left_ == 0) InitPackrow();
+  if (pack_size_left_ == 0)
+    InitPackrow();
 }
 
 int64_t MultiIndexTable::Iterator::GetCurPos() {
   DEBUG_ASSERT(table_index_ < index_table_->table_items_.size());
   DEBUG_ASSERT(cur_pos_ >= 0);
   IndexTableItem &table(index_table_->table_items_[table_index_]);
-  if (cur_pos_ >= table.GetCount()) return common::NULL_VALUE_64;
+  if (cur_pos_ >= table.GetCount())
+    return common::NULL_VALUE_64;
   return (int64_t)table.GetTable()->Get64(cur_pos_);
 }
 
@@ -93,7 +96,8 @@ void MultiIndexTable::Iterator::Skip(int64_t offset) {
   cur_pos_ += offset;
   pack_size_left_ -= offset;
 
-  if (pack_size_left_ == 0) InitPackrow();
+  if (pack_size_left_ == 0)
+    InitPackrow();
 }
 
 bool MultiIndexTable::Iterator::NextInsidePack() {
@@ -108,7 +112,8 @@ bool MultiIndexTable::Iterator::NextInsidePack() {
 bool MultiIndexTable::Iterator::BarrierAfterPackrow() {
   if (valid_) {
     int64_t next_pack_start = cur_pos_ + index_table_->table_items_[table_index_].GetCount() + pack_size_left_;
-    if (next_pack_start >= index_table_->total_count_) return true;
+    if (next_pack_start >= index_table_->total_count_)
+      return true;
   }
   return false;
 }
@@ -174,14 +179,16 @@ void MultiIndexTable::Unlock() {
 
 int MultiIndexTable::NumOfLocks() {
   int locks = 0;
-  if (!table_items_.empty()) locks = table_items_[0].GetTable()->NumOfLocks();
+  if (!table_items_.empty())
+    locks = table_items_[0].GetTable()->NumOfLocks();
   return locks;
 }
 
 //----------------------------DimensionGroupMultiMaterialized-------------------------------------------
 // The no_obj need to preset, because AddDimensionContent maybe not called on
 // uninvolved scenes.
-DimensionGroupMultiMaterialized::DimensionGroupMultiMaterialized(int64_t obj, DimensionVector &dims, uint32_t power, bool is_shallow_memory)
+DimensionGroupMultiMaterialized::DimensionGroupMultiMaterialized(int64_t obj, DimensionVector &dims, uint32_t power,
+                                                                 bool is_shallow_memory)
     : power_(power), dims_used_(dims), is_shallow_memory(is_shallow_memory) {
   dim_group_type = DGType::DG_INDEX_TABLE;
   no_obj = obj;
@@ -246,12 +253,14 @@ void DimensionGroupMultiMaterialized::FillCurrentPos(DimensionGroup::Iterator *i
 
 void DimensionGroupMultiMaterialized::Lock(int dim, int n) {
   MultiIndexTable *tables = dim_tables_[dim];
-  if (tables) tables->Lock(n);
+  if (tables)
+    tables->Lock(n);
 }
 
 void DimensionGroupMultiMaterialized::Unlock(int dim) {
   MultiIndexTable *tables = dim_tables_[dim];
-  if (tables) tables->Unlock();
+  if (tables)
+    tables->Unlock();
 }
 
 int DimensionGroupMultiMaterialized::NumOfLocks(int dim) {
@@ -276,7 +285,8 @@ DimensionGroupMultiMaterialized::DGIterator::DGIterator(int64_t total_count, Dim
   dim_tables_iterator_.resize(dims.Size());
   for (int dim = 0; dim < dims.Size(); dim++) {
     auto dim_table = dim_tables[dim];
-    if (dim_table && dims[dim]) dim_tables_iterator_[dim] = std::make_unique<MultiIndexTable::Iterator>(dim_table);
+    if (dim_table && dims[dim])
+      dim_tables_iterator_[dim] = std::make_unique<MultiIndexTable::Iterator>(dim_table);
   }
 
   Rewind();
@@ -289,7 +299,8 @@ DimensionGroupMultiMaterialized::DGIterator::DGIterator(const Iterator &sec, uin
   dim_tables_iterator_.resize(s.dim_tables_iterator_.size());
   for (size_t dim = 0; dim < s.dim_tables_iterator_.size(); dim++) {
     auto &src_iter = s.dim_tables_iterator_[dim];
-    if (src_iter) dim_tables_iterator_[dim] = std::make_unique<MultiIndexTable::Iterator>(*src_iter);
+    if (src_iter)
+      dim_tables_iterator_[dim] = std::make_unique<MultiIndexTable::Iterator>(*src_iter);
   }
 }
 
@@ -319,7 +330,8 @@ bool DimensionGroupMultiMaterialized::DGIterator::NextInsidePack() {
   bool nex_inside_pack = true;
   for (auto &it : dim_tables_iterator_) {
     if (it) {
-      if (!it->NextInsidePack()) nex_inside_pack = false;
+      if (!it->NextInsidePack())
+        nex_inside_pack = false;
     }
   }
   return nex_inside_pack;
@@ -330,7 +342,8 @@ int64_t DimensionGroupMultiMaterialized::DGIterator::GetPackSizeLeft() {
   for (auto &it : dim_tables_iterator_) {
     if (it) {
       int64_t dim_pack_size_left = it->GetPackSizeLeft();
-      if (pack_size_left > dim_pack_size_left) pack_size_left = dim_pack_size_left;
+      if (pack_size_left > dim_pack_size_left)
+        pack_size_left = dim_pack_size_left;
     }
   }
   return pack_size_left;
@@ -352,14 +365,16 @@ void DimensionGroupMultiMaterialized::DGIterator::NextPackrow() {
 }
 
 int DimensionGroupMultiMaterialized::DGIterator::GetNextPackrow(int dim, int ahead) {
-  if (ahead == 0) return GetCurPackrow(dim);
+  if (ahead == 0)
+    return GetCurPackrow(dim);
   return 0;
 }
 
 bool DimensionGroupMultiMaterialized::DGIterator::BarrierAfterPackrow() {
   for (auto &it : dim_tables_iterator_) {
     if (it) {
-      if (!it->BarrierAfterPackrow()) return false;
+      if (!it->BarrierAfterPackrow())
+        return false;
     }
   }
 

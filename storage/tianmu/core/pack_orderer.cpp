@@ -33,7 +33,8 @@ PackOrderer::PackOrderer() {
 }
 
 PackOrderer::PackOrderer(const PackOrderer &p) {
-  if (visited.get()) visited.reset(new Filter(*p.visited.get()));
+  if (visited.get())
+    visited.reset(new Filter(*p.visited.get()));
   packs = p.packs;
   curndx = p.curndx;
   prevndx = p.prevndx;
@@ -72,7 +73,8 @@ PackOrderer::PackOrderer(vcolumn::VirtualColumn *vc, common::RSValue *r_filter, 
 bool PackOrderer::Init(vcolumn::VirtualColumn *vc, OrderType order, common::RSValue *r_filter) {
   DEBUG_ASSERT(vc->GetDim() != -1);  // works only for vcolumns based on a single table
 
-  if (Initialized()) return false;
+  if (Initialized())
+    return false;
 
   packs.clear();
   otype.clear();
@@ -203,7 +205,8 @@ void PackOrderer::ReorderForCovering(std::vector<PackPair> &packs_one_col, vcolu
   while (i < packs_one_col.size()) {
     mit.SetPack(d, packs_one_col[j].second);       // vector of pairs: <mid, pack>
     int64_t max_up_to_now = vc->GetMaxInt64(mit);  // max of the last pack from the beginning
-    if (max_up_to_now == common::PLUS_INF_64) break;
+    if (max_up_to_now == common::PLUS_INF_64)
+      break;
     // Find max(max) of packs for which min<=max_up_to_now
     i_max = -1;
     int64_t best_local_max = max_up_to_now;
@@ -308,7 +311,8 @@ void PackOrderer::Rewind() {
   packs_passed = 0;
   for (curvc = 0; curvc < ncols; curvc++) RewindCol();
   curvc = 0;
-  if (visited.get()) visited->Reset();
+  if (visited.get())
+    visited->Reset();
 }
 
 void PackOrderer::RewindCol() {
@@ -342,7 +346,8 @@ void PackOrderer::RewindToMatch(vcolumn::VirtualColumn *vc, MIIterator &mit) {
     // not implemented for strings & doubles/floats
     curndx[curvc] = 0;
 
-  if (packs[curvc].size() == 0 && !natural_order[curvc]) curndx[curvc] = static_cast<int>(State::END);
+  if (packs[curvc].size() == 0 && !natural_order[curvc])
+    curndx[curvc] = static_cast<int>(State::END);
   prevndx[curvc] = curndx[curvc];
 }
 }  // namespace core

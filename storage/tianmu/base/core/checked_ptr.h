@@ -93,8 +93,8 @@ inline T *checked_ptr_do_get(T *ptr) noexcept {
 template <typename Ptr, typename NullDerefAction = default_null_deref_action>
 /// \cond GCC6_CONCEPT_DOC
 GCC6_CONCEPT(requires std::is_default_constructible<NullDerefAction>::value &&requires(NullDerefAction action) {
-                                                                                NullDerefAction();
-                                                                              })
+  NullDerefAction();
+})
     /// \endcond
     class checked_ptr {
  public:

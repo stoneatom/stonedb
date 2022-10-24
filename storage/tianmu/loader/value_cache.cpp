@@ -45,7 +45,8 @@ void *ValueCache::Prepare(size_t valueSize) {
     Realloc(newCapacity);
   }
 
-  if (!data_) return nullptr;
+  if (!data_)
+    return nullptr;
   return (static_cast<char *>(data_) + size_);
 }
 
@@ -57,14 +58,18 @@ void ValueCache::CalcIntStats(std::optional<common::double_int_t> nv) {
       auto v = *(int64_t *)GetDataBytesPointer(i);
       sum_i_ += v;
 
-      if (min_i_ > v) min_i_ = v;
-      if (max_i_ < v) max_i_ = v;
+      if (min_i_ > v)
+        min_i_ = v;
+      if (max_i_ < v)
+        max_i_ = v;
     }
   }
 
   if (NumOfNulls() > 0 && nv.has_value()) {
-    if (min_i_ > nv->i) min_i_ = nv->i;
-    if (max_i_ < nv->i) max_i_ = nv->i;
+    if (min_i_ > nv->i)
+      min_i_ = nv->i;
+    if (max_i_ < nv->i)
+      max_i_ = nv->i;
   }
 }
 
@@ -75,14 +80,18 @@ void ValueCache::CalcRealStats(std::optional<common::double_int_t> nv) {
       auto v = *(double *)GetDataBytesPointer(i);
       sum_d_ += v;
 
-      if (min_d_ > v) min_d_ = v;
-      if (max_d_ < v) max_d_ = v;
+      if (min_d_ > v)
+        min_d_ = v;
+      if (max_d_ < v)
+        max_d_ = v;
     }
   }
 
   if (NumOfNulls() > 0 && nv.has_value()) {
-    if (min_d_ > nv->d) min_d_ = nv->d;
-    if (max_d_ < nv->d) max_d_ = nv->d;
+    if (min_d_ > nv->d)
+      min_d_ = nv->d;
+    if (max_d_ < nv->d)
+      max_d_ = nv->d;
   }
 }
 
@@ -92,27 +101,32 @@ void ValueCache::CalcStrStats(types::BString &min_s, types::BString &max_s, uint
   for (size_t i = 0; i < values_.size(); ++i) {
     if (!nulls_[i]) {
       types::BString v((Size(i) ? GetDataBytesPointer(i) : ZERO_LENGTH_STRING), Size(i));
-      if (v.len > maxlen) maxlen = v.len;
+      if (v.len > maxlen)
+        maxlen = v.len;
 
       if (min_s.IsNull())
         min_s = v;
       else if (types::RequiresUTFConversions(col)) {
-        if (CollationStrCmp(col, min_s, v) > 0) min_s = v;
+        if (CollationStrCmp(col, min_s, v) > 0)
+          min_s = v;
       } else if (min_s > v)
         min_s = v;
 
       if (max_s.IsNull())
         max_s = v;
       else if (types::RequiresUTFConversions(col)) {
-        if (CollationStrCmp(col, max_s, v) < 0) max_s = v;
+        if (CollationStrCmp(col, max_s, v) < 0)
+          max_s = v;
       } else if (max_s < v)
         max_s = v;
     }
   }
   types::BString nv(ZERO_LENGTH_STRING, 0);
   if (NumOfNulls() > 0) {
-    if (min_s > nv) min_s = nv;
-    if (max_s < nv) max_s = nv;
+    if (min_s > nv)
+      min_s = nv;
+    if (max_s < nv)
+      max_s = nv;
   }
 }
 

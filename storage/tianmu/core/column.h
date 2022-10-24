@@ -34,7 +34,8 @@ class Column {
  public:
   Column(ColumnType ct = ColumnType()) : ct(ct) {}
   Column(const Column &c) {
-    if (this != &c) *this = c;
+    if (this != &c)
+      *this = c;
   }
 
   inline const ColumnType &Type() const { return ct; }

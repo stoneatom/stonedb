@@ -25,7 +25,8 @@ void BitStream::ZeroBits(uint beg, uint end) {
 
   if (byte1 < byte2) {
     (buf[byte1] _SHL_ASSIGN_ bit1) _SHR_ASSIGN_ bit1;  // clear 'bit1' upper bits of 'byte1'
-    if (bit2) (buf[byte2] >>= bit2) <<= bit2;          // clear 'bit2' lower bits of 'byte2'
+    if (bit2)
+      (buf[byte2] >>= bit2) <<= bit2;  // clear 'bit2' lower bits of 'byte2'
     std::memset(buf + byte1 + 1, 0,
                 byte2 - byte1 - 1);  // clear the rest of bytes, in the middle
   } else if (beg < end) {            // beggining and end are in the same byte
@@ -42,8 +43,10 @@ void BitStream::ZeroBits(uint beg, uint end) {
 void BitStream::ClearBits() {
   clrlen = 2 * pos + 64;
   clrlen = (clrlen / 8) * 8;  // round to the whole byte
-  if ((clrlen <= pos) || (clrlen > len)) clrlen = len;
-  if (clrlen <= pos) BufOverrun();
+  if ((clrlen <= pos) || (clrlen > len))
+    clrlen = len;
+  if (clrlen <= pos)
+    BufOverrun();
   ZeroBits(pos, clrlen);
 }
 

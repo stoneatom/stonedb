@@ -24,33 +24,33 @@
 
 namespace Tianmu {
 
-//row-column channel control.
+// row-column channel control.
 system::Channel rc_control_(true);
-//query log channel flag.
+// query log channel flag.
 system::Channel rc_querylog_(true);
-//global host ip addr.
+// global host ip addr.
 char global_hostIP_[FN_REFLEN];
-//global server info.
+// global server info.
 char global_serverinfo_[FN_REFLEN];
-//key-value engine handler.
+// key-value engine handler.
 core::Engine *ha_rcengine_ = nullptr;
-//key-value store handler.
+// key-value store handler.
 index::KVStore *ha_kvstore_ = nullptr;
-//global mutex
+// global mutex
 std::mutex global_mutex_;
-//mutex of drop or rename
+// mutex of drop or rename
 std::shared_mutex drop_rename_mutex_;
 
 #ifdef FUNCTIONS_EXECUTION_TIMES
-//num of distinct DP loaded.
+// num of distinct DP loaded.
 LoadedDataPackCounter count_distinct_dp_loads;
-//num of distinct decompressed DP.
+// num of distinct decompressed DP.
 LoadedDataPackCounter count_distinct_dp_decompressions;
-//exe time of func.
+// exe time of func.
 FunctionsExecutionTimes *fet = nullptr;
-//num of bytes read by DP.
+// num of bytes read by DP.
 uint64_t NumOfBytesReadByDPs = 0;
-//size of un-compressed DP.
+// size of un-compressed DP.
 uint64_t SizeOfUncompressedDP = 0;
 #endif
 

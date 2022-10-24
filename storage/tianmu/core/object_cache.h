@@ -40,9 +40,11 @@ class ObjectCache final {
     std::scoped_lock lck(mtx);
 
     auto sp = cache[k].lock();
-    if (sp) return sp;
+    if (sp)
+      return sp;
 
-    if (!creator) return nullptr;
+    if (!creator)
+      return nullptr;
     sp = creator(k);
     cache[k] = sp;
     return sp;

@@ -37,7 +37,8 @@ void ConstExpressionColumn::RequestEval([[maybe_unused]] const core::MIIterator 
 double ConstExpressionColumn::GetValueDoubleImpl([[maybe_unused]] const core::MIIterator &mit) {
   DEBUG_ASSERT(core::ATI::IsNumericType(TypeName()));
   double val = 0;
-  if (last_val->IsNull()) return NULL_VALUE_D;
+  if (last_val->IsNull())
+    return NULL_VALUE_D;
   if (core::ATI::IsIntegerType(TypeName()))
     val = (double)last_val->Get64();
   else if (core::ATI::IsFixedNumericType(TypeName()))
@@ -57,7 +58,8 @@ double ConstExpressionColumn::GetValueDoubleImpl([[maybe_unused]] const core::MI
     val = (double)vd_conv;
   } else if (core::ATI::IsStringType(TypeName())) {
     auto vs = last_val->ToString();
-    if (vs) val = std::stod(*vs);
+    if (vs)
+      val = std::stod(*vs);
   } else
     DEBUG_ASSERT(0 && "conversion to double not implemented");
   return val;
@@ -65,16 +67,20 @@ double ConstExpressionColumn::GetValueDoubleImpl([[maybe_unused]] const core::MI
 
 types::RCValueObject ConstExpressionColumn::GetValueImpl([[maybe_unused]] const core::MIIterator &mit,
                                                          bool lookup_to_num) {
-  if (last_val->IsNull()) return types::RCValueObject();
+  if (last_val->IsNull())
+    return types::RCValueObject();
 
   if (core::ATI::IsStringType((TypeName()))) {
     types::BString s;
     last_val->GetBString(s);
     return s;
   }
-  if (core::ATI::IsIntegerType(TypeName())) return types::RCNum(last_val->Get64(), -1, false, TypeName());
-  if (core::ATI::IsDateTimeType(TypeName())) return types::RCDateTime(last_val->Get64(), TypeName());
-  if (core::ATI::IsRealType(TypeName())) return types::RCNum(last_val->Get64(), 0, true, TypeName());
+  if (core::ATI::IsIntegerType(TypeName()))
+    return types::RCNum(last_val->Get64(), -1, false, TypeName());
+  if (core::ATI::IsDateTimeType(TypeName()))
+    return types::RCDateTime(last_val->Get64(), TypeName());
+  if (core::ATI::IsRealType(TypeName()))
+    return types::RCNum(last_val->Get64(), 0, true, TypeName());
   if (lookup_to_num || TypeName() == common::CT::NUM)
     return types::RCNum((int64_t)last_val->Get64(), Type().GetScale());
   DEBUG_ASSERT(!"Illegal execution path");
@@ -118,9 +124,10 @@ size_t ConstExpressionColumn::MaxStringSizeImpl()  // maximal byte string length
   return ct.GetPrecision();
 }
 
-core::PackOntologicalStatus ConstExpressionColumn::GetPackOntologicalStatusImpl(
-    [[maybe_unused]] const core::MIIterator &mit) {
-  if (last_val->IsNull()) return core::PackOntologicalStatus::NULLS_ONLY;
+core::PackOntologicalStatus ConstExpressionColumn::GetPackOntologicalStatusImpl([
+    [maybe_unused]] const core::MIIterator &mit) {
+  if (last_val->IsNull())
+    return core::PackOntologicalStatus::NULLS_ONLY;
   return core::PackOntologicalStatus::UNIFORM;
 }
 

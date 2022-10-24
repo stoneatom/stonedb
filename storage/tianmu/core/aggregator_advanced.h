@@ -199,7 +199,8 @@ class AggregatorBitXor : public TIANMUAggregator {
   int BufferByteSize() override { return 8; }
   void Reset(unsigned char *buf) override { *((int64_t *)buf) = 0; }
   void PutAggregatedValue(unsigned char *buf, int64_t v, int64_t factor) override {
-    if (factor % 2 == 1) *((int64_t *)buf) = (*((int64_t *)buf) ^ v);
+    if (factor % 2 == 1)
+      *((int64_t *)buf) = (*((int64_t *)buf) ^ v);
   }
   void Merge(unsigned char *buf, unsigned char *src_buf) override {
     *((int64_t *)buf) = (*((int64_t *)buf) ^ *((int64_t *)src_buf));

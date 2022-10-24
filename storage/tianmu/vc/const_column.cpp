@@ -28,7 +28,8 @@ namespace vcolumn {
 ConstColumn::ConstColumn(core::ValueOrNull const &val, core::ColumnType const &c, bool shift_to_UTC)
     : VirtualColumn(c, NULL), value(val) {
   dim = -1;
-  if (ct.IsString()) ct.SetPrecision(c.GetPrecision());
+  if (ct.IsString())
+    ct.SetPrecision(c.GetPrecision());
   if (c.GetTypeName() == common::CT::TIMESTAMP && shift_to_UTC) {
     types::RCDateTime rcdt(val.Get64(), common::CT::TIMESTAMP);
     // needs to convert value to UTC
@@ -105,24 +106,30 @@ double ConstColumn::GetValueDoubleImpl([[maybe_unused]] const core::MIIterator &
     val = (double)vd_conv;
   } else if (core::ATI::IsStringType(TypeName())) {
     auto vs = value.ToString();
-    if (vs) val = std::stod(*vs);
+    if (vs)
+      val = std::stod(*vs);
   } else
     DEBUG_ASSERT(0 && "conversion to double not implemented");
   return val;
 }
 
 types::RCValueObject ConstColumn::GetValueImpl([[maybe_unused]] const core::MIIterator &mit, bool lookup_to_num) {
-  if (value.IsNull()) return types::RCValueObject();
+  if (value.IsNull())
+    return types::RCValueObject();
 
   if (core::ATI::IsStringType((TypeName()))) {
     types::BString s;
     value.GetBString(s);
     return s;
   }
-  if (core::ATI::IsIntegerType(TypeName())) return types::RCNum(value.Get64(), -1, false, TypeName());
-  if (core::ATI::IsDateTimeType(TypeName())) return types::RCDateTime(value.Get64(), TypeName());
-  if (core::ATI::IsRealType(TypeName())) return types::RCNum(value.Get64(), 0, true, TypeName());
-  if (lookup_to_num || TypeName() == common::CT::NUM) return types::RCNum((int64_t)value.Get64(), Type().GetScale());
+  if (core::ATI::IsIntegerType(TypeName()))
+    return types::RCNum(value.Get64(), -1, false, TypeName());
+  if (core::ATI::IsDateTimeType(TypeName()))
+    return types::RCDateTime(value.Get64(), TypeName());
+  if (core::ATI::IsRealType(TypeName()))
+    return types::RCNum(value.Get64(), 0, true, TypeName());
+  if (lookup_to_num || TypeName() == common::CT::NUM)
+    return types::RCNum((int64_t)value.Get64(), Type().GetScale());
   DEBUG_ASSERT(!"Illegal execution path");
   return types::RCValueObject();
 }
@@ -168,7 +175,8 @@ size_t ConstColumn::MaxStringSizeImpl()  // maximal byte string length in column
 }
 
 core::PackOntologicalStatus ConstColumn::GetPackOntologicalStatusImpl([[maybe_unused]] const core::MIIterator &mit) {
-  if (value.IsNull()) return core::PackOntologicalStatus::NULLS_ONLY;
+  if (value.IsNull())
+    return core::PackOntologicalStatus::NULLS_ONLY;
   return core::PackOntologicalStatus::UNIFORM;
 }
 

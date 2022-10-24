@@ -68,7 +68,8 @@ void AggregatorStatD::PutAggregatedValue(unsigned char *buf, int64_t v, int64_t 
 }
 
 void AggregatorStat::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (NumOfObj(src_buf) == 0) return;
+  if (NumOfObj(src_buf) == 0)
+    return;
   stats_updated = false;
   if (NumOfObj(buf) == 0)
     std::memcpy(buf, src_buf, BufferByteSize());
@@ -97,43 +98,50 @@ void AggregatorStatD::PutAggregatedValue(unsigned char *buf, const types::BStrin
 }
 
 int64_t AggregatorVarPop64::GetValue64(unsigned char *buf) {
-  if (NumOfObj(buf) < 1) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 1)
+    return common::NULL_VALUE_64;
   double vd = VarPop(buf) / prec_factor / double(prec_factor);
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorVarSamp64::GetValue64(unsigned char *buf) {
-  if (NumOfObj(buf) < 2) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 2)
+    return common::NULL_VALUE_64;
   double vd = VarSamp(buf) / prec_factor / double(prec_factor);
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorStdPop64::GetValue64(unsigned char *buf) {
-  if (NumOfObj(buf) < 1) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 1)
+    return common::NULL_VALUE_64;
   double vd = sqrt(VarPop(buf)) / prec_factor;
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorStdSamp64::GetValue64(unsigned char *buf) {
-  if (NumOfObj(buf) < 2) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 2)
+    return common::NULL_VALUE_64;
   double vd = sqrt(VarSamp(buf)) / prec_factor;
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorVarPopD::GetValue64(unsigned char *buf) {
-  if (NumOfObj(buf) < 1) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 1)
+    return common::NULL_VALUE_64;
   double vd = VarPop(buf);
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorVarSampD::GetValue64(unsigned char *buf) {
-  if (NumOfObj(buf) < 2) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 2)
+    return common::NULL_VALUE_64;
   double vd = VarSamp(buf);
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorStdPopD::GetValue64(unsigned char *buf) {
-  if (NumOfObj(buf) < 1) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 1)
+    return common::NULL_VALUE_64;
   // double vd = Q(buf) / NumOfObj(buf);
   // vd = sqrt(vd);
   double vd = sqrt(VarPop(buf));
@@ -141,7 +149,8 @@ int64_t AggregatorStdPopD::GetValue64(unsigned char *buf) {
 }
 
 int64_t AggregatorStdSampD::GetValue64(unsigned char *buf) {
-  if (NumOfObj(buf) < 2) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 2)
+    return common::NULL_VALUE_64;
   // double vd = Q(buf) / (NumOfObj(buf) - 1);
   // vd = sqrt(vd);
   double vd = sqrt(VarSamp(buf));
@@ -184,7 +193,8 @@ void AggregatorGroupConcat::PutAggregatedValue(unsigned char *buf, const types::
   } else {
     auto pos = it->second;
 
-    if (pos == gconcat_maxlen) return;
+    if (pos == gconcat_maxlen)
+      return;
 
     if (pos < gconcat_maxlen) {
       std::string src = si.separator + v.ToString();  // combine the delimeter and value
@@ -194,9 +204,9 @@ void AggregatorGroupConcat::PutAggregatedValue(unsigned char *buf, const types::
       it->second = it->second + copylen;             // update the length of the buffer
     } else {
       TIANMU_LOG(LogCtl_Level::ERROR,
-                  "Internal error for AggregatorGroupConcat: buffer length is "
-                  "%d, which beyond threshold %d.",
-                  pos, gconcat_maxlen);
+                 "Internal error for AggregatorGroupConcat: buffer length is "
+                 "%d, which beyond threshold %d.",
+                 pos, gconcat_maxlen);
     }
   }
 }

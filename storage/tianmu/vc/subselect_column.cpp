@@ -156,8 +156,8 @@ size_t SubSelectColumn::MaxStringSizeImpl()  // maximal byte string length in co
   return ct.GetPrecision();
 }
 
-core::PackOntologicalStatus SubSelectColumn::GetPackOntologicalStatusImpl(
-    [[maybe_unused]] const core::MIIterator &mit) {
+core::PackOntologicalStatus SubSelectColumn::GetPackOntologicalStatusImpl([
+    [maybe_unused]] const core::MIIterator &mit) {
   return core::PackOntologicalStatus::NORMAL;
 }
 
@@ -171,7 +171,8 @@ common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types
   // If the sub-select is something like 'select null from xxx' then there
   // is no need to execute the sub-select, just return common::TRIBOOL_UNKNOWN.
   VirtualColumn *vc = subq->GetAttrP(col_idx)->term.vc;
-  if (vc->IsFullConst() && vc->IsNull(core::MIIterator(NULL, mind->ValueOfPower()))) return common::TRIBOOL_UNKNOWN;
+  if (vc->IsFullConst() && vc->IsNull(core::MIIterator(NULL, mind->ValueOfPower())))
+    return common::TRIBOOL_UNKNOWN;
 
   PrepareSubqResult(mit, false);
   common::Tribool res = false;
@@ -263,7 +264,8 @@ bool SubSelectColumn::IsSetEncoded(common::CT at,
                                    int scale)  // checks whether the set is constant and fixed size equal to
                                                // the given one
 {
-  if (!cache || !cache->EasyMode() || !subq->IsMaterialized() || no_cached_values < subq->NumOfObj()) return false;
+  if (!cache || !cache->EasyMode() || !subq->IsMaterialized() || no_cached_values < subq->NumOfObj())
+    return false;
   return (scale == ct.GetScale() &&
           (at == expected_type_.GetTypeName() ||
            (core::ATI::IsFixedNumericType(at) && core::ATI::IsFixedNumericType(expected_type_.GetTypeName()))));
@@ -273,7 +275,8 @@ common::Tribool SubSelectColumn::Contains64Impl(const core::MIIterator &mit, int
 {
   if (cache && cache->EasyMode()) {
     common::Tribool contains = false;
-    if (val == common::NULL_VALUE_64) return common::TRIBOOL_UNKNOWN;
+    if (val == common::NULL_VALUE_64)
+      return common::TRIBOOL_UNKNOWN;
     if (cache->Contains(val))
       contains = true;
     else if (cache->ContainsNulls())
@@ -288,7 +291,8 @@ common::Tribool SubSelectColumn::ContainsStringImpl(const core::MIIterator &mit,
 {
   if (cache && cache->EasyMode()) {
     common::Tribool contains = false;
-    if (val.IsNull()) return common::TRIBOOL_UNKNOWN;
+    if (val.IsNull())
+      return common::TRIBOOL_UNKNOWN;
     if (cache->Contains(val))
       contains = true;
     else if (cache->ContainsNulls())
@@ -300,7 +304,8 @@ common::Tribool SubSelectColumn::ContainsStringImpl(const core::MIIterator &mit,
 
 int64_t SubSelectColumn::NumOfValuesImpl(core::MIIterator const &mit) {
   PrepareSubqResult(mit, false);
-  if (!subq->IsMaterialized()) subq->Materialize();
+  if (!subq->IsMaterialized())
+    subq->Materialize();
   return subq->NumOfObj();
 }
 
@@ -335,7 +340,8 @@ int64_t SubSelectColumn::AtLeastNoDistinctValuesImpl(core::MIIterator const &mit
 bool SubSelectColumn::ContainsNullImpl(const core::MIIterator &mit) {
   PrepareSubqResult(mit, false);
   for (int64_t i = 0; i < subq->NumOfObj(); ++i)
-    if (subq->IsNull(i, col_idx)) return true;
+    if (subq->IsNull(i, col_idx))
+      return true;
   return false;
 }
 
@@ -359,7 +365,8 @@ void SubSelectColumn::PrepareSubqResult(const core::MIIterator &mit, bool exists
   MEASURE_FET("SubSelectColumn::PrepareSubqCopy(...)");
   bool cor = IsCorrelated();
   if (!cor) {
-    if (subq->IsFullyMaterialized()) return;
+    if (subq->IsFullyMaterialized())
+      return;
   }
 
   subq->CreateTemplateIfNotExists();
@@ -382,7 +389,8 @@ void SubSelectColumn::PrepareSubqResult(const core::MIIterator &mit, bool exists
   }
   subq->SuspendDisplay();
   try {
-    if (exists_only) subq->SetMode(core::TMParameter::TM_EXISTS);
+    if (exists_only)
+      subq->SetMode(core::TMParameter::TM_EXISTS);
     subq->Materialize(cor);
   } catch (...) {
     subq->ResumeDisplay();
@@ -419,7 +427,8 @@ void SubSelectColumn::RoughPrepareSubqCopy(const core::MIIterator &mit,
 }
 
 bool SubSelectColumn::IsCorrelated() const {
-  if (var_map.size() || params.size()) return true;
+  if (var_map.size() || params.size())
+    return true;
   return false;
 }
 
@@ -431,7 +440,8 @@ bool SubSelectColumn::IsNullImpl(const core::MIIterator &mit) {
 types::RCValueObject SubSelectColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool lookup_to_num) {
   PrepareSubqResult(mit, false);
   types::RCValueObject val = subq->GetValueObject(0, col_idx);
-  if (expected_type_.IsString()) return val.ToBString();
+  if (expected_type_.IsString())
+    return val.ToBString();
   if (expected_type_.IsNumeric() && core::ATI::IsStringType(val.Type())) {
     types::RCNum rc;
     types::RCNum::Parse(*static_cast<types::BString *>(val.Get()), rc, expected_type_.GetTypeName());
@@ -464,13 +474,15 @@ void SubSelectColumn::GetValueStringImpl(types::BString &s, core::MIIterator con
 types::RCValueObject SubSelectColumn::GetSetMinImpl(core::MIIterator const &mit) {
   // assert: this->params are all set
   PrepareSubqResult(mit, false);
-  if (!min_max_uptodate) CalculateMinMax();
+  if (!min_max_uptodate)
+    CalculateMinMax();
   return min;
 }
 
 types::RCValueObject SubSelectColumn::GetSetMaxImpl(core::MIIterator const &mit) {
   PrepareSubqResult(mit, false);
-  if (!min_max_uptodate) CalculateMinMax();
+  if (!min_max_uptodate)
+    CalculateMinMax();
   return max;
 }
 bool SubSelectColumn::CheckExists(core::MIIterator const &mit) {
@@ -489,7 +501,8 @@ common::Tribool SubSelectColumn::RoughIsEmpty(core::MIIterator const &mit, core:
 }
 
 void SubSelectColumn::CalculateMinMax() {
-  if (!subq->IsMaterialized()) subq->Materialize();
+  if (!subq->IsMaterialized())
+    subq->Materialize();
   if (subq->NumOfObj() == 0) {
     min = max = types::RCValueObject();
     min_max_uptodate = true;
@@ -502,7 +515,8 @@ void SubSelectColumn::CalculateMinMax() {
     types::BString val_s, min_s, max_s;
     for (int64_t i = 0; i < subq->NumOfObj(); i++) {
       subq->GetTable_S(val_s, i, col_idx);
-      if (val_s.IsNull()) continue;
+      if (val_s.IsNull())
+        continue;
       if (!found_not_null && !val_s.IsNull()) {
         found_not_null = true;
         min_s.PersistentCopy(val_s);
@@ -558,7 +572,8 @@ bool SubSelectColumn::FeedArguments(const core::MIIterator &mit, bool for_rough)
       if (cache->second.empty()) {  // empty if TIANMUexpression - feeding unnecessary
         bool ldiff = v != param_cache_for_rough[iter.var];
         diff = diff || ldiff;
-        if (ldiff) param_cache_for_rough[iter.var] = v;
+        if (ldiff)
+          param_cache_for_rough[iter.var] = v;
       } else {
         DEBUG_ASSERT(cache != var_buf_for_rough.end());
         diff = diff || (v != cache->second.begin()->first);
@@ -576,7 +591,8 @@ bool SubSelectColumn::FeedArguments(const core::MIIterator &mit, bool for_rough)
       if (cache->second.empty()) {  // empty if TIANMUexpression - feeding unnecessary
         bool ldiff = v != param_cache_for_exact[iter.var];
         diff = diff || ldiff;
-        if (ldiff) param_cache_for_exact[iter.var] = v;
+        if (ldiff)
+          param_cache_for_exact[iter.var] = v;
       } else {
         DEBUG_ASSERT(cache != var_buf_for_exact.end());
         core::ValueOrNull v1 = *(cache->second.begin()->second);
@@ -601,8 +617,10 @@ void SubSelectColumn::SetExpectedTypeImpl(core::ColumnType const &ct) { expected
 bool SubSelectColumn::MakeParallelReady() {
   core::MIDummyIterator mit(mind);
   PrepareSubqResult(mit, false);
-  if (!subq->IsMaterialized()) subq->Materialize();
-  if (subq->NumOfObj() > subq->GetPageSize()) return false;  // multipage Attrs - not thread safe
+  if (!subq->IsMaterialized())
+    subq->Materialize();
+  if (subq->NumOfObj() > subq->GetPageSize())
+    return false;  // multipage Attrs - not thread safe
   // below assert doesn't take into account lazy field
   // NumOfMaterialized() tells how many rows in lazy mode are materialized
   DEBUG_ASSERT(subq->NumOfObj() == subq->NumOfMaterialized());

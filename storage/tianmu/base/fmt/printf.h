@@ -48,7 +48,8 @@ class PrecisionHandler : public ArgVisitor<PrecisionHandler, int> {
 
   template <typename T>
   int visit_any_int(T value) {
-    if (!IntChecker<std::numeric_limits<T>::is_signed>::fits_in_int(value)) FMT_THROW(FormatError("number is too big"));
+    if (!IntChecker<std::numeric_limits<T>::is_signed>::fits_in_int(value))
+      FMT_THROW(FormatError("number is too big"));
     return static_cast<int>(value);
   }
 };
@@ -110,11 +111,13 @@ class ArgConverter : public ArgVisitor<ArgConverter<T>, void> {
   ArgConverter(internal::Arg &arg, wchar_t type) : arg_(arg), type_(type) {}
 
   void visit_bool(bool value) {
-    if (type_ != 's') visit_any_int(value);
+    if (type_ != 's')
+      visit_any_int(value);
   }
 
   void visit_char(char value) {
-    if (type_ != 's') visit_any_int(value);
+    if (type_ != 's')
+      visit_any_int(value);
   }
 
   template <typename U>
@@ -190,7 +193,8 @@ class WidthHandler : public ArgVisitor<WidthHandler, unsigned> {
       width = 0 - width;
     }
     unsigned int_max = std::numeric_limits<int>::max();
-    if (width > int_max) FMT_THROW(FormatError("number is too big"));
+    if (width > int_max)
+      FMT_THROW(FormatError("number is too big"));
     return static_cast<unsigned>(width);
   }
 };
@@ -236,7 +240,8 @@ class BasicPrintfArgFormatter : public internal::ArgFormatterBase<Impl, Char, Sp
   /** Formats an argument of type ``bool``. */
   void visit_bool(bool value) {
     Spec &fmt_spec = this->spec();
-    if (fmt_spec.type_ != 's') return this->visit_any_int(value);
+    if (fmt_spec.type_ != 's')
+      return this->visit_any_int(value);
     fmt_spec.type_ = 0;
     this->write(value);
   }
@@ -245,7 +250,8 @@ class BasicPrintfArgFormatter : public internal::ArgFormatterBase<Impl, Char, Sp
   void visit_char(int value) {
     const Spec &fmt_spec = this->spec();
     BasicWriter<Char> &w = this->writer();
-    if (fmt_spec.type_ && fmt_spec.type_ != 'c') w.write_int(value, fmt_spec);
+    if (fmt_spec.type_ && fmt_spec.type_ != 'c')
+      w.write_int(value, fmt_spec);
     using CharPtr = typename BasicWriter<Char>::CharPtr;
     CharPtr out = CharPtr();
     if (fmt_spec.width_ > 1) {
@@ -275,7 +281,8 @@ class BasicPrintfArgFormatter : public internal::ArgFormatterBase<Impl, Char, Sp
 
   /** Formats a pointer. */
   void visit_pointer(const void *value) {
-    if (value) return Base::visit_pointer(value);
+    if (value)
+      return Base::visit_pointer(value);
     this->spec().type_ = 0;
     write_null_pointer();
   }
@@ -359,7 +366,8 @@ internal::Arg PrintfFormatter<Char, AF>::get_arg(const Char *s, unsigned arg_ind
   const char *error = FMT_NULL;
   internal::Arg arg = arg_index == std::numeric_limits<unsigned>::max() ? next_arg(error)
                                                                         : FormatterBase::get_arg(arg_index - 1, error);
-  if (error) FMT_THROW(FormatError(!*s ? "invalid format string" : error));
+  if (error)
+    FMT_THROW(FormatError(!*s ? "invalid format string" : error));
   return arg;
 }
 
@@ -375,7 +383,8 @@ unsigned PrintfFormatter<Char, AF>::parse_header(const Char *&s, FormatSpec &spe
       ++s;
       arg_index = value;
     } else {
-      if (c == '0') spec.fill_ = '0';
+      if (c == '0')
+        spec.fill_ = '0';
       if (value != 0) {
         // Nonzero value means that we parsed width and don't need to
         // parse it or flags again, so return now.
@@ -401,7 +410,8 @@ void PrintfFormatter<Char, AF>::format(BasicCStringRef<Char> format_str) {
   const Char *s = start;
   while (*s) {
     Char c = *s++;
-    if (c != '%') continue;
+    if (c != '%')
+      continue;
     if (*s == c) {
       write(writer_, start, s);
       start = ++s;
@@ -473,7 +483,8 @@ void PrintfFormatter<Char, AF>::format(BasicCStringRef<Char> format_str) {
     }
 
     // Parse type.
-    if (!*s) FMT_THROW(FormatError("invalid format string"));
+    if (!*s)
+      FMT_THROW(FormatError("invalid format string"));
     spec.type_ = static_cast<char>(*s++);
 
     if (spec.type_ == 's') {

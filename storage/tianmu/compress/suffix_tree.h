@@ -101,9 +101,11 @@ class SuffixTree : public PPMModel {
   PNode PrvChild(PNode ch) { return GetNode(ch).prev; }
   PNode GetChild(PNode n, Symb s) {
 #ifdef SUFTREE_STAT
-    if (iscreating) GetNode(n).nvisit++;
+    if (iscreating)
+      GetNode(n).nvisit++;
 #endif
-    if (n == NIL) return ROOT;
+    if (n == NIL)
+      return ROOT;
     PNode ch = GetNode(n).child;
     while (ch != NIL)
       if (GetNode(ch).fsym == s)
@@ -229,15 +231,18 @@ class SuffixTree : public PPMModel {
   CprsErr GetLabel(Edge e, Symb *lbl,
                    int &len);  // 'len' - max size of lbl; upon exit: length of lbl
   int GetLen(Edge e) {
-    if (e.n == NIL) return 0;
+    if (e.n == NIL)
+      return 0;
     return GetNode(e.n).len;
   }
   void GetRange(PNode stt, Edge e,
                 Range &r);  // 'stt' must be the parent of 'e'
   Count GetTotal(PNode stt) {
-    if (stt == NIL) return NSymb;
+    if (stt == NIL)
+      return NSymb;
     Node &node = GetNode(stt);
-    if (node.child == NIL) return param.esc_count;
+    if (node.child == NIL)
+      return param.esc_count;
     return GetNode(GetNode(node.child).prev).sum;
   }
 

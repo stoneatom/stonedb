@@ -110,7 +110,9 @@ class ExpressionColumn : public VirtualColumn {
     return common::ErrorCode::FAILED;
   }
 
-  const core::MysqlExpression::tianmu_fields_cache_t &GetTIANMUItems() const override { return expr_->GetTIANMUItems(); }
+  const core::MysqlExpression::tianmu_fields_cache_t &GetTIANMUItems() const override {
+    return expr_->GetTIANMUItems();
+  }
   core::MysqlExpression *expr_;  //!= NULL if ExpressionColumn encapsulates an expression. Note - a
                                  //! constant is an expression
 

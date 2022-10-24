@@ -41,7 +41,8 @@ void Event(Span *span, char op, int v = 0) {
   span->history[span->nexthistory] = op;
   span->value[span->nexthistory] = v;
   span->nexthistory++;
-  if (span->nexthistory == sizeof(span->history)) span->nexthistory = 0;
+  if (span->nexthistory == sizeof(span->history))
+    span->nexthistory = 0;
 }
 #endif
 

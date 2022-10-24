@@ -25,7 +25,7 @@ namespace system {
 
 ResourceManager::ResourceManager() {
   // Instantiate policies based on ConfigurationManager settings
- res_manage_policy_ = new MagMemoryPolicy(tianmu_sysvar_servermainheapsize);
+  res_manage_policy_ = new MagMemoryPolicy(tianmu_sysvar_servermainheapsize);
 }
 
 ResourceManager::~ResourceManager() { delete res_manage_policy_; }

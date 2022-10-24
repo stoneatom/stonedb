@@ -30,7 +30,8 @@ FILE *PPM::dump = NULL;
 bool PPM::printstat = false;
 
 PPM::PPM(const Symb *data, int dlen, ModelType mt, PPMParam param, uchar method) {
-  if ((data == NULL) || (dlen <= 0) || (mt == ModelType::ModelNull)) return;
+  if ((data == NULL) || (dlen <= 0) || (mt == ModelType::ModelNull))
+    return;
 
   switch (mt) {
     case ModelType::ModelSufTree:
@@ -45,7 +46,8 @@ PPM::PPM(const Symb *data, int dlen, ModelType mt, PPMParam param, uchar method)
   model->TransformForPPM(param);
 
   static int _i_ = 0;
-  if (printstat && dump && (++_i_ == 18)) model->PrintStat(dump);
+  if (printstat && dump && (++_i_ == 18))
+    model->PrintStat(dump);
 }
 
 CprsErr PPM::CompressArith(char *dest, int &dlen, Symb *src, int slen) {
@@ -54,7 +56,8 @@ CprsErr PPM::CompressArith(char *dest, int &dlen, Symb *src, int slen) {
 
   // null PPM model
   if (!model) {
-    if (dlen < slen + 1) return CprsErr::CPRS_ERR_BUF;
+    if (dlen < slen + 1)
+      return CprsErr::CPRS_ERR_BUF;
     dest[0] = 0;  // method: no compression
     std::memcpy(dest + 1, src, slen);
     dlen = slen + 1;
@@ -66,7 +69,8 @@ CprsErr PPM::CompressArith(char *dest, int &dlen, Symb *src, int slen) {
   } catch (...) {
     wg = NULL;
   }
-  if (wg) ASSERT(wg->insatend == false, "should be 'wg->insatend == false'");
+  if (wg)
+    ASSERT(wg->insatend == false, "should be 'wg->insatend == false'");
 
   // DEBUG_ASSERT(src[slen-1] == 0);
   ArithCoder coder;
@@ -173,7 +177,8 @@ CprsErr PPM::DecompressArith(Symb *dest, int dlen, char *src, int slen) {
   } catch (...) {
     wg = NULL;
   }
-  if (wg) ASSERT(wg->insatend == false, "should be 'wg->insatend == false'");
+  if (wg)
+    ASSERT(wg->insatend == false, "should be 'wg->insatend == false'");
 
   ArithCoder coder;
   BitStream bs_src(src, slen * 8, 8);  // 1 byte already read
@@ -198,7 +203,8 @@ CprsErr PPM::DecompressArith(Symb *dest, int dlen, char *src, int slen) {
 
       len = dlen - i;
       err = model->Move(c, dest + i, len, rng);
-      if (static_cast<int>(err)) return err;
+      if (static_cast<int>(err))
+        return err;
       i += len;
 
       // model->FindEdgeC(stt, edge, c);
@@ -232,7 +238,8 @@ CprsErr PPM::Compress(char *dest, int &dlen, Symb *src, int slen) {
 
   // null PPM model
   if (!model) {
-    if (dlen < slen + 1) return CprsErr::CPRS_ERR_BUF;
+    if (dlen < slen + 1)
+      return CprsErr::CPRS_ERR_BUF;
     dest[0] = 0;  // method: no compression
     std::memcpy(dest + 1, src, slen);
     dlen = slen + 1;
@@ -243,7 +250,8 @@ CprsErr PPM::Compress(char *dest, int &dlen, Symb *src, int slen) {
   //	if(wg) wg->insatend = true;
   //} catch(...){}
 
-  if (dlen < 1) return CprsErr::CPRS_ERR_BUF;
+  if (dlen < 1)
+    return CprsErr::CPRS_ERR_BUF;
   dest[0] = 2;  // compression method: with RangeCoder
 
   WordGraph *wg = NULL;
@@ -253,7 +261,8 @@ CprsErr PPM::Compress(char *dest, int &dlen, Symb *src, int slen) {
     wg = NULL;
   }
 
-  if (wg) ASSERT(wg->insatend, "'wg->insatend' should be true");
+  if (wg)
+    ASSERT(wg->insatend, "'wg->insatend' should be true");
 
   RangeCoder coder;
   coder.InitCompress(dest + 1, dlen - 1);
@@ -298,17 +307,20 @@ CprsErr PPM::Compress(char *dest, int &dlen, Symb *src, int slen) {
 }
 
 CprsErr PPM::Decompress(Symb *dest, int dlen, char *src, int slen) {
-  if (slen < 1) return CprsErr::CPRS_ERR_BUF;
+  if (slen < 1)
+    return CprsErr::CPRS_ERR_BUF;
   uchar method = (uchar)src[0];
 
   // are the data simply copied, without compression?
   if (method == 0) {
-    if (dlen != slen - 1) return CprsErr::CPRS_ERR_PAR;
+    if (dlen != slen - 1)
+      return CprsErr::CPRS_ERR_PAR;
     std::memcpy(dest, src + 1, dlen);
     return CprsErr::CPRS_SUCCESS;
   } else if (method == 1)
     return DecompressArith(dest, dlen, src, slen);
-  if (method != 2) return CprsErr::CPRS_ERR_VER;
+  if (method != 2)
+    return CprsErr::CPRS_ERR_VER;
 
   WordGraph *wg = NULL;
   try {
@@ -317,7 +329,8 @@ CprsErr PPM::Decompress(Symb *dest, int dlen, char *src, int slen) {
     wg = NULL;
   }
 
-  if (wg) ASSERT(wg->insatend, "'wg->insatend' should be true");
+  if (wg)
+    ASSERT(wg->insatend, "'wg->insatend' should be true");
 
   RangeCoder coder;
   coder.InitDecompress(src + 1, slen - 1);
@@ -336,7 +349,8 @@ CprsErr PPM::Decompress(Symb *dest, int dlen, char *src, int slen) {
 
       len = dlen - i;
       err = model->Move(c, dest + i, len, rng);
-      if (static_cast<int>(err)) return err;
+      if (static_cast<int>(err))
+        return err;
       i += len;
 
       coder.Decode(rng.low, rng.high - rng.low, total);

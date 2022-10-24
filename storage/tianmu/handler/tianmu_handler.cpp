@@ -57,14 +57,16 @@ const Alter_inplace_info::HA_ALTER_FLAGS TianmuHandler::TIANMU_SUPPORTED_ALTER_C
 my_bool rcbase_query_caching_of_table_permitted(THD *thd, [[maybe_unused]] char *full_name,
                                                 [[maybe_unused]] uint full_name_len,
                                                 [[maybe_unused]] ulonglong *unused) {
-  if (!thd_test_options(thd, (OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN))) return ((my_bool)TRUE);
+  if (!thd_test_options(thd, (OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN)))
+    return ((my_bool)TRUE);
   return ((my_bool)FALSE);
 }
 
 static core::Value GetValueFromField(Field *f) {
   core::Value v;
 
-  if (f->is_null()) return v;
+  if (f->is_null())
+    return v;
 
   switch (f->type()) {
     case MYSQL_TYPE_TINY:
@@ -221,7 +223,8 @@ THR_LOCK_DATA **TianmuHandler::store_lock(THD *thd, THR_LOCK_DATA **to, enum thr
       lock_type = TL_WRITE_CONCURRENT_INSERT;
   }
 
-  if (lock_type != TL_IGNORE && m_lock.type == TL_UNLOCK) m_lock.type = lock_type;
+  if (lock_type != TL_IGNORE && m_lock.type == TL_UNLOCK)
+    m_lock.type = lock_type;
   *to++ = &m_lock;
   return to;
 }
@@ -246,7 +249,8 @@ int TianmuHandler::external_lock(THD *thd, int lock_type) {
   // rclog << lock << "external lock table " << m_table_name << " type: " <<
   // ss[lock_type] << " command: " << thd->lex->sql_command << unlock;
 
-  if (thd->lex->sql_command == SQLCOM_LOCK_TABLES) DBUG_RETURN(HA_ERR_WRONG_COMMAND);
+  if (thd->lex->sql_command == SQLCOM_LOCK_TABLES)
+    DBUG_RETURN(HA_ERR_WRONG_COMMAND);
 
   if (is_delay_insert(thd) && table_share->tmp_table == NO_TMP_TABLE && lock_type == F_WRLCK) {
     DBUG_RETURN(0);
@@ -254,9 +258,11 @@ int TianmuHandler::external_lock(THD *thd, int lock_type) {
 
   try {
     if (lock_type == F_UNLCK) {
-      if (thd->lex->sql_command == SQLCOM_UNLOCK_TABLES) current_txn_->ExplicitUnlockTables();
+      if (thd->lex->sql_command == SQLCOM_UNLOCK_TABLES)
+        current_txn_->ExplicitUnlockTables();
 
-      if (thd->killed) ha_rcengine_->Rollback(thd, true);
+      if (thd->killed)
+        ha_rcengine_->Rollback(thd, true);
       if (current_txn_) {
         current_txn_->RemoveTable(share);
         if (current_txn_->Empty()) {
@@ -265,7 +271,8 @@ int TianmuHandler::external_lock(THD *thd, int lock_type) {
       }
     } else {
       auto tx = ha_rcengine_->GetTx(thd);
-      if (thd->lex->sql_command == SQLCOM_LOCK_TABLES) tx->ExplicitLockTables();
+      if (thd->lex->sql_command == SQLCOM_LOCK_TABLES)
+        tx->ExplicitLockTables();
 
       if (lock_type == F_RDLCK) {
         tx->AddTableRD(share);
@@ -286,7 +293,8 @@ int TianmuHandler::external_lock(THD *thd, int lock_type) {
   }
 
   // destroy the tx on failure
-  if (ret != 0) ha_rcengine_->ClearTx(thd);
+  if (ret != 0)
+    ha_rcengine_->ClearTx(thd);
 
   DBUG_RETURN(ret);
 }
@@ -584,7 +592,6 @@ int TianmuHandler::delete_all_rows() {
   DBUG_RETURN(ret);
 }
 
-
 int TianmuHandler::rename_table(const char *from, const char *to) {
   try {
     ha_rcengine_->RenameTable(current_txn_, from, to, ha_thd());
@@ -668,9 +675,11 @@ int TianmuHandler::info(uint flag) {
       }
     }
 
-    if (flag & HA_STATUS_CONST) stats.create_time = share->GetCreateTime();
+    if (flag & HA_STATUS_CONST)
+      stats.create_time = share->GetCreateTime();
 
-    if (flag & HA_STATUS_TIME) stats.update_time = share->GetUpdateTime();
+    if (flag & HA_STATUS_TIME)
+      stats.update_time = share->GetUpdateTime();
 
     if (flag & HA_STATUS_ERRKEY) {
       errkey = 0;  // TODO: for now only support one pk index
@@ -713,12 +722,14 @@ int TianmuHandler::open(const char *name, [[maybe_unused]] int mode, [[maybe_unu
     // Keeping the share together with mysql handler cache makes
     // more sense that would mean once a table is opened the TableShare
     // would be kept.
-    if (!(share = ha_rcengine_->GetTableShare(table_share))) DBUG_RETURN(ret);
+    if (!(share = ha_rcengine_->GetTableShare(table_share)))
+      DBUG_RETURN(ret);
 
     thr_lock_data_init(&share->thr_lock, &m_lock, NULL);
     share->thr_lock.check_status = tianmu_check_status;
     // have primary key, use table index
-    if (table->s->primary_key != MAX_INDEXES) ha_rcengine_->AddTableIndex(name, table, ha_thd());
+    if (table->s->primary_key != MAX_INDEXES)
+      ha_rcengine_->AddTableIndex(name, table, ha_thd());
     ha_rcengine_->AddMemTable(table, share);
     ret = 0;
   } catch (common::Exception &e) {
@@ -1000,7 +1011,8 @@ int TianmuHandler::rnd_init(bool scan) {
     }
     ret = 0;
     blob_buffers.resize(0);
-    if (table_ptr != NULL) blob_buffers.resize(table_ptr->NumOfDisplaybleAttrs());
+    if (table_ptr != NULL)
+      blob_buffers.resize(table_ptr->NumOfDisplaybleAttrs());
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -1219,13 +1231,11 @@ ha_rows TianmuHandler::records_in_range([[maybe_unused]] uint inx, [[maybe_unuse
 int TianmuHandler::create(const char *name, TABLE *table_arg, [[maybe_unused]] HA_CREATE_INFO *create_info) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
-
-    //fix issue 487: bug for create table #mysql50#q.q should return failure and actually return success
-    const size_t	table_name_len = strlen(name);
-    if (name[table_name_len - 1] == '/') 
-    {
-        TIANMU_LOG(LogCtl_Level::ERROR, "Table name is empty");
-        DBUG_RETURN(ER_WRONG_TABLE_NAME);
+    // fix issue 487: bug for create table #mysql50#q.q should return failure and actually return success
+    const size_t table_name_len = strlen(name);
+    if (name[table_name_len - 1] == '/') {
+      TIANMU_LOG(LogCtl_Level::ERROR, "Table name is empty");
+      DBUG_RETURN(ER_WRONG_TABLE_NAME);
     }
 
     ha_rcengine_->CreateTable(name, table_arg);
@@ -1270,7 +1280,8 @@ uint TianmuHandler::max_supported_key_part_length(HA_CREATE_INFO *create_info) c
 }
 
 int TianmuHandler::fill_row(uchar *buf) {
-  if (table_new_iter == table_new_iter_end) return HA_ERR_END_OF_FILE;
+  if (table_new_iter == table_new_iter_end)
+    return HA_ERR_END_OF_FILE;
 
   my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->write_set);
 
@@ -1492,7 +1503,7 @@ enum_alter_inplace_result TianmuHandler::check_if_supported_inplace_alter([[mayb
   DBUG_ENTER(__PRETTY_FUNCTION__);
   if ((ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER) &&
       (ha_alter_info->handler_flags != TIANMU_SUPPORTED_ALTER_COLUMN_NAME)) {
-    // support alter table column type 
+    // support alter table column type
     if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_STORED_COLUMN_TYPE)
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
     // support alter table column exceeded length
@@ -1553,12 +1564,14 @@ bool TianmuHandler::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_t
     std::unordered_set<std::string> s;
     for (auto &it : fs::directory_iterator(tab_dir / common::COLUMN_DIR)) {
       auto target = fs::read_symlink(it.path()).string();
-      if (!target.empty()) s.insert(target);
+      if (!target.empty())
+        s.insert(target);
     }
 
     for (auto &it : fs::directory_iterator(bak_dir / common::COLUMN_DIR)) {
       auto target = fs::read_symlink(it.path()).string();
-      if (target.empty()) continue;
+      if (target.empty())
+        continue;
       auto search = s.find(target);
       if (search == s.end()) {
         fs::remove_all(target);

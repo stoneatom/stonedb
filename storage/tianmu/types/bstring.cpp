@@ -48,7 +48,8 @@ BString::BString(const char *v, size_t length, bool persistent) : persistent(per
     val = const_cast<char *>(v);
   else {
     val = new char[len];
-    if (v) std::memcpy(val, v, len);
+    if (v)
+      std::memcpy(val, v, len);
   }
 }
 
@@ -70,11 +71,13 @@ BString::BString(const BString &rcbs) : ValueBasic<BString>(rcbs), pos(rcbs.pos)
 }
 
 BString::~BString() {
-  if (persistent) delete[] val;
+  if (persistent)
+    delete[] val;
 }
 
 BString &BString::operator=(const RCDataType &rcdt) {
-  if (this == &rcdt) return *this;
+  if (this == &rcdt)
+    return *this;
 
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
     *this = (BString &)rcdt;
@@ -99,14 +102,17 @@ void BString::PutString(char *&dest, ushort len, bool move_ptr) const {
     std::memcpy(dest, val, this->len);
     std::memset(dest + this->len, ' ', len - this->len);
   }
-  if (move_ptr) dest += len;
+  if (move_ptr)
+    dest += len;
 }
 
 void BString::PutVarchar(char *&dest, uchar prefixlen, bool move_ptr) const {
-  if (prefixlen == 0) PutString(dest, len);
+  if (prefixlen == 0)
+    PutString(dest, len);
   if (len == 0) {
     std::memset(dest, 0, prefixlen);
-    if (move_ptr) dest += prefixlen;
+    if (move_ptr)
+      dest += prefixlen;
   } else {
     switch (prefixlen) {
       case 1:
@@ -122,16 +128,19 @@ void BString::PutVarchar(char *&dest, uchar prefixlen, bool move_ptr) const {
         TIANMU_ERROR("not implemented");
     }
     std::memcpy(dest + prefixlen, val, len);
-    if (move_ptr) dest += prefixlen + len;
+    if (move_ptr)
+      dest += prefixlen + len;
   }
 }
 
 BString &BString::operator=(const BString &rcbs) {
-  if (this == &rcbs) return *this;
+  if (this == &rcbs)
+    return *this;
 
   null = rcbs.null;
   if (null) {
-    if (persistent) delete[] val;
+    if (persistent)
+      delete[] val;
     val = 0;
     len = 0;
     pos = 0;
@@ -139,14 +148,16 @@ BString &BString::operator=(const BString &rcbs) {
     if (rcbs.persistent) {
       uint tmp_len = rcbs.len + rcbs.pos;
       if (!persistent || tmp_len > len + pos) {
-        if (persistent) delete[] val;
+        if (persistent)
+          delete[] val;
         val = new char[tmp_len];
       }
       len = rcbs.len;
       pos = rcbs.pos;
       std::memcpy(val, rcbs.val, len + pos);
     } else {
-      if (persistent) delete[] val;
+      if (persistent)
+        delete[] val;
       len = rcbs.len;
       pos = rcbs.pos;
       val = rcbs.val;
@@ -171,7 +182,8 @@ void BString::PersistentCopy(const BString &rcbs) {
   } else {
     uint tmp_len = rcbs.len + rcbs.pos;
     if (!persistent || tmp_len > len + pos) {
-      if (persistent) delete[] val;
+      if (persistent)
+        delete[] val;
       val = new char[tmp_len];
     }
     len = rcbs.len;
@@ -182,7 +194,8 @@ void BString::PersistentCopy(const BString &rcbs) {
 }
 
 std::string BString::ToString() const {
-  if (len) return std::string(val + pos, len);
+  if (len)
+    return std::string(val + pos, len);
   return std::string();
 }
 
@@ -206,7 +219,8 @@ BString &BString::operator-=(ushort pos) {
 }
 
 bool BString::Like(const BString &pattern, char escape_character) {
-  if (pattern.IsEmpty()) return this->IsEmpty();
+  if (pattern.IsEmpty())
+    return this->IsEmpty();
   BString processed_pattern;  // to be used as an alternative source in case of
                               // processed pattern (escape chars)
   BString processed_wildcards;
@@ -274,7 +288,8 @@ bool BString::Like(const BString &pattern, char escape_character) {
           ((cur_p < pattern_len && w[cur_p] != '%') || cur_p >= pattern_len)) {  // not matching (loop finished
         // prematurely) - try the next source
         // position
-        if (!was_wild) return false;  // no % up to now => the first non-matching is critical
+        if (!was_wild)
+          return false;  // no % up to now => the first non-matching is critical
         cur_p = cur_p_beg;
         cur_s = ++cur_s_beg;  // step forward in the source, rewind the matching
                               // pointers
@@ -293,7 +308,8 @@ bool BString::Like(const BString &pattern, char escape_character) {
 }
 
 void BString::MakePersistent() {
-  if (persistent) return;
+  if (persistent)
+    return;
   char *n_val = new char[len + pos];
   std::memcpy(n_val, val, len + pos);
   val = n_val;
@@ -303,7 +319,8 @@ void BString::MakePersistent() {
 bool BString::GreaterEqThanMin(const void *txt_min) {
   const unsigned char *s = reinterpret_cast<const unsigned char *>(txt_min);
 
-  if (null == true) return false;
+  if (null == true)
+    return false;
   uint min_len = 8;
   while (min_len > 0 && s[min_len - 1] == '\0') min_len--;
   for (uint i = 0; i < min_len && i < len; i++)
@@ -311,12 +328,14 @@ bool BString::GreaterEqThanMin(const void *txt_min) {
       return false;
     else if (((unsigned char *)val)[i + pos] > s[i])
       return true;
-  if (len < min_len) return false;
+  if (len < min_len)
+    return false;
   return true;
 }
 
 bool BString::GreaterEqThanMinUTF(const void *txt_min, DTCollation col, bool use_full_len) {
-  if (null == true) return false;
+  if (null == true)
+    return false;
   if (RequiresUTFConversions(col)) {
     uint useful_len = 0;
     const char *s = reinterpret_cast<const char *>(txt_min);
@@ -326,7 +345,8 @@ bool BString::GreaterEqThanMinUTF(const void *txt_min, DTCollation col, bool use
 
       uint next_char_len, chars_included = 0;
       while (true) {
-        if (useful_len >= len || chars_included == min_charlen) break;
+        if (useful_len >= len || chars_included == min_charlen)
+          break;
         next_char_len = col.collation->cset->mbcharlen(col.collation, (uchar)val[useful_len + pos]);
         DEBUG_ASSERT("wide character unrecognized" && next_char_len > 0);
         useful_len += next_char_len;
@@ -341,7 +361,8 @@ bool BString::GreaterEqThanMinUTF(const void *txt_min, DTCollation col, bool use
 }
 
 bool BString::LessEqThanMax(const void *txt_max) {
-  if (null == true) return false;
+  if (null == true)
+    return false;
   const unsigned char *s = reinterpret_cast<const unsigned char *>(txt_max);
   for (uint i = 0; i < 8 && i < len; i++)
     if (((unsigned char *)val)[i + pos] > s[i])
@@ -352,7 +373,8 @@ bool BString::LessEqThanMax(const void *txt_max) {
 }
 
 bool BString::LessEqThanMaxUTF(const void *txt_max, DTCollation col, bool use_full_len) {
-  if (null == true) return false;
+  if (null == true)
+    return false;
   if (RequiresUTFConversions(col)) {
     uint useful_len = 0;
     const char *s = reinterpret_cast<const char *>(txt_max);
@@ -362,7 +384,8 @@ bool BString::LessEqThanMaxUTF(const void *txt_max, DTCollation col, bool use_fu
 
       uint next_char_len, chars_included = 0;
       while (true) {
-        if (useful_len >= len || chars_included == max_charlen) break;
+        if (useful_len >= len || chars_included == max_charlen)
+          break;
         next_char_len = col.collation->cset->mbcharlen(col.collation, (uchar)val[useful_len + pos]);
         DEBUG_ASSERT("wide character unrecognized" && next_char_len > 0);
         useful_len += next_char_len;
@@ -377,55 +400,70 @@ bool BString::LessEqThanMaxUTF(const void *txt_max, DTCollation col, bool use_fu
 }
 
 bool BString::IsEmpty() const {
-  if (null == true) return false;
+  if (null == true)
+    return false;
   return len == 0 ? true : false;
 }
 
 bool BString::IsNullOrEmpty() const { return ((len == 0 || null) ? true : false); }
 
 bool BString::operator==(const RCDataType &rcdt) const {
-  if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) == 0;
+  if (null || rcdt.IsNull())
+    return false;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith((BString &)rcdt) == 0;
   return CompareWith(rcdt.ToBString()) == 0;
 }
 
 bool BString::operator==(const BString &rcs) const {
-  if (null || rcs.IsNull()) return false;
+  if (null || rcs.IsNull())
+    return false;
   return CompareWith(rcs) == 0;
 }
 
 bool BString::operator<(const RCDataType &rcdt) const {
-  if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) < 0;
+  if (null || rcdt.IsNull())
+    return false;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith((BString &)rcdt) < 0;
   return CompareWith(rcdt.ToBString()) < 0;
 }
 
 bool BString::operator>(const RCDataType &rcdt) const {
-  if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) > 0;
+  if (null || rcdt.IsNull())
+    return false;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith((BString &)rcdt) > 0;
   return CompareWith(rcdt.ToBString()) > 0;
 }
 
 bool BString::operator>=(const RCDataType &rcdt) const {
-  if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) >= 0;
+  if (null || rcdt.IsNull())
+    return false;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith((BString &)rcdt) >= 0;
   return CompareWith(rcdt.ToBString()) >= 0;
 }
 
 bool BString::operator<=(const RCDataType &rcdt) const {
-  if (null || rcdt.IsNull()) return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) <= 0;
+  if (null || rcdt.IsNull())
+    return false;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith((BString &)rcdt) <= 0;
   return CompareWith(rcdt.ToBString()) <= 0;
 }
 
 bool BString::operator!=(const RCDataType &rcdt) const {
-  if (null || rcdt.IsNull()) return true;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) != 0;
+  if (null || rcdt.IsNull())
+    return true;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith((BString &)rcdt) != 0;
   return CompareWith(rcdt.ToBString()) != 0;
 }
 
 uint BString::GetHashCode() const {
-  if (null) return 0;
+  if (null)
+    return 0;
   uint hc = 0;
   int a = 1040021;
   for (uint i = 0; i < len; i++) hc = (hc * a + val[i]) & 1048575;
@@ -440,11 +478,13 @@ std::ostream &operator<<(std::ostream &out, const BString &rcbs) {
 void BString::CopyTo(void *dest, size_t count) const {
   uint l = (len - pos) < count ? (len - pos) : count;
   std::memcpy(dest, val + pos, l);
-  if (l <= count) std::memset((char *)dest + l, 0, count - l);
+  if (l <= count)
+    std::memset((char *)dest + l, 0, count - l);
 }
 
 bool operator!=(const BString &rcbs1, const BString &rcbs2) {
-  if (rcbs1.IsNull() || rcbs2.IsNull()) return true;
+  if (rcbs1.IsNull() || rcbs2.IsNull())
+    return true;
   return rcbs1.CompareWith(rcbs2) != 0;
 }
 
@@ -453,7 +493,8 @@ size_t BString::RoundUpTo8Bytes(const DTCollation &dt) const {
   if (dt.collation->mbmaxlen > 1) {
     int next_char_len;
     while (true) {
-      if (useful_len >= len) break;
+      if (useful_len >= len)
+        break;
       next_char_len = dt.collation->cset->mbcharlen(dt.collation, (uchar)val[useful_len + pos]);
 
       if (next_char_len == 0) {
@@ -462,7 +503,8 @@ size_t BString::RoundUpTo8Bytes(const DTCollation &dt) const {
       }
 
       DEBUG_ASSERT("wide character unrecognized" && next_char_len > 0);
-      if (useful_len + next_char_len > 8) break;
+      if (useful_len + next_char_len > 8)
+        break;
       useful_len += next_char_len;
     }
   } else

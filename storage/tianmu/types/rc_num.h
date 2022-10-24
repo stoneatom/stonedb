@@ -81,7 +81,9 @@ class RCNum : public ValueBasic<RCNum> {
   short Scale() const { return scale_; }
   int64_t ValueInt() const { return value_; }
   char *GetDataBytesPointer() const override { return (char *)&value_; }
-  int64_t GetIntPart() const { return is_double_ ? (int64_t)GetIntPartAsDouble() : value_ / (int64_t)Uint64PowOfTen(scale_); }
+  int64_t GetIntPart() const {
+    return is_double_ ? (int64_t)GetIntPartAsDouble() : value_ / (int64_t)Uint64PowOfTen(scale_);
+  }
 
   int64_t GetValueInt64() const { return value_; }
   double GetIntPartAsDouble() const;

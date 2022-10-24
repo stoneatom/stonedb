@@ -36,7 +36,7 @@ void IncAlloc::clear() {
   blk = 0;
   used = 0;
   while (!blocks.empty()) {
-    delete[] (char *)(blocks.back().mem);
+    delete[](char *)(blocks.back().mem);
     blocks.pop_back();
   }
   clearfrag();
@@ -64,10 +64,12 @@ void *IncAlloc::_alloc_search(uint size) {
   if (blk > 0) {
     bsize = (uint)(blocks[blk - 1].size * GROWSIZE + ROUNDUP) / ROUNDUP * ROUNDUP;
     DEBUG_ASSERT(bsize > blocks[blk - 1].size);
-    if (bsize < size) bsize = size;
+    if (bsize < size)
+      bsize = size;
   }
   void *mem = new char[bsize];
-  if (!mem) throw CprsErr::CPRS_ERR_MEM;
+  if (!mem)
+    throw CprsErr::CPRS_ERR_MEM;
 
   blocks.push_back(Block(mem, bsize));
   used = size;

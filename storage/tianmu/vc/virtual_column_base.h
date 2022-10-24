@@ -473,7 +473,8 @@ class VirtualColumnBase : public core::Column {
    * common::NULL_VALUE_64 first.
    */
   void SetLocalDistVals(int64_t loc_dist_vals) {
-    if (vc_dist_vals == common::NULL_VALUE_64 || vc_dist_vals > loc_dist_vals) vc_dist_vals = loc_dist_vals;
+    if (vc_dist_vals == common::NULL_VALUE_64 || vc_dist_vals > loc_dist_vals)
+      vc_dist_vals = loc_dist_vals;
   }
   void SetLocalNullsOnly(bool loc_nulls_only) { nulls_only = loc_nulls_only; }
   bool GetLocalNullsOnly() { return nulls_only; }

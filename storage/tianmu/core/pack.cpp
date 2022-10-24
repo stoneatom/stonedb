@@ -69,20 +69,21 @@ types::BString Pack::GetValueBinary([[maybe_unused]] int n) const {
 }
 
 void Pack::Release() {
-  if (owner) owner->DropObjectByMM(GetPackCoordinate());
+  if (owner)
+    owner->DropObjectByMM(GetPackCoordinate());
 }
 
 bool Pack::ShouldNotCompress() const {
   return (dpn->numOfRecords < (1U << s->pss)) || (s->ColType().GetFmt() == common::PackFmt::NOCOMPRESS);
 }
 
-bool Pack::CompressedBitMap(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size,
-                                    std::unique_ptr<uint32_t[]> &ptr_buf, uint32_t &dpn_num1) {
-  //Number of bits in bytes
+bool Pack::CompressedBitMap(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf,
+                            uint32_t &dpn_num1) {
+  // Number of bits in bytes
   int bitsInBytes = 8;
-  //Fill in values to prevent boundary errors
-  int padding = bitsInBytes-1;
-  //Because the maximum size of dpn->numofrecords is 65536, the buffer used by bitmaps is also limited
+  // Fill in values to prevent boundary errors
+  int padding = bitsInBytes - 1;
+  // Because the maximum size of dpn->numofrecords is 65536, the buffer used by bitmaps is also limited
   comp_buf_size = ((dpn->numOfRecords + padding) / bitsInBytes);
 
   comp_buf =

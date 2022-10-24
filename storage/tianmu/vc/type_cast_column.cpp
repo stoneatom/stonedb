@@ -57,7 +57,8 @@ String2NumCastColumn::String2NumCastColumn(VirtualColumn *from, core::ColumnType
 }
 
 int64_t String2NumCastColumn::GetNotNullValueInt64(const core::MIIterator &mit) {
-  if (full_const) return val;
+  if (full_const)
+    return val;
   types::BString rs;
   types::RCNum rcn;
   vc->GetValueString(rs, mit);
@@ -98,7 +99,8 @@ int64_t String2NumCastColumn::GetValueInt64Impl(const core::MIIterator &mit) {
           s += "\'";
           common::PushWarning(ConnInfo()->Thd(), Sql_condition::SL_WARNING, ER_TRUNCATED_WRONG_VALUE, s.c_str());
         }
-        if (rc == common::ErrorCode::OUT_OF_RANGE && rcn.GetValueInt64() > 0) return -1;
+        if (rc == common::ErrorCode::OUT_OF_RANGE && rcn.GetValueInt64() > 0)
+          return -1;
       } else if (ct.IsFixed()) {
         rc = types::RCNum::ParseNum(rs, rcn, ct.GetScale());
         if (rc != common::ErrorCode::SUCCESS) {
@@ -217,7 +219,8 @@ String2DateTimeCastColumn::String2DateTimeCastColumn(VirtualColumn *from, core::
 }
 
 int64_t String2DateTimeCastColumn::GetNotNullValueInt64(const core::MIIterator &mit) {
-  if (full_const) return val;
+  if (full_const)
+    return val;
 
   types::RCDateTime rcdt;
   types::BString rbs;
@@ -518,7 +521,8 @@ DateTime2NumCastColumn::DateTime2NumCastColumn(VirtualColumn *from, core::Column
       val = common::NULL_VALUE_64;
     } else {
       ((types::RCDateTime *)rcv.Get())->ToInt64(val);
-      if (vc->TypeName() == common::CT::YEAR && vc->Type().GetPrecision() == 2) val %= 100;
+      if (vc->TypeName() == common::CT::YEAR && vc->Type().GetPrecision() == 2)
+        val %= 100;
       if (to.IsFloat()) {
         double x = (double)val;
         val = *(int64_t *)&x;
@@ -529,9 +533,11 @@ DateTime2NumCastColumn::DateTime2NumCastColumn(VirtualColumn *from, core::Column
 }
 
 int64_t DateTime2NumCastColumn::GetNotNullValueInt64(const core::MIIterator &mit) {
-  if (full_const) return val;
+  if (full_const)
+    return val;
   int64_t v = vc->GetNotNullValueInt64(mit);
-  if (vc->TypeName() == common::CT::YEAR && vc->Type().GetPrecision() == 2) v %= 100;
+  if (vc->TypeName() == common::CT::YEAR && vc->Type().GetPrecision() == 2)
+    v %= 100;
   types::RCDateTime rdt(v, vc->TypeName());
   int64_t r;
   rdt.ToInt64(r);
@@ -547,11 +553,13 @@ int64_t DateTime2NumCastColumn::GetValueInt64Impl(const core::MIIterator &mit) {
     return val;
   else {
     int64_t v = vc->GetValueInt64(mit);
-    if (v == common::NULL_VALUE_64) return v;
+    if (v == common::NULL_VALUE_64)
+      return v;
     types::RCDateTime rdt(v, vc->TypeName());
     int64_t r;
     rdt.ToInt64(r);
-    if (vc->TypeName() == common::CT::YEAR && vc->Type().GetPrecision() == 2) r = r % 100;
+    if (vc->TypeName() == common::CT::YEAR && vc->Type().GetPrecision() == 2)
+      r = r % 100;
     if (Type().IsFloat()) {
       double x = (double)r;
       r = *(int64_t *)&x;
@@ -568,7 +576,8 @@ double DateTime2NumCastColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
     return (double)v;
   } else {
     int64_t v = vc->GetValueInt64(mit);
-    if (v == common::NULL_VALUE_64) return NULL_VALUE_D;
+    if (v == common::NULL_VALUE_64)
+      return NULL_VALUE_D;
     types::RCDateTime rdt(v, vc->TypeName());
     rdt.ToInt64(v);
     return (double)v;
@@ -585,7 +594,8 @@ types::RCValueObject DateTime2NumCastColumn::GetValueImpl(const core::MIIterator
     } else {
       int64_t r;
       ((types::RCDateTime *)v.Get())->ToInt64(r);
-      if (vc->TypeName() == common::CT::YEAR && vc->Type().GetPrecision() == 2) r %= 100;
+      if (vc->TypeName() == common::CT::YEAR && vc->Type().GetPrecision() == 2)
+        r %= 100;
       if (Type().IsFloat()) {
         double x = (double)r;
         r = *(int64_t *)&x;
@@ -614,7 +624,8 @@ TimeZoneConversionCastColumn::TimeZoneConversionCastColumn(VirtualColumn *from)
 }
 
 int64_t TimeZoneConversionCastColumn::GetNotNullValueInt64(const core::MIIterator &mit) {
-  if (full_const) return val;
+  if (full_const)
+    return val;
   int64_t v = vc->GetNotNullValueInt64(mit);
   types::RCDateTime rdt(v, vc->TypeName());
   types::RCDateTime::AdjustTimezone(rdt);
@@ -626,7 +637,8 @@ int64_t TimeZoneConversionCastColumn::GetValueInt64Impl(const core::MIIterator &
     return val;
   else {
     int64_t v = vc->GetValueInt64(mit);
-    if (v == common::NULL_VALUE_64) return v;
+    if (v == common::NULL_VALUE_64)
+      return v;
     types::RCDateTime rdt(v, vc->TypeName());
     types::RCDateTime::AdjustTimezone(rdt);
     return rdt.GetInt64();
@@ -635,14 +647,17 @@ int64_t TimeZoneConversionCastColumn::GetValueInt64Impl(const core::MIIterator &
 
 types::RCValueObject TimeZoneConversionCastColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool b) {
   if (full_const) {
-    if (Type().IsString()) return rcv.ToBString();
+    if (Type().IsString())
+      return rcv.ToBString();
     return rcv;
   } else {
     int64_t v = vc->GetValueInt64(mit);
-    if (v == common::NULL_VALUE_64) return types::RCDateTime();
+    if (v == common::NULL_VALUE_64)
+      return types::RCDateTime();
     types::RCDateTime rdt(v, vc->TypeName());
     types::RCDateTime::AdjustTimezone(rdt);
-    if (Type().IsString()) return rdt.ToBString();
+    if (Type().IsString())
+      return rdt.ToBString();
     return rdt;
   }
 }
@@ -655,7 +670,8 @@ double TimeZoneConversionCastColumn::GetValueDoubleImpl(const core::MIIterator &
     return (double)v;
   } else {
     int64_t v = vc->GetValueInt64(mit);
-    if (v == common::NULL_VALUE_64) return NULL_VALUE_D;
+    if (v == common::NULL_VALUE_64)
+      return NULL_VALUE_D;
     types::RCDateTime rdt(v, vc->TypeName());
     types::RCDateTime::AdjustTimezone(rdt);
     rdt.ToInt64(v);

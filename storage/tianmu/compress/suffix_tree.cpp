@@ -123,7 +123,8 @@ void SuffixTree<Symb, NSymb>::MoveDown(Point &p, const uchar *&s) {
   for (;;) {
     // read the first symbol of the next edge
     p.next = GetChild(p.n, *s);
-    if (p.next == NIL) return;
+    if (p.next == NIL)
+      return;
     proj = 1;
     s++;
 
@@ -143,7 +144,8 @@ void SuffixTree<Symb, NSymb>::MoveDown(Point &p, const uchar *&s) {
       proj++;
       s++;
     }
-    if (proj < len) return;
+    if (proj < len)
+      return;
 
     p.n = p.next;
     proj = 0;
@@ -166,7 +168,8 @@ void SuffixTree<Symb, NSymb>::AddLeaf(Point p, int pos, PNode &last_int, PNode &
   if (p.proj == 0) {
     AddChild(p.n, s, nleaf);
 
-    if (last_int != NIL) GetNode(last_int).suf = p.n;
+    if (last_int != NIL)
+      GetNode(last_int).suf = p.n;
     last_int = NIL;
 
 #ifdef SUFTREE_STAT
@@ -194,7 +197,8 @@ void SuffixTree<Symb, NSymb>::AddLeaf(Point p, int pos, PNode &last_int, PNode &
     AddChild(n, s, nleaf);
 
     // now we can initialize the 'suf' link of the previously created node
-    if (last_int != NIL) GetNode(last_int).suf = nint;
+    if (last_int != NIL)
+      GetNode(last_int).suf = nint;
     last_int = nint;
 
 #ifdef SUFTREE_STAT
@@ -203,7 +207,8 @@ void SuffixTree<Symb, NSymb>::AddLeaf(Point p, int pos, PNode &last_int, PNode &
 #endif
   }
 
-  if (last_leaf != NIL) GetNode(last_leaf).suf = nleaf;
+  if (last_leaf != NIL)
+    GetNode(last_leaf).suf = nleaf;
   last_leaf = nleaf;
 
   // #	ifdef SUFTREE_STAT
@@ -266,14 +271,16 @@ int SuffixTree<Symb, NSymb>::GetSizeCDAWG(PNode n, bool cut) {
 template <class Symb, int NSymb>
 int SuffixTree<Symb, NSymb>::GetMemUsage() {
   size_t x = nodes.size() * sizeof(Node);
-  if (data) x += dlen * sizeof(data[0]);
+  if (data)
+    x += dlen * sizeof(data[0]);
   return (int)x;
 }
 
 template <class Symb, int NSymb>
 int SuffixTree<Symb, NSymb>::GetMemAlloc() {
   size_t x = nodes.capacity() * sizeof(Node);
-  if (data) x += dlen * sizeof(data[0]);
+  if (data)
+    x += dlen * sizeof(data[0]);
   return (int)x;
 }
 
@@ -308,16 +315,19 @@ void SuffixTree<Symb, NSymb>::Print(std::ostream &str, uint flags, PNode n, PNod
     PrintSub(str, node.pos, node.pos + len);
     str << ' ';
   }
-  if (flags & 2) str << len << ' ';
+  if (flags & 2)
+    str << len << ' ';
   // if(flags & 4)
   //	str << node.dep << ' ';
-  if (flags & 8) str << node.count << ' ';
+  if (flags & 8)
+    str << node.count << ' ';
   str << " [" << n << "]->[" << node.suf << "]" << std::endl;
 
   ind += len;
   for (int i = 1; i <= NSymb; i++) {
     PNode ch = GetChild(n, i % NSymb);
-    if (ch != NIL) Print(str, flags, ch, n, ind);
+    if (ch != NIL)
+      Print(str, flags, ch, n, ind);
   }
   (void)prev;  // FIXME
                //}
@@ -379,7 +389,8 @@ void SuffixTree<Symb, NSymb>::SetCounts() {
     stack.pop_back();
     Node &node = GetNode(n);
     ch = node.child;
-    if (ch == NIL) continue;
+    if (ch == NIL)
+      continue;
 
     if (proc) {  // children are already processed (their counts are correct)
       int &count = node.count;
@@ -415,7 +426,8 @@ template <class Symb, int NSymb>
 void SuffixTree<Symb, NSymb>::Prune(PNode n, bool cut) {
   SetCut(n, cut);
   PNode ch = GetNode(n).child;
-  if (ch == NIL) return;
+  if (ch == NIL)
+    return;
 
   bool invalid = false;
   if (!cut) {
@@ -430,7 +442,8 @@ void SuffixTree<Symb, NSymb>::Prune(PNode n, bool cut) {
     ch = NxtChild(ch);
   } while (ch != NIL);
 
-  if (invalid) GetNode(n).child = NIL;  // physically cut off children (but without destroying them)
+  if (invalid)
+    GetNode(n).child = NIL;  // physically cut off children (but without destroying them)
 }
 
 template <class Symb, int NSymb>
@@ -465,7 +478,8 @@ void SuffixTree<Symb, NSymb>::SetSums() {
     Node &node = GetNode(n);
     // if(node.count == GetNode(node.suf).count) _xxx_++;
     ch = node.child;
-    if (ch == NIL) continue;
+    if (ch == NIL)
+      continue;
 
     shift = Shift(node.count);  // how to shift children's counts
     Count sum = GetEscCount(n);
@@ -474,7 +488,8 @@ void SuffixTree<Symb, NSymb>::SetSums() {
       cnt = child.count;       // real count, wide-represented
       scnt = cnt _SHR_ shift;  // short count, reduced
       DEBUG_ASSERT(cnt > 0);
-      if (scnt == 0) scnt = 1;
+      if (scnt == 0)
+        scnt = 1;
 
       DEBUG_ASSERT(scnt <= COUNT_MAX);
       DEBUG_ASSERT(sum <= sum + (Count)scnt);
@@ -544,7 +559,8 @@ void SuffixTree<Symb, NSymb>::SetSuffix() {
     // put children on stack
     for (ch = node.child; ch != NIL; ch = NxtChild(ch)) stack.push_back(ch);
 
-    if (n == ROOT) continue;
+    if (n == ROOT)
+      continue;
     PNode &suf = node.suf;
     if (data[node.pos + node.len - 1] == '\0')
       // if the node's edge label ends with '\0', link the suffix directly to
@@ -603,11 +619,13 @@ void SuffixTree<Symb, NSymb>::FindEdge(Edge &e, Symb *str, int len) {
 
   // find the edge beginning with symbol str[0]
   e.n = GetChild(state, str[0]);
-  if (e.n == NIL) return;
+  if (e.n == NIL)
+    return;
 
   // check if the rest of the edge label is the same as 'str'
   Node &child = GetNode(e.n);
-  if ((child.len > len) || (std::memcmp(str + 1, data.get() + child.pos + 1, child.len - 1) != 0)) e.n = NIL;
+  if ((child.len > len) || (std::memcmp(str + 1, data.get() + child.pos + 1, child.len - 1) != 0))
+    e.n = NIL;
 }
 
 template <class Symb, int NSymb>
@@ -644,14 +662,16 @@ CprsErr SuffixTree<Symb, NSymb>::GetLabel(Edge e, Symb *lbl, int &len) {
     return CprsErr::CPRS_SUCCESS;
   }
   if (e.n == ROOT) {
-    if (len < 1) return CprsErr::CPRS_ERR_BUF;
+    if (len < 1)
+      return CprsErr::CPRS_ERR_BUF;
     *lbl = e.s;
     len = 1;
     return CprsErr::CPRS_SUCCESS;
   }
 
   Node &n = GetNode(e.n);
-  if (len < n.len) return CprsErr::CPRS_ERR_BUF;
+  if (len < n.len)
+    return CprsErr::CPRS_ERR_BUF;
   len = n.len;
   std::memcpy(lbl, data.get() + n.pos, len);
   return CprsErr::CPRS_SUCCESS;
@@ -695,7 +715,8 @@ CprsErr SuffixTree<Symb, NSymb>::Move(Count c, Symb *str, int &len, Range &rng) 
   Edge e{NIL, 0};
   FindEdge(e, c);
   CprsErr err = GetLabel(e, str, len);
-  if (static_cast<int>(err)) return err;
+  if (static_cast<int>(err))
+    return err;
   GetRange(state, e, rng);
   Move(e);
   return CprsErr::CPRS_SUCCESS;

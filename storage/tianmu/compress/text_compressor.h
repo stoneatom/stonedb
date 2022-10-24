@@ -52,7 +52,8 @@ class TextCompressor {
   int PermFirst([[maybe_unused]] int nrec) { return 0; }
   void PermNext(int &i, int nrec) {
     i += PERMSTEP;
-    if (i >= nrec) i = (i + 1) % PERMSTEP % nrec;
+    if (i >= nrec)
+      i = (i + 1) % PERMSTEP % nrec;
   }
 
   // parameters of the procedure of building a sequence of models

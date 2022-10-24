@@ -50,7 +50,8 @@ void RSIndex_CMap::Create([[maybe_unused]] int64_t _no_obj, int no_pos, [[maybe_
 
 void RSIndex_CMap::ClearPack(int pack) {
   ASSERT(size_t(pack) < hdr.no_pack);
-  if (cmap_buffers != nullptr) std::memset(PackBuf(pack), 0, hdr.no_positions * CMAP_BYTES);
+  if (cmap_buffers != nullptr)
+    std::memset(PackBuf(pack), 0, hdr.no_positions * CMAP_BYTES);
 }
 
 void RSIndex_CMap::SaveToFile(common::TX_ID ver) {
@@ -91,15 +92,19 @@ common::RSValue RSIndex_CMap::IsValue(types::BString min_v, types::BString max_v
   if (min_v == max_v) {
     auto size = min_v.size() < hdr.no_positions ? min_v.size() : hdr.no_positions;
     for (uint pos = 0; pos < size; pos++) {
-      if (!IsSet(pack, (unsigned char)min_v[pos], pos)) return common::RSValue::RS_NONE;
+      if (!IsSet(pack, (unsigned char)min_v[pos], pos))
+        return common::RSValue::RS_NONE;
     }
     return common::RSValue::RS_SOME;
   } else {
     // TODO: may be further optimized
     unsigned char f = 0, l = 255;
-    if (min_v.len > 0) f = (unsigned char)min_v[0];  // min_v.len == 0 usually means -inf
-    if (max_v.len > 0) l = (unsigned char)max_v[0];
-    if (f > l || !IsAnySet(pack, f, l, 0)) return common::RSValue::RS_NONE;
+    if (min_v.len > 0)
+      f = (unsigned char)min_v[0];  // min_v.len == 0 usually means -inf
+    if (max_v.len > 0)
+      l = (unsigned char)max_v[0];
+    if (f > l || !IsAnySet(pack, f, l, 0))
+      return common::RSValue::RS_NONE;
     return common::RSValue::RS_SOME;
   }
 }
@@ -109,15 +114,18 @@ common::RSValue RSIndex_CMap::IsLike(types::BString pattern, int pack, char esca
   char *p = pattern.val;  // just for short...
   uint pos = 0;
   while (pos < pattern.len && pos < hdr.no_positions) {
-    if (p[pos] == '%' || p[pos] == escape_character) break;
-    if (p[pos] != '_' && !IsSet(pack, p[pos], pos)) return common::RSValue::RS_NONE;
+    if (p[pos] == '%' || p[pos] == escape_character)
+      break;
+    if (p[pos] != '_' && !IsSet(pack, p[pos], pos))
+      return common::RSValue::RS_NONE;
     pos++;
   }
   return common::RSValue::RS_SOME;
 }
 
 void RSIndex_CMap::PutValue(const types::BString &v, int pack) {
-  if (v.IsNullOrEmpty()) return;
+  if (v.IsNullOrEmpty())
+    return;
   auto size = v.size() < hdr.no_positions ? v.size() : hdr.no_positions;
 
   ASSERT(size_t(pack) < hdr.no_pack);
@@ -136,7 +144,8 @@ bool RSIndex_CMap::IsSet(int pack, unsigned char c, uint pos) {
 bool RSIndex_CMap::IsAnySet(int pack, unsigned char first, unsigned char last, uint pos) {
   ASSERT(first <= last);
   for (int c = first; c <= last; c++)
-    if (IsSet(pack, c, pos)) return true;
+    if (IsSet(pack, c, pos))
+      return true;
   return false;
 }
 
@@ -159,9 +168,11 @@ void RSIndex_CMap::Update(common::PACK_INDEX pi, DPN &dpn, const PackStr *pack) 
   ClearPack(pi);
   for (size_t i = 0; i < dpn.numOfRecords; i++)
     if (pack->NotNull(i)) {
-      if (dpn.Trivial() || pack->IsNull(i)) continue;
+      if (dpn.Trivial() || pack->IsNull(i))
+        continue;
       types::BString str(pack->GetValueBinary(i));
-      if (str.size() > 0) PutValue(str, pi);
+      if (str.size() > 0)
+        PutValue(str, pi);
     }
 }
 }  // namespace core

@@ -330,7 +330,8 @@ inline uint32_t clzll(uint64_t x) {
   _BitScanReverse64(&r, x);
 #else
   // Scan the high 32 bits.
-  if (_BitScanReverse(&r, static_cast<uint32_t>(x >> 32))) return 63 - (r + 32);
+  if (_BitScanReverse(&r, static_cast<uint32_t>(x >> 32)))
+    return 63 - (r + 32);
 
   // Scan the low 32 bits.
   _BitScanReverse(&r, static_cast<uint32_t>(x));
@@ -416,8 +417,10 @@ class numeric_limits<Tianmu::fmt::internal::DummyInt> : public std::numeric_limi
     if (const_check(sizeof(signbit(x)) == sizeof(bool) || sizeof(signbit(x)) == sizeof(int))) {
       return signbit(x) != 0;
     }
-    if (x < 0) return true;
-    if (!isnotanumber(x)) return false;
+    if (x < 0)
+      return true;
+    if (!isnotanumber(x))
+      return false;
     int dec = 0, sign = 0;
     char buffer[2];  // The buffer size must be >= 2 or _ecvt_s will fail.
     _ecvt_s(buffer, sizeof(buffer), x, 0, &dec, &sign);
@@ -524,7 +527,8 @@ class BasicStringRef {
   int compare(BasicStringRef other) const {
     std::size_t size = size_ < other.size_ ? size_ : other.size_;
     int result = std::char_traits<Char>::compare(data_, other.data_, size);
-    if (result == 0) result = size_ == other.size_ ? 0 : (size_ < other.size_ ? -1 : 1);
+    if (result == 0)
+      result = size_ == other.size_ ? 0 : (size_ < other.size_ ? -1 : 1);
     return result;
   }
 
@@ -679,7 +683,8 @@ class Buffer {
     Resizes the buffer. If T is a POD type new elements may not be initialized.
    */
   void resize(std::size_t new_size) {
-    if (new_size > capacity_) grow(new_size);
+    if (new_size > capacity_)
+      grow(new_size);
     size_ = new_size;
   }
 
@@ -689,13 +694,15 @@ class Buffer {
     \endrst
    */
   void reserve(std::size_t capacity) {
-    if (capacity > capacity_) grow(capacity);
+    if (capacity > capacity_)
+      grow(capacity);
   }
 
   void clear() FMT_NOEXCEPT { size_ = 0; }
 
   void push_back(const T &value) {
-    if (size_ == capacity_) grow(size_ + 1);
+    if (size_ == capacity_)
+      grow(size_ + 1);
     ptr_[size_++] = value;
   }
 
@@ -712,7 +719,8 @@ template <typename U>
 void Buffer<T>::append(const U *begin, const U *end) {
   FMT_ASSERT(end >= begin, "negative value");
   std::size_t new_size = size_ + (end - begin);
-  if (new_size > capacity_) grow(new_size);
+  if (new_size > capacity_)
+    grow(new_size);
   std::uninitialized_copy(begin, end, internal::make_ptr(ptr_, capacity_) + size_);
   size_ = new_size;
 }
@@ -727,7 +735,8 @@ class MemoryBuffer : private Allocator, public Buffer<T> {
 
   // Deallocate memory allocated by the buffer.
   void deallocate() {
-    if (this->ptr_ != data_) Allocator::deallocate(this->ptr_, this->capacity_);
+    if (this->ptr_ != data_)
+      Allocator::deallocate(this->ptr_, this->capacity_);
   }
 
  protected:
@@ -774,7 +783,8 @@ class MemoryBuffer : private Allocator, public Buffer<T> {
 template <typename T, std::size_t SIZE, typename Allocator>
 void MemoryBuffer<T, SIZE, Allocator>::grow(std::size_t size) {
   std::size_t new_capacity = this->capacity_ + this->capacity_ / 2;
-  if (size > new_capacity) new_capacity = size;
+  if (size > new_capacity)
+    new_capacity = size;
   T *new_ptr = this->allocate(new_capacity, FMT_NULL);
   // The following code doesn't throw, so the raw pointer above doesn't leak.
   std::uninitialized_copy(this->ptr_, this->ptr_ + this->size_, make_ptr(new_ptr, new_capacity));
@@ -785,7 +795,8 @@ void MemoryBuffer<T, SIZE, Allocator>::grow(std::size_t size) {
   // deallocate may throw (at least in principle), but it doesn't matter since
   // the buffer already uses the new storage and will deallocate it in case
   // of exception.
-  if (old_ptr != data_) Allocator::deallocate(old_ptr, old_capacity);
+  if (old_ptr != data_)
+    Allocator::deallocate(old_ptr, old_capacity);
 }
 
 // A fixed-size buffer.
@@ -929,10 +940,14 @@ inline unsigned count_digits(uint64_t n) {
     // Integer division is slow so do it for a group of four digits instead
     // of for every digit. The idea comes from the talk by Alexandrescu
     // "Three Optimization Tips for C++". See speed-test for a comparison.
-    if (n < 10) return count;
-    if (n < 100) return count + 1;
-    if (n < 1000) return count + 2;
-    if (n < 10000) return count + 3;
+    if (n < 10)
+      return count;
+    if (n < 100)
+      return count + 1;
+    if (n < 1000)
+      return count + 2;
+    if (n < 10000)
+      return count + 3;
     n /= 10000u;
     count += 4;
   }
@@ -966,7 +981,8 @@ class ThousandsSep {
 
   template <typename Char>
   void operator()(Char *&buffer) {
-    if (++digit_index_ % 3 != 0) return;
+    if (++digit_index_ % 3 != 0)
+      return;
     buffer -= sep_.size();
     std::uninitialized_copy(sep_.data(), sep_.data() + sep_.size(), internal::make_ptr(buffer, sep_.size()));
   }
@@ -1489,7 +1505,8 @@ class ArgList {
     if (index < static_cast<unsigned>(enumMaxPacked::MAX_PACKED_ARGS)) {
       Arg::Type arg_type = type(index);
       internal::Value &val = arg;
-      if (arg_type != Arg::Type::NONE) val = use_values ? values_[index] : args_[index];
+      if (arg_type != Arg::Type::NONE)
+        val = use_values ? values_[index] : args_[index];
       arg.type = arg_type;
       return arg;
     }
@@ -1500,7 +1517,8 @@ class ArgList {
       return arg;
     }
     for (unsigned i = static_cast<unsigned>(enumMaxPacked::MAX_PACKED_ARGS); i <= index; ++i) {
-      if (args_[i].type == Arg::Type::NONE) return args_[i];
+      if (args_[i].type == Arg::Type::NONE)
+        return args_[i];
     }
     return args_[index];
   }
@@ -1876,7 +1894,8 @@ class ArgMap {
   const internal::Arg *find(const fmt::BasicStringRef<Char> &name) const {
     // The list is unsorted, so just return the first matching name.
     for (typename MapType::const_iterator it = map_.begin(), end = map_.end(); it != end; ++it) {
-      if (it->first == name) return &it->second;
+      if (it->first == name)
+        return &it->second;
     }
     return FMT_NULL;
   }
@@ -1966,7 +1985,8 @@ class ArgFormatterBase : public ArgVisitor<Impl, void> {
   }
 
   void visit_cstring(const char *value) {
-    if (spec_.type_ == 'p') return write_pointer(value);
+    if (spec_.type_ == 'p')
+      return write_pointer(value);
     write(value);
   }
 
@@ -1978,7 +1998,8 @@ class ArgFormatterBase : public ArgVisitor<Impl, void> {
   void visit_wstring(internal::Arg::StringValue<Char> value) { writer_.write_str(value, spec_); }
 
   void visit_pointer(const void *value) {
-    if (spec_.type_ && spec_.type_ != 'p') report_unknown_type(spec_.type_, "pointer");
+    if (spec_.type_ && spec_.type_ != 'p')
+      report_unknown_type(spec_.type_, "pointer");
     write_pointer(value);
   }
 };
@@ -2001,7 +2022,8 @@ class FormatterBase {
 
   // Returns the next argument.
   Arg next_arg(const char *&error) {
-    if (next_arg_index_ >= 0) return do_get_arg(internal::to_unsigned(next_arg_index_++), error);
+    if (next_arg_index_ >= 0)
+      return do_get_arg(internal::to_unsigned(next_arg_index_++), error);
     error = "cannot switch from manual to automatic argument indexing";
     return Arg();
   }
@@ -2023,7 +2045,8 @@ class FormatterBase {
 
   template <typename Char>
   void write(BasicWriter<Char> &w, const Char *start, const Char *end) {
-    if (start != end) w << BasicStringRef<Char>(start, internal::to_unsigned(end - start));
+    if (start != end)
+      w << BasicStringRef<Char>(start, internal::to_unsigned(end - start));
   }
 };
 }  // namespace internal
@@ -2181,7 +2204,7 @@ struct ArgArray<N, false /*IsPacked*/> {
 
 #if FMT_USE_VARIADIC_TEMPLATES
 template <typename Arg, typename... Args>
-inline uint64_t make_type(const Arg &first, const Args &...tail) {
+inline uint64_t make_type(const Arg &first, const Args &... tail) {
   return make_type(first) | (make_type(tail...) << 4);
 }
 
@@ -2216,7 +2239,7 @@ inline uint64_t make_type(FMT_GEN15(FMT_ARG_TYPE_DEFAULT)) {
 // Defines a variadic function returning void.
 #define FMT_VARIADIC_VOID(func, arg_type)                                                       \
   template <typename... Args>                                                                   \
-  void func(arg_type arg0, const Args &...args) {                                               \
+  void func(arg_type arg0, const Args &... args) {                                              \
     typedef fmt::internal::ArgArray<sizeof...(Args)> ArgArray;                                  \
     typename ArgArray::Type array{ArgArray::template make<fmt::BasicFormatter<Char>>(args)...}; \
     func(arg0, fmt::ArgList(fmt::internal::make_type(args...), array));                         \
@@ -2225,7 +2248,7 @@ inline uint64_t make_type(FMT_GEN15(FMT_ARG_TYPE_DEFAULT)) {
 // Defines a variadic constructor.
 #define FMT_VARIADIC_CTOR(ctor, func, arg0_type, arg1_type)                                     \
   template <typename... Args>                                                                   \
-  ctor(arg0_type arg0, arg1_type arg1, const Args &...args) {                                   \
+  ctor(arg0_type arg0, arg1_type arg1, const Args &... args) {                                  \
     typedef fmt::internal::ArgArray<sizeof...(Args)> ArgArray;                                  \
     typename ArgArray::Type array{ArgArray::template make<fmt::BasicFormatter<Char>>(args)...}; \
     func(arg0, arg1, fmt::ArgList(fmt::internal::make_type(args...), array));                   \
@@ -2655,7 +2678,8 @@ template <typename StrChar, typename Spec>
 void BasicWriter<Char>::write_str(const internal::Arg::StringValue<StrChar> &s, const Spec &spec) {
   // Check if StrChar is convertible to Char.
   internal::CharTraits<Char>::convert(StrChar());
-  if (spec.type_ && spec.type_ != 's') internal::report_unknown_type(spec.type_, "string");
+  if (spec.type_ && spec.type_ != 's')
+    internal::report_unknown_type(spec.type_, "string");
   const StrChar *str_value = s.value;
   std::size_t str_size = s.size;
   if (str_size == 0) {
@@ -2664,7 +2688,8 @@ void BasicWriter<Char>::write_str(const internal::Arg::StringValue<StrChar> &s, 
     }
   }
   std::size_t precision = static_cast<std::size_t>(spec.precision_);
-  if (spec.precision_ >= 0 && precision < str_size) str_size = precision;
+  if (spec.precision_ >= 0 && precision < str_size)
+    str_size = precision;
   write_str(str_value, str_size, spec);
 }
 
@@ -2691,10 +2716,12 @@ typename BasicWriter<Char>::CharPtr BasicWriter<Char>::prepare_int_buffer(unsign
   if (spec.precision() > static_cast<int>(num_digits)) {
     // Octal prefix '0' is counted as a digit, so ignore it if precision
     // is specified.
-    if (prefix_size > 0 && prefix[prefix_size - 1] == '0') --prefix_size;
+    if (prefix_size > 0 && prefix[prefix_size - 1] == '0')
+      --prefix_size;
     unsigned number_size = prefix_size + internal::to_unsigned(spec.precision());
     AlignSpec subspec(number_size, '0', Alignment::ALIGN_NUMERIC);
-    if (number_size >= width) return prepare_int_buffer(num_digits, subspec, prefix, prefix_size);
+    if (number_size >= width)
+      return prepare_int_buffer(num_digits, subspec, prefix, prefix_size);
     buffer_.reserve(width);
     unsigned fill_size = width - number_size;
     if (align != Alignment::ALIGN_LEFT) {
@@ -2801,7 +2828,8 @@ void BasicWriter<Char>::write_int(T value, Spec spec) {
     }
     case 'o': {
       UnsignedType n = abs_value;
-      if (spec.flag(static_cast<int>(enumFlags::HASH_FLAG))) prefix[prefix_size++] = '0';
+      if (spec.flag(static_cast<int>(enumFlags::HASH_FLAG)))
+        prefix[prefix_size++] = '0';
       unsigned num_digits = 0;
       do {
         ++num_digits;
@@ -2882,7 +2910,8 @@ void BasicWriter<Char>::write_double(T value, const Spec &spec) {
       ++nan;
     }
     CharPtr out = write_str(nan, nan_size, spec);
-    if (sign) *out = sign;
+    if (sign)
+      *out = sign;
     return;
   }
 
@@ -2896,7 +2925,8 @@ void BasicWriter<Char>::write_double(T value, const Spec &spec) {
       ++inf;
     }
     CharPtr out = write_str(inf, inf_size, spec);
-    if (sign) *out = sign;
+    if (sign)
+      *out = sign;
     return;
   }
 
@@ -2904,7 +2934,8 @@ void BasicWriter<Char>::write_double(T value, const Spec &spec) {
   unsigned width = spec.width();
   if (sign) {
     buffer_.reserve(buffer_.size() + (width > 1u ? width : 1u));
-    if (width > 0) --width;
+    if (width > 0)
+      --width;
     ++offset;
   }
 
@@ -2914,12 +2945,15 @@ void BasicWriter<Char>::write_double(T value, const Spec &spec) {
   Char *format_ptr = format;
   *format_ptr++ = '%';
   unsigned width_for_sprintf = width;
-  if (spec.flag(static_cast<int>(enumFlags::HASH_FLAG))) *format_ptr++ = '#';
+  if (spec.flag(static_cast<int>(enumFlags::HASH_FLAG)))
+    *format_ptr++ = '#';
   if (spec.align() == Alignment::ALIGN_CENTER) {
     width_for_sprintf = 0;
   } else {
-    if (spec.align() == Alignment::ALIGN_LEFT) *format_ptr++ = '-';
-    if (width != 0) *format_ptr++ = '*';
+    if (spec.align() == Alignment::ALIGN_LEFT)
+      *format_ptr++ = '-';
+    if (width != 0)
+      *format_ptr++ = '*';
   }
   if (spec.precision() >= 0) {
     *format_ptr++ = '.';
@@ -2950,7 +2984,8 @@ void BasicWriter<Char>::write_double(T value, const Spec &spec) {
                                                           spec.precision(), value);
     if (result >= 0) {
       n = internal::to_unsigned(result);
-      if (offset + n < buffer_.capacity()) break;  // The buffer is large enough - continue with formatting.
+      if (offset + n < buffer_.capacity())
+        break;  // The buffer is large enough - continue with formatting.
       buffer_.reserve(offset + n + 1);
     } else {
       // If result is negative we ask to increase the capacity by at least 1,
@@ -2976,7 +3011,8 @@ void BasicWriter<Char>::write_double(T value, const Spec &spec) {
   }
   if (spec.fill() != ' ' || sign) {
     while (*start == ' ') *start++ = fill;
-    if (sign) *(start - 1) = sign;
+    if (sign)
+      *(start - 1) = sign;
   }
   grow_buffer(n);
 }
@@ -3233,9 +3269,11 @@ class FormatInt {
   void FormatSigned(LongLong value) {
     ULongLong abs_value = static_cast<ULongLong>(value);
     bool negative = value < 0;
-    if (negative) abs_value = 0 - abs_value;
+    if (negative)
+      abs_value = 0 - abs_value;
     str_ = format_decimal(abs_value);
-    if (negative) *--str_ = '-';
+    if (negative)
+      *--str_ = '-';
   }
 
  public:
@@ -3357,7 +3395,7 @@ void arg(WStringRef, const internal::NamedArg<Char> &) FMT_DELETED_OR_UNDEFINED;
 #if FMT_USE_VARIADIC_TEMPLATES
 #define FMT_VARIADIC_(Char, ReturnType, func, call, ...)                                                       \
   template <typename... Args>                                                                                  \
-  ReturnType func(FMT_FOR_EACH(FMT_ADD_ARG_NAME, __VA_ARGS__), const Args &...args) {                          \
+  ReturnType func(FMT_FOR_EACH(FMT_ADD_ARG_NAME, __VA_ARGS__), const Args &... args) {                         \
     typedef fmt::internal::ArgArray<sizeof...(Args)> ArgArray;                                                 \
     typename ArgArray::Type array{ArgArray::template make<fmt::BasicFormatter<Char>>(args)...};                \
     call(FMT_FOR_EACH(FMT_GET_ARG_NAME, __VA_ARGS__), fmt::ArgList(fmt::internal::make_type(args...), array)); \
@@ -3480,7 +3518,8 @@ unsigned parse_nonnegative_int(const Char *&s) {
   } while ('0' <= *s && *s <= '9');
   // Convert to unsigned to prevent a warning.
   unsigned max_int = (std::numeric_limits<int>::max)();
-  if (value > max_int) FMT_THROW(FormatError("number is too big"));
+  if (value > max_int)
+    FMT_THROW(FormatError("number is too big"));
   return value;
 }
 
@@ -3507,7 +3546,8 @@ inline internal::Arg BasicFormatter<Char, AF>::get_arg(BasicStringRef<Char> arg_
   if (check_no_auto_index(error)) {
     map_.init(args());
     const internal::Arg *arg = map_.find(arg_name);
-    if (arg) return *arg;
+    if (arg)
+      return *arg;
     error = "argument not found";
   }
   return internal::Arg();
@@ -3533,7 +3573,8 @@ inline internal::Arg BasicFormatter<Char, AF>::parse_arg_name(const Char *&s) {
   } while (internal::is_name_start(c) || ('0' <= c && c <= '9'));
   const char *error = FMT_NULL;
   internal::Arg arg = get_arg(BasicStringRef<Char>(start, s - start), error);
-  if (error) FMT_THROW(FormatError(error));
+  if (error)
+    FMT_THROW(FormatError(error));
   return arg;
 }
 
@@ -3569,13 +3610,16 @@ const Char *BasicFormatter<Char, ArgFormatter>::format(const Char *&format_str, 
         }
         if (spec.align_ != Alignment::ALIGN_DEFAULT) {
           if (p != s) {
-            if (c == '}') break;
-            if (c == '{') FMT_THROW(FormatError("invalid fill character '{'"));
+            if (c == '}')
+              break;
+            if (c == '{')
+              FMT_THROW(FormatError("invalid fill character '{'"));
             s += 2;
             spec.fill_ = c;
           } else
             ++s;
-          if (spec.align_ == Alignment::ALIGN_NUMERIC) require_numeric_argument(arg, '=');
+          if (spec.align_ == Alignment::ALIGN_NUMERIC)
+            require_numeric_argument(arg, '=');
           break;
         }
       } while (--p >= s);
@@ -3617,18 +3661,21 @@ const Char *BasicFormatter<Char, ArgFormatter>::format(const Char *&format_str, 
     } else if (*s == '{') {
       ++s;
       Arg width_arg = internal::is_name_start(*s) ? parse_arg_name(s) : parse_arg_index(s);
-      if (*s++ != '}') FMT_THROW(FormatError("invalid format string"));
+      if (*s++ != '}')
+        FMT_THROW(FormatError("invalid format string"));
       ULongLong value = 0;
       switch (width_arg.type) {
         case Arg::Type::INT:
-          if (width_arg.int_value < 0) FMT_THROW(FormatError("negative width"));
+          if (width_arg.int_value < 0)
+            FMT_THROW(FormatError("negative width"));
           value = width_arg.int_value;
           break;
         case Arg::Type::UINT:
           value = width_arg.uint_value;
           break;
         case Arg::Type::LONG_LONG:
-          if (width_arg.long_long_value < 0) FMT_THROW(FormatError("negative width"));
+          if (width_arg.long_long_value < 0)
+            FMT_THROW(FormatError("negative width"));
           value = width_arg.long_long_value;
           break;
         case Arg::Type::ULONG_LONG:
@@ -3637,7 +3684,8 @@ const Char *BasicFormatter<Char, ArgFormatter>::format(const Char *&format_str, 
         default:
           FMT_THROW(FormatError("width is not integer"));
       }
-      if (value > (std::numeric_limits<int>::max)()) FMT_THROW(FormatError("number is too big"));
+      if (value > (std::numeric_limits<int>::max)())
+        FMT_THROW(FormatError("number is too big"));
       spec.width_ = static_cast<int>(value);
     }
 
@@ -3650,18 +3698,21 @@ const Char *BasicFormatter<Char, ArgFormatter>::format(const Char *&format_str, 
       } else if (*s == '{') {
         ++s;
         Arg precision_arg = internal::is_name_start(*s) ? parse_arg_name(s) : parse_arg_index(s);
-        if (*s++ != '}') FMT_THROW(FormatError("invalid format string"));
+        if (*s++ != '}')
+          FMT_THROW(FormatError("invalid format string"));
         ULongLong value = 0;
         switch (precision_arg.type) {
           case Arg::Type::INT:
-            if (precision_arg.int_value < 0) FMT_THROW(FormatError("negative precision"));
+            if (precision_arg.int_value < 0)
+              FMT_THROW(FormatError("negative precision"));
             value = precision_arg.int_value;
             break;
           case Arg::Type::UINT:
             value = precision_arg.uint_value;
             break;
           case Arg::Type::LONG_LONG:
-            if (precision_arg.long_long_value < 0) FMT_THROW(FormatError("negative precision"));
+            if (precision_arg.long_long_value < 0)
+              FMT_THROW(FormatError("negative precision"));
             value = precision_arg.long_long_value;
             break;
           case Arg::Type::ULONG_LONG:
@@ -3670,7 +3721,8 @@ const Char *BasicFormatter<Char, ArgFormatter>::format(const Char *&format_str, 
           default:
             FMT_THROW(FormatError("precision is not integer"));
         }
-        if (value > (std::numeric_limits<int>::max)()) FMT_THROW(FormatError("number is too big"));
+        if (value > (std::numeric_limits<int>::max)())
+          FMT_THROW(FormatError("number is too big"));
         spec.precision_ = static_cast<int>(value);
       } else {
         FMT_THROW(FormatError("missing precision specifier"));
@@ -3682,10 +3734,12 @@ const Char *BasicFormatter<Char, ArgFormatter>::format(const Char *&format_str, 
     }
 
     // Parse type.
-    if (*s != '}' && *s) spec.type_ = static_cast<char>(*s++);
+    if (*s != '}' && *s)
+      spec.type_ = static_cast<char>(*s++);
   }
 
-  if (*s++ != '}') FMT_THROW(FormatError("missing '}' in format string"));
+  if (*s++ != '}')
+    FMT_THROW(FormatError("missing '}' in format string"));
 
   // Format argument.
   ArgFormatter(*this, spec, s - 1).visit(arg);
@@ -3698,13 +3752,15 @@ void BasicFormatter<Char, AF>::format(BasicCStringRef<Char> format_str) {
   const Char *start = s;
   while (*s) {
     Char c = *s++;
-    if (c != '{' && c != '}') continue;
+    if (c != '{' && c != '}')
+      continue;
     if (*s == c) {
       write(writer_, start, s);
       start = ++s;
       continue;
     }
-    if (c == '}') FMT_THROW(FormatError("unmatched '}' in format string"));
+    if (c == '}')
+      FMT_THROW(FormatError("unmatched '}' in format string"));
     write(writer_, start, s - 1);
     internal::Arg arg = internal::is_name_start(*s) ? parse_arg_name(s) : parse_arg_index(s);
     start = s = format(s, arg);
@@ -3746,9 +3802,11 @@ auto join(const Range &range, const BasicCStringRef<wchar_t> &sep) -> ArgJoin<wc
 template <typename ArgFormatter, typename Char, typename It>
 void format_arg(fmt::BasicFormatter<Char, ArgFormatter> &f, const Char *&format_str, const ArgJoin<Char, It> &e) {
   const Char *end = format_str;
-  if (*end == ':') ++end;
+  if (*end == ':')
+    ++end;
   while (*end && *end != '}') ++end;
-  if (*end != '}') FMT_THROW(FormatError("missing '}' in format string"));
+  if (*end != '}')
+    FMT_THROW(FormatError("missing '}' in format string"));
 
   It it = e.first;
   if (it != e.last) {
@@ -3775,7 +3833,7 @@ struct UdlFormat {
   const Char *str;
 
   template <typename... Args>
-  auto operator()(Args &&...args) const -> decltype(format(str, std::forward<Args>(args)...)) {
+  auto operator()(Args &&... args) const -> decltype(format(str, std::forward<Args>(args)...)) {
     return format(str, std::forward<Args>(args)...);
   }
 };

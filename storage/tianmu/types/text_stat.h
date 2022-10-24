@@ -44,10 +44,10 @@ class TextStat final {
                                  // reset temporary statistics
 
   int64_t Encode(const BString &rcbs,
-                 bool round_up = false);  // return common::NULL_VALUE_64 if not
-                                          // encodable, round_up = true =>
-                                          // fill the unused characters by
-                                          // max codes
+                 bool round_up = false);   // return common::NULL_VALUE_64 if not
+                                           // encodable, round_up = true =>
+                                           // fill the unused characters by
+                                           // max codes
   int64_t MaxCode() { return max_code_; }  // return the maximal code which may occur
   BString Decode(int64_t code);
 

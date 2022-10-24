@@ -113,18 +113,22 @@ bool ExpressionColumn::FeedArguments(const core::MIIterator &mit) {
 }
 
 int64_t ExpressionColumn::GetValueInt64Impl(const core::MIIterator &mit) {
-  if (FeedArguments(mit)) last_val = expr_->Evaluate();
-  if (last_val->IsNull()) return common::NULL_VALUE_64;
+  if (FeedArguments(mit))
+    last_val = expr_->Evaluate();
+  if (last_val->IsNull())
+    return common::NULL_VALUE_64;
   return last_val->Get64();
 }
 
 bool ExpressionColumn::IsNullImpl(const core::MIIterator &mit) {
-  if (FeedArguments(mit)) last_val = expr_->Evaluate();
+  if (FeedArguments(mit))
+    last_val = expr_->Evaluate();
   return last_val->IsNull();
 }
 
 void ExpressionColumn::GetValueStringImpl(types::BString &s, const core::MIIterator &mit) {
-  if (FeedArguments(mit)) last_val = expr_->Evaluate();
+  if (FeedArguments(mit))
+    last_val = expr_->Evaluate();
   if (core::ATI::IsDateTimeType(TypeName())) {
     int64_t tmp;
     types::RCDateTime vd(last_val->Get64(), TypeName());
@@ -136,8 +140,10 @@ void ExpressionColumn::GetValueStringImpl(types::BString &s, const core::MIItera
 
 double ExpressionColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
   double val = 0;
-  if (FeedArguments(mit)) last_val = expr_->Evaluate();
-  if (last_val->IsNull()) val = NULL_VALUE_D;
+  if (FeedArguments(mit))
+    last_val = expr_->Evaluate();
+  if (last_val->IsNull())
+    val = NULL_VALUE_D;
 
   if (core::ATI::IsIntegerType(TypeName()))
     val = (double)last_val->Get64();
@@ -153,7 +159,8 @@ double ExpressionColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
     val = (double)vd_conv;
   } else if (core::ATI::IsStringType(TypeName())) {
     auto str = last_val->ToString();
-    if (str) val = std::stod(*str);
+    if (str)
+      val = std::stod(*str);
   } else
     DEBUG_ASSERT(0 && "conversion to double not implemented");
 
@@ -166,10 +173,14 @@ types::RCValueObject ExpressionColumn::GetValueImpl(const core::MIIterator &mit,
     GetValueString(s, mit);
     return s;
   }
-  if (core::ATI::IsIntegerType(TypeName())) return types::RCNum(GetValueInt64(mit), -1, false, TypeName());
-  if (core::ATI::IsDateTimeType(TypeName())) return types::RCDateTime(GetValueInt64(mit), TypeName());
-  if (core::ATI::IsRealType(TypeName())) return types::RCNum(GetValueInt64(mit), 0, true, TypeName());
-  if (lookup_to_num || TypeName() == common::CT::NUM) return types::RCNum(GetValueInt64(mit), Type().GetScale());
+  if (core::ATI::IsIntegerType(TypeName()))
+    return types::RCNum(GetValueInt64(mit), -1, false, TypeName());
+  if (core::ATI::IsDateTimeType(TypeName()))
+    return types::RCDateTime(GetValueInt64(mit), TypeName());
+  if (core::ATI::IsRealType(TypeName()))
+    return types::RCNum(GetValueInt64(mit), 0, true, TypeName());
+  if (lookup_to_num || TypeName() == common::CT::NUM)
+    return types::RCNum(GetValueInt64(mit), Type().GetScale());
   DEBUG_ASSERT(!"Illegal execution path");
   return types::RCValueObject();
 }
@@ -197,7 +208,8 @@ types::BString ExpressionColumn::GetMaxStringImpl([[maybe_unused]] const core::M
 
 int64_t ExpressionColumn::GetApproxDistValsImpl([[maybe_unused]] bool incl_nulls,
                                                 [[maybe_unused]] core::RoughMultiIndex *rough_mind) {
-  if (mind->TooManyTuples()) return common::PLUS_INF_64;
+  if (mind->TooManyTuples())
+    return common::PLUS_INF_64;
   return mind->NumOfTuples();  // default
 }
 
@@ -252,7 +264,8 @@ bool ExpressionColumn::IsDistinctImpl() { return false; }
 
 // the column is a deterministic expression on exactly one lookup column
 bool ExpressionColumn::ExactlyOneLookup() {
-  if (!deterministic_) return false;
+  if (!deterministic_)
+    return false;
   auto iter = var_map.begin();
   if (iter == var_map.end() || !iter->GetTabPtr()->GetColumnType(iter->col_ndx).IsLookup())
     return false;  // not a lookup
@@ -271,12 +284,14 @@ void ExpressionColumn::FeedLookupArguments(core::MILookupIterator &mit) {
   auto iter = var_map.begin();
   core::RCAttr *col = (core::RCAttr *)(iter->GetTabPtr()->GetColumn(iter->col_ndx));
   core::ValueOrNull v = types::BString();
-  if (mit.IsValid() && mit[0] != common::NULL_VALUE_64 && mit[0] < col->Cardinality()) v = col->DecodeValue_S(mit[0]);
+  if (mit.IsValid() && mit[0] != common::NULL_VALUE_64 && mit[0] < col->Cardinality())
+    v = col->DecodeValue_S(mit[0]);
 
   auto cache = var_buf_.find(iter->var);
   for (auto &val_it : cache->second) *(val_it.second) = val_it.first = v;
 
-  if (mit.IsValid() && mit[0] != common::NULL_VALUE_64 && mit[0] >= col->Cardinality()) mit.Invalidate();
+  if (mit.IsValid() && mit[0] != common::NULL_VALUE_64 && mit[0] >= col->Cardinality())
+    mit.Invalidate();
 }
 
 void ExpressionColumn::LockSourcePacks(const core::MIIterator &mit) {

@@ -44,7 +44,8 @@ class ConstExpressionColumn : public ExpressionColumn {
       : ExpressionColumn(expr, temp_table, temp_table_alias, mind) {
     // status = VC_CONST;
     dim = -1;
-    if (params.size() == 0) last_val = expr->Evaluate();
+    if (params.size() == 0)
+      last_val = expr->Evaluate();
   }
 
   ConstExpressionColumn(core::MysqlExpression *expr, core::ColumnType forced_ct, core::TempTable *temp_table,

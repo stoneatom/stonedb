@@ -67,7 +67,8 @@ handler *rcbase_create_handler(handlerton *hton, TABLE_SHARE *table, MEM_ROOT *m
 }
 
 int rcbase_panic_func([[maybe_unused]] handlerton *hton, enum ha_panic_function flag) {
-  if (tianmu_bootstrap) return 0;
+  if (tianmu_bootstrap)
+    return 0;
 
   if (flag == HA_PANIC_CLOSE) {
     delete ha_rcengine_;
@@ -203,7 +204,8 @@ int rcbase_init_func(void *p) {
 
   // When mysqld runs as bootstrap mode, we do not need to initialize
   // memmanager.
-  if (tianmu_bootstrap) DBUG_RETURN(0);
+  if (tianmu_bootstrap)
+    DBUG_RETURN(0);
 
   int ret = 1;
   ha_rcengine_ = NULL;
@@ -215,7 +217,8 @@ int rcbase_init_func(void *p) {
     rc_querylog_.addOutput(new system::FileOut(log_file + "/log/query.log"));
     struct hostent *hent = NULL;
     hent = gethostbyname(glob_hostname);
-    if (hent) strmov_str(global_hostIP_, inet_ntoa(*(struct in_addr *)(hent->h_addr_list[0])));
+    if (hent)
+      strmov_str(global_hostIP_, inet_ntoa(*(struct in_addr *)(hent->h_addr_list[0])));
     my_snprintf(global_serverinfo_, sizeof(global_serverinfo_), "\tServerIp:%s\tServerHostName:%s\tServerPort:%d",
                 global_hostIP_, glob_hostname, mysqld_port);
     // startup tianmu engine.

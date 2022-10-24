@@ -97,7 +97,8 @@ class Dictionary final {
     while ((k >= 0) && (keys[k].key != key)) k = next[k];
 
     if (k < 0) {
-      if (nkeys >= MAXKEYS) return false;
+      if (nkeys >= MAXKEYS)
+        return false;
       keys[nkeys].key = key;
       keys[nkeys].count = count;
       next[nkeys] = buckets[b];  // TODO: time - insert new keys at the END of the list

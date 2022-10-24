@@ -29,27 +29,27 @@ namespace Tianmu {
 namespace core {
 
 /*
-  The size of the current DPN structure object is used to prevent the structure of 
+  The size of the current DPN structure object is used to prevent the structure of
   the DPN from being changed arbitrarily.
-  If modification is required, 
-  please consider the size of PAGT_CNT and COL_DN_FILE_SIZE to 
+  If modification is required,
+  please consider the size of PAGT_CNT and COL_DN_FILE_SIZE to
   prevent space waste and give consideration to IO efficiency
 */
 static constexpr size_t DPN_SIZE = 88;
 // make sure the struct is not modified by mistake
 static_assert(sizeof(DPN) == DPN_SIZE, "Bad struct size of DPN");
 
-//Operating system page size
+// Operating system page size
 static constexpr size_t PAGE_SIZE = 4096;
-//Number of pages per allocation
+// Number of pages per allocation
 static constexpr size_t PAGE_CNT = 11;
-//Size of DPN memory allocation
+// Size of DPN memory allocation
 static constexpr size_t ALLOC_UNIT = PAGE_CNT * PAGE_SIZE;
 
-//Ensure that the allocated memory is an integer multiple of the DPN size
+// Ensure that the allocated memory is an integer multiple of the DPN size
 static_assert(ALLOC_UNIT % sizeof(DPN) == 0);
 
-//Number of dpns allocated each time
+// Number of dpns allocated each time
 static constexpr size_t DPN_INC_CNT = ALLOC_UNIT / sizeof(DPN);
 
 ColumnShare::~ColumnShare() {
@@ -59,7 +59,8 @@ ColumnShare::~ColumnShare() {
       TIANMU_LOG(LogCtl_Level::WARN, "Failed to unmap DPN file. Error %d(%s)", errno, std::strerror(errno));
     }
   }
-  if (dn_fd >= 0) ::close(dn_fd);
+  if (dn_fd >= 0)
+    ::close(dn_fd);
 }
 
 void ColumnShare::Init(common::TX_ID xid) {
@@ -73,7 +74,8 @@ void ColumnShare::Init(common::TX_ID xid) {
 void ColumnShare::map_dpn() {
   auto dpn_file = m_path / common::COL_DN_FILE;
   dn_fd = ::open(dpn_file.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-  if (dn_fd < 0) throw std::system_error(errno, std::system_category(), "open() " + dpn_file.string());
+  if (dn_fd < 0)
+    throw std::system_error(errno, std::system_category(), "open() " + dpn_file.string());
 
   struct stat sb;
   if (::fstat(dn_fd, &sb) != 0) {
@@ -123,9 +125,11 @@ void ColumnShare::read_meta() {
   if (pt == common::PackType::INT) {
     has_filter_hist = true;
   } else {
-    if (!types::RequiresUTFConversions(ct.GetCollation())) has_filter_cmap = true;
+    if (!types::RequiresUTFConversions(ct.GetCollation()))
+      has_filter_cmap = true;
 
-    if (ct.HasFilter()) has_filter_bloom = true;
+    if (ct.HasFilter())
+      has_filter_bloom = true;
   }
 }
 
@@ -211,11 +215,11 @@ void ColumnShare::init_dpn(DPN &dpn, const common::TX_ID xid, const DPN *from) {
   dpn.SetPackPtr(0);
 }
 
-
 int ColumnShare::alloc_dpn(common::TX_ID xid, const DPN *from) {
   for (uint32_t i = 0; i < capacity; i++) {
     if (start[i].used == 1) {
-      if (!(start[i].xmax < ha_rcengine_->MinXID())) continue;
+      if (!(start[i].xmax < ha_rcengine_->MinXID()))
+        continue;
       ha_rcengine_->cache.DropObject(PackCoordinate(owner->TabID(), col_id, i));
       segs.remove_if([i](const auto &s) { return s.idx == i; });
     }
@@ -254,7 +258,8 @@ void ColumnShare::alloc_seg(DPN *dpn) {
 
 void ColumnShare::sync_dpns() {
   int ret = ::msync(start, common::COL_DN_FILE_SIZE, MS_SYNC);
-  if (ret != 0) throw std::system_error(errno, std::system_category(), "msync() " + m_path.string());
+  if (ret != 0)
+    throw std::system_error(errno, std::system_category(), "msync() " + m_path.string());
 }
 }  // namespace core
 }  // namespace Tianmu

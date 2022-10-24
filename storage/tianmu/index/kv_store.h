@@ -40,89 +40,93 @@ namespace index {
 class KVStore final {
  public:
   KVStore(const KVStore &) = delete;
-  //mysql_real_data_home, pls refer to the system params.
+  // mysql_real_data_home, pls refer to the system params.
   KVStore() : kv_data_dir_(mysql_real_data_home){};
 
   KVStore &operator=(const KVStore &) = delete;
   virtual ~KVStore() { UnInit(); }
 
-  //initialize rocksdb engine
+  // initialize rocksdb engine
   void Init();
-  //deinitialize rocksdb engine
+  // deinitialize rocksdb engine
   void UnInit();
 
-  //sending signal DeleteData
+  // sending signal DeleteData
   void DeleteDataSignal() { cv_drop_.notify_one(); }
-  //async Droping Data
+  // async Droping Data
   void AsyncDropData();
-  //gets rocksdb handler
+  // gets rocksdb handler
   rocksdb::TransactionDB *GetRdb() const { return txn_db_; }
 
   uint GetNextIndexId() { return ddl_manager_.get_and_update_next_number(&dict_manager_); }
-  //gets the column family
-  rocksdb::ColumnFamilyHandle *GetCfHandle(std::string &cf_name) { return cf_manager_.get_or_create_cf(txn_db_, cf_name); }
-  //gets the column family by ID
+  // gets the column family
+  rocksdb::ColumnFamilyHandle *GetCfHandle(std::string &cf_name) {
+    return cf_manager_.get_or_create_cf(txn_db_, cf_name);
+  }
+  // gets the column family by ID
   rocksdb::ColumnFamilyHandle *GetCfHandleByID(const uint32_t id) { return cf_manager_.get_cf_by_id(id); }
-  //drops the index by an index ID
+  // drops the index by an index ID
   bool IndexDroping(GlobalId &index) {
     return dict_manager_.is_drop_index_ongoing(index, MetaType::DDL_DROP_INDEX_ONGOING);
   }
-  //kv table meta operation
-  //find a table by table name returns this table handler
+  // kv table meta operation
+  // find a table by table name returns this table handler
   std::shared_ptr<RdbTable> FindTable(std::string &name) { return ddl_manager_.find(name); }
-  //Put table definition of `tbl` into the mapping, and also write it to the
-  //on-disk data dictionary. 
+  // Put table definition of `tbl` into the mapping, and also write it to the
+  // on-disk data dictionary.
   common::ErrorCode KVWriteTableMeta(std::shared_ptr<RdbTable> tbl);
   common::ErrorCode KVDelTableMeta(const std::string &tablename);
   common::ErrorCode KVRenameTableMeta(const std::string &s_name, const std::string &d_name);
 
-  //kv memory table meta operation
-  //as KVWriteTableMeta does, but not to on-disk but in-mem
+  // kv memory table meta operation
+  // as KVWriteTableMeta does, but not to on-disk but in-mem
   std::shared_ptr<core::RCMemTable> FindMemTable(std::string &name) { return ddl_manager_.find_mem(name); }
   common::ErrorCode KVWriteMemTableMeta(std::shared_ptr<core::RCMemTable> tb_mem);
   common::ErrorCode KVDelMemTableMeta(std::string table_name);
   common::ErrorCode KVRenameMemTableMeta(std::string s_name, std::string d_name);
 
-  //kv data operation
+  // kv data operation
   bool KVDeleteKey(rocksdb::WriteOptions &wopts, rocksdb::ColumnFamilyHandle *cf, rocksdb::Slice &key);
   rocksdb::Iterator *GetScanIter(rocksdb::ReadOptions &ropts, rocksdb::ColumnFamilyHandle *cf) {
     return txn_db_->NewIterator(ropts, cf);
   }
-  //write mult-rows in batch mode with write options.
+  // write mult-rows in batch mode with write options.
   bool KVWriteBatch(rocksdb::WriteOptions &wopts, rocksdb::WriteBatch *batch);
-  //gets snapshot from rocksdb.
+  // gets snapshot from rocksdb.
   const rocksdb::Snapshot *GetRdbSnapshot() { return txn_db_->GetSnapshot(); }
-  //release the specific snapshot
+  // release the specific snapshot
   void ReleaseRdbSnapshot(const rocksdb::Snapshot *snapshot) { txn_db_->ReleaseSnapshot(snapshot); }
-  //gets the column family name by table handler.
+  // gets the column family name by table handler.
   static std::string generate_cf_name(uint index, TABLE *table);
-  //creates a ith key of rocksdb table.
-  static void create_rdbkey(TABLE *table, uint pos, std::shared_ptr<RdbKey> &new_key_def, rocksdb::ColumnFamilyHandle *cf_handle);
-  //create keys and column family for a rocksdb table.
+  // creates a ith key of rocksdb table.
+  static void create_rdbkey(TABLE *table, uint pos, std::shared_ptr<RdbKey> &new_key_def,
+                            rocksdb::ColumnFamilyHandle *cf_handle);
+  // create keys and column family for a rocksdb table.
   static common::ErrorCode create_keys_and_cf(TABLE *table, std::shared_ptr<RdbTable> rdb_tbl);
-  //Returns index of primary key
+  // Returns index of primary key
   static uint pk_index(const TABLE *const table, std::shared_ptr<RdbTable> tbl_def);
+
  private:
-  //initializationed?
+  // initializationed?
   bool inited_ = false;
-  //path where data located
+  // path where data located
   fs::path kv_data_dir_;
-  //async drop thread
+  // async drop thread
   std::thread drop_kv_thread_;
-  //drop mutex
+  // drop mutex
   std::mutex cv_drop_mtx_;
-  //condition var for drop table
+  // condition var for drop table
   std::condition_variable cv_drop_;
-  
-  //bb table options
+
+  // bb table options
   rocksdb::BlockBasedTableOptions bb_table_option_;
-  //rocksdb transaction
+  // rocksdb transaction
   rocksdb::TransactionDB *txn_db_;
-  //meta data manager
+  // meta data manager
   DICTManager dict_manager_;
-  //column family manager
+  // column family manager
   CFManager cf_manager_;
-  //ddl manager
+  // ddl manager
   DDLManager ddl_manager_;
 };
 
@@ -136,13 +140,14 @@ class IndexCompactFilter : public rocksdb::CompactionFilter {
   IndexCompactFilter(const IndexCompactFilter &) = delete;
   IndexCompactFilter &operator=(const IndexCompactFilter &) = delete;
 
-  //set a filter with input params
+  // set a filter with input params
   bool Filter(int level, const rocksdb::Slice &key, const rocksdb::Slice &existing_value, std::string *new_value,
               bool *value_changed) const override;
-  
+
   bool IgnoreSnapshots() const override { return true; }
-  //gets the name of index compact filter. fixed value
+  // gets the name of index compact filter. fixed value
   const char *Name() const override { return "IndexCompactFilter"; }
+
  private:
   const uint32_t cf_id_;
   mutable GlobalId prev_index_ = {0, 0};

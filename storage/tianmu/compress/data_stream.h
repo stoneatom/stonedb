@@ -127,12 +127,14 @@ class BitStream : public DataStream {
 };
 
 inline uchar BitStream::NextBit() {
-  if (pos >= len) BufOverrun();
+  if (pos >= len)
+    BufOverrun();
   return (buf[pos >> 3] >> (pos & 7)) & 1;
 }
 
 inline uchar BitStream::NextByte() {
-  if (pos + 7 >= len) BufOverrun();
+  if (pos + 7 >= len)
+    BufOverrun();
   unsigned char result = 0;
   result |= (buf[pos >> 3] >> pos % 8);
   result |= (buf[(pos >> 3) + 1] _SHL_(8 - pos % 8));
@@ -140,35 +142,41 @@ inline uchar BitStream::NextByte() {
 }
 
 inline void BitStream::SkipBit(uint skip) {
-  if ((pos > pos + skip) || ((pos += skip) > len)) BufOverrun();
+  if ((pos > pos + skip) || ((pos += skip) > len))
+    BufOverrun();
 }
 
 inline uchar BitStream::GetBit() {
-  if (pos >= len) BufOverrun();
+  if (pos >= len)
+    BufOverrun();
   uchar result = (buf[pos >> 3] >> (pos & 7)) & 1;
   pos++;
   return result;
 }
 
 inline void BitStream::PutBit(uchar b) {
-  if (pos >= clrlen) ClearBits();
+  if (pos >= clrlen)
+    ClearBits();
   buf[pos >> 3] |= ((b & 1) << (pos & 7));
   pos++;
 }
 
 inline void BitStream::PutBit0() {
-  if (pos >= clrlen) ClearBits();
+  if (pos >= clrlen)
+    ClearBits();
   pos++;
 }
 
 inline void BitStream::PutBit1() {
-  if (pos >= clrlen) ClearBits();
+  if (pos >= clrlen)
+    ClearBits();
   buf[pos >> 3] |= (1 << (pos & 7));
   pos++;
 }
 
 inline void BitStream::PutByte(uchar b) {
-  if (pos + 7 >= clrlen) ClearBits();
+  if (pos + 7 >= clrlen)
+    ClearBits();
   if (pos & 7) {
     buf[pos >> 3] |= (b << (pos & 7));
     buf[(pos >> 3) + 1] |= (b _SHR_(8 - (pos & 7)));
@@ -178,7 +186,8 @@ inline void BitStream::PutByte(uchar b) {
 }
 
 inline uchar BitStream::GetByte() {
-  if (pos + 7 >= len) BufOverrun();
+  if (pos + 7 >= len)
+    BufOverrun();
   uchar result = 0;
   if (pos & 7) {
     result |= (buf[pos >> 3] >> (pos & 7));
@@ -224,7 +233,8 @@ inline unsigned long long BitStream::GetUInt64(unsigned short int no_bits) {
 inline void BitStream::FastPutBlock(char *data, uint n) {
   pos = ((pos + 7) / 8) * 8;  // round 'pos' up to the byte boundary
   uint pos1 = pos + 8 * n;
-  if ((pos > pos1) || (pos1 > len)) BufOverrun();
+  if ((pos > pos1) || (pos1 > len))
+    BufOverrun();
   std::memcpy(buf + pos / 8, data, n);
   pos = pos1;
 }
@@ -232,7 +242,8 @@ inline void BitStream::FastPutBlock(char *data, uint n) {
 inline void BitStream::FastGetBlock(char *data, uint n) {
   pos = ((pos + 7) / 8) * 8;  // round 'pos' up to the byte boundary
   uint pos1 = pos + 8 * n;
-  if ((pos > pos1) || (pos1 > len)) BufOverrun();
+  if ((pos > pos1) || (pos1 > len))
+    BufOverrun();
   std::memcpy(data, buf + pos / 8, n);
   pos = pos1;
 }
