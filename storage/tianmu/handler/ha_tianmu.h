@@ -32,27 +32,14 @@ class ha_tianmu final : public handler {
   /* The name that will be used for display purposes */
   const char *table_type() const override { return "TIANMU"; }
   /*
-   Get the row type from the storage engine. If this method returns
-   ROW_TYPE_NOT_USED, the information in HA_CREATE_INFO should be used.
-   */
-  // enum row_type get_row_type() const override { return ROW_TYPE_COMPRESSED; }   // stonedb8  get_row_type() is
-  // deleted
-  /*
-   The name of the index type that will be used for display
-   don't implement this method unless you really have indexes
-   */
-  // const char *index_type([[maybe_unused]] uint inx) override { return "LSMTREE"; }  // stonedb8 index_type() is
-  // deleted const char **bas_ext() const override; // stonedb8 bas_ext() is deleted
-  /*
    This is a list of flags that says what the storage engine
    implements. The current table flags are documented in
    handler.h
    */
   ulonglong table_flags() const override {
-    // stonedb8 HA_REC_NOT_IN_SEQ is deleted
-    return HA_NON_KEY_AUTO_INC | /*HA_REC_NOT_IN_SEQ |*/ HA_PARTIAL_COLUMN_READ | HA_BINLOG_STMT_CAPABLE |
-           HA_BLOCK_CONST_TABLE | HA_PRIMARY_KEY_REQUIRED_FOR_POSITION | HA_NULL_IN_KEY | HA_DUPLICATE_POS |
-           HA_PRIMARY_KEY_IN_READ_INDEX;
+    return HA_NON_KEY_AUTO_INC | HA_PARTIAL_COLUMN_READ | HA_BINLOG_STMT_CAPABLE | HA_BLOCK_CONST_TABLE |
+           HA_PRIMARY_KEY_REQUIRED_FOR_POSITION | HA_NULL_IN_KEY | HA_DUPLICATE_POS | HA_PRIMARY_KEY_IN_READ_INDEX |
+           HA_NO_INDEX_ACCESS;
   }
   /*
    This is a bitmap of flags that says how the storage engine
@@ -151,12 +138,9 @@ class ha_tianmu final : public handler {
   bool explain_message(const Item *a_cond, String *buf);  // stonedb8 explain_message() is deleted
   /* Condition push-down operation */
   const Item *cond_push(const Item *cond) override;
-  // void cond_pop() override {}  // stonedb8 cond_pop() is deleted
+
   int reset() override;
 
-  // stonedb8 register_query_cache_table() is deleted
-  /* bool register_query_cache_table(THD *thd, char *table_key, size_t key_length,
-                                       qc_engine_callback *engine_callback, ulonglong *engine_data) override; */
   void update_create_info(HA_CREATE_INFO *create_info) override;
   int fill_row_by_id(uchar *buf, uint64_t rowid);
   void key_convert(const uchar *key, uint key_len, std::vector<uint> cols, std::vector<std::string_view> &keys);
