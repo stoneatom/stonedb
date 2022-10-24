@@ -100,11 +100,11 @@ RCDateTime::RCDateTime(RCNum &rcn, common::CT at) : at(at) {
   null = rcn.null;
   if (!null) {
     if (core::ATI::IsRealType(rcn.Type()))
-      throw common::DataTypeConversionException(common::TIANMUError(common::ErrorCode::DATACONVERSION));
+      throw common::DataTypeConversionException(common::TianmuError(common::ErrorCode::DATACONVERSION));
     if (rcn.Type() == common::CT::NUM && rcn.Scale() > 0)
-      throw common::DataTypeConversionException(common::TIANMUError(common::ErrorCode::DATACONVERSION));
+      throw common::DataTypeConversionException(common::TianmuError(common::ErrorCode::DATACONVERSION));
     if (Parse((int64_t)rcn, *this, at) != common::ErrorCode::SUCCESS)
-      throw common::DataTypeConversionException(common::TIANMUError(common::ErrorCode::DATACONVERSION));
+      throw common::DataTypeConversionException(common::TianmuError(common::ErrorCode::DATACONVERSION));
   }
 }
 

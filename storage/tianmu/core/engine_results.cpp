@@ -459,7 +459,7 @@ void ResultExportSender::Init(TempTable *t) {
 
   std::unique_ptr<system::IOParameters> iop;
 
-  common::TIANMUError tianmu_error;
+  common::TianmuError tianmu_error;
 
   export_res->send_result_set_metadata(thd, fields, Protocol::SEND_NUM_ROWS | Protocol::SEND_EOF);
 

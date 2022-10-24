@@ -113,7 +113,7 @@ Query_route_to ha_my_tianmu_query(THD *thd, Query_expression *qe, Query_result *
 
 static int Tianmu_LoadData(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg, char *errmsg, int len,
                            int &errcode) {
-  common::TIANMUError tianmu_error;
+  common::TianmuError tianmu_error;
   int ret = static_cast<int>(TianmuEngineReturnValues::LD_FAILED);
 
   if (!core::Engine::IsTianmuTable(table_list->table)) return static_cast<int>(TianmuEngineReturnValues::LD_CONTINUE);
@@ -127,10 +127,10 @@ static int Tianmu_LoadData(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, v
                  static_cast<int>(TianmuEngineReturnValues::LD_FAILED));
 
   } catch (std::exception &e) {
-    tianmu_error = common::TIANMUError(common::ErrorCode::UNKNOWN_ERROR, e.what());
+    tianmu_error = common::TianmuError(common::ErrorCode::UNKNOWN_ERROR, e.what());
     TIANMU_LOG(LogCtl_Level::ERROR, "RunLoader Error: %s", tianmu_error.Message().c_str());
   } catch (...) {
-    tianmu_error = common::TIANMUError(common::ErrorCode::UNKNOWN_ERROR, "An unknown system exception error caught.");
+    tianmu_error = common::TianmuError(common::ErrorCode::UNKNOWN_ERROR, "An unknown system exception error caught.");
     TIANMU_LOG(LogCtl_Level::ERROR, "RunLoader Error: %s", tianmu_error.Message().c_str());
   }
 

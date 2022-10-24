@@ -27,7 +27,8 @@ int TianmuFile::Open(std::string const &file, int flags, mode_t mode) {
   name_ = file;
 
   fd_ = open(file.c_str(), flags, mode);
-  if (fd_ == -1) ThrowError(errno);
+  if (fd_ == -1)
+    throw common::TianmuError(common::ErrorCode::FAILED, "ErrorCode: " + std::to_string(errno) + " - " + strerror(errno));
   return fd_;
 }
 
