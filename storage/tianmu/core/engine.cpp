@@ -1490,8 +1490,8 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
   return ret;
 }
 
-common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) {
-  common::TIANMUError tianmu_e;
+common::TianmuError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) {
+  common::TianmuError tianmu_e;
   TABLE *table;
   int transactional_table = 0;
 
@@ -1517,7 +1517,7 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
 
     if (current_txn_->Killed()) {
       thd->send_kill_message();
-      throw common::TIANMUError(common::ErrorCode::KILLED);
+      throw common::TianmuError(common::ErrorCode::KILLED);
     }
 
     // We must invalidate the table in query cache before binlog writing and
@@ -1539,8 +1539,8 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
     /* ok to client */
     my_ok(thd, stats.records, 0L, name);
   } catch (common::Exception &e) {
-    tianmu_e = common::TIANMUError(common::ErrorCode::UNKNOWN_ERROR, "Tianmu internal error");
-  } catch (common::TIANMUError &e) {
+    tianmu_e = common::TianmuError(common::ErrorCode::UNKNOWN_ERROR, "Tianmu internal error");
+  } catch (common::TianmuError &e) {
     tianmu_e = e;
   }
 
@@ -1705,45 +1705,45 @@ void Engine::ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes)
   minutes = (short)(secs / 60);
 }
 
-common::TIANMUError Engine::GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params) {
+common::TianmuError Engine::GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params) {
   std::string reject_file;
   int64_t abort_on_count = 0;
   double abort_on_threshold = 0;
 
   get_parameter(&thd, tianmu_var_name::TIANMU_REJECT_FILE_PATH, reject_file);
   if (get_parameter(&thd, tianmu_var_name::TIANMU_REJECT_FILE_PATH, reject_file) == 2)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_LOAD_REJECT_FILE parameter.");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_LOAD_REJECT_FILE parameter.");
 
   if (get_parameter(&thd, tianmu_var_name::TIANMU_ABORT_ON_COUNT, abort_on_count) == 2)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_ABORT_ON_COUNT parameter.");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_ABORT_ON_COUNT parameter.");
 
   if (get_parameter(&thd, tianmu_var_name::TIANMU_ABORT_ON_THRESHOLD, abort_on_threshold) == 2)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "Wrong value of TIANMU_ABORT_ON_THRESHOLD parameter.");
 
   if (abort_on_count != 0 && abort_on_threshold != 0)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "TIANMU_ABORT_ON_COUNT and TIANMU_ABORT_ON_THRESHOLD "
                                "parameters are mutualy exclusive.");
 
   if (!(abort_on_threshold >= 0.0 && abort_on_threshold < 1.0))
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "TIANMU_ABORT_ON_THRESHOLD parameter value must be in range (0,1).");
 
   if ((abort_on_count != 0 || abort_on_threshold != 0) && reject_file.empty())
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "TIANMU_ABORT_ON_COUNT or TIANMU_ABORT_ON_THRESHOLD can by only specified with "
                                "TIANMU_REJECT_FILE_PATH parameter.");
 
   if (!reject_file.empty() && fs::exists(reject_file))
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "Can not create the reject file, the file already exists.");
 
   io_params->SetRejectFile(reject_file, abort_on_count, abort_on_threshold);
   return common::ErrorCode::SUCCESS;
 }
 
-common::TIANMUError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
+common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
                                    TABLE *table, void *arg, bool for_exporter) {
   const CHARSET_INFO *cs = ex.cs;
   bool local_load = for_exporter ? false : (bool)(thd.lex)->local_file;
@@ -1776,7 +1776,7 @@ common::TIANMUError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
     if (!get_parameter(&thd, tianmu_var_name::TIANMU_DATAFORMAT, param, s_res)) {
       common::DataFormatPtr df = common::DataFormat::GetDataFormat(s_res);
       if (!df)
-        return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Unknown value of TIANMU_DATAFORMAT parameter.");
+        return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Unknown value of TIANMU_DATAFORMAT parameter.");
       else
         io_mode = df->GetId();
     } else
@@ -1803,14 +1803,14 @@ common::TIANMUError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
   io_params->SetOutput(io_mode, name);
 
   if (ex.field.escaped->length() > 1)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter escape std::string not supported.");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter escape std::string not supported.");
 
   if (ex.field.enclosed->length() > 1 &&
       (ex.field.enclosed->length() != 4 || strcasecmp(ex.field.enclosed->ptr(), "NULL") != 0))
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter enclose std::string not supported.");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter enclose std::string not supported.");
 
   if (!for_exporter) {
-    common::TIANMUError tianmu_err = GetRejectFileIOParameters(thd, io_params);
+    common::TianmuError tianmu_err = GetRejectFileIOParameters(thd, io_params);
     if (tianmu_err.GetErrorCode() != common::ErrorCode::SUCCESS)
       return tianmu_err;
   }
@@ -1844,12 +1844,12 @@ common::TIANMUError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
 
   if (io_params->EscapeCharacter() != 0 &&
       io_params->Delimiter().find(io_params->EscapeCharacter()) != std::string::npos)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "Field terminator containing the escape character not supported.");
 
   if (io_params->EscapeCharacter() != 0 && io_params->StringQualifier() != 0 &&
       io_params->EscapeCharacter() == io_params->StringQualifier())
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "The same enclose and escape characters not supported.");
 
   bool unsupported_syntax = false;
