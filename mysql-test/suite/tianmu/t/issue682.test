@@ -4,53 +4,95 @@ use test;
 set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
 create table t1(a date not null);
 insert ignore into t1 values (0);
-
 insert into t1 values (0);
 insert ignore into t1 values (null);
-
 -- error 1048
 insert into t1 values (null);
 insert into t1 values (20221020);
-
 select * from t1;
 select * from t1 where a is null;
-
 delete from t1 where a is null;
 delete from t1 where a=0;
-
 select * from t1 where a is null;
 select * from t1;
-
 delete from t1 where a ='20221020';
-
 select * from t1;
 drop table t1;
-
 
 
 create table t1(a date);
-
 insert ignore into t1 values (0);
-
 insert into t1 values (0);
 insert ignore into t1 values (null);
-
 insert into t1 values (null);
 insert into t1 values (20221020);
-
 select * from t1;
 select * from t1 where a is null;
-
 delete from t1 where a is null;
-
 select * from t1 where a is null;
 select * from t1;
-
 delete from t1 where a ='20221020';
-
 select * from t1;
-
 drop table t1;
+
+create table t1(a datetime not null);
+insert ignore into t1 values (0);
+insert into t1 values (0);
+insert ignore into t1 values (null);
+-- error 1048
+insert into t1 values (null);
+insert into t1 values (20221020);
+select * from t1;
+select * from t1 where a is null;
+delete from t1 where a is null;
+delete from t1 where a=0;
+select * from t1 where a is null;
+select * from t1;
+delete from t1 where a ='20221020';
+select * from t1;
+drop table t1;
+
+
+create table t1(a TIME not null);
+insert ignore into t1 values (0);
+insert into t1 values (0);
+insert ignore into t1 values (null);
+-- error 1048
+insert into t1 values (null);
+insert into t1 values ('12:13:14');
+select * from t1;
+select * from t1 where a is null;
+delete from t1 where a is null;
+delete from t1 where a=0;
+select * from t1 where a is null;
+select * from t1;
+delete from t1 where a ='12:13:14';
+select * from t1;
+drop table t1;
+
+
+set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,NO_ZERO_IN_DATE,NO_ZERO_DATE';
+create table t1(a date not null);
+insert ignore into t1 values (0);
+-- error 1292
+insert into t1 values (0);
+insert ignore into t1 values (null);
+-- error 1048
+insert into t1 values (null);
+insert into t1 values (20221020);
+select * from t1;
+select * from t1 where a is null;
+-- error 1292
+delete from t1 where a is null;
+-- error 1292
+delete from t1 where a=0;
+select * from t1 where a is null;
+select * from t1;
+delete from t1 where a ='20221020';
+select * from t1;
+drop table t1;
+
+
 
 
 
