@@ -120,7 +120,7 @@ class Engine final {
   void UnregisterMemTable(const std::string &from, const std::string &to);
 
   // For Load Data.
-  common::TIANMUError RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
+  common::TianmuError RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
 
   // transaction operations.
   void CommitTx(THD *thd, bool all);
@@ -175,9 +175,9 @@ class Engine final {
   static int Convert(int &is_null, String *value, types::RCDataType &rcitem, enum_field_types f_type);
   static void ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes);
   static std::string GetTablePath(TABLE *table);
-  static common::TIANMUError GetIOParams(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
+  static common::TianmuError GetIOParams(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
                                          TABLE *table = 0, void *arg = nullptr, bool for_exporter = false);
-  static common::TIANMUError GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params);
+  static common::TianmuError GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params);
   static fs::path GetNextDataDir();
 
  private:
