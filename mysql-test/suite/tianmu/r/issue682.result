@@ -43,22 +43,24 @@ select * from t1;
 a
 0000-00-00
 0000-00-00
-0000-00-00
-0000-00-00
+NULL
+NULL
 2022-10-20
 select * from t1 where a is null;
 a
-0000-00-00
-0000-00-00
-0000-00-00
-0000-00-00
+NULL
+NULL
 delete from t1 where a is null;
 select * from t1 where a is null;
 a
 select * from t1;
 a
+0000-00-00
+0000-00-00
 2022-10-20
 delete from t1 where a ='20221020';
 select * from t1;
 a
+0000-00-00
+0000-00-00
 drop table t1;

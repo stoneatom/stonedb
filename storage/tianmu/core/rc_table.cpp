@@ -590,20 +590,8 @@ void RCTable::LoadDataInfile(system::IOParameters &iop) {
 
 void RCTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
   if (f->is_null()) {
-    switch (f->type()) {
-      case MYSQL_TYPE_TIME:
-      case MYSQL_TYPE_TIME2:
-      case MYSQL_TYPE_DATE:
-      case MYSQL_TYPE_DATETIME:
-      case MYSQL_TYPE_NEWDATE:
-      case MYSQL_TYPE_TIMESTAMP2:
-      case MYSQL_TYPE_DATETIME2: {
-      } break;
-      default: {
-        vc.ExpectedNull(true);
-        return;
-      } break;
-    }
+    vc.ExpectedNull(true);
+    return;
   }
 
   switch (f->type()) {

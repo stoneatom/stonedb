@@ -1640,28 +1640,34 @@ bool Query::internalDataTimeIsNullToEq(THD *thd, Item *cond, Item **retcond) {
     Item **args = func->arguments();
     if (args[0]->type() == Item::FIELD_ITEM) {
       Field *const field = down_cast<Item_field *>(args[0])->field;
-      switch (field->type()) {
-        case MYSQL_TYPE_TIME:
-        case MYSQL_TYPE_TIME2:
-        case MYSQL_TYPE_DATE:
-        case MYSQL_TYPE_DATETIME:
-        case MYSQL_TYPE_NEWDATE:
-        case MYSQL_TYPE_TIMESTAMP2:
-        case MYSQL_TYPE_DATETIME2: {
-          Item *item0 = new (thd->mem_root) Item_int((longlong)0, 1);
-          if (item0 == NULL)
-            return true;
-          Item *eq_cond = new (thd->mem_root) Item_func_eq(args[0], item0);
-          if (eq_cond == NULL)
-            return true;
-          // Convert isnull to eq whenever it is of date type
-          cond = eq_cond;
+      if(field->flags & NOT_NULL_FLAG)
+      {
+        switch (field->type()) {
+          case MYSQL_TYPE_TIME:
+          case MYSQL_TYPE_TIME2:
+          case MYSQL_TYPE_DATE:
+          case MYSQL_TYPE_DATETIME:
+          case MYSQL_TYPE_NEWDATE:
+          case MYSQL_TYPE_TIMESTAMP2:
+          case MYSQL_TYPE_DATETIME2: {
+            Item *item0 = new (thd->mem_root) Item_int((longlong)0, 1);
+            if (item0 == NULL)
+              return true;
+            Item *eq_cond = new (thd->mem_root) Item_func_eq(args[0], item0);
+            if (eq_cond == NULL)
+              return true;
+            /*
+              Under the attribute that the date type column is not null
+              Convert isnull to eq whenever it is of date type
+            */
+            cond = eq_cond;
 
-          if (cond->fix_fields(thd, &cond))
-            return true;
-        } break;
-        default:
-          break;
+            if (cond->fix_fields(thd, &cond))
+              return true;
+          } break;
+          default:
+            break;
+        }
       }
     }
   }

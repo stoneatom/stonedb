@@ -70,6 +70,7 @@ class Query final {
   std::multimap<std::string, std::pair<int, TABLE *>> table_alias2index_ptr;
 
   /**
+  Under the attribute that the date type column is not null
   Convert isnull to eq whenever it is of date type
 
   @param thd             Thread handler
