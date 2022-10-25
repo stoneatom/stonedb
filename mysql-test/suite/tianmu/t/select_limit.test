@@ -1,0 +1,74 @@
+--echo #
+--echo # Test SELECT..LIMIT statement
+--echo # Author: syw
+--echo #
+
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS mcs_db2;
+--enable_warnings
+
+CREATE DATABASE mcs_db2;
+USE mcs_db2;
+
+#Test with mixed datatypes
+CREATE TABLE t1
+(
+  t1_tinyint TINYINT DEFAULT 0,
+  t1_int INT DEFAULT NULL,
+  t1_bigint BIGINT,
+  t1_double DOUBLE,
+  t1_float FLOAT,
+  t1_blob BLOB,
+  t1_text TEXT,
+  t1_char CHAR(1),
+  t1_varchar VARCHAR(255) DEFAULT 'hello world!',
+  t1_datetime DATETIME
+)ENGINE=tianmu;
+
+INSERT INTO t1 VALUES();
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime) VALUES
+(203685477580679, -3.797693231E+108, -7.402866E+18, repeat('a',20), repeat('a',25), 'a', '2020-10-10');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime) VALUES
+(203685477580680, -3.797693231E+108, -7.402866E+18, repeat('a',20), repeat('b',25), 'b', '1234-10-10');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime) VALUES
+(203685477580677, -3.797693231E+108, -7.402866E+18, repeat('a',20), repeat('b',25), 'c', '2020-10-11');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime) VALUES
+(203685477580678, -3.797693231E+108, -7.402866E+18, repeat('a',20), repeat('b',25), 'd', '2020-10-10');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime) VALUES
+(203685477580676, -3.797693231E+108, -7.402866E+18, repeat('a',20), repeat('b',25), 'e', '2020-10-13');
+
+--sorted_result
+SELECT t1_int,t1_blob,t1_datetime FROM t1 LIMIT 2;
+--sorted_result
+SELECT * FROM t1 LIMIT 2;
+--sorted_result
+SELECT * FROM t1 LIMIT 10;
+--sorted_result
+SELECT * FROM t1 ORDER BY t1_datetime LIMIT 5;
+
+INSERT INTO t1 SELECT * FROM t1;
+
+--sorted_result
+SELECT MAX(t1_bigint) FROM t1 GROUP BY t1_text LIMIT 10;
+--sorted_result
+SELECT * FROM t1 WHERE t1_text like '%a%' LIMIT 10;
+--sorted_result
+SELECT * FROM t1 ORDER BY t1_bigint ASC LIMIT 0,1;
+--sorted_result
+SELECT * FROM t1 ORDER BY t1_bigint ASC LIMIT 1,1;
+--sorted_result
+SELECT * FROM t1 ORDER BY t1_bigint DESC LIMIT 1,4;
+--sorted_result
+#SELECT * FROM t1 LIMIT 0;
+
+--error ER_PARSE_ERROR
+SELECT * FROM t1 LIMIT @;
+--error ER_PARSE_ERROR
+SELECT * FROM t1 LIMIT -1;
+--error ER_PARSE_ERROR
+SELECT * FROM t1  LIMIT 'a';
+
+# Clean UP
+DROP DATABASE mcs_db2;
