@@ -1,6 +1,3 @@
-#
-# Flow control function,Based on the test
-#
 create table conditiontest(a int) engine=tianmu;
 insert into conditiontest values (1),(2),(3);
 SELECT * FROM conditiontest;
@@ -51,3 +48,4 @@ NULLIF (2,1)
 SELECT NULLIF (2,2);
 NULLIF (2,2)
 NULL
+drop table conditiontest;
