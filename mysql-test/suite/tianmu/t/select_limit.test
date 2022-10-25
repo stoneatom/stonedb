@@ -61,7 +61,7 @@ SELECT * FROM t1 ORDER BY t1_bigint ASC LIMIT 1,1;
 --sorted_result
 SELECT * FROM t1 ORDER BY t1_bigint DESC LIMIT 1,4;
 --sorted_result
-SELECT * FROM t1 LIMIT 0;
+#SELECT * FROM t1 LIMIT 0;
 
 --error ER_PARSE_ERROR
 SELECT * FROM t1 LIMIT @;
