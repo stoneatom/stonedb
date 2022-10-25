@@ -1,0 +1,201 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # DELETE decimal and DElETE WHERE
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS delete_signed_test;
+
+CREATE DATABASE delete_signed_test;
+USE delete_signed_test;
+
+DROP PROCEDURE IF EXISTS signedinsertproc;
+DROP PROCEDURE IF EXISTS signeddeleteproc;
+--enable_warnings
+
+DELIMITER //;
+
+CREATE PROCEDURE signedinsertproc ()
+ BEGIN
+  INSERT INTO cs1 VALUES (125, 125);
+  INSERT INTO cs1 VALUES (-125, -125);
+  INSERT INTO cs1 values (99998, 998);
+  INSERT INTO cs1 values (99999, 999);
+  INSERT INTO cs1 values (-99998, -998);
+  INSERT INTO cs1 values (-99999, -999);
+  INSERT INTO cs1 VALUES (0, 0);
+  INSERT INTO cs1 VALUES (NULL, NULL);
+
+  INSERT INTO cs2 VALUES (1.25, 1.25);
+  INSERT INTO cs2 VALUES (-1.25, -1.25);
+  INSERT INTO cs2 values (99999.998, 99999.998);
+  INSERT INTO cs2 values (99999.999, 99999.999);
+  INSERT INTO cs2 values (-99999.998, -99999.998);
+  INSERT INTO cs2 values (-99999.999, -99999.999);
+  INSERT INTO cs2 VALUES (1.1234567891, 1.1234567891);
+  INSERT INTO cs2 VALUES (1.999, 1.999);
+  INSERT INTO cs2 VALUES (-1.1234567891, -1.1234567891);
+  INSERT INTO cs2 VALUES (-1.999, -1.999);
+  INSERT INTO cs2 VALUES (1.0000000009, 1.0000000009);
+  INSERT INTO cs2 VALUES (-1.0000000009, -1.0000000009);
+  INSERT INTO cs2 VALUES (0, 0);
+  INSERT INTO cs2 VALUES (NULL, NULL);
+
+  INSERT INTO cs3 VALUES (0.125, 0.125);
+  INSERT INTO cs3 VALUES (-0.125, -0.125);
+  INSERT INTO cs3 values (0.99998, 0.998);
+  INSERT INTO cs3 values (0.99999, 0.999);
+  INSERT INTO cs3 values (-0.99998, -0.998);
+  INSERT INTO cs3 values (-0.99999, -0.999);
+  INSERT INTO cs3 VALUES (0.12345, 0.1234);
+  INSERT INTO cs3 VALUES (0.199999, 0.19999);
+  INSERT INTO cs3 VALUES (-0.12345, -0.1234);
+  INSERT INTO cs3 VALUES (-0.199999, -0.19999);
+  INSERT INTO cs3 VALUES (0.000009, 0.00009);
+  INSERT INTO cs3 VALUES (-0.000009, -0.00009);
+  INSERT INTO cs3 VALUES (0, 0);
+  INSERT INTO cs3 VALUES (NULL, NULL);
+ END//
+
+
+CREATE PROCEDURE signeddeleteproc ()
+ BEGIN
+  DELETE FROM cs1;
+  DELETE FROM cs2;
+  DELETE FROM cs3;
+ END//
+
+
+DELIMITER ;//
+
+--disable_warnings
+DROP TABLE IF EXISTS cs1;
+DROP TABLE IF EXISTS cs2;
+DROP TABLE IF EXISTS cs3;
+# DROP TABLE IF EXISTS cs4;
+# DROP TABLE IF EXISTS cs5;
+# DROP TABLE IF EXISTS cs6;
+--enable_warnings
+
+CREATE TABLE cs1 (d1 DECIMAL(18), d2 DECIMAL(18)) ;
+CREATE TABLE cs2 (d1 DECIMAL(18,10), d2 DECIMAL(18,10)) ;
+CREATE TABLE cs3 (d1 DECIMAL(18,10), d2 DECIMAL(18,10)) ;
+# CREATE TABLE cs4 (d1 DECIMAL(38) UNSIGNED, d2 DECIMAL(19) UNSIGNED) ;
+# CREATE TABLE cs5 (d1 DECIMAL(38,10) UNSIGNED, d2 DECIMAL(19,10) UNSIGNED) ;
+# CREATE TABLE cs6 (d1 DECIMAL(38,38) UNSIGNED, d2 DECIMAL(19,19) UNSIGNED) ;
+
+CALL signedinsertproc();
+
+# Full table delete
+DELETE FROM cs1;
+DELETE FROM cs2;
+DELETE FROM cs3;
+SELECT "signedtest1", d1, d2 FROM cs1;
+SELECT "signedtest1", d1, d2 FROM cs2;
+SELECT "signedtest1", d1, d2 FROM cs3;
+
+# Deletes with WHERE clause
+# Delete a single row with a constant value in WHERE clause
+CALL signedinsertproc();
+DELETE FROM cs1 WHERE d1=-99998;
+DELETE FROM cs1 WHERE d2=999;
+DELETE FROM cs2 WHERE d1=-99999.998;
+DELETE FROM cs2 WHERE d2=99999.999;
+DELETE FROM cs3 WHERE d1=-0.99998;
+DELETE FROM cs3 WHERE d2=0.999;
+SELECT "signedtest2", d1, d2 FROM cs1;
+SELECT "signedtest2", d1, d2 FROM cs2;
+SELECT "signedtest2", d1, d2 FROM cs3;
+
+# BUG #781 is similar to this question
+# Delete multiple rows
+# Deletes with multiple constant values in WHERE clause
+# CALL signeddeleteproc();
+# CALL signedinsertproc();
+# DELETE FROM cs1 WHERE d1 in (-99998, 99999);
+# DELETE FROM cs2 WHERE d1 in (-99999.998, 99999.999);
+# DELETE FROM cs3 WHERE d1 in (-0.99998, 0.99999);
+# SELECT "signedtest3", d1, d2 FROM cs1;
+# SELECT "signedtest3", d1, d2 FROM cs2;
+# SELECT "signedtest3", d1, d2 FROM cs3;
+
+
+# Deletes with comparison operators in WHERE clause
+CALL signeddeleteproc();
+CALL signedinsertproc();
+DELETE FROM cs1 WHERE d1 <= -99998 OR d2 >= 998;
+DELETE FROM cs2 WHERE d1 <= -99999.998 OR d2 >= 99999.998;
+DELETE FROM cs3 WHERE d1 <= -0.99998 OR d2 >= 0.998;
+SELECT "signedtest4a", d1, d2 FROM cs1;
+SELECT "signedtest4a", d1, d2 FROM cs2;
+SELECT "signedtest4a", d1, d2 FROM cs3;
+CALL signeddeleteproc();
+CALL signedinsertproc();
+DELETE FROM cs1 WHERE d1 < -99998 OR d2 > 998;
+DELETE FROM cs2 WHERE d1 < -99999.998 OR d2 > 99999.998;
+DELETE FROM cs3 WHERE d1 < -0.99998 OR d2 > 0.998;
+SELECT "signedtest4", d1, d2 FROM cs1;
+SELECT "signedtest4", d1, d2 FROM cs2;
+SELECT "signedtest4", d1, d2 FROM cs3;
+
+# Delete with NULL in the WHERE clause
+DELETE FROM cs1 WHERE d1 is NULL;
+DELETE FROM cs2 WHERE d1 is NULL;
+DELETE FROM cs3 WHERE d1 is NULL;
+SELECT "signedtest5", d1, d2 FROM cs1;
+SELECT "signedtest5", d1, d2 FROM cs2;
+SELECT "signedtest5", d1, d2 FROM cs3;
+
+# Delete with != operator
+DELETE FROM cs1 WHERE d1 != 125;
+DELETE FROM cs2 WHERE d1 != 1.25;
+DELETE FROM cs3 WHERE d1 != 0.125;
+SELECT "signedtest6", d1, d2 FROM cs1;
+SELECT "signedtest6", d1, d2 FROM cs2;
+SELECT "signedtest6", d1, d2 FROM cs3;
+
+# Delete with non-constant value in the WHERE clause
+CALL signeddeleteproc();
+CALL signedinsertproc();
+DELETE FROM cs1 WHERE d1 = d2;
+DELETE FROM cs2 WHERE d1 = d2;
+DELETE FROM cs3 WHERE d1 = d2;
+SELECT "signedtest7", d1, d2 FROM cs1;
+SELECT "signedtest7", d1, d2 FROM cs2;
+SELECT "signedtest7", d1, d2 FROM cs3;
+CALL signeddeleteproc();
+CALL signedinsertproc();
+DELETE FROM cs1 WHERE d1 != d2;
+DELETE FROM cs2 WHERE d1 != d2;
+DELETE FROM cs3 WHERE d1 != d2;
+SELECT "signedtest8", d1, d2 FROM cs1;
+SELECT "signedtest8", d1, d2 FROM cs2;
+SELECT "signedtest8", d1, d2 FROM cs3;
+CALL signeddeleteproc();
+CALL signedinsertproc();
+DELETE FROM cs1 WHERE d1 < d2;
+DELETE FROM cs2 WHERE d1 < d2;
+DELETE FROM cs3 WHERE d1 < d2;
+SELECT "signedtest9", d1, d2 FROM cs1;
+SELECT "signedtest9", d1, d2 FROM cs2;
+SELECT "signedtest9", d1, d2 FROM cs3;
+CALL signeddeleteproc();
+CALL signedinsertproc();
+DELETE FROM cs1 WHERE d1 > d2;
+DELETE FROM cs2 WHERE d1 > d2;
+DELETE FROM cs3 WHERE d1 > d2;
+SELECT "signedtest10", d1, d2 FROM cs1;
+SELECT "signedtest10", d1, d2 FROM cs2;
+SELECT "signedtest10", d1, d2 FROM cs3;
+
+# Deletes with functions and expressions in the WHERE clause
+
+# Repeat above tests for the unsigned case
+
+# Deletes with functions and expressions in the WHERE clause
+
+# Clean UP
+DROP PROCEDURE IF EXISTS signedinsertproc;
+DROP PROCEDURE IF EXISTS signeddeleteproc;
+DROP DATABASE delete_signed_test;
