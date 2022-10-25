@@ -1,0 +1,65 @@
+#
+#create temporary...like...
+#
+drop table if exists t1;
+CREATE TABLE t1 (f1 INTEGER AUTO_INCREMENT, PRIMARY KEY (f1))engine=tianmu;
+CREATE TEMPORARY TABLE t2 LIKE t1;
+INSERT INTO t1 VALUES (1);
+INSERT INTO t2 VALUES (1);
+ALTER TABLE t2 COMMENT = 'ABC';
+UPDATE t2, t1 SET t2.f1 = 2, t1.f1 = 9;
+ALTER TABLE t2 COMMENT = 'DEF';
+SELECT * FROM t1;
+f1
+9
+SELECT * FROM t2;
+f1
+2
+DROP TABLE t1, t2;
+#
+#The temporary table name is consistent with the normal indication
+#
+CREATE TABLE  t1 (c1 INT)engine=tianmu;
+CREATE TEMPORARY TABLE `t1` (c1 INT)engine=tianmu;
+SHOW CREATE TABLE t1;
+Table	Create Table
+t1	CREATE TEMPORARY TABLE `t1` (
+  `c1` int(11) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
+DROP TABLE t1;
+DROP TABLE t1;
+#
+# Create an existing temporary table name
+#
+CREATE TABLE  t1 (c1 INT)engine=tianmu;
+CREATE TEMPORARY TABLE `t2` (c1 INT)engine=tianmu;
+CREATE TEMPORARY TABLE `t2` (c1 INT)engine=tianmu;
+ERROR 42S01: Table 't2' already exists
+DROP TABLE t1,t2;
+#
+# bug:646, create temporary..select...from
+#
+#
+# bug 646,CREATE TEMPORARY..(PRIMARY KEY)
+#
+#
+# temporary The table name abnormal
+#
+CREATE TEMPORARY TABLE `#sql1` (c1 INT)engine=tianmu;
+ALTER TABLE `#sql1` RENAME `@sql2`;
+INSERT INTO `@sql2` VALUES (1);
+SHOW CREATE TABLE `@sql2`;
+Table	Create Table
+@sql2	CREATE TEMPORARY TABLE `@sql2` (
+  `c1` int(11) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
+SELECT * FROM  `@sql2`;
+c1
+1
+DROP TABLE `@sql2`;
+CREATE TEMPORARY TABLE `@0023sql2` (c1 INT)engine=tianmu;
+ALTER TABLE `@0023sql2`  RENAME `#sql2`;
+INSERT INTO `#sql2`  VALUES (2);
+DROP TABLE  `#sql2`;
+CREATE TEMPORARY TABLE `tt+1` (c1 INT)engine=tianmu;
+
