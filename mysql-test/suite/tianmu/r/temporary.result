@@ -62,4 +62,3 @@ ALTER TABLE `@0023sql2`  RENAME `#sql2`;
 INSERT INTO `#sql2`  VALUES (2);
 DROP TABLE  `#sql2`;
 CREATE TEMPORARY TABLE `tt+1` (c1 INT)engine=tianmu;
-
