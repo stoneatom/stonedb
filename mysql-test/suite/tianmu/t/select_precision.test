@@ -1,0 +1,43 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # SELECT PRECISION
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS select_precision_test;
+--enable_warnings
+
+CREATE DATABASE select_precision_test;
+USE select_precision_test;
+
+SELECT @@sql_mode;
+CREATE TABLE t (col TINYINT);
+--error ER_WARN_DATA_OUT_OF_RANGE
+INSERT INTO t SET col = 128;
+SELECT col FROM t;
+--error ER_DIVISION_BY_ZERO
+INSERT INTO t SET col = 1 / 0;
+SELECT col FROM t;
+
+--disable_warnings
+SET sql_mode='';
+INSERT INTO t SET col = 128;
+SELECT col FROM t;
+INSERT INTO t SET col = 1 / 0;
+SELECT col FROM t;
+--enable_warnings
+
+CREATE TABLE t1 (col FLOAT);
+INSERT INTO t1 VALUES (NULL),(2.13),(-2.13),(21.5e0),(-21.5e0),(35.498),(986.512),(-376012.9751);
+SELECT col, ROUND(col), ROUND(col,1), ROUND(col,-1), ROUND(col,-2), ROUND(col,3) FROM t1;
+
+SELECT (.1 + .2) = .3;
+SELECT (.1e0 + .2e0) = .3e0;
+SELECT .01 * .01;
+SELECT .1 / .1;
+
+SET sql_mode=default;
+
+# Clean UP
+DROP DATABASE select_precision_test;
