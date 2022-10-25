@@ -1,0 +1,159 @@
+DROP DATABASE IF EXISTS db1;
+CREATE DATABASE db1;
+USE db1;
+CREATE TABLE t1
+(
+t1_tinyint TINYINT DEFAULT 0,
+t1_int INT DEFAULT NULL,
+t1_bigint BIGINT,
+t1_double DOUBLE,
+t1_float FLOAT,
+t1_blob BLOB,
+t1_text TEXT,
+t1_char CHAR(1),
+t1_varchar VARCHAR(255) DEFAULT 'hello world!',
+t1_datetime DATETIME
+)ENGINE=tianmu;
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime)
+VALUES(203685477580676, -3.797693231E+108, -7.402866E+18, repeat('b',100), repeat('b',100), 'b', '2387-11-08 11:22:30.123');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime)
+VALUES(303685477580676, -4.797693231, -8.402866, repeat('b',101), repeat('b',101), 'b', '3387-11-08 11:22:30.123');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime)
+VALUES(403685477580676, +54.797693231, +8.402866, repeat('c',101), repeat('c',101), 'c', '3387-11-08 11:22:30.123');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime)
+VALUES(403685477580676, +54.797693231, +8.402866, repeat('c',101), repeat('c',101), 'c', '3387-11-08 11:22:30.123');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime)
+VALUES(403685477580676, +54.797693231, +8.402866, repeat('c',101), repeat('c',101), 'c', '3387-11-08 11:22:30.123');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime)
+VALUES(403685477580676, +54.797693231, +8.402866, repeat('c',101), repeat('c',101), 'c', '3387-11-08 11:22:30.123');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime)
+VALUES(403685477580676, +54.797693231, +8.402866, repeat('c',101), repeat('c',101), 'c', '3387-11-08 11:22:30.123');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime)
+VALUES(403685477580676, +54.797693231, +8.402866, repeat('c',101), repeat('c',101), 'c', '3387-11-08 11:22:30.123');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime)
+VALUES(403685477580676, +54.797693231, +8.402866, repeat('2',102), repeat('d',102), 'd', '4387-11-08 11:22:30.123');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime)
+VALUES(403685477580676, +54.797693231, +8.402866, repeat('2',102), repeat('d',102), 'd', '4387-11-08 11:22:30.123');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime)
+VALUES(403685477580676, +54.797693231, +8.402866, repeat('2',102), repeat('d',102), 'd', '4387-11-08 11:22:30.123');
+INSERT INTO t1  VALUES(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO t1  VALUES(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO t1  VALUES(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+SELECT * FROM t1 GROUP BY t1_tinyint;
+ERROR 42000: Expression #2 of SELECT list is not in GROUP BY clause and contains nonaggregated column 'db1.t1.t1_int' which is not functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
+SELECT COUNT(*) FROM t1 GROUP BY t1_tinyint;
+COUNT(*)
+11
+3
+SELECT COUNT(*) FROM t1 GROUP BY t1_int;
+COUNT(*)
+14
+SELECT COUNT(*) FROM t1 GROUP BY t1_bigint;
+COUNT(*)
+1
+1
+3
+9
+SELECT COUNT(*) FROM t1 GROUP BY t1_double;
+COUNT(*)
+1
+1
+3
+9
+SELECT COUNT(*) FROM t1 GROUP BY t1_float;
+COUNT(*)
+1
+1
+3
+9
+SELECT COUNT(*) FROM t1 GROUP BY t1_blob;
+COUNT(*)
+1
+1
+3
+3
+6
+SELECT COUNT(*) FROM t1 GROUP BY t1_text;
+COUNT(*)
+1
+1
+3
+3
+6
+SELECT COUNT(*) FROM t1 GROUP BY t1_char;
+COUNT(*)
+2
+3
+3
+6
+SELECT COUNT(*) FROM t1 GROUP BY t1_varchar;
+COUNT(*)
+11
+3
+SELECT COUNT(*) FROM t1 GROUP BY t1_datetime;
+COUNT(*)
+1
+3
+3
+7
+SELECT SUM(t1_bigint) FROM t1 GROUP BY t1_tinyint;
+SUM(t1_bigint)
+4140540253387436
+NULL
+SELECT SUM(t1_double) FROM t1 GROUP BY t1_float;
+SUM(t1_double)
+-3.797693231e108
+-4.797693231
+493.1792390789999
+NULL
+SELECT SUM(DISTINCT t1_double) FROM t1 GROUP BY t1_float;
+SUM(DISTINCT t1_double)
+-3.797693231e108
+-4.797693231
+54.797693231
+NULL
+SELECT COUNT(*) FROM t1 GROUP BY t1_tinyint, t1_int, t1_bigint;
+COUNT(*)
+1
+1
+3
+9
+SELECT COUNT(*) FROM t1 GROUP BY t1_blob, t1_text, t1_char;
+COUNT(*)
+1
+1
+3
+3
+6
+SELECT COUNT(*) FROM t1 GROUP BY t1_varchar, t1_datetime;
+COUNT(*)
+1
+3
+3
+7
+SELECT COUNT(*) FROM t1 WHERE t1_blob IS NOT NULL GROUP BY t1_tinyint, t1_int, t1_bigint;
+COUNT(*)
+1
+1
+9
+SELECT COUNT(*) FROM t1 WHERE t1_int = 0 GROUP BY t1_blob, t1_text, t1_char;
+COUNT(*)
+SELECT COUNT(*) FROM t1 WHERE t1_char IN ('a', 'b') GROUP BY t1_varchar, t1_datetime;
+COUNT(*)
+1
+1
+SELECT COUNT(*) FROM t1 WHERE t1_varchar LIKE '%world%' GROUP BY t1_varchar, t1_datetime;
+COUNT(*)
+1
+3
+7
+SELECT COUNT(*) FROM t1 WHERE t1_bigint != 0 AND t1_int = 0 OR t1_tinyint IS NULL GROUP BY t1_varchar, t1_datetime;
+COUNT(*)
+3
+SELECT COUNT(*) FROM t1 WHERE t1_blob IS NOT NULL OR t1_tinyint IS NULL GROUP BY t1_varchar;
+COUNT(*)
+11
+3
+SELECT COUNT(*) FROM t1 GROUP BY t1_tinyint, t1_int, t1_bigint HAVING t1_char = 'b';
+ERROR 42S22: Unknown column 't1_char' in 'having clause'
+DROP DATABASE IF EXISTS db1;
