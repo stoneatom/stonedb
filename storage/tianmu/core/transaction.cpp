@@ -77,6 +77,7 @@ void Transaction::AddTableWRIfNeeded(std::shared_ptr<TableShare> &share) {
 }
 
 void Transaction::Commit([[maybe_unused]] THD *thd) {
+  TIANMU_LOG(LogCtl_Level::INFO, "txn commit, modified tables size in txn: [%d].", m_modified_tables.size());
   for (auto const &iter : m_modified_tables) iter.second->CommitVersion();
 
   m_modified_tables.clear();

@@ -589,7 +589,12 @@ void Sql_cmd_truncate_table::truncate_base(THD *thd, TABLE_LIST *table_ref) {
         This needs to be done even in case of failure so InnoDB SE
         properly invalidates its internal cache.
       */
-      close_all_tables_for_name(thd, table_ref->table->s, false, nullptr);
+      /* Added by tianmu: check if tianmu table, if so, skip */
+      /* We should commit first before close table in tianmu truncate. */
+      /* tianmu truncate table in 5.7 is ok, 8.0 has this problem */
+      if (table_ref->table->s->db_type() != tianmu_hton) {
+        close_all_tables_for_name(thd, table_ref->table->s, false, nullptr);
+      }
       break;
 
     case Truncate_result::FAILED_OPEN:
