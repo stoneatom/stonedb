@@ -1101,11 +1101,8 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       cq = saved_cq;
       if (cond_to_reinsert && list_to_reinsert)
         list_to_reinsert->push_back(cond_to_reinsert);
-      sl->cleanup(0);
-      if (ifNewJoinForTianmu) {
-        delete sl->join;
-        sl->join = nullptr;
-      }
+      if (ifNewJoinForTianmu)
+        sl->cleanup(true);
       return RETURN_QUERY_TO_MYSQL_ROUTE;
     }
 
@@ -1127,11 +1124,8 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       union_all = true;
     if (cond_to_reinsert && list_to_reinsert)
       list_to_reinsert->push_back(cond_to_reinsert);
-    sl->cleanup(0);
-    if (ifNewJoinForTianmu) {
-      delete sl->join;
-      sl->join = nullptr;
-    }
+    if (ifNewJoinForTianmu)
+      sl->cleanup(true);
   }
 
   cq->BuildTableIDStepsMap();
