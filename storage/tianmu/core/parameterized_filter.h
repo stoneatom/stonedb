@@ -21,8 +21,8 @@
 #include "core/condition.h"
 #include "core/cq_term.h"
 #include "core/joiner.h"
-#include "core/multi_index.h"
 #include "core/just_a_table.h"
+#include "core/multi_index.h"
 
 namespace Tianmu {
 namespace core {
@@ -76,8 +76,8 @@ class ParameterizedFilter final {
   Condition &GetConditions() { return descriptors; }
   void TaskProcessPacks(MIUpdatingIterator *taskIterator, Transaction *ci, common::RSValue *rf, DimensionVector *dims,
                         int desc_number, int64_t limit, int one_dim);
-  
-  void FilterDeletedByTable(JustATable *rcTable, int no_dims);
+
+  void FilterDeletedByTable(JustATable *rcTable, int &no_dims, int &tableIndex);
   void FilterDeletedForSelectAll();
 
   MultiIndex *mind;

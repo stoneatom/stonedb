@@ -167,7 +167,8 @@ void restore_fields(List<Item> &fields, std::map<int, Item *> &items_backup) {
 
   int count = 0;
   while ((item = li++)) {
-    if (items_backup.find(count) != items_backup.end()) li.replace(items_backup[count]);
+    if (items_backup.find(count) != items_backup.end())
+      li.replace(items_backup[count]);
     count++;
   }
 }
@@ -208,7 +209,8 @@ void ResultSender::Init([[maybe_unused]] TempTable *t) {
 
 void ResultSender::Send(TempTable::RecordIterator &iter) {
   if ((iter.currentRowNumber() & 0x7fff) == 0)
-    if (current_txn_->Killed()) throw common::KilledException();
+    if (current_txn_->Killed())
+      throw common::KilledException();
 
   TempTable *owner(iter.Owner());
   if (!is_initialized) {
@@ -216,7 +218,8 @@ void ResultSender::Send(TempTable::RecordIterator &iter) {
     Init(owner);
     is_initialized = true;
   }
-  if (owner && !owner->IsSent()) owner->SetIsSent();
+  if (owner && !owner->IsSent())
+    owner->SetIsSent();
 
   // func found_rows() need limit_found_rows
   thd->current_found_rows++;
@@ -227,7 +230,8 @@ void ResultSender::Send(TempTable::RecordIterator &iter) {
   }
 
   if (limit) {
-    if (*limit == 0) return;
+    if (*limit == 0)
+      return;
     --(*limit);
   }
 
@@ -237,14 +241,16 @@ void ResultSender::Send(TempTable::RecordIterator &iter) {
 }
 
 void ResultSender::SendRow(const std::vector<std::unique_ptr<types::RCDataType>> &record, TempTable *owner) {
-  if (current_txn_->Killed()) throw common::KilledException();
+  if (current_txn_->Killed())
+    throw common::KilledException();
 
   if (!is_initialized) {
     owner->CreateDisplayableAttrP();
     Init(owner);
     is_initialized = true;
   }
-  if (owner && !owner->IsSent()) owner->SetIsSent();
+  if (owner && !owner->IsSent())
+    owner->SetIsSent();
 
   // func found_rows() need limit_found_rows
   thd->current_found_rows++;
@@ -255,7 +261,8 @@ void ResultSender::SendRow(const std::vector<std::unique_ptr<types::RCDataType>>
   }
 
   if (limit) {
-    if (*limit == 0) return;
+    if (*limit == 0)
+      return;
     --(*limit);
   }
 
@@ -331,7 +338,8 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::RCDataTyp
         if (sum_type == Item_sum::COUNT_FUNC || sum_type == Item_sum::SUM_BIT_FUNC) {
           isum_int_rcbase = (types::Item_sum_int_rcbase *)is;
           Engine::Convert(is_null, value, rcdt, is->field_type());
-          if (is_null) value = 0;
+          if (is_null)
+            value = 0;
           isum_int_rcbase->int64_value(value);
           break;
         }
@@ -371,17 +379,18 @@ void ResultSender::Finalize(TempTable *result_table) {
     is_initialized = true;
     Init(result_table);
   }
-  if (result_table && !result_table->IsSent()) Send(result_table);
+  if (result_table && !result_table->IsSent())
+    Send(result_table);
   CleanUp();
   SendEof();
   ulonglong cost_time = (thd->current_utime() - thd->start_utime) / 1000;
   auto &sctx = thd->m_main_security_ctx;
   if (rc_querylog_.isOn())
     rc_querylog_ << system::lock << "\tClientIp:" << (sctx.ip().length ? sctx.ip().str : "unkownn")
-               << "\tClientHostName:" << (sctx.host().length ? sctx.host().str : "unknown")
-               << "\tClientPort:" << thd->peer_port << "\tUser:" << sctx.user().str << global_serverinfo_
-               << "\tAffectRows:" << affect_rows << "\tResultRows:" << rows_sent << "\tDBName:" << thd->db().str
-               << "\tCosttime(ms):" << cost_time << "\tSQL:" << thd->query().str << system::unlock;
+                 << "\tClientHostName:" << (sctx.host().length ? sctx.host().str : "unknown")
+                 << "\tClientPort:" << thd->peer_port << "\tUser:" << sctx.user().str << global_serverinfo_
+                 << "\tAffectRows:" << affect_rows << "\tResultRows:" << rows_sent << "\tDBName:" << thd->db().str
+                 << "\tCosttime(ms):" << cost_time << "\tSQL:" << thd->query().str << system::unlock;
   TIANMU_LOG(LogCtl_Level::DEBUG, "Result: %" PRId64 " Costtime(ms): %" PRId64, rows_sent, cost_time);
 }
 
@@ -423,7 +432,8 @@ fields_t::value_type guest_field_type(THD *&thd, TABLE &tmp_table, Item *&item) 
     else
       field = item->tmp_table_field_from_field_type(&tmp_table, 0);
   } else
-    field = create_tmp_field(thd, &tmp_table, item, item->type(), (Func_ptr_array*)0, &tmp_field, &def_field, 0, 0, 0, 0);
+    field =
+        create_tmp_field(thd, &tmp_table, item, item->type(), (Func_ptr_array *)0, &tmp_field, &def_field, 0, 0, 0, 0);
   fields_t::value_type f(MYSQL_TYPE_STRING);
   if (field) {
     f = field->type();
@@ -443,8 +453,10 @@ AttributeTypeInfo create_ati(THD *&thd, TABLE &tmp_table, Item *&item) {
     else
       field = item->tmp_table_field_from_field_type(&tmp_table, 0);
   } else
-    field = create_tmp_field(thd, &tmp_table, item, item->type(), (Func_ptr_array*)0, &tmp_field, &def_field, 0, 0, 0, 0);
-  if (!field) throw common::DatabaseException("failed to guess item type");
+    field =
+        create_tmp_field(thd, &tmp_table, item, item->type(), (Func_ptr_array *)0, &tmp_field, &def_field, 0, 0, 0, 0);
+  if (!field)
+    throw common::DatabaseException("failed to guess item type");
   AttributeTypeInfo ati = Engine::GetCorrespondingATI(*field);
   delete field;
   return ati;
@@ -459,11 +471,12 @@ void ResultExportSender::Init(TempTable *t) {
 
   std::unique_ptr<system::IOParameters> iop;
 
-  common::TIANMUError tianmu_error;
+  common::TianmuError tianmu_error;
 
   export_res->send_result_set_metadata(fields, Protocol::SEND_NUM_ROWS | Protocol::SEND_EOF);
 
-  if ((tianmu_error = Engine::GetIOP(iop, *thd, *export_res->SqlExchange(), 0, NULL, true)) != common::ErrorCode::SUCCESS)
+  if ((tianmu_error = Engine::GetIOP(iop, *thd, *export_res->SqlExchange(), 0, NULL, true)) !=
+      common::ErrorCode::SUCCESS)
     throw common::Exception("Unable to get IOP");
 
   List_iterator_fast<Item> li(fields);
@@ -484,7 +497,8 @@ void ResultExportSender::Init(TempTable *t) {
   }
 
   rcbuffer = std::make_shared<system::LargeBuffer>();
-  if (!rcbuffer->BufOpen(*iop)) throw common::FileException("Unable to open file or named pipe.");
+  if (!rcbuffer->BufOpen(*iop))
+    throw common::FileException("Unable to open file or named pipe.");
 
   rcde = common::DataFormat::GetDataFormat(iop->GetEDF())->CreateDataExporter(*iop);
   rcde->Init(rcbuffer, t->GetATIs(iop->GetEDF() != common::EDF::TRI_UNKNOWN), f, deas);

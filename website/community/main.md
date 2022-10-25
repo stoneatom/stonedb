@@ -26,15 +26,16 @@ Read on to learn how you can get involved and become part of this amazing commun
 - ![fuxiang](https://avatars.githubusercontent.com/u/26853590?v=4 "title:fuxiang,to://github.com/gougexuanli")
 - ![lujiashun](https://avatars.githubusercontent.com/u/112846998?v=4 "title:lujiashun,to://github.com/lujiashun")
 - ![xuejiao-joy](https://avatars.githubusercontent.com/u/107540910?v=4 "title:xuejiao-joy,to://github.com/xuejiao-joy")
+- ![davidshiz](https://avatars.githubusercontent.com/u/53512869?v=4) "title:shizhao,to://github.com/davidshiz")
 ```
 
 ## Join the community {#join} 
 ```custom-joinList
-- [Github Discussion](https://github.com/stoneatom/stonedb-docs/discussions "icon:icon-a-bianzu16beifen1")
+- [Github Discussion](https://github.com/stoneatom/stonedb/discussions "icon:icon-a-bianzu16beifen1")
 - [Slack Channel](https://stonedb.slack.com/join/shared_invite/zt-1ba2lpvbo-Vqq62DJcxViyxCZmp7Rimw#/shared-invite/email "icon:icon-a-bianzu18beifen2")
 - [Reddit](https://www.reddit.com/user/StoneDBTeam "icon:icon-a-bianzu3")
 - [新浪微博](https://weibo.com/u/7756824587 "icon:icon-a-bianzu31,local:zh")
-- [Twitter](https://twitter.com/StoneDB2022 "icon:icon-a-bianzu2")
+- [Twitter](https://twitter.com/StoneDataBase "icon:icon-a-bianzu2")
 ``` 
 
 <!-- ## Events {#event}

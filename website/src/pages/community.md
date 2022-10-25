@@ -8,11 +8,12 @@ Read on to learn how you can get involved and become part of this amazing commun
 - ![RingsC](https://avatars.githubusercontent.com/u/5336722?v=4 "title:RingsC,to://github.com/ringsc")
 - ![hustjieke](https://avatars.githubusercontent.com/u/18331104?v=4 "title:hustjieke,to://github.com/hustjieke")
 - ![dupeiliang](https://avatars.githubusercontent.com/u/39800914?v=4 "title:dupeiliang,to://github.com/dupeiliang")
+- ![andyli](https://avatars.githubusercontent.com/u/15212006?v=4 "title:andyli,to://github.com/andyli029")
 - ![SPzhang](https://avatars.githubusercontent.com/u/31213457?v=4 "title:SPzhang,to://github.com/zsp108")
 - ![CodingSuen](https://avatars.githubusercontent.com/u/69141572?v=4 "title:CodingSuen,to://github.com/CodingSuen")
-- ![jun-lihaijun](https://avatars.githubusercontent.com/u/103155258?v=4 "title:jun-lihaijun,to://github.com/jun-lihaijun")
-- ![XueDong-Chen](https://avatars.githubusercontent.com/u/34465107?v=4 "title:XueDong-Chen,to://github.com/XueDong-Chen")
-- ![zhx8817](https://avatars.githubusercontent.com/u/63028664?v=4 "title:zhx8817,to://github.com/zhx8817")
+- ![jun-lihaijun](https://avatars.githubusercontent.com/u/103155258?v=4 "title:jun-lihaijun,to://github.com/lihaijun-jun")
+- ![DandreChen](https://avatars.githubusercontent.com/u/34465107?v=4 "title:DandreChen,to://github.com/DandreChen")
+- ![isredstar](https://avatars.githubusercontent.com/u/63028664?v=4 "title:isredstar,to://github.com/isredstar")
 - ![konghaiya](https://avatars.githubusercontent.com/u/106147765?v=4 "title:konghaiya,to://github.com/konghaiya")
 - ![Nliver](https://avatars.githubusercontent.com/u/34496563?v=4 "title:Nliver,to://github.com/Nliver")
 - ![Yeekin-](https://avatars.githubusercontent.com/u/101704468?v=4 "title:Yeekin-,to://github.com/Yeekin-GYJ")
@@ -20,15 +21,21 @@ Read on to learn how you can get involved and become part of this amazing commun
 - ![LuiciferYi](https://avatars.githubusercontent.com/u/24913493?v=4 "title:LuiciferYi,to://github.com/LuiciferYi")
 - ![litaihong](https://avatars.githubusercontent.com/u/79444526?v=4 "title:litaihong,to://github.com/lylth")
 - ![haitaoguan](https://avatars.githubusercontent.com/u/105625912?v=4 "title:haitaoguan,to://github.com/haitaoguan")
+- ![shangyanwen](https://avatars.githubusercontent.com/u/107781103?v=4 "title:shangyanwen,to://github.com/shangyanwen")
+- ![adofsauron](https://avatars.githubusercontent.com/u/3915817?v=4 "title:adofsauron,to://github.com/adofsauron")
+- ![fuxiang](https://avatars.githubusercontent.com/u/26853590?v=4 "title:fuxiang,to://github.com/gougexuanli")
+- ![lujiashun](https://avatars.githubusercontent.com/u/112846998?v=4 "title:lujiashun,to://github.com/lujiashun")
+- ![xuejiao-joy](https://avatars.githubusercontent.com/u/107540910?v=4 "title:xuejiao-joy,to://github.com/xuejiao-joy")
+- ![davidshiz](https://avatars.githubusercontent.com/u/53512869?v=4 "title:davidshiz,to://github.com/davidshiz")
 ```
 
 ## Join the community {#join} 
 ```custom-joinList
-- [Github Discussion](https://github.com/stoneatom/stonedb-docs/discussions "icon:icon-a-bianzu16beifen1")
+- [Github Discussion](https://github.com/stoneatom/stonedb/discussions "icon:icon-a-bianzu16beifen1")
 - [Slack Channel](https://stonedb.slack.com/join/shared_invite/zt-1ba2lpvbo-Vqq62DJcxViyxCZmp7Rimw#/shared-invite/email "icon:icon-a-bianzu18beifen2")
 - [Reddit](https://www.reddit.com/user/StoneDBTeam "icon:icon-a-bianzu3")
 - [新浪微博](https://weibo.com/u/7756824587 "icon:icon-a-bianzu31,local:zh")
-- [Twitter](https://twitter.com/StoneDB2022 "icon:icon-a-bianzu2")
+- [Twitter](https://twitter.com/StoneDataBase "icon:icon-a-bianzu2")
 ``` 
 
 <!-- ## Events {#event}

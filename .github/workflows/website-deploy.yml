@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - stonedb-5.7-dev
+    paths:
+      - 'Docs/**'
+      - 'docs/**'
+      - 'website/**'
 
 jobs:
   deploy:
