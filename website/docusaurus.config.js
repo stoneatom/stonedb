@@ -177,7 +177,7 @@ const config = {
   //   'https://unpkg.com/libpag@latest/lib/libpag.min.js',
   // ],
   plugins: [
-    '@docusaurus/plugin-ideal-image',
+    // '@docusaurus/plugin-ideal-image',
     [
       "docusaurus-plugin-less", 
       {
