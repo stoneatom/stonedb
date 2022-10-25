@@ -113,4 +113,3 @@ SELECT COUNT(*) FROM t1 GROUP BY t1_tinyint, t1_int, t1_bigint HAVING t1_char = 
 
 #Clean up
 DROP DATABASE IF EXISTS db1;
-
