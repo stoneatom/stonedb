@@ -2272,6 +2272,10 @@ bool Query_result_insert::prepare(THD *thd, const mem_root_deque<Item *> &,
 
   table = lex->insert_table_leaf->table;
 
+  table_list = lex->insert_table;
+  if (duplicate_handling == DUP_UPDATE || duplicate_handling == DUP_REPLACE)
+    prepare_for_positional_update(table, table_list);
+
   if (info.add_function_default_columns(table, table->write_set)) return true;
   if ((duplicate_handling == DUP_UPDATE) &&
       update.add_function_default_columns(table, table->write_set))
