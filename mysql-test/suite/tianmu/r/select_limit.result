@@ -74,8 +74,6 @@ t1_tinyint	t1_int	t1_bigint	t1_double	t1_float	t1_blob	t1_text	t1_char	t1_varcha
 0	NULL	203685477580679	-3.797693231e108	-7.40287e18	aaaaaaaaaaaaaaaaaaaa	aaaaaaaaaaaaaaaaaaaaaaaaa	a	hello world!	2020-10-10 00:00:00
 0	NULL	203685477580679	-3.797693231e108	-7.40287e18	aaaaaaaaaaaaaaaaaaaa	aaaaaaaaaaaaaaaaaaaaaaaaa	a	hello world!	2020-10-10 00:00:00
 0	NULL	203685477580680	-3.797693231e108	-7.40287e18	aaaaaaaaaaaaaaaaaaaa	bbbbbbbbbbbbbbbbbbbbbbbbb	b	hello world!	1234-10-10 00:00:00
-SELECT * FROM t1 LIMIT 0;
-t1_tinyint	t1_int	t1_bigint	t1_double	t1_float	t1_blob	t1_text	t1_char	t1_varchar	t1_datetime
 SELECT * FROM t1 LIMIT @;
 ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '@' at line 1
 SELECT * FROM t1 LIMIT -1;
