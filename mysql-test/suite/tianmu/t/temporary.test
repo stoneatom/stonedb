@@ -80,4 +80,3 @@ DROP TABLE  `#sql2`;
 
 #Table names contain characters
 CREATE TEMPORARY TABLE `tt+1` (c1 INT)engine=tianmu;
-
