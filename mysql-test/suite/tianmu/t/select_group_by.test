@@ -110,5 +110,7 @@ SELECT COUNT(*) FROM t1 WHERE t1_blob IS NOT NULL OR t1_tinyint IS NULL GROUP BY
 ##1054: Unknown column 't1_char' in 'having clause'
 --error 1054
 SELECT COUNT(*) FROM t1 GROUP BY t1_tinyint, t1_int, t1_bigint HAVING t1_char = 'b';
+
 #Clean up
 DROP DATABASE IF EXISTS db1;
+
