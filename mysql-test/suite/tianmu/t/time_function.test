@@ -1,0 +1,35 @@
+--echo #
+--echo # TIME() function
+--echo # Author: ysw
+--echo #
+
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS time_function;
+--enable_warnings
+
+CREATE DATABASE time_function;
+USE time_function;
+
+CREATE TABLE t1
+(
+ t1_DATE DATE,
+ t1_TIME TIME,
+ t1_DATETIME DATETIME
+ )ENGINE=tianmu;
+INSERT INTO t1 VALUES('1560-08-27', '22:12:02', '1997-12-12 22:12:02');
+INSERT INTO t1 VALUES('1982-02-19', '23:59:59', '2001-1-1 23:59:59.65');
+INSERT INTO t1 VALUES('3291-05-30', '01:37:50.871', '09-12-11 01:08:59');
+
+SELECT TIME('112233') FROM t1 LIMIT 1;
+SELECT TIME('11:22:33.4455') FROM t1 LIMIT 1;
+SELECT TIME('1811/2/2 3:34:45.5') FROM t1 LIMIT 1;
+SELECT TIME('1811/2/2') FROM t1 LIMIT 1;
+
+SELECT t1_DATE, TIME(t1_DATE) FROM t1 ORDER BY 1;
+SELECT t1_TIME, TIME(t1_TIME) FROM t1 ORDER BY 1;
+SELECT t1_DATETIME, TIME(t1_DATETIME) FROM t1 ORDER BY 1;
+
+# Clean UP
+DROP DATABASE time_function;
