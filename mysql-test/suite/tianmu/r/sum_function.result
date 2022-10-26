@@ -1,0 +1,26 @@
+#
+# Test SUM as distributed aggregate function
+# Author: syw
+#
+DROP DATABASE IF EXISTS mcs189_db;
+CREATE DATABASE mcs189_db;
+USE mcs189_db;
+CREATE TABLE t1 (a INT, b CHAR(5))ENGINE=tianmu;
+INSERT INTO t1 VALUES (NULL, ''),(1, 'aaa'),(2, 'aaa'),(1, 'ccc'),(4, 'ddd'),(5, 'aaa'),(6, 'ddd'),(7, 'eee');
+SELECT SUM(DISTINCT a) FROM t1;
+SUM(DISTINCT a)
+25
+SELECT SUM(DISTINCT a) FROM t1 GROUP BY b HAVING b = 'aaa';
+SUM(DISTINCT a)
+8
+SELECT b, SUM(DISTINCT a) FROM t1 GROUP BY b ORDER BY b DESC;
+b	SUM(DISTINCT a)
+eee	7
+ddd	10
+ccc	1
+aaa	8
+	NULL
+SELECT SUM(a) FROM t1;
+SUM(a)
+26
+DROP DATABASE mcs189_db;
