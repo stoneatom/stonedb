@@ -2293,13 +2293,48 @@ ENDIF()
 INCLUDE(cmake/abi_check.cmake)
 INCLUDE(cmake/tags.cmake)
 
+IF (UNIX)
+ EXECUTE_PROCESS(COMMAND bash "-c" "git remote -v | sed -n '1p' | awk '{print $2}'"
+                  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                  OUTPUT_VARIABLE ER_REPO_NAME
+                  )
+ string(STRIP "${ER_REPO_NAME}" ER_REPO_NAME)
+
+ EXECUTE_PROCESS(COMMAND bash "-c" "git rev-parse --abbrev-ref HEAD"
+                  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                  OUTPUT_VARIABLE ER_BRANCH_NAME)
+ string(STRIP "${ER_BRANCH_NAME}" ER_BRANCH_NAME)
+
+ EXECUTE_PROCESS(COMMAND bash "-c" "git rev-parse --short HEAD"
+                  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                  OUTPUT_VARIABLE ER_COMMIT_ID)
+ string(STRIP "${ER_COMMIT_ID}" ER_COMMIT_ID)
+
+ EXECUTE_PROCESS(COMMAND bash "-c" "git show --stat | sed -n '3p'"
+                  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                  OUTPUT_VARIABLE ER_COMMIT_TIME)
+  string(STRIP "${ER_COMMIT_TIME}" ER_COMMIT_TIME)
+
+ EXECUTE_PROCESS(COMMAND bash "-c" "date"
+                  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                  OUTPUT_VARIABLE ER_BUILD_TIME)
+ string(STRIP "${ER_BUILD_TIME}" ER_BUILD_TIME)
+
+ SET(STONEDB_REPO_ADDR "${ER_REPO_NAME}:${ER_BRANCH_NAME}")
+ SET(STONEDB_BRANCH_NAME "${ER_BRANCH_NAME}")
+ SET(STONEDB_COMMIT_ID "${ER_COMMIT_ID}")
+ SET(STONEDB_COMMIT_TIME "${ER_COMMIT_TIME}")
+ SET(STONEDB_BUILD_TIME "Date: ${ER_BUILD_TIME}")
+ENDIF()
+
 CONFIGURE_FILE(config.h.cmake   ${CMAKE_BINARY_DIR}/include/my_config.h)
 CONFIGURE_FILE(config.h.cmake   ${CMAKE_BINARY_DIR}/include/config.h)
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/include/mysql_version.h.in
                ${CMAKE_BINARY_DIR}/include/mysql_version.h )
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/sql/sql_builtin.cc.in
     ${CMAKE_BINARY_DIR}/sql/sql_builtin.cc)
-
+CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/sql/build_info.h.ini
+    ${CMAKE_SOURCE_DIR}/sql/build_info.h)
 # depends on mysql_version.h to exist
 IF(NOT WITHOUT_SERVER)
   IF(WITH_ROUTER)

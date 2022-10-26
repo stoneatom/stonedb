@@ -687,7 +687,7 @@ MySQL clients support the protocol:
 /* clang-format on */
 
 #include "sql/mysqld.h"
-
+#include "build_info.h"
 #include "my_config.h"
 
 #include "errmsg.h"  // init_client_errs
@@ -9824,6 +9824,17 @@ static void print_server_version(void) {
   print_explicit_version(server_version);
 }
 
+// tianmu start
+static void print_server_build_info(void) {
+  printf("build information as follow: \n");
+  printf("\tRepository address: %s\n", STONEDB_REPO_ADDR);
+  printf("\tBranch name: %s\n", STONEDB_BRANCH_NAME);
+  printf("\tLast commit ID: %s\n", STONEDB_COMMIT_ID);
+  printf("\tLast commit time: %s\n", STONEDB_COMMIT_TIME);
+  printf("\tBuild time: %s\n", STONEDB_BUILD_TIME);
+}
+// tianmu end
+
 /** Compares two options' names, treats - and _ the same */
 static bool operator<(const my_option &a, const my_option &b) {
   const char *sa = a.name;
@@ -10291,6 +10302,7 @@ bool mysqld_get_one_option(int optid,
       break;
     case 'V':
       print_server_version();
+      print_server_build_info(); // tianmu
       exit(MYSQLD_SUCCESS_EXIT);
     case 'T':
       test_flags = argument ? (uint)atoi(argument) : 0;
