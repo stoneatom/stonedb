@@ -1,0 +1,42 @@
+--echo #
+--echo # Test SELECT JOIN
+--echo # Author: syw
+--echo #
+
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS mcs_db4;
+--enable_warnings
+
+CREATE DATABASE mcs_db4;
+USE mcs_db4;
+
+#
+# Test different join syntaxes
+#
+
+CREATE TABLE tbl1 (t1_col1 INT)ENGINE=tianmu;
+CREATE TABLE tbl2 (t2_col1 INT)ENGINE=tianmu;
+INSERT INTO tbl1 VALUES (1),(3),(5),(7),(9);
+INSERT INTO tbl1 VALUES ();
+INSERT INTO tbl2 VALUES (9),(11),(13),(15),(17),(19);
+INSERT INTO tbl2 VALUES ();
+
+SELECT t1.t1_col1,t2.t1_col1 FROM tbl1 t1 JOIN tbl1 t2 ON t1.t1_col1 = t2.t1_col1;
+SELECT t1.t1_col1,t2.t1_col1 FROM tbl1 t1 LEFT JOIN tbl1 t2 ON t1.t1_col1 = t2.t1_col1;
+SELECT t1.t1_col1,t2.t1_col1 FROM tbl1 t1 RIGHT JOIN tbl1 t2 ON t1.t1_col1 = t2.t1_col1;
+
+# Test of join with many tables
+SELECT t1.t1_col1 FROM tbl1 as t1 LEFT JOIN tbl1 AS t2 USING (t1_col1) LEFT JOIN tbl1 AS t3 USING (t1_col1) LEFT JOIN tbl1 AS t4 USING (t1_col1) LEFT JOIN tbl1 AS t5 USING (t1_col1) LEFT JOIN tbl1 AS t6 USING (t1_col1) LEFT JOIN tbl1 AS t7 USING (t1_col1) LEFT JOIN tbl1 AS t8 USING (t1_col1) LEFT JOIN tbl1 AS t9 USING (t1_col1) LEFT JOIN tbl1 AS t10 USING (t1_col1) LEFT JOIN tbl1 AS t11 USING (t1_col1) LEFT JOIN tbl1 AS t12 USING (t1_col1) LEFT JOIN tbl1 AS t13 USING (t1_col1) LEFT JOIN tbl1 AS t14 USING (t1_col1) LEFT JOIN tbl1 AS t15 USING (t1_col1) LEFT JOIN tbl1 AS t16 USING (t1_col1) LEFT JOIN tbl1 AS t17 USING (t1_col1) LEFT JOIN tbl1 AS t18 USING (t1_col1) LEFT JOIN tbl1 AS t19 USING (t1_col1) LEFT JOIN tbl1 AS t20 USING (t1_col1) LEFT JOIN tbl1 AS t21 USING (t1_col1) LEFT JOIN tbl1 AS t22 USING (t1_col1) LEFT JOIN tbl1 AS t23 USING (t1_col1) LEFT JOIN tbl1 AS t24 USING (t1_col1) LEFT JOIN tbl1 AS t25 USING (t1_col1) LEFT JOIN tbl1 AS t26 USING (t1_col1) LEFT JOIN tbl1 AS t27 USING (t1_col1) LEFT JOIN tbl1 AS t28 USING (t1_col1) LEFT JOIN tbl1 AS t29 USING (t1_col1) LEFT JOIN tbl1 AS t30 USING (t1_col1) LEFT JOIN tbl1 AS t31 USING (t1_col1) LEFT JOIN tbl1 AS t32 USING (t1_col1) LEFT JOIN tbl1 AS t33 USING (t1_col1) LEFT JOIN tbl1 AS t34 USING (t1_col1) LEFT JOIN tbl1 AS t35 USING (t1_col1) LEFT JOIN tbl1 AS t36 USING (t1_col1) LEFT JOIN tbl1 AS t37 USING (t1_col1) LEFT JOIN tbl1 AS t38 USING (t1_col1) LEFT JOIN tbl1 AS t39 USING (t1_col1) LEFT JOIN tbl1 AS t40 USING (t1_col1) LEFT JOIN tbl1 AS t41 USING (t1_col1) LEFT JOIN tbl1 AS t42 USING (t1_col1) LEFT JOIN tbl1 AS t43 USING (t1_col1) LEFT JOIN tbl1 AS t44 USING (t1_col1) LEFT JOIN tbl1 AS t45 USING (t1_col1) LEFT JOIN tbl1 AS t46 USING (t1_col1) LEFT JOIN tbl1 AS t47 USING (t1_col1) LEFT JOIN tbl1 AS t48 USING (t1_col1) LEFT JOIN tbl1 AS t49 USING (t1_col1) LEFT JOIN tbl1 AS t50 USING (t1_col1) LEFT JOIN tbl1 AS t51 USING (t1_col1) LEFT JOIN tbl1 AS t52 USING (t1_col1) LEFT JOIN tbl1 AS t53 USING (t1_col1) LEFT JOIN tbl1 AS t54 USING (t1_col1) LEFT JOIN tbl1 AS t55 USING (t1_col1) LEFT JOIN tbl1 AS t56 USING (t1_col1) LEFT JOIN tbl1 AS t57 USING (t1_col1) LEFT JOIN tbl1 AS t58 USING (t1_col1) LEFT JOIN tbl1 AS t59 USING (t1_col1) LEFT JOIN tbl1 AS t60 USING (t1_col1) LEFT JOIN tbl1 AS t61 USING (t1_col1);
+
+# Maximum tables that can be used for join is 61
+--error ER_TOO_MANY_TABLES
+SELECT t1.t1_col1 FROM tbl1 as t1 LEFT JOIN tbl1 AS t2 USING (t1_col1) LEFT JOIN tbl1 AS t3 USING (t1_col1) LEFT JOIN tbl1 AS t4 USING (t1_col1) LEFT JOIN tbl1 AS t5 USING (t1_col1) LEFT JOIN tbl1 AS t6 USING (t1_col1) LEFT JOIN tbl1 AS t7 USING (t1_col1) LEFT JOIN tbl1 AS t8 USING (t1_col1) LEFT JOIN tbl1 AS t9 USING (t1_col1) LEFT JOIN tbl1 AS t10 USING (t1_col1) LEFT JOIN tbl1 AS t11 USING (t1_col1) LEFT JOIN tbl1 AS t12 USING (t1_col1) LEFT JOIN tbl1 AS t13 USING (t1_col1) LEFT JOIN tbl1 AS t14 USING (t1_col1) LEFT JOIN tbl1 AS t15 USING (t1_col1) LEFT JOIN tbl1 AS t16 USING (t1_col1) LEFT JOIN tbl1 AS t17 USING (t1_col1) LEFT JOIN tbl1 AS t18 USING (t1_col1) LEFT JOIN tbl1 AS t19 USING (t1_col1) LEFT JOIN tbl1 AS t20 USING (t1_col1) LEFT JOIN tbl1 AS t21 USING (t1_col1) LEFT JOIN tbl1 AS t22 USING (t1_col1) LEFT JOIN tbl1 AS t23 USING (t1_col1) LEFT JOIN tbl1 AS t24 USING (t1_col1) LEFT JOIN tbl1 AS t25 USING (t1_col1) LEFT JOIN tbl1 AS t26 USING (t1_col1) LEFT JOIN tbl1 AS t27 USING (t1_col1) LEFT JOIN tbl1 AS t28 USING (t1_col1) LEFT JOIN tbl1 AS t29 USING (t1_col1) LEFT JOIN tbl1 AS t30 USING (t1_col1) LEFT JOIN tbl1 AS t31 USING (t1_col1) LEFT JOIN tbl1 AS t32 USING (t1_col1) LEFT JOIN tbl1 AS t33 USING (t1_col1) LEFT JOIN tbl1 AS t34 USING (t1_col1) LEFT JOIN tbl1 AS t35 USING (t1_col1) LEFT JOIN tbl1 AS t36 USING (t1_col1) LEFT JOIN tbl1 AS t37 USING (t1_col1) LEFT JOIN tbl1 AS t38 USING (t1_col1) LEFT JOIN tbl1 AS t39 USING (t1_col1) LEFT JOIN tbl1 AS t40 USING (t1_col1) LEFT JOIN tbl1 AS t41 USING (t1_col1) LEFT JOIN tbl1 AS t42 USING (t1_col1) LEFT JOIN tbl1 AS t43 USING (t1_col1) LEFT JOIN tbl1 AS t44 USING (t1_col1) LEFT JOIN tbl1 AS t45 USING (t1_col1) LEFT JOIN tbl1 AS t46 USING (t1_col1) LEFT JOIN tbl1 AS t47 USING (t1_col1) LEFT JOIN tbl1 AS t48 USING (t1_col1) LEFT JOIN tbl1 AS t49 USING (t1_col1) LEFT JOIN tbl1 AS t50 USING (t1_col1) LEFT JOIN tbl1 AS t51 USING (t1_col1) LEFT JOIN tbl1 AS t52 USING (t1_col1) LEFT JOIN tbl1 AS t53 USING (t1_col1) LEFT JOIN tbl1 AS t54 USING (t1_col1) LEFT JOIN tbl1 AS t55 USING (t1_col1) LEFT JOIN tbl1 AS t56 USING (t1_col1) LEFT JOIN tbl1 AS t57 USING (t1_col1) LEFT JOIN tbl1 AS t58 USING (t1_col1) LEFT JOIN tbl1 AS t59 USING (t1_col1) LEFT JOIN tbl1 AS t60 USING (t1_col1) LEFT JOIN tbl1 AS t61 USING (t1_col1) LEFT JOIN tbl1 AS t62 USING (t1_col1);
+
+SELECT t1.t1_col1,t2.t2_col1 FROM tbl1 t1 JOIN tbl2 t2 ON t1.t1_col1 = t2.t2_col1;
+SELECT t1.t1_col1,t2.t2_col1 FROM tbl1 t1 LEFT JOIN tbl2 t2 ON t1.t1_col1 = t2.t2_col1;
+SELECT t1.t1_col1,t2.t2_col1 FROM tbl1 t1 RIGHT JOIN tbl2 t2 ON t1.t1_col1 = t2.t2_col1;
+
+# Clean UP
+DROP DATABASE mcs_db4;

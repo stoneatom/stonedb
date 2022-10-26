@@ -1,0 +1,85 @@
+--echo #
+--echo # Test basic select...group by...order by
+--echo # Author: syw
+--echo #
+
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS mcs3_db1;
+--enable_warnings
+
+CREATE DATABASE mcs3_db1;
+USE mcs3_db1;
+
+CREATE TABLE t1 (
+  spID int(10) ,
+  userID int(10) ,
+  score smallint(5) ,
+  lsg char(40),
+  date date
+) ENGINE=tianmu;
+
+INSERT INTO t1 VALUES (1,1,1,'','1900-01-01');
+INSERT INTO t1 VALUES (2,2,2,'','1900-01-01');
+INSERT INTO t1 VALUES (2,1,1,'','1900-01-01');
+INSERT INTO t1 VALUES (3,3,3,'','1900-01-01');
+
+CREATE TABLE t2 (
+  userID int(10) NOT NULL,
+  niName char(15),
+  passwd char(8),
+  mail char(50),
+  isAukt char(1) DEFAULT 'N',
+  vName char(30),
+  nName char(40),
+  adr char(60),
+  plz char(5),
+  ort char(35),
+  land char(20)
+) ENGINE=tianmu;
+
+INSERT INTO t2 VALUES (1,'name','pass','mail','Y','v','n','adr','1','1','1');
+INSERT INTO t2 VALUES (2,'name','pass','mail','Y','v','n','adr','1','1','1');
+INSERT INTO t2 VALUES (3,'name','pass','mail','Y','v','n','adr','1','1','1');
+INSERT INTO t2 VALUES (4,'name','pass','mail','Y','v','n','adr','1','1','1');
+INSERT INTO t2 VALUES (5,'name','pass','mail','Y','v','n','adr','1','1','1');
+
+SELECT t2.userid, MIN(t1.score) 
+ FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid ORDER BY t2.userid;
+ 
+SELECT t2.userid, MIN(t1.score) 
+ FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid ORDER BY t2.userid ASC;
+ 
+SELECT t2.userid, MIN(t1.score) 
+ FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid ORDER BY t2.userid DESC;
+ 
+SELECT t2.userid, MIN(t1.score) 
+ FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid ORDER BY t2.userid LIMIT 2;
+ 
+#Test multiple columns
+SELECT t1.spID, t2.userid, MIN(t1.score) 
+ FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid, t1.spID ORDER BY t2.userid, t1.spID;
+SELECT t1.spID, t2.userid, MIN(t1.score) 
+ FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid, t1.spID ORDER BY t1.spID, t2.userid;
+ 
+# columns in ORDER BY clause not included in the GROUP BY clause.
+#SELECT t1.spID, t2.userid, MIN(t1.score) 
+ #FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid, t1.spID ORDER BY t1.date;
+
+# non-existing column in group by clause
+--error 1054
+SELECT t2.userid, MIN(t1.score)
+ FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY unknown ORDER BY t2.userid;
+ 
+# non-existing column in order by clause
+--error 1054
+SELECT t2.userid, MIN(t1.score)
+ FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid ORDER BY unknown;
+ 
+# order by null
+SELECT t2.userid, MIN(t1.score)
+ FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid ORDER BY NULL;
+
+#Clean up
+DROP DATABASE IF EXISTS mcs3_db1;
