@@ -9682,6 +9682,20 @@ search_key_in_table(TABLE *table, MY_BITMAP *bi_cols, uint key_type)
   uint res= MAX_KEY;
   uint key;
 
+  /*
+      The primary key of the tianmu engine does not support delete and update statements.
+      The following codes can be deleted after subsequent support
+  */
+  bool tianmu_engine = table && table->s && 
+                      (table->s->db_type() ? table->s->db_type()->db_type == DB_TYPE_TIANMU: false);
+  enum_sql_command sqlCommand = SQLCOM_END;
+  if(table->in_use && table->in_use->lex) sqlCommand = table->in_use->lex->sql_command;
+  bool tianmuDeleteOrUpdate = (tianmu_engine && (sqlCommand == SQLCOM_DELETE ||
+                                          sqlCommand == SQLCOM_DELETE_MULTI ||
+                                          sqlCommand == SQLCOM_UPDATE ||
+                                          sqlCommand == SQLCOM_UPDATE_MULTI));
+  if(tianmuDeleteOrUpdate) DBUG_RETURN(res);
+
   if (key_type & PRI_KEY_FLAG &&
       (table->s->primary_key < MAX_KEY))
   {
@@ -11284,7 +11298,6 @@ int Rows_log_event::do_apply_event(Relay_log_info const *rli)
     if ((get_general_type_code() == binary_log::UPDATE_ROWS_EVENT) &&
         !is_any_column_signaled_for_table(table, &m_cols_ai))
       goto AFTER_MAIN_EXEC_ROW_LOOP;
-
     /**
        If there are no columns marked in the read_set for this table,
        that means that we cannot lookup any row using the available BI

@@ -172,7 +172,7 @@ class TianmuHandler final : public handler {
 
   core::JustATable *table_ptr = nullptr;
   std::unique_ptr<core::Filter> filter_ptr;
-  uint64_t current_position;
+  uint64_t current_position = 0;
 
   core::RCTable::Iterator table_new_iter;
   core::RCTable::Iterator table_new_iter_end;
