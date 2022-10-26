@@ -1,0 +1,86 @@
+#
+# Test basic select...group by...order by
+# Author: syw
+#
+DROP DATABASE IF EXISTS mcs3_db1;
+CREATE DATABASE mcs3_db1;
+USE mcs3_db1;
+CREATE TABLE t1 (
+spID int(10) ,
+userID int(10) ,
+score smallint(5) ,
+lsg char(40),
+date date
+) ENGINE=tianmu;
+INSERT INTO t1 VALUES (1,1,1,'','1900-01-01');
+INSERT INTO t1 VALUES (2,2,2,'','1900-01-01');
+INSERT INTO t1 VALUES (2,1,1,'','1900-01-01');
+INSERT INTO t1 VALUES (3,3,3,'','1900-01-01');
+CREATE TABLE t2 (
+userID int(10) NOT NULL,
+niName char(15),
+passwd char(8),
+mail char(50),
+isAukt char(1) DEFAULT 'N',
+vName char(30),
+nName char(40),
+adr char(60),
+plz char(5),
+ort char(35),
+land char(20)
+) ENGINE=tianmu;
+INSERT INTO t2 VALUES (1,'name','pass','mail','Y','v','n','adr','1','1','1');
+INSERT INTO t2 VALUES (2,'name','pass','mail','Y','v','n','adr','1','1','1');
+INSERT INTO t2 VALUES (3,'name','pass','mail','Y','v','n','adr','1','1','1');
+INSERT INTO t2 VALUES (4,'name','pass','mail','Y','v','n','adr','1','1','1');
+INSERT INTO t2 VALUES (5,'name','pass','mail','Y','v','n','adr','1','1','1');
+SELECT t2.userid, MIN(t1.score) 
+FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid ORDER BY t2.userid;
+userid	MIN(t1.score)
+1	1
+2	2
+3	3
+SELECT t2.userid, MIN(t1.score) 
+FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid ORDER BY t2.userid ASC;
+userid	MIN(t1.score)
+1	1
+2	2
+3	3
+SELECT t2.userid, MIN(t1.score) 
+FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid ORDER BY t2.userid DESC;
+userid	MIN(t1.score)
+3	3
+2	2
+1	1
+SELECT t2.userid, MIN(t1.score) 
+FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid ORDER BY t2.userid LIMIT 2;
+userid	MIN(t1.score)
+1	1
+2	2
+SELECT t1.spID, t2.userid, MIN(t1.score) 
+FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid, t1.spID ORDER BY t2.userid, t1.spID;
+spID	userid	MIN(t1.score)
+1	1	1
+2	1	1
+2	2	2
+3	3	3
+SELECT t1.spID, t2.userid, MIN(t1.score) 
+FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid, t1.spID ORDER BY t1.spID, t2.userid;
+spID	userid	MIN(t1.score)
+1	1	1
+2	1	1
+2	2	2
+3	3	3
+SELECT t2.userid, MIN(t1.score)
+FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY unknown ORDER BY t2.userid;
+ERROR 42S22: Unknown column 'unknown' in 'group statement'
+SELECT t2.userid, MIN(t1.score)
+FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid ORDER BY unknown;
+ERROR 42S22: Unknown column 'unknown' in 'order clause'
+SELECT t2.userid, MIN(t1.score)
+FROM t1, t2 WHERE t1.userID=t2.userID GROUP BY t2.userid ORDER BY NULL;
+userid	MIN(t1.score)
+1	1
+2	2
+3	3
+DROP DATABASE IF EXISTS mcs3_db1;

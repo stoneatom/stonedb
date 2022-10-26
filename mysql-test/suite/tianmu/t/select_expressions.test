@@ -1,0 +1,53 @@
+--echo #
+--echo # Test SELECT expressions
+--echo # Author: syw
+--echo #
+
+-- source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS mcs_db5;
+--enable_warnings
+
+CREATE DATABASE mcs_db5;
+USE mcs_db5;
+
+CREATE TABLE t1(t1_int INT, t1_char CHAR(5))ENGINE=tianmu;
+INSERT INTO t1 VALUES(1,'aaa'),(2,'aaa'),(3,'bbb'),(4,'ccc'),(5,'ddd');
+
+SELECT (t1_int+1),(t1_int-1),(t1_int*2),(t1_int/10.3) FROM t1;
+SELECT * FROM t1 WHERE t1_int <= 1 OR t1_char='aaa';
+SELECT * FROM t1 WHERE t1_int <= 1 || t1_char='aaa';
+SELECT * FROM t1 WHERE t1_int > 1 AND t1_char LIKE '%a%'; 
+SELECT * FROM t1 WHERE t1_int > 1 && t1_char='aaa';
+
+#bug:#796
+#SELECT * FROM t1 WHERE t1_int NOT LIKE 1;
+
+SELECT * FROM t1 WHERE t1_int != 1;
+SELECT * FROM t1 WHERE t1_int BETWEEN 1 AND 5;
+SELECT * FROM t1 WHERE t1_int NOT BETWEEN 2 AND 5;
+SELECT * FROM t1 WHERE t1_int NOT IN (SELECT t1_int FROM t1 WHERE t1_int=1); 
+SELECT * FROM t1 WHERE t1_char IN (SELECT t1_char FROM t1 WHERE t1_char='aaa');
+SELECT CASE t1_int WHEN t1_int=1 THEN t1_char ELSE t1_int END FROM t1;
+
+SET @a=25;
+SET @b=25;
+SELECT @a+@b;
+SELECT @a-@b;
+SELECT @a/@b;
+SELECT @a*@b;
+SELECT @a>@b;
+SELECT @a>=@b;
+SELECT @a=@b;
+SELECT @a!=@b;
+SELECT @a<@b;
+SELECT @a<=@b;
+SELECT (@a*@b)/POW(@b,0.5);
+SELECT (POW(@a,2)-@a)/@b;
+
+--error ER_PARSE_ERROR
+SELECT @a==@b;
+
+# Clean UP
+DROP DATABASE mcs_db5;

@@ -1,0 +1,59 @@
+#
+# Test SELECT FUNCTION call
+# Author: syw
+#
+SET GLOBAL log_bin_trust_function_creators = 1;
+DROP DATABASE IF EXISTS mcs_db3;
+CREATE DATABASE mcs_db3;
+USE mcs_db3;
+CREATE TABLE t1(col INT)Engine=tianmu;
+INSERT INTO t1 VALUEs(1),(2),(3),(4),(5),(6),(7),(8),(9),(10);
+CREATE FUNCTION func(num int) RETURNS INT RETURN(POW(num,2));
+SET @a = func(11);
+SET @b = 15;
+SELECT @a;
+@a
+121
+SELECT func(@a);
+func(@a)
+14641
+SELECT func(-@b);
+func(-@b)
+225
+SELECT func(0);
+func(0)
+0
+SELECT func(11+22);
+func(11+22)
+1089
+SELECT func(11-22);
+func(11-22)
+121
+SELECT func(11*22);
+func(11*22)
+58564
+SELECT func(11/22);
+func(11/22)
+1
+SELECT col,@a FROM t1;
+col	@a
+1	121
+2	121
+3	121
+4	121
+5	121
+6	121
+7	121
+8	121
+9	121
+10	121
+SELECT f1(@b) AS 'square of 99', * FROM t1;
+ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '* FROM t1' at line 1
+SELECT func(@b/0);
+ERROR 22012: Division by 0
+SELECT func();
+ERROR 42000: Incorrect number of arguments for FUNCTION mcs_db3.func; expected 1, got 0
+SELECT fun(@b);
+ERROR 42000: FUNCTION mcs_db3.fun does not exist
+SET GLOBAL log_bin_trust_function_creators = 0;
+DROP DATABASE mcs_db3;

@@ -1,0 +1,51 @@
+--echo #
+--echo # Test SELECT FUNCTION call
+--echo # Author: syw
+--echo #
+
+--source include/have_tianmu.inc
+
+SET GLOBAL log_bin_trust_function_creators = 1;
+--disable_warnings
+DROP DATABASE IF EXISTS mcs_db3;
+--enable_warnings
+
+CREATE DATABASE mcs_db3;
+USE mcs_db3;
+
+CREATE TABLE t1(col INT)Engine=tianmu;
+INSERT INTO t1 VALUEs(1),(2),(3),(4),(5),(6),(7),(8),(9),(10);
+
+# Function that returns square of a number
+CREATE FUNCTION func(num int) RETURNS INT RETURN(POW(num,2));
+
+SET @a = func(11);
+SET @b = 15;
+SELECT @a;
+SELECT func(@a);
+SELECT func(-@b);
+SELECT func(0);
+SELECT func(11+22);
+SELECT func(11-22);
+SELECT func(11*22);
+SELECT func(11/22);
+
+SELECT col,@a FROM t1;
+
+# ERROR 6 (HY000):includes syntax that is not supported by the storage engine tianmu
+#SELECT col AS 'num', func(col) as 'square of num' from t1;
+
+--error 1064
+SELECT f1(@b) AS 'square of 99', * FROM t1;
+--error ER_DIVISION_BY_ZERO
+SELECT func(@b/0);
+--error 1318
+SELECT func();
+
+--error 1305
+SELECT fun(@b);
+
+SET GLOBAL log_bin_trust_function_creators = 0;
+
+# Clean UP
+DROP DATABASE mcs_db3;
