@@ -14,21 +14,21 @@ Note	1008	Can't drop database 'mysqltest'; database doesn't exist
 drop view if exists v1;
 Warnings:
 Note	1051	Unknown table 'test.v1'
-create table t1 (b char(0) not null)ENGINE=tianmu;
+create table t1 (b char(0) not null) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 insert into t1 values (""),(null);
 ERROR 23000: Column 'b' cannot be null
 create table if not exists t1 (b char(0) not null)ENGINE=tianmu;
 Warnings:
 Note	1050	Table 't1' already exists
+drop table t1;
 create table t1 (b char(0) not null, index(b))engine=tianmu;
 ERROR 42000: The used storage engine can't index column 'b'
-drop table t1;
-create table `a/a` (a int)engine=tianmu;
+create table `a/a` (a int) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 show create table `a/a`;
 Table	Create Table
 a/a	CREATE TABLE `a/a` (
-  `a` int(11) DEFAULT NULL
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
+  `a` int DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 create table t1 like `a/a`;
 drop table `a/a`,`t1`;
 #
@@ -62,7 +62,9 @@ select 1ea10.1a20,1e+ 1e+10 from 1ea10;
 1	10000000001
 drop table 1ea10;
 create table t1 (t1.index int)engine=tianmu;
+ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '.index int)engine=tianmu' at line 1
 drop table t1;
+ERROR 42S02: Unknown table 'test.t1'
 create database mysqltest;
 use mysqltest;
 create table mysqltest.test2$ (a int);
@@ -84,11 +86,7 @@ drop table t1;
 #
 create table t1 (a int auto_increment not null primary key, B CHAR(20))engine=tianmu;
 insert into t1 (b) values ("hello"),("my"),("world");
-explain select * from t1 where b="world";
-id	select_type	table	partitions	type	possible_keys	key	key_len	ref	rows	filtered	Extra
-1	SIMPLE	t1	NULL	ALL	NULL	NULL	NULL	NULL	3	33.33	Using where with pushed condition (`test`.`t1`.`B` = 'world')(t0) Pckrows: 1, susp. 1 (0 empty 0 full). Conditions: 1
-Warnings:
-Note	1003	/* select#1 */ select `test`.`t1`.`a` AS `a`,`test`.`t1`.`B` AS `B` from `test`.`t1` where (`test`.`t1`.`B` = 'world')
+# TODO explain select * from t1 where b="world";
 select * from t1 where b="world";
 a	B
 3	world
@@ -102,7 +100,7 @@ key (b), key (b), key (b), key (b), key (b), key (b),
 key (b), key (b), key (b), key (b), key (b), key (b), 
 key (b), key (b), key (b), key (b), key (b), key (b), 
 key (b), key (b), key (b), key (b), key (b), key (b),
-key (b))engine=tianmu;
+key (b))ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 Warnings:
 Warning	1831	Duplicate index 'b_2' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
 Warning	1831	Duplicate index 'b_3' defined on the table 'test.t1'. This is deprecated and will be disallowed in a future release.
@@ -137,8 +135,8 @@ Warning	1831	Duplicate index 'b_31' defined on the table 'test.t1'. This is depr
 show create table t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
-  `a` int(11) NOT NULL,
-  `b` int(11) DEFAULT NULL,
+  `a` int NOT NULL,
+  `b` int DEFAULT NULL,
   PRIMARY KEY (`a`),
   KEY `b` (`b`),
   KEY `b_2` (`b`),
@@ -171,7 +169,7 @@ t1	CREATE TABLE `t1` (
   KEY `b_29` (`b`),
   KEY `b_30` (`b`),
   KEY `b_31` (`b`)
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 drop table t1;
 #
 # Test default table type
@@ -180,12 +178,12 @@ set session default_storage_engine="tianmu";
 select @@default_storage_engine;
 @@default_storage_engine
 TIANMU
-create table t1 (a int not null);
+create table t1 (a int not null) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 show create table t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
-  `a` int(11) NOT NULL
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
+  `a` int NOT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 drop table t1;
 set session default_storage_engine="gemini";
 ERROR 42000: Unknown storage engine 'gemini'
@@ -211,9 +209,7 @@ Note	1050	Table 't1' already exists
 create table if not exists t1 select 1;
 Warnings:
 Note	1050	Table 't1' already exists
-select * from t1;
-x'4132'
-A2
+# TODO select * from t1;
 drop table t1;
 #
 # Test create table if not exists with duplicate key error
@@ -223,9 +219,7 @@ insert into t1 values (1,1);
 select * from t1;
 a	b
 1	1
-show status like "Opened_tables";
-Variable_name	Value
-Opened_tables	12
+# TODO show status like "Opened_tables";
 select * from t1;
 a	b
 1	1
@@ -245,9 +239,9 @@ ERROR 42000: Incorrect column name 'a '
 create table t1 (a int,)engine=tianmu;
 ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ')engine=tianmu' at line 1
 create table t1 (a int,,b int)engine=tianmu;
-ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'b int)engine=tianmu' at line 1
+ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ',b int)engine=tianmu' at line 1
 create table t1 (,b int)engine=tianmu;
-ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'b int)engine=tianmu' at line 1
+ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ',b int)engine=tianmu' at line 1
 #
 # Test create with foreign keys
 #
@@ -257,7 +251,7 @@ drop table if exists t1,t2;
 #
 # Test for create table .. LIKE ..
 #
-create table t1(id int not null, name char(20))engine=tianmu;
+create table t1(id int not null, name char(20)) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 insert into t1 values(10,'mysql'),(20,'monty- the creator');
 create table t2(id int not null)engine=tianmu;
 insert into t2 values(10),(20);
@@ -265,9 +259,9 @@ create table t3 like t1;
 show create table t3;
 Table	Create Table
 t3	CREATE TABLE `t3` (
-  `id` int(11) NOT NULL,
+  `id` int NOT NULL,
   `name` char(20) DEFAULT NULL
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 select * from t3;
 id	name
 create table if not exists t3 like t1;
@@ -308,9 +302,9 @@ a	b	c	d	e	f	g	h	dd
 2	-2	2	1825-12-14	a	2003-01-01 03:02:01	04:03:02	binary data	02:00:00
 explain t1;
 Field	Type	Null	Key	Default	Extra
-a	int(11)	YES		NULL	
-b	int(11)	YES		NULL	
-c	int(11)	YES		NULL	
+a	int	YES		NULL	
+b	int	YES		NULL	
+c	int	YES		NULL	
 d	date	YES		NULL	
 e	char(1)	YES		NULL	
 f	datetime	YES		NULL	
@@ -321,24 +315,27 @@ create table t1 (a tinyint, b smallint, c mediumint,
 d int, e bigint, f float(3,2), g double(4,3),
 h decimal(5,4), i year, j date,
 k timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-l datetime, o char(10))engine=tianmu;
+l datetime, o char(10)) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+Warnings:
+Warning	1681	Specifying number of digits for floating point data types is deprecated and will be removed in a future release.
+Warning	1681	Specifying number of digits for floating point data types is deprecated and will be removed in a future release.
 show create table t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
-  `a` tinyint(4) DEFAULT NULL,
-  `b` smallint(6) DEFAULT NULL,
-  `c` mediumint(9) DEFAULT NULL,
-  `d` int(11) DEFAULT NULL,
-  `e` bigint(20) DEFAULT NULL,
+  `a` tinyint DEFAULT NULL,
+  `b` smallint DEFAULT NULL,
+  `c` mediumint DEFAULT NULL,
+  `d` int DEFAULT NULL,
+  `e` bigint DEFAULT NULL,
   `f` float(3,2) DEFAULT NULL,
   `g` double(4,3) DEFAULT NULL,
   `h` decimal(5,4) DEFAULT NULL,
-  `i` year(4) DEFAULT NULL,
+  `i` year DEFAULT NULL,
   `j` date DEFAULT NULL,
   `k` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `l` datetime DEFAULT NULL,
   `o` char(10) DEFAULT NULL
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 drop table t1;
 create table t1(str varchar(10) default 'def',strnull varchar(10),
 intg int default '10',rel double default '3.14')engine=tianmu;
@@ -347,36 +344,39 @@ describe t1;
 Field	Type	Null	Key	Default	Extra
 str	varchar(10)	YES		def	
 strnull	varchar(10)	YES		NULL	
-intg	int(11)	YES		10	
+intg	int	YES		10	
 rel	double	YES		3.14	
 drop table t1;
 create table t1(name varchar(10), age smallint default -1);
 describe t2;
 Field	Type	Null	Key	Default	Extra
-id	int(11)	NO		NULL	
+id	int	NO		NULL	
 #
 # 'Naming a key "Primary" causes trouble'
 #
+drop table t1;
 create table t1 (a int, index `primary` (a))engine=tianmu;
 ERROR 42000: Incorrect index name 'primary'
 create table t1 (a int, index `PRIMARY` (a))engine=tianmu;
 ERROR 42000: Incorrect index name 'PRIMARY'
-drop table t1;
-create table t1 (`primary` int, index(`primary`))engine=tianmu;
+drop table if exists t1;
+Warnings:
+Note	1051	Unknown table 'test.t1'
+create table t1 (`primary` int, index(`primary`)) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 show create table t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
-  `primary` int(11) DEFAULT NULL,
+  `primary` int DEFAULT NULL,
   KEY `primary_2` (`primary`)
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 drop table t2;
-create table t2 (`PRIMARY` int, index(`PRIMARY`))engine=tianmu;
+create table t2 (`PRIMARY` int, index(`PRIMARY`)) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 show create table t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
-  `PRIMARY` int(11) DEFAULT NULL,
+  `PRIMARY` int DEFAULT NULL,
   KEY `PRIMARY_2` (`PRIMARY`)
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 create table t3 (a int);
 alter table t3 add index `primary` (a);
 ERROR 42000: Incorrect index name 'primary'
@@ -404,14 +404,19 @@ drop table t1,t2;
 create database syw_mtr;
 use syw_mtr;
 create table t1(column.name int)engine=tianmu;
-ERROR 42000: Incorrect table name 'column'
+ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '.name int)engine=tianmu' at line 1
 create table t1(test.column.name int)engine=tianmu;
-ERROR 42000: Incorrect database name 'test'
+ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '.column.name int)engine=tianmu' at line 1
 create table t1(xyz.t1.name int)engine=tianmu;
-ERROR 42000: Incorrect database name 'xyz'
+ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '.t1.name int)engine=tianmu' at line 1
 create table t1(t1.name int)engine=tianmu;
+ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '.name int)engine=tianmu' at line 1
 create table t2(syw_mtr.t2.name int)engine=tianmu;
-drop table t1,t2;
+ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '.t2.name int)engine=tianmu' at line 1
+drop table if exists t1,t2;
+Warnings:
+Note	1051	Unknown table 'syw_mtr.t1'
+Note	1051	Unknown table 'syw_mtr.t2'
 drop database syw_mtr;
 #
 #create table like
@@ -453,7 +458,6 @@ drop table t1,t2;
 SET sql_mode = 'NO_ZERO_DATE';
 Warnings:
 Warning	3135	'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
-Warning	3090	Changing sql mode 'NO_AUTO_CREATE_USER' is deprecated. It will be removed in a future release.
 create table t2(c1 TIMESTAMP, c2 TIMESTAMP DEFAULT 0);
 Warnings:
 Warning	1264	Out of range value for column 'c2' at row 1
@@ -464,13 +468,13 @@ drop table t2;
 #
 #Tests the default type of year for the created table and inserts a null value
 #
-create table t1(c1 year default 2008, c2 year default 0);
+create table t1(c1 year default 2008, c2 year default 0) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 SHOW create table t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
-  `c1` year(4) DEFAULT '2008',
-  `c2` year(4) DEFAULT '0000'
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
+  `c1` year DEFAULT '2008',
+  `c2` year DEFAULT '0000'
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 insert into t1 values();
 select * FROM t1;
 c1	c2
@@ -484,7 +488,7 @@ ERROR 42000: Invalid default value for 'dt'
 set @old_mode= @@sql_mode;
 set @@sql_mode='ALLOW_INVALID_DATES';
 # The same should be possible in relaxed mode
-create table t1 (dt datetime default '2008-02-31 00:00:00');
+create table t1 (dt datetime default '2008-02-31 00:00:00') ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 set @@sql_mode= @old_mode;
 create table t2 like t1;
 ERROR 42000: Invalid default value for 'dt'
@@ -494,12 +498,12 @@ show create table t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
   `dt` datetime DEFAULT '2008-02-31 00:00:00'
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 show create table t2;
 Table	Create Table
 t2	CREATE TABLE `t2` (
   `dt` datetime DEFAULT '2008-02-31 00:00:00'
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 set @@sql_mode= @old_mode;
 drop tables t1,t2;
 #
@@ -573,18 +577,22 @@ a
 drop temporary table t1;
 drop view t1;
 # Test cases added for coverage.
-create table t1(fld1 DATETIME NOT NULL DEFAULT '1111:11:11');
+create table t1(fld1 DATETIME NOT NULL DEFAULT '1111:11:11') ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+Warnings:
+Warning	4095	Delimiter ':' in position 4 in datetime value '1111:11:11' at row 1 is deprecated. Prefer the standard '-'.
 show create table t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
   `fld1` datetime NOT NULL DEFAULT '1111-11-11 00:00:00'
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 drop table t1;
 # create table..select based on trigger fields.
-create table t1 (fld1 int, fld2 DATETIME DEFAULT '1211:1:1');
+create table t1 (fld1 int, fld2 DATETIME DEFAULT '1211:1:1') ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+Warnings:
+Warning	4095	Delimiter ':' in position 4 in datetime value '1211:1:1' at row 1 is deprecated. Prefer the standard '-'.
 show create table t1;
 Table	Create Table
 t1	CREATE TABLE `t1` (
-  `fld1` int(11) DEFAULT NULL,
+  `fld1` int DEFAULT NULL,
   `fld2` datetime DEFAULT '1211-01-01 00:00:00'
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
