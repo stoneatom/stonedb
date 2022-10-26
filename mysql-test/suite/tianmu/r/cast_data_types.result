@@ -1,0 +1,66 @@
+#
+# CAST Data types
+# Author: ysw
+#
+DROP DATABASE IF EXISTS cast_data_types;
+CREATE DATABASE cast_data_types;
+USE cast_data_types;
+CREATE TABLE t1(t1_int INT, t1_decimal DECIMAL(5,3), t1_char CHAR(10), t1_text TEXT, t1_varchar VARCHAR(50))ENGINE=tianmu;
+INSERT INTO t1 VALUES(NULL, NULL, '', '', '');
+INSERT INTO t1 VALUES(512762, 86.722, 'A', repeat('a',50), repeat('b',50));
+INSERT INTO t1 VALUES(-512762, -86.722, '123456', repeat('1',50), repeat('2',50));
+SELECT * FROM t1;
+t1_int	t1_decimal	t1_char	t1_text	t1_varchar
+NULL	NULL			
+512762	86.722	A	aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa	bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+-512762	-86.722	123456	11111111111111111111111111111111111111111111111111	22222222222222222222222222222222222222222222222222
+SELECT CAST(t1_int AS SIGNED), CAST(t1_decimal AS SIGNED), CAST(t1_char AS SIGNED), CAST(t1_text AS SIGNED), CAST(t1_varchar AS SIGNED) FROM t1;
+CAST(t1_int AS SIGNED)	CAST(t1_decimal AS SIGNED)	CAST(t1_char AS SIGNED)	CAST(t1_text AS SIGNED)	CAST(t1_varchar AS SIGNED)
+NULL	NULL	0	0	0
+512762	87	0	0	0
+-512762	-87	123456	-1	-1
+Warnings:
+Warning	1292	Truncated incorrect INTEGER value: ''
+Warning	1292	Truncated incorrect INTEGER value: ''
+Warning	1292	Truncated incorrect INTEGER value: ''
+Warning	1292	Truncated incorrect INTEGER value: 'A'
+Warning	1292	Truncated incorrect INTEGER value: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+Warning	1292	Truncated incorrect INTEGER value: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+Warning	1292	Truncated incorrect INTEGER value: '11111111111111111111111111111111111111111111111111'
+Warning	1292	Truncated incorrect INTEGER value: '22222222222222222222222222222222222222222222222222'
+SELECT CAST(t1_int AS CHAR(10)), CAST(t1_decimal AS CHAR(10)), CAST(t1_char AS CHAR(10)), CAST(t1_text AS CHAR(10)), CAST(t1_varchar AS CHAR(10)) FROM t1;
+CAST(t1_int AS CHAR(10))	CAST(t1_decimal AS CHAR(10))	CAST(t1_char AS CHAR(10))	CAST(t1_text AS CHAR(10))	CAST(t1_varchar AS CHAR(10))
+NULL	NULL			
+512762	86.722	A	aaaaaaaaaa	bbbbbbbbbb
+-512762	-86.722	123456	1111111111	2222222222
+Warnings:
+Warning	1292	Truncated incorrect CHAR(10) value: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+Warning	1292	Truncated incorrect CHAR(10) value: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+Warning	1292	Truncated incorrect CHAR(10) value: '11111111111111111111111111111111111111111111111111'
+Warning	1292	Truncated incorrect CHAR(10) value: '22222222222222222222222222222222222222222222222222'
+SELECT CAST(t1_int AS DECIMAL(6,5)), CAST(t1_decimal AS DECIMAL(6,5)), CAST(t1_char AS DECIMAL(6,5)), CAST(t1_text AS DECIMAL(6,5)), CAST(t1_varchar AS DECIMAL(6,5)) FROM t1;
+CAST(t1_int AS DECIMAL(6,5))	CAST(t1_decimal AS DECIMAL(6,5))	CAST(t1_char AS DECIMAL(6,5))	CAST(t1_text AS DECIMAL(6,5))	CAST(t1_varchar AS DECIMAL(6,5))
+NULL	NULL	0.00000	0.00000	0.00000
+9.99999	9.99999	0.00000	0.00000	0.00000
+-9.99999	-9.99999	9.99999	9.99999	9.99999
+Warnings:
+Warning	1292	Truncated incorrect DECIMAL value: ''
+Warning	1292	Truncated incorrect DECIMAL value: ''
+Warning	1292	Truncated incorrect DECIMAL value: ''
+Warning	1264	Out of range value for column 'CAST(t1_int AS DECIMAL(6,5))' at row 1
+Warning	1264	Out of range value for column 'CAST(t1_decimal AS DECIMAL(6,5))' at row 1
+Warning	1292	Truncated incorrect DECIMAL value: 'A'
+Warning	1292	Truncated incorrect DECIMAL value: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+Warning	1292	Truncated incorrect DECIMAL value: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+Warning	1264	Out of range value for column 'CAST(t1_int AS DECIMAL(6,5))' at row 1
+Warning	1264	Out of range value for column 'CAST(t1_decimal AS DECIMAL(6,5))' at row 1
+Warning	1264	Out of range value for column 'CAST(t1_char AS DECIMAL(6,5))' at row 1
+Warning	1264	Out of range value for column 'CAST(t1_text AS DECIMAL(6,5))' at row 1
+Warning	1264	Out of range value for column 'CAST(t1_varchar AS DECIMAL(6,5))' at row 1
+SELECT CAST(t1_int AS DECIMAL(4,5)) FROM t1;
+ERROR 42000: For float(M,D), double(M,D) or decimal(M,D), M must be >= D (column '').
+SELECT CAST(t1_int AS DECIMAL(66,6)) FROM t1;
+ERROR 42000: Too-big precision 66 specified for 't1_int'. Maximum is 65.
+SELECT CAST(t1_int AS DECIMAL(64,63)) FROM t1;
+ERROR 42000: Too big scale 63 specified for column 't1_int'. Maximum is 30.
+DROP DATABASE cast_data_types;
