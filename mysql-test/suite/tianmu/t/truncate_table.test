@@ -1,0 +1,89 @@
+--echo #
+--echo # Test TRUNCATE TABLE in various possible scenarios.
+--echo #
+
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS truncate_table;
+--enable_warnings
+
+CREATE DATABASE truncate_table;
+USE truncate_table;
+
+CREATE TABLE t1 (a INTEGER, b INT,c1 CHAR(10)) ENGINE=tianmu;
+INSERT INTO t1 (a) VALUES (1),(2);
+TRUNCATE TABLE t1;
+SELECT COUNT(*) FROM t1;
+INSERT INTO t1 VALUES (1, 2, "test");
+SELECT COUNT(*) FROM t1;
+TRUNCATE truncate_table.t1;
+
+DROP TABLE IF EXISTS non_existing_table;
+--error 1146
+TRUNCATE non_existing_table;
+
+# check multi-table TRUNCATE
+DROP TABLE t1;
+DROP TABLE IF EXISTS t2;
+CREATE TABLE t1 (id INT) ENGINE=INNODB;
+CREATE TABLE t2 (id INT) ENGINE=tianmu;
+--error 1064
+TRUNCATE t1, t2;
+TRUNCATE t1;
+TRUNCATE t2;
+DROP TABLE t1;
+DROP TABLE t2;
+
+# Test for Bug#5507 "TRUNCATE should work with views"
+#
+# when it'll be fixed, the error should become 1347
+# (test.v1' is not of type 'BASE TABLE')
+#
+CREATE TABLE t1 (id INT) ENGINE=tianmu; 
+INSERT INTO t1 (id) VALUES (1), (2), (3), (4), (5);
+CREATE VIEW v1 AS SELECT * FROM t1;
+--error 1146
+TRUNCATE v1;
+SELECT * FROM v1;
+--error ER_NO_SUCH_TABLE
+TRUNCATE v1;
+SELECT * FROM v1;
+
+CREATE PROCEDURE p1() SET @a = 5;
+--error ER_NO_SUCH_TABLE
+TRUNCATE p1;
+
+# Test with handler
+DROP TABLE t1;
+CREATE TABLE t1 AS SELECT 1 AS f1;
+TRUNCATE t1;
+
+DROP TABLE t1;
+DROP TABLE IF EXISTS t1;
+CREATE TABLE t1 (id INT) ENGINE=tianmu;
+INSERT INTO t1 (id) VALUES (1), (2), (3), (4), (5);
+CREATE TABLE t2 LIKE t1;
+INSERT INTO t2 SELECT * FROM t1;
+
+# Test from parallel connections
+connect (addconroot1, localhost, root,,);
+connect (addconroot2, localhost, root,,);
+connection addconroot1;
+TRUNCATE truncate_table.t1;
+connection addconroot2;
+TRUNCATE truncate_table.t1;
+connection addconroot1;
+TRUNCATE truncate_table.t1;
+connection addconroot2;
+USE truncate_table;
+TRUNCATE t2;
+
+connection default;
+USE truncate_table;
+SELECT count(*) FROM t1;
+SELECT count(*) FROM t2;
+disconnect addconroot1;
+disconnect addconroot2;
+
+DROP DATABASE truncate_table;
