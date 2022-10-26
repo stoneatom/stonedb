@@ -63,7 +63,8 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
   if (no_dims == 1) {
     for (int i = 0; i < filter.mind->NumOfDimensions(); i++) {
       if (all_dims[i]) {
-        if (filter.mind->GetFilter(i)) one_dim = i;  // exactly one filter (non-join or join with forgotten dims)
+        if (filter.mind->GetFilter(i))
+          one_dim = i;  // exactly one filter (non-join or join with forgotten dims)
         break;
       }
     }
@@ -160,7 +161,8 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
   ord.clear();
   if (task_num == 1) {
     while (it.IsValid() && continue_now) {
-      if (m_conn->Killed()) throw common::KilledException();
+      if (m_conn->Killed())
+        throw common::KilledException();
       if (it.PackrowStarted()) {
         if (sorted_table.InitPackrow(it)) {
           local_row += it.GetPackSizeLeft();
@@ -211,7 +213,8 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
     for (int i = 0; i < task_num; i++)
       res.insert(ha_rcengine_->query_thread_pool.add_task(&TempTable::TaskPutValueInST, this, &taskIterator[i],
                                                           current_txn_, &subsorted_table[i]));
-    if (filter.mind->m_conn->Killed()) throw common::KilledException("Query killed by user");
+    if (filter.mind->m_conn->Killed())
+      throw common::KilledException("Query killed by user");
 
     for (int i = 0; i < task_num; ++i) {
       local_row += res.get(i);
@@ -248,7 +251,8 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
       valid = sorted_table.FetchNextRow();
       if (valid && global_row >= offset) {
         int col = 0;
-        if (m_conn->Killed()) throw common::KilledException();
+        if (m_conn->Killed())
+          throw common::KilledException();
         for (auto &attr : attrs) {
           if (attr->alias != nullptr) {
             switch (attr->TypeName()) {
@@ -304,7 +308,8 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
 
 void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offset, ResultSender *sender,
                                         bool pagewise) {
-  if (filter.mind->ZeroTuples()) return;
+  if (filter.mind->ZeroTuples())
+    return;
 
   if (sender) {
     SendResult(local_limit, local_offset, *sender, pagewise);
@@ -321,7 +326,8 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
     // Column statistics
     if (m_conn->DisplayAttrStats()) {
       for (uint j = 0; j < NumOfAttrs(); j++) {
-        if (attrs[j]->term.vc) attrs[j]->term.vc->DisplayAttrStats();
+        if (attrs[j]->term.vc)
+          attrs[j]->term.vc->DisplayAttrStats();
       }
       m_conn->SetDisplayAttrStats(false);  // already displayed
     }
@@ -334,14 +340,18 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
       break;
     }
   }
-  if (!has_intresting_columns) return;
+  if (!has_intresting_columns)
+    return;
 
   MIIterator it(filter.mind, filter.mind->ValueOfPower());
-  if (pagewise && local_offset < no_materialized) local_offset = no_materialized;  // continue filling
+  if (pagewise && local_offset < no_materialized)
+    local_offset = no_materialized;  // continue filling
 
-  if (local_offset > 0) it.Skip(local_offset);
+  if (local_offset > 0)
+    it.Skip(local_offset);
 
-  if (!it.IsValid()) return;
+  if (!it.IsValid())
+    return;
 
   int64_t row = local_offset;
   std::vector<char> skip_parafilloutput;
@@ -362,7 +372,8 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
     skip_parafilloutput.push_back(skip);
   }
 
-  if (attrs.size() == 0) return;
+  if (attrs.size() == 0)
+    return;
 
   // Semantics of variables:
   // row		- a row number in orig. tables
@@ -375,7 +386,8 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
     int64_t page_end = (((row - local_offset) / page_size) + 1) * page_size + local_offset;
     // where the current TempTable buffer ends, in terms of multiindex rows
     // (integer division)
-    if (page_end > no_obj + local_offset) page_end = no_obj + local_offset;
+    if (page_end > no_obj + local_offset)
+      page_end = no_obj + local_offset;
 
     for (uint i = 0; i < NumOfAttrs(); i++) attrs[i]->CreateBuffer(page_end - start_row, m_conn, pagewise);
 
@@ -400,9 +412,11 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
     res.get_all_with_except();
 
     for (uint i = 1; i < attrs.size(); i++)
-      if (skip_parafilloutput[i]) FillbufferTask(attrs[i], current_txn_, &page_start, start_row, page_end);
+      if (skip_parafilloutput[i])
+        FillbufferTask(attrs[i], current_txn_, &page_start, start_row, page_end);
 
-    if (lazy) break;
+    if (lazy)
+      break;
   }
 }
 
@@ -413,7 +427,8 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
     //////// Column statistics ////////////////////////
     if (m_conn->DisplayAttrStats()) {
       for (uint j = 0; j < NumOfAttrs(); j++) {
-        if (attrs[j]->term.vc) attrs[j]->term.vc->DisplayAttrStats();
+        if (attrs[j]->term.vc)
+          attrs[j]->term.vc->DisplayAttrStats();
       }
       m_conn->SetDisplayAttrStats(false);  // already displayed
     }
@@ -426,12 +441,15 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
       break;
     }
   }
-  if (!has_intresting_columns) return;
+  if (!has_intresting_columns)
+    return;
 
   MIIterator it(filter.mind, filter.mind->ValueOfPower());
-  if (pagewise && offset < no_materialized) offset = no_materialized;  // continue filling
+  if (pagewise && offset < no_materialized)
+    offset = no_materialized;  // continue filling
 
-  if (offset > 0) it.Skip(offset);
+  if (offset > 0)
+    it.Skip(offset);
 
   int row = 0;
   bool first_row_for_vc = true;
@@ -482,7 +500,8 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
     sender.SendRow(record, this);
     row++;
     ++it;
-    if (lazy) break;
+    if (lazy)
+      break;
   }
   for (auto &attr : attrs) {
     attr->term.vc->UnlockSourcePacks();
@@ -492,7 +511,8 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
 std::vector<AttributeTypeInfo> TempTable::GetATIs(bool orig) {
   std::vector<AttributeTypeInfo> deas;
   for (uint i = 0; i < NumOfAttrs(); i++) {
-    if (!IsDisplayAttr(i)) continue;
+    if (!IsDisplayAttr(i))
+      continue;
     deas.emplace_back(attrs[i]->TypeName(), attrs[i]->Type().NotNull(),
                       orig ? attrs[i]->orig_precision : attrs[i]->Type().GetPrecision(), attrs[i]->Type().GetScale(),
                       false, attrs[i]->Type().GetCollation());
@@ -513,6 +533,9 @@ void TempTable::VerifyAttrsSizes()  // verifies attr[i].field_size basing on the
       } else {
         vcolumn::VirtualColumn *vc = attrs[i]->term.vc;
         int max_length = attrs[i]->term.vc->MaxStringSize();
+// TODO, the code has some bug, max_length in some case wil be negative, see #671
+// comment the optimization code for temp solution;
+#if 0
         if (dynamic_cast<vcolumn::ExpressionColumn *>(vc)) {
           auto &var_map = dynamic_cast<vcolumn::ExpressionColumn *>(vc)->GetVarMap();
           for (auto &it : var_map) {
@@ -525,6 +548,7 @@ void TempTable::VerifyAttrsSizes()  // verifies attr[i].field_size basing on the
             }
           }
         }
+#endif
         attrs[i]->OverrideStringSize(max_length);
       }
     }
@@ -546,7 +570,8 @@ size_t TempTable::TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrappe
   bool continue_now = true;
   current_txn_ = ci;
   while (it->IsValid() && continue_now) {
-    if (m_conn->Killed()) throw common::KilledException();
+    if (m_conn->Killed())
+      throw common::KilledException();
     if (it->PackrowStarted()) {
       if (st->InitPackrow(*it)) {
         local_row += it->GetPackSizeLeft();
