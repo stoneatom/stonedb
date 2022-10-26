@@ -1,0 +1,24 @@
+--echo #
+--echo # Test MAX as distributed aggregate function
+--echo # Author: syw
+--echo #
+
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS mcs190_db;
+--enable_warnings
+
+CREATE DATABASE mcs190_db;
+USE mcs190_db;
+
+CREATE TABLE t1 (a INT, b CHAR(5))ENGINE=tianmu;
+INSERT INTO t1 VALUES (NULL, ''),(1, 'aaa'),(2, 'aaa'),(1, 'ccc'),(4, 'ddd'),(5, 'aaa'),(6, 'ddd'),(7, 'eee');
+
+SELECT MAX(DISTINCT a) FROM t1;
+SELECT MAX(DISTINCT a) FROM t1 GROUP BY b HAVING b = 'aaa';
+SELECT b, MAX(DISTINCT a) FROM t1 GROUP BY b ORDER BY b DESC;
+SELECT MAX(a) FROM t1;
+
+# Clean UP
+DROP DATABASE mcs190_db;
