@@ -97,8 +97,10 @@ common::RSValue RSIndex_CMap::IsValue(types::BString min_v, types::BString max_v
   } else {
     // TODO: may be further optimized
     unsigned char f = 0, l = 255;
-    if (min_v.len > 0) f = (unsigned char)min_v[0];  // min_v.len == 0 usually means -inf
-    if (max_v.len > 0) l = (unsigned char)max_v[0];
+    if (min_v.len_ > 0)
+      f = (unsigned char)min_v[0];  // min_v.len == 0 usually means -inf
+    if (max_v.len_ > 0)
+      l = (unsigned char)max_v[0];
     if (f > l || !IsAnySet(pack, f, l, 0)) return common::RSValue::RS_NONE;
     return common::RSValue::RS_SOME;
   }
@@ -106,9 +108,9 @@ common::RSValue RSIndex_CMap::IsValue(types::BString min_v, types::BString max_v
 
 common::RSValue RSIndex_CMap::IsLike(types::BString pattern, int pack, char escape_character) {
   // we can exclude cases: "ala%..." and "a_l_a%..."
-  char *p = pattern.val;  // just for short...
+  char *p = pattern.val_;  // just for short...
   uint pos = 0;
-  while (pos < pattern.len && pos < hdr.no_positions) {
+  while (pos < pattern.len_ && pos < hdr.no_positions) {
     if (p[pos] == '%' || p[pos] == escape_character) break;
     if (p[pos] != '_' && !IsSet(pack, p[pos], pos)) return common::RSValue::RS_NONE;
     pos++;

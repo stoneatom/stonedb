@@ -56,10 +56,10 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
       DEBUG_ASSERT(dynamic_cast<types::BString *>(&rcitem));
       Field_blob *blob = (Field_blob *)field;
       if (blob_buf == nullptr) {
-        blob->set_ptr(((types::BString &)rcitem).len, (uchar *)((types::BString &)rcitem).val);
+        blob->set_ptr(((types::BString &)rcitem).len_, (uchar *)((types::BString &)rcitem).val_);
         blob->copy();
       } else {
-        blob->store(((types::BString &)rcitem).val, ((types::BString &)rcitem).len, &my_charset_bin);
+        blob->store(((types::BString &)rcitem).val_, ((types::BString &)rcitem).len_, &my_charset_bin);
         uchar *src, *tgt;
 
         uint packlength = blob->pack_length_no_ptr();
@@ -148,10 +148,10 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
             case MYSQL_TYPE_BLOB: {
               Field_blob *blob = (Field_blob *)field;
               if (blob_buf == nullptr) {
-                blob->set_ptr(((types::BString &)rcitem).len, (uchar *)((types::BString &)rcitem).val);
+                blob->set_ptr(((types::BString &)rcitem).len_, (uchar *)((types::BString &)rcitem).val_);
                 blob->copy();
               } else {
-                blob->store(((types::BString &)rcitem).val, ((types::BString &)rcitem).len, &my_charset_bin);
+                blob->store(((types::BString &)rcitem).val_, ((types::BString &)rcitem).len_, &my_charset_bin);
                 uchar *src, *tgt;
 
                 uint packlength = blob->pack_length_no_ptr();
@@ -435,23 +435,23 @@ int Engine::Convert(int &is_null, String *value, types::RCDataType &rcitem, enum
     is_null = 0;
     if (f_type == MYSQL_TYPE_VARCHAR || f_type == MYSQL_TYPE_VAR_STRING) {
       types::BString str = rcitem.ToBString();
-      value->set_ascii(str.val, str.len);
+      value->set_ascii(str.val_, str.len_);
       value->copy();
     } else if (f_type == MYSQL_TYPE_STRING) {
       types::BString str = rcitem.ToBString();
-      value->set_ascii(str.val, str.len);
+      value->set_ascii(str.val_, str.len_);
       value->copy();
     } else if (f_type == MYSQL_TYPE_NEWDATE || f_type == MYSQL_TYPE_DATE) {
       types::BString str = rcitem.ToBString();
-      value->set_ascii(str.val, str.len);
+      value->set_ascii(str.val_, str.len_);
       value->copy();
     } else if (f_type == MYSQL_TYPE_TIME) {
       types::BString str = rcitem.ToBString();
-      value->set_ascii(str.val, str.len);
+      value->set_ascii(str.val_, str.len_);
       value->copy();
     } else if (f_type == MYSQL_TYPE_DATETIME) {
       types::BString str = rcitem.ToBString();
-      value->set_ascii(str.val, str.len);
+      value->set_ascii(str.val_, str.len_);
       value->copy();
     } else if (f_type == MYSQL_TYPE_TIMESTAMP) {
       if (types::RCDateTime *rcdt = dynamic_cast<types::RCDateTime *>(&rcitem)) {
@@ -469,12 +469,12 @@ int Engine::Convert(int &is_null, String *value, types::RCDataType &rcitem, enum
         }
       } else {
         types::BString str = rcitem.ToBString();
-        value->set_ascii(str.val, str.len);
+        value->set_ascii(str.val_, str.len_);
       }
       value->copy();
     } else if (f_type == MYSQL_TYPE_BLOB || f_type == MYSQL_TYPE_MEDIUM_BLOB) {
       types::BString str = rcitem.ToBString();
-      value->set_ascii(str.val, str.len);
+      value->set_ascii(str.val_, str.len_);
       value->copy();
     }
     return 1;

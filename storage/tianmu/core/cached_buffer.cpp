@@ -87,15 +87,15 @@ void CachedBuffer<T>::Set(uint64_t idx, const T &value) {
 }
 
 void CachedBuffer<types::BString>::Set(uint64_t idx, const types::BString &value) {
-  DEBUG_ASSERT(value.len <= elem_size);
+  DEBUG_ASSERT(value.len_ <= elem_size);
   if (idx / page_size != loaded_page) LoadPage((uint)(idx / page_size));
   uint pos = (uint)(idx % page_size) * (elem_size + 4);
   uint *size = (uint *)&buf[pos];
   if (value.IsNull())
     *size = common::NULL_VALUE_U;
   else {
-    *size = value.len;
-    std::memcpy(&buf[pos + 4], value.val, value.len);
+    *size = value.len_;
+    std::memcpy(&buf[pos + 4], value.val_, value.len_);
   }
   page_changed = true;
 }

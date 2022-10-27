@@ -109,7 +109,7 @@ class RCNum : public ValueBasic<RCNum> {
   common::CT attr_type_;
 
  public:
-  const static ValueTypeEnum value_type = ValueTypeEnum::NUMERIC_TYPE;
+  const static ValueTypeEnum value_type_ = ValueTypeEnum::NUMERIC_TYPE;
 };
 
 }  // namespace types

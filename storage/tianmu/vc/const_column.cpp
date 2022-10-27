@@ -194,7 +194,7 @@ char *ConstColumn::ToString(char p_buf[], size_t buf_ct) const {
   else if (ct.IsString()) {
     types::BString val;
     value.GetBString(val);
-    std::snprintf(p_buf, buf_ct - 2, "\"%.*s", (int)(val.len < buf_ct - 4 ? val.len : buf_ct - 4),
+    std::snprintf(p_buf, buf_ct - 2, "\"%.*s", (int)(val.len_ < buf_ct - 4 ? val.len_ : buf_ct - 4),
                   val.GetDataBytesPointer());
     std::strcat(p_buf, "\"");
   }

@@ -26,61 +26,61 @@ namespace compress {
 
 // All the methods may throw exceptions of type CprsErr or ErrBufOverrun
 class CoderStream : protected ArithCoder {
-  BitStream my_stream;
-  BitStream *str;
+  BitStream my_stream_;
+  BitStream *str_;
 
  public:
   void Reset(char *buf, uint len, uint pos = 0) {
-    my_stream.Reset(buf, len, pos);
-    str = &my_stream;
+    my_stream_.Reset(buf, len, pos);
+    str_ = &my_stream_;
   }
-  void Reset(BitStream *str_ = 0) { str = str_; }
+  void Reset(BitStream *str_ = 0) { str_ = str_; }
   CoderStream() { Reset(); }
   CoderStream(char *buf, uint len, uint pos = 0) { Reset(buf, len, pos); }
   CoderStream(BitStream *str_) { Reset(str_); }
   virtual ~CoderStream() {}
   using ArithCoder::BaseT;
-  using ArithCoder::MAX_TOTAL;
+  using ArithCoder::MAX_TOTAL_;
 
   // stream access methods
-  uint GetPos() { return str->GetPos(); }
+  uint GetPos() { return str_->GetPos(); }
   // compression methods
   void InitCompress() { ArithCoder::InitCompress(); }
   void Encode(BaseT low, BaseT high, BaseT total) {
-    CprsErr err = ArithCoder::ScaleRange(str, low, high, total);
+    CprsErr err = ArithCoder::ScaleRange(str_, low, high, total);
     if (static_cast<int>(err)) throw err;
   }
-  void EndCompress() { ArithCoder::EndCompress(str); }
+  void EndCompress() { ArithCoder::EndCompress(str_); }
   // decompression methods
-  void InitDecompress() { ArithCoder::InitDecompress(str); }
+  void InitDecompress() { ArithCoder::InitDecompress(str_); }
   BaseT GetCount(BaseT total) { return ArithCoder::GetCount(total); }
   void Decode(BaseT low, BaseT high, BaseT total) {
-    CprsErr err = ArithCoder::RemoveSymbol(str, low, high, total);
+    CprsErr err = ArithCoder::RemoveSymbol(str_, low, high, total);
     if (static_cast<int>(err)) throw err;
   }
 
   // uniform compression and decompression
   template <class T>
   void EncodeUniform(T val, T maxval, uint bitmax) {
-    CprsErr err = ArithCoder::EncodeUniform<T>(str, val, maxval, bitmax);
+    CprsErr err = ArithCoder::EncodeUniform<T>(str_, val, maxval, bitmax);
     if (static_cast<int>(err)) throw err;
   }
 
   template <class T>
   void EncodeUniform(T val, T maxval) {
-    CprsErr err = ArithCoder::EncodeUniform<T>(str, val, maxval);
+    CprsErr err = ArithCoder::EncodeUniform<T>(str_, val, maxval);
     if (static_cast<int>(err)) throw err;
   }
 
   template <class T>
   void DecodeUniform(T &val, T maxval, uint bitmax) {
-    CprsErr err = ArithCoder::DecodeUniform<T>(str, val, maxval, bitmax);
+    CprsErr err = ArithCoder::DecodeUniform<T>(str_, val, maxval, bitmax);
     if (static_cast<int>(err)) throw err;
   }
 
   template <class T>
   void DecodeUniform(T &val, T maxval) {
-    CprsErr err = ArithCoder::DecodeUniform<T>(str, val, maxval);
+    CprsErr err = ArithCoder::DecodeUniform<T>(str_, val, maxval);
     if (static_cast<int>(err)) throw err;
   }
 };

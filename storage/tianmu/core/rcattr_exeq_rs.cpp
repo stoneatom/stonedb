@@ -94,15 +94,16 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
       uint pack_prefix;
       if (types::RequiresUTFConversions(d.GetCollation())) {
         my_match_t mm;
-        // stonedb8 instr() -> strstr()
-        if (d.GetCollation().collation->coll->strstr(d.GetCollation().collation, pat.val, pat.len, "%", 1, &mm, 1) == 2)
+        if (d.GetCollation().collation->coll->strstr(d.GetCollation().collation, pat.val_, pat.len_, "%", 1, &mm, 1) ==
+            2)
           pattern_prefix = pattern_fixed_prefix = mm.end;
-        // stonedb8
-        if (d.GetCollation().collation->coll->strstr(d.GetCollation().collation, pat.val, pat.len, "_", 1, &mm, 1) == 2)
+
+        if (d.GetCollation().collation->coll->strstr(d.GetCollation().collation, pat.val_, pat.len_, "_", 1, &mm, 1) ==
+            2)
           if (mm.end < pattern_fixed_prefix) pattern_fixed_prefix = mm.end;
 
         if ((pattern_fixed_prefix > 0) &&
-            types::BString(pat.val, pattern_fixed_prefix).LessEqThanMaxUTF(dpn.max_s, Type().GetCollation()) == false)
+            types::BString(pat.val_, pattern_fixed_prefix).LessEqThanMaxUTF(dpn.max_s, Type().GetCollation()) == false)
           res = common::RSValue::RS_NONE;
 
         if (pattern_fixed_prefix > GetActualSize(pack)) res = common::RSValue::RS_NONE;
@@ -110,8 +111,8 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
         if (res == common::RSValue::RS_SOME && pack_prefix > 0 &&
             pattern_fixed_prefix <= pack_prefix  // special case: "xyz%" and the
                                                  // pack prefix is at least 3
-            && pattern_fixed_prefix + 1 == pat.len && pat[pattern_fixed_prefix] == '%') {
-          if (d.GetCollation().collation->coll->strnncoll(d.GetCollation().collation, (const uchar *)pat.val,
+            && pattern_fixed_prefix + 1 == pat.len_ && pat[pattern_fixed_prefix] == '%') {
+          if (d.GetCollation().collation->coll->strnncoll(d.GetCollation().collation, (const uchar *)pat.val_,
                                                           pattern_fixed_prefix, (const uchar *)dpn.min_s,
                                                           pattern_fixed_prefix, 0) == 0)
             res = common::RSValue::RS_ALL;
@@ -120,11 +121,11 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
         }
 
       } else {
-        while (pattern_prefix < pat.len && pat[pattern_prefix] != '%') pattern_prefix++;
-        while (pattern_fixed_prefix < pat.len && pat[pattern_fixed_prefix] != '%' && pat[pattern_fixed_prefix] != '_')
+        while (pattern_prefix < pat.len_ && pat[pattern_prefix] != '%') pattern_prefix++;
+        while (pattern_fixed_prefix < pat.len_ && pat[pattern_fixed_prefix] != '%' && pat[pattern_fixed_prefix] != '_')
           pattern_fixed_prefix++;
 
-        if ((pattern_fixed_prefix > 0) && types::BString(pat.val, pattern_fixed_prefix).LessEqThanMax(dpn.max_s) ==
+        if ((pattern_fixed_prefix > 0) && types::BString(pat.val_, pattern_fixed_prefix).LessEqThanMax(dpn.max_s) ==
                                               false)  // val_t==nullptr means +/-infty
           res = common::RSValue::RS_NONE;
         if (pattern_fixed_prefix > GetActualSize(pack)) res = common::RSValue::RS_NONE;
@@ -132,25 +133,25 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
         if (res == common::RSValue::RS_SOME && pack_prefix > 0 &&
             pattern_fixed_prefix <= pack_prefix  // special case: "xyz%" and the
                                                  // pack prefix is at least 3
-            && pattern_fixed_prefix + 1 == pat.len && pat[pattern_fixed_prefix] == '%') {
-          if (std::memcmp(pat.val, dpn.min_s, pattern_fixed_prefix) == 0)  // pattern is equal to the prefix
+            && pattern_fixed_prefix + 1 == pat.len_ && pat[pattern_fixed_prefix] == '%') {
+          if (std::memcmp(pat.val_, dpn.min_s, pattern_fixed_prefix) == 0)  // pattern is equal to the prefix
             res = common::RSValue::RS_ALL;
           else
             res = common::RSValue::RS_NONE;  // prefix and pattern are different
         }
       }
 
-      if (res == common::RSValue::RS_SOME && std::min(pattern_prefix, pack_prefix) < pat.len &&
+      if (res == common::RSValue::RS_SOME && std::min(pattern_prefix, pack_prefix) < pat.len_ &&
           !types::RequiresUTFConversions(d.GetCollation())) {
         types::BString pattern_for_cmap;  // note that cmap is shifted by a common prefix!
         if (pattern_prefix > pack_prefix)
-          pattern_for_cmap = types::BString(pat.val + pack_prefix,
-                                            pat.len - pack_prefix);  // "xyz%abc" -> "z%abc"
+          pattern_for_cmap = types::BString(pat.val_ + pack_prefix,
+                                            pat.len_ - pack_prefix);  // "xyz%abc" -> "z%abc"
         else
-          pattern_for_cmap = types::BString(pat.val + pattern_prefix,
-                                            pat.len - pattern_prefix);  // "xyz%abc" -> "%abc"
+          pattern_for_cmap = types::BString(pat.val_ + pattern_prefix,
+                                            pat.len_ - pattern_prefix);  // "xyz%abc" -> "%abc"
 
-        if (!(pattern_for_cmap.len == 1 && pattern_for_cmap[0] == '%')) {  // i.e. "%" => all is matching
+        if (!(pattern_for_cmap.len_ == 1 && pattern_for_cmap[0] == '%')) {  // i.e. "%" => all is matching
           if (auto sp = GetFilter_CMap()) res = sp->IsLike(pattern_for_cmap, pack, d.like_esc);
         } else
           res = common::RSValue::RS_ALL;
@@ -177,11 +178,11 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
           for (vcolumn::MultiValColumn::Iterator it = mvc->begin(mit), end = mvc->end(mit);
                (it != end) && (res == common::RSValue::RS_NONE); ++it) {
             types::BString v1 = it->GetString();
-            if (pack_prefix <= v1.len) {
-              if (pack_prefix == 0 || std::memcmp(v1.val, dpn.min_s, pack_prefix) == 0) {
-                size_t len = v1.len - pack_prefix;
-                types::BString v(len <= 0 ? "" : v1.val + pack_prefix, (int)len);
-                if (v1.len == pack_prefix || sp->IsValue(v, v, pack) != common::RSValue::RS_NONE)
+            if (pack_prefix <= v1.len_) {
+              if (pack_prefix == 0 || std::memcmp(v1.val_, dpn.min_s, pack_prefix) == 0) {
+                size_t len = v1.len_ - pack_prefix;
+                types::BString v(len <= 0 ? "" : v1.val_ + pack_prefix, (int)len);
+                if (v1.len_ == pack_prefix || sp->IsValue(v, v, pack) != common::RSValue::RS_NONE)
                   // suspected, if any value is possible (due to the prefix or
                   // CMAP)
                   res = common::RSValue::RS_SOME;
@@ -293,7 +294,7 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
       vc2->GetValueString(vmax, mit);
       if (vmin.IsNull() && vmax.IsNull())  // comparing with null - always false
         return common::RSValue::RS_NONE;
-      while (vmin.val && vmax.val && val_prefix < vmin.len && val_prefix < vmax.len &&
+      while (vmin.val_ && vmax.val_ && val_prefix < vmin.len_ && val_prefix < vmax.len_ &&
              vmin[val_prefix] == vmax[val_prefix])
         val_prefix++;  // Common prefix for values. It is a value length in case
                        // of equality.
@@ -301,12 +302,12 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
       // TODO UTF8: check PREFIX handling
       if (val_prefix > GetActualSize(pack)) {  // value to be found is longer than texts in the pack
         res = common::RSValue::RS_NONE;
-      } else if ((vmax.val && vmax.GreaterEqThanMinUTF(dpn.min_s, Type().GetCollation()) == false) ||
-                 (vmin.val &&
+      } else if ((vmax.val_ && vmax.GreaterEqThanMinUTF(dpn.min_s, Type().GetCollation()) == false) ||
+                 (vmin.val_ &&
                   vmin.LessEqThanMaxUTF(dpn.max_s, Type().GetCollation()) == false))  // val_t==nullptr means +/-infty
         res = common::RSValue::RS_NONE;
-      else if ((vmin.val == nullptr || vmin.GreaterEqThanMinUTF(dpn.min_s, Type().GetCollation()) == false) &&
-               (vmax.val == nullptr ||
+      else if ((vmin.val_ == nullptr || vmin.GreaterEqThanMinUTF(dpn.min_s, Type().GetCollation()) == false) &&
+               (vmax.val_ == nullptr ||
                 vmax.LessEqThanMaxUTF(dpn.max_s, Type().GetCollation()) == false))  // val_t==nullptr means +/-infty
         res = common::RSValue::RS_ALL;
       else if (pack_prefix == GetActualSize(pack) && vmin == vmax) {  // exact case for short texts
@@ -317,7 +318,7 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
           res = common::RSValue::RS_NONE;
       }
 
-      if (res == common::RSValue::RS_SOME && vmin.len >= pack_prefix && vmax.len >= pack_prefix &&
+      if (res == common::RSValue::RS_SOME && vmin.len_ >= pack_prefix && vmax.len_ >= pack_prefix &&
           !types::RequiresUTFConversions(d.GetCollation())) {
         vmin += pack_prefix;  // redefine - shift by a common prefix
         vmax += pack_prefix;

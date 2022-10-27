@@ -833,9 +833,10 @@ void ColumnBinEncoder::EncoderText::Encode(uchar *buf, uchar *buf_sec, vcolumn::
       if (s < mins) mins.PersistentCopy(s);
     }
   }
-  ASSERT(s.len <= (uint)size, "Size of buffer too small");
-  if (s.len > 0) std::memcpy(buf, s.GetDataBytesPointer(), s.len);
-  uint32_t length = s.len + 1;
+  ASSERT(s.len_ <= (uint)size, "Size of buffer too small");
+  if (s.len_ > 0)
+    std::memcpy(buf, s.GetDataBytesPointer(), s.len_);
+  uint32_t length = s.len_ + 1;
   std::memcpy(buf + size - sizeof(uint32_t), &length, sizeof(uint32_t));
   if (descending) Negate(buf, size);
 }
@@ -857,9 +858,10 @@ bool ColumnBinEncoder::EncoderText::EncodeString(uchar *buf, uchar *buf_sec, typ
       if (s < mins) mins.PersistentCopy(s);
     }
   }
-  ASSERT(s.len <= (uint)size, "Size of buffer too small");
-  if (s.len > 0) std::memcpy(buf, s.GetDataBytesPointer(), s.len);
-  uint32_t length = s.len + 1;
+  ASSERT(s.len_ <= (uint)size, "Size of buffer too small");
+  if (s.len_ > 0)
+    std::memcpy(buf, s.GetDataBytesPointer(), s.len_);
+  uint32_t length = s.len_ + 1;
   std::memcpy(buf + size - sizeof(uint32_t), &length, sizeof(uint32_t));
   if (descending) Negate(buf, size);
   return true;
@@ -887,10 +889,11 @@ types::BString ColumnBinEncoder::EncoderText::GetValueT(uchar *buf, uchar *buf_s
 }
 
 bool ColumnBinEncoder::EncoderText::ImpossibleStringValues(types::BString &pack_min, types::BString &pack_max) {
-  int lenmin = std::min(pack_min.len, maxs.len);
-  int lenmax = std::min(pack_max.len, mins.len);
+  int lenmin = std::min(pack_min.len_, maxs.len_);
+  int lenmax = std::min(pack_max.len_, mins.len_);
 
-  if (std::strncmp(pack_min.val, maxs.val, lenmin) > 0 || std::strncmp(pack_max.val, mins.val, lenmax) < 0) return true;
+  if (std::strncmp(pack_min.val_, maxs.val_, lenmin) > 0 || std::strncmp(pack_max.val_, mins.val_, lenmax) < 0)
+    return true;
   return false;
 }
 
@@ -939,15 +942,16 @@ void ColumnBinEncoder::EncoderText_UTF::Encode(uchar *buf, uchar *buf_sec, vcolu
       if (CollationStrCmp(collation, s, mins) < 0) mins.PersistentCopy(s);
     }
   }
-  common::strnxfrm(collation, buf, size - sizeof(uint32_t), (uchar *)s.GetDataBytesPointer(), s.len);
+  common::strnxfrm(collation, buf, size - sizeof(uint32_t), (uchar *)s.GetDataBytesPointer(), s.len_);
   // int coded_len = types::CollationBufLen(collation, s.len);
-  uint32_t length = s.len + 1;
+  uint32_t length = s.len_ + 1;
   std::memcpy(buf + size - sizeof(uint32_t), &length, sizeof(uint32_t));
   if (descending) Negate(buf, size);
   if (size_sec > 0) {
     std::memset(buf_sec, 0, size_sec);
     std::memcpy(buf_sec + size_sec - sizeof(uint32_t), &length, sizeof(uint32_t));
-    if (s.len > 0) std::memcpy(buf_sec, s.GetDataBytesPointer(), s.len);
+    if (s.len_ > 0)
+      std::memcpy(buf_sec, s.GetDataBytesPointer(), s.len_);
   }
 }
 
@@ -968,14 +972,15 @@ bool ColumnBinEncoder::EncoderText_UTF::EncodeString(uchar *buf, uchar *buf_sec,
       if (CollationStrCmp(collation, s, mins) < 0) mins = s;
     }
   }
-  common::strnxfrm(collation, buf, size - sizeof(uint32_t), (uchar *)s.GetDataBytesPointer(), s.len);
-  uint32_t length = s.len + 1;
+  common::strnxfrm(collation, buf, size - sizeof(uint32_t), (uchar *)s.GetDataBytesPointer(), s.len_);
+  uint32_t length = s.len_ + 1;
   std::memcpy(buf + size - sizeof(uint32_t), &length, sizeof(uint32_t));
   if (descending) Negate(buf, size);
   if (size_sec > 0) {
     std::memset(buf_sec, 0, size_sec);
     std::memcpy(buf_sec + size_sec - sizeof(uint32_t), &length, sizeof(uint32_t));
-    if (s.len > 0) std::memcpy(buf_sec, s.GetDataBytesPointer(), s.len);
+    if (s.len_ > 0)
+      std::memcpy(buf_sec, s.GetDataBytesPointer(), s.len_);
   }
   return true;
 }
@@ -1007,8 +1012,8 @@ types::BString ColumnBinEncoder::EncoderText_UTF::GetValueT(uchar *buf, uchar *b
 bool ColumnBinEncoder::EncoderText_UTF::ImpossibleStringValues(types::BString &pack_min, types::BString &pack_max) {
   unsigned char min[8] = {};
   unsigned char max[8] = {};
-  std::memcpy(min, pack_min.val, pack_min.len);
-  std::memcpy(max, pack_max.val, pack_max.len);
+  std::memcpy(min, pack_min.val_, pack_min.len_);
+  std::memcpy(max, pack_max.val_, pack_max.len_);
   if (!maxs.GreaterEqThanMinUTF(min, collation) || !mins.LessEqThanMaxUTF(max, collation)) return true;
   return false;
 }
@@ -1249,9 +1254,9 @@ void ColumnBinEncoder::EncoderTextMD5::Encode(uchar *buf, uchar *buf_sec, vcolum
       if (s < mins) mins.PersistentCopy(s);
     }
   }
-  if (s.len > 0) {
-    HashMD5((unsigned char *)s.GetDataBytesPointer(), s.len, buf);
-    *((uint *)buf) ^= s.len;
+  if (s.len_ > 0) {
+    HashMD5((unsigned char *)s.GetDataBytesPointer(), s.len_, buf);
+    *((uint *)buf) ^= s.len_;
   } else
     std::memcpy(buf, empty_buf, size);
 }
@@ -1272,9 +1277,9 @@ bool ColumnBinEncoder::EncoderTextMD5::EncodeString(uchar *buf, uchar *buf_sec, 
       if (s < mins) mins.PersistentCopy(s);
     }
   }
-  if (s.len > 0) {
-    HashMD5((unsigned char *)s.GetDataBytesPointer(), s.len, buf);
-    *((uint *)buf) ^= s.len;
+  if (s.len_ > 0) {
+    HashMD5((unsigned char *)s.GetDataBytesPointer(), s.len_, buf);
+    *((uint *)buf) ^= s.len_;
   } else
     std::memcpy(buf, empty_buf, size);
   return true;
@@ -1289,10 +1294,11 @@ bool ColumnBinEncoder::EncoderTextMD5::IsNull(uchar *buf, [[maybe_unused]] uchar
 }
 
 bool ColumnBinEncoder::EncoderTextMD5::ImpossibleStringValues(types::BString &pack_min, types::BString &pack_max) {
-  int lenmin = std::min(pack_min.len, maxs.len);
-  int lenmax = std::min(pack_max.len, mins.len);
+  int lenmin = std::min(pack_min.len_, maxs.len_);
+  int lenmax = std::min(pack_max.len_, mins.len_);
 
-  if (std::strncmp(pack_min.val, maxs.val, lenmin) > 0 || std::strncmp(pack_max.val, mins.val, lenmax) < 0) return true;
+  if (std::strncmp(pack_min.val_, maxs.val_, lenmin) > 0 || std::strncmp(pack_max.val_, mins.val_, lenmax) < 0)
+    return true;
   return false;
 }
 

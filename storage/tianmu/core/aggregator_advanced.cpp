@@ -178,8 +178,8 @@ void AggregatorGroupConcat::PutAggregatedValue(unsigned char *buf, const types::
 
   auto it = lenmap.find(buf);
   if (it == lenmap.end()) {
-    auto copylen = (v.len > gconcat_maxlen) ? gconcat_maxlen : v.len;
-    std::memcpy(buf, v.val, copylen);
+    auto copylen = (v.len_ > gconcat_maxlen) ? gconcat_maxlen : v.len_;
+    std::memcpy(buf, v.val_, copylen);
     lenmap.emplace(buf, copylen);
   } else {
     auto pos = it->second;
@@ -188,8 +188,8 @@ void AggregatorGroupConcat::PutAggregatedValue(unsigned char *buf, const types::
 
     if (pos < gconcat_maxlen) {
       std::string src = si.separator + v.ToString();  // combine the delimeter and value
-      auto copylen = (pos + v.len + si.separator.length()) >= gconcat_maxlen ? (gconcat_maxlen - pos)
-                                                                             : (v.len + si.separator.length());
+      auto copylen = (pos + v.len_ + si.separator.length()) >= gconcat_maxlen ? (gconcat_maxlen - pos)
+                                                                              : (v.len_ + si.separator.length());
       std::memcpy(buf + pos, src.c_str(), copylen);  // append the separator
       it->second = it->second + copylen;             // update the length of the buffer
     } else {

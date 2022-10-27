@@ -53,7 +53,7 @@ template <class T>
 class PartDict : public DataFilt<T> {
  public:
   static const uint MAXLEN = DICMAP_MAX;
-  static const uint MAXTOTAL = RangeCoder::MAX_TOTAL;
+  static const uint MAXTOTAL = RangeCoder::MAX_TOTAL_;
 
   static const uint MINOCCUR = 4;                          // how many times a value must occur to be frequent value
   static const uint MAXFREQ = (MAXTOTAL + 20) / MINOCCUR;  // max no. of frequent values = max

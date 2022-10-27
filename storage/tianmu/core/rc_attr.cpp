@@ -456,8 +456,8 @@ types::RCValueObject RCAttr::GetValue(int64_t obj, bool lookup_to_num) {
     else if (ATI::IsBinType(a_type)) {
       auto tmp_size = GetLength(obj);
       types::BString rcbs(nullptr, tmp_size, true);
-      GetValueBin(obj, tmp_size, rcbs.val);
-      rcbs.null = false;
+      GetValueBin(obj, tmp_size, rcbs.val_);
+      rcbs.null_ = false;
       ret = rcbs;
     } else if (ATI::IsIntegerType(a_type))
       ret = types::RCNum(GetNotNullValueInt64(obj), -1, false, a_type);
@@ -467,7 +467,7 @@ types::RCValueObject RCAttr::GetValue(int64_t obj, bool lookup_to_num) {
       MYSQL_TIME myt;
       MYSQL_TIME_STATUS not_used;
       // convert UTC timestamp given in string into TIME structure
-      str_to_datetime(s.GetDataBytesPointer(), s.len, &myt, TIME_DATETIME_ONLY, &not_used);
+      str_to_datetime(s.GetDataBytesPointer(), s.len_, &myt, TIME_DATETIME_ONLY, &not_used);
       return types::RCDateTime(myt, common::CT::TIMESTAMP);
     } else if (ATI::IsDateTimeType(a_type))
       ret = types::RCDateTime(this->GetNotNullValueInt64(obj), a_type);
@@ -490,8 +490,8 @@ types::RCDataType &RCAttr::GetValueData(size_t obj, types::RCDataType &value, bo
     else if (ATI::IsBinType(a_type)) {
       auto tmp_size = GetLength(obj);
       ((types::BString &)value) = types::BString(nullptr, tmp_size, true);
-      GetValueBin(obj, tmp_size, ((types::BString &)value).val);
-      value.null = false;
+      GetValueBin(obj, tmp_size, ((types::BString &)value).val_);
+      value.null_ = false;
     } else if (ATI::IsIntegerType(a_type))
       ((types::RCNum &)value).Assign(GetNotNullValueInt64(obj), -1, false, a_type);
     else if (ATI::IsDateTimeType(a_type)) {
@@ -621,7 +621,7 @@ int RCAttr::EncodeValue_T(const types::BString &rcbs, bool new_val, common::Erro
   if (ATI::IsStringType(TypeName())) {
     DEBUG_ASSERT(GetPackType() == common::PackType::INT);
     LoadPackInfo();
-    int vs = m_dict->GetEncodedValue(rcbs.val, rcbs.len);
+    int vs = m_dict->GetEncodedValue(rcbs.val_, rcbs.len_);
     if (vs < 0) {
       if (!new_val) {
         return common::NULL_VALUE_32;
@@ -637,11 +637,11 @@ int RCAttr::EncodeValue_T(const types::BString &rcbs, bool new_val, common::Erro
         hdr.dict_ver++;
         ha_rcengine_->cache.PutObject(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), m_dict);
       }
-      vs = m_dict->Add(rcbs.val, rcbs.len);
+      vs = m_dict->Add(rcbs.val_, rcbs.len_);
     }
     return vs;
   }
-  char const *val = rcbs.val;
+  char const *val = rcbs.val_;
   if (val == 0) val = ZERO_LENGTH_STRING;
   if (ATI::IsDateTimeType(TypeName()) || TypeName() == common::CT::BIGINT) {
     ASSERT(0, "Wrong data type!");
@@ -1236,7 +1236,7 @@ void RCAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
     auto &vnew = v.GetString();
     auto vold = GetValueString(row);
     std::string_view nkey(vnew.data(), vnew.length());
-    std::string_view okey(vold.val, vold.size());
+    std::string_view okey(vold.val_, vold.size());
     common::ErrorCode rc = tab->UpdateIndex(current_txn_, nkey, okey, row);
     if (rc == common::ErrorCode::DUPP_KEY || rc == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Duplicate entry: %s for primary key", vnew.data());
