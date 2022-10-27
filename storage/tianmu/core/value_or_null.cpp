@@ -28,14 +28,14 @@ void ValueOrNull::SetBString(const types::BString &rcs) {
     null = false;
     if (rcs.IsPersistent()) {
       string_owner = true;
-      sp = new char[rcs.len + 1];
-      std::memcpy(sp, rcs.val, rcs.len);
-      sp[rcs.len] = 0;
+      sp = new char[rcs.len_ + 1];
+      std::memcpy(sp, rcs.val_, rcs.len_);
+      sp[rcs.len_] = 0;
     } else {
-      sp = rcs.val;
+      sp = rcs.val_;
       string_owner = false;
     }
-    len = rcs.len;
+    len = rcs.len_;
   }
 }
 
@@ -93,8 +93,8 @@ ValueOrNull::ValueOrNull(types::RCNum const &rcn) : x(rcn.GetValueInt64()), null
 ValueOrNull::ValueOrNull(types::RCDateTime const &rcdt) : x(rcdt.GetInt64()), null(rcdt.IsNull()) {}
 
 ValueOrNull::ValueOrNull(types::BString const &rcs)
-    : x(common::NULL_VALUE_64), sp(new char[rcs.len + 1]), len(rcs.len), string_owner(true), null(rcs.IsNull()) {
-  std::memcpy(sp, rcs.val, len);
+    : x(common::NULL_VALUE_64), sp(new char[rcs.len_ + 1]), len(rcs.len_), string_owner(true), null(rcs.IsNull()) {
+  std::memcpy(sp, rcs.val_, len);
   sp[len] = 0;
 }
 

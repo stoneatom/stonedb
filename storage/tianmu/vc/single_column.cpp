@@ -67,9 +67,9 @@ double SingleColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
   } else if (core::ATI::IsStringType(TypeName())) {
     types::BString vrcbs;
     col_->GetValueString(mit[dim], vrcbs);
-    auto vs = std::make_unique<char[]>(vrcbs.len + 1);
-    std::memcpy(vs.get(), vrcbs.GetDataBytesPointer(), vrcbs.len);
-    vs[vrcbs.len] = '\0';
+    auto vs = std::make_unique<char[]>(vrcbs.len_ + 1);
+    std::memcpy(vs.get(), vrcbs.GetDataBytesPointer(), vrcbs.len_);
+    vs[vrcbs.len_] = '\0';
     val = std::atof(vs.get());
   } else
     DEBUG_ASSERT(0 && "conversion to double not implemented");

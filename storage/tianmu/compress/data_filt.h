@@ -36,9 +36,9 @@ struct DataSet {
 /* Part of DataFilt not dependent on template type */
 class DataFiltNoTemp {
  public:
-  uint codesize[2];  // size of encoded data: description part [0], data part
-                     // [1] (in bytes)
-  virtual void ClearStats() { IFSTAT(codesize[0] = codesize[1] = 0); }
+  uint codesize_[2];  // size of encoded data: description part [0], data part
+                      // [1] (in bytes)
+  virtual void ClearStats() { IFSTAT(codesize_[0] = codesize_[1] = 0); }
   virtual char const *GetName() = 0;
   virtual ~DataFiltNoTemp() {}
 };

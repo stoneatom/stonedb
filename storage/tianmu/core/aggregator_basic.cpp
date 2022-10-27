@@ -280,13 +280,13 @@ void AggregatorMinD::Merge(unsigned char *buf, unsigned char *src_buf) {
 }
 
 void AggregatorMinT::PutAggregatedValue(unsigned char *buf, const types::BString &v, [[maybe_unused]] int64_t factor) {
-  DEBUG_ASSERT((uint)val_len >= v.len);
+  DEBUG_ASSERT((uint)val_len >= v.len_);
   if (*((unsigned short *)buf) == 0 && buf[2] == 0) {  // still null
     stats_updated = false;
     std::memset(buf + 2, 0, val_len);
-    *((unsigned short *)buf) = v.len;
-    if (v.len > 0)
-      std::memcpy(buf + 2, v.val, v.len);
+    *((unsigned short *)buf) = v.len_;
+    if (v.len_ > 0)
+      std::memcpy(buf + 2, v.val_, v.len_);
     else
       buf[2] = 1;  // empty string indicator (non-null)
   } else {
@@ -294,9 +294,9 @@ void AggregatorMinT::PutAggregatedValue(unsigned char *buf, const types::BString
     if (m > v) {
       stats_updated = false;
       std::memset(buf + 2, 0, val_len);
-      *((unsigned short *)buf) = v.len;
-      if (v.len > 0)
-        std::memcpy(buf + 2, v.val, v.len);
+      *((unsigned short *)buf) = v.len_;
+      if (v.len_ > 0)
+        std::memcpy(buf + 2, v.val_, v.len_);
       else
         buf[2] = 1;  // empty string indicator (non-null)
     }
@@ -334,13 +334,13 @@ AggregatorMinT_UTF::AggregatorMinT_UTF(int max_len, DTCollation coll) : Aggregat
 
 void AggregatorMinT_UTF::PutAggregatedValue(unsigned char *buf, const types::BString &v,
                                             [[maybe_unused]] int64_t factor) {
-  DEBUG_ASSERT((uint)val_len >= v.len);
+  DEBUG_ASSERT((uint)val_len >= v.len_);
   if (*((unsigned short *)buf) == 0 && buf[2] == 0) {  // still null
     stats_updated = false;
     std::memset(buf + 2, 0, val_len);
-    *((unsigned short *)buf) = v.len;
-    if (v.len > 0)
-      std::memcpy(buf + 2, v.val, v.len);
+    *((unsigned short *)buf) = v.len_;
+    if (v.len_ > 0)
+      std::memcpy(buf + 2, v.val_, v.len_);
     else
       buf[2] = 1;  // empty string indicator (non-null)
   } else {
@@ -348,9 +348,9 @@ void AggregatorMinT_UTF::PutAggregatedValue(unsigned char *buf, const types::BSt
     if (CollationStrCmp(collation, m, v) > 0) {
       stats_updated = false;
       std::memset(buf + 2, 0, val_len);
-      *((unsigned short *)buf) = v.len;
-      if (v.len > 0)
-        std::memcpy(buf + 2, v.val, v.len);
+      *((unsigned short *)buf) = v.len_;
+      if (v.len_ > 0)
+        std::memcpy(buf + 2, v.val_, v.len_);
       else
         buf[2] = 1;  // empty string indicator (non-null)
     }
@@ -426,21 +426,21 @@ AggregatorMaxT_UTF::AggregatorMaxT_UTF(int max_len, DTCollation coll) : Aggregat
 
 void AggregatorMaxT::PutAggregatedValue(unsigned char *buf, const types::BString &v, [[maybe_unused]] int64_t factor) {
   stats_updated = false;
-  DEBUG_ASSERT((uint)val_len >= v.len);
+  DEBUG_ASSERT((uint)val_len >= v.len_);
   if (*((unsigned short *)buf) == 0 && buf[2] == 0) {  // still null
     std::memset(buf + 2, 0, val_len);
-    *((unsigned short *)buf) = v.len;
-    if (v.len > 0)
-      std::memcpy(buf + 2, v.val, v.len);
+    *((unsigned short *)buf) = v.len_;
+    if (v.len_ > 0)
+      std::memcpy(buf + 2, v.val_, v.len_);
     else
       buf[2] = 1;  // empty string indicator (non-null)
   } else {
     types::BString m((char *)buf + 2, *((unsigned short *)buf));
     if (m < v) {
       std::memset(buf + 2, 0, val_len);
-      *((unsigned short *)buf) = v.len;
-      if (v.len > 0)
-        std::memcpy(buf + 2, v.val, v.len);
+      *((unsigned short *)buf) = v.len_;
+      if (v.len_ > 0)
+        std::memcpy(buf + 2, v.val_, v.len_);
       else
         buf[2] = 1;  // empty string indicator (non-null)
     }
@@ -477,21 +477,21 @@ types::BString AggregatorMaxT::GetValueT(unsigned char *buf) {
 void AggregatorMaxT_UTF::PutAggregatedValue(unsigned char *buf, const types::BString &v,
                                             [[maybe_unused]] int64_t factor) {
   stats_updated = false;
-  DEBUG_ASSERT((uint)val_len >= v.len);
+  DEBUG_ASSERT((uint)val_len >= v.len_);
   if (*((unsigned short *)buf) == 0 && buf[2] == 0) {  // still null
     std::memset(buf + 2, 0, val_len);
-    *((unsigned short *)buf) = v.len;
-    if (v.len > 0)
-      std::memcpy(buf + 2, v.val, v.len);
+    *((unsigned short *)buf) = v.len_;
+    if (v.len_ > 0)
+      std::memcpy(buf + 2, v.val_, v.len_);
     else
       buf[2] = 1;  // empty string indicator (non-null)
   } else {
     types::BString m((char *)buf + 2, *((unsigned short *)buf));
     if (CollationStrCmp(collation, m, v) < 0) {
       std::memset(buf + 2, 0, val_len);
-      *((unsigned short *)buf) = v.len;
-      if (v.len > 0)
-        std::memcpy(buf + 2, v.val, v.len);
+      *((unsigned short *)buf) = v.len_;
+      if (v.len_ > 0)
+        std::memcpy(buf + 2, v.val_, v.len_);
       else
         buf[2] = 1;  // empty string indicator (non-null)
     }
@@ -519,12 +519,12 @@ int64_t AggregatorList32::GetValue64(unsigned char *buf) {
 }
 
 void AggregatorListT::PutAggregatedValue(unsigned char *buf, const types::BString &v, [[maybe_unused]] int64_t factor) {
-  DEBUG_ASSERT((uint)val_len >= v.len);
+  DEBUG_ASSERT((uint)val_len >= v.len_);
   if (*((unsigned short *)buf) == 0 && buf[2] == 0) {  // still null
     stats_updated = false;
-    *((unsigned short *)buf) = v.len;
-    if (v.len > 0)
-      std::memcpy(buf + 2, v.val, v.len);
+    *((unsigned short *)buf) = v.len_;
+    if (v.len_ > 0)
+      std::memcpy(buf + 2, v.val_, v.len_);
     else
       buf[2] = 1;  // empty string indicator (non-null)
     value_set = true;

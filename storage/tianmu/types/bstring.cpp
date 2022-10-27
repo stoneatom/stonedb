@@ -23,54 +23,56 @@
 namespace Tianmu {
 namespace types {
 
-BString::BString()  // null string
+BString::BString()  // null_ string
 {
-  null = true;
-  len = 0;
-  val = 0;
-  pos = 0;
-  persistent = false;
+  null_ = true;
+  len_ = 0;
+  val_ = 0;
+  pos_ = 0;
+  persistent_ = false;
 }
 
-BString::BString(const char *v, size_t length, bool persistent) : persistent(persistent) {
-  // NOTE: we allow val to be NULL. In this case, no value will be copied (just
+BString::BString(const char *v, size_t length, bool persistent) : persistent_(persistent) {
+  // NOTE: we allow val_ to be NULL. In this case, no value will be copied (just
   // reserve a place for future use). Only persistent!
-  pos = 0;
-  null = false;
+  pos_ = 0;
+  null_ = false;
   if (length == 0) {
     if (v)
-      len = std::strlen(v);
+      len_ = std::strlen(v);
     else
-      len = 0;
+      len_ = 0;
   } else
-    len = (uint)length;
+    len_ = (uint)length;
   if (persistent == false)
-    val = const_cast<char *>(v);
+    val_ = const_cast<char *>(v);
   else {
-    val = new char[len];
-    if (v) std::memcpy(val, v, len);
+    val_ = new char[len_];
+    if (v)
+      std::memcpy(val_, v, len_);
   }
 }
 
-BString::BString(const BString &rcbs) : ValueBasic<BString>(rcbs), pos(rcbs.pos), persistent(rcbs.persistent) {
-  null = rcbs.null;
-  if (!null) {
-    len = rcbs.len;
-    if (persistent) {
-      val = new char[len + pos];
-      std::memcpy(val, rcbs.val, len + pos);
+BString::BString(const BString &rcbs) : ValueBasic<BString>(rcbs), pos_(rcbs.pos_), persistent_(rcbs.persistent_) {
+  null_ = rcbs.null_;
+  if (!null_) {
+    len_ = rcbs.len_;
+    if (persistent_) {
+      val_ = new char[len_ + pos_];
+      std::memcpy(val_, rcbs.val_, len_ + pos_);
     } else
-      val = rcbs.val;
+      val_ = rcbs.val_;
   } else {
-    len = 0;
-    val = 0;
-    pos = 0;
-    persistent = false;
+    len_ = 0;
+    val_ = 0;
+    pos_ = 0;
+    persistent_ = false;
   }
 }
 
 BString::~BString() {
-  if (persistent) delete[] val;
+  if (persistent_)
+    delete[] val_;
 }
 
 BString &BString::operator=(const RCDataType &rcdt) {
@@ -92,67 +94,72 @@ bool BString::Parse(BString &in, BString &out) {
 common::CT BString::Type() const { return common::CT::STRING; }
 
 void BString::PutString(char *&dest, ushort len, bool move_ptr) const {
-  ASSERT(this->len <= len, "should be 'this->len <= len'");
-  if (this->len == 0)
+  ASSERT(this->len_ <= len, "should be 'this->len_ <= len'");
+  if (this->len_ == 0)
     std::memset(dest, ' ', len);
   else {
-    std::memcpy(dest, val, this->len);
-    std::memset(dest + this->len, ' ', len - this->len);
+    std::memcpy(dest, val_, this->len_);
+    std::memset(dest + this->len_, ' ', len - this->len_);
   }
   if (move_ptr) dest += len;
 }
 
 void BString::PutVarchar(char *&dest, uchar prefixlen, bool move_ptr) const {
-  if (prefixlen == 0) PutString(dest, len);
-  if (len == 0) {
+  if (prefixlen == 0)
+    PutString(dest, len_);
+  if (len_ == 0) {
     std::memset(dest, 0, prefixlen);
     if (move_ptr) dest += prefixlen;
   } else {
     switch (prefixlen) {
       case 1:
-        *(uchar *)dest = (uchar)len;
+        *(uchar *)dest = (uchar)len_;
         break;
       case 2:
-        *(ushort *)dest = (ushort)len;
+        *(ushort *)dest = (ushort)len_;
         break;
       case 4:
-        *(uint *)dest = (uint)len;
+        *(uint *)dest = (uint)len_;
         break;
       default:
         TIANMU_ERROR("not implemented");
     }
-    std::memcpy(dest + prefixlen, val, len);
-    if (move_ptr) dest += prefixlen + len;
+    std::memcpy(dest + prefixlen, val_, len_);
+    if (move_ptr)
+      dest += prefixlen + len_;
   }
 }
 
 BString &BString::operator=(const BString &rcbs) {
   if (this == &rcbs) return *this;
 
-  null = rcbs.null;
-  if (null) {
-    if (persistent) delete[] val;
-    val = 0;
-    len = 0;
-    pos = 0;
+  null_ = rcbs.null_;
+  if (null_) {
+    if (persistent_)
+      delete[] val_;
+    val_ = 0;
+    len_ = 0;
+    pos_ = 0;
   } else {
-    if (rcbs.persistent) {
-      uint tmp_len = rcbs.len + rcbs.pos;
-      if (!persistent || tmp_len > len + pos) {
-        if (persistent) delete[] val;
-        val = new char[tmp_len];
+    if (rcbs.persistent_) {
+      uint tmp_len = rcbs.len_ + rcbs.pos_;
+      if (!persistent_ || tmp_len > len_ + pos_) {
+        if (persistent_)
+          delete[] val_;
+        val_ = new char[tmp_len];
       }
-      len = rcbs.len;
-      pos = rcbs.pos;
-      std::memcpy(val, rcbs.val, len + pos);
+      len_ = rcbs.len_;
+      pos_ = rcbs.pos_;
+      std::memcpy(val_, rcbs.val_, len_ + pos_);
     } else {
-      if (persistent) delete[] val;
-      len = rcbs.len;
-      pos = rcbs.pos;
-      val = rcbs.val;
+      if (persistent_)
+        delete[] val_;
+      len_ = rcbs.len_;
+      pos_ = rcbs.pos_;
+      val_ = rcbs.val_;
     }
   }
-  persistent = rcbs.persistent;
+  persistent_ = rcbs.persistent_;
   return *this;
 }
 
@@ -162,46 +169,48 @@ void BString::PersistentCopy(const BString &rcbs) {
     return;
   }
 
-  null = rcbs.null;
-  if (null) {
-    delete[] val;
-    val = 0;
-    len = 0;
-    pos = 0;
+  null_ = rcbs.null_;
+  if (null_) {
+    delete[] val_;
+    val_ = 0;
+    len_ = 0;
+    pos_ = 0;
   } else {
-    uint tmp_len = rcbs.len + rcbs.pos;
-    if (!persistent || tmp_len > len + pos) {
-      if (persistent) delete[] val;
-      val = new char[tmp_len];
+    uint tmp_len = rcbs.len_ + rcbs.pos_;
+    if (!persistent_ || tmp_len > len_ + pos_) {
+      if (persistent_)
+        delete[] val_;
+      val_ = new char[tmp_len];
     }
-    len = rcbs.len;
-    pos = rcbs.pos;
-    std::memcpy(val, rcbs.val, len + pos);
+    len_ = rcbs.len_;
+    pos_ = rcbs.pos_;
+    std::memcpy(val_, rcbs.val_, len_ + pos_);
   }
-  persistent = true;
+  persistent_ = true;
 }
 
 std::string BString::ToString() const {
-  if (len) return std::string(val + pos, len);
+  if (len_)
+    return std::string(val_ + pos_, len_);
   return std::string();
 }
 
 char &BString::operator[](size_t pos) const {
-  DEBUG_ASSERT(pos < len);  // Out of BString. Note: val is not ended by '\0'.
-  return val[this->pos + pos];
+  DEBUG_ASSERT(pos < len_);  // Out of BString. Note: val_ is not ended by '\0'.
+  return val_[this->pos_ + pos];
 }
 
 BString &BString::operator+=(ushort pos) {
-  DEBUG_ASSERT((int)len - pos >= 0);
-  this->pos = this->pos + (ushort)pos;
-  this->len -= pos;
+  DEBUG_ASSERT((int)len_ - pos >= 0);
+  this->pos_ = this->pos_ + (ushort)pos;
+  this->len_ -= pos;
   return *this;
 }
 
 BString &BString::operator-=(ushort pos) {
-  DEBUG_ASSERT(pos <= this->pos);
-  this->pos = this->pos - (ushort)pos;
-  this->len += pos;
+  DEBUG_ASSERT(pos <= this->pos_);
+  this->pos_ = this->pos_ - (ushort)pos;
+  this->len_ += pos;
   return *this;
 }
 
@@ -210,11 +219,11 @@ bool BString::Like(const BString &pattern, char escape_character) {
   BString processed_pattern;  // to be used as an alternative source in case of
                               // processed pattern (escape chars)
   BString processed_wildcards;
-  char *p = pattern.val;  // a short for pattern (or processed pattern)
-  char *w = pattern.val;  // a short for wildcard map (or na original pattern,
-                          // if no escape chars)
-  char *v = val + pos;    // a short for the data itself
-  uint pattern_len = pattern.len;
+  char *p = pattern.val_;  // a short for pattern (or processed pattern)
+  char *w = pattern.val_;  // a short for wildcard map (or na original pattern,
+                           // if no escape chars)
+  char *v = val_ + pos_;   // a short for the data itself
+  uint pattern_len = pattern.len_;
 
   // Escape characters processing
   bool escaped = false;
@@ -248,8 +257,8 @@ bool BString::Like(const BString &pattern, char escape_character) {
       }
     }
     pattern_len = i;  // the rest of pattern buffers are just ignored
-    p = processed_pattern.val;
-    w = processed_wildcards.val;
+    p = processed_pattern.val_;
+    w = processed_wildcards.val_;
   }
 
   // Pattern processing
@@ -265,12 +274,12 @@ bool BString::Like(const BString &pattern, char escape_character) {
     cur_s_beg = cur_s;
     cur_p_beg = cur_p;
     do {                                            // internal loop: try to match a part between %...%
-      while (cur_p < pattern_len && cur_s < len &&  // find the first match...
+      while (cur_p < pattern_len && cur_s < len_ &&  // find the first match...
              (v[cur_s] == p[cur_p] || w[cur_p] == '_') && w[cur_p] != '%') {
         cur_s++;
         cur_p++;
       }
-      if (cur_s < len &&
+      if (cur_s < len_ &&
           ((cur_p < pattern_len && w[cur_p] != '%') || cur_p >= pattern_len)) {  // not matching (loop finished
         // prematurely) - try the next source
         // position
@@ -279,7 +288,7 @@ bool BString::Like(const BString &pattern, char escape_character) {
         cur_s = ++cur_s_beg;  // step forward in the source, rewind the matching
                               // pointers
       }
-      if (cur_s == len) {  // end of the source
+      if (cur_s == len_) {  // end of the source
         while (cur_p < pattern_len) {
           if (w[cur_p] != '%')  // Pattern nontrivial yet? No more chances for matching.
             return false;
@@ -288,35 +297,39 @@ bool BString::Like(const BString &pattern, char escape_character) {
         return true;
       }
     } while (cur_p < pattern_len && w[cur_p] != '%');  // try the next match position
-  } while (cur_p < pattern_len && cur_s < len);
+  } while (cur_p < pattern_len && cur_s < len_);
   return true;
 }
 
 void BString::MakePersistent() {
-  if (persistent) return;
-  char *n_val = new char[len + pos];
-  std::memcpy(n_val, val, len + pos);
-  val = n_val;
-  persistent = true;
+  if (persistent_)
+    return;
+  char *n_val = new char[len_ + pos_];
+  std::memcpy(n_val, val_, len_ + pos_);
+  val_ = n_val;
+  persistent_ = true;
 }
 
 bool BString::GreaterEqThanMin(const void *txt_min) {
   const unsigned char *s = reinterpret_cast<const unsigned char *>(txt_min);
 
-  if (null == true) return false;
+  if (null_ == true)
+    return false;
   uint min_len = 8;
   while (min_len > 0 && s[min_len - 1] == '\0') min_len--;
-  for (uint i = 0; i < min_len && i < len; i++)
-    if (((unsigned char *)val)[i + pos] < s[i])
+  for (uint i = 0; i < min_len && i < len_; i++)
+    if (((unsigned char *)val_)[i + pos_] < s[i])
       return false;
-    else if (((unsigned char *)val)[i + pos] > s[i])
+    else if (((unsigned char *)val_)[i + pos_] > s[i])
       return true;
-  if (len < min_len) return false;
+  if (len_ < min_len)
+    return false;
   return true;
 }
 
 bool BString::GreaterEqThanMinUTF(const void *txt_min, DTCollation col, bool use_full_len) {
-  if (null == true) return false;
+  if (null_ == true)
+    return false;
   if (RequiresUTFConversions(col)) {
     uint useful_len = 0;
     const char *s = reinterpret_cast<const char *>(txt_min);
@@ -326,33 +339,36 @@ bool BString::GreaterEqThanMinUTF(const void *txt_min, DTCollation col, bool use
 
       uint next_char_len, chars_included = 0;
       while (true) {
-        if (useful_len >= len || chars_included == min_charlen) break;
-        next_char_len = col.collation->cset->mbcharlen(col.collation, (uchar)val[useful_len + pos]);
+        if (useful_len >= len_ || chars_included == min_charlen)
+          break;
+        next_char_len = col.collation->cset->mbcharlen(col.collation, (uchar)val_[useful_len + pos_]);
         DEBUG_ASSERT("wide character unrecognized" && next_char_len > 0);
         useful_len += next_char_len;
         chars_included++;
       }
     } else
-      useful_len = len;
-    return col.collation->coll->strnncoll(col.collation, (uchar *)val, useful_len,
+      useful_len = len_;
+    return col.collation->coll->strnncoll(col.collation, (uchar *)val_, useful_len,
                                           reinterpret_cast<const unsigned char *>(txt_min), min_byte_len, 0) >= 0;
   } else
     return GreaterEqThanMin(txt_min);
 }
 
 bool BString::LessEqThanMax(const void *txt_max) {
-  if (null == true) return false;
+  if (null_ == true)
+    return false;
   const unsigned char *s = reinterpret_cast<const unsigned char *>(txt_max);
-  for (uint i = 0; i < 8 && i < len; i++)
-    if (((unsigned char *)val)[i + pos] > s[i])
+  for (uint i = 0; i < 8 && i < len_; i++)
+    if (((unsigned char *)val_)[i + pos_] > s[i])
       return false;
-    else if (((unsigned char *)val)[i + pos] < s[i])
+    else if (((unsigned char *)val_)[i + pos_] < s[i])
       return true;
   return true;
 }
 
 bool BString::LessEqThanMaxUTF(const void *txt_max, DTCollation col, bool use_full_len) {
-  if (null == true) return false;
+  if (null_ == true)
+    return false;
   if (RequiresUTFConversions(col)) {
     uint useful_len = 0;
     const char *s = reinterpret_cast<const char *>(txt_max);
@@ -362,84 +378,94 @@ bool BString::LessEqThanMaxUTF(const void *txt_max, DTCollation col, bool use_fu
 
       uint next_char_len, chars_included = 0;
       while (true) {
-        if (useful_len >= len || chars_included == max_charlen) break;
-        next_char_len = col.collation->cset->mbcharlen(col.collation, (uchar)val[useful_len + pos]);
+        if (useful_len >= len_ || chars_included == max_charlen)
+          break;
+        next_char_len = col.collation->cset->mbcharlen(col.collation, (uchar)val_[useful_len + pos_]);
         DEBUG_ASSERT("wide character unrecognized" && next_char_len > 0);
         useful_len += next_char_len;
         chars_included++;
       }
     } else
-      useful_len = len;
-    return col.collation->coll->strnncoll(col.collation, (uchar *)val, useful_len,
+      useful_len = len_;
+    return col.collation->coll->strnncoll(col.collation, (uchar *)val_, useful_len,
                                           reinterpret_cast<const unsigned char *>(txt_max), max_byte_len, 0) <= 0;
   } else
     return LessEqThanMax(txt_max);
 }
 
 bool BString::IsEmpty() const {
-  if (null == true) return false;
-  return len == 0 ? true : false;
+  if (null_ == true)
+    return false;
+  return len_ == 0 ? true : false;
 }
 
-bool BString::IsNullOrEmpty() const { return ((len == 0 || null) ? true : false); }
+bool BString::IsNullOrEmpty() const { return ((len_ == 0 || null_) ? true : false); }
 
 bool BString::operator==(const RCDataType &rcdt) const {
-  if (null || rcdt.IsNull()) return false;
+  if (null_ || rcdt.IsNull())
+    return false;
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) == 0;
   return CompareWith(rcdt.ToBString()) == 0;
 }
 
 bool BString::operator==(const BString &rcs) const {
-  if (null || rcs.IsNull()) return false;
+  if (null_ || rcs.IsNull())
+    return false;
   return CompareWith(rcs) == 0;
 }
 
 bool BString::operator<(const RCDataType &rcdt) const {
-  if (null || rcdt.IsNull()) return false;
+  if (null_ || rcdt.IsNull())
+    return false;
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) < 0;
   return CompareWith(rcdt.ToBString()) < 0;
 }
 
 bool BString::operator>(const RCDataType &rcdt) const {
-  if (null || rcdt.IsNull()) return false;
+  if (null_ || rcdt.IsNull())
+    return false;
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) > 0;
   return CompareWith(rcdt.ToBString()) > 0;
 }
 
 bool BString::operator>=(const RCDataType &rcdt) const {
-  if (null || rcdt.IsNull()) return false;
+  if (null_ || rcdt.IsNull())
+    return false;
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) >= 0;
   return CompareWith(rcdt.ToBString()) >= 0;
 }
 
 bool BString::operator<=(const RCDataType &rcdt) const {
-  if (null || rcdt.IsNull()) return false;
+  if (null_ || rcdt.IsNull())
+    return false;
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) <= 0;
   return CompareWith(rcdt.ToBString()) <= 0;
 }
 
 bool BString::operator!=(const RCDataType &rcdt) const {
-  if (null || rcdt.IsNull()) return true;
+  if (null_ || rcdt.IsNull())
+    return true;
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) != 0;
   return CompareWith(rcdt.ToBString()) != 0;
 }
 
 uint BString::GetHashCode() const {
-  if (null) return 0;
+  if (null_)
+    return 0;
   uint hc = 0;
   int a = 1040021;
-  for (uint i = 0; i < len; i++) hc = (hc * a + val[i]) & 1048575;
+  for (uint i = 0; i < len_; i++) hc = (hc * a + val_[i]) & 1048575;
   return hc;
 }
 
 std::ostream &operator<<(std::ostream &out, const BString &rcbs) {
-  out.write(rcbs.val + rcbs.pos, rcbs.len);
+  out.write(rcbs.val_ + rcbs.pos_, rcbs.len_);
   return out;
 }
 
 void BString::CopyTo(void *dest, size_t count) const {
-  uint l = (len - pos) < count ? (len - pos) : count;
-  std::memcpy(dest, val + pos, l);
+  uint l = (len_ - pos_) < count ? (len_ - pos_) : count;
+  std::memcpy(dest, val_ + pos_, l);
   if (l <= count) std::memset((char *)dest + l, 0, count - l);
 }
 
@@ -453,8 +479,9 @@ size_t BString::RoundUpTo8Bytes(const DTCollation &dt) const {
   if (dt.collation->mbmaxlen > 1) {
     int next_char_len;
     while (true) {
-      if (useful_len >= len) break;
-      next_char_len = dt.collation->cset->mbcharlen(dt.collation, (uchar)val[useful_len + pos]);
+      if (useful_len >= len_)
+        break;
+      next_char_len = dt.collation->cset->mbcharlen(dt.collation, (uchar)val_[useful_len + pos_]);
 
       if (next_char_len == 0) {
         TIANMU_LOG(LogCtl_Level::WARN, "RoundUpTo8Bytes() detect non-UTF8 character");
@@ -466,7 +493,7 @@ size_t BString::RoundUpTo8Bytes(const DTCollation &dt) const {
       useful_len += next_char_len;
     }
   } else
-    useful_len = len > 8 ? 8 : len;
+    useful_len = len_ > 8 ? 8 : len_;
 
   return useful_len;
 }

@@ -28,13 +28,13 @@ template <class T>
 bool DataFilt_RLE<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
   T *data = dataset->data;
   uint nrec = dataset->nrec;
-  ASSERT(MAXBLEN < 65536, "should be 'MAXBLEN < 65536'");
+  ASSERT(MAXBLEN_ < 65536, "should be 'MAXBLEN_ < 65536'");
 
   // use RLE?
-  dict.InitInsert();
+  dict_.InitInsert();
   uint nrep = 0, nsamp = 0;
   for (uint i = 1; i < nrec; i += 5)
-    if (dict.Insert(data[i - 1])) {
+    if (dict_.Insert(data[i - 1])) {
       nsamp++;
       if (data[i] == data[i - 1]) nrep++;
     } else
@@ -43,7 +43,7 @@ bool DataFilt_RLE<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
   ASSERT(nsamp <= 65535, "should be 'nsamp <= 65535'");
   short nkey;
   uint sum2 = 0;
-  auto keys = dict.GetKeys(nkey);
+  auto keys = dict_.GetKeys(nkey);
   for (short k = 0; k < nkey; k++) sum2 += keys[k].count * keys[k].count;
   if (nrep * nsamp < 5 * sum2) return false;
 
@@ -52,30 +52,30 @@ bool DataFilt_RLE<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
   ushort len = 1;
   T last = data[0];
   for (uint i = 1; i < nrec; i++)
-    if ((data[i] == last) && (len < MAXBLEN))
+    if ((data[i] == last) && (len < MAXBLEN_))
       len++;
     else {
       AddLen(len);
       len = 1;
-      last = data[nblk] = data[i];
+      last = data[nblk_] = data[i];
     }
   AddLen(len);
-  dataset->nrec = nblk;
+  dataset->nrec = nblk_;
 
   // save version using 2 bits
   coder->EncodeUniShift((uchar)0, 2);
 
   // calculate and save cum counts
   // TODO: histogram alignment to power of 2
-  lencnt[0] = 0;
+  lencnt_[0] = 0;
   uint bitmax = core::GetBitLen(nrec);
-  for (ushort i = 1; i <= MAXBLEN; i++) coder->EncodeUniShift(lencnt[i] += lencnt[i - 1], bitmax);
-  uint total = lencnt[MAXBLEN];
+  for (ushort i = 1; i <= MAXBLEN_; i++) coder->EncodeUniShift(lencnt_[i] += lencnt_[i - 1], bitmax);
+  uint total = lencnt_[MAXBLEN_];
 
   // encode block lengths
-  for (uint b = 0; b < nblk; b++) {
-    len = lens[b];
-    coder->Encode(lencnt[len - 1], lencnt[len] - lencnt[len - 1],
+  for (uint b = 0; b < nblk_; b++) {
+    len = lens_[b];
+    coder->Encode(lencnt_[len - 1], lencnt_[len] - lencnt_[len - 1],
                   total);  // TODO: EncodeShift
   }
 
@@ -88,38 +88,39 @@ void DataFilt_RLE<T>::Decode(RangeCoder *coder, DataSet<T> *dataset) {
   if (ver > 0) throw CprsErr::CPRS_ERR_COR;
 
   // read cum counts
-  lencnt[0] = 0;
-  merge_nrec = dataset->nrec;
-  uint bitmax = core::GetBitLen(merge_nrec);
-  for (ushort i = 1; i <= MAXBLEN; i++) coder->DecodeUniShift(lencnt[i], bitmax);
-  uint total = lencnt[MAXBLEN];
+  lencnt_[0] = 0;
+  merge_nrec_ = dataset->nrec;
+  uint bitmax = core::GetBitLen(merge_nrec_);
+  for (ushort i = 1; i <= MAXBLEN_; i++) coder->DecodeUniShift(lencnt_[i], bitmax);
+  uint total = lencnt_[MAXBLEN_];
 
   // decode block lengths
-  nblk = 0;
+  nblk_ = 0;
   uint sumlen = 0;
-  while (sumlen < merge_nrec) {
+  while (sumlen < merge_nrec_) {
     uint c = coder->GetCount(total);
     ushort len = 1;
-    while (c >= lencnt[len]) len++;
-    coder->Decode(lencnt[len - 1], lencnt[len] - lencnt[len - 1], total);
-    sumlen += (lens[nblk++] = len);
+    while (c >= lencnt_[len]) len++;
+    coder->Decode(lencnt_[len - 1], lencnt_[len] - lencnt_[len - 1], total);
+    sumlen += (lens_[nblk_++] = len);
   }
-  if (sumlen > merge_nrec) throw CprsErr::CPRS_ERR_COR;
-  dataset->nrec = nblk;
+  if (sumlen > merge_nrec_)
+    throw CprsErr::CPRS_ERR_COR;
+  dataset->nrec = nblk_;
 }
 template <class T>
 void DataFilt_RLE<T>::Merge(DataSet<T> *dataset) {
   T *data = dataset->data;
-  uint nrec = merge_nrec;
-  nblk = dataset->nrec;
-  while (nblk > 0) {
-    T val = data[--nblk];
-    for (ushort i = lens[nblk]; i > 0; i--) {
+  uint nrec = merge_nrec_;
+  nblk_ = dataset->nrec;
+  while (nblk_ > 0) {
+    T val = data[--nblk_];
+    for (ushort i = lens_[nblk_]; i > 0; i--) {
       DEBUG_ASSERT(nrec > 0);
       data[--nrec] = val;
     }
   }
-  dataset->nrec = merge_nrec;
+  dataset->nrec = merge_nrec_;
 }
 
 template <class T>
@@ -147,17 +148,18 @@ bool DataFilt_Min<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
 }
 template <class T>
 void DataFilt_Min<T>::Decode(RangeCoder *coder, DataSet<T> *dataset) {
-  coder->DecodeUniform(minval, dataset->maxval);
-  if (minval == 0) throw CprsErr::CPRS_ERR_COR;
-  dataset->maxval -= minval;
+  coder->DecodeUniform(minval_, dataset->maxval);
+  if (minval_ == 0)
+    throw CprsErr::CPRS_ERR_COR;
+  dataset->maxval -= minval_;
 }
 template <class T>
 void DataFilt_Min<T>::Merge(DataSet<T> *dataset) {
-  ASSERT(minval > 0, "should be 'minval > 0'");
+  ASSERT(minval_ > 0, "should be 'minval_ > 0'");
   T *data = dataset->data;
   uint nrec = dataset->nrec;
-  for (uint i = 0; i < nrec; i++) data[i] += minval;
-  dataset->maxval += minval;
+  for (uint i = 0; i < nrec; i++) data[i] += minval_;
+  dataset->maxval += minval_;
 }
 
 //--------------------------------------------------------------------------------------------
@@ -203,17 +205,18 @@ bool DataFilt_GCD<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
 }
 template <class T>
 void DataFilt_GCD<T>::Decode(RangeCoder *coder, DataSet<T> *dataset) {
-  coder->DecodeUniform(gcd, dataset->maxval);
-  if (gcd <= 1) throw CprsErr::CPRS_ERR_COR;
-  dataset->maxval /= gcd;
+  coder->DecodeUniform(gcd_, dataset->maxval);
+  if (gcd_ <= 1)
+    throw CprsErr::CPRS_ERR_COR;
+  dataset->maxval /= gcd_;
 }
 template <class T>
 void DataFilt_GCD<T>::Merge(DataSet<T> *dataset) {
-  ASSERT(gcd > 1, "should be 'gcd > 1'");
+  ASSERT(gcd_ > 1, "should be 'gcd_ > 1'");
   T *data = dataset->data;
   uint nrec = dataset->nrec;
-  for (uint i = 0; i < nrec; i++) data[i] *= gcd;
-  dataset->maxval *= gcd;
+  for (uint i = 0; i < nrec; i++) data[i] *= gcd_;
+  dataset->maxval *= gcd_;
 }
 
 //--------------------------------------------------------------------------------------------
@@ -222,15 +225,15 @@ template <class T>
 double DataFilt_Diff<T>::Entropy(T *data, uint nrec, [[maybe_unused]] uchar bitdict, uchar bitlow, bool top) {
   uchar mask = ((uchar)1 _SHL_ bitlow) - 1;
   ASSERT(bitlow < sizeof(T) * 8, "should be 'bitlow < sizeof(T)*8'");
-  dict.InitInsert();
+  dict_.InitInsert();
   if (top)
-    for (uint i = 0; i < nrec; i++) dict.Insert((uchar)(data[i] _SHR_ bitlow));
+    for (uint i = 0; i < nrec; i++) dict_.Insert((uchar)(data[i] _SHR_ bitlow));
   else
-    for (uint i = 0; i < nrec; i++) dict.Insert((uchar)data[i] & mask);
+    for (uint i = 0; i < nrec; i++) dict_.Insert((uchar)data[i] & mask);
 
   double len = core::QuickMath::nlog2n(nrec);
   short nkey;
-  auto keys = dict.GetKeys(nkey);
+  auto keys = dict_.GetKeys(nkey);
   for (short k = 0; k < nkey; k++) len -= core::QuickMath::nlog2n(keys[k].count);
   return len;
 }
@@ -238,7 +241,7 @@ template <class T>
 double DataFilt_Diff<T>::Measure(DataSet<T> *dataset, bool diff) {
   T *data = dataset->data;
   uint nrec = dataset->nrec;
-  uint nsamp = (nrec - 1 < MAXSAMP) ? nrec - 1 : MAXSAMP;
+  uint nsamp = (nrec - 1 < MAXSAMP_) ? nrec - 1 : MAXSAMP_;
   uint step = (nrec - 1) / nsamp;
   uint i = 1, j = 0;
 
@@ -246,24 +249,26 @@ double DataFilt_Diff<T>::Measure(DataSet<T> *dataset, bool diff) {
     T maxval1 = dataset->maxval + 1;
     for (; j < nsamp; i += step, j++) {
       DEBUG_ASSERT(i < nrec);
-      if ((sample[j] = data[i] - data[i - 1]) > data[i]) sample[j] += maxval1;
+      if ((sample_[j] = data[i] - data[i - 1]) > data[i])
+        sample_[j] += maxval1;
     }
   } else
     for (; j < nsamp; i += step, j++) {
       DEBUG_ASSERT(i < nrec);
-      sample[j] = data[i];
+      sample_[j] = data[i];
     }
 
-  ASSERT(j <= MAXSAMP, "should be 'j <= MAXSAMP'");
+  ASSERT(j <= MAXSAMP_, "should be 'j <= MAXSAMP_'");
 
   uint nbit = core::GetBitLen(dataset->maxval);
-  if (nbit <= BITDICT) return Entropy(sample, j, nbit, 0, true);
+  if (nbit <= BITDICT_)
+    return Entropy(sample_, j, nbit, 0, true);
 
-  double x = Entropy(sample, j, BITDICT, nbit - BITDICT, true);
-  if (nbit <= 2 * BITDICT)
-    x += Entropy(sample, j, nbit - BITDICT, nbit - BITDICT, false);
+  double x = Entropy(sample_, j, BITDICT_, nbit - BITDICT_, true);
+  if (nbit <= 2 * BITDICT_)
+    x += Entropy(sample_, j, nbit - BITDICT_, nbit - BITDICT_, false);
   else
-    x += Entropy(sample, j, BITDICT, BITDICT, false);
+    x += Entropy(sample_, j, BITDICT_, BITDICT_, false);
   return x;
 }
 

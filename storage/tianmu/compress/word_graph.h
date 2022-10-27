@@ -39,18 +39,18 @@ class WordGraph : public PPMModel {
     int stop;    // no. of occurences of representative of this node as a suffix
                  // (so terminating in this node)
     PNode suf;
-    PEdge edge;  // pointer to the first edge leaving this node (or ENIL if no
+    PEdge edge;  // pointer to the first edge leaving this node (or ENIL_ if no
                  // edge leaves the node)
 
     int count;    // 'stop' is included in 'count'
-    Count total;  // total count for distribution of outgoing edges + ESC
+    Count total;  // total count for distribution of outgoing edges_ + ESC
 
-    // bool istab;		// "edge" points to an array of 256 edges
+    // bool istab;		// "edge" points to an array of 256 edges_
 
 #ifdef SHADOW_EDGES
-    Symb nshadow;  // no. of shadow edges
+    Symb nshadow;  // no. of shadow edges_
     PSEdge sedge;  // first shadow edge
-    Count stotal;  // total count for distribution of shadow edges + ESC
+    Count stotal;  // total count for distribution of shadow edges_ + ESC
 #endif
 
     Node() { std::memset(this, 0, sizeof *this); }
@@ -88,29 +88,29 @@ class WordGraph : public PPMModel {
   };
 #pragma pack(pop)
 
-  static const PNode ROOT1 = 1;
-  static const PNode NIL = 0;
-  static const PEdge ENIL = 0;
-  static const PSEdge SENIL = 0;
+  static const PNode ROOT1_ = 1;
+  static const PNode NIL_ = 0;
+  static const PEdge ENIL_ = 0;
+  static const PSEdge SENIL_ = 0;
 
-  std::vector<Node> nodes;
-  std::vector<Edge> edges;
-  std::vector<PNode> finals;  // list of final nodes
-  std::vector<SEdge> sedges;
+  std::vector<Node> nodes_;
+  std::vector<Edge> edges_;
+  std::vector<PNode> finals_;  // list of final nodes_
+  std::vector<SEdge> sedges_;
 
-  // original string - for reference; this is a pointer to _original_ data, not
+  // original string - for reference; this is a pointer to _original_ data_, not
   // a copy!!!
-  const Symb *data;
-  int dlen;  // length of 'data', INcluding the possible terminating symbol
-             // ('\0')
+  const Symb *data_;
+  int dlen_;  // length of 'data_', INcluding the possible terminating symbol
+              // ('\0')
 
-  PPMParam param;
+  PPMParam param_;
 
   //-------------------------------------------------------------------------
 
-  Node &GN(PNode n) { return nodes[n]; }
-  Edge &GE(PEdge e) { return edges[e]; }
-  SEdge &GSE(PSEdge e) { return sedges[e]; }
+  Node &GN(PNode n) { return nodes_[n]; }
+  Edge &GE(PEdge e) { return edges_[e]; }
+  SEdge &GSE(PSEdge e) { return sedges_[e]; }
   PEdge NxtEdge(PEdge e) { return GE(e).next; }
   PEdge FindEdge(PNode n, Symb s);
   PEdge AddEdge(PNode n, Symb s, int len, bool solid, PNode m);
@@ -118,17 +118,17 @@ class WordGraph : public PPMModel {
   PSEdge FindSEdge(PNode n, Symb s);
 
   PNode NewNode() {
-    int s = (int)nodes.size();
-    nodes.resize(s + 1);
+    int s = (int)nodes_.size();
+    nodes_.resize(s + 1);
     return s;
   }
   PEdge NewEdge() {
-    int s = (int)edges.size();
-    edges.resize(s + 1);
+    int s = (int)edges_.size();
+    edges_.resize(s + 1);
     return s;
   }
-  // PSEdge NewSEdge()		{ int s = (int)sedges.size();
-  // sedges.resize(s+1); return s;
+  // PSEdge NewSEdge()		{ int s = (int)sedges_.size();
+  // sedges_.resize(s+1); return s;
   // }
   PNode NewFinal(int endpos);
 
@@ -144,7 +144,7 @@ class WordGraph : public PPMModel {
   //  (1) { n = x, proj = 0, edge = undefined }
   //  (2) { n = parent_of_x, proj = len_of_edge, edge = edge_to_x }
   // The latter (not fully canonized) is required during duplication, to find
-  // non-solid edges for redirection.
+  // non-solid edges_ for redirection.
   struct Point {
     PNode n;
     uint proj;   // number of symbols passed from 'n' along 'edge'
@@ -173,8 +173,8 @@ class WordGraph : public PPMModel {
   };
 
 #ifdef SHADOW_EDGES
-  int shlen[NSymb];  // used in SetShadow() to store lenghts of edges of the
-                     // longer-suffix node
+  int shlen_[N_Symb_];  // used in SetShadow() to store lenghts of edges_ of the
+                        // longer-suffix node
 #endif
 
   void PropagateStop();
@@ -182,15 +182,15 @@ class WordGraph : public PPMModel {
   // void SortEdges();
   void SetSums();
   void SetShadow(PNode pn);
-  int Shift(int c);  // c - cumulative count of outgoing edges (without ESC and
+  int Shift(int c);  // c - cumulative count of outgoing edges_ (without ESC and
                      // 'stop' of the node)
 
   Count GetEscCount(PNode n, int c = 0);
   Count GetShEscCount(PNode n, int c = 0);
-  // Count GetEscCount(PNode n)	{ DEBUG_ASSERT(n != NIL); return
-  // param.esc_count; }
-  // Count GetShEscCount(PNode n)	{ DEBUG_ASSERT(n != NIL); return
-  // param.esc_count; }
+  // Count GetEscCount(PNode n)	{ DEBUG_ASSERT(n != NIL_); return
+  // param_.esc_count; }
+  // Count GetShEscCount(PNode n)	{ DEBUG_ASSERT(n != NIL_); return
+  // param_.esc_count; }
 
   //-------------------------------------------------------------------------
   // PPM compression/decompression
@@ -202,47 +202,47 @@ class WordGraph : public PPMModel {
 #endif
 
   // if the last transition was forward or the last node doesn't have shadow
-  // edges, prev == NIL; otherwise it's the previous node
+  // edges_, prev == NIL_; otherwise it's the previous node
   struct State {
     bool lastesc;  // the last transition was ESC
     PNode prev, n;
   };
-  State state;
-  // PNode state;
+  State state_;
+  // PNode state_;
 
-  // when "escape", e := ENIL
+  // when "escape", e := ENIL_
   void FindEdge(PEdge &e, PSEdge &se, Symb *str, int len);  // compression
   void FindEdge(PEdge &e, PSEdge &se, Count c);             // decompression
 
   CprsErr GetLabel(PEdge e, Symb *lbl,
                    int &len);  // 'len' - max size of lbl; upon exit: length of lbl
   void GetRange(PEdge e, PSEdge se,
-                Range &r);  // 'e' must be an edge of the 'state'; 'se' is
-                            // shadow of 'e' or SENIL
+                Range &r);  // 'e' must be an edge of the 'state_'; 'se' is
+                            // shadow of 'e' or SENIL_
 
 #ifdef SHADOW_EDGES
-  Count GetTotal_() { return state.prev == NIL ? GN(state.n).total : GN(state.prev).stotal; }
+  Count GetTotal_() { return state_.prev == NIL_ ? GN(state_.n).total : GN(state_.prev).stotal; }
 #else
-  Count GetTotal_() { return GN(state.n).total; }
+  Count GetTotal_() { return GN(state_.n).total; }
 #endif
 
   void Move(PEdge e);
-  void MakeLog(PNode stt, PEdge e);  // print into 'logfile' information about
-                                     // current state and transition
+  void MakeLog(PNode stt, PEdge e);  // print into 'log_file_' information about
+                                     // current state_ and transition
 
   //-----------------------------------------------------------------------------
  public:
   // CAUTION: the 'data_' array is NOT physically copied, only its pointer.
-  // So the data must not change outside this class during lifetime of this
+  // So the data_ must not change outside this class during lifetime of this
   // object.
   WordGraph(const Symb *data_, int dlen_ = -1, bool insatend_ = true);
   virtual ~WordGraph() { Clear(); }
-  bool insatend;  // insert new child at the end of the children list?
+  bool insatend_;  // insert new child at the end of the children list?
 
   //-------------------------------------------------------------------------
   // information and statistics
 
-  int GetNNodes() override { return (int)nodes.size(); }
+  int GetNNodes() override { return (int)nodes_.size(); }
   void PrintStat(FILE *f) override;
   int GetMemUsage() override;  // real number of bytes used, without wasted space in 'vector'
   int GetMemAlloc() override;  // total number of bytes used

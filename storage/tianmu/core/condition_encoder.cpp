@@ -374,7 +374,7 @@ void ConditionEncoder::TransformLIKEsPattern() {
   desc->val1.vc->GetValueString(pattern, mit);
   uint min_len = 0;
   bool esc = false;
-  for (uint i = 0; i < pattern.len; i++) {
+  for (uint i = 0; i < pattern.len_; i++) {
     if (pattern[i] != '%')
       min_len++;
     else
@@ -422,7 +422,7 @@ void ConditionEncoder::TransformLIKEsIntoINsOnLookup() {
     int res;
     if (types::RequiresUTFConversions(desc->GetCollation())) {
       types::BString s = attr->GetRealString(i);
-      res = !common::wildcmp(desc->GetCollation(), s.val, s.val + s.len, pattern.val, pattern.val + pattern.len,
+      res = !common::wildcmp(desc->GetCollation(), s.val_, s.val_ + s.len_, pattern.val_, pattern.val_ + pattern.len_,
                              desc->like_esc, '_', '%');
     } else
       res = attr->GetRealString(i).Like(pattern, desc->like_esc);

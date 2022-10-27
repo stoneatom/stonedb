@@ -408,7 +408,7 @@ void RCAttr::EvaluatePack_Like(MIUpdatingIterator &mit, int dim, Descriptor &d) 
   types::BString pattern;
   d.val1.vc->GetValueString(pattern, mit);
   size_t min_len = 0;  // the number of fixed characters
-  for (uint i = 0; i < pattern.len; i++) {
+  for (uint i = 0; i < pattern.len_; i++) {
     if (pattern[i] != '%')
       min_len++;
     if (pattern[i] == d.like_esc) {  // disable optimization, escape character
@@ -482,7 +482,7 @@ void RCAttr::EvaluatePack_Like_UTF(MIUpdatingIterator &mit, int dim, Descriptor 
   types::BString pattern;
   d.val1.vc->GetValueString(pattern, mit);
   size_t min_len = 0;  // the number of fixed characters
-  for (uint i = 0; i < pattern.len; i++)
+  for (uint i = 0; i < pattern.len_; i++)
     if (pattern[i] != '%')
       min_len++;
   std::unordered_set<uint16_t> possible_ids;
@@ -522,8 +522,8 @@ void RCAttr::EvaluatePack_Like_UTF(MIUpdatingIterator &mit, int dim, Descriptor 
         res = false;
       else {
         v.MakePersistent();
-        int x = common::wildcmp(d.GetCollation(), v.val, v.val + v.len, pattern.val, pattern.val + pattern.len, '\\',
-                                '_', '%');
+        int x = common::wildcmp(d.GetCollation(), v.val_, v.val_ + v.len_, pattern.val_, pattern.val_ + pattern.len_,
+                                '\\', '_', '%');
         res = (x == 0 ? true : false);
       }
       if (d.op == common::Operator::O_NOT_LIKE)
@@ -604,8 +604,8 @@ void RCAttr::EvaluatePack_InString_UTF(MIUpdatingIterator &mit, int dim, Descrip
       types::BString vt(p->GetValueBinary(inpack));  //, true
       if (arraysize > 0 && arraysize < 10) {
         for (auto &it : d.val1.cond_value) {
-          if (coll.collation->coll->strnncoll(coll.collation, (const uchar *)it.val, it.len, (const uchar *)vt.val,
-                                              vt.len, 0) == 0) {
+          if (coll.collation->coll->strnncoll(coll.collation, (const uchar *)it.val_, it.len_, (const uchar *)vt.val_,
+                                              vt.len_, 0) == 0) {
             res = true;
             break;
           }

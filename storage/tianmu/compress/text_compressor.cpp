@@ -45,44 +45,44 @@ namespace compress {
 // buffer
 //
 
-TextCompressor::TextCompressor() : BLD_START(0), BLD_RATIO(0.0), graph() {}
+TextCompressor::TextCompressor() : BLD_START_(0), BLD_RATIO_(0.0), graph_() {}
 
 void TextCompressor::SetSplit(int len) {
   DEBUG_ASSERT(len > 0);
-  DEBUG_ASSERT(BLD_RATIO > 1.01);
-  double ratio = len / (double)BLD_START;
+  DEBUG_ASSERT(BLD_RATIO_ > 1.01);
+  double ratio = len / (double)BLD_START_;
   if (ratio < 1.0) ratio = 1.0;
 
-  int n = (int)(log(ratio) / log(BLD_RATIO)) + 1;  // no. of models (rounded downwards)
+  int n = (int)(log(ratio) / log(BLD_RATIO_)) + 1;  // no. of models (rounded downwards)
   if (n < 1) n = 1;
 
   double bld_ratio = 0.0;
   if (n > 1) bld_ratio = pow(ratio, 1.0 / (n - 1));  // quotient of 2 consecutive splits
 
-  split.resize(n + 1);
-  split[0] = 0;
-  double next = BLD_START;
+  split_.resize(n + 1);
+  split_[0] = 0;
+  double next = BLD_START_;
   for (int i = 1; i < n; i++) {
-    split[i] = (int)next;
-    DEBUG_ASSERT(split[i] > split[i - 1]);
+    split_[i] = (int)next;
+    DEBUG_ASSERT(split_[i] > split_[i - 1]);
     next *= bld_ratio;
   }
-  split[n] = len;
-  DEBUG_ASSERT(split[n] > split[n - 1]);
+  split_[n] = len;
+  DEBUG_ASSERT(split_[n] > split_[n - 1]);
 }
 
 void TextCompressor::SetParams(PPMParam &p, int ver, [[maybe_unused]] int lev, int len) {
   p.SetDefault();
-  BLD_START = 64;
+  BLD_START_ = 64;
 
   switch (ver) {
     case 1:
       p.esc_count = 25;
-      BLD_RATIO = 2.5;
+      BLD_RATIO_ = 2.5;
       break;
     case 2:
       p.esc_count = 70;
-      BLD_RATIO = 2.0;
+      BLD_RATIO_ = 2.0;
       break;
     default:
       TIANMU_ERROR("not implemented");
@@ -145,7 +145,7 @@ CprsErr TextCompressor::CompressPlain(char *dest, int &dlen, char *src, int slen
     SetParams(param, ver, lev, slen);
 
     // leave place in 'dest' for the array of 'dpos' of data parts
-    int n = (int)split.size() - 1;
+    int n = (int)split_.size() - 1;
     int *dpos_tab = (int *)(dest + dpos);
     dpos += n * sizeof(int);
 
@@ -153,9 +153,9 @@ CprsErr TextCompressor::CompressPlain(char *dest, int &dlen, char *src, int slen
 
     // loop: build next PPM model, compress next part of the data
     for (int i = 0; i < n; i++) {
-      PPM ppm((uchar *)src, split[i], mt, param);
+      PPM ppm((uchar *)src, split_[i], mt, param);
       clen = dlen - dpos;
-      err = ppm.Compress(dest + dpos, clen, (uchar *)src + split[i], split[i + 1] - split[i]);
+      err = ppm.Compress(dest + dpos, clen, (uchar *)src + split_[i], split_[i + 1] - split_[i]);
       if (static_cast<int>(err)) break;
 
       dpos_tab[i] = dpos;
@@ -189,7 +189,7 @@ CprsErr TextCompressor::DecompressPlain(char *dest, int dlen, char *src, int sle
 
   PPMParam param;
   SetParams(param, ver, lev, dlen);
-  int n = (int)split.size() - 1;
+  int n = (int)split_.size() - 1;
 
   // read array of parts' positions in 'src'
   std::vector<int> parts;
@@ -203,8 +203,8 @@ CprsErr TextCompressor::DecompressPlain(char *dest, int dlen, char *src, int sle
 
   // loop: build next PPM model, decompress next part of the data
   for (int i = 0; i < n; i++) {
-    PPM ppm((uchar *)dest, split[i], mt, param, (uchar)src[parts[i]]);
-    err = ppm.Decompress((uchar *)dest + split[i], split[i + 1] - split[i], src + parts[i], parts[i + 1] - parts[i]);
+    PPM ppm((uchar *)dest, split_[i], mt, param, (uchar)src[parts[i]]);
+    err = ppm.Decompress((uchar *)dest + split_[i], split_[i + 1] - split_[i], src + parts[i], parts[i + 1] - parts[i]);
     if (static_cast<int>(err)) return err;
   }
 
@@ -456,7 +456,8 @@ CprsErr TextCompressor::DecompressZlib(char *dest, int dlen, char *src, int slen
 CprsErr TextCompressor::Compress(char *dest, int &dlen, char **index, const uint *lens, int nrec, uint &packlen,
                                  int ver, int lev) {
   if ((!dest) || (!index) || (!lens) || (dlen <= 0) || (nrec <= 0)) return CprsErr::CPRS_ERR_PAR;
-  if ((ver < 0) || (ver > MAXVER) || (lev < 1) || (lev > 9)) return CprsErr::CPRS_ERR_VER;
+  if ((ver < 0) || (ver > MAXVER_) || (lev < 1) || (lev > 9))
+    return CprsErr::CPRS_ERR_VER;
 
   int slen = packlen;
 
@@ -492,7 +493,7 @@ CprsErr TextCompressor::Compress(char *dest, int &dlen, char **index, const uint
   try {
     RangeCoder coder;
     coder.InitCompress(dest, dlen, dpos);
-    graph.Encode(&coder, index, lens, nrec, packlen);
+    graph_.Encode(&coder, index, lens, nrec, packlen);
     coder.EndCompress();
     dpos = coder.GetPos();
   } catch (CprsErr &e) {
@@ -547,7 +548,7 @@ CprsErr TextCompressor::Decompress(char *dest, int dlen, char *src, int slen, ch
   try {
     RangeCoder coder;
     coder.InitDecompress(src, slen, spos);
-    graph.Decode(&coder, index, lens, nrec, dest, dlen);
+    graph_.Decode(&coder, index, lens, nrec, dest, dlen);
   } catch (CprsErr &e) {
     return e;
   }
