@@ -1,0 +1,49 @@
+#
+# LEFT() function
+# Author: syw
+#
+DROP DATABASE IF EXISTS left_function;
+CREATE DATABASE left_function;
+USE left_function;
+CREATE TABLE t1 (a INT, b CHAR(15))ENGINE=tianmu;
+INSERT INTO t1 VALUES (NULL, ''),(1, 'tianmu22222'),(2, 'tianmu'),(3, 'Innodb');
+SELECT LEFT('tianmu22222 cs', 7) FROM t1 LIMIT 1;
+LEFT('tianmu22222 cs', 7)
+tianmu2
+SELECT LEFT('tianmu22222 cs', 8) FROM t1 LIMIT 1;
+LEFT('tianmu22222 cs', 8)
+tianmu22
+SELECT LEFT('tianmu22222 cs', 9) FROM t1 LIMIT 1;
+LEFT('tianmu22222 cs', 9)
+tianmu222
+SELECT b, LEFT(b, 0) FROM t1 ORDER BY 1;
+b	LEFT(b, 0)
+	
+Innodb	
+tianmu	
+tianmu22222	
+SELECT b, LEFT(b, -1) FROM t1 ORDER BY 1;
+b	LEFT(b, -1)
+	
+Innodb	
+tianmu	
+tianmu22222	
+SELECT b, LEFT(b, 6) FROM t1 ORDER BY 1;
+b	LEFT(b, 6)
+	
+Innodb	Innodb
+tianmu	tianmu
+tianmu22222	tianmu
+SELECT b, LEFT(b, 9) FROM t1 ORDER BY 1;
+b	LEFT(b, 9)
+	
+Innodb	Innodb
+tianmu	tianmu
+tianmu22222	tianmu222
+SELECT b, LEFT(concat('mmm_', b), 10) FROM t1 ORDER BY 1;
+b	LEFT(concat('mmm_', b), 10)
+	mmm_
+Innodb	mmm_Innodb
+tianmu	mmm_tianmu
+tianmu22222	mmm_tianmu
+DROP DATABASE left_function;
