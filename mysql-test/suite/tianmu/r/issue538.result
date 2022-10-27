@@ -1,0 +1,58 @@
+#
+# issue 538 test for user defined function of tianmu
+#
+use test;
+DROP TABLE IF EXISTS employees;
+CREATE TABLE `employees` (
+`employee_id` int(11) NOT NULL ,
+`employee_name` varchar(50) NOT NULL,
+`employee_sex` varchar(10) DEFAULT 'men',
+`hire_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+`employee_mgr` int(11) DEFAULT NULL,
+`employee_salary` float DEFAULT '3000',
+`department_id` int(11) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+DROP FUNCTION IF EXISTS get_value;
+CREATE FUNCTION get_value(id INT) RETURNS VARCHAR(300) 
+RETURN (SELECT CONCAT('employee name:',employee_name,'---','salary: ',employee_salary) FROM employees WHERE employee_id=id);
+SELECT
+a.employee_id,
+get_value(b.employee_id)
+FROM
+employees a
+LEFT JOIN employees b ON
+a.employee_id = b.employee_id
+and b.employee_name = 'David Tian';
+employee_id	get_value(b.employee_id)
+1	employee name:David Tian---salary: 7500
+2	NULL
+3	NULL
+4	NULL
+5	NULL
+SELECT get_value(1);
+get_value(1)
+employee name:David Tian---salary: 7500
+SELECT get_value(1),get_value(1);
+get_value(1)	get_value(1)
+employee name:David Tian---salary: 7500	employee name:David Tian---salary: 7500
+SELECT get_value(1),get_value(1),get_value(1);
+get_value(1)	get_value(1)	get_value(1)
+employee name:David Tian---salary: 7500	employee name:David Tian---salary: 7500	employee name:David Tian---salary: 7500
+SELECT 1,get_value(1);
+1	get_value(1)
+1	employee name:David Tian---salary: 7500
+SELECT 1,2,get_value(1);
+1	2	get_value(1)
+1	2	employee name:David Tian---salary: 7500
+DROP TABLE employees;
+DROP FUNCTION get_value;
+DROP TABLE IF EXISTS tf;
+CREATE TABLE tf (a int) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+DROP FUNCTION IF EXISTS sfunc;
+CREATE FUNCTION sfunc (a int) RETURNS int RETURN (a+1);
+INSERT tf VALUES(1);
+SELECT sfunc(2);
+sfunc(2)
+3
+DROP TABLE tf;
+DROP FUNCTION sfunc;

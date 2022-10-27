@@ -142,27 +142,31 @@ void Item_tianmufield::FeedValue() {
 
 double Item_tianmufield::val_real() {
   // DBUG_ASSERT(fixed == 1);
-  if ((null_value = buf->null)) return 0.0;
+  if ((null_value = buf->null))
+    return 0.0;
   FeedValue();
   return ivalue->val_real();
 }
 
 longlong Item_tianmufield::val_int() {
   // DBUG_ASSERT(fixed == 1);
-  if ((null_value = buf->null)) return 0;
+  if ((null_value = buf->null))
+    return 0;
   FeedValue();
   return ivalue->val_int();
 }
 
 my_decimal *Item_tianmufield::val_decimal(my_decimal *decimal_value) {
-  if ((null_value = buf->null)) return 0;
+  if ((null_value = buf->null))
+    return 0;
   FeedValue();
   return ivalue->val_decimal(decimal_value);
 }
 
 String *Item_tianmufield::val_str(String *str) {
   // DBUG_ASSERT(fixed == 1);
-  if ((null_value = buf->null)) return 0;
+  if ((null_value = buf->null))
+    return 0;
   // acceleration
   if (tianmu_type.valtype == DataType::ValueType::VT_STRING) {
     str->copy(buf->sp, buf->len, ifield->collation.collation);
@@ -183,21 +187,46 @@ bool Item_tianmufield::get_date(MYSQL_TIME *ltime, uint fuzzydate) {
 }
 
 bool Item_tianmufield::get_time(MYSQL_TIME *ltime) {
-  if ((null_value = buf->null) || ((tianmu_type.attrtype == common::CT::DATETIME || tianmu_type.attrtype == common::CT::DATE) &&
-                                   buf->x == 0))  // zero date is illegal
-    return 1;                                     // like in Item_field::get_time - return 1 on null value.
+  if ((null_value = buf->null) ||
+      ((tianmu_type.attrtype == common::CT::DATETIME || tianmu_type.attrtype == common::CT::DATE) &&
+       buf->x == 0))  // zero date is illegal
+    return 1;         // like in Item_field::get_time - return 1 on null value.
   FeedValue();
   return ivalue->get_time(ltime);
 }
 
 bool Item_tianmufield::get_timeval(struct timeval *tm, int *warnings) {
   MYSQL_TIME ltime;
-  if (get_time(&ltime)) return true;
-  if (datetime_to_timeval(current_thd, &ltime, tm, warnings)) return true;
+  if (get_time(&ltime))
+    return true;
+  if (datetime_to_timeval(current_thd, &ltime, tm, warnings))
+    return true;
   return false;
 }
 
 bool Item_tianmufield::operator==(Item_tianmufield const &o) const { return (varID == o.varID); }
+
+type_conversion_status Item_tianmufield::save_in_field_inner(Field *to, bool no_conversions) {
+  type_conversion_status res;
+  if ((null_value = buf->null)) {
+    null_value = 1;
+    return set_field_to_null_with_conversions(to, no_conversions);
+  }
+
+  null_value = 0;
+  to->set_notnull();
+
+  Field *from = ifield->result_field;
+  assert(from && from->table && from->table->write_set);
+
+  if (!bitmap_is_set(from->table->write_set, from->field_index)) {
+    bitmap_set_bit(from->table->write_set, from->field_index);
+  }
+
+  FeedValue();
+  ivalue->save_org_in_field(from);
+  return field_conv(to, from);
+}
 
 Item_tianmudecimal::Item_tianmudecimal(DataType t) : Item_decimal(0, false) {
   scale = t.fixscale;

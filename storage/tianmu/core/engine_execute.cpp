@@ -367,6 +367,23 @@ int Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_
     return RETURN_QUERY_TO_MYSQL_ROUTE;
   }
 
+  if (!selects_list->table_list.elements) {
+    if (!selects_list->fields_list.elements) {
+      throw ReturnMeToMySQLWithError();
+    }
+
+    List_iterator_fast<Item> li(selects_list->fields_list);
+    for (Item *item = li++; item; item = li++) {
+      if ((item->type() == Item::Type::FUNC_ITEM) &&
+          (down_cast<Item_func *>(item)->functype() == Item_func::Functype::FUNC_SP)) {
+        selects_list->set_query_result(result_output);
+        JOIN *join = selects_list->join ? selects_list->join : new (thd->mem_root) JOIN(thd, selects_list);
+        join->exec();
+        return RCBASE_QUERY_ROUTE;
+      }
+    }
+  }
+
   Query query(current_txn_);
   CompiledQuery cqu;
 
