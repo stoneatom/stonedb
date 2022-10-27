@@ -164,24 +164,24 @@ class TianmuHandler final : public handler {
   int fill_row(uchar *buf);
   int free_share();
 
-  std::shared_ptr<core::TableShare> share;
+  std::shared_ptr<core::TableShare> share_;
 
-  THR_LOCK_DATA m_lock; /* MySQL lock */
-  std::string m_table_name;
-  uint m_dupkey_pos = -1;
+  THR_LOCK_DATA lock_; /* MySQL lock */
+  std::string table_name_;
+  uint dupkey_pos_ = 0;
 
-  core::JustATable *table_ptr = nullptr;
-  std::unique_ptr<core::Filter> filter_ptr;
-  uint64_t current_position;
+  core::JustATable *table_ptr_ = nullptr;
+  std::unique_ptr<core::Filter> filter_ptr_;
+  uint64_t current_position_ = 0;
 
-  core::RCTable::Iterator table_new_iter;
-  core::RCTable::Iterator table_new_iter_end;
+  core::RCTable::Iterator table_new_iter_;
+  core::RCTable::Iterator table_new_iter_end_;
 
-  std::unique_ptr<core::Query> m_query;
-  core::TabID m_tmp_table;
-  std::unique_ptr<core::CompiledQuery> m_cq;
-  bool m_result = false;
-  std::vector<std::vector<uchar>> blob_buffers;
+  std::unique_ptr<core::Query> query_;
+  core::TabID tmp_table_;
+  std::unique_ptr<core::CompiledQuery> cq_;
+  bool result_ = false;
+  std::vector<std::vector<uchar>> blob_buffers_;
 };
 
 }  // namespace dbhandler
