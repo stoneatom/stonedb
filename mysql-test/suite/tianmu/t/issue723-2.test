@@ -6,7 +6,7 @@ insert into t1 values(1,1);
 insert into t1 values(2,2);
 insert into t1 values(3,3);
 insert into t1 values(4,4);
-sleep 1;
+sleep 5;
 --replace_column 6 #
 show binlog events;
 drop table t1;

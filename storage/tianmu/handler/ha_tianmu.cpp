@@ -74,14 +74,16 @@ const Alter_inplace_info::HA_ALTER_FLAGS ha_tianmu::TIANMU_SUPPORTED_ALTER_COLUM
 
 bool rcbase_query_caching_of_table_permitted(THD *thd, [[maybe_unused]] char *full_name,
                                              [[maybe_unused]] uint full_name_len, [[maybe_unused]] ulonglong *unused) {
-  if (!thd_test_options(thd, (OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN))) return ((bool)true);
+  if (!thd_test_options(thd, (OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN)))
+    return ((bool)true);
   return ((bool)false);
 }
 
 static core::Value GetValueFromField(Field *f) {
   core::Value v;
 
-  if (f->is_null()) return v;
+  if (f->is_null())
+    return v;
 
   switch (f->type()) {
     case MYSQL_TYPE_TINY:
@@ -234,7 +236,8 @@ THR_LOCK_DATA **ha_tianmu::store_lock(THD *thd, THR_LOCK_DATA **to, enum thr_loc
       lock_type = TL_WRITE_CONCURRENT_INSERT;
   }
 
-  if (lock_type != TL_IGNORE && m_lock.type == TL_UNLOCK) m_lock.type = lock_type;
+  if (lock_type != TL_IGNORE && m_lock.type == TL_UNLOCK)
+    m_lock.type = lock_type;
   *to++ = &m_lock;
   return to;
 }
@@ -259,15 +262,19 @@ int ha_tianmu::external_lock(THD *thd, int lock_type) {
   // rclog << lock << "external lock table " << m_table_name << " type: " <<
   // ss[lock_type] << " command: " << thd->lex->sql_command << unlock;
 
-  if (thd->lex->sql_command == SQLCOM_LOCK_TABLES) DBUG_RETURN(HA_ERR_WRONG_COMMAND);
+  if (thd->lex->sql_command == SQLCOM_LOCK_TABLES)
+    DBUG_RETURN(HA_ERR_WRONG_COMMAND);
 
-  if (is_delay_insert(thd) && lock_type == F_WRLCK) DBUG_RETURN(0);
+  if (is_delay_insert(thd) && lock_type == F_WRLCK)
+    DBUG_RETURN(0);
 
   try {
     if (lock_type == F_UNLCK) {
-      if (thd->lex->sql_command == SQLCOM_UNLOCK_TABLES) current_txn_->ExplicitUnlockTables();
+      if (thd->lex->sql_command == SQLCOM_UNLOCK_TABLES)
+        current_txn_->ExplicitUnlockTables();
 
-      if (thd->killed) ha_rcengine_->Rollback(thd, true);
+      if (thd->killed)
+        ha_rcengine_->Rollback(thd, true);
       if (current_txn_) {
         current_txn_->RemoveTable(share);
         if (current_txn_->Empty()) {
@@ -276,7 +283,8 @@ int ha_tianmu::external_lock(THD *thd, int lock_type) {
       }
     } else {
       auto tx = ha_rcengine_->GetTx(thd);
-      if (thd->lex->sql_command == SQLCOM_LOCK_TABLES) tx->ExplicitLockTables();
+      if (thd->lex->sql_command == SQLCOM_LOCK_TABLES)
+        tx->ExplicitLockTables();
 
       if (lock_type == F_RDLCK) {
         tx->AddTableRD(share);
@@ -297,7 +305,8 @@ int ha_tianmu::external_lock(THD *thd, int lock_type) {
   }
 
   // destroy the tx on failure
-  if (ret != 0) ha_rcengine_->ClearTx(thd);
+  if (ret != 0)
+    ha_rcengine_->ClearTx(thd);
 
   DBUG_RETURN(ret);
 }
@@ -647,9 +656,11 @@ int ha_tianmu::info(uint flag) {
       }
     }
 
-    if (flag & HA_STATUS_CONST) stats.create_time = share->GetCreateTime();
+    if (flag & HA_STATUS_CONST)
+      stats.create_time = share->GetCreateTime();
 
-    if (flag & HA_STATUS_TIME) stats.update_time = share->GetUpdateTime();
+    if (flag & HA_STATUS_TIME)
+      stats.update_time = share->GetUpdateTime();
 
     if (flag & HA_STATUS_ERRKEY) {
       errkey = 0;  // TODO: for now only support one pk index
@@ -693,12 +704,14 @@ int ha_tianmu::open(const char *name, [[maybe_unused]] int mode, [[maybe_unused]
     // Keeping the share together with mysql handler cache makes
     // more sense that would mean once a table is opened the TableShare
     // would be kept.
-    if (!(share = ha_rcengine_->GetTableShare(table_share))) DBUG_RETURN(ret);
+    if (!(share = ha_rcengine_->GetTableShare(table_share)))
+      DBUG_RETURN(ret);
 
     thr_lock_data_init(&share->thr_lock, &m_lock, nullptr);
     share->thr_lock.check_status = tianmu_check_status;
     // have primary key, use table index
-    if (table->s->primary_key != MAX_INDEXES) ha_rcengine_->AddTableIndex(name, table, ha_thd());
+    if (table->s->primary_key != MAX_INDEXES)
+      ha_rcengine_->AddTableIndex(name, table, ha_thd());
     ha_rcengine_->AddMemTable(table, share);
     ret = 0;
   } catch (common::Exception &e) {
@@ -980,7 +993,8 @@ int ha_tianmu::rnd_init(bool scan) {
     }
     ret = 0;
     blob_buffers.resize(0);
-    if (table_ptr != nullptr) blob_buffers.resize(table_ptr->NumOfDisplaybleAttrs());
+    if (table_ptr != nullptr)
+      blob_buffers.resize(table_ptr->NumOfDisplaybleAttrs());
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -1242,7 +1256,8 @@ int ha_tianmu::truncate(dd::Table *table_def) {  // stonedb8 TODO
 }
 
 int ha_tianmu::fill_row(uchar *buf) {
-  if (table_new_iter == table_new_iter_end) return HA_ERR_END_OF_FILE;
+  if (table_new_iter == table_new_iter_end)
+    return HA_ERR_END_OF_FILE;
 
   my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->write_set);
 
@@ -1522,12 +1537,14 @@ bool ha_tianmu::commit_inplace_alter_table(TABLE *altered_table [[maybe_unused]]
     std::unordered_set<std::string> s;
     for (auto &it : fs::directory_iterator(tab_dir / common::COLUMN_DIR)) {
       auto target = fs::read_symlink(it.path()).string();
-      if (!target.empty()) s.insert(target);
+      if (!target.empty())
+        s.insert(target);
     }
 
     for (auto &it : fs::directory_iterator(bak_dir / common::COLUMN_DIR)) {
       auto target = fs::read_symlink(it.path()).string();
-      if (target.empty()) continue;
+      if (target.empty())
+        continue;
       auto search = s.find(target);
       if (search == s.end()) {
         fs::remove_all(target);
@@ -1859,11 +1876,27 @@ int rcbase_init_func(void *p) {
     log_setup(log_file + "/log/tianmu.log");
     rc_control_.addOutput(new system::FileOut(log_file + "/log/trace.log"));
     rc_querylog_.addOutput(new system::FileOut(log_file + "/log/query.log"));
-    struct hostent *hent = nullptr;
-    hent = gethostbyname(glob_hostname);
-    if (hent) strmov_str(global_hostIP_, inet_ntoa(*(struct in_addr *)(hent->h_addr_list[0])));
+
+    // replace function gethostbyname,which is thread-unsafe
+    addrinfo ai_hints;
+    addrinfo *addr_info_list = nullptr;
+    memset(&ai_hints, 0, sizeof(addrinfo));
+    ai_hints.ai_family = AF_UNSPEC;
+    ai_hints.ai_socktype = SOCK_STREAM;
+    ai_hints.ai_protocol = IPPROTO_TCP;
+
+    int error_code = getaddrinfo(glob_hostname, NULL, &ai_hints, &addr_info_list);
+    if (error_code != 0) {
+      throw common::Exception("failed to get getaddrinfo of " + std::string(gai_strerror(error_code)));
+    }
+    struct sockaddr_in in = *(struct sockaddr_in *)addr_info_list->ai_addr;
+    strmov_str(global_hostIP_, inet_ntoa(in.sin_addr));
+
     snprintf(global_serverinfo_, sizeof(global_serverinfo_), "\tServerIp:%s\tServerHostName:%s\tServerPort:%d",
              global_hostIP_, glob_hostname, mysqld_port);
+    freeaddrinfo(addr_info_list);
+
+    // kv related
     ha_kvstore_ = new index::KVStore();
     ha_kvstore_->Init();
     ha_rcengine_ = new core::Engine();
