@@ -21,56 +21,56 @@ namespace Tianmu {
 namespace compress {
 
 IncAlloc::IncAlloc(uint fsize) {
-  blk = 0;
-  used = 0;
-  firstsize = fsize;
+  blk_ = 0;
+  used_ = 0;
+  firstsize_ = fsize;
 }
 
 void IncAlloc::freeall() {
-  blk = 0;
-  used = 0;
+  blk_ = 0;
+  used_ = 0;
   clearfrag();
 }
 
 void IncAlloc::clear() {
-  blk = 0;
-  used = 0;
-  while (!blocks.empty()) {
-    delete[] (char *)(blocks.back().mem);
-    blocks.pop_back();
+  blk_ = 0;
+  used_ = 0;
+  while (!blocks_.empty()) {
+    delete[](char *)(blocks_.back().mem);
+    blocks_.pop_back();
   }
   clearfrag();
 }
 
 void IncAlloc::clearfrag() {
-  for (uint i = 0; i <= MAXFRAGSIZE; i++) frags[i].clear();
+  for (uint i = 0; i <= MAX_FRAG_SIZE_; i++) frags_[i].clear();
 }
 
 void *IncAlloc::_alloc_search(uint size) {
   // find a block with enough space
-  while ((blk < blocks.size()) && (blocks[blk].size < used + size)) {
-    blk++;
-    used = 0;
+  while ((blk_ < blocks_.size()) && (blocks_[blk_].size < used_ + size)) {
+    blk_++;
+    used_ = 0;
   }
-  if (blk < blocks.size()) {
-    void *mem = (char *)blocks[blk].mem + used;
-    used += size;
+  if (blk_ < blocks_.size()) {
+    void *mem = (char *)blocks_[blk_].mem + used_;
+    used_ += size;
     return mem;
   }
 
   // allocate a new block
-  DEBUG_ASSERT(blk == blocks.size());
-  uint bsize = firstsize;
-  if (blk > 0) {
-    bsize = (uint)(blocks[blk - 1].size * GROWSIZE + ROUNDUP) / ROUNDUP * ROUNDUP;
-    DEBUG_ASSERT(bsize > blocks[blk - 1].size);
+  DEBUG_ASSERT(blk_ == blocks_.size());
+  uint bsize = firstsize_;
+  if (blk_ > 0) {
+    bsize = (uint)(blocks_[blk_ - 1].size * GROW_SIZE_ + ROUNDUP_) / ROUNDUP_ * ROUNDUP_;
+    DEBUG_ASSERT(bsize > blocks_[blk_ - 1].size);
     if (bsize < size) bsize = size;
   }
   void *mem = new char[bsize];
   if (!mem) throw CprsErr::CPRS_ERR_MEM;
 
-  blocks.push_back(Block(mem, bsize));
-  used = size;
+  blocks_.push_back(Block(mem, bsize));
+  used_ = size;
 
   return mem;
 }
@@ -80,10 +80,10 @@ void IncAlloc::GetMemUsg(uint &memblock, uint &memalloc, uint &memused) {
   memalloc = 0;
   uint memfree = 0;
   uint i;
-  for (i = 0; i < blocks.size(); i++) memblock += blocks[i].size;
-  for (i = 0; i < blk; i++) memalloc += blocks[i].size;
-  memalloc += used;
-  for (i = 1; i <= MAXFRAGSIZE; i++) memfree += uint(i * frags[i].size());
+  for (i = 0; i < blocks_.size(); i++) memblock += blocks_[i].size;
+  for (i = 0; i < blk_; i++) memalloc += blocks_[i].size;
+  memalloc += used_;
+  for (i = 1; i <= MAX_FRAG_SIZE_; i++) memfree += uint(i * frags_[i].size());
   memused = memalloc - memfree;
 }
 

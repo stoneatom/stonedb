@@ -27,47 +27,47 @@ namespace compress {
 const uint IncWGraph::MatchLenCoder::c2[] = {120, 128};
 const uint IncWGraph::MatchLenCoder::c3[] = {102, 119, 128};
 
-IncWGraph::IncWGraph() : memory() {
-  dump = NULL;
-  ROOT = NIL = START = NULL;
-  mask = NULL;
-  coder = NULL;
-  reclen = NULL;
-  records = NULL;
+IncWGraph::IncWGraph() : memory_() {
+  dump_ = NULL;
+  ROOT_ = NIL_ = START_ = NULL;
+  p_mask_ = NULL;
+  coder_ = NULL;
+  reclen_ = NULL;
+  records_ = NULL;
 }
 
 void IncWGraph::Init() {
-  nfinals = 0;
-  matchlen_cost = esc_cost = 0;
-  // mask = &_mask_;		// uncomment if masking should be used
-  mask = NULL;
+  nfinals_ = 0;
+  matchlen_cost_ = esc_cost_ = 0;
+  // p_mask_ = &_mask_;		// uncomment if masking should be used
+  p_mask_ = NULL;
 
-  // create ROOT and NIL nodes (and START)
-  memory.alloc(ROOT);
-  memory.alloc(NIL);
-  memory.alloc(START);
+  // create ROOT_ and NIL_ nodes (and START_)
+  memory_.alloc(ROOT_);
+  memory_.alloc(NIL_);
+  memory_.alloc(START_);
 
-  ROOT->edge = 0;
-  ROOT->nedge = 0;
-  ROOT->endpos = 0;
-  ROOT->suf = NIL;
-  ROOT->total = ROOT->EscCount();
+  ROOT_->edge = 0;
+  ROOT_->nedge = 0;
+  ROOT_->endpos = 0;
+  ROOT_->suf = NIL_;
+  ROOT_->total = ROOT_->EscCount();
 
-  *START = *ROOT;
+  *START_ = *ROOT_;
 
-  memory.alloc(NIL->edge, 256);
-  NIL->nedge = 0;  // means 256
-  NIL->endpos = 0;
-  NIL->suf = 0;
-  NIL->total = 256;
+  memory_.alloc(NIL_->edge, 256);
+  NIL_->nedge = 0;  // means 256
+  NIL_->endpos = 0;
+  NIL_->suf = 0;
+  NIL_->total = 256;
 
-  // create edges from NIL to ROOT, for every possible symbol as a label
-  for (uint s = 0; s < 256; s++) NIL->edge[s].Init((uchar)s, 1, true, ROOT, 1);
+  // create edges from NIL_ to ROOT_, for every possible symbol as a label
+  for (uint s = 0; s < 256; s++) NIL_->edge[s].Init((uchar)s, 1, true, ROOT_, 1);
 }
 void IncWGraph::Clear() {
-  memory.freeall();
-  recent.clear();
-  ROOT = NIL = START = 0;
+  memory_.freeall();
+  recent_.clear();
+  ROOT_ = NIL_ = START_ = 0;
 }
 
 //-------------------------------------------------------------------------------------------
@@ -76,9 +76,9 @@ void IncWGraph::Encode(RangeCoder *cod, char **index, const uint *lens, int nrec
   if ((nrec < 1) || (nrec > 65536) || (!cod)) throw CprsErr::CPRS_ERR_PAR;
   Clear();
   Init();
-  coder = cod;
-  records = (uchar **)index;
-  reclen = lens;
+  coder_ = cod;
+  records_ = (uchar **)index;
+  reclen_ = lens;
 
   packlen = 0;
   bool repeated;
@@ -92,21 +92,21 @@ void IncWGraph::Encode(RangeCoder *cod, char **index, const uint *lens, int nrec
 
     if (/*repetitions &&*/ rec && (lens[rec] == lens[rec - 1])) {
       // is the previous record repeated?
-      if (std::memcmp(records[rec], records[rec - 1], lens[rec]) == 0)
-        coder->Encode(0, rep++, total);
+      if (std::memcmp(records_[rec], records_[rec - 1], lens[rec]) == 0)
+        coder_->Encode(0, rep++, total);
       else {
-        coder->Encode(rep, total - rep, total);
+        coder_->Encode(rep, total - rep, total);
         EncodeRec((ushort)rec, repeated);
       }
-      if (++total > coder->MAX_TOTAL) {
+      if (++total > coder_->MAX_TOTAL_) {
         rep >>= 1;
         total >>= 1;
       }
 
       // are the repetitions indeed statistically significant?
-      // if(((total & 63) == 0) && (total > 1000) && (rep*(nfinals+2) <
-      // 3*total)) repetitions = false; 1/nfinals - prob. of repetition when
-      // records are random, independent, uniform distribution (lower
+      // if(((total & 63) == 0) && (total > 1000) && (rep*(nfinals_+2) <
+      // 3*total)) repetitions = false; 1/nfinals_ - prob. of repetition when
+      // records_ are random, independent, uniform distribution (lower
       // approximation)
     } else
       EncodeRec((ushort)rec, repeated);
@@ -120,9 +120,9 @@ void IncWGraph::Decode(RangeCoder *cod, char **index, const uint *lens, int nrec
   if ((nrec < 1) || (nrec > 65536) || (!cod)) throw CprsErr::CPRS_ERR_PAR;
   Clear();
   Init();
-  coder = cod;
-  records = (uchar **)index;
-  reclen = lens;
+  coder_ = cod;
+  records_ = (uchar **)index;
+  reclen_ = lens;
   bool repeated;
 
   // bool repetitions = true;		// start: assume optimistically that
@@ -130,27 +130,27 @@ void IncWGraph::Decode(RangeCoder *cod, char **index, const uint *lens, int nrec
   uint rep = 1, total = 2, cnt;  // start: rep=1, nonrep=1
   uint sum = 0;
   for (int rec = 0; rec < nrec; rec++) {
-    records[rec] = (uchar *)dest + sum;
+    records_[rec] = (uchar *)dest + sum;
     if (lens[rec] == 0) continue;
     repeated = true;
 
     if (/*repetitions &&*/ rec && (lens[rec] == lens[rec - 1])) {
       // is the previous record repeated?
-      if ((cnt = coder->GetCount(total)) < rep) {
-        coder->Decode(0, rep++, total);
-        records[rec] = records[rec - 1];
-        // std::memcpy(records[rec], records[rec-1], lens[rec]);
+      if ((cnt = coder_->GetCount(total)) < rep) {
+        coder_->Decode(0, rep++, total);
+        records_[rec] = records_[rec - 1];
+        // std::memcpy(records_[rec], records_[rec-1], lens[rec]);
       } else {
-        coder->Decode(rep, total - rep, total);
+        coder_->Decode(rep, total - rep, total);
         DecodeRec((ushort)rec, dlen - sum, repeated);
       }
-      if (++total > coder->MAX_TOTAL) {
+      if (++total > coder_->MAX_TOTAL_) {
         rep >>= 1;
         total >>= 1;
       }
 
       // are the repetitions indeed statistically significant?
-      // if(((total & 63) == 0) && (total > 1000) && (rep*(nfinals+2) <
+      // if(((total & 63) == 0) && (total > 1000) && (rep*(nfinals_+2) <
       // 3*total)) repetitions = false;
     } else
       DecodeRec((ushort)rec, dlen - sum, repeated);
@@ -160,16 +160,17 @@ void IncWGraph::Decode(RangeCoder *cod, char **index, const uint *lens, int nrec
 }
 
 void IncWGraph::EncodeRec(ushort rec, bool &repeated) {
-  ASSERT(reclen[rec] < 65536, "bad length for word graph");
+  ASSERT(reclen_[rec] < 65536, "bad length for word graph");
   ushort proj = 0, edgelen, maxlen;
-  ushort restlen = reclen[rec];
-  uchar *s = records[rec];
-  Node *base = START, *final = 0;
+  ushort restlen = reclen_[rec];
+  uchar *s = records_[rec];
+  Node *base = START_, *final = 0;
   Edge *edge;
   Count low, total;
   bool solid;
 
-  if (mask) mask->Reset();
+  if (p_mask_)
+    p_mask_->Reset();
 
   // loop over consecutive substrings to encode:
   // (1) escape to the first node with transition starting with symbol *s,
@@ -181,8 +182,8 @@ void IncWGraph::EncodeRec(ushort rec, bool &repeated) {
 
     // (1)
     while (1) {
-      total = base->GetMaskTotal(mask);
-      if (base->FindEdge(*s, edge, low, mask))
+      total = base->GetMaskTotal(p_mask_);
+      if (base->FindEdge(*s, edge, low, p_mask_))
         break;
       else {
         repeated = false;
@@ -192,19 +193,19 @@ void IncWGraph::EncodeRec(ushort rec, bool &repeated) {
         } else
           solid = false;
 #ifdef MAKESTAT
-        uint pos = coder->GetPos();
+        uint pos = coder_->GetPos();
 #endif
-        base->EncodeEsc(coder, low, total);
+        base->EncodeEsc(coder_, low, total);
 #ifdef MAKESTAT
-        esc_cost += coder->GetPos() - pos;
+        esc_cost_ += coder_->GetPos() - pos;
 #endif
-        base->AddEdge(*s, restlen, solid, final, memory);
+        base->AddEdge(*s, restlen, solid, final, memory_);
         base = base->suf;
       }
     }
 
     // (2)
-    coder->Encode(low, edge->count, total);  // encode the edge choice
+    coder_->Encode(low, edge->count, total);  // encode the edge choice
 
     // find and encode the no. of matching symbols (incl. the first one)
     edgelen = edge->GetLen();
@@ -214,11 +215,11 @@ void IncWGraph::EncodeRec(ushort rec, bool &repeated) {
     restlen -= proj;
     if ((proj < edge->GetLen()) && restlen) repeated = false;
 #ifdef MAKESTAT
-    uint pos = coder->GetPos();
+    uint pos = coder_->GetPos();
 #endif
-    MatchLenCoder::Encode(coder, proj, maxlen, dump);
+    MatchLenCoder::Encode(coder_, proj, maxlen, dump_);
 #ifdef MAKESTAT
-    matchlen_cost += coder->GetPos() - pos;
+    matchlen_cost_ += coder_->GetPos() - pos;
 #endif
 
     // (3)
@@ -229,25 +230,26 @@ void IncWGraph::EncodeRec(ushort rec, bool &repeated) {
 
 void IncWGraph::DecodeRec(ushort rec, uint dlen, bool &repeated) {
   ushort proj = 0, declen, edgelen, maxlen;
-  ASSERT(reclen[rec] < 65536, "bad length for word graph");
-  ushort len = reclen[rec];
+  ASSERT(reclen_[rec] < 65536, "bad length for word graph");
+  ushort len = reclen_[rec];
   ushort restlen = len;
-  uchar *s = records[rec];
+  uchar *s = records_[rec];
   uchar fsym = 0;
-  Node *base = START, *final = 0;
+  Node *base = START_, *final = 0;
   Edge *edge;
   Count low, count, total;
   bool solid;
-  if (mask) mask->Reset();
+  if (p_mask_)
+    p_mask_->Reset();
 
   while (restlen) {
     DEBUG_ASSERT(proj == 0);
 
     // (1)
     while (1) {
-      total = base->GetMaskTotal(mask);
-      count = (Count)coder->GetCount(total);
-      if (base->FindEdge(count, edge, low, mask))
+      total = base->GetMaskTotal(p_mask_);
+      count = (Count)coder_->GetCount(total);
+      if (base->FindEdge(count, edge, low, p_mask_))
         break;
       else {
         if (repeated) {
@@ -262,63 +264,65 @@ void IncWGraph::DecodeRec(ushort rec, uint dlen, bool &repeated) {
           solid = true;
         } else
           solid = false;
-        base->DecodeEsc(coder, low, total);
-        recent.push_back(base->AddEdge(0, restlen, solid, final, memory));
+        base->DecodeEsc(coder_, low, total);
+        recent_.push_back(base->AddEdge(0, restlen, solid, final, memory_));
         base = base->suf;
       }
     }
 
     // (2)
-    coder->Decode(low, edge->count, total);  // decode the edge choice
+    coder_->Decode(low, edge->count, total);  // decode the edge choice
 
     // decode the no. of matching symbols (incl. the first one)
     edgelen = edge->GetLen();
     maxlen = (edgelen < restlen ? edgelen : restlen);  // min(edgelen,restlen)
-    MatchLenCoder::Decode(coder, proj, maxlen);
+    MatchLenCoder::Decode(coder_, proj, maxlen);
 
     // copy decoded symbols to 's'
     restlen -= proj;
     if (!repeated) {
-      *s++ = fsym = edge->fsym;  // needed when base=NIL
+      *s++ = fsym = edge->fsym;  // needed when base=NIL_
       LabelCopy(s, edge->target->endpos - edgelen + 1, proj - 1);
     } else if (restlen == 0) {
       s = edge->target->endpos - edgelen + proj;
-      records[rec] = s - len;            // set correct index for repeated record
+      records_[rec] = s - len;           // set correct index for repeated record
     } else if (proj < edge->GetLen()) {  // it appears that the record is not a
                                          // repetition
-      DEBUG_ASSERT(base != NIL);
+      DEBUG_ASSERT(base != NIL_);
       if (len > dlen) throw CprsErr::CPRS_ERR_BUF;
       declen = len - restlen;
       LabelCopy(s, edge->target->endpos - edgelen + proj - declen,
                 declen);  // copy at once all labels passed till now
       repeated = false;
-      DEBUG_ASSERT(recent.empty());
+      DEBUG_ASSERT(recent_.empty());
     }
 
     // set 'fsym' of recently created edges
-    for (std::vector<Edge *>::size_type i = recent.size(); i;) recent[--i]->fsym = fsym;
-    recent.clear();
+    for (std::vector<Edge *>::size_type i = recent_.size(); i;) recent_[--i]->fsym = fsym;
+    recent_.clear();
 
     // (3)
     Traverse(base, edge, proj, s, restlen, final, false);
   }
   if (final && !final->suf) final->suf = base;
-  DEBUG_ASSERT(recent.empty());
+  DEBUG_ASSERT(recent_.empty());
 }
 
 //-------------------------------------------------------------------------------------------
 
 inline void IncWGraph::Traverse(Node *&base, Edge *&edge, ushort &proj, uchar *s, ushort restlen, Node *&final,
                                 bool encode) {
-  if (mask) mask->Reset();
+  if (p_mask_)
+    p_mask_->Reset();
   if (proj == edge->GetLen()) {  // we reached a node
     // update count, perhaps exchange edges to keep them sorted, make scaling if
     // necessary
-    if (base != NIL) base->UpdateCount(edge);
+    if (base != NIL_)
+      base->UpdateCount(edge);
 
     // node duplication
     if (!edge->IsSolid())
-      base = edge->target->Duplicate(base, edge, memory);
+      base = edge->target->Duplicate(base, edge, memory_);
     else
       base = edge->target;  // canonize
     proj = 0;
@@ -339,7 +343,7 @@ inline void IncWGraph::Traverse(Node *&base, Edge *&edge, ushort &proj, uchar *s
           if (encode)
             node->AddEdge(*s, restlen, solid, final, node->EscCount());
           else
-            recent.push_back(node->AddEdge(0, restlen, solid, final, node->EscCount()));
+            recent_.push_back(node->AddEdge(0, restlen, solid, final, node->EscCount()));
           solid = false;
         } else if (final && !final->suf) {
           final->suf = node;
@@ -358,7 +362,8 @@ inline void IncWGraph::Traverse(Node *&base, Edge *&edge, ushort &proj, uchar *s
       base = Node::Canonize(base->suf, edge, proj, s, true);
     }
     last->suf = base;
-    if (mask) mask->Add(last->edge[0].fsym);  // assumption: edge[0] is the edge that was split
+    if (p_mask_)
+      p_mask_->Add(last->edge[0].fsym);  // assumption: edge[0] is the edge that was split
   }
 }
 
@@ -448,8 +453,8 @@ void IncWGraph::Node::Rescale(uchar shift) {
 
 IncWGraph::Node *IncWGraph::InsertNode([[maybe_unused]] Node *base, Edge *edge, ushort proj) {
   Node *node;
-  memory.alloc(node);
-  memory.alloc(node->edge, node->RoundNEdge(node->nedge = 1));
+  memory_.alloc(node);
+  memory_.alloc(node->edge, node->RoundNEdge(node->nedge = 1));
   DEBUG_ASSERT(node->RoundNEdge(1) == node->RoundNEdge(2));
 
   // edge from 'node' to 'edge->target'
@@ -660,12 +665,12 @@ inline void IncWGraph::MatchLenCoder::Decode(RangeCoder *coder, ushort &proj, us
 
 inline IncWGraph::Node *IncWGraph::NewFinal(uchar *endpos) {
   Node *f;
-  memory.alloc(f);
+  memory_.alloc(f);
   f->endpos = endpos;
   f->edge = 0;
   f->suf = 0;
   f->total = f->EscCount();
-  nfinals++;
+  nfinals_++;
   return f;
 }
 
@@ -680,8 +685,9 @@ inline void IncWGraph::LabelCopy(uchar *&dest, const uchar *src, ushort len) {
 
 void IncWGraph::Print(std::ostream &str, uint flags, Node *n) {
   if (!n) {
-    if (START && (START != ROOT)) Print(str, flags, START);
-    Print(str, flags, ROOT);
+    if (START_ && (START_ != ROOT_))
+      Print(str, flags, START_);
+    Print(str, flags, ROOT_);
     return;
   }
   str << "- " << n << ": ";

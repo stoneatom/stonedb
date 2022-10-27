@@ -34,7 +34,7 @@ double BitstreamCompressor::Entropy(double p) {
 void BitstreamCompressor::GetSumTable(unsigned short *sum, unsigned int num0, unsigned int num1) {
   unsigned int cnt0 = num0, cnt1 = num1;
 
-  uint maxtotal = ArithCoder::MAX_TOTAL;
+  uint maxtotal = ArithCoder::MAX_TOTAL_;
 
   // reduce cnt0 and cnt1 so that their 'total' is small enough for the coder
   while (cnt0 + cnt1 > maxtotal) {

@@ -980,8 +980,8 @@ bool Descriptor::CheckCondition_UTF(const MIIterator &mit) {
     types::BString v, pattern;
     attr.vc->GetNotNullValueString(v, mit);
     val1.vc->GetNotNullValueString(pattern, mit);
-    int x =
-        common::wildcmp(collation, v.val, v.val + v.len, pattern.val, pattern.val + pattern.len, like_esc, '_', '%');
+    int x = common::wildcmp(collation, v.val_, v.val_ + v.len_, pattern.val_, pattern.val_ + pattern.len_, like_esc,
+                            '_', '%');
     result = (x == 0 ? true : false);
     if (op == common::Operator::O_LIKE)
       return result;
