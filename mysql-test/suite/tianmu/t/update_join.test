@@ -1,0 +1,33 @@
+--echo #
+--echo # Test Update JOIN
+--echo # Author: syw
+--echo #
+
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS mcs82_db;
+--enable_warnings
+
+CREATE DATABASE mcs82_db;
+USE mcs82_db;
+
+CREATE TABLE t1 (t1_int INT, t1_char CHAR(5))ENGINE=tianmu;
+CREATE TABLE t2 (t2_int INT, t2_char CHAR(5))ENGINE=tianmu;
+
+INSERT INTO t1 VALUES (NULL, ''),(1, 'aaa'),(2, 'bbb'),(3, 'ccc'),(4, 'ddd'),(5, 'aa'),(6, ''),(7, 'aaaaa');
+INSERT INTO t2 VALUES (NULL, ''),(1, 'hhhh'),(3, 'iii'),(5, 'jjj'),(6, ''),(7, 'lll'),(9, 'm'),(11, 'nnn');
+
+SELECT * FROM t1 ORDER BY t1_int;
+UPDATE t1 JOIN t2 on t1.t1_int=t2.t2_int SET t1.t1_char='sssss';
+
+SELECT * FROM t1 ORDER BY t1_int;
+UPDATE t1 INNER JOIN t2 on t1.t1_int=t2.t2_int SET t1.t1_char='pqrs' WHERE t1_char LIKE '%a%';
+
+SELECT * FROM t1 ORDER BY t1_int;
+UPDATE t2 LEFT JOIN t1 on t1.t1_int=t2.t2_int SET t1.t1_char='xyz' WHERE t1_char is NULL;
+
+SELECT * FROM t2 ORDER BY t2_int;
+
+# Clean UP
+DROP DATABASE mcs82_db;
