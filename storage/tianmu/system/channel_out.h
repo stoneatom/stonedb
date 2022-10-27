@@ -49,7 +49,7 @@ class ChannelOut {
   virtual ChannelOut &operator<<(const std::string &str) = 0;
 
   ChannelOut &operator<<(types::BString &rcbs) {
-    for (ushort i = 0; i < rcbs.len; i++) (*this) << (char)(rcbs[i]);
+    for (ushort i = 0; i < rcbs.len_; i++) (*this) << (char)(rcbs[i]);
     return *this;
   }
 

@@ -155,8 +155,8 @@ bool LoadParser::MakeValue(uint att, ValueCache &buffer) {
   if (attrs[att]->Type().IsLookup() && !buffer.ExpectedNull()) {
     types::BString s(ZERO_LENGTH_STRING, 0);
     buffer.Prepare(sizeof(int64_t));
-    s.val = static_cast<char *>(buffer.PreparedBuffer());
-    s.len = buffer.ExpectedSize();
+    s.val_ = static_cast<char *>(buffer.PreparedBuffer());
+    s.len_ = buffer.ExpectedSize();
     *reinterpret_cast<int64_t *>(buffer.PreparedBuffer()) = attrs[att]->EncodeValue_T(s, true);
     buffer.ExpectedSize(sizeof(int64_t));
   }

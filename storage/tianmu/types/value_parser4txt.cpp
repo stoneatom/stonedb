@@ -29,7 +29,7 @@ const uint PARS_BUF_SIZE = 128;
 static int String2DateTime(const BString &s, RCDateTime &rcdt, common::CT at) {
   MYSQL_TIME myt;
   MYSQL_TIME_STATUS not_used;
-  if (str_to_datetime(s.GetDataBytesPointer(), s.len, &myt, TIME_DATETIME_ONLY, &not_used)) {
+  if (str_to_datetime(s.GetDataBytesPointer(), s.len_, &myt, TIME_DATETIME_ONLY, &not_used)) {
     return 1;
   }
 
@@ -88,14 +88,14 @@ static inline common::ErrorCode EatInt64(char *&ptr, int &len, int64_t &out_valu
 common::ErrorCode ValueParserForText::ParseNum(const BString &rcs, RCNum &rcn, short scale) {
   // TODO: refactor
   char *val, *val_ptr;
-  val = val_ptr = rcs.val;
-  int len = rcs.len;
+  val = val_ptr = rcs.val_;
+  int len = rcs.len_;
   EatWhiteSigns(val, len);
   if (rcs.Equals("nullptr", 4)) {
-    rcn.null = true;
+    rcn.null_ = true;
     return common::ErrorCode::SUCCESS;
   }
-  rcn.null = false;
+  rcn.null_ = false;
   rcn.is_double_ = false;
   rcn.scale_ = 0;
 
@@ -191,8 +191,8 @@ common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, comm
 
   // TODO: refactor
   char *val, *val_ptr;
-  val = val_ptr = rcs.val;
-  int len = rcs.len;
+  val = val_ptr = rcs.val_;
+  int len = rcs.len_;
   EatWhiteSigns(val, len);
   int ptr_len = len;
   val_ptr = val;
@@ -249,7 +249,7 @@ common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, comm
 
     if (has_unexpected_sign) {
       // same as innodb , string convert to 0
-      rcn.null = false;
+      rcn.null_ = false;
       rcn.attr_type_ = at;
       rcn.value_ = 0;
       return common::ErrorCode::VALUE_TRUNCATED;
@@ -278,7 +278,7 @@ common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, comm
     if (!core::ATI::IsNumericType(at)) return common::ErrorCode::FAILED;
   }
 
-  rcn.null = false;
+  rcn.null_ = false;
   rcn.attr_type_ = at;
   if (core::ATI::IsRealType(at)) {
     rcn.is_double_ = true;
@@ -295,7 +295,7 @@ common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, comm
   rcn.is_double_ = false;
 
   if (rcs.Equals("nullptr", 4)) {
-    rcn.null = true;
+    rcn.null_ = true;
     return common::ErrorCode::SUCCESS;
   }
 
@@ -354,14 +354,14 @@ common::ErrorCode ValueParserForText::ParseReal(const BString &rcbs, RCNum &rcn,
   if (!core::ATI::IsRealType(at)) return common::ErrorCode::FAILED;
 
   if (rcbs.Equals("nullptr", 4) || rcbs.IsNull()) {
-    rcn.null = true;
+    rcn.null_ = true;
     return common::ErrorCode::SUCCESS;
   }
   rcn.is_double_ = true;
   rcn.scale_ = 0;
 
-  char *val = rcbs.val;
-  int len = rcbs.len;
+  char *val = rcbs.val_;
+  int len = rcbs.len_;
   EatWhiteSigns(val, len);
 
   char *val_ptr = val;
@@ -401,14 +401,15 @@ common::ErrorCode ValueParserForText::ParseReal(const BString &rcbs, RCNum &rcn,
     ptr_len--;
   }
   char stempval[PARS_BUF_SIZE];
-  if (rcbs.len >= PARS_BUF_SIZE) return common::ErrorCode::VALUE_TRUNCATED;
+  if (rcbs.len_ >= PARS_BUF_SIZE)
+    return common::ErrorCode::VALUE_TRUNCATED;
 #ifndef NDEBUG
   // resetting stempval to avoid valgrind
   // false warnings
   std::memset(stempval, 0, PARS_BUF_SIZE);
 #endif
-  std::memcpy(stempval, rcbs.val, rcbs.len);
-  stempval[rcbs.len] = 0;
+  std::memcpy(stempval, rcbs.val_, rcbs.len_);
+  stempval[rcbs.len_] = 0;
   double d = 0.0;
   try {
     d = std::stod(std::string(stempval));
@@ -424,7 +425,7 @@ common::ErrorCode ValueParserForText::ParseReal(const BString &rcbs, RCNum &rcn,
   }
 
   rcn.attr_type_ = at;
-  rcn.null = false;
+  rcn.null_ = false;
   if (at == common::CT::REAL) {
     if (d > DBL_MAX) {
       d = DBL_MAX;
@@ -460,18 +461,18 @@ common::ErrorCode ValueParserForText::ParseReal(const BString &rcbs, RCNum &rcn,
 }
 
 common::ErrorCode ValueParserForText::ParseBigInt(const BString &rcs, RCNum &rcn) {
-  char *val_ptr = rcs.val;
-  int len = rcs.len;
+  char *val_ptr = rcs.val_;
+  int len = rcs.len_;
   int ptr_len = len;
   common::ErrorCode ret = common::ErrorCode::SUCCESS;
 
-  rcn.null = false;
+  rcn.null_ = false;
   rcn.attr_type_ = common::CT::BIGINT;
   rcn.scale_ = 0;
   rcn.is_double_ = false;
 
   if (rcs.Equals("nullptr", 4)) {
-    rcn.null = true;
+    rcn.null_ = true;
     return common::ErrorCode::SUCCESS;
   }
   int64_t v = 0;
@@ -595,12 +596,12 @@ common::ErrorCode ValueParserForText::ParseDecimal(BString const &rcs, int64_t &
 
 common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rcs, RCDateTime &rcv, common::CT at) {
   if (rcs.IsNull() || rcs.Equals("nullptr", 4)) {
-    rcv.at = at;
-    rcv.null = true;
+    rcv.at_ = at;
+    rcv.null_ = true;
     return common::ErrorCode::SUCCESS;
   }
-  char *buf = rcs.val;
-  int buflen = rcs.len;
+  char *buf = rcs.val_;
+  int buflen = rcs.len_;
   EatWhiteSigns(buf, buflen);
 
   if (buflen == 0) {
@@ -786,12 +787,12 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
 
 common::ErrorCode ValueParserForText::ParseTime(const BString &rcs, RCDateTime &rcv) {
   if (rcs.IsNull() || rcs.Equals("nullptr", 4)) {
-    rcv.at = common::CT::TIME;
-    rcv.null = true;
+    rcv.at_ = common::CT::TIME;
+    rcv.null_ = true;
     return common::ErrorCode::SUCCESS;
   }
-  char *buf = rcs.val;
-  int buflen = rcs.len;
+  char *buf = rcs.val_;
+  int buflen = rcs.len_;
   EatWhiteSigns(buf, buflen);
   if (buflen == 0) {
     rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::TIME));
@@ -946,12 +947,12 @@ common::ErrorCode ValueParserForText::ParseTime(const BString &rcs, RCDateTime &
 
 common::ErrorCode ValueParserForText::ParseDate(const BString &rcs, RCDateTime &rcv) {
   if (rcs.IsNull() || rcs.Equals("nullptr", 4)) {
-    rcv.at = common::CT::DATE;
-    rcv.null = true;
+    rcv.at_ = common::CT::DATE;
+    rcv.null_ = true;
     return common::ErrorCode::SUCCESS;
   }
-  char *buf = rcs.val;
-  int buflen = rcs.len;
+  char *buf = rcs.val_;
+  int buflen = rcs.len_;
   EatWhiteSigns(buf, buflen);
   if (buflen == 0) {
     rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::DATE));
@@ -1006,12 +1007,12 @@ common::ErrorCode ValueParserForText::ParseDate(const BString &rcs, RCDateTime &
 
 common::ErrorCode ValueParserForText::ParseYear(const BString &rcs, RCDateTime &rcv) {
   if (rcs.IsNull() || rcs.Equals("nullptr", 4)) {
-    rcv.at = common::CT::YEAR;
-    rcv.null = true;
+    rcv.at_ = common::CT::YEAR;
+    rcv.null_ = true;
     return common::ErrorCode::SUCCESS;
   }
-  char *buf = rcs.val;
-  int buflen = rcs.len;
+  char *buf = rcs.val_;
+  int buflen = rcs.len_;
   EatWhiteSigns(buf, buflen);
   if (buflen == 0) {
     rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::YEAR));

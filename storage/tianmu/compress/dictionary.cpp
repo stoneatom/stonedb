@@ -27,15 +27,15 @@ namespace compress {
 
 template <class T>
 void Dictionary<T>::Clear() {
-  static_assert(MAXTOTAL > MAXKEYS + 1, "should be 'MAXTOTAL > MAXKEYS+1'");
-  nkeys = 0;
-  std::memset(buckets, -1, sizeof(buckets));
-  compress = decompress = false;
+  static_assert(MAX_TOTAL_ > MAX_KEYS_ + 1, "should be 'MAX_TOTAL_ > MAX_KEYS_+1'");
+  n_keys_ = 0;
+  std::memset(buckets_, -1, sizeof(buckets_));
+  compress_ = decompress_ = false;
 }
 
 template <class T>
 Dictionary<T>::Dictionary() {
-  static_assert(MAXKEYS < SHRT_MAX, "should be 'MAXKEYS < SHRT_MAX'");
+  static_assert(MAX_KEYS_ < SHRT_MAX, "should be 'MAX_KEYS_ < SHRT_MAX'");
   Clear();
 }
 
@@ -43,43 +43,43 @@ Dictionary<T>::Dictionary() {
 
 template <class T>
 void Dictionary<T>::SetLows() {
-  // sort keys by descending 'count'
+  // sort keys_ by descending 'count'
   uint sumcnt = 0, total = 0;
-  for (short i = 0; i < nkeys; i++) {
-    order[i] = &keys[i];
-    sumcnt += keys[i].count;
-    DEBUG_ASSERT(keys[i].count > 0);
+  for (short i = 0; i < n_keys_; i++) {
+    order_[i] = &keys_[i];
+    sumcnt += keys_[i].count;
+    DEBUG_ASSERT(keys_[i].count > 0);
   }
-  qsort_tianmu(order, nkeys, sizeof(*order), compare);
+  qsort_tianmu(order_, n_keys_, sizeof(*order_), compare);
 
-  ASSERT(sumcnt <= MAXTOTAL, "should be 'sumcnt <= MAXTOTAL'");
+  ASSERT(sumcnt <= MAX_TOTAL_, "should be 'sumcnt <= MAX_TOTAL_'");
   // set short counts
-  //	if(sumcnt > MAXTOTAL) {
+  //	if(sumcnt > MAX_TOTAL_) {
   //		DEBUG_ASSERT(0);
-  //		uint shift = GetShift(sumcnt, MAXTOTAL - nkeys);
-  //		for(short i = 0; i < nkeys; i++) {
-  //			if((order[i]->count _SHR_ASSIGN_ shift) == 0)
-  // order[i]->count = 1; 			total += order[i]->count;
+  //		uint shift = GetShift(sumcnt, MAX_TOTAL_ - n_keys_);
+  //		for(short i = 0; i < n_keys_; i++) {
+  //			if((order_[i]->count _SHR_ASSIGN_ shift) == 0)
+  // order_[i]->count = 1; 			total += order_[i]->count;
   //		}
   //	}
   //	else total = sumcnt;
 
   total = sumcnt;
 
-  tot_shift = core::GetBitLen(total - 1);
-  ASSERT((total <= MAXTOTAL) && (total > 0) && (1u _SHL_ tot_shift) >= total,
-         "should be '(total <= MAXTOTAL) && (total > 0) && (1u _SHL_ "
-         "tot_shift) >= total'");
+  tot_shift_ = core::GetBitLen(total - 1);
+  ASSERT((total <= MAX_TOTAL_) && (total > 0) && (1u _SHL_ tot_shift_) >= total,
+         "should be '(total <= MAX_TOTAL_) && (total > 0) && (1u _SHL_ "
+         "tot_shift_) >= total'");
 
   // correct counts to sum up to power of 2; set lows
-  uint high = (1u _SHL_ tot_shift), rest = high - total, d;
-  for (short i = nkeys; i > 0;) {
+  uint high = (1u _SHL_ tot_shift_), rest = high - total, d;
+  for (short i = n_keys_; i > 0;) {
     rest -= (d = rest / i--);
-    order[i]->low = (high -= (order[i]->count += d));
+    order_[i]->low = (high -= (order_[i]->count += d));
   }
   ASSERT(high == 0, "should be 'high == 0'");
 
-  compress = true;
+  compress_ = true;
 }
 
 template <class T>
@@ -97,49 +97,50 @@ int Dictionary<T>::compare(const void *p1, const void *p2) {
 
 template <class T>
 void Dictionary<T>::Save(RangeCoder *dest, T maxkey) {
-  ASSERT(compress, "'compress' should be true");
+  ASSERT(compress_, "'compress_' should be true");
 
-  // save no. of keys
-  dest->EncodeUniform(nkeys, (short)MAXKEYS);
+  // save no. of keys_
+  dest->EncodeUniform(n_keys_, (short)MAX_KEYS_);
 
   uint bitmax = core::GetBitLen(maxkey);
-  uint c, prevc = MAXTOTAL - 1;
-  for (short i = 0; i < nkeys; i++) {
+  uint c, prevc = MAX_TOTAL_ - 1;
+  for (short i = 0; i < n_keys_; i++) {
     // save the key and its short count-1 (which is not greater than the
     // previous count-1)
-    dest->EncodeUniform(order[i]->key, maxkey, bitmax);
-    dest->EncodeUniform(c = order[i]->count - 1, prevc);
+    dest->EncodeUniform(order_[i]->key, maxkey, bitmax);
+    dest->EncodeUniform(c = order_[i]->count - 1, prevc);
     prevc = c;
   }
 }
 
 template <class T>
 void Dictionary<T>::Load(RangeCoder *src, T maxkey) {
-  compress = decompress = false;
+  compress_ = decompress_ = false;
 
-  // load no. of keys
-  src->DecodeUniform(nkeys, (short)MAXKEYS);
+  // load no. of keys_
+  src->DecodeUniform(n_keys_, (short)MAX_KEYS_);
 
-  // load keys, their 'lows' and 'highs'; fill 'cnt2val' array
+  // load keys_, their 'lows' and 'highs'; fill 'cnt2val_' array
   uint bitmax = core::GetBitLen(maxkey);
-  uint c, prevc = MAXTOTAL - 1;
+  uint c, prevc = MAX_TOTAL_ - 1;
   uint total = 0;
-  for (short i = 0; i < nkeys; i++) {
-    src->DecodeUniform(keys[i].key, maxkey, bitmax);
+  for (short i = 0; i < n_keys_; i++) {
+    src->DecodeUniform(keys_[i].key, maxkey, bitmax);
     src->DecodeUniform(c, prevc);
     prevc = c++;
-    keys[i].count = c;
-    keys[i].low = total;
-    if (total + c > MAXTOTAL) throw CprsErr::CPRS_ERR_COR;
-    for (; c > 0; c--) cnt2val[total++] = i;
+    keys_[i].count = c;
+    keys_[i].low = total;
+    if (total + c > MAX_TOTAL_)
+      throw CprsErr::CPRS_ERR_COR;
+    for (; c > 0; c--) cnt2val_[total++] = i;
   }
 
-  tot_shift = core::GetBitLen(total - 1);
-  ASSERT((total <= MAXTOTAL) && (total > 0) && (1u _SHL_ tot_shift) >= total,
-         "should be '(total <= MAXTOTAL) && (total > 0) && (1u _SHL_ "
-         "tot_shift) >= total'");
+  tot_shift_ = core::GetBitLen(total - 1);
+  ASSERT((total <= MAX_TOTAL_) && (total > 0) && (1u _SHL_ tot_shift_) >= total,
+         "should be '(total <= MAX_TOTAL_) && (total > 0) && (1u _SHL_ "
+         "tot_shift_) >= total'");
 
-  decompress = true;
+  decompress_ = true;
 }
 
 template class Dictionary<uchar>;

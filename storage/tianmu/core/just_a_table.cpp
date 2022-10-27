@@ -35,7 +35,7 @@ ValueOrNull JustATable::GetComplexValue(const int64_t obj, const int attr) {
     MYSQL_TIME myt;
     MYSQL_TIME_STATUS not_used;
     // convert UTC timestamp given in string into TIME structure
-    str_to_datetime(s.GetDataBytesPointer(), s.len, &myt, TIME_DATETIME_ONLY, &not_used);
+    str_to_datetime(s.GetDataBytesPointer(), s.len_, &myt, TIME_DATETIME_ONLY, &not_used);
     return ValueOrNull(types::RCDateTime(myt, common::CT::TIMESTAMP).GetInt64());
   }
   if (ct.IsFixed() || ct.IsFloat() || ct.IsDateTime()) return ValueOrNull(GetTable64(obj, attr));

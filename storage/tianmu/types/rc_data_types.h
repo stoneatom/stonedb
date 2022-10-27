@@ -127,7 +127,7 @@ enum class ValueTypeEnum { NULL_TYPE, DATE_TIME_TYPE, NUMERIC_TYPE, STRING_TYPE 
 
 class RCDataType {
  public:
-  RCDataType() : null(true) {}
+  RCDataType() : null_(true) {}
   constexpr RCDataType(const RCDataType &) = default;
   virtual ~RCDataType();
 
@@ -148,13 +148,13 @@ class RCDataType {
   virtual bool operator<=(const RCDataType &rcdt) const = 0;
   virtual bool operator!=(const RCDataType &rcdt) const = 0;
 
-  bool IsNull() const { return null; }
+  bool IsNull() const { return null_; }
   virtual uint GetHashCode() const = 0;
 
   virtual char *GetDataBytesPointer() const = 0;
 
-  void SetToNull() { null = true; }
-  bool null;
+  void SetToNull() { null_ = true; }
+  bool null_;
 
  public:
   static ValueTypeEnum GetValueType(common::CT attr_type);
@@ -171,17 +171,17 @@ class ValueBasic : public RCDataType {
  public:
   constexpr ValueBasic(const ValueBasic &) = default;
   ValueBasic() = default;
-  ValueTypeEnum GetValueType() const override { return T::value_type; }
+  ValueTypeEnum GetValueType() const override { return T::value_type_; }
   std::unique_ptr<RCDataType> Clone() const override {
     return std::unique_ptr<RCDataType>(new T(const_cast<T &>(reinterpret_cast<const T &>(*this))));
   }
-  static T null_value;
-  static T &NullValue() { return T::null_value; }
+  static T null_value_;
+  static T &NullValue() { return T::null_value_; }
   using RCDataType::operator=;
 };
 
 template <typename T>
-T ValueBasic<T>::null_value;
+T ValueBasic<T>::null_value_;
 
 using CondArray = std::vector<BString>;
 
@@ -192,16 +192,16 @@ class BString : public ValueBasic<BString> {
  public:
   BString();
   BString(const char *val, size_t len = 0, bool materialize = false);
-  // len == -1 or -2  => the length is stored on the first 2 or 4 (respectively,
-  // ushort / int) bytes of val. len == 0  => the length is a result of
-  // std::strlen(val), i.e. val is 0-terminated zero-term = true  => this is a
-  // non-null empty string, or a longer zero-terminated string
+  // len_ == -1 or -2  => the length is stored on the first 2 or 4 (respectively,
+  // ushort / int) bytes of val_. len_ == 0  => the length is a result of
+  // std::strlen(val_), i.e. val_ is 0-terminated zero-term = true  => this is a
+  // non-null_ empty string, or a longer zero-terminated string
   BString(const BString &rcbs);
   ~BString();
 
   BString &operator=(const BString &rcbs);
   BString &operator=(const RCDataType &rcn) override;
-  void PersistentCopy(const BString &rcbs);  // like "=", but makes this persistent
+  void PersistentCopy(const BString &rcbs);  // like "=", but makes this persistent_
 
   static bool Parse(BString &in, BString &out);
   common::CT Type() const override;
@@ -209,15 +209,15 @@ class BString : public ValueBasic<BString> {
   void PutString(char *&dest, ushort len, bool move_ptr = true) const;
   void PutVarchar(char *&dest, uchar prefixlen, bool move_ptr) const;
   void MakePersistent();
-  bool IsPersistent() const { return persistent; }
-  bool IsEmpty() const;        // return true if this is 0 len string, if this is null
+  bool IsPersistent() const { return persistent_; }
+  bool IsEmpty() const;        // return true if this is 0 len_ string, if this is null_
                                // this function will return false
-  bool IsNullOrEmpty() const;  // return true if this is null or this is 0 len string
+  bool IsNullOrEmpty() const;  // return true if this is null_ or this is 0 len_ string
   std::string ToString() const;
   BString ToBString() const override { return *this; }
-  char *GetDataBytesPointer() const override { return val + pos; }
+  char *GetDataBytesPointer() const override { return val_ + pos_; }
   char *begin() const { return GetDataBytesPointer(); }
-  char *end() const { return begin() + len; }
+  char *end() const { return begin() + len_; }
   BString &operator+=(ushort pos);
   BString &operator-=(ushort pos);
 
@@ -234,32 +234,36 @@ class BString : public ValueBasic<BString> {
 
   // this is fast for string literal
   bool Equals(const char *s, uint l) const {
-    if (l != len) return false;
-    return std::memcmp(s, val, l) == 0;
+    if (l != len_)
+      return false;
+    return std::memcmp(s, val_, l) == 0;
   }
 
   int CompareWith(const BString &rcbs2) const {
-    int l = std::min(len, rcbs2.len);
+    int l = std::min(len_, rcbs2.len_);
 
     if (l == 0) {
-      if (len == 0 && rcbs2.len == 0) return 0;
+      if (len_ == 0 && rcbs2.len_ == 0)
+        return 0;
 
-      if (len == 0) return -1;
+      if (len_ == 0)
+        return -1;
 
       return 1;
     }
 
-    if (len != rcbs2.len) {
-      int ret = std::memcmp(val + pos, rcbs2.val + rcbs2.pos, l);
+    if (len_ != rcbs2.len_) {
+      int ret = std::memcmp(val_ + pos_, rcbs2.val_ + rcbs2.pos_, l);
       if (ret == 0) {
-        if (len < rcbs2.len) return -1;
+        if (len_ < rcbs2.len_)
+          return -1;
         return 1;
       }
       return ret;
     }
 
     // equal length
-    return std::memcmp(val + pos, rcbs2.val + rcbs2.pos, l);
+    return std::memcmp(val_ + pos_, rcbs2.val_ + rcbs2.pos_, l);
   }
 
   // Wildcards: "_" is any character, "%" is 0 or more characters
@@ -271,18 +275,18 @@ class BString : public ValueBasic<BString> {
   bool LessEqThanMaxUTF(const void *txt_max, DTCollation col, bool use_full_len = false);
 
   uint GetHashCode() const override;
-  size_t size() const { return len; }
+  size_t size() const { return len_; }
   char &operator[](size_t pos) const;
 
-  char *val;
-  uint len;
-  uint pos;
+  char *val_;
+  uint len_;
+  uint pos_;
 
  private:
-  bool persistent;
+  bool persistent_;
 
  public:
-  const static ValueTypeEnum value_type = ValueTypeEnum::STRING_TYPE;
+  const static ValueTypeEnum value_type_ = ValueTypeEnum::STRING_TYPE;
 };
 
 class RCDateTime : public ValueBasic<RCDateTime> {
@@ -305,7 +309,7 @@ class RCDateTime : public ValueBasic<RCDateTime> {
   RCDateTime &operator=(const RCDataType &rcdt) override;
   RCDateTime &Assign(int64_t v, common::CT at);
 
-  void Store(MYSQL_TIME *my_time, enum_mysql_timestamp_type t) { dt.Store(my_time, t); }
+  void Store(MYSQL_TIME *my_time, enum_mysql_timestamp_type t) { dt_.Store(my_time, t); }
   bool IsZero() const;
   int64_t GetInt64() const;
   bool GetInt64(int64_t &value) const {
@@ -322,7 +326,7 @@ class RCDateTime : public ValueBasic<RCDateTime> {
    * \return false if it is nullptr, true otherwise
    */
   bool ToInt64(int64_t &value) const;
-  char *GetDataBytesPointer() const override { return reinterpret_cast<char *>(const_cast<DT *>(&dt)); }
+  char *GetDataBytesPointer() const override { return reinterpret_cast<char *>(const_cast<DT *>(&dt_)); }
   BString ToBString() const override;
   common::CT Type() const override;
   uint GetHashCode() const override;
@@ -335,20 +339,21 @@ class RCDateTime : public ValueBasic<RCDateTime> {
   bool operator!=(const RCDataType &rcdt) const override;
   int64_t operator-(const RCDateTime &sec) const;  // difference in days, only for common::CT::DATE
 
-  short Year() const { return dt.year; }
-  short Month() const { return dt.month; }
-  short Day() const { return dt.day; }
+  short Year() const { return dt_.year; }
+  short Month() const { return dt_.month; }
+  short Day() const { return dt_.day; }
   short Hour() const {
-    if (at != common::CT::TIME) return dt.hour;
-    return dt.time_hour;
+    if (at_ != common::CT::TIME)
+      return dt_.hour;
+    return dt_.time_hour;
   }
-  short Minute() const { return dt.minute; }
-  short Second() const { return dt.second; }
-  int MicroSecond() const { return dt.microsecond; }
+  short Minute() const { return dt_.minute; }
+  short Second() const { return dt_.second; }
+  int MicroSecond() const { return dt_.microsecond; }
 
  private:
-  DT dt{};
-  common::CT at;
+  DT dt_{};
+  common::CT at_;
 
  private:
   int compare(const RCDateTime &rcdt) const;
@@ -384,7 +389,7 @@ class RCDateTime : public ValueBasic<RCDateTime> {
   static RCDateTime GetCurrent();
 
  public:
-  const static ValueTypeEnum value_type = ValueTypeEnum::DATE_TIME_TYPE;
+  const static ValueTypeEnum value_type_ = ValueTypeEnum::DATE_TIME_TYPE;
 };
 
 class RCValueObject {
@@ -414,27 +419,27 @@ class RCValueObject {
 
   bool IsNull() const;
 
-  common::CT Type() const { return value.get() ? value->Type() : common::CT::UNK; }
-  ValueTypeEnum GetValueType() const { return value.get() ? value->GetValueType() : ValueTypeEnum::NULL_TYPE; }
+  common::CT Type() const { return value_.get() ? value_->Type() : common::CT::UNK; }
+  ValueTypeEnum GetValueType() const { return value_.get() ? value_->GetValueType() : ValueTypeEnum::NULL_TYPE; }
   BString ToBString() const;
-  // operator RCDataType*()		{ return value.get(); }
-  RCDataType *Get() const { return value.get(); }
+  // operator RCDataType*()		{ return value_.get(); }
+  RCDataType *Get() const { return value_.get(); }
   RCDataType &operator*() const;
 
-  // RCDataType& operator*() const	{ DEBUG_ASSERT(value.get()); return
-  // *value; }
+  // RCDataType& operator*() const	{ DEBUG_ASSERT(value_.get()); return
+  // *value_; }
 
   operator RCNum &() const;
   // operator BString&() const;
   operator RCDateTime &() const;
   uint GetHashCode() const;
-  char *GetDataBytesPointer() const { return value->GetDataBytesPointer(); }
+  char *GetDataBytesPointer() const { return value_->GetDataBytesPointer(); }
 
  private:
   inline void construct(const RCDataType &rcdt);
 
  protected:
-  std::unique_ptr<RCDataType> value;
+  std::unique_ptr<RCDataType> value_;
 
  public:
   static bool compare(const RCValueObject &rcvo1, const RCValueObject &rcvo2, common::Operator op, char like_esc);
@@ -462,22 +467,22 @@ class rc_hash_compare {
  */
 static inline void ConvertToBinaryForm(const BString &src, BString &dst, DTCollation coll) {
   if (!src.IsNull()) {
-    coll.collation->coll->strnxfrm(coll.collation, (uchar *)dst.val, dst.len, dst.len, (uchar *)(src.val), src.len,
+    coll.collation->coll->strnxfrm(coll.collation, (uchar *)dst.val_, dst.len_, dst.len_, (uchar *)(src.val_), src.len_,
                                    MY_STRXFRM_PAD_TO_MAXLEN);
-    dst.null = false;
+    dst.null_ = false;
   } else {
-    dst.null = true;
+    dst.null_ = true;
   }
 }
 
 static int inline CollationStrCmp(DTCollation coll, const BString &s1, const BString &s2) {
-  return coll.collation->coll->strnncoll(coll.collation, (const uchar *)s1.val, s1.len, (const uchar *)s2.val, s2.len,
-                                         0);
+  return coll.collation->coll->strnncoll(coll.collation, (const uchar *)s1.val_, s1.len_, (const uchar *)s2.val_,
+                                         s2.len_, 0);
 }
 
 static bool inline CollationStrCmp(DTCollation coll, const BString &s1, const BString &s2, common::Operator op) {
-  int res =
-      coll.collation->coll->strnncoll(coll.collation, (const uchar *)s1.val, s1.len, (const uchar *)s2.val, s2.len, 0);
+  int res = coll.collation->coll->strnncoll(coll.collation, (const uchar *)s1.val_, s1.len_, (const uchar *)s2.val_,
+                                            s2.len_, 0);
   switch (op) {
     case common::Operator::O_EQ:
       return (res == 0);
