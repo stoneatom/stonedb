@@ -1,6 +1,4 @@
---echo #
---echo # Flow control function,Based on the test
---echo #
+--source include/have_tianmu.inc
 
 create table conditiontest(a int) engine=tianmu;
 insert into conditiontest values (1),(2),(3);
@@ -32,3 +30,4 @@ SELECT IFNULL(1,0);
 --echo #nullif
 SELECT NULLIF (2,1);
 SELECT NULLIF (2,2);
+drop table conditiontest;

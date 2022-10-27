@@ -6,13 +6,14 @@
 --disable_warnings
 drop table if exists t1,t2,t3;
 --enable_warnings
-SET sql_mode = 'NO_ENGINE_SUBSTITUTION,NO_AUTO_CREATE_USER';
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
 create table t1 (bandID MEDIUMINT NOT NULL PRIMARY KEY, payoutID SMALLINT NOT NULL);
 insert into t1 (bandID,payoutID) VALUES (1,6),(2,6),(3,4),(4,9),(5,10),(6,1),(7,12),(8,12);
 create table t2 (payoutID SMALLINT NOT NULL PRIMARY KEY);
 insert into t2 (payoutID) SELECT DISTINCT payoutID FROM t1;
 --error ER_DUP_ENTRY
 insert into t2 (payoutID) SELECT payoutID+10 FROM t1;
+call mtr.add_suppression(".*is unsafe because the order in which rows are retrieved by the SELECT determines.*");
 insert ignore into t2 (payoutID) SELECT payoutID+10 FROM t1;
 select * from t2;
 drop table t1,t2;
@@ -59,6 +60,7 @@ drop table t1;
 --echo #            with ON DUPLICATE and SELECT
 create table t1(x int, y int);
 create table t2(x int, z int);
+call mtr.add_suppression(".*ON DUPLICATE KEY UPDATE is unsafe because the order in which rows are retrieved by the SELECT determines.*");
 insert into t1(x,y) select x,z from t2 on duplicate key update x=values(x);
 --error 1054
 insert into t1(x,y) select x,z from t2 on duplicate key update x=values(z);
@@ -75,6 +77,7 @@ CREATE TABLE t1 (a int PRIMARY KEY);
 INSERT INTO t1 values (1), (2);
 
 flush status;
+call mtr.add_suppression(".*This is unsafe because the set of rows included cannot be predicted.*");
 INSERT INTO t1 SELECT a + 2 FROM t1 LIMIT 1;
 show status like 'Handler_read%';
 
@@ -142,6 +145,7 @@ CREATE TABLE t1 (f1 INT, f2 INT );
 CREATE TABLE t2  (f1 INT PRIMARY KEY, f2 INT);
 INSERT INTO t1 VALUES (1,1),(2,2),(10,10);
 INSERT INTO t2 (f1, f2) SELECT f1, f2 FROM t1;
+call mtr.add_suppression(".*ON DUPLICATE KEY UPDATE is unsafe because the order in which rows are retrieved by the SELECT determines.*");
 INSERT INTO t2 (f1, f2)
   SELECT f1, f1 FROM t2 src WHERE f1 < 2
   ON DUPLICATE KEY UPDATE f1 = 100 + src.f1;
@@ -174,7 +178,8 @@ SELECT * FROM t1;
 
 CREATE TABLE t2 (join_id INT);
 INSERT INTO t2 (join_id) VALUES (0);
-
+call mtr.add_suppression(".*This is unsafe because the set of rows included cannot be predicted.*");
+call mtr.add_suppression(".*Statements writing to a table with an auto-increment column after selecting from another table are unsafe.*");
 INSERT INTO t1 (prev_id) SELECT id
   FROM t2 LEFT JOIN t1 ON t1.join_id = t2.join_id
   ORDER BY id DESC LIMIT 1;
