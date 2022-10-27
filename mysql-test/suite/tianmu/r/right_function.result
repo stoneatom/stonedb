@@ -1,0 +1,49 @@
+#
+# RIGHT() function
+# Author: syw
+#
+DROP DATABASE IF EXISTS right_function;
+CREATE DATABASE right_function;
+USE right_function;
+CREATE TABLE t1 (a INT, b CHAR(15))ENGINE=tianmu;
+INSERT INTO t1 VALUES (NULL, ''),(1, 'tianmu'),(2, 'tainmu'),(3, 'Innodb');
+SELECT RIGHT('tianmu cs', 2) FROM t1 LIMIT 1;
+RIGHT('tianmu cs', 2)
+cs
+SELECT RIGHT('tianmu cs', 3) FROM t1 LIMIT 1;
+RIGHT('tianmu cs', 3)
+ cs
+SELECT RIGHT('tianmu cs', 4) FROM t1 LIMIT 1;
+RIGHT('tianmu cs', 4)
+u cs
+SELECT b, RIGHT(b, 0) FROM t1 ORDER BY 1;
+b	RIGHT(b, 0)
+	
+Innodb	
+tainmu	
+tianmu	
+SELECT b, RIGHT(b, -1) FROM t1 ORDER BY 1;
+b	RIGHT(b, -1)
+	
+Innodb	
+tainmu	
+tianmu	
+SELECT b, RIGHT(b, 6) FROM t1 ORDER BY 1;
+b	RIGHT(b, 6)
+	
+Innodb	Innodb
+tainmu	tainmu
+tianmu	tianmu
+SELECT b, RIGHT(b, 9) FROM t1 ORDER BY 1;
+b	RIGHT(b, 9)
+	
+Innodb	Innodb
+tainmu	tainmu
+tianmu	tianmu
+SELECT b, RIGHT(concat(b, '_mmm'), 10) FROM t1 ORDER BY 1;
+b	RIGHT(concat(b, '_mmm'), 10)
+	_mmm
+Innodb	Innodb_mmm
+tainmu	tainmu_mmm
+tianmu	tianmu_mmm
+DROP DATABASE right_function;
