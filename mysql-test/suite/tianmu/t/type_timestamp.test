@@ -1,0 +1,127 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test cases for the TIMESTAMP datatype
+--echo #
+
+# Test insert/literals/microseconds
+--disable_warnings
+DROP DATABASE IF EXISTS timestamp_test;
+set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+--enable_warnings
+
+CREATE DATABASE timestamp_test;
+USE timestamp_test;
+
+## Test the effect of changing timezones on timestamp values
+CREATE TABLE ctimestamp (a timestamp);
+SET time_zone='-5:00';
+INSERT INTO ctimestamp VALUES ('2019-01-01 01:02:03'), ('2019-05-05 01:01:01');
+SET time_zone='+1:00';
+SELECT a FROM ctimestamp ORDER BY a;
+SET time_zone='-2:00';
+SELECT a FROM ctimestamp ORDER BY a;
+
+## Test insert
+CREATE TABLE ctimestamp2 (a timestamp DEFAULT 0);
+INSERT INTO ctimestamp2 SELECT * FROM ctimestamp;
+SELECT a FROM ctimestamp2 ORDER BY a;
+
+## Test literals
+CREATE TABLE ctimestamp3 (a timestamp);
+INSERT INTO ctimestamp3 VALUES (19940101), (940101),
+(19940101010203), (940101010203), ('1994-01-01T01:02:03');
+SELECT a FROM ctimestamp3 ORDER BY a;
+
+## Test microseconds error
+#CREATE TABLE ctimestamp4 (a timestamp(6) default 0);
+#INSERT INTO ctimestamp4 VALUES (0), ('2019-01-01 01:01:01.123456');
+#SELECT a, microsecond(a) FROM ctimestamp4 ORDER BY a;
+
+--disable_warnings
+DROP DATABASE IF EXISTS timestamp_test;
+--enable_warnings
+
+CREATE DATABASE timestamp_test;
+USE timestamp_test;
+
+CREATE TABLE ctimestamp (a timestamp);
+SET time_zone='+0:00';
+INSERT INTO ctimestamp VALUES ('2019-01-02 00:02:03'),
+('2019-01-02 01:02:03'), ('2019-01-02 10:11:12');
+SET time_zone='+1:00';
+
+SELECT a, a BETWEEN '2019-01-02 02:00:00' AND '2019-01-02 13:00:00'
+FROM ctimestamp ORDER BY a;
+
+#SELECT a, IF(a < '2019-01-02 02:00:00', 'yes', 'no'),
+#ADDTIME(a, '1:1:1'), STR_TO_DATE(a, '%Y-%m-%d %H:%i:%s'),
+#EXTRACT(DAY_HOUR FROM a), EXTRACT(MINUTE_SECOND FROM a),
+#TIME_FORMAT(a, '%H:\%i:\%s'), a RLIKE '02:03', IFNULL(NULL, a),
+#CASE a WHEN '2019-01-02 01:02:03' THEN 'found' WHEN '2019-01-02 11:11:12'
+#THEN 'found2' ELSE 'notfound' END, CHAR_LENGTH(a),
+#CAST(a AS UNSIGNED INT), CAST(a AS CHAR), CAST(a AS DATE),
+#TIME(CAST(a AS DATETIME)), TIME(COALESCE(NULL, a)), HEX(a),
+#NULLIF(a, '2019-01-02 01:02:03'), TIMEDIFF(a, '2019-01-01 01:02:03')
+#FROM ctimestamp ORDER BY a;
+
+INSERT INTO ctimestamp VALUES ('2020-01-03 12:12:12'),
+('2020-05-06 12:12:12'), ('2020-10-28 12:12:12');
+
+SELECT a, DAYNAME(a), DAYOFWEEK(a), DATE_FORMAT(a, '%W %M %Y'),
+MONTHNAME(a), DATE(a), YEARWEEK(a), DAYOFYEAR(a), YEAR(a),
+a + INTERVAL 1 DAY, TIMESTAMPDIFF(DAY, a, '2020-01-01'),
+LAST_DAY(a), TRUNCATE(a, -2), a IN ('2019-01-02 01:02:03', a),
+TO_DAYS(a), DAY(a), WEEK(a), WEEKDAY(a), GREATEST(a, '2020-07-01'),
+MONTH(a), QUARTER(a), DATE_ADD(a, INTERVAL 1 SECOND)
+FROM ctimestamp WHERE a > '2020-01-01' ORDER BY a;
+
+SELECT UNIX_TIMESTAMP(a), TIME_TO_SEC(a), CEIL(a),
+CAST(LEAST(a, '2019-03-03 00:00:00') AS DATETIME),
+ROUND(a), SECOND(a), MINUTE(a), HOUR(a), FLOOR(a)
+FROM ctimestamp ORDER BY a;
+
+--disable_warnings
+DROP DATABASE IF EXISTS timestamp_test;
+--enable_warnings
+
+CREATE DATABASE timestamp_test;
+USE timestamp_test;
+
+CREATE TABLE ctimestamp (a timestamp, b int);
+SET time_zone='+0:00';
+INSERT INTO ctimestamp VALUES ('2019-01-03 12:12:12', 1),
+('2019-01-04 12:12:12', 2), ('2019-01-03 12:12:12', 4),
+('2019-01-03 12:12:12', 2), ('2019-01-04 12:12:12', 1);
+
+## Test SUM
+
+SELECT a, b, SUM(b)
+FROM ctimestamp;
+
+## Test MAX
+
+SELECT a, b, MAX(a)
+FROM ctimestamp;
+
+# Test aggregate functions
+--disable_warnings
+DROP DATABASE IF EXISTS timestamp_test;
+--enable_warnings
+
+CREATE DATABASE timestamp_test;
+USE timestamp_test;
+
+CREATE TABLE ctimestamp (a int, b timestamp);
+INSERT INTO ctimestamp VALUES (1, 20190101), (1, 20200202),
+(2, 20190202), (2, 20200202), (2, 20190101);
+
+# Test count(*)
+SELECT b, count(*) FROM ctimestamp GROUP BY b ORDER BY b;
+
+# Test max/min
+SELECT b, max(a), min(a) FROM ctimestamp GROUP BY b ORDER BY b;
+SELECT a, max(b), min(b) FROM ctimestamp GROUP BY a ORDER BY a;
+
+# Cleanup
+DROP DATABASE timestamp_test;
