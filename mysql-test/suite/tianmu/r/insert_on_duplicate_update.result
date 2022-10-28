@@ -1,0 +1,17 @@
+#
+# Test INSERT ON DUPLICATE KEY UPDATE statement
+# Author: syw
+#
+DROP DATABASE IF EXISTS insert_on_duplicate_update;
+CREATE DATABASE insert_on_duplicate_update;
+USE insert_on_duplicate_update;
+CREATE TABLE t1(
+c1 INT primary key not null,
+c2 CHAR(5)
+) ENGINE=tianmu;
+INSERT INTO t1 VALUES (123, 'abc');
+INSERT INTO t1 VALUES (123, 'abc') ON DUPLICATE KEY UPDATE c1 = VALUES(c1) + 1;
+SELECT * FROM t1;
+c1	c2
+124	abc
+DROP DATABASE insert_on_duplicate_update;

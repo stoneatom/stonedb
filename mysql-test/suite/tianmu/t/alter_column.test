@@ -1,0 +1,60 @@
+--echo #
+--echo # Test add, modify, rename, drop column
+--echo # Author: syw
+--echo #
+
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS alter_colunm;
+--enable_warnings
+
+CREATE DATABASE alter_colunm;
+USE alter_colunm;
+
+CREATE TABLE t1 (c1 INT, c2 CHAR(1)) ENGINE=tianmu;
+INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c'), (4, 'd'), (5, 'e');
+
+#################
+# Add New Column
+#################
+
+ALTER TABLE t1 ADD COLUMN c11 INT NOT NULL;
+--error 1060
+ALTER TABLE t1 ADD COLUMN c11 INT(1);
+ALTER TABLE t1 ADD COLUMN c21 CHAR(2);
+
+#Duplicate column name
+--error 1060
+ALTER TABLE t1 ADD COLUMN c11 INT(2);
+ALTER TABLE t1 ADD COLUMN c12 CHAR(1) AFTER c11;
+ALTER TABLE t1 ADD COLUMN c0 INT FIRST;
+
+#################
+# Modify Column
+#################
+
+ALTER TABLE t1 MODIFY COLUMN c11 TINYINT;
+
+#################
+# Rename Column
+#################
+
+ALTER TABLE t1 CHANGE COLUMN c2 c2new CHAR(2);
+--error 1054
+ALTER TABLE t1 CHANGE COLUMN c2 c2new CHAR(1);
+ALTER TABLE t1 CHANGE COLUMN c2new c2 CHAR(1);
+
+#################
+# DROP Column
+#################
+
+--error 1064
+ALTER TABLE t1 DROP COLUMN IF EXISTS c11;
+ALTER TABLE t1 DROP COLUMN c11;
+
+SHOW CREATE TABLE t1;
+SELECT * FROM t1 ORDER BY c1;
+
+# Clean UP
+DROP DATABASE alter_colunm;

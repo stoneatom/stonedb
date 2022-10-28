@@ -1,0 +1,29 @@
+--echo #
+--echo # RIGHT() function
+--echo # Author: syw
+--echo #
+
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS right_function;
+--enable_warnings
+
+CREATE DATABASE right_function;
+USE right_function;
+
+CREATE TABLE t1 (a INT, b CHAR(15))ENGINE=tianmu;
+INSERT INTO t1 VALUES (NULL, ''),(1, 'tianmu'),(2, 'tainmu'),(3, 'Innodb');
+
+SELECT RIGHT('tianmu cs', 2) FROM t1 LIMIT 1;
+SELECT RIGHT('tianmu cs', 3) FROM t1 LIMIT 1;
+SELECT RIGHT('tianmu cs', 4) FROM t1 LIMIT 1;
+
+SELECT b, RIGHT(b, 0) FROM t1 ORDER BY 1;
+SELECT b, RIGHT(b, -1) FROM t1 ORDER BY 1;
+SELECT b, RIGHT(b, 6) FROM t1 ORDER BY 1;
+SELECT b, RIGHT(b, 9) FROM t1 ORDER BY 1;
+SELECT b, RIGHT(concat(b, '_mmm'), 10) FROM t1 ORDER BY 1;
+
+# Clean UP
+DROP DATABASE right_function;

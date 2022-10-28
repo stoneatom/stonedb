@@ -216,21 +216,6 @@ x'4132'
 A2
 drop table t1;
 #
-# Test create table if not exists with duplicate key error
-#
-create table t1 (a int not null, b int, primary key (a));
-insert into t1 values (1,1);
-select * from t1;
-a	b
-1	1
-show status like "Opened_tables";
-Variable_name	Value
-Opened_tables	12
-select * from t1;
-a	b
-1	1
-drop table t1;
-#
 # "Table truncated when creating another table name with Spaces"
 #
 create table `t1 `(a int)engine=tianmu;
