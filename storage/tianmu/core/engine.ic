@@ -72,7 +72,8 @@ static int optimize_select(THD *thd, ulong select_options, Query_result *result,
     if (result->prepare(thd, select_lex->fields, select_lex->master_query_expression())) {
       return true;
     }
-    if (!(join = new JOIN(thd, select_lex))) return true; /* purecov: inspected */
+    if (!(join = new (thd->mem_root) JOIN(thd, select_lex)))
+      return true; /* purecov: inspected */
     select_lex->set_join(thd, join);
   }
 
@@ -80,7 +81,8 @@ static int optimize_select(THD *thd, ulong select_options, Query_result *result,
   optimize_after_tianmu = true;
   // all the preparation operations are done, therefore, we set the `part` to 1, then pass it to JOIN::optimize.
   // 1 means we have done the preparation.
-  if ((err = join->optimize(false, JOIN::OptimizePhase::Before_LOJ_Transform))) return err;
+  if ((err = join->optimize(false, JOIN::OptimizePhase::Before_LOJ_Transform)))
+    return err;
   return false;
 }
 
@@ -157,11 +159,13 @@ int Query_expression::optimize_for_tianmu(THD *thd) {
   Query_block *lex_select_save = thd->lex->current_query_block();
   Query_block *select_cursor = first_query_block();
 
-  if (is_executed() && !uncacheable && !thd->lex->is_explain()) return false;
+  if (is_executed() && !uncacheable && !thd->lex->is_explain())
+    return false;
   executed = 1;
 
   if (uncacheable || !item || !item->assigned() || thd->lex->is_explain()) {
-    if (item) item->reset_value_registration();
+    if (item)
+      item->reset_value_registration();
     if (is_optimized() && item) {
       if (item->assigned()) {
         item->assigned(0);  // We will reinit & rexecute unit
@@ -169,7 +173,8 @@ int Query_expression::optimize_for_tianmu(THD *thd) {
         table->file->ha_delete_all_rows();
       }
       // re-enabling indexes for next subselect iteration
-      if (union_distinct && table->file->ha_enable_indexes(HA_KEY_SWITCH_ALL)) DEBUG_ASSERT(0);
+      if (union_distinct && table->file->ha_enable_indexes(HA_KEY_SWITCH_ALL))
+        DEBUG_ASSERT(0);
     }
     for (Query_block *sl = select_cursor; sl; sl = sl->next_query_block()) {
       thd->lex->set_current_query_block(sl);
@@ -181,7 +186,7 @@ int Query_expression::optimize_for_tianmu(THD *thd) {
         SELECT (for union it can be only INSERT ... SELECT).
       */
       if (sl->join == nullptr) {
-        JOIN *join = new JOIN(thd, sl);
+        JOIN *join = new (thd->mem_root) JOIN(thd, sl);
         if (!join) {
           thd->lex->set_current_query_block(lex_select_save);
           cleanup(thd, 0);  // stonedb8
@@ -197,7 +202,8 @@ int Query_expression::optimize_for_tianmu(THD *thd) {
           offset_limit_cnt = 0;
           // We can't use LIMIT at this stage if we are using ORDER BY for the
           // whole query
-          if (sl->order_list.first || thd->lex->is_explain()) select_limit_cnt = HA_POS_ERROR;
+          if (sl->order_list.first || thd->lex->is_explain())
+            select_limit_cnt = HA_POS_ERROR;
         }
 
         // When using braces, SQL_CALC_FOUND_ROWS affects the whole query:
@@ -224,13 +230,15 @@ int Query_expression::optimize_for_tianmu(THD *thd) {
     if (fake_query_block != nullptr) {
       thd->lex->set_current_query_block(fake_query_block);
       if (!is_prepared()) {
-        if (prepare_fake_query_block(thd)) return saved_error;
+        if (prepare_fake_query_block(thd))
+          return saved_error;
       }
       JOIN *join = nullptr;
       if (fake_query_block->join != nullptr)
         join = fake_query_block->join;
       else {
-        if (!(join = new JOIN(thd, fake_query_block))) DEBUG_ASSERT(0);
+        if (!(join = new JOIN(thd, fake_query_block)))
+          DEBUG_ASSERT(0);
         // fake_query_block->set_join(join);
       }
 
