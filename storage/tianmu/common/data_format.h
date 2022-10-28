@@ -43,33 +43,33 @@ enum class EDF { TRI_UNKNOWN };
 
 class DataFormat {
  protected:
-  DataFormat(std::string name, EDF edf) : name(name), id(no_formats++), edf(edf) {}
+  DataFormat(std::string name, EDF edf) : name_(name), id_(no_formats_++), edf_(edf) {}
 
  public:
   virtual ~DataFormat() = default;
 
  public:
-  std::string GetName() const { return name; }
-  int GetId() const { return id; }
-  EDF GetEDF() const { return edf; }
+  std::string GetName() const { return name_; }
+  int GetId() const { return id_; }
+  EDF GetEDF() const { return edf_; }
   virtual std::unique_ptr<exporter::DataExporter> CreateDataExporter(const system::IOParameters &iop) const = 0;
   virtual bool CanExport() const { return true; }
 
  private:
-  std::string name;
-  int id;
-  EDF edf;
+  std::string name_;
+  int id_;
+  EDF edf_;
 
  public:
   static DataFormatPtr GetDataFormat(const std::string &name);
   static DataFormatPtr GetDataFormat(int id);
   static DataFormatPtr GetDataFormat(EDF edf);
   static DataFormatPtr GetDataFormatbyEDF(EDF edf);
-  static auto GetNoFormats() { return df_map.size(); }
+  static auto GetNoFormats() { return df_map_.size(); }
 
  private:
-  static int no_formats;
-  static std::map<std::string, DataFormatPtr> df_map;
+  static int no_formats_;
+  static std::map<std::string, DataFormatPtr> df_map_;
 };
 
 }  // namespace common
