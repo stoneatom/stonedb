@@ -1,3 +1,9 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # fix issue415
+--echo #
+
 use test;
 CREATE TABLE `select_base_with_primary_key` (
   `pk` bigint(11) NOT NULL AUTO_INCREMENT,
