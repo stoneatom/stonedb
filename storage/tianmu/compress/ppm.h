@@ -28,7 +28,7 @@ namespace compress {
 class PPM {
   using Symb = uchar;
 
-  std::unique_ptr<PPMModel> model;
+  std::unique_ptr<PPMModel> model_;
 
   // compression and decompression using ArithCoder
   CprsErr CompressArith(char *dest, int &dlen, Symb *src, int slen);
@@ -38,10 +38,10 @@ class PPM {
   enum class ModelType { ModelNull, ModelSufTree, ModelWordGraph };
   // enum CoderType { CoderArith, CoderRange };
 
-  static FILE *dump;
-  static bool printstat;
+  static FILE *dump_;
+  static bool printstat_;
 
-  // if data=NULL or dlen=0, the model will be null - compression will simply
+  // if data=NULL or dlen=0, the model_ will be null - compression will simply
   // copy the data; 'method' - which version of compression will be used in
   // Compress/Decompress
   PPM(const Symb *data, int dlen, ModelType mt, PPMParam param = PPMParam(), uchar method = 2);

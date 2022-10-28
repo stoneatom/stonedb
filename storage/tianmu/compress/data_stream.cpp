@@ -24,27 +24,30 @@ void BitStream::ZeroBits(uint beg, uint end) {
   uint byte1 = beg >> 3, bit1 = 8 - (beg & 7), byte2 = end >> 3, bit2 = end & 7;
 
   if (byte1 < byte2) {
-    (buf[byte1] _SHL_ASSIGN_ bit1) _SHR_ASSIGN_ bit1;  // clear 'bit1' upper bits of 'byte1'
-    if (bit2) (buf[byte2] >>= bit2) <<= bit2;          // clear 'bit2' lower bits of 'byte2'
-    std::memset(buf + byte1 + 1, 0,
+    (buf_[byte1] _SHL_ASSIGN_ bit1) _SHR_ASSIGN_ bit1;  // clear 'bit1' upper bits of 'byte1'
+    if (bit2)
+      (buf_[byte2] >>= bit2) <<= bit2;  // clear 'bit2' lower bits of 'byte2'
+    std::memset(buf_ + byte1 + 1, 0,
                 byte2 - byte1 - 1);  // clear the rest of bytes, in the middle
   } else if (beg < end) {            // beggining and end are in the same byte
-    uchar t = buf[byte1];
+    uchar t = buf_[byte1];
     bit1 = 8 - bit1;
     bit2 = 8 - bit2;
     t _SHR_ASSIGN_ bit1;
     t _SHL_ASSIGN_(bit1 + bit2);
     t >>= bit2;
-    buf[byte1] -= t;
+    buf_[byte1] -= t;
   }
 }
 
 void BitStream::ClearBits() {
-  clrlen = 2 * pos + 64;
-  clrlen = (clrlen / 8) * 8;  // round to the whole byte
-  if ((clrlen <= pos) || (clrlen > len)) clrlen = len;
-  if (clrlen <= pos) BufOverrun();
-  ZeroBits(pos, clrlen);
+  clrlen_ = 2 * pos_ + 64;
+  clrlen_ = (clrlen_ / 8) * 8;  // round to the whole byte
+  if ((clrlen_ <= pos_) || (clrlen_ > len_))
+    clrlen_ = len_;
+  if (clrlen_ <= pos_)
+    BufOverrun();
+  ZeroBits(pos_, clrlen_);
 }
 
 }  // namespace compress

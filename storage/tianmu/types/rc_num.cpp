@@ -33,12 +33,12 @@ RCNum::RCNum(common::CT attrt) : value_(0), scale_(0), is_double_(false), is_dot
 RCNum::RCNum(int64_t value_, short scale, bool is_double_, common::CT attrt) { Assign(value_, scale, is_double_, attrt); }
 
 RCNum::RCNum(double value_) : value_(*(int64_t *)&value_), scale_(0), is_double_(true), is_dot_(false), attr_type_(common::CT::REAL) {
-  null = (value_ == NULL_VALUE_D ? true : false);
+  null_ = (value_ == NULL_VALUE_D ? true : false);
 }
 
 RCNum::RCNum(const RCNum &rcn)
     : ValueBasic<RCNum>(rcn), value_(rcn.value_), scale_(rcn.scale_), is_double_(rcn.is_double_), is_dot_(rcn.is_dot_), attr_type_(rcn.attr_type_) {
-  null = rcn.null;
+  null_ = rcn.null_;
 }
 
 RCNum::~RCNum() {}
@@ -60,9 +60,9 @@ RCNum &RCNum::Assign(int64_t value_, short scale, bool is_double_, common::CT at
     if (!(this->attr_type_ == common::CT::REAL || this->attr_type_ == common::CT::FLOAT)) this->attr_type_ = common::CT::REAL;
     this->is_dot_ = false;
     scale_ = 0;
-    null = (value_ == *(int64_t *)&NULL_VALUE_D ? true : false);
+    null_ = (value_ == *(int64_t *)&NULL_VALUE_D ? true : false);
   } else
-    null = (value_ == common::NULL_VALUE_64 ? true : false);
+    null_ = (value_ == common::NULL_VALUE_64 ? true : false);
   return *this;
 }
 
@@ -73,7 +73,7 @@ RCNum &RCNum::Assign(double value_) {
   this->is_dot_ = false;
   this->attr_type_ = common::CT::REAL;
   common::double_int_t v(value_);
-  null = (v.i == common::NULL_VALUE_64 ? true : false);
+  null_ = (v.i == common::NULL_VALUE_64 ? true : false);
   return *this;
 }
 
@@ -93,7 +93,7 @@ RCNum &RCNum::operator=(const RCNum &rcn) {
   value_ = rcn.value_;
   is_double_ = rcn.is_double_;
   scale_ = rcn.scale_;
-  null = rcn.null;
+  null_ = rcn.null_;
   attr_type_ = rcn.attr_type_;
   return *this;
 }
@@ -107,7 +107,7 @@ RCNum &RCNum::operator=(const RCDataType &rcdt) {
       *this = rcn1;
     } else {
       TIANMU_ERROR("Unsupported assign operation!");
-      null = true;
+      null_ = true;
     }
   }
   return *this;
@@ -250,7 +250,8 @@ RCNum::operator double() const {
 }
 
 bool RCNum::operator==(const RCDataType &rcdt) const {
-  if (null || rcdt.IsNull()) return false;
+  if (null_ || rcdt.IsNull())
+    return false;
   if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE) return (compare((RCNum &)rcdt) == 0);
   if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) == 0);
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (rcdt == this->ToBString());
@@ -259,7 +260,8 @@ bool RCNum::operator==(const RCDataType &rcdt) const {
 }
 
 bool RCNum::operator!=(const RCDataType &rcdt) const {
-  if (null || rcdt.IsNull()) return false;
+  if (null_ || rcdt.IsNull())
+    return false;
   if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE) return (compare((RCNum &)rcdt) != 0);
   if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) != 0);
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (rcdt != this->ToBString());
@@ -295,7 +297,8 @@ bool RCNum::operator<=(const RCDataType &rcdt) const {
 }
 
 bool RCNum::operator>=(const RCDataType &rcdt) const {
-  if (null || rcdt.IsNull()) return false;
+  if (null_ || rcdt.IsNull())
+    return false;
   if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE) return (compare((RCNum &)rcdt) >= 0);
   if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return (compare((RCDateTime &)rcdt) >= 0);
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (this->ToBString() >= rcdt);
@@ -304,7 +307,7 @@ bool RCNum::operator>=(const RCDataType &rcdt) const {
 }
 
 RCNum &RCNum::operator-=(const RCNum &rcn) {
-  DEBUG_ASSERT(!null);
+  DEBUG_ASSERT(!null_);
   if (rcn.IsNull() || rcn.IsNull()) return *this;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
@@ -327,7 +330,7 @@ RCNum &RCNum::operator-=(const RCNum &rcn) {
 }
 
 RCNum &RCNum::operator+=(const RCNum &rcn) {
-  DEBUG_ASSERT(!null);
+  DEBUG_ASSERT(!null_);
   if (rcn.IsNull() || rcn.IsNull()) return *this;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
@@ -350,7 +353,7 @@ RCNum &RCNum::operator+=(const RCNum &rcn) {
 }
 
 RCNum &RCNum::operator*=(const RCNum &rcn) {
-  DEBUG_ASSERT(!null);
+  DEBUG_ASSERT(!null_);
   if (rcn.IsNull() || rcn.IsNull()) return *this;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
@@ -386,7 +389,7 @@ void fcvt(char *buf_, double val_, int digits_, int *dec_, int *sign_) {
 }
 
 RCNum &RCNum::operator/=(const RCNum &rcn) {
-  DEBUG_ASSERT(!null);
+  DEBUG_ASSERT(!null_);
   if (rcn.IsNull() || rcn.IsNull()) return *this;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())

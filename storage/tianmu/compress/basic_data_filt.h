@@ -34,20 +34,20 @@ namespace compress {
 /* RLE */
 template <class T>
 class DataFilt_RLE : public DataFilt<T> {
-  static const ushort MAXBLEN = 16;
-  ushort lens[CPRS_MAXREC];
-  uint nblk;
-  uint lencnt[MAXBLEN + 1];
-  uint merge_nrec;
-  Dictionary<T> dict;
+  static const ushort MAXBLEN_ = 16;
+  ushort lens_[CPRS_MAXREC];
+  uint nblk_;
+  uint lencnt_[MAXBLEN_ + 1];
+  uint merge_nrec_;
+  Dictionary<T> dict_;
 
   void Clear() {
-    std::memset(lencnt, 0, sizeof(lencnt));
-    nblk = 0;
+    std::memset(lencnt_, 0, sizeof(lencnt_));
+    nblk_ = 0;
   }
   void AddLen(ushort len) {
-    lens[nblk++] = len;
-    lencnt[len]++;
+    lens_[nblk_++] = len;
+    lencnt_[len]++;
   }
 
  public:
@@ -63,7 +63,7 @@ class DataFilt_RLE : public DataFilt<T> {
 /* Subtracting minimum from data */
 template <class T>
 class DataFilt_Min : public DataFilt<T> {
-  T minval;
+  T minval_;
 
  public:
   char const *GetName() override { return "min"; }
@@ -75,10 +75,10 @@ class DataFilt_Min : public DataFilt<T> {
 /* Dividing data by GCD */
 template <class T>
 class DataFilt_GCD : public DataFilt<T> {
-  T gcd;
+  T gcd_;
 
  public:
-  char const *GetName() override { return "gcd"; }
+  char const *GetName() override { return "gcd_"; }
   bool Encode(RangeCoder *coder, DataSet<T> *dataset) override;
   void Decode(RangeCoder *coder, DataSet<T> *dataset) override;
   void Merge(DataSet<T> *dataset) override;
@@ -87,10 +87,10 @@ class DataFilt_GCD : public DataFilt<T> {
 /* Data differencing */
 template <class T>
 class DataFilt_Diff : public DataFilt<T> {
-  static const uint MAXSAMP = 65536 / 20;
-  static const uchar BITDICT = 8;
-  T sample[MAXSAMP];
-  Dictionary<uchar> dict;
+  static const uint MAXSAMP_ = 65536 / 20;
+  static const uchar BITDICT_ = 8;
+  T sample_[MAXSAMP_];
+  Dictionary<uchar> dict_;
   // T newmin, newmax, merge_maxval;
   // static int compare(const void* p1, const void* p2);		// for
   // sorting array in increasing order

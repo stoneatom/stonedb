@@ -45,7 +45,7 @@ template <class Symb = uchar, int NSymb = 256>
 class SuffixTree : public PPMModel {
  public:
   // node identifier (pointer);
-  // 0 - nil, 1 - root, positive - internal nodes, negative - leafs (-1 means
+  // 0 - nil, 1 - root, positive - internal nodes_, negative - leafs (-1 means
   // the first leaf, i.e. number 0)
   using PNode = int;
 
@@ -66,8 +66,8 @@ class SuffixTree : public PPMModel {
                 // transformation for PPM
 
     Symb fsym;    // int-2, leaf-2
-    PNode child;  // int-1, leaf-NO	// first child (NIL only for a leaf)
-    PNode next;   // int-1, leaf-1	// sibling of this node (NIL for the last child)
+    PNode child;  // int-1, leaf-NO	// first child (NIL_ only for a leaf)
+    PNode next;   // int-1, leaf-1	// sibling of this node (NIL_ for the last child)
     PNode prev;   // int-2, leaf-2	// previous sibling; cyclic list (first
                   // child points to the last)
 
@@ -80,43 +80,45 @@ class SuffixTree : public PPMModel {
     Node() { std::memset(this, 0, sizeof *this); }
   };
 
-  // all nodes
-  std::vector<Node> nodes;
-  PNode NIL, ROOT;
+  // all nodes_
+  std::vector<Node> nodes_;
+  PNode NIL_, ROOT_;
 
-  int dlen;                      // length of 'data', INcluding the terminating symbol ('\0')
-  std::unique_ptr<Symb[]> data;  // original string - for reference
-  std::unique_ptr<int[]> lens;   // lens[i] - length of substring of 'data' from
-                                 // 'i' to the next '\0' (incl. '\0')
+  int dlen_;                      // length of 'data_', INcluding the terminating symbol ('\0')
+  std::unique_ptr<Symb[]> data_;  // original string - for reference
+  std::unique_ptr<int[]> lens_;   // lens_[i] - length of substring of 'data_' from
+                                  // 'i' to the next '\0' (incl. '\0')
 
   // global parameters and statistics
-  int nleaves;
-  bool iscreating;  // = true during tree construction, false otherwise
-  PPMParam param;
+  int nleaves_;
+  bool iscreating_;  // = true during tree construction, false otherwise
+  PPMParam param_;
 
   //-------------------------------------------------------------------------
 
-  Node &GetNode(PNode n) { return nodes[n]; }
+  Node &GetNode(PNode n) { return nodes_[n]; }
   PNode NxtChild(PNode ch) { return GetNode(ch).next; }
   PNode PrvChild(PNode ch) { return GetNode(ch).prev; }
   PNode GetChild(PNode n, Symb s) {
 #ifdef SUFTREE_STAT
-    if (iscreating) GetNode(n).nvisit++;
+    if (iscreating_)
+      GetNode(n).nvisit++;
 #endif
-    if (n == NIL) return ROOT;
+    if (n == NIL_)
+      return ROOT_;
     PNode ch = GetNode(n).child;
-    while (ch != NIL)
+    while (ch != NIL_)
       if (GetNode(ch).fsym == s)
         return ch;
       else
         ch = GetNode(ch).next;
-    return NIL;
+    return NIL_;
   }
   void AddChild(Node &n, Symb s, PNode m) {
     Node &mm = GetNode(m);
     mm.fsym = s;
     mm.next = n.child;
-    if (n.child == NIL)
+    if (n.child == NIL_)
       mm.prev = m;
     else {
       PNode &prev = GetNode(n.child).prev;
@@ -139,7 +141,7 @@ class SuffixTree : public PPMModel {
     mm.prev = GetNode(*ch).prev;
     if (mm.prev == *ch)
       mm.prev = m;  // 'mm' is the only child
-    else if (mm.next == NIL)
+    else if (mm.next == NIL_)
       GetNode(n.child).prev = m;  // 'mm' is the last child out of 2 or more children
     else
       GetNode(mm.next).prev = m;  // 'mm' is not the last child
@@ -150,8 +152,8 @@ class SuffixTree : public PPMModel {
   // int GetLeafPos(PNode par, PNode leaf)	{ return GetNode(leaf).dep +
   // GetNode(par).dep; }
 
-  bool IsLeaf(PNode n) { return GetNode(n).child == NIL; }
-  bool IsInternal(PNode n) { return GetNode(n).child != NIL; }
+  bool IsLeaf(PNode n) { return GetNode(n).child == NIL_; }
+  bool IsInternal(PNode n) { return GetNode(n).child != NIL_; }
   struct Point {
     PNode n;
     uint proj;   // number of symbols passed from 'n' down to 'next' (if Point at
@@ -193,16 +195,16 @@ class SuffixTree : public PPMModel {
 
   bool GetCut(PNode n) { return GetNode(n).cut == 1; }
   void SetCut(PNode n, bool v) { GetNode(n).cut = (v ? 1 : 0); }
-  Count GetEscCount([[maybe_unused]] PNode n) { return param.esc_count; }
+  Count GetEscCount([[maybe_unused]] PNode n) { return param_.esc_count; }
   void SetCounts();
 
-  // sets 'cut'=true for unnecessary nodes; physically breaks edges between
-  // pruned and non-pruned nodes
+  // sets 'cut'=true for unnecessary nodes_; physically breaks edges between
+  // pruned and non-pruned nodes_
   void Prune(PNode n, bool cut);
   bool IsValid(PNode n);  // is node 'n' useful for prediction? If not, its
                           // children will be cut off
 
-  // 'sum' will be set only for not-cut-off nodes
+  // 'sum' will be set only for not-cut-off nodes_
   void SetSums();
   int Shift(int c);
 
@@ -216,10 +218,10 @@ class SuffixTree : public PPMModel {
   //-------------------------------------------------------------------------
   // PPM compression/decompression
 
-  PNode state;
+  PNode state_;
   struct Edge {
-    PNode n;  // e.n = NIL means "escape"
-    Symb s;   // this is needed to identify exactly the edges from NIL to ROOT
+    PNode n;  // e.n = NIL_ means "escape"
+    Symb s;   // this is needed to identify exactly the edges from NIL_ to ROOT_
               // (otherwise is undefined)
   };
 
@@ -229,23 +231,26 @@ class SuffixTree : public PPMModel {
   CprsErr GetLabel(Edge e, Symb *lbl,
                    int &len);  // 'len' - max size of lbl; upon exit: length of lbl
   int GetLen(Edge e) {
-    if (e.n == NIL) return 0;
+    if (e.n == NIL_)
+      return 0;
     return GetNode(e.n).len;
   }
   void GetRange(PNode stt, Edge e,
                 Range &r);  // 'stt' must be the parent of 'e'
   Count GetTotal(PNode stt) {
-    if (stt == NIL) return NSymb;
+    if (stt == NIL_)
+      return N_Symb_;
     Node &node = GetNode(stt);
-    if (node.child == NIL) return param.esc_count;
+    if (node.child == NIL_)
+      return param_.esc_count;
     return GetNode(GetNode(node.child).prev).sum;
   }
 
   void Move(Edge e) {
-    if (e.n == NIL)
-      state = GetNode(state).suf;
+    if (e.n == NIL_)
+      state_ = GetNode(state_).suf;
     else
-      state = e.n;
+      state_ = e.n;
   }
 
   //-----------------------------------------------------------------------------
@@ -255,31 +260,31 @@ class SuffixTree : public PPMModel {
   // The resultant tree is a sum of trees constructed for each of the strings,
   // with every leaf storing the number of its repetitions.
   // If dlen_=-1, it's assumed that data_ contains only one string.
-  SuffixTree(const Symb *data_, int dlen_ = -1) {
+  SuffixTree(const Symb *data, int dlen = -1) {
     Init();
     if (dlen_ < 0)
-      dlen = (int)std::strlen((const char *)data_) + 1;
+      dlen_ = (int)std::strlen((const char *)data) + 1;
     else
-      dlen = dlen_;
-    dlen += 2;  // add '\0' at the beginning and at the end
-    data.reset(new uchar[dlen]);
-    std::memcpy(data.get() + 1, data_, dlen - 2);
-    data[0] = data[dlen - 1] = '\0';
+      dlen_ = dlen;
+    dlen_ += 2;  // add '\0' at the beginning and at the end
+    data_.reset(new uchar[dlen_]);
+    std::memcpy(data_.get() + 1, data, dlen_ - 2);
+    data_[0] = data_[dlen_ - 1] = '\0';
     Create();
   }
   virtual ~SuffixTree() { Clear(); }
   //-------------------------------------------------------------------------
   // information and statistics
 
-  int GetNNodes() override { return (int)nodes.size(); }
-  int GetNLeaves() { return nleaves; }
+  int GetNNodes() override { return (int)nodes_.size(); }
+  int GetNLeaves() { return nleaves_; }
   int GetMemUsage() override;  // real number of bytes used, without wasted space in 'vector'
   int GetMemAlloc() override;  // total number of bytes used
 
   // branch[256] - array of counts of branching factors
-  // sumcnt[256] - array of summary subtree sizes (counts) for nodes of a given
+  // sumcnt[256] - array of summary subtree sizes (counts) for nodes_ of a given
   // branching factor sumvis[256] - array of summary number of visits (invoking
-  // GetChild) for a branching factor vld - number of valid internal nodes, i.e.
+  // GetChild) for a branching factor vld - number of valid internal nodes_, i.e.
   // with large count and small branching - good for prediction void
   // GetStat(int* branch, int* sumcnt, int* sumvis, int& vld, int* cnt = 0,
   // PNode n = 0, PNode prev = 0);
@@ -291,7 +296,7 @@ class SuffixTree : public PPMModel {
   // flags (OR):
   //  1 - print label text
   //  2 - print lengths of labels
-  //  4 - print depths of nodes
+  //  4 - print depths of nodes_
   //  8 - print counts
   void Print(std::ostream &str = std::cout, uint flags = 1 + 8, PNode n = 0, PNode prev = 0, int ind = 0);
   void PrintSub(std::ostream &str, int start,
@@ -302,13 +307,13 @@ class SuffixTree : public PPMModel {
   // definitions for PPM
 
   void TransformForPPM(PPMParam param_ = PPMParam()) override;
-  void InitPPM() override { state = ROOT; }
+  void InitPPM() override { state_ = ROOT_; }
   // compression: [str,len_total] -> [len_of_edge,rng,total]
   void Move(Symb *str, int &len, Range &rng, Count &total) override;
 
   // decompression: [c,str,len_max] -> [str,len_of_edge,rng]+returned_error
   CprsErr Move(Count c, Symb *str, int &len, Range &rng) override;
-  Count GetTotal() override { return GetTotal(state); }
+  Count GetTotal() override { return GetTotal(state_); }
 #ifdef SUFTREE_STAT
   int GetDep(PNode s) { return GetNode(s).dep; }
 #endif
