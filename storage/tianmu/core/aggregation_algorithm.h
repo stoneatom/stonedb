@@ -26,6 +26,16 @@
 
 namespace Tianmu {
 namespace core {
+
+enum class AggregatePackRowStats : unsigned int {
+  AGG_PACK_ROW_SUCCEED = 0,
+  AGG_PACK_ROW_FINISHED = 1,
+  AGG_PACK_ROW_KILLED = 2,
+  AGG_PACK_ROW_OVERFLOW = 3,
+  AGG_PACK_ROW_ERROR = 4,
+  AGG_PACK_ROW_SKIP = 5
+};
+
 class AggregationAlgorithm {
  public:
   AggregationAlgorithm(TempTable *tt)
@@ -36,14 +46,17 @@ class AggregationAlgorithm {
   bool AggregateRough(GroupByWrapper &gbw, MIIterator &mit, bool &packrow_done, bool &part_omitted,
                       bool &ag_not_changeabe, bool &stop_all, int64_t &uniform_pos, int64_t rows_in_pack,
                       int64_t local_factor, int just_one_aggr = -1);
+
   void MultiDimensionalGroupByScan(GroupByWrapper &gbw, int64_t &limit, int64_t &offset, ResultSender *sender,
                                    bool limit_less_than_no_groups);
+
   void MultiDimensionalDistinctScan(GroupByWrapper &gbw, MIIterator &mit);
+
   void AggregateFillOutput(GroupByWrapper &gbw, int64_t gt_pos, int64_t &omit_by_offset);
 
   // Return code for AggregatePackrow: 0 - success, 1 - stop aggregation
   // (finished), 5 - pack already aggregated (skip)
-  int AggregatePackrow(GroupByWrapper &gbw, MIIterator *mit, int64_t cur_tuple);
+  AggregatePackRowStats AggregatePackrow(GroupByWrapper &gbw, MIIterator *mit, int64_t cur_tuple);
 
   // No parallel for subquery/join/distinct cases
   bool ParallelAllowed(GroupByWrapper &gbw) {
@@ -51,8 +64,10 @@ class AggregationAlgorithm {
             gbw.MayBeParallel());
   }
   void TaskFillOutput(GroupByWrapper *gbw, Transaction *ci, int64_t offset, int64_t limit);
+
   void ParallelFillOutputWrapper(GroupByWrapper &gbw, int64_t offset, int64_t limit, MIIterator &mit);
-  TempTable *GetTempTable() { return t; }
+
+  inline TempTable *GetTempTable() { return t; }
 
  private:
   // just pointers:
@@ -60,12 +75,11 @@ class AggregationAlgorithm {
   Transaction *m_conn;
   MultiIndex *mind;
 
-  int64_t factor;  // multiindex factor - how many actual rows is processed by
-                   // one iterator step
+  int64_t factor;  // multiindex factor - how many actual rows is processed by one iterator step
 
   // Some statistics for display:
-  int64_t packrows_found;  // all packrows, except these completely omitted (as
-                           // aggregated before)
+  int64_t packrows_found;  // all packrows, except these completely omitted (as aggregated before)
+
   std::mutex mtx;
 };
 
@@ -73,34 +87,48 @@ class AggregationWorkerEnt {
  public:
   AggregationWorkerEnt(GroupByWrapper &gbw, MultiIndex *_mind, int thd_cnt, AggregationAlgorithm *_aa)
       : gb_main(&gbw), mind(_mind), m_threads(thd_cnt), aa(_aa) {}
+
   bool MayBeParallel([[maybe_unused]] MIIterator &mit) { return true; }
+
   void Init([[maybe_unused]] MIIterator &mit) {}
+
   // Return code for AggregatePackrow: 0 - success, 1 - stop aggregation
   // (finished), 2 - killed, 3
   // - overflow, 4 - other error, 5 - pack already aggregated (skip)
-  int AggregatePackrow(MIUpdatingIterator &lmit, int64_t cur_tuple) {
+  AggregatePackRowStats AggregatePackrow(MIUpdatingIterator &lmit, int64_t cur_tuple) {
     return aa->AggregatePackrow(*gb_main, &lmit, cur_tuple);
   }
-  int AggregatePackrow(MIInpackIterator &lmit, int64_t cur_tuple) {
+
+  AggregatePackRowStats AggregatePackrow(MIInpackIterator &lmit, int64_t cur_tuple) {
     return aa->AggregatePackrow(*gb_main, &lmit, cur_tuple);
   }
+
   void Commit([[maybe_unused]] bool do_merge = true) { gb_main->CommitResets(); }
+
   void ReevaluateNumberOfThreads([[maybe_unused]] MIIterator &mit) {}
+
   int ThreadsUsed() { return m_threads; }
+
   void Barrier() {}
+
   void TaskAggrePacks(MIUpdatingIterator *taskIterator, DimensionVector *dims, MIIterator *mit, int pstart, int pend,
                       int tuple, GroupByWrapper *gbw, Transaction *ci);
+
   void DistributeAggreTaskAverage(MIIterator &mit);
+
   void PrepShardingCopy(MIIterator *mit, GroupByWrapper *gb_sharding,
                         std::vector<std::unique_ptr<GroupByWrapper>> *vGBW);
 
  protected:
   GroupByWrapper *gb_main;
   MultiIndex *mind;
+
   int m_threads;
+
   AggregationAlgorithm *aa;
   std::mutex mtx;
 };
+
 }  // namespace core
 }  // namespace Tianmu
 
