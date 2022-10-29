@@ -433,7 +433,7 @@ int Engine::Convert(int &is_null, String *value, types::RCDataType &rcitem, enum
   else {
     if (!Engine::AreConvertible(rcitem, MYSQL_TYPE_STRING)) return 0;
     is_null = 0;
-    if (f_type == MYSQL_TYPE_VARCHAR || f_type == MYSQL_TYPE_VAR_STRING) {
+    if (f_type == MYSQL_TYPE_VARCHAR || f_type == MYSQL_TYPE_VAR_STRING || f_type == MYSQL_TYPE_LONG_BLOB) {
       types::BString str = rcitem.ToBString();
       value->set_ascii(str.val_, str.len_);
       value->copy();
