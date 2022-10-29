@@ -146,20 +146,20 @@ static int Tianmu_LoadData(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, v
 
 // returning true means 'to continue'
 bool ha_my_tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) {
-  char tianmumsg[256] = {0};
+  char tianmu_msg[256] = {0};
   int tianmu_errcode{0};
 
   switch (static_cast<TianmuEngineReturnValues>(
-      Tianmu_LoadData(thd, ex, table_list, arg, tianmumsg, 256, tianmu_errcode))) {
+      Tianmu_LoadData(thd, ex, table_list, arg, tianmu_msg, 256, tianmu_errcode))) {
     case TianmuEngineReturnValues::LD_CONTINUE:
       return true;
     case TianmuEngineReturnValues::LD_FAILED:
-      my_message(tianmu_errcode, tianmumsg, MYF(0));
+      my_message(tianmu_errcode, tianmu_msg, MYF(0));
       [[fallthrough]];
     case TianmuEngineReturnValues::LD_SUCCEED:
       return false;
     default:
-      my_message(tianmu_errcode, tianmumsg, MYF(0));
+      my_message(tianmu_errcode, tianmu_msg, MYF(0));
       break;
   }
 
