@@ -234,7 +234,7 @@ void ResultSender::Send(TempTable::RecordIterator &iter) {
   }
 
   TempTable::Record record(*iter);
-  SendRecord(record.m_it.dataTypes);
+  SendRecord(record.m_iter_.dataTypes);
   rows_sent++;
 }
 

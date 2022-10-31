@@ -39,7 +39,7 @@ enum class AggregatePackRowStats : unsigned int {
 class AggregationAlgorithm {
  public:
   AggregationAlgorithm(TempTable *tt)
-      : t(tt), m_conn(tt->m_conn), mind(tt->GetMultiIndexP()), factor(1), packrows_found(0) {}
+      : t(tt), m_conn(tt->m_conn_), mind(tt->GetMultiIndexP()), factor(1), packrows_found(0) {}
 
   void Aggregate(bool just_distinct, int64_t &limit, int64_t &offset, ResultSender *sender);
 
