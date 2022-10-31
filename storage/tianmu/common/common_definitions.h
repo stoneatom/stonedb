@@ -214,13 +214,13 @@ class Tribool {
   enum class tribool { TRI_FALSE, TRI_TRUE, TRI_UNKNOWN };
 
  public:
-  Tribool() { v = tribool::TRI_UNKNOWN; }
-  Tribool(bool b) { v = (b ? tribool::TRI_TRUE : tribool::TRI_FALSE); }
-  bool operator==(Tribool sec) { return v == sec.v; }
-  bool operator!=(Tribool sec) { return v != sec.v; }
+  Tribool() { v_ = tribool::TRI_UNKNOWN; }
+  Tribool(bool b) { v_ = (b ? tribool::TRI_TRUE : tribool::TRI_FALSE); }
+  bool operator==(Tribool sec) { return v_ == sec.v_; }
+  bool operator!=(Tribool sec) { return v_ != sec.v_; }
   const Tribool operator!() {
-    return Tribool(v == tribool::TRI_TRUE ? tribool::TRI_FALSE
-                                          : (v == tribool::TRI_FALSE ? tribool::TRI_TRUE : tribool::TRI_UNKNOWN));
+    return Tribool(v_ == tribool::TRI_TRUE ? tribool::TRI_FALSE
+                                           : (v_ == tribool::TRI_FALSE ? tribool::TRI_TRUE : tribool::TRI_UNKNOWN));
   }
   static Tribool And(Tribool a, Tribool b) {
     if (a == true && b == true) return true;
@@ -234,8 +234,8 @@ class Tribool {
   }
 
  private:
-  Tribool(tribool b) { v = b; }
-  tribool v;
+  Tribool(tribool b) { v_ = b; }
+  tribool v_;
 };
 
 const Tribool TRIBOOL_UNKNOWN = Tribool();

@@ -64,22 +64,22 @@ inline bool IsWarning(ErrorCode tianmu_rc) {
 
 class TianmuError {
  public:
-  TianmuError(ErrorCode tianmu_error_code = ErrorCode::SUCCESS) : ec(tianmu_error_code) {}
-  TianmuError(ErrorCode tianmu_error_code, std::string message) : ec(tianmu_error_code), message(message) {}
-  TianmuError(const TianmuError &tianmu_e) : ec(tianmu_e.ec), message(tianmu_e.message) {}
+  TianmuError(ErrorCode tianmu_error_code = ErrorCode::SUCCESS) : err_code_(tianmu_error_code) {}
+  TianmuError(ErrorCode tianmu_error_code, std::string message) : err_code_(tianmu_error_code), message_(message) {}
+  TianmuError(const TianmuError &tianmu_e) : err_code_(tianmu_e.err_code_), message_(tianmu_e.message_) {}
   TianmuError &operator=(const TianmuError &) = default;
-  operator ErrorCode() { return ec; }
-  ErrorCode GetErrorCode() { return ec; }
-  bool operator==(ErrorCode tianmu_ec) { return tianmu_ec == ec; }
+  operator ErrorCode() { return err_code_; }
+  ErrorCode GetErrorCode() { return err_code_; }
+  bool operator==(ErrorCode tianmu_ec) { return tianmu_ec == err_code_; }
   const std::string &Message() {
-    if (!message.empty())
-      return message;
-    return error_messages[static_cast<int>(ec)];
+    if (!message_.empty())
+      return message_;
+    return error_messages[static_cast<int>(err_code_)];
   }
 
  private:
-  ErrorCode ec;
-  std::string message;
+  ErrorCode err_code_;
+  std::string message_;
 };
 
 class Exception : public std::runtime_error {

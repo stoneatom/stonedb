@@ -43,7 +43,7 @@ enum class EDF { TRI_UNKNOWN };
 
 class DataFormat {
  protected:
-  DataFormat(std::string name, EDF edf) : name(name), id(no_formats++), edf(edf) {}
+  DataFormat(std::string name, EDF edf) : name(name), id(num_of_format_++), edf(edf) {}
 
  public:
   virtual ~DataFormat() = default;
@@ -65,11 +65,11 @@ class DataFormat {
   static DataFormatPtr GetDataFormat(int id);
   static DataFormatPtr GetDataFormat(EDF edf);
   static DataFormatPtr GetDataFormatbyEDF(EDF edf);
-  static auto GetNoFormats() { return df_map.size(); }
+  static auto GetNoFormats() { return data_format_map_.size(); }
 
  private:
-  static int no_formats;
-  static std::map<std::string, DataFormatPtr> df_map;
+  static int num_of_format_;
+  static std::map<std::string, DataFormatPtr> data_format_map_;
 };
 
 }  // namespace common
