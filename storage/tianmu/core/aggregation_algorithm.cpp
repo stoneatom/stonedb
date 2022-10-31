@@ -49,11 +49,11 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
   for (uint i = 0; i < t->NumOfAttrs(); i++) {  // first pass: find all grouping attributes
     TempTable::Attr &cur_a = *(t->GetAttrP(i));
 
-    if (cur_a.mode == common::ColOperation::DELAYED)  // delayed column (e.g. complex exp. on aggregations)
+    if (cur_a.oper_type_ == common::ColOperation::DELAYED)  // delayed column (e.g. complex exp. on aggregations)
       continue;
 
-    if ((just_distinct && cur_a.alias) || cur_a.mode == common::ColOperation::GROUP_BY) {
-      if (cur_a.mode == common::ColOperation::GROUP_BY)
+    if ((just_distinct && cur_a.alias_) || cur_a.oper_type_ == common::ColOperation::GROUP_BY) {
+      if (cur_a.oper_type_ == common::ColOperation::GROUP_BY)
         group_by_found = true;
 
       bool already_added{false};
@@ -84,15 +84,18 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
 
   for (uint i = 0; i < t->NumOfAttrs(); i++) {  // second pass: find all aggregated attributes
     TempTable::Attr &cur_a = *(t->GetAttrP(i));
-    if (cur_a.mode == common::ColOperation::DELAYED) {  // delayed column (e.g. complex exp.
-                                                        // on aggregations)
+    if (cur_a.oper_type_ == common::ColOperation::DELAYED) {  // delayed column (e.g. complex exp.
+                                                              // on aggregations)
       MIDummyIterator m(1);
-      cur_a.term.vc->LockSourcePacks(m);
+      cur_a.term_.vc->LockSourcePacks(m);
       continue;
     }
-    if ((!just_distinct && cur_a.mode != common::ColOperation::GROUP_BY) ||  // aggregation
-        (just_distinct && cur_a.alias == nullptr)) {                         // special case: hidden column for DISTINCT
+
+    if ((!just_distinct && cur_a.oper_type_ != common::ColOperation::GROUP_BY) ||  // aggregation
+        (just_distinct && cur_a.alias_ == nullptr)) {  // special case: hidden column for DISTINCT
+
       bool already_added = false;
+
       for (uint j = 0; j < i; j++) {
         if (*(t->GetAttrP(j)) == cur_a) {
           already_added = true;
@@ -100,28 +103,34 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
           break;
         }
       }
+
       if (already_added)
         continue;
+
       int64_t max_no_of_distinct = mind->NumOfTuples();
       min_v = common::MINUS_INF_64;
       max_v = common::PLUS_INF_64;
       uint max_size = cur_a.Type().GetInternalSize();
 
-      if (cur_a.term.vc) {
+      if (cur_a.term_.vc) {
         if (!has_lookup)
-          has_lookup = cur_a.term.vc->Type().IsLookup();
-        max_size = cur_a.term.vc->MaxStringSize();
-        min_v = cur_a.term.vc->RoughMin();
-        max_v = cur_a.term.vc->RoughMax();
-        if (cur_a.distinct && cur_a.term.vc->IsDistinct() && cur_a.mode != common::ColOperation::LISTING)
-          cur_a.distinct = false;  // "distinct" not needed, as values are distinct anyway
-        else if (cur_a.distinct) {
-          max_no_of_distinct = cur_a.term.vc->GetApproxDistVals(false);  // no nulls included
+          has_lookup = cur_a.term_.vc->Type().IsLookup();
+
+        max_size = cur_a.term_.vc->MaxStringSize();
+        min_v = cur_a.term_.vc->RoughMin();
+        max_v = cur_a.term_.vc->RoughMax();
+
+        if (cur_a.is_distinct_ && cur_a.term_.vc->IsDistinct() && cur_a.oper_type_ != common::ColOperation::LISTING)
+          cur_a.is_distinct_ = false;  // "distinct" not needed, as values are distinct anyway
+        else if (cur_a.is_distinct_) {
+          max_no_of_distinct = cur_a.term_.vc->GetApproxDistVals(false);  // no nulls included
+
           if (rc_control_.isOn())
             rc_control_.lock(m_conn->GetThreadID()) << "Adding dist. column, min = " << min_v << ",  max = " << max_v
                                                     << ",  dist = " << max_no_of_distinct << system::unlock;
         }
       }
+
       if (max_no_of_distinct == 0)
         max_no_of_distinct = 1;  // special case: aggregations on empty result (should not
                                  // be 0, because it triggers max. buffer settings)
@@ -165,7 +174,7 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
     all_done_in_one_row = true;
   }  // Special case 2, if applicable: SELECT COUNT(DISTINCT col) FROM .....;
   else if (gbw.IsCountDistinctOnly()) {
-    int64_t count_distinct = t->GetAttrP(0)->term.vc->GetExactDistVals();  // multiindex checked inside
+    int64_t count_distinct = t->GetAttrP(0)->term_.vc->GetExactDistVals();  // multiindex checked inside
     if (count_distinct != common::NULL_VALUE_64) {
       int64_t row = 0;
       gbw.FindCurrentRow(row);  // needed to initialize grouping buffer
@@ -189,7 +198,7 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
 
   if (all_done_in_one_row) {
     for (uint i = 0; i < t->NumOfAttrs(); i++) {  // left as uninitialized (nullptr or 0)
-      t->GetAttrP(i)->page_size = 1;
+      t->GetAttrP(i)->page_size_ = 1;
       t->GetAttrP(i)->CreateBuffer(1);
     }
     if (limit == -1 || (offset == 0 && limit >= 1)) {  // limit is -1 (off), or a positive
@@ -267,19 +276,21 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
           rc_control_.lock(m_conn->GetThreadID()) << "Aggregating: " << gbw.TuplesNoOnes() << " tuples left, "
                                                   << displayed_no_groups << " gr. found so far" << system::unlock;
       }
+
       cur_tuple = 0;
       gbw.ClearNoGroups();         // count groups locally created in this pass
       gbw.ClearDistinctBuffers();  // reset buffers for a new contents
       gbw.AddAllGroupingConstants(mit);
       ag_worker.Init(mit);
+
       if (rewind_needed)
-        mit.Rewind();  // aggregated rows will be massively omitted packrow by
-                       // packrow
+        mit.Rewind();  // aggregated rows will be massively omitted packrow by packrow
+
       rewind_needed = true;
       for (uint i = 0; i < t->NumOfAttrs(); i++) {  // left as uninitialized (nullptr or 0)
-        if (t->GetAttrP(i)->mode == common::ColOperation::DELAYED) {
+        if (t->GetAttrP(i)->oper_type_ == common::ColOperation::DELAYED) {
           MIDummyIterator m(1);
-          t->GetAttrP(i)->term.vc->LockSourcePacks(m);
+          t->GetAttrP(i)->term_.vc->LockSourcePacks(m);
         }
       }
 
@@ -323,19 +334,18 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
         t->CalculatePageSize(upper_groups);
         if (upper_groups > gbw.UpperApproxOfGroups())
           upper_groups = gbw.UpperApproxOfGroups();  // another upper limitation: not more
-                                                     // than theoretical number of
-                                                     // combinations
+                                                     // than theoretical number of combinations
 
         MIDummyIterator m(1);
         for (uint i = 0; i < t->NumOfAttrs(); i++) {
-          if (t->GetAttrP(i)->mode == common::ColOperation::GROUP_CONCAT) {
+          if (t->GetAttrP(i)->oper_type_ == common::ColOperation::GROUP_CONCAT) {
             t->GetAttrP(i)->SetTypeName(common::CT::VARCHAR);
             t->GetAttrP(i)->OverrideStringSize(tianmu_group_concat_max_len);
           }
 
           t->GetAttrP(i)->CreateBuffer(upper_groups);  // note: may be more than needed
-          if (t->GetAttrP(i)->mode == common::ColOperation::DELAYED)
-            t->GetAttrP(i)->term.vc->LockSourcePacks(m);
+          if (t->GetAttrP(i)->oper_type_ == common::ColOperation::DELAYED)
+            t->GetAttrP(i)->term_.vc->LockSourcePacks(m);
         }
       }
 
@@ -699,10 +709,10 @@ void AggregationAlgorithm::AggregateFillOutput(GroupByWrapper &gbw, int64_t gt_p
 
   for (uint i = 0; i < t->NumOfAttrs(); i++) {
     TempTable::Attr *a = t->GetAttrP(i);
-    if (a->mode != common::ColOperation::DELAYED)
+    if (a->oper_type_ != common::ColOperation::DELAYED)
       continue;
 
-    vcolumn::VirtualColumn *vc = a->term.vc;
+    vcolumn::VirtualColumn *vc = a->term_.vc;
     switch (a->TypeName()) {
       case common::CT::STRING:
       case common::CT::VARCHAR:
