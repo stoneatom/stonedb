@@ -48,6 +48,8 @@
 #include "partition_info.h"           // partition_info
 #include "probes_mysql.h"             // MYSQL_INSERT_START
 
+#include "../storage/tianmu/system/configuration.h"
+
 static bool check_view_insertability(THD *thd, TABLE_LIST *view,
                                      const TABLE_LIST *insert_table_ref);
 
@@ -830,51 +832,45 @@ bool Sql_cmd_insert::mysql_insert(THD *thd,TABLE_LIST *table_list)
     if (error <= 0 || thd->get_transaction()->cannot_safely_rollback(
         Transaction_ctx::STMT))
     {
-//TIANMU UPGRADE BEGIN
-#if defined(TIANMU)
       bool tianmu_engine = insert_table->s->db_type() ? insert_table->s->db_type()->db_type == DB_TYPE_TIANMU: false;
-      if (mysql_bin_log.is_open()&& !tianmu_engine)
-#else
-      if (mysql_bin_log.is_open())
-#endif
-//END
+      if (mysql_bin_log.is_open()&& !(tianmu_engine && tianmu_sysvar_insert_delayed))
       {
         int errcode= 0;
-	if (error <= 0)
+	      if (error <= 0)
         {
-	  /*
-	    [Guilhem wrote] Temporary errors may have filled
-	    thd->net.last_error/errno.  For example if there has
-	    been a disk full error when writing the row, and it was
-	    MyISAM, then thd->net.last_error/errno will be set to
-            "disk full"... and the mysql_file_pwrite() will wait until free
-	    space appears, and so when it finishes then the
-	    write_row() was entirely successful
-	  */
-	  /* todo: consider removing */
-	  thd->clear_error();
-	}
+          /*
+            [Guilhem wrote] Temporary errors may have filled
+            thd->net.last_error/errno.  For example if there has
+            been a disk full error when writing the row, and it was
+            MyISAM, then thd->net.last_error/errno will be set to
+                  "disk full"... and the mysql_file_pwrite() will wait until free
+            space appears, and so when it finishes then the
+            write_row() was entirely successful
+          */
+          /* todo: consider removing */
+	        thd->clear_error();
+	      }
         else
           errcode= query_error_code(thd, thd->killed == THD::NOT_KILLED);
         
-	/* bug#22725:
+        /* bug#22725:
 
-	A query which per-row-loop can not be interrupted with
-	KILLED, like INSERT, and that does not invoke stored
-	routines can be binlogged with neglecting the KILLED error.
-        
-	If there was no error (error == zero) until after the end of
-	inserting loop the KILLED flag that appeared later can be
-	disregarded since previously possible invocation of stored
-	routines did not result in any error due to the KILLED.  In
-	such case the flag is ignored for constructing binlog event.
-	*/
-	assert(thd->killed != THD::KILL_BAD_DATA || error > 0);
+        A query which per-row-loop can not be interrupted with
+        KILLED, like INSERT, and that does not invoke stored
+        routines can be binlogged with neglecting the KILLED error.
+              
+        If there was no error (error == zero) until after the end of
+        inserting loop the KILLED flag that appeared later can be
+        disregarded since previously possible invocation of stored
+        routines did not result in any error due to the KILLED.  In
+        such case the flag is ignored for constructing binlog event.
+        */
+	      assert(thd->killed != THD::KILL_BAD_DATA || error > 0);
         if (thd->binlog_query(THD::ROW_QUERY_TYPE,
                               thd->query().str, thd->query().length,
 			           transactional_table, FALSE, FALSE,
                                    errcode))
-	  error= 1;
+	        error= 1;
       }
     }
     assert(transactional_table || !changed || 

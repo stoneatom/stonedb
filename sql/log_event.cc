@@ -9682,6 +9682,21 @@ search_key_in_table(TABLE *table, MY_BITMAP *bi_cols, uint key_type)
   uint res= MAX_KEY;
   uint key;
 
+    /*
+      The primary key of the tianmu engine does not support delete and update statements.
+      The following codes can be deleted after subsequent support
+  */
+  bool tianmu_engine = table && table->s && 
+                      (table->s->db_type() ? table->s->db_type()->db_type == DB_TYPE_TIANMU: false);
+  enum_sql_command sqlCommand = SQLCOM_END;
+  if(table->in_use && table->in_use->lex) sqlCommand = table->in_use->lex->sql_command;
+  if (tianmu_engine && (sqlCommand == SQLCOM_DELETE ||
+                                          sqlCommand == SQLCOM_DELETE_MULTI ||
+                                          sqlCommand == SQLCOM_UPDATE ||
+                                          sqlCommand == SQLCOM_UPDATE_MULTI)){
+    DBUG_RETURN(res);
+  }
+
   if (key_type & PRI_KEY_FLAG &&
       (table->s->primary_key < MAX_KEY))
   {
