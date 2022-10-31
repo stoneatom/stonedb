@@ -18,6 +18,7 @@ import MDXContent from '@theme/MDXContent';
 import TOC from '@theme/TOC';
 import type {Props} from '@theme/MDXPage';
 import styles from './styles.module.css';
+import {useLocation} from '@docusaurus/router';
 
 export default function MDXPage(props: Props): JSX.Element {
   const {siteConfig} = useDocusaurusContext();
@@ -27,6 +28,8 @@ export default function MDXPage(props: Props): JSX.Element {
   } = MDXPageContent;
   const {wrapperClassName, hide_table_of_contents: hideTableOfContents} =
     frontMatter;
+
+    const location = useLocation();
 
   const isHome = location.pathname === '/' || location.pathname === '/zh/';
 

@@ -1,0 +1,26 @@
+--echo #
+--echo # Test DAY function
+--echo # Author: syw
+--echo #
+
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS mcs184_db;
+--enable_warnings
+
+CREATE DATABASE mcs184_db;
+USE mcs184_db;
+
+CREATE TABLE t1 (a DATE, b DATETIME)engine=tianmu;
+INSERT INTO t1 VALUES ('1990-10-10', '1990-10-10 0:0:0'), ('1212-12-12', '1111-11-11 11:11:11'), ('3333-03-03', '3333-3-3 3:33:33');
+SHOW CREATE TABLE t1;
+
+SELECT DAY('1212-12-12 11:11:11');
+SELECT DAY('2020-12-22');
+
+SELECT a, DAY(a) FROM t1 ORDER BY 1;
+SELECT b, DAY(b) FROM t1 ORDER BY 1;
+
+# Clean UP
+DROP DATABASE mcs184_db;

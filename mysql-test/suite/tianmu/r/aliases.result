@@ -1,0 +1,91 @@
+#
+# aliases test case
+#
+DROP DATABASE IF EXISTS aliases_test;
+CREATE DATABASE aliases_test;
+USE aliases_test;
+CREATE TABLE t1
+(
+t1_tinyint TINYINT DEFAULT 0,
+t1_int INT DEFAULT NULL,
+t1_bigint BIGINT,
+t1_decimal DECIMAL(5,2),
+t1_text TEXT,
+t1_char CHAR(5),
+t1_varchar VARCHAR(255) DEFAULT 'hello world!',
+t1_datetime DATETIME
+)ENGINE=Tianmu;
+INSERT INTO t1 VALUES(NULL, NULL, NULL, NULL, '', '', '', NULL);
+INSERT INTO t1 VALUES(1, 11, 987654321, 122.32, repeat('z', 20), 'aaa', repeat('a', 20), '1111-11-09 11:11:11');
+INSERT INTO t1 VALUES(0, 12, 887654321, 222.32, repeat('y', 20), 'aaa', repeat('b', 20), '1111-11-11 11:11:12');
+INSERT INTO t1 VALUES(1, -12, -987654321, -122.32, repeat('z', 20), 'bbb', repeat('a', 20), '1111-11-10 11:11:10');
+INSERT INTO t1 VALUES(0, -11, -887654321, -222.32, repeat('x', 20), 'bbb', repeat('b', 20), '1111-11-1 11:11:19');
+SELECT * FROM t1;
+t1_tinyint	t1_int	t1_bigint	t1_decimal	t1_text	t1_char	t1_varchar	t1_datetime
+NULL	NULL	NULL	NULL				NULL
+1	11	987654321	122.32	zzzzzzzzzzzzzzzzzzzz	aaa	aaaaaaaaaaaaaaaaaaaa	1111-11-09 11:11:11
+0	12	887654321	222.32	yyyyyyyyyyyyyyyyyyyy	aaa	bbbbbbbbbbbbbbbbbbbb	1111-11-11 11:11:12
+1	-12	-987654321	-122.32	zzzzzzzzzzzzzzzzzzzz	bbb	aaaaaaaaaaaaaaaaaaaa	1111-11-10 11:11:10
+0	-11	-887654321	-222.32	xxxxxxxxxxxxxxxxxxxx	bbb	bbbbbbbbbbbbbbbbbbbb	1111-11-01 11:11:19
+SELECT COUNT(*) AS 'Total Rows' FROM t1;
+Total Rows
+5
+SELECT SUM(t1_int*t1_int) AS 'Sum of Squares of Integer values' FROM t1;
+Sum of Squares of Integer values
+530
+SELECT t1_int 'Serial no', t1_text 'Name of the Book', t1_datetime 'Publish Date' FROM t1;
+Serial no	Name of the Book	Publish Date
+NULL		NULL
+11	zzzzzzzzzzzzzzzzzzzz	1111-11-09 11:11:11
+12	yyyyyyyyyyyyyyyyyyyy	1111-11-11 11:11:12
+-12	zzzzzzzzzzzzzzzzzzzz	1111-11-10 11:11:10
+-11	xxxxxxxxxxxxxxxxxxxx	1111-11-01 11:11:19
+SELECT CONCAT(t1_char, t1_text, t1_varchar) 'Concatinating String Columns' FROM t1;
+Concatinating String Columns
+
+aaazzzzzzzzzzzzzzzzzzzzaaaaaaaaaaaaaaaaaaaa
+aaayyyyyyyyyyyyyyyyyyyybbbbbbbbbbbbbbbbbbbb
+bbbzzzzzzzzzzzzzzzzzzzzaaaaaaaaaaaaaaaaaaaa
+bbbxxxxxxxxxxxxxxxxxxxxbbbbbbbbbbbbbbbbbbbb
+SELECT t1_tinyint AS 'Boolean value' FROM t1;
+Boolean value
+NULL
+1
+0
+1
+0
+SELECT t1_tinyint 'Tinyint', t1_bigint 'Big Int', t1_decimal 'Decimal', t1_text AS 'Text', t1_varchar AS 'Varchar', t1_datetime AS 'Date' FROM t1 WHERE 'Decimal' >= -300 ORDER BY 'Date';
+Tinyint	Big Int	Decimal	Text	Varchar	Date
+NULL	NULL	NULL			NULL
+1	987654321	122.32	zzzzzzzzzzzzzzzzzzzz	aaaaaaaaaaaaaaaaaaaa	1111-11-09 11:11:11
+0	887654321	222.32	yyyyyyyyyyyyyyyyyyyy	bbbbbbbbbbbbbbbbbbbb	1111-11-11 11:11:12
+1	-987654321	-122.32	zzzzzzzzzzzzzzzzzzzz	aaaaaaaaaaaaaaaaaaaa	1111-11-10 11:11:10
+0	-887654321	-222.32	xxxxxxxxxxxxxxxxxxxx	bbbbbbbbbbbbbbbbbbbb	1111-11-01 11:11:19
+SELECT COUNT(*) AS 'Total rows' FROM t1 AS table1 , t1 AS table2 WHERE table1.t1_int = table2.t1_int;
+Total rows
+4
+SELECT table1.t1_tinyint, table2.t1_int FROM t1 AS table1 JOIN t1 AS table2 ON table1.t1_int = table2.t1_int;
+t1_tinyint	t1_int
+1	11
+0	12
+1	-12
+0	-11
+CREATE TABLE t2(col1 INT, col2 TEXT)ENGINE=Tianmu;
+INSERT INTO t2 VALUES(1, repeat('s',20)),(2, repeat('o',20)),(3, 'sss'),(4, 'ooo');
+CREATE TABLE t3(col1 INT, col2 DATETIME)ENGINE=Tianmu;
+INSERT INTO t3 VALUES(1, '2020-2-2'),(2, '2020-3-3');
+SELECT table1.col1, table1.col2 AS 'Text from table1', table2.col2 AS 'Date from table2' FROM t2 AS table1 JOIN t3 AS table2 ON table1.col1 =  table2.col1;
+col1	Text from table1	Date from table2
+1	ssssssssssssssssssss	2020-02-02 00:00:00
+2	oooooooooooooooooooo	2020-03-03 00:00:00
+SELECT table1.col1, table1.col2 AS 'Text from table1', table2.col2 AS 'Date from table2' FROM t2 AS table1 LEFT JOIN t3 AS table2 ON table1.col1 =  table2.col1;
+col1	Text from table1	Date from table2
+1	ssssssssssssssssssss	2020-02-02 00:00:00
+2	oooooooooooooooooooo	2020-03-03 00:00:00
+3	sss	NULL
+4	ooo	NULL
+SELECT table1.col1, table1.col2 AS 'Text from table1', table2.col2 AS 'Date from table2' FROM t2 AS table1 RIGHT JOIN t3 AS table2 ON table1.col1 =  table2.col1;
+col1	Text from table1	Date from table2
+1	ssssssssssssssssssss	2020-02-02 00:00:00
+2	oooooooooooooooooooo	2020-03-03 00:00:00
+DROP DATABASE aliases_test;

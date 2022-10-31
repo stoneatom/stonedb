@@ -1,0 +1,54 @@
+#
+# SELECT PRECISION
+#
+DROP DATABASE IF EXISTS select_precision_test;
+CREATE DATABASE select_precision_test;
+USE select_precision_test;
+SELECT @@sql_mode;
+@@sql_mode
+ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+CREATE TABLE t (col TINYINT);
+INSERT INTO t SET col = 128;
+ERROR 22003: Out of range value for column 'col' at row 1
+SELECT col FROM t;
+col
+INSERT INTO t SET col = 1 / 0;
+ERROR 22012: Division by 0
+SELECT col FROM t;
+col
+SET sql_mode='';
+INSERT INTO t SET col = 128;
+SELECT col FROM t;
+col
+127
+INSERT INTO t SET col = 1 / 0;
+SELECT col FROM t;
+col
+127
+NULL
+CREATE TABLE t1 (col FLOAT);
+INSERT INTO t1 VALUES (NULL),(2.13),(-2.13),(21.5e0),(-21.5e0),(35.498),(986.512),(-376012.9751);
+SELECT col, ROUND(col), ROUND(col,1), ROUND(col,-1), ROUND(col,-2), ROUND(col,3) FROM t1;
+col	ROUND(col)	ROUND(col,1)	ROUND(col,-1)	ROUND(col,-2)	ROUND(col,3)
+NULL	NULL	NULL	NULL	NULL	NULL
+2.13	2	2.1	0	0	2.130
+-2.13	-2	-2.1	0	0	-2.130
+21.5	22	21.5	20	0	21.500
+-21.5	-22	-21.5	-20	0	-21.500
+35.498	35	35.5	40	0	35.498
+986.512	987	986.5	990	1000	986.512
+-376013	-376013	-376013.0	-376010	-376000	-376012.969
+SELECT (.1 + .2) = .3;
+(.1 + .2) = .3
+1
+SELECT (.1e0 + .2e0) = .3e0;
+(.1e0 + .2e0) = .3e0
+0
+SELECT .01 * .01;
+.01 * .01
+0.0001
+SELECT .1 / .1;
+.1 / .1
+1.00000
+SET sql_mode=default;
+DROP DATABASE select_precision_test;

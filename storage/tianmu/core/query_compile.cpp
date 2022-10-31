@@ -987,7 +987,13 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
     SetLimit(sl, sl == selects_list ? 0 : sl->join->unit->global_parameters(), offset_value, limit_value);
 
     List<Item> *fields = &sl->fields_list;
-    Item *conds = sl->where_cond();
+
+    Item *conds = nullptr;
+    if (ifNewJoinForTianmu || !sl->join->where_cond)
+      conds = sl->where_cond();
+    else
+      conds = sl->join->where_cond;
+
     ORDER *order = sl->order_list.first;
 
     // if (order) global_order = 0;   //we want to zero global order (which
@@ -1095,11 +1101,8 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       cq = saved_cq;
       if (cond_to_reinsert && list_to_reinsert)
         list_to_reinsert->push_back(cond_to_reinsert);
-      sl->cleanup(0);
-      if (ifNewJoinForTianmu) {
-        delete sl->join;
-        sl->join = nullptr;
-      }
+      if (ifNewJoinForTianmu)
+        sl->cleanup(true);
       return RETURN_QUERY_TO_MYSQL_ROUTE;
     }
 
@@ -1121,11 +1124,8 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       union_all = true;
     if (cond_to_reinsert && list_to_reinsert)
       list_to_reinsert->push_back(cond_to_reinsert);
-    sl->cleanup(0);
-    if (ifNewJoinForTianmu) {
-      delete sl->join;
-      sl->join = nullptr;
-    }
+    if (ifNewJoinForTianmu)
+      sl->cleanup(true);
   }
 
   cq->BuildTableIDStepsMap();

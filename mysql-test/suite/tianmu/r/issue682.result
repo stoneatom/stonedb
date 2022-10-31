@@ -1,0 +1,229 @@
+use test;
+set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+Warnings:
+Warning	3135	'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+create table t1(a date not null);
+insert ignore into t1 values (0);
+insert into t1 values (0);
+insert ignore into t1 values (null);
+Warnings:
+Warning	1048	Column 'a' cannot be null
+insert into t1 values (null);
+ERROR 23000: Column 'a' cannot be null
+insert into t1 values (20221020);
+select * from t1;
+a
+0000-00-00
+0000-00-00
+0000-00-00
+2022-10-20
+select * from t1 where a is null;
+a
+0000-00-00
+0000-00-00
+0000-00-00
+delete from t1 where a is null;
+delete from t1 where a=0;
+select * from t1 where a is null;
+a
+select * from t1;
+a
+2022-10-20
+delete from t1 where a ='20221020';
+select * from t1;
+a
+drop table t1;
+create table t1(a date);
+insert ignore into t1 values (0);
+insert into t1 values (0);
+insert ignore into t1 values (null);
+insert into t1 values (null);
+insert into t1 values (20221020);
+select * from t1;
+a
+0000-00-00
+0000-00-00
+NULL
+NULL
+2022-10-20
+select * from t1 where a is null;
+a
+NULL
+NULL
+delete from t1 where a is null;
+select * from t1 where a is null;
+a
+select * from t1;
+a
+0000-00-00
+0000-00-00
+2022-10-20
+delete from t1 where a ='20221020';
+select * from t1;
+a
+0000-00-00
+0000-00-00
+drop table t1;
+create table t1(a datetime not null);
+insert ignore into t1 values (0);
+insert into t1 values (0);
+insert ignore into t1 values (null);
+Warnings:
+Warning	1048	Column 'a' cannot be null
+insert into t1 values (null);
+ERROR 23000: Column 'a' cannot be null
+insert into t1 values (20221020);
+select * from t1;
+a
+0000-00-00 00:00:00
+0000-00-00 00:00:00
+0000-00-00 00:00:00
+2022-10-20 00:00:00
+select * from t1 where a is null;
+a
+0000-00-00 00:00:00
+0000-00-00 00:00:00
+0000-00-00 00:00:00
+delete from t1 where a is null;
+delete from t1 where a=0;
+select * from t1 where a is null;
+a
+select * from t1;
+a
+2022-10-20 00:00:00
+delete from t1 where a ='20221020';
+select * from t1;
+a
+drop table t1;
+create table t1(a TIME not null);
+insert ignore into t1 values (0);
+insert into t1 values (0);
+insert ignore into t1 values (null);
+Warnings:
+Warning	1048	Column 'a' cannot be null
+insert into t1 values (null);
+ERROR 23000: Column 'a' cannot be null
+insert into t1 values ('12:13:14');
+select * from t1;
+a
+00:00:00
+00:00:00
+00:00:00
+12:13:14
+select * from t1 where a is null;
+a
+delete from t1 where a is null;
+delete from t1 where a=0;
+select * from t1 where a is null;
+a
+select * from t1;
+a
+12:13:14
+delete from t1 where a ='12:13:14';
+select * from t1;
+a
+drop table t1;
+CREATE TABLE t1 (a varchar(10));
+CREATE TABLE t2 (a varchar(10), b date  not null);
+CREATE TABLE t3 (a varchar(10), b TIME  not null);
+INSERT INTO t1 VALUES ('test1');
+INSERT  ignore  INTO t2 VALUES
+('test1','2016-12-13'),('test1','2016-12-14'),('test1','2016-12-15'),('test1',null);
+Warnings:
+Warning	1048	Column 'b' cannot be null
+INSERT ignore INTO t3 VALUES
+('test1','11:13:14'), ('test1','12:13:14'), ('test1','10:13:14'),('test1',null);
+Warnings:
+Warning	1048	Column 'b' cannot be null
+SELECT *
+FROM t1 LEFT JOIN t2
+ON t2.a = 'test1' AND t2.b = '20161213'
+WHERE t1.a = 'test1';
+a	a	b
+test1	test1	2016-12-13
+SELECT *
+FROM t1 LEFT JOIN t2
+ON t2.a = 'test1' 
+WHERE t1.a = 'test1' 
+or t2.b is null;
+a	a	b
+test1	test1	2016-12-13
+test1	test1	2016-12-14
+test1	test1	2016-12-15
+test1	test1	0000-00-00
+SELECT *
+FROM t1 LEFT JOIN t3
+ON t3.a = 'test1' 
+AND t3.b = '12:13:14'
+WHERE t1.a = 'test1';
+a	a	b
+test1	test1	12:13:14
+SELECT *
+FROM t1 LEFT JOIN t3
+ON t3.a = 'test1' 
+WHERE t1.a = 'test1' 
+or t3.b is null;
+a	a	b
+test1	test1	11:13:14
+test1	test1	12:13:14
+test1	test1	10:13:14
+test1	test1	00:00:00
+drop table t1,t2,t3;
+set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,NO_ZERO_IN_DATE,NO_ZERO_DATE';
+Warnings:
+Warning	3135	'NO_ZERO_DATE', 'NO_ZERO_IN_DATE' and 'ERROR_FOR_DIVISION_BY_ZERO' sql modes should be used with strict mode. They will be merged with strict mode in a future release.
+create table t1(a date not null);
+insert ignore into t1 values (0);
+Warnings:
+Warning	1264	Out of range value for column 'a' at row 1
+insert into t1 values (0);
+ERROR 22007: Incorrect date value: '0' for column 'a' at row 1
+insert ignore into t1 values (null);
+Warnings:
+Warning	1048	Column 'a' cannot be null
+insert into t1 values (null);
+ERROR 23000: Column 'a' cannot be null
+insert into t1 values (20221020);
+select * from t1;
+a
+0000-00-00
+0000-00-00
+2022-10-20
+Warnings:
+Warning	1292	Incorrect date value: '0000-00-00' for column 'a' at row 1
+Warning	1292	Incorrect date value: '0000-00-00' for column 'a' at row 1
+select * from t1 where a is null;
+a
+0000-00-00
+0000-00-00
+Warnings:
+Warning	1292	Incorrect date value: '0000-00-00' for column 'a' at row 1
+Warning	1292	Incorrect date value: '0000-00-00' for column 'a' at row 1
+delete from t1 where a is null;
+ERROR 22007: Incorrect date value: '0000-00-00' for column 'a' at row 1
+delete from t1 where a=0;
+ERROR 22007: Incorrect date value: '0000-00-00' for column 'a' at row 1
+select * from t1 where a is null;
+a
+0000-00-00
+0000-00-00
+Warnings:
+Warning	1292	Incorrect date value: '0000-00-00' for column 'a' at row 1
+Warning	1292	Incorrect date value: '0000-00-00' for column 'a' at row 1
+select * from t1;
+a
+0000-00-00
+0000-00-00
+2022-10-20
+Warnings:
+Warning	1292	Incorrect date value: '0000-00-00' for column 'a' at row 1
+Warning	1292	Incorrect date value: '0000-00-00' for column 'a' at row 1
+delete from t1 where a ='20221020';
+select * from t1;
+a
+0000-00-00
+0000-00-00
+Warnings:
+Warning	1292	Incorrect date value: '0000-00-00' for column 'a' at row 1
+Warning	1292	Incorrect date value: '0000-00-00' for column 'a' at row 1
+drop table t1;

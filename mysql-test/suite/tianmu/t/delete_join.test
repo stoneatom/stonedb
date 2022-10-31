@@ -1,0 +1,28 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # DELETE JOIN
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS delete_join_test;
+--enable_warnings
+
+CREATE DATABASE delete_join_test;
+USE delete_join_test;
+
+CREATE TABLE t1 (t1_int INT, t1_char CHAR(5));
+CREATE TABLE t2 (t2_int INT, t2_char CHAR(5));
+INSERT INTO t1 VALUES (NULL, ''),(1, 'aaa'),(2, 'bbb'),(3, 'ccc'),(4, 'ddd'),(5, 'aa'),(6, ''),(7, 'aaaaa');
+INSERT INTO t2 VALUES (NULL, ''),(1, 'hhhh'),(3, 'iii'),(5, 'jjj'),(6, ''),(7, 'lll'),(9, 'm'),(11, 'nnn');
+
+SELECT * FROM t1 ORDER BY t1_int;
+SELECT * FROM t2 ORDER BY t2_int;
+
+DELETE t1 FROM t1 INNER JOIN t2 ON t1.t1_int=t2.t2_int AND t1.t1_char LIKE '%a%';
+SELECT * FROM t1 ORDER BY t1_int;
+DELETE t2 FROM t2 LEFT JOIN t1 ON t1.t1_int=t2.t2_int WHERE t2.t2_int IS NULL;
+SELECT * FROM t2 ORDER BY t2_int;
+
+# Clean UP
+DROP DATABASE delete_join_test;

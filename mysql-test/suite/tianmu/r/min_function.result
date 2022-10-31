@@ -1,0 +1,26 @@
+#
+# Test MIN as distributed aggregate function
+# Author: syw
+#
+DROP DATABASE IF EXISTS mcs191_db;
+CREATE DATABASE mcs191_db;
+USE mcs191_db;
+CREATE TABLE t1 (a INT, b CHAR(5))ENGINE=tianmu;
+INSERT INTO t1 VALUES (NULL, ''),(1, 'aaa'),(2, 'aaa'),(1, 'ccc'),(4, 'ddd'),(5, 'aaa'),(6, 'ddd'),(7, 'eee');
+SELECT MIN(DISTINCT a) FROM t1;
+MIN(DISTINCT a)
+1
+SELECT MIN(DISTINCT a) FROM t1 GROUP BY b HAVING b = 'aaa';
+MIN(DISTINCT a)
+1
+SELECT b, MIN(DISTINCT a) FROM t1 GROUP BY b ORDER BY b DESC;
+b	MIN(DISTINCT a)
+eee	7
+ddd	4
+ccc	1
+aaa	1
+	NULL
+SELECT MIN(a) FROM t1;
+MIN(a)
+1
+DROP DATABASE mcs191_db;

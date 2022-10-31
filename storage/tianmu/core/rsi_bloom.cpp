@@ -68,7 +68,7 @@ common::RSValue RSIndex_Bloom::IsValue(types::BString min_v, types::BString max_
       // this pack no bloom filter data
       return common::RSValue::RS_SOME;
     }
-    Slice key(max_v.val, max_v.size());
+    Slice key(max_v.val_, max_v.size());
     // get filter data
     Slice pack_block(bf.data, bf.len);
     FilterBlockReader reader(bloom_filter_policy.get(), pack_block);

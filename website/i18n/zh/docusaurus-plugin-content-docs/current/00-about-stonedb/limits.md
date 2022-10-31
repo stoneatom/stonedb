@@ -32,7 +32,7 @@ StoneDB 100% 兼容 MySQL 5.6、5.7 协议和 MySQL 生态等重要特性，支�
 2. update 多表关联
 3. replace into
 
-:::tips
+:::tip
 
 如果 replace into 没有主键或者唯一约束冲突，语义逻辑是插入一行，这是支持的；如果 replace into 有主键或者唯一约束冲突，语义逻辑是更新一行，这是不支持的。<br />StoneDB 不适用于有频繁的更新操作，因为对列式存储来说，更新需要找到对应的每一列，然后分多次更新，而行式存储由于一行紧挨着一行，找到对应的 page 或者 block 就可直接在行上更新，因此 StoneDB 只支持了常规用的单表 update 和 insert。
 

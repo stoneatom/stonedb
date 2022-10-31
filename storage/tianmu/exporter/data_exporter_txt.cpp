@@ -33,9 +33,9 @@ DEforTxt::DEforTxt(const system::IOParameters &iop)
 void DEforTxt::PutText(const types::BString &str) {
   WriteStringQualifier();
   size_t char_len =
-      deas[cur_attr].GetCollation().collation->cset->numchars(deas[cur_attr].GetCollation().collation, str.val,
-                                                              str.val + str.len);  // len in chars
-  WriteString(str, str.len);                                                       // len in bytes
+      deas[cur_attr].GetCollation().collation->cset->numchars(deas[cur_attr].GetCollation().collation, str.val_,
+                                                              str.val_ + str.len_);  // len in chars
+  WriteString(str, str.len_);                                                        // len in bytes
   if ((deas[cur_attr].Type() == common::CT::STRING) && (char_len < deas[cur_attr].CharLen()))
 // it can be necessary to change the WritePad implementation to something like:
 // collation->cset->fill(cs, copy->to_ptr+copy->from_length,
@@ -61,7 +61,7 @@ void DEforTxt::PutBin(const types::BString &str) {
   //	len = rcdea[cur_attr].size;
   if (len > 0) {
     char *hex = new char[len * 2];
-    system::Convert2Hex((const unsigned char *)str.val, len, hex, len * 2, false);
+    system::Convert2Hex((const unsigned char *)str.val_, len, hex, len * 2, false);
     WriteString(types::BString(hex, len * 2));
     delete[] hex;
   }

@@ -33,7 +33,7 @@ class IncWGraph {
   struct Edge;
   class Mask;
   struct Node {
-    static const uint MAX_TOTAL = RangeCoder::MAX_TOTAL;
+    static const uint MAX_TOTAL = RangeCoder::MAX_TOTAL_;
     static const Count init_count = 1;  // initial value of a count
     static const Count updt_count = 1;  // how much a count is updated in a single step
     // static const uchar max_count_last = 2;
@@ -46,7 +46,7 @@ class IncWGraph {
     Count total;  // total count of outgoing edges, incl. ESC
     uchar nedge;  // size of 'edge'; 0 means 256
 
-    bool IsNIL() { return suf == 0; }  // risky method for detecting NIL node
+    bool IsNIL() { return suf == 0; }  // risky method for detecting NIL_ node
     ushort GetNEdge() { return edge ? (nedge ? nedge : 256) : 0; }
     static ushort RoundNEdge(ushort n);
     bool FindEdge(uchar s, Edge *&e, Count &low, Mask *mask);
@@ -106,21 +106,21 @@ class IncWGraph {
   };
 
   class Mask {
-    std::bitset<255> map;
-    uint nset;
+    std::bitset<255> map_;
+    uint n_set_;
 
    public:
-    bool Masked(uchar s) { return map.test(s); }
+    bool Masked(uchar s) { return map_.test(s); }
     void Add(uchar s) {
       DEBUG_ASSERT(!Masked(s));
-      map.set(s);
-      nset++;
+      map_.set(s);
+      n_set_++;
     }
     void Reset() {
-      map.reset();
-      nset = 0;
-    }  //{ std::memset(b_map,0,sizeof(map)); }
-    uint NumSet() { return nset; }
+      map_.reset();
+      n_set_ = 0;
+    }  //{ std::memset(b_map,0,sizeof(map_)); }
+    uint NumSet() { return n_set_; }
     // Mask()			{ Reset(); }
   };
 
@@ -133,17 +133,17 @@ class IncWGraph {
     static void Decode(RangeCoder *coder, ushort &proj, ushort edgelen);
   };
 
-  IncAlloc memory;  // all elements of the graph are allocated with IncAlloc
-  Node *ROOT, *NIL, *START;
-  std::vector<Edge *> recent;  // edges with 'fsym' fields waiting for
-                               // initialization (during decoding)
-  Mask _mask_, *mask;
+  IncAlloc memory_;  // all elements of the graph are allocated with IncAlloc
+  Node *ROOT_, *NIL_, *START_;
+  std::vector<Edge *> recent_;  // edges with 'fsym' fields waiting for
+                                // initialization (during decoding)
+  Mask _mask_, *p_mask_;
 
-  RangeCoder *coder;
-  uchar **records;
-  const uint *reclen;
+  RangeCoder *coder_;
+  uchar **records_;
+  const uint *reclen_;
 
-  uint nfinals;
+  uint nfinals_;
 
   Node *InsertNode(Node *base, Edge *edge,
                    ushort proj);  // insert new node, in the middle of the 'edge'
@@ -155,7 +155,7 @@ class IncWGraph {
   void DecodeRec(ushort rec, uint dlen, bool &repeated);
 
   void Init();
-  void Clear();  // clear graph structure withOUT memory deallocation
+  void Clear();  // clear graph structure withOUT memory_ deallocation
 
  public:
   IncWGraph();
@@ -165,18 +165,18 @@ class IncWGraph {
 
   // Upon exit, 'index' will contain indices into 'dest'.
   // 'dlen' - size of 'dest'; must be >= 'packlen' returned from Encode during
-  // compression (which is <= total length of records).
+  // compression (which is <= total length of records_).
   void Decode(RangeCoder *cod, char **index, const uint *lens, int nrec, char *dest, uint dlen);
 
   void Print(std::ostream &str = std::cout, uint flags = 1, Node *n = 0);
   void PrintLbl(std::ostream &str, Edge *e);
 
   // for gathering statistics
-  FILE *dump;
-  uint matchlen_cost, esc_cost;  // length of code produced in MatchLen::Encode
-                                 // and Node::EncodeEsc
-  void PrintMemUsg(FILE *f) { memory.PrintMemUsg(f); }
-  void PrintMemUsg(std::ostream &str) { memory.PrintMemUsg(str); }
+  FILE *dump_;
+  uint matchlen_cost_, esc_cost_;  // length of code produced in MatchLen::Encode
+                                   // and Node::EncodeEsc
+  void PrintMemUsg(FILE *f) { memory_.PrintMemUsg(f); }
+  void PrintMemUsg(std::ostream &str) { memory_.PrintMemUsg(str); }
 };
 
 }  // namespace compress

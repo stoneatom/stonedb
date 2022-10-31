@@ -1,0 +1,27 @@
+--echo #
+--echo # Test INSERT ON DUPLICATE KEY UPDATE statement
+--echo # Author: syw
+--echo #
+
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS insert_on_duplicate_update;
+--enable_warnings
+
+CREATE DATABASE insert_on_duplicate_update;
+USE insert_on_duplicate_update;
+
+CREATE TABLE t1(
+c1 INT primary key not null,
+c2 CHAR(5)
+) ENGINE=tianmu;
+
+INSERT INTO t1 VALUES (123, 'abc');
+
+INSERT INTO t1 VALUES (123, 'abc') ON DUPLICATE KEY UPDATE c1 = VALUES(c1) + 1;
+
+SELECT * FROM t1;
+
+#Clean up
+DROP DATABASE insert_on_duplicate_update;

@@ -30,105 +30,107 @@ namespace compress {
 
 /* Decoder always reads exactly the same no. of bytes as the encoder saves */
 class RangeCoder {
-  static const uint TOP = 1u << 24;
-  static const uint BOT = 1u << 16;
-  // static const uint BOT = 1u << 15;
+  static const uint TOP_ = 1u << 24;
+  static const uint BOT_ = 1u << 16;
+  // static const uint BOT_ = 1u << 15;
 
-  uint low, code, range, _tot, _sh;
-  uchar *buf, *pos, *stop;
+  uint low_, code_, range_, _tot_, _sh_;
+  uchar *buf_, *pos_, *stop_;
 
   // constants for uniform encoding:
-  static const uint uni_nbit = 16;
-  static const uint uni_mask = (1u << uni_nbit) - 1;
-  static const uint uni_total = 1u << uni_nbit;
+  static const uint uni_nbit_ = 16;
+  static const uint uni_mask_ = (1u << uni_nbit_) - 1;
+  static const uint uni_total_ = 1u << uni_nbit_;
 
   uchar InByte() {
-    if (pos >= stop) throw CprsErr::CPRS_ERR_BUF;
-    return *pos++;
+    if (pos_ >= stop_)
+      throw CprsErr::CPRS_ERR_BUF;
+    return *pos_++;
   }
   void OutByte(uchar c) {
-    if (pos >= stop) throw CprsErr::CPRS_ERR_BUF;
-    *pos++ = c;
+    if (pos_ >= stop_)
+      throw CprsErr::CPRS_ERR_BUF;
+    *pos_++ = c;
   }
 
  public:
-  static const uint MAX_TOTAL = BOT;
+  static const uint MAX_TOTAL_ = BOT_;
 
-  RangeCoder() { buf = pos = stop = 0; }
-  uint GetPos() { return (uint)(pos - buf); }  // !!! position in BYTES !!!
+  RangeCoder() { buf_ = pos_ = stop_ = 0; }
+  uint GetPos() { return (uint)(pos_ - buf_); }  // !!! position in BYTES !!!
   void InitCompress(void *b, uint len, uint p = 0) {
-    buf = (uchar *)b;
-    pos = buf + p;
-    stop = buf + len;
-    low = 0;
-    range = (uint)-1;
+    buf_ = (uchar *)b;
+    pos_ = buf_ + p;
+    stop_ = buf_ + len;
+    low_ = 0;
+    range_ = (uint)-1;
   }
   void EndCompress() {
-    for (int i = 0; i < 4; i++) OutByte(low >> 24), low <<= 8;
+    for (int i = 0; i < 4; i++) OutByte(low_ >> 24), low_ <<= 8;
   }
   void InitDecompress(void *b, uint len, uint p = 0) {
-    buf = (uchar *)b;
-    pos = buf + p;
-    stop = buf + len;
-    low = code = 0;
-    range = (uint)-1;
-    for (int i = 0; i < 4; i++) code = code << 8 | InByte();
+    buf_ = (uchar *)b;
+    pos_ = buf_ + p;
+    stop_ = buf_ + len;
+    low_ = code_ = 0;
+    range_ = (uint)-1;
+    for (int i = 0; i < 4; i++) code_ = code_ << 8 | InByte();
   }
 
   void Encode(uint cumFreq, uint freq, uint total) {
-    DEBUG_ASSERT(freq && cumFreq + freq <= total && total <= MAX_TOTAL);
-    DEBUG_ASSERT(range >= BOT && low + range - 1 >= low);
-    low += (range /= total) * cumFreq;
-    range *= freq;
-    while (((low ^ (low + range)) < TOP) || ((range < BOT) && ((range = -low & (BOT - 1)), 1)))
-      OutByte(low >> 24), low <<= 8, range <<= 8;
+    DEBUG_ASSERT(freq && cumFreq + freq <= total && total <= MAX_TOTAL_);
+    DEBUG_ASSERT(range_ >= BOT_ && low_ + range_ - 1 >= low_);
+    low_ += (range_ /= total) * cumFreq;
+    range_ *= freq;
+    while (((low_ ^ (low_ + range_)) < TOP_) || ((range_ < BOT_) && ((range_ = -low_ & (BOT_ - 1)), 1)))
+      OutByte(low_ >> 24), low_ <<= 8, range_ <<= 8;
   }
 
   uint GetCount(uint total) {
 #if defined(_DEBUG) || !defined(NDEBUG)
-    _tot = total;
+    _tot_ = total;
 #endif
-    DEBUG_ASSERT(range >= BOT && low + range - 1 >= code && code >= low);
-    uint tmp = (code - low) / (range /= total);
+    DEBUG_ASSERT(range_ >= BOT_ && low_ + range_ - 1 >= code_ && code_ >= low_);
+    uint tmp = (code_ - low_) / (range_ /= total);
     DEBUG_ASSERT(tmp < total);
     if (tmp >= total) throw CprsErr::CPRS_ERR_COR;
     return tmp;
   }
 
   void Decode(uint cumFreq, uint freq, [[maybe_unused]] uint total) {
-    DEBUG_ASSERT(_tot == total && freq && cumFreq + freq <= total && total <= MAX_TOTAL);
-    low += range * cumFreq;
-    range *= freq;
-    while (((low ^ (low + range)) < TOP) || ((range < BOT) && ((range = -low & (BOT - 1)), 1)))
-      code = code << 8 | InByte(), low <<= 8, range <<= 8;
-    // NOTE: after range<BOT we might check for data corruption
+    DEBUG_ASSERT(_tot_ == total && freq && cumFreq + freq <= total && total <= MAX_TOTAL_);
+    low_ += range_ * cumFreq;
+    range_ *= freq;
+    while (((low_ ^ (low_ + range_)) < TOP_) || ((range_ < BOT_) && ((range_ = -low_ & (BOT_ - 1)), 1)))
+      code_ = code_ << 8 | InByte(), low_ <<= 8, range_ <<= 8;
+    // NOTE: after range_<BOT_ we might check for data corruption
   }
 
   void EncodeShift(uint cumFreq, uint freq, uint shift) {
-    DEBUG_ASSERT(cumFreq + freq <= (1u _SHL_ shift) && freq && (1u _SHL_ shift) <= MAX_TOTAL);
-    DEBUG_ASSERT(range >= BOT && low + range - 1 >= low);
-    low += (range _SHR_ASSIGN_ shift)*cumFreq;
-    range *= freq;
-    while ((low ^ (low + range)) < TOP || (range < BOT && ((range = -low & (BOT - 1)), 1)))
-      OutByte(low >> 24), low <<= 8, range <<= 8;
+    DEBUG_ASSERT(cumFreq + freq <= (1u _SHL_ shift) && freq && (1u _SHL_ shift) <= MAX_TOTAL_);
+    DEBUG_ASSERT(range_ >= BOT_ && low_ + range_ - 1 >= low_);
+    low_ += (range_ _SHR_ASSIGN_ shift)*cumFreq;
+    range_ *= freq;
+    while ((low_ ^ (low_ + range_)) < TOP_ || (range_ < BOT_ && ((range_ = -low_ & (BOT_ - 1)), 1)))
+      OutByte(low_ >> 24), low_ <<= 8, range_ <<= 8;
   }
 
   uint GetCountShift(uint shift) {
 #if defined(_DEBUG) || !defined(NDEBUG)
-    _sh = shift;
+    _sh_ = shift;
 #endif
-    DEBUG_ASSERT(range >= BOT && low + range - 1 >= code && code >= low);
-    uint tmp = (code - low) / (range _SHR_ASSIGN_ shift);
+    DEBUG_ASSERT(range_ >= BOT_ && low_ + range_ - 1 >= code_ && code_ >= low_);
+    uint tmp = (code_ - low_) / (range_ _SHR_ASSIGN_ shift);
     if (tmp >= (1u << shift)) throw CprsErr::CPRS_ERR_COR;
     return tmp;
   }
 
   void DecodeShift(uint cumFreq, uint freq, [[maybe_unused]] uint shift) {
-    DEBUG_ASSERT(_sh == shift && cumFreq + freq <= (1u _SHL_ shift) && freq && (1u _SHL_ shift) <= MAX_TOTAL);
-    low += range * cumFreq;
-    range *= freq;
-    while (((low ^ (low + range)) < TOP) || ((range < BOT) && ((range = -low & (BOT - 1)), 1)))
-      code = code << 8 | InByte(), low <<= 8, range <<= 8;
+    DEBUG_ASSERT(_sh_ == shift && cumFreq + freq <= (1u _SHL_ shift) && freq && (1u _SHL_ shift) <= MAX_TOTAL_);
+    low_ += range_ * cumFreq;
+    range_ *= freq;
+    while (((low_ ^ (low_ + range_)) < TOP_) || ((range_ < BOT_) && ((range_ = -low_ & (BOT_ - 1)), 1)))
+      code_ = code_ << 8 | InByte(), low_ <<= 8, range_ <<= 8;
   }
 
   // uniform compression and decompression (must be: val <= maxval)
@@ -138,18 +140,18 @@ class RangeCoder {
     DEBUG_ASSERT((((uint64_t)maxval >> bitmax) == 0) || bitmax >= 64);
     if (maxval == 0) return;
 
-    // encode groups of 'uni_nbit' bits, from the least significant
-    DEBUG_ASSERT(uni_total <= MAX_TOTAL);
-    while (bitmax > uni_nbit) {
-      EncodeShift((uint)(val & uni_mask), 1, uni_nbit);
-      DEBUG_ASSERT(uni_nbit < sizeof(T) * 8);
-      val >>= uni_nbit;
-      maxval >>= uni_nbit;
-      bitmax -= uni_nbit;
+    // encode groups of 'uni_nbit_' bits, from the least significant
+    DEBUG_ASSERT(uni_total_ <= MAX_TOTAL_);
+    while (bitmax > uni_nbit_) {
+      EncodeShift((uint)(val & uni_mask_), 1, uni_nbit_);
+      DEBUG_ASSERT(uni_nbit_ < sizeof(T) * 8);
+      val >>= uni_nbit_;
+      maxval >>= uni_nbit_;
+      bitmax -= uni_nbit_;
     }
 
     // encode the most significant group
-    // ASSERT(maxval < MAX_TOTAL, "should be 'maxval < MAX_TOTAL'"); // compiler
+    // ASSERT(maxval < MAX_TOTAL_, "should be 'maxval < MAX_TOTAL_'"); // compiler
     // figure out as allways true
     Encode((uint)val, 1, (uint)maxval + 1);
   }
@@ -165,21 +167,21 @@ class RangeCoder {
     if (maxval == 0) return;
     DEBUG_ASSERT((((uint64_t)maxval >> bitmax) == 0) || bitmax >= 64);
 
-    // decode groups of 'uni_nbit' bits, from the least significant
-    DEBUG_ASSERT(uni_total <= MAX_TOTAL);
+    // decode groups of 'uni_nbit_' bits, from the least significant
+    DEBUG_ASSERT(uni_total_ <= MAX_TOTAL_);
     uint v, shift = 0;
-    while (shift + uni_nbit < bitmax) {
-      v = GetCountShift(uni_nbit);
-      DecodeShift(v, 1, uni_nbit);
+    while (shift + uni_nbit_ < bitmax) {
+      v = GetCountShift(uni_nbit_);
+      DecodeShift(v, 1, uni_nbit_);
       DEBUG_ASSERT(shift < 64);
       val |= (uint64_t)v << shift;
-      shift += uni_nbit;
+      shift += uni_nbit_;
     }
 
     // decode the most significant group
     DEBUG_ASSERT(shift < sizeof(maxval) * 8);
     uint total = (uint)(maxval >> shift) + 1;
-    DEBUG_ASSERT(total <= MAX_TOTAL);
+    DEBUG_ASSERT(total <= MAX_TOTAL_);
     v = GetCount(total);
     Decode(v, 1, total);
     val |= (uint64_t)v << shift;
@@ -194,38 +196,38 @@ class RangeCoder {
   // uniform compression by shifting
   template <class T>
   void EncodeUniShift(T x, uint shift) {
-    if (shift <= uni_nbit)
+    if (shift <= uni_nbit_)
       EncodeShift((uint)x, 1, shift);
     else {
-      EncodeShift((uint)x & uni_mask, 1, uni_nbit);
-      EncodeUniShift(x >> uni_nbit, shift - uni_nbit);
+      EncodeShift((uint)x & uni_mask_, 1, uni_nbit_);
+      EncodeUniShift(x >> uni_nbit_, shift - uni_nbit_);
     }
   }
 
   template <class T>
   void DecodeUniShift(T &x, uint shift) {
-    if (shift <= uni_nbit) {
+    if (shift <= uni_nbit_) {
       x = (T)GetCountShift(shift);
       DecodeShift((uint)x, 1, shift);
     } else {
-      uint tmp = GetCountShift(uni_nbit);
-      DecodeShift(tmp, 1, uni_nbit);
-      DecodeUniShift(x, shift - uni_nbit);
-      DEBUG_ASSERT(uni_nbit < sizeof(x) * 8);
-      x = (x << uni_nbit) | (T)tmp;
+      uint tmp = GetCountShift(uni_nbit_);
+      DecodeShift(tmp, 1, uni_nbit_);
+      DecodeUniShift(x, shift - uni_nbit_);
+      DEBUG_ASSERT(uni_nbit_ < sizeof(x) * 8);
+      x = (x << uni_nbit_) | (T)tmp;
     }
   }
 };
 
 template <>
 inline void RangeCoder::EncodeUniShift<uchar>(uchar x, uint shift) {
-  DEBUG_ASSERT(shift <= uni_nbit);
+  DEBUG_ASSERT(shift <= uni_nbit_);
   EncodeShift((uint)x, 1, shift);
 }
 
 template <>
 inline void RangeCoder::EncodeUniShift<ushort>(ushort x, uint shift) {
-  DEBUG_ASSERT(shift <= uni_nbit);
+  DEBUG_ASSERT(shift <= uni_nbit_);
   EncodeShift((uint)x, 1, shift);
 }
 

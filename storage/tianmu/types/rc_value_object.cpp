@@ -23,7 +23,8 @@ namespace types {
 RCValueObject::RCValueObject() {}
 
 RCValueObject::RCValueObject(const RCValueObject &rcvo) {
-  if (rcvo.value.get()) construct(*rcvo.value);
+  if (rcvo.value_.get())
+    construct(*rcvo.value_);
 }
 
 RCValueObject::RCValueObject(const RCDataType &rcdt) { construct(rcdt); }
@@ -31,21 +32,21 @@ RCValueObject::RCValueObject(const RCDataType &rcdt) { construct(rcdt); }
 RCValueObject::~RCValueObject() {}
 
 RCValueObject &RCValueObject::operator=(const RCValueObject &rcvo) {
-  if (rcvo.value.get())
-    construct(*rcvo.value);
+  if (rcvo.value_.get())
+    construct(*rcvo.value_);
   else
-    value.reset();
+    value_.reset();
   return *this;
 }
 
-inline void RCValueObject::construct(const RCDataType &rcdt) { value = rcdt.Clone(); }
+inline void RCValueObject::construct(const RCDataType &rcdt) { value_ = rcdt.Clone(); }
 
 bool RCValueObject::compare(const RCValueObject &rcvo1, const RCValueObject &rcvo2, common::Operator op,
                             char like_esc) {
   if (rcvo1.IsNull() || rcvo2.IsNull())
     return false;
   else
-    return RCDataType::compare(*rcvo1.value, *rcvo2.value, op, like_esc);
+    return RCDataType::compare(*rcvo1.value_, *rcvo2.value_, op, like_esc);
 }
 
 bool RCValueObject::compare(const RCValueObject &rcvo, common::Operator op, char like_esc) const {
@@ -54,93 +55,94 @@ bool RCValueObject::compare(const RCValueObject &rcvo, common::Operator op, char
 
 bool RCValueObject::operator==(const RCValueObject &rcvo) const {
   if (IsNull() || rcvo.IsNull()) return false;
-  return *value == *rcvo.value;
+  return *value_ == *rcvo.value_;
 }
 
 bool RCValueObject::operator<(const RCValueObject &rcvo) const {
   if (IsNull() || rcvo.IsNull()) return false;
-  return *value < *rcvo.value;
+  return *value_ < *rcvo.value_;
 }
 
 bool RCValueObject::operator>(const RCValueObject &rcvo) const {
   if (IsNull() || rcvo.IsNull()) return false;
-  return *value > *rcvo.value;
+  return *value_ > *rcvo.value_;
 }
 
 bool RCValueObject::operator>=(const RCValueObject &rcvo) const {
   if (IsNull() || rcvo.IsNull()) return false;
-  return *value >= *rcvo.value;
+  return *value_ >= *rcvo.value_;
 }
 
 bool RCValueObject::operator<=(const RCValueObject &rcvo) const {
   if (IsNull() || rcvo.IsNull()) return false;
-  return *value <= *rcvo.value;
+  return *value_ <= *rcvo.value_;
 }
 
 bool RCValueObject::operator!=(const RCValueObject &rcvo) const {
   if (IsNull() || rcvo.IsNull()) return false;
-  return *value != *rcvo.value;
+  return *value_ != *rcvo.value_;
 }
 
 bool RCValueObject::operator==(const RCDataType &rcn) const {
   if (IsNull() || rcn.IsNull()) return false;
-  return *value == rcn;
+  return *value_ == rcn;
 }
 
 bool RCValueObject::operator<(const RCDataType &rcn) const {
   if (IsNull() || rcn.IsNull()) return false;
-  return *value < rcn;
+  return *value_ < rcn;
 }
 
 bool RCValueObject::operator>(const RCDataType &rcn) const {
   if (IsNull() || rcn.IsNull()) return false;
-  return *value > rcn;
+  return *value_ > rcn;
 }
 
 bool RCValueObject::operator>=(const RCDataType &rcn) const {
   if (IsNull() || rcn.IsNull()) return false;
-  return *value >= rcn;
+  return *value_ >= rcn;
 }
 
 bool RCValueObject::operator<=(const RCDataType &rcdt) const {
   if (IsNull() || rcdt.IsNull()) return false;
-  return *value <= rcdt;
+  return *value_ <= rcdt;
 }
 
 bool RCValueObject::operator!=(const RCDataType &rcn) const {
   if (IsNull() || rcn.IsNull()) return false;
-  return *value != rcn;
+  return *value_ != rcn;
 }
 
-bool RCValueObject::IsNull() const { return value.get() ? value->IsNull() : true; }
+bool RCValueObject::IsNull() const { return value_.get() ? value_->IsNull() : true; }
 
-RCDataType &RCValueObject::operator*() const { return value.get() ? *value.get() : RCNum::NullValue(); }
+RCDataType &RCValueObject::operator*() const { return value_.get() ? *value_.get() : RCNum::NullValue(); }
 
 RCValueObject::operator RCNum &() const {
   if (IsNull()) return RCNum::NullValue();
   if (GetValueType() == ValueTypeEnum::NUMERIC_TYPE || GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
-    return static_cast<RCNum &>(*value);
+    return static_cast<RCNum &>(*value_);
 
   TIANMU_ERROR("Bad cast in RCValueObject::RCNum&()");
-  return static_cast<RCNum &>(*value);
+  return static_cast<RCNum &>(*value_);
 }
 
 RCValueObject::operator RCDateTime &() const {
   if (IsNull()) return RCDateTime::NullValue();
-  if (GetValueType() == ValueTypeEnum::DATE_TIME_TYPE) return static_cast<RCDateTime &>(*value);
+  if (GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
+    return static_cast<RCDateTime &>(*value_);
 
   TIANMU_ERROR("Bad cast in RCValueObject::RCDateTime&()");
-  return static_cast<RCDateTime &>(*value);
+  return static_cast<RCDateTime &>(*value_);
 }
 
 BString RCValueObject::ToBString() const {
   if (IsNull()) return BString();
-  return value->ToBString();
+  return value_->ToBString();
 }
 
 uint RCValueObject::GetHashCode() const {
   if (IsNull()) return 0;
-  return value->GetHashCode();
+  return value_->GetHashCode();
 }
 
 }  // namespace types

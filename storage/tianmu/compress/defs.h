@@ -53,40 +53,40 @@ namespace compress {
 
 class _SHIFT_CHECK_ {
  public:
-  unsigned long long v;
-  explicit _SHIFT_CHECK_(unsigned long long a) : v(a) {}
+  unsigned long long v_;
+  explicit _SHIFT_CHECK_(unsigned long long a) : v_(a) {}
 };
 
 template <class T>
 inline T operator>>(T a, _SHIFT_CHECK_ b) {
-  if (b.v >= sizeof(T) * 8) {
+  if (b.v_ >= sizeof(T) * 8) {
     return 0;
   }
-  return a >> b.v;
+  return a >> b.v_;
 }
 template <class T>
 inline T &operator>>=(T &a, _SHIFT_CHECK_ b) {
-  if (b.v >= sizeof(T) * 8) {
+  if (b.v_ >= sizeof(T) * 8) {
     a = (T)0;
     return a;
   }
-  return a >>= b.v;
+  return a >>= b.v_;
 }
 
 template <class T>
 inline T operator<<(T a, _SHIFT_CHECK_ b) {
-  if (b.v >= sizeof(T) * 8) {
+  if (b.v_ >= sizeof(T) * 8) {
     return 0;
   }
-  return a << b.v;
+  return a << b.v_;
 }
 template <class T>
 inline T &operator<<=(T &a, _SHIFT_CHECK_ b) {
-  if (b.v >= sizeof(T) * 8) {
+  if (b.v_ >= sizeof(T) * 8) {
     a = (T)0;
     return a;
   }
-  return a <<= b.v;
+  return a <<= b.v_;
 }
 
 #ifndef _SHR_

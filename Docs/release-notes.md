@@ -5,6 +5,52 @@ sidebar_position: 11.0
 
 # Release Notes
 
+## StoneDB-5.7-V1.0.1
+Changes in StoneDB_5.7_v1.0.1 (2022-10-24, General Availability)
+● Functionality Added or Changed
+● Compilation Notes
+● Document Notes
+● Bugs Fixed
+Functionality Added or Changed
+●  Tianmu:  From StoneDB_5.7 v1.0.1,  you can use delete statement to clear some data you don't need.
+```sql
+delete from table1;
+delete from table1, table2, ...;
+delete from table1 where ...;
+delete from table1, table2, ... where ...;
+```
+● Tianmu:  From StoneDB_5.7 v1.0.1,  you can use alter table statement to modify the table structure as you need.
+```sql
+alter table tablename
+```
+● Tianmu:  Binlog replication supported ROW format；
+```shell
+binlog_format = ROW
+```
+● Tianmu: Added temporary table function；
+```sql
+CREATE TEMPORARY TABLE IF NOT EXISTS tablename
+```
+● Tianmu: From StoneDB_5.7 v1.0.1, you can create a trigger.  The trigger is a named database object that is associated with a table, and that activates when a particular event occurs for the table.
+```sql
+create trigger triggername
+```
+● Tianmu: Added  Create table AS... union...  statement；
+● Tianmu: The Tianmu engine improved the performance of subqueries；
+● Tianmu: Added gtest module；
+● Tianmu: Added some mtr test cases；
+Compilation Notes
+● Added cmake parameter configuration for  build
+```shell
+cmake  .. -DWITH_MARISA  -DWITH_ROCKSDB
+```
+Document Notes
+● The manual has been updated as the code was modified. ( [# address](https://stonedb.io/))
+Bugs Fixed
+● fix some inherited mtr from MySQL
+● fix Tianmu bug: [#282](https://github.com/stoneatom/stonedb/issues/282),[#274](about:blank),[#270](https://github.com/stoneatom/stonedb/issues/270),[#663](https://github.com/stoneatom/stonedb/issues/663),[#669](https://github.com/stoneatom/stonedb/issues/669),[#670](https://github.com/stoneatom/stonedb/issues/670),[#675](https://github.com/stoneatom/stonedb/issues/675),[#678](https://github.com/stoneatom/stonedb/issues/678),[#682](https://github.com/stoneatom/stonedb/issues/682),[#487](https://github.com/stoneatom/stonedb/issues/487),[#426](https://github.com/stoneatom/stonedb/issues/426),[#250](https://github.com/stoneatom/stonedb/issues/250),[#247](https://github.com/stoneatom/stonedb/issues/247),[#569](https://github.com/stoneatom/stonedb/issues/569),[#566](https://github.com/stoneatom/stonedb/issues/566),[#290](https://github.com/stoneatom/stonedb/issues/290),[#736](https://github.com/stoneatom/stonedb/issues/736),[#567](https://github.com/stoneatom/stonedb/issues/567),[#500](https://github.com/stoneatom/stonedb/issues/500),[#300](https://github.com/stoneatom/stonedb/issues/300),[#289](https://github.com/stoneatom/stonedb/issues/289),[#566](https://github.com/stoneatom/stonedb/issues/566),[#279](https://github.com/stoneatom/stonedb/issues/279),[#570](https://github.com/stoneatom/stonedb/issues/570)[,#571](https://github.com/stoneatom/stonedb/issues/571),[#580](https://github.com/stoneatom/stonedb/issues/580),[#581](https://github.com/stoneatom/stonedb/issues/581),[#586](https://github.com/stoneatom/stonedb/issues/586),[#589](https://github.com/stoneatom/stonedb/issues/589),[#674](https://github.com/stoneatom/stonedb/issues/674),[#646](https://github.com/stoneatom/stonedb/issues/646),[#280](https://github.com/stoneatom/stonedb/issues/280),[#301](https://github.com/stoneatom/stonedb/issues/301),[#733](https://github.com/stoneatom/stonedb/issues/733) et. al.
+
+
 ## StoneDB-5.7-V1.0.0
 Changes in StoneDB_5.7_v1.0.0 (2022-08-31, General Availability)
 
@@ -23,7 +69,7 @@ Functionality Added or Changed
 
 - Important Change: The engine name  has been changed to tianmu. StoneDB is used as a HTAP database name, it is not suitable for used both as an engine name. As the dissusion result, we choose tianmu as our new eninge name: 
 
-```bash
+```sql
 mysql> show engines;
 +----------------+---------+--------------------------+--------------+------+------------+
 | Engine         | Support | Comment                  | Transactions | XA   | Savepoints |

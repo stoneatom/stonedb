@@ -1,0 +1,80 @@
+#
+# Test MID() function
+# Author: ysw
+#
+DROP DATABASE IF EXISTS mid_function;
+CREATE DATABASE mid_function;
+USE mid_function;
+CREATE TABLE t1 (a INT, b CHAR(35))ENGINE=tianmu;
+INSERT INTO t1 VALUES (NULL, ''),(1, 'tianmu engine'),(2, 'tianmu database');
+SELECT b, MID(b,4,5) FROM t1;
+b	MID(b,4,5)
+	
+tianmu engine	nmu e
+tianmu database	nmu d
+SELECT b, MID(b,12,5) FROM t1;
+b	MID(b,12,5)
+	
+tianmu engine	ne
+tianmu database	base
+SELECT b, MID(b,5,15) FROM t1;
+b	MID(b,5,15)
+	
+tianmu engine	mu engine
+tianmu database	mu database
+SELECT b, MID(b,12,15) FROM t1;
+b	MID(b,12,15)
+	
+tianmu engine	ne
+tianmu database	base
+SELECT b, MID(b,1,1) FROM t1;
+b	MID(b,1,1)
+	
+tianmu engine	t
+tianmu database	t
+SELECT b, MID(b,1,2) FROM t1;
+b	MID(b,1,2)
+	
+tianmu engine	ti
+tianmu database	ti
+SELECT b, MID(b,5,5) FROM t1;
+b	MID(b,5,5)
+	
+tianmu engine	mu en
+tianmu database	mu da
+SELECT b, MID(b,-2,5) FROM t1;
+b	MID(b,-2,5)
+	
+tianmu engine	ne
+tianmu database	se
+SELECT b, MID(b,-5,15) FROM t1;
+b	MID(b,-5,15)
+	
+tianmu engine	ngine
+tianmu database	abase
+SELECT b, MID(b,-15,15) FROM t1;
+b	MID(b,-15,15)
+	
+tianmu engine	
+tianmu database	tianmu database
+SELECT b, MID(b,0,0) FROM t1;
+b	MID(b,0,0)
+	
+tianmu engine	
+tianmu database	
+SELECT b, MID(b,1,0) FROM t1;
+b	MID(b,1,0)
+	
+tianmu engine	
+tianmu database	
+SELECT b, MID(b,0,1) FROM t1;
+b	MID(b,0,1)
+	
+tianmu engine	
+tianmu database	
+SELECT b, MID(b,-1,0) FROM t1;
+b	MID(b,-1,0)
+	
+tianmu engine	
+tianmu database	
+DROP DATABASE mid_function;

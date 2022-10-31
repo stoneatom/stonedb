@@ -1,0 +1,59 @@
+#
+# SELECT DISTINCT
+#
+DROP DATABASE IF EXISTS select_distinct_test;
+CREATE DATABASE select_distinct_test;
+USE select_distinct_test;
+CREATE TABLE t1(col1 INT, col2 CHAR(5));
+INSERT INTO t1 VALUES(NULL,''),(1,'a'),(1,'b'),(1,'c'),(2,'dd'),(3,'eee');
+SELECT COUNT(DISTINCT col1) FROM t1;
+COUNT(DISTINCT col1)
+3
+SELECT COUNT(DISTINCT col2) FROM t1;
+COUNT(DISTINCT col2)
+6
+SELECT DISTINCT col1 FROM t1;
+col1
+NULL
+1
+2
+3
+SELECT DISTINCT col1 FROM t1 ORDER BY col1 DESC;
+col1
+3
+2
+1
+NULL
+SELECT DISTINCT col2 FROM t1;
+col2
+
+a
+b
+c
+dd
+eee
+CREATE TABLE t2(col1 INT);
+INSERT INTO t2 SELECT DISTINCT col1 FROM t1;
+SELECT * FROM t2;
+col1
+NULL
+1
+2
+3
+CREATE TABLE t3 (name varchar(255));
+INSERT INTO t3 VALUES ('aa'),('ab'),('ac'),('ad'),('ae');
+SELECT DISTINCT * FROM t3;
+name
+aa
+ab
+ac
+ad
+ae
+SELECT DISTINCT name FROM t3 LIMIT 2;
+name
+aa
+ab
+SELECT DISTINCT 1 FROM t3 LIMIT 3;
+1
+1
+DROP DATABASE select_distinct_test;

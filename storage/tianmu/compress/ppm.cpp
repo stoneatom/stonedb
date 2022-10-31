@@ -26,34 +26,35 @@
 namespace Tianmu {
 namespace compress {
 
-FILE *PPM::dump = NULL;
-bool PPM::printstat = false;
+FILE *PPM::dump_ = NULL;
+bool PPM::printstat_ = false;
 
 PPM::PPM(const Symb *data, int dlen, ModelType mt, PPMParam param, uchar method) {
   if ((data == NULL) || (dlen <= 0) || (mt == ModelType::ModelNull)) return;
 
   switch (mt) {
     case ModelType::ModelSufTree:
-      model.reset(new SuffixTree<>(data, dlen));
+      model_.reset(new SuffixTree<>(data, dlen));
       break;
     case ModelType::ModelWordGraph:
-      model.reset(new WordGraph(data, dlen, method == 2));
+      model_.reset(new WordGraph(data, dlen, method == 2));
       break;
     default:
       TIANMU_ERROR("not implemented");
   }
-  model->TransformForPPM(param);
+  model_->TransformForPPM(param);
 
   static int _i_ = 0;
-  if (printstat && dump && (++_i_ == 18)) model->PrintStat(dump);
+  if (printstat_ && dump_ && (++_i_ == 18))
+    model_->PrintStat(dump_);
 }
 
 CprsErr PPM::CompressArith(char *dest, int &dlen, Symb *src, int slen) {
   // Data format:
   //  <compr_method>[1B] <compressed_data>[?]
 
-  // null PPM model
-  if (!model) {
+  // null PPM model_
+  if (!model_) {
     if (dlen < slen + 1) return CprsErr::CPRS_ERR_BUF;
     dest[0] = 0;  // method: no compression
     std::memcpy(dest + 1, src, slen);
@@ -62,11 +63,12 @@ CprsErr PPM::CompressArith(char *dest, int &dlen, Symb *src, int slen) {
   }
   WordGraph *wg = NULL;
   try {
-    wg = dynamic_cast<WordGraph *>(model.get());
+    wg = dynamic_cast<WordGraph *>(model_.get());
   } catch (...) {
     wg = NULL;
   }
-  if (wg) ASSERT(wg->insatend == false, "should be 'wg->insatend == false'");
+  if (wg)
+    ASSERT(wg->insatend_ == false, "should be 'wg->insatend_ == false'");
 
   // DEBUG_ASSERT(src[slen-1] == 0);
   ArithCoder coder;
@@ -79,31 +81,31 @@ CprsErr PPM::CompressArith(char *dest, int &dlen, Symb *src, int slen) {
     bs_dest.PutByte(1);  // compression method [1 byte], currently 1; 0 means no
                          // compression (data are copied)
 
-    // SufTree::State stt = model->InitState();
+    // SufTree::State stt = model_->InitState();
     // SufTree::Edge edge;
     Range rng;
     Count total;
 
-    model->InitPPM();
-    model->logfile = dump;
+    model_->InitPPM();
+    model_->log_file_ = dump_;
     coder.InitCompress();
 
     // int esc = 0;
     int len;
     for (int i = 0; i < slen;) {
-      // if(dump) std::fprintf(dump, "%d %d %d\n", _n_++, i, stt);
+      // if(dump_) std::fprintf(dump_, "%d %d %d\n", _n_++, i, stt);
       // if(_n_ >= 14860)//314712)
       //	i = i;
 
       len = slen - i;
-      model->Move(src + i, len, rng, total);
+      model_->Move(src + i, len, rng, total);
       i += len;
 
-      // model->FindEdgeS(stt, edge, src + i, slen - i);
-      // model->GetRange(stt, edge, rng);
-      // total = model->GetTotal(stt);
+      // model_->FindEdgeS(stt, edge, src + i, slen - i);
+      // model_->GetRange(stt, edge, rng);
+      // total = model_->GetTotal(stt);
       // DEBUG_ASSERT(rng.high <= total);
-      // len = model->GetLen(stt, edge);
+      // len = model_->GetLen(stt, edge);
 
       // encode 'rng'
       coder.ScaleRange(&bs_dest, rng.low, rng.high, total);
@@ -112,28 +114,28 @@ CprsErr PPM::CompressArith(char *dest, int &dlen, Symb *src, int slen) {
       //			//if(edge.n == 0) esc += bs_dest.GetPos() -
       // pos1;		// count bits used to
       //  encode ESC symbols
-      //			if(makedump && dump) {
-      //				std::fprintf(dump, "%d\t",
-      // model->GetDep(stt)); 				if(edge.n == 0)
-      // std::fprintf(dump, "<-"); 				else {
+      //			if(makedump && dump_) {
+      //				std::fprintf(dump_, "%d\t",
+      // model_->GetDep(stt)); 				if(edge.n == 0)
+      // std::fprintf(dump_, "<-"); 				else {
       // for(int j
       //= i; j < i+len; j++) {
       // char s = (char)src[j];
       // if((s == 0) || (s == 10)
       //|| (s == 13) || (s == '\t')) s =
       //'#';
-      //						fputc(s, dump);
+      //						fputc(s, dump_);
       //					}
       //				}
-      //				std::fprintf(dump, "\t%d\n",
+      //				std::fprintf(dump_, "\t%d\n",
       // bs_dest.GetPos() - pos1);
       //			}
       // #			endif
       //
       //			i += len;
-      //			model->Move(stt, edge);
+      //			model_->Move(stt, edge);
     }
-    // if(dump) std::fprintf(dump, "Bytes used to encode ESC symbols: %d\n",
+    // if(dump_) std::fprintf(dump_, "Bytes used to encode ESC symbols: %d\n",
     // (esc+7)/8);
 
     coder.EndCompress(&bs_dest);
@@ -169,42 +171,43 @@ CprsErr PPM::DecompressArith(Symb *dest, int dlen, char *src, int slen) {
 
   WordGraph *wg = NULL;
   try {
-    wg = dynamic_cast<WordGraph *>(model.get());
+    wg = dynamic_cast<WordGraph *>(model_.get());
   } catch (...) {
     wg = NULL;
   }
-  if (wg) ASSERT(wg->insatend == false, "should be 'wg->insatend == false'");
+  if (wg)
+    ASSERT(wg->insatend_ == false, "should be 'wg->insatend_ == false'");
 
   ArithCoder coder;
   BitStream bs_src(src, slen * 8, 8);  // 1 byte already read
   try {
-    // SufTree::State stt = model->InitState();
+    // SufTree::State stt = model_->InitState();
     // SufTree::Edge edge;
     Range rng;
     Count c, total;
     int len;
     CprsErr err;
 
-    model->InitPPM();
+    model_->InitPPM();
     coder.InitDecompress(&bs_src);
 
     // int _n_ = 0;
     for (int i = 0; i < dlen;) {
-      // if(dump) std::fprintf(dump, "%d %d %d\n", _n_++, i, stt);
+      // if(dump_) std::fprintf(dump_, "%d %d %d\n", _n_++, i, stt);
 
       // find the next edge to move
-      total = model->GetTotal();
+      total = model_->GetTotal();
       c = coder.GetCount(total);
 
       len = dlen - i;
-      err = model->Move(c, dest + i, len, rng);
+      err = model_->Move(c, dest + i, len, rng);
       if (static_cast<int>(err)) return err;
       i += len;
 
-      // model->FindEdgeC(stt, edge, c);
+      // model_->FindEdgeC(stt, edge, c);
 
       // remove the decoded data from the source
-      // model->GetRange(stt, edge, rng);
+      // model_->GetRange(stt, edge, rng);
       // DEBUG_ASSERT(rng.high <= total);
       coder.RemoveSymbol(&bs_src, rng.low, rng.high, total);
 
@@ -213,12 +216,12 @@ CprsErr PPM::DecompressArith(Symb *dest, int dlen, char *src, int slen) {
       //	i = i;
 
       // len = dlen - i;
-      // err = model->GetLabel(stt, edge, dest + i, len);
+      // err = model_->GetLabel(stt, edge, dest + i, len);
       // if(static_cast<int>(err))
       //	return err;
       // i += len;
 
-      // model->Move(stt, edge);
+      // model_->Move(stt, edge);
     }
   } catch (ErrBufOverrun &) {
     return CprsErr::CPRS_ERR_BUF;
@@ -230,8 +233,8 @@ CprsErr PPM::DecompressArith(Symb *dest, int dlen, char *src, int slen) {
 CprsErr PPM::Compress(char *dest, int &dlen, Symb *src, int slen) {
   // return CompressArith(dest, dlen, src, slen);
 
-  // null PPM model
-  if (!model) {
+  // null PPM model_
+  if (!model_) {
     if (dlen < slen + 1) return CprsErr::CPRS_ERR_BUF;
     dest[0] = 0;  // method: no compression
     std::memcpy(dest + 1, src, slen);
@@ -239,7 +242,7 @@ CprsErr PPM::Compress(char *dest, int &dlen, Symb *src, int slen) {
     return CprsErr::CPRS_SUCCESS;
   }
   // try {
-  //	WordGraph* wg = dynamic_cast<WordGraph*>(model);
+  //	WordGraph* wg = dynamic_cast<WordGraph*>(model_);
   //	if(wg) wg->insatend = true;
   //} catch(...){}
 
@@ -248,12 +251,13 @@ CprsErr PPM::Compress(char *dest, int &dlen, Symb *src, int slen) {
 
   WordGraph *wg = NULL;
   try {
-    wg = dynamic_cast<WordGraph *>(model.get());
+    wg = dynamic_cast<WordGraph *>(model_.get());
   } catch (...) {
     wg = NULL;
   }
 
-  if (wg) ASSERT(wg->insatend, "'wg->insatend' should be true");
+  if (wg)
+    ASSERT(wg->insatend_, "'wg->insatend_' should be true");
 
   RangeCoder coder;
   coder.InitCompress(dest + 1, dlen - 1);
@@ -265,13 +269,13 @@ CprsErr PPM::Compress(char *dest, int &dlen, Symb *src, int slen) {
     Range rng;
     Count total;
 
-    model->InitPPM();
-    model->logfile = dump;
+    model_->InitPPM();
+    model_->log_file_ = dump_;
 
     int len;
     for (int i = 0; i < slen;) {
       len = slen - i;
-      model->Move(src + i, len, rng, total);
+      model_->Move(src + i, len, rng, total);
       i += len;
       coder.Encode(rng.low, rng.high - rng.low, total);
     }
@@ -312,12 +316,13 @@ CprsErr PPM::Decompress(Symb *dest, int dlen, char *src, int slen) {
 
   WordGraph *wg = NULL;
   try {
-    wg = dynamic_cast<WordGraph *>(model.get());
+    wg = dynamic_cast<WordGraph *>(model_.get());
   } catch (...) {
     wg = NULL;
   }
 
-  if (wg) ASSERT(wg->insatend, "'wg->insatend' should be true");
+  if (wg)
+    ASSERT(wg->insatend_, "'wg->insatend_' should be true");
 
   RangeCoder coder;
   coder.InitDecompress(src + 1, slen - 1);
@@ -327,15 +332,15 @@ CprsErr PPM::Decompress(Symb *dest, int dlen, char *src, int slen) {
     int len;
     CprsErr err;
 
-    model->InitPPM();
+    model_->InitPPM();
 
     for (int i = 0; i < dlen;) {
       // find the next edge to move
-      total = model->GetTotal();
+      total = model_->GetTotal();
       c = coder.GetCount(total);
 
       len = dlen - i;
-      err = model->Move(c, dest + i, len, rng);
+      err = model_->Move(c, dest + i, len, rng);
       if (static_cast<int>(err)) return err;
       i += len;
 
@@ -349,7 +354,9 @@ CprsErr PPM::Decompress(Symb *dest, int dlen, char *src, int slen) {
   return CprsErr::CPRS_SUCCESS;
 }
 
-void PPM::PrintInfo(std::ostream &str) { str << "No. of all nodes in the model: " << model->GetNNodes() << std::endl; }
+void PPM::PrintInfo(std::ostream &str) {
+  str << "No. of all nodes in the model_: " << model_->GetNNodes() << std::endl;
+}
 
 }  // namespace compress
 }  // namespace Tianmu

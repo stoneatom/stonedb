@@ -27,26 +27,27 @@
 namespace Tianmu {
 namespace common {
 
-int DataFormat::no_formats = 0;
+int DataFormat::no_formats_ = 0;
 
-std::map<std::string, DataFormatPtr> DataFormat::df_map = {{"EDF::TRI_UNKNOWN", std::make_shared<TxtDataFormat>()}};
+std::map<std::string, DataFormatPtr> DataFormat::df_map_ = {{"EDF::TRI_UNKNOWN", std::make_shared<TxtDataFormat>()}};
 
 DataFormatPtr DataFormat::GetDataFormat(const std::string &name) {
-  auto it = df_map.find(boost::trim_copy(boost::to_upper_copy(name)));
-  return it != df_map.end() ? it->second : DataFormatPtr();
+  auto it = df_map_.find(boost::trim_copy(boost::to_upper_copy(name)));
+  return it != df_map_.end() ? it->second : DataFormatPtr();
 }
 
 DataFormatPtr DataFormat::GetDataFormat(int id) {
-  auto it = std::find_if(df_map.begin(), df_map.end(), [id](const auto &p) -> bool { return p.second->GetId() == id; });
-  return it != df_map.end() ? it->second : DataFormatPtr();
+  auto it =
+      std::find_if(df_map_.begin(), df_map_.end(), [id](const auto &p) -> bool { return p.second->GetId() == id; });
+  return it != df_map_.end() ? it->second : DataFormatPtr();
 }
 
 DataFormatPtr DataFormat::GetDataFormat(EDF edf) { return GetDataFormatbyEDF(edf); }
 
 DataFormatPtr DataFormat::GetDataFormatbyEDF(EDF edf) {
   auto it =
-      std::find_if(df_map.begin(), df_map.end(), [edf](const auto &p) -> bool { return p.second->GetEDF() == edf; });
-  return it != df_map.end() ? it->second : DataFormatPtr();
+      std::find_if(df_map_.begin(), df_map_.end(), [edf](const auto &p) -> bool { return p.second->GetEDF() == edf; });
+  return it != df_map_.end() ? it->second : DataFormatPtr();
 }
 
 }  // namespace common

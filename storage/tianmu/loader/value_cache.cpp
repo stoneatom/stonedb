@@ -92,7 +92,8 @@ void ValueCache::CalcStrStats(types::BString &min_s, types::BString &max_s, uint
   for (size_t i = 0; i < values_.size(); ++i) {
     if (!nulls_[i]) {
       types::BString v((Size(i) ? GetDataBytesPointer(i) : ZERO_LENGTH_STRING), Size(i));
-      if (v.len > maxlen) maxlen = v.len;
+      if (v.len_ > maxlen)
+        maxlen = v.len_;
 
       if (min_s.IsNull())
         min_s = v;

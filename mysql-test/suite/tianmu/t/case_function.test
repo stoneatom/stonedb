@@ -1,0 +1,26 @@
+--echo #
+--echo # Test CASE function
+--echo # Author: syw
+--echo #
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS mcs174_db;
+--enable_warnings
+
+CREATE DATABASE mcs174_db;
+USE mcs174_db;
+
+CREATE TABLE t1 (a CHAR(1), b INT, c DATETIME, d DOUBLE)engine=tianmu;
+INSERT INTO t1 VALUES ('', NULL, '1990-01-01', NULL),('a', 12, '1212-12-12', 1.19691E+100),('b', 13, '1313-3-13 13:13:13', 2.1961E+18),('c', 14, '1414-4-14', 0.16191),('d', 15, '2015-5-15 15:15:15', 1.971917);
+SHOW CREATE TABLE t1;
+
+SELECT b, c, (CASE WHEN a = 'b' THEN b ELSE c END) FROM t1;
+SELECT b, a, (CASE WHEN b > 13 THEN b ELSE a END) FROM t1;
+SELECT c, a, (CASE WHEN d > 1  THEN a ELSE c END) FROM t1;
+SELECT a, c, (CASE WHEN c IS NULL THEN a ELSE c END) FROM t1;
+SELECT (CASE WHEN a = 'a' THEN 0 ELSE 1 END) FROM t1;
+SELECT (CASE WHEN 10 > 5 THEN 'True' ELSE 'False' END);
+
+# Clean UP
+DROP DATABASE mcs174_db;
