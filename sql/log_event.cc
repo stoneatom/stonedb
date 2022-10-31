@@ -9690,11 +9690,12 @@ search_key_in_table(TABLE *table, MY_BITMAP *bi_cols, uint key_type)
                       (table->s->db_type() ? table->s->db_type()->db_type == DB_TYPE_TIANMU: false);
   enum_sql_command sqlCommand = SQLCOM_END;
   if(table->in_use && table->in_use->lex) sqlCommand = table->in_use->lex->sql_command;
-  bool tianmuDeleteOrUpdate = (tianmu_engine && (sqlCommand == SQLCOM_DELETE ||
+  if (tianmu_engine && (sqlCommand == SQLCOM_DELETE ||
                                           sqlCommand == SQLCOM_DELETE_MULTI ||
                                           sqlCommand == SQLCOM_UPDATE ||
-                                          sqlCommand == SQLCOM_UPDATE_MULTI));
-  if(tianmuDeleteOrUpdate) DBUG_RETURN(res);
+                                          sqlCommand == SQLCOM_UPDATE_MULTI)){
+    DBUG_RETURN(res);
+  }
 
   if (key_type & PRI_KEY_FLAG &&
       (table->s->primary_key < MAX_KEY))

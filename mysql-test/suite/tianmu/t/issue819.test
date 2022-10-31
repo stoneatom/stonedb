@@ -1,0 +1,170 @@
+-- source include/have_tianmu.inc
+-- source include/master-slave.inc
+
+--echo #
+--echo # Test the master-slave function of innodb
+--echo # 
+
+--echo # connection master
+connection master;
+use test;
+create table ttt(id int primary key,name varchar(5))engine=innodb;
+insert into ttt values(1,'AAA');
+delete from ttt where id=1;
+insert into ttt values(1,'aaa');
+select * from ttt;
+
+--echo # connection slave
+--source include/sync_slave_sql_with_master.inc
+
+select * from ttt;
+
+--echo # connection master
+connection master;
+drop table ttt;
+--source include/sync_slave_sql_with_master.inc
+
+--echo # connection master
+connection master;
+CREATE TABLE t1 (a int not null,b int not null)engine=innodb;
+CREATE TABLE t2 (a int not null, b int not null, primary key (a,b))engine=innodb;
+CREATE TABLE t3 (a int not null, b int not null, primary key (a,b))engine=innodb;
+insert into t1 values (1,1),(2,1),(1,3);
+insert into t2 values (1,1),(2,2),(3,3);
+insert into t3 values (1,1),(2,1),(1,3);
+delete t2.*,t3.* from t1,t2,t3 where t1.a=t2.a AND t2.b=t3.a and t1.b=t3.b;
+
+select * from t1;
+select * from t2;
+select * from t3;
+
+--echo # connection slave
+--source include/sync_slave_sql_with_master.inc
+
+select * from t1;
+select * from t2;
+select * from t3;
+
+--echo # connection master
+connection master;
+drop table t1,t2,t3;
+--source include/sync_slave_sql_with_master.inc
+
+--echo # connection master
+connection master;
+CREATE TABLE t1
+ (
+ place_id int (10) unsigned NOT NULL,
+ shows int(10) unsigned DEFAULT '0' NOT NULL,
+ ishows int(10) unsigned DEFAULT '0' NOT NULL,
+ ushows int(10) unsigned DEFAULT '0' NOT NULL,
+ clicks int(10) unsigned DEFAULT '0' NOT NULL,
+ iclicks int(10) unsigned DEFAULT '0' NOT NULL,
+ uclicks int(10) unsigned DEFAULT '0' NOT NULL,
+ ts timestamp,
+ PRIMARY KEY (place_id,ts)
+ )engine=innodb;
+
+INSERT INTO t1 (place_id,shows,ishows,ushows,clicks,iclicks,uclicks,ts)
+VALUES (1,0,0,0,0,0,0,20000928174434);
+UPDATE t1 SET shows=shows+1,ishows=ishows+1,ushows=ushows+1,clicks=clicks+1,iclicks=iclicks+1,uclicks=uclicks+1 WHERE place_id=1 AND ts>="2000-09-28 00:00:00";
+select place_id,shows from t1;
+
+--echo # connection slave
+--source include/sync_slave_sql_with_master.inc
+select place_id,shows from t1;
+
+--echo # connection master
+connection master;
+drop table t1;
+--source include/sync_slave_sql_with_master.inc
+
+--echo #
+--echo # Test the master-slave function of tianmu
+--echo # 
+
+--echo # connection master
+connection master;
+use test;
+create table ttt(id int primary key,name varchar(5))engine=tianmu;
+insert into ttt values(1,'AAA');
+update ttt set name='hhhh' where id=1;
+select * from ttt;
+
+--echo # connection slave
+--source include/sync_slave_sql_with_master.inc
+
+select * from ttt;
+
+--echo # connection master
+connection master;
+drop table ttt;
+--source include/sync_slave_sql_with_master.inc
+
+--echo # connection master
+connection master;
+create table t1(id int primary key,name varchar(5))engine=tianmu;
+insert into t1 values(1,'AAA');
+delete from t1 where id=1;
+insert into t1 values(1,'aaa');
+select * from t1;
+
+--echo # connection slave
+--source include/sync_slave_sql_with_master.inc
+select * from t1;
+
+--echo # connection master
+connection master;
+drop table t1;
+
+CREATE TABLE t1 (a int not null,b int not null)engine=tianmu;
+CREATE TABLE t2 (a int not null, b int not null, primary key (a,b))engine=tianmu;
+CREATE TABLE t3 (a int not null, b int not null, primary key (a,b))engine=tianmu;
+insert into t1 values (1,1),(2,1),(1,3);
+insert into t2 values (1,1),(2,2),(3,3);
+insert into t3 values (1,1),(2,1),(1,3);
+delete t2.*,t3.* from t1,t2,t3 where t1.a=t2.a AND t2.b=t3.a and t1.b=t3.b;
+
+select * from t1;
+select * from t2;
+select * from t3;
+
+--echo # connection slave
+--source include/sync_slave_sql_with_master.inc
+
+select * from t1;
+select * from t2;
+select * from t3;
+
+--echo # connection master
+connection master;
+drop table t1,t2,t3;
+--source include/sync_slave_sql_with_master.inc
+
+--echo # connection master
+connection master;
+CREATE TABLE t1
+ (
+ place_id int (10),
+ shows int(10),
+ ishows int(10),
+ ushows int(10),
+ clicks int(10),
+ iclicks int(10),
+ uclicks int(10),
+ ts timestamp,
+ PRIMARY KEY (place_id,ts)
+ )engine=tianmu;
+
+INSERT INTO t1 (place_id,shows,ishows,ushows,clicks,iclicks,uclicks,ts)
+VALUES (1,0,0,0,0,0,0,20000928174434);
+UPDATE t1 SET shows=shows+1,ishows=ishows+1,ushows=ushows+1,clicks=clicks+1,iclicks=iclicks+1,uclicks=uclicks+1 WHERE place_id=1 AND ts>="2000-09-28 00:00:00";
+select place_id,shows from t1;
+
+--echo # connection slave
+--source include/sync_slave_sql_with_master.inc
+select place_id,shows from t1;
+
+--echo # connection master
+connection master;
+drop table t1;
