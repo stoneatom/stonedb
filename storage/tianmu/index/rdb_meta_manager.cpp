@@ -109,7 +109,8 @@ void RdbKey::pack_field_number(StringWriter &key, std::string_view &field, uchar
 
 int RdbKey::unpack_field_number(StringReader &key, std::string &field, uchar flag) {
   const uchar *from;
-  if (!(from = (const uchar *)key.read(INTSIZE))) return -1;
+  if (!(from = (const uchar *)key.read(INTSIZE)))
+    return -1;
 
   int64_t value = 0;
   char *buf = reinterpret_cast<char *>(&value);
@@ -143,7 +144,8 @@ void RdbKey::pack_field_string(StringWriter &info, StringWriter &key, std::strin
     } else {
       int cmp = 0;
       size_t bytes = std::min(CHUNKSIZE - 1, data.remain_len());
-      if (bytes > 0) cmp = memcmp(data.current_ptr(), SPACE.data(), bytes);
+      if (bytes > 0)
+        cmp = memcmp(data.current_ptr(), SPACE.data(), bytes);
       if (cmp < 0) {
         separator = Separator::LE_SPACES;
       } else if (cmp > 0) {
@@ -155,7 +157,8 @@ void RdbKey::pack_field_string(StringWriter &info, StringWriter &key, std::strin
     }
     key.write_uint8(static_cast<uint>(separator));  // last segment
 
-    if (separator == Separator::EQ_SPACES) break;
+    if (separator == Separator::EQ_SPACES)
+      break;
   }
   // pack info only save pad bytes len of last chunk
   info.write_uint16(pad_bytes);
@@ -179,7 +182,8 @@ int RdbKey::unpack_field_string(StringReader &key, StringReader &info, std::stri
 
     if (last_byte == static_cast<char>(Separator::EQ_SPACES)) {
       // this is the last segment
-      if (pad_bytes > (CHUNKSIZE - 1)) return -1;
+      if (pad_bytes > (CHUNKSIZE - 1))
+        return -1;
       used_bytes = (CHUNKSIZE - 1) - pad_bytes;
       finished = true;
     } else {
@@ -206,7 +210,8 @@ void RdbKey::pack_key(StringWriter &key, std::vector<std::string_view> &fields, 
   info.clear();
   key.write_uint32(m_indexnr);
   // version compatible
-  if (m_index_ver > static_cast<uint16_t>(enumIndexInfo::INDEX_INFO_VERSION_INITIAL)) info.write_uint16(0);
+  if (m_index_ver > static_cast<uint16_t>(enumIndexInfo::INDEX_INFO_VERSION_INITIAL))
+    info.write_uint16(0);
   size_t pos = info.length();
 
   for (uint i = 0; i < fields.size(); i++) {
@@ -261,7 +266,8 @@ common::ErrorCode RdbKey::unpack_key(StringReader &key, StringReader &value, std
 
   key.read_uint32(&index_number);
   // version compatible
-  if (m_index_ver > static_cast<uint16_t>(enumIndexInfo::INDEX_INFO_VERSION_INITIAL)) value.read_uint16(&info_len);
+  if (m_index_ver > static_cast<uint16_t>(enumIndexInfo::INDEX_INFO_VERSION_INITIAL))
+    value.read_uint16(&info_len);
 
   for (auto &col : cols_) {
     std::string field;
@@ -375,7 +381,8 @@ bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager_) {
     const rocksdb::Slice key = it->key();
     const rocksdb::Slice val = it->value();
 
-    if (key.size() >= INDEX_NUMBER_SIZE && memcmp(key.data(), ddl_entry, INDEX_NUMBER_SIZE)) break;
+    if (key.size() >= INDEX_NUMBER_SIZE && memcmp(key.data(), ddl_entry, INDEX_NUMBER_SIZE))
+      break;
 
     if (key.size() <= INDEX_NUMBER_SIZE) {
       TIANMU_LOG(LogCtl_Level::ERROR, "RocksDB: Table_store: key has length %d (corruption)", (int)key.size());
@@ -456,7 +463,8 @@ bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager_) {
     const rocksdb::Slice key = it->key();
     const rocksdb::Slice val = it->value();
 
-    if (key.size() >= INDEX_NUMBER_SIZE && !key.starts_with(mem_table_entry_slice)) break;
+    if (key.size() >= INDEX_NUMBER_SIZE && !key.starts_with(mem_table_entry_slice))
+      break;
 
     if (key.size() < INDEX_NUMBER_SIZE) {
       break;
@@ -497,7 +505,8 @@ std::shared_ptr<RdbTable> DDLManager::find(const std::string &table_name) {
   std::scoped_lock guard(m_lock);
 
   auto iter = m_ddl_hash.find(table_name);
-  if (iter != m_ddl_hash.end()) rec = iter->second;
+  if (iter != m_ddl_hash.end())
+    rec = iter->second;
 
   return rec;
 }
@@ -583,7 +592,8 @@ std::shared_ptr<core::RCMemTable> DDLManager::find_mem(const std::string &table_
   std::scoped_lock guard(m_mem_lock);
 
   auto iter = m_mem_hash.find(table_name);
-  if (iter != m_mem_hash.end()) return iter->second;
+  if (iter != m_mem_hash.end())
+    return iter->second;
 
   return nullptr;
 }
@@ -637,7 +647,8 @@ bool DDLManager::rename_mem(std::string &from, std::string &to, rocksdb::WriteBa
   m_dict->put_key(batch, {(const char *)dkey.ptr(), dkey.length()}, origin_value);
 
   auto iter = m_mem_hash.find(from);
-  if (iter == m_mem_hash.end()) return false;
+  if (iter == m_mem_hash.end())
+    return false;
 
   auto tb_mem = iter->second;
   m_mem_hash.erase(iter);
@@ -649,7 +660,8 @@ bool DICTManager::init(rocksdb::DB *const rdb_dict, CFManager *const cf_manager_
   m_db = rdb_dict;
   m_system_cfh = cf_manager_->get_or_create_cf(m_db, DEFAULT_SYSTEM_CF_NAME);
 
-  if (m_system_cfh == nullptr) return false;
+  if (m_system_cfh == nullptr)
+    return false;
 
   be_store_index(m_max_index, static_cast<uint32_t>(MetaType::MAX_INDEX_ID));
 
@@ -682,7 +694,8 @@ std::shared_ptr<rocksdb::Iterator> DICTManager::new_iterator() const {
 }
 
 bool DICTManager::commit(rocksdb::WriteBatch *const batch, const bool &sync) const {
-  if (!batch) return false;
+  if (!batch)
+    return false;
 
   rocksdb::WriteOptions options;
   options.sync = sync;
@@ -975,7 +988,8 @@ rocksdb::ColumnFamilyHandle *CFManager::get_or_create_cf(rocksdb::DB *const rdb_
     cf_handle = it->second;
   } else {
     rocksdb::ColumnFamilyOptions opts;
-    if (!IsRowStoreCF(cf_name)) opts.compaction_filter_factory.reset(new index::IndexCompactFilterFactory);
+    if (!IsRowStoreCF(cf_name))
+      opts.compaction_filter_factory.reset(new index::IndexCompactFilterFactory);
     const rocksdb::Status s = rdb_->CreateColumnFamily(opts, cf_name, &cf_handle);
     if (s.ok()) {
       m_cf_name_map[cf_handle->GetName()] = cf_handle;
@@ -993,7 +1007,8 @@ rocksdb::ColumnFamilyHandle *CFManager::get_cf_by_id(const uint32_t &id) {
   std::scoped_lock guard(m_mutex);
 
   const auto it = m_cf_id_map.find(id);
-  if (it != m_cf_id_map.end()) cf_handle = it->second;
+  if (it != m_cf_id_map.end())
+    cf_handle = it->second;
 
   return cf_handle;
 }

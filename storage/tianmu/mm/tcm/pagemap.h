@@ -106,7 +106,8 @@ class TCMalloc_PageMap1 {
   void *Next(Number k) const {
     static_assert(BITS <= sizeof(Number) * 8);
     while (k < (1 << BITS)) {
-      if (array_[k] != nullptr) return array_[k];
+      if (array_[k] != nullptr)
+        return array_[k];
       k++;
     }
     return nullptr;
@@ -186,19 +187,22 @@ class TCMalloc_PageMap3 {
       const Number i2 = (key >> LEAF_BITS) & (INTERIOR_LENGTH - 1);
 
       // Check for overflow
-      if (i1 >= INTERIOR_LENGTH || i2 >= INTERIOR_LENGTH) return false;
+      if (i1 >= INTERIOR_LENGTH || i2 >= INTERIOR_LENGTH)
+        return false;
 
       // Make 2nd level node if necessary
       if (root_->ptrs[i1] == nullptr) {
         Node *n = NewNode();
-        if (n == nullptr) return false;
+        if (n == nullptr)
+          return false;
         root_->ptrs[i1] = n;
       }
 
       // Make leaf node if necessary
       if (root_->ptrs[i1]->ptrs[i2] == nullptr) {
         Leaf *leaf = reinterpret_cast<Leaf *>((*allocator_)(sizeof(Leaf)));
-        if (leaf == nullptr) return false;
+        if (leaf == nullptr)
+          return false;
         system_alloc_list.push_back(leaf);
         memset(leaf, 0, sizeof(*leaf));
         root_->ptrs[i1]->ptrs[i2] = reinterpret_cast<Node *>(leaf);

@@ -577,7 +577,8 @@ void TempTable::VerifyAttrsSizes()  // verifies attr[i].field_size basing on the
             uint precision = ct.GetPrecision();
             if (precision >= STRING_LENGTH_THRESHOLD) {
               uint actual_size = column->MaxStringSize() * ct.GetCollation().collation->mbmaxlen;
-              if (actual_size < precision) max_length += (actual_size - precision);
+              if (actual_size < precision)
+                max_length += (actual_size - precision);
             }
           }
         }

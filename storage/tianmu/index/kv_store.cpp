@@ -108,7 +108,8 @@ void KVStore::UnInit() {
   cf_manager_.cleanup();
 
   // earase unref entries in single cache shard.
-  if (bb_table_option_.block_cache) bb_table_option_.block_cache->EraseUnRefEntries();
+  if (bb_table_option_.block_cache)
+    bb_table_option_.block_cache->EraseUnRefEntries();
 
   // release the rocksdb handler, txn_db_.
   if (txn_db_) {
@@ -186,7 +187,8 @@ common::ErrorCode KVStore::KVWriteTableMeta(std::shared_ptr<RdbTable> tbl) {
 common::ErrorCode KVStore::KVDelTableMeta(const std::string &tablename) {
   //  Find the table in the hash
   std::shared_ptr<RdbTable> tbl = ddl_manager_.find(tablename);
-  if (!tbl) return common::ErrorCode::FAILED;
+  if (!tbl)
+    return common::ErrorCode::FAILED;
 
   const std::unique_ptr<rocksdb::WriteBatch> wb = dict_manager_.begin();
   rocksdb::WriteBatch *const batch = wb.get();
@@ -243,7 +245,8 @@ common::ErrorCode KVStore::KVWriteMemTableMeta(std::shared_ptr<core::RCMemTable>
 
 common::ErrorCode KVStore::KVDelMemTableMeta(std::string table_name) {
   std::shared_ptr<core::RCMemTable> tb_mem = ddl_manager_.find_mem(table_name);
-  if (!tb_mem) return common::ErrorCode::FAILED;
+  if (!tb_mem)
+    return common::ErrorCode::FAILED;
 
   const std::unique_ptr<rocksdb::WriteBatch> wb = dict_manager_.begin();
   rocksdb::WriteBatch *const batch = wb.get();
@@ -261,7 +264,8 @@ common::ErrorCode KVStore::KVDelMemTableMeta(std::string table_name) {
   dict_manager_.add_drop_index(dropped_index_ids, batch);
   // removes from mem cache and dict data.
   ddl_manager_.remove_mem(tb_mem, batch);
-  if (!dict_manager_.commit(batch)) return common::ErrorCode::FAILED;
+  if (!dict_manager_.commit(batch))
+    return common::ErrorCode::FAILED;
 
   // notify the drop data signal.
   DeleteDataSignal();
@@ -280,7 +284,8 @@ common::ErrorCode KVStore::KVRenameMemTableMeta(std::string s_name, std::string 
     TIANMU_LOG(LogCtl_Level::ERROR, "rename table %s failed", s_name.c_str());
     return common::ErrorCode::FAILED;
   }
-  if (!dict_manager_.commit(batch)) return common::ErrorCode::FAILED;
+  if (!dict_manager_.commit(batch))
+    return common::ErrorCode::FAILED;
 
   return common::ErrorCode::SUCCESS;
 }

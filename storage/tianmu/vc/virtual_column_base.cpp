@@ -25,43 +25,43 @@
 
 namespace Tianmu {
 namespace vcolumn {
-VirtualColumnBase::VirtualColumnBase(core::ColumnType const &ct, core::MultiIndex *mind)
+VirtualColumnBase::VirtualColumnBase(core::ColumnType const &ct, core::MultiIndex *multi_index)
     : Column(ct),
-      mind(mind),
-      conn_info(current_txn_),
-      last_val(std::make_shared<core::ValueOrNull>()),
-      first_eval(true),
-      dim(-1) {
+      multi_index_(multi_index),
+      conn_info_(current_txn_),
+      last_val_(std::make_shared<core::ValueOrNull>()),
+      first_eval_(true),
+      dim_(-1) {
   ResetLocalStatistics();
 }
 
 VirtualColumnBase::VirtualColumnBase(VirtualColumn const &vc)
     : Column(vc.ct),
-      mind(vc.mind),
-      conn_info(vc.conn_info),
-      var_map(vc.var_map),
-      params(vc.params),
-      last_val(std::make_shared<core::ValueOrNull>()),
-      first_eval(true),
-      dim(vc.dim) {
+      multi_index_(vc.multi_index_),
+      conn_info_(vc.conn_info_),
+      var_map_(vc.var_map_),
+      params_(vc.params_),
+      last_val_(std::make_shared<core::ValueOrNull>()),
+      first_eval_(true),
+      dim_(vc.dim_) {
   ResetLocalStatistics();
 }
 
 void VirtualColumnBase::MarkUsedDims(core::DimensionVector &dims_usage) {
-  for (auto const &it : var_map) dims_usage[it.dim] = true;
+  for (auto const &it : var_map_) dims_usage[it.dim] = true;
 }
 std::set<int> VirtualColumnBase::GetDimensions() {
   std::set<int> d;
-  for (auto const &it : var_map) d.insert(it.dim);
+  for (auto const &it : var_map_) d.insert(it.dim);
   return d;
 }
 
 int64_t VirtualColumnBase::NumOfTuples() {
-  if (mind == nullptr)  // constant
+  if (multi_index_ == nullptr)  // constant
     return 1;
-  core::DimensionVector dims(mind->NumOfDimensions());
+  core::DimensionVector dims(multi_index_->NumOfDimensions());
   MarkUsedDims(dims);
-  return mind->NumOfTuples(dims);
+  return multi_index_->NumOfTuples(dims);
 }
 
 bool VirtualColumnBase::IsConstExpression(core::MysqlExpression *expr, int temp_table_alias,
@@ -79,41 +79,45 @@ bool VirtualColumnBase::IsConstExpression(core::MysqlExpression *expr, int temp_
 }
 
 void VirtualColumnBase::SetMultiIndex(core::MultiIndex *m, std::shared_ptr<core::JustATable> t) {
-  mind = m;
+  multi_index_ = m;
   if (t)
-    for (auto &iter : var_map) iter.tab = t;
+    for (auto &iter : var_map_) iter.just_a_table = t;
 }
 
 void VirtualColumnBase::ResetLocalStatistics() {
   // if(Type().IsFloat()) {
-  //	vc_min_val = common::MINUS_INF_64;
-  //	vc_max_val = common::PLUS_INF_64;
+  //	vc_min_val_ = common::MINUS_INF_64;
+  //	vc_max_val_ = common::PLUS_INF_64;
   //} else {
-  //	vc_min_val = common::MINUS_INF_64;
-  //	vc_max_val = common::PLUS_INF_64;
+  //	vc_min_val_ = common::MINUS_INF_64;
+  //	vc_max_val_ = common::PLUS_INF_64;
   //}
-  vc_min_val = common::NULL_VALUE_64;
-  vc_max_val = common::NULL_VALUE_64;
-  vc_nulls_possible = true;
-  vc_dist_vals = common::NULL_VALUE_64;
-  nulls_only = false;
+  vc_min_val_ = common::NULL_VALUE_64;
+  vc_max_val_ = common::NULL_VALUE_64;
+  vc_nulls_possible_ = true;
+  vc_dist_vals_ = common::NULL_VALUE_64;
+  nulls_only_ = false;
 }
 
 void VirtualColumnBase::SetLocalMinMax(int64_t loc_min, int64_t loc_max) {
-  if (loc_min == common::NULL_VALUE_64) loc_min = common::MINUS_INF_64;
-  if (loc_max == common::NULL_VALUE_64) loc_max = common::PLUS_INF_64;
+  if (loc_min == common::NULL_VALUE_64)
+    loc_min = common::MINUS_INF_64;
+  if (loc_max == common::NULL_VALUE_64)
+    loc_max = common::PLUS_INF_64;
   if (Type().IsFloat()) {
-    if (vc_min_val == common::NULL_VALUE_64 ||
+    if (vc_min_val_ == common::NULL_VALUE_64 ||
         (loc_min != common::MINUS_INF_64 &&
-         (*(double *)&loc_min > *(double *)&vc_min_val || vc_min_val == common::MINUS_INF_64)))
-      vc_min_val = loc_min;
-    if (vc_max_val == common::NULL_VALUE_64 ||
+         (*(double *)&loc_min > *(double *)&vc_min_val_ || vc_min_val_ == common::MINUS_INF_64)))
+      vc_min_val_ = loc_min;
+    if (vc_max_val_ == common::NULL_VALUE_64 ||
         (loc_max != common::PLUS_INF_64 &&
-         (*(double *)&loc_max < *(double *)&vc_max_val || vc_max_val == common::PLUS_INF_64)))
-      vc_max_val = loc_max;
+         (*(double *)&loc_max < *(double *)&vc_max_val_ || vc_max_val_ == common::PLUS_INF_64)))
+      vc_max_val_ = loc_max;
   } else {
-    if (vc_min_val == common::NULL_VALUE_64 || loc_min > vc_min_val) vc_min_val = loc_min;
-    if (vc_max_val == common::NULL_VALUE_64 || loc_max < vc_max_val) vc_max_val = loc_max;
+    if (vc_min_val_ == common::NULL_VALUE_64 || loc_min > vc_min_val_)
+      vc_min_val_ = loc_min;
+    if (vc_max_val_ == common::NULL_VALUE_64 || loc_max < vc_max_val_)
+      vc_max_val_ = loc_max;
   }
 }
 
@@ -122,11 +126,11 @@ int64_t VirtualColumnBase::RoughMax() {
   DEBUG_ASSERT(res != common::NULL_VALUE_64);
 
   if (Type().IsFloat()) {
-    if (*(double *)&res > *(double *)&vc_max_val && vc_max_val != common::PLUS_INF_64 &&
-        vc_max_val != common::NULL_VALUE_64)
-      return vc_max_val;
-  } else if (res > vc_max_val && vc_max_val != common::NULL_VALUE_64)
-    return vc_max_val;
+    if (*(double *)&res > *(double *)&vc_max_val_ && vc_max_val_ != common::PLUS_INF_64 &&
+        vc_max_val_ != common::NULL_VALUE_64)
+      return vc_max_val_;
+  } else if (res > vc_max_val_ && vc_max_val_ != common::NULL_VALUE_64)
+    return vc_max_val_;
   return res;
 }
 
@@ -134,30 +138,36 @@ int64_t VirtualColumnBase::RoughMin() {
   int64_t res = RoughMinImpl();
   DEBUG_ASSERT(res != common::NULL_VALUE_64);
   if (Type().IsFloat()) {
-    if (*(double *)&res < *(double *)&vc_min_val && vc_min_val != common::MINUS_INF_64 &&
-        vc_min_val != common::NULL_VALUE_64)
-      return vc_min_val;
-  } else if (res < vc_min_val && vc_min_val != common::NULL_VALUE_64)
-    return vc_min_val;
+    if (*(double *)&res < *(double *)&vc_min_val_ && vc_min_val_ != common::MINUS_INF_64 &&
+        vc_min_val_ != common::NULL_VALUE_64)
+      return vc_min_val_;
+  } else if (res < vc_min_val_ && vc_min_val_ != common::NULL_VALUE_64)
+    return vc_min_val_;
   return res;
 }
 
 int64_t VirtualColumnBase::GetApproxDistVals(bool incl_nulls, core::RoughMultiIndex *rough_mind) {
   int64_t res = GetApproxDistValsImpl(incl_nulls, rough_mind);
-  if (vc_dist_vals != common::NULL_VALUE_64) {
-    int64_t local_res = vc_dist_vals;
-    if (incl_nulls && IsNullsPossible()) local_res++;
-    if (res == common::NULL_VALUE_64 || res > local_res) res = local_res;
+  if (vc_dist_vals_ != common::NULL_VALUE_64) {
+    int64_t local_res = vc_dist_vals_;
+    if (incl_nulls && IsNullsPossible())
+      local_res++;
+    if (res == common::NULL_VALUE_64 || res > local_res)
+      res = local_res;
   }
-  if (!Type().IsFloat() && vc_min_val > (common::MINUS_INF_64 / 3) && vc_max_val < (common::PLUS_INF_64 / 3)) {
-    int64_t local_res = vc_max_val - vc_min_val + 1;
-    if (incl_nulls && IsNullsPossible()) local_res++;
-    if (res == common::NULL_VALUE_64 || res > local_res) return local_res;
+  if (!Type().IsFloat() && vc_min_val_ > (common::MINUS_INF_64 / 3) && vc_max_val_ < (common::PLUS_INF_64 / 3)) {
+    int64_t local_res = vc_max_val_ - vc_min_val_ + 1;
+    if (incl_nulls && IsNullsPossible())
+      local_res++;
+    if (res == common::NULL_VALUE_64 || res > local_res)
+      return local_res;
   }
-  if (Type().IsFloat() && vc_min_val != common::NULL_VALUE_64 && vc_min_val == vc_max_val) {
+  if (Type().IsFloat() && vc_min_val_ != common::NULL_VALUE_64 && vc_min_val_ == vc_max_val_) {
     int64_t local_res = 1;
-    if (incl_nulls && IsNullsPossible()) local_res++;
-    if (res == common::NULL_VALUE_64 || res > local_res) return local_res;
+    if (incl_nulls && IsNullsPossible())
+      local_res++;
+    if (res == common::NULL_VALUE_64 || res > local_res)
+      return local_res;
   }
   return res;
 }
@@ -166,11 +176,11 @@ int64_t VirtualColumnBase::GetMaxInt64(const core::MIIterator &mit) {
   int64_t res = GetMaxInt64Impl(mit);
   DEBUG_ASSERT(res != common::NULL_VALUE_64);
   if (Type().IsFloat()) {
-    if (*(double *)&res > *(double *)&vc_max_val && vc_max_val != common::PLUS_INF_64 &&
-        vc_max_val != common::NULL_VALUE_64)
-      return vc_max_val;
-  } else if ((vc_max_val != common::NULL_VALUE_64 && res > vc_max_val))
-    return vc_max_val;
+    if (*(double *)&res > *(double *)&vc_max_val_ && vc_max_val_ != common::PLUS_INF_64 &&
+        vc_max_val_ != common::NULL_VALUE_64)
+      return vc_max_val_;
+  } else if ((vc_max_val_ != common::NULL_VALUE_64 && res > vc_max_val_))
+    return vc_max_val_;
   return res;
 }
 
@@ -178,43 +188,52 @@ int64_t VirtualColumnBase::GetMinInt64(const core::MIIterator &mit) {
   int64_t res = GetMinInt64Impl(mit);
   DEBUG_ASSERT(res != common::NULL_VALUE_64);
   if (Type().IsFloat()) {
-    if (*(double *)&res < *(double *)&vc_min_val && vc_min_val != common::MINUS_INF_64 &&
-        vc_min_val != common::NULL_VALUE_64)
-      return vc_min_val;
-  } else if ((vc_min_val != common::NULL_VALUE_64 && res < vc_min_val))
-    return vc_min_val;
+    if (*(double *)&res < *(double *)&vc_min_val_ && vc_min_val_ != common::MINUS_INF_64 &&
+        vc_min_val_ != common::NULL_VALUE_64)
+      return vc_min_val_;
+  } else if ((vc_min_val_ != common::NULL_VALUE_64 && res < vc_min_val_))
+    return vc_min_val_;
   return res;
 }
 
 int64_t VirtualColumnBase::GetApproxSumImpl(const core::MIIterator &mit, bool &nonnegative) {
   int64_t res = GetSumImpl(mit, nonnegative);
-  if (res != common::NULL_VALUE_64) return res;
+  if (res != common::NULL_VALUE_64)
+    return res;
   res = GetMaxInt64Impl(mit);
 
   int64_t n = mit.GetPackSizeLeft();
-  if (res == common::PLUS_INF_64 || n == common::NULL_VALUE_64) return common::NULL_VALUE_64;
+  if (res == common::PLUS_INF_64 || n == common::NULL_VALUE_64)
+    return common::NULL_VALUE_64;
   if (Type().IsFloat()) {
     double d = *(double *)&res;
-    if (d <= 0) return 0;
+    if (d <= 0)
+      return 0;
     d *= n;
-    if (d > -9.223372037e+18 && d < 9.223372037e+18) return *(int64_t *)(&d);
+    if (d > -9.223372037e+18 && d < 9.223372037e+18)
+      return *(int64_t *)(&d);
   } else {
-    if (res <= 0) return 0;
-    if (res < 0x00007FFFFFFFFFFFll && n <= (1 << mit.GetPower())) return n * res;
+    if (res <= 0)
+      return 0;
+    if (res < 0x00007FFFFFFFFFFFll && n <= (1 << mit.GetPower()))
+      return n * res;
   }
   return common::NULL_VALUE_64;
 }
 
 int64_t VirtualColumnBase::DecodeValueAsDouble(int64_t code) {
-  if (Type().IsFloat()) return code;  // no conversion
+  if (Type().IsFloat())
+    return code;  // no conversion
   double res = double(code) / types::PowOfTen(ct.GetScale());
   return *(int64_t *)(&res);
 }
 
 common::RSValue VirtualColumnBase::RoughCheckImpl(const core::MIIterator &mit, core::Descriptor &d) {
   // default implementation
-  if (d.op == common::Operator::O_FALSE) return common::RSValue::RS_NONE;
-  if (d.op == common::Operator::O_TRUE) return common::RSValue::RS_ALL;
+  if (d.op == common::Operator::O_FALSE)
+    return common::RSValue::RS_NONE;
+  if (d.op == common::Operator::O_TRUE)
+    return common::RSValue::RS_ALL;
 
   bool nulls_possible = IsNullsPossible();
   if (d.op == common::Operator::O_IS_NULL || d.op == common::Operator::O_NOT_NULL) {
@@ -251,7 +270,8 @@ common::RSValue VirtualColumnBase::RoughCheckImpl(const core::MIIterator &mit, c
     return common::RSValue::RS_SOME;
 
   if (Type().IsString()) {
-    if (types::RequiresUTFConversions(d.GetCollation())) return common::RSValue::RS_SOME;
+    if (types::RequiresUTFConversions(d.GetCollation()))
+      return common::RSValue::RS_SOME;
 
     types::BString vamin = GetMinString(mit);
     types::BString vamax = GetMaxString(mit);
@@ -278,13 +298,15 @@ common::RSValue VirtualColumnBase::RoughCheckImpl(const core::MIIterator &mit, c
         if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ || d.op == common::Operator::O_LESS ||
             d.op == common::Operator::O_MORE_EQ)
           res = common::RSValue::RS_NONE;
-        if (d.op == common::Operator::O_MORE || d.op == common::Operator::O_LESS_EQ) res = common::RSValue::RS_ALL;
+        if (d.op == common::Operator::O_MORE || d.op == common::Operator::O_LESS_EQ)
+          res = common::RSValue::RS_ALL;
       }
       if (vamax < v1min) {
         if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ || d.op == common::Operator::O_MORE ||
             d.op == common::Operator::O_LESS_EQ)
           res = common::RSValue::RS_NONE;
-        if (d.op == common::Operator::O_LESS || d.op == common::Operator::O_MORE_EQ) res = common::RSValue::RS_ALL;
+        if (d.op == common::Operator::O_LESS || d.op == common::Operator::O_MORE_EQ)
+          res = common::RSValue::RS_ALL;
       }
     }
   } else {
@@ -320,8 +342,10 @@ common::RSValue VirtualColumnBase::RoughCheckImpl(const core::MIIterator &mit, c
               d.op == common::Operator::O_MORE_EQ)  // the second case will be negated soon
             res = common::RSValue::RS_NONE;
           if (vamin > v1max) {
-            if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ) res = common::RSValue::RS_NONE;
-            if (d.op == common::Operator::O_MORE || d.op == common::Operator::O_LESS_EQ) res = common::RSValue::RS_ALL;
+            if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ)
+              res = common::RSValue::RS_NONE;
+            if (d.op == common::Operator::O_MORE || d.op == common::Operator::O_LESS_EQ)
+              res = common::RSValue::RS_ALL;
           }
         }
         if (vamax <= v1min) {
@@ -329,8 +353,10 @@ common::RSValue VirtualColumnBase::RoughCheckImpl(const core::MIIterator &mit, c
               d.op == common::Operator::O_LESS_EQ)  // the second case will be negated soon
             res = common::RSValue::RS_NONE;
           if (vamax < v1min) {
-            if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ) res = common::RSValue::RS_NONE;
-            if (d.op == common::Operator::O_LESS || d.op == common::Operator::O_MORE_EQ) res = common::RSValue::RS_ALL;
+            if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ)
+              res = common::RSValue::RS_NONE;
+            if (d.op == common::Operator::O_LESS || d.op == common::Operator::O_MORE_EQ)
+              res = common::RSValue::RS_ALL;
           }
         }
         if (res == common::RSValue::RS_SOME && (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ) &&
@@ -360,8 +386,10 @@ common::RSValue VirtualColumnBase::RoughCheckImpl(const core::MIIterator &mit, c
               d.op == common::Operator::O_MORE_EQ)  // the second case will be negated soon
             res = common::RSValue::RS_NONE;
           if (vamind > v1maxd) {
-            if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ) res = common::RSValue::RS_NONE;
-            if (d.op == common::Operator::O_MORE || d.op == common::Operator::O_LESS_EQ) res = common::RSValue::RS_ALL;
+            if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ)
+              res = common::RSValue::RS_NONE;
+            if (d.op == common::Operator::O_MORE || d.op == common::Operator::O_LESS_EQ)
+              res = common::RSValue::RS_ALL;
           }
         }
         if (vamaxd <= v1mind) {
@@ -369,8 +397,10 @@ common::RSValue VirtualColumnBase::RoughCheckImpl(const core::MIIterator &mit, c
               d.op == common::Operator::O_LESS_EQ)  // the second case will be negated soon
             res = common::RSValue::RS_NONE;
           if (vamaxd < v1mind) {
-            if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ) res = common::RSValue::RS_NONE;
-            if (d.op == common::Operator::O_LESS || d.op == common::Operator::O_MORE_EQ) res = common::RSValue::RS_ALL;
+            if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ)
+              res = common::RSValue::RS_NONE;
+            if (d.op == common::Operator::O_LESS || d.op == common::Operator::O_MORE_EQ)
+              res = common::RSValue::RS_ALL;
           }
         }
         if (res == common::RSValue::RS_SOME && (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ) &&

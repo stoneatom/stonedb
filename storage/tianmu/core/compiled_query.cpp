@@ -566,7 +566,8 @@ void CompiledQuery::InnerJoinOn(const TableID &temp_table, std::vector<TableID> 
 }
 
 void CompiledQuery::AddConds(const TableID &t1, const CondID &c1, CondType cond_type) {
-  if (c1.IsNull()) return;
+  if (c1.IsNull())
+    return;
 
   CompiledQuery::CQStep s;
   s.type = StepType::ADD_CONDS;
@@ -592,7 +593,8 @@ void CompiledQuery::AddColumn(AttrID &a_out, const TableID &t1, CQTerm e1, commo
   s.t1 = t1;
   s.e1 = e1;
   s.cop = op;
-  if (op == common::ColOperation::GROUP_CONCAT && si != nullptr) s.si = *si;
+  if (op == common::ColOperation::GROUP_CONCAT && si != nullptr)
+    s.si = *si;
   if (alias) {
     size_t const alias_ct(std::strlen(alias) + 1);
     s.alias = new char[alias_ct];
@@ -601,7 +603,8 @@ void CompiledQuery::AddColumn(AttrID &a_out, const TableID &t1, CQTerm e1, commo
     s.alias = nullptr;
   s.n1 = distinct ? 1 : 0;
   steps.push_back(s);
-  if (op == common::ColOperation::GROUP_BY) steps_group_by_cols.push_back(s);
+  if (op == common::ColOperation::GROUP_BY)
+    steps_group_by_cols.push_back(s);
 }
 
 void CompiledQuery::CreateVirtualColumn(AttrID &a_out, const TableID &t1, MysqlExpression *expr,
@@ -716,7 +719,8 @@ bool CompiledQuery::NoAggregationOrderingAndDistinct(int table) {
 
   for (int i = 0; i < NumOfSteps(); i++) {
     step = Step(i);
-    if (step.type == CompiledQuery::StepType::ADD_ORDER && step.t1.n == table) return false;  // exclude ordering
+    if (step.type == CompiledQuery::StepType::ADD_ORDER && step.t1.n == table)
+      return false;  // exclude ordering
     if (step.type == CompiledQuery::StepType::ADD_COLUMN && step.t1.n == table &&
         step.cop != common::ColOperation::LISTING)
       return false;  // exclude all kinds of aggregations
@@ -804,7 +808,8 @@ void CompiledQuery::BuildTableIDStepsMap() {
 
 bool CompiledQuery::IsGroupByQuery(const TableID &tab_id) {
   for (auto &i : steps_group_by_cols) {
-    if (i.t1 == tab_id) return true;
+    if (i.t1 == tab_id)
+      return true;
   }
 
   return false;
@@ -813,13 +818,15 @@ bool CompiledQuery::IsGroupByQuery(const TableID &tab_id) {
 bool CompiledQuery::ExistsInTempTable(const TableID &tab_id, const TableID &tmp_table) {
   CompiledQuery::CQStep step;
 
-  if (tab_id == tmp_table) return true;
+  if (tab_id == tmp_table)
+    return true;
 
   for (auto &i : steps_tmp_tables) {
     if (i.t1 == tmp_table) {
       step = i;
       for (auto &j : step.tables1)
-        if (j == tab_id) return true;
+        if (j == tab_id)
+          return true;
     }
   }
 
@@ -845,7 +852,8 @@ TableID CompiledQuery::FindSourceOfParameter(const TableID &tab_id, const TableI
 
 bool CompiledQuery::IsTempTable(const TableID &t) {
   for (int i = 0; i < NumOfSteps(); i++) {
-    if (Step(i).type == CompiledQuery::StepType::TMP_TABLE && Step(i).t1 == t) return true;
+    if (Step(i).type == CompiledQuery::StepType::TMP_TABLE && Step(i).t1 == t)
+      return true;
   }
 
   return false;
@@ -855,7 +863,8 @@ int CompiledQuery::FindRootTempTable(int tab_id) {
   DEBUG_ASSERT(tab_id < 0);
 
   for (int x = tab_id + 1; x < 0; x++) {
-    if (IsTempTable(TableID(x)) && ExistsInTempTable(TableID(tab_id), TableID(x))) return FindRootTempTable(x);
+    if (IsTempTable(TableID(x)) && ExistsInTempTable(TableID(tab_id), TableID(x)))
+      return FindRootTempTable(x);
   }
 
   return tab_id;
@@ -904,7 +913,8 @@ std::pair<int64_t, int64_t> CompiledQuery::GetGlobalLimit() {
 
 int CompiledQuery::GetNumOfDimens(const TableID &tab_id) {
   for (auto ele : steps) {
-    if (ele.type == CompiledQuery::StepType::TMP_TABLE && ele.t1 == tab_id) return int(ele.tables1.size());
+    if (ele.type == CompiledQuery::StepType::TMP_TABLE && ele.t1 == tab_id)
+      return int(ele.tables1.size());
   }
 
   return -1;
@@ -912,7 +922,8 @@ int CompiledQuery::GetNumOfDimens(const TableID &tab_id) {
 
 TableID CompiledQuery::GetTableOfCond(const CondID &cond_id) {
   for (auto ele : steps)
-    if (ele.type == CompiledQuery::StepType::CREATE_CONDS && ele.c1 == cond_id) return ele.t1;
+    if (ele.type == CompiledQuery::StepType::CREATE_CONDS && ele.c1 == cond_id)
+      return ele.t1;
 
   return TableID();
 }

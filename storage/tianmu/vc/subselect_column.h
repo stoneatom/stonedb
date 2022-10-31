@@ -40,76 +40,76 @@ class SubSelectColumn : public MultiValColumn {
  public:
   class IteratorImpl : public IteratorInterface {
    protected:
-    IteratorImpl(core::TempTable::RecordIterator const &it_, core::ColumnType const &expected_type_)
-        : it(it_), expected_type(expected_type_) {}
+    IteratorImpl(core::TempTable::RecordIterator const &it, core::ColumnType const &expected_type)
+        : record_itr_(it), expected_type_(expected_type) {}
     virtual ~IteratorImpl() {}
-    void DoNext() override { ++it; }
+    void DoNext() override { ++record_itr_; }
     std::unique_ptr<LazyValueInterface> DoGetValue() override {
-      return std::unique_ptr<LazyValueInterface>(new LazyValueImpl(*it, expected_type));
+      return std::unique_ptr<LazyValueInterface>(new LazyValueImpl(*record_itr_, expected_type_));
     }
     bool DoNotEq(IteratorInterface const *it_) const override {
-      return it != static_cast<IteratorImpl const *>(it_)->it;
+      return record_itr_ != static_cast<IteratorImpl const *>(it_)->record_itr_;
     }
     std::unique_ptr<IteratorInterface> DoClone() const override {
       return std::unique_ptr<IteratorInterface>(new IteratorImpl(*this));
     }
     friend class SubSelectColumn;
-    core::TempTable::RecordIterator it;
-    core::ColumnType const &expected_type;
+    core::TempTable::RecordIterator record_itr_;
+    core::ColumnType const &expected_type_;
   };
   class LazyValueImpl : public LazyValueInterface {
     std::unique_ptr<LazyValueInterface> DoClone() const override {
-      return std::unique_ptr<LazyValueInterface>(new LazyValueImpl(record, expected_type));
+      return std::unique_ptr<LazyValueInterface>(new LazyValueImpl(record_, expected_type_));
     }
-    types::BString DoGetString() const override { return record[0].ToBString(); }
+    types::BString DoGetString() const override { return record_[0].ToBString(); }
     types::RCNum DoGetRCNum() const override {
-      if (record[0].GetValueType() == types::ValueTypeEnum::NUMERIC_TYPE ||
-          record[0].GetValueType() == types::ValueTypeEnum::DATE_TIME_TYPE)
-        return static_cast<types::RCNum &>(record[0]);
+      if (record_[0].GetValueType() == types::ValueTypeEnum::NUMERIC_TYPE ||
+          record_[0].GetValueType() == types::ValueTypeEnum::DATE_TIME_TYPE)
+        return static_cast<types::RCNum &>(record_[0]);
       TIANMU_ERROR("Bad cast in RCValueObject::RCNum&()");
-      return static_cast<types::RCNum &>(record[0]);
+      return static_cast<types::RCNum &>(record_[0]);
     }
     types::RCValueObject DoGetValue() const override {
-      types::RCValueObject val = record[0];
-      if (expected_type.IsString())
+      types::RCValueObject val = record_[0];
+      if (expected_type_.IsString())
         val = val.ToBString();
-      else if (expected_type.IsNumeric() && core::ATI::IsStringType(val.Type())) {
+      else if (expected_type_.IsNumeric() && core::ATI::IsStringType(val.Type())) {
         types::RCNum rc;
-        types::RCNum::Parse(*static_cast<types::BString *>(val.Get()), rc, expected_type.GetTypeName());
+        types::RCNum::Parse(*static_cast<types::BString *>(val.Get()), rc, expected_type_.GetTypeName());
         val = rc;
       }
       return val;
     }
-    int64_t DoGetInt64() const override { return (static_cast<types::RCNum &>(record[0])).GetValueInt64(); }
-    bool DoIsNull() const override { return record[0].IsNull(); }
+    int64_t DoGetInt64() const override { return (static_cast<types::RCNum &>(record_[0])).GetValueInt64(); }
+    bool DoIsNull() const override { return record_[0].IsNull(); }
     LazyValueImpl(core::TempTable::Record const &r_, core::ColumnType const &expected_type_)
-        : record(r_), expected_type(expected_type_) {}
+        : record_(r_), expected_type_(expected_type_) {}
     virtual ~LazyValueImpl() {}
-    core::TempTable::Record record;
-    core::ColumnType const &expected_type;
+    core::TempTable::Record record_;
+    core::ColumnType const &expected_type_;
     friend class IteratorImpl;
     friend class SubSelectColumn;
   };
   /*! \brief Creates a column representing subquery. Type of this column should
    * be inferred from type of wrapped core::TempTable.
    *
-   * \param table - core::TempTable representing subquery.
-   * \param mind - multindex of query containing subquery.
+   * \param tmp_tab_subq_ptr_ - core::TempTable representing subquery.
+   * \param multi_index - multindex of query containing subquery.
    */
-  SubSelectColumn(core::TempTable *subq, core::MultiIndex *mind, core::TempTable *outer_query_temp_table,
+  SubSelectColumn(core::TempTable *tmp_tab_subq_ptr_, core::MultiIndex *, core::TempTable *outer_query_temp_table,
                   int temp_table_alias);
 
-  // created copies share subq and table
+  // created copies share tmp_tab_subq_ptr_ and table
   SubSelectColumn(const SubSelectColumn &c);
 
   virtual ~SubSelectColumn();
 
-  bool IsMaterialized() const { return subq->IsMaterialized(); }
+  bool IsMaterialized() const { return tmp_tab_subq_ptr_->IsMaterialized(); }
   /*! \brief Returns true if subquery is correlated, false otherwise
    * \return bool
    */
   bool IsCorrelated() const;
-  bool IsConst() const override { return var_map.size() == 0; }
+  bool IsConst() const override { return var_map_.size() == 0; }
   bool IsSubSelect() const override { return true; }
   bool IsThreadSafe() override { return IsConst() && MakeParallelReady(); }
   void PrepareAndFillCache();
@@ -125,13 +125,13 @@ class SubSelectColumn : public MultiValColumn {
   common::Tribool RoughIsEmpty(const core::MIIterator &mit, core::SubSelectOptimizationType sot);
 
  protected:
-  uint col_idx;  // index of column in table containing result. Doesn't have to
-                 // be 0 in case of hidden columns.
-  std::shared_ptr<core::TempTableForSubquery> subq;
-  int parent_tt_alias;
-  types::RCValueObject min;
-  types::RCValueObject max;
-  bool min_max_uptodate;
+  uint col_idx_;  // index of column in table containing result. Doesn't have to
+                  // be 0 in case of hidden columns.
+  std::shared_ptr<core::TempTableForSubquery> tmp_tab_subq_ptr_;
+  int parent_tt_alias_;
+  types::RCValueObject min_;
+  types::RCValueObject max_;
+  bool check_min_max_uptodate_;
   void CalculateMinMax();
 
   std::unique_ptr<IteratorInterface> BeginImpl(core::MIIterator const &) override;
@@ -199,11 +199,11 @@ class SubSelectColumn : public MultiValColumn {
 
   bool FeedArguments(const core::MIIterator &mit, bool for_rough);
 
-  const core::MysqlExpression::tianmu_fields_cache_t &GetTIANMUItems() const override { return tianmuitems; }
+  const core::MysqlExpression::tianmu_fields_cache_t &GetTIANMUItems() const override { return tianmu_items_; }
 
   core::ColumnType expected_type_;
-  std::map<core::VarID, core::ValueOrNull> param_cache_for_exact;
-  std::map<core::VarID, core::ValueOrNull> param_cache_for_rough;
+  std::map<core::VarID, core::ValueOrNull> param_cache_for_exact_;
+  std::map<core::VarID, core::ValueOrNull> param_cache_for_rough_;
 
  private:
   void SetBufs(core::MysqlExpression::var_buf_t *bufs);
@@ -212,14 +212,14 @@ class SubSelectColumn : public MultiValColumn {
   void RoughPrepareSubqCopy(const core::MIIterator &mit, core::SubSelectOptimizationType sot);
   bool MakeParallelReady();
 
-  core::MysqlExpression::TypOfVars var_types;
-  mutable core::MysqlExpression::var_buf_t var_buf_for_exact;
-  mutable core::MysqlExpression::var_buf_t var_buf_for_rough;
+  core::MysqlExpression::TypOfVars var_types_;
+  mutable core::MysqlExpression::var_buf_t var_buf_for_exact_;
+  mutable core::MysqlExpression::var_buf_t var_buf_for_rough_;
 
-  std::shared_ptr<core::ValueSet> cache;
-  int no_cached_values;
-  bool first_eval_for_rough;
-  bool out_of_date_rough;  // important only for old mysql expr
+  std::shared_ptr<core::ValueSet> cache_;
+  int no_cached_values_;
+  bool if_first_eval_for_rough_;
+  bool if_out_of_date_rough_;  // important only for old mysql expr
 };
 
 }  // namespace vcolumn

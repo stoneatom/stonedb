@@ -1095,8 +1095,8 @@ std::shared_ptr<TempTable> TempTable::CreateMaterializedCopy(bool translate_orde
         else {
           auto &var_maps = vc->GetVarMap();
           for (uint i = 0; i < var_maps.size(); i++) {
-            if (var_maps[i].tab.lock().get() == this)
-              var_maps[i].tab = working_copy;
+            if (var_maps[i].just_a_table.lock().get() == this)
+              var_maps[i].just_a_table = working_copy;
           }
         }
       }
@@ -1191,7 +1191,6 @@ uint TempTable::GetDisplayableAttrIndex(uint attr) {
   for (i = 0; i < attrs_.size(); i++) {
     if (attrs_[i]->alias_) {
       idx++;
-
       if (idx == attr)
         break;
     }
@@ -1453,7 +1452,6 @@ void TempTable::Union(TempTable *t, int all) {
             for (uint i = 0; i < encoder.size(); i++) encoder[i].Encode(input_buf, sec_mit, sec_vcs[i].get());
 
             GDTResult res = dist_table.Add(input_buf);
-
             if (res == GDTResult::GDT_EXISTS)
               sec_mask.ResetDelayed(pos);
             if (res != GDTResult::GDT_FULL)
@@ -1674,7 +1672,6 @@ void TempTable::Union(TempTable *t, [[maybe_unused]] int all, ResultSender *send
     msg.append(" Can't switch to MySQL execution path");
     throw common::InternalException(msg);
   }
-
   if (t->IsMaterialized() && !t->IsSent())
     sender->Send(t);
 }
@@ -1787,7 +1784,6 @@ uint TempTable::CalculatePageSize(int64_t _no_obj) {
   }
 
   uint raw_size = (uint)new_no_obj;
-
   if (size_of_one_record < 1)
     size_of_one_record = 1;
 

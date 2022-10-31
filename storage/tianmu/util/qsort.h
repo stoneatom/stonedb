@@ -43,7 +43,8 @@ static void __bubble_sort(char *b, int lo, int hi, int s, comp_func_tianmu cmpsr
     }
 
     // no swap - means sorted.
-    if (!swapped) break;
+    if (!swapped)
+      break;
 
     // backward direction
     swapped = false;
@@ -80,7 +81,8 @@ static void __quicksort_tianmu(char *b, int lo, int hi, int s, comp_func_tianmu 
 
   if (s > PIVOT_SIZE) {
     pivot = (char *)malloc(s);
-    if (!pivot) return;
+    if (!pivot)
+      return;
   }
 
   std::memcpy(pivot, b + pv * s, s);
@@ -103,10 +105,13 @@ static void __quicksort_tianmu(char *b, int lo, int hi, int s, comp_func_tianmu 
     }
   }
 
-  if (lo < j) __quicksort_tianmu(b, lo, j, s, cmpsrt, call_seq + 1);
-  if (i < hi) __quicksort_tianmu(b, i, hi, s, cmpsrt, call_seq + 1);
+  if (lo < j)
+    __quicksort_tianmu(b, lo, j, s, cmpsrt, call_seq + 1);
+  if (i < hi)
+    __quicksort_tianmu(b, i, hi, s, cmpsrt, call_seq + 1);
 
-  if (s > PIVOT_SIZE) free(pivot);
+  if (s > PIVOT_SIZE)
+    free(pivot);
 }
 
 // buf, total elements, element size, compare function

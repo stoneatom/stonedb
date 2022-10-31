@@ -181,7 +181,8 @@ class CompiledQuery final {
                  int d = 0);  // d=1 for descending
   void Add_Order(const TableID &p_t, ptrdiff_t p_c) {
     int a_c(static_cast<int>(p_c));
-    if (p_c == a_c) this->Add_Order(p_t, AttrID(-abs(a_c)), a_c < 0);
+    if (p_c == a_c)
+      this->Add_Order(p_t, AttrID(-abs(a_c)), a_c < 0);
   }
   void Union(TableID &t_out, const TableID &t2, const TableID &t3, int all = 0);
   void Result(const TableID &t1);
@@ -192,7 +193,8 @@ class CompiledQuery final {
   int NumOfAttrs(const TableID &tab) { return no_attrs[-tab.n - 1]; }
   int NumOfConds() { return no_conds; }
   int NumOfVirtualColumns(const TableID &tt) {
-    if (no_virt_cols.find(tt) != no_virt_cols.end()) return no_virt_cols[tt];
+    if (no_virt_cols.find(tt) != no_virt_cols.end())
+      return no_virt_cols[tt];
     return 0;
   }
   void Print(Query *);  // display the CompiledQuery

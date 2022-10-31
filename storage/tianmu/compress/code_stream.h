@@ -48,7 +48,8 @@ class CoderStream : protected ArithCoder {
   void InitCompress() { ArithCoder::InitCompress(); }
   void Encode(BaseT low, BaseT high, BaseT total) {
     CprsErr err = ArithCoder::ScaleRange(str_, low, high, total);
-    if (static_cast<int>(err)) throw err;
+    if (static_cast<int>(err))
+      throw err;
   }
   void EndCompress() { ArithCoder::EndCompress(str_); }
   // decompression methods
@@ -56,32 +57,37 @@ class CoderStream : protected ArithCoder {
   BaseT GetCount(BaseT total) { return ArithCoder::GetCount(total); }
   void Decode(BaseT low, BaseT high, BaseT total) {
     CprsErr err = ArithCoder::RemoveSymbol(str_, low, high, total);
-    if (static_cast<int>(err)) throw err;
+    if (static_cast<int>(err))
+      throw err;
   }
 
   // uniform compression and decompression
   template <class T>
   void EncodeUniform(T val, T maxval, uint bitmax) {
     CprsErr err = ArithCoder::EncodeUniform<T>(str_, val, maxval, bitmax);
-    if (static_cast<int>(err)) throw err;
+    if (static_cast<int>(err))
+      throw err;
   }
 
   template <class T>
   void EncodeUniform(T val, T maxval) {
     CprsErr err = ArithCoder::EncodeUniform<T>(str_, val, maxval);
-    if (static_cast<int>(err)) throw err;
+    if (static_cast<int>(err))
+      throw err;
   }
 
   template <class T>
   void DecodeUniform(T &val, T maxval, uint bitmax) {
     CprsErr err = ArithCoder::DecodeUniform<T>(str_, val, maxval, bitmax);
-    if (static_cast<int>(err)) throw err;
+    if (static_cast<int>(err))
+      throw err;
   }
 
   template <class T>
   void DecodeUniform(T &val, T maxval) {
     CprsErr err = ArithCoder::DecodeUniform<T>(str_, val, maxval);
-    if (static_cast<int>(err)) throw err;
+    if (static_cast<int>(err))
+      throw err;
   }
 };
 

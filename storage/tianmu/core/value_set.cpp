@@ -47,9 +47,11 @@ ValueSet::ValueSet(ValueSet &sec)
   min = max = 0;
   for (const auto &it : sec.values) values.insert(it->Clone().release());
 
-  if (sec.min) min = sec.min->Clone().release();
+  if (sec.min)
+    min = sec.min->Clone().release();
 
-  if (sec.max) max = sec.max->Clone().release();
+  if (sec.max)
+    max = sec.max->Clone().release();
 
   easy_min = sec.easy_min;
   easy_max = sec.easy_max;
@@ -57,11 +59,14 @@ ValueSet::ValueSet(ValueSet &sec)
   if (use_easy_table)
     for (int i = 0; i < no_obj; i++) easy_table[i] = sec.easy_table[i];
 
-  if (sec.easy_vals) easy_vals.reset(new Filter(*sec.easy_vals));
+  if (sec.easy_vals)
+    easy_vals.reset(new Filter(*sec.easy_vals));
 
-  if (sec.easy_hash) easy_hash.reset(new utils::Hash64(*sec.easy_hash));
+  if (sec.easy_hash)
+    easy_hash.reset(new utils::Hash64(*sec.easy_hash));
 
-  if (sec.easy_text) easy_text.reset(new types::TextStat(*sec.easy_text));
+  if (sec.easy_text)
+    easy_text.reset(new types::TextStat(*sec.easy_text));
 }
 
 ValueSet::~ValueSet() {
@@ -94,17 +99,22 @@ void ValueSet::Add64(int64_t v)  // only for integers
     return;
   }
   types::RCDataType *rcv = new types::RCNum(v);
-  if (prep_type != common::CT::NUM || prep_scale != 0) prepared = false;
+  if (prep_type != common::CT::NUM || prep_scale != 0)
+    prepared = false;
 
   if (!values.insert(rcv).second)
     delete rcv;
   else if (prepared) {
     if (types::RequiresUTFConversions(prep_collation)) {
-      if (min->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), min->ToBString()) < 0) *min = *rcv;
-      if (max->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), max->ToBString()) > 0) *max = *rcv;
+      if (min->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), min->ToBString()) < 0)
+        *min = *rcv;
+      if (max->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), max->ToBString()) > 0)
+        *max = *rcv;
     } else {
-      if (min->IsNull() || *rcv < *min) *min = *rcv;
-      if (max->IsNull() || *rcv > *max) *max = *rcv;
+      if (min->IsNull() || *rcv < *min)
+        *min = *rcv;
+      if (max->IsNull() || *rcv > *max)
+        *max = *rcv;
     }
   }
 
@@ -125,11 +135,15 @@ void ValueSet::Add(std::unique_ptr<types::RCDataType> rcdt) {
     delete rcv;
   else if (prepared) {
     if (types::RequiresUTFConversions(prep_collation)) {
-      if (min->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), min->ToBString()) < 0) *min = *rcv;
-      if (max->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), max->ToBString()) > 0) *max = *rcv;
+      if (min->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), min->ToBString()) < 0)
+        *min = *rcv;
+      if (max->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), max->ToBString()) > 0)
+        *max = *rcv;
     } else {
-      if (min->IsNull() || *rcv < *min) *min = *rcv;
-      if (max->IsNull() || *rcv > *max) *max = *rcv;
+      if (min->IsNull() || *rcv < *min)
+        *min = *rcv;
+      if (max->IsNull() || *rcv > *max)
+        *max = *rcv;
     }
   }
 
@@ -155,11 +169,15 @@ void ValueSet::Add(const types::RCValueObject &rcv) {
       delete rcv;
     else if (prepared) {
       if (types::RequiresUTFConversions(prep_collation)) {
-        if (min->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), min->ToBString()) < 0) *min = *rcv;
-        if (max->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), max->ToBString()) > 0) *max = *rcv;
+        if (min->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), min->ToBString()) < 0)
+          *min = *rcv;
+        if (max->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), max->ToBString()) > 0)
+          *max = *rcv;
       } else {
-        if (min->IsNull() || *rcv < *min) *min = *rcv;
-        if (max->IsNull() || *rcv > *max) *max = *rcv;
+        if (min->IsNull() || *rcv < *min)
+          *min = *rcv;
+        if (max->IsNull() || *rcv > *max)
+          *max = *rcv;
       }
     }
 
@@ -167,10 +185,12 @@ void ValueSet::Add(const types::RCValueObject &rcv) {
   }
 }
 bool ValueSet::isContains(const types::RCDataType &v, DTCollation coll) {
-  if (v.IsNull()) return false;
+  if (v.IsNull())
+    return false;
   if (types::RequiresUTFConversions(coll)) {
     for (auto const &it : values)
-      if (CollationStrCmp(coll, it->ToBString(), v.ToBString()) == 0) return true;
+      if (CollationStrCmp(coll, it->ToBString(), v.ToBString()) == 0)
+        return true;
     return false;
   } else
     return (values.size() > 0 && values.find(const_cast<types::RCDataType *>(&v)) != values.end());
@@ -182,41 +202,49 @@ bool ValueSet::Contains(int64_t v) {
 
   if (use_easy_table) {
     for (int i = 0; i < no_obj; i++)
-      if (v == easy_table[i]) return true;
+      if (v == easy_table[i])
+        return true;
     return false;
   }
   if (easy_vals) {
-    if (v < easy_min || v > easy_max) return false;
+    if (v < easy_min || v > easy_max)
+      return false;
     return easy_vals->Get(v - easy_min);
   }
-  if (easy_hash) return easy_hash->Find(v);
+  if (easy_hash)
+    return easy_hash->Find(v);
   return isContains(types::RCNum(v, prep_scale), prep_collation);
 }
 
 bool ValueSet::Contains(types::BString &v) {
   DEBUG_ASSERT(prepared);  // it implies a trivial collation
 
-  if (v.IsNull()) return false;
+  if (v.IsNull())
+    return false;
   if (easy_hash && easy_text) {
     int64_t vcode = easy_text->Encode(v);
-    if (vcode == common::NULL_VALUE_64) return false;
+    if (vcode == common::NULL_VALUE_64)
+      return false;
     return easy_hash->Find(vcode);
   }
   return (values.size() > 0 && values.find(&v /*const_cast<RCDataType*>(&v)*/) != values.end());
 }
 
 bool ValueSet::Contains(const types::RCDataType &v, DTCollation coll) {
-  if (v.IsNull()) return false;
+  if (v.IsNull())
+    return false;
   if (types::RequiresUTFConversions(coll)) {
     for (auto const &it : values)
-      if (CollationStrCmp(coll, it->ToBString(), v.ToBString()) == 0) return true;
+      if (CollationStrCmp(coll, it->ToBString(), v.ToBString()) == 0)
+        return true;
     return false;
   } else
     return (values.size() > 0 && values.find(const_cast<types::RCDataType *>(&v)) != values.end());
 }
 
 bool ValueSet::Contains(const types::RCValueObject &v, DTCollation coll) {
-  if (v.IsNull()) return false;
+  if (v.IsNull())
+    return false;
   return isContains(*v.Get(), coll);
 }
 
@@ -279,20 +307,27 @@ void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
             else
               types::RCDataType::ToReal(*rcn, *rcn_new);
 
-            if (!(*rcn_new > *min)) *min = *rcn_new;
-            if (!(*rcn_new < *max)) *max = *rcn_new;
-            if (!new_values.insert(rcn_new).second) delete rcn_new;
+            if (!(*rcn_new > *min))
+              *min = *rcn_new;
+            if (!(*rcn_new < *max))
+              *max = *rcn_new;
+            if (!new_values.insert(rcn_new).second)
+              delete rcn_new;
           }
         } else if (it->Type() == common::CT::STRING) {
           types::RCNum *rcn = new types::RCNum();
           if (types::RCNum::Parse(it->ToBString(), *rcn, at) == common::ErrorCode::SUCCESS) {
-            if (!(*rcn > *min)) *min = *rcn;
-            if (!(*rcn < *max)) *max = *rcn;
-            if (!new_values.insert(rcn).second) delete rcn;
+            if (!(*rcn > *min))
+              *min = *rcn;
+            if (!(*rcn < *max))
+              *max = *rcn;
+            if (!new_values.insert(rcn).second)
+              delete rcn;
           } else {
             delete rcn;
             rcn = new types::RCNum(0, scale, false, at);
-            if (!new_values.insert(rcn).second) delete rcn;
+            if (!new_values.insert(rcn).second)
+              delete rcn;
           }
         }
       }
@@ -308,21 +343,28 @@ void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
           if (rcn->IsDecimal(scale)) {
             types::RCNum *rcn_new = new types::RCNum();
             types::RCDataType::ToDecimal(*rcn, scale, *rcn_new);
-            if (!(*rcn_new > *min)) *min = *rcn_new;
-            if (!(*rcn_new < *max)) *max = *rcn_new;
-            if (!new_values.insert(rcn_new).second) delete rcn_new;
+            if (!(*rcn_new > *min))
+              *min = *rcn_new;
+            if (!(*rcn_new < *max))
+              *max = *rcn_new;
+            if (!new_values.insert(rcn_new).second)
+              delete rcn_new;
           }
         } else if (it->Type() == common::CT::STRING) {
           types::RCNum *rcn = new types::RCNum();
           if (types::RCNum::Parse(it->ToBString(), *rcn, common::CT::NUM) == common::ErrorCode::SUCCESS &&
               rcn->IsDecimal(scale)) {
-            if (!(*rcn > *min)) *min = *rcn;
-            if (!(*rcn < *max)) *max = *rcn;
-            if (!new_values.insert(rcn).second) delete rcn;
+            if (!(*rcn > *min))
+              *min = *rcn;
+            if (!(*rcn < *max))
+              *max = *rcn;
+            if (!new_values.insert(rcn).second)
+              delete rcn;
           } else {
             delete rcn;
             rcn = new types::RCNum(0, scale, false, at);
-            if (!new_values.insert(rcn).second) delete rcn;
+            if (!new_values.insert(rcn).second)
+              delete rcn;
           }
         }
       }
@@ -337,26 +379,36 @@ void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
       for (const auto &it : values) {
         if (types::RCNum *rcn = dynamic_cast<types::RCNum *>(it)) {
           if (ATI::IsRealType(rcn->Type())) {
-            if (!(*rcn > *min)) *min = (*rcn);
-            if (!(*rcn < *max)) *max = (*rcn);
-            if (!new_values.insert(rcn).second) delete it;
+            if (!(*rcn > *min))
+              *min = (*rcn);
+            if (!(*rcn < *max))
+              *max = (*rcn);
+            if (!new_values.insert(rcn).second)
+              delete it;
           } else {
             types::RCNum *rcn_new = new types::RCNum(rcn->ToReal());
-            if (!(*rcn_new > *min)) *min = (*rcn_new);
-            if (!(*rcn < *max)) *max = (*rcn_new);
-            if (!new_values.insert(rcn_new).second) delete rcn_new;
+            if (!(*rcn_new > *min))
+              *min = (*rcn_new);
+            if (!(*rcn < *max))
+              *max = (*rcn_new);
+            if (!new_values.insert(rcn_new).second)
+              delete rcn_new;
             delete it;
           }
         } else if (it->Type() == common::CT::STRING) {
           types::RCNum *rcn = new types::RCNum();
           if (types::RCNum::ParseReal(*(types::BString *)it, *rcn, at) == common::ErrorCode::SUCCESS) {
-            if (!(*rcn > *min)) *min = *rcn;
-            if (!(*rcn < *max)) *max = *rcn;
-            if (!new_values.insert(rcn).second) delete rcn;
+            if (!(*rcn > *min))
+              *min = *rcn;
+            if (!(*rcn < *max))
+              *max = *rcn;
+            if (!new_values.insert(rcn).second)
+              delete rcn;
           } else {
             delete rcn;
             rcn = new types::RCNum(0, scale, true, at);
-            if (!new_values.insert(rcn).second) delete rcn;
+            if (!new_values.insert(rcn).second)
+              delete rcn;
           }
           delete it;
         } else {
@@ -372,31 +424,42 @@ void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
 
       for (const auto &it : values) {
         if (types::RCDateTime *rcdt = dynamic_cast<types::RCDateTime *>(it)) {
-          if (!(*rcdt > *min)) *min = *rcdt;
-          if (!(*rcdt < *max)) *max = *rcdt;
-          if (!new_values.insert(it).second) delete it;
+          if (!(*rcdt > *min))
+            *min = *rcdt;
+          if (!(*rcdt < *max))
+            *max = *rcdt;
+          if (!new_values.insert(it).second)
+            delete it;
         } else if (it->Type() == common::CT::STRING) {
           types::RCDateTime *rcdt = new types::RCDateTime();
           if (!common::IsError(types::RCDateTime::Parse(it->ToBString(), *rcdt, at))) {
-            if (!(*rcdt > *min)) *min = *rcdt;
-            if (!(*rcdt < *max)) *max = *rcdt;
-            if (!new_values.insert(rcdt).second) delete rcdt;
+            if (!(*rcdt > *min))
+              *min = *rcdt;
+            if (!(*rcdt < *max))
+              *max = *rcdt;
+            if (!new_values.insert(rcdt).second)
+              delete rcdt;
           } else {
             delete rcdt;
             rcdt = static_cast<types::RCDateTime *>(types::RCDateTime::GetSpecialValue(at).Clone().release());
-            if (!new_values.insert(rcdt).second) delete rcdt;
+            if (!new_values.insert(rcdt).second)
+              delete rcdt;
           }
           delete it;
         } else if (types::RCNum *rcn = dynamic_cast<types::RCNum *>(it)) {
           try {
             types::RCDateTime *rcdt = new types::RCDateTime(*rcn, at);
-            if (!(*rcdt > *min)) *min = *rcdt;
-            if (!(*rcdt < *max)) *max = *rcdt;
-            if (!new_values.insert(rcdt).second) delete rcdt;
+            if (!(*rcdt > *min))
+              *min = *rcdt;
+            if (!(*rcdt < *max))
+              *max = *rcdt;
+            if (!new_values.insert(rcdt).second)
+              delete rcdt;
           } catch (common::DataTypeConversionException &) {
             delete rcdt;
             rcdt = static_cast<types::RCDateTime *>(types::RCDateTime::GetSpecialValue(at).Clone().release());
-            if (!new_values.insert(rcn).second) delete rcdt;
+            if (!new_values.insert(rcn).second)
+              delete rcdt;
           }
           delete it;
         } else {
@@ -451,7 +514,8 @@ void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
           still_valid = easy_text->AddString(*v);
           it++;
         }
-        if (still_valid) still_valid = easy_text->CreateEncoding();
+        if (still_valid)
+          still_valid = easy_text->CreateEncoding();
 
         if (still_valid) {
           easy_hash.reset(new utils::Hash64(no_obj));

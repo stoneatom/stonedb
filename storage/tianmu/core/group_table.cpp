@@ -379,7 +379,6 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
   int64_t max_group_code = common::PLUS_INF_64;
   if (grouping_buf_width == 1 && encoder[0]->MaxCode() > 0)
     max_group_code = encoder[0]->MaxCode();
-
   if (grouping_buf_width == 2 && no_grouping_attr == 2 && encoder[1]->MaxCode() > 0)
     max_group_code = encoder[1]->MaxCode() * 256 + encoder[0]->MaxCode();  // wider than one-byte encoders are hard to
                                                                            // interpret, because of endianess swap
@@ -453,7 +452,6 @@ bool GroupTable::FindCurrentRow(int64_t &row)  // a position in the current Grou
   if (!existed && row != common::NULL_VALUE_64) {
     if (vm_tab->NoMoreSpace())
       not_full = false;
-
     if (no_grouping_attr > 0) {
       unsigned char *p = vm_tab->GetGroupingRow(row);
       for (int col = 0; col < no_grouping_attr; col++)
@@ -479,7 +477,6 @@ void GroupTable::Merge(GroupTable &sec, Transaction *m_conn) {
   while (sec.vm_tab->RowValid()) {
     if (m_conn->Killed())
       throw common::KilledException();
-
     sec_row = sec.vm_tab->GetCurrentRow();
 
     if (grouping_and_UTF_width > 0)
@@ -635,7 +632,6 @@ bool GroupTable::PutAggregatedValue(int col, int64_t row, MIIterator &mit, int64
     vc[col]->GetValueString(v, mit);
     if (v.IsNull() && cur_aggr->IgnoreNulls())
       return true;  // null omitted
-
     cur_aggr->PutAggregatedValue(vm_tab->GetAggregationRow(row) + aggregated_col_offset[col], v, factor);
   } else {
     // note: it is too costly to check nulls separately (e.g. for complex
@@ -643,7 +639,6 @@ bool GroupTable::PutAggregatedValue(int col, int64_t row, MIIterator &mit, int64
     int64_t v = vc[col]->GetValueInt64(mit);
     if (v == common::NULL_VALUE_64 && cur_aggr->IgnoreNulls())
       return true;
-
     cur_aggr->PutAggregatedValue(vm_tab->GetAggregationRow(row) + aggregated_col_offset[col], v, factor);
   }
 
@@ -675,7 +670,6 @@ bool GroupTable::PutCachedValue(int col, GroupDistinctCache &cache, bool as_text
   GDTResult res = gdistinct[col]->AddFromCache(cache.GetCurrentValue());
   if (res == GDTResult::GDT_EXISTS)
     return true;  // value found, do not aggregate it again
-
   if (res == GDTResult::GDT_FULL) {
     if (gdistinct[col]->AlreadyFull())
       not_full = false;  // disable also the main grouping table (if it is a

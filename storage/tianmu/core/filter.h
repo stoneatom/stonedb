@@ -96,11 +96,13 @@ class Filter final : public mm::TraceableObject {
                                         // then reset a part of it
         else
           new (blocks[b]) Block(block_filter, pack_def, true);  // block_filter->this
-        if (blocks[b] == nullptr) throw common::OutOfMemoryException();
+        if (blocks[b] == nullptr)
+          throw common::OutOfMemoryException();
       }
     }
     if (blocks[b]) {
-      if (blocks[b]->Reset(n)) ResetBlock(b);
+      if (blocks[b]->Reset(n))
+        ResetBlock(b);
       if (optimized_size != -1 && (uint)optimized_size != (pack_def - 1) &&
           (b < no_blocks - 1 || optimized_size != no_of_bits_in_last_block - 1)) {
         blocks[b]->Reset(optimized_size + 1, (b < no_blocks - 1 ? (pack_def - 1) : no_of_bits_in_last_block - 1));
@@ -112,7 +114,8 @@ class Filter final : public mm::TraceableObject {
   void Reset(Filter &f2);  // reset all positions where f2 is 1
   bool Get(size_t b, int n);
   bool Get(int64_t n) {
-    if (no_blocks == 0) return false;
+    if (no_blocks == 0)
+      return false;
     return Get((n >> no_power), (int)(n & (pack_def - 1)));
   }
   bool IsEmpty();
@@ -198,7 +201,8 @@ class Filter final : public mm::TraceableObject {
       if (pos == delayed_stats + 1) {
         delayed_stats++;
       } else if (pos > delayed_stats + 1) {  // then we can't delay
-        if (delayed_stats >= 0) ResetBetween(b, 0, b, delayed_stats);
+        if (delayed_stats >= 0)
+          ResetBetween(b, 0, b, delayed_stats);
         Reset(b, pos);
         delayed_stats = -2;  // not to use any longer
       }

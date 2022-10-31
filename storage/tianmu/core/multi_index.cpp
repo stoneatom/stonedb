@@ -219,7 +219,8 @@ void MultiIndex::AddDimension_cross(uint64_t size) {
 
 void MultiIndex::MultiplyNoTuples(uint64_t factor) {
   no_tuples = SafeMultiplication(no_tuples, factor);
-  if (no_tuples == static_cast<uint64_t>(common::NULL_VALUE_64)) no_tuples_too_big = true;
+  if (no_tuples == static_cast<uint64_t>(common::NULL_VALUE_64))
+    no_tuples_too_big = true;
 }
 
 void MultiIndex::CheckIfVirtualCanBeDistinct()  // updates can_be_distinct table
@@ -232,7 +233,8 @@ void MultiIndex::CheckIfVirtualCanBeDistinct()  // updates can_be_distinct table
   if (no_dimensions > 1) {
     int non_one_found = 0;
     for (int i = 0; i < no_dimensions; i++) {
-      if (dim_size[i] > 1) non_one_found++;
+      if (dim_size[i] > 1)
+        non_one_found++;
     }
     if (non_one_found == 1) {
       for (int j = 0; j < no_dimensions; j++)
@@ -311,13 +313,15 @@ int64_t MultiIndex::NumOfTuples(DimensionVector &dimensions,
                                 bool fail_on_overflow)  // for a given subset of dimensions
 {
   std::vector<int> dg = ListInvolvedDimGroups(dimensions);
-  if (dg.size() == 0) return 0;
+  if (dg.size() == 0)
+    return 0;
   int64_t res = 1;
   for (uint i = 0; i < dg.size(); i++) {
     dim_groups[dg[i]]->UpdateNumOfTuples();
     res = SafeMultiplication(res, dim_groups[dg[i]]->NumOfTuples());
   }
-  if (res == common::NULL_VALUE_64 && fail_on_overflow) throw common::OutOfMemoryException("Too many tuples.  (1428)");
+  if (res == common::NULL_VALUE_64 && fail_on_overflow)
+    throw common::OutOfMemoryException("Too many tuples.  (1428)");
   return res;
 }
 
@@ -328,10 +332,12 @@ int MultiIndex::MaxNumOfPacks(int dim)  // maximal (upper approx.) number of dif
   Filter *f = group_for_dim[dim]->GetFilter(dim);
   if (f) {
     for (size_t p = 0; p < f->NumOfBlocks(); p++)
-      if (!f->IsEmpty(p)) max_packs++;
+      if (!f->IsEmpty(p))
+        max_packs++;
   } else {
     max_packs = int((dim_size[dim]) >> p_power) + 1;
-    if (group_for_dim[dim]->NumOfTuples() < max_packs) max_packs = (int)group_for_dim[dim]->NumOfTuples();
+    if (group_for_dim[dim]->NumOfTuples() < max_packs)
+      max_packs = (int)group_for_dim[dim]->NumOfTuples();
   }
   return max_packs;
 }
@@ -350,7 +356,8 @@ void MultiIndex::MIFilterAnd(MIIterator &mit,
     FilterOnesIterator fit(f, p_power);
     int64_t cur_pos = 0;
     while (fit.IsValid()) {
-      if (!fd.Get(cur_pos)) fit.ResetDelayed();
+      if (!fd.Get(cur_pos))
+        fit.ResetDelayed();
       ++fit;
       cur_pos++;
     }
@@ -372,7 +379,8 @@ void MultiIndex::MIFilterAnd(MIIterator &mit,
   while (mit.IsValid()) {
     if (fd.Get(f_pos)) {
       for (int d = 0; d < no_dimensions; d++)
-        if (dim_used[d]) new_mind.SetNewTableValue(d, mit[d]);
+        if (dim_used[d])
+          new_mind.SetNewTableValue(d, mit[d]);
       new_mind.CommitNewTableValues();
     }
     ++mit;
@@ -415,7 +423,8 @@ std::vector<int> MultiIndex::ListInvolvedDimGroups(DimensionVector &v)  // List 
           added = true;
           break;
         }
-      if (!added) res.push_back(cur_group_number);
+      if (!added)
+        res.push_back(cur_group_number);
     }
   }
   return res;

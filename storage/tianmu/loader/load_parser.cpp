@@ -41,7 +41,8 @@ LoadParser::LoadParser(RCAttrPtrVect_t &attrs, const system::IOParameters &iop, 
   strategy = std::make_shared<ParsingStrategy>(iop, columns_collations);
 
   utils::Timer timer;
-  if (!read_buffer.BufOpen(f)) throw common::NetStreamException("Unable to open file " + std::string(iop.Path()));
+  if (!read_buffer.BufOpen(f))
+    throw common::NetStreamException("Unable to open file " + std::string(iop.Path()));
 
   if (read_buffer.BufSize() == 0)
     throw common::NetStreamException("File looks to be empty: " + std::string(iop.Path()));
@@ -70,7 +71,8 @@ uint LoadParser::GetPackrow(uint no_of_rows, std::vector<ValueCache> &value_buff
 
   uint no_of_rows_returned;
   for (no_of_rows_returned = 0; no_of_rows_returned < no_of_rows; no_of_rows_returned++) {
-    if (!MakeRow(value_buffers)) break;
+    if (!MakeRow(value_buffers))
+      break;
   }
 
   last_pack_size.clear();
@@ -90,7 +92,8 @@ bool LoadParser::MakeRow(std::vector<ValueCache> &value_buffers) {
     bool make_value_ok;
     switch (strategy->GetOneRow(cur_ptr, buf_end - cur_ptr, value_buffers, rowsize, errorinfo)) {
       case ParsingStrategy::ParseResult::EOB:
-        if (mysql_bin_log.is_open()) binlog_loaded_block(read_buffer.Buf(), cur_ptr);
+        if (mysql_bin_log.is_open())
+          binlog_loaded_block(read_buffer.Buf(), cur_ptr);
         if (read_buffer.BufFetch(int(buf_end - cur_ptr))) {
           cur_ptr = read_buffer.Buf();
           buf_end = cur_ptr + read_buffer.BufSize();
@@ -190,8 +193,10 @@ int LoadParser::binlog_loaded_block(const char *buf_start, const char *buf_end) 
   uchar *buffer = reinterpret_cast<uchar *>(const_cast<char *>(buf_start));
   uint max_event_size = lf_info->thd->variables.max_allowed_packet;
 
-  if (lf_info == nullptr) return -1;
-  if (lf_info->thd->is_current_stmt_binlog_format_row()) return 0;
+  if (lf_info == nullptr)
+    return -1;
+  if (lf_info->thd->is_current_stmt_binlog_format_row())
+    return 0;
 
   for (block_len = (uint)(buf_end - buf_start); block_len > 0;
        buffer += std::min(block_len, max_event_size), block_len -= std::min(block_len, max_event_size)) {
@@ -199,11 +204,13 @@ int LoadParser::binlog_loaded_block(const char *buf_start, const char *buf_end) 
     if (lf_info->logged_data_file) {
       Append_block_log_event a(lf_info->thd, lf_info->thd->db().str, buffer, std::min(block_len, max_event_size),
                                lf_info->log_delayed);
-      if (mysql_bin_log.write_event(&a)) return -1;
+      if (mysql_bin_log.write_event(&a))
+        return -1;
     } else {
       Begin_load_query_log_event b(lf_info->thd, lf_info->thd->db().str, buffer, std::min(block_len, max_event_size),
                                    lf_info->log_delayed);
-      if (mysql_bin_log.write_event(&b)) return -1;
+      if (mysql_bin_log.write_event(&b))
+        return -1;
       // stonedb8
       lf_info->logged_data_file = 1;
     }

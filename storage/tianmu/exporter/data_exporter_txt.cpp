@@ -95,7 +95,8 @@ size_t DEforTxt::WriteString(const types::BString &str, int len) {
   if (esc) {
     escaped.erase();
     for (size_t i = 0; i < str.size(); i++) {
-      if (str[i] == str_q || (!str_q && str[i] == delim)) escaped.append(1, esc);
+      if (str[i] == str_q || (!str_q && str[i] == delim))
+        escaped.append(1, esc);
       escaped.append(1, str[i]);
     }
     if (destination_cs) {

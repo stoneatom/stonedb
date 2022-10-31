@@ -56,7 +56,8 @@ std::unique_ptr<Pack> PackInt::Clone(const PackCoordinate &pc) const {
 }
 
 inline uint8_t PackInt::GetValueSize(uint64_t v) const {
-  if (is_real) return 8;
+  if (is_real)
+    return 8;
 
   auto bit_rate = GetBitLen(v);
   if (bit_rate <= 8)
@@ -201,9 +202,11 @@ void PackInt::UpdateValueFloat(size_t i, const Value &v) {
 
       SetValD(i, d);
 
-      if (d < dpn->min_d) dpn->min_d = d;
+      if (d < dpn->min_d)
+        dpn->min_d = d;
 
-      if (d > dpn->max_d) dpn->max_d = d;
+      if (d > dpn->max_d)
+        dpn->max_d = d;
     }
   } else {
     // update an original non-null value
@@ -224,8 +227,10 @@ void PackInt::UpdateValueFloat(size_t i, const Value &v) {
     for (uint j = 0; j < dpn->nr; j++) {
       if (i != j && NotNull(j)) {
         auto val = GetValDouble(j);
-        if (val > newmax) newmax = val;
-        if (val < newmin) newmin = val;
+        if (val > newmax)
+          newmax = val;
+        if (val < newmin)
+          newmin = val;
       }
     }
     if (!v.HasValue()) {
@@ -339,8 +344,10 @@ void PackInt::UpdateValueFixed(size_t i, const Value &v) {
     for (uint j = 0; j < dpn->nr; j++) {
       if (i != j && NotNull(j)) {
         auto val = GetValInt(j) + dpn->min_i;
-        if (val > newmax) newmax = val;
-        if (val < newmin) newmin = val;
+        if (val > newmax)
+          newmax = val;
+        if (val < newmin)
+          newmin = val;
       }
     }
 
@@ -351,7 +358,8 @@ void PackInt::UpdateValueFixed(size_t i, const Value &v) {
       // easy mode
       dpn->sum_i -= oldv;
 
-      if (!dpn->NullOnly()) ExpandOrShrink(newmax - newmin, 0);
+      if (!dpn->NullOnly())
+        ExpandOrShrink(newmax - newmin, 0);
 
       return;
     }
@@ -515,14 +523,16 @@ void PackInt::LoadDataFromFile(system::Stream *fcurfile) {
       ASSERT(!IsModeNoCompression());
 
       uint *cur_buf = (uint *)uptr.get();
-      if (data.ptr == nullptr && data.vt > 0) data.ptr = alloc(data.vt * dpn->nr, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
+      if (data.ptr == nullptr && data.vt > 0)
+        data.ptr = alloc(data.vt * dpn->nr, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
 
       // decompress nulls
 
       if (dpn->nn > 0) {
         uint null_buf_size = 0;
         null_buf_size = (*(ushort *)cur_buf);
-        if (null_buf_size > NULLS_SIZE) throw common::DatabaseException("Unexpected bytes found in data pack.");
+        if (null_buf_size > NULLS_SIZE)
+          throw common::DatabaseException("Unexpected bytes found in data pack.");
         if (!IsModeNullsCompressed())  // no nulls compression
           std::memcpy(nulls.get(), (char *)cur_buf + 2, null_buf_size);
         else {
@@ -554,7 +564,8 @@ void PackInt::LoadDataFromFile(system::Stream *fcurfile) {
         }
       } else if (data.vt > 0) {
         for (uint o = 0; o < dpn->nr; o++)
-          if (!IsNull(int(o))) SetVal64(o, 0);
+          if (!IsNull(int(o)))
+            SetVal64(o, 0);
       }
     }
   }
@@ -566,7 +577,8 @@ void PackInt::Save() {
   if (ShouldNotCompress()) {
     SetModeNoCompression();
     dpn->len = 0;
-    if (dpn->nn) dpn->len += NULLS_SIZE;
+    if (dpn->nn)
+      dpn->len += NULLS_SIZE;
     dpn->len += data.vt * dpn->nr;
   } else {
     auto res = Compress();
@@ -590,8 +602,10 @@ void PackInt::Save() {
 }
 
 void PackInt::SaveUncompressed(system::Stream *f) {
-  if (dpn->nn) f->WriteExact(nulls.get(), NULLS_SIZE);
-  if (data.ptr) f->WriteExact(data.ptr, data.vt * dpn->nr);
+  if (dpn->nn)
+    f->WriteExact(nulls.get(), NULLS_SIZE);
+  if (data.ptr)
+    f->WriteExact(data.ptr, data.vt * dpn->nr);
 }
 
 template <typename etype>
@@ -602,7 +616,8 @@ void PackInt::RemoveNullsAndCompress(compress::NumCompressor<etype> &nc, char *t
     tmp_data = mm::MMGuard<etype>(
         (etype *)(alloc((dpn->nr - dpn->nn) * sizeof(etype), mm::BLOCK_TYPE::BLOCK_TEMPORARY)), *this);
     for (uint i = 0, d = 0; i < dpn->nr; i++) {
-      if (!IsNull(i)) tmp_data[d++] = ((etype *)(data.ptr))[i];
+      if (!IsNull(i))
+        tmp_data[d++] = ((etype *)(data.ptr))[i];
     }
   } else
     tmp_data = mm::MMGuard<etype>((etype *)data.ptr, *this, false);
@@ -650,7 +665,8 @@ std::pair<PackInt::UniquePtr, size_t> PackInt::Compress() {
     for (uint o = 0; o < dpn->nr; o++) {
       if (!IsNull(o)) {
         cv = (uint64_t)GetValInt(o);
-        if (cv > maxv) maxv = cv;
+        if (cv > maxv)
+          maxv = cv;
       }
     }
   }
@@ -724,7 +740,8 @@ std::pair<PackInt::UniquePtr, size_t> PackInt::Compress() {
   std::memset(compressed_buf, 0, buffer_size);
   cur_buf = (uint *)compressed_buf;
   if (dpn->nn > 0) {
-    if (null_buf_size > NULLS_SIZE) throw common::DatabaseException("Unexpected bytes found (PackInt::Compress).");
+    if (null_buf_size > NULLS_SIZE)
+      throw common::DatabaseException("Unexpected bytes found (PackInt::Compress).");
     *(ushort *)compressed_buf = (ushort)null_buf_size;
     std::memcpy(compressed_buf + 2, comp_null_buf.get(), null_buf_size);
     cur_buf = (uint *)(compressed_buf + null_buf_size + 2);

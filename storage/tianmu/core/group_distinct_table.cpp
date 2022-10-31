@@ -54,11 +54,13 @@ GroupDistinctTable::~GroupDistinctTable() {
 void GroupDistinctTable::InitializeVC(int64_t max_no_groups, vcolumn::VirtualColumn *vc, int64_t max_no_rows,
                                       int64_t max_bytes, bool decodable) {
   DEBUG_ASSERT(!initialized);
-  if (max_bytes > 0) max_total_size = max_bytes;
+  if (max_bytes > 0)
+    max_total_size = max_bytes;
   if (max_bytes > 2000000000)  // possible for large aggregation settings, but
                                // not allowed here - limit to 1 GB
     max_total_size = 1_GB;
-  if (max_no_rows == common::NULL_VALUE_64) max_no_rows = 0;  // not known
+  if (max_no_rows == common::NULL_VALUE_64)
+    max_no_rows = 0;  // not known
   encoder = new ColumnBinEncoder(
       ColumnBinEncoder::ENCODER_IGNORE_NULLS |
       (decodable ? ColumnBinEncoder::ENCODER_DECODABLE : 0));  // non-monotonic comparable, usually not decodable
@@ -131,7 +133,8 @@ void GroupDistinctTable::InitializeBuffers(int64_t max_no_rows)  // max_no_rows 
   // calculate vertical size (not dividable by 17)
   if (no_rows < 67)  // too less groups => high collision probability; 67 is prime.
     no_rows = 67;
-  if (no_rows % 17 == 0) no_rows++;
+  if (no_rows % 17 == 0)
+    no_rows++;
   rows_limit = int64_t(no_rows * 0.9);  // rows_limit is used to determine whether the table is full
 
   t = (unsigned char *)alloc(total_width * no_rows, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
@@ -145,7 +148,8 @@ void GroupDistinctTable::InitializeBuffers(int64_t max_no_rows)  // max_no_rows 
 int64_t GroupDistinctTable::BytesTaken()  // actual size of structures
 {
   DEBUG_ASSERT(initialized);
-  if (filter_implementation) return f->NumOfObj() / 8;
+  if (filter_implementation)
+    return f->NumOfObj() / 8;
   return total_width * no_rows;
 }
 
@@ -154,7 +158,8 @@ GDTResult GroupDistinctTable::Find(int64_t group, int64_t val)  // numeric value
   if (filter_implementation) {
     val = encoder->ValPutValue64(val);
     val = group + group_factor * val;
-    if (f->Get(val)) return GDTResult::GDT_EXISTS;
+    if (f->Get(val))
+      return GDTResult::GDT_EXISTS;
     return GDTResult::GBIMODE_AS_TEXT;  // "Added" means "found" here.
   }
   group += 1;  // offset; 0 means empty position
@@ -168,7 +173,8 @@ GDTResult GroupDistinctTable::Add(int64_t group, MIIterator &mit) {
   if (filter_implementation) {
     int64_t val = encoder->ValEncode(mit);
     val = group + group_factor * val;
-    if (f->Get(val)) return GDTResult::GDT_EXISTS;
+    if (f->Get(val))
+      return GDTResult::GDT_EXISTS;
     f->Set(val);
     return GDTResult::GBIMODE_AS_TEXT;
   }
@@ -183,7 +189,8 @@ GDTResult GroupDistinctTable::Add(int64_t group, int64_t val)  // numeric values
   if (filter_implementation) {
     val = encoder->ValPutValue64(val);
     val = group + group_factor * val;
-    if (f->Get(val)) return GDTResult::GDT_EXISTS;
+    if (f->Get(val))
+      return GDTResult::GDT_EXISTS;
     f->Set(val);
     return GDTResult::GBIMODE_AS_TEXT;
   }
@@ -255,7 +262,8 @@ GDTResult GroupDistinctTable::FindCurrentRow(bool find_only)  // find / insert t
       }
       local_no_of_checks++;
       row += step + local_no_of_checks;
-      if (row >= no_rows) row = row % no_rows;
+      if (row >= no_rows)
+        row = row % no_rows;
     } else {
       if (!find_only) {
         std::memcpy(p, input_buffer, total_width);
