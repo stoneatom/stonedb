@@ -206,14 +206,14 @@ int rcbase_init_func(void *p) {
   if (tianmu_bootstrap) DBUG_RETURN(0);
 
   int ret = 1;
-  ha_rcengine_ = NULL;
+  ha_rcengine_ = nullptr;
 
   try {
     std::string log_file = mysql_home_ptr;
     log_setup(log_file + "/log/tianmu.log");
     rc_control_.addOutput(new system::FileOut(log_file + "/log/trace.log"));
     rc_querylog_.addOutput(new system::FileOut(log_file + "/log/query.log"));
-    struct hostent *hent = NULL;
+    struct hostent *hent = nullptr;
     hent = gethostbyname(glob_hostname);
     if (hent) strmov_str(global_hostIP_, inet_ntoa(*(struct in_addr *)(hent->h_addr_list[0])));
     my_snprintf(global_serverinfo_, sizeof(global_serverinfo_), "\tServerIp:%s\tServerHostName:%s\tServerPort:%d",
@@ -408,19 +408,19 @@ void controlquerylog_update(MYSQL_THD thd, struct st_mysql_sys_var *var, void *v
 void start_async_update(MYSQL_THD thd, struct st_mysql_sys_var *var, void *var_ptr, const void *save);
 extern void async_join_update(MYSQL_THD thd, struct st_mysql_sys_var *var, void *var_ptr, const void *save);
 
-#define STATUS_FUNCTION(name, showtype, member)                                                             \
+#define STATUS_FUNCTION(name, show_type, member)                                                            \
   int get_##name##_StatusVar([[maybe_unused]] MYSQL_THD thd, struct st_mysql_show_var *outvar, char *tmp) { \
     *((int64_t *)tmp) = ha_rcengine_->cache.member();                                                       \
     outvar->value = tmp;                                                                                    \
-    outvar->type = showtype;                                                                                \
+    outvar->type = show_type;                                                                               \
     return 0;                                                                                               \
   }
 
-#define MM_STATUS_FUNCTION(name, showtype, member)                                                          \
+#define MM_STATUS_FUNCTION(name, show_type, member)                                                         \
   int get_##name##_StatusVar([[maybe_unused]] MYSQL_THD thd, struct st_mysql_show_var *outvar, char *tmp) { \
     *((int64_t *)tmp) = mm::TraceableObject::Instance()->member();                                          \
     outvar->value = tmp;                                                                                    \
-    outvar->type = showtype;                                                                                \
+    outvar->type = show_type;                                                                               \
     return 0;                                                                                               \
   }
 
