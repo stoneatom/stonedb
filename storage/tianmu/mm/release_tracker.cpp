@@ -30,15 +30,18 @@ void FIFOTracker::insert(TraceableObject *o) {
   SetRelTracker(o, this);
   SetRelPrev(o, nullptr);
   SetRelNext(o, head);
-  if (head != nullptr) SetRelPrev(head, o);
+  if (head != nullptr)
+    SetRelPrev(head, o);
   head = o;
-  if (tail == nullptr) tail = head;
+  if (tail == nullptr)
+    tail = head;
   _size++;
 }
 
 TraceableObject *FIFOTracker::removeTail() {
   TraceableObject *res = tail;
-  if (res == nullptr) return nullptr;
+  if (res == nullptr)
+    return nullptr;
   tail = GetRelPrev(tail);
   if (tail != nullptr)
     SetRelNext(tail, nullptr);
@@ -55,7 +58,8 @@ TraceableObject *FIFOTracker::removeTail() {
 
 TraceableObject *FIFOTracker::removeHead() {
   TraceableObject *res = head;
-  if (res == nullptr) return nullptr;
+  if (res == nullptr)
+    return nullptr;
   head = GetRelNext(head);
   if (head != nullptr)
     SetRelPrev(head, nullptr);

@@ -98,7 +98,8 @@ DataType::DataType(common::CT atype, int prec, int scale, DTCollation collation)
 
 DataType &DataType::operator=(const ColumnType &ct) {
   *this = DataType();
-  if (!ct.IsKnown()) return *this;
+  if (!ct.IsKnown())
+    return *this;
 
   *this = DataType(ct.GetTypeName(), ct.GetPrecision(), ct.GetScale(), ct.GetCollation());
 

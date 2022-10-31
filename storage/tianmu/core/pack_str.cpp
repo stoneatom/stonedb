@@ -127,7 +127,8 @@ void PackStr::SetMinS(const types::BString &str) {
   if (types::RequiresUTFConversions(s->ColType().GetCollation())) {
     int useful_len = str.RoundUpTo8Bytes(s->ColType().GetCollation());
     str.CopyTo(dpn->min_s, useful_len);
-    if (useful_len < 8) dpn->min_s[useful_len] = 0;
+    if (useful_len < 8)
+      dpn->min_s[useful_len] = 0;
   } else
     str.CopyTo(dpn->min_s, sizeof(dpn->min_s));
 }
@@ -136,7 +137,8 @@ void PackStr::SetMaxS(const types::BString &str) {
   if (types::RequiresUTFConversions(s->ColType().GetCollation())) {
     int useful_len = str.RoundUpTo8Bytes(s->ColType().GetCollation());
     str.CopyTo(dpn->max_s, useful_len);
-    if (useful_len < 8) dpn->max_s[useful_len] = 0;
+    if (useful_len < 8)
+      dpn->max_s[useful_len] = 0;
   } else
     str.CopyTo(dpn->max_s, std::min(str.size(), sizeof(dpn->max_s)));
 }
@@ -149,7 +151,8 @@ size_t PackStr::CalculateMaxLen() const {
 }
 
 void PackStr::TransformIntoArray() {
-  if (state_ == PackStrtate::PACK_ARRAY) return;
+  if (state_ == PackStrtate::PACK_ARRAY)
+    return;
   data.lens = alloc((data.len_mode * (1 << s->pss)), mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
   data.index = (char **)alloc(sizeof(char *) * (1 << s->pss), mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
 
@@ -260,11 +263,14 @@ void PackStr::LoadValues(const loader::ValueCache *vc) {
     uint maxlen;
     vc->CalcStrStats(min_s, max_s, maxlen, s->ColType().GetCollation());
 
-    if (!min_s.GreaterEqThanMinUTF(dpn->min_s, s->ColType().GetCollation(), true)) SetMinS(min_s);
+    if (!min_s.GreaterEqThanMinUTF(dpn->min_s, s->ColType().GetCollation(), true))
+      SetMinS(min_s);
 
-    if (!max_s.LessEqThanMaxUTF(dpn->max_s, s->ColType().GetCollation(), true)) SetMaxS(max_s);
+    if (!max_s.LessEqThanMaxUTF(dpn->max_s, s->ColType().GetCollation(), true))
+      SetMaxS(max_s);
 
-    if (dpn->maxlen < maxlen) dpn->maxlen = maxlen;
+    if (dpn->maxlen < maxlen)
+      dpn->maxlen = maxlen;
   }
 }
 
@@ -320,7 +326,8 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
     if (!IsNull(o)) {
       cv = GetSize(o);
       *(nc_buffer.get() + onn++) = cv;
-      if (cv > maxv) maxv = cv;
+      if (cv > maxv)
+        maxv = cv;
     }
   }
 
@@ -352,7 +359,8 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
   compress::TextCompressor tc;
   int zlo = 0;
   for (uint obj = 0; obj < dpn->nr; obj++)
-    if (!IsNull(obj) && GetSize(obj) == 0) zlo++;
+    if (!IsNull(obj) && GetSize(obj) == 0)
+      zlo++;
 
   auto dlen = GetCompressBufferSize(data.sum_len);
 
@@ -398,7 +406,8 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
     p += comp_null_buf_size;
   }
 
-  if (comp_len_buf_size) std::memcpy(p, comp_len_buf.get(), comp_len_buf_size);
+  if (comp_len_buf_size)
+    std::memcpy(p, comp_len_buf.get(), comp_len_buf_size);
 
   p += comp_len_buf_size;
 
@@ -406,7 +415,8 @@ std::pair<PackStr::UniquePtr, size_t> PackStr::Compress() {
   p += sizeof(uint32_t);
   *((uint32_t *)p) = data.sum_len;
   p += sizeof(uint32_t);
-  if (dlen) std::memcpy(p, comp_buf.get(), dlen);
+  if (dlen)
+    std::memcpy(p, comp_buf.get(), dlen);
 
   SetModeDataCompressed();
 
@@ -501,7 +511,8 @@ void PackStr::Save() {
 void PackStr::SaveUncompressed(system::Stream *f) {
   f->WriteExact(nulls.get(), NULLS_SIZE);
   f->WriteExact(data.lens, (data.len_mode * (1 << s->pss)));
-  if (data.v.empty()) return;
+  if (data.v.empty())
+    return;
 
   std::unique_ptr<char[]> buff(new char[data.sum_len]);
   char *ptr = buff.get();
@@ -578,10 +589,12 @@ void PackStr::LoadCompressed(system::Stream *f) {
 
     int oid = 0;
     for (uint o = 0; o < dpn->nr; o++)
-      if (!IsNull(int(o))) SetSize(o, (uint)cn_ptr[oid++]);
+      if (!IsNull(int(o)))
+        SetSize(o, (uint)cn_ptr[oid++]);
   } else {
     for (uint o = 0; o < dpn->nr; o++)
-      if (!IsNull(int(o))) SetSize(o, 0);
+      if (!IsNull(int(o)))
+        SetSize(o, 0);
   }
   cur_buf += comp_len_buf_size;
 
@@ -595,13 +608,15 @@ void PackStr::LoadCompressed(system::Stream *f) {
 
   int zlo = 0;
   for (uint obj = 0; obj < dpn->nr; obj++)
-    if (!IsNull(obj) && GetSize(obj) == 0) zlo++;
+    if (!IsNull(obj) && GetSize(obj) == 0)
+      zlo++;
   int objs = dpn->nr - dpn->nn - zlo;
 
   if (objs) {
     mm::MMGuard<uint> tmp_len((uint *)alloc(objs * sizeof(uint), mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
     for (uint tmp_id = 0, id = 0; id < dpn->nr; id++)
-      if (!IsNull(id) && GetSize(id) != 0) tmp_len[tmp_id++] = GetSize(id);
+      if (!IsNull(id) && GetSize(id) != 0)
+        tmp_len[tmp_id++] = GetSize(id);
 
     if (dlen) {
       data.v.push_back({(char *)alloc(data.sum_len, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED), data.sum_len, 0});
@@ -640,7 +655,8 @@ void PackStr::LoadCompressedTrie(system::Stream *f) {
   ids_array_ = (unsigned short *)(buf_ptr + trie_length + 8);
   if (dpn->nn > 0) {
     for (uint row = 0; row < dpn->nr; row++) {
-      if (ids_array_[row] == 0xffff) SetNull(row);
+      if (ids_array_[row] == 0xffff)
+        SetNull(row);
     }
   }
   state_ = PackStrtate::PACK_TRIE;
@@ -655,15 +671,18 @@ types::BString PackStr::GetStringValueTrie(int ono) const {
 }
 
 types::BString PackStr::GetValueBinary(int ono) const {
-  if (IsNull(ono)) return types::BString();
+  if (IsNull(ono))
+    return types::BString();
   DEBUG_ASSERT(ono < (int)dpn->nr);
-  if (state_ == PackStrtate::PACK_TRIE) return GetStringValueTrie(ono);
+  if (state_ == PackStrtate::PACK_TRIE)
+    return GetStringValueTrie(ono);
   size_t str_size;
   if (data.len_mode == sizeof(ushort))
     str_size = data.lens16[ono];
   else
     str_size = data.lens32[ono];
-  if (str_size == 0) return ZERO_LENGTH_STRING;
+  if (str_size == 0)
+    return ZERO_LENGTH_STRING;
   return types::BString(data.index[ono], str_size);
 }
 

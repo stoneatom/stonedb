@@ -78,7 +78,8 @@ class MultiIndexBuilder {
   void CommitCountOnly(int64_t joined_tuples) {
     multi_index_->MakeCountOnly(joined_tuples, dims_involved_);
     for (int dim = 0; dim < dims_count_; dim++)
-      if (dims_involved_[dim]) multi_index_->UnlockFromGetIndex(dim);
+      if (dims_involved_[dim])
+        multi_index_->UnlockFromGetIndex(dim);
     return;
   }
 

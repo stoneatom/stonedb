@@ -223,13 +223,17 @@ class Tribool {
                                           : (v == tribool::TRI_FALSE ? tribool::TRI_TRUE : tribool::TRI_UNKNOWN));
   }
   static Tribool And(Tribool a, Tribool b) {
-    if (a == true && b == true) return true;
-    if (a == false || b == false) return false;
+    if (a == true && b == true)
+      return true;
+    if (a == false || b == false)
+      return false;
     return tribool::TRI_UNKNOWN;
   }
   static Tribool Or(Tribool a, Tribool b) {
-    if (a == true || b == true) return true;
-    if (a == tribool::TRI_UNKNOWN || b == tribool::TRI_UNKNOWN) return tribool::TRI_UNKNOWN;
+    if (a == true || b == true)
+      return true;
+    if (a == tribool::TRI_UNKNOWN || b == tribool::TRI_UNKNOWN)
+      return tribool::TRI_UNKNOWN;
     return false;
   }
 

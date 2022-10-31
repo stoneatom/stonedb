@@ -29,7 +29,8 @@ void Timer::DoPrint(const std::string &msg) const {
 }
 
 KillTimer::KillTimer(THD *thd, long secs) {
-  if (secs == 0) return;
+  if (secs == 0)
+    return;
   struct sigevent sev;
   sev.sigev_notify = SIGEV_THREAD_ID;
   sev.sigev_signo = SIGRTMIN;

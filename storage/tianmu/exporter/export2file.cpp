@@ -45,8 +45,10 @@ bool select_tianmu_export::prepare(THD *, const mem_root_deque<Item *> &list, Qu
                                           : field_term_length ? (*exchange->field.field_term)[0] : INT_MAX);
   escape_char = (exchange->field.escaped->length() ? (*exchange->field.escaped)[0] : -1);
   line_sep_char = (exchange->line.line_term->length() ? (*exchange->line.line_term)[0] : INT_MAX);
-  if (!field_term_length) exchange->field.opt_enclosed = 0;
-  if (!exchange->field.enclosed->length()) exchange->field.opt_enclosed = 1;  // A little quicker loop
+  if (!field_term_length)
+    exchange->field.opt_enclosed = 0;
+  if (!exchange->field.enclosed->length())
+    exchange->field.opt_enclosed = 1;  // A little quicker loop
   fixed_row_size = (!field_term_length && !exchange->field.enclosed->length() && !blob_flag);
 
   prepared = true;

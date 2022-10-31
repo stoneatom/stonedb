@@ -41,7 +41,8 @@ class MINewContentsRSorter {  // Rough sorter of the new contents of MultiIndex
         (anything_changed && obj - start_sorting > MAX_SORT_SIZE) ||
         (!anything_changed && obj - start_sorting > OMIT_IF_SORTED)) {
       Commit(obj);
-      if (obj % block_size == 0) Barrier();
+      if (obj % block_size == 0)
+        Barrier();
     }
 
     bool changed_now = false;
@@ -49,7 +50,8 @@ class MINewContentsRSorter {  // Rough sorter of the new contents of MultiIndex
       if (tcheck[dim] && new_value[dim] != common::NULL_VALUE_64) {
         int cur_pack = int(new_value[dim] >> p_power);
         if (last_pack[dim] != cur_pack) {
-          if (last_pack[dim] != -1) anything_changed = true;
+          if (last_pack[dim] != -1)
+            anything_changed = true;
           changed_now = true;
           last_pack[dim] = cur_pack;
         }
@@ -59,12 +61,14 @@ class MINewContentsRSorter {  // Rough sorter of the new contents of MultiIndex
       if (sorting_needed && obj - start_sorting > OPT_SORT_SIZE) {
         Commit(obj);
         for (int dim = 0; dim < no_dim; dim++)
-          if (tcheck[dim] && new_value[dim] != common::NULL_VALUE_64) last_pack[dim] = int(new_value[dim] >> p_power);
+          if (tcheck[dim] && new_value[dim] != common::NULL_VALUE_64)
+            last_pack[dim] = int(new_value[dim] >> p_power);
       }
       if (!sorting_needed) {
         uint minihash = 0;
         for (int dim = 0; dim < no_dim; dim++) minihash = (443 * minihash + last_pack[dim]) % 919;
-        if (minihash_table[minihash] == '1') sorting_needed = true;  // we're back in one of the pack previously seen
+        if (minihash_table[minihash] == '1')
+          sorting_needed = true;  // we're back in one of the pack previously seen
         minihash_table[minihash] = '1';
       }
     }
@@ -98,8 +102,10 @@ class MINewContentsRSorter {  // Rough sorter of the new contents of MultiIndex
     for (int i = 0; i < no_cols_to_compare; i++) {
       v1 = (tcomp[i]->Get64InsideBlock(tuple1) - 1) >> rough_comp_bit_offset;
       v2 = (tcomp[i]->Get64InsideBlock(tuple2) - 1) >> rough_comp_bit_offset;
-      if (v1 < v2) return -1;
-      if (v1 > v2) return 1;
+      if (v1 < v2)
+        return -1;
+      if (v1 > v2)
+        return 1;
     }
     return 0;
   }
@@ -113,8 +119,10 @@ class MINewContentsRSorter {  // Rough sorter of the new contents of MultiIndex
     uint64_t v1;
     for (int i = 0; i < no_cols_to_compare; i++) {
       v1 = (tcomp[i]->Get64InsideBlock(tuple1) - 1) >> rough_comp_bit_offset;
-      if (v1 < mid[i]) return -1;
-      if (v1 > mid[i]) return 1;
+      if (v1 < mid[i])
+        return -1;
+      if (v1 > mid[i])
+        return 1;
     }
     return 0;
   }

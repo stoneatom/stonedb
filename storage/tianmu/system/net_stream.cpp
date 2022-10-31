@@ -44,7 +44,8 @@ int NetStream::Close() {
 }
 
 size_t NetStream::Read(void *buf, size_t count) {
-  if (!opened_) return 0;
+  if (!opened_)
+    return 0;
 
   if (cached_size_ >= count) {
     std::memcpy(buf, net_->read_pos + cached_offset_, count);

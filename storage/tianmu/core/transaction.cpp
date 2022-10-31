@@ -32,10 +32,12 @@ common::SequenceGenerator Transaction::sg;
 
 std::shared_ptr<RCTable> Transaction::GetTableByPathIfExists(const std::string &table_path) {
   auto iter = m_modified_tables.find(table_path);
-  if (iter != m_modified_tables.end()) return iter->second;
+  if (iter != m_modified_tables.end())
+    return iter->second;
 
   iter = m_readonly_tables.find(table_path);
-  if (iter != m_readonly_tables.end()) return iter->second;
+  if (iter != m_readonly_tables.end())
+    return iter->second;
 
   return nullptr;
 }

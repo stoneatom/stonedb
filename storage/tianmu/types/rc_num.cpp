@@ -63,7 +63,8 @@ RCNum &RCNum::Assign(int64_t value_, short scale, bool is_double_, common::CT at
       this->attr_type_ = common::CT::NUM;
     }
   }
-  if (scale <= -1 && !is_double_) scale_ = 0;
+  if (scale <= -1 && !is_double_)
+    scale_ = 0;
   if (is_double_) {
     if (!(this->attr_type_ == common::CT::REAL || this->attr_type_ == common::CT::FLOAT))
       this->attr_type_ = common::CT::REAL;
@@ -128,8 +129,10 @@ bool RCNum::IsDecimal(ushort scale) const {
   if (core::ATI::IsIntegerType(this->attr_type_)) {
     return GetDecIntLen() <= (MAX_DEC_PRECISION - scale);
   } else if (attr_type_ == common::CT::NUM) {
-    if (this->GetDecFractLen() <= scale) return true;
-    if (scale_ > scale) return value_ % (int64_t)Uint64PowOfTen(scale_ - scale) == 0;
+    if (this->GetDecFractLen() <= scale)
+      return true;
+    if (scale_ > scale)
+      return value_ % (int64_t)Uint64PowOfTen(scale_ - scale) == 0;
     return true;
   } else {
     double f = GetFractPart();
@@ -165,10 +168,12 @@ RCNum RCNum::ToDecimal(int scale) const {
 
     if (scale == -1) {
       if (intpart >= Uint64PowOfTen(MAX_DEC_PRECISION)) {
-        if (sign != 1) scale = 0;
+        if (sign != 1)
+          scale = 0;
       } else {
         int l = 0;
-        if (intpart != 0) l = (int)floor(log10(intpart)) + 1;
+        if (intpart != 0)
+          l = (int)floor(log10(intpart)) + 1;
         scale = MAX_DEC_PRECISION - l;
       }
     }
@@ -231,7 +236,8 @@ static char *Text(int64_t value_, char buf[], int scale) {
   }
   pos = 0;
   while (buf[pos] == ' ') pos++;
-  if (!sign) buf[--pos] = '-';
+  if (!sign)
+    buf[--pos] = '-';
   return buf + pos;
 }
 
@@ -242,7 +248,8 @@ BString RCNum::ToBString() const {
     if (core::ATI::IsRealType(attr_type_)) {
       gcvt(*reinterpret_cast<double *>(const_cast<int64_t *>(&value_)), 15, buf);
       size_t s = std::strlen(buf);
-      if (s && buf[s - 1] == '.') buf[s - 1] = 0;
+      if (s && buf[s - 1] == '.')
+        buf[s - 1] = 0;
     } else if (core::ATI::IsIntegerType(attr_type_))
       std::sprintf(buf, "%ld", value_);
     else {
@@ -266,7 +273,8 @@ bool RCNum::operator==(const RCDataType &rcdt) const {
     return (compare(dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcdt))) == 0);
   if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
     return (compare(dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcdt))) == 0);
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (rcdt == this->ToBString());
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return (rcdt == this->ToBString());
   TIANMU_ERROR("Bad cast inside RCNum");
   return false;
 }
@@ -278,40 +286,47 @@ bool RCNum::operator!=(const RCDataType &rcdt) const {
     return (compare(dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcdt))) != 0);
   if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
     return (compare(dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcdt))) != 0);
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (rcdt != this->ToBString());
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return (rcdt != this->ToBString());
   TIANMU_ERROR("Bad cast inside RCNum");
   return false;
 }
 
 bool RCNum::operator<(const RCDataType &rcdt) const {
-  if (IsNull() || rcdt.IsNull()) return false;
+  if (IsNull() || rcdt.IsNull())
+    return false;
   if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
     return (compare(dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcdt))) < 0);
   if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
     return (compare(dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcdt))) < 0);
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (this->ToBString() < rcdt);
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return (this->ToBString() < rcdt);
   TIANMU_ERROR("Bad cast inside RCNum");
   return false;
 }
 
 bool RCNum::operator>(const RCDataType &rcdt) const {
-  if (IsNull() || rcdt.IsNull()) return false;
+  if (IsNull() || rcdt.IsNull())
+    return false;
   if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
     return (compare(dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcdt))) > 0);
   if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
     return (compare(dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcdt))) > 0);
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (this->ToBString() > rcdt);
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return (this->ToBString() > rcdt);
   TIANMU_ERROR("Bad cast inside RCNum");
   return false;
 }
 
 bool RCNum::operator<=(const RCDataType &rcdt) const {
-  if (IsNull() || rcdt.IsNull()) return false;
+  if (IsNull() || rcdt.IsNull())
+    return false;
   if (rcdt.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
     return (compare(dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcdt))) <= 0);
   if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
     return (compare(dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcdt))) <= 0);
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (this->ToBString() <= rcdt);
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return (this->ToBString() <= rcdt);
   TIANMU_ERROR("Bad cast inside RCNum");
   return false;
 }
@@ -323,14 +338,16 @@ bool RCNum::operator>=(const RCDataType &rcdt) const {
     return (compare(dynamic_cast<RCNum &>(const_cast<RCDataType &>(rcdt))) >= 0);
   if (rcdt.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
     return (compare(dynamic_cast<RCDateTime &>(const_cast<RCDataType &>(rcdt))) >= 0);
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return (this->ToBString() >= rcdt);
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return (this->ToBString() >= rcdt);
   TIANMU_ERROR("Bad cast inside RCNum");
   return false;
 }
 
 RCNum &RCNum::operator-=(const RCNum &rcn) {
   DEBUG_ASSERT(!null_);
-  if (rcn.IsNull() || rcn.IsNull()) return *this;
+  if (rcn.IsNull() || rcn.IsNull())
+    return *this;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
       *(double *)&value_ -= *reinterpret_cast<double *>(const_cast<int64_t *>(&rcn.value_));
@@ -353,7 +370,8 @@ RCNum &RCNum::operator-=(const RCNum &rcn) {
 
 RCNum &RCNum::operator+=(const RCNum &rcn) {
   DEBUG_ASSERT(!null_);
-  if (rcn.IsNull() || rcn.IsNull()) return *this;
+  if (rcn.IsNull() || rcn.IsNull())
+    return *this;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
       *(double *)&value_ -= *reinterpret_cast<double *>(const_cast<int64_t *>(&rcn.value_));
@@ -376,7 +394,8 @@ RCNum &RCNum::operator+=(const RCNum &rcn) {
 
 RCNum &RCNum::operator*=(const RCNum &rcn) {
   DEBUG_ASSERT(!null_);
-  if (rcn.IsNull() || rcn.IsNull()) return *this;
+  if (rcn.IsNull() || rcn.IsNull())
+    return *this;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
       *(double *)&value_ -= *reinterpret_cast<double *>(const_cast<int64_t *>(&rcn.value_));
@@ -412,7 +431,8 @@ void fcvt(char *buf_, double val_, int digits_, int *dec_, int *sign_) {
 
 RCNum &RCNum::operator/=(const RCNum &rcn) {
   DEBUG_ASSERT(!null_);
-  if (rcn.IsNull() || rcn.IsNull()) return *this;
+  if (rcn.IsNull() || rcn.IsNull())
+    return *this;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
       *(double *)&value_ -= *reinterpret_cast<double *>(const_cast<int64_t *>(&rcn.value_));
@@ -463,7 +483,8 @@ RCNum RCNum::operator/(const RCNum &rcn) const {
 uint RCNum::GetHashCode() const { return uint(GetIntPart() * 1040021); }
 
 int RCNum::compare(const RCNum &rcn) const {
-  if (IsNull() || rcn.IsNull()) return false;
+  if (IsNull() || rcn.IsNull())
+    return false;
   if (IsReal() || rcn.IsReal()) {
     if (IsReal() && rcn.IsReal())
       return (*reinterpret_cast<double *>(const_cast<int64_t *>(&value_)) >
@@ -481,21 +502,29 @@ int RCNum::compare(const RCNum &rcn) const {
     }
   } else {
     if (scale_ != rcn.scale_) {
-      if (value_ < 0 && rcn.value_ >= 0) return -1;
-      if (value_ >= 0 && rcn.value_ < 0) return 1;
+      if (value_ < 0 && rcn.value_ >= 0)
+        return -1;
+      if (value_ >= 0 && rcn.value_ < 0)
+        return 1;
       if (scale_ < rcn.scale_) {
         int64_t power_of_ten = (int64_t)PowOfTen(rcn.scale_ - scale_);
         int64_t tmpv = (int64_t)(rcn.value_ / power_of_ten);
-        if (value_ > tmpv) return 1;
-        if (value_ < tmpv || rcn.value_ % power_of_ten > 0) return -1;
-        if (rcn.value_ % power_of_ten < 0) return 1;
+        if (value_ > tmpv)
+          return 1;
+        if (value_ < tmpv || rcn.value_ % power_of_ten > 0)
+          return -1;
+        if (rcn.value_ % power_of_ten < 0)
+          return 1;
         return 0;
       } else {
         int64_t power_of_ten = (int64_t)PowOfTen(scale_ - rcn.scale_);
         int64_t tmpv = (int64_t)(value_ / power_of_ten);
-        if (tmpv < rcn.value_) return -1;
-        if (tmpv > rcn.value_ || value_ % power_of_ten > 0) return 1;
-        if (value_ % power_of_ten < 0) return -1;
+        if (tmpv < rcn.value_)
+          return -1;
+        if (tmpv > rcn.value_ || value_ % power_of_ten > 0)
+          return 1;
+        if (value_ % power_of_ten < 0)
+          return -1;
         return 0;
       }
     } else
@@ -533,8 +562,10 @@ double RCNum::GetFractPart() const {
 }
 
 short RCNum::GetDecStrLen() const {
-  if (IsNull()) return 0;
-  if (is_double_) return 18;
+  if (IsNull())
+    return 0;
+  if (is_double_)
+    return 18;
   short res = scale_;
   int64_t tmpi = value_ / (int64_t)PowOfTen(scale_);
   while (tmpi != 0) {
@@ -545,7 +576,8 @@ short RCNum::GetDecStrLen() const {
 }
 
 short RCNum::GetDecIntLen() const {
-  if (IsNull()) return 0;
+  if (IsNull())
+    return 0;
   short res = 0;
   int64_t tmpi = 0;
   if (is_double_)
@@ -561,12 +593,14 @@ short RCNum::GetDecIntLen() const {
 }
 
 short RCNum::GetDecFractLen() const {
-  if (IsNull()) return 0;
+  if (IsNull())
+    return 0;
   return scale_;
 }
 
 void RCNum::Negate() {
-  if (IsNull()) return;
+  if (IsNull())
+    return;
   if (is_double_)
     *(double *)&value_ = *(double *)&value_ * -1;
   else

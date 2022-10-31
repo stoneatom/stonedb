@@ -36,7 +36,8 @@ bool DataFilt_RLE<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
   for (uint i = 1; i < nrec; i += 5)
     if (dict_.Insert(data[i - 1])) {
       nsamp++;
-      if (data[i] == data[i - 1]) nrep++;
+      if (data[i] == data[i - 1])
+        nrep++;
     } else
       break;
 
@@ -45,7 +46,8 @@ bool DataFilt_RLE<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
   uint sum2 = 0;
   auto keys = dict_.GetKeys(nkey);
   for (short k = 0; k < nkey; k++) sum2 += keys[k].count * keys[k].count;
-  if (nrep * nsamp < 5 * sum2) return false;
+  if (nrep * nsamp < 5 * sum2)
+    return false;
 
   // make blocks
   Clear();
@@ -85,7 +87,8 @@ template <class T>
 void DataFilt_RLE<T>::Decode(RangeCoder *coder, DataSet<T> *dataset) {
   uchar ver;
   coder->DecodeUniShift(ver, 2);
-  if (ver > 0) throw CprsErr::CPRS_ERR_COR;
+  if (ver > 0)
+    throw CprsErr::CPRS_ERR_COR;
 
   // read cum counts
   lencnt_[0] = 0;
@@ -133,9 +136,12 @@ bool DataFilt_Min<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
   T minval = (T)0 - (T)1;
   for (uint i = 0; i < nrec; i++)
     // if(data[i] < minval) minval = data[i];
-    if ((data[i] < minval) && ((minval = data[i]) == 0)) break;
-  if (minval == 0) return false;
-  if (minval > dataset->maxval) throw CprsErr::CPRS_ERR_PAR;
+    if ((data[i] < minval) && ((minval = data[i]) == 0))
+      break;
+  if (minval == 0)
+    return false;
+  if (minval > dataset->maxval)
+    throw CprsErr::CPRS_ERR_PAR;
 
   // save 'minval'
   coder->EncodeUniform(minval, dataset->maxval);
@@ -190,9 +196,12 @@ bool DataFilt_GCD<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
   // find GCD
   T gcd = 0;
   for (uint i = 0; i < nrec; i++)
-    if ((gcd = GCD(gcd, data[i])) == 1) break;
-  if (gcd <= 1) return false;
-  if (gcd > dataset->maxval) throw CprsErr::CPRS_ERR_PAR;
+    if ((gcd = GCD(gcd, data[i])) == 1)
+      break;
+  if (gcd <= 1)
+    return false;
+  if (gcd > dataset->maxval)
+    throw CprsErr::CPRS_ERR_PAR;
 
   // save
   coder->EncodeUniform(gcd, dataset->maxval);
@@ -275,12 +284,14 @@ double DataFilt_Diff<T>::Measure(DataSet<T> *dataset, bool diff) {
 template <class T>
 bool DataFilt_Diff<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
   uint nrec = dataset->nrec;
-  if (nrec < 100) return false;
+  if (nrec < 100)
+    return false;
 
   double m_orig = Measure(dataset, false);
   double m_diff = Measure(dataset, true);
 
-  if (m_diff >= 0.99 * m_orig) return false;
+  if (m_diff >= 0.99 * m_orig)
+    return false;
 
   // save version of this routine, using 2 bits (3 = 2^2-1)
   coder->EncodeUniform((uchar)0, (uchar)3);
@@ -292,7 +303,8 @@ bool DataFilt_Diff<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
   // make earlyEnd_directive::full differencing
   for (uint i = 0; i < nrec; i++) {
     data[i] = (curr = data[i]) - last;
-    if (last > curr) data[i] += maxval1;
+    if (last > curr)
+      data[i] += maxval1;
     DEBUG_ASSERT(data[i] <= dataset->maxval);
     last = curr;
   }
@@ -304,7 +316,8 @@ template <class T>
 void DataFilt_Diff<T>::Decode(RangeCoder *coder, [[maybe_unused]] DataSet<T> *dataset) {
   uchar ver;
   coder->DecodeUniform(ver, (uchar)3);
-  if (ver > 0) throw CprsErr::CPRS_ERR_COR;
+  if (ver > 0)
+    throw CprsErr::CPRS_ERR_COR;
 }
 
 template <class T>
@@ -317,7 +330,8 @@ void DataFilt_Diff<T>::Merge(DataSet<T> *dataset) {
   T maxval = dataset->maxval, maxval1 = maxval + 1;
   for (uint i = 0; i < nrec; i++) {
     curr = last + data[i];
-    if ((curr > maxval) || (curr < last)) curr -= maxval1;
+    if ((curr > maxval) || (curr < last))
+      curr -= maxval1;
     DEBUG_ASSERT(curr <= maxval);
     last = data[i] = curr;
   }
@@ -350,7 +364,8 @@ void DataFilt_Uniform<T>::Decode(RangeCoder *coder, DataSet<T> *dataset) {
   // read version
   uchar ver;
   coder->DecodeUniform(ver, (uchar)3);
-  if (ver > 0) throw CprsErr::CPRS_ERR_COR;
+  if (ver > 0)
+    throw CprsErr::CPRS_ERR_COR;
 
   T *data = dataset->data;
   T maxval = dataset->maxval;

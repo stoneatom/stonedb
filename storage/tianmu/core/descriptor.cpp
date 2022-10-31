@@ -103,7 +103,8 @@ Descriptor::Descriptor(const Descriptor &desc) {
   table = desc.table;
   collation = desc.collation;
   tree = nullptr;
-  if (desc.tree) tree = new DescTree(*desc.tree);
+  if (desc.tree)
+    tree = new DescTree(*desc.tree);
   left_dims = desc.left_dims;
   right_dims = desc.right_dims;
   rv = desc.rv;
@@ -151,7 +152,8 @@ Descriptor::Descriptor(DescTree *sec_tree, TempTable *t, int no_dims)
       collation(DTCollation()),
       null_after_simplify(false) {
   tree = nullptr;
-  if (sec_tree) tree = new DescTree(*sec_tree);
+  if (sec_tree)
+    tree = new DescTree(*sec_tree);
   CalculateJoinType();
 }
 
@@ -205,7 +207,8 @@ void Descriptor::swap(Descriptor &d) {
 }
 
 Descriptor &Descriptor::operator=(const Descriptor &d) {
-  if (&d == this) return *this;
+  if (&d == this)
+    return *this;
   op = d.op;
   lop = d.lop;
   attr = d.attr;
@@ -221,7 +224,8 @@ Descriptor &Descriptor::operator=(const Descriptor &d) {
   table = d.table;
   delete tree;
   tree = nullptr;
-  if (d.tree) tree = new DescTree(*d.tree);
+  if (d.tree)
+    tree = new DescTree(*d.tree);
   left_dims = d.left_dims;
   right_dims = d.right_dims;
   desc_t = d.desc_t;
@@ -241,7 +245,8 @@ int Descriptor::operator==(const Descriptor &sec) const {
 }
 
 bool Descriptor::operator<=(const Descriptor &sec) const {
-  if (*this == sec) return true;
+  if (*this == sec)
+    return true;
   MIIterator dummy_mit;
   if (attr == sec.attr && (!val1.vc || val1.vc->IsConst()) && (!val2.vc || val2.vc->IsConst()) &&
       (!sec.val1.vc || sec.val1.vc->IsConst()) && (!sec.val2.vc || sec.val2.vc->IsConst())) {
@@ -345,7 +350,8 @@ void Descriptor::SwitchSides()  // change "a<b" into "b>a" etc; throw error if
 bool Descriptor::IsType_AttrValOrAttrValVal() const  // true if "phys column op val or column between val and val or "
 {
   // or "phys_column IS nullptr/NOT nullptr"
-  if (attr.vc == nullptr || !static_cast<int>(attr.vc->IsSingleColumn())) return false;
+  if (attr.vc == nullptr || !static_cast<int>(attr.vc->IsSingleColumn()))
+    return false;
   return ((val1.vc && val1.vc->IsConst()) ||
           (op == common::Operator::O_IS_NULL || op == common::Operator::O_NOT_NULL)) &&
          (!val2.vc || (val2.vc && val2.vc->IsConst()));
@@ -378,7 +384,8 @@ bool Descriptor::IsType_AttrAttr() const  // true if "column op column" from one
 
 bool Descriptor::IsType_TIANMUExpression() const  // only columns, constants and TIANMUExpressions
 {
-  if (attr.vc == nullptr) return false;
+  if (attr.vc == nullptr)
+    return false;
   if ((static_cast<int>(attr.vc->IsSingleColumn()) || attr.vc->IsConst()) &&
       (val1.vc == nullptr || static_cast<int>(val1.vc->IsSingleColumn()) || val1.vc->IsConst()) &&
       (val2.vc == nullptr || static_cast<int>(val2.vc->IsSingleColumn()) || val2.vc->IsConst()))
@@ -427,9 +434,11 @@ bool Descriptor::IsType_JoinComplex() const {
 }
 
 common::RSValue Descriptor::EvaluateRoughlyPack(const MIIterator &mit) {
-  if (IsType_OrTree()) return tree->root->EvaluateRoughlyPack(mit);
+  if (IsType_OrTree())
+    return tree->root->EvaluateRoughlyPack(mit);
   common::RSValue r = common::RSValue::RS_SOME;
-  if (attr.vc /*&& !attr.vc->IsConst()*/) r = attr.vc->RoughCheck(mit, *this);
+  if (attr.vc /*&& !attr.vc->IsConst()*/)
+    r = attr.vc->RoughCheck(mit, *this);
   if (rv == common::RSValue::RS_UNKNOWN)
     rv = r;
   else if (rv == common::RSValue::RS_NONE && r != common::RSValue::RS_NONE)
@@ -442,7 +451,8 @@ common::RSValue Descriptor::EvaluateRoughlyPack(const MIIterator &mit) {
 void Descriptor::Simplify(bool in_having) {
   MEASURE_FET("Descriptor::Simplify(...)");
   static MIIterator const mit(nullptr, table->Getpackpower());
-  if (op == common::Operator::O_FALSE || op == common::Operator::O_TRUE) return;
+  if (op == common::Operator::O_FALSE || op == common::Operator::O_TRUE)
+    return;
 
   if (IsType_OrTree()) {
     common::Tribool res = tree->Simplify(in_having);
@@ -466,7 +476,8 @@ void Descriptor::Simplify(bool in_having) {
        op == common::Operator::O_LESS_EQ || op == common::Operator::O_MORE || op == common::Operator::O_MORE_EQ)) {
     SwitchSides();
   }
-  if (Query::IsAllAny(op) && dynamic_cast<vcolumn::MultiValColumn *>(val1.vc) == nullptr) Query::UnmarkAllAny(op);
+  if (Query::IsAllAny(op) && dynamic_cast<vcolumn::MultiValColumn *>(val1.vc) == nullptr)
+    Query::UnmarkAllAny(op);
   if ((attr.vc && (!attr.vc->IsConst() || (in_having && attr.vc->IsParameterized()))) ||
       (val1.vc && (!val1.vc->IsConst() || (in_having && val1.vc->IsParameterized()))) ||
       (val2.vc && (!val2.vc->IsConst() || (in_having && val2.vc->IsParameterized())))) {
@@ -511,7 +522,8 @@ void Descriptor::Simplify(bool in_having) {
     case common::Operator::O_EXISTS: {
       vcolumn::MultiValColumn *mvc = static_cast<vcolumn::MultiValColumn *>(attr.vc);
       res = mvc->CheckExists(mit);
-      if (op == common::Operator::O_NOT_EXISTS) res = !res;
+      if (op == common::Operator::O_NOT_EXISTS)
+        res = !res;
       break;
     }
     case common::Operator::O_NOT_NULL:
@@ -538,14 +550,16 @@ void Descriptor::Simplify(bool in_having) {
               types::RCValueObject::compare(rv1, rv3, common::Operator::O_LESS_EQ, '\\');
       }
 
-      if (op == common::Operator::O_NOT_BETWEEN && !acc->IsNull(mit)) res = !res;
+      if (op == common::Operator::O_NOT_BETWEEN && !acc->IsNull(mit))
+        res = !res;
       break;
     }
     default: {
       types::RCValueObject rv1 = acc->GetValue(mit);
       types::RCValueObject rv2 = v1cc->GetValue(mit);
       res = types::RCValueObject::compare(rv1, rv2, op, like_esc);
-      if (res == false && (rv1.IsNull() || rv2.IsNull())) null_after_simplify = true;
+      if (res == false && (rv1.IsNull() || rv2.IsNull()))
+        null_after_simplify = true;
     }
   }
   op = res ? common::Operator::O_TRUE : common::Operator::O_FALSE;
@@ -641,7 +655,8 @@ char *Descriptor::ToString(char buffer[], size_t buffer_size) {
   if (!IsInner()) {
     std::sprintf(buffer + std::strlen(buffer), " (outer");
     for (int i = 0; i < right_dims.Size(); ++i)
-      if (right_dims[i]) std::sprintf(buffer + std::strlen(buffer), " %d", i);
+      if (right_dims[i])
+        std::sprintf(buffer + std::strlen(buffer), " %d", i);
     std::sprintf(buffer + std::strlen(buffer), ")");
   }
   return buffer;
@@ -775,26 +790,38 @@ void Descriptor::AppendTernaryOperatorToString(char buffer[], size_t size, const
 }
 
 void Descriptor::DimensionUsed(DimensionVector &dims) {
-  if (tree) tree->DimensionUsed(dims);
-  if (attr.vc) attr.vc->MarkUsedDims(dims);
-  if (val1.vc) val1.vc->MarkUsedDims(dims);
-  if (val2.vc) val2.vc->MarkUsedDims(dims);
+  if (tree)
+    tree->DimensionUsed(dims);
+  if (attr.vc)
+    attr.vc->MarkUsedDims(dims);
+  if (val1.vc)
+    val1.vc->MarkUsedDims(dims);
+  if (val2.vc)
+    val2.vc->MarkUsedDims(dims);
 }
 
 void Descriptor::LockSourcePacks(const MIIterator &mit) {
-  if (tree) tree->root->PrepareToLock(0);
-  if (attr.vc) attr.vc->LockSourcePacks(mit);
-  if (val1.vc) val1.vc->LockSourcePacks(mit);
-  if (val2.vc) val2.vc->LockSourcePacks(mit);
+  if (tree)
+    tree->root->PrepareToLock(0);
+  if (attr.vc)
+    attr.vc->LockSourcePacks(mit);
+  if (val1.vc)
+    val1.vc->LockSourcePacks(mit);
+  if (val2.vc)
+    val2.vc->LockSourcePacks(mit);
 }
 
 void Descriptor::LockSourcePacks(const MIIterator &mit, [[maybe_unused]] int th_no) { LockSourcePacks(mit); }
 
 void Descriptor::UnlockSourcePacks() {
-  if (tree) tree->root->UnlockSourcePacks();
-  if (attr.vc) attr.vc->UnlockSourcePacks();
-  if (val1.vc) val1.vc->UnlockSourcePacks();
-  if (val2.vc) val2.vc->UnlockSourcePacks();
+  if (tree)
+    tree->root->UnlockSourcePacks();
+  if (attr.vc)
+    attr.vc->UnlockSourcePacks();
+  if (val1.vc)
+    val1.vc->UnlockSourcePacks();
+  if (val2.vc)
+    val2.vc->UnlockSourcePacks();
 }
 
 void Descriptor::EvaluatePackImpl(MIUpdatingIterator &mit) {
@@ -816,9 +843,11 @@ void Descriptor::EvaluatePackImpl(MIUpdatingIterator &mit) {
   } else if (types::RequiresUTFConversions(collation)) {
     std::scoped_lock guard(mtx);
     while (mit.IsValid()) {
-      if (CheckCondition_UTF(mit) == false) mit.ResetCurrent();
+      if (CheckCondition_UTF(mit) == false)
+        mit.ResetCurrent();
       ++mit;
-      if (mit.PackrowStarted()) break;
+      if (mit.PackrowStarted())
+        break;
     }
   } else {
     if (IsType_Subquery() && op != common::Operator::O_OR_TREE) {
@@ -842,7 +871,8 @@ void Descriptor::EvaluatePackImpl(MIUpdatingIterator &mit) {
           else if (res == common::TRIBOOL_UNKNOWN && CheckCondition(mit) == false)
             mit.ResetCurrent();
           ++mit;
-          if (mit.PackrowStarted()) break;
+          if (mit.PackrowStarted())
+            break;
         }
         // cout << "# of skipped subqueries: " << true_c << "/" << false_c <<
         // "/" << unkn_c
@@ -852,9 +882,11 @@ void Descriptor::EvaluatePackImpl(MIUpdatingIterator &mit) {
     } else {
       std::scoped_lock guard(mtx);
       while (mit.IsValid()) {
-        if (CheckCondition(mit) == false) mit.ResetCurrent();
+        if (CheckCondition(mit) == false)
+          mit.ResetCurrent();
         ++mit;
-        if (mit.PackrowStarted()) break;
+        if (mit.PackrowStarted())
+          break;
       }
     }
   }
@@ -873,7 +905,8 @@ void Descriptor::UpdateVCStatistics()  // Apply all the information from
                                        // constants etc. to involved VC
 {
   MEASURE_FET("Descriptor::UpdateVCStatistics(...)");
-  if (attr.vc == nullptr) return;
+  if (attr.vc == nullptr)
+    return;
   if (op == common::Operator::O_IS_NULL) {
     attr.vc->SetLocalNullsOnly(true);
     return;
@@ -885,8 +918,10 @@ void Descriptor::UpdateVCStatistics()  // Apply all the information from
     int64_t v1 = common::NULL_VALUE_64;
     int64_t v2 = common::NULL_VALUE_64;
     if (op == common::Operator::O_BETWEEN) {
-      if (val1.vc) v1 = val1.vc->RoughMin();
-      if (val2.vc) v2 = val2.vc->RoughMax();
+      if (val1.vc)
+        v1 = val1.vc->RoughMin();
+      if (val2.vc)
+        v2 = val2.vc->RoughMax();
     } else if (op == common::Operator::O_EQ) {
       if (val1.vc) {
         v1 = val1.vc->RoughMin();
@@ -894,9 +929,11 @@ void Descriptor::UpdateVCStatistics()  // Apply all the information from
         val1.vc->SetLocalMinMax(v1, v2);  // apply to both sides
       }
     } else if (op == common::Operator::O_LESS || op == common::Operator::O_LESS_EQ) {
-      if (val1.vc) v2 = val1.vc->RoughMax();
+      if (val1.vc)
+        v2 = val1.vc->RoughMax();
     } else if (op == common::Operator::O_MORE || op == common::Operator::O_MORE_EQ) {
-      if (val1.vc) v1 = val1.vc->RoughMin();
+      if (val1.vc)
+        v1 = val1.vc->RoughMin();
     }
     int v1_scale = val1.vc ? val1.vc->Type().GetScale() : 0;
     int v2_scale = val2.vc ? val2.vc->Type().GetScale() : v1_scale;
@@ -935,15 +972,18 @@ bool Descriptor::CheckCondition_UTF(const MIIterator &mit) {
   // Assumption: LockSourcePack externally done.
   if (op == common::Operator::O_EQ) {  // fast track for the most common operator
     DEBUG_ASSERT(attr.vc && val1.vc && types::RequiresUTFConversions(collation));
-    if (attr.vc->IsNull(mit) || val1.vc->IsNull(mit)) return false;
+    if (attr.vc->IsNull(mit) || val1.vc->IsNull(mit))
+      return false;
     types::BString s1, s2;
     attr.vc->GetNotNullValueString(s1, mit);
     val1.vc->GetNotNullValueString(s2, mit);
     return CollationStrCmp(collation, s1, s2) == 0;
   } else if (op == common::Operator::O_NOT_NULL) {
-    if (attr.vc->IsNull(mit)) return false;
+    if (attr.vc->IsNull(mit))
+      return false;
   } else if (op == common::Operator::O_IS_NULL) {
-    if (!attr.vc->IsNull(mit)) return false;
+    if (!attr.vc->IsNull(mit))
+      return false;
   } else if (op == common::Operator::O_EXISTS || op == common::Operator::O_NOT_EXISTS) {
     DEBUG_ASSERT(dynamic_cast<vcolumn::SubSelectColumn *>(attr.vc));
     vcolumn::SubSelectColumn *sub = static_cast<vcolumn::SubSelectColumn *>(attr.vc);
@@ -951,7 +991,8 @@ bool Descriptor::CheckCondition_UTF(const MIIterator &mit) {
     if ((op == common::Operator::O_EXISTS && !is_nonempty) || (op == common::Operator::O_NOT_EXISTS && is_nonempty))
       return false;
   } else if (op == common::Operator::O_BETWEEN || op == common::Operator::O_NOT_BETWEEN) {
-    if (attr.vc->IsNull(mit)) return false;
+    if (attr.vc->IsNull(mit))
+      return false;
     // need to consider three value logic
     types::BString s1, s2, s3;
     attr.vc->GetNotNullValueString(s1, mit);
@@ -968,15 +1009,18 @@ bool Descriptor::CheckCondition_UTF(const MIIterator &mit) {
       val2_res = val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(attr_le_val2);
     }
     if (op == common::Operator::O_BETWEEN) {
-      if (val1_res != true || val2_res != true) return false;
+      if (val1_res != true || val2_res != true)
+        return false;
     } else {
-      if (val1_res != false && val2_res != false) return false;
+      if (val1_res != false && val2_res != false)
+        return false;
     }
   } else if (IsSetOperator(op)) {
     DEBUG_ASSERT(attr.vc && dynamic_cast<vcolumn::MultiValColumn *>(val1.vc));
     return CheckSetCondition_UTF(mit, op);
   } else if (op == common::Operator::O_LIKE || op == common::Operator::O_NOT_LIKE) {
-    if (attr.vc->IsNull(mit) || val1.vc->IsNull(mit)) return false;
+    if (attr.vc->IsNull(mit) || val1.vc->IsNull(mit))
+      return false;
     types::BString v, pattern;
     attr.vc->GetNotNullValueString(v, mit);
     val1.vc->GetNotNullValueString(pattern, mit);
@@ -992,11 +1036,13 @@ bool Descriptor::CheckCondition_UTF(const MIIterator &mit) {
     return tree->root->CheckCondition(const_cast<MIIterator &>(mit));
   } else {  // all other logical operators: >, >=, <, <=
     DEBUG_ASSERT(attr.vc && val1.vc);
-    if (attr.vc->IsNull(mit) || val1.vc->IsNull(mit)) return false;
+    if (attr.vc->IsNull(mit) || val1.vc->IsNull(mit))
+      return false;
     types::BString s1, s2;
     attr.vc->GetNotNullValueString(s1, mit);
     val1.vc->GetNotNullValueString(s2, mit);
-    if (!CollationStrCmp(collation, s1, s2, op)) return false;
+    if (!CollationStrCmp(collation, s1, s2, op))
+      return false;
   }
   return result;
 }
@@ -1014,11 +1060,14 @@ bool Descriptor::CheckCondition(const MIIterator &mit) {
   if (op == common::Operator::O_EQ) {  // fast track for the most common operator
     DEBUG_ASSERT(attr.vc && val1.vc);
     // nulls checked in operator ==
-    if (!(attr.vc->GetValue(mit) == val1.vc->GetValue(mit))) return false;
+    if (!(attr.vc->GetValue(mit) == val1.vc->GetValue(mit)))
+      return false;
   } else if (op == common::Operator::O_NOT_NULL) {
-    if (attr.vc->IsNull(mit)) return false;
+    if (attr.vc->IsNull(mit))
+      return false;
   } else if (op == common::Operator::O_IS_NULL) {
-    if (!attr.vc->IsNull(mit)) return false;
+    if (!attr.vc->IsNull(mit))
+      return false;
   } else if (op == common::Operator::O_EXISTS || op == common::Operator::O_NOT_EXISTS) {
     DEBUG_ASSERT(dynamic_cast<vcolumn::SubSelectColumn *>(attr.vc));
     vcolumn::SubSelectColumn *sub = static_cast<vcolumn::SubSelectColumn *>(attr.vc);
@@ -1026,7 +1075,8 @@ bool Descriptor::CheckCondition(const MIIterator &mit) {
     if ((op == common::Operator::O_EXISTS && !is_nonempty) || (op == common::Operator::O_NOT_EXISTS && is_nonempty))
       return false;
   } else if (op == common::Operator::O_BETWEEN || op == common::Operator::O_NOT_BETWEEN) {
-    if (attr.vc->IsNull(mit)) return false;
+    if (attr.vc->IsNull(mit))
+      return false;
     // need to consider three value logic
     common::Tribool val1_res, val2_res;
     if (encoded) {
@@ -1060,9 +1110,11 @@ bool Descriptor::CheckCondition(const MIIterator &mit) {
           val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(rcvo1 <= val2.vc->GetValue(mit, false));
     }
     if (op == common::Operator::O_BETWEEN) {
-      if (val1_res != true || val2_res != true) return false;
+      if (val1_res != true || val2_res != true)
+        return false;
     } else {
-      if (val1_res != false && val2_res != false) return false;
+      if (val1_res != false && val2_res != false)
+        return false;
     }
   } else if (IsSetOperator(op)) {
     DEBUG_ASSERT(attr.vc && dynamic_cast<vcolumn::MultiValColumn *>(val1.vc));
@@ -1072,27 +1124,33 @@ bool Descriptor::CheckCondition(const MIIterator &mit) {
     return tree->root->CheckCondition((const_cast<MIIterator &>(mit)));
   } else {  // all other logical operators: >, >=, <, <=
     DEBUG_ASSERT(attr.vc && val1.vc);
-    if (attr.vc->IsNull(mit) || val1.vc->IsNull(mit)) return false;
-    if (!types::RCValueObject::compare(attr.vc->GetValue(mit), val1.vc->GetValue(mit), op, like_esc)) return false;
+    if (attr.vc->IsNull(mit) || val1.vc->IsNull(mit))
+      return false;
+    if (!types::RCValueObject::compare(attr.vc->GetValue(mit), val1.vc->GetValue(mit), op, like_esc))
+      return false;
   }
   return result;
 }
 
 bool Descriptor::IsNull(const MIIterator &mit) {
   MEASURE_FET("Descriptor::IsNull(...)");
-  if (null_after_simplify) return true;
-  if (op == common::Operator::O_TRUE || op == common::Operator::O_FALSE) return false;
+  if (null_after_simplify)
+    return true;
+  if (op == common::Operator::O_TRUE || op == common::Operator::O_FALSE)
+    return false;
 
   // Assumption: LockSourcePacks externally done.
   if (op == common::Operator::O_EQ) {
     DEBUG_ASSERT(attr.vc && val1.vc);
-    if (attr.vc->IsNull(mit) || val1.vc->IsNull(mit)) return true;
+    if (attr.vc->IsNull(mit) || val1.vc->IsNull(mit))
+      return true;
   } else if (op == common::Operator::O_NOT_NULL || op == common::Operator::O_IS_NULL) {
     return false;
   } else if (op == common::Operator::O_EXISTS || op == common::Operator::O_NOT_EXISTS) {
     return false;
   } else if (op == common::Operator::O_BETWEEN || op == common::Operator::O_NOT_BETWEEN) {
-    if (attr.vc->IsNull(mit)) return true;
+    if (attr.vc->IsNull(mit))
+      return true;
     // need to consider three value logic
     common::Tribool val1_res, val2_res;
     if (encoded) {
@@ -1125,7 +1183,8 @@ bool Descriptor::IsNull(const MIIterator &mit) {
       val2_res =
           val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(rcvo1 <= val2.vc->GetValue(mit, false));
     }
-    if (common::Tribool::And(val1_res, val2_res) == common::TRIBOOL_UNKNOWN) return true;
+    if (common::Tribool::And(val1_res, val2_res) == common::TRIBOOL_UNKNOWN)
+      return true;
   } else if (IsSetOperator(op)) {
     DEBUG_ASSERT(attr.vc && dynamic_cast<vcolumn::MultiValColumn *>(val1.vc));
     return IsNull_Set(mit, op);
@@ -1134,13 +1193,15 @@ bool Descriptor::IsNull(const MIIterator &mit) {
     return tree->root->CheckCondition(const_cast<MIIterator &>(mit));
   } else {  // all other logical operators: >, >=, <, <=
     DEBUG_ASSERT(attr.vc && val1.vc);
-    if (attr.vc->IsNull(mit) || val1.vc->IsNull(mit)) return true;
+    if (attr.vc->IsNull(mit) || val1.vc->IsNull(mit))
+      return true;
   }
   return false;
 }
 
 common::Tribool Descriptor::RoughCheckSubselectCondition(MIIterator &mit, SubSelectOptimizationType sot) {
-  if (sot == SubSelectOptimizationType::PACK_BASED) return common::TRIBOOL_UNKNOWN;  // not implemented
+  if (sot == SubSelectOptimizationType::PACK_BASED)
+    return common::TRIBOOL_UNKNOWN;  // not implemented
   MEASURE_FET("Descriptor::RoughCheckSubselectCondition(...)");
   if (op == common::Operator::O_TRUE)
     return true;
@@ -1203,7 +1264,8 @@ common::Tribool Descriptor::RoughCheckSubselectCondition(MIIterator &mit, SubSel
     sub = static_cast<vcolumn::SubSelectColumn *>(val1.vc);
     val = attr.vc;
   }
-  if (sub->IsMaterialized()) return common::TRIBOOL_UNKNOWN;
+  if (sub->IsMaterialized())
+    return common::TRIBOOL_UNKNOWN;
 
   RoughValue rv = sub->RoughGetValue(mit, sot);
   std::shared_ptr<types::RCDataType> rv_min, rv_max;
@@ -1218,27 +1280,33 @@ common::Tribool Descriptor::RoughCheckSubselectCondition(MIIterator &mit, SubSel
   DEBUG_ASSERT(attr.vc);
   // NULLs are checked within operators
   if (op == common::Operator::O_EQ) {
-    if (v < *rv_min || v > *rv_max) return false;
+    if (v < *rv_min || v > *rv_max)
+      return false;
     // else if(v == rv_min && v == rv_max)
     //	return true;
   } else if (op == common::Operator::O_NOT_EQ) {
-    if (v == *rv_min && v == *rv_max) return false;
+    if (v == *rv_min && v == *rv_max)
+      return false;
     // else if(v < rv_min || v > rv_max)
     //	return true;
   } else if (op == common::Operator::O_MORE_EQ) {
-    if (v < *rv_min) return false;
+    if (v < *rv_min)
+      return false;
     // else if(v >= rv_max)
     //	return true;
   } else if (op == common::Operator::O_MORE) {
-    if (v <= *rv_min) return false;
+    if (v <= *rv_min)
+      return false;
     // else if(v > rv_max)
     //	return true;
   } else if (op == common::Operator::O_LESS_EQ) {
-    if (v > *rv_max) return false;
+    if (v > *rv_max)
+      return false;
     // else if(v <= rv_min)
     //	return true;
   } else if (op == common::Operator::O_LESS) {
-    if (v >= *rv_max) return false;
+    if (v >= *rv_max)
+      return false;
     // else if(v < rv_min)
     //	return true;
   }
@@ -1258,7 +1326,8 @@ bool Descriptor::CheckSetCondition_UTF(const MIIterator &mit, common::Operator o
         types::BString s2 = it->GetString();
         // ConvertToBinaryForm(it->GetString(), buf_val1, buf_val1_len,
         // collation.collation, false);
-        if (s1.IsNull() || it->IsNull() || CollationStrCmp(collation, s1, s2) != 0) return false;
+        if (s1.IsNull() || it->IsNull() || CollationStrCmp(collation, s1, s2) != 0)
+          return false;
       }
       break;
     case common::Operator::O_IN:
@@ -1285,7 +1354,8 @@ bool Descriptor::CheckSetCondition_UTF(const MIIterator &mit, common::Operator o
         for (vcolumn::MultiValColumn::Iterator it = mvc->begin(mit), end = mvc->end(mit); it != end; ++it) {
           // ConvertToBinaryForm(it->GetString(), buf_val1, buf_val1_len,
           // collation.collation, false);
-          if (!it->IsNull() && CollationStrCmp(collation, s1, it->GetString()) != 0) return true;
+          if (!it->IsNull() && CollationStrCmp(collation, s1, it->GetString()) != 0)
+            return true;
         }
       }
       break;
@@ -1341,8 +1411,10 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
   if (encoded) {
     DEBUG_ASSERT(op == common::Operator::O_IN || op == common::Operator::O_NOT_IN);
     if (attr.vc->IsNull(mit)) {
-      if (op == common::Operator::O_IN) return false;
-      if (mvc->NumOfValues(mit) != 0) return false;
+      if (op == common::Operator::O_IN)
+        return false;
+      if (mvc->NumOfValues(mit) != 0)
+        return false;
       return true;
     }
     common::Tribool res;
@@ -1354,7 +1426,8 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
       int64_t val = attr.vc->GetNotNullValueInt64(mit);
       res = mvc->Contains64(mit, val);
     }
-    if (op == common::Operator::O_NOT_IN) res = !res;
+    if (op == common::Operator::O_NOT_IN)
+      res = !res;
     return (res == true);
   }
   types::RCValueObject val = attr.vc->GetValue(mit);
@@ -1445,7 +1518,8 @@ bool Descriptor::IsNull_Set(const MIIterator &mit, common::Operator op) {
   vcolumn::MultiValColumn *mvc = static_cast<vcolumn::MultiValColumn *>(val1.vc);
   if (encoded) {
     DEBUG_ASSERT(op == common::Operator::O_IN || op == common::Operator::O_NOT_IN);
-    if (attr.vc->IsNull(mit)) return true;
+    if (attr.vc->IsNull(mit))
+      return true;
     common::Tribool res;
     if (attr.vc->Type().IsString() && !attr.vc->Type().IsLookup()) {
       types::BString val;
@@ -1462,33 +1536,39 @@ bool Descriptor::IsNull_Set(const MIIterator &mit, common::Operator op) {
   switch (op) {
     case common::Operator::O_EQ_ALL:
     case common::Operator::O_NOT_EQ_ALL:
-      if (val.IsNull() || mvc->ContainsNull(mit)) return true;
+      if (val.IsNull() || mvc->ContainsNull(mit))
+        return true;
       break;
     case common::Operator::O_IN:
     case common::Operator::O_EQ_ANY:
     case common::Operator::O_NOT_IN:
     case common::Operator::O_NOT_EQ_ANY:
-      if (val.IsNull()) return true;
+      if (val.IsNull())
+        return true;
       return (mvc->Contains(mit, *val) == common::TRIBOOL_UNKNOWN);
     case common::Operator::O_LESS_ALL:
     case common::Operator::O_LESS_EQ_ALL:
       aggr = mvc->GetSetMin(mit);
-      if (val.IsNull() || aggr.IsNull() || mvc->ContainsNull(mit)) return true;
+      if (val.IsNull() || aggr.IsNull() || mvc->ContainsNull(mit))
+        return true;
       break;
     case common::Operator::O_MORE_ANY:
     case common::Operator::O_MORE_EQ_ANY:
       aggr = mvc->GetSetMin(mit);
-      if (val.IsNull() || aggr.IsNull()) return true;
+      if (val.IsNull() || aggr.IsNull())
+        return true;
       break;
     case common::Operator::O_LESS_ANY:
     case common::Operator::O_LESS_EQ_ANY:
       aggr = mvc->GetSetMax(mit);
-      if (val.IsNull() || aggr.IsNull()) return true;
+      if (val.IsNull() || aggr.IsNull())
+        return true;
       break;
     case common::Operator::O_MORE_ALL:
     case common::Operator::O_MORE_EQ_ALL:
       aggr = mvc->GetSetMax(mit);
-      if (val.IsNull() || aggr.IsNull() || mvc->ContainsNull(mit)) return true;
+      if (val.IsNull() || aggr.IsNull() || mvc->ContainsNull(mit))
+        return true;
       break;
     default:
       DEBUG_ASSERT(0 && "unexpected operator");
@@ -1503,7 +1583,8 @@ common::Tribool Descriptor::RoughCheckSetSubSelectCondition(const MIIterator &mi
   DEBUG_ASSERT(IsSetOperator(op));
   DEBUG_ASSERT(val1.vc->IsSubSelect());
   vcolumn::SubSelectColumn *sub = static_cast<vcolumn::SubSelectColumn *>(val1.vc);
-  if (sub->IsMaterialized()) return common::TRIBOOL_UNKNOWN;
+  if (sub->IsMaterialized())
+    return common::TRIBOOL_UNKNOWN;
 
   RoughValue rv = sub->RoughGetValue(mit, sot);
   std::shared_ptr<types::RCDataType> rv_min, rv_max;
@@ -1656,18 +1737,22 @@ void Descriptor::CoerceColumnTypes() {
     } else
       CoerceColumnType(val1.vc);
   }
-  if (val2.vc) CoerceColumnType(val2.vc);
+  if (val2.vc)
+    CoerceColumnType(val2.vc);
   CoerceCollation();
 }
 
 bool Descriptor::NullMayBeTrue()  // true, if the descriptor may give nontrivial
                                   // answer if any of involved dimension is null
 {
-  if (op == common::Operator::O_IS_NULL || op == common::Operator::O_NOT_NULL) return true;
-  if (IsType_OrTree()) return tree->NullMayBeTrue();
+  if (op == common::Operator::O_IS_NULL || op == common::Operator::O_NOT_NULL)
+    return true;
+  if (IsType_OrTree())
+    return tree->NullMayBeTrue();
 
   // t1.a not between t2.b and t1.b
-  if (op == common::Operator::O_NOT_BETWEEN) return true;
+  if (op == common::Operator::O_NOT_BETWEEN)
+    return true;
   // TODO: more precise conditions
   // Examples:
   //    (a is null) = 1
@@ -1678,9 +1763,12 @@ bool Descriptor::NullMayBeTrue()  // true, if the descriptor may give nontrivial
   //    f < ALL (1, 2, a)
 
   // For now, a simplistic version: any complex case is true.
-  if (attr.vc && !static_cast<int>(attr.vc->IsSingleColumn()) && !attr.vc->IsConst()) return true;
-  if (val1.vc && !static_cast<int>(val1.vc->IsSingleColumn()) && !val1.vc->IsConst()) return true;
-  if (val2.vc && !static_cast<int>(val2.vc->IsSingleColumn()) && !val2.vc->IsConst()) return true;
+  if (attr.vc && !static_cast<int>(attr.vc->IsSingleColumn()) && !attr.vc->IsConst())
+    return true;
+  if (val1.vc && !static_cast<int>(val1.vc->IsSingleColumn()) && !val1.vc->IsConst())
+    return true;
+  if (val2.vc && !static_cast<int>(val2.vc->IsSingleColumn()) && !val2.vc->IsConst())
+    return true;
   return false;
 }
 
@@ -1691,9 +1779,12 @@ bool Descriptor::IsParameterized() const {
 
 bool Descriptor::IsDeterministic() const {
   bool det = true;
-  if (attr.vc) det = det && attr.vc->IsDeterministic();
-  if (val1.vc) det = det && val1.vc->IsDeterministic();
-  if (val2.vc) det = det && val2.vc->IsDeterministic();
+  if (attr.vc)
+    det = det && attr.vc->IsDeterministic();
+  if (val1.vc)
+    det = det && val1.vc->IsDeterministic();
+  if (val2.vc)
+    det = det && val2.vc->IsDeterministic();
   return det;
 }
 
@@ -1724,8 +1815,10 @@ bool Descriptor::IsTIANMUItemsEmpty() {
 
 void Descriptor::CoerceCollation() {
   collation = attr.vc && attr.vc->Type().IsString() ? attr.vc->GetCollation() : DTCollation();
-  if (val1.vc && val1.vc->Type().IsString()) collation = types::ResolveCollation(collation, val1.vc->GetCollation());
-  if (val2.vc && val2.vc->Type().IsString()) collation = types::ResolveCollation(collation, val2.vc->GetCollation());
+  if (val1.vc && val1.vc->Type().IsString())
+    collation = types::ResolveCollation(collation, val1.vc->GetCollation());
+  if (val2.vc && val2.vc->Type().IsString())
+    collation = types::ResolveCollation(collation, val2.vc->GetCollation());
 }
 
 void Descriptor::ClearRoughValues() {
@@ -1742,7 +1835,8 @@ void Descriptor::RoughAccumulate(MIIterator &mit) {
 
 void Descriptor::SimplifyAfterRoughAccumulate() {
   if (IsType_OrTree()) {
-    if (tree->UseRoughAccumulated()) Simplify(false);
+    if (tree->UseRoughAccumulated())
+      Simplify(false);
   } else {
     if (rv == common::RSValue::RS_NONE)
       op = common::Operator::O_FALSE;
@@ -1769,7 +1863,8 @@ bool Descriptor::CopyDesCond(MIUpdatingIterator &mit) {
         val1.cond_value.clear();
         return multival_column->CopyCond(mit, val1.cond_value, collation);
       } else if (pack_type == common::PackType::INT) {
-        if (val1.cond_numvalue != nullptr) val1.cond_numvalue.reset();
+        if (val1.cond_numvalue != nullptr)
+          val1.cond_numvalue.reset();
         return multival_column->CopyCond(mit, val1.cond_numvalue, collation);
       }
     }
@@ -1782,12 +1877,14 @@ void Descriptor::PrepareValueSet(MIIterator &mit) {
     tree->root->PrepareValueSet(mit);
   else {
     vcolumn::InSetColumn *set_column = dynamic_cast<vcolumn::InSetColumn *>(val1.vc);
-    if (set_column != nullptr) set_column->PrepareValueSet(mit);
+    if (set_column != nullptr)
+      set_column->PrepareValueSet(mit);
   }
 }
 
 bool Descriptor::CheckTmpInTerm(const CQTerm &t) const {
-  if (!t.vc) return false;
+  if (!t.vc)
+    return false;
 
   for (auto &var_map : t.vc->GetVarMap()) {
     if (var_map.GetTabPtr()->TableType() == TType::TEMP_TABLE) {
@@ -1802,7 +1899,8 @@ bool Descriptor::ExsitTmpTable() const {
 }
 
 bool Descriptor::IsleftIndexSearch() const {
-  if (!tianmu_sysvar_index_search || IsType_OrTree()) return false;
+  if (!tianmu_sysvar_index_search || IsType_OrTree())
+    return false;
   if (IsType_AttrValOrAttrValVal() && encoded) {
     auto col = static_cast<vcolumn::SingleColumn *>(attr.vc);
     if (table && table->NumOfTables() == 1 && table->GetTableP(0)->TableType() == TType::TABLE &&
@@ -1813,7 +1911,8 @@ bool Descriptor::IsleftIndexSearch() const {
 
       if (indextab) {
         std::vector<uint> keycols = indextab->KeyCols();
-        if (keycols.size() > 0 && colid == keycols[0]) return true;
+        if (keycols.size() > 0 && colid == keycols[0])
+          return true;
       }
     }
   }
@@ -1890,7 +1989,8 @@ DescTree::DescTree(CQTerm e1, common::Operator op, CQTerm e2, CQTerm e3, TempTab
 DescTree::DescTree(DescTree &t) { curr = root = Copy(t.root); }
 
 DescTreeNode *DescTree::Copy(DescTreeNode *node) {
-  if (!node) return nullptr;
+  if (!node)
+    return nullptr;
   DescTreeNode *res = new DescTreeNode(*node);
   if (node->left) {
     res->left = Copy(node->left);
@@ -1943,9 +2043,12 @@ void DescTree::AddTree(common::LogicalOperator lop, DescTree *tree, int no_dims)
 void DescTree::Display() { Display(root); }
 
 void DescTree::Display(DescTreeNode *node) {
-  if (node == nullptr) return;
-  if (node->left) Display(node->left);
-  if (node->right) Display(node->right);
+  if (node == nullptr)
+    return;
+  if (node->left)
+    Display(node->left);
+  if (node->right)
+    Display(node->right);
   std::cout << "------------------------" << std::endl;
   if (node->left)
     std::cout << (static_cast<int>(node->desc.lop) ? "OR" : "AND") << std::endl;
@@ -1988,14 +2091,18 @@ bool DescriptorEqual(std::pair<int, Descriptor> const &d1, std::pair<int, Descri
 }
 
 DescTreeNode::~DescTreeNode() {
-  if (left) delete left;
-  if (right) delete right;
+  if (left)
+    delete left;
+  if (right)
+    delete right;
 }
 
 common::Tribool DescTreeNode::Simplify(DescTreeNode *&root, bool in_having) {
   common::Tribool left_res, right_res;
-  if (left) left_res = left->Simplify(root, in_having);
-  if (right) right_res = right->Simplify(root, in_having);
+  if (left)
+    left_res = left->Simplify(root, in_having);
+  if (right)
+    right_res = right->Simplify(root, in_having);
   if (desc.op == common::Operator::O_OR_TREE) {
     common::Tribool res = (desc.lop == common::LogicalOperator::O_AND ? common::Tribool::And(left_res, right_res)
                                                                       : common::Tribool::Or(left_res, right_res));
@@ -2069,12 +2176,16 @@ bool DescTreeNode::CheckCondition(MIIterator &mit) {
   if (left) {             // i.e., not a leaf
     DEBUG_ASSERT(right);  // if left is not empty so should be right
     if (desc.lop == common::LogicalOperator::O_AND) {
-      if (!left->CheckCondition(mit)) return false;
-      if (!right->CheckCondition(mit)) return false;
+      if (!left->CheckCondition(mit))
+        return false;
+      if (!right->CheckCondition(mit))
+        return false;
       return true;
     } else {
-      if (left->CheckCondition(mit)) return true;
-      if (right->CheckCondition(mit)) return true;
+      if (left->CheckCondition(mit))
+        return true;
+      if (right->CheckCondition(mit))
+        return true;
       return false;
     }
   } else {  // i.e., a leaf
@@ -2120,9 +2231,11 @@ void DescTreeNode::EvaluatePack(MIUpdatingIterator &mit) {
   // general case:
   if (single_dim == -1) {
     while (mit.IsValid()) {
-      if (CheckCondition(mit) == false) mit.ResetCurrent();
+      if (CheckCondition(mit) == false)
+        mit.ResetCurrent();
       ++mit;
-      if (mit.PackrowStarted()) break;
+      if (mit.PackrowStarted())
+        break;
     }
     return;
   }
@@ -2141,7 +2254,8 @@ void DescTreeNode::EvaluatePack(MIUpdatingIterator &mit) {
         return;
       }
       int pack_start = mit.GetCurPackrow(single_dim);
-      if (left->desc.rv != common::RSValue::RS_ALL && mit.IsValid()) left->EvaluatePack(mit);
+      if (left->desc.rv != common::RSValue::RS_ALL && mit.IsValid())
+        left->EvaluatePack(mit);
       if (right->desc.rv != common::RSValue::RS_ALL && mit.RewindToPack(pack_start) &&
           mit.IsValid())  // otherwise the pack is already empty
         right->EvaluatePack(mit);
@@ -2203,21 +2317,26 @@ void DescTreeNode::UnlockSourcePacks() {
 
 bool DescTreeNode::IsParameterized() {
   bool is_parameterized = desc.IsParameterized();
-  if (left) is_parameterized = is_parameterized || left->IsParameterized();
-  if (right) is_parameterized = is_parameterized || right->IsParameterized();
+  if (left)
+    is_parameterized = is_parameterized || left->IsParameterized();
+  if (right)
+    is_parameterized = is_parameterized || right->IsParameterized();
   return is_parameterized;
 }
 
 void DescTreeNode::DimensionUsed(DimensionVector &dims) {
   desc.DimensionUsed(dims);
-  if (left) left->DimensionUsed(dims);
-  if (right) right->DimensionUsed(dims);
+  if (left)
+    left->DimensionUsed(dims);
+  if (right)
+    right->DimensionUsed(dims);
 }
 
 bool DescTreeNode::NullMayBeTrue() {
   // TODO: revisit the logics below
   if (left && right) {
-    if (left->NullMayBeTrue() || right->NullMayBeTrue()) return true;
+    if (left->NullMayBeTrue() || right->NullMayBeTrue())
+      return true;
     // special case: (a1 = 3) OR true
     // return false only if both sides of OR contain all involved dims
     if (desc.lop == common::LogicalOperator::O_OR) {
@@ -2225,7 +2344,8 @@ bool DescTreeNode::NullMayBeTrue() {
       DimensionVector dims2(desc.right_dims.Size());
       left->DimensionUsed(dims1);
       right->DimensionUsed(dims2);
-      if (!(dims1 == dims2)) return true;
+      if (!(dims1 == dims2))
+        return true;
     }
     return false;
   }
@@ -2268,7 +2388,8 @@ void DescTreeNode::CollectDescriptor(std::vector<std::pair<int, Descriptor>> &de
 bool DescTreeNode::CanBeExtracted(Descriptor &searched_desc) {
   if (left && right) {
     if (desc.lop == common::LogicalOperator::O_AND) {
-      if (left->CanBeExtracted(searched_desc)) return true;
+      if (left->CanBeExtracted(searched_desc))
+        return true;
       return right->CanBeExtracted(searched_desc);
     } else {
       DEBUG_ASSERT(desc.lop == common::LogicalOperator::O_OR);
@@ -2368,8 +2489,10 @@ common::Tribool DescTreeNode::ReplaceNode(DescTreeNode *src, DescTreeNode *dst, 
     src->right = nullptr;
   }
   delete src;
-  if (dst->desc.op == common::Operator::O_FALSE) return false;
-  if (dst->desc.op == common::Operator::O_TRUE) return true;
+  if (dst->desc.op == common::Operator::O_FALSE)
+    return false;
+  if (dst->desc.op == common::Operator::O_TRUE)
+    return true;
   return common::TRIBOOL_UNKNOWN;
 }
 
@@ -2378,7 +2501,8 @@ void DescTreeNode::RoughAccumulate(MIIterator &mit) {
     left->RoughAccumulate(mit);
     right->RoughAccumulate(mit);
   } else {
-    if (desc.rv == common::RSValue::RS_SOME) return;
+    if (desc.rv == common::RSValue::RS_SOME)
+      return;
     desc.EvaluateRoughlyPack(mit);  // updating desc.rv inside
   }
 }
@@ -2417,7 +2541,8 @@ void DescTreeNode::MakeSingleColsPrivate(std::vector<vcolumn::VirtualColumn *> &
     if (desc.attr.vc && static_cast<int>(desc.attr.vc->IsSingleColumn())) {
       size_t i = 0;
       for (; i < virt_cols.size(); i++)
-        if (virt_cols[i] == desc.attr.vc) break;
+        if (virt_cols[i] == desc.attr.vc)
+          break;
       DEBUG_ASSERT(i < virt_cols.size());
       desc.attr.vc = CreateVCCopy(desc.attr.vc);
       desc.attr.is_vc_owner = true;
@@ -2426,7 +2551,8 @@ void DescTreeNode::MakeSingleColsPrivate(std::vector<vcolumn::VirtualColumn *> &
     if (desc.val1.vc && static_cast<int>(desc.val1.vc->IsSingleColumn())) {
       size_t i = 0;
       for (; i < virt_cols.size(); i++)
-        if (virt_cols[i] == desc.val1.vc) break;
+        if (virt_cols[i] == desc.val1.vc)
+          break;
       DEBUG_ASSERT(i < virt_cols.size());
       desc.val1.vc = CreateVCCopy(desc.val1.vc);
       desc.val1.is_vc_owner = true;
@@ -2435,7 +2561,8 @@ void DescTreeNode::MakeSingleColsPrivate(std::vector<vcolumn::VirtualColumn *> &
     if (desc.val2.vc && static_cast<int>(desc.val2.vc->IsSingleColumn())) {
       size_t i = 0;
       for (; i < virt_cols.size(); i++)
-        if (virt_cols[i] == desc.val2.vc) break;
+        if (virt_cols[i] == desc.val2.vc)
+          break;
       DEBUG_ASSERT(i < virt_cols.size());
       desc.val2.vc = CreateVCCopy(desc.val2.vc);
       desc.val2.is_vc_owner = true;
@@ -2492,9 +2619,11 @@ void DescTreeNode::MClearRoughValues(int taskid) {
 }
 
 common::RSValue Descriptor::MEvaluateRoughlyPack(const MIIterator &mit, int taskid) {
-  if (IsType_OrTree()) return tree->root->MEvaluateRoughlyPack(mit, taskid);
+  if (IsType_OrTree())
+    return tree->root->MEvaluateRoughlyPack(mit, taskid);
   common::RSValue r = common::RSValue::RS_SOME;
-  if (attr.vc /*&& !attr.vc->IsConst()*/) r = attr.vc->RoughCheck(mit, *this);
+  if (attr.vc /*&& !attr.vc->IsConst()*/)
+    r = attr.vc->RoughCheck(mit, *this);
   if (rvs[taskid] == common::RSValue::RS_UNKNOWN)
     rvs[taskid] = r;
   else if (rvs[taskid] == common::RSValue::RS_NONE && r != common::RSValue::RS_NONE)
@@ -2525,10 +2654,14 @@ common::RSValue DescTreeNode::MEvaluateRoughlyPack(const MIIterator &mit, int ta
 }
 
 void Descriptor::MLockSourcePacks(const MIIterator &mit, int taskid) {
-  if (tree) tree->root->MPrepareToLock(0, taskid);
-  if (attr.vc) attr.vc->LockSourcePacks(mit);
-  if (val1.vc) val1.vc->LockSourcePacks(mit);
-  if (val2.vc) val2.vc->LockSourcePacks(mit);
+  if (tree)
+    tree->root->MPrepareToLock(0, taskid);
+  if (attr.vc)
+    attr.vc->LockSourcePacks(mit);
+  if (val1.vc)
+    val1.vc->LockSourcePacks(mit);
+  if (val2.vc)
+    val2.vc->LockSourcePacks(mit);
 }
 
 void DescTreeNode::MPrepareToLock(int locked_by, int taskid) {
@@ -2585,9 +2718,11 @@ void DescTreeNode::MEvaluatePack(MIUpdatingIterator &mit, int taskid) {
   // general case:
   if (single_dim == -1) {
     while (mit.IsValid()) {
-      if (CheckCondition(mit) == false) mit.ResetCurrent();
+      if (CheckCondition(mit) == false)
+        mit.ResetCurrent();
       ++mit;
-      if (mit.PackrowStarted()) break;
+      if (mit.PackrowStarted())
+        break;
     }
     return;
   }
@@ -2606,7 +2741,8 @@ void DescTreeNode::MEvaluatePack(MIUpdatingIterator &mit, int taskid) {
         return;
       }
       int pack_start = mit.GetCurPackrow(single_dim);
-      if (left->desc.rvs[taskid] != common::RSValue::RS_ALL && mit.IsValid()) left->MEvaluatePack(mit, taskid);
+      if (left->desc.rvs[taskid] != common::RSValue::RS_ALL && mit.IsValid())
+        left->MEvaluatePack(mit, taskid);
       if (right->desc.rvs[taskid] != common::RSValue::RS_ALL && mit.RewindToPack(pack_start) &&
           mit.IsValid())  // otherwise the pack is already empty
         right->MEvaluatePack(mit, taskid);

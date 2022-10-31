@@ -45,7 +45,8 @@ void GroupDistinctCache::Initialize() {
   DEBUG_ASSERT(no_obj > 0 && width > 0);
   upper_byte_limit = tianmu_sysvar_distcache_size * 1_MB;  // Default 64 MB - max size of buffer
   buf_size = no_obj;
-  if (no_obj > 32_GB) no_obj = 32_GB;  // upper reasonable size: 32 bln rows (= up to 640 GB on disk)
+  if (no_obj > 32_GB)
+    no_obj = 32_GB;  // upper reasonable size: 32 bln rows (= up to 640 GB on disk)
   // this limitation should be in future released by actual disk limits
   if (buf_size * width > upper_byte_limit) {
     buf_size = upper_byte_limit / width;

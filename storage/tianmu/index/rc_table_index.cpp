@@ -31,7 +31,8 @@ const std::string generate_cf_name(uint index, TABLE *table) {
   const char *comment = table->key_info[index].comment.str;
   std::string key_comment = comment ? comment : "";
   std::string cf_name = RdbKey::parse_comment(key_comment);
-  if (cf_name.empty() && !key_comment.empty()) return key_comment;
+  if (cf_name.empty() && !key_comment.empty())
+    return key_comment;
 
   return cf_name;
 }
@@ -244,7 +245,8 @@ common::ErrorCode RCTableIndex::InsertIndex(core::Transaction *tx, std::vector<s
   rdbkey_->pack_key(key, fields, value);
 
   common::ErrorCode rc = CheckUniqueness(tx, {(const char *)key.ptr(), key.length()});
-  if (rc != common::ErrorCode::SUCCESS) return rc;
+  if (rc != common::ErrorCode::SUCCESS)
+    return rc;
 
   value.write_uint64(row);
   const auto cf = rdbkey_->get_cf();
@@ -288,7 +290,8 @@ common::ErrorCode RCTableIndex::GetRowByKey(core::Transaction *tx, std::vector<s
     return common::ErrorCode::FAILED;
   }
 
-  if (s.IsNotFound()) return common::ErrorCode::NOT_FOUND_KEY;
+  if (s.IsNotFound())
+    return common::ErrorCode::NOT_FOUND_KEY;
 
   StringReader reader({value.data(), value.length()});
   // ver compatible
@@ -316,11 +319,13 @@ void KeyIterator::ScanToKey(std::shared_ptr<RCTableIndex> tab, std::vector<std::
   switch (op) {
     case common::Operator::O_EQ:  //==
       iter_->Seek(key_slice);
-      if (!iter_->Valid() || !rdbkey_->value_matches_prefix(iter_->key(), key_slice)) valid = false;
+      if (!iter_->Valid() || !rdbkey_->value_matches_prefix(iter_->key(), key_slice))
+        valid = false;
       break;
     case common::Operator::O_MORE_EQ:  //'>='
       iter_->Seek(key_slice);
-      if (!iter_->Valid() || !rdbkey_->covers_key(iter_->key())) valid = false;
+      if (!iter_->Valid() || !rdbkey_->covers_key(iter_->key()))
+        valid = false;
       break;
     case common::Operator::O_MORE:  //'>'
       iter_->Seek(key_slice);
@@ -331,7 +336,8 @@ void KeyIterator::ScanToKey(std::shared_ptr<RCTableIndex> tab, std::vector<std::
           iter_->Next();
         }
       }
-      if (!iter_->Valid() || !rdbkey_->covers_key(iter_->key())) valid = false;
+      if (!iter_->Valid() || !rdbkey_->covers_key(iter_->key()))
+        valid = false;
       break;
     default:
       TIANMU_LOG(LogCtl_Level::ERROR, "key not support this op:%d", static_cast<int>(op));
@@ -353,13 +359,15 @@ void KeyIterator::ScanToEdge(std::shared_ptr<RCTableIndex> tab, bool forward) {
 
   iter_->Seek(key_slice);
   if (forward) {
-    if (!iter_->Valid() || !rdbkey_->value_matches_prefix(iter_->key(), key_slice)) valid = false;
+    if (!iter_->Valid() || !rdbkey_->value_matches_prefix(iter_->key(), key_slice))
+      valid = false;
   } else {
     if (!iter_)
       valid = false;
     else {
       iter_->Prev();
-      if (!iter_->Valid() || !rdbkey_->covers_key(iter_->key())) valid = false;
+      if (!iter_->Valid() || !rdbkey_->covers_key(iter_->key()))
+        valid = false;
     }
   }
 }

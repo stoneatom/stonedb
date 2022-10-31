@@ -77,7 +77,8 @@ class AggregatorSum64 : public TIANMUAggregator {
     stats_updated = false;
   }
   bool UpdateStatistics(unsigned char *buf) override {
-    if (*((int64_t *)buf) == common::NULL_VALUE_64) null_group_found = true;
+    if (*((int64_t *)buf) == common::NULL_VALUE_64)
+      null_group_found = true;
     return null_group_found;  // if found, do not search any more
   }
   bool PackCannotChangeAggregation() override {
@@ -284,7 +285,8 @@ class AggregatorMin32 : public AggregatorMin {
   int BufferByteSize() override { return 4; }
   void PutAggregatedValue(unsigned char *buf, int64_t factor) override {
     stats_updated = false;
-    if (*((int *)buf) == common::NULL_VALUE_32 || *((int *)buf) > (int)factor) *((int *)buf) = (int)factor;
+    if (*((int *)buf) == common::NULL_VALUE_32 || *((int *)buf) > (int)factor)
+      *((int *)buf) = (int)factor;
   }
   void PutAggregatedValue(unsigned char *buf, int64_t v, int64_t factor) override;
   void Merge(unsigned char *buf, unsigned char *src_buf) override;
@@ -512,7 +514,8 @@ class AggregatorMax32 : public AggregatorMax {
   int BufferByteSize() override { return 4; }
   void PutAggregatedValue(unsigned char *buf, int64_t factor) override {
     stats_updated = false;
-    if (*((int *)buf) == common::NULL_VALUE_32 || *((int *)buf) < (int)factor) *((int *)buf) = (int)factor;
+    if (*((int *)buf) == common::NULL_VALUE_32 || *((int *)buf) < (int)factor)
+      *((int *)buf) = (int)factor;
   }
   void PutAggregatedValue(unsigned char *buf, int64_t v, int64_t factor) override;
   void Merge(unsigned char *buf, unsigned char *src_buf) override;
@@ -747,7 +750,8 @@ class AggregatorList32 : public TIANMUAggregator {
   bool FactorNeeded() override { return false; }
   bool PackCannotChangeAggregation() override { return value_set; }  // all values are unchangeable
   bool UpdateStatistics(unsigned char *buf) override {
-    if (*((int *)buf) == common::NULL_VALUE_32) value_set = false;
+    if (*((int *)buf) == common::NULL_VALUE_32)
+      value_set = false;
     return !value_set;  // if found, do not search any more
   }
 
@@ -794,7 +798,8 @@ class AggregatorList64 : public TIANMUAggregator {
   bool FactorNeeded() override { return false; }
   bool PackCannotChangeAggregation() override { return value_set; }  // all values are unchangeable
   bool UpdateStatistics(unsigned char *buf) override {
-    if (*((int64_t *)buf) == common::NULL_VALUE_64) value_set = false;
+    if (*((int64_t *)buf) == common::NULL_VALUE_64)
+      value_set = false;
     return !value_set;  // if found, do not search any more
   }
 
@@ -831,7 +836,8 @@ class AggregatorListT : public TIANMUAggregator {
   bool FactorNeeded() override { return false; }
   bool PackCannotChangeAggregation() override { return value_set; }  // all values are unchangeable
   bool UpdateStatistics(unsigned char *buf) override {
-    if (*((unsigned short *)buf) == 0 && buf[2] == 0) value_set = false;
+    if (*((unsigned short *)buf) == 0 && buf[2] == 0)
+      value_set = false;
     return !value_set;  // if found, do not search any more
   }
 

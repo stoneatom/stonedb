@@ -49,7 +49,8 @@ class MultiIndex {
   uint32_t ValueOfPower() { return p_power; }
   int NumOfDimensions() const { return no_dimensions; }  // number of dimensions
   int64_t NumOfTuples() const {                          // number of all tuples
-    if (!no_tuples_too_big) return no_tuples;
+    if (!no_tuples_too_big)
+      return no_tuples;
     throw common::OutOfMemoryException("Too many tuples.    (85)");
     return 0;
   }
@@ -91,7 +92,8 @@ class MultiIndex {
 
   bool IteratorLock() {  // register a normal iterator; false: already locked
                          // for updating
-    if (iterator_lock > -1) iterator_lock++;
+    if (iterator_lock > -1)
+      iterator_lock++;
     return (iterator_lock > -1);
   }
   bool IteratorUpdatingLock() {  // register an updating iterator; false:
