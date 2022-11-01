@@ -48,9 +48,11 @@ birthday DATE
 ) engine=stonedb;
 ```
 :::info
-1. StoneDB-5.6 的存储引擎名是 `stonedb`；StoneDB-5.7 的存储引擎名是 `tianmu`。
-2。 如果 SQL 语句中未指定“engine=stonedb”，则所创建的表的存储引擎由参数 default_storage_engine 决定，详情参见[设置参数](../04-developer-guide/05-appendix/configuration-parameters.md)。
+
+- StoneDB 5.6 的存储引擎名是 stonedb，5.7 的存储引擎名是 tianmu。
+- 如果 SQL 语句中未指定“engine=stonedb”，则所创建的表的存储引擎由参数 default_storage_engine 决定，详情参见[设置参数](https://stonedb.io/zh/docs/developer-guide/appendix/configuration-parameters)。
 :::
+
 ### 2）查看表
 查看表结构使用以下 SQL 语句：
 ```sql
@@ -73,9 +75,9 @@ insert into student values(1,'Jack',15,'20220506');
 update student set age=25 where id=1;
 ```
 ### 3）删除数据
-StoneDB 不支持 delete，如果想清空表数据，可以使用 truncate：
+使用 delete 删除记录：
 ```sql
-truncate table student ;
+delete from student where id=1;
 ```
 ## 4. 查询表
 1）查询 student 表中 ID=1 的学生的姓名和生日
@@ -93,9 +95,7 @@ select name,birthday from student order by birthday;
 ```sql
 create user 'tiger'@'%' identified by '123456';
 ```
-:::info
-用户名和主机名（'username'@'host'）唯一表示一个用户，'tiger'@'%'和'tiger'@'localhost'是两个不同的用户。
-:::
+注：用户名和主机名（'username'@'host'）唯一表示一个用户，'tiger'@'%'和'tiger'@'localhost'是两个不同的用户。
 ### 2）向用户授权
 例如：向用户 tiger 授予可查询数据库 test_db 所有的表，可以使用以下 SQL 语句：
 ```sql
