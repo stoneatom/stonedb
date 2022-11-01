@@ -110,7 +110,8 @@ class MMGuard final : public TraceableAccounting {
   }
 
   void reset() {
-    if (call_delete && data) dealloc(data);
+    if (call_delete && data)
+      dealloc(data);
     data = 0;
     owner = 0;
     call_delete = false;

@@ -142,27 +142,31 @@ void Item_tianmufield::FeedValue() {
 
 double Item_tianmufield::val_real() {
   // DBUG_ASSERT(fixed == 1);
-  if ((null_value = buf->null)) return 0.0;
+  if ((null_value = buf->null))
+    return 0.0;
   FeedValue();
   return ivalue->val_real();
 }
 
 longlong Item_tianmufield::val_int() {
   // DBUG_ASSERT(fixed == 1);
-  if ((null_value = buf->null)) return 0;
+  if ((null_value = buf->null))
+    return 0;
   FeedValue();
   return ivalue->val_int();
 }
 
 my_decimal *Item_tianmufield::val_decimal(my_decimal *decimal_value) {
-  if ((null_value = buf->null)) return 0;
+  if ((null_value = buf->null))
+    return 0;
   FeedValue();
   return ivalue->val_decimal(decimal_value);
 }
 
 String *Item_tianmufield::val_str(String *str) {
   // DBUG_ASSERT(fixed == 1);
-  if ((null_value = buf->null)) return 0;
+  if ((null_value = buf->null))
+    return 0;
   // acceleration
   if (tianmu_type.valtype == DataType::ValueType::VT_STRING) {
     str->copy(buf->sp, buf->len, ifield->collation.collation);
@@ -193,8 +197,10 @@ bool Item_tianmufield::get_time(MYSQL_TIME *ltime) {
 
 bool Item_tianmufield::get_timeval(struct my_timeval *tm, int *warnings) {
   MYSQL_TIME ltime;
-  if (get_time(&ltime)) return true;
-  if (datetime_to_timeval(&ltime, *current_thd->time_zone(), tm, warnings)) return true;
+  if (get_time(&ltime))
+    return true;
+  if (datetime_to_timeval(&ltime, *current_thd->time_zone(), tm, warnings))
+    return true;
   return false;
 }
 

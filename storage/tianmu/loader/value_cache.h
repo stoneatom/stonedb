@@ -33,7 +33,8 @@ class ValueCache final {
   ValueCache(const ValueCache &) = delete;
   ValueCache(ValueCache &&) = default;
   ~ValueCache() {
-    if (data_ != nullptr) std::free(data_);
+    if (data_ != nullptr)
+      std::free(data_);
   }
 
   void *Prepare(size_t);
@@ -41,7 +42,8 @@ class ValueCache final {
   void Commit() {
     values_.push_back(size_);
     nulls_.push_back(expected_null_);
-    if (expected_null_) null_cnt_++;
+    if (expected_null_)
+      null_cnt_++;
     size_ += expected_size_;
     DEBUG_ASSERT(size_ <= capacity_);
     expected_size_ = 0;
@@ -53,7 +55,8 @@ class ValueCache final {
     values_.pop_back();
     expected_null_ = nulls_.back();
     nulls_.pop_back();
-    if (expected_null_) null_cnt_--;
+    if (expected_null_)
+      null_cnt_--;
     expected_size_ = 0;
     expected_null_ = false;
   }
@@ -66,7 +69,8 @@ class ValueCache final {
   void SetNull(size_t ono, bool null) {
     DEBUG_ASSERT(ono < values_.size());
     nulls_[ono] = null;
-    if (null) null_cnt_++;
+    if (null)
+      null_cnt_++;
   }
 
   void ExpectedSize(size_t expectedSize) {

@@ -138,17 +138,20 @@ int64_t HashTable::AddKeyValue(const std::string &key_buffer, bool *too_many_con
         int64_t last_multiplier = *multiplier;
         DEBUG_ASSERT(last_multiplier > 0);
         (*multiplier)++;
-        if (for_count_only_) return row;
+        if (for_count_only_)
+          return row;
         // iterate several steps forward to find some free location
         row += iterate_step * last_multiplier;
-        if (row >= rows_count_) row = row % rows_count_;
+        if (row >= rows_count_)
+          row = row % rows_count_;
 
         if (*multiplier > kMaxHashConflicts && too_many_conflicts)  // a threshold for switching sides
           *too_many_conflicts = true;
       } else {  // some other value found
         // iterate one step forward
         row += iterate_step;
-        if (row >= rows_count_) row = row % rows_count_;
+        if (row >= rows_count_)
+          row = row % rows_count_;
       }
     } else {
       *multiplier = 1;
@@ -179,11 +182,13 @@ void HashTable::SetTupleValue(int col, int64_t row, int64_t value) {
 int64_t HashTable::GetTupleValue(int col, int64_t row) {
   if (column_size_[col] == 4) {
     int value = *((int *)(buffer_ + row * total_width_ + column_offset_[col]));
-    if (value == 0) return common::NULL_VALUE_64;
+    if (value == 0)
+      return common::NULL_VALUE_64;
     return value - 1;
   } else {
     int64_t value = *((int64_t *)(buffer_ + row * total_width_ + column_offset_[col]));
-    if (value == 0) return common::NULL_VALUE_64;
+    if (value == 0)
+      return common::NULL_VALUE_64;
     return value - 1;
   }
 }
@@ -213,7 +218,8 @@ void HashTable::Finder::LocateMatchedPosition() {
       }
       // some other value found, iterate one step forward
       current_row_ += current_iterate_step_;
-      if (current_row_ >= hash_table_->rows_count_) current_row_ = current_row_ % hash_table_->rows_count_;
+      if (current_row_ >= hash_table_->rows_count_)
+        current_row_ = current_row_ % hash_table_->rows_count_;
     } else {
       current_row_ = common::NULL_VALUE_64;  // not found
       return;
@@ -223,16 +229,19 @@ void HashTable::Finder::LocateMatchedPosition() {
 }
 
 int64_t HashTable::Finder::GetNextRow() {
-  if (to_be_returned_ == 0) return common::NULL_VALUE_64;
+  if (to_be_returned_ == 0)
+    return common::NULL_VALUE_64;
 
   int64_t row_to_return = current_row_;
   to_be_returned_--;
-  if (to_be_returned_ == 0) return row_to_return;
+  if (to_be_returned_ == 0)
+    return row_to_return;
 
   // now prepare the next row to be returned
   int64_t startrow = current_row_;
   current_row_ += current_iterate_step_;
-  if (current_row_ >= hash_table_->rows_count_) current_row_ = current_row_ % hash_table_->rows_count_;
+  if (current_row_ >= hash_table_->rows_count_)
+    current_row_ = current_row_ % hash_table_->rows_count_;
   do {
     DEBUG_ASSERT(
         *((int *)(hash_table_->buffer_ + current_row_ * hash_table_->total_width_ + hash_table_->multi_offset_)) != 0);
@@ -242,7 +251,8 @@ int64_t HashTable::Finder::GetNextRow() {
       return row_to_return;
     } else {  // some other value found - iterate one step forward
       current_row_ += current_iterate_step_;
-      if (current_row_ >= hash_table_->rows_count_) current_row_ = current_row_ % hash_table_->rows_count_;
+      if (current_row_ >= hash_table_->rows_count_)
+        current_row_ = current_row_ % hash_table_->rows_count_;
     }
   } while (current_row_ != startrow);
   return row_to_return;

@@ -94,7 +94,8 @@ class ColumnBinEncoder final {
 
   // Set / retrieve values
   void LockSourcePacks(MIIterator &mit) {
-    if (vc && !implicit && dup_col == -1) vc->LockSourcePacks(mit);
+    if (vc && !implicit && dup_col == -1)
+      vc->LockSourcePacks(mit);
   }
   void LoadPacks(MIIterator *mit);
 

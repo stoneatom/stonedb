@@ -49,17 +49,20 @@ Item_sum_sum_rcbase::~Item_sum_sum_rcbase() {}
 
 double Item_sum_sum_rcbase::val_real() {
   DEBUG_ASSERT(fixed == 1);
-  if (hybrid_type_ == DECIMAL_RESULT) my_decimal2double(E_DEC_FATAL_ERROR, decimal_buffs_, &sum_);
+  if (hybrid_type_ == DECIMAL_RESULT)
+    my_decimal2double(E_DEC_FATAL_ERROR, decimal_buffs_, &sum_);
   return sum_;
 }
 
 my_decimal *Item_sum_sum_rcbase::val_decimal(my_decimal *val) {
-  if (hybrid_type_ == DECIMAL_RESULT) return decimal_buffs_;
+  if (hybrid_type_ == DECIMAL_RESULT)
+    return decimal_buffs_;
   return val_decimal_from_real(val);
 }
 
 String *Item_sum_sum_rcbase::val_str(String *str) {
-  if (hybrid_type_ == DECIMAL_RESULT) return val_string_from_decimal(str);
+  if (hybrid_type_ == DECIMAL_RESULT)
+    return val_string_from_decimal(str);
   return val_string_from_real(str);
 }
 
@@ -122,7 +125,8 @@ void Item_sum_hybrid_rcbase::clear() {
 
 double Item_sum_hybrid_rcbase::val_real() {
   DEBUG_ASSERT(fixed == 1);
-  if (null_value) return 0.0;
+  if (null_value)
+    return 0.0;
   switch (hybrid_type_) {
     case STRING_RESULT: {
       const char *end_not_used;
@@ -132,7 +136,8 @@ double Item_sum_hybrid_rcbase::val_real() {
       return (res ? my_strntod(res->charset(), (char *)res->ptr(), res->length(), &end_not_used, &err_not_used) : 0.0);
     }
     case INT_RESULT:
-      if (unsigned_flag) return ulonglong2double(sum_longint_);
+      if (unsigned_flag)
+        return ulonglong2double(sum_longint_);
       return (double)sum_longint_;
     case DECIMAL_RESULT:
       my_decimal2double(E_DEC_FATAL_ERROR, &sum_decimal_, &sum_);
@@ -149,7 +154,8 @@ double Item_sum_hybrid_rcbase::val_real() {
 
 longlong Item_sum_hybrid_rcbase::val_int() {
   DEBUG_ASSERT(fixed == 1);
-  if (null_value) return 0;
+  if (null_value)
+    return 0;
   switch (hybrid_type_) {
     case INT_RESULT:
       return sum_longint_;
@@ -165,7 +171,8 @@ longlong Item_sum_hybrid_rcbase::val_int() {
 
 my_decimal *Item_sum_hybrid_rcbase::val_decimal(my_decimal *val) {
   DEBUG_ASSERT(fixed == 1);
-  if (null_value) return 0;
+  if (null_value)
+    return 0;
   switch (hybrid_type_) {
     case STRING_RESULT:
       // stonedb8
@@ -191,7 +198,8 @@ my_decimal *Item_sum_hybrid_rcbase::val_decimal(my_decimal *val) {
 
 String *Item_sum_hybrid_rcbase::val_str(String *str) {
   DEBUG_ASSERT(fixed == 1);
-  if (null_value) return (String *)0;
+  if (null_value)
+    return (String *)0;
   switch (hybrid_type_) {
     case STRING_RESULT:
       return &value_;

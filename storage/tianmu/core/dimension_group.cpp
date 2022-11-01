@@ -71,7 +71,8 @@ DimensionGroupFilter::DGFilterOrderedIterator::DGFilterOrderedIterator(const Ite
 
 DimensionGroup::Iterator *DimensionGroupFilter::CopyIterator(DimensionGroup::Iterator *s, uint32_t power) {
   DGFilterIterator *sfit = (DGFilterIterator *)s;
-  if (sfit->Ordered()) return new DGFilterOrderedIterator(*s, power);
+  if (sfit->Ordered())
+    return new DGFilterOrderedIterator(*s, power);
   return new DGFilterIterator(*s, power);
 }
 
@@ -91,7 +92,8 @@ DimensionGroupMaterialized::DimensionGroupMaterialized(DimensionVector &dims) {
 DimensionGroup *DimensionGroupMaterialized::Clone(bool shallow) {
   DimensionGroupMaterialized *new_value = new DimensionGroupMaterialized(dims_used);
   new_value->no_obj = no_obj;
-  if (shallow) return new_value;
+  if (shallow)
+    return new_value;
   for (int i = 0; i < no_dims; i++) {
     if (t[i]) {
       new_value->nulls_possible[i] = nulls_possible[i];
@@ -246,11 +248,13 @@ void DimensionGroupMaterialized::DGMaterializedIterator::InitPackrow() {
           ahead1[i] = ahead2[i] = ahead3[i] = -1;
         }
       }
-      if (next_pack[i] < cur_end_packrow) cur_end_packrow = next_pack[i];
+      if (next_pack[i] < cur_end_packrow)
+        cur_end_packrow = next_pack[i];
     }
   pack_size_left = cur_end_packrow - cur_pos;
   cur_pack_start = cur_pos;
-  if (cur_pos == 0 && pack_size_left == no_obj) inside_one_pack = true;
+  if (cur_pos == 0 && pack_size_left == no_obj)
+    inside_one_pack = true;
   DEBUG_ASSERT(pack_size_left > 0);
 }
 
@@ -267,7 +271,8 @@ bool DimensionGroupMaterialized::DGMaterializedIterator::NextInsidePack() {
 
 void DimensionGroupMaterialized::DGMaterializedIterator::JumpToNextPack(uint64_t &loc_iterator, IndexTable *cur_t,
                                                                         uint64_t loc_limit) {
-  if (loc_iterator >= loc_limit) return;
+  if (loc_iterator >= loc_limit)
+    return;
   auto loc_pack = ((cur_t->Get64(loc_iterator) - 1) >> p_power);
   ++loc_iterator;
   while (loc_iterator < loc_limit &&  // find the first row from another pack
@@ -324,7 +329,8 @@ void DimensionGroupMaterialized::DGMaterializedIterator::FindPackEnd(int dim) {
       while (loc_iterator < loc_limit &&  // find the first non-nullptr row from
                                           // another pack (but the same block)
              ((ndx = cur_t->Get64InsideBlock(loc_iterator)) == 0 || ((ndx - 1) >> p_power) == loc_pack)) {
-        if (ndx == 0) nulls_found[dim] = true;
+        if (ndx == 0)
+          nulls_found[dim] = true;
         ++loc_iterator;
       }
     }
@@ -336,11 +342,14 @@ void DimensionGroupMaterialized::DGMaterializedIterator::FindPackEnd(int dim) {
 
 int DimensionGroupMaterialized::DGMaterializedIterator::GetNextPackrow(int dim, int ahead) {
   MEASURE_FET("DGMaterializedIterator::GetNextPackrow(int dim, int ahead)");
-  if (ahead == 0) return GetCurPackrow(dim);
+  if (ahead == 0)
+    return GetCurPackrow(dim);
   IndexTable *cur_t = t[dim];
-  if (cur_t == nullptr) return -1;
+  if (cur_t == nullptr)
+    return -1;
   uint64_t end_block = cur_t->EndOfCurrentBlock(cur_pos);
-  if (next_pack[dim] >= no_obj || uint64_t(next_pack[dim]) >= end_block) return -1;
+  if (next_pack[dim] >= no_obj || uint64_t(next_pack[dim]) >= end_block)
+    return -1;
   uint64_t ahead_pos = 0;
   //	cout << "dim " << dim << ",  " << next_pack[dim] << " -> " <<
   // ahead1[dim] << "  " <<
@@ -353,7 +362,8 @@ int DimensionGroupMaterialized::DGMaterializedIterator::GetNextPackrow(int dim, 
     ahead_pos = t[dim]->Get64InsideBlock(ahead2[dim]);
   else if (ahead == 4 && ahead3[dim] != -1)
     ahead_pos = t[dim]->Get64InsideBlock(ahead3[dim]);
-  if (ahead_pos == 0) return -1;
+  if (ahead_pos == 0)
+    return -1;
   return int((ahead_pos - 1) >> p_power);
 
   return -1;
@@ -365,7 +375,8 @@ bool DimensionGroupMaterialized::DGMaterializedIterator::BarrierAfterPackrow() {
                                   // dimension group (iterating on a product of many groups)
     return true;
   for (int i = 0; i < no_dims; i++)
-    if (t[i] && (uint64_t)next_pack_start >= t[i]->EndOfCurrentBlock(cur_pos)) return true;
+    if (t[i] && (uint64_t)next_pack_start >= t[i]->EndOfCurrentBlock(cur_pos))
+      return true;
   return false;
 }
 }  // namespace core

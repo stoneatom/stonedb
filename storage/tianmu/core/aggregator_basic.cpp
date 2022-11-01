@@ -39,7 +39,8 @@ void AggregatorSum64::PutAggregatedValue(unsigned char *buf, int64_t v, int64_t 
 void AggregatorSum64::Merge(unsigned char *buf, unsigned char *src_buf) {
   int64_t *p = (int64_t *)buf;
   int64_t *ps = (int64_t *)src_buf;
-  if (*ps == common::NULL_VALUE_64) return;
+  if (*ps == common::NULL_VALUE_64)
+    return;
   stats_updated = false;
   if (*p == common::NULL_VALUE_64) {
     *p = 0;
@@ -77,7 +78,8 @@ void AggregatorSumD::PutAggregatedValue(unsigned char *buf, int64_t v, int64_t f
 void AggregatorSumD::Merge(unsigned char *buf, unsigned char *src_buf) {
   common::double_int_t *p = (common::double_int_t *)buf;
   common::double_int_t *ps = (common::double_int_t *)src_buf;
-  if ((*ps).i == common::NULL_VALUE_64) return;
+  if ((*ps).i == common::NULL_VALUE_64)
+    return;
   stats_updated = false;
   if ((*p).i == common::NULL_VALUE_64) {
     (*p).i = 0;
@@ -117,7 +119,8 @@ void AggregatorAvg64::PutAggregatedValue(unsigned char *buf, int64_t v, int64_t 
 }
 
 void AggregatorAvg64::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (*((int64_t *)(src_buf + sizeof(int64_t))) == 0) return;
+  if (*((int64_t *)(src_buf + sizeof(int64_t))) == 0)
+    return;
   stats_updated = false;
   *((double *)buf) += *((double *)src_buf);
   if (!warning_issued && (*((double *)buf) > std::numeric_limits<std::streamsize>::max() ||
@@ -129,7 +132,8 @@ void AggregatorAvg64::Merge(unsigned char *buf, unsigned char *src_buf) {
 }
 
 double AggregatorAvg64::GetValueD(unsigned char *buf) {
-  if (*((int64_t *)(buf + sizeof(int64_t))) == 0) return NULL_VALUE_D;
+  if (*((int64_t *)(buf + sizeof(int64_t))) == 0)
+    return NULL_VALUE_D;
   return *((double *)buf) / *((int64_t *)(buf + sizeof(int64_t))) / prec_factor;
 }
 
@@ -159,14 +163,16 @@ void AggregatorAvgD::PutAggregatedValue(unsigned char *buf, const types::BString
 }
 
 void AggregatorAvgD::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (*((int64_t *)(src_buf + sizeof(int64_t))) == 0) return;
+  if (*((int64_t *)(src_buf + sizeof(int64_t))) == 0)
+    return;
   stats_updated = false;
   *((double *)buf) += *((double *)src_buf);
   *((int64_t *)(buf + sizeof(int64_t))) += *((int64_t *)(src_buf + sizeof(int64_t)));
 }
 
 double AggregatorAvgD::GetValueD(unsigned char *buf) {
-  if (*((int64_t *)(buf + sizeof(int64_t))) == 0) return NULL_VALUE_D;
+  if (*((int64_t *)(buf + sizeof(int64_t))) == 0)
+    return NULL_VALUE_D;
   return *((double *)buf) / *((int64_t *)(buf + sizeof(int64_t)));
 }
 
@@ -184,7 +190,8 @@ void AggregatorAvgYear::PutAggregatedValue(unsigned char *buf, int64_t v, int64_
 }
 
 void AggregatorAvgYear::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (*((int64_t *)(src_buf + sizeof(int64_t))) == 0) return;
+  if (*((int64_t *)(src_buf + sizeof(int64_t))) == 0)
+    return;
   stats_updated = false;
   *((double *)buf) += *((double *)src_buf);
   *((int64_t *)(buf + sizeof(int64_t))) += *((int64_t *)(src_buf + sizeof(int64_t)));
@@ -207,7 +214,8 @@ void AggregatorMin32::PutAggregatedValue(unsigned char *buf, int64_t v, [[maybe_
 }
 
 void AggregatorMin32::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (*((int *)src_buf) == common::NULL_VALUE_32) return;
+  if (*((int *)src_buf) == common::NULL_VALUE_32)
+    return;
   if (*((int *)buf) == common::NULL_VALUE_32 || *((int *)buf) > *((int *)src_buf)) {
     stats_updated = false;
     *((int *)buf) = *((int *)src_buf);
@@ -215,7 +223,8 @@ void AggregatorMin32::Merge(unsigned char *buf, unsigned char *src_buf) {
 }
 
 int64_t AggregatorMin32::GetValue64(unsigned char *buf) {
-  if (*((int *)buf) == common::NULL_VALUE_32) return common::NULL_VALUE_64;
+  if (*((int *)buf) == common::NULL_VALUE_32)
+    return common::NULL_VALUE_64;
   return *((int *)buf);
 }
 
@@ -227,7 +236,8 @@ void AggregatorMin64::PutAggregatedValue(unsigned char *buf, int64_t v, [[maybe_
 }
 
 void AggregatorMin64::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (*((int64_t *)src_buf) == common::NULL_VALUE_64) return;
+  if (*((int64_t *)src_buf) == common::NULL_VALUE_64)
+    return;
   if (*((int64_t *)buf) == common::NULL_VALUE_64 || *((int64_t *)buf) > *((int64_t *)src_buf)) {
     stats_updated = false;
     *((int64_t *)buf) = *((int64_t *)src_buf);
@@ -270,7 +280,8 @@ void AggregatorMinD::PutAggregatedValue(unsigned char *buf, int64_t v, [[maybe_u
 }
 
 void AggregatorMinD::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (*((int64_t *)src_buf) == common::NULL_VALUE_64) return;
+  if (*((int64_t *)src_buf) == common::NULL_VALUE_64)
+    return;
   if (*((int64_t *)buf) == common::NULL_VALUE_64 || *((double *)buf) > *((double *)src_buf)) {
     stats_updated = false;
     *((double *)buf) = *((double *)src_buf);
@@ -302,7 +313,8 @@ void AggregatorMinT::PutAggregatedValue(unsigned char *buf, const types::BString
 }
 
 void AggregatorMinT::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (*((unsigned short *)src_buf) == 0 && src_buf[2] == 0) return;
+  if (*((unsigned short *)src_buf) == 0 && src_buf[2] == 0)
+    return;
   if (*((unsigned short *)buf) == 0 && buf[2] == 0) {  // still null
     stats_updated = false;
     std::memcpy(buf, src_buf, val_len + 2);
@@ -356,7 +368,8 @@ void AggregatorMinT_UTF::PutAggregatedValue(unsigned char *buf, const types::BSt
 }
 
 void AggregatorMinT_UTF::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (*((unsigned short *)src_buf) == 0 && src_buf[2] == 0) return;
+  if (*((unsigned short *)src_buf) == 0 && src_buf[2] == 0)
+    return;
   if (*((unsigned short *)buf) == 0 && buf[2] == 0) {  // still null
     stats_updated = false;
     std::memcpy(buf, src_buf, val_len + 2);
@@ -378,12 +391,14 @@ void AggregatorMax32::PutAggregatedValue(unsigned char *buf, int64_t v, [[maybe_
 }
 
 int64_t AggregatorMax32::GetValue64(unsigned char *buf) {
-  if (*((int *)buf) == common::NULL_VALUE_32) return common::NULL_VALUE_64;
+  if (*((int *)buf) == common::NULL_VALUE_32)
+    return common::NULL_VALUE_64;
   return *((int *)buf);
 }
 
 void AggregatorMax32::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (*((int *)src_buf) == common::NULL_VALUE_32) return;
+  if (*((int *)src_buf) == common::NULL_VALUE_32)
+    return;
   if (*((int *)buf) == common::NULL_VALUE_32 || *((int *)buf) < *((int *)src_buf)) {
     stats_updated = false;
     *((int *)buf) = *((int *)src_buf);
@@ -398,7 +413,8 @@ void AggregatorMax64::PutAggregatedValue(unsigned char *buf, int64_t v, [[maybe_
 }
 
 void AggregatorMax64::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (*((int64_t *)src_buf) == common::NULL_VALUE_64) return;
+  if (*((int64_t *)src_buf) == common::NULL_VALUE_64)
+    return;
   if (*((int64_t *)buf) == common::NULL_VALUE_64 || *((int64_t *)buf) < *((int64_t *)src_buf)) {
     stats_updated = false;
     *((int64_t *)buf) = *((int64_t *)src_buf);
@@ -413,7 +429,8 @@ void AggregatorMaxD::PutAggregatedValue(unsigned char *buf, int64_t v, [[maybe_u
 }
 
 void AggregatorMaxD::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (*((int64_t *)src_buf) == common::NULL_VALUE_64) return;
+  if (*((int64_t *)src_buf) == common::NULL_VALUE_64)
+    return;
   if (*((int64_t *)buf) == common::NULL_VALUE_64 || *((double *)buf) < *((double *)src_buf)) {
     stats_updated = false;
     *((double *)buf) = *((double *)src_buf);
@@ -446,7 +463,8 @@ void AggregatorMaxT::PutAggregatedValue(unsigned char *buf, const types::BString
 }
 
 void AggregatorMaxT::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (*((unsigned short *)src_buf) == 0 && src_buf[2] == 0) return;
+  if (*((unsigned short *)src_buf) == 0 && src_buf[2] == 0)
+    return;
   if (*((unsigned short *)buf) == 0 && buf[2] == 0) {  // still null
     stats_updated = false;
     std::memcpy(buf, src_buf, val_len + 2);
@@ -497,7 +515,8 @@ void AggregatorMaxT_UTF::PutAggregatedValue(unsigned char *buf, const types::BSt
 }
 
 void AggregatorMaxT_UTF::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (*((unsigned short *)src_buf) == 0 && src_buf[2] == 0) return;
+  if (*((unsigned short *)src_buf) == 0 && src_buf[2] == 0)
+    return;
   if (*((unsigned short *)buf) == 0 && buf[2] == 0) {  // still null
     stats_updated = false;
     std::memcpy(buf, src_buf, val_len + 2);
@@ -512,7 +531,8 @@ void AggregatorMaxT_UTF::Merge(unsigned char *buf, unsigned char *src_buf) {
 }
 
 int64_t AggregatorList32::GetValue64(unsigned char *buf) {
-  if (*((int *)buf) == common::NULL_VALUE_32) return common::NULL_VALUE_64;
+  if (*((int *)buf) == common::NULL_VALUE_32)
+    return common::NULL_VALUE_64;
   return *((int *)buf);
 }
 

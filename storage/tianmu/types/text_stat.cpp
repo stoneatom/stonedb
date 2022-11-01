@@ -41,8 +41,10 @@ bool TextStat::AddString(const BString &rcbs) {
     chars_found_[256 * i + uchar(rcbs[i])] = 1;
   }
 
-  if (len < TAB_SIZE) chars_found_[256 * len] = 1;  // value of len n puts 0 on position n (starting with 0)
-  if (len > max_string_size_) max_string_size_ = len;
+  if (len < TAB_SIZE)
+    chars_found_[256 * len] = 1;  // value of len n puts 0 on position n (starting with 0)
+  if (len > max_string_size_)
+    max_string_size_ = len;
 
   return true;
 }
@@ -55,16 +57,19 @@ bool TextStat::AddChar(uchar v, int pos)  // return false if out of range
   }
 
   chars_found_[256 * pos + v] = 1;
-  if (static_cast<size_t>(pos + 1) > max_string_size_) max_string_size_ = pos + 1;
+  if (static_cast<size_t>(pos + 1) > max_string_size_)
+    max_string_size_ = pos + 1;
   return true;
 }
 
 void TextStat::AddLen(int pos)  // value of len n puts 0 on position n (starting with 0)
 {
-  if (static_cast<size_t>(pos) == TAB_SIZE) return;
+  if (static_cast<size_t>(pos) == TAB_SIZE)
+    return;
   DEBUG_ASSERT(static_cast<size_t>(pos) < TAB_SIZE);
   chars_found_[256 * pos] = 1;
-  if (static_cast<size_t>(pos) > max_string_size_) max_string_size_ = pos;
+  if (static_cast<size_t>(pos) > max_string_size_)
+    max_string_size_ = pos;
 }
 
 // return false if cannot create encoding (too wide), do not actually create anything
@@ -86,7 +91,8 @@ bool TextStat::CheckIfCreatePossible() {
         loc_len_table++;
       }
     }
-    if (loc_len_table > 1) total_len += core::GetBitLen(uint(loc_len_table) - 1);
+    if (loc_len_table > 1)
+      total_len += core::GetBitLen(uint(loc_len_table) - 1);
     if (total_len > 63) {
       valid_ = false;
       return false;
@@ -145,7 +151,8 @@ int64_t TextStat::Encode(const BString &rcbs,
 {
   int64_t res = 0;
   size_t len = rcbs.size();
-  if (len > TAB_SIZE) return common::NULL_VALUE_64;
+  if (len > TAB_SIZE)
+    return common::NULL_VALUE_64;
   int charcode;
   for (size_t i = 0; i < len; i++) {
     if (rcbs[i] == 0)  // special cases, for encoding DPNs
@@ -154,7 +161,8 @@ int64_t TextStat::Encode(const BString &rcbs,
       charcode = (1 << len_table_[i]) - 1;
     else {
       charcode = encode_table_[256 * i + uchar(rcbs[i])];
-      if (charcode == 255) return common::NULL_VALUE_64;
+      if (charcode == 255)
+        return common::NULL_VALUE_64;
     }
     res <<= len_table_[i];
     res += charcode;
@@ -162,14 +170,16 @@ int64_t TextStat::Encode(const BString &rcbs,
   if (!round_up) {
     if (len < max_string_size_) {
       charcode = encode_table_[256 * len];  // add 0 on the end
-      if (charcode == 255) return common::NULL_VALUE_64;
+      if (charcode == 255)
+        return common::NULL_VALUE_64;
       if (len_table_[len] > 0) {
         res <<= len_table_[len];
         res += charcode;
       }
     }
     for (size_t i = len + 1; i < max_string_size_; i++)  // ignore the rest of string
-      if (len_table_[i] > 0) res <<= len_table_[i];
+      if (len_table_[i] > 0)
+        res <<= len_table_[i];
 
   } else {
     for (size_t i = len; i < max_string_size_; i++)  // fill the rest with maximal values
@@ -188,7 +198,8 @@ BString TextStat::Decode(int64_t code) {
     for (size_t i = 0; i < max_string_size_; i++) {
       chars_found_[256 * i] = 0;
       for (int j = 0; j < 256; j++)
-        if (encode_table_[j + 256 * i] != 255) chars_found_[encode_table_[j + 256 * i] + 256 * i] = j;
+        if (encode_table_[j + 256 * i] != 255)
+          chars_found_[encode_table_[j + 256 * i] + 256 * i] = j;
     }
   }
 

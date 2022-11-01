@@ -53,7 +53,8 @@ class thread_pool final {
           {
             std::unique_lock<std::mutex> lock(queue_mutex_);
             condition_.wait(lock, [this] { return this->stop_ || !this->tasks_.empty(); });
-            if (stop_ && tasks_.empty()) return;
+            if (stop_ && tasks_.empty())
+              return;
             task = std::move(tasks_.front());
             tasks_.pop();
           }
@@ -78,7 +79,8 @@ class thread_pool final {
 
   template <class F, class... Args>
   auto add_task(F &&f, Args &&... args) -> std::future<typename std::result_of<F(Args...)>::type> {
-    if (tp_owner_ == this) throw std::logic_error("add task in worker thread");
+    if (tp_owner_ == this)
+      throw std::logic_error("add task in worker thread");
 
     auto task = std::make_shared<std::packaged_task<typename std::result_of<F(Args...)>::type()>>(
         std::bind(std::forward<F>(f), std::forward<Args>(args)...));
@@ -87,7 +89,8 @@ class thread_pool final {
     {
       std::unique_lock<std::mutex> lock(queue_mutex_);
       // don't allow enqueuing if we are stopping
-      if (stop_) throw std::runtime_error("add task on stopped thread_pool");
+      if (stop_)
+        throw std::runtime_error("add task on stopped thread_pool");
       tasks_.emplace([task]() { (*task)(); });
     }
     condition_.notify_one();

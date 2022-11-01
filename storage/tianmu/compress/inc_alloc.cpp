@@ -64,10 +64,12 @@ void *IncAlloc::_alloc_search(uint size) {
   if (blk_ > 0) {
     bsize = (uint)(blocks_[blk_ - 1].size * GROW_SIZE_ + ROUNDUP_) / ROUNDUP_ * ROUNDUP_;
     DEBUG_ASSERT(bsize > blocks_[blk_ - 1].size);
-    if (bsize < size) bsize = size;
+    if (bsize < size)
+      bsize = size;
   }
   void *mem = new char[bsize];
-  if (!mem) throw CprsErr::CPRS_ERR_MEM;
+  if (!mem)
+    throw CprsErr::CPRS_ERR_MEM;
 
   blocks_.push_back(Block(mem, bsize));
   used_ = size;

@@ -282,7 +282,8 @@ resources allocate(configuration c) {
       do {
         obj = hwloc_get_next_obj_by_depth(topology, depth, obj);
       } while (!obj);
-      if (obj == node) break;
+      if (obj == node)
+        break;
     }
     assert(!remain);
     ret.cpus.push_back(std::move(this_cpu));

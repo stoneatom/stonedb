@@ -277,7 +277,8 @@ bool RCAttr::SaveVersion() {
     }
   }
 
-  if (no_change) return false;
+  if (no_change)
+    return false;
 
   // truncated table?
   if (!m_idx.empty()) {
@@ -306,7 +307,8 @@ bool RCAttr::SaveVersion() {
   fattr.WriteExact(&hdr, sizeof(hdr));
   fattr.WriteExact(&m_idx[0], sizeof(decltype(m_idx)::value_type) * hdr.np);
 
-  if (tianmu_sysvar_sync_buffers) fattr.Flush();
+  if (tianmu_sysvar_sync_buffers)
+    fattr.Flush();
 
   return true;
 }
@@ -317,7 +319,8 @@ void RCAttr::PostCommit() {
       auto &dpn = get_dpn(i);
       if (dpn.IsLocal()) {
         dpn.SetLocal(false);
-        if (dpn.base != common::INVALID_PACK_INDEX) m_share->get_dpn_ptr(dpn.base)->xmax = ha_rcengine_->MaxXID();
+        if (dpn.base != common::INVALID_PACK_INDEX)
+          m_share->get_dpn_ptr(dpn.base)->xmax = ha_rcengine_->MaxXID();
       }
     }
 
@@ -357,10 +360,12 @@ void RCAttr::LoadPackInfo([[maybe_unused]] Transaction *trans_) {
 PackOntologicalStatus RCAttr::GetPackOntologicalStatus(int pack_no) {
   LoadPackInfo();
   DPN const *dpn(pack_no >= 0 ? &get_dpn(pack_no) : nullptr);
-  if (pack_no < 0 || dpn->NullOnly()) return PackOntologicalStatus::NULLS_ONLY;
+  if (pack_no < 0 || dpn->NullOnly())
+    return PackOntologicalStatus::NULLS_ONLY;
   if (GetPackType() == common::PackType::INT) {
     if (dpn->min_i == dpn->max_i) {
-      if (dpn->nn == 0) return PackOntologicalStatus::UNIFORM;
+      if (dpn->nn == 0)
+        return PackOntologicalStatus::UNIFORM;
       return PackOntologicalStatus::UNIFORM_AND_NULLS;
     }
   }
@@ -368,7 +373,8 @@ PackOntologicalStatus RCAttr::GetPackOntologicalStatus(int pack_no) {
 }
 
 types::BString RCAttr::GetValueString(const int64_t obj) {
-  if (obj == common::NULL_VALUE_64) return types::BString();
+  if (obj == common::NULL_VALUE_64)
+    return types::BString();
   int pack = row2pack(obj);
   int offset = row2offset(obj);
 
@@ -401,7 +407,8 @@ types::BString RCAttr::GetNotNullValueString(const int64_t obj) {
 
 // original 0-level value (text, std::string, date, time etc.)
 void RCAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
-  if (obj == common::NULL_VALUE_64) return;
+  if (obj == common::NULL_VALUE_64)
+    return;
   common::CT a_type = TypeName();
   size = 0;
   DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
@@ -409,16 +416,19 @@ void RCAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
   int pack = row2pack(obj);
   int offset = row2offset(obj);
   auto const &dpn(get_dpn(pack));
-  if (dpn.NullOnly()) return;
+  if (dpn.NullOnly())
+    return;
   if (ATI::IsStringType(a_type)) {
     if (GetPackType() == common::PackType::INT) {
       int64_t res = GetValueInt64(obj);
-      if (res == common::NULL_VALUE_64) return;
+      if (res == common::NULL_VALUE_64)
+        return;
       size = m_dict->ValueSize((int)res);
       std::memcpy(val_buf, m_dict->GetBuffer((int)res), size);
       return;
     } else {  // no dictionary
-      if (dpn.Trivial()) return;
+      if (dpn.Trivial())
+        return;
       auto p = get_packS(pack);
       DEBUG_ASSERT(p->IsLocked());
       types::BString v(p->GetValueBinary(offset));
@@ -429,7 +439,8 @@ void RCAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
   } else if (ATI::IsInteger32Type(a_type)) {
     size = 4;
     int64_t v = GetValueInt64(obj);
-    if (v == common::NULL_VALUE_64) return;
+    if (v == common::NULL_VALUE_64)
+      return;
     *(int *)val_buf = int(v);
     val_buf[4] = 0;
     return;
@@ -437,7 +448,8 @@ void RCAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
              ATI::IsDateTimeType(a_type)) {
     size = 8;
     int64_t v = GetValueInt64(obj);
-    if (v == common::NULL_VALUE_64) return;
+    if (v == common::NULL_VALUE_64)
+      return;
     *(int64_t *)(val_buf) = v;
     val_buf[8] = 0;
     return;
@@ -446,7 +458,8 @@ void RCAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
 }
 
 types::RCValueObject RCAttr::GetValue(int64_t obj, bool lookup_to_num) {
-  if (obj == common::NULL_VALUE_64) return types::RCValueObject();
+  if (obj == common::NULL_VALUE_64)
+    return types::RCValueObject();
   common::CT a_type = TypeName();
   DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
   types::RCValueObject ret;
@@ -506,13 +519,16 @@ types::RCDataType &RCAttr::GetValueData(size_t obj, types::RCDataType &value, bo
 
 int64_t RCAttr::GetNumOfNulls(int pack) {
   LoadPackInfo();
-  if (pack == -1) return NumOfNulls();
+  if (pack == -1)
+    return NumOfNulls();
   return get_dpn(pack).nn;
 }
 
 size_t RCAttr::GetActualSize(int pack) {
-  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY) return 0;
-  if (Type().IsLookup() || GetPackType() != common::PackType::STR) return Type().GetPrecision();
+  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY)
+    return 0;
+  if (Type().IsLookup() || GetPackType() != common::PackType::STR)
+    return Type().GetPrecision();
   return get_dpn(pack).sum_i;
 }
 
@@ -532,13 +548,15 @@ int64_t RCAttr::GetSum(int pack, bool &nonnegative) {
 
 int64_t RCAttr::GetMinInt64(int pack) {
   LoadPackInfo();
-  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY) return common::MINUS_INF_64;
+  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY)
+    return common::MINUS_INF_64;
   return get_dpn(pack).min_i;
 }
 
 int64_t RCAttr::GetMaxInt64(int pack) {
   LoadPackInfo();
-  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY) return common::PLUS_INF_64;
+  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY)
+    return common::PLUS_INF_64;
   return get_dpn(pack).max_i;
 }
 
@@ -548,7 +566,8 @@ types::BString RCAttr::GetMaxString(int pack) {
     return types::BString();
   auto s = get_dpn(pack).max_s;
   size_t max_len = GetActualSize(pack);
-  if (max_len > 8) max_len = 8;
+  if (max_len > 8)
+    max_len = 8;
   int64_t min_len = max_len - 1;
   while (min_len >= 0 && s[min_len] != '\0') min_len--;
   return types::BString(s, min_len >= 0 ? min_len : max_len, true);
@@ -571,8 +590,10 @@ size_t RCAttr::GetLength(int64_t obj) {
   LoadPackInfo();
   int pack = row2pack(obj);
   auto const &dpn(get_dpn(pack));
-  if (dpn.NullOnly()) return 0;
-  if (GetPackType() != common::PackType::STR) return Type().GetDisplaySize();
+  if (dpn.NullOnly())
+    return 0;
+  if (GetPackType() != common::PackType::STR)
+    return Type().GetDisplaySize();
   return get_packS(pack)->GetValueBinary(row2offset(obj)).size();
 }
 
@@ -616,8 +637,10 @@ types::BString RCAttr::DecodeValue_S(int64_t code) {
 // 1-level code value for a given 0-level (text) value
 // if new_val, then add to dictionary if not present
 int RCAttr::EncodeValue_T(const types::BString &rcbs, bool new_val, common::ErrorCode *tianmu_rc) {
-  if (tianmu_rc) *tianmu_rc = common::ErrorCode::SUCCESS;
-  if (rcbs.IsNull()) return common::NULL_VALUE_32;
+  if (tianmu_rc)
+    *tianmu_rc = common::ErrorCode::SUCCESS;
+  if (rcbs.IsNull())
+    return common::NULL_VALUE_32;
   if (ATI::IsStringType(TypeName())) {
     DEBUG_ASSERT(GetPackType() == common::PackType::INT);
     LoadPackInfo();
@@ -642,13 +665,15 @@ int RCAttr::EncodeValue_T(const types::BString &rcbs, bool new_val, common::Erro
     return vs;
   }
   char const *val = rcbs.val_;
-  if (val == 0) val = ZERO_LENGTH_STRING;
+  if (val == 0)
+    val = ZERO_LENGTH_STRING;
   if (ATI::IsDateTimeType(TypeName()) || TypeName() == common::CT::BIGINT) {
     ASSERT(0, "Wrong data type!");
   } else {
     types::RCNum rcn;
     common::ErrorCode tmp_tianmu_rc = types::RCNum::Parse(rcbs, rcn, TypeName());
-    if (tianmu_rc) *tianmu_rc = tmp_tianmu_rc;
+    if (tianmu_rc)
+      *tianmu_rc = tmp_tianmu_rc;
     return (int)(int64_t)rcn;
   }
   return common::NULL_VALUE_32;
@@ -659,8 +684,10 @@ int RCAttr::EncodeValue_T(const types::BString &rcbs, bool new_val, common::Erro
 // precision than the column and the returned result is rounded down
 int64_t RCAttr::EncodeValue64(types::RCDataType *v, bool &rounded, common::ErrorCode *tianmu_rc) {
   rounded = false;
-  if (tianmu_rc) *tianmu_rc = common::ErrorCode::SUCCESS;
-  if (!v || v->IsNull()) return common::NULL_VALUE_64;
+  if (tianmu_rc)
+    *tianmu_rc = common::ErrorCode::SUCCESS;
+  if (!v || v->IsNull())
+    return common::NULL_VALUE_64;
 
   if ((Type().IsLookup() && v->Type() != common::CT::NUM)) {
     return EncodeValue_T(v->ToBString(), false, tianmu_rc);
@@ -672,7 +699,8 @@ int64_t RCAttr::EncodeValue64(types::RCDataType *v, bool &rounded, common::Error
   int64_t vv = ((types::RCNum *)v)->ValueInt();
   int vp = ((types::RCNum *)v)->Scale();
   if (ATI::IsRealType(TypeName())) {
-    if (((types::RCNum *)v)->IsReal()) return vv;  // already stored as double
+    if (((types::RCNum *)v)->IsReal())
+      return vv;  // already stored as double
     double res = double(vv);
     res /= types::Uint64PowOfTen(vp);
     // for(int i=0;i<vp;i++) res*=10;
@@ -681,8 +709,10 @@ int64_t RCAttr::EncodeValue64(types::RCDataType *v, bool &rounded, common::Error
   if (((types::RCNum *)v)->IsReal()) {  // v is double
     double vd = *(double *)(&vv);
     vd *= types::Uint64PowOfTen(Type().GetScale());  // translate into int64_t of proper precision
-    if (vd > common::PLUS_INF_64) return common::PLUS_INF_64;
-    if (vd < common::MINUS_INF_64) return common::MINUS_INF_64;
+    if (vd > common::PLUS_INF_64)
+      return common::PLUS_INF_64;
+    if (vd < common::MINUS_INF_64)
+      return common::MINUS_INF_64;
     int64_t res = int64_t(vd);
     if (fabs(vd - double(res)) > 0.01)
       rounded = true;  // ignore errors which are 2 digits less than declared
@@ -691,13 +721,16 @@ int64_t RCAttr::EncodeValue64(types::RCDataType *v, bool &rounded, common::Error
   }
   unsigned char dplaces = Type().GetScale();
   while (vp < dplaces) {
-    if (vv < common::MINUS_INF_64 / 10) return common::MINUS_INF_64;
-    if (vv > common::PLUS_INF_64 / 10) return common::PLUS_INF_64;
+    if (vv < common::MINUS_INF_64 / 10)
+      return common::MINUS_INF_64;
+    if (vv > common::PLUS_INF_64 / 10)
+      return common::PLUS_INF_64;
     vv *= 10;
     vp++;
   }
   while (vp > dplaces) {
-    if (vv % 10 != 0) rounded = true;
+    if (vv % 10 != 0)
+      rounded = true;
     vv /= 10;
     vp--;
   }
@@ -711,7 +744,8 @@ int64_t RCAttr::EncodeValue64(const types::RCValueObject &v, bool &rounded, comm
 size_t RCAttr::GetPrefixLength(int pack) {
   LoadPackInfo();
 
-  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY) return 0;
+  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY)
+    return 0;
 
   auto const &dpn(get_dpn(pack));
   size_t dif_pos = 0;
@@ -723,12 +757,15 @@ size_t RCAttr::GetPrefixLength(int pack) {
 
 void RCAttr::LockPackForUse(common::PACK_INDEX pn) {
   auto dpn = &get_dpn(pn);
-  if (dpn->IsLocal()) dpn = m_share->get_dpn_ptr(dpn->base);
+  if (dpn->IsLocal())
+    dpn = m_share->get_dpn_ptr(dpn->base);
 
-  if (dpn->Trivial() && !dpn->IsLocal()) return;
+  if (dpn->Trivial() && !dpn->IsLocal())
+    return;
 
   while (true) {
-    if (dpn->IncRef()) return;
+    if (dpn->IncRef())
+      return;
 
     // either the pack is not loaded yet or other thread is loading it
 
@@ -761,9 +798,11 @@ void RCAttr::LockPackForUse(common::PACK_INDEX pn) {
 
 void RCAttr::UnlockPackFromUse(common::PACK_INDEX pn) {
   auto dpn = &get_dpn(pn);
-  if (dpn->IsLocal()) dpn = m_share->get_dpn_ptr(dpn->base);
+  if (dpn->IsLocal())
+    dpn = m_share->get_dpn_ptr(dpn->base);
 
-  if (dpn->Trivial()) return;
+  if (dpn->Trivial())
+    return;
 
   auto v = dpn->GetPackPtr();
   unsigned long newv;
@@ -772,7 +811,8 @@ void RCAttr::UnlockPackFromUse(common::PACK_INDEX pn) {
     ASSERT(v > tag_one,
            "Unexpected lock counter!: " + Path().string() + " index:" + std::to_string(pn) + " " + std::to_string(v));
     newv = v - tag_one;
-    if ((v & ~tag_mask) == tag_one) newv = 0;
+    if ((v & ~tag_mask) == tag_one)
+      newv = 0;
   } while (!dpn->CAS(v, newv));
 
   if (newv == 0) {
@@ -793,7 +833,8 @@ void RCAttr::Release() { Collapse(); }
 
 std::shared_ptr<Pack> RCAttr::Fetch(const PackCoordinate &pc) {
   auto dpn = m_share->get_dpn_ptr(pc_dp(pc));
-  if (GetPackType() == common::PackType::STR) return std::make_shared<PackStr>(dpn, pc, m_share);
+  if (GetPackType() == common::PackType::STR)
+    return std::make_shared<PackStr>(dpn, pc, m_share);
   return std::make_shared<PackInt>(dpn, pc, m_share);
 }
 
@@ -815,7 +856,8 @@ void RCAttr::PreparePackForLoad() {
 
 void RCAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
   no_change = false;
-  if (conn_info) current_txn_ = conn_info;
+  if (conn_info)
+    current_txn_ = conn_info;
 
   PreparePackForLoad();
   int pi = SizeOfPack() - 1;
@@ -832,7 +874,8 @@ void RCAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
       break;
   }
 
-  if (!get_dpn(pi).Trivial()) get_pack(pi)->Save();
+  if (!get_dpn(pi).Trivial())
+    get_pack(pi)->Save();
 
   hdr.nr += nvs->NumOfValues();
   hdr.nn += (Type().NotNull() ? 0 : nvs->NumOfNulls());
@@ -904,13 +947,17 @@ void RCAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
       SetMaxInt64(dpn.max_i);
     } else {
       if (!ATI::IsRealType(TypeName())) {
-        if (GetMinInt64() > dpn.min_i) SetMinInt64(dpn.min_i);
-        if (GetMaxInt64() < dpn.max_i) SetMaxInt64(dpn.max_i);
+        if (GetMinInt64() > dpn.min_i)
+          SetMinInt64(dpn.min_i);
+        if (GetMaxInt64() < dpn.max_i)
+          SetMaxInt64(dpn.max_i);
       } else {
         int64_t a_min = GetMinInt64();
         int64_t a_max = GetMaxInt64();
-        if (*(double *)(&a_min) > dpn.min_d) SetMinInt64(dpn.min_i);
-        if (*(double *)(&a_max) < dpn.max_d) SetMaxInt64(dpn.max_i);  // 1-level statistics
+        if (*(double *)(&a_min) > dpn.min_d)
+          SetMinInt64(dpn.min_i);
+        if (*(double *)(&a_max) < dpn.max_d)
+          SetMaxInt64(dpn.max_i);  // 1-level statistics
       }
     }
   }
@@ -989,7 +1036,8 @@ void RCAttr::UpdateData(uint64_t row, Value &v) {
       // re-calculate the min
       hdr.min = std::numeric_limits<int64_t>::max();
       for (uint i = 0; i < m_idx.size(); i++) {
-        if (!get_dpn(i).NullOnly()) hdr.min = std::min(get_dpn(i).min_i, hdr.min);
+        if (!get_dpn(i).NullOnly())
+          hdr.min = std::min(get_dpn(i).min_i, hdr.min);
       }
     }
 
@@ -999,7 +1047,8 @@ void RCAttr::UpdateData(uint64_t row, Value &v) {
       // re-calculate the max
       hdr.max = std::numeric_limits<int64_t>::min();
       for (uint i = 0; i < m_idx.size(); i++) {
-        if (!get_dpn(i).NullOnly()) hdr.max = std::max(get_dpn(i).max_i, hdr.max);
+        if (!get_dpn(i).NullOnly())
+          hdr.max = std::max(get_dpn(i).max_i, hdr.max);
       }
     }
   } else {  // common::PackType::STR
@@ -1007,7 +1056,8 @@ void RCAttr::UpdateData(uint64_t row, Value &v) {
 }
 
 void RCAttr::CopyPackForWrite(common::PACK_INDEX pi) {
-  if (get_dpn(pi).IsLocal()) return;
+  if (get_dpn(pi).IsLocal())
+    return;
 
   auto &old_dpn(get_dpn(pi));  // save a ref to the old dpn
 
@@ -1076,7 +1126,8 @@ types::BString RCAttr::MinS(Filter *f) {
     FilterOnesIterator it(f, pss);
     while (it.IsValid()) {
       uint b = it.GetCurrPack();
-      if (b >= SizeOfPack()) continue;
+      if (b >= SizeOfPack())
+        continue;
       auto const &dpn(get_dpn(b));
       auto p = get_packS(b);
       if (GetPackType() == common::PackType::INT &&
@@ -1110,7 +1161,8 @@ types::BString RCAttr::MaxS(Filter *f) {
     FilterOnesIterator it(f, pss);
     while (it.IsValid()) {
       int b = it.GetCurrPack();
-      if (uint(b) >= SizeOfPack()) continue;
+      if (uint(b) >= SizeOfPack())
+        continue;
       auto const &dpn(get_dpn(b));
       auto p = get_packS(b);
       if (GetPackType() == common::PackType::INT &&
@@ -1138,7 +1190,8 @@ void RCAttr::UpdateRSI_Hist(common::PACK_INDEX pi) {
     return;
   }
 
-  if (GetPackType() != common::PackType::INT || NumOfObj() == 0) return;
+  if (GetPackType() != common::PackType::INT || NumOfObj() == 0)
+    return;
 
   filter_hist->Update(pi, get_dpn(pi), get_packN(pi));
 }
@@ -1147,9 +1200,11 @@ void RCAttr::UpdateRSI_CMap(common::PACK_INDEX pi) {
   if (GetPackType() != common::PackType::STR || NumOfObj() == 0 || types::RequiresUTFConversions(Type().GetCollation()))
     return;
 
-  if (!GetFilter_CMap()) return;
+  if (!GetFilter_CMap())
+    return;
 
-  if (GetPackOntologicalStatus(pi) == PackOntologicalStatus::NULLS_ONLY) return;
+  if (GetPackOntologicalStatus(pi) == PackOntologicalStatus::NULLS_ONLY)
+    return;
   filter_cmap->Update(pi, get_dpn(pi), get_packS(pi));
 }
 
@@ -1158,9 +1213,11 @@ void RCAttr::UpdateRSI_Bloom(common::PACK_INDEX pi) {
     return;
   }
 
-  if (NumOfObj() == 0) return;
+  if (NumOfObj() == 0)
+    return;
 
-  if (GetPackOntologicalStatus(pi) == PackOntologicalStatus::NULLS_ONLY) return;
+  if (GetPackOntologicalStatus(pi) == PackOntologicalStatus::NULLS_ONLY)
+    return;
 
   filter_bloom->Update(pi, get_dpn(pi), get_packS(pi));
 }
@@ -1180,10 +1237,12 @@ std::shared_ptr<RSIndex_Hist> RCAttr::GetFilter_Hist() {
     return nullptr;
   }
 
-  if (!m_share->has_filter_hist) return nullptr;
+  if (!m_share->has_filter_hist)
+    return nullptr;
 
   if (m_tx != nullptr) {
-    if (!filter_hist) filter_hist = std::make_shared<RSIndex_Hist>(Path() / common::COL_FILTER_DIR, m_version);
+    if (!filter_hist)
+      filter_hist = std::make_shared<RSIndex_Hist>(Path() / common::COL_FILTER_DIR, m_version);
     return filter_hist;
   }
   if (!filter_hist)
@@ -1197,10 +1256,12 @@ std::shared_ptr<RSIndex_CMap> RCAttr::GetFilter_CMap() {
     return nullptr;
   }
 
-  if (!m_share->has_filter_cmap) return nullptr;
+  if (!m_share->has_filter_cmap)
+    return nullptr;
 
   if (m_tx != nullptr) {
-    if (!filter_cmap) filter_cmap = std::make_shared<RSIndex_CMap>(Path() / common::COL_FILTER_DIR, m_version);
+    if (!filter_cmap)
+      filter_cmap = std::make_shared<RSIndex_CMap>(Path() / common::COL_FILTER_DIR, m_version);
     return filter_cmap;
   }
   return std::static_pointer_cast<RSIndex_CMap>(ha_rcengine_->filter_cache.Get(
@@ -1212,10 +1273,12 @@ std::shared_ptr<RSIndex_Bloom> RCAttr::GetFilter_Bloom() {
     return nullptr;
   }
 
-  if (!m_share->has_filter_bloom) return nullptr;
+  if (!m_share->has_filter_bloom)
+    return nullptr;
 
   if (m_tx != nullptr) {
-    if (!filter_bloom) filter_bloom = std::make_shared<RSIndex_Bloom>(Path() / common::COL_FILTER_DIR, m_version);
+    if (!filter_bloom)
+      filter_bloom = std::make_shared<RSIndex_Bloom>(Path() / common::COL_FILTER_DIR, m_version);
     return filter_bloom;
   }
   return std::static_pointer_cast<RSIndex_Bloom>(ha_rcengine_->filter_cache.Get(
@@ -1226,11 +1289,14 @@ void RCAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
   auto path = m_share->owner->Path();
   std::shared_ptr<index::RCTableIndex> tab = ha_rcengine_->GetTableIndex(path);
   // col is not primary key
-  if (!tab) return;
+  if (!tab)
+    return;
   std::vector<uint> keycols = tab->KeyCols();
-  if (std::find(keycols.begin(), keycols.end(), col) == keycols.end()) return;
+  if (std::find(keycols.begin(), keycols.end(), col) == keycols.end())
+    return;
 
-  if (!v.HasValue()) throw common::Exception("primary key not support null!");
+  if (!v.HasValue())
+    throw common::Exception("primary key not support null!");
 
   if (GetPackType() == common::PackType::STR) {
     auto &vnew = v.GetString();
