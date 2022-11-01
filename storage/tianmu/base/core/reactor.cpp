@@ -103,7 +103,7 @@ constexpr std::chrono::milliseconds lowres_clock_impl::_granularity;
 static bool sched_debug() { return false; }
 
 template <typename... Args>
-void sched_print(const char *fmt, Args &&...args) {
+void sched_print(const char *fmt, Args &&... args) {
   if (sched_debug()) {
     sched_logger.trace(fmt, std::forward<Args>(args)...);
   }
@@ -489,7 +489,8 @@ pollable_fd reactor::posix_listen(socket_address sa, listen_options opts) {
   if (opts.reuse_address) {
     fd.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1);
   }
-  if (_reuseport) fd.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1);
+  if (_reuseport)
+    fd.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1);
 
   fd.bind(sa.u.sa, sizeof(sa.u.sas));
   fd.listen(100);
@@ -850,7 +851,8 @@ future<> reactor::run_exit_tasks() {
     });
 #else
   auto functor = [this]() -> future<std::experimental::optional<bool>> {
-    if (_exit_funcs.empty()) return make_ready_future<std::experimental::optional<bool>>(true);
+    if (_exit_funcs.empty())
+      return make_ready_future<std::experimental::optional<bool>>(true);
     auto &func = _exit_funcs.back();
     func();
     _exit_funcs.pop_back();
@@ -1751,7 +1753,8 @@ size_t smp_message_queue::process_queue(lf_queue &q, Func process) {
   // time in which cross-cpu data is accessed
   work_item *items[queue_length + PrefetchCnt];
   work_item *wi;
-  if (!q.pop(wi)) return 0;
+  if (!q.pop(wi))
+    return 0;
   // start prefecthing first item before popping the rest to overlap memory
   // access with potential cache miss the second pop may cause
   prefetch<2>(wi);
@@ -2050,8 +2053,10 @@ void smp::configure(const options &opt) {
   smp::count = nr_cpus;
   _reactors.resize(nr_cpus);
   resource::configuration rc;
-  if (opt.memory) rc.total_memory = parse_memory_size(*opt.memory);
-  if (opt.reserve_memory) rc.reserve_memory = parse_memory_size(*opt.reserve_memory);
+  if (opt.memory)
+    rc.total_memory = parse_memory_size(*opt.memory);
+  if (opt.reserve_memory)
+    rc.reserve_memory = parse_memory_size(*opt.reserve_memory);
 
   auto mlock = opt.lock_memory;
   if (mlock) {

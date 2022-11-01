@@ -40,82 +40,85 @@ class ConstExpressionColumn : public ExpressionColumn {
    * \param ct - type of const column.
    */
   ConstExpressionColumn(core::MysqlExpression *expr, core::TempTable *temp_table, int temp_table_alias,
-                        core::MultiIndex *mind)
-      : ExpressionColumn(expr, temp_table, temp_table_alias, mind) {
+                        core::MultiIndex *multi_index)
+      : ExpressionColumn(expr, temp_table, temp_table_alias, multi_index) {
     // status = VC_CONST;
-    dim = -1;
-    if (params.size() == 0) last_val = expr->Evaluate();
+    dim_ = -1;
+    if (params_.size() == 0)
+      last_val_ = expr->Evaluate();
   }
 
   ConstExpressionColumn(core::MysqlExpression *expr, core::ColumnType forced_ct, core::TempTable *temp_table,
-                        int temp_table_alias, core::MultiIndex *mind)
-      : ExpressionColumn(expr, temp_table, temp_table_alias, mind) {
+                        int temp_table_alias, core::MultiIndex *multi_index)
+      : ExpressionColumn(expr, temp_table, temp_table_alias, multi_index) {
     // special case when naked column is a parameter
     // status = VC_CONST; Used for naked attributes as parameters
-    dim = -1;
-    //		if(params.size() == 0)
-    //			last_val = expr->Evaluate();
+    dim_ = -1;
+    //		if(params_.size() == 0)
+    //			last_val_ = expr->Evaluate();
     ct = forced_ct;
     ct = ct.RemovedLookup();
   }
 
-  ConstExpressionColumn(ConstExpressionColumn const &cc) : ExpressionColumn(NULL, NULL, common::NULL_VALUE_32, NULL) {
-    DEBUG_ASSERT(params.size() == 0 && "cannot copy expressions");
-    last_val = cc.last_val;
+  ConstExpressionColumn(ConstExpressionColumn const &cc)
+      : ExpressionColumn(nullptr, nullptr, common::NULL_VALUE_32, nullptr) {
+    DEBUG_ASSERT(params_.size() == 0 && "cannot copy expressions");
+    last_val_ = cc.last_val_;
     ct = cc.ct;
-    first_eval = cc.first_eval;
+    first_eval_ = cc.first_eval_;
   }
 
   ~ConstExpressionColumn() {}
   bool IsConst() const override { return true; }
   void RequestEval(const core::MIIterator &mit, const int tta) override;
-  int64_t GetNotNullValueInt64([[maybe_unused]] const core::MIIterator &mit) override { return last_val->Get64(); }
+  int64_t GetNotNullValueInt64([[maybe_unused]] const core::MIIterator &mit) override { return last_val_->Get64(); }
   void GetNotNullValueString(types::BString &s, [[maybe_unused]] const core::MIIterator &mit) override {
-    last_val->GetBString(s);
+    last_val_->GetBString(s);
   }
   types::BString DecodeValue_S(int64_t code) override;  // lookup (physical) only
   int EncodeValue_S([[maybe_unused]] types::BString &v) override { return -1; }
-  bool CanCopy() const override { return params.size() == 0; }
-  bool IsThreadSafe() override { return params.size() == 0; }
+  bool CanCopy() const override { return params_.size() == 0; }
+  bool IsThreadSafe() override { return params_.size() == 0; }
 
  protected:
-  bool IsNullImpl([[maybe_unused]] const core::MIIterator &mit) override { return last_val->IsNull(); }
+  bool IsNullImpl([[maybe_unused]] const core::MIIterator &mit) override { return last_val_->IsNull(); }
 
   types::RCValueObject GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) override;
 
   void GetValueStringImpl(types::BString &s, [[maybe_unused]] const core::MIIterator &mit) override {
-    last_val->GetBString(s);
+    last_val_->GetBString(s);
   }
 
   int64_t GetValueInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
-    return last_val->IsNull() ? common::NULL_VALUE_64 : last_val->Get64();
+    return last_val_->IsNull() ? common::NULL_VALUE_64 : last_val_->Get64();
   }
 
   double GetValueDoubleImpl(const core::MIIterator &mit) override;
   int64_t GetMinInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
-    return last_val->IsNull() ? common::MINUS_INF_64 : last_val->Get64();
+    return last_val_->IsNull() ? common::MINUS_INF_64 : last_val_->Get64();
   }
   int64_t GetMaxInt64Impl([[maybe_unused]] const core::MIIterator &mit) override {
-    return last_val->IsNull() ? common::PLUS_INF_64 : last_val->Get64();
+    return last_val_->IsNull() ? common::PLUS_INF_64 : last_val_->Get64();
   }
   int64_t RoughMinImpl() override {
-    return (last_val->IsNull() || last_val->Get64() == common::NULL_VALUE_64) ? common::MINUS_INF_64
-                                                                              : last_val->Get64();
+    return (last_val_->IsNull() || last_val_->Get64() == common::NULL_VALUE_64) ? common::MINUS_INF_64
+                                                                                : last_val_->Get64();
   }
   int64_t RoughMaxImpl() override {
-    return (last_val->IsNull() || last_val->Get64() == common::NULL_VALUE_64) ? common::PLUS_INF_64 : last_val->Get64();
+    return (last_val_->IsNull() || last_val_->Get64() == common::NULL_VALUE_64) ? common::PLUS_INF_64
+                                                                                : last_val_->Get64();
   }
   types::BString GetMaxStringImpl(const core::MIIterator &mit) override;
   types::BString GetMinStringImpl(const core::MIIterator &mit) override;
   int64_t GetNumOfNullsImpl(const core::MIIterator &mit, [[maybe_unused]] bool val_nulls_possible) override {
-    return last_val->IsNull() ? mit.GetPackSizeLeft() : (mit.NullsPossibleInPack() ? common::NULL_VALUE_64 : 0);
+    return last_val_->IsNull() ? mit.GetPackSizeLeft() : (mit.NullsPossibleInPack() ? common::NULL_VALUE_64 : 0);
   }
 
-  bool IsRoughNullsOnlyImpl() const override { return last_val->IsNull(); }
-  bool IsNullsPossibleImpl([[maybe_unused]] bool val_nulls_possible) override { return last_val->IsNull(); }
+  bool IsRoughNullsOnlyImpl() const override { return last_val_->IsNull(); }
+  bool IsNullsPossibleImpl([[maybe_unused]] bool val_nulls_possible) override { return last_val_->IsNull(); }
   int64_t GetSumImpl(const core::MIIterator &mit, bool &nonnegative) override;
   bool IsDistinctImpl() override {
-    return (mind->TooManyTuples() || mind->NumOfTuples() > 1) ? false : (!last_val->IsNull());
+    return (multi_index_->TooManyTuples() || multi_index_->NumOfTuples() > 1) ? false : (!last_val_->IsNull());
   }
   int64_t GetApproxDistValsImpl(bool incl_nulls, core::RoughMultiIndex *rough_mind) override;
   size_t MaxStringSizeImpl() override;  // maximal byte string length in column

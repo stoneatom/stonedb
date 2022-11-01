@@ -66,7 +66,8 @@ inline bool IsDoubleNull(const double d) { return *(int64_t *)&d == common::NULL
 inline uint GetBitLen(uint x) {
 #ifdef __x86_64__
   uint position;
-  if (!x) return 0;
+  if (!x)
+    return 0;
   asm("bsrl %1, %0" : "=r"(position) : "r"(x));
   return position + 1;
 #else
@@ -77,7 +78,8 @@ inline uint GetBitLen(uint x) {
 inline uint GetBitLen(uint64_t x) {
 #ifdef __x86_64__
   uint64_t position;
-  if (!x) return 0;
+  if (!x)
+    return 0;
   asm("bsr %1, %0" : "=r"(position) : "r"(x));
   return (uint)position + 1;
 #else

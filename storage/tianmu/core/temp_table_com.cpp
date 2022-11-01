@@ -58,7 +58,8 @@ TempTable::TempTable(JustATable *t, int alias, Query *q)
 }
 
 void TempTable::JoinT(JustATable *t, int alias, JoinType jt) {
-  if (jt != JoinType::JO_INNER) throw common::NotImplementedException("left/right/outer join is not implemented.");
+  if (jt != JoinType::JO_INNER)
+    throw common::NotImplementedException("left/right/outer join is not implemented.");
   tables.push_back(t);
   aliases.push_back(alias);
 

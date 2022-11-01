@@ -39,7 +39,7 @@ class RCTableIndex final {
  public:
   RCTableIndex(const RCTableIndex &) = delete;
   RCTableIndex(const std::string &name, TABLE *table);
-  
+
   RCTableIndex &operator=(RCTableIndex &) = delete;
   RCTableIndex() = delete;
   virtual ~RCTableIndex() = default;
@@ -65,6 +65,7 @@ class RCTableIndex final {
   std::vector<uint> index_of_columns_;
 
   uint keyid_ = 0;
+
  private:
   common::ErrorCode CheckUniqueness(core::Transaction *tx, const rocksdb::Slice &pk_slice);
 };

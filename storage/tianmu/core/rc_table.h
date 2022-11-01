@@ -97,7 +97,7 @@ class RCTable final : public JustATable {
   void Rollback(common::TX_ID xid, bool = false);
   void PostCommit();
 
-  // Data access & information 
+  // Data access & information
   int64_t NumOfObj() override;
   int64_t NumOfDeleted();
   int64_t NumOfValues() { return NumOfObj(); }

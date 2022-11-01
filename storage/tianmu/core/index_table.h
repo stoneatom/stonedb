@@ -40,7 +40,8 @@ class IndexTable : private system::CacheableItem, public mm::TraceableObject {
     DEBUG_ASSERT(IsLocked());
     DEBUG_ASSERT(n < size);
     int b = int(n >> block_shift);
-    if (b != cur_block) LoadBlock(b);
+    if (b != cur_block)
+      LoadBlock(b);
     block_changed = true;
     if (bytes_per_value == 4)
       ((unsigned int *)buf)[n & block_mask] = (unsigned int)val;
@@ -56,7 +57,8 @@ class IndexTable : private system::CacheableItem, public mm::TraceableObject {
     DEBUG_ASSERT(IsLocked());
     DEBUG_ASSERT(n < size);
     int b = int(n >> block_shift);
-    if (b != cur_block) LoadBlock(b);
+    if (b != cur_block)
+      LoadBlock(b);
     uint64_t ndx = n & block_mask;
     uint64_t res;
     if (bytes_per_value == 4)

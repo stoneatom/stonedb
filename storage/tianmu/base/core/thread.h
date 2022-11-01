@@ -302,7 +302,7 @@ inline future<> thread::join() {
 /// \endcode
 template <typename Func, typename... Args>
 inline futurize_t<std::result_of_t<std::decay_t<Func>(std::decay_t<Args>...)>> async(thread_attributes attr,
-                                                                                     Func &&func, Args &&...args) {
+                                                                                     Func &&func, Args &&... args) {
   using return_type = std::result_of_t<std::decay_t<Func>(std::decay_t<Args>...)>;
   struct work {
     thread_attributes attr;
@@ -331,7 +331,7 @@ inline futurize_t<std::result_of_t<std::decay_t<Func>(std::decay_t<Args>...)>> a
 /// \param args a parameter pack to be forwarded to \c func.
 /// \return whatever \c func returns, as a future.
 template <typename Func, typename... Args>
-inline futurize_t<std::result_of_t<std::decay_t<Func>(std::decay_t<Args>...)>> async(Func &&func, Args &&...args) {
+inline futurize_t<std::result_of_t<std::decay_t<Func>(std::decay_t<Args>...)>> async(Func &&func, Args &&... args) {
   return async(thread_attributes{}, std::forward<Func>(func), std::forward<Args>(args)...);
 }
 

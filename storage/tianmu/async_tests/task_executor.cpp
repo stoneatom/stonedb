@@ -58,7 +58,8 @@ class AppTemplate {
       pollabled = true;
     }
 
-    if (_stopped.load(std::memory_order_relaxed)) base::engine().exit(0);
+    if (_stopped.load(std::memory_order_relaxed))
+      base::engine().exit(0);
 
     return pollabled;
   }

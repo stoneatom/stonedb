@@ -30,7 +30,7 @@ struct CTask {
   int dwStartPackno;
   int dwStartTuple;
   int dwEndTuple;
-  std::unordered_map<int, int>* dwPack2cur;
+  std::unordered_map<int, int> *dwPack2cur;
   CTask()
       : dwTaskId(0),
         dwPackNum(0),
@@ -39,8 +39,7 @@ struct CTask {
         dwStartPackno(0),
         dwStartTuple(0),
         dwEndTuple(0),
-        dwPack2cur(nullptr) 
-  {}
+        dwPack2cur(nullptr) {}
 };
 }  // namespace core
 }  // namespace Tianmu

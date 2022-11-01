@@ -46,12 +46,12 @@ struct alignas(128) COL_VER_HDR_V3 {
   uint64_t numOfRecords;  // number of records
   uint64_t numOfNulls;    // number of nulls
   uint64_t numOfPacks;    // number of packs
-  uint64_t numOfDeleted;  //number of deleted
+  uint64_t numOfDeleted;  // number of deleted
 
   uint64_t auto_inc_next;
   int64_t min;
   int64_t max;
-  uint32_t dict_ver;    // dict file version name. 0 means n/a
+  uint32_t dict_ver;  // dict file version name. 0 means n/a
   uint32_t unique : 1;
   uint32_t unique_updated : 1;
   uint64_t natural_size;
