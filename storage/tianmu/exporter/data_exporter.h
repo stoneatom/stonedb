@@ -29,13 +29,13 @@ namespace exporter {
 
 class DataExporter {
  public:
-  DataExporter() : progressout(nullptr), row(nullptr), row_ptr(nullptr), nulls_indicator(nullptr) {}
+  DataExporter() : progress_out_(nullptr), row_(nullptr), row_ptr_(nullptr), nulls_indicator_(nullptr) {}
   virtual void Init(std::shared_ptr<system::LargeBuffer> buffer, std::vector<core::AttributeTypeInfo> source_deas,
                     fields_t const &fields, std::vector<core::AttributeTypeInfo> &result_deas);
   virtual ~DataExporter();
   void FlushBuffer();
 
-  void SetProgressOut(system::ChannelOut *po) { progressout = po; }
+  void SetProgressOut(system::ChannelOut *po) { progress_out_ = po; }
   void ShowProgress(int no_eq);
 
   virtual void PutNull() = 0;
@@ -46,22 +46,22 @@ class DataExporter {
   virtual void PutRowEnd() = 0;
 
  protected:
-  int cur_attr;
-  std::vector<core::AttributeTypeInfo> deas;
-  std::vector<core::AttributeTypeInfo> source_deas;
-  fields_t _fields;
+  int cur_attr_ = 0;
+  std::vector<core::AttributeTypeInfo> attr_infos_;
+  std::vector<core::AttributeTypeInfo> source_attr_infos_;
+  fields_t fields_;
 
-  std::shared_ptr<system::LargeBuffer> buf;
-  system::ChannelOut *progressout;
+  std::shared_ptr<system::LargeBuffer> data_exporter_buf_;
+  system::ChannelOut *progress_out_;
 
-  int no_attrs;
+  int no_attrs_ = 0;
 
   // the fields below should be moved to RCDEforBinIndicator
-  char *row;
-  char *row_ptr;
-  int max_row_size;
-  int nulls_indicator_len;
-  char *nulls_indicator;
+  char *row_;
+  char *row_ptr_;
+  int max_row_size_ = 0;
+  int nulls_indicator_len_ = 0;
+  char *nulls_indicator_;
 };
 
 }  // namespace exporter
