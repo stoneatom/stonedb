@@ -128,6 +128,7 @@ class ParallelHashJoiner : public TwoDimensionalJoiner {
     int outer_tuples = 0;             // For output.
     bool no_space_left = false;       // For output.
     MITaskIterator *task_miter = nullptr;
+    THD *thd = nullptr;
 
     ~TraverseTaskParams();
   };
@@ -136,6 +137,7 @@ class ParallelHashJoiner : public TwoDimensionalJoiner {
     std::shared_ptr<MultiIndexBuilder::BuildItem> build_item;
     MITaskIterator *task_miter = nullptr;
     std::vector<ColumnBinEncoder> column_bin_encoder;
+    THD *thd = nullptr;
 
     ~MatchTaskParams();
   };
@@ -173,7 +175,8 @@ class ParallelHashJoiner : public TwoDimensionalJoiner {
   template <typename T>
   bool ImpossibleValues(size_t col, T &pack_min, T &pack_max) {
     for (auto &it : traversed_hash_tables_) {
-      if (!it.GetColumnEncoder(col)->ImpossibleValues(pack_min, pack_max)) return false;
+      if (!it.GetColumnEncoder(col)->ImpossibleValues(pack_min, pack_max))
+        return false;
     }
 
     return true;
