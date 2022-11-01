@@ -31,8 +31,8 @@ longlong Item_sum_int_rcbase::val_int() {
   return (longlong)count_;
 }
 
-String *Item_sum_int_rcbase::val_str([[maybe_unused]] String *str) { return NULL; }
-my_decimal *Item_sum_int_rcbase::val_decimal(my_decimal *) { return NULL; }
+String *Item_sum_int_rcbase::val_str([[maybe_unused]] String *str) { return nullptr; }
+my_decimal *Item_sum_int_rcbase::val_decimal(my_decimal *) { return nullptr; }
 
 void Item_sum_int_rcbase::int64_value(int64_t &value) {
   fixed = 1;

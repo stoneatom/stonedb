@@ -139,7 +139,7 @@ reactor::signals::signals() : _pending_signals(0) {}
 reactor::signals::~signals() {
   sigset_t mask;
   sigfillset(&mask);
-  ::pthread_sigmask(SIG_BLOCK, &mask, NULL);
+  ::pthread_sigmask(SIG_BLOCK, &mask, nullptr);
 }
 
 reactor::signals::signal_handler::signal_handler(int signo, std::function<void()> &&handler)
@@ -151,7 +151,7 @@ reactor::signals::signal_handler::signal_handler(int signo, std::function<void()
   auto r = ::sigaction(signo, &sa, nullptr);
   throw_system_error_on(r == -1);
   auto mask = make_sigset_mask(signo);
-  r = ::pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
+  r = ::pthread_sigmask(SIG_UNBLOCK, &mask, nullptr);
   throw_pthread_error(r);
 }
 
@@ -214,7 +214,7 @@ static decltype(auto) install_signal_handler_stack() {
   throw_system_error_on(r == -1);
   return defer([mem = std::move(mem), prev_stack]() mutable {
     try {
-      auto r = sigaltstack(&prev_stack, NULL);
+      auto r = sigaltstack(&prev_stack, nullptr);
       throw_system_error_on(r == -1);
     } catch (...) {
       mem.release();  // We failed to restore previous stack, must leak it.
@@ -302,7 +302,7 @@ reactor::reactor(unsigned id)
   sigset_t mask;
   sigemptyset(&mask);
   sigaddset(&mask, alarm_signal());
-  r = ::pthread_sigmask(SIG_BLOCK, &mask, NULL);
+  r = ::pthread_sigmask(SIG_BLOCK, &mask, nullptr);
   assert(r == 0);
   struct sigevent sev;
   sev.sigev_notify = SIGEV_THREAD_ID;
@@ -780,7 +780,7 @@ void reactor::enable_timer(steady_clock_type::time_point when) {
   itimerspec its;
   its.it_interval = to_timespec(when);
   its.it_value = to_timespec(when);
-  auto ret = timer_settime(_steady_clock_timer, TIMER_ABSTIME, &its, NULL);
+  auto ret = timer_settime(_steady_clock_timer, TIMER_ABSTIME, &its, nullptr);
   throw_system_error_on(ret == -1);
 }
 
@@ -2138,7 +2138,7 @@ void smp::configure(const options &opt) {
       for (auto sig : {SIGSEGV}) {
         sigdelset(&mask, sig);
       }
-      auto r = ::pthread_sigmask(SIG_BLOCK, &mask, NULL);
+      auto r = ::pthread_sigmask(SIG_BLOCK, &mask, nullptr);
       throw_pthread_error(r);
       allocate_reactor(i);
       _reactors[i] = &engine();

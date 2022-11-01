@@ -155,14 +155,14 @@ class Engine final {
   static void ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes);
   static std::string GetTablePath(TABLE *table);
   static common::TianmuError GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
-                                    TABLE *table = 0, void *arg = NULL, bool for_exporter = false);
+                                    TABLE *table = 0, void *arg = nullptr, bool for_exporter = false);
   static common::TianmuError GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params);
   static fs::path GetNextDataDir();
 
  private:
   void AddTx(Transaction *tx);
   void RemoveTx(Transaction *tx);
-  int Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_UNIT *unit_for_union = NULL);
+  int Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_UNIT *unit_for_union = nullptr);
   int SetUpCacheFolder(const std::string &cachefolder_path);
 
   static bool AreConvertible(types::RCDataType &rcitem, enum_field_types my_type, uint length = 0);

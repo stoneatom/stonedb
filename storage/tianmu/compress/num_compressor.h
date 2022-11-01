@@ -216,7 +216,7 @@ inline CprsErr NumDecompress(T *dest, char *src, uint len, uint nrec, uint64_t m
 
 template <class T>
 NumCompressor<T>::NumCompressor(bool copy_only) : copy_only_(copy_only) {
-  dump_ = NULL;
+  dump_ = nullptr;
 
   // Create filters_
   filters_.reserve(N_FILTERS_);

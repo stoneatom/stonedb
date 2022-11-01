@@ -48,19 +48,19 @@ struct ColAttr {
 };
 
 inline void be_store_uint64(uchar *const dst_netbuf, const uint64_t &n) {
-  ASSERT(dst_netbuf != nullptr, "dst_netbuf is NULL");
+  ASSERT(dst_netbuf != nullptr, "dst_netbuf is nullptr");
   uint64_t net_val = htobe64(n);
   memcpy(dst_netbuf, &net_val, sizeof(net_val));
 }
 
 inline void be_store_uint32(uchar *const dst_netbuf, const uint32_t &n) {
-  ASSERT(dst_netbuf != nullptr, "dst_netbuf is NULL");
+  ASSERT(dst_netbuf != nullptr, "dst_netbuf is nullptr");
   uint32_t net_val = htobe32(n);
   memcpy(dst_netbuf, &net_val, sizeof(net_val));
 }
 
 inline void be_store_uint16(uchar *const dst_netbuf, const uint16_t &n) {
-  ASSERT(dst_netbuf != nullptr, "dst_netbuf is NULL");
+  ASSERT(dst_netbuf != nullptr, "dst_netbuf is nullptr");
   uint16_t net_val = htobe16(n);
   memcpy(dst_netbuf, &net_val, sizeof(net_val));
 }
@@ -70,7 +70,7 @@ inline void be_store_byte(uchar *const dst_netbuf, const uchar &c) { *dst_netbuf
 inline void be_store_index(uchar *const dst_netbuf, const uint32_t &number) { be_store_uint32(dst_netbuf, number); }
 
 inline uint64_t be_to_uint64(const uchar *const netbuf) {
-  ASSERT(netbuf != nullptr, "netbuf is NULL");
+  ASSERT(netbuf != nullptr, "netbuf is nullptr");
   uint64_t net_val;
   memcpy(&net_val, netbuf, sizeof(net_val));
 
@@ -84,7 +84,7 @@ inline uint32_t be_to_uint32(const uchar *const netbuf) {
 }
 
 inline uint16_t be_to_uint16(const uchar *const netbuf) {
-  ASSERT(netbuf != nullptr, "netbuf is NULL");
+  ASSERT(netbuf != nullptr, "netbuf is nullptr");
 
   uint16_t net_val;
   memcpy(&net_val, netbuf, sizeof(net_val));
@@ -92,12 +92,12 @@ inline uint16_t be_to_uint16(const uchar *const netbuf) {
 }
 
 inline uchar be_to_byte(const uchar *const netbuf) {
-  ASSERT(netbuf != nullptr, "netbuf is NULL");
+  ASSERT(netbuf != nullptr, "netbuf is nullptr");
   return (uchar)netbuf[0];
 }
 
 inline uint32_t be_read_uint32(const uchar **netbuf_ptr) {
-  ASSERT(netbuf_ptr != nullptr, "netbuf_ptr is NULL");
+  ASSERT(netbuf_ptr != nullptr, "netbuf_ptr is nullptr");
   const uint32_t host_val = be_to_uint32(*netbuf_ptr);
   *netbuf_ptr += sizeof(host_val);
 
@@ -112,8 +112,8 @@ inline uint16_t be_read_uint16(const uchar **netbuf_ptr) {
 }
 
 inline void be_read_gl_index(const uchar **netbuf_ptr, GlobalId *const gl_index_id) {
-  ASSERT(gl_index_id != nullptr, "gl_index_id is NULL");
-  ASSERT(netbuf_ptr != nullptr, "netbuf_ptr is NULL");
+  ASSERT(gl_index_id != nullptr, "gl_index_id is nullptr");
+  ASSERT(netbuf_ptr != nullptr, "netbuf_ptr is nullptr");
 
   gl_index_id->cf_id = be_read_uint32(netbuf_ptr);
   gl_index_id->index_id = be_read_uint32(netbuf_ptr);
@@ -221,7 +221,7 @@ class StringWriter {
   }
 
   void write(const uchar *const new_data, const size_t &len) {
-    ASSERT(new_data != nullptr, "new_data is NULL");
+    ASSERT(new_data != nullptr, "new_data is nullptr");
     m_data.insert(m_data.end(), new_data, new_data + len);
   }
 

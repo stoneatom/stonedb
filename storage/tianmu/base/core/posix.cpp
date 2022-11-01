@@ -96,7 +96,7 @@ posix_thread::~posix_thread() { assert(!_valid); }
 
 void posix_thread::join() {
   assert(_valid);
-  pthread_join(_pthread, NULL);
+  pthread_join(_pthread, nullptr);
   _valid = false;
 }
 

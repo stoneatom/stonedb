@@ -27,11 +27,11 @@ namespace core {
 SorterWrapper::SorterWrapper(MultiIndex &_mind, int64_t _limit) : cur_mit(&_mind) {
   no_of_rows = _mind.NumOfTuples();
   limit = _limit;
-  s = NULL;
-  mi_encoder = NULL;
+  s = nullptr;
+  mi_encoder = nullptr;
   buf_size = 0;
-  cur_val = NULL;
-  input_buf = NULL;
+  cur_val = nullptr;
+  input_buf = nullptr;
   no_values_encoded = 0;
   rough_sort_by = -1;
 }
@@ -223,7 +223,7 @@ void SorterWrapper::SortRoughly(std::vector<PackOrderer> &po) {
 
 bool SorterWrapper::InitPackrow(MIIterator &mit)  // return true if the packrow may be skipped
 {
-  if (s == NULL)
+  if (s == nullptr)
     return false;  // trivial sorter (constant values)
 
   // rough sort: exclude packs which are for sure out of scope
@@ -256,7 +256,7 @@ bool SorterWrapper::InitPackrow(MIIterator &mit)  // return true if the packrow 
 }
 
 bool SorterWrapper::PutValues(MIIterator &mit) {
-  if (s == NULL)
+  if (s == nullptr)
     return false;  // trivial sorter (constant values)
   if (mi_encoder)
     mi_encoder->Encode(input_buf, mit);
@@ -265,13 +265,13 @@ bool SorterWrapper::PutValues(MIIterator &mit) {
                                                                          // or already prepared
   for (uint i = 0; i < scol.size(); i++)
     if (scol[i].IsEnabled() && scol[i].IsNontrivial())  // constant num. columns are trivial
-      scol[i].Encode(input_buf, mit, NULL, update_stats);
+      scol[i].Encode(input_buf, mit, nullptr, update_stats);
   no_values_encoded++;
   return s->PutValue(input_buf);
 }
 
 bool SorterWrapper::PutValues(SorterWrapper &sw) {
-  if (s == NULL)
+  if (s == nullptr)
     return false;  // trivial sorter (constant values)
   no_values_encoded += sw.GetEncodedValNum();
   TIANMU_LOG(LogCtl_Level::DEBUG, "PutValues: no_values_encoded %d \n", no_values_encoded);
@@ -279,12 +279,12 @@ bool SorterWrapper::PutValues(SorterWrapper &sw) {
 }
 
 bool SorterWrapper::FetchNextRow() {
-  if (s == NULL) {
+  if (s == nullptr) {
     no_of_rows--;
-    return (no_of_rows >= 0);  // trivial sorter (constant values, cur_val is always NULL)
+    return (no_of_rows >= 0);  // trivial sorter (constant values, cur_val is always nullptr)
   }
   cur_val = s->GetNextValue();
-  if (cur_val == NULL)
+  if (cur_val == nullptr)
     return false;
   if (mi_encoder)
     mi_encoder->GetValue(cur_val,

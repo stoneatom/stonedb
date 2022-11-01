@@ -32,7 +32,7 @@ RoughMultiIndex::RoughMultiIndex(std::vector<int> no_of_packs) {
     if (no_packs[d] > 0)
       rf[d] = new common::RSValue[no_packs[d]];
     else
-      rf[d] = NULL;
+      rf[d] = nullptr;
     for (int p = 0; p < no_packs[d]; p++) rf[d][p] = common::RSValue::RS_UNKNOWN;
   }
 }
@@ -53,7 +53,7 @@ RoughMultiIndex::RoughMultiIndex(const RoughMultiIndex &rmind) {
     if (no_packs[d] > 0)
       rf[d] = new common::RSValue[no_packs[d]];
     else
-      rf[d] = NULL;
+      rf[d] = nullptr;
     for (int p = 0; p < no_packs[d]; p++) rf[d][p] = rmind.rf[d][p];
   }
 }
@@ -72,14 +72,14 @@ RoughMultiIndex::~RoughMultiIndex() {
 
 common::RSValue *RoughMultiIndex::GetLocalDescFilter(int dim, int desc_num, bool read_only) {
   if (desc_num < 0)
-    return NULL;
+    return nullptr;
   uint j;
   for (j = 0; j < local_desc[dim].size(); j++) {
     if ((local_desc[dim])[j]->desc_num == desc_num)
       return (local_desc[dim])[j]->desc_rf;
   }
   if (read_only)
-    return NULL;  // no local filter available
+    return nullptr;  // no local filter available
 
   // still here? Now j is the first unused descriptor slot, and we should
   // prepare a new table.
@@ -121,7 +121,7 @@ void RoughMultiIndex::MakeDimensionEmpty(int dim /*= -1*/) {
 bool RoughMultiIndex::UpdateGlobalRoughFilter(int dim, int desc_num) {
   bool any_nonempty = false;
   common::RSValue *loc_rs = GetLocalDescFilter(dim, desc_num, true);
-  if (loc_rs == NULL)
+  if (loc_rs == nullptr)
     return true;
   for (int p = 0; p < no_packs[dim]; p++) {
     if (rf[dim][p] == common::RSValue::RS_UNKNOWN) {  // not known yet - get the first

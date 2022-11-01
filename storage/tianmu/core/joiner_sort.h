@@ -47,7 +47,7 @@ class JoinerSort : public TwoDimensionalJoiner {
         other_cond_exist(false),
         watch_traversed(false),
         watch_matched(false),
-        outer_filter(NULL),
+        outer_filter(nullptr),
         outer_nulls_only(false) {}
   ~JoinerSort();
 
@@ -132,7 +132,7 @@ class JoinerSortWrapper : public mm::TraceableObject {
   int buf_bytes;       // buf size, derivable: max(traverse_bytes, match_bytes)
 
   unsigned char *min_traversed;  // minimal key set as traversed (a buffer of
-                                 // key_bytes size; NULL
+                                 // key_bytes size; nullptr
                                  // - not set yet)
 
   unsigned char *cache;  // a buffer for cache

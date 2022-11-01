@@ -29,7 +29,7 @@ class MemoryManagerInitializer : public TraceableObject {
  public:
   static MemoryManagerInitializer *Instance(size_t comp_size, size_t uncomp_size, std::string hugedir = "",
                                             int hugesize = 0) {
-    if (instance == NULL) {
+    if (instance == nullptr) {
       try {
         instance = new MemoryManagerInitializer(comp_size, uncomp_size, hugedir, hugesize);
       } catch (common::OutOfMemoryException &) {
@@ -49,7 +49,7 @@ class MemoryManagerInitializer : public TraceableObject {
 
  private:
   MemoryManagerInitializer(size_t comp_size, size_t uncomp_size, std::string hugedir = "", int hugesize = 0)
-      : TraceableObject(comp_size, uncomp_size, hugedir, NULL, hugesize) {}
+      : TraceableObject(comp_size, uncomp_size, hugedir, nullptr, hugesize) {}
   virtual ~MemoryManagerInitializer() { deinitialize(m_report_leaks); }
   static MemoryManagerInitializer *instance;
   static bool m_report_leaks;

@@ -30,7 +30,7 @@ DimensionGroupFilter::DimensionGroupFilter(int dim, int64_t size, uint32_t power
 // copy_mode: 0 - copy filter, 1 - ShallowCopy filter, 2 - grab pointer
 DimensionGroupFilter::DimensionGroupFilter(int dim, Filter *f_source, int copy_mode, [[maybe_unused]] uint32_t power) {
   base_dim = dim;
-  f = NULL;
+  f = nullptr;
   if (copy_mode == 0)
     f = new Filter(*f_source);
   else if (copy_mode == 1)
@@ -84,7 +84,7 @@ DimensionGroupMaterialized::DimensionGroupMaterialized(DimensionVector &dims) {
   t = new IndexTable *[no_dims];
   nulls_possible = new bool[no_dims];
   for (int i = 0; i < no_dims; i++) {
-    t[i] = NULL;
+    t[i] = nullptr;
     nulls_possible[i] = false;
   }
 }
@@ -116,7 +116,7 @@ DimensionGroupMaterialized::~DimensionGroupMaterialized() {
 void DimensionGroupMaterialized::Empty() {
   for (int i = 0; i < no_dims; i++) {
     delete t[i];
-    t[i] = NULL;
+    t[i] = nullptr;
   }
   no_obj = 0;
 }
@@ -175,7 +175,7 @@ DimensionGroupMaterialized::DGMaterializedIterator::DGMaterializedIterator(int64
       one_packrow[dim] =
           (t[dim]->OrigSize() <= ((1 << p_power) - 1)) && (t[dim]->EndOfCurrentBlock(0) >= (uint64_t)no_obj);
     } else
-      t[dim] = NULL;
+      t[dim] = nullptr;
   }
   Rewind();
 }
@@ -318,7 +318,7 @@ void DimensionGroupMaterialized::DGMaterializedIterator::FindPackEnd(int dim) {
   } else {
     // Nulls possible: do not use ahead1...3, because the current pack has to be
     // checked for nulls anyway
-    while (loc_iterator < loc_limit &&  // find the first non-NULL row (NULL row
+    while (loc_iterator < loc_limit &&  // find the first non-nullptr row (nullptr row
                                         // is when Get64() = 0)
            cur_t->Get64(loc_iterator) == 0) {
       nulls_found[dim] = true;
@@ -328,7 +328,7 @@ void DimensionGroupMaterialized::DGMaterializedIterator::FindPackEnd(int dim) {
       loc_pack = ((cur_t->Get64(loc_iterator) - 1) >> p_power);
       ++loc_iterator;
       uint64_t ndx;
-      while (loc_iterator < loc_limit &&  // find the first non-NULL row from
+      while (loc_iterator < loc_limit &&  // find the first non-nullptr row from
                                           // another pack (but the same block)
              ((ndx = cur_t->Get64InsideBlock(loc_iterator)) == 0 || ((ndx - 1) >> p_power) == loc_pack)) {
         if (ndx == 0)
@@ -347,7 +347,7 @@ int DimensionGroupMaterialized::DGMaterializedIterator::GetNextPackrow(int dim, 
   if (ahead == 0)
     return GetCurPackrow(dim);
   IndexTable *cur_t = t[dim];
-  if (cur_t == NULL)
+  if (cur_t == nullptr)
     return -1;
   uint64_t end_block = cur_t->EndOfCurrentBlock(cur_pos);
   if (next_pack[dim] >= no_obj || uint64_t(next_pack[dim]) >= end_block)

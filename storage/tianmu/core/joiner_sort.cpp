@@ -32,7 +32,7 @@ void JoinerSort::ExecuteJoinConditions(Condition &cond) {
   why_failed = JoinFailure::NOT_FAILED;
   vcolumn::VirtualColumn *vc1 = cond[0].attr.vc;
   vcolumn::VirtualColumn *vc2 = cond[0].val1.vc;
-  if (vc1 == NULL || vc2 == NULL) {
+  if (vc1 == nullptr || vc2 == nullptr) {
     why_failed = JoinFailure::FAIL_COMPLEX;
     return;
   } else {                                           // Normalize: let vc1 = a smaller table
@@ -189,14 +189,14 @@ void JoinerSort::ExecuteJoinConditions(Condition &cond) {
   int64_t no_of_traversed = 1;
   int64_t result_size = 0;
   unsigned char *cur_traversed = s1->GetNextValue();
-  unsigned char *cur_matched = NULL;
+  unsigned char *cur_matched = nullptr;
   bool cache_full = false;
   // Note: we are always checking "traversed < matched" condition. If ">" is
   // needed, sorters are defined as descending.
   while (cur_traversed) {
     if (m_conn->Killed())
       throw common::KilledException();
-    if (cur_matched == NULL) {  // the first pass or the end of matched sorter
+    if (cur_matched == nullptr) {  // the first pass or the end of matched sorter
       if (cache_full) {
         rc_control_.lock(m_conn->GetThreadID())
             << "Traversed " << no_of_traversed << "/" << actual_s1_size << " tuples, produced " << result_size
@@ -227,11 +227,11 @@ void JoinerSort::ExecuteJoinConditions(Condition &cond) {
         cur_matched = s2->GetNextValue();
         if (tips.limit > -1 && result_size >= tips.limit)
           break;
-      } while (cur_matched && cur_traversed == NULL);  // this loop is for the case of cur_traversed completed
+      } while (cur_matched && cur_traversed == nullptr);  // this loop is for the case of cur_traversed completed
     }
     // End when there is no more matched rows and the cache does not need to be
     // rewinded
-    if (cur_matched == NULL && !cache_full)
+    if (cur_matched == nullptr && !cache_full)
       break;
     if (tips.limit > -1 && result_size >= tips.limit)
       break;
@@ -339,19 +339,19 @@ int64_t JoinerSort::AddOuterTuples(MINewContents &new_mind, JoinerSortWrapper &s
 
 JoinerSortWrapper::JoinerSortWrapper(bool _less) {
   less = _less;
-  encoder = NULL;
-  cache = NULL;
+  encoder = nullptr;
+  cache = nullptr;
   key_bytes = 0;       // size of key data for both sorters
   traverse_bytes = 0;  // total size of the first ("traverse") sorter
   match_bytes = 0;     // total size of the second ("match") sorter
   cache_size = 0;
   cache_bytes = 0;
   cur_cache_used = 0;
-  buf = NULL;
+  buf = nullptr;
   buf_bytes = 0;
   no_dims = 0;
   outer_offset = 0;
-  min_traversed = NULL;
+  min_traversed = nullptr;
   watch_traversed = false;
   watch_matched = false;
 }
@@ -411,7 +411,7 @@ void JoinerSortWrapper::SetDimensions(MultiIndex *mind, DimensionVector &dim_tr,
     outer_offset = traverse_bytes - key_bytes;
     traverse_bytes += 8;
   }
-  DEBUG_ASSERT(buf == NULL);
+  DEBUG_ASSERT(buf == nullptr);
   buf_bytes = std::max(traverse_bytes, match_bytes);
   buf = new unsigned char[buf_bytes];
 }
@@ -420,7 +420,7 @@ unsigned char *JoinerSortWrapper::EncodeForSorter1([[maybe_unused]] vcolumn::Vir
                                                    int64_t outer_pos)  // for Traversed
 {
   std::memset(buf, 0, buf_bytes);
-  encoder->Encode(buf, mit, NULL, true);
+  encoder->Encode(buf, mit, nullptr, true);
   int64_t dim_value = 0;
   for (int i = 0; i < no_dims; i++) {
     if (dim_traversed[i] == true) {
@@ -434,7 +434,7 @@ unsigned char *JoinerSortWrapper::EncodeForSorter1([[maybe_unused]] vcolumn::Vir
   }
   if (watch_traversed)
     std::memcpy(buf + key_bytes + outer_offset, &outer_pos, 8);
-  if (min_traversed == NULL) {
+  if (min_traversed == nullptr) {
     min_traversed = new unsigned char[key_bytes];
     std::memcpy(min_traversed, buf, key_bytes);
   } else {
@@ -470,7 +470,7 @@ bool JoinerSortWrapper::PackPossible(vcolumn::VirtualColumn *v, MIIterator &mit)
   // "matched" (the second) virtual column
   if (!watch_matched && v->GetNumOfNulls(mit) == mit.GetPackSizeLeft())
     return false;
-  if (min_traversed == NULL || v->Type().IsLookup())
+  if (min_traversed == nullptr || v->Type().IsLookup())
     return true;
   else if (v->Type().IsString()) {
     types::BString local_stat;
@@ -515,7 +515,7 @@ void JoinerSortWrapper::InitCache(int64_t no_of_rows) {
         cache_size = max_mem_size / cache_bytes;
     }
     cache = (unsigned char *)alloc(cache_bytes * cache_size, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
-    if (cache == NULL)
+    if (cache == nullptr)
       throw common::OutOfMemoryException();
   }
 }

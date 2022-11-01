@@ -138,12 +138,12 @@ class FunctionsExecutionTimes {
 
 class FETOperator {
  public:
-  FETOperator(const std::string &identyfier) : id(identyfier) { gettimeofday(&start_time, NULL); }
+  FETOperator(const std::string &identyfier) : id(identyfier) { gettimeofday(&start_time, nullptr); }
   ~FETOperator() {
     struct timeval t2;
     uint64_t sec, usec;
     sec = usec = 0;
-    gettimeofday(&t2, NULL);
+    gettimeofday(&t2, nullptr);
 
     sec += (t2.tv_sec - start_time.tv_sec);
     if (t2.tv_usec < start_time.tv_usec) {

@@ -126,7 +126,7 @@ class DataCache final {
         if constexpr (T::ID == COORD_TYPE::PACK) {
           removed->Lock();
         }
-        removed->SetOwner(NULL);
+        removed->SetOwner(nullptr);
         c.erase(it);
         ++m_objectsReleased;
       }
@@ -143,7 +143,7 @@ class DataCache final {
       auto it = c.find(coord_);
       if (it != c.end()) {
         removed = it->second;
-        removed->SetOwner(NULL);
+        removed->SetOwner(nullptr);
         c.erase(it);
         ++m_objectsReleased;
       }

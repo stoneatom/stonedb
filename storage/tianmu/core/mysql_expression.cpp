@@ -48,7 +48,7 @@ MysqlExpression::MysqlExpression(Item *item, Item2VarID &item2varid) {
 
   this->item2varid = &item2varid;
   this->item = TransformTree(item, TransformDirection::FORWARD);
-  this->item2varid = NULL;
+  this->item2varid = nullptr;
 }
 
 MysqlExpression::~MysqlExpression() { TransformTree(item, TransformDirection::BACKWARD); }
@@ -59,7 +59,7 @@ bool MysqlExpression::HandledResultType(Item *item) {
   Item_result type = item->result_type();
   if ((dynamic_cast<Item_func_get_user_var *>(item)) && type == STRING_RESULT) {
     String s;
-    if (item->val_str(&s) == NULL)
+    if (item->val_str(&s) == nullptr)
       item->max_length = 0;
     else
       item->max_length = (dynamic_cast<Item_func_get_user_var *>(item))->val_str(&s)->length();
@@ -78,7 +78,7 @@ bool MysqlExpression::HandledFieldType(Item_result type) {
 }
 
 bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &fields, bool toplevel /*= true*/,
-                                             bool *has_aggregation /*= NULL*/) {
+                                             bool *has_aggregation /*= nullptr*/) {
   // printItemTree(item);
   if (!item)
     return false;
@@ -114,11 +114,11 @@ bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &field
       fields.insert(item);
       return true;
     case Item::FUNC_ITEM: {
-      if (dynamic_cast<Item_func_trig_cond *>(item) != NULL)
+      if (dynamic_cast<Item_func_trig_cond *>(item) != nullptr)
         return false;
 
       // currently stored procedures not supported
-      if (dynamic_cast<Item_func_sp *>(item) != NULL) {
+      if (dynamic_cast<Item_func_sp *>(item) != nullptr) {
         Item_func_sp *ifunc = dynamic_cast<Item_func_sp *>(item);
         if (ifunc->argument_count() != 0)
           return false;
@@ -173,7 +173,7 @@ Item_tianmufield *MysqlExpression::GetTianmufieldItem(Item_field *ifield) {
   auto key = item2varid->find(ifield);
   DEBUG_ASSERT(key != item2varid->end());
   auto it = tianmu_fields_cache.find(key->second);
-  Item_tianmufield *tianmufield = NULL;
+  Item_tianmufield *tianmufield = nullptr;
   if (it != tianmu_fields_cache.end()) {
     tianmufield = *it->second.begin();
     tianmufield->varID.push_back(key->second);
@@ -508,7 +508,7 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemDecimal2ValueOrNull(Item *item
   auto val = std::make_shared<ValueOrNull>();
   my_decimal dec;
   my_decimal *retdec = item->val_decimal(&dec);
-  if (retdec != NULL) {
+  if (retdec != nullptr) {
     if (retdec != &dec)
       my_decimal2decimal(retdec, &dec);
     int64_t v;
@@ -533,7 +533,7 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemString2ValueOrNull(Item *item,
   auto val = std::make_shared<ValueOrNull>();
   String string_result;
   String *ret = item->val_str(&string_result);
-  if (ret != NULL) {
+  if (ret != nullptr) {
     char *p = ret->c_ptr_safe();
     if (ATI::IsDateTimeType(a_type)) {
       types::RCDateTime rcdt;

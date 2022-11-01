@@ -28,19 +28,19 @@ const uint IncWGraph::MatchLenCoder::c2[] = {120, 128};
 const uint IncWGraph::MatchLenCoder::c3[] = {102, 119, 128};
 
 IncWGraph::IncWGraph() : memory_() {
-  dump_ = NULL;
-  ROOT_ = NIL_ = START_ = NULL;
-  p_mask_ = NULL;
-  coder_ = NULL;
-  reclen_ = NULL;
-  records_ = NULL;
+  dump_ = nullptr;
+  ROOT_ = NIL_ = START_ = nullptr;
+  p_mask_ = nullptr;
+  coder_ = nullptr;
+  reclen_ = nullptr;
+  records_ = nullptr;
 }
 
 void IncWGraph::Init() {
   nfinals_ = 0;
   matchlen_cost_ = esc_cost_ = 0;
   // p_mask_ = &_mask_;		// uncomment if masking should be used
-  p_mask_ = NULL;
+  p_mask_ = nullptr;
 
   // create ROOT_ and NIL_ nodes (and START_)
   memory_.alloc(ROOT_);

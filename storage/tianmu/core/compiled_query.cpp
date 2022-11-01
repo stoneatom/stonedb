@@ -55,7 +55,7 @@ CompiledQuery::CQStep::CQStep(const CompiledQuery::CQStep &s)
       tmpar(s.tmpar),
       jt(s.jt),
       cop(s.cop),
-      alias(NULL),
+      alias(nullptr),
       mysql_expr(s.mysql_expr),
       virt_cols(s.virt_cols),
       tables1(s.tables1),
@@ -68,7 +68,7 @@ CompiledQuery::CQStep::CQStep(const CompiledQuery::CQStep &s)
     alias = new char[alias_ct];
     std::strcpy(alias, s.alias);
   } else
-    alias = NULL;
+    alias = nullptr;
 }
 
 CompiledQuery::CQStep &CompiledQuery::CQStep::operator=(const CompiledQuery::CQStep &s) {
@@ -169,10 +169,10 @@ void CompiledQuery::CQStep::Print(Query *query) {
       std::strcpy(b_op, ">=ANY");
       break;
     case common::Operator::O_IS_NULL:
-      std::strcpy(b_op, "IS NULL");
+      std::strcpy(b_op, "IS nullptr");
       break;
     case common::Operator::O_NOT_NULL:
-      std::strcpy(b_op, "IS NOT NULL");
+      std::strcpy(b_op, "IS NOT nullptr");
       break;
     case common::Operator::O_BETWEEN:
       std::strcpy(b_op, "BETWEEN");
@@ -607,14 +607,14 @@ void CompiledQuery::AddColumn(AttrID &a_out, const TabID &t1, CQTerm e1, common:
   s.t1 = t1;
   s.e1 = e1;
   s.cop = op;
-  if (op == common::ColOperation::GROUP_CONCAT && si != NULL)
+  if (op == common::ColOperation::GROUP_CONCAT && si != nullptr)
     s.si = *si;
   if (alias) {
     size_t const alias_ct(std::strlen(alias) + 1);
     s.alias = new char[alias_ct];
     std::strcpy(s.alias, alias);
   } else
-    s.alias = NULL;
+    s.alias = nullptr;
   s.n1 = distinct ? 1 : 0;
   steps.push_back(s);
   if (op == common::ColOperation::GROUP_BY)

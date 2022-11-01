@@ -61,7 +61,7 @@ class MIIterator {
    *
    */
   MIIterator(MultiIndex *mind,
-             uint32_t power);  // note: mind=NULL will create a local multiindex
+             uint32_t power);  // note: mind=nullptr will create a local multiindex
                                // - one dim., one row
   MIIterator(MultiIndex *mind, int one_dimension,
              bool lock);  // -1 is an equivalent of all dimensions// = true

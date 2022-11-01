@@ -52,7 +52,7 @@ class KillTimer {
     struct itimerspec interval;
     std::memset(&interval, 0, sizeof(interval));
     interval.it_value.tv_sec = secs;
-    if (timer_settime(id, 0, &interval, NULL)) {
+    if (timer_settime(id, 0, &interval, nullptr)) {
       TIANMU_LOG(LogCtl_Level::INFO, "Failed to set up timer. error =%d[%s]", errno, std::strerror(errno));
       return;
     }
@@ -86,9 +86,9 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
   optimize_after_tianmu = FALSE;
   tianmu_free_join = 0;
 
-  SELECT_LEX_UNIT *unit = NULL;
-  SELECT_LEX *select_lex = NULL;
-  Query_result_export *se = NULL;
+  SELECT_LEX_UNIT *unit = nullptr;
+  SELECT_LEX *select_lex = nullptr;
+  Query_result_export *se = nullptr;
 
   if (tianmu_sysvar_pushdown)
     thd->variables.optimizer_switch |= OPTIMIZER_SWITCH_ENGINE_CONDITION_PUSHDOWN;
@@ -165,7 +165,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
   }
 
   se = dynamic_cast<Query_result_export *>(result);
-  if (se != NULL)
+  if (se != nullptr)
     result = new exporter::select_tianmu_export(se);
   // prepare, optimize and execute the main query
   select_lex = lex->select_lex;
@@ -273,7 +273,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
     result->send_error(ER_UNKNOWN_ERROR, ER(ER_UNKNOWN_ERROR));
     result->abort_result_set();
   }
-  if (se != NULL) {
+  if (se != nullptr) {
     // free the tianmu export object,
     // restore the original mysql export object
     // and prepare if it is expected to be prepared
@@ -355,8 +355,8 @@ int handle_exceptions(THD *, Transaction *, bool with_error = false);
 int Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_UNIT *unit_for_union) {
   DEBUG_ASSERT(thd->lex == lex);
   SELECT_LEX *selects_list = lex->select_lex;
-  SELECT_LEX *last_distinct = NULL;
-  if (unit_for_union != NULL)
+  SELECT_LEX *last_distinct = nullptr;
+  if (unit_for_union != nullptr)
     last_distinct = unit_for_union->union_distinct;
 
   int is_dumpfile = 0;
@@ -397,7 +397,7 @@ int Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_
       std::string table_path = Engine::GetTablePath(((Query_tables_list *)lex)->query_tables->table);
       rct = current_txn_->GetTableByPathIfExists(table_path);
     }
-    if (unit_for_union != NULL && !unit_for_union->is_prepared()) {
+    if (unit_for_union != nullptr && !unit_for_union->is_prepared()) {
       int res = result_output->prepare(unit_for_union->item_list, unit_for_union);
       if (res) {
         TIANMU_LOG(LogCtl_Level::ERROR, "Error: Unsupported UNION");
@@ -416,7 +416,7 @@ int Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_
     }
 
     TempTable *result = query.Preexecute(cqu, sender.get());
-    ASSERT(result != NULL, "Query execution returned no result object");
+    ASSERT(result != nullptr, "Query execution returned no result object");
     if (query.IsRoughQuery())
       result->RoughMaterialize(false, sender.get());
     else
@@ -579,7 +579,7 @@ int st_select_lex_unit::optimize_for_tianmu() {
     /* Send result to 'result' */
     saved_error = true;
     set_limit(global_parameters());
-    if (fake_select_lex != NULL) {
+    if (fake_select_lex != nullptr) {
       thd->lex->set_current_select(fake_select_lex);
       if (!is_prepared()) {
         if (prepare_fake_select_lex(thd))
@@ -597,7 +597,7 @@ int st_select_lex_unit::optimize_for_tianmu() {
       if (!join->is_optimized()) {
         //    saved_error = join->prepare(fake_select_lex->table_list.first, 0, 0,
         //                                global_parameters->order_list.elements,
-        //                                global_parameters->order_list.first, NULL, NULL, fake_select_lex,
+        //                                global_parameters->order_list.first, nullptr, nullptr, fake_select_lex,
         //                                this); //STONEDB UPGRADE
         if (!is_prepared()) {
           if (fake_select_lex->prepare(thd))

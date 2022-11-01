@@ -40,7 +40,7 @@ WordGraph::WordGraph(const Symb *data_, int dlen_, bool insatend_) {
 }
 
 void WordGraph::Init() {
-  data_ = NULL;
+  data_ = nullptr;
   dlen_ = -1;
   // NIL_ = 0; ROOT = 1;
   // nleaves = 0;
@@ -64,7 +64,7 @@ void WordGraph::Init() {
   //  iscreating = false;
   //  for(int i = 0; i < 256; i++)
   //	nodes_[NIL_].child[i] = ROOT;
-  //  lens = NULL;
+  //  lens = nullptr;
 }
 
 void WordGraph::Create() {
@@ -296,7 +296,7 @@ void WordGraph::Clear() {
   finals_.clear();
   edges_.clear();
   nodes_.clear();
-  data_ = NULL;
+  data_ = nullptr;
 }
 
 //------------------------------------------------------------------------
@@ -750,7 +750,7 @@ void WordGraph::Move(PEdge e) {
 }
 
 void WordGraph::MakeLog(PNode stt, PEdge e) {
-  if (log_file_ == NULL)
+  if (log_file_ == nullptr)
     return;
   // if(e != ENIL_) {
   //	std::fprintf(log_file_, "F\n");	// forward transition

@@ -104,7 +104,7 @@ IndexTable::~IndexTable() {
 
 void IndexTable::LoadBlock(int b) {
   DEBUG_ASSERT(IsLocked());
-  if (buf == NULL) {  // possible after block caching on disk
+  if (buf == nullptr) {  // possible after block caching on disk
     buf = (unsigned char *)alloc(buffer_size_in_bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
     if (!buf) {
       TIANMU_LOG(LogCtl_Level::ERROR, "Could not allocate memory for IndexTable(LoadBlock).");
@@ -112,7 +112,7 @@ void IndexTable::LoadBlock(int b) {
     }
   } else if (block_changed)
     CI_Put(cur_block, buf);
-  DEBUG_ASSERT(buf != NULL);
+  DEBUG_ASSERT(buf != nullptr);
   CI_Get(b, buf);
   if (m_conn->Killed())  // from time to time...
     throw common::KilledException();

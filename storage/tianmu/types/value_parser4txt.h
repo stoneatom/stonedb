@@ -56,7 +56,7 @@ class ValueParserForText {
         TIANMU_ERROR("type not supported:" + std::to_string(static_cast<unsigned char>(at.Type())));
         break;
     }
-    return NULL;
+    return nullptr;
   }
 
   static common::ErrorCode ParseNumeric(BString const &rcs, int64_t &out, common::CT at);
