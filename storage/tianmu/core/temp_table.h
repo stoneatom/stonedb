@@ -36,6 +36,8 @@
 
 namespace Tianmu {
 namespace core {
+
+// forward declaration.
 class Descriptor;
 class Filter;
 class Query;
@@ -47,71 +49,75 @@ class Transaction;
 // Sepecial Instruction
 struct SI {
   std::string separator;  // group_concat separator
-  enum_order order;       // stonedb8
+  enum_order order;       // don't sepcify the direction of groupby. Ref: https://dev.mysql.com/worklog/task/?id=8693
 };
 
 //  TempTable - for storing a definition or content of a temporary table (view)
-
 class TempTable : public JustATable {
  public:
   class Attr final : public PhysicalColumn {
    public:
-    SI si;
-    void *buffer;             // buffer to values of attribute, if materialized
-    int64_t no_obj;           // number of objects in the buffer
-    uint32_t no_power;        // number of objects in the buffer
-    int64_t no_materialized;  // number of objects already set in the buffer
-    uint page_size;           // size of one page of buffered values
-    char *alias;
-    common::ColOperation mode;
-    bool distinct;  // distinct modifier for aggregations
-    CQTerm term;
-    int dim;  // dimension of a column, i.e., index of source table,
-    // -1 means there is no corresponding table: constant, count(*)
-    uint orig_precision;
-    bool not_complete;  // does not contain all the column elements - some
-                        // functions cannot be computed
+    SI si_;
+    void *buffer_;                 // buffer to values of attribute, if materialized
+    int64_t num_of_obj_;           // number of objects in the buffer
+    uint32_t num_of_power_;        // number of objects in the buffer
+    int64_t num_of_materialized_;  // number of objects already set in the buffer
+    uint page_size_;               // size of one page of buffered values
+    char *alias_;
+    common::ColOperation oper_type_;
+    bool is_distinct_;  // distinct modifier for aggregations
+    CQTerm term_;
+    int dimension_;  // dimension of a column, i.e., index of source table, -1 means there is no corresponding table:
+                     // constant, count(*)
+    uint orig_precision_;
+    bool not_complete_;  // does not contain all the column elements - some functions cannot be computed
 
     Attr(CQTerm t, common::ColOperation m, uint32_t power, bool distinct = false, char *alias = nullptr, int dim = -1,
          common::CT type = common::CT::INT, uint scale = 0, uint precision = 10, bool notnull = true,
          DTCollation collation = DTCollation(), SI *si1 = nullptr);
+
     Attr(const Attr &);
+
     Attr &operator=(const Attr &);
     int operator==(const Attr &);
+
     ~Attr();
 
-    bool ShouldOutput() const { return (mode == common::ColOperation::LISTING) && term.vc && alias; }
+    bool ShouldOutput() const { return (oper_type_ == common::ColOperation::LISTING) && term_.vc && alias_; }
+
     bool NeedFill() const {
-      return ((mode == common::ColOperation::LISTING) && term.vc && alias) ||
-             !term.vc->IsConst();  // constant value, the buffer is already
-                                   // filled in
+      return ((oper_type_ == common::ColOperation::LISTING) && term_.vc && alias_) ||
+             !term_.vc->IsConst();  // constant value, the buffer is already filled in
     }
 
     enum phys_col_t ColType() const override { return phys_col_t::ATTR; }
-    //! Use in cases where actual string length is less than declared, before
-    //! materialization of Attr
+    //! Use in cases where actual string length is less than declared, before  materialization of Attr.
     void OverrideStringSize(int size) {
       ct.OverrideInternalSize(size);
       ct.SetPrecision(size);
     }
+
     void SetPrecision(int prec) { ct.SetPrecision(prec); }
     void SetScale(int sc) { ct.SetScale(sc); }
+
     void CreateBuffer(uint64_t size, Transaction *conn = nullptr, bool not_completed = false);
     void FillValue(const MIIterator &mii, size_t idx);
     size_t FillValues(MIIterator &mii, size_t start, size_t count);
+
     void SetNewPageSize(uint new_page_size);
     void SetValueString(int64_t obj, const types::BString &val);
     types::RCValueObject GetValue(int64_t obj, bool lookup_to_num = false) override;
+
     void GetValueString(int64_t row, types::BString &s) override { GetValueString(s, row); }
     void GetValueString(types::BString &s, int64_t row);
     void GetNotNullValueString(int64_t row, types::BString &s) override { GetValueString(s, row); }
     uint64_t ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue *rf,
-                                bool outer_nulls_possible) override;  // provide the best upper
-                                                                      // approximation of number of diff.
-                                                                      // values (incl. null, if flag set)
+                                bool outer_nulls_possible) override;  // provide the best upper approximation of number
+                                                                      // of diff. values (incl. null, if flag set)
     uint64_t ExactDistinctVals([[maybe_unused]] Filter *f) override { return common::NULL_VALUE_64; }
     bool IsDistinct([[maybe_unused]] Filter *f) override { return false; }
     size_t MaxStringSize(Filter *f = nullptr) override;  // maximal byte string length in column
+
     int64_t RoughMin([[maybe_unused]] Filter *f = nullptr, [[maybe_unused]] common::RSValue *rf = nullptr) override {
       return common::MINUS_INF_64;
     }  // for numerical: best rough approximation of min for a given filter (or
@@ -120,49 +126,61 @@ class TempTable : public JustATable {
       return common::PLUS_INF_64;
     }  // for numerical: best rough approximation of max for a given filter (or
        // global max if filter is nullptr)
+
     void DisplayAttrStats([[maybe_unused]] Filter *f) override {}
     bool TryToMerge([[maybe_unused]] Descriptor &d1, [[maybe_unused]] Descriptor &d2) override { return false; }
+
     PackOntologicalStatus GetPackOntologicalStatus([[maybe_unused]] int pack_no) override {
       return PackOntologicalStatus::NORMAL;
     }  // not implemented properly yet
+
     void ApplyFilter(MultiIndex &, int64_t offset, int64_t no_obj);
     void DeleteBuffer();
+    void InvalidateRow(int64_t obj);
 
     bool IsNull(int64_t obj) const override;
     void SetNull(int64_t obj);
     void SetMinusInf(int64_t obj);
     void SetPlusInf(int64_t obj);
+
     int64_t GetValueInt64(int64_t obj) const override;
     int64_t GetNotNullValueInt64(int64_t obj) const override;
     void SetValueInt64(int64_t obj, int64_t val);
-    void InvalidateRow(int64_t obj);
     int64_t GetMinInt64(int pack) override;
     int64_t GetMaxInt64(int pack) override;
+
     types::BString GetMaxString(int pack) override;
     types::BString GetMinString(int pack) override;
+
     int64_t GetNumOfNulls(int pack) override;
     bool IsRoughNullsOnly() const override { return false; }
     int64_t GetSum(int pack, bool &nonnegative) override;
+
     int NumOfAttr() const override { return -1; }
+
     common::RSValue RoughCheck([[maybe_unused]] int pack, [[maybe_unused]] Descriptor &d,
                                [[maybe_unused]] bool additional_nulls_possible) override {
       return common::RSValue::RS_SOME;
     }
+
     common::RSValue RoughCheck([[maybe_unused]] int pack1, [[maybe_unused]] int pack2,
                                [[maybe_unused]] Descriptor &d) override {
       return common::RSValue::RS_SOME;
     }
+
     // as far as Attr is not pack oriented the function below should not be
     // called
     void EvaluatePack([[maybe_unused]] MIUpdatingIterator &mit, [[maybe_unused]] int dim,
                       [[maybe_unused]] Descriptor &desc) override {
       DEBUG_ASSERT(0);
     }
+
     common::ErrorCode EvaluateOnIndex([[maybe_unused]] MIUpdatingIterator &mit, [[maybe_unused]] int dim,
                                       [[maybe_unused]] Descriptor &desc, [[maybe_unused]] int64_t limit) override {
       TIANMU_ERROR("To be implemented.");
       return common::ErrorCode::FAILED;
     }
+
     types::BString DecodeValue_S([[maybe_unused]] int64_t code) override {
       DEBUG_ASSERT(0);
       return types::BString();
@@ -174,60 +192,59 @@ class TempTable : public JustATable {
   };
 
   struct TableMode {
-    bool distinct;
-    bool top;
-    bool exists;
-    int64_t param1, param2;  // e.g., TOP(5), LIMIT(2,5)
-    TableMode() : distinct(false), top(false), exists(false), param1(0), param2(-1) {}
+    bool distinct_;
+    bool top_;
+    bool exists_;
+    int64_t param1_, param2_;  // e.g., TOP(5), LIMIT(2,5)
+    TableMode() : distinct_(false), top_(false), exists_(false), param1_(0), param2_(-1) {}
   };
 
  protected:
   TempTable(const TempTable &, bool is_vc_owner);
   TempTable(JustATable *const, int alias, Query *q);
 
-  std::shared_ptr<TempTable> CreateMaterializedCopy(bool translate_order,
-                                                    bool in_subq);  // move all buffers to a newly created
-                                                                    // TempTable, make this VC-pointing to it;
-                                                                    // the new table must be deleted by
-                                                                    // DeleteMaterializedCopy()
-  void DeleteMaterializedCopy(std::shared_ptr<TempTable> &t_new);   // delete the external table and remove VC
-                                                                    // pointers, make this fully materialized
-  int mem_scale;
+  std::shared_ptr<TempTable> CreateMaterializedCopy(
+      bool translate_order,
+      bool in_subq);  // move all buffers to a newly created TempTable, make this VC-pointing to it;
+                      // the new table must be deleted by DeleteMaterializedCopy()
+  void DeleteMaterializedCopy(std::shared_ptr<TempTable> &t_new);  // delete the external table and remove VC pointers,
+                                                                   // make this fully materialized
+  int mem_scale_;
   std::map<PhysicalColumn *, PhysicalColumn *> attr_back_translation;
-  //	TempTable* subq_template;
 
  public:
   virtual ~TempTable();
   void TranslateBackVCs();
+
   // Query execution (CompiledQuery language implementation)
   void AddConds(Condition *cond, CondType type);
   void AddInnerConds(Condition *cond, std::vector<TableID> &dims);
   void AddLeftConds(Condition *cond, std::vector<TableID> &dims1, std::vector<TableID> &dims2);
+
   void SetMode(TMParameter mode, int64_t mode_param1 = 0, int64_t mode_param2 = -1);
+
   void JoinT(JustATable *t, int alias, JoinType jt);
   int AddColumn(CQTerm, common::ColOperation, char *alias, bool distinct, SI si);
+
   void AddOrder(vcolumn::VirtualColumn *vc, int direction);
+
   void Union(TempTable *, int);
   void Union(TempTable *, int, ResultSender *sender, int64_t &g_offset, int64_t &g_limit);
   void RoughUnion(TempTable *, ResultSender *sender);
 
-  void ForceFullMaterialize() { force_full_materialize = true; }
+  inline void ForceFullMaterialize() { force_full_materialize_ = true; }
   // Maintenance and low-level functions
 
   bool OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t limit, int64_t offset,
-                             ResultSender *sender = nullptr);  // Sort data contained in
-                                                               // ParameterizedFilter by using some
-                                                               // attributes (usually specified by
-                                                               // AddOrder, but in general -
-                                                               // arbitrary)
+                             ResultSender *sender = nullptr);  // Sort data contained in ParameterizedFilter by using
+                                                               // some attributes (usually specified by AddOrder, but in
+                                                               // general - arbitrary)
   // just materialize as SELECT *
   void FillMaterializedBuffers(int64_t local_limit, int64_t local_offset, ResultSender *sender, bool pagewise);
-
   virtual void RoughMaterialize(bool in_subq = false, ResultSender *sender = nullptr, bool lazy = false);
   virtual void Materialize(bool in_subq = false, ResultSender *sender = nullptr, bool lazy = false);
 
-  // just_distinct = 'select distinct' but no 'group by'
-  // Set no_obj = no. of groups in result
+  // just_distinct = 'select distinct' but no 'group by' Set no_obj = no. of groups in result
   void RoughAggregate(ResultSender *sender);
   void RoughAggregateCount(DimensionVector &dims, int64_t &min_val, int64_t &max_val, bool group_by_present);
   void RoughAggregateMinMax(vcolumn::VirtualColumn *vc, int64_t &min_val, int64_t &max_val);
@@ -238,23 +255,34 @@ class TempTable : public JustATable {
 
   void SuspendDisplay();
   void ResumeDisplay();
+
   void LockPackForUse(unsigned attr, unsigned pack_no) override;
   void UnlockPackFromUse([[maybe_unused]] unsigned attr, [[maybe_unused]] unsigned pack_no) override {}
-  int64_t NumOfObj() override { return no_obj; }
-  uint32_t Getpackpower() const override { return p_power; }
-  int64_t NumOfMaterialized() { return no_materialized; }
-  void SetNumOfObj(int64_t n) { no_obj = n; }
+
+  int64_t NumOfObj() override { return num_of_obj_; }
+  uint32_t Getpackpower() const override { return p_power_; }
+  int64_t NumOfMaterialized() { return num_of_materialized_; }
+
+  void SetNumOfObj(int64_t n) { num_of_obj_ = n; }
   void SetNumOfMaterialized(int64_t n) {
-    no_obj = n;
-    no_materialized = n;
+    num_of_obj_ = n;
+    num_of_materialized_ = n;
   }
+
   TType TableType() const override { return TType::TEMP_TABLE; }  // type of JustATable - TempTable
-  uint NumOfAttrs() const override { return (uint)attrs.size(); }
-  uint NumOfDisplaybleAttrs() const override { return no_cols; }  // no. of columns with defined alias
-  bool IsDisplayAttr(int i) { return attrs[i]->alias != nullptr; }
+
+  uint NumOfAttrs() const override { return static_cast<uint>(attrs_.size()); }
+
+  uint NumOfDisplaybleAttrs() const override { return num_of_columns_; }  // no. of columns with defined alias
+
+  bool IsDisplayAttr(int i) { return attrs_[i]->alias_ != nullptr; }
+
   int64_t GetTable64(int64_t obj, int attr) override;
+
   void GetTable_S(types::BString &s, int64_t obj, int attr) override;
+
   void GetTableString(types::BString &s, int64_t obj, uint attr);
+
   types::RCValueObject GetValueObject(int64_t obj, uint attr);
 
   uint64_t ApproxAnswerSize(int attr,
@@ -269,151 +297,175 @@ class TempTable : public JustATable {
   int64_t RoughMax([[maybe_unused]] int n_a, [[maybe_unused]] Filter *f = nullptr) { return common::PLUS_INF_64; }
 
   uint MaxStringSize(int n_a, [[maybe_unused]] Filter *f = nullptr) override {
-    if (n_a < 0) return GetFieldSize(-n_a - 1);
+    if (n_a < 0)
+      return GetFieldSize(-n_a - 1);
     return GetFieldSize(n_a);
   }
 
-  uint NumOfDimensions() { return filter.mind ? (uint)filter.mind->NumOfDimensions() : 1; }
+  uint NumOfDimensions() { return filter_.mind ? static_cast<uint>(filter_.mind->NumOfDimensions()) : 1; }
+
   int GetDimension(TableID alias);
+
   std::vector<AttributeTypeInfo> GetATIs(bool orig = false) override;
+
   int GetAttrScale(int a) {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
-    return attrs[a]->Type().GetScale();
+    DEBUG_ASSERT(a >= 0 && static_cast<uint>(a) < NumOfAttrs());
+    return attrs_[a]->Type().GetScale();
   }
 
   int GetAttrSize(int a) {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
-    return attrs[a]->Type().GetDisplaySize();
+    DEBUG_ASSERT(a >= 0 && static_cast<uint>(a) < NumOfAttrs());
+    return attrs_[a]->Type().GetDisplaySize();
   }
 
   uint GetFieldSize(int a) {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
-    return attrs[a]->Type().GetInternalSize();
+    DEBUG_ASSERT(a >= 0 && static_cast<uint>(a) < NumOfAttrs());
+    return attrs_[a]->Type().GetInternalSize();
   }
 
   int GetNumOfDigits(int a) {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
-    return attrs[a]->Type().GetPrecision();
+    DEBUG_ASSERT(a >= 0 && static_cast<uint>(a) < NumOfAttrs());
+    return attrs_[a]->Type().GetPrecision();
   }
 
   const ColumnType &GetColumnType(int a) override {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
-    return attrs[a]->Type();
+    DEBUG_ASSERT(a >= 0 && static_cast<uint>(a) < NumOfAttrs());
+    return attrs_[a]->Type();
   }
 
   PhysicalColumn *GetColumn(int a) override {
-    DEBUG_ASSERT(a >= 0 && (uint)a < NumOfAttrs());
-    return attrs[a];
+    DEBUG_ASSERT(a >= 0 && static_cast<uint>(a) < NumOfAttrs());
+    return attrs_[a];
   }
 
   Attr *GetAttrP(uint a) {
     DEBUG_ASSERT(a < (uint)NumOfAttrs());
-    return attrs[a];
+    return attrs_[a];
   }
 
   Attr *GetDisplayableAttrP(uint i) {
-    DEBUG_ASSERT(!displayable_attr.empty());
-    return displayable_attr[i];
+    DEBUG_ASSERT(!displayable_attr_.empty());
+    return displayable_attr_[i];
   }
+
   void CreateDisplayableAttrP();
   uint GetDisplayableAttrIndex(uint attr);
-  MultiIndex *GetMultiIndexP() { return filter.mind; }
+
+  MultiIndex *GetMultiIndexP() { return filter_.mind; }
+
   void ClearMultiIndexP() {
-    if (nullptr == filter.mind) {
+    if (nullptr == filter_.mind) {
       return;
     }
 
-    if (filter_shallow_memory) {
+    if (filter_shallow_memory_) {
       return;
     }
 
-    delete filter.mind;
-    filter.mind = nullptr;
+    delete filter_.mind;
+    filter_.mind = nullptr;
   }
-  MultiIndex *GetOutputMultiIndexP() { return &output_mind; }
-  ParameterizedFilter *GetFilterP() { return &filter; }
+
+  MultiIndex *GetOutputMultiIndexP() { return &output_multi_index_; }
+
+  ParameterizedFilter *GetFilterP() { return &filter_; }
+
   JustATable *GetTableP(uint dim) {
-    DEBUG_ASSERT(dim < tables.size());
-    return tables[dim];
+    DEBUG_ASSERT(dim < src_tables_.size());
+    return src_tables_[dim];
   }
 
-  int NumOfTables() const { return int(tables.size()); }
-  std::vector<int> &GetAliases() { return aliases; }
-  std::vector<JustATable *> &GetTables() { return tables; }
-  bool IsMaterialized() { return materialized; }
-  void SetAsMaterialized() { materialized = true; }
+  int NumOfTables() const { return int(src_tables_.size()); }
+
+  std::vector<int> &GetAliases() { return aliases_; }
+  std::vector<JustATable *> &GetTables() { return src_tables_; }
+
+  bool IsMaterialized() { return materialized_; }
+  void SetAsMaterialized() { materialized_ = true; }
+
   // materialized with order by and limits
-  bool IsFullyMaterialized() { return materialized && ((order_by.size() == 0 && !mode.top) || !no_obj); }
+  bool IsFullyMaterialized() { return materialized_ && ((order_by_.size() == 0 && !table_mode_.top_) || !num_of_obj_); }
+
   uint CalculatePageSize(int64_t no_obj = -1);  // computes number of output records kept in memory
+
   // based on no_obj and some upper limit CACHE_SIZE (100MB)
   void SetPageSize(int64_t new_page_size);
-  void SetOneOutputRecordSize(uint size) { size_of_one_record = size; }
-  uint GetOneOutputRecordSize() { return size_of_one_record; }
+
+  void SetOneOutputRecordSize(uint size) { size_of_one_record_ = size; }
+  uint GetOneOutputRecordSize() { return size_of_one_record_; }
+
   int64_t GetPageSize() {
-    DEBUG_ASSERT(attrs[0]);
-    return attrs[0]->page_size;
+    DEBUG_ASSERT(attrs_[0]);
+    return attrs_[0]->page_size_;
   }
 
-  void DisplayRSI();  // display info about all RSI contained in RCTables from
-                      // this TempTable
+  void DisplayRSI();  // display info about all RSI contained in RCTables from  this TempTable
 
-  bool HasHavingConditions() { return having_conds.Size() > 0; }
-  bool CheckHavingConditions(MIIterator &it) { return having_conds[0].tree->root->CheckCondition(it); }
-  void ClearHavingConditions() { having_conds.Clear(); }
+  bool HasHavingConditions() { return having_conds_.Size() > 0; }
+
+  bool CheckHavingConditions(MIIterator &it) { return having_conds_[0].tree->root->CheckCondition(it); }
+  void ClearHavingConditions() { having_conds_.Clear(); }
+
   void RemoveFromManagedList(const RCTable *rct);
+
   int AddVirtColumn(vcolumn::VirtualColumn *vc);
   int AddVirtColumn(vcolumn::VirtualColumn *vc, int no);
-  uint NumOfVirtColumns() { return uint(virt_cols.size()); }
+
+  uint NumOfVirtColumns() { return uint(virtual_columns_.size()); }
   void ReserveVirtColumns(int no);
+
   vcolumn::VirtualColumn *GetVirtualColumn(uint col_num) {
-    DEBUG_ASSERT(col_num < virt_cols.size());
-    return virt_cols[col_num];
+    DEBUG_ASSERT(col_num < virtual_columns_.size());
+    return virtual_columns_[col_num];
   }
+
   void SetVCDistinctVals(int dim, int64_t val);  // set dist. vals for all vc of this dimension
   void ResetVCStatistics();
   void ProcessParameters(const MIIterator &mit, const int alias);
   void RoughProcessParameters(const MIIterator &mit, const int alias);
-  int DimInDistinctContext();  // return a dimension number if it is used only
-                               // in contexts where row repetitions may be
+  int DimInDistinctContext();  // return a dimension number if it is used only in contexts where row repetitions may be
                                // omitted, e.g. distinct
-  Condition &GetWhereConds() { return filter.GetConditions(); }
+
+  Condition &GetWhereConds() { return filter_.GetConditions(); }
+
   void MoveVC(int colnum, std::vector<vcolumn::VirtualColumn *> &from, std::vector<vcolumn::VirtualColumn *> &to);
   void MoveVC(vcolumn::VirtualColumn *vc, std::vector<vcolumn::VirtualColumn *> &from,
               std::vector<vcolumn::VirtualColumn *> &to);
   void FillbufferTask(Attr *attr, Transaction *ci, MIIterator *page_start, int64_t start_row, int64_t page_end);
   size_t TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrapper *st);
-  bool HasTempTable() const { return has_temp_table; }
+
+  bool HasTempTable() const { return has_temp_table_; }
 
  protected:
-  int64_t no_obj;
-  uint32_t p_power;                      // pack power
-  uint no_cols;                          // no. of output columns, i.e., with defined alias
-  TableMode mode;                        // based on { TM_DISTINCT, TM_TOP, TM_EXISTS }
-  std::vector<Attr *> attrs;             // vector of output columns, each column contains
-                                         // a buffer with values
-  std::vector<Attr *> displayable_attr;  // just a shortcut: some of attrs
-  Condition having_conds;
-  std::vector<JustATable *> tables;                 // vector of pointers to source tables
-  std::vector<int> aliases;                         // vector of aliases of source tables
-  std::vector<vcolumn::VirtualColumn *> virt_cols;  // vector of virtual columns defined for TempTable
-  std::vector<bool> virt_cols_for_having;           // is a virt column based on output_mind (true) or
-                                                    // source mind (false)
-  std::vector<JoinType> join_types;                 // vector of types of joins, one less than tables
-  ParameterizedFilter filter;                       // multidimensional filter, contains multiindex,
-                                                    // can be parametrized
-  bool filter_shallow_memory = false;               // is filter shallow memory
-  MultiIndex output_mind;                           // one dimensional MultiIndex used for operations on
-                                                    // output columns of TempTable
-  std::vector<SortDescriptor> order_by;             // indexes of order by columns
-  bool group_by = false;                            // true if there is at least one grouping column
-  bool is_vc_owner = true;                          // true if temptable should dealocate virtual columns
-  int no_global_virt_cols;                          // keeps number of virtual columns. In case for_subq
-                                                    // == true, all locally created
-  // virtual columns will be removed
-  bool is_sent;  // true if result of materialization was sent to MySQL
+  int64_t num_of_obj_;
+  uint32_t p_power_;                      // pack power
+  uint num_of_columns_;                   // no. of output columns, i.e., with defined alias
+  TableMode table_mode_;                  // based on { TM_DISTINCT, TM_TOP, TM_EXISTS }
+  std::vector<Attr *> attrs_;             // vector of output columns, each column contains
+                                          // a buffer with values
+  std::vector<Attr *> displayable_attr_;  // just a shortcut: some of attrs
+  Condition having_conds_;
+  std::vector<JustATable *> src_tables_;                   // vector of pointers to source tables
+  std::vector<int> aliases_;                               // vector of aliases of source tables
+  std::vector<vcolumn::VirtualColumn *> virtual_columns_;  // vector of virtual columns defined for TempTable
+  std::vector<bool> virtual_columns_for_having_;           // is a virt column based on output_mind (true) or
+                                                           // source mind (false)
+  std::vector<JoinType> join_types_;                       // vector of types of joins, one less than tables
+  ParameterizedFilter filter_;                             // multidimensional filter, contains multiindex,
+                                                           // can be parametrized
+  bool filter_shallow_memory_{false};                      // is filter shallow memory
+  MultiIndex output_multi_index_;                          // one dimensional MultiIndex used for operations on
+                                                           // output columns of TempTable
+  std::vector<SortDescriptor> order_by_;                   // indexes of order by columns
+  bool group_by_{false};                                   // true if there is at least one grouping column
+  bool is_vc_owner_{true};                                 // true if temptable should dealocate virtual columns
+  int num_of_global_virtual_columns_;  // keeps number of virtual columns. In case for_subq, == true, all locally
+                                       // created virtual columns will be removed
+  bool is_sent_;                       // true if result of materialization was sent to MySQL
 
   // some internal functions for low-level query execution
-  static const uint CACHE_SIZE = 100000000;  // size of memory cache for data in the materialized TempTable
+  static constexpr uint CACHE_SIZE = {1_MB * 10};  // size of memory cache for data in the materialized TempTable
+
   // everything else is cached on disk (CachedBuffer)
   bool IsParametrized();  // is the temptable (select) parametrized?
   void SendResult(int64_t local_limit, int64_t local_offset, ResultSender &sender, bool pagewise);
@@ -421,21 +473,22 @@ class TempTable : public JustATable {
   void ApplyOffset(int64_t limit,
                    int64_t offset);  // apply limit and offset to attr buffers
 
-  bool materialized = false;
-  bool has_temp_table = false;
+  bool materialized_{false};
+  bool has_temp_table_{false};
 
-  bool lazy;                       // materialize on demand, page by page
-  int64_t no_materialized;         // if lazy - how many are ready
-  common::Tribool rough_is_empty;  // rough value specifying if there is
-                                   // non-empty result of a query
-  bool force_full_materialize = false;
+  bool lazy_;                       // materialize on demand, page by page
+  int64_t num_of_materialized_;     // if lazy - how many are ready
+  common::Tribool rough_is_empty_;  // rough value specifying if there is
+                                    // non-empty result of a query
+  bool force_full_materialize_{false};
 
   // Refactoring: extracted small methods
   bool CanOrderSources();
   bool LimitMayBeAppliedToWhere();
   ColumnType GetUnionType(ColumnType type1, ColumnType type2);
   bool SubqueryInFrom();
-  uint size_of_one_record;
+
+  uint size_of_one_record_;
 
  public:
   class RecordIterator;
@@ -443,22 +496,27 @@ class TempTable : public JustATable {
   virtual RecordIterator end(Transaction *conn = nullptr);
 
  public:
-  Transaction *m_conn;  // external pointer
+  Transaction *m_conn_;  // external pointer
 
   void Display(std::ostream &out = std::cout);  // output to console
+
   static std::shared_ptr<TempTable> Create(const TempTable &, bool in_subq);
   static std::shared_ptr<TempTable> Create(JustATable *const, int alias, Query *q, bool for_subquery = false);
-  bool IsSent() { return is_sent; }
-  void SetIsSent() { is_sent = true; }
-  common::Tribool RoughIsEmpty() { return rough_is_empty; }
+
+  bool IsSent() { return is_sent_; }
+  void SetIsSent() { is_sent_ = true; }
+
+  common::Tribool RoughIsEmpty() { return rough_is_empty_; }
 
  public:
   class Record final {
    public:
-    Record(RecordIterator &it) : m_it(it) {}
+    Record(RecordIterator &it) : m_iter_(it) {}
     Record(Record const &it) = default;
-    types::RCDataType &operator[](size_t i) const { return *(m_it.dataTypes[i]); }
-    RecordIterator &m_it;
+
+    types::RCDataType &operator[](size_t i) const { return *(m_iter_.dataTypes[i]); }
+
+    RecordIterator &m_iter_;
   };
 
   /*! \brief RecordIterator class for _table records.
@@ -488,6 +546,7 @@ class TempTable : public JustATable {
       }
       return (Record(*this));
     }
+
     uint64_t currentRowNumber() { return _currentRNo; }
     TempTable *Owner() const { return (table); }
 
@@ -504,7 +563,8 @@ class TempTable : public JustATable {
 class TempTableForSubquery : public TempTable {
  public:
   TempTableForSubquery(JustATable *const t, int alias, Query *q)
-      : TempTable(t, alias, q), template_filter(0), is_attr_for_rough(false), rough_materialized(false) {}
+      : TempTable(t, alias, q), template_filter_(0), is_attr_for_rough_(false), rough_materialized_(false) {}
+
   ~TempTableForSubquery();
 
   void CreateTemplateIfNotExists();
@@ -515,17 +575,20 @@ class TempTableForSubquery : public TempTable {
   void SetAttrsForExact();
 
  private:
-  ParameterizedFilter *template_filter;
-  Condition template_having_conds;
-  TableMode template_mode;
-  std::vector<SortDescriptor> template_order_by;
-  bool is_attr_for_rough;
-  bool rough_materialized;
-  std::vector<Attr *> attrs_for_exact;
-  std::vector<Attr *> attrs_for_rough;
-  std::vector<Attr *> template_attrs;
-  std::vector<vcolumn::VirtualColumn *> template_virt_cols;
+  ParameterizedFilter *template_filter_;
+  Condition template_having_conds_;
+  TableMode template_mode_;
+  std::vector<SortDescriptor> template_order_by_;
+
+  bool is_attr_for_rough_;
+  bool rough_materialized_;
+
+  std::vector<Attr *> attrs_for_exact_;
+  std::vector<Attr *> attrs_for_rough_;
+  std::vector<Attr *> template_attrs_;
+  std::vector<vcolumn::VirtualColumn *> template_virtual_columns_;
 };
+
 }  // namespace core
 }  // namespace Tianmu
 
