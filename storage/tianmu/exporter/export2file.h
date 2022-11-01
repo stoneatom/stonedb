@@ -33,12 +33,12 @@ class select_tianmu_export : public Query_result_export {
   void SetRowCount(ha_rows x);
   void SendOk(THD *thd);
   sql_exchange *SqlExchange();
-  bool IsPrepared() const { return prepared; };
+  bool IsPrepared() const { return prepared_; };
   bool send_data(List<Item> &items) override;
 
  private:
-  Query_result_export *se;
-  bool prepared;
+  Query_result_export *select_export_;
+  bool prepared_;
 };
 
 }  // namespace exporter

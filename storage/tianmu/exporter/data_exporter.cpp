@@ -27,23 +27,23 @@ namespace exporter {
 
 void DataExporter::Init(std::shared_ptr<system::LargeBuffer> buffer, std::vector<core::AttributeTypeInfo> source_deas,
                         fields_t const &fields, std::vector<core::AttributeTypeInfo> &result_deas) {
-  _fields = fields;
-  buf = buffer;
+  fields_ = fields;
+  data_exporter_buf_ = buffer;
 
-  this->source_deas = source_deas;
-  this->deas = result_deas;
-  this->no_attrs = int(deas.size());
+  this->source_attr_infos_ = source_deas;
+  this->attr_infos_ = result_deas;
+  this->no_attrs_ = int(attr_infos_.size());
 
-  for (size_t i = 0; i < deas.size(); ++i) {
+  for (size_t i = 0; i < attr_infos_.size(); ++i) {
     common::CT f_at = ha_rcengine_->GetCorrespondingType(fields[i]);
-    if (core::ATI::IsStringType(deas[i].Type()) && !core::ATI::IsStringType(f_at))
-      this->deas[i] = core::AttributeTypeInfo(f_at, deas[i].NotNull());
+    if (core::ATI::IsStringType(attr_infos_[i].Type()) && !core::ATI::IsStringType(f_at))
+      this->attr_infos_[i] = core::AttributeTypeInfo(f_at, attr_infos_[i].NotNull());
   }
 
-  cur_attr = 0;
-  row = NULL;
-  row_ptr = NULL;
-  nulls_indicator = 0;
+  cur_attr_ = 0;
+  row_ = NULL;
+  row_ptr_ = NULL;
+  nulls_indicator_ = 0;
 }
 
 DataExporter::~DataExporter() {}
