@@ -47,25 +47,6 @@ static bool ForbiddenMySQLQueryPath([[maybe_unused]] Query_expression *qe) {
   return (tianmu_sysvar_allowmysqlquerypath == 0);
 }
 
-static bool Tianmu_SetStatementAllowed(THD *thd, Query_expression *qe) {
-  if (AtLeastOneTianmuTableInvolved(qe)) {
-    if (ForbiddenMySQLQueryPath(qe)) {
-      my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
-                 "Queries inside SET statements are not supported. "
-                 "Enable the MySQL core::Query Path in my.cnf to execute the query "
-                 "with reduced "
-                 "performance.",
-                 MYF(0));
-      return false;
-    } else
-      push_warning(thd, Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
-                   "SET statement not supported by the Tianmu Optimizer. The "
-                   "query executed "
-                   "by MySQL engine.");
-  }
-  return true;
-}
-
 void ha_my_tianmu_update_and_store_col_comment(TABLE *table, int field_id, Field *source_field, int source_field_id,
                                                CHARSET_INFO *cs) {
   try {

@@ -166,9 +166,6 @@ IF(MY_COMPILER_IS_CLANG)
   # -Wzero-as-null-pointer-constant
 ENDIF()
 
-# TIANMU UPGRADE
-SET(MY_WARNING_FLAGS "${MY_WARNING_FLAGS} -Wno-unknown-pragmas")
-
 # Turn on Werror (warning => error) when using maintainer mode.
 IF(MYSQL_MAINTAINER_MODE)
   IF(MSVC)
@@ -178,11 +175,10 @@ IF(MYSQL_MAINTAINER_MODE)
     STRING_APPEND(CMAKE_MODULE_LINKER_FLAGS " /WX")
     STRING_APPEND(CMAKE_SHARED_LINKER_FLAGS " /WX")
   ENDIF()
-# TIANMU UPGRADE
-#  IF(MY_COMPILER_IS_GNU_OR_CLANG)
-#    STRING_APPEND(MY_C_WARNING_FLAGS   " -Werror")
-#    STRING_APPEND(MY_CXX_WARNING_FLAGS " -Werror")
-#  ENDIF()
+  IF(MY_COMPILER_IS_GNU_OR_CLANG)
+    STRING_APPEND(MY_C_WARNING_FLAGS   " -Werror")
+    STRING_APPEND(MY_CXX_WARNING_FLAGS " -Werror")
+  ENDIF()
 ENDIF()
 
 # Set warning flags for gcc/g++/clang/clang++
