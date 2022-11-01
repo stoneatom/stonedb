@@ -1,0 +1,48 @@
+#
+# Test show databases and tables
+# Author: shiz
+#
+DROP DATABASE IF EXISTS show_test1;
+DROP DATABASE IF EXISTS show_test2;
+CREATE DATABASE show_test1;
+CREATE SCHEMA show_test2;
+SHOW DATABASES LIKE 'show%';
+Database (show%)
+show_test1
+show_test2
+SHOW SCHEMAS LIKE 'show%';
+Database (show%)
+show_test1
+show_test2
+SHOW TABLES IN show_test1;
+Tables_in_show_test1
+USE show_test2;
+SHOW TABLES;
+Tables_in_show_test2
+CREATE TABLE show_test1.t1 (id INT);
+CREATE TABLE show_test1.t2 (id INT);
+SHOW TABLES IN show_test1;
+Tables_in_show_test1
+t1
+t2
+USE show_test1;
+SHOW TABLES;
+Tables_in_show_test1
+t1
+t2
+USE show_test2;
+CREATE TABLE t1 (id INT);
+CREATE TABLE t2 (id INT);
+CREATE TEMPORARY TABLE tmp1 (id INT);
+CREATE TEMPORARY TABLE tmp1 (id INT);
+ERROR 42S01: Table 'tmp1' already exists
+SHOW TABLES;
+Tables_in_show_test2
+t1
+t2
+SHOW TABLES IN show_test2;
+Tables_in_show_test2
+t1
+t2
+DROP DATABASE show_test1;
+DROP DATABASE show_test2;
