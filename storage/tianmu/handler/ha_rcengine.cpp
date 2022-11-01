@@ -23,7 +23,7 @@
 #include "vc/virtual_column.h"
 
 namespace Tianmu {
-namespace dbhandler {
+namespace handler {
 
 enum class TIANMUEngineReturnValues { LD_Successed = 100, LD_Failed = 101, LD_Continue = 102 };
 
@@ -72,8 +72,8 @@ bool TIANMU_SetStatementAllowed(THD *thd, LEX *lex) {
   return true;
 }
 
-int TIANMU_HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
-                        int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false) {
+int ha_my_tianmu_query(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
+                       int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false) {
   int ret = RCBASE_QUERY_ROUTE;
   try {
     // handle_select_ret is introduced here because in case of some exceptions
@@ -100,8 +100,8 @@ Either restructure the query with supported syntax, or enable the MySQL core::Qu
   return ret;
 }
 
-int TIANMU_LoadData(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg, char *errmsg, int len,
-                    int &errcode) {
+int ha_my_tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg, char *errmsg, int len,
+                      int &errcode) {
   common::TianmuError tianmu_error;
   int ret = static_cast<int>(TIANMUEngineReturnValues::LD_Failed);
 
@@ -133,7 +133,7 @@ bool tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) 
   char tianmu_msg[256] = {0};
   int tianmu_errcode = 0;
   switch (static_cast<TIANMUEngineReturnValues>(
-      TIANMU_LoadData(thd, ex, table_list, arg, tianmu_msg, 256, tianmu_errcode))) {
+      ha_my_tianmu_load(thd, ex, table_list, arg, tianmu_msg, 256, tianmu_errcode))) {
     case TIANMUEngineReturnValues::LD_Continue:
       return true;
     case TIANMUEngineReturnValues::LD_Failed:
@@ -148,5 +148,5 @@ bool tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) 
   return false;
 }
 
-}  // namespace dbhandler
+}  // namespace handler
 }  // namespace Tianmu

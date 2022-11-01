@@ -22,13 +22,13 @@
 #include "core/engine.h"
 
 namespace Tianmu {
-namespace dbhandler {
+namespace handler {
 
 // Class definition for the storage engine
-class TianmuHandler final : public handler {
+class ha_tianmu final : public handler {
  public:
-  TianmuHandler(handlerton *hton, TABLE_SHARE *table_arg);
-  virtual ~TianmuHandler() = default;
+  ha_tianmu(handlerton *hton, TABLE_SHARE *table_arg);
+  virtual ~ha_tianmu() = default;
   /* The name that will be used for display purposes */
   const char *table_type() const override { return "TIANMU"; }
   /*
@@ -184,7 +184,7 @@ class TianmuHandler final : public handler {
   std::vector<std::vector<uchar>> blob_buffers_;
 };
 
-}  // namespace dbhandler
+}  // namespace handler
 }  // namespace Tianmu
 
 #endif  // TIANMU_HANDLER_TIANMU_HANDLER_H_

@@ -360,7 +360,7 @@ void RCAttr::LoadPackInfo([[maybe_unused]] Transaction *trans_) {
 
 PackOntologicalStatus RCAttr::GetPackOntologicalStatus(int pack_no) {
   LoadPackInfo();
-  DPN const *dpn(pack_no >= 0 ? &get_dpn(pack_no) : NULL);
+  DPN const *dpn(pack_no >= 0 ? &get_dpn(pack_no) : nullptr);
   if (pack_no < 0 || dpn->NullOnly())
     return PackOntologicalStatus::NULLS_ONLY;
   if (GetPackType() == common::PackType::INT) {
@@ -398,7 +398,7 @@ types::BString RCAttr::GetNotNullValueString(const int64_t obj) {
 
   if (GetPackType() == common::PackType::STR) {
     auto cur_pack = get_packS(pack);
-    ASSERT(cur_pack != NULL, "Pack ptr is null");
+    ASSERT(cur_pack != nullptr, "Pack ptr is null");
     ASSERT(cur_pack->IsLocked(), "Access unlocked pack");
     return cur_pack->GetValueBinary(offset);
   }
@@ -469,7 +469,7 @@ types::RCValueObject RCAttr::GetValue(int64_t obj, bool lookup_to_num) {
       ret = GetNotNullValueString(obj);
     else if (ATI::IsBinType(a_type)) {
       auto tmp_size = GetLength(obj);
-      types::BString rcbs(NULL, tmp_size, true);
+      types::BString rcbs(nullptr, tmp_size, true);
       GetValueBin(obj, tmp_size, rcbs.val_);
       rcbs.null_ = false;
       ret = rcbs;
@@ -503,7 +503,7 @@ types::RCDataType &RCAttr::GetValueData(size_t obj, types::RCDataType &value, bo
       ((types::BString &)value) = GetNotNullValueString(obj);
     else if (ATI::IsBinType(a_type)) {
       auto tmp_size = GetLength(obj);
-      ((types::BString &)value) = types::BString(NULL, tmp_size, true);
+      ((types::BString &)value) = types::BString(nullptr, tmp_size, true);
       GetValueBin(obj, tmp_size, ((types::BString &)value).val_);
       value.null_ = false;
     } else if (ATI::IsIntegerType(a_type))

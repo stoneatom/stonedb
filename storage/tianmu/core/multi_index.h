@@ -60,15 +60,15 @@ class MultiIndex {
   bool ZeroTuples() { return (!no_tuples_too_big && no_tuples == 0); }
   bool TooManyTuples() { return no_tuples_too_big; }
   Filter *GetFilter(int dim) const  // Get the pointer to a filter attached to a dimension.
-                                    // NOTE: will be NULL in case of materialized MultiIndex!
+                                    // NOTE: will be nullptr in case of materialized MultiIndex!
   {
-    return no_dimensions > 0 ? group_for_dim[dim]->GetFilter(dim) : NULL;
+    return no_dimensions > 0 ? group_for_dim[dim]->GetFilter(dim) : nullptr;
   }
   Filter *GetUpdatableFilter(int dim) const  // Get the pointer to a filter, if it may be changed.
-                                             // NOTE: will be NULL in case of materialized
+                                             // NOTE: will be nullptr in case of materialized
                                              // MultiIndex!
   {
-    return no_dimensions > 0 ? group_for_dim[dim]->GetUpdatableFilter(dim) : NULL;
+    return no_dimensions > 0 ? group_for_dim[dim]->GetUpdatableFilter(dim) : nullptr;
   }
   bool NullsExist(int dim) {
     return no_dimensions > 0 ? group_for_dim[dim]->NullsPossible(dim) : false;

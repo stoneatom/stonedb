@@ -41,7 +41,7 @@ class PPM {
   static FILE *dump_;
   static bool printstat_;
 
-  // if data=NULL or dlen=0, the model_ will be null - compression will simply
+  // if data=nullptr or dlen=0, the model_ will be null - compression will simply
   // copy the data; 'method' - which version of compression will be used in
   // Compress/Decompress
   PPM(const Symb *data, int dlen, ModelType mt, PPMParam param = PPMParam(), uchar method = 2);

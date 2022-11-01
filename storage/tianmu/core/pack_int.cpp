@@ -754,7 +754,7 @@ void PackInt::DecompressAndInsertNulls(compress::NumCompressor<etype> &nc, uint 
 }
 
 std::pair<PackInt::UniquePtr, size_t> PackInt::Compress() {
-  uint *cur_buf = NULL;
+  uint *cur_buf = nullptr;
   size_t buffer_size = 0;
   mm::MMGuard<char> tmp_comp_buffer;
 

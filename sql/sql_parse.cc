@@ -3261,11 +3261,11 @@ case SQLCOM_PREPARE:
           //res= handle_query(thd, lex, result, SELECT_NO_UNLOCK, 0);
 		  // Tianmu hook added
 		  
-		  int sdb_res, free_join_from_sdb, optimize_after_sdb;//TIANMU UPGRADE
-		  if (Tianmu::dbhandler::TIANMU_HandleSelect(thd, lex, result, 0, sdb_res, optimize_after_sdb, free_join_from_sdb, (int)true) == 0)
-			  res = handle_query(thd, lex, result, SELECT_NO_UNLOCK, (ulong)0, optimize_after_sdb, free_join_from_sdb);
+		  int tianmu_res, free_join_from_tianmu, optimize_after_tianmu;
+		  if (Tianmu::handler::ha_my_tianmu_query(thd, lex, result, 0, tianmu_res, optimize_after_tianmu, free_join_from_tianmu, (int)true) == 0)
+			  res = handle_query(thd, lex, result, SELECT_NO_UNLOCK, (ulong)0, optimize_after_tianmu, free_join_from_tianmu);
 		  else
-			  res = sdb_res;
+			  res = tianmu_res;
 		  
           if (thd->lex->is_ignore() || thd->is_strict_mode())
             thd->pop_internal_handler();
@@ -3727,7 +3727,7 @@ end_with_restore_list:
     if ((check_table_access(thd, SELECT_ACL, all_tables, FALSE, UINT_MAX, FALSE)
          || open_and_lock_tables(thd, all_tables, 0)))
       goto error;
-	if (!Tianmu::dbhandler::TIANMU_SetStatementAllowed(thd, lex)) {
+	if (!Tianmu::handler::TIANMU_SetStatementAllowed(thd, lex)) {
 		goto error;
 	}
     if (!(res= sql_set_variables(thd, lex_var_list)))
@@ -5178,13 +5178,13 @@ static bool execute_sqlcom_select(THD *thd, TABLE_LIST *all_tables)
       }
       //res= handle_query(thd, lex, result, 0, 0, 0, 0);
 	 
-	  int sdb_res, free_join_from_sdb, optimize_after_sdb;//ATIMSTORE UPGRADE
-	  if (Tianmu::dbhandler::TIANMU_HandleSelect(thd, lex, result, (ulong)0,
-		  sdb_res, optimize_after_sdb, free_join_from_sdb) == 0) {
-		  res = handle_query(thd, lex, result, (ulonglong)0, (ulonglong)0, optimize_after_sdb, free_join_from_sdb);
+	  int tianmu_res, free_join_from_tianmu, optimize_after_tianmu;//ATIMSTORE UPGRADE
+	  if (Tianmu::handler::ha_my_tianmu_query(thd, lex, result, (ulong)0,
+		  tianmu_res, optimize_after_tianmu, free_join_from_tianmu) == 0) {
+		  res = handle_query(thd, lex, result, (ulonglong)0, (ulonglong)0, optimize_after_tianmu, free_join_from_tianmu);
 	  }
 	  else
-		  res = sdb_res;
+		  res = tianmu_res;
 	  
       delete analyse_result;
       if (save_result != lex->result)

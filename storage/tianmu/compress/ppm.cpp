@@ -26,11 +26,11 @@
 namespace Tianmu {
 namespace compress {
 
-FILE *PPM::dump_ = NULL;
+FILE *PPM::dump_ = nullptr;
 bool PPM::printstat_ = false;
 
 PPM::PPM(const Symb *data, int dlen, ModelType mt, PPMParam param, uchar method) {
-  if ((data == NULL) || (dlen <= 0) || (mt == ModelType::ModelNull))
+  if ((data == nullptr) || (dlen <= 0) || (mt == ModelType::ModelNull))
     return;
 
   switch (mt) {
@@ -63,11 +63,11 @@ CprsErr PPM::CompressArith(char *dest, int &dlen, Symb *src, int slen) {
     dlen = slen + 1;
     return CprsErr::CPRS_SUCCESS;
   }
-  WordGraph *wg = NULL;
+  WordGraph *wg = nullptr;
   try {
     wg = dynamic_cast<WordGraph *>(model_.get());
   } catch (...) {
-    wg = NULL;
+    wg = nullptr;
   }
   if (wg)
     ASSERT(wg->insatend_ == false, "should be 'wg->insatend_ == false'");
@@ -171,11 +171,11 @@ CprsErr PPM::DecompressArith(Symb *dest, int dlen, char *src, int slen) {
   //}
   // if(method != 1) return CprsErr::CPRS_ERR_VER;
 
-  WordGraph *wg = NULL;
+  WordGraph *wg = nullptr;
   try {
     wg = dynamic_cast<WordGraph *>(model_.get());
   } catch (...) {
-    wg = NULL;
+    wg = nullptr;
   }
   if (wg)
     ASSERT(wg->insatend_ == false, "should be 'wg->insatend_ == false'");
@@ -254,11 +254,11 @@ CprsErr PPM::Compress(char *dest, int &dlen, Symb *src, int slen) {
     return CprsErr::CPRS_ERR_BUF;
   dest[0] = 2;  // compression method: with RangeCoder
 
-  WordGraph *wg = NULL;
+  WordGraph *wg = nullptr;
   try {
     wg = dynamic_cast<WordGraph *>(model_.get());
   } catch (...) {
-    wg = NULL;
+    wg = nullptr;
   }
 
   if (wg)
@@ -322,11 +322,11 @@ CprsErr PPM::Decompress(Symb *dest, int dlen, char *src, int slen) {
   if (method != 2)
     return CprsErr::CPRS_ERR_VER;
 
-  WordGraph *wg = NULL;
+  WordGraph *wg = nullptr;
   try {
     wg = dynamic_cast<WordGraph *>(model_.get());
   } catch (...) {
-    wg = NULL;
+    wg = nullptr;
   }
 
   if (wg)

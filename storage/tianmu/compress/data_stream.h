@@ -52,8 +52,8 @@ class DataStream {
     pos_ = pos;
   }
 
-  DataStream() : buf_(NULL) { Reset(0, 0, 0); }
-  DataStream(char *buf, uint len, uint pos = 0) : buf_(NULL) { Reset(buf, len, pos); }
+  DataStream() : buf_(nullptr) { Reset(0, 0, 0); }
+  DataStream(char *buf, uint len, uint pos = 0) : buf_(nullptr) { Reset(buf, len, pos); }
   virtual ~DataStream() {}
   char *GetBuf() { return (char *)buf_; }
   uint GetPos() { return pos_; }

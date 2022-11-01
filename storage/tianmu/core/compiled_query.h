@@ -97,7 +97,7 @@ class CompiledQuery final {
           tmpar(TMParameter::TM_DISTINCT),
           jt(JoinType::JO_INNER),
           cop(common::ColOperation::LISTING),
-          alias(NULL),
+          alias(nullptr),
           n1(common::NULL_VALUE_64),
           n2(common::NULL_VALUE_64),
           si(){};
@@ -129,7 +129,7 @@ class CompiledQuery final {
 
   // Add a new step to the execution plan
 
-  void TableAlias(TabID &t_out, const TabID &n, const char *tab_name = NULL, int id = -1);
+  void TableAlias(TabID &t_out, const TabID &n, const char *tab_name = nullptr, int id = -1);
   void TmpTable(TabID &t_out, const TabID &t1, bool for_subq = false);
   void CreateConds(CondID &c_out, const TabID &t1, CQTerm e1, common::Operator pr, CQTerm e2, CQTerm e3 = CQTerm(),
                    bool is_or_subtree = false, char like_esc = '\\');
@@ -148,7 +148,7 @@ class CompiledQuery final {
   void AddConds(const TabID &t1, const CondID &c1, CondType cond_type);
   void ApplyConds(const TabID &t1);
   void AddColumn(AttrID &a_out, const TabID &t1, CQTerm e1, common::ColOperation op, char const alias[] = 0,
-                 bool distinct = false, SI *si = NULL);
+                 bool distinct = false, SI *si = nullptr);
 
   /*! \brief Create compilation step CREATE_VC for mysql expression
    * \param a_out - id of created virtual column

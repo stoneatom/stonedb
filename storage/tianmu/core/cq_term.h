@@ -71,7 +71,7 @@ enum class CondType {
 
 /**
   Interpretation of CQTerm depends on which parameters are used.
-  All unused parameters must be set to NULL_VALUE (int), NULL (pointers),
+  All unused parameters must be set to NULL_VALUE (int), nullptr (pointers),
   SF_NONE (SimpleFunction), common::NULL_VALUE_64 (Tint64_t).
 
   When these parameters are set:            then the meaning is:
@@ -105,7 +105,7 @@ struct CQTerm {
   CQTerm(const CQTerm &);
   ~CQTerm();
 
-  bool IsNull() const { return (vc_id == common::NULL_VALUE_32 && vc == NULL); }
+  bool IsNull() const { return (vc_id == common::NULL_VALUE_32 && vc == nullptr); }
   CQTerm &operator=(const CQTerm &);
   bool operator==(const CQTerm &) const;
   char *ToString(char *buf, int tab_id) const;

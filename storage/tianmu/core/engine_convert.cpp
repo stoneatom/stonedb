@@ -54,7 +54,7 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
     case MYSQL_TYPE_BLOB: {
       DEBUG_ASSERT(dynamic_cast<types::BString *>(&rcitem));
       Field_blob *blob = (Field_blob *)field;
-      if (blob_buf == NULL) {
+      if (blob_buf == nullptr) {
         blob->set_ptr(((types::BString &)rcitem).len_, (uchar *)((types::BString &)rcitem).val_);
         blob->copy();
       } else {
@@ -142,7 +142,7 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
               break;
             case MYSQL_TYPE_BLOB: {
               Field_blob *blob = (Field_blob *)field;
-              if (blob_buf == NULL) {
+              if (blob_buf == nullptr) {
                 blob->set_ptr(((types::BString &)rcitem).len_, (uchar *)((types::BString &)rcitem).val_);
                 blob->copy();
               } else {
@@ -165,21 +165,21 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
               char tmp[10];
               char *tmpptr = tmp;
               ((types::BString &)rcitem).PutString(tmpptr, ushort(sizeof(tmp)), false);
-              ((Field_newdate *)field)->store(tmp, sizeof(tmp), NULL);
+              ((Field_newdate *)field)->store(tmp, sizeof(tmp), nullptr);
               break;
             }
             case MYSQL_TYPE_TIME: {
               char tmp[10];
               char *tmpptr = tmp;
               ((types::BString &)rcitem).PutString(tmpptr, ushort(sizeof(tmp)), false);
-              ((Field_time *)field)->store(tmp, sizeof(tmp), NULL);
+              ((Field_time *)field)->store(tmp, sizeof(tmp), nullptr);
               break;
             }
             case MYSQL_TYPE_DATETIME: {
               char tmp[19];
               char *tmpptr = tmp;
               ((types::BString &)rcitem).PutString(tmpptr, ushort(sizeof(tmp)), false);
-              ((Field_datetime *)field)->store(tmp, sizeof(tmp), NULL);
+              ((Field_datetime *)field)->store(tmp, sizeof(tmp), nullptr);
               break;
             }
             default:

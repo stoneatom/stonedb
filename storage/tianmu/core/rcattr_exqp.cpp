@@ -400,7 +400,7 @@ void RCAttr::EvaluatePack_Like(MIUpdatingIterator &mit, int dim, Descriptor &d) 
     return;
   }
   auto p = get_packS(pack);
-  if (p == NULL) {  // => nulls only
+  if (p == nullptr) {  // => nulls only
     mit.ResetCurrentPack();
     mit.NextPackrow();
     return;
@@ -474,7 +474,7 @@ void RCAttr::EvaluatePack_Like_UTF(MIUpdatingIterator &mit, int dim, Descriptor 
     return;
   }
   auto p = get_packS(pack);
-  if (p == NULL) {  // => nulls only
+  if (p == nullptr) {  // => nulls only
     mit.ResetCurrentPack();
     mit.NextPackrow();
     return;
@@ -544,12 +544,12 @@ void RCAttr::EvaluatePack_InString(MIUpdatingIterator &mit, int dim, Descriptor 
     return;
   }
   auto p = get_packS(pack);
-  if (p == NULL) {  // => nulls only
+  if (p == nullptr) {  // => nulls only
     mit.ResetCurrentPack();
     mit.NextPackrow();
     return;
   }
-  DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(d.val1.vc) != NULL);
+  DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(d.val1.vc) != nullptr);
   vcolumn::MultiValColumn *multival_column = static_cast<vcolumn::MultiValColumn *>(d.val1.vc);
   bool encoded_set = multival_column->IsSetEncoded(TypeName(), ct.GetScale());
   do {
@@ -585,13 +585,13 @@ void RCAttr::EvaluatePack_InString_UTF(MIUpdatingIterator &mit, int dim, Descrip
   }
 
   auto p = get_packS(pack);
-  if (p == NULL) {  // => nulls only
+  if (p == nullptr) {  // => nulls only
     mit.ResetCurrentPack();
     mit.NextPackrow();
     return;
   }
 
-  DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(d.val1.vc) != NULL);
+  DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(d.val1.vc) != nullptr);
   vcolumn::MultiValColumn *multival_column = static_cast<vcolumn::MultiValColumn *>(d.val1.vc);
   DTCollation coll = d.GetCollation();
   int arraysize = d.val1.cond_value.size();
@@ -646,7 +646,7 @@ void RCAttr::EvaluatePack_InNum(MIUpdatingIterator &mit, int dim, Descriptor &d)
   int64_t local_min = dpn.min_i;
   int64_t local_max = dpn.max_i;
 
-  DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(d.val1.vc) != NULL);
+  DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(d.val1.vc) != nullptr);
   vcolumn::MultiValColumn *multival_column = static_cast<vcolumn::MultiValColumn *>(d.val1.vc);
   bool lookup_to_num = ATI::IsStringType(TypeName());
   bool encoded_set = (lookup_to_num ? multival_column->IsSetEncoded(common::CT::NUM, 0)
@@ -733,7 +733,7 @@ void RCAttr::EvaluatePack_BetweenString(MIUpdatingIterator &mit, int dim, Descri
   }
 
   auto p = get_packS(pack);
-  if (p == NULL) {  // => nulls only
+  if (p == nullptr) {  // => nulls only
     mit.ResetCurrentPack();
     mit.NextPackrow();
     return;
@@ -790,7 +790,7 @@ void RCAttr::EvaluatePack_BetweenString_UTF(MIUpdatingIterator &mit, int dim, De
   }
 
   auto p = get_packS(pack);
-  if (p == NULL) {  // => nulls only
+  if (p == nullptr) {  // => nulls only
     mit.ResetCurrentPack();
     mit.NextPackrow();
     return;
@@ -1132,7 +1132,7 @@ bool RCAttr::IsDistinct(Filter *f) {
   if (ct.IsLookup() && types::RequiresUTFConversions(GetCollation()))
     return false;
   if (PhysicalColumn::IsDistinct() == common::RSValue::RS_ALL) {  // = is_unique_updated && is_unique
-    if (f == NULL)
+    if (f == nullptr)
       return (NumOfNulls() == 0);  // no nulls at all, and is_unique  => distinct
     LoadPackInfo();
     for (uint b = 0; b < SizeOfPack(); b++)
@@ -1146,7 +1146,7 @@ bool RCAttr::IsDistinct(Filter *f) {
 uint64_t RCAttr::ApproxAnswerSize(Descriptor &d) {
   MEASURE_FET("RCAttr::ApproxAnswerSize(...)");
   ASSERT(d.encoded, "The descriptor is not encoded!");
-  static MIIterator const mit(NULL, pss);
+  static MIIterator const mit(nullptr, pss);
   LoadPackInfo();
 
   if (d.op == common::Operator::O_NOT_NULL)
@@ -1155,7 +1155,7 @@ uint64_t RCAttr::ApproxAnswerSize(Descriptor &d) {
     return NumOfNulls();
 
   if (d.val1.vc && !d.val1.vc->IsConst()) {
-    uint64_t no_distinct = ApproxDistinctVals(false, NULL, NULL, false);
+    uint64_t no_distinct = ApproxDistinctVals(false, nullptr, nullptr, false);
     if (no_distinct == 0)
       no_distinct = 1;
     if (d.op == common::Operator::O_EQ)
@@ -1261,7 +1261,7 @@ bool RCAttr::TryToMerge(Descriptor &d1, Descriptor &d2) {
     return false;
   if (GetPackType() == common::PackType::INT && d1.val1.vc && d1.val2.vc && d2.val1.vc && d2.val2.vc &&
       d1.val1.vc->IsConst() && d1.val2.vc->IsConst() && d2.val1.vc->IsConst() && d2.val2.vc->IsConst()) {
-    static MIIterator const mit(NULL, pss);
+    static MIIterator const mit(nullptr, pss);
     int64_t d1min = d1.val1.vc->GetValueInt64(mit);
     int64_t d1max = d1.val2.vc->GetValueInt64(mit);
     int64_t d2min = d2.val1.vc->GetValueInt64(mit);
@@ -1322,7 +1322,7 @@ bool RCAttr::TryToMerge(Descriptor &d1, Descriptor &d2) {
   } else if (GetPackType() == common::PackType::STR && d1.val1.vc && d1.val2.vc && d2.val1.vc && d2.val2.vc &&
              d1.val1.vc->IsConst() && d1.val2.vc->IsConst() && d2.val1.vc->IsConst() && d2.val2.vc->IsConst() &&
              d1.sharp == d2.sharp && d1.GetCollation().collation == d2.GetCollation().collation) {
-    static MIIterator const mit(NULL, pss);
+    static MIIterator const mit(nullptr, pss);
     types::BString d1min, d1max, d2min, d2max;
     d1.val1.vc->GetValueString(d1min, mit);
     d1.val2.vc->GetValueString(d1max, mit);

@@ -42,11 +42,11 @@ void *TCMHeap::alloc(size_t size) {
   if (size > kMaxSize) {
     int pages = int(size >> kPageShift);
     tcm::Span *s = m_heap.New(pages + 1);
-    if (s == NULL)
-      return NULL;
-    s->objects = NULL;
-    s->next = NULL;
-    s->prev = NULL;
+    if (s == nullptr)
+      return nullptr;
+    s->objects = nullptr;
+    s->next = nullptr;
+    s->prev = nullptr;
     s->refcount = 1;
     s->size = uint(size);
     s->sizeclass = 0;
@@ -61,8 +61,8 @@ void *TCMHeap::alloc(size_t size) {
     // allocations of this size)
     int pages = int(m_sizemap.class_to_pages(cl));
     tcm::Span *res = m_heap.New(pages);
-    if (res == NULL)
-      return NULL;
+    if (res == nullptr)
+      return nullptr;
 
     m_heap.RegisterSizeClass(res, cl);
 
@@ -79,12 +79,12 @@ void *TCMHeap::alloc(size_t size) {
       num++;
     }
     ASSERT(ptr <= limit);
-    *tail = NULL;
+    *tail = nullptr;
     res->refcount = 0;
     list->PushRange(num, (void *)(res->start << kPageShift), tail);
   }
   if (list->empty())
-    return NULL;
+    return nullptr;
 
   res = list->Pop();
   tcm::Span *s = m_heap.GetDescriptor(ADDR_TO_PAGEID(res));
@@ -95,7 +95,7 @@ void *TCMHeap::alloc(size_t size) {
 size_t TCMHeap::getBlockSize(void *mh) {
   size_t result;
   tcm::Span *span = m_heap.GetDescriptor(ADDR_TO_PAGEID(mh));
-  ASSERT(span != NULL);
+  ASSERT(span != nullptr);
   if (span->sizeclass == 0)
     result = span->size;
   else
@@ -107,11 +107,11 @@ size_t TCMHeap::getBlockSize(void *mh) {
 
 void TCMHeap::dealloc(void *mh) {
   // be an enabler for broken code
-  if (mh == NULL)
+  if (mh == nullptr)
     return;
 
   tcm::Span *span = m_heap.GetDescriptor(ADDR_TO_PAGEID(mh));
-  ASSERT(span != NULL);
+  ASSERT(span != nullptr);
   span->refcount--;
   if (span->sizeclass == 0) {
     m_heap.Delete(span);
@@ -131,7 +131,7 @@ void TCMHeap::dealloc(void *mh) {
 void *TCMHeap::rc_realloc(void *mh, size_t size) {
   void *res = alloc(size);
 
-  if (mh == NULL)
+  if (mh == nullptr)
     return res;
   tcm::Span *span = m_heap.GetDescriptor(ADDR_TO_PAGEID(mh));
   if (span->sizeclass == 0) {

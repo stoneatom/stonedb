@@ -88,7 +88,7 @@ class PageHeap final {
   //           and has not yet been deleted.
   void RegisterSizeClass(Span *span, size_t sc);
 
-  // Return the descriptor for the specified page.  Returns NULL if
+  // Return the descriptor for the specified page.  Returns nullptr if
   // this PageID was not allocated previously.
   inline Span *GetDescriptor(PageID p) const { return reinterpret_cast<Span *>(pagemap_.get(p)); }
 
@@ -186,7 +186,7 @@ class PageHeap final {
   }
 
   // Allocate a large span of length == n.  If successful, returns a
-  // span of exactly the specified length.  Else, returns NULL.
+  // span of exactly the specified length.  Else, returns nullptr.
   Span *AllocLarge(Length n);
 
   // Coalesce span with neighboring spans if possible, prepend to

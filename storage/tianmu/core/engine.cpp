@@ -44,7 +44,7 @@
 #include "util/thread_pool.h"
 
 namespace Tianmu {
-namespace dbhandler {
+namespace handler {
 extern void resolve_async_join_settings(const std::string &settings);
 }
 namespace core {
@@ -71,7 +71,7 @@ static int setup_sig_handler() {
   sa.sa_sigaction = signal_handler;
   sigemptyset(&sa.sa_mask);
 
-  if (sigaction(SIGRTMIN, &sa, NULL) == -1) {
+  if (sigaction(SIGRTMIN, &sa, nullptr) == -1) {
     TIANMU_LOG(LogCtl_Level::INFO, "Failed to set up signal handler. error =%d[%s]", errno, std::strerror(errno));
     return 1;
   }
@@ -206,7 +206,7 @@ int Engine::Init(uint engine_slot) {
   } else {
     rc_querylog_.setOff();
   }
-  std::srand(unsigned(time(NULL)));
+  std::srand(unsigned(time(nullptr)));
 
   if (tianmu_sysvar_servermainheapsize == 0) {
     long pages = sysconf(_SC_PHYS_PAGES);
@@ -319,7 +319,7 @@ int Engine::Init(uint engine_slot) {
 
   if (tianmu_sysvar_start_async > 0)
     ResetTaskExecutor(tianmu_sysvar_start_async);
-  dbhandler::resolve_async_join_settings(tianmu_sysvar_async_join);
+  handler::resolve_async_join_settings(tianmu_sysvar_async_join);
 
   return 0;
 }
@@ -916,8 +916,8 @@ void Engine::RemoveTx(Transaction *tx) {
 
 Transaction *Engine::CreateTx(THD *thd) {
   // the transaction should be created by owner THD
-  ASSERT(thd->ha_data[m_slot].ha_ptr == NULL, "Nested transaction is not supported!");
-  ASSERT(current_txn_ == NULL, "Previous transaction is not finished!");
+  ASSERT(thd->ha_data[m_slot].ha_ptr == nullptr, "Nested transaction is not supported!");
+  ASSERT(current_txn_ == nullptr, "Previous transaction is not finished!");
 
   current_txn_ = new Transaction(thd);
   thd->ha_data[m_slot].ha_ptr = current_txn_;
@@ -941,7 +941,7 @@ void Engine::ClearTx(THD *thd) {
 
   RemoveTx(current_txn_);
   current_txn_ = nullptr;
-  thd->ha_data[m_slot].ha_ptr = NULL;
+  thd->ha_data[m_slot].ha_ptr = nullptr;
 }
 
 int Engine::SetUpCacheFolder(const std::string &cachefolder_path) {
@@ -1171,7 +1171,7 @@ static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec
   }
 
   thd->set_catalog({0, 1});  // TIANMU UPGRADE
-  thd->set_db({NULL, 0});    /* will free the current database */
+  thd->set_db({nullptr, 0}); /* will free the current database */
   thd->reset_query();
   thd->get_stmt_da()->set_overwrite_status(true);
   thd->is_error() ? trans_rollback_stmt(thd) : trans_commit_stmt(thd);
@@ -1625,13 +1625,13 @@ bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects
 }
 
 bool Engine::IsTianmuTable(TABLE *table) {
-  return table && table->s->db_type() == rcbase_hton;  // table->db_type is always NULL
+  return table && table->s->db_type() == rcbase_hton;  // table->db_type is always nullptr
 }
 
 const char *Engine::GetFilename(SELECT_LEX *selects_list, int &is_dumpfile) {
-  // if the function returns a filename <> NULL
+  // if the function returns a filename <> nullptr
   // additionally is_dumpfile indicates whether it was 'select into OUTFILE' or
-  // maybe 'select into DUMPFILE' if the function returns NULL it was a regular
+  // maybe 'select into DUMPFILE' if the function returns nullptr it was a regular
   // 'select' don't look into is_dumpfile in this case
   if (selects_list->parent_lex->exchange) {
     is_dumpfile = selects_list->parent_lex->exchange->dumpfile;
@@ -1670,7 +1670,7 @@ std::unique_ptr<system::IOParameters> Engine::CreateIOParameters(const std::stri
 }
 
 std::unique_ptr<system::IOParameters> Engine::CreateIOParameters([[maybe_unused]] THD *thd, TABLE *table, void *arg) {
-  if (table == NULL)
+  if (table == nullptr)
     return CreateIOParameters("", arg);
 
   return CreateIOParameters(GetTablePath(table), arg);
@@ -1807,7 +1807,7 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter escape std::string not supported.");
 
   if (ex.field.enclosed->length() > 1 &&
-      (ex.field.enclosed->length() != 4 || strcasecmp(ex.field.enclosed->ptr(), "NULL") != 0))
+      (ex.field.enclosed->length() != 4 || strcasecmp(ex.field.enclosed->ptr(), "nullptr") != 0))
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter enclose std::string not supported.");
 
   if (!for_exporter) {
@@ -1820,7 +1820,7 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
     io_params->SetEscapeCharacter(*ex.field.escaped->ptr());
     io_params->SetDelimiter(ex.field.field_term->ptr());
     io_params->SetLineTerminator(ex.line.line_term->ptr());
-    if (ex.field.enclosed->length() == 4 && strcasecmp(ex.field.enclosed->ptr(), "NULL") == 0)
+    if (ex.field.enclosed->length() == 4 && strcasecmp(ex.field.enclosed->ptr(), "nullptr") == 0)
       io_params->SetParameter(system::Parameter::STRING_QUALIFIER, '\0');
     else
       io_params->SetParameter(system::Parameter::STRING_QUALIFIER, *ex.field.enclosed->ptr());
@@ -1836,7 +1836,7 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
       io_params->SetLineTerminator(ex.line.line_term->ptr());
 
     if (ex.field.enclosed->length()) {
-      if (ex.field.enclosed->length() == 4 && strcasecmp(ex.field.enclosed->ptr(), "NULL") == 0)
+      if (ex.field.enclosed->length() == 4 && strcasecmp(ex.field.enclosed->ptr(), "nullptr") == 0)
         io_params->SetParameter(system::Parameter::STRING_QUALIFIER, '\0');
       else
         io_params->SetParameter(system::Parameter::STRING_QUALIFIER, *ex.field.enclosed->ptr());
