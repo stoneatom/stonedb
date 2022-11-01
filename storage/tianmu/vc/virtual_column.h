@@ -37,16 +37,16 @@ namespace vcolumn {
 
 class VirtualColumn : public VirtualColumnBase {
  public:
-  VirtualColumn(core::ColumnType const &col_type, core::MultiIndex *mind)
-      : VirtualColumnBase(col_type, mind), pguard(this) {}
-  VirtualColumn(VirtualColumn const &vc) : VirtualColumnBase(vc), pguard(this) {}
-  virtual ~VirtualColumn() { pguard.UnlockAll(); }
+  VirtualColumn(core::ColumnType const &col_type, core::MultiIndex *multi_index)
+      : VirtualColumnBase(col_type, multi_index), vc_pack_guard_(this) {}
+  VirtualColumn(VirtualColumn const &vc) : VirtualColumnBase(vc), vc_pack_guard_(this) {}
+  virtual ~VirtualColumn() { vc_pack_guard_.UnlockAll(); }
 
-  void LockSourcePacks(const core::MIIterator &mit) override { pguard.LockPackrow(mit); }
-  void UnlockSourcePacks() override { pguard.UnlockAll(); }
+  void LockSourcePacks(const core::MIIterator &mit) override { vc_pack_guard_.LockPackrow(mit); }
+  void UnlockSourcePacks() override { vc_pack_guard_.UnlockAll(); }
 
  private:
-  core::VCPackGuardian pguard;
+  core::VCPackGuardian vc_pack_guard_;
 };
 }  // namespace vcolumn
 

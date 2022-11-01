@@ -28,7 +28,8 @@ MemBlockManager::~MemBlockManager() {
 void *MemBlockManager::GetBlock() {
   DEBUG_ASSERT(block_size != -1);
 
-  if (hard_size_limit != -1 && hard_size_limit <= current_size) return NULL;
+  if (hard_size_limit != -1 && hard_size_limit <= current_size)
+    return NULL;
 
   {
     std::scoped_lock g(mx);
@@ -46,19 +47,22 @@ void *MemBlockManager::GetBlock() {
 }
 
 int MemBlockManager::MemoryBlocksLeft() {
-  if (size_limit == -1) return 9999;  // uninitialized => no limit
+  if (size_limit == -1)
+    return 9999;  // uninitialized => no limit
   int64_t s;
   {
     std::scoped_lock g(mx);
     s = free_blocks.size();
   }
   int64_t size_in_near_future = current_size + block_size * ((no_threads >> 1) - s);
-  if (size_in_near_future > size_limit) return 0;
+  if (size_in_near_future > size_limit)
+    return 0;
   return int((size_limit - size_in_near_future) / block_size);
 }
 
 void MemBlockManager::FreeBlock(void *b) {
-  if (b == NULL) return;
+  if (b == NULL)
+    return;
   std::scoped_lock g(mx);
   size_t r = used_blocks.erase(b);
   if (r == 1) {
@@ -70,13 +74,13 @@ void MemBlockManager::FreeBlock(void *b) {
       } else
         free_blocks.push_back(b);
     } else
-      // often freed block are immediately required by other - keep some of them
-      // above the limit in the pool
-      if (current_size > size_limit + block_size * (no_threads + 1)) {
-        dealloc(b);
-        current_size -= block_size;
-      } else
-        free_blocks.push_back(b);
+        // often freed block are immediately required by other - keep some of them
+        // above the limit in the pool
+        if (current_size > size_limit + block_size * (no_threads + 1)) {
+      dealloc(b);
+      current_size -= block_size;
+    } else
+      free_blocks.push_back(b);
   }  // else not found (already erased)
 }
 
@@ -94,7 +98,8 @@ void BlockedRowMemStorage::Init(int rowl, std::shared_ptr<MemBlockManager> mbm, 
   if (initial_size > 0)
     for (unsigned int i = 0; i < (initial_size / rows_in_block) + 1; i++) {
       void *b = bman->GetBlock();
-      if (!b) throw common::OutOfMemoryException("too large initial BlockedRowMemStorage size");
+      if (!b)
+        throw common::OutOfMemoryException("too large initial BlockedRowMemStorage size");
       blocks.push_back(b);
     }
   no_rows = initial_size;

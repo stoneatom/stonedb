@@ -1,0 +1,29 @@
+#
+# Test create and drop users
+# Author: shiz
+#
+DROP USER IF EXISTS user1@test;
+DROP USER IF EXISTS 'user2'@'%';
+DROP USER IF EXISTS 'user'@'%';
+DROP USER IF EXISTS 'user'@'localhost';
+DROP USER IF EXISTS 'user'@'127.0.0.1';
+CREATE USER user1@test IDENTIFIED BY 'stoneatom1234';
+CREATE USER user1@test IDENTIFIED BY 'stoneatom1234';
+ERROR HY000: Operation CREATE USER failed for 'user1'@'test'
+CREATE USER 'user2'@'%' IDENTIFIED BY 'stoneatom1234';
+CREATE USER 'user2'@'%' IDENTIFIED BY 'stoneatom1234';
+ERROR HY000: Operation CREATE USER failed for 'user2'@'%'
+CREATE USER 'user'@'%' IDENTIFIED BY 'stoneatom1234';
+CREATE USER 'user'@'localhost' IDENTIFIED BY 'stoneatom1234';
+CREATE USER 'user'@'127.0.0.1' IDENTIFIED BY 'stoneatom1234';
+CREATE USER user@127.0.0.1 IDENTIFIED BY 'stoneatom1234';
+ERROR HY000: Operation CREATE USER failed for 'user'@'127.0.0.1'
+CREATE USER user@% IDENTIFIED BY 'stoneatom1234';
+ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '% IDENTIFIED BY 'stoneatom1234'' at line 1
+DROP USER user1@test;
+DROP USER user2@%;
+ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '%' at line 1
+DROP USER 'user2'@'%';
+DROP USER 'user'@'%';
+DROP USER 'user'@'localhost';
+DROP USER 'user'@'127.0.0.1';

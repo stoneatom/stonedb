@@ -144,7 +144,8 @@ void SuffixTree<Symb, NSymb>::MoveDown(Point &p, const uchar *&s) {
       proj++;
       s++;
     }
-    if (proj < len) return;
+    if (proj < len)
+      return;
 
     p.n = p.next;
     proj = 0;
@@ -314,10 +315,12 @@ void SuffixTree<Symb, NSymb>::Print(std::ostream &str, uint flags, PNode n, PNod
     PrintSub(str, node.pos, node.pos + len);
     str << ' ';
   }
-  if (flags & 2) str << len << ' ';
+  if (flags & 2)
+    str << len << ' ';
   // if(flags & 4)
   //	str << node.dep << ' ';
-  if (flags & 8) str << node.count << ' ';
+  if (flags & 8)
+    str << node.count << ' ';
   str << " [" << n << "]->[" << node.suf << "]" << std::endl;
 
   ind += len;
@@ -485,7 +488,8 @@ void SuffixTree<Symb, NSymb>::SetSums() {
       cnt = child.count;       // real count, wide-represented
       scnt = cnt _SHR_ shift;  // short count, reduced
       DEBUG_ASSERT(cnt > 0);
-      if (scnt == 0) scnt = 1;
+      if (scnt == 0)
+        scnt = 1;
 
       DEBUG_ASSERT(scnt <= COUNT_MAX);
       DEBUG_ASSERT(sum <= sum + (Count)scnt);
@@ -658,14 +662,16 @@ CprsErr SuffixTree<Symb, NSymb>::GetLabel(Edge e, Symb *lbl, int &len) {
     return CprsErr::CPRS_SUCCESS;
   }
   if (e.n == ROOT_) {
-    if (len < 1) return CprsErr::CPRS_ERR_BUF;
+    if (len < 1)
+      return CprsErr::CPRS_ERR_BUF;
     *lbl = e.s;
     len = 1;
     return CprsErr::CPRS_SUCCESS;
   }
 
   Node &n = GetNode(e.n);
-  if (len < n.len) return CprsErr::CPRS_ERR_BUF;
+  if (len < n.len)
+    return CprsErr::CPRS_ERR_BUF;
   len = n.len;
   std::memcpy(lbl, data_.get() + n.pos, len);
   return CprsErr::CPRS_SUCCESS;
@@ -709,7 +715,8 @@ CprsErr SuffixTree<Symb, NSymb>::Move(Count c, Symb *str, int &len, Range &rng) 
   Edge e{NIL_, 0};
   FindEdge(e, c);
   CprsErr err = GetLabel(e, str, len);
-  if (static_cast<int>(err)) return err;
+  if (static_cast<int>(err))
+    return err;
   GetRange(state_, e, rng);
   Move(e);
   return CprsErr::CPRS_SUCCESS;

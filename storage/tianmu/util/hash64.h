@@ -64,19 +64,24 @@ class Hash64 final {
   ~Hash64() = default;
 
   bool Find(int64_t &n) {
-    if (n == 0) return zero_inserted_;
+    if (n == 0)
+      return zero_inserted_;
 
     int64_t i = FindAddress(n);
     int64_t tv = table_[i];
-    if (tv == n) return true;
-    if (tv == 0) return false;
+    if (tv == n)
+      return true;
+    if (tv == 0)
+      return false;
 
     int64_t s = HashStep(n);
     while (1) {
       i = (i + s) & address_mask_;
       tv = table_[i];
-      if (tv == n) return true;
-      if (tv == 0) return false;
+      if (tv == n)
+        return true;
+      if (tv == 0)
+        return false;
     }
 
     return false;
@@ -94,7 +99,8 @@ class Hash64 final {
       return;
     }
 
-    if (table_[i] == n) return;
+    if (table_[i] == n)
+      return;
     int64_t s = HashStep(n);
     while (1) {
       i = (i + s) & address_mask_;
@@ -102,7 +108,8 @@ class Hash64 final {
         table_[i] = n;
         return;
       }
-      if (table_[i] == n) return;
+      if (table_[i] == n)
+        return;
     }
 
     return;

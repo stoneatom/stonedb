@@ -84,8 +84,8 @@ class InSetColumn : public MultiValColumn {
     friend class IteratorImpl;
   };
 
-  InSetColumn(const core::ColumnType &ct, core::MultiIndex *mind, const std::vector<VirtualColumn *> &columns);
-  InSetColumn(core::ColumnType const &ct, core::MultiIndex *mind,
+  InSetColumn(const core::ColumnType &ct, core::MultiIndex *multi_index, const std::vector<VirtualColumn *> &columns);
+  InSetColumn(core::ColumnType const &ct, core::MultiIndex *multi_index,
               core::ValueSet &external_valset);  // a special version for sets of constants
   InSetColumn(const InSetColumn &c);
 
@@ -97,7 +97,7 @@ class InSetColumn : public MultiValColumn {
   bool IsInSet() const override { return true; }
   char *ToString(char p_buf[], size_t buf_ct) const override;
   void RequestEval(const core::MIIterator &mit, const int tta) override;
-  core::ColumnType &GetExpectedType() { return expected_type; }
+  core::ColumnType &GetExpectedType() { return expected_type_; }
   void LockSourcePacks(const core::MIIterator &mit) override;
   void LockSourcePacks(const core::MIIterator &mit, int);
   bool CanCopy() const override;
@@ -164,17 +164,17 @@ class InSetColumn : public MultiValColumn {
     return common::ErrorCode::FAILED;
   }
 
-  const core::MysqlExpression::tianmu_fields_cache_t &GetTIANMUItems() const override { return tianmuitems; }
+  const core::MysqlExpression::tianmu_fields_cache_t &GetTIANMUItems() const override { return tianmu_items_; }
   bool CopyCondImpl(const core::MIIterator &mit, types::CondArray &condition, DTCollation coll) override;
   bool CopyCondImpl(const core::MIIterator &mit, std::shared_ptr<utils::Hash64> &condition, DTCollation coll) override;
 
  private:
-  mutable bool full_cache;
-  mutable core::ValueSet cache;
-  core::ColumnType expected_type;
-  bool is_const;
-  char *last_mit;     // to be used for tracing cache creation for mit values
-  int last_mit_size;  // to be used for tracing cache creation for mit values
+  mutable bool full_cache_;
+  mutable core::ValueSet cache_;
+  core::ColumnType expected_type_;
+  bool is_const_;
+  char *last_mit_;     // to be used for tracing cache_ creation for mit values
+  int last_mit_size_;  // to be used for tracing cache_ creation for mit values
   void PrepareCache(const core::MIIterator &mit, const int64_t &at_least = common::PLUS_INF_64);
 };
 

@@ -35,13 +35,14 @@ namespace system {
 */
 
 class TianmuFile : public Stream {
-private:
+ private:
   int fd_;
 
  public:
   TianmuFile() { fd_ = -1; }
   ~TianmuFile() {
-    if (fd_ != -1) Close();
+    if (fd_ != -1)
+      Close();
   }
 
   off_t Seek(off_t pos, int whence);

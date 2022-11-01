@@ -75,7 +75,7 @@ export const Step: React.FC<IStep> = ({dataSource, value}) => {
           ) : null
         }
         {
-          inView ? (<div>99999</div>) : (
+          inView ? (<div></div>) : (
             <ButtonWrap type="right" onClick={scrollNext}>
               <ButtonIcon name="BottomOutlined" />
             </ButtonWrap>

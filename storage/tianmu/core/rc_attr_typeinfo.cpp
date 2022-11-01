@@ -29,8 +29,10 @@ int ATI::TextSize(common::CT attrt, uint precision, int scale, DTCollation colla
 }
 
 const types::RCDataType &AttributeTypeInfo::ValuePrototype() const {
-  if (Lookup() || ATI::IsNumericType(attrt)) return types::RCNum::NullValue();
-  if (ATI::IsStringType(attrt)) return types::BString::NullValue();
+  if (Lookup() || ATI::IsNumericType(attrt))
+    return types::RCNum::NullValue();
+  if (ATI::IsStringType(attrt))
+    return types::BString::NullValue();
   DEBUG_ASSERT(ATI::IsDateTimeType(attrt));
   return types::RCDateTime::NullValue();
 }

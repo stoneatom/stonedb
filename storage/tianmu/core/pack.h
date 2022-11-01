@@ -70,7 +70,8 @@ class Pack : public mm::TraceableObject {
   }
 
   bool IsNull(int locationInPack) const {
-    if (dpn->numOfNulls == dpn->numOfRecords) return true;
+    if (dpn->numOfNulls == dpn->numOfRecords)
+      return true;
     return ((nulls[locationInPack >> 5] & ((uint32_t)(1) << (locationInPack % 32))) != 0);
   }
 
@@ -86,9 +87,10 @@ class Pack : public mm::TraceableObject {
     deletes[locationInPack >> 5] &= mask;
   }
 
-  //If the line in the package has been deleted, return true; otherwise, return false
+  // If the line in the package has been deleted, return true; otherwise, return false
   bool IsDeleted(int locationInPack) const {
-    if (dpn->numOfDeleted == dpn->numOfRecords) return true;
+    if (dpn->numOfDeleted == dpn->numOfRecords)
+      return true;
     return ((deletes[locationInPack >> 5] & ((uint32_t)(1) << (locationInPack % 32))) != 0);
   }
 
@@ -100,10 +102,10 @@ class Pack : public mm::TraceableObject {
   }
   PackCoordinate GetPackCoordinate() const { return m_coord.co.pack; }
   void SetDPN(DPN *new_dpn) { dpn = new_dpn; }
-  
-  //Compress bitmap
+
+  // Compress bitmap
   bool CompressedBitMap(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf,
-                                uint32_t &dpn_num1);
+                        uint32_t &dpn_num1);
 
  protected:
   Pack(DPN *dpn, PackCoordinate pc, ColumnShare *s);
@@ -151,12 +153,12 @@ class Pack : public mm::TraceableObject {
   The actual storage form of a bitmap is an array of type int32.
   The principle is to use the 32-bit space occupied by a value of type int32 to
   store and record the states of these 32 values using 0 or 1.
-  The total number of bits in the bitmap is equal to the total number of rows in the pack, 
+  The total number of bits in the bitmap is equal to the total number of rows in the pack,
   and the position of the data in the pack and the position in the bitmap are also one-to-one correspondence
   This can effectively save space.
   */
-  std::unique_ptr<uint32_t[]> nulls;   //Null bitmap
-  std::unique_ptr<uint32_t[]> deletes; //deleted bitmap
+  std::unique_ptr<uint32_t[]> nulls;    // Null bitmap
+  std::unique_ptr<uint32_t[]> deletes;  // deleted bitmap
 };
 }  // namespace core
 }  // namespace Tianmu

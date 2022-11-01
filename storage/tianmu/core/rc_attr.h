@@ -97,14 +97,17 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   bool IsDelete(int64_t row);
 
   const types::RCDataType &ValuePrototype(bool lookup_to_num) const {
-    if ((Type().IsLookup() && lookup_to_num) || ATI::IsNumericType(TypeName())) return types::RCNum::NullValue();
-    if (ATI::IsStringType(TypeName())) return types::BString::NullValue();
+    if ((Type().IsLookup() && lookup_to_num) || ATI::IsNumericType(TypeName()))
+      return types::RCNum::NullValue();
+    if (ATI::IsStringType(TypeName()))
+      return types::BString::NullValue();
     DEBUG_ASSERT(ATI::IsDateTimeType(TypeName()));
     return types::RCDateTime::NullValue();
   }
 
   int64_t GetValueInt64(int64_t obj) const override {
-    if (obj == common::NULL_VALUE_64) return common::NULL_VALUE_64;
+    if (obj == common::NULL_VALUE_64)
+      return common::NULL_VALUE_64;
     DEBUG_ASSERT(hdr.numOfRecords >= static_cast<uint64_t>(obj));
     auto pack = row2pack(obj);
     const auto &dpn = get_dpn(pack);
@@ -113,14 +116,17 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
       DEBUG_ASSERT(pack_type == common::PackType::INT);
       DEBUG_ASSERT(p->IsLocked());  // assuming it is already loaded and locked
       int inpack = row2offset(obj);
-      if (p->IsNull(inpack)) return common::NULL_VALUE_64;
+      if (p->IsNull(inpack))
+        return common::NULL_VALUE_64;
       int64_t res = p->GetValInt(inpack);  // 2-level encoding
       // Natural encoding
-      if (ATI::IsRealType(TypeName())) return res;
+      if (ATI::IsRealType(TypeName()))
+        return res;
       res += dpn.min_i;
       return res;
     }
-    if (dpn.NullOnly()) return common::NULL_VALUE_64;
+    if (dpn.NullOnly())
+      return common::NULL_VALUE_64;
     // the only possibility: uniform
     ASSERT(dpn.min_i == dpn.max_i);
     return dpn.min_i;
@@ -135,7 +141,8 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
 
       int64_t res = get_packN(pack)->GetValInt(row2offset(obj));  // 2-level encoding
       // Natural encoding
-      if (ATI::IsRealType(TypeName())) return res;
+      if (ATI::IsRealType(TypeName()))
+        return res;
       res += dpn.min_i;
       return res;
     }
@@ -144,19 +151,22 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   }
 
   bool IsNull(int64_t obj) const override {
-    if (obj == common::NULL_VALUE_64) return true;
+    if (obj == common::NULL_VALUE_64)
+      return true;
     DEBUG_ASSERT(hdr.numOfRecords >= static_cast<uint64_t>(obj));
     auto pack = row2pack(obj);
     const auto &dpn = get_dpn(pack);
 
-    if (Type().NotNull() || dpn.numOfNulls == 0) return false;
+    if (Type().NotNull() || dpn.numOfNulls == 0)
+      return false;
 
     if (!dpn.Trivial()) {
       DEBUG_ASSERT(get_pack(pack)->IsLocked());  // assuming the pack is already loaded and locked
       return get_pack(pack)->IsNull(row2offset(obj));
     }
 
-    if (dpn.NullOnly()) return true;
+    if (dpn.NullOnly())
+      return true;
 
     if ((pack_type == common::PackType::STR) && !dpn.Trivial()) {
       DEBUG_ASSERT(0);
@@ -345,7 +355,7 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   PackStr *get_packS(size_t i) const { return reinterpret_cast<PackStr *>(get_pack(i)); }
   DPN &get_last_dpn() { return *m_share->get_dpn_ptr(m_idx.back()); }
   const DPN &get_last_dpn() const { return *m_share->get_dpn_ptr(m_idx.back()); }
-  
+
   void EvaluatePack_IsNoDelete(MIUpdatingIterator &mit, int dim);
   void EvaluatePack_IsNull(MIUpdatingIterator &mit, int dim);
   void EvaluatePack_NotNull(MIUpdatingIterator &mit, int dim);

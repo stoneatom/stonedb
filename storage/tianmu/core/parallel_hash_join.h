@@ -173,7 +173,8 @@ class ParallelHashJoiner : public TwoDimensionalJoiner {
   template <typename T>
   bool ImpossibleValues(size_t col, T &pack_min, T &pack_max) {
     for (auto &it : traversed_hash_tables_) {
-      if (!it.GetColumnEncoder(col)->ImpossibleValues(pack_min, pack_max)) return false;
+      if (!it.GetColumnEncoder(col)->ImpossibleValues(pack_min, pack_max))
+        return false;
     }
 
     return true;

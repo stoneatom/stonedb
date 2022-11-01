@@ -31,7 +31,8 @@ class Timer {
   Timer() = default;
 
   void Print(const std::string &msg) const {
-    if (TIANMU_LOGCHECK(LogCtl_Level::DEBUG)) DoPrint(msg);
+    if (TIANMU_LOGCHECK(LogCtl_Level::DEBUG))
+      DoPrint(msg);
   }
 
  private:
