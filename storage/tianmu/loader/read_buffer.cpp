@@ -49,7 +49,8 @@ ReadBuffer::~ReadBuffer() {
     read_thread_.join();
   }
 
-  if (tianmu_stream_) tianmu_stream_->Close();
+  if (tianmu_stream_)
+    tianmu_stream_->Close();
 }
 
 bool ReadBuffer::BufOpen(std::unique_ptr<system::Stream> &s) {
@@ -104,7 +105,8 @@ int ReadBuffer::BufFetch(int unused_bytes) {
       throw common::FileException("Unable to read from the input file.");
     }
 
-    if ((!tianmu_stream_->IsOpen() && bytes_in_read_thread_buffer_ == 0) || to_read == unused_bytes) return 0;
+    if ((!tianmu_stream_->IsOpen() && bytes_in_read_thread_buffer_ == 0) || to_read == unused_bytes)
+      return 0;
 
     for (int i = 0; i < unused_bytes; i++) buf2_[i] = *(buf_ + ((buf_used_ - unused_bytes) + i));
     to_read -= unused_bytes;
@@ -207,7 +209,8 @@ void ReadBuffer::ReadThread() {
 
       if (bytes_in_read_thread_buffer_ != size_) {
         to_read = to_read_in_one_loop;
-        if (size_ - bytes_in_read_thread_buffer_ < to_read_in_one_loop) to_read = size_ - bytes_in_read_thread_buffer_;
+        if (size_ - bytes_in_read_thread_buffer_ < to_read_in_one_loop)
+          to_read = size_ - bytes_in_read_thread_buffer_;
         ushort no_steps = 0;
         while (no_steps < 15 && to_read > 0) {
           try {
@@ -244,7 +247,8 @@ void ReadBuffer::ReadThread() {
       (bytes_in_read_thread_buffer_ == size_) ? do_sleep = true : do_sleep = false;
     }
 
-    if (do_sleep || no_read_bytes != -1) std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    if (do_sleep || no_read_bytes != -1)
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }  // while (!do_stop)
 
   return;

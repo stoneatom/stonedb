@@ -139,7 +139,8 @@ class TraceableObject {
 
   static MemoryHandling *Instance(size_t comp_size, size_t uncomp_size, std::string hugedir = "",
                                   core::DataCache *d = NULL, size_t hugesize = 0) {
-    if (!m_MemHandling) m_MemHandling = new MemoryHandling(comp_size, uncomp_size, hugedir, d, hugesize);
+    if (!m_MemHandling)
+      m_MemHandling = new MemoryHandling(comp_size, uncomp_size, hugedir, d, hugesize);
     return m_MemHandling;
   }
 

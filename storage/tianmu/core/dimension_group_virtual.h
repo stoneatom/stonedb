@@ -59,8 +59,10 @@ class DimensionGroupVirtual : public DimensionGroup {
       locks--;
   }
   int NumOfLocks(int dim) override {
-    if (t[dim]) return t[dim]->NumOfLocks();
-    if (base_dim == dim) return locks;
+    if (t[dim])
+      return t[dim]->NumOfLocks();
+    if (base_dim == dim)
+      return locks;
     return 0;
   }
   bool IsThreadSafe() override { return true; }

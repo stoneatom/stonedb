@@ -83,7 +83,8 @@ void ValueMatching_HashTable::Init(int64_t mem_available, int64_t max_no_groups,
       ht_mask = (1 << CalculateBinSize(ht_mask)) - 1;  // 001001010  ->  001111111
     }
   }
-  if (ht_mask < 63) ht_mask = 63;
+  if (ht_mask < 63)
+    ht_mask = 63;
 
   max_no_rows = max_no_groups;
   if (max_no_rows > 2000000000) {
@@ -108,14 +109,15 @@ void ValueMatching_HashTable::Init(int64_t mem_available, int64_t max_no_groups,
 int64_t ValueMatching_HashTable::ByteSize() {
   int64_t res = (ht_mask + 1) * sizeof(int);
   int64_t max_t_size = bmanager->MaxSize();
-  if (max_t_size < max_no_rows * total_width) return res + max_t_size;
+  if (max_t_size < max_no_rows * total_width)
+    return res + max_t_size;
   if (max_no_rows * total_width < bmanager->BlockSize())  // just one block
     return res + bmanager->BlockSize();
   return res + max_no_rows * total_width;
 }
 
 bool ValueMatching_HashTable::FindCurrentRow(unsigned char *input_buffer, int64_t &row, bool add_if_new,
-                                           int match_width) {
+                                             int match_width) {
   unsigned int crc_code = HashValue(input_buffer, match_width);
   unsigned int ht_pos = (crc_code & ht_mask);
   unsigned int row_no = ht[ht_pos];
@@ -136,7 +138,8 @@ bool ValueMatching_HashTable::FindCurrentRow(unsigned char *input_buffer, int64_
 
     unsigned int *next_pos = (unsigned int *)(cur_row + next_pos_offset);
     if (*next_pos == 0) {  // not found and no more conflicted values
-      if (add_if_new) *next_pos = no_rows;
+      if (add_if_new)
+        *next_pos = no_rows;
       row_no = no_rows;
     } else {
       DEBUG_ASSERT(row_no < *next_pos);
@@ -177,7 +180,8 @@ bool ValueMatching_HashTable::FindCurrentRow(unsigned char *input_buffer, int64_
 
     unsigned int *next_pos = (unsigned int *)(cur_row + next_pos_offset);
     if (*next_pos == 0) {  // not found and no more conflicted values
-      if (add_if_new) *next_pos = no_rows;
+      if (add_if_new)
+        *next_pos = no_rows;
       row_no = no_rows;
     } else {
       DEBUG_ASSERT(row_no < *next_pos);

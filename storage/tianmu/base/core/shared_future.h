@@ -254,7 +254,7 @@ class shared_promise {
 
   /// \brief Sets the shared_promise's value (variadic), same as normal promise
   template <typename... A>
-  void set_value(A &&...a) noexcept {
+  void set_value(A &&... a) noexcept {
     _promise.set_value(std::forward<A>(a)...);
   }
 

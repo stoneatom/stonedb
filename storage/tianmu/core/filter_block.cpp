@@ -34,7 +34,8 @@ Filter::Block::Block(Filter *owner, int _no_obj, bool all_full) {
   owner->bit_mut->lock();
   block_table = (uint *)owner->bit_block_pool->malloc();
   owner->bit_mut->unlock();
-  if (!block_table) throw common::OutOfMemoryException();
+  if (!block_table)
+    throw common::OutOfMemoryException();
 
   if (all_full) {
     std::memset(block_table, 255, Filter::bitBlockSize);
@@ -63,7 +64,8 @@ void Filter::Block::CopyFrom(Block const &block, Filter *owner) {
       owner->bit_mut->lock();
       block_table = (uint *)owner->bit_block_pool->malloc();
       owner->bit_mut->unlock();
-      if (!block_table) throw common::OutOfMemoryException();
+      if (!block_table)
+        throw common::OutOfMemoryException();
     }
     std::memcpy(block_table, block.block_table, block_size * sizeof(uint));
   }
@@ -133,20 +135,23 @@ bool Filter::Block::Reset(int n1, int n2) {
       for (int i = off1; i < 32; i++)
         if ((block_table[bl1] & lshift1[i])) {  // if this operation change value
           no_set_bits--;
-          if (no_set_bits == 0) break;
+          if (no_set_bits == 0)
+            break;
           block_table[bl1] &= ~lshift1[i];
         }
       if (no_set_bits > 0)
         for (int i = bl1 + 1; i < bl2; i++) {
           no_set_bits -= CalculateBinSum(block_table[i]);
           block_table[i] = 0;
-          if (no_set_bits == 0) break;
+          if (no_set_bits == 0)
+            break;
         }
       if (no_set_bits > 0)
         for (int i = 0; i <= off2; i++)
           if ((block_table[bl2] & lshift1[i])) {  // if this operation change value
             no_set_bits--;
-            if (no_set_bits == 0) break;
+            if (no_set_bits == 0)
+              break;
             block_table[bl2] &= ~lshift1[i];
           }
     }
@@ -160,21 +165,26 @@ bool Filter::Block::IsEmptyBetween(int n1, int n2) {
   int off1 = (n1 & 31);
   int off2 = (n2 & 31);
   if (bl1 == bl2) {
-    if (block_table[bl1] == 0) return true;
+    if (block_table[bl1] == 0)
+      return true;
     for (int i = off1; i <= off2; i++)
-      if ((block_table[bl1] & lshift1[i])) return false;
+      if ((block_table[bl1] & lshift1[i]))
+        return false;
   } else {
     int i_start = (off1 == 0 ? bl1 : bl1 + 1);
     int i_stop = (off2 == 31 ? bl2 : bl2 - 1);
     for (int i = i_start; i <= i_stop; i++)
-      if (block_table[i] != 0) return false;
+      if (block_table[i] != 0)
+        return false;
     if (bl1 != i_start) {
       for (int i = off1; i <= 31; i++)
-        if ((block_table[bl1] & lshift1[i])) return false;
+        if ((block_table[bl1] & lshift1[i]))
+          return false;
     }
     if (bl2 != i_stop) {
       for (int i = 0; i <= off2; i++)
-        if ((block_table[bl2] & lshift1[i])) return false;
+        if ((block_table[bl2] & lshift1[i]))
+          return false;
     }
   }
   return true;
@@ -186,21 +196,26 @@ bool Filter::Block::IsFullBetween(int n1, int n2) {
   int off1 = (n1 & 31);
   int off2 = (n2 & 31);
   if (bl1 == bl2) {
-    if (block_table[bl1] == 0xFFFFFFFF) return true;
+    if (block_table[bl1] == 0xFFFFFFFF)
+      return true;
     for (int i = off1; i <= off2; i++)
-      if ((block_table[bl1] & lshift1[i]) == 0) return false;
+      if ((block_table[bl1] & lshift1[i]) == 0)
+        return false;
   } else {
     int i_start = (off1 == 0 ? bl1 : bl1 + 1);
     int i_stop = (off2 == 31 ? bl2 : bl2 - 1);
     for (int i = i_start; i <= i_stop; i++)
-      if (block_table[i] != 0xFFFFFFFF) return false;
+      if (block_table[i] != 0xFFFFFFFF)
+        return false;
     if (bl1 != i_start) {
       for (int i = off2; i <= 31; i++)
-        if ((block_table[bl1] & lshift1[i]) == 0) return false;
+        if ((block_table[bl1] & lshift1[i]) == 0)
+          return false;
     }
     if (bl2 != i_stop) {
       for (int i = 0; i <= off2; i++)
-        if ((block_table[bl2] & lshift1[i]) == 0) return false;
+        if ((block_table[bl2] & lshift1[i]) == 0)
+          return false;
     }
   }
   return true;
@@ -213,7 +228,8 @@ int Filter::Block::NumOfOnesBetween(int n1, int n2) {
   int off1 = (n1 & 31);
   int off2 = (n2 & 31);
   if (bl1 == bl2) {
-    if (block_table[bl1] == 0) return 0;
+    if (block_table[bl1] == 0)
+      return 0;
     for (int i = off1; i <= off2; i++) result += (block_table[bl1] & lshift1[i]) ? 1 : 0;
   } else {
     int i_start = (off1 == 0 ? bl1 : bl1 + 1);
@@ -232,17 +248,20 @@ int Filter::Block::NumOfOnesBetween(int n1, int n2) {
 bool Filter::Block::IsEqual(Block &b2) {
   int mn = (no_obj - 1) / 32;
   for (int n = 0; n < mn; n++) {
-    if (block_table[n] != b2.block_table[n]) return false;
+    if (block_table[n] != b2.block_table[n])
+      return false;
   }
   unsigned int mask = 0xffffffff >> (32 - (((no_obj - 1) % 32) + 1));
-  if ((block_table[mn] & mask) != (b2.block_table[mn] & mask)) return false;
+  if ((block_table[mn] & mask) != (b2.block_table[mn] & mask))
+    return false;
   return true;
 }
 
 bool Filter::Block::And(Block &b2) {
   int mn = b2.NumOfObj() < NumOfObj() ? b2.NumOfObj() : NumOfObj();
   for (int n = 0; n < mn; n++) {
-    if (Get(n) && !b2.Get(n)) Reset(n);
+    if (Get(n) && !b2.Get(n))
+      Reset(n);
   }
   return (no_set_bits == 0);
 }
@@ -271,7 +290,8 @@ bool Filter::Block::Or(Block &b2) {
 bool Filter::Block::AndNot(Block &b2) {
   int mn = b2.NumOfObj() < NumOfObj() ? b2.NumOfObj() : NumOfObj();
   for (int n = 0; n < mn; n++) {
-    if (Get(n) && b2.Get(n)) Reset(n);
+    if (Get(n) && b2.Get(n))
+      Reset(n);
   }
   return (no_set_bits == 0);
 }

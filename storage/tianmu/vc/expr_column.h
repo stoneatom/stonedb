@@ -47,17 +47,17 @@ class ExpressionColumn : public VirtualColumn {
    * \param expr expression defining the column
    * \param temp_table core::TempTable for which the column is created
    * \param temp_table_alias alias of core::TempTable for which the column is
-   * created \param mind the multiindex to which the ExpressionColumn is
+   * created \param multi_index the multiindex to which the ExpressionColumn is
    * attached. \e note: not sure if the connection to the core::MultiIndex is
    * necessary \param tables list of tables corresponding to dimensions in \e
-   * mind, ExpressionColumn must access the tables to fetch expression arguments
+   * multi_index, ExpressionColumn must access the tables to fetch expression arguments
    *
    * The constructor takes from \e expr a list of dimensions/tables providing
    * arguments for the expression. Therefore the list of multiindex dimensions
    * necessary for evaluation if computed from \e expr
    */
   ExpressionColumn(core::MysqlExpression *expr, core::TempTable *temp_table, int temp_table_alias,
-                   core::MultiIndex *mind);
+                   core::MultiIndex *multi_index);
   ExpressionColumn(const ExpressionColumn &);
   virtual ~ExpressionColumn() = default;
 
@@ -110,8 +110,10 @@ class ExpressionColumn : public VirtualColumn {
     return common::ErrorCode::FAILED;
   }
 
-  const core::MysqlExpression::tianmu_fields_cache_t &GetTIANMUItems() const override { return expr_->GetTIANMUItems(); }
-  core::MysqlExpression *expr_;  //!= NULL if ExpressionColumn encapsulates an expression. Note - a
+  const core::MysqlExpression::tianmu_fields_cache_t &GetTIANMUItems() const override {
+    return expr_->GetTIANMUItems();
+  }
+  core::MysqlExpression *expr_;  //!= nullptr if ExpressionColumn encapsulates an expression. Note - a
                                  //! constant is an expression
 
  private:

@@ -139,7 +139,8 @@ int safe_strerror(int error_code, char *&buffer, std::size_t buffer_size) FMT_NO
     // Handle the result of GNU-specific version of strerror_r.
     int handle(char *message) {
       // If the buffer is full then the message is probably truncated.
-      if (message == buffer_ && strlen(buffer_) == buffer_size_ - 1) return ERANGE;
+      if (message == buffer_ && strlen(buffer_) == buffer_size_ - 1)
+        return ERANGE;
       buffer_ = message;
       return 0;
     }
@@ -277,13 +278,16 @@ FMT_FUNC void internal::report_unknown_type(char code, const char *type) {
 
 FMT_FUNC internal::UTF8ToUTF16::UTF8ToUTF16(StringRef s) {
   static const char ERROR_MSG[] = "cannot convert string from UTF-8 to UTF-16";
-  if (s.size() > INT_MAX) FMT_THROW(WindowsError(ERROR_INVALID_PARAMETER, ERROR_MSG));
+  if (s.size() > INT_MAX)
+    FMT_THROW(WindowsError(ERROR_INVALID_PARAMETER, ERROR_MSG));
   int s_size = static_cast<int>(s.size());
   int length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, s.data(), s_size, FMT_NULL, 0);
-  if (length == 0) FMT_THROW(WindowsError(GetLastError(), ERROR_MSG));
+  if (length == 0)
+    FMT_THROW(WindowsError(GetLastError(), ERROR_MSG));
   buffer_.resize(length + 1);
   length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, s.data(), s_size, &buffer_[0], length);
-  if (length == 0) FMT_THROW(WindowsError(GetLastError(), ERROR_MSG));
+  if (length == 0)
+    FMT_THROW(WindowsError(GetLastError(), ERROR_MSG));
   buffer_[length] = 0;
 }
 
@@ -294,13 +298,16 @@ FMT_FUNC internal::UTF16ToUTF8::UTF16ToUTF8(WStringRef s) {
 }
 
 FMT_FUNC int internal::UTF16ToUTF8::convert(WStringRef s) {
-  if (s.size() > INT_MAX) return ERROR_INVALID_PARAMETER;
+  if (s.size() > INT_MAX)
+    return ERROR_INVALID_PARAMETER;
   int s_size = static_cast<int>(s.size());
   int length = WideCharToMultiByte(CP_UTF8, 0, s.data(), s_size, FMT_NULL, 0, FMT_NULL, FMT_NULL);
-  if (length == 0) return GetLastError();
+  if (length == 0)
+    return GetLastError();
   buffer_.resize(length + 1);
   length = WideCharToMultiByte(CP_UTF8, 0, s.data(), s_size, &buffer_[0], length, FMT_NULL, FMT_NULL);
-  if (length == 0) return GetLastError();
+  if (length == 0)
+    return GetLastError();
   buffer_[length] = 0;
   return 0;
 }
@@ -330,7 +337,8 @@ FMT_FUNC void internal::format_windows_error(Writer &out, int error_code, String
         }
         break;
       }
-      if (GetLastError() != ERROR_INSUFFICIENT_BUFFER) break;  // Can't get error message, report error code instead.
+      if (GetLastError() != ERROR_INSUFFICIENT_BUFFER)
+        break;  // Can't get error message, report error code instead.
       buffer.resize(buffer.size() * 2);
     }
   }
@@ -351,7 +359,8 @@ FMT_FUNC void format_system_error(Writer &out, int error_code, StringRef message
         out << message << ": " << system_message;
         return;
       }
-      if (result != ERANGE) break;  // Can't get error message, report error code instead.
+      if (result != ERANGE)
+        break;  // Can't get error message, report error code instead.
       buffer.resize(buffer.size() * 2);
     }
   }
@@ -361,7 +370,8 @@ FMT_FUNC void format_system_error(Writer &out, int error_code, StringRef message
 
 template <typename Char>
 void internal::ArgMap<Char>::init(const ArgList &args) {
-  if (!map_.empty()) return;
+  if (!map_.empty())
+    return;
   using NamedArg = internal::NamedArg<Char>;
   const NamedArg *named_arg = FMT_NULL;
   bool use_values =

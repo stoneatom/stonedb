@@ -19,21 +19,21 @@
 #pragma once
 
 #include <mutex>
+#include "core/ctask.h"
 #include "core/groupby_wrapper.h"
 #include "core/mi_iterator.h"
 #include "core/query.h"
 #include "core/temp_table.h"
-#include "core/ctask.h"
 
 namespace Tianmu {
 namespace core {
 enum class AggregaGroupingResult {
-  AGR_OK                = 0, // success
-  AGR_FINISH            = 1, // finish
-  AGR_KILLED            = 2, // killed
-  AGR_OVERFLOW          = 3, // overflow
-  AGR_OTHER_ERROR       = 4, // other error
-  AGR_NO_LEFT           = 5  // pack already aggregated
+  AGR_OK = 0,           // success
+  AGR_FINISH = 1,       // finish
+  AGR_KILLED = 2,       // killed
+  AGR_OVERFLOW = 3,     // overflow
+  AGR_OTHER_ERROR = 4,  // other error
+  AGR_NO_LEFT = 5       // pack already aggregated
 };
 
 class AggregationAlgorithm {
@@ -57,7 +57,8 @@ class AggregationAlgorithm {
 
   // No parallel for subquery/join/distinct cases
   bool ParallelAllowed(GroupByWrapper &gbw) {
-    return (tianmu_sysvar_groupby_speedup && !t->HasTempTable() && (mind->NumOfDimensions() == 1) && gbw.MayBeParallel());
+    return (tianmu_sysvar_groupby_speedup && !t->HasTempTable() && (mind->NumOfDimensions() == 1) &&
+            gbw.MayBeParallel());
   }
   void TaskFillOutput(GroupByWrapper *gbw, Transaction *ci, int64_t offset, int64_t limit);
   void ParallelFillOutputWrapper(GroupByWrapper &gbw, int64_t offset, int64_t limit, MIIterator &mit);

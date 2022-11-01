@@ -117,7 +117,8 @@ void FilterOnesIterator::RewindToRow(const int64_t row)  // note: if row not exi
     else {
       int already_bits = 0;
       for (int64_t index = pack << pack_power; index < row; ++index) {
-        if (f->Get(index)) already_bits++;
+        if (f->Get(index))
+          already_bits++;
       }
       ones_left_in_block = f->blocks[iterator_b]->no_set_bits - already_bits;
     }
@@ -171,17 +172,22 @@ void FilterOnesIterator::NextPack() {
 int64_t FilterOnesIterator::GetPackSizeLeft()  // how many 1-s in the current block left
                                                // (including the current one)
 {
-  if (!valid) return 0;
-  if (cur_block_full) return int64_t(f->block_last_one[iterator_b]) + 1 - iterator_n;
+  if (!valid)
+    return 0;
+  if (cur_block_full)
+    return int64_t(f->block_last_one[iterator_b]) + 1 - iterator_n;
   DEBUG_ASSERT(f->block_status[iterator_b] != f->FB_EMPTY);
   return ones_left_in_block;
 }
 
 int FilterOnesIterator::Lookahead(int n) {
-  if (!IsValid()) return -1;
-  if (n == 0) return iterator_b;
+  if (!IsValid())
+    return -1;
+  if (n == 0)
+    return iterator_b;
 
-  if (buffer.Elems() >= n) return buffer.Nth(n - 1);
+  if (buffer.Elems() >= n)
+    return buffer.Nth(n - 1);
 
   size_t tmp_b = buffer.Empty() ? iterator_b : buffer.GetLast();
   n -= buffer.Elems();
@@ -203,15 +209,19 @@ bool FilterOnesIterator::IteratorBpp() {
   prev_iterator_b = iterator_b;
   if (buffer.Empty()) {
     iterator_b++;
-    if (packs_to_go != -1 && iterator_b > static_cast<unsigned int>(packs_to_go)) return false;
+    if (packs_to_go != -1 && iterator_b > static_cast<unsigned int>(packs_to_go))
+      return false;
     while (iterator_b < f->no_blocks && f->block_status[iterator_b] == f->FB_EMPTY) {
       iterator_b++;
-      if (packs_to_go != -1 && iterator_b > static_cast<unsigned int>(packs_to_go)) return false;
+      if (packs_to_go != -1 && iterator_b > static_cast<unsigned int>(packs_to_go))
+        return false;
     }
-    if (iterator_b >= f->no_blocks) return false;
+    if (iterator_b >= f->no_blocks)
+      return false;
   } else {
     iterator_b = buffer.Get();
-    if (packs_to_go != -1 && iterator_b > static_cast<unsigned int>(packs_to_go)) return false;
+    if (packs_to_go != -1 && iterator_b > static_cast<unsigned int>(packs_to_go))
+      return false;
   }
 
   uchar stat = f->block_status[iterator_b];
@@ -276,7 +286,8 @@ bool FilterOnesIterator::FindOneInsidePack() {
   if (iterator_n < cb_no_obj) {
     // else leave "found == false", which will iterate to the next block
     if (lastn + 1 == iterator_n) {
-      if (bitsLeft > 0) bitsLeft--;
+      if (bitsLeft > 0)
+        bitsLeft--;
       b >>= 1;
     } else {
       bln = iterator_n >> 5;
@@ -290,13 +301,16 @@ bool FilterOnesIterator::FindOneInsidePack() {
       // first find a portion with 1
       if (b == 0) {
         iterator_n += bitsLeft;
-        if (++bln >= cur_block->block_size) break;  // leave found == false
+        if (++bln >= cur_block->block_size)
+          break;  // leave found == false
         while (cur_block->block_table[bln] == 0) {
           iterator_n += 32;
-          if (iterator_n >= cb_no_obj) break;
+          if (iterator_n >= cb_no_obj)
+            break;
           ++bln;
         }
-        if (iterator_n >= cb_no_obj) break;
+        if (iterator_n >= cb_no_obj)
+          break;
         b = cur_block->block_table[bln];
         bitsLeft = 32;
       }
@@ -310,7 +324,8 @@ bool FilterOnesIterator::FindOneInsidePack() {
           break;
         } else {
           iterator_n += skip;
-          if (iterator_n >= cb_no_obj) break;
+          if (iterator_n >= cb_no_obj)
+            break;
           bitsLeft -= skip;
           b >>= skip;
           if (skip < 8) {
@@ -354,9 +369,11 @@ void FilterOnesIteratorOrdered::Rewind() {
 }
 
 int FilterOnesIteratorOrdered::Lookahead(int n) {
-  if (n == 0) return iterator_b;
+  if (n == 0)
+    return iterator_b;
 
-  if (buffer.Elems() >= n) return buffer.Nth(n - 1);
+  if (buffer.Elems() >= n)
+    return buffer.Nth(n - 1);
 
   int tmp_b = po->Current();
   n -= buffer.Elems();
@@ -381,7 +398,8 @@ bool FilterOnesIteratorOrdered::IteratorBpp() {
   if (buffer.Empty()) {
     iterator_b = (++(*po)).Current();
     while (po->IsValid() && f->block_status[iterator_b] == f->FB_EMPTY) iterator_b = (++(*po)).Current();
-    if (!po->IsValid()) return false;
+    if (!po->IsValid())
+      return false;
   } else
     iterator_b = buffer.Get();
 

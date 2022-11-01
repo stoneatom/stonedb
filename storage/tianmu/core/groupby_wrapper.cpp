@@ -52,7 +52,8 @@ GroupByWrapper::GroupByWrapper(int a_size, bool distinct, Transaction *conn, uin
 
 GroupByWrapper::~GroupByWrapper() {
   for (int i = 0; i < no_attr; i++) {
-    if (virt_col[i]) virt_col[i]->UnlockSourcePacks();
+    if (virt_col[i])
+      virt_col[i]->UnlockSourcePacks();
   }
   delete[] input_mode;
   delete[] is_lookup;
@@ -92,7 +93,8 @@ GroupByWrapper::GroupByWrapper(const GroupByWrapper &sec)
   for (int i = 0; i < no_attr; i++) pack_not_omitted[i] = sec.pack_not_omitted[i];
 
   tuple_left = NULL;
-  if (sec.tuple_left) tuple_left = new Filter(*sec.tuple_left);  // a copy of filter
+  if (sec.tuple_left)
+    tuple_left = new Filter(*sec.tuple_left);  // a copy of filter
   // init distinct_watch to make copy ctor has all Initialization logic
   distinct_watch.Initialize(no_attr);
   for (int gr_a = 0; gr_a < no_attr; gr_a++) {
@@ -240,9 +242,9 @@ void GroupByWrapper::AddAggregatedColumn(int orig_attr_no, TempTable::Attr &a, i
              : GBInputMode::GBIMODE_AS_INT64);
 
   TIANMU_LOG(LogCtl_Level::DEBUG,
-              "attr_no %d, input_mode[attr_no] %d, a.alias %s, a.si.separator "
-              "%s, direction %d, ag_type %d, ag_size %d",
-              attr_no, input_mode[attr_no], a.alias, a.si.separator.c_str(), a.si.order, ag_type, ag_size);
+             "attr_no %d, input_mode[attr_no] %d, a.alias %s, a.si.separator "
+             "%s, direction %d, ag_type %d, ag_size %d",
+             attr_no, input_mode[attr_no], a.alias, a.si.separator.c_str(), a.si.order, ag_type, ag_size);
 
   gt.AddAggregatedColumn(virt_col[attr_no], ag_oper, ag_distinct, ag_type, ag_size, ag_prec, ag_collation,
                          a.si);  // note: size will be automatically calculated for all numericals
@@ -267,7 +269,8 @@ void GroupByWrapper::Initialize(int64_t upper_approx_of_groups, bool parallel_al
 void GroupByWrapper::Merge(GroupByWrapper &sec) {
   int64_t old_groups = gt.GetNoOfGroups();
   gt.Merge(sec.gt, m_conn);
-  if (tuple_left) tuple_left->And(*(sec.tuple_left));
+  if (tuple_left)
+    tuple_left->And(*(sec.tuple_left));
   packrows_omitted += sec.packrows_omitted;
   packrows_part_omitted += sec.packrows_part_omitted;
 
@@ -286,17 +289,20 @@ bool GroupByWrapper::AggregatePackInOneGroup(int attr_no, MIIterator &mit, int64
       virt_col[attr_no]) {
     // Aggregated values for distinct cases (if possible)
     std::vector<int64_t> val_list = virt_col[attr_no]->GetListOfDistinctValues(mit);
-    if (val_list.size() == 0 || (val_list.size() > 1 && !no_omitted)) return false;
+    if (val_list.size() == 0 || (val_list.size() > 1 && !no_omitted))
+      return false;
     auto val_it = val_list.begin();
     while (val_it != val_list.end()) {
       GDTResult res = gt.FindDistinctValue(attr_no, uniform_pos, *val_it);
-      if (res == GDTResult::GDT_FULL) return false;  // no chance to optimize
+      if (res == GDTResult::GDT_FULL)
+        return false;  // no chance to optimize
       if (res == GDTResult::GDT_EXISTS)
         val_it = val_list.erase(val_it);
       else
         ++val_it;
     }
-    if (val_list.size() == 0) return true;  // no need to analyze pack - all values already found
+    if (val_list.size() == 0)
+      return true;  // no need to analyze pack - all values already found
     if (gt.AttrAggregator(attr_no)->PackAggregationNeedsSize())
       gt.AttrAggregator(attr_no)->SetAggregatePackNoObj(val_list.size());
     if (gt.AttrAggregator(attr_no)->PackAggregationNeedsNotNulls())
@@ -435,13 +441,15 @@ bool GroupByWrapper::PackWillNotUpdateAggregation(int i, MIIterator &mit)  // fa
     return false;
 
   // Optimization: do not recalculate statistics if there is too much groups
-  if (gt.GetNoOfGroups() > 1024) return false;
+  if (gt.GetNoOfGroups() > 1024)
+    return false;
 
   // Statistics of aggregator:
   gt.UpdateAttrStats(i);  // Warning: slow if there is a lot of groups involved
 
   // Statistics of data pack:
-  if (virt_col[i]->GetNumOfNulls(mit) == mit.GetPackSizeLeft()) return true;  // nulls only - omit pack
+  if (virt_col[i]->GetNumOfNulls(mit) == mit.GetPackSizeLeft())
+    return true;  // nulls only - omit pack
 
   if (gt.AttrAggregator(i)->PackAggregationNeedsMin()) {
     int64_t i_min = virt_col[i]->GetMinInt64(mit);
@@ -466,13 +474,15 @@ bool GroupByWrapper::DataWillNotUpdateAggregation(int i)  // false, if counters 
     return false;
 
   // Optimization: do not recalculate statistics if there is too much groups
-  if (gt.GetNoOfGroups() > 1024) return false;
+  if (gt.GetNoOfGroups() > 1024)
+    return false;
 
   // Statistics of aggregator:
   gt.UpdateAttrStats(i);  // Warning: slow if there is a lot of groups involved
 
   // Statistics of the whole data:
-  if (virt_col[i]->IsRoughNullsOnly()) return true;  // nulls only - omit pack
+  if (virt_col[i]->IsRoughNullsOnly())
+    return true;  // nulls only - omit pack
 
   if (gt.AttrAggregator(i)->PackAggregationNeedsMin()) {
     int64_t i_min = virt_col[i]->RoughMin();
@@ -505,7 +515,8 @@ bool GroupByWrapper::PutAggregatedNull(int gr_a, int64_t pos) {
 
 bool GroupByWrapper::PutAggregatedValue(int gr_a, int64_t pos, MIIterator &mit, int64_t factor) {
   DEBUG_ASSERT(input_mode[gr_a] != GBInputMode::GBIMODE_NOT_SET);
-  if (input_mode[gr_a] == GBInputMode::GBIMODE_NO_VALUE) return gt.PutAggregatedValue(gr_a, pos, factor);
+  if (input_mode[gr_a] == GBInputMode::GBIMODE_NO_VALUE)
+    return gt.PutAggregatedValue(gr_a, pos, factor);
   return gt.PutAggregatedValue(gr_a, pos, mit, factor, (input_mode[gr_a] == GBInputMode::GBIMODE_AS_TEXT));
 }
 
@@ -520,7 +531,8 @@ types::BString GroupByWrapper::GetValueT(int col, int64_t row) {
 void GroupByWrapper::FillDimsUsed(DimensionVector &dims)  // set true on all dimensions used
 {
   for (int i = 0; i < no_attr; i++) {
-    if (virt_col[i]) virt_col[i]->MarkUsedDims(dims);
+    if (virt_col[i])
+      virt_col[i]->MarkUsedDims(dims);
   }
 }
 
@@ -541,7 +553,8 @@ void GroupByWrapper::DistinctlyOmitted(int attr, int64_t obj) {
 void GroupByWrapper::RewindDistinctBuffers() {
   gt.ClearDistinct();
   for (int i = 0; i < no_attr; i++)
-    if (DistinctAggr(i)) distinct_watch.gd_cache[i].Rewind();
+    if (DistinctAggr(i))
+      distinct_watch.gd_cache[i].Rewind();
 }
 
 void GroupByWrapper::Clear()  // reset all contents of the grouping table and
@@ -556,7 +569,8 @@ void GroupByWrapper::Clear()  // reset all contents of the grouping table and
 void GroupByWrapper::ClearDistinctBuffers() {
   gt.ClearDistinct();
   for (int i = 0; i < no_attr; i++)
-    if (DistinctAggr(i)) distinct_watch.gd_cache[i].Reset();
+    if (DistinctAggr(i))
+      distinct_watch.gd_cache[i].Reset();
 }
 
 bool GroupByWrapper::PutCachedValue(int gr_a)  // current value from distinct cache
@@ -564,7 +578,8 @@ bool GroupByWrapper::PutCachedValue(int gr_a)  // current value from distinct ca
   DEBUG_ASSERT(input_mode[gr_a] != GBInputMode::GBIMODE_NOT_SET);
   bool added =
       gt.PutCachedValue(gr_a, distinct_watch.gd_cache[gr_a], (input_mode[gr_a] == GBInputMode::GBIMODE_AS_TEXT));
-  if (!added) distinct_watch.gd_cache[gr_a].MarkCurrentAsPreserved();
+  if (!added)
+    distinct_watch.gd_cache[gr_a].MarkCurrentAsPreserved();
   return added;
 }
 
@@ -579,7 +594,8 @@ void GroupByWrapper::UpdateDistinctCaches()  // take into account which values
                                              // are already counted
 {
   for (int i = 0; i < no_attr; i++)
-    if (DistinctAggr(i)) distinct_watch.gd_cache[i].SwitchToPreserved();  // ignored if n/a
+    if (DistinctAggr(i))
+      distinct_watch.gd_cache[i].SwitchToPreserved();  // ignored if n/a
 }
 
 bool GroupByWrapper::IsCountOnly(int gr_a)  // true, if an attribute is count(*)/count(const), or if
@@ -593,7 +609,8 @@ bool GroupByWrapper::IsCountOnly(int gr_a)  // true, if an attribute is count(*)
   bool count_found = false;
   for (int i = 0; i < no_attr; i++) {  // function should return true for e.g.: "SELECT 1, 2,
                                        // 'ala', COUNT(*), 5, COUNT(4) FROM ..."
-    if (gt.AttrOper(i) == GT_Aggregation::GT_COUNT) count_found = true;
+    if (gt.AttrOper(i) == GT_Aggregation::GT_COUNT)
+      count_found = true;
     if (!((virt_col[i] == NULL || virt_col[i]->IsConst()) && gt.AttrOper(i) == GT_Aggregation::GT_COUNT &&
           !gt.AttrDistinct(i))                                                      // count(*) or count(const)
         && (gt.AttrOper(i) != GT_Aggregation::GT_LIST || !virt_col[i]->IsConst()))  // a constant
@@ -643,29 +660,35 @@ void GroupByWrapper::InitTupleLeft(int64_t n) {
 }
 
 bool GroupByWrapper::AnyTuplesLeft(int64_t from, int64_t to) {
-  if (tuple_left == NULL) return true;
+  if (tuple_left == NULL)
+    return true;
   return !tuple_left->IsEmptyBetween(from, to);
 }
 
 int64_t GroupByWrapper::TuplesLeftBetween(int64_t from, int64_t to) {
-  if (tuple_left == NULL) return to - from + 1;
+  if (tuple_left == NULL)
+    return to - from + 1;
   return tuple_left->NumOfOnesBetween(from, to);
 }
 
 bool GroupByWrapper::MayBeParallel() const {
-  if (!gt.MayBeParallel()) return false;
+  if (!gt.MayBeParallel())
+    return false;
   for (int n = 0; n < attrs_size; n++)
-    if (virt_col[n] && !virt_col[n]->IsThreadSafe()) return false;
+    if (virt_col[n] && !virt_col[n]->IsThreadSafe())
+      return false;
 
   return true;
 }
 
 void GroupByWrapper::LockPack(int i, MIIterator &mit) {
-  if (ColumnNotOmitted(i) && virt_col[i]) virt_col[i]->LockSourcePacks(mit);
+  if (ColumnNotOmitted(i) && virt_col[i])
+    virt_col[i]->LockSourcePacks(mit);
 }
 
 void GroupByWrapper::LockPackAlways(int i, MIIterator &mit) {
-  if (virt_col[i]) virt_col[i]->LockSourcePacks(mit);
+  if (virt_col[i])
+    virt_col[i]->LockSourcePacks(mit);
 }
 
 void GroupByWrapper::ResetPackrow() {
@@ -695,7 +718,8 @@ void DistinctWrapper::InitTuples(int64_t n_obj, const GroupTable &gt) {
 
 bool DistinctWrapper::AnyOmitted() {
   for (int i = 0; i < no_attr; i++)
-    if (f[i] && !(f[i]->IsEmpty())) return true;
+    if (f[i] && !(f[i]->IsEmpty()))
+      return true;
   return false;
 }
 }  // namespace core

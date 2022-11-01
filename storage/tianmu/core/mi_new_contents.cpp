@@ -37,7 +37,8 @@ MINewContents::MINewContents(MultiIndex *m, JoinTips &tips)
     t_new[i] = NULL;
     nulls_possible[i] = false;
     forget_now[i] = tips.forget_now[i];
-    if (tips.distinct_only[i]) ignore_repetitions_dim = i;
+    if (tips.distinct_only[i])
+      ignore_repetitions_dim = i;
   }
   obj = 0;
   roughsorter = NULL;
@@ -97,12 +98,15 @@ void MINewContents::Init(int64_t initial_size)  // initialize temporary structur
     }
     if (optimized_dim_stay != -1 && mind->GetFilter(optimized_dim_stay) == NULL)
       optimized_dim_stay = -1;  // filter case only
-    if (optimized_dim_stay != -1) content_type = enumMINCType::MCT_VIRTUAL_DIM;
+    if (optimized_dim_stay != -1)
+      content_type = enumMINCType::MCT_VIRTUAL_DIM;
   }
-  if (content_type == enumMINCType::MCT_UNSPECIFIED) content_type = enumMINCType::MCT_MATERIAL;
+  if (content_type == enumMINCType::MCT_UNSPECIFIED)
+    content_type = enumMINCType::MCT_MATERIAL;
 
   for (int dim = 0; dim < no_dims; dim++)
-    if (dim_involved[dim]) mind->LockForGetIndex(dim);  // locking for creation
+    if (dim_involved[dim])
+      mind->LockForGetIndex(dim);  // locking for creation
 
   // general case
   bool roughsort_needed = false;
@@ -111,7 +115,8 @@ void MINewContents::Init(int64_t initial_size)  // initialize temporary structur
     if (dim_involved[dim]) {
       delete t_new[dim];
       t_new[dim] = NULL;
-      if (forget_now[dim]) continue;
+      if (forget_now[dim])
+        continue;
       if (dim != optimized_dim_stay) {
         InitTnew(dim, initial_size);
         min_block_shift = std::min(min_block_shift, t_new[dim]->BlockShift());
@@ -131,11 +136,13 @@ void MINewContents::Init(int64_t initial_size)  // initialize temporary structur
   }
   obj = 0;
   // Prepare rough sorting, if needed
-  if (roughsort_needed) roughsorter = new MINewContentsRSorter(mind, t_new, min_block_shift);
+  if (roughsort_needed)
+    roughsorter = new MINewContentsRSorter(mind, t_new, min_block_shift);
 }
 
 void MINewContents::InitTnew(int dim, int64_t initial_size) {
-  if (initial_size < 8) initial_size = 8;
+  if (initial_size < 8)
+    initial_size = 8;
   t_new[dim] = new IndexTable(initial_size, mind->OrigSize(dim), 0);
   t_new[dim]->SetNumOfLocks(mind->group_for_dim[dim]->NumOfLocks(dim));
   nulls_possible[dim] = false;
@@ -149,7 +156,8 @@ void MINewContents::CommitCountOnly(int64_t joined_tuples)  // commit changes to
   mind->MakeCountOnly(joined_tuples,
                       dim_involved);  // inside: UpdateNumOfTuples();
   for (int dim = 0; dim < no_dims; dim++)
-    if (dim_involved[dim]) mind->UnlockFromGetIndex(dim);
+    if (dim_involved[dim])
+      mind->UnlockFromGetIndex(dim);
 }
 
 void MINewContents::Commit([[maybe_unused]] int64_t joined_tuples)  // commit changes to multiindex - must be called
@@ -172,7 +180,8 @@ void MINewContents::Commit([[maybe_unused]] int64_t joined_tuples)  // commit ch
       }
     }
 
-  if (f_opt) f_opt->Commit();
+  if (f_opt)
+    f_opt->Commit();
   // Now all involved groups must be replaced by a new contents
 
   if (content_type == enumMINCType::MCT_FILTER_FORGET) {  // optimized version: just exchange filters
@@ -186,7 +195,7 @@ void MINewContents::Commit([[maybe_unused]] int64_t joined_tuples)  // commit ch
     dims_to_forget[optimized_dim_stay] = false;
     DimensionGroupMaterialized *ng = new DimensionGroupMaterialized(dims_to_forget);  // forgotten dimensions
     mind->dim_groups.push_back(ng);
-    ng->SetNumOfObj(1);                                           // set a dummy size 1 for a group containing forgotten
+    ng->SetNumOfObj(1);                                        // set a dummy size 1 for a group containing forgotten
                                                                // dimensions only
   } else if (content_type == enumMINCType::MCT_VIRTUAL_DIM) {  // optimized version: virtual dimension group
     DimensionGroupVirtual *nv = new DimensionGroupVirtual(dim_involved, optimized_dim_stay, f_opt,
@@ -223,7 +232,8 @@ void MINewContents::Commit([[maybe_unused]] int64_t joined_tuples)  // commit ch
   mind->FillGroupForDim();
   mind->UpdateNumOfTuples();
   for (int dim = 0; dim < no_dims; dim++)
-    if (dim_involved[dim] && !forget_now[dim]) mind->UnlockFromGetIndex(dim);
+    if (dim_involved[dim] && !forget_now[dim])
+      mind->UnlockFromGetIndex(dim);
 }
 
 void MINewContents::DisableOptimized() {
@@ -252,10 +262,12 @@ void MINewContents::DisableOptimized() {
 bool MINewContents::CommitPack(int pack)  // in case of single filter as a result: set a pack as not
                                           // changed (return false if cannot do it)
 {
-  if (content_type != enumMINCType::MCT_FILTER_FORGET) return false;
+  if (content_type != enumMINCType::MCT_FILTER_FORGET)
+    return false;
   Filter *orig_filter = mind->GetFilter(optimized_dim_stay);
   f_opt->Commit();
-  if (!f_opt->IsEmpty(pack) || orig_filter == NULL) return false;
+  if (!f_opt->IsEmpty(pack) || orig_filter == NULL)
+    return false;
   f_opt->CopyBlock(*orig_filter, pack);
   return true;
 }
@@ -293,7 +305,8 @@ void MINewContents::CommitNewTableValues()  // set a value (common::NULL_VALUE_6
       if (t_new[dim]) {  // == !forget_now[dim] && dim_involved[dim] &&
                          // optimized_dim_stay != dim
         if ((uint64_t)obj >= t_new[dim]->N()) {
-          if (roughsorter) roughsorter->Barrier();
+          if (roughsorter)
+            roughsorter->Barrier();
           t_new[dim]->ExpandTo(obj < 2048 ? 2048 : obj * 4);  // enlarge with a safe backup
         }
         if (new_value[dim] == common::NULL_VALUE_64) {

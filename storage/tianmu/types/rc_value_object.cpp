@@ -54,62 +54,74 @@ bool RCValueObject::compare(const RCValueObject &rcvo, common::Operator op, char
 }
 
 bool RCValueObject::operator==(const RCValueObject &rcvo) const {
-  if (IsNull() || rcvo.IsNull()) return false;
+  if (IsNull() || rcvo.IsNull())
+    return false;
   return *value_ == *rcvo.value_;
 }
 
 bool RCValueObject::operator<(const RCValueObject &rcvo) const {
-  if (IsNull() || rcvo.IsNull()) return false;
+  if (IsNull() || rcvo.IsNull())
+    return false;
   return *value_ < *rcvo.value_;
 }
 
 bool RCValueObject::operator>(const RCValueObject &rcvo) const {
-  if (IsNull() || rcvo.IsNull()) return false;
+  if (IsNull() || rcvo.IsNull())
+    return false;
   return *value_ > *rcvo.value_;
 }
 
 bool RCValueObject::operator>=(const RCValueObject &rcvo) const {
-  if (IsNull() || rcvo.IsNull()) return false;
+  if (IsNull() || rcvo.IsNull())
+    return false;
   return *value_ >= *rcvo.value_;
 }
 
 bool RCValueObject::operator<=(const RCValueObject &rcvo) const {
-  if (IsNull() || rcvo.IsNull()) return false;
+  if (IsNull() || rcvo.IsNull())
+    return false;
   return *value_ <= *rcvo.value_;
 }
 
 bool RCValueObject::operator!=(const RCValueObject &rcvo) const {
-  if (IsNull() || rcvo.IsNull()) return false;
+  if (IsNull() || rcvo.IsNull())
+    return false;
   return *value_ != *rcvo.value_;
 }
 
 bool RCValueObject::operator==(const RCDataType &rcn) const {
-  if (IsNull() || rcn.IsNull()) return false;
+  if (IsNull() || rcn.IsNull())
+    return false;
   return *value_ == rcn;
 }
 
 bool RCValueObject::operator<(const RCDataType &rcn) const {
-  if (IsNull() || rcn.IsNull()) return false;
+  if (IsNull() || rcn.IsNull())
+    return false;
   return *value_ < rcn;
 }
 
 bool RCValueObject::operator>(const RCDataType &rcn) const {
-  if (IsNull() || rcn.IsNull()) return false;
+  if (IsNull() || rcn.IsNull())
+    return false;
   return *value_ > rcn;
 }
 
 bool RCValueObject::operator>=(const RCDataType &rcn) const {
-  if (IsNull() || rcn.IsNull()) return false;
+  if (IsNull() || rcn.IsNull())
+    return false;
   return *value_ >= rcn;
 }
 
 bool RCValueObject::operator<=(const RCDataType &rcdt) const {
-  if (IsNull() || rcdt.IsNull()) return false;
+  if (IsNull() || rcdt.IsNull())
+    return false;
   return *value_ <= rcdt;
 }
 
 bool RCValueObject::operator!=(const RCDataType &rcn) const {
-  if (IsNull() || rcn.IsNull()) return false;
+  if (IsNull() || rcn.IsNull())
+    return false;
   return *value_ != rcn;
 }
 
@@ -118,7 +130,8 @@ bool RCValueObject::IsNull() const { return value_.get() ? value_->IsNull() : tr
 RCDataType &RCValueObject::operator*() const { return value_.get() ? *value_.get() : RCNum::NullValue(); }
 
 RCValueObject::operator RCNum &() const {
-  if (IsNull()) return RCNum::NullValue();
+  if (IsNull())
+    return RCNum::NullValue();
   if (GetValueType() == ValueTypeEnum::NUMERIC_TYPE || GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
     return static_cast<RCNum &>(*value_);
 
@@ -127,7 +140,8 @@ RCValueObject::operator RCNum &() const {
 }
 
 RCValueObject::operator RCDateTime &() const {
-  if (IsNull()) return RCDateTime::NullValue();
+  if (IsNull())
+    return RCDateTime::NullValue();
   if (GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
     return static_cast<RCDateTime &>(*value_);
 
@@ -136,12 +150,14 @@ RCValueObject::operator RCDateTime &() const {
 }
 
 BString RCValueObject::ToBString() const {
-  if (IsNull()) return BString();
+  if (IsNull())
+    return BString();
   return value_->ToBString();
 }
 
 uint RCValueObject::GetHashCode() const {
-  if (IsNull()) return 0;
+  if (IsNull())
+    return 0;
   return value_->GetHashCode();
 }
 

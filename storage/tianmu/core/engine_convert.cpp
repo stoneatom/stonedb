@@ -277,7 +277,8 @@ int Engine::Convert(int &is_null, my_decimal *value, types::RCDataType &rcitem, 
   if (rcitem.IsNull())
     is_null = 1;
   else {
-    if (!Engine::AreConvertible(rcitem, MYSQL_TYPE_NEWDECIMAL)) return false;
+    if (!Engine::AreConvertible(rcitem, MYSQL_TYPE_NEWDECIMAL))
+      return false;
     is_null = 0;
     if (rcitem.Type() == common::CT::NUM) {
       types::RCNum *rcn = (types::RCNum *)(&rcitem);
@@ -298,7 +299,8 @@ int Engine::Convert(int &is_null, my_decimal *value, types::RCDataType &rcitem, 
       if (ip < 0) {
         ip *= -1;
         value->sign(true);
-        if (fp < 0) fp *= -1;
+        if (fp < 0)
+          fp *= -1;
       } else if (ip == 0 && fp < 0) {
         fp *= -1;
         value->sign(true);
@@ -325,7 +327,8 @@ int Engine::Convert(int &is_null, my_decimal *value, types::RCDataType &rcitem, 
 
       for (; frac1; frac1--) {
         int digs_to_take = tmp_prec - (frac1 - 1) * DIG_PER_DEC1;
-        if (digs_to_take < 0) digs_to_take = 0;
+        if (digs_to_take < 0)
+          digs_to_take = 0;
         tmp_prec -= digs_to_take;
         int cur_pow = DIG_PER_DEC1 - digs_to_take;
         *buf-- = decimal_digit_t((fp % (int64_t)types::Uint64PowOfTen(digs_to_take)) *
@@ -408,7 +411,8 @@ int Engine::Convert(int &is_null, double &value, types::RCDataType &rcitem) {
   if (rcitem.IsNull())
     is_null = 1;
   else {
-    if (!Engine::AreConvertible(rcitem, MYSQL_TYPE_DOUBLE)) return 0;
+    if (!Engine::AreConvertible(rcitem, MYSQL_TYPE_DOUBLE))
+      return 0;
     is_null = 0;
     if (rcitem.Type() == common::CT::REAL) {
       value = (double)dynamic_cast<types::RCNum &>(rcitem);
@@ -425,7 +429,8 @@ int Engine::Convert(int &is_null, String *value, types::RCDataType &rcitem, enum
   if (rcitem.IsNull())
     is_null = 1;
   else {
-    if (!Engine::AreConvertible(rcitem, MYSQL_TYPE_STRING)) return 0;
+    if (!Engine::AreConvertible(rcitem, MYSQL_TYPE_STRING))
+      return 0;
     is_null = 0;
     if (f_type == MYSQL_TYPE_VARCHAR || f_type == MYSQL_TYPE_VAR_STRING) {
       types::BString str = rcitem.ToBString();
@@ -452,7 +457,7 @@ int Engine::Convert(int &is_null, String *value, types::RCDataType &rcitem, enum
         if (*rcdt != types::RC_TIMESTAMP_SPEC) {
           MYSQL_TIME local_time;
           my_time_t secs = tianmu_sec_since_epoch(rcdt->Year(), rcdt->Month(), rcdt->Day(), rcdt->Hour(),
-                                                   rcdt->Minute(), rcdt->Second());
+                                                  rcdt->Minute(), rcdt->Second());
           current_txn_->Thd()->variables.time_zone->gmt_sec_to_TIME(&local_time, secs);
           char buf[32];
           local_time.second_part = rcdt->MicroSecond();
@@ -495,8 +500,9 @@ bool Engine::AreConvertible(types::RCDataType &rcitem, enum_field_types my_type,
     case MYSQL_TYPE_TINY_BLOB:
     case MYSQL_TYPE_MEDIUM_BLOB:
     case MYSQL_TYPE_LONG_BLOB:
-      return (tianmu_type == common::CT::STRING || tianmu_type == common::CT::VARCHAR || tianmu_type == common::CT::BYTE ||
-              tianmu_type == common::CT::VARBYTE || tianmu_type == common::CT::LONGTEXT || tianmu_type == common::CT::BIN);
+      return (tianmu_type == common::CT::STRING || tianmu_type == common::CT::VARCHAR ||
+              tianmu_type == common::CT::BYTE || tianmu_type == common::CT::VARBYTE ||
+              tianmu_type == common::CT::LONGTEXT || tianmu_type == common::CT::BIN);
     case MYSQL_TYPE_YEAR:
       return tianmu_type == common::CT::YEAR;
     case MYSQL_TYPE_SHORT:
@@ -578,10 +584,12 @@ common::CT Engine::GetCorrespondingType(const Field &field) {
       case MYSQL_TYPE_VARCHAR:
       case MYSQL_TYPE_VAR_STRING: {
         if (const Field_str *fstr = dynamic_cast<const Field_string *>(&field)) {
-          if (fstr->charset() != &my_charset_bin) return common::CT::STRING;
+          if (fstr->charset() != &my_charset_bin)
+            return common::CT::STRING;
           return common::CT::BYTE;
         } else if (const Field_str *fvstr = dynamic_cast<const Field_varstring *>(&field)) {
-          if (fvstr->charset() != &my_charset_bin) return common::CT::VARCHAR;
+          if (fvstr->charset() != &my_charset_bin)
+            return common::CT::VARCHAR;
           return common::CT::VARBYTE;
         }
       } break;
@@ -590,7 +598,8 @@ common::CT Engine::GetCorrespondingType(const Field &field) {
           if (const Field_blob *fblo = dynamic_cast<const Field_blob *>(fstr)) {
             if (fblo->charset() != &my_charset_bin) {
               // TINYTEXT, MEDIUMTEXT, TEXT, LONGTEXT
-              if (fblo->field_length > 65535) return common::CT::LONGTEXT;
+              if (fblo->field_length > 65535)
+                return common::CT::LONGTEXT;
               return common::CT::VARCHAR;
             } else {
               switch (field.field_length) {

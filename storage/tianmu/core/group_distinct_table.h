@@ -22,8 +22,8 @@
 #include "core/blocked_mem_table.h"
 #include "core/column_bin_encoder.h"
 #include "core/filter.h"
-#include "vc/virtual_column.h"
 #include "core/value_matching_table.h"
+#include "vc/virtual_column.h"
 
 namespace Tianmu {
 namespace core {
@@ -78,7 +78,7 @@ class GroupDistinctTable : public mm::TraceableObject {
  private:
   GDTResult FindCurrentRow(bool find_only = false);  // find / insert the current buffer
   GDTResult FindCurrentRowByVMTable();
-  bool RowEmpty(unsigned char *p)                    // is this position empty? only if it starts with zeros
+  bool RowEmpty(unsigned char *p)  // is this position empty? only if it starts with zeros
   {
     return (std::memcmp(&zero_const, p, group_bytes) == 0);
   }

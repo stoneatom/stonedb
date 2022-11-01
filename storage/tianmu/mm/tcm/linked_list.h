@@ -52,7 +52,8 @@ inline void *SLL_Pop(void **list) {
 }
 
 inline void SLL_PushRange(void **head, void *start, void *end) {
-  if (!start) return;
+  if (!start)
+    return;
   SLL_SetNext(end, *head);
   *head = start;
 }
