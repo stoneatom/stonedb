@@ -38,11 +38,13 @@ Filter::Filter(int64_t no_obj, uint32_t power, bool all_ones, bool shallow)
   MEASURE_FET("Filter::Filter(int, bool, bool)");
   DEBUG_ASSERT(no_obj >= 0);
   pack_def = 1 << no_power;
-  if (no_obj > common::MAX_ROW_NUMBER) throw common::OutOfMemoryException("Too many tuples.    (48)");
+  if (no_obj > common::MAX_ROW_NUMBER)
+    throw common::OutOfMemoryException("Too many tuples.    (48)");
 
   no_blocks = (no_obj + (pack_def - 1)) >> no_power;
   no_of_bits_in_last_block = (no_obj & (pack_def - 1)) == 0 ? pack_def : int(no_obj & (pack_def - 1));
-  if (no_obj == 0) no_of_bits_in_last_block = 0;
+  if (no_obj == 0)
+    no_of_bits_in_last_block = 0;
 
   blocks = 0;
   block_changed.resize(no_blocks);
@@ -64,11 +66,13 @@ Filter::Filter(Filter *f, int64_t no_obj, uint32_t power, bool all_ones, bool sh
   MEASURE_FET("Filter::Filter(int, bool, bool)");
   DEBUG_ASSERT(no_obj >= 0);
   pack_def = 1 << no_power;
-  if (no_obj > common::MAX_ROW_NUMBER) throw common::OutOfMemoryException("Too many tuples.    (48)");
+  if (no_obj > common::MAX_ROW_NUMBER)
+    throw common::OutOfMemoryException("Too many tuples.    (48)");
 
   no_blocks = (no_obj + (pack_def - 1)) >> no_power;
   no_of_bits_in_last_block = (no_obj & (pack_def - 1)) == 0 ? pack_def : int(no_obj & (pack_def - 1));
-  if (no_obj == 0) no_of_bits_in_last_block = 0;
+  if (no_obj == 0)
+    no_of_bits_in_last_block = 0;
 
   blocks = 0;
   block_changed.resize(no_blocks);
@@ -195,7 +199,8 @@ void Filter::SetDelayed(size_t b, int pos) {
     if (pos == delayed_stats_set + 1) {
       delayed_stats_set++;
     } else if (pos > delayed_stats_set + 1) {  // then we can't delay
-      if (delayed_stats_set >= 0) SetBetween(b, 0, b, delayed_stats_set);
+      if (delayed_stats_set >= 0)
+        SetBetween(b, 0, b, delayed_stats_set);
       Set(b, pos);
       delayed_stats_set = -2;  // not to use any longer
     }
@@ -220,12 +225,14 @@ void Filter::Commit() {
 
 void Filter::Set() {
   MEASURE_FET("voFilter::Set()");
-  if (no_blocks == 0) return;
+  if (no_blocks == 0)
+    return;
   std::memset(block_status, FB_FULL, no_blocks);  // set the filter to all full
 
   for (size_t b = 0; b < no_blocks; b++) {
     block_last_one[b] = pack_def - 1;
-    if (blocks[b]) DeleteBlock(b);
+    if (blocks[b])
+      DeleteBlock(b);
   }
   block_last_one[no_blocks - 1] = no_of_bits_in_last_block - 1;
   delayed_stats = -1;
@@ -236,7 +243,8 @@ void Filter::SetBlock(size_t b) {
   DEBUG_ASSERT(b < no_blocks);
   block_status[b] = FB_FULL;  // set the filter to all full
   block_last_one[b] = (b == no_blocks - 1 ? no_of_bits_in_last_block - 1 : pack_def - 1);
-  if (blocks[b]) DeleteBlock(b);
+  if (blocks[b])
+    DeleteBlock(b);
 }
 
 void Filter::Set(size_t b, int n) {
@@ -258,7 +266,8 @@ void Filter::Set(size_t b, int n) {
       block_status[b] = FB_MIXED;
       blocks[b] = block_allocator->Alloc();
       new (blocks[b]) Block(block_filter, new_block_size);  // block_filter<->this
-      if (blocks[b] == NULL) throw common::OutOfMemoryException();
+      if (blocks[b] == NULL)
+        throw common::OutOfMemoryException();
     }
     if (make_mixed) {
       blocks[b]->Set(0, block_last_one[b]);  // create a block with a contents before Set
@@ -266,7 +275,8 @@ void Filter::Set(size_t b, int n) {
   }
   if (blocks[b]) {
     bool full = blocks[b]->Set(n);
-    if (full) SetBlock(b);
+    if (full)
+      SetBlock(b);
   }
 }
 
@@ -296,7 +306,8 @@ void Filter::SetBetween(size_t b1, int n1, size_t b2, int n2) {
           blocks[b1] = block_allocator->Alloc();
           new (blocks[b1]) Block(block_filter, pack_def);  // block_filter->this
         }
-        if (blocks[b1] == NULL) throw common::OutOfMemoryException();
+        if (blocks[b1] == NULL)
+          throw common::OutOfMemoryException();
         if (block_status[b1] == FB_FULL)
           blocks[b1]->Set(0,
                           block_last_one[b1]);  // create a block with a contents before Set
@@ -305,7 +316,8 @@ void Filter::SetBetween(size_t b1, int n1, size_t b2, int n2) {
     }
     if (blocks[b1]) {
       bool full = blocks[b1]->Set(n1, n2);
-      if (full) SetBlock(b1);
+      if (full)
+        SetBlock(b1);
     }
   } else {
     if (n1 == 0)
@@ -323,7 +335,8 @@ void Filter::Reset() {
   std::memset(block_status, FB_EMPTY,
               no_blocks);  // set the filter to all empty
   for (size_t b = 0; b < no_blocks; b++) {
-    if (blocks[b]) DeleteBlock(b);
+    if (blocks[b])
+      DeleteBlock(b);
   }
   delayed_stats = -1;
 }
@@ -332,7 +345,8 @@ void Filter::ResetBlock(size_t b) {
   MEASURE_FET("Filter::ResetBlock(int)");
   DEBUG_ASSERT(b < no_blocks);
   block_status[b] = FB_EMPTY;
-  if (blocks[b]) DeleteBlock(b);
+  if (blocks[b])
+    DeleteBlock(b);
 }
 
 void Filter::ResetBetween(int64_t n1, int64_t n2) {
@@ -359,12 +373,14 @@ void Filter::ResetBetween(size_t b1, int n1, size_t b2, int n2) {
           new (blocks[b1]) Block(block_filter, new_block_size,
                                  true);  // block_filter->this // set as full,
                                          // then reset a part of it
-          if (blocks[b1] == NULL) throw common::OutOfMemoryException();
+          if (blocks[b1] == NULL)
+            throw common::OutOfMemoryException();
         } else {
           new (blocks[b1]) Block(block_filter, new_block_size,
                                  false);  // block_filter->this// set as empty,
                                           // then set the beginning
-          if (blocks[b1] == NULL) throw common::OutOfMemoryException();
+          if (blocks[b1] == NULL)
+            throw common::OutOfMemoryException();
           blocks[b1]->Set(0, block_last_one[b1]);  // create a block with a
                                                    // contents before Reset
         }
@@ -372,7 +388,8 @@ void Filter::ResetBetween(size_t b1, int n1, size_t b2, int n2) {
     }
     if (blocks[b1]) {
       bool empty = blocks[b1]->Reset(n1, n2);
-      if (empty) ResetBlock(b1);
+      if (empty)
+        ResetBlock(b1);
     }
   } else {
     if (n1 == 0)
@@ -396,11 +413,13 @@ void Filter::Reset(Filter &f2) {
         new (blocks[b]) Block(*(f2.GetBlock(b)), block_filter);  // block_filter->this
         blocks[b]->Not();                                        // always nontrivial
         int new_block_size = (b == no_blocks - 1 ? no_of_bits_in_last_block : pack_def);
-        if (block_last_one[b] < new_block_size - 1) blocks[b]->Reset(block_last_one[b] + 1, new_block_size - 1);
+        if (block_last_one[b] < new_block_size - 1)
+          blocks[b]->Reset(block_last_one[b] + 1, new_block_size - 1);
         block_status[b] = FB_MIXED;
       } else if (blocks[b]) {
         bool empty = blocks[b]->AndNot(*(f2.GetBlock(b)));
-        if (empty) ResetBlock(b);
+        if (empty)
+          ResetBlock(b);
       }
     }
   }
@@ -408,14 +427,17 @@ void Filter::Reset(Filter &f2) {
 
 bool Filter::Get(size_t b, int n) {
   DEBUG_ASSERT(b < no_blocks);
-  if (block_status[b] == FB_EMPTY) return false;
-  if (block_status[b] == FB_FULL) return (n <= block_last_one[b]);
+  if (block_status[b] == FB_EMPTY)
+    return false;
+  if (block_status[b] == FB_FULL)
+    return (n <= block_last_one[b]);
   return blocks[b]->Get(n);
 }
 
 bool Filter::IsEmpty() {
   for (size_t i = 0; i < no_blocks; i++)
-    if (block_status[i] != FB_EMPTY) return false;
+    if (block_status[i] != FB_EMPTY)
+      return false;
   return true;
 }
 
@@ -428,14 +450,17 @@ bool Filter::IsEmptyBetween(int64_t n1,
                             int64_t n2)  // true if there are only 0 between n1 and n2, inclusively
 {
   DEBUG_ASSERT((n1 >= 0) && (n1 <= n2));
-  if (n1 == n2) return !Get(n1);
+  if (n1 == n2)
+    return !Get(n1);
   size_t b1 = int(n1 >> no_power);
   size_t b2 = int(n2 >> no_power);
   int nn1 = int(n1 & (pack_def - 1));
   int nn2 = int(n2 & (pack_def - 1));
   if (b1 == b2) {
-    if (block_status[b1] == FB_FULL) return (nn1 > block_last_one[b1]);
-    if (block_status[b1] == FB_EMPTY) return true;
+    if (block_status[b1] == FB_FULL)
+      return (nn1 > block_last_one[b1]);
+    if (block_status[b1] == FB_EMPTY)
+      return true;
     return blocks[b1]->IsEmptyBetween(nn1, nn2);
   } else {
     size_t full_pack_start = (nn1 == 0 ? b1 : b1 + 1);
@@ -443,18 +468,22 @@ bool Filter::IsEmptyBetween(int64_t n1,
     if ((uint)nn2 == (pack_def - 1) || (b2 == no_blocks - 1 && nn2 == no_of_bits_in_last_block - 1))
       full_pack_stop = b2;
     for (size_t i = full_pack_start; i <= full_pack_stop; i++)
-      if (block_status[i] != FB_EMPTY) return false;
+      if (block_status[i] != FB_EMPTY)
+        return false;
     if (b1 != full_pack_start) {
       if (block_status[b1] == FB_FULL) {
-        if (nn1 <= block_last_one[b1]) return false;
+        if (nn1 <= block_last_one[b1])
+          return false;
       } else if (block_status[b1] != FB_EMPTY &&
                  !blocks[b1]->IsEmptyBetween(nn1,
                                              pack_def - 1))  // note that b1 is never the last block
         return false;
     }
     if (b2 != full_pack_stop) {
-      if (block_status[b2] == FB_FULL) return false;
-      if (block_status[b2] != FB_EMPTY && !blocks[b2]->IsEmptyBetween(0, nn2)) return false;
+      if (block_status[b2] == FB_FULL)
+        return false;
+      if (block_status[b2] != FB_EMPTY && !blocks[b2]->IsEmptyBetween(0, nn2))
+        return false;
     }
   }
   return true;
@@ -464,14 +493,17 @@ bool Filter::IsFullBetween(int64_t n1,
                            int64_t n2)  // true if there are only 1 between n1 and n2, inclusively
 {
   DEBUG_ASSERT((n1 >= 0) && (n1 <= n2));
-  if (n1 == n2) return Get(n1);
+  if (n1 == n2)
+    return Get(n1);
   size_t b1 = int(n1 >> no_power);
   size_t b2 = int(n2 >> no_power);
   int nn1 = int(n1 & (pack_def - 1));
   int nn2 = int(n2 & (pack_def - 1));
   if (b1 == b2) {
-    if (block_status[b1] == FB_FULL) return (nn2 <= block_last_one[b1]);
-    if (block_status[b1] == FB_EMPTY) return false;
+    if (block_status[b1] == FB_FULL)
+      return (nn2 <= block_last_one[b1]);
+    if (block_status[b1] == FB_EMPTY)
+      return false;
     return blocks[b1]->IsFullBetween(nn1, nn2);
   } else {
     size_t full_pack_start = (nn1 == 0 ? b1 : b1 + 1);
@@ -479,16 +511,21 @@ bool Filter::IsFullBetween(int64_t n1,
     if ((uint)nn2 == (pack_def - 1) || (b2 == no_blocks - 1 && nn2 == no_of_bits_in_last_block - 1))
       full_pack_stop = b2;
     for (size_t i = full_pack_start; i <= full_pack_stop; i++)
-      if (!IsFull(i)) return false;
+      if (!IsFull(i))
+        return false;
     if (b1 != full_pack_start) {
-      if (block_status[b1] == FB_EMPTY) return false;
+      if (block_status[b1] == FB_EMPTY)
+        return false;
       if (!IsFull(b1) && !blocks[b1]->IsFullBetween(nn1, pack_def - 1))  // note that b1 is never the last block
         return false;
     }
     if (b2 != full_pack_stop) {
-      if (block_status[b2] == FB_EMPTY) return false;
-      if (block_status[b2] == FB_FULL) return (nn2 <= block_last_one[b2]);
-      if (!blocks[b2]->IsFullBetween(0, nn2)) return false;
+      if (block_status[b2] == FB_EMPTY)
+        return false;
+      if (block_status[b2] == FB_FULL)
+        return (nn2 <= block_last_one[b2]);
+      if (!blocks[b2]->IsFullBetween(0, nn2))
+        return false;
     }
   }
   return true;
@@ -496,7 +533,8 @@ bool Filter::IsFullBetween(int64_t n1,
 
 bool Filter::IsFull() const {
   for (size_t b = 0; b < no_blocks; b++)
-    if (!IsFull(b)) return false;
+    if (!IsFull(b))
+      return false;
   return true;
 }
 
@@ -538,27 +576,32 @@ void Filter::DeleteBlock(int pack) {
 }
 
 bool Filter::IsEqual(Filter &sec) {
-  if (no_blocks != sec.no_blocks || no_of_bits_in_last_block != sec.no_of_bits_in_last_block) return false;
+  if (no_blocks != sec.no_blocks || no_of_bits_in_last_block != sec.no_of_bits_in_last_block)
+    return false;
   for (size_t b = 0; b < no_blocks; b++) {
     if (block_status[b] != sec.block_status[b]) {
       int64_t bstart = int64_t(b) >> no_power;
       int64_t bstop = bstart + (b < no_blocks - 1 ? (pack_def - 1) : no_of_bits_in_last_block - 1);
       if (block_status[b] == FB_FULL && sec.block_status[b] == FB_MIXED) {  // Note: may still be equal!
-        if (!sec.IsFullBetween(bstart, bstart + block_last_one[b])) return false;
+        if (!sec.IsFullBetween(bstart, bstart + block_last_one[b]))
+          return false;
         if (bstart + block_last_one[b] < bstop && !sec.IsEmptyBetween(bstart + block_last_one[b] + 1, bstop))
           return false;
         return true;
       }
       if (sec.block_status[b] == FB_FULL && block_status[b] == FB_MIXED) {  // Note: may still be equal!
-        if (!IsFullBetween(bstart, bstart + sec.block_last_one[b])) return false;
+        if (!IsFullBetween(bstart, bstart + sec.block_last_one[b]))
+          return false;
         if (bstart + sec.block_last_one[b] < bstop && !IsEmptyBetween(bstart + sec.block_last_one[b] + 1, bstop))
           return false;
         return true;
       }
       return false;
     }
-    if (block_status[b] == FB_FULL && block_last_one[b] != sec.block_last_one[b]) return false;
-    if (blocks[b] && blocks[b]->IsEqual(*sec.GetBlock(b)) == false) return false;
+    if (block_status[b] == FB_FULL && block_last_one[b] != sec.block_last_one[b])
+      return false;
+    if (blocks[b] && blocks[b]->IsEqual(*sec.GetBlock(b)) == false)
+      return false;
   }
   return true;
 }
@@ -575,14 +618,17 @@ void Filter::And(Filter &f2) {
         new (blocks[b]) Block(*(f2.GetBlock(b)), block_filter);  // block_filter->this
         block_status[b] = FB_MIXED;
         int end_block = (b == no_blocks - 1 ? no_of_bits_in_last_block - 1 : (pack_def - 1));
-        if (old_block_size < end_block) ResetBetween(b, old_block_size + 1, b, end_block);
+        if (old_block_size < end_block)
+          ResetBetween(b, old_block_size + 1, b, end_block);
       } else if (blocks[b]) {
         bool empty = blocks[b]->And(*(f2.GetBlock(b)));
-        if (empty) ResetBlock(b);
+        if (empty)
+          ResetBlock(b);
       }
     } else {  // FB_FULL
       int end_block = (b == no_blocks - 1 ? no_of_bits_in_last_block - 1 : (pack_def - 1));
-      if (f2.block_last_one[b] < end_block) ResetBetween(b, int(f2.block_last_one[b]) + 1, b, end_block);
+      if (f2.block_last_one[b] < end_block)
+        ResetBetween(b, int(f2.block_last_one[b]) + 1, b, end_block);
     }
   }
 }
@@ -600,7 +646,8 @@ void Filter::Or(Filter &f2, int pack) {
         block_status[b] = FB_MIXED;
       } else if (blocks[b]) {
         bool full = blocks[b]->Or(*(f2.GetBlock(b)));
-        if (full) SetBlock(b);
+        if (full)
+          SetBlock(b);
       } else {  // FB_FULL
         if (block_last_one[b] < (b == no_blocks - 1 ? no_of_bits_in_last_block - 1 : (pack_def - 1))) {
           int old_block_size = block_last_one[b];
@@ -611,7 +658,8 @@ void Filter::Or(Filter &f2, int pack) {
         }
       }
     }
-    if (pack != -1) break;
+    if (pack != -1)
+      break;
   }
 }
 
@@ -646,10 +694,12 @@ void Filter::AndNot(Filter &f2)  // reset all positions which are set in f2
         block_status[b] = FB_MIXED;
         blocks[b]->Not();
         int end_block = (b == no_blocks - 1 ? no_of_bits_in_last_block - 1 : (pack_def - 1));
-        if (old_block_size < end_block) ResetBetween(b, old_block_size + 1, b, end_block);
+        if (old_block_size < end_block)
+          ResetBetween(b, old_block_size + 1, b, end_block);
       } else if (blocks[b]) {
         bool empty = blocks[b]->AndNot(*(f2.GetBlock(b)));
-        if (empty) ResetBlock(b);
+        if (empty)
+          ResetBlock(b);
       }
     }
   }
@@ -676,7 +726,8 @@ void Filter::SwapPack(Filter &f2, int pack) {
       blocks[pack]->CopyFrom(*(f2.blocks[pack]),
                              block_filter);  // block_filter->this
   } else {
-    if (blocks[pack]) DeleteBlock(pack);
+    if (blocks[pack])
+      DeleteBlock(pack);
   }
   if (block_status[pack] == FB_MIXED) {
     if (!f2.blocks[pack]) {
@@ -685,17 +736,21 @@ void Filter::SwapPack(Filter &f2, int pack) {
     } else
       f2.blocks[pack]->CopyFrom(b, &f2);
   } else {
-    if (f2.blocks[pack]) f2.DeleteBlock(pack);
+    if (f2.blocks[pack])
+      f2.DeleteBlock(pack);
   }
   std::swap(block_status[pack], f2.block_status[pack]);
   std::swap(block_last_one[pack], f2.block_last_one[pack]);
   std::swap(block_changed[pack], f2.block_changed[pack]);
-  if (block_status[pack] == FB_MIXED) DEBUG_ASSERT(blocks[pack]->Owner() == block_filter);  // block_filter->this
-  if (f2.block_status[pack] == FB_MIXED) DEBUG_ASSERT(f2.blocks[pack]->Owner() == &f2);
+  if (block_status[pack] == FB_MIXED)
+    DEBUG_ASSERT(blocks[pack]->Owner() == block_filter);  // block_filter->this
+  if (f2.block_status[pack] == FB_MIXED)
+    DEBUG_ASSERT(f2.blocks[pack]->Owner() == &f2);
 }
 
 int64_t Filter::NumOfOnes() const {
-  if (no_blocks == 0) return 0;
+  if (no_blocks == 0)
+    return 0;
   int64_t count = 0;
   for (size_t b = 0; b < no_blocks; b++) {
     if (block_status[b] == FB_FULL)
@@ -707,7 +762,8 @@ int64_t Filter::NumOfOnes() const {
 }
 
 uint Filter::NumOfOnes(int b) {
-  if (no_blocks == 0) return 0;
+  if (no_blocks == 0)
+    return 0;
   if (block_status[b] == FB_FULL)
     return uint(block_last_one[b]) + 1;
   else if (blocks[b])
@@ -718,10 +774,12 @@ uint Filter::NumOfOnes(int b) {
 uint Filter::NumOfOnesUncommited(int b) {
   int uc = 0;
   if (delayed_block == b) {
-    if (block_status[b] == FB_FULL && delayed_stats >= 0) uc = -delayed_stats - 1;
+    if (block_status[b] == FB_FULL && delayed_stats >= 0)
+      uc = -delayed_stats - 1;
   }
   if (delayed_block_set == b) {
-    if (block_status[b] == FB_EMPTY && delayed_stats_set >= 0) uc = delayed_stats_set + 1;
+    if (block_status[b] == FB_EMPTY && delayed_stats_set >= 0)
+      uc = delayed_stats_set + 1;
   }
   return NumOfOnes(b) + uc;
 }
@@ -729,7 +787,8 @@ uint Filter::NumOfOnesUncommited(int b) {
 int64_t Filter::NumOfOnesBetween(int64_t n1, int64_t n2)  // no of 1 between n1 and n2, inclusively
 {
   DEBUG_ASSERT((n1 >= 0) && (n1 <= n2));
-  if (n1 == n2) return (Get(n1) ? 1 : 0);
+  if (n1 == n2)
+    return (Get(n1) ? 1 : 0);
   size_t b1 = int(n1 >> no_power);
   size_t b2 = int(n2 >> no_power);
   int nn1 = int(n1 & (pack_def - 1));
@@ -737,16 +796,19 @@ int64_t Filter::NumOfOnesBetween(int64_t n1, int64_t n2)  // no of 1 between n1 
   if (b1 == b2) {
     if (block_status[b1] == FB_FULL) {
       nn2 = std::min(nn2, int(block_last_one[b1]));
-      if (nn1 > block_last_one[b1]) return 0;
+      if (nn1 > block_last_one[b1])
+        return 0;
       return nn2 - nn1 + 1;
     }
-    if (block_status[b1] == FB_EMPTY) return 0;
+    if (block_status[b1] == FB_EMPTY)
+      return 0;
     return blocks[b1]->NumOfOnesBetween(nn1, nn2);
   }
   int64_t counter = 0;
   size_t full_pack_start = (nn1 == 0 ? b1 : b1 + 1);
   size_t full_pack_stop = b2 - 1;
-  if ((uint)nn2 == (pack_def - 1) || (b2 == no_blocks - 1 && nn2 == no_of_bits_in_last_block - 1)) full_pack_stop = b2;
+  if ((uint)nn2 == (pack_def - 1) || (b2 == no_blocks - 1 && nn2 == no_of_bits_in_last_block - 1))
+    full_pack_stop = b2;
   for (size_t i = full_pack_start; i <= full_pack_stop; i++) {
     if (block_status[i] == FB_MIXED)
       counter += blocks[i]->NumOfOnes();
@@ -755,7 +817,8 @@ int64_t Filter::NumOfOnesBetween(int64_t n1, int64_t n2)  // no of 1 between n1 
   }
   if (b1 != full_pack_start) {
     if (block_status[b1] == FB_FULL) {
-      if (nn1 <= block_last_one[b1]) counter += block_last_one[b1] - nn1 + 1;
+      if (nn1 <= block_last_one[b1])
+        counter += block_last_one[b1] - nn1 + 1;
     } else if (block_status[b1] != FB_EMPTY)
       counter += blocks[b1]->NumOfOnesBetween(nn1, (pack_def - 1));  // note that b1 is never the last block
   }
@@ -785,7 +848,8 @@ int Filter::DensityWeight()  // = 65537 for empty filter or a filter with only
       }
     }
   }
-  if (nonempty < 2) return 65537;
+  if (nonempty < 2)
+    return 65537;
   return int(count / double(nonempty));
 }
 
@@ -844,7 +908,8 @@ void HeapAllocator::free(char *const block) {
 }
 
 Filter::Block *Filter::BlockAllocator::Alloc(bool sync) {
-  if (sync) block_mut.lock();
+  if (sync)
+    block_mut.lock();
   if (!free_in_pool) {
     for (int i = 0; i < pool_size; i++) {
       pool[i] = (Filter::Block *)block_object_pool.malloc();
@@ -859,7 +924,8 @@ Filter::Block *Filter::BlockAllocator::Alloc(bool sync) {
   free_in_pool--;
   Block *b = pool[next_ndx];
   next_ndx = (next_ndx + pool_stride) % pool_size;
-  if (sync) block_mut.unlock();
+  if (sync)
+    block_mut.unlock();
   return b;
 }
 

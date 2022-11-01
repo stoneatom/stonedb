@@ -66,7 +66,8 @@ void *TraceableObject::alloc(size_t size, BLOCK_TYPE type, bool nothrow) {
 
 void TraceableObject::dealloc(void *ptr) {
   size_t s;
-  if (ptr == NULL) return;
+  if (ptr == NULL)
+    return;
   s = Instance()->rc_msize(ptr, this);
   Instance()->dealloc(ptr, this);
   m_sizeAllocated -= s;
@@ -77,7 +78,8 @@ void TraceableObject::dealloc(void *ptr) {
 }
 
 void *TraceableObject::rc_realloc(void *ptr, size_t size, BLOCK_TYPE type) {
-  if (ptr == NULL) return alloc(size, type);
+  if (ptr == NULL)
+    return alloc(size, type);
 
   size_t s1 = Instance()->rc_msize(ptr, this);
   void *addr = Instance()->rc_realloc(ptr, size, this, type);
@@ -127,7 +129,8 @@ TraceableObject::TraceableObject(const TraceableObject &to)
 TraceableObject::~TraceableObject() {
   // Instance()->AssertNoLeak(this);
   DEBUG_ASSERT(m_sizeAllocated == 0 /*, "TraceableObject size accounting"*/);
-  if (IsTracked()) StopAccessTracking();
+  if (IsTracked())
+    StopAccessTracking();
 }
 
 void TraceableObject::Lock() {
@@ -204,7 +207,8 @@ void TraceableObject::UnlockAndResetOrDeletePack(std::shared_ptr<core::Pack> &pa
     } else
       reset_outside = true;
   }
-  if (reset_outside) pack.reset();
+  if (reset_outside)
+    pack.reset();
 }
 
 void TraceableObject::UnlockAndResetPack(std::shared_ptr<core::Pack> &pack) {
@@ -231,7 +235,8 @@ void TraceableObject::deinitialize(bool detect_leaks) {
   }
 
   if (m_MemHandling) {  // Used only in MemoryManagerInitializer!
-    if (detect_leaks) m_MemHandling->ReportLeaks();
+    if (detect_leaks)
+      m_MemHandling->ReportLeaks();
     delete m_MemHandling;
   }
 }
@@ -249,7 +254,8 @@ int64_t TraceableObject::MemScale2BufSizeLarge(int ms)
   //	int64_t to_add = 8_GB;
   for (; sc16 > 0; sc16--) {
     max_total_size += to_add;
-    if (to_add < 12_GB) to_add += 1_GB;
+    if (to_add < 12_GB)
+      to_add += 1_GB;
   }
   return max_total_size;
 }

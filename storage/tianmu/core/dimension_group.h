@@ -35,8 +35,8 @@ class DimensionGroup {
   virtual DimensionGroup *Clone(bool shallow) = 0;  // create a new group with the same (copied) contents
   virtual ~DimensionGroup() {}
   int64_t NumOfTuples() { return no_obj; }
-  virtual void UpdateNumOfTuples() {}          // may be not needed for some group types
-  DGType Type() { return dim_group_type; }     // type selector
+  virtual void UpdateNumOfTuples() {}       // may be not needed for some group types
+  DGType Type() { return dim_group_type; }  // type selector
   virtual Filter *GetFilter([[maybe_unused]] int dim) const {
     return NULL;
   }  // Get the pointer to a filter attached to a dimension. NOTE: will be NULL
@@ -331,7 +331,8 @@ class DimensionGroupMaterialized : public DimensionGroup {
       for (int i = 0; i < n; i++) t[dim]->Lock();
   }
   void Unlock(int dim) override {
-    if (t[dim]) t[dim]->Unlock();
+    if (t[dim])
+      t[dim]->Unlock();
   }
   int NumOfLocks(int dim) override { return (t[dim] ? t[dim]->NumOfLocks() : 0); }
   bool IsThreadSafe() override { return true; }  // BarrierAfterPackrow() must be used for parallel execution
@@ -348,7 +349,8 @@ class DimensionGroupMaterialized : public DimensionGroup {
     void operator++() override {
       cur_pos++;
       pack_size_left--;
-      if (pack_size_left == 0) InitPackrow();
+      if (pack_size_left == 0)
+        InitPackrow();
     }
     void Rewind() override;
     bool NextInsidePack() override;

@@ -211,7 +211,8 @@ void PageHeap::RemoveFromFreeList(Span *span) {
 void PageHeap::IncrementalScavenge(Length n) {
   // Fast path; not yet time to release memory
   scavenge_counter_ -= n;
-  if (scavenge_counter_ >= 0) return;  // Not yet time to scavenge
+  if (scavenge_counter_ >= 0)
+    return;  // Not yet time to scavenge
 
   //  const double rate = FLAGS_tcmalloc_release_rate;
   const double rate = 5.0;
@@ -267,7 +268,8 @@ Length PageHeap::ReleaseAtLeastNPages(Length num_pages) {
     prev_released_pages = released_pages;
 
     for (size_t i = 0; i < kMaxPages + 1 && released_pages < num_pages; i++, release_index_++) {
-      if (release_index_ > kMaxPages) release_index_ = 0;
+      if (release_index_ > kMaxPages)
+        release_index_ = 0;
       SpanList *slist = (release_index_ == kMaxPages) ? &large_ : &free_[release_index_];
       if (!DLL_IsEmpty(&slist->normal)) {
         Length released_len = ReleaseLastNormalSpan(slist);
@@ -292,7 +294,8 @@ void PageHeap::RegisterSizeClass(Span *span, size_t sc) {
 
 bool PageHeap::GrowHeap(Length n) {
   ASSERT(kMaxPages >= kMinSystemAlloc);
-  if (n > kMaxValidPages) return false;
+  if (n > kMaxValidPages)
+    return false;
   Length ask = (n > kMinSystemAlloc) ? n : static_cast<Length>(kMinSystemAlloc);
   size_t actual_size;
   void *ptr = NULL;
@@ -304,7 +307,8 @@ bool PageHeap::GrowHeap(Length n) {
       ask = n;
       ptr = TCMalloc_SystemAlloc(ask << kPageShift, NULL, kPageSize);
     }
-    if (ptr == NULL) return false;
+    if (ptr == NULL)
+      return false;
   }
   system_alloc_list.push_back(ptr);
   actual_size = ask << kPageShift;

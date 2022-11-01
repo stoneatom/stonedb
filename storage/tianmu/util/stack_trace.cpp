@@ -32,19 +32,22 @@ static inline bool DemangelSymbol(char *name, std::string &result) {
 
   while ((*p != '\0') && (*p != '(')) p++;
 
-  if (*p == '\0') return false;
+  if (*p == '\0')
+    return false;
 
   char *begin = ++p;
 
   while ((*p != '\0') && (*p != '+')) p++;
 
-  if (*p == '\0') return false;
+  if (*p == '\0')
+    return false;
 
   char *end = p++;
   *end = '\0';
   int status;
   char *func = abi::__cxa_demangle(begin, NULL, NULL, &status);
-  if (!func) return false;
+  if (!func)
+    return false;
 
   *end = '+';
   *begin = '\0';

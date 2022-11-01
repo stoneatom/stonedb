@@ -26,7 +26,8 @@ namespace mm {
 SystemHeap::~SystemHeap() {}
 
 void *SystemHeap::alloc(size_t size) {
-  if (size_ > 0 && (alloc_size_ + size > size_)) return NULL;
+  if (size_ > 0 && (alloc_size_ + size > size_))
+    return NULL;
 
   void *res = malloc(size);
   block_sizes_.insert(std::make_pair(res, size));

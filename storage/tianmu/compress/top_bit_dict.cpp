@@ -54,10 +54,12 @@ uint TopBitDict<T>::FindOptimum(DataSet<T> *dataset, uint nbit, uint &opt_bit, D
 
   while (bit <= nbit) {
     skiprec = nrec / (maxkey * KEY_OCCUR_);
-    if (!skiprec) skiprec = 1;
+    if (!skiprec)
+      skiprec = 1;
 
     // insert truncated bits to dictionary (counter)
-    if (!Insert(dict, data, nbit, bit, nrec, skiprec)) break;
+    if (!Insert(dict, data, nbit, bit, nrec, skiprec))
+      break;
 
     // make prediction
     DEBUG_ASSERT(nrec <= MAX_TOTAL_);
@@ -65,14 +67,16 @@ uint TopBitDict<T>::FindOptimum(DataSet<T> *dataset, uint nbit, uint &opt_bit, D
     short nkey;
     auto keys = dict->GetKeys(nkey);
     for (short i = 0; i < nkey; i++) uplen -= math.nlog2n(keys[i].count);
-    if (skiprec > 1) uplen = skiprec * uplen - nrec * math.log2(skiprec);
+    if (skiprec > 1)
+      uplen = skiprec * uplen - nrec * math.log2(skiprec);
     uplen += math.nlog2n(nrec);
     double cntlen = math.log2(MAX_TOTAL_) - math.log2((uint)nkey);
     pred = (nbit - bit) * nrec       // bits encoded uniformly
            + uplen                   // bits encoded with dictionary
            + (bit + cntlen) * nkey;  // dictionary
 
-    if ((pred > max_pred) || (pred > 1.03 * opt_pred)) break;
+    if ((pred > max_pred) || (pred > 1.03 * opt_pred))
+      break;
     if (pred < opt_pred) {
       // if((skiprec > 1) && (pred < min_pred)) {
       //	skiprec = 1;			// recalculate dictionary
@@ -113,12 +117,14 @@ inline bool TopBitDict<T>::Insert(Dictionary<T> *dict, T *data, uint nbit, uint 
     uchar bitlow = (uchar)(nbit - bit);
     DEBUG_ASSERT(bitlow < sizeof(T) * 8);
     for (uint i = 0; i < nrec; i += skiprec)
-      if (!dict->Insert(data[i] >> bitlow)) return false;
+      if (!dict->Insert(data[i] >> bitlow))
+        return false;
   } else {  // low bits
     T mask = (T)1 _SHL_(uchar) bit;
     mask--;
     for (uint i = 0; i < nrec; i += skiprec)
-      if (!dict->Insert(data[i] & mask)) return false;
+      if (!dict->Insert(data[i] & mask))
+        return false;
   }
   return true;
 }
@@ -126,12 +132,14 @@ inline bool TopBitDict<T>::Insert(Dictionary<T> *dict, T *data, uint nbit, uint 
 template <class T>
 bool TopBitDict<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
   T maxval = dataset->maxval;
-  if (maxval == 0) return false;
+  if (maxval == 0)
+    return false;
 
   // find optimum dictionary
   Dictionary<T> *dict;
   uint nbit = core::GetBitLen(maxval), bitdict;
-  if (FindOptimum(dataset, nbit, bitdict, dict) >= 0.98 * this->PredictUni(dataset)) return false;
+  if (FindOptimum(dataset, nbit, bitdict, dict) >= 0.98 * this->PredictUni(dataset))
+    return false;
   DEBUG_ASSERT(bitdict);
 
   dict->SetLows();
@@ -181,7 +189,8 @@ void TopBitDict<T>::Decode(RangeCoder *coder, DataSet<T> *dataset) {
   // read version
   uchar ver;
   coder->DecodeUniform(ver, (uchar)7);
-  if (ver > 0) throw CprsErr::CPRS_ERR_COR;
+  if (ver > 0)
+    throw CprsErr::CPRS_ERR_COR;
 
   // read no. of lower bits
   coder->DecodeUniform(bitlow_, (T)64);

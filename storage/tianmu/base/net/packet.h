@@ -298,8 +298,12 @@ class packet final {
   bool allocate_headroom(size_t size);
 
  public:
-  class offload_info offload_info() const { return _impl->_offload_info; }
-  class offload_info &offload_info_ref() { return _impl->_offload_info; }
+  class offload_info offload_info() const {
+    return _impl->_offload_info;
+  }
+  class offload_info &offload_info_ref() {
+    return _impl->_offload_info;
+  }
   void set_offload_info(class offload_info oi) { _impl->_offload_info = oi; }
 };
 

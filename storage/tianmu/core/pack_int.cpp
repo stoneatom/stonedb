@@ -55,7 +55,8 @@ std::unique_ptr<Pack> PackInt::Clone(const PackCoordinate &pc) const {
 }
 
 inline uint8_t PackInt::GetValueSize(uint64_t v) const {
-  if (is_real) return 8;
+  if (is_real)
+    return 8;
 
   auto bit_rate = GetBitLen(v);
   if (bit_rate <= 8)
@@ -192,7 +193,7 @@ void PackInt::UpdateValueFloat(size_t locationInPack, const Value &v) {
       dpn->max_d = d;
       data.vt = 8;
       data.ptr = alloc(data.vt * dpn->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
-      std::memset(data.ptr, 0, data.vt * dpn->numOfRecords); 
+      std::memset(data.ptr, 0, data.vt * dpn->numOfRecords);
       SetValD(locationInPack, d);
     } else {
       dpn->numOfNulls--;
@@ -200,9 +201,11 @@ void PackInt::UpdateValueFloat(size_t locationInPack, const Value &v) {
 
       SetValD(locationInPack, d);
 
-      if (d < dpn->min_d) dpn->min_d = d;
+      if (d < dpn->min_d)
+        dpn->min_d = d;
 
-      if (d > dpn->max_d) dpn->max_d = d;
+      if (d > dpn->max_d)
+        dpn->max_d = d;
     }
   } else {
     // update an original non-null value
@@ -223,8 +226,10 @@ void PackInt::UpdateValueFloat(size_t locationInPack, const Value &v) {
     for (uint j = 0; j < dpn->numOfRecords; j++) {
       if (locationInPack != j && NotNull(j)) {
         auto val = GetValDouble(j);
-        if (val > newmax) newmax = val;
-        if (val < newmin) newmin = val;
+        if (val > newmax)
+          newmax = val;
+        if (val < newmin)
+          newmin = val;
       }
     }
     if (!v.HasValue()) {
@@ -251,7 +256,8 @@ void PackInt::UpdateValueFloat(size_t locationInPack, const Value &v) {
 }
 
 void PackInt::UpdateValue(size_t locationInPack, const Value &v) {
-  if (IsDeleted(locationInPack)) return;
+  if (IsDeleted(locationInPack))
+    return;
   if (is_real)
     UpdateValueFloat(locationInPack, v);
   else
@@ -267,7 +273,8 @@ void PackInt::UpdateValue(size_t locationInPack, const Value &v) {
 }
 
 void PackInt::DeleteByRow(size_t locationInPack) {
-  if (IsDeleted(locationInPack)) return;
+  if (IsDeleted(locationInPack))
+    return;
   dpn->synced = false;
 
   if (!IsNull(locationInPack)) {
@@ -290,8 +297,10 @@ void PackInt::DeleteByRow(size_t locationInPack) {
         for (uint j = 0; j < dpn->numOfRecords; j++) {
           if (locationInPack != j && NotNull(j)) {
             auto val = GetValDouble(j);
-            if (val > newmax) newmax = val;
-            if (val < newmin) newmin = val;
+            if (val > newmax)
+              newmax = val;
+            if (val < newmin)
+              newmin = val;
           }
         }
         dpn->min_d = newmin;
@@ -315,8 +324,10 @@ void PackInt::DeleteByRow(size_t locationInPack) {
         for (uint j = 0; j < dpn->numOfRecords; j++) {
           if (locationInPack != j && NotNull(j)) {
             auto val = GetValInt(j) + dpn->min_i;
-            if (val > newmax) newmax = val;
-            if (val < newmin) newmin = val;
+            if (val > newmax)
+              newmax = val;
+            if (val < newmin)
+              newmin = val;
           }
         }
         ExpandOrShrink(newmax - newmin, dpn->min_i - newmin);
@@ -404,8 +415,10 @@ void PackInt::UpdateValueFixed(size_t locationInPack, const Value &v) {
     for (uint j = 0; j < dpn->numOfRecords; j++) {
       if (locationInPack != j && NotNull(j)) {
         auto val = GetValInt(j) + dpn->min_i;
-        if (val > newmax) newmax = val;
-        if (val < newmin) newmin = val;
+        if (val > newmax)
+          newmax = val;
+        if (val < newmin)
+          newmin = val;
       }
     }
 
@@ -416,7 +429,8 @@ void PackInt::UpdateValueFixed(size_t locationInPack, const Value &v) {
       // easy mode
       dpn->sum_i -= oldv;
 
-      if (!dpn->NullOnly()) ExpandOrShrink(newmax - newmin, 0);
+      if (!dpn->NullOnly())
+        ExpandOrShrink(newmax - newmin, 0);
 
       return;
     }
@@ -583,19 +597,22 @@ void PackInt::LoadDataFromFile(system::Stream *fcurfile) {
       ASSERT(!IsModeNoCompression());
 
       uint *cur_buf = (uint *)uptr.get();
-      if (data.ptr == nullptr && data.vt > 0) data.ptr = alloc(data.vt * dpn->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
+      if (data.ptr == nullptr && data.vt > 0)
+        data.ptr = alloc(data.vt * dpn->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
 
       // decompress nulls
 
       if (dpn->numOfNulls > 0) {
         uint null_buf_size = 0;
         null_buf_size = (*(ushort *)cur_buf);
-        if (null_buf_size > bitmapSize) throw common::DatabaseException("Unexpected bytes found in data pack.");
+        if (null_buf_size > bitmapSize)
+          throw common::DatabaseException("Unexpected bytes found in data pack.");
         if (!IsModeNullsCompressed())  // no nulls compression
           std::memcpy(nulls.get(), (char *)cur_buf + 2, null_buf_size);
         else {
           compress::BitstreamCompressor bsc;
-          CprsErr res = bsc.Decompress((char *)nulls.get(), null_buf_size, (char *)cur_buf + 2, dpn->numOfRecords, dpn->numOfNulls);
+          CprsErr res = bsc.Decompress((char *)nulls.get(), null_buf_size, (char *)cur_buf + 2, dpn->numOfRecords,
+                                       dpn->numOfNulls);
           if (res != CprsErr::CPRS_SUCCESS) {
             throw common::DatabaseException("Decompression of nulls failed for column " +
                                             std::to_string(pc_column(GetCoordinate().co.pack) + 1) + ", pack " +
@@ -609,13 +626,14 @@ void PackInt::LoadDataFromFile(system::Stream *fcurfile) {
       if (dpn->numOfDeleted > 0) {
         uint delete_buf_size = 0;
         delete_buf_size = (*(ushort *)cur_buf);
-        if (delete_buf_size > bitmapSize) throw common::DatabaseException("Unexpected bytes found in data pack.");
+        if (delete_buf_size > bitmapSize)
+          throw common::DatabaseException("Unexpected bytes found in data pack.");
         if (!IsModeDeletesCompressed())  // no deletes compression
           std::memcpy(deletes.get(), (char *)cur_buf + 2, delete_buf_size);
         else {
           compress::BitstreamCompressor bsc;
-          CprsErr res =
-              bsc.Decompress((char *)deletes.get(), delete_buf_size, (char *)cur_buf + 2, dpn->numOfRecords, dpn->numOfDeleted);
+          CprsErr res = bsc.Decompress((char *)deletes.get(), delete_buf_size, (char *)cur_buf + 2, dpn->numOfRecords,
+                                       dpn->numOfDeleted);
           if (res != CprsErr::CPRS_SUCCESS) {
             throw common::DatabaseException("Decompression of nulls failed for column " +
                                             std::to_string(pc_column(GetCoordinate().co.pack) + 1) + ", pack " +
@@ -642,7 +660,8 @@ void PackInt::LoadDataFromFile(system::Stream *fcurfile) {
         }
       } else if (data.vt > 0) {
         for (uint o = 0; o < dpn->numOfRecords; o++)
-          if (!IsNull(int(o))) SetVal64(o, 0);
+          if (!IsNull(int(o)))
+            SetVal64(o, 0);
       }
     }
   }
@@ -654,8 +673,10 @@ void PackInt::Save() {
   if (ShouldNotCompress()) {
     SetModeNoCompression();
     dpn->dataLength = 0;
-    if (dpn->numOfNulls) dpn->dataLength += bitmapSize;
-    if (dpn->numOfDeleted) dpn->dataLength += bitmapSize;
+    if (dpn->numOfNulls)
+      dpn->dataLength += bitmapSize;
+    if (dpn->numOfDeleted)
+      dpn->dataLength += bitmapSize;
     dpn->dataLength += data.vt * dpn->numOfRecords;
   } else {
     auto res = Compress();
@@ -679,9 +700,12 @@ void PackInt::Save() {
 }
 
 void PackInt::SaveUncompressed(system::Stream *f) {
-  if (dpn->numOfNulls) f->WriteExact(nulls.get(), bitmapSize);
-  if (dpn->numOfDeleted) f->WriteExact(deletes.get(), bitmapSize);
-  if (data.ptr) f->WriteExact(data.ptr, data.vt * dpn->numOfRecords);
+  if (dpn->numOfNulls)
+    f->WriteExact(nulls.get(), bitmapSize);
+  if (dpn->numOfDeleted)
+    f->WriteExact(deletes.get(), bitmapSize);
+  if (data.ptr)
+    f->WriteExact(data.ptr, data.vt * dpn->numOfRecords);
 }
 
 template <typename etype>
@@ -690,14 +714,17 @@ void PackInt::RemoveNullsAndCompress(compress::NumCompressor<etype> &nc, char *t
   mm::MMGuard<etype> tmp_data;
   if (dpn->numOfNulls > 0) {
     tmp_data = mm::MMGuard<etype>(
-        (etype *)(alloc((dpn->numOfRecords - dpn->numOfNulls) * sizeof(etype), mm::BLOCK_TYPE::BLOCK_TEMPORARY)), *this);
+        (etype *)(alloc((dpn->numOfRecords - dpn->numOfNulls) * sizeof(etype), mm::BLOCK_TYPE::BLOCK_TEMPORARY)),
+        *this);
     for (uint i = 0, d = 0; i < dpn->numOfRecords; i++) {
-      if (!IsNull(i)) tmp_data[d++] = ((etype *)(data.ptr))[i];
+      if (!IsNull(i))
+        tmp_data[d++] = ((etype *)(data.ptr))[i];
     }
   } else
     tmp_data = mm::MMGuard<etype>((etype *)data.ptr, *this, false);
 
-  CprsErr res = nc.Compress(tmp_comp_buffer, tmp_cb_len, tmp_data.get(), dpn->numOfRecords - dpn->numOfNulls, (etype)(maxv));
+  CprsErr res =
+      nc.Compress(tmp_comp_buffer, tmp_cb_len, tmp_data.get(), dpn->numOfRecords - dpn->numOfNulls, (etype)(maxv));
   if (res != CprsErr::CPRS_SUCCESS) {
     std::stringstream msg_buf;
     msg_buf << "Compression of numerical values failed for column " << (pc_column(GetCoordinate().co.pack) + 1)
@@ -740,7 +767,8 @@ std::pair<PackInt::UniquePtr, size_t> PackInt::Compress() {
     for (uint o = 0; o < dpn->numOfRecords; o++) {
       if (!IsNull(o)) {
         cv = (uint64_t)GetValInt(o);
-        if (cv > maxv) maxv = cv;
+        if (cv > maxv)
+          maxv = cv;
       }
     }
   }
@@ -809,7 +837,8 @@ std::pair<PackInt::UniquePtr, size_t> PackInt::Compress() {
   cur_buf = (uint *)compressed_buf;
 
   if (dpn->numOfNulls > 0) {
-    if (comp_null_buf_size > bitmapSize) throw common::DatabaseException("Unexpected bytes found (PackInt::Compress).");
+    if (comp_null_buf_size > bitmapSize)
+      throw common::DatabaseException("Unexpected bytes found (PackInt::Compress).");
 
     *(ushort *)compressed_buf = (ushort)comp_null_buf_size;
     std::memcpy(compressed_buf + 2, comp_null_buf.get(), comp_null_buf_size);

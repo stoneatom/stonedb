@@ -97,7 +97,8 @@ void ValueMatching_OnePosition::Clear() {
 bool ValueMatching_OnePosition::FindCurrentRow([[maybe_unused]] unsigned char *input_buffer, int64_t &row,
                                                bool add_if_new) {
   row = 0;
-  if (no_rows == 1) return true;
+  if (no_rows == 1)
+    return true;
   if (!add_if_new) {
     row = common::NULL_VALUE_64;
     return false;
@@ -170,7 +171,8 @@ bool ValueMatching_LookupTable::FindCurrentRow(unsigned char *input_buffer, int6
   row = 0;
   std::memcpy(&row, input_buffer, matching_width);
   DEBUG_ASSERT(row < max_no_rows);
-  if (occupied->Get(row)) return true;
+  if (occupied->Get(row))
+    return true;
   if (!add_if_new) {
     row = common::NULL_VALUE_64;
     return false;

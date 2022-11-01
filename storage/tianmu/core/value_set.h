@@ -72,12 +72,14 @@ class ValueSet {
   types::RCDataType *Min() const { return min; }
   types::RCDataType *Max() const { return max; }
   int NoVals() const {
-    if (values.empty()) return no_obj;
+    if (values.empty())
+      return no_obj;
     return values.size();
   }
 
   auto begin() {
-    if (!prepared) return values.cend();
+    if (!prepared)
+      return values.cend();
     return values.cbegin();
   }
 

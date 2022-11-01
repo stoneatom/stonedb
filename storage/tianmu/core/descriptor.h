@@ -300,17 +300,20 @@ class DescTree {
   void Display(DescTreeNode *node);
 
   bool Left() {
-    if (!curr || !curr->left) return false;
+    if (!curr || !curr->left)
+      return false;
     curr = curr->left;
     return true;
   }
   bool Right() {
-    if (!curr || !curr->right) return false;
+    if (!curr || !curr->right)
+      return false;
     curr = curr->right;
     return true;
   }
   bool Up() {
-    if (!curr || !curr->parent) return false;
+    if (!curr || !curr->parent)
+      return false;
     curr = curr->parent;
     return true;
   }

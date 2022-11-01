@@ -46,7 +46,6 @@ RdbKey::RdbKey(uint pos, uint keyno, rocksdb::ColumnFamilyHandle *cf_handle, uin
       is_reverse_order_(is_reverse_cf),
       key_name_(_name),
       cols_(cols) {
-
   be_store_index(index_pos_be_, index_pos_);
   ASSERT(cf_handle_ != nullptr, "cf_handle_ is NULL");
 }
@@ -58,7 +57,6 @@ RdbKey::RdbKey(const RdbKey &k)
       is_reverse_order_(k.is_reverse_order_),
       key_name_(k.key_name_),
       cols_(k.cols_) {
-
   be_store_index(index_pos_be_, index_pos_);
 }
 
@@ -83,17 +81,17 @@ const std::string RdbKey::parse_comment(const std::string &comment) {
   std::string qualifier = CF_NAME_QUALIFIER;
 
   for (const auto &it : v) {
-    //can not find the qualifier, return;
+    // can not find the qualifier, return;
     if (it.substr(0, qualifier.length()) != qualifier)
-       break;
+      break;
 
     std::vector<std::string> tokens = parse_into_tokens(it, QUALIFIER_VALUE_SEP);
     if (tokens.size() == 2) {
-        //tokens[0] is comment char. 
-        result = tokens[1];
-        break;
-      }//if tokens.size() == 2 
-  } //for
+      // tokens[0] is comment char.
+      result = tokens[1];
+      break;
+    }  // if tokens.size() == 2
+  }    // for
 
   return result;
 }
@@ -105,7 +103,6 @@ void RdbKey::get_key_cols(std::vector<uint> &cols) {
 }
 
 void RdbKey::pack_field_number(StringWriter &key, std::string_view &field, uchar flag) {
-
   uchar tuple[INTSIZE] = {0};
   copy_integer<false>(tuple, INTSIZE, (const uchar *)field.data(), INTSIZE, flag);
   key.write(tuple, sizeof(tuple));
@@ -113,13 +110,14 @@ void RdbKey::pack_field_number(StringWriter &key, std::string_view &field, uchar
 
 common::ErrorCode RdbKey::unpack_field_number(StringReader &key, std::string &field, uchar flag) {
   const uchar *from;
-  if (!(from = (const uchar *)key.read(INTSIZE))) return common::ErrorCode::FAILED;
+  if (!(from = (const uchar *)key.read(INTSIZE)))
+    return common::ErrorCode::FAILED;
 
   int64_t value = 0;
   char *buf = reinterpret_cast<char *>(&value);
   char sign_byte = from[0];
 
-  flag? buf[INTSIZE - 1] = sign_byte : buf[INTSIZE - 1] = sign_byte ^ 128;  // Reverse the sign bit.
+  flag ? buf[INTSIZE - 1] = sign_byte : buf[INTSIZE - 1] = sign_byte ^ 128;  // Reverse the sign bit.
 
   for (uint i = 0, j = INTSIZE - 1; i < INTSIZE - 1; ++i, --j) buf[i] = from[j];
 
@@ -134,24 +132,25 @@ void RdbKey::pack_field_string(StringWriter &info, StringWriter &key, std::strin
     return;
   }
 
-  //pack the string into data.
+  // pack the string into data.
   StringReader data(field);
   size_t pad_bytes = 0;
   while (true) {
     size_t copy_len = std::min<size_t>(CHUNKSIZE - 1, data.remain_len());
     pad_bytes = CHUNKSIZE - 1 - copy_len;
-    //write the data len.
+    // write the data len.
     key.write((const uchar *)data.read(copy_len), copy_len);
 
     Separator separator;
-    if (pad_bytes) { //not full of A pack string.
-      //write the data.
+    if (pad_bytes) {  // not full of A pack string.
+      // write the data.
       key.write((const uchar *)SPACE.data(), pad_bytes);
       separator = Separator::EQ_SPACES;
-    } else { //a full pack string.
+    } else {  // a full pack string.
       int cmp = 0;
       size_t bytes = std::min(CHUNKSIZE - 1, data.remain_len());
-      if (bytes > 0) cmp = memcmp(data.current_ptr(), SPACE.data(), bytes);
+      if (bytes > 0)
+        cmp = memcmp(data.current_ptr(), SPACE.data(), bytes);
 
       if (cmp < 0) {
         separator = Separator::LE_SPACES;
@@ -165,7 +164,8 @@ void RdbKey::pack_field_string(StringWriter &info, StringWriter &key, std::strin
 
     key.write_uint8(static_cast<uint>(separator));  // last segment
 
-    if (separator == Separator::EQ_SPACES) break;
+    if (separator == Separator::EQ_SPACES)
+      break;
   }
   // pack info only save pad bytes len of last chunk
   info.write_uint16(pad_bytes);
@@ -189,7 +189,7 @@ common::ErrorCode RdbKey::unpack_field_string(StringReader &key, StringReader &i
 
     if (last_byte == static_cast<char>(Separator::EQ_SPACES)) {
       // this is the last segment
-      if (pad_bytes > (CHUNKSIZE - 1)) 
+      if (pad_bytes > (CHUNKSIZE - 1))
         return common::ErrorCode::FAILED;
       used_bytes = (CHUNKSIZE - 1) - pad_bytes;
       finished = true;
@@ -216,7 +216,8 @@ void RdbKey::pack_key(StringWriter &key, std::vector<std::string_view> &fields, 
   info.clear();
   key.write_uint32(index_pos_);
   // version compatible
-  if (index_ver_ > static_cast<uint16_t>(IndexInfoType::INDEX_INFO_VERSION_INITIAL)) info.write_uint16(0);
+  if (index_ver_ > static_cast<uint16_t>(IndexInfoType::INDEX_INFO_VERSION_INITIAL))
+    info.write_uint16(0);
   size_t pos = info.length();
 
   for (uint i = 0; i < fields.size(); i++) {
@@ -273,7 +274,8 @@ common::ErrorCode RdbKey::unpack_key(StringReader &key, StringReader &value, std
 
   key.read_uint32(&index_number);
   // version compatible
-  if (index_ver_ > static_cast<uint16_t>(IndexInfoType::INDEX_INFO_VERSION_INITIAL)) value.read_uint16(&info_len);
+  if (index_ver_ > static_cast<uint16_t>(IndexInfoType::INDEX_INFO_VERSION_INITIAL))
+    value.read_uint16(&info_len);
 
   for (auto &col : cols_) {
     std::string field;
@@ -335,9 +337,8 @@ RdbTable::~RdbTable() { rdb_keys_.clear(); }
 
 // Put table definition DDL entry. Actual write is done at DICTManager::commit
 void RdbTable::put_dict(DICTManager *dict, rocksdb::WriteBatch *const batch, uchar *const key, size_t keylen) {
-
   StringWriter value;
-  //write the ddl version firstly.
+  // write the ddl version firstly.
   value.write_uint16(static_cast<uint>(VersionType::DDL_VERSION));
 
   for (auto &kd : rdb_keys_) {
@@ -346,13 +347,13 @@ void RdbTable::put_dict(DICTManager *dict, rocksdb::WriteBatch *const batch, uch
     if (!if_exist_cf(dict)) {
       dict->add_cf_flags(batch, cf_id, flags);
     }
-    //write column family id.
+    // write column family id.
     value.write_uint32(cf_id);
-    //index pos.
+    // index pos.
     value.write_uint32(kd->GetIndexPos());
     dict->save_index_info(batch, kd->GetIndexVersion(), kd->GetIndexType(), kd->GetIndexPos(), cf_id, kd->cols_);
   }
-  //put the index key.
+  // put the index key.
   dict->put_key(batch, {(char *)key, keylen}, {(char *)value.ptr(), value.length()});
 }
 
@@ -380,11 +381,10 @@ void RdbTable::set_name(const std::string &name) {
 }
 
 bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager_) {
-
   dict_ = dict;
   cf_ = cf_manager_;
   uchar ddl_entry[INDEX_NUMBER_SIZE] = {0};
-  //write meta type : ddl index.
+  // write meta type : ddl index.
   be_store_index(ddl_entry, static_cast<uint32_t>(MetaType::DDL_INDEX));
 
   std::shared_ptr<rocksdb::Iterator> it = dict_->new_iterator();
@@ -396,7 +396,8 @@ bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager_) {
     const rocksdb::Slice key = it->key();
     const rocksdb::Slice val = it->value();
 
-    if (key.size() >= INDEX_NUMBER_SIZE && memcmp(key.data(), ddl_entry, INDEX_NUMBER_SIZE)) break;
+    if (key.size() >= INDEX_NUMBER_SIZE && memcmp(key.data(), ddl_entry, INDEX_NUMBER_SIZE))
+      break;
 
     if (key.size() <= INDEX_NUMBER_SIZE) {
       TIANMU_LOG(LogCtl_Level::ERROR, "RocksDB: Table_store: key has length %d (corruption)", (int)key.size());
@@ -417,9 +418,9 @@ bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager_) {
     const int version = be_read_uint16(&ptr);
     if (version != static_cast<uint>(VersionType::DDL_VERSION)) {
       TIANMU_LOG(LogCtl_Level::ERROR,
-                  "RocksDB: DDL ENTRY Version was not expected.Expected: %d, "
-                  "Actual: %d",
-                  static_cast<uint>(VersionType::DDL_VERSION), version);
+                 "RocksDB: DDL ENTRY Version was not expected.Expected: %d, "
+                 "Actual: %d",
+                 static_cast<uint>(VersionType::DDL_VERSION), version);
       return false;
     }
 
@@ -433,39 +434,39 @@ bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager_) {
       std::vector<ColAttr> vcols;
       if (!dict_->get_index_info(gl_index_id, index_ver, index_type, vcols)) {
         TIANMU_LOG(LogCtl_Level::ERROR,
-                    "RocksDB: Could not get INDEXINFO for Index Number "
-                    "(%u,%u), table %s",
-                    gl_index_id.cf_id, gl_index_id.index_id, tdef->fullname().c_str());
+                   "RocksDB: Could not get INDEXINFO for Index Number "
+                   "(%u,%u), table %s",
+                   gl_index_id.cf_id, gl_index_id.index_id, tdef->fullname().c_str());
         return false;
       }
       if (max_index_id < gl_index_id.index_id) {
         TIANMU_LOG(LogCtl_Level::ERROR,
-                    "RocksDB: Found MetaType::MAX_INDEX_ID %u, but also found larger "
-                    "index %u from INDEXINFO.",
-                    max_index_id, gl_index_id.index_id);
+                   "RocksDB: Found MetaType::MAX_INDEX_ID %u, but also found larger "
+                   "index %u from INDEXINFO.",
+                   max_index_id, gl_index_id.index_id);
         return false;
       }
       // In some abnormal condition, gl_index_id.cf_id(CF Number) is greater
       // than 0 like 3 or 4 just log it and set the CF to 0.
       if (gl_index_id.cf_id != 0) {
         TIANMU_LOG(LogCtl_Level::ERROR,
-                    "Tianmu-RocksDB: Could not get Column Family Flags for CF "
-                    "Number %d, table %s",
-                    gl_index_id.cf_id, tdef->fullname().c_str());
+                   "Tianmu-RocksDB: Could not get Column Family Flags for CF "
+                   "Number %d, table %s",
+                   gl_index_id.cf_id, tdef->fullname().c_str());
         gl_index_id.cf_id = 0;
       }
       if (!dict_->get_cf_flags(gl_index_id.cf_id, flags)) {
         TIANMU_LOG(LogCtl_Level::ERROR,
-                    "RocksDB: Could not get Column Family Flags for CF Number "
-                    "%d, table %s",
-                    gl_index_id.cf_id, tdef->fullname().c_str());
+                   "RocksDB: Could not get Column Family Flags for CF Number "
+                   "%d, table %s",
+                   gl_index_id.cf_id, tdef->fullname().c_str());
         return false;
       }
 
       rocksdb::ColumnFamilyHandle *const cfh = cf_manager_->get_cf_by_id(gl_index_id.cf_id);
 
-      tdef->GetRdbTableKeys().at(keyno) = std::make_shared<RdbKey>(gl_index_id.index_id, keyno, cfh, index_ver, index_type,
-                                                        flags & REVERSE_CF_FLAG, "", vcols);
+      tdef->GetRdbTableKeys().at(keyno) = std::make_shared<RdbKey>(gl_index_id.index_id, keyno, cfh, index_ver,
+                                                                   index_type, flags & REVERSE_CF_FLAG, "", vcols);
     }
     put(tdef);
   }
@@ -479,7 +480,8 @@ bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager_) {
     const rocksdb::Slice key = it->key();
     const rocksdb::Slice val = it->value();
 
-    if (key.size() >= INDEX_NUMBER_SIZE && !key.starts_with(mem_table_entry_slice)) break;
+    if (key.size() >= INDEX_NUMBER_SIZE && !key.starts_with(mem_table_entry_slice))
+      break;
 
     if (key.size() < INDEX_NUMBER_SIZE) {
       break;
@@ -489,9 +491,9 @@ bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager_) {
     const int version = be_read_uint16(&ptr);
     if (version != static_cast<uint>(VersionType::DDL_VERSION)) {
       TIANMU_LOG(LogCtl_Level::ERROR,
-                  "RocksDB: DDL MEMTABLE ENTRY Version was not expected or "
-                  "currupt.Expected: %d, Actual: %d",
-                  static_cast<uint>(VersionType::DDL_VERSION), version);
+                 "RocksDB: DDL MEMTABLE ENTRY Version was not expected or "
+                 "currupt.Expected: %d, Actual: %d",
+                 static_cast<uint>(VersionType::DDL_VERSION), version);
       return false;
     }
 
@@ -500,7 +502,7 @@ bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager_) {
     std::string table_name = std::string(key.data() + INDEX_NUMBER_SIZE, key.size() - INDEX_NUMBER_SIZE);
     if (max_index_id < memtable_id) {
       TIANMU_LOG(LogCtl_Level::ERROR, "RocksDB: Found MAX_MEM_ID %u, but also found larger memtable id %u.",
-                  max_index_id, memtable_id);
+                 max_index_id, memtable_id);
       return false;
     }
     std::shared_ptr<core::RCMemTable> tb_mem = std::make_shared<core::RCMemTable>(table_name, memtable_id, cf_id);
@@ -520,7 +522,8 @@ std::shared_ptr<RdbTable> DDLManager::find(const std::string &table_name) {
   std::scoped_lock guard(lock_);
 
   auto iter = ddl_hash_.find(table_name);
-  if (iter != ddl_hash_.end()) rec = iter->second;
+  if (iter != ddl_hash_.end())
+    rec = iter->second;
 
   return rec;
 }
@@ -607,7 +610,8 @@ std::shared_ptr<core::RCMemTable> DDLManager::find_mem(const std::string &table_
   std::scoped_lock guard(mem_lock_);
 
   auto iter = mem_hash_.find(table_name);
-  if (iter != mem_hash_.end()) return iter->second;
+  if (iter != mem_hash_.end())
+    return iter->second;
 
   return nullptr;
 }
@@ -661,7 +665,8 @@ bool DDLManager::rename_mem(std::string &from, std::string &to, rocksdb::WriteBa
   dict_->put_key(batch, {(const char *)dkey.ptr(), dkey.length()}, origin_value);
 
   auto iter = mem_hash_.find(from);
-  if (iter == mem_hash_.end()) return false;
+  if (iter == mem_hash_.end())
+    return false;
 
   auto tb_mem = iter->second;
   mem_hash_.erase(iter);
@@ -670,11 +675,11 @@ bool DDLManager::rename_mem(std::string &from, std::string &to, rocksdb::WriteBa
 }
 
 bool DICTManager::init(rocksdb::DB *const rdb_dict, CFManager *const cf_manager_) {
-
   db_ = rdb_dict;
   system_cf_ = cf_manager_->get_or_create_cf(db_, DEFAULT_SYSTEM_CF_NAME);
 
-  if (system_cf_ == nullptr) return false;
+  if (system_cf_ == nullptr)
+    return false;
 
   be_store_index(max_index_, static_cast<uint32_t>(MetaType::MAX_INDEX_ID));
 
@@ -707,7 +712,8 @@ std::shared_ptr<rocksdb::Iterator> DICTManager::new_iterator() const {
 }
 
 bool DICTManager::commit(rocksdb::WriteBatch *const batch, const bool &sync) const {
-  if (!batch) return false;
+  if (!batch)
+    return false;
 
   rocksdb::WriteOptions options;
   options.sync = sync;
@@ -890,7 +896,7 @@ bool DICTManager::update_max_index_id(rocksdb::WriteBatch *const batch, const ui
   if (get_max_index_id(&old_index_id)) {
     if (old_index_id > index_id) {
       TIANMU_LOG(LogCtl_Level::ERROR, "RocksDB: Found max index id %u but trying to update to %u.", old_index_id,
-                  index_id);
+                 index_id);
       return true;
     }
   }
@@ -964,8 +970,8 @@ bool DICTManager::is_drop_index_ongoing(const GlobalId &gl_index_id, MetaType dd
 
 uint SeqGenerator::get_and_update_next_number(DICTManager *const dict) {
   uint res;
-  //it not global or shared var, why do we use mutext to protect it? non-sense
-  //std::scoped_lock guard(seq_mutex_);
+  // it not global or shared var, why do we use mutext to protect it? non-sense
+  // std::scoped_lock guard(seq_mutex_);
   res = next_number_++;
 
   const std::unique_ptr<rocksdb::WriteBatch> wb = dict->begin();
@@ -1001,7 +1007,8 @@ rocksdb::ColumnFamilyHandle *CFManager::get_or_create_cf(rocksdb::DB *const rdb_
     cf_handle = it->second;
   } else {
     rocksdb::ColumnFamilyOptions opts;
-    if (!IsRowStoreCF(cf_name)) opts.compaction_filter_factory.reset(new index::IndexCompactFilterFactory);
+    if (!IsRowStoreCF(cf_name))
+      opts.compaction_filter_factory.reset(new index::IndexCompactFilterFactory);
     const rocksdb::Status s = rdb_->CreateColumnFamily(opts, cf_name, &cf_handle);
     if (s.ok()) {
       cf_name_map_[cf_handle->GetName()] = cf_handle;
@@ -1019,7 +1026,8 @@ rocksdb::ColumnFamilyHandle *CFManager::get_cf_by_id(const uint32_t &id) {
   std::scoped_lock guard(cf_mutex_);
 
   const auto it = cf_id_map_.find(id);
-  if (it != cf_id_map_.end()) cf_handle = it->second;
+  if (it != cf_id_map_.end())
+    cf_handle = it->second;
 
   return cf_handle;
 }

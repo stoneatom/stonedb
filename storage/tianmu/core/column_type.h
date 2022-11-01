@@ -121,11 +121,16 @@ struct ColumnType {
   const DTCollation &GetCollation() const { return collation; }
   void SetCollation(DTCollation _collation) { collation = _collation; }
   bool IsNumComparable(const ColumnType &sec) const {
-    if (IsLookup() || sec.IsLookup() || IsString() || sec.IsString()) return false;
-    if (scale != sec.scale) return false;
-    if (IsFixed() && sec.IsFixed()) return true;
-    if (IsFloat() && sec.IsFloat()) return true;
-    if (IsDateTime() && sec.IsDateTime()) return true;
+    if (IsLookup() || sec.IsLookup() || IsString() || sec.IsString())
+      return false;
+    if (scale != sec.scale)
+      return false;
+    if (IsFixed() && sec.IsFixed())
+      return true;
+    if (IsFloat() && sec.IsFloat())
+      return true;
+    if (IsDateTime() && sec.IsDateTime())
+      return true;
     return false;
   }
   common::PackFmt GetFmt() const { return fmt; }

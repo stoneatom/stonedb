@@ -60,15 +60,18 @@ TableShare::~TableShare() {
   if (current.use_count() > 1)
     TIANMU_LOG(LogCtl_Level::FATAL, "TableShare still has ref outside by current %ld", current.use_count());
 
-  if (!write_table.expired()) TIANMU_LOG(LogCtl_Level::FATAL, "TableShare still has ref outside by write table");
+  if (!write_table.expired())
+    TIANMU_LOG(LogCtl_Level::FATAL, "TableShare still has ref outside by write table");
 
   for (auto &t : versions)
-    if (!t.expired()) TIANMU_LOG(LogCtl_Level::FATAL, "TableShare still has ref outside by old versions");
+    if (!t.expired())
+      TIANMU_LOG(LogCtl_Level::FATAL, "TableShare still has ref outside by old versions");
 }
 
 std::shared_ptr<RCTable> TableShare::GetSnapshot() {
   std::scoped_lock guard(current_mtx);
-  if (!current) current = std::make_shared<RCTable>(table_path, this);
+  if (!current)
+    current = std::make_shared<RCTable>(table_path, this);
 
   return current;
 }
@@ -99,7 +102,8 @@ void TableShare::CommitWrite(RCTable *t) {
     current = sp;
     write_table.reset();
     t->PostCommit();
-    if (!save.expired()) versions.push_back(save);
+    if (!save.expired())
+      versions.push_back(save);
   }
 }
 

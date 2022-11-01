@@ -36,7 +36,8 @@ bool RCDataType::AreComperable(const RCDataType &rcdt1, const RCDataType &rcdt2)
 bool RCDataType::compare(const RCDataType &rcdt1, const RCDataType &rcdt2, common::Operator op, char like_esc) {
   // DEBUG_ASSERT(RCDataType::AreComperable(rcdt1, rcdt2));
   if (op == common::Operator::O_LIKE || op == common::Operator::O_NOT_LIKE) {
-    if (rcdt1.IsNull() || rcdt2.IsNull()) return false;
+    if (rcdt1.IsNull() || rcdt2.IsNull())
+      return false;
     BString x, y;
     BString *rcbs1 = dynamic_cast<BString *>(const_cast<RCDataType *>(&rcdt1));
     if (!rcbs1) {
@@ -69,8 +70,10 @@ bool RCDataType::compare(const RCDataType &rcdt, common::Operator op, char like_
 }
 
 bool AreComparable(common::CT attr1_t, common::CT attr2_t) {
-  if (attr1_t == attr2_t) return true;
-  if ((core::ATI::IsDateTimeType(attr1_t)) && (core::ATI::IsDateTimeType(attr2_t))) return true;
+  if (attr1_t == attr2_t)
+    return true;
+  if ((core::ATI::IsDateTimeType(attr1_t)) && (core::ATI::IsDateTimeType(attr2_t)))
+    return true;
   if ((core::ATI::IsTxtType(attr2_t) && attr1_t == common::CT::VARBYTE) ||
       (core::ATI::IsTxtType(attr1_t) && attr2_t == common::CT::VARBYTE))
     return true;
@@ -91,7 +94,8 @@ bool RCDataType::ToDecimal(const RCDataType &in, int scale, RCNum &out) {
       return true;
     }
   } else if (BString *rcs = dynamic_cast<BString *>(const_cast<RCDataType *>(&in))) {
-    if (RCNum::Parse(*rcs, out) == common::ErrorCode::SUCCESS) return true;
+    if (RCNum::Parse(*rcs, out) == common::ErrorCode::SUCCESS)
+      return true;
   }
   return false;
 }
@@ -103,7 +107,8 @@ bool RCDataType::ToInt(const RCDataType &in, RCNum &out) {
       return true;
     }
   } else if (BString *rcs = dynamic_cast<BString *>(const_cast<RCDataType *>(&in))) {
-    if (RCNum::Parse(*rcs, out) == common::ErrorCode::SUCCESS) return true;
+    if (RCNum::Parse(*rcs, out) == common::ErrorCode::SUCCESS)
+      return true;
   }
   return false;
 }
@@ -115,7 +120,8 @@ bool RCDataType::ToReal(const RCDataType &in, RCNum &out) {
       return true;
     }
   } else if (BString *rcs = dynamic_cast<BString *>(const_cast<RCDataType *>(&in))) {
-    if (RCNum::ParseReal(*rcs, out, common::CT::UNK) == common::ErrorCode::SUCCESS) return true;
+    if (RCNum::ParseReal(*rcs, out, common::CT::UNK) == common::ErrorCode::SUCCESS)
+      return true;
   }
   return false;
 }

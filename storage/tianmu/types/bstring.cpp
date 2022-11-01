@@ -76,7 +76,8 @@ BString::~BString() {
 }
 
 BString &BString::operator=(const RCDataType &rcdt) {
-  if (this == &rcdt) return *this;
+  if (this == &rcdt)
+    return *this;
 
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
     *this = (BString &)rcdt;
@@ -101,7 +102,8 @@ void BString::PutString(char *&dest, ushort len, bool move_ptr) const {
     std::memcpy(dest, val_, this->len_);
     std::memset(dest + this->len_, ' ', len - this->len_);
   }
-  if (move_ptr) dest += len;
+  if (move_ptr)
+    dest += len;
 }
 
 void BString::PutVarchar(char *&dest, uchar prefixlen, bool move_ptr) const {
@@ -109,7 +111,8 @@ void BString::PutVarchar(char *&dest, uchar prefixlen, bool move_ptr) const {
     PutString(dest, len_);
   if (len_ == 0) {
     std::memset(dest, 0, prefixlen);
-    if (move_ptr) dest += prefixlen;
+    if (move_ptr)
+      dest += prefixlen;
   } else {
     switch (prefixlen) {
       case 1:
@@ -131,7 +134,8 @@ void BString::PutVarchar(char *&dest, uchar prefixlen, bool move_ptr) const {
 }
 
 BString &BString::operator=(const BString &rcbs) {
-  if (this == &rcbs) return *this;
+  if (this == &rcbs)
+    return *this;
 
   null_ = rcbs.null_;
   if (null_) {
@@ -215,7 +219,8 @@ BString &BString::operator-=(ushort pos) {
 }
 
 bool BString::Like(const BString &pattern, char escape_character) {
-  if (pattern.IsEmpty()) return this->IsEmpty();
+  if (pattern.IsEmpty())
+    return this->IsEmpty();
   BString processed_pattern;  // to be used as an alternative source in case of
                               // processed pattern (escape chars)
   BString processed_wildcards;
@@ -273,7 +278,7 @@ bool BString::Like(const BString &pattern, char escape_character) {
     }
     cur_s_beg = cur_s;
     cur_p_beg = cur_p;
-    do {                                            // internal loop: try to match a part between %...%
+    do {                                             // internal loop: try to match a part between %...%
       while (cur_p < pattern_len && cur_s < len_ &&  // find the first match...
              (v[cur_s] == p[cur_p] || w[cur_p] == '_') && w[cur_p] != '%') {
         cur_s++;
@@ -283,7 +288,8 @@ bool BString::Like(const BString &pattern, char escape_character) {
           ((cur_p < pattern_len && w[cur_p] != '%') || cur_p >= pattern_len)) {  // not matching (loop finished
         // prematurely) - try the next source
         // position
-        if (!was_wild) return false;  // no % up to now => the first non-matching is critical
+        if (!was_wild)
+          return false;  // no % up to now => the first non-matching is critical
         cur_p = cur_p_beg;
         cur_s = ++cur_s_beg;  // step forward in the source, rewind the matching
                               // pointers
@@ -404,7 +410,8 @@ bool BString::IsNullOrEmpty() const { return ((len_ == 0 || null_) ? true : fals
 bool BString::operator==(const RCDataType &rcdt) const {
   if (null_ || rcdt.IsNull())
     return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) == 0;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith((BString &)rcdt) == 0;
   return CompareWith(rcdt.ToBString()) == 0;
 }
 
@@ -417,35 +424,40 @@ bool BString::operator==(const BString &rcs) const {
 bool BString::operator<(const RCDataType &rcdt) const {
   if (null_ || rcdt.IsNull())
     return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) < 0;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith((BString &)rcdt) < 0;
   return CompareWith(rcdt.ToBString()) < 0;
 }
 
 bool BString::operator>(const RCDataType &rcdt) const {
   if (null_ || rcdt.IsNull())
     return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) > 0;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith((BString &)rcdt) > 0;
   return CompareWith(rcdt.ToBString()) > 0;
 }
 
 bool BString::operator>=(const RCDataType &rcdt) const {
   if (null_ || rcdt.IsNull())
     return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) >= 0;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith((BString &)rcdt) >= 0;
   return CompareWith(rcdt.ToBString()) >= 0;
 }
 
 bool BString::operator<=(const RCDataType &rcdt) const {
   if (null_ || rcdt.IsNull())
     return false;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) <= 0;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith((BString &)rcdt) <= 0;
   return CompareWith(rcdt.ToBString()) <= 0;
 }
 
 bool BString::operator!=(const RCDataType &rcdt) const {
   if (null_ || rcdt.IsNull())
     return true;
-  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE) return CompareWith((BString &)rcdt) != 0;
+  if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
+    return CompareWith((BString &)rcdt) != 0;
   return CompareWith(rcdt.ToBString()) != 0;
 }
 
@@ -466,11 +478,13 @@ std::ostream &operator<<(std::ostream &out, const BString &rcbs) {
 void BString::CopyTo(void *dest, size_t count) const {
   uint l = (len_ - pos_) < count ? (len_ - pos_) : count;
   std::memcpy(dest, val_ + pos_, l);
-  if (l <= count) std::memset((char *)dest + l, 0, count - l);
+  if (l <= count)
+    std::memset((char *)dest + l, 0, count - l);
 }
 
 bool operator!=(const BString &rcbs1, const BString &rcbs2) {
-  if (rcbs1.IsNull() || rcbs2.IsNull()) return true;
+  if (rcbs1.IsNull() || rcbs2.IsNull())
+    return true;
   return rcbs1.CompareWith(rcbs2) != 0;
 }
 
@@ -489,7 +503,8 @@ size_t BString::RoundUpTo8Bytes(const DTCollation &dt) const {
       }
 
       DEBUG_ASSERT("wide character unrecognized" && next_char_len > 0);
-      if (useful_len + next_char_len > 8) break;
+      if (useful_len + next_char_len > 8)
+        break;
       useful_len += next_char_len;
     }
   } else

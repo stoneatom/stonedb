@@ -39,18 +39,19 @@ int select_tianmu_export::prepare(List<Item> &list, SELECT_LEX_UNIT *u) {
       }
     }
   }
-      field_term_length = exchange->field.field_term->length();
-    if (!exchange->line.line_term->length())
-        exchange->line.line_term = exchange->field.field_term;  // Use this if it exists
-    field_sep_char = (exchange->field.enclosed->length() ? (*exchange->field.enclosed)[0]
-                                                   : field_term_length ? (*exchange->field.field_term)[0] : INT_MAX);
-    escape_char = (exchange->field.escaped->length() ? (*exchange->field.escaped)[0] : -1);
-    line_sep_char = (exchange->line.line_term->length() ? (*exchange->line.line_term)[0] : INT_MAX);
-  	if (!field_term_length)
-		exchange->field.opt_enclosed = 0;
-    if (!exchange->field.enclosed->length())
-        exchange->field.opt_enclosed = 1;  // A little quicker loop
-    fixed_row_size = (!field_term_length && !exchange->field.enclosed->length() && !blob_flag);
+  field_term_length = exchange->field.field_term->length();
+  if (!exchange->line.line_term->length())
+    exchange->line.line_term = exchange->field.field_term;  // Use this if it exists
+  field_sep_char =
+      (exchange->field.enclosed->length() ? (*exchange->field.enclosed)[0]
+                                          : field_term_length ? (*exchange->field.field_term)[0] : INT_MAX);
+  escape_char = (exchange->field.escaped->length() ? (*exchange->field.escaped)[0] : -1);
+  line_sep_char = (exchange->line.line_term->length() ? (*exchange->line.line_term)[0] : INT_MAX);
+  if (!field_term_length)
+    exchange->field.opt_enclosed = 0;
+  if (!exchange->field.enclosed->length())
+    exchange->field.opt_enclosed = 1;  // A little quicker loop
+  fixed_row_size = (!field_term_length && !exchange->field.enclosed->length() && !blob_flag);
 
   prepared = true;
   return 0;

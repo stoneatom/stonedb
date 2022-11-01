@@ -93,7 +93,8 @@ class AttributeTypeInfo {
     flag[static_cast<int>(enumATI::AUTO_INC)] = auto_inc;
 
     // lookup only applies to string type
-    if (attrt != common::CT::STRING && attrt != common::CT::VARCHAR && Lookup()) fmt = common::PackFmt::DEFAULT;
+    if (attrt != common::CT::STRING && attrt != common::CT::VARCHAR && Lookup())
+      fmt = common::PackFmt::DEFAULT;
   }
   common::CT Type() const { return attrt; }
   common::PackType GetPackType() const {

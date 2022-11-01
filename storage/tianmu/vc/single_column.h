@@ -36,15 +36,15 @@ class SingleColumn : public VirtualColumn {
   /*! \brief Create a virtual column for a given column
    *
    * \param col the column to be "wrapped" by VirtualColumn
-   * \param _mind the multiindex to which the SingleColumn is attached.
+   * \param multi_index the multiindex to which the SingleColumn is attached.
    * \param alias the alias number of the source table
    * \param col_no number of the column in the table, negative if col of
    * core::TempTable \param source_table pointer to the table holding \endcode
-   * col \param dim dimension number in the multiindex holding the column. \e
+   * col \param dim_ dimension number in the multiindex holding the column. \e
    * note: not sure if the pointer to the core::MultiIndex is necessary
    */
-  SingleColumn(core::PhysicalColumn *col, core::MultiIndex *mind, int alias, int col_no, core::JustATable *source_table,
-               int dim);
+  SingleColumn(core::PhysicalColumn *col, core::MultiIndex *multi_index, int alias, int col_no,
+               core::JustATable *source_table, int dim_);
   SingleColumn(const SingleColumn &col);
   ~SingleColumn();
   virtual uint64_t ApproxAnswerSize(core::Descriptor &d) { return col_->ApproxAnswerSize(d); }
@@ -56,13 +56,13 @@ class SingleColumn : public VirtualColumn {
   char *ToString(char p_buf[], size_t buf_ct) const override;
   virtual void TranslateSourceColumns(std::map<core::PhysicalColumn *, core::PhysicalColumn *> &);
   void GetNotNullValueString(types::BString &s, const core::MIIterator &mit) override {
-    col_->GetNotNullValueString(mit[dim], s);
+    col_->GetNotNullValueString(mit[dim_], s);
   }
 
-  int64_t GetNotNullValueInt64(const core::MIIterator &mit) override { return col_->GetNotNullValueInt64(mit[dim]); }
-  bool IsDistinctInTable() override { return col_->IsDistinct(mind->GetFilter(dim)); }
+  int64_t GetNotNullValueInt64(const core::MIIterator &mit) override { return col_->GetNotNullValueInt64(mit[dim_]); }
+  bool IsDistinctInTable() override { return col_->IsDistinct(multi_index_->GetFilter(dim_)); }
   bool IsTempTableColumn() const { return col_->ColType() == core::PhysicalColumn::phys_col_t::ATTR; }
-  void GetTextStat(types::TextStat &s) override { col_->GetTextStat(s, mind->GetFilter(dim)); }
+  void GetTextStat(types::TextStat &s) override { col_->GetTextStat(s, multi_index_->GetFilter(dim_)); }
   bool CanCopy() const override {
     return (col_->ColType() != core::PhysicalColumn::phys_col_t::ATTR);
   }  // cannot copy core::TempTable, as it may be paged
@@ -71,10 +71,10 @@ class SingleColumn : public VirtualColumn {
   }  // TODO: for ATTR check if not materialized and not buffered
 
  protected:
-  int64_t GetValueInt64Impl(const core::MIIterator &mit) override { return col_->GetValueInt64(mit[dim]); }
-  bool IsNullImpl(const core::MIIterator &mit) override { return col_->IsNull(mit[dim]); }
+  int64_t GetValueInt64Impl(const core::MIIterator &mit) override { return col_->GetValueInt64(mit[dim_]); }
+  bool IsNullImpl(const core::MIIterator &mit) override { return col_->IsNull(mit[dim_]); }
   void GetValueStringImpl(types::BString &s, const core::MIIterator &mit) override {
-    col_->GetValueString(mit[dim], s);
+    col_->GetValueString(mit[dim_], s);
   }
   double GetValueDoubleImpl(const core::MIIterator &mit) override;
   types::RCValueObject GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) override;
@@ -87,17 +87,19 @@ class SingleColumn : public VirtualColumn {
   types::BString GetMinStringImpl(const core::MIIterator &) override;
   types::BString GetMaxStringImpl(const core::MIIterator &) override;
 
-  int64_t RoughMinImpl() override { return col_->RoughMin(mind->GetFilter(dim)); }
-  int64_t RoughMaxImpl() override { return col_->RoughMax(mind->GetFilter(dim)); }
+  int64_t RoughMinImpl() override { return col_->RoughMin(multi_index_->GetFilter(dim_)); }
+  int64_t RoughMaxImpl() override { return col_->RoughMax(multi_index_->GetFilter(dim_)); }
   double RoughSelectivity() override;
 
   int64_t GetNumOfNullsImpl(const core::MIIterator &mit, bool val_nulls_possible) override {
     int64_t res;
-    if (mit.GetCurPackrow(dim) >= 0 && !mit.NullsPossibleInPack(dim)) {  // if outer nulls possible - cannot
-                                                                         // calculate precise result
-      if (!val_nulls_possible) return 0;
-      res = col_->GetNumOfNulls(mit.GetCurPackrow(dim));
-      if (res == 0 || mit.WholePack(dim)) return res;
+    if (mit.GetCurPackrow(dim_) >= 0 && !mit.NullsPossibleInPack(dim_)) {  // if outer nulls possible - cannot
+                                                                           // calculate precise result
+      if (!val_nulls_possible)
+        return 0;
+      res = col_->GetNumOfNulls(mit.GetCurPackrow(dim_));
+      if (res == 0 || mit.WholePack(dim_))
+        return res;
     }
 
     return common::NULL_VALUE_64;
@@ -105,15 +107,19 @@ class SingleColumn : public VirtualColumn {
 
   bool IsRoughNullsOnlyImpl() const override { return col_->IsRoughNullsOnly(); }
   bool IsNullsPossibleImpl(bool val_nulls_possible) override {
-    if (mind->NullsExist(dim)) return true;
-    if (val_nulls_possible && col_->GetNumOfNulls(-1) != 0) return true;
+    if (multi_index_->NullsExist(dim_))
+      return true;
+    if (val_nulls_possible && col_->GetNumOfNulls(-1) != 0)
+      return true;
     return false;
   }
 
   int64_t GetSumImpl(const core::MIIterator &mit, bool &nonnegative) override;
   int64_t GetApproxSumImpl(const core::MIIterator &mit, bool &nonnegative) override;
 
-  bool IsDistinctImpl() override { return (col_->IsDistinct(mind->GetFilter(dim)) && mind->CanBeDistinct(dim)); }
+  bool IsDistinctImpl() override {
+    return (col_->IsDistinct(multi_index_->GetFilter(dim_)) && multi_index_->CanBeDistinct(dim_));
+  }
   int64_t GetApproxDistValsImpl(bool incl_nulls, core::RoughMultiIndex *rough_mind) override;
   int64_t GetExactDistVals() override;
   size_t MaxStringSizeImpl() override;  // maximal byte string length in column
@@ -122,7 +128,7 @@ class SingleColumn : public VirtualColumn {
   void EvaluatePackImpl(core::MIUpdatingIterator &mit, core::Descriptor &desc) override;
   virtual common::ErrorCode EvaluateOnIndexImpl(core::MIUpdatingIterator &mit, core::Descriptor &desc,
                                                 int64_t limit) override {
-    return col_->EvaluateOnIndex(mit, dim, desc, limit);
+    return col_->EvaluateOnIndex(mit, dim_, desc, limit);
   }
 
   bool TryToMerge(core::Descriptor &d1, core::Descriptor &d2) override;
@@ -135,10 +141,10 @@ class SingleColumn : public VirtualColumn {
     return dummy;
   }
 
-  core::PhysicalColumn *col_;  //!= NULL if SingleColumn encapsulates a single
+  core::PhysicalColumn *col_;  //!= nullptr if SingleColumn encapsulates a single
                                //! column only (no expression)
                                //	this an easily accessible copy
-                               // var_map[0].tab->GetColumn(var_map[0].col_ndx)
+                               // var_map_[0].just_a_table->GetColumn(var_map_[0].)
 };
 }  // namespace vcolumn
 }  // namespace Tianmu

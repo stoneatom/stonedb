@@ -15,13 +15,13 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
+#include "core/ctask.h"
 #include "core/descriptor.h"
 #include "core/joiner.h"
 #include "core/mi_new_contents.h"
 #include "core/mi_updating_iterator.h"
 #include "core/transaction.h"
 #include "vc/virtual_column.h"
-#include "core/ctask.h"
 
 namespace Tianmu {
 namespace core {
@@ -33,12 +33,15 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
   bool false_desc_found = false;
   bool non_true_desc_found = false;
   for (int i = 0; i < no_desc; i++) {
-    if (cond[i].IsFalse()) false_desc_found = true;
-    if (!cond[i].IsTrue()) non_true_desc_found = true;
+    if (cond[i].IsFalse())
+      false_desc_found = true;
+    if (!cond[i].IsTrue())
+      non_true_desc_found = true;
     pack_desc_locked.push_back(false);
     cond[i].DimensionUsed(all_dims);
   }
-  if (!non_true_desc_found) return;
+  if (!non_true_desc_found)
+    return;
   mind->MarkInvolvedDimGroups(all_dims);
   DimensionVector outer_dims(cond[0].right_dims);
   if (!outer_dims.IsEmpty()) {
@@ -50,14 +53,16 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
     all_dims.Plus(cond[0].left_dims);  // for FALSE join condition
                                        // DimensionUsed() does not mark anything
     for (int i = 0; i < mind->NumOfDimensions(); i++)
-      if (all_dims[i]) mind->Empty(i);
+      if (all_dims[i])
+        mind->Empty(i);
     return;  // all done
   }
   MIIterator mit(mind, all_dims);
   MINewContents new_mind(mind, tips);
   new_mind.SetDimensions(all_dims);
   int64_t approx_size = (tips.limit > -1 ? tips.limit : mit.NumOfTuples() / 4);
-  if (!tips.count_only) new_mind.Init(approx_size);  // an initial size of IndexTable
+  if (!tips.count_only)
+    new_mind.Init(approx_size);  // an initial size of IndexTable
 
   int64_t tuples_in_output = 0;
   bool loc_result;
@@ -68,15 +73,15 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
   if (!outer_dims.IsEmpty())
     ExecuteOuterJoinLoop(cond, new_mind, all_dims, outer_dims, tuples_in_output, tips.limit);
   else {
-    // TODO: There is no time to continue to optimize this parameter, 
+    // TODO: There is no time to continue to optimize this parameter,
     // later need to provide a configurable parameter to
     // control whether to enable multithreading
 #ifdef INNER_JOIN_LOOP_MULTI_THREAD
     ExecuteInnerJoinLoopMultiThread(mit, cond, new_mind, all_dims, pack_desc_locked, tuples_in_output, tips.limit,
-                                     tips.count_only);
+                                    tips.count_only);
 #else
     ExecuteInnerJoinLoopSingleThread(mit, cond, new_mind, all_dims, pack_desc_locked, tuples_in_output, tips.limit,
-                                       tips.count_only);
+                                     tips.count_only);
 #endif
   }
   // Postprocessing and cleanup
@@ -97,9 +102,7 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
 void JoinerGeneral::ExecuteInnerJoinPackRow(MIIterator *mii, CTask *task, Condition *cond, MINewContents *new_mind,
                                             DimensionVector *all_dims, std::vector<bool> *_pack_desc_locked,
                                             int64_t *tuples_in_output, int64_t limit, bool count_only,
-                                            bool *stop_execution,
-                                            int64_t *rows_passed, int64_t *rows_omitted) 
-{
+                                            bool *stop_execution, int64_t *rows_passed, int64_t *rows_omitted) {
   std::scoped_lock guard(mtx);
   int no_desc = (*cond).Size();
 
@@ -114,7 +117,8 @@ void JoinerGeneral::ExecuteInnerJoinPackRow(MIIterator *mii, CTask *task, Condit
     if (mii->PackrowStarted()) {
       bool omit_this_packrow = false;
       for (int i = 0; (i < no_desc && !omit_this_packrow); i++)
-        if ((*cond)[i].EvaluateRoughlyPack(*mii) == common::RSValue::RS_NONE) omit_this_packrow = true;
+        if ((*cond)[i].EvaluateRoughlyPack(*mii) == common::RSValue::RS_NONE)
+          omit_this_packrow = true;
       for (int i = 0; i < no_desc; i++) pack_desc_locked[i] = false;  // delay locking
       if (new_mind->NoMoreTuplesPossible())
         break;  // stop the join if nothing new may be obtained in some optimized cases
@@ -125,37 +129,42 @@ void JoinerGeneral::ExecuteInnerJoinPackRow(MIIterator *mii, CTask *task, Condit
         continue;
       }
     }
-{
-    bool loc_result = true;
-    for (int i = 0; (i < no_desc && loc_result); i++) {
-      if (!pack_desc_locked[i]) {
-        (*cond)[i].LockSourcePacks(*mii);
-        pack_desc_locked[i] = true;
+    {
+      bool loc_result = true;
+      for (int i = 0; (i < no_desc && loc_result); i++) {
+        if (!pack_desc_locked[i]) {
+          (*cond)[i].LockSourcePacks(*mii);
+          pack_desc_locked[i] = true;
+        }
+
+        if (types::RequiresUTFConversions((*cond)[i].GetCollation())) {
+          if ((*cond)[i].CheckCondition_UTF(*mii) == false)
+            loc_result = false;
+        } else {
+          if ((*cond)[i].CheckCondition(*mii) == false)
+            loc_result = false;
+        }
       }
 
-      if (types::RequiresUTFConversions((*cond)[i].GetCollation())) {
-        if ((*cond)[i].CheckCondition_UTF(*mii) == false) loc_result = false;
-      } else {
-        if ((*cond)[i].CheckCondition(*mii) == false) loc_result = false;
+      if (loc_result) {
+        if (!count_only) {
+          for (int i = 0; i < mind->NumOfDimensions(); i++)
+            if ((*all_dims)[i])
+              new_mind->SetNewTableValue(i, (*mii)[i]);
+          new_mind->CommitNewTableValues();
+        }
+        (*tuples_in_output)++;
       }
-    }
 
-    if (loc_result) {
-      if (!count_only) {
-        for (int i = 0; i < mind->NumOfDimensions(); i++)
-          if ((*all_dims)[i]) new_mind->SetNewTableValue(i, (*mii)[i]);
-        new_mind->CommitNewTableValues();
-      }
-      (*tuples_in_output)++;
-    }
-    
-    (*rows_passed)++;
-    if (m_conn->Killed()) throw common::KilledException();
-    if (limit > -1 && *tuples_in_output >= limit) *stop_execution = true;
+      (*rows_passed)++;
+      if (m_conn->Killed())
+        throw common::KilledException();
+      if (limit > -1 && *tuples_in_output >= limit)
+        *stop_execution = true;
 
-    
-    mii->Increment();
-    if (mii->PackrowStarted()) break;
+      mii->Increment();
+      if (mii->PackrowStarted())
+        break;
     }
 
     ++index;
@@ -166,8 +175,7 @@ void JoinerGeneral::ExecuteInnerJoinPackRow(MIIterator *mii, CTask *task, Condit
 void JoinerGeneral::TaskInnerJoinPacks(MIIterator *taskIterator, CTask *task, Condition *cond, MINewContents *new_mind,
                                        DimensionVector *all_dims, std::vector<bool> *pack_desc_locked_p,
                                        int64_t *tuples_in_output, int64_t limit, bool count_only, bool *stop_execution,
-                                       int64_t *rows_passed, int64_t *rows_omitted) 
-{
+                                       int64_t *rows_passed, int64_t *rows_omitted) {
   int no_desc = (*cond).Size();
 
   std::vector<bool> pack_desc_locked;
@@ -184,8 +192,7 @@ void JoinerGeneral::TaskInnerJoinPacks(MIIterator *taskIterator, CTask *task, Co
       MIInpackIterator mii(*taskIterator);
 
       ExecuteInnerJoinPackRow(&mii, task, &cd, new_mind, all_dims, &pack_desc_locked, tuples_in_output, limit,
-                              count_only,
-                              stop_execution, rows_passed, rows_omitted);
+                              count_only, stop_execution, rows_passed, rows_omitted);
     }
 
     taskIterator->NextPackrow();
@@ -193,76 +200,83 @@ void JoinerGeneral::TaskInnerJoinPacks(MIIterator *taskIterator, CTask *task, Co
   }
 }
 
-  // A single thread handles nested loop.
+// A single thread handles nested loop.
 // The purpose of this function is to provide an option that can be handled by a single thread
 void JoinerGeneral::ExecuteInnerJoinLoopSingleThread(MIIterator &mit, Condition &cond, MINewContents &new_mind,
-    DimensionVector& all_dims, std::vector<bool>& pack_desc_locked,
-    int64_t& tuples_in_output, int64_t limit, bool count_only) {
-    rc_control_.lock(m_conn->GetThreadID()) << "Starting joiner loop (" << mit.NumOfTuples() << " rows)." << system::unlock;
-    bool stop_execution = false;
-    bool loc_result = false;
-    int no_desc = cond.Size();
-    int64_t rows_passed = 0;
-    int64_t rows_omitted = 0;
+                                                     DimensionVector &all_dims, std::vector<bool> &pack_desc_locked,
+                                                     int64_t &tuples_in_output, int64_t limit, bool count_only) {
+  rc_control_.lock(m_conn->GetThreadID())
+      << "Starting joiner loop (" << mit.NumOfTuples() << " rows)." << system::unlock;
+  bool stop_execution = false;
+  bool loc_result = false;
+  int no_desc = cond.Size();
+  int64_t rows_passed = 0;
+  int64_t rows_omitted = 0;
 
-    while (mit.IsValid() && !stop_execution) {
-      if (mit.PackrowStarted()) {
-        bool omit_this_packrow = false;
-        for (int i = 0; (i < no_desc && !omit_this_packrow); i++)
-          if (cond[i].EvaluateRoughlyPack(mit) == common::RSValue::RS_NONE) omit_this_packrow = true;
-        for (int i = 0; i < no_desc; i++) pack_desc_locked[i] = false;  // delay locking
-        if (new_mind.NoMoreTuplesPossible())
-          break;  // stop the join if nothing new may be obtained in some
-                  // optimized cases
-        if (omit_this_packrow) {
-          rows_omitted += mit.GetPackSizeLeft();
-          rows_passed += mit.GetPackSizeLeft();
-          mit.NextPackrow();
-          continue;
-        }
+  while (mit.IsValid() && !stop_execution) {
+    if (mit.PackrowStarted()) {
+      bool omit_this_packrow = false;
+      for (int i = 0; (i < no_desc && !omit_this_packrow); i++)
+        if (cond[i].EvaluateRoughlyPack(mit) == common::RSValue::RS_NONE)
+          omit_this_packrow = true;
+      for (int i = 0; i < no_desc; i++) pack_desc_locked[i] = false;  // delay locking
+      if (new_mind.NoMoreTuplesPossible())
+        break;  // stop the join if nothing new may be obtained in some
+                // optimized cases
+      if (omit_this_packrow) {
+        rows_omitted += mit.GetPackSizeLeft();
+        rows_passed += mit.GetPackSizeLeft();
+        mit.NextPackrow();
+        continue;
       }
-      loc_result = true;
-      for (int i = 0; (i < no_desc && loc_result); i++) {
-        if (!pack_desc_locked[i]) {  // delayed locking - maybe will not be
-                                     // locked at all?
-          cond[i].LockSourcePacks(mit);
-          pack_desc_locked[i] = true;
-        }
-        if (types::RequiresUTFConversions(cond[i].GetCollation())) {
-          if (cond[i].CheckCondition_UTF(mit) == false) loc_result = false;
-        } else {
-          if (cond[i].CheckCondition(mit) == false) loc_result = false;
-        }
-      }
-      if (loc_result) {
-        if (!count_only) {
-          for (int i = 0; i < mind->NumOfDimensions(); i++)
-            if (all_dims[i]) new_mind.SetNewTableValue(i, mit[i]);
-          new_mind.CommitNewTableValues();
-        }
-        tuples_in_output++;
-      }
-      ++mit;
-      rows_passed++;
-      if (m_conn->Killed()) throw common::KilledException();
-      if (limit > -1 && tuples_in_output >= limit) stop_execution = true;
     }
+    loc_result = true;
+    for (int i = 0; (i < no_desc && loc_result); i++) {
+      if (!pack_desc_locked[i]) {  // delayed locking - maybe will not be
+                                   // locked at all?
+        cond[i].LockSourcePacks(mit);
+        pack_desc_locked[i] = true;
+      }
+      if (types::RequiresUTFConversions(cond[i].GetCollation())) {
+        if (cond[i].CheckCondition_UTF(mit) == false)
+          loc_result = false;
+      } else {
+        if (cond[i].CheckCondition(mit) == false)
+          loc_result = false;
+      }
+    }
+    if (loc_result) {
+      if (!count_only) {
+        for (int i = 0; i < mind->NumOfDimensions(); i++)
+          if (all_dims[i])
+            new_mind.SetNewTableValue(i, mit[i]);
+        new_mind.CommitNewTableValues();
+      }
+      tuples_in_output++;
+    }
+    ++mit;
+    rows_passed++;
+    if (m_conn->Killed())
+      throw common::KilledException();
+    if (limit > -1 && tuples_in_output >= limit)
+      stop_execution = true;
+  }
 
-     if (rows_passed > 0 && rows_omitted > 0) {
-       rc_control_.lock(m_conn->GetThreadID())
-          << "Roughly omitted " << int(rows_omitted / double(rows_passed) * 1000) / 10.0 << "% rows." << system::unlock;
-     }
+  if (rows_passed > 0 && rows_omitted > 0) {
+    rc_control_.lock(m_conn->GetThreadID())
+        << "Roughly omitted " << int(rows_omitted / double(rows_passed) * 1000) / 10.0 << "% rows." << system::unlock;
+  }
 }
 
 // Instead of the original inner Join function block,
 // as the top-level call of inner Join,
 // internal split multiple threads to separate different subsets for processing
 void JoinerGeneral::ExecuteInnerJoinLoopMultiThread(MIIterator &mit, Condition &cond, MINewContents &new_mind,
-                                         DimensionVector &all_dims, std::vector<bool> &pack_desc_locked,
-                                         int64_t &tuples_in_output, int64_t limit, bool count_only) {
+                                                    DimensionVector &all_dims, std::vector<bool> &pack_desc_locked,
+                                                    int64_t &tuples_in_output, int64_t limit, bool count_only) {
   rc_control_.lock(m_conn->GetThreadID())
       << "Starting joiner loop (" << mit.NumOfTuples() << " rows)." << system::unlock;
-  
+
   int packnum = 0;
   while (mit.IsValid()) {
     int64_t packrow_length = mit.GetPackSizeLeft();
@@ -272,7 +286,7 @@ void JoinerGeneral::ExecuteInnerJoinLoopMultiThread(MIIterator &mit, Condition &
 
   int hardware_concurrency = std::thread::hardware_concurrency();
   // TODO: The original code was the number of CPU cores divided by 4, and the reason for that is to be traced further
-  int threads_num =  hardware_concurrency > 4 ? (hardware_concurrency / 4) : 1;
+  int threads_num = hardware_concurrency > 4 ? (hardware_concurrency / 4) : 1;
 
   int loopcnt = 0;
   int mod = 0;
@@ -285,10 +299,10 @@ void JoinerGeneral::ExecuteInnerJoinLoopMultiThread(MIIterator &mit, Condition &
 
     --threads_num;
   } while ((num <= 1) && (threads_num >= 1));
-  
-  TIANMU_LOG(LogCtl_Level::DEBUG, "ExecuteInnerJoinLoopMultiThreading packnum: %d threads_num: %d loopcnt: %d num: %d mod: %d",
-             packnum, threads_num,
-             loopcnt, num, mod);
+
+  TIANMU_LOG(LogCtl_Level::DEBUG,
+             "ExecuteInnerJoinLoopMultiThreading packnum: %d threads_num: %d loopcnt: %d num: %d mod: %d", packnum,
+             threads_num, loopcnt, num, mod);
 
   std::vector<CTask> vTask;
   vTask.reserve(loopcnt);
@@ -336,8 +350,8 @@ void JoinerGeneral::ExecuteInnerJoinLoopMultiThread(MIIterator &mit, Condition &
 
   utils::result_set<void> res;
   for (size_t i = 0; i < vTask.size(); ++i) {
-    res.insert(
-        ha_rcengine_->query_thread_pool.add_task(&JoinerGeneral::TaskInnerJoinPacks, this, &taskIterator[i], &vTask[i], &cond, &new_mind, &all_dims,
+    res.insert(ha_rcengine_->query_thread_pool.add_task(
+        &JoinerGeneral::TaskInnerJoinPacks, this, &taskIterator[i], &vTask[i], &cond, &new_mind, &all_dims,
         &pack_desc_locked, &tuples_in_output, limit, count_only, &stop_execution, &rows_passed, &rows_omitted));
   }
 
@@ -359,7 +373,8 @@ void JoinerGeneral::ExecuteOuterJoinLoop(Condition &cond, MINewContents &new_min
   int no_desc = cond.Size();
   bool outer_nulls_only = true;  // true => omit all non-null tuples
   for (int j = 0; j < outer_dims.Size(); j++)
-    if (outer_dims[j] && tips.null_only[j] == false) outer_nulls_only = false;
+    if (outer_dims[j] && tips.null_only[j] == false)
+      outer_nulls_only = false;
 
   mind->MarkInvolvedDimGroups(outer_dims);
   DimensionVector non_outer_dims(all_dims);
@@ -374,7 +389,8 @@ void JoinerGeneral::ExecuteOuterJoinLoop(Condition &cond, MINewContents &new_min
     MIDummyIterator complex_mit(nout_mit);
 
     while (out_mit.IsValid() && !stop_execution) {
-      if (out_mit.PackrowStarted()) packrow_started = true;
+      if (out_mit.PackrowStarted())
+        packrow_started = true;
       complex_mit.Combine(out_mit);
       if (packrow_started) {
         for (int i = 0; i < no_desc; i++) cond[i].LockSourcePacks(complex_mit);
@@ -383,16 +399,19 @@ void JoinerGeneral::ExecuteOuterJoinLoop(Condition &cond, MINewContents &new_min
       loc_result = true;
       for (int i = 0; (i < no_desc && loc_result); i++) {
         if (types::RequiresUTFConversions(cond[i].GetCollation())) {
-          if (cond[i].CheckCondition_UTF(complex_mit) == false) loc_result = false;
+          if (cond[i].CheckCondition_UTF(complex_mit) == false)
+            loc_result = false;
         } else {
-          if (cond[i].CheckCondition(complex_mit) == false) loc_result = false;
+          if (cond[i].CheckCondition(complex_mit) == false)
+            loc_result = false;
         }
       }
       if (loc_result) {
         if (!outer_nulls_only) {
           if (!tips.count_only) {
             for (int i = 0; i < mind->NumOfDimensions(); i++)
-              if (all_dims[i]) new_mind.SetNewTableValue(i, complex_mit[i]);
+              if (all_dims[i])
+                new_mind.SetNewTableValue(i, complex_mit[i]);
             new_mind.CommitNewTableValues();
           }
           tuples_in_output++;
@@ -400,8 +419,10 @@ void JoinerGeneral::ExecuteOuterJoinLoop(Condition &cond, MINewContents &new_min
         tuple_used = true;
       }
       ++out_mit;
-      if (m_conn->Killed()) throw common::KilledException();
-      if (output_limit > -1 && tuples_in_output >= output_limit) stop_execution = true;
+      if (m_conn->Killed())
+        throw common::KilledException();
+      if (output_limit > -1 && tuples_in_output >= output_limit)
+        stop_execution = true;
     }
     if (!tuple_used && !stop_execution) {
       if (!tips.count_only) {

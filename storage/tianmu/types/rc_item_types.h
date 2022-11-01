@@ -54,7 +54,7 @@ class Item_sum_int_rcbase : public Item_sum_num {
   void update_field() override;
   const char *func_name() const override { return "count("; };
 
-public:
+ public:
   int64_t count_;
 };
 
@@ -80,14 +80,14 @@ class Item_sum_sum_rcbase : public Item_sum_num {
   void reset_field() override {}
   const char *func_name() const override { return "sum("; }
 
-public:
+ public:
   double sum_;
   Item_result hybrid_type_;
   my_decimal decimal_buffs_[1];
 };
 
 class Item_sum_hybrid_rcbase : public Item_sum {
-public:
+ public:
   Item_sum_hybrid_rcbase();
   ~Item_sum_hybrid_rcbase();
 
@@ -113,8 +113,8 @@ public:
   const char *func_name() const override { return "min("; }
   bool get_date(MYSQL_TIME *ltime, uint fuzzydate) override { return get_date_from_string(ltime, fuzzydate); }
   bool get_time(MYSQL_TIME *ltime) override { return get_time_from_string(ltime); }
- 
-public:
+
+ public:
   String value_;
   enum_field_types hybrid_field_type_;
   Item_result hybrid_type_;

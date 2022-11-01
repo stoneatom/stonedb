@@ -269,7 +269,8 @@ class TempTable : public JustATable {
   int64_t RoughMax([[maybe_unused]] int n_a, Filter *f = NULL) { return common::PLUS_INF_64; }
 
   uint MaxStringSize(int n_a, Filter *f = NULL) override {
-    if (n_a < 0) return GetFieldSize(-n_a - 1);
+    if (n_a < 0)
+      return GetFieldSize(-n_a - 1);
     return GetFieldSize(n_a);
   }
 

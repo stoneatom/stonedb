@@ -39,9 +39,11 @@ class ValueOrNull final {
   ~ValueOrNull() { Clear(); }
   ValueOrNull &operator=(ValueOrNull const &von);
   bool operator!=(ValueOrNull const &v) const {
-    if (null && v.null) return false;
+    if (null && v.null)
+      return false;
 
-    if ((null && (!v.null)) || (!null && v.null)) return true;
+    if ((null && (!v.null)) || (!null && v.null))
+      return true;
 
     bool diff = false;
     if (sp) {
@@ -103,7 +105,8 @@ class ValueOrNull final {
 
   void Swap(ValueOrNull &von);
   void Clear() {
-    if (string_owner) delete[] sp;
+    if (string_owner)
+      delete[] sp;
     sp = nullptr;
     string_owner = false;
     null = true;

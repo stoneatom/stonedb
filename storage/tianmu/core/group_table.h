@@ -118,10 +118,12 @@ class GroupTable : public mm::TraceableObject {
   bool IsFull() { return !not_full; }  // no place left or all groups found
   void SetAsFull() { not_full = false; }
   bool MayBeParallel() const {
-    if (distinct_present) return false;
+    if (distinct_present)
+      return false;
 
     for (auto &ag : aggregated_desc) {
-      if (ag.operation == GT_Aggregation::GT_GROUP_CONCAT) return false;
+      if (ag.operation == GT_Aggregation::GT_GROUP_CONCAT)
+        return false;
     }
     return true;
   }
@@ -214,7 +216,7 @@ class GroupTable : public mm::TraceableObject {
   std::vector<bool> distinct;
   std::vector<vcolumn::VirtualColumn *> vc;
   std::vector<TIANMUAggregator *> aggregator;  // a table of actual aggregators
-  std::vector<ColumnBinEncoder *> encoder;      // encoders for grouping columns
+  std::vector<ColumnBinEncoder *> encoder;     // encoders for grouping columns
 
   // "distinct" part
   std::vector<std::shared_ptr<GroupDistinctTable>> gdistinct;  // Empty if not used

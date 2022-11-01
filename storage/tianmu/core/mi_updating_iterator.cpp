@@ -26,7 +26,8 @@ MIUpdatingIterator::MIUpdatingIterator(MultiIndex *_mind, DimensionVector &dimen
   bool success = mind->IteratorUpdatingLock();
   (void)success;          // FIXME: error handling
   DEBUG_ASSERT(success);  // Multiindex was already locked for reading or updating!
-  if (one_filter_dim > -1 && !(it[it_for_dim[one_filter_dim]]->InternallyUpdatable())) one_filter_dim = -1;
+  if (one_filter_dim > -1 && !(it[it_for_dim[one_filter_dim]]->InternallyUpdatable()))
+    one_filter_dim = -1;
   if (one_filter_dim == -1) {
     multi_dim_filter.reset(new Filter(no_obj, pack_power));
     multi_dim_filter->Set();
@@ -55,13 +56,14 @@ void MIUpdatingIterator::ResetCurrentPack() {
 }
 
 void MIUpdatingIterator::Commit(bool recalculate_no_tuples) {
-  if (!changed) return;
+  if (!changed)
+    return;
   if (one_filter_dim > -1) {
     one_filter_it->CommitUpdate();  // working directly on multiindex filer
                                     // (special case)
     if (recalculate_no_tuples)
       mind->UpdateNumOfTuples();  // not for parallel WHERE - shallow copy of
-                               // MultiIndex/Filter
+                                  // MultiIndex/Filter
   } else {
     multi_dim_filter->Commit();
     mind->IteratorUnlock();  // unlock to allow creating the iterator below
@@ -146,7 +148,8 @@ bool MIUpdatingIterator::SwapPackFilter(int pack, Filter *f)  // swap the conten
   DEBUG_ASSERT(one_filter_it);
   Commit(false);
   Filter *f_old = mind->GetFilter(one_filter_dim);
-  if (f_old->IsFull(pack)) return false;
+  if (f_old->IsFull(pack))
+    return false;
   f_old->SwapPack(*f, pack);
   return true;
 }
