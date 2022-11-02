@@ -30,15 +30,15 @@ class SequenceGenerator {
   SequenceGenerator &operator=(const SequenceGenerator &) = delete;
   SequenceGenerator() {
     using namespace std::chrono;
-    sequence.store(duration_cast<seconds>(system_clock::now().time_since_epoch()).count() << 32);
-    sequence += 10000;  // in case the server restarts into service in less than
-                        // one second
+    sequence_.store(duration_cast<seconds>(system_clock::now().time_since_epoch()).count() << 32);
+    sequence_ += 10000;  // in case the server restarts into service in less than
+                         // one second
   }
 
-  uint64_t NextID() { return ++sequence; }
+  uint64_t NextID() { return ++sequence_; }
 
  private:
-  std::atomic<std::uint64_t> sequence;
+  std::atomic<std::uint64_t> sequence_;
 };
 
 }  // namespace common
