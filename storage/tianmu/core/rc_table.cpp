@@ -361,7 +361,7 @@ void RCTable::CommitVersion() {
   // directory containing the file has also reached disk.  For that an
   // explicit fsync() on a file descriptor for the directory is also needed.
   auto dir = ::opendir(m_path.c_str());
-  if (dir == NULL) {
+  if (dir == nullptr) {
     throw std::system_error(errno, std::system_category(), "opendir() " + p.string());
   }
 
@@ -796,7 +796,7 @@ uint64_t RCTable::ProceedNormal(system::IOParameters &iop) {
 }
 
 int RCTable::binlog_load_query_log_event(system::IOParameters &iop) {
-  char *load_data_query, *end, *fname_start, *fname_end, *p = NULL;
+  char *load_data_query, *end, *fname_start, *fname_end, *p = nullptr;
   size_t pl = 0;
   List<Item> fv;
   Item *item;
@@ -877,7 +877,7 @@ int RCTable::binlog_load_query_log_event(system::IOParameters &iop) {
   if (!(load_data_query = (char *)thd->alloc(lle.get_query_buffer_length() + 1 + pl)))
     return -1;
 
-  lle.print_query(FALSE, ex->cs ? ex->cs->csname : NULL, load_data_query, &end, &fname_start, &fname_end);
+  lle.print_query(FALSE, ex->cs ? ex->cs->csname : nullptr, load_data_query, &end, &fname_start, &fname_end);
 
   std::strcpy(end, p);
   end += pl;
@@ -912,7 +912,7 @@ size_t RCTable::max_row_length(std::vector<loader::ValueCache> &vcs, uint row, u
 }
 
 int RCTable::binlog_insert2load_log_event(system::IOParameters &iop) {
-  char *load_data_query, *p = NULL;
+  char *load_data_query, *p = nullptr;
   size_t pl = 0;
   List<Item> fv;
 
@@ -999,7 +999,7 @@ int RCTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, uint
     }
     for (uint att = 0; att < m_attrs.size(); ++att) {
       if (vcs[att].IsNull(i)) {
-        std::memcpy(ptr, "NULL", 4);
+        std::memcpy(ptr, "nullptr", 4);
         ptr += 4;
         if (att < cols - 1) {
           *ptr = FIELDS_DELIMITER;

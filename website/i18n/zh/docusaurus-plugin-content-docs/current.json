@@ -86,5 +86,21 @@
   "sidebar.autoSidebar.category.Troubleshooting": {
     "message": "故障诊断",
     "description": "The label for category Connect to StoneDB in sidebar autoSidebar"
+  },  
+  "sidebar.autoSidebar.category.Quick Deployment": {
+    "message": "快速部署",
+    "description": "The label for category Quick Deployment in sidebar autoSidebar"
+  },  
+  "sidebar.autoSidebar.category.Compile StoneDB on CentOS7.x": {
+    "message": "在CentOS7.x上编译StoneDB",
+    "description": "The label for category Compile StoneDB on CentOS7.x in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Compile StoneDB on RedHat7.x": {
+    "message": "在RedHat7.x上编译StoneDB",
+    "description": "The label for category Compile StoneDB on RedHat7.x in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Compile StoneDB on Ubuntu20.04": {
+    "message": "在Ubuntu20.04上编译StoneDB",
+    "description": "The label for category Compile StoneDB on Ubuntu20.04 in sidebar autoSidebar"
   }
 }

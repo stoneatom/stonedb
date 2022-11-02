@@ -46,8 +46,8 @@ size_t strnxfrm(const DTCollation &collation, uchar *src, size_t src_len, const 
 }
 
 void SetMySQLTHD(THD *thd) {
-	my_thread_set_THR_THD(thd);
-    my_thread_set_THR_MALLOC(&thd->mem_root);
+  my_thread_set_THR_THD(thd);
+  my_thread_set_THR_MALLOC(&thd->mem_root);
 }
 
 }  // namespace common

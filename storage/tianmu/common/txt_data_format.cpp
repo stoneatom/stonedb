@@ -36,13 +36,18 @@ std::unique_ptr<exporter::DataExporter> TxtDataFormat::CreateDataExporter(const 
 //! Number of bytes taken by a value when written out,
 //! or number of chars if collation not binary and CT::STRING or CT::VARCHAR
 uint TxtDataFormat::StaticExtrnalSize(CT attrt, uint precision, int scale, const DTCollation *col) {
-  if (attrt == CT::NUM) return 1 + precision + (scale ? 1 : 0) + (precision == (uint)scale ? 1 : 0);
+  if (attrt == CT::NUM)
+    return 1 + precision + (scale ? 1 : 0) + (precision == (uint)scale ? 1 : 0);
   // because "-0.1" may be declared as DEC(1,1), so 18 decimal places may take
   // 21 characters
-  if (attrt == CT::BYTE || attrt == CT::VARBYTE || attrt == CT::BIN) return precision * 2;
-  if (attrt == CT::TIME_N || attrt == CT::DATETIME_N) return precision + scale + 1;
-  if (attrt == CT::TIME) return 10;
-  if (attrt == CT::DATETIME || attrt == CT::TIMESTAMP) return 19;
+  if (attrt == CT::BYTE || attrt == CT::VARBYTE || attrt == CT::BIN)
+    return precision * 2;
+  if (attrt == CT::TIME_N || attrt == CT::DATETIME_N)
+    return precision + scale + 1;
+  if (attrt == CT::TIME)
+    return 10;
+  if (attrt == CT::DATETIME || attrt == CT::TIMESTAMP)
+    return 19;
   if (attrt == CT::DATE)
     return 10;
   else if (attrt == CT::INT)
@@ -59,7 +64,7 @@ uint TxtDataFormat::StaticExtrnalSize(CT attrt, uint precision, int scale, const
     return 23;
   else if (attrt == CT::FLOAT)
     return 15;
-  if (col == NULL)
+  if (col == nullptr)
     return precision;
   else
     return precision / col->collation->mbmaxlen;  // at creation, the charlen was multiplicated by

@@ -83,7 +83,8 @@ union DT {
     second = my_time.second;
     microsecond = my_time.second_part;
     neg = my_time.neg;
-    if (my_time.time_type == MYSQL_TIMESTAMP_TIME) time_hour = my_time.hour;
+    if (my_time.time_type == MYSQL_TIMESTAMP_TIME)
+      time_hour = my_time.hour;
   }
 
   bool Neg() const { return neg == 1; }
@@ -98,27 +99,32 @@ union DT {
     my_time->neg = neg;
     my_time->time_type = t;
 
-    if (t == MYSQL_TIMESTAMP_TIME) my_time->hour = time_hour;
+    if (t == MYSQL_TIMESTAMP_TIME)
+      my_time->hour = time_hour;
   }
 
   // util functions
   static int64_t DateSortEncoding(int64_t v) {
-    if (v != common::MINUS_INF_64 && v != common::PLUS_INF_64) return (v >> 37);  // omit sec, min, hour
+    if (v != common::MINUS_INF_64 && v != common::PLUS_INF_64)
+      return (v >> 37);  // omit sec, min, hour
     return v;
   }
 
   static int64_t DateSortDecoding(int64_t v) {
-    if (v != common::MINUS_INF_64 && v != common::PLUS_INF_64) return (v << 37);  // omit sec, min, hour
+    if (v != common::MINUS_INF_64 && v != common::PLUS_INF_64)
+      return (v << 37);  // omit sec, min, hour
     return v;
   }
 
   static int64_t YearSortEncoding(int64_t v) {
-    if (v != common::MINUS_INF_64 && v != common::PLUS_INF_64) return (v >> 46);  // omit sec, min, hour, day, month
+    if (v != common::MINUS_INF_64 && v != common::PLUS_INF_64)
+      return (v >> 46);  // omit sec, min, hour, day, month
     return v;
   }
 
   static int64_t YearSortDecoding(int64_t v) {
-    if (v != common::MINUS_INF_64 && v != common::PLUS_INF_64) return (v << 46);  // omit sec, min, hour, day, month
+    if (v != common::MINUS_INF_64 && v != common::PLUS_INF_64)
+      return (v << 46);  // omit sec, min, hour, day, month
     return v;
   }
 };
@@ -318,7 +324,7 @@ class RCDateTime : public ValueBasic<RCDateTime> {
    * Date: 				YYYYMMDD
    * DATETIME/TIMESTAM:	YYYYMMDDHHMMSS
    * \param value result of the conversion
-   * \return false if it is NULL, true otherwise
+   * \return false if it is nullptr, true otherwise
    */
   bool ToInt64(int64_t &value) const;
   char *GetDataBytesPointer() const override { return (char *)&dt_; }
@@ -449,7 +455,8 @@ class rc_hash_compare {
   size_t operator()(const Key k) const { return k->GetHashCode() & 1048575; };
   bool operator()(const Key &k1, const Key &k2) const {
     if (dynamic_cast<RCNum *>(k1)) {
-      if (dynamic_cast<RCNum *>(k2)) return *k1 == *k2;
+      if (dynamic_cast<RCNum *>(k2))
+        return *k1 == *k2;
     } else if (AreComparable(k1->Type(), k2->Type()))
       return *k1 == *k2;
     return false;
@@ -549,13 +556,16 @@ static inline bool IsCaseInsensitive(const DTCollation &coll) {
 
 inline DTCollation ResolveCollation(DTCollation first, DTCollation sec) {
   if (sec.collation != first.collation && sec.derivation <= first.derivation) {
-    if ((IsUnicode(first) && !IsUnicode(sec)) || (IsBinary(first) && !IsBinary(sec))) return first;
+    if ((IsUnicode(first) && !IsUnicode(sec)) || (IsBinary(first) && !IsBinary(sec)))
+      return first;
     if (sec.derivation < first.derivation || (IsUnicode(sec) && !IsUnicode(first)) ||
         (IsBinary(sec) && !IsBinary(first)))
       return sec;
     if (std::strcmp(sec.collation->csname, first.collation->csname) == 0) {
-      if (IsBin(first)) return first;
-      if (IsBin(sec)) return sec;
+      if (IsBin(first))
+        return first;
+      if (IsBin(sec))
+        return sec;
     }
     DEBUG_ASSERT(!"Error: Incompatible collations!");
   }
@@ -618,7 +628,8 @@ static inline uint64_t Uint64PowOfTenMultiply5(short exponent) {
                          50000000000000000ULL,
                          500000000000000000ULL,
                          5000000000000000000ULL};
-  if (exponent >= 0 && exponent < 19) return v[exponent];
+  if (exponent >= 0 && exponent < 19)
+    return v[exponent];
   return (uint64_t)PowOfTen(exponent) * 5;
 }
 

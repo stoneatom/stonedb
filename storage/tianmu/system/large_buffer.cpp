@@ -47,8 +47,10 @@ LargeBuffer::LargeBuffer(int num, int requested_size) : size_(requested_size), b
 }
 
 LargeBuffer::~LargeBuffer() {
-  if (flush_thread_.joinable()) flush_thread_.join();
-  if (tianmu_stream_) tianmu_stream_->Close();
+  if (flush_thread_.joinable())
+    flush_thread_.join();
+  if (tianmu_stream_)
+    tianmu_stream_->Close();
 }
 
 bool LargeBuffer::BufOpen(const IOParameters &iop) {
@@ -69,7 +71,8 @@ bool LargeBuffer::BufOpen(const IOParameters &iop) {
 }
 
 void LargeBuffer::BufFlush() {
-  if (buf_used_ > size_) TIANMU_LOG(LogCtl_Level::ERROR, "LargeBuffer error: Buffer overrun (Flush)");
+  if (buf_used_ > size_)
+    TIANMU_LOG(LogCtl_Level::ERROR, "LargeBuffer error: Buffer overrun (Flush)");
   if (flush_thread_.joinable()) {
     flush_thread_.join();
   }
@@ -77,7 +80,8 @@ void LargeBuffer::BufFlush() {
     TIANMU_LOG(LogCtl_Level::ERROR, "Write operation to file or pipe failed_.");
     throw common::FileException("Write operation to file or pipe failed_.");
   }
-  flush_thread_ = std::thread(std::bind(&LargeBuffer::BufFlushThread, this, tianmu_stream_.get(), buf_, buf_used_, &failed_));
+  flush_thread_ =
+      std::thread(std::bind(&LargeBuffer::BufFlushThread, this, tianmu_stream_.get(), buf_, buf_used_, &failed_));
   UseNextBuf();
 }
 
@@ -87,7 +91,8 @@ void LargeBuffer::BufFlushThread(Stream *s, char *buf_ptr, int len, bool *failed
     while (end != len) {
       start = end;
       end += WRITE_TO_PIPE_NO_BYTES;
-      if (end > len) end = len;
+      if (end > len)
+        end = len;
       try {
         s->WriteExact(buf_ptr + start, end - start);
       } catch (common::DatabaseException &) {
@@ -102,9 +107,11 @@ void LargeBuffer::BufFlushThread(Stream *s, char *buf_ptr, int len, bool *failed
 void LargeBuffer::BufClose()  // close the buffer; warning: does not flush data
                               // on disk
 {
-  if (flush_thread_.joinable()) flush_thread_.join();
+  if (flush_thread_.joinable())
+    flush_thread_.join();
 
-  if (tianmu_stream_) tianmu_stream_->Close();
+  if (tianmu_stream_)
+    tianmu_stream_->Close();
 
   buf_used_ = 0;
   if (buf_[size_ + 1] != D_OVERRUN_GUARDIAN) {
@@ -121,7 +128,7 @@ void LargeBuffer::FlushAndClose() {
 char *LargeBuffer::BufAppend(unsigned int len) {
   if ((int)len > size_) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Error: LargeBuffer buffer overrun (BufAppend)");
-    return NULL;
+    return nullptr;
   }
   int buf_pos = buf_used_;
   if (size_ > (int)(buf_used_ + len))

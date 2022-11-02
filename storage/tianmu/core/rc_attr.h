@@ -53,7 +53,7 @@ class TextStat;
 
 // ENCODING LEVELS
 // 0 - text values of attributes
-//     NULL represented as '\0' string or null pointer
+//     nullptr represented as '\0' string or null pointer
 // 1 - int encoded:
 //		common::CT::INT,common::CT::NUM   - int64_t value,
 // common::NULL_VALUE_64 for null, may be also
@@ -97,14 +97,17 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   bool IsDelete(int64_t row);
 
   const types::RCDataType &ValuePrototype(bool lookup_to_num) const {
-    if ((Type().IsLookup() && lookup_to_num) || ATI::IsNumericType(TypeName())) return types::RCNum::NullValue();
-    if (ATI::IsStringType(TypeName())) return types::BString::NullValue();
+    if ((Type().IsLookup() && lookup_to_num) || ATI::IsNumericType(TypeName()))
+      return types::RCNum::NullValue();
+    if (ATI::IsStringType(TypeName()))
+      return types::BString::NullValue();
     DEBUG_ASSERT(ATI::IsDateTimeType(TypeName()));
     return types::RCDateTime::NullValue();
   }
 
   int64_t GetValueInt64(int64_t obj) const override {
-    if (obj == common::NULL_VALUE_64) return common::NULL_VALUE_64;
+    if (obj == common::NULL_VALUE_64)
+      return common::NULL_VALUE_64;
     DEBUG_ASSERT(hdr.numOfRecords >= static_cast<uint64_t>(obj));
     auto pack = row2pack(obj);
     const auto &dpn = get_dpn(pack);
@@ -113,14 +116,17 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
       DEBUG_ASSERT(pack_type == common::PackType::INT);
       DEBUG_ASSERT(p->IsLocked());  // assuming it is already loaded and locked
       int inpack = row2offset(obj);
-      if (p->IsNull(inpack)) return common::NULL_VALUE_64;
+      if (p->IsNull(inpack))
+        return common::NULL_VALUE_64;
       int64_t res = p->GetValInt(inpack);  // 2-level encoding
       // Natural encoding
-      if (ATI::IsRealType(TypeName())) return res;
+      if (ATI::IsRealType(TypeName()))
+        return res;
       res += dpn.min_i;
       return res;
     }
-    if (dpn.NullOnly()) return common::NULL_VALUE_64;
+    if (dpn.NullOnly())
+      return common::NULL_VALUE_64;
     // the only possibility: uniform
     ASSERT(dpn.min_i == dpn.max_i);
     return dpn.min_i;
@@ -135,7 +141,8 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
 
       int64_t res = get_packN(pack)->GetValInt(row2offset(obj));  // 2-level encoding
       // Natural encoding
-      if (ATI::IsRealType(TypeName())) return res;
+      if (ATI::IsRealType(TypeName()))
+        return res;
       res += dpn.min_i;
       return res;
     }
@@ -144,19 +151,22 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   }
 
   bool IsNull(int64_t obj) const override {
-    if (obj == common::NULL_VALUE_64) return true;
+    if (obj == common::NULL_VALUE_64)
+      return true;
     DEBUG_ASSERT(hdr.numOfRecords >= static_cast<uint64_t>(obj));
     auto pack = row2pack(obj);
     const auto &dpn = get_dpn(pack);
 
-    if (Type().NotNull() || dpn.numOfNulls == 0) return false;
+    if (Type().NotNull() || dpn.numOfNulls == 0)
+      return false;
 
     if (!dpn.Trivial()) {
       DEBUG_ASSERT(get_pack(pack)->IsLocked());  // assuming the pack is already loaded and locked
       return get_pack(pack)->IsNull(row2offset(obj));
     }
 
-    if (dpn.NullOnly()) return true;
+    if (dpn.NullOnly())
+      return true;
 
     if ((pack_type == common::PackType::STR) && !dpn.Trivial()) {
       DEBUG_ASSERT(0);
@@ -267,12 +277,12 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   uint64_t ApproxAnswerSize(Descriptor &d) override;
 
   // maximal byte string length in column
-  size_t MaxStringSize(Filter *f = NULL) override;
+  size_t MaxStringSize(Filter *f = nullptr) override;
   bool IsDistinct(Filter *f) override;
   // for numerical: best rough approximation of min/max for a given filter (or
-  // global min if filter is NULL) or rough filter
-  int64_t RoughMin(Filter *f, common::RSValue *rf = NULL) override;
-  int64_t RoughMax(Filter *f, common::RSValue *rf = NULL) override;
+  // global min if filter is nullptr) or rough filter
+  int64_t RoughMin(Filter *f, common::RSValue *rf = nullptr) override;
+  int64_t RoughMax(Filter *f, common::RSValue *rf = nullptr) override;
 
   // Rough queries and indexes
   // Note that you should release all indexes after using a series of
@@ -291,11 +301,11 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   void RoughStats(double &hist_density, int &trivial_packs, double &span);
   void DisplayAttrStats(Filter *f) override;  // filter is for # of objects in packs
   double RoughSelectivity() override;
-  void GetTextStat(types::TextStat &s, Filter *f = NULL) override;
+  void GetTextStat(types::TextStat &s, Filter *f = nullptr) override;
 
   std::vector<int64_t> GetListOfDistinctValuesInPack(int pack) override;
 
-  void LoadData(loader::ValueCache *nvs, Transaction *conn_info = NULL);
+  void LoadData(loader::ValueCache *nvs, Transaction *conn_info = nullptr);
   void LoadPackInfo(Transaction *trans_ = current_txn_);
   void LoadProcessedData([[maybe_unused]] std::unique_ptr<system::Stream> &s,
                          [[maybe_unused]] size_t no_rows){/* TODO */};
@@ -345,7 +355,7 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   PackStr *get_packS(size_t i) const { return reinterpret_cast<PackStr *>(get_pack(i)); }
   DPN &get_last_dpn() { return *m_share->get_dpn_ptr(m_idx.back()); }
   const DPN &get_last_dpn() const { return *m_share->get_dpn_ptr(m_idx.back()); }
-  
+
   void EvaluatePack_IsNoDelete(MIUpdatingIterator &mit, int dim);
   void EvaluatePack_IsNull(MIUpdatingIterator &mit, int dim);
   void EvaluatePack_NotNull(MIUpdatingIterator &mit, int dim);

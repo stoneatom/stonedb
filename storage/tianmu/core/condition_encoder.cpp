@@ -36,8 +36,8 @@ ConditionEncoder::ConditionEncoder(bool additional_nulls, uint32_t power)
       in_type(ColumnType(common::CT::UNK)),
       sharp(false),
       encoding_done(false),
-      attr(NULL),
-      desc(NULL),
+      attr(nullptr),
+      desc(nullptr),
       pack_power(power) {}
 
 ConditionEncoder::~ConditionEncoder() {}
@@ -47,10 +47,12 @@ void ConditionEncoder::DoEncode() {
     return;  // No actual encoding needed, just mark it as encoded. Type
              // correspondence checked earlier.
   TransformWithRespectToNulls();
-  if (!IsTransformationNeeded()) return;
+  if (!IsTransformationNeeded())
+    return;
 
   DescriptorTransformation();
-  if (!IsTransformationNeeded()) return;
+  if (!IsTransformationNeeded())
+    return;
 
   if (ATI::IsStringType(AttrTypeName()))
     EncodeConditionOnStringColumn();
@@ -60,7 +62,8 @@ void ConditionEncoder::DoEncode() {
 
 void ConditionEncoder::operator()(Descriptor &desc) {
   MEASURE_FET("ConditionEncoder::operator()(...)");
-  if (desc.encoded) return;
+  if (desc.encoded)
+    return;
 
   auto tab = std::static_pointer_cast<RCTable>(desc.attr.vc->GetVarMap()[0].GetTabPtr());
   attr = tab->GetAttr(desc.attr.vc->GetVarMap()[0].col_ndx);
@@ -84,11 +87,13 @@ void ConditionEncoder::DescriptorTransformation() {
     DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(desc->val1.vc));
     return;
   }
-  if (desc->op == common::Operator::O_EQ_ANY) desc->op = common::Operator::O_IN;
+  if (desc->op == common::Operator::O_EQ_ANY)
+    desc->op = common::Operator::O_IN;
 
-  if (desc->op == common::Operator::O_NOT_EQ_ALL) desc->op = common::Operator::O_NOT_IN;
+  if (desc->op == common::Operator::O_NOT_EQ_ALL)
+    desc->op = common::Operator::O_NOT_IN;
 
-  static MIIterator mit(NULL, pack_power);
+  static MIIterator mit(nullptr, pack_power);
   if (desc->val1.IsNull() ||
       (!IsSetOperator(desc->op) && desc->val1.vc && desc->val1.vc->IsConst() && desc->val1.vc->IsNull(mit))) {
     desc->op = common::Operator::O_FALSE;
@@ -153,7 +158,8 @@ void ConditionEncoder::DescriptorTransformation() {
         desc->val1.vc_id = desc->table->AddVirtColumn(desc->val1.vc);
       }
     }
-    if (desc->op == common::Operator::O_FALSE || desc->op == common::Operator::O_TRUE) return;
+    if (desc->op == common::Operator::O_FALSE || desc->op == common::Operator::O_TRUE)
+      return;
     if (!IsSetOperator(desc->op) && (desc->val1.vc)->IsMultival()) {
       vcolumn::MultiValColumn &mvc = static_cast<vcolumn::MultiValColumn &>(*desc->val1.vc);
       vcolumn::VirtualColumn *vc = new vcolumn::ConstColumn(mvc.GetValue(mit), mvc.Type());
@@ -191,7 +197,7 @@ void ConditionEncoder::TransformWithRespectToNulls() {
   if ((IsSetAllOperator(desc->op) || desc->op == common::Operator::O_NOT_IN) && desc->val1.vc &&
       desc->val1.vc->IsMultival()) {
     vcolumn::MultiValColumn *mvc = static_cast<vcolumn::MultiValColumn *>(desc->val1.vc);
-    MIIterator mit(NULL, pack_power);
+    MIIterator mit(nullptr, pack_power);
     // Change to common::Operator::O_FALSE for non-subselect columns, or non-correlated
     // subselects (otherwise ContainsNulls needs feeding arguments)
     if (mvc->ContainsNull(mit)) {
@@ -207,7 +213,8 @@ void ConditionEncoder::EncodeConditionOnStringColumn() {
   DEBUG_ASSERT(ATI::IsStringType(AttrTypeName()));
 
   TextTransformation();
-  if (!IsTransformationNeeded()) return;
+  if (!IsTransformationNeeded())
+    return;
 
   if (desc->op == common::Operator::O_IN || desc->op == common::Operator::O_NOT_IN)
     TransformINs();
@@ -229,7 +236,7 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
   int64_t v1 = 0;
   int64_t v2 = 0;
   bool v1_rounded = false, v2_rounded = false;
-  static MIIterator mit(NULL, pack_power);
+  static MIIterator mit(nullptr, pack_power);
 
   vcolumn::MultiValColumn *mvc = 0;
   if (desc->val1.vc && (desc->val1.vc)->IsMultival()) {
@@ -289,15 +296,20 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
       return;
     }
 
-    if (ISTypeOfLessOperator(desc->op) && v1 >= 0) desc->op = common::Operator::O_LESS_EQ;
+    if (ISTypeOfLessOperator(desc->op) && v1 >= 0)
+      desc->op = common::Operator::O_LESS_EQ;
 
-    if (ISTypeOfLessEqualOperator(desc->op) && v1 < 0) desc->op = common::Operator::O_LESS;
+    if (ISTypeOfLessEqualOperator(desc->op) && v1 < 0)
+      desc->op = common::Operator::O_LESS;
 
-    if (ISTypeOfMoreOperator(desc->op) && v1 < 0) desc->op = common::Operator::O_MORE_EQ;
+    if (ISTypeOfMoreOperator(desc->op) && v1 < 0)
+      desc->op = common::Operator::O_MORE_EQ;
 
-    if (ISTypeOfMoreEqualOperator(desc->op) && v1 >= 0) desc->op = common::Operator::O_MORE;
+    if (ISTypeOfMoreEqualOperator(desc->op) && v1 >= 0)
+      desc->op = common::Operator::O_MORE;
 
-    if ((desc->op == common::Operator::O_BETWEEN || desc->op == common::Operator::O_NOT_BETWEEN) && v1 >= 0) v1 += 1;
+    if ((desc->op == common::Operator::O_BETWEEN || desc->op == common::Operator::O_NOT_BETWEEN) && v1 >= 0)
+      v1 += 1;
   }
 
   if (v2_rounded && (desc->op == common::Operator::O_BETWEEN || desc->op == common::Operator::O_NOT_BETWEEN) && v2 < 0)
@@ -309,11 +321,13 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
     return;
   }
 
-  if (ISTypeOfEqualOperator(desc->op) || ISTypeOfNotEqualOperator(desc->op)) v2 = v1;
+  if (ISTypeOfEqualOperator(desc->op) || ISTypeOfNotEqualOperator(desc->op))
+    v2 = v1;
 
   if (ISTypeOfLessOperator(desc->op)) {
     if (!ATI::IsRealType(AttrTypeName())) {
-      if (v1 > common::MINUS_INF_64) v2 = v1 - 1;
+      if (v1 > common::MINUS_INF_64)
+        v2 = v1 - 1;
       v1 = common::MINUS_INF_64;
     } else {
       if (*(double *)&v1 > common::MINUS_INF_DBL)
@@ -324,7 +338,8 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
 
   if (ISTypeOfMoreOperator(desc->op)) {
     if (!ATI::IsRealType(AttrTypeName())) {
-      if (v1 != common::PLUS_INF_64) v1 += 1;
+      if (v1 != common::PLUS_INF_64)
+        v1 += 1;
       v2 = common::PLUS_INF_64;
     } else {
       if (*(double *)&(v1) != common::PLUS_INF_DBL)
@@ -369,7 +384,7 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
 
 void ConditionEncoder::TransformLIKEsPattern() {
   MEASURE_FET("ConditionEncoder::TransformLIKEsPattern(...)");
-  static MIIterator const mit(NULL, pack_power);
+  static MIIterator const mit(nullptr, pack_power);
   types::BString pattern;
   desc->val1.vc->GetValueString(pattern, mit);
   uint min_len = 0;
@@ -414,7 +429,7 @@ void ConditionEncoder::TransformLIKEsIntoINsOnLookup() {
     desc->op = common::Operator::O_NOT_IN;
 
   ValueSet valset(desc->table->Getpackpower());
-  static MIIterator mid(NULL, pack_power);
+  static MIIterator mid(nullptr, pack_power);
   in_type = ColumnType(common::CT::NUM);
   types::BString pattern;
   desc->val1.vc->GetValueString(pattern, mid);
@@ -426,9 +441,10 @@ void ConditionEncoder::TransformLIKEsIntoINsOnLookup() {
                              desc->like_esc, '_', '%');
     } else
       res = attr->GetRealString(i).Like(pattern, desc->like_esc);
-    if (res) valset.Add64(i);
+    if (res)
+      valset.Add64(i);
   }
-  desc->val1.vc = new vcolumn::InSetColumn(in_type, NULL, valset);
+  desc->val1.vc = new vcolumn::InSetColumn(in_type, nullptr, valset);
   desc->val1.vc_id = desc->table->AddVirtColumn(desc->val1.vc);
   if (static_cast<vcolumn::InSetColumn &>(*desc->val1.vc).IsEmpty(mid)) {
     if (desc->op == common::Operator::O_IN)
@@ -441,7 +457,8 @@ void ConditionEncoder::TransformLIKEsIntoINsOnLookup() {
 void ConditionEncoder::TransformLIKEs() {
   MEASURE_FET("ConditionEncoder::TransformLIKEs(...)");
   TransformLIKEsPattern();
-  if (!IsTransformationNeeded()) return;
+  if (!IsTransformationNeeded())
+    return;
 
   if (attr->Type().IsLookup() && (desc->op == common::Operator::O_LIKE || desc->op == common::Operator::O_NOT_LIKE))
     TransformLIKEsIntoINsOnLookup();
@@ -449,15 +466,16 @@ void ConditionEncoder::TransformLIKEs() {
 
 void ConditionEncoder::TransformINsOnLookup() {
   MEASURE_FET("ConditionEncoder::TransformINsOnLookup(...)");
-  static MIIterator mid(NULL, pack_power);
+  static MIIterator mid(nullptr, pack_power);
   ValueSet valset(desc->table->Getpackpower());
   types::BString s;
   for (int i = 0; i < attr->Cardinality(); i++) {
     s = attr->GetRealString(i);
-    if ((static_cast<vcolumn::MultiValColumn *>(desc->val1.vc))->Contains(mid, s) == true) valset.Add64(i);
+    if ((static_cast<vcolumn::MultiValColumn *>(desc->val1.vc))->Contains(mid, s) == true)
+      valset.Add64(i);
   }
   in_type = ColumnType(common::CT::NUM);
-  desc->val1.vc = new vcolumn::InSetColumn(in_type, NULL, valset);
+  desc->val1.vc = new vcolumn::InSetColumn(in_type, nullptr, valset);
   desc->val1.vc_id = desc->table->AddVirtColumn(desc->val1.vc);
   if (static_cast<vcolumn::InSetColumn &>(*desc->val1.vc).IsEmpty(mid)) {
     if (desc->op == common::Operator::O_IN)
@@ -469,7 +487,7 @@ void ConditionEncoder::TransformINsOnLookup() {
 
 void ConditionEncoder::TransformIntoINsOnLookup() {
   MEASURE_FET("ConditionEncoder::TransformIntoINsOnLookup(...)");
-  static MIIterator mit(NULL, pack_power);
+  static MIIterator mit(nullptr, pack_power);
   ValueSet vset_positive(desc->table->Getpackpower());
   ValueSet vset_negative(desc->table->Getpackpower());
   types::BString s, vs1, vs2;
@@ -481,14 +499,16 @@ void ConditionEncoder::TransformIntoINsOnLookup() {
     else if ((desc->op == common::Operator::O_LESS_ANY || desc->op == common::Operator::O_LESS_EQ_ANY) ||
              (desc->op == common::Operator::O_MORE_ALL || desc->op == common::Operator::O_MORE_EQ_ALL))
       vo = static_cast<vcolumn::MultiValColumn &>(*desc->val1.vc).GetSetMax(mit);
-    if (vo.Get()) vs1 = vo.Get()->ToBString();
+    if (vo.Get())
+      vs1 = vo.Get()->ToBString();
   } else if (desc->val1.vc->IsConst())
     desc->val1.vc->GetValueString(vs1, mit);
 
   if (desc->op == common::Operator::O_BETWEEN || desc->op == common::Operator::O_NOT_BETWEEN) {
     if (desc->val2.vc->IsMultival() && static_cast<vcolumn::MultiValColumn &>(*desc->val2.vc).NumOfValues(mit) > 0) {
       vo = static_cast<vcolumn::MultiValColumn &>(*desc->val2.vc).GetSetMin(mit);
-      if (vo.Get()) vs2 = vo.Get()->ToBString();
+      if (vo.Get())
+        vs2 = vo.Get()->ToBString();
     } else if (desc->val2.vc->IsConst())
       desc->val2.vc->GetValueString(vs2, mit);
   }
@@ -520,25 +540,27 @@ void ConditionEncoder::TransformIntoINsOnLookup() {
           (ISTypeOfLessEqualOperator(desc->op) && cmp1 <= 0) || (ISTypeOfMoreEqualOperator(desc->op) && cmp1 >= 0) ||
           ((desc->op == common::Operator::O_BETWEEN) && cmp1 >= 0 && cmp2 <= 0) ||
           ((desc->op == common::Operator::O_NOT_BETWEEN) && (cmp1 < 0 || cmp2 > 0))) {
-        if (count1 <= attr->Cardinality() / 2 + 1) vset_positive.Add64(i);
+        if (count1 <= attr->Cardinality() / 2 + 1)
+          vset_positive.Add64(i);
         count1++;
         if (single_value_search) {
           count0 += attr->Cardinality() - i - 1;
           break;
         }
       } else {
-        if (!single_value_search && count0 <= attr->Cardinality() / 2 + 1) vset_negative.Add64(i);
+        if (!single_value_search && count0 <= attr->Cardinality() / 2 + 1)
+          vset_negative.Add64(i);
         count0++;
       }
     }
 
     if (count1 <= count0) {
       desc->op = common::Operator::O_IN;
-      desc->val1.vc = new vcolumn::InSetColumn(in_type, NULL, vset_positive /* *vset.release()*/);
+      desc->val1.vc = new vcolumn::InSetColumn(in_type, nullptr, vset_positive /* *vset.release()*/);
       desc->val1.vc_id = desc->table->AddVirtColumn(desc->val1.vc);
     } else {
       desc->op = common::Operator::O_NOT_IN;
-      desc->val1.vc = new vcolumn::InSetColumn(in_type, NULL, vset_negative /* *vset_n.release() */);
+      desc->val1.vc = new vcolumn::InSetColumn(in_type, nullptr, vset_negative /* *vset_n.release() */);
       desc->val1.vc_id = desc->table->AddVirtColumn(desc->val1.vc);
     }
   }
@@ -569,7 +591,7 @@ void ConditionEncoder::TransformINs() {
   MEASURE_FET("ConditionEncoder::TransformINs(...)");
   DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(desc->val1.vc));
 
-  static MIIterator mit(NULL, pack_power);
+  static MIIterator mit(nullptr, pack_power);
 
   vcolumn::MultiValColumn &mvc = static_cast<vcolumn::MultiValColumn &>(*desc->val1.vc);
   mvc.SetExpectedType(in_type);
@@ -577,7 +599,8 @@ void ConditionEncoder::TransformINs() {
   int64_t no_dis_values = mvc.AtLeastNoDistinctValues(mit, 2);
 
   if (no_dis_values == 0) {
-    if (mvc.ContainsNull(mit)) desc->null_after_simplify = true;
+    if (mvc.ContainsNull(mit))
+      desc->null_after_simplify = true;
     if (desc->op == common::Operator::O_IN)
       desc->op = common::Operator::O_FALSE;
     else if (!mvc.ContainsNull(mit))
@@ -651,7 +674,7 @@ void ConditionEncoder::TransformOtherThanINsOnNotLookup() {
   sharp = false;
   //(SOME, ALL)
 
-  MIIterator mit(NULL, pack_power);
+  MIIterator mit(nullptr, pack_power);
   vcolumn::MultiValColumn *mvc = 0;
   if (v1.vc && v1.vc->IsMultival()) {
     mvc = static_cast<vcolumn::MultiValColumn *>(v1.vc);
@@ -688,11 +711,14 @@ void ConditionEncoder::TransformOtherThanINsOnNotLookup() {
     desc->null_after_simplify = true;
     desc->op = common::Operator::O_FALSE;
   } else {
-    if (v1.vc && v1.vc->IsMultival() && !v1.vc->IsNull(mit)) desc->CoerceColumnType(v1.vc);
+    if (v1.vc && v1.vc->IsMultival() && !v1.vc->IsNull(mit))
+      desc->CoerceColumnType(v1.vc);
 
-    if (v2.vc && v2.vc->IsMultival() && !v2.vc->IsNull(mit)) desc->CoerceColumnType(v2.vc);
+    if (v2.vc && v2.vc->IsMultival() && !v2.vc->IsNull(mit))
+      desc->CoerceColumnType(v2.vc);
 
-    if (ISTypeOfEqualOperator(desc->op) || ISTypeOfNotEqualOperator(desc->op)) v2 = v1;
+    if (ISTypeOfEqualOperator(desc->op) || ISTypeOfNotEqualOperator(desc->op))
+      v2 = v1;
 
     if (ISTypeOfLessOperator(desc->op) || ISTypeOfLessEqualOperator(desc->op)) {
       v2 = v1;
@@ -705,7 +731,8 @@ void ConditionEncoder::TransformOtherThanINsOnNotLookup() {
       v2.vc_id = desc->table->AddVirtColumn(v2.vc);
     }
 
-    if (ISTypeOfLessOperator(desc->op) || ISTypeOfMoreOperator(desc->op)) sharp = true;
+    if (ISTypeOfLessOperator(desc->op) || ISTypeOfMoreOperator(desc->op))
+      sharp = true;
 
     if (ISTypeOfNotEqualOperator(desc->op) || desc->op == common::Operator::O_NOT_BETWEEN)
       desc->op = common::Operator::O_NOT_BETWEEN;
@@ -721,23 +748,26 @@ void ConditionEncoder::TransformOtherThanINsOnNotLookup() {
 
 void ConditionEncoder::EncodeIfPossible(Descriptor &desc, bool for_rough_query, bool additional_nulls) {
   MEASURE_FET("ConditionEncoder::EncodeIfPossible(...)");
-  if (desc.done || desc.IsDelayed()) return;
+  if (desc.done || desc.IsDelayed())
+    return;
   if (desc.IsType_OrTree()) {
     desc.tree->root->EncodeIfPossible(for_rough_query, additional_nulls);
     desc.Simplify();
     return;
   }
-  if (!desc.attr.vc || desc.attr.vc->GetDim() == -1) return;
+  if (!desc.attr.vc || desc.attr.vc->GetDim() == -1)
+    return;
 
   vcolumn::SingleColumn *vcsc =
-      (static_cast<int>(desc.attr.vc->IsSingleColumn()) ? static_cast<vcolumn::SingleColumn *>(desc.attr.vc) : NULL);
+      (static_cast<int>(desc.attr.vc->IsSingleColumn()) ? static_cast<vcolumn::SingleColumn *>(desc.attr.vc) : nullptr);
 
   bool encode_now = false;
   if (desc.IsType_AttrAttr() && IsSimpleEqualityOperator(desc.op) && vcsc) {
     // special case: simple operator on two compatible numerical columns
-    vcolumn::SingleColumn *vcsc2 = NULL;
-    if (static_cast<int>(desc.val1.vc->IsSingleColumn())) vcsc2 = static_cast<vcolumn::SingleColumn *>(desc.val1.vc);
-    if (vcsc2 == NULL || vcsc->GetVarMap()[0].GetTabPtr()->TableType() != TType::TABLE ||
+    vcolumn::SingleColumn *vcsc2 = nullptr;
+    if (static_cast<int>(desc.val1.vc->IsSingleColumn()))
+      vcsc2 = static_cast<vcolumn::SingleColumn *>(desc.val1.vc);
+    if (vcsc2 == nullptr || vcsc->GetVarMap()[0].GetTabPtr()->TableType() != TType::TABLE ||
         vcsc2->GetVarMap()[0].GetTabPtr()->TableType() != TType::TABLE)
       return;
     if (vcsc->Type().IsString() || vcsc->Type().IsLookup() || vcsc2->Type().IsString() ||
@@ -746,7 +776,8 @@ void ConditionEncoder::EncodeIfPossible(Descriptor &desc, bool for_rough_query, 
     bool is_timestamp1 = (vcsc->Type().GetTypeName() == common::CT::TIMESTAMP);
     bool is_timestamp2 = (vcsc2->Type().GetTypeName() == common::CT::TIMESTAMP);
     // excluding timestamps compared with something else
-    if (is_timestamp1 || (is_timestamp2 && !(is_timestamp1 && is_timestamp2))) return;
+    if (is_timestamp1 || (is_timestamp2 && !(is_timestamp1 && is_timestamp2)))
+      return;
 
     encode_now = (vcsc->Type().IsDateTime() && vcsc2->Type().IsDateTime()) ||
                  (vcsc->Type().IsFloat() && vcsc2->Type().IsFloat()) ||
@@ -756,11 +787,13 @@ void ConditionEncoder::EncodeIfPossible(Descriptor &desc, bool for_rough_query, 
 
   if (!encode_now) {
     vcolumn::ExpressionColumn *vcec = dynamic_cast<vcolumn::ExpressionColumn *>(desc.attr.vc);
-    if (vcec == NULL && (vcsc == NULL || vcsc->GetVarMap()[0].GetTabPtr()->TableType() != TType::TABLE)) return;
-    if (vcec != NULL) {
-      encode_now = (vcec->ExactlyOneLookup() &&
-                    (desc.op == common::Operator::O_IS_NULL || desc.op == common::Operator::O_NOT_NULL ||
-                     (desc.val1.vc && desc.val1.vc->IsConst() && (desc.val2.vc == NULL || desc.val2.vc->IsConst()))));
+    if (vcec == nullptr && (vcsc == nullptr || vcsc->GetVarMap()[0].GetTabPtr()->TableType() != TType::TABLE))
+      return;
+    if (vcec != nullptr) {
+      encode_now =
+          (vcec->ExactlyOneLookup() &&
+           (desc.op == common::Operator::O_IS_NULL || desc.op == common::Operator::O_NOT_NULL ||
+            (desc.val1.vc && desc.val1.vc->IsConst() && (desc.val2.vc == nullptr || desc.val2.vc->IsConst()))));
     } else {
       encode_now = (desc.IsType_AttrValOrAttrValVal() || desc.IsType_AttrMultiVal() ||
                     desc.op == common::Operator::O_IS_NULL || desc.op == common::Operator::O_NOT_NULL) &&
@@ -768,7 +801,8 @@ void ConditionEncoder::EncodeIfPossible(Descriptor &desc, bool for_rough_query, 
                    (!for_rough_query || !desc.IsType_Subquery());
     }
   }
-  if (!encode_now) return;
+  if (!encode_now)
+    return;
   // Encoding itself
   ConditionEncoder ce(additional_nulls, desc.table->Getpackpower());
   ce(desc);
@@ -789,23 +823,24 @@ void ConditionEncoder::LookupExpressionTransformation() {
   do {
     mit.Set(code);
     if (desc->CheckCondition(mit)) {
-      if (mit.IsValid()) valset.Add64(code);
+      if (mit.IsValid())
+        valset.Add64(code);
     }
     code++;
   } while (mit.IsValid());
 
   if (!null_positive) {
     PhysicalColumn *col = col_desc.GetTabPtr()->GetColumn(col_desc.col_ndx);
-    desc->attr.vc = new vcolumn::SingleColumn(col, vcec->GetMultiIndex(), col_desc.var.tab, col_desc.col_ndx,
+    desc->attr.vc = new vcolumn::SingleColumn(col, vcec->GetMultiIndex(), col_desc.var_id.tab, col_desc.col_ndx,
                                               col_desc.GetTabPtr().get(), vcec->GetDim());
     desc->attr.vc_id = desc->table->AddVirtColumn(desc->attr.vc);
     desc->op = common::Operator::O_IN;
-    desc->val1.vc = new vcolumn::InSetColumn(in_type, NULL, valset);
+    desc->val1.vc = new vcolumn::InSetColumn(in_type, nullptr, valset);
     desc->val1.vc_id = desc->table->AddVirtColumn(desc->val1.vc);
     desc->encoded = true;
   } else if (valset.IsEmpty()) {
     PhysicalColumn *col = col_desc.GetTabPtr()->GetColumn(col_desc.col_ndx);
-    desc->attr.vc = new vcolumn::SingleColumn(col, vcec->GetMultiIndex(), col_desc.var.tab, col_desc.col_ndx,
+    desc->attr.vc = new vcolumn::SingleColumn(col, vcec->GetMultiIndex(), col_desc.var_id.tab, col_desc.col_ndx,
                                               col_desc.GetTabPtr().get(), vcec->GetDim());
     desc->attr.vc_id = desc->table->AddVirtColumn(desc->attr.vc);
     desc->op = common::Operator::O_IS_NULL;

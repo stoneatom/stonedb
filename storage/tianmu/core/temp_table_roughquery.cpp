@@ -30,30 +30,39 @@ namespace Tianmu {
 namespace core {
 void TempTable::RoughMaterialize([[maybe_unused]] bool in_subq, ResultSender *sender, [[maybe_unused]] bool lazy) {
   MEASURE_FET("Descriptor::RoughMaterialize(...)");
-  if (materialized) return;
+  if (materialized)
+    return;
   filter.PrepareRoughMultiIndex();
   RoughAggregate(sender);  // Always use RoughAggregate (table distinct, order
                            // by, having, etc. are ignored)
 }
 
 int64_t UpdateMin(int64_t old_min, int64_t v, bool double_val) {
-  if (old_min == common::NULL_VALUE_64) return v;
-  if (v == common::NULL_VALUE_64) return old_min;
+  if (old_min == common::NULL_VALUE_64)
+    return v;
+  if (v == common::NULL_VALUE_64)
+    return old_min;
   if (double_val) {
-    if (*(double *)&old_min > *(double *)&v) return v;
+    if (*(double *)&old_min > *(double *)&v)
+      return v;
   } else {
-    if (old_min > v) return v;
+    if (old_min > v)
+      return v;
   }
   return old_min;
 }
 
 int64_t UpdateMax(int64_t old_max, int64_t v, bool double_val) {
-  if (old_max == common::NULL_VALUE_64) return v;
-  if (v == common::NULL_VALUE_64) return old_max;
+  if (old_max == common::NULL_VALUE_64)
+    return v;
+  if (v == common::NULL_VALUE_64)
+    return old_max;
   if (double_val) {
-    if (*(double *)&old_max < *(double *)&v) return v;
+    if (*(double *)&old_max < *(double *)&v)
+      return v;
   } else {
-    if (old_max < v) return v;
+    if (old_max < v)
+      return v;
   }
   return old_max;
 }
@@ -83,7 +92,8 @@ void TempTable::RoughAggregateMinMax(vcolumn::VirtualColumn *vc, int64_t &min_va
     }
     mit.NextPackrow();
   }
-  if (max_val < min_val) min_val = max_val = common::NULL_VALUE_64;
+  if (max_val < min_val)
+    min_val = max_val = common::NULL_VALUE_64;
 }
 
 void TempTable::RoughAggregateCount(DimensionVector &dims, int64_t &min_val, int64_t &max_val, bool group_by_present) {
@@ -96,7 +106,8 @@ void TempTable::RoughAggregateCount(DimensionVector &dims, int64_t &min_val, int
         common::RSValue res = filter.rough_mind->GetPackStatus(dim, mit.GetCurPackrow(dim));
         if (res != common::RSValue::RS_NONE) {
           loc_max += mit.GetPackSizeLeft();
-          if (!group_by_present && res == common::RSValue::RS_ALL) loc_min += mit.GetPackSizeLeft();
+          if (!group_by_present && res == common::RSValue::RS_ALL)
+            loc_min += mit.GetPackSizeLeft();
         }
         mit.NextPackrow();
       }
@@ -104,13 +115,15 @@ void TempTable::RoughAggregateCount(DimensionVector &dims, int64_t &min_val, int
         min_val = loc_min;
       else {
         min_val = SafeMultiplication(min_val, loc_min);
-        if (min_val == common::NULL_VALUE_64) min_val = 0;
+        if (min_val == common::NULL_VALUE_64)
+          min_val = 0;
       }
       if (max_val == common::NULL_VALUE_64)
         max_val = loc_max;
       else {
         max_val = SafeMultiplication(max_val, loc_max);
-        if (max_val == common::NULL_VALUE_64) max_val = common::PLUS_INF_64;
+        if (max_val == common::NULL_VALUE_64)
+          max_val = common::PLUS_INF_64;
       }
     }
 }
@@ -134,7 +147,7 @@ void TempTable::RoughAggregateSum(vcolumn::VirtualColumn *vc, int64_t &min_val, 
                                          // possible)
       for (uint j = 0; j < group_by_attrs.size(); j++) {
         vcolumn::VirtualColumn *vc_gb = group_by_attrs[j]->term.vc;
-        if (vc_gb == NULL || vc_gb->GetNumOfNulls(mit) != 0 || vc_gb->GetMinInt64(mit) == common::NULL_VALUE_64 ||
+        if (vc_gb == nullptr || vc_gb->GetNumOfNulls(mit) != 0 || vc_gb->GetMinInt64(mit) == common::NULL_VALUE_64 ||
             vc_gb->GetMinInt64(mit) != vc_gb->GetMaxInt64(mit))
           no_groups_or_uniform = false;  // leave it true only when we are sure the
                                          // grouping columns are uniform for this packrow
@@ -169,7 +182,8 @@ void TempTable::RoughAggregateSum(vcolumn::VirtualColumn *vc, int64_t &min_val, 
         } else {
           if (nonnegative) {
             // nonnegative: minimum not changed, maximum limited by sum
-            if (v == common::NULL_VALUE_64) v = vc->GetApproxSum(mit, nonnegative);
+            if (v == common::NULL_VALUE_64)
+              v = vc->GetApproxSum(mit, nonnegative);
             if (double_vals)
               max_val_d += *(double *)&v;
             else
@@ -260,7 +274,7 @@ void TempTable::RoughAggregateSum(vcolumn::VirtualColumn *vc, int64_t &min_val, 
 
 bool IsTempTableColumn(vcolumn::VirtualColumn *vc) {
   vcolumn::SingleColumn *sc =
-      ((vc && static_cast<int>(vc->IsSingleColumn())) ? static_cast<vcolumn::SingleColumn *>(vc) : NULL);
+      ((vc && static_cast<int>(vc->IsSingleColumn())) ? static_cast<vcolumn::SingleColumn *>(vc) : nullptr);
   return (sc && sc->IsTempTableColumn());
 }
 
@@ -277,7 +291,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
 
         Interpretation of the result:
         Minimal and maximal possible value for a given column, if executed as
-        exact. NULL if not known (unable to determine).
+        exact. nullptr if not known (unable to determine).
   */
 
   // filter.Prepare();
@@ -306,7 +320,8 @@ void TempTable::RoughAggregate(ResultSender *sender) {
         common::RSValue res = filter.rough_mind->GetPackStatus(dim, pack);
         if (res != common::RSValue::RS_NONE) {
           local_empty = false;
-          if (rough_is_empty != false) break;
+          if (rough_is_empty != false)
+            break;
         }
         if (res == common::RSValue::RS_ALL) {
           local_some = false;
@@ -317,17 +332,20 @@ void TempTable::RoughAggregate(ResultSender *sender) {
         rough_is_empty = true;
         break;
       }
-      if (local_some) rough_is_empty = common::TRIBOOL_UNKNOWN;  // cannot be false any more
+      if (local_some)
+        rough_is_empty = common::TRIBOOL_UNKNOWN;  // cannot be false any more
     }
   }
-  if (!group_by_present && aggregation_present) rough_is_empty = false;
+  if (!group_by_present && aggregation_present)
+    rough_is_empty = false;
 
   CalculatePageSize(2);  // 2 rows in result
 
   if (rough_is_empty == true || (mode.top && mode.param2 == 0)) {  // empty or "limit 0"
     no_obj = 0;
     materialized = true;
-    if (sender) sender->Send(this);
+    if (sender)
+      sender->Send(this);
     return;
   }
 
@@ -353,7 +371,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
         bool double_vals = vc->Type().IsFloat();
         int64_t cutoff_value = common::NULL_VALUE_64;
         int64_t certain_rows = 0;
-        bool cutoff_is_null = false;  // true if all values up to limit are NULL for ascending
+        bool cutoff_is_null = false;  // true if all values up to limit are nullptr for ascending
         while (mit.IsValid()) {
           common::RSValue res = filter.rough_mind->GetPackStatus(0, mit.GetCurPackrow(0));
           if (res == common::RSValue::RS_ALL) {
@@ -363,7 +381,8 @@ void TempTable::RoughAggregate(ResultSender *sender) {
             certain_rows += mit.GetPackSizeLeft();
             if (certain_rows >= local_limit) {
               cutoff_value = (asc ? vc->GetMaxInt64Exact(mit) : vc->GetMinInt64Exact(mit));
-              if (asc && vc->GetNumOfNulls(mit) == mit.GetPackSizeLeft()) cutoff_is_null = true;
+              if (asc && vc->GetNumOfNulls(mit) == mit.GetPackSizeLeft())
+                cutoff_is_null = true;
               break;
             }
           }
@@ -382,7 +401,8 @@ void TempTable::RoughAggregate(ResultSender *sender) {
                     ((double_vals && *(double *)&local_stat > *(double *)&cutoff_value) ||
                      (!double_vals && local_stat > cutoff_value)))
                   omit = true;
-                if (cutoff_is_null && vc->GetNumOfNulls(mit) == 0) omit = true;
+                if (cutoff_is_null && vc->GetNumOfNulls(mit) == 0)
+                  omit = true;
               } else {
                 local_stat = vc->GetMaxInt64(mit);
                 if (local_stat != common::NULL_VALUE_64 &&
@@ -390,7 +410,8 @@ void TempTable::RoughAggregate(ResultSender *sender) {
                      (!double_vals && local_stat < cutoff_value)))
                   omit = true;
               }
-              if (omit) filter.rough_mind->SetPackStatus(0, mit.GetCurPackrow(0), common::RSValue::RS_NONE);
+              if (omit)
+                filter.rough_mind->SetPackStatus(0, mit.GetCurPackrow(0), common::RSValue::RS_NONE);
             }
             mit.NextPackrow();
           }
@@ -407,7 +428,8 @@ void TempTable::RoughAggregate(ResultSender *sender) {
           common::RSValue res = filter.rough_mind->GetPackStatus(0, mit.GetCurPackrow(0));
           if (res == common::RSValue::RS_ALL) {
             certain_rows += mit.GetPackSizeLeft();
-            if (certain_rows >= local_limit) omit_the_rest = true;
+            if (certain_rows >= local_limit)
+              omit_the_rest = true;
           }
         }
         mit.NextPackrow();
@@ -423,7 +445,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
     vcolumn::VirtualColumn *vc = attrs[i]->term.vc;
     bool nulls_only = vc ? (vc->GetLocalNullsOnly() || vc->IsRoughNullsOnly()) : false;
     types::BString vals;
-    bool double_vals = (vc != NULL && vc->Type().IsFloat());
+    bool double_vals = (vc != nullptr && vc->Type().IsFloat());
     if (vc && vc->IsConst() && !vc->IsSubSelect() && attrs[i]->mode != common::ColOperation::SUM &&
         attrs[i]->mode != common::ColOperation::COUNT && attrs[i]->mode != common::ColOperation::BIT_XOR) {
       if (attrs[i]->mode == common::ColOperation::STD_POP || attrs[i]->mode == common::ColOperation::VAR_POP ||
@@ -471,7 +493,8 @@ void TempTable::RoughAggregate(ResultSender *sender) {
           if (!vc->Type().IsString() && !vc->Type().IsLookup()) {
             int64_t min_val = common::NULL_VALUE_64;
             int64_t max_val = common::NULL_VALUE_64;
-            if (!nulls_only) RoughAggregateMinMax(vc, min_val, max_val);
+            if (!nulls_only)
+              RoughAggregateMinMax(vc, min_val, max_val);
             if (!double_vals && ATI::IsRealType(attrs[i]->TypeName()) && !nulls_only &&
                 min_val != common::NULL_VALUE_64) {  // decimal column, double
                                                      // result (e.g. for AVG)
@@ -522,7 +545,8 @@ void TempTable::RoughAggregate(ResultSender *sender) {
                   min_val = UpdateMax(min_val, relevant_val,
                                       double_vals);  // take relevant_val, if larger
               }
-              if (max_val < min_val) min_val = max_val = common::NULL_VALUE_64;
+              if (max_val < min_val)
+                min_val = max_val = common::NULL_VALUE_64;
             }
             attrs[i]->SetValueInt64(0, min_val);
             attrs[i]->SetValueInt64(1, max_val);
@@ -578,23 +602,30 @@ void TempTable::RoughAggregate(ResultSender *sender) {
                   int64_t loc_max = 0;
                   while (mit.IsValid()) {
                     common::RSValue res = filter.rough_mind->GetPackStatus(dim, mit.GetCurPackrow(dim));
-                    if (res != common::RSValue::RS_NONE) loc_max += mit.GetPackSizeLeft();
-                    if (res == common::RSValue::RS_ALL && !group_by_present) min_count_star += mit.GetPackSizeLeft();
-                    if (res != common::RSValue::RS_ALL) all_only = false;
+                    if (res != common::RSValue::RS_NONE)
+                      loc_max += mit.GetPackSizeLeft();
+                    if (res == common::RSValue::RS_ALL && !group_by_present)
+                      min_count_star += mit.GetPackSizeLeft();
+                    if (res != common::RSValue::RS_ALL)
+                      all_only = false;
                     mit.NextPackrow();
                   }
                   max_count_star =
                       (max_count_star == common::NULL_VALUE_64 ? loc_max : SafeMultiplication(max_count_star, loc_max));
-                  if (max_count_star == common::NULL_VALUE_64) max_count_star = common::PLUS_INF_64;
+                  if (max_count_star == common::NULL_VALUE_64)
+                    max_count_star = common::PLUS_INF_64;
                   if (max_count_star > max_val)  // approx. distinct vals
                                                  // reached - stop execution
                     break;
                 }
-              if (max_count_star < max_val) max_val = max_count_star;
-              if (vc->IsDistinct() && dims.Size() == 1) min_val = min_count_star;
+              if (max_count_star < max_val)
+                max_val = max_count_star;
+              if (vc->IsDistinct() && dims.Size() == 1)
+                min_val = min_count_star;
               if (all_only) {
                 int64_t exact_dist = vc->GetExactDistVals();
-                if (exact_dist != common::NULL_VALUE_64) min_val = max_val = exact_dist;
+                if (exact_dist != common::NULL_VALUE_64)
+                  min_val = max_val = exact_dist;
               }
             } else
               max_val = 0;
@@ -631,10 +662,11 @@ void TempTable::RoughAggregate(ResultSender *sender) {
             int64_t max_val = common::NULL_VALUE_64;
             std::vector<Attr *> group_by_attrs;
             for (uint j = 0; j < attrs.size(); j++)
-              if (attrs[j]->mode == common::ColOperation::GROUP_BY) group_by_attrs.push_back(attrs[j]);
+              if (attrs[j]->mode == common::ColOperation::GROUP_BY)
+                group_by_attrs.push_back(attrs[j]);
             RoughAggregateSum(vc, min_val, max_val, group_by_attrs, nulls_only, attrs[i]->distinct);
             if (min_val == common::NULL_VALUE_64 || max_val == common::NULL_VALUE_64) {
-              attrs[i]->SetNull(0);  // NULL as a result of empty set or non-computable sum
+              attrs[i]->SetNull(0);  // nullptr as a result of empty set or non-computable sum
               attrs[i]->SetNull(1);
             } else {
               attrs[i]->SetValueInt64(0, min_val);
@@ -713,13 +745,15 @@ void TempTable::RoughAggregate(ResultSender *sender) {
   }
   no_obj = 2;
   materialized = true;
-  if (sender) sender->Send(this);
+  if (sender)
+    sender->Send(this);
 }
 
 void TempTable::RoughUnion(TempTable *t, ResultSender *sender) {
   if (!t) {
     this->RoughMaterialize(false);
-    if (sender && !this->IsSent()) sender->Send(this);
+    if (sender && !this->IsSent())
+      sender->Send(this);
     return;
   }
   DEBUG_ASSERT(NumOfDisplaybleAttrs() == t->NumOfDisplaybleAttrs());
@@ -730,12 +764,15 @@ void TempTable::RoughUnion(TempTable *t, ResultSender *sender) {
   this->RoughMaterialize(false);
   t->RoughMaterialize(false);
   if (sender) {
-    if (!this->IsSent()) sender->Send(this);
-    if (!t->IsSent()) sender->Send(t);
+    if (!this->IsSent())
+      sender->Send(this);
+    if (!t->IsSent())
+      sender->Send(t);
     return;
   }
   for (uint i = 0; i < attrs.size(); i++)
-    if (!attrs[i]->buffer) attrs[i]->CreateBuffer(2);
+    if (!attrs[i]->buffer)
+      attrs[i]->CreateBuffer(2);
 
   int64_t pos = NumOfObj();
   no_obj += 2;

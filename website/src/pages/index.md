@@ -80,7 +80,7 @@ A Real-time HTAP Database
                 - Minimal TCO, Making Data Services Affordable to Everyone
 ```
 
-```custom-roadMap 2022-10-10
+```custom-roadMap 2022-10-20
 - Roadmap
     - StoneDB_5.6_v1.0.0
         1. Support integrated hybrid row-column storage and use an in-memory computing architecture.

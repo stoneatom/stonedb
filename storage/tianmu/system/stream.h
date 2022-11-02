@@ -23,7 +23,6 @@
 namespace Tianmu {
 namespace system {
 class Stream {
-
  public:
   Stream() = default;
   virtual ~Stream() = default;

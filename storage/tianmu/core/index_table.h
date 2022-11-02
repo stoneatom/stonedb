@@ -40,7 +40,8 @@ class IndexTable : private system::CacheableItem, public mm::TraceableObject {
     DEBUG_ASSERT(IsLocked());
     DEBUG_ASSERT(n < size);
     int b = int(n >> block_shift);
-    if (b != cur_block) LoadBlock(b);
+    if (b != cur_block)
+      LoadBlock(b);
     block_changed = true;
     if (bytes_per_value == 4)
       ((unsigned int *)buf)[n & block_mask] = (unsigned int)val;
@@ -56,7 +57,8 @@ class IndexTable : private system::CacheableItem, public mm::TraceableObject {
     DEBUG_ASSERT(IsLocked());
     DEBUG_ASSERT(n < size);
     int b = int(n >> block_shift);
-    if (b != cur_block) LoadBlock(b);
+    if (b != cur_block)
+      LoadBlock(b);
     uint64_t ndx = n & block_mask;
     uint64_t res;
     if (bytes_per_value == 4)
@@ -102,7 +104,7 @@ class IndexTable : private system::CacheableItem, public mm::TraceableObject {
 
   int64_t OrigSize() {
     return orig_size;
-  }                                         // the size of the original table, or the largest (incl. 0 = NULL) value
+  }                                         // the size of the original table, or the largest (incl. 0 = nullptr) value
                                             // which may occur in table
   uint64_t N() { return size; }             // note: this is the upper size, the table can be used partially!
   int BlockShift() { return block_shift; }  // block = int( tuple >> block_shift )
@@ -124,7 +126,7 @@ class IndexTable : private system::CacheableItem, public mm::TraceableObject {
   uint64_t block_mask;
   uint64_t size;
   int64_t orig_size;  // the size of the original table, or the largest value
-                      // (incl. 0 = NULL) which may occur in the table
+                      // (incl. 0 = nullptr) which may occur in the table
 
   int cur_block;
   bool block_changed;

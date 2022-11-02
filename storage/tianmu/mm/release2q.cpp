@@ -53,7 +53,8 @@ void Release2Q::Release(unsigned num_objs) {
   uint count = 0;
   for (int max_loop = std::max(A1in.size(), Am.size()); (max_loop > 0) && (count < num_objs); max_loop--) {
     if (A1in.size() >= Am.size()) {
-      if (A1in.size() == 0) break;
+      if (A1in.size() == 0)
+        break;
 
       TraceableObject *o = A1in.removeTail();
       if (o->IsLocked()) {

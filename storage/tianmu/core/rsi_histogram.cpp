@@ -97,7 +97,8 @@ int RSIndex_Hist::Count(int pack, int width) {
 common::RSValue RSIndex_Hist::IsValue(int64_t min_v, int64_t max_v, int pack, int64_t pack_min, int64_t pack_max) {
   ASSERT(size_t(pack) < hdr.no_pack, std::to_string(pack) + " < " + std::to_string(hdr.no_pack));
 
-  if (IntervalTooLarge(pack_min, pack_max) || IntervalTooLarge(min_v, max_v)) return common::RSValue::RS_SOME;
+  if (IntervalTooLarge(pack_min, pack_max) || IntervalTooLarge(min_v, max_v))
+    return common::RSValue::RS_SOME;
   int min_bit = 0, max_bit = 0;
   if (!Fixed()) {  // floating point
     double dmin_v = *(double *)(&min_v);
@@ -105,8 +106,10 @@ common::RSValue RSIndex_Hist::IsValue(int64_t min_v, int64_t max_v, int pack, in
     double dpack_min = *(double *)(&pack_min);
     double dpack_max = *(double *)(&pack_max);
     DEBUG_ASSERT(dmin_v <= dmax_v);
-    if (dmax_v < dpack_min || dmin_v > dpack_max) return common::RSValue::RS_NONE;
-    if (dmax_v >= dpack_max && dmin_v <= dpack_min) return common::RSValue::RS_ALL;
+    if (dmax_v < dpack_min || dmin_v > dpack_max)
+      return common::RSValue::RS_NONE;
+    if (dmax_v >= dpack_max && dmin_v <= dpack_min)
+      return common::RSValue::RS_ALL;
     if (dmax_v >= dpack_max || dmin_v <= dpack_min)
       return common::RSValue::RS_SOME;  // pack_min xor pack_max are present
     // now we know that (max_v<pack_max) and (min_v>pack_min) and there is only
@@ -116,9 +119,12 @@ common::RSValue RSIndex_Hist::IsValue(int64_t min_v, int64_t max_v, int pack, in
     max_bit = int((dmax_v - dpack_min) / interval_len);
   } else {
     DEBUG_ASSERT(min_v <= max_v);
-    if (max_v < pack_min || min_v > pack_max) return common::RSValue::RS_NONE;
-    if (max_v >= pack_max && min_v <= pack_min) return common::RSValue::RS_ALL;
-    if (max_v >= pack_max || min_v <= pack_min) return common::RSValue::RS_SOME;  // pack_min xor pack_max are present
+    if (max_v < pack_min || min_v > pack_max)
+      return common::RSValue::RS_NONE;
+    if (max_v >= pack_max && min_v <= pack_min)
+      return common::RSValue::RS_ALL;
+    if (max_v >= pack_max || min_v <= pack_min)
+      return common::RSValue::RS_SOME;  // pack_min xor pack_max are present
     // now we know that (max_v<pack_max) and (min_v>pack_min) and there is only
     // common::RSValue::RS_SOME or common::RSValue::RS_NONE answer possible
     if (ExactMode(pack_min, pack_max)) {    // exact mode
@@ -135,7 +141,8 @@ common::RSValue RSIndex_Hist::IsValue(int64_t min_v, int64_t max_v, int pack, in
     return common::RSValue::RS_SOME;  // it may happen for extremely large numbers (
                                       // >2^52 )
   for (int i = min_bit; i <= max_bit; i++) {
-    if (((*(hist_buffers[pack].data + i / 64) >> (i % 64)) & 0x00000001) != 0) return common::RSValue::RS_SOME;
+    if (((*(hist_buffers[pack].data + i / 64) >> (i % 64)) & 0x00000001) != 0)
+      return common::RSValue::RS_SOME;
   }
   return common::RSValue::RS_NONE;
 }
@@ -143,8 +150,10 @@ common::RSValue RSIndex_Hist::IsValue(int64_t min_v, int64_t max_v, int pack, in
 bool RSIndex_Hist::Intersection(int pack, int64_t pack_min, int64_t pack_max, RSIndex_Hist *sec, int pack2,
                                 int64_t pack_min2, int64_t pack_max2) {
   // we may assume that min-max of packs was already checked
-  if (!Fixed() || !sec->Fixed()) return true;  // not implemented - intersection possible
-  if (IntervalTooLarge(pack_min, pack_max) || IntervalTooLarge(pack_min2, pack_max2)) return true;
+  if (!Fixed() || !sec->Fixed())
+    return true;  // not implemented - intersection possible
+  if (IntervalTooLarge(pack_min, pack_max) || IntervalTooLarge(pack_min2, pack_max2))
+    return true;
 
   if (sec->IsValue(pack_min, pack_min, pack2, pack_min2, pack_max2) != common::RSValue::RS_NONE ||
       sec->IsValue(pack_max, pack_max, pack2, pack_min2, pack_max2) != common::RSValue::RS_NONE ||
@@ -190,7 +199,8 @@ void RSIndex_Hist::Update(common::PACK_INDEX pi, DPN &dpn, const PackInt *pack) 
 
   hdr.fixed = pack->IsFixed();
 
-  if (IntervalTooLarge(dpn.min_i, dpn.max_i)) return;
+  if (IntervalTooLarge(dpn.min_i, dpn.max_i))
+    return;
 
   double interval_len;
   if (Fixed()) {
@@ -200,18 +210,21 @@ void RSIndex_Hist::Update(common::PACK_INDEX pi, DPN &dpn, const PackInt *pack) 
   }
 
   for (size_t i = 0; i < dpn.numOfRecords; i++) {
-    if (pack->IsNull(i)) continue;
+    if (pack->IsNull(i))
+      continue;
 
     auto v = pack->GetValInt(i);
     int bit = -1;
     if (!Fixed()) {
       double dv = *(double *)(&v);
       ASSERT(dv >= dpn.min_d && dv <= dpn.max_d);
-      if (dv == dpn.min_d || dv == dpn.max_d) continue;
+      if (dv == dpn.min_d || dv == dpn.max_d)
+        continue;
       bit = int((dv - dpn.min_d) / interval_len);
     } else {
       ASSERT(v >= 0 && v + dpn.min_i <= dpn.max_i);
-      if (v == 0 || v == dpn.max_i - dpn.min_i) continue;
+      if (v == 0 || v == dpn.max_i - dpn.min_i)
+        continue;
       if (ExactMode(dpn.min_i, dpn.max_i)) {  // exact mode
         bit = int(v - 1);                     // translate into [0,...]
       } else {                                // interval mode
@@ -219,7 +232,8 @@ void RSIndex_Hist::Update(common::PACK_INDEX pi, DPN &dpn, const PackInt *pack) 
       }
     }
     ASSERT(bit >= 0, "Invalid bit index: " + std::to_string(bit));
-    if (bit >= RSI_HIST_BITS) return;  // it may happen for extremely large numbers ( >2^52 )
+    if (bit >= RSI_HIST_BITS)
+      return;  // it may happen for extremely large numbers ( >2^52 )
     hist_buffers[pi].data[bit / 64] |= (0x00000001ul << (bit % 64));
   }
 }

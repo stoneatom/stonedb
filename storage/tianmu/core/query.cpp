@@ -238,13 +238,13 @@ const std::string Query::GetItemName(Item *item) {
       return "REF_ITEM";
     }
     case Item::NULL_ITEM:
-      return "NULL";
+      return "nullptr";
     case Item::INT_ITEM: {
       Item_int_with_ref *int_ref = dynamic_cast<Item_int_with_ref *>(item);
       String s(buf, 256, nullptr);
       if (!int_ref) {
         String *ps = item->val_str(&s);
-        return ps ? ps->c_ptr_safe() : "NULL";
+        return ps ? ps->c_ptr_safe() : "nullptr";
       }
       // else item is an instance of Item_int_with_ref, not Item_int
       return GetItemName(int_ref->real_item());
@@ -252,7 +252,7 @@ const std::string Query::GetItemName(Item *item) {
     case Item::STRING_ITEM: {
       String s(buf, 256, nullptr);
       String *ps = item->val_str(&s);
-      return ps ? ps->c_ptr_safe() : "NULL";
+      return ps ? ps->c_ptr_safe() : "nullptr";
     }
     case Item::SUBSELECT_ITEM:
       return "SUBSELECT";

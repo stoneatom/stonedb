@@ -76,8 +76,8 @@ class Descriptor {
   Descriptor(const Descriptor &desc);
   Descriptor(CQTerm e1, common::Operator pr, CQTerm e2, CQTerm e3, TempTable *t, int no_dims, char like_escape = '\\');
   Descriptor(DescTree *tree, TempTable *t, int no_dims);
-  Descriptor(TempTable *t, vcolumn::VirtualColumn *v1, common::Operator pr, vcolumn::VirtualColumn *v2 = NULL,
-             vcolumn::VirtualColumn *v3 = NULL);
+  Descriptor(TempTable *t, vcolumn::VirtualColumn *v1, common::Operator pr, vcolumn::VirtualColumn *v2 = nullptr,
+             vcolumn::VirtualColumn *v3 = nullptr);
 
   void swap(Descriptor &d);
 
@@ -185,14 +185,14 @@ class Descriptor {
 
  public:
   bool null_after_simplify;  // true if Simplify set common::Operator::O_FALSE because of
-                             // NULL
+                             // nullptr
 };
 
 class SortDescriptor {
  public:
   vcolumn::VirtualColumn *vc;
   int dir;  // ordering direction: 0 - ascending, 1 - descending
-  SortDescriptor() : vc(NULL), dir(0){};
+  SortDescriptor() : vc(nullptr), dir(0){};
   int operator==(const SortDescriptor &sec) { return (dir == sec.dir) && (vc == sec.vc); }
 };
 
@@ -209,12 +209,12 @@ bool IsSimpleEqualityOperator(common::Operator op);
 
 struct DescTreeNode {
   DescTreeNode(common::LogicalOperator _lop, TempTable *t, int no_dims)
-      : desc(t, no_dims), locked(0), left(NULL), right(NULL), parent(NULL) {
+      : desc(t, no_dims), locked(0), left(nullptr), right(nullptr), parent(nullptr) {
     desc.lop = _lop;
   }
 
   DescTreeNode(CQTerm e1, common::Operator op, CQTerm e2, CQTerm e3, TempTable *t, int no_dims, char like_esc)
-      : desc(t, no_dims), locked(0), left(NULL), right(NULL), parent(NULL) {
+      : desc(t, no_dims), locked(0), left(nullptr), right(nullptr), parent(nullptr) {
     desc.attr = e1;
     desc.op = op;
     desc.val1 = e2;
@@ -226,7 +226,7 @@ struct DescTreeNode {
   }
 
   DescTreeNode(DescTreeNode &n, [[maybe_unused]] bool in_subq = false)
-      : desc(n.desc), locked(0), left(NULL), right(NULL), parent(NULL) {}
+      : desc(n.desc), locked(0), left(nullptr), right(nullptr), parent(nullptr) {}
   ~DescTreeNode();
   bool CheckCondition(MIIterator &mit);
   bool IsNull(MIIterator &mit);
@@ -300,17 +300,20 @@ class DescTree {
   void Display(DescTreeNode *node);
 
   bool Left() {
-    if (!curr || !curr->left) return false;
+    if (!curr || !curr->left)
+      return false;
     curr = curr->left;
     return true;
   }
   bool Right() {
-    if (!curr || !curr->right) return false;
+    if (!curr || !curr->right)
+      return false;
     curr = curr->right;
     return true;
   }
   bool Up() {
-    if (!curr || !curr->parent) return false;
+    if (!curr || !curr->parent)
+      return false;
     curr = curr->parent;
     return true;
   }

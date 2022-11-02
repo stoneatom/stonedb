@@ -29,9 +29,9 @@ namespace index {
 
 RCTableIndex::RCTableIndex(const std::string &name, TABLE *table) {
   std::string fullname;
-  //normalize the table name.
+  // normalize the table name.
   NormalizeName(name, fullname);
-  //does the table exists now.
+  // does the table exists now.
   rocksdb_tbl_ = ha_kvstore_->FindTable(fullname);
   TIANMU_LOG(LogCtl_Level::WARN, "normalize tablename %s, table_full_name %s!", name.c_str(), fullname.c_str());
 
@@ -173,7 +173,8 @@ common::ErrorCode RCTableIndex::InsertIndex(core::Transaction *tx, std::vector<s
   rocksdb_key_->pack_key(key, fields, value);
 
   common::ErrorCode rc = CheckUniqueness(tx, {(const char *)key.ptr(), key.length()});
-  if (rc != common::ErrorCode::SUCCESS) return rc;
+  if (rc != common::ErrorCode::SUCCESS)
+    return rc;
 
   value.write_uint64(row);
   const auto cf = rocksdb_key_->get_cf();
@@ -206,8 +207,7 @@ common::ErrorCode RCTableIndex::UpdateIndex(core::Transaction *tx, std::string_v
   return rc;
 }
 
-common::ErrorCode RCTableIndex::DeleteIndex(core::Transaction *tx, std::string_view &currentRowKey,
-                                            uint64_t row) {
+common::ErrorCode RCTableIndex::DeleteIndex(core::Transaction *tx, std::string_view &currentRowKey, uint64_t row) {
   StringWriter value, packkey;
   std::vector<std::string_view> fields;
 
@@ -228,17 +228,19 @@ common::ErrorCode RCTableIndex::GetRowByKey(core::Transaction *tx, std::vector<s
   std::string value;
   StringWriter packkey, info;
   rocksdb_key_->pack_key(packkey, fields, info);
-  rocksdb::Status s = tx->KVTrans().Get(rocksdb_key_->get_cf(), {(const char *)packkey.ptr(), packkey.length()}, &value);
+  rocksdb::Status s =
+      tx->KVTrans().Get(rocksdb_key_->get_cf(), {(const char *)packkey.ptr(), packkey.length()}, &value);
 
   if (!s.IsNotFound() && !s.ok()) {
     return common::ErrorCode::FAILED;
   }
 
-  if (s.IsNotFound()) return common::ErrorCode::NOT_FOUND_KEY;
+  if (s.IsNotFound())
+    return common::ErrorCode::NOT_FOUND_KEY;
 
   StringReader reader({value.data(), value.length()});
   // ver compatible
-  if (rocksdb_key_->GetIndexVersion()  > static_cast<uint16_t>(IndexInfoType::INDEX_INFO_VERSION_INITIAL)) {
+  if (rocksdb_key_->GetIndexVersion() > static_cast<uint16_t>(IndexInfoType::INDEX_INFO_VERSION_INITIAL)) {
     uint16_t packlen;
     reader.read_uint16(&packlen);
     reader.read(packlen);
@@ -262,11 +264,13 @@ void KeyIterator::ScanToKey(std::shared_ptr<RCTableIndex> tab, std::vector<std::
   switch (op) {
     case common::Operator::O_EQ:  //==
       iter_->Seek(key_slice);
-      if (!iter_->Valid() || !rocksdb_key_->value_matches_prefix(iter_->key(), key_slice)) valid = false;
+      if (!iter_->Valid() || !rocksdb_key_->value_matches_prefix(iter_->key(), key_slice))
+        valid = false;
       break;
     case common::Operator::O_MORE_EQ:  //'>='
       iter_->Seek(key_slice);
-      if (!iter_->Valid() || !rocksdb_key_->covers_key(iter_->key())) valid = false;
+      if (!iter_->Valid() || !rocksdb_key_->covers_key(iter_->key()))
+        valid = false;
       break;
     case common::Operator::O_MORE:  //'>'
       iter_->Seek(key_slice);
@@ -277,7 +281,8 @@ void KeyIterator::ScanToKey(std::shared_ptr<RCTableIndex> tab, std::vector<std::
           iter_->Next();
         }
       }
-      if (!iter_->Valid() || !rocksdb_key_->covers_key(iter_->key())) valid = false;
+      if (!iter_->Valid() || !rocksdb_key_->covers_key(iter_->key()))
+        valid = false;
       break;
     default:
       TIANMU_LOG(LogCtl_Level::ERROR, "key not support this op:%d", op);
@@ -299,13 +304,15 @@ void KeyIterator::ScanToEdge(std::shared_ptr<RCTableIndex> tab, bool forward) {
 
   iter_->Seek(key_slice);
   if (forward) {
-    if (!iter_->Valid() || !rocksdb_key_->value_matches_prefix(iter_->key(), key_slice)) valid = false;
+    if (!iter_->Valid() || !rocksdb_key_->value_matches_prefix(iter_->key(), key_slice))
+      valid = false;
   } else {
     if (!iter_)
       valid = false;
     else {
       iter_->Prev();
-      if (!iter_->Valid() || !rocksdb_key_->covers_key(iter_->key())) valid = false;
+      if (!iter_->Valid() || !rocksdb_key_->covers_key(iter_->key()))
+        valid = false;
     }
   }
 }

@@ -294,7 +294,7 @@ class file_desc {
     return size_t(r);
   }
   void timerfd_settime(int flags, const itimerspec &its) {
-    auto r = ::timerfd_settime(_fd, flags, &its, NULL);
+    auto r = ::timerfd_settime(_fd, flags, &its, nullptr);
     throw_system_error_on(r == -1, "timerfd_settime");
   }
 

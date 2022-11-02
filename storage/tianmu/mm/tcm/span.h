@@ -82,7 +82,7 @@ void DeleteSpan(Span *span);
 void DLL_Init(Span *list);
 
 // Remove 'span' from the linked list in which it resides, updating the
-// pointers of adjacent Spans and setting span's next and prev to NULL.
+// pointers of adjacent Spans and setting span's next and prev to nullptr.
 void DLL_Remove(Span *span);
 
 // Return true iff "list" is empty.

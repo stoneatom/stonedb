@@ -31,12 +31,14 @@ IndexTable::IndexTable(int64_t _size, int64_t _orig_size, [[maybe_unused]] int m
   bytes_per_value = ((orig_size + 1) > 0xFFFF ? ((orig_size + 1) > 0xFFFFFFFF ? 8 : 4) : 2);
 
   max_buffer_size_in_bytes = 32_MB;  // 32 MB = 2^25
-  if (size_t(_size * bytes_per_value) > 32_MB) max_buffer_size_in_bytes = int(mm::TraceableObject::MaxBufferSize(-1));
+  if (size_t(_size * bytes_per_value) > 32_MB)
+    max_buffer_size_in_bytes = int(mm::TraceableObject::MaxBufferSize(-1));
 
   buffer_size_in_bytes = max_buffer_size_in_bytes;
   CI_SetDefaultSize((int)max_buffer_size_in_bytes);
   size = _size;
-  if (size == 0) size = 1;
+  if (size == 0)
+    size = 1;
   uint values_per_block = uint(max_buffer_size_in_bytes / bytes_per_value);
   block_shift = CalculateBinSize(values_per_block) - 1;  // e.g. BinSize(16)==5, but shift by 4.
                                                          // WARNING: should it be (val...-1)? Now
@@ -96,12 +98,13 @@ IndexTable::IndexTable(IndexTable &sec)
 
 IndexTable::~IndexTable() {
   DestructionLock();
-  if (buf) dealloc(buf);
+  if (buf)
+    dealloc(buf);
 }
 
 void IndexTable::LoadBlock(int b) {
   DEBUG_ASSERT(IsLocked());
-  if (buf == NULL) {  // possible after block caching on disk
+  if (buf == nullptr) {  // possible after block caching on disk
     buf = (unsigned char *)alloc(buffer_size_in_bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
     if (!buf) {
       TIANMU_LOG(LogCtl_Level::ERROR, "Could not allocate memory for IndexTable(LoadBlock).");
@@ -109,7 +112,7 @@ void IndexTable::LoadBlock(int b) {
     }
   } else if (block_changed)
     CI_Put(cur_block, buf);
-  DEBUG_ASSERT(buf != NULL);
+  DEBUG_ASSERT(buf != nullptr);
   CI_Get(b, buf);
   if (m_conn->Killed())  // from time to time...
     throw common::KilledException();
@@ -120,7 +123,8 @@ void IndexTable::LoadBlock(int b) {
 
 void IndexTable::ExpandTo(int64_t new_size) {
   DEBUG_ASSERT(IsLocked());
-  if (new_size <= (int64_t)size) return;
+  if (new_size <= (int64_t)size)
+    return;
   if (size * bytes_per_value == buffer_size_in_bytes) {  // the whole table was in one buffer
     if (buffer_size_in_bytes < 32_MB && size_t(new_size * bytes_per_value) > 32_MB) {
       max_buffer_size_in_bytes =

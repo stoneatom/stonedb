@@ -69,8 +69,10 @@ class BloomFilterPolicy : public FilterPolicy {
   explicit BloomFilterPolicy(int bits_per_key) : bits_per_key_(bits_per_key) {
     // We intentionally round down to reduce probing cost a little bit
     k_ = static_cast<size_t>(bits_per_key * 0.69);  // 0.69 =~ ln(2)
-    if (k_ < 1) k_ = 1;
-    if (k_ > 30) k_ = 30;
+    if (k_ < 1)
+      k_ = 1;
+    if (k_ > 30)
+      k_ = 30;
   }
 
   const char *Name() const override { return "Tianmu.BuiltinBloomFilter2"; }
@@ -79,7 +81,8 @@ class BloomFilterPolicy : public FilterPolicy {
     size_t bits = n * bits_per_key_;
     // For small n, we can see a very high false positive rate.  Fix it
     // by enforcing a minimum bloom filter length.
-    if (bits < 64) bits = 64;
+    if (bits < 64)
+      bits = 64;
 
     size_t bytes = (bits + 7) / 8;
     bits = bytes * 8;
@@ -102,7 +105,8 @@ class BloomFilterPolicy : public FilterPolicy {
 
   bool KeyMayMatch(const Slice &key, const Slice &bloom_filter) const override {
     const size_t len = bloom_filter.size();
-    if (len < 2) return false;
+    if (len < 2)
+      return false;
 
     const char *array = bloom_filter.data();
     const size_t bits = (len - 1) * 8;
@@ -120,7 +124,8 @@ class BloomFilterPolicy : public FilterPolicy {
     const uint32_t delta = (h >> 17) | (h << 15);  // Rotate right 17 bits
     for (size_t j = 0; j < k; j++) {
       const uint32_t bitpos = h % bits;
-      if ((array[bitpos / 8] & (1 << (bitpos % 8))) == 0) return false;
+      if ((array[bitpos / 8] & (1 << (bitpos % 8))) == 0)
+        return false;
       h += delta;
     }
     return true;
@@ -188,12 +193,14 @@ void FilterBlockBuilder::GenerateFilter() {
 }
 
 FilterBlockReader::FilterBlockReader(const FilterPolicy *policy, const Slice &contents)
-    : policy_(policy), data_(NULL), offset_(NULL), num_(0), base_lg_(0) {
+    : policy_(policy), data_(nullptr), offset_(nullptr), num_(0), base_lg_(0) {
   size_t n = contents.size();
-  if (n < 5) return;  // 1 byte for base_lg_ and 4 for start of offset array
+  if (n < 5)
+    return;  // 1 byte for base_lg_ and 4 for start of offset array
   base_lg_ = contents[n - 1];
   uint32_t last_word = DecodeFixed32(contents.data() + n - 5);
-  if (last_word > n - 5) return;
+  if (last_word > n - 5)
+    return;
   data_ = contents.data();
   offset_ = data_ + last_word;
   num_ = (n - 5 - last_word) / 4;

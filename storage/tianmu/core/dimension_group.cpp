@@ -30,7 +30,7 @@ DimensionGroupFilter::DimensionGroupFilter(int dim, int64_t size, uint32_t power
 // copy_mode: 0 - copy filter, 1 - ShallowCopy filter, 2 - grab pointer
 DimensionGroupFilter::DimensionGroupFilter(int dim, Filter *f_source, int copy_mode, [[maybe_unused]] uint32_t power) {
   base_dim = dim;
-  f = NULL;
+  f = nullptr;
   if (copy_mode == 0)
     f = new Filter(*f_source);
   else if (copy_mode == 1)
@@ -71,7 +71,8 @@ DimensionGroupFilter::DGFilterOrderedIterator::DGFilterOrderedIterator(const Ite
 
 DimensionGroup::Iterator *DimensionGroupFilter::CopyIterator(DimensionGroup::Iterator *s, uint32_t power) {
   DGFilterIterator *sfit = (DGFilterIterator *)s;
-  if (sfit->Ordered()) return new DGFilterOrderedIterator(*s, power);
+  if (sfit->Ordered())
+    return new DGFilterOrderedIterator(*s, power);
   return new DGFilterIterator(*s, power);
 }
 
@@ -83,7 +84,7 @@ DimensionGroupMaterialized::DimensionGroupMaterialized(DimensionVector &dims) {
   t = new IndexTable *[no_dims];
   nulls_possible = new bool[no_dims];
   for (int i = 0; i < no_dims; i++) {
-    t[i] = NULL;
+    t[i] = nullptr;
     nulls_possible[i] = false;
   }
 }
@@ -115,7 +116,7 @@ DimensionGroupMaterialized::~DimensionGroupMaterialized() {
 void DimensionGroupMaterialized::Empty() {
   for (int i = 0; i < no_dims; i++) {
     delete t[i];
-    t[i] = NULL;
+    t[i] = nullptr;
   }
   no_obj = 0;
 }
@@ -174,7 +175,7 @@ DimensionGroupMaterialized::DGMaterializedIterator::DGMaterializedIterator(int64
       one_packrow[dim] =
           (t[dim]->OrigSize() <= ((1 << p_power) - 1)) && (t[dim]->EndOfCurrentBlock(0) >= (uint64_t)no_obj);
     } else
-      t[dim] = NULL;
+      t[dim] = nullptr;
   }
   Rewind();
 }
@@ -249,11 +250,13 @@ void DimensionGroupMaterialized::DGMaterializedIterator::InitPackrow() {
           ahead1[i] = ahead2[i] = ahead3[i] = -1;
         }
       }
-      if (next_pack[i] < cur_end_packrow) cur_end_packrow = next_pack[i];
+      if (next_pack[i] < cur_end_packrow)
+        cur_end_packrow = next_pack[i];
     }
   pack_size_left = cur_end_packrow - cur_pos;
   cur_pack_start = cur_pos;
-  if (cur_pos == 0 && pack_size_left == no_obj) inside_one_pack = true;
+  if (cur_pos == 0 && pack_size_left == no_obj)
+    inside_one_pack = true;
   DEBUG_ASSERT(pack_size_left > 0);
 }
 
@@ -270,7 +273,8 @@ bool DimensionGroupMaterialized::DGMaterializedIterator::NextInsidePack() {
 
 void DimensionGroupMaterialized::DGMaterializedIterator::JumpToNextPack(uint64_t &loc_iterator, IndexTable *cur_t,
                                                                         uint64_t loc_limit) {
-  if (loc_iterator >= loc_limit) return;
+  if (loc_iterator >= loc_limit)
+    return;
   auto loc_pack = ((cur_t->Get64(loc_iterator) - 1) >> p_power);
   ++loc_iterator;
   while (loc_iterator < loc_limit &&  // find the first row from another pack
@@ -314,7 +318,7 @@ void DimensionGroupMaterialized::DGMaterializedIterator::FindPackEnd(int dim) {
   } else {
     // Nulls possible: do not use ahead1...3, because the current pack has to be
     // checked for nulls anyway
-    while (loc_iterator < loc_limit &&  // find the first non-NULL row (NULL row
+    while (loc_iterator < loc_limit &&  // find the first non-nullptr row (nullptr row
                                         // is when Get64() = 0)
            cur_t->Get64(loc_iterator) == 0) {
       nulls_found[dim] = true;
@@ -324,10 +328,11 @@ void DimensionGroupMaterialized::DGMaterializedIterator::FindPackEnd(int dim) {
       loc_pack = ((cur_t->Get64(loc_iterator) - 1) >> p_power);
       ++loc_iterator;
       uint64_t ndx;
-      while (loc_iterator < loc_limit &&  // find the first non-NULL row from
+      while (loc_iterator < loc_limit &&  // find the first non-nullptr row from
                                           // another pack (but the same block)
              ((ndx = cur_t->Get64InsideBlock(loc_iterator)) == 0 || ((ndx - 1) >> p_power) == loc_pack)) {
-        if (ndx == 0) nulls_found[dim] = true;
+        if (ndx == 0)
+          nulls_found[dim] = true;
         ++loc_iterator;
       }
     }
@@ -339,11 +344,14 @@ void DimensionGroupMaterialized::DGMaterializedIterator::FindPackEnd(int dim) {
 
 int DimensionGroupMaterialized::DGMaterializedIterator::GetNextPackrow(int dim, int ahead) {
   MEASURE_FET("DGMaterializedIterator::GetNextPackrow(int dim, int ahead)");
-  if (ahead == 0) return GetCurPackrow(dim);
+  if (ahead == 0)
+    return GetCurPackrow(dim);
   IndexTable *cur_t = t[dim];
-  if (cur_t == NULL) return -1;
+  if (cur_t == nullptr)
+    return -1;
   uint64_t end_block = cur_t->EndOfCurrentBlock(cur_pos);
-  if (next_pack[dim] >= no_obj || uint64_t(next_pack[dim]) >= end_block) return -1;
+  if (next_pack[dim] >= no_obj || uint64_t(next_pack[dim]) >= end_block)
+    return -1;
   uint64_t ahead_pos = 0;
   //	cout << "dim " << dim << ",  " << next_pack[dim] << " -> " <<
   // ahead1[dim] << "  " <<
@@ -356,7 +364,8 @@ int DimensionGroupMaterialized::DGMaterializedIterator::GetNextPackrow(int dim, 
     ahead_pos = t[dim]->Get64InsideBlock(ahead2[dim]);
   else if (ahead == 4 && ahead3[dim] != -1)
     ahead_pos = t[dim]->Get64InsideBlock(ahead3[dim]);
-  if (ahead_pos == 0) return -1;
+  if (ahead_pos == 0)
+    return -1;
   return int((ahead_pos - 1) >> p_power);
 
   return -1;
@@ -368,7 +377,8 @@ bool DimensionGroupMaterialized::DGMaterializedIterator::BarrierAfterPackrow() {
                                   // dimension group (iterating on a product of many groups)
     return true;
   for (int i = 0; i < no_dims; i++)
-    if (t[i] && (uint64_t)next_pack_start >= t[i]->EndOfCurrentBlock(cur_pos)) return true;
+    if (t[i] && (uint64_t)next_pack_start >= t[i]->EndOfCurrentBlock(cur_pos))
+      return true;
   return false;
 }
 }  // namespace core

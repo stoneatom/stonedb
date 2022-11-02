@@ -25,10 +25,10 @@ namespace Tianmu {
 namespace system {
 CacheableItem::CacheableItem(char const *owner_name, char const *object_id, int _default_block_size) {
   default_block_size = _default_block_size;
-  DEBUG_ASSERT(owner_name != NULL);
-  DEBUG_ASSERT(object_id != NULL);
+  DEBUG_ASSERT(owner_name != nullptr);
+  DEBUG_ASSERT(object_id != nullptr);
   // copy the temporary folder first
-  filename = NULL;
+  filename = nullptr;
 
   {
     // read the configuration parameter
@@ -43,7 +43,7 @@ CacheableItem::CacheableItem(char const *owner_name, char const *object_id, int 
     filename_n_position += 6;
   }
 
-  if (filename == NULL) {
+  if (filename == nullptr) {
     // if the temporary path is not set, use the current folder
     filename = new char[36];  // "XXXXXXnnnnnnAAAAAAAABBBBBBBB.tianmu_tmp"
     filename_n_position = 6;
@@ -67,10 +67,12 @@ CacheableItem::CacheableItem(char const *owner_name, char const *object_id, int 
   random_number |= (rand() % 2048);
   std::sprintf(buf, "%X", random_number);
   std::strcpy(filename + filename_n_position + 6 + (8 - std::strlen(buf)), buf);
-  if (std::strlen(buf) < 8) std::memset(filename + filename_n_position + 6, '0', 8 - std::strlen(buf));
+  if (std::strlen(buf) < 8)
+    std::memset(filename + filename_n_position + 6, '0', 8 - std::strlen(buf));
   std::sprintf(buf, "%p", this);
   std::strcpy(filename + filename_n_position + 14 + (8 - std::strlen(buf)), buf);
-  if (std::strlen(buf) < 8) std::memset(filename + filename_n_position + 14, '0', 8 - std::strlen(buf));
+  if (std::strlen(buf) < 8)
+    std::memset(filename + filename_n_position + 14, '0', 8 - std::strlen(buf));
   std::strcpy(filename + filename_n_position + 22, ".tianmu_tmp");
 }
 
@@ -84,9 +86,12 @@ CacheableItem::~CacheableItem() {
 }
 
 void CacheableItem::CI_Put(int block, unsigned char *data, int size) {
-  if (block == -1) return;
-  if (size == -1) size = default_block_size;
-  if (size <= 0) return;
+  if (block == -1)
+    return;
+  if (size == -1)
+    size = default_block_size;
+  if (size <= 0)
+    return;
   for (int i = no_block; i < block; i++) {  // rare case: the block numbering is not continuous
     // create empty blocks
     file_number.push_back(-1);
@@ -148,7 +153,8 @@ void CacheableItem::CI_Put(int block, unsigned char *data, int size) {
 }
 
 int CacheableItem::CI_Get(int block, uchar *data, int size, int off) {
-  if (block >= no_block || file_size[block] <= 0 || (size >= 0 && off + size > file_size[block])) return -1;
+  if (block >= no_block || file_size[block] <= 0 || (size >= 0 && off + size > file_size[block]))
+    return -1;
 
   try {
     // open file containing the block

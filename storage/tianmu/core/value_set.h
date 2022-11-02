@@ -62,7 +62,7 @@ class ValueSet {
   void Prepare(common::CT at, int scale, DTCollation);
   bool Contains(int64_t v);          // easy case, for non-null integers
   bool Contains(types::BString &v);  // easy case, for strings
-  bool EasyMode() { return (use_easy_table || easy_vals != NULL || easy_hash != NULL) && prepared; }
+  bool EasyMode() { return (use_easy_table || easy_vals != nullptr || easy_hash != nullptr) && prepared; }
   bool Contains(const types::RCValueObject &v, DTCollation);
   bool Contains(const types::RCDataType &v, DTCollation);
   void Clear();
@@ -72,12 +72,14 @@ class ValueSet {
   types::RCDataType *Min() const { return min; }
   types::RCDataType *Max() const { return max; }
   int NoVals() const {
-    if (values.empty()) return no_obj;
+    if (values.empty())
+      return no_obj;
     return values.size();
   }
 
   auto begin() {
-    if (!prepared) return values.cend();
+    if (!prepared)
+      return values.cend();
     return values.cbegin();
   }
 

@@ -275,7 +275,8 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
     prepared = true;
   }
 
-  if (buf == buf_end) return ParsingStrategy::ParseResult::EOB;
+  if (buf == buf_end)
+    return ParsingStrategy::ParseResult::EOB;
 
   const char *ptr = buf;
   bool row_incomplete = false;
@@ -302,7 +303,8 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
     try {
       GetValue(val_beg, ptr - val_beg, col, record[col]);
     } catch (...) {
-      if (errorinfo == -1) errorinfo = col;
+      if (errorinfo == -1)
+        errorinfo = col;
     }
     ptr += delimiter.size();
   }
@@ -320,14 +322,16 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
       try {
         GetValue(val_beg, ptr - val_beg, atis.size() - 1, record[atis.size() - 1]);
       } catch (...) {
-        if (errorinfo == -1) errorinfo = atis.size() - 1;
+        if (errorinfo == -1)
+          errorinfo = atis.size() - 1;
       }
       ptr += eol.size();
     }
   }
 
   if (row_incomplete) {
-    if (errorinfo == -1) errorinfo = atis.size() - 1;
+    if (errorinfo == -1)
+      errorinfo = atis.size() - 1;
     return ParsingStrategy::ParseResult::EOB;
   }
   rowsize = uint(ptr - buf);
@@ -338,7 +342,8 @@ char TranslateEscapedChar(char c) {
   static char in[] = {'0', 'b', 'n', 'r', 't', char(26)};
   static char out[] = {'\0', '\b', '\n', '\r', '\t', char(26)};
   for (int i = 0; i < 6; i++)
-    if (in[i] == c) return out[i];
+    if (in[i] == c)
+      return out[i];
 
   return c;
 }
@@ -363,13 +368,16 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
   bool isnull = false;
   switch (value_size) {
     case 0:
-      if (!is_enclosed) isnull = true;
+      if (!is_enclosed)
+        isnull = true;
       break;
     case 2:
-      if (*value_ptr == '\\' && (value_ptr[1] == 'N' || (!is_enclosed && value_ptr[1] == 'n'))) isnull = true;
+      if (*value_ptr == '\\' && (value_ptr[1] == 'N' || (!is_enclosed && value_ptr[1] == 'n')))
+        isnull = true;
       break;
     case 4:
-      if (!is_enclosed && strncasecmp(value_ptr, "NULL", 4) == 0) isnull = true;
+      if (!is_enclosed && strncasecmp(value_ptr, "nullptr", 4) == 0)
+        isnull = true;
       break;
     default:
       break;
@@ -380,7 +388,8 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
 
   else if (core::ATI::IsBinType(ati.Type())) {
     // convert hexadecimal format to binary
-    if (value_size % 2) throw common::FormatException(0, 0);
+    if (value_size % 2)
+      throw common::FormatException(0, 0);
     char *buf = reinterpret_cast<char *>(buffer.Prepare(value_size / 2));
     int p = 0;
     for (uint l = 0; l < value_size; l += 2) {
@@ -388,13 +397,15 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
       int b = 0;
       if (isalpha((uchar)value_ptr[l])) {
         char c = tolower(value_ptr[l]);
-        if (c < 'a' || c > 'f') throw common::FormatException(0, 0);
+        if (c < 'a' || c > 'f')
+          throw common::FormatException(0, 0);
         a = c - 'a' + 10;
       } else
         a = value_ptr[l] - '0';
       if (isalpha((uchar)value_ptr[l + 1])) {
         char c = tolower(value_ptr[l + 1]);
-        if (c < 'a' || c > 'f') throw common::FormatException(0, 0);
+        if (c < 'a' || c > 'f')
+          throw common::FormatException(0, 0);
         b = c - 'a' + 10;
       } else
         b = value_ptr[l + 1] - '0';
@@ -408,7 +419,7 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
       std::string valueStr(value_ptr, value_size);
       value_size = ati.CharLen();
       TIANMU_LOG(LogCtl_Level::DEBUG, "Data format error. DbName:%s ,TableName:%s ,Col %d, value:%s", dbname.c_str(),
-                  tablename.c_str(), col, valueStr.c_str());
+                 tablename.c_str(), col, valueStr.c_str());
       std::stringstream err_msg;
       err_msg << "data truncate,col num" << col << " value:" << valueStr << std::endl;
       common::PushWarning(current_txn_->Thd(), Sql_condition::SL_WARNING, ER_UNKNOWN_ERROR, err_msg.str().c_str());
@@ -433,7 +444,8 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
       if (ati.CharsetInfo()->mbmaxlen <= cs_info->mbmaxlen)
         new_size = copy_and_convert(buf, reserved, ati.CharsetInfo(), buf, new_size, cs_info, &errors);
       else {
-        if (new_size > temp_buf.size()) temp_buf.resize(new_size);
+        if (new_size > temp_buf.size())
+          temp_buf.resize(new_size);
         char *tmpbuf = &temp_buf[0];
         std::memcpy(tmpbuf, buf, new_size);
         new_size = copy_and_convert(buf, reserved, ati.CharsetInfo(), tmpbuf, new_size, cs_info, &errors);
@@ -442,7 +454,8 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
 
     // check the value length
     size_t char_len = ati.CharsetInfo()->cset->numchars(ati.CharsetInfo(), buf, buf + new_size);
-    if (char_len > ati.CharLen()) throw common::FormatException(0, col);
+    if (char_len > ati.CharLen())
+      throw common::FormatException(0, col);
 
     buffer.ExpectedSize(new_size);
 

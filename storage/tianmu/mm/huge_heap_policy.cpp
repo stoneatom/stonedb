@@ -28,7 +28,7 @@ namespace Tianmu {
 namespace mm {
 
 HugeHeap::HugeHeap(std::string hugedir, size_t size) : TCMHeap(0) {
-  heap_frame_ = NULL;
+  heap_frame_ = nullptr;
   // convert size from MB to B and make it a multiple of 2MB
   size_ = 1_MB * (size & ~0x1);
   heap_status_ = HEAP_STATUS::HEAP_ERROR;
@@ -44,18 +44,18 @@ HugeHeap::HugeHeap(std::string hugedir, size_t size) : TCMHeap(0) {
     if (fd_ < 0) {
       heap_status_ = HEAP_STATUS::HEAP_OUT_OF_MEMORY;
       rc_control_ << system::lock << "Memory Manager Error: Unable to create hugepage file: " << huge_filename_
-                << system::unlock;
+                  << system::unlock;
       return;
     }
     // MAP_SHARED to have mmap fail immediately if not enough pages
     // MAP_PRIVATE does copy on write
     // MAP_POPULATE to create page table entries and avoid future surprises
-    heap_frame_ = (char *)mmap(NULL, size_, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, fd_, 0);
+    heap_frame_ = (char *)mmap(nullptr, size_, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_POPULATE, fd_, 0);
     if (heap_frame_ == MAP_FAILED) {
       unlink(huge_filename_);
       heap_status_ = HEAP_STATUS::HEAP_OUT_OF_MEMORY;
       rc_control_ << system::lock << "Memory Manager Error: hugepage file mmap error: " << std::strerror(errno)
-                << system::unlock;
+                  << system::unlock;
       return;
     }
 
@@ -69,7 +69,7 @@ HugeHeap::HugeHeap(std::string hugedir, size_t size) : TCMHeap(0) {
 }
 
 HugeHeap::~HugeHeap() {
-  if (heap_frame_ != NULL) {
+  if (heap_frame_ != nullptr) {
     munmap(heap_frame_, size_);
   }
   if (fd_ > 0) {

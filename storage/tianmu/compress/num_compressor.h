@@ -216,7 +216,7 @@ inline CprsErr NumDecompress(T *dest, char *src, uint len, uint nrec, uint64_t m
 
 template <class T>
 NumCompressor<T>::NumCompressor(bool copy_only) : copy_only_(copy_only) {
-  dump_ = NULL;
+  dump_ = nullptr;
 
   // Create filters_
   filters_.reserve(N_FILTERS_);
@@ -252,7 +252,8 @@ void NumCompressor<T>::DumpData(DataSet<T> *ds, uint f) {
 template <class T>
 CprsErr NumCompressor<T>::CopyCompress(char *dest, uint &len, const T *src, uint nrec) {
   uint datalen = nrec * sizeof(T);
-  if (len < 1 + datalen) return CprsErr::CPRS_ERR_BUF;
+  if (len < 1 + datalen)
+    return CprsErr::CPRS_ERR_BUF;
   *dest = 0;  // ID of copy compression
   std::memcpy(dest + 1, src, datalen);
   len = 1 + datalen;
@@ -262,7 +263,8 @@ CprsErr NumCompressor<T>::CopyCompress(char *dest, uint &len, const T *src, uint
 template <class T>
 CprsErr NumCompressor<T>::CopyDecompress(T *dest, char *src, uint len, uint nrec) {
   uint datalen = nrec * sizeof(T);
-  if (len < 1 + datalen) throw CprsErr::CPRS_ERR_BUF;
+  if (len < 1 + datalen)
+    throw CprsErr::CPRS_ERR_BUF;
   std::memcpy(dest, src + 1, datalen);
   return CprsErr::CPRS_SUCCESS;
 }
@@ -274,8 +276,10 @@ CprsErr NumCompressor<T>::CompressT(char *dest, uint &len, const T *src, uint nr
   // <ver>=0  - copy compression
   // <ver>=1  - current version
 
-  if (!dest || !src || (len < 3)) return CprsErr::CPRS_ERR_BUF;
-  if ((nrec == 0) || (maxval == 0)) return CprsErr::CPRS_ERR_PAR;
+  if (!dest || !src || (len < 3))
+    return CprsErr::CPRS_ERR_BUF;
+  if ((nrec == 0) || (maxval == 0))
+    return CprsErr::CPRS_ERR_PAR;
 
   if (copy_only_)
     return CopyCompress(dest, len, src, nrec);
@@ -315,7 +319,8 @@ CprsErr NumCompressor<T>::CompressT(char *dest, uint &len, const T *src, uint nr
 
   // if compression failed or the size is bigger than the raw data, use copy
   // compression
-  if (static_cast<int>(err) || (pos >= 0.98 * nrec * sizeof(T))) return CopyCompress(dest, len, src, nrec);
+  if (static_cast<int>(err) || (pos >= 0.98 * nrec * sizeof(T)))
+    return CopyCompress(dest, len, src, nrec);
 
   len = pos;
   return CprsErr::CPRS_SUCCESS;
@@ -324,12 +329,16 @@ CprsErr NumCompressor<T>::CompressT(char *dest, uint &len, const T *src, uint nr
 template <class T>
 CprsErr NumCompressor<T>::DecompressT(T *dest, char *src, uint len, uint nrec, T maxval,
                                       [[maybe_unused]] CprsAttrType cat) {
-  if (!src || (len < 1)) return CprsErr::CPRS_ERR_BUF;
-  if ((nrec == 0) || (maxval == 0)) return CprsErr::CPRS_ERR_PAR;
+  if (!src || (len < 1))
+    return CprsErr::CPRS_ERR_BUF;
+  if ((nrec == 0) || (maxval == 0))
+    return CprsErr::CPRS_ERR_PAR;
 
   uchar ver = (uchar)src[0];
-  if (ver == 0) return CopyDecompress(dest, src, len, nrec);
-  if (len < 3) return CprsErr::CPRS_ERR_BUF;
+  if (ver == 0)
+    return CopyDecompress(dest, src, len, nrec);
+  if (len < 3)
+    return CprsErr::CPRS_ERR_BUF;
   ushort ID = *(ushort *)(src + 1);
   uint pos = 3;
 

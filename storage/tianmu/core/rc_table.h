@@ -97,7 +97,7 @@ class RCTable final : public JustATable {
   void Rollback(common::TX_ID xid, bool = false);
   void PostCommit();
 
-  // Data access & information 
+  // Data access & information
   int64_t NumOfObj() override;
   int64_t NumOfDeleted();
   int64_t NumOfValues() { return NumOfObj(); }
@@ -106,17 +106,17 @@ class RCTable final : public JustATable {
   int64_t GetTable64(int64_t obj, int attr) override;  // value from table in 1-level numerical form
   bool IsNull(int64_t obj,
               int attr) override;  // return true if the value of attr. is null
-  types::RCValueObject GetValue(int64_t obj, int attr, Transaction *conn = NULL);
+  types::RCValueObject GetValue(int64_t obj, int attr, Transaction *conn = nullptr);
   const fs::path &Path() { return m_path; }
 
   // Query execution
 
   // for numerical: best rough approximation of min/max for a given filter (or
-  // global min if filter is NULL)
-  int64_t RoughMin(int n_a, Filter *f = NULL);
-  int64_t RoughMax(int n_a, Filter *f = NULL);
+  // global min if filter is nullptr)
+  int64_t RoughMin(int n_a, Filter *f = nullptr);
+  int64_t RoughMax(int n_a, Filter *f = nullptr);
 
-  uint MaxStringSize(int n_a, Filter *f = NULL) override;
+  uint MaxStringSize(int n_a, Filter *f = nullptr) override;
   void FillRowByRowid(TABLE *table, int64_t obj);
   void DisplayRSI();
   uint32_t Getpackpower() const override;

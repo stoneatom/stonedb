@@ -27,11 +27,11 @@ namespace core {
 SorterWrapper::SorterWrapper(MultiIndex &_mind, int64_t _limit) : cur_mit(&_mind) {
   no_of_rows = _mind.NumOfTuples();
   limit = _limit;
-  s = NULL;
-  mi_encoder = NULL;
+  s = nullptr;
+  mi_encoder = nullptr;
   buf_size = 0;
-  cur_val = NULL;
-  input_buf = NULL;
+  cur_val = nullptr;
+  input_buf = nullptr;
   no_values_encoded = 0;
   rough_sort_by = -1;
 }
@@ -52,7 +52,8 @@ void SorterWrapper::InitOrderByVector(std::vector<int> &order_by) {
 
   for (uint i = 0; i < input_cols.size(); i++) {
     int ord = input_cols[i].sort_order;
-    if (ord < 0) ord = -ord;
+    if (ord < 0)
+      ord = -ord;
     if (ord != 0) {
       DEBUG_ASSERT(order_by[ord - 1] == -1);
       order_by[ord - 1] = i;
@@ -76,23 +77,24 @@ void SorterWrapper::InitOrderByVector(std::vector<int> &order_by) {
 void SorterWrapper::InitSorter(MultiIndex &mind, bool implicit_logic) {
   DimensionVector implicit_dims(mind.NumOfDimensions());  // these dimensions will be implicit
   DimensionVector one_pack_dims(mind.NumOfDimensions());  // these dimensions contain only one used pack
-                                                       // (potentially implicit)
+                                                          // (potentially implicit)
 
   // Prepare optimization guidelines
   for (int dim = 0; dim < mind.NumOfDimensions(); dim++) {
     int no_packs = mind.MaxNumOfPacks(dim);
-    if (no_packs == 1) one_pack_dims[dim] = true;  // possibly implicit if only one pack
-                                                   /*
-                                                           //disable implicit logic for SorterWrapper Merge case(multi thread
-                                                      case)
-                                                           //sortedtable and its sub-sorttable would has different limit value
-                                                      (limit=sortrows)
-                                                           //which means implicit_dims[dim] may be different sortedtable and
-                                                      its sub-sortedtable.
-                                                           //This would cause total_bytes being different between them, while
-                                                      PutValues(SorterWrapper &st)
-                                                           //require them to be the same.
-                                                   */
+    if (no_packs == 1)
+      one_pack_dims[dim] = true;  // possibly implicit if only one pack
+                                  /*
+                                          //disable implicit logic for SorterWrapper Merge case(multi thread
+                                     case)
+                                          //sortedtable and its sub-sorttable would has different limit value
+                                     (limit=sortrows)
+                                          //which means implicit_dims[dim] may be different sortedtable and
+                                     its sub-sortedtable.
+                                          //This would cause total_bytes being different between them, while
+                                     PutValues(SorterWrapper &st)
+                                          //require them to be the same.
+                                  */
     if ((no_packs > (limit == -1 ? no_of_rows : limit)) && implicit_logic)
       implicit_dims[dim] = true;  // implicit if there is more opened packs than output rows
   }
@@ -105,8 +107,10 @@ void SorterWrapper::InitSorter(MultiIndex &mind, bool implicit_logic) {
   scol.reserve(input_cols.size());
   for (uint i = 0; i < input_cols.size(); i++) {
     int flags = 0;
-    if (input_cols[i].sort_order != 0) flags |= ColumnBinEncoder::ENCODER_MONOTONIC;
-    if (input_cols[i].sort_order < 0) flags |= ColumnBinEncoder::ENCODER_DESCENDING;
+    if (input_cols[i].sort_order != 0)
+      flags |= ColumnBinEncoder::ENCODER_MONOTONIC;
+    if (input_cols[i].sort_order < 0)
+      flags |= ColumnBinEncoder::ENCODER_DESCENDING;
     if (input_cols[i].in_output) {
       flags |= ColumnBinEncoder::ENCODER_DECODABLE;
       if (input_cols[i].sort_order == 0)  // decodable, but not comparable (store values)
@@ -116,7 +120,8 @@ void SorterWrapper::InitSorter(MultiIndex &mind, bool implicit_logic) {
     scol[i].PrepareEncoder(input_cols[i].col);
     // neither in_output nor sorting keys => disable them, we'll not use it in
     // any way
-    if (!input_cols[i].in_output && input_cols[i].sort_order == 0) scol[i].Disable();
+    if (!input_cols[i].in_output && input_cols[i].sort_order == 0)
+      scol[i].Disable();
     for (uint col = 0; col < i; col++) {
       if (scol[i].DefineAsEquivalent(scol[col])) {
         scol[i].SetDupCol(col);
@@ -218,7 +223,8 @@ void SorterWrapper::SortRoughly(std::vector<PackOrderer> &po) {
 
 bool SorterWrapper::InitPackrow(MIIterator &mit)  // return true if the packrow may be skipped
 {
-  if (s == NULL) return false;  // trivial sorter (constant values)
+  if (s == nullptr)
+    return false;  // trivial sorter (constant values)
 
   // rough sort: exclude packs which are for sure out of scope
   if (rough_sort_by > -1 && limit > -1 && no_values_encoded >= limit) {
@@ -228,12 +234,13 @@ bool SorterWrapper::InitPackrow(MIIterator &mit)  // return true if the packrow 
       bool asc = (input_cols[rough_sort_by].sort_order > 0);  // ascending sort
       int64_t local_min = (asc ? vc->GetMinInt64(mit) : common::MINUS_INF_64);
       int64_t local_max = (asc ? common::PLUS_INF_64 : vc->GetMaxInt64(mit));
-      if (scol[rough_sort_by].ImpossibleValues(local_min, local_max)) return true;  // exclude
+      if (scol[rough_sort_by].ImpossibleValues(local_min, local_max))
+        return true;  // exclude
     }
   }
 
   TIANMU_LOG(LogCtl_Level::DEBUG, "InitPackrow: no_values_encoded %d, begin to loadpacks scol size %d ",
-              no_values_encoded, scol.size());
+             no_values_encoded, scol.size());
   // Not excluded: lock packs
   if (!ha_rcengine_->query_thread_pool.is_owner()) {
     utils::result_set<void> res;
@@ -249,34 +256,39 @@ bool SorterWrapper::InitPackrow(MIIterator &mit)  // return true if the packrow 
 }
 
 bool SorterWrapper::PutValues(MIIterator &mit) {
-  if (s == NULL) return false;  // trivial sorter (constant values)
-  if (mi_encoder) mi_encoder->Encode(input_buf, mit);
+  if (s == nullptr)
+    return false;  // trivial sorter (constant values)
+  if (mi_encoder)
+    mi_encoder->Encode(input_buf, mit);
   bool update_stats =
       (rough_sort_by > -1 && limit > -1 && no_values_encoded <= limit);  // otherwise statistics are either not used
                                                                          // or already prepared
   for (uint i = 0; i < scol.size(); i++)
     if (scol[i].IsEnabled() && scol[i].IsNontrivial())  // constant num. columns are trivial
-      scol[i].Encode(input_buf, mit, NULL, update_stats);
+      scol[i].Encode(input_buf, mit, nullptr, update_stats);
   no_values_encoded++;
   return s->PutValue(input_buf);
 }
 
 bool SorterWrapper::PutValues(SorterWrapper &sw) {
-  if (s == NULL) return false;  // trivial sorter (constant values)
+  if (s == nullptr)
+    return false;  // trivial sorter (constant values)
   no_values_encoded += sw.GetEncodedValNum();
   TIANMU_LOG(LogCtl_Level::DEBUG, "PutValues: no_values_encoded %d \n", no_values_encoded);
   return s->PutValue(sw.GetSorter());
 }
 
 bool SorterWrapper::FetchNextRow() {
-  if (s == NULL) {
+  if (s == nullptr) {
     no_of_rows--;
-    return (no_of_rows >= 0);  // trivial sorter (constant values, cur_val is always NULL)
+    return (no_of_rows >= 0);  // trivial sorter (constant values, cur_val is always nullptr)
   }
   cur_val = s->GetNextValue();
-  if (cur_val == NULL) return false;
-  if (mi_encoder) mi_encoder->GetValue(cur_val,
-                                       cur_mit);  // decode the MIIterator (for implicit/virtual values)
+  if (cur_val == nullptr)
+    return false;
+  if (mi_encoder)
+    mi_encoder->GetValue(cur_val,
+                         cur_mit);  // decode the MIIterator (for implicit/virtual values)
   return true;
 }
 }  // namespace core

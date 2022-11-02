@@ -266,7 +266,7 @@ class concrete_execution_stage final : public execution_stage {
     promise_type _ready;
 
     template <typename... Args>
-    work_item(Args &&...args) : _in(std::forward<Args>(args)...) {}
+    work_item(Args &&... args) : _in(std::forward<Args>(args)...) {}
 
     work_item(work_item &&other) = delete;
     work_item(const work_item &) = delete;
@@ -330,7 +330,7 @@ class concrete_execution_stage final : public execution_stage {
   /// \return future containing the result of the call to the stage's function
   template <typename... Args>
   GCC6_CONCEPT(requires std::is_constructible<input_type, Args...>::value)
-  return_type operator()(Args &&...args) {
+  return_type operator()(Args &&... args) {
     _queue.emplace_back(std::forward<Args>(args)...);
     _empty = false;
     _stats.function_calls_enqueued++;

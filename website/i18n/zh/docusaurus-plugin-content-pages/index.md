@@ -79,7 +79,7 @@ StoneDB for MySQL
                 - 减少企业的TCO成本，人人皆可获得低成本的数据服务。
 ```
 
-```custom-roadMap 2022-10-10
+```custom-roadMap 2022-10-20
 - Roadmap
     - StoneDB_5.6_v1.0.0
         1. 一体化行列混存+内存计算架构

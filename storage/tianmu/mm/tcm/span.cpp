@@ -41,7 +41,8 @@ void Event(Span *span, char op, int v = 0) {
   span->history[span->nexthistory] = op;
   span->value[span->nexthistory] = v;
   span->nexthistory++;
-  if (span->nexthistory == sizeof(span->history)) span->nexthistory = 0;
+  if (span->nexthistory == sizeof(span->history))
+    span->nexthistory = 0;
 }
 #endif
 
@@ -72,8 +73,8 @@ void DLL_Init(Span *list) {
 void DLL_Remove(Span *span) {
   span->prev->next = span->next;
   span->next->prev = span->prev;
-  span->prev = NULL;
-  span->next = NULL;
+  span->prev = nullptr;
+  span->next = nullptr;
 }
 
 #if 0  // This isn't used.  If that changes, rewrite to use TCMalloc_Printer.
@@ -88,8 +89,8 @@ void DLL_Print(const char *label, const Span *list)
 #endif
 
 void DLL_Prepend(Span *list, Span *span) {
-  ASSERT(span->next == NULL);
-  ASSERT(span->prev == NULL);
+  ASSERT(span->next == nullptr);
+  ASSERT(span->prev == nullptr);
   span->next = list->next;
   span->prev = list;
   list->next->prev = span;

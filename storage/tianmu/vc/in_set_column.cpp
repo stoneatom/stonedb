@@ -25,59 +25,63 @@
 
 namespace Tianmu {
 namespace vcolumn {
-InSetColumn::InSetColumn(core::ColumnType const &ct, core::MultiIndex *mind,
+InSetColumn::InSetColumn(core::ColumnType const &ct, core::MultiIndex *multi_index,
                          std::vector<VirtualColumn *> const &columns_)
-    : MultiValColumn(ct, mind),
+    : MultiValColumn(ct, multi_index),
       columns(columns_),
-      full_cache(false),
-      cache(mind->ValueOfPower()),
-      expected_type(ct),
-      last_mit(NULL),
-      last_mit_size(0) {
+      full_cache_(false),
+      cache_(multi_index->ValueOfPower()),
+      expected_type_(ct),
+      last_mit_(nullptr),
+      last_mit_size_(0) {
   std::set<VarMap> uvms;
   for (auto &it : columns) {
     auto const &vm = it->GetVarMap();
     uvms.insert(vm.begin(), vm.end());
     core::MysqlExpression::tianmu_fields_cache_t const &tianmu_fields_cache = it->GetTIANMUItems();
-    tianmuitems.insert(tianmu_fields_cache.begin(), tianmu_fields_cache.end());
+    tianmu_items_.insert(tianmu_fields_cache.begin(), tianmu_fields_cache.end());
   }
-  std::vector<VarMap>(uvms.begin(), uvms.end()).swap(var_map);
+  std::vector<VarMap>(uvms.begin(), uvms.end()).swap(var_map_);
   std::set<int> dims;
-  for (auto &it : var_map) dims.insert(it.dim);
+  for (auto &it : var_map_) dims.insert(it.dim);
   if (dims.size() == 1)
-    dim = *(dims.begin());
+    dim_ = *(dims.begin());
   else
-    dim = -1;
+    dim_ = -1;
 
-  is_const =
+  is_const_ =
       std::find_if(columns.begin(), columns.end(), [](VirtualColumn *col) { return !col->IsConst(); }) == columns.end();
 }
 
-InSetColumn::InSetColumn(core::ColumnType const &ct, core::MultiIndex *mind, core::ValueSet &external_valset)
-    : MultiValColumn(ct, mind), cache(external_valset), expected_type(ct), last_mit(NULL), last_mit_size(0) {
-  dim = -1;
-  is_const = true;
-  full_cache = true;
-  cache.Prepare(expected_type.GetTypeName(), ct.GetScale(), expected_type.GetCollation());
+InSetColumn::InSetColumn(core::ColumnType const &ct, core::MultiIndex *multi_index, core::ValueSet &external_valset)
+    : MultiValColumn(ct, multi_index),
+      cache_(external_valset),
+      expected_type_(ct),
+      last_mit_(nullptr),
+      last_mit_size_(0) {
+  dim_ = -1;
+  is_const_ = true;
+  full_cache_ = true;
+  cache_.Prepare(expected_type_.GetTypeName(), ct.GetScale(), expected_type_.GetCollation());
 }
 
 InSetColumn::InSetColumn(const InSetColumn &c)
     : MultiValColumn(c),
       columns(c.columns),
-      full_cache(c.full_cache),
-      cache(c.cache),
-      expected_type(c.expected_type),
-      is_const(c.is_const),
-      last_mit(c.last_mit),
-      last_mit_size(c.last_mit_size) {}
+      full_cache_(c.full_cache_),
+      cache_(c.cache_),
+      expected_type_(c.expected_type_),
+      is_const_(c.is_const_),
+      last_mit_(c.last_mit_),
+      last_mit_size_(c.last_mit_size_) {}
 
 InSetColumn::~InSetColumn() {}
 
-bool InSetColumn::IsConst() const { return is_const; }
+bool InSetColumn::IsConst() const { return is_const_; }
 
 void InSetColumn::RequestEval(const core::MIIterator &mit, const int tta) {
-  full_cache = false;
-  cache.Clear();
+  full_cache_ = false;
+  cache_.Clear();
   for (unsigned int i = 0; i < columns.size(); i++) columns[i]->RequestEval(mit, tta);
 }
 
@@ -110,19 +114,20 @@ void InSetColumn::EvaluatePackImpl([[maybe_unused]] core::MIUpdatingIterator &mi
 }
 
 bool InSetColumn::IsSetEncoded(common::CT at, int scale) {
-  return (cache.EasyMode() && scale == ct.GetScale() &&
-          (at == expected_type.GetTypeName() ||
-           (core::ATI::IsFixedNumericType(at) && core::ATI::IsFixedNumericType(expected_type.GetTypeName()))));
+  return (cache_.EasyMode() && scale == ct.GetScale() &&
+          (at == expected_type_.GetTypeName() ||
+           (core::ATI::IsFixedNumericType(at) && core::ATI::IsFixedNumericType(expected_type_.GetTypeName()))));
 }
 
 common::Tribool InSetColumn::Contains64Impl(const core::MIIterator &mit, int64_t val)  // easy case for numerics
 {
-  if (cache.EasyMode()) {
+  if (cache_.EasyMode()) {
     common::Tribool contains = false;
-    if (val == common::NULL_VALUE_64) return common::TRIBOOL_UNKNOWN;
-    if (cache.Contains(val))
+    if (val == common::NULL_VALUE_64)
+      return common::TRIBOOL_UNKNOWN;
+    if (cache_.Contains(val))
       contains = true;
-    else if (cache.ContainsNulls())
+    else if (cache_.ContainsNulls())
       contains = common::TRIBOOL_UNKNOWN;
     return contains;
   }
@@ -132,12 +137,13 @@ common::Tribool InSetColumn::Contains64Impl(const core::MIIterator &mit, int64_t
 common::Tribool InSetColumn::ContainsStringImpl(const core::MIIterator &mit,
                                                 types::BString &val)  // easy case for numerics
 {
-  if (cache.EasyMode()) {
+  if (cache_.EasyMode()) {
     common::Tribool contains = false;
-    if (val.IsNull()) return common::TRIBOOL_UNKNOWN;
-    if (cache.Contains(val))
+    if (val.IsNull())
+      return common::TRIBOOL_UNKNOWN;
+    if (cache_.Contains(val))
       contains = true;
-    else if (cache.ContainsNulls())
+    else if (cache_.ContainsNulls())
       contains = common::TRIBOOL_UNKNOWN;
     return contains;
   }
@@ -146,17 +152,19 @@ common::Tribool InSetColumn::ContainsStringImpl(const core::MIIterator &mit,
 
 common::Tribool InSetColumn::ContainsImpl(const core::MIIterator &mit, const types::RCDataType &val) {
   common::Tribool contains = false;
-  if (val.IsNull()) return common::TRIBOOL_UNKNOWN;
+  if (val.IsNull())
+    return common::TRIBOOL_UNKNOWN;
   if (IsConst()) {
-    if (!full_cache) PrepareCache(mit);
-    cache.Prepare(expected_type.GetTypeName(), ct.GetScale(), expected_type.GetCollation());
+    if (!full_cache_)
+      PrepareCache(mit);
+    cache_.Prepare(expected_type_.GetTypeName(), ct.GetScale(), expected_type_.GetCollation());
 
-    if (cache.Contains(val, GetCollation()))
+    if (cache_.Contains(val, GetCollation()))
       contains = true;
-    else if (cache.ContainsNulls())
+    else if (cache_.ContainsNulls())
       contains = common::TRIBOOL_UNKNOWN;
   } else {
-    // TODO: remember mit value for the last cache creation and reuse cache if
+    // TODO: remember mit value for the last cache_ creation and reuse cache_ if
     // possible.
     if (types::RequiresUTFConversions(GetCollation()) && Type().IsString()) {
       for (auto &it : columns) {
@@ -187,7 +195,8 @@ common::Tribool InSetColumn::ContainsImpl(const core::MIIterator &mit, const typ
 }
 
 int64_t InSetColumn::NumOfValuesImpl([[maybe_unused]] core::MIIterator const &mit) {
-  if (full_cache && is_const) return cache.NoVals();
+  if (full_cache_ && is_const_)
+    return cache_.NoVals();
   return columns.size();
 }
 
@@ -195,73 +204,81 @@ bool InSetColumn::IsEmptyImpl(core::MIIterator const &mit) { return AtLeastNoDis
 
 void InSetColumn::PrepareCache(const core::MIIterator &mit, const int64_t &at_least) {
   // MEASURE_FET("InSetColumn::PrepareCache(...)");
-  full_cache = false;
-  cache.Clear();
+  full_cache_ = false;
+  cache_.Clear();
   auto it(columns.begin());
   auto end(columns.end());
   if (types::RequiresUTFConversions(GetCollation()) && Type().IsString()) {
     core::ValueSet bin_cache(mit.GetPower());
-    bin_cache.Prepare(expected_type.GetTypeName(), expected_type.GetScale(), expected_type.GetCollation());
+    bin_cache.Prepare(expected_type_.GetTypeName(), expected_type_.GetScale(), expected_type_.GetCollation());
     int bin_size = 0;
     int max_str_size = 0;
     for (; (it != end) && (bin_cache.NoVals() <= at_least); ++it) max_str_size += (*it)->MaxStringSize();
     it = columns.begin();
-    types::BString buf(NULL, types::CollationBufLen(GetCollation(), max_str_size), true);
+    types::BString buf(nullptr, types::CollationBufLen(GetCollation(), max_str_size), true);
     for (; (it != end) && (bin_cache.NoVals() <= at_least); ++it) {
       types::BString s;
       (*it)->GetValueString(s, mit);
       ConvertToBinaryForm(s, buf, GetCollation());
       bin_size = bin_cache.NoVals();
       bin_cache.Add(buf);
-      if (bin_size < bin_cache.NoVals()) cache.Add(s);
+      if (bin_size < bin_cache.NoVals())
+        cache_.Add(s);
     }
   } else {
-    for (; (it != end) && (cache.NoVals() <= at_least); ++it) cache.Add((*it)->GetValue(mit));
+    for (; (it != end) && (cache_.NoVals() <= at_least); ++it) cache_.Add((*it)->GetValue(mit));
   }
-  if ((at_least == common::PLUS_INF_64) || (it == end)) full_cache = true;
+  if ((at_least == common::PLUS_INF_64) || (it == end))
+    full_cache_ = true;
 }
 
 int64_t InSetColumn::AtLeastNoDistinctValuesImpl(const core::MIIterator &mit, int64_t const at_least) {
   DEBUG_ASSERT(at_least > 0);
-  if (!full_cache || !is_const) PrepareCache(mit, at_least);
-  return cache.NoVals();
+  if (!full_cache_ || !is_const_)
+    PrepareCache(mit, at_least);
+  return cache_.NoVals();
 }
 
 bool InSetColumn::ContainsNullImpl(const core::MIIterator &mit) {
-  if (!full_cache || !is_const) PrepareCache(mit);
-  cache.Prepare(expected_type.GetTypeName(), ct.GetScale(), expected_type.GetCollation());
-  return cache.ContainsNulls();
+  if (!full_cache_ || !is_const_)
+    PrepareCache(mit);
+  cache_.Prepare(expected_type_.GetTypeName(), ct.GetScale(), expected_type_.GetCollation());
+  return cache_.ContainsNulls();
 }
 
 std::unique_ptr<MultiValColumn::IteratorInterface> InSetColumn::BeginImpl(core::MIIterator const &mit) {
-  if (!full_cache || !is_const) PrepareCache(mit);
-  cache.Prepare(expected_type.GetTypeName(), ct.GetScale(), expected_type.GetCollation());
-  return std::unique_ptr<MultiValColumn::IteratorInterface>(new IteratorImpl(cache.begin()));
+  if (!full_cache_ || !is_const_)
+    PrepareCache(mit);
+  cache_.Prepare(expected_type_.GetTypeName(), ct.GetScale(), expected_type_.GetCollation());
+  return std::unique_ptr<MultiValColumn::IteratorInterface>(new IteratorImpl(cache_.begin()));
 }
 
 std::unique_ptr<MultiValColumn::IteratorInterface> InSetColumn::EndImpl(core::MIIterator const &mit) {
-  if (!full_cache || !is_const) PrepareCache(mit);
-  cache.Prepare(expected_type.GetTypeName(), ct.GetScale(), expected_type.GetCollation());
-  return std::unique_ptr<MultiValColumn::IteratorInterface>(new IteratorImpl(cache.end()));
+  if (!full_cache_ || !is_const_)
+    PrepareCache(mit);
+  cache_.Prepare(expected_type_.GetTypeName(), ct.GetScale(), expected_type_.GetCollation());
+  return std::unique_ptr<MultiValColumn::IteratorInterface>(new IteratorImpl(cache_.end()));
 }
 
 types::RCValueObject InSetColumn::GetSetMinImpl(core::MIIterator const &mit) {
-  if (!full_cache || !is_const) PrepareCache(mit);
-  cache.Prepare(expected_type.GetTypeName(), ct.GetScale(), expected_type.GetCollation());
-  return types::RCValueObject(*cache.Min());
+  if (!full_cache_ || !is_const_)
+    PrepareCache(mit);
+  cache_.Prepare(expected_type_.GetTypeName(), ct.GetScale(), expected_type_.GetCollation());
+  return types::RCValueObject(*cache_.Min());
 }
 
 types::RCValueObject InSetColumn::GetSetMaxImpl(core::MIIterator const &mit) {
-  if (!full_cache || !is_const) PrepareCache(mit);
-  cache.Prepare(expected_type.GetTypeName(), ct.GetScale(), expected_type.GetCollation());
-  return types::RCValueObject(*cache.Max());
+  if (!full_cache_ || !is_const_)
+    PrepareCache(mit);
+  cache_.Prepare(expected_type_.GetTypeName(), ct.GetScale(), expected_type_.GetCollation());
+  return types::RCValueObject(*cache_.Max());
 }
 
-void InSetColumn::SetExpectedTypeImpl(core::ColumnType const &ct) { expected_type = ct; }
+void InSetColumn::SetExpectedTypeImpl(core::ColumnType const &ct) { expected_type_ = ct; }
 
 char *InSetColumn::ToString(char p_buf[], size_t buf_ct) const {
-  if (full_cache && is_const) {
-    int64_t no_vals = cache.NoVals();
+  if (full_cache_ && is_const_) {
+    int64_t no_vals = cache_.NoVals();
     std::snprintf(p_buf, buf_ct, "%ld vals", no_vals);
   }
   return p_buf;
@@ -275,7 +292,8 @@ void InSetColumn::LockSourcePacks(const core::MIIterator &mit) {
 
 bool InSetColumn::CanCopy() const {
   for (unsigned int i = 0; i < columns.size(); i++) {
-    if (!columns[i]->CanCopy()) return false;
+    if (!columns[i]->CanCopy())
+      return false;
   }
   return true;
 }
@@ -283,13 +301,13 @@ bool InSetColumn::CanCopy() const {
 bool InSetColumn::CopyCondImpl(const core::MIIterator &mit, types::CondArray &condition,
                                [[maybe_unused]] DTCollation coll) {
   bool success = true;
-  cache.Prepare(expected_type.GetTypeName(), ct.GetScale(), expected_type.GetCollation());
+  cache_.Prepare(expected_type_.GetTypeName(), ct.GetScale(), expected_type_.GetCollation());
   if (types::RequiresUTFConversions(GetCollation()) && Type().IsString()) {
     for (auto &it : columns) {
       types::BString s;
       it->GetValueString(s, mit);
       if (s.IsNull()) {
-        TIANMU_LOG(LogCtl_Level::WARN, "DoCopyCond condition is NULL");
+        TIANMU_LOG(LogCtl_Level::WARN, "DoCopyCond condition is nullptr");
         condition.clear();
         success = false;
         break;
@@ -306,13 +324,14 @@ bool InSetColumn::CopyCondImpl(const core::MIIterator &mit, types::CondArray &co
 
 bool InSetColumn::CopyCondImpl([[maybe_unused]] const core::MIIterator &mit, std::shared_ptr<utils::Hash64> &condition,
                                DTCollation coll) {
-  cache.Prepare(expected_type.GetTypeName(), ct.GetScale(), expected_type.GetCollation());
-  return cache.CopyCondition(expected_type.GetTypeName(), condition, coll);
+  cache_.Prepare(expected_type_.GetTypeName(), ct.GetScale(), expected_type_.GetCollation());
+  return cache_.CopyCondition(expected_type_.GetTypeName(), condition, coll);
 }
 
 bool InSetColumn::PrepareValueSet(const core::MIIterator &mit) {
-  if (!full_cache || !is_const) PrepareCache(mit);
-  cache.Prepare(expected_type.GetTypeName(), ct.GetScale(), expected_type.GetCollation());
+  if (!full_cache_ || !is_const_)
+    PrepareCache(mit);
+  cache_.Prepare(expected_type_.GetTypeName(), ct.GetScale(), expected_type_.GetCollation());
   return true;
 }
 }  // namespace vcolumn
