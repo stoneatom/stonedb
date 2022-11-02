@@ -1,0 +1,65 @@
+#
+# Test INSERT..SELECT statement
+# Author: shiz
+#
+DROP DATABASE IF EXISTS insert_select_test;
+CREATE DATABASE insert_select_test;
+USE insert_select_test;
+CREATE TABLE t1(t1_bool BOOLEAN,
+t1_int INT,
+t1_decimal DECIMAL(5,2),
+t1_varchar VARCHAR(10),
+t1_dt DATETIME
+);
+CREATE TABLE t2(t2_char CHAR(5) NOT NULL DEFAULT 'xyz',
+t2_int INT,
+t2_varchar VARCHAR(10),
+t2_dt DATETIME
+);
+INSERT INTO t1 VALUES(1,1111,11.11,'aaaaa','2020-02-01 17:8:19'),
+(1,2222,22.22,'bbbb','1234-11-21 9:18:16');
+SELECT * FROM t1;
+t1_bool	t1_int	t1_decimal	t1_varchar	t1_dt
+1	1111	11.11	aaaaa	2020-02-01 17:08:19
+1	2222	22.22	bbbb	1234-11-21 09:18:16
+INSERT INTO t2 (t2_int,t2_varchar,t2_dt) SELECT t1_int,t1_varchar,t1_dt FROM t1;
+INSERT INTO t2 (t2_int,t2_varchar,t2_dt) SELECT t1_int,t1_varchar,t1_dt FROM t1 WHERE t1.t1_int=1111;
+INSERT INTO t2 SELECT * FROM t2;
+INSERT INTO t2 (t2_char) SELECT (SELECT SUM(LENGTH(t1_varchar)) FROM t1) FROM t1 LIMIT 1;
+INSERT INTO t2 (t2_char) SELECT (SELECT MAX(LENGTH(t1_varchar)) AS 'var' FROM t1) FROM t1 LIMIT 1;
+INSERT INTO t2 SELECT * FROM t2 WHERE t2.t2_char='xyz' LIMIT 1;
+SELECT * FROM t2;
+t2_char	t2_int	t2_varchar	t2_dt
+xyz	1111	aaaaa	2020-02-01 17:08:19
+xyz	2222	bbbb	1234-11-21 09:18:16
+xyz	1111	aaaaa	2020-02-01 17:08:19
+xyz	1111	aaaaa	2020-02-01 17:08:19
+xyz	2222	bbbb	1234-11-21 09:18:16
+xyz	1111	aaaaa	2020-02-01 17:08:19
+9	NULL	NULL	NULL
+5	NULL	NULL	NULL
+xyz	1111	aaaaa	2020-02-01 17:08:19
+INSERT INTO t2 SELECT * FROM t1;
+ERROR 21S01: Column count doesn't match value count at row 1
+INSERT INTO t2 SELECT t1_int,t1_varchar,t1_dt FROM t1;
+ERROR 21S01: Column count doesn't match value count at row 1
+INSERT INTO t2 SELECT (SELECT SUM(LENGTH(t2_varchar)) AS 'var' FROM t2 WHERE t2.t2_char='xyz' LIMIT 1) FROM t2;
+ERROR 21S01: Column count doesn't match value count at row 1
+INSERT INTO t2 SELECT * FROM t2,t2;
+ERROR 42000: Not unique table/alias: 't2'
+DROP TABLE t1;
+DROP TABLE t2;
+CREATE TABLE t1(t1_int INT NOT NULL PRIMARY KEY, t1_char CHAR(10));
+CREATE TABLE t2(t2_int INT, t2_char CHAR(10));
+INSERT INTO t1 VALUES(1,'a'),(2,'bb'),(3,'ccc');
+INSERT INTO t2 SELECT * FROM t1;
+INSERT INTO t2 SELECT * FROM t2;
+SELECT * FROM t2;
+t2_int	t2_char
+1	a
+2	bb
+3	ccc
+1	a
+2	bb
+3	ccc
+DROP DATABASE insert_select_test;

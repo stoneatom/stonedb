@@ -1,0 +1,46 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test show databases and tables
+--echo # Author: shiz
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS show_test1;
+DROP DATABASE IF EXISTS show_test2;
+--enable_warnings
+
+CREATE DATABASE show_test1;
+CREATE SCHEMA show_test2;
+--sorted_result
+SHOW DATABASES LIKE 'show%';
+--sorted_result
+SHOW SCHEMAS LIKE 'show%';
+
+SHOW TABLES IN show_test1;
+USE show_test2;
+--sorted_result
+SHOW TABLES;
+
+CREATE TABLE show_test1.t1 (id INT);
+CREATE TABLE show_test1.t2 (id INT);
+--sorted_result
+SHOW TABLES IN show_test1;
+USE show_test1;
+--sorted_result
+SHOW TABLES;
+
+USE show_test2;
+CREATE TABLE t1 (id INT);
+CREATE TABLE t2 (id INT);
+CREATE TEMPORARY TABLE tmp1 (id INT);
+--error 1050
+CREATE TEMPORARY TABLE tmp1 (id INT);
+--sorted_result
+SHOW TABLES;
+--sorted_result
+SHOW TABLES IN show_test2;
+
+# Clean up
+DROP DATABASE show_test1;
+DROP DATABASE show_test2;
