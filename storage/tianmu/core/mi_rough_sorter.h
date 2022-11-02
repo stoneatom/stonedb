@@ -156,7 +156,7 @@ class MINewContentsRSorter {  // Rough sorter of the new contents of MultiIndex
 
 class MINewContentsRSorterWorker {
  public:
-  MINewContentsRSorterWorker() : bound_queue_size(0), bound_queue(NULL), rough_sorter(NULL) {}
+  MINewContentsRSorterWorker() : bound_queue_size(0), bound_queue(nullptr), rough_sorter(nullptr) {}
   MINewContentsRSorterWorker(int _bound_queue_size, MINewContentsRSorter *_rough_sorter);
   virtual ~MINewContentsRSorterWorker();
 

@@ -33,11 +33,11 @@ class DimensionGroupVirtual : public DimensionGroup {
 
   void FillCurrentPos(DimensionGroup::Iterator *it, int64_t *cur_pos, int *cur_pack, DimensionVector &dims) override;
   void UpdateNumOfTuples() override;
-  Filter *GetFilter(int dim) const override { return (base_dim == dim || dim == -1 ? f : NULL); }
+  Filter *GetFilter(int dim) const override { return (base_dim == dim || dim == -1 ? f : nullptr); }
   // For this type of filter: dim == -1 means the only existing one
-  // Note: GetUpdatableFilter remains default (NULL)
+  // Note: GetUpdatableFilter remains default (nullptr)
   bool DimUsed(int dim) override { return (base_dim == dim || dims_used[dim]); }
-  bool DimEnabled(int dim) override { return (base_dim == dim || t[dim] != NULL); }
+  bool DimEnabled(int dim) override { return (base_dim == dim || t[dim] != nullptr); }
   bool NullsPossible(int dim) override { return nulls_possible[dim]; }
   void Empty() override;
   void NewDimensionContent(int dim, IndexTable *tnew,
@@ -153,7 +153,7 @@ class DimensionGroupVirtual : public DimensionGroup {
   Filter *f;
   DimensionVector dims_used;
   int no_dims;        // number of all possible dimensions (or just the last used one)
-  IndexTable **t;     // NULL for not used (natural numbering) and for base_dim
+  IndexTable **t;     // nullptr for not used (natural numbering) and for base_dim
   int64_t *pack_pos;  // table of size = number of packs in base_dim; the first
                       // position of a given pack in all IndexTables
   bool *nulls_possible;

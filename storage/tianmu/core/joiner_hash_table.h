@@ -64,7 +64,7 @@ class JoinerHashTable : public mm::TraceableObject {
   // put values to a temporary buffer (note that it will contain the previous
   // values, which may be reused
   void PutKeyValue(int col, MIIterator &mit) {  // for all values EXCEPT NULLS
-    encoder[col].Encode(input_buffer.get(), mit, NULL,
+    encoder[col].Encode(input_buffer.get(), mit, nullptr,
                         true);  // true: update statistics
   }
   void PutMatchedValue(int col, vcolumn::VirtualColumn *vc,

@@ -107,9 +107,9 @@ int OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct,
             oper = common::ColOperation::VAR_POP;
           break;
         case Item_sum::SUM_BIT_FUNC:
-          if (dynamic_cast<Item_sum_xor *>(item) != NULL)
+          if (dynamic_cast<Item_sum_xor *>(item) != nullptr)
             oper = common::ColOperation::BIT_XOR;
-          else if (dynamic_cast<Item_sum_and *>(item) != NULL)
+          else if (dynamic_cast<Item_sum_and *>(item) != nullptr)
             oper = common::ColOperation::BIT_AND;
           else
             oper = common::ColOperation::BIT_OR;
@@ -169,7 +169,7 @@ void PrintItemTree(Item *item, int indent) {
   indent += 1;
 
   if (!item) {
-    std::fprintf(stderr, "NULL item\n");
+    std::fprintf(stderr, "nullptr item\n");
     return;
   }
 

@@ -129,7 +129,7 @@ class MultiIndexTable {
 class DimensionGroupMultiMaterialized : public DimensionGroup {
   class DGIterator : public DimensionGroup::Iterator {
    public:
-    // NOTE: works also for "count only" (all t[i] are NULL)。
+    // NOTE: works also for "count only" (all t[i] are nullptr)。
     DGIterator(int64_t total_count, DimensionVector &dims, std::vector<MultiIndexTable *> &dim_tables, uint32_t power);
     DGIterator(const Iterator &sec, uint32_t power);
     ~DGIterator() = default;
@@ -162,7 +162,7 @@ class DimensionGroupMultiMaterialized : public DimensionGroup {
   };
 
  public:
-  // NOTE: works also for "count only" (all t[i] are NULL, only no_obj set)
+  // NOTE: works also for "count only" (all t[i] are nullptr, only no_obj set)
   DimensionGroupMultiMaterialized(int64_t obj, DimensionVector &dims, uint32_t power, bool is_shallow_memory = false);
   ~DimensionGroupMultiMaterialized() override;
 
@@ -194,7 +194,7 @@ class DimensionGroupMultiMaterialized : public DimensionGroup {
   DimensionVector dims_used_;
   // Number of all possible dimensions (or just the last used one).
   int dims_count_ = 0;
-  // NULL for not used (natural numbering).
+  // nullptr for not used (natural numbering).
   std::vector<MultiIndexTable *> dim_tables_;
   bool is_shallow_memory;
 };

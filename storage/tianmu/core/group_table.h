@@ -180,7 +180,7 @@ class GroupTable : public mm::TraceableObject {
   // used for complex aggregations
   struct ColTempDesc {
     ColTempDesc() {
-      vc = NULL;
+      vc = nullptr;
       min = common::MINUS_INF_64;
       max = common::PLUS_INF_64;
       max_no_values = 0;

@@ -38,12 +38,12 @@ class DimensionGroup {
   virtual void UpdateNumOfTuples() {}       // may be not needed for some group types
   DGType Type() { return dim_group_type; }  // type selector
   virtual Filter *GetFilter([[maybe_unused]] int dim) const {
-    return NULL;
-  }  // Get the pointer to a filter attached to a dimension. NOTE: will be NULL
+    return nullptr;
+  }  // Get the pointer to a filter attached to a dimension. NOTE: will be nullptr
      // if not applicable
   virtual Filter *GetUpdatableFilter([[maybe_unused]] int dim) const {
-    return NULL;
-  }                                       // Get the pointer to a filter, if it may be changed. NOTE: will be NULL if
+    return nullptr;
+  }                                       // Get the pointer to a filter, if it may be changed. NOTE: will be nullptr if
                                           // not applicable
   virtual bool DimUsed(int d) = 0;        // true if the dimension is involved in this group
   virtual bool DimEnabled(int d) = 0;     // true if the dimension is used and has
@@ -118,7 +118,7 @@ class DimensionGroup {
   virtual DimensionGroup::Iterator *NewIterator(DimensionVector &, uint32_t power) = 0;
   virtual DimensionGroup::Iterator *NewOrderedIterator(DimensionVector &, [[maybe_unused]] PackOrderer *po,
                                                        [[maybe_unused]] uint32_t power) {
-    return NULL;
+    return nullptr;
   }
   // create a new ordered iterator, if possible
   virtual DimensionGroup::Iterator *CopyIterator(DimensionGroup::Iterator *, uint32_t power) = 0;
@@ -308,7 +308,7 @@ class DimensionGroupFilter : public DimensionGroup {
 
 class DimensionGroupMaterialized : public DimensionGroup {
  public:
-  // NOTE: works also for "count only" (all t[i] are NULL, only no_obj set)
+  // NOTE: works also for "count only" (all t[i] are nullptr, only no_obj set)
   DimensionGroupMaterialized(DimensionVector &dims);
   virtual ~DimensionGroupMaterialized();
   DimensionGroup *Clone(bool shallow) override;
@@ -320,7 +320,7 @@ class DimensionGroupMaterialized : public DimensionGroup {
                                          // dim
   void SetNumOfObj(int64_t _no_obj) { no_obj = _no_obj; }
   bool DimUsed(int dim) override { return dims_used[dim]; }
-  bool DimEnabled(int dim) override { return (t[dim] != NULL); }
+  bool DimEnabled(int dim) override { return (t[dim] != nullptr); }
   bool NullsPossible(int dim) override { return nulls_possible[dim]; }
   void Empty() override;
 
@@ -340,7 +340,7 @@ class DimensionGroupMaterialized : public DimensionGroup {
 
   class DGMaterializedIterator : public DimensionGroup::Iterator {
    public:
-    // NOTE: works also for "count only" (all t[i] are NULL)
+    // NOTE: works also for "count only" (all t[i] are nullptr)
     DGMaterializedIterator(int64_t _no_obj, DimensionVector &dims, IndexTable **_t, bool *nulls, uint32_t power);
     DGMaterializedIterator(const Iterator &sec, uint32_t power);
     ~DGMaterializedIterator();
@@ -398,7 +398,7 @@ class DimensionGroupMaterialized : public DimensionGroup {
 
     // External pointers:
     IndexTable **t;  // table is local, pointers are from DimensionGroupMaterialized,
-                     // NULL for not used (not iterated)
+                     // nullptr for not used (not iterated)
     bool *nulls_possible;
   };
   // create a new iterator (to be deleted by user)
@@ -410,7 +410,7 @@ class DimensionGroupMaterialized : public DimensionGroup {
  private:
   DimensionVector dims_used;
   int no_dims;     // number of all possible dimensions (or just the last used one)
-  IndexTable **t;  // NULL for not used (natural numbering)
+  IndexTable **t;  // nullptr for not used (natural numbering)
   bool *nulls_possible;
 };
 }  // namespace core

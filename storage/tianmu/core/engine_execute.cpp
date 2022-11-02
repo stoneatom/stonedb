@@ -377,8 +377,8 @@ int Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_
       if ((item->type() == Item::Type::FUNC_ITEM) &&
           (down_cast<Item_func *>(item)->functype() == Item_func::Functype::FUNC_SP)) {
         selects_list->set_query_result(result_output);
-        JOIN *join = selects_list->join ? selects_list->join : new (thd->mem_root) JOIN(thd, selects_list);
-        join->exec();
+        ASSERT(selects_list->join);
+        selects_list->join->exec();
         return RCBASE_QUERY_ROUTE;
       }
     }

@@ -94,7 +94,7 @@ class GroupByWrapper final {
   void OmitInCache(int attr, int64_t obj_to_omit);
   void DistinctlyOmitted(int attr, int64_t obj);
   bool AnyOmittedByDistinct() { return distinct_watch.AnyOmitted(); }
-  int64_t ApproxDistinctVals(int gr_a, MultiIndex *mind = NULL);
+  int64_t ApproxDistinctVals(int gr_a, MultiIndex *mind = nullptr);
 
   int NumOfAttrs() { return no_attr; }
   int NumOfGroupingAttrs() { return no_grouping_attr; }
@@ -147,7 +147,7 @@ class GroupByWrapper final {
 
   void InitTupleLeft(int64_t n);
   bool AnyTuplesLeft(int64_t from, int64_t to);
-  bool AnyTuplesLeft() { return (tuple_left != NULL) && !tuple_left->IsEmpty(); }
+  bool AnyTuplesLeft() { return (tuple_left != nullptr) && !tuple_left->IsEmpty(); }
   int64_t TuplesLeftBetween(int64_t from, int64_t to);
   void CommitResets() {
     if (tuple_left)
@@ -165,8 +165,8 @@ class GroupByWrapper final {
     if (tuple_left)
       tuple_left->ResetDelayed(pos);
   }
-  bool TuplesGet(int64_t pos) { return (tuple_left == NULL) || tuple_left->Get(pos); }
-  int64_t TuplesNoOnes() { return (tuple_left == NULL ? 0 : tuple_left->NumOfOnes()); }
+  bool TuplesGet(int64_t pos) { return (tuple_left == nullptr) || tuple_left->Get(pos); }
+  int64_t TuplesNoOnes() { return (tuple_left == nullptr ? 0 : tuple_left->NumOfOnes()); }
   // Locking packs etc.
 
   void LockPack(int i, MIIterator &mit);

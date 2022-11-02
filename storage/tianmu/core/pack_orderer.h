@@ -63,7 +63,7 @@ class PackOrderer {
   //! Initialized Orderer constructed with a default constructor,
   //! ignored if used on a initialized orderer
   //! \return true if successful, otherwise false
-  bool Init(vcolumn::VirtualColumn *vc, OrderType order, common::RSValue *r_filter = NULL);
+  bool Init(vcolumn::VirtualColumn *vc, OrderType order, common::RSValue *r_filter = nullptr);
 
   /*!
    * Reset the iterator, so it will start from the first pack in the given sort

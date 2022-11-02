@@ -108,7 +108,7 @@ void Filter::Block::Reset() {
     owner->bit_mut->lock();
     owner->bit_block_pool->free(block_table);
     owner->bit_mut->unlock();
-    block_table = NULL;
+    block_table = nullptr;
   }
   no_set_bits = 0;
 }

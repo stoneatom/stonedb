@@ -66,7 +66,7 @@ class GroupDistinctCache : private system::CacheableItem, public mm::TraceableOb
   unsigned char *t_write;   // value buffer for preserved objects, if different than t
   size_t upper_byte_limit;  // upper byte size of t, t_write, it is also the
                             // actual size for multi-block case
-  unsigned char *cur_pos;   // current location in buffer; NULL - out of scope
+  unsigned char *cur_pos;   // current location in buffer; nullptr - out of scope
   size_t cur_obj;           // current (virtual) object number
   size_t no_obj;            // a number of all (virtual) objects; current state (may be
                             // lowered by switching to preserved)

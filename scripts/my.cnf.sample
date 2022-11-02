@@ -6,14 +6,14 @@ socket          = YOUR_ABS_PATH/tmp/mysql.sock
 port                            = 3306
 basedir                         = YOUR_ABS_PATH/
 character-sets-dir              = YOUR_ABS_PATH/share/charsets/
-lc-messages-dir                 = YOUR_ABS_PATH/share/
 plugin_dir                      = YOUR_ABS_PATH/lib/plugin/
 tmpdir                          = YOUR_ABS_PATH/tmp/
 socket                          = YOUR_ABS_PATH/tmp/mysql.sock
 datadir                         = YOUR_ABS_PATH/data/
 pid-file                        = YOUR_ABS_PATH/data/mysqld.pid
 log-error                       = YOUR_ABS_PATH/log/mysqld.log
-lc-messages-dir                 = YOUR_ABS_PATH/share/english/
+lc-messages-dir                 = YOUR_ABS_PATH/share/
+lc_messages                     = en_US
 local-infile
 
 character-set-server = utf8mb4
@@ -192,4 +192,3 @@ write_buffer = 2M
 
 [mysqlhotcopy]
 interactive-timeout
-

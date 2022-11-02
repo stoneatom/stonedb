@@ -133,7 +133,7 @@ CprsErr TextCompressor::DecompressCopy(char *dest, int dlen, char *src, [[maybe_
 //---------------------------------------------------------------------------------------------------------
 
 CprsErr TextCompressor::CompressPlain(char *dest, int &dlen, char *src, int slen, int ver, int lev) {
-  if ((dest == NULL) || (src == NULL) || (dlen <= 0) || (slen <= 0))
+  if ((dest == nullptr) || (src == nullptr) || (dlen <= 0) || (slen <= 0))
     return CprsErr::CPRS_ERR_PAR;
   if ((ver < 0) || (ver > 2) || (lev < 1) || (lev > 9))
     return CprsErr::CPRS_ERR_VER;
@@ -182,7 +182,7 @@ CprsErr TextCompressor::CompressPlain(char *dest, int &dlen, char *src, int slen
 }
 
 CprsErr TextCompressor::DecompressPlain(char *dest, int dlen, char *src, int slen) {
-  if ((dest == NULL) || (src == NULL) || (dlen <= 0) || (slen <= 0))
+  if ((dest == nullptr) || (src == nullptr) || (dlen <= 0) || (slen <= 0))
     return CprsErr::CPRS_ERR_PAR;
   if (slen < 2)
     return CprsErr::CPRS_ERR_BUF;
