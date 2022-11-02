@@ -23,6 +23,7 @@
 #include "core/parallel_hash_join.h"
 #include "core/query.h"
 #include "vc/const_column.h"
+#include "vc/expr_column.h"
 #include "vc/virtual_column.h"
 
 namespace Tianmu {
@@ -41,6 +42,14 @@ TwoDimensionalJoiner::~TwoDimensionalJoiner() {
 
 JoinAlgType TwoDimensionalJoiner::ChooseJoinAlgorithm([[maybe_unused]] MultiIndex &mind, Condition &cond) {
   auto choose_map_or_hash = ([&tianmu_sysvar_force_hashjoin, &cond] {
+    {
+      Item *item = cond[0].val1.vc->GetItem();
+      if (item && (item->type() == Item::Type::FUNC_ITEM) &&
+          (down_cast<Item_func *>(item)->functype() == Item_func::Functype::FUNC_SP)) {
+        return JoinAlgType::JTYPE_GENERAL;
+      }
+    }
+
     if ((!tianmu_sysvar_force_hashjoin) && (cond.Size() == 1))
       return JoinAlgType::JTYPE_MAP;  // available types checked inside
 

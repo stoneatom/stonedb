@@ -78,6 +78,8 @@ class ExpressionColumn : public VirtualColumn {
   void LockSourcePacks(const core::MIIterator &mit) override;
   void LockSourcePacks(const core::MIIterator &mit, int);
 
+  Item *GetItem() override { return expr_->GetItem(); }
+
   /////////////// Data access //////////////////////
  protected:
   int64_t GetValueInt64Impl(const core::MIIterator &) override;
@@ -113,6 +115,7 @@ class ExpressionColumn : public VirtualColumn {
   const core::MysqlExpression::tianmu_fields_cache_t &GetTIANMUItems() const override {
     return expr_->GetTIANMUItems();
   }
+
   core::MysqlExpression *expr_;  //!= nullptr if ExpressionColumn encapsulates an expression. Note - a
                                  //! constant is an expression
 

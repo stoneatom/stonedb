@@ -51,10 +51,10 @@ a.employee_salary = get_int(b.employee_id)
 and b.employee_name = 'David Tian';
 employee_id	get_desc(b.employee_id)
 1	employee name:David Tian---salary: 7500
+2	NULL
 3	NULL
 4	NULL
 5	NULL
-2	NULL
 SELECT
 a.employee_id,
 get_desc(b.employee_id)
@@ -69,8 +69,6 @@ employee_id	get_desc(b.employee_id)
 5	employee name:David Tian---salary: 7500
 4	employee name:David Tian---salary: 7500
 3	employee name:David Tian---salary: 7500
-set global tianmu_force_hashjoin=OFF;
-set global tianmu_join_parallel=0;
 SELECT
 a.employee_id,
 get_desc(b.employee_id)
@@ -82,8 +80,6 @@ WHERE
 a.employee_salary = get_int(b.employee_id);
 employee_id	get_desc(b.employee_id)
 1	employee name:David Tian---salary: 7500
-set global tianmu_force_hashjoin=ON;
-set global tianmu_join_parallel=1;
 SELECT
 a.employee_id,
 get_desc(b.employee_id)

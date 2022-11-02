@@ -75,12 +75,6 @@ LEFT JOIN employees b ON
 WHERE
 	a.employee_salary < get_int(b.employee_id);
 
-# Currently, multithreading in parallel hash join is not supported.
-# In special cases, parameters should be used to disable parallel hash join
-
-set global tianmu_force_hashjoin=OFF;
-set global tianmu_join_parallel=0;
-
 SELECT
 	a.employee_id,
 	get_desc(b.employee_id)
@@ -90,9 +84,6 @@ LEFT JOIN employees b ON
 	b.employee_name = 'David Tian'
 WHERE
 	a.employee_salary = get_int(b.employee_id);
-
-set global tianmu_force_hashjoin=ON;
-set global tianmu_join_parallel=1;
 
 SELECT
 	a.employee_id,

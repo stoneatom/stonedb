@@ -93,6 +93,14 @@ class VirtualColumnBase : public core::Column {
   inline int64_t GetValueInt64(const core::MIIterator &mit) { return GetValueInt64Impl(mit); }
   virtual int64_t GetNotNullValueInt64(const core::MIIterator &mit) = 0;
 
+  /*! \brief get Item
+   *
+   * \pre The ExpressionColumn implementation is meaningful
+   * only if the column attribute is an Expressioncolumn implementation
+   *
+   */
+  virtual Item *GetItem() { return nullptr; };
+
   /*! \brief Is the column value nullptr ?
    *
    * \pre necessary datapacks (containing rows pointed by \e mit) are loaded and
