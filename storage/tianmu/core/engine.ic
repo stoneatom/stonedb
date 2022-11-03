@@ -44,8 +44,10 @@ static int optimize_select(THD *thd, ulong select_options, Query_result *result,
   free_join = 1;
   select_lex->context.resolve_in_select_list = true;
   JOIN *join = nullptr;
+
   if (select_lex->join != nullptr) {
     join = select_lex->join;
+
     // here is EXPLAIN of subselect or derived table
     if (select_lex->linkage != DERIVED_TABLE_TYPE || (select_options & (1ULL << 2))) {
       // global_options_type means a global option, such as limit order by, etc., of a union query. refer to
@@ -55,34 +57,39 @@ static int optimize_select(THD *thd, ulong select_options, Query_result *result,
           return true;
         }
       } else {  // it is a global_opton query block, such as limit, order by, etc.
-        if (!select_lex->master_query_expression()->is_prepared())
-          if ((err = select_lex->prepare(thd, nullptr))) {
-            return err;
-          }
+        if (!select_lex->master_query_expression()->is_prepared() && (err = select_lex->prepare(thd, nullptr))) {
+          return err;
+        }
       }
     }
+
     free_join = 0;
     join->select_options = select_options;
   } else {
     thd_proc_info(thd, "init");
-    if (!select_lex->master_query_expression()->is_prepared())
-      if ((err = select_lex->prepare(thd, nullptr))) {
-        return err;
-      }
+
+    if (!select_lex->master_query_expression()->is_prepared() && (err = select_lex->prepare(thd, nullptr))) {
+      return err;
+    }
+
     if (result->prepare(thd, select_lex->fields, select_lex->master_query_expression())) {
       return true;
     }
+
     if (!(join = new (thd->mem_root) JOIN(thd, select_lex)))
       return true; /* purecov: inspected */
+
     select_lex->set_join(thd, join);
   }
 
   join->best_rowcount = 2;
   optimize_after_tianmu = true;
+
   // all the preparation operations are done, therefore, we set the `part` to 1, then pass it to JOIN::optimize.
   // 1 means we have done the preparation.
   if ((err = join->optimize(false, JOIN::OptimizePhase::Before_LOJ_Transform)))
     return err;
+
   return false;
 }
 
@@ -91,6 +98,7 @@ static Query_route_to handle_exceptions(THD *thd, Transaction *cur_connection, b
     std::string msg = "Query terminated with exception: ";
     msg += thd->query().str;
     TIANMU_LOG(LogCtl_Level::INFO, msg);
+
     throw;
   } catch (common::NotImplementedException const &x) {
     rc_control_.lock(cur_connection->GetThreadID()) << "Switched to MySQL: " << x.what() << system::unlock;
@@ -105,45 +113,53 @@ static Query_route_to handle_exceptions(THD *thd, Transaction *cur_connection, b
       msg.append(" Can't switch to MySQL execution path");
       throw common::InternalException(msg);
     }
+
     return Query_route_to::TO_MYSQL;
 
   } catch (common::OutOfMemoryException const &x) {
     rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
     my_message(static_cast<int>(common::ErrorCode::OUT_OF_MEMORY),
                (std::string("Tianmu out of resources error: ") + x.what()).c_str(), MYF(0));
+
     throw ReturnMeToMySQLWithError();
 
   } catch (common::DataTypeConversionException const &x) {
     rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
     my_message(static_cast<int>(common::ErrorCode::DATACONVERSION),
                (std::string("Tianmu specific error: ") + x.what()).c_str(), MYF(0));
+
     throw ReturnMeToMySQLWithError();
 
   } catch (common::DBObjectException const &x) {  // the subselect had more than one row in a comparison
                                                   // without ANY or ALL
     rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
     my_message(ER_SYNTAX_ERROR, (std::string("Tianmu specific error: ") + x.what()).c_str(), MYF(0));
+
     throw ReturnMeToMySQLWithError();
 
   } catch (common::KilledException const &) {
     rc_control_.lock(cur_connection->GetThreadID()) << "Stopped by user. " << system::unlock;
     my_message(ER_UNKNOWN_ERROR, (std::string("Stopped by user.")).c_str(), MYF(0));
+
     throw ReturnMeToMySQLWithError();
 
   } catch (common::FileException const &e) {
     rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << e.what() << system::unlock;
     my_message(static_cast<int>(common::ErrorCode::CANNOT_OPEN_FILE_OR_PIPE),
                (std::string("Tianmu specific error: ") + e.what()).c_str(), MYF(0));
+
     throw ReturnMeToMySQLWithError();
 
   } catch (common::Exception const &x) {
     rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
     my_message(ER_UNKNOWN_ERROR, "Tianmu other specific error", MYF(0));
+
     throw ReturnMeToMySQLWithError();
 
   } catch (std::bad_alloc const &) {
     rc_control_.lock(cur_connection->GetThreadID()) << "Error: std::bad_alloc caught" << system::unlock;
     my_message(ER_UNKNOWN_ERROR, (std::string("Tianmu out of memory error")).c_str(), MYF(0));
+
     throw ReturnMeToMySQLWithError();
   }
 
@@ -161,24 +177,29 @@ int Query_expression::optimize_for_tianmu(THD *thd) {
 
   if (is_executed() && !uncacheable && !thd->lex->is_explain())
     return false;
+
   executed = 1;
 
   if (uncacheable || !item || !item->assigned() || thd->lex->is_explain()) {
     if (item)
       item->reset_value_registration();
+
     if (is_optimized() && item) {
       if (item->assigned()) {
         item->assigned(0);  // We will reinit & rexecute unit
         item->reset();
         table->file->ha_delete_all_rows();
       }
+
       // re-enabling indexes for next subselect iteration
       if (union_distinct && table->file->ha_enable_indexes(HA_KEY_SWITCH_ALL))
         DEBUG_ASSERT(0);
     }
+
     for (Query_block *sl = select_cursor; sl; sl = sl->next_query_block()) {
       thd->lex->set_current_query_block(sl);
       sl->add_active_options(SELECT_NO_UNLOCK);
+
       /*
         setup_tables_done_option should be set only for very first SELECT,
         because it protect from secont setup_tables call for select-like non
@@ -192,26 +213,27 @@ int Query_expression::optimize_for_tianmu(THD *thd) {
           cleanup(thd, 0);  // stonedb8
           return true;
         }
+
         sl->set_join(thd, join);
       }
+
       if (is_optimized())
         sl->join->reset();
       else {
         set_limit(thd, sl);  // stonedb8
         if (sl == global_parameters() || thd->lex->is_explain()) {
           offset_limit_cnt = 0;
-          // We can't use LIMIT at this stage if we are using ORDER BY for the
-          // whole query
+          // We can't use LIMIT at this stage if we are using ORDER BY for the whole query
           if (sl->order_list.first || thd->lex->is_explain())
             select_limit_cnt = HA_POS_ERROR;
         }
 
-        // When using braces, SQL_CALC_FOUND_ROWS affects the whole query:
-        // we don't calculate found_rows() per union part.
-        // Otherwise, SQL_CALC_FOUND_ROWS should be done on all sub parts.
+        // When using braces, SQL_CALC_FOUND_ROWS affects the whole query: we don't calculate found_rows() per union
+        // part. Otherwise, SQL_CALC_FOUND_ROWS should be done on all sub parts.
         sl->join->select_options = (select_limit_cnt == HA_POS_ERROR || thd->lex->unit->is_union())
                                        ? sl->active_options() & ~OPTION_FOUND_ROWS
                                        : sl->active_options() | found_rows_for_union;
+
         saved_error = sl->join->optimize(false, JOIN::OptimizePhase::Before_LOJ_Transform);
       }
 
@@ -222,22 +244,25 @@ int Query_expression::optimize_for_tianmu(THD *thd) {
       }
     }
   }
+
   /* code from st_select_lex_unit::exec*/
   if (!saved_error && !thd->is_fatal_error()) {
     /* Send result to 'result' */
     saved_error = true;
-    set_limit(thd, global_parameters());  // stonedb8 add thd
+    set_limit(thd, global_parameters());
+
     if (fake_query_block != nullptr) {
       thd->lex->set_current_query_block(fake_query_block);
-      if (!is_prepared()) {
-        if (prepare_fake_query_block(thd))
-          return saved_error;
+      if (!is_prepared() && prepare_fake_query_block(thd)) {
+        return saved_error;
       }
+
+      // In tianmu, we should not new the JOIN, but it should be created in SQL server. but here we do this temporarly.
       JOIN *join = nullptr;
       if (fake_query_block->join != nullptr)
         join = fake_query_block->join;
       else {
-        if (!(join = new JOIN(thd, fake_query_block)))
+        if (!(join = new (thd->mem_root) JOIN(thd, fake_query_block)))
           DEBUG_ASSERT(0);
         // fake_query_block->set_join(join);
       }
@@ -247,10 +272,8 @@ int Query_expression::optimize_for_tianmu(THD *thd) {
         //                                global_parameters->order_list.elements,
         //                                global_parameters->order_list.first, nullptr, nullptr, fake_query_block,
         //                                this); //STONEDB UPGRADE
-        if (!is_prepared()) {
-          if (fake_query_block->prepare(thd, nullptr))  // stonedb8 add nullptr from m8
-            return saved_error;
-        }
+        if (!is_prepared() && fake_query_block->prepare(thd, nullptr))
+          return saved_error;
       } else {
         join->examined_rows = 0;
         join->reset();
@@ -270,12 +293,13 @@ int Query_expression::optimize_after_tianmu(THD *thd) {
   for (Query_block *sl = first_query_block(); sl; sl = sl->next_query_block()) {
     thd->lex->set_current_query_block(sl);
     if (!sl->join) {
-      JOIN *join = new JOIN(thd, sl);
+      JOIN *join = new (thd->mem_root) JOIN(thd, sl);
       if (!join) {
         thd->lex->set_current_query_block(lex_select_save);
-        cleanup(thd, 0);  // stonedb8
+        cleanup(thd, 0);
         return true;
       }
+
       sl->set_join(thd, join);
     }
 
@@ -290,7 +314,7 @@ int Query_expression::optimize_after_tianmu(THD *thd) {
     // fake_query_block->join must be cleaned up before returning to
     // MySQL route, otherwise sub select + union would coredump.
     thd->lex->set_current_query_block(fake_query_block);
-    fake_query_block->cleanup(thd, 0);  // stonedb8
+    fake_query_block->cleanup(thd, 0);
   }
 
   executed = 0;
