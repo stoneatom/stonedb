@@ -458,34 +458,33 @@ void TempTable::RoughAggregate(ResultSender *sender) {
   }
 
   // Rough values for columns
-  for (auto iter : attrs_) {
-    // for (uint i = 0; i < attrs.size(); i++) {
+  for (auto attr : attrs_) {
     bool value_set{false};
-    iter->CreateBuffer(2);
+    attr->CreateBuffer(2);
 
-    vcolumn::VirtualColumn *vc = iter->term_.vc;
+    vcolumn::VirtualColumn *vc = attr->term_.vc;
     bool nulls_only = vc ? (vc->GetLocalNullsOnly() || vc->IsRoughNullsOnly()) : false;
     types::BString vals;
     bool double_vals = (vc != nullptr && vc->Type().IsFloat());
 
-    if (vc && vc->IsConst() && !vc->IsSubSelect() && iter->oper_type_ != common::ColOperation::SUM &&
-        iter->oper_type_ != common::ColOperation::COUNT && iter->oper_type_ != common::ColOperation::BIT_XOR) {
-      if (iter->oper_type_ == common::ColOperation::STD_POP || iter->oper_type_ == common::ColOperation::VAR_POP ||
-          iter->oper_type_ == common::ColOperation::STD_SAMP || iter->oper_type_ == common::ColOperation::VAR_SAMP) {
-        iter->SetValueInt64(0, 0);  // deviations for constants = 0
-        iter->SetValueInt64(1, 0);
+    if (vc && vc->IsConst() && !vc->IsSubSelect() && attr->oper_type_ != common::ColOperation::SUM &&
+        attr->oper_type_ != common::ColOperation::COUNT && attr->oper_type_ != common::ColOperation::BIT_XOR) {
+      if (attr->oper_type_ == common::ColOperation::STD_POP || attr->oper_type_ == common::ColOperation::VAR_POP ||
+          attr->oper_type_ == common::ColOperation::STD_SAMP || attr->oper_type_ == common::ColOperation::VAR_SAMP) {
+        attr->SetValueInt64(0, 0);  // deviations for constants = 0
+        attr->SetValueInt64(1, 0);
       } else {  // other rough values for constants: usually just these constants
         MIIterator mit(filter_.mind, filter_.mind->ValueOfPower());
         if (vc->IsNull(mit)) {
-          iter->SetNull(0);
-          iter->SetNull(1);
-        } else if (iter->oper_type_ == common::ColOperation::AVG) {
+          attr->SetNull(0);
+          attr->SetNull(1);
+        } else if (attr->oper_type_ == common::ColOperation::AVG) {
           int64_t val = vc->GetValueInt64(mit);
           val = vc->DecodeValueAsDouble(val);
-          iter->SetValueInt64(0, val);
-          iter->SetValueInt64(1, val);
+          attr->SetValueInt64(0, val);
+          attr->SetValueInt64(1, val);
         } else {
-          switch (iter->TypeName()) {
+          switch (attr->TypeName()) {
             case common::CT::STRING:
             case common::CT::VARCHAR:
             case common::CT::BIN:
@@ -493,19 +492,19 @@ void TempTable::RoughAggregate(ResultSender *sender) {
             case common::CT::VARBYTE:
             case common::CT::LONGTEXT:
               vc->GetValueString(vals, mit);
-              iter->SetValueString(0, vals);
-              iter->SetValueString(1, vals);
+              attr->SetValueString(0, vals);
+              attr->SetValueString(1, vals);
               break;
             default:
-              iter->SetValueInt64(0, vc->GetValueInt64(mit));
-              iter->SetValueInt64(1, vc->GetValueInt64(mit));
+              attr->SetValueInt64(0, vc->GetValueInt64(mit));
+              attr->SetValueInt64(1, vc->GetValueInt64(mit));
               break;
           }
         }
       }
       value_set = true;
     } else {
-      switch (iter->oper_type_) {
+      switch (attr->oper_type_) {
         case common::ColOperation::LISTING:
         case common::ColOperation::GROUP_BY:  // Rough values of listed rows: min and max of possible packs
         case common::ColOperation::AVG:       // easy implementation of AVG: between min and max
@@ -516,14 +515,14 @@ void TempTable::RoughAggregate(ResultSender *sender) {
             if (!nulls_only)
               RoughAggregateMinMax(vc, min_val, max_val);
 
-            if (!double_vals && ATI::IsRealType(iter->TypeName()) && !nulls_only &&
+            if (!double_vals && ATI::IsRealType(attr->TypeName()) && !nulls_only &&
                 min_val != common::NULL_VALUE_64) {  // decimal column, double result (e.g. for AVG)
               min_val = vc->DecodeValueAsDouble(min_val);
               max_val = vc->DecodeValueAsDouble(max_val);
             }
 
-            iter->SetValueInt64(0, min_val);
-            iter->SetValueInt64(1, max_val);
+            attr->SetValueInt64(0, min_val);
+            attr->SetValueInt64(1, max_val);
             value_set = true;
           }
           break;
@@ -536,7 +535,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
             int64_t min_val = common::NULL_VALUE_64;
             int64_t max_val = common::NULL_VALUE_64;
             int64_t relevant_val = common::NULL_VALUE_64;
-            bool is_min = (iter->oper_type_ == common::ColOperation::MIN);
+            bool is_min = (attr->oper_type_ == common::ColOperation::MIN);
             bool skip_counting = (IsTempTableColumn(vc) || SubqueryInFrom());
 
             if (!nulls_only) {
@@ -569,8 +568,8 @@ void TempTable::RoughAggregate(ResultSender *sender) {
                 min_val = max_val = common::NULL_VALUE_64;
             }
 
-            iter->SetValueInt64(0, min_val);
-            iter->SetValueInt64(1, max_val);
+            attr->SetValueInt64(0, min_val);
+            attr->SetValueInt64(1, max_val);
             value_set = true;
           }
           break;
@@ -580,7 +579,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
           DimensionVector dims(filter_.mind->NumOfDimensions());  // initialized as empty
           bool skip_counting = (IsTempTableColumn(vc) || SubqueryInFrom());
 
-          if (vc && !iter->is_distinct_ && !skip_counting) {  // COUNT(a)
+          if (vc && !attr->is_distinct_ && !skip_counting) {  // COUNT(a)
             int dim = vc->GetDim();
             if (dim != -1) {
               dims[dim] = true;
@@ -607,7 +606,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
             } else
               min_val = 0;
 
-          } else if (vc && iter->is_distinct_ && !skip_counting) {  // COUNT(DISTINCT a)
+          } else if (vc && attr->is_distinct_ && !skip_counting) {  // COUNT(DISTINCT a)
             vc->MarkUsedDims(dims);
             MIIterator mit(filter_.mind, dims);
             min_val = 0;
@@ -663,8 +662,8 @@ void TempTable::RoughAggregate(ResultSender *sender) {
             max_val = common::PLUS_INF_64;
           }
 
-          iter->SetValueInt64(0, min_val);
-          iter->SetValueInt64(1, max_val);
+          attr->SetValueInt64(0, min_val);
+          attr->SetValueInt64(1, max_val);
           value_set = true;
           break;
         }
@@ -676,8 +675,8 @@ void TempTable::RoughAggregate(ResultSender *sender) {
               bool nonnegative = false;
               MIIterator mit(filter_.mind, vc->GetDim(), true);
               vc->GetSum(mit, nonnegative);
-              iter->SetValueInt64(0, nonnegative ? 0 : common::MINUS_INF_64);  // +-INF
-              iter->SetValueInt64(1, common::PLUS_INF_64);
+              attr->SetValueInt64(0, nonnegative ? 0 : common::MINUS_INF_64);  // +-INF
+              attr->SetValueInt64(1, common::PLUS_INF_64);
               value_set = true;
               break;
             }
@@ -690,14 +689,14 @@ void TempTable::RoughAggregate(ResultSender *sender) {
               if (inner_iter->oper_type_ == common::ColOperation::GROUP_BY)
                 group_by_attrs.push_back(inner_iter);
 
-            RoughAggregateSum(vc, min_val, max_val, group_by_attrs, nulls_only, iter->is_distinct_);
+            RoughAggregateSum(vc, min_val, max_val, group_by_attrs, nulls_only, attr->is_distinct_);
 
             if (min_val == common::NULL_VALUE_64 || max_val == common::NULL_VALUE_64) {
-              iter->SetNull(0);  // nullptr as a result of empty set or non-computable sum
-              iter->SetNull(1);
+              attr->SetNull(0);  // nullptr as a result of empty set or non-computable sum
+              attr->SetNull(1);
             } else {
-              iter->SetValueInt64(0, min_val);
-              iter->SetValueInt64(1, max_val);
+              attr->SetValueInt64(0, min_val);
+              attr->SetValueInt64(1, max_val);
             }
 
             value_set = true;
@@ -705,23 +704,25 @@ void TempTable::RoughAggregate(ResultSender *sender) {
           break;
         case common::ColOperation::BIT_AND:
           if (nulls_only) {
-            iter->SetValueInt64(0, -1);  // unsigned 64-bit result
-            iter->SetValueInt64(1, -1);
+            attr->SetValueInt64(0, -1);  // unsigned 64-bit result
+            attr->SetValueInt64(1, -1);
           } else {
-            iter->SetValueInt64(0, 0);  // unsigned 64-bit result
-            iter->SetValueInt64(1, -1);
+            attr->SetValueInt64(0, 0);  // unsigned 64-bit result
+            attr->SetValueInt64(1, -1);
           }
+
           value_set = true;
           break;
         case common::ColOperation::BIT_OR:
         case common::ColOperation::BIT_XOR:
           if (nulls_only) {
-            iter->SetValueInt64(0, 0);  // unsigned 64-bit result
-            iter->SetValueInt64(1, 0);
+            attr->SetValueInt64(0, 0);  // unsigned 64-bit result
+            attr->SetValueInt64(1, 0);
           } else {
-            iter->SetValueInt64(0, 0);  // unsigned 64-bit result
-            iter->SetValueInt64(1, -1);
+            attr->SetValueInt64(0, 0);  // unsigned 64-bit result
+            attr->SetValueInt64(1, -1);
           }
+
           value_set = true;
           break;
         case common::ColOperation::STD_POP:
@@ -739,22 +740,22 @@ void TempTable::RoughAggregate(ResultSender *sender) {
                 max_val = vc->DecodeValueAsDouble(max_val);
                 double diff = *(reinterpret_cast<double *>(&max_val)) - *(reinterpret_cast<double *>(&min_val));
 
-                if (iter->oper_type_ == common::ColOperation::VAR_POP ||
-                    iter->oper_type_ == common::ColOperation::VAR_SAMP)
+                if (attr->oper_type_ == common::ColOperation::VAR_POP ||
+                    attr->oper_type_ == common::ColOperation::VAR_SAMP)
                   diff *= diff;
 
-                iter->SetValueInt64(0, 0);
-                iter->SetValueInt64(1, *(int64_t *)(&diff));  // May be approximated better. For
+                attr->SetValueInt64(0, 0);
+                attr->SetValueInt64(1, *(int64_t *)(&diff));  // May be approximated better. For
                                                               // now Var <= difference^2
                 value_set = true;
               } else {
-                iter->SetValueInt64(0, common::NULL_VALUE_64);
-                iter->SetValueInt64(1, common::NULL_VALUE_64);
+                attr->SetValueInt64(0, common::NULL_VALUE_64);
+                attr->SetValueInt64(1, common::NULL_VALUE_64);
                 value_set = true;
               }
             } else {
-              iter->SetValueInt64(0, common::NULL_VALUE_64);
-              iter->SetValueInt64(1, common::NULL_VALUE_64);
+              attr->SetValueInt64(0, common::NULL_VALUE_64);
+              attr->SetValueInt64(1, common::NULL_VALUE_64);
               value_set = true;
             }
           }
@@ -766,12 +767,12 @@ void TempTable::RoughAggregate(ResultSender *sender) {
 
     // Fill output buffers, if not filled yet
     if (!value_set) {
-      if (ATI::IsStringType(iter->TypeName())) {
-        iter->SetValueString(0, types::BString("*"));
-        iter->SetValueString(1, types::BString("*"));
+      if (ATI::IsStringType(attr->TypeName())) {
+        attr->SetValueString(0, types::BString("*"));
+        attr->SetValueString(1, types::BString("*"));
       } else {
-        iter->SetMinusInf(0);
-        iter->SetPlusInf(1);
+        attr->SetMinusInf(0);
+        attr->SetPlusInf(1);
       }
     }
   }
@@ -789,11 +790,15 @@ void TempTable::RoughUnion(TempTable *t, ResultSender *sender) {
       sender->Send(this);
     return;
   }
+
   DEBUG_ASSERT(NumOfDisplaybleAttrs() == t->NumOfDisplaybleAttrs());
+
   if (NumOfDisplaybleAttrs() != t->NumOfDisplaybleAttrs())
     throw common::NotImplementedException("UNION of tables with different number of columns.");
+
   if (this->IsParametrized() || t->IsParametrized())
     throw common::NotImplementedException("Materialize: not implemented union of parameterized queries.");
+
   this->RoughMaterialize(false);
   t->RoughMaterialize(false);
 
