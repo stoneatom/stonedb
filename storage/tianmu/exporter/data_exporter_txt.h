@@ -43,27 +43,27 @@ class DEforTxt : public DataExporter {
   void PutRowEnd() override;
 
  protected:
-  void WriteStringQualifier() { /*buf->WriteIfNonzero(str_q);*/
+  void WriteStringQualifier() { /*data_exporter_buf_->WriteIfNonzero(str_q);*/
   }
-  void WriteDelimiter() { buf->WriteIfNonzero(delim); }
-  void WriteNull() { WriteString(nulls_str.c_str(), (int)nulls_str.length()); }
+  void WriteDelimiter() { data_exporter_buf_->WriteIfNonzero(delimiter_); }
+  void WriteNull() { WriteString(nulls_str_.c_str(), (int)nulls_str_.length()); }
   void WriteString(const types::BString &str) { WriteString(str, str.size()); }
   size_t WriteString(const types::BString &str, int len);
-  void WriteChar(char c, uint repeat = 1) { std::memset(buf->BufAppend(repeat), c, repeat); }
+  void WriteChar(char c, uint repeat = 1) { std::memset(data_exporter_buf_->BufAppend(repeat), c, repeat); }
   void WritePad(uint repeat) { WriteChar(' ', repeat); }
   void WriteValueEnd() {
-    if (cur_attr == no_attrs - 1)
-      cur_attr = 0;
+    if (cur_attr_ == no_attrs_ - 1)
+      cur_attr_ = 0;
     else {
       WriteDelimiter();
-      cur_attr++;
+      cur_attr_++;
     }
   }
 
-  uchar delim, str_q, esc;
-  uchar line_terminator;
-  std::string nulls_str, escaped;
-  CHARSET_INFO *destination_cs;
+  uchar delimiter_, str_qualifier_, escape_character_;
+  uchar line_terminator_;
+  std::string nulls_str_, escaped_;
+  CHARSET_INFO *destination_charset_;
 };
 
 }  // namespace exporter

@@ -73,8 +73,10 @@ JoinAlgType TwoDimensionalJoiner::ChooseJoinAlgorithm([[maybe_unused]] MultiInde
 
 JoinAlgType TwoDimensionalJoiner::ChooseJoinAlgorithm(JoinFailure join_result, JoinAlgType prev_type,
                                                       [[maybe_unused]] size_t desc_size) {
-  if (join_result == JoinFailure::FAIL_1N_TOO_HARD) return JoinAlgType::JTYPE_HASH;
-  if (join_result == JoinFailure::FAIL_WRONG_SIDES) return prev_type;
+  if (join_result == JoinFailure::FAIL_1N_TOO_HARD)
+    return JoinAlgType::JTYPE_HASH;
+  if (join_result == JoinFailure::FAIL_WRONG_SIDES)
+    return prev_type;
   // the easiest strategy: in case of any problems, use general joiner
   return JoinAlgType::JTYPE_GENERAL;
 }

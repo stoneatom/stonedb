@@ -27,7 +27,8 @@ namespace Tianmu {
 namespace mm {
 
 TCMHeap::TCMHeap(size_t heap_size) : HeapPolicy(heap_size) {
-  if (heap_size > 0) m_heap.GrowHeap((heap_size) >> kPageShift);
+  if (heap_size > 0)
+    m_heap.GrowHeap((heap_size) >> kPageShift);
   m_sizemap.Init();
   for (size_t i = 0; i < kNumClasses; i++) m_freelist[i].Init();
 }
@@ -41,7 +42,8 @@ void *TCMHeap::alloc(size_t size) {
   if (size > kMaxSize) {
     int pages = int(size >> kPageShift);
     tcm::Span *s = m_heap.New(pages + 1);
-    if (s == nullptr) return nullptr;
+    if (s == nullptr)
+      return nullptr;
     s->objects = nullptr;
     s->next = nullptr;
     s->prev = nullptr;
@@ -59,7 +61,8 @@ void *TCMHeap::alloc(size_t size) {
     // allocations of this size)
     int pages = int(m_sizemap.class_to_pages(cl));
     tcm::Span *res = m_heap.New(pages);
-    if (res == nullptr) return nullptr;
+    if (res == nullptr)
+      return nullptr;
 
     m_heap.RegisterSizeClass(res, cl);
 
@@ -80,7 +83,8 @@ void *TCMHeap::alloc(size_t size) {
     res->refcount = 0;
     list->PushRange(num, (void *)(res->start << kPageShift), tail);
   }
-  if (list->empty()) return nullptr;
+  if (list->empty())
+    return nullptr;
 
   res = list->Pop();
   tcm::Span *s = m_heap.GetDescriptor(ADDR_TO_PAGEID(res));
@@ -103,7 +107,8 @@ size_t TCMHeap::getBlockSize(void *mh) {
 
 void TCMHeap::dealloc(void *mh) {
   // be an enabler for broken code
-  if (mh == nullptr) return;
+  if (mh == nullptr)
+    return;
 
   tcm::Span *span = m_heap.GetDescriptor(ADDR_TO_PAGEID(mh));
   ASSERT(span != nullptr);
@@ -126,7 +131,8 @@ void TCMHeap::dealloc(void *mh) {
 void *TCMHeap::rc_realloc(void *mh, size_t size) {
   void *res = alloc(size);
 
-  if (mh == nullptr) return res;
+  if (mh == nullptr)
+    return res;
   tcm::Span *span = m_heap.GetDescriptor(ADDR_TO_PAGEID(mh));
   if (span->sizeclass == 0) {
     std::memcpy(res, mh, std::min(span->length * kPageSize, size));

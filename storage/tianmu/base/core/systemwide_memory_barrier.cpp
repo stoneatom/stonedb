@@ -37,7 +37,7 @@ void systemwide_memory_barrier() {
     assert(mem != MAP_FAILED);
     return reinterpret_cast<char *>(mem);
   }();
-  int r1 = mprotect(mem, getpagesize(), PROT_READ | PROT_WRITE);
+  int r1 [[maybe_unused]] = mprotect(mem, getpagesize(), PROT_READ | PROT_WRITE);
   assert(r1 == 0);
   // Force page into memory to avoid next mprotect() attempting to be clever
   *mem = 3;
@@ -45,7 +45,7 @@ void systemwide_memory_barrier() {
   // lower permissions to force kernel to send IPI to all threads, with
   // a side effect of executing a memory barrier on those threads
   // FIXME: does this work on ARM?
-  int r2 = mprotect(mem, getpagesize(), PROT_READ);
+  int r2 [[maybe_unused]] = mprotect(mem, getpagesize(), PROT_READ);
   assert(r2 == 0);
 }
 

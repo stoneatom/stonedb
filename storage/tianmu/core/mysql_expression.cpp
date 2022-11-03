@@ -80,9 +80,12 @@ bool MysqlExpression::HandledFieldType(Item_result type) {
 bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &fields, bool toplevel /*= true*/,
                                              bool *has_aggregation /*= nullptr*/) {
   // printItemTree(item);
-  if (!item) return false;
-  if (toplevel && !HandledResultType(item)) return false;
-  if (toplevel && has_aggregation) *has_aggregation = false;
+  if (!item)
+    return false;
+  if (toplevel && !HandledResultType(item))
+    return false;
+  if (toplevel && has_aggregation)
+    *has_aggregation = false;
 
   /*
    * *FIXME*
@@ -100,21 +103,25 @@ bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &field
 
     case static_cast<int>(Item_tianmufield::enumTIANMUFiledItem::TIANMUFIELD_ITEM):
       if (has_aggregation) {
-        if (Query::IsAggregationItem(((Item_tianmufield *)item)->OriginalItem())) *has_aggregation = true;
+        if (Query::IsAggregationItem(((Item_tianmufield *)item)->OriginalItem()))
+          *has_aggregation = true;
       }
       fields.insert(((Item_tianmufield *)item)->OriginalItem());
       return true;
     case Item::FIELD_ITEM:
-      if (((Item_field *)item)->field && !HandledFieldType(item->result_type())) return false;
+      if (((Item_field *)item)->field && !HandledFieldType(item->result_type()))
+        return false;
       fields.insert(item);
       return true;
     case Item::FUNC_ITEM: {
-      if (dynamic_cast<Item_func_trig_cond *>(item) != nullptr) return false;
+      if (dynamic_cast<Item_func_trig_cond *>(item) != nullptr)
+        return false;
 
       // currently stored procedures not supported
       if (dynamic_cast<Item_func_sp *>(item) != nullptr) {
         Item_func_sp *ifunc = dynamic_cast<Item_func_sp *>(item);
-        if (ifunc->argument_count() != 0) return false;
+        if (ifunc->argument_count() != 0)
+          return false;
         return true;
       }
 
@@ -124,7 +131,8 @@ bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &field
       for (uint i = 0; i < ifunc->argument_count(); i++) {
         Item **args = ifunc->arguments();
         correct = (correct && SanityAggregationCheck(args[i], fields, false, has_aggregation));
-        if (!correct) break;
+        if (!correct)
+          break;
       }
       return correct;
     }
@@ -135,19 +143,23 @@ bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &field
       bool correct = true;
       while ((arg = li++)) {
         correct = (correct && SanityAggregationCheck(arg, fields, false, has_aggregation));
-        if (!correct) break;
+        if (!correct)
+          break;
       }
       return correct;
     }
     case Item::SUM_FUNC_ITEM: {
-      if (!HandledFieldType(item->result_type())) return false;
-      if (has_aggregation) *has_aggregation = true;
+      if (!HandledFieldType(item->result_type()))
+        return false;
+      if (has_aggregation)
+        *has_aggregation = true;
       fields.insert(item);
       return true;
     }
     case Item::REF_ITEM: {
       Item_ref *iref = dynamic_cast<Item_ref *>(item);
-      if (!iref->ref) return false;
+      if (!iref->ref)
+        return false;
       Item *arg = *(iref->ref);
       return SanityAggregationCheck(arg, fields, toplevel, has_aggregation);
     }
@@ -481,9 +493,11 @@ void MysqlExpression::CheckDecimalError(int err) {
 std::shared_ptr<ValueOrNull> MysqlExpression::ItemReal2ValueOrNull(Item *item) {
   auto val = std::make_shared<ValueOrNull>();
   double v = item->val_real();
-  if (v == -0.0) v = 0.0;
+  if (v == -0.0)
+    v = 0.0;
   int64_t vint = *(int64_t *)&v;
-  if (vint == common::NULL_VALUE_64) vint++;
+  if (vint == common::NULL_VALUE_64)
+    vint++;
   v = *(double *)&vint;
   val->SetDouble(v);
   if (item->null_value) {
@@ -497,7 +511,8 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemDecimal2ValueOrNull(Item *item
   my_decimal dec;
   my_decimal *retdec = item->val_decimal(&dec);
   if (retdec != nullptr) {
-    if (retdec != &dec) my_decimal2decimal(retdec, &dec);
+    if (retdec != &dec)
+      my_decimal2decimal(retdec, &dec);
     int64_t v;
     int err;
     // err = my_decimal_shift((uint)-1, &dec, item->decimals <= 18 ?
@@ -511,7 +526,8 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemDecimal2ValueOrNull(Item *item
     CheckDecimalError(err);
     val->SetFixed(v);
   }
-  if (item->null_value) return std::make_shared<ValueOrNull>();
+  if (item->null_value)
+    return std::make_shared<ValueOrNull>();
   return val;
 }
 
@@ -544,18 +560,21 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemString2ValueOrNull(Item *item,
       val->MakeStringOwner();
     }
   }
-  if (item->null_value) return std::make_shared<ValueOrNull>();
+  if (item->null_value)
+    return std::make_shared<ValueOrNull>();
   return val;
 }
 
 std::shared_ptr<ValueOrNull> MysqlExpression::ItemInt2ValueOrNull(Item *item) {
   auto val = std::make_shared<ValueOrNull>();
   int64_t v = item->val_int();
-  if (v == common::NULL_VALUE_64) v++;
+  if (v == common::NULL_VALUE_64)
+    v++;
   if (v < 0 && item->unsigned_flag)
     throw common::NotImplementedException("Out of range: unsigned data type is not supported.");
   val->SetFixed(v);
-  if (item->null_value) return std::make_shared<ValueOrNull>();
+  if (item->null_value)
+    return std::make_shared<ValueOrNull>();
   return val;
 }
 

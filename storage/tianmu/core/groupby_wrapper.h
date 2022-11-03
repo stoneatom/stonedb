@@ -150,16 +150,20 @@ class GroupByWrapper final {
   bool AnyTuplesLeft() { return (tuple_left != nullptr) && !tuple_left->IsEmpty(); }
   int64_t TuplesLeftBetween(int64_t from, int64_t to);
   void CommitResets() {
-    if (tuple_left) tuple_left->Commit();
+    if (tuple_left)
+      tuple_left->Commit();
   }
   void TuplesResetAll() {
-    if (tuple_left) tuple_left->Reset();
+    if (tuple_left)
+      tuple_left->Reset();
   }
   void TuplesResetBetween(int64_t from, int64_t to) {
-    if (tuple_left) tuple_left->ResetBetween(from, to);
+    if (tuple_left)
+      tuple_left->ResetBetween(from, to);
   }
   void TuplesReset(int64_t pos) {
-    if (tuple_left) tuple_left->ResetDelayed(pos);
+    if (tuple_left)
+      tuple_left->ResetDelayed(pos);
   }
   bool TuplesGet(int64_t pos) { return (tuple_left == nullptr) || tuple_left->Get(pos); }
   int64_t TuplesNoOnes() { return (tuple_left == nullptr ? 0 : tuple_left->NumOfOnes()); }

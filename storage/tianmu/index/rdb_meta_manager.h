@@ -102,8 +102,10 @@ class RdbKey {
   }
   // Check if given mem-comparable key belongs to this index
   bool covers_key(const rocksdb::Slice &slice) const {
-    if (slice.size() < INDEX_NUMBER_SIZE) return false;
-    if (memcmp(slice.data(), m_index_nr_be, INDEX_NUMBER_SIZE)) return false;
+    if (slice.size() < INDEX_NUMBER_SIZE)
+      return false;
+    if (memcmp(slice.data(), m_index_nr_be, INDEX_NUMBER_SIZE))
+      return false;
 
     return true;
   }
@@ -299,7 +301,8 @@ class CFManager {
 };
 
 inline bool IsRowStoreCF(std::string cf_name) {
-  if (cf_name.size() < DEFAULT_ROWSTORE_PREFIX.size()) return false;
+  if (cf_name.size() < DEFAULT_ROWSTORE_PREFIX.size())
+    return false;
 
   return (strncmp(cf_name.data(), DEFAULT_ROWSTORE_PREFIX.data(), DEFAULT_ROWSTORE_PREFIX.size()) == 0);
 };

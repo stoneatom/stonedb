@@ -369,7 +369,6 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
           // copy GroupTable into TempTable, row by row
           if (t->NumOfObj() >= limit)
             break;
-
           AggregateFillOutput(gbw, gbw.GetCurrentRow(),
                               offset);  // offset is decremented for each row, if positive
 
@@ -404,7 +403,6 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
 
       } else
         displayed_no_groups = t->NumOfObj();
-
       if (t->NumOfObj() >= limit)
         break;
       if (gbw.AnyTuplesLeft())
@@ -454,7 +452,6 @@ void AggregationAlgorithm::MultiDimensionalDistinctScan(GroupByWrapper &gbw, MII
           if (mit.PackrowStarted()) {
             if (m_conn->Killed())
               throw common::KilledException();
-
             // All packrow-level operations
             omit_filter->Commit();
             gbw.ResetPackrow();
@@ -618,7 +615,6 @@ AggregatePackRowStats AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
         for (int gr_a = 0; gr_a < gbw.NumOfGroupingAttrs(); gr_a++)
           if (gbw.ColumnNotOmitted(gr_a))
             gbw.PutGroupingValue(gr_a, *mit);
-
         existed = gbw.FindCurrentRow(pos);
       }
 
@@ -660,7 +656,6 @@ AggregatePackRowStats AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
 
     cur_tuple++;
     mit->Increment();
-
     if (mit->PackrowStarted())
       break;
   }

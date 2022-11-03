@@ -52,28 +52,33 @@ void MultiIndexBuilder::BuildItem::Initialize(int64_t initial_size) {
     index_table_[dim] = nullptr;
 
     if (builder_->dims_involved_[dim]) {
-      if (builder_->forget_now_[dim]) continue;
+      if (builder_->forget_now_[dim])
+        continue;
 
       index_table_[dim] = new IndexTable(initial_size, mind->OrigSize(dim), 0);
       index_table_[dim]->SetNumOfLocks(mind->group_for_dim[dim]->NumOfLocks(dim));
       min_block_shift = std::min(min_block_shift, index_table_[dim]->BlockShift());
 
-      if (initial_size > (1U << mind->ValueOfPower())) rough_sort_needed = true;
+      if (initial_size > (1U << mind->ValueOfPower()))
+        rough_sort_needed = true;
     }
   }
 
-  if (rough_sort_needed) rough_sorter_.reset(new MINewContentsRSorter(mind, index_table_, min_block_shift));
+  if (rough_sort_needed)
+    rough_sorter_.reset(new MINewContentsRSorter(mind, index_table_, min_block_shift));
 }
 
 void MultiIndexBuilder::BuildItem::SetTableValue(int dim, int64_t val) { cached_values_[dim] = val; }
 
 void MultiIndexBuilder::BuildItem::CommitTableValues() {
-  if (rough_sorter_) rough_sorter_->CommitValues(&cached_values_[0], added_count_);
+  if (rough_sorter_)
+    rough_sorter_->CommitValues(&cached_values_[0], added_count_);
 
   for (int dim = 0; dim < builder_->dims_count_; ++dim) {
     if (index_table_[dim]) {
       if ((uint64_t)added_count_ >= index_table_[dim]->N()) {
-        if (rough_sorter_) rough_sorter_->Barrier();
+        if (rough_sorter_)
+          rough_sorter_->Barrier();
         index_table_[dim]->ExpandTo(added_count_ < 2048 ? 2048 : added_count_ * 4);
       }
       if (cached_values_[dim] == common::NULL_VALUE_64) {
@@ -121,7 +126,8 @@ void MultiIndexBuilder::Init(int64_t initial_size, const std::vector<DimensionVe
   }
 
   for (int dim = 0; dim < dims_count_; dim++) {
-    if (dims_involved_[dim]) multi_index_->LockForGetIndex(dim);  // Locking for creation.
+    if (dims_involved_[dim])
+      multi_index_->LockForGetIndex(dim);  // Locking for creation.
   }
 }
 
@@ -185,7 +191,8 @@ void MultiIndexBuilder::Commit(int64_t joined_tuples, bool count_only) {
   multi_index_->FillGroupForDim();
   multi_index_->UpdateNumOfTuples();
   for (int dim = 0; dim < dims_count_; dim++)
-    if (dims_involved_[dim] && !forget_now_[dim]) multi_index_->UnlockFromGetIndex(dim);
+    if (dims_involved_[dim] && !forget_now_[dim])
+      multi_index_->UnlockFromGetIndex(dim);
 }
 
 }  // namespace core

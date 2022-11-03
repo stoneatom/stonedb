@@ -59,7 +59,8 @@ types::BString Pack::GetValueBinary([[maybe_unused]] int n) const {
 }
 
 void Pack::Release() {
-  if (owner) owner->DropObjectByMM(GetPackCoordinate());
+  if (owner)
+    owner->DropObjectByMM(GetPackCoordinate());
 }
 
 bool Pack::ShouldNotCompress() const {

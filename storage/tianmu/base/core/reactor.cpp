@@ -435,7 +435,7 @@ future<> reactor_backend_epoll::get_epoll_future(pollable_fd_state &pfd, promise
     ::epoll_event eevt;
     eevt.events = pfd.events_epoll;
     eevt.data.ptr = &pfd;
-    int r = ::epoll_ctl(_epollfd.get(), ctl, pfd.fd.get(), &eevt);
+    int r [[maybe_unused]] = ::epoll_ctl(_epollfd.get(), ctl, pfd.fd.get(), &eevt);
     assert(r == 0);
     engine().start_epoll();
   }
@@ -451,7 +451,7 @@ void reactor_backend_epoll::abort_fd(pollable_fd_state &pfd, std::exception_ptr 
     ::epoll_event eevt;
     eevt.events = pfd.events_epoll;
     eevt.data.ptr = &pfd;
-    int r = ::epoll_ctl(_epollfd.get(), ctl, pfd.fd.get(), &eevt);
+    int r [[maybe_unused]] = ::epoll_ctl(_epollfd.get(), ctl, pfd.fd.get(), &eevt);
     assert(r == 0);
   }
   if (pfd.events_requested & event) {
@@ -1845,7 +1845,7 @@ file_desc writeable_eventfd::try_create_eventfd(size_t initial) {
 
 void writeable_eventfd::signal(size_t count) {
   uint64_t c = count;
-  auto r = _fd.write(&c, sizeof(c));
+  auto r [[maybe_unused]] = _fd.write(&c, sizeof(c));
   assert(r == sizeof(c));
 }
 
@@ -1859,7 +1859,7 @@ file_desc readable_eventfd::try_create_eventfd(size_t initial) {
 future<size_t> readable_eventfd::wait() {
   return engine().readable(*_fd._s).then([this] {
     uint64_t count;
-    int r = ::read(_fd.get_fd(), &count, sizeof(count));
+    int r [[maybe_unused]] = ::read(_fd.get_fd(), &count, sizeof(count));
     assert(r == sizeof(count));
     return make_ready_future<size_t>(count);
   });
@@ -1963,7 +1963,7 @@ void smp::allocate_reactor(unsigned id) {
   // we cannot just write "local_engin = new reactor" since reactor's
   // constructor uses local_engine
   void *buf;
-  int r = posix_memalign(&buf, cache_line_size, sizeof(reactor));
+  int r [[maybe_unused]] = posix_memalign(&buf, cache_line_size, sizeof(reactor));
   assert(r == 0);
   local_engine = reinterpret_cast<reactor *>(buf);
   new (buf) reactor(id);

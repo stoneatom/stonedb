@@ -264,7 +264,8 @@ class AggregatorCount64 : public TIANMUAggregator {
     stats_updated = false;
   }
   bool UpdateStatistics(unsigned char *buf) override {
-    if (cur_min_counter > *((int64_t *)buf)) cur_min_counter = *((int64_t *)buf);
+    if (cur_min_counter > *((int64_t *)buf))
+      cur_min_counter = *((int64_t *)buf);
     return (cur_min_counter == 1);  // minimal value, we will not find anything better
   }
   bool PackCannotChangeAggregation() override {
@@ -331,7 +332,8 @@ class AggregatorCount32 : public TIANMUAggregator {
     stats_updated = false;
   }
   bool UpdateStatistics(unsigned char *buf) override {
-    if (cur_min_counter > *((int *)buf)) cur_min_counter = *((int *)buf);
+    if (cur_min_counter > *((int *)buf))
+      cur_min_counter = *((int *)buf);
     return (cur_min_counter == 1);  // minimal value, we will not find anything better
   }
   bool PackCannotChangeAggregation() override {

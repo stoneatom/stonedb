@@ -61,7 +61,8 @@ void LogCtl::LogMsg(logger::LogCtl_Level level, const char *file, int line, cons
     va_start(args, format);
     char buff[MAX_LOG_LEN];
     auto length = std::vsnprintf(buff, sizeof(buff), format, args);
-    if (static_cast<size_t>(length) >= MAX_LOG_LEN) length = MAX_LOG_LEN - 1;
+    if (static_cast<size_t>(length) >= MAX_LOG_LEN)
+      length = MAX_LOG_LEN - 1;
     buff[length] = '\0';
     tianmulog << system::lock << "[" << logger::get_level_str(level) << "] [" << basename(file) << ":" << line
               << "] MSG: " << buff << system::unlock;

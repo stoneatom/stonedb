@@ -41,7 +41,8 @@ class DimensionVector {
   bool operator==(const DimensionVector &d2) const {
     DEBUG_ASSERT(Size() == d2.Size());
     for (int i = 0; i < Size(); ++i)
-      if (v[i] != d2.v[i]) return false;
+      if (v[i] != d2.v[i])
+        return false;
     return true;
   }
   bool operator!=(const DimensionVector &d2) { return !operator==(d2); }
@@ -58,7 +59,8 @@ class DimensionVector {
   bool Intersects(DimensionVector &sec) {
     DEBUG_ASSERT(v.size() == sec.v.size());
     for (size_t i = 0; i < v.size(); i++)
-      if (v[i] && sec.v[i]) return true;
+      if (v[i] && sec.v[i])
+        return true;
     return false;
   }
 
@@ -66,26 +68,30 @@ class DimensionVector {
   bool Includes(DimensionVector &sec) {
     DEBUG_ASSERT(v.size() == sec.v.size());
     for (size_t i = 0; i < v.size(); i++)
-      if (sec.v[i] && !v[i]) return false;
+      if (sec.v[i] && !v[i])
+        return false;
     return true;
   }
   // exclude from *this all dimensions present in sec
   void Minus(DimensionVector &sec) {
     DEBUG_ASSERT(v.size() == sec.v.size());
     for (size_t i = 0; i < v.size(); i++)
-      if (sec.v[i]) v[i] = false;
+      if (sec.v[i])
+        v[i] = false;
   }
   // include in *this all dimensions present in sec
   void Plus(DimensionVector &sec) {
     DEBUG_ASSERT(v.size() == sec.v.size());
     for (size_t i = 0; i < v.size(); i++)
-      if (sec.v[i]) v[i] = true;
+      if (sec.v[i])
+        v[i] = true;
   }
 
   int NoDimsUsed() const {
     int res = 0;
     for (size_t i = 0; i < v.size(); i++)
-      if (v[i]) res++;
+      if (v[i])
+        res++;
     return res;
   }
   // return the only existing dim, or -1 if more or less than one
@@ -93,14 +99,16 @@ class DimensionVector {
     int res = -1;
     for (size_t i = 0; i < v.size(); i++)
       if (v[i]) {
-        if (res != -1) return -1;
+        if (res != -1)
+          return -1;
         res = i;
       }
     return res;
   }
   bool IsEmpty() const {
     for (size_t i = 0; i < v.size(); i++)
-      if (v[i]) return false;
+      if (v[i])
+        return false;
     return true;
   }
   int Size() const { return v.size(); }  // return a number of all dimensions (present or not)

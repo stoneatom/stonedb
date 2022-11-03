@@ -564,11 +564,11 @@ void TempTable::VerifyAttrsSizes()  // verifies attr[i].field_size basing on the
       if (attr->term_.vc->MaxStringSize() < STRING_LENGTH_THRESHOLD) {
         attr->OverrideStringSize(attr->term_.vc->MaxStringSize());
       } else {
-        vcolumn::VirtualColumn *vc = attr->term_.vc;
         int max_length = attr->term_.vc->MaxStringSize();
 // TODO, the code has some bug, max_length in some case wil be negative, see #671
 // comment the optimization code for temp solution;
 #if 0
+        vcolumn::VirtualColumn *vc = attrs[i]->term.vc;
         if (dynamic_cast<vcolumn::ExpressionColumn *>(vc)) {
           auto &var_map = dynamic_cast<vcolumn::ExpressionColumn *>(vc)->GetVarMap();
           for (auto &it : var_map) {
@@ -577,7 +577,8 @@ void TempTable::VerifyAttrsSizes()  // verifies attr[i].field_size basing on the
             uint precision = ct.GetPrecision();
             if (precision >= STRING_LENGTH_THRESHOLD) {
               uint actual_size = column->MaxStringSize() * ct.GetCollation().collation->mbmaxlen;
-              if (actual_size < precision) max_length += (actual_size - precision);
+              if (actual_size < precision)
+                max_length += (actual_size - precision);
             }
           }
         }

@@ -132,11 +132,11 @@ class MultiValColumn : public VirtualColumn {
   /*! \brief Create a column that represent const value.
    *
    * \param ct - type of column.
-   * \param mind - core::MultiIndex.
+   * \param multi_index - core::MultiIndex.
    * \param expressions - a STL container of core::MysqlExpression*.
    */
-  MultiValColumn(core::ColumnType const &ct, core::MultiIndex *mind) : VirtualColumn(ct, mind) {}
-  MultiValColumn(const MultiValColumn &c) : VirtualColumn(c) { tianmuitems = c.tianmuitems; }
+  MultiValColumn(core::ColumnType const &ct, core::MultiIndex *multi_index) : VirtualColumn(ct, multi_index) {}
+  MultiValColumn(const MultiValColumn &c) : VirtualColumn(c) { tianmu_items_ = c.tianmu_items_; }
   virtual ~MultiValColumn() {}
 
   bool IsMultival() const override { return true; }
@@ -225,8 +225,9 @@ class MultiValColumn : public VirtualColumn {
   }
   int64_t GetApproxDistValsImpl([[maybe_unused]] bool incl_nulls,
                                 [[maybe_unused]] core::RoughMultiIndex *rough_mind) override {
-    if (mind->TooManyTuples()) return common::PLUS_INF_64;
-    return mind->NumOfTuples();  // default
+    if (multi_index_->TooManyTuples())
+      return common::PLUS_INF_64;
+    return multi_index_->NumOfTuples();  // default
   }
 
   virtual common::Tribool Contains64Impl(core::MIIterator const &mit, int64_t val) = 0;
@@ -241,7 +242,7 @@ class MultiValColumn : public VirtualColumn {
   }  // even copies refer to the same core::TempTable and core::TempTable cannot
      // be used in parallel due to Attr paging
   bool IsThreadSafe() override { return false; }
-  core::MysqlExpression::tianmu_fields_cache_t tianmuitems;  // items used in mysqlExpressions
+  core::MysqlExpression::tianmu_fields_cache_t tianmu_items_;  // items used in mysqlExpressions
 };
 }  // namespace vcolumn
 }  // namespace Tianmu

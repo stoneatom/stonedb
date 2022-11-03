@@ -726,6 +726,7 @@ class future {
       }
     }
     assert(0 && "we should not be here");
+    return make_ready_future<T...>();  // just swallow warning "-Wreturn-type"
   }
 
   template <typename... U>
@@ -959,6 +960,7 @@ class future {
             return result.rethrow_with_nested();
           }
           assert(0 && "we should not be here");
+          return result.rethrow_with_nested();  // just swallow warning "-Wreturn-type"
         }
       });
     }

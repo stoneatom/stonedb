@@ -81,13 +81,16 @@ ColumnBinEncoder &ColumnBinEncoder::operator=(const ColumnBinEncoder &sec) {
 }
 
 ColumnBinEncoder::~ColumnBinEncoder() {
-  if (vc && !implicit && dup_col == -1) vc->UnlockSourcePacks();
+  if (vc && !implicit && dup_col == -1)
+    vc->UnlockSourcePacks();
 }
 
 bool ColumnBinEncoder::PrepareEncoder(vcolumn::VirtualColumn *_vc, vcolumn::VirtualColumn *_vc2) {
-  if (_vc == nullptr) return false;
+  if (_vc == nullptr)
+    return false;
   bool nulls_possible = false;
-  if (!ignore_nulls) nulls_possible = _vc->IsNullsPossible() || (_vc2 != nullptr && _vc2->IsNullsPossible());
+  if (!ignore_nulls)
+    nulls_possible = _vc->IsNullsPossible() || (_vc2 != nullptr && _vc2->IsNullsPossible());
   vc = _vc;
   ColumnType vct = vc->Type();
   ColumnType vct2 = _vc2 ? _vc2->Type() : ColumnType();
@@ -156,7 +159,8 @@ bool ColumnBinEncoder::PrepareEncoder(vcolumn::VirtualColumn *_vc, vcolumn::Virt
           my_encoder.reset(new ColumnBinEncoder::EncoderText(vc, decodable, nulls_possible, descending));
         second_try = my_encoder->SecondColumn(_vc2);
       }
-      if (!second_try) return false;
+      if (!second_try)
+        return false;
     }
   }
   val_size = my_encoder->ValueSize();
@@ -165,32 +169,38 @@ bool ColumnBinEncoder::PrepareEncoder(vcolumn::VirtualColumn *_vc, vcolumn::Virt
 }
 
 void ColumnBinEncoder::Encode(uchar *buf, MIIterator &mit, vcolumn::VirtualColumn *alternative_vc, bool update_stats) {
-  if (implicit) return;
+  if (implicit)
+    return;
   my_encoder->Encode(buf + val_offset, buf + val_sec_offset, (alternative_vc ? alternative_vc : vc), mit, update_stats);
 }
 
 bool ColumnBinEncoder::PutValue64(uchar *buf, int64_t v, bool sec_column, bool update_stats) {
-  if (implicit) return false;
+  if (implicit)
+    return false;
   return my_encoder->EncodeInt64(buf + val_offset, buf + val_sec_offset, v, sec_column, update_stats);
 }
 
 bool ColumnBinEncoder::PutValueString(uchar *buf, types::BString &v, bool sec_column, bool update_stats) {
-  if (implicit) return false;
+  if (implicit)
+    return false;
   return my_encoder->EncodeString(buf + val_offset, buf + val_sec_offset, v, sec_column, update_stats);
 }
 
 int64_t ColumnBinEncoder::ValEncode(MIIterator &mit, bool update_stats) {
-  if (implicit) return common::NULL_VALUE_64;
+  if (implicit)
+    return common::NULL_VALUE_64;
   return my_encoder->ValEncode(vc, mit, update_stats);
 }
 
 int64_t ColumnBinEncoder::ValPutValue64(int64_t v, bool update_stats) {
-  if (implicit) return common::NULL_VALUE_64;
+  if (implicit)
+    return common::NULL_VALUE_64;
   return my_encoder->ValEncodeInt64(v, update_stats);
 }
 
 int64_t ColumnBinEncoder::ValPutValueString(types::BString &v, bool update_stats) {
-  if (implicit) return common::NULL_VALUE_64;
+  if (implicit)
+    return common::NULL_VALUE_64;
   return my_encoder->ValEncodeString(v, update_stats);
 }
 
@@ -201,7 +211,8 @@ int64_t ColumnBinEncoder::GetValue64(uchar *buf, const MIDummyIterator &mit, boo
   if (implicit) {
     vc->LockSourcePacks(mit);
     int64_t v = vc->GetValueInt64(mit);
-    if (v == common::NULL_VALUE_64) is_null = true;
+    if (v == common::NULL_VALUE_64)
+      is_null = true;
     return v;
   }
   if (my_encoder->IsNull(buf + val_offset, buf + val_sec_offset)) {
@@ -215,11 +226,13 @@ types::BString ColumnBinEncoder::GetValueT(uchar *buf, const MIDummyIterator &mi
   if (implicit) {
     vc->LockSourcePacks(mit);
     types::BString s;
-    if (vc->IsNull(mit)) return s;
+    if (vc->IsNull(mit))
+      return s;
     vc->GetNotNullValueString(s, mit);
     return s;
   }
-  if (my_encoder->IsNull(buf + val_offset, buf + val_sec_offset)) return types::BString();
+  if (my_encoder->IsNull(buf + val_offset, buf + val_sec_offset))
+    return types::BString();
   return my_encoder->GetValueT(buf + val_offset, buf + val_sec_offset);
 }
 
@@ -233,7 +246,8 @@ bool ColumnBinEncoder::ImpossibleValues(int64_t pack_min,
                                         int64_t pack_max)  // return true if the current contents of the encoder is
                                                            // out of scope
 {
-  if (implicit) return false;
+  if (implicit)
+    return false;
   return my_encoder->ImpossibleInt64Values(pack_min, pack_max);
 }
 
@@ -293,10 +307,13 @@ bool ColumnBinEncoder::EncoderInt::SecondColumn(vcolumn::VirtualColumn *vc) {
   int64_t new_min_val = vc->RoughMin();
   int64_t max_val = max_code + min_val - (null_status == 1 ? 1 : 0);
   int64_t new_max_val = vc->RoughMax();
-  if (min_val > new_min_val) min_val = new_min_val;
-  if (max_val < new_max_val) max_val = new_max_val;
+  if (min_val > new_min_val)
+    min_val = new_min_val;
+  if (max_val < new_max_val)
+    max_val = new_max_val;
   max_code = uint64_t(max_val - min_val);
-  if (null_status == 1 && max_code == (UINT64_MAX)) null_status = 2;  // separate byte
+  if (null_status == 1 && max_code == (UINT64_MAX))
+    null_status = 2;  // separate byte
   size = CalculateByteSize(max_code) + (null_status == 2 ? 1 : 0);
   return true;
 }
@@ -318,11 +335,14 @@ bool ColumnBinEncoder::EncoderInt::EncodeInt64(uchar *buf, uchar *buf_sec, int64
   uint64_t coded_val;
   int loc_size = size;
   if (update_stats) {
-    if (v > max_found) max_found = v;
-    if (v < min_found) min_found = v;
+    if (v > max_found)
+      max_found = v;
+    if (v < min_found)
+      min_found = v;
   }
   coded_val = uint64_t(v - min_val) + (null_status == 1 ? 1 : 0);
-  if (descending) coded_val = max_code - coded_val;
+  if (descending)
+    coded_val = max_code - coded_val;
   if (null_status == 2) {
     *buf = (descending ? '\0' : '\1');  // not null
     buf++;
@@ -336,7 +356,8 @@ bool ColumnBinEncoder::EncoderInt::EncodeInt64(uchar *buf, uchar *buf_sec, int64
 }
 
 int64_t ColumnBinEncoder::EncoderInt::ValEncode(vcolumn::VirtualColumn *vc, MIIterator &mit, bool update_stats) {
-  if (null_status > 0 && vc->IsNull(mit)) return ValEncodeInt64(common::NULL_VALUE_64, update_stats);
+  if (null_status > 0 && vc->IsNull(mit))
+    return ValEncodeInt64(common::NULL_VALUE_64, update_stats);
   return ValEncodeInt64(vc->GetNotNullValueInt64(mit), update_stats);
 }
 
@@ -344,15 +365,19 @@ int64_t ColumnBinEncoder::EncoderInt::ValEncodeInt64(int64_t v, bool update_stat
   DEBUG_ASSERT(null_status < 2);  // should be used only for small values, when
                                   // an additional byte is not needed
   if (v == common::NULL_VALUE_64) {
-    if (descending) return max_code;
+    if (descending)
+      return max_code;
     return 0;
   }
   if (update_stats) {
-    if (v > max_found) max_found = v;
-    if (v < min_found) min_found = v;
+    if (v > max_found)
+      max_found = v;
+    if (v < min_found)
+      min_found = v;
   }
   int64_t coded_val = (v - min_val) + (null_status == 1 ? 1 : 0);
-  if (descending) return max_code - coded_val;
+  if (descending)
+    return max_code - coded_val;
   return coded_val;
 }
 
@@ -382,7 +407,8 @@ void ColumnBinEncoder::EncoderInt::SetNull(uchar *buf, [[maybe_unused]] uchar *b
 }
 
 bool ColumnBinEncoder::EncoderInt::IsNull(uchar *buf, [[maybe_unused]] uchar *buf_sec) {
-  if (null_status == 0) return false;
+  if (null_status == 0)
+    return false;
   uint64_t zero = 0;
   if (descending) {
     if (null_status == 1) {
@@ -403,7 +429,8 @@ bool ColumnBinEncoder::EncoderInt::IsNull(uchar *buf, [[maybe_unused]] uchar *bu
 int64_t ColumnBinEncoder::EncoderInt::GetValue64(uchar *buf, [[maybe_unused]] uchar *buf_sec) {
   int loc_size = size;
   if (null_status == 2) {
-    if ((!descending && *buf == '\0') || (descending && *buf == '\1')) return common::NULL_VALUE_64;
+    if ((!descending && *buf == '\0') || (descending && *buf == '\1'))
+      return common::NULL_VALUE_64;
     buf++;
     loc_size--;
   }
@@ -411,21 +438,26 @@ int64_t ColumnBinEncoder::EncoderInt::GetValue64(uchar *buf, [[maybe_unused]] uc
   uchar *val_ptr = (uchar *)(&coded_val) + loc_size;           // the end of meaningful bytes
   for (int i = 0; i < loc_size; i++) *(--val_ptr) = *(buf++);  // change endianess
 
-  if (descending) coded_val = max_code - coded_val;
+  if (descending)
+    coded_val = max_code - coded_val;
   return coded_val - (null_status == 1 ? 1 : 0) + min_val;
 }
 
 void ColumnBinEncoder::EncoderInt::UpdateStatistics(unsigned char *buf) {
   int64_t v = GetValue64(buf, nullptr);
-  if (null_status > 0 && v == common::NULL_VALUE_64) return;
-  if (v > max_found) max_found = v;
-  if (v < min_found) min_found = v;
+  if (null_status > 0 && v == common::NULL_VALUE_64)
+    return;
+  if (v > max_found)
+    max_found = v;
+  if (v < min_found)
+    min_found = v;
 }
 
 bool ColumnBinEncoder::EncoderInt::ImpossibleInt64Values(int64_t pack_min, int64_t pack_max) {
   if (pack_min == common::NULL_VALUE_64 || pack_max == common::NULL_VALUE_64 || min_found == common::PLUS_INF_64)
     return false;
-  if (pack_min > max_found || pack_max < min_found) return true;
+  if (pack_min > max_found || pack_max < min_found)
+    return true;
   return false;
 }
 
@@ -471,10 +503,13 @@ bool ColumnBinEncoder::EncoderDecimal::SecondColumn(vcolumn::VirtualColumn *vc) 
     new_max_val *= int64_t(sec_multiplier);
   }
   scale = std::max(new_scale, scale);
-  if (min_val > new_min_val) min_val = new_min_val;
-  if (max_val < new_max_val) max_val = new_max_val;
+  if (min_val > new_min_val)
+    min_val = new_min_val;
+  if (max_val < new_max_val)
+    max_val = new_max_val;
   max_code = uint64_t(max_val - min_val);
-  if (null_status == 1 && max_code == (UINT64_MAX)) null_status = 2;  // separate byte
+  if (null_status == 1 && max_code == (UINT64_MAX))
+    null_status = 2;  // separate byte
   size = CalculateByteSize(max_code) + (null_status == 2 ? 1 : 0);
   return true;
 }
@@ -485,7 +520,8 @@ void ColumnBinEncoder::EncoderDecimal::Encode(uchar *buf, uchar *buf_sec, vcolum
     SetNull(buf, buf_sec);
   else {
     int64_t v = vc->GetNotNullValueInt64(mit);
-    if (vc->Type().GetScale() < scale) v *= int64_t(types::PowOfTen(scale - vc->Type().GetScale()));
+    if (vc->Type().GetScale() < scale)
+      v *= int64_t(types::PowOfTen(scale - vc->Type().GetScale()));
     EncoderInt::EncodeInt64(buf, buf_sec, v, false, update_stats);
   }
 }
@@ -495,7 +531,8 @@ bool ColumnBinEncoder::EncoderDecimal::EncodeInt64(uchar *buf, uchar *buf_sec, i
   if (null_status > 0 && v == common::NULL_VALUE_64)
     SetNull(buf, buf_sec);
   else {
-    if (v != common::PLUS_INF_64 && v != common::MINUS_INF_64) v *= int64_t(sec_column ? sec_multiplier : multiplier);
+    if (v != common::PLUS_INF_64 && v != common::MINUS_INF_64)
+      v *= int64_t(sec_column ? sec_multiplier : multiplier);
     return EncoderInt::EncodeInt64(buf, buf_sec, v, false, update_stats);
   }
   return true;
@@ -507,8 +544,10 @@ bool ColumnBinEncoder::EncoderDecimal::ImpossibleInt64Values(int64_t pack_min, i
   if (pack_min != common::MINUS_INF_64)
     pack_min *= int64_t(sec_multiplier);  // assuming that pack_min, pack_max
                                           // always belong to the second column!
-  if (pack_max != common::PLUS_INF_64) pack_max *= int64_t(sec_multiplier);
-  if (pack_min > max_found || pack_max < min_found) return true;
+  if (pack_max != common::PLUS_INF_64)
+    pack_max *= int64_t(sec_multiplier);
+  if (pack_min > max_found || pack_max < min_found)
+    return true;
   return false;
 }
 
@@ -521,7 +560,8 @@ ColumnBinEncoder::EncoderDate::EncoderDate(vcolumn::VirtualColumn *vc, bool deco
   max_code = uint64_t(pmax - pmin);
   if (nulls_possible) {
     null_status = 1;  // 0 is null - because dates never reach max. int.
-    if (max_code != uint64_t(UINT64_MAX)) max_code++;
+    if (max_code != uint64_t(UINT64_MAX))
+      max_code++;
   } else
     null_status = 0;
   size = CalculateByteSize(max_code);
@@ -537,8 +577,10 @@ bool ColumnBinEncoder::EncoderDate::SecondColumn(vcolumn::VirtualColumn *vc) {
   int64_t new_min_val = types::DT::DateSortEncoding(vc->RoughMin());
   int64_t max_val = max_code + min_val - (null_status == 1 ? 1 : 0);
   int64_t new_max_val = types::DT::DateSortEncoding(vc->RoughMax());
-  if (min_val > new_min_val) min_val = new_min_val;
-  if (max_val < new_max_val) max_val = new_max_val;
+  if (min_val > new_min_val)
+    min_val = new_min_val;
+  if (max_val < new_max_val)
+    max_val = new_max_val;
   max_code = uint64_t(max_val - min_val) + (null_status == 1 && max_code != UINT64_MAX ? 1 : 0);
   ;
   size = CalculateByteSize(max_code);
@@ -564,7 +606,8 @@ bool ColumnBinEncoder::EncoderDate::EncodeInt64(uchar *buf, uchar *buf_sec, int6
 }
 
 int64_t ColumnBinEncoder::EncoderDate::ValEncode(vcolumn::VirtualColumn *vc, MIIterator &mit, bool update_stats) {
-  if (null_status > 0 && vc->IsNull(mit)) return EncoderInt::ValEncodeInt64(common::NULL_VALUE_64, update_stats);
+  if (null_status > 0 && vc->IsNull(mit))
+    return EncoderInt::ValEncodeInt64(common::NULL_VALUE_64, update_stats);
   return EncoderInt::ValEncodeInt64(types::DT::DateSortEncoding(vc->GetNotNullValueInt64(mit)), update_stats);
 }
 
@@ -575,17 +618,20 @@ int64_t ColumnBinEncoder::EncoderDate::ValEncodeInt64(int64_t v, bool update_sta
 }
 
 int64_t ColumnBinEncoder::EncoderDate::GetValue64(uchar *buf, uchar *buf_sec) {
-  if (IsNull(buf, buf_sec)) return common::NULL_VALUE_64;
+  if (IsNull(buf, buf_sec))
+    return common::NULL_VALUE_64;
   return types::DT::DateSortDecoding(EncoderInt::GetValue64(buf, buf_sec));
 }
 
 void ColumnBinEncoder::EncoderDate::UpdateStatistics(unsigned char *buf) {
   int64_t v = EncoderInt::GetValue64(buf, nullptr);
-  if (null_status > 0 && v == common::NULL_VALUE_64) return;
+  if (null_status > 0 && v == common::NULL_VALUE_64)
+    return;
   if (v > max_found)  // min/max_found as types::DT::DateSortEncoding
                       // values
     max_found = v;
-  if (v < min_found) min_found = v;
+  if (v < min_found)
+    min_found = v;
 }
 
 bool ColumnBinEncoder::EncoderDate::ImpossibleInt64Values(int64_t pack_min, int64_t pack_max) {
@@ -605,7 +651,8 @@ ColumnBinEncoder::EncoderYear::EncoderYear(vcolumn::VirtualColumn *vc, bool deco
   max_code = uint64_t(pmax - pmin);
   if (nulls_possible) {
     null_status = 1;  // 0 is null - because years never reach max. int.
-    if (max_code != UINT64_MAX) max_code++;
+    if (max_code != UINT64_MAX)
+      max_code++;
   } else
     null_status = 0;
   size = CalculateByteSize(max_code);
@@ -622,10 +669,13 @@ bool ColumnBinEncoder::EncoderYear::SecondColumn(vcolumn::VirtualColumn *vc) {
   int64_t new_min_val = types::DT::YearSortEncoding(vc->RoughMin());
   int64_t max_val = max_code + min_val - (null_status == 1 ? 1 : 0);
   int64_t new_max_val = types::DT::YearSortEncoding(vc->RoughMax());
-  if (min_val > new_min_val) min_val = new_min_val;
-  if (max_val < new_max_val) max_val = new_max_val;
+  if (min_val > new_min_val)
+    min_val = new_min_val;
+  if (max_val < new_max_val)
+    max_val = new_max_val;
   max_code = uint64_t(max_val - min_val);
-  if (max_code != UINT64_MAX && null_status == 1) max_code++;
+  if (max_code != UINT64_MAX && null_status == 1)
+    max_code++;
   size = CalculateByteSize(max_code);
   return true;
 }
@@ -649,7 +699,8 @@ bool ColumnBinEncoder::EncoderYear::EncodeInt64(uchar *buf, uchar *buf_sec, int6
 }
 
 int64_t ColumnBinEncoder::EncoderYear::ValEncode(vcolumn::VirtualColumn *vc, MIIterator &mit, bool update_stats) {
-  if (null_status > 0 && vc->IsNull(mit)) return EncoderInt::ValEncodeInt64(common::NULL_VALUE_64, update_stats);
+  if (null_status > 0 && vc->IsNull(mit))
+    return EncoderInt::ValEncodeInt64(common::NULL_VALUE_64, update_stats);
   return EncoderInt::ValEncodeInt64(types::DT::YearSortEncoding(vc->GetNotNullValueInt64(mit)), update_stats);
 }
 
@@ -660,17 +711,20 @@ int64_t ColumnBinEncoder::EncoderYear::ValEncodeInt64(int64_t v, bool update_sta
 }
 
 int64_t ColumnBinEncoder::EncoderYear::GetValue64(uchar *buf, uchar *buf_sec) {
-  if (IsNull(buf, buf_sec)) return common::NULL_VALUE_64;
+  if (IsNull(buf, buf_sec))
+    return common::NULL_VALUE_64;
   return types::DT::YearSortDecoding(EncoderInt::GetValue64(buf, buf_sec));
 }
 
 void ColumnBinEncoder::EncoderYear::UpdateStatistics(unsigned char *buf) {
   int64_t v = EncoderInt::GetValue64(buf, nullptr);
-  if (null_status > 0 && v == common::NULL_VALUE_64) return;
+  if (null_status > 0 && v == common::NULL_VALUE_64)
+    return;
   if (v > max_found)  // min/max_found as types::DT::YearSortEncoding
                       // values
     max_found = v;
-  if (v < min_found) min_found = v;
+  if (v < min_found)
+    min_found = v;
 }
 
 bool ColumnBinEncoder::EncoderYear::ImpossibleInt64Values(int64_t pack_min, int64_t pack_max) {
@@ -723,7 +777,8 @@ void ColumnBinEncoder::EncoderDouble::Encode(uchar *buf, uchar *buf_sec, vcolumn
   }
   double val = vc->GetValueDouble(mit);  // note that non-float columns will be properly converted here
   int64_t coded_val = MonotonicDouble2Int64(*(int64_t *)&val);
-  if (descending) Negate((uchar *)&coded_val, 8);
+  if (descending)
+    Negate((uchar *)&coded_val, 8);
   uchar *val_ptr = (uchar *)(&coded_val) + 8;  // the end of meaningful bytes
   for (int i = 0; i < 8; i++)
     *(buf++) = *(--val_ptr);  // change endianess - to make numbers comparable
@@ -748,7 +803,8 @@ bool ColumnBinEncoder::EncoderDouble::EncodeInt64(uchar *buf, uchar *buf_sec, in
     double d = double(v) / local_mult;  // decimal encoded as double
     coded_val = MonotonicDouble2Int64(*((int64_t *)(&d)));
   }
-  if (descending) Negate((uchar *)&coded_val, 8);
+  if (descending)
+    Negate((uchar *)&coded_val, 8);
   uchar *val_ptr = (uchar *)(&coded_val) + 8;  // the end of meaningful bytes
   for (int i = 0; i < 8; i++)
     *(buf++) = *(--val_ptr);  // change endianess - to make numbers comparable
@@ -764,24 +820,29 @@ void ColumnBinEncoder::EncoderDouble::SetNull(uchar *buf, [[maybe_unused]] uchar
   // ---------------------------------------------
   DEBUG_ASSERT(null_status == 2);
   std::memset(buf, 0, 9);
-  if (descending) *buf = '\1';
+  if (descending)
+    *buf = '\1';
 }
 
 bool ColumnBinEncoder::EncoderDouble::IsNull(uchar *buf, [[maybe_unused]] uchar *buf_sec) {
-  if (null_status != 2) return false;
-  if (descending) return (*buf == '\1');
+  if (null_status != 2)
+    return false;
+  if (descending)
+    return (*buf == '\1');
   return (*buf == '\0');
 }
 
 int64_t ColumnBinEncoder::EncoderDouble::GetValue64(uchar *buf, [[maybe_unused]] uchar *buf_sec) {
   if (null_status == 2) {
-    if ((!descending && *buf == '\0') || (descending && *buf == '\1')) return common::NULL_VALUE_64;
+    if ((!descending && *buf == '\0') || (descending && *buf == '\1'))
+      return common::NULL_VALUE_64;
     buf++;
   }
   uint64_t coded_val = 0;
   uchar *val_ptr = (uchar *)(&coded_val) + 8;           // the end of meaningful bytes
   for (int i = 0; i < 8; i++) *(--val_ptr) = *(buf++);  // change endianess
-  if (descending) Negate((uchar *)&coded_val, 8);
+  if (descending)
+    Negate((uchar *)&coded_val, 8);
   return MonotonicInt642Double(coded_val);
 }
 
@@ -829,8 +890,10 @@ void ColumnBinEncoder::EncoderText::Encode(uchar *buf, uchar *buf_sec, vcolumn::
       mins.PersistentCopy(s);
       min_max_set = true;
     } else {
-      if (s > maxs) maxs.PersistentCopy(s);
-      if (s < mins) mins.PersistentCopy(s);
+      if (s > maxs)
+        maxs.PersistentCopy(s);
+      if (s < mins)
+        mins.PersistentCopy(s);
     }
   }
   ASSERT(s.len_ <= (uint)size, "Size of buffer too small");
@@ -838,7 +901,8 @@ void ColumnBinEncoder::EncoderText::Encode(uchar *buf, uchar *buf_sec, vcolumn::
     std::memcpy(buf, s.GetDataBytesPointer(), s.len_);
   uint32_t length = s.len_ + 1;
   std::memcpy(buf + size - sizeof(uint32_t), &length, sizeof(uint32_t));
-  if (descending) Negate(buf, size);
+  if (descending)
+    Negate(buf, size);
 }
 
 bool ColumnBinEncoder::EncoderText::EncodeString(uchar *buf, uchar *buf_sec, types::BString &s,
@@ -854,8 +918,10 @@ bool ColumnBinEncoder::EncoderText::EncodeString(uchar *buf, uchar *buf_sec, typ
       mins.PersistentCopy(s);
       min_max_set = true;
     } else {
-      if (s > maxs) maxs.PersistentCopy(s);
-      if (s < mins) mins.PersistentCopy(s);
+      if (s > maxs)
+        maxs.PersistentCopy(s);
+      if (s < mins)
+        mins.PersistentCopy(s);
     }
   }
   ASSERT(s.len_ <= (uint)size, "Size of buffer too small");
@@ -863,7 +929,8 @@ bool ColumnBinEncoder::EncoderText::EncodeString(uchar *buf, uchar *buf_sec, typ
     std::memcpy(buf, s.GetDataBytesPointer(), s.len_);
   uint32_t length = s.len_ + 1;
   std::memcpy(buf + size - sizeof(uint32_t), &length, sizeof(uint32_t));
-  if (descending) Negate(buf, size);
+  if (descending)
+    Negate(buf, size);
   return true;
 }
 
@@ -875,15 +942,19 @@ void ColumnBinEncoder::EncoderText::SetNull(uchar *buf, [[maybe_unused]] uchar *
 }
 
 bool ColumnBinEncoder::EncoderText::IsNull(uchar *buf, [[maybe_unused]] uchar *buf_sec) {
-  if (descending) return (*(reinterpret_cast<uint32_t *>(buf + size - sizeof(uint32_t))) == 0xffffffff);
+  if (descending)
+    return (*(reinterpret_cast<uint32_t *>(buf + size - sizeof(uint32_t))) == 0xffffffff);
   return (*(reinterpret_cast<uint32_t *>(buf + size - sizeof(uint32_t))) == 0);
 }
 
 types::BString ColumnBinEncoder::EncoderText::GetValueT(uchar *buf, uchar *buf_sec) {
-  if (IsNull(buf, buf_sec)) return types::BString();
-  if (descending) Negate(buf, size);
+  if (IsNull(buf, buf_sec))
+    return types::BString();
+  if (descending)
+    Negate(buf, size);
   uint32_t len = *(reinterpret_cast<uint32_t *>(buf + size - sizeof(uint32_t))) - 1;
-  if (len == 0) return types::BString("");
+  if (len == 0)
+    return types::BString("");
   return types::BString((char *)buf,
                         len);  // the types::BString is generated as temporary
 }
@@ -904,7 +975,8 @@ ColumnBinEncoder::EncoderText_UTF::EncoderText_UTF(vcolumn::VirtualColumn *vc, b
   uint coded_len = types::CollationBufLen(collation, vc->MaxStringSize());
   size = coded_len + sizeof(uint32_t);  // 4 bytes for len
   size_sec = 0;
-  if (decodable) size_sec = vc->MaxStringSize() + sizeof(uint32_t);  // just a raw data plus len
+  if (decodable)
+    size_sec = vc->MaxStringSize() + sizeof(uint32_t);  // just a raw data plus len
   null_status = (nulls_possible ? 1 : 0);
 }
 
@@ -918,8 +990,9 @@ bool ColumnBinEncoder::EncoderText_UTF::SecondColumn(vcolumn::VirtualColumn *vc2
     return false;
   }
   size_t coded_len = types::CollationBufLen(collation, vc2->MaxStringSize());
-  size = std::max(size, coded_len + sizeof(uint32_t));                                       // 4 bytes for len
-  if (size_sec > 0) size_sec = std::max(size_sec, vc2->MaxStringSize() + sizeof(uint32_t));  // 4 bytes for len
+  size = std::max(size, coded_len + sizeof(uint32_t));  // 4 bytes for len
+  if (size_sec > 0)
+    size_sec = std::max(size_sec, vc2->MaxStringSize() + sizeof(uint32_t));  // 4 bytes for len
   return true;
 }
 
@@ -938,15 +1011,18 @@ void ColumnBinEncoder::EncoderText_UTF::Encode(uchar *buf, uchar *buf_sec, vcolu
       mins.PersistentCopy(s);
       min_max_set = true;
     } else {
-      if (CollationStrCmp(collation, s, maxs) > 0) maxs.PersistentCopy(s);
-      if (CollationStrCmp(collation, s, mins) < 0) mins.PersistentCopy(s);
+      if (CollationStrCmp(collation, s, maxs) > 0)
+        maxs.PersistentCopy(s);
+      if (CollationStrCmp(collation, s, mins) < 0)
+        mins.PersistentCopy(s);
     }
   }
   common::strnxfrm(collation, buf, size - sizeof(uint32_t), (uchar *)s.GetDataBytesPointer(), s.len_);
   // int coded_len = types::CollationBufLen(collation, s.len);
   uint32_t length = s.len_ + 1;
   std::memcpy(buf + size - sizeof(uint32_t), &length, sizeof(uint32_t));
-  if (descending) Negate(buf, size);
+  if (descending)
+    Negate(buf, size);
   if (size_sec > 0) {
     std::memset(buf_sec, 0, size_sec);
     std::memcpy(buf_sec + size_sec - sizeof(uint32_t), &length, sizeof(uint32_t));
@@ -968,14 +1044,17 @@ bool ColumnBinEncoder::EncoderText_UTF::EncodeString(uchar *buf, uchar *buf_sec,
       mins = s;
       min_max_set = true;
     } else {
-      if (CollationStrCmp(collation, s, maxs) > 0) maxs = s;
-      if (CollationStrCmp(collation, s, mins) < 0) mins = s;
+      if (CollationStrCmp(collation, s, maxs) > 0)
+        maxs = s;
+      if (CollationStrCmp(collation, s, mins) < 0)
+        mins = s;
     }
   }
   common::strnxfrm(collation, buf, size - sizeof(uint32_t), (uchar *)s.GetDataBytesPointer(), s.len_);
   uint32_t length = s.len_ + 1;
   std::memcpy(buf + size - sizeof(uint32_t), &length, sizeof(uint32_t));
-  if (descending) Negate(buf, size);
+  if (descending)
+    Negate(buf, size);
   if (size_sec > 0) {
     std::memset(buf_sec, 0, size_sec);
     std::memcpy(buf_sec + size_sec - sizeof(uint32_t), &length, sizeof(uint32_t));
@@ -990,7 +1069,8 @@ void ColumnBinEncoder::EncoderText_UTF::SetNull(uchar *buf, uchar *buf_sec) {
     std::memset(buf, 255, size);
   else
     std::memset(buf, 0, size);
-  if (size_sec > 0) std::memset(buf_sec, 0, size_sec);
+  if (size_sec > 0)
+    std::memset(buf_sec, 0, size_sec);
 }
 
 bool ColumnBinEncoder::EncoderText_UTF::IsNull([[maybe_unused]] uchar *buf, uchar *buf_sec) {
@@ -1000,7 +1080,8 @@ bool ColumnBinEncoder::EncoderText_UTF::IsNull([[maybe_unused]] uchar *buf, ucha
 
 types::BString ColumnBinEncoder::EncoderText_UTF::GetValueT(uchar *buf, uchar *buf_sec) {
   DEBUG_ASSERT(size_sec > 0);
-  if (null_status > 0 && IsNull(buf, buf_sec)) return types::BString();
+  if (null_status > 0 && IsNull(buf, buf_sec))
+    return types::BString();
   uint32_t len = *(reinterpret_cast<uint32_t *>(buf_sec + size_sec - sizeof(uint32_t))) - 1;
   if (len == 0)
     return types::BString("");
@@ -1014,7 +1095,8 @@ bool ColumnBinEncoder::EncoderText_UTF::ImpossibleStringValues(types::BString &p
   unsigned char max[8] = {};
   std::memcpy(min, pack_min.val_, pack_min.len_);
   std::memcpy(max, pack_max.val_, pack_max.len_);
-  if (!maxs.GreaterEqThanMinUTF(min, collation) || !mins.LessEqThanMaxUTF(max, collation)) return true;
+  if (!maxs.GreaterEqThanMinUTF(min, collation) || !mins.LessEqThanMaxUTF(max, collation))
+    return true;
   return false;
 }
 
@@ -1058,7 +1140,8 @@ bool ColumnBinEncoder::EncoderLookup::SecondColumn(vcolumn::VirtualColumn *vc) {
   delete[] translate2;
   translate2 = new int[no_sec_values];
   DTCollation collation = first_vc->GetCollation();
-  if (collation.collation != sec_vc->GetCollation().collation) return false;
+  if (collation.collation != sec_vc->GetCollation().collation)
+    return false;
   if (types::RequiresUTFConversions(collation)) {
     for (int i = 0; i < no_sec_values; i++) {
       int code = -1;
@@ -1066,7 +1149,8 @@ bool ColumnBinEncoder::EncoderLookup::SecondColumn(vcolumn::VirtualColumn *vc) {
       for (int j = (int)min_val; j < max_val + 1; j++) {
         types::BString val1 = first_vc->DecodeValue_S(j);
         if (CollationStrCmp(collation, val1, val2) == 0) {
-          if (code != -1) return false;  // ambiguous translation - cannot encode properly
+          if (code != -1)
+            return false;  // ambiguous translation - cannot encode properly
           code = j;
         }
       }
@@ -1079,15 +1163,18 @@ bool ColumnBinEncoder::EncoderLookup::SecondColumn(vcolumn::VirtualColumn *vc) {
       translate2[i] = (code < 0 ? -1 : code);
     }
   }
-  if (min_val > new_min_val) min_val = new_min_val;
-  if (max_val < new_max_val) max_val = new_max_val;
+  if (min_val > new_min_val)
+    min_val = new_min_val;
+  if (max_val < new_max_val)
+    max_val = new_max_val;
   max_code = uint64_t(max_val - min_val);
   size = CalculateByteSize(max_code);
   return true;
 }
 
 types::BString ColumnBinEncoder::EncoderLookup::GetValueT(unsigned char *buf, unsigned char *buf_sec) {
-  if (IsNull(buf, buf_sec)) return types::BString();
+  if (IsNull(buf, buf_sec))
+    return types::BString();
   int64_t v = EncoderInt::GetValue64(buf, buf_sec);
   return first_vc->DecodeValue_S(v);
 }
@@ -1116,7 +1203,8 @@ bool ColumnBinEncoder::EncoderLookup::EncodeInt64(uchar *buf, uchar *buf_sec, in
   else {
     if (sec_column) {
       v = translate2[v];
-      if (v == -1) v = common::NULL_VALUE_64;  // value not found
+      if (v == -1)
+        v = common::NULL_VALUE_64;  // value not found
     }
     return EncoderInt::EncodeInt64(buf, buf_sec, v, false, update_stats);
   }
@@ -1128,13 +1216,18 @@ bool ColumnBinEncoder::EncoderLookup::ImpossibleInt64Values(int64_t pack_min, in
   // Calculate min. and max. codes in the v1 encoding
   int64_t pack_v1_min = common::PLUS_INF_64;
   int64_t pack_v1_max = common::MINUS_INF_64;
-  if (pack_min < 0) pack_min = 0;
-  if (pack_max > no_sec_values - 1) pack_max = no_sec_values - 1;
+  if (pack_min < 0)
+    pack_min = 0;
+  if (pack_max > no_sec_values - 1)
+    pack_max = no_sec_values - 1;
   for (int i = (int)pack_min; i <= pack_max; i++) {
-    if (pack_v1_min > translate2[i]) pack_v1_min = translate2[i];
-    if (pack_v1_max < translate2[i]) pack_v1_max = translate2[i];
+    if (pack_v1_min > translate2[i])
+      pack_v1_min = translate2[i];
+    if (pack_v1_max < translate2[i])
+      pack_v1_max = translate2[i];
   }
-  if (pack_v1_min != common::PLUS_INF_64 && (pack_v1_min > max_found || pack_v1_max < min_found)) return true;
+  if (pack_v1_min != common::PLUS_INF_64 && (pack_v1_min > max_found || pack_v1_max < min_found))
+    return true;
   return false;
 }
 
@@ -1163,7 +1256,8 @@ bool ColumnBinEncoder::EncoderTextStat::SecondColumn(vcolumn::VirtualColumn *vc)
 }
 
 types::BString ColumnBinEncoder::EncoderTextStat::GetValueT(unsigned char *buf, unsigned char *buf_sec) {
-  if (IsNull(buf, buf_sec)) return types::BString();
+  if (IsNull(buf, buf_sec))
+    return types::BString();
   int64_t v = EncoderInt::GetValue64(buf, buf_sec);
   return coder.Decode(v);
 }
@@ -1192,7 +1286,8 @@ bool ColumnBinEncoder::EncoderTextStat::EncodeString(uchar *buf, uchar *buf_sec,
 }
 
 int64_t ColumnBinEncoder::EncoderTextStat::ValEncode(vcolumn::VirtualColumn *vc, MIIterator &mit, bool update_stats) {
-  if (null_status > 0 && vc->IsNull(mit)) return EncoderInt::ValEncodeInt64(common::NULL_VALUE_64, update_stats);
+  if (null_status > 0 && vc->IsNull(mit))
+    return EncoderInt::ValEncodeInt64(common::NULL_VALUE_64, update_stats);
   types::BString vs;
   vc->GetValueString(vs, mit);
   int64_t v = coder.Encode(vs);
@@ -1250,8 +1345,10 @@ void ColumnBinEncoder::EncoderTextMD5::Encode(uchar *buf, uchar *buf_sec, vcolum
       mins.PersistentCopy(s);
       min_max_set = true;
     } else {
-      if (s > maxs) maxs.PersistentCopy(s);
-      if (s < mins) mins.PersistentCopy(s);
+      if (s > maxs)
+        maxs.PersistentCopy(s);
+      if (s < mins)
+        mins.PersistentCopy(s);
     }
   }
   if (s.len_ > 0) {
@@ -1273,8 +1370,10 @@ bool ColumnBinEncoder::EncoderTextMD5::EncodeString(uchar *buf, uchar *buf_sec, 
       mins.PersistentCopy(s);
       min_max_set = true;
     } else {
-      if (s > maxs) maxs.PersistentCopy(s);
-      if (s < mins) mins.PersistentCopy(s);
+      if (s > maxs)
+        maxs.PersistentCopy(s);
+      if (s < mins)
+        mins.PersistentCopy(s);
     }
   }
   if (s.len_ > 0) {

@@ -447,7 +447,6 @@ void TempTable::RoughAggregate(ResultSender *sender) {
           common::RSValue res = filter_.rough_mind->GetPackStatus(0, mit.GetCurPackrow(0));
           if (res == common::RSValue::RS_ALL) {
             certain_rows += mit.GetPackSizeLeft();
-
             if (certain_rows >= local_limit)
               omit_the_rest = true;
           }
@@ -563,7 +562,6 @@ void TempTable::RoughAggregate(ResultSender *sender) {
                 else
                   min_val = UpdateMax(min_val, relevant_val, double_vals);  // take relevant_val, if larger
               }
-
               if (max_val < min_val)
                 min_val = max_val = common::NULL_VALUE_64;
             }

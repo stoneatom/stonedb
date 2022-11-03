@@ -74,7 +74,8 @@ class MIUpdatingIterator : public MIIterator {
   MIUpdatingIterator &operator++() {
     MIIterator::operator++();
     multi_filter_pos++;
-    if (next_pack_started) multi_filter_pack_start = multi_filter_pos;
+    if (next_pack_started)
+      multi_filter_pack_start = multi_filter_pos;
     return *this;
   }
 

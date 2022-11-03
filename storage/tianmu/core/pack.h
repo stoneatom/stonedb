@@ -68,7 +68,8 @@ class Pack : public mm::TraceableObject {
   }
 
   bool IsNull(int i) const {
-    if (dpn->nn == dpn->nr) return true;
+    if (dpn->nn == dpn->nr)
+      return true;
     return ((nulls[i >> 5] & ((uint32_t)(1) << (i % 32))) != 0);
   }
   bool NotNull(int i) const { return !IsNull(i); }
