@@ -32,7 +32,8 @@ void VCPackGuardian::Initialize(int no_th) {
 
   int no_dims = -1;
   for (auto const &iter : my_vc.GetVarMap())
-    if (iter.dim > no_dims) no_dims = iter.dim;  // find the maximal number of dimension used
+    if (iter.dim > no_dims)
+      no_dims = iter.dim;  // find the maximal number of dimension used
   no_dims++;
   if (no_dims > 0) {  // else constant
     last_pack.reserve(no_dims);
@@ -45,7 +46,8 @@ void VCPackGuardian::Initialize(int no_th) {
  * ResizeLastPack handles last_pack overflow under multi-threads group by
  */
 void VCPackGuardian::ResizeLastPack(int taskNum) {
-  if (!initialized) return;
+  if (!initialized)
+    return;
 
   for (auto &v : last_pack) v.resize(taskNum, common::NULL_VALUE_32);
 
@@ -101,7 +103,8 @@ void VCPackGuardian::LockPackrow(const MIIterator &mit) {
 }
 
 void VCPackGuardian::UnlockAll() {
-  if (!initialized) return;
+  if (!initialized)
+    return;
   for (auto const &iter : my_vc.GetVarMap()) {
     for (int i = 0; i < threads; ++i)
       if (last_pack[iter.dim][i] != common::NULL_VALUE_32 && iter.GetTabPtr())

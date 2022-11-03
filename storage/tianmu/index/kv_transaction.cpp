@@ -81,7 +81,8 @@ rocksdb::Iterator *KVTransaction::GetDataIterator(rocksdb::ReadOptions &ropts,
 }
 
 void KVTransaction::Acquiresnapshot() {
-  if (read_opts_.snapshot == nullptr) read_opts_.snapshot = ha_kvstore_->GetRdbSnapshot();
+  if (read_opts_.snapshot == nullptr)
+    read_opts_.snapshot = ha_kvstore_->GetRdbSnapshot();
 }
 
 void KVTransaction::Releasesnapshot() {

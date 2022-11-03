@@ -1,10 +1,21 @@
+--source include/have_tianmu.inc
+
+--disable_query_log
 use test;
+
 CREATE TABLE `test_groupconcat2_case` (
   `id` int(11) DEFAULT NULL,
   `val` int(11)
 ) ENGINE=TIANMU;
+
 insert into test_groupconcat2_case values(1, 22);
 insert into test_groupconcat2_case values(1, 4);
+
+--enable_query_log
+
 select id,group_concat(val order by val desc SEPARATOR " ") from test_groupconcat2_case group by id;
 select id,group_concat(distinct val SEPARATOR ":") from test_groupconcat2_case group by id;
+
+--disable_query_log
 drop table test_groupconcat2_case;
+--enable_query_log

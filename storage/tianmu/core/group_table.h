@@ -31,8 +31,6 @@
 namespace Tianmu {
 namespace core {
 
-// GroupTable - a tool for storing values and counters
-
 enum class GT_Aggregation {
   GT_LIST,  // GT_LIST - just store the first value
   GT_COUNT,
@@ -51,13 +49,13 @@ enum class GT_Aggregation {
   GT_GROUP_CONCAT
 };
 
+// GroupTable - a tool for storing values and counters
 class GroupTable : public mm::TraceableObject {
  public:
-  GroupTable(uint32_t power);
+  // Group table construction
+  explicit GroupTable(uint32_t power);
   GroupTable(const GroupTable &sec);
   ~GroupTable();
-
-  // Group table construction
 
   void AddGroupingColumn(vcolumn::VirtualColumn *vc);
   void AddAggregatedColumn(vcolumn::VirtualColumn *vc, GT_Aggregation operation, bool distinct, common::CT type,
@@ -118,10 +116,12 @@ class GroupTable : public mm::TraceableObject {
   bool IsFull() { return !not_full; }  // no place left or all groups found
   void SetAsFull() { not_full = false; }
   bool MayBeParallel() const {
-    if (distinct_present) return false;
+    if (distinct_present)
+      return false;
 
     for (auto &ag : aggregated_desc) {
-      if (ag.operation == GT_Aggregation::GT_GROUP_CONCAT) return false;
+      if (ag.operation == GT_Aggregation::GT_GROUP_CONCAT)
+        return false;
     }
     return true;
   }
@@ -129,7 +129,7 @@ class GroupTable : public mm::TraceableObject {
   bool SetCurrentRow(int64_t row) { return vm_tab->SetCurrentRow(row); }
   bool SetEndRow(int64_t row) { return vm_tab->SetEndRow(row); }
   int64_t GetNoOfGroups() { return vm_tab->NoRows(); }
-  int MemoryBlocksLeft();  // no place left for more packs (soft limit)
+  inline int MemoryBlocksLeft() { return vm_tab->MemoryBlocksLeft(); }  // no place left for more packs (soft limit)
 
   int64_t GetValue64(int col, int64_t row);  // columns have common numbering
   types::BString GetValueT(int col, int64_t row);
@@ -170,8 +170,6 @@ class GroupTable : public mm::TraceableObject {
   int64_t declared_max_no_groups;  // maximal number of groups calculated from
                                    // KNs etc.
 
-  // column/operation descriptions
-
   bool initialized;
 
   // temporary description - prior to buffers initialization, then sometimes
@@ -206,6 +204,7 @@ class GroupTable : public mm::TraceableObject {
     DTCollation collation;
     SI si;
   };
+
   std::vector<ColTempDesc> grouping_desc;  // input fields description
   std::vector<ColTempDesc> aggregated_desc;
 
@@ -229,6 +228,7 @@ class GroupTable : public mm::TraceableObject {
   // some memory managing
   int64_t max_total_size;
 };
+
 }  // namespace core
 }  // namespace Tianmu
 

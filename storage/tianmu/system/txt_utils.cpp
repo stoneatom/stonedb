@@ -42,7 +42,8 @@ void Convert2Hex(const unsigned char *src, int src_size, char *dest, int dest_si
     dest[2 * i] = Convert2Hex((src[i]) / 16);
     dest[2 * i + 1] = Convert2Hex((src[i]) % 16);
   };
-  if (zero_term) dest[dest_size] = '\0';
+  if (zero_term)
+    dest[dest_size] = '\0';
 };
 
 bool EatDTSeparators(char *&ptr, int &len) {
@@ -86,7 +87,8 @@ common::ErrorCode EatInt(char *&ptr, int &len, int &out_value) {
     ptr++;
   }
 
-  if (rc == common::ErrorCode::SUCCESS) out_v_tmp *= sign;
+  if (rc == common::ErrorCode::SUCCESS)
+    out_v_tmp *= sign;
   out_value = (int)out_v_tmp;
   return rc;
 }

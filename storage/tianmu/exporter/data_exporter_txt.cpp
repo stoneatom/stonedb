@@ -23,20 +23,20 @@ namespace Tianmu {
 namespace exporter {
 
 DEforTxt::DEforTxt(const system::IOParameters &iop)
-    : delim(iop.Delimiter()[0]),
-      str_q(iop.StringQualifier()),
-      esc(iop.EscapeCharacter()),
-      line_terminator(iop.LineTerminator()[0]),
-      nulls_str(iop.NullsStr()),
-      destination_cs(iop.CharsetInfoNumber() ? get_charset(iop.CharsetInfoNumber(), 0) : 0) {}
+    : delimiter_(iop.Delimiter()[0]),
+      str_qualifier_(iop.StringQualifier()),
+      escape_character_(iop.EscapeCharacter()),
+      line_terminator_(iop.LineTerminator()[0]),
+      nulls_str_(iop.NullsStr()),
+      destination_charset_(iop.CharsetInfoNumber() ? get_charset(iop.CharsetInfoNumber(), 0) : 0) {}
 
 void DEforTxt::PutText(const types::BString &str) {
   WriteStringQualifier();
-  size_t char_len =
-      deas[cur_attr].GetCollation().collation->cset->numchars(deas[cur_attr].GetCollation().collation, str.val_,
-                                                              str.val_ + str.len_);  // len in chars
-  WriteString(str, str.len_);                                                        // len in bytes
-  if ((deas[cur_attr].Type() == common::CT::STRING) && (char_len < deas[cur_attr].CharLen()))
+  size_t char_len = attr_infos_[cur_attr_].GetCollation().collation->cset->numchars(
+      attr_infos_[cur_attr_].GetCollation().collation, str.val_,
+      str.val_ + str.len_);    // len in chars
+  WriteString(str, str.len_);  // len in bytes
+  if ((attr_infos_[cur_attr_].Type() == common::CT::STRING) && (char_len < attr_infos_[cur_attr_].CharLen()))
 // it can be necessary to change the WritePad implementation to something like:
 // collation->cset->fill(cs, copy->to_ptr+copy->from_length,
 // copy->to_length-copy->from_length, '
@@ -44,10 +44,10 @@ void DEforTxt::PutText(const types::BString &str) {
 // if ' ' (space) can have different codes.
 // for export data not fill space
 #if 0
-        if (!destination_cs) { //export as binary
-            WritePad(deas[cur_attr].Precision() - bytes_written);
+        if (!destination_cs_) { //export as binary
+            WritePad(attr_infos_[cur_attr_].Precision() - bytes_written);
         } else {
-            WritePad(deas[cur_attr].CharLen() - char_len);
+            WritePad(attr_infos_[cur_attr_].CharLen() - char_len);
         }
 #endif
     WriteStringQualifier();
@@ -56,9 +56,9 @@ void DEforTxt::PutText(const types::BString &str) {
 
 void DEforTxt::PutBin(const types::BString &str) {
   int len = str.size();
-  // if((rcdea[cur_attr].attrt == common::CT::BYTE) && (len <
-  // rcdea[cur_attr].size))
-  //	len = rcdea[cur_attr].size;
+  // if((rcdea[cur_attr_].attrt == common::CT::BYTE) && (len <
+  // rcdea[cur_attr_].size))
+  //	len = rcdea[cur_attr_].size;
   if (len > 0) {
     char *hex = new char[len * 2];
     system::Convert2Hex((const unsigned char *)str.val_, len, hex, len * 2, false);
@@ -69,57 +69,60 @@ void DEforTxt::PutBin(const types::BString &str) {
 }
 
 void DEforTxt::PutNumeric(int64_t num) {
-  types::RCNum rcn(num, source_deas[cur_attr].Scale(), core::ATI::IsRealType(source_deas[cur_attr].Type()),
-                   source_deas[cur_attr].Type());
+  types::RCNum rcn(num, source_attr_infos_[cur_attr_].Scale(),
+                   core::ATI::IsRealType(source_attr_infos_[cur_attr_].Type()), source_attr_infos_[cur_attr_].Type());
   types::BString rcs = rcn.ToBString();
   WriteString(rcs);
   WriteValueEnd();
 }
 
 void DEforTxt::PutDateTime(int64_t dt) {
-  types::RCDateTime rcdt(dt, deas[cur_attr].Type());
+  types::RCDateTime rcdt(dt, attr_infos_[cur_attr_].Type());
   types::BString rcs = rcdt.ToBString();
   WriteString(rcs);
   WriteValueEnd();
 }
 
 void DEforTxt::PutRowEnd() {
-  if (line_terminator == 0)
+  if (line_terminator_ == 0)
     WriteString("\r\n", 2);
   else
-    buf->WriteIfNonzero(line_terminator);
+    data_exporter_buf_->WriteIfNonzero(line_terminator_);
 }
 
 size_t DEforTxt::WriteString(const types::BString &str, int len) {
   int res_len = 0;
-  if (esc) {
-    escaped.erase();
+  if (escape_character_) {
+    escaped_.erase();
     for (size_t i = 0; i < str.size(); i++) {
-      if (str[i] == str_q || (!str_q && str[i] == delim)) escaped.append(1, esc);
-      escaped.append(1, str[i]);
+      if (str[i] == str_qualifier_ || (!str_qualifier_ && str[i] == delimiter_))
+        escaped_.append(1, escape_character_);
+      escaped_.append(1, str[i]);
     }
-    if (destination_cs) {
-      int max_res_len =
-          std::max(destination_cs->mbmaxlen * len + len, deas[cur_attr].GetCollation().collation->mbmaxlen * len + len);
+    if (destination_charset_) {
+      int max_res_len = std::max(destination_charset_->mbmaxlen * len + len,
+                                 attr_infos_[cur_attr_].GetCollation().collation->mbmaxlen * len + len);
       uint errors = 0;
-      res_len = copy_and_convert(buf->BufAppend(max_res_len), max_res_len, destination_cs, escaped.c_str(),
-                                 uint32_t(escaped.length()), deas[cur_attr].GetCollation().collation, &errors);
-      buf->SeekBack(max_res_len - res_len);
+      res_len = copy_and_convert(data_exporter_buf_->BufAppend(max_res_len), max_res_len, destination_charset_,
+                                 escaped_.c_str(), uint32_t(escaped_.length()),
+                                 attr_infos_[cur_attr_].GetCollation().collation, &errors);
+      data_exporter_buf_->SeekBack(max_res_len - res_len);
     } else {
-      std::strncpy(buf->BufAppend(uint(escaped.length())), escaped.c_str(), escaped.length());
+      std::strncpy(data_exporter_buf_->BufAppend(uint(escaped_.length())), escaped_.c_str(), escaped_.length());
       res_len = len;
     }
 
   } else {
-    if (destination_cs) {
-      int max_res_len =
-          std::max(destination_cs->mbmaxlen * len, deas[cur_attr].GetCollation().collation->mbmaxlen * len);
+    if (destination_charset_) {
+      int max_res_len = std::max(destination_charset_->mbmaxlen * len,
+                                 attr_infos_[cur_attr_].GetCollation().collation->mbmaxlen * len);
       uint errors = 0;
-      res_len = copy_and_convert(buf->BufAppend(max_res_len), max_res_len, destination_cs, str.GetDataBytesPointer(),
-                                 len, deas[cur_attr].GetCollation().collation, &errors);
-      buf->SeekBack(max_res_len - res_len);
+      res_len =
+          copy_and_convert(data_exporter_buf_->BufAppend(max_res_len), max_res_len, destination_charset_,
+                           str.GetDataBytesPointer(), len, attr_infos_[cur_attr_].GetCollation().collation, &errors);
+      data_exporter_buf_->SeekBack(max_res_len - res_len);
     } else {
-      str.CopyTo(buf->BufAppend((uint)len), len);
+      str.CopyTo(data_exporter_buf_->BufAppend((uint)len), len);
       res_len = len;
     }
   }

@@ -93,5 +93,5 @@ TARGET_INCLUDE_DIRECTORIES(tianmu PRIVATE ${CMAKE_SOURCE_DIR}/storage/tianmu/bas
 TARGET_COMPILE_OPTIONS(tianmu PRIVATE -Wno-error -Wextra -Wall)
 TARGET_COMPILE_OPTIONS(tianmu PRIVATE -Wunused-parameter)
 TARGET_COMPILE_OPTIONS(tianmu PRIVATE -Wsuggest-override)
-
+TARGET_COMPILE_OPTIONS(tianmu PRIVATE -fno-strict-aliasing)
 add_subdirectory(async_tests)

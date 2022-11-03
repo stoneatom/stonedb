@@ -427,7 +427,8 @@ class posix_udp_channel : public udp_channel_impl {
     _fd = std::make_unique<pollable_fd>(std::move(fd));
   }
   virtual ~posix_udp_channel() {
-    if (!_closed) close();
+    if (!_closed)
+      close();
   }
   virtual future<udp_datagram> receive() override;
   future<> send(ipv4_addr dst, const char *msg) override;

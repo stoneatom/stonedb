@@ -170,7 +170,8 @@ class TOCoordinate {
   TOCoordinate &operator=(const TOCoordinate &) = default;
 
   bool operator==(TOCoordinate const &oid) const {
-    if (oid.ID != ID) return false;
+    if (oid.ID != ID)
+      return false;
     switch (ID) {
       case COORD_TYPE::PACK:
         return co.pack == oid.co.pack;
@@ -266,11 +267,13 @@ class FunctionExecutor {
  public:
   FunctionExecutor(F call_in_constructor, F call_in_deconstructor)
       : call_in_constructor(call_in_constructor), call_in_deconstructor(call_in_deconstructor) {
-    if (call_in_constructor) call_in_constructor();
+    if (call_in_constructor)
+      call_in_constructor();
   }
 
   virtual ~FunctionExecutor() {
-    if (call_in_deconstructor) call_in_deconstructor();
+    if (call_in_deconstructor)
+      call_in_deconstructor();
   }
 
  private:

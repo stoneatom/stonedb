@@ -78,14 +78,16 @@ void DeleteDirectory(std::string const &path) {
 time_t GetFileTime(std::string const &path) {
   struct stat stat_info;
   int ret = stat(path.c_str(), &stat_info);
-  if (ret != 0) return -1;
+  if (ret != 0)
+    return -1;
   return stat_info.st_mtime;
 }
 
 time_t GetFileCreateTime(std::string const &path) {
   struct stat stat_info;
   int ret = stat(path.c_str(), &stat_info);
-  if (ret != 0) return -1;
+  if (ret != 0)
+    return -1;
   return stat_info.st_ctime;
 }
 
@@ -115,18 +117,22 @@ void FlushDirectoryChanges(std::string const &path) {
   int res, fd;
 
   dir = opendir(path.c_str());
-  if (dir == 0) goto l_err;
+  if (dir == 0)
+    goto l_err;
 
   fd = dirfd(dir);
-  if (fd < 0) goto l_err;
+  if (fd < 0)
+    goto l_err;
 
   res = fsync(fd);
-  if (res < 0) goto l_err;
+  if (res < 0)
+    goto l_err;
 
   closedir(dir);
   return;
 l_err:
-  if (dir) closedir(dir);
+  if (dir)
+    closedir(dir);
   throw common::DatabaseException(std::strerror(errno));
 }
 

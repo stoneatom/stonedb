@@ -32,10 +32,12 @@ common::SequenceGenerator Transaction::sg;
 
 std::shared_ptr<RCTable> Transaction::GetTableByPathIfExists(const std::string &table_path) {
   auto iter = m_modified_tables.find(table_path);
-  if (iter != m_modified_tables.end()) return iter->second;
+  if (iter != m_modified_tables.end())
+    return iter->second;
 
   iter = m_readonly_tables.find(table_path);
-  if (iter != m_readonly_tables.end()) return iter->second;
+  if (iter != m_readonly_tables.end())
+    return iter->second;
 
   return nullptr;
 }
@@ -77,7 +79,7 @@ void Transaction::AddTableWRIfNeeded(std::shared_ptr<TableShare> &share) {
 }
 
 void Transaction::Commit([[maybe_unused]] THD *thd) {
-  TIANMU_LOG(LogCtl_Level::INFO, "txn commit, modified tables size in txn: [%d].", m_modified_tables.size());
+  TIANMU_LOG(LogCtl_Level::INFO, "txn commit, modified tables size in txn: [%lu].", m_modified_tables.size());
   for (auto const &iter : m_modified_tables) iter.second->CommitVersion();
 
   m_modified_tables.clear();

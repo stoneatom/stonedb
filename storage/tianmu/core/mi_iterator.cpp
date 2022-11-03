@@ -152,7 +152,8 @@ MIIterator::MIIterator(const MIIterator &sec, bool lock)
   }
   if (dimensions.Size() > 0)  // may be not initialized for dummy iterators
     for (int i = 0; i < no_dims; i++)
-      if (dimensions[i]) mind->LockForGetIndex(i);
+      if (dimensions[i])
+        mind->LockForGetIndex(i);
   for (uint i = 0; i < sec.it.size(); i++) it.push_back(sec.dg[i]->CopyIterator(sec.it[i], p_power));
 
   one_filter_it = nullptr;
@@ -210,7 +211,8 @@ void MIIterator::Init(bool lock) {
       omitted_factor = SafeMultiplication(omitted_factor, mind->dim_groups[i]->NumOfTuples());
     }
   }
-  if (zero_tuples) no_obj = 0;
+  if (zero_tuples)
+    no_obj = 0;
 
   if (no_dims > 0) {
     it_for_dim = new int[no_dims];
@@ -286,7 +288,8 @@ void MIIterator::Init(bool lock) {
   delete[] dim_group_used;
 
   Rewind();
-  if (!IsValid()) no_obj = 0;
+  if (!IsValid())
+    no_obj = 0;
 }
 
 MIIterator::~MIIterator() {
@@ -298,11 +301,13 @@ MIIterator::~MIIterator() {
   }
   if (dimensions.Size() > 0)  // may be not initialized for dummy iterators
     for (int i = 0; i < no_dims; i++)
-      if (dimensions[i]) mind->UnlockFromGetIndex(i);
+      if (dimensions[i])
+        mind->UnlockFromGetIndex(i);
   delete[] cur_pos;
   delete[] cur_pack;
   delete[] it_for_dim;
-  if (mind_created_locally) delete mind;
+  if (mind_created_locally)
+    delete mind;
 }
 
 void MIIterator::Rewind() {
@@ -328,10 +333,12 @@ void MIIterator::GeneralIncrement() {
   bool done = false;  // packwise order: iterate pack-by-pack
   for (uint i = 0; i < it.size(); i++) {
     bool still_in_pack = it[i]->NextInsidePack();
-    if (still_in_pack) done = true;
+    if (still_in_pack)
+      done = true;
     dg[i]->FillCurrentPos(it[i], cur_pos, cur_pack, dimensions);
 
-    if (done) break;
+    if (done)
+      break;
   }
   if (!done) {  // pack switched on every dimension - make progress in the whole
                 // pack numbering
@@ -342,18 +349,22 @@ void MIIterator::GeneralIncrement() {
       else {
         it[i]->Rewind();  // rewind completely this dimension, increase packrow
                           // in the next one
-        if (!it[i]->IsValid()) break;
+        if (!it[i]->IsValid())
+          break;
       }
       dg[i]->FillCurrentPos(it[i], cur_pos, cur_pack, dimensions);
 
-      if (done) break;
+      if (done)
+        break;
     }
-    if (!done) valid = false;
+    if (!done)
+      valid = false;
   }
 }
 
 void MIIterator::NextPackrow() {
-  if (!valid) return;
+  if (!valid)
+    return;
   bool done = false;
   for (uint i = 0; i < it.size(); i++) {
     it[i]->NextPackrow();
@@ -366,7 +377,8 @@ void MIIterator::NextPackrow() {
         break;                // exit and set valid = false
       dg[i]->FillCurrentPos(it[i], cur_pos, cur_pack, dimensions);
     }
-    if (done) break;
+    if (done)
+      break;
   }
   if (!done)
     valid = false;
@@ -396,14 +408,17 @@ void MIIterator::Skip(int64_t offset) {
 
 bool MIIterator::IsThreadSafe() {
   for (uint d = 0; d < dg.size(); d++)
-    if (!dg[d]->IsThreadSafe()) return false;
+    if (!dg[d]->IsThreadSafe())
+      return false;
   return true;
 }
 
 bool MIIterator::BarrierAfterPackrow() {
-  if (!valid) return false;
+  if (!valid)
+    return false;
   for (uint i = 0; i < it.size(); i++)
-    if (it[i]->BarrierAfterPackrow()) return true;
+    if (it[i]->BarrierAfterPackrow())
+      return true;
   return false;
 }
 
@@ -458,7 +473,8 @@ MIDummyIterator::MIDummyIterator(int dims) : MIIterator() {
 
 bool MIDummyIterator::NullsPossibleInPack() const {
   for (int i = 0; i < no_dims; i++)
-    if (cur_pos[i] == common::NULL_VALUE_64) return true;
+    if (cur_pos[i] == common::NULL_VALUE_64)
+      return true;
   return false;
 }
 
@@ -466,9 +482,11 @@ void MIInpackIterator::GeneralIncrement() {
   bool done = false;  // packwise order: iterate pack-by-pack
   for (uint i = 0; i < it.size(); i++) {
     bool still_in_pack = it[i]->NextInsidePack();
-    if (still_in_pack) done = true;
+    if (still_in_pack)
+      done = true;
     dg[i]->FillCurrentPos(it[i], cur_pos, cur_pack, dimensions);
-    if (done) break;
+    if (done)
+      break;
   }
   if (!done)  // pack switched on every dimension
     valid = false;
@@ -540,7 +558,8 @@ MIIterator::SliceCapability MIIterator::GetSliceCapability() const {
     one_filter_it->GetSlices(&capability.slices);
   } else {
     if (dg.size() == 1) {
-      if (it[0]->GetSlices(&capability.slices)) capability.type = SliceCapability::Type::kFixed;
+      if (it[0]->GetSlices(&capability.slices))
+        capability.type = SliceCapability::Type::kFixed;
     }
   }
   return capability;

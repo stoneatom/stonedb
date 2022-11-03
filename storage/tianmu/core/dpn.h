@@ -85,7 +85,8 @@ struct DPN final {
   bool IncRef() {
     auto v = tagged_ptr.load();
     while (v != 0 && v != loading_flag)
-      if (tagged_ptr.compare_exchange_weak(v, v + tag_one)) return true;
+      if (tagged_ptr.compare_exchange_weak(v, v + tag_one))
+        return true;
     return false;
   }
 

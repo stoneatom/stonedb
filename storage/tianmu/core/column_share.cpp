@@ -37,7 +37,8 @@ ColumnShare::~ColumnShare() {
       TIANMU_LOG(LogCtl_Level::WARN, "Failed to unmap DPN file. Error %d(%s)", errno, std::strerror(errno));
     }
   }
-  if (dn_fd >= 0) ::close(dn_fd);
+  if (dn_fd >= 0)
+    ::close(dn_fd);
 }
 
 void ColumnShare::Init(common::TX_ID xid) {
@@ -51,7 +52,8 @@ void ColumnShare::Init(common::TX_ID xid) {
 void ColumnShare::map_dpn() {
   auto dpn_file = m_path / common::COL_DN_FILE;
   dn_fd = ::open(dpn_file.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
-  if (dn_fd < 0) throw std::system_error(errno, std::system_category(), "open() " + dpn_file.string());
+  if (dn_fd < 0)
+    throw std::system_error(errno, std::system_category(), "open() " + dpn_file.string());
 
   struct stat sb;
   if (::fstat(dn_fd, &sb) != 0) {
@@ -101,9 +103,11 @@ void ColumnShare::read_meta() {
   if (pt == common::PackType::INT) {
     has_filter_hist = true;
   } else {
-    if (!types::RequiresUTFConversions(ct.GetCollation())) has_filter_cmap = true;
+    if (!types::RequiresUTFConversions(ct.GetCollation()))
+      has_filter_cmap = true;
 
-    if (ct.HasFilter()) has_filter_bloom = true;
+    if (ct.HasFilter())
+      has_filter_bloom = true;
   }
 }
 
@@ -202,7 +206,8 @@ static constexpr size_t DPN_INC_CNT = ALLOC_UNIT / sizeof(DPN);
 int ColumnShare::alloc_dpn(common::TX_ID xid, const DPN *from) {
   for (uint32_t i = 0; i < cap; i++) {
     if (start[i].used == 1) {
-      if (!(start[i].xmax < ha_rcengine_->MinXID())) continue;
+      if (!(start[i].xmax < ha_rcengine_->MinXID()))
+        continue;
       ha_rcengine_->cache.DropObject(PackCoordinate(owner->TabID(), col_id, i));
       segs.remove_if([i](const auto &s) { return s.idx == i; });
     }
@@ -241,7 +246,8 @@ void ColumnShare::alloc_seg(DPN *dpn) {
 
 void ColumnShare::sync_dpns() {
   int ret = ::msync(start, common::COL_DN_FILE_SIZE, MS_SYNC);
-  if (ret != 0) throw std::system_error(errno, std::system_category(), "msync() " + m_path.string());
+  if (ret != 0)
+    throw std::system_error(errno, std::system_category(), "msync() " + m_path.string());
 }
 }  // namespace core
 }  // namespace Tianmu

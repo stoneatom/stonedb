@@ -1,18 +1,29 @@
+--source include/have_tianmu.inc
+
+--disable_query_log
+
 use test;
+
 CREATE TABLE `test_groupconcat_case` (
   `id` int DEFAULT NULL,
   `name` text
 ) ENGINE=TIANMU;
+
 insert into test_groupconcat_case values(1,'test');
 insert into test_groupconcat_case values(1,'test1');
 insert into test_groupconcat_case values(1,'test1');
 insert into test_groupconcat_case values(2,'test');
 insert into test_groupconcat_case values(3,'test1');
 insert into test_groupconcat_case values(2,'test2');
+
+--enable_query_log
+
 select id,group_concat(name SEPARATOR ",") from test_groupconcat_case group by id;
 select id,group_concat(name SEPARATOR ",") from test_groupconcat_case group by id order by id desc;
 select id,group_concat(name SEPARATOR ":") from test_groupconcat_case group by id;
 select id,group_concat(name order by name desc SEPARATOR ":") from test_groupconcat_case group by id;
 select id,group_concat(distinct name SEPARATOR ":") from test_groupconcat_case group by id;
-drop table test_groupconcat_case;
 
+--disable_query_log
+drop table test_groupconcat_case;
+--enable_query_log

@@ -84,7 +84,8 @@ void WordGraph::Create() {
     // doesn't need to be null-terminated!
     sstop = s;
     while ((sstop != dstop) && *sstop) sstop++;
-    if (sstop != dstop) sstop++;  // strings inserted into the graph will include '\0' at the end
+    if (sstop != dstop)
+      sstop++;  // strings inserted into the graph will include '\0' at the end
     // sstop = s + std::strlen((char*)s) + 1;
 
     Point active = {ROOT1_, 0, ENIL_};  // active point
@@ -94,7 +95,8 @@ void WordGraph::Create() {
 
     while ((s != sstop) || (active.proj > 0)) {
       // only if active point is at node, it's worth invoking MoveDown()
-      if (active.proj == 0) MoveDown(active, s, sstop);
+      if (active.proj == 0)
+        MoveDown(active, s, sstop);
 
       Insert(active, (int)(s - data_), (int)(sstop - data_), last, final);
       MoveSuffix(active, s, true);
@@ -130,7 +132,8 @@ void WordGraph::MoveDown(Point &p, const uchar *&s, const uchar *sstop) {
 
   for (;;) {
     // read the first symbol of the next edge
-    if (s == sstop) return;
+    if (s == sstop)
+      return;
     p.edge = FindEdge(p.n, *s);
     if (p.edge == ENIL_)
       return;
@@ -145,12 +148,14 @@ void WordGraph::MoveDown(Point &p, const uchar *&s, const uchar *sstop) {
       proj++;
       s++;
     }
-    if (proj < len) return;
+    if (proj < len)
+      return;
 
     // check whether the passed edge was non-solid - in that case the target
     // node must be duplicated, part of incoming edges_ redirected and active
     // point 'p' accordingly updated
-    if (!e.IsSolid()) Duplicate(p);
+    if (!e.IsSolid())
+      Duplicate(p);
 
     p.n = GE(p.edge).n;
     proj = 0;
@@ -408,7 +413,8 @@ void WordGraph::PropagateStop() {
     PNode n = finals_[i];
     while (n != ROOT1_) {
       Node &nd = GN(n);
-      if (nd.count == 0) break;
+      if (nd.count == 0)
+        break;
       nd.stop = nd.count;
       nd.count = 0;
       n = nd.suf;
@@ -495,14 +501,16 @@ void WordGraph::SetSums() {
     pn = stack.back();
     stack.pop_back();
     Node &node = GN(pn);
-    if (node.total > 0) continue;  // we already visited this node
+    if (node.total > 0)
+      continue;  // we already visited this node
 
 #ifdef SHIFT_ESC
     int c = node.count - node.stop;
     int esc = GetEscCount(pn, c);
     shift = Shift(c + esc);
     Count sum = esc _SHR_ shift;
-    if (sum == 0) sum = 1;
+    if (sum == 0)
+      sum = 1;
 #else
     int c = node.count - node.stop;
     shift = Shift(c);  // how to shift children's counts
@@ -517,7 +525,8 @@ void WordGraph::SetSums() {
       cnt = GN(e.n).count;     // real count, wide-represented
       scnt = cnt _SHR_ shift;  // short count, reduced
       DEBUG_ASSERT(cnt > 0);
-      if (scnt == 0) scnt = 1;
+      if (scnt == 0)
+        scnt = 1;
 
       DEBUG_ASSERT(scnt <= COUNT_MAX / 4);
       DEBUG_ASSERT(sum <= sum + (Count)scnt);
@@ -586,7 +595,8 @@ void WordGraph::SetShadow([[maybe_unused]] PNode pn) {
       cnt = GN(e.n).count;     // real count, wide-represented
       scnt = cnt _SHR_ shift;  // short count, reduced
       DEBUG_ASSERT(cnt > 0);
-      if (scnt == 0) scnt = 1;
+      if (scnt == 0)
+        scnt = 1;
 
       DEBUG_ASSERT(scnt <= COUNT_MAX / 4);
       DEBUG_ASSERT(stotal <= stotal + (Count)scnt);
@@ -679,7 +689,8 @@ CprsErr WordGraph::GetLabel(PEdge e, [[maybe_unused]] Symb *lbl, int &len) {
   }  // "escape"
 
   Edge &edge = GE(e);
-  if (len < (int)edge.GetLen()) return CprsErr::CPRS_ERR_BUF;
+  if (len < (int)edge.GetLen())
+    return CprsErr::CPRS_ERR_BUF;
   len = (int)edge.GetLen();
 
   // TODO:uncomment ROOT
@@ -785,7 +796,8 @@ CprsErr WordGraph::Move(Count c, Symb *str, int &len, Range &rng) {
   PSEdge se;
   FindEdge(e, se, c);
   CprsErr err = GetLabel(e, str, len);
-  if (static_cast<int>(err)) return err;
+  if (static_cast<int>(err))
+    return err;
   GetRange(e, se, rng);
   Move(e);
   return CprsErr::CPRS_SUCCESS;

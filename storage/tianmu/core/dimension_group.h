@@ -331,7 +331,8 @@ class DimensionGroupMaterialized : public DimensionGroup {
       for (int i = 0; i < n; i++) t[dim]->Lock();
   }
   void Unlock(int dim) override {
-    if (t[dim]) t[dim]->Unlock();
+    if (t[dim])
+      t[dim]->Unlock();
   }
   int NumOfLocks(int dim) override { return (t[dim] ? t[dim]->NumOfLocks() : 0); }
   bool IsThreadSafe() override { return true; }  // BarrierAfterPackrow() must be used for parallel execution
@@ -348,7 +349,8 @@ class DimensionGroupMaterialized : public DimensionGroup {
     void operator++() override {
       cur_pos++;
       pack_size_left--;
-      if (pack_size_left == 0) InitPackrow();
+      if (pack_size_left == 0)
+        InitPackrow();
     }
     void Rewind() override;
     bool NextInsidePack() override;

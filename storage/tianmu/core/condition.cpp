@@ -39,7 +39,8 @@ void Condition::Simplify() {
       DEBUG_ASSERT(descriptors[i].tree);
       Descriptor desc;
       do {
-        if ((descriptors[i].op != common::Operator::O_OR_TREE)) break;
+        if ((descriptors[i].op != common::Operator::O_OR_TREE))
+          break;
         desc = descriptors[i].tree->ExtractDescriptor();
         if (!desc.IsEmpty()) {
           descriptors[i].Simplify(true);  // true required not to simplify parameters

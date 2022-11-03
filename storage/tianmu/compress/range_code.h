@@ -93,7 +93,8 @@ class RangeCoder {
     DEBUG_ASSERT(range_ >= BOT_ && low_ + range_ - 1 >= code_ && code_ >= low_);
     uint tmp = (code_ - low_) / (range_ /= total);
     DEBUG_ASSERT(tmp < total);
-    if (tmp >= total) throw CprsErr::CPRS_ERR_COR;
+    if (tmp >= total)
+      throw CprsErr::CPRS_ERR_COR;
     return tmp;
   }
 
@@ -121,7 +122,8 @@ class RangeCoder {
 #endif
     DEBUG_ASSERT(range_ >= BOT_ && low_ + range_ - 1 >= code_ && code_ >= low_);
     uint tmp = (code_ - low_) / (range_ _SHR_ASSIGN_ shift);
-    if (tmp >= (1u << shift)) throw CprsErr::CPRS_ERR_COR;
+    if (tmp >= (1u << shift))
+      throw CprsErr::CPRS_ERR_COR;
     return tmp;
   }
 
@@ -138,7 +140,8 @@ class RangeCoder {
   void EncodeUniform(T val, T maxval, uint bitmax) {
     DEBUG_ASSERT((val <= maxval));
     DEBUG_ASSERT((((uint64_t)maxval >> bitmax) == 0) || bitmax >= 64);
-    if (maxval == 0) return;
+    if (maxval == 0)
+      return;
 
     // encode groups of 'uni_nbit_' bits, from the least significant
     DEBUG_ASSERT(uni_total_ <= MAX_TOTAL_);
@@ -164,7 +167,8 @@ class RangeCoder {
   template <class T>
   void DecodeUniform(T &val, T maxval, uint bitmax) {
     val = 0;
-    if (maxval == 0) return;
+    if (maxval == 0)
+      return;
     DEBUG_ASSERT((((uint64_t)maxval >> bitmax) == 0) || bitmax >= 64);
 
     // decode groups of 'uni_nbit_' bits, from the least significant
