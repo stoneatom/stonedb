@@ -103,7 +103,7 @@ FROM
 LEFT JOIN employees b ON
     b.employee_name = 'David Tian'
 WHERE
-    get_int(b.employee_id) =  a.employee_salary;
+    get_int(b.employee_id) = a.employee_salary;
 
 
 SELECT get_desc(1);

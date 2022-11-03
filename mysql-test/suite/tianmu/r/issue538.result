@@ -98,7 +98,7 @@ employees a
 LEFT JOIN employees b ON
 b.employee_name = 'David Tian'
 WHERE
-get_int(b.employee_id) =  a.employee_salary;
+get_int(b.employee_id) = a.employee_salary;
 employee_id	get_desc(b.employee_id)
 1	employee name:David Tian---salary: 7500
 SELECT get_desc(1);
