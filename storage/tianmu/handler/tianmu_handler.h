@@ -158,6 +158,7 @@ class ha_tianmu final : public handler {
  public:
   static const Alter_inplace_info::HA_ALTER_FLAGS TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER;
   static const Alter_inplace_info::HA_ALTER_FLAGS TIANMU_SUPPORTED_ALTER_COLUMN_NAME;
+  static const Alter_inplace_info::HA_ALTER_FLAGS TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS;
 
  protected:
   int set_cond_iter();
