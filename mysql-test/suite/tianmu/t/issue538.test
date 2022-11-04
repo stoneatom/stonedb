@@ -8,6 +8,8 @@ use test;
 
 --disable_warnings
 
+# User-defined function parameter table data query
+
 DROP TABLE IF EXISTS employees;
 
 CREATE TABLE `employees` (
@@ -39,6 +41,8 @@ INSERT INTO employees(employee_id,employee_name,employee_sex,employee_mgr,employ
 
 --enable_query_log
 
+# User-defined functions as simple projection conditions
+
 SELECT
 	a.employee_id,
 	get_desc(b.employee_id)
@@ -47,6 +51,8 @@ FROM
 LEFT JOIN employees b ON
 	a.employee_id = b.employee_id
 	and b.employee_name = 'David Tian';
+
+# User - defined function parameters aggregate function operations
 
 SELECT
 	sum(200 + get_int(b.employee_id))
@@ -56,6 +62,8 @@ LEFT JOIN employees b ON
 	a.employee_id = b.employee_id
 	and b.employee_name = 'David Tian';
 
+# User-defined function as the on predicate of the left join
+
 SELECT
 	a.employee_id,
 	get_desc(b.employee_id)
@@ -64,6 +72,8 @@ FROM
 LEFT JOIN employees b ON
 	a.employee_salary = get_int(b.employee_id)
 	and b.employee_name = 'David Tian';
+
+# User-defined functions as interval predicates
 
 SELECT
 	a.employee_id,
@@ -85,6 +95,8 @@ LEFT JOIN employees b ON
 WHERE
 	a.employee_salary > get_int(b.employee_id);
 
+# User-defined functions as equivalent predicates
+
 SELECT
 	a.employee_id,
 	get_desc(b.employee_id)
@@ -105,6 +117,52 @@ LEFT JOIN employees b ON
 WHERE
     get_int(b.employee_id) = a.employee_salary;
 
+# User-defined functions generate derived tables
+
+## User - defined functions as simple driver tables
+
+SELECT
+	get_desc(a.employee_id),
+	b.employee_salary
+FROM
+	employees as a,
+	(
+	select
+		get_int(employees.employee_id) as employee_salary
+	from
+		employees) as b
+WHERE
+	a.employee_name = 'David Tian'
+	AND a.employee_salary = b.employee_salary;
+
+## User-defined functions as nested driver tables
+
+SELECT
+	get_desc(a.employee_id),
+	b.employee_salary
+FROM
+	employees as a,
+	(
+	select
+		get_int(e.employee_id) as employee_salary
+	from
+		(
+		SELECT
+			c.employee_id
+		FROM
+			(
+			SELECT
+				employee_id,
+				get_int(employees.employee_id) as employee_salary
+			FROM
+				employees
+			WHERE
+				employee_salary > 500) as c) as e ) as b
+WHERE
+	a.employee_name = 'David Tian'
+	AND a.employee_salary = b.employee_salary;
+
+# User-defined functions as simple stand-alone queries
 
 SELECT get_desc(1);
 SELECT get_desc(1),get_desc(1);
@@ -116,6 +174,7 @@ DROP TABLE employees;
 DROP FUNCTION get_desc;
 DROP FUNCTION get_int;
 
+# User-defined functions do not depend on tables and only do simple numerical calculations
 
 DROP TABLE IF EXISTS tf;
 

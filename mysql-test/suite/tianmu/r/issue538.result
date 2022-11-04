@@ -101,6 +101,47 @@ WHERE
 get_int(b.employee_id) = a.employee_salary;
 employee_id	get_desc(b.employee_id)
 1	employee name:David Tian---salary: 7500
+SELECT
+get_desc(a.employee_id),
+b.employee_salary
+FROM
+employees as a,
+(
+select
+get_int(employees.employee_id) as employee_salary
+from
+employees) as b
+WHERE
+a.employee_name = 'David Tian'
+	AND a.employee_salary = b.employee_salary;
+get_desc(a.employee_id)	employee_salary
+employee name:David Tian---salary: 7500	7500
+SELECT
+get_desc(a.employee_id),
+b.employee_salary
+FROM
+employees as a,
+(
+select
+get_int(e.employee_id) as employee_salary
+from
+(
+SELECT
+c.employee_id
+FROM
+(
+SELECT
+employee_id,
+get_int(employees.employee_id) as employee_salary
+FROM
+employees
+WHERE
+employee_salary > 500) as c) as e ) as b
+WHERE
+a.employee_name = 'David Tian'
+	AND a.employee_salary = b.employee_salary;
+get_desc(a.employee_id)	employee_salary
+employee name:David Tian---salary: 7500	7500
 SELECT get_desc(1);
 get_desc(1)
 employee name:David Tian---salary: 7500
