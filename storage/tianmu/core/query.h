@@ -73,6 +73,7 @@ class Query final {
  private:
   CompiledQuery *cq = nullptr;
   std::vector<std::pair<TabID, bool>> subqueries_in_where;
+  std::vector<TabID> outer_tabs;
   using TabIDColAlias = std::pair<int, std::string>;
   std::map<TabIDColAlias, int> field_alias2num;
   std::map<std::string, unsigned> path2num;
@@ -128,7 +129,7 @@ class Query final {
   int VirtualColumnAlreadyExists(const TabID &tmp_table, const std::vector<int> &vcs, const AttrID &at);
 
   int Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_table, CondType filter_type, bool negative = false,
-                  Item *left_expr_for_subselect = nullptr, common::Operator *oper_for_subselect = nullptr);
+                  Item *left_expr_for_subselect = nullptr, common::Operator *oper_for_subselect = nullptr, const TabID &base_table=TabID());
 
   // int FilterNotSubselect(Item *conds, const TabID& tmp_table, FilterType
   // filter_type, FilterID *and_me_filter = 0);
@@ -241,8 +242,8 @@ class Query final {
    * \param group_by - indicates if it is column for group by query
    * \return column number
    */
-  int AddColumnForPhysColumn(Item *item, const TabID &tmp_table, const common::ColOperation oper, const bool distinct,
-                             bool group_by, const char *alias = nullptr);
+  int AddColumnForPhysColumn(Item *item, const TabID &tmp_table, const TabID &base_table, const common::ColOperation oper,
+                             const bool distinct, bool group_by, const char *alias = nullptr);
 
   /*! \brief Creates AddColumn step in compilation by creating, if does not
    * exist, Virtual Column based on expression \param mysql_expression - pointer
@@ -318,8 +319,10 @@ class Query final {
    * RETURN_QUERY_TO_MYSQL_ROUTE in case of any problem and RCBASE_QUERY_ROUTE
    * otherwise
    */
-  int AddFields(List<Item> &fields, const TabID &tmp_table, const bool group_by_clause, int &num_of_added_fields,
+  int AddFields(List<Item> &fields, const TabID &tmp_table, TabID const &base_table, const bool group_by_clause, int &num_of_added_fields,
                 bool ignore_minmax, bool &aggr_used);
+
+  int AddSemiJoinFiled(List<Item> &fields, List<TABLE_LIST> &join, const TabID &tmp_table);
 
   /*! \brief Generates AddColumn compilation steps for every field on GROUP BY
    * list \param fields - pointer to GROUP BY fields \param tmp_table - alias of
@@ -327,12 +330,12 @@ class Query final {
    * RETURN_QUERY_TO_MYSQL_ROUTE in case of any problem and RCBASE_QUERY_ROUTE
    * otherwise
    */
-  int AddGroupByFields(ORDER *group_by, const TabID &tmp_table);
+  int AddGroupByFields(ORDER *group_by, const TabID &tmp_table, const TabID &base_table);
 
   //! is this item representing a column local to the temp table (not a
   //! parameter)
   bool IsLocalColumn(Item *item, const TabID &tmp_table);
-  int AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const group_by_clause);
+  int AddOrderByFields(ORDER *order_by, TabID const &tmp_table, TabID const &base_table, int const group_by_clause);
   int AddGlobalOrderByFields(SQL_I_List<ORDER> *global_order, const TabID &tmp_table, int max_col);
   int AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vector<TabID> &left_tables,
                std::vector<TabID> &right_tables, bool in_subquery, bool &first_table, bool for_subq = false);

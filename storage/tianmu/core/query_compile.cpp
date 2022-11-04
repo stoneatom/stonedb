@@ -315,19 +315,23 @@ int Query::AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vector<TabID>
   // Compilation(...) it must be sth. like `select 1 from t1 union select 2` and
   // we are in the second select in the union
 
-  while ((join_ptr = li++) != nullptr) reversed.push_back(join_ptr);
+  while ((join_ptr = li++) != nullptr) {
+    reversed.push_back(join_ptr);
+  }
   size_t size = reversed.size();
   for (unsigned int i = 0; i < size; i++) {
     join_ptr = reversed[size - i - 1];
     if (join_ptr->nested_join) {
       std::vector<TabID> local_left, local_right;
-      if (!AddJoins(join_ptr->nested_join->join_list, tmp_table, local_left, local_right, in_subquery, first_table,
-                    for_subq_in_where))
+      if (!AddJoins(join_ptr->nested_join->join_list, tmp_table, local_left, local_right,
+                    in_subquery, first_table, for_subq_in_where)) {
         return RETURN_QUERY_TO_MYSQL_ROUTE;
+      }
       JoinType join_type = GetJoinTypeAndCheckExpr(join_ptr->outer_join, join_ptr->join_cond());
       CondID cond_id;
-      if (!BuildCondsIfPossible(join_ptr->join_cond(), cond_id, tmp_table, join_type))
+      if (!BuildCondsIfPossible(join_ptr->join_cond(), cond_id, tmp_table, join_type)) {
         return RETURN_QUERY_TO_MYSQL_ROUTE;
+      }
       left_tables.insert(left_tables.end(), right_tables.begin(), right_tables.end());
       local_left.insert(local_left.end(), local_right.begin(), local_right.end());
       if (join_ptr->outer_join)
@@ -397,7 +401,7 @@ int Query::AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vector<TabID>
   return RCBASE_QUERY_ROUTE;
 }
 
-int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const group_by_clause, int &num_of_added_fields,
+int Query::AddFields(List<Item> &fields, TabID const &tmp_table, TabID const &base_table, bool const group_by_clause, int &num_of_added_fields,
                      bool ignore_minmax, bool &aggregation_used) {
   List_iterator_fast<Item> li(fields);
   Item *item;
@@ -419,8 +423,9 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
       oper = common::ColOperation::LISTING;
 
     // select PHYSICAL COLUMN or AGGREGATION over PHYSICAL COLUMN
-    if ((IsFieldItem(item) || IsAggregationOverFieldItem(item)) && IsLocalColumn(item, tmp_table))
-      AddColumnForPhysColumn(item, tmp_table, oper, distinct, false, item->item_name.ptr());
+    if ((IsFieldItem(item) || IsAggregationOverFieldItem(item)) &&
+        (IsLocalColumn(item, tmp_table) || (!base_table.IsNullID() && IsLocalColumn(item, base_table))))
+      AddColumnForPhysColumn(item, tmp_table, base_table, oper, distinct, false, item->item_name.ptr());
     // REF to FIELD_ITEM
     else if (item->type() == Item::REF_ITEM) {
       item = UnRef(item);
@@ -442,7 +447,7 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
               (UnRef(((Item_sum *)item)->get_arg(0))->type() == Item_tianmufield::FIELD_ITEM)) &&
              IsLocalColumn(UnRef(((Item_sum *)item)->get_arg(0)), tmp_table))
       // AGGR on REF to FIELD_ITEM
-      AddColumnForPhysColumn(UnRef(((Item_sum *)item)->get_arg(0)), tmp_table, oper, distinct, false,
+      AddColumnForPhysColumn(UnRef(((Item_sum *)item)->get_arg(0)), tmp_table, TabID(), oper, distinct, false,
                              item->item_name.ptr());
     else if (IsAggregationItem(item)) {
       // select AGGREGATION over EXPRESSION
@@ -498,7 +503,57 @@ int Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool const grou
   return RCBASE_QUERY_ROUTE;
 }
 
-int Query::AddGroupByFields(ORDER *group_by, const TabID &tmp_table) {
+// todo(dfx): handle more query scenarios
+int Query::AddSemiJoinFiled(List<Item> &fields, List<TABLE_LIST> &join, const TabID &tmp_table) {
+  List_iterator_fast<Item> field_li(fields);
+  Item *item;
+  item = field_li++;
+  while (item) {
+    WrapStatus ws;
+    common::ColOperation oper;
+    bool distinct;
+    if (!OperationUnmysterify(item, oper, distinct, 0))
+      return RETURN_QUERY_TO_MYSQL_ROUTE;
+    if (!IsFieldItem(item)) {
+      item = field_li++;
+      continue;
+    }
+    AddColumnForPhysColumn(item, tmp_table, TabID(), oper, distinct, false, item->item_name.ptr());
+    item = field_li++;
+  }
+
+  TABLE_LIST *join_ptr;
+  List_iterator<TABLE_LIST> li(join);
+  std::vector<TABLE_LIST *> reversed;
+  while ((join_ptr = li++) != nullptr) {
+    reversed.push_back(join_ptr);
+  }
+  size_t size = reversed.size();
+  for (unsigned int i = 0; i < size; i++) {
+    join_ptr = reversed[size - i - 1];
+    if (join_ptr->nested_join) {
+      List_iterator_fast<Item> outer_field_li(join_ptr->nested_join->sj_outer_exprs);
+      Item *outer_item;
+      outer_item = outer_field_li++;
+      while (outer_item) {
+        WrapStatus ws;
+        common::ColOperation oper;
+        bool distinct;
+        if (!OperationUnmysterify(outer_item, oper, distinct, 0))
+          return RETURN_QUERY_TO_MYSQL_ROUTE;
+        if (!IsFieldItem(outer_item)) {
+          outer_item = outer_field_li++;
+          continue;
+        }
+        AddColumnForPhysColumn(outer_item, tmp_table, TabID(), oper, distinct, false, outer_item->item_name.ptr());
+        outer_item = outer_field_li++;
+      }
+    }
+  }
+  return RCBASE_QUERY_ROUTE;
+}
+
+int Query::AddGroupByFields(ORDER *group_by, const TabID &tmp_table, const TabID &base_table) {
   for (; group_by; group_by = group_by->next) {
     if (group_by->direction != ORDER::ORDER_ASC) {
       my_message(ER_SYNTAX_ERROR,
@@ -513,8 +568,9 @@ int Query::AddGroupByFields(ORDER *group_by, const TabID &tmp_table) {
     item = UnRef(item);
     // group by PHYSICAL COLUMN
     if ((IsFieldItem(item) || (IsAggregationItem(item) && IsFieldItem(((Item_sum *)item)->get_arg(0)))) &&
-        IsLocalColumn(item, tmp_table))
-      AddColumnForPhysColumn(item, tmp_table, common::ColOperation::GROUP_BY, false, true);
+        (IsLocalColumn(item, tmp_table) || (!base_table.IsNullID() && IsLocalColumn(item, base_table)))) {
+      AddColumnForPhysColumn(item, tmp_table, base_table, common::ColOperation::GROUP_BY, false, true);
+    }
     else if (item->type() == Item::SUBSELECT_ITEM) {
       CQTerm term;
       AttrID at;
@@ -534,7 +590,7 @@ int Query::AddGroupByFields(ORDER *group_by, const TabID &tmp_table) {
   return RCBASE_QUERY_ROUTE;
 }
 
-int Query::AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const group_by_clause) {
+int Query::AddOrderByFields(ORDER *order_by, TabID const &tmp_table, TabID const &base_table, int const group_by_clause) {
   for (; order_by; order_by = order_by->next) {
     std::pair<int, int> vc;
     Item *item = *(order_by->item);
@@ -586,7 +642,8 @@ int Query::AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const g
         // result = Item2CQTerm(item, my_term, tmp_table, CondType::HAVING_COND);
       } else {
         AttrID at;
-        result = Item2CQTerm(item, my_term, tmp_table, CondType::HAVING_COND);
+        result = Item2CQTerm(item, my_term, tmp_table, CondType::HAVING_COND,
+                             false, nullptr, nullptr, base_table);
         if (item->type() == Item::SUBSELECT_ITEM) {
           // create a materialized column with subsel results for the ordering
           cq->AddColumn(at, tmp_table, my_term, common::ColOperation::DELAYED, nullptr, false);
@@ -691,7 +748,7 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
         if (!OperationUnmysterify(it, oper, distinct, true))
           return WrapStatus::FAILURE;
         if (is_group_by && !IsParameterFromWhere(params_table)) {
-          col.n = AddColumnForPhysColumn(it, params_table, oper, distinct, true);
+          col.n = AddColumnForPhysColumn(it, params_table, TabID(), oper, distinct, true);
           item2varid[it] = VarID(params_table.n, col.n);
         } else
           item2varid[it] = VarID(tab.n, col.n);
@@ -724,7 +781,7 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
           if (IsFieldItem(aggregation->get_arg(0)) && FieldUnmysterify(aggregation, tab, col) &&
               cq->ExistsInTempTable(tab, tmp_table)) {
             // PHYSICAL COLUMN
-            at.n = AddColumnForPhysColumn(aggregation->get_arg(0), tmp_table, oper, distinct, true);
+            at.n = AddColumnForPhysColumn(aggregation->get_arg(0), tmp_table, TabID(), oper, distinct, true);
           } else {
             // EXPRESSION
             ws = WrapMysqlExpression(aggregation->get_arg(0), tmp_table, expr, in_where, false);
@@ -747,7 +804,7 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
           if (!OperationUnmysterify(it, oper, distinct, true))
             return WrapStatus::FAILURE;
           if (is_group_by && !IsParameterFromWhere(params_table)) {
-            col.n = AddColumnForPhysColumn(it, params_table, oper, distinct, true);
+            col.n = AddColumnForPhysColumn(it, params_table, TabID(), oper, distinct, true);
             item2varid[it] = VarID(params_table.n, col.n);
           } else
             item2varid[it] = VarID(tab.n, col.n);
@@ -756,7 +813,7 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
           bool distinct;
           if (!OperationUnmysterify(it, oper, distinct, true))
             return WrapStatus::FAILURE;
-          at.n = AddColumnForPhysColumn(it, tmp_table, oper, distinct, true);
+          at.n = AddColumnForPhysColumn(it, tmp_table, TabID(), oper, distinct, true);
           item2varid[it] = VarID(tmp_table.n, at.n);
         } else {
           item2varid[it] = VarID(tab.n, col.n);
@@ -769,8 +826,9 @@ Query::WrapStatus Query::WrapMysqlExpression(Item *item, const TabID &tmp_table,
   return WrapStatus::SUCCESS;
 }
 
-int Query::AddColumnForPhysColumn(Item *item, const TabID &tmp_table, const common::ColOperation oper,
-                                  const bool distinct, bool group_by, const char *alias) {
+int Query::AddColumnForPhysColumn(Item *item, const TabID &tmp_table, TabID const &base_table,
+                                  const common::ColOperation oper, const bool distinct,
+                                  bool group_by, const char *alias) {
   std::pair<int, int> vc;
   AttrID col, at;
   TabID tab;
@@ -780,35 +838,65 @@ int Query::AddColumnForPhysColumn(Item *item, const TabID &tmp_table, const comm
     tab = tmp_table;  // table name not contained in item - must be the result
                       // temp_table
 
-  DEBUG_ASSERT(cq->ExistsInTempTable(tab, tmp_table));
-  if (item->type() == Item_tianmufield::get_tianmuitem_type() &&
-      IsAggregationItem(dynamic_cast<Item_tianmufield *>(item)->OriginalItem()))
-    return ((Item_tianmufield *)item)->varID[0].col;
-
-  vc = VirtualColumnAlreadyExists(tmp_table, tab, col);
-  if (vc.first == common::NULL_VALUE_32) {
-    vc.first = tmp_table.n;
-    cq->CreateVirtualColumn(vc.second, tmp_table, tab, col);
-    phys2virt.insert(std::make_pair(std::make_pair(tab.n, col.n), vc));
-  } else {
-    int attr = GetAddColumnId(AttrID(vc.second), tmp_table, oper, distinct);
-    if (attr != common::NULL_VALUE_32) {
-      if (group_by)  // do not add column - not needed duplicate
+  if (base_table.IsNullID()) {
+    DEBUG_ASSERT(cq->ExistsInTempTable(tab, tmp_table));
+    if (item->type() == Item_tianmufield::get_tianmuitem_type() &&
+        IsAggregationItem(dynamic_cast<Item_tianmufield *>(item)->OriginalItem())){
+      return ((Item_tianmufield *)item)->varID[0].col;
+    }
+    vc = VirtualColumnAlreadyExists(tmp_table, tab, col);
+    if (vc.first == common::NULL_VALUE_32) {
+      vc.first = tmp_table.n;
+      cq->CreateVirtualColumn(vc.second, tmp_table, tab, col);
+      phys2virt.insert(std::make_pair(std::make_pair(tab.n, col.n), vc));
+    } else {
+      int attr = GetAddColumnId(AttrID(vc.second), tmp_table, oper, distinct);
+      if (attr != common::NULL_VALUE_32) {
+        if (group_by)  // do not add column - not needed duplicate
+          return attr;
+        // vc.n = col_to_vc[attr];
+      } else if (group_by && oper == common::ColOperation::GROUP_BY &&
+          (attr = GetAddColumnId(AttrID(vc.second), tmp_table, common::ColOperation::LISTING, distinct)) !=
+              common::NULL_VALUE_32) {
+        // modify existing column
+        CQChangeAddColumnLIST2GROUP_BY(tmp_table, attr);
         return attr;
-      // vc.n = col_to_vc[attr];
-    } else if (group_by && oper == common::ColOperation::GROUP_BY &&
-               (attr = GetAddColumnId(AttrID(vc.second), tmp_table, common::ColOperation::LISTING, distinct)) !=
-                   common::NULL_VALUE_32) {
-      // modify existing column
-      CQChangeAddColumnLIST2GROUP_BY(tmp_table, attr);
-      return attr;
-    } else if (group_by && oper == common::ColOperation::LISTING &&
-               (attr = GetAddColumnId(AttrID(vc.second), tmp_table, common::ColOperation::GROUP_BY, distinct)) !=
-                   common::NULL_VALUE_32) {
-      // don;t add unnecessary column to select list
-      return attr;
+      } else if (group_by && oper == common::ColOperation::LISTING &&
+          (attr = GetAddColumnId(AttrID(vc.second), tmp_table, common::ColOperation::GROUP_BY, distinct)) !=
+              common::NULL_VALUE_32) {
+        // don;t add unnecessary column to select list
+        return attr;
+      }
+    }
+  } else {
+    std::pair<int, int> phys_vc = VirtualColumnAlreadyExists(base_table, tab, col);
+    if (phys_vc.first == common::NULL_VALUE_32) {
+      return common::NULL_VALUE_32;
+    }
+    vc = VirtualColumnAlreadyExists(tmp_table, TabID(phys_vc.first), AttrID(phys_vc.first));
+    if (vc.first == common::NULL_VALUE_32) {
+      vc.first = tmp_table.n;
+      int at_id = field_alias2num[TabIDColAlias(base_table.n, item->item_name.ptr())];
+      cq->CreateVirtualColumn(vc.second, tmp_table, TabID(phys_vc.first), AttrID(at_id));
+      phys2virt.insert(std::make_pair(std::make_pair(phys_vc.first, at_id), vc));
+    } else {
+      int attr = GetAddColumnId(AttrID(vc.second), tmp_table, oper, distinct);
+      if (attr != common::NULL_VALUE_32) {
+        if (group_by)  // do not add column - not needed duplicate
+          return attr;
+      } else if (group_by && oper == common::ColOperation::GROUP_BY &&
+          (attr = GetAddColumnId(AttrID(vc.second), tmp_table, common::ColOperation::LISTING, distinct)) !=
+              common::NULL_VALUE_32) {
+        CQChangeAddColumnLIST2GROUP_BY(tmp_table, attr);
+        return attr;
+      } else if (group_by && oper == common::ColOperation::LISTING &&
+          (attr = GetAddColumnId(AttrID(vc.second), tmp_table, common::ColOperation::GROUP_BY, distinct)) !=
+              common::NULL_VALUE_32) {
+        return attr;
+      }
     }
   }
+
   if (!item->item_name.ptr() && item->type() == Item::SUM_FUNC_ITEM) {
     cq->AddColumn(at, tmp_table, CQTerm(vc.second), oper,
                   group_by ? nullptr : ((Item_field *)(((Item_sum *)item)->get_arg(0)))->item_name.ptr(), distinct);
@@ -1050,6 +1138,7 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
       if (having && !group)  // we cannot handle the case of a having without a group by
         throw CompilationError();
 
+      // handle table list
       TABLE_LIST *tables = sl->leaf_tables ? sl->leaf_tables : (TABLE_LIST *)sl->table_list.first;
       for (TABLE_LIST *table_ptr = tables; table_ptr; table_ptr = table_ptr->next_leaf) {
         if (!table_ptr->is_view_or_derived()) {
@@ -1063,38 +1152,66 @@ int Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_list, SELE
           }
         }
       }
+
+      // handle join & join cond
       std::vector<TabID> left_tables, right_tables;
       bool first_table = true;
       if (!AddJoins(*join_list, tmp_table, left_tables, right_tables, (res_tab != nullptr && res_tab->n != 0),
                     first_table, for_subq_in_where))
         throw CompilationError();
 
+      // handle fields
       List<Item> field_list_for_subselect;
       if (left_expr_for_subselect && field_for_subselect) {
         field_list_for_subselect.push_back(field_for_subselect);
         fields = &field_list_for_subselect;
       }
       bool aggr_used = false;
-      if (!AddFields(*fields, tmp_table, group != nullptr, col_count, ignore_minmax, aggr_used))
-        throw CompilationError();
+      if (sl->has_sj_nests && group != nullptr) {  // handle semi-join fields (use on group by)
+        if (!AddSemiJoinFiled(*fields, *join_list, tmp_table))
+          throw CompilationError();
+      } else {
+        if (!AddFields(*fields, tmp_table, TabID(), group != nullptr, col_count, ignore_minmax, aggr_used))
+          throw CompilationError();
 
-      if (!AddGroupByFields(group, tmp_table))
-        throw CompilationError();
+        if (!AddGroupByFields(group, tmp_table, TabID()))
+          throw CompilationError();
 
-      if (!AddOrderByFields(order, tmp_table, group != nullptr || sl->join->select_distinct || aggr_used))
-        throw CompilationError();
+        if (!AddOrderByFields(order, tmp_table,TabID(), group != nullptr || sl->join->select_distinct || aggr_used))
+          throw CompilationError();
+      }
+
+      // handle where cond
       CondID cond_id;
       if (!BuildConditions(conds, cond_id, cq, tmp_table, CondType::WHERE_COND, zero_result))
         throw CompilationError();
 
       cq->AddConds(tmp_table, cond_id, CondType::WHERE_COND);
 
+      // handle having cond
       cond_id = CondID();
       if (!BuildConditions(having, cond_id, cq, tmp_table, CondType::HAVING_COND))
         throw CompilationError();
       cq->AddConds(tmp_table, cond_id, CondType::HAVING_COND);
 
       cq->ApplyConds(tmp_table);
+
+      if (sl->has_sj_nests) {
+        if (group != nullptr) {  // handle group by & order by after semi-join
+          cq->Mode(tmp_table, TMParameter::TM_DISTINCT);
+          TabID new_tmp_table;
+          cq->TmpTable(new_tmp_table, tmp_table, false);
+          if (!AddFields(*fields, new_tmp_table, tmp_table, group != nullptr, col_count, ignore_minmax, aggr_used))
+            throw CompilationError();
+          if (!AddGroupByFields(group, new_tmp_table, tmp_table))
+            throw CompilationError();
+          if (!AddOrderByFields(order, new_tmp_table, tmp_table, group != nullptr || sl->join->select_distinct || aggr_used))
+            throw CompilationError();
+          tmp_table = new_tmp_table;
+        } else {
+          cq->Mode(tmp_table, TMParameter::TM_DISTINCT);
+        }
+      }
     } catch (...) {
       // restore original values of class fields (necessary if this method is
       // called recursively)

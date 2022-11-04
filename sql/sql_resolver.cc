@@ -44,6 +44,9 @@
 
 static void propagate_nullability(List<TABLE_LIST> *tables, bool nullable);
 
+static bool decorrelate_equality(List<Item> *sj_outer_exprs, List<Item> *sj_inner_exprs,
+                                 Item_func *func);
+
 static const Item::enum_walk walk_subquery=
   Item::enum_walk(Item::WALK_POSTFIX | Item::WALK_SUBQUERY);
 
@@ -988,11 +991,18 @@ bool SELECT_LEX::resolve_subquery(THD *thd)
     subq_predicate is the same, not sure this is desired (double work?).
   */
 
-  Item_in_subselect * const in_predicate=
-    (subq_predicate->substype() == Item_subselect::IN_SUBS) ?
-    static_cast<Item_in_subselect *>(subq_predicate) : NULL;
+  // Predicate for possible semi-join candidates (IN and EXISTS)
+  Item_exists_subselect *const predicate =
+      (subq_predicate->substype() == Item_subselect::EXISTS_SUBS ||
+          subq_predicate->substype() == Item_subselect::IN_SUBS) ?
+      down_cast<Item_exists_subselect *>(subq_predicate) : nullptr;
 
-  if (in_predicate)
+  // Predicate for IN subquery predicate
+  Item_in_subselect * const in_predicate=
+      (subq_predicate->substype() == Item_subselect::IN_SUBS) ?
+      down_cast<Item_in_subselect *>(subq_predicate) : nullptr;
+
+  if (in_predicate != nullptr)
   {
     thd->lex->set_current_select(outer);
     char const *save_where= thd->where;
@@ -1042,29 +1052,29 @@ bool SELECT_LEX::resolve_subquery(THD *thd)
       11. Parent query block does not prohibit semi-join.
   */
   if (semijoin_enabled(thd) &&
-      in_predicate &&                                                   // 1
+      predicate &&                                                      // 1
       !is_part_of_union() &&                                            // 2
       !group_list.elements &&                                           // 3
       !m_having_cond && !with_sum_func &&                               // 4
       (outer->resolve_place == st_select_lex::RESOLVE_CONDITION ||      // 5a
-       outer->resolve_place == st_select_lex::RESOLVE_JOIN_NEST) &&     // 5a
+          outer->resolve_place == st_select_lex::RESOLVE_JOIN_NEST) &&  // 5a
       !outer->semijoin_disallowed &&                                    // 5b
       outer->sj_candidates &&                                           // 6
       leaf_table_count > 0 &&                                           // 7
-      in_predicate->exec_method ==
-                           Item_exists_subselect::EXEC_UNSPECIFIED &&   // 8
+      predicate->exec_method ==
+          Item_exists_subselect::EXEC_UNSPECIFIED &&                    // 8
       outer->leaf_table_count &&                                        // 9
       !((active_options() | outer->active_options()) &
-        SELECT_STRAIGHT_JOIN) &&                                        //10
+          SELECT_STRAIGHT_JOIN) &&                                      //10
       !(outer->active_options() & SELECT_NO_SEMI_JOIN))                 //11
   {
     DBUG_PRINT("info", ("Subquery is semi-join conversion candidate"));
 
     /* Notify in the subquery predicate where it belongs in the query graph */
-    in_predicate->embedding_join_nest= outer->resolve_nest;
+    predicate->embedding_join_nest= outer->resolve_nest;
 
     /* Register the subquery for further processing in flatten_subqueries() */
-    outer->sj_candidates->push_back(in_predicate);
+    outer->sj_candidates->push_back(predicate);
     chose_semijoin= true;
   }
 
@@ -1867,7 +1877,8 @@ SELECT_LEX::convert_subquery_to_semijoin(Item_exists_subselect *subq_pred)
   THD *const thd= subq_pred->unit->thd;
   DBUG_ENTER("convert_subquery_to_semijoin");
 
-  assert(subq_pred->substype() == Item_subselect::IN_SUBS);
+  assert(subq_pred->substype() == Item_subselect::IN_SUBS ||
+         subq_pred->substype() == Item_subselect::EXISTS_SUBS);
 
   bool outer_join= false;  // True if predicate is inner to an outer join
 
@@ -2197,6 +2208,52 @@ SELECT_LEX::convert_subquery_to_semijoin(Item_exists_subselect *subq_pred)
 
     // Attach semi-join condition to semi-join nest
     sj_nest->set_sj_cond(sj_cond);
+  }
+  else   // EXISTS_SUBS
+  {
+    subq_pred->exec_method= Item_exists_subselect::EXEC_SEMI_JOIN;
+    Item *sj_cond= subq_select->where_cond();
+    Opt_trace_array sj_on_trace(&thd->opt_trace,
+                                "evaluating_constant_semijoin_conditions");
+    sj_cond->top_level_item();
+    // Attach semi-join condition to semi-join nest
+    sj_nest->set_sj_cond(sj_cond);
+  }
+
+  /*
+    The WHERE clause and the join conditions may contain equalities that may
+    be leveraged by semi-join strategies (e.g to set up key lookups in
+    semi-join materialization), decorrelate them (ie. add respective fields
+    and expressions to sj_inner_exprs and sj_outer_exprs).
+  */
+  if (subq_select->where_cond()) {
+    Item *base_cond = subq_select->where_cond();
+    Item_func *func;
+    Item_cond *cond;
+
+    if (base_cond->type() == Item::FUNC_ITEM &&
+        (func = down_cast<Item_func *>(base_cond)) &&
+        func->functype() == Item_func::EQ_FUNC)
+    {
+      decorrelate_equality(&nested_join->sj_outer_exprs,
+                           &nested_join->sj_inner_exprs, func);
+    }
+    else if (base_cond->type() == Item::COND_ITEM &&
+        (cond = down_cast<Item_cond *>(base_cond)) &&
+        cond->functype() == Item_func::COND_AND_FUNC)
+    {
+      List<Item> *args = cond->argument_list();
+      List_iterator<Item> li(*args);
+      Item *item;
+      while ((item = li++)) {
+        if (item->type() == Item::FUNC_ITEM &&
+            (func = down_cast<Item_func *>(item)) &&
+            func->functype() == Item_func::EQ_FUNC) {
+          decorrelate_equality(&nested_join->sj_outer_exprs,
+                               &nested_join->sj_inner_exprs, func);
+        }
+      }
+    }
   }
 
   // Unlink the subquery's query expression:
@@ -2639,7 +2696,8 @@ bool SELECT_LEX::flatten_subqueries()
     /*
       Currently, we only support transformation of IN subqueries.
     */
-    assert((*subq)->substype() == Item_subselect::IN_SUBS);
+    assert((*subq)->substype() == Item_subselect::IN_SUBS ||
+           (*subq)->substype() == Item_subselect::EXISTS_SUBS);
 
     st_select_lex *child_select= (*subq)->unit->first_select();
 
@@ -2780,6 +2838,59 @@ static void propagate_nullability(List<TABLE_LIST> *tables, bool nullable)
     propagate_nullability(&tr->nested_join->join_list,
                           nullable || tr->outer_join);
   }
+}
+
+
+/**
+  Try to decorrelate an (in)equality node. The node can be decorrelated if one
+  argument contains only outer references and the other argument contains
+  references only to local tables.
+  Both arguments should be deterministic.
+  const-for-execution values are accepted in both arguments.
+
+  @note that a predicate like '(a,b) IN ((c,d))' is changed to two equalities
+  only during optimization, so at the present stage it isn't decorrelate-able.
+
+  @param sj_outer_exprs Object for recording the decorrelated outer expressions
+  @param sj_inner_exprs Object for recording the decorrelated inner expressions
+  @param func    The query function node
+
+  @returns false if success, true if error
+*/
+static bool decorrelate_equality(List<Item> *sj_outer_exprs, List<Item> *sj_inner_exprs,
+                                 Item_func *func) {
+  Item_bool_func2 *bool_func = down_cast<Item_bool_func2 *>(func);
+  Item *const left = bool_func->arguments()[0];
+  Item *const right = bool_func->arguments()[1];
+  Item *inner = nullptr;
+  Item *outer = nullptr;
+  table_map left_used_tables = left->used_tables() & ~PARAM_TABLE_BIT;
+  table_map right_used_tables = right->used_tables() & ~PARAM_TABLE_BIT;
+
+  if ((left_used_tables & RAND_TABLE_BIT) ||
+      (right_used_tables & RAND_TABLE_BIT))
+    return false;
+
+  if (left_used_tables == OUTER_REF_TABLE_BIT) {
+    outer = left;
+  } else if (!(left_used_tables & OUTER_REF_TABLE_BIT)) {
+    inner = left;
+  }
+  if (right_used_tables == OUTER_REF_TABLE_BIT) {
+    outer = right;
+  } else if (!(right_used_tables & OUTER_REF_TABLE_BIT)) {
+    inner = right;
+  }
+  if (inner == nullptr || outer == nullptr)
+    return false;
+
+  // Equalities over row items cannot be decorrelated
+  if (outer->type() == Item::ROW_ITEM)
+    return false;
+
+  sj_inner_exprs->push_back(inner);
+  sj_outer_exprs->push_back(outer);
+  return false;
 }
 
 
