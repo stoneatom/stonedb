@@ -23,6 +23,7 @@
 
 namespace Tianmu {
 namespace vcolumn {
+
 SingleColumn::SingleColumn(core::PhysicalColumn *col, core::MultiIndex *multi_index, int alias, int col_no,
                            core::JustATable *source_table, int d)
     : VirtualColumn(col->Type(), multi_index), col_(col) {
@@ -172,7 +173,7 @@ void SingleColumn::EvaluatePackImpl(core::MIUpdatingIterator &mit, core::Descrip
   col_->EvaluatePack(mit, dim_, desc);
 }
 
-common::RSValue SingleColumn::RoughCheckImpl(const core::MIIterator &mit, core::Descriptor &d) {
+common::RoughSetValue SingleColumn::RoughCheckImpl(const core::MIIterator &mit, core::Descriptor &d) {
   if (mit.GetCurPackrow(dim_) >= 0) {
     // check whether isn't it a join
     SingleColumn *sc = nullptr;
@@ -183,7 +184,7 @@ common::RSValue SingleColumn::RoughCheckImpl(const core::MIIterator &mit, core::
     else  // One-dim_ rough check
       return col_->RoughCheck(mit.GetCurPackrow(dim_), d, mit.NullsPossibleInPack(dim_));
   } else
-    return common::RSValue::RS_SOME;
+    return common::RoughSetValue::RS_SOME;
 }
 
 void SingleColumn::DisplayAttrStats() { col_->DisplayAttrStats(multi_index_->GetFilter(dim_)); }
@@ -196,5 +197,6 @@ char *SingleColumn::ToString(char p_buf[], size_t buf_ct) const {
     std::snprintf(p_buf, buf_ct, "t%da*", dim_);
   return p_buf;
 }
+
 }  // namespace vcolumn
 }  // namespace Tianmu

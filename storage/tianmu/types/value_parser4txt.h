@@ -25,6 +25,7 @@
 
 namespace Tianmu {
 namespace types {
+
 class ValueParserForText {
  public:
   ValueParserForText() {}
@@ -33,23 +34,23 @@ class ValueParserForText {
   static auto GetParsingFuntion(const core::AttributeTypeInfo &at)
       -> std::function<common::ErrorCode(BString const &, int64_t &)> {
     switch (at.Type()) {
-      case common::CT::NUM:
+      case common::ColumnType::NUM:
         return std::bind<common::ErrorCode>(&ParseDecimal, std::placeholders::_1, std::placeholders::_2, at.Precision(),
                                             at.Scale());
-      case common::CT::REAL:
-      case common::CT::FLOAT:
-      case common::CT::BYTEINT:
-      case common::CT::SMALLINT:
-      case common::CT::MEDIUMINT:
-      case common::CT::INT:
+      case common::ColumnType::REAL:
+      case common::ColumnType::FLOAT:
+      case common::ColumnType::BYTEINT:
+      case common::ColumnType::SMALLINT:
+      case common::ColumnType::MEDIUMINT:
+      case common::ColumnType::INT:
         return std::bind<common::ErrorCode>(&ParseNumeric, std::placeholders::_1, std::placeholders::_2, at.Type());
-      case common::CT::BIGINT:
+      case common::ColumnType::BIGINT:
         return &ParseBigIntAdapter;
-      case common::CT::DATE:
-      case common::CT::TIME:
-      case common::CT::YEAR:
-      case common::CT::DATETIME:
-      case common::CT::TIMESTAMP:
+      case common::ColumnType::DATE:
+      case common::ColumnType::TIME:
+      case common::ColumnType::YEAR:
+      case common::ColumnType::DATETIME:
+      case common::ColumnType::TIMESTAMP:
         return std::bind<common::ErrorCode>(&ParseDateTimeAdapter, std::placeholders::_1, std::placeholders::_2,
                                             at.Type());
       default:
@@ -59,19 +60,19 @@ class ValueParserForText {
     return nullptr;
   }
 
-  static common::ErrorCode ParseNumeric(BString const &rcs, int64_t &out, common::CT at);
+  static common::ErrorCode ParseNumeric(BString const &rcs, int64_t &out, common::ColumnType at);
   static common::ErrorCode ParseBigIntAdapter(const BString &rcs, int64_t &out);
   static common::ErrorCode ParseDecimal(BString const &rcs, int64_t &out, short precision, short scale);
-  static common::ErrorCode ParseDateTimeAdapter(BString const &rcs, int64_t &out, common::CT at);
+  static common::ErrorCode ParseDateTimeAdapter(BString const &rcs, int64_t &out, common::ColumnType at);
 
-  static common::ErrorCode Parse(const BString &rcs, RCNum &rcn, common::CT at);
+  static common::ErrorCode Parse(const BString &rcs, RCNum &rcn, common::ColumnType at);
   static common::ErrorCode ParseNum(const BString &rcs, RCNum &rcn, short scale);
   static common::ErrorCode ParseBigInt(const BString &rcs, RCNum &out);
-  static common::ErrorCode ParseReal(const BString &rcbs, RCNum &rcn, common::CT at);
-  static common::ErrorCode ParseDateTime(const BString &rcs, RCDateTime &rcv, common::CT at);
+  static common::ErrorCode ParseReal(const BString &rcbs, RCNum &rcn, common::ColumnType at);
+  static common::ErrorCode ParseDateTime(const BString &rcs, RCDateTime &rcv, common::ColumnType at);
 
  private:
-  static common::ErrorCode ParseDateTimeOrTimestamp(const BString &rcs, RCDateTime &rcv, common::CT at);
+  static common::ErrorCode ParseDateTimeOrTimestamp(const BString &rcs, RCDateTime &rcv, common::ColumnType at);
   static common::ErrorCode ParseTime(const BString &rcs, RCDateTime &rcv);
   static common::ErrorCode ParseDate(const BString &rcs, RCDateTime &rcv);
   static common::ErrorCode ParseYear(const BString &rcs, RCDateTime &rcv);

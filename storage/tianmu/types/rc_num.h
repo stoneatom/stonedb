@@ -30,23 +30,23 @@ class RCNum : public ValueBasic<RCNum> {
   friend class Engine;
 
  public:
-  RCNum(common::CT attrt = common::CT::NUM);
-  RCNum(int64_t value, short scale = -1, bool dbl = false, common::CT attrt = common::CT::UNK);
+  RCNum(common::ColumnType attrt = common::ColumnType::NUM);
+  RCNum(int64_t value, short scale = -1, bool dbl = false, common::ColumnType attrt = common::ColumnType::UNK);
   RCNum(double value);
   RCNum(const RCNum &);
   ~RCNum();
 
-  RCNum &Assign(int64_t value, short scale = -1, bool dbl = false, common::CT attrt = common::CT::UNK);
+  RCNum &Assign(int64_t value, short scale = -1, bool dbl = false, common::ColumnType attrt = common::ColumnType::UNK);
   RCNum &Assign(double value);
 
-  static common::ErrorCode Parse(const BString &rcs, RCNum &rcn, common::CT at = common::CT::UNK);
-  static common::ErrorCode ParseReal(const BString &, RCNum &, common::CT at);
+  static common::ErrorCode Parse(const BString &rcs, RCNum &rcn, common::ColumnType at = common::ColumnType::UNK);
+  static common::ErrorCode ParseReal(const BString &, RCNum &, common::ColumnType at);
   static common::ErrorCode ParseNum(const BString &, RCNum &, short scale = -1);
 
   RCNum &operator=(const RCNum &rcn);
   RCNum &operator=(const RCDataType &rcdt) override;
 
-  common::CT Type() const override;
+  common::ColumnType Type() const override;
 
   bool operator==(const RCDataType &rcdt) const override;
   bool operator<(const RCDataType &rcdt) const override;
@@ -106,7 +106,7 @@ class RCNum : public ValueBasic<RCNum> {
   ushort scale_;  // means 'scale' actually
   bool is_double_;
   bool is_dot_;
-  common::CT attr_type_;
+  common::ColumnType attr_type_;
 
  public:
   const static ValueTypeEnum value_type_ = ValueTypeEnum::NUMERIC_TYPE;

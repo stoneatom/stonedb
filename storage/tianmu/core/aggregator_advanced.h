@@ -26,6 +26,7 @@
 
 namespace Tianmu {
 namespace core {
+
 /*! \brief A generalization of aggregation algorithms (counters) to be used in
  * GROUP BY etc. See "Aggregator.h" for more details.
  *
@@ -213,7 +214,7 @@ class AggregatorGroupConcat : public TIANMUAggregator {
  public:
   using TIANMUAggregator::PutAggregatedValue;
   AggregatorGroupConcat() = delete;
-  AggregatorGroupConcat(SI si, common::CT type) : si(si), attrtype(type) {}
+  AggregatorGroupConcat(SI si, common::ColumnType type) : si(si), attrtype(type) {}
   AggregatorGroupConcat(const AggregatorGroupConcat &sec)
       : TIANMUAggregator(sec), si(sec.si), gconcat_maxlen(sec.gconcat_maxlen), attrtype(sec.attrtype) {}
 
@@ -240,8 +241,9 @@ class AggregatorGroupConcat : public TIANMUAggregator {
   const SI si{",", ORDER_NOT_RELEVANT};                     // stonedb8
   const uint gconcat_maxlen = tianmu_group_concat_max_len;  // stonedb8
   std::map<unsigned char *, unsigned int> lenmap;           // store aggregation column length
-  common::CT attrtype = common::CT::STRING;
+  common::ColumnType attrtype = common::ColumnType::STRING;
 };
+
 }  // namespace core
 }  // namespace Tianmu
 

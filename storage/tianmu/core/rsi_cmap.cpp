@@ -23,6 +23,7 @@
 
 namespace Tianmu {
 namespace core {
+
 RSIndex_CMap::RSIndex_CMap(const fs::path &dir, common::TX_ID ver) {
   m_path = dir / common::COL_FILTER_CMAP_DIR;
   auto fpath = dir / common::COL_FILTER_CMAP_DIR / ver.ToString();
@@ -80,22 +81,22 @@ int RSIndex_CMap::Count(int pack, uint pos) {
   return d;
 }
 
-// Results:		common::RSValue::RS_NONE - there is no objects having values
+// Results:		common::RoughSetValue::RS_NONE - there is no objects having values
 // between min_v and max_v (including)
-//				common::RSValue::RS_SOME - some objects from this pack
+//				common::RoughSetValue::RS_SOME - some objects from this pack
 // may have
-// values between min_v and max_v 				common::RSValue::RS_ALL	-
+// values between min_v and max_v 				common::RoughSetValue::RS_ALL	-
 // all objects from this pack do have values between min_v and max_v
-common::RSValue RSIndex_CMap::IsValue(types::BString min_v, types::BString max_v, int pack) {
+common::RoughSetValue RSIndex_CMap::IsValue(types::BString min_v, types::BString max_v, int pack) {
   ASSERT(size_t(pack) < hdr.no_pack);
 
   if (min_v == max_v) {
     auto size = min_v.size() < hdr.no_positions ? min_v.size() : hdr.no_positions;
     for (uint pos = 0; pos < size; pos++) {
       if (!IsSet(pack, (unsigned char)min_v[pos], pos))
-        return common::RSValue::RS_NONE;
+        return common::RoughSetValue::RS_NONE;
     }
-    return common::RSValue::RS_SOME;
+    return common::RoughSetValue::RS_SOME;
   } else {
     // TODO: may be further optimized
     unsigned char f = 0, l = 255;
@@ -104,12 +105,12 @@ common::RSValue RSIndex_CMap::IsValue(types::BString min_v, types::BString max_v
     if (max_v.len_ > 0)
       l = (unsigned char)max_v[0];
     if (f > l || !IsAnySet(pack, f, l, 0))
-      return common::RSValue::RS_NONE;
-    return common::RSValue::RS_SOME;
+      return common::RoughSetValue::RS_NONE;
+    return common::RoughSetValue::RS_SOME;
   }
 }
 
-common::RSValue RSIndex_CMap::IsLike(types::BString pattern, int pack, char escape_character) {
+common::RoughSetValue RSIndex_CMap::IsLike(types::BString pattern, int pack, char escape_character) {
   // we can exclude cases: "ala%..." and "a_l_a%..."
   char *p = pattern.val_;  // just for short...
   uint pos = 0;
@@ -117,10 +118,10 @@ common::RSValue RSIndex_CMap::IsLike(types::BString pattern, int pack, char esca
     if (p[pos] == '%' || p[pos] == escape_character)
       break;
     if (p[pos] != '_' && !IsSet(pack, p[pos], pos))
-      return common::RSValue::RS_NONE;
+      return common::RoughSetValue::RS_NONE;
     pos++;
   }
-  return common::RSValue::RS_SOME;
+  return common::RoughSetValue::RS_SOME;
 }
 
 void RSIndex_CMap::PutValue(const types::BString &v, int pack) {
@@ -175,5 +176,6 @@ void RSIndex_CMap::Update(common::PACK_INDEX pi, DPN &dpn, const PackStr *pack) 
         PutValue(str, pi);
     }
 }
+
 }  // namespace core
 }  // namespace Tianmu

@@ -161,10 +161,10 @@ class Engine final {
   ObjectCache<FilterCoordinate, RSIndex, FilterCoordinate> filter_cache;
 
  public:
-  static common::CT GetCorrespondingType(const Field &field);
+  static common::ColumnType GetCorrespondingType(const Field &field);
   static AttributeTypeInfo GetCorrespondingATI(Field &field);
   static AttributeTypeInfo GetAttrTypeInfo(const Field &field);
-  static common::CT GetCorrespondingType(const enum_field_types &eft);
+  static common::ColumnType GetCorrespondingType(const enum_field_types &eft);
 
   static bool IsTianmuTable(TABLE *table);
 

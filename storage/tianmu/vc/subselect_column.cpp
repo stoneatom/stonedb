@@ -42,6 +42,7 @@ SubSelectColumn::SubSelectColumn(core::TempTable *tmp_tab_subq_ptr_, core::Multi
       col_idx_ = i;
       break;
     }
+
   ct = tmp_tab_subq_ptr_->GetColumnType(col_idx_);
   core::MysqlExpression::SetOfVars all_params;
 
@@ -50,9 +51,11 @@ SubSelectColumn::SubSelectColumn(core::TempTable *tmp_tab_subq_ptr_, core::Multi
     all_params.insert(params_.begin(), params_.end());
     core::MysqlExpression::tianmu_fields_cache_t tianmufields =
         tmp_tab_subq_ptr_->GetVirtualColumn(i)->GetTIANMUItems();
+
     if (!tianmufields.empty()) {
       for (auto &tianmufield : tianmufields) {
         auto tianmuitem = tianmu_items_.find(tianmufield.first);
+
         if (tianmuitem == tianmu_items_.end())
           tianmu_items_.insert(tianmufield);
         else {
@@ -64,6 +67,7 @@ SubSelectColumn::SubSelectColumn(core::TempTable *tmp_tab_subq_ptr_, core::Multi
 
   for (auto &iter : all_params) {
     auto ndx_it = find(aliases->begin(), aliases->end(), iter.tab);
+
     if (ndx_it != aliases->end()) {
       int ndx = (int)distance(aliases->begin(), ndx_it);
 
@@ -83,6 +87,7 @@ SubSelectColumn::SubSelectColumn(core::TempTable *tmp_tab_subq_ptr_, core::Multi
       params_.insert(iter);
     }
   }
+
   SetBufs(&var_buf_for_exact_);
   var_buf_for_rough_ = var_buf_for_exact_;
 
@@ -90,6 +95,7 @@ SubSelectColumn::SubSelectColumn(core::TempTable *tmp_tab_subq_ptr_, core::Multi
     dim_ = var_map_[0].dim;
   else
     dim_ = -1;
+
   if_first_eval_for_rough_ = true;
   if_out_of_date_rough_ = true;
 }
@@ -107,22 +113,10 @@ SubSelectColumn::SubSelectColumn(const SubSelectColumn &c)
       if_out_of_date_rough_(c.if_out_of_date_rough_) {
   if (c.cache_.get()) {
     cache_ = std::make_shared<core::ValueSet>(*c.cache_.get());
-    // core::ValueSet* vs = new core::ValueSet(*c.cache_.get());
-    // cache = std::shared_ptr<core::ValueSet>(vs);
   }
 }
 
-SubSelectColumn::~SubSelectColumn() {
-  //	if(!!table)
-  //			table->TranslateBackVCs();
-  //
-  //	if(!!table_for_rough)
-  //		table_for_rough->TranslateBackVCs();
-  //	if(table != tmp_tab_subq_ptr_) {
-  //		table.reset();
-  //		table_for_rough.reset();
-  //	}
-}
+SubSelectColumn::~SubSelectColumn() {}
 
 void SubSelectColumn::SetBufs(core::MysqlExpression::var_buf_t *bufs) {
   DEBUG_ASSERT(bufs);
@@ -176,6 +170,7 @@ common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types
 
   PrepareSubqResult(mit, false);
   common::Tribool res = false;
+
   if (!cache_) {
     cache_ = std::shared_ptr<core::ValueSet>(new core::ValueSet(multi_index_->ValueOfPower()));
     cache_->Prepare(Type().GetTypeName(), Type().GetScale(), GetCollation());
@@ -191,6 +186,7 @@ common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types
     for (int64_t i = no_cached_values_; i < tmp_tab_subq_ptr_->NumOfObj(); i++) {
       no_cached_values_++;
       added_new_value = true;
+
       if (tmp_tab_subq_ptr_->IsNull(i, col_idx_)) {
         cache_->AddNull();
         res = common::TRIBOOL_UNKNOWN;
@@ -199,6 +195,7 @@ common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types
         tmp_tab_subq_ptr_->GetTableString(val, i, col_idx_);
         val.MakePersistent();
         cache_->Add(val);
+
         if (CollationStrCmp(GetCollation(), val, v.ToBString()) == 0) {
           res = true;
           break;
@@ -209,6 +206,7 @@ common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types
     for (int64_t i = no_cached_values_; i < tmp_tab_subq_ptr_->NumOfObj(); i++) {
       no_cached_values_++;
       added_new_value = true;
+
       if (tmp_tab_subq_ptr_->IsNull(i, col_idx_)) {
         cache_->AddNull();
         res = common::TRIBOOL_UNKNOWN;
@@ -240,6 +238,7 @@ void SubSelectColumn::PrepareAndFillCache() {
     cache_ = std::shared_ptr<core::ValueSet>(new core::ValueSet(multi_index_->ValueOfPower()));
     cache_->Prepare(Type().GetTypeName(), Type().GetScale(), GetCollation());
   }
+
   for (int64_t i = no_cached_values_; i < tmp_tab_subq_ptr_->NumOfObj(); i++) {
     no_cached_values_++;
     if (tmp_tab_subq_ptr_->IsNull(i, col_idx_)) {
@@ -256,17 +255,19 @@ void SubSelectColumn::PrepareAndFillCache() {
       cache_->Add(value);
     }
   }
+
   cache_->ForcePreparation();
   cache_->Prepare(Type().GetTypeName(), Type().GetScale(), GetCollation());
 }
 
-bool SubSelectColumn::IsSetEncoded(common::CT at,
+bool SubSelectColumn::IsSetEncoded(common::ColumnType at,
                                    int scale)  // checks whether the set is constant and fixed size equal to
                                                // the given one
 {
   if (!cache_ || !cache_->EasyMode() || !tmp_tab_subq_ptr_->IsMaterialized() ||
       no_cached_values_ < tmp_tab_subq_ptr_->NumOfObj())
     return false;
+
   return (scale == ct.GetScale() &&
           (at == expected_type_.GetTypeName() ||
            (core::ATI::IsFixedNumericType(at) && core::ATI::IsFixedNumericType(expected_type_.GetTypeName()))));
@@ -278,12 +279,14 @@ common::Tribool SubSelectColumn::Contains64Impl(const core::MIIterator &mit, int
     common::Tribool contains = false;
     if (val == common::NULL_VALUE_64)
       return common::TRIBOOL_UNKNOWN;
+
     if (cache_->Contains(val))
       contains = true;
     else if (cache_->ContainsNulls())
       contains = common::TRIBOOL_UNKNOWN;
     return contains;
   }
+
   return ContainsImpl(mit, types::RCNum(val, ct.GetScale()));
 }
 
@@ -294,12 +297,14 @@ common::Tribool SubSelectColumn::ContainsStringImpl(const core::MIIterator &mit,
     common::Tribool contains = false;
     if (val.IsNull())
       return common::TRIBOOL_UNKNOWN;
+
     if (cache_->Contains(val))
       contains = true;
     else if (cache_->ContainsNulls())
       contains = common::TRIBOOL_UNKNOWN;
     return contains;
   }
+
   return ContainsImpl(mit, val);
 }
 
@@ -307,6 +312,7 @@ int64_t SubSelectColumn::NumOfValuesImpl(core::MIIterator const &mit) {
   PrepareSubqResult(mit, false);
   if (!tmp_tab_subq_ptr_->IsMaterialized())
     tmp_tab_subq_ptr_->Materialize();
+
   return tmp_tab_subq_ptr_->NumOfObj();
 }
 
@@ -344,6 +350,7 @@ bool SubSelectColumn::ContainsNullImpl(const core::MIIterator &mit) {
   for (int64_t i = 0; i < tmp_tab_subq_ptr_->NumOfObj(); ++i)
     if (tmp_tab_subq_ptr_->IsNull(i, col_idx_))
       return true;
+
   return false;
 }
 
@@ -361,12 +368,14 @@ std::unique_ptr<MultiValColumn::IteratorInterface> SubSelectColumn::EndImpl(core
 void SubSelectColumn::RequestEval(const core::MIIterator &mit, const int tta) {
   first_eval_ = true;
   if_first_eval_for_rough_ = true;
+
   for (uint i = 0; i < tmp_tab_subq_ptr_->NumOfVirtColumns(); i++)
     tmp_tab_subq_ptr_->GetVirtualColumn(i)->RequestEval(mit, tta);
 }
 
 void SubSelectColumn::PrepareSubqResult(const core::MIIterator &mit, bool exists_only) {
   MEASURE_FET("SubSelectColumn::PrepareSubqCopy(...)");
+
   bool cor = IsCorrelated();
   if (!cor) {
     if (tmp_tab_subq_ptr_->IsFullyMaterialized())
@@ -391,6 +400,7 @@ void SubSelectColumn::PrepareSubqResult(const core::MIIterator &mit, bool exists
     }
     tmp_tab_subq_ptr_->ResumeDisplay();
   }
+
   tmp_tab_subq_ptr_->SuspendDisplay();
   try {
     if (exists_only)
@@ -407,14 +417,14 @@ void SubSelectColumn::PrepareSubqResult(const core::MIIterator &mit, bool exists
 void SubSelectColumn::RoughPrepareSubqCopy(const core::MIIterator &mit,
                                            [[maybe_unused]] core::SubSelectOptimizationType sot) {
   MEASURE_FET("SubSelectColumn::RoughPrepareSubqCopy(...)");
+
   tmp_tab_subq_ptr_->CreateTemplateIfNotExists();
   if ((!IsCorrelated() && if_first_eval_for_rough_) || (IsCorrelated() && (FeedArguments(mit, true)))) {
     if_out_of_date_rough_ = false;
-    //		cache_.reset();
-    //		no_cached_values_ = 0;
     tmp_tab_subq_ptr_->ResetToTemplate(true);
     tmp_tab_subq_ptr_->ResetVCStatistics();
     tmp_tab_subq_ptr_->SuspendDisplay();
+
     try {
       tmp_tab_subq_ptr_->RoughProcessParameters(mit, parent_tt_alias_);
     } catch (...) {
@@ -422,17 +432,20 @@ void SubSelectColumn::RoughPrepareSubqCopy(const core::MIIterator &mit,
     }
     tmp_tab_subq_ptr_->ResumeDisplay();
   }
+
   tmp_tab_subq_ptr_->SuspendDisplay();
   try {
     tmp_tab_subq_ptr_->RoughMaterialize(true);
   } catch (...) {
   }
+
   tmp_tab_subq_ptr_->ResumeDisplay();
 }
 
 bool SubSelectColumn::IsCorrelated() const {
   if (var_map_.size() || params_.size())
     return true;
+
   return false;
 }
 
@@ -444,13 +457,16 @@ bool SubSelectColumn::IsNullImpl(const core::MIIterator &mit) {
 types::RCValueObject SubSelectColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool lookup_to_num) {
   PrepareSubqResult(mit, false);
   types::RCValueObject val = tmp_tab_subq_ptr_->GetValueObject(0, col_idx_);
+
   if (expected_type_.IsString())
     return val.ToBString();
+
   if (expected_type_.IsNumeric() && core::ATI::IsStringType(val.Type())) {
     types::RCNum rc;
     types::RCNum::Parse(*static_cast<types::BString *>(val.Get()), rc, expected_type_.GetTypeName());
     val = rc;
   }
+
   return val;
 }
 
@@ -480,6 +496,7 @@ types::RCValueObject SubSelectColumn::GetSetMinImpl(core::MIIterator const &mit)
   PrepareSubqResult(mit, false);
   if (!check_min_max_uptodate_)
     CalculateMinMax();
+
   return min_;
 }
 
@@ -487,6 +504,7 @@ types::RCValueObject SubSelectColumn::GetSetMaxImpl(core::MIIterator const &mit)
   PrepareSubqResult(mit, false);
   if (!check_min_max_uptodate_)
     CalculateMinMax();
+
   return max_;
 }
 bool SubSelectColumn::CheckExists(core::MIIterator const &mit) {
@@ -507,6 +525,7 @@ common::Tribool SubSelectColumn::RoughIsEmpty(core::MIIterator const &mit, core:
 void SubSelectColumn::CalculateMinMax() {
   if (!tmp_tab_subq_ptr_->IsMaterialized())
     tmp_tab_subq_ptr_->Materialize();
+
   if (tmp_tab_subq_ptr_->NumOfObj() == 0) {
     min_ = max_ = types::RCValueObject();
     check_min_max_uptodate_ = true;
@@ -521,24 +540,28 @@ void SubSelectColumn::CalculateMinMax() {
       tmp_tab_subq_ptr_->GetTable_S(val_s, i, col_idx_);
       if (val_s.IsNull())
         continue;
+
       if (!found_not_null && !val_s.IsNull()) {
         found_not_null = true;
         min_s.PersistentCopy(val_s);
         max_s.PersistentCopy(val_s);
         continue;
       }
+
       if (CollationStrCmp(GetCollation(), val_s, max_s) > 0) {
         max_s.PersistentCopy(val_s);
       } else if (CollationStrCmp(GetCollation(), val_s, min_s) < 0) {
         min_s.PersistentCopy(val_s);
       }
     }
+
     min_ = min_s;
     max_ = max_s;
   } else {
     types::RCValueObject val;
     for (int64_t i = 0; i < tmp_tab_subq_ptr_->NumOfObj(); i++) {
       val = tmp_tab_subq_ptr_->GetValueObject(i, col_idx_);
+
       if (expected_type_.IsString()) {
         val = val.ToBString();
         static_cast<types::BString *>(val.Get())->MakePersistent();
@@ -553,6 +576,7 @@ void SubSelectColumn::CalculateMinMax() {
         min_ = max_ = val;
         continue;
       }
+
       if (val > max_) {
         max_ = val;
       } else if (val < min_) {
@@ -560,6 +584,7 @@ void SubSelectColumn::CalculateMinMax() {
       }
     }
   }
+
   check_min_max_uptodate_ = true;
 }
 
@@ -576,36 +601,44 @@ bool SubSelectColumn::FeedArguments(const core::MIIterator &mit, bool for_rough)
       if (cache->second.empty()) {  // empty if TIANMUexpression - feeding unnecessary
         bool ldiff = v != param_cache_for_rough_[iter.var_id];
         diff = diff || ldiff;
+
         if (ldiff)
           param_cache_for_rough_[iter.var_id] = v;
       } else {
         DEBUG_ASSERT(cache != var_buf_for_rough_.end());
         diff = diff || (v != cache->second.begin()->first);
+
         if (diff)
           for (auto &val_it : cache->second) *(val_it.second) = val_it.first = v;
       }
     }
+
     if_first_eval_for_rough_ = false;
+
   } else {
     diff = first_eval_;
     for (auto &iter : var_map_) {
       core::ValueOrNull v = iter.GetTabPtr()->GetComplexValue(mit[iter.dim], iter.col_ndx);
       auto cache = var_buf_for_exact_.find(iter.var_id);
       v.MakeStringOwner();
+
       if (cache->second.empty()) {  // empty if TIANMUexpression - feeding unnecessary
         bool ldiff = v != param_cache_for_exact_[iter.var_id];
         diff = diff || ldiff;
         if (ldiff)
           param_cache_for_exact_[iter.var_id] = v;
+
       } else {
         DEBUG_ASSERT(cache != var_buf_for_exact_.end());
         core::ValueOrNull v1 = *(cache->second.begin()->second);
         core::ValueOrNull v2 = (cache->second.begin()->first);
         diff = diff || (v != cache->second.begin()->first);
+
         if (diff)
           for (auto &val_it : cache->second) *(val_it.second) = val_it.first = v;
       }
     }
+
     first_eval_ = false;
   }
 
@@ -613,6 +646,7 @@ bool SubSelectColumn::FeedArguments(const core::MIIterator &mit, bool for_rough)
     check_min_max_uptodate_ = false;
     if_out_of_date_rough_ = true;
   }
+
   return diff;
 }
 
@@ -621,8 +655,10 @@ void SubSelectColumn::SetExpectedTypeImpl(core::ColumnType const &ct) { expected
 bool SubSelectColumn::MakeParallelReady() {
   core::MIDummyIterator mit(multi_index_);
   PrepareSubqResult(mit, false);
+
   if (!tmp_tab_subq_ptr_->IsMaterialized())
     tmp_tab_subq_ptr_->Materialize();
+
   if (tmp_tab_subq_ptr_->NumOfObj() > tmp_tab_subq_ptr_->GetPageSize())
     return false;  // multipage Attrs - not thread safe
   // below assert doesn't take into account lazy field

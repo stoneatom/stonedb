@@ -37,10 +37,11 @@
 
 namespace Tianmu {
 namespace core {
+
 PackStr::PackStr(DPN *dpn, PackCoordinate pc, ColumnShare *s) : Pack(dpn, pc, s) {
   auto t = s->ColType().GetTypeName();
 
-  if (t == common::CT::BIN || t == common::CT::LONGTEXT)
+  if (t == common::ColumnType::BIN || t == common::ColumnType::LONGTEXT)
     data.len_mode = sizeof(uint32_t);
   else
     data.len_mode = sizeof(uint16_t);
@@ -732,5 +733,6 @@ bool PackStr::LikePrefix(const types::BString &pattern, std::size_t prefixlen, s
 bool PackStr::IsNotMatched(int row, const std::unordered_set<uint16_t> &ids) {
   return ids.find(ids_array_[row]) == ids.end();
 }
+
 }  // namespace core
 }  // namespace Tianmu

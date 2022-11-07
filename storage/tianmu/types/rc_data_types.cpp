@@ -28,8 +28,8 @@ RCDataType::~RCDataType() {}
 bool RCDataType::AreComperable(const RCDataType &rcdt) const { return RCDataType::AreComperable(*this, rcdt); }
 
 bool RCDataType::AreComperable(const RCDataType &rcdt1, const RCDataType &rcdt2) {
-  common::CT att1 = rcdt1.Type();
-  common::CT att2 = rcdt2.Type();
+  common::ColumnType att1 = rcdt1.Type();
+  common::ColumnType att2 = rcdt2.Type();
   return AreComparable(att1, att2);
 }
 
@@ -69,16 +69,18 @@ bool RCDataType::compare(const RCDataType &rcdt, common::Operator op, char like_
   return RCDataType::compare(*this, rcdt, op, like_esc);
 }
 
-bool AreComparable(common::CT attr1_t, common::CT attr2_t) {
+bool AreComparable(common::ColumnType attr1_t, common::ColumnType attr2_t) {
   if (attr1_t == attr2_t)
     return true;
   if ((core::ATI::IsDateTimeType(attr1_t)) && (core::ATI::IsDateTimeType(attr2_t)))
     return true;
-  if ((core::ATI::IsTxtType(attr2_t) && attr1_t == common::CT::VARBYTE) ||
-      (core::ATI::IsTxtType(attr1_t) && attr2_t == common::CT::VARBYTE))
+  if ((core::ATI::IsTxtType(attr2_t) && attr1_t == common::ColumnType::VARBYTE) ||
+      (core::ATI::IsTxtType(attr1_t) && attr2_t == common::ColumnType::VARBYTE))
     return true;
-  if ((((attr1_t == common::CT::TIME) || (attr1_t == common::CT::DATE)) && attr2_t != common::CT::DATETIME) ||
-      (((attr2_t == common::CT::TIME) || (attr2_t == common::CT::DATE)) && attr1_t != common::CT::DATETIME) ||
+  if ((((attr1_t == common::ColumnType::TIME) || (attr1_t == common::ColumnType::DATE)) &&
+       attr2_t != common::ColumnType::DATETIME) ||
+      (((attr2_t == common::ColumnType::TIME) || (attr2_t == common::ColumnType::DATE)) &&
+       attr1_t != common::ColumnType::DATETIME) ||
       (core::ATI::IsBinType(attr1_t) && !core::ATI::IsBinType(attr2_t)) ||
       (core::ATI::IsBinType(attr2_t) && !core::ATI::IsBinType(attr1_t)) ||
       (core::ATI::IsTxtType(attr1_t) && !core::ATI::IsTxtType(attr2_t)) ||
@@ -120,13 +122,13 @@ bool RCDataType::ToReal(const RCDataType &in, RCNum &out) {
       return true;
     }
   } else if (BString *rcs = dynamic_cast<BString *>(const_cast<RCDataType *>(&in))) {
-    if (RCNum::ParseReal(*rcs, out, common::CT::UNK) == common::ErrorCode::SUCCESS)
+    if (RCNum::ParseReal(*rcs, out, common::ColumnType::UNK) == common::ErrorCode::SUCCESS)
       return true;
   }
   return false;
 }
 
-ValueTypeEnum RCDataType::GetValueType(common::CT attr_type) {
+ValueTypeEnum RCDataType::GetValueType(common::ColumnType attr_type) {
   if (core::ATI::IsNumericType(attr_type))
     return ValueTypeEnum::NUMERIC_TYPE;
   else if (core::ATI::IsDateTimeType(attr_type))

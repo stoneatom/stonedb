@@ -30,8 +30,8 @@ ConstColumn::ConstColumn(core::ValueOrNull const &val, core::ColumnType const &c
   dim_ = -1;
   if (ct.IsString())
     ct.SetPrecision(c.GetPrecision());
-  if (c.GetTypeName() == common::CT::TIMESTAMP && shift_to_UTC) {
-    types::RCDateTime rcdt(val.Get64(), common::CT::TIMESTAMP);
+  if (c.GetTypeName() == common::ColumnType::TIMESTAMP && shift_to_UTC) {
+    types::RCDateTime rcdt(val.Get64(), common::ColumnType::TIMESTAMP);
     // needs to convert value_or_null_ to UTC
     MYSQL_TIME myt;
     std::memset(&myt, 0, sizeof(MYSQL_TIME));
@@ -51,7 +51,7 @@ ConstColumn::ConstColumn(core::ValueOrNull const &val, core::ColumnType const &c
       common::GMTSec2GMTTime(&myt, secs_utc);
       myt.second_part = rcdt.MicroSecond();
     }
-    rcdt = types::RCDateTime(myt, common::CT::TIMESTAMP);
+    rcdt = types::RCDateTime(myt, common::ColumnType::TIMESTAMP);
     value_or_null_.SetFixed(rcdt.GetInt64());
   }
 }
@@ -129,7 +129,7 @@ types::RCValueObject ConstColumn::GetValueImpl([[maybe_unused]] const core::MIIt
     return types::RCDateTime(value_or_null_.Get64(), TypeName());
   if (core::ATI::IsRealType(TypeName()))
     return types::RCNum(value_or_null_.Get64(), 0, true, TypeName());
-  if (lookup_to_num || TypeName() == common::CT::NUM)
+  if (lookup_to_num || TypeName() == common::ColumnType::NUM)
     return types::RCNum((int64_t)value_or_null_.Get64(), Type().GetScale());
   DEBUG_ASSERT(!"Illegal execution path");
   return types::RCValueObject();

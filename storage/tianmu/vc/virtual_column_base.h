@@ -347,7 +347,9 @@ class VirtualColumnBase : public core::Column {
     return EvaluateOnIndexImpl(mit, desc, limit);
   }
   //! check whether any value from the pack may meet the condition
-  inline common::RSValue RoughCheck(const core::MIIterator &it, core::Descriptor &d) { return RoughCheckImpl(it, d); }
+  inline common::RoughSetValue RoughCheck(const core::MIIterator &it, core::Descriptor &d) {
+    return RoughCheckImpl(it, d);
+  }
   //! is a datapack pointed by \e mit NULLS_ONLY, UNIFORM, UNIFORM_AND_NULLS or
   //! NORMAL
   core::PackOntologicalStatus GetPackOntologicalStatus(const core::MIIterator &mit) {
@@ -508,7 +510,7 @@ class VirtualColumnBase : public core::Column {
   virtual size_t MaxStringSizeImpl() = 0;  // maximal byte string length in column
 
   virtual core::PackOntologicalStatus GetPackOntologicalStatusImpl(const core::MIIterator &) = 0;
-  virtual common::RSValue RoughCheckImpl(const core::MIIterator &, core::Descriptor &);
+  virtual common::RoughSetValue RoughCheckImpl(const core::MIIterator &, core::Descriptor &);
   virtual void EvaluatePackImpl(core::MIUpdatingIterator &mit, core::Descriptor &) = 0;
   virtual common::ErrorCode EvaluateOnIndexImpl(core::MIUpdatingIterator &mit, core::Descriptor &, int64_t limit) = 0;
 

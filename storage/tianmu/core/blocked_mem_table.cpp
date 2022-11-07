@@ -19,6 +19,7 @@
 
 namespace Tianmu {
 namespace core {
+
 MemBlockManager::~MemBlockManager() {
   for (auto &it : free_blocks) dealloc(it);
 
@@ -33,7 +34,8 @@ void *MemBlockManager::GetBlock() {
 
   {
     std::scoped_lock g(mx);
-    void *p;
+    void *p = nullptr;
+
     if (free_blocks.size() > 0) {
       p = free_blocks[free_blocks.size() - 1];
       free_blocks.pop_back();
@@ -41,6 +43,7 @@ void *MemBlockManager::GetBlock() {
       p = alloc(block_size, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
       current_size += block_size;
     }
+
     used_blocks.insert(p);
     return p;
   }
@@ -49,38 +52,44 @@ void *MemBlockManager::GetBlock() {
 int MemBlockManager::MemoryBlocksLeft() {
   if (size_limit == -1)
     return 9999;  // uninitialized => no limit
-  int64_t s;
-  {
-    std::scoped_lock g(mx);
-    s = free_blocks.size();
-  }
+
+  std::scoped_lock g(mx);
+  int64_t s = free_blocks.size();
+
   int64_t size_in_near_future = current_size + block_size * ((no_threads >> 1) - s);
   if (size_in_near_future > size_limit)
     return 0;
+
   return int((size_limit - size_in_near_future) / block_size);
 }
 
 void MemBlockManager::FreeBlock(void *b) {
   if (b == nullptr)
     return;
+
   std::scoped_lock g(mx);
   size_t r = used_blocks.erase(b);
-  if (r == 1) {
+  if (r == 1) {  // find one.
     if (size_limit == -1) {
       // no limit - keep a few freed blocks
       if (free_blocks.size() > 5) {
         dealloc(b);
         current_size -= block_size;
-      } else
+
+      } else {
         free_blocks.push_back(b);
-    } else
-        // often freed block are immediately required by other - keep some of them
-        // above the limit in the pool
-        if (current_size > size_limit + block_size * (no_threads + 1)) {
-      dealloc(b);
-      current_size -= block_size;
-    } else
-      free_blocks.push_back(b);
+      }
+    } else {
+      // often freed block are immediately required by other - keep some of them
+      // above the limit in the pool
+      if (current_size > size_limit + block_size * (no_threads + 1)) {
+        dealloc(b);
+        current_size -= block_size;
+
+      } else {
+        free_blocks.push_back(b);
+      }
+    }
   }  // else not found (already erased)
 }
 
@@ -89,24 +98,29 @@ void MemBlockManager::FreeBlock(void *b) {
 void BlockedRowMemStorage::Init(int rowl, std::shared_ptr<MemBlockManager> mbm, uint64_t initial_size,
                                 int min_block_len) {
   DEBUG_ASSERT(no_rows == 0);
+
   CalculateBlockSize(rowl, min_block_len);
   bman = mbm;
   bman->SetBlockSize(block_size);
   row_len = rowl;
   release = false;
   current = -1;
+
   if (initial_size > 0)
     for (unsigned int i = 0; i < (initial_size / rows_in_block) + 1; i++) {
       void *b = bman->GetBlock();
       if (!b)
         throw common::OutOfMemoryException("too large initial BlockedRowMemStorage size");
+
       blocks.push_back(b);
     }
+
   no_rows = initial_size;
 }
 
 void BlockedRowMemStorage::Clear() {
   for (auto &b : blocks) bman->FreeBlock(b);  // may be nullptr already
+
   blocks.clear();
   no_rows = 0;
   release = false;
@@ -130,9 +144,11 @@ BlockedRowMemStorage::BlockedRowMemStorage(const BlockedRowMemStorage &bs)
 //! size >= min_block_size
 void BlockedRowMemStorage::CalculateBlockSize(int row_len, int min_block_size) {
   npower = 0;
+
   for (rows_in_block = 1; row_len * rows_in_block < min_block_size; rows_in_block *= 2) {
     ++npower;
   }
+
   ndx_mask = (1 << npower) - 1;
   block_size = rows_in_block * row_len;
 }
@@ -142,6 +158,7 @@ int64_t BlockedRowMemStorage::AddRow(const void *r) {
     void *b = bman->GetBlock();
     blocks.push_back(b);
   }
+
   std::memcpy(((char *)blocks.back()) + (no_rows & ndx_mask) * row_len, r, row_len);
 
   return no_rows++;
@@ -152,6 +169,7 @@ int64_t BlockedRowMemStorage::AddEmptyRow() {
     void *b = bman->GetBlock();
     blocks.push_back(b);
   }
+
   std::memset(((char *)blocks.back()) + (no_rows & ndx_mask) * row_len, 0, row_len);
 
   return no_rows++;
@@ -159,9 +177,12 @@ int64_t BlockedRowMemStorage::AddEmptyRow() {
 
 void BlockedRowMemStorage::Rewind(bool rel) {
   DEBUG_ASSERT(!release);
+
   release = rel;
+
   if (no_rows == 0) {
     current = -1;
+
   } else {
     current = 0;
   }
@@ -172,6 +193,7 @@ bool BlockedRowMemStorage::NextRow() {
     current = -1;
     return false;
   }
+
   if (release) {
     if ((current & ndx_mask) == 0) {
       bman->FreeBlock(blocks[(current >> npower) - 1]);
@@ -186,6 +208,7 @@ bool BlockedRowMemStorage::SetCurrentRow(int64_t row) {
   if (row <= no_rows) {
     current = row;
     return true;
+
   } else {
     return false;
   }
@@ -195,9 +218,11 @@ bool BlockedRowMemStorage::SetEndRow(int64_t row) {
   if (row <= no_rows) {
     no_rows = row;
     return true;
+
   } else {
     return false;
   }
 }
+
 }  // namespace core
 }  // namespace Tianmu

@@ -33,7 +33,7 @@ namespace types {
 class BString;
 class RCNum;
 
-bool AreComparable(common::CT att1, common::CT att2);
+bool AreComparable(common::ColumnType att1, common::ColumnType att2);
 
 //  TYPE            range
 // -------------------------------------------
@@ -140,7 +140,7 @@ class RCDataType {
  public:
   virtual std::unique_ptr<RCDataType> Clone() const = 0;
   virtual BString ToBString() const = 0;
-  virtual common::CT Type() const = 0;
+  virtual common::ColumnType Type() const = 0;
   virtual ValueTypeEnum GetValueType() const = 0;
 
   bool AreComperable(const RCDataType &) const;
@@ -163,7 +163,7 @@ class RCDataType {
   bool null_;
 
  public:
-  static ValueTypeEnum GetValueType(common::CT attr_type);
+  static ValueTypeEnum GetValueType(common::ColumnType attr_type);
   static bool ToDecimal(const RCDataType &in, int scale, RCNum &out);
   static bool ToInt(const RCDataType &in, RCNum &out);
   static bool ToReal(const RCDataType &in, RCNum &out);
@@ -210,7 +210,7 @@ class BString : public ValueBasic<BString> {
   void PersistentCopy(const BString &rcbs);  // like "=", but makes this persistent_
 
   static bool Parse(BString &in, BString &out);
-  common::CT Type() const override;
+  common::ColumnType Type() const override;
 
   void PutString(char *&dest, ushort len, bool move_ptr = true) const;
   void PutVarchar(char *&dest, uchar prefixlen, bool move_ptr) const;
@@ -299,21 +299,21 @@ class RCDateTime : public ValueBasic<RCDateTime> {
   friend class ValueParserForText;
 
  public:
-  RCDateTime(int64_t dt, common::CT at);
+  RCDateTime(int64_t dt, common::ColumnType at);
   RCDateTime(short year = common::NULL_VALUE_SH);
   RCDateTime(short year, short month, short day, short hour, short minute, short second,
-             common::CT at);                                // DataTime , Timestamp
-  RCDateTime(short yh, short mm, short ds, common::CT at);  // Date or Time
+             common::ColumnType at);                                // DataTime , Timestamp
+  RCDateTime(short yh, short mm, short ds, common::ColumnType at);  // Date or Time
   RCDateTime(const RCDateTime &rcdt);
-  RCDateTime(const MYSQL_TIME &myt, common::CT at);
+  RCDateTime(const MYSQL_TIME &myt, common::ColumnType at);
 
-  RCDateTime(RCNum &rcn, common::CT at);
+  RCDateTime(RCNum &rcn, common::ColumnType at);
   ~RCDateTime();
 
  public:
   RCDateTime &operator=(const RCDateTime &rcdt);
   RCDateTime &operator=(const RCDataType &rcdt) override;
-  RCDateTime &Assign(int64_t v, common::CT at);
+  RCDateTime &Assign(int64_t v, common::ColumnType at);
 
   void Store(MYSQL_TIME *my_time, enum_mysql_timestamp_type t) { dt_.Store(my_time, t); }
   bool IsZero() const;
@@ -334,7 +334,7 @@ class RCDateTime : public ValueBasic<RCDateTime> {
   bool ToInt64(int64_t &value) const;
   char *GetDataBytesPointer() const override { return reinterpret_cast<char *>(const_cast<DT *>(&dt_)); }
   BString ToBString() const override;
-  common::CT Type() const override;
+  common::ColumnType Type() const override;
   uint GetHashCode() const override;
 
   bool operator==(const RCDataType &rcdt) const override;
@@ -343,13 +343,13 @@ class RCDateTime : public ValueBasic<RCDateTime> {
   bool operator>=(const RCDataType &rcdt) const override;
   bool operator<=(const RCDataType &rcdt) const override;
   bool operator!=(const RCDataType &rcdt) const override;
-  int64_t operator-(const RCDateTime &sec) const;  // difference in days, only for common::CT::DATE
+  int64_t operator-(const RCDateTime &sec) const;  // difference in days, only for common::ColumnType::DATE
 
   short Year() const { return dt_.year; }
   short Month() const { return dt_.month; }
   short Day() const { return dt_.day; }
   short Hour() const {
-    if (at_ != common::CT::TIME)
+    if (at_ != common::ColumnType::TIME)
       return dt_.hour;
     return dt_.time_hour;
   }
@@ -359,7 +359,7 @@ class RCDateTime : public ValueBasic<RCDateTime> {
 
  private:
   DT dt_{};
-  common::CT at_;
+  common::ColumnType at_;
 
  private:
   int compare(const RCDateTime &rcdt) const;
@@ -367,8 +367,8 @@ class RCDateTime : public ValueBasic<RCDateTime> {
 
  public:
   static void AdjustTimezone(RCDateTime &dt);
-  static common::ErrorCode Parse(const BString &, RCDateTime &, common::CT);
-  static common::ErrorCode Parse(const int64_t &, RCDateTime &, common::CT, int precision = -1);
+  static common::ErrorCode Parse(const BString &, RCDateTime &, common::ColumnType);
+  static common::ErrorCode Parse(const int64_t &, RCDateTime &, common::ColumnType, int precision = -1);
 
   static bool CanBeYear(int64_t year);
   static bool CanBeMonth(int64_t month);
@@ -390,8 +390,8 @@ class RCDateTime : public ValueBasic<RCDateTime> {
   static bool IsCorrectTIANMUTimestamp(short year, short month, short day, short hour, short minute, short second);
   static bool IsCorrectTIANMUDatetime(short year, short month, short day, short hour, short minute, short second);
 
-  static short ToCorrectYear(uint v, common::CT at, bool is_year_2 = false);
-  static RCDateTime GetSpecialValue(common::CT at);
+  static short ToCorrectYear(uint v, common::ColumnType at, bool is_year_2 = false);
+  static RCDateTime GetSpecialValue(common::ColumnType at);
   static RCDateTime GetCurrent();
 
  public:
@@ -425,7 +425,7 @@ class RCValueObject {
 
   bool IsNull() const;
 
-  common::CT Type() const { return value_.get() ? value_->Type() : common::CT::UNK; }
+  common::ColumnType Type() const { return value_.get() ? value_->Type() : common::ColumnType::UNK; }
   ValueTypeEnum GetValueType() const { return value_.get() ? value_->GetValueType() : ValueTypeEnum::NULL_TYPE; }
   BString ToBString() const;
   // operator RCDataType*()		{ return value_.get(); }
@@ -643,21 +643,21 @@ const static RCDateTime RC_YEAR_MIN(1901);
 const static RCDateTime RC_YEAR_MAX(2155);
 const static RCDateTime RC_YEAR_SPEC(0);
 
-const static RCDateTime RC_TIME_MIN(-838, 59, 59, common::CT::TIME);
-const static RCDateTime RC_TIME_MAX(838, 59, 59, common::CT::TIME);
-const static RCDateTime RC_TIME_SPEC(0, common::CT::TIME);
+const static RCDateTime RC_TIME_MIN(-838, 59, 59, common::ColumnType::TIME);
+const static RCDateTime RC_TIME_MAX(838, 59, 59, common::ColumnType::TIME);
+const static RCDateTime RC_TIME_SPEC(0, common::ColumnType::TIME);
 
-const static RCDateTime RC_DATE_MIN(100, 1, 1, common::CT::DATE);
-const static RCDateTime RC_DATE_MAX(9999, 12, 31, common::CT::DATE);
-const static RCDateTime RC_DATE_SPEC(0, common::CT::DATE);
+const static RCDateTime RC_DATE_MIN(100, 1, 1, common::ColumnType::DATE);
+const static RCDateTime RC_DATE_MAX(9999, 12, 31, common::ColumnType::DATE);
+const static RCDateTime RC_DATE_SPEC(0, common::ColumnType::DATE);
 
-const static RCDateTime RC_DATETIME_MIN(100, 1, 1, 0, 0, 0, common::CT::DATETIME);
-const static RCDateTime RC_DATETIME_MAX(9999, 12, 31, 23, 59, 59, common::CT::DATETIME);
-const static RCDateTime RC_DATETIME_SPEC(0, common::CT::DATETIME);
+const static RCDateTime RC_DATETIME_MIN(100, 1, 1, 0, 0, 0, common::ColumnType::DATETIME);
+const static RCDateTime RC_DATETIME_MAX(9999, 12, 31, 23, 59, 59, common::ColumnType::DATETIME);
+const static RCDateTime RC_DATETIME_SPEC(0, common::ColumnType::DATETIME);
 
-const static RCDateTime RC_TIMESTAMP_MIN(1970, 01, 01, 00, 00, 00, common::CT::TIMESTAMP);
-const static RCDateTime RC_TIMESTAMP_MAX(2038, 01, 01, 00, 59, 59, common::CT::TIMESTAMP);
-const static RCDateTime RC_TIMESTAMP_SPEC(0, common::CT::TIMESTAMP);
+const static RCDateTime RC_TIMESTAMP_MIN(1970, 01, 01, 00, 00, 00, common::ColumnType::TIMESTAMP);
+const static RCDateTime RC_TIMESTAMP_MAX(2038, 01, 01, 00, 59, 59, common::ColumnType::TIMESTAMP);
+const static RCDateTime RC_TIMESTAMP_SPEC(0, common::ColumnType::TIMESTAMP);
 
 }  // namespace types
 }  // namespace Tianmu

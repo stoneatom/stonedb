@@ -24,7 +24,8 @@
 
 namespace Tianmu {
 namespace core {
-int ATI::TextSize(common::CT attrt, uint precision, int scale, DTCollation collation) {
+
+int ATI::TextSize(common::ColumnType attrt, uint precision, int scale, DTCollation collation) {
   return common::TxtDataFormat::StaticExtrnalSize(attrt, precision, scale, &collation);
 }
 
@@ -36,5 +37,6 @@ const types::RCDataType &AttributeTypeInfo::ValuePrototype() const {
   DEBUG_ASSERT(ATI::IsDateTimeType(attrt));
   return types::RCDateTime::NullValue();
 }
+
 }  // namespace core
 }  // namespace Tianmu

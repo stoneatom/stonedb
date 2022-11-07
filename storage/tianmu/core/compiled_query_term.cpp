@@ -26,9 +26,10 @@
 
 namespace Tianmu {
 namespace core {
-CQTerm::CQTerm() : type(common::CT::UNK), vc(nullptr), vc_id(common::NULL_VALUE_32), is_vc_owner(false) {}
 
-CQTerm::CQTerm(int v) : type(common::CT::UNK), vc(nullptr), vc_id(v), is_vc_owner(false) {}
+CQTerm::CQTerm() : type(common::ColumnType::UNK), vc(nullptr), vc_id(common::NULL_VALUE_32), is_vc_owner(false) {}
+
+CQTerm::CQTerm(int v) : type(common::ColumnType::UNK), vc(nullptr), vc_id(v), is_vc_owner(false) {}
 
 CQTerm::CQTerm(const CQTerm &t) {
   type = t.type;
@@ -105,5 +106,6 @@ char *CQTerm::ToString(char p_buf[], size_t buf_ct, int tab_id) const {
     buf[std::strlen(buf) - 1] = '\0';
   return p_buf;
 }
+
 }  // namespace core
 }  // namespace Tianmu

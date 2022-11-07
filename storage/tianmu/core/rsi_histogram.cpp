@@ -88,17 +88,18 @@ int RSIndex_Hist::Count(int pack, int width) {
   return d;
 }
 
-// Results:		common::RSValue::RS_NONE - there is no objects having values
+// Results:		common::RoughSetValue::RS_NONE - there is no objects having values
 // between min_v and max_v (including)
-//				common::RSValue::RS_SOME - some objects from this pack
+//				common::RoughSetValue::RS_SOME - some objects from this pack
 // may have
-// values between min_v and max_v 				common::RSValue::RS_ALL	-
+// values between min_v and max_v 				common::RoughSetValue::RS_ALL	-
 // all objects from this pack do have values between min_v and max_v
-common::RSValue RSIndex_Hist::IsValue(int64_t min_v, int64_t max_v, int pack, int64_t pack_min, int64_t pack_max) {
+common::RoughSetValue RSIndex_Hist::IsValue(int64_t min_v, int64_t max_v, int pack, int64_t pack_min,
+                                            int64_t pack_max) {
   ASSERT(size_t(pack) < hdr.no_pack, std::to_string(pack) + " < " + std::to_string(hdr.no_pack));
 
   if (IntervalTooLarge(pack_min, pack_max) || IntervalTooLarge(min_v, max_v))
-    return common::RSValue::RS_SOME;
+    return common::RoughSetValue::RS_SOME;
   int min_bit = 0, max_bit = 0;
   if (!Fixed()) {  // floating point
     double dmin_v = *(double *)(&min_v);
@@ -107,26 +108,26 @@ common::RSValue RSIndex_Hist::IsValue(int64_t min_v, int64_t max_v, int pack, in
     double dpack_max = *(double *)(&pack_max);
     DEBUG_ASSERT(dmin_v <= dmax_v);
     if (dmax_v < dpack_min || dmin_v > dpack_max)
-      return common::RSValue::RS_NONE;
+      return common::RoughSetValue::RS_NONE;
     if (dmax_v >= dpack_max && dmin_v <= dpack_min)
-      return common::RSValue::RS_ALL;
+      return common::RoughSetValue::RS_ALL;
     if (dmax_v >= dpack_max || dmin_v <= dpack_min)
-      return common::RSValue::RS_SOME;  // pack_min xor pack_max are present
+      return common::RoughSetValue::RS_SOME;  // pack_min xor pack_max are present
     // now we know that (max_v<pack_max) and (min_v>pack_min) and there is only
-    // common::RSValue::RS_SOME or common::RSValue::RS_NONE answer possible
+    // common::RoughSetValue::RS_SOME or common::RoughSetValue::RS_NONE answer possible
     double interval_len = (dpack_max - dpack_min) / double(RSI_HIST_BITS);
     min_bit = int((dmin_v - dpack_min) / interval_len);
     max_bit = int((dmax_v - dpack_min) / interval_len);
   } else {
     DEBUG_ASSERT(min_v <= max_v);
     if (max_v < pack_min || min_v > pack_max)
-      return common::RSValue::RS_NONE;
+      return common::RoughSetValue::RS_NONE;
     if (max_v >= pack_max && min_v <= pack_min)
-      return common::RSValue::RS_ALL;
+      return common::RoughSetValue::RS_ALL;
     if (max_v >= pack_max || min_v <= pack_min)
-      return common::RSValue::RS_SOME;  // pack_min xor pack_max are present
+      return common::RoughSetValue::RS_SOME;  // pack_min xor pack_max are present
     // now we know that (max_v<pack_max) and (min_v>pack_min) and there is only
-    // common::RSValue::RS_SOME or common::RSValue::RS_NONE answer possible
+    // common::RoughSetValue::RS_SOME or common::RoughSetValue::RS_NONE answer possible
     if (ExactMode(pack_min, pack_max)) {    // exact mode
       min_bit = int(min_v - pack_min - 1);  // translate into [0,...]
       max_bit = int(max_v - pack_min - 1);
@@ -138,13 +139,13 @@ common::RSValue RSIndex_Hist::IsValue(int64_t min_v, int64_t max_v, int pack, in
   }
   DEBUG_ASSERT(min_bit >= 0);
   if (max_bit >= RSI_HIST_BITS)
-    return common::RSValue::RS_SOME;  // it may happen for extremely large numbers (
-                                      // >2^52 )
+    return common::RoughSetValue::RS_SOME;  // it may happen for extremely large numbers (
+                                            // >2^52 )
   for (int i = min_bit; i <= max_bit; i++) {
     if (((*(hist_buffers[pack].data + i / 64) >> (i % 64)) & 0x00000001) != 0)
-      return common::RSValue::RS_SOME;
+      return common::RoughSetValue::RS_SOME;
   }
-  return common::RSValue::RS_NONE;
+  return common::RoughSetValue::RS_NONE;
 }
 
 bool RSIndex_Hist::Intersection(int pack, int64_t pack_min, int64_t pack_max, RSIndex_Hist *sec, int pack2,
@@ -155,10 +156,10 @@ bool RSIndex_Hist::Intersection(int pack, int64_t pack_min, int64_t pack_max, RS
   if (IntervalTooLarge(pack_min, pack_max) || IntervalTooLarge(pack_min2, pack_max2))
     return true;
 
-  if (sec->IsValue(pack_min, pack_min, pack2, pack_min2, pack_max2) != common::RSValue::RS_NONE ||
-      sec->IsValue(pack_max, pack_max, pack2, pack_min2, pack_max2) != common::RSValue::RS_NONE ||
-      IsValue(pack_min2, pack_min2, pack, pack_min, pack_max) != common::RSValue::RS_NONE ||
-      IsValue(pack_max2, pack_max2, pack, pack_min, pack_max) != common::RSValue::RS_NONE)
+  if (sec->IsValue(pack_min, pack_min, pack2, pack_min2, pack_max2) != common::RoughSetValue::RS_NONE ||
+      sec->IsValue(pack_max, pack_max, pack2, pack_min2, pack_max2) != common::RoughSetValue::RS_NONE ||
+      IsValue(pack_min2, pack_min2, pack, pack_min, pack_max) != common::RoughSetValue::RS_NONE ||
+      IsValue(pack_max2, pack_max2, pack, pack_min, pack_max) != common::RoughSetValue::RS_NONE)
     return true;  // intersection found (extreme values)
 
   if (ExactMode(pack_min, pack_max) && ExactMode(pack_min2, pack_max2)) {  // exact mode

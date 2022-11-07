@@ -36,7 +36,7 @@ void DEforTxt::PutText(const types::BString &str) {
       attr_infos_[cur_attr_].GetCollation().collation, str.val_,
       str.val_ + str.len_);    // len in chars
   WriteString(str, str.len_);  // len in bytes
-  if ((attr_infos_[cur_attr_].Type() == common::CT::STRING) && (char_len < attr_infos_[cur_attr_].CharLen()))
+  if ((attr_infos_[cur_attr_].Type() == common::ColumnType::STRING) && (char_len < attr_infos_[cur_attr_].CharLen()))
 // it can be necessary to change the WritePad implementation to something like:
 // collation->cset->fill(cs, copy->to_ptr+copy->from_length,
 // copy->to_length-copy->from_length, '
@@ -56,7 +56,7 @@ void DEforTxt::PutText(const types::BString &str) {
 
 void DEforTxt::PutBin(const types::BString &str) {
   int len = str.size();
-  // if((rcdea[cur_attr_].attrt == common::CT::BYTE) && (len <
+  // if((rcdea[cur_attr_].attrt == common::ColumnType::BYTE) && (len <
   // rcdea[cur_attr_].size))
   //	len = rcdea[cur_attr_].size;
   if (len > 0) {

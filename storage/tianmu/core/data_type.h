@@ -22,6 +22,7 @@
 
 namespace Tianmu {
 namespace core {
+
 struct ColumnType;
 
 // Type of intermediate results of expression evaluation.
@@ -36,11 +37,11 @@ struct ColumnType;
 struct DataType final {
   enum class ValueType { VT_FLOAT, VT_FIXED, VT_STRING, VT_DATETIME, VT_NOTKNOWN = 255 };
   ValueType valtype;
-  common::CT attrtype;  // storage type of TIANMU (only for source columns;
-                        // otherwise common::CT::UNK)
-  int fixscale;         // base-10 scale of ValueType::VT_FIXED (no. of decimal digits after
-                        // comma)
-  int64_t fixmax;       // maximum _absolute_ value possible (upper bound) of ValueType::VT_FIXED;
+  common::ColumnType attrtype;  // storage type of TIANMU (only for source columns;
+                                // otherwise common::ColumnType::UNK)
+  int fixscale;                 // base-10 scale of ValueType::VT_FIXED (no. of decimal digits after
+                                // comma)
+  int64_t fixmax;               // maximum _absolute_ value possible (upper bound) of ValueType::VT_FIXED;
   // fixmax = -1  when upper bound is unknown or doesn't fit in int64_t;
   // precision of a decimal = QuickMath::precision10(fixmax)
   DTCollation collation;  // character set of ValueType::VT_STRING + coercibility
@@ -48,13 +49,13 @@ struct DataType final {
 
   DataType() {
     valtype = ValueType::VT_NOTKNOWN;
-    attrtype = common::CT::UNK;
+    attrtype = common::ColumnType::UNK;
     fixscale = 0;
     fixmax = -1;
     collation = DTCollation();
     precision = -1;
   }
-  DataType(common::CT atype, int prec = 0, int scale = 0, DTCollation collation = DTCollation());
+  DataType(common::ColumnType atype, int prec = 0, int scale = 0, DTCollation collation = DTCollation());
   DataType &operator=(const ColumnType &ct);
 
   bool IsKnown() const { return valtype != ValueType::VT_NOTKNOWN; }
@@ -64,6 +65,7 @@ struct DataType final {
   bool IsString() const { return valtype == ValueType::VT_STRING; }
   bool IsDateTime() const { return valtype == ValueType::VT_DATETIME; }
 };
+
 }  // namespace core
 }  // namespace Tianmu
 

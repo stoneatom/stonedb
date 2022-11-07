@@ -24,17 +24,18 @@
 
 namespace Tianmu {
 namespace types {
+
 const uint PARS_BUF_SIZE = 128;
 
-static int String2DateTime(const BString &s, RCDateTime &rcdt, common::CT at) {
+static int String2DateTime(const BString &s, RCDateTime &rcdt, common::ColumnType at) {
   MYSQL_TIME myt;
   MYSQL_TIME_STATUS not_used;
   if (str_to_datetime(s.GetDataBytesPointer(), s.len_, &myt, TIME_DATETIME_ONLY, &not_used)) {
     return 1;
   }
 
-  if ((at == common::CT::TIMESTAMP) && !validate_my_time(myt)) {  // stonedb8
-    rcdt = RCDateTime(0, common::CT::TIMESTAMP);
+  if ((at == common::ColumnType::TIMESTAMP) && !validate_my_time(myt)) {  // stonedb8
+    rcdt = RCDateTime(0, common::ColumnType::TIMESTAMP);
     return 0;
   }
 
@@ -157,7 +158,7 @@ common::ErrorCode ValueParserForText::ParseNum(const BString &rcs, RCNum &rcn, s
         has_unexpected_sign = true;
       break;
     } else if (*val_ptr == 'd' || *val_ptr == 'D' || *val_ptr == 'e' || *val_ptr == 'E') {
-      tianmuret = RCNum::ParseReal(rcs, rcn, common::CT::REAL);
+      tianmuret = RCNum::ParseReal(rcs, rcn, common::ColumnType::REAL);
       rcn = rcn.ToDecimal(scale);
       return tianmuret;
     } else {
@@ -192,8 +193,8 @@ common::ErrorCode ValueParserForText::ParseNum(const BString &rcs, RCNum &rcn, s
   return tianmuret;
 }
 
-common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, common::CT at) {
-  if (at == common::CT::BIGINT)
+common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, common::ColumnType at) {
+  if (at == common::ColumnType::BIGINT)
     return ParseBigInt(rcs, rcn);
 
   // TODO: refactor
@@ -205,7 +206,7 @@ common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, comm
   val_ptr = val;
   short scale = -1;
 
-  if (at == common::CT::UNK) {
+  if (at == common::ColumnType::UNK) {
     bool has_dot = false;
     bool has_exp = false;
     bool has_unexpected_sign = false;
@@ -267,22 +268,22 @@ common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, comm
     }
 
     if (has_exp)
-      at = common::CT::REAL;
+      at = common::ColumnType::REAL;
     else {
       if (has_dot) {
         if (std::abs((no_digs - no_digs_after_dot) + exponent) + std::abs(no_digs_after_dot - exponent) <= 18) {
           scale = std::abs(no_digs_after_dot - exponent);
-          at = common::CT::NUM;
+          at = common::ColumnType::NUM;
         } else
-          at = common::CT::REAL;
+          at = common::ColumnType::REAL;
       } else {
         if (no_digs <= 18 && no_digs > 9) {
-          at = common::CT::NUM;
+          at = common::ColumnType::NUM;
           scale = 0;
         } else if (no_digs > 18)
-          at = common::CT::REAL;
+          at = common::ColumnType::REAL;
         else
-          at = common::CT::INT;
+          at = common::ColumnType::INT;
       }
     }
   } else {
@@ -300,7 +301,7 @@ common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, comm
 
   if (core::ATI::IsRealType(at))
     return ValueParserForText::ParseReal(rcs, rcn, at);
-  else if (at == common::CT::NUM)
+  else if (at == common::ColumnType::NUM)
     return ValueParserForText::ParseNum(rcs, rcn, scale);
 
   rcn.scale_ = 0;
@@ -320,7 +321,7 @@ common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, comm
     ret = ParseBigInt(rcs, rcn);
     int64_t v = rcn.value_;
 
-    if (at == common::CT::BYTEINT) {
+    if (at == common::ColumnType::BYTEINT) {
       if (v > TIANMU_TINYINT_MAX) {
         v = TIANMU_TINYINT_MAX;
         ret = common::ErrorCode::OUT_OF_RANGE;
@@ -328,7 +329,7 @@ common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, comm
         v = TIANMU_TINYINT_MIN;
         ret = common::ErrorCode::OUT_OF_RANGE;
       }
-    } else if (at == common::CT::SMALLINT) {
+    } else if (at == common::ColumnType::SMALLINT) {
       if (v > TIANMU_SMALLINT_MAX) {
         v = TIANMU_SMALLINT_MAX;
         ret = common::ErrorCode::OUT_OF_RANGE;
@@ -336,7 +337,7 @@ common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, comm
         v = TIANMU_SMALLINT_MIN;
         ret = common::ErrorCode::OUT_OF_RANGE;
       }
-    } else if (at == common::CT::MEDIUMINT) {
+    } else if (at == common::ColumnType::MEDIUMINT) {
       if (v > TIANMU_MEDIUMINT_MAX) {
         v = TIANMU_MEDIUMINT_MAX;
         ret = common::ErrorCode::OUT_OF_RANGE;
@@ -344,7 +345,7 @@ common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, comm
         v = TIANMU_MEDIUMINT_MIN;
         ret = common::ErrorCode::OUT_OF_RANGE;
       }
-    } else if (at == common::CT::INT) {
+    } else if (at == common::ColumnType::INT) {
       if (v > std::numeric_limits<int>::max()) {
         v = std::numeric_limits<int>::max();
         ret = common::ErrorCode::OUT_OF_RANGE;
@@ -360,10 +361,10 @@ common::ErrorCode ValueParserForText::Parse(const BString &rcs, RCNum &rcn, comm
   return ret;
 }
 
-common::ErrorCode ValueParserForText::ParseReal(const BString &rcbs, RCNum &rcn, common::CT at) {
+common::ErrorCode ValueParserForText::ParseReal(const BString &rcbs, RCNum &rcn, common::ColumnType at) {
   // TODO: refactor
-  if (at == common::CT::UNK)
-    at = common::CT::REAL;
+  if (at == common::ColumnType::UNK)
+    at = common::ColumnType::REAL;
   if (!core::ATI::IsRealType(at))
     return common::ErrorCode::FAILED;
 
@@ -441,7 +442,7 @@ common::ErrorCode ValueParserForText::ParseReal(const BString &rcbs, RCNum &rcn,
 
   rcn.attr_type_ = at;
   rcn.null_ = false;
-  if (at == common::CT::REAL) {
+  if (at == common::ColumnType::REAL) {
     if (d > DBL_MAX) {
       d = DBL_MAX;
       ret = common::ErrorCode::OUT_OF_RANGE;
@@ -456,7 +457,7 @@ common::ErrorCode ValueParserForText::ParseReal(const BString &rcbs, RCNum &rcn,
       ret = common::ErrorCode::OUT_OF_RANGE;
     }
     *(double *)&rcn.value_ = d;
-  } else if (at == common::CT::FLOAT) {
+  } else if (at == common::ColumnType::FLOAT) {
     if (d > FLT_MAX) {
       d = FLT_MAX;
       ret = common::ErrorCode::OUT_OF_RANGE;
@@ -482,7 +483,7 @@ common::ErrorCode ValueParserForText::ParseBigInt(const BString &rcs, RCNum &rcn
   common::ErrorCode ret = common::ErrorCode::SUCCESS;
 
   rcn.null_ = false;
-  rcn.attr_type_ = common::CT::BIGINT;
+  rcn.attr_type_ = common::ColumnType::BIGINT;
   rcn.scale_ = 0;
   rcn.is_double_ = false;
 
@@ -511,7 +512,7 @@ common::ErrorCode ValueParserForText::ParseBigInt(const BString &rcs, RCNum &rcn
   } else {
     if (ptr_len) {
       if (*val_ptr == 'd' || *val_ptr == 'D' || *val_ptr == 'e' || *val_ptr == 'E') {
-        ret = RCNum::ParseReal(rcs, rcn, common::CT::REAL);
+        ret = RCNum::ParseReal(rcs, rcn, common::ColumnType::REAL);
         if (rcn.GetDecFractLen() != 0 || ret != common::ErrorCode::SUCCESS)
           ret = common::ErrorCode::VALUE_TRUNCATED;
         if (rcn.GetIntPartAsDouble() > common::TIANMU_BIGINT_MAX) {
@@ -535,7 +536,7 @@ common::ErrorCode ValueParserForText::ParseBigInt(const BString &rcs, RCNum &rcn
             if (system::EatInt(val_ptr, ptr_len, fract) != common::ErrorCode::SUCCESS)
               ret = common::ErrorCode::VALUE_TRUNCATED;
             else if (*val_ptr == 'e' || *val_ptr == 'E') {
-              ret = RCNum::ParseReal(rcs, rcn, common::CT::REAL);
+              ret = RCNum::ParseReal(rcs, rcn, common::ColumnType::REAL);
               if (rcn.GetDecFractLen() != 0 || ret != common::ErrorCode::SUCCESS)
                 ret = common::ErrorCode::VALUE_TRUNCATED;
               if (rcn.GetIntPartAsDouble() > common::TIANMU_BIGINT_MAX) {
@@ -583,7 +584,7 @@ common::ErrorCode ValueParserForText::ParseBigInt(const BString &rcs, RCNum &rcn
   return ret;
 }
 
-common::ErrorCode ValueParserForText::ParseNumeric(BString const &rcs, int64_t &out, common::CT at) {
+common::ErrorCode ValueParserForText::ParseNumeric(BString const &rcs, int64_t &out, common::ColumnType at) {
   RCNum number;
   common::ErrorCode return_code = Parse(rcs, number, at);
   out = number.ValueInt();
@@ -611,7 +612,8 @@ common::ErrorCode ValueParserForText::ParseDecimal(BString const &rcs, int64_t &
   return return_code;
 }
 
-common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rcs, RCDateTime &rcv, common::CT at) {
+common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rcs, RCDateTime &rcv,
+                                                               common::ColumnType at) {
   if (rcs.IsNull() || rcs.Equals("nullptr", 4)) {
     rcv.at_ = at;
     rcv.null_ = true;
@@ -627,7 +629,7 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
   }
 
   if (String2DateTime(rcs, rcv, at) == 0) {
-    if (at == common::CT::TIMESTAMP) {
+    if (at == common::ColumnType::TIMESTAMP) {
       // convert to UTC
       MYSQL_TIME myt;
       std::memset(&myt, 0, sizeof(MYSQL_TIME));
@@ -645,7 +647,7 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
         common::GMTSec2GMTTime(&myt, secs_utc);
         myt.second_part = rcv.MicroSecond();
       }
-      rcv = RCDateTime(myt, common::CT::TIMESTAMP);
+      rcv = RCDateTime(myt, common::ColumnType::TIMESTAMP);
     }
     return common::ErrorCode::SUCCESS;
   }
@@ -689,11 +691,11 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
   }
 
   if (!EatWhiteSigns(buf, buflen) && !system::EatDTSeparators(buf, buflen)) {
-    if ((at == common::CT::DATETIME &&
+    if ((at == common::ColumnType::DATETIME &&
          RCDateTime::IsCorrectTIANMUDatetime((short)year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
                                              RCDateTime::GetSpecialValue(at).Minute(),
                                              RCDateTime::GetSpecialValue(at).Second())) ||
-        (at == common::CT::TIMESTAMP &&
+        (at == common::ColumnType::TIMESTAMP &&
          RCDateTime::IsCorrectTIANMUTimestamp((short)year, month, day, RCDateTime::GetSpecialValue(at).Hour(),
                                               RCDateTime::GetSpecialValue(at).Minute(),
                                               RCDateTime::GetSpecialValue(at).Second())))
@@ -759,7 +761,7 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
   EatWhiteSigns(buf, buflen);
 
   try {
-    if (at == common::CT::DATETIME) {
+    if (at == common::ColumnType::DATETIME) {
       if (RCDateTime::IsCorrectTIANMUDatetime((short)year, (short)month, (short)day, (short)hour, (short)minute,
                                               (short)second)) {
         rcv = RCDateTime((short)year, (short)month, (short)day, (short)hour, (short)minute, (short)second, at);
@@ -770,7 +772,7 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
                          (short)RCDateTime::GetSpecialValue(at).Second(), at);
         tianmu_rc = common::ErrorCode::OUT_OF_RANGE;
       }
-    } else if (at == common::CT::TIMESTAMP) {
+    } else if (at == common::ColumnType::TIMESTAMP) {
       if (RCDateTime::IsCorrectTIANMUTimestamp((short)year, (short)month, (short)day, (short)hour, (short)minute,
                                                (short)second)) {
         // convert to UTC
@@ -790,7 +792,7 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
           common::GMTSec2GMTTime(&myt, secs_utc);
           myt.second_part = microsecond;
         }
-        rcv = RCDateTime(myt, common::CT::TIMESTAMP);
+        rcv = RCDateTime(myt, common::ColumnType::TIMESTAMP);
         return tianmu_rc;
       } else {
         rcv = RC_TIMESTAMP_SPEC;
@@ -810,7 +812,7 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &rc
 
 common::ErrorCode ValueParserForText::ParseTime(const BString &rcs, RCDateTime &rcv) {
   if (rcs.IsNull() || rcs.Equals("nullptr", 4)) {
-    rcv.at_ = common::CT::TIME;
+    rcv.at_ = common::ColumnType::TIME;
     rcv.null_ = true;
     return common::ErrorCode::SUCCESS;
   }
@@ -818,7 +820,7 @@ common::ErrorCode ValueParserForText::ParseTime(const BString &rcs, RCDateTime &
   int buflen = rcs.len_;
   EatWhiteSigns(buf, buflen);
   if (buflen == 0) {
-    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::TIME));
+    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::ColumnType::TIME));
     return common::ErrorCode::OUT_OF_RANGE;
   }
 
@@ -844,13 +846,13 @@ common::ErrorCode ValueParserForText::ParseTime(const BString &rcs, RCDateTime &
   if (tianmu_rc == common::ErrorCode::FAILED && buflen > 0 && *buf == ':') {  // e.g. :12:34
     colon = true;
   } else if (tianmu_rc != common::ErrorCode::SUCCESS) {
-    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::TIME));
+    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::ColumnType::TIME));
     return common::ErrorCode::VALUE_TRUNCATED;
   } else if (tianmu_rc == common::ErrorCode::SUCCESS) {
     second = tmp;
     EatWhiteSigns(buf, buflen);
     if (buflen == 0) {  // e.g. 235959
-      return RCDateTime::Parse(second * sign, rcv, common::CT::TIME);
+      return RCDateTime::Parse(second * sign, rcv, common::ColumnType::TIME);
     }
   }
 
@@ -864,7 +866,7 @@ common::ErrorCode ValueParserForText::ParseTime(const BString &rcs, RCDateTime &
       EatWhiteSigns(buf, buflen);
       if (colon) {  // starts with ':'
         if (!RCDateTime::CanBeMinute(tmp2)) {
-          rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::TIME));
+          rcv = RCDateTime(RCDateTime::GetSpecialValue(common::ColumnType::TIME));
           return common::ErrorCode::VALUE_TRUNCATED;
         }
         minute = tmp2;
@@ -878,7 +880,7 @@ common::ErrorCode ValueParserForText::ParseTime(const BString &rcs, RCDateTime &
           if (tianmu_rc == common::ErrorCode::SUCCESS && RCDateTime::CanBeSecond(tmp2))
             second = tmp2;
           else {
-            second = RCDateTime::GetSpecialValue(common::CT::TIME).Second();
+            second = RCDateTime::GetSpecialValue(common::ColumnType::TIME).Second();
             tianmu_rc = common::ErrorCode::VALUE_TRUNCATED;
           }
         } else {  // e.g. :01:
@@ -886,7 +888,7 @@ common::ErrorCode ValueParserForText::ParseTime(const BString &rcs, RCDateTime &
       } else {  // e.g. 01:02:03
         hour = (int)second;
         if (!RCDateTime::CanBeMinute(tmp2)) {
-          rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::TIME));
+          rcv = RCDateTime(RCDateTime::GetSpecialValue(common::ColumnType::TIME));
           return common::ErrorCode::VALUE_TRUNCATED;
         }
         minute = tmp2;
@@ -898,7 +900,7 @@ common::ErrorCode ValueParserForText::ParseTime(const BString &rcs, RCDateTime &
           if (tianmu_rc == common::ErrorCode::SUCCESS && RCDateTime::CanBeSecond(tmp2))
             second = tmp2;
           else {
-            second = RCDateTime::GetSpecialValue(common::CT::TIME).Second();
+            second = RCDateTime::GetSpecialValue(common::ColumnType::TIME).Second();
             tianmu_rc = common::ErrorCode::VALUE_TRUNCATED;
           }
         }
@@ -923,7 +925,7 @@ common::ErrorCode ValueParserForText::ParseTime(const BString &rcs, RCDateTime &
         tianmu_rc = common::ErrorCode::VALUE_TRUNCATED;
 
       if (RCDateTime::IsCorrectTIANMUTime(short(hour * sign), short(minute * sign), short(second * sign))) {
-        rcv = RCDateTime(short(hour * sign), short(minute * sign), short(second * sign), common::CT::TIME);
+        rcv = RCDateTime(short(hour * sign), short(minute * sign), short(second * sign), common::ColumnType::TIME);
         return tianmu_rc;
       } else {
         if (hour * sign < -RC_TIME_MIN.Hour())
@@ -942,27 +944,27 @@ common::ErrorCode ValueParserForText::ParseTime(const BString &rcs, RCDateTime &
         if (tianmu_rc == common::ErrorCode::SUCCESS) {
           hour = (int)second;
           if (!RCDateTime::CanBeSecond(tmp2)) {
-            rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::TIME));
+            rcv = RCDateTime(RCDateTime::GetSpecialValue(common::ColumnType::TIME));
             return common::ErrorCode::VALUE_TRUNCATED;
           }
           second = tmp2;
         }
       } else
-        return RCDateTime::Parse(second * sign, rcv, common::CT::TIME);
+        return RCDateTime::Parse(second * sign, rcv, common::ColumnType::TIME);
       if (RCDateTime::IsCorrectTIANMUTime(short(hour * sign), short(minute * sign), short(second * sign))) {
-        rcv = RCDateTime(short(hour * sign), short(minute * sign), short(second * sign), common::CT::TIME);
+        rcv = RCDateTime(short(hour * sign), short(minute * sign), short(second * sign), common::ColumnType::TIME);
         return common::ErrorCode::VALUE_TRUNCATED;
       } else {
-        rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::TIME));
+        rcv = RCDateTime(RCDateTime::GetSpecialValue(common::ColumnType::TIME));
         return common::ErrorCode::VALUE_TRUNCATED;
       }
     }
   } else {
     if (RCDateTime::IsCorrectTIANMUTime(short(hour * sign), short(minute * sign), short(second * sign))) {
-      rcv = RCDateTime(short(hour * sign), short(minute * sign), short(second * sign), common::CT::TIME);
+      rcv = RCDateTime(short(hour * sign), short(minute * sign), short(second * sign), common::ColumnType::TIME);
       return common::ErrorCode::VALUE_TRUNCATED;
     } else {
-      rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::TIME));
+      rcv = RCDateTime(RCDateTime::GetSpecialValue(common::ColumnType::TIME));
       return common::ErrorCode::VALUE_TRUNCATED;
     }
   }
@@ -971,7 +973,7 @@ common::ErrorCode ValueParserForText::ParseTime(const BString &rcs, RCDateTime &
 
 common::ErrorCode ValueParserForText::ParseDate(const BString &rcs, RCDateTime &rcv) {
   if (rcs.IsNull() || rcs.Equals("nullptr", 4)) {
-    rcv.at_ = common::CT::DATE;
+    rcv.at_ = common::ColumnType::DATE;
     rcv.null_ = true;
     return common::ErrorCode::SUCCESS;
   }
@@ -979,53 +981,53 @@ common::ErrorCode ValueParserForText::ParseDate(const BString &rcs, RCDateTime &
   int buflen = rcs.len_;
   EatWhiteSigns(buf, buflen);
   if (buflen == 0) {
-    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::DATE));
+    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::ColumnType::DATE));
     return common::ErrorCode::OUT_OF_RANGE;
   }
 
   if (buflen > 0 && *buf == '-') {
-    rcv = RCDateTime::GetSpecialValue(common::CT::DATE);
+    rcv = RCDateTime::GetSpecialValue(common::ColumnType::DATE);
     return common::ErrorCode::VALUE_TRUNCATED;
   }
 
   uint year = 0, month = 0, day = 0;
   common::ErrorCode tianmu_rc = system::EatUInt(buf, buflen, year);
   if (tianmu_rc == common::ErrorCode::FAILED) {
-    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::DATE));
+    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::ColumnType::DATE));
     return common::ErrorCode::VALUE_TRUNCATED;
   } else if (tianmu_rc != common::ErrorCode::OUT_OF_RANGE && buflen > 0) {
-    year = RCDateTime::ToCorrectYear(year, common::CT::DATE);
+    year = RCDateTime::ToCorrectYear(year, common::ColumnType::DATE);
   }
 
   if (buflen == 0)
-    return RCDateTime::Parse((int64_t)year, rcv, common::CT::DATE);
+    return RCDateTime::Parse((int64_t)year, rcv, common::ColumnType::DATE);
 
   EatWhiteSigns(buf, buflen);
   if (!system::EatDTSeparators(buf, buflen)) {
-    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::DATE));
+    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::ColumnType::DATE));
     return common::ErrorCode::VALUE_TRUNCATED;
   }
   EatWhiteSigns(buf, buflen);
   if (system::EatUInt(buf, buflen, month) == common::ErrorCode::FAILED) {
-    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::DATE));
+    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::ColumnType::DATE));
     return common::ErrorCode::VALUE_TRUNCATED;
   }
   EatWhiteSigns(buf, buflen);
   if (!system::EatDTSeparators(buf, buflen)) {
-    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::DATE));
+    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::ColumnType::DATE));
     return common::ErrorCode::VALUE_TRUNCATED;
   }
   EatWhiteSigns(buf, buflen);
   if (system::EatUInt(buf, buflen, day) == common::ErrorCode::FAILED) {
-    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::DATE));
+    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::ColumnType::DATE));
     return common::ErrorCode::VALUE_TRUNCATED;
   }
   EatWhiteSigns(buf, buflen);
   if (!RCDateTime::CanBeDate(year, month, day)) {
-    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::DATE));
+    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::ColumnType::DATE));
     return common::ErrorCode::VALUE_TRUNCATED;
   } else
-    rcv = RCDateTime(year, month, day, common::CT::DATE);
+    rcv = RCDateTime(year, month, day, common::ColumnType::DATE);
   if (buflen != 0)
     return common::ErrorCode::VALUE_TRUNCATED;
   return common::ErrorCode::SUCCESS;
@@ -1033,7 +1035,7 @@ common::ErrorCode ValueParserForText::ParseDate(const BString &rcs, RCDateTime &
 
 common::ErrorCode ValueParserForText::ParseYear(const BString &rcs, RCDateTime &rcv) {
   if (rcs.IsNull() || rcs.Equals("nullptr", 4)) {
-    rcv.at_ = common::CT::YEAR;
+    rcv.at_ = common::ColumnType::YEAR;
     rcv.null_ = true;
     return common::ErrorCode::SUCCESS;
   }
@@ -1041,24 +1043,24 @@ common::ErrorCode ValueParserForText::ParseYear(const BString &rcs, RCDateTime &
   int buflen = rcs.len_;
   EatWhiteSigns(buf, buflen);
   if (buflen == 0) {
-    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::YEAR));
+    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::ColumnType::YEAR));
     return common::ErrorCode::OUT_OF_RANGE;
   }
 
   if (buflen > 0 && *buf == '-') {
-    rcv = RCDateTime::GetSpecialValue(common::CT::YEAR);
+    rcv = RCDateTime::GetSpecialValue(common::ColumnType::YEAR);
     return common::ErrorCode::VALUE_TRUNCATED;
   }
   uint year = 0;
   int tmp_buf_len = buflen;
   common::ErrorCode tianmu_rc = system::EatUInt(buf, buflen, year);
   if (tianmu_rc != common::ErrorCode::SUCCESS) {
-    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::YEAR));
+    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::ColumnType::YEAR));
     return common::ErrorCode::VALUE_TRUNCATED;
   } else if (year == 0 && (tmp_buf_len - buflen) < 4) {
     year = 2000;
   } else {
-    year = RCDateTime::ToCorrectYear(year, common::CT::YEAR);
+    year = RCDateTime::ToCorrectYear(year, common::ColumnType::YEAR);
   }
 
   if (RCDateTime::IsCorrectTIANMUYear(year)) {
@@ -1068,32 +1070,33 @@ common::ErrorCode ValueParserForText::ParseYear(const BString &rcs, RCDateTime &
       return common::ErrorCode::OUT_OF_RANGE;
     return common::ErrorCode::SUCCESS;
   } else {
-    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::CT::YEAR));
+    rcv = RCDateTime(RCDateTime::GetSpecialValue(common::ColumnType::YEAR));
     return common::ErrorCode::OUT_OF_RANGE;
   }
   return common::ErrorCode::SUCCESS;
 }
 
-common::ErrorCode ValueParserForText::ParseDateTime(const BString &rcs, RCDateTime &rcv, common::CT at) {
+common::ErrorCode ValueParserForText::ParseDateTime(const BString &rcs, RCDateTime &rcv, common::ColumnType at) {
   DEBUG_ASSERT(core::ATI::IsDateTimeType(at));
   switch (at) {
-    case common::CT::TIMESTAMP:
-    case common::CT::DATETIME:
+    case common::ColumnType::TIMESTAMP:
+    case common::ColumnType::DATETIME:
       return ValueParserForText::ParseDateTimeOrTimestamp(rcs, rcv, at);
-    case common::CT::TIME:
+    case common::ColumnType::TIME:
       return ValueParserForText::ParseTime(rcs, rcv);
-    case common::CT::DATE:
+    case common::ColumnType::DATE:
       return ValueParserForText::ParseDate(rcs, rcv);
-    default:  // case common::CT::YEAR :
+    default:  // case common::ColumnType::YEAR :
       return ValueParserForText::ParseYear(rcs, rcv);
   }
 }
 
-common::ErrorCode ValueParserForText::ParseDateTimeAdapter(BString const &rcs, int64_t &out, common::CT at) {
+common::ErrorCode ValueParserForText::ParseDateTimeAdapter(BString const &rcs, int64_t &out, common::ColumnType at) {
   RCDateTime dt;
   common::ErrorCode return_code = ValueParserForText::ParseDateTime(rcs, dt, at);
   out = dt.GetInt64();
   return return_code;
 }
+
 }  // namespace types
 }  // namespace Tianmu

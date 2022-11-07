@@ -34,7 +34,7 @@ class IOParameters;
 
 namespace core {
 struct AttrInfo {
-  common::CT type;
+  common::ColumnType type;
   int size;
   int precision;
   bool no_nulls;
@@ -209,6 +209,7 @@ class RCTable final : public JustATable {
   }
   Iterator End() { return Iterator::CreateEnd(); }
 };
+
 }  // namespace core
 }  // namespace Tianmu
 

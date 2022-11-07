@@ -37,6 +37,7 @@
 
 namespace Tianmu {
 namespace core {
+
 namespace stdexp = std::experimental;
 
 using ColumnBinEncoderPtr = std::shared_ptr<std::vector<ColumnBinEncoder>>;
@@ -382,7 +383,8 @@ class ProxyHashJoiner::Action {
     // Comparable, non-monotonic, non-decodable.
     ColumnBinEncoder &encoder = column_encoder->emplace_back((int)ColumnBinEncoder::ENCODER_IGNORE_NULLS);
     // RC_TIMESTAMP is omitted by ColumnValueEncoder::SecondColumn.
-    vcolumn::VirtualColumn *second_column = (vc->Type().GetTypeName() == common::CT::TIMESTAMP) ? nullptr : vc_matching;
+    vcolumn::VirtualColumn *second_column =
+        (vc->Type().GetTypeName() == common::ColumnType::TIMESTAMP) ? nullptr : vc_matching;
     bool success = encoder.PrepareEncoder(vc, second_column);
     encoder.SetPrimaryOffset(primary_offset);
     *primary_size = encoder.GetPrimarySize();

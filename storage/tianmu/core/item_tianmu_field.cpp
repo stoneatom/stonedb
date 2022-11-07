@@ -24,6 +24,7 @@
 
 namespace Tianmu {
 namespace core {
+
 Item_tianmufield::Item_tianmufield(Item_field *ifield, VarID varID)
     : Item_field(current_txn_->Thd(), ifield), ifield(ifield), buf(nullptr), ivalue(nullptr) {
   this->varID.push_back(varID);
@@ -83,19 +84,19 @@ void Item_tianmufield::SetType(DataType t) {
 
     case DataType::ValueType::VT_DATETIME:
       switch (tianmu_type.attrtype) {
-        case common::CT::DATETIME:
+        case common::ColumnType::DATETIME:
           ivalue = new Item_tianmudatetime();
           break;
-        case common::CT::TIMESTAMP:
+        case common::ColumnType::TIMESTAMP:
           ivalue = new Item_tianmutimestamp();
           break;
-        case common::CT::DATE:
+        case common::ColumnType::DATE:
           ivalue = new Item_tianmudate();
           break;
-        case common::CT::TIME:
+        case common::ColumnType::TIME:
           ivalue = new Item_tianmutime();
           break;
-        case common::CT::YEAR:
+        case common::ColumnType::YEAR:
           ivalue = new Item_tianmuyear(tianmu_type.precision);
           break;
         default:
@@ -180,7 +181,8 @@ String *Item_tianmufield::val_str(String *str) {
 bool Item_tianmufield::get_date(MYSQL_TIME *ltime, uint fuzzydate) {
   if ((null_value = buf->null) ||
       ((!(fuzzydate & TIME_FUZZY_DATE) &&
-        (tianmu_type.attrtype == common::CT::DATETIME || tianmu_type.attrtype == common::CT::DATE) && buf->x == 0)))
+        (tianmu_type.attrtype == common::ColumnType::DATETIME || tianmu_type.attrtype == common::ColumnType::DATE) &&
+        buf->x == 0)))
     return 1;  // like in Item_field::get_date - return 1 on null value.
   FeedValue();
   return ivalue->get_date(ltime, fuzzydate);
@@ -188,7 +190,7 @@ bool Item_tianmufield::get_date(MYSQL_TIME *ltime, uint fuzzydate) {
 
 bool Item_tianmufield::get_time(MYSQL_TIME *ltime) {
   if ((null_value = buf->null) ||
-      ((tianmu_type.attrtype == common::CT::DATETIME || tianmu_type.attrtype == common::CT::DATE) &&
+      ((tianmu_type.attrtype == common::ColumnType::DATETIME || tianmu_type.attrtype == common::ColumnType::DATE) &&
        buf->x == 0))  // zero date is illegal
     return 1;         // like in Item_field::get_time - return 1 on null value.
   FeedValue();
@@ -317,5 +319,6 @@ bool Item_tianmuyear::get_date(MYSQL_TIME *ltime, [[maybe_unused]] uint fuzzydat
   std::memset(ltime, 0, sizeof(*ltime));
   return 1;
 }
+
 }  // namespace core
 }  // namespace Tianmu

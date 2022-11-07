@@ -21,6 +21,7 @@
 
 namespace Tianmu {
 namespace core {
+
 GroupByWrapper::GroupByWrapper(int a_size, bool distinct, Transaction *conn, uint32_t power)
     : distinct_watch(power), m_conn(conn), gt(power), just_distinct(distinct) {
   p_power = power;
@@ -126,8 +127,8 @@ void GroupByWrapper::AddAggregatedColumn(int orig_attr_no, TempTable::Attr &a, i
 {
   // MEASURE_FET("GroupByWrapper::AddAggregatedColumn(...)");
   GT_Aggregation ag_oper;
-  common::CT ag_type = a.TypeName();  // original type, not the output one (it
-                                      // is important e.g. for AVG)
+  common::ColumnType ag_type = a.TypeName();  // original type, not the output one (it
+                                              // is important e.g. for AVG)
   int ag_size = max_size;
   int ag_prec = a.Type().GetScale();
   bool ag_distinct = a.is_distinct_;
@@ -227,7 +228,7 @@ void GroupByWrapper::AddAggregatedColumn(int orig_attr_no, TempTable::Attr &a, i
     // lookup for these operations may use codes
     ag_size = 4;  // integer
     ag_prec = 0;
-    ag_type = common::CT::INT;
+    ag_type = common::ColumnType::INT;
     is_lookup[attr_no] = true;
   }
   if (ag_oper == GT_Aggregation::GT_COUNT)
@@ -719,5 +720,6 @@ bool DistinctWrapper::AnyOmitted() {
       return true;
   return false;
 }
+
 }  // namespace core
 }  // namespace Tianmu

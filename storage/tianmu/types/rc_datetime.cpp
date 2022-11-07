@@ -25,17 +25,18 @@
 
 namespace Tianmu {
 namespace types {
+
 static_assert(sizeof(DT) == 8);
 
-RCDateTime::RCDateTime(int64_t v, common::CT at) : at_(at) {
+RCDateTime::RCDateTime(int64_t v, common::ColumnType at) : at_(at) {
   null_ = (v == common::NULL_VALUE_64);
   if (!null_) {
     *(int64_t *)&dt_ = v;
-    if (at == common::CT::DATE) {
+    if (at == common::ColumnType::DATE) {
       dt_.second = 0;
       dt_.minute = 0;
       dt_.hour = 0;
-    } else if (at == common::CT::TIME) {
+    } else if (at == common::ColumnType::TIME) {
       dt_.day = 0;
       dt_.month = 0;
       dt_.year = 0;
@@ -44,7 +45,7 @@ RCDateTime::RCDateTime(int64_t v, common::CT at) : at_(at) {
 }
 
 RCDateTime::RCDateTime(short year) {
-  at_ = common::CT::YEAR;
+  at_ = common::ColumnType::YEAR;
   null_ = false;
   if (year == common::NULL_VALUE_SH)
     null_ = true;
@@ -53,13 +54,13 @@ RCDateTime::RCDateTime(short year) {
   }
 }
 
-RCDateTime::RCDateTime(short yh, short mm, short ds, common::CT at) : at_(at) {
+RCDateTime::RCDateTime(short yh, short mm, short ds, common::ColumnType at) : at_(at) {
   null_ = false;
-  if (at == common::CT::DATE) {
+  if (at == common::ColumnType::DATE) {
     dt_.day = std::abs(ds);
     dt_.month = std::abs(mm);
     dt_.year = std::abs(yh);
-  } else if (at == common::CT::TIME) {
+  } else if (at == common::ColumnType::TIME) {
     dt_.second = std::abs(ds);
     dt_.minute = std::abs(mm);
     dt_.time_hour = std::abs(yh);
@@ -69,10 +70,11 @@ RCDateTime::RCDateTime(short yh, short mm, short ds, common::CT at) : at_(at) {
     TIANMU_ERROR("type not supported");
 }
 
-RCDateTime::RCDateTime(short year, short month, short day, short hour, short minute, short second, common::CT at)
+RCDateTime::RCDateTime(short year, short month, short day, short hour, short minute, short second,
+                       common::ColumnType at)
     : at_(at) {
-  ASSERT(at == common::CT::DATETIME || at == common::CT::TIMESTAMP,
-         "should be 'at == common::CT::DATETIME || at == common::CT::TIMESTAMP'");
+  ASSERT(at == common::ColumnType::DATETIME || at == common::ColumnType::TIMESTAMP,
+         "should be 'at == common::ColumnType::DATETIME || at == common::ColumnType::TIMESTAMP'");
   null_ = false;
   dt_.year = std::abs(year);
   dt_.month = std::abs(month);
@@ -82,9 +84,9 @@ RCDateTime::RCDateTime(short year, short month, short day, short hour, short min
   dt_.second = std::abs(second);
 }
 
-RCDateTime::RCDateTime(const MYSQL_TIME &myt, common::CT at) {
-  ASSERT(at == common::CT::DATETIME || at == common::CT::TIMESTAMP,
-         "should be 'at == common::CT::DATETIME || at == common::CT::TIMESTAMP'");
+RCDateTime::RCDateTime(const MYSQL_TIME &myt, common::ColumnType at) {
+  ASSERT(at == common::ColumnType::DATETIME || at == common::ColumnType::TIMESTAMP,
+         "should be 'at == common::ColumnType::DATETIME || at == common::ColumnType::TIMESTAMP'");
   null_ = false;
 
   dt_.year = myt.year;
@@ -97,12 +99,12 @@ RCDateTime::RCDateTime(const MYSQL_TIME &myt, common::CT at) {
   dt_.neg = myt.neg;
 }
 
-RCDateTime::RCDateTime(RCNum &rcn, common::CT at) : at_(at) {
+RCDateTime::RCDateTime(RCNum &rcn, common::ColumnType at) : at_(at) {
   null_ = rcn.null_;
   if (!null_) {
     if (core::ATI::IsRealType(rcn.Type()))
       throw common::DataTypeConversionException(common::TianmuError(common::ErrorCode::DATACONVERSION));
-    if (rcn.Type() == common::CT::NUM && rcn.Scale() > 0)
+    if (rcn.Type() == common::ColumnType::NUM && rcn.Scale() > 0)
       throw common::DataTypeConversionException(common::TianmuError(common::ErrorCode::DATACONVERSION));
     if (Parse((int64_t)rcn, *this, at) != common::ErrorCode::SUCCESS)
       throw common::DataTypeConversionException(common::TianmuError(common::ErrorCode::DATACONVERSION));
@@ -130,7 +132,7 @@ RCDateTime &RCDateTime::operator=(const RCDataType &rcv) {
   return *this;
 }
 
-RCDateTime &RCDateTime::Assign(int64_t v, common::CT at) {
+RCDateTime &RCDateTime::Assign(int64_t v, common::ColumnType at) {
   this->at_ = at;
   null_ = (v == common::NULL_VALUE_64);
   if (null_)
@@ -148,13 +150,13 @@ int64_t RCDateTime::GetInt64() const {
 
 bool RCDateTime::ToInt64(int64_t &value) const {
   if (!IsNull()) {
-    if (at_ == common::CT::YEAR) {
+    if (at_ == common::ColumnType::YEAR) {
       value = (int)dt_.year;
       return true;
-    } else if (at_ == common::CT::DATE) {
+    } else if (at_ == common::ColumnType::DATE) {
       value = Year() * 10000 + Month() * 100 + Day();
       return true;
-    } else if (at_ == common::CT::TIME) {
+    } else if (at_ == common::ColumnType::TIME) {
       value = dt_.time_hour * 10000 + Minute() * 100 + Second();
       if (dt_.Neg())
         value = -value;
@@ -178,13 +180,13 @@ BString RCDateTime::ToBString() const {
     char *buf = rcs.val_;
     if (dt_.Neg())
       *buf++ = '-';
-    if (at_ == common::CT::YEAR) {
+    if (at_ == common::ColumnType::YEAR) {
       std::sprintf(buf, "%04d", (int)std::abs(Year()));
-    } else if (at_ == common::CT::DATE) {
+    } else if (at_ == common::ColumnType::DATE) {
       std::sprintf(buf, "%04d-%02d-%02d", (int)std::abs(Year()), (int)std::abs(Month()), (int)std::abs(Day()));
-    } else if (at_ == common::CT::TIME) {
+    } else if (at_ == common::ColumnType::TIME) {
       std::sprintf(buf, "%02d:%02d:%02d", (int)dt_.time_hour, (int)Minute(), (int)Second());
-    } else if (at_ == common::CT::DATETIME || at_ == common::CT::TIMESTAMP) {
+    } else if (at_ == common::ColumnType::DATETIME || at_ == common::ColumnType::TIMESTAMP) {
       std::sprintf(buf, "%04d-%02d-%02d %02d:%02d:%02d.%06d", (int)std::abs(Year()), (int)std::abs(Month()),
                    (int)std::abs(Day()), (int)Hour(), (int)Minute(), (int)Second(), (int)MicroSecond());
     } else
@@ -195,11 +197,11 @@ BString RCDateTime::ToBString() const {
   return BString();
 }
 
-common::ErrorCode RCDateTime::Parse(const BString &rcs, RCDateTime &rcv, common::CT at) {
+common::ErrorCode RCDateTime::Parse(const BString &rcs, RCDateTime &rcv, common::ColumnType at) {
   return ValueParserForText::ParseDateTime(rcs, rcv, at);
 }
 
-common::ErrorCode RCDateTime::Parse(const int64_t &v, RCDateTime &rcv, common::CT at, int precision) {
+common::ErrorCode RCDateTime::Parse(const int64_t &v, RCDateTime &rcv, common::ColumnType at, int precision) {
   int64_t tmp_v = v < 0 ? -v : v;
   int sign = 1;
   if (v < 0)
@@ -212,14 +214,14 @@ common::ErrorCode RCDateTime::Parse(const int64_t &v, RCDateTime &rcv, common::C
   } else
     rcv.null_ = false;
 
-  if (at == common::CT::YEAR) {
+  if (at == common::ColumnType::YEAR) {
     uint vv = (uint)v;
     vv = ToCorrectYear(vv, at, (precision >= 0 && precision < 4));
     if (IsCorrectTIANMUYear((short)vv)) {
       rcv.dt_.year = (short)vv;
       return common::ErrorCode::SUCCESS;
     }
-  } else if (at == common::CT::DATE) {
+  } else if (at == common::ColumnType::DATE) {
     if (!CanBeDay(tmp_v % 100)) {
       rcv = GetSpecialValue(at);
       return common::ErrorCode::OUT_OF_RANGE;
@@ -241,7 +243,7 @@ common::ErrorCode RCDateTime::Parse(const int64_t &v, RCDateTime &rcv, common::C
     rcv.dt_.year = vv;
     if (sign == 1 && IsCorrectTIANMUDate(short(rcv.dt_.year), short(rcv.dt_.month), short(rcv.dt_.day)))
       return common::ErrorCode::SUCCESS;
-  } else if (at == common::CT::TIME) {
+  } else if (at == common::ColumnType::TIME) {
     if (!CanBeSecond(tmp_v % 100)) {
       rcv = GetSpecialValue(at);
       return common::ErrorCode::OUT_OF_RANGE;
@@ -273,7 +275,7 @@ common::ErrorCode RCDateTime::Parse(const int64_t &v, RCDateTime &rcv, common::C
       rcv = RC_TIME_SPEC;
       return common::ErrorCode::VALUE_TRUNCATED;
     }
-  } else if (at == common::CT::DATETIME || at == common::CT::TIMESTAMP) {
+  } else if (at == common::ColumnType::DATETIME || at == common::ColumnType::TIMESTAMP) {
     if (v > 245959) {
       if (!CanBeSecond(tmp_v % 100)) {
         rcv = GetSpecialValue(at);
@@ -311,10 +313,10 @@ common::ErrorCode RCDateTime::Parse(const int64_t &v, RCDateTime &rcv, common::C
       return common::ErrorCode::OUT_OF_RANGE;
     }
     rcv.dt_.year = RCDateTime::ToCorrectYear((uint)tmp_v, at);
-    if (sign == 1 && at == common::CT::DATETIME &&
+    if (sign == 1 && at == common::ColumnType::DATETIME &&
         IsCorrectTIANMUDatetime(rcv.dt_.year, rcv.dt_.month, rcv.dt_.day, rcv.dt_.hour, rcv.dt_.minute, rcv.dt_.second))
       return common::ErrorCode::SUCCESS;
-    if (sign == 1 && at == common::CT::TIMESTAMP &&
+    if (sign == 1 && at == common::ColumnType::TIMESTAMP &&
         IsCorrectTIANMUTimestamp(short(rcv.dt_.year), short(rcv.dt_.month), short(rcv.dt_.day), short(rcv.dt_.hour),
                                  short(rcv.dt_.minute), short(rcv.dt_.second)))
       return common::ErrorCode::SUCCESS;
@@ -434,7 +436,7 @@ bool RCDateTime::IsCorrectTIANMUTimestamp(short year, short month, short day, sh
     return true;
   if (CanBeYear(year) && CanBeMonth(month) && (day > 0 && (day <= NoDaysInMonth(year, month))) && CanBeHour(hour) &&
       CanBeMinute(minute) && CanBeSecond(second)) {
-    RCDateTime rcdt(year, month, day, hour, minute, second, common::CT::TIMESTAMP);
+    RCDateTime rcdt(year, month, day, hour, minute, second, common::ColumnType::TIMESTAMP);
     if (rcdt >= RC_TIMESTAMP_MIN && rcdt <= RC_TIMESTAMP_MAX)
       return true;
   }
@@ -474,9 +476,9 @@ ushort RCDateTime::NoDaysInMonth(short year, ushort month) {
   return no_days[month - 1];
 }
 
-short RCDateTime::ToCorrectYear(uint v, common::CT at, bool is_year_2 /*= false*/) {
+short RCDateTime::ToCorrectYear(uint v, common::ColumnType at, bool is_year_2 /*= false*/) {
   switch (at) {
-    case common::CT::YEAR:
+    case common::ColumnType::YEAR:
       if (v == 0 && is_year_2)  // 0 for year(2) corresponds to 2000
         return 2000;
       if (v <= 0 || v > 2155)
@@ -487,9 +489,9 @@ short RCDateTime::ToCorrectYear(uint v, common::CT at, bool is_year_2 /*= false*
         return v + 1900;
       }
       return (short)v;
-    case common::CT::DATE:
-    case common::CT::DATETIME:
-    case common::CT::TIMESTAMP:
+    case common::ColumnType::DATE:
+    case common::ColumnType::DATETIME:
+    case common::ColumnType::TIMESTAMP:
       if (v < 100) {
         if (v <= 69)
           return v + 2000;
@@ -502,17 +504,17 @@ short RCDateTime::ToCorrectYear(uint v, common::CT at, bool is_year_2 /*= false*
   return 0;  // to avoid errors in release version
 }
 
-RCDateTime RCDateTime::GetSpecialValue(common::CT at) {
+RCDateTime RCDateTime::GetSpecialValue(common::ColumnType at) {
   switch (at) {
-    case common::CT::YEAR:
+    case common::ColumnType::YEAR:
       return RC_YEAR_SPEC;
-    case common::CT::TIME:
+    case common::ColumnType::TIME:
       return RC_TIME_SPEC;
-    case common::CT::DATE:
+    case common::ColumnType::DATE:
       return RC_DATE_SPEC;
-    case common::CT::DATETIME:
+    case common::ColumnType::DATETIME:
       return RC_DATETIME_SPEC;
-    case common::CT::TIMESTAMP:
+    case common::ColumnType::TIMESTAMP:
       return RC_TIMESTAMP_SPEC;
     default:
       TIANMU_ERROR("type not supported");
@@ -524,7 +526,7 @@ RCDateTime RCDateTime::GetCurrent() {
   time_t const curr = time(0);
   tm const tmt = *localtime(&curr);
   RCDateTime rcdt(tmt.tm_year + 1900, tmt.tm_mon + 1, tmt.tm_mday, tmt.tm_hour, tmt.tm_min, tmt.tm_sec,
-                  common::CT::DATETIME);
+                  common::ColumnType::DATETIME);
   return rcdt;
 }
 
@@ -590,7 +592,7 @@ bool RCDateTime::operator!=(const RCDataType &rcv) const {
 }
 
 int64_t RCDateTime::operator-(const RCDateTime &sec) const {
-  if (at_ != common::CT::DATE || sec.at_ != common::CT::DATE || IsNull() || sec.IsNull())
+  if (at_ != common::ColumnType::DATE || sec.at_ != common::ColumnType::DATE || IsNull() || sec.IsNull())
     return common::NULL_VALUE_64;
   int64_t result = 0;  // span in days for [sec., ..., this]
   bool notless_than_sec = (this->operator>(sec));
@@ -631,7 +633,7 @@ int64_t RCDateTime::operator-(const RCDateTime &sec) const {
   return notless_than_sec ? result : -result;
 }
 
-common::CT RCDateTime::Type() const { return at_; }
+common::ColumnType RCDateTime::Type() const { return at_; }
 
 uint RCDateTime::GetHashCode() const {
   uint64_t v = *reinterpret_cast<uint64_t *>(const_cast<DT *>(&dt_));
@@ -688,9 +690,10 @@ void RCDateTime::AdjustTimezone(RCDateTime &dt) {
     gmtime_r(&secs, &utc_t);
     // UTC time stored on server
     dt = RCDateTime((utc_t.tm_year + 1900) % 10000, utc_t.tm_mon + 1, utc_t.tm_mday, utc_t.tm_hour, utc_t.tm_min,
-                    utc_t.tm_sec, common::CT::TIMESTAMP);
+                    utc_t.tm_sec, common::ColumnType::TIMESTAMP);
     dt.dt_.microsecond = t.second_part;
   }
 }
+
 }  // namespace types
 }  // namespace Tianmu
