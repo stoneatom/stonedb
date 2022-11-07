@@ -28,7 +28,7 @@ TextStat::TextStat() {
 
 bool TextStat::AddString(const BString &rcbs) {
   size_t len = rcbs.size();
-  if (len > TAB_SIZE) {
+  if (len > TAB_SIZE_) {
     valid_ = false;
     return false;
   }
@@ -41,7 +41,7 @@ bool TextStat::AddString(const BString &rcbs) {
     chars_found_[256 * i + uchar(rcbs[i])] = 1;
   }
 
-  if (len < TAB_SIZE)
+  if (len < TAB_SIZE_)
     chars_found_[256 * len] = 1;  // value of len n puts 0 on position n (starting with 0)
   if (len > max_string_size_)
     max_string_size_ = len;
@@ -51,7 +51,7 @@ bool TextStat::AddString(const BString &rcbs) {
 
 bool TextStat::AddChar(uchar v, int pos)  // return false if out of range
 {
-  if (static_cast<size_t>(pos) >= TAB_SIZE || v == 0) {
+  if (static_cast<size_t>(pos) >= TAB_SIZE_ || v == 0) {
     valid_ = false;
     return false;
   }
@@ -64,9 +64,9 @@ bool TextStat::AddChar(uchar v, int pos)  // return false if out of range
 
 void TextStat::AddLen(int pos)  // value of len n puts 0 on position n (starting with 0)
 {
-  if (static_cast<size_t>(pos) == TAB_SIZE)
+  if (static_cast<size_t>(pos) == TAB_SIZE_)
     return;
-  DEBUG_ASSERT(static_cast<size_t>(pos) < TAB_SIZE);
+  DEBUG_ASSERT(static_cast<size_t>(pos) < TAB_SIZE_);
   chars_found_[256 * pos] = 1;
   if (static_cast<size_t>(pos) > max_string_size_)
     max_string_size_ = pos;
@@ -151,7 +151,7 @@ int64_t TextStat::Encode(const BString &rcbs,
 {
   int64_t res = 0;
   size_t len = rcbs.size();
-  if (len > TAB_SIZE)
+  if (len > TAB_SIZE_)
     return common::NULL_VALUE_64;
   int charcode;
   for (size_t i = 0; i < len; i++) {
@@ -205,9 +205,9 @@ BString TextStat::Decode(int64_t code) {
 
   int charcode;
   int len = max_string_size_;
-  char buf_val[TMP_BUFFER_SIZE] = {0};
+  char buf_val[TMP_BUFFER_SIZE_] = {0};
 
-  DEBUG_ASSERT(max_string_size_ < TMP_BUFFER_SIZE);
+  DEBUG_ASSERT(max_string_size_ < TMP_BUFFER_SIZE_);
   buf_val[max_string_size_] = 0;
   for (int i = max_string_size_ - 1; i >= 0; i--) {
     charcode = 0;

@@ -61,7 +61,7 @@ class PPMModel {
   static const int N_Symb_ = 256;
 
  public:
-  virtual void TransformForPPM(PPMParam param_ = PPMParam()) = 0;
+  virtual void TransformForPPM(PPMParam param = PPMParam()) = 0;
 
   virtual void InitPPM() = 0;
 

@@ -47,7 +47,7 @@ class Item_sum_int_rcbase : public Item_sum_num {
     maybe_null = null_value = 0;
   }
 
-  void int64_value(int64_t &value_);
+  void int64_value(int64_t &value);
 
   void clear() override;
   bool add() override;

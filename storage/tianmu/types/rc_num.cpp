@@ -34,8 +34,8 @@ RCNum::RCNum(int64_t value_, short scale, bool is_double_, common::CT attrt) {
   Assign(value_, scale, is_double_, attrt);
 }
 
-RCNum::RCNum(double value_)
-    : value_(*(int64_t *)&value_), scale_(0), is_double_(true), is_dot_(false), attr_type_(common::CT::REAL) {
+RCNum::RCNum(double value)
+    : value_(*(int64_t *)&value), scale_(0), is_double_(true), is_dot_(false), attr_type_(common::CT::REAL) {
   null_ = (value_ == NULL_VALUE_D ? true : false);
 }
 
@@ -51,10 +51,10 @@ RCNum::RCNum(const RCNum &rcn)
 
 RCNum::~RCNum() {}
 
-RCNum &RCNum::Assign(int64_t value_, short scale, bool is_double_, common::CT attrt) {
-  this->value_ = value_;
+RCNum &RCNum::Assign(int64_t value, short scale, bool is_double, common::CT attrt) {
+  this->value_ = value;
   this->scale_ = scale;
-  this->is_double_ = is_double_;
+  this->is_double_ = is_double;
   this->attr_type_ = attrt;
 
   if (scale != -1 && !is_double_) {
@@ -76,8 +76,8 @@ RCNum &RCNum::Assign(int64_t value_, short scale, bool is_double_, common::CT at
   return *this;
 }
 
-RCNum &RCNum::Assign(double value_) {
-  this->value_ = *(int64_t *)&value_;
+RCNum &RCNum::Assign(double value) {
+  this->value_ = *(int64_t *)&value;
   this->scale_ = 0;
   this->is_double_ = true;
   this->is_dot_ = false;
@@ -411,18 +411,18 @@ RCNum &RCNum::operator*=(const RCNum &rcn) {
   return *this;
 }
 
-void fcvt(char *buf_, double val_, int digits_, int *dec_, int *sign_) {
+void fcvt(char *buf, double val, int digits, int *dec, int *sign) {
   static int const fmtlen = 10;
   char format[fmtlen + 1];
-  std::snprintf(format, fmtlen + 1, "%%.%df", digits_);
-  std::snprintf(buf_, digits_, format, val_);
-  int len(std::strlen(buf_));
-  (*sign_) = (buf_[0] == '-') ? 1 : 0;
-  (*sign_) && std::memmove(buf_, buf_ + 1, len);
-  char *pbuf(buf_);
+  std::snprintf(format, fmtlen + 1, "%%.%df", digits);
+  std::snprintf(buf, digits, format, val);
+  int len(std::strlen(buf));
+  (*sign) = (buf[0] == '-') ? 1 : 0;
+  (*sign) && std::memmove(buf, buf + 1, len);
+  char *pbuf(buf);
   ::strsep(&pbuf, ".,");
   if (pbuf) {
-    (*dec_) = pbuf - buf_ - 1;
+    (*dec) = pbuf - buf - 1;
     std::memmove(pbuf - 1, pbuf, std::strlen(pbuf) + 1);
   }
   return;

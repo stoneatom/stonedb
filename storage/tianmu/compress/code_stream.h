@@ -34,10 +34,10 @@ class CoderStream : protected ArithCoder {
     my_stream_.Reset(buf, len, pos);
     str_ = &my_stream_;
   }
-  void Reset(BitStream *str_ = 0) { str_ = str_; }
+  void Reset(BitStream *str = 0) { str_ = str; }
   CoderStream() { Reset(); }
   CoderStream(char *buf, uint len, uint pos = 0) { Reset(buf, len, pos); }
-  CoderStream(BitStream *str_) { Reset(str_); }
+  CoderStream(BitStream *str) { Reset(str); }
   virtual ~CoderStream() {}
   using ArithCoder::BaseT;
   using ArithCoder::MAX_TOTAL_;
