@@ -1473,7 +1473,8 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
 
     std::unique_ptr<core::CompiledQuery> tmp_cq(new core::CompiledQuery(*cq_));
     core::CondID cond_id;
-    if (!query_->BuildConditions(cond, cond_id, tmp_cq.get(), tmp_table_, core::CondType::WHERE_COND, false)) {
+    if (QueryRouteTo::kToMySQL ==
+        query_->BuildConditions(cond, cond_id, tmp_cq.get(), tmp_table_, core::CondType::WHERE_COND, false)) {
       query_.reset();
       return a_cond;
     }

@@ -118,7 +118,7 @@
 #include "rpl_group_replication.h"
 #include <algorithm>
 
-#include "../storage/tianmu/handler/ha_rcengine.h" // tianmu code
+#include "../storage/tianmu/handler/ha_my_tianmu.h" // tianmu code
 using std::max;
 
 /**
@@ -3262,10 +3262,11 @@ case SQLCOM_PREPARE:
 		  // Tianmu hook added
 		  
 		  int tianmu_res, free_join_from_tianmu, optimize_after_tianmu;
-		  if (Tianmu::handler::ha_my_tianmu_query(thd, lex, result, 0, tianmu_res, optimize_after_tianmu, free_join_from_tianmu, (int)true) == 0)
-			  res = handle_query(thd, lex, result, SELECT_NO_UNLOCK, (ulong)0, optimize_after_tianmu, free_join_from_tianmu);
+		  if (Tianmu::handler::QueryRouteTo::kToMySQL ==
+			  Tianmu::handler::ha_my_tianmu_query(thd, lex, result, 0, tianmu_res, optimize_after_tianmu, free_join_from_tianmu, (int)true))
+		    res = handle_query(thd, lex, result, SELECT_NO_UNLOCK, (ulong)0, optimize_after_tianmu, free_join_from_tianmu);
 		  else
-			  res = tianmu_res;
+		    res = tianmu_res;
 		  
           if (thd->lex->is_ignore() || thd->is_strict_mode())
             thd->pop_internal_handler();
@@ -3727,7 +3728,7 @@ end_with_restore_list:
     if ((check_table_access(thd, SELECT_ACL, all_tables, FALSE, UINT_MAX, FALSE)
          || open_and_lock_tables(thd, all_tables, 0)))
       goto error;
-	if (!Tianmu::handler::TIANMU_SetStatementAllowed(thd, lex)) {
+	if (!Tianmu::handler::ha_my_tianmu_set_statement_allowed(thd, lex)) {
 		goto error;
 	}
     if (!(res= sql_set_variables(thd, lex_var_list)))
@@ -5178,9 +5179,9 @@ static bool execute_sqlcom_select(THD *thd, TABLE_LIST *all_tables)
       }
       //res= handle_query(thd, lex, result, 0, 0, 0, 0);
 	 
-	  int tianmu_res, free_join_from_tianmu, optimize_after_tianmu;//ATIMSTORE UPGRADE
-	  if (Tianmu::handler::ha_my_tianmu_query(thd, lex, result, (ulong)0,
-		  tianmu_res, optimize_after_tianmu, free_join_from_tianmu) == 0) {
+	  int tianmu_res, free_join_from_tianmu, optimize_after_tianmu;
+	  if (Tianmu::handler::QueryRouteTo::kToMySQL ==
+		  Tianmu::handler::ha_my_tianmu_query(thd, lex, result, (ulong)0, tianmu_res, optimize_after_tianmu, free_join_from_tianmu)) {
 		  res = handle_query(thd, lex, result, (ulonglong)0, (ulonglong)0, optimize_after_tianmu, free_join_from_tianmu);
 	  }
 	  else
