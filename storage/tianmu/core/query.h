@@ -344,7 +344,8 @@ class Query final {
   QueryRouteTo AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const group_by_clause);
   QueryRouteTo AddGlobalOrderByFields(SQL_I_List<ORDER> *global_order, const TabID &tmp_table, int max_col);
   QueryRouteTo AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vector<TabID> &left_tables,
-                        std::vector<TabID> &right_tables, bool in_subquery, bool &first_table, bool for_subq = false);
+                        std::vector<TabID> &right_tables, bool in_subquery, bool &first_table, bool for_subq = false,
+                        bool use_tmp_when_no_join = false);
   static bool ClearSubselectTransformation(common::Operator &oper_for_subselect, Item *&field_for_subselect,
                                            Item *&conds, Item *&having, Item *&cond_removed,
                                            List<Item> *&list_to_reinsert, Item *left_expr_for_subselect);

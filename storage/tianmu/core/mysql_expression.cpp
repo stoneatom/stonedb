@@ -117,14 +117,6 @@ bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &field
       if (dynamic_cast<Item_func_trig_cond *>(item) != nullptr)
         return false;
 
-      // currently stored procedures not supported
-      if (dynamic_cast<Item_func_sp *>(item) != nullptr) {
-        Item_func_sp *ifunc = dynamic_cast<Item_func_sp *>(item);
-        if (ifunc->argument_count() != 0)
-          return false;
-        return true;
-      }
-
       // Otherwise, it's a regular function/operator (hopefully)
       Item_func *ifunc = dynamic_cast<Item_func *>(item);
       bool correct = true;
