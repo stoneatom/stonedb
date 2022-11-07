@@ -74,11 +74,11 @@ Handles a single query
 If an error appears during query preparation/optimization
 query structures are cleaned up and the function returns information about the
 error through res'. If the query can not be compiled by Tianmu engine
-RETURN_QUERY_TO_MYSQL_ROUTE is returned and MySQL engine continues query
+QueryRouteTo::kToMySQL is returned and MySQL engine continues query
 execution.
 */
-int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
-                         int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
+QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
+                                  int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
   KillTimer timer(thd, tianmu_sysvar_max_execution_time);
 
   int in_case_of_failure_can_go_to_mysql;
@@ -93,12 +93,12 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
   if (tianmu_sysvar_pushdown)
     thd->variables.optimizer_switch |= OPTIMIZER_SWITCH_ENGINE_CONDITION_PUSHDOWN;
   if (!IsTIANMURoute(thd, lex->query_tables, lex->select_lex, in_case_of_failure_can_go_to_mysql, with_insert)) {
-    return RETURN_QUERY_TO_MYSQL_ROUTE;
+    return QueryRouteTo::kToMySQL;
   }
 
   if (lock_tables(thd, thd->lex->query_tables, thd->lex->table_count, 0)) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Failed to lock tables for query '%s'", thd->query().str);
-    return RCBASE_QUERY_ROUTE;
+    return QueryRouteTo::kToTianmu;
   }
   /*
     Only register query in cache if it tables were locked above.
@@ -111,7 +111,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
   // at this point all tables are in RCBase engine, so we can proceed with the
   // query and we know that if the result goes to the file, the TIANMU_DATAFORMAT is
   // one of TIANMU formats
-  int route = RCBASE_QUERY_ROUTE;
+  QueryRouteTo route = QueryRouteTo::kToTianmu;
   SELECT_LEX *save_current_select = lex->current_select();
   List<st_select_lex_unit> derived_optimized;  // collection to remember derived
                                                // tables that are optimized
@@ -132,7 +132,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
           if (first_select->next_select() && first_select->next_select()->linkage == UNION_TYPE) {  //?? only if union
             if (lex->is_explain() || cursor->derived_unit()->item) {  //??called for explain
               // OR there is subselect(?)
-              route = RETURN_QUERY_TO_MYSQL_ROUTE;
+              route = QueryRouteTo::kToMySQL;
               goto ret_derived;
             }
             if (!cursor->derived_unit()->is_executed() ||
@@ -157,8 +157,8 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
           }
           lex->set_current_select(save_current_select);
           if (!res && free_join)  // no error &
-            route = RETURN_QUERY_TO_MYSQL_ROUTE;
-          if (res || route == RETURN_QUERY_TO_MYSQL_ROUTE)
+            route = QueryRouteTo::kToMySQL;
+          if (res || route == QueryRouteTo::kToMySQL)
             goto ret_derived;
         }
     lex->thd->derived_tables_processing = FALSE;
@@ -181,7 +181,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
          sc->create_table->table_name); res = 1; } else
        */
       if (lex->is_explain() || unit->item)  // explain or sth was already computed - go to mysql
-        route = RETURN_QUERY_TO_MYSQL_ROUTE;
+        route = QueryRouteTo::kToMySQL;
       else {
         int old_executed = unit->is_executed();
         res = unit->optimize_for_tianmu();  //====exec()
@@ -189,7 +189,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
         if (!res) {
           try {
             route = ha_rcengine_->Execute(unit->thd, unit->thd->lex, result, unit);
-            if (route == RETURN_QUERY_TO_MYSQL_ROUTE) {
+            if (route == QueryRouteTo::kToMySQL) {
               if (in_case_of_failure_can_go_to_mysql)
                 if (old_executed)
                   unit->set_executed();
@@ -207,13 +207,13 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
               }
             }
           } catch (ReturnMeToMySQLWithError &) {
-            route = RCBASE_QUERY_ROUTE;
+            route = QueryRouteTo::kToTianmu;
             res = TRUE;
           }
         }
       }
     }
-    if (res || route == RCBASE_QUERY_ROUTE) {
+    if (res || route == QueryRouteTo::kToTianmu) {
       res |= (int)unit->cleanup(0);
       optimize_after_tianmu = FALSE;
     }
@@ -236,7 +236,7 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
     if (!err) {
       try {
         route = Execute(thd, lex, result);
-        if (route == RETURN_QUERY_TO_MYSQL_ROUTE && !in_case_of_failure_can_go_to_mysql) {
+        if (route == QueryRouteTo::kToMySQL && !in_case_of_failure_can_go_to_mysql) {
           TIANMU_LOG(LogCtl_Level::ERROR,
                      "Error: Query syntax not implemented in Tianmu, can export "
                      "only to MySQL format (set TIANMU_DATAFORMAT to 'MYSQL').");
@@ -248,13 +248,13 @@ int Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulong setup_
           throw ReturnMeToMySQLWithError();
         }
       } catch (ReturnMeToMySQLWithError &) {
-        route = RCBASE_QUERY_ROUTE;
+        route = QueryRouteTo::kToTianmu;
         err = TRUE;
       }
     }
     if (tianmu_free_join) {  // there was a join created in an upper function
       // so an upper function will do the cleanup
-      if (err || route == RCBASE_QUERY_ROUTE) {
+      if (err || route == QueryRouteTo::kToTianmu) {
         thd->proc_info = "end";
         err |= (int)select_lex->cleanup(0);
         optimize_after_tianmu = FALSE;
@@ -290,7 +290,7 @@ ret_derived:
   // if the query is redirected to MySQL engine
   // optimization of derived tables must be completed
   // and derived tables must be filled
-  if (route == RETURN_QUERY_TO_MYSQL_ROUTE) {
+  if (route == QueryRouteTo::kToMySQL) {
     for (SELECT_LEX *sl = lex->all_selects_list; sl; sl = sl->next_select_in_list())
       for (TABLE_LIST *cursor = sl->get_table_list(); cursor; cursor = cursor->next_local)
         if (cursor->table && cursor->is_derived()) {
@@ -350,9 +350,9 @@ int optimize_select(THD *thd, ulong select_options, Query_result *result, SELECT
   return FALSE;
 }
 
-int handle_exceptions(THD *, Transaction *, bool with_error = false);
+QueryRouteTo handle_exceptions(THD *, Transaction *, bool with_error = false);
 
-int Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_UNIT *unit_for_union) {
+QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_UNIT *unit_for_union) {
   DEBUG_ASSERT(thd->lex == lex);
   SELECT_LEX *selects_list = lex->select_lex;
   SELECT_LEX *last_distinct = nullptr;
@@ -364,7 +364,7 @@ int Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_
   if (is_dumpfile) {
     push_warning(thd, Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
                  "Dumpfile not implemented in Tianmu, executed by MySQL engine.");
-    return RETURN_QUERY_TO_MYSQL_ROUTE;
+    return QueryRouteTo::kToMySQL;
   }
 
   Query query(current_txn_);
@@ -374,10 +374,10 @@ int Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_
   query.SetRoughQuery(selects_list->active_options() & SELECT_ROUGHLY);
 
   try {
-    if (!query.Compile(&cqu, selects_list, last_distinct)) {
+    if (QueryRouteTo::kToMySQL == query.Compile(&cqu, selects_list, last_distinct)) {
       push_warning(thd, Sql_condition::SL_NOTE, ER_UNKNOWN_ERROR,
                    "Query syntax not implemented in Tianmu, executed by MySQL engine.");
-      return RETURN_QUERY_TO_MYSQL_ROUTE;
+      return QueryRouteTo::kToMySQL;
     }
   } catch (common::Exception const &x) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Query Compile Error: %s", x.what());
@@ -445,10 +445,10 @@ int Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_
     }
     return (handle_exceptions(thd, current_txn_, with_error));
   }
-  return RCBASE_QUERY_ROUTE;
+  return QueryRouteTo::kToTianmu;
 }
 
-int handle_exceptions(THD *thd, Transaction *cur_connection, bool with_error) {
+QueryRouteTo handle_exceptions(THD *thd, Transaction *cur_connection, bool with_error) {
   try {
     std::string msg = "Query terminated with exception: ";
     msg += thd->query().str;
@@ -467,7 +467,7 @@ int handle_exceptions(THD *thd, Transaction *cur_connection, bool with_error) {
       msg.append(" Can't switch to MySQL execution path");
       throw common::InternalException(msg);
     }
-    return RETURN_QUERY_TO_MYSQL_ROUTE;
+    return QueryRouteTo::kToMySQL;
   } catch (common::OutOfMemoryException const &x) {
     rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
     my_message(static_cast<int>(common::ErrorCode::OUT_OF_MEMORY),
@@ -501,7 +501,7 @@ int handle_exceptions(THD *thd, Transaction *cur_connection, bool with_error) {
     my_message(ER_UNKNOWN_ERROR, (std::string("Tianmu out of memory error")).c_str(), MYF(0));
     throw ReturnMeToMySQLWithError();
   }
-  return RETURN_QUERY_TO_MYSQL_ROUTE;
+  return QueryRouteTo::kToMySQL;
 }
 }  // namespace core
 }  // namespace Tianmu
