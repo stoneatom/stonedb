@@ -306,7 +306,7 @@ class SuffixTree : public PPMModel {
   //-------------------------------------------------------------------------
   // definitions for PPM
 
-  void TransformForPPM(PPMParam param_ = PPMParam()) override;
+  void TransformForPPM(PPMParam param = PPMParam()) override;
   void InitPPM() override { state_ = ROOT_; }
   // compression: [str,len_total] -> [len_of_edge,rng,total]
   void Move(Symb *str, int &len, Range &rng, Count &total) override;
