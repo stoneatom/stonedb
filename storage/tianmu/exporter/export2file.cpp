@@ -24,7 +24,7 @@ namespace Tianmu {
 namespace exporter {
 
 select_tianmu_export::select_tianmu_export(Query_result_export *se)
-    : Query_result_export(se->get_sql_exchange()), se(se), prepared(false) {}
+    : Query_result_export(se->get_sql_exchange()), select_export_(se), prepared_(false) {}
 
 int select_tianmu_export::prepare(List<Item> &list, SELECT_LEX_UNIT *u) {
   bool blob_flag = 0;
@@ -53,7 +53,7 @@ int select_tianmu_export::prepare(List<Item> &list, SELECT_LEX_UNIT *u) {
     exchange->field.opt_enclosed = 1;  // A little quicker loop
   fixed_row_size = (!field_term_length && !exchange->field.enclosed->length() && !blob_flag);
 
-  prepared = true;
+  prepared_ = true;
   return 0;
 }
 
@@ -63,7 +63,7 @@ void select_tianmu_export::SendOk(THD *thd) { ::my_ok(thd, row_count); }
 
 sql_exchange *select_tianmu_export::SqlExchange() { return exchange; }
 
-bool select_tianmu_export::send_data(List<Item> &items) { return se->send_data(items); }
+bool select_tianmu_export::send_data(List<Item> &items) { return select_export_->send_data(items); }
 
 }  // namespace exporter
 }  // namespace Tianmu

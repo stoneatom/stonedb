@@ -41,6 +41,8 @@ const Alter_inplace_info::HA_ALTER_FLAGS ha_tianmu::TIANMU_SUPPORTED_ALTER_ADD_D
     Alter_inplace_info::ADD_COLUMN | Alter_inplace_info::DROP_COLUMN | Alter_inplace_info::ALTER_STORED_COLUMN_ORDER;
 const Alter_inplace_info::HA_ALTER_FLAGS ha_tianmu::TIANMU_SUPPORTED_ALTER_COLUMN_NAME =
     Alter_inplace_info::ALTER_COLUMN_DEFAULT | Alter_inplace_info::ALTER_COLUMN_NAME;
+const Alter_inplace_info::HA_ALTER_FLAGS ha_tianmu::TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS =
+    Alter_inplace_info::CHANGE_CREATE_OPTION;
 /////////////////////////////////////////////////////////////////////
 //
 // NOTICE: ALL EXCEPTIONS SHOULD BE CAUGHT in the handler API!!!
@@ -170,7 +172,23 @@ namespace {
 std::vector<bool> GetAttrsUseIndicator(TABLE *table) {
   int col_id = 0;
   std::vector<bool> attr_uses;
+  enum_sql_command sql_command = SQLCOM_END;
+  if (table->in_use && table->in_use->lex)
+    sql_command = table->in_use->lex->sql_command;
+  bool check_tianmu_delete_or_update = (sql_command == SQLCOM_DELETE) || (sql_command == SQLCOM_DELETE_MULTI) ||
+                                       (sql_command == SQLCOM_UPDATE) || (sql_command == SQLCOM_UPDATE_MULTI);
+
   for (Field **field = table->field; *field; ++field, ++col_id) {
+    /*
+      The binlog in row format will record the information in each column of the currently modified row and generate a
+      change log, The information of each column in the current row is obtained from the engine layer, so when the
+      current statement is delete or update, you need to fill in data for each column.
+      Here, should set each column to be valid.
+    */
+    if (check_tianmu_delete_or_update) {
+      attr_uses.push_back(true);
+      continue;
+    }
     if (bitmap_is_set(table->read_set, col_id) || bitmap_is_set(table->write_set, col_id))
       attr_uses.push_back(true);
     else
@@ -301,7 +319,7 @@ int ha_tianmu::external_lock(THD *thd, int lock_type) {
 
 namespace {
 inline bool has_dup_key(std::shared_ptr<index::RCTableIndex> &indextab, TABLE *table, size_t &row) {
-  common::ErrorCode ret;
+  common::ErrorCode ret = common::ErrorCode::SUCCESS;
   std::vector<std::string_view> records;
   KEY *key = table->key_info + table->s->primary_key;
 
@@ -593,9 +611,10 @@ int ha_tianmu::delete_all_rows() {
 }
 
 int ha_tianmu::rename_table(const char *from, const char *to) {
+  DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
     ha_rcengine_->RenameTable(current_txn_, from, to, ha_thd());
-    return 0;
+    DBUG_RETURN(0);
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -603,7 +622,7 @@ int ha_tianmu::rename_table(const char *from, const char *to) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
-  return 1;
+  DBUG_RETURN(1);
 }
 
 void ha_tianmu::update_create_info([[maybe_unused]] HA_CREATE_INFO *create_info) {}
@@ -749,8 +768,9 @@ int ha_tianmu::open(const char *name, [[maybe_unused]] int mode, [[maybe_unused]
 }
 
 int ha_tianmu::free_share() {
+  DBUG_ENTER(__PRETTY_FUNCTION__);
   share_.reset();
-  return 0;
+  DBUG_RETURN(0);
 }
 
 /*
@@ -1271,7 +1291,7 @@ int ha_tianmu::truncate() {
   DBUG_RETURN(ret);
 }
 
-uint ha_tianmu::max_supported_key_part_length(HA_CREATE_INFO *create_info) const {
+uint ha_tianmu::max_supported_key_part_length([[maybe_unused]] HA_CREATE_INFO *create_info) const {
   if (tianmu_sysvar_large_prefix)
     return (Tianmu::common::TIANMU_MAX_INDEX_COL_LEN_LARGE);
   else
@@ -1502,6 +1522,11 @@ int ha_tianmu::reset() {
 enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_unused]] TABLE *altered_table,
                                                                       Alter_inplace_info *ha_alter_info) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
+  if ((ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) &&
+      (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)) {
+    DBUG_RETURN(HA_ALTER_INPLACE_EXCLUSIVE_LOCK);
+  }
+
   if ((ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER) &&
       (ha_alter_info->handler_flags != TIANMU_SUPPORTED_ALTER_COLUMN_NAME)) {
     // support alter table column type
@@ -1513,6 +1538,10 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
     // support alter table column default
     if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_COLUMN_DEFAULT)
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+    // support alter table NULL to NOT NULL or NOT NULL to NULL
+    if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_COLUMN_NULLABLE ||
+        ha_alter_info->handler_flags & Alter_inplace_info::ALTER_COLUMN_NOT_NULLABLE)
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
 
     DBUG_RETURN(HA_ALTER_ERROR);
   }
@@ -1520,14 +1549,18 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
 }
 
 bool ha_tianmu::inplace_alter_table(TABLE *altered_table, Alter_inplace_info *ha_alter_info) {
+  DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
-    if (!(ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)) {
+    if ((ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) &&
+        (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)) {
+      DBUG_RETURN(false);
+    } else if (!(ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)) {
       std::vector<Field *> v_old(table_share->field, table_share->field + table_share->fields);
       std::vector<Field *> v_new(altered_table->s->field, altered_table->s->field + altered_table->s->fields);
       ha_rcengine_->PrepareAlterTable(table_name_, v_new, v_old, ha_thd());
-      return false;
+      DBUG_RETURN(false);
     } else if (ha_alter_info->handler_flags == TIANMU_SUPPORTED_ALTER_COLUMN_NAME) {
-      return false;
+      DBUG_RETURN(false);
     }
   } catch (std::exception &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -1537,21 +1570,27 @@ bool ha_tianmu::inplace_alter_table(TABLE *altered_table, Alter_inplace_info *ha
 
   my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Unable to inplace alter table", MYF(0));
 
-  return true;
+  DBUG_RETURN(true);
 }
 
 bool ha_tianmu::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_table, Alter_inplace_info *ha_alter_info,
                                            bool commit) {
+  DBUG_ENTER(__PRETTY_FUNCTION__);
   if (!commit) {
     TIANMU_LOG(LogCtl_Level::INFO, "Alter table failed : %s%s", table_name_.c_str(), " rollback");
-    return true;
+    DBUG_RETURN(true);
+  }
+  if ((ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) &&
+      (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)) {
+    DBUG_RETURN(false);
   }
   if (ha_alter_info->handler_flags == TIANMU_SUPPORTED_ALTER_COLUMN_NAME) {
-    return false;
+    DBUG_RETURN(false);
   }
   if ((ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)) {
     TIANMU_LOG(LogCtl_Level::INFO, "Altered table not support type %lu", ha_alter_info->handler_flags);
     return true;
+    DBUG_RETURN(true);
   }
   fs::path tmp_dir(table_name_ + ".tmp");
   fs::path tab_dir(table_name_ + common::TIANMU_EXT);
@@ -1584,9 +1623,9 @@ bool ha_tianmu::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_table
     TIANMU_LOG(LogCtl_Level::ERROR, "file system error: %s %s|%s", e.what(), e.path1().string().c_str(),
                e.path2().string().c_str());
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Failed to commit alter table", MYF(0));
-    return true;
+    DBUG_RETURN(true);
   }
-  return false;
+  DBUG_RETURN(false);
 }
 /*
  key: mysql format, may be union key, need changed to kvstore key format
