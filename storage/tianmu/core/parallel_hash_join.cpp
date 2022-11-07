@@ -536,6 +536,9 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
   // Preload packs data of TempTable.
   TempTablePackLocker temptable_pack_locker(vc1_, cond_hashed_, availabled_packs);
 
+  THD *cur_thd = current_thd;
+  DEBUG_ASSERT(cur_thd);
+
   int64_t traversed_rows = 0;
   bool no_except = true;
   utils::result_set<int64_t> res;
@@ -550,6 +553,7 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
       params.traversed_hash_table = &ht;
       params.build_item = multi_index_builder_->CreateBuildItem();
       params.task_miter = iter;
+      params.thd = cur_thd;
 
       res.insert(ha_rcengine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncTraverseDim, this, &params));
     }
@@ -603,6 +607,9 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
 int64_t ParallelHashJoiner::AsyncTraverseDim(TraverseTaskParams *params) {
   params->traversed_hash_table->Initialize();
 
+  my_thread_set_THR_THD(params->thd);
+  DEBUG_ASSERT(params->thd->mem_root);
+  my_thread_set_THR_MALLOC(&(params->thd->mem_root));
   HashTable *hash_table = params->traversed_hash_table->hash_table();
 
   std::string key_input_buffer(hash_table->GetKeyBufferWidth(), 0);
@@ -782,6 +789,9 @@ int64_t ParallelHashJoiner::MatchDim(MIIterator &mit) {
   int availabled_packs = (int)((rows_count + (1 << pack_power_) - 1) >> pack_power_);
   TempTablePackLocker temptable_pack_locker(vc2_, cond_hashed_, availabled_packs);
 
+  THD *cur_thd = current_thd;
+  DEBUG_ASSERT(cur_thd);
+
   std::vector<MatchTaskParams> match_task_params;
   match_task_params.reserve(task_iterators.size());
   int64_t matched_rows = 0;
@@ -794,6 +804,7 @@ int64_t ParallelHashJoiner::MatchDim(MIIterator &mit) {
         ftht.GetColumnEncoder(&params.column_bin_encoder);
         params.build_item = multi_index_builder_->CreateBuildItem();
         params.task_miter = iter;
+        params.thd = cur_thd;
 
         res.insert(ha_rcengine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncMatchDim, this, &params));
       }
@@ -821,6 +832,8 @@ int64_t ParallelHashJoiner::MatchDim(MIIterator &mit) {
     ftht.GetColumnEncoder(&params.column_bin_encoder);
     params.build_item = multi_index_builder_->CreateBuildItem();
     params.task_miter = *task_iterators.begin();
+    params.thd = cur_thd;
+
     matched_rows = AsyncMatchDim(&params);
   }
 
@@ -846,6 +859,10 @@ int64_t ParallelHashJoiner::AsyncMatchDim(MatchTaskParams *params) {
   MEASURE_FET("ParallelHashJoiner::AsyncMatchDim(...)");
 
   DEBUG_ASSERT(!traversed_hash_tables_.empty());
+
+  my_thread_set_THR_THD(params->thd);
+  DEBUG_ASSERT(params->thd->mem_root);
+  my_thread_set_THR_MALLOC(&(params->thd->mem_root));
 
   // ftht: first_traversed_hash_table.
   auto &ftht = traversed_hash_tables_[0];

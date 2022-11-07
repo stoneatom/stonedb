@@ -206,6 +206,28 @@ bool Item_tianmufield::get_timeval(struct timeval *tm, int *warnings) {
 
 bool Item_tianmufield::operator==(Item_tianmufield const &o) const { return (varID == o.varID); }
 
+type_conversion_status Item_tianmufield::save_in_field_inner(Field *to, bool no_conversions) {
+  type_conversion_status res;
+  if ((null_value = buf->null)) {
+    null_value = 1;
+    return set_field_to_null_with_conversions(to, no_conversions);
+  }
+
+  null_value = 0;
+  to->set_notnull();
+
+  Field *from = ifield->result_field;
+  assert(from && from->table && from->table->write_set);
+
+  if (!bitmap_is_set(from->table->write_set, from->field_index)) {
+    bitmap_set_bit(from->table->write_set, from->field_index);
+  }
+
+  FeedValue();
+  ivalue->save_org_in_field(from);
+  return field_conv(to, from);
+}
+
 Item_tianmudecimal::Item_tianmudecimal(DataType t) : Item_decimal(0, false) {
   scale = t.fixscale;
   scaleCoef = QuickMath::power10i(scale);

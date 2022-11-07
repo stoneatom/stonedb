@@ -93,6 +93,7 @@ class Item_tianmufield : public Item_field {
   bool operator==(Item_tianmufield const &) const;
   bool IsAggregation() { return was_aggregation; }
   const ValueOrNull GetCurrentValue();
+  type_conversion_status save_in_field_inner(Field *field, bool no_conversions) override;
 
   // possibly more functions of Item_field should be redifined to redirect them
   // to ifield bool result_as_longlong()

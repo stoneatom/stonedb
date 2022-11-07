@@ -308,9 +308,15 @@ QueryRouteTo Query::AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vect
   List_iterator<TABLE_LIST> li(join);
   std::vector<TABLE_LIST *> reversed;
 
-  if (!join.elements)
-    return QueryRouteTo::kToMySQL;  // no tables in table list in this
-                                    // select
+  if (!join.elements) {
+    TabID tab(-1);
+
+    left_tables.push_back(tab);
+    cq->TmpTable(tmp_table, tab, for_subq_in_where);
+
+    return QueryRouteTo::kToTianmu;
+  }
+
   // if the table list was empty altogether, we wouldn't even enter
   // Compilation(...) it must be sth. like `select 1 from t1 union select 2` and
   // we are in the second select in the union
@@ -883,30 +889,37 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
                             TabID *res_tab, bool ignore_limit, Item *left_expr_for_subselect,
                             common::Operator *oper_for_subselect, bool ignore_minmax, bool for_subq_in_where) {
   MEASURE_FET("Query::Compile(...)");
-  // at this point all tables are in RCBase engine, so we can proceed with the
-  // query
+  // at this point all tables are in RCBase engine, so we can proceed with the query
 
   /*Item_func
    |
-   --Item_int_func  <-  arguments are kept in an array accessible through
-   arguments()
+   --Item_int_func  <-  arguments are kept in an array accessible through arguments()
    |
    --Item_bool_func
    |   |
-   |   ---Item_cond  <- arguments are kept in a list accessible through
-   argument_list() |   |     | |   |     ---Item_cond_and   <- when negated OR
-   of negated items is created |   |     | |   |     ---Item_cond_or    <- when
-   negated AND of negated items is created |   |     | |   | ---Item_cond_xor |
-   | |   ---Item_equal  <- arguments are kept in a list accessible through
-   argument_list() |   |                 + const_item (accessible through
-   get_const() ) |   |           (multiple equality) |   | |   ---Item_func_not
+   |   ---Item_cond  <- arguments are kept in a list accessible through argument_list()
+   |   |     |
+   |   |     ---Item_cond_and   <- when negated OR of negated items is created
+   |   |     |
+   |   |     ---Item_cond_or    <- when negated AND of negated items is created
+   |   |     |
+   |   |     ---Item_cond_xor
+   |   |
+   |   ---Item_equal  <- arguments are kept in a list accessible through argument_list()
+   |   |                 + const_item (accessible through get_const() )
+   |   |           (multiple equality)
+   |   |
+   |   ---Item_func_not
    |   |            (???)
    |   |
-   |   ---Item func_isnull     <- when negated IS NOT nullptr is created
+   |   ---Item func_isnull     <- when negated IS NOT NULL is created
    |
-   --Item_func_opt_neg  <-  arguments are kept in an array accessible through
-   arguments(), if negated |   |                     this information is kept
-   additionally (in a field named 'negated') |   | |   | |   ---Item_func_in | |
+   --Item_func_opt_neg  <-  arguments are kept in an array accessible through arguments(), if negated
+   |   |                     this information is kept additionally (in a field named 'negated')
+   |   |
+   |   |
+   |   ---Item_func_in
+   |   |
    |   |
    |   ---Item_func_between
    |
@@ -914,10 +927,9 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
    --Item_bool_func2
    |
    |
-   ---Item_bool_rowready_func2  <-arguments are kept in an array accessible
-   through arguments(), if negated |                          an object of a
-   corresponding class is created |                           (e.q.
-   ~Item_func_lt => Item_func_ge)
+   ---Item_bool_rowready_func2  <-arguments are kept in an array accessible through arguments(), if negated
+   |                          an object of a corresponding class is created
+   |                           (e.q. ~Item_func_lt => Item_func_ge)
    |
    ----Item_func_eq
    |
@@ -938,10 +950,10 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
    |
    |
    ----Item_func_equal   <- This is mystery so far
-
    There are 3 equality functions:
-   Item_equal -> multiple equality (many fields and optional additional constant
-   value) Item_func_equal -> ??? Item_func_eq -> pairwise equality
+   Item_equal -> multiple equality (many fields and optional additional constant value)
+   Item_func_equal -> ???
+   Item_func_eq -> pairwise equality
    */
 
   bool union_all = (last_distinct == nullptr);
@@ -1027,6 +1039,18 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
               break;
             }
           }
+        }
+      }
+    }
+
+    if (!join_list->elements) {
+      List_iterator_fast<Item> li(*fields);
+      for (Item *item = li++; item; item = li++) {
+        if ((item->type() == Item::Type::FUNC_ITEM) &&
+            (down_cast<Item_func *>(item)->functype() == Item_func::Functype::FUNC_SP) && (!sl->is_distinct())) {
+          sl->add_active_options(SELECT_DISTINCT);
+          sl->join->select_distinct = TRUE;
+          break;
         }
       }
     }

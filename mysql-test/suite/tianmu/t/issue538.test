@@ -1,0 +1,191 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # issue 538 test for user defined function of tianmu
+--echo #
+
+use test;
+
+--disable_warnings
+
+# User-defined function parameter table data query
+
+DROP TABLE IF EXISTS employees;
+
+CREATE TABLE `employees` (
+  `employee_id` int(11) NOT NULL ,
+  `employee_name` varchar(50) NOT NULL,
+  `employee_sex` varchar(10) DEFAULT 'men',
+  `hire_date` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `employee_mgr` int(11) DEFAULT NULL,
+  `employee_salary` float DEFAULT '3000',
+  `department_id` int(11) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+
+DROP FUNCTION IF EXISTS get_desc;
+DROP FUNCTION IF EXISTS get_int;
+
+CREATE FUNCTION get_desc(id INT) RETURNS VARCHAR(300) 
+  RETURN (SELECT CONCAT('employee name:',employee_name,'---','salary: ',employee_salary) FROM employees WHERE employee_id=id);
+
+CREATE FUNCTION get_int(id INT) RETURNS VARCHAR(300) 
+  RETURN (SELECT employee_salary FROM employees WHERE employee_id=id);
+
+--disable_query_log
+
+INSERT INTO employees(employee_id,employee_name,employee_sex,employee_mgr,employee_salary,department_id) VALUES (1,'David Tian','man',10,7500,1);
+INSERT INTO employees(employee_id,employee_name,employee_sex,employee_mgr,employee_salary,department_id) VALUES (2,'Black Xie','man',10,6600,1);
+INSERT INTO employees(employee_id,employee_name,employee_sex,employee_mgr,employee_salary,department_id) VALUES (3,'Moses Wang','man',10,4300,1);
+INSERT INTO employees(employee_id,employee_name,employee_sex,employee_mgr,employee_salary,department_id) VALUES (4,'Rena Ruan','woman',10,5300,1);
+INSERT INTO employees(employee_id,employee_name,employee_sex,employee_mgr,employee_salary,department_id) VALUES (5,'Sunshine Ma','woman',10,6500,2);
+
+--enable_query_log
+
+# User-defined functions as simple projection conditions
+
+SELECT
+	a.employee_id,
+	get_desc(b.employee_id)
+FROM
+	employees a
+LEFT JOIN employees b ON
+	a.employee_id = b.employee_id
+	and b.employee_name = 'David Tian';
+
+# User - defined function parameters aggregate function operations
+
+SELECT
+	sum(200 + get_int(b.employee_id))
+FROM
+	employees a
+LEFT JOIN employees b ON
+	a.employee_id = b.employee_id
+	and b.employee_name = 'David Tian';
+
+# User-defined function as the on predicate of the left join
+
+SELECT
+	a.employee_id,
+	get_desc(b.employee_id)
+FROM
+	employees a
+LEFT JOIN employees b ON
+	a.employee_salary = get_int(b.employee_id)
+	and b.employee_name = 'David Tian';
+
+# User-defined functions as interval predicates
+
+SELECT
+	a.employee_id,
+	get_desc(b.employee_id)
+FROM
+	employees a
+LEFT JOIN employees b ON
+	b.employee_name = 'David Tian'
+WHERE
+	a.employee_salary < get_int(b.employee_id);
+
+SELECT
+	a.employee_id,
+	get_desc(b.employee_id)
+FROM
+	employees a
+LEFT JOIN employees b ON
+	b.employee_name = 'David Tian'
+WHERE
+	a.employee_salary > get_int(b.employee_id);
+
+# User-defined functions as equivalent predicates
+
+SELECT
+	a.employee_id,
+	get_desc(b.employee_id)
+FROM
+	employees a
+LEFT JOIN employees b ON
+	b.employee_name = 'David Tian'
+WHERE
+	a.employee_salary = get_int(b.employee_id);
+
+SELECT
+    a.employee_id,
+    get_desc(b.employee_id)
+FROM
+    employees a
+LEFT JOIN employees b ON
+    b.employee_name = 'David Tian'
+WHERE
+    get_int(b.employee_id) = a.employee_salary;
+
+# User-defined functions generate derived tables
+
+## User - defined functions as simple driver tables
+
+SELECT
+	get_desc(a.employee_id),
+	b.employee_salary
+FROM
+	employees as a,
+	(
+	select
+		get_int(employees.employee_id) as employee_salary
+	from
+		employees) as b
+WHERE
+	a.employee_name = 'David Tian'
+	AND a.employee_salary = b.employee_salary;
+
+## User-defined functions as nested driver tables
+
+SELECT
+	get_desc(a.employee_id),
+	b.employee_salary
+FROM
+	employees as a,
+	(
+	select
+		get_int(e.employee_id) as employee_salary
+	from
+		(
+		SELECT
+			c.employee_id
+		FROM
+			(
+			SELECT
+				employee_id,
+				get_int(employees.employee_id) as employee_salary
+			FROM
+				employees
+			WHERE
+				employee_salary > 500) as c) as e ) as b
+WHERE
+	a.employee_name = 'David Tian'
+	AND a.employee_salary = b.employee_salary;
+
+# User-defined functions as simple stand-alone queries
+
+SELECT get_desc(1);
+SELECT get_desc(1),get_desc(1);
+SELECT get_desc(1),get_desc(1),get_desc(1);
+SELECT 1,get_desc(1);
+SELECT 1,2,get_desc(1);
+
+DROP TABLE employees;
+DROP FUNCTION get_desc;
+DROP FUNCTION get_int;
+
+# User-defined functions do not depend on tables and only do simple numerical calculations
+
+DROP TABLE IF EXISTS tf;
+
+CREATE TABLE tf (a int) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+
+DROP FUNCTION IF EXISTS sfunc;
+
+CREATE FUNCTION sfunc (a int) RETURNS int RETURN (a+1);
+INSERT tf VALUES(1);
+
+SELECT sfunc(2);
+
+DROP TABLE tf;
+DROP FUNCTION sfunc;
