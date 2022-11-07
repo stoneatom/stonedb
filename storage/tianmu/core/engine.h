@@ -108,8 +108,8 @@ class Engine final {
   Transaction *CreateTx(THD *thd);
   Transaction *GetTx(THD *thd);
   void ClearTx(THD *thd);
-  int HandleSelect(THD *thd, LEX *lex, Query_result *&result_output, ulong setup_tables_done_option, int &res,
-                   int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false);
+  QueryRouteTo HandleSelect(THD *thd, LEX *lex, Query_result *&result_output, ulong setup_tables_done_option, int &res,
+                            int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false);
   system::ResourceManager *getResourceManager() const { return m_resourceManager; }
   std::shared_ptr<RCTable> GetTableRD(const std::string &table_path);
   int InsertRow(const std::string &tablename, Transaction *trans_, TABLE *table, std::shared_ptr<TableShare> &share);
@@ -162,7 +162,7 @@ class Engine final {
  private:
   void AddTx(Transaction *tx);
   void RemoveTx(Transaction *tx);
-  int Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_UNIT *unit_for_union = nullptr);
+  QueryRouteTo Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_UNIT *unit_for_union = nullptr);
   int SetUpCacheFolder(const std::string &cachefolder_path);
 
   static bool AreConvertible(types::RCDataType &rcitem, enum_field_types my_type, uint length = 0);
