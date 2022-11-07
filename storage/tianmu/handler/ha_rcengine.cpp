@@ -27,8 +27,8 @@ namespace handler {
 
 enum class TIANMUEngineReturnValues { LD_Successed = 100, LD_Failed = 101, LD_Continue = 102 };
 
-void TIANMU_UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
-                                        CHARSET_INFO *cs) {
+void ha_my_tianmu_update_and_store_col_comment(TABLE *table, int field_id, Field *source_field, int source_field_id,
+                                               CHARSET_INFO *cs) {
   try {
     ha_rcengine_->UpdateAndStoreColumnComment(table, field_id, source_field, source_field_id, cs);
   } catch (std::exception &e) {
@@ -53,7 +53,7 @@ bool AtLeastOneTIANMUTableInvolved(LEX *lex) {
 bool ForbiddenMySQLQueryPath([[maybe_unused]] LEX *lex) { return (tianmu_sysvar_allowmysqlquerypath == 0); }
 }  // namespace
 
-bool TIANMU_SetStatementAllowed(THD *thd, LEX *lex) {
+bool ha_my_tianmu_set_statement_allowed(THD *thd, LEX *lex) {
   if (AtLeastOneTIANMUTableInvolved(lex)) {
     if (ForbiddenMySQLQueryPath(lex)) {
       my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
@@ -72,22 +72,21 @@ bool TIANMU_SetStatementAllowed(THD *thd, LEX *lex) {
   return true;
 }
 
-int ha_my_tianmu_query(THD *thd, LEX *lex, Query_result *&result, ulong setup_tables_done_option, int &res,
-                       int &optimize_after_tianmu, int &tianmu_free_join, int with_insert = false) {
-  int ret = RCBASE_QUERY_ROUTE;
+QueryRouteTo ha_my_tianmu_query(THD *thd, LEX *lex, Query_result *&result_output, ulong setup_tables_done_option,
+                                int &res, int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
+  QueryRouteTo ret = QueryRouteTo::kToTianmu;
   try {
     // handle_select_ret is introduced here because in case of some exceptions
     // (e.g. thrown from ForbiddenMySQLQueryPath) we want to return
-    // RCBASE_QUERY_ROUTE
-    int handle_select_ret = ha_rcengine_->HandleSelect(thd, lex, result, setup_tables_done_option, res,
-                                                       optimize_after_tianmu, tianmu_free_join, with_insert);
-    if (handle_select_ret == RETURN_QUERY_TO_MYSQL_ROUTE && AtLeastOneTIANMUTableInvolved(lex) &&
+    QueryRouteTo handle_select_ret = ha_rcengine_->HandleSelect(thd, lex, result_output, setup_tables_done_option, res,
+                                                                optimize_after_tianmu, tianmu_free_join, with_insert);
+    if (handle_select_ret == QueryRouteTo::kToMySQL && AtLeastOneTIANMUTableInvolved(lex) &&
         ForbiddenMySQLQueryPath(lex)) {
       my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
                  "The query includes syntax that is not supported by the storage engine. \
 Either restructure the query with supported syntax, or enable the MySQL core::Query Path in config file to execute the query with reduced performance.",
                  MYF(0));
-      handle_select_ret = RCBASE_QUERY_ROUTE;
+      handle_select_ret = QueryRouteTo::kToTianmu;
     }
     ret = handle_select_ret;
   } catch (std::exception &e) {

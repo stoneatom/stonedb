@@ -319,7 +319,7 @@ int ha_tianmu::external_lock(THD *thd, int lock_type) {
 
 namespace {
 inline bool has_dup_key(std::shared_ptr<index::RCTableIndex> &indextab, TABLE *table, size_t &row) {
-  common::ErrorCode ret;
+  common::ErrorCode ret = common::ErrorCode::SUCCESS;
   std::vector<std::string_view> records;
   KEY *key = table->key_info + table->s->primary_key;
 
@@ -611,9 +611,10 @@ int ha_tianmu::delete_all_rows() {
 }
 
 int ha_tianmu::rename_table(const char *from, const char *to) {
+  DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
     ha_rcengine_->RenameTable(current_txn_, from, to, ha_thd());
-    return 0;
+    DBUG_RETURN(0);
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -621,7 +622,7 @@ int ha_tianmu::rename_table(const char *from, const char *to) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
-  return 1;
+  DBUG_RETURN(1);
 }
 
 void ha_tianmu::update_create_info([[maybe_unused]] HA_CREATE_INFO *create_info) {}
@@ -767,8 +768,9 @@ int ha_tianmu::open(const char *name, [[maybe_unused]] int mode, [[maybe_unused]
 }
 
 int ha_tianmu::free_share() {
+  DBUG_ENTER(__PRETTY_FUNCTION__);
   share_.reset();
-  return 0;
+  DBUG_RETURN(0);
 }
 
 /*
@@ -1471,7 +1473,8 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
 
     std::unique_ptr<core::CompiledQuery> tmp_cq(new core::CompiledQuery(*cq_));
     core::CondID cond_id;
-    if (!query_->BuildConditions(cond, cond_id, tmp_cq.get(), tmp_table_, core::CondType::WHERE_COND, false)) {
+    if (QueryRouteTo::kToMySQL ==
+        query_->BuildConditions(cond, cond_id, tmp_cq.get(), tmp_table_, core::CondType::WHERE_COND, false)) {
       query_.reset();
       return a_cond;
     }
@@ -1534,6 +1537,10 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
     // support alter table column default
     if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_COLUMN_DEFAULT)
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+    // support alter table NULL to NOT NULL or NOT NULL to NULL
+    if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_COLUMN_NULLABLE ||
+        ha_alter_info->handler_flags & Alter_inplace_info::ALTER_COLUMN_NOT_NULLABLE)
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
 
     DBUG_RETURN(HA_ALTER_ERROR);

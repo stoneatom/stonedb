@@ -77,7 +77,7 @@
 #include <algorithm>
 #include <functional>
 
-#include "../storage/tianmu/handler/ha_rcengine.h"  // TIANMU UPGRADE
+#include "../storage/tianmu/handler/ha_my_tianmu.h"  // TIANMU UPGRADE
 using std::max;
 using std::min;
 
@@ -5535,7 +5535,7 @@ static int get_schema_column_record(THD *thd, TABLE_LIST *tables,
       table->field[IS_COLUMNS_GENERATION_EXPRESSION]->set_null();
     //table->field[IS_COLUMNS_COLUMN_COMMENT]->store(field->comment.str,
    //                                                field->comment.length, cs);
-   Tianmu::handler::TIANMU_UpdateAndStoreColumnComment(table, IS_COLUMNS_COLUMN_COMMENT, field, count - 1, cs);//TIANMU UPGRADE
+   Tianmu::handler::ha_my_tianmu_update_and_store_col_comment(table, IS_COLUMNS_COLUMN_COMMENT, field, count - 1, cs);//TIANMU UPGRADE
     if (schema_table_store_record(thd, table))
       DBUG_RETURN(1);
   }
