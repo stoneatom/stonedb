@@ -367,20 +367,35 @@ int Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SELECT_LEX_
     return RETURN_QUERY_TO_MYSQL_ROUTE;
   }
 
-  if (!selects_list->table_list.elements) {
-    if (!selects_list->fields_list.elements) {
-      throw ReturnMeToMySQLWithError();
-    }
+  auto join_exec = ([&selects_list, &result_output] {
+    selects_list->set_query_result(result_output);
+    ASSERT(selects_list->join);
+    selects_list->join->exec();
+    return RCBASE_QUERY_ROUTE;
+  });
 
+  if ((!selects_list->table_list.elements) && (selects_list->fields_list.elements)) {
     List_iterator_fast<Item> li(selects_list->fields_list);
     for (Item *item = li++; item; item = li++) {
       if ((item->type() == Item::Type::FUNC_ITEM) &&
           (down_cast<Item_func *>(item)->functype() == Item_func::Functype::FUNC_SP)) {
-        selects_list->set_query_result(result_output);
-        ASSERT(selects_list->join);
-        selects_list->join->exec();
-        return RCBASE_QUERY_ROUTE;
+        return join_exec();
       }
+    }
+  }
+
+  if (selects_list->table_list.elements) {
+    bool total_derived_tables = true;
+    TABLE_LIST *tables = (TABLE_LIST *)selects_list->table_list.first;
+    for (TABLE_LIST *table_ptr = tables; table_ptr; table_ptr = table_ptr->next_leaf) {
+      if (!table_ptr->is_derived()) {
+        total_derived_tables = false;
+        break;
+      }
+    }
+
+    if (total_derived_tables) {
+      return join_exec();
     }
   }
 
