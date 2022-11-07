@@ -24,6 +24,7 @@
 
 namespace Tianmu {
 namespace core {
+
 void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
   MEASURE_FET("JoinerGeneral::ExecuteJoinConditions(...)");
   int no_desc = cond.Size();
@@ -80,7 +81,7 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
       if (mit.PackrowStarted()) {
         bool omit_this_packrow = false;
         for (int i = 0; (i < no_desc && !omit_this_packrow); i++)
-          if (cond[i].EvaluateRoughlyPack(mit) == common::RSValue::RS_NONE)
+          if (cond[i].EvaluateRoughlyPack(mit) == common::RoughSetValue::RS_NONE)
             omit_this_packrow = true;
         for (int i = 0; i < no_desc; i++) pack_desc_locked[i] = false;  // delay locking
         if (new_mind.NoMoreTuplesPossible())
@@ -216,5 +217,6 @@ void JoinerGeneral::ExecuteOuterJoinLoop(Condition &cond, MINewContents &new_min
     ++nout_mit;
   }
 }
+
 }  // namespace core
 }  // namespace Tianmu

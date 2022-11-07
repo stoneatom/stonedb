@@ -23,6 +23,7 @@
 
 namespace Tianmu {
 namespace core {
+
 struct DataType;
 
 struct ColumnType {
@@ -33,8 +34,8 @@ struct ColumnType {
   };
 
  public:
-  ColumnType() : type(common::CT::INT), internal_size(4), display_size(11) {}
-  ColumnType(common::CT t, bool notnull = false, common::PackFmt fmt = common::PackFmt::DEFAULT, int prec = 0,
+  ColumnType() : type(common::ColumnType::INT), internal_size(4), display_size(11) {}
+  ColumnType(common::ColumnType t, bool notnull = false, common::PackFmt fmt = common::PackFmt::DEFAULT, int prec = 0,
              int sc = 0, DTCollation collation = DTCollation())
       : type(t),
         precision(prec),
@@ -46,7 +47,7 @@ struct ColumnType {
     internal_size = InternalSize();
   }
 
-  void Initialize(common::CT t, bool notnull, common::PackFmt f, uint prec, int sc,
+  void Initialize(common::ColumnType t, bool notnull, common::PackFmt f, uint prec, int sc,
                   DTCollation collation = DTCollation()) {
     type = t;
     flag[static_cast<int>(enumCT::NOT_NULL)] = notnull;
@@ -61,8 +62,8 @@ struct ColumnType {
 
   bool operator==(const ColumnType &) const;
 
-  common::CT GetTypeName() const { return type; }
-  void SetTypeName(common::CT t) { type = t; }
+  common::ColumnType GetTypeName() const { return type; }
+  void SetTypeName(common::ColumnType t) { type = t; }
   // column width, as X in CHAR(X) or DEC(X,*)
   uint GetPrecision() const { return precision; }
   /*! \brief Set column width, as X in DEC(X,*)
@@ -100,19 +101,19 @@ struct ColumnType {
 
   bool IsNumeric() const {
     switch (type) {
-      case common::CT::BIN:
-      case common::CT::BYTE:
-      case common::CT::VARBYTE:
-      case common::CT::STRING:
-      case common::CT::VARCHAR:
-      case common::CT::LONGTEXT:
+      case common::ColumnType::BIN:
+      case common::ColumnType::BYTE:
+      case common::ColumnType::VARBYTE:
+      case common::ColumnType::STRING:
+      case common::ColumnType::VARCHAR:
+      case common::ColumnType::LONGTEXT:
         return false;
       default:
         return true;
     }
   }
 
-  bool IsKnown() const { return type != common::CT::UNK; }
+  bool IsKnown() const { return type != common::ColumnType::UNK; }
   bool IsFixed() const { return ATI::IsFixedNumericType(type); }
   bool IsFloat() const { return ATI::IsRealType(type); }
   bool IsInt() const { return IsFixed() && scale == 0; }
@@ -144,7 +145,7 @@ struct ColumnType {
   bool HasFilter() const { return flag[static_cast<int>(enumCT::BLOOM_FILTER)]; }
 
  private:
-  common::CT type;
+  common::ColumnType type;
   uint precision = 0;
   int scale = 0;
   uint internal_size;
@@ -163,6 +164,7 @@ struct ColumnType {
     display_size = ATI::TextSize(type, precision, scale, collation);
   }
 };
+
 }  // namespace core
 }  // namespace Tianmu
 

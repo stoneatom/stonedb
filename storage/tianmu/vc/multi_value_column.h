@@ -24,6 +24,7 @@
 #include "vc/virtual_column.h"
 
 namespace Tianmu {
+
 namespace core {
 class MysqlExpression;
 }
@@ -147,7 +148,7 @@ class MultiValColumn : public VirtualColumn {
   inline common::Tribool Contains(core::MIIterator const &mit, types::RCDataType const &val) {
     return (ContainsImpl(mit, val));
   }
-  virtual bool IsSetEncoded([[maybe_unused]] common::CT at, [[maybe_unused]] int scale) {
+  virtual bool IsSetEncoded([[maybe_unused]] common::ColumnType at, [[maybe_unused]] int scale) {
     return false;
   }  // checks whether the set is constant and fixed size equal to the given one
   inline bool IsEmpty(core::MIIterator const &mit) { return (IsEmptyImpl(mit)); }
@@ -244,6 +245,7 @@ class MultiValColumn : public VirtualColumn {
   bool IsThreadSafe() override { return false; }
   core::MysqlExpression::tianmu_fields_cache_t tianmu_items_;  // items used in mysqlExpressions
 };
+
 }  // namespace vcolumn
 }  // namespace Tianmu
 

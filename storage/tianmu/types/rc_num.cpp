@@ -28,14 +28,14 @@
 namespace Tianmu {
 namespace types {
 
-RCNum::RCNum(common::CT attrt) : value_(0), scale_(0), is_double_(false), is_dot_(false), attr_type_(attrt) {}
+RCNum::RCNum(common::ColumnType attrt) : value_(0), scale_(0), is_double_(false), is_dot_(false), attr_type_(attrt) {}
 
-RCNum::RCNum(int64_t value_, short scale, bool is_double_, common::CT attrt) {
+RCNum::RCNum(int64_t value_, short scale, bool is_double_, common::ColumnType attrt) {
   Assign(value_, scale, is_double_, attrt);
 }
 
 RCNum::RCNum(double value_)
-    : value_(*(int64_t *)&value_), scale_(0), is_double_(true), is_dot_(false), attr_type_(common::CT::REAL) {
+    : value_(*(int64_t *)&value_), scale_(0), is_double_(true), is_dot_(false), attr_type_(common::ColumnType::REAL) {
   null_ = (value_ == NULL_VALUE_D ? true : false);
 }
 
@@ -51,23 +51,23 @@ RCNum::RCNum(const RCNum &rcn)
 
 RCNum::~RCNum() {}
 
-RCNum &RCNum::Assign(int64_t value_, short scale, bool is_double_, common::CT attrt) {
+RCNum &RCNum::Assign(int64_t value_, short scale, bool is_double_, common::ColumnType attrt) {
   this->value_ = value_;
   this->scale_ = scale;
   this->is_double_ = is_double_;
   this->attr_type_ = attrt;
 
   if (scale != -1 && !is_double_) {
-    if (scale != 0 || attrt == common::CT::UNK) {
+    if (scale != 0 || attrt == common::ColumnType::UNK) {
       is_dot_ = true;
-      this->attr_type_ = common::CT::NUM;
+      this->attr_type_ = common::ColumnType::NUM;
     }
   }
   if (scale <= -1 && !is_double_)
     scale_ = 0;
   if (is_double_) {
-    if (!(this->attr_type_ == common::CT::REAL || this->attr_type_ == common::CT::FLOAT))
-      this->attr_type_ = common::CT::REAL;
+    if (!(this->attr_type_ == common::ColumnType::REAL || this->attr_type_ == common::ColumnType::FLOAT))
+      this->attr_type_ = common::ColumnType::REAL;
     this->is_dot_ = false;
     scale_ = 0;
     null_ = (value_ == *(reinterpret_cast<const int64_t *>(&NULL_VALUE_D)) ? true : false);
@@ -81,17 +81,17 @@ RCNum &RCNum::Assign(double value_) {
   this->scale_ = 0;
   this->is_double_ = true;
   this->is_dot_ = false;
-  this->attr_type_ = common::CT::REAL;
+  this->attr_type_ = common::ColumnType::REAL;
   common::double_int_t v(value_);
   null_ = (v.i == common::NULL_VALUE_64 ? true : false);
   return *this;
 }
 
-common::ErrorCode RCNum::Parse(const BString &rcs, RCNum &rcn, common::CT at) {
+common::ErrorCode RCNum::Parse(const BString &rcs, RCNum &rcn, common::ColumnType at) {
   return ValueParserForText::Parse(rcs, rcn, at);
 }
 
-common::ErrorCode RCNum::ParseReal(const BString &rcbs, RCNum &rcn, common::CT at) {
+common::ErrorCode RCNum::ParseReal(const BString &rcbs, RCNum &rcn, common::ColumnType at) {
   return ValueParserForText::ParseReal(rcbs, rcn, at);
 }
 
@@ -123,12 +123,12 @@ RCNum &RCNum::operator=(const RCDataType &rcdt) {
   return *this;
 }
 
-common::CT RCNum::Type() const { return attr_type_; }
+common::ColumnType RCNum::Type() const { return attr_type_; }
 
 bool RCNum::IsDecimal(ushort scale) const {
   if (core::ATI::IsIntegerType(this->attr_type_)) {
     return GetDecIntLen() <= (MAX_DEC_PRECISION - scale);
-  } else if (attr_type_ == common::CT::NUM) {
+  } else if (attr_type_ == common::ColumnType::NUM) {
     if (this->GetDecFractLen() <= scale)
       return true;
     if (scale_ > scale)
@@ -261,7 +261,7 @@ BString RCNum::ToBString() const {
 }
 
 RCNum::operator double() const {
-  return (core::ATI::IsRealType(Type()) || Type() == common::CT::FLOAT)
+  return (core::ATI::IsRealType(Type()) || Type() == common::ColumnType::FLOAT)
              ? *reinterpret_cast<double *>(const_cast<int64_t *>(&value_))
              : GetIntPart() + GetFractPart();
 }

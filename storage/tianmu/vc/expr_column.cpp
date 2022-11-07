@@ -22,6 +22,7 @@
 
 namespace Tianmu {
 namespace vcolumn {
+
 ExpressionColumn::ExpressionColumn(core::MysqlExpression *expr, core::TempTable *temp_table, int temp_table_alias,
                                    core::MultiIndex *multi_index)
     : VirtualColumn(core::ColumnType(), multi_index),
@@ -181,7 +182,7 @@ types::RCValueObject ExpressionColumn::GetValueImpl(const core::MIIterator &mit,
     return types::RCDateTime(GetValueInt64(mit), TypeName());
   if (core::ATI::IsRealType(TypeName()))
     return types::RCNum(GetValueInt64(mit), 0, true, TypeName());
-  if (lookup_to_num || TypeName() == common::CT::NUM)
+  if (lookup_to_num || TypeName() == common::ColumnType::NUM)
     return types::RCNum(GetValueInt64(mit), Type().GetScale());
   DEBUG_ASSERT(!"Illegal execution path");
   return types::RCValueObject();
@@ -300,5 +301,6 @@ void ExpressionColumn::LockSourcePacks(const core::MIIterator &mit) {
   for (auto &it : var_map_) it.just_a_table_ptr = it.GetTabPtr().get();
   VirtualColumn::LockSourcePacks(mit);
 }
+
 }  // namespace vcolumn
 }  // namespace Tianmu

@@ -35,6 +35,7 @@
 
 namespace Tianmu {
 namespace core {
+
 ParameterizedFilter::ParameterizedFilter(uint32_t power, CondType filter_type)
     : mind(new MultiIndex(power)),
       mind_shallow_memory(false),
@@ -140,13 +141,13 @@ void ParameterizedFilter::PrepareRoughMultiIndex() {
       Filter *f = mind->GetFilter(d);
       for (int p = 0; p < rough_mind->NoPacks(d); p++) {
         if (f == nullptr)
-          rough_mind->SetPackStatus(d, p, common::RSValue::RS_UNKNOWN);
+          rough_mind->SetPackStatus(d, p, common::RoughSetValue::RS_UNKNOWN);
         else if (f->IsFull(p))
-          rough_mind->SetPackStatus(d, p, common::RSValue::RS_ALL);
+          rough_mind->SetPackStatus(d, p, common::RoughSetValue::RS_ALL);
         else if (f->IsEmpty(p))
-          rough_mind->SetPackStatus(d, p, common::RSValue::RS_NONE);
+          rough_mind->SetPackStatus(d, p, common::RoughSetValue::RS_NONE);
         else
-          rough_mind->SetPackStatus(d, p, common::RSValue::RS_SOME);
+          rough_mind->SetPackStatus(d, p, common::RoughSetValue::RS_SOME);
       }
     }
   }
@@ -331,13 +332,13 @@ bool ParameterizedFilter::RoughUpdateMultiIndex() {
         int dim = dims.GetOneDim();
         if (dim == -1)
           continue;
-        common::RSValue *rf = rough_mind->GetLocalDescFilter(dim, i);  // rough filter for a descriptor
-        descriptors[i].ClearRoughValues();                             // clear accumulated rough values
-                                                                       // for descriptor
+        common::RoughSetValue *rf = rough_mind->GetLocalDescFilter(dim, i);  // rough filter for a descriptor
+        descriptors[i].ClearRoughValues();                                   // clear accumulated rough values
+                                                                             // for descriptor
         MIIterator mit(mind, dim, true);
         while (mit.IsValid()) {
           int p = mit.GetCurPackrow(dim);
-          if (p >= 0 && rf[p] != common::RSValue::RS_NONE)
+          if (p >= 0 && rf[p] != common::RoughSetValue::RS_NONE)
             rf[p] = descriptors[i].EvaluateRoughlyPack(mit);  // rough values are also accumulated inside
           mit.NextPackrow();
           if (mind->m_conn->Killed())
@@ -368,9 +369,9 @@ bool ParameterizedFilter::RoughUpdateMultiIndex() {
       pack_some = 0;
       pack_all = rough_mind->NoPacks(dim);
       for (int b = 0; b < pack_all; b++) {
-        if (rough_mind->GetPackStatus(dim, b) == common::RSValue::RS_ALL)
+        if (rough_mind->GetPackStatus(dim, b) == common::RoughSetValue::RS_ALL)
           pack_full++;
-        else if (rough_mind->GetPackStatus(dim, b) != common::RSValue::RS_NONE)
+        else if (rough_mind->GetPackStatus(dim, b) != common::RoughSetValue::RS_NONE)
           pack_some++;
       }
 
@@ -394,7 +395,7 @@ bool ParameterizedFilter::PropagateRoughToMind() {
     Filter *f = mind->GetUpdatableFilter(i);
     if (f) {
       for (int b = 0; b < rough_mind->NoPacks(i); b++) {
-        if (rough_mind->GetPackStatus(i, b) == common::RSValue::RS_NONE)
+        if (rough_mind->GetPackStatus(i, b) == common::RoughSetValue::RS_NONE)
           f->ResetBlock(b);
       }
       if (f->IsEmpty())
@@ -426,9 +427,9 @@ void ParameterizedFilter::RoughUpdateJoins() {
     }
   }
   if (join_or_delayed_present)
-    rough_mind->MakeDimensionSuspect();  // no common::RSValue::RS_ALL packs
+    rough_mind->MakeDimensionSuspect();  // no common::RoughSetValue::RS_ALL packs
   else if (dims_to_be_suspect.size()) {
-    for (auto &it : dims_to_be_suspect) rough_mind->MakeDimensionSuspect(it);  // no common::RSValue::RS_ALL packs
+    for (auto &it : dims_to_be_suspect) rough_mind->MakeDimensionSuspect(it);  // no common::RoughSetValue::RS_ALL packs
   }
 }
 
@@ -480,7 +481,7 @@ void ParameterizedFilter::RoughMakeProjections(int to_dim, bool update_reduced) 
       // for each dim2 pack, check whether it may be joined with anything
       // nonempty on dim1
       for (int p2 = 0; p2 < rough_mind->NoPacks(to_dim); p2++) {
-        if (rough_mind->GetPackStatus(to_dim, p2) != common::RSValue::RS_NONE) {
+        if (rough_mind->GetPackStatus(to_dim, p2) != common::RoughSetValue::RS_NONE) {
           bool pack_possible = false;
           local_mit.SetPack(to_dim, p2);
 
@@ -494,12 +495,12 @@ void ParameterizedFilter::RoughMakeProjections(int to_dim, bool update_reduced) 
             // rmind.NoPacks(dim1); p1++)
             //							if(rmind.GetPackStatus(dim1,
             // p1)
-            //!= common::RSValue::RS_NONE) {
-            if (rough_mind->GetPackStatus(dim1, po.Current()) != common::RSValue::RS_NONE) {
+            //!= common::RoughSetValue::RS_NONE) {
+            if (rough_mind->GetPackStatus(dim1, po.Current()) != common::RoughSetValue::RS_NONE) {
               local_mit.SetPack(dim1,
                                 po.Current());  // set a dummy position, just
                                                 // for transferring pack number
-              if (ld.attr.vc->RoughCheck(local_mit, ld) != common::RSValue::RS_NONE) {
+              if (ld.attr.vc->RoughCheck(local_mit, ld) != common::RoughSetValue::RS_NONE) {
                 pack_possible = true;
                 break;
               }
@@ -507,7 +508,7 @@ void ParameterizedFilter::RoughMakeProjections(int to_dim, bool update_reduced) 
             ++po;
           }
           if (!pack_possible) {
-            rough_mind->SetPackStatus(to_dim, p2, common::RSValue::RS_NONE);
+            rough_mind->SetPackStatus(to_dim, p2, common::RoughSetValue::RS_NONE);
             total_excluded++;
           }
         }
@@ -526,7 +527,7 @@ void ParameterizedFilter::RoughMakeProjections(int to_dim, bool update_reduced) 
       Filter *f = mind->GetUpdatableFilter(dim1);
       if (f) {
         for (int b = 0; b < rough_mind->NoPacks(dim1); b++) {
-          if (rough_mind->GetPackStatus(dim1, b) == common::RSValue::RS_NONE)
+          if (rough_mind->GetPackStatus(dim1, b) == common::RoughSetValue::RS_NONE)
             f->ResetBlock(b);
         }
       }
@@ -1080,7 +1081,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
     rough_mind->ClearLocalDescFilters();
     return;
   }
-  PropagateRoughToMind();  // exclude common::RSValue::RS_NONE from mind
+  PropagateRoughToMind();  // exclude common::RoughSetValue::RS_NONE from mind
 
   // count other types of conditions, e.g. joins (i.e. conditions using
   // attributes from two
@@ -1274,7 +1275,7 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
     }
   }
   if (join_or_delayed_present)
-    rough_mind->MakeDimensionSuspect();  // no common::RSValue::RS_ALL packs
+    rough_mind->MakeDimensionSuspect();  // no common::RoughSetValue::RS_ALL packs
   mind->UpdateNumOfTuples();
 }
 
@@ -1314,7 +1315,7 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
     dims.SetAll();
   // Check the easy case (one-dim, parallelizable)
   int one_dim = -1;
-  common::RSValue *rf = nullptr;
+  common::RoughSetValue *rf = nullptr;
   if (no_dims == 1) {
     for (int i = 0; i < mind->NumOfDimensions(); i++) {
       if (dims[i]) {
@@ -1333,7 +1334,7 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
   int pack_all = rough_mind->NoPacks(one_dim);
   int pack_some = 0;
   for (int b = 0; b < pack_all; b++) {
-    if (rough_mind->GetPackStatus(one_dim, b) != common::RSValue::RS_NONE)
+    if (rough_mind->GetPackStatus(one_dim, b) != common::RoughSetValue::RS_NONE)
       pack_some++;
   }
   MIUpdatingIterator mit(mind, dims);
@@ -1390,7 +1391,7 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
       mind->UpdateNumOfTuples();
 
     } else {
-      common::RSValue cur_roughval;
+      common::RoughSetValue cur_roughval;
       uint64_t passed = 0;
       int pack = -1;
       while (mit.IsValid()) {
@@ -1411,15 +1412,15 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
         if (rf && mit.GetCurPackrow(one_dim) >= 0)
           cur_roughval = rf[mit.GetCurPackrow(one_dim)];
         else
-          cur_roughval = common::RSValue::RS_SOME;
+          cur_roughval = common::RoughSetValue::RS_SOME;
 
-        if (cur_roughval == common::RSValue::RS_NONE) {
+        if (cur_roughval == common::RoughSetValue::RS_NONE) {
           mit.ResetCurrentPack();
           mit.NextPackrow();
-        } else if (cur_roughval == common::RSValue::RS_ALL) {
+        } else if (cur_roughval == common::RoughSetValue::RS_ALL) {
           mit.NextPackrow();
         } else {
-          // common::RSValue::RS_SOME or common::RSValue::RS_UNKNOWN
+          // common::RoughSetValue::RS_SOME or common::RoughSetValue::RS_UNKNOWN
           desc.EvaluatePack(mit);
         }
         if (mind->m_conn->Killed())
@@ -1433,17 +1434,17 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
     Filter *f = mind->GetFilter(one_dim);
     for (int p = 0; p < rough_mind->NoPacks(one_dim); p++)
       if (f->IsEmpty(p)) {
-        rough_mind->SetPackStatus(one_dim, p, common::RSValue::RS_NONE);
+        rough_mind->SetPackStatus(one_dim, p, common::RoughSetValue::RS_NONE);
       }
   }
   desc.UpdateVCStatistics();
   return;
 }
 
-void ParameterizedFilter::TaskProcessPacks(MIUpdatingIterator *taskIterator, Transaction *ci, common::RSValue *rf,
+void ParameterizedFilter::TaskProcessPacks(MIUpdatingIterator *taskIterator, Transaction *ci, common::RoughSetValue *rf,
                                            [[maybe_unused]] DimensionVector *dims, int desc_number, int64_t limit,
                                            int one_dim) {
-  common::RSValue cur_roughval;
+  common::RoughSetValue cur_roughval;
   uint64_t passed = 0;
   int pack = -1;
   Descriptor &desc = descriptors[desc_number];
@@ -1466,11 +1467,11 @@ void ParameterizedFilter::TaskProcessPacks(MIUpdatingIterator *taskIterator, Tra
     if (rf && taskIterator->GetCurPackrow(one_dim) >= 0)
       cur_roughval = rf[taskIterator->GetCurPackrow(one_dim)];  //?D??¦Ì¡À?¡ã¡ã¨¹¨º?¡¤??¨¹?DRS_SOME¡À¨ª¨º?2?¡¤??¨¹?D
     else
-      cur_roughval = common::RSValue::RS_SOME;
-    if (cur_roughval == common::RSValue::RS_NONE) {
+      cur_roughval = common::RoughSetValue::RS_SOME;
+    if (cur_roughval == common::RoughSetValue::RS_NONE) {
       taskIterator->ResetCurrentPack();
       taskIterator->NextPackrow();
-    } else if (cur_roughval == common::RSValue::RS_ALL) {
+    } else if (cur_roughval == common::RoughSetValue::RS_ALL) {
       taskIterator->NextPackrow();
     } else {
       desc.EvaluatePack(*taskIterator);  //??¦Ì¡À?¡ã¡ã¨¹???y??¨¬???DD??¡À¨¨¡ã¨¹¨¤¡§?a?1¡ã¨¹¡ê???¨¬???????¡À¨¨
@@ -1478,5 +1479,6 @@ void ParameterizedFilter::TaskProcessPacks(MIUpdatingIterator *taskIterator, Tra
   }
   taskIterator->Commit(false);
 }
+
 }  // namespace core
 }  // namespace Tianmu

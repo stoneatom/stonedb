@@ -25,6 +25,7 @@
 
 namespace Tianmu {
 namespace vcolumn {
+
 InSetColumn::InSetColumn(core::ColumnType const &ct, core::MultiIndex *multi_index,
                          std::vector<VirtualColumn *> const &columns_)
     : MultiValColumn(ct, multi_index),
@@ -113,7 +114,7 @@ void InSetColumn::EvaluatePackImpl([[maybe_unused]] core::MIUpdatingIterator &mi
   DEBUG_ASSERT(0);  // comparison of a const with a const should be simplified earlier
 }
 
-bool InSetColumn::IsSetEncoded(common::CT at, int scale) {
+bool InSetColumn::IsSetEncoded(common::ColumnType at, int scale) {
   return (cache_.EasyMode() && scale == ct.GetScale() &&
           (at == expected_type_.GetTypeName() ||
            (core::ATI::IsFixedNumericType(at) && core::ATI::IsFixedNumericType(expected_type_.GetTypeName()))));
@@ -334,5 +335,6 @@ bool InSetColumn::PrepareValueSet(const core::MIIterator &mit) {
   cache_.Prepare(expected_type_.GetTypeName(), ct.GetScale(), expected_type_.GetCollation());
   return true;
 }
+
 }  // namespace vcolumn
 }  // namespace Tianmu

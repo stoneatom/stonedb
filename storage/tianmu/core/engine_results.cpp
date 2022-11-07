@@ -25,6 +25,7 @@
 
 namespace Tianmu {
 namespace core {
+
 // stonedb8 List -> mem_root_deque
 void scan_fields(mem_root_deque<Item *> &fields, uint *&buf_lens, std::map<int, Item *> &items_backup) {
   Item *item;
@@ -515,18 +516,18 @@ void ResultExportSender::SendRecord(const std::vector<std::unique_ptr<types::RCD
       types::BString val(rcdt.ToBString());
       if (l_item->data_type() == MYSQL_TYPE_DATE) {
         types::RCDateTime dt;
-        types::ValueParserForText::ParseDateTime(val, dt, common::CT::DATE);
+        types::ValueParserForText::ParseDateTime(val, dt, common::ColumnType::DATE);
         rcde->PutDateTime(dt.GetInt64());
       } else if ((l_item->data_type() == MYSQL_TYPE_DATETIME) || (l_item->data_type() == MYSQL_TYPE_TIMESTAMP)) {
         types::RCDateTime dt;
-        types::ValueParserForText::ParseDateTime(val, dt, common::CT::DATETIME);
+        types::ValueParserForText::ParseDateTime(val, dt, common::ColumnType::DATETIME);
         if (l_item->data_type() == MYSQL_TYPE_TIMESTAMP) {
           types::RCDateTime::AdjustTimezone(dt);
         }
         rcde->PutDateTime(dt.GetInt64());
       } else {
         // values from binary columns from TempTable are retrieved as
-        // types::BString -> they get common::CT::STRING type, so an
+        // types::BString -> they get common::ColumnType::STRING type, so an
         // additional check is necessary
         if (dynamic_cast<Item_field *>(l_item) && static_cast<Item_field *>(l_item)->field->binary())
           rcde->PutBin(val);
@@ -536,16 +537,16 @@ void ResultExportSender::SendRecord(const std::vector<std::unique_ptr<types::RCD
     } else if (ATI::IsBinType(rcdt.Type()))
       rcde->PutBin(rcdt.ToBString());
     else if (ATI::IsNumericType(rcdt.Type())) {
-      if (rcdt.Type() == common::CT::BYTEINT)
+      if (rcdt.Type() == common::ColumnType::BYTEINT)
         rcde->PutNumeric((char)dynamic_cast<types::RCNum &>(rcdt).ValueInt());
-      else if (rcdt.Type() == common::CT::SMALLINT)
+      else if (rcdt.Type() == common::ColumnType::SMALLINT)
         rcde->PutNumeric((short)dynamic_cast<types::RCNum &>(rcdt).ValueInt());
-      else if (rcdt.Type() == common::CT::INT || rcdt.Type() == common::CT::MEDIUMINT)
+      else if (rcdt.Type() == common::ColumnType::INT || rcdt.Type() == common::ColumnType::MEDIUMINT)
         rcde->PutNumeric((int)dynamic_cast<types::RCNum &>(rcdt).ValueInt());
       else
         rcde->PutNumeric(dynamic_cast<types::RCNum &>(rcdt).ValueInt());
     } else if (ATI::IsDateTimeType(rcdt.Type())) {
-      if (rcdt.Type() == common::CT::TIMESTAMP) {
+      if (rcdt.Type() == common::ColumnType::TIMESTAMP) {
         // timezone conversion
         types::RCDateTime &dt(dynamic_cast<types::RCDateTime &>(rcdt));
         types::RCDateTime::AdjustTimezone(dt);
@@ -557,5 +558,6 @@ void ResultExportSender::SendRecord(const std::vector<std::unique_ptr<types::RCD
   }
   rcde->PutRowEnd();
 }
+
 }  // namespace core
 }  // namespace Tianmu

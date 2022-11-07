@@ -174,13 +174,14 @@ class FormatException : public Exception {
 
 class DataTypeConversionException : public Exception {
  public:
-  int64_t value;  // converted value
-  CT type;        // type to which value is converted
-  DataTypeConversionException(std::string const &msg, int64_t val = NULL_VALUE_64, CT t = CT::UNK)
+  int64_t value;            // converted value
+  common::ColumnType type;  // type to which value is converted
+  DataTypeConversionException(std::string const &msg, int64_t val = NULL_VALUE_64,
+                              common::ColumnType t = common::ColumnType::UNK)
       : Exception(msg), value(val), type(t) {}
 
   DataTypeConversionException(TianmuError tianmu_error = ErrorCode::DATACONVERSION, int64_t val = NULL_VALUE_64,
-                              CT t = CT::UNK)
+                              common::ColumnType t = common::ColumnType::UNK)
       : Exception(tianmu_error.Message()), value(val), type(t) {}
 };
 

@@ -34,7 +34,7 @@ class RSIndex_Bloom final : public RSIndex {
 
   void SaveToFile(common::TX_ID ver) override;
   void Update(common::PACK_INDEX pi, DPN &dpn, const PackStr *pack);
-  common::RSValue IsValue(types::BString min_v, types::BString max_v, int pack);
+  common::RoughSetValue IsValue(types::BString min_v, types::BString max_v, int pack);
 
  private:
   static const int FORMAT_VERSION = 2;

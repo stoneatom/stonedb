@@ -91,7 +91,7 @@ enum class CondType {
  class)
  */
 struct CQTerm {
-  common::CT type;  // type of constant
+  common::ColumnType type;  // type of constant
   vcolumn::VirtualColumn *vc;
   types::CondArray cond_value;
   std::shared_ptr<utils::Hash64> cond_numvalue;
@@ -102,7 +102,7 @@ struct CQTerm {
 
   CQTerm();  // null
   explicit CQTerm(int v);
-  explicit CQTerm(int64_t v, common::CT t = common::CT::INT);
+  explicit CQTerm(int64_t v, common::ColumnType t = common::ColumnType::INT);
   CQTerm(const CQTerm &);
   ~CQTerm();
 
@@ -112,6 +112,7 @@ struct CQTerm {
   char *ToString(char *buf, int tab_id) const;
   char *ToString(char p_buf[], size_t buf_ct, int tab_id) const;
 };
+
 }  // namespace core
 }  // namespace Tianmu
 

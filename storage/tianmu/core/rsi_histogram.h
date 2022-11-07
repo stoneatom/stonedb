@@ -37,14 +37,14 @@ class RSIndex_Hist final : public RSIndex {
 
   // reading histogram information
   // Note: this function is thread-safe, i.e. it only reads the data
-  common::RSValue IsValue(int64_t min_v, int64_t max_v, int pack, int64_t pack_min, int64_t pack_max);
+  common::RoughSetValue IsValue(int64_t min_v, int64_t max_v, int pack, int64_t pack_min, int64_t pack_max);
 
   //  Return true if there is any common value possible for two packs from two
   //  different columns (histograms).
-  // Results:     common::RSValue::RS_NONE - there is no objects having values between
+  // Results:     common::RoughSetValue::RS_NONE - there is no objects having values between
   // min_v and max_v (including)
-  //              common::RSValue::RS_SOME - some objects from this pack do have values
-  //              between min_v and max_v common::RSValue::RS_ALL  - all objects from
+  //              common::RoughSetValue::RS_SOME - some objects from this pack do have values
+  //              between min_v and max_v common::RoughSetValue::RS_ALL  - all objects from
   //              this pack do have values between min_v and max_v
   bool Intersection(int pack, int64_t pack_min, int64_t pack_max, RSIndex_Hist *sec, int pack2, int64_t pack_min2,
                     int64_t pack_max2);

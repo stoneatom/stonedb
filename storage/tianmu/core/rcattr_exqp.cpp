@@ -36,6 +36,7 @@
 
 namespace Tianmu {
 namespace core {
+
 void RCAttr::EvaluatePack(MIUpdatingIterator &mit, int dim, Descriptor &d) {
   MEASURE_FET("RCAttr::EvaluatePack(...)");
   ASSERT(d.encoded, "Descriptor is not encoded!");
@@ -617,7 +618,7 @@ void RCAttr::EvaluatePack_InNum(MIUpdatingIterator &mit, int dim, Descriptor &d)
   DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(d.val1.vc) != nullptr);
   vcolumn::MultiValColumn *multival_column = static_cast<vcolumn::MultiValColumn *>(d.val1.vc);
   bool lookup_to_num = ATI::IsStringType(TypeName());
-  bool encoded_set = (lookup_to_num ? multival_column->IsSetEncoded(common::CT::NUM, 0)
+  bool encoded_set = (lookup_to_num ? multival_column->IsSetEncoded(common::ColumnType::NUM, 0)
                                     : multival_column->IsSetEncoded(TypeName(), ct.GetScale()));
   common::Tribool res;
   std::unique_ptr<types::RCDataType> value(ValuePrototype(lookup_to_num).Clone());
@@ -1097,7 +1098,7 @@ bool RCAttr::IsDistinct(Filter *f) {
   MEASURE_FET("RCAttr::IsDistinct(...)");
   if (ct.IsLookup() && types::RequiresUTFConversions(GetCollation()))
     return false;
-  if (PhysicalColumn::IsDistinct() == common::RSValue::RS_ALL) {  // = is_unique_updated && is_unique
+  if (PhysicalColumn::IsDistinct() == common::RoughSetValue::RS_ALL) {  // = is_unique_updated && is_unique
     if (f == nullptr)
       return (NumOfNulls() == 0);  // no nulls at all, and is_unique  => distinct
     LoadPackInfo();
@@ -1344,5 +1345,6 @@ bool RCAttr::TryToMerge(Descriptor &d1, Descriptor &d2) {
   }
   return false;
 }
+
 }  // namespace core
 }  // namespace Tianmu

@@ -59,7 +59,7 @@ class ValueSet {
   void Add(const types::RCValueObject &rcv);
   void AddNull() { contains_nulls = true; }
   void ForcePreparation() { prepared = false; }
-  void Prepare(common::CT at, int scale, DTCollation);
+  void Prepare(common::ColumnType at, int scale, DTCollation);
   bool Contains(int64_t v);          // easy case, for non-null integers
   bool Contains(types::BString &v);  // easy case, for strings
   bool EasyMode() { return (use_easy_table || easy_vals != nullptr || easy_hash != nullptr) && prepared; }
@@ -86,18 +86,18 @@ class ValueSet {
   auto end() { return values.cend(); }
 
   bool CopyCondition(types::CondArray &condition, DTCollation coll);
-  bool CopyCondition(common::CT at, std::shared_ptr<utils::Hash64> &condition, DTCollation coll);
+  bool CopyCondition(common::ColumnType at, std::shared_ptr<utils::Hash64> &condition, DTCollation coll);
 
  private:
   bool isContains(const types::RCDataType &v, DTCollation coll);
-  bool IsPrepared(common::CT at, int scale, DTCollation);
+  bool IsPrepared(common::ColumnType at, int scale, DTCollation);
 
  protected:
   bool contains_nulls;
   int no_obj;  // number of values added
   bool prepared;
-  common::CT prep_type;  // type to which it is prepared
-  int prep_scale;        // scale to which it is prepared
+  common::ColumnType prep_type;  // type to which it is prepared
+  int prep_scale;                // scale to which it is prepared
   DTCollation prep_collation;
 
   std::unordered_set<types::RCDataType *, types::rc_hash_compare<types::RCDataType *>,
@@ -123,6 +123,7 @@ class ValueSet {
  public:
   typedef decltype(values)::const_iterator const_iterator;
 };
+
 }  // namespace core
 }  // namespace Tianmu
 

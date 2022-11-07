@@ -90,7 +90,7 @@ class TypeCastColumn : public VirtualColumn {
   core::PackOntologicalStatus GetPackOntologicalStatusImpl(const core::MIIterator &m) override {
     return vc_->GetPackOntologicalStatus(m);
   }
-  common::RSValue RoughCheckImpl(const core::MIIterator &m, core::Descriptor &d) override {
+  common::RoughSetValue RoughCheckImpl(const core::MIIterator &m, core::Descriptor &d) override {
     return vc_->RoughCheck(m, d);
   }
   void EvaluatePackImpl(core::MIUpdatingIterator &mit, core::Descriptor &d) override {

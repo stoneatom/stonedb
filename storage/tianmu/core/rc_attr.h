@@ -44,6 +44,7 @@
 
 namespace Tianmu {
 namespace core {
+
 class Transaction;
 class Filter;
 class MIUpdatingIterator;
@@ -55,13 +56,13 @@ class TextStat;
 // 0 - text values of attributes
 //     nullptr represented as '\0' string or null pointer
 // 1 - int encoded:
-//		common::CT::INT,common::CT::NUM   - int64_t value,
+//		common::ColumnType::INT,common::ColumnType::NUM   - int64_t value,
 // common::NULL_VALUE_64 for null, may be also
 // treated as int (NULL_VALUE)   decimals: the
 // value is shifted by precision, e.g. "583880"=583.88 for DEC(10,3)
-// common::CT::TIME, common::CT::DATE, common::CT::YEAR - bitwise 64-bit
+// common::ColumnType::TIME, common::ColumnType::DATE, common::ColumnType::YEAR - bitwise 64-bit
 // encoding as DATETIME
-// common::CT::STRING, common::CT::VARCHAR:
+// common::ColumnType::STRING, common::ColumnType::VARCHAR:
 // lookup	- value from the dictionary as int64_t,
 // common::NULL_VALUE_64 for null
 // non-lookup	- text value as BString
@@ -262,7 +263,8 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
 
   // provide the best upper approximation of number of diff. values (incl.null,
   // if flag set)
-  uint64_t ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue *rf, bool outer_nulls_possible) override;
+  uint64_t ApproxDistinctVals(bool incl_nulls, Filter *f, common::RoughSetValue *rf,
+                              bool outer_nulls_possible) override;
 
   // provide the exact number of diff. non-null values, if possible, or
   // common::NULL_VALUE_64
@@ -277,21 +279,21 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   bool IsDistinct(Filter *f) override;
   // for numerical: best rough approximation of min/max for a given filter (or
   // global min if filter is nullptr) or rough filter
-  int64_t RoughMin(Filter *f, common::RSValue *rf = nullptr) override;
-  int64_t RoughMax(Filter *f, common::RSValue *rf = nullptr) override;
+  int64_t RoughMin(Filter *f, common::RoughSetValue *rf = nullptr) override;
+  int64_t RoughMax(Filter *f, common::RoughSetValue *rf = nullptr) override;
 
   // Rough queries and indexes
   // Note that you should release all indexes after using a series of
   // RoughChecks!
 
   // check whether any value from the pack may meet the condition
-  common::RSValue RoughCheck(int pack, Descriptor &d, bool additional_nulls_possible) override;
+  common::RoughSetValue RoughCheck(int pack, Descriptor &d, bool additional_nulls_possible) override;
   // check whether any pair from two packs of two different attr/tables may meet
   // the condition
-  common::RSValue RoughCheck(int pack1, int pack2, Descriptor &d) override;
+  common::RoughSetValue RoughCheck(int pack1, int pack2, Descriptor &d) override;
   // check whether any value from the pack may meet the condition "... BETWEEN
   // min AND max"
-  common::RSValue RoughCheckBetween(int pack, int64_t min, int64_t max) override;
+  common::RoughSetValue RoughCheckBetween(int pack, int64_t min, int64_t max) override;
 
   // calculate the number of 1's in histograms and other KN stats
   void RoughStats(double &hist_density, int &trivial_packs, double &span);
@@ -400,6 +402,7 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
                                   // pack, providing KNs etc.
   std::function<std::shared_ptr<RSIndex>(const FilterCoordinate &co)> filter_creator;
 };
+
 }  // namespace core
 }  // namespace Tianmu
 

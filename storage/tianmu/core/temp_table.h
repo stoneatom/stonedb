@@ -73,7 +73,7 @@ class TempTable : public JustATable {
     bool not_complete_;  // does not contain all the column elements - some functions cannot be computed
 
     Attr(CQTerm t, common::ColOperation m, uint32_t power, bool distinct = false, char *alias = nullptr, int dim = -1,
-         common::CT type = common::CT::INT, uint scale = 0, uint precision = 10, bool notnull = true,
+         common::ColumnType type = common::ColumnType::INT, uint scale = 0, uint precision = 10, bool notnull = true,
          DTCollation collation = DTCollation(), SI *si1 = nullptr);
 
     Attr(const Attr &);
@@ -111,18 +111,20 @@ class TempTable : public JustATable {
     void GetValueString(int64_t row, types::BString &s) override { GetValueString(s, row); }
     void GetValueString(types::BString &s, int64_t row);
     void GetNotNullValueString(int64_t row, types::BString &s) override { GetValueString(s, row); }
-    uint64_t ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue *rf,
+    uint64_t ApproxDistinctVals(bool incl_nulls, Filter *f, common::RoughSetValue *rf,
                                 bool outer_nulls_possible) override;  // provide the best upper approximation of number
                                                                       // of diff. values (incl. null, if flag set)
     uint64_t ExactDistinctVals([[maybe_unused]] Filter *f) override { return common::NULL_VALUE_64; }
     bool IsDistinct([[maybe_unused]] Filter *f) override { return false; }
     size_t MaxStringSize(Filter *f = nullptr) override;  // maximal byte string length in column
 
-    int64_t RoughMin([[maybe_unused]] Filter *f = nullptr, [[maybe_unused]] common::RSValue *rf = nullptr) override {
+    int64_t RoughMin([[maybe_unused]] Filter *f = nullptr,
+                     [[maybe_unused]] common::RoughSetValue *rf = nullptr) override {
       return common::MINUS_INF_64;
     }  // for numerical: best rough approximation of min for a given filter (or
        // global min if filter is nullptr)
-    int64_t RoughMax([[maybe_unused]] Filter *f = nullptr, [[maybe_unused]] common::RSValue *rf = nullptr) override {
+    int64_t RoughMax([[maybe_unused]] Filter *f = nullptr,
+                     [[maybe_unused]] common::RoughSetValue *rf = nullptr) override {
       return common::PLUS_INF_64;
     }  // for numerical: best rough approximation of max for a given filter (or
        // global max if filter is nullptr)
@@ -158,14 +160,14 @@ class TempTable : public JustATable {
 
     int NumOfAttr() const override { return -1; }
 
-    common::RSValue RoughCheck([[maybe_unused]] int pack, [[maybe_unused]] Descriptor &d,
-                               [[maybe_unused]] bool additional_nulls_possible) override {
-      return common::RSValue::RS_SOME;
+    common::RoughSetValue RoughCheck([[maybe_unused]] int pack, [[maybe_unused]] Descriptor &d,
+                                     [[maybe_unused]] bool additional_nulls_possible) override {
+      return common::RoughSetValue::RS_SOME;
     }
 
-    common::RSValue RoughCheck([[maybe_unused]] int pack1, [[maybe_unused]] int pack2,
-                               [[maybe_unused]] Descriptor &d) override {
-      return common::RSValue::RS_SOME;
+    common::RoughSetValue RoughCheck([[maybe_unused]] int pack1, [[maybe_unused]] int pack2,
+                                     [[maybe_unused]] Descriptor &d) override {
+      return common::RoughSetValue::RS_SOME;
     }
 
     // as far as Attr is not pack oriented the function below should not be

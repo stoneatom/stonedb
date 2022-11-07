@@ -121,26 +121,27 @@ void GroupTable::AddGroupingColumn(vcolumn::VirtualColumn *vc) {
 }
 
 void GroupTable::AddAggregatedColumn(vcolumn::VirtualColumn *vc, GT_Aggregation operation, bool distinct,
-                                     common::CT type, int size, int precision, DTCollation in_collation, SI si) {
+                                     common::ColumnType type, int size, int precision, DTCollation in_collation,
+                                     SI si) {
   GroupTable::ColTempDesc desc;
   desc.type = type;  // put defaults first, then check in Initialize() what will  be actual result definition
   // Overwriting size in some cases:
   switch (type) {
-    case common::CT::INT:
-    case common::CT::MEDIUMINT:
-    case common::CT::BYTEINT:
-    case common::CT::SMALLINT:
+    case common::ColumnType::INT:
+    case common::ColumnType::MEDIUMINT:
+    case common::ColumnType::BYTEINT:
+    case common::ColumnType::SMALLINT:
       size = 4;
       break;  // minimal field is one int (4 bytes)
-    case common::CT::STRING:
-    case common::CT::VARCHAR:
-    case common::CT::BIN:
-    case common::CT::BYTE:
-    case common::CT::VARBYTE:
-    case common::CT::LONGTEXT:
+    case common::ColumnType::STRING:
+    case common::ColumnType::VARCHAR:
+    case common::ColumnType::BIN:
+    case common::ColumnType::BYTE:
+    case common::ColumnType::VARBYTE:
+    case common::ColumnType::LONGTEXT:
       // left as is
       break;
-    // Note: lookup strings will have type common::CT::STRING or similar, and
+    // Note: lookup strings will have type common::ColumnType::STRING or similar, and
     // size 4 (stored as int!)
     default:
       size = 8;
@@ -217,7 +218,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
         case GT_Aggregation::GT_AVG: {  // AVG(...) Note: strings are parsed  to double
           if (ATI::IsRealType(desc.type) || ATI::IsStringType(desc.type))
             aggregator[i] = new AggregatorAvgD;
-          else if (desc.type == common::CT::YEAR)
+          else if (desc.type == common::ColumnType::YEAR)
             aggregator[i] = new AggregatorAvgYear;
           else
             aggregator[i] = new AggregatorAvg64(desc.precision);

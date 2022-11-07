@@ -113,7 +113,7 @@ class SubSelectColumn : public MultiValColumn {
   bool IsSubSelect() const override { return true; }
   bool IsThreadSafe() override { return IsConst() && MakeParallelReady(); }
   void PrepareAndFillCache();
-  bool IsSetEncoded(common::CT at,
+  bool IsSetEncoded(common::ColumnType at,
                     int scale) override;  // checks whether the set is constant and fixed size
                                           // equal to the given one
   int64_t GetNotNullValueInt64(const core::MIIterator &mit) override { return GetValueInt64Impl(mit); }

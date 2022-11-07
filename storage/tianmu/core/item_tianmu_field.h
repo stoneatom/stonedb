@@ -28,6 +28,7 @@
 
 namespace Tianmu {
 namespace core {
+
 // damn it... should be C linkage.
 // this is not exported yet in msyql 5.6
 ///*extern "C" */int decimal_shift(decimal_t *dec, int shift);
@@ -143,10 +144,10 @@ class Item_tianmudecimal : public Item_decimal {
 class Item_tianmudatetime_base : public Item {
  protected:
   types::DT dt;
-  common::CT at;
+  common::ColumnType at;
 
  public:
-  void Set(int64_t x, common::CT at) {
+  void Set(int64_t x, common::ColumnType at) {
     dt.val = x;
     this->at = at;
   }
@@ -189,6 +190,7 @@ class Item_tianmuyear : public Item_tianmudatetime_base {
   String *val_str(String *s) override;
   bool get_date(MYSQL_TIME *ltime, uint fuzzydate) override;
 };
+
 }  // namespace core
 }  // namespace Tianmu
 

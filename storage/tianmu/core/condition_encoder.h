@@ -28,6 +28,7 @@ class MultiValColumn;
 }  // namespace vcolumn
 
 namespace core {
+
 class Descriptor;
 
 class ConditionEncoder {
@@ -58,7 +59,7 @@ class ConditionEncoder {
   void TransformOtherThanINsOnNumerics();
   void LookupExpressionTransformation();
 
-  inline common::CT AttrTypeName() const { return attr->TypeName(); }
+  inline common::ColumnType AttrTypeName() const { return attr->TypeName(); }
 
  public:
   static void EncodeIfPossible(Descriptor &desc, bool for_rough_query, bool additional_nulls);
@@ -72,6 +73,7 @@ class ConditionEncoder {
   Descriptor *desc;
   uint32_t pack_power;
 };
+
 }  // namespace core
 }  // namespace Tianmu
 

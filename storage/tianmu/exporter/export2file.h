@@ -33,7 +33,7 @@ class select_tianmu_export : public Query_result_export {
   void SetRowCount(ha_rows x);
   void SendOk(THD *thd);
   sql_exchange *SqlExchange();
-  bool IsPrepared() const { return prepared_; };
+  bool IsPrepared() const { return prepared_; }
   bool send_data(THD *thd, const mem_root_deque<Item *> &items) override;
 
  private:

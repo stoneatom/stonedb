@@ -42,7 +42,7 @@ extern void PushWarning(THD *thd, Sql_condition::enum_severity_level level, uint
 // Column Type
 // NOTE: do not change the order of implemented data types! Stored as int(...)
 // on disk.
-enum class CT : unsigned char {
+enum class ColumnType : unsigned char {
   STRING,   // string treated either as dictionary value or "free" text
   VARCHAR,  // as above (discerned for compatibility with SQL)
   INT,      // integer 32-bit
@@ -107,12 +107,13 @@ constexpr int64_t TIANMU_BIGINT_MIN = NULL_VALUE_64;
 #define DEFAULT_DELIMITER ";"
 #define DEFAULT_LINE_TERMINATOR ""
 
-enum class RSValue : char {
+enum class RoughSetValue : char {
   RS_NONE = 0,    // the pack is empty
   RS_SOME = 1,    // the pack is suspected (but may be empty or full) (i.e.
-                  // RSValue::RS_SOME & RSValue::RS_ALL = RSValue::RS_SOME)
+                  // RoughSetValue::RS_SOME & RoughSetValue::RS_ALL = RoughSetValue::RS_SOME)
   RS_ALL = 2,     // the pack is full
-  RS_UNKNOWN = 3  // the pack was not checked yet (i.e. RSValue::RS_UNKNOWN & RSValue::RS_ALL = RSValue::RS_ALL)
+  RS_UNKNOWN = 3  // the pack was not checked yet (i.e. RoughSetValue::RS_UNKNOWN & RoughSetValue::RS_ALL =
+                  // RoughSetValue::RS_ALL)
 };
 
 /**
