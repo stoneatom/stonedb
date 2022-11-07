@@ -1,0 +1,208 @@
+#
+# Test select from
+# Author: shiz
+#
+drop table if exists t1_test;
+create table t1_test(
+id int, 
+c1 date, 
+c2 decimal(4,2), 
+c3 date);
+insert into t1_test values 
+(0, '2011-01-27', null, '1999-08-25'), 
+(1, null, null, null), 
+(2, '2001-01-05', 2.34, null), 
+(3, null, null, '2001-05-03');
+select * from t1_test where (year(c1) = 2011 or c2 = 2.34) or month(c3) = 1;
+id	c1	c2	c3
+0	2011-01-27	NULL	1999-08-25
+2	2001-01-05	2.34	NULL
+select * from t1_test where (year(c1) = 2011 or c2 = 2.34) and month(c1) = 1;
+id	c1	c2	c3
+0	2011-01-27	NULL	1999-08-25
+2	2001-01-05	2.34	NULL
+select * from t1_test where year(c1) = 2011 or (c2 = 2.4) or month(c3) = 8;
+id	c1	c2	c3
+0	2011-01-27	NULL	1999-08-25
+select * from t1_test where year(c1) = 2011 or (c2 is null) or month(c1) = 2;
+id	c1	c2	c3
+0	2011-01-27	NULL	1999-08-25
+1	NULL	NULL	NULL
+3	NULL	NULL	2001-05-03
+select * from t1_test where c1 is null or (c2 is null) or year(c1) = 99;
+id	c1	c2	c3
+0	2011-01-27	NULL	1999-08-25
+1	NULL	NULL	NULL
+3	NULL	NULL	2001-05-03
+select * from t1_test where year(ifnull(c1, c3)) > 2000 and c2 is not null;
+id	c1	c2	c3
+2	2001-01-05	2.34	NULL
+select * from t1_test where year(ifnull(c1, c3)) < 2000 or c2 is null and c3 is not null;
+id	c1	c2	c3
+0	2011-01-27	NULL	1999-08-25
+3	NULL	NULL	2001-05-03
+select * from t1_test where ifnull(year(c1), 2011) > 2010 or c2 is null and c3 is not null;
+id	c1	c2	c3
+0	2011-01-27	NULL	1999-08-25
+1	NULL	NULL	NULL
+3	NULL	NULL	2001-05-03
+select * from t1_test where ifnull(year(c1), 2011) > 2010 or (c2 is null and c3 is not null or c2 > 2);
+id	c1	c2	c3
+0	2011-01-27	NULL	1999-08-25
+1	NULL	NULL	NULL
+2	2001-01-05	2.34	NULL
+3	NULL	NULL	2001-05-03
+select * from t1_test where (null or year(ifnull(c1, c3)) > 2000) and ( c3 is not null or null);
+id	c1	c2	c3
+0	2011-01-27	NULL	1999-08-25
+3	NULL	NULL	2001-05-03
+select * from t1_test where (null or year(ifnull(c1, c3)) > 2000) or ( (c3 is not null or null) and c3 is null);
+id	c1	c2	c3
+0	2011-01-27	NULL	1999-08-25
+2	2001-01-05	2.34	NULL
+3	NULL	NULL	2001-05-03
+select * from t1_test where (null or year(ifnull(c1, c3)) > 2000) or ( (c3 is not null or null) and null);
+id	c1	c2	c3
+0	2011-01-27	NULL	1999-08-25
+2	2001-01-05	2.34	NULL
+3	NULL	NULL	2001-05-03
+select * from t1_test where (null or year(ifnull(c1, c3)) > 2000 and isnull(c2)) or ( (c3 is not null or null) and null);
+id	c1	c2	c3
+0	2011-01-27	NULL	1999-08-25
+3	NULL	NULL	2001-05-03
+select * from t1_test where ((null or year(ifnull(c1, c3)) > 2000) and isnull(c2)) or ( (c3 is not null or null) and null);
+id	c1	c2	c3
+0	2011-01-27	NULL	1999-08-25
+3	NULL	NULL	2001-05-03
+select * from t1_test where (null or c2+1 between 0 and 4 or isnull(c2)) and ( c3 is not null or null);
+id	c1	c2	c3
+0	2011-01-27	NULL	1999-08-25
+3	NULL	NULL	2001-05-03
+drop table if exists t2_test;
+Warnings:
+Note	1051	Unknown table 'test.t2_test'
+create table t2_test (
+idx int,
+i1 int,
+i2 int,
+bi1 bigint,
+bi2 bigint,
+d1 double,
+d2 double,
+f1 float,
+f2 float,
+c1 char(8),
+c2 char(8),
+vc1 varchar(20),
+vc2 varchar(20),
+dt1 date,
+dt2 date,
+dtm1 datetime,
+dtm2 datetime
+);
+insert into t2_test values
+(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, '2008-01-25', '2008-01-25', '2008-01-25 10:00', '2011-01-08 11:00'),
+(2, null, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, null, '2009-01-25', '2009-01-25', '2009-01-25 10:00', '2019-01-25 11:00'),
+(3, 3, null, 3, 3, 3, 3, 3, 3, 3, 3, null, 3, '2010-01-25', '2010-01-25', '2010-01-25 10:00', '2018-01-25 11:00'),
+(4, 4, 4, null, 4, 4, 4, 4, 4, 4, null, 4, 4, null, '2011-01-25', '2011-01-25 10:00', '2017-01-25 11:00'),
+(5, 5, 5, 5, null, 5, 5, 5, 5, null, 5, 5, 5, '2012-01-25', null, '2012-01-25 10:00', '2016-01-25 11:00'),
+(6, 6, 6, 6, 6, null, 6, 6, 6, 6, 6, 6, 6, '2013-01-25', '2014-01-25', null, '2015-01-25 11:00'),
+(7, 7, 7, 7, 7, 7, null, 7, 7, 7, 7, 7, 7, '2014-01-25', '2013-01-25', '2014-01-25 10:00', null),
+(8, 8, 8, 8, 8, 8, 8, null, 8, 8, 8, 8, 8, '2015-01-25', '2012-01-25', '2013-01-25 10:00', '2015-01-25 11:00'),
+(9, 9, 9, 9, 9, 9, 9, 9, null, 9, 9, 9, 9, '2016-01-25', '2011-01-25', '2012-01-25 10:00', '2016-01-25 11:00'),
+(10, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+select 'q1', idx from t2_test where (idx <=5 or idx is null) or (if(idx > 7, null, idx) = idx);
+q1	idx
+q1	1
+q1	2
+q1	3
+q1	4
+q1	5
+q1	6
+q1	7
+select 'q2', idx, bi1, dt1, dt2 from t2_test
+where (bi1 is null) or (year(dt1)<2013 or year(dt2)=2012 or dt1 is null) and (idx <= 9) and (year(dt2)<2020 or 
+year(dt2) is null);
+q2	idx	bi1	dt1	dt2
+q2	1	1	2008-01-25	2008-01-25
+q2	2	2	2009-01-25	2009-01-25
+q2	3	3	2010-01-25	2010-01-25
+q2	4	NULL	NULL	2011-01-25
+q2	5	5	2012-01-25	NULL
+q2	8	8	2015-01-25	2012-01-25
+q2	10	NULL	NULL	NULL
+select 'q3', idx, bi1, dt1, dt2 from t2_test
+where (bi1 is null) or (year(dt1)=2017 or year(dt2)=2012 or dt1 is null) and (idx <= 9) and (year(dt2)<2020 or 
+year(dt2) is null);
+q3	idx	bi1	dt1	dt2
+q3	4	NULL	NULL	2011-01-25
+q3	8	8	2015-01-25	2012-01-25
+q3	10	NULL	NULL	NULL
+select 'q4', idx, f1, f2 from t2_test where (f1 > 3) or (f2 < 7);
+q4	idx	f1	f2
+q4	1	1	1
+q4	2	2	2
+q4	3	3	3
+q4	4	4	4
+q4	5	5	5
+q4	6	6	6
+q4	7	7	7
+q4	9	9	NULL
+select 'q5', idx, vc1, vc2 from t2_test where (vc1 > 1) or (vc2 > 1);
+q5	idx	vc1	vc2
+q5	2	2	NULL
+q5	3	NULL	3
+q5	4	4	4
+q5	5	5	5
+q5	6	6	6
+q5	7	7	7
+q5	8	8	8
+q5	9	9	9
+select 'q6', idx, dtm1, dtm2 from t2_test where (year(dtm1)=2014 and month(dtm1)=1) or (year(dtm2)=2015 and 
+month(dtm2) <= 7);
+q6	idx	dtm1	dtm2
+q6	6	NULL	2015-01-25 11:00:00
+q6	7	2014-01-25 10:00:00	NULL
+q6	8	2013-01-25 10:00:00	2015-01-25 11:00:00
+select 'q7', idx, d1, d2, f1, f2 from t2_test where (d1 <= d2 or f1 > f2 or f2 is null) and (idx >= 1 and (f1 < 8 or 
+f2 > 7));
+q7	idx	d1	d2	f1	f2
+q7	1	1	1	1	1
+q7	2	2	2	2	2
+q7	3	3	3	3	3
+q7	4	4	4	4	4
+q7	5	5	5	5	5
+q7	8	8	8	NULL	8
+select 'q8', idx, dtm1, dtm2 from t2_test where hour(dtm1)=10 or hour(dtm2)=11;
+q8	idx	dtm1	dtm2
+q8	1	2008-01-25 10:00:00	2011-01-08 11:00:00
+q8	2	2009-01-25 10:00:00	2019-01-25 11:00:00
+q8	3	2010-01-25 10:00:00	2018-01-25 11:00:00
+q8	4	2011-01-25 10:00:00	2017-01-25 11:00:00
+q8	5	2012-01-25 10:00:00	2016-01-25 11:00:00
+q8	6	NULL	2015-01-25 11:00:00
+q8	7	2014-01-25 10:00:00	NULL
+q8	8	2013-01-25 10:00:00	2015-01-25 11:00:00
+q8	9	2012-01-25 10:00:00	2016-01-25 11:00:00
+select 'q9', idx from t2_test where hour(dtm1)=10 or i1 > 2 or i2 < 5 or f1 > 6 or year(dtm2) < 2018 or vc1 < 9 or 
+bi2 < 4;
+q9	idx
+q9	1
+q9	2
+q9	3
+q9	4
+q9	5
+q9	6
+q9	7
+q9	8
+q9	9
+select 'q10', idx from t2_test where hour(dtm1)=9 or i1 = 2 or i2 = 5 or f2 is null or f1 > 6 or year(dtm2)= 2012 or 
+vc1 = 9 or bi2 = 4;
+q10	idx
+q10	4
+q10	5
+q10	7
+q10	9
+q10	10
+drop table t2_test;
+drop table t1_test;

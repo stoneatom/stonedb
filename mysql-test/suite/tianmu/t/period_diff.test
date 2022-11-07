@@ -1,0 +1,56 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test of PERIOD_DIFF function
+--echo # Author: shiz
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS period_diff_test;
+--enable_warnings
+
+CREATE DATABASE period_diff_test; 
+USE period_diff_test;
+
+SELECT PERIOD_DIFF(201808,199508);
+SELECT PERIOD_DIFF(1601,1603);
+SELECT PERIOD_DIFF(191602,191607);
+SELECT PERIOD_DIFF(1916-02,1916-07);
+SELECT PERIOD_DIFF(1602,9002);
+
+CREATE TABLE t1 (a DECIMAL(10,1));
+INSERT INTO t1 VALUES (200101.9);
+SELECT a,PERIOD_DIFF(a, 200101) FROM t1;
+DROP TABLE t1;
+
+--echo # Wide decimal rounding
+
+CREATE TABLE t1 (a DECIMAL(17,1));
+INSERT INTO t1 VALUES (200101.9);
+SELECT a,PERIOD_DIFF(a, 200101) FROM t1;
+DROP TABLE t1;
+
+--echo # Huge narrow decimal
+# Below query is disabled until fixed
+#CREATE TABLE t1 (a DECIMAL(17,0));
+#INSERT INTO t1 VALUES (9999999999999999);
+#SELECT a, PERIOD_DIFF(200101,a) FROM t1;
+#DROP TABLE t1;
+
+--echo # Huge wide decimal
+# Below query is disabled until fixed
+#CREATE TABLE t1 (a DECIMAL(18,0));
+#INSERT INTO t1 VALUES (92233720368547758);
+#SELECT a, PERIOD_DIFF(200101,a) FROM t1;
+#DROP TABLE t1;
+
+--echo # Huge double
+
+CREATE TABLE t1 (a DOUBLE);
+INSERT INTO t1 VALUES (9223372036854775807.0-1000);
+INSERT INTO t1 VALUES (9223372036854775807.0+1000);
+SELECT a, PERIOD_DIFF(200101,a) FROM t1 ORDER BY 2;
+DROP TABLE t1;
+
+# clean up
+DROP DATABASE period_diff_test;
