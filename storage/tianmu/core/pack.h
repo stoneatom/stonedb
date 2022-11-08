@@ -59,95 +59,95 @@ class Pack : public mm::TraceableObject {
 
   void SetNull(int locationInPack) {
     int mask = 1 << (locationInPack % 32);
-    ASSERT((nulls[locationInPack >> 5] & mask) == 0);
-    nulls[locationInPack >> 5] |= mask;
+    ASSERT((nulls_ptr_[locationInPack >> 5] & mask) == 0);
+    nulls_ptr_[locationInPack >> 5] |= mask;
   }
 
   void UnsetNull(int locationInPack) {
     int mask = ~(1 << (locationInPack % 32));
     ASSERT(IsNull(locationInPack), "already null!");
-    nulls[locationInPack >> 5] &= mask;
+    nulls_ptr_[locationInPack >> 5] &= mask;
   }
 
   bool IsNull(int locationInPack) const {
-    if (dpn->numOfNulls == dpn->numOfRecords)
+    if (dpn_->numOfNulls == dpn_->numOfRecords)
       return true;
-    return ((nulls[locationInPack >> 5] & ((uint32_t)(1) << (locationInPack % 32))) != 0);
+    return ((nulls_ptr_[locationInPack >> 5] & ((uint32_t)(1) << (locationInPack % 32))) != 0);
   }
 
   void SetDeleted(int locationInPack) {
     int mask = 1 << (locationInPack % 32);
-    ASSERT((deletes[locationInPack >> 5] & mask) == 0);
-    deletes[locationInPack >> 5] |= mask;
+    ASSERT((deletes_ptr_[locationInPack >> 5] & mask) == 0);
+    deletes_ptr_[locationInPack >> 5] |= mask;
   }
 
   void UnsetDeleted(int locationInPack) {
     int mask = ~(1 << (locationInPack % 32));
     ASSERT(IsDeleted(locationInPack), "already deleted!");
-    deletes[locationInPack >> 5] &= mask;
+    deletes_ptr_[locationInPack >> 5] &= mask;
   }
 
   // If the line in the package has been deleted, return true; otherwise, return false
   bool IsDeleted(int locationInPack) const {
-    if (dpn->numOfDeleted == dpn->numOfRecords)
+    if (dpn_->numOfDeleted == dpn_->numOfRecords)
       return true;
-    return ((deletes[locationInPack >> 5] & ((uint32_t)(1) << (locationInPack % 32))) != 0);
+    return ((deletes_ptr_[locationInPack >> 5] & ((uint32_t)(1) << (locationInPack % 32))) != 0);
   }
 
   bool NotNull(int locationInPack) const { return !IsNull(locationInPack); }
   void InitNull() {
-    if (dpn->NullOnly()) {
-      for (uint i = 0; i < dpn->numOfNulls; i++) SetNull(i);
+    if (dpn_->NullOnly()) {
+      for (uint i = 0; i < dpn_->numOfNulls; i++) SetNull(i);
     }
   }
   PackCoordinate GetPackCoordinate() const { return m_coord.co.pack; }
-  void SetDPN(DPN *new_dpn) { dpn = new_dpn; }
+  void SetDPN(DPN *new_dpn) { dpn_ = new_dpn; }
 
   // Compress bitmap
   bool CompressedBitMap(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, std::unique_ptr<uint32_t[]> &ptr_buf,
                         uint32_t &dpn_num1);
 
  protected:
-  Pack(DPN *dpn, PackCoordinate pc, ColumnShare *s);
+  Pack(DPN *dpn, PackCoordinate pc, ColumnShare *col_share);
   Pack(const Pack &ap, const PackCoordinate &pc);
   virtual std::pair<UniquePtr, size_t> Compress() = 0;
   virtual void Destroy() = 0;
 
   bool ShouldNotCompress() const;
-  bool IsModeNullsCompressed() const { return dpn->null_compressed; }
-  bool IsModeDeletesCompressed() const { return dpn->delete_compressed; }
-  bool IsModeDataCompressed() const { return dpn->data_compressed; }
+  bool IsModeNullsCompressed() const { return dpn_->null_compressed; }
+  bool IsModeDeletesCompressed() const { return dpn_->delete_compressed; }
+  bool IsModeDataCompressed() const { return dpn_->data_compressed; }
   bool IsModeCompressionApplied() const { return IsModeDataCompressed() || IsModeNullsCompressed(); }
-  bool IsModeNoCompression() const { return dpn->no_compress; }
-  void ResetModeNoCompression() { dpn->no_compress = 0; }
+  bool IsModeNoCompression() const { return dpn_->no_compress; }
+  void ResetModeNoCompression() { dpn_->no_compress = 0; }
   void ResetModeCompressed() {
-    dpn->null_compressed = 0;
-    dpn->data_compressed = 0;
+    dpn_->null_compressed = 0;
+    dpn_->data_compressed = 0;
   }
   void SetModeNoCompression() {
     ResetModeCompressed();
-    dpn->no_compress = 1;
+    dpn_->no_compress = 1;
   }
   void SetModeDataCompressed() {
     ResetModeNoCompression();
-    dpn->data_compressed = 1;
+    dpn_->data_compressed = 1;
   }
   void SetModeNullsCompressed() {
     ResetModeNoCompression();
-    dpn->null_compressed = 1;
+    dpn_->null_compressed = 1;
   }
-  void ResetModeNullsCompressed() { dpn->null_compressed = 0; }
+  void ResetModeNullsCompressed() { dpn_->null_compressed = 0; }
 
   void SetModeDeletesCompressed() {
     ResetModeNoCompression();
-    dpn->delete_compressed = 1;
+    dpn_->delete_compressed = 1;
   }
-  void ResetModeDeletesCompressed() { dpn->delete_compressed = 0; }
+  void ResetModeDeletesCompressed() { dpn_->delete_compressed = 0; }
 
  protected:
-  ColumnShare *s = nullptr;
-  size_t bitmapSize;
-  DPN *dpn = nullptr;
+  ColumnShare *col_share_ = nullptr;
+  size_t bitmap_size_;
+  DPN *dpn_ = nullptr;
 
   /*
   The actual storage form of a bitmap is an array of type int32.
@@ -157,8 +157,8 @@ class Pack : public mm::TraceableObject {
   and the position of the data in the pack and the position in the bitmap are also one-to-one correspondence
   This can effectively save space.
   */
-  std::unique_ptr<uint32_t[]> nulls;    // Null bitmap
-  std::unique_ptr<uint32_t[]> deletes;  // deleted bitmap
+  std::unique_ptr<uint32_t[]> nulls_ptr_;    // Null bitmap
+  std::unique_ptr<uint32_t[]> deletes_ptr_;  // deleted bitmap
 };
 }  // namespace core
 }  // namespace Tianmu

@@ -360,9 +360,9 @@ void TempTable::RoughAggregate(ResultSender *sender) {
       if (!vc->Type().IsString() && !vc->Type().IsLookup() && vc->GetDim() == 0) {
         std::vector<PackOrderer> po(1);
         po[0].Init(vc,
-                   (asc ? PackOrderer::OrderType::MaxAsc
-                        : PackOrderer::OrderType::MinDesc),  // start with best packs to possibly
-                                                             // roughly exclude others
+                   (asc ? PackOrderer::OrderType::kMaxAsc
+                        : PackOrderer::OrderType::kMinDesc),  // start with best packs to possibly
+                                                              // roughly exclude others
                    filter.rough_mind->GetRSValueTable(0));
         DimensionVector loc_dims(1);
         loc_dims[0] = true;
