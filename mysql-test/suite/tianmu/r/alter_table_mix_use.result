@@ -1,6 +1,6 @@
-create database alter_table_null;
-use alter_table_null;
-CREATE TABLE `alter_table_null_test` (
+create database alter_table_mix;
+use alter_table_mix;
+CREATE TABLE `alter_table_mix_test` (
 `c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',
 `c_smallint` smallint NOT NULL COMMENT 'smallint',
 `c_mediumint` mediumint DEFAULT NULL COMMENT 'mediumint',
@@ -19,9 +19,9 @@ CREATE TABLE `alter_table_null_test` (
 `c_text` text COMMENT 'text',
 `c_longblob` longblob COMMENT 'longblob'
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-show create table alter_table_null_test;
+show create table alter_table_mix_test;
 Table	Create Table
-alter_table_null_test	CREATE TABLE `alter_table_null_test` (
+alter_table_mix_test	CREATE TABLE `alter_table_mix_test` (
   `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
   `c_smallint` smallint(6) NOT NULL COMMENT 'smallint',
   `c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
@@ -40,35 +40,14 @@ alter_table_null_test	CREATE TABLE `alter_table_null_test` (
   `c_text` text COLLATE utf8mb4_unicode_ci COMMENT 'text',
   `c_longblob` longblob COMMENT 'longblob'
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-alter table alter_table_null_test modify c_smallint smallint NULL;
-show create table alter_table_null_test;
-Table	Create Table
-alter_table_null_test	CREATE TABLE `alter_table_null_test` (
-  `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
-  `c_smallint` smallint(6) DEFAULT NULL,
-  `c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
-  `c_int` int(11) DEFAULT NULL COMMENT 'int',
-  `c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
-  `c_float` float DEFAULT NULL COMMENT 'float',
-  `c_double` double DEFAULT NULL COMMENT 'double',
-  `c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
-  `c_date` date DEFAULT NULL COMMENT 'date',
-  `c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
-  `c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
-  `c_time` time DEFAULT NULL COMMENT 'time',
-  `c_char` char(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'char',
-  `c_varchar` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'varchar',
-  `c_blob` blob COMMENT 'blob',
-  `c_text` text COLLATE utf8mb4_unicode_ci COMMENT 'text',
-  `c_longblob` longblob COMMENT 'longblob'
-) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-insert into alter_table_null_test(c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
+insert into alter_table_mix_test(c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
 values(105,105,105,105,105,5.2,10.88,105.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom1','hello1','bcdefghijklmn');
-show create table alter_table_null_test;
+alter table alter_table_mix_test rename alter_table_rename_add, add c_add char(10);
+show create table alter_table_rename_add;
 Table	Create Table
-alter_table_null_test	CREATE TABLE `alter_table_null_test` (
+alter_table_rename_add	CREATE TABLE `alter_table_rename_add` (
   `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
-  `c_smallint` smallint(6) DEFAULT NULL,
+  `c_smallint` smallint(6) NOT NULL COMMENT 'smallint',
   `c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
   `c_int` int(11) DEFAULT NULL COMMENT 'int',
   `c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
@@ -83,13 +62,16 @@ alter_table_null_test	CREATE TABLE `alter_table_null_test` (
   `c_varchar` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'varchar',
   `c_blob` blob COMMENT 'blob',
   `c_text` text COLLATE utf8mb4_unicode_ci COMMENT 'text',
-  `c_longblob` longblob COMMENT 'longblob'
+  `c_longblob` longblob COMMENT 'longblob',
+  `c_add` char(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-show create table alter_table_null_test;
+insert into alter_table_rename_add(c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text, c_add)
+values(105,105,105,105,105,5.2,10.88,105.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom1','hello1','bcdefghijklmn', 'add');
+show create table alter_table_rename_add;
 Table	Create Table
-alter_table_null_test	CREATE TABLE `alter_table_null_test` (
+alter_table_rename_add	CREATE TABLE `alter_table_rename_add` (
   `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
-  `c_smallint` smallint(6) DEFAULT NULL,
+  `c_smallint` smallint(6) NOT NULL COMMENT 'smallint',
   `c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
   `c_int` int(11) DEFAULT NULL COMMENT 'int',
   `c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
@@ -104,14 +86,33 @@ alter_table_null_test	CREATE TABLE `alter_table_null_test` (
   `c_varchar` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'varchar',
   `c_blob` blob COMMENT 'blob',
   `c_text` text COLLATE utf8mb4_unicode_ci COMMENT 'text',
-  `c_longblob` longblob COMMENT 'longblob'
+  `c_longblob` longblob COMMENT 'longblob',
+  `c_add` char(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-alter table alter_table_null_test modify c_tinyint tinyint NOT NULL;
-show create table alter_table_null_test;
+CREATE TABLE `alter_table_mix_test` (
+`c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',
+`c_smallint` smallint NOT NULL COMMENT 'smallint',
+`c_mediumint` mediumint DEFAULT NULL COMMENT 'mediumint',
+`c_int` int DEFAULT NULL COMMENT 'int',
+`c_bigint` bigint DEFAULT NULL COMMENT 'bigint',
+`c_float` float DEFAULT NULL COMMENT 'float',
+`c_double` double DEFAULT NULL COMMENT 'double',
+`c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+`c_date` date DEFAULT NULL COMMENT 'date',
+`c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
+`c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+`c_time` time DEFAULT NULL COMMENT 'time',
+`c_char` char(10) DEFAULT NULL COMMENT 'char',
+`c_varchar` varchar(10) DEFAULT NULL COMMENT 'varchar',
+`c_blob` blob COMMENT 'blob',
+`c_text` text COMMENT 'text',
+`c_longblob` longblob COMMENT 'longblob'
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+show create table alter_table_mix_test;
 Table	Create Table
-alter_table_null_test	CREATE TABLE `alter_table_null_test` (
-  `c_tinyint` tinyint(4) NOT NULL,
-  `c_smallint` smallint(6) DEFAULT NULL,
+alter_table_mix_test	CREATE TABLE `alter_table_mix_test` (
+  `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
+  `c_smallint` smallint(6) NOT NULL COMMENT 'smallint',
   `c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
   `c_int` int(11) DEFAULT NULL COMMENT 'int',
   `c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
@@ -128,13 +129,14 @@ alter_table_null_test	CREATE TABLE `alter_table_null_test` (
   `c_text` text COLLATE utf8mb4_unicode_ci COMMENT 'text',
   `c_longblob` longblob COMMENT 'longblob'
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-insert into alter_table_null_test(c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
+insert into alter_table_mix_test(c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
 values(105,105,105,105,105,5.2,10.88,105.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom1','hello1','bcdefghijklmn');
-show create table alter_table_null_test;
+alter table alter_table_mix_test rename alter_table_rename_drop, drop c_longblob;
+show create table alter_table_rename_drop;
 Table	Create Table
-alter_table_null_test	CREATE TABLE `alter_table_null_test` (
-  `c_tinyint` tinyint(4) NOT NULL,
-  `c_smallint` smallint(6) DEFAULT NULL,
+alter_table_rename_drop	CREATE TABLE `alter_table_rename_drop` (
+  `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
+  `c_smallint` smallint(6) NOT NULL COMMENT 'smallint',
   `c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
   `c_int` int(11) DEFAULT NULL COMMENT 'int',
   `c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
@@ -148,8 +150,27 @@ alter_table_null_test	CREATE TABLE `alter_table_null_test` (
   `c_char` char(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'char',
   `c_varchar` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'varchar',
   `c_blob` blob COMMENT 'blob',
-  `c_text` text COLLATE utf8mb4_unicode_ci COMMENT 'text',
-  `c_longblob` longblob COMMENT 'longblob'
+  `c_text` text COLLATE utf8mb4_unicode_ci COMMENT 'text'
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-drop table alter_table_null_test;
-drop database alter_table_null;
+insert into alter_table_rename_drop(c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
+values(105,105,105,105,105,5.2,10.88,105.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom1','hello1','bcdefghijklmn');
+show create table alter_table_rename_drop;
+Table	Create Table
+alter_table_rename_drop	CREATE TABLE `alter_table_rename_drop` (
+  `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
+  `c_smallint` smallint(6) NOT NULL COMMENT 'smallint',
+  `c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
+  `c_int` int(11) DEFAULT NULL COMMENT 'int',
+  `c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
+  `c_float` float DEFAULT NULL COMMENT 'float',
+  `c_double` double DEFAULT NULL COMMENT 'double',
+  `c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+  `c_date` date DEFAULT NULL COMMENT 'date',
+  `c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
+  `c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+  `c_time` time DEFAULT NULL COMMENT 'time',
+  `c_char` char(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'char',
+  `c_varchar` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'varchar',
+  `c_blob` blob COMMENT 'blob',
+  `c_text` text COLLATE utf8mb4_unicode_ci COMMENT 'text'
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
