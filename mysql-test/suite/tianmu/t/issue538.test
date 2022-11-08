@@ -21,12 +21,12 @@ CREATE TABLE `employees` (
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
 
 DROP FUNCTION IF EXISTS get_desc;
-DROP FUNCTION IF EXISTS get_int;
+DROP FUNCTION IF EXISTS get_salary;
 
 CREATE FUNCTION get_desc(id INT) RETURNS VARCHAR(300) 
   RETURN (SELECT CONCAT('employee name:',employee_name,'---','salary: ',employee_salary) FROM employees WHERE employee_id=id);
 
-CREATE FUNCTION get_int(id INT) RETURNS VARCHAR(300) 
+CREATE FUNCTION get_salary(id INT) RETURNS FLOAT
   RETURN (SELECT employee_salary FROM employees WHERE employee_id=id);
 
 --disable_query_log
@@ -53,7 +53,7 @@ LEFT JOIN employees b ON
 # User - defined function parameters aggregate function operations
 
 SELECT
-	sum(200 + get_int(b.employee_id))
+	sum(200 + get_salary(b.employee_id))
 FROM
 	employees a
 LEFT JOIN employees b ON
@@ -68,7 +68,7 @@ SELECT
 FROM
 	employees a
 LEFT JOIN employees b ON
-	a.employee_salary = get_int(b.employee_id)
+	a.employee_salary = get_salary(b.employee_id)
 	and b.employee_name = 'David Tian';
 
 # User-defined functions as interval predicates
@@ -81,7 +81,7 @@ FROM
 LEFT JOIN employees b ON
 	b.employee_name = 'David Tian'
 WHERE
-	a.employee_salary < get_int(b.employee_id);
+	a.employee_salary < get_salary(b.employee_id);
 
 SELECT
 	a.employee_id,
@@ -91,7 +91,7 @@ FROM
 LEFT JOIN employees b ON
 	b.employee_name = 'David Tian'
 WHERE
-	a.employee_salary > get_int(b.employee_id);
+	a.employee_salary > get_salary(b.employee_id);
 
 # User-defined functions as equivalent predicates
 
@@ -103,7 +103,7 @@ FROM
 LEFT JOIN employees b ON
 	b.employee_name = 'David Tian'
 WHERE
-	a.employee_salary = get_int(b.employee_id);
+	a.employee_salary = get_salary(b.employee_id);
 
 SELECT
     a.employee_id,
@@ -113,7 +113,7 @@ FROM
 LEFT JOIN employees b ON
     b.employee_name = 'David Tian'
 WHERE
-    get_int(b.employee_id) = a.employee_salary;
+    get_salary(b.employee_id) = a.employee_salary;
 
 # User-defined functions generate derived tables
 
@@ -126,7 +126,7 @@ FROM
 	employees as a,
 	(
 	SELECT
-		get_int(employees.employee_id) as employee_salary
+		get_salary(employees.employee_id) as employee_salary
 	FROM
 		employees) as b
 WHERE
@@ -142,7 +142,7 @@ FROM
 	employees as a,
 	(
 	SELECT
-		get_int(e.employee_id) as employee_salary
+		get_salary(e.employee_id) as employee_salary
 	FROM
 		(
 		SELECT
@@ -151,7 +151,7 @@ FROM
 			(
 			SELECT
 				employee_id,
-				get_int(employees.employee_id) as employee_salary
+				get_salary(employees.employee_id) as employee_salary
 			FROM
 				employees
 			WHERE
@@ -168,7 +168,7 @@ FROM
 	employees,
 	(
 	SELECT
-		get_int(1) ) as ta
+		get_salary(1) ) as ta
 WHERE
 	employees.employee_name = 'David Tian';
 
@@ -178,7 +178,7 @@ FROM
 	employees,
 	(
 	SELECT
-		get_int(employees.employee_id)
+		get_salary(employees.employee_id)
 	FROM
 		employees ) as ta
 WHERE
@@ -192,7 +192,7 @@ SELECT
 FROM
 	employees,
 	(
-		SELECT get_int(1) as sal) as ta
+		SELECT get_salary(1) as sal) as ta
 WHERE
 	employees.employee_name = 'David Tian';
 
@@ -204,7 +204,7 @@ FROM
 	employees
 LEFT JOIN ((
 	SELECT
-		get_int(1) as employee_salary) as ta) ON
+		get_salary(1) as employee_salary) as ta) ON
 	employees.employee_salary = ta.employee_salary
 WHERE
 	employees.employee_name = 'David Tian';
@@ -215,7 +215,7 @@ SELECT
 	ta.sal
 FROM
 	(
-		SELECT get_int(1) as sal) as ta;
+		SELECT get_salary(1) as sal) as ta;
 
 SELECT
 	ta.const,
@@ -224,7 +224,7 @@ FROM
 	(
 	SELECT
 		3 as const,
-		get_int(1) as sal) as ta;
+		get_salary(1) as sal) as ta;
 
 # User-defined functions as simple stand-alone queries
 
@@ -236,7 +236,7 @@ SELECT 1,2,get_desc(1);
 
 DROP TABLE employees;
 DROP FUNCTION get_desc;
-DROP FUNCTION get_int;
+DROP FUNCTION get_salary;
 
 # User-defined functions do not depend ON tables and only do simple numerical calculations
 

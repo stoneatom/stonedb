@@ -13,10 +13,10 @@ CREATE TABLE `employees` (
 `department_id` int(11) DEFAULT NULL
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
 DROP FUNCTION IF EXISTS get_desc;
-DROP FUNCTION IF EXISTS get_int;
+DROP FUNCTION IF EXISTS get_salary;
 CREATE FUNCTION get_desc(id INT) RETURNS VARCHAR(300) 
 RETURN (SELECT CONCAT('employee name:',employee_name,'---','salary: ',employee_salary) FROM employees WHERE employee_id=id);
-CREATE FUNCTION get_int(id INT) RETURNS VARCHAR(300) 
+CREATE FUNCTION get_salary(id INT) RETURNS FLOAT
 RETURN (SELECT employee_salary FROM employees WHERE employee_id=id);
 SELECT
 a.employee_id,
@@ -33,13 +33,13 @@ employee_id	get_desc(b.employee_id)
 4	NULL
 5	NULL
 SELECT
-sum(200 + get_int(b.employee_id))
+sum(200 + get_salary(b.employee_id))
 FROM
 employees a
 LEFT JOIN employees b ON
 a.employee_id = b.employee_id
 and b.employee_name = 'David Tian';
-sum(200 + get_int(b.employee_id))
+sum(200 + get_salary(b.employee_id))
 7700
 SELECT
 a.employee_id,
@@ -47,7 +47,7 @@ get_desc(b.employee_id)
 FROM
 employees a
 LEFT JOIN employees b ON
-a.employee_salary = get_int(b.employee_id)
+a.employee_salary = get_salary(b.employee_id)
 and b.employee_name = 'David Tian';
 employee_id	get_desc(b.employee_id)
 1	employee name:David Tian---salary: 7500
@@ -63,7 +63,7 @@ employees a
 LEFT JOIN employees b ON
 b.employee_name = 'David Tian'
 WHERE
-a.employee_salary < get_int(b.employee_id);
+a.employee_salary < get_salary(b.employee_id);
 employee_id	get_desc(b.employee_id)
 2	employee name:David Tian---salary: 7500
 5	employee name:David Tian---salary: 7500
@@ -77,7 +77,7 @@ employees a
 LEFT JOIN employees b ON
 b.employee_name = 'David Tian'
 WHERE
-a.employee_salary > get_int(b.employee_id);
+a.employee_salary > get_salary(b.employee_id);
 employee_id	get_desc(b.employee_id)
 SELECT
 a.employee_id,
@@ -87,7 +87,7 @@ employees a
 LEFT JOIN employees b ON
 b.employee_name = 'David Tian'
 WHERE
-a.employee_salary = get_int(b.employee_id);
+a.employee_salary = get_salary(b.employee_id);
 employee_id	get_desc(b.employee_id)
 1	employee name:David Tian---salary: 7500
 SELECT
@@ -98,7 +98,7 @@ employees a
 LEFT JOIN employees b ON
 b.employee_name = 'David Tian'
 WHERE
-get_int(b.employee_id) = a.employee_salary;
+get_salary(b.employee_id) = a.employee_salary;
 employee_id	get_desc(b.employee_id)
 1	employee name:David Tian---salary: 7500
 SELECT
@@ -108,7 +108,7 @@ FROM
 employees as a,
 (
 SELECT
-get_int(employees.employee_id) as employee_salary
+get_salary(employees.employee_id) as employee_salary
 FROM
 employees) as b
 WHERE
@@ -123,7 +123,7 @@ FROM
 employees as a,
 (
 SELECT
-get_int(e.employee_id) as employee_salary
+get_salary(e.employee_id) as employee_salary
 FROM
 (
 SELECT
@@ -132,7 +132,7 @@ FROM
 (
 SELECT
 employee_id,
-get_int(employees.employee_id) as employee_salary
+get_salary(employees.employee_id) as employee_salary
 FROM
 employees
 WHERE
@@ -148,10 +148,10 @@ FROM
 employees,
 (
 SELECT
-get_int(1) ) as ta
+get_salary(1) ) as ta
 WHERE
 employees.employee_name = 'David Tian';
-employee_id	employee_name	employee_sex	hire_date	employee_mgr	employee_salary	department_id	get_int(1)
+employee_id	employee_name	employee_sex	hire_date	employee_mgr	employee_salary	department_id	get_salary(1)
 1	David Tian	man	NULL	10	7500	1	7500
 SELECT
 *
@@ -159,12 +159,12 @@ FROM
 employees,
 (
 SELECT
-get_int(employees.employee_id)
+get_salary(employees.employee_id)
 FROM
 employees ) as ta
 WHERE
 employees.employee_name = 'David Tian';
-employee_id	employee_name	employee_sex	hire_date	employee_mgr	employee_salary	department_id	get_int(employees.employee_id)
+employee_id	employee_name	employee_sex	hire_date	employee_mgr	employee_salary	department_id	get_salary(employees.employee_id)
 1	David Tian	man	NULL	10	7500	1	7500
 1	David Tian	man	NULL	10	7500	1	6600
 1	David Tian	man	NULL	10	7500	1	4300
@@ -176,7 +176,7 @@ ta.sal
 FROM
 employees,
 (
-SELECT get_int(1) as sal) as ta
+SELECT get_salary(1) as sal) as ta
 WHERE
 employees.employee_name = 'David Tian';
 employee_id	sal
@@ -187,7 +187,7 @@ FROM
 employees
 LEFT JOIN ((
 SELECT
-get_int(1) as employee_salary) as ta) ON
+get_salary(1) as employee_salary) as ta) ON
 employees.employee_salary = ta.employee_salary
 WHERE
 employees.employee_name = 'David Tian';
@@ -197,7 +197,7 @@ SELECT
 ta.sal
 FROM
 (
-SELECT get_int(1) as sal) as ta;
+SELECT get_salary(1) as sal) as ta;
 sal
 7500
 SELECT
@@ -207,7 +207,7 @@ FROM
 (
 SELECT
 3 as const,
-get_int(1) as sal) as ta;
+get_salary(1) as sal) as ta;
 const	sal
 3	7500
 SELECT get_desc(1);
@@ -227,7 +227,7 @@ SELECT 1,2,get_desc(1);
 1	2	employee name:David Tian---salary: 7500
 DROP TABLE employees;
 DROP FUNCTION get_desc;
-DROP FUNCTION get_int;
+DROP FUNCTION get_salary;
 DROP TABLE IF EXISTS tf;
 CREATE TABLE tf (a int) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
 DROP FUNCTION IF EXISTS sfunc;
