@@ -333,6 +333,12 @@ class Query final {
   bool IsLocalColumn(Item *item, const TabID &tmp_table);
   QueryRouteTo AddOrderByFields(ORDER *order_by, TabID const &tmp_table, int const group_by_clause);
   QueryRouteTo AddGlobalOrderByFields(SQL_I_List<ORDER> *global_order, const TabID &tmp_table, int max_col);
+
+  /*! \brief AddJoins for every field on SELECT join list
+   * \param join - list of joins
+   * \param use_tmp_when_no_join - When join_list has no elements and field has sp, tmp table is used and de-duplicated
+   * \return returns RETURN_QUERY_TO_MYSQL_ROUTE in case of any problem and RCBASE_QUERY_ROUTE otherwise
+   */
   QueryRouteTo AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vector<TabID> &left_tables,
                         std::vector<TabID> &right_tables, bool in_subquery, bool &first_table, bool for_subq = false,
                         bool use_tmp_when_no_join = false);
