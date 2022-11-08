@@ -439,17 +439,13 @@ QueryRouteTo Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool c
       item = UnRef(item);
       continue;
     }
-    //			if ((UnRef(item)->type() == Item_tianmufield::enumTIANMUFiledItem::TIANMUFIELD_ITEM
-    //||
-    // UnRef(item)->type() == Item_tianmufield::FIELD_ITEM ) &&
-    // IsLocalColumn(UnRef(item), tmp_table)
-    //)
-    //				AddColumnForPhysColumn(UnRef(item), tmp_table,
-    // oper, distinct,
-    // false, false);
-    //			else {
-    //				//
-    //			}
+    // if ((UnRef(item)->type() == Item_tianmufield::enumTIANMUFiledItem::TIANMUFIELD_ITEM ||
+    //      UnRef(item)->type() == Item_tianmufield::FIELD_ITEM) &&
+    //     IsLocalColumn(UnRef(item), tmp_table))
+    //   AddColumnForPhysColumn(UnRef(item), tmp_table, oper, distinct, false, false);
+    // else {
+    //   //
+    // }
     else if (IsAggregationItem(item) && (((Item_sum *)item)->get_arg(0))->type() == Item::REF_ITEM &&
              (UnRef(((Item_sum *)item)->get_arg(0))->type() == Item_tianmufield::get_tianmuitem_type() ||
               (UnRef(((Item_sum *)item)->get_arg(0))->type() == Item_tianmufield::FIELD_ITEM)) &&
