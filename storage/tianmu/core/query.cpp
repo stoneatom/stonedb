@@ -1776,8 +1776,8 @@ TableStatus Query::PrefixCheck(Item *conds) {
           while ((item = li++) /*|| (item = list_equal++)*/) {
             TableStatus ret = PrefixCheck(item);
 
-            if (TableStatus::TALE_SEEN_INVOLVED == ret)
-              return TableStatus::TALE_SEEN_INVOLVED;
+            if (TableStatus::TABLE_SEEN_INVOLVED == ret)
+              return TableStatus::TABLE_SEEN_INVOLVED;
             if (TableStatus::TABLE_YET_UNSEEN_INVOLVED == ret)
               return TableStatus::TABLE_YET_UNSEEN_INVOLVED;
             // for RETURN_TO_RCBASE_ROUTE the next item is evaluated
@@ -1810,8 +1810,8 @@ TableStatus Query::PrefixCheck(Item *conds) {
             Item *an_arg = UnRef(args[i]);
             TableStatus ret = PrefixCheck(an_arg);
 
-            if (ret == TableStatus::TALE_SEEN_INVOLVED)
-              return TableStatus::TALE_SEEN_INVOLVED;
+            if (ret == TableStatus::TABLE_SEEN_INVOLVED)
+              return TableStatus::TABLE_SEEN_INVOLVED;
             if (ret == TableStatus::TABLE_YET_UNSEEN_INVOLVED)
               return TableStatus::TABLE_YET_UNSEEN_INVOLVED;
           }
@@ -1823,15 +1823,15 @@ TableStatus Query::PrefixCheck(Item *conds) {
           while ((ifield = li++) != nullptr) {
             TableStatus ret = PrefixCheck(ifield);
 
-            if (TableStatus::TALE_SEEN_INVOLVED == ret)
-              return TableStatus::TALE_SEEN_INVOLVED;
+            if (TableStatus::TABLE_SEEN_INVOLVED == ret)
+              return TableStatus::TABLE_SEEN_INVOLVED;
             if (ret == TableStatus::TABLE_YET_UNSEEN_INVOLVED)
               return TableStatus::TABLE_YET_UNSEEN_INVOLVED;
           }
           break;
         }
         default:
-          return TableStatus::TALE_SEEN_INVOLVED;  // unknown function type
+          return TableStatus::TABLE_SEEN_INVOLVED;  // unknown function type
       }
       break;
     }
@@ -1853,14 +1853,14 @@ TableStatus Query::PrefixCheck(Item *conds) {
       if (table_alias2index_ptr.lower_bound(ext_alias) == table_alias2index_ptr.end())
         return TableStatus::TABLE_YET_UNSEEN_INVOLVED;
       else
-        return TableStatus::TALE_SEEN_INVOLVED;
+        return TableStatus::TABLE_SEEN_INVOLVED;
       break;
     }
     default:
       // hmmm.... ?
       break;
   }
-  return TableStatus::TALE_SEEN_INVOLVED;
+  return TableStatus::TABLE_SEEN_INVOLVED;
 }
 
 QueryRouteTo Query::BuildCondsIfPossible(Item *conds, CondID &cond_id, const TabID &tmp_table, JoinType join_type) {

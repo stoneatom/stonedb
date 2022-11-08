@@ -37,7 +37,7 @@ class RCTable;
 class Transaction;
 
 enum class TableStatus {
-  TALE_SEEN_INVOLVED = 0,
+  TABLE_SEEN_INVOLVED = 0,
   TABLE_YET_UNSEEN_INVOLVED = 1,
   TABLE_UNKONWN_ERROR = -1,
 };
