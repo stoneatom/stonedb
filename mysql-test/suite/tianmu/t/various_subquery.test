@@ -2,7 +2,6 @@
 
 --echo #
 --echo # Test of various subqueries
---echo # Author: shiz
 --echo #
 
 --disable_warnings

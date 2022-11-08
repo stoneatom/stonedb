@@ -1,6 +1,5 @@
 #
 # Test select from
-# Author: shiz
 #
 drop table if exists t1_test;
 create table t1_test(

@@ -2,7 +2,6 @@
 
 --echo #
 --echo # Test of inner join
---echo # Author: shiz
 --echo #
 
 --disable_warnings

@@ -2,7 +2,6 @@
 
 --echo #
 --echo # Test of PERIOD_DIFF function
---echo # Author: shiz
 --echo #
 
 --disable_warnings

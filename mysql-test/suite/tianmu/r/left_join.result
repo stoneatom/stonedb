@@ -1,6 +1,5 @@
 #
 # Test of left join
-# Author: shiz
 #
 DROP DATABASE IF EXISTS left_join_test;
 CREATE DATABASE left_join_test;

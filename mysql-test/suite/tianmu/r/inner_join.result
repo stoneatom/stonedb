@@ -1,6 +1,5 @@
 #
 # Test of inner join
-# Author: shiz
 #
 DROP DATABASE IF EXISTS inner_join_test;
 CREATE DATABASE inner_join_test;

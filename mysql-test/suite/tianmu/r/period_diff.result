@@ -1,6 +1,5 @@
 #
 # Test of PERIOD_DIFF function
-# Author: shiz
 #
 DROP DATABASE IF EXISTS period_diff_test;
 CREATE DATABASE period_diff_test;

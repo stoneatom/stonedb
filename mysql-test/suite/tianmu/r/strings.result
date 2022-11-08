@@ -1,6 +1,5 @@
 #
 # Test string type
-# Author: shiz
 #
 DROP DATABASE IF EXISTS type_string_test;
 CREATE DATABASE type_string_test;

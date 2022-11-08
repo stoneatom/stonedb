@@ -2,7 +2,6 @@
 
 --echo #
 --echo # Test string type
---echo # Author: shiz
 --echo #
 
 --disable_warnings

@@ -1,6 +1,5 @@
 #
 # Test of various subqueries
-# Author: shiz
 #
 DROP DATABASE IF EXISTS various_subquery_test;
 CREATE DATABASE various_subquery_test;
