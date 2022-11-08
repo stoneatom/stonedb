@@ -1,0 +1,67 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test of various subqueries
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS various_subquery_test;
+--enable_warnings
+
+CREATE DATABASE various_subquery_test;
+
+USE various_subquery_test;
+
+CREATE TABLE t1 (a int, b int);
+
+INSERT INTO t1 values (1, 1), (2, 1), (3, 2), (4, 2), (5, 2);
+
+# Test subquery columns referenced/not-referenced in simple projections
+SELECT "123" FROM (SELECT * FROM t1) q;
+SELECT "123" FROM (SELECT "234" FROM t1) q;
+SELECT a FROM (SELECT * FROM t1) q;
+SELECT b FROM (SELECT * FROM t1) q;
+SELECT a,b FROM (SELECT * FROM t1) q;
+SELECT b,a FROM (SELECT * FROM t1) q;
+SELECT a FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM t1) q1) q2) q3;
+SELECT b FROM (SELECT * FROM (SELECT * FROM (SELECT * FROM t1) q1) q2) q3;
+SELECT a FROM (SELECT b,a FROM (SELECT * FROM t1) q1) q2;
+SELECT b FROM (SELECT b,a FROM (SELECT * FROM t1) q1) q2;
+
+# Test subquery columns referenced/not-referenced in group by and aggregates
+
+SELECT "123" FROM (SELECT * FROM t1) q GROUP BY a ORDER BY a;
+SELECT "123" FROM (SELECT * FROM t1) q GROUP BY b ORDER BY b;
+SELECT "123" FROM (SELECT * FROM t1) q GROUP BY a,b ORDER BY a,b;
+SELECT COUNT(a) FROM (SELECT * FROM t1) q GROUP BY a ORDER BY a;
+SELECT COUNT(b) FROM (SELECT * FROM t1) q GROUP BY b ORDER BY b;
+SELECT COUNT(a) FROM (SELECT * FROM t1) q GROUP BY b ORDER BY b;
+SELECT COUNT(b) FROM (SELECT * FROM t1) q GROUP BY a ORDER BY a;
+SELECT c1 FROM (SELECT a AS c1, COUNT(a) AS c2 FROM t1 GROUP BY c1) q ORDER BY c1;
+SELECT c2 FROM (SELECT a AS c1, COUNT(a) AS c2 FROM t1 GROUP BY c1) q ORDER BY c2;
+SELECT * FROM (SELECT a AS c1, COUNT(a) AS c2 FROM t1 GROUP BY c1) q ORDER BY c1,c2;
+
+# Test subquery columns referenced/not-referenced in joins
+
+SELECT tab1.a FROM t1 tab1 JOIN (SELECT * FROM t1) tab2 ON tab1.a=tab2.a ORDER BY tab1.a;
+SELECT tab1.a FROM t1 tab1 JOIN (SELECT * FROM t1) tab2 ON tab1.b=tab2.b ORDER BY tab1.a;
+SELECT tab1.a FROM t1 tab1 JOIN (SELECT * FROM t1) tab2 ON tab1.b=tab2.b and tab1.a=tab2.a ORDER BY tab1.a;
+SELECT tab1.a, tab2.b FROM t1 tab1 JOIN (SELECT * FROM t1) tab2 ON tab1.a=tab2.a ORDER BY tab1.a,tab2.b;
+
+# Test subquery columns referenced/not-referenced when subqueries contain unions
+
+SELECT COUNT(a) FROM (SELECT * FROM t1 UNION ALL SELECT * FROM t1) q;
+SELECT COUNT(b) FROM (SELECT * FROM t1 UNION ALL SELECT * FROM t1) q;
+SELECT COUNT(b), COUNT(a) FROM (SELECT * FROM t1 UNION ALL SELECT * FROM t1) q;
+SELECT COUNT(a) FROM (SELECT * FROM t1 UNION ALL SELECT * FROM t1) q GROUP BY b ORDER BY b;
+SELECT q1.a FROM (SELECT * FROM (SELECT * FROM t1 UNION ALL SELECT * FROM t1) q1_1) q1 JOIN
+(SELECT * FROM (SELECT * FROM t1 UNION ALL SELECT * FROM t1) q2_1) q2 ON q1.a=q2.a ORDER BY 1;
+SELECT q1.a, q2.b FROM (SELECT * FROM (SELECT * FROM t1 UNION ALL SELECT * FROM t1) q1_1) q1 JOIN
+(SELECT * FROM (SELECT * FROM t1 UNION ALL SELECT * FROM t1) q2_1) q2 ON q1.a=q2.a ORDER BY 2 desc, 1 asc;
+
+SELECT "123" FROM (SELECT * FROM t1) q GROUP BY b ORDER BY b;
+SELECT "123" FROM (SELECT * FROM t1) q GROUP BY b;
+
+# clean up
+
+DROP DATABASE various_subquery_test;
