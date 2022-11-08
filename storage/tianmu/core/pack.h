@@ -57,66 +57,66 @@ class Pack : public mm::TraceableObject {
 
   void SetNull(int i) {
     int mask = 1 << (i % 32);
-    ASSERT((nulls[i >> 5] & mask) == 0);
-    nulls[i >> 5] |= mask;
+    ASSERT((nulls_ptr_[i >> 5] & mask) == 0);
+    nulls_ptr_[i >> 5] |= mask;
   }
 
   void UnsetNull(int i) {
     int mask = ~(1 << (i % 32));
     ASSERT(IsNull(i), "already null!");
-    nulls[i >> 5] &= mask;
+    nulls_ptr_[i >> 5] &= mask;
   }
 
   bool IsNull(int i) const {
-    if (dpn->nn == dpn->nr)
+    if (dpn_->nn == dpn_->nr)
       return true;
-    return ((nulls[i >> 5] & ((uint32_t)(1) << (i % 32))) != 0);
+    return ((nulls_ptr_[i >> 5] & ((uint32_t)(1) << (i % 32))) != 0);
   }
   bool NotNull(int i) const { return !IsNull(i); }
   void InitNull() {
-    if (dpn->NullOnly()) {
-      for (uint i = 0; i < dpn->nn; i++) SetNull(i);
+    if (dpn_->NullOnly()) {
+      for (uint i = 0; i < dpn_->nn; i++) SetNull(i);
     }
   }
   PackCoordinate GetPackCoordinate() const { return m_coord.co.pack; }
-  void SetDPN(DPN *new_dpn) { dpn = new_dpn; }
+  void SetDPN(DPN *new_dpn_) { dpn_ = new_dpn_; }
 
  protected:
-  Pack(DPN *dpn, PackCoordinate pc, ColumnShare *s);
+  Pack(DPN *dpn_, PackCoordinate pc, ColumnShare *col_share);
   Pack(const Pack &ap, const PackCoordinate &pc);
   virtual std::pair<UniquePtr, size_t> Compress() = 0;
   virtual void Destroy() = 0;
 
   bool ShouldNotCompress() const;
-  bool IsModeNullsCompressed() const { return dpn->null_compressed; }
-  bool IsModeDataCompressed() const { return dpn->data_compressed; }
+  bool IsModeNullsCompressed() const { return dpn_->null_compressed; }
+  bool IsModeDataCompressed() const { return dpn_->data_compressed; }
   bool IsModeCompressionApplied() const { return IsModeDataCompressed() || IsModeNullsCompressed(); }
-  bool IsModeNoCompression() const { return dpn->no_compress; }
-  void ResetModeNoCompression() { dpn->no_compress = 0; }
+  bool IsModeNoCompression() const { return dpn_->no_compress; }
+  void ResetModeNoCompression() { dpn_->no_compress = 0; }
   void ResetModeCompressed() {
-    dpn->null_compressed = 0;
-    dpn->data_compressed = 0;
+    dpn_->null_compressed = 0;
+    dpn_->data_compressed = 0;
   }
   void SetModeNoCompression() {
     ResetModeCompressed();
-    dpn->no_compress = 1;
+    dpn_->no_compress = 1;
   }
   void SetModeDataCompressed() {
     ResetModeNoCompression();
-    dpn->data_compressed = 1;
+    dpn_->data_compressed = 1;
   }
   void SetModeNullsCompressed() {
     ResetModeNoCompression();
-    dpn->null_compressed = 1;
+    dpn_->null_compressed = 1;
   }
-  void ResetModeNullsCompressed() { dpn->null_compressed = 0; }
+  void ResetModeNullsCompressed() { dpn_->null_compressed = 0; }
 
  protected:
-  ColumnShare *s = nullptr;
-  size_t NULLS_SIZE;
-  DPN *dpn = nullptr;
+  ColumnShare *col_share_ = nullptr;
+  size_t kNullSize_;
+  DPN *dpn_ = nullptr;
 
-  std::unique_ptr<uint32_t[]> nulls;
+  std::unique_ptr<uint32_t[]> nulls_ptr_;
 };
 }  // namespace core
 }  // namespace Tianmu
