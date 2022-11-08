@@ -142,11 +142,12 @@ class Query final {
   // int FilterNotSubselect(Item *conds, const TabID& tmp_table, FilterType
   // filter_type, FilterID *and_me_filter = 0);
 
-  /*! \brief Create filter from field or function that has no condition
-   * attached. \param conds - condition (a field or function). \param tmp_table
-   * - required for Item2CQTerm. \param filter_type - type of filter context
-   * (WHERE, HAVING). \param and_me_filter - ? \return filter number
-   * (non-negative) or error indication (negative)
+  /*! \brief Create filter from field or function that has no condition attached.
+   * \param conds - condition (a field or function).
+   * \param tmp_table - required for Item2CQTerm.
+   * \param filter_type - type of filter context (WHERE, HAVING).
+   * \param and_me_filter - ?
+   * \return filter number (non-negative) or error indication (negative)
    */
   CondID ConditionNumberFromNaked(Item *conds, const TabID &tmp_table, CondType filter_type, CondID *and_me_filter,
                                   bool is_or_subtree = false);
