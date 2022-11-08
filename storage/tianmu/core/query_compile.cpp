@@ -301,13 +301,6 @@ bool Query::FieldUnmysterify(Item *item, TabID &tab, AttrID &col) {
 QueryRouteTo Query::AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vector<TabID> &left_tables,
                              std::vector<TabID> &right_tables, bool in_subquery, bool &first_table /*= true*/,
                              bool for_subq_in_where /*false*/, bool use_tmp_when_no_join /*false*/) {
-  // on first call first_table = true. It indicates if it is the first table to
-  // be added is_left is true iff it is nested left join which needs to be
-  // flatten (all tables regardless of their join type need to be left-joined)
-  TABLE_LIST *join_ptr;
-  List_iterator<TABLE_LIST> li(join);
-  std::vector<TABLE_LIST *> reversed;
-
   if (!join.elements) {
     // Use use_tmp_when_no_join when AddJoins
     // The caller decides that the scenario is When join_list has no elements and field has sp
@@ -321,6 +314,13 @@ QueryRouteTo Query::AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vect
     // no tables in table list in this select
     return QueryRouteTo::kToMySQL;
   }
+
+  // on first call first_table = true. It indicates if it is the first table to
+  // be added is_left is true iff it is nested left join which needs to be
+  // flatten (all tables regardless of their join type need to be left-joined)
+  TABLE_LIST *join_ptr;
+  List_iterator<TABLE_LIST> li(join);
+  std::vector<TABLE_LIST *> reversed;
 
   // if the table list was empty altogether, we wouldn't even enter
   // Compilation(...) it must be sth. like `select 1 from t1 union select 2` and
