@@ -309,6 +309,8 @@ QueryRouteTo Query::AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vect
   std::vector<TABLE_LIST *> reversed;
 
   if (!join.elements) {
+    // Use use_tmp_when_no_join when AddJoins
+    // The caller decides that the scenario is When join_list has no elements and field has sp
     if (use_tmp_when_no_join) {
       TabID tab(-1);
       left_tables.push_back(tab);
@@ -1044,6 +1046,8 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
       }
     }
 
+    // When join_list has no elements and field has sp, tmp table is used and de-duplicated
+    // Use use_tmp_when_no_join when AddJoins
     bool use_tmp_when_no_join = false;
     if (!join_list->elements) {
       List_iterator_fast<Item> li(*fields);

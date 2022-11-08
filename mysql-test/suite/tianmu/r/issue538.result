@@ -185,7 +185,7 @@ SELECT
 employee_id
 FROM
 employees
-LEFT join ((
+LEFT JOIN ((
 SELECT
 get_int(1) as employee_salary) as ta) ON
 employees.employee_salary = ta.employee_salary

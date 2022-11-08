@@ -60,7 +60,7 @@ LEFT JOIN employees b ON
 	a.employee_id = b.employee_id
 	and b.employee_name = 'David Tian';
 
-# User-defined function as the ON predicate of the LEFT join
+# User-defined function as the ON predicate of the LEFT JOIN
 
 SELECT
 	a.employee_id,
@@ -196,13 +196,13 @@ FROM
 WHERE
 	employees.employee_name = 'David Tian';
 
-# User-defined functions LEFT join
+# User-defined functions LEFT JOIN
 
 SELECT
 	employee_id
 FROM
 	employees
-LEFT join ((
+LEFT JOIN ((
 	SELECT
 		get_int(1) as employee_salary) as ta) ON
 	employees.employee_salary = ta.employee_salary
