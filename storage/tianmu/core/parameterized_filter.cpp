@@ -472,10 +472,12 @@ void ParameterizedFilter::RoughMakeProjections(int to_dim, bool update_reduced) 
       vcolumn::VirtualColumn *matched_vc;
       MIDummyIterator local_mit(mind);
       if (dim1 == ld.attr.vc->GetDim()) {
-        po.Init(ld.attr.vc, PackOrderer::OrderType::RangeSimilarity, rough_mind->GetRSValueTable(ld.attr.vc->GetDim()));
+        po.Init(ld.attr.vc, PackOrderer::OrderType::kRangeSimilarity,
+                rough_mind->GetRSValueTable(ld.attr.vc->GetDim()));
         matched_vc = ld.val1.vc;
       } else {
-        po.Init(ld.val1.vc, PackOrderer::OrderType::RangeSimilarity, rough_mind->GetRSValueTable(ld.val1.vc->GetDim()));
+        po.Init(ld.val1.vc, PackOrderer::OrderType::kRangeSimilarity,
+                rough_mind->GetRSValueTable(ld.val1.vc->GetDim()));
         matched_vc = ld.attr.vc;
       }
       // for each dim2 pack, check whether it may be joined with anything

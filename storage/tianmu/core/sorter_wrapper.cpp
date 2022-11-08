@@ -217,7 +217,7 @@ void SorterWrapper::SortRoughly(std::vector<PackOrderer> &po) {
     bool asc = (input_cols[rough_sort_by].sort_order > 0);  // ascending sort
     // start with best packs to possibly roughly exclude others
     po[dim].Init(input_cols[rough_sort_by].col,
-                 (asc ? PackOrderer::OrderType::MaxAsc : PackOrderer::OrderType::MinDesc));
+                 (asc ? PackOrderer::OrderType::kMaxAsc : PackOrderer::OrderType::kMinDesc));
   }
 }
 
