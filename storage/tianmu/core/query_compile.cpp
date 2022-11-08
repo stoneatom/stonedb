@@ -326,6 +326,7 @@ QueryRouteTo Query::AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vect
   // Compilation(...) it must be sth. like `select 1 from t1 union select 2` and
   // we are in the second select in the union
 
+  reversed.reserve(join.elements);
   while ((join_ptr = li++) != nullptr) reversed.push_back(join_ptr);
   size_t size = reversed.size();
   for (unsigned int i = 0; i < size; i++) {
