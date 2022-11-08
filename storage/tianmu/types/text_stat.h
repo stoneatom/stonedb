@@ -55,20 +55,20 @@ class TextStat final {
   void Invalidate() { valid_ = false; }
 
  private:
-  static constexpr int TMP_BUFFER_SIZE = 49;
+  static constexpr int TMP_BUFFER_SIZE_ = 49;
 
-  static constexpr size_t TAB_SIZE = 48;
+  static constexpr size_t TAB_SIZE_ = 48;
 
   // binary length of position n, value 0 means that this is a constant
   // character
-  std::array<int, TAB_SIZE> len_table_;
+  std::array<int, TAB_SIZE_> len_table_;
 
   // encode_table[c + 256 * n] is a character for code c on position n
-  std::array<uchar, 256 * TAB_SIZE> encode_table_;
+  std::array<uchar, 256 * TAB_SIZE_> encode_table_;
 
   // a buffer for two purposes: collecting 0/1 info about chars found, or
   // collecting decoding into
-  std::array<uchar, 256 * TAB_SIZE> chars_found_;
+  std::array<uchar, 256 * TAB_SIZE_> chars_found_;
 
   bool chars_found_for_decoding_{false};  // true, if chars_found is initialized for value decoding
   bool valid_{true};

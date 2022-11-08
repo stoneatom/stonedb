@@ -1005,11 +1005,8 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
     SetLimit(sl, sl == selects_list ? 0 : sl->join->unit->global_parameters(), offset_value, limit_value);
     List<Item> *fields = &sl->fields_list;
 
-    Item *conds = nullptr;
-    if (ifNewJoinForTianmu || !sl->join->where_cond)
-      conds = sl->where_cond();
-    else
-      conds = sl->join->where_cond;
+    Item *conds =
+        (ifNewJoinForTianmu || !sl->join->where_cond) ? conds = sl->where_cond() : conds = sl->join->where_cond;
 
     ORDER *order = sl->order_list.first;
 

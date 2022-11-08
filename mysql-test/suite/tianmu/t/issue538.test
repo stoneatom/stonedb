@@ -62,7 +62,7 @@ LEFT JOIN employees b ON
 	a.employee_id = b.employee_id
 	and b.employee_name = 'David Tian';
 
-# User-defined function as the on predicate of the left join
+# User-defined function as the ON predicate of the LEFT join
 
 SELECT
 	a.employee_id,
@@ -127,9 +127,9 @@ SELECT
 FROM
 	employees as a,
 	(
-	select
+	SELECT
 		get_int(employees.employee_id) as employee_salary
-	from
+	FROM
 		employees) as b
 WHERE
 	a.employee_name = 'David Tian'
@@ -143,9 +143,9 @@ SELECT
 FROM
 	employees as a,
 	(
-	select
+	SELECT
 		get_int(e.employee_id) as employee_salary
-	from
+	FROM
 		(
 		SELECT
 			c.employee_id
@@ -164,67 +164,67 @@ WHERE
 
 # User - defined functions directly generate driver tables
 
-select
+SELECT
 	*
-from
+FROM
 	employees,
 	(
-	select
+	SELECT
 		get_int(1) ) as ta
-where
+WHERE
 	employees.employee_name = 'David Tian';
 
-select
+SELECT
 	*
-from
+FROM
 	employees,
 	(
-	select
+	SELECT
 		get_int(employees.employee_id)
-	from
+	FROM
 		employees ) as ta
-where
+WHERE
 	employees.employee_name = 'David Tian';
 
 # User-defined functions directly derived table
 
-select
+SELECT
 	employee_id,
 	ta.sal
-from
+FROM
 	employees,
 	(
-		select get_int(1) as sal) as ta
-where
+		SELECT get_int(1) as sal) as ta
+WHERE
 	employees.employee_name = 'David Tian';
 
-# User-defined functions left join
+# User-defined functions LEFT join
 
-select
+SELECT
 	employee_id
-from
+FROM
 	employees
-left join ((
-	select
-		get_int(1) as employee_salary) as ta) on
+LEFT join ((
+	SELECT
+		get_int(1) as employee_salary) as ta) ON
 	employees.employee_salary = ta.employee_salary
-where
+WHERE
 	employees.employee_name = 'David Tian';
 
 # User-defined functions only derived tables
 
-select
+SELECT
 	ta.sal
-from
+FROM
 	(
-		select get_int(1) as sal) as ta;
+		SELECT get_int(1) as sal) as ta;
 
-select
+SELECT
 	ta.const,
 	ta.sal
-from
+FROM
 	(
-	select
+	SELECT
 		3 as const,
 		get_int(1) as sal) as ta;
 
@@ -240,7 +240,7 @@ DROP TABLE employees;
 DROP FUNCTION get_desc;
 DROP FUNCTION get_int;
 
-# User-defined functions do not depend on tables and only do simple numerical calculations
+# User-defined functions do not depend ON tables and only do simple numerical calculations
 
 DROP TABLE IF EXISTS tf;
 

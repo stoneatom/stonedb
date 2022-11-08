@@ -107,9 +107,9 @@ b.employee_salary
 FROM
 employees as a,
 (
-select
+SELECT
 get_int(employees.employee_id) as employee_salary
-from
+FROM
 employees) as b
 WHERE
 a.employee_name = 'David Tian'
@@ -122,9 +122,9 @@ b.employee_salary
 FROM
 employees as a,
 (
-select
+SELECT
 get_int(e.employee_id) as employee_salary
-from
+FROM
 (
 SELECT
 c.employee_id
@@ -142,27 +142,27 @@ a.employee_name = 'David Tian'
 	AND a.employee_salary = b.employee_salary;
 get_desc(a.employee_id)	employee_salary
 employee name:David Tian---salary: 7500	7500
-select
+SELECT
 *
-from
+FROM
 employees,
 (
-select
+SELECT
 get_int(1) ) as ta
-where
+WHERE
 employees.employee_name = 'David Tian';
 employee_id	employee_name	employee_sex	hire_date	employee_mgr	employee_salary	department_id	get_int(1)
 1	David Tian	man	NULL	10	7500	1	7500
-select
+SELECT
 *
-from
+FROM
 employees,
 (
-select
+SELECT
 get_int(employees.employee_id)
-from
+FROM
 employees ) as ta
-where
+WHERE
 employees.employee_name = 'David Tian';
 employee_id	employee_name	employee_sex	hire_date	employee_mgr	employee_salary	department_id	get_int(employees.employee_id)
 1	David Tian	man	NULL	10	7500	1	7500
@@ -170,42 +170,42 @@ employee_id	employee_name	employee_sex	hire_date	employee_mgr	employee_salary	de
 1	David Tian	man	NULL	10	7500	1	4300
 1	David Tian	man	NULL	10	7500	1	5300
 1	David Tian	man	NULL	10	7500	1	6500
-select
+SELECT
 employee_id,
 ta.sal
-from
+FROM
 employees,
 (
-select get_int(1) as sal) as ta
-where
+SELECT get_int(1) as sal) as ta
+WHERE
 employees.employee_name = 'David Tian';
 employee_id	sal
 1	7500
-select
+SELECT
 employee_id
-from
+FROM
 employees
-left join ((
-select
-get_int(1) as employee_salary) as ta) on
+LEFT join ((
+SELECT
+get_int(1) as employee_salary) as ta) ON
 employees.employee_salary = ta.employee_salary
-where
+WHERE
 employees.employee_name = 'David Tian';
 employee_id
 1
-select
+SELECT
 ta.sal
-from
+FROM
 (
-select get_int(1) as sal) as ta;
+SELECT get_int(1) as sal) as ta;
 sal
 7500
-select
+SELECT
 ta.const,
 ta.sal
-from
+FROM
 (
-select
+SELECT
 3 as const,
 get_int(1) as sal) as ta;
 const	sal

@@ -377,8 +377,8 @@ void WordGraph::Print(std::ostream &str, [[maybe_unused]] uint flags) {
 // transformation for PPM
 //------------------------------------------------------------------------
 
-void WordGraph::TransformForPPM(PPMParam param_) {
-  param_ = param_;
+void WordGraph::TransformForPPM(PPMParam param) {
+  param_ = param;
 
   // propagate 'stop' numbers from final nodes_ to all border-path nodes_
   PropagateStop();

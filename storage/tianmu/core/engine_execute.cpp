@@ -374,7 +374,7 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
     return QueryRouteTo::kToTianmu;
   });
 
-  // has sp fields
+  // has sp fields but no from ...
   if ((!selects_list->table_list.elements) && (selects_list->fields_list.elements)) {
     List_iterator_fast<Item> li(selects_list->fields_list);
     for (Item *item = li++; item; item = li++) {
