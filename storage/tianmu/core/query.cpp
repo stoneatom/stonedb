@@ -460,46 +460,48 @@ vcolumn::VirtualColumn *Query::CreateColumnFromExpression(std::vector<MysqlExpre
                                                           TempTable *temp_table, int temp_table_alias,
                                                           MultiIndex *mind) {
   DEBUG_ASSERT(exprs.size() > 0);
-  vcolumn::VirtualColumn *vc = nullptr;
-  if (exprs.size() == 1) {
-    bool is_const_expr =
-        vcolumn::VirtualColumn::IsConstExpression(exprs[0], temp_table_alias, &temp_table->GetAliases());
-    if (exprs[0]->IsDeterministic() && (exprs[0]->GetVars().size() == 0)) {
-      ColumnType type(exprs[0]->EvalType());
-      vc = new vcolumn::ConstColumn(*(exprs[0]->Evaluate()), type, true);
-    } else if (is_const_expr && exprs[0]->IsDeterministic()) {
-      if (IsFieldItem(exprs[0]->GetItem())) {
-        // a special case when a naked column is a parameter
-        // without this column type would be a seen by mysql, not TIANMU.
-        // e.g. timestamp would be string 19
-        TabID tab;
-        AttrID col;
-        tab.n = exprs[0]->GetVars().begin()->tab;
-        col.n = exprs[0]->GetVars().begin()->col;
-        col.n = col.n < 0 ? -col.n - 1 : col.n;
-        ColumnType ct = ta[-tab.n - 1]->GetColumnType(col.n);
-        vc = new vcolumn::ConstExpressionColumn(exprs[0], ct, temp_table, temp_table_alias, mind);
-      } else
-        vc = new vcolumn::ConstExpressionColumn(exprs[0], temp_table, temp_table_alias, mind);
-    } else {
-      if (rc_control_.isOn()) {
-        if (static_cast<int>(exprs[0]->GetItem()->type()) == Item::FUNC_ITEM) {
-          Item_func *ifunc = static_cast<Item_func *>(exprs[0]->GetItem());
-          rc_control_.lock(mind->m_conn->GetThreadID())
-              << "Unoptimized expression near '" << ifunc->func_name() << "'" << system::unlock;
-        }
-      }
-      vc = new vcolumn::ExpressionColumn(exprs[0], temp_table, temp_table_alias, mind);
-      if (static_cast<vcolumn::ExpressionColumn *>(vc)->GetStringType() == MysqlExpression::StringType::STRING_TIME &&
-          vc->TypeName() != common::CT::TIME) {  // common::CT::TIME is already as int64_t
-        vcolumn::TypeCastColumn *tcc = new vcolumn::String2DateTimeCastColumn(vc, ColumnType(common::CT::TIME));
-        temp_table->AddVirtColumn(vc);
-        vc = tcc;
-      }
-    }
-  } else {
+  if (exprs.size() != 1) {
     DEBUG_ASSERT(0);
   }
+
+  vcolumn::VirtualColumn *vc = nullptr;
+
+  Item *item = exprs[0]->GetItem();
+  if (exprs[0]->IsDeterministic() && (exprs[0]->GetVars().empty())) {
+    ColumnType type(exprs[0]->EvalType());
+    vc = new vcolumn::ConstColumn(*(exprs[0]->Evaluate()), type, true);
+  } else if (vcolumn::VirtualColumn::IsConstExpression(exprs[0], temp_table_alias, &temp_table->GetAliases()) &&
+             exprs[0]->IsDeterministic()) {
+    if (IsFieldItem(item)) {
+      // a special case when a naked column is a parameter
+      // without this column type would be a seen by mysql, not TIANMU.
+      // e.g. timestamp would be string 19
+      TabID tab;
+      AttrID col;
+      tab.n = exprs[0]->GetVars().begin()->tab;
+      col.n = exprs[0]->GetVars().begin()->col;
+      col.n = col.n < 0 ? -col.n - 1 : col.n;
+      ColumnType ct = ta[-tab.n - 1]->GetColumnType(col.n);
+      vc = new vcolumn::ConstExpressionColumn(exprs[0], ct, temp_table, temp_table_alias, mind);
+    } else
+      vc = new vcolumn::ConstExpressionColumn(exprs[0], temp_table, temp_table_alias, mind);
+  } else {
+    if (rc_control_.isOn()) {
+      if ((item->type()) == Item::FUNC_ITEM) {
+        Item_func *ifunc = down_cast<Item_func *>(item);
+        rc_control_.lock(mind->m_conn->GetThreadID())
+            << "Unoptimized expression near '" << ifunc->func_name() << "'" << system::unlock;
+      }
+    }
+    vc = new vcolumn::ExpressionColumn(exprs[0], temp_table, temp_table_alias, mind);
+    if (static_cast<vcolumn::ExpressionColumn *>(vc)->GetStringType() == MysqlExpression::StringType::STRING_TIME &&
+        vc->TypeName() != common::CT::TIME) {  // common::CT::TIME is already as int64_t
+      vcolumn::TypeCastColumn *tcc = new vcolumn::String2DateTimeCastColumn(vc, ColumnType(common::CT::TIME));
+      temp_table->AddVirtColumn(vc);
+      vc = tcc;
+    }
+  }
+
   MysqlExpression::SetOfVars params = vc->GetParams();
   MysqlExpression::TypOfVars types;
   for (auto &iter : params) {
