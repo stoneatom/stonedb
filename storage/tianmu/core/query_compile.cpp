@@ -1197,7 +1197,7 @@ JoinType Query::GetJoinTypeAndCheckExpr(uint outer_join, Item *on_expr) {
 bool Query::IsLOJ(List<TABLE_LIST> *join) {
   TABLE_LIST *join_ptr;
   List_iterator<TABLE_LIST> li(*join);
-  while ((join_ptr = li++) != nullptr) {
+  while (join_ptr = li++) {
     JoinType join_type = GetJoinTypeAndCheckExpr(join_ptr->outer_join, join_ptr->join_cond());
     if (join_ptr->join_cond() && (join_type == JoinType::JO_LEFT || join_type == JoinType::JO_RIGHT))
       return true;
