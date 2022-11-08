@@ -1,5 +1,3 @@
---source include/have_tianmu.inc
-
 --echo #
 --echo # issue 538 test for user defined function of tianmu
 --echo #
