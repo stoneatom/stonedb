@@ -94,8 +94,9 @@ class Query final {
   std::multimap<TabID, std::pair<int, TabID>> tab_id2subselect;
   std::map<Item_tianmufield *, int> tianmuitems_cur_var_ids;
 
-  std::vector<std::shared_ptr<JustATable>> ta;  // table aliases - sometimes point to TempTables (maybe to the
-                                                // same one), sometimes to RCTables
+  // table aliases - sometimes point to TempTables (maybe to the same one), sometimes to RCTables
+  std::vector<std::shared_ptr<JustATable>> ta;
+
   std::vector<std::shared_ptr<RCTable>> t;
 
   bool rough_query = false;  // set as true to enable rough execution
