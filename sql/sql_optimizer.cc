@@ -10118,7 +10118,7 @@ bool optimize_cond(THD *thd, Item **cond, COND_EQUAL **cond_equal,
   */
   DBUG_EXECUTE("where",print_where(*cond,"after const change", QT_ORDINARY););
    }
-  }//ATOMRESTORE UPGRADE
+  }
   if (*cond)
   {
     Opt_trace_object step_wrapper(trace);
