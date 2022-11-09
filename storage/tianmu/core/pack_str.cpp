@@ -37,20 +37,11 @@
 
 namespace Tianmu {
 namespace core {
-<<<<<<< HEAD
-
-PackStr::PackStr(DPN *dpn, PackCoordinate pc, ColumnShare *s) : Pack(dpn, pc, s) {
-  auto t = s->ColType().GetTypeName();
-
-  if (t == common::ColumnType::BIN || t == common::ColumnType::LONGTEXT)
-    data.len_mode = sizeof(uint32_t);
-=======
 PackStr::PackStr(DPN *dpn, PackCoordinate pc, ColumnShare *col_share) : Pack(dpn, pc, col_share) {
   auto t = col_share->ColType().GetTypeName();
 
-  if (t == common::CT::BIN || t == common::CT::LONGTEXT)
+  if (t == common::ColumnType::BIN || t == common::ColumnType::LONGTEXT)
     data_.len_mode = sizeof(uint32_t);
->>>>>>> feat(core): uniform code #11
   else
     data_.len_mode = sizeof(uint16_t);
 

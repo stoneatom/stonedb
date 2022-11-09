@@ -110,7 +110,7 @@ void PackOrderer::InitOneColumn(vcolumn::VirtualColumn *vc, OrderType ot, common
   while (mit.IsValid()) {
     int pack = mit.GetCurPackrow(d);
     if (!r_filter || r_filter[pack] != common::RoughSetValue::RS_NONE) {
-      if (mmt == MinMaxType::MMT_Fixed) {
+      if (mmt == MinMaxType::kMMTFixed) {
         if (vc->GetNumOfNulls(mit) == mit.GetPackSizeLeft()) {
           mid.i = common::PLUS_INF_64;
         } else {
