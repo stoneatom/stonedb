@@ -8,8 +8,8 @@ then
     mkdir ../build
 fi
 
-#build_type=Debug
-build_type=Release
+build_type=Debug
+#build_type=Release
 branch=`git rev-parse --abbrev-ref HEAD`
 cpu_arc=`uname -m`
 os_dist=`lsb_release -a | grep Distributor | tail -n 1 | awk '{print $3}'`
@@ -18,7 +18,7 @@ build_time=`date "+%Y-%m-%d_%H-%M-%S"`
 build_tag=build_${branch}_${cpu_arc}_${os_dist}${os_dist_release}_${build_type}_${build_time}
 build_log=`pwd`/../build/build_log_${build_tag}.log
 
-install_target=/stonedb57/install
+install_target=`pwd`/../build/install
 
 # step 2. shutdown server first
 if test -f ${install_target}/support-files/mysql.server
@@ -52,13 +52,10 @@ cmake ../../ \
 -DDEFAULT_CHARSET=utf8mb4 \
 -DDEFAULT_COLLATION=utf8mb4_general_ci \
 -DDOWNLOAD_BOOST=0 \
--DDOWNLOAD_ROCKSDB=0 \
--DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb \
--DWITH_MARISA=/usr/local/stonedb-marisa \
 -DWITH_BOOST=/usr/local/stonedb-boost \
 2>&1 | tee -a ${build_log}
 
 # step 5. make & make install
-make -j 15                                                           2>&1 | tee -a ${build_log}
+make VERBOSE=1 -j`nproc`                                             2>&1 | tee -a ${build_log}
 make install                                                         2>&1 | tee -a ${build_log}
-echo "current dir is `pwd`"                                          2>&1 | tee -a ${build_log}
+echo "current dir is `pwd`"                                                              2>&1 | tee -a ${build_log}
