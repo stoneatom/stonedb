@@ -912,7 +912,8 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
 }
 
 QueryRouteTo Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_table, CondType filter_type, bool negative,
-                       Item *left_expr_for_subselect, common::Operator *oper_for_subselect, const TabID &base_table) {
+                                Item *left_expr_for_subselect, common::Operator *oper_for_subselect,
+                                const TabID &base_table) {
   an_arg = UnRef(an_arg);
   if (an_arg->type() == Item::SUBSELECT_ITEM) {
     Item_subselect *item_subs = dynamic_cast<Item_subselect *>(an_arg);
@@ -1875,11 +1876,10 @@ TableStatus Query::PrefixCheck(Item *conds) {
 QueryRouteTo Query::BuildCondsIfPossible(Item *conds, CondID &cond_id, const TabID &tmp_table, JoinType join_type) {
   conds = UnRef(conds);
   if (conds) {
-    CondType filter_type = (join_type == JoinType::JO_LEFT
-                            ? CondType::ON_LEFT_FILTER
-                            : (join_type == JoinType::JO_RIGHT
-                               ? CondType::ON_RIGHT_FILTER
-                               : CondType::ON_INNER_FILTER));
+    CondType filter_type =
+        (join_type == JoinType::JO_LEFT
+             ? CondType::ON_LEFT_FILTER
+             : (join_type == JoinType::JO_RIGHT ? CondType::ON_RIGHT_FILTER : CondType::ON_INNER_FILTER));
     // in case of Right join MySQL changes order of tables. Right must be
     // switched back to left!
     if (filter_type == CondType::ON_RIGHT_FILTER) {

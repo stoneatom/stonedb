@@ -137,7 +137,7 @@ class Query final {
 
   QueryRouteTo Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_table, CondType filter_type,
                            bool negative = false, Item *left_expr_for_subselect = nullptr,
-                           common::Operator *oper_for_subselect = nullptr, const TabID &base_table=TabID());
+                           common::Operator *oper_for_subselect = nullptr, const TabID &base_table = TabID());
 
   // int FilterNotSubselect(Item *conds, const TabID& tmp_table, FilterType
   // filter_type, FilterID *and_me_filter = 0);
@@ -329,8 +329,7 @@ class Query final {
    * otherwise
    */
   QueryRouteTo AddFields(List<Item> &fields, const TabID &tmp_table, TabID const &base_table,
-                         const bool group_by_clause, int &num_of_added_fields,bool ignore_minmax,
-                         bool &aggr_used);
+                         const bool group_by_clause, int &num_of_added_fields, bool ignore_minmax, bool &aggr_used);
 
   QueryRouteTo AddSemiJoinFiled(List<Item> &fields, List<TABLE_LIST> &join, const TabID &tmp_table);
 
@@ -345,7 +344,8 @@ class Query final {
   //! is this item representing a column local to the temp table (not a
   //! parameter)
   bool IsLocalColumn(Item *item, const TabID &tmp_table);
-  QueryRouteTo AddOrderByFields(ORDER *order_by, TabID const &tmp_table, TabID const &base_table, int const group_by_clause);
+  QueryRouteTo AddOrderByFields(ORDER *order_by, TabID const &tmp_table, TabID const &base_table,
+                                int const group_by_clause);
   QueryRouteTo AddGlobalOrderByFields(SQL_I_List<ORDER> *global_order, const TabID &tmp_table, int max_col);
   QueryRouteTo AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vector<TabID> &left_tables,
                         std::vector<TabID> &right_tables, bool in_subquery, bool &first_table, bool for_subq = false);
