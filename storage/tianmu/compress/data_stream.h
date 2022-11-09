@@ -42,9 +42,9 @@ class DataStream {
   using uint64_t = unsigned long long;
 
   void Reset() { pos_ = 0; }
-  void Reset(uint len_, uint pos_ = 0) {
-    len_ = len_;
-    pos_ = pos_;
+  void Reset(uint len, uint pos = 0) {
+    len_ = len;
+    pos_ = pos;
   }
   void Reset(char *buf, uint len, uint pos = 0) {
     buf_ = (uchar *)buf;
@@ -57,7 +57,7 @@ class DataStream {
   virtual ~DataStream() {}
   char *GetBuf() { return (char *)buf_; }
   uint GetPos() { return pos_; }
-  void SetPos(uint pos_) { pos_ = pos_; }
+  void SetPos(uint pos) { pos_ = pos; }
   bool CanRead() { return pos_ < len_; }
   bool CanWrite() { return pos_ < len_; }
   virtual uchar Get() = 0;
@@ -85,18 +85,18 @@ class BitStream : public DataStream {
     DataStream::Reset();
     clrlen_ = 0;
   }
-  void Reset(uint len_, uint pos_ = 0) {
-    DataStream::Reset(len_, pos_);
+  void Reset(uint len, uint pos = 0) {
+    DataStream::Reset(len, pos);
     clrlen_ = 0;
   }
-  void Reset(char *buf_, uint len_, uint pos_ = 0) {
-    DataStream::Reset(buf_, len_, pos_);
+  void Reset(char *buf, uint len, uint pos = 0) {
+    DataStream::Reset(buf, len, pos);
     clrlen_ = 0;
   }
 
   // len_, pos_ - numbers of BITS
   BitStream() { Reset(0, 0, 0); }
-  BitStream(char *buf_, uint len_, uint pos_ = 0) { Reset(buf_, len_, pos_); }
+  BitStream(char *buf, uint len, uint pos = 0) { Reset(buf, len, pos); }
   virtual ~BitStream() {}
   uchar NextBit();              // show the next bit, but don't remove it from the stream
   uchar NextByte();             // show the next byte, but don't remove it from the stream

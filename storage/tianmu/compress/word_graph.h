@@ -252,7 +252,7 @@ class WordGraph : public PPMModel {
   //-------------------------------------------------------------------------
   // definitions for PPM
 
-  void TransformForPPM(PPMParam param_ = PPMParam()) override;
+  void TransformForPPM(PPMParam param = PPMParam()) override;
   void InitPPM() override;
 
   // compression: [str,len_total] -> [len_of_edge,rng,total]
