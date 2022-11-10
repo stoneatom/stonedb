@@ -73,8 +73,8 @@ class RCTable final : public JustATable {
   static void Alter(const std::string &path, std::vector<Field *> &new_cols, std::vector<Field *> &old_cols,
                     size_t no_objs);
   void Truncate();
-  void UpdateItem(uint64_t row, uint64_t col, Value &v);
-  void DeleteItem(uint64_t row, uint64_t col);
+  void UpdateItem(uint64_t row, uint64_t col, Value v, core::Transaction *current_transaction);
+  void DeleteItem(uint64_t row, uint64_t col, core::Transaction *current_transaction);
 
   void LockPackInfoForUse();     // lock attribute data against memory manager
   void UnlockPackInfoFromUse();  // return attribute data to memory manager

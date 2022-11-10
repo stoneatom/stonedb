@@ -30,12 +30,18 @@ CREATE TABLE `column_type_test` (
 --echo #
 
 load data infile '../../std_data/tianmu/bigdata4load' into table column_type_test fields terminated by '|';
+--disable_warnings
+select * from column_type_test limit 10;
+--enable_warnings
 select count(*) from column_type_test;
 select max(c_int) from column_type_test;
 select min(c_int) from column_type_test;
 select avg(c_int) from column_type_test;
 select sum(c_int) from column_type_test;
-#delete from column_type_test where c_tinyint=100;    #This operation is too time-consuming under large data volume and can be released during private testing
+delete from column_type_test where c_tinyint=100;
+--disable_warnings
+select * from column_type_test limit 10;
+--enable_warnings
 show create table column_type_test;
 select count(*) from column_type_test;
 select max(c_int) from column_type_test;

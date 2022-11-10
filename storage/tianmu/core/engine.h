@@ -138,6 +138,7 @@ class Engine final {
   utils::thread_pool delay_insert_thread_pool;
   utils::thread_pool load_thread_pool;
   utils::thread_pool query_thread_pool;
+  utils::thread_pool delete_or_update_thread_pool;
   DataCache cache;
   ObjectCache<FilterCoordinate, RSIndex, FilterCoordinate> filter_cache;
 

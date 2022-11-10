@@ -232,3 +232,5 @@ v2	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VI
 # connection master
 drop view v2, v1;
 drop table t1, t2;
+include/sync_slave_sql_with_master.inc
+stop slave;
