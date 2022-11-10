@@ -23,88 +23,88 @@
 
 namespace Tianmu {
 namespace system {
-CacheableItem::CacheableItem(char const *owner_name, char const *object_id, int _default_block_size) {
-  default_block_size_ = _default_block_size;
+CacheableItem::CacheableItem(char const *owner_name, char const *object_id, int default_block_size)
+    : default_block_size_(default_block_size) {
   DEBUG_ASSERT(owner_name != nullptr);
   DEBUG_ASSERT(object_id != nullptr);
+
+  constexpr size_t kMinOwnerNameLen = 3;
+  constexpr size_t kOwnerAndObjectLen = 6;
+  constexpr size_t kNumberFillLen = 6;
+  constexpr size_t kRandomLen = 8;
+  constexpr size_t kObjectPtrLen = 8;
+  constexpr size_t kSuffixLen = 11;
+  size_t filename_offset = 0;
+
+  // read the configuration parameter
+  std::string temp_filename = tianmu_sysvar_cachefolder;
+  char last_char = temp_filename[temp_filename.size() - 1];
+  if (last_char != '/' && last_char != '\\') {
+    temp_filename += "/";
+  }
+
   // copy the temporary folder first
-  filename_ = nullptr;
+  // "...path.../XXXXXXnnnnnnAAAAAAAABBBBBBBB.tianmu_tmp"
+  size_t total_length =
+      temp_filename.length() + kOwnerAndObjectLen + kNumberFillLen + kRandomLen + kObjectPtrLen + kSuffixLen + 1;
+  file_name_ = new char[total_length];
+  file_name_[total_length - 1] = 0;
+  std::strcpy(file_name_, temp_filename.c_str());
+  filename_offset = temp_filename.length();
 
-  {
-    // read the configuration parameter
-    std::string temp_filename = tianmu_sysvar_cachefolder;
-    filename_n_position_ = temp_filename.length();
-    filename_ = new char[filename_n_position_ + 37];  // "...path.../XXXXXXnnnnnnAAAAAAAABBBBBBBB.tianmu_tmp"
-    std::strcpy(filename_, temp_filename.c_str());
-    if (filename_[filename_n_position_ - 1] != '/' && filename_[filename_n_position_ - 1] != '\\') {
-      filename_[filename_n_position_] = '/';
-      filename_n_position_++;
-    }
-    filename_n_position_ += 6;
-  }
-
-  if (filename_ == nullptr) {
-    // if the temporary path is not set, use the current folder
-    filename_ = new char[36];  // "XXXXXXnnnnnnAAAAAAAABBBBBBBB.tianmu_tmp"
-    filename_n_position_ = 6;
-  }
-  max_file_id_ = 0;
-  max_file_pos_ = 0;
-  no_block_ = 0;
-  cur_file_number_ = -1;
   // fill the file name
   int i = 0, j = 0;
-  while (owner_name[j] != 0 && i < 6) {
-    filename_[filename_n_position_ - 6 + (i++)] = owner_name[j++];
-  }
-  while (i < 3) {
-    filename_[filename_n_position_ - 6 + (i++)] = '_';
-  }
-  j = 0;
-  while (object_id[j] != 0 && i < 6) {
-    filename_[filename_n_position_ - 6 + (i++)] = object_id[j++];
-  }
-  while (i < 6) {
-    filename_[filename_n_position_ - 6 + (i++)] = '_';
-  }
-  std::strcpy(filename_ + filename_n_position_, "000000");
 
-  char buf[30];
+  while (owner_name[j] != 0 && i < kOwnerAndObjectLen) file_name_[filename_offset + (i++)] = owner_name[j++];
+  while (i < kMinOwnerNameLen) file_name_[filename_offset + (i++)] = '_';
+  j = 0;
+  while (object_id[j] != 0 && i < kOwnerAndObjectLen) file_name_[filename_offset + (i++)] = object_id[j++];
+  while (i < kOwnerAndObjectLen) file_name_[filename_offset + (i++)] = '_';
+  filename_offset += kOwnerAndObjectLen;
+
+  filename_n_position_ = filename_offset;
+
+  snprintf(file_name_ + filename_offset, kNumberFillLen + 1, "%s", "000000");
+  filename_offset += kNumberFillLen;
+
+  char buf[30] = {};
   unsigned int random_number = 0;
   random_number |= ((rand() % 1024) << 21);
   random_number |= ((rand() % 1024) << 11);
   random_number |= (rand() % 2048);
-  std::sprintf(buf, "%X", random_number);
+  std::snprintf(file_name_ + filename_offset, kRandomLen + 1, "%08X", random_number);
+  filename_offset += kRandomLen;
 
-  std::strcpy(filename_ + filename_n_position_ + 6 + (8 - std::strlen(buf)), buf);
-  if (std::strlen(buf) < 8) {
-    std::memset(filename_ + filename_n_position_ + 6, '0', 8 - std::strlen(buf));
+  std::snprintf(buf, sizeof(buf), "%p", this);
+  auto object_len = std::strlen(buf);
+  if (object_len >= kObjectPtrLen)
+    std::memcpy(file_name_ + filename_offset, buf, kObjectPtrLen);
+  else {
+    std::strcpy(file_name_ + filename_offset + (kObjectPtrLen - object_len), buf);
+    std::memset(file_name_ + filename_offset, '0', kObjectPtrLen - object_len);
   }
-  std::sprintf(buf, "%p", this);
+  filename_offset += kObjectPtrLen;
 
-  std::strcpy(filename_ + filename_n_position_ + 14 + (8 - std::strlen(buf)), buf);
-  if (std::strlen(buf) < 8) {
-    std::memset(filename_ + filename_n_position_ + 14, '0', 8 - std::strlen(buf));
-  }
-  std::strcpy(filename_ + filename_n_position_ + 22, ".tianmu_tmp");
+  std::snprintf(file_name_ + filename_offset, kSuffixLen + 1, "%s", ".tianmu_tmp");
+  filename_offset += kSuffixLen;
+
+  DEBUG_ASSERT(file_name_[filename_offset] == 0);
 }
 
 CacheableItem::~CacheableItem() {
   cur_file_handle_.Close();
   for (int i = 0; i <= max_file_id_; i++) {
     SetFilename(i);  // delete all files
-    RemoveFile(filename_);
+    RemoveFile(file_name_);
   }
-  delete[] filename_;
+  delete[] file_name_;
 }
 
 void CacheableItem::CI_Put(int block, unsigned char *data, int size) {
-  if (block == -1) {
+  if (block == -1)
     return;
-  }
-  if (size == -1) {
+  if (size == -1)
     size = default_block_size_;
-  }
   if (size <= 0)
     return;
   for (int i = no_block_; i < block; i++) {  // rare case: the block numbering is not continuous
@@ -135,9 +135,9 @@ void CacheableItem::CI_Put(int block, unsigned char *data, int size) {
       cur_file_handle_.Close();
       SetFilename(file_number_[block]);
       if (max_file_pos_ == 0)  // the new file
-        cur_file_handle_.OpenCreateEmpty(filename_);
+        cur_file_handle_.OpenCreateEmpty(file_name_);
       else
-        cur_file_handle_.OpenReadWrite(filename_);
+        cur_file_handle_.OpenReadWrite(file_name_);
       DEBUG_ASSERT(cur_file_handle_.IsOpen());
       cur_file_number_ = file_number_[block];
       max_file_pos_ += size;
@@ -148,16 +148,16 @@ void CacheableItem::CI_Put(int block, unsigned char *data, int size) {
       cur_file_number_ = file_number_[block];
       cur_file_handle_.Close();
       SetFilename(cur_file_number_);
-      cur_file_handle_.OpenReadWrite(filename_);
+      cur_file_handle_.OpenReadWrite(file_name_);
       DEBUG_ASSERT(cur_file_handle_.IsOpen());
     }
 
 #ifdef FUNCTIONS_EXECUTION_TIMES
     char str[100];
-    if (file_size[block] >= 1_MB)
-      std::sprintf(str, "CacheableItem::CI_Put,write(%dMB)", (int)(file_size[block] / 1_MB));
+    if (file_size_[block] >= 1_MB)
+      std::sprintf(str, "CacheableItem::CI_Put,write(%dMB)", (int)(file_size_[block] / 1_MB));
     else
-      std::sprintf(str, "CacheableItem::CI_Put,write(%dKB)", (int)(file_size[block] / 1_KB));
+      std::sprintf(str, "CacheableItem::CI_Put,write(%dKB)", (int)(file_size_[block] / 1_KB));
     FETOperator feto(str);
 #endif
     cur_file_handle_.Seek(file_start_[block], SEEK_SET);
@@ -178,7 +178,7 @@ int CacheableItem::CI_Get(int block, uchar *data, int size, int off) {
       cur_file_number_ = file_number_[block];
       cur_file_handle_.Close();
       SetFilename(cur_file_number_);
-      cur_file_handle_.OpenReadWrite(filename_);
+      cur_file_handle_.OpenReadWrite(file_name_);
       DEBUG_ASSERT(cur_file_handle_.IsOpen());
     }
 
@@ -207,12 +207,12 @@ int CacheableItem::CI_Get(int block, uchar *data, int size, int off) {
 
 void CacheableItem::SetFilename(int i)  // char -> void temporary change to enable compilation
 {
-  filename_[filename_n_position_ + 5] = (char)('0' + i % 10);
-  filename_[filename_n_position_ + 4] = (char)('0' + (i / 10) % 10);
-  filename_[filename_n_position_ + 3] = (char)('0' + (i / 100) % 10);
-  filename_[filename_n_position_ + 2] = (char)('0' + (i / 1000) % 10);
-  filename_[filename_n_position_ + 1] = (char)('0' + (i / 10000) % 10);
-  filename_[filename_n_position_] = (char)('0' + (i / 100000) % 10);
+  file_name_[filename_n_position_ + 5] = (char)('0' + i % 10);
+  file_name_[filename_n_position_ + 4] = (char)('0' + (i / 10) % 10);
+  file_name_[filename_n_position_ + 3] = (char)('0' + (i / 100) % 10);
+  file_name_[filename_n_position_ + 2] = (char)('0' + (i / 1000) % 10);
+  file_name_[filename_n_position_ + 1] = (char)('0' + (i / 10000) % 10);
+  file_name_[filename_n_position_] = (char)('0' + (i / 100000) % 10);
 }
 
 }  // namespace system
