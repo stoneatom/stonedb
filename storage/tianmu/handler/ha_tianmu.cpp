@@ -1148,21 +1148,6 @@ int ha_tianmu::start_stmt(THD *thd, thr_lock_type lock_type) {
 }
 
 /*
- Ask rcbase handler about permission to cache table during query registration.
- If current thread is in non-autocommit, we don't permit any mysql query
- caching.
- */
-// stonedb8 TODO: register_query_cache_table is deleted
-/*
-bool ha_tianmu::register_query_cache_table(THD *thd, char *table_key, size_t key_length,
-                                                   qc_engine_callback *call_back,
-                                                   [[maybe_unused]] ulonglong *engine_data) {
-  *call_back = rcbase_query_caching_of_table_permitted;
-  return rcbase_query_caching_of_table_permitted(thd, table_key, key_length, 0);
-}
-*/
-
-/*
  Used to delete a table. By the time delete_table() has been called all
  opened references to this table will have been closed (and your globally
  shared references released. The variable name will just be the name of
@@ -1170,7 +1155,7 @@ bool ha_tianmu::register_query_cache_table(THD *thd, char *table_key, size_t key
 
  If you do not implement this, the default delete_table() is called from
  handler.cc and it will delete all files with the file extentions returned
- by bas_ext(). // stonedb8 TODO bas_ext() has been deleted in mysql8.0
+ by bas_ext().
 
  Called from handler.cc by delete_table and  ha_create_table(). Only used
  during create if the table_flag HA_DROP_BEFORE_CREATE was specified for

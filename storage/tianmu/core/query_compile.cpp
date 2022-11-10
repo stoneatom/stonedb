@@ -1070,7 +1070,6 @@ Query_route_to Query::Compile(CompiledQuery *compiled_query, Query_block *select
       cq = saved_cq;
       if (cond_to_reinsert && list_to_reinsert)
         list_to_reinsert->push_back(cond_to_reinsert);
-      // sl->cleanup(0); // stonedb8
       return Query_route_to::TO_MYSQL;
     }
 
@@ -1092,7 +1091,6 @@ Query_route_to Query::Compile(CompiledQuery *compiled_query, Query_block *select
       union_all = true;
     if (cond_to_reinsert && list_to_reinsert)
       list_to_reinsert->push_back(cond_to_reinsert);
-    // sl->cleanup(0); // stonedb8
   }
 
   cq->BuildTableIDStepsMap();
