@@ -21,49 +21,48 @@
 
 namespace Tianmu {
 namespace core {
-
-float PackOrderer::basic_sorted_percentage = 10.0;  // ordering on just sorted_percentage% of packs
+float PackOrderer::basic_sorted_percentage_ = 10.0;  // ordering on just sorted_percentage% of packs
 
 PackOrderer::PackOrderer() {
-  curvc = 0;
-  ncols = 0;
-  packs.push_back(std::vector<PackPair>());
-  otype.push_back(OrderType::NotSpecified);
-  packs_ordered_up_to = 0;
-  packs_passed = 0;
+  cur_vc_ = 0;
+  n_cols = 0;
+  packs_.push_back(std::vector<PackPair>());
+  order_type_.push_back(OrderType::kNotSpecified);
+  packs_ordered_up_to_ = 0;
+  packs_passed_ = 0;
 }
 
 PackOrderer::PackOrderer(const PackOrderer &p) {
-  if (visited.get())
-    visited.reset(new Filter(*p.visited.get()));
-  packs = p.packs;
-  curndx = p.curndx;
-  prevndx = p.prevndx;
-  curvc = p.curvc;
-  ncols = p.ncols;
-  natural_order = p.natural_order;
-  dimsize = p.dimsize;
-  lastly_left = p.lastly_left;
-  mmtype = p.mmtype;
-  otype = p.otype;
-  packs_ordered_up_to = p.packs_ordered_up_to;
-  packs_passed = p.packs_passed;
+  if (visited_.get())
+    visited_.reset(new Filter(*p.visited_.get()));
+  packs_ = p.packs_;
+  cur_ndx_ = p.cur_ndx_;
+  prev_ndx_ = p.prev_ndx_;
+  cur_vc_ = p.cur_vc_;
+  n_cols = p.n_cols;
+  natural_order_ = p.natural_order_;
+  dim_size_ = p.dim_size_;
+  lastly_left_ = p.lastly_left_;
+  min_max_type_ = p.min_max_type_;
+  order_type_ = p.order_type_;
+  packs_ordered_up_to_ = p.packs_ordered_up_to_;
+  packs_passed_ = p.packs_passed_;
 }
 
 PackOrderer &PackOrderer::operator=(const PackOrderer &p) {
-  visited.reset(new Filter(*p.visited.get()));
-  packs = p.packs;
-  curndx = p.curndx;
-  prevndx = p.prevndx;
-  curvc = p.curvc;
-  ncols = p.ncols;
-  natural_order = p.natural_order;
-  dimsize = p.dimsize;
-  lastly_left = p.lastly_left;
-  mmtype = p.mmtype;
-  otype = p.otype;
-  packs_ordered_up_to = p.packs_ordered_up_to;
-  packs_passed = p.packs_passed;
+  visited_.reset(new Filter(*p.visited_.get()));
+  packs_ = p.packs_;
+  cur_ndx_ = p.cur_ndx_;
+  prev_ndx_ = p.prev_ndx_;
+  cur_vc_ = p.cur_vc_;
+  n_cols = p.n_cols;
+  natural_order_ = p.natural_order_;
+  dim_size_ = p.dim_size_;
+  lastly_left_ = p.lastly_left_;
+  min_max_type_ = p.min_max_type_;
+  order_type_ = p.order_type_;
+  packs_ordered_up_to_ = p.packs_ordered_up_to_;
+  packs_passed_ = p.packs_passed_;
   return *this;
 }
 
@@ -77,10 +76,10 @@ bool PackOrderer::Init(vcolumn::VirtualColumn *vc, OrderType order, common::Roug
   if (Initialized())
     return false;
 
-  packs.clear();
-  otype.clear();
+  packs_.clear();
+  order_type_.clear();
 
-  curvc = 0;
+  cur_vc_ = 0;
 
   InitOneColumn(vc, order, r_filter, OrderStat(0, 1));
 
@@ -89,21 +88,21 @@ bool PackOrderer::Init(vcolumn::VirtualColumn *vc, OrderType order, common::Roug
 
 void PackOrderer::InitOneColumn(vcolumn::VirtualColumn *vc, OrderType ot, common::RoughSetValue *r_filter,
                                 struct OrderStat os) {
-  ++ncols;
+  ++n_cols;
   MinMaxType mmt;
   if (vc->Type().IsFixed() || vc->Type().IsDateTime()) {
-    mmt = MinMaxType::MMT_Fixed;
+    mmt = MinMaxType::kMMTFixed;
   } else
-    mmt = MinMaxType::MMT_String;
+    mmt = MinMaxType::kMMTString;
 
-  mmtype.push_back(mmt);
-  otype.push_back(ot);
-  packs.push_back(std::vector<PackPair>());
-  lastly_left.push_back(true);
-  prevndx.push_back(static_cast<int>(State::INIT_VAL));
-  curndx.push_back(static_cast<int>(State::INIT_VAL));
+  min_max_type_.push_back(mmt);
+  order_type_.push_back(ot);
+  packs_.push_back(std::vector<PackPair>());
+  lastly_left_.push_back(true);
+  prev_ndx_.push_back(static_cast<int>(State::kInitVal));
+  cur_ndx_.push_back(static_cast<int>(State::kInitVal));
 
-  auto &packs_one_col = packs[ncols - 1];
+  auto &packs_one_col = packs_[n_cols - 1];
   int d = vc->GetDim();
   MIIterator mit(vc->GetMultiIndex(), d, true);
 
@@ -111,26 +110,26 @@ void PackOrderer::InitOneColumn(vcolumn::VirtualColumn *vc, OrderType ot, common
   while (mit.IsValid()) {
     int pack = mit.GetCurPackrow(d);
     if (!r_filter || r_filter[pack] != common::RoughSetValue::RS_NONE) {
-      if (mmt == MinMaxType::MMT_Fixed) {
+      if (mmt == MinMaxType::kMMTFixed) {
         if (vc->GetNumOfNulls(mit) == mit.GetPackSizeLeft()) {
           mid.i = common::PLUS_INF_64;
         } else {
           int64_t min = vc->GetMinInt64(mit);
           int64_t max = vc->GetMaxInt64(mit);
           switch (ot) {
-            case OrderType::RangeSimilarity:
+            case OrderType::kRangeSimilarity:
               mid.i = (min == common::NULL_VALUE_64 ? common::MINUS_INF_64 : (max - min) / 2);
               break;
-            case OrderType::MinAsc:
-            case OrderType::MinDesc:
-            case OrderType::Covering:
+            case OrderType::kMinAsc:
+            case OrderType::kMinDesc:
+            case OrderType::kCovering:
               mid.i = min;
               break;
-            case OrderType::MaxAsc:
-            case OrderType::MaxDesc:
+            case OrderType::kMaxAsc:
+            case OrderType::kMaxDesc:
               mid.i = max;
               break;
-            case OrderType::NotSpecified:
+            case OrderType::kNotSpecified:
               break;
           }
         }
@@ -151,29 +150,29 @@ void PackOrderer::InitOneColumn(vcolumn::VirtualColumn *vc, OrderType ot, common
   }
 
   if (packs_one_col.size() == 0 && !r_filter)
-    natural_order.push_back(true);
+    natural_order_.push_back(true);
   else
-    natural_order.push_back(false);
+    natural_order_.push_back(false);
 
-  if (mmt == MinMaxType::MMT_Fixed) {
+  if (mmt == MinMaxType::kMMTFixed) {
     switch (ot) {
-      case OrderType::RangeSimilarity:
-      case OrderType::MinAsc:
-      case OrderType::MaxAsc:
+      case OrderType::kRangeSimilarity:
+      case OrderType::kMinAsc:
+      case OrderType::kMaxAsc:
         sort(packs_one_col.begin(), packs_one_col.end(), [](const auto &v1, const auto &v2) {
           return v1.first.i < v2.first.i || (v1.first.i == v2.first.i && v1.second < v2.second);
         });
         break;
-      case OrderType::Covering:
+      case OrderType::kCovering:
         ReorderForCovering(packs_one_col, vc);
         break;
-      case OrderType::MinDesc:
-      case OrderType::MaxDesc:
+      case OrderType::kMinDesc:
+      case OrderType::kMaxDesc:
         sort(packs_one_col.begin(), packs_one_col.end(), [](const auto &v1, const auto &v2) {
           return v1.first.i > v2.first.i || (v1.first.i == v2.first.i && v1.second < v2.second);
         });
         break;
-      case OrderType::NotSpecified:
+      case OrderType::kNotSpecified:
         break;
     }
   }
@@ -181,11 +180,11 @@ void PackOrderer::InitOneColumn(vcolumn::VirtualColumn *vc, OrderType ot, common
   // Resort in natural order, leaving only the beginning ordered
   auto packs_one_col_begin = packs_one_col.begin();
   float sorted_percentage =
-      basic_sorted_percentage / (os.neutral + os.ordered ? os.neutral + os.ordered : 1);  // todo: using os.sorted
-  packs_ordered_up_to = (int64_t)(packs_one_col.size() * (sorted_percentage / 100.0));
-  if (packs_ordered_up_to > 1000)  // do not order too much packs (for large cases)
-    packs_ordered_up_to = 1000;
-  packs_one_col_begin += packs_ordered_up_to;  // ordering on just sorted_percentage% of packs
+      basic_sorted_percentage_ / (os.neutral + os.ordered ? os.neutral + os.ordered : 1);  // todo: using os.sorted
+  packs_ordered_up_to_ = (int64_t)(packs_one_col.size() * (sorted_percentage / 100.0));
+  if (packs_ordered_up_to_ > 1000)  // do not order too much packs (for large cases)
+    packs_ordered_up_to_ = 1000;
+  packs_one_col_begin += packs_ordered_up_to_;  // ordering on just sorted_percentage% of packs
   sort(packs_one_col_begin, packs_one_col.end(), [](const auto &v1, const auto &v2) { return v1.second < v2.second; });
 }
 
@@ -241,48 +240,48 @@ void PackOrderer::ReorderForCovering(std::vector<PackPair> &packs_one_col, vcolu
 }
 
 void PackOrderer::NextPack() {
-  packs_passed++;
-  if (natural_order[curvc]) {
+  packs_passed_++;
+  if (natural_order_[cur_vc_]) {
     // natural order traversing all packs
-    if (curndx[curvc] < dimsize - 1 && curndx[curvc] != static_cast<int>(State::END))
-      ++curndx[curvc];
+    if (cur_ndx_[cur_vc_] < dim_size_ - 1 && cur_ndx_[cur_vc_] != static_cast<int>(State::kEnd))
+      ++cur_ndx_[cur_vc_];
     else
-      curndx[curvc] = static_cast<int>(State::END);
+      cur_ndx_[cur_vc_] = static_cast<int>(State::kEnd);
   } else
-    switch (otype[curvc]) {
-      case OrderType::RangeSimilarity: {
-        if (lastly_left[curvc]) {
-          if (size_t(prevndx[curvc]) < packs[curvc].size() - 1) {
-            lastly_left[curvc] = !lastly_left[curvc];
-            int tmp = curndx[curvc];
-            curndx[curvc] = prevndx[curvc] + 1;
-            prevndx[curvc] = tmp;
+    switch (order_type_[cur_vc_]) {
+      case OrderType::kRangeSimilarity: {
+        if (lastly_left_[cur_vc_]) {
+          if (size_t(prev_ndx_[cur_vc_]) < packs_[cur_vc_].size() - 1) {
+            lastly_left_[cur_vc_] = !lastly_left_[cur_vc_];
+            int tmp = cur_ndx_[cur_vc_];
+            cur_ndx_[cur_vc_] = prev_ndx_[cur_vc_] + 1;
+            prev_ndx_[cur_vc_] = tmp;
           } else {
-            if (curndx[curvc] > 0)
-              --curndx[curvc];
+            if (cur_ndx_[cur_vc_] > 0)
+              --cur_ndx_[cur_vc_];
             else
-              curndx[curvc] = static_cast<int>(State::END);
+              cur_ndx_[cur_vc_] = static_cast<int>(State::kEnd);
           }
-        } else if (prevndx[curvc] > 0) {
-          lastly_left[curvc] = !lastly_left[curvc];
-          int tmp = curndx[curvc];
-          curndx[curvc] = prevndx[curvc] - 1;
-          prevndx[curvc] = tmp;
+        } else if (prev_ndx_[cur_vc_] > 0) {
+          lastly_left_[cur_vc_] = !lastly_left_[cur_vc_];
+          int tmp = cur_ndx_[cur_vc_];
+          cur_ndx_[cur_vc_] = prev_ndx_[cur_vc_] - 1;
+          prev_ndx_[cur_vc_] = tmp;
         } else {
-          if (size_t(curndx[curvc]) < packs[curvc].size() - 1)
-            ++curndx[curvc];
+          if (size_t(cur_ndx_[cur_vc_]) < packs_[cur_vc_].size() - 1)
+            ++cur_ndx_[cur_vc_];
           else
-            curndx[curvc] = static_cast<int>(State::END);
+            cur_ndx_[cur_vc_] = static_cast<int>(State::kEnd);
         }
         break;
       }
       default:
-        // go along packs from 0 to packs[curvc].size() - 1
-        if (curndx[curvc] != static_cast<int>(State::END)) {
-          if (curndx[curvc] < (int)packs[curvc].size() - 1)
-            ++curndx[curvc];
+        // go along packs from 0 to packs[cur_vc_].size() - 1
+        if (cur_ndx_[cur_vc_] != static_cast<int>(State::kEnd)) {
+          if (cur_ndx_[cur_vc_] < (int)packs_[cur_vc_].size() - 1)
+            ++cur_ndx_[cur_vc_];
           else {
-            curndx[curvc] = static_cast<int>(State::END);
+            cur_ndx_[cur_vc_] = static_cast<int>(State::kEnd);
           }
         }
         break;
@@ -291,65 +290,65 @@ void PackOrderer::NextPack() {
 
 PackOrderer &PackOrderer::operator++() {
   DEBUG_ASSERT(Initialized());
-  if (ncols == 1) {
+  if (n_cols == 1) {
     NextPack();
   } else {
-    curvc = (curvc + 1) % ncols;
+    cur_vc_ = (cur_vc_ + 1) % n_cols;
 
     do {
       NextPack();
-    } while (curndx[curvc] != static_cast<int>(State::END) &&
-             visited->Get(natural_order[curvc] ? curndx[curvc] : packs[curvc][curndx[curvc]].second));
+    } while (cur_ndx_[cur_vc_] != static_cast<int>(State::kEnd) &&
+             visited_->Get(natural_order_[cur_vc_] ? cur_ndx_[cur_vc_] : packs_[cur_vc_][cur_ndx_[cur_vc_]].second));
 
-    if (curndx[curvc] != static_cast<int>(State::END)) {
-      visited->Set(natural_order[curvc] ? curndx[curvc] : packs[curvc][curndx[curvc]].second);
+    if (cur_ndx_[cur_vc_] != static_cast<int>(State::kEnd)) {
+      visited_->Set(natural_order_[cur_vc_] ? cur_ndx_[cur_vc_] : packs_[cur_vc_][cur_ndx_[cur_vc_]].second);
     }
   }
   return *this;
 }
 
 void PackOrderer::Rewind() {
-  packs_passed = 0;
-  for (curvc = 0; curvc < ncols; curvc++) RewindCol();
-  curvc = 0;
-  if (visited.get())
-    visited->Reset();
+  packs_passed_ = 0;
+  for (cur_vc_ = 0; cur_vc_ < n_cols; cur_vc_++) RewindCol();
+  cur_vc_ = 0;
+  if (visited_.get())
+    visited_->Reset();
 }
 
 void PackOrderer::RewindCol() {
-  if (!natural_order[curvc] && packs[curvc].size() == 0)
-    curndx[curvc] = static_cast<int>(State::END);
+  if (!natural_order_[cur_vc_] && packs_[cur_vc_].size() == 0)
+    cur_ndx_[cur_vc_] = static_cast<int>(State::kEnd);
   else
-    curndx[curvc] = prevndx[curvc] = static_cast<int>(State::INIT_VAL);
+    cur_ndx_[cur_vc_] = prev_ndx_[cur_vc_] = static_cast<int>(State::kInitVal);
 }
 
 void PackOrderer::RewindToMatch(vcolumn::VirtualColumn *vc, MIIterator &mit) {
   DEBUG_ASSERT(vc->GetDim() != -1);
-  DEBUG_ASSERT(otype[curvc] == OrderType::RangeSimilarity);
-  DEBUG_ASSERT(ncols == 1);  // not implemented otherwise
+  DEBUG_ASSERT(order_type_[cur_vc_] == OrderType::kRangeSimilarity);
+  DEBUG_ASSERT(n_cols == 1);  // not implemented otherwise
 
-  if (mmtype[curvc] == MinMaxType::MMT_Fixed) {
+  if (min_max_type_[cur_vc_] == MinMaxType::kMMTFixed) {
     int64_t mid = common::MINUS_INF_64;
     if (vc->GetNumOfNulls(mit) != mit.GetPackSizeLeft()) {
       int64_t min = vc->GetMinInt64(mit);
       int64_t max = vc->GetMaxInt64(mit);
       mid = (max - min) / 2;
     }
-    auto it = std::lower_bound(packs[curvc].begin(), packs[curvc].end(), PackPair(mid, 0),
+    auto it = std::lower_bound(packs_[cur_vc_].begin(), packs_[cur_vc_].end(), PackPair(mid, 0),
                                [](const auto &v1, const auto &v2) {
                                  return v1.first.i < v2.first.i || (v1.first.i == v2.first.i && v1.second < v2.second);
                                });
-    if (it == packs[curvc].end())
-      curndx[curvc] = int(packs[curvc].size() - 1);
+    if (it == packs_[cur_vc_].end())
+      cur_ndx_[cur_vc_] = int(packs_[cur_vc_].size() - 1);
     else
-      curndx[curvc] = int(distance(packs[curvc].begin(), it));
+      cur_ndx_[cur_vc_] = int(distance(packs_[cur_vc_].begin(), it));
   } else
     // not implemented for strings & doubles/floats
-    curndx[curvc] = 0;
+    cur_ndx_[cur_vc_] = 0;
 
-  if (packs[curvc].size() == 0 && !natural_order[curvc])
-    curndx[curvc] = static_cast<int>(State::END);
-  prevndx[curvc] = curndx[curvc];
+  if (packs_[cur_vc_].size() == 0 && !natural_order_[cur_vc_])
+    cur_ndx_[cur_vc_] = static_cast<int>(State::kEnd);
+  prev_ndx_[cur_vc_] = cur_ndx_[cur_vc_];
 }
 
 }  // namespace core

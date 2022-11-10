@@ -352,8 +352,8 @@ void SuffixTree<Symb, NSymb>::Print(std::ostream &str, uint flags, PNode n, PNod
 //------------------------------------------------------------------------
 
 template <class Symb, int NSymb>
-void SuffixTree<Symb, NSymb>::TransformForPPM(PPMParam param_) {
-  param_ = param_;
+void SuffixTree<Symb, NSymb>::TransformForPPM(PPMParam param) {
+  param_ = param;
 
   // compute counts of all nodes_ in the 'tree'
   SetCounts();

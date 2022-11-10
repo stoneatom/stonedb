@@ -51,13 +51,13 @@ uint32_t RCTable::GetTableId(const fs::path &dir) {
 }
 
 void RCTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
-  uint32_t tid = ha_rcengine_->GetNextTableId();
+  uint32_t table_id = ha_rcengine_->GetNextTableId();
   auto &path(opt->path);
   uint32_t no_attrs = opt->atis.size();
 
   fs::create_directory(path);
 
-  TABLE_META meta{common::FILE_MAGIC, common::TABLE_DATA_VERSION, tid, opt->pss};
+  TABLE_META meta{common::FILE_MAGIC, common::TABLE_DATA_VERSION, table_id, opt->pss};
 
   system::TianmuFile ftbl;
   ftbl.OpenCreateEmpty(path / common::TABLE_DESC_FILE);
@@ -80,7 +80,7 @@ void RCTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
 
   for (size_t idx = 0; idx < no_attrs; idx++) {
     auto dir = Engine::GetNextDataDir();
-    dir /= std::to_string(tid) + "." + std::to_string(idx);
+    dir /= std::to_string(table_id) + "." + std::to_string(idx);
     if (system::DoesFileExist(dir)) {
       throw common::DatabaseException("Directory " + dir.string() + " already exists!");
     }
@@ -91,7 +91,7 @@ void RCTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
     RCAttr::Create(lnk, opt->atis[idx], opt->pss, 0);
     // TIANMU_LOG(LogCtl_Level::INFO, "Column %zu at %s", idx, dir.c_str());
   }
-  TIANMU_LOG(LogCtl_Level::INFO, "Create table %s, ID = %u", opt->path.c_str(), tid);
+  TIANMU_LOG(LogCtl_Level::INFO, "Create table %s, ID = %u", opt->path.c_str(), table_id);
 }
 
 void RCTable::Alter(const std::string &table_path, std::vector<Field *> &new_cols, std::vector<Field *> &old_cols,
@@ -1073,7 +1073,7 @@ class DelayedInsertParser final {
       }
 
       auto ptr = (*vec)[processed].get();
-      // int  tid = *(int32_t *)ptr;
+      // int  table_id = *(int32_t *)ptr;
       ptr += sizeof(int32_t);
       std::string path(ptr);
       ptr += path.length() + 1;
