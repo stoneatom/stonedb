@@ -1,0 +1,78 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test of function
+--echo #
+
+--echo # ----------------------------------------------------------------------
+--echo # CAST function.
+--echo # ----------------------------------------------------------------------
+
+--disable_warnings
+DROP DATABASE IF EXISTS cast_json_func_test;
+--enable_warnings
+
+CREATE DATABASE cast_json_func_test;
+use cast_json_func_test;
+
+CREATE TABLE t1 (d1 DOUBLE, d2 DOUBLE NOT NULL);
+INSERT INTO t1 VALUES (9.2233720368547758e+18, 9.2233720368547758e+18);
+INSERT INTO t1 VALUES (18446744073709551614,18446744073709551614);
+--disable_warnings
+SELECT d1, CAST(d1 AS SIGNED), CAST(d2 AS SIGNED) FROM t1;
+--enable_warnings
+DROP TABLE t1;
+
+
+--echo # ----------------------------------------------------------------------
+--echo # JSON_ARRAY function.
+--echo # ----------------------------------------------------------------------
+CREATE TABLE t2(a text);
+INSERT INTO t2 VALUES('1');
+# JSON_ARRAY() returns wrong result
+#SELECT JSON_ARRAY() FROM t2;
+#SELECT JSON_ARRAY(a) FROM t2;
+#SELECT JSON_ARRAY(a, null, 'My name is "Foo"', 3.1415, 6) FROM t2;
+#SELECT JSON_ARRAY(a, true, false, "true", "false") FROM t2;
+#SELECT JSON_ARRAY(a, '{"key1":"value1"}') FROM t2;
+
+DROP TABLE t2;
+
+--echo # ----------------------------------------------------------------------
+--echo # JSON_CONTAINS function.
+--echo # ----------------------------------------------------------------------
+
+CREATE TABLE t3(j LONGTEXT, v LONGTEXT);
+
+INSERT INTO
+    t3
+VALUES
+    ('"you"', '"you"'),
+    ('"youth"', '"you"'),
+    ('[1]', '1'),
+    ('[2, 1]', '1'),
+    ('[2, [2, 3], 1]', '1'),
+    ('[4, [2, 3], 1]', '2'),
+    ('[2, 1]', '[1, 2]'),
+    ('[2, 1]', '[1, 0, 2]'),
+    ('[2, 0, 3, 1]', '[1, 2]'),
+    ('{"b":[1,2], "a":1}', '{"a":1, "b":2}'),
+    ('{"a":1}', '{}'),
+    ('[1, {"a":1}]', '{}'),
+    ('[1, {"a":1}]', '{"a":1}'),
+    ('[{"abc":"def", "def":"abc"}]', '["foo","bar"]'),
+    (
+        '[{"abc":"def", "def":"abc"}, "bar"]',
+        '["bar", {}]'
+    ),
+    ('[{"a":"b"},{"c":"d"}]', '{"c":"d"}');
+
+SELECT
+    j AS json,
+    v AS value,
+    JSON_CONTAINS(j, v) AS result
+FROM
+    t3;
+
+drop table t3;
+DROP DATABASE cast_json_func_test;

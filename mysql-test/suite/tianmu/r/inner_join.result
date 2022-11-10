@@ -1,0 +1,114 @@
+#
+# Test of inner join
+#
+DROP DATABASE IF EXISTS inner_join_test;
+CREATE DATABASE inner_join_test;
+USE inner_join_test;
+/* simple circular inner join `=` operator */
+create table t1 (a int, b int);
+create table t2 (b int, c int);
+create table t3 (a int, c int);
+insert into t1 values (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7);
+insert into t2 values (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7);
+insert into t3 values (2, 4), (3, 5), (4, 6), (5, 10), (6, 12);
+select * from t1 inner join t2 on (t1.b = t2.b) inner join t3 on (t1.a = t3.a and t2.c = t3.c);
+a	b	b	c	a	c
+2	3	3	4	2	4
+3	4	4	5	3	5
+4	5	5	6	4	6
+drop table t1;
+drop table t2;
+drop table t3;
+/* simple circular inner join with `where` filter */
+create table t1 (a int, b int);
+create table t2 (b int, c int);
+create table t3 (a int, c int);
+insert into t1 values (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7);
+insert into t2 values (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7);
+insert into t3 values (2, 4), (3, 5), (4, 6), (5, 10), (6, 12);
+select * from t1 inner join t2 on (t1.b = t2.b) inner join t3 on (t1.a = t3.a) where t2.c = t3.c;
+a	b	b	c	a	c
+2	3	3	4	2	4
+3	4	4	5	3	5
+4	5	5	6	4	6
+drop table t1;
+drop table t2;
+drop table t3;
+/* circular inner join with filter */
+create table t1 (a int, b int, f int);
+create table t2 (b int, c int);
+create table t3 (a int, c int, f int);
+insert into t1 values (1, 2, 1), (2, 3, 2), (3, 4, 3), (4, 5, 4), (5, 6, 5), (6, 7, 6);
+insert into t2 values (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7);
+insert into t3 values (2, 4, 1), (3, 5, 2), (4, 6, 4), (5, 10, 5), (6, 12, 6);
+select * from t1 inner join t2 on (t1.b = t2.b) inner join t3 on (t1.a = t3.a and t2.c = t3.c) where t1.f > t3.f;
+a	b	f	b	c	a	c	f
+2	3	2	3	4	2	4	1
+3	4	3	4	5	3	5	2
+drop table t1;
+drop table t2;
+drop table t3;
+/* circular `where` node inner join with filter */
+create table t1 (a int, b int, f int);
+create table t2 (b int, c int);
+create table t3 (a int, c int, f int);
+insert into t1 values (1, 2, 1), (2, 3, 2), (3, 4, 3), (4, 5, 4), (5, 6, 5), (6, 7, 6);
+insert into t2 values (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7);
+insert into t3 values (2, 4, 1), (3, 5, 2), (4, 6, 4), (5, 10, 5), (6, 12, 6);
+select * from t1 inner join t2 on (t1.b = t2.b) inner join t3 on (t1.a = t3.a) where t2.c = t3.c and t1.f > t3.f;
+a	b	f	b	c	a	c	f
+2	3	2	3	4	2	4	1
+3	4	3	4	5	3	5	2
+drop table t1;
+drop table t2;
+drop table t3;
+/* circular join more than 2 join keys */
+create table t1 (a int, b int, f int);
+create table t2 (b int, c int);
+create table t3 (a int, c int, f int);
+insert into t1 values (1, 2, 1), (2, 3, 2), (3, 4, 3), (4, 5, 4), (5, 6, 5), (6, 7, 6);
+insert into t2 values (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7);
+insert into t3 values (2, 4, 1), (3, 5, 2), (4, 6, 4), (5, 10, 5), (6, 12, 6);
+select * from t1 inner join t2 on (t1.b = t2.b) inner join t3 on (t1.a = t3.a and t2.c = t3.c and t1.f = t3.f);
+a	b	f	b	c	a	c	f
+4	5	4	5	6	4	6	4
+drop table t1;
+drop table t2;
+drop table t3;
+/* circular join with 3 loops */
+create table t1 (a int, b int, f int);
+create table t2 (b int, c int);
+create table t3 (a int, c int, f int);
+create table t4 (a int, b int);
+create table t5 (a int, b int);
+insert into t1 values (1, 2, 1), (2, 3, 2), (3, 4, 3), (4, 5, 4), (5, 6, 5), (6, 7, 6);
+insert into t2 values (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7);
+insert into t3 values (2, 4, 1), (3, 5, 2), (4, 6, 4), (5, 10, 5), (6, 12, 6);
+insert into t4 values (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7);
+insert into t5 values (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7);
+select * from t1 inner join t2 on (t1.b = t2.b) inner join t3 on (t1.a = t3.a and t2.c = t3.c) inner join t4 on (t1.a = t4.a and t2.b = t4.b) inner join t5 on (t4.a = t5.a and t3.a = t5.a);
+a	b	f	b	c	a	c	f	a	b	a	b
+2	3	2	3	4	2	4	1	2	3	2	3
+3	4	3	4	5	3	5	2	3	4	3	4
+4	5	4	5	6	4	6	4	4	5	4	5
+drop table t1;
+drop table t2;
+drop table t3;
+drop table t4;
+drop table t5;
+/* circular joins for dict */
+create table t1 (a varchar(255), b varchar(255));
+create table t2 (b varchar(255), c varchar(255));
+create table t3 (a varchar(255), c varchar(255));
+insert into t1 values ("1","2"), ("2","3"), ("3","4"), ("4","5"), ("5", "6"), ("6","7");
+insert into t2 values ("1","2"), ("2","3"), ("3","4"), ("4","5"), ("5","6"), ("6","7");
+insert into t3 values ("2","4"), ("3","5"), ("4","6"), ("5", "10"), ("6", "12");
+select * from t1 inner join t2 on (t1.b = t2.b) inner join t3 on (t1.a = t3.a and t2.c = t3.c);
+a	b	b	c	a	c
+2	3	3	4	2	4
+3	4	4	5	3	5
+4	5	5	6	4	6
+drop table t1;
+drop table t2;
+drop table t3;
+DROP DATABASE inner_join_test;
