@@ -741,9 +741,15 @@ int RCTable::Insert(TABLE *table) {
   return 0;
 }
 
-void RCTable::UpdateItem(uint64_t row, uint64_t col, Value &v) { m_attrs[col]->UpdateData(row, v); }
+void RCTable::UpdateItem(uint64_t row, uint64_t col, Value v, core::Transaction *current_transaction) {
+  current_txn_ = current_transaction;
+  m_attrs[col]->UpdateData(row, v);
+}
 
-void RCTable::DeleteItem(uint64_t row, uint64_t col) { m_attrs[col]->DeleteData(row); }
+void RCTable::DeleteItem(uint64_t row, uint64_t col, core::Transaction *current_transaction) {
+  current_txn_ = current_transaction;
+  m_attrs[col]->DeleteData(row);
+}
 
 uint64_t RCTable::ProceedNormal(system::IOParameters &iop) {
   std::unique_ptr<system::Stream> fs;

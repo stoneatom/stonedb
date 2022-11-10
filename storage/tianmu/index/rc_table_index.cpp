@@ -215,11 +215,14 @@ common::ErrorCode RCTableIndex::DeleteIndex(core::Transaction *tx, std::string_v
   fields.emplace_back(currentRowKey);
 
   rocksdb_key_->pack_key(packkey, fields, value);
-  const auto cf = rocksdb_key_->get_cf();
-  const auto rockdbStatus = tx->KVTrans().Delete(cf, {(const char *)packkey.ptr(), packkey.length()});
-  if (!rockdbStatus.ok()) {
-    TIANMU_LOG(LogCtl_Level::ERROR, "RockDb: delete key fail!");
-    return common::ErrorCode::FAILED;
+  common::ErrorCode rc = CheckUniqueness(tx, {(const char *)packkey.ptr(), packkey.length()});
+  if (rc == common::ErrorCode::DUPP_KEY) {
+    const auto cf = rocksdb_key_->get_cf();
+    const auto rockdbStatus = tx->KVTrans().Delete(cf, {(const char *)packkey.ptr(), packkey.length()});
+    if (!rockdbStatus.ok()) {
+      TIANMU_LOG(LogCtl_Level::ERROR, "RockDb: delete key fail!");
+      return common::ErrorCode::FAILED;
+    }
   }
   return common::ErrorCode::SUCCESS;
 }

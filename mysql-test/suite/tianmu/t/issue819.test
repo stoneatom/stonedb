@@ -218,3 +218,5 @@ show create view v2;
 connection master;
 drop view v2, v1;
 drop table t1, t2;
+--source include/sync_slave_sql_with_master.inc
+stop slave;

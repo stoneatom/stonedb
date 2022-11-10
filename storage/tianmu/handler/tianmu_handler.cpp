@@ -498,7 +498,7 @@ int ha_tianmu::update_row(const uchar *old_data, uchar *new_data) {
 
   try {
     auto tab = current_txn_->GetTableByPath(table_name_);
-
+    utils::result_set<void> res;
     for (uint i = 0; i < table->s->fields; i++) {
       if (!bitmap_is_set(table->write_set, i)) {
         continue;
@@ -511,7 +511,8 @@ int ha_tianmu::update_row(const uchar *old_data, uchar *new_data) {
 
         if (field->is_null_in_record(new_data)) {
           core::Value null;
-          tab->UpdateItem(current_position_, i, null);
+          res.insert(ha_rcengine_->delete_or_update_thread_pool.add_task(&core::RCTable::UpdateItem, tab.get(),
+                                                                         current_position_, i, null, current_txn_));
           continue;
         }
       }
@@ -522,9 +523,11 @@ int ha_tianmu::update_row(const uchar *old_data, uchar *new_data) {
         std::shared_ptr<void> defer(
             nullptr, [org_bitmap2, this](...) { dbug_tmp_restore_column_map(table->read_set, org_bitmap2); });
         core::Value v = GetValueFromField(field);
-        tab->UpdateItem(current_position_, i, v);
+        res.insert(ha_rcengine_->delete_or_update_thread_pool.add_task(&core::RCTable::UpdateItem, tab.get(),
+                                                                       current_position_, i, v, current_txn_));
       }
     }
+    res.get_all_with_except();
     ha_rcengine_->IncTianmuStatUpdate();
     DBUG_RETURN(0);
   } catch (common::DatabaseException &e) {
@@ -567,10 +570,13 @@ int ha_tianmu::delete_row([[maybe_unused]] const uchar *buf) {
 
   try {
     auto tab = current_txn_->GetTableByPath(table_name_);
-
+    utils::result_set<void> res;
     for (uint i = 0; i < table->s->fields; i++) {
-      tab->DeleteItem(current_position_, i);
+      res.insert(ha_rcengine_->delete_or_update_thread_pool.add_task(&core::RCTable::DeleteItem, tab.get(),
+                                                                     current_position_, i, current_txn_));
     }
+    res.get_all_with_except();
+
     DBUG_RETURN(0);
   } catch (common::DatabaseException &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Delete exception: %s.", e.what());
@@ -1410,6 +1416,9 @@ int ha_tianmu::set_cond_iter() {
       table_ptr_ = push_down_result->GetTableP(0);
       table_new_iter_ = ((core::RCTable *)table_ptr_)->Begin(GetAttrsUseIndicator(table), *filter_ptr_);
       table_new_iter_end_ = ((core::RCTable *)table_ptr_)->End();
+      blob_buffers_.resize(0);
+      if (table_ptr_ != nullptr)
+        blob_buffers_.resize(table_ptr_->NumOfDisplaybleAttrs());
       ret = 0;
     } catch (common::Exception const &e) {
       rc_control_ << system::lock << "Error in push-down execution, push-down execution aborted: " << e.what()
@@ -1482,8 +1491,8 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
     tmp_cq->ApplyConds(tmp_table_);
     cq_.reset(tmp_cq.release());
     // reset  table_new_iter_ with push condition
-    set_cond_iter();
-    ret = 0;
+    if (!set_cond_iter())
+      ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());

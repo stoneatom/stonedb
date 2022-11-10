@@ -123,6 +123,7 @@ class Pack : public mm::TraceableObject {
   void ResetModeCompressed() {
     dpn_->null_compressed = 0;
     dpn_->data_compressed = 0;
+    dpn_->delete_compressed = 0;
   }
   void SetModeNoCompression() {
     ResetModeCompressed();
