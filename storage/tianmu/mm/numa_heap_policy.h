@@ -43,10 +43,10 @@ class NUMAHeap : public HeapPolicy {
   size_t getBlockSize(void *mh);
 
  private:
-  std::unordered_map<int, TCMHeap *> m_nodeHeaps;
-  std::unordered_map<void *, TCMHeap *> m_blockHeap;
+  std::unordered_map<int, TCMHeap *> m_node_heaps_;
+  std::unordered_map<void *, TCMHeap *> m_block_heap_;
 
-  bool m_avail;
+  bool m_avail_;
 };
 
 #else

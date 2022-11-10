@@ -15,7 +15,7 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 // Variables to show config through mysql 'show variables' command
 char tianmu_sysvar_pushdown;

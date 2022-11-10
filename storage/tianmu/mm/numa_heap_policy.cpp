@@ -18,7 +18,7 @@
 #include "numa_heap_policy.h"
 
 #include "common/assert.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 #ifdef USE_NUMA
 

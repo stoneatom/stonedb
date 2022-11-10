@@ -28,9 +28,9 @@ namespace mm {
 
 TCMHeap::TCMHeap(size_t heap_size) : HeapPolicy(heap_size) {
   if (heap_size > 0)
-    m_heap.GrowHeap((heap_size) >> kPageShift);
-  m_sizemap.Init();
-  for (size_t i = 0; i < kNumClasses; i++) m_freelist[i].Init();
+    m_heap_.GrowHeap((heap_size) >> kPageShift);
+  m_size_map_.Init();
+  for (size_t i = 0; i < kNumClasses; i++) m_freelist_[i].Init();
 }
 
 void *TCMHeap::alloc(size_t size) {
@@ -41,7 +41,7 @@ void *TCMHeap::alloc(size_t size) {
 
   if (size > kMaxSize) {
     int pages = int(size >> kPageShift);
-    tcm::Span *s = m_heap.New(pages + 1);
+    tcm::Span *s = m_heap_.New(pages + 1);
     if (s == nullptr)
       return nullptr;
     s->objects = nullptr;
@@ -50,21 +50,21 @@ void *TCMHeap::alloc(size_t size) {
     s->refcount = 1;
     s->size = uint(size);
     s->sizeclass = 0;
-    m_heap.RegisterSizeClass(s, 0);
+    m_heap_.RegisterSizeClass(s, 0);
     return reinterpret_cast<void *>(s->start << kPageShift);
   }
-  const size_t cl = size_t(m_sizemap.SizeClass((int)size));
-  const size_t alloc_size = m_sizemap.ByteSizeForClass(cl);
-  FreeList *list = &m_freelist[cl];
+  const size_t cl = size_t(m_size_map_.SizeClass((int)size));
+  const size_t alloc_size = m_size_map_.ByteSizeForClass(cl);
+  FreeList *list = &m_freelist_[cl];
   if (list->empty()) {
     // Get a new span of pages (potentially large enough for multiple
     // allocations of this size)
-    int pages = int(m_sizemap.class_to_pages(cl));
-    tcm::Span *res = m_heap.New(pages);
+    int pages = int(m_size_map_.class_to_pages(cl));
+    tcm::Span *res = m_heap_.New(pages);
     if (res == nullptr)
       return nullptr;
 
-    m_heap.RegisterSizeClass(res, cl);
+    m_heap_.RegisterSizeClass(res, cl);
 
     // from CentralFreeList::Populate
     // initialize the span of pages into a "list" of smaller objects
@@ -87,19 +87,19 @@ void *TCMHeap::alloc(size_t size) {
     return nullptr;
 
   res = list->Pop();
-  tcm::Span *s = m_heap.GetDescriptor(ADDR_TO_PAGEID(res));
+  tcm::Span *s = m_heap_.GetDescriptor(ADDR_TO_PAGEID(res));
   s->refcount++;
   return res;
 }
 
 size_t TCMHeap::getBlockSize(void *mh) {
   size_t result;
-  tcm::Span *span = m_heap.GetDescriptor(ADDR_TO_PAGEID(mh));
+  tcm::Span *span = m_heap_.GetDescriptor(ADDR_TO_PAGEID(mh));
   ASSERT(span != nullptr);
   if (span->sizeclass == 0)
     result = span->size;
   else
-    result = m_sizemap.ByteSizeForClass(span->sizeclass);
+    result = m_size_map_.ByteSizeForClass(span->sizeclass);
 
   ASSERT(result != 0, "Block size error");
   return result;
@@ -110,20 +110,20 @@ void TCMHeap::dealloc(void *mh) {
   if (mh == nullptr)
     return;
 
-  tcm::Span *span = m_heap.GetDescriptor(ADDR_TO_PAGEID(mh));
+  tcm::Span *span = m_heap_.GetDescriptor(ADDR_TO_PAGEID(mh));
   ASSERT(span != nullptr);
   span->refcount--;
   if (span->sizeclass == 0) {
-    m_heap.Delete(span);
+    m_heap_.Delete(span);
   } else {
     int sclass = span->sizeclass;
     if (span->refcount == 0) {
-      m_freelist[sclass].RemoveRange(
+      m_freelist_[sclass].RemoveRange(
           reinterpret_cast<void *>(span->start << kPageShift),
           reinterpret_cast<void *>((span->start << kPageShift) + (span->length * kPageSize) - 1));
-      m_heap.Delete(span);
+      m_heap_.Delete(span);
     } else {
-      m_freelist[sclass].Push(mh);
+      m_freelist_[sclass].Push(mh);
     }
   }
 }
@@ -133,12 +133,12 @@ void *TCMHeap::rc_realloc(void *mh, size_t size) {
 
   if (mh == nullptr)
     return res;
-  tcm::Span *span = m_heap.GetDescriptor(ADDR_TO_PAGEID(mh));
+  tcm::Span *span = m_heap_.GetDescriptor(ADDR_TO_PAGEID(mh));
   if (span->sizeclass == 0) {
     std::memcpy(res, mh, std::min(span->length * kPageSize, size));
     dealloc(mh);
   } else {
-    std::memcpy(res, mh, std::min(m_sizemap.ByteSizeForClass(span->sizeclass), size));
+    std::memcpy(res, mh, std::min(m_size_map_.ByteSizeForClass(span->sizeclass), size));
     dealloc(mh);
   }
 

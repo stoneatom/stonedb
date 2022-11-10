@@ -29,7 +29,7 @@
 
 #include "mm/mysql_heap_policy.h"
 #include "mm/numa_heap_policy.h"
-#include "mm/release2q.h"
+#include "mm/release_2q.h"
 #include "mm/release_all.h"
 #include "mm/release_fifo.h"
 #include "mm/release_lru.h"
@@ -39,37 +39,37 @@
 #include "mm/tcm_heap_policy.h"
 #include "mm/traceable_object.h"
 #include "system/fet.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #include "tcm/page_heap.h"
 
 namespace Tianmu {
 namespace mm {
 
-unsigned long long MemoryHandling::getReleaseCount1() { return _releasePolicy->getCount1(); }
+unsigned long long MemoryHandling::getReleaseCount1() { return release_policy_->getCount1(); }
 
-unsigned long long MemoryHandling::getReleaseCount2() { return _releasePolicy->getCount2(); }
+unsigned long long MemoryHandling::getReleaseCount2() { return release_policy_->getCount2(); }
 
-unsigned long long MemoryHandling::getReleaseCount3() { return _releasePolicy->getCount3(); }
+unsigned long long MemoryHandling::getReleaseCount3() { return release_policy_->getCount3(); }
 
-unsigned long long MemoryHandling::getReleaseCount4() { return _releasePolicy->getCount4(); }
+unsigned long long MemoryHandling::getReleaseCount4() { return release_policy_->getCount4(); }
 
-unsigned long long MemoryHandling::getReloaded() { return _releasePolicy->getReloaded(); }
+unsigned long long MemoryHandling::getReloaded() { return release_policy_->getReloaded(); }
 
 MemoryHandling::MemoryHandling([[maybe_unused]] size_t comp_heap_size, size_t uncomp_heap_size, std::string hugedir,
                                [[maybe_unused]] core::DataCache *d, size_t hugesize)
-    : m_alloc_blocks(0),
-      m_alloc_objs(0),
-      m_alloc_size(0),
-      m_alloc_pack(0),
-      m_alloc_temp(0),
-      m_free_blocks(0),
-      m_alloc_temp_size(0),
-      m_alloc_pack_size(0),
-      m_free_pack(0),
-      m_free_temp(0),
-      m_free_pack_size(0),
-      m_free_temp_size(0),
-      m_free_size(0) {
+    : m_alloc_blocks_(0),
+      m_alloc_objs_(0),
+      m_alloc_size_(0),
+      m_alloc_pack_(0),
+      m_alloc_temp_(0),
+      m_free_blocks_(0),
+      m_alloc_temp_size_(0),
+      m_alloc_pack_size_(0),
+      m_free_pack_(0),
+      m_free_temp_(0),
+      m_free_pack_size_(0),
+      m_free_temp_size_(0),
+      m_free_size_(0) {
   int64_t adj_mh_size, lt_size;
   std::string conf_error;
   std::string rpolicy = tianmu_sysvar_mm_releasepolicy;
@@ -80,7 +80,7 @@ MemoryHandling::MemoryHandling([[maybe_unused]] size_t comp_heap_size, size_t un
   // rccontrol << lock << "Large Temp Ratio: " << ltemp << unlock;
 
   // Do we want to enforce a hard limit
-  m_hard_limit = (hlimit > 0);
+  m_hard_limit_ = (hlimit > 0);
 
   // calculate adjusted heap sizes if appropriate
   if (ltemp > 0.0) {
@@ -96,15 +96,15 @@ MemoryHandling::MemoryHandling([[maybe_unused]] size_t comp_heap_size, size_t un
 
   // Which heaps to use
   if (hpolicy == "system") {
-    m_main_heap = new SystemHeap(uncomp_heap_size);
-    m_huge_heap = new HugeHeap(hugedir, hugesize);
-    m_system = new SystemHeap(0);
-    m_large_temp = nullptr;
+    m_main_heap_ = new SystemHeap(uncomp_heap_size);
+    m_huge_heap_ = new HugeHeap(hugedir, hugesize);
+    m_system_ = new SystemHeap(0);
+    m_large_temp_ = nullptr;
   } else if (hpolicy == "mysql") {
-    m_main_heap = new MySQLHeap(uncomp_heap_size);
-    m_huge_heap = new HugeHeap(hugedir, hugesize);
-    m_system = new SystemHeap(0);
-    m_large_temp = nullptr;
+    m_main_heap_ = new MySQLHeap(uncomp_heap_size);
+    m_huge_heap_ = new HugeHeap(hugedir, hugesize);
+    m_system_ = new SystemHeap(0);
+    m_large_temp_ = nullptr;
   } else {  // default or ""
 #ifdef USE_NUMA
     m_main_heap = new NUMAHeap(adj_mh_size);
@@ -113,50 +113,50 @@ MemoryHandling::MemoryHandling([[maybe_unused]] size_t comp_heap_size, size_t un
     else
       m_large_temp = nullptr;
 #else
-    m_main_heap = new TCMHeap(adj_mh_size);
+    m_main_heap_ = new TCMHeap(adj_mh_size);
     if (lt_size != 0)
-      m_large_temp = new TCMHeap(lt_size);
+      m_large_temp_ = new TCMHeap(lt_size);
     else
-      m_large_temp = nullptr;
+      m_large_temp_ = nullptr;
 #endif
-    m_huge_heap = new HugeHeap(hugedir, hugesize);
-    m_system = new SystemHeap(0);
+    m_huge_heap_ = new HugeHeap(hugedir, hugesize);
+    m_system_ = new SystemHeap(0);
   }
 
   tcm::_span_allocator.Init();
-  main_heap_MB = int(adj_mh_size >> 20);
+  main_heap_size_ = int(adj_mh_size >> 20);
   // set this large enough to get a low number of collisions
   // m_objs.resize(main_heap_MB);
-  m_objs.clear();
+  m_objs_.clear();
 
   // rccontrol << lock << "Release Policy: " << rpolicy << unlock;
 
   if (rpolicy == "fifo")
-    _releasePolicy = new ReleaseFIFO();
+    release_policy_ = new ReleaseFIFO();
   else if (rpolicy == "all")
-    _releasePolicy = new ReleaseALL();
+    release_policy_ = new ReleaseALL();
   else if (rpolicy == "lru")
-    _releasePolicy = new ReleaseLRU();
+    release_policy_ = new ReleaseLRU();
   else if (rpolicy == "2q")
-    _releasePolicy = new Release2Q(1024, main_heap_MB * 4, 128);
+    release_policy_ = new Release2Q(1024, main_heap_size_ * 4, 128);
   else  // default
-    _releasePolicy = new Release2Q(1024, main_heap_MB * 4, 128);
+    release_policy_ = new Release2Q(1024, main_heap_size_ * 4, 128);
   //_releaseStrat = new ReleaseALL( this );
   //_releaseStrat = new ReleaseNULL( this );
 }
 
 MemoryHandling::~MemoryHandling() {
-  delete m_main_heap;
-  delete m_huge_heap;
-  delete m_system;
-  delete m_large_temp;
-  delete _releasePolicy;
+  delete m_main_heap_;
+  delete m_huge_heap_;
+  delete m_system_;
+  delete m_large_temp_;
+  delete release_policy_;
 }
 
 void MemoryHandling::DumpObjs(std::ostream &out) {
-  std::scoped_lock guard(m_mutex);
+  std::scoped_lock guard(m_mutex_);
   out << "  MEMORY DUMP: {" << std::endl;
-  for (auto &[obj, heap_map] : m_objs) {
+  for (auto &[obj, heap_map] : m_objs_) {
     out << "    " << obj->GetCoordinate().ToString() << ", locks: " << obj->NumOfLocks() << ", size allocated "
         << obj->SizeAllocated() << std::endl;
     (void)heap_map;
@@ -166,7 +166,7 @@ void MemoryHandling::DumpObjs(std::ostream &out) {
 
 void *MemoryHandling::alloc(size_t size, BLOCK_TYPE type, TraceableObject *owner, bool nothrow) {
   MEASURE_FET("MemoryHandling::alloc");
-  std::scoped_lock guard(m_mutex);
+  std::scoped_lock guard(m_mutex_);
   HeapPolicy *heap;
 
   ASSERT(size < (size_t)(1 << 31), "Oversized alloc request!");
@@ -178,38 +178,38 @@ void *MemoryHandling::alloc(size_t size, BLOCK_TYPE type, TraceableObject *owner
       // 2. it is hardcoded off
       // if (m_huge_heap->getHeapStatus() == HEAP_STATUS::HEAP_SUCCESS)
       //    heap = m_huge_heap;
-      if ((m_large_temp != nullptr) && (size >= (tianmu_sysvar_mm_large_threshold * 1_MB)))
+      if ((m_large_temp_ != nullptr) && (size >= (tianmu_sysvar_mm_large_threshold * 1_MB)))
         switch (owner->TraceableType()) {
           case TO_TYPE::TO_SORTER:
           case TO_TYPE::TO_CACHEDBUFFER:
           case TO_TYPE::TO_INDEXTABLE:
           case TO_TYPE::TO_TEMPORARY:
-            heap = m_large_temp;
+            heap = m_large_temp_;
             break;
           default:
-            heap = m_main_heap;
+            heap = m_main_heap_;
             break;
         }
       else
-        heap = m_main_heap;
+        heap = m_main_heap_;
       break;
     default:
-      heap = m_main_heap;
+      heap = m_main_heap_;
   };
 
   void *res = heap->alloc(size);
   if (res == nullptr) {
-    heap = m_main_heap;
+    heap = m_main_heap_;
     ReleaseMemory(size, nullptr);
     res = heap->alloc(size);
 
     if (res == nullptr) {
-      if (m_hard_limit) {
+      if (m_hard_limit_) {
         if (nothrow)
           return res;
         throw common::OutOfMemoryException(size);
       }
-      res = m_system->alloc(size);
+      res = m_system_->alloc(size);
       if (res == nullptr) {
         if (nothrow)
           return res;
@@ -217,35 +217,35 @@ void *MemoryHandling::alloc(size_t size, BLOCK_TYPE type, TraceableObject *owner
             << "Failed to alloc block of size " << static_cast<int>(size) << system::unlock;
         throw common::OutOfMemoryException(size);
       } else {
-        heap = m_system;
+        heap = m_system_;
       }
     }
   }
-  auto it = m_objs.find(owner);
-  if (it != m_objs.end()) {
+  auto it = m_objs_.find(owner);
+  if (it != m_objs_.end()) {
     it->second->insert(std::make_pair((void *)res, heap));
   } else {
-    m_alloc_objs++;
+    m_alloc_objs_++;
     // TBD: pool these objects
     auto tianmu = new PtrHeapMap();
     tianmu->insert(std::make_pair((void *)res, heap));
-    m_objs.insert(std::make_pair(owner, tianmu));
+    m_objs_.insert(std::make_pair(owner, tianmu));
   }
   size_t bsize = heap->getBlockSize(res);
-  m_alloc_blocks++;
-  m_alloc_size += bsize;
+  m_alloc_blocks_++;
+  m_alloc_size_ += bsize;
   if (owner != nullptr)
     if (owner->TraceableType() == TO_TYPE::TO_PACK) {
-      m_alloc_pack_size += bsize;
-      m_alloc_pack++;
+      m_alloc_pack_size_ += bsize;
+      m_alloc_pack_++;
     } else {
       // I want this for type = BLOCK_TYPE::BLOCK_TEMPORARY but will take this for now
-      m_alloc_temp_size += bsize;
-      m_alloc_temp++;
+      m_alloc_temp_size_ += bsize;
+      m_alloc_temp_++;
     }
   else {
-    m_alloc_temp_size += bsize;
-    m_alloc_temp++;
+    m_alloc_temp_size_ += bsize;
+    m_alloc_temp_++;
   }
 #ifdef MEM_INIT
   std::memset(res, MEM_INIT, bsize);
@@ -256,12 +256,12 @@ void *MemoryHandling::alloc(size_t size, BLOCK_TYPE type, TraceableObject *owner
 size_t MemoryHandling::rc_msize(void *mh, TraceableObject *owner) {
   MEASURE_FET("MemoryHandling::rc_msize");
 
-  std::scoped_lock guard(m_mutex);
+  std::scoped_lock guard(m_mutex_);
   // if( owner == nullptr || mh == 0 )
   if (mh == 0)
     return 0;
-  auto it = m_objs.find(owner);
-  ASSERT(it != m_objs.end(), "MSize Owner not found");
+  auto it = m_objs_.find(owner);
+  ASSERT(it != m_objs_.end(), "MSize Owner not found");
 
   auto h = (it->second)->find(mh);
   ASSERT(h != it->second->end(), "Did not find msize block in map");
@@ -271,13 +271,13 @@ size_t MemoryHandling::rc_msize(void *mh, TraceableObject *owner) {
 void MemoryHandling::dealloc(void *mh, TraceableObject *owner) {
   MEASURE_FET("MemoryHandling::dealloc");
 
-  std::scoped_lock guard(m_mutex);
+  std::scoped_lock guard(m_mutex_);
 
   if (mh == nullptr)
     return;
 
-  auto it = m_objs.find(owner);
-  ASSERT(it != m_objs.end(), "DeAlloc owner not found");
+  auto it = m_objs_.find(owner);
+  ASSERT(it != m_objs_.end(), "DeAlloc owner not found");
 
   auto h = it->second->find(mh);
   ASSERT(h != it->second->end(), "Dealloc heap not found.");
@@ -285,27 +285,27 @@ void MemoryHandling::dealloc(void *mh, TraceableObject *owner) {
 #ifdef MEM_CLEAR
   std::memset(mh, MEM_CLEAR, bsize);
 #endif
-  m_free_blocks++;
-  m_free_size += bsize;
+  m_free_blocks_++;
+  m_free_size_ += bsize;
   if (owner != nullptr)
     if (owner->TraceableType() == TO_TYPE::TO_PACK) {
-      m_free_pack_size += bsize;
-      m_free_pack++;
+      m_free_pack_size_ += bsize;
+      m_free_pack_++;
     } else {
-      m_free_temp_size += bsize;
-      m_free_temp++;
+      m_free_temp_size_ += bsize;
+      m_free_temp_++;
     }
   else {
-    m_free_temp_size += bsize;
-    m_free_temp++;
+    m_free_temp_size_ += bsize;
+    m_free_temp_++;
   }
 
   h->second->dealloc(mh);
   it->second->erase(h);
   if (it->second->empty()) {
     delete it->second;
-    m_objs.erase(it);
-    m_alloc_objs--;
+    m_objs_.erase(it);
+    m_alloc_objs_--;
   }
 }
 
@@ -313,31 +313,31 @@ bool MemoryHandling::ReleaseMemory(size_t size, [[maybe_unused]] TraceableObject
   MEASURE_FET("MemoryHandling::ReleaseMemory");
 
   bool result = false;
-  std::scoped_lock guard(m_release_mutex);
+  std::scoped_lock guard(m_release_mutex_);
 
   // release 10 packs for every MB requested + 20
   unsigned objs = uint(10 * (size >> 20) + 20);
 
-  _releasePolicy->Release(objs);
-  m_release_count++;
-  m_release_total++;
+  release_policy_->Release(objs);
+  m_release_count_++;
+  m_release_total_++;
   // some kind of experiment to reduce the cumulative effects of fragmentation
   // - release all packs that have an allocation outside of main heap on
   // non-small size alloc
   // - dont do this everytime because walking through the entire heap is slow
   if (size > static_cast<size_t>(tianmu_sysvar_cachesizethreshold * 1_MB) ||
-      m_release_count > tianmu_sysvar_cachereleasethreshold) {
-    m_release_count = 0;
+      m_release_count_ > tianmu_sysvar_cachereleasethreshold) {
+    m_release_count_ = 0;
     std::vector<TraceableObject *> dps;
 
-    for (auto &it : m_objs) {
+    for (auto &it : m_objs_) {
       if (it.first == nullptr)
         continue;
       if (it.first->IsLocked() || it.first->TraceableType() != TO_TYPE::TO_PACK)
         continue;
 
       for (auto &mit : *it.second) {
-        if (mit.second == m_system) {
+        if (mit.second == m_system_) {
           dps.push_back(it.first);
           break;
         }
@@ -349,7 +349,7 @@ bool MemoryHandling::ReleaseMemory(size_t size, [[maybe_unused]] TraceableObject
       it->Release();
     }
     // RELEASE  unlock A1in ,AM queue
-    _releasePolicy->ReleaseFull();
+    release_policy_->ReleaseFull();
   }
 
 #if 0
@@ -378,7 +378,7 @@ bool MemoryHandling::ReleaseMemory(size_t size, [[maybe_unused]] TraceableObject
 void *MemoryHandling::rc_realloc(void *mh, size_t size, TraceableObject *owner, BLOCK_TYPE type) {
   MEASURE_FET("MemoryHandling::rc_realloc");
 
-  std::scoped_lock guard(m_mutex);
+  std::scoped_lock guard(m_mutex_);
   void *res = alloc(size, type, owner);
 
   if (mh == nullptr)
@@ -393,7 +393,7 @@ void *MemoryHandling::rc_realloc(void *mh, size_t size, TraceableObject *owner, 
 void MemoryHandling::ReportLeaks() {
   int blocks = 0;
   size_t size = 0;
-  for (auto it : m_objs) {
+  for (auto it : m_objs_) {
     blocks++;
     for (auto it2 : *(it.second)) {
       size += it2.second->getBlockSize(it2.first);
@@ -405,7 +405,7 @@ void MemoryHandling::ReportLeaks() {
 
 void MemoryHandling::EnsureNoLeakedTraceableObject() {
   bool error_found = false;
-  for (auto it : m_objs) {
+  for (auto it : m_objs_) {
     if (it.first->IsLocked() && (it.first->NumOfLocks() > 1 || it.first->TraceableType() == TO_TYPE::TO_PACK)) {
       error_found = true;
       TIANMU_LOG(LogCtl_Level::ERROR, "Object @[%ld] locked too many times. Object type: %d, no. locks: %d",
@@ -476,15 +476,15 @@ void MemoryHandling::HeapHistogram(std::ostream &out) {
 
   std::unordered_map<HeapPolicy *, SimpleHist *> used_blocks;
 
-  used_blocks.insert(std::make_pair(m_main_heap, &main_heap));
+  used_blocks.insert(std::make_pair(m_main_heap_, &main_heap));
   // used_blocks.insert( std::make_pair(m_huge_heap,&huge_heap) );
-  used_blocks.insert(std::make_pair(m_system, &system_heap));
-  used_blocks.insert(std::make_pair(m_large_temp, &large_temp));
+  used_blocks.insert(std::make_pair(m_system_, &system_heap));
+  used_blocks.insert(std::make_pair(m_large_temp_, &large_temp));
 
   {
-    std::scoped_lock guard(m_mutex);
+    std::scoped_lock guard(m_mutex_);
 
-    for (auto it : m_objs) {
+    for (auto it : m_objs_) {
       SimpleHist *block_type;
 
       if (it.first->TraceableType() == TO_TYPE::TO_PACK && it.first->IsLocked())
@@ -552,22 +552,22 @@ void MemoryHandling::HeapHistogram(std::ostream &out) {
 }
 
 void MemoryHandling::AssertNoLeak(TraceableObject *o) {
-  std::scoped_lock guard(m_mutex);
-  ASSERT(m_objs.find(o) == m_objs.end(), "MemoryLeakAssertion");
+  std::scoped_lock guard(m_mutex_);
+  ASSERT(m_objs_.find(o) == m_objs_.end(), "MemoryLeakAssertion");
 }
 
 void MemoryHandling::TrackAccess(TraceableObject *o) {
   MEASURE_FET("MemoryHandling::TrackAccess");
-  std::scoped_lock guard(m_release_mutex);
-  _releasePolicy->Access(o);
+  std::scoped_lock guard(m_release_mutex_);
+  release_policy_->Access(o);
 }
 
 void MemoryHandling::StopAccessTracking(TraceableObject *o) {
   MEASURE_FET("MemoryHandling::TrackAccess");
-  std::scoped_lock guard(m_release_mutex);
+  std::scoped_lock guard(m_release_mutex_);
 
   if (o->IsTracked())
-    _releasePolicy->Remove(o);
+    release_policy_->Remove(o);
 }
 
 }  // namespace mm

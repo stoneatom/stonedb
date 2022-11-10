@@ -52,7 +52,7 @@
 #include <cstdint>
 #include <list>
 
-#include "mm/tcm/tccommon.h"
+#include "mm/tcm/tc_common.h"
 
 namespace Tianmu {
 namespace mm {
@@ -126,7 +126,7 @@ class TCMalloc_PageMap3 {
   static const int LEAF_BITS = BITS - 2 * INTERIOR_BITS;
   static const int LEAF_LENGTH = 1 << LEAF_BITS;
 
-  std::list<void *> system_alloc_list;
+  std::list<void *> system_alloc_list_;
 
   // Interior node
   struct Node {
@@ -146,7 +146,7 @@ class TCMalloc_PageMap3 {
     if (result != nullptr) {
       memset(result, 0, sizeof(*result));
     }
-    system_alloc_list.push_back(result);
+    system_alloc_list_.push_back(result);
     return result;
   }
 
@@ -160,7 +160,7 @@ class TCMalloc_PageMap3 {
   }
 
   ~TCMalloc_PageMap3() {
-    for (auto i : system_alloc_list) free(i);
+    for (auto i : system_alloc_list_) free(i);
   }
 
   void *get(Number k) const {
@@ -203,7 +203,7 @@ class TCMalloc_PageMap3 {
         Leaf *leaf = reinterpret_cast<Leaf *>((*allocator_)(sizeof(Leaf)));
         if (leaf == nullptr)
           return false;
-        system_alloc_list.push_back(leaf);
+        system_alloc_list_.push_back(leaf);
         memset(leaf, 0, sizeof(*leaf));
         root_->ptrs[i1]->ptrs[i2] = reinterpret_cast<Node *>(leaf);
       }

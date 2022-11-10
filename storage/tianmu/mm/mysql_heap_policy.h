@@ -41,7 +41,7 @@ class MySQLHeap : public HeapPolicy {
   size_t getBlockSize(void *mh) override;
 
  private:
-  std::unordered_map<void *, size_t> m_blockSizes;
+  std::unordered_map<void *, size_t> m_block_sizes_;
 };
 
 }  // namespace mm

@@ -22,7 +22,7 @@
 #include <sys/stat.h>
 #include <cstring>
 
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace mm {
@@ -62,7 +62,7 @@ HugeHeap::HugeHeap(std::string hugedir, size_t size) : TCMHeap(0) {
     rc_control_ << system::lock << "Huge Heap size (MB) " << (int)(size) << system::unlock;
     // size_ = size;
     // manage the region as a normal 4k pagesize heap
-    m_heap.RegisterArea(heap_frame_, size_ >> kPageShift);
+    m_heap_.RegisterArea(heap_frame_, size_ >> kPageShift);
     size_ = size;
     heap_status_ = HEAP_STATUS::HEAP_SUCCESS;
   }

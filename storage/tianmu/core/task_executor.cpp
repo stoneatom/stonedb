@@ -23,7 +23,7 @@
 
 #ifndef DISABLE_USED_FOR_TIANMU
 #include "core/engine.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #endif
 
 namespace Tianmu {

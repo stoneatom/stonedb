@@ -23,17 +23,17 @@
 namespace Tianmu {
 namespace mm {
 
-void ReleaseALL::Access(TraceableObject *o) { trackable.touch(o); }
+void ReleaseALL::Access(TraceableObject *o) { trackable_.touch(o); }
 
-void ReleaseALL::Remove(TraceableObject *o) { trackable.remove(o); }
+void ReleaseALL::Remove(TraceableObject *o) { trackable_.remove(o); }
 
 void ReleaseALL::Release([[maybe_unused]] unsigned sz) {
-  uint size = trackable.size();
+  uint size = trackable_.size();
   TraceableObject *o;
   for (uint i = 0; i < size; i++) {
-    o = trackable.removeTail();
+    o = trackable_.removeTail();
     if (o->IsLocked())
-      trackable.touch(o);
+      trackable_.touch(o);
     else
       o->Release();
   }

@@ -27,7 +27,7 @@ namespace mm {
 class TraceableObject;
 
 class ReleaseLRU : public ReleaseStrategy {
-  LRUTracker tracker;
+  LRUTracker tracker_;
 
  public:
   ReleaseLRU() : ReleaseStrategy() {}
@@ -37,7 +37,7 @@ class ReleaseLRU : public ReleaseStrategy {
   void Release(unsigned) override;
   void ReleaseFull() override;
 
-  unsigned long long getCount1() override { return tracker.size(); }
+  unsigned long long getCount1() override { return tracker_.size(); }
   unsigned long long getCount2() override { return 0; }
   unsigned long long getCount3() override { return 0; }
   unsigned long long getCount4() override { return 0; }

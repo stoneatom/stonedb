@@ -25,7 +25,7 @@ namespace mm {
 
 class ReleaseTracker {
  protected:
-  unsigned _size;
+  unsigned size_;
 
   // Access the tracking structures inside Releasable objects from friend
   // relationship
@@ -37,19 +37,19 @@ class ReleaseTracker {
   inline void SetRelTracker(TraceableObject *o, ReleaseTracker *v) { o->tracker = v; }
 
  public:
-  ReleaseTracker() : _size(0) {}
+  ReleaseTracker() : size_(0) {}
   virtual ~ReleaseTracker() {}
   virtual void insert(TraceableObject *) = 0;
   virtual void remove(TraceableObject *) = 0;
   virtual void touch(TraceableObject *) = 0;
-  unsigned size() { return _size; }
+  unsigned size() { return size_; }
 };
 
 class FIFOTracker : public ReleaseTracker {
-  TraceableObject *head, *tail;
+  TraceableObject *head_, *tail_;
 
  public:
-  FIFOTracker() : ReleaseTracker(), head(0), tail(0) {}
+  FIFOTracker() : ReleaseTracker(), head_(0), tail_(0) {}
   void insert(TraceableObject *) override;
   void remove(TraceableObject *) override;
   void touch(TraceableObject *) override;

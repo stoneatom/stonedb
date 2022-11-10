@@ -29,7 +29,7 @@
 #include "index/rdb_utils.h"
 #include "rocksdb/compaction_filter.h"
 #include "rocksdb/utilities/transaction_db.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace core {

@@ -20,8 +20,8 @@
 #include <fstream>
 #include <map>
 
-#include "system/rc_system.h"
 #include "system/tianmu_file.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace core {

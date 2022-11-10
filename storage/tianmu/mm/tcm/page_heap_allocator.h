@@ -38,7 +38,7 @@
 #include <cstdlib>
 #include <list>
 
-#include "mm/tcm/tccommon.h"
+#include "mm/tcm/tc_common.h"
 
 namespace Tianmu {
 namespace mm {
@@ -49,7 +49,7 @@ template <class T>
 class PageHeapAllocator {
  public:
   ~PageHeapAllocator() {
-    for (auto i : system_alloc_list) free(i);
+    for (auto i : system_alloc_list_) free(i);
   }
   // We use an explicit Init function because these variables are statically
   // allocated and their constructors might not have run by the time some
@@ -78,7 +78,7 @@ class PageHeapAllocator {
         if (free_area_ == nullptr) {
           return nullptr;
         }
-        system_alloc_list.push_back(free_area_);
+        system_alloc_list_.push_back(free_area_);
         free_avail_ = kAllocIncrement;
       }
       result = free_area_;
@@ -107,7 +107,7 @@ class PageHeapAllocator {
   // Free list of already carved objects
   void *free_list_;
 
-  std::list<void *> system_alloc_list;
+  std::list<void *> system_alloc_list_;
 };
 
 }  // namespace tcm

@@ -25,7 +25,7 @@ namespace Tianmu {
 namespace mm {
 
 class ReleaseFIFO : public ReleaseStrategy {
-  FIFOTracker tracker;
+  FIFOTracker tracker_;
 
  public:
   ReleaseFIFO() : ReleaseStrategy() {}
@@ -35,7 +35,7 @@ class ReleaseFIFO : public ReleaseStrategy {
   void Release(unsigned) override;
   void ReleaseFull() override;
 
-  unsigned long long getCount1() override { return tracker.size(); }
+  unsigned long long getCount1() override { return tracker_.size(); }
   unsigned long long getCount2() override { return 0; }
   unsigned long long getCount3() override { return 0; }
   unsigned long long getCount4() override { return 0; }

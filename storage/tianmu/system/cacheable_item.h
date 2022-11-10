@@ -53,32 +53,32 @@ class CacheableItem {
 
   void CI_SetDefaultSize(int size)  // If the value is set (here, or in constructor),
   {
-    default_block_size = size;
+    default_block_size_ = size;
   }  // then the size parameter in CI_Put may be omitted.
 
  private:
   void SetFilename(int i);  // set the current filename to the i-th file
-  char *filename;           // the current filename with the full path
+  char *filename_;          // the current filename with the full path
   // the filename template is as follows:
   // "..path../XXXXXXnnnnnnAAAAAAAABBBBBBBB.tianmu_tmp" where X..X is an id. of
   // object manager and object type (filled with "_") n..n is the number of file
   // (0..999999), A..A is the random session number (hex), B..B is the
   // semi-random object number (its memory address while creating, hex)
-  size_t filename_n_position;  // the position of the first character of
-                               // "nnnnnn" section of the file name
+  size_t filename_n_position_;  // the position of the first character of
+                                // "nnnnnn" section of the file name
 
-  int max_file_id;               // maximal used file number, start with 0
-  int max_file_pos;              // the end of the last file used (here we will append)
-  int no_block;                  // the number of registered (saved) data blocks
-  std::vector<int> file_number;  // a number of file where the i-th data block is stored
-  std::vector<int> file_start;   // an address in the file where the i-th data block starts
-  std::vector<int> file_size;    // a size of the i-th data block
+  int max_file_id_;               // maximal used file number, start with 0
+  int max_file_pos_;              // the end of the last file used (here we will append)
+  int no_block_;                  // the number of registered (saved) data blocks
+  std::vector<int> file_number_;  // a number of file where the i-th data block is stored
+  std::vector<int> file_start_;   // an address in the file where the i-th data block starts
+  std::vector<int> file_size_;    // a size of the i-th data block
 
-  int default_block_size;
-  TianmuFile cur_file_handle;
-  int cur_file_number;  // the number of currently opened file
-  void *cur_map_addr;
-  static const size_t cur_map_size;
+  int default_block_size_;
+  TianmuFile cur_file_handle_;
+  int cur_file_number_;  // the number of currently opened file
+  void *cur_map_addr_;
+  static const size_t cur_map_size_;
 };
 }  // namespace system
 }  // namespace Tianmu

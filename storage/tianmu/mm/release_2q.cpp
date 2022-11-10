@@ -14,7 +14,7 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
-#include "release2q.h"
+#include "release_2q.h"
 
 #include <algorithm>
 
@@ -27,22 +27,22 @@
 namespace Tianmu {
 namespace mm {
 
-void Release2Q::Access(TraceableObject *o) {
+void Release2Q::Access(TraceableObject *obj) {
   // ASSERT(o->TraceableType() == TO_TYPE::TO_PACK, "Access wrong type");
-  if (!o->IsTracked()) {
-    auto it = A1outLookup.find(o->GetCoordinate());
+  if (!obj->IsTracked()) {
+    auto it = A1outLookup.find(obj->GetCoordinate());
     if (it != A1outLookup.end()) {
       m_reloaded++;
-      TraceableObject *d = it->second;
-      Am.insert(o);
-      A1out.remove(d);
+      TraceableObject *old = it->second;
+      Am.insert(obj);
+      A1out.remove(old);
       A1outLookup.erase(it);
-      delete d;
+      delete old;
     } else {
-      A1in.insert(o);
+      A1in.insert(obj);
     }
   } else {
-    Touch(o);
+    Touch(obj);
   }
 }
 

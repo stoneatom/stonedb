@@ -35,7 +35,7 @@
 #include <list>
 #include "mm/tcm/pagemap.h"
 #include "mm/tcm/span.h"
-#include "mm/tcm/tccommon.h"
+#include "mm/tcm/tc_common.h"
 
 namespace Tianmu {
 namespace mm {
@@ -69,7 +69,7 @@ class PageHeap final {
  public:
   PageHeap();
   ~PageHeap() {
-    for (auto i : system_alloc_list) free(i);
+    for (auto i : system_alloc_list_) free(i);
   }
 
   // Allocate a run of "n" pages.  Returns zero if out of memory.
@@ -167,7 +167,7 @@ class PageHeap final {
 
   // Statistics on system, free, and unmapped bytes
   Stats stats_;
-  std::list<void *> system_alloc_list;
+  std::list<void *> system_alloc_list_;
 
   // REQUIRES: span->length >= n
   // REQUIRES: span->location != enumSpanType::IN_USE

@@ -23,16 +23,16 @@
 namespace Tianmu {
 namespace mm {
 
-void ReleaseLRU::Access(TraceableObject *o) { tracker.touch(o); }
+void ReleaseLRU::Access(TraceableObject *o) { tracker_.touch(o); }
 
-void ReleaseLRU::Remove(TraceableObject *o) { tracker.remove(o); }
+void ReleaseLRU::Remove(TraceableObject *o) { tracker_.remove(o); }
 
 void ReleaseLRU::Release(unsigned num) {
   TraceableObject *o = nullptr;
   for (uint i = 0; i < num; i++) {
-    o = tracker.removeMax();
+    o = tracker_.removeMax();
     if (o->IsLocked()) {
-      tracker.touch(o);
+      tracker_.touch(o);
     } else {
       o->Release();
     }
@@ -41,11 +41,11 @@ void ReleaseLRU::Release(unsigned num) {
 
 void ReleaseLRU::ReleaseFull() {
   TraceableObject *o = nullptr;
-  int num = tracker.size();
+  int num = tracker_.size();
   for (int i = 0; i < num; i++) {
-    o = tracker.removeMax();
+    o = tracker_.removeMax();
     if (o->IsLocked()) {
-      tracker.touch(o);
+      tracker_.touch(o);
     } else {
       o->Release();
     }

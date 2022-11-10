@@ -29,62 +29,62 @@ void FIFOTracker::insert(TraceableObject *o) {
   ASSERT(GetRelNext(o) == nullptr, "Object was not removed or initialized properly");
   SetRelTracker(o, this);
   SetRelPrev(o, nullptr);
-  SetRelNext(o, head);
-  if (head != nullptr)
-    SetRelPrev(head, o);
-  head = o;
-  if (tail == nullptr)
-    tail = head;
-  _size++;
+  SetRelNext(o, head_);
+  if (head_ != nullptr)
+    SetRelPrev(head_, o);
+  head_ = o;
+  if (tail_ == nullptr)
+    tail_ = head_;
+  size_++;
 }
 
 TraceableObject *FIFOTracker::removeTail() {
-  TraceableObject *res = tail;
+  TraceableObject *res = tail_;
   if (res == nullptr)
     return nullptr;
-  tail = GetRelPrev(tail);
-  if (tail != nullptr)
-    SetRelNext(tail, nullptr);
+  tail_ = GetRelPrev(tail_);
+  if (tail_ != nullptr)
+    SetRelNext(tail_, nullptr);
   else {
-    ASSERT(_size == 1, "FIFOTracker size error");
-    head = nullptr;
+    ASSERT(size_ == 1, "FIFOTracker size error");
+    head_ = nullptr;
   }
   SetRelTracker(res, nullptr);
   SetRelPrev(res, nullptr);
   SetRelNext(res, nullptr);
-  _size--;
+  size_--;
   return res;
 }
 
 TraceableObject *FIFOTracker::removeHead() {
-  TraceableObject *res = head;
+  TraceableObject *res = head_;
   if (res == nullptr)
     return nullptr;
-  head = GetRelNext(head);
-  if (head != nullptr)
-    SetRelPrev(head, nullptr);
+  head_ = GetRelNext(head_);
+  if (head_ != nullptr)
+    SetRelPrev(head_, nullptr);
   else {
-    ASSERT(_size == 1, "FIFOTracker size error");
-    tail = nullptr;
+    ASSERT(size_ == 1, "FIFOTracker size error");
+    tail_ = nullptr;
   }
   SetRelTracker(res, nullptr);
   SetRelPrev(res, nullptr);
   SetRelNext(res, nullptr);
-  _size--;
+  size_--;
   return res;
 }
 
 void FIFOTracker::remove(TraceableObject *o) {
   ASSERT(GetRelTracker(o) == this, "Removing object from wrong tracker");
   SetRelTracker(o, nullptr);
-  if ((o == head) && (o == tail)) {
-    head = tail = nullptr;
-  } else if (o == head) {
-    head = GetRelNext(o);
-    SetRelPrev(head, nullptr);
-  } else if (o == tail) {
-    tail = GetRelPrev(o);
-    SetRelNext(tail, nullptr);
+  if ((o == head_) && (o == tail_)) {
+    head_ = tail_ = nullptr;
+  } else if (o == head_) {
+    head_ = GetRelNext(o);
+    SetRelPrev(head_, nullptr);
+  } else if (o == tail_) {
+    tail_ = GetRelPrev(o);
+    SetRelNext(tail_, nullptr);
   } else {
     TraceableObject *p = GetRelPrev(o), *n = GetRelNext(o);
     SetRelNext(p, n);
@@ -92,7 +92,7 @@ void FIFOTracker::remove(TraceableObject *o) {
   }
   SetRelNext(o, nullptr);
   SetRelPrev(o, nullptr);
-  _size--;
+  size_--;
 }
 
 void FIFOTracker::touch(TraceableObject *) {

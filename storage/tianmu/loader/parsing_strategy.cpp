@@ -24,7 +24,7 @@
 #include "core/transaction.h"
 #include "loader/value_cache.h"
 #include "system/io_parameters.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #include "types/value_parser4txt.h"
 
 namespace Tianmu {

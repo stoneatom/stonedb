@@ -88,10 +88,10 @@ class TraceableObject {
   // Lock the object during destruction to prevent garbage collection
   void DestructionLock();
 
-  bool IsLocked() const { return m_lock_count > 0; }
-  bool LastLock() const { return m_lock_count == 1; }
+  bool IsLocked() const { return m_lock_count_ > 0; }
+  bool LastLock() const { return m_lock_count_ == 1; }
   // Locking is used by RCAttr etc. for packs manipulation purposes
-  short NumOfLocks() const { return m_lock_count; }
+  short NumOfLocks() const { return m_lock_count_; }
   void SetNumOfLocks(int n);
 
   void SetOwner(core::DataCache *new_owner) { owner = new_owner; }
@@ -100,8 +100,8 @@ class TraceableObject {
   static size_t GetUnFreeableSize() { return globalUnFreeable; }
   // DataPacks can be prefetched but not used yet
   // this is a hint to memory release algorithm
-  bool IsPrefetchUnused() { return m_preUnused; }
-  void clearPrefetchUnused() { m_preUnused = false; }
+  bool IsPrefetchUnused() { return m_pre_unused; }
+  void clearPrefetchUnused() { m_pre_unused = false; }
   static MemoryHandling *Instance() {
     if (!m_MemHandling) {
       // m_MemHandling = new MemoryHandling<void*, BasicHeap<void*> >(COMP_SIZE,
@@ -118,7 +118,7 @@ class TraceableObject {
   virtual void Release() { TIANMU_ERROR("Release functionality not implemented for this object"); }
   core::TOCoordinate &GetCoordinate();
 
-  size_t SizeAllocated() const { return m_sizeAllocated; }
+  size_t SizeAllocated() const { return m_size_allocated; }
 
  protected:
   // For release tracking purposes, used by ReleaseTracker and ReleaseStrategy
@@ -134,7 +134,7 @@ class TraceableObject {
 
   void deinitialize(bool detect_leaks);
 
-  static std::recursive_mutex &GetLockingMutex() { return Instance()->m_release_mutex; }
+  static std::recursive_mutex &GetLockingMutex() { return Instance()->m_release_mutex_; }
   static MemoryHandling *m_MemHandling;
 
   static MemoryHandling *Instance(size_t comp_size, size_t uncomp_size, std::string hugedir = "",
@@ -144,12 +144,12 @@ class TraceableObject {
     return m_MemHandling;
   }
 
-  bool m_preUnused;
+  bool m_pre_unused;
 
   static std::atomic_size_t globalFreeable;
   static std::atomic_size_t globalUnFreeable;
 
-  size_t m_sizeAllocated;
+  size_t m_size_allocated;
 
   core::DataCache *owner = nullptr;
 
@@ -157,7 +157,7 @@ class TraceableObject {
   core::TOCoordinate m_coord;
 
  private:
-  short m_lock_count = 1;
+  short m_lock_count_ = 1;
   static int64_t MemScale2BufSizeLarge(int ms);
   static int64_t MemScale2BufSizeSmall(int ms);
 };

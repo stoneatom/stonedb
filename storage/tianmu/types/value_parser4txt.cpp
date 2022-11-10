@@ -20,7 +20,7 @@
 
 #include "core/transaction.h"
 #include "my_time.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace types {

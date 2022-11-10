@@ -27,17 +27,19 @@ int TianmuFile::Open(std::string const &file, int flags, mode_t mode) {
   name_ = file;
 
   fd_ = open(file.c_str(), flags, mode);
-  if (fd_ == -1)
+  if (fd_ == -1) {
     throw common::TianmuError(common::ErrorCode::FAILED,
                               "ErrorCode: " + std::to_string(errno) + " - " + strerror(errno));
+  }
   return fd_;
 }
 
 size_t TianmuFile::Read(void *buf, size_t count) {
   DEBUG_ASSERT(fd_ != -1);
   auto read_bytes = read(fd_, buf, count);
-  if (read_bytes == -1)
+  if (read_bytes == -1) {
     ThrowError(errno);
+  }
   return read_bytes;
 }
 
@@ -52,23 +54,23 @@ int TianmuFile::Flush() {
 }
 
 int TianmuFile::OpenCreate(std::string const &file) {
-  return Open(file, O_CREAT | O_RDWR | O_LARGEFILE | O_BINARY, tianmu_umask);
+  return Open(file, O_CREAT | O_RDWR | O_LARGEFILE | O_BINARY, TIANMU_UMASK);
 }
 
 int TianmuFile::OpenCreateNotExists(std::string const &file) {
-  return Open(file, O_CREAT | O_EXCL | O_RDWR | O_LARGEFILE | O_BINARY, tianmu_umask);
+  return Open(file, O_CREAT | O_EXCL | O_RDWR | O_LARGEFILE | O_BINARY, TIANMU_UMASK);
 }
 
 int TianmuFile::OpenCreateEmpty(std::string const &file) {
-  return Open(file, O_CREAT | O_RDWR | O_TRUNC | O_LARGEFILE | O_BINARY, tianmu_umask);
+  return Open(file, O_CREAT | O_RDWR | O_TRUNC | O_LARGEFILE | O_BINARY, TIANMU_UMASK);
 }
 
 int TianmuFile::OpenReadOnly(std::string const &file) {
-  return Open(file, O_RDONLY | O_LARGEFILE | O_BINARY, tianmu_umask);
+  return Open(file, O_RDONLY | O_LARGEFILE | O_BINARY, TIANMU_UMASK);
 }
 
 int TianmuFile::OpenReadWrite(std::string const &file) {
-  return Open(file, O_RDWR | O_LARGEFILE | O_BINARY, tianmu_umask);
+  return Open(file, O_RDWR | O_LARGEFILE | O_BINARY, TIANMU_UMASK);
 }
 
 void TianmuFile::ReadExact(void *buf, size_t count) {

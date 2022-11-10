@@ -27,7 +27,7 @@ namespace mm {
 class TraceableObject;
 
 class ReleaseALL : public ReleaseStrategy {
-  FIFOTracker trackable;
+  FIFOTracker trackable_;
 
  public:
   ReleaseALL() : ReleaseStrategy() {}
@@ -37,7 +37,7 @@ class ReleaseALL : public ReleaseStrategy {
   void Release(unsigned) override;
   void ReleaseFull() override;
 
-  unsigned long long getCount1() override { return trackable.size(); }
+  unsigned long long getCount1() override { return trackable_.size(); }
   unsigned long long getCount2() override { return 0; }
   unsigned long long getCount3() override { return 0; }
   unsigned long long getCount4() override { return 0; }

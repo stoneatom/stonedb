@@ -39,22 +39,23 @@ class MemoryHandling {
   friend class TraceableObject;
 
   using PtrHeapMap = std::unordered_map<void *, HeapPolicy *>;
-  std::unordered_map<TraceableObject *, PtrHeapMap *> m_objs;
+  std::unordered_map<TraceableObject *, PtrHeapMap *> m_objs_;
 
-  HeapPolicy *m_main_heap, *m_huge_heap, *m_system, *m_large_temp;
-  int main_heap_MB, comp_heap_MB;
-  bool m_hard_limit;
-  int m_release_count = 0;
-  size_t m_release_total = 0;
+  HeapPolicy *m_main_heap_, *m_huge_heap_, *m_system_, *m_large_temp_;
+  int main_heap_size_, comp_heap_size_;  // MB
+  bool m_hard_limit_;
+  int m_release_count_ = 0;
+  size_t m_release_total_ = 0;
 
-  std::recursive_mutex m_mutex;
-  std::recursive_mutex m_release_mutex;
+  std::recursive_mutex m_mutex_;
+  std::recursive_mutex m_release_mutex_;
 
   // status counters
-  unsigned long m_alloc_blocks, m_alloc_objs, m_alloc_size, m_alloc_pack, m_alloc_temp, m_free_blocks,
-      m_alloc_temp_size, m_alloc_pack_size, m_free_pack, m_free_temp, m_free_pack_size, m_free_temp_size, m_free_size;
+  unsigned long m_alloc_blocks_, m_alloc_objs_, m_alloc_size_, m_alloc_pack_, m_alloc_temp_, m_free_blocks_,
+      m_alloc_temp_size_, m_alloc_pack_size_, m_free_pack_, m_free_temp_, m_free_pack_size_, m_free_temp_size_,
+      m_free_size_;
 
-  ReleaseStrategy *_releasePolicy = nullptr;
+  ReleaseStrategy *release_policy_ = nullptr;
 
   void DumpObjs(std::ostream &out);
 
@@ -80,21 +81,21 @@ class MemoryHandling {
   void EnsureNoLeakedTraceableObject();
   void CompressPacks();
 
-  unsigned long getAllocBlocks() { return m_alloc_blocks; }
-  unsigned long getAllocObjs() { return m_alloc_objs; }
-  unsigned long getAllocSize() { return m_alloc_size; }
-  unsigned long getAllocPack() { return m_alloc_pack; }
-  unsigned long getAllocTemp() { return m_alloc_temp; }
-  unsigned long getFreeBlocks() { return m_free_blocks; }
-  unsigned long getAllocTempSize() { return m_alloc_temp_size; }
-  unsigned long getAllocPackSize() { return m_alloc_pack_size; }
-  unsigned long getFreePacks() { return m_free_pack; }
-  unsigned long getFreeTemp() { return m_free_temp; }
-  unsigned long getFreePackSize() { return m_free_pack_size; }
-  unsigned long getFreeTempSize() { return m_free_temp_size; }
-  unsigned long getFreeSize() { return m_free_size; }
-  unsigned long getReleaseCount() { return m_release_count; }
-  unsigned long getReleaseTotal() { return m_release_total; }
+  unsigned long getAllocBlocks() { return m_alloc_blocks_; }
+  unsigned long getAllocObjs() { return m_alloc_objs_; }
+  unsigned long getAllocSize() { return m_alloc_size_; }
+  unsigned long getAllocPack() { return m_alloc_pack_; }
+  unsigned long getAllocTemp() { return m_alloc_temp_; }
+  unsigned long getFreeBlocks() { return m_free_blocks_; }
+  unsigned long getAllocTempSize() { return m_alloc_temp_size_; }
+  unsigned long getAllocPackSize() { return m_alloc_pack_size_; }
+  unsigned long getFreePacks() { return m_free_pack_; }
+  unsigned long getFreeTemp() { return m_free_temp_; }
+  unsigned long getFreePackSize() { return m_free_pack_size_; }
+  unsigned long getFreeTempSize() { return m_free_temp_size_; }
+  unsigned long getFreeSize() { return m_free_size_; }
+  unsigned long getReleaseCount() { return m_release_count_; }
+  unsigned long getReleaseTotal() { return m_release_total_; }
   unsigned long long getReleaseCount1();
   unsigned long long getReleaseCount2();
   unsigned long long getReleaseCount3();

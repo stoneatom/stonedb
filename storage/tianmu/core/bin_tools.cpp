@@ -18,7 +18,7 @@
 #include <cmath>
 
 #include "core/bin_tools.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace core {

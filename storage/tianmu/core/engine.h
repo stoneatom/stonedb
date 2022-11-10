@@ -38,7 +38,7 @@
 #include "log.h"
 #include "sql_table.h"
 #include "system/io_parameters.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #include "util/fs.h"
 #include "util/mapped_circular_buffer.h"
 #include "util/thread_pool.h"

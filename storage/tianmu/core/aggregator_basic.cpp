@@ -19,7 +19,7 @@
 #include <limits>
 
 #include "core/transaction.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace core {

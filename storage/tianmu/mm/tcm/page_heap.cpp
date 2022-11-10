@@ -31,7 +31,7 @@
 
 #include "page_heap.h"
 
-#include "mm/tcm/tccommon.h"
+#include "mm/tcm/tc_common.h"
 
 namespace Tianmu {
 namespace mm {
@@ -55,13 +55,13 @@ Span *PageHeap::New(Length n) {
     Span *ll = &free_[s].normal;
     // If we're lucky, ll is non-empty, meaning it has a suitable span.
     if (!DLL_IsEmpty(ll)) {
-      ASSERT(ll->next->location == static_cast<unsigned int>(Span::enumSpanType::ON_NORMAL_FREELIST));
+      ASSERT(ll->next->location == static_cast<unsigned int>(Span::Type::ON_NORMAL_FREELIST));
       return Carve(ll->next, n);
     }
     // Alternatively, maybe there's a usable returned span.
     ll = &free_[s].returned;
     if (!DLL_IsEmpty(ll)) {
-      ASSERT(ll->next->location == static_cast<unsigned int>(Span::enumSpanType::ON_RETURNED_FREELIST));
+      ASSERT(ll->next->location == static_cast<unsigned int>(Span::Type::ON_RETURNED_FREELIST));
       return Carve(ll->next, n);
     }
     // Still no luck, so keep looking in larger classes.
@@ -89,7 +89,7 @@ Span *PageHeap::AllocLarge(Length n) {
       if ((best == nullptr) || (span->length < best->length) ||
           ((span->length == best->length) && (span->start < best->start))) {
         best = span;
-        ASSERT(best->location == static_cast<unsigned int>(Span::enumSpanType::ON_NORMAL_FREELIST));
+        ASSERT(best->location == static_cast<unsigned int>(Span::Type::ON_NORMAL_FREELIST));
       }
     }
   }
@@ -100,7 +100,7 @@ Span *PageHeap::AllocLarge(Length n) {
       if ((best == nullptr) || (span->length < best->length) ||
           ((span->length == best->length) && (span->start < best->start))) {
         best = span;
-        ASSERT(best->location == static_cast<unsigned int>(Span::enumSpanType::ON_RETURNED_FREELIST));
+        ASSERT(best->location == static_cast<unsigned int>(Span::Type::ON_RETURNED_FREELIST));
       }
     }
   }
@@ -110,10 +110,10 @@ Span *PageHeap::AllocLarge(Length n) {
 
 Span *PageHeap::Carve(Span *span, Length n) {
   ASSERT(n > 0);
-  ASSERT(span->location != static_cast<unsigned int>(Span::enumSpanType::IN_USE));
+  ASSERT(span->location != static_cast<unsigned int>(Span::Type::IN_USE));
   const int old_location = span->location;
   RemoveFromFreeList(span);
-  span->location = static_cast<unsigned int>(Span::enumSpanType::IN_USE);
+  span->location = static_cast<unsigned int>(Span::Type::IN_USE);
   Event(span, 'A', n);
 
   const int extra = int(span->length - n);
@@ -133,14 +133,14 @@ Span *PageHeap::Carve(Span *span, Length n) {
 
 void PageHeap::Delete(Span *span) {
   ASSERT(Check());
-  ASSERT(span->location == static_cast<unsigned int>(Span::enumSpanType::IN_USE));
+  ASSERT(span->location == static_cast<unsigned int>(Span::Type::IN_USE));
   ASSERT(span->length > 0);
   ASSERT(GetDescriptor(span->start) == span);
   ASSERT(GetDescriptor(span->start + span->length - 1) == span);
   const Length n = span->length;
   span->sizeclass = 0;
   span->sample = 0;
-  span->location = static_cast<unsigned int>(Span::enumSpanType::ON_NORMAL_FREELIST);
+  span->location = static_cast<unsigned int>(Span::Type::ON_NORMAL_FREELIST);
   Event(span, 'D', span->length);
   MergeIntoFreeList(span);  // Coalesces if possible
   IncrementalScavenge(n);
@@ -148,7 +148,7 @@ void PageHeap::Delete(Span *span) {
 }
 
 void PageHeap::MergeIntoFreeList(Span *span) {
-  ASSERT(span->location != static_cast<unsigned int>(Span::enumSpanType::IN_USE));
+  ASSERT(span->location != static_cast<unsigned int>(Span::Type::IN_USE));
 
   // Coalesce -- we guarantee that "p" != 0, so no bounds checking
   // necessary.  We do not bother resetting the stale pagemap
@@ -187,9 +187,9 @@ void PageHeap::MergeIntoFreeList(Span *span) {
 }
 
 void PageHeap::PrependToFreeList(Span *span) {
-  ASSERT(span->location != static_cast<unsigned int>(Span::enumSpanType::IN_USE));
+  ASSERT(span->location != static_cast<unsigned int>(Span::Type::IN_USE));
   SpanList *list = (span->length < kMaxPages) ? &free_[span->length] : &large_;
-  if (span->location == static_cast<unsigned int>(Span::enumSpanType::ON_NORMAL_FREELIST)) {
+  if (span->location == static_cast<unsigned int>(Span::Type::ON_NORMAL_FREELIST)) {
     stats_.free_bytes += (span->length << kPageShift);
     DLL_Prepend(&list->normal, span);
   } else {
@@ -199,8 +199,8 @@ void PageHeap::PrependToFreeList(Span *span) {
 }
 
 void PageHeap::RemoveFromFreeList(Span *span) {
-  ASSERT(span->location != static_cast<unsigned int>(Span::enumSpanType::IN_USE));
-  if (span->location == static_cast<unsigned int>(Span::enumSpanType::ON_NORMAL_FREELIST)) {
+  ASSERT(span->location != static_cast<unsigned int>(Span::Type::IN_USE));
+  if (span->location == static_cast<unsigned int>(Span::Type::ON_NORMAL_FREELIST)) {
     stats_.free_bytes -= (span->length << kPageShift);
   } else {
     stats_.unmapped_bytes -= (span->length << kPageShift);
@@ -244,12 +244,12 @@ void PageHeap::IncrementalScavenge(Length n) {
 
 Length PageHeap::ReleaseLastNormalSpan(SpanList *slist) {
   Span *s = slist->normal.prev;
-  ASSERT(s->location == static_cast<unsigned int>(Span::enumSpanType::ON_NORMAL_FREELIST));
+  ASSERT(s->location == static_cast<unsigned int>(Span::Type::ON_NORMAL_FREELIST));
   RemoveFromFreeList(s);
   const Length n = s->length;
   // TCMalloc_SystemRelease(reinterpret_cast<void*>(s->start << kPageShift),
   //                       static_cast<size_t>(s->length << kPageShift));
-  s->location = static_cast<unsigned int>(Span::enumSpanType::ON_RETURNED_FREELIST);
+  s->location = static_cast<unsigned int>(Span::Type::ON_RETURNED_FREELIST);
   MergeIntoFreeList(s);  // Coalesces if possible.
   return n;
 }
@@ -282,7 +282,7 @@ Length PageHeap::ReleaseAtLeastNPages(Length num_pages) {
 
 void PageHeap::RegisterSizeClass(Span *span, size_t sc) {
   // Associate span object with all interior pages as well
-  ASSERT(span->location == static_cast<unsigned int>(Span::enumSpanType::IN_USE));
+  ASSERT(span->location == static_cast<unsigned int>(Span::Type::IN_USE));
   ASSERT(GetDescriptor(span->start) == span);
   ASSERT(GetDescriptor(span->start + span->length - 1) == span);
   Event(span, 'C', sc);
@@ -310,7 +310,7 @@ bool PageHeap::GrowHeap(Length n) {
     if (ptr == nullptr)
       return false;
   }
-  system_alloc_list.push_back(ptr);
+  system_alloc_list_.push_back(ptr);
   actual_size = ask << kPageShift;
   // ask = actual_size >> kPageShift;
   // RecordGrowth(ask << kPageShift);

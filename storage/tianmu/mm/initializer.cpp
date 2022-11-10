@@ -20,7 +20,7 @@
 namespace Tianmu {
 namespace mm {
 
-MemoryManagerInitializer *MemoryManagerInitializer::instance = nullptr;
+MemoryManagerInitializer *MemoryManagerInitializer::instance_ = nullptr;
 
 bool MemoryManagerInitializer::m_report_leaks = false;
 

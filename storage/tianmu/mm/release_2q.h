@@ -89,7 +89,7 @@ class Release2Q : public ReleaseStrategy {
     A1outLookup.clear();
   }
 
-  void Access(TraceableObject *o) override;
+  void Access(TraceableObject *obj) override;
   void Remove(TraceableObject *o) override { UnTrack(o); }
   void Release(unsigned) override;
   void ReleaseFull() override;

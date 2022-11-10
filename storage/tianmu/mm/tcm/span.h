@@ -33,7 +33,7 @@
 #pragma once
 
 #include "mm/tcm/page_heap_allocator.h"
-#include "mm/tcm/tccommon.h"
+#include "mm/tcm/tc_common.h"
 
 namespace Tianmu {
 namespace mm {
@@ -61,7 +61,7 @@ struct Span {
 #endif
 
   // What freelist the span is on: IN_USE if on none, or normal or returned
-  enum class enumSpanType { IN_USE, ON_NORMAL_FREELIST, ON_RETURNED_FREELIST };
+  enum class Type { IN_USE, ON_NORMAL_FREELIST, ON_RETURNED_FREELIST };
 };
 
 #ifdef SPAN_HISTORY

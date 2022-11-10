@@ -19,7 +19,7 @@
 
 #include "common/assert.h"
 #include "my_sys.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace mm {
@@ -28,25 +28,25 @@ MySQLHeap::~MySQLHeap() {}
 
 void *MySQLHeap::alloc(size_t size) {
   void *res = my_malloc(PSI_NOT_INSTRUMENTED, size, 0);
-  m_blockSizes.insert(std::make_pair(res, size));
+  m_block_sizes_.insert(std::make_pair(res, size));
   return res;
 }
 
 void MySQLHeap::dealloc(void *mh) {
-  m_blockSizes.erase(mh);
+  m_block_sizes_.erase(mh);
   my_free(mh);
 }
 
 void *MySQLHeap::rc_realloc(void *mh, size_t size) {
-  m_blockSizes.erase(mh);
+  m_block_sizes_.erase(mh);
   void *res = my_realloc(PSI_NOT_INSTRUMENTED, mh, size, MY_ALLOW_ZERO_PTR);
-  m_blockSizes.insert(std::make_pair(res, size));
+  m_block_sizes_.insert(std::make_pair(res, size));
   return res;
 }
 
 size_t MySQLHeap::getBlockSize(void *mh) {
-  auto it = m_blockSizes.find(mh);
-  ASSERT(it != m_blockSizes.end(), "Invalid block address");
+  auto it = m_block_sizes_.find(mh);
+  ASSERT(it != m_block_sizes_.end(), "Invalid block address");
   return it->second;
 }
 

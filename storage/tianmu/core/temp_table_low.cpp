@@ -30,7 +30,7 @@
 #include "exporter/data_exporter.h"
 #include "system/fet.h"
 #include "system/io_parameters.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #include "system/txt_utils.h"
 #include "types/value_parser4txt.h"
 #include "util/thread_pool.h"

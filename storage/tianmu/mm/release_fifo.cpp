@@ -23,16 +23,16 @@
 namespace Tianmu {
 namespace mm {
 
-void ReleaseFIFO::Access(TraceableObject *o) { tracker.touch(o); }
+void ReleaseFIFO::Access(TraceableObject *o) { tracker_.touch(o); }
 
-void ReleaseFIFO::Remove(TraceableObject *o) { tracker.remove(o); }
+void ReleaseFIFO::Remove(TraceableObject *o) { tracker_.remove(o); }
 
 void ReleaseFIFO::Release(unsigned num) {
   TraceableObject *o = nullptr;
   for (uint i = 0; i < num; i++) {
-    o = tracker.removeTail();
+    o = tracker_.removeTail();
     if (o->IsLocked()) {
-      tracker.touch(o);
+      tracker_.touch(o);
     } else {
       o->Release();
     }
@@ -41,11 +41,11 @@ void ReleaseFIFO::Release(unsigned num) {
 
 void ReleaseFIFO::ReleaseFull() {
   TraceableObject *o = nullptr;
-  int num = tracker.size();
+  int num = tracker_.size();
   for (int i = 0; i < num; i++) {
-    o = tracker.removeTail();
+    o = tracker_.removeTail();
     if (o->IsLocked()) {
-      tracker.touch(o);
+      tracker_.touch(o);
     } else {
       o->Release();
     }

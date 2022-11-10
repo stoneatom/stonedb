@@ -27,15 +27,15 @@
 #include "tcm/linked_list.h"
 #include "tcm/page_heap.h"
 #include "tcm/page_heap_allocator.h"
-#include "tcm/tccommon.h"
+#include "tcm/tc_common.h"
 
 namespace Tianmu {
 namespace mm {
 
 class TCMHeap : public HeapPolicy {
  protected:
-  tcm::PageHeap m_heap;
-  tcm::SizeMap m_sizemap;
+  tcm::PageHeap m_heap_;
+  tcm::SizeMap m_size_map_;
 
   // from tcmalloc::ThreadCache
   class FreeList {
@@ -85,7 +85,7 @@ class TCMHeap : public HeapPolicy {
     }
   };
 
-  FreeList m_freelist[kNumClasses];  // Array indexed by size-class
+  FreeList m_freelist_[kNumClasses];  // Array indexed by size-class
 
  public:
   TCMHeap(size_t hsize);

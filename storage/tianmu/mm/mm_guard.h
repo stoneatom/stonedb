@@ -31,10 +31,10 @@ template <typename T>
 class MMGuardRef {
  private:
   explicit MMGuardRef(T *data, TraceableObject &owner, bool call_delete = true)
-      : data(data), owner(&owner), call_delete(call_delete) {}
-  T *data;
-  TraceableObject *owner;
-  bool call_delete;
+      : data_(data), owner_(&owner), call_delete_(call_delete) {}
+  T *data_;
+  TraceableObject *owner_;
+  bool call_delete_;
   friend class MMGuard<T>;
 };
 
@@ -51,75 +51,75 @@ struct debunk_void<void> {
 // Friend class of TraceableObject that can use MM functions that do accounting
 class TraceableAccounting {
  public:
-  TraceableAccounting(TraceableObject *o) : owner(o) {}
+  TraceableAccounting(TraceableObject *o) : owner_(o) {}
   virtual ~TraceableAccounting() {}
 
  protected:
-  void dealloc(void *p) { owner->dealloc(p); }
-  TraceableObject *owner;
+  void dealloc(void *p) { owner_->dealloc(p); }
+  TraceableObject *owner_;
 };
 
 template <typename T>
 class MMGuard final : public TraceableAccounting {
  public:
-  MMGuard() : TraceableAccounting(0), data(0), call_delete(false) {}
+  MMGuard() : TraceableAccounting(0), data_(0), call_delete_(false) {}
   explicit MMGuard(T *data, TraceableObject &owner, bool call_delete = true)
-      : TraceableAccounting(&owner), data(data), call_delete(call_delete) {}
+      : TraceableAccounting(&owner), data_(data), call_delete_(call_delete) {}
 
   MMGuard(MMGuard &mm_guard)
-      : TraceableAccounting(mm_guard.owner), data(mm_guard.data), call_delete(mm_guard.call_delete) {
-    mm_guard.call_delete = false;
+      : TraceableAccounting(mm_guard.owner_), data_(mm_guard.data_), call_delete_(mm_guard.call_delete_) {
+    mm_guard.call_delete_ = false;
   }
 
   virtual ~MMGuard() { reset(); }
   MMGuard &operator=(MMGuardRef<T> const &mm_guard) {
     reset();
-    data = mm_guard.data;
-    owner = mm_guard.owner;
-    call_delete = mm_guard.call_delete;
+    data_ = mm_guard.data_;
+    owner_ = mm_guard.owner_;
+    call_delete_ = mm_guard.call_delete_;
     return *this;
   }
 
   MMGuard &operator=(MMGuard<T> &mm_guard) {
     if (&mm_guard != this) {
       reset();
-      data = mm_guard.data;
-      owner = mm_guard.owner;
-      call_delete = mm_guard.call_delete;
-      mm_guard.call_delete = false;
+      data_ = mm_guard.data_;
+      owner_ = mm_guard.owner_;
+      call_delete_ = mm_guard.call_delete_;
+      mm_guard.call_delete_ = false;
     }
     return *this;
   }
 
   operator MMGuardRef<T>() {
-    MMGuardRef<T> mmr(data, *owner, call_delete);
-    call_delete = false;
+    MMGuardRef<T> mmr(data_, *owner_, call_delete_);
+    call_delete_ = false;
     return (mmr);
   }
 
-  typename debunk_void<T>::type operator*() const { return *data; }
-  T *get() const { return data; }
-  T *operator->() const { return data; }
-  typename debunk_void<T>::type operator[](uint i) const { return data[i]; }
+  typename debunk_void<T>::type operator*() const { return *data_; }
+  T *get() const { return data_; }
+  T *operator->() const { return data_; }
+  typename debunk_void<T>::type operator[](uint i) const { return data_[i]; }
   T *release() {
-    T *tmp = data;
-    data = 0;
-    owner = 0;
-    call_delete = false;
+    T *tmp = data_;
+    data_ = 0;
+    owner_ = 0;
+    call_delete_ = false;
     return tmp;
   }
 
   void reset() {
-    if (call_delete && data)
-      dealloc(data);
-    data = 0;
-    owner = 0;
-    call_delete = false;
+    if (call_delete_ && data_)
+      dealloc(data_);
+    data_ = 0;
+    owner_ = 0;
+    call_delete_ = false;
   }
 
  private:
-  T *data;
-  bool call_delete;
+  T *data_;
+  bool call_delete_;
 };
 
 }  // namespace mm
