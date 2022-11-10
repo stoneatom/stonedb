@@ -34,8 +34,8 @@ namespace mm {
 
 class TCMHeap : public HeapPolicy {
  protected:
-  tcm::PageHeap m_heap_;
-  tcm::SizeMap m_size_map_;
+  tcm::PageHeap heap_;
+  tcm::SizeMap size_map_;
 
   // from tcmalloc::ThreadCache
   class FreeList {
@@ -85,7 +85,7 @@ class TCMHeap : public HeapPolicy {
     }
   };
 
-  FreeList m_freelist_[kNumClasses];  // Array indexed by size-class
+  FreeList freelist_[kNumClasses];  // Array indexed by size-class
 
  public:
   TCMHeap(size_t hsize);

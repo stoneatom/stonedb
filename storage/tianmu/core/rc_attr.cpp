@@ -41,9 +41,9 @@ namespace Tianmu {
 namespace core {
 RCAttr::RCAttr(Transaction *tx, common::TX_ID xid, int a_num, int t_num, ColumnShare *share)
     : m_version(xid), m_tx(tx), m_tid(t_num), m_cid(a_num), m_share(share) {
-  m_coord.ID = COORD_TYPE::RCATTR;
-  m_coord.co.rcattr[0] = m_tid;
-  m_coord.co.rcattr[1] = m_cid;
+  coord.ID = COORD_TYPE::RCATTR;
+  coord.co.rcattr[0] = m_tid;
+  coord.co.rcattr[1] = m_cid;
 
   pss = m_share->pss;
   ct = m_share->ColType();

@@ -39,13 +39,13 @@ Pack::Pack(DPN *dpn, PackCoordinate pc, ColumnShare *s) : s(s), dpn(dpn) {
   //   2. All values are uniform. Then it would be all zeros already.
   //   3. Otherwise. It would be loaded from disk by PackInt() or PackStr().
   InitNull();
-  m_coord.ID = COORD_TYPE::PACK;
-  m_coord.co.pack = pc;
+  coord.ID = COORD_TYPE::PACK;
+  coord.co.pack = pc;
 }
 
 Pack::Pack(const Pack &ap, const PackCoordinate &pc) : mm::TraceableObject(ap), s(ap.s), dpn(ap.dpn) {
-  m_coord.ID = COORD_TYPE::PACK;
-  m_coord.co.pack = pc;
+  coord.ID = COORD_TYPE::PACK;
+  coord.co.pack = pc;
   bitmapSize = ap.bitmapSize;
   nulls = std::make_unique<uint32_t[]>(bitmapSize / sizeof(uint32_t));
   deletes = std::make_unique<uint32_t[]>(bitmapSize / sizeof(uint32_t));

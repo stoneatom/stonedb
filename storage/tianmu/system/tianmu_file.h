@@ -35,9 +35,6 @@ namespace system {
 */
 
 class TianmuFile : public Stream {
- private:
-  int fd_;
-
  public:
   TianmuFile() { fd_ = -1; }
   ~TianmuFile() {
@@ -61,6 +58,9 @@ class TianmuFile : public Stream {
 
   bool IsOpen() const override;
   int Close() override;
+
+ private:
+  int fd_;
 };
 
 }  // namespace system

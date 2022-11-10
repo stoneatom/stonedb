@@ -62,7 +62,7 @@ HugeHeap::HugeHeap(std::string hugedir, size_t size) : TCMHeap(0) {
     rc_control_ << system::lock << "Huge Heap size (MB) " << (int)(size) << system::unlock;
     // size_ = size;
     // manage the region as a normal 4k pagesize heap
-    m_heap_.RegisterArea(heap_frame_, size_ >> kPageShift);
+    heap_.RegisterArea(heap_frame_, size_ >> kPageShift);
     size_ = size;
     heap_status_ = HEAP_STATUS::HEAP_SUCCESS;
   }

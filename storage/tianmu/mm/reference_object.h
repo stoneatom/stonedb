@@ -28,14 +28,14 @@ namespace mm {
 class ReferenceObject : public TraceableObject {
  public:
   ReferenceObject(core::PackCoordinate &r) : TraceableObject() {
-    m_coord.ID = core::COORD_TYPE::PACK;
-    m_coord.co.pack = r;
+    coord.ID = core::COORD_TYPE::PACK;
+    coord.co.pack = r;
   }
   ReferenceObject(core::RCAttrCoordinate &r) : TraceableObject() {
-    m_coord.ID = core::COORD_TYPE::RCATTR;
-    m_coord.co.rcattr = r;
+    coord.ID = core::COORD_TYPE::RCATTR;
+    coord.co.rcattr = r;
   }
-  ReferenceObject(core::TOCoordinate &r) : TraceableObject() { m_coord = r; }
+  ReferenceObject(core::TOCoordinate &r) : TraceableObject() { coord = r; }
   TO_TYPE TraceableType() const override { return TO_TYPE::TO_REFERENCE; }
 };
 

@@ -37,28 +37,6 @@ class HeapPolicy;
 //  -- track objects
 class MemoryHandling {
   friend class TraceableObject;
-
-  using PtrHeapMap = std::unordered_map<void *, HeapPolicy *>;
-  std::unordered_map<TraceableObject *, PtrHeapMap *> m_objs_;
-
-  HeapPolicy *m_main_heap_, *m_huge_heap_, *m_system_, *m_large_temp_;
-  int main_heap_size_, comp_heap_size_;  // MB
-  bool m_hard_limit_;
-  int m_release_count_ = 0;
-  size_t m_release_total_ = 0;
-
-  std::recursive_mutex m_mutex_;
-  std::recursive_mutex m_release_mutex_;
-
-  // status counters
-  unsigned long m_alloc_blocks_, m_alloc_objs_, m_alloc_size_, m_alloc_pack_, m_alloc_temp_, m_free_blocks_,
-      m_alloc_temp_size_, m_alloc_pack_size_, m_free_pack_, m_free_temp_, m_free_pack_size_, m_free_temp_size_,
-      m_free_size_;
-
-  ReleaseStrategy *release_policy_ = nullptr;
-
-  void DumpObjs(std::ostream &out);
-
  public:
   MemoryHandling(size_t comp_heap_size, size_t uncomp_heap_size, std::string hugedir = "", core::DataCache *d = nullptr,
                  size_t hugesize = 0);
@@ -81,21 +59,21 @@ class MemoryHandling {
   void EnsureNoLeakedTraceableObject();
   void CompressPacks();
 
-  unsigned long getAllocBlocks() { return m_alloc_blocks_; }
-  unsigned long getAllocObjs() { return m_alloc_objs_; }
-  unsigned long getAllocSize() { return m_alloc_size_; }
-  unsigned long getAllocPack() { return m_alloc_pack_; }
-  unsigned long getAllocTemp() { return m_alloc_temp_; }
-  unsigned long getFreeBlocks() { return m_free_blocks_; }
-  unsigned long getAllocTempSize() { return m_alloc_temp_size_; }
-  unsigned long getAllocPackSize() { return m_alloc_pack_size_; }
-  unsigned long getFreePacks() { return m_free_pack_; }
-  unsigned long getFreeTemp() { return m_free_temp_; }
-  unsigned long getFreePackSize() { return m_free_pack_size_; }
-  unsigned long getFreeTempSize() { return m_free_temp_size_; }
-  unsigned long getFreeSize() { return m_free_size_; }
-  unsigned long getReleaseCount() { return m_release_count_; }
-  unsigned long getReleaseTotal() { return m_release_total_; }
+  unsigned long getAllocBlocks() { return alloc_blocks_; }
+  unsigned long getAllocObjs() { return alloc_objs_; }
+  unsigned long getAllocSize() { return alloc_size_; }
+  unsigned long getAllocPack() { return alloc_pack_; }
+  unsigned long getAllocTemp() { return alloc_temp_; }
+  unsigned long getFreeBlocks() { return free_blocks_; }
+  unsigned long getAllocTempSize() { return alloc_temp_size_; }
+  unsigned long getAllocPackSize() { return alloc_pack_size_; }
+  unsigned long getFreePacks() { return free_pack_; }
+  unsigned long getFreeTemp() { return free_temp_; }
+  unsigned long getFreePackSize() { return free_pack_size_; }
+  unsigned long getFreeTempSize() { return free_temp_size_; }
+  unsigned long getFreeSize() { return free_size_; }
+  unsigned long getReleaseCount() { return release_count_; }
+  unsigned long getReleaseTotal() { return release_total_; }
   unsigned long long getReleaseCount1();
   unsigned long long getReleaseCount2();
   unsigned long long getReleaseCount3();
@@ -103,6 +81,41 @@ class MemoryHandling {
   unsigned long long getReloaded();
 
   void HeapHistogram(std::ostream &);
+
+  void DumpObjs(std::ostream &out);
+
+  using PtrHeapMap = std::unordered_map<void *, HeapPolicy *>;
+  std::unordered_map<TraceableObject *, PtrHeapMap *> objs_;
+
+  HeapPolicy *main_heap_ = nullptr;
+  HeapPolicy *huge_heap_ = nullptr;
+  HeapPolicy *system_ = nullptr;
+  HeapPolicy *large_temp_ = nullptr;
+  int main_heap_size_ = 0;
+  int comp_heap_size_ = 0;  // MB
+  bool hard_limit_ = false;
+  int release_count_ = 0;
+  size_t release_total_ = 0;
+
+  std::recursive_mutex mutex_;
+  std::recursive_mutex release_mutex_;
+
+  // status counters
+  unsigned long alloc_blocks_ = 0;
+  unsigned long alloc_objs_ = 0;
+  unsigned long alloc_size_ = 0;
+  unsigned long alloc_pack_ = 0;
+  unsigned long alloc_temp_ = 0;
+  unsigned long free_blocks_ = 0;
+  unsigned long alloc_temp_size_ = 0;
+  unsigned long alloc_pack_size_ = 0;
+  unsigned long free_pack_ = 0;
+  unsigned long free_temp_ = 0;
+  unsigned long free_pack_size_ = 0;
+  unsigned long free_temp_size_ = 0;
+  unsigned long free_size_ = 0;
+
+  ReleaseStrategy *release_policy_ = nullptr;
 };
 
 }  // namespace mm

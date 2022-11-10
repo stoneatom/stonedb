@@ -100,7 +100,7 @@ class Pack : public mm::TraceableObject {
       for (uint i = 0; i < dpn->numOfNulls; i++) SetNull(i);
     }
   }
-  PackCoordinate GetPackCoordinate() const { return m_coord.co.pack; }
+  PackCoordinate GetPackCoordinate() const { return coord.co.pack; }
   void SetDPN(DPN *new_dpn) { dpn = new_dpn; }
 
   // Compress bitmap

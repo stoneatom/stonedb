@@ -27,8 +27,6 @@ namespace mm {
 class TraceableObject;
 
 class ReleaseLRU : public ReleaseStrategy {
-  LRUTracker tracker_;
-
  public:
   ReleaseLRU() : ReleaseStrategy() {}
   void Access(TraceableObject *) override;
@@ -41,6 +39,9 @@ class ReleaseLRU : public ReleaseStrategy {
   unsigned long long getCount2() override { return 0; }
   unsigned long long getCount3() override { return 0; }
   unsigned long long getCount4() override { return 0; }
+
+ private:
+  LRUTracker tracker_;
 };
 
 }  // namespace mm

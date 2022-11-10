@@ -24,6 +24,14 @@ namespace Tianmu {
 namespace mm {
 
 class ReleaseTracker {
+ public:
+  ReleaseTracker() : size_(0) {}
+  virtual ~ReleaseTracker() {}
+  virtual void insert(TraceableObject *) = 0;
+  virtual void remove(TraceableObject *) = 0;
+  virtual void touch(TraceableObject *) = 0;
+  unsigned size() { return size_; }
+
  protected:
   unsigned size_;
 
@@ -35,19 +43,9 @@ class ReleaseTracker {
   inline void SetRelNext(TraceableObject *o, TraceableObject *v) { o->next = v; }
   inline void SetRelPrev(TraceableObject *o, TraceableObject *v) { o->prev = v; }
   inline void SetRelTracker(TraceableObject *o, ReleaseTracker *v) { o->tracker = v; }
-
- public:
-  ReleaseTracker() : size_(0) {}
-  virtual ~ReleaseTracker() {}
-  virtual void insert(TraceableObject *) = 0;
-  virtual void remove(TraceableObject *) = 0;
-  virtual void touch(TraceableObject *) = 0;
-  unsigned size() { return size_; }
 };
 
 class FIFOTracker : public ReleaseTracker {
-  TraceableObject *head_, *tail_;
-
  public:
   FIFOTracker() : ReleaseTracker(), head_(0), tail_(0) {}
   void insert(TraceableObject *) override;
@@ -56,6 +54,9 @@ class FIFOTracker : public ReleaseTracker {
 
   TraceableObject *removeHead();
   TraceableObject *removeTail();
+
+ private:
+  TraceableObject *head_, *tail_;
 };
 
 class LRUTracker : public FIFOTracker {

@@ -30,7 +30,7 @@
 namespace Tianmu {
 namespace mm {
 
-MemoryHandling *TraceableObject::m_MemHandling = nullptr;
+MemoryHandling *TraceableObject::MemHandling = nullptr;
 
 std::atomic_size_t TraceableObject::globalFreeable;
 std::atomic_size_t TraceableObject::globalUnFreeable;
@@ -55,7 +55,7 @@ void *TraceableObject::alloc(size_t size, BLOCK_TYPE type, bool nothrow) {
   void *addr = Instance()->alloc(size, type, this, nothrow);
   if (addr != nullptr) {
     size_t s = Instance()->rc_msize(addr, this);
-    m_size_allocated += s;
+    size_allocated += s;
     if (!IsLocked() && TraceableType() == TO_TYPE::TO_PACK)
       globalFreeable += s;
     else
@@ -70,7 +70,7 @@ void TraceableObject::dealloc(void *ptr) {
     return;
   s = Instance()->rc_msize(ptr, this);
   Instance()->dealloc(ptr, this);
-  m_size_allocated -= s;
+  size_allocated -= s;
   if (!IsLocked() && TraceableType() == TO_TYPE::TO_PACK)
     globalFreeable -= s;
   else
@@ -85,8 +85,8 @@ void *TraceableObject::rc_realloc(void *ptr, size_t size, BLOCK_TYPE type) {
   void *addr = Instance()->rc_realloc(ptr, size, this, type);
   if (addr != nullptr) {
     size_t s = Instance()->rc_msize(addr, this);
-    m_size_allocated += s;
-    m_size_allocated -= s1;
+    size_allocated += s;
+    size_allocated -= s1;
     if (!IsLocked() && TraceableType() == TO_TYPE::TO_PACK) {
       globalFreeable += s;
       globalFreeable -= s1;
@@ -104,31 +104,31 @@ TraceableObject::TraceableObject()
     : next(nullptr),
       prev(nullptr),
       tracker(nullptr),
-      m_pre_unused(false),
-      m_size_allocated(0),
-      m_locking_mutex(Instance()->m_release_mutex_) {}
+      pre_unused(false),
+      size_allocated(0),
+      locking_mutex(Instance()->release_mutex_) {}
 TraceableObject::TraceableObject(size_t comp_size, size_t uncomp_size, std::string hugedir, core::DataCache *owner_,
                                  size_t hugesize)
     : next(nullptr),
       prev(nullptr),
       tracker(nullptr),
-      m_pre_unused(false),
-      m_size_allocated(0),
+      pre_unused(false),
+      size_allocated(0),
       owner(owner_),
-      m_locking_mutex(Instance(comp_size, uncomp_size, hugedir, owner_, hugesize)->m_release_mutex_) {}
+      locking_mutex(Instance(comp_size, uncomp_size, hugedir, owner_, hugesize)->release_mutex_) {}
 
 TraceableObject::TraceableObject(const TraceableObject &to)
     : next(nullptr),
       prev(nullptr),
       tracker(nullptr),
-      m_pre_unused(false),
-      m_size_allocated(0),
-      m_locking_mutex(Instance()->m_release_mutex_),
-      m_coord(to.m_coord) {}
+      pre_unused(false),
+      size_allocated(0),
+      locking_mutex(Instance()->release_mutex_),
+      coord(to.coord) {}
 
 TraceableObject::~TraceableObject() {
   // Instance()->AssertNoLeak(this);
-  DEBUG_ASSERT(m_size_allocated == 0 /*, "TraceableObject size accounting"*/);
+  DEBUG_ASSERT(size_allocated == 0 /*, "TraceableObject size accounting"*/);
   if (IsTracked())
     StopAccessTracking();
 }
@@ -136,21 +136,21 @@ TraceableObject::~TraceableObject() {
 void TraceableObject::Lock() {
   MEASURE_FET("TraceableObject::Lock");
   if (TraceableType() == TO_TYPE::TO_PACK) {
-    std::scoped_lock locking_guard(m_locking_mutex);
+    std::scoped_lock locking_guard(locking_mutex);
     clearPrefetchUnused();
     if (!IsLocked()) {
-      globalFreeable -= m_size_allocated;
-      globalUnFreeable += m_size_allocated;
+      globalFreeable -= size_allocated;
+      globalUnFreeable += size_allocated;
     }
-    m_lock_count_++;
+    lock_count_++;
 
     // Locking is done externally
     // if(!((Pack*) this)->IsEmpty() && IsCompressed()) Uncompress();
   } else {
-    std::scoped_lock locking_guard(m_locking_mutex);
-    m_lock_count_++;
+    std::scoped_lock locking_guard(locking_mutex);
+    lock_count_++;
   }
-  if (m_lock_count_ == 32766) {
+  if (lock_count_ == 32766) {
     std::string message =
         "TraceableObject locked too many times. Object type: " + std::to_string((int)this->TraceableType());
     rc_control_ << system::lock << message << system::unlock;
@@ -160,21 +160,21 @@ void TraceableObject::Lock() {
 
 void TraceableObject::SetNumOfLocks(int n) {
   if (TraceableType() == TO_TYPE::TO_PACK) {
-    std::scoped_lock locking_guard(m_locking_mutex);
+    std::scoped_lock locking_guard(locking_mutex);
     clearPrefetchUnused();
     if (!IsLocked()) {
-      globalFreeable -= m_size_allocated;
-      globalUnFreeable += m_size_allocated;
+      globalFreeable -= size_allocated;
+      globalUnFreeable += size_allocated;
     }
-    m_lock_count_ = n;
+    lock_count_ = n;
 
     // Locking is done externally
     // if(n > 0 && !((Pack*) this)->IsEmpty() && IsCompressed()) Uncompress();
   } else {
-    std::scoped_lock locking_guard(m_locking_mutex);
-    m_lock_count_ = n;
+    std::scoped_lock locking_guard(locking_mutex);
+    lock_count_ = n;
   }
-  if (m_lock_count_ == 32766) {
+  if (lock_count_ == 32766) {
     std::string message =
         "TraceableObject locked too many times. Object type: " + std::to_string((int)this->TraceableType());
     rc_control_ << system::lock << message << system::unlock;
@@ -184,16 +184,16 @@ void TraceableObject::SetNumOfLocks(int n) {
 
 void TraceableObject::Unlock() {
   MEASURE_FET("TraceableObject::UnLock");
-  std::scoped_lock locking_guard(m_locking_mutex);
-  m_lock_count_--;
-  if (m_lock_count_ < 0) {
+  std::scoped_lock locking_guard(locking_mutex);
+  lock_count_--;
+  if (lock_count_ < 0) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Internal error: An object unlocked too many times in memory manager.");
     DEBUG_ASSERT(!"Internal error: An object unlocked too many times in memory manager.");
-    m_lock_count_ = 0;
+    lock_count_ = 0;
   }
   if (!IsLocked() && TraceableType() == TO_TYPE::TO_PACK) {
-    globalUnFreeable -= m_size_allocated;
-    globalFreeable += m_size_allocated;
+    globalUnFreeable -= size_allocated;
+    globalFreeable += size_allocated;
   }
 }
 
@@ -218,12 +218,12 @@ void TraceableObject::UnlockAndResetPack(std::shared_ptr<core::Pack> &pack) {
 }
 
 void TraceableObject::DestructionLock() {
-  std::scoped_lock locking_guard(m_locking_mutex);
+  std::scoped_lock locking_guard(locking_mutex);
   if (!IsLocked() && TraceableType() == TO_TYPE::TO_PACK) {
-    globalUnFreeable += m_size_allocated;
-    globalFreeable -= m_size_allocated;
+    globalUnFreeable += size_allocated;
+    globalFreeable -= size_allocated;
   }
-  m_lock_count_++;
+  lock_count_++;
 }
 
 int TraceableObject::MemorySettingsScale() { return ha_rcengine_->getResourceManager()->GetMemoryScale(); }
@@ -234,10 +234,10 @@ void TraceableObject::deinitialize(bool detect_leaks) {
     return;
   }
 
-  if (m_MemHandling) {  // Used only in MemoryManagerInitializer!
+  if (MemHandling) {  // Used only in MemoryManagerInitializer!
     if (detect_leaks)
-      m_MemHandling->ReportLeaks();
-    delete m_MemHandling;
+      MemHandling->ReportLeaks();
+    delete MemHandling;
   }
 }
 
@@ -299,7 +299,7 @@ int64_t TraceableObject::MaxBufferSizeForAggr(int64_t size)  // how much bytes m
   return memsize;
 }
 
-core::TOCoordinate &TraceableObject::GetCoordinate() { return m_coord; }
+core::TOCoordinate &TraceableObject::GetCoordinate() { return coord; }
 
 }  // namespace mm
 }  // namespace Tianmu

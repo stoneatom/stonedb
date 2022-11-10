@@ -40,19 +40,19 @@ class MemoryManagerInitializer : public TraceableObject {
   }
 
   static void deinit(bool report_leaks = false) {
-    m_report_leaks = report_leaks;
+    report_leaks = report_leaks;
     delete instance_;
   }
 
-  static void EnsureNoLeakedTraceableObject() { m_MemHandling->EnsureNoLeakedTraceableObject(); }
+  static void EnsureNoLeakedTraceableObject() { MemHandling->EnsureNoLeakedTraceableObject(); }
   TO_TYPE TraceableType() const override { return TO_TYPE::TO_INITIALIZER; }
 
  private:
   MemoryManagerInitializer(size_t comp_size, size_t uncomp_size, std::string hugedir = "", int hugesize = 0)
       : TraceableObject(comp_size, uncomp_size, hugedir, nullptr, hugesize) {}
-  virtual ~MemoryManagerInitializer() { deinitialize(m_report_leaks); }
+  virtual ~MemoryManagerInitializer() { deinitialize(report_leaks); }
   static MemoryManagerInitializer *instance_;
-  static bool m_report_leaks;
+  static bool report_leaks;
 };
 
 }  // namespace mm

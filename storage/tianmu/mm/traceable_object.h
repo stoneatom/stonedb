@@ -88,10 +88,10 @@ class TraceableObject {
   // Lock the object during destruction to prevent garbage collection
   void DestructionLock();
 
-  bool IsLocked() const { return m_lock_count_ > 0; }
-  bool LastLock() const { return m_lock_count_ == 1; }
+  bool IsLocked() const { return lock_count_ > 0; }
+  bool LastLock() const { return lock_count_ == 1; }
   // Locking is used by RCAttr etc. for packs manipulation purposes
-  short NumOfLocks() const { return m_lock_count_; }
+  short NumOfLocks() const { return lock_count_; }
   void SetNumOfLocks(int n);
 
   void SetOwner(core::DataCache *new_owner) { owner = new_owner; }
@@ -100,16 +100,16 @@ class TraceableObject {
   static size_t GetUnFreeableSize() { return globalUnFreeable; }
   // DataPacks can be prefetched but not used yet
   // this is a hint to memory release algorithm
-  bool IsPrefetchUnused() { return m_pre_unused; }
-  void clearPrefetchUnused() { m_pre_unused = false; }
+  bool IsPrefetchUnused() { return pre_unused; }
+  void clearPrefetchUnused() { pre_unused = false; }
   static MemoryHandling *Instance() {
-    if (!m_MemHandling) {
+    if (!MemHandling) {
       // m_MemHandling = new MemoryHandling<void*, BasicHeap<void*> >(COMP_SIZE,
       // UNCOMP_SIZE, COMPRESSED_HEAP_RELEASE, UNCOMPRESSED_HEAP_RELEASE);
       TIANMU_ERROR("Memory manager is not instantiated");
       return nullptr;
     } else
-      return m_MemHandling;
+      return MemHandling;
   }
 
   void TrackAccess() { Instance()->TrackAccess(this); }
@@ -118,7 +118,7 @@ class TraceableObject {
   virtual void Release() { TIANMU_ERROR("Release functionality not implemented for this object"); }
   core::TOCoordinate &GetCoordinate();
 
-  size_t SizeAllocated() const { return m_size_allocated; }
+  size_t SizeAllocated() const { return size_allocated; }
 
  protected:
   // For release tracking purposes, used by ReleaseTracker and ReleaseStrategy
@@ -134,30 +134,30 @@ class TraceableObject {
 
   void deinitialize(bool detect_leaks);
 
-  static std::recursive_mutex &GetLockingMutex() { return Instance()->m_release_mutex_; }
-  static MemoryHandling *m_MemHandling;
+  static std::recursive_mutex &GetLockingMutex() { return Instance()->release_mutex_; }
+  static MemoryHandling *MemHandling;
 
   static MemoryHandling *Instance(size_t comp_size, size_t uncomp_size, std::string hugedir = "",
                                   core::DataCache *d = nullptr, size_t hugesize = 0) {
-    if (!m_MemHandling)
-      m_MemHandling = new MemoryHandling(comp_size, uncomp_size, hugedir, d, hugesize);
-    return m_MemHandling;
+    if (!MemHandling)
+      MemHandling = new MemoryHandling(comp_size, uncomp_size, hugedir, d, hugesize);
+    return MemHandling;
   }
 
-  bool m_pre_unused;
+  bool pre_unused;
 
   static std::atomic_size_t globalFreeable;
   static std::atomic_size_t globalUnFreeable;
 
-  size_t m_size_allocated;
+  size_t size_allocated;
 
   core::DataCache *owner = nullptr;
 
-  std::recursive_mutex &m_locking_mutex;
-  core::TOCoordinate m_coord;
+  std::recursive_mutex &locking_mutex;
+  core::TOCoordinate coord;
 
  private:
-  short m_lock_count_ = 1;
+  short lock_count_ = 1;
   static int64_t MemScale2BufSizeLarge(int ms);
   static int64_t MemScale2BufSizeSmall(int ms);
 };

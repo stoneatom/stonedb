@@ -22,7 +22,7 @@ namespace mm {
 
 MemoryManagerInitializer *MemoryManagerInitializer::instance_ = nullptr;
 
-bool MemoryManagerInitializer::m_report_leaks = false;
+bool MemoryManagerInitializer::report_leaks = false;
 
 }  // namespace mm
 }  // namespace Tianmu
