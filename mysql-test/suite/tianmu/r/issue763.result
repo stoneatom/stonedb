@@ -134,6 +134,24 @@ SELECT id, val FROM tlike4 WHERE id in (4, 5) or val LIKE NULL;
 id	val
 4	ffff
 5	ggggg
+SELECT * FROM tlike1 WHERE val NOT LIKE NULL;
+id	val
+SELECT COUNT(*) FROM tlike1 WHERE val NOT LIKE NULL;
+COUNT(*)
+0
+SELECT id, val FROM tlike1 WHERE id=1 and val NOT LIKE NULL;
+id	val
+SELECT id, val FROM tlike1 WHERE id=1 or val NOT LIKE NULL;
+id	val
+1	a
+1	b
+1	c
+SELECT id, val FROM tlike1 WHERE id in (4, 5) and val NOT LIKE NULL;
+id	val
+SELECT id, val FROM tlike1 WHERE id in (4, 5) or val NOT LIKE NULL;
+id	val
+4	NULL
+5	NULL
 SELECT t1.id, t1.val FROM tlike1 t1, tlike2 t2 where t1.id=t2.id and t1.val like NULL;
 id	val
 SELECT t1.id, t1.val FROM tlike1 t1, tlike2 t2 where t1.id=t2.id and  t2.val like NULL;
