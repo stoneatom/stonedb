@@ -212,7 +212,7 @@ int rcbase_init_func(void *p) {
 
   try {
     std::string log_file = mysql_real_data_home_ptr;
-    log_setup(log_file + "/tianmu_engine.log");
+    log_setup(log_file + "/tianmu.log");
     rc_control_.addOutput(new system::FileOut(log_file + "/tianmu_trace.log"));
     rc_querylog_.addOutput(new system::FileOut(log_file + "/tianmu_query.log"));
     struct hostent *hent = nullptr;
