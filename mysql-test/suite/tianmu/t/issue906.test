@@ -1,0 +1,118 @@
+--source include/have_tianmu.inc
+
+USE test;
+
+--disable_warnings
+
+DROP TABLE IF EXISTS shop;
+
+CREATE TABLE shop (
+    article INT           DEFAULT '0000' NOT NULL,
+    dealer  CHAR(20)      DEFAULT ''     NOT NULL,
+    price   DECIMAL(16,2) DEFAULT '0.00' NOT NULL
+) ENGINE=TIANMU;
+
+INSERT INTO shop
+	VALUES(1, 'A', 3.45),(1, 'B', 3.99),
+	(2, 'A', 10.99),(3, 'B', 1.45),
+	(3, 'C', 1.69),(3, 'D', 1.25),
+	(4, 'D', 19.95);
+
+## subquery
+
+### EXPR IN subquery
+
+SELECT
+    *
+FROM
+    shop
+WHERE
+    article IN (
+    SELECT
+        COUNT(*)
+    FROM
+        shop
+    GROUP BY
+        article
+);
+
+### EXPR NOT IN subquery
+
+SELECT
+    *
+FROM
+    shop
+WHERE
+    article NOT IN (
+    SELECT
+        COUNT(*)
+    FROM
+        shop
+    GROUP BY
+        article
+);
+
+## union
+
+SELECT
+    *
+FROM
+    shop
+WHERE
+    article IN (
+    SELECT
+        COUNT(*)
+    FROM
+        shop
+    GROUP BY
+        article
+)
+UNION
+SELECT
+    *
+FROM
+    shop
+WHERE
+    article NOT IN (
+    SELECT
+        COUNT(*)
+    FROM
+        shop
+    GROUP BY
+        article
+);
+
+## union all
+
+SELECT
+    *
+FROM
+    shop
+WHERE
+    article IN (
+    SELECT
+        COUNT(*)
+    FROM
+        shop
+    GROUP BY
+        article
+)
+UNION ALL
+SELECT
+    *
+FROM
+    shop
+WHERE
+    article NOT IN (
+    SELECT
+        COUNT(*)
+    FROM
+        shop
+    GROUP BY
+        article
+);
+
+## clear test table of this issue
+
+DROP TABLE shop;
+
