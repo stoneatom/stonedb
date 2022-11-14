@@ -138,7 +138,7 @@ class Engine final {
 
   // row operations.
   int InsertRow(const std::string &tablename, Transaction *trans_, TABLE *table, std::shared_ptr<TableShare> &share);
-  void InsertDelayed(const std::string &table_path, int tid, TABLE *table);
+  void InsertDelayed(const std::string &table_path, int table_id, TABLE *table);
   void InsertMemRow(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table);
   std::string DelayedBufferStat() { return insert_buffer.Status(); }
   std::string RowStoreStat();
@@ -202,7 +202,7 @@ class Engine final {
   void ProcessDelayedInsert();
   void ProcessDelayedMerge();
   std::unique_ptr<char[]> GetRecord(size_t &len);
-  void EncodeRecord(const std::string &table_path, int tid, Field **field, size_t col, size_t blobs,
+  void EncodeRecord(const std::string &table_path, int table_id, Field **field, size_t col, size_t blobs,
                     std::unique_ptr<char[]> &buf, uint32_t &size);
 
  private:

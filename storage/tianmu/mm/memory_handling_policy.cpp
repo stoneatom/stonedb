@@ -468,7 +468,7 @@ void MemoryHandling::HeapHistogram(std::ostream &out) {
   unsigned packs_locked = 0;
 
   SimpleHist main_heap("Main Heap Total"), huge_heap("Huge Heap Total"), system_heap("System Heap Total"),
-      large_temp("Large Temporary Heap"), packs("TO_TYPE::TO_PACK objects"), sorter("TO_TYPE::TO_SORTER objects"),
+      large_temp("Large Temporary Heap"), packs_("TO_TYPE::TO_PACK objects"), sorter("TO_TYPE::TO_SORTER objects"),
       cbit("TO_TYPE::TO_CACHEDBUFFER+TO_TYPE::TO_INDEXTABLE objects"),
       filter("TO_TYPE::TO_FILTER+TO_TYPE::TO_MULTIFILTER2 objects"),
       rsisplice("TO_TYPE::TO_RSINDEX+TO_TYPE::TO_SPLICE objects"), temp("TO_TYPE::TO_TEMPORARY objects"),
@@ -492,7 +492,7 @@ void MemoryHandling::HeapHistogram(std::ostream &out) {
 
       switch (it.first->TraceableType()) {
         case TO_TYPE::TO_PACK:
-          block_type = &packs;
+          block_type = &packs_;
           break;
         case TO_TYPE::TO_SORTER:
           block_type = &sorter;
@@ -536,7 +536,7 @@ void MemoryHandling::HeapHistogram(std::ostream &out) {
   for (auto h : used_blocks) {
     h.second->print(out);
   }
-  packs.print(out);
+  packs_.print(out);
   sorter.print(out);
   cbit.print(out);
   filter.print(out);

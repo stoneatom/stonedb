@@ -30,7 +30,7 @@ RCMemTable::RCMemTable(const std::string name, const uint32_t mem_id, const uint
     : fullname_(name), mem_id_(mem_id), cf_handle_(ha_kvstore_->GetCfHandleByID(cf_id)) {
   ASSERT(cf_handle_, "column family handle not exist " + name);
 
-  index::KVTransaction kv_trans;
+  index::KVTransaction kv_trans_;
   uchar entry_key[32];
   size_t entry_pos = 0;
   index::be_store_index(entry_key + entry_pos, mem_id_);
@@ -50,7 +50,7 @@ RCMemTable::RCMemTable(const std::string name, const uint32_t mem_id, const uint
 
   rocksdb::ReadOptions ropts;
   ropts.iterate_upper_bound = &upper_slice;
-  std::unique_ptr<rocksdb::Iterator> iter(kv_trans.GetDataIterator(ropts, cf_handle_));
+  std::unique_ptr<rocksdb::Iterator> iter(kv_trans_.GetDataIterator(ropts, cf_handle_));
   iter->Seek(entry_slice);
 
   if (iter->Valid() && iter->key().starts_with(entry_slice)) {
@@ -125,15 +125,15 @@ void RCMemTable::InsertRow(std::unique_ptr<char[]> buf, uint32_t size) {
 
   uchar key[32];
   size_t key_pos = 0;
-  index::KVTransaction kv_trans;
+  index::KVTransaction kv_trans_;
   index::be_store_index(key + key_pos, mem_id_);
   key_pos += sizeof(uint32_t);
   index::be_store_byte(key + key_pos, static_cast<uchar>(RecordType::kInsert));
   key_pos += sizeof(uchar);
   index::be_store_uint64(key + key_pos, row_id);
   key_pos += sizeof(uint64_t);
-  kv_trans.PutData(cf_handle_, {(char *)key, key_pos}, {buf.get(), size});
-  kv_trans.Commit();
+  kv_trans_.PutData(cf_handle_, {(char *)key, key_pos}, {buf.get(), size});
+  kv_trans_.Commit();
   stat.write_cnt++;
   stat.write_bytes += size;
 }

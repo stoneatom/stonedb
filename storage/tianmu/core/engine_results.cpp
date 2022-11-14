@@ -26,7 +26,6 @@
 namespace Tianmu {
 namespace core {
 
-// stonedb8 List -> mem_root_deque
 void scan_fields(mem_root_deque<Item *> &fields, uint *&buf_lens, std::map<int, Item *> &items_backup) {
   Item *item;
   Field *f;
@@ -36,7 +35,8 @@ void scan_fields(mem_root_deque<Item *> &fields, uint *&buf_lens, std::map<int, 
   Item::Type item_type;
   Item_sum::Sumfunctype sum_type;
 
-  buf_lens = new uint[CountVisibleFields(fields)];  // stonedb8
+  buf_lens = new uint[fields.size()];
+  memset(buf_lens, 0, sizeof(uint) * fields.size());
   uint item_id = 0;
   uint field_length = 0;
   uint total_length = 0;
@@ -81,7 +81,7 @@ void scan_fields(mem_root_deque<Item *> &fields, uint *&buf_lens, std::map<int, 
         tmp->collation.set(item->collation);
         tmp->value_.set_charset(item->collation.collation);
         tmp->set_data_type(item->data_type());
-        fields[item_id] = tmp;  // stonedb8
+        fields[item_id] = tmp;
         break;
       }
       case Item::SUM_FUNC_ITEM: {
@@ -100,7 +100,7 @@ void scan_fields(mem_root_deque<Item *> &fields, uint *&buf_lens, std::map<int, 
           isum_hybrid_rcbase->hybrid_field_type_ = is->data_type();
           isum_hybrid_rcbase->collation.set(is->collation);
           isum_hybrid_rcbase->value_.set_charset(is->collation.collation);
-          fields[item_id] = isum_hybrid_rcbase;  // stonedb8
+          fields[item_id] = isum_hybrid_rcbase;
           buf_lens[item_id] = 0;
           break;
         } else if (sum_type == Item_sum::COUNT_FUNC || sum_type == Item_sum::COUNT_DISTINCT_FUNC ||
@@ -108,7 +108,7 @@ void scan_fields(mem_root_deque<Item *> &fields, uint *&buf_lens, std::map<int, 
           isum_int_rcbase = new types::Item_sum_int_rcbase();
           isum_int_rcbase->unsigned_flag = is->unsigned_flag;
           items_backup[item_id] = item;
-          fields[item_id] = isum_int_rcbase;  // stonedb8
+          fields[item_id] = isum_int_rcbase;
           buf_lens[item_id] = 0;
           break;
           // we can use the same type for SUM,AVG and SUM DIST, AVG DIST
@@ -138,7 +138,7 @@ void scan_fields(mem_root_deque<Item *> &fields, uint *&buf_lens, std::map<int, 
 
   item_id = 0;
 
-  for (auto it = fields.begin(); it != fields.end(); ++it) {  // stonedb8
+  for (auto it = fields.begin(); it != fields.end(); ++it) {
     item = *it;
     item_type = item->type();
     switch (item_type) {
