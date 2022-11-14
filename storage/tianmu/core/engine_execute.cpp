@@ -456,7 +456,7 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
       std::string table_path = Engine::GetTablePath(((Query_tables_list *)lex)->query_tables->table);
       rct = current_txn_->GetTableByPathIfExists(table_path);
     }
-    if (unit_for_union != nullptr && !unit_for_union->is_prepared()) {
+    if ((unit_for_union != nullptr) && (lex->sql_command != SQLCOM_CREATE_TABLE)) {  //  for exclude CTAS
       int res = result_output->prepare(unit_for_union->item_list, unit_for_union);
       if (res) {
         TIANMU_LOG(LogCtl_Level::ERROR, "Error: Unsupported UNION");
