@@ -300,7 +300,25 @@ bool Query::FieldUnmysterify(Item *item, TabID &tab, AttrID &col) {
 
 QueryRouteTo Query::AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vector<TabID> &left_tables,
                              std::vector<TabID> &right_tables, bool in_subquery, bool &first_table /*= true*/,
-                             bool for_subq_in_where /*false*/) {
+                             bool for_subq_in_where /*false*/, bool use_tmp_when_no_join /*false*/) {
+  if (!join.elements) {
+    // Use use_tmp_when_no_join when AddJoins
+    // The caller decides that the scenario is When join_list has no elements and field has sp
+    if (use_tmp_when_no_join) {
+      // The index of the subscript [-1] indicates
+      // that the first physical table is used as the temporary table.
+      // The subscript value operation in
+      // TMP_TABLE is required in combination with Query::Preexecute.
+      TabID tab(-1);
+      left_tables.push_back(tab);
+      cq->TmpTable(tmp_table, tab, for_subq_in_where);
+      return QueryRouteTo::kToTianmu;
+    }
+
+    // no tables in table list in this select
+    return QueryRouteTo::kToMySQL;
+  }
+
   // on first call first_table = true. It indicates if it is the first table to
   // be added is_left is true iff it is nested left join which needs to be
   // flatten (all tables regardless of their join type need to be left-joined)
@@ -308,13 +326,11 @@ QueryRouteTo Query::AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vect
   List_iterator<TABLE_LIST> li(join);
   std::vector<TABLE_LIST *> reversed;
 
-  if (!join.elements)
-    return QueryRouteTo::kToMySQL;  // no tables in table list in this
-                                    // select
   // if the table list was empty altogether, we wouldn't even enter
   // Compilation(...) it must be sth. like `select 1 from t1 union select 2` and
   // we are in the second select in the union
 
+  reversed.reserve(join.elements);
   while ((join_ptr = li++) != nullptr) reversed.push_back(join_ptr);
   size_t size = reversed.size();
   for (unsigned int i = 0; i < size; i++) {
@@ -427,17 +443,13 @@ QueryRouteTo Query::AddFields(List<Item> &fields, TabID const &tmp_table, bool c
       item = UnRef(item);
       continue;
     }
-    //			if ((UnRef(item)->type() == Item_tianmufield::enumTIANMUFiledItem::TIANMUFIELD_ITEM
-    //||
-    // UnRef(item)->type() == Item_tianmufield::FIELD_ITEM ) &&
-    // IsLocalColumn(UnRef(item), tmp_table)
-    //)
-    //				AddColumnForPhysColumn(UnRef(item), tmp_table,
-    // oper, distinct,
-    // false, false);
-    //			else {
-    //				//
-    //			}
+    // if ((UnRef(item)->type() == Item_tianmufield::enumTIANMUFiledItem::TIANMUFIELD_ITEM ||
+    //      UnRef(item)->type() == Item_tianmufield::FIELD_ITEM) &&
+    //     IsLocalColumn(UnRef(item), tmp_table))
+    //   AddColumnForPhysColumn(UnRef(item), tmp_table, oper, distinct, false, false);
+    // else {
+    //   //
+    // }
     else if (IsAggregationItem(item) && (((Item_sum *)item)->get_arg(0))->type() == Item::REF_ITEM &&
              (UnRef(((Item_sum *)item)->get_arg(0))->type() == Item_tianmufield::get_tianmuitem_type() ||
               (UnRef(((Item_sum *)item)->get_arg(0))->type() == Item_tianmufield::FIELD_ITEM)) &&
@@ -888,25 +900,33 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
 
   /*Item_func
    |
-   --Item_int_func  <-  arguments are kept in an array accessible through
-   arguments()
+   --Item_int_func  <-  arguments are kept in an array accessible through arguments()
    |
    --Item_bool_func
    |   |
-   |   ---Item_cond  <- arguments are kept in a list accessible through
-   argument_list() |   |     | |   |     ---Item_cond_and   <- when negated OR
-   of negated items is created |   |     | |   |     ---Item_cond_or    <- when
-   negated AND of negated items is created |   |     | |   | ---Item_cond_xor |
-   | |   ---Item_equal  <- arguments are kept in a list accessible through
-   argument_list() |   |                 + const_item (accessible through
-   get_const() ) |   |           (multiple equality) |   | |   ---Item_func_not
+   |   ---Item_cond  <- arguments are kept in a list accessible through argument_list()
+   |   |     |
+   |   |     ---Item_cond_and   <- when negated OR of negated items is created
+   |   |     |
+   |   |     ---Item_cond_or    <- when negated AND of negated items is created
+   |   |     |
+   |   |     ---Item_cond_xor
+   |   |
+   |   ---Item_equal  <- arguments are kept in a list accessible through argument_list()
+   |   |                 + const_item (accessible through get_const() )
+   |   |           (multiple equality)
+   |   |
+   |   ---Item_func_not
    |   |            (???)
    |   |
-   |   ---Item func_isnull     <- when negated IS NOT nullptr is created
+   |   ---Item func_isnull     <- when negated IS NOT NULL is created
    |
-   --Item_func_opt_neg  <-  arguments are kept in an array accessible through
-   arguments(), if negated |   |                     this information is kept
-   additionally (in a field named 'negated') |   | |   | |   ---Item_func_in | |
+   --Item_func_opt_neg  <-  arguments are kept in an array accessible through arguments(), if negated
+   |   |                     this information is kept additionally (in a field named 'negated')
+   |   |
+   |   |
+   |   ---Item_func_in
+   |   |
    |   |
    |   ---Item_func_between
    |
@@ -914,10 +934,9 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
    --Item_bool_func2
    |
    |
-   ---Item_bool_rowready_func2  <-arguments are kept in an array accessible
-   through arguments(), if negated |                          an object of a
-   corresponding class is created |                           (e.q.
-   ~Item_func_lt => Item_func_ge)
+   ---Item_bool_rowready_func2  <-arguments are kept in an array accessible through arguments(), if negated
+   |                          an object of a corresponding class is created
+   |                           (e.q. ~Item_func_lt => Item_func_ge)
    |
    ----Item_func_eq
    |
@@ -938,10 +957,10 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
    |
    |
    ----Item_func_equal   <- This is mystery so far
-
    There are 3 equality functions:
-   Item_equal -> multiple equality (many fields and optional additional constant
-   value) Item_func_equal -> ??? Item_func_eq -> pairwise equality
+   Item_equal -> multiple equality (many fields and optional additional constant value)
+   Item_func_equal -> ???
+   Item_func_eq -> pairwise equality
    */
 
   bool union_all = (last_distinct == nullptr);
@@ -989,11 +1008,8 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
     SetLimit(sl, sl == selects_list ? 0 : sl->join->unit->global_parameters(), offset_value, limit_value);
     List<Item> *fields = &sl->fields_list;
 
-    Item *conds = nullptr;
-    if (ifNewJoinForTianmu || !sl->join->where_cond)
-      conds = sl->where_cond();
-    else
-      conds = sl->join->where_cond;
+    Item *conds =
+        (ifNewJoinForTianmu || !sl->join->where_cond) ? conds = sl->where_cond() : conds = sl->join->where_cond;
 
     ORDER *order = sl->order_list.first;
 
@@ -1027,6 +1043,22 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
               break;
             }
           }
+        }
+      }
+    }
+
+    // When join_list has no elements and field has sp, tmp table is used and de-duplicated
+    // Use use_tmp_when_no_join when AddJoins
+    bool use_tmp_when_no_join = false;
+    if (!join_list->elements) {
+      List_iterator_fast<Item> li(*fields);
+      for (Item *item = li++; item; item = li++) {
+        if ((item->type() == Item::Type::FUNC_ITEM) &&
+            (down_cast<Item_func *>(item)->functype() == Item_func::Functype::FUNC_SP) && (!sl->is_distinct())) {
+          sl->add_active_options(SELECT_DISTINCT);
+          sl->join->select_distinct = TRUE;
+          use_tmp_when_no_join = true;
+          break;
         }
       }
     }
@@ -1067,7 +1099,8 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
       std::vector<TabID> left_tables, right_tables;
       bool first_table = true;
       if (QueryRouteTo::kToMySQL == AddJoins(*join_list, tmp_table, left_tables, right_tables,
-                                             (res_tab != nullptr && res_tab->n != 0), first_table, for_subq_in_where))
+                                             (res_tab != nullptr && res_tab->n != 0), first_table, for_subq_in_where,
+                                             use_tmp_when_no_join))
         throw CompilationError();
 
       List<Item> field_list_for_subselect;
@@ -1168,7 +1201,7 @@ JoinType Query::GetJoinTypeAndCheckExpr(uint outer_join, Item *on_expr) {
 bool Query::IsLOJ(List<TABLE_LIST> *join) {
   TABLE_LIST *join_ptr;
   List_iterator<TABLE_LIST> li(*join);
-  while ((join_ptr = li++) != nullptr) {
+  while (join_ptr = li++) {
     JoinType join_type = GetJoinTypeAndCheckExpr(join_ptr->outer_join, join_ptr->join_cond());
     if (join_ptr->join_cond() && (join_type == JoinType::JO_LEFT || join_type == JoinType::JO_RIGHT))
       return true;
