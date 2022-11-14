@@ -78,6 +78,8 @@ class ExpressionColumn : public VirtualColumn {
   void LockSourcePacks(const core::MIIterator &mit) override;
   void LockSourcePacks(const core::MIIterator &mit, int);
 
+  Item *GetItem() override { return expr_->GetItem(); }
+
   /////////////// Data access //////////////////////
  protected:
   int64_t GetValueInt64Impl(const core::MIIterator &) override;

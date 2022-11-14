@@ -367,6 +367,65 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
     return QueryRouteTo::kToMySQL;
   }
 
+  auto join_exec = ([&selects_list, &result_output] {
+    selects_list->set_query_result(result_output);
+    ASSERT(selects_list->join);
+    selects_list->join->exec();
+    return QueryRouteTo::kToTianmu;
+  });
+
+  // has sp fields but no from ...
+  if ((!selects_list->table_list.elements) && (selects_list->fields_list.elements)) {
+    List_iterator_fast<Item> li(selects_list->fields_list);
+    for (Item *item = li++; item; item = li++) {
+      if ((item->type() == Item::Type::FUNC_ITEM) &&
+          (down_cast<Item_func *>(item)->functype() == Item_func::Functype::FUNC_SP)) {
+        return join_exec();
+      }
+    }
+  }
+
+  // 1. all tables are derived and derived tables has no from table
+  // 2. fields of derived tables has sp
+  bool exec_direct = true;
+  if ((selects_list->table_list.elements)) {
+    TABLE_LIST *tables =
+        selects_list->leaf_tables ? selects_list->leaf_tables : (TABLE_LIST *)selects_list->table_list.first;
+    for (TABLE_LIST *table_ptr = tables; table_ptr; table_ptr = table_ptr->next_leaf) {
+      // check derived table
+      if (!table_ptr->is_derived()) {
+        exec_direct = false;
+        break;
+      }
+
+      // has from ...
+      SELECT_LEX *first_select = table_ptr->derived_unit()->first_select();
+      if (first_select->table_list.elements) {
+        exec_direct = false;
+        break;
+      }
+
+      // check fields has sp
+      exec_direct = false;
+      List_iterator_fast<Item> li(first_select->fields_list);
+      for (Item *item = li++; item; item = li++) {
+        if ((item->type() == Item::Type::FUNC_ITEM) &&
+            (down_cast<Item_func *>(item)->functype() == Item_func::Functype::FUNC_SP)) {
+          exec_direct = true;
+          break;
+        }
+      }
+
+      if (!exec_direct) {
+        break;
+      }
+    }
+  }
+
+  if (exec_direct) {
+    return join_exec();
+  }
+
   Query query(current_txn_);
   CompiledQuery cqu;
 
