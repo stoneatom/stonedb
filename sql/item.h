@@ -2848,7 +2848,7 @@ class Item_field :public Item_ident
 
 protected:
   void set_field(Field *field);
-  type_conversion_status save_in_field_inner(Field *field, bool no_conversions);
+  virtual type_conversion_status save_in_field_inner(Field *field, bool no_conversions);
 public:
   /**
     Table containing this resolved field. This is required e.g for calculation
