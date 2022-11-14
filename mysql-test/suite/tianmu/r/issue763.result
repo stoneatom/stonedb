@@ -1,0 +1,178 @@
+#
+# SELECT ... FROM tablename WHERE col LIKE NULL
+#
+DROP DATABASE IF EXISTS test_like_null;
+CREATE DATABASE test_like_null;
+USE test_like_null;
+create table tlike1 (id int, val varchar(255));
+INSERT INTO tlike1 VALUES(1,'a'), (1,'b'), (1,'c'), (2,'dd'), (3,'eee'), (4, NULL), (5, NULL);
+SELECT * FROM tlike1;
+id	val
+1	a
+1	b
+1	c
+2	dd
+3	eee
+4	NULL
+5	NULL
+SELECT * FROM tlike1 WHERE val is NULL;
+id	val
+4	NULL
+5	NULL
+SELECT * FROM tlike1 WHERE val LIKE NULL;
+id	val
+SELECT COUNT(*) FROM tlike1 WHERE val LIKE NULL;
+COUNT(*)
+0
+SELECT id, val FROM tlike1 WHERE id=1 and val LIKE NULL;
+id	val
+SELECT id, val FROM tlike1 WHERE id=1 or val LIKE NULL;
+id	val
+1	a
+1	b
+1	c
+SELECT id, val FROM tlike1 WHERE id in (4, 5) and val LIKE NULL;
+id	val
+SELECT id, val FROM tlike1 WHERE id in (4, 5) or val LIKE NULL;
+id	val
+4	NULL
+5	NULL
+create table tlike2 (id int, val varchar(255));
+INSERT INTO tlike2 VALUES(1,'a'), (1,'b'), (1,'c'), (2,'dd'), (3,'eee'), (4, ""), (5, NULL);
+SELECT * FROM tlike2;
+id	val
+1	a
+1	b
+1	c
+2	dd
+3	eee
+4	
+5	NULL
+SELECT * FROM tlike2 WHERE val is NULL;
+id	val
+5	NULL
+SELECT * FROM tlike2 WHERE val LIKE NULL;
+id	val
+SELECT * FROM tlike2 WHERE val LIKE "";
+id	val
+4	
+SELECT COUNT(*) FROM tlike2 WHERE val LIKE NULL;
+COUNT(*)
+0
+SELECT id, val FROM tlike2 WHERE id=1 and val LIKE NULL;
+id	val
+SELECT id, val FROM tlike2 WHERE id=1 or val LIKE NULL;
+id	val
+1	a
+1	b
+1	c
+SELECT id, val FROM tlike2 WHERE id in (4, 5) and val LIKE NULL;
+id	val
+SELECT id, val FROM tlike2 WHERE id in (4, 5) or val LIKE NULL;
+id	val
+4	
+5	NULL
+create table tlike3 (id int, val varchar(255));
+INSERT INTO tlike3 VALUES(1,'a'), (1,'b'), (1,'c'), (2,'dd'), (3,'eee'), (4, ""), (5, "ggggg");
+SELECT * FROM tlike3;
+id	val
+1	a
+1	b
+1	c
+2	dd
+3	eee
+4	
+5	ggggg
+SELECT * FROM tlike3 WHERE val is NULL;
+id	val
+SELECT * FROM tlike3 WHERE val LIKE NULL;
+id	val
+SELECT COUNT(*) FROM tlike3 WHERE val LIKE NULL;
+COUNT(*)
+0
+SELECT id, val FROM tlike3 WHERE id=1 and val LIKE NULL;
+id	val
+SELECT id, val FROM tlike3 WHERE id=1 or val LIKE NULL;
+id	val
+1	a
+1	b
+1	c
+SELECT id, val FROM tlike3 WHERE id in (4, 5) and val LIKE NULL;
+id	val
+SELECT id, val FROM tlike3 WHERE id in (4, 5) or val LIKE NULL;
+id	val
+4	
+5	ggggg
+create table tlike4 (id int, val varchar(255));
+INSERT INTO tlike4 VALUES(1,'a'), (1,'b'), (1,'c'), (2,'dd'), (3,'eee'), (4, "ffff"), (5, "ggggg");
+SELECT * FROM tlike4;
+id	val
+1	a
+1	b
+1	c
+2	dd
+3	eee
+4	ffff
+5	ggggg
+SELECT * FROM tlike4 WHERE val is NULL;
+id	val
+SELECT * FROM tlike4 WHERE val LIKE NULL;
+id	val
+SELECT COUNT(*) FROM tlike4 WHERE val LIKE NULL;
+COUNT(*)
+0
+SELECT id, val FROM tlike4 WHERE id=1 and val LIKE NULL;
+id	val
+SELECT id, val FROM tlike4 WHERE id=1 or val LIKE NULL;
+id	val
+1	a
+1	b
+1	c
+SELECT id, val FROM tlike4 WHERE id in (4, 5) and val LIKE NULL;
+id	val
+SELECT id, val FROM tlike4 WHERE id in (4, 5) or val LIKE NULL;
+id	val
+4	ffff
+5	ggggg
+SELECT * FROM tlike1 WHERE val NOT LIKE NULL;
+id	val
+SELECT COUNT(*) FROM tlike1 WHERE val NOT LIKE NULL;
+COUNT(*)
+0
+SELECT id, val FROM tlike1 WHERE id=1 and val NOT LIKE NULL;
+id	val
+SELECT id, val FROM tlike1 WHERE id=1 or val NOT LIKE NULL;
+id	val
+1	a
+1	b
+1	c
+SELECT id, val FROM tlike1 WHERE id in (4, 5) and val NOT LIKE NULL;
+id	val
+SELECT id, val FROM tlike1 WHERE id in (4, 5) or val NOT LIKE NULL;
+id	val
+4	NULL
+5	NULL
+SELECT t1.id, t1.val FROM tlike1 t1, tlike2 t2 where t1.id=t2.id and t1.val like NULL;
+id	val
+SELECT t1.id, t1.val FROM tlike1 t1, tlike2 t2 where t1.id=t2.id and  t2.val like NULL;
+id	val
+SELECT t1.id, t1.val FROM tlike1 t1, tlike2 t2 where t1.id=t2.id and t1.val like NULL and t2.val like NULL;
+id	val
+SELECT t1.id, t1.val FROM tlike1 t1, tlike2 t2 where t1.id=t2.id and t1.val is NULL;
+id	val
+4	NULL
+5	NULL
+SELECT t1.id, t1.val FROM tlike1 t1, tlike2 t2 where t1.id=t2.id and  t2.val is NULL;
+id	val
+5	NULL
+SELECT t1.id, t1.val FROM tlike1 t1, tlike2 t2 where t1.id=t2.id and t1.val is NULL and t2.val is NULL;
+id	val
+5	NULL
+SELECT id, val FROM tlike1 WHERE val LIKE NULL union all SELECT id, val FROM tlike2 WHERE id in (4,5) and val LIKE NULL;
+id	val
+SELECT id, val FROM tlike1 WHERE val is NULL union all SELECT id, val FROM tlike2 WHERE id in (4,5) and val is NULL;
+id	val
+4	NULL
+5	NULL
+5	NULL
+DROP DATABASE test_like_null;
