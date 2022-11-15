@@ -56,7 +56,7 @@ void MultiIndexBuilder::BuildItem::Initialize(int64_t initial_size) {
         continue;
 
       index_table_[dim] = new IndexTable(initial_size, mind->OrigSize(dim), 0);
-      index_table_[dim]->SetNumOfLocks(mind->group_for_dim[dim]->NumOfLocks(dim));
+      index_table_[dim]->SetNumOfLocks(mind->dimension_group_[dim]->NumOfLocks(dim));
       min_block_shift = std::min(min_block_shift, index_table_[dim]->BlockShift());
 
       if (initial_size > (1U << mind->ValueOfPower()))
@@ -157,24 +157,24 @@ void MultiIndexBuilder::Commit(int64_t joined_tuples, bool count_only) {
   std::vector<int> no_locks(dims_count_);
   for (int dim = 0; dim < dims_count_; dim++) {
     if (dims_involved_[dim]) {
-      no_locks[dim] = multi_index_->group_for_dim[dim]->NumOfLocks(dim);
+      no_locks[dim] = multi_index_->dimension_group_[dim]->NumOfLocks(dim);
     }
   }
 
   // dims_involved_ contains full original groups (to be deleted)
   for (int dim = 0; dim < dims_count_; dim++) {
     if (dims_involved_[dim]) {
-      int group_no = multi_index_->group_num_for_dim[dim];
-      if (multi_index_->dim_groups[group_no]) {  // otherwise already deleted
-        delete multi_index_->dim_groups[group_no];
-        multi_index_->dim_groups[group_no] = nullptr;
+      int group_no = multi_index_->group_num_for_dimension_[dim];
+      if (multi_index_->dim_groups_[group_no]) {  // otherwise already deleted
+        delete multi_index_->dim_groups_[group_no];
+        multi_index_->dim_groups_[group_no] = nullptr;
       }
     }
   }
 
   DimensionGroupMultiMaterialized *ng =
       new DimensionGroupMultiMaterialized(joined_tuples, dims_involved_, multi_index_->ValueOfPower());
-  multi_index_->dim_groups.push_back(ng);
+  multi_index_->dim_groups_.push_back(ng);
 
   for (auto &build_item : build_items_) {
     if (build_item->GetCount() > 0) {
