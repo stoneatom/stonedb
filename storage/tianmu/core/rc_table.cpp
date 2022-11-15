@@ -28,7 +28,7 @@
 #include "core/rc_table.h"
 #include "core/table_share.h"
 #include "core/transaction.h"
-#include "handler/tianmu_handler.h"
+#include "handler/ha_tianmu.h"
 #include "loader/load_parser.h"
 #include "log_event.h"
 #include "system/channel.h"

@@ -25,7 +25,26 @@
 namespace Tianmu {
 namespace handler {
 
-enum class TIANMUEngineReturnValues { LD_Successed = 100, LD_Failed = 101, LD_Continue = 102 };
+enum class TianmuEngineReturnValues {
+  kLoadSuccessed = 0,
+  kLoadFailed,
+  kLoadContinue,
+};
+
+bool AtLeastOneTIANMUTableInvolved(LEX *lex) {
+  for (TABLE_LIST *table_list = lex->query_tables; table_list; table_list = table_list->next_global) {
+    TABLE *table = table_list->table;
+    if (core::Engine::IsTianmuTable(table))
+      return true;
+  }
+  return false;
+}
+
+bool ForbiddenMySQLQueryPath([[maybe_unused]] LEX *lex) {
+  // 0: not allowed route to mysql
+  // 1: allowed route to mysql if tianmu engine not support
+  return 0 == tianmu_sysvar_allowmysqlquerypath;
+}
 
 void ha_my_tianmu_update_and_store_col_comment(TABLE *table, int field_id, Field *source_field, int source_field_id,
                                                CHARSET_INFO *cs) {
@@ -40,19 +59,7 @@ void ha_my_tianmu_update_and_store_col_comment(TABLE *table, int field_id, Field
   }
 }
 
-namespace {
-bool AtLeastOneTIANMUTableInvolved(LEX *lex) {
-  for (TABLE_LIST *table_list = lex->query_tables; table_list; table_list = table_list->next_global) {
-    TABLE *table = table_list->table;
-    if (core::Engine::IsTianmuTable(table))
-      return TRUE;
-  }
-  return FALSE;
-}
-
-bool ForbiddenMySQLQueryPath([[maybe_unused]] LEX *lex) { return (tianmu_sysvar_allowmysqlquerypath == 0); }
-}  // namespace
-
+// used in stonedb 5.7, deleted in stonedb 8.0
 bool ha_my_tianmu_set_statement_allowed(THD *thd, LEX *lex) {
   if (AtLeastOneTIANMUTableInvolved(lex)) {
     if (ForbiddenMySQLQueryPath(lex)) {
@@ -99,20 +106,20 @@ Either restructure the query with supported syntax, or enable the MySQL core::Qu
   return ret;
 }
 
-int ha_my_tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg, char *errmsg, int len,
-                      int &errcode) {
+int tianmu_load_impl(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg, char *errmsg, int len,
+                     int &errcode) {
   common::TianmuError tianmu_error;
-  int ret = static_cast<int>(TIANMUEngineReturnValues::LD_Failed);
+  int ret = static_cast<int>(TianmuEngineReturnValues::kLoadFailed);
 
   if (!core::Engine::IsTianmuTable(table_list->table))
-    return static_cast<int>(TIANMUEngineReturnValues::LD_Continue);
+    return static_cast<int>(TianmuEngineReturnValues::kLoadContinue);
 
   try {
     tianmu_error = ha_rcengine_->RunLoader(thd, ex, table_list, arg);
     if (tianmu_error.GetErrorCode() != common::ErrorCode::SUCCESS) {
       TIANMU_LOG(LogCtl_Level::ERROR, "RunLoader Error: %s", tianmu_error.Message().c_str());
     } else {
-      ret = static_cast<int>(TIANMUEngineReturnValues::LD_Successed);
+      ret = static_cast<int>(TianmuEngineReturnValues::kLoadSuccessed);
     }
   } catch (std::exception &e) {
     tianmu_error = common::TianmuError(common::ErrorCode::UNKNOWN_ERROR, e.what());
@@ -128,17 +135,17 @@ int ha_my_tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *
 }
 
 // returning true means 'to continue'
-bool tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) {
+bool ha_my_tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) {
   char tianmu_msg[256] = {0};
   int tianmu_errcode = 0;
-  switch (static_cast<TIANMUEngineReturnValues>(
-      ha_my_tianmu_load(thd, ex, table_list, arg, tianmu_msg, 256, tianmu_errcode))) {
-    case TIANMUEngineReturnValues::LD_Continue:
+  switch (static_cast<TianmuEngineReturnValues>(
+      tianmu_load_impl(thd, ex, table_list, arg, tianmu_msg, 256, tianmu_errcode))) {
+    case TianmuEngineReturnValues::kLoadContinue:
       return true;
-    case TIANMUEngineReturnValues::LD_Failed:
+    case TianmuEngineReturnValues::kLoadFailed:
       my_message(tianmu_errcode, tianmu_msg, MYF(0));
       [[fallthrough]];
-    case TIANMUEngineReturnValues::LD_Successed:
+    case TianmuEngineReturnValues::kLoadSuccessed:
       return false;
     default:
       my_message(tianmu_errcode, tianmu_msg, MYF(0));

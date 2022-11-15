@@ -310,6 +310,7 @@ extern const char *opt_date_time_formats[];
 extern handlerton *myisam_hton;
 extern handlerton *heap_hton;
 extern handlerton *innodb_hton;
+extern handlerton *tianmu_hton;
 extern uint opt_server_id_bits;
 extern ulong opt_server_id_mask;
 #ifdef WITH_NDBCLUSTER_STORAGE_ENGINE
