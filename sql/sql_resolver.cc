@@ -1034,7 +1034,7 @@ bool SELECT_LEX::resolve_subquery(THD *thd)
 
   bool tianmu_table_has_index = false;
   SQL_I_List<TABLE_LIST> parent_tables = parent_lex->select_lex->table_list;
-  for (TABLE_LIST*p_table_list = parent_tables.first; p_table_list;
+  for (TABLE_LIST *p_table_list = parent_tables.first; p_table_list;
        p_table_list = p_table_list->next_local) {
     TABLE* p_table = p_table_list->table;
     if (p_table && p_table->s && p_table->s->db_type() &&
