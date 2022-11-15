@@ -1,15 +1,12 @@
 /* Copyright (c) 2022 StoneAtom, Inc. All rights reserved.
    Use is subject to license terms
-
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation; version 2 of the License.
-
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
@@ -53,15 +50,17 @@ CacheableItem::CacheableItem(char const *owner_name, char const *object_id, int 
   filename_offset = temp_filename.length();
 
   // fill the file name
-  int i = 0, j = 0;
+  size_t i = 0, j = 0;
 
   while (owner_name[j] != 0 && i < kOwnerAndObjectLen) file_name_[filename_offset + (i++)] = owner_name[j++];
+
   while (i < kMinOwnerNameLen) file_name_[filename_offset + (i++)] = '_';
+
   j = 0;
   while (object_id[j] != 0 && i < kOwnerAndObjectLen) file_name_[filename_offset + (i++)] = object_id[j++];
   while (i < kOwnerAndObjectLen) file_name_[filename_offset + (i++)] = '_';
-  filename_offset += kOwnerAndObjectLen;
 
+  filename_offset += kOwnerAndObjectLen;
   filename_n_position_ = filename_offset;
 
   snprintf(file_name_ + filename_offset, kNumberFillLen + 1, "%s", "000000");
