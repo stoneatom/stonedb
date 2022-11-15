@@ -22,10 +22,9 @@
 #include <set>
 #include <tuple>
 
-#include "common/mysql_gate.h"
-
 #include "common/data_format.h"
 #include "common/exception.h"
+#include "common/mysql_gate.h"
 #include "core/rc_mem_table.h"
 #include "core/table_share.h"
 #include "core/task_executor.h"
@@ -836,7 +835,7 @@ std::vector<AttrInfo> Engine::GetTableAttributesInfo(const std::string &table_pa
 
 void Engine::UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
                                          CHARSET_INFO *cs) {
-  if (source_field->orig_table->s->db_type() == rcbase_hton) {  // do not use table (cont. default values)
+  if (source_field->orig_table->s->db_type() == tianmu_hton) {  // do not use table (cont. default values)
     char buf_size[256] = {0};
     char buf_ratio[256] = {0};
     uint buf_size_count = 0;
@@ -1628,7 +1627,7 @@ bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects
 }
 
 bool Engine::IsTianmuTable(TABLE *table) {
-  return table && table->s->db_type() == rcbase_hton;  // table->db_type is always nullptr
+  return table && table->s->db_type() == tianmu_hton;  // table->db_type is always nullptr
 }
 
 const char *Engine::GetFilename(SELECT_LEX *selects_list, int &is_dumpfile) {
