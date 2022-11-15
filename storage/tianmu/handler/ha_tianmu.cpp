@@ -15,6 +15,8 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
+#include "handler/ha_tianmu.h"
+
 #include <arpa/inet.h>
 #include <netdb.h>  // stonedb8 for gethostbyname()
 #include <iostream>
@@ -34,7 +36,6 @@
 #include "core/tools.h"
 #include "core/transaction.h"
 #include "core/value.h"
-#include "handler/ha_tianmu.h"
 #include "mm/initializer.h"
 #include "system/configuration.h"
 #include "system/file_out.h"
@@ -42,7 +43,8 @@
 
 #define MYSQL_SERVER 1
 
-handler *rcbase_create_handler(handlerton *hton, TABLE_SHARE *table, bool partitioned, MEM_ROOT *mem_root) {
+// Used by tianmu_init_func(void *p)
+handler *tianmu_create_handler(handlerton *hton, TABLE_SHARE *table, bool partitioned, MEM_ROOT *mem_root) {
   return new (mem_root) Tianmu::handler::ha_tianmu(hton, table, partitioned);
 }
 
@@ -992,9 +994,9 @@ int ha_tianmu::rnd_init(bool scan) {
       }
     }
     ret = 0;
-    rblob_buffers_.resize(0);
+    blob_buffers_.resize(0);
     if (table_ptr_ != nullptr)
-      rblob_buffers_.resize(table_ptr_->NumOfDisplaybleAttrs());
+      blob_buffers_.resize(table_ptr_->NumOfDisplaybleAttrs());
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -1090,7 +1092,7 @@ int ha_tianmu::rnd_pos(uchar *buf, uchar *pos) {
 
     table_new_iter_.MoveToRow(position);
     table->set_found_row();  // stonedb8
-    rblob_buffers_.resize(table->s->fields);
+    blob_buffers_.resize(table->s->fields);
     if (fill_row(buf) == HA_ERR_END_OF_FILE) {
       table->set_no_row();  // stonedb8
       DBUG_RETURN(ret);
@@ -1256,7 +1258,7 @@ int ha_tianmu::fill_row(uchar *buf) {
   }
 
   for (uint col_id = 0; col_id < table->s->fields; col_id++)
-    core::Engine::ConvertToField(table->field[col_id], *(table_new_iter_.GetData(col_id)), &rblob_buffers_[col_id]);
+    core::Engine::ConvertToField(table->field[col_id], *(table_new_iter_.GetData(col_id)), &blob_buffers_[col_id]);
 
   if (buf != table->record[0]) {
     std::memcpy(buf, table->record[0], table->s->reclength);
@@ -1416,7 +1418,7 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
     std::unique_ptr<core::CompiledQuery> tmp_cq(new core::CompiledQuery(*cq_));
     core::CondID cond_id;
     if (query_->BuildConditions(cond, cond_id, tmp_cq.get(), tmp_table_, core::CondType::WHERE_COND, false) ==
-        Query_route_to::TO_MYSQL) {
+        QueryRouteTo::TO_MYSQL) {
       query_.reset();
       return a_cond;
     }
@@ -1449,7 +1451,7 @@ int ha_tianmu::reset() {
     query_.reset();
     cq_.reset();
     result_ = false;
-    rblob_buffers_.resize(0);
+    blob_buffers_.resize(0);
     ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
@@ -1699,7 +1701,7 @@ void ha_tianmu::key_convert(const uchar *key, uint key_len, std::vector<uint> co
   }
 }
 
-static int rcbase_done_func([[maybe_unused]] void *p) {
+static int tianmu_done_func([[maybe_unused]] void *p) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
   if (ha_rcengine_) {
@@ -1714,7 +1716,7 @@ static int rcbase_done_func([[maybe_unused]] void *p) {
   DBUG_RETURN(0);
 }
 
-int rcbase_panic_func([[maybe_unused]] handlerton *hton, enum ha_panic_function flag) {
+int tianmu_panic_func([[maybe_unused]] handlerton *hton, enum ha_panic_function flag) {
   if (flag == HA_PANIC_CLOSE) {
     delete ha_rcengine_;
     ha_rcengine_ = nullptr;
@@ -1724,7 +1726,7 @@ int rcbase_panic_func([[maybe_unused]] handlerton *hton, enum ha_panic_function 
   return 0;
 }
 
-int rcbase_rollback([[maybe_unused]] handlerton *hton, THD *thd, bool all) {
+int tianmu_rollback([[maybe_unused]] handlerton *hton, THD *thd, bool all) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
   int ret = 1;
@@ -1742,12 +1744,12 @@ int rcbase_rollback([[maybe_unused]] handlerton *hton, THD *thd, bool all) {
   DBUG_RETURN(ret);
 }
 
-int rcbase_close_connection(handlerton *hton, THD *thd) {
+int tianmu_close_connection(handlerton *hton, THD *thd) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
   int ret = 1;
   try {
-    rcbase_rollback(hton, thd, true);
+    tianmu_rollback(hton, thd, true);
     ha_rcengine_->ClearTx(thd);
     ret = 0;
   } catch (std::exception &e) {
@@ -1761,7 +1763,7 @@ int rcbase_close_connection(handlerton *hton, THD *thd) {
   DBUG_RETURN(ret);
 }
 
-int rcbase_commit([[maybe_unused]] handlerton *hton, THD *thd, bool all) {
+int tianmu_commit([[maybe_unused]] handlerton *hton, THD *thd, bool all) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
   int ret = 1;
@@ -1807,7 +1809,7 @@ int rcbase_commit([[maybe_unused]] handlerton *hton, THD *thd, bool all) {
   DBUG_RETURN(ret);
 }
 
-bool rcbase_show_status([[maybe_unused]] handlerton *hton, THD *thd, stat_print_fn *pprint, enum ha_stat_type stat) {
+bool tianmu_show_status([[maybe_unused]] handlerton *hton, THD *thd, stat_print_fn *pprint, enum ha_stat_type stat) {
   const static char *hton_name = "TIANMU";
 
   std::ostringstream buf(std::ostringstream::out);
@@ -1830,14 +1832,13 @@ static int init_variables() {
 // Gives the file extension of an Tianmu single-table tablespace.
 static const char *ha_tianmu_exts[] = {common::TIANMU_EXT, NullS};
 
-int rcbase_init_func(void *p) {
+int tianmu_init_func(void *p) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
   // move hton here, just like other storate like innodb, myisam, csv... does.
   // handlerton is a singleton structure - one instance per storage engine.
   // defined in sql/handler.h
-  handlerton *tianmu_hton;
-  tianmu_hton = (handlerton *)p;
+  handlerton *tianmu_hton = (handlerton *)p;
 
   if (init_variables()) {
     DBUG_RETURN(1);
@@ -1845,13 +1846,13 @@ int rcbase_init_func(void *p) {
 
   tianmu_hton->state = SHOW_OPTION_YES;
   tianmu_hton->db_type = DB_TYPE_TIANMU;
-  tianmu_hton->create = rcbase_create_handler;
+  tianmu_hton->create = tianmu_create_handler;
   tianmu_hton->flags = HTON_NO_FLAGS;
-  tianmu_hton->panic = rcbase_panic_func;
-  tianmu_hton->close_connection = rcbase_close_connection;
-  tianmu_hton->commit = rcbase_commit;
-  tianmu_hton->rollback = rcbase_rollback;
-  tianmu_hton->show_status = rcbase_show_status;
+  tianmu_hton->panic = tianmu_panic_func;
+  tianmu_hton->close_connection = tianmu_close_connection;
+  tianmu_hton->commit = tianmu_commit;
+  tianmu_hton->rollback = tianmu_rollback;
+  tianmu_hton->show_status = tianmu_show_status;
   tianmu_hton->file_extensions = ha_tianmu_exts;
 
   int ret = 1;
@@ -2356,7 +2357,6 @@ void async_join_update([[maybe_unused]] MYSQL_THD thd, [[maybe_unused]] struct S
   resolve_async_join_settings(settings);
 }
 
-// stonedb8
 static struct SYS_VAR *tianmu_system_variables[] = {MYSQL_SYSVAR(bg_load_threads),
                                                     MYSQL_SYSVAR(cachinglevel),
                                                     MYSQL_SYSVAR(compensation_start),
@@ -2426,9 +2426,9 @@ mysql_declare_plugin(tianmu){
     "StoneAtom Group Holding Limited",
     "Tianmu storage engine",
     PLUGIN_LICENSE_GPL,
-    Tianmu::handler::rcbase_init_func, /* Plugin Init */
+    Tianmu::handler::tianmu_init_func, /* Plugin Init */
     nullptr,                           /* Plugin Check uninstall */
-    Tianmu::handler::rcbase_done_func, /* Plugin Deinit */
+    Tianmu::handler::tianmu_done_func, /* Plugin Deinit */
     0x0001 /* tianmu version 0.1 */,
     Tianmu::handler::statusvars,              /* status variables  */
     Tianmu::handler::tianmu_system_variables, /* system variables  */

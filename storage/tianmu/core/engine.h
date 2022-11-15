@@ -64,7 +64,7 @@ class select_tianmu_export;
 
 namespace core {
 
-using Tianmu::handler::Query_route_to;
+using Tianmu::handler::QueryRouteTo;
 struct AttrInfo;
 class TableShare;
 class Transaction;
@@ -130,7 +130,7 @@ class Engine final {
   void ClearTx(THD *thd);
 
   // processing the queries which routed to Tianmu.
-  Query_route_to Handle_Query(THD *thd, Query_expression *qe, Query_result *&result_output,
+  QueryRouteTo Handle_Query(THD *thd, Query_expression *qe, Query_result *&result_output,
                               ulong setup_tables_done_option, int &res, int &optimize_after_tianmu,
                               int &tianmu_free_join, int with_insert = false);
 
@@ -184,13 +184,13 @@ class Engine final {
   void AddTx(Transaction *tx);
   void RemoveTx(Transaction *tx);
 
-  Query_route_to Execute(THD *thd, LEX *lex, Query_result *result_output,
+  QueryRouteTo Execute(THD *thd, LEX *lex, Query_result *result_output,
                          Query_expression *unit_for_union = nullptr);  // stonedb8
 
   int SetUpCacheFolder(const std::string &cachefolder_path);
   static bool AreConvertible(types::RCDataType &rcitem, enum_field_types my_type, uint length = 0);
 
-  static Query_route_to RouteTo(THD *thd, TABLE_LIST *table_list, Query_block *selects_list,
+  static QueryRouteTo RouteTo(THD *thd, TABLE_LIST *table_list, Query_block *selects_list,
                                 int &in_case_of_failure_can_go_to_mysql, int with_insert);  // stonedb8
 
   static const char *GetFilename(Query_block *selects_list, int &is_dumpfile);  // stonedb8

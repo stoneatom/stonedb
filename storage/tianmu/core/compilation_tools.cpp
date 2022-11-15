@@ -48,7 +48,7 @@ const char *TablePath(TABLE_LIST *tab) {
   return tab->table->s->path.str;
 }
 
-Query_route_to OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct,
+QueryRouteTo OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct,
                                     [[maybe_unused]] const int group_by_clause) {
   distinct = false;
 
@@ -123,13 +123,13 @@ Query_route_to OperationUnmysterify(Item *item, common::ColOperation &oper, bool
           oper = common::ColOperation::GROUP_CONCAT;
           break;
         default:
-          return Query_route_to::TO_MYSQL;
+          return QueryRouteTo::TO_MYSQL;
       }
       break;
     default:
-      return Query_route_to::TO_MYSQL;
+      return QueryRouteTo::TO_MYSQL;
   }
-  return Query_route_to::TO_TIANMU;
+  return QueryRouteTo::TO_TIANMU;
 }
 
 const char *FieldType(enum_field_types ft) {
