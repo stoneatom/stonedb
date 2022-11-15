@@ -44,7 +44,9 @@ static bool AtLeastOneTianmuTableInvolved(Query_expression *qe) {
 }
 
 static bool ForbiddenMySQLQueryPath([[maybe_unused]] Query_expression *qe) {
-  return (tianmu_sysvar_allowmysqlquerypath == 0);
+  // 0: not allowed route to mysql
+  // 1: allowed route to mysql if tianmu engine not support
+  return 0 == tianmu_sysvar_allowmysqlquerypath;
 }
 
 void ha_my_tianmu_update_and_store_col_comment(TABLE *table, int field_id, Field *source_field, int source_field_id,
@@ -60,28 +62,28 @@ void ha_my_tianmu_update_and_store_col_comment(TABLE *table, int field_id, Field
   }
 }
 
-Query_route_to ha_my_tianmu_query(THD *thd, Query_expression *qe, Query_result *&result, ulong setup_tables_done_option,
-                                  int &res, int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
-  Query_route_to ret = Query_route_to::TO_TIANMU;
+QueryRouteTo ha_my_tianmu_query(THD *thd, Query_expression *qe, Query_result *&result, ulong setup_tables_done_option,
+                                int &res, int &optimize_after_tianmu, int &tianmu_free_join, int with_insert) {
+  QueryRouteTo ret = QueryRouteTo::TO_TIANMU;
   try {
     // ret is introduced here because in case of some exceptions
     // (e.g. thrown from ForbiddenMySQLQueryPath) we want to return
 
     // is explain, route to MySQL
     if (thd->lex->is_explain())
-      return Query_route_to::TO_MYSQL;
+      return QueryRouteTo::TO_MYSQL;
 
     // is query, route to Tianmu
     ret = ha_rcengine_->Handle_Query(thd, qe, result, setup_tables_done_option, res, optimize_after_tianmu,
                                      tianmu_free_join, with_insert);
 
-    if (ret == handler::Query_route_to::TO_MYSQL && AtLeastOneTianmuTableInvolved(qe) && ForbiddenMySQLQueryPath(qe)) {
+    if (ret == handler::QueryRouteTo::TO_MYSQL && AtLeastOneTianmuTableInvolved(qe) && ForbiddenMySQLQueryPath(qe)) {
       my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
                  "The query includes syntax that is not supported by the storage engine. "
                  "Either restructure the query with supported syntax, or enable the MySQL core::Query Path "
                  "in config file to execute the query with reduced performance.",
                  MYF(0));
-      ret = Query_route_to::TO_TIANMU;
+      ret = QueryRouteTo::TO_TIANMU;
     }
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));

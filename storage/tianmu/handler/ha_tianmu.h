@@ -162,7 +162,7 @@ class ha_tianmu final : public handler {
 
   core::JustATable *table_ptr_ = nullptr;
   std::unique_ptr<core::Filter> filter_ptr_;
-  uint64_t current_position_;
+  uint64_t current_position_ = 0;
 
   core::RCTable::Iterator table_new_iter_;
   core::RCTable::Iterator table_new_iter_end_;
@@ -171,7 +171,7 @@ class ha_tianmu final : public handler {
   core::TableID tmp_table_;
   std::unique_ptr<core::CompiledQuery> cq_;
   bool result_ = false;
-  std::vector<std::vector<uchar>> rblob_buffers_;
+  std::vector<std::vector<uchar>> blob_buffers_;
   bool partitioned_ = false;
 };
 

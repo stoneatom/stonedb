@@ -93,7 +93,7 @@ static int optimize_select(THD *thd, ulong select_options, Query_result *result,
   return false;
 }
 
-static Query_route_to handle_exceptions(THD *thd, Transaction *cur_connection, bool with_error) {
+static QueryRouteTo handle_exceptions(THD *thd, Transaction *cur_connection, bool with_error) {
   try {
     std::string msg = "Query terminated with exception: ";
     msg += thd->query().str;
@@ -114,7 +114,7 @@ static Query_route_to handle_exceptions(THD *thd, Transaction *cur_connection, b
       throw common::InternalException(msg);
     }
 
-    return Query_route_to::TO_MYSQL;
+    return QueryRouteTo::TO_MYSQL;
 
   } catch (common::OutOfMemoryException const &x) {
     rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
@@ -163,7 +163,7 @@ static Query_route_to handle_exceptions(THD *thd, Transaction *cur_connection, b
     throw ReturnMeToMySQLWithError();
   }
 
-  return Query_route_to::TO_MYSQL;
+  return QueryRouteTo::TO_MYSQL;
 }
 
 }  // namespace core
