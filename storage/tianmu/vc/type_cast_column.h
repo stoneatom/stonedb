@@ -57,6 +57,7 @@ class TypeCastColumn : public VirtualColumn {
   bool CanCopy() const override { return vc_->CanCopy(); }
   bool IsThreadSafe() override { return vc_->IsThreadSafe(); }
   std::vector<VirtualColumn *> GetChildren() const override { return std::vector<VirtualColumn *>(1, vc_); }
+  Item *GetItem() override { return vc_->GetItem(); }
 
  protected:
   int64_t GetValueInt64Impl(const core::MIIterator &mit) override { return vc_->GetValueInt64(mit); }

@@ -32,7 +32,7 @@ CREATE TABLE `alter_table_null_test` (
 
 show create table alter_table_null_test;
 
-alter table alter_table_null_test modify c_smallint smallint NOT NULL;
+alter table alter_table_null_test modify c_smallint smallint NULL;
 
 show create table alter_table_null_test;
 

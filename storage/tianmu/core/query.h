@@ -37,7 +37,7 @@ class RCTable;
 class Transaction;
 
 enum class TableStatus {
-  TALE_SEEN_INVOLVED = 0,
+  TABLE_SEEN_INVOLVED = 0,
   TABLE_YET_UNSEEN_INVOLVED = 1,
   TABLE_UNKONWN_ERROR = -1,
 };
@@ -94,8 +94,9 @@ class Query final {
   std::multimap<TabID, std::pair<int, TabID>> tab_id2subselect;
   std::map<Item_tianmufield *, int> tianmuitems_cur_var_ids;
 
-  std::vector<std::shared_ptr<JustATable>> ta;  // table aliases - sometimes point to TempTables (maybe to the
-                                                // same one), sometimes to RCTables
+  // table aliases - sometimes point to TempTables (maybe to the same one), sometimes to RCTables
+  std::vector<std::shared_ptr<JustATable>> ta;
+
   std::vector<std::shared_ptr<RCTable>> t;
 
   bool rough_query = false;  // set as true to enable rough execution
@@ -142,11 +143,12 @@ class Query final {
   // int FilterNotSubselect(Item *conds, const TabID& tmp_table, FilterType
   // filter_type, FilterID *and_me_filter = 0);
 
-  /*! \brief Create filter from field or function that has no condition
-   * attached. \param conds - condition (a field or function). \param tmp_table
-   * - required for Item2CQTerm. \param filter_type - type of filter context
-   * (WHERE, HAVING). \param and_me_filter - ? \return filter number
-   * (non-negative) or error indication (negative)
+  /*! \brief Create filter from field or function that has no condition attached.
+   * \param conds - condition (a field or function).
+   * \param tmp_table - required for Item2CQTerm.
+   * \param filter_type - type of filter context (WHERE, HAVING).
+   * \param and_me_filter - ?
+   * \return filter number (non-negative) or error indication (negative)
    */
   CondID ConditionNumberFromNaked(Item *conds, const TabID &tmp_table, CondType filter_type, CondID *and_me_filter,
                                   bool is_or_subtree = false);
@@ -254,12 +256,14 @@ class Query final {
                              const common::ColOperation oper, const bool distinct, bool group_by,
                              const char *alias = nullptr);
 
-  /*! \brief Creates AddColumn step in compilation by creating, if does not
-   * exist, Virtual Column based on expression \param mysql_expression - pointer
-   * to expression \param tmp_table - for which TempTable \param alias - defines
-   * alias of added column \param oper - defines type of added column \param
-   * distinct - flag for AddColumn operation \param group_by - indicates if it
-   * is column for group by query \return column number
+  /*! \brief Creates AddColumn step in compilation by creating, if does not exist, Virtual Column based on expression
+   * \param mysql_expression - pointer to expression
+   * \param tmp_table - for which TempTable
+   * \param alias - defines alias of added column
+   * \param oper - defines type of added column
+   * \param distinct - flag for AddColumn operation
+   * \param group_by - indicates if it is column for group by query
+   * \return column number
    */
   int AddColumnForMysqlExpression(MysqlExpression *mysql_expression, const TabID &tmp_table, const char *alias,
                                   const common::ColOperation oper, const bool distinct, bool group_by = false);
@@ -273,109 +277,99 @@ class Query final {
    */
   int GetAddColumnId(const AttrID &vc, const TabID &tmp_table, const common::ColOperation oper, const bool distinct);
 
-  /*! \brief Changes type of AddColumn step in compilation from LISTING to
-   * GROUP_BY \param tmp_table - for which TempTable \param attr - for which
-   * column
+  /*! \brief Changes type of AddColumn step in compilation from LISTING to GROUP_BY
+   * \param tmp_table - for which TempTable
+   * \param attr - for which column
    */
   void CQChangeAddColumnLIST2GROUP_BY(const TabID &tmp_table, int attr);
 
-  /*! \brief Creates MysqlExpression object that wraps expression tree of MySQL
-   * not containing aggregations. All Item_field items are substituted with
-   * Item_tianmufield items \param item - root of MySQL expression tree to be
-   * wrapped \param tmp_table - alias of TempTable which is checked if it
-   * contains aggregation fields (should not) \param expr - expression to store
-   * the result tree \param in_aggregation - the expression is used in WHERE
-   * (true) or elsewhere (having, select list = false) \return
-   * WrapStatus::SUCCESS on success, WrapStatus::OPTIMIZE if an aggregation was
-   * encountered, WrapStatus::FAILURE if
-   * there was any problem with wrapping, e.g., not acceptable type of
-   * expression
+  /*! \brief Creates MysqlExpression object that wraps expression tree of MySQL not containing aggregations.
+   * All Item_field items are substituted with Item_bhfield items
+   * \param item - root of MySQL expression tree to be wrapped
+   * \param tmp_table - alias of TempTable which is checked if it contains aggregation fields (should not)
+   * \param expr - expression to store the result tree
+   * \param in_aggregation - the expression is used in WHERE (true) or elsewhere (having, select list = false)
+   * \return WrapStatus::SUCCESS on success, WrapStatus::OPTIMIZE if an aggregation was encountered, WrapStatus::FAILURE
+   * if there was any problem with wrapping, e.g., not acceptable type of expression
    */
   WrapStatus WrapMysqlExpression(Item *item, const TabID &tmp_table, MysqlExpression *&expr, bool in_where,
                                  bool aggr_used);
   //
-  //	/*! \brief Creates MysqlExpression object that wraps full expression
-  // tree of MySQL. All
-  // Item_field items are
-  //	 * substituted with Item_tianmufield items. In case of aggregation it is
-  // substituted with its
-  // whole subtree by a single
-  //	 * Item_tianmufield, however, there is an AddColumn step added to
-  // compilation with this
-  // aggregation and Item_tianmufield refers to the
+  //	/*! \brief Creates MysqlExpression object that wraps full expression tree of MySQL. All Item_field items are
+  //	 * substituted with Item_bhfield items. In case of aggregation it is substituted with its whole subtree by a
+  // single
+  //	 * Item_bhfield, however, there is an AddColumn step added to compilation with this aggregation and Item_bhfield
+  // refers to the
   //	 * column created by this step.
   //	 * \param item - root of MySQL expression tree to be wrapped
-  //	 * \param tmp_table - alias of TempTable to which AddColumn is added in
-  // case of aggregation
+  //	 * \param tmp_table - alias of TempTable to which AddColumn is added in case of aggregation
   //	 * \param expr - expression to store the result tree
-  //	 * \param is_const_or_aggr - optional pointer to bool variable that is
-  // set to true if
-  // expression has no variables or
+  //	 * \param is_const_or_aggr - optional pointer to bool variable that is set to true if expression has no
+  // variables or
   //	 * it contains at least one aggregation (false otherwise)
-  //	 * \return WrapStatus::SUCCESS on success, WrapStatus::FAILURE if there
-  // was any problem with
-  // wrapping,
+  //	 * \return WrapStatus::SUCCESS on success, WrapStatus::FAILURE if there was any problem with wrapping,
   //	 *  e.g., not acceptable type of expression
   //	 */
-  //	WrapStatus WrapMysqlExpressionWithAggregations(Item *item, const TabID&
-  // tmp_table, MysqlExpression*& expr, bool* is_const_or_aggr = nullptr);
+  //	WrapStatus::wrap_status_t WrapMysqlExpressionWithAggregations(Item *item, const TabID& tmp_table,
+  // MysqlExpression*& expr, bool* is_const_or_aggr = NULL);
 
-  /*! \brief Generates AddColumn compilation steps for every field on SELECT
-   * list \param fields - list of fields \param tmp_table - alias of TempTable
-   * for which AddColumn steps are added \param group_by_clause - indicates
-   * whether it is group by query \param ignore_minmax - indicates if field of
-   * typy Min/Max should be transformed to LISTING \return returns
-   * QueryRouteTo::QueryRouteTo::kToMySQL in case of any problem and QueryRouteTo::kToTianmu
-   * otherwise
+  /*! \brief Generates AddColumn compilation steps for every field on SELECT list
+   * \param fields - list of fields
+   * \param tmp_table - alias of TempTable for which AddColumn steps are added
+   * \param group_by_clause - indicates whether it is group by query
+   * \param ignore_minmax - indicates if field of typy Min/Max should be transformed to LISTING
+   * \return returns RETURN_QUERY_TO_MYSQL_ROUTE in case of any problem and RCBASE_QUERY_ROUTE otherwise
    */
   QueryRouteTo AddFields(List<Item> &fields, const TabID &tmp_table, TabID const &base_table,
                          const bool group_by_clause, int &num_of_added_fields, bool ignore_minmax, bool &aggr_used);
 
   QueryRouteTo AddSemiJoinFiled(List<Item> &fields, List<TABLE_LIST> &join, const TabID &tmp_table);
 
-  /*! \brief Generates AddColumn compilation steps for every field on GROUP BY
-   * list \param fields - pointer to GROUP BY fields \param tmp_table - alias of
-   * TempTable for which AddColumn steps are added \return returns
-   * QueryRouteTo::QueryRouteTo::kToMySQL in case of any problem and QueryRouteTo::kToTianmu
-   * otherwise
+  /*! \brief Generates AddColumn compilation steps for every field on GROUP BY list
+   * \param fields - pointer to GROUP BY fields
+   * \param tmp_table - alias of TempTable for which AddColumn steps are added
+   * \return returns RETURN_QUERY_TO_MYSQL_ROUTE in case of any problem and RCBASE_QUERY_ROUTE otherwise
    */
   QueryRouteTo AddGroupByFields(ORDER *group_by, const TabID &tmp_table, const TabID &base_table);
 
-  //! is this item representing a column local to the temp table (not a
-  //! parameter)
+  //! is this item representing a column local to the temp table (not a parameter)
   bool IsLocalColumn(Item *item, const TabID &tmp_table);
   QueryRouteTo AddOrderByFields(ORDER *order_by, TabID const &tmp_table, TabID const &base_table,
                                 int const group_by_clause);
   QueryRouteTo AddGlobalOrderByFields(SQL_I_List<ORDER> *global_order, const TabID &tmp_table, int max_col);
+
+  /*! \brief AddJoins for every field on SELECT join list
+   * \param join - list of joins
+   * \param use_tmp_when_no_join - When join_list has no elements and field has sp, tmp table is used and de-duplicated
+   * \return returns RETURN_QUERY_TO_MYSQL_ROUTE in case of any problem and RCBASE_QUERY_ROUTE otherwise
+   */
   QueryRouteTo AddJoins(List<TABLE_LIST> &join, TabID &tmp_table, std::vector<TabID> &left_tables,
-                        std::vector<TabID> &right_tables, bool in_subquery, bool &first_table, bool for_subq = false);
+                        std::vector<TabID> &right_tables, bool in_subquery, bool &first_table, bool for_subq = false,
+                        bool use_tmp_when_no_join = false);
   static bool ClearSubselectTransformation(common::Operator &oper_for_subselect, Item *&field_for_subselect,
                                            Item *&conds, Item *&having, Item *&cond_removed,
                                            List<Item> *&list_to_reinsert, Item *left_expr_for_subselect);
 
   /*!
-   * \brief Are the variables constant (i.e. they are parameters) in the context
-   * of the query represented by TempTable t
+   * \brief Are the variables constant (i.e. they are parameters) in the context of the query represented by TempTable t
    */
   bool IsConstExpr(MysqlExpression::SetOfVars &vars, const TabID &t);
 
   Transaction *m_conn;
 
-  // void EvalCQTerm(bool cplx, CQTerm& term, MysqlExpression::BufOfVars bufs,
-  // CQTerm& t2, DataType eval_type, std::map<int,ValueOrNull> & columns); void
-  // PrepareCQTerm(CQTerm& term, bool& cplx_val2, MysqlExpression::SetOfVars&
-  // val2_vars, std::vector<int>& aliases, std::map<int,ValueOrNull>& columns,
-  // DataType& attr_eval_type);
+  // void EvalCQTerm(bool cplx, CQTerm& term, MysqlExpression::BufOfVars bufs, CQTerm& t2, DataType eval_type,
+  // std::map<int,ValueOrNull> & columns); void PrepareCQTerm(CQTerm& term, bool& cplx_val2, MysqlExpression::SetOfVars&
+  // val2_vars, std::vector<int>& aliases, std::map<int,ValueOrNull>& columns, DataType& attr_eval_type);
 
   static JoinType GetJoinTypeAndCheckExpr(uint outer_join, Item *on_expr);
 
   void DisplayJoinResults(MultiIndex &mind, DimensionVector &all_involved_dims, JoinAlgType cur_join_type,
                           bool is_outer, int conditions_used);
 
-  /*! \brief Checks if condition represented by \e it is a negation of other
-   * condition \param it - item \param is_there_not - output param.: true if
-   * negation was found \return Item* - returns pointer to argument of negation
-   * or original item if there was no negation
+  /*! \brief Checks if condition represented by \e it is a negation of other condition
+   * \param it - item
+   * \param is_there_not - output param.: true if negation was found
+   * \return Item* - returns pointer to argument of negation or original item if there was no negation
    */
   Item *FindOutAboutNot(Item *it, bool &is_there_not);
 
