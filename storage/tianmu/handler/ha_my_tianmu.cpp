@@ -31,7 +31,7 @@ enum class TianmuEngineReturnValues {
   kLoadContinue,
 };
 
-bool AtLeastOneTIANMUTableInvolved(LEX *lex) {
+bool AtLeastOneTianmuTableInvolved(LEX *lex) {
   for (TABLE_LIST *table_list = lex->query_tables; table_list; table_list = table_list->next_global) {
     TABLE *table = table_list->table;
     if (core::Engine::IsTianmuTable(table))
@@ -40,7 +40,7 @@ bool AtLeastOneTIANMUTableInvolved(LEX *lex) {
   return false;
 }
 
-bool ForbiddenMySQLQueryPath([[maybe_unused]] LEX *lex) {
+bool ForbiddenMySQLQueryPath(LEX *lex [[maybe_unused]]) {
   // 0: not allowed route to mysql
   // 1: allowed route to mysql if tianmu engine not support
   return 0 == tianmu_sysvar_allowmysqlquerypath;
@@ -61,7 +61,7 @@ void ha_my_tianmu_update_and_store_col_comment(TABLE *table, int field_id, Field
 
 // used in stonedb 5.7, deleted in stonedb 8.0
 bool ha_my_tianmu_set_statement_allowed(THD *thd, LEX *lex) {
-  if (AtLeastOneTIANMUTableInvolved(lex)) {
+  if (AtLeastOneTianmuTableInvolved(lex)) {
     if (ForbiddenMySQLQueryPath(lex)) {
       my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
                  "Queries inside SET statements are not supported. "
@@ -87,7 +87,7 @@ QueryRouteTo ha_my_tianmu_query(THD *thd, LEX *lex, Query_result *&result_output
     // (e.g. thrown from ForbiddenMySQLQueryPath) we want to return
     QueryRouteTo handle_select_ret = ha_rcengine_->HandleSelect(thd, lex, result_output, setup_tables_done_option, res,
                                                                 optimize_after_tianmu, tianmu_free_join, with_insert);
-    if (handle_select_ret == QueryRouteTo::kToMySQL && AtLeastOneTIANMUTableInvolved(lex) &&
+    if (handle_select_ret == QueryRouteTo::kToMySQL && AtLeastOneTianmuTableInvolved(lex) &&
         ForbiddenMySQLQueryPath(lex)) {
       my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),
                  "The query includes syntax that is not supported by the storage engine. \
@@ -134,12 +134,13 @@ int tianmu_load_impl(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *a
   return ret;
 }
 
+const int kMaxErrMsgLen = 256;
 // returning true means 'to continue'
 bool ha_my_tianmu_load(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) {
   char tianmu_msg[256] = {0};
   int tianmu_errcode = 0;
   switch (static_cast<TianmuEngineReturnValues>(
-      tianmu_load_impl(thd, ex, table_list, arg, tianmu_msg, 256, tianmu_errcode))) {
+      tianmu_load_impl(thd, ex, table_list, arg, tianmu_msg, kMaxErrMsgLen, tianmu_errcode))) {
     case TianmuEngineReturnValues::kLoadContinue:
       return true;
     case TianmuEngineReturnValues::kLoadFailed:
