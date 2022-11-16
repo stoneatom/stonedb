@@ -1008,8 +1008,7 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, SELECT_LEX *selects_l
     SetLimit(sl, sl == selects_list ? 0 : sl->join->unit->global_parameters(), offset_value, limit_value);
     List<Item> *fields = &sl->fields_list;
 
-    Item *conds =
-        (ifNewJoinForTianmu || !sl->join->where_cond) ? conds = sl->where_cond() : conds = sl->join->where_cond;
+    Item *conds = (ifNewJoinForTianmu || !sl->join->where_cond) ? sl->where_cond() : sl->join->where_cond;
 
     ORDER *order = sl->order_list.first;
 
@@ -1199,9 +1198,9 @@ JoinType Query::GetJoinTypeAndCheckExpr(uint outer_join, Item *on_expr) {
 }
 
 bool Query::IsLOJ(List<TABLE_LIST> *join) {
-  TABLE_LIST *join_ptr;
+  TABLE_LIST *join_ptr{nullptr};
   List_iterator<TABLE_LIST> li(*join);
-  while (join_ptr = li++) {
+  while ((join_ptr = li++)) {
     JoinType join_type = GetJoinTypeAndCheckExpr(join_ptr->outer_join, join_ptr->join_cond());
     if (join_ptr->join_cond() && (join_type == JoinType::JO_LEFT || join_type == JoinType::JO_RIGHT))
       return true;

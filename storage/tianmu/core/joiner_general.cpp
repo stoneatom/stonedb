@@ -65,8 +65,6 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
     new_mind.Init(approx_size);  // an initial size of IndexTable
 
   int64_t tuples_in_output = 0;
-  bool loc_result;
-  bool stop_execution = false;  // early stop for LIMIT
 
   // The main loop for checking conditions
 
@@ -99,8 +97,9 @@ void JoinerGeneral::ExecuteJoinConditions(Condition &cond) {
 // Handles each row in the Pack that the current iterator points to
 // TODO: Keep in mind that internal Pack reads will have cache invalidation during multithread switching,
 // leaving the second phase to continue processing the split of the house storage layer
-void JoinerGeneral::ExecuteInnerJoinPackRow(MIIterator *mii, CTask *task, Condition *cond, MINewContents *new_mind,
-                                            DimensionVector *all_dims, std::vector<bool> *_pack_desc_locked,
+void JoinerGeneral::ExecuteInnerJoinPackRow(MIIterator *mii, CTask *task [[maybe_unused]], Condition *cond,
+                                            MINewContents *new_mind, DimensionVector *all_dims,
+                                            std::vector<bool> *_pack_desc_locked [[maybe_unused]],
                                             int64_t *tuples_in_output, int64_t limit, bool count_only,
                                             bool *stop_execution, int64_t *rows_passed, int64_t *rows_omitted) {
   std::scoped_lock guard(mtx);
@@ -173,7 +172,8 @@ void JoinerGeneral::ExecuteInnerJoinPackRow(MIIterator *mii, CTask *task, Condit
 
 // The purpose of this function is to process the split task in a separate thread
 void JoinerGeneral::TaskInnerJoinPacks(MIIterator *taskIterator, CTask *task, Condition *cond, MINewContents *new_mind,
-                                       DimensionVector *all_dims, std::vector<bool> *pack_desc_locked_p,
+                                       DimensionVector *all_dims,
+                                       std::vector<bool> *pack_desc_locked_p [[maybe_unused]],
                                        int64_t *tuples_in_output, int64_t limit, bool count_only, bool *stop_execution,
                                        int64_t *rows_passed, int64_t *rows_omitted) {
   int no_desc = (*cond).Size();
@@ -279,7 +279,7 @@ void JoinerGeneral::ExecuteInnerJoinLoopMultiThread(MIIterator &mit, Condition &
 
   int packnum = 0;
   while (mit.IsValid()) {
-    int64_t packrow_length = mit.GetPackSizeLeft();
+    int64_t packrow_length [[maybe_unused]] = mit.GetPackSizeLeft();
     packnum++;
     mit.NextPackrow();
   }
@@ -333,9 +333,7 @@ void JoinerGeneral::ExecuteInnerJoinLoopMultiThread(MIIterator &mit, Condition &
 
   int64_t rows_passed = 0;
   int64_t rows_omitted = 0;
-  int no_desc = cond.Size();
   bool stop_execution = false;
-  int index = 0;
 
   mit.Rewind();
 
