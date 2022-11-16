@@ -18,7 +18,7 @@
 #include "core/transaction.h"
 
 #include "core/dpn.h"
-#include "core/rc_table.h"
+#include "core/tianmu_table.h"
 #include "core/tools.h"
 #include "system/file_system.h"
 #include "util/fs.h"
@@ -30,7 +30,7 @@ thread_local core::Transaction *current_txn_;
 namespace core {
 common::SequenceGenerator Transaction::seq_generator_;
 
-std::shared_ptr<RCTable> Transaction::GetTableByPathIfExists(const std::string &table_path) {
+std::shared_ptr<TianmuTable> Transaction::GetTableByPathIfExists(const std::string &table_path) {
   auto iter = modified_tables_.find(table_path);
   if (iter != modified_tables_.end())
     return iter->second;
@@ -42,7 +42,7 @@ std::shared_ptr<RCTable> Transaction::GetTableByPathIfExists(const std::string &
   return nullptr;
 }
 
-std::shared_ptr<RCTable> Transaction::GetTableByPath(const std::string &table_path) {
+std::shared_ptr<TianmuTable> Transaction::GetTableByPath(const std::string &table_path) {
   auto t = GetTableByPathIfExists(table_path);
   ASSERT(t, "table " + table_path + " is not opened by transaction!");
   return t;

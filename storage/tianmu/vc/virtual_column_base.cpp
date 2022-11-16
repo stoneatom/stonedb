@@ -19,7 +19,7 @@
 
 #include "core/compiled_query.h"
 #include "core/mysql_expression.h"
-#include "core/rc_attr.h"
+#include "core/tianmu_attr.h"
 #include "vc/in_set_column.h"
 #include "vc/subselect_column.h"
 

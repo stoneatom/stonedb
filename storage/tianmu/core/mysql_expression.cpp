@@ -528,16 +528,16 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemString2ValueOrNull(Item *item,
   if (ret != nullptr) {
     char *p = ret->c_ptr_safe();
     if (ATI::IsDateTimeType(a_type)) {
-      types::RCDateTime rcdt;
+      types::TianmuDateTime tianmu_dt;
       types::BString rbs(p);
       if (rbs.IsNull())
         return val = std::make_shared<ValueOrNull>(common::NULL_VALUE_64);
       else {
-        common::ErrorCode rc = types::ValueParserForText::ParseDateTime(rbs, rcdt, a_type);
+        common::ErrorCode rc = types::ValueParserForText::ParseDateTime(rbs, tianmu_dt, a_type);
         if (common::IsError(rc)) {
           return val = std::make_shared<ValueOrNull>(common::NULL_VALUE_64);
         }
-        val->SetFixed(rcdt.GetInt64());
+        val->SetFixed(tianmu_dt.GetInt64());
       }
     } else {
       uint len = ret->length();

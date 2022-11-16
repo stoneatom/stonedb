@@ -14,8 +14,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
-#ifndef TIANMU_TYPES_RC_DATA_TYPES_H_
-#define TIANMU_TYPES_RC_DATA_TYPES_H_
+#ifndef TIANMU_TYPES_DATA_TYPES_H_
+#define TIANMU_TYPES_DATA_TYPES_H_
 #pragma once
 
 #include <cstring>
@@ -24,14 +24,14 @@
 #include "common/common_definitions.h"
 #include "common/exception.h"
 #include "core/bin_tools.h"
-#include "core/rc_attr_typeinfo.h"
+#include "core/tianmu_attr_typeinfo.h"
 #include "system/txt_utils.h"
 
 namespace Tianmu {
 namespace types {
 
 class BString;
-class RCNum;
+class TianmuNum;
 
 bool AreComparable(common::CT att1, common::CT att2);
 
@@ -131,28 +131,28 @@ union DT {
 
 enum class ValueTypeEnum { NULL_TYPE, DATE_TIME_TYPE, NUMERIC_TYPE, STRING_TYPE };
 
-class RCDataType {
+class TianmuDataType {
  public:
-  RCDataType() : null_(true) {}
-  constexpr RCDataType(const RCDataType &) = default;
-  virtual ~RCDataType();
+  TianmuDataType() : null_(true) {}
+  constexpr TianmuDataType(const TianmuDataType &) = default;
+  virtual ~TianmuDataType();
 
  public:
-  virtual std::unique_ptr<RCDataType> Clone() const = 0;
+  virtual std::unique_ptr<TianmuDataType> Clone() const = 0;
   virtual BString ToBString() const = 0;
   virtual common::CT Type() const = 0;
   virtual ValueTypeEnum GetValueType() const = 0;
 
-  bool AreComperable(const RCDataType &) const;
-  bool compare(const RCDataType &rcdt, common::Operator op, char like_esc) const;
+  bool AreComperable(const TianmuDataType &) const;
+  bool compare(const TianmuDataType &tianmu_dt, common::Operator op, char like_esc) const;
 
-  virtual RCDataType &operator=(const RCDataType &rcn) = 0;
-  virtual bool operator==(const RCDataType &rcdt) const = 0;
-  virtual bool operator<(const RCDataType &rcdt) const = 0;
-  virtual bool operator>(const RCDataType &rcdt) const = 0;
-  virtual bool operator>=(const RCDataType &rcdt) const = 0;
-  virtual bool operator<=(const RCDataType &rcdt) const = 0;
-  virtual bool operator!=(const RCDataType &rcdt) const = 0;
+  virtual TianmuDataType &operator=(const TianmuDataType &tianmu_n) = 0;
+  virtual bool operator==(const TianmuDataType &tianmu_dt) const = 0;
+  virtual bool operator<(const TianmuDataType &tianmu_dt) const = 0;
+  virtual bool operator>(const TianmuDataType &tianmu_dt) const = 0;
+  virtual bool operator>=(const TianmuDataType &tianmu_dt) const = 0;
+  virtual bool operator<=(const TianmuDataType &tianmu_dt) const = 0;
+  virtual bool operator!=(const TianmuDataType &tianmu_dt) const = 0;
 
   bool IsNull() const { return null_; }
   virtual uint GetHashCode() const = 0;
@@ -164,24 +164,24 @@ class RCDataType {
 
  public:
   static ValueTypeEnum GetValueType(common::CT attr_type);
-  static bool ToDecimal(const RCDataType &in, int scale, RCNum &out);
-  static bool ToInt(const RCDataType &in, RCNum &out);
-  static bool ToReal(const RCDataType &in, RCNum &out);
+  static bool ToDecimal(const TianmuDataType &in, int scale, TianmuNum &out);
+  static bool ToInt(const TianmuDataType &in, TianmuNum &out);
+  static bool ToReal(const TianmuDataType &in, TianmuNum &out);
 
-  static bool AreComperable(const RCDataType &rcdt1, const RCDataType &rcdt2);
-  static bool compare(const RCDataType &rcdt1, const RCDataType &rcdt2, common::Operator op, char like_esc);
+  static bool AreComperable(const TianmuDataType &tianmu_dt1, const TianmuDataType &tianmu_dt2);
+  static bool compare(const TianmuDataType &tianmu_dt1, const TianmuDataType &tianmu_dt2, common::Operator op, char like_esc);
 };
 
 template <typename T>
-class ValueBasic : public RCDataType {
+class ValueBasic : public TianmuDataType {
  public:
   constexpr ValueBasic(const ValueBasic &) = default;
   ValueBasic() = default;
   ValueTypeEnum GetValueType() const override { return T::value_type_; }
-  std::unique_ptr<RCDataType> Clone() const override { return std::unique_ptr<RCDataType>(new T((T &)*this)); };
+  std::unique_ptr<TianmuDataType> Clone() const override { return std::unique_ptr<TianmuDataType>(new T((T &)*this)); };
   static T null_value_;
   static T &NullValue() { return T::null_value_; }
-  using RCDataType::operator=;
+  using TianmuDataType::operator=;
 };
 
 template <typename T>
@@ -190,8 +190,8 @@ T ValueBasic<T>::null_value_;
 using CondArray = std::vector<BString>;
 
 class BString : public ValueBasic<BString> {
-  friend std::ostream &operator<<(std::ostream &out, const BString &rcbs);
-  friend bool operator!=(const BString &rcbs1, const BString &rcbs2);
+  friend std::ostream &operator<<(std::ostream &out, const BString &tianmu_bs);
+  friend bool operator!=(const BString &tianmu_bs1, const BString &tianmu_bs2);
 
  public:
   BString();
@@ -200,12 +200,12 @@ class BString : public ValueBasic<BString> {
   // ushort / int) bytes of val_. len_ == 0  => the length is a result of
   // std::strlen(val_), i.e. val_ is 0-terminated zero-term = true  => this is a
   // non-null_ empty string, or a longer zero-terminated string
-  BString(const BString &rcbs);
+  BString(const BString &tianmu_bs);
   ~BString();
 
-  BString &operator=(const BString &rcbs);
-  BString &operator=(const RCDataType &rcn) override;
-  void PersistentCopy(const BString &rcbs);  // like "=", but makes this persistent_
+  BString &operator=(const BString &tianmu_bs);
+  BString &operator=(const TianmuDataType &tianmu_n) override;
+  void PersistentCopy(const BString &tianmu_bs);  // like "=", but makes this persistent_
 
   static bool Parse(BString &in, BString &out);
   common::CT Type() const override;
@@ -225,13 +225,13 @@ class BString : public ValueBasic<BString> {
   BString &operator+=(ushort pos);
   BString &operator-=(ushort pos);
 
-  bool operator==(const RCDataType &rcn) const override;
-  bool operator<(const RCDataType &rcn) const override;
-  bool operator>(const RCDataType &rcn) const override;
-  bool operator>=(const RCDataType &rcn) const override;
-  bool operator<=(const RCDataType &rcn) const override;
-  bool operator!=(const RCDataType &rcn) const override;
-  bool operator==(const BString &rcs) const;
+  bool operator==(const TianmuDataType &tianmu_n) const override;
+  bool operator<(const TianmuDataType &tianmu_n) const override;
+  bool operator>(const TianmuDataType &tianmu_n) const override;
+  bool operator>=(const TianmuDataType &tianmu_n) const override;
+  bool operator<=(const TianmuDataType &tianmu_n) const override;
+  bool operator!=(const TianmuDataType &tianmu_n) const override;
+  bool operator==(const BString &tianmu_s) const;
 
   size_t RoundUpTo8Bytes(const DTCollation &dt) const;
   void CopyTo(void *dest, size_t count) const;
@@ -243,11 +243,11 @@ class BString : public ValueBasic<BString> {
     return std::memcmp(s, val_, l) == 0;
   }
 
-  int CompareWith(const BString &rcbs2) const {
-    int l = std::min(len_, rcbs2.len_);
+  int CompareWith(const BString &tianmu_bs2) const {
+    int l = std::min(len_, tianmu_bs2.len_);
 
     if (l == 0) {
-      if (len_ == 0 && rcbs2.len_ == 0)
+      if (len_ == 0 && tianmu_bs2.len_ == 0)
         return 0;
 
       if (len_ == 0)
@@ -256,10 +256,10 @@ class BString : public ValueBasic<BString> {
       return 1;
     }
 
-    if (len_ != rcbs2.len_) {
-      int ret = std::memcmp(val_ + pos_, rcbs2.val_ + rcbs2.pos_, l);
+    if (len_ != tianmu_bs2.len_) {
+      int ret = std::memcmp(val_ + pos_, tianmu_bs2.val_ + tianmu_bs2.pos_, l);
       if (ret == 0) {
-        if (len_ < rcbs2.len_)
+        if (len_ < tianmu_bs2.len_)
           return -1;
         return 1;
       }
@@ -267,7 +267,7 @@ class BString : public ValueBasic<BString> {
     }
 
     // equal length
-    return std::memcmp(val_ + pos_, rcbs2.val_ + rcbs2.pos_, l);
+    return std::memcmp(val_ + pos_, tianmu_bs2.val_ + tianmu_bs2.pos_, l);
   }
 
   // Wildcards: "_" is any character, "%" is 0 or more characters
@@ -293,25 +293,25 @@ class BString : public ValueBasic<BString> {
   const static ValueTypeEnum value_type_ = ValueTypeEnum::STRING_TYPE;
 };
 
-class RCDateTime : public ValueBasic<RCDateTime> {
+class TianmuDateTime : public ValueBasic<TianmuDateTime> {
   friend class ValueParserForText;
 
  public:
-  RCDateTime(int64_t dt, common::CT at);
-  RCDateTime(short year = common::NULL_VALUE_SH);
-  RCDateTime(short year, short month, short day, short hour, short minute, short second,
+  TianmuDateTime(int64_t dt, common::CT at);
+  TianmuDateTime(short year = common::NULL_VALUE_SH);
+  TianmuDateTime(short year, short month, short day, short hour, short minute, short second,
              common::CT at);                                // DataTime , Timestamp
-  RCDateTime(short yh, short mm, short ds, common::CT at);  // Date or Time
-  RCDateTime(const RCDateTime &rcdt);
-  RCDateTime(const MYSQL_TIME &myt, common::CT at);
+  TianmuDateTime(short yh, short mm, short ds, common::CT at);  // Date or Time
+  TianmuDateTime(const TianmuDateTime &tianmu_dt);
+  TianmuDateTime(const MYSQL_TIME &myt, common::CT at);
 
-  RCDateTime(RCNum &rcn, common::CT at);
-  ~RCDateTime();
+  TianmuDateTime(TianmuNum &tianmu_n, common::CT at);
+  ~TianmuDateTime();
 
  public:
-  RCDateTime &operator=(const RCDateTime &rcdt);
-  RCDateTime &operator=(const RCDataType &rcdt) override;
-  RCDateTime &Assign(int64_t v, common::CT at);
+  TianmuDateTime &operator=(const TianmuDateTime &tianmu_dt);
+  TianmuDateTime &operator=(const TianmuDataType &tianmu_dt) override;
+  TianmuDateTime &Assign(int64_t v, common::CT at);
 
   void Store(MYSQL_TIME *my_time, enum_mysql_timestamp_type t) { dt_.Store(my_time, t); }
   bool IsZero() const;
@@ -321,7 +321,7 @@ class RCDateTime : public ValueBasic<RCDateTime> {
     return true;
   };
 
-  /** Convert RCDateTime to 64 bit integer in the following format:
+  /** Convert TianmuDateTime to 64 bit integer in the following format:
    * YEAR: 				YYYY
    * TIME:				(+/-)HHH:MM:SS
    * Date: 				YYYYMMDD
@@ -335,13 +335,13 @@ class RCDateTime : public ValueBasic<RCDateTime> {
   common::CT Type() const override;
   uint GetHashCode() const override;
 
-  bool operator==(const RCDataType &rcdt) const override;
-  bool operator<(const RCDataType &rcdt) const override;
-  bool operator>(const RCDataType &rcdt) const override;
-  bool operator>=(const RCDataType &rcdt) const override;
-  bool operator<=(const RCDataType &rcdt) const override;
-  bool operator!=(const RCDataType &rcdt) const override;
-  int64_t operator-(const RCDateTime &sec) const;  // difference in days, only for common::CT::DATE
+  bool operator==(const TianmuDataType &tianmu_dt) const override;
+  bool operator<(const TianmuDataType &tianmu_dt) const override;
+  bool operator>(const TianmuDataType &tianmu_dt) const override;
+  bool operator>=(const TianmuDataType &tianmu_dt) const override;
+  bool operator<=(const TianmuDataType &tianmu_dt) const override;
+  bool operator!=(const TianmuDataType &tianmu_dt) const override;
+  int64_t operator-(const TianmuDateTime &sec) const;  // difference in days, only for common::CT::DATE
 
   short Year() const { return dt_.year; }
   short Month() const { return dt_.month; }
@@ -360,13 +360,13 @@ class RCDateTime : public ValueBasic<RCDateTime> {
   common::CT at_;
 
  private:
-  int compare(const RCDateTime &rcdt) const;
-  int compare(const RCNum &rcdt) const;
+  int compare(const TianmuDateTime &tianmu_dt) const;
+  int compare(const TianmuNum &tianmu_dt) const;
 
  public:
-  static void AdjustTimezone(RCDateTime &dt);
-  static common::ErrorCode Parse(const BString &, RCDateTime &, common::CT);
-  static common::ErrorCode Parse(const int64_t &, RCDateTime &, common::CT, int precision = -1);
+  static void AdjustTimezone(TianmuDateTime &dt);
+  static common::ErrorCode Parse(const BString &, TianmuDateTime &, common::CT);
+  static common::ErrorCode Parse(const int64_t &, TianmuDateTime &, common::CT, int precision = -1);
 
   static bool CanBeYear(int64_t year);
   static bool CanBeMonth(int64_t month);
@@ -382,83 +382,83 @@ class RCDateTime : public ValueBasic<RCDateTime> {
   static bool IsLeapYear(short year);
   static ushort NoDaysInMonth(short year, ushort month);
 
-  static bool IsCorrectTIANMUYear(short year);
-  static bool IsCorrectTIANMUDate(short year, short month, short day);
-  static bool IsCorrectTIANMUTime(short hour, short minute, short second);
-  static bool IsCorrectTIANMUTimestamp(short year, short month, short day, short hour, short minute, short second);
-  static bool IsCorrectTIANMUDatetime(short year, short month, short day, short hour, short minute, short second);
+  static bool IsCorrectTianmuYear(short year);
+  static bool IsCorrectTianmuDate(short year, short month, short day);
+  static bool IsCorrectTianmuTime(short hour, short minute, short second);
+  static bool IsCorrectTianmuTimestamp(short year, short month, short day, short hour, short minute, short second);
+  static bool IsCorrectTianmuDatetime(short year, short month, short day, short hour, short minute, short second);
 
   static short ToCorrectYear(uint v, common::CT at, bool is_year_2 = false);
-  static RCDateTime GetSpecialValue(common::CT at);
-  static RCDateTime GetCurrent();
+  static TianmuDateTime GetSpecialValue(common::CT at);
+  static TianmuDateTime GetCurrent();
 
  public:
   const static ValueTypeEnum value_type_ = ValueTypeEnum::DATE_TIME_TYPE;
 };
 
-class RCValueObject {
+class TianmuValueObject {
  public:
-  RCValueObject();
-  RCValueObject(const RCValueObject &rcvo);
-  RCValueObject(const RCDataType &rcvo);
+  TianmuValueObject();
+  TianmuValueObject(const TianmuValueObject &tianmu_value_obj);
+  TianmuValueObject(const TianmuDataType &tianmu_value_obj);
 
-  ~RCValueObject();
-  RCValueObject &operator=(const RCValueObject &rcvo);
+  ~TianmuValueObject();
+  TianmuValueObject &operator=(const TianmuValueObject &tianmu_value_obj);
 
-  bool compare(const RCValueObject &rcvo, common::Operator op, char like_esc) const;
+  bool compare(const TianmuValueObject &tianmu_value_obj, common::Operator op, char like_esc) const;
 
-  bool operator==(const RCValueObject &rcvo) const;
-  bool operator<(const RCValueObject &rcvo) const;
-  bool operator>(const RCValueObject &rcvo) const;
-  bool operator>=(const RCValueObject &rcvo) const;
-  bool operator<=(const RCValueObject &rcvo) const;
-  bool operator!=(const RCValueObject &rcvo) const;
+  bool operator==(const TianmuValueObject &tianmu_value_obj) const;
+  bool operator<(const TianmuValueObject &tianmu_value_obj) const;
+  bool operator>(const TianmuValueObject &tianmu_value_obj) const;
+  bool operator>=(const TianmuValueObject &tianmu_value_obj) const;
+  bool operator<=(const TianmuValueObject &tianmu_value_obj) const;
+  bool operator!=(const TianmuValueObject &tianmu_value_obj) const;
 
-  bool operator==(const RCDataType &rcdt) const;
-  bool operator<(const RCDataType &rcdt) const;
-  bool operator>(const RCDataType &rcdt) const;
-  bool operator>=(const RCDataType &rcdt) const;
-  bool operator<=(const RCDataType &rcdt) const;
-  bool operator!=(const RCDataType &rcdt) const;
+  bool operator==(const TianmuDataType &tianmu_dt) const;
+  bool operator<(const TianmuDataType &tianmu_dt) const;
+  bool operator>(const TianmuDataType &tianmu_dt) const;
+  bool operator>=(const TianmuDataType &tianmu_dt) const;
+  bool operator<=(const TianmuDataType &tianmu_dt) const;
+  bool operator!=(const TianmuDataType &tianmu_dt) const;
 
   bool IsNull() const;
 
   common::CT Type() const { return value_.get() ? value_->Type() : common::CT::UNK; }
   ValueTypeEnum GetValueType() const { return value_.get() ? value_->GetValueType() : ValueTypeEnum::NULL_TYPE; }
   BString ToBString() const;
-  // operator RCDataType*()		{ return value_.get(); }
-  RCDataType *Get() const { return value_.get(); }
-  RCDataType &operator*() const;
+  // operator TianmuDataType*()		{ return value_.get(); }
+  TianmuDataType *Get() const { return value_.get(); }
+  TianmuDataType &operator*() const;
 
-  // RCDataType& operator*() const	{ DEBUG_ASSERT(value_.get()); return
+  // TianmuDataType& operator*() const	{ DEBUG_ASSERT(value_.get()); return
   // *value_; }
 
-  operator RCNum &() const;
+  operator TianmuNum &() const;
   // operator BString&() const;
-  operator RCDateTime &() const;
+  operator TianmuDateTime &() const;
   uint GetHashCode() const;
   char *GetDataBytesPointer() const { return value_->GetDataBytesPointer(); }
 
  private:
-  inline void construct(const RCDataType &rcdt);
+  inline void construct(const TianmuDataType &tianmu_dt);
 
  protected:
-  std::unique_ptr<RCDataType> value_;
+  std::unique_ptr<TianmuDataType> value_;
 
  public:
-  static bool compare(const RCValueObject &rcvo1, const RCValueObject &rcvo2, common::Operator op, char like_esc);
+  static bool compare(const TianmuValueObject &tianmu_value_obj1, const TianmuValueObject &tianmu_value_obj2, common::Operator op, char like_esc);
 };
 
 template <class T>
-class rc_hash_compare {
+class tianmu_hash_compare {
  private:
   using Key = T;
 
  public:
   size_t operator()(const Key k) const { return k->GetHashCode() & 1048575; };
   bool operator()(const Key &k1, const Key &k2) const {
-    if (dynamic_cast<RCNum *>(k1)) {
-      if (dynamic_cast<RCNum *>(k2))
+    if (dynamic_cast<TianmuNum *>(k1)) {
+      if (dynamic_cast<TianmuNum *>(k2))
         return *k1 == *k2;
     } else if (AreComparable(k1->Type(), k2->Type()))
       return *k1 == *k2;
@@ -636,27 +636,27 @@ static inline uint64_t Uint64PowOfTenMultiply5(short exponent) {
   return (uint64_t)PowOfTen(exponent) * 5;
 }
 
-const static RCDateTime RC_YEAR_MIN(1901);
-const static RCDateTime RC_YEAR_MAX(2155);
-const static RCDateTime RC_YEAR_SPEC(0);
+const static TianmuDateTime kTianmuYearMin(1901);
+const static TianmuDateTime kTianmuYearMax(2155);
+const static TianmuDateTime kTianmuYearSpec(0);
 
-const static RCDateTime RC_TIME_MIN(-838, 59, 59, common::CT::TIME);
-const static RCDateTime RC_TIME_MAX(838, 59, 59, common::CT::TIME);
-const static RCDateTime RC_TIME_SPEC(0, common::CT::TIME);
+const static TianmuDateTime kTianmuTimeMin(-838, 59, 59, common::CT::TIME);
+const static TianmuDateTime kTianmuTimeMax(838, 59, 59, common::CT::TIME);
+const static TianmuDateTime kTianmuTimeSpec(0, common::CT::TIME);
 
-const static RCDateTime RC_DATE_MIN(100, 1, 1, common::CT::DATE);
-const static RCDateTime RC_DATE_MAX(9999, 12, 31, common::CT::DATE);
-const static RCDateTime RC_DATE_SPEC(0, common::CT::DATE);
+const static TianmuDateTime kTianmuDateMin(100, 1, 1, common::CT::DATE);
+const static TianmuDateTime kTianmuDateMax(9999, 12, 31, common::CT::DATE);
+const static TianmuDateTime kTianmuDateSpec(0, common::CT::DATE);
 
-const static RCDateTime RC_DATETIME_MIN(100, 1, 1, 0, 0, 0, common::CT::DATETIME);
-const static RCDateTime RC_DATETIME_MAX(9999, 12, 31, 23, 59, 59, common::CT::DATETIME);
-const static RCDateTime RC_DATETIME_SPEC(0, common::CT::DATETIME);
+const static TianmuDateTime kTianmuDatetimeMin(100, 1, 1, 0, 0, 0, common::CT::DATETIME);
+const static TianmuDateTime kTianmuDatetimeMax(9999, 12, 31, 23, 59, 59, common::CT::DATETIME);
+const static TianmuDateTime kTianmuDatetimeSpec(0, common::CT::DATETIME);
 
-const static RCDateTime RC_TIMESTAMP_MIN(1970, 01, 01, 00, 00, 00, common::CT::TIMESTAMP);
-const static RCDateTime RC_TIMESTAMP_MAX(2038, 01, 01, 00, 59, 59, common::CT::TIMESTAMP);
-const static RCDateTime RC_TIMESTAMP_SPEC(0, common::CT::TIMESTAMP);
+const static TianmuDateTime kTianmuTimestampMin(1970, 01, 01, 00, 00, 00, common::CT::TIMESTAMP);
+const static TianmuDateTime kTianmuTimestampMax(2038, 01, 01, 00, 59, 59, common::CT::TIMESTAMP);
+const static TianmuDateTime kTianmuTimestampSpec(0, common::CT::TIMESTAMP);
 
 }  // namespace types
 }  // namespace Tianmu
 
-#endif  // TIANMU_TYPES_RC_DATA_TYPES_H_
+#endif  // TIANMU_TYPES_DATA_TYPES_H_

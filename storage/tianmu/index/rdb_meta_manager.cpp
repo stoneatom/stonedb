@@ -30,7 +30,7 @@
 #include "my_bit.h"
 
 #include "core/engine.h"
-#include "core/rc_mem_table.h"
+#include "core/tianmu_mem_table.h"
 #include "index/kv_store.h"
 #include "index/rdb_utils.h"
 
@@ -505,7 +505,7 @@ bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager_) {
                  max_index_id, memtable_id);
       return false;
     }
-    std::shared_ptr<core::RCMemTable> tb_mem = std::make_shared<core::RCMemTable>(table_name, memtable_id, cf_id);
+    std::shared_ptr<core::TianmuMemTable> tb_mem = std::make_shared<core::TianmuMemTable>(table_name, memtable_id, cf_id);
     mem_hash_[table_name] = tb_mem;
   }
 
@@ -606,7 +606,7 @@ void DDLManager::cleanup() {
   }
 }
 
-std::shared_ptr<core::RCMemTable> DDLManager::find_mem(const std::string &table_name) {
+std::shared_ptr<core::TianmuMemTable> DDLManager::find_mem(const std::string &table_name) {
   std::scoped_lock guard(mem_lock_);
 
   auto iter = mem_hash_.find(table_name);
@@ -616,7 +616,7 @@ std::shared_ptr<core::RCMemTable> DDLManager::find_mem(const std::string &table_
   return nullptr;
 }
 
-void DDLManager::put_mem(std::shared_ptr<core::RCMemTable> tb_mem, rocksdb::WriteBatch *const batch) {
+void DDLManager::put_mem(std::shared_ptr<core::TianmuMemTable> tb_mem, rocksdb::WriteBatch *const batch) {
   std::scoped_lock guard(mem_lock_);
 
   StringWriter key;
@@ -633,7 +633,7 @@ void DDLManager::put_mem(std::shared_ptr<core::RCMemTable> tb_mem, rocksdb::Writ
   mem_hash_[table_name] = tb_mem;
 }
 
-void DDLManager::remove_mem(std::shared_ptr<core::RCMemTable> tb_mem, rocksdb::WriteBatch *const batch) {
+void DDLManager::remove_mem(std::shared_ptr<core::TianmuMemTable> tb_mem, rocksdb::WriteBatch *const batch) {
   std::scoped_lock guard(mem_lock_);
 
   StringWriter key;

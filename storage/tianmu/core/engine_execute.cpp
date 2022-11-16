@@ -188,7 +188,7 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
         optimize_after_tianmu = TRUE;
         if (!res) {
           try {
-            route = ha_rcengine_->Execute(unit->thd, unit->thd->lex, result, unit);
+            route = ha_tianmu_engine_->Execute(unit->thd, unit->thd->lex, result, unit);
             if (route == QueryRouteTo::kToMySQL) {
               if (in_case_of_failure_can_go_to_mysql)
                 if (old_executed)
@@ -450,7 +450,7 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
                                              std::bind(&Query::UnlockPackInfoFromUse, &query));
 
   try {
-    std::shared_ptr<RCTable> rct;
+    std::shared_ptr<TianmuTable> rct;
     if (lex->sql_command == SQLCOM_INSERT_SELECT &&
         Engine::IsTianmuTable(((Query_tables_list *)lex)->query_tables->table)) {
       std::string table_path = Engine::GetTablePath(((Query_tables_list *)lex)->query_tables->table);
@@ -484,8 +484,8 @@ QueryRouteTo Engine::Execute(THD *thd, LEX *lex, Query_result *result_output, SE
     sender->Finalize(result);
 
     if (rct) {
-      // in this case if this is an insert to RCTable from select based on the
-      // same table RCTable object for this table can't be deleted in TempTable
+      // in this case if this is an insert to TianmuTable from select based on the
+      // same table TianmuTable object for this table can't be deleted in TempTable
       // destructor It will be deleted in RefreshTables method that will be
       // called on commit
       result->RemoveFromManagedList(rct.get());
@@ -514,7 +514,7 @@ QueryRouteTo handle_exceptions(THD *thd, Transaction *cur_connection, bool with_
     TIANMU_LOG(LogCtl_Level::INFO, msg);
     throw;
   } catch (common::NotImplementedException const &x) {
-    rc_control_.lock(cur_connection->GetThreadID()) << "Switched to MySQL: " << x.what() << system::unlock;
+    tianmu_control_.lock(cur_connection->GetThreadID()) << "Switched to MySQL: " << x.what() << system::unlock;
     my_message(ER_UNKNOWN_ERROR,
                (std::string("The query includes syntax that is not supported "
                             "by the storage engine. Tianmu: ") +
@@ -528,35 +528,35 @@ QueryRouteTo handle_exceptions(THD *thd, Transaction *cur_connection, bool with_
     }
     return QueryRouteTo::kToMySQL;
   } catch (common::OutOfMemoryException const &x) {
-    rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
+    tianmu_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
     my_message(static_cast<int>(common::ErrorCode::OUT_OF_MEMORY),
                (std::string("Tianmu out of resources error: ") + x.what()).c_str(), MYF(0));
     throw ReturnMeToMySQLWithError();
   } catch (common::DataTypeConversionException const &x) {
-    rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
+    tianmu_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
     my_message(static_cast<int>(common::ErrorCode::DATACONVERSION),
                (std::string("Tianmu specific error: ") + x.what()).c_str(), MYF(0));
     throw ReturnMeToMySQLWithError();
   } catch (common::DBObjectException const &x) {  // the subselect had more than one row in a comparison
                                                   // without ANY or ALL
-    rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
+    tianmu_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
     my_message(ER_SYNTAX_ERROR, (std::string("Tianmu specific error: ") + x.what()).c_str(), MYF(0));
     throw ReturnMeToMySQLWithError();
   } catch (common::KilledException const &) {
-    rc_control_.lock(cur_connection->GetThreadID()) << "Stopped by user. " << system::unlock;
+    tianmu_control_.lock(cur_connection->GetThreadID()) << "Stopped by user. " << system::unlock;
     my_message(ER_UNKNOWN_ERROR, (std::string("Stopped by user.")).c_str(), MYF(0));
     throw ReturnMeToMySQLWithError();
   } catch (common::FileException const &e) {
-    rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << e.what() << system::unlock;
+    tianmu_control_.lock(cur_connection->GetThreadID()) << "Error: " << e.what() << system::unlock;
     my_message(static_cast<int>(common::ErrorCode::CANNOT_OPEN_FILE_OR_PIPE),
                (std::string("Tianmu specific error: ") + e.what()).c_str(), MYF(0));
     throw ReturnMeToMySQLWithError();
   } catch (common::Exception const &x) {
-    rc_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
+    tianmu_control_.lock(cur_connection->GetThreadID()) << "Error: " << x.what() << system::unlock;
     my_message(ER_UNKNOWN_ERROR, x.getExceptionMsg().data(), MYF(0));
     throw ReturnMeToMySQLWithError();
   } catch (std::bad_alloc const &) {
-    rc_control_.lock(cur_connection->GetThreadID()) << "Error: std::bad_alloc caught" << system::unlock;
+    tianmu_control_.lock(cur_connection->GetThreadID()) << "Error: std::bad_alloc caught" << system::unlock;
     my_message(ER_UNKNOWN_ERROR, (std::string("Tianmu out of memory error")).c_str(), MYF(0));
     throw ReturnMeToMySQLWithError();
   }

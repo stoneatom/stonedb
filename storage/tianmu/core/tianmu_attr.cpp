@@ -24,8 +24,8 @@
 #include "core/dpn.h"
 #include "core/pack_int.h"
 #include "core/pack_str.h"
-#include "core/rc_attr.h"
-#include "core/rc_attr_typeinfo.h"
+#include "core/tianmu_attr.h"
+#include "core/tianmu_attr_typeinfo.h"
 #include "core/tools.h"
 #include "core/transaction.h"
 #include "core/value.h"
@@ -33,15 +33,15 @@
 #include "loader/value_cache.h"
 #include "system/fet.h"
 #include "system/tianmu_file.h"
-#include "types/rc_data_types.h"
+#include "types/tianmu_data_types.h"
 #include "util/fs.h"
 #include "util/log_ctl.h"
 
 namespace Tianmu {
 namespace core {
-RCAttr::RCAttr(Transaction *tx, common::TX_ID xid, int a_num, int t_num, ColumnShare *share)
+TianmuAttr::TianmuAttr(Transaction *tx, common::TX_ID xid, int a_num, int t_num, ColumnShare *share)
     : m_version(xid), m_tx(tx), m_tid(t_num), m_cid(a_num), m_share(share) {
-  m_coord.ID = COORD_TYPE::RCATTR;
+  m_coord.ID = COORD_TYPE::kTianmuAttr;
   m_coord.co.rcattr[0] = m_tid;
   m_coord.co.rcattr[1] = m_cid;
 
@@ -67,7 +67,7 @@ RCAttr::RCAttr(Transaction *tx, common::TX_ID xid, int a_num, int t_num, ColumnS
   };
 }
 
-void RCAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8_t pss, size_t no_rows) {
+void TianmuAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8_t pss, size_t no_rows) {
   uint32_t no_pack = common::rows2packs(no_rows, pss);
 
   // write meta data(immutable)
@@ -155,7 +155,7 @@ void RCAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8_t p
   fs::create_directory(dir / common::COL_FILTER_DIR / common::COL_FILTER_HIST_DIR);
 }
 
-void RCAttr::LoadVersion(common::TX_ID xid) {
+void TianmuAttr::LoadVersion(common::TX_ID xid) {
   auto fname = Path() / common::COL_VERSION_DIR / xid.ToString();
   system::TianmuFile fattr;
   fattr.OpenReadOnly(fname);
@@ -165,13 +165,13 @@ void RCAttr::LoadVersion(common::TX_ID xid) {
   SetUniqueUpdated(hdr.unique_updated);
 
   if (hdr.dict_ver != 0) {
-    m_dict = ha_rcengine_->cache.GetOrFetchObject<FTree>(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), this);
+    m_dict = ha_tianmu_engine_->cache.GetOrFetchObject<FTree>(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), this);
   }
   m_idx.resize(hdr.numOfPacks);
   fattr.ReadExact(&m_idx[0], sizeof(common::PACK_INDEX) * hdr.numOfPacks);
 }
 
-void RCAttr::Truncate() {
+void TianmuAttr::Truncate() {
   no_change = false;
   hdr = {};
   if (ct.IsLookup()) {
@@ -183,7 +183,7 @@ void RCAttr::Truncate() {
   m_idx.clear();
 }
 
-size_t RCAttr::ComputeNaturalSize() {
+size_t TianmuAttr::ComputeNaturalSize() {
   size_t na_size = (Type().NotNull() ? 0 : 1) * NumOfObj() / 8;
 
   switch (TypeName()) {
@@ -234,7 +234,7 @@ size_t RCAttr::ComputeNaturalSize() {
   return na_size;
 }
 
-void RCAttr::SaveFilters() {
+void TianmuAttr::SaveFilters() {
   if (filter_hist) {
     filter_hist->SaveToFile(m_tx->GetID());
     filter_hist.reset();
@@ -253,7 +253,7 @@ void RCAttr::SaveFilters() {
 
 // Save all modified data (pack, filter, dictionary, etc) to disk.
 // This is basically the PREPARE phase of COMMIT.
-bool RCAttr::SaveVersion() {
+bool TianmuAttr::SaveVersion() {
   ASSERT(m_tx != nullptr, "Attempt to modify table in read-only transaction");
 
   for (size_t i = 0; i < m_idx.size(); i++) {
@@ -266,7 +266,7 @@ bool RCAttr::SaveVersion() {
         // trivial or already saved to disk
         if (auto p = get_pack(i); p != nullptr) {
           p->Unlock();
-          ha_rcengine_->cache.DropObject(get_pc(i));
+          ha_tianmu_engine_->cache.DropObject(get_pc(i));
           dpn.SetPackPtr(0);
         }
         continue;
@@ -314,26 +314,26 @@ bool RCAttr::SaveVersion() {
   return true;
 }
 
-void RCAttr::PostCommit() {
+void TianmuAttr::PostCommit() {
   if (!no_change) {
     for (size_t i = 0; i < m_idx.size(); i++) {
       auto &dpn = get_dpn(i);
       if (dpn.IsLocal()) {
         dpn.SetLocal(false);
         if (dpn.base != common::INVALID_PACK_INDEX)
-          m_share->get_dpn_ptr(dpn.base)->xmax = ha_rcengine_->MaxXID();
+          m_share->get_dpn_ptr(dpn.base)->xmax = ha_tianmu_engine_->MaxXID();
       }
     }
 
-    ha_rcengine_->DeferRemove(Path() / common::COL_VERSION_DIR / m_version.ToString(), m_tid);
+    ha_tianmu_engine_->DeferRemove(Path() / common::COL_VERSION_DIR / m_version.ToString(), m_tid);
     if (m_share->has_filter_bloom)
-      ha_rcengine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_BLOOM_DIR / m_version.ToString(),
+      ha_tianmu_engine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_BLOOM_DIR / m_version.ToString(),
                                 m_tid);
     if (m_share->has_filter_cmap)
-      ha_rcengine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_CMAP_DIR / m_version.ToString(),
+      ha_tianmu_engine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_CMAP_DIR / m_version.ToString(),
                                 m_tid);
     if (m_share->has_filter_hist)
-      ha_rcengine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_HIST_DIR / m_version.ToString(),
+      ha_tianmu_engine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_HIST_DIR / m_version.ToString(),
                                 m_tid);
 
     m_version = m_tx->GetID();
@@ -341,24 +341,24 @@ void RCAttr::PostCommit() {
   m_tx = nullptr;
 }
 
-void RCAttr::Rollback() {
+void TianmuAttr::Rollback() {
   for (size_t i = 0; i < m_idx.size(); i++) {
     auto &dpn(get_dpn(i));
     if (dpn.IsLocal()) {
-      ha_rcengine_->cache.DropObject(get_pc(i));
+      ha_tianmu_engine_->cache.DropObject(get_pc(i));
       dpn.reset();
     }
   }
   m_tx = nullptr;
 }
 
-void RCAttr::LoadPackInfo([[maybe_unused]] Transaction *trans_) {
+void TianmuAttr::LoadPackInfo([[maybe_unused]] Transaction *trans_) {
   if (hdr.dict_ver != 0 && !m_dict) {
-    m_dict = ha_rcengine_->cache.GetOrFetchObject<FTree>(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), this);
+    m_dict = ha_tianmu_engine_->cache.GetOrFetchObject<FTree>(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), this);
   }
 }
 
-PackOntologicalStatus RCAttr::GetPackOntologicalStatus(int pack_no) {
+PackOntologicalStatus TianmuAttr::GetPackOntologicalStatus(int pack_no) {
   LoadPackInfo();
   DPN const *dpn(pack_no >= 0 ? &get_dpn(pack_no) : nullptr);
   if (pack_no < 0 || dpn->NullOnly())
@@ -373,7 +373,7 @@ PackOntologicalStatus RCAttr::GetPackOntologicalStatus(int pack_no) {
   return PackOntologicalStatus::NORMAL;
 }
 
-types::BString RCAttr::GetValueString(const int64_t obj) {
+types::BString TianmuAttr::GetValueString(const int64_t obj) {
   if (obj == common::NULL_VALUE_64)
     return types::BString();
   int pack = row2pack(obj);
@@ -392,7 +392,7 @@ types::BString RCAttr::GetValueString(const int64_t obj) {
   return DecodeValue_S(v);
 }
 
-types::BString RCAttr::GetNotNullValueString(const int64_t obj) {
+types::BString TianmuAttr::GetNotNullValueString(const int64_t obj) {
   int pack = row2pack(obj);
   int offset = row2offset(obj);
 
@@ -407,7 +407,7 @@ types::BString RCAttr::GetNotNullValueString(const int64_t obj) {
 }
 
 // original 0-level value (text, std::string, date, time etc.)
-void RCAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
+void TianmuAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
   if (obj == common::NULL_VALUE_64)
     return;
   common::CT a_type = TypeName();
@@ -458,23 +458,23 @@ void RCAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
   return;
 }
 
-types::RCValueObject RCAttr::GetValue(int64_t obj, bool lookup_to_num) {
+types::TianmuValueObject TianmuAttr::GetValue(int64_t obj, bool lookup_to_num) {
   if (obj == common::NULL_VALUE_64)
-    return types::RCValueObject();
+    return types::TianmuValueObject();
   common::CT a_type = TypeName();
   DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
-  types::RCValueObject ret;
+  types::TianmuValueObject ret;
   if (!IsNull(obj)) {
     if (ATI::IsTxtType(a_type) && !lookup_to_num)
       ret = GetNotNullValueString(obj);
     else if (ATI::IsBinType(a_type)) {
       auto tmp_size = GetLength(obj);
-      types::BString rcbs(nullptr, tmp_size, true);
-      GetValueBin(obj, tmp_size, rcbs.val_);
-      rcbs.null_ = false;
-      ret = rcbs;
+      types::BString tianmu_bs(nullptr, tmp_size, true);
+      GetValueBin(obj, tmp_size, tianmu_bs.val_);
+      tianmu_bs.null_ = false;
+      ret = tianmu_bs;
     } else if (ATI::IsIntegerType(a_type))
-      ret = types::RCNum(GetNotNullValueInt64(obj), -1, false, a_type);
+      ret = types::TianmuNum(GetNotNullValueInt64(obj), -1, false, a_type);
     else if (a_type == common::CT::TIMESTAMP) {
       // needs to convert UTC/GMT time stored on server to time zone of client
       types::BString s = GetValueString(obj);
@@ -482,18 +482,18 @@ types::RCValueObject RCAttr::GetValue(int64_t obj, bool lookup_to_num) {
       MYSQL_TIME_STATUS not_used;
       // convert UTC timestamp given in string into TIME structure
       str_to_datetime(s.GetDataBytesPointer(), s.len_, &myt, TIME_DATETIME_ONLY, &not_used);
-      return types::RCDateTime(myt, common::CT::TIMESTAMP);
+      return types::TianmuDateTime(myt, common::CT::TIMESTAMP);
     } else if (ATI::IsDateTimeType(a_type))
-      ret = types::RCDateTime(this->GetNotNullValueInt64(obj), a_type);
+      ret = types::TianmuDateTime(this->GetNotNullValueInt64(obj), a_type);
     else if (ATI::IsRealType(a_type))
-      ret = types::RCNum(this->GetNotNullValueInt64(obj), 0, true, a_type);
+      ret = types::TianmuNum(this->GetNotNullValueInt64(obj), 0, true, a_type);
     else if (lookup_to_num || a_type == common::CT::NUM)
-      ret = types::RCNum((int64_t)GetNotNullValueInt64(obj), Type().GetScale());
+      ret = types::TianmuNum((int64_t)GetNotNullValueInt64(obj), Type().GetScale());
   }
   return ret;
 }
 
-types::RCDataType &RCAttr::GetValueData(size_t obj, types::RCDataType &value, bool lookup_to_num) {
+types::TianmuDataType &TianmuAttr::GetValueData(size_t obj, types::TianmuDataType &value, bool lookup_to_num) {
   if (obj == size_t(common::NULL_VALUE_64) || IsNull(obj))
     value = ValuePrototype(lookup_to_num);
   else {
@@ -507,25 +507,25 @@ types::RCDataType &RCAttr::GetValueData(size_t obj, types::RCDataType &value, bo
       GetValueBin(obj, tmp_size, ((types::BString &)value).val_);
       value.null_ = false;
     } else if (ATI::IsIntegerType(a_type))
-      ((types::RCNum &)value).Assign(GetNotNullValueInt64(obj), -1, false, a_type);
+      ((types::TianmuNum &)value).Assign(GetNotNullValueInt64(obj), -1, false, a_type);
     else if (ATI::IsDateTimeType(a_type)) {
-      ((types::RCDateTime &)value) = types::RCDateTime(this->GetNotNullValueInt64(obj), a_type);
+      ((types::TianmuDateTime &)value) = types::TianmuDateTime(this->GetNotNullValueInt64(obj), a_type);
     } else if (ATI::IsRealType(a_type))
-      ((types::RCNum &)value).Assign(this->GetNotNullValueInt64(obj), 0, true, a_type);
+      ((types::TianmuNum &)value).Assign(this->GetNotNullValueInt64(obj), 0, true, a_type);
     else
-      ((types::RCNum &)value).Assign(this->GetNotNullValueInt64(obj), Type().GetScale());
+      ((types::TianmuNum &)value).Assign(this->GetNotNullValueInt64(obj), Type().GetScale());
   }
   return value;
 }
 
-int64_t RCAttr::GetNumOfNulls(int pack) {
+int64_t TianmuAttr::GetNumOfNulls(int pack) {
   LoadPackInfo();
   if (pack == -1)
     return NumOfNulls();
   return get_dpn(pack).numOfNulls;
 }
 
-size_t RCAttr::GetActualSize(int pack) {
+size_t TianmuAttr::GetActualSize(int pack) {
   if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY)
     return 0;
   if (Type().IsLookup() || GetPackType() != common::PackType::STR)
@@ -533,7 +533,7 @@ size_t RCAttr::GetActualSize(int pack) {
   return get_dpn(pack).sum_i;
 }
 
-int64_t RCAttr::GetSum(int pack, bool &nonnegative) {
+int64_t TianmuAttr::GetSum(int pack, bool &nonnegative) {
   LoadPackInfo();
   auto const &dpn(get_dpn(pack));
   if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY ||
@@ -547,21 +547,21 @@ int64_t RCAttr::GetSum(int pack, bool &nonnegative) {
   return dpn.sum_i;
 }
 
-int64_t RCAttr::GetMinInt64(int pack) {
+int64_t TianmuAttr::GetMinInt64(int pack) {
   LoadPackInfo();
   if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY)
     return common::MINUS_INF_64;
   return get_dpn(pack).min_i;
 }
 
-int64_t RCAttr::GetMaxInt64(int pack) {
+int64_t TianmuAttr::GetMaxInt64(int pack) {
   LoadPackInfo();
   if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY)
     return common::PLUS_INF_64;
   return get_dpn(pack).max_i;
 }
 
-types::BString RCAttr::GetMaxString(int pack) {
+types::BString TianmuAttr::GetMaxString(int pack) {
   LoadPackInfo();
   if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY || pack_type != common::PackType::STR)
     return types::BString();
@@ -574,7 +574,7 @@ types::BString RCAttr::GetMaxString(int pack) {
   return types::BString(s, min_len >= 0 ? min_len : max_len, true);
 }
 
-types::BString RCAttr::GetMinString(int pack) {
+types::BString TianmuAttr::GetMinString(int pack) {
   LoadPackInfo();
   if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY || pack_type != common::PackType::STR)
     return types::BString();
@@ -586,7 +586,7 @@ types::BString RCAttr::GetMinString(int pack) {
 }
 
 // size of original 0-level value (text/binary, not null-terminated)
-size_t RCAttr::GetLength(int64_t obj) {
+size_t TianmuAttr::GetLength(int64_t obj) {
   DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
   LoadPackInfo();
   int pack = row2pack(obj);
@@ -599,7 +599,7 @@ size_t RCAttr::GetLength(int64_t obj) {
 }
 
 // original 0-level value for a given 1-level code
-types::BString RCAttr::DecodeValue_S(int64_t code) {
+types::BString TianmuAttr::DecodeValue_S(int64_t code) {
   if (code == common::NULL_VALUE_64) {
     return types::BString();
   }
@@ -609,26 +609,26 @@ types::BString RCAttr::DecodeValue_S(int64_t code) {
   }
   common::CT a_type = TypeName();
   if (ATI::IsIntegerType(a_type)) {
-    types::RCNum rcn(code, -1, false, a_type);
-    types::BString local_rcb = rcn.ToBString();
+    types::TianmuNum tianmu_n(code, -1, false, a_type);
+    types::BString local_rcb = tianmu_n.ToBString();
     local_rcb.MakePersistent();
     return local_rcb;
   } else if (ATI::IsRealType(a_type)) {
-    types::RCNum rcn(code, -1, true, a_type);
-    types::BString local_rcb = rcn.ToBString();
+    types::TianmuNum tianmu_n(code, -1, true, a_type);
+    types::BString local_rcb = tianmu_n.ToBString();
     local_rcb.MakePersistent();
     return local_rcb;
   } else if (a_type == common::CT::NUM) {
-    types::RCNum rcn(code, Type().GetScale(), false, a_type);
-    types::BString local_rcb = rcn.ToBString();
+    types::TianmuNum tianmu_n(code, Type().GetScale(), false, a_type);
+    types::BString local_rcb = tianmu_n.ToBString();
     local_rcb.MakePersistent();
     return local_rcb;
   } else if (ATI::IsDateTimeType(a_type)) {
-    types::RCDateTime rcdt(code, a_type);
+    types::TianmuDateTime tianmu_dt(code, a_type);
     if (a_type == common::CT::TIMESTAMP) {
-      types::RCDateTime::AdjustTimezone(rcdt);
+      types::TianmuDateTime::AdjustTimezone(tianmu_dt);
     }
-    types::BString local_rcb = rcdt.ToBString();
+    types::BString local_rcb = tianmu_dt.ToBString();
     local_rcb.MakePersistent();
     return local_rcb;
   }
@@ -637,15 +637,15 @@ types::BString RCAttr::DecodeValue_S(int64_t code) {
 
 // 1-level code value for a given 0-level (text) value
 // if new_val, then add to dictionary if not present
-int RCAttr::EncodeValue_T(const types::BString &rcbs, bool new_val, common::ErrorCode *tianmu_rc) {
-  if (tianmu_rc)
-    *tianmu_rc = common::ErrorCode::SUCCESS;
-  if (rcbs.IsNull())
+int TianmuAttr::EncodeValue_T(const types::BString &tianmu_bs, bool new_val, common::ErrorCode *tianmu_err_code) {
+  if (tianmu_err_code)
+    *tianmu_err_code = common::ErrorCode::SUCCESS;
+  if (tianmu_bs.IsNull())
     return common::NULL_VALUE_32;
   if (ATI::IsStringType(TypeName())) {
     DEBUG_ASSERT(GetPackType() == common::PackType::INT);
     LoadPackInfo();
-    int vs = m_dict->GetEncodedValue(rcbs.val_, rcbs.len_);
+    int vs = m_dict->GetEncodedValue(tianmu_bs.val_, tianmu_bs.len_);
     if (vs < 0) {
       if (!new_val) {
         return common::NULL_VALUE_32;
@@ -659,55 +659,55 @@ int RCAttr::EncodeValue_T(const types::BString &rcbs, bool new_val, common::Erro
         m_dict = sp->Clone();
         sp->Unlock();
         hdr.dict_ver++;
-        ha_rcengine_->cache.PutObject(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), m_dict);
+        ha_tianmu_engine_->cache.PutObject(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), m_dict);
       }
-      vs = m_dict->Add(rcbs.val_, rcbs.len_);
+      vs = m_dict->Add(tianmu_bs.val_, tianmu_bs.len_);
     }
     return vs;
   }
-  char const *val = rcbs.val_;
+  char const *val = tianmu_bs.val_;
   if (val == 0)
     val = ZERO_LENGTH_STRING;
   if (ATI::IsDateTimeType(TypeName()) || TypeName() == common::CT::BIGINT) {
     ASSERT(0, "Wrong data type!");
   } else {
-    types::RCNum rcn;
-    common::ErrorCode tmp_tianmu_rc = types::RCNum::Parse(rcbs, rcn, TypeName());
-    if (tianmu_rc)
-      *tianmu_rc = tmp_tianmu_rc;
-    return (int)(int64_t)rcn;
+    types::TianmuNum tianmu_n;
+    common::ErrorCode tmp_tianmu_rc = types::TianmuNum::Parse(tianmu_bs, tianmu_n, TypeName());
+    if (tianmu_err_code)
+      *tianmu_err_code = tmp_tianmu_rc;
+    return (int)(int64_t)tianmu_n;
   }
   return common::NULL_VALUE_32;
 }
 
-// transform a types::RCNum value into 1-level code, take into account
+// transform a types::TianmuNum value into 1-level code, take into account
 // the precision etc. no changes for REAL; rounded=true iff v has greater
 // precision than the column and the returned result is rounded down
-int64_t RCAttr::EncodeValue64(types::RCDataType *v, bool &rounded, common::ErrorCode *tianmu_rc) {
+int64_t TianmuAttr::EncodeValue64(types::TianmuDataType *v, bool &rounded, common::ErrorCode *tianmu_err_code) {
   rounded = false;
-  if (tianmu_rc)
-    *tianmu_rc = common::ErrorCode::SUCCESS;
+  if (tianmu_err_code)
+    *tianmu_err_code = common::ErrorCode::SUCCESS;
   if (!v || v->IsNull())
     return common::NULL_VALUE_64;
 
   if ((Type().IsLookup() && v->Type() != common::CT::NUM)) {
-    return EncodeValue_T(v->ToBString(), false, tianmu_rc);
+    return EncodeValue_T(v->ToBString(), false, tianmu_err_code);
   } else if (ATI::IsDateTimeType(TypeName()) || ATI::IsDateTimeNType(TypeName())) {
-    return ((types::RCDateTime *)v)->GetInt64();
+    return ((types::TianmuDateTime *)v)->GetInt64();
   }
   ASSERT(GetPackType() == common::PackType::INT, "Pack type must be numeric!");
 
-  int64_t vv = ((types::RCNum *)v)->ValueInt();
-  int vp = ((types::RCNum *)v)->Scale();
+  int64_t vv = ((types::TianmuNum *)v)->ValueInt();
+  int vp = ((types::TianmuNum *)v)->Scale();
   if (ATI::IsRealType(TypeName())) {
-    if (((types::RCNum *)v)->IsReal())
+    if (((types::TianmuNum *)v)->IsReal())
       return vv;  // already stored as double
     double res = double(vv);
     res /= types::Uint64PowOfTen(vp);
     // for(int i=0;i<vp;i++) res*=10;
     return *(int64_t *)(&res);  // encode
   }
-  if (((types::RCNum *)v)->IsReal()) {  // v is double
+  if (((types::TianmuNum *)v)->IsReal()) {  // v is double
     double vd = *(double *)(&vv);
     vd *= types::Uint64PowOfTen(Type().GetScale());  // translate into int64_t of proper precision
     if (vd > common::PLUS_INF_64)
@@ -738,11 +738,11 @@ int64_t RCAttr::EncodeValue64(types::RCDataType *v, bool &rounded, common::Error
   return vv;
 }
 
-int64_t RCAttr::EncodeValue64(const types::RCValueObject &v, bool &rounded, common::ErrorCode *tianmu_rc) {
-  return EncodeValue64(v.Get(), rounded, tianmu_rc);
+int64_t TianmuAttr::EncodeValue64(const types::TianmuValueObject &v, bool &rounded, common::ErrorCode *tianmu_err_code) {
+  return EncodeValue64(v.Get(), rounded, tianmu_err_code);
 }
 
-size_t RCAttr::GetPrefixLength(int pack) {
+size_t TianmuAttr::GetPrefixLength(int pack) {
   LoadPackInfo();
 
   if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY)
@@ -756,7 +756,7 @@ size_t RCAttr::GetPrefixLength(int pack) {
   return dif_pos;
 }
 
-void RCAttr::LockPackForUse(common::PACK_INDEX pn) {
+void TianmuAttr::LockPackForUse(common::PACK_INDEX pn) {
   if (m_idx.empty()) {  // in case table not insert data
     return;
   }
@@ -779,7 +779,7 @@ void RCAttr::LockPackForUse(common::PACK_INDEX pn) {
       // we win the chance to load data
       std::shared_ptr<Pack> sp;
       try {
-        sp = ha_rcengine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
+        sp = ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
       } catch (std::exception &e) {
         dpn->SetPackPtr(0);
         TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -801,10 +801,11 @@ void RCAttr::LockPackForUse(common::PACK_INDEX pn) {
   }
 }
 
-void RCAttr::UnlockPackFromUse(common::PACK_INDEX pn) {
+void TianmuAttr::UnlockPackFromUse(common::PACK_INDEX pn) {
   if (m_idx.empty()) {  // in case table not insert data
     return;
   }
+
   auto dpn = &get_dpn(pn);
   if (dpn->IsLocal())
     dpn = m_share->get_dpn_ptr(dpn->base);
@@ -830,29 +831,29 @@ void RCAttr::UnlockPackFromUse(common::PACK_INDEX pn) {
   }
 }
 
-void RCAttr::Collapse() {
+void TianmuAttr::Collapse() {
   if (m_dict && !m_dict->Changed()) {
     m_dict->Release();
     m_dict.reset();
   }
 }
 
-void RCAttr::Release() { Collapse(); }
+void TianmuAttr::Release() { Collapse(); }
 
-std::shared_ptr<Pack> RCAttr::Fetch(const PackCoordinate &pc) {
+std::shared_ptr<Pack> TianmuAttr::Fetch(const PackCoordinate &pc) {
   auto dpn = m_share->get_dpn_ptr(pc_dp(pc));
   if (GetPackType() == common::PackType::STR)
     return std::make_shared<PackStr>(dpn, pc, m_share);
   return std::make_shared<PackInt>(dpn, pc, m_share);
 }
 
-std::shared_ptr<FTree> RCAttr::Fetch([[maybe_unused]] const FTreeCoordinate &coord) {
+std::shared_ptr<FTree> TianmuAttr::Fetch([[maybe_unused]] const FTreeCoordinate &coord) {
   auto sp = std::make_shared<FTree>();
   sp->LoadData(Path() / common::COL_DICT_DIR / std::to_string(hdr.dict_ver));
   return sp;
 }
 
-void RCAttr::PreparePackForLoad() {
+void TianmuAttr::PreparePackForLoad() {
   if (SizeOfPack() == 0 || get_last_dpn().numOfRecords == (1U << pss)) {
     // just allocate a DPN but do not create dp for now
     auto ret = m_share->alloc_dpn(m_tx->GetID());
@@ -862,7 +863,7 @@ void RCAttr::PreparePackForLoad() {
   }
 }
 
-void RCAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
+void TianmuAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
   no_change = false;
   if (conn_info)
     current_txn_ = conn_info;
@@ -891,7 +892,7 @@ void RCAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
     if (pack) {
       pack->Unlock();
     }
-    ha_rcengine_->cache.DropObject(get_pc(pi));
+    ha_tianmu_engine_->cache.DropObject(get_pc(pi));
     dpn.SetPackPtr(0);
   }
 
@@ -900,7 +901,7 @@ void RCAttr::LoadData(loader::ValueCache *nvs, Transaction *conn_info) {
   hdr.natural_size += nvs->SumarizedSize();
 }
 
-void RCAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
+void TianmuAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
   std::optional<common::double_int_t> nv;
 
   if (Type().NotNull()) {
@@ -950,7 +951,7 @@ void RCAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
     // new package (also in case of expanding so-far-uniform package)
     if (dpn.Trivial()) {
       // we need a pack struct for the previous trivial dp
-      auto sp = ha_rcengine_->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
+      auto sp = ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
 
       // we don't need any synchronization here because the dpn is local!
       dpn.SetPackPtr(reinterpret_cast<unsigned long>(sp.get()) + tag_one);
@@ -981,7 +982,7 @@ void RCAttr::LoadDataPackN(size_t pi, loader::ValueCache *nvs) {
   }
 }
 
-void RCAttr::LoadDataPackS(size_t pi, loader::ValueCache *nvs) {
+void TianmuAttr::LoadDataPackS(size_t pi, loader::ValueCache *nvs) {
   auto &dpn(get_dpn(pi));
 
   auto load_nulls = Type().NotNull() ? 0 : nvs->NumOfNulls();
@@ -996,14 +997,14 @@ void RCAttr::LoadDataPackS(size_t pi, loader::ValueCache *nvs) {
 
   // new package or expanding so-far-null package
   if (dpn.numOfRecords == 0 || dpn.NullOnly()) {
-    auto sp = ha_rcengine_->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
+    auto sp = ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
     dpn.SetPackPtr(reinterpret_cast<unsigned long>(sp.get()) + tag_one);
   }
 
   get_packS(pi)->LoadValues(nvs);
 }
 
-void RCAttr::UpdateData(uint64_t row, Value &v) {
+void TianmuAttr::UpdateData(uint64_t row, Value &v) {
   // rclog << lock << "update data for row " << row << " col " << m_cid <<
   // system::unlock;
   no_change = false;
@@ -1019,7 +1020,7 @@ void RCAttr::UpdateData(uint64_t row, Value &v) {
   auto dpn_save = dpn;
   if (dpn.Trivial()) {
     // need to create pack struct for previous trivial pack
-    ha_rcengine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
+    ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
   }
 
   if (ct.IsLookup() && v.HasValue()) {
@@ -1033,7 +1034,7 @@ void RCAttr::UpdateData(uint64_t row, Value &v) {
         m_dict = sp->Clone();
         sp->Unlock();
         hdr.dict_ver++;
-        ha_rcengine_->cache.PutObject(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), m_dict);
+        ha_tianmu_engine_->cache.PutObject(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), m_dict);
       }
       code = m_dict->Add(str.data(), str.size());
     }
@@ -1073,7 +1074,7 @@ void RCAttr::UpdateData(uint64_t row, Value &v) {
   }
 }
 
-bool RCAttr::IsDelete(int64_t row) {
+bool TianmuAttr::IsDelete(int64_t row) {
   if (row == common::NULL_VALUE_64)
     return true;
   DEBUG_ASSERT(hdr.numOfRecords >= static_cast<uint64_t>(row));
@@ -1090,7 +1091,7 @@ bool RCAttr::IsDelete(int64_t row) {
   return false;
 }
 
-void RCAttr::DeleteData(uint64_t row) {
+void TianmuAttr::DeleteData(uint64_t row) {
   auto pn = row2pack(row);
   FunctionExecutor fe([this, pn]() { LockPackForUse(pn); }, [this, pn]() { UnlockPackFromUse(pn); });
 
@@ -1102,7 +1103,7 @@ void RCAttr::DeleteData(uint64_t row) {
   auto dpn_save = dpn;
   if (dpn.Trivial()) {
     // need to create pack struct for previous trivial pack
-    ha_rcengine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
+    ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
   }
   get_pack(pn)->DeleteByRow(row2offset(row));
 
@@ -1137,7 +1138,7 @@ void RCAttr::DeleteData(uint64_t row) {
   }
 }
 
-void RCAttr::CopyPackForWrite(common::PACK_INDEX pi) {
+void TianmuAttr::CopyPackForWrite(common::PACK_INDEX pi) {
   if (get_dpn(pi).IsLocal())
     return;
 
@@ -1157,19 +1158,19 @@ void RCAttr::CopyPackForWrite(common::PACK_INDEX pi) {
   std::shared_ptr<Pack> new_pack;
   // if the pack data is already loaded, just clone it to avoid disk IO
   // otherwise, load pack data from disk
-  auto pack = ha_rcengine_->cache.GetLockedObject<Pack>(pc_old);
+  auto pack = ha_tianmu_engine_->cache.GetLockedObject<Pack>(pc_old);
   if (pack) {
     new_pack = pack->Clone(pc_new);
     new_pack->SetDPN(&dpn);  // need to set dpn after clone
-    ha_rcengine_->cache.PutObject(pc_new, new_pack);
+    ha_tianmu_engine_->cache.PutObject(pc_new, new_pack);
     pack->Unlock();
   } else {
-    new_pack = ha_rcengine_->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
+    new_pack = ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pi), this);
   }
   dpn.SetPackPtr(reinterpret_cast<unsigned long>(new_pack.get()) + tag_one);
 }
 
-void RCAttr::CompareAndSetCurrentMin(const types::BString &tstmp, types::BString &min, bool set) {
+void TianmuAttr::CompareAndSetCurrentMin(const types::BString &tstmp, types::BString &min, bool set) {
   bool res;
   if (types::RequiresUTFConversions(Type().GetCollation())) {
     res = CollationStrCmp(Type().GetCollation(), tstmp, min) < 0;
@@ -1183,7 +1184,7 @@ void RCAttr::CompareAndSetCurrentMin(const types::BString &tstmp, types::BString
   }
 }
 
-void RCAttr::CompareAndSetCurrentMax(const types::BString &tstmp, types::BString &max) {
+void TianmuAttr::CompareAndSetCurrentMax(const types::BString &tstmp, types::BString &max) {
   bool res;
   if (types::RequiresUTFConversions(Type().GetCollation())) {
     res = CollationStrCmp(Type().GetCollation(), tstmp, max) > 0;
@@ -1196,7 +1197,7 @@ void RCAttr::CompareAndSetCurrentMax(const types::BString &tstmp, types::BString
   }
 }
 
-types::BString RCAttr::MinS(Filter *f) {
+types::BString TianmuAttr::MinS(Filter *f) {
   if (f->IsEmpty() || !ATI::IsStringType(TypeName()) || NumOfObj() == 0 || NumOfObj() == NumOfNulls())
     return types::BString();
   types::BString min;
@@ -1231,7 +1232,7 @@ types::BString RCAttr::MinS(Filter *f) {
   return min;
 }
 
-types::BString RCAttr::MaxS(Filter *f) {
+types::BString TianmuAttr::MaxS(Filter *f) {
   if (f->IsEmpty() || !ATI::IsStringType(TypeName()) || NumOfObj() == 0 || NumOfObj() == NumOfNulls())
     return types::BString();
 
@@ -1267,7 +1268,7 @@ types::BString RCAttr::MaxS(Filter *f) {
   return max;
 }
 
-void RCAttr::UpdateRSI_Hist(common::PACK_INDEX pi) {
+void TianmuAttr::UpdateRSI_Hist(common::PACK_INDEX pi) {
   if (!GetFilter_Hist()) {
     return;
   }
@@ -1278,7 +1279,7 @@ void RCAttr::UpdateRSI_Hist(common::PACK_INDEX pi) {
   filter_hist->Update(pi, get_dpn(pi), get_packN(pi));
 }
 
-void RCAttr::UpdateRSI_CMap(common::PACK_INDEX pi) {
+void TianmuAttr::UpdateRSI_CMap(common::PACK_INDEX pi) {
   if (GetPackType() != common::PackType::STR || NumOfObj() == 0 || types::RequiresUTFConversions(Type().GetCollation()))
     return;
 
@@ -1290,7 +1291,7 @@ void RCAttr::UpdateRSI_CMap(common::PACK_INDEX pi) {
   filter_cmap->Update(pi, get_dpn(pi), get_packS(pi));
 }
 
-void RCAttr::UpdateRSI_Bloom(common::PACK_INDEX pi) {
+void TianmuAttr::UpdateRSI_Bloom(common::PACK_INDEX pi) {
   if (!GetFilter_Bloom()) {
     return;
   }
@@ -1304,17 +1305,17 @@ void RCAttr::UpdateRSI_Bloom(common::PACK_INDEX pi) {
   filter_bloom->Update(pi, get_dpn(pi), get_packS(pi));
 }
 
-void RCAttr::RefreshFilter(common::PACK_INDEX pi) {
+void TianmuAttr::RefreshFilter(common::PACK_INDEX pi) {
   UpdateRSI_Bloom(pi);
   UpdateRSI_CMap(pi);
   UpdateRSI_Hist(pi);
 }
 
-Pack *RCAttr::get_pack(size_t i) { return reinterpret_cast<Pack *>(get_dpn(i).GetPackPtr() & tag_mask); }
+Pack *TianmuAttr::get_pack(size_t i) { return reinterpret_cast<Pack *>(get_dpn(i).GetPackPtr() & tag_mask); }
 
-Pack *RCAttr::get_pack(size_t i) const { return reinterpret_cast<Pack *>(get_dpn(i).GetPackPtr() & tag_mask); }
+Pack *TianmuAttr::get_pack(size_t i) const { return reinterpret_cast<Pack *>(get_dpn(i).GetPackPtr() & tag_mask); }
 
-std::shared_ptr<RSIndex_Hist> RCAttr::GetFilter_Hist() {
+std::shared_ptr<RSIndex_Hist> TianmuAttr::GetFilter_Hist() {
   if (!tianmu_sysvar_enable_histogram_cmap_bloom) {
     return nullptr;
   }
@@ -1328,12 +1329,12 @@ std::shared_ptr<RSIndex_Hist> RCAttr::GetFilter_Hist() {
     return filter_hist;
   }
   if (!filter_hist)
-    filter_hist = std::static_pointer_cast<RSIndex_Hist>(ha_rcengine_->filter_cache.Get(
+    filter_hist = std::static_pointer_cast<RSIndex_Hist>(ha_tianmu_engine_->filter_cache.Get(
         FilterCoordinate(m_tid, m_cid, (int)FilterType::HIST, m_version.v1, m_version.v2), filter_creator));
   return filter_hist;
 }
 
-std::shared_ptr<RSIndex_CMap> RCAttr::GetFilter_CMap() {
+std::shared_ptr<RSIndex_CMap> TianmuAttr::GetFilter_CMap() {
   if (!tianmu_sysvar_enable_histogram_cmap_bloom) {
     return nullptr;
   }
@@ -1346,11 +1347,11 @@ std::shared_ptr<RSIndex_CMap> RCAttr::GetFilter_CMap() {
       filter_cmap = std::make_shared<RSIndex_CMap>(Path() / common::COL_FILTER_DIR, m_version);
     return filter_cmap;
   }
-  return std::static_pointer_cast<RSIndex_CMap>(ha_rcengine_->filter_cache.Get(
+  return std::static_pointer_cast<RSIndex_CMap>(ha_tianmu_engine_->filter_cache.Get(
       FilterCoordinate(m_tid, m_cid, (int)FilterType::CMAP, m_version.v1, m_version.v2), filter_creator));
 }
 
-std::shared_ptr<RSIndex_Bloom> RCAttr::GetFilter_Bloom() {
+std::shared_ptr<RSIndex_Bloom> TianmuAttr::GetFilter_Bloom() {
   if (!tianmu_sysvar_enable_histogram_cmap_bloom) {
     return nullptr;
   }
@@ -1363,13 +1364,13 @@ std::shared_ptr<RSIndex_Bloom> RCAttr::GetFilter_Bloom() {
       filter_bloom = std::make_shared<RSIndex_Bloom>(Path() / common::COL_FILTER_DIR, m_version);
     return filter_bloom;
   }
-  return std::static_pointer_cast<RSIndex_Bloom>(ha_rcengine_->filter_cache.Get(
+  return std::static_pointer_cast<RSIndex_Bloom>(ha_tianmu_engine_->filter_cache.Get(
       FilterCoordinate(m_tid, m_cid, (int)FilterType::BLOOM, m_version.v1, m_version.v2), filter_creator));
 }
 
-void RCAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
+void TianmuAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
   auto path = m_share->owner->Path();
-  std::shared_ptr<index::RCTableIndex> tab = ha_rcengine_->GetTableIndex(path);
+  std::shared_ptr<index::TianmuTableIndex> tab = ha_tianmu_engine_->GetTableIndex(path);
   // col is not primary key
   if (!tab)
     return;
@@ -1403,9 +1404,9 @@ void RCAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
   }
 }
 
-void RCAttr::DeleteByPrimaryKey(uint64_t row, uint64_t col) {
+void TianmuAttr::DeleteByPrimaryKey(uint64_t row, uint64_t col) {
   auto path = m_share->owner->Path();
-  std::shared_ptr<index::RCTableIndex> tab = ha_rcengine_->GetTableIndex(path);
+  std::shared_ptr<index::TianmuTableIndex> tab = ha_tianmu_engine_->GetTableIndex(path);
   // col is not primary key
   if (!tab)
     return;

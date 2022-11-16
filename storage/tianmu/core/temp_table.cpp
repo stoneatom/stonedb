@@ -432,22 +432,22 @@ void TempTable::Attr::SetValueString(int64_t obj, const types::BString &val) {
   }
 }
 
-types::RCValueObject TempTable::Attr::GetValue(int64_t obj, [[maybe_unused]] bool lookup_to_num) {
+types::TianmuValueObject TempTable::Attr::GetValue(int64_t obj, [[maybe_unused]] bool lookup_to_num) {
   if (obj == common::NULL_VALUE_64)
-    return types::RCValueObject();
-  types::RCValueObject ret;
+    return types::TianmuValueObject();
+  types::TianmuValueObject ret;
   if (ATI::IsStringType(TypeName())) {
     types::BString s;
     GetValueString(s, obj);
     ret = s;
   } else if (ATI::IsIntegerType(TypeName()))
-    ret = types::RCNum(GetValueInt64(obj), 0, false, common::CT::NUM);
+    ret = types::TianmuNum(GetValueInt64(obj), 0, false, common::CT::NUM);
   else if (ATI::IsDateTimeType(TypeName()))
-    ret = types::RCDateTime(this->GetValueInt64(obj), TypeName() /*, precision*/);
+    ret = types::TianmuDateTime(this->GetValueInt64(obj), TypeName() /*, precision*/);
   else if (ATI::IsRealType(TypeName()))
-    ret = types::RCNum(this->GetValueInt64(obj), 0, true);
+    ret = types::TianmuNum(this->GetValueInt64(obj), 0, true);
   else if (TypeName() == common::CT::NUM)
-    ret = types::RCNum((int64_t)GetValueInt64(obj), Type().GetScale());
+    ret = types::TianmuNum((int64_t)GetValueInt64(obj), Type().GetScale());
   return ret;
 }
 
@@ -467,29 +467,29 @@ void TempTable::Attr::GetValueString(types::BString &s, int64_t obj) {
       (*(AttrBuffer<types::BString> *)buffer).GetString(s, obj);
       break;
     case common::CT::BYTEINT: {
-      types::RCNum rcn((int64_t)(*(AttrBuffer<char> *)buffer)[obj], -1, false, TypeName());
-      s = rcn.ToBString();
+      types::TianmuNum tianmu_n((int64_t)(*(AttrBuffer<char> *)buffer)[obj], -1, false, TypeName());
+      s = tianmu_n.ToBString();
       break;
     }
     case common::CT::SMALLINT: {
-      types::RCNum rcn((int64_t)(*(AttrBuffer<short> *)buffer)[obj], -1, false, TypeName());
-      s = rcn.ToBString();
+      types::TianmuNum tianmu_n((int64_t)(*(AttrBuffer<short> *)buffer)[obj], -1, false, TypeName());
+      s = tianmu_n.ToBString();
       break;
     }
     case common::CT::INT:
     case common::CT::MEDIUMINT: {
-      types::RCNum rcn((int)(*(AttrBuffer<int> *)buffer)[obj], -1, false, TypeName());
-      s = rcn.ToBString();
+      types::TianmuNum tianmu_n((int)(*(AttrBuffer<int> *)buffer)[obj], -1, false, TypeName());
+      s = tianmu_n.ToBString();
       break;
     }
     case common::CT::BIGINT: {
-      types::RCNum rcn((int64_t)(*(AttrBuffer<int64_t> *)buffer)[obj], -1, false, TypeName());
-      s = rcn.ToBString();
+      types::TianmuNum tianmu_n((int64_t)(*(AttrBuffer<int64_t> *)buffer)[obj], -1, false, TypeName());
+      s = tianmu_n.ToBString();
       break;
     }
     case common::CT::NUM: {
-      types::RCNum rcn((*(AttrBuffer<int64_t> *)buffer)[obj], Type().GetScale());
-      s = rcn.ToBString();
+      types::TianmuNum tianmu_n((*(AttrBuffer<int64_t> *)buffer)[obj], Type().GetScale());
+      s = tianmu_n.ToBString();
       break;
     }
     case common::CT::YEAR:
@@ -497,18 +497,18 @@ void TempTable::Attr::GetValueString(types::BString &s, int64_t obj) {
     case common::CT::DATE:
     case common::CT::DATETIME:
     case common::CT::TIMESTAMP: {
-      types::RCDateTime rcdt((*(AttrBuffer<int64_t> *)buffer)[obj], TypeName());
+      types::TianmuDateTime tianmu_dt((*(AttrBuffer<int64_t> *)buffer)[obj], TypeName());
       if (TypeName() == common::CT::TIMESTAMP) {
-        types::RCDateTime::AdjustTimezone(rcdt);
+        types::TianmuDateTime::AdjustTimezone(tianmu_dt);
       }
-      s = rcdt.ToBString();
+      s = tianmu_dt.ToBString();
       break;
     }
     case common::CT::REAL:
     case common::CT::FLOAT: {
       d_p = &(*(AttrBuffer<double> *)buffer)[obj];
-      types::RCNum rcn(*(int64_t *)d_p, 0, true, TypeName());
-      s = rcn.ToBString();
+      types::TianmuNum tianmu_n(*(int64_t *)d_p, 0, true, TypeName());
+      s = tianmu_n.ToBString();
       break;
     }
     default:
@@ -1287,7 +1287,7 @@ void TempTable::Union(TempTable *t, int all) {
     throw common::NotImplementedException("UNION of tables with different number of columns.");
   if (this->IsParametrized() || t->IsParametrized())
     throw common::NotImplementedException("Materialize: not implemented union of parameterized queries.");
-  rc_control_.lock(m_conn->GetThreadID()) << "UNION: materializing components." << system::unlock;
+  tianmu_control_.lock(m_conn->GetThreadID()) << "UNION: materializing components." << system::unlock;
   this->Materialize();
   t->Materialize();
   if ((!t->NumOfObj() && all) || (!this->NumOfObj() && !t->NumOfObj()))  // no objects = no union
@@ -1299,7 +1299,7 @@ void TempTable::Union(TempTable *t, int all) {
   first_mask.Set();
   sec_mask.Set();
   if (!all) {
-    rc_control_.lock(m_conn->GetThreadID()) << "UNION: excluding repetitions." << system::unlock;
+    tianmu_control_.lock(m_conn->GetThreadID()) << "UNION: excluding repetitions." << system::unlock;
     Filter first_f(NumOfObj(), p_power);
     first_f.Set();
     Filter sec_f(t->NumOfObj(), p_power);
@@ -1385,7 +1385,7 @@ void TempTable::Union(TempTable *t, int all) {
   int64_t first_no_obj = first_mask.NumOfOnes();
   int64_t sec_no_obj = sec_mask.NumOfOnes();
   int64_t new_no_obj = first_no_obj + sec_no_obj;
-  rc_control_.lock(m_conn->GetThreadID()) << "UNION: generating result (" << new_no_obj << " rows)." << system::unlock;
+  tianmu_control_.lock(m_conn->GetThreadID()) << "UNION: generating result (" << new_no_obj << " rows)." << system::unlock;
   uint new_page_size = CalculatePageSize(new_no_obj);
   for (uint i = 0; i < NumOfDisplaybleAttrs(); i++) {
     Attr *first_attr = GetDisplayableAttrP(i);
@@ -1641,9 +1641,9 @@ void TempTable::GetTableString(types::BString &s, int64_t obj, uint attr) {
   attrs[attr]->GetValueString(s, obj);
 }
 
-types::RCValueObject TempTable::GetValueObject(int64_t obj, uint attr) {
+types::TianmuValueObject TempTable::GetValueObject(int64_t obj, uint attr) {
   if (no_obj == 0)
-    return types::RCValueObject();
+    return types::TianmuValueObject();
   DEBUG_ASSERT(obj < no_obj && (uint)attr < attrs.size());
   return attrs[attr]->GetValue(obj);
 }
@@ -1716,13 +1716,13 @@ void TempTable::SetPageSize(int64_t new_page_size) {
 void TempTable::DisplayRSI() {
   for (uint i = 0; i < tables.size(); i++) {
     if (tables[i]->TableType() == TType::TABLE)
-      ((RCTable *)tables[i])->DisplayRSI();
+      ((TianmuTable *)tables[i])->DisplayRSI();
   }
 }
 
 // Refactoring: extracted methods
 
-void TempTable::RemoveFromManagedList(const RCTable *tab) {
+void TempTable::RemoveFromManagedList(const TianmuTable *tab) {
   tables.erase(std::remove(tables.begin(), tables.end(), tab), tables.end());
 }
 
@@ -2127,38 +2127,38 @@ void TempTable::RecordIterator::PrepareValues() {
         if (v == common::NULL_VALUE_32)
           dataTypes[att]->SetToNull();
         else
-          ((types::RCNum *)dataTypes[att].get())->Assign(v, 0, false, attrt_tmp);
+          ((types::TianmuNum *)dataTypes[att].get())->Assign(v, 0, false, attrt_tmp);
       } else if (attrt_tmp == common::CT::SMALLINT) {
         short &v = (*(AttrBuffer<short> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == common::NULL_VALUE_SH)
           dataTypes[att]->SetToNull();
         else
-          ((types::RCNum *)dataTypes[att].get())->Assign(v, 0, false, attrt_tmp);
+          ((types::TianmuNum *)dataTypes[att].get())->Assign(v, 0, false, attrt_tmp);
       } else if (attrt_tmp == common::CT::BYTEINT) {
         char &v = (*(AttrBuffer<char> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == common::NULL_VALUE_C)
           dataTypes[att]->SetToNull();
         else
-          ((types::RCNum *)dataTypes[att].get())->Assign(v, 0, false, attrt_tmp);
+          ((types::TianmuNum *)dataTypes[att].get())->Assign(v, 0, false, attrt_tmp);
       } else if (ATI::IsRealType(attrt_tmp)) {
         double &v = (*(AttrBuffer<double> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == NULL_VALUE_D)
           dataTypes[att]->SetToNull();
         else
-          ((types::RCNum *)dataTypes[att].get())->Assign(v);
+          ((types::TianmuNum *)dataTypes[att].get())->Assign(v);
       } else if (attrt_tmp == common::CT::NUM || attrt_tmp == common::CT::BIGINT) {
         int64_t &v = (*(AttrBuffer<int64_t> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == common::NULL_VALUE_64)
           dataTypes[att]->SetToNull();
         else
-          ((types::RCNum *)dataTypes[att].get())
+          ((types::TianmuNum *)dataTypes[att].get())
               ->Assign(v, table->GetDisplayableAttrP(att)->Type().GetScale(), false, attrt_tmp);
       } else if (ATI::IsDateTimeType(attrt_tmp)) {
         int64_t &v = (*(AttrBuffer<int64_t> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == common::NULL_VALUE_64)
           dataTypes[att]->SetToNull();
         else
-          ((types::RCDateTime *)dataTypes[att].get())->Assign(v, attrt_tmp);
+          ((types::TianmuDateTime *)dataTypes[att].get())->Assign(v, attrt_tmp);
       } else {
         ASSERT(ATI::IsStringType(attrt_tmp), "not all possible attr_types checked");
         (*(AttrBuffer<types::BString> *)table->GetDisplayableAttrP(att)->buffer)
@@ -2190,9 +2190,9 @@ TempTable::RecordIterator::RecordIterator(TempTable *table_, Transaction *conn_,
     if (att_type == common::CT::INT || att_type == common::CT::MEDIUMINT || att_type == common::CT::SMALLINT ||
         att_type == common::CT::BYTEINT || ATI::IsRealType(att_type) || att_type == common::CT::NUM ||
         att_type == common::CT::BIGINT)
-      dataTypes.emplace_back(new types::RCNum());
+      dataTypes.emplace_back(new types::TianmuNum());
     else if (ATI::IsDateTimeType(att_type))
-      dataTypes.emplace_back(new types::RCDateTime());
+      dataTypes.emplace_back(new types::TianmuDateTime());
     else {
       ASSERT(ATI::IsStringType(att_type), "not all possible attr_types checked");
       dataTypes.emplace_back(new types::BString());

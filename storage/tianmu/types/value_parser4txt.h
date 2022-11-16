@@ -20,8 +20,8 @@
 
 #include "common/assert.h"
 #include "common/exception.h"
-#include "core/rc_attr_typeinfo.h"
-#include "types/rc_data_types.h"
+#include "core/tianmu_attr_typeinfo.h"
+#include "types/tianmu_data_types.h"
 
 namespace Tianmu {
 namespace types {
@@ -59,22 +59,22 @@ class ValueParserForText {
     return nullptr;
   }
 
-  static common::ErrorCode ParseNumeric(BString const &rcs, int64_t &out, common::CT at);
-  static common::ErrorCode ParseBigIntAdapter(const BString &rcs, int64_t &out);
-  static common::ErrorCode ParseDecimal(BString const &rcs, int64_t &out, short precision, short scale);
-  static common::ErrorCode ParseDateTimeAdapter(BString const &rcs, int64_t &out, common::CT at);
+  static common::ErrorCode ParseNumeric(BString const &tianmu_s, int64_t &out, common::CT at);
+  static common::ErrorCode ParseBigIntAdapter(const BString &tianmu_s, int64_t &out);
+  static common::ErrorCode ParseDecimal(BString const &tianmu_s, int64_t &out, short precision, short scale);
+  static common::ErrorCode ParseDateTimeAdapter(BString const &tianmu_s, int64_t &out, common::CT at);
 
-  static common::ErrorCode Parse(const BString &rcs, RCNum &rcn, common::CT at);
-  static common::ErrorCode ParseNum(const BString &rcs, RCNum &rcn, short scale);
-  static common::ErrorCode ParseBigInt(const BString &rcs, RCNum &out);
-  static common::ErrorCode ParseReal(const BString &rcbs, RCNum &rcn, common::CT at);
-  static common::ErrorCode ParseDateTime(const BString &rcs, RCDateTime &rcv, common::CT at);
+  static common::ErrorCode Parse(const BString &tianmu_s, TianmuNum &tianmu_n, common::CT at);
+  static common::ErrorCode ParseNum(const BString &tianmu_s, TianmuNum &tianmu_n, short scale);
+  static common::ErrorCode ParseBigInt(const BString &tianmu_s, TianmuNum &out);
+  static common::ErrorCode ParseReal(const BString &tianmu_bs, TianmuNum &tianmu_n, common::CT at);
+  static common::ErrorCode ParseDateTime(const BString &tianmu_s, TianmuDateTime &rcv, common::CT at);
 
  private:
-  static common::ErrorCode ParseDateTimeOrTimestamp(const BString &rcs, RCDateTime &rcv, common::CT at);
-  static common::ErrorCode ParseTime(const BString &rcs, RCDateTime &rcv);
-  static common::ErrorCode ParseDate(const BString &rcs, RCDateTime &rcv);
-  static common::ErrorCode ParseYear(const BString &rcs, RCDateTime &rcv);
+  static common::ErrorCode ParseDateTimeOrTimestamp(const BString &tianmu_s, TianmuDateTime &rcv, common::CT at);
+  static common::ErrorCode ParseTime(const BString &tianmu_s, TianmuDateTime &rcv);
+  static common::ErrorCode ParseDate(const BString &tianmu_s, TianmuDateTime &rcv);
+  static common::ErrorCode ParseYear(const BString &tianmu_s, TianmuDateTime &rcv);
 };
 
 }  // namespace types

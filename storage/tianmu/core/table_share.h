@@ -29,7 +29,7 @@
 
 namespace Tianmu {
 namespace core {
-class RCTable;
+class TianmuTable;
 
 struct TABLE_META {
   uint64_t magic = common::FILE_MAGIC;
@@ -55,14 +55,14 @@ class TableShare final {
   uint8_t PackSizeShift() const { return meta.pss; }
   uint32_t TabID() const { return meta.id; }
   size_t NumOfCols() const { return no_cols; }
-  std::shared_ptr<RCTable> GetSnapshot();
-  std::shared_ptr<RCTable> GetTableForWrite();
+  std::shared_ptr<TianmuTable> GetSnapshot();
+  std::shared_ptr<TianmuTable> GetTableForWrite();
 
   unsigned long GetCreateTime();
   unsigned long GetUpdateTime();
 
   ColumnShare *GetColumnShare(size_t i) { return m_columns[i].get(); }
-  void CommitWrite(RCTable *t);
+  void CommitWrite(TianmuTable *t);
   void Reset();
   // MySQL lock
   THR_LOCK thr_lock;
@@ -74,12 +74,12 @@ class TableShare final {
 
   std::vector<std::unique_ptr<ColumnShare>> m_columns;
 
-  std::shared_ptr<RCTable> current;
+  std::shared_ptr<TianmuTable> current;
   std::mutex current_mtx;
 
-  std::list<std::weak_ptr<RCTable>> versions;
+  std::list<std::weak_ptr<TianmuTable>> versions;
 
-  std::weak_ptr<RCTable> write_table;
+  std::weak_ptr<TianmuTable> write_table;
   std::mutex write_table_mtx;
 };
 }  // namespace core

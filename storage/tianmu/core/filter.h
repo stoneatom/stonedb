@@ -25,7 +25,7 @@
 #include "compress/bit_stream_compressor.h"
 #include "mm/traceable_object.h"
 #include "system/fet.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #include "util/circ_buf.h"
 
 namespace Tianmu {

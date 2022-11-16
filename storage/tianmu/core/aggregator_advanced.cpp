@@ -21,7 +21,7 @@
 #include <vector>
 
 #include "aggregator_advanced.h"
-#include "types/rc_num.h"
+#include "types/tianmu_num.h"
 
 namespace Tianmu {
 namespace core {
@@ -89,8 +89,8 @@ void AggregatorStat::Merge(unsigned char *buf, unsigned char *src_buf) {
 
 void AggregatorStatD::PutAggregatedValue(unsigned char *buf, const types::BString &v, int64_t factor) {
   stats_updated = false;
-  types::RCNum val(common::CT::REAL);
-  if (!v.IsEmpty() && types::RCNum::ParseReal(v, val, common::CT::REAL) == common::ErrorCode::SUCCESS &&
+  types::TianmuNum val(common::CT::REAL);
+  if (!v.IsEmpty() && types::TianmuNum::ParseReal(v, val, common::CT::REAL) == common::ErrorCode::SUCCESS &&
       !val.IsNull()) {
     double d_val = double(val);
     PutAggregatedValue(buf, *((int64_t *)(&d_val)), factor);
@@ -159,24 +159,24 @@ int64_t AggregatorStdSampD::GetValue64(unsigned char *buf) {
 
 void AggregatorBitAnd::PutAggregatedValue(unsigned char *buf, const types::BString &v, int64_t factor) {
   stats_updated = false;
-  types::RCNum val(common::CT::BIGINT);
-  if (!v.IsEmpty() && types::RCNum::Parse(v, val, common::CT::BIGINT) == common::ErrorCode::SUCCESS && !val.IsNull()) {
+  types::TianmuNum val(common::CT::BIGINT);
+  if (!v.IsEmpty() && types::TianmuNum::Parse(v, val, common::CT::BIGINT) == common::ErrorCode::SUCCESS && !val.IsNull()) {
     PutAggregatedValue(buf, int64_t(val), factor);
   }
 }
 
 void AggregatorBitOr::PutAggregatedValue(unsigned char *buf, const types::BString &v, int64_t factor) {
   stats_updated = false;
-  types::RCNum val(common::CT::BIGINT);
-  if (!v.IsEmpty() && types::RCNum::Parse(v, val, common::CT::BIGINT) == common::ErrorCode::SUCCESS && !val.IsNull()) {
+  types::TianmuNum val(common::CT::BIGINT);
+  if (!v.IsEmpty() && types::TianmuNum::Parse(v, val, common::CT::BIGINT) == common::ErrorCode::SUCCESS && !val.IsNull()) {
     PutAggregatedValue(buf, int64_t(val), factor);
   }
 }
 
 void AggregatorBitXor::PutAggregatedValue(unsigned char *buf, const types::BString &v, int64_t factor) {
   stats_updated = false;
-  types::RCNum val(common::CT::BIGINT);
-  if (!v.IsEmpty() && types::RCNum::Parse(v, val, common::CT::BIGINT) == common::ErrorCode::SUCCESS && !val.IsNull()) {
+  types::TianmuNum val(common::CT::BIGINT);
+  if (!v.IsEmpty() && types::TianmuNum::Parse(v, val, common::CT::BIGINT) == common::ErrorCode::SUCCESS && !val.IsNull()) {
     PutAggregatedValue(buf, int64_t(val), factor);
   }
 }

@@ -29,7 +29,7 @@ struct ColumnType;
 // ValueType::VT_FIXED - fixed-point real (decimal) or integer, encoded as int64_t with
 // base-10 scale ValueType::VT_STRING - pointer to character string, accompanied by string
 // length ValueType::VT_DATETIME - date/time value encoded as int64_t, taken from
-// types::RCDateTime representation
+// types::TianmuDateTime representation
 //               DataType::attrtype must be set to precisely denote which
 //               date/time type is considered.
 

@@ -29,11 +29,11 @@
 #include "index/rdb_utils.h"
 #include "rocksdb/compaction_filter.h"
 #include "rocksdb/utilities/transaction_db.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace core {
-class RCMemTable;
+class TianmuMemTable;
 }
 namespace index {
 class DICTManager;
@@ -244,9 +244,9 @@ class DDLManager {
   // find the handler by table name.
   std::shared_ptr<RdbTable> find(const std::string &table_name);
   // find the mem handler by table name.
-  std::shared_ptr<core::RCMemTable> find_mem(const std::string &table_name);
+  std::shared_ptr<core::TianmuMemTable> find_mem(const std::string &table_name);
   // store a rc mem table into DDL mananger.
-  void put_mem(std::shared_ptr<core::RCMemTable> tb_mem, rocksdb::WriteBatch *const batch);
+  void put_mem(std::shared_ptr<core::TianmuMemTable> tb_mem, rocksdb::WriteBatch *const batch);
 
   // write dictionary into tbl.
   void put_and_write(std::shared_ptr<RdbTable> tbl, rocksdb::WriteBatch *const batch);
@@ -256,7 +256,7 @@ class DDLManager {
   // remove the tbl from dictionary.
   void remove(std::shared_ptr<RdbTable> tbl, rocksdb::WriteBatch *const batch);
   // remove tbl from mem hash table.
-  void remove_mem(std::shared_ptr<core::RCMemTable> tb_mem, rocksdb::WriteBatch *const batch);
+  void remove_mem(std::shared_ptr<core::TianmuMemTable> tb_mem, rocksdb::WriteBatch *const batch);
   bool rename_mem(std::string &from, std::string &to, rocksdb::WriteBatch *const batch);
   // get the next seq num.
   uint get_and_update_next_number(DICTManager *const dict) { return seq_gen_.get_and_update_next_number(dict); }
@@ -271,7 +271,7 @@ class DDLManager {
 
   // Contains RdbTable elements
   std::unordered_map<std::string, std::shared_ptr<RdbTable>> ddl_hash_;
-  std::unordered_map<std::string, std::shared_ptr<core::RCMemTable>> mem_hash_;
+  std::unordered_map<std::string, std::shared_ptr<core::TianmuMemTable>> mem_hash_;
   std::recursive_mutex lock_;
   std::recursive_mutex mem_lock_;
   SeqGenerator seq_gen_;

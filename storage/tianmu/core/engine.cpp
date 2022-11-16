@@ -25,7 +25,7 @@
 #include "common/data_format.h"
 #include "common/exception.h"
 #include "common/mysql_gate.h"
-#include "core/rc_mem_table.h"
+#include "core/tianmu_mem_table.h"
 #include "core/table_share.h"
 #include "core/task_executor.h"
 #include "core/temp_table.h"
@@ -82,7 +82,7 @@ fs::path Engine::GetNextDataDir() {
 
   if (tianmu_data_dirs.empty()) {
     // fall back to use MySQL data directory
-    auto p = ha_rcengine_->tianmu_data_dir / TIANMU_DATA_DIR;
+    auto p = ha_tianmu_engine_->tianmu_data_dir / TIANMU_DATA_DIR;
     if (!fs::is_directory(p))
       fs::create_directory(p);
     return p;
@@ -204,9 +204,9 @@ int Engine::Init(uint engine_slot) {
   m_slot = engine_slot;
   ConfigureRCControl();
   if (tianmu_sysvar_controlquerylog > 0) {
-    rc_querylog_.setOn();
+    tianmu_querylog_.setOn();
   } else {
-    rc_querylog_.setOff();
+    tianmu_querylog_.setOff();
   }
   std::srand(unsigned(time(nullptr)));
 
@@ -379,7 +379,7 @@ Engine::~Engine() {
   } catch (...) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Unkown exception caught");
   }
-  if (rc_control_.isOn())
+  if (tianmu_control_.isOn())
     mm::MemoryManagerInitializer::deinit(true);
   else
     mm::MemoryManagerInitializer::deinit(false);
@@ -625,7 +625,7 @@ std::shared_ptr<TableOption> Engine::GetTableOption(const std::string &table, TA
   return opt;
 }
 
-void Engine::CreateTable(const std::string &table, TABLE *form) { RCTable::CreateNew(GetTableOption(table, form)); }
+void Engine::CreateTable(const std::string &table, TABLE *form) { TianmuTable::CreateNew(GetTableOption(table, form)); }
 
 AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
   bool auto_inc = field.flags & AUTO_INCREMENT_FLAG;
@@ -771,19 +771,19 @@ void Engine::Rollback(THD *thd, bool all, bool force_error_message) {
 void Engine::DeleteTable(const char *table, [[maybe_unused]] THD *thd) {
   {
     std::unique_lock<std::shared_mutex> index_guard(tables_keys_mutex);
-    index::RCTableIndex::DropIndexTable(table);
+    index::TianmuTableIndex::DropIndexTable(table);
     m_table_keys.erase(table);
   }
   {
     std::unique_lock<std::shared_mutex> mem_guard(mem_table_mutex);
-    RCMemTable::DropMemTable(table);
+    TianmuMemTable::DropMemTable(table);
     mem_table_map.erase(table);
   }
 
   UnRegisterTable(table);
   std::string p = table;
   p += common::TIANMU_EXT;
-  auto id = RCTable::GetTableId(p);
+  auto id = TianmuTable::GetTableId(p);
   cache.ReleaseTable(id);
   filter_cache.RemoveIf([id](const FilterCoordinate &c) { return c[0] == int(id); });
 
@@ -808,14 +808,14 @@ void Engine::TruncateTable(const std::string &table_path, [[maybe_unused]] THD *
   TIANMU_LOG(LogCtl_Level::INFO, "Truncated table %s, ID = %u", table_path.c_str(), id);
 }
 
-void Engine::GetTableIterator(const std::string &table_path, RCTable::Iterator &iter_begin, RCTable::Iterator &iter_end,
-                              std::shared_ptr<RCTable> &table, const std::vector<bool> &attrs, THD *thd) {
+void Engine::GetTableIterator(const std::string &table_path, TianmuTable::Iterator &iter_begin, TianmuTable::Iterator &iter_end,
+                              std::shared_ptr<TianmuTable> &table, const std::vector<bool> &attrs, THD *thd) {
   table = GetTx(thd)->GetTableByPath(table_path);
   iter_begin = table->Begin(attrs);
   iter_end = table->End();
 }
 
-std::shared_ptr<RCTable> Engine::GetTableRD(const std::string &table_path) {
+std::shared_ptr<TianmuTable> Engine::GetTableRD(const std::string &table_path) {
   return getTableShare(table_path)->GetSnapshot();
 }
 
@@ -823,7 +823,7 @@ std::vector<AttrInfo> Engine::GetTableAttributesInfo(const std::string &table_pa
                                                      [[maybe_unused]] TABLE_SHARE *table_share) {
   std::scoped_lock guard(global_mutex_);
 
-  std::shared_ptr<RCTable> tab;
+  std::shared_ptr<TianmuTable> tab;
   if (current_txn_ != nullptr)
     tab = current_txn_->GetTableByPath(table_path);
   else
@@ -1088,7 +1088,7 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::stri
 void Engine::RenameTable([[maybe_unused]] Transaction *trans_, const std::string &from, const std::string &to,
                          [[maybe_unused]] THD *thd) {
   UnRegisterTable(from);
-  auto id = RCTable::GetTableId(from + common::TIANMU_EXT);
+  auto id = TianmuTable::GetTableId(from + common::TIANMU_EXT);
   cache.ReleaseTable(id);
   filter_cache.RemoveIf([id](const FilterCoordinate &c) { return c[0] == int(id); });
   system::RenameFile(tianmu_data_dir / (from + common::TIANMU_EXT), tianmu_data_dir / (to + common::TIANMU_EXT));
@@ -1103,7 +1103,7 @@ void Engine::PrepareAlterTable(const std::string &table_path, std::vector<Field 
   HandleDeferredJobs();
 
   auto tab = current_txn_->GetTableByPath(table_path);
-  RCTable::Alter(table_path, new_cols, old_cols, tab->NumOfObj());
+  TianmuTable::Alter(table_path, new_cols, old_cols, tab->NumOfObj());
   cache.ReleaseTable(tab->GetID());
   UnRegisterTable(table_path);
 }
@@ -1200,7 +1200,7 @@ static void HandleDelayedLoad(int table_id, std::vector<std::unique_ptr<char[]>>
 void DistributeLoad(std::unordered_map<int, std::vector<std::unique_ptr<char[]>>> &tm) {
   utils::result_set<void> res;
   for (auto &it : tm) {
-    res.insert(ha_rcengine_->delay_insert_thread_pool.add_task(HandleDelayedLoad, it.first, std::ref(it.second)));
+    res.insert(ha_tianmu_engine_->delay_insert_thread_pool.add_task(HandleDelayedLoad, it.first, std::ref(it.second)));
   }
   res.get_all();
   tm.clear();
@@ -1290,7 +1290,7 @@ void Engine::ProcessDelayedMerge() {
           int64_t record_count = mem_table->CountRecords();
           if (record_count >= tianmu_sysvar_insert_numthreshold ||
               (sleep_cnts.count(name) && sleep_cnts[name] > tianmu_sysvar_insert_cntthreshold)) {
-            auto share = ha_rcengine_->getTableShare(name);
+            auto share = ha_tianmu_engine_->getTableShare(name);
             auto table_id = share->TabID();
             utils::BitSet null_mask(share->NumOfCols());
             std::unique_ptr<char[]> buf(new char[sizeof(uint32_t) + name.size() + 1 + null_mask.data_size()]);
@@ -1653,7 +1653,7 @@ std::unique_ptr<system::IOParameters> Engine::CreateIOParameters(const std::stri
     data_dir = "";
     data_path = path;
   } else {
-    data_dir = ha_rcengine_->tianmu_data_dir;
+    data_dir = ha_tianmu_engine_->tianmu_data_dir;
     std::string db_name, tab_name;
     std::tie(db_name, tab_name) = GetNames(path);
     data_path += db_name;
@@ -1930,17 +1930,17 @@ std::shared_ptr<TableShare> Engine::GetTableShare(const TABLE_SHARE *table_share
 
 void Engine::AddTableIndex(const std::string &table_path, TABLE *table, [[maybe_unused]] THD *thd) {
   std::unique_lock<std::shared_mutex> guard(tables_keys_mutex);
-  if (!index::RCTableIndex::FindIndexTable(table_path)) {
-    index::RCTableIndex::CreateIndexTable(table_path, table);
+  if (!index::TianmuTableIndex::FindIndexTable(table_path)) {
+    index::TianmuTableIndex::CreateIndexTable(table_path, table);
   }
   auto iter = m_table_keys.find(table_path);
   if (iter == m_table_keys.end()) {
-    std::shared_ptr<index::RCTableIndex> tab = std::make_shared<index::RCTableIndex>(table_path, table);
+    std::shared_ptr<index::TianmuTableIndex> tab = std::make_shared<index::TianmuTableIndex>(table_path, table);
     m_table_keys[table_path] = tab;
   }
 }
 
-std::shared_ptr<index::RCTableIndex> Engine::GetTableIndex(const std::string &table_path) {
+std::shared_ptr<index::TianmuTableIndex> Engine::GetTableIndex(const std::string &table_path) {
   std::shared_lock<std::shared_mutex> guard(tables_keys_mutex);
   auto iter = m_table_keys.find(table_path);
   if (iter != m_table_keys.end()) {
@@ -1965,7 +1965,7 @@ void Engine::AddMemTable(TABLE *form, std::shared_ptr<TableShare> share) {
   try {
     auto table_path = share->Path();
     if (mem_table_map.find(table_path) == mem_table_map.end()) {
-      mem_table_map[table_path] = RCMemTable::CreateMemTable(share, has_mem_name(form->s->comment));
+      mem_table_map[table_path] = TianmuMemTable::CreateMemTable(share, has_mem_name(form->s->comment));
       return;
     }
     return;

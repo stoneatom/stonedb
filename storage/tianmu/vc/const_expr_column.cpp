@@ -19,7 +19,7 @@
 
 #include "core/compiled_query.h"
 #include "core/mysql_expression.h"
-#include "core/rc_attr.h"
+#include "core/tianmu_attr.h"
 
 namespace Tianmu {
 namespace vcolumn {
@@ -51,7 +51,7 @@ double ConstExpressionColumn::GetValueDoubleImpl([[maybe_unused]] const core::MI
     u.i = last_val_->Get64();
     val = u.d;
   } else if (core::ATI::IsDateTimeType(TypeName())) {
-    types::RCDateTime vd(last_val_->Get64(),
+    types::TianmuDateTime vd(last_val_->Get64(),
                          TypeName());  // 274886765314048  ->  2000-01-01
     int64_t vd_conv = 0;
     vd.ToInt64(vd_conv);  // 2000-01-01  ->  20000101
@@ -65,10 +65,10 @@ double ConstExpressionColumn::GetValueDoubleImpl([[maybe_unused]] const core::MI
   return val;
 }
 
-types::RCValueObject ConstExpressionColumn::GetValueImpl([[maybe_unused]] const core::MIIterator &mit,
+types::TianmuValueObject ConstExpressionColumn::GetValueImpl([[maybe_unused]] const core::MIIterator &mit,
                                                          bool lookup_to_num) {
   if (last_val_->IsNull())
-    return types::RCValueObject();
+    return types::TianmuValueObject();
 
   if (core::ATI::IsStringType((TypeName()))) {
     types::BString s;
@@ -76,15 +76,15 @@ types::RCValueObject ConstExpressionColumn::GetValueImpl([[maybe_unused]] const 
     return s;
   }
   if (core::ATI::IsIntegerType(TypeName()))
-    return types::RCNum(last_val_->Get64(), -1, false, TypeName());
+    return types::TianmuNum(last_val_->Get64(), -1, false, TypeName());
   if (core::ATI::IsDateTimeType(TypeName()))
-    return types::RCDateTime(last_val_->Get64(), TypeName());
+    return types::TianmuDateTime(last_val_->Get64(), TypeName());
   if (core::ATI::IsRealType(TypeName()))
-    return types::RCNum(last_val_->Get64(), 0, true, TypeName());
+    return types::TianmuNum(last_val_->Get64(), 0, true, TypeName());
   if (lookup_to_num || TypeName() == common::CT::NUM)
-    return types::RCNum((int64_t)last_val_->Get64(), Type().GetScale());
+    return types::TianmuNum((int64_t)last_val_->Get64(), Type().GetScale());
   DEBUG_ASSERT(!"Illegal execution path");
-  return types::RCValueObject();
+  return types::TianmuValueObject();
 }
 
 int64_t ConstExpressionColumn::GetSumImpl(const core::MIIterator &mit, bool &nonnegative) {

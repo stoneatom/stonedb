@@ -61,7 +61,7 @@ struct alignas(128) COL_VER_HDR_V3 {
 using COL_VER_HDR = COL_VER_HDR_V3;
 
 class ColumnShare final {
-  friend class RCAttr;
+  friend class TianmuAttr;
 
  public:
   ColumnShare() = delete;

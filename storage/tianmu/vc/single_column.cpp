@@ -19,7 +19,7 @@
 
 #include "core/compiled_query.h"
 #include "core/mysql_expression.h"
-#include "core/rc_attr.h"
+#include "core/tianmu_attr.h"
 
 namespace Tianmu {
 namespace vcolumn {
@@ -61,7 +61,7 @@ double SingleColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
     val = u.d;
   } else if (core::ATI::IsDateTimeType(TypeName())) {
     int64_t v = col_->GetValueInt64(mit[dim_]);
-    types::RCDateTime vd(v, TypeName());  // 274886765314048  ->  2000-01-01
+    types::TianmuDateTime vd(v, TypeName());  // 274886765314048  ->  2000-01-01
     int64_t vd_conv = 0;
     vd.ToInt64(vd_conv);  // 2000-01-01  ->  20000101
     val = (double)vd_conv;
@@ -77,7 +77,7 @@ double SingleColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
   return val;
 }
 
-types::RCValueObject SingleColumn::GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) {
+types::TianmuValueObject SingleColumn::GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) {
   return col_->GetValue(mit[dim_], lookup_to_num);
 }
 

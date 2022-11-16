@@ -15,7 +15,7 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "rc_system.h"
+#include "tianmu_system.h"
 
 #include <sys/stat.h>
 
@@ -25,15 +25,15 @@
 namespace Tianmu {
 
 // row-column channel control.
-system::Channel rc_control_(true);
+system::Channel tianmu_control_(true);
 // query log channel flag.
-system::Channel rc_querylog_(true);
+system::Channel tianmu_querylog_(true);
 // global host ip addr.
 char global_hostIP_[FN_REFLEN];
 // global server info.
 char global_serverinfo_[FN_REFLEN];
 // key-value engine handler.
-core::Engine *ha_rcengine_ = nullptr;
+core::Engine *ha_tianmu_engine_ = nullptr;
 // key-value store handler.
 index::KVStore *ha_kvstore_ = nullptr;
 // global mutex

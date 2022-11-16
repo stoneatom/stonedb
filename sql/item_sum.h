@@ -700,7 +700,7 @@ public:
 };
 
 
-class Item_sum_num :public Item_sum
+class ItemSumNum :public Item_sum
 {
 protected:
   /*
@@ -711,18 +711,18 @@ protected:
   */
   bool is_evaluated;
 public:
-  Item_sum_num(const POS &pos, Item *item_par) 
+  ItemSumNum(const POS &pos, Item *item_par) 
     :Item_sum(pos, item_par), is_evaluated(FALSE)
   {}
 
-  Item_sum_num(const POS &pos, PT_item_list *list) 
+  ItemSumNum(const POS &pos, PT_item_list *list) 
     :Item_sum(pos, list), is_evaluated(FALSE)
   {}
   //TIANMU UPGRADE
-  Item_sum_num() :Item_sum(),is_evaluated(FALSE) {}
+  ItemSumNum() :Item_sum(),is_evaluated(FALSE) {}
   //END
 
-  Item_sum_num(THD *thd, Item_sum_num *item) 
+  ItemSumNum(THD *thd, ItemSumNum *item) 
     :Item_sum(thd, item),is_evaluated(item->is_evaluated) {}
   bool fix_fields(THD *, Item **);
   longlong val_int()
@@ -744,13 +744,13 @@ public:
 };
 
 
-class Item_sum_int :public Item_sum_num
+class Item_sum_int :public ItemSumNum
 {
 public:
-  Item_sum_int(const POS &pos, Item *item_par) :Item_sum_num(pos, item_par) {}
+  Item_sum_int(const POS &pos, Item *item_par) :ItemSumNum(pos, item_par) {}
 
-  Item_sum_int(const POS &pos, PT_item_list *list) :Item_sum_num(pos, list) {}
-  Item_sum_int(THD *thd, Item_sum_int *item) :Item_sum_num(thd, item) {}
+  Item_sum_int(const POS &pos, PT_item_list *list) :ItemSumNum(pos, list) {}
+  Item_sum_int(THD *thd, Item_sum_int *item) :ItemSumNum(thd, item) {}
   double val_real() { assert(fixed == 1); return (double) val_int(); }
   String *val_str(String*str);
   my_decimal *val_decimal(my_decimal *);
@@ -768,7 +768,7 @@ public:
 };
 
 
-class Item_sum_sum :public Item_sum_num
+class Item_sum_sum :public ItemSumNum
 {
 protected:
   Item_result hybrid_type;
@@ -779,7 +779,7 @@ protected:
 
 public:
   Item_sum_sum(const POS &pos, Item *item_par, bool distinct)
-    :Item_sum_num(pos, item_par) 
+    :ItemSumNum(pos, item_par) 
   {
     set_distinct(distinct);
   }
@@ -1084,7 +1084,7 @@ But, this falls prey to catastrophic cancellation.  Instead, use the recurrence 
 
 */
 
-class Item_sum_variance : public Item_sum_num
+class Item_sum_variance : public ItemSumNum
 {
   void fix_length_and_dec();
 
@@ -1100,7 +1100,7 @@ public:
   uint prec_increment;
 
   Item_sum_variance(const POS &pos, Item *item_par, uint sample_arg)
-    :Item_sum_num(pos, item_par),
+    :ItemSumNum(pos, item_par),
      hybrid_type(REAL_RESULT), count(0), sample(sample_arg)
   {}
 
@@ -1123,7 +1123,7 @@ public:
   void cleanup()
   {
     count= 0;
-    Item_sum_num::cleanup();
+    ItemSumNum::cleanup();
   }
 };
 

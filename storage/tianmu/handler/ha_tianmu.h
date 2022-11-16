@@ -175,8 +175,8 @@ class ha_tianmu final : public handler {
   std::unique_ptr<core::Filter> filter_ptr_;
   uint64_t current_position_ = 0;
 
-  core::RCTable::Iterator table_new_iter_;
-  core::RCTable::Iterator table_new_iter_end_;
+  core::TianmuTable::Iterator table_new_iter_;
+  core::TianmuTable::Iterator table_new_iter_end_;
 
   std::unique_ptr<core::Query> query_;
   core::TabID tmp_table_;

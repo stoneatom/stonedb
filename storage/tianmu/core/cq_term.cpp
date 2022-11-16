@@ -18,7 +18,7 @@
 #include "common/common_definitions.h"
 #include "core/bin_tools.h"
 #include "core/query_operator.h"
-#include "core/rc_attr.h"
+#include "core/tianmu_attr.h"
 #include "core/value_set.h"
 #include "system/txt_utils.h"
 #include "types/value_parser4txt.h"

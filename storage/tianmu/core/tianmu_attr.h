@@ -14,8 +14,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
-#ifndef TIANMU_CORE_RC_ATTR_H_
-#define TIANMU_CORE_RC_ATTR_H_
+#ifndef TIANMU_CORE_TIANMU_ATTR_H_
+#define TIANMU_CORE_TIANMU_ATTR_H_
 #pragma once
 
 #include <vector>
@@ -28,7 +28,7 @@
 #include "core/ftree.h"
 #include "core/pack.h"
 #include "core/physical_column.h"
-#include "core/rc_attr_typeinfo.h"
+#include "core/tianmu_attr_typeinfo.h"
 #include "core/rough_multi_index.h"
 #include "core/rsi_bloom.h"
 #include "core/rsi_cmap.h"
@@ -37,9 +37,9 @@
 #include "loader/value_cache.h"
 #include "mm/traceable_object.h"
 #include "system/file_system.h"
-#include "system/rc_system.h"
-#include "types/rc_data_types.h"
-#include "types/rc_num.h"
+#include "system/tianmu_system.h"
+#include "types/tianmu_data_types.h"
+#include "types/tianmu_num.h"
 #include "util/fs.h"
 
 namespace Tianmu {
@@ -76,15 +76,15 @@ class PackAllocator {
   virtual std::shared_ptr<FTree> Fetch(const FTreeCoordinate &coord) = 0;
 };
 
-class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public PackAllocator {
-  friend class RCTable;
+class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, public PackAllocator {
+  friend class TianmuTable;
 
  public:
-  RCAttr(Transaction *tx, common::TX_ID xid, int a_num, int t_num, ColumnShare *share);
-  RCAttr() = delete;
-  RCAttr(const RCAttr &) = delete;
-  RCAttr &operator=(const RCAttr &) = delete;
-  ~RCAttr() = default;
+  TianmuAttr(Transaction *tx, common::TX_ID xid, int a_num, int t_num, ColumnShare *share);
+  TianmuAttr() = delete;
+  TianmuAttr(const TianmuAttr &) = delete;
+  TianmuAttr &operator=(const TianmuAttr &) = delete;
+  ~TianmuAttr() = default;
 
   static void Create(const fs::path &path, const AttributeTypeInfo &ati, uint8_t pss, size_t no_rows);
 
@@ -96,13 +96,13 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   void DeleteByPrimaryKey(uint64_t row, uint64_t col);
   bool IsDelete(int64_t row);
 
-  const types::RCDataType &ValuePrototype(bool lookup_to_num) const {
+  const types::TianmuDataType &ValuePrototype(bool lookup_to_num) const {
     if ((Type().IsLookup() && lookup_to_num) || ATI::IsNumericType(TypeName()))
-      return types::RCNum::NullValue();
+      return types::TianmuNum::NullValue();
     if (ATI::IsStringType(TypeName()))
       return types::BString::NullValue();
     DEBUG_ASSERT(ATI::IsDateTimeType(TypeName()));
-    return types::RCDateTime::NullValue();
+    return types::TianmuDateTime::NullValue();
   }
 
   int64_t GetValueInt64(int64_t obj) const override {
@@ -204,7 +204,7 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   void Release() override;
 
   int NumOfAttr() const override { return m_cid; }
-  phys_col_t ColType() const override { return phys_col_t::RCATTR; }
+  phys_col_t ColType() const override { return phys_col_t::kTianmuAttr; }
   common::PackType GetPackType() const { return pack_type; }
   PackOntologicalStatus GetPackOntologicalStatus(int pack_no) override;
 
@@ -233,9 +233,9 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   size_t GetLength(int64_t obj);
 
   // lookup_to_num=true to return a number instead of string
-  // should be removed to get rid of types::RCValueObject class
-  types::RCValueObject GetValue(int64_t obj, bool lookup_to_num = false) override;
-  types::RCDataType &GetValueData(size_t obj, types::RCDataType &value, bool lookup_to_num = false);
+  // should be removed to get rid of types::TianmuValueObject class
+  types::TianmuValueObject GetValue(int64_t obj, bool lookup_to_num = false) override;
+  types::TianmuDataType &GetValueData(size_t obj, types::TianmuDataType &value, bool lookup_to_num = false);
 
   int64_t GetNumOfNulls(int pack) override;
   bool IsRoughNullsOnly() const override { return hdr.numOfRecords == hdr.numOfNulls; }
@@ -251,12 +251,12 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
   int EncodeValue_S(types::BString &v) override { return EncodeValue_T(v); }
   // 1-level code value for a given 0-level (text) value, if new_val then add to
   // dictionary if not present
-  int EncodeValue_T(const types::BString &rcbs, bool new_val = false, common::ErrorCode *tianmu_rc = 0);
+  int EncodeValue_T(const types::BString &tianmu_bs, bool new_val = false, common::ErrorCode *tianmu_err_code = 0);
   // no changes for REAL; rounded=true iff v has greater precision than the
   // column and the returned result is rounded down
-  int64_t EncodeValue64(types::RCDataType *v, bool &rounded,
-                        common::ErrorCode *tianmu_rc = 0);  // as above
-  int64_t EncodeValue64(const types::RCValueObject &v, bool &rounded, common::ErrorCode *tianmu_rc = 0);
+  int64_t EncodeValue64(types::TianmuDataType *v, bool &rounded,
+                        common::ErrorCode *tianmu_err_code = 0);  // as above
+  int64_t EncodeValue64(const types::TianmuValueObject &v, bool &rounded, common::ErrorCode *tianmu_err_code = 0);
 
   // Query execution
   void EvaluatePack(MIUpdatingIterator &mit, int dim, Descriptor &desc) override;
@@ -408,4 +408,4 @@ class RCAttr final : public mm::TraceableObject, public PhysicalColumn, public P
 }  // namespace core
 }  // namespace Tianmu
 
-#endif  // TIANMU_CORE_RC_ATTR_H_
+#endif  // TIANMU_CORE_TIANMU_ATTR_H_

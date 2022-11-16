@@ -21,7 +21,7 @@
 #include "common/common_definitions.h"
 #include "mm/traceable_object.h"
 #include "system/cacheable_item.h"
-#include "types/rc_data_types.h"
+#include "types/tianmu_data_types.h"
 
 namespace Tianmu {
 namespace core {

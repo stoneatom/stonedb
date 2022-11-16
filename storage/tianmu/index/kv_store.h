@@ -80,8 +80,8 @@ class KVStore final {
 
   // kv memory table meta operation
   // as KVWriteTableMeta does, but not to on-disk but in-mem
-  std::shared_ptr<core::RCMemTable> FindMemTable(std::string &name) { return ddl_manager_.find_mem(name); }
-  common::ErrorCode KVWriteMemTableMeta(std::shared_ptr<core::RCMemTable> tb_mem);
+  std::shared_ptr<core::TianmuMemTable> FindMemTable(std::string &name) { return ddl_manager_.find_mem(name); }
+  common::ErrorCode KVWriteMemTableMeta(std::shared_ptr<core::TianmuMemTable> tb_mem);
   common::ErrorCode KVDelMemTableMeta(std::string table_name);
   common::ErrorCode KVRenameMemTableMeta(std::string s_name, std::string d_name);
 

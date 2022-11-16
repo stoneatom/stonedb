@@ -22,7 +22,7 @@
 #include "common/exception.h"
 #include "core/column_share.h"
 #include "core/engine.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #include "system/tianmu_file.h"
 
 namespace Tianmu {
@@ -218,9 +218,9 @@ void ColumnShare::init_dpn(DPN &dpn, const common::TX_ID xid, const DPN *from) {
 int ColumnShare::alloc_dpn(common::TX_ID xid, const DPN *from) {
   for (uint32_t i = 0; i < capacity; i++) {
     if (start[i].used == 1) {
-      if (!(start[i].xmax < ha_rcengine_->MinXID()))
+      if (!(start[i].xmax < ha_tianmu_engine_->MinXID()))
         continue;
-      ha_rcengine_->cache.DropObject(PackCoordinate(owner->TabID(), col_id, i));
+      ha_tianmu_engine_->cache.DropObject(PackCoordinate(owner->TabID(), col_id, i));
       segs.remove_if([i](const auto &s) { return s.idx == i; });
     }
     init_dpn(start[i], xid, from);

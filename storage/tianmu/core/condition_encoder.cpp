@@ -20,8 +20,8 @@
 #include "core/descriptor.h"
 #include "core/just_a_table.h"
 #include "core/query.h"
-#include "core/rc_attr.h"
-#include "core/rc_table.h"
+#include "core/tianmu_attr.h"
+#include "core/tianmu_table.h"
 #include "core/value_set.h"
 #include "vc/const_column.h"
 #include "vc/expr_column.h"
@@ -65,7 +65,7 @@ void ConditionEncoder::operator()(Descriptor &desc) {
   if (desc.encoded)
     return;
 
-  auto tab = std::static_pointer_cast<RCTable>(desc.attr.vc->GetVarMap()[0].GetTabPtr());
+  auto tab = std::static_pointer_cast<TianmuTable>(desc.attr.vc->GetVarMap()[0].GetTabPtr());
   attr = tab->GetAttr(desc.attr.vc->GetVarMap()[0].col_ndx);
   attr->LoadPackInfo(current_txn_);
   in_type = attr->Type();
@@ -252,10 +252,10 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
       v1 = attr->EncodeValue64(mvc->GetSetMin(mit).Get(),
                                v1_rounded);  // 1-level values
   } else if (desc->val1.vc->IsConst()) {
-    common::ErrorCode tianmu_rc = common::ErrorCode::SUCCESS;
+    common::ErrorCode tianmu_err_code = common::ErrorCode::SUCCESS;
     v1 = attr->EncodeValue64(desc->val1.vc->GetValue(mit), v1_rounded,
-                             &tianmu_rc);  // 1-level values
-    if (tianmu_rc != common::ErrorCode::SUCCESS) {
+                             &tianmu_err_code);  // 1-level values
+    if (tianmu_err_code != common::ErrorCode::SUCCESS) {
       desc->encoded = false;
       throw common::DataTypeConversionException(common::ErrorCode::DATACONVERSION);
     }
@@ -273,11 +273,11 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
       v2 = attr->EncodeValue64(mvc->GetSetMin(mit).Get(),
                                v2_rounded);  // 1-level values
   } else {
-    common::ErrorCode tianmu_rc = common::ErrorCode::SUCCESS;
+    common::ErrorCode tianmu_err_code = common::ErrorCode::SUCCESS;
     if (!desc->val2.IsNull() && desc->val2.vc && desc->val2.vc->IsConst()) {
       v2 = attr->EncodeValue64(desc->val2.vc->GetValue(mit), v2_rounded,
-                               &tianmu_rc);  // 1-level values
-      if (tianmu_rc != common::ErrorCode::SUCCESS) {
+                               &tianmu_err_code);  // 1-level values
+      if (tianmu_err_code != common::ErrorCode::SUCCESS) {
         desc->encoded = false;
         throw common::DataTypeConversionException(common::ErrorCode::DATACONVERSION);
       }
@@ -371,13 +371,13 @@ void ConditionEncoder::TransformOtherThanINsOnNumerics() {
 
   desc->val1 = CQTerm();
   desc->val1.vc = new vcolumn::ConstColumn(
-      ValueOrNull(types::RCNum(v1, attr->Type().GetScale(), ATI::IsRealType(AttrTypeName()), AttrTypeName())),
+      ValueOrNull(types::TianmuNum(v1, attr->Type().GetScale(), ATI::IsRealType(AttrTypeName()), AttrTypeName())),
       attr->Type());
   desc->val1.vc_id = desc->table->AddVirtColumn(desc->val1.vc);
 
   desc->val2 = CQTerm();
   desc->val2.vc = new vcolumn::ConstColumn(
-      ValueOrNull(types::RCNum(v2, attr->Type().GetScale(), ATI::IsRealType(AttrTypeName()), AttrTypeName())),
+      ValueOrNull(types::TianmuNum(v2, attr->Type().GetScale(), ATI::IsRealType(AttrTypeName()), AttrTypeName())),
       attr->Type());
   desc->val2.vc_id = desc->table->AddVirtColumn(desc->val2.vc);
 }
@@ -491,7 +491,7 @@ void ConditionEncoder::TransformIntoINsOnLookup() {
   ValueSet vset_positive(desc->table->Getpackpower());
   ValueSet vset_negative(desc->table->Getpackpower());
   types::BString s, vs1, vs2;
-  types::RCValueObject vo;
+  types::TianmuValueObject vo;
   if (desc->val1.vc->IsMultival() && static_cast<vcolumn::MultiValColumn &>(*desc->val1.vc).NumOfValues(mit) > 0) {
     if ((desc->op == common::Operator::O_LESS_ALL || desc->op == common::Operator::O_LESS_EQ_ALL) ||
         (desc->op == common::Operator::O_MORE_ANY || desc->op == common::Operator::O_MORE_EQ_ANY))
@@ -612,7 +612,7 @@ void ConditionEncoder::TransformINs() {
       if (attr->GetPackType() == common::PackType::INT && !attr->Type().IsLookup()) {
         desc->val2 = CQTerm();
         desc->val2.vc =
-            new vcolumn::ConstColumn(ValueOrNull(types::RCNum(attr->EncodeValue64(mvc.GetSetMin(mit), sharp),
+            new vcolumn::ConstColumn(ValueOrNull(types::TianmuNum(attr->EncodeValue64(mvc.GetSetMin(mit), sharp),
                                                               static_cast<short>(in_type.GetTypeName()))),
                                      in_type);
         desc->val2.vc_id = desc->table->AddVirtColumn(desc->val2.vc);
@@ -639,8 +639,8 @@ void ConditionEncoder::TransformINs() {
     } else if (attr->GetPackType() == common::PackType::INT && !mvc.ContainsNull(mit)) {
       int64_t val_min, val_max;
       if (attr->Type().IsLookup()) {
-        val_min = int64_t((types::RCNum &)mvc.GetSetMin(mit));
-        val_max = int64_t((types::RCNum &)mvc.GetSetMax(mit));
+        val_min = int64_t((types::TianmuNum &)mvc.GetSetMin(mit));
+        val_max = int64_t((types::TianmuNum &)mvc.GetSetMax(mit));
       } else {
         val_min = attr->EncodeValue64(mvc.GetSetMin(mit), sharp);
         val_max = attr->EncodeValue64(mvc.GetSetMax(mit), sharp);
@@ -649,12 +649,12 @@ void ConditionEncoder::TransformINs() {
       if (attr->Type().GetScale() < 1 && span > 0 && span < 65536  // otherwise AtLeast... will be too costly
           && span == mvc.AtLeastNoDistinctValues(mit, span + 1)) {
         desc->val2.vc = new vcolumn::ConstColumn(
-            ValueOrNull(types::RCNum(val_max, attr->Type().GetScale(), ATI::IsRealType(in_type.GetTypeName()),
+            ValueOrNull(types::TianmuNum(val_max, attr->Type().GetScale(), ATI::IsRealType(in_type.GetTypeName()),
                                      in_type.GetTypeName())),
             in_type);
         desc->val2.vc_id = desc->table->AddVirtColumn(desc->val2.vc);
         desc->val1.vc = new vcolumn::ConstColumn(
-            ValueOrNull(types::RCNum(val_min, attr->Type().GetScale(), ATI::IsRealType(in_type.GetTypeName()),
+            ValueOrNull(types::TianmuNum(val_min, attr->Type().GetScale(), ATI::IsRealType(in_type.GetTypeName()),
                                      in_type.GetTypeName())),
             in_type);
         desc->val1.vc_id = desc->table->AddVirtColumn(desc->val1.vc);

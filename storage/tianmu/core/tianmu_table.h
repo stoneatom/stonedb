@@ -14,16 +14,16 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
-#ifndef TIANMU_CORE_RC_TABLE_H_
-#define TIANMU_CORE_RC_TABLE_H_
+#ifndef TIANMU_CORE_TIANMU_TABLE_H_
+#define TIANMU_CORE_TIANMU_TABLE_H_
 #pragma once
 
 #include <string>
 
 #include "common/common_definitions.h"
 #include "core/just_a_table.h"
-#include "core/rc_attr.h"
-#include "core/rc_mem_table.h"
+#include "core/tianmu_attr.h"
+#include "core/tianmu_mem_table.h"
 #include "util/fs.h"
 
 namespace Tianmu {
@@ -53,20 +53,20 @@ struct TableOption {
 
 class DataPackLock : public FunctionExecutor {
  public:
-  DataPackLock(RCAttr *attr, const int &id)
-      : FunctionExecutor(std::bind(&RCAttr::LockPackForUse, attr, id),
-                         std::bind(&RCAttr::UnlockPackFromUse, attr, id)) {}
+  DataPackLock(TianmuAttr *attr, const int &id)
+      : FunctionExecutor(std::bind(&TianmuAttr::LockPackForUse, attr, id),
+                         std::bind(&TianmuAttr::UnlockPackFromUse, attr, id)) {}
 };
 
 class TableShare;
 
-class RCTable final : public JustATable {
+class TianmuTable final : public JustATable {
  public:
-  RCTable() = delete;
-  RCTable(const RCTable &) = delete;
-  RCTable &operator=(const RCTable &) = delete;
-  RCTable(std::string const &path, TableShare *share, Transaction *tx = nullptr);
-  ~RCTable() = default;
+  TianmuTable() = delete;
+  TianmuTable(const TianmuTable &) = delete;
+  TianmuTable &operator=(const TianmuTable &) = delete;
+  TianmuTable(std::string const &path, TableShare *share, Transaction *tx = nullptr);
+  ~TianmuTable() = default;
 
   static void CreateNew(const std::shared_ptr<TableOption> &opt);
   static uint32_t GetTableId(const fs::path &dir);
@@ -89,7 +89,7 @@ class RCTable final : public JustATable {
   std::vector<AttributeTypeInfo> GetATIs(bool orig = false) override;
   const ColumnType &GetColumnType(int col) override;
   PhysicalColumn *GetColumn(int col_no) override { return m_attrs[col_no].get(); }
-  RCAttr *GetAttr(int n_a);
+  TianmuAttr *GetAttr(int n_a);
 
   // Transaction management
   bool Verify();
@@ -106,7 +106,7 @@ class RCTable final : public JustATable {
   int64_t GetTable64(int64_t obj, int attr) override;  // value from table in 1-level numerical form
   bool IsNull(int64_t obj,
               int attr) override;  // return true if the value of attr. is null
-  types::RCValueObject GetValue(int64_t obj, int attr, Transaction *conn = nullptr);
+  types::TianmuValueObject GetValue(int64_t obj, int attr, Transaction *conn = nullptr);
   const fs::path &Path() { return m_path; }
 
   // Query execution
@@ -144,8 +144,8 @@ class RCTable final : public JustATable {
 
   Transaction *m_tx = nullptr;
 
-  std::vector<std::unique_ptr<RCAttr>> m_attrs;
-  std::shared_ptr<RCMemTable> m_mem_table;
+  std::vector<std::unique_ptr<TianmuAttr>> m_attrs;
+  std::shared_ptr<TianmuMemTable> m_mem_table;
 
   std::vector<common::TX_ID> m_versions;
 
@@ -157,13 +157,13 @@ class RCTable final : public JustATable {
 
  public:
   class Iterator final {
-    friend class RCTable;
+    friend class TianmuTable;
 
    public:
     Iterator() = default;
 
    private:
-    Iterator(RCTable &table, std::shared_ptr<Filter> filter);
+    Iterator(TianmuTable &table, std::shared_ptr<Filter> filter);
     void Initialize(const std::vector<bool> &attrs);
 
    public:
@@ -171,7 +171,7 @@ class RCTable final : public JustATable {
     bool operator!=(const Iterator &iter) { return !(*this == iter); }
     void operator++(int);
 
-    std::shared_ptr<types::RCDataType> &GetData(int col) {
+    std::shared_ptr<types::TianmuDataType> &GetData(int col) {
       FetchValues();
       return record[col];
     }
@@ -186,20 +186,20 @@ class RCTable final : public JustATable {
     void LockPacks();
 
    private:
-    RCTable *table = nullptr;
+    TianmuTable *table = nullptr;
     int64_t position = -1;
     Transaction *conn = nullptr;
     bool current_record_fetched = false;
     std::shared_ptr<Filter> filter;
     FilterOnesIterator it;
 
-    std::vector<std::shared_ptr<types::RCDataType>> record;
+    std::vector<std::shared_ptr<types::TianmuDataType>> record;
     std::vector<std::function<void(size_t)>> values_fetchers;
     std::vector<std::unique_ptr<DataPackLock>> dp_locks;
-    std::vector<RCAttr *> attrs;
+    std::vector<TianmuAttr *> attrs;
 
    private:
-    static Iterator CreateBegin(RCTable &table, std::shared_ptr<Filter> filter, const std::vector<bool> &attrs);
+    static Iterator CreateBegin(TianmuTable &table, std::shared_ptr<Filter> filter, const std::vector<bool> &attrs);
     static Iterator CreateEnd();
   };
 
@@ -214,4 +214,4 @@ class RCTable final : public JustATable {
 }  // namespace core
 }  // namespace Tianmu
 
-#endif  // TIANMU_CORE_RC_TABLE_H_
+#endif  // TIANMU_CORE_TIANMU_TABLE_H_

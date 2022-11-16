@@ -14,65 +14,65 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
-#ifndef TIANMU_TYPES_RC_NUM_H_
-#define TIANMU_TYPES_RC_NUM_H_
+#ifndef TIANMU_TYPES_NUM_H_
+#define TIANMU_TYPES_NUM_H_
 #pragma once
 
-#include "types/rc_data_types.h"
+#include "types/tianmu_data_types.h"
 
 namespace Tianmu {
 namespace types {
 
 class BString;
 
-class RCNum : public ValueBasic<RCNum> {
+class TianmuNum : public ValueBasic<TianmuNum> {
   friend class ValueParserForText;
   friend class Engine;
 
  public:
-  RCNum(common::CT attrt = common::CT::NUM);
-  RCNum(int64_t value, short scale = -1, bool dbl = false, common::CT attrt = common::CT::UNK);
-  RCNum(double value);
-  RCNum(const RCNum &);
-  ~RCNum();
+  TianmuNum(common::CT attrt = common::CT::NUM);
+  TianmuNum(int64_t value, short scale = -1, bool dbl = false, common::CT attrt = common::CT::UNK);
+  TianmuNum(double value);
+  TianmuNum(const TianmuNum &);
+  ~TianmuNum();
 
-  RCNum &Assign(int64_t value, short scale = -1, bool dbl = false, common::CT attrt = common::CT::UNK);
-  RCNum &Assign(double value);
+  TianmuNum &Assign(int64_t value, short scale = -1, bool dbl = false, common::CT attrt = common::CT::UNK);
+  TianmuNum &Assign(double value);
 
-  static common::ErrorCode Parse(const BString &rcs, RCNum &rcn, common::CT at = common::CT::UNK);
-  static common::ErrorCode ParseReal(const BString &, RCNum &, common::CT at);
-  static common::ErrorCode ParseNum(const BString &, RCNum &, short scale = -1);
+  static common::ErrorCode Parse(const BString &tianmu_s, TianmuNum &tianmu_n, common::CT at = common::CT::UNK);
+  static common::ErrorCode ParseReal(const BString &, TianmuNum &, common::CT at);
+  static common::ErrorCode ParseNum(const BString &, TianmuNum &, short scale = -1);
 
-  RCNum &operator=(const RCNum &rcn);
-  RCNum &operator=(const RCDataType &rcdt) override;
+  TianmuNum &operator=(const TianmuNum &tianmu_n);
+  TianmuNum &operator=(const TianmuDataType &tianmu_dt) override;
 
   common::CT Type() const override;
 
-  bool operator==(const RCDataType &rcdt) const override;
-  bool operator<(const RCDataType &rcdt) const override;
-  bool operator>(const RCDataType &rcdt) const override;
-  bool operator>=(const RCDataType &rcdt) const override;
-  bool operator<=(const RCDataType &rcdt) const override;
-  bool operator!=(const RCDataType &rcdt) const override;
+  bool operator==(const TianmuDataType &tianmu_dt) const override;
+  bool operator<(const TianmuDataType &tianmu_dt) const override;
+  bool operator>(const TianmuDataType &tianmu_dt) const override;
+  bool operator>=(const TianmuDataType &tianmu_dt) const override;
+  bool operator<=(const TianmuDataType &tianmu_dt) const override;
+  bool operator!=(const TianmuDataType &tianmu_dt) const override;
 
-  RCNum &operator-=(const RCNum &rcn);
-  RCNum &operator+=(const RCNum &rcn);
-  RCNum &operator*=(const RCNum &rcn);
-  RCNum &operator/=(const RCNum &rcn);
+  TianmuNum &operator-=(const TianmuNum &tianmu_n);
+  TianmuNum &operator+=(const TianmuNum &tianmu_n);
+  TianmuNum &operator*=(const TianmuNum &tianmu_n);
+  TianmuNum &operator/=(const TianmuNum &tianmu_n);
 
-  RCNum operator-(const RCNum &rcn) const;
-  RCNum operator+(const RCNum &rcn) const;
-  RCNum operator*(const RCNum &rcn) const;
-  RCNum operator/(const RCNum &rcn) const;
+  TianmuNum operator-(const TianmuNum &tianmu_n) const;
+  TianmuNum operator+(const TianmuNum &tianmu_n) const;
+  TianmuNum operator*(const TianmuNum &tianmu_n) const;
+  TianmuNum operator/(const TianmuNum &tianmu_n) const;
 
   bool IsDecimal(ushort scale) const;
   bool IsReal() const { return is_double_; }
   bool IsInt() const;
 
   BString ToBString() const override;
-  RCNum ToDecimal(int scale = -1) const;
-  RCNum ToReal() const;
-  RCNum ToInt() const;
+  TianmuNum ToDecimal(int scale = -1) const;
+  TianmuNum ToReal() const;
+  TianmuNum ToInt() const;
 
   operator int64_t() const { return GetIntPart(); }
   operator double() const;
@@ -97,8 +97,8 @@ class RCNum : public ValueBasic<RCNum> {
   void Negate();
 
  private:
-  int compare(const RCNum &rcn) const;
-  int compare(const RCDateTime &rcn) const;
+  int compare(const TianmuNum &tianmu_n) const;
+  int compare(const TianmuDateTime &tianmu_n) const;
 
  private:
   static constexpr int MAX_DEC_PRECISION = 18;
@@ -115,4 +115,4 @@ class RCNum : public ValueBasic<RCNum> {
 }  // namespace types
 }  // namespace Tianmu
 
-#endif  // TIANMU_TYPES_RC_NUM_H_
+#endif  // TIANMU_TYPES_NUM_H_

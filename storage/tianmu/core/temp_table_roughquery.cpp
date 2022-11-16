@@ -780,10 +780,10 @@ void TempTable::RoughUnion(TempTable *t, ResultSender *sender) {
     if (IsDisplayAttr(i) && !ATI::IsStringType(attrs[i]->TypeName())) {
       int64_t v;
       if (GetColumnType(i).IsFloat()) {
-        types::RCNum rc = (types::RCNum)t->GetValueObject(0, i);
+        types::TianmuNum rc = (types::TianmuNum)t->GetValueObject(0, i);
         v = rc.ToReal().ValueInt();
       } else if (t->GetColumnType(i).IsFloat()) {
-        types::RCNum rc = (types::RCNum)t->GetValueObject(0, i);
+        types::TianmuNum rc = (types::TianmuNum)t->GetValueObject(0, i);
         v = (int64_t)((double)rc * types::PowOfTen(GetAttrScale(i)));
       } else {
         double multiplier = types::PowOfTen(GetAttrScale(i) - t->GetAttrScale(i));
@@ -791,10 +791,10 @@ void TempTable::RoughUnion(TempTable *t, ResultSender *sender) {
       }
       attrs[i]->SetValueInt64(pos, v);
       if (GetColumnType(i).IsFloat()) {
-        types::RCNum rc = (types::RCNum)t->GetValueObject(1, i);
+        types::TianmuNum rc = (types::TianmuNum)t->GetValueObject(1, i);
         v = rc.ToReal().ValueInt();
       } else if (t->GetColumnType(i).IsFloat()) {
-        types::RCNum rc = (types::RCNum)t->GetValueObject(1, i);
+        types::TianmuNum rc = (types::TianmuNum)t->GetValueObject(1, i);
         v = (int64_t)((double)rc * types::PowOfTen(GetAttrScale(i)));
       } else {
         double multiplier = types::PowOfTen(GetAttrScale(i) - t->GetAttrScale(i));

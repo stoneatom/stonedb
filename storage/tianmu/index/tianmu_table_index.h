@@ -14,8 +14,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
-#ifndef TIANMU_INDEX_RC_TABLE_INDEX_H_
-#define TIANMU_INDEX_RC_TABLE_INDEX_H_
+#ifndef TIANMU_TABLE_INDEX_H_
+#define TIANMU_TABLE_INDEX_H_
 #pragma once
 
 #include <string>
@@ -35,14 +35,14 @@ class RdbKey;
 class RdbTable;
 class KVTransaction;
 
-class RCTableIndex final {
+class TianmuTableIndex final {
  public:
-  RCTableIndex(const RCTableIndex &) = delete;
-  RCTableIndex(const std::string &name, TABLE *table);
+  TianmuTableIndex(const TianmuTableIndex &) = delete;
+  TianmuTableIndex(const std::string &name, TABLE *table);
 
-  RCTableIndex &operator=(RCTableIndex &) = delete;
-  RCTableIndex() = delete;
-  virtual ~RCTableIndex() = default;
+  TianmuTableIndex &operator=(TianmuTableIndex &) = delete;
+  TianmuTableIndex() = delete;
+  virtual ~TianmuTableIndex() = default;
 
   const std::vector<uint> &KeyCols() { return index_of_columns_; }
 
@@ -75,8 +75,8 @@ class KeyIterator final {
   KeyIterator() = delete;
   KeyIterator(const KeyIterator &sec) : valid(sec.valid), iter_(sec.iter_), rocksdb_key_(sec.rocksdb_key_){};
   KeyIterator(KVTransaction *tx) : txn_(tx){};
-  void ScanToKey(std::shared_ptr<RCTableIndex> tab, std::vector<std::string_view> &fields, common::Operator op);
-  void ScanToEdge(std::shared_ptr<RCTableIndex> tab, bool forward);
+  void ScanToKey(std::shared_ptr<TianmuTableIndex> tab, std::vector<std::string_view> &fields, common::Operator op);
+  void ScanToEdge(std::shared_ptr<TianmuTableIndex> tab, bool forward);
   common::ErrorCode GetCurKV(std::vector<std::string> &keys, uint64_t &row);
   common::ErrorCode GetRowid(uint64_t &row) {
     std::vector<std::string> keys;
@@ -96,4 +96,4 @@ class KeyIterator final {
 }  // namespace index
 }  // namespace Tianmu
 
-#endif  // TIANMU_INDEX_RC_TABLE_INDEX_H_
+#endif  // TIANMU_TABLE_INDEX_H_

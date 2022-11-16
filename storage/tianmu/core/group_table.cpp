@@ -383,7 +383,7 @@ void GroupTable::Initialize(int64_t max_no_groups, bool parallel_allowed) {
   size_mb =
       (size_mb > 1024 ? (size_mb > 1024 * 1024 ? int64_t(size_mb / 1024 * 1024) : int64_t(size_mb / 1024) / 1024.0)
                       : 0.001);
-  rc_control_.lock(m_conn->GetThreadID())
+  tianmu_control_.lock(m_conn->GetThreadID())
       << "GroupTable begin, initialized for up to " << max_no_groups << " groups, " << grouping_buf_width << "+"
       << total_width - grouping_buf_width << " bytes (" << size_mb << " MB)" << system::unlock;
   ClearAll();

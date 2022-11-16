@@ -77,7 +77,7 @@ class SingleColumn : public VirtualColumn {
     col_->GetValueString(mit[dim_], s);
   }
   double GetValueDoubleImpl(const core::MIIterator &mit) override;
-  types::RCValueObject GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) override;
+  types::TianmuValueObject GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) override;
 
   int64_t GetMinInt64Impl(const core::MIIterator &mit) override;
   int64_t GetMaxInt64Impl(const core::MIIterator &mit) override;

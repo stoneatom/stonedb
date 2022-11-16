@@ -431,7 +431,7 @@ void ParallelHashJoiner::ExecuteJoin() {
     outer_tuples_ += outer_tuples;
 
     if (too_many_conflicts_) {
-      rc_control_.lock(m_conn->GetThreadID()) << "Too many hash conflicts: restarting join." << system::unlock;
+      tianmu_control_.lock(m_conn->GetThreadID()) << "Too many hash conflicts: restarting join." << system::unlock;
       return;
     }
 
@@ -447,12 +447,12 @@ void ParallelHashJoiner::ExecuteJoin() {
   outer_tuples_ += outer_tuples_matched;
 
   if (outer_tuples_ > 0)
-    rc_control_.lock(m_conn->GetThreadID())
+    tianmu_control_.lock(m_conn->GetThreadID())
         << "Added " << outer_tuples_ << " null tuples by outer join." << system::unlock;
   joined_tuples += outer_tuples_;
   // revert multiindex to the updated tables
   if (packrows_omitted_ > 0)
-    rc_control_.lock(m_conn->GetThreadID())
+    tianmu_control_.lock(m_conn->GetThreadID())
         << "Roughly omitted " << int(packrows_omitted_ / double(packrows_matched_) * 10000.0) / 100.0 << "% packrows."
         << system::unlock;
 
@@ -526,7 +526,7 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
   }
 
   int traversed_fragment_count = (int)task_iterators.size();
-  rc_control_.lock(m_conn->GetThreadID()) << "Begin traversed with " << traversed_fragment_count << " threads with "
+  tianmu_control_.lock(m_conn->GetThreadID()) << "Begin traversed with " << traversed_fragment_count << " threads with "
                                           << splitting_type << " type." << system::unlock;
 
   std::vector<TraverseTaskParams> traverse_task_params;
@@ -551,7 +551,7 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
       params.build_item = multi_index_builder_->CreateBuildItem();
       params.task_miter = iter;
 
-      res.insert(ha_rcengine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncTraverseDim, this, &params));
+      res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncTraverseDim, this, &params));
     }
   } catch (std::exception &e) {
     res.get_all_with_except();
@@ -577,7 +577,7 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
   if (m_conn->Killed())
     throw common::KilledException();
 
-  rc_control_.lock(m_conn->GetThreadID())
+  tianmu_control_.lock(m_conn->GetThreadID())
       << "End traversed " << traversed_rows << "/" << rows_count << " rows." << system::unlock;
 
   for (auto &params : traverse_task_params) {
@@ -587,7 +587,7 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
     }
 
     if (params.no_space_left)
-      rc_control_.lock(m_conn->GetThreadID()) << "No space left of hash table. " << system::unlock;
+      tianmu_control_.lock(m_conn->GetThreadID()) << "No space left of hash table. " << system::unlock;
 
     *outer_tuples += params.outer_tuples;
     multi_index_builder_->AddBuildItem(params.build_item);
@@ -772,7 +772,7 @@ int64_t ParallelHashJoiner::MatchDim(MIIterator &mit) {
   std::vector<MITaskIterator *> task_iterators;
   CreateMatchingTasks(mit, rows_count, &task_iterators, &splitting_type);
 
-  rc_control_.lock(m_conn->GetThreadID())
+  tianmu_control_.lock(m_conn->GetThreadID())
       << "Begin match dim of " << rows_count << " rows, spliting into " << task_iterators.size() << " threads with "
       << splitting_type << " type." << system::unlock;
 
@@ -795,7 +795,7 @@ int64_t ParallelHashJoiner::MatchDim(MIIterator &mit) {
         params.build_item = multi_index_builder_->CreateBuildItem();
         params.task_miter = iter;
 
-        res.insert(ha_rcengine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncMatchDim, this, &params));
+        res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncMatchDim, this, &params));
       }
     } catch (std::exception &e) {
       res.get_all_with_except();
@@ -827,7 +827,7 @@ int64_t ParallelHashJoiner::MatchDim(MIIterator &mit) {
   if (m_conn->Killed())
     throw common::KilledException();
 
-  rc_control_.lock(m_conn->GetThreadID())
+  tianmu_control_.lock(m_conn->GetThreadID())
       << "End match dim. Produced tuples:" << matched_rows << "/" << rows_count << system::unlock;
 
   for (auto &params : match_task_params) {
@@ -1171,7 +1171,7 @@ int64_t ParallelHashJoiner::SubmitOuterMatched(MIIterator &miter) {
       params.task_iter = iter;
       params.build_item = multi_index_builder_->CreateBuildItem();
 
-      res.insert(ha_rcengine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncSubmitOuterMatched, this, &params,
+      res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncSubmitOuterMatched, this, &params,
                                                           outer_matched_filter_.get()));
     }
   } catch (std::exception &e) {

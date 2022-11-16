@@ -143,7 +143,7 @@ class VirtualColumnBase : public core::Column {
    * \param mit points to a row in an Multiindex, requested column value comes
    * from this row \param lookup_to_num legacy meaning (?)
    */
-  inline types::RCValueObject GetValue(const core::MIIterator &mit, bool lookup_to_num = false) {
+  inline types::TianmuValueObject GetValue(const core::MIIterator &mit, bool lookup_to_num = false) {
     return (GetValueImpl(mit, lookup_to_num));
   }
 
@@ -493,7 +493,7 @@ class VirtualColumnBase : public core::Column {
   virtual bool IsNullImpl(const core::MIIterator &) = 0;
   virtual void GetValueStringImpl(types::BString &, const core::MIIterator &) = 0;
   virtual double GetValueDoubleImpl(const core::MIIterator &) = 0;
-  virtual types::RCValueObject GetValueImpl(const core::MIIterator &, bool) = 0;
+  virtual types::TianmuValueObject GetValueImpl(const core::MIIterator &, bool) = 0;
 
   virtual int64_t GetMinInt64Impl(const core::MIIterator &) = 0;
   virtual int64_t GetMinInt64ExactImpl(const core::MIIterator &) { return common::NULL_VALUE_64; }

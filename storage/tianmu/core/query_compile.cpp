@@ -278,7 +278,7 @@ bool Query::FieldUnmysterify(Item *item, TabID &tab, AttrID &col) {
 
     // FIXME: is this correct?
     if (!mysql_table->pos_in_table_list->is_view_or_derived()) {
-      // Physical table in FROM - RCTable
+      // Physical table in FROM - TianmuTable
       int field_num;
       for (field_num = 0; mysql_table->field[field_num]; field_num++)
         if (mysql_table->field[field_num]->field_name == ifield->result_field->field_name)

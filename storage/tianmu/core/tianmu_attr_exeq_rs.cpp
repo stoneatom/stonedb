@@ -15,13 +15,13 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-// This is a part of RCAttr implementation concerned with the KNs and its usage
+// This is a part of TianmuAttr implementation concerned with the KNs and its usage
 #include "core/cq_term.h"
 #include "core/engine.h"
 #include "core/pack.h"
 #include "core/pack_guardian.h"
-#include "core/rc_attr.h"
-#include "core/rc_attr_typeinfo.h"
+#include "core/tianmu_attr.h"
+#include "core/tianmu_attr_typeinfo.h"
 #include "core/value_set.h"
 #include "types/text_stat.h"
 #include "vc/multi_value_column.h"
@@ -40,7 +40,7 @@ uint Int64StrLen(int64_t x) {
 }
 
 // NOTE: similar code is in vcolumn::VirtualColumnBase::DoRoughCheck
-common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_nulls_possible) {
+common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_nulls_possible) {
   if (d.op == common::Operator::O_FALSE)
     return common::RSValue::RS_NONE;
   else if (d.op == common::Operator::O_TRUE)
@@ -227,8 +227,8 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
         DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(vc1));
         vcolumn::MultiValColumn *mvc(static_cast<vcolumn::MultiValColumn *>(vc1));
         int64_t v1, v2;
-        types::RCNum rcn_min = mvc->GetSetMin(mit);
-        types::RCNum rcn_max = mvc->GetSetMax(mit);
+        types::TianmuNum rcn_min = mvc->GetSetMin(mit);
+        types::TianmuNum rcn_max = mvc->GetSetMax(mit);
         if (rcn_min.IsNull() || rcn_max.IsNull())  // cannot determine min/max
           return common::RSValue::RS_SOME;
         if (Type().IsLookup()) {
@@ -247,10 +247,10 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
           res = common::RSValue::RS_NONE;  // calculate as for common::Operator::O_IN and then take
                                            // common::Operator::O_NOT_IN into account
         } else if (dpn.min_i == dpn.max_i) {
-          types::RCValueObject rcvo(ATI::IsDateTimeType(TypeName())
-                                        ? types::RCValueObject(types::RCDateTime(dpn.min_i, TypeName()))
-                                        : types::RCValueObject(types::RCNum(dpn.min_i, Type().GetScale())));
-          res = (mvc->Contains(mit, *rcvo) != false) ? common::RSValue::RS_ALL : common::RSValue::RS_NONE;
+          types::TianmuValueObject tianmu_value_obj(ATI::IsDateTimeType(TypeName())
+                                        ? types::TianmuValueObject(types::TianmuDateTime(dpn.min_i, TypeName()))
+                                        : types::TianmuValueObject(types::TianmuNum(dpn.min_i, Type().GetScale())));
+          res = (mvc->Contains(mit, *tianmu_value_obj) != false) ? common::RSValue::RS_ALL : common::RSValue::RS_NONE;
         } else {
           if (auto sp = GetFilter_Hist())
             res = sp->IsValue(v1, v2, pack, dpn.min_i, dpn.max_i);
@@ -396,9 +396,9 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
       return common::RSValue::RS_SOME;
     vcolumn::SingleColumn *sc =
         (static_cast<int>(d.val1.vc->IsSingleColumn()) ? static_cast<vcolumn::SingleColumn *>(d.val1.vc) : nullptr);
-    RCAttr *sec = nullptr;
+    TianmuAttr *sec = nullptr;
     if (sc)
-      sec = dynamic_cast<RCAttr *>(sc->GetPhysical());
+      sec = dynamic_cast<TianmuAttr *>(sc->GetPhysical());
     if (d.IsType_AttrAttr() && d.op != common::Operator::O_BETWEEN && d.op != common::Operator::O_NOT_BETWEEN && sec) {
       common::RSValue res = common::RSValue::RS_SOME;
       // special cases, not implemented yet:
@@ -527,7 +527,7 @@ common::RSValue RCAttr::RoughCheck(int pack, Descriptor &d, bool additional_null
   return common::RSValue::RS_SOME;
 }
 
-common::RSValue RCAttr::RoughCheck(int pack1, int pack2, Descriptor &d) {
+common::RSValue TianmuAttr::RoughCheck(int pack1, int pack2, Descriptor &d) {
   vcolumn::VirtualColumn *vc1 = d.val1.vc;
   vcolumn::VirtualColumn *vc2 = d.val2.vc;
 
@@ -539,7 +539,7 @@ common::RSValue RCAttr::RoughCheck(int pack1, int pack2, Descriptor &d) {
     sc = static_cast<vcolumn::SingleColumn *>(vc1);
   if (sc == nullptr)
     return common::RSValue::RS_SOME;
-  RCAttr *sec = dynamic_cast<RCAttr *>(sc->GetPhysical());
+  TianmuAttr *sec = dynamic_cast<TianmuAttr *>(sc->GetPhysical());
   if (sec == nullptr || !Type().IsNumComparable(sec->Type()))
     return common::RSValue::RS_SOME;
 
@@ -555,7 +555,7 @@ common::RSValue RCAttr::RoughCheck(int pack1, int pack2, Descriptor &d) {
 
 // check whether any value from the pack may meet the condition "... BETWEEN min
 // AND max"
-common::RSValue RCAttr::RoughCheckBetween(int pack, int64_t v1, int64_t v2) {
+common::RSValue TianmuAttr::RoughCheckBetween(int pack, int64_t v1, int64_t v2) {
   common::RSValue res = common::RSValue::RS_SOME;  // calculate as for common::Operator::O_BETWEEN
                                                    // and then consider negation
   bool is_float = Type().IsFloat();
@@ -594,7 +594,7 @@ common::RSValue RCAttr::RoughCheckBetween(int pack, int64_t v1, int64_t v2) {
   return res;
 }
 
-int64_t RCAttr::RoughMin(Filter *f, common::RSValue *rf)  // f == nullptr is treated as full filter
+int64_t TianmuAttr::RoughMin(Filter *f, common::RSValue *rf)  // f == nullptr is treated as full filter
 {
   LoadPackInfo();
   if (GetPackType() == common::PackType::STR)
@@ -631,7 +631,7 @@ int64_t RCAttr::RoughMin(Filter *f, common::RSValue *rf)  // f == nullptr is tre
   return res;
 }
 
-int64_t RCAttr::RoughMax(Filter *f, common::RSValue *rf)  // f == nullptr is treated as full filter
+int64_t TianmuAttr::RoughMax(Filter *f, common::RSValue *rf)  // f == nullptr is treated as full filter
 {
   LoadPackInfo();
   if (GetPackType() == common::PackType::STR)
@@ -668,7 +668,7 @@ int64_t RCAttr::RoughMax(Filter *f, common::RSValue *rf)  // f == nullptr is tre
   return res;
 }
 
-std::vector<int64_t> RCAttr::GetListOfDistinctValuesInPack(int pack) {
+std::vector<int64_t> TianmuAttr::GetListOfDistinctValuesInPack(int pack) {
   std::vector<int64_t> list_vals;
   if (GetPackType() != common::PackType::INT || pack == -1 ||
       (Type().IsLookup() && types::RequiresUTFConversions(GetCollation())))
@@ -702,7 +702,7 @@ std::vector<int64_t> RCAttr::GetListOfDistinctValuesInPack(int pack) {
   return list_vals;
 }
 
-uint64_t RCAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue *rf, bool outer_nulls_possible) {
+uint64_t TianmuAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue *rf, bool outer_nulls_possible) {
   LoadPackInfo();
   uint64_t no_dist = 0;
   int64_t max_obj = NumOfObj();  // no more values than objects
@@ -716,8 +716,8 @@ uint64_t RCAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue 
     max_obj = f->NumOfOnes();
   if (TypeName() == common::CT::DATE) {
     try {
-      types::RCDateTime date_min(RoughMin(f, rf), common::CT::DATE);
-      types::RCDateTime date_max(RoughMax(f, rf), common::CT::DATE);
+      types::TianmuDateTime date_min(RoughMin(f, rf), common::CT::DATE);
+      types::TianmuDateTime date_max(RoughMax(f, rf), common::CT::DATE);
       no_dist += (date_max - date_min) + 1;  // overloaded minus - a number of days between dates
     } catch (...) {                          // in case of any problems with conversion of dates - just
                                              // numerical approximation
@@ -725,8 +725,8 @@ uint64_t RCAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue 
     }
   } else if (TypeName() == common::CT::YEAR) {
     try {
-      types::RCDateTime date_min(RoughMin(f, rf), common::CT::YEAR);
-      types::RCDateTime date_max(RoughMax(f, rf), common::CT::YEAR);
+      types::TianmuDateTime date_min(RoughMin(f, rf), common::CT::YEAR);
+      types::TianmuDateTime date_max(RoughMax(f, rf), common::CT::YEAR);
       no_dist += ((int)(date_max.Year()) - date_min.Year()) + 1;
     } catch (...) {  // in case of any problems with conversion of dates - just
                      // numerical approximation
@@ -792,7 +792,7 @@ uint64_t RCAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue 
   return no_dist;
 }
 
-uint64_t RCAttr::ExactDistinctVals(Filter *f)  // provide the exact number of diff. non-null values, if
+uint64_t TianmuAttr::ExactDistinctVals(Filter *f)  // provide the exact number of diff. non-null values, if
                                                // possible, or common::NULL_VALUE_64
 {
   if (f == nullptr)  // no exact information about tuples => nothing can be
@@ -858,7 +858,7 @@ uint64_t RCAttr::ExactDistinctVals(Filter *f)  // provide the exact number of di
   return common::NULL_VALUE_64;
 }
 
-double RCAttr::RoughSelectivity() {
+double TianmuAttr::RoughSelectivity() {
   if (rough_selectivity == -1) {
     LoadPackInfo();
     if (GetPackType() == common::PackType::INT && TypeName() != common::CT::REAL && TypeName() != common::CT::FLOAT &&
@@ -883,7 +883,7 @@ double RCAttr::RoughSelectivity() {
   return rough_selectivity;
 }
 
-void RCAttr::GetTextStat(types::TextStat &s, Filter *f) {
+void TianmuAttr::GetTextStat(types::TextStat &s, Filter *f) {
   bool success = false;
   LoadPackInfo();
   if (GetPackType() == common::PackType::STR && !types::RequiresUTFConversions(GetCollation())) {
@@ -922,7 +922,7 @@ void RCAttr::GetTextStat(types::TextStat &s, Filter *f) {
 }
 
 // calculate the number of 1's in histograms and other KN stats
-void RCAttr::RoughStats(double &hist_density, int &trivial_packs, double &span) {
+void TianmuAttr::RoughStats(double &hist_density, int &trivial_packs, double &span) {
   uint npack = SizeOfPack();
   hist_density = -1;
   trivial_packs = 0;
@@ -946,7 +946,7 @@ void RCAttr::RoughStats(double &hist_density, int &trivial_packs, double &span) 
     }
   }
   if (span != -1) {
-    int64_t tmp_min = GetMinInt64();  // always a value - i_min from RCAttr
+    int64_t tmp_min = GetMinInt64();  // always a value - i_min from TianmuAttr
     int64_t tmp_max = GetMaxInt64();
     if (ATI::IsRealType(TypeName()))
       span = (span / (npack - trivial_packs)) / (*(double *)(&tmp_max) - *(double *)(&tmp_min));
@@ -972,7 +972,7 @@ void RCAttr::RoughStats(double &hist_density, int &trivial_packs, double &span) 
   }
 }
 
-void RCAttr::DisplayAttrStats(Filter *f)  // filter is for # of objects
+void TianmuAttr::DisplayAttrStats(Filter *f)  // filter is for # of objects
 {
   int npack = SizeOfPack();
   LoadPackInfo();

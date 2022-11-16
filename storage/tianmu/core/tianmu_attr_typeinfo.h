@@ -14,8 +14,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
-#ifndef TIANMU_CORE_RC_ATTR_TYPEINFO_H_
-#define TIANMU_CORE_RC_ATTR_TYPEINFO_H_
+#ifndef TIANMU_CORE_TIANMU_ATTR_TYPEINFO_H_
+#define TIANMU_CORE_TIANMU_ATTR_TYPEINFO_H_
 #pragma once
 
 #include <bitset>
@@ -24,7 +24,7 @@
 
 namespace Tianmu {
 namespace types {
-class RCDataType;
+class TianmuDataType;
 }  // namespace types
 namespace core {
 class ATI {
@@ -110,7 +110,7 @@ class AttributeTypeInfo {
   void SetCollation(CHARSET_INFO *charset_info) { this->collation.set(charset_info); }
   DTCollation GetCollation() const { return collation; }
   CHARSET_INFO *CharsetInfo() const { return const_cast<CHARSET_INFO *>(this->collation.collation); }
-  const types::RCDataType &ValuePrototype() const;
+  const types::TianmuDataType &ValuePrototype() const;
   common::PackFmt Fmt() const { return fmt; }
   bool Lookup() const { return fmt == common::PackFmt::LOOKUP; }
   unsigned char Flag() const { return flag.to_ulong(); }
@@ -128,4 +128,4 @@ class AttributeTypeInfo {
 }  // namespace core
 }  // namespace Tianmu
 
-#endif  // TIANMU_CORE_RC_ATTR_TYPEINFO_H_
+#endif  // TIANMU_CORE_TIANMU_ATTR_TYPEINFO_H_

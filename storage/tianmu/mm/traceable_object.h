@@ -90,7 +90,7 @@ class TraceableObject {
 
   bool IsLocked() const { return m_lock_count > 0; }
   bool LastLock() const { return m_lock_count == 1; }
-  // Locking is used by RCAttr etc. for packs manipulation purposes
+  // Locking is used by TianmuAttr etc. for packs manipulation purposes
   short NumOfLocks() const { return m_lock_count; }
   void SetNumOfLocks(int n);
 

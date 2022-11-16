@@ -15,7 +15,7 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "rc_table_index.h"
+#include "tianmu_table_index.h"
 
 #include "rocksdb/status.h"
 
@@ -27,7 +27,7 @@
 namespace Tianmu {
 namespace index {
 
-RCTableIndex::RCTableIndex(const std::string &name, TABLE *table) {
+TianmuTableIndex::TianmuTableIndex(const std::string &name, TABLE *table) {
   std::string fullname;
   // normalize the table name.
   NormalizeName(name, fullname);
@@ -44,7 +44,7 @@ RCTableIndex::RCTableIndex(const std::string &name, TABLE *table) {
     rocksdb_key_->get_key_cols(index_of_columns_);
 }
 
-bool RCTableIndex::FindIndexTable(const std::string &name) {
+bool TianmuTableIndex::FindIndexTable(const std::string &name) {
   std::string str;
   if (!NormalizeName(name, str)) {
     throw common::Exception("Normalization wrong of table  " + name);
@@ -56,7 +56,7 @@ bool RCTableIndex::FindIndexTable(const std::string &name) {
   return false;
 }
 
-common::ErrorCode RCTableIndex::CreateIndexTable(const std::string &name, TABLE *table) {
+common::ErrorCode TianmuTableIndex::CreateIndexTable(const std::string &name, TABLE *table) {
   std::string str;
   if (!NormalizeName(name, str)) {
     throw common::Exception("Normalization wrong of table  " + name);
@@ -81,7 +81,7 @@ common::ErrorCode RCTableIndex::CreateIndexTable(const std::string &name, TABLE 
   return ha_kvstore_->KVWriteTableMeta(tbl);
 }
 
-common::ErrorCode RCTableIndex::DropIndexTable(const std::string &name) {
+common::ErrorCode TianmuTableIndex::DropIndexTable(const std::string &name) {
   std::string str;
   if (!NormalizeName(name, str)) {
     throw common::Exception("Exception: table name  " + name);
@@ -91,7 +91,7 @@ common::ErrorCode RCTableIndex::DropIndexTable(const std::string &name) {
   return ha_kvstore_->KVDelTableMeta(str);
 }
 
-common::ErrorCode RCTableIndex::RefreshIndexTable(const std::string &name) {
+common::ErrorCode TianmuTableIndex::RefreshIndexTable(const std::string &name) {
   std::string fullname;
 
   if (!NormalizeName(name, fullname)) {
@@ -106,7 +106,7 @@ common::ErrorCode RCTableIndex::RefreshIndexTable(const std::string &name) {
   return common::ErrorCode::SUCCESS;
 }
 
-common::ErrorCode RCTableIndex::RenameIndexTable(const std::string &from, const std::string &to) {
+common::ErrorCode TianmuTableIndex::RenameIndexTable(const std::string &from, const std::string &to) {
   std::string sname, dname;
 
   if (!NormalizeName(from, sname)) {
@@ -119,7 +119,7 @@ common::ErrorCode RCTableIndex::RenameIndexTable(const std::string &from, const 
   return ha_kvstore_->KVRenameTableMeta(sname, dname);
 }
 
-void RCTableIndex::TruncateIndexTable() {
+void TianmuTableIndex::TruncateIndexTable() {
   rocksdb::WriteOptions wopts;
   rocksdb::ReadOptions ropts;
   ropts.total_order_seek = true;
@@ -143,7 +143,7 @@ void RCTableIndex::TruncateIndexTable() {
   }
 }
 
-common::ErrorCode RCTableIndex::CheckUniqueness(core::Transaction *tx, const rocksdb::Slice &pk_slice) {
+common::ErrorCode TianmuTableIndex::CheckUniqueness(core::Transaction *tx, const rocksdb::Slice &pk_slice) {
   std::string retrieved_value;
 
   rocksdb::Status s = tx->KVTrans().Get(rocksdb_key_->get_cf(), pk_slice, &retrieved_value);
@@ -166,28 +166,28 @@ common::ErrorCode RCTableIndex::CheckUniqueness(core::Transaction *tx, const roc
   return common::ErrorCode::SUCCESS;
 }
 
-common::ErrorCode RCTableIndex::InsertIndex(core::Transaction *tx, std::vector<std::string_view> &fields,
+common::ErrorCode TianmuTableIndex::InsertIndex(core::Transaction *tx, std::vector<std::string_view> &fields,
                                             uint64_t row) {
   StringWriter value, key;
 
   rocksdb_key_->pack_key(key, fields, value);
 
-  common::ErrorCode rc = CheckUniqueness(tx, {(const char *)key.ptr(), key.length()});
-  if (rc != common::ErrorCode::SUCCESS)
-    return rc;
+  common::ErrorCode err_code = CheckUniqueness(tx, {(const char *)key.ptr(), key.length()});
+  if (err_code != common::ErrorCode::SUCCESS)
+    return err_code;
 
   value.write_uint64(row);
   const auto cf = rocksdb_key_->get_cf();
   const auto s =
       tx->KVTrans().Put(cf, {(const char *)key.ptr(), key.length()}, {(const char *)value.ptr(), value.length()});
   if (!s.ok()) {
-    TIANMU_LOG(LogCtl_Level::ERROR, "RockDb: insert key fail!");
-    rc = common::ErrorCode::FAILED;
+    TIANMU_LOG(LogCtl_Level::ERROR, "RocksDB: insert key fail!");
+    err_code = common::ErrorCode::FAILED;
   }
-  return rc;
+  return err_code;
 }
 
-common::ErrorCode RCTableIndex::UpdateIndex(core::Transaction *tx, std::string_view &nkey, std::string_view &okey,
+common::ErrorCode TianmuTableIndex::UpdateIndex(core::Transaction *tx, std::string_view &nkey, std::string_view &okey,
                                             uint64_t row) {
   StringWriter value, packkey;
   std::vector<std::string_view> ofields, nfields;
@@ -196,18 +196,18 @@ common::ErrorCode RCTableIndex::UpdateIndex(core::Transaction *tx, std::string_v
   nfields.emplace_back(nkey);
 
   rocksdb_key_->pack_key(packkey, ofields, value);
-  common::ErrorCode rc = CheckUniqueness(tx, {(const char *)packkey.ptr(), packkey.length()});
-  if (rc == common::ErrorCode::DUPP_KEY) {
+  common::ErrorCode err_code = CheckUniqueness(tx, {(const char *)packkey.ptr(), packkey.length()});
+  if (err_code == common::ErrorCode::DUPP_KEY) {
     const auto cf = rocksdb_key_->get_cf();
     tx->KVTrans().Delete(cf, {(const char *)packkey.ptr(), packkey.length()});
   } else {
     TIANMU_LOG(LogCtl_Level::WARN, "RockDb: don't have the key for update!");
   }
-  rc = InsertIndex(tx, nfields, row);
-  return rc;
+  err_code = InsertIndex(tx, nfields, row);
+  return err_code;
 }
 
-common::ErrorCode RCTableIndex::DeleteIndex(core::Transaction *tx, std::string_view &currentRowKey,
+common::ErrorCode TianmuTableIndex::DeleteIndex(core::Transaction *tx, std::string_view &currentRowKey,
                                             uint64_t row [[maybe_unused]]) {
   StringWriter value, packkey;
   std::vector<std::string_view> fields;
@@ -227,7 +227,7 @@ common::ErrorCode RCTableIndex::DeleteIndex(core::Transaction *tx, std::string_v
   return common::ErrorCode::SUCCESS;
 }
 
-common::ErrorCode RCTableIndex::GetRowByKey(core::Transaction *tx, std::vector<std::string_view> &fields,
+common::ErrorCode TianmuTableIndex::GetRowByKey(core::Transaction *tx, std::vector<std::string_view> &fields,
                                             uint64_t &row) {
   std::string value;
   StringWriter packkey, info;
@@ -253,7 +253,7 @@ common::ErrorCode RCTableIndex::GetRowByKey(core::Transaction *tx, std::vector<s
   return common::ErrorCode::SUCCESS;
 }
 
-void KeyIterator::ScanToKey(std::shared_ptr<RCTableIndex> tab, std::vector<std::string_view> &fields,
+void KeyIterator::ScanToKey(std::shared_ptr<TianmuTableIndex> tab, std::vector<std::string_view> &fields,
                             common::Operator op) {
   if (!tab || !txn_) {
     return;
@@ -295,7 +295,7 @@ void KeyIterator::ScanToKey(std::shared_ptr<RCTableIndex> tab, std::vector<std::
   }
 }
 
-void KeyIterator::ScanToEdge(std::shared_ptr<RCTableIndex> tab, bool forward) {
+void KeyIterator::ScanToEdge(std::shared_ptr<TianmuTableIndex> tab, bool forward) {
   if (!tab || !txn_) {
     return;
   }

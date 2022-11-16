@@ -23,7 +23,7 @@
 
 namespace Tianmu {
 namespace core {
-bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector<uchar> *blob_buf) {
+bool Engine::ConvertToField(Field *field, types::TianmuDataType &rcitem, std::vector<uchar> *blob_buf) {
   if (rcitem.IsNull()) {
     std::memset(field->ptr, 0, 2);
     field->set_null();
@@ -77,7 +77,7 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
     case MYSQL_TYPE_NEWDECIMAL: {
       my_decimal md;
       if (rcitem.Type() == common::CT::REAL) {
-        double2decimal((double)((types::RCNum &)(rcitem)), &md);
+        double2decimal((double)((types::TianmuNum &)(rcitem)), &md);
       } else {
         int is_null;
         Engine::Convert(is_null, &md, rcitem);
@@ -99,25 +99,25 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
         case common::CT::NUM:
           switch (field->type()) {
             case MYSQL_TYPE_TINY:
-              *(char *)field->ptr = (char)(int64_t)((types::RCNum &)(rcitem));
+              *(char *)field->ptr = (char)(int64_t)((types::TianmuNum &)(rcitem));
               break;
             case MYSQL_TYPE_SHORT:
-              *(short *)field->ptr = (short)(int64_t)((types::RCNum &)(rcitem));
+              *(short *)field->ptr = (short)(int64_t)((types::TianmuNum &)(rcitem));
               break;
             case MYSQL_TYPE_INT24:
-              int3store((char *)field->ptr, (int)(int64_t)((types::RCNum &)(rcitem)));
+              int3store((char *)field->ptr, (int)(int64_t)((types::TianmuNum &)(rcitem)));
               break;
             case MYSQL_TYPE_LONG:
-              *(int *)field->ptr = (int)(int64_t)((types::RCNum &)(rcitem));
+              *(int *)field->ptr = (int)(int64_t)((types::TianmuNum &)(rcitem));
               break;
             case MYSQL_TYPE_LONGLONG:
-              *(int64_t *)field->ptr = (int64_t)((types::RCNum &)(rcitem));
+              *(int64_t *)field->ptr = (int64_t)((types::TianmuNum &)(rcitem));
               break;
             case MYSQL_TYPE_FLOAT:
-              *(float *)field->ptr = (float)((types::RCNum &)(rcitem));
+              *(float *)field->ptr = (float)((types::TianmuNum &)(rcitem));
               break;
             case MYSQL_TYPE_DOUBLE:
-              *(double *)field->ptr = (double)((types::RCNum &)(rcitem));
+              *(double *)field->ptr = (double)((types::TianmuNum &)(rcitem));
               break;
             default:
               DEBUG_ASSERT(!"No data types conversion available!");
@@ -190,17 +190,17 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
           break;
         case common::CT::YEAR: {
           ASSERT(field->type() == MYSQL_TYPE_YEAR);
-          auto rcdt = dynamic_cast<types::RCDateTime *>(&rcitem);
+          auto tianmu_dt = dynamic_cast<types::TianmuDateTime *>(&rcitem);
           MYSQL_TIME my_time = {};
-          rcdt->Store(&my_time, MYSQL_TIMESTAMP_DATE);
+          tianmu_dt->Store(&my_time, MYSQL_TIMESTAMP_DATE);
           field->store_time(&my_time);
           break;
         }
         case common::CT::DATE: {
           if (field->type() == MYSQL_TYPE_DATE || field->type() == MYSQL_TYPE_NEWDATE) {
-            auto rcdt = dynamic_cast<types::RCDateTime *>(&rcitem);
+            auto tianmu_dt = dynamic_cast<types::TianmuDateTime *>(&rcitem);
             MYSQL_TIME my_time = {};
-            rcdt->Store(&my_time, MYSQL_TIMESTAMP_DATE);
+            tianmu_dt->Store(&my_time, MYSQL_TIMESTAMP_DATE);
             field->store_time(&my_time);
           }
           break;
@@ -239,25 +239,25 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
 
         case common::CT::TIME: {
           ASSERT(field->type() == MYSQL_TYPE_TIME);
-          auto rcdt = dynamic_cast<types::RCDateTime *>(&rcitem);
+          auto tianmu_dt = dynamic_cast<types::TianmuDateTime *>(&rcitem);
           MYSQL_TIME my_time = {};
-          rcdt->Store(&my_time, MYSQL_TIMESTAMP_TIME);
+          tianmu_dt->Store(&my_time, MYSQL_TIMESTAMP_TIME);
           field->store_time(&my_time);
           break;
         }
         case common::CT::DATETIME: {
           ASSERT(field->type() == MYSQL_TYPE_DATETIME);
-          auto rcdt = dynamic_cast<types::RCDateTime *>(&rcitem);
+          auto tianmu_dt = dynamic_cast<types::TianmuDateTime *>(&rcitem);
           MYSQL_TIME my_time = {};
-          rcdt->Store(&my_time, MYSQL_TIMESTAMP_DATETIME);
+          tianmu_dt->Store(&my_time, MYSQL_TIMESTAMP_DATETIME);
           field->store_time(&my_time);
           break;
         }
         case common::CT::TIMESTAMP: {
-          auto rcdt = dynamic_cast<types::RCDateTime *>(&rcitem);
+          auto tianmu_dt = dynamic_cast<types::TianmuDateTime *>(&rcitem);
           MYSQL_TIME my_time = {};
-          types::RCDateTime::AdjustTimezone(*rcdt);
-          rcdt->Store(&my_time, MYSQL_TIMESTAMP_DATETIME);
+          types::TianmuDateTime::AdjustTimezone(*tianmu_dt);
+          tianmu_dt->Store(&my_time, MYSQL_TIMESTAMP_DATETIME);
           field->store_time(&my_time);
           break;
         }
@@ -273,7 +273,7 @@ bool Engine::ConvertToField(Field *field, types::RCDataType &rcitem, std::vector
 #define DIG_BASE 1000000000
 #define ROUND_UP(X) (((X) + DIG_PER_DEC1 - 1) / DIG_PER_DEC1)
 
-int Engine::Convert(int &is_null, my_decimal *value, types::RCDataType &rcitem, int output_scale) {
+int Engine::Convert(int &is_null, my_decimal *value, types::TianmuDataType &rcitem, int output_scale) {
   if (rcitem.IsNull())
     is_null = 1;
   else {
@@ -281,15 +281,15 @@ int Engine::Convert(int &is_null, my_decimal *value, types::RCDataType &rcitem, 
       return false;
     is_null = 0;
     if (rcitem.Type() == common::CT::NUM) {
-      types::RCNum *rcn = (types::RCNum *)(&rcitem);
-      int intg = rcn->GetDecIntLen();
-      int frac = rcn->GetDecFractLen();
+      types::TianmuNum *tianmu_n = (types::TianmuNum *)(&rcitem);
+      int intg = tianmu_n->GetDecIntLen();
+      int frac = tianmu_n->GetDecFractLen();
       int intg1 = ROUND_UP(intg);
       int frac1 = ROUND_UP(frac);
       value->intg = intg;
       value->frac = frac;
-      int64_t ip = rcn->GetIntPart();
-      int64_t fp = (rcn->ValueInt() % (int64_t)types::Uint64PowOfTen(rcn->Scale()));
+      int64_t ip = tianmu_n->GetIntPart();
+      int64_t fp = (tianmu_n->ValueInt() % (int64_t)types::Uint64PowOfTen(tianmu_n->Scale()));
       bool special_value_minbigint = false;
       if (uint64_t(ip) == 0x8000000000000000ULL) {
         // a special case, cannot be converted like that
@@ -323,7 +323,7 @@ int Engine::Convert(int &is_null, my_decimal *value, types::RCDataType &rcitem, 
         tmp /= 10;
         no_digs++;
       }
-      int tmp_prec = rcn->Scale();
+      int tmp_prec = tianmu_n->Scale();
 
       for (; frac1; frac1--) {
         int digs_to_take = tmp_prec - (frac1 - 1) * DIG_PER_DEC1;
@@ -339,10 +339,10 @@ int Engine::Convert(int &is_null, my_decimal *value, types::RCDataType &rcitem, 
       my_decimal_round(0, value, (output_scale_1 == -1) ? frac : output_scale_1, false, value);
       return 1;
     } else if (rcitem.Type() == common::CT::REAL || rcitem.Type() == common::CT::FLOAT) {
-      double2decimal((double)((types::RCNum &)(rcitem)), (decimal_t *)value);
+      double2decimal((double)((types::TianmuNum &)(rcitem)), (decimal_t *)value);
       return 1;
     } else if (ATI::IsIntegerType(rcitem.Type())) {
-      longlong2decimal((longlong)((types::RCNum &)(rcitem)).ValueInt(), (decimal_t *)value);
+      longlong2decimal((longlong)((types::TianmuNum &)(rcitem)).ValueInt(), (decimal_t *)value);
       return 1;
     }
     return false;
@@ -350,13 +350,13 @@ int Engine::Convert(int &is_null, my_decimal *value, types::RCDataType &rcitem, 
   return 1;
 }
 
-int Engine::Convert(int &is_null, int64_t &value, types::RCDataType &rcitem, enum_field_types f_type) {
+int Engine::Convert(int &is_null, int64_t &value, types::TianmuDataType &rcitem, enum_field_types f_type) {
   if (rcitem.IsNull())
     is_null = 1;
   else {
     is_null = 0;
     if (rcitem.Type() == common::CT::NUM || rcitem.Type() == common::CT::BIGINT) {
-      value = (int64_t)(types::RCNum &)rcitem;
+      value = (int64_t)(types::TianmuNum &)rcitem;
       switch (f_type) {
         case MYSQL_TYPE_LONG:
         case MYSQL_TYPE_INT24:
@@ -388,26 +388,26 @@ int Engine::Convert(int &is_null, int64_t &value, types::RCDataType &rcitem, enu
       }
       return 1;
     } else if (rcitem.Type() == common::CT::INT || rcitem.Type() == common::CT::MEDIUMINT) {
-      value = (int)(int64_t) dynamic_cast<types::RCNum &>(rcitem);
+      value = (int)(int64_t) dynamic_cast<types::TianmuNum &>(rcitem);
       return 1;
     } else if (rcitem.Type() == common::CT::BYTEINT) {
-      value = (char)(int64_t) dynamic_cast<types::RCNum &>(rcitem);
+      value = (char)(int64_t) dynamic_cast<types::TianmuNum &>(rcitem);
       return 1;
     } else if (rcitem.Type() == common::CT::SMALLINT) {
-      value = (short)(int64_t) dynamic_cast<types::RCNum &>(rcitem);
+      value = (short)(int64_t) dynamic_cast<types::TianmuNum &>(rcitem);
       return 1;
     } else if (rcitem.Type() == common::CT::YEAR) {
-      value = dynamic_cast<types::RCDateTime &>(rcitem).Year();
+      value = dynamic_cast<types::TianmuDateTime &>(rcitem).Year();
       return 1;
     } else if (rcitem.Type() == common::CT::REAL) {
-      value = (int64_t)(double)dynamic_cast<types::RCNum &>(rcitem);
+      value = (int64_t)(double)dynamic_cast<types::TianmuNum &>(rcitem);
       return 1;
     }
   }
   return 0;
 }
 
-int Engine::Convert(int &is_null, double &value, types::RCDataType &rcitem) {
+int Engine::Convert(int &is_null, double &value, types::TianmuDataType &rcitem) {
   if (rcitem.IsNull())
     is_null = 1;
   else {
@@ -415,17 +415,17 @@ int Engine::Convert(int &is_null, double &value, types::RCDataType &rcitem) {
       return 0;
     is_null = 0;
     if (rcitem.Type() == common::CT::REAL) {
-      value = (double)dynamic_cast<types::RCNum &>(rcitem);
+      value = (double)dynamic_cast<types::TianmuNum &>(rcitem);
       return 1;
     } else if (rcitem.Type() == common::CT::FLOAT) {
-      value = (float)dynamic_cast<types::RCNum &>(rcitem);
+      value = (float)dynamic_cast<types::TianmuNum &>(rcitem);
       return 1;
     }
   }
   return 0;
 }
 
-int Engine::Convert(int &is_null, String *value, types::RCDataType &rcitem, enum_field_types f_type) {
+int Engine::Convert(int &is_null, String *value, types::TianmuDataType &rcitem, enum_field_types f_type) {
   if (rcitem.IsNull())
     is_null = 1;
   else {
@@ -453,14 +453,14 @@ int Engine::Convert(int &is_null, String *value, types::RCDataType &rcitem, enum
       value->set_ascii(str.val_, str.len_);
       value->copy();
     } else if (f_type == MYSQL_TYPE_TIMESTAMP) {
-      if (types::RCDateTime *rcdt = dynamic_cast<types::RCDateTime *>(&rcitem)) {
-        if (*rcdt != types::RC_TIMESTAMP_SPEC) {
+      if (types::TianmuDateTime *tianmu_dt = dynamic_cast<types::TianmuDateTime *>(&rcitem)) {
+        if (*tianmu_dt != types::kTianmuTimestampSpec) {
           MYSQL_TIME local_time;
-          my_time_t secs = tianmu_sec_since_epoch(rcdt->Year(), rcdt->Month(), rcdt->Day(), rcdt->Hour(),
-                                                  rcdt->Minute(), rcdt->Second());
+          my_time_t secs = tianmu_sec_since_epoch(tianmu_dt->Year(), tianmu_dt->Month(), tianmu_dt->Day(), tianmu_dt->Hour(),
+                                                  tianmu_dt->Minute(), tianmu_dt->Second());
           current_txn_->Thd()->variables.time_zone->gmt_sec_to_TIME(&local_time, secs);
           char buf[32];
-          local_time.second_part = rcdt->MicroSecond();
+          local_time.second_part = tianmu_dt->MicroSecond();
           my_datetime_to_str(&local_time, buf, 0);
           value->set_ascii(buf, 19);
         } else {
@@ -481,14 +481,14 @@ int Engine::Convert(int &is_null, String *value, types::RCDataType &rcitem, enum
   return 0;
 }
 
-bool Engine::AreConvertible(types::RCDataType &rcitem, enum_field_types my_type, [[maybe_unused]] uint length) {
+bool Engine::AreConvertible(types::TianmuDataType &rcitem, enum_field_types my_type, [[maybe_unused]] uint length) {
   /*if(rcitem->Type() == Engine::GetCorrespondingType(my_type, length) ||
    rcitem->IsNull()) return true;*/
   common::CT tianmu_type = rcitem.Type();
   switch (my_type) {
     case MYSQL_TYPE_LONGLONG:
       if (tianmu_type == common::CT::INT || tianmu_type == common::CT::MEDIUMINT || tianmu_type == common::CT::BIGINT ||
-          (tianmu_type == common::CT::NUM && dynamic_cast<types::RCNum &>(rcitem).Scale() == 0))
+          (tianmu_type == common::CT::NUM && dynamic_cast<types::TianmuNum &>(rcitem).Scale() == 0))
         return true;
       break;
     case MYSQL_TYPE_NEWDECIMAL:
