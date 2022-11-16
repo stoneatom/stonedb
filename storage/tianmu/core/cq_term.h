@@ -60,6 +60,7 @@ struct CondID {
 enum class JoinType { JO_INNER, JO_LEFT, JO_RIGHT, JO_FULL };
 enum class TMParameter { TM_DISTINCT, TM_TOP, TM_EXISTS };  // Table Mode Parameter
 enum class CondType {
+  UNKOWN_COND,
   WHERE_COND,
   HAVING_COND,
   ON_INNER_FILTER,
