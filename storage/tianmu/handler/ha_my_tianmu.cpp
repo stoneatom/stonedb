@@ -85,8 +85,8 @@ QueryRouteTo ha_my_tianmu_query(THD *thd, LEX *lex, Query_result *&result_output
   try {
     // handle_select_ret is introduced here because in case of some exceptions
     // (e.g. thrown from ForbiddenMySQLQueryPath) we want to return
-    QueryRouteTo handle_select_ret = ha_tianmu_engine_->HandleSelect(thd, lex, result_output, setup_tables_done_option, res,
-                                                                optimize_after_tianmu, tianmu_free_join, with_insert);
+    QueryRouteTo handle_select_ret = ha_tianmu_engine_->HandleSelect(
+        thd, lex, result_output, setup_tables_done_option, res, optimize_after_tianmu, tianmu_free_join, with_insert);
     if (handle_select_ret == QueryRouteTo::kToMySQL && AtLeastOneTianmuTableInvolved(lex) &&
         ForbiddenMySQLQueryPath(lex)) {
       my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR),

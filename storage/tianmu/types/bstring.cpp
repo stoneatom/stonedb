@@ -53,7 +53,8 @@ BString::BString(const char *v, size_t length, bool persistent) : persistent_(pe
   }
 }
 
-BString::BString(const BString &tianmu_bs) : ValueBasic<BString>(tianmu_bs), pos_(tianmu_bs.pos_), persistent_(tianmu_bs.persistent_) {
+BString::BString(const BString &tianmu_bs)
+    : ValueBasic<BString>(tianmu_bs), pos_(tianmu_bs.pos_), persistent_(tianmu_bs.persistent_) {
   null_ = tianmu_bs.null_;
   if (!null_) {
     len_ = tianmu_bs.len_;

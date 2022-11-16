@@ -41,8 +41,8 @@ TianmuValueObject &TianmuValueObject::operator=(const TianmuValueObject &tianmu_
 
 inline void TianmuValueObject::construct(const TianmuDataType &tianmu_dt) { value_ = tianmu_dt.Clone(); }
 
-bool TianmuValueObject::compare(const TianmuValueObject &tianmu_value_obj1, const TianmuValueObject &tianmu_value_obj2, common::Operator op,
-                            char like_esc) {
+bool TianmuValueObject::compare(const TianmuValueObject &tianmu_value_obj1, const TianmuValueObject &tianmu_value_obj2,
+                                common::Operator op, char like_esc) {
   if (tianmu_value_obj1.IsNull() || tianmu_value_obj2.IsNull())
     return false;
   else

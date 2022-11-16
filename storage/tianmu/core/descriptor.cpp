@@ -262,29 +262,32 @@ bool Descriptor::operator<=(const Descriptor &sec) const {
         if ((sec.op == common::Operator::O_LESS || sec.op == common::Operator::O_LESS_EQ ||
              sec.op == common::Operator::O_MORE || sec.op == common::Operator::O_MORE_EQ ||
              sec.op == common::Operator::O_EQ) &&
-            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
+            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op,
+                                              '\\'))
           return true;
         break;
       case common::Operator::O_LESS_EQ:
         if ((sec.op == common::Operator::O_LESS || sec.op == common::Operator::O_LESS_EQ) &&
-            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
+            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op,
+                                              '\\'))
           return true;
         break;
       case common::Operator::O_MORE_EQ:
         if ((sec.op == common::Operator::O_MORE || sec.op == common::Operator::O_MORE_EQ) &&
-            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
+            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op,
+                                              '\\'))
           return true;
         break;
       case common::Operator::O_LESS:
         if ((sec.op == common::Operator::O_LESS || sec.op == common::Operator::O_LESS_EQ) &&
             types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit),
-                                          common::Operator::O_LESS_EQ, '\\'))
+                                              common::Operator::O_LESS_EQ, '\\'))
           return true;
         break;
       case common::Operator::O_MORE:
         if ((sec.op == common::Operator::O_MORE || sec.op == common::Operator::O_MORE_EQ) &&
             types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit),
-                                          common::Operator::O_MORE_EQ, '\\'))
+                                              common::Operator::O_MORE_EQ, '\\'))
           return true;
         break;
       case common::Operator::O_BETWEEN:
@@ -292,10 +295,12 @@ bool Descriptor::operator<=(const Descriptor &sec) const {
             val2.vc->GetValue(dummy_mit) <= sec.val2.vc->GetValue(dummy_mit))
           return true;
         if ((sec.op == common::Operator::O_LESS || sec.op == common::Operator::O_LESS_EQ) &&
-            types::TianmuValueObject::compare(val2.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
+            types::TianmuValueObject::compare(val2.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op,
+                                              '\\'))
           return true;
         if ((sec.op == common::Operator::O_MORE || sec.op == common::Operator::O_MORE_EQ) &&
-            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
+            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op,
+                                              '\\'))
           return true;
         break;
       case common::Operator::O_IN: {
@@ -1104,10 +1109,10 @@ bool Descriptor::CheckCondition(const MIIterator &mit) {
       }
     } else {
       types::TianmuValueObject tianmu_value_obj1 = attr.vc->GetValue(mit, false);
-      val1_res =
-          val1.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(tianmu_value_obj1 >= val1.vc->GetValue(mit, false));
-      val2_res =
-          val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(tianmu_value_obj1 <= val2.vc->GetValue(mit, false));
+      val1_res = val1.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN
+                                      : common::Tribool(tianmu_value_obj1 >= val1.vc->GetValue(mit, false));
+      val2_res = val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN
+                                      : common::Tribool(tianmu_value_obj1 <= val2.vc->GetValue(mit, false));
     }
     if (op == common::Operator::O_BETWEEN) {
       if (val1_res != true || val2_res != true)
@@ -1178,10 +1183,10 @@ bool Descriptor::IsNull(const MIIterator &mit) {
       }
     } else {
       types::TianmuValueObject tianmu_value_obj1 = attr.vc->GetValue(mit, false);
-      val1_res =
-          val1.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(tianmu_value_obj1 >= val1.vc->GetValue(mit, false));
-      val2_res =
-          val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(tianmu_value_obj1 <= val2.vc->GetValue(mit, false));
+      val1_res = val1.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN
+                                      : common::Tribool(tianmu_value_obj1 >= val1.vc->GetValue(mit, false));
+      val2_res = val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN
+                                      : common::Tribool(tianmu_value_obj1 <= val2.vc->GetValue(mit, false));
     }
     if (common::Tribool::And(val1_res, val2_res) == common::TRIBOOL_UNKNOWN)
       return true;

@@ -486,8 +486,9 @@ int TianmuNum::compare(const TianmuNum &tianmu_n) const {
     return false;
   if (IsReal() || tianmu_n.IsReal()) {
     if (IsReal() && tianmu_n.IsReal())
-      return (*(double *)&value_ > *(double *)&tianmu_n.value_ ? 1
-                                                          : (*(double *)&value_ == *(double *)&tianmu_n.value_ ? 0 : -1));
+      return (*(double *)&value_ > *(double *)&tianmu_n.value_
+                  ? 1
+                  : (*(double *)&value_ == *(double *)&tianmu_n.value_ ? 0 : -1));
     else {
       if (IsReal())
         return (*this > tianmu_n.ToReal() ? 1 : (*this == tianmu_n.ToReal() ? 0 : -1));

@@ -25,7 +25,9 @@ namespace types {
 
 TianmuDataType::~TianmuDataType() {}
 
-bool TianmuDataType::AreComperable(const TianmuDataType &tianmu_dt) const { return TianmuDataType::AreComperable(*this, tianmu_dt); }
+bool TianmuDataType::AreComperable(const TianmuDataType &tianmu_dt) const {
+  return TianmuDataType::AreComperable(*this, tianmu_dt);
+}
 
 bool TianmuDataType::AreComperable(const TianmuDataType &tianmu_dt1, const TianmuDataType &tianmu_dt2) {
   common::CT att1 = tianmu_dt1.Type();
@@ -33,7 +35,8 @@ bool TianmuDataType::AreComperable(const TianmuDataType &tianmu_dt1, const Tianm
   return AreComparable(att1, att2);
 }
 
-bool TianmuDataType::compare(const TianmuDataType &tianmu_dt1, const TianmuDataType &tianmu_dt2, common::Operator op, char like_esc) {
+bool TianmuDataType::compare(const TianmuDataType &tianmu_dt1, const TianmuDataType &tianmu_dt2, common::Operator op,
+                             char like_esc) {
   // DEBUG_ASSERT(TianmuDataType::AreComperable(tianmu_dt1, tianmu_dt2));
   if (op == common::Operator::O_LIKE || op == common::Operator::O_NOT_LIKE) {
     if (tianmu_dt1.IsNull() || tianmu_dt2.IsNull())

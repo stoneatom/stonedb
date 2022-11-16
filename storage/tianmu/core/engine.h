@@ -29,9 +29,9 @@
 #include "core/data_cache.h"
 #include "core/object_cache.h"
 #include "core/query.h"
-#include "core/tianmu_table.h"
 #include "core/table_share.h"
 #include "core/temp_table.h"
+#include "core/tianmu_table.h"
 #include "exporter/data_exporter.h"
 #include "exporter/export2file.h"
 #include "index/tianmu_table_index.h"
@@ -100,8 +100,9 @@ class Engine final {
   std::vector<AttrInfo> GetTableAttributesInfo(const std::string &table_path, TABLE_SHARE *table_share);
   void UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
                                    CHARSET_INFO *cs);
-  void GetTableIterator(const std::string &table_path, TianmuTable::Iterator &iter_begin, TianmuTable::Iterator &iter_end,
-                        std::shared_ptr<TianmuTable> &table, const std::vector<bool> &, THD *thd);
+  void GetTableIterator(const std::string &table_path, TianmuTable::Iterator &iter_begin,
+                        TianmuTable::Iterator &iter_end, std::shared_ptr<TianmuTable> &table, const std::vector<bool> &,
+                        THD *thd);
   common::TianmuError RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg);
   void CommitTx(THD *thd, bool all);
   void Rollback(THD *thd, bool all, bool force_error_message = false);

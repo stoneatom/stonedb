@@ -17,8 +17,8 @@
 #include "common/common_definitions.h"
 #include "core/filter.h"
 #include "core/tianmu_attr_typeinfo.h"
-#include "types/tianmu_num.h"
 #include "types/text_stat.h"
+#include "types/tianmu_num.h"
 #include "util/hash64.h"
 
 #include "value_set.h"
@@ -441,7 +441,8 @@ void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
               delete tianmu_dt;
           } else {
             delete tianmu_dt;
-            tianmu_dt = static_cast<types::TianmuDateTime *>(types::TianmuDateTime::GetSpecialValue(at).Clone().release());
+            tianmu_dt =
+                static_cast<types::TianmuDateTime *>(types::TianmuDateTime::GetSpecialValue(at).Clone().release());
             if (!new_values.insert(tianmu_dt).second)
               delete tianmu_dt;
           }
@@ -457,7 +458,8 @@ void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
               delete tianmu_dt;
           } catch (common::DataTypeConversionException &) {
             delete tianmu_dt;
-            tianmu_dt = static_cast<types::TianmuDateTime *>(types::TianmuDateTime::GetSpecialValue(at).Clone().release());
+            tianmu_dt =
+                static_cast<types::TianmuDateTime *>(types::TianmuDateTime::GetSpecialValue(at).Clone().release());
             if (!new_values.insert(tianmu_n).second)
               delete tianmu_dt;
           }

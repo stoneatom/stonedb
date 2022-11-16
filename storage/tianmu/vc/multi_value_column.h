@@ -206,7 +206,7 @@ class MultiValColumn : public VirtualColumn {
     DEBUG_ASSERT(!"Invalid call for this type of column.");
   }
   types::TianmuValueObject GetValueImpl([[maybe_unused]] const core::MIIterator &mit,
-                                    [[maybe_unused]] bool lookup_to_num) override {
+                                        [[maybe_unused]] bool lookup_to_num) override {
     DEBUG_ASSERT(!"Invalid call for this type of column.");
     return (types::TianmuValueObject());
   }

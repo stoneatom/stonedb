@@ -155,7 +155,7 @@ double ExpressionColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
     val = last_val_->GetDouble();
   } else if (core::ATI::IsDateTimeType(TypeName())) {
     types::TianmuDateTime vd(last_val_->Get64(),
-                         TypeName());  // 274886765314048  ->  2000-01-01
+                             TypeName());  // 274886765314048  ->  2000-01-01
     int64_t vd_conv = 0;
     vd.ToInt64(vd_conv);  // 2000-01-01  ->  20000101
     val = (double)vd_conv;

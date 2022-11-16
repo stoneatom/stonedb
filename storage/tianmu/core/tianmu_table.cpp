@@ -24,9 +24,9 @@
 #include "common/exception.h"
 #include "core/engine.h"
 #include "core/pack_guardian.h"
+#include "core/table_share.h"
 #include "core/tianmu_attr.h"
 #include "core/tianmu_table.h"
-#include "core/table_share.h"
 #include "core/transaction.h"
 #include "handler/ha_tianmu.h"
 #include "loader/load_parser.h"
@@ -94,7 +94,7 @@ void TianmuTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
 }
 
 void TianmuTable::Alter(const std::string &table_path, std::vector<Field *> &new_cols, std::vector<Field *> &old_cols,
-                    size_t no_objs) {
+                        size_t no_objs) {
   fs::path tmp_dir = table_path + ".tmp";
   fs::path tab_dir = table_path + common::TIANMU_EXT;
 
@@ -276,7 +276,8 @@ void TianmuTable::CommitVersion() {
 
   utils::result_set<bool> res;
   bool no_except = true;
-  for (auto &attr : m_attrs) res.insert(ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::SaveVersion, attr.get()));
+  for (auto &attr : m_attrs)
+    res.insert(ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::SaveVersion, attr.get()));
 
   std::vector<size_t> changed_columns;
   changed_columns.reserve(m_attrs.size());
@@ -498,7 +499,7 @@ void TianmuTable::Iterator::LockPacks() {
 }
 
 TianmuTable::Iterator TianmuTable::Iterator::CreateBegin(TianmuTable &table, std::shared_ptr<Filter> filter,
-                                                 const std::vector<bool> &attrs) {
+                                                         const std::vector<bool> &attrs) {
   TianmuTable::Iterator ret(table, filter);
   ret.Initialize(attrs);
   ret.it.Rewind();
@@ -572,7 +573,8 @@ void TianmuTable::LoadDataInfile(system::IOParameters &iop) {
         "Invalid table ID(" + std::to_string(GetID()) + "/" + std::to_string(iop.TableID()) + "): " + m_path.string());
   }
 
-  FunctionExecutor fe(std::bind(&TianmuTable::LockPackInfoForUse, this), std::bind(&TianmuTable::UnlockPackInfoFromUse, this));
+  FunctionExecutor fe(std::bind(&TianmuTable::LockPackInfoForUse, this),
+                      std::bind(&TianmuTable::UnlockPackInfoFromUse, this));
 
   if (iop.LoadDelayed()) {
     if (tianmu_sysvar_enable_rowstore) {
@@ -708,7 +710,8 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
 }
 
 int TianmuTable::Insert(TABLE *table) {
-  FunctionExecutor fe(std::bind(&TianmuTable::LockPackInfoForUse, this), std::bind(&TianmuTable::UnlockPackInfoFromUse, this));
+  FunctionExecutor fe(std::bind(&TianmuTable::LockPackInfoForUse, this),
+                      std::bind(&TianmuTable::UnlockPackInfoFromUse, this));
 
   my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->read_set);
   std::shared_ptr<void> defer(nullptr,
@@ -773,8 +776,8 @@ uint64_t TianmuTable::ProceedNormal(system::IOParameters &iop) {
     if (parser.GetNoRow() > 0) {
       utils::result_set<void> res;
       for (uint att = 0; att < m_attrs.size(); ++att) {
-        res.insert(ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(), &value_buffers[att],
-                                                           current_txn_));
+        res.insert(ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(),
+                                                                &value_buffers[att], current_txn_));
       }
       res.get_all();
     }
@@ -969,7 +972,8 @@ int TianmuTable::binlog_insert2load_log_event(system::IOParameters &iop) {
   return mysql_bin_log.write_event(&e);
 }
 
-int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, uint load_obj, system::IOParameters &iop) {
+int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, uint load_obj,
+                                          system::IOParameters &iop) {
   uint block_len, max_event_size;
   uchar *buffer = nullptr;
   size_t buf_sz = 16_MB;
@@ -1028,7 +1032,7 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
             s = types::BString();
           else {
             types::TianmuNum rcd(v, m_attrs[att]->Type().GetScale(), m_attrs[att]->Type().IsFloat(),
-                             m_attrs[att]->TypeName());
+                                 m_attrs[att]->TypeName());
             s = rcd.ToBString();
           }
           std::memcpy(ptr, s.GetDataBytesPointer(), s.size());
@@ -1278,8 +1282,8 @@ uint64_t TianmuTable::ProcessDelayed(system::IOParameters &iop) {
     if (real_loaded_rows > 0) {
       utils::result_set<void> res;
       for (uint att = 0; att < m_attrs.size(); ++att) {
-        res.insert(
-            ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(), &vcs[att], current_txn_));
+        res.insert(ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(), &vcs[att],
+                                                                current_txn_));
       }
       res.get_all();
       no_loaded_rows += real_loaded_rows;
@@ -1370,7 +1374,8 @@ int TianmuTable::MergeMemTable(system::IOParameters &iop) {
     if (real_loaded_rows > 0) {
       utils::result_set<void> res;
       for (uint att = 0; att < m_attrs.size(); ++att) {
-        res.insert(ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(), &vcs[att], m_tx));
+        res.insert(
+            ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(), &vcs[att], m_tx));
       }
       res.get_all();
       no_loaded_rows += real_loaded_rows;

@@ -25,10 +25,10 @@
 #include "common/data_format.h"
 #include "common/exception.h"
 #include "common/mysql_gate.h"
-#include "core/tianmu_mem_table.h"
 #include "core/table_share.h"
 #include "core/task_executor.h"
 #include "core/temp_table.h"
+#include "core/tianmu_mem_table.h"
 #include "core/tools.h"
 #include "core/transaction.h"
 #include "mm/initializer.h"
@@ -808,8 +808,9 @@ void Engine::TruncateTable(const std::string &table_path, [[maybe_unused]] THD *
   TIANMU_LOG(LogCtl_Level::INFO, "Truncated table %s, ID = %u", table_path.c_str(), id);
 }
 
-void Engine::GetTableIterator(const std::string &table_path, TianmuTable::Iterator &iter_begin, TianmuTable::Iterator &iter_end,
-                              std::shared_ptr<TianmuTable> &table, const std::vector<bool> &attrs, THD *thd) {
+void Engine::GetTableIterator(const std::string &table_path, TianmuTable::Iterator &iter_begin,
+                              TianmuTable::Iterator &iter_end, std::shared_ptr<TianmuTable> &table,
+                              const std::vector<bool> &attrs, THD *thd) {
   table = GetTx(thd)->GetTableByPath(table_path);
   iter_begin = table->Begin(attrs);
   iter_end = table->End();

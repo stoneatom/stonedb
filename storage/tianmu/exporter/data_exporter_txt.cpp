@@ -70,7 +70,8 @@ void DEforTxt::PutBin(const types::BString &str) {
 
 void DEforTxt::PutNumeric(int64_t num) {
   types::TianmuNum tianmu_n(num, source_attr_infos_[cur_attr_].Scale(),
-                   core::ATI::IsRealType(source_attr_infos_[cur_attr_].Type()), source_attr_infos_[cur_attr_].Type());
+                            core::ATI::IsRealType(source_attr_infos_[cur_attr_].Type()),
+                            source_attr_infos_[cur_attr_].Type());
   types::BString tianmu_s = tianmu_n.ToBString();
   WriteString(tianmu_s);
   WriteValueEnd();

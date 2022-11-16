@@ -571,7 +571,8 @@ ColumnBinEncoder::EncoderDate::EncoderDate(vcolumn::VirtualColumn *vc, bool deco
 bool ColumnBinEncoder::EncoderDate::SecondColumn(vcolumn::VirtualColumn *vc) {
   // Possible conversions: only dates.
   if (vc->Type().GetTypeName() != common::CT::DATE) {
-    tianmu_control_.lock(vc->ConnInfo()->GetThreadID()) << "Nontrivial comparison: date with non-date" << system::unlock;
+    tianmu_control_.lock(vc->ConnInfo()->GetThreadID())
+        << "Nontrivial comparison: date with non-date" << system::unlock;
     return false;
   }
   int64_t new_min_val = types::DT::DateSortEncoding(vc->RoughMin());
@@ -662,7 +663,8 @@ ColumnBinEncoder::EncoderYear::EncoderYear(vcolumn::VirtualColumn *vc, bool deco
 bool ColumnBinEncoder::EncoderYear::SecondColumn(vcolumn::VirtualColumn *vc) {
   // Possible conversions: only years.
   if (vc->Type().GetTypeName() != common::CT::YEAR) {
-    tianmu_control_.lock(vc->ConnInfo()->GetThreadID()) << "Nontrivial comparison: year with non-year" << system::unlock;
+    tianmu_control_.lock(vc->ConnInfo()->GetThreadID())
+        << "Nontrivial comparison: year with non-year" << system::unlock;
     return false;
   }
 

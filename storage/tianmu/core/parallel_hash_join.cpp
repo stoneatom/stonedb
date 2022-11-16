@@ -527,7 +527,7 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
 
   int traversed_fragment_count = (int)task_iterators.size();
   tianmu_control_.lock(m_conn->GetThreadID()) << "Begin traversed with " << traversed_fragment_count << " threads with "
-                                          << splitting_type << " type." << system::unlock;
+                                              << splitting_type << " type." << system::unlock;
 
   std::vector<TraverseTaskParams> traverse_task_params;
   traverse_task_params.reserve(task_iterators.size());
@@ -1171,8 +1171,8 @@ int64_t ParallelHashJoiner::SubmitOuterMatched(MIIterator &miter) {
       params.task_iter = iter;
       params.build_item = multi_index_builder_->CreateBuildItem();
 
-      res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncSubmitOuterMatched, this, &params,
-                                                          outer_matched_filter_.get()));
+      res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncSubmitOuterMatched, this,
+                                                               &params, outer_matched_filter_.get()));
     }
   } catch (std::exception &e) {
     res.get_all_with_except();

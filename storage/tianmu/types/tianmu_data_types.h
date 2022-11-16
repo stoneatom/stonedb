@@ -169,7 +169,8 @@ class TianmuDataType {
   static bool ToReal(const TianmuDataType &in, TianmuNum &out);
 
   static bool AreComperable(const TianmuDataType &tianmu_dt1, const TianmuDataType &tianmu_dt2);
-  static bool compare(const TianmuDataType &tianmu_dt1, const TianmuDataType &tianmu_dt2, common::Operator op, char like_esc);
+  static bool compare(const TianmuDataType &tianmu_dt1, const TianmuDataType &tianmu_dt2, common::Operator op,
+                      char like_esc);
 };
 
 template <typename T>
@@ -300,7 +301,7 @@ class TianmuDateTime : public ValueBasic<TianmuDateTime> {
   TianmuDateTime(int64_t dt, common::CT at);
   TianmuDateTime(short year = common::NULL_VALUE_SH);
   TianmuDateTime(short year, short month, short day, short hour, short minute, short second,
-             common::CT at);                                // DataTime , Timestamp
+                 common::CT at);                                // DataTime , Timestamp
   TianmuDateTime(short yh, short mm, short ds, common::CT at);  // Date or Time
   TianmuDateTime(const TianmuDateTime &tianmu_dt);
   TianmuDateTime(const MYSQL_TIME &myt, common::CT at);
@@ -446,7 +447,8 @@ class TianmuValueObject {
   std::unique_ptr<TianmuDataType> value_;
 
  public:
-  static bool compare(const TianmuValueObject &tianmu_value_obj1, const TianmuValueObject &tianmu_value_obj2, common::Operator op, char like_esc);
+  static bool compare(const TianmuValueObject &tianmu_value_obj1, const TianmuValueObject &tianmu_value_obj2,
+                      common::Operator op, char like_esc);
 };
 
 template <class T>

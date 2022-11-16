@@ -69,7 +69,8 @@ TianmuDateTime::TianmuDateTime(short yh, short mm, short ds, common::CT at) : at
     TIANMU_ERROR("type not supported");
 }
 
-TianmuDateTime::TianmuDateTime(short year, short month, short day, short hour, short minute, short second, common::CT at)
+TianmuDateTime::TianmuDateTime(short year, short month, short day, short hour, short minute, short second,
+                               common::CT at)
     : at_(at) {
   ASSERT(at == common::CT::DATETIME || at == common::CT::TIMESTAMP || at == common::CT::DATE,
          "should be 'at == common::CT::DATETIME || at == common::CT::TIMESTAMP || at == common::CT::DATE'");
@@ -108,7 +109,9 @@ TianmuDateTime::TianmuDateTime(TianmuNum &tianmu_n, common::CT at) : at_(at) {
   }
 }
 
-TianmuDateTime::TianmuDateTime(const TianmuDateTime &tianmu_dt) : ValueBasic<TianmuDateTime>(tianmu_dt) { *this = tianmu_dt; }
+TianmuDateTime::TianmuDateTime(const TianmuDateTime &tianmu_dt) : ValueBasic<TianmuDateTime>(tianmu_dt) {
+  *this = tianmu_dt;
+}
 
 TianmuDateTime::~TianmuDateTime() {}
 
@@ -373,9 +376,10 @@ bool TianmuDateTime::CanBeTime(int64_t hour, int64_t minute, int64_t second) {
 }
 
 bool TianmuDateTime::CanBeTimestamp(int64_t year, int64_t month, int64_t day, int64_t hour, int64_t minute,
-                                int64_t second) {
-  if (year == kTianmuTimestampSpec.Year() && month == kTianmuTimestampSpec.Month() && day == kTianmuTimestampSpec.Day() &&
-      hour == kTianmuTimestampSpec.Hour() && minute == kTianmuTimestampSpec.Minute() && second == kTianmuTimestampSpec.Second())
+                                    int64_t second) {
+  if (year == kTianmuTimestampSpec.Year() && month == kTianmuTimestampSpec.Month() &&
+      day == kTianmuTimestampSpec.Day() && hour == kTianmuTimestampSpec.Hour() &&
+      minute == kTianmuTimestampSpec.Minute() && second == kTianmuTimestampSpec.Second())
     return true;
   if (CanBeYear(year) && CanBeMonth(month) && (day > 0 && (day <= NoDaysInMonth((ushort)year, (ushort)month))) &&
       CanBeHour(hour) && CanBeMinute(minute) && CanBeSecond(second))
@@ -383,9 +387,11 @@ bool TianmuDateTime::CanBeTimestamp(int64_t year, int64_t month, int64_t day, in
   return false;
 }
 
-bool TianmuDateTime::CanBeDatetime(int64_t year, int64_t month, int64_t day, int64_t hour, int64_t minute, int64_t second) {
+bool TianmuDateTime::CanBeDatetime(int64_t year, int64_t month, int64_t day, int64_t hour, int64_t minute,
+                                   int64_t second) {
   if (year == kTianmuDatetimeSpec.Year() && month == kTianmuDatetimeSpec.Month() && day == kTianmuDatetimeSpec.Day() &&
-      hour == kTianmuDatetimeSpec.Hour() && minute == kTianmuDatetimeSpec.Minute() && second == kTianmuDatetimeSpec.Second())
+      hour == kTianmuDatetimeSpec.Hour() && minute == kTianmuDatetimeSpec.Minute() &&
+      second == kTianmuDatetimeSpec.Second())
     return true;
   if (CanBeYear(year) && CanBeMonth(month) && (day > 0 && (day <= NoDaysInMonth((ushort)year, (ushort)month))) &&
       CanBeHour(hour) && CanBeMinute(minute) && CanBeSecond(second))
@@ -394,7 +400,8 @@ bool TianmuDateTime::CanBeDatetime(int64_t year, int64_t month, int64_t day, int
 }
 
 bool TianmuDateTime::IsCorrectTianmuYear(short year) {
-  return year == kTianmuYearSpec.Year() || (CanBeYear(year) && (year >= kTianmuYearMin.Year() && year <= kTianmuYearMax.Year()));
+  return year == kTianmuYearSpec.Year() ||
+         (CanBeYear(year) && (year >= kTianmuYearMin.Year() && year <= kTianmuYearMax.Year()));
 }
 
 bool TianmuDateTime::IsCorrectTianmuDate(short year, short month, short day) {
@@ -421,15 +428,17 @@ bool TianmuDateTime::IsCorrectTianmuTime(short hour, short minute, short second)
   if (hasnegative == haspositive && (hour != 0 || minute != 0 || second != 0))
     return false;
 
-  if (hour >= -kTianmuTimeMin.Hour() && hour <= kTianmuTimeMax.Hour() && (CanBeMinute(minute) || CanBeMinute(-minute)) &&
-      (CanBeSecond(second) || CanBeSecond(-second)))
+  if (hour >= -kTianmuTimeMin.Hour() && hour <= kTianmuTimeMax.Hour() &&
+      (CanBeMinute(minute) || CanBeMinute(-minute)) && (CanBeSecond(second) || CanBeSecond(-second)))
     return true;
   return false;
 }
 
-bool TianmuDateTime::IsCorrectTianmuTimestamp(short year, short month, short day, short hour, short minute, short second) {
-  if (year == kTianmuTimestampSpec.Year() && month == kTianmuTimestampSpec.Month() && day == kTianmuTimestampSpec.Day() &&
-      hour == kTianmuTimestampSpec.Hour() && minute == kTianmuTimestampSpec.Minute() && second == kTianmuTimestampSpec.Second())
+bool TianmuDateTime::IsCorrectTianmuTimestamp(short year, short month, short day, short hour, short minute,
+                                              short second) {
+  if (year == kTianmuTimestampSpec.Year() && month == kTianmuTimestampSpec.Month() &&
+      day == kTianmuTimestampSpec.Day() && hour == kTianmuTimestampSpec.Hour() &&
+      minute == kTianmuTimestampSpec.Minute() && second == kTianmuTimestampSpec.Second())
     return true;
   if (CanBeYear(year) && CanBeMonth(month) && (day > 0 && (day <= NoDaysInMonth(year, month))) && CanBeHour(hour) &&
       CanBeMinute(minute) && CanBeSecond(second)) {
@@ -440,16 +449,20 @@ bool TianmuDateTime::IsCorrectTianmuTimestamp(short year, short month, short day
   return false;
 }
 
-bool TianmuDateTime::IsCorrectTianmuDatetime(short year, short month, short day, short hour, short minute, short second) {
+bool TianmuDateTime::IsCorrectTianmuDatetime(short year, short month, short day, short hour, short minute,
+                                             short second) {
   if (year == kTianmuDatetimeSpec.Year() && month == kTianmuDatetimeSpec.Month() && day == kTianmuDatetimeSpec.Day() &&
-      hour == kTianmuDatetimeSpec.Hour() && minute == kTianmuDatetimeSpec.Minute() && second == kTianmuDatetimeSpec.Second())
+      hour == kTianmuDatetimeSpec.Hour() && minute == kTianmuDatetimeSpec.Minute() &&
+      second == kTianmuDatetimeSpec.Second())
     return true;
   if (CanBeYear(year) && CanBeMonth(month) && (day > 0 && (day <= NoDaysInMonth(year, month))) && CanBeHour(hour) &&
       CanBeMinute(minute) && CanBeSecond(second)) {
     if ((year >= kTianmuDatetimeMin.Year() && month >= kTianmuDatetimeMin.Month() && day >= kTianmuDatetimeMin.Day() &&
-         hour >= kTianmuDatetimeMin.Hour() && minute >= kTianmuDatetimeMin.Minute() && second >= kTianmuDatetimeMin.Second()) &&
+         hour >= kTianmuDatetimeMin.Hour() && minute >= kTianmuDatetimeMin.Minute() &&
+         second >= kTianmuDatetimeMin.Second()) &&
         (year <= kTianmuDatetimeMax.Year() && month <= kTianmuDatetimeMax.Month() && day <= kTianmuDatetimeMax.Day() &&
-         hour <= kTianmuDatetimeMax.Hour() && minute <= kTianmuDatetimeMax.Minute() && second <= kTianmuDatetimeMax.Second()))
+         hour <= kTianmuDatetimeMax.Hour() && minute <= kTianmuDatetimeMax.Minute() &&
+         second <= kTianmuDatetimeMax.Second()))
       return true;
   }
   return false;
@@ -523,7 +536,7 @@ TianmuDateTime TianmuDateTime::GetCurrent() {
   time_t const curr = time(0);
   tm const tmt = *localtime(&curr);
   TianmuDateTime tianmu_dt(tmt.tm_year + 1900, tmt.tm_mon + 1, tmt.tm_mday, tmt.tm_hour, tmt.tm_min, tmt.tm_sec,
-                  common::CT::DATETIME);
+                           common::CT::DATETIME);
   return tianmu_dt;
 }
 
@@ -687,7 +700,7 @@ void TianmuDateTime::AdjustTimezone(TianmuDateTime &dt) {
     gmtime_r(&secs, &utc_t);
     // UTC time stored on server
     dt = TianmuDateTime((utc_t.tm_year + 1900) % 10000, utc_t.tm_mon + 1, utc_t.tm_mday, utc_t.tm_hour, utc_t.tm_min,
-                    utc_t.tm_sec, common::CT::TIMESTAMP);
+                        utc_t.tm_sec, common::CT::TIMESTAMP);
     dt.dt_.microsecond = t.second_part;
   }
 }

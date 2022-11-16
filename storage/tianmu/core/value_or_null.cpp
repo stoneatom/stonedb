@@ -95,7 +95,11 @@ ValueOrNull::ValueOrNull(types::TianmuNum const &tianmu_n) : x(tianmu_n.GetValue
 ValueOrNull::ValueOrNull(types::TianmuDateTime const &tianmu_dt) : x(tianmu_dt.GetInt64()), null(tianmu_dt.IsNull()) {}
 
 ValueOrNull::ValueOrNull(types::BString const &tianmu_s)
-    : x(common::NULL_VALUE_64), sp(new char[tianmu_s.len_ + 1]), len(tianmu_s.len_), string_owner(true), null(tianmu_s.IsNull()) {
+    : x(common::NULL_VALUE_64),
+      sp(new char[tianmu_s.len_ + 1]),
+      len(tianmu_s.len_),
+      string_owner(true),
+      null(tianmu_s.IsNull()) {
   std::memcpy(sp, tianmu_s.val_, len);
   sp[len] = 0;
 }

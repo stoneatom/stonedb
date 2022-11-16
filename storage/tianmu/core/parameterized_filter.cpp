@@ -1423,8 +1423,8 @@ void ParameterizedFilter::ApplyDescriptor(int desc_number, int64_t limit)
       utils::result_set<void> res;
       for (int i = 0; i < task_num; ++i) {
         res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&ParameterizedFilter::TaskProcessPacks, this,
-                                                            &taskIterator[i], current_txn_, rf, &dims, desc_number,
-                                                            limit, one_dim));
+                                                                 &taskIterator[i], current_txn_, rf, &dims, desc_number,
+                                                                 limit, one_dim));
       }
       res.get_all_with_except();
 

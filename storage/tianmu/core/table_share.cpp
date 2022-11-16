@@ -19,8 +19,8 @@
 #include <fstream>
 #include <mutex>
 
-#include "core/tianmu_table.h"
 #include "core/table_share.h"
+#include "core/tianmu_table.h"
 
 namespace Tianmu {
 namespace core {

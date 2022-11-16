@@ -101,7 +101,7 @@ double ConstColumn::GetValueDoubleImpl([[maybe_unused]] const core::MIIterator &
     val = u.d;
   } else if (core::ATI::IsDateTimeType(TypeName())) {
     types::TianmuDateTime vd(value_or_null_.Get64(),
-                         TypeName());  // 274886765314048  -> 2000-01-01
+                             TypeName());  // 274886765314048  -> 2000-01-01
     int64_t vd_conv = 0;
     vd.ToInt64(vd_conv);  // 2000-01-01  ->  20000101
     val = (double)vd_conv;

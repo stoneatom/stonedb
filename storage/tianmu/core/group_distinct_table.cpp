@@ -144,7 +144,7 @@ void GroupDistinctTable::InitializeBuffers(int64_t max_no_rows)  // max_no_rows 
   input_buffer = reinterpret_cast<unsigned char *>(new int[total_width / 4 + 1]);  // ensure proper memory alignment
   memset(input_buffer, 0, total_width / 4 + 1);
   tianmu_control_.lock(m_conn->GetThreadID()) << "GroupDistinctTable initialized as Hash(" << no_rows << "), "
-                                          << group_bytes << "+" << value_bytes << " bytes." << system::unlock;
+                                              << group_bytes << "+" << value_bytes << " bytes." << system::unlock;
   Clear();
 }
 

@@ -327,14 +327,14 @@ void TianmuAttr::PostCommit() {
 
     ha_tianmu_engine_->DeferRemove(Path() / common::COL_VERSION_DIR / m_version.ToString(), m_tid);
     if (m_share->has_filter_bloom)
-      ha_tianmu_engine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_BLOOM_DIR / m_version.ToString(),
-                                m_tid);
+      ha_tianmu_engine_->DeferRemove(
+          Path() / common::COL_FILTER_DIR / common::COL_FILTER_BLOOM_DIR / m_version.ToString(), m_tid);
     if (m_share->has_filter_cmap)
-      ha_tianmu_engine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_CMAP_DIR / m_version.ToString(),
-                                m_tid);
+      ha_tianmu_engine_->DeferRemove(
+          Path() / common::COL_FILTER_DIR / common::COL_FILTER_CMAP_DIR / m_version.ToString(), m_tid);
     if (m_share->has_filter_hist)
-      ha_tianmu_engine_->DeferRemove(Path() / common::COL_FILTER_DIR / common::COL_FILTER_HIST_DIR / m_version.ToString(),
-                                m_tid);
+      ha_tianmu_engine_->DeferRemove(
+          Path() / common::COL_FILTER_DIR / common::COL_FILTER_HIST_DIR / m_version.ToString(), m_tid);
 
     m_version = m_tx->GetID();
   }
@@ -738,7 +738,8 @@ int64_t TianmuAttr::EncodeValue64(types::TianmuDataType *v, bool &rounded, commo
   return vv;
 }
 
-int64_t TianmuAttr::EncodeValue64(const types::TianmuValueObject &v, bool &rounded, common::ErrorCode *tianmu_err_code) {
+int64_t TianmuAttr::EncodeValue64(const types::TianmuValueObject &v, bool &rounded,
+                                  common::ErrorCode *tianmu_err_code) {
   return EncodeValue64(v.Get(), rounded, tianmu_err_code);
 }
 
