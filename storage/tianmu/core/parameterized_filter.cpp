@@ -1018,12 +1018,12 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
       It needs to be increased according to the number of executions.
     */
     int no_dims = 0;
-    for (int tableIndex = 0; tableIndex < rcTables.size(); tableIndex++) {
+    for (uint tableIndex = 0; tableIndex < rcTables.size(); tableIndex++) {
       auto rcTable = rcTables[tableIndex];
       if (rcTable->TableType() == TType::TEMP_TABLE)
         continue;
       bool isVald = false;
-      for (int i = 0; i < descriptors.Size(); i++) {
+      for (uint i = 0; i < descriptors.Size(); i++) {
         Descriptor &desc = descriptors[i];
         /*The number of values in the (var_map) corresponding to the entity column is always 1,
         so only the first element in the (var_map) is judged here.*/
@@ -1516,7 +1516,7 @@ void ParameterizedFilter::TaskProcessPacks(MIUpdatingIterator *taskIterator, Tra
   taskIterator->Commit(false);
 }
 
-void ParameterizedFilter::FilterDeletedByTable(JustATable *rcTable, int &no_dims, int &tableIndex) {
+void ParameterizedFilter::FilterDeletedByTable(JustATable *rcTable, int &no_dims, int tableIndex) {
   Descriptor desc(table, no_dims);
   desc.op = common::Operator::O_EQ_ALL;
   desc.encoded = true;
@@ -1550,7 +1550,7 @@ void ParameterizedFilter::FilterDeletedForSelectAll() {
   if (table) {
     auto &rcTables = table->GetTables();
     int no_dims = 0;
-    for (int tableIndex = 0; tableIndex < rcTables.size(); tableIndex++) {
+    for (uint tableIndex = 0; tableIndex < rcTables.size(); tableIndex++) {
       auto rcTable = rcTables[tableIndex];
       if (rcTable->TableType() == TType::TEMP_TABLE)
         continue;
