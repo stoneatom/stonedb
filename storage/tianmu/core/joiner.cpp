@@ -40,7 +40,7 @@ TwoDimensionalJoiner::~TwoDimensionalJoiner() {
 }
 
 JoinAlgType TwoDimensionalJoiner::ChooseJoinAlgorithm([[maybe_unused]] MultiIndex &mind, Condition &cond) {
-  auto choose_map_or_hash = ([&tianmu_sysvar_force_hashjoin, &cond] {
+  auto choose_map_or_hash = ([&cond] {
     {
       // do not use multithreaded hash join in case sp field
       JoinAlgType join_type = JoinAlgType::JTYPE_NONE;

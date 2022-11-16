@@ -107,10 +107,12 @@ void PartDict<T>::Create(DataSet<T> *dataset) {
 
 template <class T>
 int PartDict<T>::compare(const void *p1, const void *p2) {
-  using AK = struct PartDict<T>::HashTab::AKey;
-  if (((*(AK **)p1)->count) < ((*(AK **)p2)->count))
+  using AK = typename PartDict<T>::HashTab::AKey;
+  if ((*reinterpret_cast<AK **>(const_cast<void *>(p1)))->count <
+      (*reinterpret_cast<AK **>(const_cast<void *>(p2)))->count)
     return 1;
-  else if (((*(AK **)p1)->count) > ((*(AK **)p2)->count))
+  else if ((*reinterpret_cast<AK **>(const_cast<void *>(p1)))->count >
+           (*reinterpret_cast<AK **>(const_cast<void *>(p2)))->count)
     return -1;
   else
     return 0;

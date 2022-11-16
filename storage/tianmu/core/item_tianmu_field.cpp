@@ -207,7 +207,6 @@ bool Item_tianmufield::get_timeval(struct timeval *tm, int *warnings) {
 bool Item_tianmufield::operator==(Item_tianmufield const &o) const { return (varID == o.varID); }
 
 type_conversion_status Item_tianmufield::save_in_field_inner(Field *to, bool no_conversions) {
-  type_conversion_status res;
   if ((null_value = buf->null)) {
     null_value = 1;
     return set_field_to_null_with_conversions(to, no_conversions);
