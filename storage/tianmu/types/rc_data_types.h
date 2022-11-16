@@ -134,6 +134,7 @@ enum class ValueTypeEnum { NULL_TYPE, DATE_TIME_TYPE, NUMERIC_TYPE, STRING_TYPE 
 class RCDataType {
  public:
   RCDataType() : null_(true) {}
+  constexpr RCDataType(const RCDataType &) = default;
   virtual ~RCDataType();
 
  public:
@@ -174,6 +175,8 @@ class RCDataType {
 template <typename T>
 class ValueBasic : public RCDataType {
  public:
+  constexpr ValueBasic(const ValueBasic &) = default;
+  ValueBasic() = default;
   ValueTypeEnum GetValueType() const override { return T::value_type_; }
   std::unique_ptr<RCDataType> Clone() const override { return std::unique_ptr<RCDataType>(new T((T &)*this)); };
   static T null_value_;
