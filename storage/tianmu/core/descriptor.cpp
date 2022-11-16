@@ -262,28 +262,28 @@ bool Descriptor::operator<=(const Descriptor &sec) const {
         if ((sec.op == common::Operator::O_LESS || sec.op == common::Operator::O_LESS_EQ ||
              sec.op == common::Operator::O_MORE || sec.op == common::Operator::O_MORE_EQ ||
              sec.op == common::Operator::O_EQ) &&
-            types::RCValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
+            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
           return true;
         break;
       case common::Operator::O_LESS_EQ:
         if ((sec.op == common::Operator::O_LESS || sec.op == common::Operator::O_LESS_EQ) &&
-            types::RCValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
+            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
           return true;
         break;
       case common::Operator::O_MORE_EQ:
         if ((sec.op == common::Operator::O_MORE || sec.op == common::Operator::O_MORE_EQ) &&
-            types::RCValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
+            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
           return true;
         break;
       case common::Operator::O_LESS:
         if ((sec.op == common::Operator::O_LESS || sec.op == common::Operator::O_LESS_EQ) &&
-            types::RCValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit),
+            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit),
                                           common::Operator::O_LESS_EQ, '\\'))
           return true;
         break;
       case common::Operator::O_MORE:
         if ((sec.op == common::Operator::O_MORE || sec.op == common::Operator::O_MORE_EQ) &&
-            types::RCValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit),
+            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit),
                                           common::Operator::O_MORE_EQ, '\\'))
           return true;
         break;
@@ -292,10 +292,10 @@ bool Descriptor::operator<=(const Descriptor &sec) const {
             val2.vc->GetValue(dummy_mit) <= sec.val2.vc->GetValue(dummy_mit))
           return true;
         if ((sec.op == common::Operator::O_LESS || sec.op == common::Operator::O_LESS_EQ) &&
-            types::RCValueObject::compare(val2.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
+            types::TianmuValueObject::compare(val2.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
           return true;
         if ((sec.op == common::Operator::O_MORE || sec.op == common::Operator::O_MORE_EQ) &&
-            types::RCValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
+            types::TianmuValueObject::compare(val1.vc->GetValue(dummy_mit), sec.val1.vc->GetValue(dummy_mit), sec.op, '\\'))
           return true;
         break;
       case common::Operator::O_IN: {
@@ -543,11 +543,11 @@ void Descriptor::Simplify(bool in_having) {
         v2cc->GetValueString(s3, mit);
         res = (s1.CompareWith(s2) >= 0 && s1.CompareWith(s3) <= 0);
       } else {
-        types::RCValueObject rv1 = acc->GetValue(mit);
-        types::RCValueObject rv2 = v1cc->GetValue(mit);
-        types::RCValueObject rv3 = v2cc->GetValue(mit);
-        res = types::RCValueObject::compare(rv1, rv2, common::Operator::O_MORE_EQ, '\\') &&
-              types::RCValueObject::compare(rv1, rv3, common::Operator::O_LESS_EQ, '\\');
+        types::TianmuValueObject rv1 = acc->GetValue(mit);
+        types::TianmuValueObject rv2 = v1cc->GetValue(mit);
+        types::TianmuValueObject rv3 = v2cc->GetValue(mit);
+        res = types::TianmuValueObject::compare(rv1, rv2, common::Operator::O_MORE_EQ, '\\') &&
+              types::TianmuValueObject::compare(rv1, rv3, common::Operator::O_LESS_EQ, '\\');
       }
 
       if (op == common::Operator::O_NOT_BETWEEN && !acc->IsNull(mit))
@@ -555,9 +555,9 @@ void Descriptor::Simplify(bool in_having) {
       break;
     }
     default: {
-      types::RCValueObject rv1 = acc->GetValue(mit);
-      types::RCValueObject rv2 = v1cc->GetValue(mit);
-      res = types::RCValueObject::compare(rv1, rv2, op, like_esc);
+      types::TianmuValueObject rv1 = acc->GetValue(mit);
+      types::TianmuValueObject rv2 = v1cc->GetValue(mit);
+      res = types::TianmuValueObject::compare(rv1, rv2, op, like_esc);
       if (res == false && (rv1.IsNull() || rv2.IsNull()))
         null_after_simplify = true;
     }
@@ -937,8 +937,8 @@ void Descriptor::UpdateVCStatistics()  // Apply all the information from
     }
     int v1_scale = val1.vc ? val1.vc->Type().GetScale() : 0;
     int v2_scale = val2.vc ? val2.vc->Type().GetScale() : v1_scale;
-    types::RCNum v1_conv(v1, v1_scale);
-    types::RCNum v2_conv(v2, v2_scale);
+    types::TianmuNum v1_conv(v1, v1_scale);
+    types::TianmuNum v2_conv(v2, v2_scale);
     if (v1 != common::NULL_VALUE_64 && v1 != common::PLUS_INF_64 && v1 != common::MINUS_INF_64)
       v1_conv = v1_conv.ToDecimal(attr.vc->Type().GetScale());
     if (v2 != common::NULL_VALUE_64 && v2 != common::PLUS_INF_64 && v2 != common::MINUS_INF_64)
@@ -1094,20 +1094,20 @@ bool Descriptor::CheckCondition(const MIIterator &mit) {
         val2_res =
             val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(val <= val2.vc->GetNotNullValueInt64(mit));
       } else {  // Rare case: for encoded conditions treat nullptr as +/- inf.
-        types::RCValueObject rcvo1 = attr.vc->GetValue(mit, false);
+        types::TianmuValueObject tianmu_value_obj1 = attr.vc->GetValue(mit, false);
         val1_res = val1.vc->IsNull(mit) ? true
-                                        : (sharp ? common::Tribool(rcvo1 > val1.vc->GetValue(mit, false))
-                                                 : common::Tribool(rcvo1 >= val1.vc->GetValue(mit, false)));
+                                        : (sharp ? common::Tribool(tianmu_value_obj1 > val1.vc->GetValue(mit, false))
+                                                 : common::Tribool(tianmu_value_obj1 >= val1.vc->GetValue(mit, false)));
         val2_res = val2.vc->IsNull(mit) ? true
-                                        : (sharp ? common::Tribool(rcvo1 < val2.vc->GetValue(mit, false))
-                                                 : common::Tribool(rcvo1 <= val2.vc->GetValue(mit, false)));
+                                        : (sharp ? common::Tribool(tianmu_value_obj1 < val2.vc->GetValue(mit, false))
+                                                 : common::Tribool(tianmu_value_obj1 <= val2.vc->GetValue(mit, false)));
       }
     } else {
-      types::RCValueObject rcvo1 = attr.vc->GetValue(mit, false);
+      types::TianmuValueObject tianmu_value_obj1 = attr.vc->GetValue(mit, false);
       val1_res =
-          val1.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(rcvo1 >= val1.vc->GetValue(mit, false));
+          val1.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(tianmu_value_obj1 >= val1.vc->GetValue(mit, false));
       val2_res =
-          val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(rcvo1 <= val2.vc->GetValue(mit, false));
+          val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(tianmu_value_obj1 <= val2.vc->GetValue(mit, false));
     }
     if (op == common::Operator::O_BETWEEN) {
       if (val1_res != true || val2_res != true)
@@ -1126,7 +1126,7 @@ bool Descriptor::CheckCondition(const MIIterator &mit) {
     DEBUG_ASSERT(attr.vc && val1.vc);
     if (attr.vc->IsNull(mit) || val1.vc->IsNull(mit))
       return false;
-    if (!types::RCValueObject::compare(attr.vc->GetValue(mit), val1.vc->GetValue(mit), op, like_esc))
+    if (!types::TianmuValueObject::compare(attr.vc->GetValue(mit), val1.vc->GetValue(mit), op, like_esc))
       return false;
   }
   return result;
@@ -1168,20 +1168,20 @@ bool Descriptor::IsNull(const MIIterator &mit) {
         val2_res =
             val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(val <= val2.vc->GetNotNullValueInt64(mit));
       } else {  // Rare case: for encoded conditions treat nullptr as +/- inf.
-        types::RCValueObject rcvo1 = attr.vc->GetValue(mit, false);
+        types::TianmuValueObject tianmu_value_obj1 = attr.vc->GetValue(mit, false);
         val1_res = val1.vc->IsNull(mit) ? true
-                                        : (sharp ? common::Tribool(rcvo1 > val1.vc->GetValue(mit, false))
-                                                 : common::Tribool(rcvo1 >= val1.vc->GetValue(mit, false)));
+                                        : (sharp ? common::Tribool(tianmu_value_obj1 > val1.vc->GetValue(mit, false))
+                                                 : common::Tribool(tianmu_value_obj1 >= val1.vc->GetValue(mit, false)));
         val2_res = val2.vc->IsNull(mit) ? true
-                                        : (sharp ? common::Tribool(rcvo1 < val2.vc->GetValue(mit, false))
-                                                 : common::Tribool(rcvo1 <= val2.vc->GetValue(mit, false)));
+                                        : (sharp ? common::Tribool(tianmu_value_obj1 < val2.vc->GetValue(mit, false))
+                                                 : common::Tribool(tianmu_value_obj1 <= val2.vc->GetValue(mit, false)));
       }
     } else {
-      types::RCValueObject rcvo1 = attr.vc->GetValue(mit, false);
+      types::TianmuValueObject tianmu_value_obj1 = attr.vc->GetValue(mit, false);
       val1_res =
-          val1.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(rcvo1 >= val1.vc->GetValue(mit, false));
+          val1.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(tianmu_value_obj1 >= val1.vc->GetValue(mit, false));
       val2_res =
-          val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(rcvo1 <= val2.vc->GetValue(mit, false));
+          val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN : common::Tribool(tianmu_value_obj1 <= val2.vc->GetValue(mit, false));
     }
     if (common::Tribool::And(val1_res, val2_res) == common::TRIBOOL_UNKNOWN)
       return true;
@@ -1235,12 +1235,12 @@ common::Tribool Descriptor::RoughCheckSubselectCondition(MIIterator &mit, SubSel
     // TODO: to be implemented
     // if(attr.vc->IsNull(mit))
     //	return false;
-    // types::RCValueObject rcvo1 = attr.vc->GetValue(mit, false);
+    // types::TianmuValueObject tianmu_value_obj1 = attr.vc->GetValue(mit, false);
     // need to consider three value logic
     // common::Tribool val1_res = val1.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN
-    // : common::Tribool(rcvo1 >= val1.vc->GetValue(mit, false));
+    // : common::Tribool(tianmu_value_obj1 >= val1.vc->GetValue(mit, false));
     // common::Tribool val2_res = val2.vc->IsNull(mit) ? common::TRIBOOL_UNKNOWN
-    // : common::Tribool(rcvo1 <= val2.vc->GetValue(mit, false)); if(op ==
+    // : common::Tribool(tianmu_value_obj1 <= val2.vc->GetValue(mit, false)); if(op ==
     // common::Operator::O_BETWEEN) {
     //	if(val1_res != true || val2_res != true)
     //		return false;
@@ -1268,15 +1268,15 @@ common::Tribool Descriptor::RoughCheckSubselectCondition(MIIterator &mit, SubSel
     return common::TRIBOOL_UNKNOWN;
 
   RoughValue rv = sub->RoughGetValue(mit, sot);
-  std::shared_ptr<types::RCDataType> rv_min, rv_max;
+  std::shared_ptr<types::TianmuDataType> rv_min, rv_max;
   if (sub->Type().IsDateTime()) {
-    rv_min.reset(new types::RCDateTime(rv.GetMin(), sub->TypeName()));
-    rv_max.reset(new types::RCDateTime(rv.GetMax(), sub->TypeName()));
+    rv_min.reset(new types::TianmuDateTime(rv.GetMin(), sub->TypeName()));
+    rv_max.reset(new types::TianmuDateTime(rv.GetMax(), sub->TypeName()));
   } else {
-    rv_min.reset(new types::RCNum(rv.GetMin(), sub->Type().GetScale(), sub->Type().IsFloat(), sub->TypeName()));
-    rv_max.reset(new types::RCNum(rv.GetMax(), sub->Type().GetScale(), sub->Type().IsFloat(), sub->TypeName()));
+    rv_min.reset(new types::TianmuNum(rv.GetMin(), sub->Type().GetScale(), sub->Type().IsFloat(), sub->TypeName()));
+    rv_max.reset(new types::TianmuNum(rv.GetMax(), sub->Type().GetScale(), sub->Type().IsFloat(), sub->TypeName()));
   }
-  types::RCValueObject v = val->GetValue(mit);
+  types::TianmuValueObject v = val->GetValue(mit);
   DEBUG_ASSERT(attr.vc);
   // NULLs are checked within operators
   if (op == common::Operator::O_EQ) {
@@ -1319,7 +1319,7 @@ bool Descriptor::CheckSetCondition_UTF(const MIIterator &mit, common::Operator o
   vcolumn::MultiValColumn *mvc = static_cast<vcolumn::MultiValColumn *>(val1.vc);
   types::BString s1;
   attr.vc->GetValueString(s1, mit);
-  types::RCValueObject aggr;
+  types::TianmuValueObject aggr;
   switch (op) {
     case common::Operator::O_EQ_ALL:
       for (vcolumn::MultiValColumn::Iterator it = mvc->begin(mit), end = mvc->end(mit); it != end; ++it) {
@@ -1430,13 +1430,13 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
       res = !res;
     return (res == true);
   }
-  types::RCValueObject val = attr.vc->GetValue(mit);
-  types::RCValueObject aggr;
+  types::TianmuValueObject val = attr.vc->GetValue(mit);
+  types::TianmuValueObject aggr;
   switch (op) {
     case common::Operator::O_EQ_ALL:
       for (vcolumn::MultiValColumn::Iterator it = mvc->begin(mit), end = mvc->end(mit); it != end; ++it) {
         if (val.IsNull() || it->IsNull() ||
-            !types::RCValueObject::compare(val, it->GetValue(), common::Operator::O_EQ, '\\'))
+            !types::TianmuValueObject::compare(val, it->GetValue(), common::Operator::O_EQ, '\\'))
           return false;
       }
       break;
@@ -1462,7 +1462,7 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
       result = false;
       if (!val.IsNull()) {
         for (vcolumn::MultiValColumn::Iterator it = mvc->begin(mit), end = mvc->end(mit); it != end; ++it) {
-          if (!it->IsNull() && types::RCValueObject::compare(val, it->GetValue(), common::Operator::O_NOT_EQ, '\\'))
+          if (!it->IsNull() && types::TianmuValueObject::compare(val, it->GetValue(), common::Operator::O_NOT_EQ, '\\'))
             return true;
         }
       }
@@ -1474,7 +1474,7 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
       if (mvc->NumOfValues(mit) == 0)
         result = true;  // op ALL (empty_set) is TRUE
       else if (val.IsNull() || aggr.IsNull() || mvc->ContainsNull(mit) ||
-               !types::RCValueObject::compare(val, aggr, op, '\\'))
+               !types::TianmuValueObject::compare(val, aggr, op, '\\'))
         result = false;
       break;
     case common::Operator::O_MORE_ANY:
@@ -1483,7 +1483,7 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
       aggr = mvc->GetSetMin(mit);
       if (mvc->NumOfValues(mit) == 0)
         result = false;  // op ANY (empty_set) is FALSE
-      else if (val.IsNull() || aggr.IsNull() || !types::RCValueObject::compare(val, aggr, op, '\\'))
+      else if (val.IsNull() || aggr.IsNull() || !types::TianmuValueObject::compare(val, aggr, op, '\\'))
         result = false;
       break;
     case common::Operator::O_LESS_ANY:
@@ -1492,7 +1492,7 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
       aggr = mvc->GetSetMax(mit);
       if (mvc->NumOfValues(mit) == 0)
         result = false;  // op ANY (empty_set) is FALSE
-      else if (val.IsNull() || aggr.IsNull() || !types::RCValueObject::compare(val, aggr, op, '\\'))
+      else if (val.IsNull() || aggr.IsNull() || !types::TianmuValueObject::compare(val, aggr, op, '\\'))
         result = false;
       break;
     case common::Operator::O_MORE_ALL:
@@ -1502,7 +1502,7 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
       if (mvc->NumOfValues(mit) == 0)
         result = true;  // op ALL (empty_set) is TRUE
       else if (val.IsNull() || aggr.IsNull() || mvc->ContainsNull(mit) ||
-               !types::RCValueObject::compare(val, aggr, op, '\\'))
+               !types::TianmuValueObject::compare(val, aggr, op, '\\'))
         result = false;
       break;
     default:
@@ -1531,8 +1531,8 @@ bool Descriptor::IsNull_Set(const MIIterator &mit, common::Operator op) {
     }
     return (res == common::TRIBOOL_UNKNOWN);
   }
-  types::RCValueObject val = attr.vc->GetValue(mit);
-  types::RCValueObject aggr;
+  types::TianmuValueObject val = attr.vc->GetValue(mit);
+  types::TianmuValueObject aggr;
   switch (op) {
     case common::Operator::O_EQ_ALL:
     case common::Operator::O_NOT_EQ_ALL:
@@ -1587,15 +1587,15 @@ common::Tribool Descriptor::RoughCheckSetSubSelectCondition(const MIIterator &mi
     return common::TRIBOOL_UNKNOWN;
 
   RoughValue rv = sub->RoughGetValue(mit, sot);
-  std::shared_ptr<types::RCDataType> rv_min, rv_max;
+  std::shared_ptr<types::TianmuDataType> rv_min, rv_max;
   if (sub->Type().IsDateTime()) {
-    rv_min.reset(new types::RCDateTime(rv.GetMin(), sub->TypeName()));
-    rv_max.reset(new types::RCDateTime(rv.GetMax(), sub->TypeName()));
+    rv_min.reset(new types::TianmuDateTime(rv.GetMin(), sub->TypeName()));
+    rv_max.reset(new types::TianmuDateTime(rv.GetMax(), sub->TypeName()));
   } else {
-    rv_min.reset(new types::RCNum(rv.GetMin(), sub->Type().GetScale(), sub->Type().IsFloat(), sub->TypeName()));
-    rv_max.reset(new types::RCNum(rv.GetMax(), sub->Type().GetScale(), sub->Type().IsFloat(), sub->TypeName()));
+    rv_min.reset(new types::TianmuNum(rv.GetMin(), sub->Type().GetScale(), sub->Type().IsFloat(), sub->TypeName()));
+    rv_max.reset(new types::TianmuNum(rv.GetMax(), sub->Type().GetScale(), sub->Type().IsFloat(), sub->TypeName()));
   }
-  types::RCValueObject v = attr.vc->GetValue(mit);
+  types::TianmuValueObject v = attr.vc->GetValue(mit);
   common::Tribool rough_is_empty = sub->RoughIsEmpty(mit, sot);
 
   switch (op) {
@@ -1636,7 +1636,7 @@ common::Tribool Descriptor::RoughCheckSetSubSelectCondition(const MIIterator &mi
     //= mvc->end(mit); it !=
     // end; ++it) {
     //			if(!it->IsNull() &&
-    // types::RCValueObject::compare(val, it->GetValue(),
+    // types::TianmuValueObject::compare(val, it->GetValue(),
     // common::Operator::O_NOT_EQ))
     //				return true;
     //		}
@@ -1647,7 +1647,7 @@ common::Tribool Descriptor::RoughCheckSetSubSelectCondition(const MIIterator &mi
       Query::UnmarkAllAny(op);
       if (rough_is_empty == true)
         return true;  // op ALL (empty_set) is TRUE
-      else if (rough_is_empty == false && !types::RCValueObject::compare(v, *rv_max, op, '\\'))
+      else if (rough_is_empty == false && !types::TianmuValueObject::compare(v, *rv_max, op, '\\'))
         return false;
       break;
     case common::Operator::O_MORE_ANY:
@@ -1655,7 +1655,7 @@ common::Tribool Descriptor::RoughCheckSetSubSelectCondition(const MIIterator &mi
       Query::UnmarkAllAny(op);
       if (rough_is_empty == true)
         return false;  // op ANY (empty_set) is FALSE
-      else if (rough_is_empty == false && !types::RCValueObject::compare(v, *rv_min, op, '\\'))
+      else if (rough_is_empty == false && !types::TianmuValueObject::compare(v, *rv_min, op, '\\'))
         return false;
       break;
     case common::Operator::O_LESS_ANY:
@@ -1663,7 +1663,7 @@ common::Tribool Descriptor::RoughCheckSetSubSelectCondition(const MIIterator &mi
       Query::UnmarkAllAny(op);
       if (rough_is_empty == true)
         return false;  // op ANY (empty_set) is FALSE
-      else if (rough_is_empty == false && !types::RCValueObject::compare(v, *rv_max, op, '\\'))
+      else if (rough_is_empty == false && !types::TianmuValueObject::compare(v, *rv_max, op, '\\'))
         return false;
       break;
     case common::Operator::O_MORE_ALL:
@@ -1671,7 +1671,7 @@ common::Tribool Descriptor::RoughCheckSetSubSelectCondition(const MIIterator &mi
       Query::UnmarkAllAny(op);
       if (rough_is_empty == true)
         return true;  // op ALL (empty_set) is TRUE
-      else if (rough_is_empty == false && !types::RCValueObject::compare(v, *rv_min, op, '\\'))
+      else if (rough_is_empty == false && !types::TianmuValueObject::compare(v, *rv_min, op, '\\'))
         return false;
       break;
     default:
@@ -1710,8 +1710,8 @@ void Descriptor::CoerceColumnType(vcolumn::VirtualColumn *&for_typecast) {
     return;
 
   if (tcc) {
-    if (rc_control_.isOn()) {
-      rc_control_.lock(current_txn_->GetThreadID())
+    if (tianmu_control_.isOn()) {
+      tianmu_control_.lock(current_txn_->GetThreadID())
           << "Type conversion for VC:"
           << (for_typecast == val1.vc ? val1.vc_id : for_typecast == val2.vc ? val2.vc_id : val1.vc_id)
           << system::unlock;
@@ -1906,10 +1906,10 @@ bool Descriptor::IsleftIndexSearch() const {
   if (IsType_AttrValOrAttrValVal() && encoded) {
     auto col = static_cast<vcolumn::SingleColumn *>(attr.vc);
     if (table && table->NumOfTables() == 1 && table->GetTableP(0)->TableType() == TType::TABLE &&
-        col->GetPhysical()->ColType() == PhysicalColumn::phys_col_t::RCATTR) {
-      auto path = (static_cast<RCTable *>(table->GetTableP(0))->Path());
-      auto indextab = ha_rcengine_->GetTableIndex(path.replace_extension().string());
-      uint32_t colid = static_cast<RCAttr *>(col->GetPhysical())->ColId();
+        col->GetPhysical()->ColType() == PhysicalColumn::phys_col_t::kTianmuAttr) {
+      auto path = (static_cast<TianmuTable *>(table->GetTableP(0))->Path());
+      auto indextab = ha_tianmu_engine_->GetTableIndex(path.replace_extension().string());
+      uint32_t colid = static_cast<TianmuAttr *>(col->GetPhysical())->ColId();
 
       if (indextab) {
         std::vector<uint> keycols = indextab->KeyCols();

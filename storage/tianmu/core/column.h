@@ -20,7 +20,7 @@
 
 #include "common/common_definitions.h"
 #include "core/column_type.h"
-#include "types/rc_data_types.h"
+#include "types/tianmu_data_types.h"
 
 namespace Tianmu {
 namespace core {
@@ -28,7 +28,7 @@ enum class PackOntologicalStatus { NULLS_ONLY, UNIFORM, UNIFORM_AND_NULLS, SEQUE
 
 /*! \brief Base class for columns.
  *
- * Defines the common interface for RCAttr, Attr and vcolumn::VirtualColumn
+ * Defines the common interface for TianmuAttr, Attr and vcolumn::VirtualColumn
  */
 class Column {
  public:

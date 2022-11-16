@@ -19,7 +19,7 @@
 #pragma once
 
 #include "common/data_format.h"
-#include "core/rc_attr_typeinfo.h"
+#include "core/tianmu_attr_typeinfo.h"
 #include "loader/value_cache.h"
 
 namespace Tianmu {

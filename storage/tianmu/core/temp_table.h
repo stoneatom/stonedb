@@ -39,7 +39,7 @@ namespace core {
 class Descriptor;
 class Filter;
 class Query;
-class RCTable;
+class TianmuTable;
 class ResultSender;
 class SortDescriptor;
 class Transaction;
@@ -102,7 +102,7 @@ class TempTable : public JustATable {
     size_t FillValues(MIIterator &mii, size_t start, size_t count);
     void SetNewPageSize(uint new_page_size);
     void SetValueString(int64_t obj, const types::BString &val);
-    types::RCValueObject GetValue(int64_t obj, bool lookup_to_num = false) override;
+    types::TianmuValueObject GetValue(int64_t obj, bool lookup_to_num = false) override;
     void GetValueString(int64_t row, types::BString &s) override { GetValueString(s, row); }
     void GetValueString(types::BString &s, int64_t row);
     void GetNotNullValueString(int64_t row, types::BString &s) override { GetValueString(s, row); }
@@ -167,7 +167,7 @@ class TempTable : public JustATable {
     types::BString DecodeValue_S(int64_t code [[maybe_unused]]) override {
       DEBUG_ASSERT(0);
       return types::BString();
-    }  // RCAttr only
+    }  // TianmuAttr only
     int EncodeValue_S(types::BString &v [[maybe_unused]]) override {
       DEBUG_ASSERT(0);
       return -1;
@@ -256,7 +256,7 @@ class TempTable : public JustATable {
   int64_t GetTable64(int64_t obj, int attr) override;
   void GetTable_S(types::BString &s, int64_t obj, int attr) override;
   void GetTableString(types::BString &s, int64_t obj, uint attr);
-  types::RCValueObject GetValueObject(int64_t obj, uint attr);
+  types::TianmuValueObject GetValueObject(int64_t obj, uint attr);
 
   uint64_t ApproxAnswerSize(int attr,
                             Descriptor &d);  // provide the most probable
@@ -356,13 +356,13 @@ class TempTable : public JustATable {
     return attrs[0]->page_size;
   }
 
-  void DisplayRSI();  // display info about all RSI contained in RCTables from
+  void DisplayRSI();  // display info about all RSI contained in TianmuTables from
                       // this TempTable
 
   bool HasHavingConditions() { return having_conds.Size() > 0; }
   bool CheckHavingConditions(MIIterator &it) { return having_conds[0].tree->root->CheckCondition(it); }
   void ClearHavingConditions() { having_conds.Clear(); }
-  void RemoveFromManagedList(const RCTable *rct);
+  void RemoveFromManagedList(const TianmuTable *rct);
   int AddVirtColumn(vcolumn::VirtualColumn *vc);
   int AddVirtColumn(vcolumn::VirtualColumn *vc, int no);
   uint NumOfVirtColumns() { return uint(virt_cols.size()); }
@@ -459,7 +459,7 @@ class TempTable : public JustATable {
    public:
     Record(RecordIterator &it) : m_it(it) {}
     Record(Record const &it) = default;
-    types::RCDataType &operator[](size_t i) const { return *(m_it.dataTypes[i]); }
+    types::TianmuDataType &operator[](size_t i) const { return *(m_it.dataTypes[i]); }
     RecordIterator &m_it;
   };
 
@@ -472,7 +472,7 @@ class TempTable : public JustATable {
     Transaction *_conn;
     bool is_prepared;
 
-    std::vector<std::unique_ptr<types::RCDataType>> dataTypes;
+    std::vector<std::unique_ptr<types::TianmuDataType>> dataTypes;
 
    public:
     RecordIterator();

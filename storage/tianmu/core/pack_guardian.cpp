@@ -19,7 +19,7 @@
 
 #include "core/just_a_table.h"
 #include "core/mi_iterator.h"
-#include "core/rc_attr.h"
+#include "core/tianmu_attr.h"
 #include "vc/virtual_column.h"
 
 namespace Tianmu {

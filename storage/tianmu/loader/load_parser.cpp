@@ -19,7 +19,7 @@
 
 #include "binlog.h"
 #include "core/engine.h"
-#include "core/rc_attr.h"
+#include "core/tianmu_attr.h"
 #include "loader/value_cache.h"
 #include "log_event.h"
 #include "system/io_parameters.h"
@@ -27,10 +27,10 @@
 
 namespace Tianmu {
 namespace loader {
-LoadParser::LoadParser(RCAttrPtrVect_t &attrs, const system::IOParameters &iop, uint packsize,
+LoadParser::LoadParser(TianmuAttrPtrVect_t &attrs, const system::IOParameters &iop, uint packsize,
                        std::unique_ptr<system::Stream> &f)
     : attrs_(attrs),
-      start_time_(types::RCDateTime::GetCurrent().GetInt64()),
+      start_time_(types::TianmuDateTime::GetCurrent().GetInt64()),
       io_param_(iop),
       pack_size_(packsize),
       rejecter_(packsize, iop.GetRejectFile(), iop.GetAbortOnCount(), iop.GetAbortOnThreshold()),
@@ -51,7 +51,7 @@ LoadParser::LoadParser(RCAttrPtrVect_t &attrs, const system::IOParameters &iop, 
   buf_end_ = cur_ptr_ + read_buffer_.BufSize();
 
   timer.Print(__PRETTY_FUNCTION__);
-  tab_index_ = ha_rcengine_->GetTableIndex("./" + io_param_.TableName());
+  tab_index_ = ha_tianmu_engine_->GetTableIndex("./" + io_param_.TableName());
 }
 
 uint LoadParser::GetPackrow(uint no_of_rows, std::vector<ValueCache> &value_buffers) {
@@ -167,7 +167,7 @@ bool LoadParser::MakeValue(uint att, ValueCache &buffer) {
   return true;
 }
 
-int LoadParser::ProcessInsertIndex(std::shared_ptr<index::RCTableIndex> tab, std::vector<ValueCache> &vcs,
+int LoadParser::ProcessInsertIndex(std::shared_ptr<index::TianmuTableIndex> tab, std::vector<ValueCache> &vcs,
                                    uint no_rows) {
   std::vector<std::string_view> fields;
   size_t lastrow = vcs[0].NumOfValues();

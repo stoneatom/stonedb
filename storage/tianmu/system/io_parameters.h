@@ -23,7 +23,7 @@
 #include "common/assert.h"
 #include "common/common_definitions.h"
 #include "common/data_format.h"
-#include "core/rc_attr_typeinfo.h"
+#include "core/tianmu_attr_typeinfo.h"
 #include "system/file_system.h"
 
 namespace Tianmu {
@@ -166,7 +166,7 @@ class IOParameters {
 
  private:
   std::vector<core::AttributeTypeInfo> attr_type_info_;
-  int curr_output_mode_;    // I/O file format - see RCTable::SaveTable parameters
+  int curr_output_mode_;    // I/O file format - see TianmuTable::SaveTable parameters
   char output_path_[1024];  // input or output file name, set by "interface..."
   std::string delimiter_;
   char string_qualifier_;

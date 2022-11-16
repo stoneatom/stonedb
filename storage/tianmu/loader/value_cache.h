@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "common/common_definitions.h"
-#include "types/rc_data_types.h"
+#include "types/tianmu_data_types.h"
 
 namespace Tianmu {
 namespace loader {

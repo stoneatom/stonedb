@@ -15,9 +15,9 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "core/rc_mem_table.h"
+#include "core/tianmu_mem_table.h"
 #include "common/common_definitions.h"
-#include "core/rc_table.h"
+#include "core/tianmu_table.h"
 #include "core/table_share.h"
 #include "core/transaction.h"
 #include "index/kv_store.h"
@@ -26,7 +26,7 @@
 
 namespace Tianmu {
 namespace core {
-RCMemTable::RCMemTable(const std::string name, const uint32_t mem_id, const uint32_t cf_id)
+TianmuMemTable::TianmuMemTable(const std::string name, const uint32_t mem_id, const uint32_t cf_id)
     : fullname_(name), mem_id_(mem_id), cf_handle_(ha_kvstore_->GetCfHandleByID(cf_id)) {
   ASSERT(cf_handle_, "column family handle not exist " + name);
 
@@ -63,14 +63,14 @@ RCMemTable::RCMemTable(const std::string name, const uint32_t mem_id, const uint
   stat.write_cnt = next_insert_id_.load() - next_load_id_.load();
 }
 
-std::shared_ptr<RCMemTable> RCMemTable::CreateMemTable(std::shared_ptr<TableShare> share, const std::string mem_name) {
+std::shared_ptr<TianmuMemTable> TianmuMemTable::CreateMemTable(std::shared_ptr<TableShare> share, const std::string mem_name) {
   std::string table_name = share->Path();
   std::string normalized_name;
   if (!index::NormalizeName(table_name, normalized_name)) {
     throw common::Exception("Normalized rowstore name failed " + table_name);
     return nullptr;
   }
-  std::shared_ptr<RCMemTable> tb_mem = ha_kvstore_->FindMemTable(normalized_name);
+  std::shared_ptr<TianmuMemTable> tb_mem = ha_kvstore_->FindMemTable(normalized_name);
   if (tb_mem)
     return tb_mem;
 
@@ -79,7 +79,7 @@ std::shared_ptr<RCMemTable> RCMemTable::CreateMemTable(std::shared_ptr<TableShar
   std::string cf_name = mem_name.empty() ? index::DEFAULT_ROWSTORE_NAME : index::DEFAULT_ROWSTORE_PREFIX + mem_name;
   uint32_t cf_id = ha_kvstore_->GetCfHandle(cf_name)->GetID();
   uint32_t mem_id = ha_kvstore_->GetNextIndexId();
-  tb_mem = std::make_shared<RCMemTable>(normalized_name, mem_id, cf_id);
+  tb_mem = std::make_shared<TianmuMemTable>(normalized_name, mem_id, cf_id);
   ha_kvstore_->KVWriteMemTableMeta(tb_mem);
   TIANMU_LOG(LogCtl_Level::INFO, "Create RowStore: %s, CF ID: %d, RowStore ID: %u", normalized_name.c_str(), cf_id,
              mem_id);
@@ -87,7 +87,7 @@ std::shared_ptr<RCMemTable> RCMemTable::CreateMemTable(std::shared_ptr<TableShar
   return tb_mem;
 }
 
-common::ErrorCode RCMemTable::Rename(const std::string &to) {
+common::ErrorCode TianmuMemTable::Rename(const std::string &to) {
   std::string dname;
   if (!index::NormalizeName(to, dname)) {
     return common::ErrorCode::FAILED;
@@ -101,7 +101,7 @@ common::ErrorCode RCMemTable::Rename(const std::string &to) {
   return common::ErrorCode::SUCCESS;
 }
 
-common::ErrorCode RCMemTable::DropMemTable(std::string table_name) {
+common::ErrorCode TianmuMemTable::DropMemTable(std::string table_name) {
   std::string normalized_name;
   if (!index::NormalizeName(table_name, normalized_name)) {
     throw common::Exception("Normalized memtable name failed " + table_name);
@@ -116,7 +116,7 @@ common::ErrorCode RCMemTable::DropMemTable(std::string table_name) {
   return ha_kvstore_->KVDelMemTableMeta(normalized_name);
 }
 
-void RCMemTable::InsertRow(std::unique_ptr<char[]> buf, uint32_t size) {
+void TianmuMemTable::InsertRow(std::unique_ptr<char[]> buf, uint32_t size) {
   // insert rowset data
   int64_t row_id = next_insert_id_++;
   if (row_id < next_load_id_)
@@ -137,13 +137,13 @@ void RCMemTable::InsertRow(std::unique_ptr<char[]> buf, uint32_t size) {
   stat.write_bytes += size;
 }
 
-void RCMemTable::Truncate(Transaction *tx) {
+void TianmuMemTable::Truncate(Transaction *tx) {
   ASSERT(tx, "No truncate transaction.");
   uchar entry_key[32];
   size_t key_pos = 0;
   index::be_store_index(entry_key + key_pos, mem_id_);
   key_pos += sizeof(uint32_t);
-  index::be_store_byte(entry_key + key_pos, static_cast<uchar>(RCMemTable::RecordType::kInsert));
+  index::be_store_byte(entry_key + key_pos, static_cast<uchar>(TianmuMemTable::RecordType::kInsert));
   key_pos += sizeof(uchar);
   rocksdb::Slice entry_slice((char *)entry_key, key_pos);
 
@@ -151,7 +151,7 @@ void RCMemTable::Truncate(Transaction *tx) {
   size_t upper_pos = 0;
   index::be_store_index(upper_key + upper_pos, mem_id_);
   upper_pos += sizeof(uint32_t);
-  uchar upkey = static_cast<int>(RCMemTable::RecordType::kInsert) + 1;
+  uchar upkey = static_cast<int>(TianmuMemTable::RecordType::kInsert) + 1;
   index::be_store_byte(upper_key + upper_pos, upkey);
   upper_pos += sizeof(uchar);
   rocksdb::Slice upper_slice((char *)upper_key, upper_pos);

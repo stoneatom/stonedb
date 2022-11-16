@@ -14,8 +14,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
-#ifndef TIANMU_TYPES_RC_ITEM_TYPES_H_
-#define TIANMU_TYPES_RC_ITEM_TYPES_H_
+#ifndef TIANMU_TYPES_TIANMU_ITEM_TYPES_H_
+#define TIANMU_TYPES_TIANMU_ITEM_TYPES_H_
 #pragma once
 
 #include "common/assert.h"
@@ -24,10 +24,10 @@
 namespace Tianmu {
 namespace types {
 
-class Item_sum_int_rcbase : public Item_sum_num {
+class ItemSumInTianmuBase : public ItemSumNum {
  public:
-  Item_sum_int_rcbase();
-  ~Item_sum_int_rcbase();
+  ItemSumInTianmuBase();
+  ~ItemSumInTianmuBase();
 
   longlong val_int() override;
 
@@ -58,10 +58,10 @@ class Item_sum_int_rcbase : public Item_sum_num {
   int64_t count_;
 };
 
-class Item_sum_sum_rcbase : public Item_sum_num {
+class ItemSumSumTianmuBase : public ItemSumNum {
  public:
-  Item_sum_sum_rcbase();
-  ~Item_sum_sum_rcbase();
+  ItemSumSumTianmuBase();
+  ~ItemSumSumTianmuBase();
 
   enum Sumfunctype sum_func() const override { return SUM_FUNC; }
   enum Item_result result_type() const override { return hybrid_type_; }
@@ -86,10 +86,10 @@ class Item_sum_sum_rcbase : public Item_sum_num {
   my_decimal decimal_buffs_[1];
 };
 
-class Item_sum_hybrid_rcbase : public Item_sum {
+class ItemSumHybridTianmuBase : public Item_sum {
  public:
-  Item_sum_hybrid_rcbase();
-  ~Item_sum_hybrid_rcbase();
+  ItemSumHybridTianmuBase();
+  ~ItemSumHybridTianmuBase();
 
   void clear() override;
   double val_real() override;
@@ -130,4 +130,4 @@ class Item_sum_hybrid_rcbase : public Item_sum {
 }  // namespace types
 }  // namespace Tianmu
 
-#endif  // TIANMU_TYPES_RC_ITEM_TYPES_H_
+#endif  // TIANMU_TYPES_TIANMU_ITEM_TYPES_H_

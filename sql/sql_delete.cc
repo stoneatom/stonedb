@@ -431,7 +431,7 @@ bool Sql_cmd_delete::mysql_delete(THD *thd, ha_rows limit)
         && table->triggers->has_triggers(TRG_EVENT_DELETE, TRG_ACTION_AFTER)) {
       /*
       The table has AFTER DELETE triggers, trigger might need OLD records,
-       but RCTable of tianmu engine is only load required columns. So here
+       but TianmuTable of tianmu engine is only load required columns. So here
        we set to all columns to be used.
       */
       bitmap_set_all(table->read_set);

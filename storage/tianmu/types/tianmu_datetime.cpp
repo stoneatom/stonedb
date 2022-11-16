@@ -15,19 +15,19 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "types/rc_data_types.h"
+#include "types/tianmu_data_types.h"
 
 #include "core/engine.h"
 #include "core/tools.h"
 #include "core/transaction.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #include "types/value_parser4txt.h"
 
 namespace Tianmu {
 namespace types {
 static_assert(sizeof(DT) == 8);
 
-RCDateTime::RCDateTime(int64_t v, common::CT at) : at_(at) {
+TianmuDateTime::TianmuDateTime(int64_t v, common::CT at) : at_(at) {
   null_ = (v == common::NULL_VALUE_64);
   if (!null_) {
     *(int64_t *)&dt_ = v;
@@ -43,7 +43,7 @@ RCDateTime::RCDateTime(int64_t v, common::CT at) : at_(at) {
   }
 }
 
-RCDateTime::RCDateTime(short year) {
+TianmuDateTime::TianmuDateTime(short year) {
   at_ = common::CT::YEAR;
   null_ = false;
   if (year == common::NULL_VALUE_SH)
@@ -53,7 +53,7 @@ RCDateTime::RCDateTime(short year) {
   }
 }
 
-RCDateTime::RCDateTime(short yh, short mm, short ds, common::CT at) : at_(at) {
+TianmuDateTime::TianmuDateTime(short yh, short mm, short ds, common::CT at) : at_(at) {
   null_ = false;
   if (at == common::CT::DATE) {
     dt_.day = std::abs(ds);
@@ -69,7 +69,7 @@ RCDateTime::RCDateTime(short yh, short mm, short ds, common::CT at) : at_(at) {
     TIANMU_ERROR("type not supported");
 }
 
-RCDateTime::RCDateTime(short year, short month, short day, short hour, short minute, short second, common::CT at)
+TianmuDateTime::TianmuDateTime(short year, short month, short day, short hour, short minute, short second, common::CT at)
     : at_(at) {
   ASSERT(at == common::CT::DATETIME || at == common::CT::TIMESTAMP || at == common::CT::DATE,
          "should be 'at == common::CT::DATETIME || at == common::CT::TIMESTAMP || at == common::CT::DATE'");
@@ -82,7 +82,7 @@ RCDateTime::RCDateTime(short year, short month, short day, short hour, short min
   dt_.second = std::abs(second);
 }
 
-RCDateTime::RCDateTime(const MYSQL_TIME &myt, common::CT at) : at_(at) {
+RCDateTime::TianmuDateTime(const MYSQL_TIME &myt, common::CT at) : at_(at) {
   ASSERT(at == common::CT::DATETIME || at == common::CT::TIMESTAMP || at == common::CT::DATE,
          "should be 'at == common::CT::DATETIME || at == common::CT::TIMESTAMP || common::CT::DATE'");
   null_ = false;
@@ -96,32 +96,32 @@ RCDateTime::RCDateTime(const MYSQL_TIME &myt, common::CT at) : at_(at) {
   dt_.neg = myt.neg;
 }
 
-RCDateTime::RCDateTime(RCNum &rcn, common::CT at) : at_(at) {
-  null_ = rcn.null_;
+TianmuDateTime::TianmuDateTime(TianmuNum &tianmu_n, common::CT at) : at_(at) {
+  null_ = tianmu_n.null_;
   if (!null_) {
-    if (core::ATI::IsRealType(rcn.Type()))
+    if (core::ATI::IsRealType(tianmu_n.Type()))
       throw common::DataTypeConversionException(common::TianmuError(common::ErrorCode::DATACONVERSION));
-    if (rcn.Type() == common::CT::NUM && rcn.Scale() > 0)
+    if (tianmu_n.Type() == common::CT::NUM && tianmu_n.Scale() > 0)
       throw common::DataTypeConversionException(common::TianmuError(common::ErrorCode::DATACONVERSION));
-    if (Parse((int64_t)rcn, *this, at) != common::ErrorCode::SUCCESS)
+    if (Parse((int64_t)tianmu_n, *this, at) != common::ErrorCode::SUCCESS)
       throw common::DataTypeConversionException(common::TianmuError(common::ErrorCode::DATACONVERSION));
   }
 }
 
-RCDateTime::RCDateTime(const RCDateTime &rcdt) : ValueBasic<RCDateTime>(rcdt) { *this = rcdt; }
+TianmuDateTime::TianmuDateTime(const TianmuDateTime &tianmu_dt) : ValueBasic<TianmuDateTime>(tianmu_dt) { *this = tianmu_dt; }
 
-RCDateTime::~RCDateTime() {}
+TianmuDateTime::~TianmuDateTime() {}
 
-RCDateTime &RCDateTime::operator=(const RCDateTime &rcv) {
+TianmuDateTime &TianmuDateTime::operator=(const TianmuDateTime &rcv) {
   *(int64_t *)&dt_ = *(int64_t *)&rcv.dt_;
   this->at_ = rcv.at_;
   this->null_ = rcv.null_;
   return *this;
 }
 
-RCDateTime &RCDateTime::operator=(const RCDataType &rcv) {
+TianmuDateTime &TianmuDateTime::operator=(const TianmuDataType &rcv) {
   if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
-    *this = (RCDateTime &)rcv;
+    *this = (TianmuDateTime &)rcv;
   else {
     TIANMU_ERROR("bad cast");
     null_ = true;
@@ -129,7 +129,7 @@ RCDateTime &RCDateTime::operator=(const RCDataType &rcv) {
   return *this;
 }
 
-RCDateTime &RCDateTime::Assign(int64_t v, common::CT at) {
+TianmuDateTime &TianmuDateTime::Assign(int64_t v, common::CT at) {
   this->at_ = at;
   null_ = (v == common::NULL_VALUE_64);
   if (null_)
@@ -139,13 +139,13 @@ RCDateTime &RCDateTime::Assign(int64_t v, common::CT at) {
   return *this;
 }
 
-int64_t RCDateTime::GetInt64() const {
+int64_t TianmuDateTime::GetInt64() const {
   if (null_)
     return common::NULL_VALUE_64;
   return *(int64_t *)&dt_;
 }
 
-bool RCDateTime::ToInt64(int64_t &value) const {
+bool TianmuDateTime::ToInt64(int64_t &value) const {
   if (!IsNull()) {
     if (at_ == common::CT::YEAR) {
       value = (int)dt_.year;
@@ -169,12 +169,12 @@ bool RCDateTime::ToInt64(int64_t &value) const {
   return false;
 }
 
-bool RCDateTime::IsZero() const { return *this == GetSpecialValue(Type()); }
+bool TianmuDateTime::IsZero() const { return *this == GetSpecialValue(Type()); }
 
-BString RCDateTime::ToBString() const {
+BString TianmuDateTime::ToBString() const {
   if (!IsNull()) {
-    BString rcs(0, 30, true);
-    char *buf = rcs.val_;
+    BString tianmu_s(0, 30, true);
+    char *buf = tianmu_s.val_;
     if (dt_.Neg())
       *buf++ = '-';
     if (at_ == common::CT::YEAR) {
@@ -188,17 +188,17 @@ BString RCDateTime::ToBString() const {
                    (int)std::abs(Day()), (int)Hour(), (int)Minute(), (int)Second(), (int)MicroSecond());
     } else
       TIANMU_ERROR("type not supported");
-    rcs.len_ = (uint)std::strlen(rcs.val_);
-    return rcs;
+    tianmu_s.len_ = (uint)std::strlen(tianmu_s.val_);
+    return tianmu_s;
   }
   return BString();
 }
 
-common::ErrorCode RCDateTime::Parse(const BString &rcs, RCDateTime &rcv, common::CT at) {
-  return ValueParserForText::ParseDateTime(rcs, rcv, at);
+common::ErrorCode TianmuDateTime::Parse(const BString &tianmu_s, TianmuDateTime &rcv, common::CT at) {
+  return ValueParserForText::ParseDateTime(tianmu_s, rcv, at);
 }
 
-common::ErrorCode RCDateTime::Parse(const int64_t &v, RCDateTime &rcv, common::CT at, int precision) {
+common::ErrorCode TianmuDateTime::Parse(const int64_t &v, TianmuDateTime &rcv, common::CT at, int precision) {
   int64_t tmp_v = v < 0 ? -v : v;
   int sign = 1;
   if (v < 0)
@@ -214,7 +214,7 @@ common::ErrorCode RCDateTime::Parse(const int64_t &v, RCDateTime &rcv, common::C
   if (at == common::CT::YEAR) {
     uint vv = (uint)v;
     vv = ToCorrectYear(vv, at, (precision >= 0 && precision < 4));
-    if (IsCorrectTIANMUYear((short)vv)) {
+    if (IsCorrectTianmuYear((short)vv)) {
       rcv.dt_.year = (short)vv;
       return common::ErrorCode::SUCCESS;
     }
@@ -238,7 +238,7 @@ common::ErrorCode RCDateTime::Parse(const int64_t &v, RCDateTime &rcv, common::C
       return common::ErrorCode::OUT_OF_RANGE;
     }
     rcv.dt_.year = vv;
-    if (sign == 1 && IsCorrectTIANMUDate(short(rcv.dt_.year), short(rcv.dt_.month), short(rcv.dt_.day)))
+    if (sign == 1 && IsCorrectTianmuDate(short(rcv.dt_.year), short(rcv.dt_.month), short(rcv.dt_.day)))
       return common::ErrorCode::SUCCESS;
   } else if (at == common::CT::TIME) {
     if (!CanBeSecond(tmp_v % 100)) {
@@ -254,22 +254,22 @@ common::ErrorCode RCDateTime::Parse(const int64_t &v, RCDateTime &rcv, common::C
     rcv.dt_.minute = tmp_v % 100;
     tmp_v /= 100;
 
-    if ((tmp_v * sign) > RC_TIME_MAX.Hour()) {
-      rcv = RC_TIME_MAX;
+    if ((tmp_v * sign) > kTianmuTimeMax.Hour()) {
+      rcv = kTianmuTimeMax;
       return common::ErrorCode::OUT_OF_RANGE;
-    } else if ((tmp_v * sign) < -RC_TIME_MIN.Hour()) {
-      rcv = RC_TIME_MIN;
+    } else if ((tmp_v * sign) < -kTianmuTimeMin.Hour()) {
+      rcv = kTianmuTimeMin;
       return common::ErrorCode::OUT_OF_RANGE;
     }
 
     rcv.dt_.hour = tmp_v;
 
-    if (IsCorrectTIANMUTime(short(rcv.dt_.hour * sign), short(rcv.dt_.minute * sign), short(rcv.dt_.second * sign))) {
+    if (IsCorrectTianmuTime(short(rcv.dt_.hour * sign), short(rcv.dt_.minute * sign), short(rcv.dt_.second * sign))) {
       if (sign == -1)
         rcv.dt_.neg = 1;
       return common::ErrorCode::SUCCESS;
     } else {
-      rcv = RC_TIME_SPEC;
+      rcv = kTianmuTimeSpec;
       return common::ErrorCode::VALUE_TRUNCATED;
     }
   } else if (at == common::CT::DATETIME || at == common::CT::TIMESTAMP) {
@@ -309,12 +309,12 @@ common::ErrorCode RCDateTime::Parse(const int64_t &v, RCDateTime &rcv, common::C
       rcv = GetSpecialValue(at);
       return common::ErrorCode::OUT_OF_RANGE;
     }
-    rcv.dt_.year = RCDateTime::ToCorrectYear((uint)tmp_v, at);
+    rcv.dt_.year = TianmuDateTime::ToCorrectYear((uint)tmp_v, at);
     if (sign == 1 && at == common::CT::DATETIME &&
-        IsCorrectTIANMUDatetime(rcv.dt_.year, rcv.dt_.month, rcv.dt_.day, rcv.dt_.hour, rcv.dt_.minute, rcv.dt_.second))
+        IsCorrectTianmuDatetime(rcv.dt_.year, rcv.dt_.month, rcv.dt_.day, rcv.dt_.hour, rcv.dt_.minute, rcv.dt_.second))
       return common::ErrorCode::SUCCESS;
     if (sign == 1 && at == common::CT::TIMESTAMP &&
-        IsCorrectTIANMUTimestamp(short(rcv.dt_.year), short(rcv.dt_.month), short(rcv.dt_.day), short(rcv.dt_.hour),
+        IsCorrectTianmuTimestamp(short(rcv.dt_.year), short(rcv.dt_.month), short(rcv.dt_.day), short(rcv.dt_.hour),
                                  short(rcv.dt_.minute), short(rcv.dt_.second)))
       return common::ErrorCode::SUCCESS;
   } else
@@ -324,58 +324,58 @@ common::ErrorCode RCDateTime::Parse(const int64_t &v, RCDateTime &rcv, common::C
   return common::ErrorCode::OUT_OF_RANGE;
 }
 
-bool RCDateTime::CanBeYear(int64_t year) {
+bool TianmuDateTime::CanBeYear(int64_t year) {
   if (year >= 0 && year <= 9999)
     return true;
   return false;
 }
 
-bool RCDateTime::CanBeMonth(int64_t month) {
+bool TianmuDateTime::CanBeMonth(int64_t month) {
   if (month >= 1 && month <= 12)
     return true;
   return false;
 }
 
-bool RCDateTime::CanBeDay(int64_t day) {
+bool TianmuDateTime::CanBeDay(int64_t day) {
   if (day >= 1 && day <= 31)
     return true;
   return false;
 }
 
-bool RCDateTime::CanBeHour(int64_t hour) {
+bool TianmuDateTime::CanBeHour(int64_t hour) {
   if (hour >= 0 && hour <= 23)
     return true;
   return false;
 }
 
-bool RCDateTime::CanBeMinute(int64_t minute) {
+bool TianmuDateTime::CanBeMinute(int64_t minute) {
   if (minute >= 0 && minute <= 59)
     return true;
   return false;
 }
 
-bool RCDateTime::CanBeSecond(int64_t second) { return RCDateTime::CanBeMinute(second); }
+bool TianmuDateTime::CanBeSecond(int64_t second) { return TianmuDateTime::CanBeMinute(second); }
 
-bool RCDateTime::CanBeDate(int64_t year, int64_t month, int64_t day) {
-  if (year == RC_DATE_SPEC.Year() && month == RC_DATE_SPEC.Month() && day == RC_DATE_SPEC.Day())
+bool TianmuDateTime::CanBeDate(int64_t year, int64_t month, int64_t day) {
+  if (year == kTianmuDateSpec.Year() && month == kTianmuDateSpec.Month() && day == kTianmuDateSpec.Day())
     return true;
   if (CanBeYear(year) && CanBeMonth(month) && (day > 0 && (day <= NoDaysInMonth((ushort)year, (ushort)month))))
     return true;
   return false;
 }
 
-bool RCDateTime::CanBeTime(int64_t hour, int64_t minute, int64_t second) {
-  if (hour == RC_TIME_SPEC.Hour() && minute == RC_TIME_SPEC.Minute() && second == RC_TIME_SPEC.Second())
+bool TianmuDateTime::CanBeTime(int64_t hour, int64_t minute, int64_t second) {
+  if (hour == kTianmuTimeSpec.Hour() && minute == kTianmuTimeSpec.Minute() && second == kTianmuTimeSpec.Second())
     return true;
   if (hour >= -838 && hour <= 838 && CanBeMinute(minute) && CanBeSecond(second))
     return true;
   return false;
 }
 
-bool RCDateTime::CanBeTimestamp(int64_t year, int64_t month, int64_t day, int64_t hour, int64_t minute,
+bool TianmuDateTime::CanBeTimestamp(int64_t year, int64_t month, int64_t day, int64_t hour, int64_t minute,
                                 int64_t second) {
-  if (year == RC_TIMESTAMP_SPEC.Year() && month == RC_TIMESTAMP_SPEC.Month() && day == RC_TIMESTAMP_SPEC.Day() &&
-      hour == RC_TIMESTAMP_SPEC.Hour() && minute == RC_TIMESTAMP_SPEC.Minute() && second == RC_TIMESTAMP_SPEC.Second())
+  if (year == kTianmuTimestampSpec.Year() && month == kTianmuTimestampSpec.Month() && day == kTianmuTimestampSpec.Day() &&
+      hour == kTianmuTimestampSpec.Hour() && minute == kTianmuTimestampSpec.Minute() && second == kTianmuTimestampSpec.Second())
     return true;
   if (CanBeYear(year) && CanBeMonth(month) && (day > 0 && (day <= NoDaysInMonth((ushort)year, (ushort)month))) &&
       CanBeHour(hour) && CanBeMinute(minute) && CanBeSecond(second))
@@ -383,9 +383,9 @@ bool RCDateTime::CanBeTimestamp(int64_t year, int64_t month, int64_t day, int64_
   return false;
 }
 
-bool RCDateTime::CanBeDatetime(int64_t year, int64_t month, int64_t day, int64_t hour, int64_t minute, int64_t second) {
-  if (year == RC_DATETIME_SPEC.Year() && month == RC_DATETIME_SPEC.Month() && day == RC_DATETIME_SPEC.Day() &&
-      hour == RC_DATETIME_SPEC.Hour() && minute == RC_DATETIME_SPEC.Minute() && second == RC_DATETIME_SPEC.Second())
+bool TianmuDateTime::CanBeDatetime(int64_t year, int64_t month, int64_t day, int64_t hour, int64_t minute, int64_t second) {
+  if (year == kTianmuDatetimeSpec.Year() && month == kTianmuDatetimeSpec.Month() && day == kTianmuDatetimeSpec.Day() &&
+      hour == kTianmuDatetimeSpec.Hour() && minute == kTianmuDatetimeSpec.Minute() && second == kTianmuDatetimeSpec.Second())
     return true;
   if (CanBeYear(year) && CanBeMonth(month) && (day > 0 && (day <= NoDaysInMonth((ushort)year, (ushort)month))) &&
       CanBeHour(hour) && CanBeMinute(minute) && CanBeSecond(second))
@@ -393,23 +393,23 @@ bool RCDateTime::CanBeDatetime(int64_t year, int64_t month, int64_t day, int64_t
   return false;
 }
 
-bool RCDateTime::IsCorrectTIANMUYear(short year) {
-  return year == RC_YEAR_SPEC.Year() || (CanBeYear(year) && (year >= RC_YEAR_MIN.Year() && year <= RC_YEAR_MAX.Year()));
+bool TianmuDateTime::IsCorrectTianmuYear(short year) {
+  return year == kTianmuYearSpec.Year() || (CanBeYear(year) && (year >= kTianmuYearMin.Year() && year <= kTianmuYearMax.Year()));
 }
 
-bool RCDateTime::IsCorrectTIANMUDate(short year, short month, short day) {
-  if (year == RC_DATE_SPEC.Year() && month == RC_DATE_SPEC.Month() && day == RC_DATE_SPEC.Day())
+bool TianmuDateTime::IsCorrectTianmuDate(short year, short month, short day) {
+  if (year == kTianmuDateSpec.Year() && month == kTianmuDateSpec.Month() && day == kTianmuDateSpec.Day())
     return true;
   if (CanBeYear(year) && CanBeMonth(month) && (day > 0 && (day <= NoDaysInMonth(year, month)))) {
-    if (((year >= RC_DATE_MIN.Year() && month >= RC_DATE_MIN.Month() && day >= RC_DATE_MIN.Day()) &&
-         (year <= RC_DATE_MAX.Year() && month <= RC_DATE_MAX.Month() && day <= RC_DATE_MAX.Day())))
+    if (((year >= kTianmuDateMin.Year() && month >= kTianmuDateMin.Month() && day >= kTianmuDateMin.Day()) &&
+         (year <= kTianmuDateMax.Year() && month <= kTianmuDateMax.Month() && day <= kTianmuDateMax.Day())))
       return true;
   }
   return false;
 }
 
-bool RCDateTime::IsCorrectTIANMUTime(short hour, short minute, short second) {
-  if (hour == RC_TIME_SPEC.Hour() && minute == RC_TIME_SPEC.Minute() && second == RC_TIME_SPEC.Second())
+bool TianmuDateTime::IsCorrectTianmuTime(short hour, short minute, short second) {
+  if (hour == kTianmuTimeSpec.Hour() && minute == kTianmuTimeSpec.Minute() && second == kTianmuTimeSpec.Second())
     return true;
   bool haspositive = false;
   bool hasnegative = false;
@@ -421,41 +421,41 @@ bool RCDateTime::IsCorrectTIANMUTime(short hour, short minute, short second) {
   if (hasnegative == haspositive && (hour != 0 || minute != 0 || second != 0))
     return false;
 
-  if (hour >= -RC_TIME_MIN.Hour() && hour <= RC_TIME_MAX.Hour() && (CanBeMinute(minute) || CanBeMinute(-minute)) &&
+  if (hour >= -kTianmuTimeMin.Hour() && hour <= kTianmuTimeMax.Hour() && (CanBeMinute(minute) || CanBeMinute(-minute)) &&
       (CanBeSecond(second) || CanBeSecond(-second)))
     return true;
   return false;
 }
 
-bool RCDateTime::IsCorrectTIANMUTimestamp(short year, short month, short day, short hour, short minute, short second) {
-  if (year == RC_TIMESTAMP_SPEC.Year() && month == RC_TIMESTAMP_SPEC.Month() && day == RC_TIMESTAMP_SPEC.Day() &&
-      hour == RC_TIMESTAMP_SPEC.Hour() && minute == RC_TIMESTAMP_SPEC.Minute() && second == RC_TIMESTAMP_SPEC.Second())
+bool TianmuDateTime::IsCorrectTianmuTimestamp(short year, short month, short day, short hour, short minute, short second) {
+  if (year == kTianmuTimestampSpec.Year() && month == kTianmuTimestampSpec.Month() && day == kTianmuTimestampSpec.Day() &&
+      hour == kTianmuTimestampSpec.Hour() && minute == kTianmuTimestampSpec.Minute() && second == kTianmuTimestampSpec.Second())
     return true;
   if (CanBeYear(year) && CanBeMonth(month) && (day > 0 && (day <= NoDaysInMonth(year, month))) && CanBeHour(hour) &&
       CanBeMinute(minute) && CanBeSecond(second)) {
-    RCDateTime rcdt(year, month, day, hour, minute, second, common::CT::TIMESTAMP);
-    if (rcdt >= RC_TIMESTAMP_MIN && rcdt <= RC_TIMESTAMP_MAX)
+    TianmuDateTime tianmu_dt(year, month, day, hour, minute, second, common::CT::TIMESTAMP);
+    if (tianmu_dt >= kTianmuTimestampMin && tianmu_dt <= kTianmuTimestampMax)
       return true;
   }
   return false;
 }
 
-bool RCDateTime::IsCorrectTIANMUDatetime(short year, short month, short day, short hour, short minute, short second) {
-  if (year == RC_DATETIME_SPEC.Year() && month == RC_DATETIME_SPEC.Month() && day == RC_DATETIME_SPEC.Day() &&
-      hour == RC_DATETIME_SPEC.Hour() && minute == RC_DATETIME_SPEC.Minute() && second == RC_DATETIME_SPEC.Second())
+bool TianmuDateTime::IsCorrectTianmuDatetime(short year, short month, short day, short hour, short minute, short second) {
+  if (year == kTianmuDatetimeSpec.Year() && month == kTianmuDatetimeSpec.Month() && day == kTianmuDatetimeSpec.Day() &&
+      hour == kTianmuDatetimeSpec.Hour() && minute == kTianmuDatetimeSpec.Minute() && second == kTianmuDatetimeSpec.Second())
     return true;
   if (CanBeYear(year) && CanBeMonth(month) && (day > 0 && (day <= NoDaysInMonth(year, month))) && CanBeHour(hour) &&
       CanBeMinute(minute) && CanBeSecond(second)) {
-    if ((year >= RC_DATETIME_MIN.Year() && month >= RC_DATETIME_MIN.Month() && day >= RC_DATETIME_MIN.Day() &&
-         hour >= RC_DATETIME_MIN.Hour() && minute >= RC_DATETIME_MIN.Minute() && second >= RC_DATETIME_MIN.Second()) &&
-        (year <= RC_DATETIME_MAX.Year() && month <= RC_DATETIME_MAX.Month() && day <= RC_DATETIME_MAX.Day() &&
-         hour <= RC_DATETIME_MAX.Hour() && minute <= RC_DATETIME_MAX.Minute() && second <= RC_DATETIME_MAX.Second()))
+    if ((year >= kTianmuDatetimeMin.Year() && month >= kTianmuDatetimeMin.Month() && day >= kTianmuDatetimeMin.Day() &&
+         hour >= kTianmuDatetimeMin.Hour() && minute >= kTianmuDatetimeMin.Minute() && second >= kTianmuDatetimeMin.Second()) &&
+        (year <= kTianmuDatetimeMax.Year() && month <= kTianmuDatetimeMax.Month() && day <= kTianmuDatetimeMax.Day() &&
+         hour <= kTianmuDatetimeMax.Hour() && minute <= kTianmuDatetimeMax.Minute() && second <= kTianmuDatetimeMax.Second()))
       return true;
   }
   return false;
 }
 
-bool RCDateTime::IsLeapYear(short year) {
+bool TianmuDateTime::IsLeapYear(short year) {
   if (year == 0)
     return false;
   if (!CanBeYear(year))
@@ -463,7 +463,7 @@ bool RCDateTime::IsLeapYear(short year) {
   return ((year & 3) == 0 && year % 100) || ((year & 3) == 0 && year % 400 == 0);
 }
 
-ushort RCDateTime::NoDaysInMonth(short year, ushort month) {
+ushort TianmuDateTime::NoDaysInMonth(short year, ushort month) {
   static const ushort no_days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
   if (!CanBeYear(year) || !CanBeMonth(month))
@@ -473,7 +473,7 @@ ushort RCDateTime::NoDaysInMonth(short year, ushort month) {
   return no_days[month - 1];
 }
 
-short RCDateTime::ToCorrectYear(uint v, common::CT at, bool is_year_2 /*= false*/) {
+short TianmuDateTime::ToCorrectYear(uint v, common::CT at, bool is_year_2 /*= false*/) {
   switch (at) {
     case common::CT::YEAR:
       if (v == 0 && is_year_2)  // 0 for year(2) corresponds to 2000
@@ -501,94 +501,94 @@ short RCDateTime::ToCorrectYear(uint v, common::CT at, bool is_year_2 /*= false*
   return 0;  // to avoid errors in release version
 }
 
-RCDateTime RCDateTime::GetSpecialValue(common::CT at) {
+TianmuDateTime TianmuDateTime::GetSpecialValue(common::CT at) {
   switch (at) {
     case common::CT::YEAR:
-      return RC_YEAR_SPEC;
+      return kTianmuYearSpec;
     case common::CT::TIME:
-      return RC_TIME_SPEC;
+      return kTianmuTimeSpec;
     case common::CT::DATE:
-      return RC_DATE_SPEC;
+      return kTianmuDateSpec;
     case common::CT::DATETIME:
-      return RC_DATETIME_SPEC;
+      return kTianmuDatetimeSpec;
     case common::CT::TIMESTAMP:
-      return RC_TIMESTAMP_SPEC;
+      return kTianmuTimestampSpec;
     default:
       TIANMU_ERROR("type not supported");
   }
-  return RC_DATETIME_SPEC;  // to avoid errors in release version
+  return kTianmuDatetimeSpec;  // to avoid errors in release version
 }
 
-RCDateTime RCDateTime::GetCurrent() {
+TianmuDateTime TianmuDateTime::GetCurrent() {
   time_t const curr = time(0);
   tm const tmt = *localtime(&curr);
-  RCDateTime rcdt(tmt.tm_year + 1900, tmt.tm_mon + 1, tmt.tm_mday, tmt.tm_hour, tmt.tm_min, tmt.tm_sec,
+  TianmuDateTime tianmu_dt(tmt.tm_year + 1900, tmt.tm_mon + 1, tmt.tm_mday, tmt.tm_hour, tmt.tm_min, tmt.tm_sec,
                   common::CT::DATETIME);
-  return rcdt;
+  return tianmu_dt;
 }
 
-bool RCDateTime::operator==(const RCDataType &rcv) const {
+bool TianmuDateTime::operator==(const TianmuDataType &rcv) const {
   if (!AreComparable(at_, rcv.Type()) || IsNull() || rcv.IsNull())
     return false;
   if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
-    return compare((RCDateTime &)rcv) == 0;
+    return compare((TianmuDateTime &)rcv) == 0;
   else if (rcv.GetValueType() == ValueTypeEnum::NUMERIC_TYPE) {
-    return compare((RCNum &)rcv) == 0;
+    return compare((TianmuNum &)rcv) == 0;
   }
   return false;
 }
 
-bool RCDateTime::operator<(const RCDataType &rcv) const {
+bool TianmuDateTime::operator<(const TianmuDataType &rcv) const {
   if (!AreComparable(at_, rcv.Type()) || IsNull() || rcv.IsNull())
     return false;
   if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
-    return compare((RCDateTime &)rcv) < 0;
+    return compare((TianmuDateTime &)rcv) < 0;
   else if (rcv.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
-    return compare((RCNum &)rcv) < 0;
+    return compare((TianmuNum &)rcv) < 0;
   return false;
 }
 
-bool RCDateTime::operator>(const RCDataType &rcv) const {
+bool TianmuDateTime::operator>(const TianmuDataType &rcv) const {
   if (!AreComparable(at_, rcv.Type()) || IsNull() || rcv.IsNull())
     return false;
   if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
-    return compare((RCDateTime &)rcv) > 0;
+    return compare((TianmuDateTime &)rcv) > 0;
   else if (rcv.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
-    return compare((RCNum &)rcv) > 0;
+    return compare((TianmuNum &)rcv) > 0;
   return false;
 }
 
-bool RCDateTime::operator>=(const RCDataType &rcv) const {
+bool TianmuDateTime::operator>=(const TianmuDataType &rcv) const {
   if (!AreComparable(at_, rcv.Type()) || IsNull() || rcv.IsNull())
     return false;
   if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
-    return compare((RCDateTime &)rcv) >= 0;
+    return compare((TianmuDateTime &)rcv) >= 0;
   else if (rcv.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
-    return compare((RCNum &)rcv) >= 0;
+    return compare((TianmuNum &)rcv) >= 0;
   return false;
 }
 
-bool RCDateTime::operator<=(const RCDataType &rcv) const {
+bool TianmuDateTime::operator<=(const TianmuDataType &rcv) const {
   if (!AreComparable(at_, rcv.Type()) || IsNull() || rcv.IsNull())
     return false;
   if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
-    return compare((RCDateTime &)rcv) <= 0;
+    return compare((TianmuDateTime &)rcv) <= 0;
   else if (rcv.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
-    return compare((RCNum &)rcv) <= 0;
+    return compare((TianmuNum &)rcv) <= 0;
   return false;
 }
 
-bool RCDateTime::operator!=(const RCDataType &rcv) const {
+bool TianmuDateTime::operator!=(const TianmuDataType &rcv) const {
   if (!AreComparable(at_, rcv.Type()) || IsNull() || rcv.IsNull())
     return false;
   if (rcv.GetValueType() == ValueTypeEnum::DATE_TIME_TYPE)
-    return compare((RCDateTime &)rcv) != 0;
+    return compare((TianmuDateTime &)rcv) != 0;
   else if (rcv.GetValueType() == ValueTypeEnum::NUMERIC_TYPE)
-    return compare((RCNum &)rcv) != 0;
+    return compare((TianmuNum &)rcv) != 0;
   return false;
 }
 
-int64_t RCDateTime::operator-(const RCDateTime &sec) const {
+int64_t TianmuDateTime::operator-(const TianmuDateTime &sec) const {
   if (at_ != common::CT::DATE || sec.at_ != common::CT::DATE || IsNull() || sec.IsNull())
     return common::NULL_VALUE_64;
   int64_t result = 0;  // span in days for [sec., ..., this]
@@ -630,28 +630,28 @@ int64_t RCDateTime::operator-(const RCDateTime &sec) const {
   return notless_than_sec ? result : -result;
 }
 
-common::CT RCDateTime::Type() const { return at_; }
+common::CT TianmuDateTime::Type() const { return at_; }
 
-uint RCDateTime::GetHashCode() const {
+uint TianmuDateTime::GetHashCode() const {
   uint64_t v = *(uint64_t *)&dt_;
   return (uint)(v >> 32) + (uint)(v) /*+ *(short*)&tz*/;
 }
 
-int RCDateTime::compare(const RCDateTime &rcv) const {
+int TianmuDateTime::compare(const TianmuDateTime &rcv) const {
   int64_t v1 = *(int64_t *)&dt_;
   int64_t v2 = *(int64_t *)&rcv.dt_;
   return (v1 < v2 ? -1 : (v1 > v2 ? 1 : 0));
 }
 
-int RCDateTime::compare(const RCNum &rcv) const {
+int TianmuDateTime::compare(const TianmuNum &rcv) const {
   if (IsNull() || rcv.IsNull())
     return false;
   int64_t tmp;
   ToInt64(tmp);
-  return int(tmp - ((RCNum &)rcv).GetIntPart());
+  return int(tmp - ((TianmuNum &)rcv).GetIntPart());
 }
 
-void RCDateTime::AdjustTimezone(RCDateTime &dt) {
+void TianmuDateTime::AdjustTimezone(TianmuDateTime &dt) {
   // timezone conversion
   if (!dt.IsZero()) {
     auto thd = current_txn_->Thd();
@@ -686,7 +686,7 @@ void RCDateTime::AdjustTimezone(RCDateTime &dt) {
     struct tm utc_t;
     gmtime_r(&secs, &utc_t);
     // UTC time stored on server
-    dt = RCDateTime((utc_t.tm_year + 1900) % 10000, utc_t.tm_mon + 1, utc_t.tm_mday, utc_t.tm_hour, utc_t.tm_min,
+    dt = TianmuDateTime((utc_t.tm_year + 1900) % 10000, utc_t.tm_mon + 1, utc_t.tm_mday, utc_t.tm_hour, utc_t.tm_min,
                     utc_t.tm_sec, common::CT::TIMESTAMP);
     dt.dt_.microsecond = t.second_part;
   }

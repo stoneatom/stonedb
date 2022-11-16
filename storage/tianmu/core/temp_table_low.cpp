@@ -30,7 +30,7 @@
 #include "exporter/data_exporter.h"
 #include "system/fet.h"
 #include "system/io_parameters.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #include "system/txt_utils.h"
 #include "types/value_parser4txt.h"
 #include "util/thread_pool.h"
@@ -175,7 +175,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
 
       local_row++;
       if (local_row % 10000000 == 0)
-        rc_control_.lock(m_conn->GetThreadID())
+        tianmu_control_.lock(m_conn->GetThreadID())
             << "Preparing values to sort (" << int(local_row / double(filter.mind->NumOfTuples()) * 100) << "% done)."
             << system::unlock;
     }
@@ -211,7 +211,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
 
     utils::result_set<size_t> res;
     for (int i = 0; i < task_num; i++)
-      res.insert(ha_rcengine_->query_thread_pool.add_task(&TempTable::TaskPutValueInST, this, &taskIterator[i],
+      res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&TempTable::TaskPutValueInST, this, &taskIterator[i],
                                                           current_txn_, &subsorted_table[i]));
     if (filter.mind->m_conn->Killed())
       throw common::KilledException("Query killed by user");
@@ -279,7 +279,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
         local_row++;
         ++produced_rows;
         if ((global_row - offset + 1) % 10000000 == 0)
-          rc_control_.lock(m_conn->GetThreadID())
+          tianmu_control_.lock(m_conn->GetThreadID())
               << "Retrieving sorted rows (" << int((global_row - offset) / double(limit - offset) * 100) << "% done)."
               << system::unlock;
       } else if (valid)
@@ -299,7 +299,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
       local_row = 0;
     }
   } while (valid && global_row < limit + offset);
-  rc_control_.lock(m_conn->GetThreadID()) << "Sorted end, rows retrieved." << system::unlock;
+  tianmu_control_.lock(m_conn->GetThreadID()) << "Sorted end, rows retrieved." << system::unlock;
 
   // TIANMU_LOG(LogCtl_Level::INFO, "OrderByAndMaterialize complete global_row %d, limit %d,
   // offset %d", global_row, limit, offset);
@@ -405,7 +405,7 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
     utils::result_set<void> res;
     for (uint i = 1; i < attrs.size(); i++) {
       if (!skip_parafilloutput[i]) {
-        res.insert(ha_rcengine_->query_thread_pool.add_task(&TempTable::FillbufferTask, this, attrs[i], current_txn_,
+        res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&TempTable::FillbufferTask, this, attrs[i], current_txn_,
                                                             &page_start, start_row, page_end));
       }
     }
@@ -459,7 +459,7 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
       first_row_for_vc = false;
     }
 
-    std::vector<std::unique_ptr<types::RCDataType>> record;
+    std::vector<std::unique_ptr<types::TianmuDataType>> record;
     for (uint att = 0; att < NumOfDisplaybleAttrs(); ++att) {
       Attr *col = GetDisplayableAttrP(att);
       common::CT ct = col->TypeName();
@@ -467,21 +467,21 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
       auto vc = col->term.vc;
       if (ct == common::CT::INT || ct == common::CT::MEDIUMINT || ct == common::CT::SMALLINT ||
           ct == common::CT::BYTEINT || ct == common::CT::NUM || ct == common::CT::BIGINT) {
-        auto data_ptr = new types::RCNum();
+        auto data_ptr = new types::TianmuNum();
         if (vc->IsNull(it))
           data_ptr->SetToNull();
         else
           data_ptr->Assign(vc->GetValueInt64(it), col->Type().GetScale(), false, ct);
         record.emplace_back(data_ptr);
       } else if (ATI::IsRealType(ct)) {
-        auto data_ptr = new types::RCNum();
+        auto data_ptr = new types::TianmuNum();
         if (vc->IsNull(it))
           data_ptr->SetToNull();
         else
           data_ptr->Assign(vc->GetValueDouble(it));
         record.emplace_back(data_ptr);
       } else if (ATI::IsDateTimeType(ct)) {
-        auto data_ptr = new types::RCDateTime();
+        auto data_ptr = new types::TianmuDateTime();
         if (vc->IsNull(it))
           data_ptr->SetToNull();
         else
@@ -583,7 +583,7 @@ size_t TempTable::TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrappe
 
     local_row++;
     if (local_row % 10000000 == 0)
-      rc_control_.lock(m_conn->GetThreadID())
+      tianmu_control_.lock(m_conn->GetThreadID())
           << "Preparing values to sort (" << int(local_row / double(filter.mind->NumOfTuples()) * 100) << "% done)."
           << system::unlock;
   }

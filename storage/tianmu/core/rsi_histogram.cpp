@@ -19,7 +19,7 @@
 
 #include "core/pack.h"
 #include "core/rsi_histogram.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #include "system/tianmu_file.h"
 
 namespace Tianmu {

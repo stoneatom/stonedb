@@ -18,24 +18,24 @@
 #include "core/value_or_null.h"
 
 #include "common/assert.h"
-#include "types/rc_num.h"
+#include "types/tianmu_num.h"
 
 namespace Tianmu {
 namespace core {
-void ValueOrNull::SetBString(const types::BString &rcs) {
+void ValueOrNull::SetBString(const types::BString &tianmu_s) {
   Clear();
-  if (!rcs.IsNull()) {
+  if (!tianmu_s.IsNull()) {
     null = false;
-    if (rcs.IsPersistent()) {
+    if (tianmu_s.IsPersistent()) {
       string_owner = true;
-      sp = new char[rcs.len_ + 1];
-      std::memcpy(sp, rcs.val_, rcs.len_);
-      sp[rcs.len_] = 0;
+      sp = new char[tianmu_s.len_ + 1];
+      std::memcpy(sp, tianmu_s.val_, tianmu_s.len_);
+      sp[tianmu_s.len_] = 0;
     } else {
-      sp = rcs.val_;
+      sp = tianmu_s.val_;
       string_owner = false;
     }
-    len = rcs.len_;
+    len = tianmu_s.len_;
   }
 }
 
@@ -56,17 +56,17 @@ std::optional<std::string> ValueOrNull::ToString() const {
   return std::string(sp, len);
 }
 
-void ValueOrNull::GetBString(types::BString &rcs) const {
+void ValueOrNull::GetBString(types::BString &tianmu_s) const {
   if (null) {
     types::BString rcs_null;
-    rcs = rcs_null;
+    tianmu_s = rcs_null;
   } else {
     // copy either from sp or x
     if (sp)
-      rcs = types::BString(sp, len, true);
+      tianmu_s = types::BString(sp, len, true);
     else
-      rcs = types::RCNum(x).ToBString();
-    rcs.MakePersistent();
+      tianmu_s = types::TianmuNum(x).ToBString();
+    tianmu_s.MakePersistent();
   }
 }
 
@@ -90,13 +90,13 @@ ValueOrNull &ValueOrNull::operator=(ValueOrNull const &von) {
   return (*this);
 }
 
-ValueOrNull::ValueOrNull(types::RCNum const &rcn) : x(rcn.GetValueInt64()), null(rcn.IsNull()) {}
+ValueOrNull::ValueOrNull(types::TianmuNum const &tianmu_n) : x(tianmu_n.GetValueInt64()), null(tianmu_n.IsNull()) {}
 
-ValueOrNull::ValueOrNull(types::RCDateTime const &rcdt) : x(rcdt.GetInt64()), null(rcdt.IsNull()) {}
+ValueOrNull::ValueOrNull(types::TianmuDateTime const &tianmu_dt) : x(tianmu_dt.GetInt64()), null(tianmu_dt.IsNull()) {}
 
-ValueOrNull::ValueOrNull(types::BString const &rcs)
-    : x(common::NULL_VALUE_64), sp(new char[rcs.len_ + 1]), len(rcs.len_), string_owner(true), null(rcs.IsNull()) {
-  std::memcpy(sp, rcs.val_, len);
+ValueOrNull::ValueOrNull(types::BString const &tianmu_s)
+    : x(common::NULL_VALUE_64), sp(new char[tianmu_s.len_ + 1]), len(tianmu_s.len_), string_owner(true), null(tianmu_s.IsNull()) {
+  std::memcpy(sp, tianmu_s.val_, len);
   sp[len] = 0;
 }
 

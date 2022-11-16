@@ -15,7 +15,7 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "rc_item_types.h"
+#include "tianmu_item_types.h"
 
 #include "common/common_definitions.h"
 #include "item_sum.h"
@@ -23,49 +23,49 @@
 namespace Tianmu {
 namespace types {
 
-Item_sum_int_rcbase::Item_sum_int_rcbase() : Item_sum_num() {}
-Item_sum_int_rcbase::~Item_sum_int_rcbase() {}
+ItemSumInTianmuBase::ItemSumInTianmuBase() : ItemSumNum() {}
+ItemSumInTianmuBase::~ItemSumInTianmuBase() {}
 
-longlong Item_sum_int_rcbase::val_int() {
+longlong ItemSumInTianmuBase::val_int() {
   DEBUG_ASSERT(fixed == 1);
   return (longlong)count_;
 }
 
-String *Item_sum_int_rcbase::val_str([[maybe_unused]] String *str) { return nullptr; }
-my_decimal *Item_sum_int_rcbase::val_decimal(my_decimal *) { return nullptr; }
+String *ItemSumInTianmuBase::val_str([[maybe_unused]] String *str) { return nullptr; }
+my_decimal *ItemSumInTianmuBase::val_decimal(my_decimal *) { return nullptr; }
 
-void Item_sum_int_rcbase::int64_value(int64_t &value) {
+void ItemSumInTianmuBase::int64_value(int64_t &value) {
   fixed = 1;
   count_ = value;
 }
 
-void Item_sum_int_rcbase::clear() {}
-bool Item_sum_int_rcbase::add() { return 0; }
-void Item_sum_int_rcbase::update_field() {}
+void ItemSumInTianmuBase::clear() {}
+bool ItemSumInTianmuBase::add() { return 0; }
+void ItemSumInTianmuBase::update_field() {}
 
-Item_sum_sum_rcbase::Item_sum_sum_rcbase() : Item_sum_num() { sum_ = 0; }
-Item_sum_sum_rcbase::~Item_sum_sum_rcbase() {}
+ItemSumSumTianmuBase::ItemSumSumTianmuBase() : ItemSumNum() { sum_ = 0; }
+ItemSumSumTianmuBase::~ItemSumSumTianmuBase() {}
 
-double Item_sum_sum_rcbase::val_real() {
+double ItemSumSumTianmuBase::val_real() {
   DEBUG_ASSERT(fixed == 1);
   if (hybrid_type_ == DECIMAL_RESULT)
     my_decimal2double(E_DEC_FATAL_ERROR, decimal_buffs_, &sum_);
   return sum_;
 }
 
-my_decimal *Item_sum_sum_rcbase::val_decimal(my_decimal *val) {
+my_decimal *ItemSumSumTianmuBase::val_decimal(my_decimal *val) {
   if (hybrid_type_ == DECIMAL_RESULT)
     return decimal_buffs_;
   return val_decimal_from_real(val);
 }
 
-String *Item_sum_sum_rcbase::val_str(String *str) {
+String *ItemSumSumTianmuBase::val_str(String *str) {
   if (hybrid_type_ == DECIMAL_RESULT)
     return val_string_from_decimal(str);
   return val_string_from_real(str);
 }
 
-longlong Item_sum_sum_rcbase::val_int() {
+longlong ItemSumSumTianmuBase::val_int() {
   DEBUG_ASSERT(fixed == 1);
   if (hybrid_type_ == DECIMAL_RESULT) {
     longlong result;
@@ -75,26 +75,26 @@ longlong Item_sum_sum_rcbase::val_int() {
   return (longlong)rint(val_real());
 }
 
-my_decimal *Item_sum_sum_rcbase::dec_value() {
+my_decimal *ItemSumSumTianmuBase::dec_value() {
   fixed = 1;
   return decimal_buffs_;
 }
 
-double &Item_sum_sum_rcbase::real_value() {
+double &ItemSumSumTianmuBase::real_value() {
   fixed = 1;
   return sum_;
 }
 
-void Item_sum_sum_rcbase::real_value(double &val) {
+void ItemSumSumTianmuBase::real_value(double &val) {
   fixed = 1;
   sum_ = val;
 }
 
-void Item_sum_sum_rcbase::clear() {}
-bool Item_sum_sum_rcbase::add() { return false; }
-void Item_sum_sum_rcbase::update_field() {}
+void ItemSumSumTianmuBase::clear() {}
+bool ItemSumSumTianmuBase::add() { return false; }
+void ItemSumSumTianmuBase::update_field() {}
 
-Item_sum_hybrid_rcbase::Item_sum_hybrid_rcbase() : Item_sum() {
+ItemSumHybridTianmuBase::ItemSumHybridTianmuBase() : Item_sum() {
   is_values_ = true;
   sum_longint_ = 0;
   my_decimal_set_zero(&sum_decimal_);
@@ -103,9 +103,9 @@ Item_sum_hybrid_rcbase::Item_sum_hybrid_rcbase() : Item_sum() {
   null_value = 1;
 }
 
-Item_sum_hybrid_rcbase::~Item_sum_hybrid_rcbase() {}
+ItemSumHybridTianmuBase::~ItemSumHybridTianmuBase() {}
 
-void Item_sum_hybrid_rcbase::clear() {
+void ItemSumHybridTianmuBase::clear() {
   switch (hybrid_type_) {
     case INT_RESULT:
       sum_longint_ = 0;
@@ -122,7 +122,7 @@ void Item_sum_hybrid_rcbase::clear() {
   null_value = 1;
 }
 
-double Item_sum_hybrid_rcbase::val_real() {
+double ItemSumHybridTianmuBase::val_real() {
   DEBUG_ASSERT(fixed == 1);
   if (null_value)
     return 0.0;
@@ -151,7 +151,7 @@ double Item_sum_hybrid_rcbase::val_real() {
   }
 }
 
-longlong Item_sum_hybrid_rcbase::val_int() {
+longlong ItemSumHybridTianmuBase::val_int() {
   DEBUG_ASSERT(fixed == 1);
   if (null_value)
     return 0;
@@ -164,11 +164,11 @@ longlong Item_sum_hybrid_rcbase::val_int() {
       return result;
     }
     default:
-      return (longlong)rint(Item_sum_hybrid_rcbase::val_real());
+      return (longlong)rint(ItemSumHybridTianmuBase::val_real());
   }
 }
 
-my_decimal *Item_sum_hybrid_rcbase::val_decimal(my_decimal *val) {
+my_decimal *ItemSumHybridTianmuBase::val_decimal(my_decimal *val) {
   DEBUG_ASSERT(fixed == 1);
   if (null_value)
     return 0;
@@ -194,7 +194,7 @@ my_decimal *Item_sum_hybrid_rcbase::val_decimal(my_decimal *val) {
   return val;  // Keep compiler happy
 }
 
-String *Item_sum_hybrid_rcbase::val_str(String *str) {
+String *ItemSumHybridTianmuBase::val_str(String *str) {
   DEBUG_ASSERT(fixed == 1);
   if (null_value)
     return (String *)0;
@@ -222,26 +222,26 @@ String *Item_sum_hybrid_rcbase::val_str(String *str) {
   return str;  // Keep compiler happy
 }
 
-my_decimal *Item_sum_hybrid_rcbase::dec_value() {
+my_decimal *ItemSumHybridTianmuBase::dec_value() {
   fixed = 1;
   return &sum_decimal_;
 }
-double &Item_sum_hybrid_rcbase::real_value() {
+double &ItemSumHybridTianmuBase::real_value() {
   fixed = 1;
   return sum_;
 }
 
-int64_t &Item_sum_hybrid_rcbase::int64_value() {
+int64_t &ItemSumHybridTianmuBase::int64_value() {
   fixed = 1;
   return (int64_t &)sum_longint_;
 }
-String *Item_sum_hybrid_rcbase::string_value() {
+String *ItemSumHybridTianmuBase::string_value() {
   fixed = 1;
   return &value_;
 }
 
-bool Item_sum_hybrid_rcbase::add() { return false; }
-void Item_sum_hybrid_rcbase::update_field() {}
+bool ItemSumHybridTianmuBase::add() { return false; }
+void ItemSumHybridTianmuBase::update_field() {}
 
 }  // namespace types
 }  // namespace Tianmu

@@ -24,8 +24,8 @@
 #include "common/exception.h"
 #include "core/engine.h"
 #include "core/pack_guardian.h"
-#include "core/rc_attr.h"
-#include "core/rc_table.h"
+#include "core/tianmu_attr.h"
+#include "core/tianmu_table.h"
 #include "core/table_share.h"
 #include "core/transaction.h"
 #include "handler/ha_tianmu.h"
@@ -41,7 +41,7 @@
 
 namespace Tianmu {
 namespace core {
-uint32_t RCTable::GetTableId(const fs::path &dir) {
+uint32_t TianmuTable::GetTableId(const fs::path &dir) {
   TABLE_META meta;
   system::TianmuFile f;
   f.OpenReadOnly(dir / common::TABLE_DESC_FILE);
@@ -49,8 +49,8 @@ uint32_t RCTable::GetTableId(const fs::path &dir) {
   return meta.id;
 }
 
-void RCTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
-  uint32_t tid = ha_rcengine_->GetNextTableId();
+void TianmuTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
+  uint32_t tid = ha_tianmu_engine_->GetNextTableId();
   auto &path(opt->path);
   uint32_t no_attrs = opt->atis.size();
 
@@ -87,13 +87,13 @@ void RCTable::CreateNew(const std::shared_ptr<TableOption> &opt) {
     auto lnk = column_path / std::to_string(idx);
     fs::create_symlink(dir, lnk);
 
-    RCAttr::Create(lnk, opt->atis[idx], opt->pss, 0);
+    TianmuAttr::Create(lnk, opt->atis[idx], opt->pss, 0);
     // TIANMU_LOG(LogCtl_Level::INFO, "Column %zu at %s", idx, dir.c_str());
   }
   TIANMU_LOG(LogCtl_Level::INFO, "Create table %s, ID = %u", opt->path.c_str(), tid);
 }
 
-void RCTable::Alter(const std::string &table_path, std::vector<Field *> &new_cols, std::vector<Field *> &old_cols,
+void TianmuTable::Alter(const std::string &table_path, std::vector<Field *> &new_cols, std::vector<Field *> &old_cols,
                     size_t no_objs) {
   fs::path tmp_dir = table_path + ".tmp";
   fs::path tab_dir = table_path + common::TIANMU_EXT;
@@ -106,7 +106,7 @@ void RCTable::Alter(const std::string &table_path, std::vector<Field *> &new_col
   system::TianmuFile f;
   f.OpenReadOnly(tab_dir / common::TABLE_DESC_FILE);
   f.ReadExact(&meta, sizeof(meta));
-  meta.id = ha_rcengine_->GetNextTableId();  // only table id is updated
+  meta.id = ha_tianmu_engine_->GetNextTableId();  // only table id is updated
 
   system::TianmuFile tempf;
   tempf.OpenReadWrite(tmp_dir / common::TABLE_DESC_FILE);
@@ -141,7 +141,7 @@ void RCTable::Alter(const std::string &table_path, std::vector<Field *> &new_col
     dir /= std::to_string(meta.id) + "." + std::to_string(i);
     fs::create_directory(dir);
     fs::create_symlink(dir, column_dir);
-    RCAttr::Create(column_dir, Engine::GetAttrTypeInfo(*new_cols[i]), meta.pss, no_objs);
+    TianmuAttr::Create(column_dir, Engine::GetAttrTypeInfo(*new_cols[i]), meta.pss, no_objs);
     TIANMU_LOG(LogCtl_Level::INFO, "Add column %s at %s", new_cols[i]->field_name, dir.c_str());
   }
   {
@@ -154,12 +154,12 @@ void RCTable::Alter(const std::string &table_path, std::vector<Field *> &new_col
   TIANMU_LOG(LogCtl_Level::INFO, "Altered table %s", table_path.c_str());
 }
 
-void RCTable::Truncate() {
+void TianmuTable::Truncate() {
   for (auto &attr : m_attrs) attr->Truncate();
   m_mem_table->Truncate(m_tx);
 }
 
-RCTable::RCTable(std::string const &p, TableShare *s, Transaction *tx) : share(s), m_tx(tx), m_path(p) {
+TianmuTable::TianmuTable(std::string const &p, TableShare *s, Transaction *tx) : share(s), m_tx(tx), m_path(p) {
   db_name = m_path.parent_path().filename().string();
 
   if (!fs::exists(m_path)) {
@@ -179,7 +179,7 @@ RCTable::RCTable(std::string const &p, TableShare *s, Transaction *tx) : share(s
 
   for (uint32_t i = 0; i < share->NumOfCols(); i++) {
     auto &attr = m_attrs.emplace_back(
-        std::make_unique<RCAttr>(m_tx, m_versions[i], i, share->TabID(), share->GetColumnShare(i)));
+        std::make_unique<TianmuAttr>(m_tx, m_versions[i], i, share->TabID(), share->GetColumnShare(i)));
     attr->TrackAccess();
   }
 
@@ -191,32 +191,32 @@ RCTable::RCTable(std::string const &p, TableShare *s, Transaction *tx) : share(s
   m_mem_table = ha_kvstore_->FindMemTable(normalized_path);
 }
 
-void RCTable::LockPackInfoForUse() {
+void TianmuTable::LockPackInfoForUse() {
   for (auto &attr : m_attrs) {
     attr->Lock();
     attr->TrackAccess();
   }
 }
 
-void RCTable::UnlockPackInfoFromUse() {
+void TianmuTable::UnlockPackInfoFromUse() {
   for (auto &attr : m_attrs) attr->Unlock();
 }
 
-void RCTable::LockPackForUse(unsigned attr, unsigned pack_no) {
+void TianmuTable::LockPackForUse(unsigned attr, unsigned pack_no) {
   if (pack_no == 0xFFFFFFFF)
     return;
   m_attrs[attr]->LockPackForUse(pack_no);
 }
 
-void RCTable::UnlockPackFromUse(unsigned attr, unsigned pack_no) {
+void TianmuTable::UnlockPackFromUse(unsigned attr, unsigned pack_no) {
   if (pack_no == 0xFFFFFFFF)
     return;
   m_attrs[attr]->UnlockPackFromUse(pack_no);
 }
 
-int RCTable::GetID() const { return share->TabID(); }
+int TianmuTable::GetID() const { return share->TabID(); }
 
-std::vector<AttrInfo> RCTable::GetAttributesInfo() {
+std::vector<AttrInfo> TianmuTable::GetAttributesInfo() {
   std::vector<AttrInfo> info(NumOfAttrs());
   Verify();
   for (int j = 0; j < (int)NumOfAttrs(); j++) {
@@ -234,7 +234,7 @@ std::vector<AttrInfo> RCTable::GetAttributesInfo() {
   return info;
 }
 
-std::vector<AttributeTypeInfo> RCTable::GetATIs([[maybe_unused]] bool orig) {
+std::vector<AttributeTypeInfo> TianmuTable::GetATIs([[maybe_unused]] bool orig) {
   std::vector<AttributeTypeInfo> deas;
   for (uint j = 0; j < NumOfAttrs(); j++) {
     deas.emplace_back(m_attrs[j]->TypeName(), m_attrs[j]->Type().NotNull(), m_attrs[j]->Type().GetPrecision(),
@@ -244,15 +244,15 @@ std::vector<AttributeTypeInfo> RCTable::GetATIs([[maybe_unused]] bool orig) {
   return deas;
 }
 
-const ColumnType &RCTable::GetColumnType(int col) { return m_attrs[col]->Type(); }
+const ColumnType &TianmuTable::GetColumnType(int col) { return m_attrs[col]->Type(); }
 
-RCAttr *RCTable::GetAttr(int n_a) {
+TianmuAttr *TianmuTable::GetAttr(int n_a) {
   m_attrs[n_a]->TrackAccess();
   return m_attrs[n_a].get();
 }
 
 // return ture when there is inconsistency
-bool RCTable::Verify() {
+bool TianmuTable::Verify() {
   bool ok = true;
   uint64_t n_o = 0xFFFFFFFF;
   for (auto &attr : m_attrs) {
@@ -270,13 +270,13 @@ bool RCTable::Verify() {
   return !ok;
 }
 
-void RCTable::CommitVersion() {
+void TianmuTable::CommitVersion() {
   if (Verify())
     throw common::DatabaseException("Data integrity is broken in table " + m_path.string());
 
   utils::result_set<bool> res;
   bool no_except = true;
-  for (auto &attr : m_attrs) res.insert(ha_rcengine_->load_thread_pool.add_task(&RCAttr::SaveVersion, attr.get()));
+  for (auto &attr : m_attrs) res.insert(ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::SaveVersion, attr.get()));
 
   std::vector<size_t> changed_columns;
   changed_columns.reserve(m_attrs.size());
@@ -382,18 +382,18 @@ void RCTable::CommitVersion() {
   share->CommitWrite(this);
 }
 
-void RCTable::PostCommit() {
+void TianmuTable::PostCommit() {
   for (auto &attr : m_attrs) attr->PostCommit();
 }
 
-void RCTable::Rollback([[maybe_unused]] common::TX_ID xid, bool) {
+void TianmuTable::Rollback([[maybe_unused]] common::TX_ID xid, bool) {
   TIANMU_LOG(LogCtl_Level::INFO, "roll back table %s.%s", db_name.c_str(), m_path.c_str());
   for (auto &attr : m_attrs) attr->Rollback();
 }
 
-uint32_t RCTable::Getpackpower() const { return share->PackSizeShift(); }
+uint32_t TianmuTable::Getpackpower() const { return share->PackSizeShift(); }
 
-void RCTable::DisplayRSI() {
+void TianmuTable::DisplayRSI() {
   std::stringstream ss;
 
   ss << "--- RSIndices for " << m_path << " (tab.no. " << share->TabID() << ", "
@@ -410,7 +410,7 @@ void RCTable::DisplayRSI() {
 
     int display_limit = int(20) - si.length();
     for (int j = 0; j < display_limit; j++) ss << " ";
-    rc_control_ << trivials << "\t\t";
+    tianmu_control_ << trivials << "\t\t";
     if (span != -1)
       ss << int(span * 10000) / 100.0 << "%\t";
     else
@@ -425,10 +425,10 @@ void RCTable::DisplayRSI() {
   TIANMU_LOG(LogCtl_Level::DEBUG, "%s", ss.str().c_str());
 }
 
-RCTable::Iterator::Iterator(RCTable &table, std::shared_ptr<Filter> filter)
+TianmuTable::Iterator::Iterator(TianmuTable &table, std::shared_ptr<Filter> filter)
     : table(&table), filter(filter), it(filter.get(), table.Getpackpower()) {}
 
-void RCTable::Iterator::Initialize(const std::vector<bool> &attrs_) {
+void TianmuTable::Iterator::Initialize(const std::vector<bool> &attrs_) {
   int attr_id = 0;
   attrs.clear();
   record.clear();
@@ -436,11 +436,11 @@ void RCTable::Iterator::Initialize(const std::vector<bool> &attrs_) {
 
   for (auto const iter : attrs_) {
     if (iter) {
-      RCAttr *attr = table->GetAttr(attr_id);
+      TianmuAttr *attr = table->GetAttr(attr_id);
       attrs.push_back(attr);
       record.emplace_back(attr->ValuePrototype(false).Clone());
       values_fetchers.push_back(
-          std::bind(&RCAttr::GetValueData, attr, std::placeholders::_1, std::ref(*record[attr_id]), false));
+          std::bind(&TianmuAttr::GetValueData, attr, std::placeholders::_1, std::ref(*record[attr_id]), false));
     } else {
       record.emplace_back(table->GetAttr(attr_id)->ValuePrototype(false).Clone());
     }
@@ -448,9 +448,9 @@ void RCTable::Iterator::Initialize(const std::vector<bool> &attrs_) {
   }
 }
 
-bool RCTable::Iterator::operator==(const Iterator &iter) { return position == iter.position; }
+bool TianmuTable::Iterator::operator==(const Iterator &iter) { return position == iter.position; }
 
-void RCTable::Iterator::operator++(int) {
+void TianmuTable::Iterator::operator++(int) {
   ++it;
   int64_t new_pos;
   if (it.IsValid())
@@ -462,7 +462,7 @@ void RCTable::Iterator::operator++(int) {
   current_record_fetched = false;
 }
 
-void RCTable::Iterator::MoveToRow(int64_t row_id) {
+void TianmuTable::Iterator::MoveToRow(int64_t row_id) {
   UnlockPacks(row_id);
   it.RewindToRow(row_id);
   if (it.IsValid())
@@ -472,7 +472,7 @@ void RCTable::Iterator::MoveToRow(int64_t row_id) {
   current_record_fetched = false;
 }
 
-void RCTable::Iterator::FetchValues() {
+void TianmuTable::Iterator::FetchValues() {
   if (!current_record_fetched) {
     LockPacks();
     for (auto &func : values_fetchers) {
@@ -482,7 +482,7 @@ void RCTable::Iterator::FetchValues() {
   }
 }
 
-void RCTable::Iterator::UnlockPacks(int64_t new_row_id) {
+void TianmuTable::Iterator::UnlockPacks(int64_t new_row_id) {
   if (position != -1) {
     uint32_t power = table->Getpackpower();
     if (new_row_id == -1 || (position >> power) != (new_row_id >> power))
@@ -490,16 +490,16 @@ void RCTable::Iterator::UnlockPacks(int64_t new_row_id) {
   }
 }
 
-void RCTable::Iterator::LockPacks() {
+void TianmuTable::Iterator::LockPacks() {
   if (dp_locks.empty() && position != -1) {
     uint32_t power = table->Getpackpower();
     for (auto &a : attrs) dp_locks.emplace_back(std::make_unique<DataPackLock>(a, int(position >> power)));
   }
 }
 
-RCTable::Iterator RCTable::Iterator::CreateBegin(RCTable &table, std::shared_ptr<Filter> filter,
+TianmuTable::Iterator TianmuTable::Iterator::CreateBegin(TianmuTable &table, std::shared_ptr<Filter> filter,
                                                  const std::vector<bool> &attrs) {
-  RCTable::Iterator ret(table, filter);
+  TianmuTable::Iterator ret(table, filter);
   ret.Initialize(attrs);
   ret.it.Rewind();
   if (ret.it.IsValid())
@@ -510,51 +510,51 @@ RCTable::Iterator RCTable::Iterator::CreateBegin(RCTable &table, std::shared_ptr
   return ret;
 }
 
-RCTable::Iterator RCTable::Iterator::CreateEnd() { return RCTable::Iterator(); }
+TianmuTable::Iterator TianmuTable::Iterator::CreateEnd() { return TianmuTable::Iterator(); }
 
-int64_t RCTable::NumOfObj() { return m_attrs[0]->NumOfObj(); }
+int64_t TianmuTable::NumOfObj() { return m_attrs[0]->NumOfObj(); }
 
-int64_t RCTable::NumOfDeleted() { return m_attrs[0]->NumOfDeleted(); }
+int64_t TianmuTable::NumOfDeleted() { return m_attrs[0]->NumOfDeleted(); }
 
-void RCTable::GetTable_S(types::BString &s, int64_t obj, int attr) {
+void TianmuTable::GetTable_S(types::BString &s, int64_t obj, int attr) {
   DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
   DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   s = m_attrs[attr]->GetValueString(obj);
 }
 
-int64_t RCTable::GetTable64(int64_t obj, int attr) {
+int64_t TianmuTable::GetTable64(int64_t obj, int attr) {
   DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
   DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   return m_attrs[attr]->GetValueInt64(obj);
 }
 
-bool RCTable::IsNull(int64_t obj, int attr) {
+bool TianmuTable::IsNull(int64_t obj, int attr) {
   DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
   DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   return (m_attrs[attr]->IsNull(obj) ? true : false);
 }
 
-types::RCValueObject RCTable::GetValue(int64_t obj, int attr, [[maybe_unused]] Transaction *conn) {
+types::TianmuValueObject TianmuTable::GetValue(int64_t obj, int attr, [[maybe_unused]] Transaction *conn) {
   DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
   DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
   return m_attrs[attr]->GetValue(obj, false);
 }
 
-uint RCTable::MaxStringSize(int n_a, Filter *f) {
+uint TianmuTable::MaxStringSize(int n_a, Filter *f) {
   DEBUG_ASSERT(n_a >= 0 && static_cast<size_t>(n_a) <= m_attrs.size());
   if (NumOfObj() == 0)
     return 1;
   return m_attrs[n_a]->MaxStringSize(f);
 }
 
-void RCTable::FillRowByRowid(TABLE *table, int64_t obj) {
+void TianmuTable::FillRowByRowid(TABLE *table, int64_t obj) {
   int col_id = 0;
   assert((int64_t)obj <= NumOfObj());
   for (Field **field = table->field; *field; field++, col_id++) {
     LockPackForUse(col_id, obj >> m_attrs[col_id]->ValueOfPackPower());
     std::shared_ptr<void> defer(nullptr,
                                 [this, col_id, obj](...) { UnlockPackFromUse(col_id, obj >> Getpackpower()); });
-    std::unique_ptr<types::RCDataType> value(m_attrs[col_id]->ValuePrototype(false).Clone());
+    std::unique_ptr<types::TianmuDataType> value(m_attrs[col_id]->ValuePrototype(false).Clone());
     m_attrs[col_id]->GetValueData(obj, *value);
     if (bitmap_is_set(table->read_set, col_id)) {
       Engine::ConvertToField(*field, *value, nullptr);
@@ -565,14 +565,14 @@ void RCTable::FillRowByRowid(TABLE *table, int64_t obj) {
   }
 }
 
-void RCTable::LoadDataInfile(system::IOParameters &iop) {
+void TianmuTable::LoadDataInfile(system::IOParameters &iop) {
   if (iop.LoadDelayed() && GetID() != iop.TableID()) {
     throw common::TianmuError(
         common::ErrorCode::DATA_ERROR,
         "Invalid table ID(" + std::to_string(GetID()) + "/" + std::to_string(iop.TableID()) + "): " + m_path.string());
   }
 
-  FunctionExecutor fe(std::bind(&RCTable::LockPackInfoForUse, this), std::bind(&RCTable::UnlockPackInfoFromUse, this));
+  FunctionExecutor fe(std::bind(&TianmuTable::LockPackInfoForUse, this), std::bind(&TianmuTable::UnlockPackInfoFromUse, this));
 
   if (iop.LoadDelayed()) {
     if (tianmu_sysvar_enable_rowstore) {
@@ -588,7 +588,7 @@ void RCTable::LoadDataInfile(system::IOParameters &iop) {
   }
 }
 
-void RCTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
+void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
   if (f->is_null()) {
     vc.ExpectedNull(true);
     return;
@@ -707,8 +707,8 @@ void RCTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
   }
 }
 
-int RCTable::Insert(TABLE *table) {
-  FunctionExecutor fe(std::bind(&RCTable::LockPackInfoForUse, this), std::bind(&RCTable::UnlockPackInfoFromUse, this));
+int TianmuTable::Insert(TABLE *table) {
+  FunctionExecutor fe(std::bind(&TianmuTable::LockPackInfoForUse, this), std::bind(&TianmuTable::UnlockPackInfoFromUse, this));
 
   my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->read_set);
   std::shared_ptr<void> defer(nullptr,
@@ -722,7 +722,7 @@ int RCTable::Insert(TABLE *table) {
     vcs[i].Commit();
   }
 
-  std::shared_ptr<index::RCTableIndex> tab = ha_rcengine_->GetTableIndex(share->Path());
+  std::shared_ptr<index::TianmuTableIndex> tab = ha_tianmu_engine_->GetTableIndex(share->Path());
   if (tab) {
     std::vector<std::string_view> fields;
     std::vector<uint> cols = tab->KeyCols();
@@ -741,17 +741,17 @@ int RCTable::Insert(TABLE *table) {
   return 0;
 }
 
-void RCTable::UpdateItem(uint64_t row, uint64_t col, Value v, core::Transaction *current_transaction) {
+void TianmuTable::UpdateItem(uint64_t row, uint64_t col, Value v, core::Transaction *current_transaction) {
   current_txn_ = current_transaction;
   m_attrs[col]->UpdateData(row, v);
 }
 
-void RCTable::DeleteItem(uint64_t row, uint64_t col, core::Transaction *current_transaction) {
+void TianmuTable::DeleteItem(uint64_t row, uint64_t col, core::Transaction *current_transaction) {
   current_txn_ = current_transaction;
   m_attrs[col]->DeleteData(row);
 }
 
-uint64_t RCTable::ProceedNormal(system::IOParameters &iop) {
+uint64_t TianmuTable::ProceedNormal(system::IOParameters &iop) {
   std::unique_ptr<system::Stream> fs;
   if (iop.LocalLoad()) {
     fs.reset(new system::NetStream(iop));
@@ -773,7 +773,7 @@ uint64_t RCTable::ProceedNormal(system::IOParameters &iop) {
     if (parser.GetNoRow() > 0) {
       utils::result_set<void> res;
       for (uint att = 0; att < m_attrs.size(); ++att) {
-        res.insert(ha_rcengine_->load_thread_pool.add_task(&RCAttr::LoadData, m_attrs[att].get(), &value_buffers[att],
+        res.insert(ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(), &value_buffers[att],
                                                            current_txn_));
       }
       res.get_all();
@@ -801,7 +801,7 @@ uint64_t RCTable::ProceedNormal(system::IOParameters &iop) {
   return no_loaded_rows;
 }
 
-int RCTable::binlog_load_query_log_event(system::IOParameters &iop) {
+int TianmuTable::binlog_load_query_log_event(system::IOParameters &iop) {
   char *load_data_query, *end, *fname_start, *fname_end, *p = nullptr;
   size_t pl = 0;
   List<Item> fv;
@@ -894,7 +894,7 @@ int RCTable::binlog_load_query_log_event(system::IOParameters &iop) {
   return mysql_bin_log.write_event(&e);
 }
 
-size_t RCTable::max_row_length(std::vector<loader::ValueCache> &vcs, uint row, uint delimiter) {
+size_t TianmuTable::max_row_length(std::vector<loader::ValueCache> &vcs, uint row, uint delimiter) {
   size_t row_len = 0;
   for (uint att = 0; att < m_attrs.size(); ++att) {
     switch (m_attrs[att]->TypeName()) {
@@ -917,7 +917,7 @@ size_t RCTable::max_row_length(std::vector<loader::ValueCache> &vcs, uint row, u
   return row_len;
 }
 
-int RCTable::binlog_insert2load_log_event(system::IOParameters &iop) {
+int TianmuTable::binlog_insert2load_log_event(system::IOParameters &iop) {
   char *load_data_query, *p = nullptr;
   size_t pl = 0;
   List<Item> fv;
@@ -969,7 +969,7 @@ int RCTable::binlog_insert2load_log_event(system::IOParameters &iop) {
   return mysql_bin_log.write_event(&e);
 }
 
-int RCTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, uint load_obj, system::IOParameters &iop) {
+int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, uint load_obj, system::IOParameters &iop) {
   uint block_len, max_event_size;
   uchar *buffer = nullptr;
   size_t buf_sz = 16_MB;
@@ -1027,7 +1027,7 @@ int RCTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, uint
           if (v == common::NULL_VALUE_64)
             s = types::BString();
           else {
-            types::RCNum rcd(v, m_attrs[att]->Type().GetScale(), m_attrs[att]->Type().IsFloat(),
+            types::TianmuNum rcd(v, m_attrs[att]->Type().GetScale(), m_attrs[att]->Type().IsFloat(),
                              m_attrs[att]->TypeName());
             s = rcd.ToBString();
           }
@@ -1042,11 +1042,11 @@ int RCTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, uint
           types::BString s;
           int64_t v = *(int64_t *)(vcs[att].GetDataBytesPointer(i));
           if (v == common::NULL_VALUE_64) {
-            s = types::RCDateTime().ToBString();
+            s = types::TianmuDateTime().ToBString();
           } else {
-            types::RCDateTime rcdt(v, m_attrs[att]->TypeName());
-            types::RCDateTime::AdjustTimezone(rcdt);
-            s = rcdt.ToBString();
+            types::TianmuDateTime tianmu_dt(v, m_attrs[att]->TypeName());
+            types::TianmuDateTime::AdjustTimezone(tianmu_dt);
+            s = tianmu_dt.ToBString();
           }
           std::memcpy(ptr, s.GetDataBytesPointer(), s.size());
           ptr += s.size();
@@ -1062,10 +1062,10 @@ int RCTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, uint
           types::BString s;
           int64_t v = *(int64_t *)(vcs[att].GetDataBytesPointer(i));
           if (v == common::NULL_VALUE_64) {
-            s = types::RCDateTime().ToBString();
+            s = types::TianmuDateTime().ToBString();
           } else {
-            types::RCDateTime rcdt(v, m_attrs[att]->TypeName());
-            s = rcdt.ToBString();
+            types::TianmuDateTime tianmu_dt(v, m_attrs[att]->TypeName());
+            s = tianmu_dt.ToBString();
           }
           std::memcpy(ptr, s.GetDataBytesPointer(), s.size());
           ptr += s.size();
@@ -1147,8 +1147,8 @@ int RCTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, uint
 
 class DelayedInsertParser final {
  public:
-  DelayedInsertParser(std::vector<std::unique_ptr<RCAttr>> &attrs, std::vector<std::unique_ptr<char[]>> *vec,
-                      uint packsize, std::shared_ptr<index::RCTableIndex> index)
+  DelayedInsertParser(std::vector<std::unique_ptr<TianmuAttr>> &attrs, std::vector<std::unique_ptr<char[]>> *vec,
+                      uint packsize, std::shared_ptr<index::TianmuTableIndex> index)
       : pack_size(packsize), attrs(attrs), vec(vec), index_table(index) {}
 
   uint GetRows(uint no_of_rows, std::vector<loader::ValueCache> &value_buffers) {
@@ -1256,16 +1256,16 @@ class DelayedInsertParser final {
  private:
   uint processed = 0;
   uint pack_size;
-  std::vector<std::unique_ptr<RCAttr>> &attrs;
+  std::vector<std::unique_ptr<TianmuAttr>> &attrs;
   std::vector<std::unique_ptr<char[]>> *vec;
-  std::shared_ptr<index::RCTableIndex> index_table;
+  std::shared_ptr<index::TianmuTableIndex> index_table;
 };
 
-uint64_t RCTable::ProcessDelayed(system::IOParameters &iop) {
+uint64_t TianmuTable::ProcessDelayed(system::IOParameters &iop) {
   std::string str(basename(const_cast<char *>(iop.Path())));
   auto vec = reinterpret_cast<std::vector<std::unique_ptr<char[]>> *>(std::stol(str));
 
-  DelayedInsertParser parser(m_attrs, vec, share->PackSize(), ha_rcengine_->GetTableIndex(share->Path()));
+  DelayedInsertParser parser(m_attrs, vec, share->PackSize(), ha_tianmu_engine_->GetTableIndex(share->Path()));
   long no_loaded_rows = 0;
 
   uint to_prepare, no_of_rows_returned;
@@ -1279,7 +1279,7 @@ uint64_t RCTable::ProcessDelayed(system::IOParameters &iop) {
       utils::result_set<void> res;
       for (uint att = 0; att < m_attrs.size(); ++att) {
         res.insert(
-            ha_rcengine_->load_thread_pool.add_task(&RCAttr::LoadData, m_attrs[att].get(), &vcs[att], current_txn_));
+            ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(), &vcs[att], current_txn_));
       }
       res.get_all();
       no_loaded_rows += real_loaded_rows;
@@ -1297,14 +1297,14 @@ uint64_t RCTable::ProcessDelayed(system::IOParameters &iop) {
   return no_loaded_rows;
 }
 
-void RCTable::InsertMemRow(std::unique_ptr<char[]> buf, uint32_t size) {
+void TianmuTable::InsertMemRow(std::unique_ptr<char[]> buf, uint32_t size) {
   return m_mem_table->InsertRow(std::move(buf), size);
 }
 
-int RCTable::MergeMemTable(system::IOParameters &iop) {
+int TianmuTable::MergeMemTable(system::IOParameters &iop) {
   ASSERT(m_tx, "Transaction not generated.");
   ASSERT(m_mem_table, "memory table not exist");
-  auto index_table = ha_rcengine_->GetTableIndex(share->Path());
+  auto index_table = ha_tianmu_engine_->GetTableIndex(share->Path());
 
   struct timespec t1, t2, t3;
   clock_gettime(CLOCK_REALTIME, &t1);
@@ -1316,7 +1316,7 @@ int RCTable::MergeMemTable(system::IOParameters &iop) {
     uint32_t mem_id = m_mem_table->GetMemID();
     index::be_store_index(entry_key + key_pos, mem_id);
     key_pos += sizeof(uint32_t);
-    index::be_store_byte(entry_key + key_pos, static_cast<uchar>(RCMemTable::RecordType::kInsert));
+    index::be_store_byte(entry_key + key_pos, static_cast<uchar>(TianmuMemTable::RecordType::kInsert));
     key_pos += sizeof(uchar);
     rocksdb::Slice entry_slice((char *)entry_key, key_pos);
 
@@ -1324,7 +1324,7 @@ int RCTable::MergeMemTable(system::IOParameters &iop) {
     size_t upper_pos = 0;
     index::be_store_index(upper_key + upper_pos, mem_id);
     upper_pos += sizeof(uint32_t);
-    uchar upkey = static_cast<int>(RCMemTable::RecordType::kInsert) + 1;
+    uchar upkey = static_cast<int>(TianmuMemTable::RecordType::kInsert) + 1;
     index::be_store_byte(upper_key + upper_pos, upkey);
     upper_pos += sizeof(uchar);
     rocksdb::Slice upper_slice((char *)upper_key, upper_pos);
@@ -1370,7 +1370,7 @@ int RCTable::MergeMemTable(system::IOParameters &iop) {
     if (real_loaded_rows > 0) {
       utils::result_set<void> res;
       for (uint att = 0; att < m_attrs.size(); ++att) {
-        res.insert(ha_rcengine_->load_thread_pool.add_task(&RCAttr::LoadData, m_attrs[att].get(), &vcs[att], m_tx));
+        res.insert(ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(), &vcs[att], m_tx));
       }
       res.get_all();
       no_loaded_rows += real_loaded_rows;

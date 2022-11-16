@@ -23,7 +23,7 @@
 #include "common/common_definitions.h"
 #include "mm/traceable_object.h"
 #include "system/cacheable_item.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace core {

@@ -23,7 +23,7 @@
 #include "core/pack_guardian.h"
 #include "core/temp_table.h"
 #include "core/tools.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #include "vc/virtual_column.h"
 
 namespace Tianmu {

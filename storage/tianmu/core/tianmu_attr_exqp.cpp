@@ -16,7 +16,7 @@
 */
 
 /*
- This is a part of RCAttr implementation concerned with the query execution
+ This is a part of TianmuAttr implementation concerned with the query execution
  mechanisms
 */
 
@@ -24,8 +24,8 @@
 #include "core/cq_term.h"
 #include "core/pack_guardian.h"
 #include "core/pack_str.h"
-#include "core/rc_attr.h"
-#include "core/rc_attr_typeinfo.h"
+#include "core/tianmu_attr.h"
+#include "core/tianmu_attr_typeinfo.h"
 #include "core/tools.h"
 #include "core/transaction.h"
 #include "core/value_set.h"
@@ -36,8 +36,8 @@
 
 namespace Tianmu {
 namespace core {
-void RCAttr::EvaluatePack(MIUpdatingIterator &mit, int dim, Descriptor &d) {
-  MEASURE_FET("RCAttr::EvaluatePack(...)");
+void TianmuAttr::EvaluatePack(MIUpdatingIterator &mit, int dim, Descriptor &d) {
+  MEASURE_FET("TianmuAttr::EvaluatePack(...)");
   ASSERT(d.encoded, "Descriptor is not encoded!");
   if (d.op == common::Operator::O_FALSE) {
     mit.ResetCurrentPack();
@@ -89,7 +89,7 @@ void RCAttr::EvaluatePack(MIUpdatingIterator &mit, int dim, Descriptor &d) {
 }
 
 // TODO: op (common::Operator::O_LIKE common::Operator::O_IN)
-common::ErrorCode RCAttr::EvaluateOnIndex(MIUpdatingIterator &mit, int dim, Descriptor &d, int64_t limit) {
+common::ErrorCode TianmuAttr::EvaluateOnIndex(MIUpdatingIterator &mit, int dim, Descriptor &d, int64_t limit) {
   common::ErrorCode rv = common::ErrorCode::FAILED;
 
   if (GetPackType() == common::PackType::INT &&
@@ -105,9 +105,9 @@ common::ErrorCode RCAttr::EvaluateOnIndex(MIUpdatingIterator &mit, int dim, Desc
 
   return rv;
 }
-common::ErrorCode RCAttr::EvaluateOnIndex_BetweenInt(MIUpdatingIterator &mit, int dim, Descriptor &d, int64_t limit) {
+common::ErrorCode TianmuAttr::EvaluateOnIndex_BetweenInt(MIUpdatingIterator &mit, int dim, Descriptor &d, int64_t limit) {
   common::ErrorCode rv = common::ErrorCode::FAILED;
-  auto indextab = ha_rcengine_->GetTableIndex(m_share->owner->Path());
+  auto indextab = ha_tianmu_engine_->GetTableIndex(m_share->owner->Path());
   if (!indextab)
     return rv;
 
@@ -167,10 +167,10 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenInt(MIUpdatingIterator &mit, in
   return rv;
 }
 
-common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString(MIUpdatingIterator &mit, int dim, Descriptor &d,
+common::ErrorCode TianmuAttr::EvaluateOnIndex_BetweenString(MIUpdatingIterator &mit, int dim, Descriptor &d,
                                                         int64_t limit) {
   common::ErrorCode rv = common::ErrorCode::FAILED;
-  auto indextab = ha_rcengine_->GetTableIndex(m_share->owner->Path());
+  auto indextab = ha_tianmu_engine_->GetTableIndex(m_share->owner->Path());
   if (!indextab)
     return rv;
 
@@ -233,10 +233,10 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString(MIUpdatingIterator &mit,
   return rv;
 }
 
-common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString_UTF(MIUpdatingIterator &mit, int dim, Descriptor &d,
+common::ErrorCode TianmuAttr::EvaluateOnIndex_BetweenString_UTF(MIUpdatingIterator &mit, int dim, Descriptor &d,
                                                             int64_t limit) {
   common::ErrorCode rv = common::ErrorCode::FAILED;
-  auto indextab = ha_rcengine_->GetTableIndex(m_share->owner->Path());
+  auto indextab = ha_tianmu_engine_->GetTableIndex(m_share->owner->Path());
   if (!indextab)
     return rv;
 
@@ -301,8 +301,8 @@ common::ErrorCode RCAttr::EvaluateOnIndex_BetweenString_UTF(MIUpdatingIterator &
   return rv;
 }
 
-void RCAttr::EvaluatePack_IsNoDelete(MIUpdatingIterator &mit, int dim) {
-  MEASURE_FET("RCAttr::EvaluatePack_IsNoDelete(...)");
+void TianmuAttr::EvaluatePack_IsNoDelete(MIUpdatingIterator &mit, int dim) {
+  MEASURE_FET("TianmuAttr::EvaluatePack_IsNoDelete(...)");
   // Keep consistent with the method of other functions to obtain the pack index
   auto pack = mit.GetCurPackrow(dim);
   if (pack == -1) {
@@ -329,8 +329,8 @@ void RCAttr::EvaluatePack_IsNoDelete(MIUpdatingIterator &mit, int dim) {
   }
 }
 
-void RCAttr::EvaluatePack_IsNull(MIUpdatingIterator &mit, int dim) {
-  MEASURE_FET("RCAttr::EvaluatePack_IsNull(...)");
+void TianmuAttr::EvaluatePack_IsNull(MIUpdatingIterator &mit, int dim) {
+  MEASURE_FET("TianmuAttr::EvaluatePack_IsNull(...)");
   int pack = mit.GetCurPackrow(dim);
   if (pack == -1) {
     EvaluatePack_IsNoDelete(mit, dim);
@@ -360,8 +360,8 @@ void RCAttr::EvaluatePack_IsNull(MIUpdatingIterator &mit, int dim) {
   }
 }
 
-void RCAttr::EvaluatePack_NotNull(MIUpdatingIterator &mit, int dim) {
-  MEASURE_FET("RCAttr::EvaluatePack_NotNull(...)");
+void TianmuAttr::EvaluatePack_NotNull(MIUpdatingIterator &mit, int dim) {
+  MEASURE_FET("TianmuAttr::EvaluatePack_NotNull(...)");
   int pack = mit.GetCurPackrow(dim);
   if (pack == -1) {  // nulls only
     mit.ResetCurrentPack();
@@ -391,8 +391,8 @@ void RCAttr::EvaluatePack_NotNull(MIUpdatingIterator &mit, int dim) {
 
 bool IsSpecialChar(char c, Descriptor &d) { return c == '%' || c == '_' || c == d.like_esc; }
 
-void RCAttr::EvaluatePack_Like(MIUpdatingIterator &mit, int dim, Descriptor &d) {
-  MEASURE_FET("RCAttr::EvaluatePack_Like(...)");
+void TianmuAttr::EvaluatePack_Like(MIUpdatingIterator &mit, int dim, Descriptor &d) {
+  MEASURE_FET("TianmuAttr::EvaluatePack_Like(...)");
   int pack = mit.GetCurPackrow(dim);
   if (pack == -1) {
     mit.ResetCurrentPack();
@@ -465,8 +465,8 @@ void RCAttr::EvaluatePack_Like(MIUpdatingIterator &mit, int dim, Descriptor &d) 
   } while (mit.IsValid() && !mit.PackrowStarted());
 }
 
-void RCAttr::EvaluatePack_Like_UTF(MIUpdatingIterator &mit, int dim, Descriptor &d) {
-  MEASURE_FET("RCAttr::EvaluatePack_Like_UTF(...)");
+void TianmuAttr::EvaluatePack_Like_UTF(MIUpdatingIterator &mit, int dim, Descriptor &d) {
+  MEASURE_FET("TianmuAttr::EvaluatePack_Like_UTF(...)");
   int pack = mit.GetCurPackrow(dim);
   if (pack == -1) {
     mit.ResetCurrentPack();
@@ -535,8 +535,8 @@ void RCAttr::EvaluatePack_Like_UTF(MIUpdatingIterator &mit, int dim, Descriptor 
   } while (mit.IsValid() && !mit.PackrowStarted());
 }
 
-void RCAttr::EvaluatePack_InString(MIUpdatingIterator &mit, int dim, Descriptor &d) {
-  MEASURE_FET("RCAttr::EvaluatePack_InString(...)");
+void TianmuAttr::EvaluatePack_InString(MIUpdatingIterator &mit, int dim, Descriptor &d) {
+  MEASURE_FET("TianmuAttr::EvaluatePack_InString(...)");
   int pack = mit.GetCurPackrow(dim);
   if (pack == -1) {
     mit.ResetCurrentPack();
@@ -575,8 +575,8 @@ void RCAttr::EvaluatePack_InString(MIUpdatingIterator &mit, int dim, Descriptor 
   } while (mit.IsValid() && !mit.PackrowStarted());
 }
 
-void RCAttr::EvaluatePack_InString_UTF(MIUpdatingIterator &mit, int dim, Descriptor &d) {
-  MEASURE_FET("RCAttr::EvaluatePack_InString_UTF(...)");
+void TianmuAttr::EvaluatePack_InString_UTF(MIUpdatingIterator &mit, int dim, Descriptor &d) {
+  MEASURE_FET("TianmuAttr::EvaluatePack_InString_UTF(...)");
   int pack = mit.GetCurPackrow(dim);
   if (pack == -1) {
     mit.ResetCurrentPack();
@@ -625,8 +625,8 @@ void RCAttr::EvaluatePack_InString_UTF(MIUpdatingIterator &mit, int dim, Descrip
   } while (mit.IsValid() && !mit.PackrowStarted());
 }
 
-void RCAttr::EvaluatePack_InNum(MIUpdatingIterator &mit, int dim, Descriptor &d) {
-  MEASURE_FET("RCAttr::EvaluatePack_InNum(...)");
+void TianmuAttr::EvaluatePack_InNum(MIUpdatingIterator &mit, int dim, Descriptor &d) {
+  MEASURE_FET("TianmuAttr::EvaluatePack_InNum(...)");
   int pack = mit.GetCurPackrow(dim);
   if (pack == -1) {
     mit.ResetCurrentPack();
@@ -652,7 +652,7 @@ void RCAttr::EvaluatePack_InNum(MIUpdatingIterator &mit, int dim, Descriptor &d)
   bool encoded_set = (lookup_to_num ? multival_column->IsSetEncoded(common::CT::NUM, 0)
                                     : multival_column->IsSetEncoded(TypeName(), ct.GetScale()));
   common::Tribool res;
-  std::unique_ptr<types::RCDataType> value(ValuePrototype(lookup_to_num).Clone());
+  std::unique_ptr<types::TianmuDataType> value(ValuePrototype(lookup_to_num).Clone());
   bool not_in = (d.op == common::Operator::O_NOT_IN);
   int arraysize = 0;
   if (d.val1.cond_numvalue != nullptr)
@@ -669,7 +669,7 @@ void RCAttr::EvaluatePack_InNum(MIUpdatingIterator &mit, int dim, Descriptor &d)
           mit.ResetCurrent();
         else {
           // find the first non-null and set the rest basing on it.
-          // const RCValueObject& val = GetValue(mit[dim], lookup_to_num);
+          // const TianmuValueObject& val = GetValue(mit[dim], lookup_to_num);
           // note: res may be UNKNOWN for NOT IN (...null...)
           res = multival_column->Contains(mit, GetValueData(mit[dim], *value, lookup_to_num));
           if (not_in)
@@ -717,8 +717,8 @@ void RCAttr::EvaluatePack_InNum(MIUpdatingIterator &mit, int dim, Descriptor &d)
   }
 }
 
-void RCAttr::EvaluatePack_BetweenString(MIUpdatingIterator &mit, int dim, Descriptor &d) {
-  MEASURE_FET("RCAttr::EvaluatePack_BetweenString(...)");
+void TianmuAttr::EvaluatePack_BetweenString(MIUpdatingIterator &mit, int dim, Descriptor &d) {
+  MEASURE_FET("TianmuAttr::EvaluatePack_BetweenString(...)");
   int pack = mit.GetCurPackrow(dim);
   if (pack == -1) {
     mit.ResetCurrentPack();
@@ -774,8 +774,8 @@ void RCAttr::EvaluatePack_BetweenString(MIUpdatingIterator &mit, int dim, Descri
   } while (mit.IsValid() && !mit.PackrowStarted());
 }
 
-void RCAttr::EvaluatePack_BetweenString_UTF(MIUpdatingIterator &mit, int dim, Descriptor &d) {
-  MEASURE_FET("RCAttr::EvaluatePack_BetweenString_UTF(...)");
+void TianmuAttr::EvaluatePack_BetweenString_UTF(MIUpdatingIterator &mit, int dim, Descriptor &d) {
+  MEASURE_FET("TianmuAttr::EvaluatePack_BetweenString_UTF(...)");
   int pack = mit.GetCurPackrow(dim);
   if (pack == -1) {
     mit.ResetCurrentPack();
@@ -835,8 +835,8 @@ void RCAttr::EvaluatePack_BetweenString_UTF(MIUpdatingIterator &mit, int dim, De
   } while (mit.IsValid() && !mit.PackrowStarted());
 }
 
-void RCAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descriptor &d) {
-  MEASURE_FET("RCAttr::EvaluatePack_BetweenInt(...)");
+void TianmuAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descriptor &d) {
+  MEASURE_FET("TianmuAttr::EvaluatePack_BetweenInt(...)");
   int pack = mit.GetCurPackrow(dim);
   if (pack == -1) {
     mit.ResetCurrentPack();
@@ -933,8 +933,8 @@ void RCAttr::EvaluatePack_BetweenInt(MIUpdatingIterator &mit, int dim, Descripto
   }
 }
 
-void RCAttr::EvaluatePack_BetweenReal(MIUpdatingIterator &mit, int dim, Descriptor &d) {
-  MEASURE_FET("RCAttr::EvaluatePack_BetweenReal(...)");
+void TianmuAttr::EvaluatePack_BetweenReal(MIUpdatingIterator &mit, int dim, Descriptor &d) {
+  MEASURE_FET("TianmuAttr::EvaluatePack_BetweenReal(...)");
   int pack = mit.GetCurPackrow(dim);
   if (pack == -1) {
     mit.ResetCurrentPack();
@@ -1000,15 +1000,15 @@ void RCAttr::EvaluatePack_BetweenReal(MIUpdatingIterator &mit, int dim, Descript
   }
 }
 
-void RCAttr::EvaluatePack_AttrAttr(MIUpdatingIterator &mit, int dim, Descriptor &d) {
-  MEASURE_FET("RCAttr::EvaluatePack_AttrAttr(...)");
+void TianmuAttr::EvaluatePack_AttrAttr(MIUpdatingIterator &mit, int dim, Descriptor &d) {
+  MEASURE_FET("TianmuAttr::EvaluatePack_AttrAttr(...)");
   int pack = mit.GetCurPackrow(dim);
   if (pack == -1) {
     mit.ResetCurrentPack();
     mit.NextPackrow();
     return;
   }
-  RCAttr *a2 = (RCAttr *)(((vcolumn::SingleColumn *)d.val1.vc)->GetPhysical());
+  TianmuAttr *a2 = (TianmuAttr *)(((vcolumn::SingleColumn *)d.val1.vc)->GetPhysical());
   if (get_dpn(pack).numOfNulls == get_dpn(pack).numOfRecords ||
       a2->get_dpn(pack).numOfNulls == a2->get_dpn(pack).numOfRecords) {
     mit.ResetCurrentPack();  // nulls only
@@ -1063,15 +1063,15 @@ void RCAttr::EvaluatePack_AttrAttr(MIUpdatingIterator &mit, int dim, Descriptor 
   } while (mit.IsValid() && !mit.PackrowStarted());
 }
 
-void RCAttr::EvaluatePack_AttrAttrReal(MIUpdatingIterator &mit, int dim, Descriptor &d) {
-  MEASURE_FET("RCAttr::EvaluatePack_AttrAttrReal(...)");
+void TianmuAttr::EvaluatePack_AttrAttrReal(MIUpdatingIterator &mit, int dim, Descriptor &d) {
+  MEASURE_FET("TianmuAttr::EvaluatePack_AttrAttrReal(...)");
   int pack = mit.GetCurPackrow(dim);
   if (pack == -1) {
     mit.ResetCurrentPack();
     mit.NextPackrow();
     return;
   }
-  RCAttr *a2 = (RCAttr *)(((vcolumn::SingleColumn *)d.val1.vc)->GetPhysical());
+  TianmuAttr *a2 = (TianmuAttr *)(((vcolumn::SingleColumn *)d.val1.vc)->GetPhysical());
   if (get_dpn(pack).numOfNulls == get_dpn(pack).numOfRecords ||
       a2->get_dpn(pack).numOfNulls == a2->get_dpn(pack).numOfRecords) {
     mit.ResetCurrentPack();  // nulls only
@@ -1127,8 +1127,8 @@ void RCAttr::EvaluatePack_AttrAttrReal(MIUpdatingIterator &mit, int dim, Descrip
   } while (mit.IsValid() && !mit.PackrowStarted());
 }
 
-bool RCAttr::IsDistinct(Filter *f) {
-  MEASURE_FET("RCAttr::IsDistinct(...)");
+bool TianmuAttr::IsDistinct(Filter *f) {
+  MEASURE_FET("TianmuAttr::IsDistinct(...)");
   if (ct.IsLookup() && types::RequiresUTFConversions(GetCollation()))
     return false;
   if (PhysicalColumn::IsDistinct() == common::RSValue::RS_ALL) {  // = is_unique_updated && is_unique
@@ -1143,8 +1143,8 @@ bool RCAttr::IsDistinct(Filter *f) {
   return false;
 }
 
-uint64_t RCAttr::ApproxAnswerSize(Descriptor &d) {
-  MEASURE_FET("RCAttr::ApproxAnswerSize(...)");
+uint64_t TianmuAttr::ApproxAnswerSize(Descriptor &d) {
+  MEASURE_FET("TianmuAttr::ApproxAnswerSize(...)");
   ASSERT(d.encoded, "The descriptor is not encoded!");
   static MIIterator const mit(nullptr, pss);
   LoadPackInfo();
@@ -1222,7 +1222,7 @@ uint64_t RCAttr::ApproxAnswerSize(Descriptor &d) {
   return (NumOfObj() - NumOfNulls()) / 2;  // default
 }
 
-size_t RCAttr::MaxStringSize(Filter *f)  // maximal byte string length in column
+size_t TianmuAttr::MaxStringSize(Filter *f)  // maximal byte string length in column
 {
   LoadPackInfo();
   size_t max_size = 1;
@@ -1254,8 +1254,8 @@ size_t RCAttr::MaxStringSize(Filter *f)  // maximal byte string length in column
   return max_size;
 }
 
-bool RCAttr::TryToMerge(Descriptor &d1, Descriptor &d2) {
-  MEASURE_FET("RCAttr::TryToMerge(...)");
+bool TianmuAttr::TryToMerge(Descriptor &d1, Descriptor &d2) {
+  MEASURE_FET("TianmuAttr::TryToMerge(...)");
   if ((d1.op != common::Operator::O_BETWEEN && d1.op != common::Operator::O_NOT_BETWEEN) ||
       (d2.op != common::Operator::O_BETWEEN && d2.op != common::Operator::O_NOT_BETWEEN))
     return false;

@@ -83,7 +83,7 @@ class ConstExpressionColumn : public ExpressionColumn {
  protected:
   bool IsNullImpl([[maybe_unused]] const core::MIIterator &mit) override { return last_val_->IsNull(); }
 
-  types::RCValueObject GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) override;
+  types::TianmuValueObject GetValueImpl(const core::MIIterator &mit, bool lookup_to_num) override;
 
   void GetValueStringImpl(types::BString &s, [[maybe_unused]] const core::MIIterator &mit) override {
     last_val_->GetBString(s);

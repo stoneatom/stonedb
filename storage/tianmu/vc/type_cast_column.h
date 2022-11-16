@@ -64,7 +64,7 @@ class TypeCastColumn : public VirtualColumn {
   bool IsNullImpl(const core::MIIterator &mit) override { return vc_->IsNull(mit); }
   void GetValueStringImpl(types::BString &s, const core::MIIterator &m) override { return vc_->GetValueString(s, m); }
   double GetValueDoubleImpl(const core::MIIterator &m) override { return vc_->GetValueDouble(m); }
-  types::RCValueObject GetValueImpl(const core::MIIterator &m, bool lookup_to_num) override {
+  types::TianmuValueObject GetValueImpl(const core::MIIterator &m, bool lookup_to_num) override {
     return vc_->GetValue(m, lookup_to_num);
   }
   int64_t GetMinInt64Impl([[maybe_unused]] const core::MIIterator &m) override { return common::MINUS_INF_64; }
@@ -113,14 +113,14 @@ class String2NumCastColumn : public TypeCastColumn {
   virtual bool IsDistinctInTable() override { return false; }  // cast may make distinct strings equal
  protected:
   int64_t GetValueInt64Impl(const core::MIIterator &mit) override;
-  types::RCValueObject GetValueImpl(const core::MIIterator &, bool lookup_to_num = true) override;
+  types::TianmuValueObject GetValueImpl(const core::MIIterator &, bool lookup_to_num = true) override;
   int64_t GetMinInt64Impl(const core::MIIterator &m) override;
   int64_t GetMaxInt64Impl(const core::MIIterator &m) override;
   double GetValueDoubleImpl(const core::MIIterator &mit) override;
 
  private:
   mutable int64_t val_;
-  mutable types::RCValueObject rc_value_obj_;
+  mutable types::TianmuValueObject rc_value_obj_;
 };
 
 //////////////////////////////////////////////////////////
@@ -131,14 +131,14 @@ class String2DateTimeCastColumn : public TypeCastColumn {
   bool IsDistinctInTable() override { return false; }  // cast may make distinct strings equal
  protected:
   int64_t GetValueInt64Impl(const core::MIIterator &mit) override;
-  types::RCValueObject GetValueImpl(const core::MIIterator &, bool lookup_to_num = true) override;
+  types::TianmuValueObject GetValueImpl(const core::MIIterator &, bool lookup_to_num = true) override;
   void GetValueStringImpl(types::BString &s, const core::MIIterator &m) override;
   int64_t GetMinInt64Impl(const core::MIIterator &m) override;
   int64_t GetMaxInt64Impl(const core::MIIterator &m) override;
 
  private:
   int64_t val_;
-  mutable types::RCValueObject rc_value_obj_;
+  mutable types::TianmuValueObject rc_value_obj_;
 };
 
 //////////////////////////////////////////////////////////
@@ -148,11 +148,11 @@ class Num2DateTimeCastColumn : public String2DateTimeCastColumn {
 
  protected:
   int64_t GetValueInt64Impl(const core::MIIterator &mit) override;
-  types::RCValueObject GetValueImpl(const core::MIIterator &, bool lookup_to_num = true) override;
+  types::TianmuValueObject GetValueImpl(const core::MIIterator &, bool lookup_to_num = true) override;
 
  private:
   int64_t val_;
-  mutable types::RCValueObject rc_value_obj_;
+  mutable types::TianmuValueObject rc_value_obj_;
 };
 
 //////////////////////////////////////////////////////////
@@ -165,10 +165,10 @@ class DateTime2VarcharCastColumn : public TypeCastColumn {
   }
 
  protected:
-  types::RCValueObject GetValueImpl(const core::MIIterator &, bool lookup_to_num = true) override;
+  types::TianmuValueObject GetValueImpl(const core::MIIterator &, bool lookup_to_num = true) override;
 
  private:
-  mutable types::RCValueObject rc_value_obj_;
+  mutable types::TianmuValueObject rc_value_obj_;
 };
 
 //////////////////////////////////////////////////////////
@@ -178,11 +178,11 @@ class Num2VarcharCastColumn : public TypeCastColumn {
   void GetNotNullValueString(types::BString &s, const core::MIIterator &m) override { GetValueStringImpl(s, m); }
 
  protected:
-  types::RCValueObject GetValueImpl(const core::MIIterator &, bool lookup_to_num = true) override;
+  types::TianmuValueObject GetValueImpl(const core::MIIterator &, bool lookup_to_num = true) override;
   void GetValueStringImpl(types::BString &s, const core::MIIterator &m) override;
 
  private:
-  mutable types::RCValueObject rc_value_obj_;
+  mutable types::TianmuValueObject rc_value_obj_;
 };
 
 //////////////////////////////////////////////////////
@@ -193,12 +193,12 @@ class DateTime2NumCastColumn : public TypeCastColumn {
 
  protected:
   int64_t GetValueInt64Impl(const core::MIIterator &mit) override;
-  types::RCValueObject GetValueImpl(const core::MIIterator &, bool lookup_to_num = true) override;
+  types::TianmuValueObject GetValueImpl(const core::MIIterator &, bool lookup_to_num = true) override;
   double GetValueDoubleImpl(const core::MIIterator &mit) override;
 
  private:
   mutable int64_t val_;
-  mutable types::RCValueObject rc_value_obj_;
+  mutable types::TianmuValueObject rc_value_obj_;
 };
 
 //////////////////////////////////////////////////////
@@ -209,13 +209,13 @@ class TimeZoneConversionCastColumn : public TypeCastColumn {
 
  protected:
   int64_t GetValueInt64Impl(const core::MIIterator &mit) override;
-  types::RCValueObject GetValueImpl(const core::MIIterator &, bool lookup_to_num = true) override;
+  types::TianmuValueObject GetValueImpl(const core::MIIterator &, bool lookup_to_num = true) override;
   double GetValueDoubleImpl(const core::MIIterator &m) override;
   void GetValueStringImpl(types::BString &s, const core::MIIterator &m) override;
 
  private:
   mutable int64_t val_;
-  mutable types::RCValueObject rc_value_obj_;
+  mutable types::TianmuValueObject rc_value_obj_;
 };
 
 class StringCastColumn : public TypeCastColumn {
@@ -224,7 +224,7 @@ class StringCastColumn : public TypeCastColumn {
 
  protected:
   void GetValueStringImpl(types::BString &s, const core::MIIterator &m) override { return vc_->GetValueString(s, m); }
-  types::RCValueObject GetValueImpl(const core::MIIterator &, bool lookup_to_num = true) override;
+  types::TianmuValueObject GetValueImpl(const core::MIIterator &, bool lookup_to_num = true) override;
   size_t MaxStringSizeImpl() override { return ct.GetPrecision(); }
 };
 

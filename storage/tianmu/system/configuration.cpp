@@ -15,7 +15,7 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 // Variables to show config through mysql 'show variables' command
 char tianmu_sysvar_pushdown;
@@ -81,5 +81,5 @@ async_join_setting tianmu_sysvar_async_join_setting;
 void ConfigureRCControl() {
   using namespace Tianmu;
   int control_level = tianmu_sysvar_controltrace;
-  (control_level > 0) ? rc_control_.setOn() : rc_control_.setOff();
+  (control_level > 0) ? tianmu_control_.setOn() : tianmu_control_.setOff();
 }

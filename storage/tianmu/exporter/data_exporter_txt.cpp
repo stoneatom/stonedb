@@ -17,7 +17,7 @@
 
 #include "data_exporter_txt.h"
 
-#include "types/rc_num.h"
+#include "types/tianmu_num.h"
 
 namespace Tianmu {
 namespace exporter {
@@ -69,17 +69,17 @@ void DEforTxt::PutBin(const types::BString &str) {
 }
 
 void DEforTxt::PutNumeric(int64_t num) {
-  types::RCNum rcn(num, source_attr_infos_[cur_attr_].Scale(),
+  types::TianmuNum tianmu_n(num, source_attr_infos_[cur_attr_].Scale(),
                    core::ATI::IsRealType(source_attr_infos_[cur_attr_].Type()), source_attr_infos_[cur_attr_].Type());
-  types::BString rcs = rcn.ToBString();
-  WriteString(rcs);
+  types::BString tianmu_s = tianmu_n.ToBString();
+  WriteString(tianmu_s);
   WriteValueEnd();
 }
 
 void DEforTxt::PutDateTime(int64_t dt) {
-  types::RCDateTime rcdt(dt, attr_infos_[cur_attr_].Type());
-  types::BString rcs = rcdt.ToBString();
-  WriteString(rcs);
+  types::TianmuDateTime tianmu_dt(dt, attr_infos_[cur_attr_].Type());
+  types::BString tianmu_s = tianmu_dt.ToBString();
+  WriteString(tianmu_s);
   WriteValueEnd();
 }
 

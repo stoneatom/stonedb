@@ -14,8 +14,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
-#ifndef TIANMU_SYSTEM_RC_SYSTEM_H_
-#define TIANMU_SYSTEM_RC_SYSTEM_H_
+#ifndef TIANMU_SYSTEM_TIANMU_SYSTEM_H_
+#define TIANMU_SYSTEM_TIANMU_SYSTEM_H_
 #pragma once
 
 #include <shared_mutex>
@@ -37,16 +37,16 @@ class KVStore;
 
 // Channel for debugging information, not
 // displayed in the standard running mode.
-extern system::Channel rc_control_;
+extern system::Channel tianmu_control_;
 // the channel for query log.
-extern system::Channel rc_querylog_;
+extern system::Channel tianmu_querylog_;
 // host ip addr.
 extern char global_hostIP_[FN_REFLEN];
 // host server info string.
 extern char global_serverinfo_[FN_REFLEN];
 
 // row-column engine handler.
-extern core::Engine *ha_rcengine_;
+extern core::Engine *ha_tianmu_engine_;
 // key-value store handler.
 extern index::KVStore *ha_kvstore_;
 // global mutex.
@@ -58,4 +58,4 @@ extern thread_local core::Transaction *current_txn_;
 
 }  // namespace Tianmu
 
-#endif  // TIANMU_SYSTEM_RC_SYSTEM_H_
+#endif  // TIANMU_SYSTEM_TIANMU_SYSTEM_H_

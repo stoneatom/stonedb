@@ -19,7 +19,7 @@
 
 #include "core/compiled_query.h"
 #include "core/mysql_expression.h"
-#include "core/rc_attr.h"
+#include "core/tianmu_attr.h"
 #include "vc/const_column.h"
 #include "vc/expr_column.h"
 
@@ -131,7 +131,7 @@ common::Tribool InSetColumn::Contains64Impl(const core::MIIterator &mit, int64_t
       contains = common::TRIBOOL_UNKNOWN;
     return contains;
   }
-  return ContainsImpl(mit, types::RCNum(val, ct.GetScale()));
+  return ContainsImpl(mit, types::TianmuNum(val, ct.GetScale()));
 }
 
 common::Tribool InSetColumn::ContainsStringImpl(const core::MIIterator &mit,
@@ -150,7 +150,7 @@ common::Tribool InSetColumn::ContainsStringImpl(const core::MIIterator &mit,
   return ContainsImpl(mit, val);
 }
 
-common::Tribool InSetColumn::ContainsImpl(const core::MIIterator &mit, const types::RCDataType &val) {
+common::Tribool InSetColumn::ContainsImpl(const core::MIIterator &mit, const types::TianmuDataType &val) {
   common::Tribool contains = false;
   if (val.IsNull())
     return common::TRIBOOL_UNKNOWN;
@@ -260,18 +260,18 @@ std::unique_ptr<MultiValColumn::IteratorInterface> InSetColumn::EndImpl(core::MI
   return std::unique_ptr<MultiValColumn::IteratorInterface>(new IteratorImpl(cache_.end()));
 }
 
-types::RCValueObject InSetColumn::GetSetMinImpl(core::MIIterator const &mit) {
+types::TianmuValueObject InSetColumn::GetSetMinImpl(core::MIIterator const &mit) {
   if (!full_cache_ || !is_const_)
     PrepareCache(mit);
   cache_.Prepare(expected_type_.GetTypeName(), ct.GetScale(), expected_type_.GetCollation());
-  return types::RCValueObject(*cache_.Min());
+  return types::TianmuValueObject(*cache_.Min());
 }
 
-types::RCValueObject InSetColumn::GetSetMaxImpl(core::MIIterator const &mit) {
+types::TianmuValueObject InSetColumn::GetSetMaxImpl(core::MIIterator const &mit) {
   if (!full_cache_ || !is_const_)
     PrepareCache(mit);
   cache_.Prepare(expected_type_.GetTypeName(), ct.GetScale(), expected_type_.GetCollation());
-  return types::RCValueObject(*cache_.Max());
+  return types::TianmuValueObject(*cache_.Max());
 }
 
 void InSetColumn::SetExpectedTypeImpl(core::ColumnType const &ct) { expected_type_ = ct; }

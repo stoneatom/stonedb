@@ -14,8 +14,8 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
-#ifndef TIANMU_CORE_RC_MEM_TABLE_H_
-#define TIANMU_CORE_RC_MEM_TABLE_H_
+#ifndef TIANMU_CORE_TIANMU_MEM_TABLE_H_
+#define TIANMU_CORE_TIANMU_MEM_TABLE_H_
 #pragma once
 
 #include <string>
@@ -30,14 +30,14 @@ namespace core {
 class TableShare;
 class Transaction;
 
-class RCMemTable {
+class TianmuMemTable {
  public:
   enum class RecordType { RecordType_min, kSchema, kInsert, kUpdate, kDelete, RecordType_max };
 
-  RCMemTable() = default;
-  ~RCMemTable() = default;
-  RCMemTable(const std::string name, const uint32_t mem_id, const uint32_t cf_id);
-  static std::shared_ptr<RCMemTable> CreateMemTable(std::shared_ptr<TableShare> share, const std::string mem_name);
+  TianmuMemTable() = default;
+  ~TianmuMemTable() = default;
+  TianmuMemTable(const std::string name, const uint32_t mem_id, const uint32_t cf_id);
+  static std::shared_ptr<TianmuMemTable> CreateMemTable(std::shared_ptr<TableShare> share, const std::string mem_name);
   static common::ErrorCode DropMemTable(std::string table_name);
 
   std::string FullName() { return fullname_; }
@@ -65,4 +65,4 @@ class RCMemTable {
 }  // namespace core
 }  // namespace Tianmu
 
-#endif  // TIANMU_CORE_RC_MEM_TABLE_H_
+#endif  // TIANMU_CORE_TIANMU_MEM_TABLE_H_

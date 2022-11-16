@@ -19,7 +19,7 @@
 #include <fstream>
 #include <mutex>
 
-#include "core/rc_table.h"
+#include "core/tianmu_table.h"
 #include "core/table_share.h"
 
 namespace Tianmu {
@@ -68,25 +68,25 @@ TableShare::~TableShare() {
       TIANMU_LOG(LogCtl_Level::FATAL, "TableShare still has ref outside by old versions");
 }
 
-std::shared_ptr<RCTable> TableShare::GetSnapshot() {
+std::shared_ptr<TianmuTable> TableShare::GetSnapshot() {
   std::scoped_lock guard(current_mtx);
   if (!current)
-    current = std::make_shared<RCTable>(table_path, this);
+    current = std::make_shared<TianmuTable>(table_path, this);
 
   return current;
 }
 
-std::shared_ptr<RCTable> TableShare::GetTableForWrite() {
+std::shared_ptr<TianmuTable> TableShare::GetTableForWrite() {
   std::unique_lock<std::mutex> lk(write_table_mtx);
   ASSERT(write_table.expired(), "Table write cannot be concurrent!");
-  auto ptr = std::make_shared<RCTable>(table_path, this, current_txn_);
+  auto ptr = std::make_shared<TianmuTable>(table_path, this, current_txn_);
   ptr->write_lock = std::move(lk);
   write_table = ptr;
 
   return ptr;
 }
 
-void TableShare::CommitWrite(RCTable *t) {
+void TableShare::CommitWrite(TianmuTable *t) {
   auto sp = write_table.lock();
 
   ASSERT(sp, "No open tables to commit!");
@@ -98,7 +98,7 @@ void TableShare::CommitWrite(RCTable *t) {
     // The lock should be released even there is exception!
     std::shared_ptr<void> defer(nullptr, [t](...) { t->write_lock.unlock(); });
 
-    std::weak_ptr<RCTable> save = current;
+    std::weak_ptr<TianmuTable> save = current;
     current = sp;
     write_table.reset();
     t->PostCommit();

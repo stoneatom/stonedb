@@ -200,12 +200,12 @@ void SorterWrapper::InitSorter(MultiIndex &mind, bool implicit_logic) {
     s = Sorter3::CreateSorter(no_of_rows, key_bytes, total_bytes, limit);
     input_buf = new unsigned char[total_bytes];
     if (mi_encoder)
-      rc_control_.lock(s->conn->GetThreadID())
+      tianmu_control_.lock(s->conn->GetThreadID())
           << s->Name() << " begin, initialized for " << no_of_rows << " rows, " << key_bytes << "+"
           << total_bytes - key_bytes - mi_encoder->GetPrimarySize() << "+" << mi_encoder->GetPrimarySize()
           << " bytes each." << system::unlock;
     else
-      rc_control_.lock(s->conn->GetThreadID())
+      tianmu_control_.lock(s->conn->GetThreadID())
           << s->Name() << " begin, initialized for " << no_of_rows << " rows, " << key_bytes << "+"
           << total_bytes - key_bytes << " bytes each." << system::unlock;
   }
@@ -242,10 +242,10 @@ bool SorterWrapper::InitPackrow(MIIterator &mit)  // return true if the packrow 
   TIANMU_LOG(LogCtl_Level::DEBUG, "InitPackrow: no_values_encoded %d, begin to loadpacks scol size %d ",
              no_values_encoded, scol.size());
   // Not excluded: lock packs
-  if (!ha_rcengine_->query_thread_pool.is_owner()) {
+  if (!ha_tianmu_engine_->query_thread_pool.is_owner()) {
     utils::result_set<void> res;
     for (uint i = 0; i < scol.size(); i++)
-      res.insert(ha_rcengine_->query_thread_pool.add_task(&ColumnBinEncoder::LoadPacks, &scol[i], &mit));
+      res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&ColumnBinEncoder::LoadPacks, &scol[i], &mit));
     res.get_all_with_except();
   } else {
     for (uint i = 0; i < scol.size(); i++)

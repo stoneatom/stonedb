@@ -528,7 +528,7 @@ void CompiledQuery::Mode(const TabID &t1, TMParameter mode, int64_t n1, int64_t 
     size_t const alias_ct(100);
     s.type = StepType::STEP_ERROR;
     s.alias = new char[alias_ct];
-    std::strcpy(s.alias, "T_MODE: can't be applied to RCTable");
+    std::strcpy(s.alias, "T_MODE: can't be applied to TianmuTable");
     return;
   }
   s.type = StepType::T_MODE;

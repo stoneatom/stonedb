@@ -17,7 +17,7 @@
 
 #include "core/rsi_bloom.h"
 #include "core/pack_str.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #include "system/tianmu_file.h"
 
 namespace Tianmu {

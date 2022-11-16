@@ -18,7 +18,7 @@
 #define TIANMU_TYPES_TEXT_STAT_H_
 #pragma once
 
-#include "types/rc_data_types.h"
+#include "types/tianmu_data_types.h"
 
 namespace Tianmu {
 namespace types {
@@ -35,7 +35,7 @@ class TextStat final {
   TextStat(const TextStat &sec) = default;
   ~TextStat() = default;
 
-  bool AddString(const BString &rcbs);  // return false if cannot create encoding
+  bool AddString(const BString &tianmu_bs);  // return false if cannot create encoding
   bool AddChar(uchar v, int pos);
   void AddLen(int pos);          // value of len n puts 0 on position n (starting with 0)
   bool CheckIfCreatePossible();  // return false if cannot create encoding (too
@@ -43,7 +43,7 @@ class TextStat final {
   bool CreateEncoding();         // return false if cannot create encoding (too wide),
                                  // reset temporary statistics
 
-  int64_t Encode(const BString &rcbs,
+  int64_t Encode(const BString &tianmu_bs,
                  bool round_up = false);   // return common::NULL_VALUE_64 if not
                                            // encodable, round_up = true =>
                                            // fill the unused characters by

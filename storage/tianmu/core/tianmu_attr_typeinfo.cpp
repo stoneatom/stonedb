@@ -15,12 +15,12 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "rc_attr_typeinfo.h"
+#include "tianmu_attr_typeinfo.h"
 #include "common/data_format.h"
 #include "common/txt_data_format.h"
-#include "core/rc_attr.h"
-#include "types/rc_data_types.h"
-#include "types/rc_num.h"
+#include "core/tianmu_attr.h"
+#include "types/tianmu_data_types.h"
+#include "types/tianmu_num.h"
 
 namespace Tianmu {
 namespace core {
@@ -28,13 +28,13 @@ int ATI::TextSize(common::CT attrt, uint precision, int scale, DTCollation colla
   return common::TxtDataFormat::StaticExtrnalSize(attrt, precision, scale, &collation);
 }
 
-const types::RCDataType &AttributeTypeInfo::ValuePrototype() const {
+const types::TianmuDataType &AttributeTypeInfo::ValuePrototype() const {
   if (Lookup() || ATI::IsNumericType(attrt))
-    return types::RCNum::NullValue();
+    return types::TianmuNum::NullValue();
   if (ATI::IsStringType(attrt))
     return types::BString::NullValue();
   DEBUG_ASSERT(ATI::IsDateTimeType(attrt));
-  return types::RCDateTime::NullValue();
+  return types::TianmuDateTime::NullValue();
 }
 }  // namespace core
 }  // namespace Tianmu

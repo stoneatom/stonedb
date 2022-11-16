@@ -57,7 +57,7 @@ class InSetColumn : public MultiValColumn {
   };
 
   class LazyValueImpl : public LazyValueInterface {
-    explicit LazyValueImpl(types::RCDataType const *v) : value(v) {}
+    explicit LazyValueImpl(types::TianmuDataType const *v) : value(v) {}
 
    public:
     std::unique_ptr<LazyValueInterface> DoClone() const override {
@@ -67,20 +67,20 @@ class InSetColumn : public MultiValColumn {
       DEBUG_ASSERT(dynamic_cast<types::BString const *>(value));
       return *static_cast<types::BString const *>(value);
     }
-    types::RCNum DoGetRCNum() const override {
-      DEBUG_ASSERT(dynamic_cast<types::RCNum const *>(value));
-      return *static_cast<types::RCNum const *>(value);
+    types::TianmuNum DoGetRCNum() const override {
+      DEBUG_ASSERT(dynamic_cast<types::TianmuNum const *>(value));
+      return *static_cast<types::TianmuNum const *>(value);
     }
-    types::RCValueObject DoGetValue() const override { return *value; }
+    types::TianmuValueObject DoGetValue() const override { return *value; }
     int64_t DoGetInt64() const override {
-      DEBUG_ASSERT(dynamic_cast<types::RCNum const *>(value));
-      return static_cast<types::RCNum const *>(value)->ValueInt();
+      DEBUG_ASSERT(dynamic_cast<types::TianmuNum const *>(value));
+      return static_cast<types::TianmuNum const *>(value)->ValueInt();
     }
     bool DoIsNull() const override { return value->IsNull(); }
     virtual ~LazyValueImpl() {}
 
    private:
-    types::RCDataType const *value;
+    types::TianmuDataType const *value;
     friend class IteratorImpl;
   };
 
@@ -109,11 +109,11 @@ class InSetColumn : public MultiValColumn {
   int64_t NumOfValuesImpl(core::MIIterator const &mit) override;
   int64_t AtLeastNoDistinctValuesImpl(const core::MIIterator &mit, int64_t const at_least) override;
   bool ContainsNullImpl(const core::MIIterator &mit) override;
-  types::RCValueObject GetSetMinImpl(const core::MIIterator &mit) override;
-  types::RCValueObject GetSetMaxImpl(const core::MIIterator &mit) override;
+  types::TianmuValueObject GetSetMinImpl(const core::MIIterator &mit) override;
+  types::TianmuValueObject GetSetMaxImpl(const core::MIIterator &mit) override;
   std::unique_ptr<IteratorInterface> BeginImpl(const core::MIIterator &) override;
   std::unique_ptr<IteratorInterface> EndImpl(const core::MIIterator &) override;
-  common::Tribool ContainsImpl(const core::MIIterator &, const types::RCDataType &) override;
+  common::Tribool ContainsImpl(const core::MIIterator &, const types::TianmuDataType &) override;
   common::Tribool Contains64Impl(const core::MIIterator &,
                                  int64_t) override;  // easy case for integers
   common::Tribool ContainsStringImpl(const core::MIIterator &,

@@ -19,7 +19,7 @@
 
 #include "core/compiled_query.h"
 #include "core/mysql_expression.h"
-#include "core/rc_attr.h"
+#include "core/tianmu_attr.h"
 #include "core/transaction.h"
 
 namespace Tianmu {
@@ -31,17 +31,17 @@ ConstColumn::ConstColumn(core::ValueOrNull const &val, core::ColumnType const &c
   if (ct.IsString())
     ct.SetPrecision(c.GetPrecision());
   if (c.GetTypeName() == common::CT::TIMESTAMP && shift_to_UTC) {
-    types::RCDateTime rcdt(val.Get64(), common::CT::TIMESTAMP);
+    types::TianmuDateTime tianmu_dt(val.Get64(), common::CT::TIMESTAMP);
     // needs to convert value_or_null_ to UTC
     MYSQL_TIME myt;
     std::memset(&myt, 0, sizeof(MYSQL_TIME));
-    myt.year = rcdt.Year();
-    myt.month = rcdt.Month();
-    myt.day = rcdt.Day();
-    myt.hour = rcdt.Hour();
-    myt.minute = rcdt.Minute();
-    myt.second = rcdt.Second();
-    myt.second_part = rcdt.MicroSecond();
+    myt.year = tianmu_dt.Year();
+    myt.month = tianmu_dt.Month();
+    myt.day = tianmu_dt.Day();
+    myt.hour = tianmu_dt.Hour();
+    myt.minute = tianmu_dt.Minute();
+    myt.second = tianmu_dt.Second();
+    myt.second_part = tianmu_dt.MicroSecond();
     myt.time_type = MYSQL_TIMESTAMP_DATETIME;
     if (!common::IsTimeStampZero(myt)) {
       my_bool myb;
@@ -49,14 +49,14 @@ ConstColumn::ConstColumn(core::ValueOrNull const &val, core::ColumnType const &c
       my_time_t secs_utc = current_txn_->Thd()->variables.time_zone->TIME_to_gmt_sec(&myt, &myb);
       // UTC seconds converted to UTC TIME
       common::GMTSec2GMTTime(&myt, secs_utc);
-      myt.second_part = rcdt.MicroSecond();
+      myt.second_part = tianmu_dt.MicroSecond();
     }
-    rcdt = types::RCDateTime(myt, common::CT::TIMESTAMP);
-    value_or_null_.SetFixed(rcdt.GetInt64());
+    tianmu_dt = types::TianmuDateTime(myt, common::CT::TIMESTAMP);
+    value_or_null_.SetFixed(tianmu_dt.GetInt64());
   }
 }
 
-ConstColumn::ConstColumn(const types::RCValueObject &v, const core::ColumnType &c)
+ConstColumn::ConstColumn(const types::TianmuValueObject &v, const core::ColumnType &c)
     : VirtualColumn(c, nullptr), value_or_null_() {
   dim_ = -1;
   if (c.IsString()) {
@@ -64,14 +64,14 @@ ConstColumn::ConstColumn(const types::RCValueObject &v, const core::ColumnType &
     ct.SetPrecision(value_or_null_.StrLen());
   } else if (c.IsNumeric() && !c.IsDateTime()) {
     if (v.GetValueType() == types::ValueTypeEnum::NUMERIC_TYPE)
-      value_or_null_ = core::ValueOrNull(static_cast<types::RCNum &>(v));
+      value_or_null_ = core::ValueOrNull(static_cast<types::TianmuNum &>(v));
     else if (v.GetValueType() == types::ValueTypeEnum::STRING_TYPE) {
-      types::RCNum rcn;
+      types::TianmuNum tianmu_n;
       if (c.IsFloat())
-        types::RCNum::ParseReal(v.ToBString(), rcn, c.GetTypeName());
+        types::TianmuNum::ParseReal(v.ToBString(), tianmu_n, c.GetTypeName());
       else
-        types::RCNum::ParseNum(v.ToBString(), rcn);
-      value_or_null_ = rcn;
+        types::TianmuNum::ParseNum(v.ToBString(), tianmu_n);
+      value_or_null_ = tianmu_n;
     } else if (v.GetValueType() == types::ValueTypeEnum::NULL_TYPE)
       value_or_null_ = core::ValueOrNull();
     else
@@ -79,7 +79,7 @@ ConstColumn::ConstColumn(const types::RCValueObject &v, const core::ColumnType &
   } else {
     DEBUG_ASSERT(v.GetValueType() == types::ValueTypeEnum::DATE_TIME_TYPE);
     // TODO: if it is non-date-time a proper conversion should be done here
-    value_or_null_ = core::ValueOrNull(static_cast<types::RCDateTime &>(v));
+    value_or_null_ = core::ValueOrNull(static_cast<types::TianmuDateTime &>(v));
   }
 }
 
@@ -100,7 +100,7 @@ double ConstColumn::GetValueDoubleImpl([[maybe_unused]] const core::MIIterator &
     u.i = value_or_null_.Get64();
     val = u.d;
   } else if (core::ATI::IsDateTimeType(TypeName())) {
-    types::RCDateTime vd(value_or_null_.Get64(),
+    types::TianmuDateTime vd(value_or_null_.Get64(),
                          TypeName());  // 274886765314048  -> 2000-01-01
     int64_t vd_conv = 0;
     vd.ToInt64(vd_conv);  // 2000-01-01  ->  20000101
@@ -114,9 +114,9 @@ double ConstColumn::GetValueDoubleImpl([[maybe_unused]] const core::MIIterator &
   return val;
 }
 
-types::RCValueObject ConstColumn::GetValueImpl([[maybe_unused]] const core::MIIterator &mit, bool lookup_to_num) {
+types::TianmuValueObject ConstColumn::GetValueImpl([[maybe_unused]] const core::MIIterator &mit, bool lookup_to_num) {
   if (value_or_null_.IsNull())
-    return types::RCValueObject();
+    return types::TianmuValueObject();
 
   if (core::ATI::IsStringType((TypeName()))) {
     types::BString s;
@@ -124,15 +124,15 @@ types::RCValueObject ConstColumn::GetValueImpl([[maybe_unused]] const core::MIIt
     return s;
   }
   if (core::ATI::IsIntegerType(TypeName()))
-    return types::RCNum(value_or_null_.Get64(), -1, false, TypeName());
+    return types::TianmuNum(value_or_null_.Get64(), -1, false, TypeName());
   if (core::ATI::IsDateTimeType(TypeName()))
-    return types::RCDateTime(value_or_null_.Get64(), TypeName());
+    return types::TianmuDateTime(value_or_null_.Get64(), TypeName());
   if (core::ATI::IsRealType(TypeName()))
-    return types::RCNum(value_or_null_.Get64(), 0, true, TypeName());
+    return types::TianmuNum(value_or_null_.Get64(), 0, true, TypeName());
   if (lookup_to_num || TypeName() == common::CT::NUM)
-    return types::RCNum((int64_t)value_or_null_.Get64(), Type().GetScale());
+    return types::TianmuNum((int64_t)value_or_null_.Get64(), Type().GetScale());
   DEBUG_ASSERT(!"Illegal execution path");
-  return types::RCValueObject();
+  return types::TianmuValueObject();
 }
 
 void ConstColumn::GetValueStringImpl(types::BString &s, const core::MIIterator &mit) { s = GetValue(mit).ToBString(); }

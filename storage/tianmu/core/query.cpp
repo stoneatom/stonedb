@@ -42,7 +42,7 @@ Query::~Query() {
   for (auto it : gc_expressions) delete it;
 }
 
-void Query::RemoveFromManagedList(const std::shared_ptr<RCTable> tab) {
+void Query::RemoveFromManagedList(const std::shared_ptr<TianmuTable> tab) {
   ta.erase(std::remove(ta.begin(), ta.end(), tab), ta.end());
 }
 
@@ -486,10 +486,10 @@ vcolumn::VirtualColumn *Query::CreateColumnFromExpression(std::vector<MysqlExpre
     } else
       vc = new vcolumn::ConstExpressionColumn(exprs[0], temp_table, temp_table_alias, mind);
   } else {
-    if (rc_control_.isOn()) {
+    if (tianmu_control_.isOn()) {
       if ((item->type()) == Item::FUNC_ITEM) {
         Item_func *ifunc = down_cast<Item_func *>(item);
-        rc_control_.lock(mind->m_conn->GetThreadID())
+        tianmu_control_.lock(mind->m_conn->GetThreadID())
             << "Unoptimized expression near '" << ifunc->func_name() << "'" << system::unlock;
       }
     }
@@ -892,10 +892,10 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           output_table = (TempTable *)ta[-step.t1.n - 1].get();
           break;
         case CompiledQuery::StepType::STEP_ERROR:
-          rc_control_.lock(m_conn->GetThreadID()) << "ERROR in step " << step.alias << system::unlock;
+          tianmu_control_.lock(m_conn->GetThreadID()) << "ERROR in step " << step.alias << system::unlock;
           break;
         default:
-          rc_control_.lock(m_conn->GetThreadID())
+          tianmu_control_.lock(m_conn->GetThreadID())
               << "ERROR: unsupported type of CQStep (" << static_cast<int>(step.type) << ")" << system::unlock;
       }
     } catch (...) {
