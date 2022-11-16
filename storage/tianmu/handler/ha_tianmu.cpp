@@ -952,15 +952,15 @@ int ha_tianmu::rnd_init(bool scan) {
 
   int ret = 1;
   try {
-    if (query_ && !result_ && table_ptr_->NumOfObj() != 0) {
-      cq_->Result(tmp_table_);  // it is ALWAYS -2 though....
+    if (query_ptr_ && !result_ && table_ptr_->NumOfObj() != 0) {
+      cq_ptr_->Result(tmp_table_);  // it is ALWAYS -2 though....
       result_ = true;
 
       try {
-        core::FunctionExecutor fe(std::bind(&core::Query::LockPackInfoForUse, std::ref(query_)),
-                                  std::bind(&core::Query::UnlockPackInfoFromUse, std::ref(query_)));
+        core::FunctionExecutor fe(std::bind(&core::Query::LockPackInfoForUse, std::ref(query_ptr_)),
+                                  std::bind(&core::Query::UnlockPackInfoFromUse, std::ref(query_ptr_)));
 
-        core::TempTable *push_down_result = query_->Preexecute(*cq_, nullptr, false);
+        core::TempTable *push_down_result = query_ptr_->Preexecute(*cq_ptr_, nullptr, false);
         if (!push_down_result || push_down_result->NumOfTables() != 1)
           throw common::InternalException("core::Query execution returned no result object");
 
@@ -979,8 +979,8 @@ int ha_tianmu::rnd_init(bool scan) {
                     << system::unlock;
         TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in push-down execution: %s", e.what());
       }
-      query_.reset();
-      cq_.reset();
+      query_ptr_.reset();
+      cq_ptr_.reset();
     } else {
       if (scan && filter_ptr_.get()) {
         table_new_iter_ = ((core::RCTable *)table_ptr_)->Begin(GetAttrsUseIndicator(table), *filter_ptr_);
@@ -1122,8 +1122,8 @@ int ha_tianmu::extra([[maybe_unused]] enum ha_extra_function operation) {
   // stonedb8 TODO: HA_EXTRA_NO_CACHE is deleted
   /*
   if (operation == HA_EXTRA_NO_CACHE) {
-    cq_.reset();
-    query_.reset();
+    cq_ptr_.reset();
+    query_ptr_.reset();
   }
   */
   DBUG_RETURN(0);
@@ -1332,15 +1332,15 @@ bool ha_tianmu::explain_message(const Item *a_cond, String *buf) {
 
 int ha_tianmu::set_cond_iter() {
   int ret = 1;
-  if (query_ && !result_ && table_ptr_->NumOfObj() != 0) {
-    cq_->Result(tmp_table_);  // it is ALWAYS -2 though....
+  if (query_ptr_ && !result_ && table_ptr_->NumOfObj() != 0) {
+    cq_ptr_->Result(tmp_table_);  // it is ALWAYS -2 though....
     result_ = true;
 
     try {
-      core::FunctionExecutor fe(std::bind(&core::Query::LockPackInfoForUse, std::ref(query_)),
-                                std::bind(&core::Query::UnlockPackInfoFromUse, std::ref(query_)));
+      core::FunctionExecutor fe(std::bind(&core::Query::LockPackInfoForUse, std::ref(query_ptr_)),
+                                std::bind(&core::Query::UnlockPackInfoFromUse, std::ref(query_ptr_)));
 
-      core::TempTable *push_down_result = query_->Preexecute(*cq_, nullptr, false);
+      core::TempTable *push_down_result = query_ptr_->Preexecute(*cq_ptr_, nullptr, false);
       if (!push_down_result || push_down_result->NumOfTables() != 1)
         throw common::InternalException("core::Query execution returned no result object");
 
@@ -1360,8 +1360,8 @@ int ha_tianmu::set_cond_iter() {
                   << system::unlock;
       TIANMU_LOG(LogCtl_Level::ERROR, "Error in push-down execution, push-down execution aborted: %s", e.what());
     }
-    query_.reset();
-    cq_.reset();
+    query_ptr_.reset();
+    cq_ptr_.reset();
   }
   return ret;
 }
@@ -1371,20 +1371,20 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
   Item *cond = const_cast<Item *>(a_cond);
 
   try {
-    if (!query_) {
+    if (!query_ptr_) {
       std::shared_ptr<core::RCTable> rctp;
       ha_rcengine_->GetTableIterator(table_name_, table_new_iter_, table_new_iter_end_, rctp,
                                      GetAttrsUseIndicator(table), table->in_use);
       table_ptr_ = rctp.get();
-      query_.reset(new core::Query(current_txn_));
-      cq_.reset(new core::CompiledQuery);
+      query_ptr_.reset(new core::Query(current_txn_));
+      cq_ptr_.reset(new core::CompiledQuery);
       result_ = false;
 
-      query_->AddTable(rctp);
+      query_ptr_->AddTable(rctp);
       core::TableID t_out;
-      cq_->TableAlias(t_out,
-                      core::TableID(0));  // we apply it to the only table in this query
-      cq_->TmpTable(tmp_table_, t_out);
+      cq_ptr_->TableAlias(t_out,
+                          core::TableID(0));  // we apply it to the only table in this query
+      cq_ptr_->TmpTable(tmp_table_, t_out);
 
       std::string ext_alias;
       if (table->pos_in_table_list->referencing_view)
@@ -1392,7 +1392,7 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
       else
         ext_alias = std::string(table->s->table_name.str);
       ext_alias += std::string(":") + std::string(table->alias);
-      query_->table_alias2index_ptr.insert(std::make_pair(ext_alias, std::make_pair(t_out.n, table)));
+      query_ptr_->table_alias2index_ptr.insert(std::make_pair(ext_alias, std::make_pair(t_out.n, table)));
 
       int col_no = 0;
       core::AttrID col, vc;
@@ -1403,9 +1403,9 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
         core::AttrID at;
         if (bitmap_is_set(table->read_set, col_no)) {
           col.n = col_no++;
-          cq_->CreateVirtualColumn(vc.n, tmp_table_, t_out, col);
-          cq_->AddColumn(at, tmp_table_, core::CQTerm(vc.n), common::ColOperation::LISTING, (*field)->field_name,
-                         false);
+          cq_ptr_->CreateVirtualColumn(vc.n, tmp_table_, t_out, col);
+          cq_ptr_->AddColumn(at, tmp_table_, core::CQTerm(vc.n), common::ColOperation::LISTING, (*field)->field_name,
+                             false);
         }
       }
       dbug_tmp_restore_column_map(table->read_set, org_bitmap);
@@ -1415,17 +1415,17 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
       return a_cond;  // if result_ there is already a result command in
                       // compilation
 
-    std::unique_ptr<core::CompiledQuery> tmp_cq(new core::CompiledQuery(*cq_));
+    std::unique_ptr<core::CompiledQuery> tmp_cq(new core::CompiledQuery(*cq_ptr_));
     core::CondID cond_id;
-    if (query_->BuildConditions(cond, cond_id, tmp_cq.get(), tmp_table_, core::CondType::WHERE_COND, false) ==
+    if (query_ptr_->BuildConditions(cond, cond_id, tmp_cq.get(), tmp_table_, core::CondType::WHERE_COND, false) ==
         QueryRouteTo::TO_MYSQL) {
-      query_.reset();
+      query_ptr_.reset();
       return a_cond;
     }
 
     tmp_cq->AddConds(tmp_table_, cond_id, core::CondType::WHERE_COND);
     tmp_cq->ApplyConds(tmp_table_);
-    cq_.reset(tmp_cq.release());
+    cq_ptr_.reset(tmp_cq.release());
     // reset  table_new_iter_ with push condition
     set_cond_iter();
     ret = 0;
@@ -1448,8 +1448,8 @@ int ha_tianmu::reset() {
     table_new_iter_end_ = core::RCTable::Iterator();
     table_ptr_ = nullptr;
     filter_ptr_.reset();
-    query_.reset();
-    cq_.reset();
+    query_ptr_.reset();
+    cq_ptr_.reset();
     result_ = false;
     blob_buffers_.resize(0);
     ret = 0;
