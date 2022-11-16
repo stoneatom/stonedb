@@ -170,9 +170,12 @@ void SubSelectColumn::EvaluatePackImpl([[maybe_unused]] core::MIUpdatingIterator
 common::Tribool SubSelectColumn::ContainsImpl(core::MIIterator const &mit, types::RCDataType const &v) {
   // If the sub-select is something like 'select null from xxx' then there
   // is no need to execute the sub-select, just return common::TRIBOOL_UNKNOWN.
-  VirtualColumn *vc = tmp_tab_subq_ptr_->GetAttrP(col_idx_)->term.vc;
-  if (vc->IsFullConst() && vc->IsNull(core::MIIterator(nullptr, multi_index_->ValueOfPower())))
-    return common::TRIBOOL_UNKNOWN;
+  Tianmu::core::TempTable::Attr *attr = tmp_tab_subq_ptr_->GetAttrP(col_idx_);
+  if (attr && attr->IsListField()) {
+    VirtualColumn *vc = attr->term.vc;
+    if (vc->IsFullConst() && vc->IsNull(core::MIIterator(nullptr, multi_index_->ValueOfPower())))
+      return common::TRIBOOL_UNKNOWN;
+  }
 
   PrepareSubqResult(mit, false);
   common::Tribool res = false;

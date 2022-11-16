@@ -80,7 +80,8 @@ class TempTable : public JustATable {
     int operator==(const Attr &);
     ~Attr();
 
-    bool ShouldOutput() const { return (mode == common::ColOperation::LISTING) && term.vc && alias; }
+    bool IsListField() const { return (mode == common::ColOperation::LISTING) && term.vc; };
+    bool ShouldOutput() const { return alias && IsListField(); }
     bool NeedFill() const {
       return ((mode == common::ColOperation::LISTING) && term.vc && alias) ||
              !term.vc->IsConst();  // constant value, the buffer is already
