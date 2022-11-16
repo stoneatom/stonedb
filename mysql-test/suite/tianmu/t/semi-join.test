@@ -1,5 +1,5 @@
-
-# in/exists subquery with PRIMARY KEY
+--source include/have_tianmu.inc
+use test;
 CREATE TABLE t1 (t1_int INT, t1_char CHAR(5), PRIMARY KEY (t1_int)) ENGINE=TIANMU;
 CREATE TABLE t2 (t2_int INT, t2_char CHAR(5)) ENGINE=TIANMU;
 INSERT INTO t1 VALUES (1, 'aaa'),(2, 'aaa'),(3, 'ccc'),(4, 'ddd'),(5, 'aaa'),(6, ''),(7, 'eee');
