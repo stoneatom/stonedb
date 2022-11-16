@@ -158,7 +158,7 @@ class ha_tianmu final : public handler {
 
   THR_LOCK_DATA lock_; /* MySQL lock */
   std::string table_name_;
-  uint dupkey_pos_ = -1;
+  uint dupkey_pos_ = UINT32_MAX;
 
   core::JustATable *table_ptr_ = nullptr;
   std::unique_ptr<core::Filter> filter_ptr_;
@@ -167,9 +167,9 @@ class ha_tianmu final : public handler {
   core::RCTable::Iterator table_new_iter_;
   core::RCTable::Iterator table_new_iter_end_;
 
-  std::unique_ptr<core::Query> query_;
+  std::unique_ptr<core::Query> query_ptr_;
   core::TableID tmp_table_;
-  std::unique_ptr<core::CompiledQuery> cq_;
+  std::unique_ptr<core::CompiledQuery> cq_ptr_;
   bool result_ = false;
   std::vector<std::vector<uchar>> blob_buffers_;
   bool partitioned_ = false;
