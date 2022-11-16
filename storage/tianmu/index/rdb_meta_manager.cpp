@@ -505,7 +505,8 @@ bool DDLManager::init(DICTManager *const dict, CFManager *const cf_manager_) {
                  max_index_id, memtable_id);
       return false;
     }
-    std::shared_ptr<core::TianmuMemTable> tb_mem = std::make_shared<core::TianmuMemTable>(table_name, memtable_id, cf_id);
+    std::shared_ptr<core::TianmuMemTable> tb_mem =
+        std::make_shared<core::TianmuMemTable>(table_name, memtable_id, cf_id);
     mem_hash_[table_name] = tb_mem;
   }
 

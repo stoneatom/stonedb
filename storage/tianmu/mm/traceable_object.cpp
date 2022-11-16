@@ -24,8 +24,8 @@
 #include "mm/release_tracker.h"
 
 #include "system/fet.h"
-#include "system/tianmu_system.h"
 #include "system/res_manager.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace mm {

@@ -597,7 +597,8 @@ common::ErrorCode ValueParserForText::ParseBigIntAdapter(const BString &tianmu_s
   return return_code;
 }
 
-common::ErrorCode ValueParserForText::ParseDecimal(BString const &tianmu_s, int64_t &out, short precision, short scale) {
+common::ErrorCode ValueParserForText::ParseDecimal(BString const &tianmu_s, int64_t &out, short precision,
+                                                   short scale) {
   TianmuNum number;
   common::ErrorCode return_code = ParseNum(tianmu_s, number, scale);
   out = number.ValueInt();
@@ -611,7 +612,8 @@ common::ErrorCode ValueParserForText::ParseDecimal(BString const &tianmu_s, int6
   return return_code;
 }
 
-common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &tianmu_s, TianmuDateTime &rcv, common::CT at) {
+common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &tianmu_s, TianmuDateTime &rcv,
+                                                               common::CT at) {
   if (tianmu_s.IsNull() || tianmu_s.Equals("nullptr", 4)) {
     rcv.at_ = at;
     rcv.null_ = true;
@@ -691,15 +693,16 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &ti
   if (!EatWhiteSigns(buf, buflen) && !system::EatDTSeparators(buf, buflen)) {
     if ((at == common::CT::DATETIME &&
          TianmuDateTime::IsCorrectTianmuDatetime((short)year, month, day, TianmuDateTime::GetSpecialValue(at).Hour(),
-                                             TianmuDateTime::GetSpecialValue(at).Minute(),
-                                             TianmuDateTime::GetSpecialValue(at).Second())) ||
+                                                 TianmuDateTime::GetSpecialValue(at).Minute(),
+                                                 TianmuDateTime::GetSpecialValue(at).Second())) ||
         (at == common::CT::TIMESTAMP &&
          TianmuDateTime::IsCorrectTianmuTimestamp((short)year, month, day, TianmuDateTime::GetSpecialValue(at).Hour(),
-                                              TianmuDateTime::GetSpecialValue(at).Minute(),
-                                              TianmuDateTime::GetSpecialValue(at).Second())) ||
+                                                  TianmuDateTime::GetSpecialValue(at).Minute(),
+                                                  TianmuDateTime::GetSpecialValue(at).Second())) ||
         (at == common::CT::DATE && TianmuDateTime::IsCorrectTianmuDate((short)year, month, day)))
       rcv = TianmuDateTime((short)year, month, day, TianmuDateTime::GetSpecialValue(at).Hour(),
-                       TianmuDateTime::GetSpecialValue(at).Minute(), TianmuDateTime::GetSpecialValue(at).Second(), at);
+                           TianmuDateTime::GetSpecialValue(at).Minute(), TianmuDateTime::GetSpecialValue(at).Second(),
+                           at);
     return common::ErrorCode::OUT_OF_RANGE;
   }
 
@@ -762,18 +765,18 @@ common::ErrorCode ValueParserForText::ParseDateTimeOrTimestamp(const BString &ti
   try {
     if (at == common::CT::DATETIME) {
       if (TianmuDateTime::IsCorrectTianmuDatetime((short)year, (short)month, (short)day, (short)hour, (short)minute,
-                                              (short)second)) {
+                                                  (short)second)) {
         rcv = TianmuDateTime((short)year, (short)month, (short)day, (short)hour, (short)minute, (short)second, at);
         return tianmu_err_code;
       } else {
         rcv = TianmuDateTime((short)year, (short)month, (short)day, (short)TianmuDateTime::GetSpecialValue(at).Hour(),
-                         (short)TianmuDateTime::GetSpecialValue(at).Minute(),
-                         (short)TianmuDateTime::GetSpecialValue(at).Second(), at);
+                             (short)TianmuDateTime::GetSpecialValue(at).Minute(),
+                             (short)TianmuDateTime::GetSpecialValue(at).Second(), at);
         tianmu_err_code = common::ErrorCode::OUT_OF_RANGE;
       }
     } else if (at == common::CT::TIMESTAMP) {
       if (TianmuDateTime::IsCorrectTianmuTimestamp((short)year, (short)month, (short)day, (short)hour, (short)minute,
-                                               (short)second)) {
+                                                   (short)second)) {
         // convert to UTC
         MYSQL_TIME myt;
         std::memset(&myt, 0, sizeof(MYSQL_TIME));

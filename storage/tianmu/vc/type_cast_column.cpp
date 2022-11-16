@@ -454,7 +454,8 @@ DateTime2VarcharCastColumn::DateTime2VarcharCastColumn(VirtualColumn *from, core
   }
 }
 
-types::TianmuValueObject DateTime2VarcharCastColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool b) {
+types::TianmuValueObject DateTime2VarcharCastColumn::GetValueImpl(const core::MIIterator &mit,
+                                                                  [[maybe_unused]] bool b) {
   if (full_const_)
     return rc_value_obj_;
   else {
@@ -645,7 +646,8 @@ int64_t TimeZoneConversionCastColumn::GetValueInt64Impl(const core::MIIterator &
   }
 }
 
-types::TianmuValueObject TimeZoneConversionCastColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool b) {
+types::TianmuValueObject TimeZoneConversionCastColumn::GetValueImpl(const core::MIIterator &mit,
+                                                                    [[maybe_unused]] bool b) {
   if (full_const_) {
     if (Type().IsString())
       return rc_value_obj_.ToBString();
@@ -694,7 +696,8 @@ void TimeZoneConversionCastColumn::GetValueStringImpl(types::BString &s, const c
   }
 }
 
-types::TianmuValueObject StringCastColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool lookup_to_num) {
+types::TianmuValueObject StringCastColumn::GetValueImpl(const core::MIIterator &mit,
+                                                        [[maybe_unused]] bool lookup_to_num) {
   types::BString s;
   vc_->GetValueString(s, mit);
   return s;

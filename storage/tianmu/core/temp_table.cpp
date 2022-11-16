@@ -1385,7 +1385,8 @@ void TempTable::Union(TempTable *t, int all) {
   int64_t first_no_obj = first_mask.NumOfOnes();
   int64_t sec_no_obj = sec_mask.NumOfOnes();
   int64_t new_no_obj = first_no_obj + sec_no_obj;
-  tianmu_control_.lock(m_conn->GetThreadID()) << "UNION: generating result (" << new_no_obj << " rows)." << system::unlock;
+  tianmu_control_.lock(m_conn->GetThreadID())
+      << "UNION: generating result (" << new_no_obj << " rows)." << system::unlock;
   uint new_page_size = CalculatePageSize(new_no_obj);
   for (uint i = 0; i < NumOfDisplaybleAttrs(); i++) {
     Attr *first_attr = GetDisplayableAttrP(i);

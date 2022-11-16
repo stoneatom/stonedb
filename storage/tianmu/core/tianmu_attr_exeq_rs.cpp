@@ -247,9 +247,10 @@ common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_
           res = common::RSValue::RS_NONE;  // calculate as for common::Operator::O_IN and then take
                                            // common::Operator::O_NOT_IN into account
         } else if (dpn.min_i == dpn.max_i) {
-          types::TianmuValueObject tianmu_value_obj(ATI::IsDateTimeType(TypeName())
-                                        ? types::TianmuValueObject(types::TianmuDateTime(dpn.min_i, TypeName()))
-                                        : types::TianmuValueObject(types::TianmuNum(dpn.min_i, Type().GetScale())));
+          types::TianmuValueObject tianmu_value_obj(
+              ATI::IsDateTimeType(TypeName())
+                  ? types::TianmuValueObject(types::TianmuDateTime(dpn.min_i, TypeName()))
+                  : types::TianmuValueObject(types::TianmuNum(dpn.min_i, Type().GetScale())));
           res = (mvc->Contains(mit, *tianmu_value_obj) != false) ? common::RSValue::RS_ALL : common::RSValue::RS_NONE;
         } else {
           if (auto sp = GetFilter_Hist())
@@ -793,7 +794,7 @@ uint64_t TianmuAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSVa
 }
 
 uint64_t TianmuAttr::ExactDistinctVals(Filter *f)  // provide the exact number of diff. non-null values, if
-                                               // possible, or common::NULL_VALUE_64
+                                                   // possible, or common::NULL_VALUE_64
 {
   if (f == nullptr)  // no exact information about tuples => nothing can be
                      // determined for sure

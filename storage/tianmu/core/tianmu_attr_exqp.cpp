@@ -105,7 +105,8 @@ common::ErrorCode TianmuAttr::EvaluateOnIndex(MIUpdatingIterator &mit, int dim, 
 
   return rv;
 }
-common::ErrorCode TianmuAttr::EvaluateOnIndex_BetweenInt(MIUpdatingIterator &mit, int dim, Descriptor &d, int64_t limit) {
+common::ErrorCode TianmuAttr::EvaluateOnIndex_BetweenInt(MIUpdatingIterator &mit, int dim, Descriptor &d,
+                                                         int64_t limit) {
   common::ErrorCode rv = common::ErrorCode::FAILED;
   auto indextab = ha_tianmu_engine_->GetTableIndex(m_share->owner->Path());
   if (!indextab)
@@ -168,7 +169,7 @@ common::ErrorCode TianmuAttr::EvaluateOnIndex_BetweenInt(MIUpdatingIterator &mit
 }
 
 common::ErrorCode TianmuAttr::EvaluateOnIndex_BetweenString(MIUpdatingIterator &mit, int dim, Descriptor &d,
-                                                        int64_t limit) {
+                                                            int64_t limit) {
   common::ErrorCode rv = common::ErrorCode::FAILED;
   auto indextab = ha_tianmu_engine_->GetTableIndex(m_share->owner->Path());
   if (!indextab)
@@ -234,7 +235,7 @@ common::ErrorCode TianmuAttr::EvaluateOnIndex_BetweenString(MIUpdatingIterator &
 }
 
 common::ErrorCode TianmuAttr::EvaluateOnIndex_BetweenString_UTF(MIUpdatingIterator &mit, int dim, Descriptor &d,
-                                                            int64_t limit) {
+                                                                int64_t limit) {
   common::ErrorCode rv = common::ErrorCode::FAILED;
   auto indextab = ha_tianmu_engine_->GetTableIndex(m_share->owner->Path());
   if (!indextab)

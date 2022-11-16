@@ -212,7 +212,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
     utils::result_set<size_t> res;
     for (int i = 0; i < task_num; i++)
       res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&TempTable::TaskPutValueInST, this, &taskIterator[i],
-                                                          current_txn_, &subsorted_table[i]));
+                                                               current_txn_, &subsorted_table[i]));
     if (filter.mind->m_conn->Killed())
       throw common::KilledException("Query killed by user");
 
@@ -405,8 +405,8 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
     utils::result_set<void> res;
     for (uint i = 1; i < attrs.size(); i++) {
       if (!skip_parafilloutput[i]) {
-        res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&TempTable::FillbufferTask, this, attrs[i], current_txn_,
-                                                            &page_start, start_row, page_end));
+        res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&TempTable::FillbufferTask, this, attrs[i],
+                                                                 current_txn_, &page_start, start_row, page_end));
       }
     }
     res.get_all_with_except();

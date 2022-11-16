@@ -613,7 +613,7 @@ void ConditionEncoder::TransformINs() {
         desc->val2 = CQTerm();
         desc->val2.vc =
             new vcolumn::ConstColumn(ValueOrNull(types::TianmuNum(attr->EncodeValue64(mvc.GetSetMin(mit), sharp),
-                                                              static_cast<short>(in_type.GetTypeName()))),
+                                                                  static_cast<short>(in_type.GetTypeName()))),
                                      in_type);
         desc->val2.vc_id = desc->table->AddVirtColumn(desc->val2.vc);
       } else {
@@ -650,12 +650,12 @@ void ConditionEncoder::TransformINs() {
           && span == mvc.AtLeastNoDistinctValues(mit, span + 1)) {
         desc->val2.vc = new vcolumn::ConstColumn(
             ValueOrNull(types::TianmuNum(val_max, attr->Type().GetScale(), ATI::IsRealType(in_type.GetTypeName()),
-                                     in_type.GetTypeName())),
+                                         in_type.GetTypeName())),
             in_type);
         desc->val2.vc_id = desc->table->AddVirtColumn(desc->val2.vc);
         desc->val1.vc = new vcolumn::ConstColumn(
             ValueOrNull(types::TianmuNum(val_min, attr->Type().GetScale(), ATI::IsRealType(in_type.GetTypeName()),
-                                     in_type.GetTypeName())),
+                                         in_type.GetTypeName())),
             in_type);
         desc->val1.vc_id = desc->table->AddVirtColumn(desc->val1.vc);
         if (desc->op == common::Operator::O_IN)

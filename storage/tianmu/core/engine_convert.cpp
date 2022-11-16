@@ -456,8 +456,8 @@ int Engine::Convert(int &is_null, String *value, types::TianmuDataType &rcitem, 
       if (types::TianmuDateTime *tianmu_dt = dynamic_cast<types::TianmuDateTime *>(&rcitem)) {
         if (*tianmu_dt != types::kTianmuTimestampSpec) {
           MYSQL_TIME local_time;
-          my_time_t secs = tianmu_sec_since_epoch(tianmu_dt->Year(), tianmu_dt->Month(), tianmu_dt->Day(), tianmu_dt->Hour(),
-                                                  tianmu_dt->Minute(), tianmu_dt->Second());
+          my_time_t secs = tianmu_sec_since_epoch(tianmu_dt->Year(), tianmu_dt->Month(), tianmu_dt->Day(),
+                                                  tianmu_dt->Hour(), tianmu_dt->Minute(), tianmu_dt->Second());
           current_txn_->Thd()->variables.time_zone->gmt_sec_to_TIME(&local_time, secs);
           char buf[32];
           local_time.second_part = tianmu_dt->MicroSecond();

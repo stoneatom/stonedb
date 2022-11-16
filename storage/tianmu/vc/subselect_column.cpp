@@ -444,7 +444,8 @@ bool SubSelectColumn::IsNullImpl(const core::MIIterator &mit) {
   return tmp_tab_subq_ptr_->IsNull(0, col_idx_);
 }
 
-types::TianmuValueObject SubSelectColumn::GetValueImpl(const core::MIIterator &mit, [[maybe_unused]] bool lookup_to_num) {
+types::TianmuValueObject SubSelectColumn::GetValueImpl(const core::MIIterator &mit,
+                                                       [[maybe_unused]] bool lookup_to_num) {
   PrepareSubqResult(mit, false);
   types::TianmuValueObject val = tmp_tab_subq_ptr_->GetValueObject(0, col_idx_);
   if (expected_type_.IsString())

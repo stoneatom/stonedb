@@ -167,7 +167,7 @@ common::ErrorCode TianmuTableIndex::CheckUniqueness(core::Transaction *tx, const
 }
 
 common::ErrorCode TianmuTableIndex::InsertIndex(core::Transaction *tx, std::vector<std::string_view> &fields,
-                                            uint64_t row) {
+                                                uint64_t row) {
   StringWriter value, key;
 
   rocksdb_key_->pack_key(key, fields, value);
@@ -188,7 +188,7 @@ common::ErrorCode TianmuTableIndex::InsertIndex(core::Transaction *tx, std::vect
 }
 
 common::ErrorCode TianmuTableIndex::UpdateIndex(core::Transaction *tx, std::string_view &nkey, std::string_view &okey,
-                                            uint64_t row) {
+                                                uint64_t row) {
   StringWriter value, packkey;
   std::vector<std::string_view> ofields, nfields;
 
@@ -228,7 +228,7 @@ common::ErrorCode TianmuTableIndex::DeleteIndex(core::Transaction *tx, std::stri
 }
 
 common::ErrorCode TianmuTableIndex::GetRowByKey(core::Transaction *tx, std::vector<std::string_view> &fields,
-                                            uint64_t &row) {
+                                                uint64_t &row) {
   std::string value;
   StringWriter packkey, info;
   rocksdb_key_->pack_key(packkey, fields, info);

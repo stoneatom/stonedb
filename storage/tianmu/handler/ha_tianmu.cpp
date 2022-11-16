@@ -1035,7 +1035,7 @@ int ha_tianmu::rnd_init(bool scan) {
         table_new_iter_end_ = ((core::TianmuTable *)table_ptr_)->End();
       } catch (common::Exception const &e) {
         tianmu_control_ << system::lock << "Error in push-down execution, push-down execution aborted: " << e.what()
-                    << system::unlock;
+                        << system::unlock;
         TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in push-down execution: %s", e.what());
       }
       query_.reset();
@@ -1047,7 +1047,7 @@ int ha_tianmu::rnd_init(bool scan) {
       } else {
         std::shared_ptr<core::TianmuTable> rctp;
         ha_tianmu_engine_->GetTableIterator(table_name_, table_new_iter_, table_new_iter_end_, rctp,
-                                       GetAttrsUseIndicator(table), table->in_use);
+                                            GetAttrsUseIndicator(table), table->in_use);
         table_ptr_ = rctp.get();
         filter_ptr_.reset();
       }
@@ -1439,7 +1439,7 @@ int ha_tianmu::set_cond_iter() {
       ret = 0;
     } catch (common::Exception const &e) {
       tianmu_control_ << system::lock << "Error in push-down execution, push-down execution aborted: " << e.what()
-                  << system::unlock;
+                      << system::unlock;
       TIANMU_LOG(LogCtl_Level::ERROR, "Error in push-down execution, push-down execution aborted: %s", e.what());
     }
     query_.reset();
@@ -1456,7 +1456,7 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
     if (!query_) {
       std::shared_ptr<core::TianmuTable> rctp;
       ha_tianmu_engine_->GetTableIterator(table_name_, table_new_iter_, table_new_iter_end_, rctp,
-                                     GetAttrsUseIndicator(table), table->in_use);
+                                          GetAttrsUseIndicator(table), table->in_use);
       table_ptr_ = rctp.get();
       query_.reset(new core::Query(current_txn_));
       cq_.reset(new core::CompiledQuery);
@@ -2182,7 +2182,7 @@ extern void async_join_update(MYSQL_THD thd, struct st_mysql_sys_var *var, void 
 
 #define STATUS_FUNCTION(name, show_type, member)                                                            \
   int get_##name##_StatusVar([[maybe_unused]] MYSQL_THD thd, struct st_mysql_show_var *outvar, char *tmp) { \
-    *((int64_t *)tmp) = ha_tianmu_engine_->cache.member();                                                       \
+    *((int64_t *)tmp) = ha_tianmu_engine_->cache.member();                                                  \
     outvar->value = tmp;                                                                                    \
     outvar->type = show_type;                                                                               \
     return 0;                                                                                               \

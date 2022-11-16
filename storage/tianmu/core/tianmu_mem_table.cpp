@@ -17,8 +17,8 @@
 
 #include "core/tianmu_mem_table.h"
 #include "common/common_definitions.h"
-#include "core/tianmu_table.h"
 #include "core/table_share.h"
+#include "core/tianmu_table.h"
 #include "core/transaction.h"
 #include "index/kv_store.h"
 #include "index/kv_transaction.h"
@@ -63,7 +63,8 @@ TianmuMemTable::TianmuMemTable(const std::string name, const uint32_t mem_id, co
   stat.write_cnt = next_insert_id_.load() - next_load_id_.load();
 }
 
-std::shared_ptr<TianmuMemTable> TianmuMemTable::CreateMemTable(std::shared_ptr<TableShare> share, const std::string mem_name) {
+std::shared_ptr<TianmuMemTable> TianmuMemTable::CreateMemTable(std::shared_ptr<TableShare> share,
+                                                               const std::string mem_name) {
   std::string table_name = share->Path();
   std::string normalized_name;
   if (!index::NormalizeName(table_name, normalized_name)) {

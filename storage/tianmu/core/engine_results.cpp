@@ -323,13 +323,15 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::TianmuDat
             Engine::Convert(is_null, isum_hybrid_rcbase->dec_value(), tianmu_dt, item->decimals);
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == INT_RESULT) {
-            Engine::Convert(is_null, isum_hybrid_rcbase->int64_value(), tianmu_dt, isum_hybrid_rcbase->hybrid_field_type_);
+            Engine::Convert(is_null, isum_hybrid_rcbase->int64_value(), tianmu_dt,
+                            isum_hybrid_rcbase->hybrid_field_type_);
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == REAL_RESULT) {
             Engine::Convert(is_null, isum_hybrid_rcbase->real_value(), tianmu_dt);
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == STRING_RESULT) {
-            Engine::Convert(is_null, isum_hybrid_rcbase->string_value(), tianmu_dt, isum_hybrid_rcbase->hybrid_field_type_);
+            Engine::Convert(is_null, isum_hybrid_rcbase->string_value(), tianmu_dt,
+                            isum_hybrid_rcbase->hybrid_field_type_);
             isum_hybrid_rcbase->null_value = is_null;
           }
           break;
@@ -387,10 +389,10 @@ void ResultSender::Finalize(TempTable *result_table) {
   auto &sctx = thd->m_main_security_ctx;
   if (tianmu_querylog_.isOn())
     tianmu_querylog_ << system::lock << "\tClientIp:" << (sctx.ip().length ? sctx.ip().str : "unkownn")
-                 << "\tClientHostName:" << (sctx.host().length ? sctx.host().str : "unknown")
-                 << "\tClientPort:" << thd->peer_port << "\tUser:" << sctx.user().str << global_serverinfo_
-                 << "\tAffectRows:" << affect_rows << "\tResultRows:" << rows_sent << "\tDBName:" << thd->db().str
-                 << "\tCosttime(ms):" << cost_time << "\tSQL:" << thd->query().str << system::unlock;
+                     << "\tClientHostName:" << (sctx.host().length ? sctx.host().str : "unknown")
+                     << "\tClientPort:" << thd->peer_port << "\tUser:" << sctx.user().str << global_serverinfo_
+                     << "\tAffectRows:" << affect_rows << "\tResultRows:" << rows_sent << "\tDBName:" << thd->db().str
+                     << "\tCosttime(ms):" << cost_time << "\tSQL:" << thd->query().str << system::unlock;
   TIANMU_LOG(LogCtl_Level::DEBUG, "Result: %" PRId64 " Costtime(ms): %" PRId64, rows_sent, cost_time);
 }
 
