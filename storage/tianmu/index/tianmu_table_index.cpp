@@ -208,7 +208,7 @@ common::ErrorCode TianmuTableIndex::UpdateIndex(core::Transaction *tx, std::stri
 }
 
 common::ErrorCode TianmuTableIndex::DeleteIndex(core::Transaction *tx, std::string_view &currentRowKey,
-                                            uint64_t row [[maybe_unused]]) {
+                                                uint64_t row [[maybe_unused]]) {
   StringWriter value, packkey;
   std::vector<std::string_view> fields;
 
