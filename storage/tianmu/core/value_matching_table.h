@@ -52,7 +52,8 @@ class ValueMatchingTable {  // abstract class: interface for value matching
   // already exists, false if put as a new row
   virtual bool FindCurrentRow(unsigned char *input_buffer, int64_t &row, bool add_if_new = true) = 0;
 
-  virtual bool FindCurrentRow(unsigned char *input_buffer, int64_t &row, bool add_if_new, int match_width) {
+  virtual bool FindCurrentRow(unsigned char *input_buffer, int64_t &row, bool add_if_new,
+                              int match_width [[maybe_unused]]) {
     return FindCurrentRow(input_buffer, row, add_if_new);
   };
 
@@ -103,6 +104,7 @@ class ValueMatchingTable {  // abstract class: interface for value matching
 
 class ValueMatching_OnePosition : public ValueMatchingTable {
  public:
+  using ValueMatchingTable::FindCurrentRow;
   ValueMatching_OnePosition();
   ValueMatching_OnePosition(ValueMatching_OnePosition &sec);
   virtual ~ValueMatching_OnePosition();
@@ -136,6 +138,7 @@ class ValueMatching_OnePosition : public ValueMatchingTable {
 
 class ValueMatching_LookupTable : public mm::TraceableObject, public ValueMatchingTable {
  public:
+  using ValueMatchingTable::FindCurrentRow;
   ValueMatching_LookupTable();
   ValueMatching_LookupTable(ValueMatching_LookupTable &sec);
   virtual ~ValueMatching_LookupTable();

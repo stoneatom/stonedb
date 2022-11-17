@@ -40,7 +40,28 @@ TwoDimensionalJoiner::~TwoDimensionalJoiner() {
 }
 
 JoinAlgType TwoDimensionalJoiner::ChooseJoinAlgorithm([[maybe_unused]] MultiIndex &mind, Condition &cond) {
-  auto choose_map_or_hash = ([&tianmu_sysvar_force_hashjoin, &cond] {
+  auto choose_map_or_hash = ([&cond] {
+    {
+      // do not use multithreaded hash join in case sp field
+      JoinAlgType join_type = JoinAlgType::JTYPE_NONE;
+      std::vector<CQTerm *> terms = {&cond[0].attr, &cond[0].val1, &cond[0].val2};
+      std::for_each(terms.begin(), terms.end(), [&](CQTerm *&tm) {
+        if (!tm || !tm->vc || (join_type != JoinAlgType::JTYPE_NONE)) {
+          return;
+        }
+
+        Item *item = tm->vc->GetItem();
+        if (item && (item->type() == Item::Type::FUNC_ITEM) &&
+            (down_cast<Item_func *>(item)->functype() == Item_func::Functype::FUNC_SP)) {
+          join_type = JoinAlgType::JTYPE_GENERAL;
+        }
+      });
+
+      if (join_type != JoinAlgType::JTYPE_NONE) {
+        return join_type;
+      }
+    }
+
     if ((!tianmu_sysvar_force_hashjoin) && (cond.Size() == 1))
       return JoinAlgType::JTYPE_MAP;  // available types checked inside
 

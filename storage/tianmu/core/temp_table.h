@@ -80,7 +80,8 @@ class TempTable : public JustATable {
     int operator==(const Attr &);
     ~Attr();
 
-    bool ShouldOutput() const { return (mode == common::ColOperation::LISTING) && term.vc && alias; }
+    bool IsListField() const { return (mode == common::ColOperation::LISTING) && term.vc; };
+    bool ShouldOutput() const { return alias && IsListField(); }
     bool NeedFill() const {
       return ((mode == common::ColOperation::LISTING) && term.vc && alias) ||
              !term.vc->IsConst();  // constant value, the buffer is already
@@ -109,20 +110,20 @@ class TempTable : public JustATable {
                                 bool outer_nulls_possible) override;  // provide the best upper
                                                                       // approximation of number of diff.
                                                                       // values (incl. null, if flag set)
-    uint64_t ExactDistinctVals([[maybe_unused]] Filter *f) override { return common::NULL_VALUE_64; }
-    bool IsDistinct([[maybe_unused]] Filter *f) override { return false; }
+    uint64_t ExactDistinctVals(Filter *f [[maybe_unused]]) override { return common::NULL_VALUE_64; }
+    bool IsDistinct(Filter *f [[maybe_unused]]) override { return false; }
     size_t MaxStringSize(Filter *f = nullptr) override;  // maximal byte string length in column
-    int64_t RoughMin(Filter *f = nullptr, common::RSValue *rf = nullptr) override {
+    int64_t RoughMin(Filter *f [[maybe_unused]] = nullptr, common::RSValue *rf [[maybe_unused]] = nullptr) override {
       return common::MINUS_INF_64;
     }  // for numerical: best rough approximation of min for a given filter (or
        // global min if filter is nullptr)
-    int64_t RoughMax(Filter *f = nullptr, common::RSValue *rf = nullptr) override {
+    int64_t RoughMax(Filter *f [[maybe_unused]] = nullptr, common::RSValue *rf [[maybe_unused]] = nullptr) override {
       return common::PLUS_INF_64;
     }  // for numerical: best rough approximation of max for a given filter (or
        // global max if filter is nullptr)
-    void DisplayAttrStats([[maybe_unused]] Filter *f) override {}
-    bool TryToMerge([[maybe_unused]] Descriptor &d1, [[maybe_unused]] Descriptor &d2) override { return false; }
-    PackOntologicalStatus GetPackOntologicalStatus([[maybe_unused]] int pack_no) override {
+    void DisplayAttrStats(Filter *f [[maybe_unused]]) override {}
+    bool TryToMerge(Descriptor &d1 [[maybe_unused]], Descriptor &d2 [[maybe_unused]]) override { return false; }
+    PackOntologicalStatus GetPackOntologicalStatus(int pack_no [[maybe_unused]]) override {
       return PackOntologicalStatus::NORMAL;
     }  // not implemented properly yet
     void ApplyFilter(MultiIndex &, int64_t offset, int64_t no_obj);
@@ -144,30 +145,30 @@ class TempTable : public JustATable {
     bool IsRoughNullsOnly() const override { return false; }
     int64_t GetSum(int pack, bool &nonnegative) override;
     int NumOfAttr() const override { return -1; }
-    common::RSValue RoughCheck([[maybe_unused]] int pack, [[maybe_unused]] Descriptor &d,
-                               [[maybe_unused]] bool additional_nulls_possible) override {
+    common::RSValue RoughCheck(int pack [[maybe_unused]], Descriptor &d [[maybe_unused]],
+                               bool additional_nulls_possible [[maybe_unused]]) override {
       return common::RSValue::RS_SOME;
     }
-    common::RSValue RoughCheck([[maybe_unused]] int pack1, [[maybe_unused]] int pack2,
-                               [[maybe_unused]] Descriptor &d) override {
+    common::RSValue RoughCheck(int pack1 [[maybe_unused]], int pack2 [[maybe_unused]],
+                               Descriptor &d [[maybe_unused]]) override {
       return common::RSValue::RS_SOME;
     }
     // as far as Attr is not pack oriented the function below should not be
     // called
-    void EvaluatePack([[maybe_unused]] MIUpdatingIterator &mit, [[maybe_unused]] int dim,
-                      [[maybe_unused]] Descriptor &desc) override {
+    void EvaluatePack(MIUpdatingIterator &mit [[maybe_unused]], int dim [[maybe_unused]],
+                      Descriptor &desc [[maybe_unused]]) override {
       DEBUG_ASSERT(0);
     }
-    common::ErrorCode EvaluateOnIndex([[maybe_unused]] MIUpdatingIterator &mit, [[maybe_unused]] int dim,
-                                      [[maybe_unused]] Descriptor &desc, [[maybe_unused]] int64_t limit) override {
+    common::ErrorCode EvaluateOnIndex(MIUpdatingIterator &mit [[maybe_unused]], int dim [[maybe_unused]],
+                                      Descriptor &desc [[maybe_unused]], int64_t limit [[maybe_unused]]) override {
       TIANMU_ERROR("To be implemented.");
       return common::ErrorCode::FAILED;
     }
-    types::BString DecodeValue_S([[maybe_unused]] int64_t code) override {
+    types::BString DecodeValue_S(int64_t code [[maybe_unused]]) override {
       DEBUG_ASSERT(0);
       return types::BString();
     }  // RCAttr only
-    int EncodeValue_S([[maybe_unused]] types::BString &v) override {
+    int EncodeValue_S(types::BString &v [[maybe_unused]]) override {
       DEBUG_ASSERT(0);
       return -1;
     }  // lookup (physical) only
@@ -239,7 +240,7 @@ class TempTable : public JustATable {
   void SuspendDisplay();
   void ResumeDisplay();
   void LockPackForUse(unsigned attr, unsigned pack_no) override;
-  void UnlockPackFromUse([[maybe_unused]] unsigned attr, [[maybe_unused]] unsigned pack_no) override {}
+  void UnlockPackFromUse(unsigned attr [[maybe_unused]], unsigned pack_no [[maybe_unused]]) override {}
   int64_t NumOfObj() override { return no_obj; }
   uint32_t Getpackpower() const override { return p_power; }
   int64_t NumOfMaterialized() { return no_materialized; }
@@ -265,10 +266,10 @@ class TempTable : public JustATable {
   bool IsNull(int64_t obj,
               int attr) override;  // return true if the value of attr. is null
 
-  int64_t RoughMin([[maybe_unused]] int n_a, Filter *f = nullptr) { return common::MINUS_INF_64; }
-  int64_t RoughMax([[maybe_unused]] int n_a, Filter *f = nullptr) { return common::PLUS_INF_64; }
+  int64_t RoughMin(int n_a [[maybe_unused]], Filter *f [[maybe_unused]] = nullptr) { return common::MINUS_INF_64; }
+  int64_t RoughMax(int n_a [[maybe_unused]], Filter *f [[maybe_unused]] = nullptr) { return common::PLUS_INF_64; }
 
-  uint MaxStringSize(int n_a, Filter *f = nullptr) override {
+  uint MaxStringSize(int n_a, Filter *f [[maybe_unused]] = nullptr) override {
     if (n_a < 0)
       return GetFieldSize(-n_a - 1);
     return GetFieldSize(n_a);

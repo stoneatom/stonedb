@@ -37,7 +37,7 @@ class Column {
     if (this != &c)
       *this = c;
   }
-
+  constexpr Column &operator=(const Column &) = default;
   inline const ColumnType &Type() const { return ct; }
   inline common::CT TypeName() const { return ct.GetTypeName(); }
   inline void SetTypeName(common::CT type) { ct.SetTypeName(type); }

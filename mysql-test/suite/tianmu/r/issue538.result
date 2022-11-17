@@ -1,0 +1,240 @@
+#
+# issue 538 test for user defined function of tianmu
+#
+use test;
+DROP TABLE IF EXISTS employees;
+CREATE TABLE `employees` (
+`employee_id` int(11) NOT NULL ,
+`employee_name` varchar(50) NOT NULL,
+`employee_sex` varchar(10) DEFAULT 'men',
+`hire_date` datetime DEFAULT NULL,
+`employee_mgr` int(11) DEFAULT NULL,
+`employee_salary` float DEFAULT '3000',
+`department_id` int(11) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+DROP FUNCTION IF EXISTS get_desc;
+DROP FUNCTION IF EXISTS get_salary;
+CREATE FUNCTION get_desc(id INT) RETURNS VARCHAR(300) 
+RETURN (SELECT CONCAT('employee name:',employee_name,'---','salary: ',employee_salary) FROM employees WHERE employee_id=id);
+CREATE FUNCTION get_salary(id INT) RETURNS FLOAT
+RETURN (SELECT employee_salary FROM employees WHERE employee_id=id);
+SELECT
+a.employee_id,
+get_desc(b.employee_id)
+FROM
+employees a
+LEFT JOIN employees b ON
+a.employee_id = b.employee_id
+and b.employee_name = 'David Tian';
+employee_id	get_desc(b.employee_id)
+1	employee name:David Tian---salary: 7500
+2	NULL
+3	NULL
+4	NULL
+5	NULL
+SELECT
+sum(200 + get_salary(b.employee_id))
+FROM
+employees a
+LEFT JOIN employees b ON
+a.employee_id = b.employee_id
+and b.employee_name = 'David Tian';
+sum(200 + get_salary(b.employee_id))
+7700
+SELECT
+a.employee_id,
+get_desc(b.employee_id)
+FROM
+employees a
+LEFT JOIN employees b ON
+a.employee_salary = get_salary(b.employee_id)
+and b.employee_name = 'David Tian';
+employee_id	get_desc(b.employee_id)
+1	employee name:David Tian---salary: 7500
+2	NULL
+3	NULL
+4	NULL
+5	NULL
+SELECT
+a.employee_id,
+get_desc(b.employee_id)
+FROM
+employees a
+LEFT JOIN employees b ON
+b.employee_name = 'David Tian'
+WHERE
+a.employee_salary < get_salary(b.employee_id);
+employee_id	get_desc(b.employee_id)
+2	employee name:David Tian---salary: 7500
+5	employee name:David Tian---salary: 7500
+4	employee name:David Tian---salary: 7500
+3	employee name:David Tian---salary: 7500
+SELECT
+a.employee_id,
+get_desc(b.employee_id)
+FROM
+employees a
+LEFT JOIN employees b ON
+b.employee_name = 'David Tian'
+WHERE
+a.employee_salary > get_salary(b.employee_id);
+employee_id	get_desc(b.employee_id)
+SELECT
+a.employee_id,
+get_desc(b.employee_id)
+FROM
+employees a
+LEFT JOIN employees b ON
+b.employee_name = 'David Tian'
+WHERE
+a.employee_salary = get_salary(b.employee_id);
+employee_id	get_desc(b.employee_id)
+1	employee name:David Tian---salary: 7500
+SELECT
+a.employee_id,
+get_desc(b.employee_id)
+FROM
+employees a
+LEFT JOIN employees b ON
+b.employee_name = 'David Tian'
+WHERE
+get_salary(b.employee_id) = a.employee_salary;
+employee_id	get_desc(b.employee_id)
+1	employee name:David Tian---salary: 7500
+SELECT
+get_desc(a.employee_id),
+b.employee_salary
+FROM
+employees as a,
+(
+SELECT
+get_salary(employees.employee_id) as employee_salary
+FROM
+employees) as b
+WHERE
+a.employee_name = 'David Tian'
+	AND a.employee_salary = b.employee_salary;
+get_desc(a.employee_id)	employee_salary
+employee name:David Tian---salary: 7500	7500
+SELECT
+get_desc(a.employee_id),
+b.employee_salary
+FROM
+employees as a,
+(
+SELECT
+get_salary(e.employee_id) as employee_salary
+FROM
+(
+SELECT
+c.employee_id
+FROM
+(
+SELECT
+employee_id,
+get_salary(employees.employee_id) as employee_salary
+FROM
+employees
+WHERE
+employee_salary > 500) as c) as e ) as b
+WHERE
+a.employee_name = 'David Tian'
+	AND a.employee_salary = b.employee_salary;
+get_desc(a.employee_id)	employee_salary
+employee name:David Tian---salary: 7500	7500
+SELECT
+*
+FROM
+employees,
+(
+SELECT
+get_salary(1) ) as ta
+WHERE
+employees.employee_name = 'David Tian';
+employee_id	employee_name	employee_sex	hire_date	employee_mgr	employee_salary	department_id	get_salary(1)
+1	David Tian	man	NULL	10	7500	1	7500
+SELECT
+*
+FROM
+employees,
+(
+SELECT
+get_salary(employees.employee_id)
+FROM
+employees ) as ta
+WHERE
+employees.employee_name = 'David Tian';
+employee_id	employee_name	employee_sex	hire_date	employee_mgr	employee_salary	department_id	get_salary(employees.employee_id)
+1	David Tian	man	NULL	10	7500	1	7500
+1	David Tian	man	NULL	10	7500	1	6600
+1	David Tian	man	NULL	10	7500	1	4300
+1	David Tian	man	NULL	10	7500	1	5300
+1	David Tian	man	NULL	10	7500	1	6500
+SELECT
+employee_id,
+ta.sal
+FROM
+employees,
+(
+SELECT get_salary(1) as sal) as ta
+WHERE
+employees.employee_name = 'David Tian';
+employee_id	sal
+1	7500
+SELECT
+employee_id
+FROM
+employees
+LEFT JOIN ((
+SELECT
+get_salary(1) as employee_salary) as ta) ON
+employees.employee_salary = ta.employee_salary
+WHERE
+employees.employee_name = 'David Tian';
+employee_id
+1
+SELECT
+ta.sal
+FROM
+(
+SELECT get_salary(1) as sal) as ta;
+sal
+7500
+SELECT
+ta.const,
+ta.sal
+FROM
+(
+SELECT
+3 as const,
+get_salary(1) as sal) as ta;
+const	sal
+3	7500
+SELECT get_desc(1);
+get_desc(1)
+employee name:David Tian---salary: 7500
+SELECT get_desc(1),get_desc(1);
+get_desc(1)	get_desc(1)
+employee name:David Tian---salary: 7500	employee name:David Tian---salary: 7500
+SELECT get_desc(1),get_desc(1),get_desc(1);
+get_desc(1)	get_desc(1)	get_desc(1)
+employee name:David Tian---salary: 7500	employee name:David Tian---salary: 7500	employee name:David Tian---salary: 7500
+SELECT 1,get_desc(1);
+1	get_desc(1)
+1	employee name:David Tian---salary: 7500
+SELECT 1,2,get_desc(1);
+1	2	get_desc(1)
+1	2	employee name:David Tian---salary: 7500
+DROP TABLE employees;
+DROP FUNCTION get_desc;
+DROP FUNCTION get_salary;
+DROP TABLE IF EXISTS tf;
+CREATE TABLE tf (a int) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+DROP FUNCTION IF EXISTS sfunc;
+CREATE FUNCTION sfunc (a int) RETURNS int RETURN (a+1);
+INSERT tf VALUES(1);
+SELECT sfunc(2);
+sfunc(2)
+3
+DROP TABLE tf;
+DROP FUNCTION sfunc;

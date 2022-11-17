@@ -1,0 +1,386 @@
+--source include/have_tianmu.inc
+
+USE test;
+
+--disable_warnings
+
+DROP TABLE IF EXISTS t1,t2,t3;
+
+## DDL
+
+CREATE TABLE t1 (a INT) ENGINE=TIANMU;
+CREATE TABLE t2 (a INT) ENGINE=TIANMU;
+CREATE TABLE t3 (a INT) ENGINE=TIANMU;
+
+## insert data
+
+INSERT INTO t1 VALUES (1), (2), (3), (4);
+INSERT INTO t2 VALUES (2), (3), (4);
+INSERT INTO t3 VALUES (3), (4);
+
+## check insert data
+
+SELECT * FROM t1,t2,t3 ORDER BY t1.a,t2.a,t3.a;
+
+## The predicate IS NULL occurs at where
+
+### left join
+
+SELECT
+	*
+FROM
+	t1
+LEFT JOIN t2
+LEFT JOIN t3 ON
+	t2.a = t3.a ON
+	t1.a = t2.a
+WHERE
+	t3.a IS NULL
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+SELECT
+	*
+FROM
+	t1
+LEFT JOIN t2
+LEFT JOIN t3 ON
+	t2.a = t3.a ON
+	t1.a = t2.a
+WHERE
+	t3.a IS NOT NULL
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+### right join
+
+SELECT
+	*
+FROM
+	t1
+RIGHT JOIN t2
+RIGHT JOIN t3 ON
+	t2.a = t3.a ON
+	t1.a = t2.a
+WHERE
+	t3.a IS NULL
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+SELECT
+	*
+FROM
+	t1
+RIGHT JOIN t2
+RIGHT JOIN t3 ON
+	t2.a = t3.a ON
+	t1.a = t2.a
+WHERE
+	t3.a IS NOT NULL
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+### inner join
+
+SELECT
+	*
+FROM
+	t1
+INNER JOIN t2
+INNER JOIN t3
+WHERE
+	t3.a IS NULL
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+SELECT
+	*
+FROM
+	t1
+INNER JOIN t2
+INNER JOIN t3
+WHERE
+	t3.a IS NOT NULL
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+### cross join
+
+SELECT
+	*
+FROM
+	t1
+CROSS JOIN t2
+CROSS JOIN t3
+WHERE
+	t3.a IS NULL
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+SELECT
+	*
+FROM
+	t1
+CROSS JOIN t2
+CROSS JOIN t3
+WHERE
+	t3.a IS NOT NULL
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+## The predicate IS NULL occurs at on
+
+### left join
+
+SELECT
+	*
+FROM
+	t1
+LEFT JOIN t2
+LEFT JOIN t3 ON
+	t2.a = t3.a ON
+	t1.a = t2.a AND
+	t3.a IS NULL
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+SELECT
+	*
+FROM
+	t1
+LEFT JOIN t2
+LEFT JOIN t3 ON
+	t2.a = t3.a ON
+	t1.a = t2.a AND
+	t3.a IS NOT NULL
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+### right join
+
+SELECT
+	*
+FROM
+	t1
+RIGHT JOIN t2
+RIGHT JOIN t3 ON
+	t2.a = t3.a ON
+	t1.a = t2.a AND
+	t3.a IS NULL
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+SELECT
+	*
+FROM
+	t1
+RIGHT JOIN t2
+RIGHT JOIN t3 ON
+	t2.a = t3.a ON
+	t1.a = t2.a AND
+	t3.a IS NOT NULL
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+### inner join
+
+SELECT
+	*
+FROM
+	t1
+INNER JOIN t2
+INNER JOIN t3 ON
+	t3.a IS NULL
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+SELECT
+	*
+FROM
+	t1
+INNER JOIN t2
+INNER JOIN t3 ON
+	t3.a IS NOT NULL
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+### cross join
+
+SELECT
+	*
+FROM
+	t1
+CROSS JOIN t2
+CROSS JOIN t3 ON
+	t3.a IS NULL
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+SELECT
+	*
+FROM
+	t1
+CROSS JOIN t2
+CROSS JOIN t3 ON
+	t3.a IS NOT NULL
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+## Predicate of routine
+
+### Is greater than
+
+SELECT
+	*
+FROM
+	t1
+LEFT JOIN t2
+LEFT JOIN t3 ON
+	t2.a = t3.a ON
+	t1.a = t2.a
+WHERE
+	t3.a > 3
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+SELECT
+	*
+FROM
+	t1
+LEFT JOIN t2
+LEFT JOIN t3 ON
+	t2.a = t3.a ON
+	t1.a = t2.a AND
+	t3.a > 3
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+### Is equal to the
+
+SELECT
+	*
+FROM
+	t1
+LEFT JOIN t2
+LEFT JOIN t3 ON
+	t2.a = t3.a ON
+	t1.a = t2.a
+WHERE
+	t3.a = 3
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+SELECT
+	*
+FROM
+	t1
+LEFT JOIN t2
+LEFT JOIN t3 ON
+	t2.a = t3.a ON
+	t1.a = t2.a AND
+	t3.a = 3
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+### Less than
+
+SELECT
+	*
+FROM
+	t1
+LEFT JOIN t2
+LEFT JOIN t3 ON
+	t2.a = t3.a ON
+	t1.a = t2.a
+WHERE
+	t3.a < 3
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+SELECT
+	*
+FROM
+	t1
+LEFT JOIN t2
+LEFT JOIN t3 ON
+	t2.a = t3.a ON
+	t1.a = t2.a AND
+	t3.a < 3
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+## NOT JOIN
+
+SELECT
+	*
+FROM
+	t1,t2,t3
+WHERE
+	t3.a IS NULL OR
+	t2.a IS NULL OR
+	t1.a IS NULL
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+SELECT
+	*
+FROM
+	t1,t2,t3
+WHERE
+	t3.a IS NOT NULL OR
+	t2.a IS NOT NULL OR
+	t1.a IS NOT NULL
+ORDER BY
+	t1.a,
+	t2.a,
+	t3.a;
+
+## clear test table of this issue
+
+DROP TABLE t1,t2,t3;
