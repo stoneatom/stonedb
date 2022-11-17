@@ -83,7 +83,7 @@ TianmuDateTime::TianmuDateTime(short year, short month, short day, short hour, s
   dt_.second = std::abs(second);
 }
 
-RCDateTime::TianmuDateTime(const MYSQL_TIME &myt, common::CT at) : at_(at) {
+TianmuDateTime::TianmuDateTime(const MYSQL_TIME &myt, common::CT at) : at_(at) {
   ASSERT(at == common::CT::DATETIME || at == common::CT::TIMESTAMP || at == common::CT::DATE,
          "should be 'at == common::CT::DATETIME || at == common::CT::TIMESTAMP || common::CT::DATE'");
   null_ = false;

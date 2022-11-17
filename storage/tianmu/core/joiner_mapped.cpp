@@ -403,8 +403,8 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
     task.dwStartPackno = table_id * (packnums / tids);
     task.dwEndPackno = (table_id == tids - 1) ? packnums : (table_id + 1) * (packnums / tids);
     res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&JoinerParallelMapped::ExecuteMatchLoop, this,
-                                                        &indextable[table_id], packrows, &matched_tuples[table_id], vc2,
-                                                        task, map_function.get()));
+                                                             &indextable[table_id], packrows, &matched_tuples[table_id],
+                                                             vc2, task, map_function.get()));
   }
   res.get_all();
 
