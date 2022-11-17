@@ -207,7 +207,8 @@ common::ErrorCode RCTableIndex::UpdateIndex(core::Transaction *tx, std::string_v
   return rc;
 }
 
-common::ErrorCode RCTableIndex::DeleteIndex(core::Transaction *tx, std::string_view &currentRowKey, uint64_t row) {
+common::ErrorCode RCTableIndex::DeleteIndex(core::Transaction *tx, std::string_view &currentRowKey,
+                                            uint64_t row [[maybe_unused]]) {
   StringWriter value, packkey;
   std::vector<std::string_view> fields;
 

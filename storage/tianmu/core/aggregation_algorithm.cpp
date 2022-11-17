@@ -855,9 +855,9 @@ void AggregationAlgorithm::TaskFillOutput(GroupByWrapper *gbw, Transaction *ci, 
   }
 }
 
-void AggregationWorkerEnt::TaskAggrePacks(MIIterator *taskIterator, [[maybe_unused]] DimensionVector *dims,
-                                          [[maybe_unused]] MIIterator *mit, [[maybe_unused]] CTask *task,
-                                          GroupByWrapper *gbw, Transaction *ci) {
+void AggregationWorkerEnt::TaskAggrePacks(MIIterator *taskIterator, DimensionVector *dims [[maybe_unused]],
+                                          MIIterator *mit [[maybe_unused]], CTask *task [[maybe_unused]],
+                                          GroupByWrapper *gbw, Transaction *ci [[maybe_unused]]) {
   taskIterator->Rewind();
   int task_pack_num = 0;
   while (taskIterator->IsValid()) {
@@ -918,7 +918,6 @@ void AggregationWorkerEnt::DistributeAggreTaskAverage(MIIterator &mit) {
   pack2cur.emplace(std::pair<int, int>(packnum, curtuple_index));
 
   int loopcnt = (packnum < m_threads) ? packnum : m_threads;
-  int mod = packnum % loopcnt;
   int num = packnum / loopcnt;
 
   utils::result_set<void> res;

@@ -67,6 +67,7 @@ class Descriptor {
   common::RSValue rv;                // rough evaluation of descriptor (accumulated or used locally)
   char like_esc;                     // nonstandard LIKE escape character
   std::mutex mtx;
+  CondType cond_type = CondType::UNKOWN_COND;
 
   Descriptor();
   Descriptor(TempTable *t,
@@ -155,6 +156,12 @@ class Descriptor {
   bool ExsitTmpTable() const;
   bool IsleftIndexSearch() const;
   common::ErrorCode EvaluateOnIndex(MIUpdatingIterator &mit, int64_t limit);
+  CondType GetCondType() const { return cond_type; };
+  void SetCondType(CondType type) { cond_type = type; };
+  bool IsTypeJoinExprOn() const {
+    return CondType::ON_INNER_FILTER == cond_type || CondType::ON_LEFT_FILTER == cond_type ||
+           CondType::ON_RIGHT_FILTER == cond_type;
+  };
 
  private:
   /*! \brief Checks condition for set operator, e.g., <ALL
