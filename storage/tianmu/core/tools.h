@@ -167,6 +167,8 @@ class TOCoordinate {
     co.rcattr = _t.co.rcattr;
   }
 
+  TOCoordinate &operator=(const TOCoordinate &) = default;
+
   bool operator==(TOCoordinate const &oid) const {
     if (oid.ID != ID)
       return false;

@@ -385,7 +385,7 @@ Engine::~Engine() {
   TIANMU_LOG(LogCtl_Level::INFO, "Tianmu engine destroyed.");
 }
 
-void Engine::EncodeRecord(const std::string &table_path, int tid, Field **field, size_t col, size_t blobs,
+void Engine::EncodeRecord(const std::string &table_path, int table_id, Field **field, size_t col, size_t blobs,
                           std::unique_ptr<char[]> &buf, uint32_t &size) {
   size = blobs > 0 ? 4_MB : 128_KB;
   buf.reset(new char[size]);
@@ -397,7 +397,7 @@ void Engine::EncodeRecord(const std::string &table_path, int tid, Field **field,
   //     null_mask
   //     fileds...
   char *ptr = buf.get();
-  *(int32_t *)ptr = tid;  // table id
+  *(int32_t *)ptr = table_id;  // table id
   ptr += sizeof(int32_t);
   int32_t path_len = table_path.size();
   std::memcpy(ptr, table_path.c_str(), path_len);
@@ -1106,7 +1106,7 @@ void Engine::PrepareAlterTable(const std::string &table_path, std::vector<Field 
   UnRegisterTable(table_path);
 }
 
-static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec) {
+static void HandleDelayedLoad(int table_id, std::vector<std::unique_ptr<char[]>> &vec) {
   std::string addr = std::to_string(reinterpret_cast<long>(&vec));
 
   std::string table_path(vec[0].get() + sizeof(int32_t));
@@ -1160,7 +1160,7 @@ static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec
   thd->lex->sql_command = SQLCOM_LOAD;
   sql_exchange ex("buffered_insert", 0, FILETYPE_MEM);
   ex.file_name = const_cast<char *>(addr.c_str());
-  ex.skip_lines = tid;  // this is ugly...
+  ex.skip_lines = table_id;  // this is ugly...
   thd->lex->select_lex->context.resolve_in_table_list_only(&tl);
   if (open_temporary_tables(thd, &tl)) {
     // error/////
@@ -1248,9 +1248,9 @@ void Engine::ProcessDelayedInsert() {
     }
 
     buffer_recordnum++;
-    auto tid = *(int32_t *)rec.get();
-    tm[tid].emplace_back(std::move(rec));
-    if (tm[tid].size() > static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
+    auto table_id = *(int32_t *)rec.get();
+    tm[table_id].emplace_back(std::move(rec));
+    if (tm[table_id].size() > static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
       // in case the ingress rate is too high
       DistributeLoad(tm);
       buffer_recordnum = 0;
@@ -1289,17 +1289,17 @@ void Engine::ProcessDelayedMerge() {
           if (record_count >= tianmu_sysvar_insert_numthreshold ||
               (sleep_cnts.count(name) && sleep_cnts[name] > tianmu_sysvar_insert_cntthreshold)) {
             auto share = ha_rcengine_->getTableShare(name);
-            auto tid = share->TabID();
+            auto table_id = share->TabID();
             utils::BitSet null_mask(share->NumOfCols());
             std::unique_ptr<char[]> buf(new char[sizeof(uint32_t) + name.size() + 1 + null_mask.data_size()]);
             char *ptr = buf.get();
-            *(int32_t *)ptr = tid;  // table id
+            *(int32_t *)ptr = table_id;  // table id
             ptr += sizeof(int32_t);
             std::memcpy(ptr, name.c_str(), name.size());
             ptr += name.size();
             *ptr++ = 0;  // end with NUL
             std::memcpy(ptr, null_mask.data(), null_mask.data_size());
-            tm[tid].emplace_back(std::move(buf));
+            tm[table_id].emplace_back(std::move(buf));
             sleep_cnts[name] = 0;
           } else if (record_count > 0) {
             if (sleep_cnts.count(name))
@@ -1419,14 +1419,14 @@ void Engine::LogStat() {
   saved = tianmu_stat;
 }
 
-void Engine::InsertDelayed(const std::string &table_path, int tid, TABLE *table) {
+void Engine::InsertDelayed(const std::string &table_path, int table_id, TABLE *table) {
   my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->read_set);
   std::shared_ptr<void> defer(nullptr,
                               [table, org_bitmap](...) { dbug_tmp_restore_column_map(table->read_set, org_bitmap); });
 
   uint32_t buf_sz = 0;
   std::unique_ptr<char[]> buf;
-  EncodeRecord(table_path, tid, table->field, table->s->fields, table->s->blob_fields, buf, buf_sz);
+  EncodeRecord(table_path, table_id, table->field, table->s->fields, table->s->blob_fields, buf, buf_sz);
 
   int failed = 0;
   while (true) {

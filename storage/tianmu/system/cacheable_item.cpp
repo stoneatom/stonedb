@@ -53,7 +53,7 @@ CacheableItem::CacheableItem(char const *owner_name, char const *object_id, int 
   filename_offset = temp_filename.length();
 
   // fill the file name
-  int i = 0, j = 0;
+  size_t i = 0, j = 0;
 
   while (owner_name[j] != 0 && i < kOwnerAndObjectLen) file_name_[filename_offset + (i++)] = owner_name[j++];
   while (i < kMinOwnerNameLen) file_name_[filename_offset + (i++)] = '_';

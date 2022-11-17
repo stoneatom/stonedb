@@ -80,7 +80,7 @@ BString &BString::operator=(const RCDataType &rcdt) {
     return *this;
 
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
-    *this = (BString &)rcdt;
+    *this = reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt));
   else
     TIANMU_ERROR("bad cast");
 
@@ -411,7 +411,7 @@ bool BString::operator==(const RCDataType &rcdt) const {
   if (null_ || rcdt.IsNull())
     return false;
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
-    return CompareWith((BString &)rcdt) == 0;
+    return CompareWith(reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt))) == 0;
   return CompareWith(rcdt.ToBString()) == 0;
 }
 
@@ -425,7 +425,7 @@ bool BString::operator<(const RCDataType &rcdt) const {
   if (null_ || rcdt.IsNull())
     return false;
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
-    return CompareWith((BString &)rcdt) < 0;
+    return CompareWith(reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt))) < 0;
   return CompareWith(rcdt.ToBString()) < 0;
 }
 
@@ -433,7 +433,7 @@ bool BString::operator>(const RCDataType &rcdt) const {
   if (null_ || rcdt.IsNull())
     return false;
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
-    return CompareWith((BString &)rcdt) > 0;
+    return CompareWith(reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt))) > 0;
   return CompareWith(rcdt.ToBString()) > 0;
 }
 
@@ -441,7 +441,7 @@ bool BString::operator>=(const RCDataType &rcdt) const {
   if (null_ || rcdt.IsNull())
     return false;
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
-    return CompareWith((BString &)rcdt) >= 0;
+    return CompareWith(reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt))) >= 0;
   return CompareWith(rcdt.ToBString()) >= 0;
 }
 
@@ -449,7 +449,7 @@ bool BString::operator<=(const RCDataType &rcdt) const {
   if (null_ || rcdt.IsNull())
     return false;
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
-    return CompareWith((BString &)rcdt) <= 0;
+    return CompareWith(reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt))) <= 0;
   return CompareWith(rcdt.ToBString()) <= 0;
 }
 
@@ -457,7 +457,7 @@ bool BString::operator!=(const RCDataType &rcdt) const {
   if (null_ || rcdt.IsNull())
     return true;
   if (rcdt.GetValueType() == ValueTypeEnum::STRING_TYPE)
-    return CompareWith((BString &)rcdt) != 0;
+    return CompareWith(reinterpret_cast<BString &>(const_cast<RCDataType &>(rcdt))) != 0;
   return CompareWith(rcdt.ToBString()) != 0;
 }
 

@@ -67,6 +67,7 @@ class TianmuError {
   TianmuError(ErrorCode tianmu_error_code = ErrorCode::SUCCESS) : ec_(tianmu_error_code) {}
   TianmuError(ErrorCode tianmu_error_code, std::string message) : ec_(tianmu_error_code), message_(message) {}
   TianmuError(const TianmuError &tianmu_e) : ec_(tianmu_e.ec_), message_(tianmu_e.message_) {}
+  TianmuError &operator=(const TianmuError &) = default;
   operator ErrorCode() { return ec_; }
   ErrorCode GetErrorCode() { return ec_; }
   bool operator==(ErrorCode tianmu_ec) { return tianmu_ec == ec_; }

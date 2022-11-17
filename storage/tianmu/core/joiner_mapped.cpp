@@ -218,7 +218,7 @@ std::unique_ptr<JoinerMapFunction> JoinerMapped::GenerateFunction(vcolumn::Virtu
 
   rc_control_.lock(m_conn->GetThreadID())
       << "Join mapping (multimaps) created on " << mit.NumOfTuples() << " rows." << system::unlock;
-  return std::move(map_function);
+  return map_function;
 }
 
 int64_t JoinerParallelMapped::ExecuteMatchLoop(std::shared_ptr<MultiIndexBuilder::BuildItem> *indextable,
@@ -398,12 +398,13 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
   std::vector<int64_t> matched_tuples(tids);
   CTask task;
   task.dwPackNum = tids;
-  for (int tid = 0; tid < tids; tid++) {
-    task.dwTaskId = tid;
-    task.dwStartPackno = tid * (packnums / tids);
-    task.dwEndPackno = (tid == tids - 1) ? packnums : (tid + 1) * (packnums / tids);
-    res.insert(ha_rcengine_->query_thread_pool.add_task(&JoinerParallelMapped::ExecuteMatchLoop, this, &indextable[tid],
-                                                        packrows, &matched_tuples[tid], vc2, task, map_function.get()));
+  for (int table_id = 0; table_id < tids; table_id++) {
+    task.dwTaskId = table_id;
+    task.dwStartPackno = table_id * (packnums / tids);
+    task.dwEndPackno = (table_id == tids - 1) ? packnums : (table_id + 1) * (packnums / tids);
+    res.insert(ha_rcengine_->query_thread_pool.add_task(&JoinerParallelMapped::ExecuteMatchLoop, this,
+                                                        &indextable[table_id], packrows, &matched_tuples[table_id], vc2,
+                                                        task, map_function.get()));
   }
   res.get_all();
 

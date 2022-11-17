@@ -37,8 +37,8 @@
 namespace Tianmu {
 namespace index {
 
-RdbKey::RdbKey(uint pos, uint keyno, rocksdb::ColumnFamilyHandle *cf_handle, uint16_t index_ver, uchar index_type,
-               bool is_reverse_cf, const char *_name, std::vector<ColAttr> &cols)
+RdbKey::RdbKey(uint pos, uint keyno [[maybe_unused]], rocksdb::ColumnFamilyHandle *cf_handle, uint16_t index_ver,
+               uchar index_type, bool is_reverse_cf, const char *_name, std::vector<ColAttr> &cols)
     : index_pos_(pos),
       cf_handle_(cf_handle),
       index_ver_(index_ver),
