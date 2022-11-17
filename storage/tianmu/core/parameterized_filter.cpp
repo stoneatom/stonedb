@@ -118,13 +118,15 @@ void ParameterizedFilter::AssignInternal(const ParameterizedFilter &pf) {
   filter_type = pf.filter_type;
 }
 
-void ParameterizedFilter::AddConditions(const Condition *new_cond) {
-  const Condition &cond = *new_cond;
-  for (uint i = 0; i < cond.Size(); i++)
+void ParameterizedFilter::AddConditions(Condition *new_cond, CondType type) {
+  Condition &cond = *new_cond;
+  for (uint i = 0; i < cond.Size(); i++) {
+    cond[i].SetCondType(type);
     if (cond[i].IsParameterized())
       parametrized_desc.AddDescriptor(cond[i]);
     else
       descriptors.AddDescriptor(cond[i]);
+  }
 }
 
 void ParameterizedFilter::ProcessParameters() {
@@ -476,10 +478,12 @@ void ParameterizedFilter::RoughMakeProjections(int to_dim, bool update_reduced) 
       vcolumn::VirtualColumn *matched_vc;
       MIDummyIterator local_mit(mind);
       if (dim1 == ld.attr.vc->GetDim()) {
-        po.Init(ld.attr.vc, PackOrderer::OrderType::RangeSimilarity, rough_mind->GetRSValueTable(ld.attr.vc->GetDim()));
+        po.Init(ld.attr.vc, PackOrderer::OrderType::kRangeSimilarity,
+                rough_mind->GetRSValueTable(ld.attr.vc->GetDim()));
         matched_vc = ld.val1.vc;
       } else {
-        po.Init(ld.val1.vc, PackOrderer::OrderType::RangeSimilarity, rough_mind->GetRSValueTable(ld.val1.vc->GetDim()));
+        po.Init(ld.val1.vc, PackOrderer::OrderType::kRangeSimilarity,
+                rough_mind->GetRSValueTable(ld.val1.vc->GetDim()));
         matched_vc = ld.attr.vc;
       }
       // for each dim2 pack, check whether it may be joined with anything
@@ -1252,10 +1256,11 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
         for (uint i = 0; i < descriptors.Size(); i++) {
           if (descriptors[i].IsDelayed() && !descriptors[i].done && descriptors[i].op == common::Operator::O_IS_NULL &&
               join_desc[0].right_dims.Get(descriptors[i].attr.vc->GetDim()) &&
-              !descriptors[i].attr.vc->IsNullsPossible()) {
+              !descriptors[i].attr.vc->IsNullsPossible() && descriptors[i].IsTypeJoinExprOn()) {
             for (int j = 0; j < join_desc[0].right_dims.Size(); j++) {
-              if (join_desc[0].right_dims[j] == true)
+              if (join_desc[0].right_dims[j] == true) {
                 join_tips.null_only[j] = true;
+              }
             }
             descriptors[i].done = true;  // completed inside joining algorithms
             no_of_delayed_conditions--;

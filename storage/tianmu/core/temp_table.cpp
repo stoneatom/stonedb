@@ -1127,20 +1127,29 @@ uint TempTable::GetDisplayableAttrIndex(uint attr) {
 
 void TempTable::AddConds(Condition *cond, CondType type) {
   MEASURE_FET("TempTable::AddConds(...)");
-  if (type == CondType::WHERE_COND) {
-    // need to add one by one since where_conds can be non-empty
-    filter.AddConditions(cond);
-  } else if (type == CondType::HAVING_COND) {
-    DEBUG_ASSERT((*cond)[0].tree);
-    having_conds.AddDescriptor((*cond)[0].tree, this, (*cond)[0].left_dims.Size());
-  } else
-    DEBUG_ASSERT(0);
+  switch (type) {
+    case CondType::WHERE_COND: {
+      // need to add one by one since where_conds can be non-empty
+      filter.AddConditions(cond, CondType::WHERE_COND);
+      break;
+    }
+
+    case CondType::HAVING_COND: {
+      Descriptor &desc = cond->operator[](0);
+      DEBUG_ASSERT(desc.tree);
+      having_conds.AddDescriptor(desc.tree, this, desc.left_dims.Size());
+      break;
+    }
+
+    default:
+      DEBUG_ASSERT(0);
+  }
 }
 
 void TempTable::AddInnerConds(Condition *cond, std::vector<TabID> &dim_aliases) {
   for (uint i = 0; i < cond->Size(); i++)
     for (uint j = 0; j < dim_aliases.size(); j++) (*cond)[i].left_dims[GetDimension(dim_aliases[j])] = true;
-  filter.AddConditions(cond);
+  filter.AddConditions(cond, CondType::ON_INNER_FILTER);
 }
 
 void TempTable::AddLeftConds(Condition *cond, std::vector<TabID> &left_aliases, std::vector<TabID> &right_aliases) {
@@ -1149,7 +1158,7 @@ void TempTable::AddLeftConds(Condition *cond, std::vector<TabID> &left_aliases, 
     for (uint j = 0; j < left_aliases.size(); j++) (*cond)[i].left_dims[GetDimension(left_aliases[j])] = true;
     for (uint j = 0; j < right_aliases.size(); j++) (*cond)[i].right_dims[GetDimension(right_aliases[j])] = true;
   }
-  filter.AddConditions(cond);
+  filter.AddConditions(cond, CondType::ON_LEFT_FILTER);
 }
 
 void TempTable::SetMode(TMParameter mode, int64_t mode_param1, int64_t mode_param2) {

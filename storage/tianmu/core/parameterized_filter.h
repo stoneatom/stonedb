@@ -43,7 +43,7 @@ class ParameterizedFilter final {
   ParameterizedFilter &operator=(const ParameterizedFilter &pf);
   ParameterizedFilter &operator=(ParameterizedFilter &&pf);
   // ParameterizedFilter & operator =(const ParameterizedFilter & pf);
-  void AddConditions(const Condition *conds);
+  void AddConditions(Condition *conds, CondType type);
   uint NoParameterizedDescs() { return parametrized_desc.Size(); }
   void ProcessParameters();
   void PrepareRoughMultiIndex();

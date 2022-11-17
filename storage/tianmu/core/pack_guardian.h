@@ -30,7 +30,7 @@ class MIIterator;
 
 class VCPackGuardian final {
  public:
-  VCPackGuardian(vcolumn::VirtualColumn *vc) : my_vc(*vc) {}
+  VCPackGuardian(vcolumn::VirtualColumn *vc) : my_vc_(*vc) {}
   ~VCPackGuardian() = default;
 
   void LockPackrow(const MIIterator &mit);
@@ -40,16 +40,16 @@ class VCPackGuardian final {
   void Initialize(int no_th);
   void ResizeLastPack(int taskNum);  // used only when Initialize is done
 
-  vcolumn::VirtualColumn &my_vc;
-  bool initialized{false};  // false if the object was not initialized yet.
+  vcolumn::VirtualColumn &my_vc_;
+  bool initialized_{false};  // false if the object was not initialized yet.
   // To be done at the first use, because it is too risky to init in constructor
   // (multiindex may not be valid yet)
 
   // Structures used for LOCK_ONE
-  std::vector<std::vector<int>> last_pack;
+  std::vector<std::vector<int>> last_pack_;
 
-  int threads{1};  // number of parallel threads using the guardian
-  std::mutex mx_thread;
+  int guardian_threads_{1};  // number of parallel threads using the guardian
+  std::mutex mx_thread_;
 };
 }  // namespace core
 }  // namespace Tianmu
