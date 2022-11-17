@@ -39,7 +39,7 @@ pull_request_rules:
   - name: Comment PR if title not semantic
     conditions:
           - author!=Mergify
-          - '-title~=^(feat|fix|docs|workflow|style|refactor|test|website|chore)(\(.*\))?:'
+          - '-title~=^(feat|fix|docs|workflow|perf|style|refactor|test|website|chore)(\(.*\))?:'
     actions:
       comment:
         message: |
@@ -64,6 +64,7 @@ pull_request_rules:
           - `fix`: bug fix for stonedb
           - `docs`: changes to the documentation
           - `workflow`: ci/cd in .github
+          - `perf`: Changes to improve code performance
           - `refactor`: refactoring production code, eg. renaming a variable
           - `style`: formatting, missing semi colons, etc; no production code change
           - `test`: adding missing tests, refactoring tests; no production code change
@@ -115,6 +116,13 @@ pull_request_rules:
       label:
         add:
           - PR-docs
+  - name: label on perf
+    conditions:
+      - 'title~=^(perf)(\(.*\))?:'
+    actions:
+      label:
+        add:
+          - PR-perf
   - name: label on style
     conditions:
       - 'title~=^(style)(\(.*\))?:'
