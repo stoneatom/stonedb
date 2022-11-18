@@ -1231,13 +1231,13 @@ void Aggregator_distinct::endup()
 
 
 String *
-ItemSumNum::val_str(String *str)
+Item_sum_num::val_str(String *str)
 {
   return val_string_from_real(str);
 }
 
 
-my_decimal *ItemSumNum::val_decimal(my_decimal *decimal_value)
+my_decimal *Item_sum_num::val_decimal(my_decimal *decimal_value)
 {
   return val_decimal_from_real(decimal_value);
 }
@@ -1257,7 +1257,7 @@ my_decimal *Item_sum_int::val_decimal(my_decimal *decimal_value)
 
 
 bool
-ItemSumNum::fix_fields(THD *thd, Item **ref)
+Item_sum_num::fix_fields(THD *thd, Item **ref)
 {
   assert(fixed == 0);
 
@@ -1414,7 +1414,7 @@ Field *Item_sum_hybrid::create_tmp_field(bool group, TABLE *table)
   check if the following assignments are really needed
 */
 Item_sum_sum::Item_sum_sum(THD *thd, Item_sum_sum *item) 
-  :ItemSumNum(thd, item), hybrid_type(item->hybrid_type),
+  :Item_sum_num(thd, item), hybrid_type(item->hybrid_type),
    curr_dec_buff(item->curr_dec_buff)
 {
   /* TODO: check if the following assignments are really needed */
@@ -1901,7 +1901,7 @@ static double variance_fp_recurrence_result(double s, ulonglong count, bool is_s
 
 
 Item_sum_variance::Item_sum_variance(THD *thd, Item_sum_variance *item):
-  ItemSumNum(thd, item), hybrid_type(item->hybrid_type),
+  Item_sum_num(thd, item), hybrid_type(item->hybrid_type),
     count(item->count), sample(item->sample),
     prec_increment(item->prec_increment)
 {
@@ -2303,7 +2303,7 @@ bool Item_sum_and::add()
 ** reset result of a Item_sum with is saved in a tmp_table
 *************************************************************************/
 
-void ItemSumNum::reset_field()
+void Item_sum_num::reset_field()
 {
   double nr= args[0]->val_real();
   uchar *res=result_field->ptr;
