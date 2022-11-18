@@ -23,7 +23,7 @@
 namespace Tianmu {
 namespace types {
 
-ItemSumInTianmuBase::ItemSumInTianmuBase() : ItemSumNum() {}
+ItemSumInTianmuBase::ItemSumInTianmuBase() : Item_sum_num() {}
 ItemSumInTianmuBase::~ItemSumInTianmuBase() {}
 
 longlong ItemSumInTianmuBase::val_int() {
@@ -43,7 +43,7 @@ void ItemSumInTianmuBase::clear() {}
 bool ItemSumInTianmuBase::add() { return 0; }
 void ItemSumInTianmuBase::update_field() {}
 
-ItemSumSumTianmuBase::ItemSumSumTianmuBase() : ItemSumNum() { sum_ = 0; }
+ItemSumSumTianmuBase::ItemSumSumTianmuBase() : Item_sum_num() { sum_ = 0; }
 ItemSumSumTianmuBase::~ItemSumSumTianmuBase() {}
 
 double ItemSumSumTianmuBase::val_real() {

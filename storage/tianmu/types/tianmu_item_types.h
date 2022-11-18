@@ -24,7 +24,7 @@
 namespace Tianmu {
 namespace types {
 
-class ItemSumInTianmuBase : public ItemSumNum {
+class ItemSumInTianmuBase : public Item_sum_num {
  public:
   ItemSumInTianmuBase();
   ~ItemSumInTianmuBase();
@@ -58,7 +58,7 @@ class ItemSumInTianmuBase : public ItemSumNum {
   int64_t count_;
 };
 
-class ItemSumSumTianmuBase : public ItemSumNum {
+class ItemSumSumTianmuBase : public Item_sum_num {
  public:
   ItemSumSumTianmuBase();
   ~ItemSumSumTianmuBase();

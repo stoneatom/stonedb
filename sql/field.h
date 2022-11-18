@@ -1604,7 +1604,7 @@ public:
   friend class Copy_field;
   friend class Item_avg_field;
   friend class Item_std_field;
-  friend class ItemSumNum;
+  friend class Item_sum_num;
   friend class Item_sum_sum;
   friend class Item_sum_str;
   friend class Item_sum_count;
