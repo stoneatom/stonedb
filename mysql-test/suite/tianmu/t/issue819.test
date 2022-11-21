@@ -1,4 +1,5 @@
 -- source include/have_tianmu.inc
+-- source include/have_binlog_format_row.inc
 --disable_warnings
 -- source include/master-slave.inc
 --enable_warnings
@@ -6,7 +7,7 @@
 --echo # Test the master-slave function of innodb
 --echo # 
 
---echo # connection master
+--echo [on master]
 connection master;
 use test;
 create table ttt(id int primary key,name varchar(5))engine=innodb;
@@ -15,17 +16,17 @@ delete from ttt where id=1;
 insert into ttt values(1,'aaa');
 select * from ttt;
 
---echo # connection slave
+--echo [on slave]
 --source include/sync_slave_sql_with_master.inc
 
 select * from ttt;
 
---echo # connection master
+--echo [on master]
 connection master;
 drop table ttt;
 --source include/sync_slave_sql_with_master.inc
 
---echo # connection master
+--echo [on master]
 connection master;
 CREATE TABLE t1 (a int not null,b int not null)engine=innodb;
 CREATE TABLE t2 (a int not null, b int not null, primary key (a,b))engine=innodb;
@@ -39,29 +40,29 @@ select * from t1;
 select * from t2;
 select * from t3;
 
---echo # connection slave
+--echo [on slave]
 --source include/sync_slave_sql_with_master.inc
 
 select * from t1;
 select * from t2;
 select * from t3;
 
---echo # connection master
+--echo [on master]
 connection master;
 drop table t1,t2,t3;
 --source include/sync_slave_sql_with_master.inc
 
---echo # connection master
+--echo [on master]
 connection master;
 CREATE TABLE t1
  (
- place_id int (10) unsigned NOT NULL,
- shows int(10) unsigned DEFAULT '0' NOT NULL,
- ishows int(10) unsigned DEFAULT '0' NOT NULL,
- ushows int(10) unsigned DEFAULT '0' NOT NULL,
- clicks int(10) unsigned DEFAULT '0' NOT NULL,
- iclicks int(10) unsigned DEFAULT '0' NOT NULL,
- uclicks int(10) unsigned DEFAULT '0' NOT NULL,
+ place_id int (10),
+ shows int(10),
+ ishows int(10),
+ ushows int(10),
+ clicks int(10),
+ iclicks int(10),
+ uclicks int(10),
  ts timestamp,
  PRIMARY KEY (place_id,ts)
  )engine=innodb;
@@ -71,11 +72,11 @@ VALUES (1,0,0,0,0,0,0,20000928174434);
 UPDATE t1 SET shows=shows+1,ishows=ishows+1,ushows=ushows+1,clicks=clicks+1,iclicks=iclicks+1,uclicks=uclicks+1 WHERE place_id=1 AND ts>="2000-09-28 00:00:00";
 select place_id,shows from t1;
 
---echo # connection slave
+--echo [on slave]
 --source include/sync_slave_sql_with_master.inc
 select place_id,shows from t1;
 
---echo # connection master
+--echo [on master]
 connection master;
 drop table t1;
 --source include/sync_slave_sql_with_master.inc
@@ -84,7 +85,7 @@ drop table t1;
 --echo # Test the master-slave function of tianmu
 --echo # 
 
---echo # connection master
+--echo [on master]
 connection master;
 use test;
 create table ttt(id int primary key,name varchar(5))engine=tianmu;
@@ -92,17 +93,17 @@ insert into ttt values(1,'AAA');
 update ttt set name='hhhh' where id=1;
 select * from ttt;
 
---echo # connection slave
+--echo [on slave]
 --source include/sync_slave_sql_with_master.inc
 
 select * from ttt;
 
---echo # connection master
+--echo [on master]
 connection master;
 drop table ttt;
 --source include/sync_slave_sql_with_master.inc
 
---echo # connection master
+--echo [on master]
 connection master;
 create table t1(id int primary key,name varchar(5))engine=tianmu;
 insert into t1 values(1,'AAA');
@@ -110,11 +111,11 @@ delete from t1 where id=1;
 insert into t1 values(1,'aaa');
 select * from t1;
 
---echo # connection slave
+--echo [on slave]
 --source include/sync_slave_sql_with_master.inc
 select * from t1;
 
---echo # connection master
+--echo [on master]
 connection master;
 drop table t1;
 
@@ -130,19 +131,19 @@ select * from t1;
 select * from t2;
 select * from t3;
 
---echo # connection slave
+--echo [on slave]
 --source include/sync_slave_sql_with_master.inc
 
 select * from t1;
 select * from t2;
 select * from t3;
 
---echo # connection master
+--echo [on master]
 connection master;
 drop table t1,t2,t3;
 --source include/sync_slave_sql_with_master.inc
 
---echo # connection master
+--echo [on master]
 connection master;
 CREATE TABLE t1
  (
@@ -162,11 +163,11 @@ VALUES (1,0,0,0,0,0,0,20000928174434);
 UPDATE t1 SET shows=shows+1,ishows=ishows+1,ushows=ushows+1,clicks=clicks+1,iclicks=iclicks+1,uclicks=uclicks+1 WHERE place_id=1 AND ts>="2000-09-28 00:00:00";
 select place_id,shows from t1;
 
---echo # connection slave
+--echo [on slave]
 --source include/sync_slave_sql_with_master.inc
 select place_id,shows from t1;
 
---echo # connection master
+--echo [on master]
 connection master;
 drop table t1;
 
@@ -179,10 +180,10 @@ insert into t1 values (1), (2);
 insert into t2 values (2), (3);
 create view v1 as select * from t1,t2 union all select * from t1,t2;
 select * from v1;
---echo # connection slave
+--echo [on slave]
 --source include/sync_slave_sql_with_master.inc
 select * from v1;
---echo # connection master
+--echo [on master]
 connection master;
 drop view v1;
 drop tables t1, t2;
@@ -195,10 +196,10 @@ insert into t1 values (1);
 create view v1 as select count(*) from t1;
 insert into t1 values (null);
 select * from v1;
---echo # connection slave
+--echo [on slave]
 --source include/sync_slave_sql_with_master.inc
 select * from v1;
---echo # connection master
+--echo [on master]
 connection master;
 drop view v1;
 drop table t1;
@@ -211,10 +212,10 @@ create table t2 (a int);
 create view v1 as select a from t1;
 create view v2 as select a from t2 where a in (select a from v1);
 show create view v2;
---echo # connection slave
+--echo [on slave]
 --source include/sync_slave_sql_with_master.inc
 show create view v2;
---echo # connection master
+--echo [on master]
 connection master;
 drop view v2, v1;
 drop table t1, t2;
