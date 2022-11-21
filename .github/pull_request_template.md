@@ -34,7 +34,6 @@ Issue Number: close #issue_number_you_created
 
 - [ ] New Feature
 - [ ] Bug Fix
-- [ ] Perf
 - [ ] Performance Improvement
 - [ ] Build/Testing/CI/CD
 - [ ] Documentation
