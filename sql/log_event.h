@@ -344,7 +344,6 @@ class Relay_log_info;
 class Slave_worker;
 class Slave_committed_queue;
 
-#ifdef MYSQL_CLIENT
 enum enum_base64_output_mode {
   BASE64_OUTPUT_NEVER= 0,
   BASE64_OUTPUT_AUTO= 1,
@@ -353,7 +352,7 @@ enum enum_base64_output_mode {
   /* insert new output modes here */
   BASE64_OUTPUT_MODE_COUNT
 };
-
+#ifdef MYSQL_CLIENT
 /*
   A structure for mysqlbinlog to know how to print events
 
@@ -3295,6 +3294,22 @@ private:
      performed.
    */
   int do_hash_scan_and_update(Relay_log_info const *rli);
+
+  /*column information to conditions,Prepare for conditional push*/
+  bool column_information_to_conditions(std::string &sql_statemens, 
+                                                      MY_BITMAP *cols_bitmap, 
+                                                      std::string &prefix);
+
+  /*
+    Push down the execution conditions for the engine 
+    if necessary to reduce the number of rows to be iterated
+  */
+  bool can_push_donw();
+
+  /*
+    Convert log in row format to sql statement
+  */
+  bool row_event_to_statement(LEX_CSTRING &lex_str, std::string &sql_statemens);
 
   /**
      Implementation of the legacy table_scan and update algorithm. For

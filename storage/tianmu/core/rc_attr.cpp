@@ -757,6 +757,10 @@ size_t RCAttr::GetPrefixLength(int pack) {
 }
 
 void RCAttr::LockPackForUse(common::PACK_INDEX pn) {
+  if (m_idx.empty()) {  // in case table not insert data
+    return;
+  }
+
   auto dpn = &get_dpn(pn);
   if (dpn->IsLocal())
     dpn = m_share->get_dpn_ptr(dpn->base);
@@ -798,6 +802,9 @@ void RCAttr::LockPackForUse(common::PACK_INDEX pn) {
 }
 
 void RCAttr::UnlockPackFromUse(common::PACK_INDEX pn) {
+  if (m_idx.empty()) {  // in case table not insert data
+    return;
+  }
   auto dpn = &get_dpn(pn);
   if (dpn->IsLocal())
     dpn = m_share->get_dpn_ptr(dpn->base);

@@ -38,38 +38,38 @@ extern char *tianmu_sysvar_cachefolder;
 extern char *tianmu_sysvar_hugefiledir;
 extern char *tianmu_sysvar_mm_policy;
 extern char *tianmu_sysvar_mm_releasepolicy;
-extern int tianmu_sysvar_allowmysqlquerypath;
-extern int tianmu_sysvar_bg_load_threads;
-extern int tianmu_sysvar_cachereleasethreshold;
-extern int tianmu_sysvar_cachesizethreshold;
-extern int tianmu_sysvar_cachinglevel;
-extern int tianmu_sysvar_controlquerylog;
-extern int tianmu_sysvar_controltrace;
-extern int tianmu_sysvar_disk_usage_threshold;
-extern int tianmu_sysvar_distcache_size;
-extern int tianmu_sysvar_global_debug_level;
-extern int tianmu_sysvar_insert_buffer_size;
-extern int tianmu_sysvar_insert_cntthreshold;
-extern int tianmu_sysvar_insert_max_buffered;
-extern int tianmu_sysvar_insert_numthreshold;
-extern int tianmu_sysvar_insert_wait_ms;
-extern int tianmu_sysvar_insert_wait_time;
-extern int tianmu_sysvar_join_parallel;
-extern int tianmu_sysvar_join_splitrows;
-extern int tianmu_sysvar_knlevel;
-extern int tianmu_sysvar_load_threads;
+extern unsigned int tianmu_sysvar_allowmysqlquerypath;
+extern unsigned int tianmu_sysvar_bg_load_threads;
+extern unsigned int tianmu_sysvar_cachereleasethreshold;
+extern unsigned int tianmu_sysvar_cachesizethreshold;
+extern unsigned int tianmu_sysvar_cachinglevel;
+extern unsigned int tianmu_sysvar_controlquerylog;
+extern unsigned int tianmu_sysvar_controltrace;
+extern unsigned int tianmu_sysvar_disk_usage_threshold;
+extern unsigned int tianmu_sysvar_distcache_size;
+extern unsigned int tianmu_sysvar_global_debug_level;
+extern unsigned int tianmu_sysvar_insert_buffer_size;
+extern unsigned int tianmu_sysvar_insert_cntthreshold;
+extern unsigned int tianmu_sysvar_insert_max_buffered;
+extern unsigned int tianmu_sysvar_insert_numthreshold;
+extern unsigned int tianmu_sysvar_insert_wait_ms;
+extern unsigned int tianmu_sysvar_insert_wait_time;
+extern unsigned int tianmu_sysvar_join_parallel;
+extern unsigned int tianmu_sysvar_join_splitrows;
+extern unsigned int tianmu_sysvar_knlevel;
+extern unsigned int tianmu_sysvar_load_threads;
 extern unsigned int tianmu_sysvar_lookup_max_size;
-extern int tianmu_sysvar_max_execution_time;
-extern int tianmu_sysvar_mm_hardlimit;
-extern int tianmu_sysvar_mm_large_threshold;
-extern int tianmu_sysvar_mm_largetempratio;
-extern int tianmu_sysvar_query_threads;
-extern int tianmu_sysvar_servermainheapsize;
-extern int tianmu_sysvar_sync_buffers;
-extern int tianmu_sysvar_threadpoolsize;
+extern unsigned int tianmu_sysvar_max_execution_time;
+extern unsigned int tianmu_sysvar_mm_hardlimit;
+extern unsigned int tianmu_sysvar_mm_large_threshold;
+extern unsigned int tianmu_sysvar_mm_largetempratio;
+extern unsigned int tianmu_sysvar_query_threads;
+extern unsigned int tianmu_sysvar_servermainheapsize;
+extern unsigned int tianmu_sysvar_sync_buffers;
+extern unsigned int tianmu_sysvar_threadpoolsize;
 extern unsigned long tianmu_sysvar_dist_policy;
 extern char tianmu_sysvar_force_hashjoin;
-extern int tianmu_sysvar_start_async;
+extern unsigned int tianmu_sysvar_start_async;
 // Format: a;b;c;d
 // a : iterator pack count one step,default 1, 0 is disable
 // b : iterator rows count one step,default 0, 0 is disable,if a and b all is
@@ -86,6 +86,8 @@ extern char tianmu_sysvar_enable_histogram_cmap_bloom;
 // The number of rows to load at a time when processing queries like select xxx
 // from yyy
 extern unsigned int tianmu_sysvar_result_sender_rows;
+// Number of threads executing (delete_row) and (update_row) in parallel
+extern unsigned int tianmu_sysvar_delete_or_update_threads;
 
 void ConfigureRCControl();
 

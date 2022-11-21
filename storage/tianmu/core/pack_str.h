@@ -140,7 +140,7 @@ class PackStr final : public Pack {
   void *Put(const void *src, size_t length) {
     if (data_.v.empty() || length > data_.v.back().capacity()) {
       auto sz = length * 2;
-      data_.v.push_back({(char *)alloc(sz, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED), sz, 0});
+      data_.v.push_back({reinterpret_cast<char *>(alloc(sz, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED)), sz, 0});
     }
     return data_.v.back().put(src, length);
   }

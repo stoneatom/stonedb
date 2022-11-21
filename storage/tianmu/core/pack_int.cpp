@@ -79,85 +79,85 @@ struct Hash {
 std::unordered_map<Key, Func, Hash> xf{
     {{1, 1},
      [](void *src, void *end, void *dst, int64_t delta) {
-       std::transform((uint8_t *)src, (uint8_t *)end, (uint8_t *)dst,
+       std::transform(static_cast<uint8_t *>(src), static_cast<uint8_t *>(end), static_cast<uint8_t *>(dst),
                       [delta](uint8_t i) -> uint8_t { return i + delta; });
      }},
     {{1, 2},
      [](void *src, void *end, void *dst, int64_t delta) {
-       std::transform((uint8_t *)src, (uint8_t *)end, (uint16_t *)dst,
+       std::transform(static_cast<uint8_t *>(src), static_cast<uint8_t *>(end), static_cast<uint16_t *>(dst),
                       [delta](uint8_t i) -> uint16_t { return i + delta; });
      }},
     {{1, 4},
      [](void *src, void *end, void *dst, int64_t delta) {
-       std::transform((uint8_t *)src, (uint8_t *)end, (uint32_t *)dst,
+       std::transform(static_cast<uint8_t *>(src), static_cast<uint8_t *>(end), static_cast<uint32_t *>(dst),
                       [delta](uint8_t i) -> uint32_t { return i + delta; });
      }},
     {{1, 8},
      [](void *src, void *end, void *dst, int64_t delta) {
-       std::transform((uint8_t *)src, (uint8_t *)end, (uint64_t *)dst,
+       std::transform(static_cast<uint8_t *>(src), static_cast<uint8_t *>(end), static_cast<uint64_t *>(dst),
                       [delta](uint8_t i) -> uint64_t { return i + delta; });
      }},
     {{2, 1},
      [](void *src, void *end, void *dst, int64_t delta) {
-       std::transform((uint16_t *)src, (uint16_t *)end, (uint8_t *)dst,
+       std::transform(static_cast<uint16_t *>(src), static_cast<uint16_t *>(end), static_cast<uint8_t *>(dst),
                       [delta](uint16_t i) -> uint8_t { return i + delta; });
      }},
     {{2, 2},
      [](void *src, void *end, void *dst, int64_t delta) {
-       std::transform((uint16_t *)src, (uint16_t *)end, (uint16_t *)dst,
+       std::transform(static_cast<uint16_t *>(src), static_cast<uint16_t *>(end), static_cast<uint16_t *>(dst),
                       [delta](uint16_t i) -> uint16_t { return i + delta; });
      }},
     {{2, 4},
      [](void *src, void *end, void *dst, int64_t delta) {
-       std::transform((uint16_t *)src, (uint16_t *)end, (uint32_t *)dst,
+       std::transform(static_cast<uint16_t *>(src), static_cast<uint16_t *>(end), static_cast<uint32_t *>(dst),
                       [delta](uint16_t i) -> uint32_t { return i + delta; });
      }},
     {{2, 8},
      [](void *src, void *end, void *dst, int64_t delta) {
-       std::transform((uint16_t *)src, (uint16_t *)end, (uint64_t *)dst,
+       std::transform(static_cast<uint16_t *>(src), static_cast<uint16_t *>(end), static_cast<uint64_t *>(dst),
                       [delta](uint16_t i) -> uint64_t { return i + delta; });
      }},
 
     {{4, 1},
      [](void *src, void *end, void *dst, int64_t delta) {
-       std::transform((uint32_t *)src, (uint32_t *)end, (uint8_t *)dst,
+       std::transform(static_cast<uint32_t *>(src), static_cast<uint32_t *>(end), static_cast<uint8_t *>(dst),
                       [delta](uint32_t i) -> uint8_t { return i + delta; });
      }},
 
     {{4, 2},
      [](void *src, void *end, void *dst, int64_t delta) {
-       std::transform((uint32_t *)src, (uint32_t *)end, (uint16_t *)dst,
+       std::transform(static_cast<uint32_t *>(src), static_cast<uint32_t *>(end), static_cast<uint16_t *>(dst),
                       [delta](uint32_t i) -> uint16_t { return i + delta; });
      }},
 
     {{4, 4},
      [](void *src, void *end, void *dst, int64_t delta) {
-       std::transform((uint32_t *)src, (uint32_t *)end, (uint32_t *)dst,
+       std::transform(static_cast<uint32_t *>(src), static_cast<uint32_t *>(end), static_cast<uint32_t *>(dst),
                       [delta](uint32_t i) -> uint32_t { return i + delta; });
      }},
     {{4, 8},
      [](void *src, void *end, void *dst, int64_t delta) {
-       std::transform((uint32_t *)src, (uint32_t *)end, (uint64_t *)dst,
+       std::transform(static_cast<uint32_t *>(src), static_cast<uint32_t *>(end), static_cast<uint64_t *>(dst),
                       [delta](uint32_t i) -> uint64_t { return i + delta; });
      }},
     {{8, 1},
      [](void *src, void *end, void *dst, int64_t delta) {
-       std::transform((uint64_t *)src, (uint64_t *)end, (uint8_t *)dst,
+       std::transform(static_cast<uint64_t *>(src), static_cast<uint64_t *>(end), static_cast<uint8_t *>(dst),
                       [delta](uint64_t i) -> uint8_t { return i + delta; });
      }},
     {{8, 2},
      [](void *src, void *end, void *dst, int64_t delta) {
-       std::transform((uint64_t *)src, (uint64_t *)end, (uint16_t *)dst,
+       std::transform(static_cast<uint64_t *>(src), static_cast<uint64_t *>(end), static_cast<uint16_t *>(dst),
                       [delta](uint64_t i) -> uint16_t { return i + delta; });
      }},
     {{8, 4},
      [](void *src, void *end, void *dst, int64_t delta) {
-       std::transform((uint64_t *)src, (uint64_t *)end, (uint32_t *)dst,
+       std::transform(static_cast<uint64_t *>(src), static_cast<uint64_t *>(end), static_cast<uint32_t *>(dst),
                       [delta](uint64_t i) -> uint32_t { return i + delta; });
      }},
     {{8, 8},
      [](void *src, void *end, void *dst, int64_t delta) {
-       std::transform((uint64_t *)src, (uint64_t *)end, (uint64_t *)dst,
+       std::transform(static_cast<uint64_t *>(src), static_cast<uint64_t *>(end), static_cast<uint64_t *>(dst),
                       [delta](uint64_t i) -> uint64_t { return i + delta; });
      }},
 };
@@ -467,7 +467,7 @@ void PackInt::LoadValuesDouble(const loader::ValueCache *vc, const std::optional
     data_.value_type_ = sizeof(double);
     data_.ptr_ = alloc(data_.value_type_ * new_nr, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
     if (dpn_->Uniform()) {
-      std::fill_n((double *)data_.ptr_, new_nr, dpn_->min_d);
+      std::fill_n(reinterpret_cast<double *>(data_.ptr_), new_nr, dpn_->min_d);
     }
   } else {
     // expanding existing pack data_
@@ -521,16 +521,16 @@ void PackInt::LoadValuesFixed(const loader::ValueCache *vc, const std::optional<
     if (dpn_->Uniform()) {
       switch (new_vt) {
         case 8:
-          std::fill_n((uint64_t *)data_.ptr_, new_nr, delta);
+          std::fill_n(static_cast<uint64_t *>(data_.ptr_), new_nr, delta);
           break;
         case 4:
-          std::fill_n((uint32_t *)data_.ptr_, new_nr, delta);
+          std::fill_n(static_cast<uint32_t *>(data_.ptr_), new_nr, delta);
           break;
         case 2:
-          std::fill_n((uint16_t *)data_.ptr_, new_nr, delta);
+          std::fill_n(static_cast<uint16_t *>(data_.ptr_), new_nr, delta);
           break;
         case 1:
-          std::fill_n((uint8_t *)data_.ptr_, new_nr, delta);
+          std::fill_n(static_cast<uint8_t *>(data_.ptr_), new_nr, delta);
           break;
         default:
           TIANMU_ERROR("bad value type in pakcN");
@@ -598,7 +598,7 @@ void PackInt::LoadDataFromFile(system::Stream *fcurfile) {
     {
       ASSERT(!IsModeNoCompression());
 
-      uint *cur_buf = (uint *)uptr.get();
+      uint *cur_buf = static_cast<uint *>(uptr.get());
       if (data_.ptr_ == nullptr && data_.value_type_ > 0)
         data_.ptr_ = alloc(data_.value_type_ * dpn_->numOfRecords, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED);
 
@@ -606,15 +606,16 @@ void PackInt::LoadDataFromFile(system::Stream *fcurfile) {
 
       if (dpn_->numOfNulls > 0) {
         uint null_buf_size = 0;
-        null_buf_size = (*(ushort *)cur_buf);
+        null_buf_size = (*reinterpret_cast<ushort *>(cur_buf));
         if (null_buf_size > bitmap_size_)
           throw common::DatabaseException("Unexpected bytes found in data pack.");
         if (!IsModeNullsCompressed())  // no nulls compression
-          std::memcpy(nulls_ptr_.get(), (char *)cur_buf + 2, null_buf_size);
+          std::memcpy(nulls_ptr_.get(), reinterpret_cast<char *>(cur_buf) + sizeof(ushort), null_buf_size);
         else {
           compress::BitstreamCompressor bsc;
-          CprsErr res = bsc.Decompress((char *)nulls_ptr_.get(), null_buf_size, (char *)cur_buf + 2, dpn_->numOfRecords,
-                                       dpn_->numOfNulls);
+          CprsErr res =
+              bsc.Decompress(reinterpret_cast<char *>(nulls_ptr_.get()), null_buf_size,
+                             reinterpret_cast<char *>(cur_buf) + sizeof(ushort), dpn_->numOfRecords, dpn_->numOfNulls);
           if (res != CprsErr::CPRS_SUCCESS) {
             throw common::DatabaseException("Decompression of nulls failed for column " +
                                             std::to_string(pc_column(GetCoordinate().co.pack) + 1) + ", pack " +
@@ -622,31 +623,33 @@ void PackInt::LoadDataFromFile(system::Stream *fcurfile) {
                                             std::to_string(static_cast<int>(res)) + ").");
           }
         }
-        cur_buf = (uint *)((char *)cur_buf + null_buf_size + 2);
+        cur_buf = reinterpret_cast<uint *>(reinterpret_cast<char *>(cur_buf) + null_buf_size + sizeof(ushort));
       }
 
       if (dpn_->numOfDeleted > 0) {
         uint delete_buf_size = 0;
-        delete_buf_size = (*(ushort *)cur_buf);
+        delete_buf_size = *(reinterpret_cast<ushort *>(cur_buf));
         if (delete_buf_size > bitmap_size_)
           throw common::DatabaseException("Unexpected bytes found in data pack.");
         if (!IsModeDeletesCompressed())  // no deletes compression
-          std::memcpy(deletes_ptr_.get(), (char *)cur_buf + 2, delete_buf_size);
+          std::memcpy(deletes_ptr_.get(), reinterpret_cast<char *>(cur_buf) + sizeof(ushort), delete_buf_size);
         else {
           compress::BitstreamCompressor bsc;
-          CprsErr res = bsc.Decompress((char *)deletes_ptr_.get(), delete_buf_size, (char *)cur_buf + 2,
-                                       dpn_->numOfRecords, dpn_->numOfDeleted);
+          CprsErr res = bsc.Decompress(reinterpret_cast<char *>(deletes_ptr_.get()), delete_buf_size,
+                                       reinterpret_cast<char *>(cur_buf) + sizeof(ushort), dpn_->numOfRecords,
+                                       dpn_->numOfDeleted);
           if (res != CprsErr::CPRS_SUCCESS) {
-            throw common::DatabaseException("Decompression of nulls failed for column " +
+            throw common::DatabaseException("Decompression of deletes failed for column " +
                                             std::to_string(pc_column(GetCoordinate().co.pack) + 1) + ", pack " +
                                             std::to_string(pc_dp(GetCoordinate().co.pack) + 1) + " (error " +
                                             std::to_string(static_cast<int>(res)) + ").");
           }
         }
-        cur_buf = (uint *)((char *)cur_buf + delete_buf_size + 2);
+        cur_buf = reinterpret_cast<uint *>(reinterpret_cast<char *>(cur_buf) + delete_buf_size + sizeof(ushort));
       }
 
-      if (IsModeDataCompressed() && data_.value_type_ > 0 && *(uint64_t *)(cur_buf + 1) != (uint64_t)0) {
+      if (IsModeDataCompressed() && data_.value_type_ > 0 &&
+          *reinterpret_cast<uint64_t *>(cur_buf + 1) != (uint64_t)0) {
         if (data_.value_type_ == 1) {
           compress::NumCompressor<uchar> nc;
           DecompressAndInsertNulls(nc, cur_buf);
@@ -715,15 +718,15 @@ void PackInt::RemoveNullsAndCompress(compress::NumCompressor<etype> &nc, char *t
                                      uint64_t &maxv) {
   mm::MMGuard<etype> tmp_data;
   if (dpn_->numOfNulls > 0) {
-    tmp_data = mm::MMGuard<etype>(
-        (etype *)(alloc((dpn_->numOfRecords - dpn_->numOfNulls) * sizeof(etype), mm::BLOCK_TYPE::BLOCK_TEMPORARY)),
-        *this);
+    tmp_data = mm::MMGuard<etype>(static_cast<etype *>(alloc((dpn_->numOfRecords - dpn_->numOfNulls) * sizeof(etype),
+                                                             mm::BLOCK_TYPE::BLOCK_TEMPORARY)),
+                                  *this);
     for (uint i = 0, d = 0; i < dpn_->numOfRecords; i++) {
       if (!IsNull(i))
-        tmp_data[d++] = ((etype *)(data_.ptr_))[i];
+        tmp_data[d++] = (static_cast<etype *>(data_.ptr_))[i];
     }
   } else
-    tmp_data = mm::MMGuard<etype>((etype *)data_.ptr_, *this, false);
+    tmp_data = mm::MMGuard<etype>(static_cast<etype *>(data_.ptr_), *this, false);
 
   CprsErr res =
       nc.Compress(tmp_comp_buffer, tmp_cb_len, tmp_data.get(), dpn_->numOfRecords - dpn_->numOfNulls, (etype)(maxv));
@@ -737,16 +740,17 @@ void PackInt::RemoveNullsAndCompress(compress::NumCompressor<etype> &nc, char *t
 
 template <typename etype>
 void PackInt::DecompressAndInsertNulls(compress::NumCompressor<etype> &nc, uint *&cur_buf) {
-  CprsErr res = nc.Decompress(data_.ptr_, (char *)((cur_buf + 3)), *cur_buf, dpn_->numOfRecords - dpn_->numOfNulls,
-                              (etype) * (uint64_t *)((cur_buf + 1)));
+  CprsErr res =
+      nc.Decompress(data_.ptr_, reinterpret_cast<char *>((cur_buf + 3)), *cur_buf,
+                    dpn_->numOfRecords - dpn_->numOfNulls, (etype) * (reinterpret_cast<uint64_t *>(cur_buf + 1)));
   if (res != CprsErr::CPRS_SUCCESS) {
     std::stringstream msg_buf;
     msg_buf << "Decompression of numerical values failed for column " << (pc_column(GetCoordinate().co.pack) + 1)
             << ", pack " << (pc_dp(GetCoordinate().co.pack) + 1) << " (error " << static_cast<int>(res) << ").";
     throw common::DatabaseException(msg_buf.str());
   }
-  etype *d = ((etype *)(data_.ptr_)) + dpn_->numOfRecords - 1;
-  etype *s = ((etype *)(data_.ptr_)) + dpn_->numOfRecords - dpn_->numOfNulls - 1;
+  etype *d = (static_cast<etype *>(data_.ptr_)) + dpn_->numOfRecords - 1;
+  etype *s = (static_cast<etype *>(data_.ptr_)) + dpn_->numOfRecords - dpn_->numOfNulls - 1;
   for (int i = dpn_->numOfRecords - 1; d > s; i--) {
     if (IsNull(i))
       --d;
@@ -782,29 +786,29 @@ std::pair<PackInt::UniquePtr, size_t> PackInt::Compress() {
       compress::NumCompressor<uchar> nc;
       tmp_cb_len = (dpn_->numOfRecords - dpn_->numOfNulls) * sizeof(uchar) + 20;
       if (tmp_cb_len)
-        tmp_comp_buffer =
-            mm::MMGuard<char>((char *)alloc(tmp_cb_len * sizeof(char), mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
+        tmp_comp_buffer = mm::MMGuard<char>(
+            reinterpret_cast<char *>(alloc(tmp_cb_len * sizeof(char), mm::BLOCK_TYPE::BLOCK_TEMPORARY)), *this);
       RemoveNullsAndCompress(nc, tmp_comp_buffer.get(), tmp_cb_len, maxv);
     } else if (data_.value_type_ == 2) {
       compress::NumCompressor<ushort> nc;
       tmp_cb_len = (dpn_->numOfRecords - dpn_->numOfNulls) * sizeof(ushort) + 20;
       if (tmp_cb_len)
-        tmp_comp_buffer =
-            mm::MMGuard<char>((char *)alloc(tmp_cb_len * sizeof(char), mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
+        tmp_comp_buffer = mm::MMGuard<char>(
+            reinterpret_cast<char *>(alloc(tmp_cb_len * sizeof(char), mm::BLOCK_TYPE::BLOCK_TEMPORARY)), *this);
       RemoveNullsAndCompress(nc, tmp_comp_buffer.get(), tmp_cb_len, maxv);
     } else if (data_.value_type_ == 4) {
       compress::NumCompressor<uint> nc;
       tmp_cb_len = (dpn_->numOfRecords - dpn_->numOfNulls) * sizeof(uint) + 20;
       if (tmp_cb_len)
-        tmp_comp_buffer =
-            mm::MMGuard<char>((char *)alloc(tmp_cb_len * sizeof(char), mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
+        tmp_comp_buffer = mm::MMGuard<char>(
+            reinterpret_cast<char *>(alloc(tmp_cb_len * sizeof(char), mm::BLOCK_TYPE::BLOCK_TEMPORARY)), *this);
       RemoveNullsAndCompress(nc, tmp_comp_buffer.get(), tmp_cb_len, maxv);
     } else {
       compress::NumCompressor<uint64_t> nc;
       tmp_cb_len = (dpn_->numOfRecords - dpn_->numOfNulls) * sizeof(uint64_t) + 20;
       if (tmp_cb_len)
-        tmp_comp_buffer =
-            mm::MMGuard<char>((char *)alloc(tmp_cb_len * sizeof(char), mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
+        tmp_comp_buffer = mm::MMGuard<char>(
+            reinterpret_cast<char *>(alloc(tmp_cb_len * sizeof(char), mm::BLOCK_TYPE::BLOCK_TEMPORARY)), *this);
       RemoveNullsAndCompress(nc, tmp_comp_buffer.get(), tmp_cb_len, maxv);
     }
     buffer_size += tmp_cb_len;
@@ -830,35 +834,35 @@ std::pair<PackInt::UniquePtr, size_t> PackInt::Compress() {
     }
   }
 
-  buffer_size += (comp_null_buf_size > 0 ? 2 + comp_null_buf_size : 0);
-  buffer_size += (comp_delete_buf_size > 0 ? 2 + comp_delete_buf_size : 0);
+  buffer_size += (comp_null_buf_size > 0 ? sizeof(ushort) + comp_null_buf_size : 0);
+  buffer_size += (comp_delete_buf_size > 0 ? sizeof(ushort) + comp_delete_buf_size : 0);
 
   UniquePtr ptr = alloc_ptr(buffer_size, mm::BLOCK_TYPE::BLOCK_COMPRESSED);
   uchar *compressed_buf = reinterpret_cast<uchar *>(ptr.get());
   std::memset(compressed_buf, 0, buffer_size);
-  cur_buf = (uint *)compressed_buf;
+  cur_buf = reinterpret_cast<uint *>(compressed_buf);
 
   if (dpn_->numOfNulls > 0) {
     if (comp_null_buf_size > bitmap_size_)
       throw common::DatabaseException("Unexpected bytes found (PackInt::Compress).");
 
-    *(ushort *)compressed_buf = (ushort)comp_null_buf_size;
-    std::memcpy(compressed_buf + 2, comp_null_buf.get(), comp_null_buf_size);
-    cur_buf = (uint *)(compressed_buf + comp_null_buf_size + 2);
-    compressed_buf = (uchar *)cur_buf;
+    *reinterpret_cast<ushort *>(compressed_buf) = (ushort)(comp_null_buf_size);
+    std::memcpy(compressed_buf + sizeof(ushort), comp_null_buf.get(), comp_null_buf_size);
+    cur_buf = reinterpret_cast<uint *>(compressed_buf + comp_null_buf_size + sizeof(ushort));
+    compressed_buf = reinterpret_cast<uchar *>(cur_buf);
   }
 
   if (dpn_->numOfDeleted > 0) {
     if (comp_delete_buf_size > bitmap_size_)
       throw common::DatabaseException("Unexpected bytes found (PackInt::Compress).");
 
-    *(ushort *)compressed_buf = (ushort)comp_delete_buf_size;
-    std::memcpy(compressed_buf + 2, comp_delete_buf.get(), comp_delete_buf_size);
-    cur_buf = (uint *)(compressed_buf + comp_delete_buf_size + 2);
+    *reinterpret_cast<ushort *>(compressed_buf) = (ushort)(comp_delete_buf_size);
+    std::memcpy(compressed_buf + sizeof(ushort), comp_delete_buf.get(), comp_delete_buf_size);
+    cur_buf = reinterpret_cast<uint *>(compressed_buf + comp_delete_buf_size + sizeof(ushort));
   }
 
   *cur_buf = tmp_cb_len;
-  *(uint64_t *)(cur_buf + 1) = maxv;
+  *reinterpret_cast<uint64_t *>(cur_buf + 1) = maxv;
   std::memcpy(cur_buf + 3, tmp_comp_buffer.get(), tmp_cb_len);
   return std::make_pair(std::move(ptr), buffer_size);
 }

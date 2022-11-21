@@ -125,6 +125,7 @@ SET(SQL_SHARED_SOURCES
   locking_service.cc
   locks/shared_spin_lock.cc
   log.cc
+  log_event_push_cond.cc
   mdl.cc
   migrate_keyring.cc
   my_decimal.cc

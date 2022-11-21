@@ -194,6 +194,9 @@ Engine::Engine()
                        tianmu_sysvar_load_threads ? tianmu_sysvar_load_threads : std::thread::hardware_concurrency()),
       query_thread_pool(
           "query", tianmu_sysvar_query_threads ? tianmu_sysvar_query_threads : std::thread::hardware_concurrency()),
+      delete_or_update_thread_pool("delete_or_update", tianmu_sysvar_delete_or_update_threads
+                                                           ? tianmu_sysvar_delete_or_update_threads
+                                                           : std::thread::hardware_concurrency()),
       insert_buffer(BUFFER_FILE, tianmu_sysvar_insert_buffer_size) {
   tianmu_data_dir = mysql_real_data_home;
 }

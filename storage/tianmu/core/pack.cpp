@@ -86,13 +86,14 @@ bool Pack::CompressedBitMap(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, s
   // Because the maximum size of dpn_->numofrecords is 65536, the buffer used by bitmaps is also limited
   comp_buf_size = ((dpn_->numOfRecords + padding) / bitsInBytes);
 
-  comp_buf =
-      mm::MMGuard<uchar>((uchar *)alloc((comp_buf_size + 2) * sizeof(char), mm::BLOCK_TYPE::BLOCK_TEMPORARY), *this);
+  comp_buf = mm::MMGuard<uchar>(
+      static_cast<uchar *>(alloc((comp_buf_size + sizeof(ushort)) * sizeof(char), mm::BLOCK_TYPE::BLOCK_TEMPORARY)),
+      *this);
   uint cnbl = comp_buf_size + 1;
   comp_buf[cnbl] = 0xBA;  // just checking - buffer overrun
   compress::BitstreamCompressor bsc;
-  CprsErr res =
-      bsc.Compress((char *)comp_buf.get(), comp_buf_size, (char *)ptr_buf.get(), dpn_->numOfRecords, dpn_num1);
+  CprsErr res = bsc.Compress(reinterpret_cast<char *>(comp_buf.get()), comp_buf_size,
+                             reinterpret_cast<char *>(ptr_buf.get()), dpn_->numOfRecords, dpn_num1);
   if (comp_buf[cnbl] != 0xBA) {
     TIANMU_LOG(LogCtl_Level::ERROR, "buffer overrun by BitstreamCompressor (N f).");
     ASSERT(0, "ERROR: buffer overrun by BitstreamCompressor (N f).");
@@ -100,7 +101,7 @@ bool Pack::CompressedBitMap(mm::MMGuard<uchar> &comp_buf, uint &comp_buf_size, s
   if (res == CprsErr::CPRS_SUCCESS)
     return true;
   else if (res == CprsErr::CPRS_ERR_BUF) {
-    comp_buf = mm::MMGuard<uchar>((uchar *)ptr_buf.get(), *this, false);
+    comp_buf = mm::MMGuard<uchar>(reinterpret_cast<uchar *>(ptr_buf.get()), *this, false);
     comp_buf_size = ((dpn_->numOfRecords + padding) / bitsInBytes);
     return false;
   } else {

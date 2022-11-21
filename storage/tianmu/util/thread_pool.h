@@ -125,6 +125,10 @@ class result_set final {
     bool no_except = true;
     for (auto &&result : results) try {
         result.get();
+      } catch (common::DupKeyException &e) {
+        throw e;
+      } catch (common::Exception &e) {
+        throw e;
       } catch (std::exception &e) {
         no_except = false;
         TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());

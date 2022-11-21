@@ -1031,9 +1031,10 @@ void ParameterizedFilter::UpdateMultiIndex(bool count_only, int64_t limit) {
         Descriptor &desc = descriptors[i];
         /*The number of values in the (var_map) corresponding to the entity column is always 1,
         so only the first element in the (var_map) is judged here.*/
-        if (desc.attr.vc && desc.attr.vc->GetVarMap().size() >= 1 &&
+        if ((desc.attr.vc && desc.attr.vc->GetVarMap().size() >= 1) &&
             // Use the tab object in VarMap to compare with the corresponding table
-            desc.attr.vc->GetVarMap()[0].just_a_table_ptr == rcTable) {
+            (desc.attr.vc->GetVarMap()[0].GetTabPtr().get() == rcTable) &&
+            (desc.GetJoinType() == DescriptorJoinType::DT_NON_JOIN)) {
           isVald = true;
           break;
         }
