@@ -10761,7 +10761,8 @@ static bool check_engine(THD *thd, const char *db_name,
                                   no_substitution, 1)))
     DBUG_RETURN(true);
 
-  if (req_engine && req_engine != *new_engine)
+  if ((req_engine && req_engine != *new_engine)&& 
+     (create_info->db_type->db_type != DB_TYPE_TIANMU))
   {
     push_warning_printf(thd, Sql_condition::SL_NOTE,
                        ER_WARN_USING_OTHER_HANDLER,
