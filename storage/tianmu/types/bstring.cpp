@@ -53,16 +53,16 @@ BString::BString(const char *v, size_t length, bool persistent) : persistent_(pe
   }
 }
 
-BString::BString(const BString &tianmu_bs)
-    : ValueBasic<BString>(tianmu_bs), pos_(tianmu_bs.pos_), persistent_(tianmu_bs.persistent_) {
-  null_ = tianmu_bs.null_;
+BString::BString(const BString &tianmu_s)
+    : ValueBasic<BString>(tianmu_s), pos_(tianmu_s.pos_), persistent_(tianmu_s.persistent_) {
+  null_ = tianmu_s.null_;
   if (!null_) {
-    len_ = tianmu_bs.len_;
+    len_ = tianmu_s.len_;
     if (persistent_) {
       val_ = new char[len_ + pos_];
-      std::memcpy(val_, tianmu_bs.val_, len_ + pos_);
+      std::memcpy(val_, tianmu_s.val_, len_ + pos_);
     } else
-      val_ = tianmu_bs.val_;
+      val_ = tianmu_s.val_;
   } else {
     len_ = 0;
     val_ = 0;
@@ -134,11 +134,11 @@ void BString::PutVarchar(char *&dest, uchar prefixlen, bool move_ptr) const {
   }
 }
 
-BString &BString::operator=(const BString &tianmu_bs) {
-  if (this == &tianmu_bs)
+BString &BString::operator=(const BString &tianmu_s) {
+  if (this == &tianmu_s)
     return *this;
 
-  null_ = tianmu_bs.null_;
+  null_ = tianmu_s.null_;
   if (null_) {
     if (persistent_)
       delete[] val_;
@@ -146,50 +146,50 @@ BString &BString::operator=(const BString &tianmu_bs) {
     len_ = 0;
     pos_ = 0;
   } else {
-    if (tianmu_bs.persistent_) {
-      uint tmp_len = tianmu_bs.len_ + tianmu_bs.pos_;
+    if (tianmu_s.persistent_) {
+      uint tmp_len = tianmu_s.len_ + tianmu_s.pos_;
       if (!persistent_ || tmp_len > len_ + pos_) {
         if (persistent_)
           delete[] val_;
         val_ = new char[tmp_len];
       }
-      len_ = tianmu_bs.len_;
-      pos_ = tianmu_bs.pos_;
-      std::memcpy(val_, tianmu_bs.val_, len_ + pos_);
+      len_ = tianmu_s.len_;
+      pos_ = tianmu_s.pos_;
+      std::memcpy(val_, tianmu_s.val_, len_ + pos_);
     } else {
       if (persistent_)
         delete[] val_;
-      len_ = tianmu_bs.len_;
-      pos_ = tianmu_bs.pos_;
-      val_ = tianmu_bs.val_;
+      len_ = tianmu_s.len_;
+      pos_ = tianmu_s.pos_;
+      val_ = tianmu_s.val_;
     }
   }
-  persistent_ = tianmu_bs.persistent_;
+  persistent_ = tianmu_s.persistent_;
   return *this;
 }
 
-void BString::PersistentCopy(const BString &tianmu_bs) {
-  if (this == &tianmu_bs) {
+void BString::PersistentCopy(const BString &tianmu_s) {
+  if (this == &tianmu_s) {
     MakePersistent();
     return;
   }
 
-  null_ = tianmu_bs.null_;
+  null_ = tianmu_s.null_;
   if (null_) {
     delete[] val_;
     val_ = 0;
     len_ = 0;
     pos_ = 0;
   } else {
-    uint tmp_len = tianmu_bs.len_ + tianmu_bs.pos_;
+    uint tmp_len = tianmu_s.len_ + tianmu_s.pos_;
     if (!persistent_ || tmp_len > len_ + pos_) {
       if (persistent_)
         delete[] val_;
       val_ = new char[tmp_len];
     }
-    len_ = tianmu_bs.len_;
-    pos_ = tianmu_bs.pos_;
-    std::memcpy(val_, tianmu_bs.val_, len_ + pos_);
+    len_ = tianmu_s.len_;
+    pos_ = tianmu_s.pos_;
+    std::memcpy(val_, tianmu_s.val_, len_ + pos_);
   }
   persistent_ = true;
 }
@@ -471,8 +471,8 @@ uint BString::GetHashCode() const {
   return hc;
 }
 
-std::ostream &operator<<(std::ostream &out, const BString &tianmu_bs) {
-  out.write(tianmu_bs.val_ + tianmu_bs.pos_, tianmu_bs.len_);
+std::ostream &operator<<(std::ostream &out, const BString &tianmu_s) {
+  out.write(tianmu_s.val_ + tianmu_s.pos_, tianmu_s.len_);
   return out;
 }
 
@@ -483,10 +483,10 @@ void BString::CopyTo(void *dest, size_t count) const {
     std::memset((char *)dest + l, 0, count - l);
 }
 
-bool operator!=(const BString &tianmu_bs1, const BString &tianmu_bs2) {
-  if (tianmu_bs1.IsNull() || tianmu_bs2.IsNull())
+bool operator!=(const BString &tianmu_s1, const BString &tianmu_s2) {
+  if (tianmu_s1.IsNull() || tianmu_s2.IsNull())
     return true;
-  return tianmu_bs1.CompareWith(tianmu_bs2) != 0;
+  return tianmu_s1.CompareWith(tianmu_s2) != 0;
 }
 
 size_t BString::RoundUpTo8Bytes(const DTCollation &dt) const {

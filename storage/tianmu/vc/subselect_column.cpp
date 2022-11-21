@@ -451,9 +451,9 @@ types::TianmuValueObject SubSelectColumn::GetValueImpl(const core::MIIterator &m
   if (expected_type_.IsString())
     return val.ToBString();
   if (expected_type_.IsNumeric() && core::ATI::IsStringType(val.Type())) {
-    types::TianmuNum rc;
-    types::TianmuNum::Parse(*static_cast<types::BString *>(val.Get()), rc, expected_type_.GetTypeName());
-    val = rc;
+    types::TianmuNum tn;
+    types::TianmuNum::Parse(*static_cast<types::BString *>(val.Get()), tn, expected_type_.GetTypeName());
+    val = tn;
   }
   return val;
 }
@@ -547,9 +547,9 @@ void SubSelectColumn::CalculateMinMax() {
         val = val.ToBString();
         static_cast<types::BString *>(val.Get())->MakePersistent();
       } else if (expected_type_.IsNumeric() && core::ATI::IsStringType(val.Type())) {
-        types::TianmuNum rc;
-        types::TianmuNum::Parse(*static_cast<types::BString *>(val.Get()), rc, expected_type_.GetTypeName());
-        val = rc;
+        types::TianmuNum tn;
+        types::TianmuNum::Parse(*static_cast<types::BString *>(val.Get()), tn, expected_type_.GetTypeName());
+        val = tn;
       }
 
       if (!found_not_null && !val.IsNull()) {

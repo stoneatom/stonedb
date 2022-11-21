@@ -360,22 +360,22 @@ common::ErrorCode ValueParserForText::Parse(const BString &tianmu_s, TianmuNum &
   return ret;
 }
 
-common::ErrorCode ValueParserForText::ParseReal(const BString &tianmu_bs, TianmuNum &tianmu_n, common::CT at) {
+common::ErrorCode ValueParserForText::ParseReal(const BString &tianmu_s, TianmuNum &tianmu_n, common::CT at) {
   // TODO: refactor
   if (at == common::CT::UNK)
     at = common::CT::REAL;
   if (!core::ATI::IsRealType(at))
     return common::ErrorCode::FAILED;
 
-  if (tianmu_bs.Equals("nullptr", 4) || tianmu_bs.IsNull()) {
+  if (tianmu_s.Equals("nullptr", 4) || tianmu_s.IsNull()) {
     tianmu_n.null_ = true;
     return common::ErrorCode::SUCCESS;
   }
   tianmu_n.is_double_ = true;
   tianmu_n.scale_ = 0;
 
-  char *val = tianmu_bs.val_;
-  int len = tianmu_bs.len_;
+  char *val = tianmu_s.val_;
+  int len = tianmu_s.len_;
   EatWhiteSigns(val, len);
 
   char *val_ptr = val;
@@ -416,15 +416,15 @@ common::ErrorCode ValueParserForText::ParseReal(const BString &tianmu_bs, Tianmu
     ptr_len--;
   }
   char stempval[PARS_BUF_SIZE];
-  if (tianmu_bs.len_ >= PARS_BUF_SIZE)
+  if (tianmu_s.len_ >= PARS_BUF_SIZE)
     return common::ErrorCode::VALUE_TRUNCATED;
 #ifndef NDEBUG
   // resetting stempval to avoid valgrind
   // false warnings
   std::memset(stempval, 0, PARS_BUF_SIZE);
 #endif
-  std::memcpy(stempval, tianmu_bs.val_, tianmu_bs.len_);
-  stempval[tianmu_bs.len_] = 0;
+  std::memcpy(stempval, tianmu_s.val_, tianmu_s.len_);
+  stempval[tianmu_s.len_] = 0;
   double d = 0.0;
   try {
     d = std::stod(std::string(stempval));

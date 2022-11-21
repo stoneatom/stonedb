@@ -191,8 +191,8 @@ T ValueBasic<T>::null_value_;
 using CondArray = std::vector<BString>;
 
 class BString : public ValueBasic<BString> {
-  friend std::ostream &operator<<(std::ostream &out, const BString &tianmu_bs);
-  friend bool operator!=(const BString &tianmu_bs1, const BString &tianmu_bs2);
+  friend std::ostream &operator<<(std::ostream &out, const BString &tianmu_s);
+  friend bool operator!=(const BString &tianmu_s1, const BString &tianmu_s2);
 
  public:
   BString();
@@ -201,12 +201,12 @@ class BString : public ValueBasic<BString> {
   // ushort / int) bytes of val_. len_ == 0  => the length is a result of
   // std::strlen(val_), i.e. val_ is 0-terminated zero-term = true  => this is a
   // non-null_ empty string, or a longer zero-terminated string
-  BString(const BString &tianmu_bs);
+  BString(const BString &tianmu_s);
   ~BString();
 
-  BString &operator=(const BString &tianmu_bs);
+  BString &operator=(const BString &tianmu_s);
   BString &operator=(const TianmuDataType &tianmu_n) override;
-  void PersistentCopy(const BString &tianmu_bs);  // like "=", but makes this persistent_
+  void PersistentCopy(const BString &tianmu_s);  // like "=", but makes this persistent_
 
   static bool Parse(BString &in, BString &out);
   common::CT Type() const override;
@@ -244,11 +244,11 @@ class BString : public ValueBasic<BString> {
     return std::memcmp(s, val_, l) == 0;
   }
 
-  int CompareWith(const BString &tianmu_bs2) const {
-    int l = std::min(len_, tianmu_bs2.len_);
+  int CompareWith(const BString &tianmu_s2) const {
+    int l = std::min(len_, tianmu_s2.len_);
 
     if (l == 0) {
-      if (len_ == 0 && tianmu_bs2.len_ == 0)
+      if (len_ == 0 && tianmu_s2.len_ == 0)
         return 0;
 
       if (len_ == 0)
@@ -257,10 +257,10 @@ class BString : public ValueBasic<BString> {
       return 1;
     }
 
-    if (len_ != tianmu_bs2.len_) {
-      int ret = std::memcmp(val_ + pos_, tianmu_bs2.val_ + tianmu_bs2.pos_, l);
+    if (len_ != tianmu_s2.len_) {
+      int ret = std::memcmp(val_ + pos_, tianmu_s2.val_ + tianmu_s2.pos_, l);
       if (ret == 0) {
-        if (len_ < tianmu_bs2.len_)
+        if (len_ < tianmu_s2.len_)
           return -1;
         return 1;
       }
@@ -268,7 +268,7 @@ class BString : public ValueBasic<BString> {
     }
 
     // equal length
-    return std::memcmp(val_ + pos_, tianmu_bs2.val_ + tianmu_bs2.pos_, l);
+    return std::memcmp(val_ + pos_, tianmu_s2.val_ + tianmu_s2.pos_, l);
   }
 
   // Wildcards: "_" is any character, "%" is 0 or more characters

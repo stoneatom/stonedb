@@ -251,7 +251,7 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   int EncodeValue_S(types::BString &v) override { return EncodeValue_T(v); }
   // 1-level code value for a given 0-level (text) value, if new_val then add to
   // dictionary if not present
-  int EncodeValue_T(const types::BString &tianmu_bs, bool new_val = false, common::ErrorCode *tianmu_err_code = 0);
+  int EncodeValue_T(const types::BString &tianmu_s, bool new_val = false, common::ErrorCode *tianmu_err_code = 0);
   // no changes for REAL; rounded=true iff v has greater precision than the
   // column and the returned result is rounded down
   int64_t EncodeValue64(types::TianmuDataType *v, bool &rounded,
