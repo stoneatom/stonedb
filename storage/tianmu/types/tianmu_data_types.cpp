@@ -42,17 +42,17 @@ bool TianmuDataType::compare(const TianmuDataType &tianmu_dt1, const TianmuDataT
     if (tianmu_dt1.IsNull() || tianmu_dt2.IsNull())
       return false;
     BString x, y;
-    BString *tianmu_bs1 = dynamic_cast<BString *>(const_cast<TianmuDataType *>(&tianmu_dt1));
-    if (!tianmu_bs1) {
+    BString *tianmu_s1 = dynamic_cast<BString *>(const_cast<TianmuDataType *>(&tianmu_dt1));
+    if (!tianmu_s1) {
       x = tianmu_dt1.ToBString();
-      tianmu_bs1 = &x;
+      tianmu_s1 = &x;
     }
-    BString *tianmu_bs2 = dynamic_cast<BString *>(const_cast<TianmuDataType *>(&tianmu_dt2));
-    if (!tianmu_bs2) {
+    BString *tianmu_s2 = dynamic_cast<BString *>(const_cast<TianmuDataType *>(&tianmu_dt2));
+    if (!tianmu_s2) {
       y = tianmu_dt2.ToBString();
-      tianmu_bs2 = &y;
+      tianmu_s2 = &y;
     }
-    bool res = tianmu_bs1->Like(*tianmu_bs2, like_esc);
+    bool res = tianmu_s1->Like(*tianmu_s2, like_esc);
     if (op == common::Operator::O_LIKE)
       return res;
     else

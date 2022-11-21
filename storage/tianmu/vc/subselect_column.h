@@ -74,9 +74,9 @@ class SubSelectColumn : public MultiValColumn {
       if (expected_type_.IsString())
         val = val.ToBString();
       else if (expected_type_.IsNumeric() && core::ATI::IsStringType(val.Type())) {
-        types::TianmuNum rc;
-        types::TianmuNum::Parse(*static_cast<types::BString *>(val.Get()), rc, expected_type_.GetTypeName());
-        val = rc;
+        types::TianmuNum tn;
+        types::TianmuNum::Parse(*static_cast<types::BString *>(val.Get()), tn, expected_type_.GetTypeName());
+        val = tn;
       }
       return val;
     }

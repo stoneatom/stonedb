@@ -67,7 +67,7 @@ class ValueParserForText {
   static common::ErrorCode Parse(const BString &tianmu_s, TianmuNum &tianmu_n, common::CT at);
   static common::ErrorCode ParseNum(const BString &tianmu_s, TianmuNum &tianmu_n, short scale);
   static common::ErrorCode ParseBigInt(const BString &tianmu_s, TianmuNum &out);
-  static common::ErrorCode ParseReal(const BString &tianmu_bs, TianmuNum &tianmu_n, common::CT at);
+  static common::ErrorCode ParseReal(const BString &tianmu_s, TianmuNum &tianmu_n, common::CT at);
   static common::ErrorCode ParseDateTime(const BString &tianmu_s, TianmuDateTime &rcv, common::CT at);
 
  private:

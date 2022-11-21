@@ -469,10 +469,10 @@ types::TianmuValueObject TianmuAttr::GetValue(int64_t obj, bool lookup_to_num) {
       ret = GetNotNullValueString(obj);
     else if (ATI::IsBinType(a_type)) {
       auto tmp_size = GetLength(obj);
-      types::BString tianmu_bs(nullptr, tmp_size, true);
-      GetValueBin(obj, tmp_size, tianmu_bs.val_);
-      tianmu_bs.null_ = false;
-      ret = tianmu_bs;
+      types::BString tianmu_s(nullptr, tmp_size, true);
+      GetValueBin(obj, tmp_size, tianmu_s.val_);
+      tianmu_s.null_ = false;
+      ret = tianmu_s;
     } else if (ATI::IsIntegerType(a_type))
       ret = types::TianmuNum(GetNotNullValueInt64(obj), -1, false, a_type);
     else if (a_type == common::CT::TIMESTAMP) {
@@ -637,15 +637,15 @@ types::BString TianmuAttr::DecodeValue_S(int64_t code) {
 
 // 1-level code value for a given 0-level (text) value
 // if new_val, then add to dictionary if not present
-int TianmuAttr::EncodeValue_T(const types::BString &tianmu_bs, bool new_val, common::ErrorCode *tianmu_err_code) {
+int TianmuAttr::EncodeValue_T(const types::BString &tianmu_s, bool new_val, common::ErrorCode *tianmu_err_code) {
   if (tianmu_err_code)
     *tianmu_err_code = common::ErrorCode::SUCCESS;
-  if (tianmu_bs.IsNull())
+  if (tianmu_s.IsNull())
     return common::NULL_VALUE_32;
   if (ATI::IsStringType(TypeName())) {
     DEBUG_ASSERT(GetPackType() == common::PackType::INT);
     LoadPackInfo();
-    int vs = m_dict->GetEncodedValue(tianmu_bs.val_, tianmu_bs.len_);
+    int vs = m_dict->GetEncodedValue(tianmu_s.val_, tianmu_s.len_);
     if (vs < 0) {
       if (!new_val) {
         return common::NULL_VALUE_32;
@@ -661,18 +661,18 @@ int TianmuAttr::EncodeValue_T(const types::BString &tianmu_bs, bool new_val, com
         hdr.dict_ver++;
         ha_tianmu_engine_->cache.PutObject(FTreeCoordinate(m_tid, m_cid, hdr.dict_ver), m_dict);
       }
-      vs = m_dict->Add(tianmu_bs.val_, tianmu_bs.len_);
+      vs = m_dict->Add(tianmu_s.val_, tianmu_s.len_);
     }
     return vs;
   }
-  char const *val = tianmu_bs.val_;
+  char const *val = tianmu_s.val_;
   if (val == 0)
     val = ZERO_LENGTH_STRING;
   if (ATI::IsDateTimeType(TypeName()) || TypeName() == common::CT::BIGINT) {
     ASSERT(0, "Wrong data type!");
   } else {
     types::TianmuNum tianmu_n;
-    common::ErrorCode tmp_tianmu_rc = types::TianmuNum::Parse(tianmu_bs, tianmu_n, TypeName());
+    common::ErrorCode tmp_tianmu_rc = types::TianmuNum::Parse(tianmu_s, tianmu_n, TypeName());
     if (tianmu_err_code)
       *tianmu_err_code = tmp_tianmu_rc;
     return (int)(int64_t)tianmu_n;

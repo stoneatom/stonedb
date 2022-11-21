@@ -48,8 +48,8 @@ class ChannelOut {
   virtual ChannelOut &operator<<(const wchar_t *buffer) = 0;
   virtual ChannelOut &operator<<(const std::string &str) = 0;
 
-  ChannelOut &operator<<(types::BString &tianmu_bs) {
-    for (ushort i = 0; i < tianmu_bs.len_; i++) (*this) << (char)(tianmu_bs[i]);
+  ChannelOut &operator<<(types::BString &tianmu_s) {
+    for (ushort i = 0; i < tianmu_s.len_; i++) (*this) << (char)(tianmu_s[i]);
     return *this;
   }
 

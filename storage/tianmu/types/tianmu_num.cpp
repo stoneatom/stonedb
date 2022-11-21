@@ -91,8 +91,8 @@ common::ErrorCode TianmuNum::Parse(const BString &tianmu_s, TianmuNum &tianmu_n,
   return ValueParserForText::Parse(tianmu_s, tianmu_n, at);
 }
 
-common::ErrorCode TianmuNum::ParseReal(const BString &tianmu_bs, TianmuNum &tianmu_n, common::CT at) {
-  return ValueParserForText::ParseReal(tianmu_bs, tianmu_n, at);
+common::ErrorCode TianmuNum::ParseReal(const BString &tianmu_s, TianmuNum &tianmu_n, common::CT at) {
+  return ValueParserForText::ParseReal(tianmu_s, tianmu_n, at);
 }
 
 common::ErrorCode TianmuNum::ParseNum(const BString &tianmu_s, TianmuNum &tianmu_n, short scale) {
