@@ -608,6 +608,9 @@ bool operator==(Item const &l_, Item const &r_) {
         same = !std::strcmp(l->func_name(), r->func_name());
         same = same && (l->arg_count == r->arg_count);
         same = same && l->functype() == r->functype();
+        // add for the diff operation, as below example:
+        // select EXTRACT(DAY_HOUR FROM a), EXTRACT(MINUTE_SECOND FROM b) from xxx;
+        same = same && l->item_name.eq_safe(r->item_name);
         if (l->functype() == Item_func::GUSERVAR_FUNC) {
           if (same) {
             Item_func_get_user_var const *ll = static_cast<Item_func_get_user_var const *>(&l_);
@@ -618,22 +621,14 @@ bool operator==(Item const &l_, Item const &r_) {
           same = same && l->arg_count == r->arg_count;
           for (uint i = 0; same && (i < l->arg_count); ++i) same = same && (*l->arguments()[i] == *r->arguments()[i]);
 
-          // Item_func* lll = (Item_func*)&l;
-          // Item_func* mmm = (Item_func*)&r;
-
-          // bool x = l->const_item();
-          // bool y = r->const_item();
-          // longlong zzz = lll->val_int_result();
-          // longlong vvv = mmm->val_int_result();
           same = same && (l->const_item() == r->const_item());
           if (same && l->const_item())
             same = ((Item_func *)&l_)->val_int() == ((Item_func *)&r_)->val_int();
-          if (dynamic_cast<const Item_date_add_interval *>(&l_)) {
-            const Item_date_add_interval *l = static_cast<const Item_date_add_interval *>(&l_);
-            const Item_date_add_interval *r = static_cast<const Item_date_add_interval *>(&r_);
-            same = same && dynamic_cast<const Item_date_add_interval *>(&r_);
-            same = same && ((l->int_type == r->int_type) && (l->date_sub_interval == r->date_sub_interval));
-          }
+
+          const Item_date_add_interval *l = static_cast<const Item_date_add_interval *>(&l_);
+          const Item_date_add_interval *r = static_cast<const Item_date_add_interval *>(&r_);
+          same = same && ((l->int_type == r->int_type) && (l->date_sub_interval == r->date_sub_interval));
+
           if (l->functype() == Item_func::IN_FUNC) {
             const Item_func_in *l = static_cast<const Item_func_in *>(&l_);
             const Item_func_in *r = static_cast<const Item_func_in *>(&r_);
