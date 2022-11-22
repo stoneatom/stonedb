@@ -1,0 +1,22 @@
+--source include/have_tianmu.inc
+
+USE test;
+
+--disable_warnings
+
+DROP TABLE IF EXISTS test_timestamp;
+
+CREATE TABLE test_timestamp (t timestamp);
+INSERT INTO test_timestamp VALUES ('2019-01-02 00:01:02'),
+                              ('2019-01-02 01:02:03'),
+                              ('2019-01-02 02:03:04'),
+                              ('2019-01-02 03:05:06'),
+                              ('2019-01-02 04:07:08');
+
+#EXTRACT SELECT
+
+SELECT EXTRACT(DAY_HOUR FROM t), EXTRACT(MINUTE_SECOND FROM t) FROM test_timestamp;
+
+#DROP TABLE
+
+DROP TABLE test_timestamp;
