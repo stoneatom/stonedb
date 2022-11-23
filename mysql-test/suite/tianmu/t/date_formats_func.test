@@ -1,0 +1,68 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test Date formats and func
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS date_formats_func_test;
+--enable_warnings
+
+CREATE DATABASE date_formats_func_test;
+USE date_formats_func_test;
+
+CREATE TABLE t1 (date CHAR(30), format CHAR(30));
+INSERT INTO t1 VALUES
+('2023-01-02 10:11:12', '%Y-%m-%d %H:%i:%S'),
+('2203-01-02 10:11:12 PM', '%Y-%m-%d %h:%i:%S %p'),
+('2023-01-02 01:11:12.12345AM', '%Y-%m-%d %h:%i:%S.%f%p'),
+('2013-01-02 02:11:12.12345AM', '%Y-%m-%d %h:%i:%S.%f %p'),
+('2001-01-02 12:11:12.12345 am', '%Y-%m-%d %h:%i:%S.%f%p'),
+('2113-01-02 11:11:12Pm', '%Y-%m-%d %h:%i:%S%p'),
+#bug #975('10:20:10', '%H:%i:%s'),
+#('10:20:10', '%h:%i:%s.%f'),
+#('10:20:10', '%T'),
+#('10:20:10AM', '%h:%i:%s%p'),
+#('10:20:10AM', '%r'),
+#('10:20:10.44AM', '%h:%i:%s.%f%p'),
+('15-01-2001 12:59:58', '%d-%m-%Y %H:%i:%S'),
+('15 September 2001', '%d %M %Y'),
+('15 SEPTEMB 1001', '%d %M %Y'),
+('15 MAY 2221', '%d %b %Y'),
+('15th May 2111', '%D %b %Y'),
+('Sunday 15 MAY 2021', '%W %d %b %Y'),
+('Sund 15 MAY 2011', '%W %d %b %Y'),
+('Tuesday 00 2002', '%W %U %Y'),
+('Thursday 53 1998', '%W %u %Y'),
+('Sunday 01 1111', '%W %v %x'),
+('Tuesday 52 2901', '%W %V %X'),
+('060 1004', '%j %Y'),
+('4 53 1998', '%w %u %Y'),
+('15-01-2001', '%d-%m-%Y %H:%i:%S'),
+('15-01-11', '%d-%m-%y'),
+('15-2021-1', '%d-%Y-%c');
+
+SELECT date, format, STR_TO_DATE(date, format) as str_to_date FROM t1;
+
+DROP TABLE t1;
+
+CREATE TABLE t1(t1_d DATE, t1_t TIME, t1_dt DATETIME);
+INSERT INTO t1 VALUES(NULL, NULL, NULL);
+#INSERT INTO t1 VALUES('0000-00-00', '00:00:00', '0000-00-00');
+INSERT INTO t1 VALUES('2222-11-11', '12:12:12', '2020-11-11 12:12:12');
+INSERT INTO t1 VALUES('2020-01-01', '11:11:11', '2020-12-31 12:34:56');
+INSERT INTO t1 VALUES('2016-02-01', '11:11:11', '2017-02-01 12:12:12');
+
+SELECT t1_dt, DATE_FORMAT(t1_dt, '%Y-%m-%d') a, DATE_FORMAT(t1_d, '%a %D %b %Y') b, DATE_FORMAT(t1_d, '%W %D %M %Y') c FROM t1;
+SELECT t1_dt, DATE_FORMAT(t1_dt, '%Y/%m/%d %T') a, DATE_FORMAT(t1_dt, '%a %D %b %Y %H:%i') b, DATE_FORMAT(t1_dt, '%W %D %M %Y %T') c FROM t1;
+
+# func DATE_SUB
+SELECT DATE_SUB('2017-09-04',INTERVAL 1 DAY) result;
+SELECT DATE_SUB('2017-09-04',INTERVAL 3 HOUR) result;
+SELECT DATE_SUB('2017-02-29', INTERVAL - 1 DAY) result;
+SELECT DATE_SUB('03/07/2017', INTERVAL 1 DAY) result;
+SELECT DATE_SUB(NULL, INTERVAL 1 DAY) result;
+SELECT DATE_SUB('2017-03-30', INTERVAL 1 MONTH) result;
+
+# Clean UP
+DROP DATABASE date_formats_func_test;
