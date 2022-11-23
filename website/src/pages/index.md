@@ -90,21 +90,21 @@ A Real-time HTAP Database
     - StoneDB_5.7_v1.0.0
         - Adapt to MySQL 5.7.
         - 2022-08-31
-    - StoneDB_8.0_v1.0.0
-        - Adapt to MySQL 8.0.
-        - 2022-10-10
     - StoneDB_5.7_v1.0.1
         1. Improve the processing performance of the 8 TPC-H queries that take long to complete execution.
         2. Optimize the query module.
         3. Add the support for DELETE statements.
         4. Add the support for binlogs in the row-based format.
-        - 2022-10-20
+        - 2022-10-24
     - StoneDB_5.7_v1.0.2
         1. Upgrade basic components to improve performance, security, etc.
         2. Add the partitioning feature.
         3. Add the parallel processing feature.
         4. Add the vectorized processing feature.
         - 2022-12-31
+    - StoneDB_8.0_v1.0.0
+        - Adapt to MySQL 8.0.
+        - 2023-03-06
     - StoneDB_v2.0.0
         - Launch the brand new V2.0 architecture.
         - 2023~
