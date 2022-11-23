@@ -758,6 +758,10 @@ void ConditionEncoder::EncodeIfPossible(Descriptor &desc, bool for_rough_query, 
   if (!desc.attr.vc || desc.attr.vc->GetDim() == -1)
     return;
 
+  if (desc.IsType_In()) {
+    return;
+  }
+
   vcolumn::SingleColumn *vcsc =
       (static_cast<int>(desc.attr.vc->IsSingleColumn()) ? static_cast<vcolumn::SingleColumn *>(desc.attr.vc) : nullptr);
 
