@@ -8,18 +8,12 @@ Developed based on MySQL, StoneDB is compatible with the MySQL 5.6 and 5.7 proto
 ## Unsupported DDL operations
 StoneDB does not support the following DDL operations:
 
-- Change the character set of a table or a field.
-- Convert the character set for a table.
+- Change the character set of a table.
 - Optimize a table.
 - Analyze a table.
-- Lock a table.
 - Repair a table.
-- Unlock tables.
-- Execute a `CREATE TABLE … AS SELECT` statement.
-- Rename a field.
-- Configure the default value for a field.
-- Specify the default value of a field to null.
-- Specify the default value of a field to non-null.
+- Lock a table.
+- Execute a CREATE TABLE … AS SELECT statement.
 - Add a unique constraint.
 - Delete a unique constraint.
 - Add a primary key constraint.
