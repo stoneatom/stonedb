@@ -1,0 +1,94 @@
+DROP DATABASE IF EXISTS create_view_test;
+CREATE DATABASE create_view_test;
+USE create_view_test;
+CREATE TABLE t1(id INT);
+CREATE VIEW v1 AS SELECT * FROM t1 WHERE id>10;
+INSERT INTO t1 VALUES (5), (8), (10), (20), (30);
+SELECT * FROM t1;
+id
+5
+8
+10
+20
+30
+SELECT * FROM v1;
+id
+20
+30
+SELECT * FROM v2;
+ERROR 42S02: Table 'create_view_test.v2' doesn't exist
+CREATE VIEW v2 AS SELECT * FROM t1 WHERE id>11;
+SELECT VIEW_DEFINITION FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_NAME='v1' AND TABLE_SCHEMA='create_view_test';
+VIEW_DEFINITION
+select `create_view_test`.`t1`.`id` AS `id` from `create_view_test`.`t1` where (`create_view_test`.`t1`.`id` > 10)
+CREATE VIEW v1 AS SELECT * FROM t1 WHERE id>12;
+ERROR 42S01: Table 'v1' already exists
+SELECT VIEW_DEFINITION FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_NAME='v1' AND TABLE_SCHEMA='create_view_test';
+VIEW_DEFINITION
+select `create_view_test`.`t1`.`id` AS `id` from `create_view_test`.`t1` where (`create_view_test`.`t1`.`id` > 10)
+CREATE OR REPLACE VIEW v1 AS SELECT * FROM t1 WHERE id>13;
+SELECT VIEW_DEFINITION FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_NAME='v1' AND TABLE_SCHEMA='create_view_test';
+VIEW_DEFINITION
+select `create_view_test`.`t1`.`id` AS `id` from `create_view_test`.`t1` where (`create_view_test`.`t1`.`id` > 13)
+CREATE OR REPLACE VIEW v1 AS SELECT * FROM t1 WHERE id>40;
+SELECT VIEW_DEFINITION FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_NAME='v1' AND TABLE_SCHEMA='create_view_test';
+VIEW_DEFINITION
+select `create_view_test`.`t1`.`id` AS `id` from `create_view_test`.`t1` where (`create_view_test`.`t1`.`id` > 40)
+INSERT INTO t1 VALUES (50), (80), (3), (2), (40);
+SELECT * FROM t1;
+id
+5
+8
+10
+20
+30
+50
+80
+3
+2
+40
+SELECT * FROM v1;
+id
+50
+80
+DROP TABLE v1;
+ERROR 42S02: Unknown table 'create_view_test.v1'
+DROP VIEW v1;
+DROP VIEW v2;
+DROP TABLE t1;
+SELECT * FROM v1;
+ERROR 42S02: Table 'create_view_test.v1' doesn't exist
+CREATE TABLE t3 (a int, b int);
+INSERT INTO t3 values
+(5,10),
+(10,15),
+(15,20),
+(20,25);
+CREATE OR REPLACE VIEW v3 AS
+SELECT * FROM t3;
+CREATE OR REPLACE VIEW v3 AS
+SELECT * FROM t3 WHERE a > 10;
+SELECT * FROM v3;
+a	b
+15	20
+20	25
+CREATE OR REPLACE VIEW v3 AS
+SELECT a, b FROM t3 WHERE a > 5 ORDER BY b DESC;
+SELECT * FROM v3;
+a	b
+20	25
+15	20
+10	15
+CREATE OR REPLACE VIEW v3 AS
+SELECT a FROM t3 WHERE a <> 20;
+CREATE OR REPLACE VIEW v3 AS
+SELECT 1, * FROM t3;
+ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '* FROM t3' at line 2
+CREATE OR REPLACE VIEW v3 AS
+SELECT a, b::numeric FROM t3;
+ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '::numeric FROM t3' at line 2
+CREATE OR REPLACE VIEW v3 AS
+SELECT a, b, 0 AS c FROM t3;
+DROP VIEW v3;
+DROP TABLE t3;
+DROP DATABASE create_view_test;

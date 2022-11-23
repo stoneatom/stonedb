@@ -1,0 +1,237 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test aggregate
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS aggregate_test;
+--enable_warnings
+
+CREATE DATABASE aggregate_test;
+USE aggregate_test;
+
+--disable_warnings
+DROP TABLE IF EXISTS cs1;
+DROP TABLE IF EXISTS cs2;
+DROP TABLE IF EXISTS cs3;
+DROP TABLE IF EXISTS cs4;
+DROP TABLE IF EXISTS cs5;
+--enable_warnings
+
+CREATE TABLE cs1 (d1 DECIMAL(17), d2 DECIMAL(17,10), d3 DECIMAL(17,16), d4 DECIMAL(17),d5 DECIMAL(17),i1 INT) ;
+CREATE TABLE cs2 (d1 DECIMAL(17) SIGNED, d2 DECIMAL(17,10) SIGNED, d3 DECIMAL(17,16) SIGNED, d4 DECIMAL(17),d5 DECIMAL(17),i1 INT);
+CREATE TABLE cs3 (d1 DECIMAL(17), d2 DECIMAL(17,10), d3 DECIMAL(17,16), d4 DECIMAL(17),d5 DECIMAL(17),i1 INT) ;
+CREATE TABLE cs4 (d1 DECIMAL(17) SIGNED, d2 DECIMAL(17,10) SIGNED, d3 DECIMAL(17,16) SIGNED, d4 DECIMAL(17) SIGNED,d5 DECIMAL(17),i1 INT);
+CREATE TABLE cs5(d DECIMAL(17,10)) ;
+
+INSERT INTO cs1 VALUES
+    (1234,5678,-0.123456789012345,2,1,1),     
+    (1234,-5678,0.12345678901234,2,1,1),
+    (1234567890123,123456.90123,0.12345678901234,2,1,1),
+    (NULL,NULL,NULL,2,1,1),
+    (0,0,0,2,1,1),
+    (1234,5678,0.123456789,3,2,2),
+    (-12345678923,-5678,0.1234567890121,3,2,2),
+    (56789012,123856.90,0.12345678909,3,2,2),
+    (NULL,NULL,NULL,3,2,2),
+    (0,0,0,3,2,2),
+    (1234,5678,-0.123456789012345,1111111111,1,1),
+    (1234,5678,-0.123456789012345,1111111111,1,1),
+    (1234,5678,-0.123456789012345,1111111112,1,1); 
+INSERT INTO cs2 VALUES
+    (1234,5678,0.123456789012345,2,1,1),     
+    (1234,5678,0.12345678901234,2,1,1),
+    (1234567890123,123456.90123,0.12345678901234,2,1,1),
+    (NULL,NULL,NULL,2,1,1),
+    (0,0,0,2,1,1),
+    (1234,5678,0.123456789,3,2,2),
+    (456789123,5678,0.1234567890121,3,2,2),
+    (56789012,123856.90,0.12345678909,3,2,2),
+    (NULL,NULL,NULL,3,2,2),
+    (0,0,0,3,2,2),
+    (1234,5678,0.123456789012345,1111111111,1,1),
+    (1234,5678,0.123456789012345,1111111111,1,1),
+    (1234,5678,0.123456789012345,1111111112,1,1); 
+INSERT INTO cs3 VALUES
+    (1234,5678,-0.12345678901234,2,1,1),     
+    (1234,-5678,0.12345678901234,2,1,1),
+    (12345678901,123456.90128,0.1234567890123,2,1,1),
+    (NULL,NULL,NULL,2,1,1),
+    (0,0,0,2,1,1),
+    (1234,5678,0.12345678901234,3,2,2),
+    (-1234567899,-5678,0.1234567890123,3,2,2),
+    (12345678901,123456.9012,0.1234567890123,3,2,2),
+    (NULL,NULL,NULL,3,2,2),
+    (0,0,0,3,2,2);
+INSERT INTO cs4 VALUES
+    (1234,5678,0.12345678901234,2,1,1),     
+    (1234,5678,0.12345678901234,2,1,1),
+    (12345678901,123456.90128,0.1234567890123,2,1,1),
+    (NULL,NULL,NULL,2,1,1),
+    (0,0,0,2,1,1),
+    (1234,5678,0.12345678901234,3,2,2),
+    (1234567899,5678,0.1234567890123,3,2,2),
+    (12345678901,123456.90123,0.1234567890123,3,2,2),
+    (NULL,NULL,NULL,3,2,2),
+    (0,0,0,3,2,2);
+
+#no GROUP BY DECIMAL
+SELECT "sum(17)_test1", sum(d1),sum(d2),sum(d3) FROM cs1;
+# SELECT "avg(17)_test1", avg(d1),avg(d2),avg(d3) FROM cs1;
+SELECT "count(17)_test1", count(d1),count(d2),count(d3) FROM cs1;
+SELECT "min(17)_test1", min(d1),min(d2),min(d3) FROM cs1;
+SELECT "max(17)_test1", max(d1),max(d2),max(d3) FROM cs1;
+# SELECT "group_concat(17)_test1", group_concat(d1 ORDER BY d1),group_concat(d2 ORDER BY d2),group_concat(d3 ORDER BY d3) FROM cs1;
+SELECT "count(distinct 17)_test1", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs1;
+
+#no GROUP BY DECIMAL
+SELECT "sum(17)_test1", sum(d1),sum(d2),sum(d3) FROM (SELECT d1,d2,d3 FROM cs1)a1;
+#SELECT "avg(17)_test1", avg(d1),avg(d2),avg(d3) FROM (SELECT d1,d2,d3 FROM cs1)a1;
+SELECT "count(17)_test1", count(d1),count(d2),count(d3) FROM (SELECT d1,d2,d3 FROM cs1)a1;
+SELECT "min(17)_test1", min(d1),min(d2),min(d3) FROM (SELECT d1,d2,d3 FROM cs1)a1;
+SELECT "max(17)_test1", max(d1),max(d2),max(d3) FROM (SELECT d1,d2,d3 FROM cs1)a1;
+
+# SELECT "group_concat(17)_test1", group_concat(d1 ORDER BY d1),group_concat(d2 ORDER BY d2),group_concat(d3 ORDER BY d3) FROM (SELECT d1,d2,d3 FROM cs1)a1;
+SELECT "count(distinct 17)_test1", count(distinct d1),count(distinct d2),count(distinct d3) FROM (SELECT d1,d2,d3 FROM cs1)a1;
+
+#GROUP BY DECIMAL
+SELECT "sum(17)_GB(17)_test1" ,d4,d5,sum(d1),sum(d2),sum(d3) FROM cs1 GROUP BY d4,d5 ORDER BY 2,3;
+#SELECT "avg(17)_GB(17)_test1" ,d4,d5,avg(d1),avg(d2),avg(d3) FROM cs1 GROUP BY d4,d5 ORDER BY 2,3;
+SELECT "count(17)_GB(17)_test1" ,d4,d5,count(d1),count(d2),count(d3) FROM cs1 GROUP BY d4,d5 ORDER BY 2,3;
+SELECT "min(17)_GB(17)_test1" ,d4,d5,min(d1),min(d2),min(d3) FROM cs1 GROUP BY d4,d5 ORDER BY 2,3;
+SELECT "max(17)_GB(17)_test1" ,d4,d5,max(d1),max(d2),max(d3) FROM cs1 GROUP BY d4,d5 ORDER BY 2,3;
+# SELECT "group_concat(17)_GB(17)_test1", group_concat(d1 ORDER BY d1),group_concat(d2 ORDER BY d2),group_concat(d3 ORDER BY d3) FROM cs1 GROUP BY d4,d5 ORDER BY 2;
+SELECT "count(distinct 17)_GB(17)_test1", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs1 GROUP BY d4,d5 ORDER BY 2,3;
+#with GROUP BY INT
+SELECT "sum(17)_GB(8)_test1" ,i1,sum(d1),sum(d2),sum(d3) FROM cs1 GROUP BY i1 ORDER BY 2;
+#SELECT "avg(17)_GB(8)_test1" ,i1,avg(d1),avg(d2),avg(d3) FROM cs1 GROUP BY i1 ORDER BY 2;
+SELECT "count(17)_GB(8)_test1" ,i1,count(d1),count(d2),count(d3) FROM cs1 GROUP BY i1 ORDER BY 2;
+SELECT "min(17)_GB(8)_test1" ,i1,min(d1),min(d2),min(d3) FROM cs1 GROUP BY i1 ORDER BY 2;
+SELECT "max(17)_GB(8)_test1" ,i1,max(d1),max(d2),max(d3) FROM cs1 GROUP BY i1 ORDER BY 2;
+# SELECT "group_concat(17)_GB(8)_test1", group_concat(d1 ORDER BY d1),group_concat(d2 ORDER BY d2),group_concat(d3 ORDER BY d3) FROM cs1 GROUP BY i1 ORDER BY 2;
+SELECT "count(distinct 17)_GB(8)_test1", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs1 GROUP BY i1 ORDER BY 2;
+
+#no GROUP BY DECIMAL
+SELECT "sum(17)_test2", sum(d1),sum(d2),sum(d3) FROM cs2;
+#SELECT "avg(17)_test2", avg(d1),avg(d2),avg(d3) FROM cs2;
+SELECT "count(17)_test2", count(d1),count(d2),count(d3) FROM cs2;
+SELECT "min(17)_test2", min(d1),min(d2),min(d3) FROM cs2;
+SELECT "max(17)_test2", max(d1),max(d2),max(d3) FROM cs2;
+# SELECT "group_concat(17)_test2", group_concat(d1),group_concat(d2),group_concat(d3) FROM cs2;
+SELECT "count(distinct 17)_test2", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs2;
+
+#no GROUP BY DECIMAL
+SELECT "sum(17)_test2", sum(d1),sum(d2),sum(d3) FROM (SELECT d1,d2,d3 FROM cs2)a1;
+#SELECT "avg(17)_test2", avg(d1),avg(d2),avg(d3) FROM (SELECT d1,d2,d3 FROM cs2)a1;
+SELECT "count(17)_test2", count(d1),count(d2),count(d3) FROM (SELECT d1,d2,d3 FROM cs2)a1;
+SELECT "min(17)_test2", min(d1),min(d2),min(d3) FROM (SELECT d1,d2,d3 FROM cs2)a1;
+SELECT "max(17)_test2", max(d1),max(d2),max(d3) FROM (SELECT d1,d2,d3 FROM cs2)a1;
+# SELECT "group_concat(17)_test2", group_concat(d1),group_concat(d2),group_concat(d3) FROM (SELECT d1,d2,d3 FROM cs2)a1;
+SELECT "count(distinct 17)_test2", count(distinct d1),count(distinct d2),count(distinct d3) FROM (SELECT d1,d2,d3 FROM cs2)a1;
+
+#GROUP BY DECIMAL
+SELECT "sum(17)_GB(17)_test2" ,d4,d5,sum(d1),sum(d2),sum(d3) FROM cs2 GROUP BY d4,d5 ORDER BY 2,3;
+#SELECT "avg(17)_GB(17)_test2" ,d4,d5,avg(d1),avg(d2),avg(d3) FROM cs2 GROUP BY d4,d5 ORDER BY 2,3;
+SELECT "count(17)_GB(17)_test2" ,d4,d5,count(d1),count(d2),count(d3) FROM cs2 GROUP BY d4,d5 ORDER BY 2,3;
+SELECT "min(17)_GB(17)_test2" ,d4,d5,min(d1),min(d2),min(d3) FROM cs2 GROUP BY d4,d5 ORDER BY 2,3;
+SELECT "max(17)_GB(17)_test2" ,d4,d5,max(d1),max(d2),max(d3) FROM cs2 GROUP BY d4,d5 ORDER BY 2,3;
+# SELECT "group_concat(17)_GB(17)_test2", group_concat(d1 ORDER BY d1),group_concat(d2 ORDER BY d2),group_concat(d3 ORDER BY d3) FROM cs2 GROUP BY d4,d5 ORDER BY 2,3;
+SELECT "count(distinct 17)_GB(17)_test2", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs2 GROUP BY d4,d5 ORDER BY 2,3;
+
+#with GROUP BY INT
+SELECT "sum(17)_GB(8)_test2" ,i1,sum(d1),sum(d2),sum(d3) FROM cs2 GROUP BY i1 ORDER BY 2,3;
+#SELECT "avg(17)_GB(8)_test2" ,i1,avg(d1),avg(d2),avg(d3) FROM cs2 GROUP BY i1 ORDER BY 2,3;
+SELECT "count(17)_GB(8)_test2" ,i1,count(d1),count(d2),count(d3) FROM cs2 GROUP BY i1 ORDER BY 2,3;
+SELECT "min(17)_GB(8)_test2" ,i1,min(d1),min(d2),min(d3) FROM cs2 GROUP BY i1 ORDER BY 2,3;
+SELECT "max(17)_GB(8)_test2" ,i1,max(d1),max(d2),max(d3) FROM cs2 GROUP BY i1 ORDER BY 2,3;
+# SELECT "group_concat(17)_GB(8)_test2", group_concat(d1 ORDER BY d1),group_concat(d2 ORDER BY d1),group_concat(d3 ORDER BY d1) FROM cs2 GROUP BY i1 ORDER BY 2,3;
+SELECT "count(distinct 17)_GB(8)_test2", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs2 GROUP BY i1 ORDER BY 2,3;
+
+#no GROUP BY DECIMAL
+SELECT "sum(17)_test3", sum(d1),sum(d2),sum(d3) FROM cs3;
+#SELECT "avg(17)_test3", avg(d1),avg(d2),avg(d3) FROM cs3;
+SELECT "count(17)_test3", count(d1),count(d2),count(d3) FROM cs3;
+SELECT "min(17)_test3", min(d1),min(d2),min(d3) FROM cs3;
+SELECT "max(17)_test3", max(d1),max(d2),max(d3) FROM cs3;
+# SELECT "group_concat(17)_test3", group_concat(d1 ORDER BY d1),group_concat(d2 ORDER BY d1),group_concat(d3 ORDER BY d1) FROM cs3;
+SELECT "count(distinct 17)_test3", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs3;
+
+#no GROUP BY DECIMAL
+SELECT "sum(17)_test3", sum(d1),sum(d2),sum(d3) FROM (SELECT d1,d2,d3 FROM cs3)a1;
+#SELECT "avg(17)_test3", avg(d1),avg(d2),avg(d3) FROM (SELECT d1,d2,d3 FROM cs3)a1;
+SELECT "count(17)_test3", count(d1),count(d2),count(d3) FROM (SELECT d1,d2,d3 FROM cs3)a1;
+SELECT "min(17)_test3", min(d1),min(d2),min(d3) FROM (SELECT d1,d2,d3 FROM cs3)a1;
+SELECT "max(17)_test3", max(d1),max(d2),max(d3) FROM (SELECT d1,d2,d3 FROM cs3)a1;
+# SELECT "group_concat(17)_test3", group_concat(d1 ORDER BY d1),group_concat(d2 ORDER BY d2),group_concat(d3 ORDER BY d3) FROM (SELECT d1,d2,d3 FROM cs3)a1;
+SELECT "count(distinct 17)_test3", count(distinct d1),count(distinct d2),count(distinct d3) FROM (SELECT d1,d2,d3 FROM cs3)a1;
+
+#GROUP BY DECIMAL
+SELECT "sum(17)_GB(17)_test3" ,d4,d5,sum(d1),sum(d2),sum(d3) FROM cs3 GROUP BY d4,d5 ORDER BY 2,3;
+#SELECT "avg(17)_GB(17)_test3" ,d4,d5,avg(d1),avg(d2),avg(d3) FROM cs3 GROUP BY d4,d5 ORDER BY 2,3;
+SELECT "count(17)_GB(17)_test3" ,d4,d5,count(d1),count(d2),count(d3) FROM cs3 GROUP BY d4,d5 ORDER BY 2,3;
+SELECT "min(17)_GB(17)_test3" ,d4,d5,min(d1),min(d2),min(d3) FROM cs3 GROUP BY d4,d5 ORDER BY 2,3;
+SELECT "max(17)_GB(17)_test3" ,d4,d5,max(d1),max(d2),max(d3) FROM cs3 GROUP BY d4,d5 ORDER BY 2,3;
+# SELECT "group_concat(17)_GB(17)_test3", group_concat(d1 ORDER BY d1),group_concat(d2 ORDER BY d2),group_concat(d3 ORDER BY d3) FROM cs3 GROUP BY d4,d5 ORDER BY 2,3;
+SELECT "count(distinct 17)_GB(17)_test3", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs3 GROUP BY d4,d5 ORDER BY 2,3;
+
+#with GROUP BY INT
+SELECT "sum(17)_GB(8)_test3" ,i1,sum(d1),sum(d2),sum(d3) FROM cs3 GROUP BY i1 ORDER BY 2,3;
+#SELECT "avg(17)_GB(8)_test3" ,i1,avg(d1),avg(d2),avg(d3) FROM cs3 GROUP BY i1 ORDER BY 2,3;
+SELECT "count(17)_GB(8)_test3" ,i1,count(d1),count(d2),count(d3) FROM cs3 GROUP BY i1 ORDER BY 2,3;
+SELECT "min(17)_GB(8)_test3" ,i1,min(d1),min(d2),min(d3) FROM cs3 GROUP BY i1 ORDER BY 2,3;
+SELECT "max(17)_GB(8)_test3" ,i1,max(d1),max(d2),max(d3) FROM cs3 GROUP BY i1 ORDER BY 2,3;
+# SELECT "group_concat(17)_GB(8)_test3", group_concat(d1 ORDER BY d1),group_concat(d2 ORDER BY d2),group_concat(d3 ORDER BY d3) FROM cs3 GROUP BY i1 ORDER BY 2,3;
+SELECT "count(distinct 17)_GB(8)_test3", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs3 GROUP BY i1 ORDER BY 2,3;
+
+#no GROUP BY DECIMAL
+SELECT "sum(17)_test4", sum(d1),sum(d2),sum(d3) FROM cs4;
+#SELECT "avg(17)_test4", avg(d1),avg(d2),avg(d3) FROM cs4;
+SELECT "count(17)_test4", count(d1),count(d2),count(d3) FROM cs4;
+SELECT "min(17)_test4", min(d1),min(d2),min(d3) FROM cs4;
+SELECT "max(17)_test4", max(d1),max(d2),max(d3) FROM cs4;
+# SELECT "group_concat(17)_test4", group_concat(d1 ORDER BY d1),group_concat(d2 ORDER BY d2),group_concat(d3 ORDER BY d3) FROM cs4;
+SELECT "count(distinct 17)_test4", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs4;
+
+#no GROUP BY DECIMAL
+SELECT "sum(17)_test4", sum(d1),sum(d2),sum(d3) FROM (SELECT d1,d2,d3 FROM cs4)a1;
+#SELECT "avg(17)_test4", avg(d1),avg(d2),avg(d3) FROM (SELECT d1,d2,d3 FROM cs4)a1;
+SELECT "count(17)_test4", count(d1),count(d2),count(d3) FROM (SELECT d1,d2,d3 FROM cs4)a1;
+SELECT "min(17)_test4", min(d1),min(d2),min(d3) FROM (SELECT d1,d2,d3 FROM cs4)a1;
+SELECT "max(17)_test4", max(d1),max(d2),max(d3) FROM (SELECT d1,d2,d3 FROM cs4)a1;
+#SELECT "group_concat(17)_test4", group_concat(d1 ORDER BY d1),group_concat(d2 ORDER BY d2),group_concat(d3 ORDER BY d3) FROM (SELECT d1,d2,d3 FROM cs4)a1;
+SELECT "count(distinct 17)_test4", count(distinct d1),count(distinct d2),count(distinct d3) FROM (SELECT d1,d2,d3 FROM cs4)a1;
+
+#GROUP BY DECIMAL
+SELECT "sum(17)_GB(17)_test4" ,d4,d5,sum(d1),sum(d2),sum(d3) FROM cs4 GROUP BY d4,d5 ORDER BY 2,3;
+#SELECT "avg(17)_GB(17)_test4" ,d4,d5,avg(d1),avg(d2),avg(d3) FROM cs4 GROUP BY d4,d5 ORDER BY 2,3;
+SELECT "count(17)_GB(17)_test4" ,d4,d5,count(d1),count(d2),count(d3) FROM cs4 GROUP BY d4,d5 ORDER BY 2,3;
+SELECT "min(17)_GB(17)_test4" ,d4,d5,min(d1),min(d2),min(d3) FROM cs4 GROUP BY d4,d5 ORDER BY 2,3;
+SELECT "max(17)_GB(17)_test4" ,d4,d5,max(d1),max(d2),max(d3) FROM cs4 GROUP BY d4,d5 ORDER BY 2,3;
+#SELECT "group_concat(17)_GB(17)_test4", group_concat(d1 ORDER BY d1),group_concat(d2 ORDER BY d2),group_concat(d3 ORDER BY d3) FROM cs4 GROUP BY d4,d5 ORDER BY 2,3;
+SELECT "count(distinct 17)_GB(17)_test4", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs4 GROUP BY d4,d5 ORDER BY 2,3;
+
+#with GROUP BY INT
+SELECT "sum(17)_GB(17)_test4" ,i1,sum(d1),sum(d2),sum(d3) FROM cs4 GROUP BY i1 ORDER BY 2,3;
+#SELECT "avg(17)_GB(17)_test4" ,i1,avg(d1),avg(d2),avg(d3) FROM cs4 GROUP BY i1 ORDER BY 2,3;
+SELECT "count(17)_GB(17)_test4" ,i1,count(d1),count(d2),count(d3) FROM cs4 GROUP BY i1 ORDER BY 2,3;
+SELECT "min(17)_GB(17)_test4" ,i1,min(d1),min(d2),min(d3) FROM cs4 GROUP BY i1 ORDER BY 2,3;
+SELECT "max(17)_GB(17)_test4" ,i1,max(d1),max(d2),max(d3) FROM cs4 GROUP BY i1 ORDER BY 2,3;
+#SELECT "group_concat(17)_GB(8)_test4", group_concat(d1 ORDER BY d1),group_concat(d2 ORDER BY d2),group_concat(d3 ORDER BY d3) FROM cs4 GROUP BY i1 ORDER BY 2,3;
+SELECT "count(distinct 17)_GB(8)_test4", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs4 GROUP BY i1 ORDER BY 2,3;
+
+SELECT sum(d1), "sum(17)_test1", sum(d2),sum(d3) FROM cs1;
+
+INSERT INTO cs5 VALUES (1),(0.1),(0.05),(0.05),(0.05),(0.05),(0.2),(0.154),(0.1),(0.05),(0.05);
+SELECT avg(d) FROM cs5;
+UPDATE cs5 SET d=-d;
+SELECT avg(d) FROM cs5;
+
+#clean up
+DROP TABLE cs1;
+DROP TABLE cs2;
+DROP TABLE cs3;
+DROP TABLE cs4;
+DROP TABLE cs5;
+drop database aggregate_test;
+
