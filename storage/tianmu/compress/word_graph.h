@@ -235,7 +235,7 @@ class WordGraph : public PPMModel {
   // CAUTION: the 'data_' array is NOT physically copied, only its pointer.
   // So the data_ must not change outside this class during lifetime of this
   // object.
-  WordGraph(const Symb *data_, int dlen_ = -1, bool insatend_ = true);
+  WordGraph(const Symb *data, int dlen = -1, bool insatend = true);
   virtual ~WordGraph() { Clear(); }
   bool insatend_;  // insert new child at the end of the children list?
 
