@@ -1,0 +1,468 @@
+#
+# Test IN subquery
+#
+drop database if exists in_subquery_test;
+set optimizer_switch='semijoin=off';
+create database in_subquery_test;
+use in_subquery_test;
+create table t1 (a int);
+insert into t1 values (1), (2), (3), (4), (null);
+create table t2 (b int, c int);
+insert into t2 values (1, 100), (1, 101), (2, 200),
+(3, 300), (3, 301), (3, 302), (null, null);
+select * from t1 where a in (select b from t2);
+a
+1
+2
+3
+select * from t1 where a in (select c from t2);
+a
+select * from t1 where (a+a) in (select (b+b) from t2);
+a
+1
+2
+3
+select * from t1 where (a+1) in (select b from t2);
+a
+1
+2
+select * from t1 where hex(a*10) in (select hex(b*10) from t2);
+a
+1
+2
+3
+select * from t1 where a in (select b from t2 where t1.a=t2.c-299);
+a
+3
+select * from t1 where a is not null and a in (select b from t2);
+a
+1
+2
+3
+select * from t1 where a in (select b from t2) and a is null;
+a
+select * from t1 where a in (select 2 from t2) and a in (select b from t2);
+a
+2
+select * from t1 where a in (1,3) and a in (select b from t2);
+a
+1
+3
+select * from t1 where a in (select b from t2 where b in (select a from t1));
+a
+1
+2
+3
+select * from t1 where a in (select b from t2 where b in (select a from t1 where a in (2,3)));
+a
+2
+3
+select * from t1 where a in (select b from t2 where b in (select a from t1 where a not in (2,3)));
+a
+1
+select * from t1 where a in (select b from t2 where b=3);
+a
+3
+select * from t1 where a in (select b from t2 where b=3 or c=200);
+a
+2
+3
+select * from t1 where a in (select b from t2 where b is not null);
+a
+1
+2
+3
+select * from t1 where a in (select b from t2 group by b);
+a
+1
+2
+3
+select * from t1 where a in (select count(*) from t2 group by b);
+a
+1
+2
+3
+select * from t1 where a in (select count(*) from t2 group by b having count(*) < 3);
+a
+1
+2
+select * from t1 where a in (select count(*) from t2 where b <> 2 group by b having count(*) < 3);
+a
+2
+select * from t1 where a in (select t1.b from t2 t1, t2 t2 where t1.b=t2.b);
+a
+1
+2
+3
+select * from t1 where a in (select t1.b from t2 t1, t2 t2 where t1.b=t2.b and t1.b <> 3);
+a
+1
+2
+select * from t1 join t2 on t1.a=t2.b and t1.a in (select b from t2) order by 1,2,3;
+a	b	c
+1	1	100
+1	1	101
+2	2	200
+3	3	300
+3	3	301
+3	3	302
+select * from t1 join t2 on t1.a=t2.b and t1.a in (select b from t2) and t1.a=1;
+a	b	c
+1	1	100
+1	1	101
+select * from t1 where a not in (select b from t2);
+a
+select * from t1 where a not in (select c from t2);
+a
+select * from t1 where (a+a) not in (select (b+b) from t2);
+a
+select * from t1 where (a+1) not in (select b from t2);
+a
+select * from t1 where hex(a*10) not in (select hex(b*10) from t2);
+a
+select * from t1 where a is not null and a not in (select b from t2);
+a
+select * from t1 where a not in (select b from t2) and a is null;
+a
+select * from t1 where a not in (select 2 from t2) and a not in (select b from t2);
+a
+select * from t1 where a in (1,3) and a not in (select b from t2);
+a
+select * from t1 where a not in (select b from t2 where b not in (select a from t1 where a in (2,3)));
+a
+2
+3
+4
+select * from t1 where a not in (select b from t2 where b not in (select a from t1 where a not in (2,3)));
+a
+1
+4
+select * from t1 where a not in (select b from t2 where b=3);
+a
+1
+2
+4
+select * from t1 where a not in (select b from t2 where b=3 or c=200);
+a
+1
+4
+select * from t1 where a not in (select b from t2 where b is not null);
+a
+4
+select * from t1 where a not in (select b from t2 group by b);
+a
+select * from t1 where a not in (select count(*) from t2 group by b);
+a
+4
+select * from t1 where a not in (select count(*) from t2 group by b having count(*) < 3);
+a
+3
+4
+select * from t1 where a not in (select count(*) from t2 where b <> 2 group by b having count(*) < 3);
+a
+1
+3
+4
+select * from t1 where a not in (select t1.b from t2 t1, t2 t2 where t1.b=t2.b);
+a
+4
+select * from t1 where a not in (select t1.b from t2 t1, t2 t2 where t1.b=t2.b and t1.b <> 3);
+a
+3
+4
+select * from t1 join t2 on t1.a=t2.b and t1.a not in (select b from t2);
+a	b	c
+select * from t1 join t2 on t1.a=t2.b and t1.a not in (select b from t2) and t1.a=1;
+a	b	c
+select * from t1 where a not in (select b from t2 where b is not null);
+a
+4
+select * from t1 where a not in (select c from t2 where b is not null);
+a
+1
+2
+3
+4
+select * from t1 where (a+a) not in (select (b+b) from t2 where b is not null);
+a
+4
+select * from t1 where (a+1) not in (select b from t2 where b is not null);
+a
+3
+4
+select * from t1 where hex(a*10) not in (select hex(b*10) from t2 where b is not null);
+a
+4
+select * from t1 where a is not null and a not in (select b from t2 where b is not null);
+a
+4
+select * from t1 where a not in (select b from t2 where b is not null) and a is null;
+a
+select * from t1 where a not in (select 2 from t2) and a not in (select b from t2 where b is not null);
+a
+4
+select * from t1 where a in (1,3) and a not in (select b from t2 where b is not null);
+a
+select * from t1 where a not in (select b from t2 where b not in (select a from t1 where a in (2,3) and a is not null) and b is not null);
+a
+2
+3
+4
+select * from t1 where a not in (select b from t2 where b not in (select a from t1 where a not in (2,3) and a is not null) and b is not null);
+a
+1
+4
+select * from t1 where a not in (select b from t2 where b is not null group by b);
+a
+4
+select * from t1 where a not in (select count(*) from t2 where b is not null group by b);
+a
+4
+select * from t1 where a not in (select count(*) from t2 where b is not null group by b having count(*) < 3);
+a
+3
+4
+select * from t1 where a not in (select t1.b from t2 t1, t2 t2 where t1.b=t2.b and t1.b is not null);
+a
+4
+select * from t1 join t2 on t1.a=t2.b and t1.a not in (select b from t2 where b is not null);
+a	b	c
+select * from t1 join t2 on t1.a=t2.b and t1.a not in (select b from t2 where b is not null) and t1.a=1;
+a	b	c
+select * from t1 where a in (select b from t2 where b is null);
+a
+select * from t1 where a in (select b from t2 where b is not null);
+a
+1
+2
+3
+select * from t1 where a not in (select b from t2 where b is null);
+a
+drop table t1;
+create table t1 (a int);
+insert into t1 values (1), (2), (3), (4), (null);
+prepare stmt from "select * from t1 where a in (select b from t2)";
+execute stmt;
+a
+1
+2
+3
+execute stmt;
+a
+1
+2
+3
+prepare stmt from "select * from t1 where a in (select c from t2)";
+execute stmt;
+a
+execute stmt;
+a
+prepare stmt from "select * from t1 where (a+a) in (select (b+b) from t2)";
+execute stmt;
+a
+1
+2
+3
+execute stmt;
+a
+1
+2
+3
+prepare stmt from "select * from t1 where (a+1) in (select b from t2)";
+execute stmt;
+a
+1
+2
+execute stmt;
+a
+1
+2
+prepare stmt from "select * from t1 where hex(a*10) in (select hex(b*10) from t2)";
+execute stmt;
+a
+1
+2
+3
+execute stmt;
+a
+1
+2
+3
+prepare stmt from "select * from t1 where a in (select b from t2 where t1.a=t2.c-299)";
+execute stmt;
+a
+3
+execute stmt;
+a
+3
+prepare stmt from "select * from t1 where a is not null and a in (select b from t2)";
+execute stmt;
+a
+1
+2
+3
+execute stmt;
+a
+1
+2
+3
+prepare stmt from "select * from t1 where a in (select b from t2) and a is null";
+execute stmt;
+a
+execute stmt;
+a
+prepare stmt from "select * from t1 where a in (select 2 from t2) and a in (select b from t2)";
+execute stmt;
+a
+2
+execute stmt;
+a
+2
+prepare stmt from "select * from t1 where a in (1,3) and a in (select b from t2)";
+execute stmt;
+a
+1
+3
+execute stmt;
+a
+1
+3
+prepare stmt from "select * from t1 where a in (select b from t2 where b in (select a from t1))";
+execute stmt;
+a
+1
+2
+3
+execute stmt;
+a
+1
+2
+3
+prepare stmt from "select * from t1 where a in (select b from t2 where b in (select a from t1 where a in (2,3)))";
+execute stmt;
+a
+2
+3
+execute stmt;
+a
+2
+3
+prepare stmt from "select * from t1 where a in (select b from t2 where b in (select a from t1 where a not in (2,3)))";
+execute stmt;
+a
+1
+execute stmt;
+a
+1
+prepare stmt from "select * from t1 where a in (select b from t2 where b=3)";
+execute stmt;
+a
+3
+execute stmt;
+a
+3
+prepare stmt from "select * from t1 where a in (select b from t2 where b=3 or c=200)";
+execute stmt;
+a
+2
+3
+execute stmt;
+a
+2
+3
+prepare stmt from "select * from t1 where a in (select b from t2 where b is not null)";
+execute stmt;
+a
+1
+2
+3
+execute stmt;
+a
+1
+2
+3
+prepare stmt from "select * from t1 where a in (select b from t2 group by b)";
+execute stmt;
+a
+1
+2
+3
+execute stmt;
+a
+1
+2
+3
+prepare stmt from "select * from t1 where a in (select count(*) from t2 group by b)";
+execute stmt;
+a
+1
+2
+3
+execute stmt;
+a
+1
+2
+3
+prepare stmt from "select * from t1 where a in (select count(*) from t2 group by b having count(*) < 3)";
+execute stmt;
+a
+1
+2
+execute stmt;
+a
+1
+2
+prepare stmt from "select * from t1 where a in (select count(*) from t2 where b <> 2 group by b having count(*) < 3)";
+execute stmt;
+a
+2
+execute stmt;
+a
+2
+prepare stmt from "select * from t1 where a in (select t1.b from t2 t1, t2 t2 where t1.b=t2.b)";
+execute stmt;
+a
+1
+2
+3
+execute stmt;
+a
+1
+2
+3
+prepare stmt from "select * from t1 where a in (select t1.b from t2 t1, t2 t2 where t1.b=t2.b and t1.b <> 3)";
+execute stmt;
+a
+1
+2
+execute stmt;
+a
+1
+2
+prepare stmt from "select * from t1 join t2 on t1.a=t2.b and t1.a in (select b from t2) order by 1,2,3";
+execute stmt;
+a	b	c
+1	1	100
+1	1	101
+2	2	200
+3	3	300
+3	3	301
+3	3	302
+execute stmt;
+a	b	c
+1	1	100
+1	1	101
+2	2	200
+3	3	300
+3	3	301
+3	3	302
+prepare stmt from "select * from t1 join t2 on t1.a=t2.b and t1.a in (select b from t2) and t1.a=1 order by 1,2,3";
+execute stmt;
+a	b	c
+1	1	100
+1	1	101
+execute stmt;
+a	b	c
+1	1	100
+1	1	101
+drop database in_subquery_test;
