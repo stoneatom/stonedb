@@ -524,7 +524,7 @@ void TianmuAttr::EvaluatePack_Like_UTF(MIUpdatingIterator &mit, int dim, Descrip
       else {
         v.MakePersistent();
         int x = common::wildcmp(d.GetCollation(), v.val_, v.val_ + v.len_, pattern.val_, pattern.val_ + pattern.len_,
-                                '\\', '_', '%');
+                                d.like_esc, '_', '%');
         res = (x == 0 ? true : false);
       }
       if (d.op == common::Operator::O_NOT_LIKE)
