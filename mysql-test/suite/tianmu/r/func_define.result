@@ -1,0 +1,84 @@
+#
+# Test functions define and call
+#
+DROP DATABASE IF EXISTS func_define_test;
+CREATE DATABASE func_define_test;
+USE func_define_test;
+CREATE TABLE t1(x INT, y CHAR(10));
+INSERT INTO t1 VALUES(1,'aaaaa'),(100,'bbbbbb'),(100,'ccccccc'),(300,'ddddddd');
+CREATE FUNCTION f1(z INT) RETURNS INT DETERMINISTIC 
+RETURN (SELECT x FROM t1 WHERE x = z);
+CREATE FUNCTION f2(z INT) RETURNS INT DETERMINISTIC
+RETURN (SELECT * FROM t1 WHERE x = z);
+SELECT f1(1);
+f1(1)
+1
+SELECT f1(300);
+f1(300)
+300
+SELECT f1(11);
+f1(11)
+NULL
+SELECT f1();
+ERROR 42000: Incorrect number of arguments for FUNCTION func_define_test.f1; expected 1, got 0
+SELECT f1(100);
+ERROR 21000: Subquery returns more than 1 row
+SELECT f2(1);
+ERROR 21000: Operand should contain 1 column(s)
+DROP FUNCTION f1;
+DROP FUNCTION f2;
+DROP FUNCTION f2;
+ERROR 42000: FUNCTION func_define_test.f2 does not exist
+CREATE FUNCTION f3(i INT) RETURNS INT DETERMINISTIC
+BEGIN
+INSERT INTO t2 VALUES(i+1);
+RETURN 42;
+END //
+CREATE TABLE t2(col1 INT);
+SELECT f3(a);
+ERROR 42S22: Unknown column 'a' in 'field list'
+SELECT f3(123);
+f3(123)
+42
+SELECT f3(86);
+f3(86)
+42
+SELECT f3(07);
+f3(07)
+42
+SELECT * FROM t2;
+col1
+124
+87
+8
+DROP FUNCTION f3;
+CREATE FUNCTION func1() RETURNS INT LANGUAGE SQL DETERMINISTIC CONTAINS SQL SQL SECURITY DEFINER
+BEGIN
+RETURN 1;
+END//
+SHOW CREATE FUNCTION func1;
+Function	sql_mode	Create Function	character_set_client	collation_connection	Database Collation
+func1	ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION	CREATE DEFINER=`root`@`localhost` FUNCTION `func1`() RETURNS int(11)
+    DETERMINISTIC
+BEGIN
+RETURN 1;
+END	latin1	latin1_swedish_ci	latin1_swedish_ci
+SELECT func1();
+func1()
+1
+CREATE FUNCTION func2() RETURNS CHAR(10) LANGUAGE SQL NOT DETERMINISTIC NO SQL SQL SECURITY INVOKER
+BEGIN
+RETURN 'func2';
+END//
+SHOW CREATE FUNCTION func2;
+Function	sql_mode	Create Function	character_set_client	collation_connection	Database Collation
+func2	ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION	CREATE DEFINER=`root`@`localhost` FUNCTION `func2`() RETURNS char(10) CHARSET latin1
+    NO SQL
+    SQL SECURITY INVOKER
+BEGIN
+RETURN 'func2';
+END	latin1	latin1_swedish_ci	latin1_swedish_ci
+SELECT func2();
+func2()
+func2
+DROP DATABASE func_define_test;

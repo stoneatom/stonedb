@@ -1,0 +1,47 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test COALESCE and ASCII function
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS coalesce_ascii_func_test;
+--enable_warnings
+
+CREATE DATABASE coalesce_ascii_func_test;
+USE coalesce_ascii_func_test;
+
+# COALESCE function
+
+CREATE TABLE t1 (a CHAR(1), b INT, c DATETIME, d DOUBLE);
+INSERT INTO t1 VALUES ('', NULL, '1211-11-11', NULL),('a', 12, '1212-12-12', 1.19691E+100),('b', 13, '1313-3-13 13:13:13', 2.1961E+18),('c', 14, '1414-4-14', 0.16191),('d', 15, '2015-5-15 15:15:15', 1.971917);
+SHOW CREATE TABLE t1;
+
+SELECT COALESCE(NULL, NULL, NULL, 'stonedb', NULL, 'stonedbtianmu');
+SELECT COALESCE(NULL, 1, 2, 'stonedbtianmu');
+SELECT a, COALESCE(a, 'na') FROM t1;
+SELECT b, COALESCE(b, 'null value') FROM t1;
+SELECT d, COALESCE(d, 'null value') FROM t1;
+
+# ASCII function
+
+CREATE TABLE t2 (a CHAR(1), b INT);
+INSERT INTO t2 VALUES ('', NULL), ('m', 6), ('N', 5), ('o', 4);
+
+SHOW CREATE TABLE t2;
+
+SELECT ASCII(0);
+SELECT ASCII(1);
+SELECT ASCII(9);
+SELECT ASCII('abc');
+SELECT ASCII('a');
+SELECT ASCII('A');
+SELECT ASCII('z');
+SELECT ASCII('~');
+SELECT ASCII('-');
+
+SELECT a, ASCII(a) FROM t2;
+SELECT b, ASCII(b) FROM t2;
+
+# Clean UP
+DROP DATABASE coalesce_ascii_func_test;
