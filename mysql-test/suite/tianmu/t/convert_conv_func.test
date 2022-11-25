@@ -1,0 +1,47 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test CONVERT, CONV functions
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS convert_conv_func_test;
+--enable_warnings
+
+CREATE DATABASE convert_conv_func_test;
+USE convert_conv_func_test;
+
+CREATE TABLE t1 (a CHAR(1), b INT, c DATETIME, d DOUBLE);
+INSERT INTO t1 VALUES ('', NULL, '1111-11-11', NULL),
+('a', 12, '1212-12-12', 1.19691E+100),
+('b', 13, '1313-3-13 13:13:13', 2.1961E+18),
+('c', 14, '1414-4-14', 0.16191),
+('d', 15, '2015-5-15 15:15:15', 1.971917);
+
+select * from t1;
+SHOW CREATE TABLE t1;
+
+SELECT CONVERT(123, CHAR);
+SELECT CONVERT("14:06:10", TIME);
+SELECT CONVERT("stonedbtianmu" USING latin1);
+SELECT CONVERT('abcd', BINARY);
+SELECT CONVERT(-123, UNSIGNED);
+
+SELECT CONV(123, 10, 2);
+SELECT CONV(123, 8, 2);
+SELECT CONV(2011, 10, 16);
+SELECT CONV(101011, 2, 10);
+
+SELECT CONVERT(c, DATE) FROM t1;
+#bug SELECT CONVERT(c, TIME) FROM t1;
+SELECT CONVERT(b, CHAR) FROM t1;
+SELECT CONVERT(b, SIGNED) FROM t1;
+
+SELECT b, CONV(b, 10, 2) FROM t1;
+SELECT b, CONV(b, 10, 8) FROM t1;
+SELECT b, CONV(b, 10, 16) FROM t1;
+SELECT d, CONV(d, 10, 2) FROM t1;
+SELECT d, CONV(d, 10, 16) FROM t1;
+
+# Clean UP
+DROP DATABASE convert_conv_func_test;
