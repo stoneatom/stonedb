@@ -451,12 +451,12 @@ types::TianmuValueObject TempTable::Attr::GetValue(int64_t obj, [[maybe_unused]]
   return ret;
 }
 
-void TempTable::Attr::GetValueString(types::BString &s, int64_t obj) {
+void TempTable::Attr::GetValueString(types::BString &value, int64_t obj) {
   if (obj == common::NULL_VALUE_64) {
-    s = types::BString();
+    value = types::BString();
     return;
   }
-  double *d_p = nullptr;
+
   switch (TypeName()) {
     case common::CT::BIN:
     case common::CT::BYTE:
@@ -464,32 +464,32 @@ void TempTable::Attr::GetValueString(types::BString &s, int64_t obj) {
     case common::CT::STRING:
     case common::CT::VARCHAR:
     case common::CT::LONGTEXT:
-      (*(AttrBuffer<types::BString> *)buffer).GetString(s, obj);
+      (*(AttrBuffer<types::BString> *)buffer).GetString(value, obj);
       break;
     case common::CT::BYTEINT: {
-      types::TianmuNum tianmu_n((int64_t)(*(AttrBuffer<char> *)buffer)[obj], -1, false, TypeName());
-      s = tianmu_n.ToBString();
+      types::TianmuNum tianmu_n(static_cast<int64_t>((*(AttrBuffer<char> *)buffer)[obj]), -1, false, TypeName());
+      value = tianmu_n.GetValueInt64() == common::NULL_VALUE_64 ? types::BString() : tianmu_n.ToBString();
       break;
     }
     case common::CT::SMALLINT: {
-      types::TianmuNum tianmu_n((int64_t)(*(AttrBuffer<short> *)buffer)[obj], -1, false, TypeName());
-      s = tianmu_n.ToBString();
+      types::TianmuNum tianmu_n(static_cast<int64_t>((*(AttrBuffer<short> *)buffer)[obj]), -1, false, TypeName());
+      value = tianmu_n.GetValueInt64() == common::NULL_VALUE_64 ? types::BString() : tianmu_n.ToBString();
       break;
     }
     case common::CT::INT:
     case common::CT::MEDIUMINT: {
-      types::TianmuNum tianmu_n((int)(*(AttrBuffer<int> *)buffer)[obj], -1, false, TypeName());
-      s = tianmu_n.ToBString();
+      types::TianmuNum tianmu_n(static_cast<int>((*(AttrBuffer<int> *)buffer)[obj]), -1, false, TypeName());
+      value = tianmu_n.ValueInt() == common::NULL_VALUE_32 ? types::BString() : tianmu_n.ToBString();
       break;
     }
     case common::CT::BIGINT: {
-      types::TianmuNum tianmu_n((int64_t)(*(AttrBuffer<int64_t> *)buffer)[obj], -1, false, TypeName());
-      s = tianmu_n.ToBString();
+      types::TianmuNum tianmu_n(static_cast<int64_t>((*(AttrBuffer<int64_t> *)buffer)[obj]), -1, false, TypeName());
+      value = tianmu_n.GetValueInt64() == common::NULL_VALUE_64 ? types::BString() : tianmu_n.ToBString();
       break;
     }
     case common::CT::NUM: {
       types::TianmuNum tianmu_n((*(AttrBuffer<int64_t> *)buffer)[obj], Type().GetScale());
-      s = tianmu_n.ToBString();
+      value = tianmu_n.GetValueInt64() == common::NULL_VALUE_64 ? types::BString() : tianmu_n.ToBString();
       break;
     }
     case common::CT::YEAR:
@@ -501,14 +501,20 @@ void TempTable::Attr::GetValueString(types::BString &s, int64_t obj) {
       if (TypeName() == common::CT::TIMESTAMP) {
         types::TianmuDateTime::AdjustTimezone(tianmu_dt);
       }
-      s = tianmu_dt.ToBString();
+      if (tianmu_dt.GetInt64() == common::NULL_VALUE_64) {
+        value = types::BString();
+      } else {
+        const types::BString &tianmu_dt_str = tianmu_dt.ToBString();
+        size_t len = tianmu_dt_str.len_ > Type().GetPrecision() ? Type().GetPrecision() : tianmu_dt_str.len_;
+        value = types::BString(tianmu_dt_str.GetDataBytesPointer(), len, tianmu_dt_str.IsPersistent());
+      }
       break;
     }
     case common::CT::REAL:
     case common::CT::FLOAT: {
-      d_p = &(*(AttrBuffer<double> *)buffer)[obj];
-      types::TianmuNum tianmu_n(*(int64_t *)d_p, 0, true, TypeName());
-      s = tianmu_n.ToBString();
+      double *d_p = &(*(AttrBuffer<double> *)buffer)[obj];
+      types::TianmuNum tianmu_n(static_cast<int64_t>(*d_p), 0, true, TypeName());
+      value = tianmu_n.GetValueInt64() == common::NULL_VALUE_64 ? types::BString() : tianmu_n.ToBString();
       break;
     }
     default:
