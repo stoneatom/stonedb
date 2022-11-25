@@ -1,0 +1,37 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test BETWEEN..AND function
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS between_and_test;
+--enable_warnings
+
+CREATE DATABASE between_and_test;
+USE between_and_test;
+
+CREATE TABLE t1 (a CHAR(1), b INT, c DATETIME, d DOUBLE);
+INSERT INTO t1 VALUES 
+('', NULL, '1111-11-11', NULL),
+('a', 12, '1212-12-12', 1.19691E+100),
+('b', 13, '1313-3-13 13:13:13', 2.1961E+18),
+('c', 14, '1414-4-14', 0.16191),
+('d', 15, '2015-5-15 15:15:15', 1.971917);
+
+select * from t1;
+
+SELECT 1 BETWEEN 2 AND 3;
+SELECT 2 BETWEEN 1 AND 3;
+SELECT 2.1 BETWEEN 2 AND 3;
+SELECT 'a' BETWEEN 'a' and 'b';
+SELECT 'c' BETWEEN 'a' and 'b';
+
+SELECT * FROM t1 WHERE a BETWEEN 'a' AND 'd' ORDER BY a;
+SELECT * FROM t1 WHERE b BETWEEN 14 AND 15 ORDER BY a;
+SELECT * FROM t1 WHERE c BETWEEN '1212-12-12' AND '1414-4-14' ORDER BY a;
+SELECT * FROM t1 WHERE d BETWEEN 0 AND 2 ORDER BY a;
+SELECT * FROM t1 WHERE a BETWEEN 'a' AND 'b' AND b BETWEEN 12 AND 15 ORDER BY a;
+
+# Clean UP
+DROP DATABASE between_and_test;
