@@ -85,6 +85,15 @@ jobs:
       - name: compile stonedb
         id: compile
         run: |
+          case ${{ matrix.os }} in
+            debian10_1.0.3)
+              apt-get install lcov bc -y
+              ;;
+            centos7_1.0.3)
+              yum install lcov.noarch bc.x86_64 -y
+            ;;
+          esac
+          
           mkdir build && cd build
           git config --global --add safe.directory /__w/stonedb/stonedb
           cmake ../ \
