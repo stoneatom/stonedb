@@ -109,7 +109,26 @@ jobs:
           -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb/ \
           -DWITH_MARISA=/usr/local/stonedb-marisa/ \
           -DDOWNLOAD_ROCKSDB=0 \
+          -DENABLE_GCOV=1 \
           -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb && make -j`nproc` && make -j`nproc` install
+
+      - name: run gtest && gcov
+        run: |
+          cd build/ && ./storage/tianmu/unittest/testgmock 
+          # && ./unittest/gunit/innodb/merge_innodb_tests-t
+          # cd -
+          lcov --capture --directory . --output-file  coverage.info --test-name coverage
+
+      - name: Comment code coverage
+        uses: andybelltree/lcov-reporter-action@v1.0.0
+        if: github.event_name == 'pull_request'
+        with:
+          github-token: ${{ secrets.CICD_PAT }}
+          lcov-file: ./build/coverage.info
+          title: My comment title
+          filter-changed-files: true
+          delete-old-comments: true
+
 
       - name: mtr test
         run: |
