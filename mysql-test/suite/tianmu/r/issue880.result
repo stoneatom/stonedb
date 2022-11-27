@@ -10,7 +10,7 @@
 DROP DATABASE IF EXISTS test_timestamp_union;
 CREATE DATABASE test_timestamp_union;
 USE test_timestamp_union;
-CREATE TABLE `tb_finance_company_account_change` (
+CREATE TABLE `issue880_t1` (
 `id` int(11) NOT NULL COMMENT '主键; Size[MB]: 0.1; Ratio: 1.00',
 `company_account_id` int(11) DEFAULT NULL COMMENT 'tb_finance_company_account表主键; Size[MB]: 0.1; Ratio: 2.06',
 `period_account_id` int(11) DEFAULT NULL COMMENT '核账ID; Size[MB]: 0.1; Ratio: 1.78',
@@ -36,7 +36,7 @@ KEY `company_change_company_id` (`COMPANY_ID`),
 KEY `period_pay_id_index` (`period_pay_id`),
 KEY `period_account_id_index` (`period_account_id`)
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED;
-CREATE TABLE `tb_finance_period_account` (
+CREATE TABLE `issue880_t2` (
 `id` int(10) NOT NULL COMMENT 'Size[MB]: 0.1; Ratio: 2.00\0 ',
 `company_id` int(10) DEFAULT NULL COMMENT '公司ID; Size[MB]: 0.1; Ratio: 2.06',
 `company_name` varchar(250) DEFAULT NULL COMMENT '公司名称; Size[MB]: 0.5; Ratio: 0.77',
@@ -88,7 +88,7 @@ KEY `index_pay_type` (`pay_type`),
 KEY `index_pay_status` (`pay_status`),
 KEY `index_type_status` (`pay_type`,`pay_status`)
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED;
-CREATE TABLE `tb_finance_period_pay` (
+CREATE TABLE `issue880_t3` (
 `id` int(10) NOT NULL COMMENT 'Size[MB]: 0.1; Ratio: 2.00\0 ',
 `company_id` int(10) DEFAULT NULL COMMENT 'Size[MB]: 0.1; Ratio: 2.06\0 ',
 `company_name` varchar(40) DEFAULT NULL COMMENT 'Size[MB]: 0.1; Ratio: 0.20\0 ',
@@ -113,16 +113,16 @@ UNIQUE KEY `pay_order_no` (`order_no`),
 KEY `pay_status_index` (`pay_status`),
 KEY `idx_pay_status_feetype` (`pay_status`,`fee_type`)
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED;
-LOAD DATA LOCAL INFILE 'suite/tianmu/std_data/tb_finance_company_account_change.txt' INTO TABLE tb_finance_company_account_change;
-LOAD DATA LOCAL INFILE 'suite/tianmu/std_data/tb_finance_period_pay.txt' INTO TABLE tb_finance_period_pay;
-LOAD DATA LOCAL INFILE 'suite/tianmu/std_data/tb_finance_period_account.txt' INTO TABLE tb_finance_period_account;
+LOAD DATA LOCAL INFILE 'suite/tianmu/std_data/issue880_t1.txt' INTO TABLE issue880_t1;
+LOAD DATA LOCAL INFILE 'suite/tianmu/std_data/issue880_t3.txt' INTO TABLE issue880_t3;
+LOAD DATA LOCAL INFILE 'suite/tianmu/std_data/issue880_t2.txt' INTO TABLE issue880_t2;
 select b.create_time AS create_time
-from (tb_finance_period_pay a join tb_finance_company_account_change b)
+from (issue880_t3 a join issue880_t1 b)
 where ((a.id = b.period_pay_id) and (a.pay_status = 2) and
 (a.fee_type = 'TARGET') and (b.type = 2))
 union
 select a.create_time AS create_time
-from (tb_finance_period_account a join tb_finance_company_account_change b)
+from (issue880_t2 a join issue880_t1 b)
 where ((a.id = b.period_account_id) and (b.type = 1) and (a.pay_type = 1) and
 (a.period_status = 1));
 create_time
@@ -176,12 +176,12 @@ create_time
 2021-06-22 00:02:00
 2021-07-16 00:02:00
 select b.update_time AS create_time
-from (tb_finance_period_pay a join tb_finance_company_account_change b)
+from (issue880_t3 a join issue880_t1 b)
 where ((a.id = b.period_pay_id) and (a.pay_status = 2) and
 (a.fee_type = 'TARGET') and (b.type = 2))
 union
 select a.period_time AS create_time
-from (tb_finance_period_account a join tb_finance_company_account_change b)
+from (issue880_t2 a join issue880_t1 b)
 where ((a.id = b.period_account_id) and (b.type = 1) and (a.pay_type = 1) and
 (a.period_status = 1));
 create_time
@@ -242,32 +242,32 @@ create_time
 2021-06-28 13:52:21
 2021-07-16 13:22:13
 select b.CREATE_TIME AS create_time
-from (tb_finance_period_pay a join tb_finance_company_account_change b)
+from (issue880_t3 a join issue880_t1 b)
 where ((a.id = b.period_pay_id) and (a.pay_status = 2) and
 (a.fee_type = 'TARGET') and (b.type = 2))
 union
 select a.period_time AS create_time
-from (tb_finance_period_account a join tb_finance_company_account_change b)
+from (issue880_t2 a join issue880_t1 b)
 where ((a.id = b.period_account_id) and (b.type = 1) and (a.pay_type = 1) and
 (a.period_status = 1));
 ERROR HY000: The query includes syntax that is not supported by the storage engine. Tianmu: UNION of non-matching columns (column no 0) .
 select b.update_time AS create_time
-from (tb_finance_period_pay a join tb_finance_company_account_change b)
+from (issue880_t3 a join issue880_t1 b)
 where ((a.id = b.period_pay_id) and (a.pay_status = 2) and
 (a.fee_type = 'TARGET') and (b.type = 2))
 union
 select a.create_time AS create_time
-from (tb_finance_period_account a join tb_finance_company_account_change b)
+from (issue880_t2 a join issue880_t1 b)
 where ((a.id = b.period_account_id) and (b.type = 1) and (a.pay_type = 1) and
 (a.period_status = 1));
 ERROR HY000: The query includes syntax that is not supported by the storage engine. Tianmu: UNION of non-matching columns (column no 0) .
 select b.order_sn AS create_time
-from (tb_finance_period_pay a join tb_finance_company_account_change b)
+from (issue880_t3 a join issue880_t1 b)
 where ((a.id = b.period_pay_id) and (a.pay_status = 2) and
 (a.fee_type = 'TARGET') and (b.type = 2))
 union
 select a.create_time AS create_time
-from (tb_finance_period_account a join tb_finance_company_account_change b)
+from (issue880_t2 a join issue880_t1 b)
 where ((a.id = b.period_account_id) and (b.type = 1) and (a.pay_type = 1) and
 (a.period_status = 1));
 create_time
@@ -327,12 +327,12 @@ B20210825034611730633
 2021-06-22 00:02:00
 2021-07-16 00:02:00
 select b.create_time AS create_time
-from (tb_finance_period_pay a join tb_finance_company_account_change b)
+from (issue880_t3 a join issue880_t1 b)
 where ((a.id = b.period_pay_id) and (a.pay_status = 2) and
 (a.fee_type = 'TARGET') and (b.type = 2))
 union
 select a.product_name AS create_time
-from (tb_finance_period_account a join tb_finance_company_account_change b)
+from (issue880_t2 a join issue880_t1 b)
 where ((a.id = b.period_account_id) and (b.type = 1) and (a.pay_type = 1) and
 (a.period_status = 1));
 create_time
@@ -362,5 +362,5 @@ create_time
 2021-08-18 12:12:00
 2021-08-20 12:50:00
 2021-08-25 17:46:00
-充电桩系统
+机制
 DROP DATABASE test_timestamp_union;
