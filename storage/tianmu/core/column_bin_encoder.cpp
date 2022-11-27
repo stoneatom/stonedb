@@ -301,7 +301,7 @@ bool ColumnBinEncoder::EncoderInt::SecondColumn(vcolumn::VirtualColumn *vc) {
   bool is_timestamp1 = (this->vc_type.GetTypeName() == common::CT::TIMESTAMP);
   bool is_timestamp2 = (vc->Type().GetTypeName() == common::CT::TIMESTAMP);
   if (is_timestamp1 ^ is_timestamp2)
-    return false;  // cannot compare datetime with anything different than
+    return false;  // cannot compare timestamp with anything different than
                    // timestamp
   // Easy case: integers/decimals with the same precision
   int64_t new_min_val = vc->RoughMin();
