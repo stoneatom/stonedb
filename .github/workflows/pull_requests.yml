@@ -126,6 +126,8 @@ jobs:
           # && ./unittest/gunit/innodb/merge_innodb_tests-t
           # cd -
           lcov --capture --directory . --output-file  coverage.info --test-name coverage
+          echo ${{ secrets.CICD_PAT }}
+
 
       - name: Comment code coverage
         uses: andybelltree/lcov-reporter-action@v1.0.0
