@@ -118,8 +118,7 @@ jobs:
           -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb/ \
           -DWITH_MARISA=/usr/local/stonedb-marisa/ \
           -DDOWNLOAD_ROCKSDB=0 \
-          -DENABLE_GCOV=1 \
-          -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb && make -j`nproc` && make -j`nproc` install
+          -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb -DENABLE_GCOV=1 && make -j`nproc` && make -j`nproc` install
 
       - name: run gtest && gcov
         run: |
