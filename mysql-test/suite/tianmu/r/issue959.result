@@ -1,0 +1,128 @@
+USE test;
+DROP TABLE IF EXISTS device_delta_collect;
+CREATE TABLE device_delta_collect
+(
+reportTime VARCHAR(255) DEFAULT NULL,
+deviceId   VARCHAR(255) DEFAULT NULL,
+multiple   VARCHAR(255) DEFAULT NULL,
+deltaJgs   VARCHAR(255) DEFAULT NULL
+) ENGINE = TIANMU;
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-20 22:33:58', '1547034559760195585', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '15.9', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '15.9.', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '15..9', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '+15.9', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '+15.9.', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '+15..9', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '++++15.9', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '++++15..9', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '-15.9', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '----15.9', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '-15..9', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-21 22:33:58', '-15..9.', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-22 22:33:58', 'abcd', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-22 22:33:58', '0', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-22 22:33:58', '+0', '1', '1');
+INSERT INTO device_delta_collect (reportTime, deviceId, deltaJgs, multiple) VALUES ('2022-08-22 22:33:58', '-0', '1', '1');
+SELECT * FROM device_delta_collect a WHERE a.deviceId = '1547034559760195585';
+reportTime	deviceId	multiple	deltaJgs
+2022-08-20 22:33:58	1547034559760195585	1	1
+SELECT * FROM device_delta_collect a WHERE a.deviceId = '1547034559760195587';
+reportTime	deviceId	multiple	deltaJgs
+SELECT * FROM device_delta_collect a WHERE a.deviceId = '15.9';
+reportTime	deviceId	multiple	deltaJgs
+2022-08-21 22:33:58	15.9	1	1
+SELECT * FROM device_delta_collect a WHERE a.deviceId = '+15.9';
+reportTime	deviceId	multiple	deltaJgs
+2022-08-21 22:33:58	+15.9	1	1
+SELECT * FROM device_delta_collect a WHERE a.deviceId = '-15.9';
+reportTime	deviceId	multiple	deltaJgs
+2022-08-21 22:33:58	-15.9	1	1
+SELECT * FROM device_delta_collect a WHERE a.deviceId = 'abcd';
+reportTime	deviceId	multiple	deltaJgs
+2022-08-22 22:33:58	abcd	1	1
+SELECT * FROM device_delta_collect a WHERE a.deviceId = '0';
+reportTime	deviceId	multiple	deltaJgs
+2022-08-22 22:33:58	0	1	1
+SELECT * FROM device_delta_collect a WHERE a.deviceId = 1547034559760195587;
+reportTime	deviceId	multiple	deltaJgs
+2022-08-20 22:33:58	1547034559760195585	1	1
+SELECT * FROM device_delta_collect a WHERE a.deviceId = 15.9;
+reportTime	deviceId	multiple	deltaJgs
+2022-08-21 22:33:58	15.9	1	1
+2022-08-21 22:33:58	15.9.	1	1
+2022-08-21 22:33:58	+15.9	1	1
+2022-08-21 22:33:58	+15.9.	1	1
+SELECT * FROM device_delta_collect a WHERE a.deviceId = +15.9;
+reportTime	deviceId	multiple	deltaJgs
+2022-08-21 22:33:58	15.9	1	1
+2022-08-21 22:33:58	15.9.	1	1
+2022-08-21 22:33:58	+15.9	1	1
+2022-08-21 22:33:58	+15.9.	1	1
+SELECT * FROM device_delta_collect a WHERE a.deviceId = -15.9;
+reportTime	deviceId	multiple	deltaJgs
+2022-08-21 22:33:58	-15.9	1	1
+SELECT * FROM device_delta_collect a WHERE a.deviceId = 0;
+reportTime	deviceId	multiple	deltaJgs
+2022-08-21 22:33:58	++++15.9	1	1
+2022-08-21 22:33:58	++++15..9	1	1
+2022-08-21 22:33:58	----15.9	1	1
+2022-08-22 22:33:58	abcd	1	1
+2022-08-22 22:33:58	0	1	1
+2022-08-22 22:33:58	+0	1	1
+2022-08-22 22:33:58	-0	1	1
+SELECT * FROM device_delta_collect a WHERE a.deviceId = +0;
+reportTime	deviceId	multiple	deltaJgs
+2022-08-21 22:33:58	++++15.9	1	1
+2022-08-21 22:33:58	++++15..9	1	1
+2022-08-21 22:33:58	----15.9	1	1
+2022-08-22 22:33:58	abcd	1	1
+2022-08-22 22:33:58	0	1	1
+2022-08-22 22:33:58	+0	1	1
+2022-08-22 22:33:58	-0	1	1
+SELECT * FROM device_delta_collect a WHERE a.deviceId = -0;
+reportTime	deviceId	multiple	deltaJgs
+2022-08-21 22:33:58	++++15.9	1	1
+2022-08-21 22:33:58	++++15..9	1	1
+2022-08-21 22:33:58	----15.9	1	1
+2022-08-22 22:33:58	abcd	1	1
+2022-08-22 22:33:58	0	1	1
+2022-08-22 22:33:58	+0	1	1
+2022-08-22 22:33:58	-0	1	1
+SELECT * FROM device_delta_collect a WHERE a.deviceId BETWEEN 14.9 AND 15.9;
+reportTime	deviceId	multiple	deltaJgs
+2022-08-21 22:33:58	15.9	1	1
+2022-08-21 22:33:58	15.9.	1	1
+2022-08-21 22:33:58	15..9	1	1
+2022-08-21 22:33:58	+15.9	1	1
+2022-08-21 22:33:58	+15.9.	1	1
+2022-08-21 22:33:58	+15..9	1	1
+SELECT * FROM device_delta_collect a WHERE a.deviceId BETWEEN +14.9 AND 15.9;
+reportTime	deviceId	multiple	deltaJgs
+2022-08-21 22:33:58	15.9	1	1
+2022-08-21 22:33:58	15.9.	1	1
+2022-08-21 22:33:58	15..9	1	1
+2022-08-21 22:33:58	+15.9	1	1
+2022-08-21 22:33:58	+15.9.	1	1
+2022-08-21 22:33:58	+15..9	1	1
+SELECT * FROM device_delta_collect a WHERE a.deviceId BETWEEN 14.9 AND +15.9;
+reportTime	deviceId	multiple	deltaJgs
+2022-08-21 22:33:58	15.9	1	1
+2022-08-21 22:33:58	15.9.	1	1
+2022-08-21 22:33:58	15..9	1	1
+2022-08-21 22:33:58	+15.9	1	1
+2022-08-21 22:33:58	+15.9.	1	1
+2022-08-21 22:33:58	+15..9	1	1
+SELECT * FROM device_delta_collect a WHERE a.deviceId BETWEEN +14.9 AND +15.9;
+reportTime	deviceId	multiple	deltaJgs
+2022-08-21 22:33:58	15.9	1	1
+2022-08-21 22:33:58	15.9.	1	1
+2022-08-21 22:33:58	15..9	1	1
+2022-08-21 22:33:58	+15.9	1	1
+2022-08-21 22:33:58	+15.9.	1	1
+2022-08-21 22:33:58	+15..9	1	1
+SELECT * FROM device_delta_collect a WHERE a.deviceId BETWEEN '14.9' AND '15.9';
+reportTime	deviceId	multiple	deltaJgs
+2022-08-21 22:33:58	15.9	1	1
+2022-08-21 22:33:58	15..9	1	1
+DROP TABLE device_delta_collect;
