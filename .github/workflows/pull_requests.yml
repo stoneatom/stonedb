@@ -130,11 +130,19 @@ jobs:
           # && ./unittest/gunit/innodb/merge_innodb_tests-t
           # cd -
           lcov --capture --directory . --output-file  coverage.info --test-name coverage
-          # echo ${{ secrets.CICD_PAT }}
 
 
-      - name: Codecov
-        uses: codecov/codecov-action@v3.1.1
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CICD_PAT }}
+          directory: ./coverage/reports/
+          fail_ci_if_error: true
+          files: ./build/coverage.info
+          # flags: unittests
+          name: codecov-umbrella
+          path_to_write_report: ./coverage/codecov_report.txt
+          verbose: true
 
 
       # - name: Comment code coverage
