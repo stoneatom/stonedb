@@ -133,13 +133,17 @@ jobs:
           # echo ${{ secrets.CICD_PAT }}
 
 
-      - name: Comment code coverage
-        # uses: andybelltree/lcov-reporter-action@v1.0.0
-        uses: romeovs/lcov-reporter-action@v0.2.21
-        if: github.event_name == 'pull_request'
-        with:
-          lcov-file: ./build/coverage.info
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.1
+
+
+      # - name: Comment code coverage
+      #   # uses: andybelltree/lcov-reporter-action@v1.0.0
+      #   uses: romeovs/lcov-reporter-action@v0.2.21
+      #   if: github.event_name == 'pull_request'
+      #   with:
+      #     lcov-file: ./build/coverage.info
+      #     github-token: ${{ secrets.CICD_PAT }}
           # github-token: ${{ secrets.CICD_PAT }}
           # lcov-file: ./build/coverage.info
           # title: My comment title
