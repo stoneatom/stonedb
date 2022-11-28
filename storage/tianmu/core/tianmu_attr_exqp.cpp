@@ -796,6 +796,7 @@ void TianmuAttr::EvaluatePack_BetweenString_UTF(MIUpdatingIterator &mit, int dim
     mit.NextPackrow();
     return;
   }
+
   types::BString v1, v2;
   DTCollation coll = d.GetCollation();
   d.val1.vc->GetValueString(v1, mit);
@@ -810,6 +811,18 @@ void TianmuAttr::EvaluatePack_BetweenString_UTF(MIUpdatingIterator &mit, int dim
       return;
     }
   }
+
+  auto check_item_digital = ([&](CQTerm &val) {
+    return ((nullptr != val.item) &&
+            (Item::Type::INT_ITEM == val.item->type() || (Item::Type::DECIMAL_ITEM == val.item->type()) ||
+             (Item::Type::REAL_ITEM == val.item->type()) ||
+             (Item::Type::FUNC_ITEM == val.item->type() &&
+              Item_func::Functype::NEG_FUNC == down_cast<Item_func *>(val.item)->functype())));
+  });
+
+  const bool v1_is_digital = check_item_digital(d.val1);
+  const bool v2_is_digital = check_item_digital(d.val2);
+
   do {
     int inpack = mit.GetCurInpack(dim);  // row number inside the pack
     if (mit[dim] == common::NULL_VALUE_64 || p->IsNull(inpack)) {
@@ -818,15 +831,20 @@ void TianmuAttr::EvaluatePack_BetweenString_UTF(MIUpdatingIterator &mit, int dim
       if (p->IsNotMatched(inpack, trie_id))
         mit.ResetCurrent();
     } else {
-      types::BString v(p->GetValueBinary(inpack));  // change to materialized in case
-                                                    // of problems, but the pack should
-                                                    // be locked and unchanged here
+      // change to materialized in case
+      // of problems, but the pack should
+      // be locked and unchanged here
+      types::BString v(p->GetValueBinary(inpack));
+
       // IsNull() below means +/-inf
       bool res =
           (d.sharp &&
-           ((v1.IsNull() || CollationStrCmp(coll, v, v1) > 0) && (v2.IsNull() || CollationStrCmp(coll, v, v2) < 0))) ||
+           ((v1.IsNull() || ((v1_is_digital ? CollationRealCmp(coll, v, v1) : CollationStrCmp(coll, v, v1)) > 0)) &&
+            (v2.IsNull() || ((v2_is_digital ? CollationRealCmp(coll, v, v2) : CollationStrCmp(coll, v, v2)) < 0)))) ||
           (!d.sharp &&
-           ((v1.IsNull() || CollationStrCmp(coll, v, v1) >= 0) && (v2.IsNull() || CollationStrCmp(coll, v, v2) <= 0)));
+           ((v1.IsNull() || ((v1_is_digital ? CollationRealCmp(coll, v, v1) : CollationStrCmp(coll, v, v1)) >= 0)) &&
+            (v2.IsNull() || ((v2_is_digital ? CollationRealCmp(coll, v, v2) : CollationStrCmp(coll, v, v2)) <= 0))));
+
       if (d.op == common::Operator::O_NOT_BETWEEN)
         res = !res;
       if (!res)
