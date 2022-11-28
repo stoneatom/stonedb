@@ -134,9 +134,9 @@ jobs:
 
       - name: Upload coverage to Codecov
         run: |
-        curl -Os https://uploader.codecov.io/latest/ linux /codecov
-        chmod +x codecov
-        ./codecov
+          curl -Os https://uploader.codecov.io/latest/ linux /codecov
+          chmod +x codecov
+          ./codecov
       #   uses: codecov/codecov-action@v3
       #   with:
       #     token: ${{ secrets.CICD_PAT }}
