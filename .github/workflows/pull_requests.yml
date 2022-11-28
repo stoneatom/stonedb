@@ -133,16 +133,20 @@ jobs:
 
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          token: ${{ secrets.CICD_PAT }}
-          directory: ./coverage/reports/
-          fail_ci_if_error: true
-          files: ./build/coverage.info
-          # flags: unittests
-          name: codecov-umbrella
-          path_to_write_report: ./coverage/codecov_report.txt
-          verbose: true
+        run: |
+        curl -Os https://uploader.codecov.io/latest/ linux /codecov
+        chmod +x codecov
+        ./codecov
+      #   uses: codecov/codecov-action@v3
+      #   with:
+      #     token: ${{ secrets.CICD_PAT }}
+      #     directory: ./coverage/reports/
+      #     fail_ci_if_error: true
+      #     files: ./build/coverage.info
+      #     # flags: unittests
+      #     name: codecov-umbrella
+      #     path_to_write_report: ./coverage/codecov_report.txt
+      #     verbose: true
 
 
       # - name: Comment code coverage
