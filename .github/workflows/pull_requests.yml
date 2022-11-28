@@ -36,7 +36,7 @@ env:
 defaults:
   run:
     shell: bash
-    
+
 permissions:
   contents: read
   pull-requests: write
@@ -137,7 +137,7 @@ jobs:
         uses: andybelltree/lcov-reporter-action@v1.0.0
         if: github.event_name == 'pull_request'
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.CICD_PAT }}
           lcov-file: ./build/coverage.info
           title: My comment title
           filter-changed-files: true
