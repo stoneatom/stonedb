@@ -76,9 +76,9 @@ jobs:
           - centos7_1.0.3
         compiler:
           - gcc-9.3
-        # exclude:
-        #   - os: debian10_1.0.3
-        #     compiler: gcc-9.3
+        exclude:
+          - os: centos7_1.0.3
+            compiler: gcc-9.3
     env:
       CCACHE_DIR: /tmp/ccache/stonedb/${{ matrix.os }}-${{ matrix.compiler }}
       CCACHE_MAXSIZE: 8G
