@@ -91,10 +91,10 @@ jobs:
         run: |
           case ${{ matrix.os }} in
             debian10_1.0.3)
-              apt-get install lcov bc -y
+              apt-get install curl lcov bc -y
               ;;
             centos7_1.0.3)
-              yum install lcov.noarch bc.x86_64 -y
+              yum install curl lcov.noarch bc.x86_64 -y
             ;;
           esac
           
