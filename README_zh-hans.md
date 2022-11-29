@@ -182,7 +182,7 @@ CREATE TABLE `example_table` (
 # 加入 StoneDB 用户群
 您可以扫码加入我们的微信用户群：
 
-![logo](Docs/stonedb_wecaht_group.jpg)
+![logo](Docs/stonedb_wecaht_group.png)
 
 
 # 行为准则
