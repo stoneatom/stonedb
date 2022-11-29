@@ -901,12 +901,12 @@ size_t TianmuTable::max_row_length(std::vector<loader::ValueCache> &vcs, uint ro
   size_t row_len = 0;
   for (uint att = 0; att < m_attrs.size(); ++att) {
     switch (m_attrs[att]->TypeName()) {
-      case common::CT::VARCHAR:
-      case common::CT::VARBYTE:
-      case common::CT::BIN:
-      case common::CT::LONGTEXT:
-      case common::CT::BYTE:
-      case common::CT::STRING: {
+      case common::ColumnType::VARCHAR:
+      case common::ColumnType::VARBYTE:
+      case common::ColumnType::BIN:
+      case common::ColumnType::LONGTEXT:
+      case common::ColumnType::BYTE:
+      case common::ColumnType::STRING: {
         row_len += (2 * vcs[att].Size(row));  // real data len
         row_len += delimiter;
       } break;
@@ -1018,14 +1018,14 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
         continue;
       }
       switch (m_attrs[att]->TypeName()) {
-        case common::CT::NUM:
-        case common::CT::REAL:
-        case common::CT::FLOAT:
-        case common::CT::BYTEINT:
-        case common::CT::SMALLINT:
-        case common::CT::INT:
-        case common::CT::MEDIUMINT:
-        case common::CT::BIGINT: {
+        case common::ColumnType::NUM:
+        case common::ColumnType::REAL:
+        case common::ColumnType::FLOAT:
+        case common::ColumnType::BYTEINT:
+        case common::ColumnType::SMALLINT:
+        case common::ColumnType::INT:
+        case common::ColumnType::MEDIUMINT:
+        case common::ColumnType::BIGINT: {
           types::BString s;
           int64_t v = *(int64_t *)(vcs[att].GetDataBytesPointer(i));
           if (v == common::NULL_VALUE_64)
@@ -1042,7 +1042,7 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
             ptr += sizeof(FIELDS_DELIMITER);
           }
         } break;
-        case common::CT::TIMESTAMP: {
+        case common::ColumnType::TIMESTAMP: {
           types::BString s;
           int64_t v = *(int64_t *)(vcs[att].GetDataBytesPointer(i));
           if (v == common::NULL_VALUE_64) {
@@ -1059,10 +1059,10 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
             ptr += sizeof(FIELDS_DELIMITER);
           }
         } break;
-        case common::CT::YEAR:
-        case common::CT::TIME:
-        case common::CT::DATETIME:
-        case common::CT::DATE: {
+        case common::ColumnType::YEAR:
+        case common::ColumnType::TIME:
+        case common::ColumnType::DATETIME:
+        case common::ColumnType::DATE: {
           types::BString s;
           int64_t v = *(int64_t *)(vcs[att].GetDataBytesPointer(i));
           if (v == common::NULL_VALUE_64) {
@@ -1078,12 +1078,12 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
             ptr += sizeof(FIELDS_DELIMITER);
           }
         } break;
-        case common::CT::VARCHAR:
-        case common::CT::VARBYTE:
-        case common::CT::BIN:
-        case common::CT::LONGTEXT:
-        case common::CT::BYTE:
-        case common::CT::STRING: {
+        case common::ColumnType::VARCHAR:
+        case common::ColumnType::VARBYTE:
+        case common::ColumnType::BIN:
+        case common::ColumnType::LONGTEXT:
+        case common::ColumnType::BYTE:
+        case common::ColumnType::STRING: {
           const char *v = vcs[att].GetDataBytesPointer(i);
           uint size = vcs[att].Size(i);
           bool null = vcs[att].IsNull(i);
@@ -1116,10 +1116,10 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
             ptr += sizeof(FIELDS_DELIMITER);
           }
         } break;
-        case common::CT::DATETIME_N:
-        case common::CT::TIMESTAMP_N:
-        case common::CT::TIME_N:
-        case common::CT::UNK:
+        case common::ColumnType::DATETIME_N:
+        case common::ColumnType::TIMESTAMP_N:
+        case common::ColumnType::TIME_N:
+        case common::ColumnType::UNK:
         default:
           throw common::Exception("Unsupported Tianmu Type " +
                                   std::to_string(static_cast<unsigned char>(m_attrs[att]->TypeName())));

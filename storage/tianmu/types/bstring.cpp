@@ -93,7 +93,7 @@ bool BString::Parse(BString &in, BString &out) {
   return true;
 }
 
-common::CT BString::Type() const { return common::CT::STRING; }
+common::ColumnType BString::Type() const { return common::ColumnType::STRING; }
 
 void BString::PutString(char *&dest, ushort len, bool move_ptr) const {
   ASSERT(this->len_ <= len, "should be 'this->len_ <= len'");

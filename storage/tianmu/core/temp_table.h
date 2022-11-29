@@ -73,7 +73,7 @@ class TempTable : public JustATable {
                         // functions cannot be computed
 
     Attr(CQTerm t, common::ColOperation m, uint32_t power, bool distinct = false, char *alias = nullptr, int dim = -1,
-         common::CT type = common::CT::INT, uint scale = 0, uint precision = 10, bool notnull = true,
+         common::ColumnType type = common::ColumnType::INT, uint scale = 0, uint precision = 10, bool notnull = true,
          DTCollation collation = DTCollation(), SI *si1 = nullptr);
     Attr(const Attr &);
     Attr &operator=(const Attr &);

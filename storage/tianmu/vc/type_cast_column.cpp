@@ -132,7 +132,7 @@ double String2NumCastColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
     if (rs.IsNull()) {
       return NULL_VALUE_D;
     } else {
-      types::TianmuNum::Parse(rs, tianmu_n, common::CT::FLOAT);
+      types::TianmuNum::Parse(rs, tianmu_n, common::ColumnType::FLOAT);
       // if(types::TianmuNum::Parse(rs, tianmu_n, common::CT::FLOAT) !=
       // common::ErrorCode::SUCCESS) {
       //	std::string s = "Truncated incorrect numeric value: \'";
@@ -343,7 +343,7 @@ Num2DateTimeCastColumn::Num2DateTimeCastColumn(VirtualColumn *from, core::Column
     // rc_value_obj_ = from->GetValue(mit);
     types::TianmuDateTime tianmu_dt;
     if (val_ != common::NULL_VALUE_64) {
-      if (TypeName() == common::CT::TIME) {
+      if (TypeName() == common::ColumnType::TIME) {
         MYSQL_TIME ltime;
         short timehour;
         TIME_from_longlong_time_packed(&ltime, val_);
@@ -353,7 +353,7 @@ Num2DateTimeCastColumn::Num2DateTimeCastColumn(VirtualColumn *from, core::Column
           timehour = ltime.hour * -1;
         else
           timehour = ltime.hour;
-        types::TianmuDateTime rctime(timehour, minute, second, common::CT::TIME);
+        types::TianmuDateTime rctime(timehour, minute, second, common::ColumnType::TIME);
         tianmu_dt = rctime;
       } else {
         common::ErrorCode rc = types::TianmuDateTime::Parse(val_, tianmu_dt, TypeName(), ct.GetPrecision());
@@ -363,7 +363,7 @@ Num2DateTimeCastColumn::Num2DateTimeCastColumn(VirtualColumn *from, core::Column
           s += "\'";
           TIANMU_LOG(LogCtl_Level::WARN, "Num2DateTimeCast %s", s.c_str());
         }
-        if (TypeName() == common::CT::TIMESTAMP) {
+        if (TypeName() == common::ColumnType::TIMESTAMP) {
           // needs to convert value to UTC
           MYSQL_TIME myt;
           memset(&myt, 0, sizeof(MYSQL_TIME));
@@ -381,7 +381,7 @@ Num2DateTimeCastColumn::Num2DateTimeCastColumn(VirtualColumn *from, core::Column
             // UTC seconds converted to UTC TIME
             common::GMTSec2GMTTime(&myt, secs_utc);
           }
-          tianmu_dt = types::TianmuDateTime(myt, common::CT::TIMESTAMP);
+          tianmu_dt = types::TianmuDateTime(myt, common::ColumnType::TIMESTAMP);
         }
       }
 
@@ -522,7 +522,7 @@ DateTime2NumCastColumn::DateTime2NumCastColumn(VirtualColumn *from, core::Column
       val_ = common::NULL_VALUE_64;
     } else {
       ((types::TianmuDateTime *)rc_value_obj_.Get())->ToInt64(val_);
-      if (vc_->TypeName() == common::CT::YEAR && vc_->Type().GetPrecision() == 2)
+      if (vc_->TypeName() == common::ColumnType::YEAR && vc_->Type().GetPrecision() == 2)
         val_ %= 100;
       if (to.IsFloat()) {
         double x = (double)val_;
@@ -537,7 +537,7 @@ int64_t DateTime2NumCastColumn::GetNotNullValueInt64(const core::MIIterator &mit
   if (full_const_)
     return val_;
   int64_t v = vc_->GetNotNullValueInt64(mit);
-  if (vc_->TypeName() == common::CT::YEAR && vc_->Type().GetPrecision() == 2)
+  if (vc_->TypeName() == common::ColumnType::YEAR && vc_->Type().GetPrecision() == 2)
     v %= 100;
   types::TianmuDateTime rdt(v, vc_->TypeName());
   int64_t r;
@@ -559,7 +559,7 @@ int64_t DateTime2NumCastColumn::GetValueInt64Impl(const core::MIIterator &mit) {
     types::TianmuDateTime rdt(v, vc_->TypeName());
     int64_t r;
     rdt.ToInt64(r);
-    if (vc_->TypeName() == common::CT::YEAR && vc_->Type().GetPrecision() == 2)
+    if (vc_->TypeName() == common::ColumnType::YEAR && vc_->Type().GetPrecision() == 2)
       r = r % 100;
     if (Type().IsFloat()) {
       double x = (double)r;
@@ -595,7 +595,7 @@ types::TianmuValueObject DateTime2NumCastColumn::GetValueImpl(const core::MIIter
     } else {
       int64_t r;
       ((types::TianmuDateTime *)v.Get())->ToInt64(r);
-      if (vc_->TypeName() == common::CT::YEAR && vc_->Type().GetPrecision() == 2)
+      if (vc_->TypeName() == common::ColumnType::YEAR && vc_->Type().GetPrecision() == 2)
         r %= 100;
       if (Type().IsFloat()) {
         double x = (double)r;
@@ -607,8 +607,8 @@ types::TianmuValueObject DateTime2NumCastColumn::GetValueImpl(const core::MIIter
 }
 
 TimeZoneConversionCastColumn::TimeZoneConversionCastColumn(VirtualColumn *from)
-    : TypeCastColumn(from, core::ColumnType(common::CT::DATETIME)) {
-  DEBUG_ASSERT(from->TypeName() == common::CT::TIMESTAMP);
+    : TypeCastColumn(from, core::ColumnType(common::ColumnType::DATETIME)) {
+  DEBUG_ASSERT(from->TypeName() == common::ColumnType::TIMESTAMP);
   core::MIIterator mit(nullptr, PACK_INVALID);
   full_const_ = vc_->IsFullConst();
   if (full_const_) {

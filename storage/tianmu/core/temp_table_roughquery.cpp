@@ -465,12 +465,12 @@ void TempTable::RoughAggregate(ResultSender *sender) {
           attrs[i]->SetValueInt64(1, val);
         } else {
           switch (attrs[i]->TypeName()) {
-            case common::CT::STRING:
-            case common::CT::VARCHAR:
-            case common::CT::BIN:
-            case common::CT::BYTE:
-            case common::CT::VARBYTE:
-            case common::CT::LONGTEXT:
+            case common::ColumnType::STRING:
+            case common::ColumnType::VARCHAR:
+            case common::ColumnType::BIN:
+            case common::ColumnType::BYTE:
+            case common::ColumnType::VARBYTE:
+            case common::ColumnType::LONGTEXT:
               vc->GetValueString(vals, mit);
               attrs[i]->SetValueString(0, vals);
               attrs[i]->SetValueString(1, vals);

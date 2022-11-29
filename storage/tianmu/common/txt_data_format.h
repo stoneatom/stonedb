@@ -30,7 +30,7 @@ class TxtDataFormat final : public DataFormat {
   std::unique_ptr<exporter::DataExporter> CreateDataExporter(const system::IOParameters &iop) const override;
 
  public:
-  static uint StaticExtrnalSize(CT attrt, uint precision, int scale, const DTCollation *col);
+  static uint StaticExtrnalSize(ColumnType attrt, uint precision, int scale, const DTCollation *col);
 };
 
 }  // namespace common
