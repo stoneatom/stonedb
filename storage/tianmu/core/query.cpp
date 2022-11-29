@@ -184,7 +184,8 @@ std::pair<int, int> Query::VirtualColumnAlreadyExists(const TabID &tmp_table, co
 }
 
 bool Query::IsFieldItem(Item *item) {
-  return (item->type() == Item::FIELD_ITEM || item->type() == Item_tianmufield::get_tianmuitem_type());
+  return (item->type() == Item::FIELD_ITEM || item->type() == Item::REF_ITEM ||
+          item->type() == Item_tianmufield::get_tianmuitem_type());
 }
 
 bool Query::IsAggregationOverFieldItem(Item *item) {
