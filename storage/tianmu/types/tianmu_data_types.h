@@ -503,10 +503,9 @@ static int inline CollationRealCmp(DTCollation coll, const BString &s1, const BS
   char *end_not_used = nullptr;
   double d1 = coll.collation->cset->strntod(coll.collation, const_cast<char *>(s1.GetDataBytesPointer()), s1.len_,
                                             &end_not_used, &not_used);
-
-  double d2 = coll.collation->cset->strntod(coll.collation, const_cast<char *>(s1.GetDataBytesPointer()), s2.len_,
+  double d2 = coll.collation->cset->strntod(coll.collation, const_cast<char *>(s2.GetDataBytesPointer()), s2.len_,
                                             &end_not_used, &not_used);
-  return (d1 == d2) ? 0 : ((d1 < d2) ? -1 : 1);
+  return (d1 < d2) ? -1 : ((d1 == d2) ? 0 : 1);
 }
 
 static bool inline CollationStrCmp(DTCollation coll, const BString &s1, const BString &s2, common::Operator op) {

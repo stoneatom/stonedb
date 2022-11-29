@@ -813,7 +813,7 @@ void TianmuAttr::EvaluatePack_BetweenString_UTF(MIUpdatingIterator &mit, int dim
 
   auto check_item_digital = ([&](CQTerm &val) {
     return ((nullptr != val.item) &&
-            ((val.item->type() == Item::Type::INT_ITEM) || (val.item->type() == Item::Type::DECIMAL_ITEM) ||
+            (val.item->type() == Item::Type::INT_ITEM || (val.item->type() == Item::Type::DECIMAL_ITEM) ||
              (val.item->type() == Item::Type::REAL_ITEM) ||
              (val.item->type() == Item::Type::FUNC_ITEM &&
               down_cast<Item_func *>(val.item)->functype() == Item_func::Functype::NEG_FUNC)));
