@@ -85,8 +85,17 @@ jobs:
       - name: compile stonedb
         id: compile
         run: |
-          mkdir build && cd build
+          case ${{ matrix.os }} in
+            debian10_1.0.3)
+              apt-get install curl lcov bc -y
+              ;;
+            centos7_1.0.3)
+              yum install curl lcov.noarch.noarch bc.x86_64 -y
+            ;;
+          esac
           git config --global --add safe.directory /__w/stonedb/stonedb
+          mkdir build && cd build
+          
           cmake ../ \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/stonedb57/install \
@@ -110,6 +119,13 @@ jobs:
           -DWITH_MARISA=/usr/local/stonedb-marisa/ \
           -DDOWNLOAD_ROCKSDB=0 \
           -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb -DENABLE_GCOV=1 && make -j`nproc` && make -j`nproc` install
+
+      - name: run gtest && gcov
+        run: |
+          cd build/ && ./storage/tianmu/unittest/testgmock  
+          # && ./unittest/gunit/innodb/merge_innodb_tests-t
+          # cd -
+          lcov --capture --directory . --output-file  coverage.info --test-name coverage
 
       - name: Codecov
         uses: codecov/codecov-action@v3.1.1
