@@ -135,8 +135,8 @@ bool ColumnBinEncoder::PrepareEncoder(vcolumn::VirtualColumn *_vc, vcolumn::Virt
       } else
         text_stat_encoder = true;
     }
-  } else if (vct.IsDateTime()) {  // Date/time types except special cases
-                                  // (above)
+  } else if (vct.IsDateTime() && (!_vc2 || vct2.IsDateTime())) {  // Date/time types except special cases
+                                                                  // (above)
     my_encoder.reset(new ColumnBinEncoder::EncoderInt(vc, decodable, nulls_possible, descending));
   } else {
     DEBUG_ASSERT(!"wrong combination of encoded columns");  // Other types not
@@ -300,7 +300,7 @@ bool ColumnBinEncoder::EncoderInt::SecondColumn(vcolumn::VirtualColumn *vc) {
   }
   bool is_timestamp1 = (this->vc_type.GetTypeName() == common::CT::TIMESTAMP);
   bool is_timestamp2 = (vc->Type().GetTypeName() == common::CT::TIMESTAMP);
-  if (is_timestamp1 || (is_timestamp2 && !(is_timestamp1 && is_timestamp2)))
+  if (is_timestamp1 ^ is_timestamp2)
     return false;  // cannot compare timestamp with anything different than
                    // timestamp
   // Easy case: integers/decimals with the same precision
