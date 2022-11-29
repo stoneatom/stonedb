@@ -263,7 +263,7 @@ void SubSelectColumn::PrepareAndFillCache() {
   cache_->Prepare(Type().GetTypeName(), Type().GetScale(), GetCollation());
 }
 
-bool SubSelectColumn::IsSetEncoded(common::CT at,
+bool SubSelectColumn::IsSetEncoded(common::ColumnType at,
                                    int scale)  // checks whether the set is constant and fixed size equal to
                                                // the given one
 {

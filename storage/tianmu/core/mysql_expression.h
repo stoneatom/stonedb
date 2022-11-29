@@ -73,7 +73,7 @@ class MysqlExpression {
   static std::shared_ptr<ValueOrNull> ItemReal2ValueOrNull(Item *item);
   static std::shared_ptr<ValueOrNull> ItemDecimal2ValueOrNull(Item *item, int dec_scale = -1);
   static std::shared_ptr<ValueOrNull> ItemString2ValueOrNull(Item *item, int max_str_len = -1,
-                                                             common::CT a_type = common::CT::STRING);
+                                                             common::ColumnType a_type = common::ColumnType::STRING);
 
   static int64_t &AsInt(int64_t &x) { return x; }
   static double &AsReal(int64_t &x) { return *(double *)&x; }

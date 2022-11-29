@@ -391,7 +391,8 @@ bool ParallelHashJoiner::AddKeyColumn(vcolumn::VirtualColumn *vc, vcolumn::Virtu
   // Comparable, non-monotonic, non-decodable.
   column_bin_encoder_.push_back(ColumnBinEncoder(ColumnBinEncoder::ENCODER_IGNORE_NULLS));
   // common::CT::TIMESTAMP is omitted by ColumnValueEncoder::SecondColumn.
-  vcolumn::VirtualColumn *second_column = (vc->Type().GetTypeName() == common::CT::TIMESTAMP) ? nullptr : vc_matching;
+  vcolumn::VirtualColumn *second_column =
+      (vc->Type().GetTypeName() == common::ColumnType::TIMESTAMP) ? nullptr : vc_matching;
   bool success = column_bin_encoder_[column_index].PrepareEncoder(vc, second_column);
   hash_table_key_size_.push_back(column_bin_encoder_[column_index].GetPrimarySize());
   return success;

@@ -33,10 +33,10 @@ class TableShare;
 
 struct COL_META {
   uint32_t magic;
-  uint32_t ver;         // file version
-  uint8_t pss;          // pack size shift
-  common::CT type;      // type
-  common::PackFmt fmt;  // data format: LZ4, snappy, lookup, raw, etc
+  uint32_t ver;             // file version
+  uint8_t pss;              // pack size shift
+  common::ColumnType type;  // type
+  common::PackFmt fmt;      // data format: LZ4, snappy, lookup, raw, etc
   uint8_t flag;
   uint32_t precision;
   uint32_t scale;

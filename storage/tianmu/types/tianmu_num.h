@@ -30,23 +30,25 @@ class TianmuNum : public ValueBasic<TianmuNum> {
   friend class Engine;
 
  public:
-  TianmuNum(common::CT attrt = common::CT::NUM);
-  TianmuNum(int64_t value, short scale = -1, bool dbl = false, common::CT attrt = common::CT::UNK);
+  TianmuNum(common::ColumnType attrt = common::ColumnType::NUM);
+  TianmuNum(int64_t value, short scale = -1, bool dbl = false, common::ColumnType attrt = common::ColumnType::UNK);
   TianmuNum(double value);
   TianmuNum(const TianmuNum &);
   ~TianmuNum();
 
-  TianmuNum &Assign(int64_t value, short scale = -1, bool dbl = false, common::CT attrt = common::CT::UNK);
+  TianmuNum &Assign(int64_t value, short scale = -1, bool dbl = false,
+                    common::ColumnType attrt = common::ColumnType::UNK);
   TianmuNum &Assign(double value);
 
-  static common::ErrorCode Parse(const BString &tianmu_s, TianmuNum &tianmu_n, common::CT at = common::CT::UNK);
-  static common::ErrorCode ParseReal(const BString &, TianmuNum &, common::CT at);
+  static common::ErrorCode Parse(const BString &tianmu_s, TianmuNum &tianmu_n,
+                                 common::ColumnType at = common::ColumnType::UNK);
+  static common::ErrorCode ParseReal(const BString &, TianmuNum &, common::ColumnType at);
   static common::ErrorCode ParseNum(const BString &, TianmuNum &, short scale = -1);
 
   TianmuNum &operator=(const TianmuNum &tianmu_n);
   TianmuNum &operator=(const TianmuDataType &tianmu_dt) override;
 
-  common::CT Type() const override;
+  common::ColumnType Type() const override;
 
   bool operator==(const TianmuDataType &tianmu_dt) const override;
   bool operator<(const TianmuDataType &tianmu_dt) const override;
@@ -106,7 +108,7 @@ class TianmuNum : public ValueBasic<TianmuNum> {
   ushort scale_;  // means 'scale' actually
   bool is_double_;
   bool is_dot_;
-  common::CT attr_type_;
+  common::ColumnType attr_type_;
 
  public:
   const static ValueTypeEnum value_type_ = ValueTypeEnum::NUMERIC_TYPE;

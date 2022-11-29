@@ -1,0 +1,366 @@
+# support (timestamp union timestamp)
+# support (not timestamp union not timestamp)
+# support (timestamp union varchar)
+# support (varchar union timestamp)
+# not support (timestamp union datetime)
+# not support (datetime union timestamp)
+# not support (timestamp union other type)
+# not support (other type union timestamp)
+# SELECT timestamp_type/other_type FROM tablename union SELECT timestamp_type/other_type FROM tablename
+DROP DATABASE IF EXISTS test_timestamp_union;
+CREATE DATABASE test_timestamp_union;
+USE test_timestamp_union;
+CREATE TABLE `issue880_t1` (
+`id` int(11) NOT NULL COMMENT '主键; Size[MB]: 0.1; Ratio: 1.00',
+`company_account_id` int(11) DEFAULT NULL COMMENT 'tb_finance_company_account表主键; Size[MB]: 0.1; Ratio: 2.06',
+`period_account_id` int(11) DEFAULT NULL COMMENT '核账ID; Size[MB]: 0.1; Ratio: 1.78',
+`COMPANY_ID` int(10) DEFAULT NULL COMMENT '公司id; Size[MB]: 0.1; Ratio: 1.78',
+`BALANCE` decimal(10,2) DEFAULT NULL COMMENT '变动的余额; Size[MB]: 0.1; Ratio: 2.78',
+`before_balance` decimal(10,2) DEFAULT NULL COMMENT '变动前的余额; Size[MB]: 0.1; Ratio: 2.78',
+`after_balance` decimal(10,2) DEFAULT NULL COMMENT '变动后的余额; Size[MB]: 0.1; Ratio: 2.78',
+`create_time` timestamp NULL DEFAULT NULL COMMENT 'Size[MB]: 0.1; Ratio: 2.39\0 ',
+`update_time` datetime DEFAULT NULL COMMENT 'Size[MB]: 0.1; Ratio: 2.39\0 ',
+`type` smallint(2) DEFAULT NULL COMMENT '交易类型（1线下核帐成功、2易宝代付成功,3易宝代付失败,4,每天抽佣,5每月抽佣,6每季度抽佣,7每年抽佣,8易宝手续费,9在线充值,10在线退款,11Saas产品购买,13补贴结算,14政府补贴到账,15运营商专项补贴 ,17余额冲正）; Size[MB]: 0.1; Ratio: 2.12',
+`order_sn` varchar(100) DEFAULT NULL COMMENT '余额明细的订单编号; Size[MB]: 0.6; Ratio: 0.79',
+`third_sn` varchar(45) DEFAULT NULL COMMENT '第三方流水号; Size[MB]: 0.1; Ratio: 0.00',
+`commission_period` smallint(1) DEFAULT NULL COMMENT '抽佣周期. T+1  1, 按月结算 2, 按季度结算 3, 按年结算 4; Size[MB]: 0.1; Ratio: 1.62',
+`detail_period_time` varchar(45) DEFAULT NULL COMMENT ' T+1:(2018-10-12)  , 按月结算:(1-12) , 按季度结算:(1,2,3,4), 按年结算(2018); Size[MB]: 0.1; Ratio: 0.00',
+`period_pay_id` int(11) DEFAULT NULL COMMENT 'Size[MB]: 0.1; Ratio: 1.78\0 ',
+`operator_time` datetime DEFAULT NULL COMMENT '操作时间; Size[MB]: 0.2; Ratio: 2.30',
+`operator` varchar(50) DEFAULT NULL COMMENT '操作人; Size[MB]: 0.1; Ratio: 0.02',
+`operator_id` int(11) DEFAULT NULL COMMENT '操作人id; Size[MB]: 0.1; Ratio: 1.78',
+`remark` varchar(50) DEFAULT NULL COMMENT '备注; Size[MB]: 0.1; Ratio: 0.02',
+PRIMARY KEY (`id`),
+UNIQUE KEY `company_account_change_id` (`id`),
+KEY `company_change_company_id` (`COMPANY_ID`),
+KEY `period_pay_id_index` (`period_pay_id`),
+KEY `period_account_id_index` (`period_account_id`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED;
+CREATE TABLE `issue880_t2` (
+`id` int(10) NOT NULL COMMENT 'Size[MB]: 0.1; Ratio: 2.00\0 ',
+`company_id` int(10) DEFAULT NULL COMMENT '公司ID; Size[MB]: 0.1; Ratio: 2.06',
+`company_name` varchar(250) DEFAULT NULL COMMENT '公司名称; Size[MB]: 0.5; Ratio: 0.77',
+`product_id` int(1) DEFAULT NULL COMMENT 'Size[MB]: 0.1; Ratio: 1.77\0 ',
+`product_name` varchar(60) DEFAULT NULL COMMENT 'Size[MB]: 0.4; Ratio: 0.72\0 ',
+`pay_type` smallint(1) NOT NULL DEFAULT '2' COMMENT '支付方式(1:支出，2:收入); Size[MB]: 0.1; Ratio: 2.00',
+`pay_account` varchar(45) DEFAULT NULL COMMENT '支付账户; Size[MB]: 0.5; Ratio: 0.73',
+`bank_code` varchar(10) DEFAULT NULL COMMENT '银行编号; Size[MB]: 0.2; Ratio: 0.39',
+`poundage_mode` smallint(1) DEFAULT NULL COMMENT '''手续费方式(运营商支付：1,平台支付:2)''; Size[MB]: 0.1; Ratio: 1.60',
+`commission_period` smallint(1) NOT NULL COMMENT '''抽佣周期. T+1  1, 按月结算 2, 按季度结算 3, 按年结算 4'',运营商专项补贴5，订阅结算6，每日结算抽佣7，每月结算抽佣8; Size[MB]: 0.1; Ratio: 2.00',
+`create_time` timestamp NULL DEFAULT NULL COMMENT 'Size[MB]: 0.1; Ratio: 2.30\0 ',
+`update_time` timestamp NULL DEFAULT NULL COMMENT 'Size[MB]: 0.1; Ratio: 2.39\0 ',
+`maid_type` smallint(1) DEFAULT NULL COMMENT '抽佣类型(1:平台抽佣，2：承担手续费); Size[MB]: 0.1; Ratio: 0.91',
+`guarantee_amount` decimal(10,2) DEFAULT '0.00' COMMENT '保底金额; Size[MB]: 0.1; Ratio: 2.57',
+`guarantee_extra_amount` decimal(10,4) DEFAULT '0.0000' COMMENT '额外支付金额; Size[MB]: 0.1; Ratio: 2.57',
+`period_account_money` decimal(10,2) DEFAULT '0.00' COMMENT '分账结果; Size[MB]: 0.1; Ratio: 2.57',
+`fee` decimal(10,2) DEFAULT NULL COMMENT '手续费; Size[MB]: 0.1; Ratio: 8.39',
+`fee_type` varchar(10) DEFAULT NULL COMMENT '手续费类型; Size[MB]: 0.1; Ratio: 0.02',
+`poundage_money` decimal(10,4) DEFAULT NULL COMMENT '手续费; Size[MB]: 0.1; Ratio: 2.57',
+`sum_expense` decimal(10,2) DEFAULT NULL COMMENT '总金额; Size[MB]: 0.1; Ratio: 2.57',
+`sum_electric_charge` decimal(10,3) DEFAULT NULL COMMENT '总电量; Size[MB]: 0.1; Ratio: 2.57',
+`sum_service_charge` decimal(10,2) DEFAULT NULL COMMENT '总服务费; Size[MB]: 0.1; Ratio: 2.57',
+`sum_earning_money` decimal(10,4) DEFAULT NULL COMMENT '总抽佣钱; Size[MB]: 0.1; Ratio: 2.57',
+`begin_data_time` date DEFAULT NULL COMMENT '分账开始日期; Size[MB]: 0.1; Ratio: 1.22',
+`end_data_time` date DEFAULT NULL COMMENT '分账结束日期; Size[MB]: 0.1; Ratio: 1.22',
+`pay_status` smallint(1) DEFAULT '0' COMMENT '支付状态(0:未支付，1:支付调用，2：支付成功,3:支付失败); Size[MB]: 0.1; Ratio: 1.06',
+`fail_msg` varchar(250) DEFAULT NULL COMMENT 'Size[MB]: 0.1; Ratio: 0.02\0 ',
+`batch_no` varchar(30) DEFAULT NULL COMMENT '批次号; Size[MB]: 0.5; Ratio: 0.75',
+`order_no` varchar(30) DEFAULT NULL COMMENT '订单号; Size[MB]: 0.6; Ratio: 0.79',
+`period_operator` varchar(40) DEFAULT NULL COMMENT '核账确认用户; Size[MB]: 0.1; Ratio: 0.03',
+`period_time` datetime DEFAULT NULL COMMENT '核账时间; Size[MB]: 0.1; Ratio: 2.30',
+`period_status` smallint(1) DEFAULT '0' COMMENT '线下核账状态，(0:未核账，1:已核账); Size[MB]: 0.1; Ratio: 1.60',
+`out_sum_charge` decimal(10,3) DEFAULT '0.000' COMMENT '对外总电量; Size[MB]: 0.1; Ratio: 2.57',
+`out_sum_earning_money` decimal(10,4) DEFAULT '0.0000' COMMENT '对外总抽佣; Size[MB]: 0.1; Ratio: 2.78',
+`out_sum_money` decimal(10,4) DEFAULT '0.0000' COMMENT '对外总金额; Size[MB]: 0.1; Ratio: 2.78',
+`in_sum_charge` decimal(10,3) DEFAULT '0.000' COMMENT '对内总电量; Size[MB]: 0.1; Ratio: 2.78',
+`in_sum_earning_money` decimal(10,4) DEFAULT '0.0000' COMMENT '对内总抽佣; Size[MB]: 0.1; Ratio: 2.78',
+`in_sum_money` decimal(10,4) DEFAULT '0.0000' COMMENT '对内总金额; Size[MB]: 0.1; Ratio: 2.78',
+`period_pay_id` int(10) DEFAULT NULL COMMENT 'Size[MB]: 0.1; Ratio: 1.77\0 ',
+`order_source` varchar(255) DEFAULT NULL COMMENT '订单来源，多个以逗号分隔; Size[MB]: 0.1; Ratio: 0.02',
+`sum_subsidy_monetary` decimal(10,2) DEFAULT '0.00' COMMENT '总补贴金额; Size[MB]: 0.1; Ratio: 8.39',
+`subscribe_number` varchar(5000) DEFAULT NULL COMMENT '订阅编号; Size[MB]: 0.1; Ratio: 0.04',
+`settlement_status` smallint(1) DEFAULT '1' COMMENT '是否需要结算0不需要，1需要; Size[MB]: 0.1; Ratio: 1.60',
+`company_type` smallint(1) DEFAULT '1' COMMENT '公司类型(1:运营商,2:合作伙伴); Size[MB]: 0.1; Ratio: 2.12',
+PRIMARY KEY (`id`),
+UNIQUE KEY `period_account_id` (`id`),
+KEY `period_account_company_id` (`company_id`),
+KEY `index_pay_type` (`pay_type`),
+KEY `index_pay_status` (`pay_status`),
+KEY `index_type_status` (`pay_type`,`pay_status`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED;
+CREATE TABLE `issue880_t3` (
+`id` int(10) NOT NULL COMMENT 'Size[MB]: 0.1; Ratio: 2.00\0 ',
+`company_id` int(10) DEFAULT NULL COMMENT 'Size[MB]: 0.1; Ratio: 2.06\0 ',
+`company_name` varchar(40) DEFAULT NULL COMMENT 'Size[MB]: 0.1; Ratio: 0.20\0 ',
+`poundage_mode` smallint(1) DEFAULT NULL COMMENT '支付方式(1:支出，2:收入); Size[MB]: 0.1; Ratio: 2.12',
+`money` decimal(10,2) DEFAULT NULL COMMENT 'Size[MB]: 0.1; Ratio: 2.78\0 ',
+`pay_status` smallint(1) DEFAULT NULL COMMENT '支付状态(0:未支付，1:支付调用，2：支付成功,3:支付失败); Size[MB]: 0.1; Ratio: 2.12',
+`fail_msg` varchar(250) DEFAULT NULL COMMENT 'Size[MB]: 0.1; Ratio: 0.02\0 ',
+`batch_no` varchar(30) DEFAULT NULL COMMENT 'Size[MB]: 0.1; Ratio: 0.12\0 ',
+`fee` decimal(10,2) DEFAULT NULL COMMENT '手续费; Size[MB]: 0.1; Ratio: 0.76',
+`fee_type` varchar(10) DEFAULT NULL COMMENT '手续费类型; Size[MB]: 0.1; Ratio: 0.05',
+`order_no` varchar(30) DEFAULT NULL COMMENT 'Size[MB]: 0.1; Ratio: 0.15\0 ',
+`create_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'Size[MB]: 0.1; Ratio: 2.39\0 ',
+`success_time` datetime DEFAULT NULL COMMENT '成功时间; Size[MB]: 0.1; Ratio: 1.30',
+`source` smallint(1) DEFAULT '0' COMMENT '代付订单来源：0抽佣结算，1政府补贴; Size[MB]: 0.1; Ratio: 0.24',
+`period_account_id` int(11) DEFAULT NULL COMMENT '分账ID; Size[MB]: 0.1; Ratio: 0.48',
+`account_number` varchar(20) DEFAULT NULL COMMENT '交易银行账户; Size[MB]: 0.1; Ratio: 0.04',
+`pay_flag` smallint(1) DEFAULT '0' COMMENT '是否需要支付，0需要，1不需要; Size[MB]: 0.1; Ratio: 0.24',
+`union_order_flag` smallint(1) DEFAULT '0' COMMENT '是否合成订单0不是，1是; Size[MB]: 0.1; Ratio: 2.12',
+PRIMARY KEY (`id`),
+UNIQUE KEY `pay_id` (`id`),
+UNIQUE KEY `pay_order_no` (`order_no`),
+KEY `pay_status_index` (`pay_status`),
+KEY `idx_pay_status_feetype` (`pay_status`,`fee_type`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED;
+LOAD DATA LOCAL INFILE 'suite/tianmu/std_data/issue880_t1.txt' INTO TABLE issue880_t1;
+LOAD DATA LOCAL INFILE 'suite/tianmu/std_data/issue880_t3.txt' INTO TABLE issue880_t3;
+LOAD DATA LOCAL INFILE 'suite/tianmu/std_data/issue880_t2.txt' INTO TABLE issue880_t2;
+select b.create_time AS create_time
+from (issue880_t3 a join issue880_t1 b)
+where ((a.id = b.period_pay_id) and (a.pay_status = 2) and
+(a.fee_type = 'TARGET') and (b.type = 2))
+union
+select a.create_time AS create_time
+from (issue880_t2 a join issue880_t1 b)
+where ((a.id = b.period_account_id) and (b.type = 1) and (a.pay_type = 1) and
+(a.period_status = 1));
+create_time
+2019-06-03 09:08:00
+2019-07-01 09:08:01
+2019-08-01 09:08:00
+2019-09-02 09:08:01
+2019-10-08 09:22:00
+2019-11-01 09:04:00
+2019-12-02 09:06:01
+2020-01-02 08:32:00
+2020-01-18 03:00:03
+2020-03-27 07:10:02
+2020-06-12 02:34:02
+2020-06-15 01:16:02
+2020-06-22 07:08:02
+2020-06-24 00:10:03
+2020-06-25 02:12:03
+2020-06-30 01:52:02
+2020-07-10 02:02:03
+2020-07-14 00:10:03
+2020-09-07 14:28:03
+2020-09-07 14:58:03
+2020-09-08 02:34:04
+2020-09-28 07:06:04
+2020-10-23 07:00:04
+2021-08-18 12:12:00
+2021-08-20 12:50:00
+2021-08-25 17:46:00
+2019-06-01 00:00:00
+2019-07-01 00:00:00
+2019-08-01 00:00:00
+2019-10-01 00:00:00
+2019-11-01 00:00:00
+2020-01-01 00:00:00
+2020-01-16 15:45:59
+2020-01-16 15:53:32
+2020-01-16 15:53:33
+2020-01-16 16:16:04
+2020-01-16 16:19:00
+2020-03-31 13:17:31
+2020-03-31 23:59:23
+2020-03-31 23:59:24
+2020-05-31 23:58:22
+2020-06-28 19:28:24
+2020-08-01 00:01:31
+2020-08-28 17:04:00
+2020-08-28 17:04:01
+2020-12-01 00:02:03
+2021-01-01 00:02:03
+2021-06-22 00:02:00
+2021-07-16 00:02:00
+select b.update_time AS create_time
+from (issue880_t3 a join issue880_t1 b)
+where ((a.id = b.period_pay_id) and (a.pay_status = 2) and
+(a.fee_type = 'TARGET') and (b.type = 2))
+union
+select a.period_time AS create_time
+from (issue880_t2 a join issue880_t1 b)
+where ((a.id = b.period_account_id) and (b.type = 1) and (a.pay_type = 1) and
+(a.period_status = 1));
+create_time
+2019-06-03 09:08:00
+2019-07-01 09:08:00
+2019-08-01 09:08:00
+2019-09-02 09:08:00
+2019-10-08 09:22:00
+2019-11-01 09:04:00
+2019-12-02 09:06:00
+2020-01-02 08:32:00
+2020-01-17 14:38:02
+2020-03-27 07:09:29
+2020-06-04 15:35:31
+2020-06-15 01:15:51
+2020-06-22 07:07:58
+2020-06-22 13:35:08
+2020-06-22 13:35:09
+2020-06-23 13:36:15
+2020-06-28 12:34:37
+2020-06-30 12:04:45
+2020-07-14 00:09:49
+2020-07-14 00:09:50
+2020-09-01 07:05:26
+2020-09-01 07:35:26
+2020-09-01 14:05:14
+2020-09-28 07:06:03
+2020-10-23 07:00:03
+2021-08-18 12:12:00
+2021-08-20 12:50:00
+2021-08-25 17:46:00
+2020-02-28 14:56:34
+2020-03-24 15:04:33
+2020-02-28 10:01:12
+2020-02-28 13:56:04
+2020-02-28 13:31:25
+2020-02-27 17:26:17
+2020-02-28 15:12:48
+2020-02-27 17:30:23
+2020-04-07 09:16:37
+2020-04-07 13:19:43
+2020-02-28 14:50:53
+2020-04-07 20:13:38
+2020-04-07 19:54:43
+2020-04-08 09:22:47
+2020-05-18 13:49:25
+2020-06-11 14:30:25
+2020-07-17 16:32:11
+2020-09-07 18:10:23
+2020-09-07 18:10:18
+2020-09-07 17:53:16
+2020-09-07 17:34:46
+2020-09-07 17:34:31
+2020-09-07 17:33:26
+2020-09-07 17:33:06
+2020-12-01 14:58:50
+2021-02-06 14:46:04
+2021-06-28 13:52:21
+2021-07-16 13:22:13
+select b.CREATE_TIME AS create_time
+from (issue880_t3 a join issue880_t1 b)
+where ((a.id = b.period_pay_id) and (a.pay_status = 2) and
+(a.fee_type = 'TARGET') and (b.type = 2))
+union
+select a.period_time AS create_time
+from (issue880_t2 a join issue880_t1 b)
+where ((a.id = b.period_account_id) and (b.type = 1) and (a.pay_type = 1) and
+(a.period_status = 1));
+ERROR HY000: The query includes syntax that is not supported by the storage engine. Tianmu: UNION of non-matching columns (column no 0) .
+select b.update_time AS create_time
+from (issue880_t3 a join issue880_t1 b)
+where ((a.id = b.period_pay_id) and (a.pay_status = 2) and
+(a.fee_type = 'TARGET') and (b.type = 2))
+union
+select a.create_time AS create_time
+from (issue880_t2 a join issue880_t1 b)
+where ((a.id = b.period_account_id) and (b.type = 1) and (a.pay_type = 1) and
+(a.period_status = 1));
+ERROR HY000: The query includes syntax that is not supported by the storage engine. Tianmu: UNION of non-matching columns (column no 0) .
+select b.order_sn AS create_time
+from (issue880_t3 a join issue880_t1 b)
+where ((a.id = b.period_pay_id) and (a.pay_status = 2) and
+(a.fee_type = 'TARGET') and (b.type = 2))
+union
+select a.create_time AS create_time
+from (issue880_t2 a join issue880_t1 b)
+where ((a.id = b.period_account_id) and (b.type = 1) and (a.pay_type = 1) and
+(a.period_status = 1));
+create_time
+A20190601120501266729
+A20190701120500589139
+A20190801120001862208
+A20190901120500478100
+A20191001120500327063
+A20191101120501862649
+A20191201120500590132
+B20200101120500578805
+B20200131115804672616
+B20200327120500655086
+B20200612120719706352
+B20200612121007490497
+B20200613121638551615
+B20200613121831378446
+B20200620120000512785
+B20200623120000050797
+B20200623121000112398
+B20200623121500091089
+B20200624094500868518
+B20200629120000678997
+B20200709120500248870
+B20200711120500769091
+B20200713120500349598
+B20200714120500094304
+B20200906120500993625
+B20200907120500071721
+B20200908120500173332
+B20200928120500633994
+B20201023120501240045
+B20210818100627764770
+B20210820104340874391
+B20210825034611730633
+2019-06-01 00:00:00
+2019-07-01 00:00:00
+2019-08-01 00:00:00
+2019-10-01 00:00:00
+2019-11-01 00:00:00
+2020-01-01 00:00:00
+2020-01-16 15:45:59
+2020-01-16 15:53:32
+2020-01-16 15:53:33
+2020-01-16 16:16:04
+2020-01-16 16:19:00
+2020-03-31 13:17:31
+2020-03-31 23:59:23
+2020-03-31 23:59:24
+2020-05-31 23:58:22
+2020-06-28 19:28:24
+2020-08-01 00:01:31
+2020-08-28 17:04:00
+2020-08-28 17:04:01
+2020-12-01 00:02:03
+2021-01-01 00:02:03
+2021-06-22 00:02:00
+2021-07-16 00:02:00
+select b.create_time AS create_time
+from (issue880_t3 a join issue880_t1 b)
+where ((a.id = b.period_pay_id) and (a.pay_status = 2) and
+(a.fee_type = 'TARGET') and (b.type = 2))
+union
+select a.product_name AS create_time
+from (issue880_t2 a join issue880_t1 b)
+where ((a.id = b.period_account_id) and (b.type = 1) and (a.pay_type = 1) and
+(a.period_status = 1));
+create_time
+2019-06-03 09:08:00
+2019-07-01 09:08:01
+2019-08-01 09:08:00
+2019-09-02 09:08:01
+2019-10-08 09:22:00
+2019-11-01 09:04:00
+2019-12-02 09:06:01
+2020-01-02 08:32:00
+2020-01-18 03:00:03
+2020-03-27 07:10:02
+2020-06-12 02:34:02
+2020-06-15 01:16:02
+2020-06-22 07:08:02
+2020-06-24 00:10:03
+2020-06-25 02:12:03
+2020-06-30 01:52:02
+2020-07-10 02:02:03
+2020-07-14 00:10:03
+2020-09-07 14:28:03
+2020-09-07 14:58:03
+2020-09-08 02:34:04
+2020-09-28 07:06:04
+2020-10-23 07:00:04
+2021-08-18 12:12:00
+2021-08-20 12:50:00
+2021-08-25 17:46:00
+机制
+DROP DATABASE test_timestamp_union;

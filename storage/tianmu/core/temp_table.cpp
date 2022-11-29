@@ -85,8 +85,8 @@ TempTable::Attr::Attr(const Attr &a) : PhysicalColumn(a) {
   si = a.si;
 }
 
-TempTable::Attr::Attr(CQTerm t, common::ColOperation m, uint32_t power, bool dis, char *a, int dim, common::CT type,
-                      uint scale, uint no_digits, bool notnull, DTCollation collation, SI *si1)
+TempTable::Attr::Attr(CQTerm t, common::ColOperation m, uint32_t power, bool dis, char *a, int dim,
+                      common::ColumnType type, uint scale, uint no_digits, bool notnull, DTCollation collation, SI *si1)
     : mode(m), distinct(dis), term(t), dim(dim), not_complete(true) {
   ct.Initialize(type, notnull, common::PackFmt::DEFAULT, no_digits, scale, collation);
   orig_precision = no_digits;
@@ -148,40 +148,40 @@ void TempTable::Attr::CreateBuffer(uint64_t size, Transaction *conn, bool not_c)
     page_size = (uint)size;
   no_obj = size;
   switch (TypeName()) {
-    case common::CT::INT:
-    case common::CT::MEDIUMINT:
+    case common::ColumnType::INT:
+    case common::ColumnType::MEDIUMINT:
       if (!buffer)
         buffer = new AttrBuffer<int>(page_size, sizeof(int), conn);
       break;
-    case common::CT::BYTEINT:
+    case common::ColumnType::BYTEINT:
       if (!buffer)
         buffer = new AttrBuffer<char>(page_size, sizeof(char), conn);
       break;
-    case common::CT::SMALLINT:
+    case common::ColumnType::SMALLINT:
       if (!buffer)
         buffer = new AttrBuffer<short>(page_size, sizeof(short), conn);
       break;
-    case common::CT::STRING:
-    case common::CT::VARCHAR:
-    case common::CT::BIN:
-    case common::CT::BYTE:
-    case common::CT::VARBYTE:
-    case common::CT::LONGTEXT:
+    case common::ColumnType::STRING:
+    case common::ColumnType::VARCHAR:
+    case common::ColumnType::BIN:
+    case common::ColumnType::BYTE:
+    case common::ColumnType::VARBYTE:
+    case common::ColumnType::LONGTEXT:
       DeleteBuffer();
       buffer = new AttrBuffer<types::BString>(page_size, Type().GetInternalSize(), conn);
       break;
-    case common::CT::BIGINT:
-    case common::CT::NUM:
-    case common::CT::YEAR:
-    case common::CT::TIME:
-    case common::CT::DATE:
-    case common::CT::DATETIME:
-    case common::CT::TIMESTAMP:
+    case common::ColumnType::BIGINT:
+    case common::ColumnType::NUM:
+    case common::ColumnType::YEAR:
+    case common::ColumnType::TIME:
+    case common::ColumnType::DATE:
+    case common::ColumnType::DATETIME:
+    case common::ColumnType::TIMESTAMP:
       if (!buffer)
         buffer = new AttrBuffer<int64_t>(page_size, sizeof(int64_t), conn);
       break;
-    case common::CT::REAL:
-    case common::CT::FLOAT:
+    case common::ColumnType::REAL:
+    case common::ColumnType::FLOAT:
       if (!buffer)
         buffer = new AttrBuffer<double>(page_size, sizeof(double), conn);
       break;
@@ -193,15 +193,15 @@ void TempTable::Attr::CreateBuffer(uint64_t size, Transaction *conn, bool not_c)
 void TempTable::Attr::FillValue(const MIIterator &mii, size_t idx) {
   types::BString vals;
   switch (TypeName()) {
-    case common::CT::STRING:
-    case common::CT::VARCHAR:
+    case common::ColumnType::STRING:
+    case common::ColumnType::VARCHAR:
       term.vc->GetValueString(vals, mii);
       SetValueString(idx, vals);
       break;
-    case common::CT::BIN:
-    case common::CT::BYTE:
-    case common::CT::VARBYTE:
-    case common::CT::LONGTEXT:
+    case common::ColumnType::BIN:
+    case common::ColumnType::BYTE:
+    case common::ColumnType::VARBYTE:
+    case common::ColumnType::LONGTEXT:
       if (!term.vc->IsNull(mii))
         term.vc->GetNotNullValueString(vals, mii);
       else
@@ -232,35 +232,35 @@ size_t TempTable::Attr::FillValues(MIIterator &mii, size_t start, size_t count) 
 
 void TempTable::Attr::DeleteBuffer() {
   switch (TypeName()) {
-    case common::CT::INT:
-    case common::CT::MEDIUMINT:
+    case common::ColumnType::INT:
+    case common::ColumnType::MEDIUMINT:
       delete (AttrBuffer<int> *)(buffer);
       break;
-    case common::CT::BYTEINT:
+    case common::ColumnType::BYTEINT:
       delete (AttrBuffer<char> *)(buffer);
       break;
-    case common::CT::SMALLINT:
+    case common::ColumnType::SMALLINT:
       delete (AttrBuffer<short> *)(buffer);
       break;
-    case common::CT::STRING:
-    case common::CT::VARCHAR:
-    case common::CT::BIN:
-    case common::CT::BYTE:
-    case common::CT::VARBYTE:
-    case common::CT::LONGTEXT:
+    case common::ColumnType::STRING:
+    case common::ColumnType::VARCHAR:
+    case common::ColumnType::BIN:
+    case common::ColumnType::BYTE:
+    case common::ColumnType::VARBYTE:
+    case common::ColumnType::LONGTEXT:
       delete (AttrBuffer<types::BString> *)(buffer);
       break;
-    case common::CT::BIGINT:
-    case common::CT::NUM:
-    case common::CT::YEAR:
-    case common::CT::TIME:
-    case common::CT::DATE:
-    case common::CT::DATETIME:
-    case common::CT::TIMESTAMP:
+    case common::ColumnType::BIGINT:
+    case common::ColumnType::NUM:
+    case common::ColumnType::YEAR:
+    case common::ColumnType::TIME:
+    case common::ColumnType::DATE:
+    case common::ColumnType::DATETIME:
+    case common::ColumnType::TIMESTAMP:
       delete (AttrBuffer<int64_t> *)(buffer);
       break;
-    case common::CT::REAL:
-    case common::CT::FLOAT:
+    case common::ColumnType::REAL:
+    case common::ColumnType::FLOAT:
       delete (AttrBuffer<double> *)(buffer);
       break;
     default:
@@ -274,17 +274,17 @@ void TempTable::Attr::SetValueInt64(int64_t obj, int64_t val) {
   no_materialized = obj + 1;
   no_obj = obj >= no_obj ? obj + 1 : no_obj;
   switch (TypeName()) {
-    case common::CT::BIGINT:
-    case common::CT::NUM:
-    case common::CT::YEAR:
-    case common::CT::TIME:
-    case common::CT::DATE:
-    case common::CT::DATETIME:
-    case common::CT::TIMESTAMP:  // 64-bit
+    case common::ColumnType::BIGINT:
+    case common::ColumnType::NUM:
+    case common::ColumnType::YEAR:
+    case common::ColumnType::TIME:
+    case common::ColumnType::DATE:
+    case common::ColumnType::DATETIME:
+    case common::ColumnType::TIMESTAMP:  // 64-bit
       ((AttrBuffer<int64_t> *)buffer)->Set(obj, val);
       break;
-    case common::CT::INT:        // 32-bit
-    case common::CT::MEDIUMINT:  // 24-bit
+    case common::ColumnType::INT:        // 32-bit
+    case common::ColumnType::MEDIUMINT:  // 24-bit
       if (val == common::NULL_VALUE_64)
         ((AttrBuffer<int> *)buffer)->Set(obj, common::NULL_VALUE_32);
       else if (val == common::PLUS_INF_64)
@@ -294,7 +294,7 @@ void TempTable::Attr::SetValueInt64(int64_t obj, int64_t val) {
       else
         ((AttrBuffer<int> *)buffer)->Set(obj, (int)val);
       break;
-    case common::CT::SMALLINT:  // 16-bit
+    case common::ColumnType::SMALLINT:  // 16-bit
       if (val == common::NULL_VALUE_64)
         ((AttrBuffer<short> *)buffer)->Set(obj, common::NULL_VALUE_SH);
       else if (val == common::PLUS_INF_64)
@@ -304,7 +304,7 @@ void TempTable::Attr::SetValueInt64(int64_t obj, int64_t val) {
       else
         ((AttrBuffer<short> *)buffer)->Set(obj, (short)val);
       break;
-    case common::CT::BYTEINT:  // 8-bit
+    case common::ColumnType::BYTEINT:  // 8-bit
       if (val == common::NULL_VALUE_64)
         ((AttrBuffer<char> *)buffer)->Set(obj, common::NULL_VALUE_C);
       else if (val == common::PLUS_INF_64)
@@ -314,8 +314,8 @@ void TempTable::Attr::SetValueInt64(int64_t obj, int64_t val) {
       else
         ((AttrBuffer<char> *)buffer)->Set(obj, (char)val);
       break;
-    case common::CT::REAL:
-    case common::CT::FLOAT:
+    case common::ColumnType::REAL:
+    case common::ColumnType::FLOAT:
       if (val == common::NULL_VALUE_64)
         ((AttrBuffer<double> *)buffer)->Set(obj, NULL_VALUE_D);
       else if (val == common::PLUS_INF_64)
@@ -341,35 +341,35 @@ void TempTable::Attr::SetNull(int64_t obj) {
   no_materialized = obj + 1;
   no_obj = obj >= no_obj ? obj + 1 : no_obj;
   switch (TypeName()) {
-    case common::CT::BIGINT:
-    case common::CT::NUM:
-    case common::CT::YEAR:
-    case common::CT::TIME:
-    case common::CT::DATE:
-    case common::CT::DATETIME:
-    case common::CT::TIMESTAMP:
+    case common::ColumnType::BIGINT:
+    case common::ColumnType::NUM:
+    case common::ColumnType::YEAR:
+    case common::ColumnType::TIME:
+    case common::ColumnType::DATE:
+    case common::ColumnType::DATETIME:
+    case common::ColumnType::TIMESTAMP:
       ((AttrBuffer<int64_t> *)buffer)->Set(obj, common::NULL_VALUE_64);
       break;
-    case common::CT::INT:
-    case common::CT::MEDIUMINT:
+    case common::ColumnType::INT:
+    case common::ColumnType::MEDIUMINT:
       ((AttrBuffer<int> *)buffer)->Set(obj, common::NULL_VALUE_32);
       break;
-    case common::CT::SMALLINT:
+    case common::ColumnType::SMALLINT:
       ((AttrBuffer<short> *)buffer)->Set(obj, common::NULL_VALUE_SH);
       break;
-    case common::CT::BYTEINT:
+    case common::ColumnType::BYTEINT:
       ((AttrBuffer<char> *)buffer)->Set(obj, common::NULL_VALUE_C);
       break;
-    case common::CT::REAL:
-    case common::CT::FLOAT:
+    case common::ColumnType::REAL:
+    case common::ColumnType::FLOAT:
       ((AttrBuffer<double> *)buffer)->Set(obj, NULL_VALUE_D);
       break;
-    case common::CT::BIN:
-    case common::CT::BYTE:
-    case common::CT::VARBYTE:
-    case common::CT::LONGTEXT:
-    case common::CT::STRING:
-    case common::CT::VARCHAR:
+    case common::ColumnType::BIN:
+    case common::ColumnType::BYTE:
+    case common::ColumnType::VARBYTE:
+    case common::ColumnType::LONGTEXT:
+    case common::ColumnType::STRING:
+    case common::ColumnType::VARCHAR:
       ((AttrBuffer<types::BString> *)buffer)->Set(obj, types::BString());
       break;
     default:
@@ -389,38 +389,38 @@ void TempTable::Attr::SetValueString(int64_t obj, const types::BString &val) {
   double valD = 0.0;
 
   switch (TypeName()) {
-    case common::CT::INT:
-    case common::CT::MEDIUMINT:
+    case common::ColumnType::INT:
+    case common::ColumnType::MEDIUMINT:
       ((AttrBuffer<int> *)buffer)->Set(obj, std::atoi(val.GetDataBytesPointer()));
       break;
-    case common::CT::BYTEINT:
+    case common::ColumnType::BYTEINT:
       ((AttrBuffer<char> *)buffer)->Set(obj, val.GetDataBytesPointer()[0]);
       break;
-    case common::CT::SMALLINT:
+    case common::ColumnType::SMALLINT:
       ((AttrBuffer<short> *)buffer)->Set(obj, (short)std::atoi(val.GetDataBytesPointer()));
       break;
-    case common::CT::BIGINT:
+    case common::ColumnType::BIGINT:
       ((AttrBuffer<int64_t> *)buffer)->Set(obj, std::strtoll(val.GetDataBytesPointer(), nullptr, 10));
       break;
-    case common::CT::BIN:
-    case common::CT::BYTE:
-    case common::CT::VARBYTE:
-    case common::CT::STRING:
-    case common::CT::VARCHAR:
-    case common::CT::LONGTEXT:
+    case common::ColumnType::BIN:
+    case common::ColumnType::BYTE:
+    case common::ColumnType::VARBYTE:
+    case common::ColumnType::STRING:
+    case common::ColumnType::VARCHAR:
+    case common::ColumnType::LONGTEXT:
       ((AttrBuffer<types::BString> *)buffer)->Set(obj, val);
       break;
-    case common::CT::NUM:
-    case common::CT::YEAR:
-    case common::CT::TIME:
-    case common::CT::DATE:
-    case common::CT::DATETIME:
-    case common::CT::TIMESTAMP:
+    case common::ColumnType::NUM:
+    case common::ColumnType::YEAR:
+    case common::ColumnType::TIME:
+    case common::ColumnType::DATE:
+    case common::ColumnType::DATETIME:
+    case common::ColumnType::TIMESTAMP:
       val64 = *(int64_t *)(val.GetDataBytesPointer());
       ((AttrBuffer<int64_t> *)buffer)->Set(obj, val64);
       break;
-    case common::CT::REAL:
-    case common::CT::FLOAT:
+    case common::ColumnType::REAL:
+    case common::ColumnType::FLOAT:
       if (!val.IsNullOrEmpty())
         valD = *(double *)(val.GetDataBytesPointer());
       else
@@ -441,74 +441,80 @@ types::TianmuValueObject TempTable::Attr::GetValue(int64_t obj, [[maybe_unused]]
     GetValueString(s, obj);
     ret = s;
   } else if (ATI::IsIntegerType(TypeName()))
-    ret = types::TianmuNum(GetValueInt64(obj), 0, false, common::CT::NUM);
+    ret = types::TianmuNum(GetValueInt64(obj), 0, false, common::ColumnType::NUM);
   else if (ATI::IsDateTimeType(TypeName()))
     ret = types::TianmuDateTime(this->GetValueInt64(obj), TypeName() /*, precision*/);
   else if (ATI::IsRealType(TypeName()))
     ret = types::TianmuNum(this->GetValueInt64(obj), 0, true);
-  else if (TypeName() == common::CT::NUM)
+  else if (TypeName() == common::ColumnType::NUM)
     ret = types::TianmuNum((int64_t)GetValueInt64(obj), Type().GetScale());
   return ret;
 }
 
-void TempTable::Attr::GetValueString(types::BString &s, int64_t obj) {
+void TempTable::Attr::GetValueString(types::BString &value, int64_t obj) {
   if (obj == common::NULL_VALUE_64) {
-    s = types::BString();
+    value = types::BString();
     return;
   }
-  double *d_p = nullptr;
+
   switch (TypeName()) {
-    case common::CT::BIN:
-    case common::CT::BYTE:
-    case common::CT::VARBYTE:
-    case common::CT::STRING:
-    case common::CT::VARCHAR:
-    case common::CT::LONGTEXT:
-      (*(AttrBuffer<types::BString> *)buffer).GetString(s, obj);
+    case common::ColumnType::BIN:
+    case common::ColumnType::BYTE:
+    case common::ColumnType::VARBYTE:
+    case common::ColumnType::STRING:
+    case common::ColumnType::VARCHAR:
+    case common::ColumnType::LONGTEXT:
+      (*(AttrBuffer<types::BString> *)buffer).GetString(value, obj);
       break;
-    case common::CT::BYTEINT: {
-      types::TianmuNum tianmu_n((int64_t)(*(AttrBuffer<char> *)buffer)[obj], -1, false, TypeName());
-      s = tianmu_n.ToBString();
-      break;
-    }
-    case common::CT::SMALLINT: {
-      types::TianmuNum tianmu_n((int64_t)(*(AttrBuffer<short> *)buffer)[obj], -1, false, TypeName());
-      s = tianmu_n.ToBString();
+    case common::ColumnType::BYTEINT: {
+      types::TianmuNum tianmu_n(static_cast<int64_t>((*(AttrBuffer<char> *)buffer)[obj]), -1, false, TypeName());
+      value = tianmu_n.GetValueInt64() == common::NULL_VALUE_64 ? types::BString() : tianmu_n.ToBString();
       break;
     }
-    case common::CT::INT:
-    case common::CT::MEDIUMINT: {
-      types::TianmuNum tianmu_n((int)(*(AttrBuffer<int> *)buffer)[obj], -1, false, TypeName());
-      s = tianmu_n.ToBString();
+    case common::ColumnType::SMALLINT: {
+      types::TianmuNum tianmu_n(static_cast<int64_t>((*(AttrBuffer<short> *)buffer)[obj]), -1, false, TypeName());
+      value = tianmu_n.GetValueInt64() == common::NULL_VALUE_64 ? types::BString() : tianmu_n.ToBString();
       break;
     }
-    case common::CT::BIGINT: {
-      types::TianmuNum tianmu_n((int64_t)(*(AttrBuffer<int64_t> *)buffer)[obj], -1, false, TypeName());
-      s = tianmu_n.ToBString();
+    case common::ColumnType::INT:
+    case common::ColumnType::MEDIUMINT: {
+      types::TianmuNum tianmu_n(static_cast<int>((*(AttrBuffer<int> *)buffer)[obj]), -1, false, TypeName());
+      value = tianmu_n.ValueInt() == common::NULL_VALUE_32 ? types::BString() : tianmu_n.ToBString();
       break;
     }
-    case common::CT::NUM: {
+    case common::ColumnType::BIGINT: {
+      types::TianmuNum tianmu_n(static_cast<int64_t>((*(AttrBuffer<int64_t> *)buffer)[obj]), -1, false, TypeName());
+      value = tianmu_n.GetValueInt64() == common::NULL_VALUE_64 ? types::BString() : tianmu_n.ToBString();
+      break;
+    }
+    case common::ColumnType::NUM: {
       types::TianmuNum tianmu_n((*(AttrBuffer<int64_t> *)buffer)[obj], Type().GetScale());
-      s = tianmu_n.ToBString();
+      value = tianmu_n.GetValueInt64() == common::NULL_VALUE_64 ? types::BString() : tianmu_n.ToBString();
       break;
     }
-    case common::CT::YEAR:
-    case common::CT::TIME:
-    case common::CT::DATE:
-    case common::CT::DATETIME:
-    case common::CT::TIMESTAMP: {
+    case common::ColumnType::YEAR:
+    case common::ColumnType::TIME:
+    case common::ColumnType::DATE:
+    case common::ColumnType::DATETIME:
+    case common::ColumnType::TIMESTAMP: {
       types::TianmuDateTime tianmu_dt((*(AttrBuffer<int64_t> *)buffer)[obj], TypeName());
-      if (TypeName() == common::CT::TIMESTAMP) {
+      if (TypeName() == common::ColumnType::TIMESTAMP) {
         types::TianmuDateTime::AdjustTimezone(tianmu_dt);
       }
-      s = tianmu_dt.ToBString();
+      if (tianmu_dt.GetInt64() == common::NULL_VALUE_64) {
+        value = types::BString();
+      } else {
+        const types::BString &tianmu_dt_str = tianmu_dt.ToBString();
+        size_t len = tianmu_dt_str.len_ > Type().GetPrecision() ? Type().GetPrecision() : tianmu_dt_str.len_;
+        value = types::BString(tianmu_dt_str.GetDataBytesPointer(), len, tianmu_dt_str.IsPersistent());
+      }
       break;
     }
-    case common::CT::REAL:
-    case common::CT::FLOAT: {
-      d_p = &(*(AttrBuffer<double> *)buffer)[obj];
-      types::TianmuNum tianmu_n(*(int64_t *)d_p, 0, true, TypeName());
-      s = tianmu_n.ToBString();
+    case common::ColumnType::REAL:
+    case common::ColumnType::FLOAT: {
+      double *d_p = &(*(AttrBuffer<double> *)buffer)[obj];
+      types::TianmuNum tianmu_n(static_cast<int64_t>(*d_p), 0, true, TypeName());
+      value = tianmu_n.GetValueInt64() == common::NULL_VALUE_64 ? types::BString() : tianmu_n.ToBString();
       break;
     }
     default:
@@ -621,44 +627,44 @@ int64_t TempTable::Attr::GetValueInt64(int64_t obj) const {
   if (obj == common::NULL_VALUE_64)
     return res;
   switch (TypeName()) {
-    case common::CT::BIGINT:
-    case common::CT::NUM:
-    case common::CT::YEAR:
-    case common::CT::TIME:
-    case common::CT::DATE:
-    case common::CT::DATETIME:
-    case common::CT::TIMESTAMP:
+    case common::ColumnType::BIGINT:
+    case common::ColumnType::NUM:
+    case common::ColumnType::YEAR:
+    case common::ColumnType::TIME:
+    case common::ColumnType::DATE:
+    case common::ColumnType::DATETIME:
+    case common::ColumnType::TIMESTAMP:
       if (!IsNull(obj))
         res = (*(AttrBuffer<int64_t> *)buffer)[obj];
       break;
-    case common::CT::INT:
-    case common::CT::MEDIUMINT:
+    case common::ColumnType::INT:
+    case common::ColumnType::MEDIUMINT:
       if (!IsNull(obj))
         res = (*(AttrBuffer<int> *)buffer)[obj];
       break;
-    case common::CT::SMALLINT:
+    case common::ColumnType::SMALLINT:
       if (!IsNull(obj))
         res = (*(AttrBuffer<short> *)buffer)[obj];
       break;
-    case common::CT::BYTEINT:
+    case common::ColumnType::BYTEINT:
       if (!IsNull(obj))
         res = (*(AttrBuffer<char> *)buffer)[obj];
       break;
-    case common::CT::STRING:
-    case common::CT::VARCHAR:
+    case common::ColumnType::STRING:
+    case common::ColumnType::VARCHAR:
       DEBUG_ASSERT(0);
       break;
-    case common::CT::REAL:
-    case common::CT::FLOAT:
+    case common::ColumnType::REAL:
+    case common::ColumnType::FLOAT:
       if (!IsNull(obj))
         res = *(int64_t *)&(*(AttrBuffer<double> *)buffer)[obj];
       else
         res = *(int64_t *)&NULL_VALUE_D;
       break;
-    case common::CT::BIN:
-    case common::CT::BYTE:
-    case common::CT::VARBYTE:
-    case common::CT::LONGTEXT:
+    case common::ColumnType::BIN:
+    case common::ColumnType::BYTE:
+    case common::ColumnType::VARBYTE:
+    case common::ColumnType::LONGTEXT:
       DEBUG_ASSERT(0);
       break;
     default:
@@ -670,27 +676,27 @@ int64_t TempTable::Attr::GetValueInt64(int64_t obj) const {
 int64_t TempTable::Attr::GetNotNullValueInt64(int64_t obj) const {
   int64_t res = common::NULL_VALUE_64;
   switch (TypeName()) {
-    case common::CT::INT:
-    case common::CT::MEDIUMINT:
+    case common::ColumnType::INT:
+    case common::ColumnType::MEDIUMINT:
       res = (*(AttrBuffer<int> *)buffer)[obj];
       break;
-    case common::CT::BYTEINT:
+    case common::ColumnType::BYTEINT:
       res = (*(AttrBuffer<char> *)buffer)[obj];
       break;
-    case common::CT::SMALLINT:
+    case common::ColumnType::SMALLINT:
       res = (*(AttrBuffer<short> *)buffer)[obj];
       break;
-    case common::CT::BIGINT:
-    case common::CT::NUM:
-    case common::CT::YEAR:
-    case common::CT::TIME:
-    case common::CT::DATE:
-    case common::CT::DATETIME:
-    case common::CT::TIMESTAMP:
+    case common::ColumnType::BIGINT:
+    case common::ColumnType::NUM:
+    case common::ColumnType::YEAR:
+    case common::ColumnType::TIME:
+    case common::ColumnType::DATE:
+    case common::ColumnType::DATETIME:
+    case common::ColumnType::TIMESTAMP:
       res = (*(AttrBuffer<int64_t> *)buffer)[obj];
       break;
-    case common::CT::REAL:
-    case common::CT::FLOAT:
+    case common::ColumnType::REAL:
+    case common::ColumnType::FLOAT:
       res = *(int64_t *)&(*(AttrBuffer<double> *)buffer)[obj];
       break;
     default:
@@ -705,35 +711,35 @@ bool TempTable::Attr::IsNull(const int64_t obj) const {
     return true;
   bool res = false;
   switch (TypeName()) {
-    case common::CT::INT:
-    case common::CT::MEDIUMINT:
+    case common::ColumnType::INT:
+    case common::ColumnType::MEDIUMINT:
       res = (*(AttrBuffer<int> *)buffer)[obj] == common::NULL_VALUE_32;
       break;
-    case common::CT::BYTEINT:
+    case common::ColumnType::BYTEINT:
       res = (*(AttrBuffer<char> *)buffer)[obj] == common::NULL_VALUE_C;
       break;
-    case common::CT::SMALLINT:
+    case common::ColumnType::SMALLINT:
       res = (*(AttrBuffer<short> *)buffer)[obj] == common::NULL_VALUE_SH;
       break;
-    case common::CT::BIN:
-    case common::CT::BYTE:
-    case common::CT::VARBYTE:
-    case common::CT::STRING:
-    case common::CT::VARCHAR:
-    case common::CT::LONGTEXT:
+    case common::ColumnType::BIN:
+    case common::ColumnType::BYTE:
+    case common::ColumnType::VARBYTE:
+    case common::ColumnType::STRING:
+    case common::ColumnType::VARCHAR:
+    case common::ColumnType::LONGTEXT:
       res = (*(AttrBuffer<types::BString> *)buffer)[obj].IsNull();
       break;
-    case common::CT::BIGINT:
-    case common::CT::NUM:
-    case common::CT::YEAR:
-    case common::CT::TIME:
-    case common::CT::DATE:
-    case common::CT::DATETIME:
-    case common::CT::TIMESTAMP:
+    case common::ColumnType::BIGINT:
+    case common::ColumnType::NUM:
+    case common::ColumnType::YEAR:
+    case common::ColumnType::TIME:
+    case common::ColumnType::DATE:
+    case common::ColumnType::DATETIME:
+    case common::ColumnType::TIMESTAMP:
       res = (*(AttrBuffer<int64_t> *)buffer)[obj] == common::NULL_VALUE_64;
       break;
-    case common::CT::REAL:
-    case common::CT::FLOAT: {
+    case common::ColumnType::REAL:
+    case common::ColumnType::FLOAT: {
       common::double_int_t v((*(AttrBuffer<double> *)buffer)[obj]);
       res = v.i == common::NULL_VALUE_64;
       break;
@@ -769,35 +775,35 @@ void TempTable::Attr::ApplyFilter(MultiIndex &mind, int64_t offset, int64_t last
     DEBUG_ASSERT(idx != static_cast<uint64_t>(common::NULL_VALUE_64));  // null object should never appear
                                                                         // in a materialized temp. table
     switch (TypeName()) {
-      case common::CT::INT:
-      case common::CT::MEDIUMINT:
+      case common::ColumnType::INT:
+      case common::ColumnType::MEDIUMINT:
         ((AttrBuffer<int> *)buffer)->Set(i, (*(AttrBuffer<int> *)old_buffer)[idx]);
         break;
-      case common::CT::BYTEINT:
+      case common::ColumnType::BYTEINT:
         ((AttrBuffer<char> *)buffer)->Set(i, (*(AttrBuffer<char> *)old_buffer)[idx]);
         break;
-      case common::CT::SMALLINT:
+      case common::ColumnType::SMALLINT:
         ((AttrBuffer<short> *)buffer)->Set(i, (*(AttrBuffer<short> *)old_buffer)[idx]);
         break;
-      case common::CT::STRING:
-      case common::CT::VARCHAR:
-      case common::CT::BIN:
-      case common::CT::BYTE:
-      case common::CT::VARBYTE:
-      case common::CT::LONGTEXT:
+      case common::ColumnType::STRING:
+      case common::ColumnType::VARCHAR:
+      case common::ColumnType::BIN:
+      case common::ColumnType::BYTE:
+      case common::ColumnType::VARBYTE:
+      case common::ColumnType::LONGTEXT:
         ((AttrBuffer<types::BString> *)buffer)->Set(i, (*(AttrBuffer<types::BString> *)old_buffer)[idx]);
         break;
-      case common::CT::BIGINT:
-      case common::CT::NUM:
-      case common::CT::YEAR:
-      case common::CT::TIME:
-      case common::CT::DATE:
-      case common::CT::DATETIME:
-      case common::CT::TIMESTAMP:
+      case common::ColumnType::BIGINT:
+      case common::ColumnType::NUM:
+      case common::ColumnType::YEAR:
+      case common::ColumnType::TIME:
+      case common::ColumnType::DATE:
+      case common::ColumnType::DATETIME:
+      case common::ColumnType::TIMESTAMP:
         ((AttrBuffer<int64_t> *)buffer)->Set(i, (*(AttrBuffer<int64_t> *)old_buffer)[idx]);
         break;
-      case common::CT::REAL:
-      case common::CT::FLOAT:
+      case common::ColumnType::REAL:
+      case common::ColumnType::FLOAT:
         ((AttrBuffer<double> *)buffer)->Set(i, (*(AttrBuffer<double> *)old_buffer)[idx]);
         break;
       default:
@@ -807,35 +813,35 @@ void TempTable::Attr::ApplyFilter(MultiIndex &mind, int64_t offset, int64_t last
   }
 
   switch (TypeName()) {
-    case common::CT::INT:
-    case common::CT::MEDIUMINT:
+    case common::ColumnType::INT:
+    case common::ColumnType::MEDIUMINT:
       delete (AttrBuffer<int> *)old_buffer;
       break;
-    case common::CT::BYTEINT:
+    case common::ColumnType::BYTEINT:
       delete (AttrBuffer<char> *)old_buffer;
       break;
-    case common::CT::SMALLINT:
+    case common::ColumnType::SMALLINT:
       delete (AttrBuffer<short> *)old_buffer;
       break;
-    case common::CT::STRING:
-    case common::CT::VARCHAR:
-    case common::CT::BIN:
-    case common::CT::BYTE:
-    case common::CT::VARBYTE:
-    case common::CT::LONGTEXT:
+    case common::ColumnType::STRING:
+    case common::ColumnType::VARCHAR:
+    case common::ColumnType::BIN:
+    case common::ColumnType::BYTE:
+    case common::ColumnType::VARBYTE:
+    case common::ColumnType::LONGTEXT:
       delete (AttrBuffer<types::BString> *)old_buffer;
       break;
-    case common::CT::BIGINT:
-    case common::CT::NUM:
-    case common::CT::YEAR:
-    case common::CT::TIME:
-    case common::CT::DATE:
-    case common::CT::DATETIME:
-    case common::CT::TIMESTAMP:
+    case common::ColumnType::BIGINT:
+    case common::ColumnType::NUM:
+    case common::ColumnType::YEAR:
+    case common::ColumnType::TIME:
+    case common::ColumnType::DATE:
+    case common::ColumnType::DATETIME:
+    case common::ColumnType::TIMESTAMP:
       delete (AttrBuffer<int64_t> *)old_buffer;
       break;
-    case common::CT::REAL:
-    case common::CT::FLOAT:
+    case common::ColumnType::REAL:
+    case common::ColumnType::FLOAT:
       delete (AttrBuffer<double> *)old_buffer;
       break;
     default:
@@ -867,35 +873,35 @@ size_t TempTable::Attr::MaxStringSize([[maybe_unused]] Filter *f)  // maximal by
 void TempTable::Attr::SetNewPageSize(uint new_page_size) {
   if (buffer) {
     switch (TypeName()) {
-      case common::CT::INT:
-      case common::CT::MEDIUMINT:
+      case common::ColumnType::INT:
+      case common::ColumnType::MEDIUMINT:
         static_cast<CachedBuffer<int> *>(buffer)->SetNewPageSize(new_page_size);
         break;
-      case common::CT::BYTEINT:
+      case common::ColumnType::BYTEINT:
         static_cast<CachedBuffer<char> *>(buffer)->SetNewPageSize(new_page_size);
         break;
-      case common::CT::SMALLINT:
+      case common::ColumnType::SMALLINT:
         static_cast<CachedBuffer<short> *>(buffer)->SetNewPageSize(new_page_size);
         break;
-      case common::CT::STRING:
-      case common::CT::VARCHAR:
-      case common::CT::BIN:
-      case common::CT::BYTE:
-      case common::CT::VARBYTE:
-      case common::CT::LONGTEXT:
+      case common::ColumnType::STRING:
+      case common::ColumnType::VARCHAR:
+      case common::ColumnType::BIN:
+      case common::ColumnType::BYTE:
+      case common::ColumnType::VARBYTE:
+      case common::ColumnType::LONGTEXT:
         static_cast<CachedBuffer<types::BString> *>(buffer)->SetNewPageSize(new_page_size);
         break;
-      case common::CT::BIGINT:
-      case common::CT::NUM:
-      case common::CT::YEAR:
-      case common::CT::TIME:
-      case common::CT::DATE:
-      case common::CT::DATETIME:
-      case common::CT::TIMESTAMP:
+      case common::ColumnType::BIGINT:
+      case common::ColumnType::NUM:
+      case common::ColumnType::YEAR:
+      case common::ColumnType::TIME:
+      case common::ColumnType::DATE:
+      case common::ColumnType::DATETIME:
+      case common::ColumnType::TIMESTAMP:
         static_cast<CachedBuffer<int64_t> *>(buffer)->SetNewPageSize(new_page_size);
         break;
-      case common::CT::REAL:
-      case common::CT::FLOAT:
+      case common::ColumnType::REAL:
+      case common::ColumnType::FLOAT:
         static_cast<CachedBuffer<double> *>(buffer)->SetNewPageSize(new_page_size);
         break;
       default:
@@ -1183,28 +1189,28 @@ void TempTable::SetMode(TMParameter mode, int64_t mode_param1, int64_t mode_para
 int TempTable::AddColumn(CQTerm e, common::ColOperation mode, char *alias, bool distinct, SI si) {
   if (alias)
     no_cols++;
-  common::CT type = common::CT::UNK;  // type of column
-  bool notnull = false;               // NULLs are allowed
-  uint scale = 0;                     // number of decimal places
-  uint precision = 0;                 // number of all places
+  common::ColumnType type = common::ColumnType::UNK;  // type of column
+  bool notnull = false;                               // NULLs are allowed
+  uint scale = 0;                                     // number of decimal places
+  uint precision = 0;                                 // number of all places
 
   // new code for vcolumn::VirtualColumn
   if (e.vc_id != common::NULL_VALUE_32) {
     DEBUG_ASSERT(e.vc);
     // enum common::ColOperation {LISTING, COUNT, SUM, MIN, MAX, AVG, GROUP_BY};
     if (mode == common::ColOperation::COUNT) {
-      type = common::CT::NUM;  // 64 bit, Decimal(18,0)
+      type = common::ColumnType::NUM;  // 64 bit, Decimal(18,0)
       precision = 18;
       notnull = true;
     } else if (mode == common::ColOperation::BIT_AND || mode == common::ColOperation::BIT_OR ||
                mode == common::ColOperation::BIT_XOR) {
-      type = common::CT::BIGINT;
+      type = common::ColumnType::BIGINT;
       precision = 19;
       notnull = true;
     } else if (mode == common::ColOperation::AVG || mode == common::ColOperation::VAR_POP ||
                mode == common::ColOperation::VAR_SAMP || mode == common::ColOperation::STD_POP ||
                mode == common::ColOperation::STD_SAMP) {
-      type = common::CT::REAL;  // 64 bit
+      type = common::ColumnType::REAL;  // 64 bit
       precision = 18;
     } else {
       scale = e.vc->Type().GetScale();
@@ -1213,22 +1219,22 @@ int TempTable::AddColumn(CQTerm e, common::ColOperation mode, char *alias, bool 
       notnull = e.vc->Type().NotNull();
       if (mode == common::ColOperation::SUM) {
         switch (e.vc->TypeName()) {
-          case common::CT::INT:
-          case common::CT::NUM:
-          case common::CT::SMALLINT:
-          case common::CT::BYTEINT:
-          case common::CT::MEDIUMINT:
-            type = common::CT::NUM;
+          case common::ColumnType::INT:
+          case common::ColumnType::NUM:
+          case common::ColumnType::SMALLINT:
+          case common::ColumnType::BYTEINT:
+          case common::ColumnType::MEDIUMINT:
+            type = common::ColumnType::NUM;
             precision = 18;
             break;
-          case common::CT::BIGINT:
-            type = common::CT::BIGINT;
+          case common::ColumnType::BIGINT:
+            type = common::ColumnType::BIGINT;
             precision = 19;
             break;
-          case common::CT::REAL:
-          case common::CT::FLOAT:
+          case common::ColumnType::REAL:
+          case common::ColumnType::FLOAT:
           default:  // all other types summed up as double (parsed from text)
-            type = common::CT::REAL;
+            type = common::ColumnType::REAL;
             break;
             //					default:
             //						throw
@@ -1243,7 +1249,7 @@ int TempTable::AddColumn(CQTerm e, common::ColOperation mode, char *alias, bool 
       }
     }
   } else if (mode == common::ColOperation::COUNT) {
-    type = common::CT::NUM;
+    type = common::ColumnType::NUM;
     precision = 18;
     notnull = true;
   } else {
@@ -1414,7 +1420,7 @@ void TempTable::Union(TempTable *t, int all) {
                  new_type.GetScale(), new_type.GetPrecision(), new_type.NotNull(), new_type.GetCollation());
     new_attr->page_size = new_page_size;
     new_attr->CreateBuffer(new_no_obj, m_conn);
-    if (first_attr->TypeName() == common::CT::NUM && sec_attr->TypeName() == common::CT::NUM &&
+    if (first_attr->TypeName() == common::ColumnType::NUM && sec_attr->TypeName() == common::ColumnType::NUM &&
         first_attr->Type().GetScale() != sec_attr->Type().GetScale()) {
       uint max_scale = new_attr->Type().GetScale();
       // copy attr from first table to new_attr
@@ -1653,9 +1659,9 @@ uint TempTable::CalculatePageSize(int64_t _no_obj) {
   int64_t new_no_obj = _no_obj == -1 ? no_obj : _no_obj;
   uint size_of_one_record = 0;
   for (uint i = 0; i < attrs.size(); i++)
-    if (attrs[i]->TypeName() == common::CT::BIN || attrs[i]->TypeName() == common::CT::BYTE ||
-        attrs[i]->TypeName() == common::CT::VARBYTE || attrs[i]->TypeName() == common::CT::LONGTEXT ||
-        attrs[i]->TypeName() == common::CT::STRING || attrs[i]->TypeName() == common::CT::VARCHAR)
+    if (attrs[i]->TypeName() == common::ColumnType::BIN || attrs[i]->TypeName() == common::ColumnType::BYTE ||
+        attrs[i]->TypeName() == common::ColumnType::VARBYTE || attrs[i]->TypeName() == common::ColumnType::LONGTEXT ||
+        attrs[i]->TypeName() == common::ColumnType::STRING || attrs[i]->TypeName() == common::ColumnType::VARCHAR)
       size_of_one_record += attrs[i]->Type().GetInternalSize() + 4;  // 4 bytes describing length
     else
       size_of_one_record += attrs[i]->Type().GetInternalSize();
@@ -2122,20 +2128,20 @@ void TempTable::RecordIterator::PrepareValues() {
   if (_currentRNo < uint64_t(table->NumOfObj())) {
     uint no_disp_attr = table->NumOfDisplaybleAttrs();
     for (uint att = 0; att < no_disp_attr; ++att) {
-      common::CT attrt_tmp = table->GetDisplayableAttrP(att)->TypeName();
-      if (attrt_tmp == common::CT::INT || attrt_tmp == common::CT::MEDIUMINT) {
+      common::ColumnType attrt_tmp = table->GetDisplayableAttrP(att)->TypeName();
+      if (attrt_tmp == common::ColumnType::INT || attrt_tmp == common::ColumnType::MEDIUMINT) {
         int &v = (*(AttrBuffer<int> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == common::NULL_VALUE_32)
           dataTypes[att]->SetToNull();
         else
           ((types::TianmuNum *)dataTypes[att].get())->Assign(v, 0, false, attrt_tmp);
-      } else if (attrt_tmp == common::CT::SMALLINT) {
+      } else if (attrt_tmp == common::ColumnType::SMALLINT) {
         short &v = (*(AttrBuffer<short> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == common::NULL_VALUE_SH)
           dataTypes[att]->SetToNull();
         else
           ((types::TianmuNum *)dataTypes[att].get())->Assign(v, 0, false, attrt_tmp);
-      } else if (attrt_tmp == common::CT::BYTEINT) {
+      } else if (attrt_tmp == common::ColumnType::BYTEINT) {
         char &v = (*(AttrBuffer<char> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == common::NULL_VALUE_C)
           dataTypes[att]->SetToNull();
@@ -2147,7 +2153,7 @@ void TempTable::RecordIterator::PrepareValues() {
           dataTypes[att]->SetToNull();
         else
           ((types::TianmuNum *)dataTypes[att].get())->Assign(v);
-      } else if (attrt_tmp == common::CT::NUM || attrt_tmp == common::CT::BIGINT) {
+      } else if (attrt_tmp == common::ColumnType::NUM || attrt_tmp == common::ColumnType::BIGINT) {
         int64_t &v = (*(AttrBuffer<int64_t> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == common::NULL_VALUE_64)
           dataTypes[att]->SetToNull();
@@ -2187,10 +2193,10 @@ TempTable::RecordIterator::RecordIterator(TempTable *table_, Transaction *conn_,
   DEBUG_ASSERT(table != 0);
   DEBUG_ASSERT(_currentRNo <= uint64_t(table->NumOfObj()));
   for (uint att = 0; att < table->NumOfDisplaybleAttrs(); att++) {
-    common::CT att_type = table->GetDisplayableAttrP(att)->TypeName();
-    if (att_type == common::CT::INT || att_type == common::CT::MEDIUMINT || att_type == common::CT::SMALLINT ||
-        att_type == common::CT::BYTEINT || ATI::IsRealType(att_type) || att_type == common::CT::NUM ||
-        att_type == common::CT::BIGINT)
+    common::ColumnType att_type = table->GetDisplayableAttrP(att)->TypeName();
+    if (att_type == common::ColumnType::INT || att_type == common::ColumnType::MEDIUMINT ||
+        att_type == common::ColumnType::SMALLINT || att_type == common::ColumnType::BYTEINT ||
+        ATI::IsRealType(att_type) || att_type == common::ColumnType::NUM || att_type == common::ColumnType::BIGINT)
       dataTypes.emplace_back(new types::TianmuNum());
     else if (ATI::IsDateTimeType(att_type))
       dataTypes.emplace_back(new types::TianmuDateTime());

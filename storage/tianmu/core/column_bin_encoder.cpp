@@ -103,9 +103,9 @@ bool ColumnBinEncoder::PrepareEncoder(vcolumn::VirtualColumn *_vc, vcolumn::Virt
   } else if (vct.IsFixed() && !vct2.IsString()) {  // Decimals for different scale (the same
                                                    // scale is done by EncoderInt)
     my_encoder.reset(new ColumnBinEncoder::EncoderDecimal(vc, decodable, nulls_possible, descending));
-  } else if (vct.GetTypeName() == common::CT::DATE) {
+  } else if (vct.GetTypeName() == common::ColumnType::DATE) {
     my_encoder.reset(new ColumnBinEncoder::EncoderDate(vc, decodable, nulls_possible, descending));
-  } else if (vct.GetTypeName() == common::CT::YEAR) {
+  } else if (vct.GetTypeName() == common::ColumnType::YEAR) {
     my_encoder.reset(new ColumnBinEncoder::EncoderYear(vc, decodable, nulls_possible, descending));
   } else if (!monotonic_encoding && vct.IsLookup() && _vc2 == nullptr &&
              !types::RequiresUTFConversions(vc->GetCollation())) {  // Lookup encoding: only non-UTF
@@ -135,8 +135,8 @@ bool ColumnBinEncoder::PrepareEncoder(vcolumn::VirtualColumn *_vc, vcolumn::Virt
       } else
         text_stat_encoder = true;
     }
-  } else if (vct.IsDateTime()) {  // Date/time types except special cases
-                                  // (above)
+  } else if (vct.IsDateTime() && (!_vc2 || vct2.IsDateTime())) {  // Date/time types except special cases
+                                                                  // (above)
     my_encoder.reset(new ColumnBinEncoder::EncoderInt(vc, decodable, nulls_possible, descending));
   } else {
     DEBUG_ASSERT(!"wrong combination of encoded columns");  // Other types not
@@ -298,9 +298,9 @@ bool ColumnBinEncoder::EncoderInt::SecondColumn(vcolumn::VirtualColumn *vc) {
         << "Nontrivial comparison: date/time with non-date/time" << system::unlock;
     return false;
   }
-  bool is_timestamp1 = (this->vc_type.GetTypeName() == common::CT::TIMESTAMP);
-  bool is_timestamp2 = (vc->Type().GetTypeName() == common::CT::TIMESTAMP);
-  if (is_timestamp1 || (is_timestamp2 && !(is_timestamp1 && is_timestamp2)))
+  bool is_timestamp1 = (this->vc_type.GetTypeName() == common::ColumnType::TIMESTAMP);
+  bool is_timestamp2 = (vc->Type().GetTypeName() == common::ColumnType::TIMESTAMP);
+  if (is_timestamp1 ^ is_timestamp2)
     return false;  // cannot compare timestamp with anything different than
                    // timestamp
   // Easy case: integers/decimals with the same precision
@@ -570,7 +570,7 @@ ColumnBinEncoder::EncoderDate::EncoderDate(vcolumn::VirtualColumn *vc, bool deco
 
 bool ColumnBinEncoder::EncoderDate::SecondColumn(vcolumn::VirtualColumn *vc) {
   // Possible conversions: only dates.
-  if (vc->Type().GetTypeName() != common::CT::DATE) {
+  if (vc->Type().GetTypeName() != common::ColumnType::DATE) {
     tianmu_control_.lock(vc->ConnInfo()->GetThreadID())
         << "Nontrivial comparison: date with non-date" << system::unlock;
     return false;
@@ -662,7 +662,7 @@ ColumnBinEncoder::EncoderYear::EncoderYear(vcolumn::VirtualColumn *vc, bool deco
 
 bool ColumnBinEncoder::EncoderYear::SecondColumn(vcolumn::VirtualColumn *vc) {
   // Possible conversions: only years.
-  if (vc->Type().GetTypeName() != common::CT::YEAR) {
+  if (vc->Type().GetTypeName() != common::ColumnType::YEAR) {
     tianmu_control_.lock(vc->ConnInfo()->GetThreadID())
         << "Nontrivial comparison: year with non-year" << system::unlock;
     return false;
