@@ -1,0 +1,6 @@
+SELECT group_concat(d1 ORDER BY d1) FROM (SELECT d1 FROM test) a1;
+group_concat(d1 ORDER BY d1)
+1234,56789012,1234567890123
+SELECT group_concat(d1 ORDER BY d1) FROM test;
+group_concat(d1 ORDER BY d1)
+1234,56789012,1234567890123
