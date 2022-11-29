@@ -38,6 +38,7 @@
 
 namespace Tianmu {
 namespace core {
+
 Query::~Query() {
   for (auto it : gc_expressions) delete it;
 }
@@ -184,7 +185,8 @@ std::pair<int, int> Query::VirtualColumnAlreadyExists(const TabID &tmp_table, co
 }
 
 bool Query::IsFieldItem(Item *item) {
-  return (item->type() == Item::FIELD_ITEM || item->type() == Item_tianmufield::get_tianmuitem_type());
+  return (item->type() == Item::FIELD_ITEM || item->type() == Item::REF_ITEM ||
+          item->type() == Item_tianmufield::get_tianmuitem_type());
 }
 
 bool Query::IsAggregationOverFieldItem(Item *item) {
@@ -1908,5 +1910,6 @@ QueryRouteTo Query::BuildCondsIfPossible(Item *conds, CondID &cond_id, const Tab
   }
   return QueryRouteTo::kToTianmu;
 }
+
 }  // namespace core
 }  // namespace Tianmu
