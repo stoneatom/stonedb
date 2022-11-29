@@ -99,10 +99,11 @@ struct CQTerm {
   int vc_id;         // virt column number set at compilation, = -1 for legacy cases
                      // (not using virt column)
   bool is_vc_owner;  // indicator if vc should be it deleted in destructor
+  Item *item;
 
   CQTerm();  // null
-  explicit CQTerm(int v);
-  explicit CQTerm(int64_t v, common::ColumnType t = common::ColumnType::INT);
+  explicit CQTerm(int v, Item *item_arg = nullptr);
+  explicit CQTerm(int64_t v, common::ColumnType t = common::ColumnType::INT, Item *item_arg = nullptr);
   CQTerm(const CQTerm &);
   ~CQTerm();
 

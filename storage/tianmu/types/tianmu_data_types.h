@@ -19,6 +19,7 @@
 #pragma once
 
 #include <cstring>
+#include <regex>
 
 #include "common/assert.h"
 #include "common/common_definitions.h"
@@ -271,6 +272,13 @@ class BString : public ValueBasic<BString> {
     return std::memcmp(val_ + pos_, tianmu_s2.val_ + tianmu_s2.pos_, l);
   }
 
+  bool IsDigital() {
+    static std::regex const re{R"([-+]?((\.\d+)|(\d+\.)|(\d+))\d*([eE][-+]?\d+)?)"};
+    return std::regex_match(ToString(), re);
+  }
+
+  bool IsDigitalZero() const { return (Equals("0", 1) || Equals("+0", 2) || Equals("-0", 2)); }
+
   // Wildcards: "_" is any character, "%" is 0 or more characters
   bool Like(const BString &pattern, char escape_character);
 
@@ -488,6 +496,17 @@ static inline void ConvertToBinaryForm(const BString &src, BString &dst, DTColla
 static int inline CollationStrCmp(DTCollation coll, const BString &s1, const BString &s2) {
   return coll.collation->coll->strnncoll(coll.collation, (const uchar *)s1.val_, s1.len_, (const uchar *)s2.val_,
                                          s2.len_, 0);
+}
+
+static int inline CollationRealCmp(DTCollation coll, const BString &s1, const BString &s2) {
+  int not_used = 0;
+  char *end_not_used = nullptr;
+  double d1 = coll.collation->cset->strntod(coll.collation, const_cast<char *>(s1.GetDataBytesPointer()), s1.len_,
+                                            &end_not_used, &not_used);
+
+  double d2 = coll.collation->cset->strntod(coll.collation, const_cast<char *>(s1.GetDataBytesPointer()), s2.len_,
+                                            &end_not_used, &not_used);
+  return (d1 == d2) ? 0 : ((d1 < d2) ? -1 : 1);
 }
 
 static bool inline CollationStrCmp(DTCollation coll, const BString &s1, const BString &s2, common::Operator op) {
