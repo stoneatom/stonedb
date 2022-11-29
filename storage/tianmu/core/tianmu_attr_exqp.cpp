@@ -650,7 +650,7 @@ void TianmuAttr::EvaluatePack_InNum(MIUpdatingIterator &mit, int dim, Descriptor
   DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(d.val1.vc) != nullptr);
   vcolumn::MultiValColumn *multival_column = static_cast<vcolumn::MultiValColumn *>(d.val1.vc);
   bool lookup_to_num = ATI::IsStringType(TypeName());
-  bool encoded_set = (lookup_to_num ? multival_column->IsSetEncoded(common::CT::NUM, 0)
+  bool encoded_set = (lookup_to_num ? multival_column->IsSetEncoded(common::ColumnType::NUM, 0)
                                     : multival_column->IsSetEncoded(TypeName(), ct.GetScale()));
   common::Tribool res;
   std::unique_ptr<types::TianmuDataType> value(ValuePrototype(lookup_to_num).Clone());

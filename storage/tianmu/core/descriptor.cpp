@@ -1213,9 +1213,9 @@ common::Tribool Descriptor::RoughCheckSubselectCondition(MIIterator &mit, SubSel
   else if (op == common::Operator::O_FALSE)
     return false;
 
-  common::CT attr_t = attr.vc ? attr.vc->TypeName() : common::CT();
-  common::CT val1_t = val1.vc ? val1.vc->TypeName() : common::CT();
-  common::CT val2_t = val2.vc ? val2.vc->TypeName() : common::CT();
+  common::ColumnType attr_t = attr.vc ? attr.vc->TypeName() : common::ColumnType();
+  common::ColumnType val1_t = val1.vc ? val1.vc->TypeName() : common::ColumnType();
+  common::ColumnType val2_t = val2.vc ? val2.vc->TypeName() : common::ColumnType();
   if ((attr.vc && ATI::IsStringType(attr_t)) || (val1.vc && ATI::IsStringType(val1_t)) ||
       (val2.vc && ATI::IsStringType(val2_t)))
     return common::TRIBOOL_UNKNOWN;
@@ -1700,7 +1700,7 @@ void Descriptor::CoerceColumnType(vcolumn::VirtualColumn *&for_typecast) {
       tcc = new vcolumn::String2DateTimeCastColumn(for_typecast, vc->Type());
     else if (ATI::IsNumericType(for_typecast->TypeName()))
       tcc = new vcolumn::Num2DateTimeCastColumn(for_typecast, vc->Type());
-    else if (vc->TypeName() == common::CT::TIMESTAMP &&
+    else if (vc->TypeName() == common::ColumnType::TIMESTAMP &&
              !(ATI::IsDateTimeType(for_typecast->TypeName()))) {  // for_typecast->TypeName() !=
                                                                   // common::CT::TIMESTAMP	{
       tcc = new vcolumn::TimeZoneConversionCastColumn(vc);
@@ -1856,9 +1856,9 @@ void Descriptor::SimplifyAfterRoughAccumulate() {
 bool Descriptor::CopyDesCond(MIUpdatingIterator &mit) {
   common::PackType pack_type;
   if (IsType_AttrValOrAttrValVal()) {
-    common::CT column_type = attr.vc->Type().GetTypeName();
+    common::ColumnType column_type = attr.vc->Type().GetTypeName();
     bool is_lookup = attr.vc->Type().IsLookup();
-    if (((column_type == common::CT::VARCHAR || column_type == common::CT::STRING) && is_lookup) ||
+    if (((column_type == common::ColumnType::VARCHAR || column_type == common::ColumnType::STRING) && is_lookup) ||
         ATI::IsNumericType(column_type) || ATI::IsDateTimeType(column_type))
       pack_type = common::PackType::INT;
     else

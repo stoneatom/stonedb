@@ -142,7 +142,7 @@ bool LoadParser::MakeRow(std::vector<ValueCache> &value_buffers) {
 }
 
 bool LoadParser::MakeValue(uint att, ValueCache &buffer) {
-  if (attrs_[att]->TypeName() == common::CT::TIMESTAMP) {
+  if (attrs_[att]->TypeName() == common::ColumnType::TIMESTAMP) {
     if (buffer.ExpectedNull() && attrs_[att]->Type().NotNull()) {
       *reinterpret_cast<int64_t *>(buffer.Prepare(sizeof(int64_t))) = start_time_;
       buffer.ExpectedSize(sizeof(int64_t));

@@ -495,8 +495,8 @@ vcolumn::VirtualColumn *Query::CreateColumnFromExpression(std::vector<MysqlExpre
     }
     vc = new vcolumn::ExpressionColumn(exprs[0], temp_table, temp_table_alias, mind);
     if (static_cast<vcolumn::ExpressionColumn *>(vc)->GetStringType() == MysqlExpression::StringType::STRING_TIME &&
-        vc->TypeName() != common::CT::TIME) {  // common::CT::TIME is already as int64_t
-      vcolumn::TypeCastColumn *tcc = new vcolumn::String2DateTimeCastColumn(vc, ColumnType(common::CT::TIME));
+        vc->TypeName() != common::ColumnType::TIME) {  // common::CT::TIME is already as int64_t
+      vcolumn::TypeCastColumn *tcc = new vcolumn::String2DateTimeCastColumn(vc, ColumnType(common::ColumnType::TIME));
       temp_table->AddVirtColumn(vc);
       vc = tcc;
     }

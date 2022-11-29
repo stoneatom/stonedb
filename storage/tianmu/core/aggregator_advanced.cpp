@@ -89,8 +89,8 @@ void AggregatorStat::Merge(unsigned char *buf, unsigned char *src_buf) {
 
 void AggregatorStatD::PutAggregatedValue(unsigned char *buf, const types::BString &v, int64_t factor) {
   stats_updated = false;
-  types::TianmuNum val(common::CT::REAL);
-  if (!v.IsEmpty() && types::TianmuNum::ParseReal(v, val, common::CT::REAL) == common::ErrorCode::SUCCESS &&
+  types::TianmuNum val(common::ColumnType::REAL);
+  if (!v.IsEmpty() && types::TianmuNum::ParseReal(v, val, common::ColumnType::REAL) == common::ErrorCode::SUCCESS &&
       !val.IsNull()) {
     double d_val = double(val);
     PutAggregatedValue(buf, *((int64_t *)(&d_val)), factor);
@@ -159,8 +159,8 @@ int64_t AggregatorStdSampD::GetValue64(unsigned char *buf) {
 
 void AggregatorBitAnd::PutAggregatedValue(unsigned char *buf, const types::BString &v, int64_t factor) {
   stats_updated = false;
-  types::TianmuNum val(common::CT::BIGINT);
-  if (!v.IsEmpty() && types::TianmuNum::Parse(v, val, common::CT::BIGINT) == common::ErrorCode::SUCCESS &&
+  types::TianmuNum val(common::ColumnType::BIGINT);
+  if (!v.IsEmpty() && types::TianmuNum::Parse(v, val, common::ColumnType::BIGINT) == common::ErrorCode::SUCCESS &&
       !val.IsNull()) {
     PutAggregatedValue(buf, int64_t(val), factor);
   }
@@ -168,8 +168,8 @@ void AggregatorBitAnd::PutAggregatedValue(unsigned char *buf, const types::BStri
 
 void AggregatorBitOr::PutAggregatedValue(unsigned char *buf, const types::BString &v, int64_t factor) {
   stats_updated = false;
-  types::TianmuNum val(common::CT::BIGINT);
-  if (!v.IsEmpty() && types::TianmuNum::Parse(v, val, common::CT::BIGINT) == common::ErrorCode::SUCCESS &&
+  types::TianmuNum val(common::ColumnType::BIGINT);
+  if (!v.IsEmpty() && types::TianmuNum::Parse(v, val, common::ColumnType::BIGINT) == common::ErrorCode::SUCCESS &&
       !val.IsNull()) {
     PutAggregatedValue(buf, int64_t(val), factor);
   }
@@ -177,8 +177,8 @@ void AggregatorBitOr::PutAggregatedValue(unsigned char *buf, const types::BStrin
 
 void AggregatorBitXor::PutAggregatedValue(unsigned char *buf, const types::BString &v, int64_t factor) {
   stats_updated = false;
-  types::TianmuNum val(common::CT::BIGINT);
-  if (!v.IsEmpty() && types::TianmuNum::Parse(v, val, common::CT::BIGINT) == common::ErrorCode::SUCCESS &&
+  types::TianmuNum val(common::ColumnType::BIGINT);
+  if (!v.IsEmpty() && types::TianmuNum::Parse(v, val, common::ColumnType::BIGINT) == common::ErrorCode::SUCCESS &&
       !val.IsNull()) {
     PutAggregatedValue(buf, int64_t(val), factor);
   }

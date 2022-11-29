@@ -389,41 +389,41 @@ DataType MysqlExpression::EvalType(TypOfVars *tv) {
   //  type = DataType();
   switch (mysql_type) {
     case INT_RESULT:
-      type = DataType(common::CT::BIGINT);
+      type = DataType(common::ColumnType::BIGINT);
       break;
     case REAL_RESULT:
-      type = DataType(common::CT::FLOAT);
+      type = DataType(common::ColumnType::FLOAT);
       break;
     case DECIMAL_RESULT:
-      type = DataType(common::CT::NUM, decimal_precision, decimal_scale);
+      type = DataType(common::ColumnType::NUM, decimal_precision, decimal_scale);
       break;
     case STRING_RESULT:  // GA: in case of time item->max_length can contain
                          // invalid value
       if ((item->type() != Item_tianmufield::get_tianmuitem_type() && item->field_type() == MYSQL_TYPE_TIME) ||
           (item->type() == Item_tianmufield::get_tianmuitem_type() &&
            static_cast<Item_tianmufield *>(item)->IsAggregation() == false && item->field_type() == MYSQL_TYPE_TIME))
-        type = DataType(common::CT::TIME, 17, 0, item->collation);
+        type = DataType(common::ColumnType::TIME, 17, 0, item->collation);
       else if ((item->type() != Item_tianmufield::get_tianmuitem_type() &&
                 item->field_type() == MYSQL_TYPE_TIMESTAMP) ||
                (item->type() == Item_tianmufield::get_tianmuitem_type() &&
                 static_cast<Item_tianmufield *>(item)->IsAggregation() == false &&
                 item->field_type() == MYSQL_TYPE_TIMESTAMP))
-        type = DataType(common::CT::TIMESTAMP, 17, 0, item->collation);
+        type = DataType(common::ColumnType::TIMESTAMP, 17, 0, item->collation);
       else if ((item->type() != Item_tianmufield::get_tianmuitem_type() && item->field_type() == MYSQL_TYPE_DATETIME) ||
                (item->type() == Item_tianmufield::get_tianmuitem_type() &&
                 static_cast<Item_tianmufield *>(item)->IsAggregation() == false &&
                 item->field_type() == MYSQL_TYPE_DATETIME))
-        type = DataType(common::CT::DATETIME, 17, 0, item->collation);
+        type = DataType(common::ColumnType::DATETIME, 17, 0, item->collation);
       else if ((item->type() != Item_tianmufield::get_tianmuitem_type() && item->field_type() == MYSQL_TYPE_DATE) ||
                (item->type() == Item_tianmufield::get_tianmuitem_type() &&
                 static_cast<Item_tianmufield *>(item)->IsAggregation() == false &&
                 item->field_type() == MYSQL_TYPE_DATE))
-        type = DataType(common::CT::DATE, 17, 0, item->collation);
+        type = DataType(common::ColumnType::DATE, 17, 0, item->collation);
       else
         // type = DataType(common::CT::STRING, item->max_length, 0,
         // item->collation);
         type =
-            DataType(common::CT::STRING,
+            DataType(common::ColumnType::STRING,
                      (item->str_value.length() == 0) ? item->max_length
                                                      : (item->str_value.length() * item->collation.collation->mbmaxlen),
                      0, item->collation);
@@ -521,7 +521,8 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemDecimal2ValueOrNull(Item *item
   return val;
 }
 
-std::shared_ptr<ValueOrNull> MysqlExpression::ItemString2ValueOrNull(Item *item, int maxstrlen, common::CT a_type) {
+std::shared_ptr<ValueOrNull> MysqlExpression::ItemString2ValueOrNull(Item *item, int maxstrlen,
+                                                                     common::ColumnType a_type) {
   auto val = std::make_shared<ValueOrNull>();
   String string_result;
   String *ret = item->val_str(&string_result);

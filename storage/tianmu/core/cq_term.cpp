@@ -26,9 +26,9 @@
 
 namespace Tianmu {
 namespace core {
-CQTerm::CQTerm() : type(common::CT::UNK), vc(nullptr), vc_id(common::NULL_VALUE_32), is_vc_owner(false) {}
+CQTerm::CQTerm() : type(common::ColumnType::UNK), vc(nullptr), vc_id(common::NULL_VALUE_32), is_vc_owner(false) {}
 
-CQTerm::CQTerm(int v) : type(common::CT::UNK), vc(nullptr), vc_id(v), is_vc_owner(false) {}
+CQTerm::CQTerm(int v) : type(common::ColumnType::UNK), vc(nullptr), vc_id(v), is_vc_owner(false) {}
 
 CQTerm::CQTerm(const CQTerm &t) {
   type = t.type;

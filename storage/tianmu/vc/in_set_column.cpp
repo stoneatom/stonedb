@@ -113,7 +113,7 @@ void InSetColumn::EvaluatePackImpl([[maybe_unused]] core::MIUpdatingIterator &mi
   DEBUG_ASSERT(0);  // comparison of a const with a const should be simplified earlier
 }
 
-bool InSetColumn::IsSetEncoded(common::CT at, int scale) {
+bool InSetColumn::IsSetEncoded(common::ColumnType at, int scale) {
   return (cache_.EasyMode() && scale == ct.GetScale() &&
           (at == expected_type_.GetTypeName() ||
            (core::ATI::IsFixedNumericType(at) && core::ATI::IsFixedNumericType(expected_type_.GetTypeName()))));

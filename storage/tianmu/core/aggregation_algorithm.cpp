@@ -334,7 +334,7 @@ void AggregationAlgorithm::MultiDimensionalGroupByScan(GroupByWrapper &gbw, int6
         MIDummyIterator m(1);
         for (uint i = 0; i < t->NumOfAttrs(); i++) {
           if (t->GetAttrP(i)->mode == common::ColOperation::GROUP_CONCAT) {
-            t->GetAttrP(i)->SetTypeName(common::CT::VARCHAR);
+            t->GetAttrP(i)->SetTypeName(common::ColumnType::VARCHAR);
             t->GetAttrP(i)->OverrideStringSize(tianmu_group_concat_max_len);
           }
           t->GetAttrP(i)->CreateBuffer(upper_groups);  // note: may be more than needed
@@ -668,15 +668,15 @@ void AggregationAlgorithm::AggregateFillOutput(GroupByWrapper &gbw, int64_t gt_p
       continue;
     vcolumn::VirtualColumn *vc = a->term.vc;
     switch (a->TypeName()) {
-      case common::CT::STRING:
-      case common::CT::VARCHAR:
+      case common::ColumnType::STRING:
+      case common::ColumnType::VARCHAR:
         vc->GetValueString(vals, it);
         a->SetValueString(cur_output_tuple, vals);
         break;
-      case common::CT::BIN:
-      case common::CT::BYTE:
-      case common::CT::VARBYTE:
-      case common::CT::LONGTEXT:
+      case common::ColumnType::BIN:
+      case common::ColumnType::BYTE:
+      case common::ColumnType::VARBYTE:
+      case common::ColumnType::LONGTEXT:
         if (!vc->IsNull(it))
           vc->GetNotNullValueString(vals, it);
         else

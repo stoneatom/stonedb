@@ -256,12 +256,12 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
         for (auto &attr : attrs) {
           if (attr->alias != nullptr) {
             switch (attr->TypeName()) {
-              case common::CT::STRING:
-              case common::CT::VARCHAR:
-              case common::CT::BIN:
-              case common::CT::BYTE:
-              case common::CT::VARBYTE:
-              case common::CT::LONGTEXT:
+              case common::ColumnType::STRING:
+              case common::ColumnType::VARCHAR:
+              case common::ColumnType::BIN:
+              case common::ColumnType::BYTE:
+              case common::ColumnType::VARBYTE:
+              case common::ColumnType::LONGTEXT:
                 val_s = sorted_table.GetValueT(col);
                 attr->SetValueString(local_row, val_s);
                 break;
@@ -462,11 +462,11 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
     std::vector<std::unique_ptr<types::TianmuDataType>> record;
     for (uint att = 0; att < NumOfDisplaybleAttrs(); ++att) {
       Attr *col = GetDisplayableAttrP(att);
-      common::CT ct = col->TypeName();
+      common::ColumnType ct = col->TypeName();
 
       auto vc = col->term.vc;
-      if (ct == common::CT::INT || ct == common::CT::MEDIUMINT || ct == common::CT::SMALLINT ||
-          ct == common::CT::BYTEINT || ct == common::CT::NUM || ct == common::CT::BIGINT) {
+      if (ct == common::ColumnType::INT || ct == common::ColumnType::MEDIUMINT || ct == common::ColumnType::SMALLINT ||
+          ct == common::ColumnType::BYTEINT || ct == common::ColumnType::NUM || ct == common::ColumnType::BIGINT) {
         auto data_ptr = new types::TianmuNum();
         if (vc->IsNull(it))
           data_ptr->SetToNull();

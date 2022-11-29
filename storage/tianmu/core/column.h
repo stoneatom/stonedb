@@ -39,8 +39,8 @@ class Column {
   }
   constexpr Column &operator=(const Column &) = default;
   inline const ColumnType &Type() const { return ct; }
-  inline common::CT TypeName() const { return ct.GetTypeName(); }
-  inline void SetTypeName(common::CT type) { ct.SetTypeName(type); }
+  inline common::ColumnType TypeName() const { return ct.GetTypeName(); }
+  inline void SetTypeName(common::ColumnType type) { ct.SetTypeName(type); }
   void SetCollation(DTCollation collation) { ct.SetCollation(collation); }
   DTCollation GetCollation() { return ct.GetCollation(); }
 
