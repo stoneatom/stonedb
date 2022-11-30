@@ -51,7 +51,7 @@ logger::LogCtl_Level LogCtl::GetGlobalLevel() {
 bool LogCtl::LogEnabled(logger::LogCtl_Level level) {
   // there is issue with TLS in thread pool so we disable session log level until
   // a fix is available.
-  return tianmu_sysvar_global_debug_level >= static_cast<int>(level);
+  return tianmu_sysvar_global_debug_level >= static_cast<unsigned int>(level);
 }
 
 void LogCtl::LogMsg(logger::LogCtl_Level level, const char *file, int line, const char *format, ...) {
