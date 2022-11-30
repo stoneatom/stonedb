@@ -3,7 +3,7 @@ include/master-slave.inc
 #
 # Test the master-slave function of innodb
 # 
-# connection master
+[on master]
 use test;
 create table ttt(id int primary key,name varchar(5))engine=innodb;
 insert into ttt values(1,'AAA');
@@ -12,15 +12,15 @@ insert into ttt values(1,'aaa');
 select * from ttt;
 id	name
 1	aaa
-# connection slave
+[on slave]
 include/sync_slave_sql_with_master.inc
 select * from ttt;
 id	name
 1	aaa
-# connection master
+[on master]
 drop table ttt;
 include/sync_slave_sql_with_master.inc
-# connection master
+[on master]
 CREATE TABLE t1 (a int not null,b int not null)engine=innodb;
 CREATE TABLE t2 (a int not null, b int not null, primary key (a,b))engine=innodb;
 CREATE TABLE t3 (a int not null, b int not null, primary key (a,b))engine=innodb;
@@ -38,7 +38,7 @@ a	b
 3	3
 select * from t3;
 a	b
-# connection slave
+[on slave]
 include/sync_slave_sql_with_master.inc
 select * from t1;
 a	b
@@ -50,19 +50,19 @@ a	b
 3	3
 select * from t3;
 a	b
-# connection master
+[on master]
 drop table t1,t2,t3;
 include/sync_slave_sql_with_master.inc
-# connection master
+[on master]
 CREATE TABLE t1
 (
-place_id int (10) unsigned NOT NULL,
-shows int(10) unsigned DEFAULT '0' NOT NULL,
-ishows int(10) unsigned DEFAULT '0' NOT NULL,
-ushows int(10) unsigned DEFAULT '0' NOT NULL,
-clicks int(10) unsigned DEFAULT '0' NOT NULL,
-iclicks int(10) unsigned DEFAULT '0' NOT NULL,
-uclicks int(10) unsigned DEFAULT '0' NOT NULL,
+place_id int (10),
+shows int(10),
+ishows int(10),
+ushows int(10),
+clicks int(10),
+iclicks int(10),
+uclicks int(10),
 ts timestamp,
 PRIMARY KEY (place_id,ts)
 )engine=innodb;
@@ -72,18 +72,18 @@ UPDATE t1 SET shows=shows+1,ishows=ishows+1,ushows=ushows+1,clicks=clicks+1,icli
 select place_id,shows from t1;
 place_id	shows
 1	1
-# connection slave
+[on slave]
 include/sync_slave_sql_with_master.inc
 select place_id,shows from t1;
 place_id	shows
 1	1
-# connection master
+[on master]
 drop table t1;
 include/sync_slave_sql_with_master.inc
 #
 # Test the master-slave function of tianmu
 # 
-# connection master
+[on master]
 use test;
 create table ttt(id int primary key,name varchar(5))engine=tianmu;
 insert into ttt values(1,'AAA');
@@ -91,15 +91,15 @@ update ttt set name='hhhh' where id=1;
 select * from ttt;
 id	name
 1	hhhh
-# connection slave
+[on slave]
 include/sync_slave_sql_with_master.inc
 select * from ttt;
 id	name
 1	hhhh
-# connection master
+[on master]
 drop table ttt;
 include/sync_slave_sql_with_master.inc
-# connection master
+[on master]
 create table t1(id int primary key,name varchar(5))engine=tianmu;
 insert into t1 values(1,'AAA');
 delete from t1 where id=1;
@@ -107,12 +107,12 @@ insert into t1 values(1,'aaa');
 select * from t1;
 id	name
 1	aaa
-# connection slave
+[on slave]
 include/sync_slave_sql_with_master.inc
 select * from t1;
 id	name
 1	aaa
-# connection master
+[on master]
 drop table t1;
 CREATE TABLE t1 (a int not null,b int not null)engine=tianmu;
 CREATE TABLE t2 (a int not null, b int not null, primary key (a,b))engine=tianmu;
@@ -131,7 +131,7 @@ a	b
 3	3
 select * from t3;
 a	b
-# connection slave
+[on slave]
 include/sync_slave_sql_with_master.inc
 select * from t1;
 a	b
@@ -143,10 +143,10 @@ a	b
 3	3
 select * from t3;
 a	b
-# connection master
+[on master]
 drop table t1,t2,t3;
 include/sync_slave_sql_with_master.inc
-# connection master
+[on master]
 CREATE TABLE t1
 (
 place_id int (10),
@@ -165,12 +165,12 @@ UPDATE t1 SET shows=shows+1,ishows=ishows+1,ushows=ushows+1,clicks=clicks+1,icli
 select place_id,shows from t1;
 place_id	shows
 1	1
-# connection slave
+[on slave]
 include/sync_slave_sql_with_master.inc
 select place_id,shows from t1;
 place_id	shows
 1	1
-# connection master
+[on master]
 drop table t1;
 create table t1 (s1 int);
 create table t2 (s2 int);
@@ -187,7 +187,7 @@ s1	s2
 2	2
 1	3
 2	3
-# connection slave
+[on slave]
 include/sync_slave_sql_with_master.inc
 select * from v1;
 s1	s2
@@ -199,7 +199,7 @@ s1	s2
 2	2
 1	3
 2	3
-# connection master
+[on master]
 drop view v1;
 drop tables t1, t2;
 create table t1 (col1 int);
@@ -209,12 +209,12 @@ insert into t1 values (null);
 select * from v1;
 count(*)
 2
-# connection slave
+[on slave]
 include/sync_slave_sql_with_master.inc
 select * from v1;
 count(*)
 2
-# connection master
+[on master]
 drop view v1;
 drop table t1;
 create table t1 (a int);
@@ -224,12 +224,12 @@ create view v2 as select a from t2 where a in (select a from v1);
 show create view v2;
 View	Create View	character_set_client	collation_connection
 v2	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v2` AS select `t2`.`a` AS `a` from `t2` where `t2`.`a` in (select `v1`.`a` from `v1`)	latin1	latin1_swedish_ci
-# connection slave
+[on slave]
 include/sync_slave_sql_with_master.inc
 show create view v2;
 View	Create View	character_set_client	collation_connection
 v2	CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v2` AS select `t2`.`a` AS `a` from `t2` where `t2`.`a` in (select `v1`.`a` from `v1`)	latin1	latin1_swedish_ci
-# connection master
+[on master]
 drop view v2, v1;
 drop table t1, t2;
 include/sync_slave_sql_with_master.inc
