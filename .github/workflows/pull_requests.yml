@@ -85,7 +85,7 @@ jobs:
         run: |
           # cp -rf include/boost_1_77_0/patches/boost/* /usr/local/stonedb-boost/include/boost/
           mkdir build && cd build
-          git config --global --add safe.directory /__w/GGDB/GGDB
+          git config --global --add safe.directory /__w/stonedb/stonedb
           cmake ../ \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/stonedb80/install \
