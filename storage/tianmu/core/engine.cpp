@@ -1577,8 +1577,8 @@ bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects
 
   if (!table_list)
     return false;
-  if (with_insert)
-    table_list = table_list->next_global;  // we skip one
+  if (with_insert )
+    table_list = table_list->next_global ? table_list->next_global : *(table_list->prev_global);  // we skip one
 
   if (!table_list)
     return false;
