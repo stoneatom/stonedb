@@ -22,6 +22,7 @@
 #include <set>
 #include <tuple>
 
+#include "common/common_definitions.h"
 #include "common/data_format.h"
 #include "common/exception.h"
 #include "common/mysql_gate.h"
@@ -749,7 +750,8 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
       }
       [[fallthrough]];
     default:
-      throw common::UnsupportedDataTypeException("Unsupported data type.");
+      throw common::UnsupportedDataTypeException(
+              std::string("Unsupported data type[") + common::get_enum_field_types_name(field.type()) + std::string("]"));
   }
   throw;
 }
