@@ -91,6 +91,7 @@ jobs:
               ;;
             centos7_1.0.3)
               yum install curl lcov.noarch bc.x86_64 -y
+              rm -rf /usr/bin/gcc && ln -s /opt/rh/devtoolset-9/root/bin/gcc /usr/bin/gcc
             ;;
           esac
 
