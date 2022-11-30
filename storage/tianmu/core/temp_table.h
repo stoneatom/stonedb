@@ -572,7 +572,7 @@ class TempTableForSubquery : public TempTable {
   void CreateTemplateIfNotExists();
   void Materialize(bool in_subq = false, ResultSender *sender = nullptr, bool lazy = false) override;
   void RoughMaterialize(bool in_subq = false, ResultSender *sender = nullptr, bool lazy = false) override;
-  void ResetToTemplate(bool rough);
+  void ResetToTemplate(bool rough, bool use_filter_shallow = false);
   void SetAttrsForRough();
   void SetAttrsForExact();
 

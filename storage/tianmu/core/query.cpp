@@ -448,9 +448,16 @@ void Query::ExtractOperatorType(Item *&conds, common::Operator &op, bool &negati
       conds = cond_func->arguments()[0];
       break;
     }
-    case Item_func::UNKNOWN_FUNC:
+    case Item_func::UNKNOWN_FUNC: {
       op = common::Operator::O_UNKNOWN_FUNC;
+      if (cond_func->arg_count == 2) {
+        auto subselect_item = dynamic_cast<Item_in_subselect *>(cond_func->arguments()[1]);
+        if (subselect_item != nullptr && subselect_item->value_transform == Item::BOOL_IS_FALSE) {
+          negative = true;
+        }
+      }
       break;
+    }
     default:
       op = common::Operator::O_ERROR;  // unknown function type
       break;
@@ -1643,15 +1650,17 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
                                          Item *left_expr_for_subselect) {
   cond_to_reinsert = nullptr;
   list_to_reinsert = nullptr;
-  Item *cond_removed;
-  if (having &&
-      (having->type() == Item::COND_ITEM ||
-       (having->type() == Item::FUNC_ITEM && ((Item_func *)having)->functype() != Item_func::ISNOTNULLTEST_FUNC &&
-        (((Item_func *)having)->functype() != Item_func::TRIG_COND_FUNC ||
-         ((Item_func *)having)->arguments()[0]->type() != Item::FUNC_ITEM ||
-         ((Item_func *)((Item_func *)having)->arguments()[0])->functype() != Item_func::ISNOTNULLTEST_FUNC)))) {
+  Item *cond_removed = nullptr;
+  Item *left_ref = nullptr;
+  if (having && (having->type() == Item::COND_ITEM ||
+                 (having->type() == Item::FUNC_ITEM &&
+                  down_cast<Item_func *>(having)->functype() != Item_func::ISNOTNULLTEST_FUNC &&
+                  (down_cast<Item_func *>(having)->functype() != Item_func::TRIG_COND_FUNC ||
+                   down_cast<Item_func *>(having)->arguments()[0]->type() != Item::FUNC_ITEM ||
+                   down_cast<Item_func *>(down_cast<Item_func *>(having)->arguments()[0])->functype() !=
+                       Item_func::ISNOTNULLTEST_FUNC)))) {
     if (having->type() == Item::COND_ITEM) {
-      Item_cond *having_cond = (Item_cond *)having;
+      Item_cond *having_cond = down_cast<Item_cond *>(having);
       // if the condition is a complex formula it must be AND
       if (having_cond->functype() != Item_func::COND_AND_FUNC)
         return false;
@@ -1673,33 +1682,37 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
     cond_removed = UnRef(cond_removed);
     // check if the extra condition was wrapped into trigger
     if (cond_removed->type() == Item::FUNC_ITEM &&
-        ((Item_func *)cond_removed)->functype() == Item_func::TRIG_COND_FUNC) {
-      cond_removed = ((Item_func *)cond_removed)->arguments()[0];
+        down_cast<Item_func *>(cond_removed)->functype() == Item_func::TRIG_COND_FUNC) {
+      cond_removed = down_cast<Item_func *>(cond_removed)->arguments()[0];
       cond_removed = UnRef(cond_removed);
     }
     // check if the extra condition is a comparison
-    if (cond_removed->type() != Item::FUNC_ITEM || ((Item_func *)cond_removed)->arg_count != 2)
+    if (cond_removed->type() != Item::FUNC_ITEM || down_cast<Item_func *>(cond_removed)->arg_count != 2)
       return false;
     // the right side of equality is the field of the original subselect
-    if (dynamic_cast<Item_ref_null_helper *>(((Item_func *)cond_removed)->arguments()[1]) == nullptr)
+    if (dynamic_cast<Item_ref_null_helper *>(down_cast<Item_func *>(cond_removed)->arguments()[1]) == nullptr)
       return false;
     field_for_subselect = nullptr;
+    // the left side of equality should be the left side of the original
+    // expression with subselect
+    left_ref = down_cast<Item_func *>(cond_removed)->arguments()[0];
   } else if (!having || (having->type() == Item::FUNC_ITEM &&
-                         (((Item_func *)having)->functype() == Item_func::ISNOTNULLTEST_FUNC ||
-                          ((Item_func *)having)->functype() == Item_func::TRIG_COND_FUNC))) {
+                         (down_cast<Item_func *>(having)->functype() == Item_func::ISNOTNULLTEST_FUNC ||
+                          down_cast<Item_func *>(having)->functype() == Item_func::TRIG_COND_FUNC))) {
     if (!conds)
       return false;
-    if (conds->type() == Item::COND_ITEM && ((Item_cond *)conds)->functype() == Item_func::COND_AND_FUNC) {
+    if (conds->type() == Item::COND_ITEM && down_cast<Item_cond *>(conds)->functype() == Item_func::COND_AND_FUNC) {
       // if the condition is a conjunctive formula
       // the extra condition should be in the last argument
-      if (((Item_cond *)conds)->argument_list()->elements < 2)
+      if (down_cast<Item_cond *>(conds)->argument_list()->elements < 2)
         return false;
-      List_iterator<Item> li(*(((Item_cond *)conds)->argument_list()));
+
+      List_iterator<Item> li(*(down_cast<Item_cond *>(conds)->argument_list()));
       while (li++ != nullptr) cond_to_reinsert = *li.ref();
       li.rewind();
       while (*li.ref() != cond_to_reinsert) li++;
       li.remove();
-      list_to_reinsert = ((Item_cond *)conds)->argument_list();
+      list_to_reinsert = down_cast<Item_cond *>(conds)->argument_list();
       cond_removed = cond_to_reinsert;
     } else {
       // if no conjunctive formula the original condition was empty
@@ -1707,14 +1720,15 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
       conds = nullptr;
     }
     if (cond_removed->type() == Item::FUNC_ITEM &&
-        ((Item_func *)cond_removed)->functype() == Item_func::TRIG_COND_FUNC) {
+        down_cast<Item_func *>(cond_removed)->functype() == Item_func::TRIG_COND_FUNC) {
       // Condition was wrapped into trigger
-      cond_removed = (Item_cond *)((Item_func *)cond_removed)->arguments()[0];
+      cond_removed = down_cast<Item_cond *>(down_cast<Item_func *>(cond_removed)->arguments()[0]);
     }
-    if (cond_removed->type() == Item::COND_ITEM && ((Item_func *)cond_removed)->functype() == Item_func::COND_OR_FUNC) {
+    if (cond_removed->type() == Item::COND_ITEM &&
+        down_cast<Item_func *>(cond_removed)->functype() == Item_func::COND_OR_FUNC) {
       // if the subselect field could have null values
       // equality condition was OR-ed with IS nullptr condition
-      Item_cond *cond_cond = (Item_cond *)cond_removed;
+      Item_cond *cond_cond = down_cast<Item_cond *>(cond_removed);
       List_iterator_fast<Item> li(*(cond_cond->argument_list()));
       cond_removed = li++;
       if (cond_removed == nullptr)
@@ -1727,25 +1741,37 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
       having = nullptr;
     }
     // check if the extra condition is a comparison
-    if (cond_removed->type() != Item::FUNC_ITEM || ((Item_func *)cond_removed)->arg_count != 2)
+    if (cond_removed->type() != Item::FUNC_ITEM || down_cast<Item_func *>(cond_removed)->arg_count != 2)
       return false;
-    // the right side of equality is the field of the original subselect
-    field_for_subselect = ((Item_func *)cond_removed)->arguments()[1];
+
+    auto item_func = down_cast<Item_func *>(cond_removed);
+    if (item_func->arguments()[0]->type() == Item::REF_ITEM) {
+      // the right side of equality is the field of the original subselect
+      field_for_subselect = item_func->arguments()[1];
+      // the left side of equality should be the left side of the original
+      // expression with subselect
+      left_ref = item_func->arguments()[0];
+    } else if (item_func->arguments()[1]->type() == Item::REF_ITEM) {
+      // ref #767
+      // the left side of equality is the field of the original subselect
+      field_for_subselect = item_func->arguments()[0];
+      // the right side of equality should be the left side of the original
+      // expression with subselect
+      left_ref = item_func->arguments()[1];
+    } else {
+      return false;
+    }
   } else
     return false;
-  // the left side of equality should be the left side of the original
-  // expression with subselect
-  Item *left_ref = ((Item_func *)cond_removed)->arguments()[0];
+
   if (dynamic_cast<Item_int_with_ref *>(left_ref) != nullptr)
-    left_ref = ((Item_int_with_ref *)left_ref)->real_item();
-  if (left_ref->type() != Item::REF_ITEM ||
-      /*((Item_ref *)left_ref)->ref_type() != Item_ref::DIRECT_REF ||*/  // stonedb8 DIRECT_REF is deleted
-          ((Item_ref *)left_ref)->real_item() != left_expr_for_subselect)
+    left_ref = down_cast<Item_int_with_ref *>(left_ref)->real_item();
+  if (left_ref->type() != Item::REF_ITEM || down_cast<Item_ref *>(left_ref)->real_item() != left_expr_for_subselect)
     return false;
   // set the operation type
-  switch (((Item_func *)cond_removed)->functype()) {
+  switch (down_cast<Item_func *>(cond_removed)->functype()) {
     case Item_func::EQ_FUNC:
-      oper_for_subselect = common::Operator::O_IN; /*common::Operator::common::Operator::O_IN;*/
+      oper_for_subselect = common::Operator::O_IN;
       break;
     case Item_func::NE_FUNC:
       oper_for_subselect = common::Operator::O_NOT_EQ;
