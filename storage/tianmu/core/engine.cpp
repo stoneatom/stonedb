@@ -1226,8 +1226,8 @@ void Engine::ProcessDelayedInsert() {
   mysql_mutex_unlock(&LOCK_server_started);
 
   std::unordered_map<int, std::vector<std::unique_ptr<char[]>>> tm;
-  int buffer_recordnum = 0;
-  int sleep_cnt = 0;
+  unsigned int buffer_recordnum = 0;
+  unsigned int sleep_cnt = 0;
   while (!exiting) {
     if (tianmu_sysvar_enable_rowstore) {
       std::unique_lock<std::mutex> lk(cv_mtx);
@@ -1295,7 +1295,7 @@ void Engine::ProcessDelayedMerge() {
         for (auto &[name, mem_table] : mem_table_map) {
           int64_t record_count = mem_table->CountRecords();
           if (record_count >= tianmu_sysvar_insert_numthreshold ||
-              (sleep_cnts.count(name) && sleep_cnts[name] > tianmu_sysvar_insert_cntthreshold)) {
+              (sleep_cnts.count(name) && sleep_cnts[name] > static_cast<int>(tianmu_sysvar_insert_cntthreshold))) {
             auto share = ha_tianmu_engine_->getTableShare(name);
             auto table_id = share->TabID();
             utils::BitSet null_mask(share->NumOfCols());
@@ -1436,7 +1436,7 @@ void Engine::InsertDelayed(const std::string &table_path, int table_id, TABLE *t
   std::unique_ptr<char[]> buf;
   EncodeRecord(table_path, table_id, table->field, table->s->fields, table->s->blob_fields, buf, buf_sz);
 
-  int failed = 0;
+  unsigned int failed = 0;
   while (true) {
     try {
       insert_buffer.Write(utils::MappedCircularBuffer::TAG::INSERT_RECORD, buf.get(), buf_sz);
@@ -1577,7 +1577,7 @@ bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects
 
   if (!table_list)
     return false;
-  if (with_insert )
+  if (with_insert)
     table_list = table_list->next_global ? table_list->next_global : *(table_list->prev_global);  // we skip one
 
   if (!table_list)
