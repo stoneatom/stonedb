@@ -2426,7 +2426,7 @@ TempTableForSubquery::~TempTableForSubquery() {
   for (auto it : template_attrs_) delete it;
 }
 
-void TempTableForSubquery::ResetToTemplate(bool rough) {
+void TempTableForSubquery::ResetToTemplate(bool rough, bool use_filter_shallow) {
   if (!template_filter_)
     return;
 
@@ -2442,8 +2442,13 @@ void TempTableForSubquery::ResetToTemplate(bool rough) {
     (*attrs_[i]).buffer_ = orig_buf;
   }
 
-  filter_ = std::move(*template_filter_);  // shallow
-  filter_shallow_memory_ = true;
+  if (use_filter_shallow) {
+    filter_ = std::move(*template_filter_);  // shallow
+    filter_shallow_memory_ = true;
+  } else {
+    filter_ = *template_filter_;
+    filter_shallow_memory_ = false;
+  }
 
   for (int i = 0; i < num_of_global_virtual_columns_; i++)
     if (!virtual_columns_for_having_[i])

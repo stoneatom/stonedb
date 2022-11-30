@@ -328,6 +328,7 @@ void CompiledQuery::CQStep::Print(Query *query) {
     case StepType::TMP_TABLE: {
       std::sprintf(buf, "T:%d = TMP_TABLE(", N(t1.n));
       for (auto ele : tables1) std::sprintf(buf + std::strlen(buf), "T:%d,", N(ele.n));
+      std::sprintf(buf + std::strlen(buf), ")");
     } break;
     case StepType::CREATE_VC:
       if (mysql_expr.size() == 1) {

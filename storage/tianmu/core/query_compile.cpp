@@ -973,7 +973,12 @@ QueryRouteTo Query::Compile(CompiledQuery *compiled_query, Query_block *selects_
 
     // according the meaning of `part`, which describs in JOIN::optimize
     if (!sl->join) {
-      TIANMU_LOG(LogCtl_Level::ERROR, "sl->join is nil!!!!");
+      auto thd = current_txn_->Thd();
+      DEBUG_ASSERT(thd != nullptr);
+      JOIN *join = new (thd->mem_root) JOIN(thd, sl);
+
+      sl->set_join(thd, join);
+      TIANMU_LOG(LogCtl_Level::INFO, "sl->join is nullptr!");
     }
 
     if (JudgeErrors(sl) == QueryRouteTo::TO_MYSQL)
