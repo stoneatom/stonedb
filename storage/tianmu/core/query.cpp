@@ -977,7 +977,7 @@ QueryRouteTo Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_tab
             UnmarkAllAny(*oper_for_subselect);
         }
       }
-      term = CQTerm(vc.n);
+      term = CQTerm(vc.n, an_arg);
     }
     return res;
   }
@@ -1071,7 +1071,7 @@ QueryRouteTo Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_tab
         }
       }
     }
-    term = CQTerm(vc.n);
+    term = CQTerm(vc.n, an_arg);
     return QueryRouteTo::kToTianmu;
   } else {
     // WHERE FILTER
@@ -1120,7 +1120,7 @@ QueryRouteTo Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_tab
         tab_id2expression.insert(std::make_pair(tmp_table, std::make_pair(vc.n, expr)));
       }
     }
-    term = CQTerm(vc.n);
+    term = CQTerm(vc.n, an_arg);
     return QueryRouteTo::kToTianmu;
   }
   return QueryRouteTo::kToMySQL;
