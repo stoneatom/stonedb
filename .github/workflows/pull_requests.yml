@@ -85,6 +85,15 @@ jobs:
       - name: compile stonedb
         id: compile
         run: |
+          case ${{ matrix.os }} in
+            debian10_1.0.3)
+              apt-get install curl lcov bc -y
+              ;;
+            centos7_1.0.3)
+              yum install curl lcov.noarch bc.x86_64 -y
+            ;;
+          esac
+
           mkdir build && cd build
           git config --global --add safe.directory /__w/stonedb/stonedb
           cmake ../ \
@@ -109,12 +118,20 @@ jobs:
           -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb/ \
           -DWITH_MARISA=/usr/local/stonedb-marisa/ \
           -DDOWNLOAD_ROCKSDB=0 \
-          -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb && make -j`nproc` && make -j`nproc` install
+          -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb -DENABLE_GCOV=1 && make -j`nproc` && make -j`nproc` install
 
       - name: mtr test
         run: |
           mkdir -p /stonedb57/install/log
           groupadd mysql && useradd -g mysql mysql
-          chown -R mysql:mysql /stonedb57
+          chown -R mysql:mysql /stonedb57 && chown -R mysql:mysql ./build
           cd /stonedb57/install/mysql-test
           ./mysql-test-run.pl --suite=tianmu --nowarnings --force --nocheck-testcases --retry=0
+
+      - name: create coverage.info
+        run: |
+          cd build
+          lcov --capture --directory . --output-file  coverage.info --test-name coverage
+
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.1
