@@ -178,7 +178,7 @@ The [GitHub Discussions](https://github.com/stoneatom/stonedb/discussions) is th
 # Join StoneDB Wechat Group
 You can add our little assistant's WeChat and join StoneDB's user group:
 
-![logo](Docs/stonedb_wecaht_group.jpg)
+![logo](Docs/stonedb_wecaht_group.png)
 
 # Code of Conduct
 When participating in the StoneDB project, please ensure all your behavior complies with the [Code of Conduct](https://stonedb.io/community/main).

@@ -42,7 +42,7 @@ extern void PushWarning(THD *thd, Sql_condition::enum_severity_level level, uint
 // Column Type
 // NOTE: do not change the order of implemented data types! Stored as int(...)
 // on disk.
-enum class CT : unsigned char {
+enum class ColumnType : unsigned char {
   STRING,   // string treated either as dictionary value or "free" text
   VARCHAR,  // as above (discerned for compatibility with SQL)
   INT,      // integer 32-bit

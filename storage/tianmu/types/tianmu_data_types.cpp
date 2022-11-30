@@ -30,8 +30,8 @@ bool TianmuDataType::AreComperable(const TianmuDataType &tianmu_dt) const {
 }
 
 bool TianmuDataType::AreComperable(const TianmuDataType &tianmu_dt1, const TianmuDataType &tianmu_dt2) {
-  common::CT att1 = tianmu_dt1.Type();
-  common::CT att2 = tianmu_dt2.Type();
+  common::ColumnType att1 = tianmu_dt1.Type();
+  common::ColumnType att2 = tianmu_dt2.Type();
   return AreComparable(att1, att2);
 }
 
@@ -72,16 +72,18 @@ bool TianmuDataType::compare(const TianmuDataType &tianmu_dt, common::Operator o
   return TianmuDataType::compare(*this, tianmu_dt, op, like_esc);
 }
 
-bool AreComparable(common::CT attr1_t, common::CT attr2_t) {
+bool AreComparable(common::ColumnType attr1_t, common::ColumnType attr2_t) {
   if (attr1_t == attr2_t)
     return true;
   if ((core::ATI::IsDateTimeType(attr1_t)) && (core::ATI::IsDateTimeType(attr2_t)))
     return true;
-  if ((core::ATI::IsTxtType(attr2_t) && attr1_t == common::CT::VARBYTE) ||
-      (core::ATI::IsTxtType(attr1_t) && attr2_t == common::CT::VARBYTE))
+  if ((core::ATI::IsTxtType(attr2_t) && attr1_t == common::ColumnType::VARBYTE) ||
+      (core::ATI::IsTxtType(attr1_t) && attr2_t == common::ColumnType::VARBYTE))
     return true;
-  if ((((attr1_t == common::CT::TIME) || (attr1_t == common::CT::DATE)) && attr2_t != common::CT::DATETIME) ||
-      (((attr2_t == common::CT::TIME) || (attr2_t == common::CT::DATE)) && attr1_t != common::CT::DATETIME) ||
+  if ((((attr1_t == common::ColumnType::TIME) || (attr1_t == common::ColumnType::DATE)) &&
+       attr2_t != common::ColumnType::DATETIME) ||
+      (((attr2_t == common::ColumnType::TIME) || (attr2_t == common::ColumnType::DATE)) &&
+       attr1_t != common::ColumnType::DATETIME) ||
       (core::ATI::IsBinType(attr1_t) && !core::ATI::IsBinType(attr2_t)) ||
       (core::ATI::IsBinType(attr2_t) && !core::ATI::IsBinType(attr1_t)) ||
       (core::ATI::IsTxtType(attr1_t) && !core::ATI::IsTxtType(attr2_t)) ||
@@ -123,13 +125,13 @@ bool TianmuDataType::ToReal(const TianmuDataType &in, TianmuNum &out) {
       return true;
     }
   } else if (BString *tianmu_s = dynamic_cast<BString *>(const_cast<TianmuDataType *>(&in))) {
-    if (TianmuNum::ParseReal(*tianmu_s, out, common::CT::UNK) == common::ErrorCode::SUCCESS)
+    if (TianmuNum::ParseReal(*tianmu_s, out, common::ColumnType::UNK) == common::ErrorCode::SUCCESS)
       return true;
   }
   return false;
 }
 
-ValueTypeEnum TianmuDataType::GetValueType(common::CT attr_type) {
+ValueTypeEnum TianmuDataType::GetValueType(common::ColumnType attr_type) {
   if (core::ATI::IsNumericType(attr_type))
     return ValueTypeEnum::NUMERIC_TYPE;
   else if (core::ATI::IsDateTimeType(attr_type))

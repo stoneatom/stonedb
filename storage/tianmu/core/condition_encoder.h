@@ -58,7 +58,7 @@ class ConditionEncoder {
   void TransformOtherThanINsOnNumerics();
   void LookupExpressionTransformation();
 
-  inline common::CT AttrTypeName() const { return attr->TypeName(); }
+  inline common::ColumnType AttrTypeName() const { return attr->TypeName(); }
 
  public:
   static void EncodeIfPossible(Descriptor &desc, bool for_rough_query, bool additional_nulls);

@@ -28,7 +28,7 @@ namespace core {
 ValueSet::ValueSet(uint32_t power) {
   prepared = false;
   contains_nulls = false;
-  prep_type = common::CT::UNK;
+  prep_type = common::ColumnType::UNK;
   prep_scale = 0;
   prep_collation = DTCollation();
   min = max = 0;
@@ -83,7 +83,7 @@ void ValueSet::Clear() {
   delete max;
   max = 0;
   prepared = false;
-  prep_type = common::CT::UNK;
+  prep_type = common::ColumnType::UNK;
   prep_scale = 0;
   prep_collation = DTCollation();
   easy_vals.reset();
@@ -99,7 +99,7 @@ void ValueSet::Add64(int64_t v)  // only for integers
     return;
   }
   types::TianmuDataType *rcv = new types::TianmuNum(v);
-  if (prep_type != common::CT::NUM || prep_scale != 0)
+  if (prep_type != common::ColumnType::NUM || prep_scale != 0)
     prepared = false;
 
   if (!values.insert(rcv).second)
@@ -128,7 +128,7 @@ void ValueSet::Add(std::unique_ptr<types::TianmuDataType> tianmu_dt) {
   }
   types::TianmuDataType *rcv = tianmu_dt.release();
   if (prep_type != rcv->Type() ||
-      (rcv->Type() == common::CT::NUM && static_cast<types::TianmuNum &>(*rcv).Scale() != prep_scale))
+      (rcv->Type() == common::ColumnType::NUM && static_cast<types::TianmuNum &>(*rcv).Scale() != prep_scale))
     prepared = false;
 
   if (!values.insert(rcv).second)
@@ -162,7 +162,7 @@ void ValueSet::Add(const types::TianmuValueObject &rcv) {
     }
     types::TianmuDataType *rcv = tianmu_dt.release();
     if (prep_type != rcv->Type() ||
-        (rcv->Type() == common::CT::NUM && static_cast<types::TianmuNum &>(*rcv).Scale() != prep_scale))
+        (rcv->Type() == common::ColumnType::NUM && static_cast<types::TianmuNum &>(*rcv).Scale() != prep_scale))
       prepared = false;
 
     if (!values.insert(rcv).second)
@@ -248,14 +248,14 @@ bool ValueSet::Contains(const types::TianmuValueObject &v, DTCollation coll) {
   return isContains(*v.Get(), coll);
 }
 
-inline bool ValueSet::IsPrepared(common::CT at, int scale, DTCollation coll) {
+inline bool ValueSet::IsPrepared(common::ColumnType at, int scale, DTCollation coll) {
   return (prepared && (prep_type == at || (ATI::IsStringType(prep_type) && ATI::IsStringType(at)))  // CHAR = VARCHAR
           && prep_scale == scale &&
           (!ATI::IsStringType(at) || prep_collation.collation == coll.collation ||
            (!types::RequiresUTFConversions(prep_collation) && !types::RequiresUTFConversions(coll))));
 }
 
-void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
+void ValueSet::Prepare(common::ColumnType at, int scale, DTCollation coll) {
   if (!IsPrepared(at, scale, coll)) {
     decltype(values) new_values;
     if (ATI::IsStringType(at)) {
@@ -314,7 +314,7 @@ void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
             if (!new_values.insert(rcn_new).second)
               delete rcn_new;
           }
-        } else if (it->Type() == common::CT::STRING) {
+        } else if (it->Type() == common::ColumnType::STRING) {
           types::TianmuNum *tianmu_n = new types::TianmuNum();
           if (types::TianmuNum::Parse(it->ToBString(), *tianmu_n, at) == common::ErrorCode::SUCCESS) {
             if (!(*tianmu_n > *min))
@@ -333,7 +333,7 @@ void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
       }
       std::swap(values, new_values);
       for (const auto &it : new_values) delete it;
-    } else if (at == common::CT::NUM) {
+    } else if (at == common::ColumnType::NUM) {
       delete min;
       min = new types::TianmuNum();
       delete max;
@@ -350,9 +350,10 @@ void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
             if (!new_values.insert(rcn_new).second)
               delete rcn_new;
           }
-        } else if (it->Type() == common::CT::STRING) {
+        } else if (it->Type() == common::ColumnType::STRING) {
           types::TianmuNum *tianmu_n = new types::TianmuNum();
-          if (types::TianmuNum::Parse(it->ToBString(), *tianmu_n, common::CT::NUM) == common::ErrorCode::SUCCESS &&
+          if (types::TianmuNum::Parse(it->ToBString(), *tianmu_n, common::ColumnType::NUM) ==
+                  common::ErrorCode::SUCCESS &&
               tianmu_n->IsDecimal(scale)) {
             if (!(*tianmu_n > *min))
               *min = *tianmu_n;
@@ -395,7 +396,7 @@ void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
               delete rcn_new;
             delete it;
           }
-        } else if (it->Type() == common::CT::STRING) {
+        } else if (it->Type() == common::ColumnType::STRING) {
           types::TianmuNum *tianmu_n = new types::TianmuNum();
           if (types::TianmuNum::ParseReal(*(types::BString *)it, *tianmu_n, at) == common::ErrorCode::SUCCESS) {
             if (!(*tianmu_n > *min))
@@ -430,7 +431,7 @@ void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
             *max = *tianmu_dt;
           if (!new_values.insert(it).second)
             delete it;
-        } else if (it->Type() == common::CT::STRING) {
+        } else if (it->Type() == common::ColumnType::STRING) {
           types::TianmuDateTime *tianmu_dt = new types::TianmuDateTime();
           if (!common::IsError(types::TianmuDateTime::Parse(it->ToBString(), *tianmu_dt, at))) {
             if (!(*tianmu_dt > *min))
@@ -546,7 +547,7 @@ bool ValueSet::CopyCondition(types::CondArray &condition, [[maybe_unused]] DTCol
   return ret;
 }
 
-bool ValueSet::CopyCondition([[maybe_unused]] common::CT at, std::shared_ptr<utils::Hash64> &condition,
+bool ValueSet::CopyCondition([[maybe_unused]] common::ColumnType at, std::shared_ptr<utils::Hash64> &condition,
                              [[maybe_unused]] DTCollation coll) {
   bool ret = false;
   if (no_obj > 0) {

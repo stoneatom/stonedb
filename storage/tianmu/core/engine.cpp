@@ -680,7 +680,7 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
       return AttributeTypeInfo(Engine::GetCorrespondingType(field), notnull, (ushort)field.field_length, 0, auto_inc,
                                DTCollation(), fmt, filter);
     case MYSQL_TYPE_TIME:
-      return AttributeTypeInfo(common::CT::TIME, notnull, 0, 0, false, DTCollation(), fmt, filter);
+      return AttributeTypeInfo(common::ColumnType::TIME, notnull, 0, 0, false, DTCollation(), fmt, filter);
     case MYSQL_TYPE_STRING:
     case MYSQL_TYPE_VARCHAR: {
       if (field.field_length > FIELD_MAXLENGTH)
@@ -697,15 +697,18 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
           throw common::UnsupportedDataTypeException();
         }
         if (fstr->charset() != &my_charset_bin)
-          return AttributeTypeInfo(common::CT::STRING, notnull, field.field_length, 0, auto_inc, coll, fmt, filter);
-        return AttributeTypeInfo(common::CT::BYTE, notnull, field.field_length, 0, auto_inc, coll, fmt, filter);
+          return AttributeTypeInfo(common::ColumnType::STRING, notnull, field.field_length, 0, auto_inc, coll, fmt,
+                                   filter);
+        return AttributeTypeInfo(common::ColumnType::BYTE, notnull, field.field_length, 0, auto_inc, coll, fmt, filter);
       } else if (const Field_str *fvstr = dynamic_cast<const Field_varstring *>(&field)) {
         DTCollation coll(fvstr->charset(), fvstr->derivation());
         if (fmt == common::PackFmt::TRIE && types::IsCaseInsensitive(coll))
           throw common::UnsupportedDataTypeException();
         if (fvstr->charset() != &my_charset_bin)
-          return AttributeTypeInfo(common::CT::VARCHAR, notnull, field.field_length, 0, auto_inc, coll, fmt, filter);
-        return AttributeTypeInfo(common::CT::VARBYTE, notnull, field.field_length, 0, auto_inc, coll, fmt, filter);
+          return AttributeTypeInfo(common::ColumnType::VARCHAR, notnull, field.field_length, 0, auto_inc, coll, fmt,
+                                   filter);
+        return AttributeTypeInfo(common::ColumnType::VARBYTE, notnull, field.field_length, 0, auto_inc, coll, fmt,
+                                 filter);
       }
       throw common::UnsupportedDataTypeException();
     }
@@ -715,16 +718,16 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
       const Field_new_decimal *fnd = ((const Field_new_decimal *)&field);
       if (/*fnd->precision > 0 && */ fnd->precision <= 18 /*&& fnd->dec >= 0*/
           && fnd->dec <= fnd->precision)
-        return AttributeTypeInfo(common::CT::NUM, notnull, fnd->precision, fnd->dec);
+        return AttributeTypeInfo(common::ColumnType::NUM, notnull, fnd->precision, fnd->dec);
       throw common::UnsupportedDataTypeException("Precision must be less than or equal to 18.");
     }
     case MYSQL_TYPE_BLOB:
       if (const Field_str *fstr = dynamic_cast<const Field_str *>(&field)) {
         if (const Field_blob *fblo = dynamic_cast<const Field_blob *>(fstr)) {
           if (fblo->charset() != &my_charset_bin) {  // TINYTEXT, MEDIUMTEXT, TEXT, LONGTEXT
-            common::CT t = common::CT::VARCHAR;
+            common::ColumnType t = common::ColumnType::VARCHAR;
             if (field.field_length > FIELD_MAXLENGTH) {
-              t = common::CT::LONGTEXT;
+              t = common::ColumnType::LONGTEXT;
             }
             return AttributeTypeInfo(t, notnull, field.field_length, 0, auto_inc, DTCollation(), fmt, filter);
           }
@@ -732,13 +735,13 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
             case 255:
             case FIELD_MAXLENGTH:
               // TINYBLOB, BLOB
-              return AttributeTypeInfo(common::CT::VARBYTE, notnull, field.field_length, 0, auto_inc, DTCollation(),
-                                       fmt, filter);
+              return AttributeTypeInfo(common::ColumnType::VARBYTE, notnull, field.field_length, 0, auto_inc,
+                                       DTCollation(), fmt, filter);
             case 16777215:
             case 4294967295:
               // MEDIUMBLOB, LONGBLOB
-              return AttributeTypeInfo(common::CT::BIN, notnull, field.field_length, 0, auto_inc, DTCollation(), fmt,
-                                       filter);
+              return AttributeTypeInfo(common::ColumnType::BIN, notnull, field.field_length, 0, auto_inc, DTCollation(),
+                                       fmt, filter);
             default:
               throw common::UnsupportedDataTypeException();
           }

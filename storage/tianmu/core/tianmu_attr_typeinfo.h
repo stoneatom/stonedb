@@ -29,50 +29,55 @@ class TianmuDataType;
 namespace core {
 class ATI {
  public:
-  static int TextSize(common::CT attrt, uint precision, int scale, DTCollation col = DTCollation());
+  static int TextSize(common::ColumnType attrt, uint precision, int scale, DTCollation col = DTCollation());
 
-  static bool IsInteger32Type(common::CT attr_type) {
-    return attr_type == common::CT::INT || attr_type == common::CT::BYTEINT || attr_type == common::CT::SMALLINT ||
-           attr_type == common::CT::MEDIUMINT;
-  }
-
-  static bool IsIntegerType(common::CT attr_type) {
-    return IsInteger32Type(attr_type) || attr_type == common::CT::BIGINT;
-  }
-  static bool IsFixedNumericType(common::CT attr_type) {
-    return IsInteger32Type(attr_type) || attr_type == common::CT::BIGINT || attr_type == common::CT::NUM;
+  static bool IsInteger32Type(common::ColumnType attr_type) {
+    return attr_type == common::ColumnType::INT || attr_type == common::ColumnType::BYTEINT ||
+           attr_type == common::ColumnType::SMALLINT || attr_type == common::ColumnType::MEDIUMINT;
   }
 
-  static bool IsRealType(common::CT attr_type) {
-    return attr_type == common::CT::FLOAT || attr_type == common::CT::REAL;
+  static bool IsIntegerType(common::ColumnType attr_type) {
+    return IsInteger32Type(attr_type) || attr_type == common::ColumnType::BIGINT;
   }
-  static bool IsNumericType(common::CT attr_type) {
-    return IsInteger32Type(attr_type) || attr_type == common::CT::BIGINT || attr_type == common::CT::NUM ||
-           attr_type == common::CT::FLOAT || attr_type == common::CT::REAL;
-  }
-
-  static bool IsBinType(common::CT attr_type) {
-    return attr_type == common::CT::BYTE || attr_type == common::CT::VARBYTE || attr_type == common::CT::BIN;
+  static bool IsFixedNumericType(common::ColumnType attr_type) {
+    return IsInteger32Type(attr_type) || attr_type == common::ColumnType::BIGINT ||
+           attr_type == common::ColumnType::NUM;
   }
 
-  static bool IsTxtType(common::CT attr_type) {
-    return attr_type == common::CT::STRING || attr_type == common::CT::VARCHAR || attr_type == common::CT::LONGTEXT;
+  static bool IsRealType(common::ColumnType attr_type) {
+    return attr_type == common::ColumnType::FLOAT || attr_type == common::ColumnType::REAL;
+  }
+  static bool IsNumericType(common::ColumnType attr_type) {
+    return IsInteger32Type(attr_type) || attr_type == common::ColumnType::BIGINT ||
+           attr_type == common::ColumnType::NUM || attr_type == common::ColumnType::FLOAT ||
+           attr_type == common::ColumnType::REAL;
   }
 
-  static bool IsCharType(common::CT attr_type) { return attr_type == common::CT::STRING; }
-  static bool IsStringType(common::CT attr_type) {
-    return attr_type == common::CT::STRING || attr_type == common::CT::VARCHAR || attr_type == common::CT::LONGTEXT ||
-           IsBinType(attr_type);
+  static bool IsBinType(common::ColumnType attr_type) {
+    return attr_type == common::ColumnType::BYTE || attr_type == common::ColumnType::VARBYTE ||
+           attr_type == common::ColumnType::BIN;
   }
 
-  static bool IsDateTimeType(common::CT attr_type) {
-    return attr_type == common::CT::DATE || attr_type == common::CT::TIME || attr_type == common::CT::YEAR ||
-           attr_type == common::CT::DATETIME || attr_type == common::CT::TIMESTAMP;
+  static bool IsTxtType(common::ColumnType attr_type) {
+    return attr_type == common::ColumnType::STRING || attr_type == common::ColumnType::VARCHAR ||
+           attr_type == common::ColumnType::LONGTEXT;
   }
 
-  static bool IsDateTimeNType(common::CT attr_type) {
-    return attr_type == common::CT::TIME_N || attr_type == common::CT::DATETIME_N ||
-           attr_type == common::CT::TIMESTAMP_N;
+  static bool IsCharType(common::ColumnType attr_type) { return attr_type == common::ColumnType::STRING; }
+  static bool IsStringType(common::ColumnType attr_type) {
+    return attr_type == common::ColumnType::STRING || attr_type == common::ColumnType::VARCHAR ||
+           attr_type == common::ColumnType::LONGTEXT || IsBinType(attr_type);
+  }
+
+  static bool IsDateTimeType(common::ColumnType attr_type) {
+    return attr_type == common::ColumnType::DATE || attr_type == common::ColumnType::TIME ||
+           attr_type == common::ColumnType::YEAR || attr_type == common::ColumnType::DATETIME ||
+           attr_type == common::ColumnType::TIMESTAMP;
+  }
+
+  static bool IsDateTimeNType(common::ColumnType attr_type) {
+    return attr_type == common::ColumnType::TIME_N || attr_type == common::ColumnType::DATETIME_N ||
+           attr_type == common::ColumnType::TIMESTAMP_N;
   }
 };
 
@@ -84,7 +89,7 @@ class AttributeTypeInfo {
     BLOOM_FILTER = 2,
   };
 
-  AttributeTypeInfo(common::CT attrt, bool notnull, uint precision = 0, ushort scale = 0, bool auto_inc = false,
+  AttributeTypeInfo(common::ColumnType attrt, bool notnull, uint precision = 0, ushort scale = 0, bool auto_inc = false,
                     DTCollation collation = DTCollation(), common::PackFmt fmt = common::PackFmt::DEFAULT,
                     bool filter = false)
       : attrt(attrt), fmt(fmt), precision(precision), scale(scale), collation(collation) {
@@ -93,10 +98,10 @@ class AttributeTypeInfo {
     flag[static_cast<int>(enumATI::AUTO_INC)] = auto_inc;
 
     // lookup only applies to string type
-    if (attrt != common::CT::STRING && attrt != common::CT::VARCHAR && Lookup())
+    if (attrt != common::ColumnType::STRING && attrt != common::ColumnType::VARCHAR && Lookup())
       fmt = common::PackFmt::DEFAULT;
   }
-  common::CT Type() const { return attrt; }
+  common::ColumnType Type() const { return attrt; }
   common::PackType GetPackType() const {
     return ATI::IsDateTimeType(attrt) || ATI::IsNumericType(attrt) || Lookup() ? common::PackType::INT
                                                                                : common::PackType::STR;
@@ -117,7 +122,7 @@ class AttributeTypeInfo {
   void SetFlag(unsigned char v) { flag = std::bitset<std::numeric_limits<unsigned char>::digits>(v); }
 
  private:
-  common::CT attrt;
+  common::ColumnType attrt;
   common::PackFmt fmt;
   uint precision;
   int scale;

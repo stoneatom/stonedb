@@ -144,10 +144,10 @@ class Item_tianmudecimal : public Item_decimal {
 class Item_tianmudatetime_base : public Item {
  protected:
   types::DT dt;
-  common::CT at;
+  common::ColumnType at;
 
  public:
-  void Set(int64_t x, common::CT at) {
+  void Set(int64_t x, common::ColumnType at) {
     dt.val = x;
     this->at = at;
   }

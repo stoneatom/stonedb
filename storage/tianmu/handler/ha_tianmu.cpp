@@ -1548,9 +1548,11 @@ int ha_tianmu::reset() {
 enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_unused]] TABLE *altered_table,
                                                                       Alter_inplace_info *ha_alter_info) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
-  if ((ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) &&
-      (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)) {
-    DBUG_RETURN(HA_ALTER_INPLACE_EXCLUSIVE_LOCK);
+  if (ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) {
+    if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)
+      DBUG_RETURN(HA_ALTER_INPLACE_EXCLUSIVE_LOCK);
+    if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_COMMENT)
+      DBUG_RETURN(HA_ALTER_INPLACE_EXCLUSIVE_LOCK);
   }
 
   if ((ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER) &&
@@ -1580,9 +1582,11 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
 bool ha_tianmu::inplace_alter_table(TABLE *altered_table, Alter_inplace_info *ha_alter_info) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
-    if ((ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) &&
-        (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)) {
-      DBUG_RETURN(false);
+    if (ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) {
+      if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)
+        DBUG_RETURN(false);
+      if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_COMMENT)
+        DBUG_RETURN(false);
     } else if (!(ha_alter_info->handler_flags & ~TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)) {
       std::vector<Field *> v_old(table_share->field, table_share->field + table_share->fields);
       std::vector<Field *> v_new(altered_table->s->field, altered_table->s->field + altered_table->s->fields);
@@ -1609,9 +1613,11 @@ bool ha_tianmu::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_table
     TIANMU_LOG(LogCtl_Level::INFO, "Alter table failed : %s%s", table_name_.c_str(), " rollback");
     DBUG_RETURN(true);
   }
-  if ((ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) &&
-      (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)) {
-    DBUG_RETURN(false);
+  if (ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) {
+    if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)
+      DBUG_RETURN(false);
+    if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_COMMENT)
+      DBUG_RETURN(false);
   }
   if (ha_alter_info->handler_flags == TIANMU_SUPPORTED_ALTER_COLUMN_NAME) {
     DBUG_RETURN(false);

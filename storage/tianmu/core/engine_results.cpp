@@ -520,11 +520,11 @@ void ResultExportSender::SendRecord(const std::vector<std::unique_ptr<types::Tia
       types::BString val(tianmu_dt.ToBString());
       if (l_item->field_type() == MYSQL_TYPE_DATE) {
         types::TianmuDateTime dt;
-        types::ValueParserForText::ParseDateTime(val, dt, common::CT::DATE);
+        types::ValueParserForText::ParseDateTime(val, dt, common::ColumnType::DATE);
         rcde->PutDateTime(dt.GetInt64());
       } else if ((l_item->field_type() == MYSQL_TYPE_DATETIME) || (l_item->field_type() == MYSQL_TYPE_TIMESTAMP)) {
         types::TianmuDateTime dt;
-        types::ValueParserForText::ParseDateTime(val, dt, common::CT::DATETIME);
+        types::ValueParserForText::ParseDateTime(val, dt, common::ColumnType::DATETIME);
         if (l_item->field_type() == MYSQL_TYPE_TIMESTAMP) {
           types::TianmuDateTime::AdjustTimezone(dt);
         }
@@ -541,16 +541,16 @@ void ResultExportSender::SendRecord(const std::vector<std::unique_ptr<types::Tia
     } else if (ATI::IsBinType(tianmu_dt.Type()))
       rcde->PutBin(tianmu_dt.ToBString());
     else if (ATI::IsNumericType(tianmu_dt.Type())) {
-      if (tianmu_dt.Type() == common::CT::BYTEINT)
+      if (tianmu_dt.Type() == common::ColumnType::BYTEINT)
         rcde->PutNumeric((char)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
-      else if (tianmu_dt.Type() == common::CT::SMALLINT)
+      else if (tianmu_dt.Type() == common::ColumnType::SMALLINT)
         rcde->PutNumeric((short)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
-      else if (tianmu_dt.Type() == common::CT::INT || tianmu_dt.Type() == common::CT::MEDIUMINT)
+      else if (tianmu_dt.Type() == common::ColumnType::INT || tianmu_dt.Type() == common::ColumnType::MEDIUMINT)
         rcde->PutNumeric((int)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
       else
         rcde->PutNumeric(dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
     } else if (ATI::IsDateTimeType(tianmu_dt.Type())) {
-      if (tianmu_dt.Type() == common::CT::TIMESTAMP) {
+      if (tianmu_dt.Type() == common::ColumnType::TIMESTAMP) {
         // timezone conversion
         types::TianmuDateTime &dt(dynamic_cast<types::TianmuDateTime &>(tianmu_dt));
         types::TianmuDateTime::AdjustTimezone(dt);

@@ -40,7 +40,7 @@ namespace core {
 PackStr::PackStr(DPN *dpn, PackCoordinate pc, ColumnShare *col_share) : Pack(dpn, pc, col_share) {
   auto t = col_share->ColType().GetTypeName();
 
-  if (t == common::CT::BIN || t == common::CT::LONGTEXT)
+  if (t == common::ColumnType::BIN || t == common::ColumnType::LONGTEXT)
     data_.len_mode = sizeof(uint32_t);
   else
     data_.len_mode = sizeof(uint16_t);
