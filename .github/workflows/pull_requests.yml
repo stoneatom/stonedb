@@ -127,7 +127,7 @@ jobs:
           groupadd mysql && useradd -g mysql mysql
           chown -R mysql:mysql /stonedb57 && chown -R mysql:mysql ./build
           cd /stonedb57/install/mysql-test
-          ./mysql-test-run.pl --suite=tianmu --nowarnings --force --nocheck-testcases --retry=0
+          ./mysql-test-run.pl --suite=tianmu --nowarnings --force --nocheck-testcases --retry=0 --parallel=10
 
       - name: create coverage.info
         run: |
