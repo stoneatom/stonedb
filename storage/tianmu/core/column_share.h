@@ -69,7 +69,7 @@ class ColumnShare final {
   ColumnShare(ColumnShare const &) = delete;
   void operator=(ColumnShare const &x) = delete;
   ColumnShare(TableShare *owner, common::TX_ID ver, uint32_t i, const fs::path &p, const Field *f)
-      : owner(owner), m_path(p), col_id(i) {
+      : owner(owner), m_path(p), col_id(i), field_name_(f->field_name) {
     ct.SetCollation({f->charset(), f->derivation()});
     ct.SetAutoInc(f->flags & AUTO_INCREMENT_FLAG);
     Init(ver);
@@ -97,6 +97,7 @@ class ColumnShare final {
     ASSERT(i >= 0 && size_t(i) < capacity, "bad index " + std::to_string(i));
     return i;
   }
+  std::string GetFieldName() const { return field_name_; }
 
  private:
   void Init(common::TX_ID xid);
@@ -112,7 +113,7 @@ class ColumnShare final {
   size_t capacity{0};  // current capacity of the dn array
   common::PackType pt;
   uint32_t col_id;
-
+  std::string field_name_;
   struct seg {
     uint64_t offset;
     uint64_t len;

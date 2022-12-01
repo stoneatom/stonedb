@@ -1,0 +1,123 @@
+use test;
+#
+# Test of skip lines syntax
+#
+CREATE TABLE `tmp_loaddata` (
+`id` int(11) NOT NULL,
+`name` varchar(100) DEFAULT NULL,
+PRIMARY KEY (`id`)
+) ENGINE=tianmu;
+LOAD DATA INFILE '../../std_data/tianmu/issue1000-1.data' Into TABLE tmp_loaddata FIELDS TERMINATED BY ',' ignore 1 lines;
+select * from tmp_loaddata;
+id	name
+2	new update
+3	new update
+truncate table tmp_loaddata;
+LOAD DATA INFILE '../../std_data/tianmu/issue1000-1.data' Into TABLE tmp_loaddata FIELDS TERMINATED BY ',' ignore 2 lines;
+select * from tmp_loaddata;
+id	name
+3	new update
+truncate table tmp_loaddata;
+LOAD DATA INFILE '../../std_data/tianmu/issue1000-1.data' Into TABLE tmp_loaddata FIELDS TERMINATED BY ',' ignore 3 lines;
+select * from tmp_loaddata;
+id	name
+truncate table tmp_loaddata;
+LOAD DATA INFILE '../../std_data/tianmu/issue1000-1.data' Into TABLE tmp_loaddata FIELDS TERMINATED BY ',' ignore 4 lines;
+select * from tmp_loaddata;
+id	name
+#
+# Test of specified syntax
+#
+CREATE TABLE `tmp_loaddata2` (
+`id1` int(11) NOT NULL,
+`id2` int(11) NOT NULL,
+PRIMARY KEY (`id1`)
+) ENGINE=tianmu;
+LOAD DATA INFILE  '../../std_data/tianmu/issue1000-2.data' Into TABLE tmp_loaddata2 FIELDS TERMINATED BY ',' ignore 1 lines(id1,id2);
+LOAD DATA INFILE  '../../std_data/tianmu/issue1000-2.data' Into TABLE tmp_loaddata2 FIELDS TERMINATED BY ',' ignore 1 lines(id2,id1);
+select * from tmp_loaddata2;
+id1	id2
+4	5
+6	7
+5	4
+7	6
+#
+# Test of set syntax
+#
+CREATE TABLE `tmp_loaddata3` (
+`id1` int(11) NOT NULL,
+`id2` int(11) NOT NULL,
+PRIMARY KEY (`id1`)
+) ENGINE=tianmu;
+LOAD DATA INFILE '../../std_data/tianmu/issue1000-2.data' Into TABLE tmp_loaddata3 FIELDS TERMINATED BY ',' ignore 1 lines(id1,@var1) set id2 = @var1 +100  ;
+LOAD DATA INFILE '../../std_data/tianmu/issue1000-2.data' Into TABLE tmp_loaddata3 FIELDS TERMINATED BY ',' ignore 1 lines(id2,id1);
+select * from tmp_loaddata3;
+id1	id2
+4	105
+6	107
+5	4
+7	6
+#
+# Test of default
+#
+CREATE TABLE `tmp_loaddata4` (
+`id1` int(11) NOT NULL,
+`id2` int(11) NOT NULL,
+`id3` int(11) default 9,
+PRIMARY KEY (`id1`)
+) ENGINE=tianmu;
+LOAD DATA INFILE '../../std_data/tianmu/issue1000-2.data' Into TABLE tmp_loaddata4 FIELDS TERMINATED BY ',' ignore 1 lines(id1,id2);
+LOAD DATA INFILE '../../std_data/tianmu/issue1000-2.data' Into TABLE tmp_loaddata4 FIELDS TERMINATED BY ',' ignore 1 lines(id2,id1);
+select * from tmp_loaddata4;
+id1	id2	id3
+4	5	9
+6	7	9
+5	4	9
+7	6	9
+#
+# Test of auto-increment
+#
+CREATE TABLE `tmp_loaddata5` (
+`id` int auto_increment primary key,
+`id1` int NOT NULL,
+`id2` int NOT NULL,
+`id3` int default 6
+) ENGINE=tianmu;
+LOAD DATA INFILE '../../std_data/tianmu/issue1000-2.data' Into TABLE tmp_loaddata5 FIELDS TERMINATED BY ',' ignore 1 lines(id1,id2);
+LOAD DATA INFILE '../../std_data/tianmu/issue1000-2.data' Into TABLE tmp_loaddata5 FIELDS TERMINATED BY ',' ignore 1 lines(id2,id1);
+select * from tmp_loaddata5;
+id	id1	id2	id3
+1	4	5	6
+2	6	7	6
+3	5	4	6
+4	7	6	6
+#
+# Test of this case
+#
+create temporary table error_log (row int auto_increment primary key,   suspicious int default 1,   file_name varchar(255),   line varchar(1024) default null )engine=tianmu;
+load data infile '../../std_data/tianmu/issue1000.data' into table error_log fields terminated by 'xykls37' escaped by ''   ignore 1 lines (line) set file_name='/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err';
+select * from error_log;
+row	suspicious	file_name	line
+1	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.545786Z 0 [Warning] The synta
+2	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.545885Z 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --e
+3	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.546902Z 0 [Warning] Insecure configuration for --secure-file-priv: Data directory is accessible through --secure-file-priv. Consider choosing a different directory.
+4	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.546916Z 0 [Warning] Insecure configuration for --secure-file-priv: Location is accessible to all OS users. Consider choosing a different directory.
+5	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.856735Z 0 [Warning] unknown variable 'loose-mysql
+6	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.856749Z 0 [Warning] unknown variable 'loose-mysql
+7	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.858729Z 0 [Warning] No e
+8	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.861317Z 0 [Warning] A deprecated TLS version TLSv1 is enabled. Please use TLSv1.2 or higher.
+9	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.861325Z 0 [Warning] A deprecated TLS version TLSv1.1 is enabled. Please use TLSv1.2 or higher.
+10	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.861798Z 0 [Warning] CA certificate /home/Code/GitHub/stonedb/build/install/mysql-test/std_data/cacert.pem is self signed.
+11	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.861860Z 0 [Warning] RSA private key file not found: /home/Code/GitHub/stonedb/build/install/mysql-test/var/mysqld.2/data//private_key.pem. Some authentication plugins will not work.
+12	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.861871Z 0 [Warning] RSA public key file not found: /home/Code/GitHub/stonedb/build/install/mysql-test/var/mysqld.2/data//public_key.pem. Some authentication plugins will not work.
+13	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:38.116846Z 5 [Warning] Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Synta
+14	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:38.117197Z 6 [Warning] Slave SQL for channel '': If a crash happens this configuration does not guarantee that the relay log info will be consistent, Error_code: 0
+#
+# Clean Resource
+#
+drop table tmp_loaddata;
+drop table tmp_loaddata2;
+drop table tmp_loaddata3;
+drop table tmp_loaddata4;
+drop table tmp_loaddata5;
+drop table error_log;

@@ -153,7 +153,7 @@ constexpr int32_t TIANMU_MAX_INDEX_COL_LEN_SMALL = 767;
 
 #define ZERO_LENGTH_STRING ""
 #define DEFAULT_DELIMITER ";"
-#define DEFAULT_LINE_TERMINATOR ""
+#define DEFAULT_LINE_TERMINATOR "\n"
 
 enum class RSValue : char {
   RS_NONE = 0,    // the pack is empty

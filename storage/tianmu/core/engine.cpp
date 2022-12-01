@@ -1163,7 +1163,8 @@ static void HandleDelayedLoad(int table_id, std::vector<std::unique_ptr<char[]>>
   thd->lex->sql_command = SQLCOM_LOAD;
   sql_exchange ex("buffered_insert", 0, FILETYPE_MEM);
   ex.file_name = const_cast<char *>(addr.c_str());
-  ex.skip_lines = table_id;  // this is ugly...
+  ex.skip_lines = 0;
+  ex.tab_id = table_id;
   thd->lex->select_lex->context.resolve_in_table_list_only(&tl);
   if (open_temporary_tables(thd, &tl)) {
     // error/////
@@ -1517,6 +1518,10 @@ common::TianmuError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
 
     auto tab = current_txn_->GetTableByPath(table_path);
 
+    // Maybe not good to put this code here,just for temp.
+    bitmap_set_all(table->read_set);
+    bitmap_set_all(table->write_set);
+
     tab->LoadDataInfile(*iop);
 
     if (current_txn_->Killed()) {
@@ -1542,6 +1547,8 @@ common::TianmuError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
 
     /* ok to client */
     my_ok(thd, stats.records, 0L, name);
+  } catch (common::FormatException &e) {
+    tianmu_e = common::TianmuError(common::ErrorCode::DATA_ERROR, e.what());
   } catch (common::Exception &e) {
     tianmu_e = common::TianmuError(common::ErrorCode::UNKNOWN_ERROR, "Tianmu internal error");
   } catch (common::TianmuError &e) {
@@ -1766,7 +1773,8 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
   short sign, minutes;
   ComputeTimeZoneDiffInMinutes(&thd, sign, minutes);
   io_params->SetTimeZone(sign, minutes);
-
+  io_params->SetTHD(&thd);
+  io_params->SetTable(table);
   if (ex.filetype == FILETYPE_MEM) {
     io_params->load_delayed_insert_ = true;
   }
@@ -1864,8 +1872,11 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
                             (int)(thd.variables.collation_database->number));  // default charset
 
   if (ex.skip_lines != 0) {
-    unsupported_syntax = true;
     io_params->SetParameter(system::Parameter::SKIP_LINES, (int64_t)ex.skip_lines);
+  }
+
+  if (ex.tab_id != 0) {
+    io_params->SetParameter(system::Parameter::TABLE_ID, static_cast<int64_t>(ex.tab_id));
   }
 
   if (ex.line.line_start != 0 && ex.line.line_start->length() != 0) {
@@ -1878,7 +1889,6 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
   }
 
   if (value_list_elements != 0) {
-    unsupported_syntax = true;
     io_params->SetParameter(system::Parameter::VALUE_LIST_ELEMENTS, (int64_t)value_list_elements);
   }
 

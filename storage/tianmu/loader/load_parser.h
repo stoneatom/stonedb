@@ -53,7 +53,8 @@ class LoadParser final {
   bool ThresholdExceeded(int64_t no_rows) const { return rejecter_.ThresholdExceeded(no_rows); }
   int ProcessInsertIndex(std::shared_ptr<index::TianmuTableIndex> tab, std::vector<ValueCache> &vcs, uint no_rows);
   int64_t GetNoRow() const { return num_of_row_; }
-  int64_t GetDuprow() const { return num_of_dup_; }
+  int64_t GetDupRow() const { return num_of_dup_; }
+  int64_t GetIgnoreRow() const { return num_of_skip_; }
 
  private:
   TianmuAttrPtrVect_t &attrs_;
@@ -75,6 +76,7 @@ class LoadParser final {
   int64_t num_of_obj_ = 0;
   int64_t num_of_row_ = 0;
   int64_t num_of_dup_ = 0;
+  int64_t num_of_skip_ = 0;
 
   bool MakeRow(std::vector<ValueCache> &value_buffers);
   bool MakeValue(uint col, ValueCache &buffer);
