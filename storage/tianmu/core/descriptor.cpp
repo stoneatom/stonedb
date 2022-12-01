@@ -1906,7 +1906,7 @@ bool Descriptor::ExsitTmpTable() const {
 }
 
 bool Descriptor::IsleftIndexSearch() const {
-  if (!tianmu_sysvar_index_search || IsType_OrTree())
+  if (!tianmu_sysvar_index_search || IsType_OrTree() || IsType_Between())
     return false;
   if (IsType_AttrValOrAttrValVal() && encoded) {
     auto col = static_cast<vcolumn::SingleColumn *>(attr.vc);
