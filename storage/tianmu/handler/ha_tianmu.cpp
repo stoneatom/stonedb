@@ -455,7 +455,7 @@ int ha_tianmu::write_row([[maybe_unused]] uchar *buf) {
   int ret = 1;
   DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
-    if (ha_thd()->lex->duplicates == DUP_UPDATE || ha_thd()->lex->duplicates == DUP_REPLACE) { //add DUP_REPLACE
+    if (ha_thd()->lex->duplicates == DUP_UPDATE || ha_thd()->lex->duplicates == DUP_REPLACE) {  // add DUP_REPLACE
       if (auto indextab = ha_tianmu_engine_->GetTableIndex(table_name_)) {
         if (size_t row; has_dup_key(indextab, table, row)) {
           dupkey_pos_ = row;
