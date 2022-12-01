@@ -124,6 +124,7 @@ class Descriptor {
   bool IsType_Subquery();
   bool IsType_Exists() const { return op == common::Operator::O_EXISTS || op == common::Operator::O_NOT_EXISTS; }
   bool IsType_In() const { return op == common::Operator::O_IN || op == common::Operator::O_NOT_IN; }
+  bool IsType_Between() const { return op == common::Operator::O_BETWEEN || op == common::Operator::O_NOT_BETWEEN; }
 
   bool IsType_TIANMUExpression() const;  // only columns, constants and TIANMUExpressions
   bool IsType_JoinComplex() const;
