@@ -650,7 +650,7 @@ void TianmuAttr::EvaluatePack_InNum(MIUpdatingIterator &mit, int dim, Descriptor
   DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(d.val1.vc) != nullptr);
   vcolumn::MultiValColumn *multival_column = static_cast<vcolumn::MultiValColumn *>(d.val1.vc);
   bool lookup_to_num = ATI::IsStringType(TypeName());
-  bool encoded_set = (lookup_to_num ? multival_column->IsSetEncoded(common::CT::NUM, 0)
+  bool encoded_set = (lookup_to_num ? multival_column->IsSetEncoded(common::ColumnType::NUM, 0)
                                     : multival_column->IsSetEncoded(TypeName(), ct.GetScale()));
   common::Tribool res;
   std::unique_ptr<types::TianmuDataType> value(ValuePrototype(lookup_to_num).Clone());
@@ -810,6 +810,18 @@ void TianmuAttr::EvaluatePack_BetweenString_UTF(MIUpdatingIterator &mit, int dim
       return;
     }
   }
+
+  auto check_item_digital = ([&](CQTerm &val) {
+    return ((nullptr != val.item) &&
+            (val.item->type() == Item::Type::INT_ITEM || (val.item->type() == Item::Type::DECIMAL_ITEM) ||
+             (val.item->type() == Item::Type::REAL_ITEM) ||
+             (val.item->type() == Item::Type::FUNC_ITEM &&
+              down_cast<Item_func *>(val.item)->functype() == Item_func::Functype::NEG_FUNC)));
+  });
+
+  const bool v1_is_digital = check_item_digital(d.val1);
+  const bool v2_is_digital = check_item_digital(d.val2);
+
   do {
     int inpack = mit.GetCurInpack(dim);  // row number inside the pack
     if (mit[dim] == common::NULL_VALUE_64 || p->IsNull(inpack)) {
@@ -818,15 +830,20 @@ void TianmuAttr::EvaluatePack_BetweenString_UTF(MIUpdatingIterator &mit, int dim
       if (p->IsNotMatched(inpack, trie_id))
         mit.ResetCurrent();
     } else {
-      types::BString v(p->GetValueBinary(inpack));  // change to materialized in case
-                                                    // of problems, but the pack should
-                                                    // be locked and unchanged here
+      // change to materialized in case
+      // of problems, but the pack should
+      // be locked and unchanged here
+      types::BString v(p->GetValueBinary(inpack));
+
       // IsNull() below means +/-inf
       bool res =
           (d.sharp &&
-           ((v1.IsNull() || CollationStrCmp(coll, v, v1) > 0) && (v2.IsNull() || CollationStrCmp(coll, v, v2) < 0))) ||
+           ((v1.IsNull() || ((v1_is_digital ? CollationRealCmp(coll, v, v1) : CollationStrCmp(coll, v, v1)) > 0)) &&
+            (v2.IsNull() || ((v2_is_digital ? CollationRealCmp(coll, v, v2) : CollationStrCmp(coll, v, v2)) < 0)))) ||
           (!d.sharp &&
-           ((v1.IsNull() || CollationStrCmp(coll, v, v1) >= 0) && (v2.IsNull() || CollationStrCmp(coll, v, v2) <= 0)));
+           ((v1.IsNull() || ((v1_is_digital ? CollationRealCmp(coll, v, v1) : CollationStrCmp(coll, v, v1)) >= 0)) &&
+            (v2.IsNull() || ((v2_is_digital ? CollationRealCmp(coll, v, v2) : CollationStrCmp(coll, v, v2)) <= 0))));
+
       if (d.op == common::Operator::O_NOT_BETWEEN)
         res = !res;
       if (!res)

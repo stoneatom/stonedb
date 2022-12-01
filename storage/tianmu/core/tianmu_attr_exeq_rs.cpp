@@ -683,7 +683,7 @@ std::vector<int64_t> TianmuAttr::GetListOfDistinctValuesInPack(int pack) {
   } else if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY) {
     list_vals.push_back(common::NULL_VALUE_64);
     return list_vals;
-  } else if (TypeName() == common::CT::REAL || TypeName() == common::CT::FLOAT) {
+  } else if (TypeName() == common::ColumnType::REAL || TypeName() == common::ColumnType::FLOAT) {
     return list_vals;
   } else if (dpn.max_i - dpn.min_i > 0 && dpn.max_i - dpn.min_i < 1024) {
     auto sp = GetFilter_Hist();
@@ -715,26 +715,26 @@ uint64_t TianmuAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSVa
       max_obj = f->NumOfOnes();
   } else if (f)
     max_obj = f->NumOfOnes();
-  if (TypeName() == common::CT::DATE) {
+  if (TypeName() == common::ColumnType::DATE) {
     try {
-      types::TianmuDateTime date_min(RoughMin(f, rf), common::CT::DATE);
-      types::TianmuDateTime date_max(RoughMax(f, rf), common::CT::DATE);
+      types::TianmuDateTime date_min(RoughMin(f, rf), common::ColumnType::DATE);
+      types::TianmuDateTime date_max(RoughMax(f, rf), common::ColumnType::DATE);
       no_dist += (date_max - date_min) + 1;  // overloaded minus - a number of days between dates
     } catch (...) {                          // in case of any problems with conversion of dates - just
                                              // numerical approximation
       no_dist += RoughMax(f, rf) - RoughMin(f, rf) + 1;
     }
-  } else if (TypeName() == common::CT::YEAR) {
+  } else if (TypeName() == common::ColumnType::YEAR) {
     try {
-      types::TianmuDateTime date_min(RoughMin(f, rf), common::CT::YEAR);
-      types::TianmuDateTime date_max(RoughMax(f, rf), common::CT::YEAR);
+      types::TianmuDateTime date_min(RoughMin(f, rf), common::ColumnType::YEAR);
+      types::TianmuDateTime date_max(RoughMax(f, rf), common::ColumnType::YEAR);
       no_dist += ((int)(date_max.Year()) - date_min.Year()) + 1;
     } catch (...) {  // in case of any problems with conversion of dates - just
                      // numerical approximation
       no_dist += RoughMax(f, rf) - RoughMin(f, rf) + 1;
     }
-  } else if (GetPackType() == common::PackType::INT && TypeName() != common::CT::REAL &&
-             TypeName() != common::CT::FLOAT) {
+  } else if (GetPackType() == common::PackType::INT && TypeName() != common::ColumnType::REAL &&
+             TypeName() != common::ColumnType::FLOAT) {
     int64_t cur_min = RoughMin(f, rf);  // extrema of nonempty packs
     int64_t cur_max = RoughMax(f, rf);
     uint64_t span = cur_max - cur_min + 1;
@@ -765,15 +765,15 @@ uint64_t TianmuAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSVa
       no_dist += values_present.NumOfOnes();
     } else
       no_dist += span;  // span between min and max
-  } else if (TypeName() == common::CT::REAL || TypeName() == common::CT::FLOAT) {
+  } else if (TypeName() == common::ColumnType::REAL || TypeName() == common::ColumnType::FLOAT) {
     int64_t cur_min = RoughMin(f, rf);  // extrema of nonempty packs
     int64_t cur_max = RoughMax(f, rf);
     if (cur_min == cur_max && cur_min != common::NULL_VALUE_64)  // the only case we can do anything
       no_dist += 1;
     else
       no_dist = max_obj;
-  } else if (TypeName() == common::CT::STRING || TypeName() == common::CT::VARCHAR ||
-             TypeName() == common::CT::LONGTEXT) {
+  } else if (TypeName() == common::ColumnType::STRING || TypeName() == common::ColumnType::VARCHAR ||
+             TypeName() == common::ColumnType::LONGTEXT) {
     size_t max_len = 0;
     for (uint p = 0; p < SizeOfPack(); p++) {  // max len of nonempty packs
       if (f == nullptr || !f->IsEmpty(p))
@@ -811,7 +811,7 @@ uint64_t TianmuAttr::ExactDistinctVals(Filter *f)  // provide the exact number o
   if (nulls_only)
     return 0;
   if (GetPackType() == common::PackType::INT && !types::RequiresUTFConversions(GetCollation()) &&
-      TypeName() != common::CT::REAL && TypeName() != common::CT::FLOAT) {
+      TypeName() != common::ColumnType::REAL && TypeName() != common::ColumnType::FLOAT) {
     int64_t cur_min = RoughMin(f);  // extrema of nonempty packs
     int64_t cur_max = RoughMax(f);
     uint64_t span = cur_max - cur_min + 1;
@@ -862,8 +862,8 @@ uint64_t TianmuAttr::ExactDistinctVals(Filter *f)  // provide the exact number o
 double TianmuAttr::RoughSelectivity() {
   if (rough_selectivity == -1) {
     LoadPackInfo();
-    if (GetPackType() == common::PackType::INT && TypeName() != common::CT::REAL && TypeName() != common::CT::FLOAT &&
-        SizeOfPack() > 0) {
+    if (GetPackType() == common::PackType::INT && TypeName() != common::ColumnType::REAL &&
+        TypeName() != common::ColumnType::FLOAT && SizeOfPack() > 0) {
       int64_t global_min = common::PLUS_INF_64;
       int64_t global_max = common::MINUS_INF_64;
       double width_sum = 0;

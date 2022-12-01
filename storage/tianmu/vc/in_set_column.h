@@ -90,7 +90,7 @@ class InSetColumn : public MultiValColumn {
   InSetColumn(const InSetColumn &c);
 
   virtual ~InSetColumn();
-  bool IsSetEncoded(common::CT at,
+  bool IsSetEncoded(common::ColumnType at,
                     int scale) override;  // checks whether the set is constant and fixed size
                                           // equal to the given one
   bool IsConst() const override;

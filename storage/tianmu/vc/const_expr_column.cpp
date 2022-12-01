@@ -81,7 +81,7 @@ types::TianmuValueObject ConstExpressionColumn::GetValueImpl([[maybe_unused]] co
     return types::TianmuDateTime(last_val_->Get64(), TypeName());
   if (core::ATI::IsRealType(TypeName()))
     return types::TianmuNum(last_val_->Get64(), 0, true, TypeName());
-  if (lookup_to_num || TypeName() == common::CT::NUM)
+  if (lookup_to_num || TypeName() == common::ColumnType::NUM)
     return types::TianmuNum((int64_t)last_val_->Get64(), Type().GetScale());
   DEBUG_ASSERT(!"Illegal execution path");
   return types::TianmuValueObject();

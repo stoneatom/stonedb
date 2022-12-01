@@ -1,0 +1,19 @@
+--source include/have_tianmu.inc
+
+--disable_query_log
+USE test;
+CREATE TABLE tb (d1 DECIMAL(17)) ENGINE=TIANMU;
+
+INSERT INTO tb VALUES
+    (1234),     
+    (1234567890123),
+    (56789012);
+--enable_query_log
+
+SELECT group_concat(d1 ORDER BY d1) FROM (SELECT d1 FROM tb) a1;
+
+SELECT group_concat(d1 ORDER BY d1) FROM tb;
+
+--disable_query_log
+DROP TABLE tb;
+--enable_query_log

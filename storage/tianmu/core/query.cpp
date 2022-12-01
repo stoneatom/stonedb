@@ -38,6 +38,7 @@
 
 namespace Tianmu {
 namespace core {
+
 Query::~Query() {
   for (auto it : gc_expressions) delete it;
 }
@@ -184,7 +185,8 @@ std::pair<int, int> Query::VirtualColumnAlreadyExists(const TabID &tmp_table, co
 }
 
 bool Query::IsFieldItem(Item *item) {
-  return (item->type() == Item::FIELD_ITEM || item->type() == Item_tianmufield::get_tianmuitem_type());
+  return (item->type() == Item::FIELD_ITEM || item->type() == Item::REF_ITEM ||
+          item->type() == Item_tianmufield::get_tianmuitem_type());
 }
 
 bool Query::IsAggregationOverFieldItem(Item *item) {
@@ -495,8 +497,8 @@ vcolumn::VirtualColumn *Query::CreateColumnFromExpression(std::vector<MysqlExpre
     }
     vc = new vcolumn::ExpressionColumn(exprs[0], temp_table, temp_table_alias, mind);
     if (static_cast<vcolumn::ExpressionColumn *>(vc)->GetStringType() == MysqlExpression::StringType::STRING_TIME &&
-        vc->TypeName() != common::CT::TIME) {  // common::CT::TIME is already as int64_t
-      vcolumn::TypeCastColumn *tcc = new vcolumn::String2DateTimeCastColumn(vc, ColumnType(common::CT::TIME));
+        vc->TypeName() != common::ColumnType::TIME) {  // common::CT::TIME is already as int64_t
+      vcolumn::TypeCastColumn *tcc = new vcolumn::String2DateTimeCastColumn(vc, ColumnType(common::ColumnType::TIME));
       temp_table->AddVirtColumn(vc);
       vc = tcc;
     }
@@ -975,7 +977,7 @@ QueryRouteTo Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_tab
             UnmarkAllAny(*oper_for_subselect);
         }
       }
-      term = CQTerm(vc.n);
+      term = CQTerm(vc.n, an_arg);
     }
     return res;
   }
@@ -1069,7 +1071,7 @@ QueryRouteTo Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_tab
         }
       }
     }
-    term = CQTerm(vc.n);
+    term = CQTerm(vc.n, an_arg);
     return QueryRouteTo::kToTianmu;
   } else {
     // WHERE FILTER
@@ -1118,7 +1120,7 @@ QueryRouteTo Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_tab
         tab_id2expression.insert(std::make_pair(tmp_table, std::make_pair(vc.n, expr)));
       }
     }
-    term = CQTerm(vc.n);
+    term = CQTerm(vc.n, an_arg);
     return QueryRouteTo::kToTianmu;
   }
   return QueryRouteTo::kToMySQL;
@@ -1908,5 +1910,6 @@ QueryRouteTo Query::BuildCondsIfPossible(Item *conds, CondID &cond_id, const Tab
   }
   return QueryRouteTo::kToTianmu;
 }
+
 }  // namespace core
 }  // namespace Tianmu

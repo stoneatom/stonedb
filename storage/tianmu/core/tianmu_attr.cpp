@@ -187,45 +187,45 @@ size_t TianmuAttr::ComputeNaturalSize() {
   size_t na_size = (Type().NotNull() ? 0 : 1) * NumOfObj() / 8;
 
   switch (TypeName()) {
-    case common::CT::STRING:
-    case common::CT::BYTE:
-    case common::CT::DATE:
+    case common::ColumnType::STRING:
+    case common::ColumnType::BYTE:
+    case common::ColumnType::DATE:
       na_size += Type().GetPrecision() * NumOfObj();
       break;
-    case common::CT::TIME:
-    case common::CT::YEAR:
-    case common::CT::DATETIME:
-    case common::CT::TIMESTAMP:
+    case common::ColumnType::TIME:
+    case common::ColumnType::YEAR:
+    case common::ColumnType::DATETIME:
+    case common::ColumnType::TIMESTAMP:
       na_size += Type().GetDisplaySize() * NumOfObj();
       break;
-    case common::CT::NUM:
+    case common::ColumnType::NUM:
       na_size += (Type().GetPrecision() + (Type().GetScale() ? 1 : 0)) * NumOfObj();
       break;
-    case common::CT::BIGINT:
-    case common::CT::REAL:
+    case common::ColumnType::BIGINT:
+    case common::ColumnType::REAL:
       na_size += 8 * NumOfObj();
       break;
-    case common::CT::FLOAT:
-    case common::CT::INT:
+    case common::ColumnType::FLOAT:
+    case common::ColumnType::INT:
       na_size += 4 * NumOfObj();
       break;
-    case common::CT::MEDIUMINT:
+    case common::ColumnType::MEDIUMINT:
       na_size += 3 * NumOfObj();
       break;
-    case common::CT::SMALLINT:
+    case common::ColumnType::SMALLINT:
       na_size += 2 * NumOfObj();
       break;
-    case common::CT::BYTEINT:
+    case common::ColumnType::BYTEINT:
       na_size += 1 * NumOfObj();
       break;
-    case common::CT::VARCHAR:
+    case common::ColumnType::VARCHAR:
       na_size += hdr.natural_size;
       break;
-    case common::CT::LONGTEXT:
+    case common::ColumnType::LONGTEXT:
       na_size += hdr.natural_size;
       break;
-    case common::CT::VARBYTE:
-    case common::CT::BIN:
+    case common::ColumnType::VARBYTE:
+    case common::ColumnType::BIN:
       na_size += hdr.natural_size;
       break;
     default:
@@ -410,7 +410,7 @@ types::BString TianmuAttr::GetNotNullValueString(const int64_t obj) {
 void TianmuAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
   if (obj == common::NULL_VALUE_64)
     return;
-  common::CT a_type = TypeName();
+  common::ColumnType a_type = TypeName();
   size = 0;
   DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
   LoadPackInfo();
@@ -445,7 +445,7 @@ void TianmuAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
     *(int *)val_buf = int(v);
     val_buf[4] = 0;
     return;
-  } else if (a_type == common::CT::NUM || a_type == common::CT::BIGINT || ATI::IsRealType(a_type) ||
+  } else if (a_type == common::ColumnType::NUM || a_type == common::ColumnType::BIGINT || ATI::IsRealType(a_type) ||
              ATI::IsDateTimeType(a_type)) {
     size = 8;
     int64_t v = GetValueInt64(obj);
@@ -461,7 +461,7 @@ void TianmuAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
 types::TianmuValueObject TianmuAttr::GetValue(int64_t obj, bool lookup_to_num) {
   if (obj == common::NULL_VALUE_64)
     return types::TianmuValueObject();
-  common::CT a_type = TypeName();
+  common::ColumnType a_type = TypeName();
   DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
   types::TianmuValueObject ret;
   if (!IsNull(obj)) {
@@ -475,19 +475,19 @@ types::TianmuValueObject TianmuAttr::GetValue(int64_t obj, bool lookup_to_num) {
       ret = tianmu_s;
     } else if (ATI::IsIntegerType(a_type))
       ret = types::TianmuNum(GetNotNullValueInt64(obj), -1, false, a_type);
-    else if (a_type == common::CT::TIMESTAMP) {
+    else if (a_type == common::ColumnType::TIMESTAMP) {
       // needs to convert UTC/GMT time stored on server to time zone of client
       types::BString s = GetValueString(obj);
       MYSQL_TIME myt;
       MYSQL_TIME_STATUS not_used;
       // convert UTC timestamp given in string into TIME structure
       str_to_datetime(s.GetDataBytesPointer(), s.len_, &myt, TIME_DATETIME_ONLY, &not_used);
-      return types::TianmuDateTime(myt, common::CT::TIMESTAMP);
+      return types::TianmuDateTime(myt, common::ColumnType::TIMESTAMP);
     } else if (ATI::IsDateTimeType(a_type))
       ret = types::TianmuDateTime(this->GetNotNullValueInt64(obj), a_type);
     else if (ATI::IsRealType(a_type))
       ret = types::TianmuNum(this->GetNotNullValueInt64(obj), 0, true, a_type);
-    else if (lookup_to_num || a_type == common::CT::NUM)
+    else if (lookup_to_num || a_type == common::ColumnType::NUM)
       ret = types::TianmuNum((int64_t)GetNotNullValueInt64(obj), Type().GetScale());
   }
   return ret;
@@ -497,7 +497,7 @@ types::TianmuDataType &TianmuAttr::GetValueData(size_t obj, types::TianmuDataTyp
   if (obj == size_t(common::NULL_VALUE_64) || IsNull(obj))
     value = ValuePrototype(lookup_to_num);
   else {
-    common::CT a_type = TypeName();
+    common::ColumnType a_type = TypeName();
     DEBUG_ASSERT(NumOfObj() >= static_cast<uint64_t>(obj));
     if (ATI::IsTxtType(a_type) && !lookup_to_num)
       ((types::BString &)value) = GetNotNullValueString(obj);
@@ -607,7 +607,7 @@ types::BString TianmuAttr::DecodeValue_S(int64_t code) {
     DEBUG_ASSERT(GetPackType() == common::PackType::INT);
     return m_dict->GetRealValue((int)code);
   }
-  common::CT a_type = TypeName();
+  common::ColumnType a_type = TypeName();
   if (ATI::IsIntegerType(a_type)) {
     types::TianmuNum tianmu_n(code, -1, false, a_type);
     types::BString local_rcb = tianmu_n.ToBString();
@@ -618,14 +618,14 @@ types::BString TianmuAttr::DecodeValue_S(int64_t code) {
     types::BString local_rcb = tianmu_n.ToBString();
     local_rcb.MakePersistent();
     return local_rcb;
-  } else if (a_type == common::CT::NUM) {
+  } else if (a_type == common::ColumnType::NUM) {
     types::TianmuNum tianmu_n(code, Type().GetScale(), false, a_type);
     types::BString local_rcb = tianmu_n.ToBString();
     local_rcb.MakePersistent();
     return local_rcb;
   } else if (ATI::IsDateTimeType(a_type)) {
     types::TianmuDateTime tianmu_dt(code, a_type);
-    if (a_type == common::CT::TIMESTAMP) {
+    if (a_type == common::ColumnType::TIMESTAMP) {
       types::TianmuDateTime::AdjustTimezone(tianmu_dt);
     }
     types::BString local_rcb = tianmu_dt.ToBString();
@@ -668,7 +668,7 @@ int TianmuAttr::EncodeValue_T(const types::BString &tianmu_s, bool new_val, comm
   char const *val = tianmu_s.val_;
   if (val == 0)
     val = ZERO_LENGTH_STRING;
-  if (ATI::IsDateTimeType(TypeName()) || TypeName() == common::CT::BIGINT) {
+  if (ATI::IsDateTimeType(TypeName()) || TypeName() == common::ColumnType::BIGINT) {
     ASSERT(0, "Wrong data type!");
   } else {
     types::TianmuNum tianmu_n;
@@ -690,7 +690,7 @@ int64_t TianmuAttr::EncodeValue64(types::TianmuDataType *v, bool &rounded, commo
   if (!v || v->IsNull())
     return common::NULL_VALUE_64;
 
-  if ((Type().IsLookup() && v->Type() != common::CT::NUM)) {
+  if ((Type().IsLookup() && v->Type() != common::ColumnType::NUM)) {
     return EncodeValue_T(v->ToBString(), false, tianmu_err_code);
   } else if (ATI::IsDateTimeType(TypeName()) || ATI::IsDateTimeNType(TypeName())) {
     return ((types::TianmuDateTime *)v)->GetInt64();
