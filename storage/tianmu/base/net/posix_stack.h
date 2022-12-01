@@ -118,8 +118,16 @@ class posix_ap_server_socket_impl : public server_socket_impl {
     socket_address addr;
     connection(pollable_fd xfd, socket_address xaddr) : fd(std::move(xfd)), addr(xaddr) {}
   };
-  static thread_local std::unordered_map<::sockaddr_in, promise<connected_socket, socket_address>> sockets;
-  static thread_local std::unordered_multimap<::sockaddr_in, connection> conn_q;
+
+  static std::unordered_map<::sockaddr_in, promise<connected_socket, socket_address>> &GetSockets() {
+    static thread_local std::unordered_map<::sockaddr_in, promise<connected_socket, socket_address>> sockets;
+    return sockets;
+  }
+  static std::unordered_multimap<::sockaddr_in, connection> &GetConn() {
+    static thread_local std::unordered_multimap<::sockaddr_in, connection> conn_q;
+    return conn_q;
+  }
+
   socket_address _sa;
 
  public:

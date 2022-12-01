@@ -394,3 +394,9 @@ drop table t1;
 --echo # create table..select based on trigger fields.
 create table t1 (fld1 int, fld2 DATETIME DEFAULT '1211:1:1');
 show create table t1;
+
+--echo # error of support type
+--error 6
+create table t_unsupport_type (a2 bit DEFAULT NULL);
+--error 6
+create table t_unsupport_type (a2 json DEFAULT NULL);
