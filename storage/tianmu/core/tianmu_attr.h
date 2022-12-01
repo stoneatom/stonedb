@@ -222,9 +222,22 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   int64_t GetMaxInt64() const { return hdr.max; }
   void SetMaxInt64(int64_t a_imax) { hdr.max = a_imax; }
   bool GetIfAutoInc() const { return ct.GetAutoInc(); }
-  uint64_t AutoIncNext() { return ++hdr.auto_inc_next; }
+  uint64_t AutoIncNext() {
+    backup_auto_inc_next_ = hdr.auto_inc_next;
+    return ++hdr.auto_inc_next;
+  }
+  void RollBackIfAutoInc() {
+    if (!GetIfAutoInc())
+      return;
+    hdr.auto_inc_next = backup_auto_inc_next_;
+    return;
+  }
+
   uint64_t GetAutoInc() const { return hdr.auto_inc_next; }
-  void SetAutoInc(uint64_t v) { hdr.auto_inc_next = v; }
+  void SetAutoInc(uint64_t v) {
+    backup_auto_inc_next_ = hdr.auto_inc_next;
+    hdr.auto_inc_next = v;
+  }
   // Original 0-level value (text, not null-terminated) and its length; binary
   // data types may be displayed as hex
   void GetValueBin(int64_t obj, size_t &size, char *val_buf);
@@ -377,6 +390,7 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   common::PACK_INDEX row2pack(size_t row) const { return row >> pss; }
   int row2offset(size_t row) const { return row % (1L << pss); }
   const fs::path &Path() const { return m_share->m_path; }
+  std::string GetFieldName() const { return m_share->GetFieldName(); }
 
  private:
   COL_VER_HDR hdr{};
@@ -390,6 +404,7 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   std::vector<common::PACK_INDEX> m_idx;
 
   bool no_change = true;
+  uint64_t backup_auto_inc_next_{0};
 
   // local filters for write session
   std::shared_ptr<RSIndex_Hist> filter_hist;
