@@ -750,8 +750,8 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
       }
       [[fallthrough]];
     default:
-      throw common::UnsupportedDataTypeException(
-              std::string("Unsupported data type[") + common::get_enum_field_types_name(field.type()) + std::string("]"));
+      throw common::UnsupportedDataTypeException(std::string("Unsupported data type[") +
+                                                 common::get_enum_field_types_name(field.type()) + std::string("]"));
   }
   throw;
 }
