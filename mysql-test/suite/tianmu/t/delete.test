@@ -38,7 +38,7 @@ select max(c_int) from column_type_test;
 select min(c_int) from column_type_test;
 select avg(c_int) from column_type_test;
 select sum(c_int) from column_type_test;
-delete from column_type_test where c_tinyint=100;
+delete from column_type_test where c_tinyint=100 limit 1000;
 --disable_warnings
 select * from column_type_test limit 10;
 --enable_warnings
