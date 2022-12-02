@@ -30,8 +30,8 @@ namespace types {
 
 RCNum::RCNum(common::ColumnType attrt) : value_(0), scale_(0), is_double_(false), is_dot_(false), attr_type_(attrt) {}
 
-RCNum::RCNum(int64_t value_, short scale, bool is_double_, common::ColumnType attrt) {
-  Assign(value_, scale, is_double_, attrt);
+RCNum::RCNum(int64_t value, short scale, bool is_double, common::ColumnType attrt) {
+  Assign(value, scale, is_double, attrt);
 }
 
 RCNum::RCNum(double value)
@@ -207,13 +207,13 @@ RCNum RCNum::ToReal() const {
 
 RCNum RCNum::ToInt() const { return GetIntPart(); }
 
-static char *Text(int64_t value_, char buf[], int scale) {
+static char *Text(int64_t value, char buf[], int scale) {
   bool sign = true;
-  if (value_ < 0) {
+  if (value < 0) {
     sign = false;
-    value_ *= -1;
+    value *= -1;
   }
-  longlong2str(value_, buf, 10);
+  longlong2str(value, buf, 10);
   int l = (int)std::strlen(buf);
   std::memset(buf + l + 1, ' ', 21 - l);
   int pos = 21;
