@@ -262,7 +262,7 @@ class SuffixTree : public PPMModel {
   // If dlen_=-1, it's assumed that data_ contains only one string.
   SuffixTree(const Symb *data, int dlen = -1) {
     Init();
-    if (dlen_ < 0)
+    if (dlen < 0)
       dlen_ = (int)std::strlen((const char *)data) + 1;
     else
       dlen_ = dlen;
