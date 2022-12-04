@@ -1573,6 +1573,10 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
     // support alter table: mix add/drop column、order column and other syntaxs to use
     if (ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+    if (ha_alter_info->handler_flags & Alter_inplace_info::ADD_PK_INDEX)
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+    if (ha_alter_info->handler_flags & Alter_inplace_info::DROP_PK_INDEX)
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
 
     DBUG_RETURN(HA_ALTER_ERROR);
   }
