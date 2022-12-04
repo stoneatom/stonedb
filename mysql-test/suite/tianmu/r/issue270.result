@@ -2,6 +2,9 @@
 # Explain select straight_join DISTINCT.The rows in the test result is incorrect (#270)
 # 
 use test;
+DROP TABLE IF EXISTS t1;
+DROP TABLE IF EXISTS t2;
+DROP TABLE IF EXISTS t3;
 CREATE TABLE t1(a int, b int, c int, KEY b(b), KEY c(c))engine=tianmu;
 insert into t1 values (1,0,0),(2,0,0);
 CREATE TABLE t2 (a int, b varchar(2), c varchar(2), PRIMARY KEY(a))engine=tianmu;
