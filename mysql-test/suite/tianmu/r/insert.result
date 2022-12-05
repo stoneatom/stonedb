@@ -253,7 +253,7 @@ count(*)
 insert into  t2 select t1.* from t1, t2 t, t3 where  t1.id1 = t.id2 and t.id2 = t3.id3;
 select count(*) from t2;
 count(*)
-500
+25500
 drop table t1,t2,t3;
 #
 # Test different cases of duplicate fields
