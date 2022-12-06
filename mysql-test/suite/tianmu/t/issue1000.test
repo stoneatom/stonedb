@@ -10,17 +10,20 @@ CREATE TABLE `tmp_loaddata` (
 PRIMARY KEY (`id`)
 ) ENGINE=tianmu;
 
-
-LOAD DATA INFILE '../../std_data/tianmu/issue1000-1.data' Into TABLE tmp_loaddata FIELDS TERMINATED BY ',' ignore 1 lines;
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1000-1.txt' Into TABLE tmp_loaddata FIELDS TERMINATED BY ',' ignore 1 lines;
 select * from tmp_loaddata;
 truncate table tmp_loaddata;
-LOAD DATA INFILE '../../std_data/tianmu/issue1000-1.data' Into TABLE tmp_loaddata FIELDS TERMINATED BY ',' ignore 2 lines;
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1000-1.txt' Into TABLE tmp_loaddata FIELDS TERMINATED BY ',' ignore 2 lines;
 select * from tmp_loaddata;
 truncate table tmp_loaddata;
-LOAD DATA INFILE '../../std_data/tianmu/issue1000-1.data' Into TABLE tmp_loaddata FIELDS TERMINATED BY ',' ignore 3 lines;
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1000-1.txt' Into TABLE tmp_loaddata FIELDS TERMINATED BY ',' ignore 3 lines;
 select * from tmp_loaddata;
 truncate table tmp_loaddata;
-LOAD DATA INFILE '../../std_data/tianmu/issue1000-1.data' Into TABLE tmp_loaddata FIELDS TERMINATED BY ',' ignore 4 lines;
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1000-1.txt' Into TABLE tmp_loaddata FIELDS TERMINATED BY ',' ignore 4 lines;
 select * from tmp_loaddata;
 
 --echo #
@@ -31,8 +34,10 @@ CREATE TABLE `tmp_loaddata2` (
 `id2` int(11) NOT NULL,
 PRIMARY KEY (`id1`)
 ) ENGINE=tianmu;
-LOAD DATA INFILE  '../../std_data/tianmu/issue1000-2.data' Into TABLE tmp_loaddata2 FIELDS TERMINATED BY ',' ignore 1 lines(id1,id2);
-LOAD DATA INFILE  '../../std_data/tianmu/issue1000-2.data' Into TABLE tmp_loaddata2 FIELDS TERMINATED BY ',' ignore 1 lines(id2,id1);
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA INFILE  '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1000-2.txt' Into TABLE tmp_loaddata2 FIELDS TERMINATED BY ',' ignore 1 lines(id1,id2);
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA INFILE  '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1000-2.txt' Into TABLE tmp_loaddata2 FIELDS TERMINATED BY ',' ignore 1 lines(id2,id1);
 
 select * from tmp_loaddata2;
 --echo #
@@ -43,8 +48,10 @@ CREATE TABLE `tmp_loaddata3` (
 `id2` int(11) NOT NULL,
 PRIMARY KEY (`id1`)
 ) ENGINE=tianmu;
-LOAD DATA INFILE '../../std_data/tianmu/issue1000-2.data' Into TABLE tmp_loaddata3 FIELDS TERMINATED BY ',' ignore 1 lines(id1,@var1) set id2 = @var1 +100  ;
-LOAD DATA INFILE '../../std_data/tianmu/issue1000-2.data' Into TABLE tmp_loaddata3 FIELDS TERMINATED BY ',' ignore 1 lines(id2,id1);
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1000-2.txt' Into TABLE tmp_loaddata3 FIELDS TERMINATED BY ',' ignore 1 lines(id1,@var1) set id2 = @var1 +100  ;
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1000-2.txt' Into TABLE tmp_loaddata3 FIELDS TERMINATED BY ',' ignore 1 lines(id2,id1);
 select * from tmp_loaddata3;
 
 --echo #
@@ -56,8 +63,10 @@ CREATE TABLE `tmp_loaddata4` (
 `id3` int(11) default 9,
 PRIMARY KEY (`id1`)
 ) ENGINE=tianmu;
-LOAD DATA INFILE '../../std_data/tianmu/issue1000-2.data' Into TABLE tmp_loaddata4 FIELDS TERMINATED BY ',' ignore 1 lines(id1,id2);
-LOAD DATA INFILE '../../std_data/tianmu/issue1000-2.data' Into TABLE tmp_loaddata4 FIELDS TERMINATED BY ',' ignore 1 lines(id2,id1);
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1000-2.txt' Into TABLE tmp_loaddata4 FIELDS TERMINATED BY ',' ignore 1 lines(id1,id2);
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1000-2.txt' Into TABLE tmp_loaddata4 FIELDS TERMINATED BY ',' ignore 1 lines(id2,id1);
 select * from tmp_loaddata4;
 
 --echo #
@@ -69,15 +78,18 @@ CREATE TABLE `tmp_loaddata5` (
 `id2` int NOT NULL,
 `id3` int default 6
 ) ENGINE=tianmu;
-LOAD DATA INFILE '../../std_data/tianmu/issue1000-2.data' Into TABLE tmp_loaddata5 FIELDS TERMINATED BY ',' ignore 1 lines(id1,id2);
-LOAD DATA INFILE '../../std_data/tianmu/issue1000-2.data' Into TABLE tmp_loaddata5 FIELDS TERMINATED BY ',' ignore 1 lines(id2,id1);
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1000-2.txt' Into TABLE tmp_loaddata5 FIELDS TERMINATED BY ',' ignore 1 lines(id1,id2);
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1000-2.txt' Into TABLE tmp_loaddata5 FIELDS TERMINATED BY ',' ignore 1 lines(id2,id1);
 select * from tmp_loaddata5;
 
 --echo #
 --echo # Test of this case
 --echo #
 create temporary table error_log (row int auto_increment primary key,   suspicious int default 1,   file_name varchar(255),   line varchar(1024) default null )engine=tianmu;
-load data infile '../../std_data/tianmu/issue1000.data' into table error_log fields terminated by 'xykls37' escaped by ''   ignore 1 lines (line) set file_name='/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err';
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1000.txt' into table error_log fields terminated by 'xykls37' escaped by ''   ignore 1 lines (line) set file_name='/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err';
 select * from error_log;
 
 --echo #

@@ -113,9 +113,9 @@ UNIQUE KEY `pay_order_no` (`order_no`),
 KEY `pay_status_index` (`pay_status`),
 KEY `idx_pay_status_feetype` (`pay_status`,`fee_type`)
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED;
-LOAD DATA LOCAL INFILE 'suite/tianmu/std_data/issue880_t1.txt' INTO TABLE issue880_t1;
-LOAD DATA LOCAL INFILE 'suite/tianmu/std_data/issue880_t3.txt' INTO TABLE issue880_t3;
-LOAD DATA LOCAL INFILE 'suite/tianmu/std_data/issue880_t2.txt' INTO TABLE issue880_t2;
+LOAD DATA LOCAL INFILE 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t1.txt' INTO TABLE issue880_t1;
+LOAD DATA LOCAL INFILE 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t3.txt' INTO TABLE issue880_t3;
+LOAD DATA LOCAL INFILE 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t2.txt' INTO TABLE issue880_t2;
 select b.create_time AS create_time
 from (issue880_t3 a join issue880_t1 b)
 where ((a.id = b.period_pay_id) and (a.pay_status = 2) and

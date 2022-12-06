@@ -29,7 +29,8 @@ CREATE TABLE `column_type_test` (
 --echo # DELETE FROM TABLE_NAME for Large amount of data
 --echo #
 
-load data infile '../../std_data/tianmu/bigdata4load' into table column_type_test fields terminated by '|';
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/bigdata4load.txt' into table column_type_test fields terminated by '|';
 select count(*) from column_type_test;
 select max(c_int) from column_type_test;
 select min(c_int) from column_type_test;

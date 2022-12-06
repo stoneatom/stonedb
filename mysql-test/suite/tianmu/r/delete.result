@@ -24,7 +24,7 @@ CREATE TABLE `column_type_test` (
 #
 # DELETE FROM TABLE_NAME WHERE ...for Large amount of data
 #
-load data infile '../../std_data/tianmu/bigdata4load' into table column_type_test fields terminated by '|';
+load data infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/bigdata4load.txt' into table column_type_test fields terminated by '|';
 select * from column_type_test limit 10;
 c_tinyint	c_smallint	c_mediumint	c_int	c_bigint	c_float	c_double	c_decimal	c_date	c_datetime	c_timestamp	c_time	c_char	c_varchar	c_blob	c_text	c_longblob
 100	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
