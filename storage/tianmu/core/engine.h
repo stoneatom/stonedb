@@ -114,8 +114,12 @@ class Engine final {
   system::ResourceManager *getResourceManager() const { return m_resourceManager; }
   std::shared_ptr<TianmuTable> GetTableRD(const std::string &table_path);
   int InsertRow(const std::string &tablename, Transaction *trans_, TABLE *table, std::shared_ptr<TableShare> &share);
+  int UpdateRow(const std::string &tablename, TABLE *table, std::shared_ptr<TableShare> &share, uint64_t row_id,
+                const uchar *old_data, uchar *new_data);
   void InsertDelayed(const std::string &table_path, int table_id, TABLE *table);
   void InsertMemRow(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table);
+  void UpdateMemRow(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table, uint64_t row_id,
+                    const uchar *old_data, uchar *new_data);
   std::string DelayedBufferStat() { return insert_buffer.Status(); }
   std::string RowStoreStat();
   void UnRegisterTable(const std::string &table_path);
@@ -179,8 +183,11 @@ class Engine final {
   void ProcessDelayedInsert();
   void ProcessDelayedMerge();
   std::unique_ptr<char[]> GetRecord(size_t &len);
-  void EncodeRecord(const std::string &table_path, int table_id, Field **field, size_t col, size_t blobs,
-                    std::unique_ptr<char[]> &buf, uint32_t &size);
+  void EncodeInsertRecord(const std::string &table_path, int table_id, Field **field, size_t col, size_t blobs,
+                          std::unique_ptr<char[]> &buf, uint32_t &size);
+  void EncodeUpdateRecord(const std::string &table_path, int table_id, uint64_t row_id,
+                          std::unordered_map<uint, Field *> update_fields, size_t field_size, size_t blobs,
+                          std::unique_ptr<char[]> &buf, uint32_t &buf_size);
 
  private:
   struct TianmuStat {

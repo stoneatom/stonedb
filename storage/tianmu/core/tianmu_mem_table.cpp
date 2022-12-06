@@ -119,7 +119,7 @@ common::ErrorCode TianmuMemTable::DropMemTable(std::string table_name) {
 
 void TianmuMemTable::InsertRow(std::unique_ptr<char[]> buf, uint32_t size) {
   // insert rowset data
-  int64_t row_id = next_insert_id_++;
+  uint64_t row_id = next_insert_id_++;
   if (row_id < next_load_id_)
     next_load_id_ = row_id;
 
@@ -131,6 +131,26 @@ void TianmuMemTable::InsertRow(std::unique_ptr<char[]> buf, uint32_t size) {
   index::be_store_byte(key + key_pos, static_cast<uchar>(RecordType::kInsert));
   key_pos += sizeof(uchar);
   index::be_store_uint64(key + key_pos, row_id);
+  key_pos += sizeof(uint64_t);
+  kv_trans.PutData(cf_handle_, {(char *)key, key_pos}, {buf.get(), size});
+  kv_trans.Commit();
+  stat.write_cnt++;
+  stat.write_bytes += size;
+}
+
+void TianmuMemTable::UpdateRow(std::unique_ptr<char[]> buf, uint32_t size) {
+  uint64_t load_row_id = next_insert_id_++;  // this is only for load, not real row id
+  if (load_row_id < next_load_id_)
+    next_load_id_ = load_row_id;
+
+  uchar key[32];
+  size_t key_pos = 0;
+  index::KVTransaction kv_trans;
+  index::be_store_index(key + key_pos, mem_id_);
+  key_pos += sizeof(uint32_t);
+  index::be_store_byte(key + key_pos, static_cast<uchar>(RecordType::kUpdate));
+  key_pos += sizeof(uchar);
+  index::be_store_uint64(key + key_pos, load_row_id);
   key_pos += sizeof(uint64_t);
   kv_trans.PutData(cf_handle_, {(char *)key, key_pos}, {buf.get(), size});
   kv_trans.Commit();

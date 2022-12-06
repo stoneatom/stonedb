@@ -123,9 +123,16 @@ class TianmuTable final : public JustATable {
   int64_t NoRecordsLoaded() { return no_loaded_rows; }
   int64_t NoRecordsDuped() { return no_dup_rows; }
   int Insert(TABLE *table);
+  int Update(TABLE *table, uint64_t row_id, const uchar *old_data, uchar *new_data);
+  int Delete(TABLE *table);
   void LoadDataInfile(system::IOParameters &iop);
   void InsertMemRow(std::unique_ptr<char[]> buf, uint32_t size);
-  int MergeMemTable(system::IOParameters &iop);
+  void UpdateMemRow(std::unique_ptr<char[]> buf, uint32_t size);
+  void DeleteMemRow();  // todo(dfx): delete mem row
+  uint64_t MergeMemTable(system::IOParameters &iop);
+  uint64_t MergeInsertRecords(system::IOParameters &iop);
+  uint64_t MergeUpdateRecords();
+  uint64_t MergeDeleteRecords();
 
   std::unique_lock<std::mutex> write_lock;
 

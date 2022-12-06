@@ -43,7 +43,7 @@
 #include "util/thread_pool.h"
 
 namespace Tianmu {
-namespace handler {
+namespace DBHandler {
 extern void resolve_async_join_settings(const std::string &settings);
 }
 namespace core {
@@ -321,7 +321,7 @@ int Engine::Init(uint engine_slot) {
 
   if (tianmu_sysvar_start_async > 0)
     ResetTaskExecutor(tianmu_sysvar_start_async);
-  handler::resolve_async_join_settings(tianmu_sysvar_async_join);
+  DBHandler::resolve_async_join_settings(tianmu_sysvar_async_join);
 
   return 0;
 }
@@ -387,8 +387,8 @@ Engine::~Engine() {
   TIANMU_LOG(LogCtl_Level::INFO, "Tianmu engine destroyed.");
 }
 
-void Engine::EncodeRecord(const std::string &table_path, int table_id, Field **field, size_t col, size_t blobs,
-                          std::unique_ptr<char[]> &buf, uint32_t &size) {
+void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Field **field, size_t col, size_t blobs,
+                                std::unique_ptr<char[]> &buf, uint32_t &size) {
   size = blobs > 0 ? 4_MB : 128_KB;
   buf.reset(new char[size]);
   utils::BitSet null_mask(col);
@@ -564,6 +564,178 @@ void Engine::EncodeRecord(const std::string &table_path, int table_id, Field **f
 
   std::memcpy(buf.get() + null_offset, null_mask.data(), null_mask.data_size());
   size = ptr - buf.get();
+}
+
+void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id, uint64_t row_id,
+                                std::unordered_map<uint, Field *> update_fields, size_t field_size, size_t blobs,
+                                std::unique_ptr<char[]> &buf, uint32_t &buf_size) {
+  // layout:
+  //     table_id
+  //     table_path
+  //     row_id
+  //     update_mask
+  //     null_mask
+  //     update_fileds...
+
+  buf_size = blobs > 0 ? 4_MB : 128_KB;
+  buf.reset(new char[buf_size]);
+  utils::BitSet update_mask(field_size);
+  utils::BitSet null_mask(field_size);
+
+  char *ptr = buf.get();
+
+  *(int32_t *)ptr = table_id;  // table id
+  ptr += sizeof(int32_t);
+
+  int32_t path_len = table_path.size();
+  std::memcpy(ptr, table_path.c_str(), path_len);  // table path
+  ptr += path_len;
+  *ptr++ = 0;  // end with NULL
+
+  *(uint64_t *)ptr = row_id;  // row id
+  ptr += sizeof(uint64_t);
+
+  auto update_offset = ptr - buf.get();
+  ptr += update_mask.data_size();
+
+  auto null_offset = ptr - buf.get();
+  ptr += null_mask.data_size();
+
+  for (uint col_id = 0; col_id < field_size; col_id++) {
+    if (update_fields.find(col_id) == update_fields.end()) {
+      continue;
+    }
+    Field *f = update_fields[col_id];
+    if (f == nullptr) {
+      null_mask.set(col_id);
+      continue;
+    }
+    update_mask.set(col_id);
+
+    switch (f->type()) {
+      case MYSQL_TYPE_TINY: {
+        int64_t v = f->val_int();
+        if (v > TIANMU_TINYINT_MAX)
+          v = TIANMU_TINYINT_MAX;
+        else if (v < TIANMU_TINYINT_MIN)
+          v = TIANMU_TINYINT_MIN;
+        *(int64_t *)ptr = v;
+        ptr += sizeof(int64_t);
+      } break;
+      case MYSQL_TYPE_SHORT: {
+        int64_t v = f->val_int();
+        if (v > TIANMU_SMALLINT_MAX)
+          v = TIANMU_SMALLINT_MAX;
+        else if (v < TIANMU_SMALLINT_MIN)
+          v = TIANMU_SMALLINT_MIN;
+        *(int64_t *)ptr = v;
+        ptr += sizeof(int64_t);
+      } break;
+      case MYSQL_TYPE_LONG: {
+        int64_t v = f->val_int();
+        if (v > std::numeric_limits<int>::max())
+          v = std::numeric_limits<int>::max();
+        else if (v < TIANMU_INT_MIN)
+          v = TIANMU_INT_MIN;
+        *(int64_t *)ptr = v;
+        ptr += sizeof(int64_t);
+      } break;
+      case MYSQL_TYPE_INT24: {
+        int64_t v = f->val_int();
+        if (v > TIANMU_MEDIUMINT_MAX)
+          v = TIANMU_MEDIUMINT_MAX;
+        else if (v < TIANMU_MEDIUMINT_MIN)
+          v = TIANMU_MEDIUMINT_MIN;
+        *(int64_t *)ptr = v;
+        ptr += sizeof(int64_t);
+      } break;
+      case MYSQL_TYPE_LONGLONG: {
+        int64_t v = f->val_int();
+        if (v > common::TIANMU_BIGINT_MAX)
+          v = common::TIANMU_BIGINT_MAX;
+        else if (v < common::TIANMU_BIGINT_MIN)
+          v = common::TIANMU_BIGINT_MIN;
+        *(int64_t *)ptr = v;
+        ptr += sizeof(int64_t);
+      } break;
+      case MYSQL_TYPE_DECIMAL:
+      case MYSQL_TYPE_FLOAT:
+      case MYSQL_TYPE_DOUBLE: {
+        double v = f->val_real();
+        *(int64_t *)ptr = *reinterpret_cast<int64_t *>(&v);
+        ptr += sizeof(int64_t);
+      } break;
+      case MYSQL_TYPE_NEWDECIMAL: {
+        auto dec_f = dynamic_cast<Field_new_decimal *>(f);
+        *(int64_t *)ptr = std::lround(dec_f->val_real() * types::PowOfTen(dec_f->dec));
+        ptr += sizeof(int64_t);
+      } break;
+      case MYSQL_TYPE_TIME:
+      case MYSQL_TYPE_TIME2:
+      case MYSQL_TYPE_DATE:
+      case MYSQL_TYPE_DATETIME:
+      case MYSQL_TYPE_NEWDATE:
+      case MYSQL_TYPE_TIMESTAMP2:
+      case MYSQL_TYPE_DATETIME2: {
+        MYSQL_TIME my_time;
+        std::memset(&my_time, 0, sizeof(my_time));
+        f->get_time(&my_time);
+        types::DT dt(my_time);
+        *(int64_t *)ptr = dt.val;
+        ptr += sizeof(int64_t);
+      } break;
+
+      case MYSQL_TYPE_TIMESTAMP: {
+        MYSQL_TIME my_time;
+        std::memset(&my_time, 0, sizeof(my_time));
+        f->get_time(&my_time);
+        auto saved = my_time.second_part;
+        // convert to UTC
+        if (!common::IsTimeStampZero(my_time)) {
+          my_bool myb;
+          my_time_t secs_utc = current_thd->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
+          common::GMTSec2GMTTime(&my_time, secs_utc);
+        }
+        my_time.second_part = saved;
+        types::DT dt(my_time);
+        *(int64_t *)ptr = dt.val;
+        ptr += sizeof(int64_t);
+      } break;
+      case MYSQL_TYPE_YEAR:  // what the hell?
+      {
+        types::DT dt = {};
+        dt.year = f->val_int();
+        *(int64_t *)ptr = dt.val;
+        ptr += sizeof(int64_t);
+      } break;
+      case MYSQL_TYPE_VARCHAR:
+      case MYSQL_TYPE_TINY_BLOB:
+      case MYSQL_TYPE_MEDIUM_BLOB:
+      case MYSQL_TYPE_LONG_BLOB:
+      case MYSQL_TYPE_BLOB:
+      case MYSQL_TYPE_VAR_STRING:
+      case MYSQL_TYPE_STRING: {
+        String str;
+        f->val_str(&str);
+        *(uint32_t *)ptr = str.length();
+        ptr += sizeof(uint32_t);
+        std::memcpy(ptr, str.ptr(), str.length());
+        ptr += str.length();
+      } break;
+      case MYSQL_TYPE_SET:
+      case MYSQL_TYPE_ENUM:
+      case MYSQL_TYPE_GEOMETRY:
+      case MYSQL_TYPE_NULL:
+      case MYSQL_TYPE_BIT:
+      default:
+        throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
+        break;
+    }
+    ASSERT(ptr <= buf.get() + buf_size, "Buffer overflow");
+  }
+  std::memcpy(buf.get() + update_offset, update_mask.data(), update_mask.data_size());
+  std::memcpy(buf.get() + null_offset, null_mask.data(), null_mask.data_size());
+  buf_size = ptr - buf.get();
 }
 
 std::unique_ptr<char[]> Engine::GetRecord(size_t &len) {
@@ -1109,7 +1281,7 @@ void Engine::PrepareAlterTable(const std::string &table_path, std::vector<Field 
   UnRegisterTable(table_path);
 }
 
-static void HandleDelayedLoad(int table_id, std::vector<std::unique_ptr<char[]>> &vec) {
+static void HandleDelayedLoad(uint32_t table_id, std::vector<std::unique_ptr<char[]>> &vec) {
   std::string addr = std::to_string(reinterpret_cast<long>(&vec));
 
   std::string table_path(vec[0].get() + sizeof(int32_t));
@@ -1198,7 +1370,7 @@ static void HandleDelayedLoad(int table_id, std::vector<std::unique_ptr<char[]>>
   my_thread_end();
 }
 
-void DistributeLoad(std::unordered_map<int, std::vector<std::unique_ptr<char[]>>> &tm) {
+void DistributeLoad(std::unordered_map<uint32_t, std::vector<std::unique_ptr<char[]>>> &tm) {
   utils::result_set<void> res;
   for (auto &it : tm) {
     res.insert(ha_tianmu_engine_->delay_insert_thread_pool.add_task(HandleDelayedLoad, it.first, std::ref(it.second)));
@@ -1220,9 +1392,9 @@ void Engine::ProcessDelayedInsert() {
   }
   mysql_mutex_unlock(&LOCK_server_started);
 
-  std::unordered_map<int, std::vector<std::unique_ptr<char[]>>> tm;
-  int buffer_recordnum = 0;
-  int sleep_cnt = 0;
+  std::unordered_map<uint32_t, std::vector<std::unique_ptr<char[]>>> tm;
+  uint32_t buffer_recordnum = 0;
+  uint32_t sleep_cnt = 0;
   while (!exiting) {
     if (tianmu_sysvar_enable_rowstore) {
       std::unique_lock<std::mutex> lk(cv_mtx);
@@ -1251,7 +1423,7 @@ void Engine::ProcessDelayedInsert() {
     }
 
     buffer_recordnum++;
-    auto table_id = *(int32_t *)rec.get();
+    auto table_id = *(uint32_t *)rec.get();
     tm[table_id].emplace_back(std::move(rec));
     if (tm[table_id].size() > static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
       // in case the ingress rate is too high
@@ -1275,7 +1447,7 @@ void Engine::ProcessDelayedMerge() {
   }
   mysql_mutex_unlock(&LOCK_server_started);
 
-  std::map<std::string, int> sleep_cnts;
+  std::map<std::string, uint> sleep_cnts;
   while (!exiting) {
     if (!tianmu_sysvar_enable_rowstore) {
       std::unique_lock<std::mutex> lk(cv_merge_mtx);
@@ -1283,12 +1455,12 @@ void Engine::ProcessDelayedMerge() {
       continue;
     }
 
-    std::unordered_map<int, std::vector<std::unique_ptr<char[]>>> tm;
+    std::unordered_map<uint32_t, std::vector<std::unique_ptr<char[]>>> need_merge_table;
     {
       try {
         std::scoped_lock guard(mem_table_mutex);
         for (auto &[name, mem_table] : mem_table_map) {
-          int64_t record_count = mem_table->CountRecords();
+          uint64_t record_count = mem_table->CountRecords();
           if (record_count >= tianmu_sysvar_insert_numthreshold ||
               (sleep_cnts.count(name) && sleep_cnts[name] > tianmu_sysvar_insert_cntthreshold)) {
             auto share = ha_tianmu_engine_->getTableShare(name);
@@ -1296,13 +1468,13 @@ void Engine::ProcessDelayedMerge() {
             utils::BitSet null_mask(share->NumOfCols());
             std::unique_ptr<char[]> buf(new char[sizeof(uint32_t) + name.size() + 1 + null_mask.data_size()]);
             char *ptr = buf.get();
-            *(int32_t *)ptr = table_id;  // table id
-            ptr += sizeof(int32_t);
+            *(uint32_t *)ptr = table_id;  // table id
+            ptr += sizeof(uint32_t);
             std::memcpy(ptr, name.c_str(), name.size());
             ptr += name.size();
             *ptr++ = 0;  // end with NUL
             std::memcpy(ptr, null_mask.data(), null_mask.data_size());
-            tm[table_id].emplace_back(std::move(buf));
+            need_merge_table[table_id].emplace_back(std::move(buf));
             sleep_cnts[name] = 0;
           } else if (record_count > 0) {
             if (sleep_cnts.count(name))
@@ -1323,8 +1495,8 @@ void Engine::ProcessDelayedMerge() {
         continue;
       }
     }
-    if (!tm.empty())
-      DistributeLoad(tm);
+    if (!need_merge_table.empty())
+      DistributeLoad(need_merge_table);
     else {
       std::unique_lock<std::mutex> lk(cv_merge_mtx);
       cv_merge.wait_for(lk, std::chrono::milliseconds(tianmu_sysvar_insert_wait_ms));
@@ -1429,7 +1601,7 @@ void Engine::InsertDelayed(const std::string &table_path, int table_id, TABLE *t
 
   uint32_t buf_sz = 0;
   std::unique_ptr<char[]> buf;
-  EncodeRecord(table_path, table_id, table->field, table->s->fields, table->s->blob_fields, buf, buf_sz);
+  EncodeInsertRecord(table_path, table_id, table->field, table->s->fields, table->s->blob_fields, buf, buf_sz);
 
   int failed = 0;
   while (true) {
@@ -1456,9 +1628,46 @@ void Engine::InsertMemRow(const std::string &table_path, std::shared_ptr<TableSh
 
   uint32_t buf_sz = 0;
   std::unique_ptr<char[]> buf;
-  EncodeRecord(table_path, share->TabID(), table->field, table->s->fields, table->s->blob_fields, buf, buf_sz);
-  auto rctable = share->GetSnapshot();
-  rctable->InsertMemRow(std::move(buf), buf_sz);
+  EncodeInsertRecord(table_path, share->TabID(), table->field, table->s->fields, table->s->blob_fields, buf, buf_sz);
+  auto tm_table = share->GetSnapshot();
+  tm_table->InsertMemRow(std::move(buf), buf_sz);
+}
+
+void Engine::UpdateMemRow(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table,
+                          uint64_t row_id, const uchar *old_data, uchar *new_data) {
+  my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->read_set);
+  std::shared_ptr<void> defer(nullptr,
+                              [table, org_bitmap](...) { dbug_tmp_restore_column_map(table->read_set, org_bitmap); });
+
+  std::unordered_map<uint, Field *> update_fields;
+  for (uint col_id = 0; col_id < table->s->fields; col_id++) {
+    if (!bitmap_is_set(table->write_set, col_id)) {
+      continue;
+    }
+    auto field = table->field[col_id];
+    if (field->real_maybe_null()) {
+      if (field->is_null_in_record(old_data) && field->is_null_in_record(new_data)) {
+        continue;
+      }
+
+      if (field->is_null_in_record(new_data)) {
+        update_fields.emplace(col_id, nullptr);  // set to null
+        continue;
+      }
+    }
+    auto o_ptr = field->ptr - table->record[0] + old_data;
+    auto n_ptr = field->ptr - table->record[0] + new_data;
+    if (field->is_null_in_record(old_data) || std::memcmp(o_ptr, n_ptr, field->pack_length()) != 0) {
+      update_fields.emplace(col_id, field);
+    }
+  }
+
+  uint32_t buf_sz = 0;
+  std::unique_ptr<char[]> buf;
+  EncodeUpdateRecord(table_path, share->TabID(), row_id, update_fields, table->s->fields, table->s->blob_fields, buf,
+                     buf_sz);
+  auto tm_table = share->GetSnapshot();
+  tm_table->UpdateMemRow(std::move(buf), buf_sz);
 }
 
 int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transaction *trans_, TABLE *table,
@@ -1489,6 +1698,25 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
   if (tianmu_sysvar_insert_delayed) {
     tianmu_stat.failed_delayinsert++;
     ret = 1;
+  }
+
+  return ret;
+}
+
+int Engine::UpdateRow(const std::string &table_path, TABLE *table, std::shared_ptr<TableShare> &share, uint64_t row_id,
+                      const uchar *old_data, uchar *new_data) {
+  int ret = 0;
+  if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE) {
+    if (tianmu_sysvar_enable_rowstore) {
+      UpdateMemRow(table_path, share, table, row_id, old_data, new_data);
+    } else {
+      // todo(dfx): full mem version
+      // InsertDelayed(table_path, share->TabID(), table);
+    }
+    tianmu_stat.delayinsert++;
+  } else {
+    auto tm_table = current_txn_->GetTableByPath(table_path);
+    ret = tm_table->Update(table, row_id, old_data, new_data);
   }
 
   return ret;

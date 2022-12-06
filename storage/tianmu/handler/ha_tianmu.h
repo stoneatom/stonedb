@@ -22,7 +22,7 @@
 #include "core/engine.h"
 
 namespace Tianmu {
-namespace handler {
+namespace DBHandler {
 
 // Class definition for the storage engine
 class ha_tianmu final : public handler {

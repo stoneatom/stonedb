@@ -20,7 +20,7 @@
 
 // mysql <--> tianmu interface functions
 namespace Tianmu {
-namespace handler {
+namespace DBHandler {
 
 enum class QueryRouteTo {
   kToMySQL = 0,

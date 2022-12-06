@@ -41,11 +41,12 @@ class TianmuMemTable {
   static common::ErrorCode DropMemTable(std::string table_name);
 
   std::string FullName() { return fullname_; }
-  uint32_t GetMemID() { return mem_id_; }
-  int64_t CountRecords() { return (next_insert_id_.load() - next_load_id_.load()); }
+  uint32_t GetMemID() const { return mem_id_; }
+  uint64_t CountRecords() { return (next_insert_id_.load() - next_load_id_.load()); }
   rocksdb::ColumnFamilyHandle *GetCFHandle() { return cf_handle_; }
   common::ErrorCode Rename(const std::string &to);
   void InsertRow(std::unique_ptr<char[]> buf, uint32_t size);
+  void UpdateRow(std::unique_ptr<char[]> buf, uint32_t size);
   void Truncate(Transaction *tx);
 
   struct Stat {
@@ -54,8 +55,8 @@ class TianmuMemTable {
     std::atomic_ulong read_cnt{0};
     std::atomic_ulong read_bytes{0};
   } stat;
-  std::atomic<std::int64_t> next_load_id_ = 0;
-  std::atomic<std::int64_t> next_insert_id_ = 0;
+  std::atomic<uint64_t> next_load_id_ = 0;
+  std::atomic<uint64_t> next_insert_id_ = 0;
 
  private:
   std::string fullname_;

@@ -23,7 +23,7 @@
 #include "vc/virtual_column.h"
 
 namespace Tianmu {
-namespace handler {
+namespace DBHandler {
 
 enum class TianmuEngineReturnValues {
   kLoadSuccessed = 0,

@@ -27,7 +27,7 @@
 namespace Tianmu {
 namespace core {
 
-using Tianmu::handler::QueryRouteTo;
+using Tianmu::DBHandler::QueryRouteTo;
 
 class CompiledQuery;
 class MysqlExpression;

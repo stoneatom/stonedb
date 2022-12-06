@@ -47,11 +47,11 @@ struct st_mysql_sys_var {
 };
 
 handler *tianmu_create_handler(handlerton *hton, TABLE_SHARE *table, MEM_ROOT *mem_root) {
-  return new (mem_root) Tianmu::handler::ha_tianmu(hton, table);
+  return new (mem_root) Tianmu::DBHandler::ha_tianmu(hton, table);
 }
 
 namespace Tianmu {
-namespace handler {
+namespace DBHandler {
 
 const Alter_inplace_info::HA_ALTER_FLAGS ha_tianmu::TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER =
     Alter_inplace_info::ADD_COLUMN | Alter_inplace_info::DROP_COLUMN | Alter_inplace_info::ALTER_STORED_COLUMN_ORDER;
@@ -78,101 +78,6 @@ my_bool rcbase_query_caching_of_table_permitted(THD *thd, [[maybe_unused]] char 
   if (!thd_test_options(thd, (OPTION_NOT_AUTOCOMMIT | OPTION_BEGIN)))
     return ((my_bool)TRUE);
   return ((my_bool)FALSE);
-}
-
-static core::Value GetValueFromField(Field *f) {
-  core::Value v;
-
-  if (f->is_null())
-    return v;
-
-  switch (f->type()) {
-    case MYSQL_TYPE_TINY:
-    case MYSQL_TYPE_SHORT:
-    case MYSQL_TYPE_LONG:
-    case MYSQL_TYPE_INT24:
-    case MYSQL_TYPE_LONGLONG:
-      v.SetInt(f->val_int());
-      break;
-    case MYSQL_TYPE_DECIMAL:
-    case MYSQL_TYPE_FLOAT:
-    case MYSQL_TYPE_DOUBLE:
-      v.SetDouble(f->val_real());
-      break;
-    case MYSQL_TYPE_NEWDECIMAL: {
-      auto dec_f = dynamic_cast<Field_new_decimal *>(f);
-      v.SetInt(std::lround(dec_f->val_real() * types::PowOfTen(dec_f->dec)));
-      break;
-    }
-    case MYSQL_TYPE_TIMESTAMP: {
-      MYSQL_TIME my_time;
-      std::memset(&my_time, 0, sizeof(my_time));
-      f->get_time(&my_time);
-      // convert to UTC
-      if (!common::IsTimeStampZero(my_time)) {
-        my_bool myb;
-        my_time_t secs_utc = current_txn_->Thd()->variables.time_zone->TIME_to_gmt_sec(&my_time, &myb);
-        common::GMTSec2GMTTime(&my_time, secs_utc);
-      }
-      types::DT dt = {};
-      dt.year = my_time.year;
-      dt.month = my_time.month;
-      dt.day = my_time.day;
-      dt.hour = my_time.hour;
-      dt.minute = my_time.minute;
-      dt.second = my_time.second;
-      v.SetInt(dt.val);
-      break;
-    }
-    case MYSQL_TYPE_TIME:
-    case MYSQL_TYPE_TIME2:
-    case MYSQL_TYPE_DATE:
-    case MYSQL_TYPE_DATETIME:
-    case MYSQL_TYPE_NEWDATE:
-    case MYSQL_TYPE_TIMESTAMP2:
-    case MYSQL_TYPE_DATETIME2: {
-      MYSQL_TIME my_time;
-      std::memset(&my_time, 0, sizeof(my_time));
-      f->get_time(&my_time);
-      types::DT dt = {};
-      dt.year = my_time.year;
-      dt.month = my_time.month;
-      dt.day = my_time.day;
-      dt.hour = my_time.hour;
-      dt.minute = my_time.minute;
-      dt.second = my_time.second;
-      v.SetInt(dt.val);
-      break;
-    }
-    case MYSQL_TYPE_YEAR:  // what the hell?
-    {
-      types::DT dt = {};
-      dt.year = f->val_int();
-      v.SetInt(dt.val);
-      break;
-    }
-    case MYSQL_TYPE_VARCHAR:
-    case MYSQL_TYPE_TINY_BLOB:
-    case MYSQL_TYPE_MEDIUM_BLOB:
-    case MYSQL_TYPE_LONG_BLOB:
-    case MYSQL_TYPE_BLOB:
-    case MYSQL_TYPE_VAR_STRING:
-    case MYSQL_TYPE_STRING: {
-      String str;
-      f->val_str(&str);
-      v.SetString(const_cast<char *>(str.ptr()), str.length());
-      break;
-    }
-    case MYSQL_TYPE_SET:
-    case MYSQL_TYPE_ENUM:
-    case MYSQL_TYPE_GEOMETRY:
-    case MYSQL_TYPE_NULL:
-    case MYSQL_TYPE_BIT:
-    default:
-      throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
-      break;
-  }
-  return v;
 }
 
 ha_tianmu::ha_tianmu(handlerton *hton, TABLE_SHARE *table_arg) : handler(hton, table_arg) {
@@ -513,38 +418,7 @@ int ha_tianmu::update_row(const uchar *old_data, uchar *new_data) {
                               [org_bitmap, this](...) { dbug_tmp_restore_column_map(table->write_set, org_bitmap); });
 
   try {
-    auto tab = current_txn_->GetTableByPath(table_name_);
-    utils::result_set<void> res;
-    for (uint i = 0; i < table->s->fields; i++) {
-      if (!bitmap_is_set(table->write_set, i)) {
-        continue;
-      }
-      auto field = table->field[i];
-      if (field->real_maybe_null()) {
-        if (field->is_null_in_record(old_data) && field->is_null_in_record(new_data)) {
-          continue;
-        }
-
-        if (field->is_null_in_record(new_data)) {
-          core::Value null;
-          res.insert(ha_tianmu_engine_->delete_or_update_thread_pool.add_task(
-              &core::TianmuTable::UpdateItem, tab.get(), current_position_, i, null, current_txn_));
-          continue;
-        }
-      }
-      auto o_ptr = field->ptr - table->record[0] + old_data;
-      auto n_ptr = field->ptr - table->record[0] + new_data;
-      if (field->is_null_in_record(old_data) || std::memcmp(o_ptr, n_ptr, field->pack_length()) != 0) {
-        my_bitmap_map *org_bitmap2 = dbug_tmp_use_all_columns(table, table->read_set);
-        std::shared_ptr<void> defer(
-            nullptr, [org_bitmap2, this](...) { dbug_tmp_restore_column_map(table->read_set, org_bitmap2); });
-        core::Value v = GetValueFromField(field);
-        res.insert(ha_tianmu_engine_->delete_or_update_thread_pool.add_task(&core::TianmuTable::UpdateItem, tab.get(),
-                                                                            current_position_, i, v, current_txn_));
-      }
-    }
-
-    res.get_all_with_except();
+    ha_tianmu_engine_->UpdateRow(table_name_, table, share_, current_position_, old_data, new_data);
     ha_tianmu_engine_->IncTianmuStatUpdate();
     DBUG_RETURN(0);
   } catch (common::DatabaseException &e) {
@@ -2523,21 +2397,21 @@ static struct st_mysql_sys_var *tianmu_showvars[] = {MYSQL_SYSVAR(bg_load_thread
                                                      MYSQL_SYSVAR(start_async),
                                                      MYSQL_SYSVAR(result_sender_rows),
                                                      nullptr};
-}  // namespace handler
+}  // namespace DBHandler
 }  // namespace Tianmu
 
 mysql_declare_plugin(tianmu){
     MYSQL_STORAGE_ENGINE_PLUGIN,
-    &Tianmu::handler::tianmu_storage_engine,
+    &Tianmu::DBHandler::tianmu_storage_engine,
     "TIANMU",
     "StoneAtom Group Holding Limited",
     "Tianmu storage engine",
     PLUGIN_LICENSE_GPL,
-    Tianmu::handler::tianmu_init_func, /* Plugin Init */
-    Tianmu::handler::tianmu_done_func, /* Plugin Deinit */
+    Tianmu::DBHandler::tianmu_init_func, /* Plugin Init */
+    Tianmu::DBHandler::tianmu_done_func, /* Plugin Deinit */
     0x0001 /* 0.1 */,
-    Tianmu::handler::statusvars,      /* status variables  */
-    Tianmu::handler::tianmu_showvars, /* system variables  */
-    nullptr,                          /* config options    */
-    0                                 /* flags for plugin */
+    Tianmu::DBHandler::statusvars,      /* status variables  */
+    Tianmu::DBHandler::tianmu_showvars, /* system variables  */
+    nullptr,                            /* config options    */
+    0                                   /* flags for plugin */
 } mysql_declare_plugin_end;
