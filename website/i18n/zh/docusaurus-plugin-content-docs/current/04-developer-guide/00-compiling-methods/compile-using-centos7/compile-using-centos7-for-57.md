@@ -153,7 +153,7 @@ boost 的安装路径可以根据实际情况指定，示例中的安装路径�
 :::
 ### 6. 安装 gtest
 ```shell
-git clone https://github.com/google/googletest.git -b release-1.12.0
+git clone git@github.com:google/googletest.git -b release-1.12.0
 cd googletest
 mkdir build
 cd build
@@ -165,7 +165,8 @@ gtest 默认安装在 /usr/local
 ```shell
 ls /usr/local/include/
 ...... gtest
-ls /usr/local/lib/
+ls /usr/local/lib/ # 32-bit os
+ls /usr/local/lib64/ # 64-bit os
 ...... cmake  libgtest.a  libgtest_main.a
 ```
 ## 第四步：执行编译
@@ -260,6 +261,8 @@ Copyright (c) 2021, 2022 StoneAtom Group Holding Limited
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
 mysql> alter user 'root'@'localhost' identified by 'stonedb123';
+mysql> GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'stonedb123' WITH GRANT OPTION;
+mysql> FLUSH PRIVILEGES;
 ```
 :::info
 管理员用户的临时密码在 mysqld.log 中，第一次登陆后需要修改管理员用户的密码。
