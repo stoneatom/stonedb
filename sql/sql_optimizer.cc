@@ -2935,16 +2935,32 @@ bool JOIN::get_best_combination()
         delete tab->quick();
         tab->set_quick(NULL);
       }
-      if (!pos->key)
+
+      // The tianmu engine does not handle the index well that day.
+      // If it is a tianmu table, the query does not pass the index.
+      // Otherwise, pass to the original logic
+      TABLE *const table = tab->table();
+      bool check_tianmu_table =
+          table && table->s && (table->s->db_type() ? (table->s->db_type()->db_type == DB_TYPE_TIANMU) : false);
+      if (check_tianmu_table)
       {
+        tab->set_type(JT_ALL);
         if (tab->quick())
-          tab->set_type(calc_join_type(tab->quick()->get_type()));
-        else
-          tab->set_type(JT_ALL);
+        {
+          delete tab->quick();
+          tab->set_quick(NULL);
+        }
       }
       else
-        // REF or RANGE, clarify later when prefix tables are set for JOIN_TABs
-        tab->set_type(JT_REF);
+      {
+        if (!pos->key)
+        {
+          tab->set_type((tab->quick()) ? calc_join_type(tab->quick()->get_type()) : JT_ALL);
+        }
+        else
+          // REF or RANGE, clarify later when prefix tables are set for JOIN_TABs
+          tab->set_type(JT_REF);
+      }
     }
     assert(tab->type() != JT_UNKNOWN);
 
