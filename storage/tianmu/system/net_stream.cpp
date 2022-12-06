@@ -21,14 +21,13 @@
 
 #include "common/assert.h"
 #include "core/transaction.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace system {
 NetStream::NetStream(const IOParameters &iop) : net_(&current_txn_->Thd()->net), cached_size_(0), cached_offset_(0) {
-  //net_request_file(net_, iop.Path());
-  net_write_command(net_, 251, (uchar*) iop.Path(), strlen(iop.Path()),
-                    (uchar*) "", 0);
+  // net_request_file(net_, iop.Path());
+  net_write_command(net_, 251, (uchar *)iop.Path(), strlen(iop.Path()), (uchar *)"", 0);
   opened_ = true;
 }
 
@@ -44,7 +43,8 @@ int NetStream::Close() {
 }
 
 size_t NetStream::Read(void *buf, size_t count) {
-  if (!opened_) return 0;
+  if (!opened_)
+    return 0;
 
   if (cached_size_ >= count) {
     std::memcpy(buf, net_->read_pos + cached_offset_, count);
@@ -70,7 +70,7 @@ size_t NetStream::Read(void *buf, size_t count) {
     opened_ = false;
     std::chrono::duration<double> diff = std::chrono::system_clock::now() - start;
     TIANMU_LOG(LogCtl_Level::INFO, "Failed to read from network: %s. Used %f seconds", std::strerror(errno),
-                diff.count());
+               diff.count());
     return copied;
   }
   if (len == 0) {

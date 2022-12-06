@@ -27,59 +27,62 @@
 namespace Tianmu {
 namespace core {
 class Transaction final {
-  static common::SequenceGenerator sg;
+  static common::SequenceGenerator seq_generator_;
 
  private:
-  common::TX_ID tid;
+  common::TX_ID txn_id_;
 
-  std::unordered_map<std::string, std::shared_ptr<RCTable>> m_modified_tables;
-  std::unordered_map<std::string, std::shared_ptr<RCTable>> m_readonly_tables;
+  std::unordered_map<std::string, std::shared_ptr<TianmuTable>> modified_tables_;
+  std::unordered_map<std::string, std::shared_ptr<TianmuTable>> readonly_tables_;
 
-  std::atomic_int display_lock{0};  // if >0 disable messages e.g. in subqueries
+  std::atomic_int display_lock_{0};  // if >0 disable messages e.g. in subqueries
 
-  bool display_attr_stats = false;  // if set, statistics on attributes should
-                                    // be displayed at the end of query
+  bool display_attr_stats_ = false;  // if set, statistics on attributes should
+                                     // be displayed at the end of query
   THD *thd;
-  int session_trace = 0;
-  int debug_level = 0;
-  std::string explain_msg;
-  index::KVTransaction kv_trans;
+  int session_trace_ = 0;
+  int debug_level_ = 0;
+  std::string explain_msg_;
+  index::KVTransaction kv_trans_;
+  common::LoadSource load_source_;
 
  public:
   ulong GetThreadID() const;
   THD *Thd() const { return thd; }
   bool Killed() const { return (thd ? thd->killed != 0 : false); }
-  void SetDisplayAttrStats(bool v = true) { display_attr_stats = v; }
-  bool DisplayAttrStats() { return display_attr_stats; }
+  void SetDisplayAttrStats(bool v = true) { display_attr_stats_ = v; }
+  bool DisplayAttrStats() { return display_attr_stats_; }
   void SuspendDisplay();
   void ResumeDisplay();
   void ResetDisplay();
-  void SetDebugLevel(int dbg_lev) { debug_level = dbg_lev; }
-  int DebugLevel() { return debug_level; }
-  void SetSessionTrace(int trace) { session_trace = trace; }
+  void SetDebugLevel(int dbg_lev) { debug_level_ = dbg_lev; }
+  int DebugLevel() { return debug_level_; }
+  void SetSessionTrace(int trace) { session_trace_ = trace; }
   bool Explain() { return (thd ? thd->lex->describe : false); }
-  std::string GetExplainMsg() { return explain_msg; }
-  void SetExplainMsg(const std::string &msg) { explain_msg = msg; }
-  bool m_explicit_lock_tables = false;
+  std::string GetExplainMsg() { return explain_msg_; }
+  void SetExplainMsg(const std::string &msg) { explain_msg_ = msg; }
+  bool explicit_lock_tables_ = false;
 
-  Transaction(THD *thd) : tid(sg.NextID()), thd(thd) {}
+  Transaction(THD *thd) : txn_id_(seq_generator_.NextID()), thd(thd) {}
   Transaction() = delete;
   ~Transaction() = default;
 
-  common::TX_ID GetID() const { return tid; }
-  std::shared_ptr<RCTable> GetTableByPathIfExists(const std::string &table_path);
-  std::shared_ptr<RCTable> GetTableByPath(const std::string &table_path);
+  common::TX_ID GetID() const { return txn_id_; }
+  common::LoadSource LoadSource() const { return load_source_; }
+  std::shared_ptr<TianmuTable> GetTableByPathIfExists(const std::string &table_path);
+  std::shared_ptr<TianmuTable> GetTableByPath(const std::string &table_path);
 
-  void ExplicitLockTables() { m_explicit_lock_tables = true; };
-  void ExplicitUnlockTables() { m_explicit_lock_tables = false; };
+  void SetLoadSource(common::LoadSource ls) { load_source_ = ls; }
+  void ExplicitLockTables() { explicit_lock_tables_ = true; }
+  void ExplicitUnlockTables() { explicit_lock_tables_ = false; }
   void AddTableRD(std::shared_ptr<TableShare> &share);
   void AddTableWR(std::shared_ptr<TableShare> &share);
   void AddTableWRIfNeeded(std::shared_ptr<TableShare> &share);
   void RemoveTable(std::shared_ptr<TableShare> &share);
-  bool Empty() const { return m_modified_tables.empty() && m_readonly_tables.empty(); }
+  bool Empty() const { return modified_tables_.empty() && readonly_tables_.empty(); }
   void Commit(THD *thd);
   void Rollback(THD *thd, bool force_error_message);
-  index::KVTransaction &KVTrans() { return kv_trans; }
+  index::KVTransaction &KVTrans() { return kv_trans_; }
 };
 }  // namespace core
 }  // namespace Tianmu

@@ -14,14 +14,7 @@ const Team: React.FC<any> = ({children}) => {
   function init() {
     const node = unified().use(remarkParse).parse(children);
     
-    const fn = reduce((acc, cur) => {
-      if(cur.type === 'image'){
-        acc.push(cur)
-      } else if(cur.children && cur.children.length) {
-        acc = acc.concat(fn([], cur.children))
-      }
-      return acc;
-    });
+
     const list = pickWhen('image',  (acc, cur) => {
       acc.push(cur)
       return acc;

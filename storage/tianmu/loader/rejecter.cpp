@@ -17,7 +17,7 @@
 
 #include "rejecter.h"
 
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace loader {
@@ -55,7 +55,8 @@ void Rejecter::ConsumeBadRow(char const *ptr, int64_t size, int64_t row_no, int 
     do_throw = (rejected_ >= abort_on_count_);
   } else if (abort_on_count_ == 0)
     do_throw = true;
-  if (do_throw) throw common::FormatException(row_no, error_code);
+  if (do_throw)
+    throw common::FormatException(row_no, error_code);
 }
 
 }  // namespace loader

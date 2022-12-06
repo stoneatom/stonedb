@@ -19,7 +19,7 @@
 #pragma once
 
 #include "common/common_definitions.h"
-#include "types/rc_data_types.h"
+#include "types/tianmu_data_types.h"
 
 namespace Tianmu {
 
@@ -60,6 +60,7 @@ struct CondID {
 enum class JoinType { JO_INNER, JO_LEFT, JO_RIGHT, JO_FULL };
 enum class TMParameter { TM_DISTINCT, TM_TOP, TM_EXISTS };  // Table Mode Parameter
 enum class CondType {
+  UNKOWN_COND,
   WHERE_COND,
   HAVING_COND,
   ON_INNER_FILTER,
@@ -71,7 +72,7 @@ enum class CondType {
 
 /**
   Interpretation of CQTerm depends on which parameters are used.
-  All unused parameters must be set to NULL_VALUE (int), NULL (pointers),
+  All unused parameters must be set to NULL_VALUE (int), nullptr (pointers),
   SF_NONE (SimpleFunction), common::NULL_VALUE_64 (Tint64_t).
 
   When these parameters are set:            then the meaning is:
@@ -90,7 +91,7 @@ enum class CondType {
  class)
  */
 struct CQTerm {
-  common::CT type;  // type of constant
+  common::ColumnType type;  // type of constant
   vcolumn::VirtualColumn *vc;
   types::CondArray cond_value;
   std::shared_ptr<utils::Hash64> cond_numvalue;
@@ -98,14 +99,15 @@ struct CQTerm {
   int vc_id;         // virt column number set at compilation, = -1 for legacy cases
                      // (not using virt column)
   bool is_vc_owner;  // indicator if vc should be it deleted in destructor
+  Item *item;
 
   CQTerm();  // null
-  explicit CQTerm(int v);
-  explicit CQTerm(int64_t v, common::CT t = common::CT::INT);
+  explicit CQTerm(int v, Item *item_arg = nullptr);
+  explicit CQTerm(int64_t v, common::ColumnType t = common::ColumnType::INT, Item *item_arg = nullptr);
   CQTerm(const CQTerm &);
   ~CQTerm();
 
-  bool IsNull() const { return (vc_id == common::NULL_VALUE_32 && vc == NULL); }
+  bool IsNull() const { return (vc_id == common::NULL_VALUE_32 && vc == nullptr); }
   CQTerm &operator=(const CQTerm &);
   bool operator==(const CQTerm &) const;
   char *ToString(char *buf, int tab_id) const;

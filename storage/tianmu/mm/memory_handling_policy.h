@@ -44,7 +44,7 @@ class MemoryHandling {
   HeapPolicy *m_main_heap, *m_huge_heap, *m_system, *m_large_temp;
   int main_heap_MB, comp_heap_MB;
   bool m_hard_limit;
-  int m_release_count = 0;
+  unsigned int m_release_count = 0;
   size_t m_release_total = 0;
 
   std::recursive_mutex m_mutex;
@@ -59,7 +59,7 @@ class MemoryHandling {
   void DumpObjs(std::ostream &out);
 
  public:
-  MemoryHandling(size_t comp_heap_size, size_t uncomp_heap_size, std::string hugedir = "", core::DataCache *d = NULL,
+  MemoryHandling(size_t comp_heap_size, size_t uncomp_heap_size, std::string hugedir = "", core::DataCache *d = nullptr,
                  size_t hugesize = 0);
   virtual ~MemoryHandling();
 

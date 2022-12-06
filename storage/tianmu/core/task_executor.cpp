@@ -23,7 +23,7 @@
 
 #ifndef DISABLE_USED_FOR_TIANMU
 #include "core/engine.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #endif
 
 namespace Tianmu {
@@ -58,7 +58,8 @@ class AppTemplate {
       pollabled = true;
     }
 
-    if (_stopped.load(std::memory_order_relaxed)) base::engine().exit(0);
+    if (_stopped.load(std::memory_order_relaxed))
+      base::engine().exit(0);
 
     return pollabled;
   }
@@ -97,7 +98,7 @@ void TaskExecutor::Exit() {
 void TaskExecutor::AddTask(std::unique_ptr<Task> task) { _app_template->AddTask(std::move(task)); }
 
 #ifndef DISABLE_USED_FOR_TIANMU
-TaskExecutor *GetTaskExecutor() { return ha_rcengine_->GetTaskExecutor(); }
+TaskExecutor *GetTaskExecutor() { return ha_tianmu_engine_->GetTaskExecutor(); }
 #endif
 
 }  // namespace core

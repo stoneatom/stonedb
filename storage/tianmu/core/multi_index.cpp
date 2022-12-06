@@ -34,10 +34,11 @@ MultiIndex::MultiIndex(uint32_t power) : m_conn(current_txn_) {
   no_dimensions = 0;
   no_tuples = 0;
   no_tuples_too_big = false;
-  dim_size = NULL;
-  group_for_dim = NULL;
-  group_num_for_dim = NULL;
+  dim_size = nullptr;
+  group_for_dim = nullptr;
+  group_num_for_dim = nullptr;
   iterator_lock = 0;
+  shallow_dim_groups = false;
 }
 
 MultiIndex::MultiIndex(const MultiIndex &s) : m_conn(s.m_conn) {
@@ -57,11 +58,12 @@ MultiIndex::MultiIndex(const MultiIndex &s) : m_conn(s.m_conn) {
 
     FillGroupForDim();
   } else {
-    dim_size = NULL;
-    group_for_dim = NULL;
-    group_num_for_dim = NULL;
+    dim_size = nullptr;
+    group_for_dim = nullptr;
+    group_num_for_dim = nullptr;
   }
   iterator_lock = 0;
+  shallow_dim_groups = false;
 }
 
 MultiIndex::MultiIndex(MultiIndex &s, bool shallow) : m_conn(s.m_conn) {
@@ -81,17 +83,20 @@ MultiIndex::MultiIndex(MultiIndex &s, bool shallow) : m_conn(s.m_conn) {
 
     FillGroupForDim();
   } else {
-    dim_size = NULL;
-    group_for_dim = NULL;
-    group_num_for_dim = NULL;
+    dim_size = nullptr;
+    group_for_dim = nullptr;
+    group_num_for_dim = nullptr;
   }
   iterator_lock = 0;
+  shallow_dim_groups = shallow;
 }
 
 MultiIndex::~MultiIndex() {
-  for (uint i = 0; i < dim_groups.size(); i++) {
-    delete dim_groups[i];
-    dim_groups[i] = NULL;
+  if (!shallow_dim_groups) {
+    for (uint i = 0; i < dim_groups.size(); i++) {
+      delete dim_groups[i];
+      dim_groups[i] = nullptr;
+    }
   }
   delete[] dim_size;
   delete[] group_for_dim;
@@ -102,7 +107,7 @@ void MultiIndex::Clear() {
   try {
     for (uint i = 0; i < dim_groups.size(); i++) {
       delete dim_groups[i];
-      dim_groups[i] = NULL;
+      dim_groups[i] = nullptr;
     }
   } catch (...) {
     DEBUG_ASSERT(!"exception from destructor");
@@ -114,9 +119,9 @@ void MultiIndex::Clear() {
   no_dimensions = 0;
   no_tuples = 0;
   no_tuples_too_big = false;
-  dim_size = NULL;
-  group_for_dim = NULL;
-  group_num_for_dim = NULL;
+  dim_size = nullptr;
+  group_for_dim = nullptr;
+  group_num_for_dim = nullptr;
   iterator_lock = 0;
   can_be_distinct.clear();
   used_in_output.clear();
@@ -126,11 +131,11 @@ void MultiIndex::FillGroupForDim() {
   MEASURE_FET("MultiIndex::FillGroupForDim(...)");
   int move_groups = 0;
   for (uint i = 0; i < dim_groups.size(); i++) {  // pack all holes
-    if (dim_groups[i] == NULL) {
-      while (i + move_groups < dim_groups.size() && dim_groups[i + move_groups] == NULL) move_groups++;
+    if (dim_groups[i] == nullptr) {
+      while (i + move_groups < dim_groups.size() && dim_groups[i + move_groups] == nullptr) move_groups++;
       if (i + move_groups < dim_groups.size()) {
         dim_groups[i] = dim_groups[i + move_groups];
-        dim_groups[i + move_groups] = NULL;
+        dim_groups[i + move_groups] = nullptr;
       } else
         break;
     }
@@ -138,7 +143,7 @@ void MultiIndex::FillGroupForDim() {
   for (int i = 0; i < move_groups; i++) dim_groups.pop_back();  // clear nulls from the end
 
   for (int d = 0; d < no_dimensions; d++) {
-    group_for_dim[d] = NULL;
+    group_for_dim[d] = nullptr;
     group_num_for_dim[d] = -1;
   }
 
@@ -184,7 +189,7 @@ void MultiIndex::AddDimension() {
   group_for_dim = ng;
   group_num_for_dim = ngn;
   dim_size[no_dimensions - 1] = 0;
-  group_for_dim[no_dimensions - 1] = NULL;
+  group_for_dim[no_dimensions - 1] = nullptr;
   group_num_for_dim[no_dimensions - 1] = -1;
   // Temporary code, for rare cases when we add a dimension after other joins
   // (smk_33):
@@ -201,7 +206,7 @@ void MultiIndex::AddDimension_cross(uint64_t size) {
     MultiplyNoTuples(size);
   else
     no_tuples = size;
-  DimensionGroupFilter *nf = NULL;
+  DimensionGroupFilter *nf = nullptr;
   if (size > 0) {
     dim_size[new_dim] = size;
     nf = new DimensionGroupFilter(new_dim, size, p_power);  // redo
@@ -219,7 +224,8 @@ void MultiIndex::AddDimension_cross(uint64_t size) {
 
 void MultiIndex::MultiplyNoTuples(uint64_t factor) {
   no_tuples = SafeMultiplication(no_tuples, factor);
-  if (no_tuples == static_cast<uint64_t>(common::NULL_VALUE_64)) no_tuples_too_big = true;
+  if (no_tuples == static_cast<uint64_t>(common::NULL_VALUE_64))
+    no_tuples_too_big = true;
 }
 
 void MultiIndex::CheckIfVirtualCanBeDistinct()  // updates can_be_distinct table
@@ -232,7 +238,8 @@ void MultiIndex::CheckIfVirtualCanBeDistinct()  // updates can_be_distinct table
   if (no_dimensions > 1) {
     int non_one_found = 0;
     for (int i = 0; i < no_dimensions; i++) {
-      if (dim_size[i] > 1) non_one_found++;
+      if (dim_size[i] > 1)
+        non_one_found++;
     }
     if (non_one_found == 1) {
       for (int j = 0; j < no_dimensions; j++)
@@ -246,9 +253,19 @@ void MultiIndex::CheckIfVirtualCanBeDistinct()  // updates can_be_distinct table
   }
 }
 
-void MultiIndex::LockForGetIndex(int dim) { group_for_dim[dim]->Lock(dim); }
+void MultiIndex::LockForGetIndex(int dim) {
+  if (shallow_dim_groups) {
+    return;
+  }
+  group_for_dim[dim]->Lock(dim);
+}
 
-void MultiIndex::UnlockFromGetIndex(int dim) { group_for_dim[dim]->Unlock(dim); }
+void MultiIndex::UnlockFromGetIndex(int dim) {
+  if (shallow_dim_groups) {
+    return;
+  }
+  group_for_dim[dim]->Unlock(dim);
+}
 
 uint64_t MultiIndex::DimSize(int dim)  // the size of one dimension: material_no_tuples for materialized,
                                        // NumOfOnes for virtual
@@ -257,10 +274,16 @@ uint64_t MultiIndex::DimSize(int dim)  // the size of one dimension: material_no
 }
 
 void MultiIndex::LockAllForUse() {
+  if (shallow_dim_groups) {
+    return;
+  }
   for (int dim = 0; dim < no_dimensions; dim++) LockForGetIndex(dim);
 }
 
 void MultiIndex::UnlockAllFromUse() {
+  if (shallow_dim_groups) {
+    return;
+  }
   for (int dim = 0; dim < no_dimensions; dim++) UnlockFromGetIndex(dim);
 }
 
@@ -268,16 +291,16 @@ void MultiIndex::MakeCountOnly(int64_t mat_tuples, DimensionVector &dims_to_mate
   MEASURE_FET("MultiIndex::MakeCountOnly(...)");
   MarkInvolvedDimGroups(dims_to_materialize);
   for (int i = 0; i < NumOfDimensions(); i++) {
-    if (dims_to_materialize[i] && group_for_dim[i] != NULL) {
+    if (dims_to_materialize[i] && group_for_dim[i] != nullptr) {
       // delete this group
       int dim_group_to_delete = group_num_for_dim[i];
       for (int j = i; j < NumOfDimensions(); j++)
         if (group_num_for_dim[j] == dim_group_to_delete) {
-          group_for_dim[j] = NULL;
+          group_for_dim[j] = nullptr;
           group_num_for_dim[j] = -1;
         }
       delete dim_groups[dim_group_to_delete];
-      dim_groups[dim_group_to_delete] = NULL;  // these holes will be packed in FillGroupForDim()
+      dim_groups[dim_group_to_delete] = nullptr;  // these holes will be packed in FillGroupForDim()
     }
   }
   DimensionGroupMaterialized *count_only_group = new DimensionGroupMaterialized(dims_to_materialize);
@@ -289,8 +312,8 @@ void MultiIndex::MakeCountOnly(int64_t mat_tuples, DimensionVector &dims_to_mate
 
 void MultiIndex::UpdateNumOfTuples() {
   // assumptions:
-  // - no_material_tuples is correct, even if all t[...] are NULL (forgotten).
-  //   However, if all f[...] are not NULL, then the index is set to IT_VIRTUAL
+  // - no_material_tuples is correct, even if all t[...] are nullptr (forgotten).
+  //   However, if all f[...] are not nullptr, then the index is set to IT_VIRTUAL
   //   and no_material_tuples = 0
   // - IT_MIXED or IT_VIRTUAL may be in fact IT_ORDERED (must be set properly on
   // output)
@@ -308,30 +331,34 @@ void MultiIndex::UpdateNumOfTuples() {
 }
 
 int64_t MultiIndex::NumOfTuples(DimensionVector &dimensions,
-                             bool fail_on_overflow)  // for a given subset of dimensions
+                                bool fail_on_overflow)  // for a given subset of dimensions
 {
   std::vector<int> dg = ListInvolvedDimGroups(dimensions);
-  if (dg.size() == 0) return 0;
+  if (dg.size() == 0)
+    return 0;
   int64_t res = 1;
   for (uint i = 0; i < dg.size(); i++) {
     dim_groups[dg[i]]->UpdateNumOfTuples();
     res = SafeMultiplication(res, dim_groups[dg[i]]->NumOfTuples());
   }
-  if (res == common::NULL_VALUE_64 && fail_on_overflow) throw common::OutOfMemoryException("Too many tuples.  (1428)");
+  if (res == common::NULL_VALUE_64 && fail_on_overflow)
+    throw common::OutOfMemoryException("Too many tuples.  (1428)");
   return res;
 }
 
 int MultiIndex::MaxNumOfPacks(int dim)  // maximal (upper approx.) number of different nonempty data
-                                     // packs for the given dimension
+                                        // packs for the given dimension
 {
   int max_packs = 0;
   Filter *f = group_for_dim[dim]->GetFilter(dim);
   if (f) {
     for (size_t p = 0; p < f->NumOfBlocks(); p++)
-      if (!f->IsEmpty(p)) max_packs++;
+      if (!f->IsEmpty(p))
+        max_packs++;
   } else {
     max_packs = int((dim_size[dim]) >> p_power) + 1;
-    if (group_for_dim[dim]->NumOfTuples() < max_packs) max_packs = (int)group_for_dim[dim]->NumOfTuples();
+    if (group_for_dim[dim]->NumOfTuples() < max_packs)
+      max_packs = (int)group_for_dim[dim]->NumOfTuples();
   }
   return max_packs;
 }
@@ -350,7 +377,8 @@ void MultiIndex::MIFilterAnd(MIIterator &mit,
     FilterOnesIterator fit(f, p_power);
     int64_t cur_pos = 0;
     while (fit.IsValid()) {
-      if (!fd.Get(cur_pos)) fit.ResetDelayed();
+      if (!fd.Get(cur_pos))
+        fit.ResetDelayed();
       ++fit;
       cur_pos++;
     }
@@ -372,7 +400,8 @@ void MultiIndex::MIFilterAnd(MIIterator &mit,
   while (mit.IsValid()) {
     if (fd.Get(f_pos)) {
       for (int d = 0; d < no_dimensions; d++)
-        if (dim_used[d]) new_mind.SetNewTableValue(d, mit[d]);
+        if (dim_used[d])
+          new_mind.SetNewTableValue(d, mit[d]);
       new_mind.CommitNewTableValues();
     }
     ++mit;
@@ -415,7 +444,8 @@ std::vector<int> MultiIndex::ListInvolvedDimGroups(DimensionVector &v)  // List 
           added = true;
           break;
         }
-      if (!added) res.push_back(cur_group_number);
+      if (!added)
+        res.push_back(cur_group_number);
     }
   }
   return res;

@@ -1,0 +1,29 @@
+--echo #
+--echo # LEFT() function
+--echo # Author: syw
+--echo #
+
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS left_function;
+--enable_warnings
+
+CREATE DATABASE left_function;
+USE left_function;
+
+CREATE TABLE t1 (a INT, b CHAR(15))ENGINE=tianmu;
+INSERT INTO t1 VALUES (NULL, ''),(1, 'tianmu22222'),(2, 'tianmu'),(3, 'Innodb');
+
+SELECT LEFT('tianmu22222 cs', 7) FROM t1 LIMIT 1;
+SELECT LEFT('tianmu22222 cs', 8) FROM t1 LIMIT 1;
+SELECT LEFT('tianmu22222 cs', 9) FROM t1 LIMIT 1;
+
+SELECT b, LEFT(b, 0) FROM t1 ORDER BY 1;
+SELECT b, LEFT(b, -1) FROM t1 ORDER BY 1;
+SELECT b, LEFT(b, 6) FROM t1 ORDER BY 1;
+SELECT b, LEFT(b, 9) FROM t1 ORDER BY 1;
+SELECT b, LEFT(concat('mmm_', b), 10) FROM t1 ORDER BY 1;
+
+# Clean UP
+DROP DATABASE left_function;

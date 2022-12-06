@@ -24,7 +24,8 @@
 namespace Tianmu {
 namespace core {
 Item *UnRef(Item *item) {
-  if (!item) return 0;
+  if (!item)
+    return 0;
   bool changed;
   do {
     changed = false;
@@ -46,8 +47,8 @@ const char *TablePath(TABLE_LIST *tab) {
   return tab->table->s->path.str;
 }
 
-int OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct,
-                         [[maybe_unused]] const int group_by_clause) {
+QueryRouteTo OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct,
+                                  [[maybe_unused]] const int group_by_clause) {
   distinct = false;
 
   item = UnRef(item);
@@ -106,9 +107,9 @@ int OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct,
             oper = common::ColOperation::VAR_POP;
           break;
         case Item_sum::SUM_BIT_FUNC:
-          if (dynamic_cast<Item_sum_xor *>(item) != NULL)
+          if (dynamic_cast<Item_sum_xor *>(item) != nullptr)
             oper = common::ColOperation::BIT_XOR;
-          else if (dynamic_cast<Item_sum_and *>(item) != NULL)
+          else if (dynamic_cast<Item_sum_and *>(item) != nullptr)
             oper = common::ColOperation::BIT_AND;
           else
             oper = common::ColOperation::BIT_OR;
@@ -116,18 +117,18 @@ int OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct,
         case Item_sum::GROUP_CONCAT_FUNC:
           distinct = ((Item_func_group_concat *)item)->get_distinct();
           TIANMU_LOG(LogCtl_Level::DEBUG, "group_concat distinct %d, sepertator %s, direction %d", distinct,
-                      ((Item_func_group_concat *)item)->get_separator()->c_ptr(),
-                      ((Item_func_group_concat *)item)->direction());
+                     ((Item_func_group_concat *)item)->get_separator()->c_ptr(),
+                     ((Item_func_group_concat *)item)->direction());
           oper = common::ColOperation::GROUP_CONCAT;
           break;
         default:
-          return RETURN_QUERY_TO_MYSQL_ROUTE;
+          return QueryRouteTo::kToMySQL;
       }
       break;
     default:
-      return RETURN_QUERY_TO_MYSQL_ROUTE;
+      return QueryRouteTo::kToMySQL;
   }
-  return RCBASE_QUERY_ROUTE;
+  return QueryRouteTo::kToTianmu;
 }
 
 const char *FieldType(enum_field_types ft) {
@@ -143,8 +144,10 @@ const char *FieldType(enum_field_types ft) {
                                      "MYSQL_TYPE_GEOMETRY"};
 
   size_t i = ft;
-  if (i < sizeof(low_names) / sizeof(*low_names)) return low_names[i];
-  if ((i >= 246) && (i <= 255)) return high_names[i - 246];
+  if (i < sizeof(low_names) / sizeof(*low_names))
+    return low_names[i];
+  if ((i >= 246) && (i <= 255))
+    return high_names[i - 246];
   return "<unknown field type>";
 }
 
@@ -166,7 +169,7 @@ void PrintItemTree(Item *item, int indent) {
   indent += 1;
 
   if (!item) {
-    std::fprintf(stderr, "NULL item\n");
+    std::fprintf(stderr, "nullptr item\n");
     return;
   }
 
@@ -247,12 +250,14 @@ void PrintItemTree(Item *item, int indent) {
       Item_ref *ref = static_cast<Item_ref *>(item);
       Item *real = ref->real_item();
       std::fprintf(stderr, "\n");
-      if (ref != real) PrintItemTree(real, indent);
+      if (ref != real)
+        PrintItemTree(real, indent);
       return;
     }
     case Item::INT_ITEM: {
       Item_int_with_ref *int_ref = dynamic_cast<Item_int_with_ref *>(item);
-      if (!int_ref) break;
+      if (!int_ref)
+        break;
       // else item is an instance of Item_int_with_ref, not Item_int
       std::fprintf(stderr, " [Item_int_with_ref]\n");
       PrintItemTree(int_ref->real_item(), indent);

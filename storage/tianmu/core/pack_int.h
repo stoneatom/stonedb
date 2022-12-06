@@ -48,15 +48,16 @@ class PackInt final : public Pack {
   std::unique_ptr<Pack> Clone(const PackCoordinate &pc) const override;
   void LoadDataFromFile(system::Stream *fcurfile) override;
   void Save() override;
-  void UpdateValue(size_t i, const Value &v) override;
+  void UpdateValue(size_t locationInPack, const Value &v) override;
+  void DeleteByRow(size_t locationInPack) override;
 
   void LoadValues(const loader::ValueCache *vc, const std::optional<common::double_int_t> &null_value);
-  int64_t GetValInt(int n) const override { return data[n]; }
-  double GetValDouble(int n) const override {
-    ASSERT(is_real);
-    return data.pdouble[n];
+  int64_t GetValInt(int locationInPack) const override { return data_[locationInPack]; }
+  double GetValDouble(int locationInPack) const override {
+    ASSERT(is_real_);
+    return data_.ptr_double_[locationInPack];
   }
-  bool IsFixed() const { return !is_real; }
+  bool IsFixed() const { return !is_real_; }
 
  protected:
   std::pair<UniquePtr, size_t> Compress() override;
@@ -66,36 +67,36 @@ class PackInt final : public Pack {
   PackInt(const PackInt &apn, const PackCoordinate &pc);
 
   void AppendValue(uint64_t v) {
-    dpn->nr++;
-    SetVal64(dpn->nr - 1, v);
+    dpn_->numOfRecords++;
+    SetVal64(dpn_->numOfRecords - 1, v);
   }
 
   void AppendNull() {
-    SetNull(dpn->nr);
-    dpn->nn++;
-    dpn->nr++;
+    SetNull(dpn_->numOfRecords);
+    dpn_->numOfNulls++;
+    dpn_->numOfRecords++;
   }
   void SetValD(uint n, double v) {
-    dpn->synced = false;
-    ASSERT(n < dpn->nr);
-    ASSERT(is_real);
-    data.pdouble[n] = v;
+    dpn_->synced = false;
+    ASSERT(n < dpn_->numOfRecords);
+    ASSERT(is_real_);
+    data_.ptr_double_[n] = v;
   }
   void SetVal64(uint n, uint64_t v) {
-    dpn->synced = false;
-    ASSERT(n < dpn->nr);
-    switch (data.vt) {
+    dpn_->synced = false;
+    ASSERT(n < dpn_->numOfRecords);
+    switch (data_.value_type_) {
       case 8:
-        data.pint64[n] = v;
+        data_.ptr_int64_[n] = v;
         return;
       case 4:
-        data.pint32[n] = v;
+        data_.ptr_int32_[n] = v;
         return;
       case 2:
-        data.pint16[n] = v;
+        data_.ptr_int16_[n] = v;
         return;
       case 1:
-        data.pint8[n] = v;
+        data_.ptr_int8_[n] = v;
         return;
       default:
         TIANMU_ERROR("bad value type in pakcN");
@@ -107,8 +108,8 @@ class PackInt final : public Pack {
     else
       SetNull(n);
   }
-  void UpdateValueFloat(size_t i, const Value &v);
-  void UpdateValueFixed(size_t i, const Value &v);
+  void UpdateValueFloat(size_t locationInPack, const Value &v);
+  void UpdateValueFixed(size_t locationInPack, const Value &v);
   void ExpandOrShrink(uint64_t maxv, int64_t delta);
   void SaveCompressed(system::Stream *fcurfile);
   void SaveUncompressed(system::Stream *fcurfile);
@@ -123,35 +124,35 @@ class PackInt final : public Pack {
   void RemoveNullsAndCompress(compress::NumCompressor<etype> &nc, char *tmp_comp_buffer, uint &tmp_cb_len,
                               uint64_t &maxv);
 
-  bool is_real = false;
+  bool is_real_ = false;
   struct {
     int64_t operator[](size_t n) const {
-      switch (vt) {
+      switch (value_type_) {
         case 8:
-          return pint64[n];
+          return ptr_int64_[n];
         case 4:
-          return pint32[n];
+          return ptr_int32_[n];
         case 2:
-          return pint16[n];
+          return ptr_int16_[n];
         case 1:
-          return pint8[n];
+          return ptr_int8_[n];
         default:
           TIANMU_ERROR("bad value type in pakcN");
       }
     }
-    bool empty() const { return ptr == nullptr; }
+    bool empty() const { return ptr_ == nullptr; }
 
    public:
-    unsigned char vt;
+    unsigned char value_type_;
     union {
-      uint8_t *pint8;
-      uint16_t *pint16;
-      uint32_t *pint32;
-      uint64_t *pint64;
-      double *pdouble;
-      void *ptr;
+      uint8_t *ptr_int8_;
+      uint16_t *ptr_int16_;
+      uint32_t *ptr_int32_;
+      uint64_t *ptr_int64_;
+      double *ptr_double_;
+      void *ptr_;
     };
-  } data = {};
+  } data_ = {};
 };
 }  // namespace core
 }  // namespace Tianmu

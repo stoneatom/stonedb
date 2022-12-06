@@ -20,7 +20,7 @@
 
 #include "core/mi_updating_iterator.h"
 #include "core/pack_guardian.h"
-#include "types/rc_num.h"
+#include "types/tianmu_num.h"
 #include "vc/virtual_column.h"
 
 namespace Tianmu {
@@ -41,16 +41,16 @@ class MultiValColumn : public VirtualColumn {
     virtual ~LazyValueInterface() {}
     inline std::unique_ptr<LazyValueInterface> Clone() const { return DoClone(); }
     inline types::BString GetString() const { return DoGetString(); }
-    inline types::RCNum GetRCNum() const { return DoGetRCNum(); }
-    inline types::RCValueObject GetValue() const { return DoGetValue(); }
+    inline types::TianmuNum GetRCNum() const { return DoGetRCNum(); }
+    inline types::TianmuValueObject GetValue() const { return DoGetValue(); }
     inline int64_t GetInt64() const { return DoGetInt64(); }
     inline bool IsNull() const { return DoIsNull(); }
 
    private:
     virtual std::unique_ptr<LazyValueInterface> DoClone() const = 0;
     virtual types::BString DoGetString() const = 0;
-    virtual types::RCNum DoGetRCNum() const = 0;
-    virtual types::RCValueObject DoGetValue() const = 0;
+    virtual types::TianmuNum DoGetRCNum() const = 0;
+    virtual types::TianmuValueObject DoGetValue() const = 0;
     virtual int64_t DoGetInt64() const = 0;
     virtual bool DoIsNull() const = 0;
   };
@@ -71,8 +71,8 @@ class MultiValColumn : public VirtualColumn {
 
     LazyValue *operator->() { return this; }
     types::BString GetString() { return impl->GetString(); }
-    types::RCNum GetRCNum() { return impl->GetRCNum(); }
-    types::RCValueObject GetValue() { return impl->GetValue(); }
+    types::TianmuNum GetRCNum() { return impl->GetRCNum(); }
+    types::TianmuValueObject GetValue() { return impl->GetValue(); }
     int64_t GetInt64() { return impl->GetInt64(); }
     bool IsNull() { return impl->IsNull(); }
 
@@ -132,11 +132,11 @@ class MultiValColumn : public VirtualColumn {
   /*! \brief Create a column that represent const value.
    *
    * \param ct - type of column.
-   * \param mind - core::MultiIndex.
+   * \param multi_index - core::MultiIndex.
    * \param expressions - a STL container of core::MysqlExpression*.
    */
-  MultiValColumn(core::ColumnType const &ct, core::MultiIndex *mind) : VirtualColumn(ct, mind) {}
-  MultiValColumn(const MultiValColumn &c) : VirtualColumn(c) { tianmuitems = c.tianmuitems; }
+  MultiValColumn(core::ColumnType const &ct, core::MultiIndex *multi_index) : VirtualColumn(ct, multi_index) {}
+  MultiValColumn(const MultiValColumn &c) : VirtualColumn(c) { tianmu_items_ = c.tianmu_items_; }
   virtual ~MultiValColumn() {}
 
   bool IsMultival() const override { return true; }
@@ -144,10 +144,10 @@ class MultiValColumn : public VirtualColumn {
   inline common::Tribool ContainsString(core::MIIterator const &mit, types::BString &val) {
     return ContainsStringImpl(mit, val);
   }
-  inline common::Tribool Contains(core::MIIterator const &mit, types::RCDataType const &val) {
+  inline common::Tribool Contains(core::MIIterator const &mit, types::TianmuDataType const &val) {
     return (ContainsImpl(mit, val));
   }
-  virtual bool IsSetEncoded([[maybe_unused]] common::CT at, [[maybe_unused]] int scale) {
+  virtual bool IsSetEncoded([[maybe_unused]] common::ColumnType at, [[maybe_unused]] int scale) {
     return false;
   }  // checks whether the set is constant and fixed size equal to the given one
   inline bool IsEmpty(core::MIIterator const &mit) { return (IsEmptyImpl(mit)); }
@@ -159,8 +159,8 @@ class MultiValColumn : public VirtualColumn {
   virtual bool CheckExists(core::MIIterator const &mit) { return (NumOfValuesImpl(mit) > 0); }
   inline Iterator begin(core::MIIterator const &mit) { return Iterator(this, BeginImpl(mit)); }
   inline Iterator end(core::MIIterator const &mit) { return Iterator(this, EndImpl(mit)); }
-  inline types::RCValueObject GetSetMin(core::MIIterator const &mit) { return GetSetMinImpl(mit); }
-  inline types::RCValueObject GetSetMax(core::MIIterator const &mit) { return GetSetMaxImpl(mit); }
+  inline types::TianmuValueObject GetSetMin(core::MIIterator const &mit) { return GetSetMinImpl(mit); }
+  inline types::TianmuValueObject GetSetMax(core::MIIterator const &mit) { return GetSetMaxImpl(mit); }
   inline void SetExpectedType(core::ColumnType const &ct) { SetExpectedTypeImpl(ct); }
   int64_t GetNotNullValueInt64([[maybe_unused]] const core::MIIterator &mit) override {
     DEBUG_ASSERT(0);
@@ -179,8 +179,8 @@ class MultiValColumn : public VirtualColumn {
   }
 
  protected:
-  virtual types::RCValueObject GetSetMinImpl(core::MIIterator const &mit) = 0;
-  virtual types::RCValueObject GetSetMaxImpl(core::MIIterator const &mit) = 0;
+  virtual types::TianmuValueObject GetSetMinImpl(core::MIIterator const &mit) = 0;
+  virtual types::TianmuValueObject GetSetMaxImpl(core::MIIterator const &mit) = 0;
 
   virtual int64_t NumOfValuesImpl(core::MIIterator const &mit) = 0;
   virtual int64_t AtLeastNoDistinctValuesImpl(core::MIIterator const &, int64_t const at_least) = 0;
@@ -205,10 +205,10 @@ class MultiValColumn : public VirtualColumn {
   void GetValueStringImpl([[maybe_unused]] types::BString &s, [[maybe_unused]] const core::MIIterator &mit) override {
     DEBUG_ASSERT(!"Invalid call for this type of column.");
   }
-  types::RCValueObject GetValueImpl([[maybe_unused]] const core::MIIterator &mit,
-                                    [[maybe_unused]] bool lookup_to_num) override {
+  types::TianmuValueObject GetValueImpl([[maybe_unused]] const core::MIIterator &mit,
+                                        [[maybe_unused]] bool lookup_to_num) override {
     DEBUG_ASSERT(!"Invalid call for this type of column.");
-    return (types::RCValueObject());
+    return (types::TianmuValueObject());
   }
   int64_t GetNumOfNullsImpl([[maybe_unused]] const core::MIIterator &mit,
                             [[maybe_unused]] bool val_nulls_possible) override {
@@ -225,13 +225,14 @@ class MultiValColumn : public VirtualColumn {
   }
   int64_t GetApproxDistValsImpl([[maybe_unused]] bool incl_nulls,
                                 [[maybe_unused]] core::RoughMultiIndex *rough_mind) override {
-    if (mind->TooManyTuples()) return common::PLUS_INF_64;
-    return mind->NumOfTuples();  // default
+    if (multi_index_->TooManyTuples())
+      return common::PLUS_INF_64;
+    return multi_index_->NumOfTuples();  // default
   }
 
   virtual common::Tribool Contains64Impl(core::MIIterator const &mit, int64_t val) = 0;
   virtual common::Tribool ContainsStringImpl(core::MIIterator const &mit, types::BString &val) = 0;
-  virtual common::Tribool ContainsImpl(core::MIIterator const &, types::RCDataType const &) = 0;
+  virtual common::Tribool ContainsImpl(core::MIIterator const &, types::TianmuDataType const &) = 0;
   virtual bool IsEmptyImpl(core::MIIterator const &) = 0;
   virtual bool CopyCondImpl(core::MIIterator const &mit, types::CondArray &condition, DTCollation coll) = 0;
   virtual bool CopyCondImpl(core::MIIterator const &mit, std::shared_ptr<utils::Hash64> &condition,
@@ -241,7 +242,7 @@ class MultiValColumn : public VirtualColumn {
   }  // even copies refer to the same core::TempTable and core::TempTable cannot
      // be used in parallel due to Attr paging
   bool IsThreadSafe() override { return false; }
-  core::MysqlExpression::tianmu_fields_cache_t tianmuitems;  // items used in mysqlExpressions
+  core::MysqlExpression::tianmu_fields_cache_t tianmu_items_;  // items used in mysqlExpressions
 };
 }  // namespace vcolumn
 }  // namespace Tianmu

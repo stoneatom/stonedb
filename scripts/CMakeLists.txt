@@ -539,3 +539,19 @@ IF(CMAKE_COMPILER_IS_GNUCXX AND CMAKE_CXX_FLAGS MATCHES "-static")
   ENDIF()
 ENDIF()
 
+# add by stonedb, generate my.cnf and mysql_server
+IF(UNIX)
+EXECUTE_PROCESS(COMMAND bash "-c" "cp my.cnf.sample my.cnf"
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/scripts/)
+EXECUTE_PROCESS(COMMAND bash "-c" "cp scripts/mysql_server.sample scripts/mysql_server"
+		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+	EXECUTE_PROCESS(COMMAND bash "-c" "./generate_abs_path.sh ${CMAKE_INSTALL_PREFIX}"
+			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/scripts/)
+ENDIF()
+
+# add by stonedb, mv install script files to CMAKE_INSTALL_PREFIX path
+SET (ENGINE_MYSQLDIR   "${CMAKE_INSTALL_PREFIX}/")
+install(FILES my.cnf
+              DESTINATION ${ENGINE_MYSQLDIR} COMPONENT storage-engine)
+install(PROGRAMS mysql_server install.sh reinstall.sh
+              DESTINATION ${ENGINE_MYSQLDIR} COMPONENT storage-engine)

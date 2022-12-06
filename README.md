@@ -4,6 +4,7 @@
 
 <h3 align="center"><strong>An One-Stop Real-Time HTAP database</strong></h3>
 
+  [**English**](README.md) | [中文](README_zh-hans.md) 
 
 </br>
 
@@ -13,21 +14,26 @@
 [![WeChat badge](https://img.shields.io/badge/Wechat-join-green?logo=wechat&amp)](https://cms.stoneatom.com/assets/8f44fbdf-b987-44fb-8b8d-c65a37da9221.jpg)
 [![Twitter Follow](https://img.shields.io/twitter/follow/StoneDataBase?style=social)](https://twitter.com/intent/follow?screen_name=StoneDataBase)
 
-</div>
+</div> 
 
-* [What is StoneDB](#what-is-stonedb)
-* [Contribution](#contribution)
-* [Getting Started](#getting-started)
-   * [Supported Platform](#supported-platform)
-   * [Build StoneDB from the Source Code](#build-stonedb-from-the-source-code)
-   * [Build StoneDB from Source Code in a Docker Container](#build-stonedb-from-source-code-in-a-docker-container)
-   * [Configure StoneDB](#configure-stonedb)
-   * [Initialize the Database](#initialize-the-database)
-   * [Start the Database Instance](#start-the-database-instance)
-   * [Create a StoneDB Table](#create-a-stonedb-table)
-   * [Switch from MySQL to StoneDB in Production](#switch-from-mysql-to-stonedb-in-production)
-* [Documentation](#documentation)
-* [Discussion](#discussion)
+- [What is StoneDB](#what-is-stonedb)
+- [Contribution](#contribution)
+- [Getting Started](#getting-started)
+  - [Supported Platform](#supported-platform)
+  - [Build StoneDB from the Source Code](#build-stonedb-from-the-source-code)
+    - [On Ubuntu 20.04](#on-ubuntu-2004)
+    - [On CentOS 7.X](#on-centos-7x)
+    - [On RedHat 7.X](#on-redhat-7x)
+  - [Build StoneDB from Source Code in a Docker Container](#build-stonedb-from-source-code-in-a-docker-container)
+  - [Configure StoneDB](#configure-stonedb)
+  - [Initialize the Database](#initialize-the-database)
+  - [Start the Database Instance](#start-the-database-instance)
+  - [Create a StoneDB Table](#create-a-stonedb-table)
+  - [Switch from MySQL to StoneDB in Production](#switch-from-mysql-to-stonedb-in-production)
+- [Documentation](#documentation)
+- [Discussion](#discussion)
+- [Join StoneDB Wechat Group](#join-stonedb-wechat-group)
+- [Code of Conduct](#code-of-conduct)
 
 # What is StoneDB
 
@@ -35,7 +41,12 @@
 
 StoneDB is a MySQL-compatible high-performance hybrid transaction/analytical processing (HTAP) database. It provides analytical processing (AP) abilities to MySQL. The running systems can be seamlessly migrated to StoneDB without any code changed. Compared to InnoDB, StoneDB provides 10 times the query performance as well as 10 times the load performance. StoneDB also provides 10:1 to 40:1 compression ratio. 
 
-<p align="center"> <b>Architecture</b> </p>
+
+<p align="center"> <b>Overview</b> </p>
+
+[![logo](Docs/stonedb_overview.png)](https://stonedb.io/docs/about-stonedb/intro)
+
+<p align="center"> <b>Architecture 2.0</b> </p>
 
 [![logo](Docs/stonedb_architecture.png)](https://stonedb.io/docs/about-stonedb/architecture)
 
@@ -54,8 +65,9 @@ The Getting Started part provides information about StoneDB supported platforms,
 
 The officially supported subsets of platforms are:
 
-- CentOS 7.9 or higher
+- CentOS 7.x or higher
 - Ubuntu 20.04 or higher
+- Red Hat Enterprise Linux 7 (RHEL 7.x) 
 
 Compiler toolsets we verify our builds with:
 
@@ -63,19 +75,24 @@ Compiler toolsets we verify our builds with:
 
 The following packages we verify our builds with:
 
-- CMake 3.16.3 or higher
-- RocksDB 6.12.6 or higher
-- marisa 0.2.6 or higher
+- Make 3.82 or later
+- CMake 3.7.2 or later
+- marisa 0.77
+- RocksDB 6.12.6
+- Boost 1.66
 
 ## Build StoneDB from the Source Code
 
-**On a fresh Ubuntu 20.04 instance:**
+### On Ubuntu 20.04
 
-For more information, see [Compile StoneDB on Ubuntu 20.04](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-ubuntu20.04).
+For more information, see [Compile StoneDB on Ubuntu 20.04](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-ubuntu2004/compile-using-ubuntu20.04-for-57/).
 
-**On CentOS 7.9:**
+### On CentOS 7.X
 
-For more information, see [Compile StoneDB on CentOS 7](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-centos7).
+For more information, see [Compile StoneDB on CentOS 7.x](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-centos7/compile-using-centos7-for-57).
+
+### On RedHat 7.X
+For more information, see [Compile StoneDB on RedHat 7.x](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-redhat7/compile-using-redhat7-for-57/).
 ## Build StoneDB from Source Code in a Docker Container
 
 For more information, see [Compile StoneDB in a Docker Container](https://stonedb.io/docs/developer-guide/compiling-methods/compile-using-docker).
@@ -83,11 +100,14 @@ For more information, see [Compile StoneDB in a Docker Container](https://stoned
 ## Configure StoneDB
 After StoneDB is installed, you need to configure at least the following parameters in the **my.cnf** file:
 
-```
+```shell
 #the stonedb configuration options are listed as following.
 #for an example.
 [mysqld] 
-default-storage-engine=stonedb
+# For version 5.7 or later, the engine should be set to tianmu
+default-storage-engine=tianmu
+# For version 5.6, the engine should be set to stonedb
+# default-storage-engine=stonedb
 default-tmp-storage-engine=MyISAM
 binlog-format=STATEMENT
 ```
@@ -95,41 +115,39 @@ binlog-format=STATEMENT
 ## Initialize the Database
 
 ```bash
+# For version 5.6
 cd /path/to/your/path/bin && ./mysql_install_db --basedir=/stonedb/install/ --datadir=/stonedb/install/data/ --user=mysql
+
+# For version 5.7 or later
+cd /path/to/your/path/bin && ./mysqld --initialize --basedir=/stonedb/install/ --datadir=/stonedb/install/data/ --user=mysql
 ```
 
 ## Start the Database Instance 
 
 ```bash
-mysqld_safe --defaults-file=/path/to/my.cnf 
-```
-
-or
-
-```bash
-cp /path/to/your/path/support-files/mysql.server /etc/init.d/
-service mysql start
+mysqld_safe --defaults-file=/path/to/my.cnf --user=mysql &
 ```
 
 ## Create a StoneDB Table
 
 ```sql
---The example code for creating a table with 'stonedb' engine.
+--The example code for creating a table with 'tianmu' engine.(For version 5.7 or later)
 CREATE TABLE `example_table` (
-  `id1` bigint(20) unsigned NOT NULL DEFAULT '0',
-  `id1_type` int(10) unsigned NOT NULL DEFAULT '0',
-  `id2` bigint(20) unsigned NOT NULL DEFAULT '0',
-  `id2_type` int(10) unsigned NOT NULL DEFAULT '0',
+  `id1` bigint(20) NOT NULL DEFAULT '0',
+  `id1_type` int(10) NOT NULL DEFAULT '0',
+  `id2` bigint(20) NOT NULL DEFAULT '0',
+  `id2_type` int(10) NOT NULL DEFAULT '0',
   `data` varchar(255) NOT NULL DEFAULT '',
-  `time` bigint(20) unsigned NOT NULL DEFAULT '0',
-  `version` int(11) unsigned NOT NULL DEFAULT '0',
-) ENGINE=stonedb DEFAULT COLLATE=utf8mb4_general_ci;
+  `time` bigint(20) NOT NULL DEFAULT '0',
+  `version` int(11) NOT NULL DEFAULT '0',
+) ENGINE=tianmu;
+-- For version 5.6, the engine should be set to 'stonedb'
 
 ```
 
 The example shows some important features and limitations in StoneDB. For more information about limitations, please see [StoneDB Limitations](https://stonedb.io/docs/about-stonedb/limits). 
 
-- StoneDB data is stored in Column format and persist to RocksDB, and RocksDB plays as a disk to store the formatted data by column. All data is compressed, and the compression ratio can be 10:1 to 40:1. 
+- StoneDB data is stored in Column format and persist to RocksDB. All data is compressed, and the compression ratio can be 10:1 to 40:1. 
 - StoneDB can achieve a competitive performance when processing ad-hoc queries, even without any indexes created. For more details, click [here.](http://stonedb.io/)
 
 --- 
@@ -155,7 +173,13 @@ Online migration tools to move data between storage engines are not currently de
 Documentation can be found online at [https://stonedb.io](https://stonedb.io/docs/about-stonedb/intro). The documentation provides you with StoneDB basics, extensive examples of using StoneDB, as well as other information that you may need during your usage of StoneDB.
 
 # Discussion
-The [GitHub Discussions](https://github.com/stoneatom/stonedb/discussions) is the home for most discussions and communications about the StoneDB project. We welcome your participation. Every single opinion or suggestion of yours is welcomed and valued. We anticipate StoneDB to be an open and influential project.  
 
+The [GitHub Discussions](https://github.com/stoneatom/stonedb/discussions) is the home for most discussions and communications about the StoneDB project. We welcome your participation. Every single opinion or suggestion of yours is welcomed and valued. We anticipate StoneDB to be an open and influential project.
+# Join StoneDB Wechat Group
+You can add our little assistant's WeChat and join StoneDB's user group:
+
+![logo](Docs/stonedb_wecaht_group.png)
+
+# Code of Conduct
 When participating in the StoneDB project, please ensure all your behavior complies with the [Code of Conduct](https://stonedb.io/community/main).
 

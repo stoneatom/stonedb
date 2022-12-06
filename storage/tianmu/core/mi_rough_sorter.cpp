@@ -36,7 +36,7 @@ MINewContentsRSorter::MINewContentsRSorter(MultiIndex *_m, IndexTable **t_new, i
   no_cols_to_compare = 0;
   no_cols_to_sort = 0;
   for (int dim = 0; dim < no_dim; dim++) {
-    tall[dim] = NULL;  // will remain NULL if the dimension is not covered by sorter
+    tall[dim] = nullptr;  // will remain nullptr if the dimension is not covered by sorter
     AddColumn(t_new[dim], dim);
   }
   last_pack = new int[no_dim];
@@ -56,7 +56,7 @@ MINewContentsRSorter::~MINewContentsRSorter() {
 }
 
 void MINewContentsRSorter::AddColumn(IndexTable *t, int dim) {
-  DEBUG_ASSERT(t == NULL || tall[dim] == NULL);  // else already added - something is wrong!
+  DEBUG_ASSERT(t == nullptr || tall[dim] == nullptr);  // else already added - something is wrong!
   tall[dim] = t;
   tcheck[dim] = false;
   if (t) {
@@ -90,7 +90,8 @@ void MINewContentsRSorter::ResetStats() {
 
 void MINewContentsRSorter::Barrier()  // finish all unfinished work, if any
 {
-  if (synchronized) return;
+  if (synchronized)
+    return;
   worker->Barrier();
   synchronized = true;
 }
@@ -107,7 +108,8 @@ void MINewContentsRSorter::RoughQSort(uint *bound_queue, uint64_t start_tuple, u
     s1 = bound_queue[queue_read] + start_tuple;
     s2 = bound_queue[queue_read + 1] + start_tuple;
     queue_read = (queue_read + 2) % bound_queue_size;
-    if (s1 == s2) continue;
+    if (s1 == s2)
+      continue;
     if (s2 - s1 < 20) {  // bubble sort for small buffers
       j = s2;
       do {

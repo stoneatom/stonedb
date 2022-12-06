@@ -23,7 +23,7 @@
 #include "common/common_definitions.h"
 #include "mm/traceable_object.h"
 #include "system/cacheable_item.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace core {
@@ -50,7 +50,7 @@ class Sorter3 : public mm::TraceableObject {
   /*
         Return a pointer to a buffer position containing the next sorted row.
         It is assumed that the pointer is valid until next GetNextValue() is
-        alled, or the object is deleted. Return NULL at the end of data.
+        alled, or the object is deleted. Return nullptr at the end of data.
   */
   virtual unsigned char *GetNextValue() = 0;
   /*
@@ -154,13 +154,13 @@ class SorterMultiPass : public SorterOnePass, private system::CacheableItem {
 
   void InitHeap();                               // prepare heap, load beginnings of blocks into memory
   Keyblock GetFromBlock(int b, bool &reloaded);  // get the next value from block, return (-1,
-                                                 // NULL, 0) if the block is empty
+                                                 // nullptr, 0) if the block is empty
   // set reloaded if the data was reloaded (and the last buffer position
   // preserved)
 
   struct BlockDescription {
     BlockDescription(int b_size)
-        : block_size(b_size), file_offset(0), block_start(NULL), read_offset(-1), buf_size(0) {}
+        : block_size(b_size), file_offset(0), block_start(nullptr), read_offset(-1), buf_size(0) {}
     int block_size;              // total size in bytes
     int file_offset;             // current offset of file read position
     unsigned char *block_start;  // start of buffer prepared for this block

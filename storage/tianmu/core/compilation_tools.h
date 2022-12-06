@@ -33,7 +33,7 @@ class ReturnMeToMySQLWithError {};
 
 const char *TablePath(TABLE_LIST *tab);
 Item *UnRef(Item *item);
-int OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct, const int group_by_clause);
+QueryRouteTo OperationUnmysterify(Item *item, common::ColOperation &oper, bool &distinct, const int group_by_clause);
 void PrintItemTree(Item *item, int indent = 0);
 void PrintItemTree(char const *info, Item *item);
 }  // namespace core

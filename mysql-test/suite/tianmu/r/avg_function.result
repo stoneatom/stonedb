@@ -1,0 +1,26 @@
+#
+# Test AVG as distributed aggregate function
+# Author: syw
+#
+DROP DATABASE IF EXISTS mcs188_db;
+CREATE DATABASE mcs188_db;
+USE mcs188_db;
+CREATE TABLE t1 (a INT, b CHAR(5))ENGINE=tianmu;
+INSERT INTO t1 VALUES (NULL, ''),(1, 'aaa'),(2, 'aaa'),(1, 'ccc'),(4, 'ddd'),(5, 'aaa'),(6, 'ddd'),(7, 'eee');
+SELECT AVG(DISTINCT a) FROM t1;
+AVG(DISTINCT a)
+4.1667
+SELECT AVG(DISTINCT a) FROM t1 GROUP BY b HAVING b = 'aaa';
+AVG(DISTINCT a)
+2.6667
+SELECT b, AVG(DISTINCT a) FROM t1 GROUP BY b ORDER BY b DESC;
+b	AVG(DISTINCT a)
+eee	7.0000
+ddd	5.0000
+ccc	1.0000
+aaa	2.6667
+	NULL
+SELECT AVG(a) FROM t1;
+AVG(a)
+3.7143
+DROP DATABASE mcs188_db;

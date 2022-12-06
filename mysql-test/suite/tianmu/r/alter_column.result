@@ -1,0 +1,42 @@
+#
+# Test add, modify, rename, drop column
+# Author: syw
+#
+DROP DATABASE IF EXISTS alter_colunm;
+CREATE DATABASE alter_colunm;
+USE alter_colunm;
+CREATE TABLE t1 (c1 INT, c2 CHAR(1)) ENGINE=tianmu;
+INSERT INTO t1 VALUES (1, 'a'), (2, 'b'), (3, 'c'), (4, 'd'), (5, 'e');
+ALTER TABLE t1 ADD COLUMN c11 INT NOT NULL;
+ALTER TABLE t1 ADD COLUMN c11 INT(1);
+ERROR 42S21: Duplicate column name 'c11'
+ALTER TABLE t1 ADD COLUMN c21 CHAR(2);
+ALTER TABLE t1 ADD COLUMN c11 INT(2);
+ERROR 42S21: Duplicate column name 'c11'
+ALTER TABLE t1 ADD COLUMN c12 CHAR(1) AFTER c11;
+ALTER TABLE t1 ADD COLUMN c0 INT FIRST;
+ALTER TABLE t1 MODIFY COLUMN c11 TINYINT;
+ALTER TABLE t1 CHANGE COLUMN c2 c2new CHAR(2);
+ALTER TABLE t1 CHANGE COLUMN c2 c2new CHAR(1);
+ERROR 42S22: Unknown column 'c2' in 't1'
+ALTER TABLE t1 CHANGE COLUMN c2new c2 CHAR(1);
+ALTER TABLE t1 DROP COLUMN IF EXISTS c11;
+ERROR 42000: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'IF EXISTS c11' at line 1
+ALTER TABLE t1 DROP COLUMN c11;
+SHOW CREATE TABLE t1;
+Table	Create Table
+t1	CREATE TABLE `t1` (
+  `c0` int(11) DEFAULT NULL,
+  `c1` int(11) DEFAULT NULL,
+  `c2` char(1) DEFAULT NULL,
+  `c12` char(1) DEFAULT NULL,
+  `c21` char(2) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
+SELECT * FROM t1 ORDER BY c1;
+c0	c1	c2	c12	c21
+NULL	1	a	NULL	NULL
+NULL	2	b	NULL	NULL
+NULL	3	c	NULL	NULL
+NULL	4	d	NULL	NULL
+NULL	5	e	NULL	NULL
+DROP DATABASE alter_colunm;

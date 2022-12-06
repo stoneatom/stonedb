@@ -21,10 +21,12 @@ namespace fmt {
 
 template <typename ArgFormatter>
 void format_arg(BasicFormatter<char, ArgFormatter> &f, const char *&format_str, const std::tm &tm) {
-  if (*format_str == ':') ++format_str;
+  if (*format_str == ':')
+    ++format_str;
   const char *end = format_str;
   while (*end && *end != '}') ++end;
-  if (*end != '}') FMT_THROW(FormatError("missing '}' in format string"));
+  if (*end != '}')
+    FMT_THROW(FormatError("missing '}' in format string"));
   internal::MemoryBuffer<char, static_cast<size_t>(internal::enumInlineBuffer::INLINE_BUFFER_SIZE)> format;
   format.append(format_str, end + 1);
   format[format.size() - 1] = '\0';
@@ -82,12 +84,14 @@ inline std::tm localtime(std::time_t time) {
     bool fallback(internal::Null<>) {
       using namespace fmt::internal;
       std::tm *tm = std::localtime(&time_);
-      if (tm) tm_ = *tm;
+      if (tm)
+        tm_ = *tm;
       return tm != FMT_NULL;
     }
   };
   LocalTime lt(time);
-  if (lt.run()) return lt.tm_;
+  if (lt.run())
+    return lt.tm_;
   // Too big time values may be unsupported.
   FMT_THROW(fmt::FormatError("time_t value out of range"));
   return std::tm();
@@ -117,12 +121,14 @@ inline std::tm gmtime(std::time_t time) {
 
     bool fallback(internal::Null<>) {
       std::tm *tm = std::gmtime(&time_);
-      if (tm != FMT_NULL) tm_ = *tm;
+      if (tm != FMT_NULL)
+        tm_ = *tm;
       return tm != FMT_NULL;
     }
   };
   GMTime gt(time);
-  if (gt.run()) return gt.tm_;
+  if (gt.run())
+    return gt.tm_;
   // Too big time values may be unsupported.
   FMT_THROW(fmt::FormatError("time_t value out of range"));
   return std::tm();

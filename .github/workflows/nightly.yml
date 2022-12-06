@@ -1,0 +1,88 @@
+name: nightly
+
+on:
+  push:
+    tags:
+      - "*v*"
+  schedule:
+    - cron: "0 18 * * *"
+
+concurrency:
+  group: nightly
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  package:
+    name: build package
+    runs-on: self-hosted
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - debian10_1.0.3
+          # - centos7_1.0.3
+    container:
+      image: stoneatom/stonedb_buildenv:${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: package
+        run: |
+          find . -name pkg_outdir -delete
+          mkdir {build,pkg_outdir} && cd build
+          git config --global --add safe.directory /__w/stonedb/stonedb
+          cmake ../ \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=/stonedb57/install \
+          -DMYSQL_DATADIR=/stonedb57/install/data \
+          -DSYSCONFDIR=/stonedb57/install \
+          -DMYSQL_UNIX_ADDR=/stonedb57/install/tmp/mysql.sock \
+          -DWITH_EMBEDDED_SERVER=OFF \
+          -DWITH_TIANMU_STORAGE_ENGINE=1 \
+          -DWITH_MYISAM_STORAGE_ENGINE=1 \
+          -DWITH_INNOBASE_STORAGE_ENGINE=1 \
+          -DWITH_PARTITION_STORAGE_ENGINE=1 \
+          -DMYSQL_TCP_PORT=3306 \
+          -DENABLED_LOCAL_INFILE=1 \
+          -DEXTRA_CHARSETS=all \
+          -DDEFAULT_CHARSET=utf8 \
+          -DDEFAULT_COLLATION=utf8_general_ci \
+          -DDOWNLOAD_BOOST=0 \
+          -DWITH_BOOST=/usr/local/stonedb-boost/ \
+          -DDOWNLOAD_ROCKSDB=0 \
+          -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb/ \
+          -DWITH_MARISA=/usr/local/stonedb-marisa/ \
+          -DDOWNLOAD_ROCKSDB=0 \
+          -DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb && make -j`nproc` && make -j`nproc` install
+
+          tar -zcPvf ../pkg_outdir/stonedb57_nightly-`date +%y%m%d%H%M`.tar.gz /stonedb57/
+
+      - name: mtr test
+        run: |
+          mkdir -p /stonedb57/install/log
+          groupadd mysql && useradd -g mysql mysql
+          chown -R mysql:mysql /stonedb57
+          cd /stonedb57/install/mysql-test
+          ./mysql-test-run.pl --suite=tianmu --nowarnings --force --nocheck-testcases --retry=0
+
+      - name: output some vars
+        id: vars
+        env:
+          SHA_EXT: sha256sum.txt
+        run: |
+          find pkg_outdir -type f \( -iname \*.deb -o -iname \*.rpm -o -iname \*.tar.gz \) -exec bash -c "sha256sum {} > {}.sha256sum.txt" \;
+          subdir=$(date -u +%Y.%m.%d)
+          echo "::set-output name=subdir::$subdir"
+      
+      - name: copy file via ssh password
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.FILE_SERVER_HOST }}
+          username: ${{ secrets.FILE_SERVER_USERNAME }}
+          password: ${{ secrets.FILE_SERVER_PASSWORD }}
+          port: ${{ secrets.FILE_SERVER_PORT }}
+          source: "pkg_outdir/*"
+          target: "${{ secrets.FILE_SERVER_DIR }}"

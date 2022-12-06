@@ -61,7 +61,7 @@ class MIIterator {
    *
    */
   MIIterator(MultiIndex *mind,
-             uint32_t power);  // note: mind=NULL will create a local multiindex
+             uint32_t power);  // note: mind=nullptr will create a local multiindex
                                // - one dim., one row
   MIIterator(MultiIndex *mind, int one_dimension,
              bool lock);  // -1 is an equivalent of all dimensions// = true
@@ -131,7 +131,8 @@ class MIIterator {
       if (pack_size_left != common::NULL_VALUE_64) {  // else the packrow is too large to be
                                                       // iterated through
         --pack_size_left;
-        if (pack_size_left == 0) InitNextPackrow();
+        if (pack_size_left == 0)
+          InitNextPackrow();
       }
     }
     DEBUG_ASSERT(one_filter_dim == -1 || cur_pos[one_filter_dim] >> p_power == cur_pack[one_filter_dim]);
@@ -178,7 +179,8 @@ class MIIterator {
   virtual bool NullsPossibleInPack(int dim) const { return it[it_for_dim[dim]]->NullsExist(dim); }
   virtual bool NullsPossibleInPack() const {
     for (int i = 0; i < no_dims; i++) {
-      if (dimensions.Get(i) && it[it_for_dim[i]]->NullsExist(i)) return true;
+      if (dimensions.Get(i) && it[it_for_dim[i]]->NullsExist(i))
+        return true;
     }
     return false;
   }
@@ -279,7 +281,8 @@ class MIIterator {
   inline void InitNextPackrow() {  // find boundaries of the current packrow,
     // assumption: pack_size_left is properly updated only if the method is used
     // at the first row of a packrow.
-    if (!valid) return;
+    if (!valid)
+      return;
     pack_size_left = 1;
     for (unsigned int i = 0; i < it.size(); i++) {
       pack_size_left = SafeMultiplication(pack_size_left, it[i]->GetPackSizeLeft());
@@ -348,6 +351,7 @@ class MIInpackIterator : public MIIterator {
  public:
   MIInpackIterator(const MIIterator &sec) : MIIterator(sec) {}
   MIInpackIterator() : MIIterator() {}
+  MIInpackIterator(const MIInpackIterator &) = default;
   void swap(MIInpackIterator &i);
   MIInpackIterator &operator=(const MIInpackIterator &m) {
     MIInpackIterator tmp(m);
@@ -373,13 +377,15 @@ class MIInpackIterator : public MIIterator {
     if (one_filter_dim > -1) {
       valid = one_filter_it->NextInsidePack();
       valid = valid && one_filter_it->IsValid();
-      if (valid) cur_pos[one_filter_dim] = one_filter_it->GetCurPos(one_filter_dim);
+      if (valid)
+        cur_pos[one_filter_dim] = one_filter_it->GetCurPos(one_filter_dim);
     } else {
       // General part:
       GeneralIncrement();
     }
     --pack_size_left;
-    if (pack_size_left == 0) valid = false;
+    if (pack_size_left == 0)
+      valid = false;
     return *this;
   }
 

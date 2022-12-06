@@ -24,70 +24,74 @@ namespace Tianmu {
 namespace mm {
 
 void FIFOTracker::insert(TraceableObject *o) {
-  ASSERT(GetRelTracker(o) == NULL, "Object has multiple trackers");
-  ASSERT(GetRelPrev(o) == NULL, "Object was not removed or initialized properly");
-  ASSERT(GetRelNext(o) == NULL, "Object was not removed or initialized properly");
+  ASSERT(GetRelTracker(o) == nullptr, "Object has multiple trackers");
+  ASSERT(GetRelPrev(o) == nullptr, "Object was not removed or initialized properly");
+  ASSERT(GetRelNext(o) == nullptr, "Object was not removed or initialized properly");
   SetRelTracker(o, this);
-  SetRelPrev(o, NULL);
+  SetRelPrev(o, nullptr);
   SetRelNext(o, head);
-  if (head != NULL) SetRelPrev(head, o);
+  if (head != nullptr)
+    SetRelPrev(head, o);
   head = o;
-  if (tail == NULL) tail = head;
+  if (tail == nullptr)
+    tail = head;
   _size++;
 }
 
 TraceableObject *FIFOTracker::removeTail() {
   TraceableObject *res = tail;
-  if (res == NULL) return NULL;
+  if (res == nullptr)
+    return nullptr;
   tail = GetRelPrev(tail);
-  if (tail != NULL)
-    SetRelNext(tail, NULL);
+  if (tail != nullptr)
+    SetRelNext(tail, nullptr);
   else {
     ASSERT(_size == 1, "FIFOTracker size error");
-    head = NULL;
+    head = nullptr;
   }
-  SetRelTracker(res, NULL);
-  SetRelPrev(res, NULL);
-  SetRelNext(res, NULL);
+  SetRelTracker(res, nullptr);
+  SetRelPrev(res, nullptr);
+  SetRelNext(res, nullptr);
   _size--;
   return res;
 }
 
 TraceableObject *FIFOTracker::removeHead() {
   TraceableObject *res = head;
-  if (res == NULL) return NULL;
+  if (res == nullptr)
+    return nullptr;
   head = GetRelNext(head);
-  if (head != NULL)
-    SetRelPrev(head, NULL);
+  if (head != nullptr)
+    SetRelPrev(head, nullptr);
   else {
     ASSERT(_size == 1, "FIFOTracker size error");
-    tail = NULL;
+    tail = nullptr;
   }
-  SetRelTracker(res, NULL);
-  SetRelPrev(res, NULL);
-  SetRelNext(res, NULL);
+  SetRelTracker(res, nullptr);
+  SetRelPrev(res, nullptr);
+  SetRelNext(res, nullptr);
   _size--;
   return res;
 }
 
 void FIFOTracker::remove(TraceableObject *o) {
   ASSERT(GetRelTracker(o) == this, "Removing object from wrong tracker");
-  SetRelTracker(o, NULL);
+  SetRelTracker(o, nullptr);
   if ((o == head) && (o == tail)) {
-    head = tail = NULL;
+    head = tail = nullptr;
   } else if (o == head) {
     head = GetRelNext(o);
-    SetRelPrev(head, NULL);
+    SetRelPrev(head, nullptr);
   } else if (o == tail) {
     tail = GetRelPrev(o);
-    SetRelNext(tail, NULL);
+    SetRelNext(tail, nullptr);
   } else {
     TraceableObject *p = GetRelPrev(o), *n = GetRelNext(o);
     SetRelNext(p, n);
     SetRelPrev(n, p);
   }
-  SetRelNext(o, NULL);
-  SetRelPrev(o, NULL);
+  SetRelNext(o, nullptr);
+  SetRelPrev(o, nullptr);
   _size--;
 }
 

@@ -1,0 +1,294 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # DELETE FROM TABLE_NAME WHERE ...
+--echo #
+
+use test;
+CREATE TABLE `column_type_test` (
+ `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
+  `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
+  `c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
+  `c_int` int(11) DEFAULT NULL COMMENT 'int',
+  `c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
+  `c_float` float DEFAULT NULL COMMENT 'float',
+  `c_double` double DEFAULT NULL COMMENT 'double',
+  `c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+  `c_date` date DEFAULT NULL COMMENT 'date',
+  `c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
+  `c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+  `c_time` time DEFAULT NULL COMMENT 'time',
+  `c_char` char(10) DEFAULT NULL COMMENT 'char',
+  `c_varchar` varchar(10) DEFAULT NULL COMMENT 'varchar',
+  `c_blob` blob COMMENT 'blob',
+  `c_text` text COMMENT 'text',
+  `c_longblob` longblob COMMENT 'longblob'
+) ENGINE=TIANMU;
+
+--echo #
+--echo # DELETE FROM TABLE_NAME WHERE ...for Large amount of data
+--echo #
+
+load data infile '../../std_data/tianmu/bigdata4load' into table column_type_test fields terminated by '|';
+--disable_warnings
+select * from column_type_test limit 10;
+--enable_warnings
+select count(*) from column_type_test;
+select max(c_int) from column_type_test;
+select min(c_int) from column_type_test;
+select avg(c_int) from column_type_test;
+select sum(c_int) from column_type_test;
+delete from column_type_test where c_tinyint=100 limit 1000;
+--disable_warnings
+select * from column_type_test limit 10;
+--enable_warnings
+show create table column_type_test;
+select count(*) from column_type_test;
+select max(c_int) from column_type_test;
+select min(c_int) from column_type_test;
+select avg(c_int) from column_type_test;
+select sum(c_int) from column_type_test;
+drop table column_type_test;
+
+--disable_warnings
+drop table if exists t1,t2,t3,t11,t12;
+--enable_warnings
+CREATE TABLE t1 (a tinyint(3), b tinyint(5))ENGINE=TIANMU;
+INSERT INTO t1 VALUES (1,1);
+INSERT LOW_PRIORITY INTO t1 VALUES (1,2);
+INSERT INTO t1 VALUES (1,3);
+DELETE from t1 where a=1 limit 1;
+DELETE LOW_PRIORITY from t1 where a=1;
+
+INSERT INTO t1 VALUES (1,1);
+DELETE from t1;
+INSERT INTO t1 VALUES (1,2);
+DELETE from t1;
+INSERT INTO t1 VALUES (1,2);
+SET AUTOCOMMIT=0;
+DELETE from t1;
+SET AUTOCOMMIT=1;
+drop table t1;
+
+#
+# Test of delete when the delete will cause a node to disappear and reappear
+# (This assumes a block size of 1024)
+#
+
+create table t1 (
+	a bigint not null,
+	b bigint not null default 0,
+	c bigint not null default 0,
+	d bigint not null default 0,
+	e bigint not null default 0,
+	f bigint not null default 0,
+	g bigint not null default 0,
+	h bigint not null default 0,
+	i bigint not null default 0,
+	j bigint not null default 0,
+	primary key (a,b,c,d,e,f,g,h,i,j))ENGINE=TIANMU;
+insert into t1 (a) values (2),(4),(6),(8),(10),(12),(14),(16),(18),(20),(22),(24),(26),(23);
+delete from t1 where a=26;
+drop table t1;
+create table t1 (
+	a bigint not null,
+	b bigint not null default 0,
+	c bigint not null default 0,
+	d bigint not null default 0,
+	e bigint not null default 0,
+	f bigint not null default 0,
+	g bigint not null default 0,
+	h bigint not null default 0,
+	i bigint not null default 0,
+	j bigint not null default 0,
+	primary key (a,b,c,d,e,f,g,h,i,j));
+insert into t1 (a) values (2),(4),(6),(8),(10),(12),(14),(16),(18),(20),(22),(24),(26),(23),(27);
+delete from t1 where a=27;
+drop table t1;
+
+CREATE TABLE `t1` (
+  `i` int(10) NOT NULL default '0',
+  `i2` int(10) NOT NULL default '0',
+  PRIMARY KEY  (`i`)
+)ENGINE=TIANMU;
+-- error 1054
+DELETE FROM t1 USING t1 WHERE post='1';
+drop table t1;
+
+#
+# CHAR(0) bug - not actually DELETE bug, but anyway...
+#
+
+CREATE TABLE t1 (
+  bool     char(0) default NULL,
+  not_null varchar(20) binary NOT NULL default '',
+  misc     integer not null,
+  PRIMARY KEY  (not_null)
+)ENGINE=TIANMU;
+
+INSERT INTO t1 VALUES (NULL,'a',4), (NULL,'b',5), (NULL,'c',6), (NULL,'d',7);
+
+select * from t1 where misc > 5 and bool is null;
+delete   from t1 where misc > 5 and bool is null;
+select * from t1 where misc > 5 and bool is null;
+
+select count(*) from t1;
+delete from t1 where 1 > 2;
+select count(*) from t1;
+delete from t1 where 3 > 2;
+select count(*) from t1;
+
+drop table t1;
+
+#
+# IGNORE option
+# IGNORE syntax is not currently supported
+
+create table t11 (a int NOT NULL, b int, primary key (a))ENGINE=TIANMU;
+create table t12 (a int NOT NULL, b int, primary key (a))ENGINE=TIANMU;
+create table t2 (a int NOT NULL, b int, primary key (a))ENGINE=TIANMU;
+insert into t11 values (0, 10),(1, 11),(2, 12);
+insert into t12 values (33, 10),(0, 11),(2, 12);
+insert into t2 values (1, 21),(2, 12),(3, 23);
+select * from t11;
+select * from t12;
+select * from t2;
+-- error 1242
+delete t11.*, t12.* from t11,t12 where t11.a = t12.a and t11.b <> (select b from t2 where t11.a < t2.a);
+select * from t11;
+select * from t12;
+delete ignore t11.*, t12.* from t11,t12 where t11.a = t12.a and t11.b <> (select b from t2 where t11.a < t2.a);
+select * from t11;
+select * from t12;
+# IGNORE syntax is not currently supported.The following insertion will fail, and will be commented out temporarily
+#insert into t11 values (2, 12);
+-- error 1242
+delete from t11 where t11.b <> (select b from t2 where t11.a < t2.a);
+select * from t11;
+delete ignore from t11 where t11.b <> (select b from t2 where t11.a < t2.a);
+select * from t11;
+drop table t11, t12, t2;
+
+--echo # sql_safe_updates mode with multi-table DELETE
+
+CREATE TABLE t1(a INTEGER PRIMARY KEY)ENGINE=TIANMU;
+INSERT INTO t1 VALUES(10),(20);
+
+CREATE TABLE t2(b INTEGER)ENGINE=TIANMU;
+INSERT INTO t2 VALUES(10),(20);
+
+SET SESSION sql_safe_updates=1;
+
+-- error ER_UPDATE_WITHOUT_KEY_IN_SAFE_MODE
+DELETE t2 FROM t1 JOIN t2 WHERE t1.a = 10;
+
+SET SESSION sql_safe_updates=default;
+
+DROP TABLE t1, t2;
+
+#
+# deletion and KEYREAD
+#
+
+create table t1 (a int, b int, unique key (a), key (b))ENGINE=TIANMU;
+insert into t1 values (3, 3), (7, 7);
+delete from t1 where a = 3;
+check table t1;
+select * from t1;
+drop table t1;
+
+#
+# delete with ORDER BY containing a direct reference to the table 
+#
+ 
+CREATE TABLE t1 ( a int PRIMARY KEY )ENGINE=TIANMU;
+DELETE FROM t1 WHERE t1.a > 0 ORDER BY t1.a;
+INSERT INTO t1 VALUES (0),(1),(2);
+DELETE FROM t1 WHERE t1.a > 0 ORDER BY t1.a LIMIT 1;
+SELECT * FROM t1;
+DROP TABLE t1;
+
+#
+# Test of multi-delete where we are not scanning the first table
+#
+
+CREATE TABLE t1 (a int not null,b int not null)ENGINE=TIANMU;
+CREATE TABLE t2 (a int not null, b int not null, primary key (a,b))ENGINE=TIANMU;
+CREATE TABLE t3 (a int not null, b int not null, primary key (a,b))ENGINE=TIANMU;
+insert into t1 values (1,1),(2,1),(1,3);
+insert into t2 values (1,1),(2,2),(3,3);
+insert into t3 values (1,1),(2,1),(1,3);
+select * from t1,t2,t3 where t1.a=t2.a AND t2.b=t3.a and t1.b=t3.b;
+delete t2.*,t3.* from t1,t2,t3 where t1.a=t2.a AND t2.b=t3.a and t1.b=t3.b;
+# This should be empty
+select * from t3;
+drop table t1,t2,t3;
+
+
+#
+# deleting '0000-00-00' values using IS NULL
+#
+
+create table t1(a date not null)ENGINE=TIANMU;
+-- error 1292
+insert into t1 values (0);
+select * from t1 where a is null;
+delete from t1 where a is null;
+select count(*) from t1;
+drop table t1;
+
+--echo #
+--echo # Adds some test cases for unicode. such as insert unicode chars, in values, table name, or etc.
+--echo #
+
+CREATE TABLE `abc def` (i int)ENGINE=TIANMU;
+
+INSERT INTO `abc def` VALUES (1);
+delete from `abc def` where i=1;
+drop table `abc def`;
+
+CREATE TABLE t1 (`abc def1` int, `abc def2` int)ENGINE=TIANMU;
+INSERT INTO t1 VALUES (1,1);
+DELETE from t1 where `abc def1` = 1;
+INSERT INTO t1 VALUES (1,2);
+DELETE from t1 where `abc def1` = 1;
+INSERT INTO t1 VALUES (1,2);
+SET AUTOCOMMIT=0;
+DELETE from t1 where `abc def2` = 2;
+SET AUTOCOMMIT=1;
+drop table t1;
+
+--echo #
+--echo #  deleting rows from a temporary tables
+--echo #
+
+CREATE TABLE t1 (c int not null, d char (10) not null)ENGINE=TIANMU;
+insert into t1 values(1,""),(2,"a"),(3,"b");
+CREATE TEMPORARY TABLE t1 (a int not null, b char (10) not null)ENGINE=TIANMU;
+insert into t1 values(4,"e"),(5,"f"),(6,"g");
+alter table t1 rename t2;
+select * from t1;
+select * from t2;
+
+delete from t1;
+drop table t1 , t2;
+
+--echo #
+--echo #  Multi engine
+--echo #
+
+drop table if exists tbIn,t1;
+
+create table tbIn(c1 int,c2 varchar(255))engine=InnoDB;
+insert into tbIn values(3,'hhhb');
+insert into tbIn values(2,'hhhb');
+insert into tbIn values(1,'hhhb');
+
+create table t1(c1 int,c2 varchar(255))engine=tianmu;
+insert into t1 values(3,'hhhb');
+insert into t1 values(2,'hhhb');
+insert into t1 values(1,'hhhb');
+
+delete tbIn,t1 from tbIn,t1 where tbIn.c1=t1.c1 and tbIn.c1=1;
+
+drop table tbIn,t1;

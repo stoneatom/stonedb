@@ -72,7 +72,8 @@ class MIIteratorPoller {
   std::string GetSliceType() const { return slice_type_; }
 
   std::shared_ptr<MIIterator> Poll() {
-    if (no_more_) return std::shared_ptr<MIIterator>();
+    if (no_more_)
+      return std::shared_ptr<MIIterator>();
 
     std::shared_ptr<MIIterator> pack_iter;
     if (slice_capability_.type != MIIterator::SliceCapability::Type::kDisable) {
@@ -127,7 +128,7 @@ class MIIteratorPoller {
       no_more_ = true;
     }
 
-    return std::move(pack_iter);
+    return pack_iter;
   }
 
  private:
@@ -174,8 +175,10 @@ class ProxyHashJoiner::Action {
           mind_->MarkInvolvedDimGroups(dims1);
           mind_->MarkInvolvedDimGroups(dims2);
           // Add dimensions for nested outer joins
-          if (dims1.Intersects(cond[index].right_dims)) dims1.Plus(cond[index].right_dims);
-          if (dims2.Intersects(cond[index].right_dims)) dims2.Plus(cond[index].right_dims);
+          if (dims1.Intersects(cond[index].right_dims))
+            dims1.Plus(cond[index].right_dims);
+          if (dims2.Intersects(cond[index].right_dims))
+            dims2.Plus(cond[index].right_dims);
           first_found = false;
         } else {
           // Make sure the local descriptions are compatible.
@@ -200,7 +203,8 @@ class ProxyHashJoiner::Action {
       }
     }
 
-    if (hash_descriptors.empty()) return false;
+    if (hash_descriptors.empty())
+      return false;
     cond_hashed_ = hash_descriptors.size();
 
     /*
@@ -228,7 +232,8 @@ class ProxyHashJoiner::Action {
         */
         if (dim1_distinct > dim1_size * 0.9 && dim2_distinct > dim2_size * 0.9) {
           // No difference - just check table sizes.
-          if (dim1_size > dim2_size) switch_sides = true;
+          if (dim1_size > dim2_size)
+            switch_sides = true;
         } else if (double(dim1_distinct) / dim1_size < double(dim2_distinct) / dim2_size) {
           // Switch if dim1 has more repeating values.
           switch_sides = true;
@@ -238,7 +243,8 @@ class ProxyHashJoiner::Action {
       switch_sides = true;
     }
 
-    if (force_switching_sides_) switch_sides = !switch_sides;
+    if (force_switching_sides_)
+      switch_sides = !switch_sides;
     if (switch_sides) {
       // Switch sides of joining conditions.
       for (size_t index = 0; index < cond_hashed_; ++index) cond[hash_descriptors[index]].SwitchSides();
@@ -284,7 +290,8 @@ class ProxyHashJoiner::Action {
       hash_table_key_size.push_back(primary_size);
     }
 
-    if (traversed_dims_.Intersects(matched_dims_) || !compatible) return false;
+    if (traversed_dims_.Intersects(matched_dims_) || !compatible)
+      return false;
 
     InitOuterScene(cond);
 
@@ -329,7 +336,7 @@ class ProxyHashJoiner::Action {
 
       int64_t outer_tuples = outer_tuples_traversed_ + outer_tuples_matched_;
       if (outer_tuples > 0) {
-        rc_control_.lock(parent_->m_conn->GetThreadID())
+        tianmu_control_.lock(parent_->m_conn->GetThreadID())
             << "Added " << outer_tuples << " null tuples by outer join." << system::unlock;
       }
       actually_matched_rows_ += outer_tuples;
@@ -337,7 +344,7 @@ class ProxyHashJoiner::Action {
       // Revert multiindex to the updated tables.
       if (packrows_omitted_ > 0) {
         int ommitted = int(packrows_omitted_ / double(packrows_matched_) * 10000.0) / 100.0;
-        rc_control_.lock(parent_->m_conn->GetThreadID())
+        tianmu_control_.lock(parent_->m_conn->GetThreadID())
             << "Roughly omitted " << ommitted << "% packrows." << system::unlock;
       }
 
@@ -361,7 +368,8 @@ class ProxyHashJoiner::Action {
 
       for (int index = 0; index < mind_->NumOfDimensions(); index++) {
         // All dimensions involved in traversed side.
-        if (traversed_dims_[index]) parent_->table->SetVCDistinctVals(index, traversed_dist_limit);
+        if (traversed_dims_[index])
+          parent_->table->SetVCDistinctVals(index, traversed_dist_limit);
       }
     };
 
@@ -374,7 +382,8 @@ class ProxyHashJoiner::Action {
     // Comparable, non-monotonic, non-decodable.
     ColumnBinEncoder &encoder = column_encoder->emplace_back((int)ColumnBinEncoder::ENCODER_IGNORE_NULLS);
     // RC_TIMESTAMP is omitted by ColumnValueEncoder::SecondColumn.
-    vcolumn::VirtualColumn *second_column = (vc->Type().GetTypeName() == common::CT::TIMESTAMP) ? nullptr : vc_matching;
+    vcolumn::VirtualColumn *second_column =
+        (vc->Type().GetTypeName() == common::ColumnType::TIMESTAMP) ? nullptr : vc_matching;
     bool success = encoder.PrepareEncoder(vc, second_column);
     encoder.SetPrimaryOffset(primary_offset);
     *primary_size = encoder.GetPrimarySize();
@@ -395,7 +404,8 @@ class ProxyHashJoiner::Action {
 
       outer_nulls_only_ = true;
       for (int index = 0; index < outer_dims.Size(); ++index)
-        if (outer_dims[index] && parent_->tips.null_only[index] == false) outer_nulls_only_ = false;
+        if (outer_dims[index] && parent_->tips.null_only[index] == false)
+          outer_nulls_only_ = false;
     }
   }
 
@@ -430,7 +440,8 @@ class ProxyHashJoiner::Action {
   inline bool ImpossibleValues(size_t col, T &pack_min, T &pack_max) {
     for (size_t index : boost::irange<size_t>(0, tables_manager_->GetTableCount())) {
       ColumnBinEncoder *encoder = tables_manager_->GetTable(index)->GetColumnEncoder(col);
-      if (!encoder->ImpossibleValues(pack_min, pack_max)) return false;
+      if (!encoder->ImpossibleValues(pack_min, pack_max))
+        return false;
     }
     return true;
   }
@@ -456,7 +467,8 @@ class ProxyHashJoiner::Action {
     auto functor = [this, miter, build_item, thread_table]() mutable {
       std::string key_buffer(thread_table->GetKeyBufferWidth(), 0);
       while (miter->IsValid() && !too_many_conflicts_) {
-        if (parent_->m_conn->Killed()) throw common::KilledException();
+        if (parent_->m_conn->Killed())
+          throw common::KilledException();
 
         if (miter->PackrowStarted()) {
           for (size_t index = 0; index < cond_hashed_; ++index) vc1_[index]->LockSourcePacks(*miter);
@@ -477,7 +489,8 @@ class ProxyHashJoiner::Action {
         if (!should_ignore_row) {
           bool too_many_conflicts = false;
           int64_t hash_row = thread_table->AddKeyValue(key_buffer, &too_many_conflicts);
-          if (hash_row == common::NULL_VALUE_64) throw std::runtime_error("No space left");
+          if (hash_row == common::NULL_VALUE_64)
+            throw std::runtime_error("No space left");
 
           if (too_many_conflicts) {
             too_many_conflicts_ = true;
@@ -515,7 +528,7 @@ class ProxyHashJoiner::Action {
       try {
         f.get();
       } catch (std::exception &ex) {
-        rc_control_.lock(parent_->m_conn->GetThreadID())
+        tianmu_control_.lock(parent_->m_conn->GetThreadID())
             << "Exception on traversing pack: " << ex.what() << system::unlock;
         result = stdexp::optional<bool>(false);
       }
@@ -549,7 +562,8 @@ class ProxyHashJoiner::Action {
       combined_mit.SetTaskNum(miter->GetTaskNum());
 
       while (miter->IsValid() && !stop_matching_) {
-        if (parent_->m_conn->Killed()) throw common::KilledException();
+        if (parent_->m_conn->Killed())
+          throw common::KilledException();
 
         bool ignore_this_packrow = false;
         if (miter->PackrowStarted()) {
@@ -711,7 +725,7 @@ class ProxyHashJoiner::Action {
     std::shared_ptr<MIIterator> miter(new MIIterator(mind_, traversed_dims_));
     std::shared_ptr<MIIteratorPoller> miter_poller(new MIIteratorPoller(miter));
 
-    rc_control_.lock(parent_->m_conn->GetThreadID())
+    tianmu_control_.lock(parent_->m_conn->GetThreadID())
         << "Start traverse " << miter->NumOfTuples() << " rows with " << slice_count << " threads using "
         << miter_poller->GetSliceType() << system::unlock;
     auto start_traversing = base::steady_clock_type::now();
@@ -729,7 +743,7 @@ class ProxyHashJoiner::Action {
                 try {
                   f.get();
                 } catch (std::exception &ex) {
-                  rc_control_.lock(parent_->m_conn->GetThreadID())
+                  tianmu_control_.lock(parent_->m_conn->GetThreadID())
                       << "Exception on traversing: " << ex.what() << system::unlock;
                 }
               });
@@ -737,7 +751,7 @@ class ProxyHashJoiner::Action {
 
     return traverse_future.then([this, start_traversing, temp_locker = std::move(temp_locker)] {
       auto elapsed = base::steady_clock_type::now() - start_traversing;
-      rc_control_.lock(parent_->m_conn->GetThreadID())
+      tianmu_control_.lock(parent_->m_conn->GetThreadID())
           << "Traversed " << actually_traversed_rows_ << " completed, cost "
           << static_cast<double>(elapsed.count() / 1000000000.0) << " s" << system::unlock;
       for (auto &vc : vc1_) {
@@ -753,7 +767,7 @@ class ProxyHashJoiner::Action {
 
     std::shared_ptr<MIIterator> miter(new MIIterator(mind_, matched_dims_));
     std::shared_ptr<MIIteratorPoller> miter_poller(new MIIteratorPoller(miter));
-    rc_control_.lock(parent_->m_conn->GetThreadID())
+    tianmu_control_.lock(parent_->m_conn->GetThreadID())
         << "Start match " << miter->NumOfTuples() << " rows with " << slice_count << " threads using "
         << miter_poller->GetSliceType() << system::unlock;
     auto start_matching = base::steady_clock_type::now();
@@ -775,7 +789,7 @@ class ProxyHashJoiner::Action {
                 try {
                   f.get();
                 } catch (std::exception &ex) {
-                  rc_control_.lock(parent_->m_conn->GetThreadID())
+                  tianmu_control_.lock(parent_->m_conn->GetThreadID())
                       << "Exception on matching: " << ex.what() << system::unlock;
                 }
               });
@@ -783,7 +797,7 @@ class ProxyHashJoiner::Action {
 
     return match_future.then([this, start_matching, temp_locker = std::move(temp_locker)] {
       auto elapsed = base::steady_clock_type::now() - start_matching;
-      rc_control_.lock(parent_->m_conn->GetThreadID())
+      tianmu_control_.lock(parent_->m_conn->GetThreadID())
           << "Produced " << actually_matched_rows_ << " rows, cost "
           << static_cast<double>(elapsed.count() / 1000000000.0) << " s" << system::unlock;
       for (auto &vc : vc2_) {
@@ -791,12 +805,14 @@ class ProxyHashJoiner::Action {
       }
       for (auto &cond : other_cond_) cond.UnlockSourcePacks();
 
-      if (outer_nulls_only_) actually_matched_rows_ = 0;
+      if (outer_nulls_only_)
+        actually_matched_rows_ = 0;
     });
   }
 
   int64_t SubmitOuterTraversed() {
-    if (!watch_traversed_) return 0;
+    if (!watch_traversed_)
+      return 0;
 
     MultiIndexBuilder::BuildItemPtr build_item = mind_builder_->CreateBuildItem();
     int64_t outer_added = 0;
@@ -880,10 +896,11 @@ void ProxyHashJoiner::ExecuteJoinConditions(Condition &cond) {
   auto wait_future = ScheduleAsyncTask([this, started, &cond]() {
     base::future<> join_ready = base::make_ready_future<>();
     action_ = std::make_unique<Action>(this, force_switching_sides_);
-    if (action_->Init(cond)) join_ready = action_->Execute();
+    if (action_->Init(cond))
+      join_ready = action_->Execute();
     return join_ready.then([this, started]() mutable {
       auto elapsed = base::steady_clock_type::now() - started;
-      rc_control_.lock(m_conn->GetThreadID())
+      tianmu_control_.lock(m_conn->GetThreadID())
           << "Join task cost " << static_cast<double>(elapsed.count() / 1000000000.0) << " s" << system::unlock;
 
       action_.reset();

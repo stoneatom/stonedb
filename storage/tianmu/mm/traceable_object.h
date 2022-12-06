@@ -66,7 +66,7 @@ class TraceableObject {
   using UniquePtr = std::unique_ptr<void, std::function<void(void *)>>;
 
   TraceableObject();
-  TraceableObject(size_t, size_t, std::string = "", core::DataCache * = NULL, size_t = 0);
+  TraceableObject(size_t, size_t, std::string = "", core::DataCache * = nullptr, size_t = 0);
   TraceableObject(const TraceableObject &to);
   virtual ~TraceableObject();
 
@@ -90,7 +90,7 @@ class TraceableObject {
 
   bool IsLocked() const { return m_lock_count > 0; }
   bool LastLock() const { return m_lock_count == 1; }
-  // Locking is used by RCAttr etc. for packs manipulation purposes
+  // Locking is used by TianmuAttr etc. for packs manipulation purposes
   short NumOfLocks() const { return m_lock_count; }
   void SetNumOfLocks(int n);
 
@@ -107,14 +107,14 @@ class TraceableObject {
       // m_MemHandling = new MemoryHandling<void*, BasicHeap<void*> >(COMP_SIZE,
       // UNCOMP_SIZE, COMPRESSED_HEAP_RELEASE, UNCOMPRESSED_HEAP_RELEASE);
       TIANMU_ERROR("Memory manager is not instantiated");
-      return NULL;
+      return nullptr;
     } else
       return m_MemHandling;
   }
 
   void TrackAccess() { Instance()->TrackAccess(this); }
   void StopAccessTracking() { Instance()->StopAccessTracking(this); }
-  bool IsTracked() { return tracker != NULL; }
+  bool IsTracked() { return tracker != nullptr; }
   virtual void Release() { TIANMU_ERROR("Release functionality not implemented for this object"); }
   core::TOCoordinate &GetCoordinate();
 
@@ -138,8 +138,9 @@ class TraceableObject {
   static MemoryHandling *m_MemHandling;
 
   static MemoryHandling *Instance(size_t comp_size, size_t uncomp_size, std::string hugedir = "",
-                                  core::DataCache *d = NULL, size_t hugesize = 0) {
-    if (!m_MemHandling) m_MemHandling = new MemoryHandling(comp_size, uncomp_size, hugedir, d, hugesize);
+                                  core::DataCache *d = nullptr, size_t hugesize = 0) {
+    if (!m_MemHandling)
+      m_MemHandling = new MemoryHandling(comp_size, uncomp_size, hugedir, d, hugesize);
     return m_MemHandling;
   }
 

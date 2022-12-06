@@ -126,7 +126,7 @@ class DataCache final {
         if constexpr (T::ID == COORD_TYPE::PACK) {
           removed->Lock();
         }
-        removed->SetOwner(NULL);
+        removed->SetOwner(nullptr);
         c.erase(it);
         ++m_objectsReleased;
       }
@@ -143,7 +143,7 @@ class DataCache final {
       auto it = c.find(coord_);
       if (it != c.end()) {
         removed = it->second;
-        removed->SetOwner(NULL);
+        removed->SetOwner(nullptr);
         c.erase(it);
         ++m_objectsReleased;
       }
@@ -164,7 +164,8 @@ class DataCache final {
     //++ m_cacheHits;
     auto sp = std::static_pointer_cast<T>(it->second);
     sp->Lock();
-    if constexpr (U::ID == COORD_TYPE::PACK) sp->TrackAccess();
+    if constexpr (U::ID == COORD_TYPE::PACK)
+      sp->TrackAccess();
     return sp;
   }
 
@@ -193,7 +194,8 @@ class DataCache final {
       }
 
       {
-        if constexpr (U::ID == COORD_TYPE::PACK) m_cacheMisses++;
+        if constexpr (U::ID == COORD_TYPE::PACK)
+          m_cacheMisses++;
         auto rit = w.find(coord_);
         while (rit != w.end()) {
           m_readWaitInProgress++;

@@ -1,0 +1,53 @@
+#
+# Flow control function,Based on the test
+#
+create table conditiontest(a int) engine=tianmu;
+insert into conditiontest values (1),(2),(3);
+SELECT * FROM conditiontest;
+a
+1
+2
+3
+SELECT a,
+CASE a
+WHEN 1 THEN 'one'
+      WHEN 2 THEN 'two'
+      ELSE 'three'
+      END as caseresult
+FROM conditiontest;
+a	caseresult
+1	one
+2	two
+3	three
+SELECT a,
+CASE a
+WHEN a=1 THEN 'one1'
+      WHEN a=2 THEN 'two2'
+      ELSE 'three3'
+      END as caseresult
+FROM conditiontest;
+a	caseresult
+1	one1
+2	three3
+3	three3
+#if
+SELECT IF((2+3)>4,5,6);
+IF((2+3)>4,5,6)
+5
+SELECT IF((2+3)<5,5,6);
+IF((2+3)<5,5,6)
+6
+#ifnull
+SELECT IFNULL(NULL,2);
+IFNULL(NULL,2)
+2
+SELECT IFNULL(1,0);
+IFNULL(1,0)
+1
+#nullif
+SELECT NULLIF (2,1);
+NULLIF (2,1)
+2
+SELECT NULLIF (2,2);
+NULLIF (2,2)
+NULL

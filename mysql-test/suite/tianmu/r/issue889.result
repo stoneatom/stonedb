@@ -1,0 +1,63 @@
+include/master-slave.inc
+[connection master]
+#
+# Multiple types
+# 
+# connection master
+CREATE TABLE `column_type_test` (
+`c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
+`c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
+`c_mediumint` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
+`c_int` int(11) DEFAULT NULL COMMENT 'int',
+`c_bigint` bigint(20) DEFAULT NULL COMMENT 'bigint',
+`c_float` float DEFAULT NULL COMMENT 'float',
+`c_double` double DEFAULT NULL COMMENT 'double',
+`c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+`c_date` date DEFAULT NULL COMMENT 'date',
+`c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
+`c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+`c_time` time DEFAULT NULL COMMENT 'time',
+`c_char` char(10) DEFAULT NULL COMMENT 'char',
+`c_varchar` varchar(10) DEFAULT NULL COMMENT 'varchar',
+`c_blob` blob COMMENT 'blob',
+`c_text` text COMMENT 'text',
+`c_longblob` longblob COMMENT 'longblob'
+) ENGINE=TIANMU;
+insert into column_type_test 
+values(100,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
+'2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
+insert into column_type_test 
+values(101,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
+'2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
+insert into column_type_test 
+values(102,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
+'2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
+update column_type_test set c_smallint=200 where c_tinyint=100;
+select * from column_type_test;
+c_tinyint	c_smallint	c_mediumint	c_int	c_bigint	c_float	c_double	c_decimal	c_date	c_datetime	c_timestamp	c_time	c_char	c_varchar	c_blob	c_text	c_longblob
+100	200	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+# connection slave
+include/sync_slave_sql_with_master.inc
+select * from column_type_test;
+c_tinyint	c_smallint	c_mediumint	c_int	c_bigint	c_float	c_double	c_decimal	c_date	c_datetime	c_timestamp	c_time	c_char	c_varchar	c_blob	c_text	c_longblob
+100	200	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+# connection master
+delete from column_type_test where c_tinyint=100;
+select * from column_type_test;
+c_tinyint	c_smallint	c_mediumint	c_int	c_bigint	c_float	c_double	c_decimal	c_date	c_datetime	c_timestamp	c_time	c_char	c_varchar	c_blob	c_text	c_longblob
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+# connection slave
+include/sync_slave_sql_with_master.inc
+select * from column_type_test;
+c_tinyint	c_smallint	c_mediumint	c_int	c_bigint	c_float	c_double	c_decimal	c_date	c_datetime	c_timestamp	c_time	c_char	c_varchar	c_blob	c_text	c_longblob
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+# connection master
+drop table column_type_test;
+include/sync_slave_sql_with_master.inc
+stop slave;

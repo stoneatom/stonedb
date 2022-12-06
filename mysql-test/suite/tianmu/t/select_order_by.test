@@ -1,0 +1,110 @@
+--source include/have_tianmu.inc
+
+#
+# Some basic order by statements #
+# Author: syw
+#
+
+--disable_warnings
+DROP DATABASE IF EXISTS db1;
+--enable_warnings
+
+CREATE DATABASE db1;
+USE db1;
+
+CREATE TABLE t1
+(
+  t1_tinyint TINYINT DEFAULT 0,
+  t1_int INT DEFAULT NULL,
+  t1_bigint BIGINT,
+  t1_double DOUBLE,
+  t1_float FLOAT,
+  t1_blob BLOB,
+  t1_text TEXT,
+  t1_char CHAR(1),
+  t1_varchar VARCHAR(255) DEFAULT 'hello world!',
+  t1_datetime DATETIME
+)ENGINE=tianmu;
+
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime)
+ VALUES(203685477580676, -3.797693231E+108, -7.402866E+18, repeat('b',100), repeat('b',100), 'b', '2387-11-08 11:22:30.123');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime) 
+ VALUES(303685477580676, -4.797693231, -8.402866, repeat('b',101), repeat('b',101), 'b', '3387-11-08 11:22:30.123');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime) 
+ VALUES(403685477580676, +54.797693231, +8.402866, repeat('c',101), repeat('c',101), 'c', '3387-11-08 11:22:30.123');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime)
+ VALUES(403685477580676, +54.797693231, +8.402866, repeat('c',101), repeat('c',101), 'c', '3387-11-08 11:22:30.123');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime)
+ VALUES(403685477580676, +54.797693231, +8.402866, repeat('c',101), repeat('c',101), 'c', '3387-11-08 11:22:30.123');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime)
+ VALUES(403685477580676, +54.797693231, +8.402866, repeat('c',101), repeat('c',101), 'c', '3387-11-08 11:22:30.123');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime)
+ VALUES(403685477580676, +54.797693231, +8.402866, repeat('c',101), repeat('c',101), 'c', '3387-11-08 11:22:30.123');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime)
+ VALUES(403685477580676, +54.797693231, +8.402866, repeat('c',101), repeat('c',101), 'c', '3387-11-08 11:22:30.123');
+INSERT INTO t1 (t1_bigint, t1_double, t1_float, t1_blob, t1_text, t1_char, t1_datetime)
+ VALUES(403685477580676, +54.797693231, +8.402866, repeat('2',102), repeat('d',102), 'd', '4387-11-08 11:22:30.123');
+INSERT INTO t1  VALUES(NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+SELECT * FROM t1;
+
+SELECT * FROM t1 ORDER BY t1_tinyint;
+SELECT * FROM t1 ORDER BY t1_tinyint ASC;
+SELECT * FROM t1 ORDER BY t1_tinyint DESC;
+
+SELECT * FROM t1 ORDER BY t1_int;
+SELECT * FROM t1 ORDER BY t1_int ASC;
+SELECT * FROM t1 ORDER BY t1_int DESC;
+
+SELECT * FROM t1 ORDER BY t1_bigint;
+SELECT * FROM t1 ORDER BY t1_bigint ASC;
+SELECT * FROM t1 ORDER BY t1_bigint DESC;
+
+SELECT * FROM t1 ORDER BY t1_double;
+SELECT * FROM t1 ORDER BY t1_double ASC;
+SELECT * FROM t1 ORDER BY t1_double DESC;
+
+SELECT * FROM t1 ORDER BY t1_float;
+SELECT * FROM t1 ORDER BY t1_float ASC;
+SELECT * FROM t1 ORDER BY t1_float DESC;
+
+SELECT * FROM t1 ORDER BY t1_blob;
+SELECT * FROM t1 ORDER BY t1_blob ASC;
+SELECT * FROM t1 ORDER BY t1_blob DESC;
+
+SELECT * FROM t1 ORDER BY t1_text;
+SELECT * FROM t1 ORDER BY t1_text ASC;
+SELECT * FROM t1 ORDER BY t1_text DESC;
+
+SELECT * FROM t1 ORDER BY t1_char;
+SELECT * FROM t1 ORDER BY t1_char ASC;
+SELECT * FROM t1 ORDER BY t1_char DESC;
+
+SELECT * FROM t1 ORDER BY t1_varchar;
+SELECT * FROM t1 ORDER BY t1_varchar ASC;
+SELECT * FROM t1 ORDER BY t1_varchar DESC;
+
+SELECT * FROM t1 ORDER BY t1_datetime;
+SELECT * FROM t1 ORDER BY t1_datetime ASC;
+SELECT * FROM t1 ORDER BY t1_datetime DESC;
+
+#ORDER BY multiple columns
+SELECT * FROM t1 ORDER BY t1_tinyint, t1_int, t1_bigint;
+SELECT * FROM t1 ORDER BY t1_tinyint, t1_int, t1_bigint ASC;
+SELECT * FROM t1 ORDER BY t1_tinyint, t1_int, t1_bigint DESC;
+
+SELECT * FROM t1 ORDER BY t1_double, t1_float;
+SELECT * FROM t1 ORDER BY t1_double, t1_float ASC;
+SELECT * FROM t1 ORDER BY t1_double, t1_float DESC;
+
+SELECT * FROM t1 ORDER BY t1_blob, t1_text, t1_char;
+SELECT * FROM t1 ORDER BY t1_blob, t1_text, t1_char ASC;
+SELECT * FROM t1 ORDER BY t1_blob, t1_text, t1_char DESC;
+
+SELECT * FROM t1 ORDER BY t1_varchar, t1_datetime;
+SELECT * FROM t1 ORDER BY t1_varchar, t1_datetime ASC;
+SELECT * FROM t1 ORDER BY t1_varchar, t1_datetime DESC;
+
+#Clean up
+DROP DATABASE IF EXISTS db1;
+

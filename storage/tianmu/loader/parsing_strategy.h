@@ -19,7 +19,7 @@
 #pragma once
 
 #include "common/data_format.h"
-#include "core/rc_attr_typeinfo.h"
+#include "core/tianmu_attr_typeinfo.h"
 #include "loader/value_cache.h"
 
 namespace Tianmu {
@@ -35,30 +35,34 @@ class ParsingStrategy final {
   ~ParsingStrategy() {}
   ParseResult GetOneRow(const char *const buf, size_t size, std::vector<ValueCache> &values, uint &rowsize,
                         int &errorinfo);
+  void SetTHD(THD *thd) { thd_ = thd; }
+  THD *GetTHD() const { return thd_; };
 
  protected:
-  core::AttributeTypeInfo &GetATI(ushort col) { return atis[col]; }
+  core::AttributeTypeInfo &GetATI(ushort col) { return attr_infos_[col]; }
 
  private:
-  std::vector<core::AttributeTypeInfo> atis;
-  bool prepared;
+  std::vector<core::AttributeTypeInfo> attr_infos_;
+  THD *thd_{nullptr};
+  TABLE *table_{nullptr};
+  bool prepared_;
 
-  std::string eol;
-  std::string delimiter;  // cloumn separator
-  uchar string_qualifier;
-  char escape_char;  // row separator
-  std::string enclose_delimiter;
-  std::string enclose_eol;
-  std::string tablename;
-  std::string dbname;
+  std::string terminator_;
+  std::string delimiter_;  // cloumn separator
+  uchar string_qualifier_;
+  char escape_char_;  // row separator
+  std::string enclose_delimiter_;
+  std::string enclose_terminator_;
+  std::string tablename_;
+  std::string dbname_;
 
-  kmp_next_t kmp_next_delimiter;
-  kmp_next_t kmp_next_enclose_delimiter;
-  kmp_next_t kmp_next_eol;
-  kmp_next_t kmp_next_enclose_eol;
+  kmp_next_t kmp_next_delimiter_;
+  kmp_next_t kmp_next_enclose_delimiter_;
+  kmp_next_t kmp_next_terminator_;
+  kmp_next_t kmp_next_enclose_terminator_;
 
-  CHARSET_INFO *cs_info;
-  std::vector<char> temp_buf;
+  CHARSET_INFO *charset_info_;
+  std::vector<char> temp_buf_;
 
   void GuessUnescapedEOL(const char *ptr, const char *buf_end);
   void GuessUnescapedEOLWithEnclose(const char *ptr, const char *const buf_end);

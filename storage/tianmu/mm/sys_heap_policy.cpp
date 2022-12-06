@@ -18,7 +18,7 @@
 #include "sys_heap_policy.h"
 
 #include "common/assert.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace mm {
@@ -26,7 +26,8 @@ namespace mm {
 SystemHeap::~SystemHeap() {}
 
 void *SystemHeap::alloc(size_t size) {
-  if (size_ > 0 && (alloc_size_ + size > size_)) return NULL;
+  if (size_ > 0 && (alloc_size_ + size > size_))
+    return nullptr;
 
   void *res = malloc(size);
   block_sizes_.insert(std::make_pair(res, size));

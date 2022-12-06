@@ -22,7 +22,7 @@
 #include "core/transaction.h"
 #include "sorter3.h"
 #include "system/fet.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace core {
@@ -53,17 +53,19 @@ SorterOnePass::SorterOnePass(uint _size, uint _key_bytes, uint _total_bytes)
     : Sorter3(_size, _key_bytes, _total_bytes) {
   no_obj = 0;
   bound_queue_size = 2 + size / 10;
-  if (bound_queue_size < 10) bound_queue_size = 10;
+  if (bound_queue_size < 10)
+    bound_queue_size = 10;
 
-  buf = NULL;
-  bound_queue = NULL;
-  buf_tmp = NULL;
+  buf = nullptr;
+  bound_queue = nullptr;
+  buf_tmp = nullptr;
   if (size > 0) {
     buf = (unsigned char *)alloc(size * total_bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
-    if (buf == NULL) throw common::OutOfMemoryException();
+    if (buf == nullptr)
+      throw common::OutOfMemoryException();
     bound_queue =
         (unsigned char **)alloc(bound_queue_size * 2 * sizeof(unsigned char *), mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
-    if (bound_queue == NULL) {
+    if (bound_queue == nullptr) {
       dealloc(buf);
       throw common::OutOfMemoryException();
     }
@@ -76,8 +78,10 @@ SorterOnePass::SorterOnePass(uint _size, uint _key_bytes, uint _total_bytes)
 }
 
 SorterOnePass::~SorterOnePass() {
-  if (buf) dealloc(buf);
-  if (bound_queue) dealloc(bound_queue);
+  if (buf)
+    dealloc(buf);
+  if (bound_queue)
+    dealloc(bound_queue);
   delete[] buf_tmp;
 }
 
@@ -86,7 +90,8 @@ bool SorterOnePass::PutValue(unsigned char *b) {
   already_sorted = false;
   std::memcpy(buf_input_pos, b, total_bytes);
   buf_input_pos += total_bytes;
-  if (no_obj < size) no_obj++;
+  if (no_obj < size)
+    no_obj++;
   return true;
 }
 
@@ -110,7 +115,8 @@ unsigned char *SorterOnePass::GetNextValue() {
     QuickSort();
     already_sorted = true;
   }
-  if (buf_output_pos == buf_input_pos) return NULL;
+  if (buf_output_pos == buf_input_pos)
+    return nullptr;
   unsigned char *res = buf_output_pos;
   buf_output_pos += total_bytes;
   return res;
@@ -120,7 +126,8 @@ void SorterOnePass::QuickSort() {
 #ifdef FUNCTIONS_EXECUTION_TIMES
   FETOperator feto("SorterOnePass::QuickSort(...)");
 #endif
-  if (key_bytes == 0) return;
+  if (key_bytes == 0)
+    return;
   ptrdiff_t bubble_sort_limit = 20 * total_bytes;
   bound_queue[0] = buf;
   bound_queue[1] = buf_input_pos - total_bytes;
@@ -136,11 +143,13 @@ void SorterOnePass::QuickSort() {
   unsigned char *j;
   int queue_read = 0, queue_write = 2;  // jump by two
   while (queue_read != queue_write) {   // this loop is instead of Quicksort recurrency
-    if (conn->Killed()) throw common::KilledException();
+    if (conn->Killed())
+      throw common::KilledException();
     s1 = bound_queue[queue_read];
     s2 = bound_queue[queue_read + 1];
     queue_read = (queue_read + 2) % bound_queue_size;
-    if (s1 == s2) continue;
+    if (s1 == s2)
+      continue;
     // note: quicksorting at least 20 positions
     int r = 2 + rand() % 4;  // random values 2, 3, 4, 5  - for randomized quicksort
     mid_val = s1 + total_bytes * (int64_t((s2 - s1) / total_bytes) / 8) *
@@ -169,7 +178,8 @@ void SorterOnePass::QuickSort() {
         bound_queue[queue_write] = s1;
         bound_queue[queue_write + 1] = j;
         queue_write += 2;  // cyclic buffer
-        if (queue_write >= bound_queue_size) queue_write -= bound_queue_size;
+        if (queue_write >= bound_queue_size)
+          queue_write -= bound_queue_size;
       }
     }
     if (i < s2) {
@@ -179,7 +189,8 @@ void SorterOnePass::QuickSort() {
         bound_queue[queue_write] = i;
         bound_queue[queue_write + 1] = s2;
         queue_write += 2;  // cyclic buffer
-        if (queue_write >= bound_queue_size) queue_write -= bound_queue_size;
+        if (queue_write >= bound_queue_size)
+          queue_write -= bound_queue_size;
       }
     }
   }
@@ -200,7 +211,7 @@ void SorterOnePass::BubbleSort(unsigned char *s1,
   unsigned char *pom;
   j = s2;
   do {
-    pom = NULL;
+    pom = nullptr;
     for (unsigned char *i = s1; i < s2; i += total_bytes) {
       if (std::memcmp(i, i + total_bytes, key_bytes) > 0) {
         Switch(i, i + total_bytes);
@@ -208,7 +219,7 @@ void SorterOnePass::BubbleSort(unsigned char *s1,
       }
     }
     j = pom;
-  } while (j != NULL);
+  } while (j != nullptr);
 }
 
 SorterMultiPass::SorterMultiPass(uint _size, uint _key_bytes, uint _total_bytes)
@@ -248,7 +259,8 @@ unsigned char *SorterMultiPass::GetNextValue() {
     already_sorted = true;
   }
   // merge
-  if (heap.empty()) return NULL;
+  if (heap.empty())
+    return nullptr;
   SorterMultiPass::Keyblock cur_val = heap.top();
   unsigned char *res = cur_val.rec;
   heap.pop();
@@ -256,7 +268,8 @@ unsigned char *SorterMultiPass::GetNextValue() {
   cur_val = GetFromBlock(cur_val.block, reloaded);
   if (cur_val.block != -1)  // not end of block
     heap.push(cur_val);
-  if (reloaded) return last_row;
+  if (reloaded)
+    return last_row;
   return res;
 }
 
@@ -277,7 +290,8 @@ void SorterMultiPass::InitHeap() {
     rows_in_small_buffer = 3;
     dealloc(buf);
     buf = (unsigned char *)alloc(3 * total_bytes * no_blocks, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
-    if (buf == NULL) throw common::OutOfMemoryException();
+    if (buf == nullptr)
+      throw common::OutOfMemoryException();
   }
   int standard_buf_size = rows_in_small_buffer * total_bytes;
   int last_buf_size =
@@ -295,23 +309,25 @@ void SorterMultiPass::InitHeap() {
 }
 
 SorterMultiPass::Keyblock SorterMultiPass::GetFromBlock(int b, bool &reloaded) {
-  if (blocks[b].read_offset == -2) return SorterMultiPass::Keyblock(-1, NULL, 0);  // end of block
-  if (blocks[b].read_offset == -1) {                                               // new buffer, to be read
-    if (blocks[b].file_offset > 0) {  // preserve the last row before overwriting the whole buffer
+  if (blocks[b].read_offset == -2)
+    return SorterMultiPass::Keyblock(-1, nullptr, 0);  // end of block
+  if (blocks[b].read_offset == -1) {                   // new buffer, to be read
+    if (blocks[b].file_offset > 0) {                   // preserve the last row before overwriting the whole buffer
       std::memcpy(last_row, blocks[b].block_start + blocks[b].buf_size - total_bytes, total_bytes);
       reloaded = true;
     }
     int bytes_to_load = std::min(blocks[b].block_size - blocks[b].file_offset, blocks[b].buf_size);
     if (bytes_to_load <= 0) {
       blocks[b].read_offset = -2;
-      return SorterMultiPass::Keyblock(-1, NULL, 0);  // end of block
+      return SorterMultiPass::Keyblock(-1, nullptr, 0);  // end of block
     }
     CI_Get(b, blocks[b].block_start, bytes_to_load, blocks[b].file_offset);
     blocks[b].file_offset += bytes_to_load;
     blocks[b].read_offset = 0;
     blocks[b].buf_size = bytes_to_load;  // may be less than initially given if
                                          // the end of block is near
-    if (conn->Killed()) throw common::KilledException();
+    if (conn->Killed())
+      throw common::KilledException();
   }
   Keyblock kb(b, blocks[b].block_start + blocks[b].read_offset, key_bytes);
   blocks[b].read_offset += total_bytes;
@@ -324,9 +340,10 @@ SorterMultiPass::Keyblock SorterMultiPass::GetFromBlock(int b, bool &reloaded) {
 SorterCounting::SorterCounting(uint _size, uint _key_bytes, uint _total_bytes)
     : Sorter3(_size, _key_bytes, _total_bytes) {
   buf = (unsigned char *)alloc(size * total_bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
-  if (buf == NULL) throw common::OutOfMemoryException();
+  if (buf == nullptr)
+    throw common::OutOfMemoryException();
   buf_output = (unsigned char *)alloc(size * total_bytes, mm::BLOCK_TYPE::BLOCK_TEMPORARY, true);
-  if (buf_output == NULL) {
+  if (buf_output == nullptr) {
     dealloc(buf);
     throw common::OutOfMemoryException();
   }
@@ -338,20 +355,24 @@ SorterCounting::SorterCounting(uint _size, uint _key_bytes, uint _total_bytes)
   buf_input_pos = buf;
   buf_output_pos = buf_output;
   buf_end = buf + size * total_bytes;
-  buf_output_end = NULL;  // to be calculated
+  buf_output_end = nullptr;  // to be calculated
 }
 
 SorterCounting::~SorterCounting() {
-  if (buf) dealloc(buf);
-  if (buf_output) dealloc(buf_output);
+  if (buf)
+    dealloc(buf);
+  if (buf_output)
+    dealloc(buf_output);
 }
 
 bool SorterCounting::PutValue(unsigned char *b) {
   DEBUG_ASSERT(buf_input_pos < buf_end);
   std::memcpy(buf_input_pos, b, total_bytes);
   int pos = Position(b);
-  if (pos > distrib_max) distrib_max = pos;
-  if (pos < distrib_min) distrib_min = pos;
+  if (pos > distrib_max)
+    distrib_max = pos;
+  if (pos < distrib_min)
+    distrib_min = pos;
   buf_input_pos += total_bytes;
   return true;
 }
@@ -366,7 +387,8 @@ unsigned char *SorterCounting::GetNextValue() {
     CountingSort();
     already_sorted = true;
   }
-  if (buf_output_pos == buf_output_end) return NULL;
+  if (buf_output_pos == buf_output_end)
+    return nullptr;
   unsigned char *res = buf_output_pos;
   buf_output_pos += total_bytes;
   return res;
@@ -404,7 +426,7 @@ void SorterCounting::CountingSort() {
 SorterLimit::SorterLimit(uint _size, uint _key_bytes, uint _total_bytes)
     : SorterOnePass(_size, _key_bytes, _total_bytes) {
   buf_input_pos = buf + size * total_bytes;  // simulate the end of buffer
-  zero_buf = NULL;
+  zero_buf = nullptr;
   if (key_bytes > 0) {
     zero_buf = new unsigned char[key_bytes];
     std::memset(zero_buf, 0, key_bytes);
@@ -428,7 +450,8 @@ bool SorterLimit::PutValue(unsigned char *b) {
     while (parent > 0) {
       unsigned char *p1 = buf + (parent - 1) * total_bytes;
       unsigned char *p2 = buf + (n - 1) * total_bytes;
-      if (std::memcmp(p1, p2, key_bytes) >= 0) break;
+      if (std::memcmp(p1, p2, key_bytes) >= 0)
+        break;
       Switch(p1, p2);
       n = parent;
       parent = n >> 1;
@@ -454,8 +477,9 @@ bool SorterLimit::PutValue(unsigned char *b) {
       }
       n--;
       std::memcpy(buf + n * total_bytes, b, total_bytes);
-    } else {                                                         // check whether it is not sorted already
-      if (std::memcmp(buf, zero_buf, key_bytes) == 0) return false;  // zero => nothing better possible
+    } else {  // check whether it is not sorted already
+      if (std::memcmp(buf, zero_buf, key_bytes) == 0)
+        return false;  // zero => nothing better possible
     }
   }
   return true;
@@ -466,7 +490,8 @@ bool SorterLimit::PutValue(Sorter3 *s) {
   // Just copy the data leave the sort part to QuickSort when GetNextValue is
   // invoked
   already_sorted = false;
-  if (std::strcmp(s->Name(), "Heap Sort")) throw common::InternalException("Input sorter does not belong to Heap Sort");
+  if (std::strcmp(s->Name(), "Heap Sort"))
+    throw common::InternalException("Input sorter does not belong to Heap Sort");
 
   SorterLimit *sl = (SorterLimit *)s;
   // Note: PutValue(Sorter3 * s) is dependent on PutValue(char *)
@@ -482,10 +507,10 @@ bool SorterLimit::PutValue(Sorter3 *s) {
       std::memcpy(buf + no_obj * total_bytes, buf1, tmp_noobj * total_bytes);
       no_obj += tmp_noobj;
       TIANMU_LOG(LogCtl_Level::DEBUG, "PutValue: no_obj %ld, tmp_noobj %ld, total_bytes %ld buf %s", no_obj, tmp_noobj,
-                  total_bytes, buf);
+                 total_bytes, buf);
     } else {
       TIANMU_LOG(LogCtl_Level::ERROR, "error in Putvalue, out of  boundary size %d no_obj+tmp_noobj %d", size,
-                  no_obj + tmp_noobj);
+                 no_obj + tmp_noobj);
       throw common::OutOfMemoryException("Out of boundary after merge sorters together.");
       return false;
     }

@@ -39,7 +39,7 @@ JoinerHashTable::JoinerHashTable() {
   for_count_only = false;
   initialized = false;
   no_of_occupied = 0;
-  t = NULL;
+  t = nullptr;
   key_buf_width = 0;
   total_width = 0;
   mult_offset = 0;
@@ -72,11 +72,13 @@ void JoinerHashTable::Initialize(int64_t max_table_size, bool easy_roughable) {
   // <key_1><key_2>...<key_n><tuple_1>...<tuple_m><multiplier>
   if (max_table_size < 2)  // otherwise strange things may occur
     max_table_size = 2;
-  if (initialized) return;
+  if (initialized)
+    return;
   AddTupleColumn(8);  // add multiplier column
   no_key_attr = int(encoder.size());
   no_attr = int(size.size());
-  if (no_key_attr == 0) return;
+  if (no_key_attr == 0)
+    return;
   if (no_attr - no_key_attr == 1)  // i.e. no tuple columns, just a multiplier
     for_count_only = true;
 
@@ -102,7 +104,8 @@ void JoinerHashTable::Initialize(int64_t max_table_size, bool easy_roughable) {
   else {
     // for easy roughable case the buffer may be smaller
     no_rows = mm::TraceableObject::MaxBufferSize(easy_roughable ? -3 : 0) / total_width;  // memory limitation
-    if ((max_table_size + 1) * 1.25 < no_rows) no_rows = int64_t((max_table_size + 1) * 1.25);
+    if ((max_table_size + 1) * 1.25 < no_rows)
+      no_rows = int64_t((max_table_size + 1) * 1.25);
   }
 
   // calculate vertical size (not dividable by a set of some prime numbers)
@@ -131,9 +134,9 @@ void JoinerHashTable::Initialize(int64_t max_table_size, bool easy_roughable) {
   // initialize everything
   ClearAll();
   Transaction *m_conn = current_txn_;
-  rc_control_.lock(m_conn->GetThreadID()) << "Hash join buffer initialized for up to " << no_rows << " rows, "
-                                        << key_buf_width << "+" << total_width - key_buf_width << " bytes."
-                                        << system::unlock;
+  tianmu_control_.lock(m_conn->GetThreadID())
+      << "Hash join buffer initialized for up to " << no_rows << " rows, " << key_buf_width << "+"
+      << total_width - key_buf_width << " bytes." << system::unlock;
   initialized = true;
 }
 
@@ -160,17 +163,20 @@ int64_t JoinerHashTable::FindAndAddCurrentRow()  // a position in the current Jo
         int64_t last_multiplier = *multiplier;
         DEBUG_ASSERT(last_multiplier > 0);
         (*multiplier)++;
-        if (for_count_only) return row;
+        if (for_count_only)
+          return row;
         // iterate several steps forward to find some free location
         row += iterate_step * last_multiplier;
-        if (row >= no_rows) row = row % no_rows;
+        if (row >= no_rows)
+          row = row % no_rows;
 
         if (*multiplier > MAX_HASH_CONFLICTS)  // a threshold for switching sides
           too_many_conflicts = true;
       } else {  // some other value found
         // iterate one step forward
         row += iterate_step;
-        if (row >= no_rows) row = row % no_rows;
+        if (row >= no_rows)
+          row = row % no_rows;
       }
     } else {
       std::memcpy(cur_t, input_buffer.get(), key_buf_width);
@@ -205,7 +211,8 @@ int64_t JoinerHashTable::InitCurrentRowToGet() {
       } else {  // some other value found
         // iterate one step forward
         current_row += current_iterate_step;
-        if (current_row >= no_rows) current_row = current_row % no_rows;
+        if (current_row >= no_rows)
+          current_row = current_row % no_rows;
       }
     } else {
       current_row = common::NULL_VALUE_64;  // not found
@@ -218,14 +225,17 @@ int64_t JoinerHashTable::InitCurrentRowToGet() {
 
 int64_t JoinerHashTable::GetNextRow() {
   // MEASURE_FET("JoinerHashTable::InitCurrentRowToGet()");
-  if (to_be_returned == 0) return common::NULL_VALUE_64;
+  if (to_be_returned == 0)
+    return common::NULL_VALUE_64;
   int64_t row_to_return = current_row;
   to_be_returned--;
-  if (to_be_returned == 0) return row_to_return;
+  if (to_be_returned == 0)
+    return row_to_return;
   // now prepare the next row to be returned
   int64_t startrow = current_row;
   current_row += current_iterate_step;
-  if (current_row >= no_rows) current_row = current_row % no_rows;
+  if (current_row >= no_rows)
+    current_row = current_row % no_rows;
   do {
     DEBUG_ASSERT(*((int *)(t + current_row * total_width + mult_offset)) != 0);
     if (std::memcmp(t + current_row * total_width, input_buffer.get(), key_buf_width) == 0) {
@@ -233,7 +243,8 @@ int64_t JoinerHashTable::GetNextRow() {
       return row_to_return;
     } else {  // some other value found - iterate one step forward
       current_row += current_iterate_step;
-      if (current_row >= no_rows) current_row = current_row % no_rows;
+      if (current_row >= no_rows)
+        current_row = current_row % no_rows;
     }
   } while (current_row != startrow);
   return row_to_return;

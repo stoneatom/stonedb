@@ -124,7 +124,7 @@ void SizeMap::Init() {
   // Initialize the mapping arrays
   int next_size = 0;
   for (size_t c = 1; c < kNumClasses; c++) {
-    const int max_size_in_class = (const int)class_to_size_[c];
+    int max_size_in_class = static_cast<int>(class_to_size_[c]);
     for (int s = next_size; s <= max_size_in_class; s += kAlignment) {
       class_array_[ClassIndex(s)] = c;
     }
@@ -154,8 +154,8 @@ void SizeMap::Init() {
 static uint64_t metadata_system_bytes_ = 0;
 
 void *MetaDataAlloc(size_t bytes) {
-  void *result = TCMalloc_SystemAlloc(bytes, NULL, kPageSize);
-  if (result != NULL) {
+  void *result = TCMalloc_SystemAlloc(bytes, nullptr, kPageSize);
+  if (result != nullptr) {
     metadata_system_bytes_ += bytes;
   }
   return result;
@@ -167,7 +167,7 @@ void *MetaDataAlloc(size_t bytes) {
 // This is mostly like MmapSysAllocator::Alloc, except it does these weird
 // munmap's in the middle of the page, which is forbidden in windows.
 void *TCMalloc_SystemAlloc(size_t size, size_t *actual_size, size_t alignment) {
-  void *ptr(NULL);
+  void *ptr(nullptr);
   if (actual_size) {
     *actual_size = size;
   }

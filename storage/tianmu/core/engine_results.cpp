@@ -20,7 +20,7 @@
 #include "common/data_format.h"
 #include "core/engine.h"
 #include "core/transaction.h"
-#include "types/rc_item_types.h"
+#include "types/tianmu_item_types.h"
 #include "types/value_parser4txt.h"
 
 namespace Tianmu {
@@ -46,9 +46,9 @@ void scan_fields(List<Item> &fields, uint *&buf_lens, std::map<int, Item *> &ite
   // check fileds
   std::unordered_set<size_t> used_fields;
 
-  types::Item_sum_int_rcbase *isum_int_rcbase;
-  types::Item_sum_sum_rcbase *isum_sum_rcbase;
-  types::Item_sum_hybrid_rcbase *isum_hybrid_rcbase;
+  types::ItemSumInTianmuBase *isum_int_rcbase;
+  types::ItemSumSumTianmuBase *isum_sum_rcbase;
+  types::ItemSumHybridTianmuBase *isum_hybrid_rcbase;
 
   while ((item = li++)) {
     item_type = item->type();
@@ -71,7 +71,7 @@ void scan_fields(List<Item> &fields, uint *&buf_lens, std::map<int, Item *> &ite
       case Item::SUBSELECT_ITEM:
       case Item::FUNC_ITEM:
       case Item::REF_ITEM: {  // select from view
-        types::Item_sum_hybrid_rcbase *tmp = new types::Item_sum_hybrid_rcbase();
+        types::ItemSumHybridTianmuBase *tmp = new types::ItemSumHybridTianmuBase();
         items_backup[item_id] = item;
         tmp->decimals = item->decimals;
         tmp->hybrid_type_ = item->result_type();
@@ -88,7 +88,7 @@ void scan_fields(List<Item> &fields, uint *&buf_lens, std::map<int, Item *> &ite
 
         if (sum_type == Item_sum::GROUP_CONCAT_FUNC || sum_type == Item_sum::MIN_FUNC ||
             sum_type == Item_sum::MAX_FUNC) {
-          isum_hybrid_rcbase = new types::Item_sum_hybrid_rcbase();
+          isum_hybrid_rcbase = new types::ItemSumHybridTianmuBase();
           items_backup[item_id] = item;
 
           // We have to add some knowledge to our item from original item
@@ -103,7 +103,7 @@ void scan_fields(List<Item> &fields, uint *&buf_lens, std::map<int, Item *> &ite
           break;
         } else if (sum_type == Item_sum::COUNT_FUNC || sum_type == Item_sum::COUNT_DISTINCT_FUNC ||
                    sum_type == Item_sum::SUM_BIT_FUNC) {
-          isum_int_rcbase = new types::Item_sum_int_rcbase();
+          isum_int_rcbase = new types::ItemSumInTianmuBase();
           isum_int_rcbase->unsigned_flag = is->unsigned_flag;
           items_backup[item_id] = item;
           li.replace(isum_int_rcbase);
@@ -113,7 +113,7 @@ void scan_fields(List<Item> &fields, uint *&buf_lens, std::map<int, Item *> &ite
         } else if (sum_type == Item_sum::SUM_FUNC || sum_type == Item_sum::AVG_FUNC ||
                    sum_type == Item_sum::SUM_DISTINCT_FUNC || sum_type == Item_sum::AVG_DISTINCT_FUNC ||
                    sum_type == Item_sum::VARIANCE_FUNC || sum_type == Item_sum::STD_FUNC) {
-          isum_sum_rcbase = new types::Item_sum_sum_rcbase();
+          isum_sum_rcbase = new types::ItemSumSumTianmuBase();
           items_backup[item_id] = item;
 
           // We have to add some knowledge to our item from original item
@@ -167,7 +167,8 @@ void restore_fields(List<Item> &fields, std::map<int, Item *> &items_backup) {
 
   int count = 0;
   while ((item = li++)) {
-    if (items_backup.find(count) != items_backup.end()) li.replace(items_backup[count]);
+    if (items_backup.find(count) != items_backup.end())
+      li.replace(items_backup[count]);
     count++;
   }
 }
@@ -189,11 +190,11 @@ inline static void SetFieldState(Field *field, bool is_null) {
 ResultSender::ResultSender(THD *thd, Query_result *res, List<Item> &fields)
     : thd(thd),
       res(res),
-      buf_lens(NULL),
+      buf_lens(nullptr),
       fields(fields),
       is_initialized(false),
-      offset(NULL),
-      limit(NULL),
+      offset(nullptr),
+      limit(nullptr),
       rows_sent(0) {}
 
 void ResultSender::Init([[maybe_unused]] TempTable *t) {
@@ -208,7 +209,8 @@ void ResultSender::Init([[maybe_unused]] TempTable *t) {
 
 void ResultSender::Send(TempTable::RecordIterator &iter) {
   if ((iter.currentRowNumber() & 0x7fff) == 0)
-    if (current_txn_->Killed()) throw common::KilledException();
+    if (current_txn_->Killed())
+      throw common::KilledException();
 
   TempTable *owner(iter.Owner());
   if (!is_initialized) {
@@ -216,7 +218,8 @@ void ResultSender::Send(TempTable::RecordIterator &iter) {
     Init(owner);
     is_initialized = true;
   }
-  if (owner && !owner->IsSent()) owner->SetIsSent();
+  if (owner && !owner->IsSent())
+    owner->SetIsSent();
 
   // func found_rows() need limit_found_rows
   thd->current_found_rows++;
@@ -227,7 +230,8 @@ void ResultSender::Send(TempTable::RecordIterator &iter) {
   }
 
   if (limit) {
-    if (*limit == 0) return;
+    if (*limit == 0)
+      return;
     --(*limit);
   }
 
@@ -236,15 +240,17 @@ void ResultSender::Send(TempTable::RecordIterator &iter) {
   rows_sent++;
 }
 
-void ResultSender::SendRow(const std::vector<std::unique_ptr<types::RCDataType>> &record, TempTable *owner) {
-  if (current_txn_->Killed()) throw common::KilledException();
+void ResultSender::SendRow(const std::vector<std::unique_ptr<types::TianmuDataType>> &record, TempTable *owner) {
+  if (current_txn_->Killed())
+    throw common::KilledException();
 
   if (!is_initialized) {
     owner->CreateDisplayableAttrP();
     Init(owner);
     is_initialized = true;
   }
-  if (owner && !owner->IsSent()) owner->SetIsSent();
+  if (owner && !owner->IsSent())
+    owner->SetIsSent();
 
   // func found_rows() need limit_found_rows
   thd->current_found_rows++;
@@ -255,7 +261,8 @@ void ResultSender::SendRow(const std::vector<std::unique_ptr<types::RCDataType>>
   }
 
   if (limit) {
-    if (*limit == 0) return;
+    if (*limit == 0)
+      return;
     --(*limit);
   }
 
@@ -263,14 +270,14 @@ void ResultSender::SendRow(const std::vector<std::unique_ptr<types::RCDataType>>
   rows_sent++;
 }
 
-void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::RCDataType>> &r) {
+void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::TianmuDataType>> &r) {
   Item *item;
   Field *f;
   Item_field *ifield;
   Item_ref *iref;
   Item_sum *is;
-  types::Item_sum_int_rcbase *isum_int_rcbase;
-  types::Item_sum_sum_rcbase *isum_sum_rcbase;
+  types::ItemSumInTianmuBase *isum_int_rcbase;
+  types::ItemSumSumTianmuBase *isum_sum_rcbase;
   Item_sum::Sumfunctype sum_type;
 
   uint col_id = 0;
@@ -280,7 +287,7 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::RCDataTyp
   li.rewind();
   while ((item = li++)) {
     int is_null = 0;
-    types::RCDataType &rcdt(*r[col_id]);
+    types::TianmuDataType &tianmu_dt(*r[col_id]);
     switch (item->type()) {
       case Item::DEFAULT_VALUE_ITEM:
       case Item::FIELD_ITEM:  // regular select
@@ -290,7 +297,7 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::RCDataTyp
         // because it was assigned for this instance of object
         if (buf_lens[col_id] != 0) {
           bitmap_set_bit(f->table->write_set, f->field_index);
-          auto is_null = Engine::ConvertToField(f, rcdt, NULL);
+          auto is_null = Engine::ConvertToField(f, tianmu_dt, nullptr);
           SetFieldState(f, is_null);
         }
         break;
@@ -300,7 +307,7 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::RCDataTyp
         f = ifield->result_field;
         if (buf_lens[col_id] != 0) {
           bitmap_set_bit(f->table->write_set, f->field_index);
-          auto is_null = Engine::ConvertToField(f, rcdt, NULL);
+          auto is_null = Engine::ConvertToField(f, tianmu_dt, nullptr);
           SetFieldState(f, is_null);
         }
         break;
@@ -311,37 +318,40 @@ void ResultSender::SendRecord(const std::vector<std::unique_ptr<types::RCDataTyp
         // used only MIN_FUNC
         if (sum_type == Item_sum::MIN_FUNC || sum_type == Item_sum::MAX_FUNC ||
             sum_type == Item_sum::GROUP_CONCAT_FUNC) {
-          types::Item_sum_hybrid_rcbase *isum_hybrid_rcbase = (types::Item_sum_hybrid_rcbase *)is;
+          types::ItemSumHybridTianmuBase *isum_hybrid_rcbase = (types::ItemSumHybridTianmuBase *)is;
           if (isum_hybrid_rcbase->result_type() == DECIMAL_RESULT) {
-            Engine::Convert(is_null, isum_hybrid_rcbase->dec_value(), rcdt, item->decimals);
+            Engine::Convert(is_null, isum_hybrid_rcbase->dec_value(), tianmu_dt, item->decimals);
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == INT_RESULT) {
-            Engine::Convert(is_null, isum_hybrid_rcbase->int64_value(), rcdt, isum_hybrid_rcbase->hybrid_field_type_);
+            Engine::Convert(is_null, isum_hybrid_rcbase->int64_value(), tianmu_dt,
+                            isum_hybrid_rcbase->hybrid_field_type_);
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == REAL_RESULT) {
-            Engine::Convert(is_null, isum_hybrid_rcbase->real_value(), rcdt);
+            Engine::Convert(is_null, isum_hybrid_rcbase->real_value(), tianmu_dt);
             isum_hybrid_rcbase->null_value = is_null;
           } else if (isum_hybrid_rcbase->result_type() == STRING_RESULT) {
-            Engine::Convert(is_null, isum_hybrid_rcbase->string_value(), rcdt, isum_hybrid_rcbase->hybrid_field_type_);
+            Engine::Convert(is_null, isum_hybrid_rcbase->string_value(), tianmu_dt,
+                            isum_hybrid_rcbase->hybrid_field_type_);
             isum_hybrid_rcbase->null_value = is_null;
           }
           break;
         }
         // do not check COUNT_DISTINCT_FUNC, we use only this for both types
         if (sum_type == Item_sum::COUNT_FUNC || sum_type == Item_sum::SUM_BIT_FUNC) {
-          isum_int_rcbase = (types::Item_sum_int_rcbase *)is;
-          Engine::Convert(is_null, value, rcdt, is->field_type());
-          if (is_null) value = 0;
+          isum_int_rcbase = (types::ItemSumInTianmuBase *)is;
+          Engine::Convert(is_null, value, tianmu_dt, is->field_type());
+          if (is_null)
+            value = 0;
           isum_int_rcbase->int64_value(value);
           break;
         }
         if (sum_type == Item_sum::SUM_FUNC || sum_type == Item_sum::STD_FUNC || sum_type == Item_sum::VARIANCE_FUNC) {
-          isum_sum_rcbase = (types::Item_sum_sum_rcbase *)is;
+          isum_sum_rcbase = (types::ItemSumSumTianmuBase *)is;
           if (isum_sum_rcbase->result_type() == DECIMAL_RESULT) {
-            Engine::Convert(is_null, isum_sum_rcbase->dec_value(), rcdt);
+            Engine::Convert(is_null, isum_sum_rcbase->dec_value(), tianmu_dt);
             isum_sum_rcbase->null_value = is_null;
           } else if (isum_sum_rcbase->result_type() == REAL_RESULT) {
-            Engine::Convert(is_null, isum_sum_rcbase->real_value(), rcdt);
+            Engine::Convert(is_null, isum_sum_rcbase->real_value(), tianmu_dt);
             isum_sum_rcbase->null_value = is_null;
           }
           break;
@@ -371,17 +381,18 @@ void ResultSender::Finalize(TempTable *result_table) {
     is_initialized = true;
     Init(result_table);
   }
-  if (result_table && !result_table->IsSent()) Send(result_table);
+  if (result_table && !result_table->IsSent())
+    Send(result_table);
   CleanUp();
   SendEof();
   ulonglong cost_time = (thd->current_utime() - thd->start_utime) / 1000;
   auto &sctx = thd->m_main_security_ctx;
-  if (rc_querylog_.isOn())
-    rc_querylog_ << system::lock << "\tClientIp:" << (sctx.ip().length ? sctx.ip().str : "unkownn")
-               << "\tClientHostName:" << (sctx.host().length ? sctx.host().str : "unknown")
-               << "\tClientPort:" << thd->peer_port << "\tUser:" << sctx.user().str << global_serverinfo_
-               << "\tAffectRows:" << affect_rows << "\tResultRows:" << rows_sent << "\tDBName:" << thd->db().str
-               << "\tCosttime(ms):" << cost_time << "\tSQL:" << thd->query().str << system::unlock;
+  if (tianmu_querylog_.isOn())
+    tianmu_querylog_ << system::lock << "\tClientIp:" << (sctx.ip().length ? sctx.ip().str : "unkownn")
+                     << "\tClientHostName:" << (sctx.host().length ? sctx.host().str : "unknown")
+                     << "\tClientPort:" << thd->peer_port << "\tUser:" << sctx.user().str << global_serverinfo_
+                     << "\tAffectRows:" << affect_rows << "\tResultRows:" << rows_sent << "\tDBName:" << thd->db().str
+                     << "\tCosttime(ms):" << cost_time << "\tSQL:" << thd->query().str << system::unlock;
   TIANMU_LOG(LogCtl_Level::DEBUG, "Result: %" PRId64 " Costtime(ms): %" PRId64, rows_sent, cost_time);
 }
 
@@ -414,16 +425,17 @@ void init_field_scan_helpers(THD *&thd, TABLE &tmp_table, TABLE_SHARE &share) {
 }
 
 fields_t::value_type guest_field_type(THD *&thd, TABLE &tmp_table, Item *&item) {
-  Field *field = NULL;
-  Field *tmp_field = NULL;
-  Field *def_field = NULL;
+  Field *field = nullptr;
+  Field *tmp_field = nullptr;
+  Field *def_field = nullptr;
   if (item->type() == Item::FUNC_ITEM) {
     if (item->result_type() != STRING_RESULT)
       field = item->tmp_table_field(&tmp_table);
     else
       field = item->tmp_table_field_from_field_type(&tmp_table, 0);
   } else
-    field = create_tmp_field(thd, &tmp_table, item, item->type(), (Func_ptr_array*)0, &tmp_field, &def_field, 0, 0, 0, 0);
+    field =
+        create_tmp_field(thd, &tmp_table, item, item->type(), (Func_ptr_array *)0, &tmp_field, &def_field, 0, 0, 0, 0);
   fields_t::value_type f(MYSQL_TYPE_STRING);
   if (field) {
     f = field->type();
@@ -434,17 +446,19 @@ fields_t::value_type guest_field_type(THD *&thd, TABLE &tmp_table, Item *&item) 
 }
 
 AttributeTypeInfo create_ati(THD *&thd, TABLE &tmp_table, Item *&item) {
-  Field *field = NULL;
-  Field *tmp_field = NULL;
-  Field *def_field = NULL;
+  Field *field = nullptr;
+  Field *tmp_field = nullptr;
+  Field *def_field = nullptr;
   if (item->type() == Item::FUNC_ITEM) {
     if (item->result_type() != STRING_RESULT)
       field = item->tmp_table_field(&tmp_table);
     else
       field = item->tmp_table_field_from_field_type(&tmp_table, 0);
   } else
-    field = create_tmp_field(thd, &tmp_table, item, item->type(), (Func_ptr_array*)0, &tmp_field, &def_field, 0, 0, 0, 0);
-  if (!field) throw common::DatabaseException("failed to guess item type");
+    field =
+        create_tmp_field(thd, &tmp_table, item, item->type(), (Func_ptr_array *)0, &tmp_field, &def_field, 0, 0, 0, 0);
+  if (!field)
+    throw common::DatabaseException("failed to guess item type");
   AttributeTypeInfo ati = Engine::GetCorrespondingATI(*field);
   delete field;
   return ati;
@@ -459,17 +473,18 @@ void ResultExportSender::Init(TempTable *t) {
 
   std::unique_ptr<system::IOParameters> iop;
 
-  common::TIANMUError tianmu_error;
+  common::TianmuError tianmu_error;
 
   export_res->send_result_set_metadata(fields, Protocol::SEND_NUM_ROWS | Protocol::SEND_EOF);
 
-  if ((tianmu_error = Engine::GetIOP(iop, *thd, *export_res->SqlExchange(), 0, NULL, true)) != common::ErrorCode::SUCCESS)
+  if ((tianmu_error = Engine::GetIOP(iop, *thd, *export_res->SqlExchange(), 0, nullptr, true)) !=
+      common::ErrorCode::SUCCESS)
     throw common::Exception("Unable to get IOP");
 
   List_iterator_fast<Item> li(fields);
   fields_t f;
   li.rewind();
-  Item *item(NULL);
+  Item *item(nullptr);
   TABLE tmp_table;  // Used during 'Create_field()'
   TABLE_SHARE share;
   init_field_scan_helpers(thd, tmp_table, share);
@@ -484,33 +499,34 @@ void ResultExportSender::Init(TempTable *t) {
   }
 
   rcbuffer = std::make_shared<system::LargeBuffer>();
-  if (!rcbuffer->BufOpen(*iop)) throw common::FileException("Unable to open file or named pipe.");
+  if (!rcbuffer->BufOpen(*iop))
+    throw common::FileException("Unable to open file or named pipe.");
 
   rcde = common::DataFormat::GetDataFormat(iop->GetEDF())->CreateDataExporter(*iop);
   rcde->Init(rcbuffer, t->GetATIs(iop->GetEDF() != common::EDF::TRI_UNKNOWN), f, deas);
 }
 
 // send to Exporter
-void ResultExportSender::SendRecord(const std::vector<std::unique_ptr<types::RCDataType>> &r) {
+void ResultExportSender::SendRecord(const std::vector<std::unique_ptr<types::TianmuDataType>> &r) {
   List_iterator_fast<Item> li(fields);
   Item *l_item;
   li.rewind();
   uint o = 0;
   while ((l_item = li++) != nullptr) {
-    types::RCDataType &rcdt(*r[o]);
-    if (rcdt.IsNull())
+    types::TianmuDataType &tianmu_dt(*r[o]);
+    if (tianmu_dt.IsNull())
       rcde->PutNull();
-    else if (ATI::IsTxtType(rcdt.Type())) {
-      types::BString val(rcdt.ToBString());
+    else if (ATI::IsTxtType(tianmu_dt.Type())) {
+      types::BString val(tianmu_dt.ToBString());
       if (l_item->field_type() == MYSQL_TYPE_DATE) {
-        types::RCDateTime dt;
-        types::ValueParserForText::ParseDateTime(val, dt, common::CT::DATE);
+        types::TianmuDateTime dt;
+        types::ValueParserForText::ParseDateTime(val, dt, common::ColumnType::DATE);
         rcde->PutDateTime(dt.GetInt64());
       } else if ((l_item->field_type() == MYSQL_TYPE_DATETIME) || (l_item->field_type() == MYSQL_TYPE_TIMESTAMP)) {
-        types::RCDateTime dt;
-        types::ValueParserForText::ParseDateTime(val, dt, common::CT::DATETIME);
+        types::TianmuDateTime dt;
+        types::ValueParserForText::ParseDateTime(val, dt, common::ColumnType::DATETIME);
         if (l_item->field_type() == MYSQL_TYPE_TIMESTAMP) {
-          types::RCDateTime::AdjustTimezone(dt);
+          types::TianmuDateTime::AdjustTimezone(dt);
         }
         rcde->PutDateTime(dt.GetInt64());
       } else {
@@ -522,25 +538,25 @@ void ResultExportSender::SendRecord(const std::vector<std::unique_ptr<types::RCD
         else
           rcde->PutText(val);
       }
-    } else if (ATI::IsBinType(rcdt.Type()))
-      rcde->PutBin(rcdt.ToBString());
-    else if (ATI::IsNumericType(rcdt.Type())) {
-      if (rcdt.Type() == common::CT::BYTEINT)
-        rcde->PutNumeric((char)dynamic_cast<types::RCNum &>(rcdt).ValueInt());
-      else if (rcdt.Type() == common::CT::SMALLINT)
-        rcde->PutNumeric((short)dynamic_cast<types::RCNum &>(rcdt).ValueInt());
-      else if (rcdt.Type() == common::CT::INT || rcdt.Type() == common::CT::MEDIUMINT)
-        rcde->PutNumeric((int)dynamic_cast<types::RCNum &>(rcdt).ValueInt());
+    } else if (ATI::IsBinType(tianmu_dt.Type()))
+      rcde->PutBin(tianmu_dt.ToBString());
+    else if (ATI::IsNumericType(tianmu_dt.Type())) {
+      if (tianmu_dt.Type() == common::ColumnType::BYTEINT)
+        rcde->PutNumeric((char)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+      else if (tianmu_dt.Type() == common::ColumnType::SMALLINT)
+        rcde->PutNumeric((short)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+      else if (tianmu_dt.Type() == common::ColumnType::INT || tianmu_dt.Type() == common::ColumnType::MEDIUMINT)
+        rcde->PutNumeric((int)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
       else
-        rcde->PutNumeric(dynamic_cast<types::RCNum &>(rcdt).ValueInt());
-    } else if (ATI::IsDateTimeType(rcdt.Type())) {
-      if (rcdt.Type() == common::CT::TIMESTAMP) {
+        rcde->PutNumeric(dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+    } else if (ATI::IsDateTimeType(tianmu_dt.Type())) {
+      if (tianmu_dt.Type() == common::ColumnType::TIMESTAMP) {
         // timezone conversion
-        types::RCDateTime &dt(dynamic_cast<types::RCDateTime &>(rcdt));
-        types::RCDateTime::AdjustTimezone(dt);
+        types::TianmuDateTime &dt(dynamic_cast<types::TianmuDateTime &>(tianmu_dt));
+        types::TianmuDateTime::AdjustTimezone(dt);
         rcde->PutDateTime(dt.GetInt64());
       } else
-        rcde->PutDateTime(dynamic_cast<types::RCDateTime &>(rcdt).GetInt64());
+        rcde->PutDateTime(dynamic_cast<types::TianmuDateTime &>(tianmu_dt).GetInt64());
     }
     o++;
   }

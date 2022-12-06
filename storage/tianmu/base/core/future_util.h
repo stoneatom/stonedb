@@ -68,7 +68,7 @@ void schedule_in_group(scheduling_group sg, Func func) {
 /// std::ref()
 ///             to force passing references
 template <typename Func, typename... Args>
-inline auto with_scheduling_group(scheduling_group sg, Func func, Args &&...args) {
+inline auto with_scheduling_group(scheduling_group sg, Func func, Args &&... args) {
   using return_type = decltype(func(std::forward<Args>(args)...));
   using futurator = futurize<return_type>;
   if (sg.active()) {
@@ -121,8 +121,9 @@ struct parallel_for_each_state {
 ///         contains one of the exceptions.
 template <typename Iterator, typename Func>
 GCC6_CONCEPT(requires requires(Func f, Iterator i) {
-                        { f(*i++) } -> future<>;
-                      })
+  { f(*i++) }
+  ->future<>;
+})
 inline future<> parallel_for_each(Iterator begin, Iterator end, Func &&func) {
   if (begin == end) {
     return make_ready_future<>();
@@ -174,8 +175,9 @@ inline future<> parallel_for_each(Iterator begin, Iterator end, Func &&func) {
 ///         value will contain one of those exceptions.
 template <typename Range, typename Func>
 GCC6_CONCEPT(requires requires(Func f, Range r) {
-                        { f(*r.begin()) } -> future<>;
-                      })
+  { f(*r.begin()) }
+  ->future<>;
+})
 inline future<> parallel_for_each(Range &&range, Func &&func) {
   return parallel_for_each(std::begin(range), std::end(range), std::forward<Func>(func));
 }
@@ -275,10 +277,10 @@ using repeat_until_value_return_type =
 ///         a call to to \c action failed.  The \c optional's value is returned.
 template <typename AsyncAction>
 GCC6_CONCEPT(requires requires(AsyncAction aa) {
-                        requires is_future<decltype(aa())>::value;
-                        bool(aa().get0());
-                        aa().get0().value();
-                      })
+  requires is_future<decltype(aa())>::value;
+  bool(aa().get0());
+  aa().get0().value();
+})
 repeat_until_value_return_type<AsyncAction> repeat_until_value(AsyncAction &&action) {
   using type_helper = repeat_until_value_type_helper<std::result_of_t<AsyncAction()>>;
   // the "T" in the documentation
@@ -384,9 +386,7 @@ inline future<> keep_doing(AsyncAction &&action) {
 /// \return a ready future on success, or the first failed future if
 ///         \c action failed.
 template <typename Iterator, typename AsyncAction>
-GCC6_CONCEPT(requires requires(Iterator i, AsyncAction aa) {
-                        { aa(*i) } -> future<>
-                      })
+GCC6_CONCEPT(requires requires(Iterator i, AsyncAction aa){{aa(*i)}->future<>})
 inline future<> do_for_each(Iterator begin, Iterator end, AsyncAction &&action) {
   if (begin == end) {
     return make_ready_future<>();
@@ -421,9 +421,7 @@ inline future<> do_for_each(Iterator begin, Iterator end, AsyncAction &&action) 
 /// \return a ready future on success, or the first failed future if
 ///         \c action failed.
 template <typename Container, typename AsyncAction>
-GCC6_CONCEPT(requires requires(Container c, AsyncAction aa) {
-                        { aa(*c.begin()) } -> future<>
-                      })
+GCC6_CONCEPT(requires requires(Container c, AsyncAction aa){{aa(*c.begin())}->future<>})
 inline future<> do_for_each(Container &c, AsyncAction &&action) {
   return do_for_each(std::begin(c), std::end(c), std::forward<AsyncAction>(action));
 }
@@ -445,7 +443,7 @@ class when_all_state : public enable_lw_shared_from_this<when_all_state<Resolved
 
  public:
   typename ResolvedTupleTransform::promise_type p;
-  when_all_state(Futures &&...t) : tuple(std::make_tuple(std::move(t)...)) {}
+  when_all_state(Futures &&... t) : tuple(std::make_tuple(std::move(t)...)) {}
   ~when_all_state() { ResolvedTupleTransform::set_promise(p, std::move(tuple)); }
 
  private:
@@ -503,7 +501,7 @@ GCC6_CONCEPT(
 ///         ready, all contained futures will be ready as well.
 template <typename... Futs>
 GCC6_CONCEPT(requires base::AllAreFutures<Futs...>)
-inline future<std::tuple<Futs...>> when_all(Futs &&...futs) {
+inline future<std::tuple<Futs...>> when_all(Futs &&... futs) {
   namespace si = internal;
   using state = si::when_all_state<si::identity_futures_tuple<Futs...>, Futs...>;
   auto s = make_lw_shared<state>(std::forward<Futs>(futs)...);
@@ -578,9 +576,9 @@ inline auto do_when_all(FutureIterator begin, FutureIterator end) {
 ///         ready, all contained futures will be ready as well.
 template <typename FutureIterator>
 GCC6_CONCEPT(requires requires(FutureIterator i) {
-                        { *i++ };
-                        requires is_future<std::remove_reference_t<decltype(*i)>>::value;
-                      })
+  {*i++};
+  requires is_future<std::remove_reference_t<decltype(*i)>>::value;
+})
 inline future<std::vector<typename std::iterator_traits<FutureIterator>::value_type>> when_all(FutureIterator begin,
                                                                                                FutureIterator end) {
   namespace si = internal;
@@ -690,12 +688,14 @@ inline auto map_reduce(Iterator begin, Iterator end, Mapper &&mapper, Reducer &&
 /// ...
 template <typename Iterator, typename Mapper, typename Initial, typename Reduce>
 GCC6_CONCEPT(requires requires(Iterator i, Mapper mapper, Initial initial, Reduce reduce) {
-                        *i++;
-                        { i != i } -> bool;
-                        mapper(*i);
-                        requires is_future<decltype(mapper(*i))>::value;
-                        { reduce(std::move(initial), mapper(*i).get0()) } -> Initial;
-                      })
+  *i++;
+  { i != i }
+  ->bool;
+  mapper(*i);
+  requires is_future<decltype(mapper(*i))>::value;
+  { reduce(std::move(initial), mapper(*i).get0()) }
+  ->Initial;
+})
 inline future<Initial> map_reduce(Iterator begin, Iterator end, Mapper &&mapper, Initial initial, Reduce reduce) {
   struct state {
     Initial result;
@@ -760,12 +760,13 @@ inline future<Initial> map_reduce(Iterator begin, Iterator end, Mapper &&mapper,
 /// ...
 template <typename Range, typename Mapper, typename Initial, typename Reduce>
 GCC6_CONCEPT(requires requires(Range range, Mapper mapper, Initial initial, Reduce reduce) {
-                        std::begin(range);
-                        std::end(range);
-                        mapper(*std::begin(range));
-                        requires is_future<std::remove_reference_t<decltype(mapper(*std::begin(range)))>>::value;
-                        { reduce(std::move(initial), mapper(*std::begin(range)).get0()) } -> Initial;
-                      })
+  std::begin(range);
+  std::end(range);
+  mapper(*std::begin(range));
+  requires is_future<std::remove_reference_t<decltype(mapper(*std::begin(range)))>>::value;
+  { reduce(std::move(initial), mapper(*std::begin(range)).get0()) }
+  ->Initial;
+})
 inline future<Initial> map_reduce(Range &&range, Mapper &&mapper, Initial initial, Reduce reduce) {
   return map_reduce(std::begin(range), std::end(range), std::forward<Mapper>(mapper), std::move(initial),
                     std::move(reduce));
@@ -848,7 +849,7 @@ struct tuple_to_future<std::tuple<Elements...>> {
   using promise_type = promise<Elements...>;
 
   static auto make_ready(std::tuple<Elements...> t) {
-    auto create_future = [](auto &&...args) { return make_ready_future<Elements...>(std::move(args)...); };
+    auto create_future = [](auto &&... args) { return make_ready_future<Elements...>(std::move(args)...); };
     return apply(create_future, std::move(t));
   }
 
@@ -955,7 +956,7 @@ struct extract_values_from_futures_vector<future<>> {
 /// \return future containing values of input futures
 template <typename... Futures>
 GCC6_CONCEPT(requires base::AllAreFutures<Futures...>)
-inline auto when_all_succeed(Futures &&...futures) {
+inline auto when_all_succeed(Futures &&... futures) {
   using state = internal::when_all_state<internal::extract_values_from_futures_tuple<Futures...>, Futures...>;
   auto s = make_lw_shared<state>(std::forward<Futures>(futures)...);
   return s->wait_all(std::make_index_sequence<sizeof...(Futures)>());
@@ -973,10 +974,11 @@ inline auto when_all_succeed(Futures &&...futures) {
 /// futures \return an \c std::vector<> of all the valus in the input
 template <typename FutureIterator, typename = typename std::iterator_traits<FutureIterator>::value_type>
 GCC6_CONCEPT(requires requires(FutureIterator i) {
-                        *i++;
-                        { i != i } -> bool;
-                        requires is_future<std::remove_reference_t<decltype(*i)>>::value;
-                      })
+  *i++;
+  { i != i }
+  ->bool;
+  requires is_future<std::remove_reference_t<decltype(*i)>>::value;
+})
 
 inline auto when_all_succeed(FutureIterator begin, FutureIterator end) {
   using itraits = std::iterator_traits<FutureIterator>;

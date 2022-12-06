@@ -6,6 +6,8 @@ sql/build_info.h
 VERSION.dep
 CMakeCache
 CMakeFiles
+scripts/my.cnf
+scripts/mysql_server
 
 
 *-t
@@ -115,3 +117,4 @@ CTestTestfile.cmake
 COPYING
 .vs/
 node_modules
+website/.docusaurus

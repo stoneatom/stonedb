@@ -45,12 +45,12 @@ class TCMHeap : public HeapPolicy {
 
    public:
     void Init() {
-      list_ = NULL;
+      list_ = nullptr;
       length_ = 0;
     }
 
     // Is list empty?
-    bool empty() const { return list_ == NULL; }
+    bool empty() const { return list_ == nullptr; }
 
     void Push(void *ptr) {
       tcm::SLL_Push(&list_, ptr);
@@ -58,7 +58,7 @@ class TCMHeap : public HeapPolicy {
     }
 
     void *Pop() {
-      ASSERT(list_ != NULL);
+      ASSERT(list_ != nullptr);
       length_--;
       return tcm::SLL_Pop(&list_);
     }
@@ -74,7 +74,7 @@ class TCMHeap : public HeapPolicy {
         list_ = tcm::SLL_Next(list_);
       }
       current = list_;
-      while (current != NULL) {
+      while (current != nullptr) {
         prev = current;
         current = tcm::SLL_Next(current);
         while (current <= hi && current >= low) {

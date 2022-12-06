@@ -25,7 +25,7 @@ namespace Tianmu {
 namespace core {
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-DataType::DataType(common::CT atype, int prec, int scale, DTCollation collation) : precision(prec) {
+DataType::DataType(common::ColumnType atype, int prec, int scale, DTCollation collation) : precision(prec) {
   valtype = ValueType::VT_NOTKNOWN;
   attrtype = atype;
   fixscale = scale;
@@ -33,28 +33,28 @@ DataType::DataType(common::CT atype, int prec, int scale, DTCollation collation)
   this->collation = collation;
 
   switch (attrtype) {
-    case common::CT::INT:
+    case common::ColumnType::INT:
       valtype = ValueType::VT_FIXED;
       fixmax = MAX(std::numeric_limits<int>::max(), -TIANMU_INT_MIN);
       break;
-    case common::CT::BIGINT:
+    case common::ColumnType::BIGINT:
       valtype = ValueType::VT_FIXED;
       fixmax = MAX(common::TIANMU_BIGINT_MAX, -common::TIANMU_BIGINT_MIN);
       break;
-    case common::CT::MEDIUMINT:
+    case common::ColumnType::MEDIUMINT:
       valtype = ValueType::VT_FIXED;
       fixmax = MAX(TIANMU_MEDIUMINT_MAX, -TIANMU_MEDIUMINT_MIN);
       break;
-    case common::CT::SMALLINT:
+    case common::ColumnType::SMALLINT:
       valtype = ValueType::VT_FIXED;
       fixmax = MAX(TIANMU_SMALLINT_MAX, -TIANMU_SMALLINT_MIN);
       break;
-    case common::CT::BYTEINT:
+    case common::ColumnType::BYTEINT:
       valtype = ValueType::VT_FIXED;
       fixmax = MAX(TIANMU_TINYINT_MAX, -TIANMU_TINYINT_MIN);
       break;
 
-    case common::CT::NUM:
+    case common::ColumnType::NUM:
       DEBUG_ASSERT((prec > 0) && (prec <= 19) && (fixscale >= 0));
       if (prec == 19)
         fixmax = common::PLUS_INF_64;
@@ -63,31 +63,31 @@ DataType::DataType(common::CT atype, int prec, int scale, DTCollation collation)
       valtype = ValueType::VT_FIXED;
       break;
 
-    case common::CT::REAL:
-    case common::CT::FLOAT:
+    case common::ColumnType::REAL:
+    case common::ColumnType::FLOAT:
       valtype = ValueType::VT_FLOAT;
       break;
 
-    case common::CT::STRING:
-    case common::CT::VARCHAR:
-    case common::CT::BIN:
-    case common::CT::BYTE:
-    case common::CT::VARBYTE:
-    case common::CT::LONGTEXT:
+    case common::ColumnType::STRING:
+    case common::ColumnType::VARCHAR:
+    case common::ColumnType::BIN:
+    case common::ColumnType::BYTE:
+    case common::ColumnType::VARBYTE:
+    case common::ColumnType::LONGTEXT:
       valtype = ValueType::VT_STRING;
       break;
 
-    case common::CT::DATETIME:
-    case common::CT::TIMESTAMP:
-    case common::CT::TIME:
-    case common::CT::DATE:
-    case common::CT::YEAR:
+    case common::ColumnType::DATETIME:
+    case common::ColumnType::TIMESTAMP:
+    case common::ColumnType::TIME:
+    case common::ColumnType::DATE:
+    case common::ColumnType::YEAR:
       valtype = ValueType::VT_DATETIME;
       break;
 
-    case common::CT::DATETIME_N:
-    case common::CT::TIMESTAMP_N:
-    case common::CT::TIME_N:
+    case common::ColumnType::DATETIME_N:
+    case common::ColumnType::TIMESTAMP_N:
+    case common::ColumnType::TIME_N:
         // NOT IMPLEMENTED YET
         ;
     default:
@@ -98,13 +98,14 @@ DataType::DataType(common::CT atype, int prec, int scale, DTCollation collation)
 
 DataType &DataType::operator=(const ColumnType &ct) {
   *this = DataType();
-  if (!ct.IsKnown()) return *this;
+  if (!ct.IsKnown())
+    return *this;
 
   *this = DataType(ct.GetTypeName(), ct.GetPrecision(), ct.GetScale(), ct.GetCollation());
 
   if (valtype == ValueType::VT_NOTKNOWN) {
     char s[128];
-    std::sprintf(s, "ColumnType (common::CT #%d) is not convertible to a DataType", (int)ct.GetTypeName());
+    std::sprintf(s, "ColumnType (common::ColumnType #%d) is not convertible to a DataType", (int)ct.GetTypeName());
     throw common::Exception(s);
   }
 

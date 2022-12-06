@@ -1,0 +1,383 @@
+#
+# Test aggregate
+#
+DROP DATABASE IF EXISTS aggregate_test;
+CREATE DATABASE aggregate_test;
+USE aggregate_test;
+DROP TABLE IF EXISTS cs1;
+DROP TABLE IF EXISTS cs2;
+DROP TABLE IF EXISTS cs3;
+DROP TABLE IF EXISTS cs4;
+DROP TABLE IF EXISTS cs5;
+CREATE TABLE cs1 (d1 DECIMAL(17), d2 DECIMAL(17,10), d3 DECIMAL(17,16), d4 DECIMAL(17),d5 DECIMAL(17),i1 INT) ;
+CREATE TABLE cs2 (d1 DECIMAL(17) SIGNED, d2 DECIMAL(17,10) SIGNED, d3 DECIMAL(17,16) SIGNED, d4 DECIMAL(17),d5 DECIMAL(17),i1 INT);
+CREATE TABLE cs3 (d1 DECIMAL(17), d2 DECIMAL(17,10), d3 DECIMAL(17,16), d4 DECIMAL(17),d5 DECIMAL(17),i1 INT) ;
+CREATE TABLE cs4 (d1 DECIMAL(17) SIGNED, d2 DECIMAL(17,10) SIGNED, d3 DECIMAL(17,16) SIGNED, d4 DECIMAL(17) SIGNED,d5 DECIMAL(17),i1 INT);
+CREATE TABLE cs5(d DECIMAL(17,10)) ;
+INSERT INTO cs1 VALUES
+(1234,5678,-0.123456789012345,2,1,1),     
+(1234,-5678,0.12345678901234,2,1,1),
+(1234567890123,123456.90123,0.12345678901234,2,1,1),
+(NULL,NULL,NULL,2,1,1),
+(0,0,0,2,1,1),
+(1234,5678,0.123456789,3,2,2),
+(-12345678923,-5678,0.1234567890121,3,2,2),
+(56789012,123856.90,0.12345678909,3,2,2),
+(NULL,NULL,NULL,3,2,2),
+(0,0,0,3,2,2),
+(1234,5678,-0.123456789012345,1111111111,1,1),
+(1234,5678,-0.123456789012345,1111111111,1,1),
+(1234,5678,-0.123456789012345,1111111112,1,1);
+INSERT INTO cs2 VALUES
+(1234,5678,0.123456789012345,2,1,1),     
+(1234,5678,0.12345678901234,2,1,1),
+(1234567890123,123456.90123,0.12345678901234,2,1,1),
+(NULL,NULL,NULL,2,1,1),
+(0,0,0,2,1,1),
+(1234,5678,0.123456789,3,2,2),
+(456789123,5678,0.1234567890121,3,2,2),
+(56789012,123856.90,0.12345678909,3,2,2),
+(NULL,NULL,NULL,3,2,2),
+(0,0,0,3,2,2),
+(1234,5678,0.123456789012345,1111111111,1,1),
+(1234,5678,0.123456789012345,1111111111,1,1),
+(1234,5678,0.123456789012345,1111111112,1,1);
+INSERT INTO cs3 VALUES
+(1234,5678,-0.12345678901234,2,1,1),     
+(1234,-5678,0.12345678901234,2,1,1),
+(12345678901,123456.90128,0.1234567890123,2,1,1),
+(NULL,NULL,NULL,2,1,1),
+(0,0,0,2,1,1),
+(1234,5678,0.12345678901234,3,2,2),
+(-1234567899,-5678,0.1234567890123,3,2,2),
+(12345678901,123456.9012,0.1234567890123,3,2,2),
+(NULL,NULL,NULL,3,2,2),
+(0,0,0,3,2,2);
+INSERT INTO cs4 VALUES
+(1234,5678,0.12345678901234,2,1,1),     
+(1234,5678,0.12345678901234,2,1,1),
+(12345678901,123456.90128,0.1234567890123,2,1,1),
+(NULL,NULL,NULL,2,1,1),
+(0,0,0,2,1,1),
+(1234,5678,0.12345678901234,3,2,2),
+(1234567899,5678,0.1234567890123,3,2,2),
+(12345678901,123456.90123,0.1234567890123,3,2,2),
+(NULL,NULL,NULL,3,2,2),
+(0,0,0,3,2,2);
+SELECT "sum(17)_test1", sum(d1),sum(d2),sum(d3) FROM cs1;
+sum(17)_test1	sum(d1)	sum(d2)	sum(d3)
+sum(17)_test1	1222279007616	264347.8012300000	0.1234567890774000
+SELECT "count(17)_test1", count(d1),count(d2),count(d3) FROM cs1;
+count(17)_test1	count(d1)	count(d2)	count(d3)
+count(17)_test1	11	11	11
+SELECT "min(17)_test1", min(d1),min(d2),min(d3) FROM cs1;
+min(17)_test1	min(d1)	min(d2)	min(d3)
+min(17)_test1	-12345678923	-5678.0000000000	-0.1234567890123450
+SELECT "max(17)_test1", max(d1),max(d2),max(d3) FROM cs1;
+max(17)_test1	max(d1)	max(d2)	max(d3)
+max(17)_test1	1234567890123	123856.9000000000	0.1234567890900000
+SELECT "count(distinct 17)_test1", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs1;
+count(distinct 17)_test1	count(distinct d1)	count(distinct d2)	count(distinct d3)
+count(distinct 17)_test1	5	5	6
+SELECT "sum(17)_test1", sum(d1),sum(d2),sum(d3) FROM (SELECT d1,d2,d3 FROM cs1)a1;
+sum(17)_test1	sum(d1)	sum(d2)	sum(d3)
+sum(17)_test1	1222279007616	264347.8012300000	0.1234567890774000
+SELECT "count(17)_test1", count(d1),count(d2),count(d3) FROM (SELECT d1,d2,d3 FROM cs1)a1;
+count(17)_test1	count(d1)	count(d2)	count(d3)
+count(17)_test1	11	11	11
+SELECT "min(17)_test1", min(d1),min(d2),min(d3) FROM (SELECT d1,d2,d3 FROM cs1)a1;
+min(17)_test1	min(d1)	min(d2)	min(d3)
+min(17)_test1	-12345678923	-5678.0000000000	-0.1234567890123450
+SELECT "max(17)_test1", max(d1),max(d2),max(d3) FROM (SELECT d1,d2,d3 FROM cs1)a1;
+max(17)_test1	max(d1)	max(d2)	max(d3)
+max(17)_test1	1234567890123	123856.9000000000	0.1234567890900000
+SELECT "count(distinct 17)_test1", count(distinct d1),count(distinct d2),count(distinct d3) FROM (SELECT d1,d2,d3 FROM cs1)a1;
+count(distinct 17)_test1	count(distinct d1)	count(distinct d2)	count(distinct d3)
+count(distinct 17)_test1	5	5	6
+SELECT "sum(17)_GB(17)_test1" ,d4,d5,sum(d1),sum(d2),sum(d3) FROM cs1 GROUP BY d4,d5 ORDER BY 2,3;
+sum(17)_GB(17)_test1	d4	d5	sum(d1)	sum(d2)	sum(d3)
+sum(17)_GB(17)_test1	2	1	1234567892591	123456.9012300000	0.1234567890123350
+sum(17)_GB(17)_test1	3	2	-12288888677	123856.9000000000	0.3703703671021000
+sum(17)_GB(17)_test1	1111111111	1	2468	11356.0000000000	-0.2469135780246900
+sum(17)_GB(17)_test1	1111111112	1	1234	5678.0000000000	-0.1234567890123450
+SELECT "count(17)_GB(17)_test1" ,d4,d5,count(d1),count(d2),count(d3) FROM cs1 GROUP BY d4,d5 ORDER BY 2,3;
+count(17)_GB(17)_test1	d4	d5	count(d1)	count(d2)	count(d3)
+count(17)_GB(17)_test1	2	1	4	4	4
+count(17)_GB(17)_test1	3	2	4	4	4
+count(17)_GB(17)_test1	1111111111	1	2	2	2
+count(17)_GB(17)_test1	1111111112	1	1	1	1
+SELECT "min(17)_GB(17)_test1" ,d4,d5,min(d1),min(d2),min(d3) FROM cs1 GROUP BY d4,d5 ORDER BY 2,3;
+min(17)_GB(17)_test1	d4	d5	min(d1)	min(d2)	min(d3)
+min(17)_GB(17)_test1	2	1	0	-5678.0000000000	-0.1234567890123450
+min(17)_GB(17)_test1	3	2	-12345678923	-5678.0000000000	0.0000000000000000
+min(17)_GB(17)_test1	1111111111	1	1234	5678.0000000000	-0.1234567890123450
+min(17)_GB(17)_test1	1111111112	1	1234	5678.0000000000	-0.1234567890123450
+SELECT "max(17)_GB(17)_test1" ,d4,d5,max(d1),max(d2),max(d3) FROM cs1 GROUP BY d4,d5 ORDER BY 2,3;
+max(17)_GB(17)_test1	d4	d5	max(d1)	max(d2)	max(d3)
+max(17)_GB(17)_test1	2	1	1234567890123	123456.9012300000	0.1234567890123400
+max(17)_GB(17)_test1	3	2	56789012	123856.9000000000	0.1234567890900000
+max(17)_GB(17)_test1	1111111111	1	1234	5678.0000000000	-0.1234567890123450
+max(17)_GB(17)_test1	1111111112	1	1234	5678.0000000000	-0.1234567890123450
+SELECT "count(distinct 17)_GB(17)_test1", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs1 GROUP BY d4,d5 ORDER BY 2,3;
+count(distinct 17)_GB(17)_test1	count(distinct d1)	count(distinct d2)	count(distinct d3)
+count(distinct 17)_GB(17)_test1	1	1	1
+count(distinct 17)_GB(17)_test1	1	1	1
+count(distinct 17)_GB(17)_test1	3	4	3
+count(distinct 17)_GB(17)_test1	4	4	4
+SELECT "sum(17)_GB(8)_test1" ,i1,sum(d1),sum(d2),sum(d3) FROM cs1 GROUP BY i1 ORDER BY 2;
+sum(17)_GB(8)_test1	i1	sum(d1)	sum(d2)	sum(d3)
+sum(17)_GB(8)_test1	1	1234567896293	140490.9012300000	-0.2469135780247000
+sum(17)_GB(8)_test1	2	-12288888677	123856.9000000000	0.3703703671021000
+SELECT "count(17)_GB(8)_test1" ,i1,count(d1),count(d2),count(d3) FROM cs1 GROUP BY i1 ORDER BY 2;
+count(17)_GB(8)_test1	i1	count(d1)	count(d2)	count(d3)
+count(17)_GB(8)_test1	1	7	7	7
+count(17)_GB(8)_test1	2	4	4	4
+SELECT "min(17)_GB(8)_test1" ,i1,min(d1),min(d2),min(d3) FROM cs1 GROUP BY i1 ORDER BY 2;
+min(17)_GB(8)_test1	i1	min(d1)	min(d2)	min(d3)
+min(17)_GB(8)_test1	1	0	-5678.0000000000	-0.1234567890123450
+min(17)_GB(8)_test1	2	-12345678923	-5678.0000000000	0.0000000000000000
+SELECT "max(17)_GB(8)_test1" ,i1,max(d1),max(d2),max(d3) FROM cs1 GROUP BY i1 ORDER BY 2;
+max(17)_GB(8)_test1	i1	max(d1)	max(d2)	max(d3)
+max(17)_GB(8)_test1	1	1234567890123	123456.9012300000	0.1234567890123400
+max(17)_GB(8)_test1	2	56789012	123856.9000000000	0.1234567890900000
+SELECT "count(distinct 17)_GB(8)_test1", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs1 GROUP BY i1 ORDER BY 2;
+count(distinct 17)_GB(8)_test1	count(distinct d1)	count(distinct d2)	count(distinct d3)
+count(distinct 17)_GB(8)_test1	3	4	3
+count(distinct 17)_GB(8)_test1	4	4	4
+SELECT "sum(17)_test2", sum(d1),sum(d2),sum(d3) FROM cs2;
+sum(17)_test2	sum(d1)	sum(d2)	sum(d3)
+sum(17)_test2	1235081475662	287059.8012300000	1.1111111011761600
+SELECT "count(17)_test2", count(d1),count(d2),count(d3) FROM cs2;
+count(17)_test2	count(d1)	count(d2)	count(d3)
+count(17)_test2	11	11	11
+SELECT "min(17)_test2", min(d1),min(d2),min(d3) FROM cs2;
+min(17)_test2	min(d1)	min(d2)	min(d3)
+min(17)_test2	0	0.0000000000	0.0000000000000000
+SELECT "max(17)_test2", max(d1),max(d2),max(d3) FROM cs2;
+max(17)_test2	max(d1)	max(d2)	max(d3)
+max(17)_test2	1234567890123	123856.9000000000	0.1234567890900000
+SELECT "count(distinct 17)_test2", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs2;
+count(distinct 17)_test2	count(distinct d1)	count(distinct d2)	count(distinct d3)
+count(distinct 17)_test2	5	4	6
+SELECT "sum(17)_test2", sum(d1),sum(d2),sum(d3) FROM (SELECT d1,d2,d3 FROM cs2)a1;
+sum(17)_test2	sum(d1)	sum(d2)	sum(d3)
+sum(17)_test2	1235081475662	287059.8012300000	1.1111111011761600
+SELECT "count(17)_test2", count(d1),count(d2),count(d3) FROM (SELECT d1,d2,d3 FROM cs2)a1;
+count(17)_test2	count(d1)	count(d2)	count(d3)
+count(17)_test2	11	11	11
+SELECT "min(17)_test2", min(d1),min(d2),min(d3) FROM (SELECT d1,d2,d3 FROM cs2)a1;
+min(17)_test2	min(d1)	min(d2)	min(d3)
+min(17)_test2	0	0.0000000000	0.0000000000000000
+SELECT "max(17)_test2", max(d1),max(d2),max(d3) FROM (SELECT d1,d2,d3 FROM cs2)a1;
+max(17)_test2	max(d1)	max(d2)	max(d3)
+max(17)_test2	1234567890123	123856.9000000000	0.1234567890900000
+SELECT "count(distinct 17)_test2", count(distinct d1),count(distinct d2),count(distinct d3) FROM (SELECT d1,d2,d3 FROM cs2)a1;
+count(distinct 17)_test2	count(distinct d1)	count(distinct d2)	count(distinct d3)
+count(distinct 17)_test2	5	4	6
+SELECT "sum(17)_GB(17)_test2" ,d4,d5,sum(d1),sum(d2),sum(d3) FROM cs2 GROUP BY d4,d5 ORDER BY 2,3;
+sum(17)_GB(17)_test2	d4	d5	sum(d1)	sum(d2)	sum(d3)
+sum(17)_GB(17)_test2	2	1	1234567892591	134812.9012300000	0.3703703670370250
+sum(17)_GB(17)_test2	3	2	513579369	135212.9000000000	0.3703703671021000
+sum(17)_GB(17)_test2	1111111111	1	2468	11356.0000000000	0.2469135780246900
+sum(17)_GB(17)_test2	1111111112	1	1234	5678.0000000000	0.1234567890123450
+SELECT "count(17)_GB(17)_test2" ,d4,d5,count(d1),count(d2),count(d3) FROM cs2 GROUP BY d4,d5 ORDER BY 2,3;
+count(17)_GB(17)_test2	d4	d5	count(d1)	count(d2)	count(d3)
+count(17)_GB(17)_test2	2	1	4	4	4
+count(17)_GB(17)_test2	3	2	4	4	4
+count(17)_GB(17)_test2	1111111111	1	2	2	2
+count(17)_GB(17)_test2	1111111112	1	1	1	1
+SELECT "min(17)_GB(17)_test2" ,d4,d5,min(d1),min(d2),min(d3) FROM cs2 GROUP BY d4,d5 ORDER BY 2,3;
+min(17)_GB(17)_test2	d4	d5	min(d1)	min(d2)	min(d3)
+min(17)_GB(17)_test2	2	1	0	0.0000000000	0.0000000000000000
+min(17)_GB(17)_test2	3	2	0	0.0000000000	0.0000000000000000
+min(17)_GB(17)_test2	1111111111	1	1234	5678.0000000000	0.1234567890123450
+min(17)_GB(17)_test2	1111111112	1	1234	5678.0000000000	0.1234567890123450
+SELECT "max(17)_GB(17)_test2" ,d4,d5,max(d1),max(d2),max(d3) FROM cs2 GROUP BY d4,d5 ORDER BY 2,3;
+max(17)_GB(17)_test2	d4	d5	max(d1)	max(d2)	max(d3)
+max(17)_GB(17)_test2	2	1	1234567890123	123456.9012300000	0.1234567890123450
+max(17)_GB(17)_test2	3	2	456789123	123856.9000000000	0.1234567890900000
+max(17)_GB(17)_test2	1111111111	1	1234	5678.0000000000	0.1234567890123450
+max(17)_GB(17)_test2	1111111112	1	1234	5678.0000000000	0.1234567890123450
+SELECT "count(distinct 17)_GB(17)_test2", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs2 GROUP BY d4,d5 ORDER BY 2,3;
+count(distinct 17)_GB(17)_test2	count(distinct d1)	count(distinct d2)	count(distinct d3)
+count(distinct 17)_GB(17)_test2	1	1	1
+count(distinct 17)_GB(17)_test2	1	1	1
+count(distinct 17)_GB(17)_test2	3	3	3
+count(distinct 17)_GB(17)_test2	4	3	4
+SELECT "sum(17)_GB(8)_test2" ,i1,sum(d1),sum(d2),sum(d3) FROM cs2 GROUP BY i1 ORDER BY 2,3;
+sum(17)_GB(8)_test2	i1	sum(d1)	sum(d2)	sum(d3)
+sum(17)_GB(8)_test2	1	1234567896293	151846.9012300000	0.7407407340740600
+sum(17)_GB(8)_test2	2	513579369	135212.9000000000	0.3703703671021000
+SELECT "count(17)_GB(8)_test2" ,i1,count(d1),count(d2),count(d3) FROM cs2 GROUP BY i1 ORDER BY 2,3;
+count(17)_GB(8)_test2	i1	count(d1)	count(d2)	count(d3)
+count(17)_GB(8)_test2	1	7	7	7
+count(17)_GB(8)_test2	2	4	4	4
+SELECT "min(17)_GB(8)_test2" ,i1,min(d1),min(d2),min(d3) FROM cs2 GROUP BY i1 ORDER BY 2,3;
+min(17)_GB(8)_test2	i1	min(d1)	min(d2)	min(d3)
+min(17)_GB(8)_test2	1	0	0.0000000000	0.0000000000000000
+min(17)_GB(8)_test2	2	0	0.0000000000	0.0000000000000000
+SELECT "max(17)_GB(8)_test2" ,i1,max(d1),max(d2),max(d3) FROM cs2 GROUP BY i1 ORDER BY 2,3;
+max(17)_GB(8)_test2	i1	max(d1)	max(d2)	max(d3)
+max(17)_GB(8)_test2	1	1234567890123	123456.9012300000	0.1234567890123450
+max(17)_GB(8)_test2	2	456789123	123856.9000000000	0.1234567890900000
+SELECT "count(distinct 17)_GB(8)_test2", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs2 GROUP BY i1 ORDER BY 2,3;
+count(distinct 17)_GB(8)_test2	count(distinct d1)	count(distinct d2)	count(distinct d3)
+count(distinct 17)_GB(8)_test2	3	3	3
+count(distinct 17)_GB(8)_test2	4	3	4
+SELECT "sum(17)_test3", sum(d1),sum(d2),sum(d3) FROM cs3;
+sum(17)_test3	sum(d1)	sum(d2)	sum(d3)
+sum(17)_test3	23456793605	246913.8024800000	0.4938271560492400
+SELECT "count(17)_test3", count(d1),count(d2),count(d3) FROM cs3;
+count(17)_test3	count(d1)	count(d2)	count(d3)
+count(17)_test3	8	8	8
+SELECT "min(17)_test3", min(d1),min(d2),min(d3) FROM cs3;
+min(17)_test3	min(d1)	min(d2)	min(d3)
+min(17)_test3	-1234567899	-5678.0000000000	-0.1234567890123400
+SELECT "max(17)_test3", max(d1),max(d2),max(d3) FROM cs3;
+max(17)_test3	max(d1)	max(d2)	max(d3)
+max(17)_test3	12345678901	123456.9012800000	0.1234567890123400
+SELECT "count(distinct 17)_test3", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs3;
+count(distinct 17)_test3	count(distinct d1)	count(distinct d2)	count(distinct d3)
+count(distinct 17)_test3	4	5	4
+SELECT "sum(17)_test3", sum(d1),sum(d2),sum(d3) FROM (SELECT d1,d2,d3 FROM cs3)a1;
+sum(17)_test3	sum(d1)	sum(d2)	sum(d3)
+sum(17)_test3	23456793605	246913.8024800000	0.4938271560492400
+SELECT "count(17)_test3", count(d1),count(d2),count(d3) FROM (SELECT d1,d2,d3 FROM cs3)a1;
+count(17)_test3	count(d1)	count(d2)	count(d3)
+count(17)_test3	8	8	8
+SELECT "min(17)_test3", min(d1),min(d2),min(d3) FROM (SELECT d1,d2,d3 FROM cs3)a1;
+min(17)_test3	min(d1)	min(d2)	min(d3)
+min(17)_test3	-1234567899	-5678.0000000000	-0.1234567890123400
+SELECT "max(17)_test3", max(d1),max(d2),max(d3) FROM (SELECT d1,d2,d3 FROM cs3)a1;
+max(17)_test3	max(d1)	max(d2)	max(d3)
+max(17)_test3	12345678901	123456.9012800000	0.1234567890123400
+SELECT "count(distinct 17)_test3", count(distinct d1),count(distinct d2),count(distinct d3) FROM (SELECT d1,d2,d3 FROM cs3)a1;
+count(distinct 17)_test3	count(distinct d1)	count(distinct d2)	count(distinct d3)
+count(distinct 17)_test3	4	5	4
+SELECT "sum(17)_GB(17)_test3" ,d4,d5,sum(d1),sum(d2),sum(d3) FROM cs3 GROUP BY d4,d5 ORDER BY 2,3;
+sum(17)_GB(17)_test3	d4	d5	sum(d1)	sum(d2)	sum(d3)
+sum(17)_GB(17)_test3	2	1	12345681369	123456.9012800000	0.1234567890123000
+sum(17)_GB(17)_test3	3	2	11111112236	123456.9012000000	0.3703703670369400
+SELECT "count(17)_GB(17)_test3" ,d4,d5,count(d1),count(d2),count(d3) FROM cs3 GROUP BY d4,d5 ORDER BY 2,3;
+count(17)_GB(17)_test3	d4	d5	count(d1)	count(d2)	count(d3)
+count(17)_GB(17)_test3	2	1	4	4	4
+count(17)_GB(17)_test3	3	2	4	4	4
+SELECT "min(17)_GB(17)_test3" ,d4,d5,min(d1),min(d2),min(d3) FROM cs3 GROUP BY d4,d5 ORDER BY 2,3;
+min(17)_GB(17)_test3	d4	d5	min(d1)	min(d2)	min(d3)
+min(17)_GB(17)_test3	2	1	0	-5678.0000000000	-0.1234567890123400
+min(17)_GB(17)_test3	3	2	-1234567899	-5678.0000000000	0.0000000000000000
+SELECT "max(17)_GB(17)_test3" ,d4,d5,max(d1),max(d2),max(d3) FROM cs3 GROUP BY d4,d5 ORDER BY 2,3;
+max(17)_GB(17)_test3	d4	d5	max(d1)	max(d2)	max(d3)
+max(17)_GB(17)_test3	2	1	12345678901	123456.9012800000	0.1234567890123400
+max(17)_GB(17)_test3	3	2	12345678901	123456.9012000000	0.1234567890123400
+SELECT "count(distinct 17)_GB(17)_test3", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs3 GROUP BY d4,d5 ORDER BY 2,3;
+count(distinct 17)_GB(17)_test3	count(distinct d1)	count(distinct d2)	count(distinct d3)
+count(distinct 17)_GB(17)_test3	3	4	4
+count(distinct 17)_GB(17)_test3	4	4	3
+SELECT "sum(17)_GB(8)_test3" ,i1,sum(d1),sum(d2),sum(d3) FROM cs3 GROUP BY i1 ORDER BY 2,3;
+sum(17)_GB(8)_test3	i1	sum(d1)	sum(d2)	sum(d3)
+sum(17)_GB(8)_test3	1	12345681369	123456.9012800000	0.1234567890123000
+sum(17)_GB(8)_test3	2	11111112236	123456.9012000000	0.3703703670369400
+SELECT "count(17)_GB(8)_test3" ,i1,count(d1),count(d2),count(d3) FROM cs3 GROUP BY i1 ORDER BY 2,3;
+count(17)_GB(8)_test3	i1	count(d1)	count(d2)	count(d3)
+count(17)_GB(8)_test3	1	4	4	4
+count(17)_GB(8)_test3	2	4	4	4
+SELECT "min(17)_GB(8)_test3" ,i1,min(d1),min(d2),min(d3) FROM cs3 GROUP BY i1 ORDER BY 2,3;
+min(17)_GB(8)_test3	i1	min(d1)	min(d2)	min(d3)
+min(17)_GB(8)_test3	1	0	-5678.0000000000	-0.1234567890123400
+min(17)_GB(8)_test3	2	-1234567899	-5678.0000000000	0.0000000000000000
+SELECT "max(17)_GB(8)_test3" ,i1,max(d1),max(d2),max(d3) FROM cs3 GROUP BY i1 ORDER BY 2,3;
+max(17)_GB(8)_test3	i1	max(d1)	max(d2)	max(d3)
+max(17)_GB(8)_test3	1	12345678901	123456.9012800000	0.1234567890123400
+max(17)_GB(8)_test3	2	12345678901	123456.9012000000	0.1234567890123400
+SELECT "count(distinct 17)_GB(8)_test3", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs3 GROUP BY i1 ORDER BY 2,3;
+count(distinct 17)_GB(8)_test3	count(distinct d1)	count(distinct d2)	count(distinct d3)
+count(distinct 17)_GB(8)_test3	3	4	4
+count(distinct 17)_GB(8)_test3	4	4	3
+SELECT "sum(17)_test4", sum(d1),sum(d2),sum(d3) FROM cs4;
+sum(17)_test4	sum(d1)	sum(d2)	sum(d3)
+sum(17)_test4	25925929403	269625.8025100000	0.7407407340739200
+SELECT "count(17)_test4", count(d1),count(d2),count(d3) FROM cs4;
+count(17)_test4	count(d1)	count(d2)	count(d3)
+count(17)_test4	8	8	8
+SELECT "min(17)_test4", min(d1),min(d2),min(d3) FROM cs4;
+min(17)_test4	min(d1)	min(d2)	min(d3)
+min(17)_test4	0	0.0000000000	0.0000000000000000
+SELECT "max(17)_test4", max(d1),max(d2),max(d3) FROM cs4;
+max(17)_test4	max(d1)	max(d2)	max(d3)
+max(17)_test4	12345678901	123456.9012800000	0.1234567890123400
+SELECT "count(distinct 17)_test4", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs4;
+count(distinct 17)_test4	count(distinct d1)	count(distinct d2)	count(distinct d3)
+count(distinct 17)_test4	4	4	3
+SELECT "sum(17)_test4", sum(d1),sum(d2),sum(d3) FROM (SELECT d1,d2,d3 FROM cs4)a1;
+sum(17)_test4	sum(d1)	sum(d2)	sum(d3)
+sum(17)_test4	25925929403	269625.8025100000	0.7407407340739200
+SELECT "count(17)_test4", count(d1),count(d2),count(d3) FROM (SELECT d1,d2,d3 FROM cs4)a1;
+count(17)_test4	count(d1)	count(d2)	count(d3)
+count(17)_test4	8	8	8
+SELECT "min(17)_test4", min(d1),min(d2),min(d3) FROM (SELECT d1,d2,d3 FROM cs4)a1;
+min(17)_test4	min(d1)	min(d2)	min(d3)
+min(17)_test4	0	0.0000000000	0.0000000000000000
+SELECT "max(17)_test4", max(d1),max(d2),max(d3) FROM (SELECT d1,d2,d3 FROM cs4)a1;
+max(17)_test4	max(d1)	max(d2)	max(d3)
+max(17)_test4	12345678901	123456.9012800000	0.1234567890123400
+SELECT "count(distinct 17)_test4", count(distinct d1),count(distinct d2),count(distinct d3) FROM (SELECT d1,d2,d3 FROM cs4)a1;
+count(distinct 17)_test4	count(distinct d1)	count(distinct d2)	count(distinct d3)
+count(distinct 17)_test4	4	4	3
+SELECT "sum(17)_GB(17)_test4" ,d4,d5,sum(d1),sum(d2),sum(d3) FROM cs4 GROUP BY d4,d5 ORDER BY 2,3;
+sum(17)_GB(17)_test4	d4	d5	sum(d1)	sum(d2)	sum(d3)
+sum(17)_GB(17)_test4	2	1	12345681369	134812.9012800000	0.3703703670369800
+sum(17)_GB(17)_test4	3	2	13580248034	134812.9012300000	0.3703703670369400
+SELECT "count(17)_GB(17)_test4" ,d4,d5,count(d1),count(d2),count(d3) FROM cs4 GROUP BY d4,d5 ORDER BY 2,3;
+count(17)_GB(17)_test4	d4	d5	count(d1)	count(d2)	count(d3)
+count(17)_GB(17)_test4	2	1	4	4	4
+count(17)_GB(17)_test4	3	2	4	4	4
+SELECT "min(17)_GB(17)_test4" ,d4,d5,min(d1),min(d2),min(d3) FROM cs4 GROUP BY d4,d5 ORDER BY 2,3;
+min(17)_GB(17)_test4	d4	d5	min(d1)	min(d2)	min(d3)
+min(17)_GB(17)_test4	2	1	0	0.0000000000	0.0000000000000000
+min(17)_GB(17)_test4	3	2	0	0.0000000000	0.0000000000000000
+SELECT "max(17)_GB(17)_test4" ,d4,d5,max(d1),max(d2),max(d3) FROM cs4 GROUP BY d4,d5 ORDER BY 2,3;
+max(17)_GB(17)_test4	d4	d5	max(d1)	max(d2)	max(d3)
+max(17)_GB(17)_test4	2	1	12345678901	123456.9012800000	0.1234567890123400
+max(17)_GB(17)_test4	3	2	12345678901	123456.9012300000	0.1234567890123400
+SELECT "count(distinct 17)_GB(17)_test4", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs4 GROUP BY d4,d5 ORDER BY 2,3;
+count(distinct 17)_GB(17)_test4	count(distinct d1)	count(distinct d2)	count(distinct d3)
+count(distinct 17)_GB(17)_test4	3	3	3
+count(distinct 17)_GB(17)_test4	4	3	3
+SELECT "sum(17)_GB(17)_test4" ,i1,sum(d1),sum(d2),sum(d3) FROM cs4 GROUP BY i1 ORDER BY 2,3;
+sum(17)_GB(17)_test4	i1	sum(d1)	sum(d2)	sum(d3)
+sum(17)_GB(17)_test4	1	12345681369	134812.9012800000	0.3703703670369800
+sum(17)_GB(17)_test4	2	13580248034	134812.9012300000	0.3703703670369400
+SELECT "count(17)_GB(17)_test4" ,i1,count(d1),count(d2),count(d3) FROM cs4 GROUP BY i1 ORDER BY 2,3;
+count(17)_GB(17)_test4	i1	count(d1)	count(d2)	count(d3)
+count(17)_GB(17)_test4	1	4	4	4
+count(17)_GB(17)_test4	2	4	4	4
+SELECT "min(17)_GB(17)_test4" ,i1,min(d1),min(d2),min(d3) FROM cs4 GROUP BY i1 ORDER BY 2,3;
+min(17)_GB(17)_test4	i1	min(d1)	min(d2)	min(d3)
+min(17)_GB(17)_test4	1	0	0.0000000000	0.0000000000000000
+min(17)_GB(17)_test4	2	0	0.0000000000	0.0000000000000000
+SELECT "max(17)_GB(17)_test4" ,i1,max(d1),max(d2),max(d3) FROM cs4 GROUP BY i1 ORDER BY 2,3;
+max(17)_GB(17)_test4	i1	max(d1)	max(d2)	max(d3)
+max(17)_GB(17)_test4	1	12345678901	123456.9012800000	0.1234567890123400
+max(17)_GB(17)_test4	2	12345678901	123456.9012300000	0.1234567890123400
+SELECT "count(distinct 17)_GB(8)_test4", count(distinct d1),count(distinct d2),count(distinct d3) FROM cs4 GROUP BY i1 ORDER BY 2,3;
+count(distinct 17)_GB(8)_test4	count(distinct d1)	count(distinct d2)	count(distinct d3)
+count(distinct 17)_GB(8)_test4	3	3	3
+count(distinct 17)_GB(8)_test4	4	3	3
+SELECT sum(d1), "sum(17)_test1", sum(d2),sum(d3) FROM cs1;
+sum(d1)	sum(17)_test1	sum(d2)	sum(d3)
+1222279007616	sum(17)_test1	264347.8012300000	0.1234567890774000
+INSERT INTO cs5 VALUES (1),(0.1),(0.05),(0.05),(0.05),(0.05),(0.2),(0.154),(0.1),(0.05),(0.05);
+SELECT avg(d) FROM cs5;
+avg(d)
+0.16854545454545
+UPDATE cs5 SET d=-d;
+SELECT avg(d) FROM cs5;
+avg(d)
+-0.16854545454545
+DROP TABLE cs1;
+DROP TABLE cs2;
+DROP TABLE cs3;
+DROP TABLE cs4;
+DROP TABLE cs5;
+drop database aggregate_test;

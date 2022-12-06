@@ -21,7 +21,7 @@
 #include <vector>
 
 #include "aggregator_advanced.h"
-#include "types/rc_num.h"
+#include "types/tianmu_num.h"
 
 namespace Tianmu {
 namespace core {
@@ -68,7 +68,8 @@ void AggregatorStatD::PutAggregatedValue(unsigned char *buf, int64_t v, int64_t 
 }
 
 void AggregatorStat::Merge(unsigned char *buf, unsigned char *src_buf) {
-  if (NumOfObj(src_buf) == 0) return;
+  if (NumOfObj(src_buf) == 0)
+    return;
   stats_updated = false;
   if (NumOfObj(buf) == 0)
     std::memcpy(buf, src_buf, BufferByteSize());
@@ -88,8 +89,8 @@ void AggregatorStat::Merge(unsigned char *buf, unsigned char *src_buf) {
 
 void AggregatorStatD::PutAggregatedValue(unsigned char *buf, const types::BString &v, int64_t factor) {
   stats_updated = false;
-  types::RCNum val(common::CT::REAL);
-  if (!v.IsEmpty() && types::RCNum::ParseReal(v, val, common::CT::REAL) == common::ErrorCode::SUCCESS &&
+  types::TianmuNum val(common::ColumnType::REAL);
+  if (!v.IsEmpty() && types::TianmuNum::ParseReal(v, val, common::ColumnType::REAL) == common::ErrorCode::SUCCESS &&
       !val.IsNull()) {
     double d_val = double(val);
     PutAggregatedValue(buf, *((int64_t *)(&d_val)), factor);
@@ -97,43 +98,50 @@ void AggregatorStatD::PutAggregatedValue(unsigned char *buf, const types::BStrin
 }
 
 int64_t AggregatorVarPop64::GetValue64(unsigned char *buf) {
-  if (NumOfObj(buf) < 1) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 1)
+    return common::NULL_VALUE_64;
   double vd = VarPop(buf) / prec_factor / double(prec_factor);
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorVarSamp64::GetValue64(unsigned char *buf) {
-  if (NumOfObj(buf) < 2) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 2)
+    return common::NULL_VALUE_64;
   double vd = VarSamp(buf) / prec_factor / double(prec_factor);
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorStdPop64::GetValue64(unsigned char *buf) {
-  if (NumOfObj(buf) < 1) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 1)
+    return common::NULL_VALUE_64;
   double vd = sqrt(VarPop(buf)) / prec_factor;
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorStdSamp64::GetValue64(unsigned char *buf) {
-  if (NumOfObj(buf) < 2) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 2)
+    return common::NULL_VALUE_64;
   double vd = sqrt(VarSamp(buf)) / prec_factor;
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorVarPopD::GetValue64(unsigned char *buf) {
-  if (NumOfObj(buf) < 1) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 1)
+    return common::NULL_VALUE_64;
   double vd = VarPop(buf);
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorVarSampD::GetValue64(unsigned char *buf) {
-  if (NumOfObj(buf) < 2) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 2)
+    return common::NULL_VALUE_64;
   double vd = VarSamp(buf);
   return *(int64_t *)(&vd);
 }
 
 int64_t AggregatorStdPopD::GetValue64(unsigned char *buf) {
-  if (NumOfObj(buf) < 1) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 1)
+    return common::NULL_VALUE_64;
   // double vd = Q(buf) / NumOfObj(buf);
   // vd = sqrt(vd);
   double vd = sqrt(VarPop(buf));
@@ -141,7 +149,8 @@ int64_t AggregatorStdPopD::GetValue64(unsigned char *buf) {
 }
 
 int64_t AggregatorStdSampD::GetValue64(unsigned char *buf) {
-  if (NumOfObj(buf) < 2) return common::NULL_VALUE_64;
+  if (NumOfObj(buf) < 2)
+    return common::NULL_VALUE_64;
   // double vd = Q(buf) / (NumOfObj(buf) - 1);
   // vd = sqrt(vd);
   double vd = sqrt(VarSamp(buf));
@@ -150,24 +159,27 @@ int64_t AggregatorStdSampD::GetValue64(unsigned char *buf) {
 
 void AggregatorBitAnd::PutAggregatedValue(unsigned char *buf, const types::BString &v, int64_t factor) {
   stats_updated = false;
-  types::RCNum val(common::CT::BIGINT);
-  if (!v.IsEmpty() && types::RCNum::Parse(v, val, common::CT::BIGINT) == common::ErrorCode::SUCCESS && !val.IsNull()) {
+  types::TianmuNum val(common::ColumnType::BIGINT);
+  if (!v.IsEmpty() && types::TianmuNum::Parse(v, val, common::ColumnType::BIGINT) == common::ErrorCode::SUCCESS &&
+      !val.IsNull()) {
     PutAggregatedValue(buf, int64_t(val), factor);
   }
 }
 
 void AggregatorBitOr::PutAggregatedValue(unsigned char *buf, const types::BString &v, int64_t factor) {
   stats_updated = false;
-  types::RCNum val(common::CT::BIGINT);
-  if (!v.IsEmpty() && types::RCNum::Parse(v, val, common::CT::BIGINT) == common::ErrorCode::SUCCESS && !val.IsNull()) {
+  types::TianmuNum val(common::ColumnType::BIGINT);
+  if (!v.IsEmpty() && types::TianmuNum::Parse(v, val, common::ColumnType::BIGINT) == common::ErrorCode::SUCCESS &&
+      !val.IsNull()) {
     PutAggregatedValue(buf, int64_t(val), factor);
   }
 }
 
 void AggregatorBitXor::PutAggregatedValue(unsigned char *buf, const types::BString &v, int64_t factor) {
   stats_updated = false;
-  types::RCNum val(common::CT::BIGINT);
-  if (!v.IsEmpty() && types::RCNum::Parse(v, val, common::CT::BIGINT) == common::ErrorCode::SUCCESS && !val.IsNull()) {
+  types::TianmuNum val(common::ColumnType::BIGINT);
+  if (!v.IsEmpty() && types::TianmuNum::Parse(v, val, common::ColumnType::BIGINT) == common::ErrorCode::SUCCESS &&
+      !val.IsNull()) {
     PutAggregatedValue(buf, int64_t(val), factor);
   }
 }
@@ -178,25 +190,26 @@ void AggregatorGroupConcat::PutAggregatedValue(unsigned char *buf, const types::
 
   auto it = lenmap.find(buf);
   if (it == lenmap.end()) {
-    auto copylen = (v.len > gconcat_maxlen) ? gconcat_maxlen : v.len;
-    std::memcpy(buf, v.val, copylen);
+    auto copylen = (v.len_ > gconcat_maxlen) ? gconcat_maxlen : v.len_;
+    std::memcpy(buf, v.val_, copylen);
     lenmap.emplace(buf, copylen);
   } else {
     auto pos = it->second;
 
-    if (pos == gconcat_maxlen) return;
+    if (pos == gconcat_maxlen)
+      return;
 
     if (pos < gconcat_maxlen) {
       std::string src = si.separator + v.ToString();  // combine the delimeter and value
-      auto copylen = (pos + v.len + si.separator.length()) >= gconcat_maxlen ? (gconcat_maxlen - pos)
-                                                                             : (v.len + si.separator.length());
+      auto copylen = (pos + v.len_ + si.separator.length()) >= gconcat_maxlen ? (gconcat_maxlen - pos)
+                                                                              : (v.len_ + si.separator.length());
       std::memcpy(buf + pos, src.c_str(), copylen);  // append the separator
       it->second = it->second + copylen;             // update the length of the buffer
     } else {
       TIANMU_LOG(LogCtl_Level::ERROR,
-                  "Internal error for AggregatorGroupConcat: buffer length is "
-                  "%d, which beyond threshold %d.",
-                  pos, gconcat_maxlen);
+                 "Internal error for AggregatorGroupConcat: buffer length is "
+                 "%d, which beyond threshold %d.",
+                 pos, gconcat_maxlen);
     }
   }
 }
@@ -204,7 +217,7 @@ void AggregatorGroupConcat::PutAggregatedValue(unsigned char *buf, const types::
 types::BString AggregatorGroupConcat::GetValueT(unsigned char *buf) {
   auto it = lenmap.find(buf);
   if (it == lenmap.end()) {
-    // cases that grouping value is NULL
+    // cases that grouping value is nullptr
     return types::BString();
   }
 

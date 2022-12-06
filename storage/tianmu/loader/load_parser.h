@@ -29,10 +29,10 @@
 namespace Tianmu {
 
 namespace core {
-class RCAttr;
+class TianmuAttr;
 }
 namespace index {
-class RCTableIndex;
+class TianmuTableIndex;
 }  // namespace index
 
 namespace system {
@@ -42,39 +42,41 @@ class IOParameters;
 namespace loader {
 class LoadParser final {
  public:
-  using RCAttrPtrVect_t = std::vector<std::unique_ptr<core::RCAttr>>;
+  using TianmuAttrPtrVect_t = std::vector<std::unique_ptr<core::TianmuAttr>>;
 
-  LoadParser(RCAttrPtrVect_t &attrs, const system::IOParameters &iop, uint packsize,
+  LoadParser(TianmuAttrPtrVect_t &attrs, const system::IOParameters &iop, uint packsize,
              std::unique_ptr<system::Stream> &f);
   ~LoadParser() = default;
 
   uint GetPackrow(uint no_of_rows, std::vector<ValueCache> &vcs);
-  int64_t GetNumOfRejectedRows() const { return rejecter.GetNumOfRejectedRows(); }
-  bool ThresholdExceeded(int64_t no_rows) const { return rejecter.ThresholdExceeded(no_rows); }
-  int ProcessInsertIndex(std::shared_ptr<index::RCTableIndex> tab, std::vector<ValueCache> &vcs, uint no_rows);
-  int64_t GetNoRow() const { return row_no; }
-  int64_t GetDuprow() const { return dup_no; }
+  int64_t GetNumOfRejectedRows() const { return rejecter_.GetNumOfRejectedRows(); }
+  bool ThresholdExceeded(int64_t no_rows) const { return rejecter_.ThresholdExceeded(no_rows); }
+  int ProcessInsertIndex(std::shared_ptr<index::TianmuTableIndex> tab, std::vector<ValueCache> &vcs, uint no_rows);
+  int64_t GetNoRow() const { return num_of_row_; }
+  int64_t GetDupRow() const { return num_of_dup_; }
+  int64_t GetIgnoreRow() const { return num_of_skip_; }
 
  private:
-  RCAttrPtrVect_t &attrs;
+  TianmuAttrPtrVect_t &attrs_;
 
-  std::vector<int64_t> last_pack_size;
-  int64_t start_time;
+  std::vector<int64_t> last_pack_size_;
+  int64_t start_time_ = 0;
 
-  ReadBuffer read_buffer;
+  ReadBuffer read_buffer_;
 
-  std::shared_ptr<ParsingStrategy> strategy;
-  std::shared_ptr<index::RCTableIndex> tab_index;
+  std::shared_ptr<ParsingStrategy> strategy_;
+  std::shared_ptr<index::TianmuTableIndex> tab_index_;
 
-  const char *cur_ptr;
-  const char *buf_end;
-  const system::IOParameters &ioparam;
-  uint pack_size;
-  Rejecter rejecter;
-  uint cur_row = 0;
-  int64_t no_obj = 0;
-  int64_t row_no = 0;
-  int64_t dup_no = 0;
+  const char *cur_ptr_;
+  const char *buf_end_;
+  const system::IOParameters &io_param_;
+  uint pack_size_ = 0;
+  Rejecter rejecter_;
+  uint cur_row_ = 0;
+  int64_t num_of_obj_ = 0;
+  int64_t num_of_row_ = 0;
+  int64_t num_of_dup_ = 0;
+  int64_t num_of_skip_ = 0;
 
   bool MakeRow(std::vector<ValueCache> &value_buffers);
   bool MakeValue(uint col, ValueCache &buffer);

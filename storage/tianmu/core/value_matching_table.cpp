@@ -43,7 +43,7 @@ void ValueMatchingTable::Clear() { no_rows = 0; }
 ValueMatchingTable *ValueMatchingTable::CreateNew_ValueMatchingTable(int64_t mem_available, int64_t max_no_groups,
                                                                      int64_t max_group_code, int _total_width,
                                                                      int _input_buf_width, int _match_width,
-                                                                     uint32_t power) {
+                                                                     uint32_t power, bool use_lookup_table) {
   // trivial case: one group only
   if (_input_buf_width == 0) {
     ValueMatching_OnePosition *new_object = new ValueMatching_OnePosition();
@@ -52,10 +52,12 @@ ValueMatchingTable *ValueMatchingTable::CreateNew_ValueMatchingTable(int64_t mem
   }
 
   // easy case: narrow scope of group codes, which may be used
-  if (max_group_code < common::PLUS_INF_64 && max_group_code < max_no_groups * 1.5) {
-    ValueMatching_LookupTable *new_object = new ValueMatching_LookupTable();
-    new_object->Init(max_group_code, _total_width, _input_buf_width, _match_width, power);
-    return new_object;
+  if (use_lookup_table) {
+    if (max_group_code < common::PLUS_INF_64 && max_group_code < max_no_groups * 1.5) {
+      ValueMatching_LookupTable *new_object = new ValueMatching_LookupTable();
+      new_object->Init(max_group_code, _total_width, _input_buf_width, _match_width, power);
+      return new_object;
+    }
   }
 
   // default
@@ -65,7 +67,7 @@ ValueMatchingTable *ValueMatchingTable::CreateNew_ValueMatchingTable(int64_t mem
 }
 
 ValueMatching_OnePosition::ValueMatching_OnePosition() {
-  t_aggr = NULL;
+  t_aggr = nullptr;
   iterator_valid = false;
 }
 
@@ -73,7 +75,7 @@ ValueMatching_OnePosition::ValueMatching_OnePosition(ValueMatching_OnePosition &
   DEBUG_ASSERT(total_width > 0);
   iterator_valid = sec.iterator_valid;
 
-  t_aggr = NULL;
+  t_aggr = nullptr;
   t_aggr = new unsigned char[total_width];
   std::memcpy(t_aggr, sec.t_aggr, total_width);
 }
@@ -95,7 +97,8 @@ void ValueMatching_OnePosition::Clear() {
 bool ValueMatching_OnePosition::FindCurrentRow([[maybe_unused]] unsigned char *input_buffer, int64_t &row,
                                                bool add_if_new) {
   row = 0;
-  if (no_rows == 1) return true;
+  if (no_rows == 1)
+    return true;
   if (!add_if_new) {
     row = common::NULL_VALUE_64;
     return false;
@@ -105,10 +108,10 @@ bool ValueMatching_OnePosition::FindCurrentRow([[maybe_unused]] unsigned char *i
 }
 
 ValueMatching_LookupTable::ValueMatching_LookupTable() {
-  t = NULL;
-  t_aggr = NULL;
-  occupied = NULL;
-  occupied_table = NULL;
+  t = nullptr;
+  t_aggr = nullptr;
+  occupied = nullptr;
+  occupied_table = nullptr;
   max_no_rows = 0;
   occupied_iterator = 0;
 }
@@ -121,13 +124,13 @@ ValueMatching_LookupTable::ValueMatching_LookupTable(ValueMatching_LookupTable &
   if (sec.occupied)
     occupied = new Filter(*sec.occupied);
   else
-    occupied = NULL;
+    occupied = nullptr;
 
   if (sec.occupied_table) {
     occupied_table = new int[max_no_rows];
     std::memcpy(occupied_table, sec.occupied_table, max_no_rows * sizeof(int));
   } else
-    occupied_table = NULL;
+    occupied_table = nullptr;
 
   t = (unsigned char *)alloc(total_width * max_no_rows, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
   t_aggr = t + input_buffer_width;
@@ -168,7 +171,8 @@ bool ValueMatching_LookupTable::FindCurrentRow(unsigned char *input_buffer, int6
   row = 0;
   std::memcpy(&row, input_buffer, matching_width);
   DEBUG_ASSERT(row < max_no_rows);
-  if (occupied->Get(row)) return true;
+  if (occupied->Get(row))
+    return true;
   if (!add_if_new) {
     row = common::NULL_VALUE_64;
     return false;

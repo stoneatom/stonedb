@@ -199,7 +199,8 @@ class AggregatorBitXor : public TIANMUAggregator {
   int BufferByteSize() override { return 8; }
   void Reset(unsigned char *buf) override { *((int64_t *)buf) = 0; }
   void PutAggregatedValue(unsigned char *buf, int64_t v, int64_t factor) override {
-    if (factor % 2 == 1) *((int64_t *)buf) = (*((int64_t *)buf) ^ v);
+    if (factor % 2 == 1)
+      *((int64_t *)buf) = (*((int64_t *)buf) ^ v);
   }
   void Merge(unsigned char *buf, unsigned char *src_buf) override {
     *((int64_t *)buf) = (*((int64_t *)buf) ^ *((int64_t *)src_buf));
@@ -212,7 +213,7 @@ class AggregatorGroupConcat : public TIANMUAggregator {
  public:
   using TIANMUAggregator::PutAggregatedValue;
   AggregatorGroupConcat() = delete;
-  AggregatorGroupConcat(SI si, common::CT type) : si(si), attrtype(type) {}
+  AggregatorGroupConcat(SI si, common::ColumnType type) : si(si), attrtype(type) {}
   AggregatorGroupConcat(const AggregatorGroupConcat &sec)
       : TIANMUAggregator(sec), si(sec.si), gconcat_maxlen(sec.gconcat_maxlen), attrtype(sec.attrtype) {}
 
@@ -239,7 +240,7 @@ class AggregatorGroupConcat : public TIANMUAggregator {
   const SI si{",", ORDER::ORDER_NOT_RELEVANT};
   const uint gconcat_maxlen = tianmu_group_concat_max_len;
   std::map<unsigned char *, unsigned int> lenmap;  // store aggregation column length
-  common::CT attrtype = common::CT::STRING;
+  common::ColumnType attrtype = common::ColumnType::STRING;
 };
 }  // namespace core
 }  // namespace Tianmu

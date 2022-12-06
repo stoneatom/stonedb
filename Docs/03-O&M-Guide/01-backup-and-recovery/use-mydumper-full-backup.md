@@ -15,7 +15,7 @@ Both parts require multithreading capacities.
 ### Benefits
 
 - Parallelism and performance: The tool provides high backup rate. Expensive character set conversion routines are avoided and the overall high efficiency of code is ensured.
-- Simplified output management: Separate files are used for tables and metadata is dumped, simplifying data view and parse.
+- Simplified output management: Separate files used for tables and metadata is dumped, simplifying data view and parse.
 - High consistency: The tool maintains snapshots across all threads and provides accurate positions of primary and secondary logs.
 - Manageability: Perl Compatible Regular Expressions (PCRE) can be used to specify whether to include or exclude tables or databases.
 

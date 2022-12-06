@@ -40,7 +40,8 @@ class FormatBuf : public std::basic_streambuf<Char> {
   // results in a call to xsputn.
 
   int_type overflow(int_type ch = traits_type::eof()) FMT_OVERRIDE {
-    if (!traits_type::eq_int_type(ch, traits_type::eof())) buffer_.push_back(static_cast<Char>(ch));
+    if (!traits_type::eq_int_type(ch, traits_type::eof()))
+      buffer_.push_back(static_cast<Char>(ch));
     return ch;
   }
 

@@ -42,13 +42,14 @@ class PackStr final : public Pack {
   // overrides
   std::unique_ptr<Pack> Clone(const PackCoordinate &pc) const override;
   void LoadDataFromFile(system::Stream *fcurfile) override;
-  void UpdateValue(size_t i, const Value &v) override;
+  void UpdateValue(size_t locationInPack, const Value &v) override;
+  void DeleteByRow(size_t locationInPack) override;
   void Save() override;
 
-  types::BString GetValueBinary(int i) const override;
+  types::BString GetValueBinary(int locationInPack) const override;
 
   void LoadValues(const loader::ValueCache *vc);
-  bool IsTrie() const { return state_ == PackStrtate::PACK_TRIE; }
+  bool IsTrie() const { return pack_str_state_ == PackStrtate::kPackTrie; }
   bool Lookup(const types::BString &pattern, uint16_t &id);
   bool LikePrefix(const types::BString &pattern, std::size_t prefixlen, std::unordered_set<uint16_t> &ids);
   bool IsNotMatched(int row, uint16_t &id);
@@ -66,27 +67,27 @@ class PackStr final : public Pack {
   void Prepare(int no_nulls);
   void AppendValue(const char *value, uint size) {
     if (size == 0) {
-      SetPtrSize(dpn->nr, nullptr, 0);
+      SetPtrSize(dpn_->numOfRecords, nullptr, 0);
     } else {
-      SetPtrSize(dpn->nr, Put(value, size), size);
-      data.sum_len += size;
+      SetPtrSize(dpn_->numOfRecords, Put(value, size), size);
+      data_.sum_len += size;
     }
-    dpn->nr++;
+    dpn_->numOfRecords++;
   }
 
   size_t CalculateMaxLen() const;
-  types::BString GetStringValueTrie(int ono) const;
-  size_t GetSize(int ono) {
-    if (data.len_mode == sizeof(ushort))
-      return data.lens16[ono];
+  types::BString GetStringValueTrie(int locationInPack) const;
+  size_t GetSize(int locationInPack) {
+    if (data_.len_mode == sizeof(ushort))
+      return data_.lens16[locationInPack];
     else
-      return data.lens32[ono];
+      return data_.lens32[locationInPack];
   }
-  void SetSize(int ono, uint size) {
-    if (data.len_mode == sizeof(uint16_t))
-      data.lens16[ono] = (ushort)size;
+  void SetSize(int locationInPack, uint size) {
+    if (data_.len_mode == sizeof(uint16_t))
+      data_.lens16[locationInPack] = (ushort)size;
     else
-      data.lens32[ono] = (uint)size;
+      data_.lens32[locationInPack] = (uint)size;
   }
   void SetMinS(const types::BString &s);
   void SetMaxS(const types::BString &s);
@@ -108,15 +109,19 @@ class PackStr final : public Pack {
     }
   };
 
-  char *GetPtr(int i) const { return data.index[i]; }
-  void SetPtr(int i, void *addr) { data.index[i] = reinterpret_cast<char *>(addr); }
-  void SetPtrSize(int i, void *addr, uint size) {
-    SetPtr(i, addr);
-    SetSize(i, size);
+  char *GetPtr(int locationInPack) const { return data_.index[locationInPack]; }
+  void SetPtr(int locationInPack, void *addr) { data_.index[locationInPack] = reinterpret_cast<char *>(addr); }
+  void SetPtrSize(int locationInPack, void *addr, uint size) {
+    SetPtr(locationInPack, addr);
+    SetSize(locationInPack, size);
   }
 
-  enum class PackStrtate { PACK_ARRAY, PACK_TRIE };
-  PackStrtate state_ = PackStrtate::PACK_ARRAY;
+  enum class PackStrtate {
+    kPackArray = 0,
+    kPackTrie,
+  };
+
+  PackStrtate pack_str_state_ = PackStrtate::kPackArray;
   marisa::Trie marisa_trie_;
   UniquePtr compressed_data_;
   uint16_t *ids_array_;
@@ -130,14 +135,14 @@ class PackStr final : public Pack {
       uint16_t *lens16;
     };
     uint8_t len_mode;
-  } data{};
+  } data_{};
 
   void *Put(const void *src, size_t length) {
-    if (data.v.empty() || length > data.v.back().capacity()) {
+    if (data_.v.empty() || length > data_.v.back().capacity()) {
       auto sz = length * 2;
-      data.v.push_back({(char *)alloc(sz, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED), sz, 0});
+      data_.v.push_back({reinterpret_cast<char *>(alloc(sz, mm::BLOCK_TYPE::BLOCK_UNCOMPRESSED)), sz, 0});
     }
-    return data.v.back().put(src, length);
+    return data_.v.back().put(src, length);
   }
 
   void SaveUncompressed(system::Stream *fcurfile);

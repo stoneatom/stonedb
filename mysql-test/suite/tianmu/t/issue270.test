@@ -1,0 +1,27 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Explain select straight_join DISTINCT.The rows in the test result is incorrect (#270)
+--echo # 
+
+use test;
+--disable_warnings
+DROP TABLE IF EXISTS t1;
+DROP TABLE IF EXISTS t2;
+DROP TABLE IF EXISTS t3;
+--enable_warnings
+CREATE TABLE t1(a int, b int, c int, KEY b(b), KEY c(c))engine=tianmu;
+insert into t1 values (1,0,0),(2,0,0);
+CREATE TABLE t2 (a int, b varchar(2), c varchar(2), PRIMARY KEY(a))engine=tianmu;
+insert into t2 values (1,'',''), (2,'','');
+CREATE TABLE t3 (a int, b int, PRIMARY KEY (a,b), KEY a (a), KEY b (b))engine=tianmu;
+insert into t3 values (1,1),(1,2);
+
+--disable_warnings
+explain select straight_join DISTINCT t2.a,t2.b, t1.c from t1, t3, t2 
+where (t1.c=t2.a or (t1.c=t3.a and t2.a=t3.b)) and t1.b=556476786 and 
+t2.b like '%%' order by t2.b limit 0,1;
+--enable_warnings
+
+drop table t1,t2,t3;
+

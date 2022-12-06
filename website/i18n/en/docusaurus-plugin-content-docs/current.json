@@ -1,0 +1,118 @@
+{
+  "version.label": {
+    "message": "Next",
+    "description": "The label for version current"
+  },
+  "sidebar.autoSidebar.category.About StoneDB": {
+    "message": "About StoneDB",
+    "description": "The label for category About StoneDB in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Environment Requirements": {
+    "message": "Environment Requirements",
+    "description": "The label for category Environment Requirements in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Getting Started": {
+    "message": "Getting Started",
+    "description": "The label for category Getting Started in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Quick Deployment": {
+    "message": "Quick Deployment",
+    "description": "The label for category Quick Deployment in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.O&M Guide": {
+    "message": "O&M Guide",
+    "description": "The label for category O&M Guide in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Monitoring and Alerting": {
+    "message": "Monitoring and Alerting",
+    "description": "The label for category Monitoring and Alerting in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Backup and Recovery": {
+    "message": "Backup and Recovery",
+    "description": "The label for category Backup and Recovery in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Developer Guide": {
+    "message": "Developer Guide",
+    "description": "The label for category Developer Guide in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Compiling Methods": {
+    "message": "Compiling Methods",
+    "description": "The label for category Compiling Methods in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Compile StoneDB on CentOS7.x": {
+    "message": "Compile StoneDB on CentOS7.x",
+    "description": "The label for category Compile StoneDB on CentOS7.x in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Compile StoneDB on RedHat7.x": {
+    "message": "Compile StoneDB on RedHat7.x",
+    "description": "The label for category Compile StoneDB on RedHat7.x in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Compile StoneDB on Ubuntu20.04": {
+    "message": "Compile StoneDB on Ubuntu20.04",
+    "description": "The label for category Compile StoneDB on Ubuntu20.04 in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Connect to StoneDB": {
+    "message": "Connect to StoneDB",
+    "description": "The label for category Connect to StoneDB in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Create and Manage Database Objects": {
+    "message": "Create and Manage Database Objects",
+    "description": "The label for category Create and Manage Database Objects in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Appendix": {
+    "message": "Appendix",
+    "description": "The label for category Appendix in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.SQL Reference": {
+    "message": "SQL Reference",
+    "description": "The label for category SQL Reference in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Operators": {
+    "message": "Operators",
+    "description": "The label for category Operators in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Functions": {
+    "message": "Functions",
+    "description": "The label for category Functions in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Performance Tuning": {
+    "message": "Performance Tuning",
+    "description": "The label for category Performance Tuning in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Performance Monitoring Commands": {
+    "message": "Performance Monitoring Commands",
+    "description": "The label for category Performance Monitoring Commands in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Database Tuning": {
+    "message": "Database Tuning",
+    "description": "The label for category Database Tuning in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Architecture Tuning": {
+    "message": "Architecture Tuning",
+    "description": "The label for category Architecture Tuning in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Performance Tests": {
+    "message": "Performance Tests",
+    "description": "The label for category Performance Tests in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.OLAP": {
+    "message": "OLAP",
+    "description": "The label for category OLAP in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.OLTP": {
+    "message": "OLTP",
+    "description": "The label for category OLTP in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Data Migration to StoneDB": {
+    "message": "Data Migration to StoneDB",
+    "description": "The label for category Data Migration to StoneDB in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.Troubleshooting": {
+    "message": "Troubleshooting",
+    "description": "The label for category Troubleshooting in sidebar autoSidebar"
+  },
+  "sidebar.autoSidebar.category.FAQ": {
+    "message": "FAQ",
+    "description": "The label for category FAQ in sidebar autoSidebar"
+  }
+}

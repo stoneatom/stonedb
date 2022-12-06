@@ -37,9 +37,9 @@ TempTable::TempTable(JustATable *t, int alias, Query *q)
   if (t->TableType() == TType::TEMP_TABLE) {
     has_temp_table = true;
     if (q->IsRoughQuery())
-      ((TempTable *)t)->RoughMaterialize(false, NULL, true);
+      ((TempTable *)t)->RoughMaterialize(false, nullptr, true);
     else
-      ((TempTable *)t)->Materialize(false, NULL, false);
+      ((TempTable *)t)->Materialize(false, nullptr, false);
     filter.mind->AddDimension_cross(t->NumOfObj());
   } else {
     filter.mind->AddDimension_cross(t->NumOfObj());
@@ -58,7 +58,8 @@ TempTable::TempTable(JustATable *t, int alias, Query *q)
 }
 
 void TempTable::JoinT(JustATable *t, int alias, JoinType jt) {
-  if (jt != JoinType::JO_INNER) throw common::NotImplementedException("left/right/outer join is not implemented.");
+  if (jt != JoinType::JO_INNER)
+    throw common::NotImplementedException("left/right/outer join is not implemented.");
   tables.push_back(t);
   aliases.push_back(alias);
 

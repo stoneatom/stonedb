@@ -1,0 +1,43 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test create and drop users
+--echo # Author: shiz
+--echo #
+
+--disable_warnings
+DROP USER IF EXISTS user1@test;
+DROP USER IF EXISTS 'user2'@'%';
+DROP USER IF EXISTS 'user'@'%';
+DROP USER IF EXISTS 'user'@'localhost';
+DROP USER IF EXISTS 'user'@'127.0.0.1';
+--enable_warnings
+
+CREATE USER user1@test IDENTIFIED BY 'stoneatom1234';
+--error ER_CANNOT_USER
+CREATE USER user1@test IDENTIFIED BY 'stoneatom1234';
+
+#--disable_warnings
+#CREATE USER IF NOT EXISTS user1@test IDENTIFIED BY 'stoneatom1234';
+#--enable_warnings
+
+CREATE USER 'user2'@'%' IDENTIFIED BY 'stoneatom1234';
+--error ER_CANNOT_USER 
+CREATE USER 'user2'@'%' IDENTIFIED BY 'stoneatom1234';
+
+CREATE USER 'user'@'%' IDENTIFIED BY 'stoneatom1234';
+CREATE USER 'user'@'localhost' IDENTIFIED BY 'stoneatom1234';
+CREATE USER 'user'@'127.0.0.1' IDENTIFIED BY 'stoneatom1234';
+--error ER_CANNOT_USER
+CREATE USER user@127.0.0.1 IDENTIFIED BY 'stoneatom1234';
+--error ER_PARSE_ERROR
+CREATE USER user@% IDENTIFIED BY 'stoneatom1234';
+
+DROP USER user1@test;
+--error ER_PARSE_ERROR
+DROP USER user2@%;
+DROP USER 'user2'@'%';
+DROP USER 'user'@'%';
+DROP USER 'user'@'localhost';
+DROP USER 'user'@'127.0.0.1';
+

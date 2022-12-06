@@ -103,7 +103,7 @@ constexpr std::chrono::milliseconds lowres_clock_impl::_granularity;
 static bool sched_debug() { return false; }
 
 template <typename... Args>
-void sched_print(const char *fmt, Args &&...args) {
+void sched_print(const char *fmt, Args &&... args) {
   if (sched_debug()) {
     sched_logger.trace(fmt, std::forward<Args>(args)...);
   }
@@ -139,7 +139,7 @@ reactor::signals::signals() : _pending_signals(0) {}
 reactor::signals::~signals() {
   sigset_t mask;
   sigfillset(&mask);
-  ::pthread_sigmask(SIG_BLOCK, &mask, NULL);
+  ::pthread_sigmask(SIG_BLOCK, &mask, nullptr);
 }
 
 reactor::signals::signal_handler::signal_handler(int signo, std::function<void()> &&handler)
@@ -151,7 +151,7 @@ reactor::signals::signal_handler::signal_handler(int signo, std::function<void()
   auto r = ::sigaction(signo, &sa, nullptr);
   throw_system_error_on(r == -1);
   auto mask = make_sigset_mask(signo);
-  r = ::pthread_sigmask(SIG_UNBLOCK, &mask, NULL);
+  r = ::pthread_sigmask(SIG_UNBLOCK, &mask, nullptr);
   throw_pthread_error(r);
 }
 
@@ -214,7 +214,7 @@ static decltype(auto) install_signal_handler_stack() {
   throw_system_error_on(r == -1);
   return defer([mem = std::move(mem), prev_stack]() mutable {
     try {
-      auto r = sigaltstack(&prev_stack, NULL);
+      auto r = sigaltstack(&prev_stack, nullptr);
       throw_system_error_on(r == -1);
     } catch (...) {
       mem.release();  // We failed to restore previous stack, must leak it.
@@ -302,7 +302,7 @@ reactor::reactor(unsigned id)
   sigset_t mask;
   sigemptyset(&mask);
   sigaddset(&mask, alarm_signal());
-  r = ::pthread_sigmask(SIG_BLOCK, &mask, NULL);
+  r = ::pthread_sigmask(SIG_BLOCK, &mask, nullptr);
   assert(r == 0);
   struct sigevent sev;
   sev.sigev_notify = SIGEV_THREAD_ID;
@@ -489,7 +489,8 @@ pollable_fd reactor::posix_listen(socket_address sa, listen_options opts) {
   if (opts.reuse_address) {
     fd.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1);
   }
-  if (_reuseport) fd.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1);
+  if (_reuseport)
+    fd.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1);
 
   fd.bind(sa.u.sa, sizeof(sa.u.sas));
   fd.listen(100);
@@ -779,7 +780,7 @@ void reactor::enable_timer(steady_clock_type::time_point when) {
   itimerspec its;
   its.it_interval = to_timespec(when);
   its.it_value = to_timespec(when);
-  auto ret = timer_settime(_steady_clock_timer, TIMER_ABSTIME, &its, NULL);
+  auto ret = timer_settime(_steady_clock_timer, TIMER_ABSTIME, &its, nullptr);
   throw_system_error_on(ret == -1);
 }
 
@@ -850,7 +851,8 @@ future<> reactor::run_exit_tasks() {
     });
 #else
   auto functor = [this]() -> future<std::experimental::optional<bool>> {
-    if (_exit_funcs.empty()) return make_ready_future<std::experimental::optional<bool>>(true);
+    if (_exit_funcs.empty())
+      return make_ready_future<std::experimental::optional<bool>>(true);
     auto &func = _exit_funcs.back();
     func();
     _exit_funcs.pop_back();
@@ -1751,7 +1753,8 @@ size_t smp_message_queue::process_queue(lf_queue &q, Func process) {
   // time in which cross-cpu data is accessed
   work_item *items[queue_length + PrefetchCnt];
   work_item *wi;
-  if (!q.pop(wi)) return 0;
+  if (!q.pop(wi))
+    return 0;
   // start prefecthing first item before popping the rest to overlap memory
   // access with potential cache miss the second pop may cause
   prefetch<2>(wi);
@@ -2050,8 +2053,10 @@ void smp::configure(const options &opt) {
   smp::count = nr_cpus;
   _reactors.resize(nr_cpus);
   resource::configuration rc;
-  if (opt.memory) rc.total_memory = parse_memory_size(*opt.memory);
-  if (opt.reserve_memory) rc.reserve_memory = parse_memory_size(*opt.reserve_memory);
+  if (opt.memory)
+    rc.total_memory = parse_memory_size(*opt.memory);
+  if (opt.reserve_memory)
+    rc.reserve_memory = parse_memory_size(*opt.reserve_memory);
 
   auto mlock = opt.lock_memory;
   if (mlock) {
@@ -2133,7 +2138,7 @@ void smp::configure(const options &opt) {
       for (auto sig : {SIGSEGV}) {
         sigdelset(&mask, sig);
       }
-      auto r = ::pthread_sigmask(SIG_BLOCK, &mask, NULL);
+      auto r = ::pthread_sigmask(SIG_BLOCK, &mask, nullptr);
       throw_pthread_error(r);
       allocate_reactor(i);
       _reactors[i] = &engine();

@@ -40,8 +40,8 @@ namespace compress {
 class NumCompressorBase {
  public:
   virtual ~NumCompressorBase() {}
-  static const uint NFILTERS = 7;
-  FILE *dump;
+  static const uint N_FILTERS_ = 7;
+  FILE *dump_;
 
   // statistics
   struct Stat {
@@ -55,7 +55,7 @@ class NumCompressorBase {
     }
   };
   struct Stats : public std::vector<Stat> {
-    Stats() : std::vector<Stat>(NumCompressorBase::NFILTERS) {}
+    Stats() : std::vector<Stat>(NumCompressorBase::N_FILTERS_) {}
     // Stats(size_type cnt): std::vector<Stat>(cnt) {}
     Stats &operator+=(Stats &s) {
       ASSERT(size() == s.size(), "should be 'size() == s.size()'");
@@ -70,7 +70,7 @@ class NumCompressorBase {
       for (size_type i = 0; i < size(); i++) (*this)[i].Clear();
     }
   };
-  Stats stats;
+  Stats stats_;
 
   // non-templated type-safe compression methods
   virtual CprsErr Compress([[maybe_unused]] char *dest, [[maybe_unused]] uint &len, [[maybe_unused]] const uchar *src,
@@ -142,7 +142,7 @@ class NumCompressorBase {
 template <class T>
 class NumCompressor : public NumCompressorBase {
  private:
-  bool copy_only;
+  bool copy_only_;
 
   // compress by simple copying the data
   CprsErr CopyCompress(char *dest, uint &len, const T *src, uint nrec);
@@ -152,7 +152,7 @@ class NumCompressor : public NumCompressorBase {
 
  public:
   // Filters - compression algorithms:
-  std::vector<std::unique_ptr<DataFilt<T>>> filters;
+  std::vector<std::unique_ptr<DataFilt<T>>> filters_;
 
   NumCompressor(bool copy_only = false);
   virtual ~NumCompressor();
@@ -215,21 +215,21 @@ inline CprsErr NumDecompress(T *dest, char *src, uint len, uint nrec, uint64_t m
 //-------------------------------------------------------------------------
 
 template <class T>
-NumCompressor<T>::NumCompressor(bool copy_only) : copy_only(copy_only) {
-  dump = NULL;
+NumCompressor<T>::NumCompressor(bool copy_only) : copy_only_(copy_only) {
+  dump_ = nullptr;
 
-  // Create filters
-  filters.reserve(NFILTERS);
-  // filters.emplace_back(new DataFilt_RLE<T>);
-  filters.emplace_back(new DataFilt_Min<T>);
-  filters.emplace_back(new DataFilt_GCD<T>);
-  filters.emplace_back(new DataFilt_Diff<T>);
-  filters.emplace_back(new PartDict<T>);
-  filters.emplace_back(new TopBitDict<T>(true));   // top bits
-  filters.emplace_back(new TopBitDict<T>(false));  // low bits
-  filters.emplace_back(new DataFilt_Uniform<T>);
-  ASSERT(filters.size() == NFILTERS, "should be 'filters.size() == NFILTERS'");
-  IFSTAT(stats.resize(filters.size()));
+  // Create filters_
+  filters_.reserve(N_FILTERS_);
+  // filters_.emplace_back(new DataFilt_RLE<T>);
+  filters_.emplace_back(new DataFilt_Min<T>);
+  filters_.emplace_back(new DataFilt_GCD<T>);
+  filters_.emplace_back(new DataFilt_Diff<T>);
+  filters_.emplace_back(new PartDict<T>);
+  filters_.emplace_back(new TopBitDict<T>(true));   // top bits
+  filters_.emplace_back(new TopBitDict<T>(false));  // low bits
+  filters_.emplace_back(new DataFilt_Uniform<T>);
+  ASSERT(filters_.size() == N_FILTERS_, "should be 'filters_.size() == N_FILTERS_'");
+  IFSTAT(stats_.resize(filters_.size()));
 }
 
 template <class T>
@@ -239,18 +239,21 @@ NumCompressor<T>::~NumCompressor() {}
 
 template <class T>
 void NumCompressor<T>::DumpData(DataSet<T> *ds, uint f) {
-  if (!dump) return;
+  if (!dump_)
+    return;
   uint nbit = core::GetBitLen(ds->maxval);
-  std::fprintf(dump, "%u:  %u %I64u %u ;  ", f, ds->nrec, (uint64_t)ds->maxval, nbit);
-  if (f) filters[f - 1]->LogCompress(dump);
-  std::fprintf(dump, "\n");
+  std::fprintf(dump_, "%u:  %u %I64u %u ;  ", f, ds->nrec, (uint64_t)ds->maxval, nbit);
+  if (f)
+    filters_[f - 1]->LogCompress(dump_);
+  std::fprintf(dump_, "\n");
 }
 //-------------------------------------------------------------------------
 
 template <class T>
 CprsErr NumCompressor<T>::CopyCompress(char *dest, uint &len, const T *src, uint nrec) {
   uint datalen = nrec * sizeof(T);
-  if (len < 1 + datalen) return CprsErr::CPRS_ERR_BUF;
+  if (len < 1 + datalen)
+    return CprsErr::CPRS_ERR_BUF;
   *dest = 0;  // ID of copy compression
   std::memcpy(dest + 1, src, datalen);
   len = 1 + datalen;
@@ -260,7 +263,8 @@ CprsErr NumCompressor<T>::CopyCompress(char *dest, uint &len, const T *src, uint
 template <class T>
 CprsErr NumCompressor<T>::CopyDecompress(T *dest, char *src, uint len, uint nrec) {
   uint datalen = nrec * sizeof(T);
-  if (len < 1 + datalen) throw CprsErr::CPRS_ERR_BUF;
+  if (len < 1 + datalen)
+    throw CprsErr::CPRS_ERR_BUF;
   std::memcpy(dest, src + 1, datalen);
   return CprsErr::CPRS_SUCCESS;
 }
@@ -272,15 +276,18 @@ CprsErr NumCompressor<T>::CompressT(char *dest, uint &len, const T *src, uint nr
   // <ver>=0  - copy compression
   // <ver>=1  - current version
 
-  if (!dest || !src || (len < 3)) return CprsErr::CPRS_ERR_BUF;
-  if ((nrec == 0) || (maxval == 0)) return CprsErr::CPRS_ERR_PAR;
+  if (!dest || !src || (len < 3))
+    return CprsErr::CPRS_ERR_BUF;
+  if ((nrec == 0) || (maxval == 0))
+    return CprsErr::CPRS_ERR_PAR;
 
-  if (copy_only) return CopyCompress(dest, len, src, nrec);
+  if (copy_only_)
+    return CopyCompress(dest, len, src, nrec);
 
   *dest = 1;                // version
   uint posID = 1, pos = 3;  // 1 byte reserved for compression ID
   ushort ID = 0;
-  ASSERT(filters.size() <= 8 * sizeof(ID), "should be 'filters.size() <= 8*sizeof(ID)'");
+  ASSERT(filters_.size() <= 8 * sizeof(ID), "should be 'filters_.size() <= 8*sizeof(ID)'");
 
   std::vector<T> buf(src, src + nrec);
   DataSet<T> dataset = {&buf[0], maxval, nrec};
@@ -289,15 +296,16 @@ CprsErr NumCompressor<T>::CompressT(char *dest, uint &len, const T *src, uint nr
   try {
     RangeCoder coder;
     coder.InitCompress(dest, len, pos);
-    IFSTAT(stats.Clear());
+    IFSTAT(stats_.Clear());
 
-    // main loop: apply all compression algorithms from 'filters'
+    // main loop: apply all compression algorithms from 'filters_'
     uint f = 0;
     IFSTAT(DumpData(&dataset, f));
-    for (; (f < filters.size()) && dataset.nrec; f++) {
+    for (; (f < filters_.size()) && dataset.nrec; f++) {
       IFSTAT(clock_t t1 = clock());
-      if (filters[f]->Encode(&coder, &dataset)) ID |= 1 << f;
-      IFSTAT(stats[f].tc += clock() - t1);
+      if (filters_[f]->Encode(&coder, &dataset))
+        ID |= 1 << f;
+      IFSTAT(stats_[f].tc += clock() - t1);
       IFSTAT(if (ID & (1 << f)) DumpData(&dataset, f + 1));
     }
 
@@ -311,7 +319,8 @@ CprsErr NumCompressor<T>::CompressT(char *dest, uint &len, const T *src, uint nr
 
   // if compression failed or the size is bigger than the raw data, use copy
   // compression
-  if (static_cast<int>(err) || (pos >= 0.98 * nrec * sizeof(T))) return CopyCompress(dest, len, src, nrec);
+  if (static_cast<int>(err) || (pos >= 0.98 * nrec * sizeof(T)))
+    return CopyCompress(dest, len, src, nrec);
 
   len = pos;
   return CprsErr::CPRS_SUCCESS;
@@ -320,12 +329,16 @@ CprsErr NumCompressor<T>::CompressT(char *dest, uint &len, const T *src, uint nr
 template <class T>
 CprsErr NumCompressor<T>::DecompressT(T *dest, char *src, uint len, uint nrec, T maxval,
                                       [[maybe_unused]] CprsAttrType cat) {
-  if (!src || (len < 1)) return CprsErr::CPRS_ERR_BUF;
-  if ((nrec == 0) || (maxval == 0)) return CprsErr::CPRS_ERR_PAR;
+  if (!src || (len < 1))
+    return CprsErr::CPRS_ERR_BUF;
+  if ((nrec == 0) || (maxval == 0))
+    return CprsErr::CPRS_ERR_PAR;
 
   uchar ver = (uchar)src[0];
-  if (ver == 0) return CopyDecompress(dest, src, len, nrec);
-  if (len < 3) return CprsErr::CPRS_ERR_BUF;
+  if (ver == 0)
+    return CopyDecompress(dest, src, len, nrec);
+  if (len < 3)
+    return CprsErr::CPRS_ERR_BUF;
   ushort ID = *(ushort *)(src + 1);
   uint pos = 3;
 
@@ -334,21 +347,23 @@ CprsErr NumCompressor<T>::DecompressT(T *dest, char *src, uint len, uint nrec, T
   try {
     RangeCoder coder;
     coder.InitDecompress(src, len, pos);
-    uint f = 0, nfilt = (uint)filters.size();
-    IFSTAT(stats.Clear());
+    uint f = 0, nfilt = (uint)filters_.size();
+    IFSTAT(stats_.Clear());
 
     // 1st stage of decompression
     for (; (f < nfilt) && dataset.nrec; f++) {
       IFSTAT(clock_t t1 = clock());
-      if (ID & (1 << f)) filters[f]->Decode(&coder, &dataset);
-      IFSTAT(stats[f].td += clock() - t1);
+      if (ID & (1 << f))
+        filters_[f]->Decode(&coder, &dataset);
+      IFSTAT(stats_[f].td += clock() - t1);
     }
 
     // 2nd stage
     for (; f > 0;) {
       IFSTAT(clock_t t1 = clock());
-      if (ID & (1 << --f)) filters[f]->Merge(&dataset);
-      IFSTAT(stats[f].td += clock() - t1);
+      if (ID & (1 << --f))
+        filters_[f]->Merge(&dataset);
+      IFSTAT(stats_[f].td += clock() - t1);
     }
   } catch (CprsErr &err) {
     return err;

@@ -97,7 +97,7 @@ class CompiledQuery final {
           tmpar(TMParameter::TM_DISTINCT),
           jt(JoinType::JO_INNER),
           cop(common::ColOperation::LISTING),
-          alias(NULL),
+          alias(nullptr),
           n1(common::NULL_VALUE_64),
           n2(common::NULL_VALUE_64),
           si(){};
@@ -129,7 +129,7 @@ class CompiledQuery final {
 
   // Add a new step to the execution plan
 
-  void TableAlias(TabID &t_out, const TabID &n, const char *tab_name = NULL, int id = -1);
+  void TableAlias(TabID &t_out, const TabID &n, const char *tab_name = nullptr, int id = -1);
   void TmpTable(TabID &t_out, const TabID &t1, bool for_subq = false);
   void CreateConds(CondID &c_out, const TabID &t1, CQTerm e1, common::Operator pr, CQTerm e2, CQTerm e3 = CQTerm(),
                    bool is_or_subtree = false, char like_esc = '\\');
@@ -148,7 +148,7 @@ class CompiledQuery final {
   void AddConds(const TabID &t1, const CondID &c1, CondType cond_type);
   void ApplyConds(const TabID &t1);
   void AddColumn(AttrID &a_out, const TabID &t1, CQTerm e1, common::ColOperation op, char const alias[] = 0,
-                 bool distinct = false, SI *si = NULL);
+                 bool distinct = false, SI *si = nullptr);
 
   /*! \brief Create compilation step CREATE_VC for mysql expression
    * \param a_out - id of created virtual column
@@ -176,7 +176,8 @@ class CompiledQuery final {
                  int d = 0);  // d=1 for descending
   void Add_Order(const TabID &p_t, ptrdiff_t p_c) {
     int a_c(static_cast<int>(p_c));
-    if (p_c == a_c) this->Add_Order(p_t, AttrID(-abs(a_c)), a_c < 0);
+    if (p_c == a_c)
+      this->Add_Order(p_t, AttrID(-abs(a_c)), a_c < 0);
   }
   void Union(TabID &t_out, const TabID &t2, const TabID &t3, int all = 0);
   void Result(const TabID &t1);
@@ -187,7 +188,8 @@ class CompiledQuery final {
   int NumOfAttrs(const TabID &tab) { return no_attrs[-tab.n - 1]; }
   int NumOfConds() { return no_conds; }
   int NumOfVirtualColumns(const TabID &tt) {
-    if (no_virt_cols.find(tt) != no_virt_cols.end()) return no_virt_cols[tt];
+    if (no_virt_cols.find(tt) != no_virt_cols.end())
+      return no_virt_cols[tt];
     return 0;
   }
   void Print(Query *);  // display the CompiledQuery

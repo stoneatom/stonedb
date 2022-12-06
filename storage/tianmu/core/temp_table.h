@@ -39,7 +39,7 @@ namespace core {
 class Descriptor;
 class Filter;
 class Query;
-class RCTable;
+class TianmuTable;
 class ResultSender;
 class SortDescriptor;
 class Transaction;
@@ -72,15 +72,16 @@ class TempTable : public JustATable {
     bool not_complete;  // does not contain all the column elements - some
                         // functions cannot be computed
 
-    Attr(CQTerm t, common::ColOperation m, uint32_t power, bool distinct = false, char *alias = NULL, int dim = -1,
-         common::CT type = common::CT::INT, uint scale = 0, uint precision = 10, bool notnull = true,
-         DTCollation collation = DTCollation(), SI *si1 = NULL);
+    Attr(CQTerm t, common::ColOperation m, uint32_t power, bool distinct = false, char *alias = nullptr, int dim = -1,
+         common::ColumnType type = common::ColumnType::INT, uint scale = 0, uint precision = 10, bool notnull = true,
+         DTCollation collation = DTCollation(), SI *si1 = nullptr);
     Attr(const Attr &);
     Attr &operator=(const Attr &);
     int operator==(const Attr &);
     ~Attr();
 
-    bool ShouldOutput() const { return (mode == common::ColOperation::LISTING) && term.vc && alias; }
+    bool IsListField() const { return (mode == common::ColOperation::LISTING) && term.vc; };
+    bool ShouldOutput() const { return alias && IsListField(); }
     bool NeedFill() const {
       return ((mode == common::ColOperation::LISTING) && term.vc && alias) ||
              !term.vc->IsConst();  // constant value, the buffer is already
@@ -96,12 +97,12 @@ class TempTable : public JustATable {
     }
     void SetPrecision(int prec) { ct.SetPrecision(prec); }
     void SetScale(int sc) { ct.SetScale(sc); }
-    void CreateBuffer(uint64_t size, Transaction *conn = NULL, bool not_completed = false);
+    void CreateBuffer(uint64_t size, Transaction *conn = nullptr, bool not_completed = false);
     void FillValue(const MIIterator &mii, size_t idx);
     size_t FillValues(MIIterator &mii, size_t start, size_t count);
     void SetNewPageSize(uint new_page_size);
     void SetValueString(int64_t obj, const types::BString &val);
-    types::RCValueObject GetValue(int64_t obj, bool lookup_to_num = false) override;
+    types::TianmuValueObject GetValue(int64_t obj, bool lookup_to_num = false) override;
     void GetValueString(int64_t row, types::BString &s) override { GetValueString(s, row); }
     void GetValueString(types::BString &s, int64_t row);
     void GetNotNullValueString(int64_t row, types::BString &s) override { GetValueString(s, row); }
@@ -109,20 +110,20 @@ class TempTable : public JustATable {
                                 bool outer_nulls_possible) override;  // provide the best upper
                                                                       // approximation of number of diff.
                                                                       // values (incl. null, if flag set)
-    uint64_t ExactDistinctVals([[maybe_unused]] Filter *f) override { return common::NULL_VALUE_64; }
-    bool IsDistinct([[maybe_unused]] Filter *f) override { return false; }
-    size_t MaxStringSize(Filter *f = NULL) override;  // maximal byte string length in column
-    int64_t RoughMin(Filter *f = NULL, common::RSValue *rf = NULL) override {
+    uint64_t ExactDistinctVals(Filter *f [[maybe_unused]]) override { return common::NULL_VALUE_64; }
+    bool IsDistinct(Filter *f [[maybe_unused]]) override { return false; }
+    size_t MaxStringSize(Filter *f = nullptr) override;  // maximal byte string length in column
+    int64_t RoughMin(Filter *f [[maybe_unused]] = nullptr, common::RSValue *rf [[maybe_unused]] = nullptr) override {
       return common::MINUS_INF_64;
     }  // for numerical: best rough approximation of min for a given filter (or
-       // global min if filter is NULL)
-    int64_t RoughMax(Filter *f = NULL, common::RSValue *rf = NULL) override {
+       // global min if filter is nullptr)
+    int64_t RoughMax(Filter *f [[maybe_unused]] = nullptr, common::RSValue *rf [[maybe_unused]] = nullptr) override {
       return common::PLUS_INF_64;
     }  // for numerical: best rough approximation of max for a given filter (or
-       // global max if filter is NULL)
-    void DisplayAttrStats([[maybe_unused]] Filter *f) override {}
-    bool TryToMerge([[maybe_unused]] Descriptor &d1, [[maybe_unused]] Descriptor &d2) override { return false; }
-    PackOntologicalStatus GetPackOntologicalStatus([[maybe_unused]] int pack_no) override {
+       // global max if filter is nullptr)
+    void DisplayAttrStats(Filter *f [[maybe_unused]]) override {}
+    bool TryToMerge(Descriptor &d1 [[maybe_unused]], Descriptor &d2 [[maybe_unused]]) override { return false; }
+    PackOntologicalStatus GetPackOntologicalStatus(int pack_no [[maybe_unused]]) override {
       return PackOntologicalStatus::NORMAL;
     }  // not implemented properly yet
     void ApplyFilter(MultiIndex &, int64_t offset, int64_t no_obj);
@@ -144,30 +145,30 @@ class TempTable : public JustATable {
     bool IsRoughNullsOnly() const override { return false; }
     int64_t GetSum(int pack, bool &nonnegative) override;
     int NumOfAttr() const override { return -1; }
-    common::RSValue RoughCheck([[maybe_unused]] int pack, [[maybe_unused]] Descriptor &d,
-                               [[maybe_unused]] bool additional_nulls_possible) override {
+    common::RSValue RoughCheck(int pack [[maybe_unused]], Descriptor &d [[maybe_unused]],
+                               bool additional_nulls_possible [[maybe_unused]]) override {
       return common::RSValue::RS_SOME;
     }
-    common::RSValue RoughCheck([[maybe_unused]] int pack1, [[maybe_unused]] int pack2,
-                               [[maybe_unused]] Descriptor &d) override {
+    common::RSValue RoughCheck(int pack1 [[maybe_unused]], int pack2 [[maybe_unused]],
+                               Descriptor &d [[maybe_unused]]) override {
       return common::RSValue::RS_SOME;
     }
     // as far as Attr is not pack oriented the function below should not be
     // called
-    void EvaluatePack([[maybe_unused]] MIUpdatingIterator &mit, [[maybe_unused]] int dim,
-                      [[maybe_unused]] Descriptor &desc) override {
+    void EvaluatePack(MIUpdatingIterator &mit [[maybe_unused]], int dim [[maybe_unused]],
+                      Descriptor &desc [[maybe_unused]]) override {
       DEBUG_ASSERT(0);
     }
-    common::ErrorCode EvaluateOnIndex([[maybe_unused]] MIUpdatingIterator &mit, [[maybe_unused]] int dim,
-                                      [[maybe_unused]] Descriptor &desc, [[maybe_unused]] int64_t limit) override {
+    common::ErrorCode EvaluateOnIndex(MIUpdatingIterator &mit [[maybe_unused]], int dim [[maybe_unused]],
+                                      Descriptor &desc [[maybe_unused]], int64_t limit [[maybe_unused]]) override {
       TIANMU_ERROR("To be implemented.");
       return common::ErrorCode::FAILED;
     }
-    types::BString DecodeValue_S([[maybe_unused]] int64_t code) override {
+    types::BString DecodeValue_S(int64_t code [[maybe_unused]]) override {
       DEBUG_ASSERT(0);
       return types::BString();
-    }  // RCAttr only
-    int EncodeValue_S([[maybe_unused]] types::BString &v) override {
+    }  // TianmuAttr only
+    int EncodeValue_S(types::BString &v [[maybe_unused]]) override {
       DEBUG_ASSERT(0);
       return -1;
     }  // lookup (physical) only
@@ -215,16 +216,16 @@ class TempTable : public JustATable {
   // Maintenance and low-level functions
 
   bool OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t limit, int64_t offset,
-                             ResultSender *sender = NULL);  // Sort data contained in
-                                                            // ParameterizedFilter by using some
-                                                            // attributes (usually specified by
-                                                            // AddOrder, but in general -
-                                                            // arbitrary)
+                             ResultSender *sender = nullptr);  // Sort data contained in
+                                                               // ParameterizedFilter by using some
+                                                               // attributes (usually specified by
+                                                               // AddOrder, but in general -
+                                                               // arbitrary)
   // just materialize as SELECT *
   void FillMaterializedBuffers(int64_t local_limit, int64_t local_offset, ResultSender *sender, bool pagewise);
 
-  virtual void RoughMaterialize(bool in_subq = false, ResultSender *sender = NULL, bool lazy = false);
-  virtual void Materialize(bool in_subq = false, ResultSender *sender = NULL, bool lazy = false);
+  virtual void RoughMaterialize(bool in_subq = false, ResultSender *sender = nullptr, bool lazy = false);
+  virtual void Materialize(bool in_subq = false, ResultSender *sender = nullptr, bool lazy = false);
 
   // just_distinct = 'select distinct' but no 'group by'
   // Set no_obj = no. of groups in result
@@ -239,7 +240,7 @@ class TempTable : public JustATable {
   void SuspendDisplay();
   void ResumeDisplay();
   void LockPackForUse(unsigned attr, unsigned pack_no) override;
-  void UnlockPackFromUse([[maybe_unused]] unsigned attr, [[maybe_unused]] unsigned pack_no) override {}
+  void UnlockPackFromUse(unsigned attr [[maybe_unused]], unsigned pack_no [[maybe_unused]]) override {}
   int64_t NumOfObj() override { return no_obj; }
   uint32_t Getpackpower() const override { return p_power; }
   int64_t NumOfMaterialized() { return no_materialized; }
@@ -251,11 +252,11 @@ class TempTable : public JustATable {
   TType TableType() const override { return TType::TEMP_TABLE; }  // type of JustATable - TempTable
   uint NumOfAttrs() const override { return (uint)attrs.size(); }
   uint NumOfDisplaybleAttrs() const override { return no_cols; }  // no. of columns with defined alias
-  bool IsDisplayAttr(int i) { return attrs[i]->alias != NULL; }
+  bool IsDisplayAttr(int i) { return attrs[i]->alias != nullptr; }
   int64_t GetTable64(int64_t obj, int attr) override;
   void GetTable_S(types::BString &s, int64_t obj, int attr) override;
   void GetTableString(types::BString &s, int64_t obj, uint attr);
-  types::RCValueObject GetValueObject(int64_t obj, uint attr);
+  types::TianmuValueObject GetValueObject(int64_t obj, uint attr);
 
   uint64_t ApproxAnswerSize(int attr,
                             Descriptor &d);  // provide the most probable
@@ -265,11 +266,12 @@ class TempTable : public JustATable {
   bool IsNull(int64_t obj,
               int attr) override;  // return true if the value of attr. is null
 
-  int64_t RoughMin([[maybe_unused]] int n_a, Filter *f = NULL) { return common::MINUS_INF_64; }
-  int64_t RoughMax([[maybe_unused]] int n_a, Filter *f = NULL) { return common::PLUS_INF_64; }
+  int64_t RoughMin(int n_a [[maybe_unused]], Filter *f [[maybe_unused]] = nullptr) { return common::MINUS_INF_64; }
+  int64_t RoughMax(int n_a [[maybe_unused]], Filter *f [[maybe_unused]] = nullptr) { return common::PLUS_INF_64; }
 
-  uint MaxStringSize(int n_a, Filter *f = NULL) override {
-    if (n_a < 0) return GetFieldSize(-n_a - 1);
+  uint MaxStringSize(int n_a, Filter *f [[maybe_unused]] = nullptr) override {
+    if (n_a < 0)
+      return GetFieldSize(-n_a - 1);
     return GetFieldSize(n_a);
   }
 
@@ -354,13 +356,13 @@ class TempTable : public JustATable {
     return attrs[0]->page_size;
   }
 
-  void DisplayRSI();  // display info about all RSI contained in RCTables from
+  void DisplayRSI();  // display info about all RSI contained in TianmuTables from
                       // this TempTable
 
   bool HasHavingConditions() { return having_conds.Size() > 0; }
   bool CheckHavingConditions(MIIterator &it) { return having_conds[0].tree->root->CheckCondition(it); }
   void ClearHavingConditions() { having_conds.Clear(); }
-  void RemoveFromManagedList(const RCTable *rct);
+  void RemoveFromManagedList(const TianmuTable *rct);
   int AddVirtColumn(vcolumn::VirtualColumn *vc);
   int AddVirtColumn(vcolumn::VirtualColumn *vc, int no);
   uint NumOfVirtColumns() { return uint(virt_cols.size()); }
@@ -439,8 +441,8 @@ class TempTable : public JustATable {
 
  public:
   class RecordIterator;
-  virtual RecordIterator begin(Transaction *conn = NULL);
-  virtual RecordIterator end(Transaction *conn = NULL);
+  virtual RecordIterator begin(Transaction *conn = nullptr);
+  virtual RecordIterator end(Transaction *conn = nullptr);
 
  public:
   Transaction *m_conn;  // external pointer
@@ -457,7 +459,7 @@ class TempTable : public JustATable {
    public:
     Record(RecordIterator &it) : m_it(it) {}
     Record(Record const &it) = default;
-    types::RCDataType &operator[](size_t i) const { return *(m_it.dataTypes[i]); }
+    types::TianmuDataType &operator[](size_t i) const { return *(m_it.dataTypes[i]); }
     RecordIterator &m_it;
   };
 
@@ -470,7 +472,7 @@ class TempTable : public JustATable {
     Transaction *_conn;
     bool is_prepared;
 
-    std::vector<std::unique_ptr<types::RCDataType>> dataTypes;
+    std::vector<std::unique_ptr<types::TianmuDataType>> dataTypes;
 
    public:
     RecordIterator();
@@ -508,9 +510,9 @@ class TempTableForSubquery : public TempTable {
   ~TempTableForSubquery();
 
   void CreateTemplateIfNotExists();
-  void Materialize(bool in_subq = false, ResultSender *sender = NULL, bool lazy = false) override;
-  void RoughMaterialize(bool in_subq = false, ResultSender *sender = NULL, bool lazy = false) override;
-  void ResetToTemplate(bool rough);
+  void Materialize(bool in_subq = false, ResultSender *sender = nullptr, bool lazy = false) override;
+  void RoughMaterialize(bool in_subq = false, ResultSender *sender = nullptr, bool lazy = false) override;
+  void ResetToTemplate(bool rough, bool use_filter_shallow = false);
   void SetAttrsForRough();
   void SetAttrsForExact();
 

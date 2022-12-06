@@ -18,7 +18,7 @@ After the client is connected to the server, the server identifies what operatio
 ## Services layer
 The services layer includes service components, such as the system manager, SQL interface, query cache, and SQL parser.
 :::info
-The optimizer and executor provided by MySQL are not provided in this topic. The Optimizer and executor described in this topic are StoneDB Optimizer and StoneDB Executor.
+The optimizer and executor provided by MySQL are not provided in this topic. The optimizer and executor described in this topic are StoneDB Optimizer and StoneDB Executor.
 :::
 ### Management & Utilities
 StoneDB provides various database management features, such as backup and recovery, user and permission management, and database metadata management.
@@ -41,10 +41,10 @@ Data Packs are data storage units. Data in each column is sliced into Data Packs
 
 The rough set theory can be used for classification to discover structural relationships within imprecise or noisy data. Based on this theory, Data Packs can be classified into the following three categories:
 
-- Irrelevant Data Packs: with no data elements relevant for further execution
+- Irrelevant Data Packs: without data elements relevant for further execution
 - Relevant Data Packs: with all data elements relevant for further execution
 :::info
-When a query is being processed, the relevant Data Packs are compressed only when the result set of a query cannot be obtained through the Data Pack Nodes.
+When a query is being processed, the relevant Data Packs are decompressed only when the result set of a query cannot be obtained through the Data Pack Nodes.
 :::
 
 - Suspect Data Packs: with some data elements relevant for further execution
@@ -146,8 +146,6 @@ The working process of the Knowledge Grid is as follows:
 ![Step3.png](./KnowledgeGrid-3.png)
 ### StoneDB Loader Parser
 StoneDB Loader Parser is a module responsible for data import and export. It processes `LOAD DATA INFILE` and `SELECT ... INTO FILE` operations. StoneDB provides an independent client to import data from various sources, written in different programming languages. Before data is imported, it is preprocessed, such as data compression and construction of Knowledge Nodes. In this way, operations such as parsing, verification, and transaction processing are eliminated when the data is being processed by the storage engine.
-### Replication Manager
-The high-availability structure of StoneDB includes a replication engine called Replication Manager to ensure strong consistency between the primary and secondary databases. Different from binlog replication used by MySQL to replicate original data, Replication Manager can directly replicate compressed data since data stored in StoneDB is compressed, without the need for decompression. This greatly reduces the traffic required for transmitting data.
 ### Compress
 Compress is the module for compressing data and supports more than 20 compression algorithms such as PPM, LZ4, B2, and Delta. In StoneDB, data is stored by column. Since data records stored in a column are of the same data type, StoneDB can dynamically choose the most efficient compression algorithm based on the data type defined for the column. More repeated values in a column indicates higher compression ratio of the column. Compression not only saves storage space but also I/O and memory resources.
 ### Decompress

@@ -17,8 +17,8 @@
 
 #include "core/rsi_bloom.h"
 #include "core/pack_str.h"
-#include "system/rc_system.h"
 #include "system/tianmu_file.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace core {
@@ -68,7 +68,7 @@ common::RSValue RSIndex_Bloom::IsValue(types::BString min_v, types::BString max_
       // this pack no bloom filter data
       return common::RSValue::RS_SOME;
     }
-    Slice key(max_v.val, max_v.size());
+    Slice key(max_v.val_, max_v.size());
     // get filter data
     Slice pack_block(bf.data, bf.len);
     FilterBlockReader reader(bloom_filter_policy.get(), pack_block);
@@ -97,8 +97,9 @@ void RSIndex_Bloom::Update(common::PACK_INDEX pi, DPN &dpn, const PackStr *pack)
 
   bloom_builder->StartBlock(0);
 
-  for (size_t i = 0; i < dpn.nr; i++)
-    if (pack->NotNull(i)) bloom_builder->AddKey(Slice(pack->GetValueBinary(i).ToString()));
+  for (size_t i = 0; i < dpn.numOfRecords; i++)
+    if (pack->NotNull(i))
+      bloom_builder->AddKey(Slice(pack->GetValueBinary(i).ToString()));
 
   Slice block = bloom_builder->Finish();
 

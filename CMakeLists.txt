@@ -794,7 +794,6 @@ IF(NOT WITHOUT_SERVER)
   ADD_SUBDIRECTORY(mysql-test)
   ADD_SUBDIRECTORY(mysql-test/lib/My/SafeProcess)
   ADD_SUBDIRECTORY(support-files)
-  ADD_SUBDIRECTORY(install_scripts)
   IF(EXISTS ${CMAKE_SOURCE_DIR}/internal/CMakeLists.txt)
     ADD_SUBDIRECTORY(internal)
   ENDIF()
@@ -846,9 +845,12 @@ ENDIF()
 CONFIGURE_FILE(config.h.cmake   ${CMAKE_BINARY_DIR}/include/my_config.h)
 CONFIGURE_FILE(config.h.cmake   ${CMAKE_BINARY_DIR}/include/config.h)
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/include/mysql_version.h.in
-               ${CMAKE_BINARY_DIR}/include/mysql_version.h )
+               ${CMAKE_BINARY_DIR}/include/mysql_version.h)
+# add by stonedb, used to avoid tianmu/unittest make failed. We should refresh it when update mysql core version.
+CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/include/mysqld_error.h
+               ${CMAKE_BINARY_DIR}/include/mysqld_error.h)
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/sql/mysql_version.cc.in
-               ${CMAKE_BINARY_DIR}/sql/mysql_version.cc )
+               ${CMAKE_BINARY_DIR}/sql/mysql_version.cc)
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/sql/sql_builtin.cc.in
     	       ${CMAKE_BINARY_DIR}/sql/sql_builtin.cc)
 CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/sql/build_info.h.ini
@@ -880,7 +882,7 @@ IF(WIN32)
   SET(CPACK_GENERATOR "ZIP")
 ELSE()
   SET(CPACK_GENERATOR "TGZ")
-ENDIF() 
+ENDIF()
 ADD_SUBDIRECTORY(packaging/WiX)
 ADD_SUBDIRECTORY(packaging/solaris)
 

@@ -21,13 +21,13 @@
 #include "core/condition.h"
 #include "core/cq_term.h"
 #include "core/joiner.h"
+#include "core/just_a_table.h"
 #include "core/multi_index.h"
 
 namespace Tianmu {
 namespace core {
 class TempTable;
 class RoughMultiIndex;
-
 /*
 A class defining multidimensional filter (by means of MultiIndex) on a set of
 tables. It can store descriptors defining some restrictions on particular
@@ -43,7 +43,7 @@ class ParameterizedFilter final {
   ParameterizedFilter &operator=(const ParameterizedFilter &pf);
   ParameterizedFilter &operator=(ParameterizedFilter &&pf);
   // ParameterizedFilter & operator =(const ParameterizedFilter & pf);
-  void AddConditions(const Condition *conds);
+  void AddConditions(Condition *conds, CondType type);
   uint NoParameterizedDescs() { return parametrized_desc.Size(); }
   void ProcessParameters();
   void PrepareRoughMultiIndex();
@@ -76,6 +76,9 @@ class ParameterizedFilter final {
   Condition &GetConditions() { return descriptors; }
   void TaskProcessPacks(MIUpdatingIterator *taskIterator, Transaction *ci, common::RSValue *rf, DimensionVector *dims,
                         int desc_number, int64_t limit, int one_dim);
+
+  void FilterDeletedByTable(JustATable *rcTable, int &no_dims, int tableIndex);
+  void FilterDeletedForSelectAll();
 
   MultiIndex *mind;
   bool mind_shallow_memory;

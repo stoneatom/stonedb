@@ -18,7 +18,7 @@
 #include <cmath>
 
 #include "core/bin_tools.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace core {
@@ -91,7 +91,8 @@ int CalculateBinSize(unsigned int n)  // 000 -> 0, 001 -> 1, 100 -> 3 etc.
 
 int CalculateBinSize(uint64_t n)  // 000 -> 0, 001 -> 1, 100 -> 3 etc.
 {
-  if (((uint)(n >> 32)) == 0) return CalculateBinSize((uint)n);  // >> safe, as n is 64-bit
+  if (((uint)(n >> 32)) == 0)
+    return CalculateBinSize((uint)n);  // >> safe, as n is 64-bit
   return CalculateBinSize(((uint)(n >> 32))) + 32;
 }
 
@@ -106,14 +107,18 @@ int64_t SafeMultiplication(int64_t x,
 }
 
 common::RSValue Or(common::RSValue f, common::RSValue s) {
-  if (f == common::RSValue::RS_ALL || s == common::RSValue::RS_ALL) return common::RSValue::RS_ALL;
-  if (f == common::RSValue::RS_SOME || s == common::RSValue::RS_SOME) return common::RSValue::RS_SOME;
+  if (f == common::RSValue::RS_ALL || s == common::RSValue::RS_ALL)
+    return common::RSValue::RS_ALL;
+  if (f == common::RSValue::RS_SOME || s == common::RSValue::RS_SOME)
+    return common::RSValue::RS_SOME;
   return common::RSValue::RS_NONE;
 }
 
 common::RSValue And(common::RSValue f, common::RSValue s) {
-  if (f == common::RSValue::RS_ALL && s == common::RSValue::RS_ALL) return common::RSValue::RS_ALL;
-  if (f == common::RSValue::RS_NONE || s == common::RSValue::RS_NONE) return common::RSValue::RS_NONE;
+  if (f == common::RSValue::RS_ALL && s == common::RSValue::RS_ALL)
+    return common::RSValue::RS_ALL;
+  if (f == common::RSValue::RS_NONE || s == common::RSValue::RS_NONE)
+    return common::RSValue::RS_NONE;
   return common::RSValue::RS_SOME;
 }
 
@@ -129,7 +134,8 @@ int64_t MonotonicDouble2Int64(int64_t d)  // encode double value (bitwise stored
 
 int64_t MonotonicInt642Double(int64_t v)  // decode a value encoded by MonotonicDouble2Int64
 {
-  if ((v & 0x8000000000000000LL) != 0) return (v & 0x7FFFFFFFFFFFFFFFLL);  // reset the last bit, if it is 1
+  if ((v & 0x8000000000000000LL) != 0)
+    return (v & 0x7FFFFFFFFFFFFFFFLL);  // reset the last bit, if it is 1
   return ~v;
 }
 
@@ -205,7 +211,8 @@ int64_t MonotonicInt642Double(int64_t v)  // decode a value encoded by Monotonic
     // return *(int64_t *)&d;                  // very small negative
     return 0x8000000000400001LL;
   }
-  if (v == 0x0000000000400001LL) return 0;  // very small positive
+  if (v == 0x0000000000400001LL)
+    return 0;  // very small positive
   uf.f = (float)u.d;
   if ((uf.i & 0x7FFFFF) == 0x000001) {  // mantissa is minimal
     uf.i = (uf.i >> 23) - 1;            // decrease exponent by one
@@ -265,8 +272,10 @@ int64_t MonotonicInt642Double(int64_t v)  // decode a value encoded by Monotonic
     u.d = -u.d;  // and back to negative
     return u.i;
   }
-  if (v == 0) return 0x8000000000000001LL;                   // very small negative
-  if (v == 0x0000000000000001LL) return 0;                   // very small positive
+  if (v == 0)
+    return 0x8000000000000001LL;  // very small negative
+  if (v == 0x0000000000000001LL)
+    return 0;                                                // very small positive
   if ((v & 0x000FFFFFFFFFFFFFLL) == 0x0000000000000001LL) {  // mantissa is minimal
     v = (v >> 52) - 1;                                       // decrease exponent by one
     return ((v << 52) | 0x0000000000000001LL);               // leave the minimal mantissa

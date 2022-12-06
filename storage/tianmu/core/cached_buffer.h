@@ -21,7 +21,7 @@
 #include "common/common_definitions.h"
 #include "mm/traceable_object.h"
 #include "system/cacheable_item.h"
-#include "types/rc_data_types.h"
+#include "types/tianmu_data_types.h"
 
 namespace Tianmu {
 namespace core {
@@ -38,7 +38,7 @@ class Transaction;
 template <class T>
 class CachedBuffer : public system::CacheableItem, public mm::TraceableObject {
  public:
-  explicit CachedBuffer(uint page_size = 33554432, uint elem_size = 0, Transaction *conn = NULL);
+  explicit CachedBuffer(uint page_size = 33554432, uint elem_size = 0, Transaction *conn = nullptr);
   virtual ~CachedBuffer();
 
   uint64_t PageSize() { return page_size; }
@@ -69,9 +69,9 @@ equal size, thus elem_size must be set */
 template <>
 class CachedBuffer<types::BString> : public system::CacheableItem, public mm::TraceableObject {
  public:
-  CachedBuffer(uint page_size = 33554432, uint elem_size = 0, Transaction *conn = NULL);
+  CachedBuffer(uint page_size = 33554432, uint elem_size = 0, Transaction *conn = nullptr);
   CachedBuffer(uint64_t size, types::BString &value, uint page_size = 33554432, uint elem_size = 0,
-               Transaction *conn = NULL);
+               Transaction *conn = nullptr);
   virtual ~CachedBuffer();
 
   uint64_t PageSize() { return page_size; }

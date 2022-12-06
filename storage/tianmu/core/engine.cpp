@@ -22,29 +22,29 @@
 #include <set>
 #include <tuple>
 
-#include "common/mysql_gate.h"
-
+#include "common/common_definitions.h"
 #include "common/data_format.h"
 #include "common/exception.h"
-#include "core/rc_mem_table.h"
+#include "common/mysql_gate.h"
 #include "core/table_share.h"
 #include "core/task_executor.h"
 #include "core/temp_table.h"
+#include "core/tianmu_mem_table.h"
 #include "core/tools.h"
 #include "core/transaction.h"
 #include "mm/initializer.h"
+#include "mysql/thread_pool_priv.h"
+#include "mysqld_thd_manager.h"
 #include "system/file_out.h"
 #include "system/res_manager.h"
 #include "system/stdout.h"
+#include "thr_lock.h"
 #include "util/bitset.h"
 #include "util/fs.h"
 #include "util/thread_pool.h"
-#include "mysqld_thd_manager.h"
-#include "mysql/thread_pool_priv.h"
-#include "thr_lock.h"
 
 namespace Tianmu {
-namespace dbhandler {
+namespace handler {
 extern void resolve_async_join_settings(const std::string &settings);
 }
 namespace core {
@@ -71,7 +71,7 @@ static int setup_sig_handler() {
   sa.sa_sigaction = signal_handler;
   sigemptyset(&sa.sa_mask);
 
-  if (sigaction(SIGRTMIN, &sa, NULL) == -1) {
+  if (sigaction(SIGRTMIN, &sa, nullptr) == -1) {
     TIANMU_LOG(LogCtl_Level::INFO, "Failed to set up signal handler. error =%d[%s]", errno, std::strerror(errno));
     return 1;
   }
@@ -83,8 +83,9 @@ fs::path Engine::GetNextDataDir() {
 
   if (tianmu_data_dirs.empty()) {
     // fall back to use MySQL data directory
-    auto p = ha_rcengine_->tianmu_data_dir / TIANMU_DATA_DIR;
-    if (!fs::is_directory(p)) fs::create_directory(p);
+    auto p = ha_tianmu_engine_->tianmu_data_dir / TIANMU_DATA_DIR;
+    if (!fs::is_directory(p))
+      fs::create_directory(p);
     return p;
   }
 
@@ -126,9 +127,11 @@ static int has_pack(const LEX_STRING &comment) {
   boost::to_upper(str);
   std::string val;
   auto pos = str.find("PACK");
-  if (pos == std::string::npos) return ret;
+  if (pos == std::string::npos)
+    return ret;
   size_t val_pos = str.find(':', pos);
-  if (val_pos == std::string::npos) return ret;
+  if (val_pos == std::string::npos)
+    return ret;
   size_t term_pos = str.find(';', val_pos);
   if (term_pos == std::string::npos) {
     val = str.substr(val_pos + 1);
@@ -137,7 +140,8 @@ static int has_pack(const LEX_STRING &comment) {
   }
   boost::trim(val);
   ret = atoi(val.c_str());
-  if (ret > common::DFT_PSS || ret <= 0) ret = common::DFT_PSS;
+  if (ret > common::DFT_PSS || ret <= 0)
+    ret = common::DFT_PSS;
   return ret;
 }
 
@@ -146,9 +150,11 @@ static std::string has_mem_name(const LEX_STRING &comment) {
   std::string str(comment.str, comment.length);
   boost::to_upper(str);
   auto pos = str.find("ROWSTORE");
-  if (pos == std::string::npos) return name;
+  if (pos == std::string::npos)
+    return name;
   size_t val_pos = str.find(':', pos);
-  if (val_pos == std::string::npos) return name;
+  if (val_pos == std::string::npos)
+    return name;
   size_t term_pos = str.find(';', val_pos);
   if (term_pos == std::string::npos) {
     name = str.substr(val_pos + 1);
@@ -165,7 +171,8 @@ bool parameter_equals(THD *thd, enum tianmu_var_name vn, longlong value) {
   std::string s_res;
 
   if (!get_parameter(thd, vn, param, s_res))
-    if (param == value) return true;
+    if (param == value)
+      return true;
 
   return false;
 }
@@ -187,6 +194,9 @@ Engine::Engine()
                        tianmu_sysvar_load_threads ? tianmu_sysvar_load_threads : std::thread::hardware_concurrency()),
       query_thread_pool(
           "query", tianmu_sysvar_query_threads ? tianmu_sysvar_query_threads : std::thread::hardware_concurrency()),
+      delete_or_update_thread_pool("delete_or_update", tianmu_sysvar_delete_or_update_threads
+                                                           ? tianmu_sysvar_delete_or_update_threads
+                                                           : std::thread::hardware_concurrency()),
       insert_buffer(BUFFER_FILE, tianmu_sysvar_insert_buffer_size) {
   tianmu_data_dir = mysql_real_data_home;
 }
@@ -195,11 +205,11 @@ int Engine::Init(uint engine_slot) {
   m_slot = engine_slot;
   ConfigureRCControl();
   if (tianmu_sysvar_controlquerylog > 0) {
-    rc_querylog_.setOn();
+    tianmu_querylog_.setOn();
   } else {
-    rc_querylog_.setOff();
+    tianmu_querylog_.setOff();
   }
-  std::srand(unsigned(time(NULL)));
+  std::srand(unsigned(time(nullptr)));
 
   if (tianmu_sysvar_servermainheapsize == 0) {
     long pages = sysconf(_SC_PHYS_PAGES);
@@ -224,12 +234,13 @@ int Engine::Init(uint engine_slot) {
   std::string cachefolder_path = tianmu_sysvar_cachefolder;
   boost::trim(cachefolder_path);
   boost::trim_if(cachefolder_path, boost::is_any_of("\""));
-  if (SetUpCacheFolder(cachefolder_path) != 0) return 1;
+  if (SetUpCacheFolder(cachefolder_path) != 0)
+    return 1;
   system::ClearDirectory(cachefolder_path);
 
   m_resourceManager = new system::ResourceManager();
-  
-  //init the tianmu key-value store, aka, rocksdb engine.
+
+  // init the tianmu key-value store, aka, rocksdb engine.
   ha_kvstore_ = new index::KVStore();
   ha_kvstore_->Init();
 
@@ -245,12 +256,11 @@ int Engine::Init(uint engine_slot) {
     for (auto &dir : tianmu_data_dirs) {
       auto si = fs::space(dir);
       TIANMU_LOG(LogCtl_Level::INFO, "    %s  capacity/available: %ld/%ld", dir.native().c_str(), si.capacity,
-                  si.available);
+                 si.available);
     }
   TIANMU_LOG(LogCtl_Level::INFO, "  }");
 
-  TIANMU_LOG(LogCtl_Level::INFO, "Tianmu thread pool for background load, size = %ld",
-              delay_insert_thread_pool.size());
+  TIANMU_LOG(LogCtl_Level::INFO, "Tianmu thread pool for background load, size = %ld", delay_insert_thread_pool.size());
   TIANMU_LOG(LogCtl_Level::INFO, "Tianmu thread pool for load, size = %ld", load_thread_pool.size());
   TIANMU_LOG(LogCtl_Level::INFO, "Tianmu thread pool for query, size = %ld", query_thread_pool.size());
 
@@ -282,9 +292,11 @@ int Engine::Init(uint engine_slot) {
       counter++;
       std::unique_lock<std::mutex> lk(cv_mtx);
       if (cv.wait_for(lk, std::chrono::seconds(loop_interval)) == std::cv_status::timeout) {
-        if (!tianmu_sysvar_qps_log) continue;
+        if (!tianmu_sysvar_qps_log)
+          continue;
         for (auto &j : jobs) {
-          if (counter % (j.interval / loop_interval) == 0) j.func();
+          if (counter % (j.interval / loop_interval) == 0)
+            j.func();
         }
       }
     }
@@ -298,7 +310,8 @@ int Engine::Init(uint engine_slot) {
     do {
       std::this_thread::sleep_for(std::chrono::seconds(3));
       std::unique_lock<std::mutex> lk(cv_mtx);
-      if (cv.wait_for(lk, std::chrono::seconds(3)) == std::cv_status::timeout) HandleDeferredJobs();
+      if (cv.wait_for(lk, std::chrono::seconds(3)) == std::cv_status::timeout)
+        HandleDeferredJobs();
     } while (!exiting);
     TIANMU_LOG(LogCtl_Level::INFO, "Tianmu file purge thread exiting...");
   });
@@ -307,8 +320,9 @@ int Engine::Init(uint engine_slot) {
     return -1;
   }
 
-  if (tianmu_sysvar_start_async > 0) ResetTaskExecutor(tianmu_sysvar_start_async);
-  dbhandler::resolve_async_join_settings(tianmu_sysvar_async_join);
+  if (tianmu_sysvar_start_async > 0)
+    ResetTaskExecutor(tianmu_sysvar_start_async);
+  handler::resolve_async_join_settings(tianmu_sysvar_async_join);
 
   return 0;
 }
@@ -334,7 +348,8 @@ void Engine::HandleDeferredJobs() {
 
 void Engine::DeferRemove(const fs::path &file, int32_t cookie) {
   std::scoped_lock lk(gc_tasks_mtx);
-  if (fs::exists(file)) gc_tasks.emplace_back(purge_task{file, MaxXID(), cookie});
+  if (fs::exists(file))
+    gc_tasks.emplace_back(purge_task{file, MaxXID(), cookie});
 }
 
 Engine::~Engine() {
@@ -365,7 +380,7 @@ Engine::~Engine() {
   } catch (...) {
     TIANMU_LOG(LogCtl_Level::ERROR, "Unkown exception caught");
   }
-  if (rc_control_.isOn())
+  if (tianmu_control_.isOn())
     mm::MemoryManagerInitializer::deinit(true);
   else
     mm::MemoryManagerInitializer::deinit(false);
@@ -373,7 +388,7 @@ Engine::~Engine() {
   TIANMU_LOG(LogCtl_Level::INFO, "Tianmu engine destroyed.");
 }
 
-void Engine::EncodeRecord(const std::string &table_path, int tid, Field **field, size_t col, size_t blobs,
+void Engine::EncodeRecord(const std::string &table_path, int table_id, Field **field, size_t col, size_t blobs,
                           std::unique_ptr<char[]> &buf, uint32_t &size) {
   size = blobs > 0 ? 4_MB : 128_KB;
   buf.reset(new char[size]);
@@ -385,7 +400,7 @@ void Engine::EncodeRecord(const std::string &table_path, int tid, Field **field,
   //     null_mask
   //     fileds...
   char *ptr = buf.get();
-  *(int32_t *)ptr = tid;  // table id
+  *(int32_t *)ptr = table_id;  // table id
   ptr += sizeof(int32_t);
   int32_t path_len = table_path.size();
   std::memcpy(ptr, table_path.c_str(), path_len);
@@ -566,7 +581,8 @@ uint32_t Engine::GetNextTableId() {
   if (!fs::exists(p)) {
     TIANMU_LOG(LogCtl_Level::INFO, "Creating table id file");
     std::ofstream seq_file(p.string());
-    if (seq_file) seq_file << 0;
+    if (seq_file)
+      seq_file << 0;
     if (!seq_file) {
       throw common::FileException("Failed to write to table id file");
     }
@@ -574,7 +590,8 @@ uint32_t Engine::GetNextTableId() {
 
   uint32_t seq;
   std::fstream seq_file(p.string());
-  if (seq_file) seq_file >> seq;
+  if (seq_file)
+    seq_file >> seq;
   if (!seq_file) {
     throw common::FileException("Failed to read from table id file");
   }
@@ -609,7 +626,7 @@ std::shared_ptr<TableOption> Engine::GetTableOption(const std::string &table, TA
   return opt;
 }
 
-void Engine::CreateTable(const std::string &table, TABLE *form) { RCTable::CreateNew(GetTableOption(table, form)); }
+void Engine::CreateTable(const std::string &table, TABLE *form) { TianmuTable::CreateNew(GetTableOption(table, form)); }
 
 AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
   bool auto_inc = field.flags & AUTO_INCREMENT_FLAG;
@@ -653,9 +670,6 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
     case MYSQL_TYPE_FLOAT:
     case MYSQL_TYPE_DOUBLE:
     case MYSQL_TYPE_LONGLONG:
-      if (field.flags & UNSIGNED_FLAG)
-        throw common::UnsupportedDataTypeException("UNSIGNED data types are not supported.");
-      [[fallthrough]];
     case MYSQL_TYPE_YEAR:
     case MYSQL_TYPE_TIMESTAMP:
     case MYSQL_TYPE_DATETIME:
@@ -664,50 +678,52 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
       return AttributeTypeInfo(Engine::GetCorrespondingType(field), notnull, (ushort)field.field_length, 0, auto_inc,
                                DTCollation(), fmt, filter);
     case MYSQL_TYPE_TIME:
-      return AttributeTypeInfo(common::CT::TIME, notnull, 0, 0, false, DTCollation(), fmt, filter);
+      return AttributeTypeInfo(common::ColumnType::TIME, notnull, 0, 0, false, DTCollation(), fmt, filter);
     case MYSQL_TYPE_STRING:
     case MYSQL_TYPE_VARCHAR: {
       if (field.field_length > FIELD_MAXLENGTH)
         throw common::UnsupportedDataTypeException("Length of STRING or VARCHAR exceeds 65535 bytes.");
       // Trie column only supports String/VARCHAR column and it
       // doesn't work for case-insensitive collations.
-      if (str.find("TRIE") != std::string::npos) fmt = common::PackFmt::TRIE;
+      if (str.find("TRIE") != std::string::npos)
+        fmt = common::PackFmt::TRIE;
       if (const Field_str *fstr = dynamic_cast<const Field_string *>(&field)) {
         DTCollation coll(fstr->charset(), fstr->derivation());
         if (fmt == common::PackFmt::TRIE && types::IsCaseInsensitive(coll)) {
           TIANMU_LOG(LogCtl_Level::ERROR, "TRIE can not work with case-insensitive collation: %s!",
-                      coll.collation->name);
+                     coll.collation->name);
           throw common::UnsupportedDataTypeException();
         }
         if (fstr->charset() != &my_charset_bin)
-          return AttributeTypeInfo(common::CT::STRING, notnull, field.field_length, 0, auto_inc, coll, fmt, filter);
-        return AttributeTypeInfo(common::CT::BYTE, notnull, field.field_length, 0, auto_inc, coll, fmt, filter);
+          return AttributeTypeInfo(common::ColumnType::STRING, notnull, field.field_length, 0, auto_inc, coll, fmt,
+                                   filter);
+        return AttributeTypeInfo(common::ColumnType::BYTE, notnull, field.field_length, 0, auto_inc, coll, fmt, filter);
       } else if (const Field_str *fvstr = dynamic_cast<const Field_varstring *>(&field)) {
         DTCollation coll(fvstr->charset(), fvstr->derivation());
         if (fmt == common::PackFmt::TRIE && types::IsCaseInsensitive(coll))
           throw common::UnsupportedDataTypeException();
         if (fvstr->charset() != &my_charset_bin)
-          return AttributeTypeInfo(common::CT::VARCHAR, notnull, field.field_length, 0, auto_inc, coll, fmt, filter);
-        return AttributeTypeInfo(common::CT::VARBYTE, notnull, field.field_length, 0, auto_inc, coll, fmt, filter);
+          return AttributeTypeInfo(common::ColumnType::VARCHAR, notnull, field.field_length, 0, auto_inc, coll, fmt,
+                                   filter);
+        return AttributeTypeInfo(common::ColumnType::VARBYTE, notnull, field.field_length, 0, auto_inc, coll, fmt,
+                                 filter);
       }
       throw common::UnsupportedDataTypeException();
     }
     case MYSQL_TYPE_NEWDECIMAL: {
-      if (field.flags & UNSIGNED_FLAG)
-        throw common::UnsupportedDataTypeException("UNSIGNED data types are not supported.");
       const Field_new_decimal *fnd = ((const Field_new_decimal *)&field);
       if (/*fnd->precision > 0 && */ fnd->precision <= 18 /*&& fnd->dec >= 0*/
           && fnd->dec <= fnd->precision)
-        return AttributeTypeInfo(common::CT::NUM, notnull, fnd->precision, fnd->dec);
+        return AttributeTypeInfo(common::ColumnType::NUM, notnull, fnd->precision, fnd->dec);
       throw common::UnsupportedDataTypeException("Precision must be less than or equal to 18.");
     }
     case MYSQL_TYPE_BLOB:
       if (const Field_str *fstr = dynamic_cast<const Field_str *>(&field)) {
         if (const Field_blob *fblo = dynamic_cast<const Field_blob *>(fstr)) {
           if (fblo->charset() != &my_charset_bin) {  // TINYTEXT, MEDIUMTEXT, TEXT, LONGTEXT
-            common::CT t = common::CT::VARCHAR;
+            common::ColumnType t = common::ColumnType::VARCHAR;
             if (field.field_length > FIELD_MAXLENGTH) {
-              t = common::CT::LONGTEXT;
+              t = common::ColumnType::LONGTEXT;
             }
             return AttributeTypeInfo(t, notnull, field.field_length, 0, auto_inc, DTCollation(), fmt, filter);
           }
@@ -715,13 +731,13 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
             case 255:
             case FIELD_MAXLENGTH:
               // TINYBLOB, BLOB
-              return AttributeTypeInfo(common::CT::VARBYTE, notnull, field.field_length, 0, auto_inc, DTCollation(),
-                                       fmt, filter);
+              return AttributeTypeInfo(common::ColumnType::VARBYTE, notnull, field.field_length, 0, auto_inc,
+                                       DTCollation(), fmt, filter);
             case 16777215:
             case 4294967295:
               // MEDIUMBLOB, LONGBLOB
-              return AttributeTypeInfo(common::CT::BIN, notnull, field.field_length, 0, auto_inc, DTCollation(), fmt,
-                                       filter);
+              return AttributeTypeInfo(common::ColumnType::BIN, notnull, field.field_length, 0, auto_inc, DTCollation(),
+                                       fmt, filter);
             default:
               throw common::UnsupportedDataTypeException();
           }
@@ -729,7 +745,8 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
       }
       [[fallthrough]];
     default:
-      throw common::UnsupportedDataTypeException("Unsupported data type.");
+      throw common::UnsupportedDataTypeException(std::string("Unsupported data type[") +
+                                                 common::get_enum_field_types_name(field.type()) + std::string("]"));
   }
   throw;
 }
@@ -754,19 +771,19 @@ void Engine::Rollback(THD *thd, bool all, bool force_error_message) {
 void Engine::DeleteTable(const char *table, [[maybe_unused]] THD *thd) {
   {
     std::unique_lock<std::shared_mutex> index_guard(tables_keys_mutex);
-    index::RCTableIndex::DropIndexTable(table);
+    index::TianmuTableIndex::DropIndexTable(table);
     m_table_keys.erase(table);
   }
   {
     std::unique_lock<std::shared_mutex> mem_guard(mem_table_mutex);
-    RCMemTable::DropMemTable(table);
+    TianmuMemTable::DropMemTable(table);
     mem_table_map.erase(table);
   }
 
   UnRegisterTable(table);
   std::string p = table;
   p += common::TIANMU_EXT;
-  auto id = RCTable::GetTableId(p);
+  auto id = TianmuTable::GetTableId(p);
   cache.ReleaseTable(id);
   filter_cache.RemoveIf([id](const FilterCoordinate &c) { return c[0] == int(id); });
 
@@ -791,14 +808,15 @@ void Engine::TruncateTable(const std::string &table_path, [[maybe_unused]] THD *
   TIANMU_LOG(LogCtl_Level::INFO, "Truncated table %s, ID = %u", table_path.c_str(), id);
 }
 
-void Engine::GetTableIterator(const std::string &table_path, RCTable::Iterator &iter_begin, RCTable::Iterator &iter_end,
-                              std::shared_ptr<RCTable> &table, const std::vector<bool> &attrs, THD *thd) {
+void Engine::GetTableIterator(const std::string &table_path, TianmuTable::Iterator &iter_begin,
+                              TianmuTable::Iterator &iter_end, std::shared_ptr<TianmuTable> &table,
+                              const std::vector<bool> &attrs, THD *thd) {
   table = GetTx(thd)->GetTableByPath(table_path);
   iter_begin = table->Begin(attrs);
   iter_end = table->End();
 }
 
-std::shared_ptr<RCTable> Engine::GetTableRD(const std::string &table_path) {
+std::shared_ptr<TianmuTable> Engine::GetTableRD(const std::string &table_path) {
   return getTableShare(table_path)->GetSnapshot();
 }
 
@@ -806,7 +824,7 @@ std::vector<AttrInfo> Engine::GetTableAttributesInfo(const std::string &table_pa
                                                      [[maybe_unused]] TABLE_SHARE *table_share) {
   std::scoped_lock guard(global_mutex_);
 
-  std::shared_ptr<RCTable> tab;
+  std::shared_ptr<TianmuTable> tab;
   if (current_txn_ != nullptr)
     tab = current_txn_->GetTableByPath(table_path);
   else
@@ -818,7 +836,7 @@ std::vector<AttrInfo> Engine::GetTableAttributesInfo(const std::string &table_pa
 
 void Engine::UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *source_field, int source_field_id,
                                          CHARSET_INFO *cs) {
-  if (source_field->orig_table->s->db_type() == rcbase_hton) {  // do not use table (cont. default values)
+  if (source_field->orig_table->s->db_type() == tianmu_hton) {  // do not use table (cont. default values)
     char buf_size[256] = {0};
     char buf_ratio[256] = {0};
     uint buf_size_count = 0;
@@ -836,9 +854,11 @@ void Engine::UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *sour
     }
 
     double d_comp = int(sum_c / 104857.6) / 10.0;  // 1 MB = 2^20 bytes
-    if (d_comp < 0.1) d_comp = 0.1;
+    if (d_comp < 0.1)
+      d_comp = 0.1;
     double ratio = (sum_c > 0 ? sum_u / double(sum_c) : 0);
-    if (ratio > 1000) ratio = 999.99;
+    if (ratio > 1000)
+      ratio = 999.99;
 
     buf_size_count = std::snprintf(buf_size, 256, "Size[MB]: %.1f", d_comp);
     if (is_unique)
@@ -899,8 +919,8 @@ void Engine::RemoveTx(Transaction *tx) {
 
 Transaction *Engine::CreateTx(THD *thd) {
   // the transaction should be created by owner THD
-  ASSERT(thd->ha_data[m_slot].ha_ptr == NULL, "Nested transaction is not supported!");
-  ASSERT(current_txn_ == NULL, "Previous transaction is not finished!");
+  ASSERT(thd->ha_data[m_slot].ha_ptr == nullptr, "Nested transaction is not supported!");
+  ASSERT(current_txn_ == nullptr, "Previous transaction is not finished!");
 
   current_txn_ = new Transaction(thd);
   thd->ha_data[m_slot].ha_ptr = current_txn_;
@@ -911,18 +931,20 @@ Transaction *Engine::CreateTx(THD *thd) {
 }
 
 Transaction *Engine::GetTx(THD *thd) {
-  if (thd->ha_data[m_slot].ha_ptr == nullptr) return CreateTx(thd);
+  if (thd->ha_data[m_slot].ha_ptr == nullptr)
+    return CreateTx(thd);
   return static_cast<Transaction *>(thd->ha_data[m_slot].ha_ptr);
 }
 
 void Engine::ClearTx(THD *thd) {
   ASSERT(current_txn_ == (Transaction *)thd->ha_data[m_slot].ha_ptr, "Bad transaction");
 
-  if (current_txn_ == nullptr) return;
+  if (current_txn_ == nullptr)
+    return;
 
   RemoveTx(current_txn_);
   current_txn_ = nullptr;
-  thd->ha_data[m_slot].ha_ptr = NULL;
+  thd->ha_data[m_slot].ha_ptr = nullptr;
 }
 
 int Engine::SetUpCacheFolder(const std::string &cachefolder_path) {
@@ -946,7 +968,8 @@ int Engine::SetUpCacheFolder(const std::string &cachefolder_path) {
 }
 
 std::string get_parameter_name(enum tianmu_var_name vn) {
-  DEBUG_ASSERT(static_cast<int>(vn) >= 0 && static_cast<int>(vn) <= static_cast<int>(tianmu_var_name::TIANMU_VAR_LIMIT));
+  DEBUG_ASSERT(static_cast<int>(vn) >= 0 &&
+               static_cast<int>(vn) <= static_cast<int>(tianmu_var_name::TIANMU_VAR_LIMIT));
   return tianmu_var_name_strings[static_cast<int>(vn)];
 }
 
@@ -956,9 +979,11 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, double &value) {
   my_bool null_val;
 
   m_entry = (user_var_entry *)my_hash_search(&thd->user_vars, (uchar *)var_data.c_str(), (uint)var_data.size());
-  if (!m_entry) return 1;
+  if (!m_entry)
+    return 1;
   value = m_entry->val_real(&null_val);
-  if (null_val) return 2;
+  if (null_val)
+    return 2;
   return 0;
 }
 
@@ -969,9 +994,11 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, int64_t &value) {
 
   m_entry = (user_var_entry *)my_hash_search(&thd->user_vars, (uchar *)var_data.c_str(), (uint)var_data.size());
 
-  if (!m_entry) return 1;
+  if (!m_entry)
+    return 1;
   value = m_entry->val_int(&null_val);
-  if (null_val) return 2;
+  if (null_val)
+    return 2;
   return 0;
 }
 
@@ -982,11 +1009,13 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, std::string &value) {
   String str;
 
   m_entry = (user_var_entry *)my_hash_search(&thd->user_vars, (uchar *)var_data.c_str(), (uint)var_data.size());
-  if (!m_entry) return 1;
+  if (!m_entry)
+    return 1;
 
   m_entry->val_str(&null_val, &str, NOT_FIXED_DEC);
 
-  if (null_val) return 2;
+  if (null_val)
+    return 2;
   value = std::string(str.ptr());
 
   return 0;
@@ -997,7 +1026,8 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::stri
   std::string var_data = get_parameter_name(vn);
 
   m_entry = (user_var_entry *)my_hash_search(&thd->user_vars, (uchar *)var_data.c_str(), (uint)var_data.size());
-  if (!m_entry) return 1;
+  if (!m_entry)
+    return 1;
 
   if (m_entry->type() == DECIMAL_RESULT) {
     switch (vn) {
@@ -1042,8 +1072,10 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::stri
       s_result = var_data;
     } else if (vn == tianmu_var_name::TIANMU_PIPEMODE) {
       boost::to_upper(var_data);
-      if (var_data == "SERVER") result = 1;
-      if (var_data == "CLIENT") result = 0;
+      if (var_data == "SERVER")
+        result = 1;
+      if (var_data == "CLIENT")
+        result = 0;
     } else if (vn == tianmu_var_name::TIANMU_NULL) {
       s_result = var_data;
     }
@@ -1057,7 +1089,7 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::stri
 void Engine::RenameTable([[maybe_unused]] Transaction *trans_, const std::string &from, const std::string &to,
                          [[maybe_unused]] THD *thd) {
   UnRegisterTable(from);
-  auto id = RCTable::GetTableId(from + common::TIANMU_EXT);
+  auto id = TianmuTable::GetTableId(from + common::TIANMU_EXT);
   cache.ReleaseTable(id);
   filter_cache.RemoveIf([id](const FilterCoordinate &c) { return c[0] == int(id); });
   system::RenameFile(tianmu_data_dir / (from + common::TIANMU_EXT), tianmu_data_dir / (to + common::TIANMU_EXT));
@@ -1072,12 +1104,12 @@ void Engine::PrepareAlterTable(const std::string &table_path, std::vector<Field 
   HandleDeferredJobs();
 
   auto tab = current_txn_->GetTableByPath(table_path);
-  RCTable::Alter(table_path, new_cols, old_cols, tab->NumOfObj());
+  TianmuTable::Alter(table_path, new_cols, old_cols, tab->NumOfObj());
   cache.ReleaseTable(tab->GetID());
   UnRegisterTable(table_path);
 }
 
-static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec) {
+static void HandleDelayedLoad(int table_id, std::vector<std::unique_ptr<char[]>> &vec) {
   std::string addr = std::to_string(reinterpret_cast<long>(&vec));
 
   std::string table_path(vec[0].get() + sizeof(int32_t));
@@ -1086,75 +1118,76 @@ static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec
   std::tie(db_name, tab_name) = GetNames(table_path);
   std::string load_data_query = "LOAD DELAYED INSERT DATA INTO TABLE " + db_name + "." + tab_name;
 
-    LEX_CSTRING dbname,tabname,loadquery;
-    dbname.str=const_cast<char *>(db_name.c_str());
-    dbname.length=db_name.length();
-    loadquery.str=const_cast<char *>(load_data_query.c_str());
-    loadquery.length=load_data_query.length();
-    
-    // fix issue 362: bug for insert into a table which table name contains special characters
-    char t_tbname[MAX_TABLE_NAME_LEN + 1]={0};
-    tabname.length = filename_to_tablename( const_cast<char *>(tab_name.c_str()),t_tbname, sizeof(t_tbname));
-    tabname.str=t_tbname;
+  LEX_CSTRING dbname, tabname, loadquery;
+  dbname.str = const_cast<char *>(db_name.c_str());
+  dbname.length = db_name.length();
+  loadquery.str = const_cast<char *>(load_data_query.c_str());
+  loadquery.length = load_data_query.length();
 
-    // END
-	
-	//TIANMU UPGRADE
-    Global_THD_manager *thd_manager = Global_THD_manager::get_instance();//global thread manager
-    
-	THD *thd = new THD;
-    thd->thread_stack = (char *)&thd;
-    my_thread_init();
-    thd->store_globals();
-    thd->m_security_ctx->skip_grants();
-    
-    /* Add thread to THD list so that's it's visible in 'show processlist' */
-    thd->set_new_thread_id();
-    thd->set_current_time();
-    thd_manager->add_thd(thd);
-    mysql_reset_thd_for_next_command(thd);
-    thd->init_for_queries();
-    thd->set_db(dbname);
-    // Forge LOAD DATA INFILE query which will be used in SHOW PROCESS LIST
-    thd->set_query(loadquery);
-    thd->set_query_id(next_query_id());
-    thd->update_charset();  // for the charset change to take effect
-    // Usually lex_start() is called by mysql_parse(), but we need
-    // it here as the present method does not call mysql_parse().
-    lex_start(thd);
-    TABLE_LIST tl;
-    tl.init_one_table(thd->strmake(thd->db().str, thd->db().length), thd->db().length, tabname.str, tabname.length,
-                      tabname.str, TL_WRITE_CONCURRENT_INSERT);//TIANMU UPGRADE
-    tl.updating = 1;
+  // fix issue 362: bug for insert into a table which table name contains special characters
+  char t_tbname[MAX_TABLE_NAME_LEN + 1] = {0};
+  tabname.length = filename_to_tablename(const_cast<char *>(tab_name.c_str()), t_tbname, sizeof(t_tbname));
+  tabname.str = t_tbname;
 
-    // the table will be opened in mysql_load
-    thd->lex->sql_command = SQLCOM_LOAD;
-    sql_exchange ex("buffered_insert", 0, FILETYPE_MEM);
-    ex.file_name = const_cast<char *>(addr.c_str());
-    ex.skip_lines = tid;  // this is ugly...
-    thd->lex->select_lex->context.resolve_in_table_list_only(&tl);
-    if (open_temporary_tables(thd, &tl)) {
-        // error/////
-    }
-    List<Item> tmp_list;  // dummy
-    if (mysql_load(thd, &ex, &tl, tmp_list, tmp_list, tmp_list, DUP_ERROR, false)) {
-        thd->is_slave_error = 1;
-    }
+  // END
 
-    thd->set_catalog({0, 1});//TIANMU UPGRADE
-    thd->set_db({NULL,0}); /* will free the current database */
-    thd->reset_query();
-    thd->get_stmt_da()->set_overwrite_status(true);
-    thd->is_error() ? trans_rollback_stmt(thd) : trans_commit_stmt(thd);
-    thd->get_stmt_da()->set_overwrite_status(false);
-    close_thread_tables(thd);
-    if (thd->transaction_rollback_request) {
-        trans_rollback_implicit(thd);
-        thd->mdl_context.release_transactional_locks();
-    } else if (!thd->in_multi_stmt_transaction_mode())
-        thd->mdl_context.release_transactional_locks();
-    else
-        thd->mdl_context.release_statement_locks();
+  // TIANMU UPGRADE
+  Global_THD_manager *thd_manager = Global_THD_manager::get_instance();  // global thread manager
+
+  THD *thd = new THD;
+  thd->thread_stack = (char *)&thd;
+  my_thread_init();
+  thd->store_globals();
+  thd->m_security_ctx->skip_grants();
+
+  /* Add thread to THD list so that's it's visible in 'show processlist' */
+  thd->set_new_thread_id();
+  thd->set_current_time();
+  thd_manager->add_thd(thd);
+  mysql_reset_thd_for_next_command(thd);
+  thd->init_for_queries();
+  thd->set_db(dbname);
+  // Forge LOAD DATA INFILE query which will be used in SHOW PROCESS LIST
+  thd->set_query(loadquery);
+  thd->set_query_id(next_query_id());
+  thd->update_charset();  // for the charset change to take effect
+  // Usually lex_start() is called by mysql_parse(), but we need
+  // it here as the present method does not call mysql_parse().
+  lex_start(thd);
+  TABLE_LIST tl;
+  tl.init_one_table(thd->strmake(thd->db().str, thd->db().length), thd->db().length, tabname.str, tabname.length,
+                    tabname.str, TL_WRITE_CONCURRENT_INSERT);  // TIANMU UPGRADE
+  tl.updating = 1;
+
+  // the table will be opened in mysql_load
+  thd->lex->sql_command = SQLCOM_LOAD;
+  sql_exchange ex("buffered_insert", 0, FILETYPE_MEM);
+  ex.file_name = const_cast<char *>(addr.c_str());
+  ex.skip_lines = 0;
+  ex.tab_id = table_id;
+  thd->lex->select_lex->context.resolve_in_table_list_only(&tl);
+  if (open_temporary_tables(thd, &tl)) {
+    // error/////
+  }
+  List<Item> tmp_list;  // dummy
+  if (mysql_load(thd, &ex, &tl, tmp_list, tmp_list, tmp_list, DUP_ERROR, false)) {
+    thd->is_slave_error = 1;
+  }
+
+  thd->set_catalog({0, 1});  // TIANMU UPGRADE
+  thd->set_db({nullptr, 0}); /* will free the current database */
+  thd->reset_query();
+  thd->get_stmt_da()->set_overwrite_status(true);
+  thd->is_error() ? trans_rollback_stmt(thd) : trans_commit_stmt(thd);
+  thd->get_stmt_da()->set_overwrite_status(false);
+  close_thread_tables(thd);
+  if (thd->transaction_rollback_request) {
+    trans_rollback_implicit(thd);
+    thd->mdl_context.release_transactional_locks();
+  } else if (!thd->in_multi_stmt_transaction_mode())
+    thd->mdl_context.release_transactional_locks();
+  else
+    thd->mdl_context.release_statement_locks();
 
   free_root(thd->mem_root, MYF(MY_KEEP_PREALLOC));
   if (thd->is_fatal_error) {
@@ -1169,7 +1202,7 @@ static void HandleDelayedLoad(int tid, std::vector<std::unique_ptr<char[]>> &vec
 void DistributeLoad(std::unordered_map<int, std::vector<std::unique_ptr<char[]>>> &tm) {
   utils::result_set<void> res;
   for (auto &it : tm) {
-    res.insert(ha_rcengine_->delay_insert_thread_pool.add_task(HandleDelayedLoad, it.first, std::ref(it.second)));
+    res.insert(ha_tianmu_engine_->delay_insert_thread_pool.add_task(HandleDelayedLoad, it.first, std::ref(it.second)));
   }
   res.get_all();
   tm.clear();
@@ -1189,8 +1222,8 @@ void Engine::ProcessDelayedInsert() {
   mysql_mutex_unlock(&LOCK_server_started);
 
   std::unordered_map<int, std::vector<std::unique_ptr<char[]>>> tm;
-  int buffer_recordnum = 0;
-  int sleep_cnt = 0;
+  unsigned int buffer_recordnum = 0;
+  unsigned int sleep_cnt = 0;
   while (!exiting) {
     if (tianmu_sysvar_enable_rowstore) {
       std::unique_lock<std::mutex> lk(cv_mtx);
@@ -1219,9 +1252,9 @@ void Engine::ProcessDelayedInsert() {
     }
 
     buffer_recordnum++;
-    auto tid = *(int32_t *)rec.get();
-    tm[tid].emplace_back(std::move(rec));
-    if (tm[tid].size() > static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
+    auto table_id = *(int32_t *)rec.get();
+    tm[table_id].emplace_back(std::move(rec));
+    if (tm[table_id].size() > static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
       // in case the ingress rate is too high
       DistributeLoad(tm);
       buffer_recordnum = 0;
@@ -1258,19 +1291,19 @@ void Engine::ProcessDelayedMerge() {
         for (auto &[name, mem_table] : mem_table_map) {
           int64_t record_count = mem_table->CountRecords();
           if (record_count >= tianmu_sysvar_insert_numthreshold ||
-              (sleep_cnts.count(name) && sleep_cnts[name] > tianmu_sysvar_insert_cntthreshold)) {
-            auto share = ha_rcengine_->getTableShare(name);
-            auto tid = share->TabID();
+              (sleep_cnts.count(name) && sleep_cnts[name] > static_cast<int>(tianmu_sysvar_insert_cntthreshold))) {
+            auto share = ha_tianmu_engine_->getTableShare(name);
+            auto table_id = share->TabID();
             utils::BitSet null_mask(share->NumOfCols());
             std::unique_ptr<char[]> buf(new char[sizeof(uint32_t) + name.size() + 1 + null_mask.data_size()]);
             char *ptr = buf.get();
-            *(int32_t *)ptr = tid;  // table id
+            *(int32_t *)ptr = table_id;  // table id
             ptr += sizeof(int32_t);
             std::memcpy(ptr, name.c_str(), name.size());
             ptr += name.size();
             *ptr++ = 0;  // end with NUL
             std::memcpy(ptr, null_mask.data(), null_mask.data_size());
-            tm[tid].emplace_back(std::move(buf));
+            tm[table_id].emplace_back(std::move(buf));
             sleep_cnts[name] = 0;
           } else if (record_count > 0) {
             if (sleep_cnts.count(name))
@@ -1344,9 +1377,9 @@ void Engine::LogStat() {
     };
 
     STATUS_VAR sv;
-	mysql_mutex_lock(&LOCK_status);
+    mysql_mutex_lock(&LOCK_status);
     calc_sum_of_all_status(&sv);
-	mysql_mutex_unlock(&LOCK_status);
+    mysql_mutex_unlock(&LOCK_status);
     std::string msg("Command: ");
     for (auto &c : cmds) {
       auto delta = sv.com_stat[c] - saved_com_stat[c];
@@ -1359,15 +1392,15 @@ void Engine::LogStat() {
   }
 
   TIANMU_LOG(LogCtl_Level::INFO,
-              "Select: %lu/%lu, Loaded: %lu/%lu(%lu/%lu), dup: %lu/%lu, insert: "
-              "%lu/%lu, failed insert: %lu/%lu, update: "
-              "%lu/%lu",
-              tianmu_stat.select - saved.select, tianmu_stat.select, tianmu_stat.loaded - saved.loaded,
-              tianmu_stat.loaded, tianmu_stat.load_cnt - saved.load_cnt, tianmu_stat.load_cnt,
-              tianmu_stat.loaded_dup - saved.loaded_dup, tianmu_stat.loaded_dup,
-              tianmu_stat.delayinsert - saved.delayinsert, tianmu_stat.delayinsert,
-              tianmu_stat.failed_delayinsert - saved.failed_delayinsert, tianmu_stat.failed_delayinsert,
-              tianmu_stat.update - saved.update, tianmu_stat.update);
+             "Select: %lu/%lu, Loaded: %lu/%lu(%lu/%lu), dup: %lu/%lu, insert: "
+             "%lu/%lu, failed insert: %lu/%lu, update: "
+             "%lu/%lu",
+             tianmu_stat.select - saved.select, tianmu_stat.select, tianmu_stat.loaded - saved.loaded,
+             tianmu_stat.loaded, tianmu_stat.load_cnt - saved.load_cnt, tianmu_stat.load_cnt,
+             tianmu_stat.loaded_dup - saved.loaded_dup, tianmu_stat.loaded_dup,
+             tianmu_stat.delayinsert - saved.delayinsert, tianmu_stat.delayinsert,
+             tianmu_stat.failed_delayinsert - saved.failed_delayinsert, tianmu_stat.failed_delayinsert,
+             tianmu_stat.update - saved.update, tianmu_stat.update);
 
   if (tianmu_stat.loaded == saved.loaded && tianmu_stat.delayinsert > saved.delayinsert) {
     TIANMU_LOG(LogCtl_Level::ERROR, "No data loaded from insert buffer");
@@ -1390,16 +1423,16 @@ void Engine::LogStat() {
   saved = tianmu_stat;
 }
 
-void Engine::InsertDelayed(const std::string &table_path, int tid, TABLE *table) {
+void Engine::InsertDelayed(const std::string &table_path, int table_id, TABLE *table) {
   my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->read_set);
   std::shared_ptr<void> defer(nullptr,
                               [table, org_bitmap](...) { dbug_tmp_restore_column_map(table->read_set, org_bitmap); });
 
   uint32_t buf_sz = 0;
   std::unique_ptr<char[]> buf;
-  EncodeRecord(table_path, tid, table->field, table->s->fields, table->s->blob_fields, buf, buf_sz);
+  EncodeRecord(table_path, table_id, table->field, table->s->fields, table->s->blob_fields, buf, buf_sz);
 
-  int failed = 0;
+  unsigned int failed = 0;
   while (true) {
     try {
       insert_buffer.Write(utils::MappedCircularBuffer::TAG::INSERT_RECORD, buf.get(), buf_sz);
@@ -1433,7 +1466,7 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
                       std::shared_ptr<TableShare> &share) {
   int ret = 0;
   try {
-    if (tianmu_sysvar_insert_delayed) {
+    if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE) {
       if (tianmu_sysvar_enable_rowstore) {
         InsertMemRow(table_path, share, table);
       } else {
@@ -1441,6 +1474,7 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
       }
       tianmu_stat.delayinsert++;
     } else {
+      current_txn_->SetLoadSource(common::LoadSource::LS_Direct);
       auto rct = current_txn_->GetTableByPath(table_path);
       ret = rct->Insert(table);
     }
@@ -1461,8 +1495,8 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
   return ret;
 }
 
-common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) {
-  common::TIANMUError tianmu_e;
+common::TianmuError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *table_list, void *arg) {
+  common::TianmuError tianmu_e;
   TABLE *table;
   int transactional_table = 0;
 
@@ -1474,7 +1508,8 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
 
     auto tianmu_error = Engine::GetIOP(iop, *thd, *ex, table, arg);
 
-    if (tianmu_error != common::ErrorCode::SUCCESS) throw tianmu_error;
+    if (tianmu_error != common::ErrorCode::SUCCESS)
+      throw tianmu_error;
 
     std::string table_path = GetTablePath(table);
 
@@ -1483,11 +1518,15 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
 
     auto tab = current_txn_->GetTableByPath(table_path);
 
+    // Maybe not good to put this code here,just for temp.
+    bitmap_set_all(table->read_set);
+    bitmap_set_all(table->write_set);
+
     tab->LoadDataInfile(*iop);
 
     if (current_txn_->Killed()) {
       thd->send_kill_message();
-      throw common::TIANMUError(common::ErrorCode::KILLED);
+      throw common::TianmuError(common::ErrorCode::KILLED);
     }
 
     // We must invalidate the table in query cache before binlog writing and
@@ -1508,14 +1547,16 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
 
     /* ok to client */
     my_ok(thd, stats.records, 0L, name);
+  } catch (common::FormatException &e) {
+    tianmu_e = common::TianmuError(common::ErrorCode::DATA_ERROR, e.what());
   } catch (common::Exception &e) {
-    tianmu_e = common::TIANMUError(common::ErrorCode::UNKNOWN_ERROR, "Tianmu internal error");
-  } catch (common::TIANMUError &e) {
+    tianmu_e = common::TianmuError(common::ErrorCode::UNKNOWN_ERROR, "Tianmu internal error");
+  } catch (common::TianmuError &e) {
     tianmu_e = e;
   }
 
-    //if (thd->transaction.stmt.cannot_safely_rollback())
-    //    thd->transaction.all.mark_modified_non_trans_table();
+  // if (thd->transaction.stmt.cannot_safely_rollback())
+  //     thd->transaction.all.mark_modified_non_trans_table();
 
   if (transactional_table) {
     if (tianmu_e == common::ErrorCode::SUCCESS)
@@ -1528,18 +1569,21 @@ common::TIANMUError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
     mysql_unlock_tables(thd, thd->lock);
     thd->lock = 0;
   }
-  //thd->abort_on_warning = 0;
+  // thd->abort_on_warning = 0;
   return tianmu_e;
 }
 
 bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects_list,
-                        int &in_case_of_failure_can_go_to_mysql, int with_insert) {
+                           int &in_case_of_failure_can_go_to_mysql, int with_insert) {
   in_case_of_failure_can_go_to_mysql = true;
 
-  if (!table_list) return false;
-  if (with_insert) table_list = table_list->next_global;  // we skip one
+  if (!table_list)
+    return false;
+  if (with_insert)
+    table_list = table_list->next_global ? table_list->next_global : *(table_list->prev_global);  // we skip one
 
-  if (!table_list) return false;
+  if (!table_list)
+    return false;
 
   bool has_TIANMUTable = false;
   for (TABLE_LIST *tl = table_list; tl; tl = tl->next_global) {  // SZN:we go through tables
@@ -1547,7 +1591,7 @@ bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects
       // In this list we have all views, derived tables and their
       // sources, so anyway we walk through all the source tables
       // even though we seem to reject the control of views
-      if (!IsTIANMUTable(tl->table))
+      if (!IsTianmuTable(tl->table))
         return false;
       else
         has_TIANMUTable = true;
@@ -1565,7 +1609,8 @@ bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects
     longlong param = 0;
     std::string s_res;
     if (!get_parameter(thd, tianmu_var_name::TIANMU_DATAFORMAT, param, s_res)) {
-      if (boost::iequals(boost::trim_copy(s_res), "MYSQL")) return false;
+      if (boost::iequals(boost::trim_copy(s_res), "MYSQL"))
+        return false;
 
       common::DataFormatPtr df = common::DataFormat::GetDataFormat(s_res);
       if (!df) {  // parameter is UNKNOWN VALUE
@@ -1589,14 +1634,14 @@ bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects
   return true;
 }
 
-bool Engine::IsTIANMUTable(TABLE *table) {
-  return table && table->s->db_type() == rcbase_hton;  // table->db_type is always NULL
+bool Engine::IsTianmuTable(TABLE *table) {
+  return table && table->s->db_type() == tianmu_hton;  // table->db_type is always nullptr
 }
 
 const char *Engine::GetFilename(SELECT_LEX *selects_list, int &is_dumpfile) {
-  // if the function returns a filename <> NULL
+  // if the function returns a filename <> nullptr
   // additionally is_dumpfile indicates whether it was 'select into OUTFILE' or
-  // maybe 'select into DUMPFILE' if the function returns NULL it was a regular
+  // maybe 'select into DUMPFILE' if the function returns nullptr it was a regular
   // 'select' don't look into is_dumpfile in this case
   if (selects_list->parent_lex->exchange) {
     is_dumpfile = selects_list->parent_lex->exchange->dumpfile;
@@ -1606,7 +1651,8 @@ const char *Engine::GetFilename(SELECT_LEX *selects_list, int &is_dumpfile) {
 }
 
 std::unique_ptr<system::IOParameters> Engine::CreateIOParameters(const std::string &path, void *arg) {
-  if (path.empty()) return std::unique_ptr<system::IOParameters>(new system::IOParameters());
+  if (path.empty())
+    return std::unique_ptr<system::IOParameters>(new system::IOParameters());
 
   std::string data_dir;
   std::string data_path;
@@ -1615,7 +1661,7 @@ std::unique_ptr<system::IOParameters> Engine::CreateIOParameters(const std::stri
     data_dir = "";
     data_path = path;
   } else {
-    data_dir = ha_rcengine_->tianmu_data_dir;
+    data_dir = ha_tianmu_engine_->tianmu_data_dir;
     std::string db_name, tab_name;
     std::tie(db_name, tab_name) = GetNames(path);
     data_path += db_name;
@@ -1634,7 +1680,8 @@ std::unique_ptr<system::IOParameters> Engine::CreateIOParameters(const std::stri
 }
 
 std::unique_ptr<system::IOParameters> Engine::CreateIOParameters([[maybe_unused]] THD *thd, TABLE *table, void *arg) {
-  if (table == NULL) return CreateIOParameters("", arg);
+  if (table == nullptr)
+    return CreateIOParameters("", arg);
 
   return CreateIOParameters(GetTablePath(table), arg);
 }
@@ -1664,49 +1711,51 @@ void Engine::ComputeTimeZoneDiffInMinutes(THD *thd, short &sign, short &minutes)
   long msecs;
   sign = 1;
   minutes = 0;
-  if (calc_time_diff(&utc, &client_zone, 1, &secs, &msecs)) sign = -1;
+  if (calc_time_diff(&utc, &client_zone, 1, &secs, &msecs))
+    sign = -1;
   minutes = (short)(secs / 60);
 }
 
-common::TIANMUError Engine::GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params) {
+common::TianmuError Engine::GetRejectFileIOParameters(THD &thd, std::unique_ptr<system::IOParameters> &io_params) {
   std::string reject_file;
   int64_t abort_on_count = 0;
   double abort_on_threshold = 0;
 
   get_parameter(&thd, tianmu_var_name::TIANMU_REJECT_FILE_PATH, reject_file);
   if (get_parameter(&thd, tianmu_var_name::TIANMU_REJECT_FILE_PATH, reject_file) == 2)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_LOAD_REJECT_FILE parameter.");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_LOAD_REJECT_FILE parameter.");
 
   if (get_parameter(&thd, tianmu_var_name::TIANMU_ABORT_ON_COUNT, abort_on_count) == 2)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_ABORT_ON_COUNT parameter.");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_ABORT_ON_COUNT parameter.");
 
   if (get_parameter(&thd, tianmu_var_name::TIANMU_ABORT_ON_THRESHOLD, abort_on_threshold) == 2)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_ABORT_ON_THRESHOLD parameter.");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
+                               "Wrong value of TIANMU_ABORT_ON_THRESHOLD parameter.");
 
   if (abort_on_count != 0 && abort_on_threshold != 0)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
-                            "TIANMU_ABORT_ON_COUNT and TIANMU_ABORT_ON_THRESHOLD "
-                            "parameters are mutualy exclusive.");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
+                               "TIANMU_ABORT_ON_COUNT and TIANMU_ABORT_ON_THRESHOLD "
+                               "parameters are mutualy exclusive.");
 
   if (!(abort_on_threshold >= 0.0 && abort_on_threshold < 1.0))
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
-                            "TIANMU_ABORT_ON_THRESHOLD parameter value must be in range (0,1).");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
+                               "TIANMU_ABORT_ON_THRESHOLD parameter value must be in range (0,1).");
 
   if ((abort_on_count != 0 || abort_on_threshold != 0) && reject_file.empty())
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
-                            "TIANMU_ABORT_ON_COUNT or TIANMU_ABORT_ON_THRESHOLD can by only specified with "
-                            "TIANMU_REJECT_FILE_PATH parameter.");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
+                               "TIANMU_ABORT_ON_COUNT or TIANMU_ABORT_ON_THRESHOLD can by only specified with "
+                               "TIANMU_REJECT_FILE_PATH parameter.");
 
   if (!reject_file.empty() && fs::exists(reject_file))
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
-                            "Can not create the reject file, the file already exists.");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
+                               "Can not create the reject file, the file already exists.");
 
   io_params->SetRejectFile(reject_file, abort_on_count, abort_on_threshold);
   return common::ErrorCode::SUCCESS;
 }
 
-common::TIANMUError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
-                                TABLE *table, void *arg, bool for_exporter) {
+common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_params, THD &thd, sql_exchange &ex,
+                                   TABLE *table, void *arg, bool for_exporter) {
   const CHARSET_INFO *cs = ex.cs;
   bool local_load = for_exporter ? false : (bool)(thd.lex)->local_file;
   uint value_list_elements = (thd.lex)->load_value_list.elements;
@@ -1716,15 +1765,16 @@ common::TIANMUError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
   char name[FN_REFLEN];
   char *tdb = 0;
   if (table) {
-    tdb = table->s->db.str ? table->s->db.str : (char*)thd.db().str;
+    tdb = table->s->db.str ? table->s->db.str : (char *)thd.db().str;
   } else
-    tdb = (char*)thd.db().str;
+    tdb = (char *)thd.db().str;
 
   io_params = CreateIOParameters(&thd, table, arg);
   short sign, minutes;
   ComputeTimeZoneDiffInMinutes(&thd, sign, minutes);
   io_params->SetTimeZone(sign, minutes);
-
+  io_params->SetTHD(&thd);
+  io_params->SetTable(table);
   if (ex.filetype == FILETYPE_MEM) {
     io_params->load_delayed_insert_ = true;
   }
@@ -1738,7 +1788,7 @@ common::TIANMUError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
     if (!get_parameter(&thd, tianmu_var_name::TIANMU_DATAFORMAT, param, s_res)) {
       common::DataFormatPtr df = common::DataFormat::GetDataFormat(s_res);
       if (!df)
-        return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Unknown value of TIANMU_DATAFORMAT parameter.");
+        return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Unknown value of TIANMU_DATAFORMAT parameter.");
       else
         io_mode = df->GetId();
     } else
@@ -1746,7 +1796,8 @@ common::TIANMUError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
   } else
     io_mode = common::DataFormat::GetDataFormat(0)->GetId();
 
-  if (!get_parameter(&thd, tianmu_var_name::TIANMU_NULL, param, s_res)) io_params->SetNullsStr(s_res);
+  if (!get_parameter(&thd, tianmu_var_name::TIANMU_NULL, param, s_res))
+    io_params->SetNullsStr(s_res);
 
   if (io_params->LoadDelayed()) {
     std::strcpy(name, ex.file_name);
@@ -1764,34 +1815,39 @@ common::TIANMUError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
   io_params->SetOutput(io_mode, name);
 
   if (ex.field.escaped->length() > 1)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter escape std::string not supported.");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter escape std::string not supported.");
 
-  if (ex.field.enclosed->length() > 1 && (ex.field.enclosed->length() != 4 || strcasecmp(ex.field.enclosed->ptr(), "NULL") != 0))
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter enclose std::string not supported.");
+  if (ex.field.enclosed->length() > 1 &&
+      (ex.field.enclosed->length() != 4 || strcasecmp(ex.field.enclosed->ptr(), "nullptr") != 0))
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Multicharacter enclose std::string not supported.");
 
   if (!for_exporter) {
-    common::TIANMUError tianmu_err = GetRejectFileIOParameters(thd, io_params);
-    if (tianmu_err.GetErrorCode() != common::ErrorCode::SUCCESS) return tianmu_err;
+    common::TianmuError tianmu_err = GetRejectFileIOParameters(thd, io_params);
+    if (tianmu_err.GetErrorCode() != common::ErrorCode::SUCCESS)
+      return tianmu_err;
   }
 
   if (tianmu_sysvar_usemysqlimportexportdefaults) {
     io_params->SetEscapeCharacter(*ex.field.escaped->ptr());
     io_params->SetDelimiter(ex.field.field_term->ptr());
     io_params->SetLineTerminator(ex.line.line_term->ptr());
-    if (ex.field.enclosed->length() == 4 && strcasecmp(ex.field.enclosed->ptr(), "NULL") == 0)
+    if (ex.field.enclosed->length() == 4 && strcasecmp(ex.field.enclosed->ptr(), "nullptr") == 0)
       io_params->SetParameter(system::Parameter::STRING_QUALIFIER, '\0');
     else
       io_params->SetParameter(system::Parameter::STRING_QUALIFIER, *ex.field.enclosed->ptr());
 
   } else {
-    if (ex.field.escaped->alloced_length() != 0) io_params->SetEscapeCharacter(*ex.field.escaped->ptr());
+    if (ex.field.escaped->alloced_length() != 0)
+      io_params->SetEscapeCharacter(*ex.field.escaped->ptr());
 
-    if (ex.field.field_term->alloced_length() != 0) io_params->SetDelimiter(ex.field.field_term->ptr());
+    if (ex.field.field_term->alloced_length() != 0)
+      io_params->SetDelimiter(ex.field.field_term->ptr());
 
-    if (ex.line.line_term->alloced_length() != 0) io_params->SetLineTerminator(ex.line.line_term->ptr());
+    if (ex.line.line_term->alloced_length() != 0)
+      io_params->SetLineTerminator(ex.line.line_term->ptr());
 
     if (ex.field.enclosed->length()) {
-      if (ex.field.enclosed->length() == 4 && strcasecmp(ex.field.enclosed->ptr(), "NULL") == 0)
+      if (ex.field.enclosed->length() == 4 && strcasecmp(ex.field.enclosed->ptr(), "nullptr") == 0)
         io_params->SetParameter(system::Parameter::STRING_QUALIFIER, '\0');
       else
         io_params->SetParameter(system::Parameter::STRING_QUALIFIER, *ex.field.enclosed->ptr());
@@ -1800,13 +1856,13 @@ common::TIANMUError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
 
   if (io_params->EscapeCharacter() != 0 &&
       io_params->Delimiter().find(io_params->EscapeCharacter()) != std::string::npos)
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
-                            "Field terminator containing the escape character not supported.");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
+                               "Field terminator containing the escape character not supported.");
 
   if (io_params->EscapeCharacter() != 0 && io_params->StringQualifier() != 0 &&
       io_params->EscapeCharacter() == io_params->StringQualifier())
-    return common::TIANMUError(common::ErrorCode::WRONG_PARAMETER,
-                            "The same enclose and escape characters not supported.");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
+                               "The same enclose and escape characters not supported.");
 
   bool unsupported_syntax = false;
   if (cs != 0)
@@ -1816,8 +1872,11 @@ common::TIANMUError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
                             (int)(thd.variables.collation_database->number));  // default charset
 
   if (ex.skip_lines != 0) {
-    unsupported_syntax = true;
     io_params->SetParameter(system::Parameter::SKIP_LINES, (int64_t)ex.skip_lines);
+  }
+
+  if (ex.tab_id != 0) {
+    io_params->SetParameter(system::Parameter::TABLE_ID, static_cast<int64_t>(ex.tab_id));
   }
 
   if (ex.line.line_start != 0 && ex.line.line_start->length() != 0) {
@@ -1830,7 +1889,6 @@ common::TIANMUError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
   }
 
   if (value_list_elements != 0) {
-    unsupported_syntax = true;
     io_params->SetParameter(system::Parameter::VALUE_LIST_ELEMENTS, (int64_t)value_list_elements);
   }
 
@@ -1883,17 +1941,17 @@ std::shared_ptr<TableShare> Engine::GetTableShare(const TABLE_SHARE *table_share
 
 void Engine::AddTableIndex(const std::string &table_path, TABLE *table, [[maybe_unused]] THD *thd) {
   std::unique_lock<std::shared_mutex> guard(tables_keys_mutex);
-  if (!index::RCTableIndex::FindIndexTable(table_path)) {
-    index::RCTableIndex::CreateIndexTable(table_path, table);
+  if (!index::TianmuTableIndex::FindIndexTable(table_path)) {
+    index::TianmuTableIndex::CreateIndexTable(table_path, table);
   }
   auto iter = m_table_keys.find(table_path);
   if (iter == m_table_keys.end()) {
-    std::shared_ptr<index::RCTableIndex> tab = std::make_shared<index::RCTableIndex>(table_path, table);
+    std::shared_ptr<index::TianmuTableIndex> tab = std::make_shared<index::TianmuTableIndex>(table_path, table);
     m_table_keys[table_path] = tab;
   }
 }
 
-std::shared_ptr<index::RCTableIndex> Engine::GetTableIndex(const std::string &table_path) {
+std::shared_ptr<index::TianmuTableIndex> Engine::GetTableIndex(const std::string &table_path) {
   std::shared_lock<std::shared_mutex> guard(tables_keys_mutex);
   auto iter = m_table_keys.find(table_path);
   if (iter != m_table_keys.end()) {
@@ -1918,7 +1976,7 @@ void Engine::AddMemTable(TABLE *form, std::shared_ptr<TableShare> share) {
   try {
     auto table_path = share->Path();
     if (mem_table_map.find(table_path) == mem_table_map.end()) {
-      mem_table_map[table_path] = RCMemTable::CreateMemTable(share, has_mem_name(form->s->comment));
+      mem_table_map[table_path] = TianmuMemTable::CreateMemTable(share, has_mem_name(form->s->comment));
       return;
     }
     return;

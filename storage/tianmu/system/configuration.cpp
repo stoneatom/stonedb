@@ -15,7 +15,7 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335 USA
 */
 
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 // Variables to show config through mysql 'show variables' command
 char tianmu_sysvar_pushdown;
@@ -25,34 +25,35 @@ char *tianmu_sysvar_cachefolder;
 char *tianmu_sysvar_hugefiledir;
 char *tianmu_sysvar_mm_policy;
 char *tianmu_sysvar_mm_releasepolicy;
-int tianmu_sysvar_allowmysqlquerypath;
-int tianmu_sysvar_bg_load_threads;
-int tianmu_sysvar_cachereleasethreshold;
-int tianmu_sysvar_cachesizethreshold;
-int tianmu_sysvar_cachinglevel;
-int tianmu_sysvar_controlquerylog;
-int tianmu_sysvar_controltrace;
-int tianmu_sysvar_disk_usage_threshold;
-int tianmu_sysvar_distcache_size;
-int tianmu_sysvar_global_debug_level;
-int tianmu_sysvar_insert_buffer_size;
-int tianmu_sysvar_insert_cntthreshold;
-int tianmu_sysvar_insert_max_buffered;
-int tianmu_sysvar_insert_numthreshold;
-int tianmu_sysvar_insert_wait_ms;
-int tianmu_sysvar_insert_wait_time;
-int tianmu_sysvar_knlevel;
-int tianmu_sysvar_load_threads;
-int tianmu_sysvar_max_execution_time;
-int tianmu_sysvar_mm_hardlimit;
-int tianmu_sysvar_mm_large_threshold;
-int tianmu_sysvar_mm_largetempratio;
-int tianmu_sysvar_query_threads;
-int tianmu_sysvar_servermainheapsize;
-int tianmu_sysvar_sync_buffers;
-int tianmu_sysvar_threadpoolsize;
-int tianmu_sysvar_join_parallel;
-int tianmu_sysvar_join_splitrows;
+unsigned int tianmu_sysvar_allowmysqlquerypath;
+unsigned int tianmu_sysvar_bg_load_threads;
+unsigned int tianmu_sysvar_cachereleasethreshold;
+unsigned int tianmu_sysvar_cachesizethreshold;
+unsigned int tianmu_sysvar_cachinglevel;
+unsigned int tianmu_sysvar_controlquerylog;
+unsigned int tianmu_sysvar_controltrace;
+unsigned int tianmu_sysvar_disk_usage_threshold;
+unsigned int tianmu_sysvar_distcache_size;
+unsigned int tianmu_sysvar_global_debug_level;
+unsigned int tianmu_sysvar_insert_buffer_size;
+unsigned int tianmu_sysvar_insert_cntthreshold;
+unsigned int tianmu_sysvar_insert_max_buffered;
+unsigned int tianmu_sysvar_insert_numthreshold;
+unsigned int tianmu_sysvar_insert_wait_ms;
+unsigned int tianmu_sysvar_insert_wait_time;
+unsigned int tianmu_sysvar_knlevel;
+unsigned int tianmu_sysvar_load_threads;
+unsigned int tianmu_sysvar_max_execution_time;
+unsigned int tianmu_sysvar_mm_hardlimit;
+unsigned int tianmu_sysvar_mm_large_threshold;
+unsigned int tianmu_sysvar_mm_largetempratio;
+unsigned int tianmu_sysvar_query_threads;
+unsigned int tianmu_sysvar_servermainheapsize;
+unsigned int tianmu_sysvar_sync_buffers;
+unsigned int tianmu_sysvar_threadpoolsize;
+unsigned int tianmu_sysvar_join_parallel;
+unsigned int tianmu_sysvar_join_splitrows;
+unsigned int tianmu_sysvar_delete_or_update_threads;
 my_bool tianmu_sysvar_compensation_start;
 my_bool tianmu_sysvar_filterevaluation_speedup;
 my_bool tianmu_sysvar_groupby_speedup;
@@ -65,10 +66,11 @@ my_bool tianmu_sysvar_orderby_speedup;
 my_bool tianmu_sysvar_parallel_filloutput;
 my_bool tianmu_sysvar_parallel_mapjoin;
 my_bool tianmu_sysvar_qps_log;
+my_bool tianmu_sysvar_large_prefix;
 unsigned int tianmu_sysvar_lookup_max_size;
 unsigned long tianmu_sysvar_dist_policy;
 char tianmu_sysvar_force_hashjoin;
-int tianmu_sysvar_start_async;
+unsigned int tianmu_sysvar_start_async;
 char *tianmu_sysvar_async_join;
 char tianmu_sysvar_join_disable_switch_side;
 char tianmu_sysvar_enable_histogram_cmap_bloom;
@@ -79,5 +81,5 @@ async_join_setting tianmu_sysvar_async_join_setting;
 void ConfigureRCControl() {
   using namespace Tianmu;
   int control_level = tianmu_sysvar_controltrace;
-  (control_level > 0) ? rc_control_.setOn() : rc_control_.setOff();
+  (control_level > 0) ? tianmu_control_.setOn() : tianmu_control_.setOff();
 }

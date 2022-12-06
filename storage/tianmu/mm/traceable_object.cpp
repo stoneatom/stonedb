@@ -24,13 +24,13 @@
 #include "mm/release_tracker.h"
 
 #include "system/fet.h"
-#include "system/rc_system.h"
 #include "system/res_manager.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace mm {
 
-MemoryHandling *TraceableObject::m_MemHandling = NULL;
+MemoryHandling *TraceableObject::m_MemHandling = nullptr;
 
 std::atomic_size_t TraceableObject::globalFreeable;
 std::atomic_size_t TraceableObject::globalUnFreeable;
@@ -53,7 +53,7 @@ TraceableObject::UniquePtr TraceableObject::alloc_ptr(size_t size, BLOCK_TYPE ty
 
 void *TraceableObject::alloc(size_t size, BLOCK_TYPE type, bool nothrow) {
   void *addr = Instance()->alloc(size, type, this, nothrow);
-  if (addr != NULL) {
+  if (addr != nullptr) {
     size_t s = Instance()->rc_msize(addr, this);
     m_sizeAllocated += s;
     if (!IsLocked() && TraceableType() == TO_TYPE::TO_PACK)
@@ -66,7 +66,8 @@ void *TraceableObject::alloc(size_t size, BLOCK_TYPE type, bool nothrow) {
 
 void TraceableObject::dealloc(void *ptr) {
   size_t s;
-  if (ptr == NULL) return;
+  if (ptr == nullptr)
+    return;
   s = Instance()->rc_msize(ptr, this);
   Instance()->dealloc(ptr, this);
   m_sizeAllocated -= s;
@@ -77,11 +78,12 @@ void TraceableObject::dealloc(void *ptr) {
 }
 
 void *TraceableObject::rc_realloc(void *ptr, size_t size, BLOCK_TYPE type) {
-  if (ptr == NULL) return alloc(size, type);
+  if (ptr == nullptr)
+    return alloc(size, type);
 
   size_t s1 = Instance()->rc_msize(ptr, this);
   void *addr = Instance()->rc_realloc(ptr, size, this, type);
-  if (addr != NULL) {
+  if (addr != nullptr) {
     size_t s = Instance()->rc_msize(addr, this);
     m_sizeAllocated += s;
     m_sizeAllocated -= s1;
@@ -99,26 +101,26 @@ void *TraceableObject::rc_realloc(void *ptr, size_t size, BLOCK_TYPE type) {
 size_t TraceableObject::rc_msize(void *ptr) { return Instance()->rc_msize(ptr, this); }
 
 TraceableObject::TraceableObject()
-    : next(NULL),
-      prev(NULL),
-      tracker(NULL),
+    : next(nullptr),
+      prev(nullptr),
+      tracker(nullptr),
       m_preUnused(false),
       m_sizeAllocated(0),
       m_locking_mutex(Instance()->m_release_mutex) {}
 TraceableObject::TraceableObject(size_t comp_size, size_t uncomp_size, std::string hugedir, core::DataCache *owner_,
                                  size_t hugesize)
-    : next(NULL),
-      prev(NULL),
-      tracker(NULL),
+    : next(nullptr),
+      prev(nullptr),
+      tracker(nullptr),
       m_preUnused(false),
       m_sizeAllocated(0),
       owner(owner_),
       m_locking_mutex(Instance(comp_size, uncomp_size, hugedir, owner_, hugesize)->m_release_mutex) {}
 
 TraceableObject::TraceableObject(const TraceableObject &to)
-    : next(NULL),
-      prev(NULL),
-      tracker(NULL),
+    : next(nullptr),
+      prev(nullptr),
+      tracker(nullptr),
       m_preUnused(false),
       m_sizeAllocated(0),
       m_locking_mutex(Instance()->m_release_mutex),
@@ -127,7 +129,8 @@ TraceableObject::TraceableObject(const TraceableObject &to)
 TraceableObject::~TraceableObject() {
   // Instance()->AssertNoLeak(this);
   DEBUG_ASSERT(m_sizeAllocated == 0 /*, "TraceableObject size accounting"*/);
-  if (IsTracked()) StopAccessTracking();
+  if (IsTracked())
+    StopAccessTracking();
 }
 
 void TraceableObject::Lock() {
@@ -150,7 +153,7 @@ void TraceableObject::Lock() {
   if (m_lock_count == 32766) {
     std::string message =
         "TraceableObject locked too many times. Object type: " + std::to_string((int)this->TraceableType());
-    rc_control_ << system::lock << message << system::unlock;
+    tianmu_control_ << system::lock << message << system::unlock;
     TIANMU_ERROR(message.c_str());
   }
 }
@@ -174,7 +177,7 @@ void TraceableObject::SetNumOfLocks(int n) {
   if (m_lock_count == 32766) {
     std::string message =
         "TraceableObject locked too many times. Object type: " + std::to_string((int)this->TraceableType());
-    rc_control_ << system::lock << message << system::unlock;
+    tianmu_control_ << system::lock << message << system::unlock;
     TIANMU_ERROR(message.c_str());
   }
 }
@@ -204,7 +207,8 @@ void TraceableObject::UnlockAndResetOrDeletePack(std::shared_ptr<core::Pack> &pa
     } else
       reset_outside = true;
   }
-  if (reset_outside) pack.reset();
+  if (reset_outside)
+    pack.reset();
 }
 
 void TraceableObject::UnlockAndResetPack(std::shared_ptr<core::Pack> &pack) {
@@ -222,7 +226,7 @@ void TraceableObject::DestructionLock() {
   m_lock_count++;
 }
 
-int TraceableObject::MemorySettingsScale() { return ha_rcengine_->getResourceManager()->GetMemoryScale(); }
+int TraceableObject::MemorySettingsScale() { return ha_tianmu_engine_->getResourceManager()->GetMemoryScale(); }
 
 void TraceableObject::deinitialize(bool detect_leaks) {
   if (TraceableType() != TO_TYPE::TO_INITIALIZER) {
@@ -231,7 +235,8 @@ void TraceableObject::deinitialize(bool detect_leaks) {
   }
 
   if (m_MemHandling) {  // Used only in MemoryManagerInitializer!
-    if (detect_leaks) m_MemHandling->ReportLeaks();
+    if (detect_leaks)
+      m_MemHandling->ReportLeaks();
     delete m_MemHandling;
   }
 }
@@ -249,7 +254,8 @@ int64_t TraceableObject::MemScale2BufSizeLarge(int ms)
   //	int64_t to_add = 8_GB;
   for (; sc16 > 0; sc16--) {
     max_total_size += to_add;
-    if (to_add < 12_GB) to_add += 1_GB;
+    if (to_add < 12_GB)
+      to_add += 1_GB;
   }
   return max_total_size;
 }

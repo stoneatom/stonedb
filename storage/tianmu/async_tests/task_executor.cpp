@@ -23,7 +23,7 @@
 
 #ifndef DISABLE_USED_FOR_TIANMU
 #include "core/engine.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #endif
 
 namespace Tianmu {
@@ -58,7 +58,8 @@ class AppTemplate {
       pollabled = true;
     }
 
-    if (_stopped.load(std::memory_order_relaxed)) base::engine().exit(0);
+    if (_stopped.load(std::memory_order_relaxed))
+      base::engine().exit(0);
 
     return pollabled;
   }

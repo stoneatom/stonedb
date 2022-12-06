@@ -29,16 +29,16 @@ namespace compress {
 template <class T>
 class TopBitDict : public DataFilt<T> {
  public:
-  static const uint MAXTOTAL = RangeCoder::MAX_TOTAL;
-  static const uint MAXLEN = DICMAP_MAX;
-  static const uint BITSTART = 7;
-  static const uint BITSTEP = 2;
-  static const uint KEYOCCUR = 8;
-  static const double MINPREDICT;
+  static const uint MAX_TOTAL_ = RangeCoder::MAX_TOTAL_;
+  static const uint MAX_LEN_ = DICMAP_MAX;
+  static const uint BIT_START_ = 7;
+  static const uint BIT_STEP_ = 2;
+  static const uint KEY_OCCUR_ = 8;
+  static const double MIN_PREDICT_;
   enum class TopBottom { tbTop, tbBottom };  // which part of bits is compressed
 
  private:
-  const TopBottom topbottom;
+  const TopBottom top_bottom_;
 
   // uint* levels[2];		// for temporary use in FindOptimum()
   // T* datasort;
@@ -51,25 +51,25 @@ class TopBitDict : public DataFilt<T> {
   //};
   // uint total;
 
-  Dictionary<T> counters[2];
-  T bitlow;  // no. of bits in lower part
+  Dictionary<T> counters_[2];
+  T bitlow_;  // no. of bits in lower part
 
   // for merging data during decompression
-  T decoded[MAXLEN];  // decoded 'highs' of values
+  T decoded_[MAX_LEN_];  // decoded_ 'highs' of values
 
-  T maxval_merge;
+  T maxval_merge_;
 
   // Finds optimum no. of bits to store in the dictionary.
   uint FindOptimum(DataSet<T> *dataset, uint nbit, uint &opt_bit, Dictionary<T> *&opt_dict);
   bool Insert(Dictionary<T> *dict, T *data, uint nbit, uint bit, uint nrec, uint skiprec);
-  static const uint INF = UINT_MAX;
+  static const uint INF_ = UINT_MAX;
 
-  virtual void LogCompress(FILE *f) { std::fprintf(f, "%u %u", this->codesize[0], this->codesize[1]); }
+  virtual void LogCompress(FILE *f) { std::fprintf(f, "%u %u", this->codesize_[0], this->codesize_[1]); }
 
  public:
-  TopBitDict(bool top) : topbottom(top ? TopBottom::tbTop : TopBottom::tbBottom) {}
+  TopBitDict(bool top) : top_bottom_(top ? TopBottom::tbTop : TopBottom::tbBottom) {}
   virtual ~TopBitDict() = default;
-  char const *GetName() override { return topbottom == TopBottom::tbTop ? (char *)"top" : (char *)"low"; }
+  char const *GetName() override { return top_bottom_ == TopBottom::tbTop ? (char *)"top" : (char *)"low"; }
   bool Encode(RangeCoder *coder, DataSet<T> *dataset) override;
   void Decode(RangeCoder *coder, DataSet<T> *dataset) override;
   void Merge(DataSet<T> *dataset) override;

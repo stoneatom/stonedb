@@ -33,19 +33,21 @@ class TableShare;
 
 struct COL_META {
   uint32_t magic;
-  uint32_t ver;         // file version
-  uint8_t pss;          // pack size shift
-  common::CT type;      // type
-  common::PackFmt fmt;  // data format: LZ4, snappy, lookup, raw, etc
+  uint32_t ver;             // file version
+  uint8_t pss;              // pack size shift
+  common::ColumnType type;  // type
+  common::PackFmt fmt;      // data format: LZ4, snappy, lookup, raw, etc
   uint8_t flag;
   uint32_t precision;
   uint32_t scale;
 };
 
 struct alignas(128) COL_VER_HDR_V3 {
-  uint64_t nr;  // no. of records
-  uint64_t nn;  // no. of nulls
-  uint64_t np;  // no. of packs
+  uint64_t numOfRecords;  // number of records
+  uint64_t numOfNulls;    // number of nulls
+  uint64_t numOfPacks;    // number of packs
+  uint64_t numOfDeleted;  // number of deleted
+
   uint64_t auto_inc_next;
   int64_t min;
   int64_t max;
@@ -59,7 +61,7 @@ struct alignas(128) COL_VER_HDR_V3 {
 using COL_VER_HDR = COL_VER_HDR_V3;
 
 class ColumnShare final {
-  friend class RCAttr;
+  friend class TianmuAttr;
 
  public:
   ColumnShare() = delete;
@@ -67,7 +69,7 @@ class ColumnShare final {
   ColumnShare(ColumnShare const &) = delete;
   void operator=(ColumnShare const &x) = delete;
   ColumnShare(TableShare *owner, common::TX_ID ver, uint32_t i, const fs::path &p, const Field *f)
-      : owner(owner), m_path(p), col_id(i) {
+      : owner(owner), m_path(p), col_id(i), field_name_(f->field_name) {
     ct.SetCollation({f->charset(), f->derivation()});
     ct.SetAutoInc(f->flags & AUTO_INCREMENT_FLAG);
     Init(ver);
@@ -92,9 +94,10 @@ class ColumnShare final {
   uint8_t pss;
   common::PACK_INDEX GetPackIndex(DPN *dpn) const {
     auto i = std::distance(start, dpn);
-    ASSERT(i >= 0 && size_t(i) < cap, "bad index " + std::to_string(i));
+    ASSERT(i >= 0 && size_t(i) < capacity, "bad index " + std::to_string(i));
     return i;
   }
+  std::string GetFieldName() const { return field_name_; }
 
  private:
   void Init(common::TX_ID xid);
@@ -107,10 +110,10 @@ class ColumnShare final {
   ColumnType ct;
   int dn_fd{-1};
   DPN *start;
-  size_t cap{0};  // current capacity of the dn array
+  size_t capacity{0};  // current capacity of the dn array
   common::PackType pt;
   uint32_t col_id;
-
+  std::string field_name_;
   struct seg {
     uint64_t offset;
     uint64_t len;

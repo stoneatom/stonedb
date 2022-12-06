@@ -20,8 +20,8 @@
 #include "common/assert.h"
 #include "core/compilation_tools.h"
 #include "core/engine.h"
-#include "item_timefunc.h"
 #include "core/transaction.h"
+#include "item_timefunc.h"
 #include "types/value_parser4txt.h"
 
 namespace Tianmu {
@@ -48,7 +48,7 @@ MysqlExpression::MysqlExpression(Item *item, Item2VarID &item2varid) {
 
   this->item2varid = &item2varid;
   this->item = TransformTree(item, TransformDirection::FORWARD);
-  this->item2varid = NULL;
+  this->item2varid = nullptr;
 }
 
 MysqlExpression::~MysqlExpression() { TransformTree(item, TransformDirection::BACKWARD); }
@@ -59,7 +59,7 @@ bool MysqlExpression::HandledResultType(Item *item) {
   Item_result type = item->result_type();
   if ((dynamic_cast<Item_func_get_user_var *>(item)) && type == STRING_RESULT) {
     String s;
-    if (item->val_str(&s) == NULL)
+    if (item->val_str(&s) == nullptr)
       item->max_length = 0;
     else
       item->max_length = (dynamic_cast<Item_func_get_user_var *>(item))->val_str(&s)->length();
@@ -78,11 +78,14 @@ bool MysqlExpression::HandledFieldType(Item_result type) {
 }
 
 bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &fields, bool toplevel /*= true*/,
-                                             bool *has_aggregation /*= NULL*/) {
+                                             bool *has_aggregation /*= nullptr*/) {
   // printItemTree(item);
-  if (!item) return false;
-  if (toplevel && !HandledResultType(item)) return false;
-  if (toplevel && has_aggregation) *has_aggregation = false;
+  if (!item)
+    return false;
+  if (toplevel && !HandledResultType(item))
+    return false;
+  if (toplevel && has_aggregation)
+    *has_aggregation = false;
 
   /*
    * *FIXME*
@@ -100,23 +103,19 @@ bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &field
 
     case static_cast<int>(Item_tianmufield::enumTIANMUFiledItem::TIANMUFIELD_ITEM):
       if (has_aggregation) {
-        if (Query::IsAggregationItem(((Item_tianmufield *)item)->OriginalItem())) *has_aggregation = true;
+        if (Query::IsAggregationItem(((Item_tianmufield *)item)->OriginalItem()))
+          *has_aggregation = true;
       }
       fields.insert(((Item_tianmufield *)item)->OriginalItem());
       return true;
     case Item::FIELD_ITEM:
-      if (((Item_field *)item)->field && !HandledFieldType(item->result_type())) return false;
+      if (((Item_field *)item)->field && !HandledFieldType(item->result_type()))
+        return false;
       fields.insert(item);
       return true;
     case Item::FUNC_ITEM: {
-      if (dynamic_cast<Item_func_trig_cond *>(item) != NULL) return false;
-
-      // currently stored procedures not supported
-      if (dynamic_cast<Item_func_sp *>(item) != NULL) {
-        Item_func_sp *ifunc = dynamic_cast<Item_func_sp *>(item);
-        if (ifunc->argument_count() != 0) return false;
-        return true;
-      }
+      if (dynamic_cast<Item_func_trig_cond *>(item) != nullptr)
+        return false;
 
       // Otherwise, it's a regular function/operator (hopefully)
       Item_func *ifunc = dynamic_cast<Item_func *>(item);
@@ -124,7 +123,8 @@ bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &field
       for (uint i = 0; i < ifunc->argument_count(); i++) {
         Item **args = ifunc->arguments();
         correct = (correct && SanityAggregationCheck(args[i], fields, false, has_aggregation));
-        if (!correct) break;
+        if (!correct)
+          break;
       }
       return correct;
     }
@@ -135,19 +135,23 @@ bool MysqlExpression::SanityAggregationCheck(Item *item, std::set<Item *> &field
       bool correct = true;
       while ((arg = li++)) {
         correct = (correct && SanityAggregationCheck(arg, fields, false, has_aggregation));
-        if (!correct) break;
+        if (!correct)
+          break;
       }
       return correct;
     }
     case Item::SUM_FUNC_ITEM: {
-      if (!HandledFieldType(item->result_type())) return false;
-      if (has_aggregation) *has_aggregation = true;
+      if (!HandledFieldType(item->result_type()))
+        return false;
+      if (has_aggregation)
+        *has_aggregation = true;
       fields.insert(item);
       return true;
     }
     case Item::REF_ITEM: {
       Item_ref *iref = dynamic_cast<Item_ref *>(item);
-      if (!iref->ref) return false;
+      if (!iref->ref)
+        return false;
       Item *arg = *(iref->ref);
       return SanityAggregationCheck(arg, fields, toplevel, has_aggregation);
     }
@@ -161,7 +165,7 @@ Item_tianmufield *MysqlExpression::GetTianmufieldItem(Item_field *ifield) {
   auto key = item2varid->find(ifield);
   DEBUG_ASSERT(key != item2varid->end());
   auto it = tianmu_fields_cache.find(key->second);
-  Item_tianmufield *tianmufield = NULL;
+  Item_tianmufield *tianmufield = nullptr;
   if (it != tianmu_fields_cache.end()) {
     tianmufield = *it->second.begin();
     tianmufield->varID.push_back(key->second);
@@ -385,39 +389,41 @@ DataType MysqlExpression::EvalType(TypOfVars *tv) {
   //  type = DataType();
   switch (mysql_type) {
     case INT_RESULT:
-      type = DataType(common::CT::BIGINT);
+      type = DataType(common::ColumnType::BIGINT);
       break;
     case REAL_RESULT:
-      type = DataType(common::CT::FLOAT);
+      type = DataType(common::ColumnType::FLOAT);
       break;
     case DECIMAL_RESULT:
-      type = DataType(common::CT::NUM, decimal_precision, decimal_scale);
+      type = DataType(common::ColumnType::NUM, decimal_precision, decimal_scale);
       break;
     case STRING_RESULT:  // GA: in case of time item->max_length can contain
                          // invalid value
       if ((item->type() != Item_tianmufield::get_tianmuitem_type() && item->field_type() == MYSQL_TYPE_TIME) ||
           (item->type() == Item_tianmufield::get_tianmuitem_type() &&
            static_cast<Item_tianmufield *>(item)->IsAggregation() == false && item->field_type() == MYSQL_TYPE_TIME))
-        type = DataType(common::CT::TIME, 17, 0, item->collation);
-      else if ((item->type() != Item_tianmufield::get_tianmuitem_type() && item->field_type() == MYSQL_TYPE_TIMESTAMP) ||
+        type = DataType(common::ColumnType::TIME, 17, 0, item->collation);
+      else if ((item->type() != Item_tianmufield::get_tianmuitem_type() &&
+                item->field_type() == MYSQL_TYPE_TIMESTAMP) ||
                (item->type() == Item_tianmufield::get_tianmuitem_type() &&
                 static_cast<Item_tianmufield *>(item)->IsAggregation() == false &&
                 item->field_type() == MYSQL_TYPE_TIMESTAMP))
-        type = DataType(common::CT::TIMESTAMP, 17, 0, item->collation);
+        type = DataType(common::ColumnType::TIMESTAMP, 17, 0, item->collation);
       else if ((item->type() != Item_tianmufield::get_tianmuitem_type() && item->field_type() == MYSQL_TYPE_DATETIME) ||
                (item->type() == Item_tianmufield::get_tianmuitem_type() &&
                 static_cast<Item_tianmufield *>(item)->IsAggregation() == false &&
                 item->field_type() == MYSQL_TYPE_DATETIME))
-        type = DataType(common::CT::DATETIME, 17, 0, item->collation);
+        type = DataType(common::ColumnType::DATETIME, 17, 0, item->collation);
       else if ((item->type() != Item_tianmufield::get_tianmuitem_type() && item->field_type() == MYSQL_TYPE_DATE) ||
                (item->type() == Item_tianmufield::get_tianmuitem_type() &&
-                static_cast<Item_tianmufield *>(item)->IsAggregation() == false && item->field_type() == MYSQL_TYPE_DATE))
-        type = DataType(common::CT::DATE, 17, 0, item->collation);
+                static_cast<Item_tianmufield *>(item)->IsAggregation() == false &&
+                item->field_type() == MYSQL_TYPE_DATE))
+        type = DataType(common::ColumnType::DATE, 17, 0, item->collation);
       else
         // type = DataType(common::CT::STRING, item->max_length, 0,
         // item->collation);
         type =
-            DataType(common::CT::STRING,
+            DataType(common::ColumnType::STRING,
                      (item->str_value.length() == 0) ? item->max_length
                                                      : (item->str_value.length() * item->collation.collation->mbmaxlen),
                      0, item->collation);
@@ -477,9 +483,11 @@ void MysqlExpression::CheckDecimalError(int err) {
 std::shared_ptr<ValueOrNull> MysqlExpression::ItemReal2ValueOrNull(Item *item) {
   auto val = std::make_shared<ValueOrNull>();
   double v = item->val_real();
-  if (v == -0.0) v = 0.0;
+  if (v == -0.0)
+    v = 0.0;
   int64_t vint = *(int64_t *)&v;
-  if (vint == common::NULL_VALUE_64) vint++;
+  if (vint == common::NULL_VALUE_64)
+    vint++;
   v = *(double *)&vint;
   val->SetDouble(v);
   if (item->null_value) {
@@ -492,8 +500,9 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemDecimal2ValueOrNull(Item *item
   auto val = std::make_shared<ValueOrNull>();
   my_decimal dec;
   my_decimal *retdec = item->val_decimal(&dec);
-  if (retdec != NULL) {
-    if (retdec != &dec) my_decimal2decimal(retdec, &dec);
+  if (retdec != nullptr) {
+    if (retdec != &dec)
+      my_decimal2decimal(retdec, &dec);
     int64_t v;
     int err;
     // err = my_decimal_shift((uint)-1, &dec, item->decimals <= 18 ?
@@ -507,27 +516,29 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemDecimal2ValueOrNull(Item *item
     CheckDecimalError(err);
     val->SetFixed(v);
   }
-  if (item->null_value) return std::make_shared<ValueOrNull>();
+  if (item->null_value)
+    return std::make_shared<ValueOrNull>();
   return val;
 }
 
-std::shared_ptr<ValueOrNull> MysqlExpression::ItemString2ValueOrNull(Item *item, int maxstrlen, common::CT a_type) {
+std::shared_ptr<ValueOrNull> MysqlExpression::ItemString2ValueOrNull(Item *item, int maxstrlen,
+                                                                     common::ColumnType a_type) {
   auto val = std::make_shared<ValueOrNull>();
   String string_result;
   String *ret = item->val_str(&string_result);
-  if (ret != NULL) {
+  if (ret != nullptr) {
     char *p = ret->c_ptr_safe();
     if (ATI::IsDateTimeType(a_type)) {
-      types::RCDateTime rcdt;
+      types::TianmuDateTime tianmu_dt;
       types::BString rbs(p);
       if (rbs.IsNull())
         return val = std::make_shared<ValueOrNull>(common::NULL_VALUE_64);
       else {
-        common::ErrorCode rc = types::ValueParserForText::ParseDateTime(rbs, rcdt, a_type);
+        common::ErrorCode rc = types::ValueParserForText::ParseDateTime(rbs, tianmu_dt, a_type);
         if (common::IsError(rc)) {
           return val = std::make_shared<ValueOrNull>(common::NULL_VALUE_64);
         }
-        val->SetFixed(rcdt.GetInt64());
+        val->SetFixed(tianmu_dt.GetInt64());
       }
     } else {
       uint len = ret->length();
@@ -540,93 +551,92 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemString2ValueOrNull(Item *item,
       val->MakeStringOwner();
     }
   }
-  if (item->null_value) return std::make_shared<ValueOrNull>();
+  if (item->null_value)
+    return std::make_shared<ValueOrNull>();
   return val;
 }
 
 std::shared_ptr<ValueOrNull> MysqlExpression::ItemInt2ValueOrNull(Item *item) {
   auto val = std::make_shared<ValueOrNull>();
   int64_t v = item->val_int();
-  if (v == common::NULL_VALUE_64) v++;
-  if (v < 0 && item->unsigned_flag)
-    throw common::NotImplementedException("Out of range: unsigned data type is not supported.");
+  if (v == common::NULL_VALUE_64)
+    v++;
   val->SetFixed(v);
-  if (item->null_value) return std::make_shared<ValueOrNull>();
+  if (item->null_value)
+    return std::make_shared<ValueOrNull>();
   return val;
 }
 
-bool SameTIANMUField(Item_tianmufield *const &l, Item_tianmufield *const &r) {
-  return (!(l || r)) || (l && r && ((*l) == (*r)));
+bool SameTIANMUField(Item_tianmufield *const &left, Item_tianmufield *const &right) {
+  return (!(left || right)) || (left && right && ((*left) == (*right)));
 }
 
-bool SameTIANMUFieldSet(MysqlExpression::tianmu_fields_cache_t::value_type const &l,
-                     MysqlExpression::tianmu_fields_cache_t::value_type const &r) {
-  return l.second.size() == r.second.size() && equal(l.second.begin(), l.second.end(), r.second.begin(), SameTIANMUField);
+bool SameTIANMUFieldSet(MysqlExpression::tianmu_fields_cache_t::value_type const &left,
+                        MysqlExpression::tianmu_fields_cache_t::value_type const &right) {
+  return left.second.size() == right.second.size() &&
+         equal(left.second.begin(), left.second.end(), right.second.begin(), SameTIANMUField);
 }
 
 bool operator==(Item const &, Item const &);
 
 namespace {
-bool generic_item_same(Item const &l_, Item const &r_) {
-  return ((&l_ == &r_) || ((l_.type() == r_.type()) && (l_.result_type() == r_.result_type()) &&
-                           (l_.cast_to_int_type() == r_.cast_to_int_type()) &&
-                           (l_.string_field_type() == r_.string_field_type()) && (l_.field_type() == r_.field_type()) &&
-                           (l_.const_during_execution() == r_.const_during_execution()) && (l_ == r_)));
+bool generic_item_same(Item const &left, Item const &right) {
+  return ((&left == &right) ||
+          ((left.type() == right.type()) && (left.result_type() == right.result_type()) &&
+           (left.cast_to_int_type() == right.cast_to_int_type()) &&
+           (left.string_field_type() == right.string_field_type()) && (left.field_type() == right.field_type()) &&
+           (left.const_during_execution() == right.const_during_execution()) && (left == right)));
 }
 }  // namespace
 
-bool operator==(Item const &l_, Item const &r_) {
-  Item::Type t = l_.type();
-  bool same = t == r_.type();
+bool operator==(Item const &left, Item const &right) {
+  Item::Type t = left.type();
+  bool same = t == right.type();
   if (same) {
     switch (static_cast<int>(t)) {
       case (Item::FIELD_ITEM): {
         same = false;  // not implemented
                        //              Item_field const* l = static_cast<Item_field
-                       //              const*>(&l_); Item_field const* r =
+                       //              const*>(&left); Item_field const* r =
                        //              static_cast<Item_field const*>(&r_);
                        //                  same = l->field->
       } break;
       case (Item::COND_ITEM):
       case (Item::FUNC_ITEM): {
-        Item_func const *l = static_cast<Item_func const *>(&l_);
-        Item_func const *r = static_cast<Item_func const *>(&r_);
+        Item_func const *l = static_cast<Item_func const *>(&left);
+        Item_func const *r = static_cast<Item_func const *>(&right);
         same = !std::strcmp(l->func_name(), r->func_name());
         same = same && (l->arg_count == r->arg_count);
         same = same && l->functype() == r->functype();
+        // add for the diff operation, as below example:
+        // select EXTRACT(DAY_HOUR FROM a), EXTRACT(MINUTE_SECOND FROM b) from xxx;
+        same = same && l->item_name.eq_safe(r->item_name);
         if (l->functype() == Item_func::GUSERVAR_FUNC) {
           if (same) {
-            Item_func_get_user_var const *ll = static_cast<Item_func_get_user_var const *>(&l_);
-            Item_func_get_user_var const *rr = static_cast<Item_func_get_user_var const *>(&r_);
+            Item_func_get_user_var const *ll = static_cast<Item_func_get_user_var const *>(&left);
+            Item_func_get_user_var const *rr = static_cast<Item_func_get_user_var const *>(&right);
             same = !std::strcmp(ll->name.ptr(), rr->name.ptr());
           }
         } else {
           same = same && l->arg_count == r->arg_count;
           for (uint i = 0; same && (i < l->arg_count); ++i) same = same && (*l->arguments()[i] == *r->arguments()[i]);
 
-          // Item_func* lll = (Item_func*)&l;
-          // Item_func* mmm = (Item_func*)&r;
-
-          // bool x = l->const_item();
-          // bool y = r->const_item();
-          // longlong zzz = lll->val_int_result();
-          // longlong vvv = mmm->val_int_result();
           same = same && (l->const_item() == r->const_item());
-          if (same && l->const_item()) same = ((Item_func *)&l_)->val_int() == ((Item_func *)&r_)->val_int();
-          if (dynamic_cast<const Item_date_add_interval *>(&l_)) {
-            const Item_date_add_interval *l = static_cast<const Item_date_add_interval *>(&l_);
-            const Item_date_add_interval *r = static_cast<const Item_date_add_interval *>(&r_);
-            same = same && dynamic_cast<const Item_date_add_interval *>(&r_);
-            same = same && ((l->int_type == r->int_type) && (l->date_sub_interval == r->date_sub_interval));
-          }
+          if (same && l->const_item())
+            same = ((Item_func *)&left)->val_int() == ((Item_func *)&right)->val_int();
+
+          const Item_date_add_interval *l = static_cast<const Item_date_add_interval *>(&left);
+          const Item_date_add_interval *r = static_cast<const Item_date_add_interval *>(&right);
+          same = same && ((l->int_type == r->int_type) && (l->date_sub_interval == r->date_sub_interval));
+
           if (l->functype() == Item_func::IN_FUNC) {
-            const Item_func_in *l = static_cast<const Item_func_in *>(&l_);
-            const Item_func_in *r = static_cast<const Item_func_in *>(&r_);
+            const Item_func_in *l = static_cast<const Item_func_in *>(&left);
+            const Item_func_in *r = static_cast<const Item_func_in *>(&right);
             same = same && l->negated == r->negated;
           }
           if (same && (l->functype() == Item_func::COND_AND_FUNC || l->functype() == Item_func::COND_OR_FUNC)) {
-            Item_cond *l = const_cast<Item_cond *>(static_cast<Item_cond const *>(&l_));
-            Item_cond *r = const_cast<Item_cond *>(static_cast<Item_cond const *>(&r_));
+            Item_cond *l = const_cast<Item_cond *>(static_cast<Item_cond const *>(&left));
+            Item_cond *r = const_cast<Item_cond *>(static_cast<Item_cond const *>(&right));
             List_iterator<Item> li(*l->argument_list());
             List_iterator<Item> ri(*r->argument_list());
             Item *il, *ir;
@@ -641,13 +651,13 @@ bool operator==(Item const &l_, Item const &r_) {
         }
       } break;
       case static_cast<int>(Item_tianmufield::enumTIANMUFiledItem::TIANMUFIELD_ITEM): {
-        Item_tianmufield const *l = static_cast<Item_tianmufield const *>(&l_);
-        Item_tianmufield const *r = static_cast<Item_tianmufield const *>(&r_);
+        Item_tianmufield const *l = static_cast<Item_tianmufield const *>(&left);
+        Item_tianmufield const *r = static_cast<Item_tianmufield const *>(&right);
         same = (*l == *r);
       } break;
       case (Item::REF_ITEM): {
-        Item_ref const *l = static_cast<Item_ref const *>(&l_);
-        Item_ref const *r = static_cast<Item_ref const *>(&r_);
+        Item_ref const *l = static_cast<Item_ref const *>(&left);
+        Item_ref const *r = static_cast<Item_ref const *>(&right);
         same = (!(l->ref || r->ref)) ||
                (l->ref && r->ref &&
                 ((!(*(l->ref) || *(r->ref))) || (*(l->ref) && *(r->ref) && (*(*(l->ref)) == *(*(r->ref))))));
@@ -658,10 +668,10 @@ bool operator==(Item const &l_, Item const &r_) {
       case (Item::REAL_ITEM):
       case (Item::VARBIN_ITEM):
       case (Item::INT_ITEM): {
-        same = l_.eq(&r_, true);
+        same = left.eq(&right, true);
       } break;
       default: {
-        same = generic_item_same(l_, r_);
+        same = generic_item_same(left, right);
       } break;
     }
   }
@@ -671,8 +681,10 @@ bool operator==(Item const &l_, Item const &r_) {
 bool MysqlExpression::operator==(MysqlExpression const &other) const {
   return ((mysql_type == other.mysql_type) && (decimal_precision == other.decimal_precision) &&
           (decimal_scale == other.decimal_scale) && (deterministic == other.deterministic) &&
-          (*item == *(other.item)) && (tianmu_fields_cache.size() == other.tianmu_fields_cache.size()) && vars == other.vars &&
-          equal(tianmu_fields_cache.begin(), tianmu_fields_cache.end(), other.tianmu_fields_cache.begin(), SameTIANMUFieldSet));
+          (*item == *(other.item)) && (tianmu_fields_cache.size() == other.tianmu_fields_cache.size()) &&
+          vars == other.vars &&
+          equal(tianmu_fields_cache.begin(), tianmu_fields_cache.end(), other.tianmu_fields_cache.begin(),
+                SameTIANMUFieldSet));
 }
 }  // namespace core
 }  // namespace Tianmu

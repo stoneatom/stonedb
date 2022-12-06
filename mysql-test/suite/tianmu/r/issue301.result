@@ -1,0 +1,497 @@
+use test;
+CREATE TABLE t1 (a INT NOT NULL, b INT)engine=tianmu;
+INSERT INTO t1 VALUES (1, 1),(1,2),(1,3);
+select * from t1 where 1=1 and 1=1 or b>2;
+a	b
+1	1
+1	2
+1	3
+select * from t1 where b>2 or 1=2;
+a	b
+1	3
+select * from t1 where b>2 or 1<2;
+a	b
+1	1
+1	2
+1	3
+select * from t1 where b>2 or 1>2;
+a	b
+1	3
+select * from t1 where b>2 or 1=1;
+a	b
+1	1
+1	2
+1	3
+select * from t1 where b>2 or 1;
+a	b
+1	1
+1	2
+1	3
+select * from t1 where b>2 or 0;
+a	b
+1	3
+select * from t1 where ( 1> '1.1' ) or b>2;
+a	b
+1	3
+select * from t1 where ( 1 > 1.1 ) or b>2;
+a	b
+1	3
+select * from t1 where ( 1.2 > 1.1 ) or b>2;
+a	b
+1	1
+1	2
+1	3
+select * from t1 where ( 1.2 >= 1.2 ) or b>2;
+a	b
+1	1
+1	2
+1	3
+select * from t1 where ( 1.1 < 1.2 ) or b>2;
+a	b
+1	1
+1	2
+1	3
+select * from t1 where ( 1.2 <= 1.2 ) or b>2;
+a	b
+1	1
+1	2
+1	3
+select * from t1 where ( 'a' <= 'a' ) or b>2;
+a	b
+1	1
+1	2
+1	3
+select * from t1 where ( a = b ) or b>2;
+a	b
+1	1
+1	3
+select * from t1 where ( a != b ) or b>2;
+a	b
+1	2
+1	3
+select * from t1 where ( a is null ) or b>2;
+a	b
+1	3
+select * from t1 where ( null is null ) or b>2;
+a	b
+1	1
+1	2
+1	3
+select * from t1 where ( 1 = 1 and 1 = 1 ) or b>2;
+a	b
+1	1
+1	2
+1	3
+select * from t1 where ( 1 = 1 and 1 != 1 ) or b>2;
+a	b
+1	3
+select * from t1 where ( 1 = 1 and 1 = 1 ) and b>2;
+a	b
+1	3
+select * from t1 where ( 1 = 1 and 1 != 1 ) and b>2;
+a	b
+select * from t1 where ( 1 = 1 and 1 = 1 and 1 = 1 ) or b>2;
+a	b
+1	1
+1	2
+1	3
+select * from t1 where ( 1 = 1 and 1 = 1 and 1 != 1 ) or b>2;
+a	b
+1	3
+select * from t1 where ( a = a and 1 = 1 and 1 = 1 ) or b>2;
+a	b
+1	1
+1	2
+1	3
+select * from t1 where ( a = a and 1 = 1 and 1 != 1 ) or b>2;
+a	b
+1	3
+select * from t1 where ( 1 = 1 and 1 = 1 and 1 = 1 ) and b>2;
+a	b
+1	3
+select * from t1 where ( 1 = 1 and 1 = 1 and 1 != 1 ) and b>2;
+a	b
+select * from t1 where ( a = a and 1 = 1 and 1 = 1 ) and b>2;
+a	b
+1	3
+select * from t1 where ( a = a and 1 = 1 and 1 != 1 ) and b>2;
+a	b
+select * from t1 where ((((1=1) or (3=3)) and (3=3)) or ((1=100) and (5=a)));
+a	b
+1	1
+1	2
+1	3
+select * from t1 where ((((1=1) or (3=3)) and (3=4)) or ((1=100) and (5=a)));
+a	b
+select * from t1 where ((((1=2) or (3=3)) and (3=3)) or ((1=100) and (5=a)));
+a	b
+1	1
+1	2
+1	3
+select * from t1 where ((((1>2) or (3=3)) and (3=3)) or ((1=1) and (5=a)));
+a	b
+1	1
+1	2
+1	3
+select * from t1 where ((((1=2) or (3=3)) and (3=1)) or ((1>1) and (5=a)));
+a	b
+select * from t1 where ((((1=2) or (3=3)) and (3!=1)) or ((1>1) and (5=a)));
+a	b
+1	1
+1	2
+1	3
+drop table t1;
+CREATE TABLE t1 (a INT NOT NULL, b INT)engine=tianmu;
+INSERT INTO t1 VALUES (1, 1);
+SELECT * FROM t1 WHERE (a=a AND a=a) OR b > 2;
+a	b
+1	1
+drop table t1;
+create table t1 (id int, value int) engine=tianmu;
+create table t2 (id int, value int) engine=tianmu;
+insert into t1 values (1,null);
+insert into t2 values (1,null);
+select t1.*, t2.*, t1.value<=>t2.value from t1, t2 where t1.id=t2.id and t1.id=1;
+id	value	id	value	t1.value<=>t2.value
+1	NULL	1	NULL	1
+select * from t1 where id <=>id;
+id	value
+1	NULL
+select * from t1 where value <=> value;
+id	value
+1	NULL
+select * from t1 where id <=> value or value<=>id;
+id	value
+drop table t1,t2;
+SET NAMES utf8;
+CREATE TABLE diaries (
+created_at datetime,
+title varchar(256),
+KEY created_at_key(created_at)
+) engine=tianmu DEFAULT CHARSET=utf8;
+INSERT INTO diaries VALUES ("1000-01-01 00:00:00", "The start");
+INSERT INTO diaries VALUES ("2012-10-25 16:18:29", "Today is shiny day.");
+INSERT INTO diaries VALUES ("9999-12-31 23:59:59", "The end");
+SELECT *
+FROM diaries FORCE INDEX(created_at_key)
+WHERE created_at = created_at or created_at = "2012-10-25 16:18:29";
+created_at	title
+1000-01-01 00:00:00	The start
+2012-10-25 16:18:29	Today is shiny day.
+9999-12-31 23:59:59	The end
+SELECT *
+FROM diaries FORCE INDEX(created_at_key)
+WHERE created_at = created_at and created_at = "2012-10-25 16:18:29";
+created_at	title
+2012-10-25 16:18:29	Today is shiny day.
+DROP TABLE diaries;
+CREATE TABLE tags (
+name VARCHAR(16) NOT NULL,
+KEY index_name (name)
+)engine=tianmu;
+INSERT INTO tags VALUES ('mroonga');
+INSERT INTO tags VALUES ('mysql');
+INSERT INTO tags VALUES ('');
+SELECT * FROM tags WHERE name = "";
+name
+
+SELECT * FROM tags WHERE name=name or name = "";
+name
+mroonga
+mysql
+
+SELECT * FROM tags WHERE 1=1 or name = "";
+name
+mroonga
+mysql
+
+SELECT * FROM tags WHERE name=name and name = "";
+name
+
+SELECT * FROM tags WHERE 1=1 and name = "";
+name
+
+SELECT * FROM tags WHERE name != "";
+name
+mroonga
+mysql
+SELECT * FROM tags WHERE name = name or name != "";
+name
+mroonga
+mysql
+
+SELECT * FROM tags WHERE 1 = 1 or name != "";
+name
+mroonga
+mysql
+
+SELECT * FROM tags WHERE name = name and name != "";
+name
+mroonga
+mysql
+SELECT * FROM tags WHERE 1 = 1 and name != "";
+name
+mroonga
+mysql
+DROP TABLE tags;
+CREATE TABLE t1(c1 VARCHAR(10), c2 VARCHAR(10), c3 TINYINT) engine=tianmu;
+INSERT INTO t1 VALUES ('a','b',0), ('a','b',1), ('a','b',2), ('a','b',3), ('a','b',4), ('a','b',5), ('a','b',6), ('a','b',7), ('a','b',8), ('a','b',9);
+SELECT c1,c2,c3 FROM t1 ORDER BY c3 DESC LIMIT 1;
+c1	c2	c3
+a	b	9
+SELECT c1,MAX(c3) FROM t1 GROUP BY c1;
+c1	MAX(c3)
+a	9
+SELECT c1,c2,c3 FROM t1 WHERE c3=(SELECT MAX(c3) FROM t1);
+c1	c2	c3
+a	b	9
+SELECT c1,c2,c3 FROM t1 WHERE c3=(SELECT MAX(t11.c3) FROM t1 AS t11 WHERE t1.c1 = t11.c1);
+c1	c2	c3
+a	b	9
+DROP TABLE t1;
+CREATE TABLE t1(c1 VARCHAR(10), c2 VARCHAR(10), c3 SMALLINT) engine=tianmu;
+INSERT INTO t1 VALUES ('a','b',0), ('a','b',1), ('a','b',2), ('a','b',3), ('a','b',4), ('a','b',5), ('a','b',6), ('a','b',7), ('a','b',8), ('a','b',9);
+SELECT c1,c2,c3 FROM t1 ORDER BY c3 DESC LIMIT 1;
+c1	c2	c3
+a	b	9
+SELECT c1,MAX(c3) FROM t1 GROUP BY c1;
+c1	MAX(c3)
+a	9
+SELECT c1,c2,c3 FROM t1 WHERE c3=(SELECT MAX(c3) FROM t1);
+c1	c2	c3
+a	b	9
+SELECT c1,c2,c3 FROM t1 WHERE c3=(SELECT MAX(t11.c3) FROM t1 AS t11 WHERE t1.c1 = t11.c1);
+c1	c2	c3
+a	b	9
+DROP TABLE t1;
+CREATE TABLE t1(c1 VARCHAR(10), c2 VARCHAR(10), c3 MEDIUMINT) engine=tianmu;
+INSERT INTO t1 VALUES ('a','b',0), ('a','b',1), ('a','b',2), ('a','b',3), ('a','b',4), ('a','b',5), ('a','b',6), ('a','b',7), ('a','b',8), ('a','b',9);
+SELECT c1,c2,c3 FROM t1 ORDER BY c3 DESC LIMIT 1;
+c1	c2	c3
+a	b	9
+SELECT c1,MAX(c3) FROM t1 GROUP BY c1;
+c1	MAX(c3)
+a	9
+SELECT c1,c2,c3 FROM t1 WHERE c3=(SELECT MAX(c3) FROM t1);
+c1	c2	c3
+a	b	9
+SELECT c1,c2,c3 FROM t1 WHERE c3=(SELECT MAX(t11.c3) FROM t1 AS t11 WHERE t1.c1 = t11.c1);
+c1	c2	c3
+a	b	9
+DROP TABLE t1;
+CREATE TABLE t1(c1 VARCHAR(10), c2 VARCHAR(10), c3 INT) engine=tianmu;
+INSERT INTO t1 VALUES ('a','b',0), ('a','b',1), ('a','b',2), ('a','b',3), ('a','b',4), ('a','b',5), ('a','b',6), ('a','b',7), ('a','b',8), ('a','b',9);
+SELECT c1,c2,c3 FROM t1 ORDER BY c3 DESC LIMIT 1;
+c1	c2	c3
+a	b	9
+SELECT c1,MAX(c3) FROM t1 GROUP BY c1;
+c1	MAX(c3)
+a	9
+SELECT c1,c2,c3 FROM t1 WHERE c3=(SELECT MAX(c3) FROM t1);
+c1	c2	c3
+a	b	9
+SELECT c1,c2,c3 FROM t1 WHERE c3=(SELECT MAX(t11.c3) FROM t1 AS t11 WHERE t1.c1 = t11.c1);
+c1	c2	c3
+a	b	9
+DROP TABLE t1;
+CREATE TABLE t1(c1 VARCHAR(10), c2 VARCHAR(10), c3 INTEGER) engine=tianmu;
+INSERT INTO t1 VALUES ('a','b',0), ('a','b',1), ('a','b',2), ('a','b',3), ('a','b',4), ('a','b',5), ('a','b',6), ('a','b',7), ('a','b',8), ('a','b',9);
+SELECT c1,c2,c3 FROM t1 ORDER BY c3 DESC LIMIT 1;
+c1	c2	c3
+a	b	9
+SELECT c1,MAX(c3) FROM t1 GROUP BY c1;
+c1	MAX(c3)
+a	9
+SELECT c1,c2,c3 FROM t1 WHERE c3=(SELECT MAX(c3) FROM t1);
+c1	c2	c3
+a	b	9
+SELECT c1,c2,c3 FROM t1 WHERE c3=(SELECT MAX(t11.c3) FROM t1 AS t11 WHERE t1.c1 = t11.c1);
+c1	c2	c3
+a	b	9
+DROP TABLE t1;
+CREATE TABLE t1(c1 VARCHAR(10), c2 VARCHAR(10), c3 BIGINT) engine=tianmu;
+INSERT INTO t1 VALUES ('a','b',0), ('a','b',1), ('a','b',2), ('a','b',3), ('a','b',4), ('a','b',5), ('a','b',6), ('a','b',7), ('a','b',8), ('a','b',9);
+SELECT c1,c2,c3 FROM t1 ORDER BY c3 DESC LIMIT 1;
+c1	c2	c3
+a	b	9
+SELECT c1,MAX(c3) FROM t1 GROUP BY c1;
+c1	MAX(c3)
+a	9
+SELECT c1,c2,c3 FROM t1 WHERE c3=(SELECT MAX(c3) FROM t1);
+c1	c2	c3
+a	b	9
+SELECT c1,c2,c3 FROM t1 WHERE c3=(SELECT MAX(t11.c3) FROM t1 AS t11 WHERE t1.c1 = t11.c1);
+c1	c2	c3
+a	b	9
+DROP TABLE t1;
+CREATE TABLE t1 (t1_int INT, t1_char CHAR(5)) ENGINE=TIANMU;
+CREATE TABLE t2 (t2_int INT, t2_char CHAR(5)) ENGINE=TIANMU;
+CREATE TABLE t3 (t3_int INT, t3_char CHAR(5)) ENGINE=TIANMU;
+CREATE TABLE t4 (t4_int INT, t4_char CHAR(5)) ENGINE=TIANMU;
+INSERT INTO t1 VALUES (NULL, ''),(1, 'aaa'),(2, 'aaa'),(3, 'ccc'),(4, 'ddd'),(5, 'aaa'),(6, ''),(7, 'eee');
+INSERT INTO t2 VALUES (NULL, ''),(1, 'eee'),(3, 'ccc'),(5, 'jjj'),(6, ''),(7, 'lll'),(9, 'eee'),(11, 'nnn');
+INSERT INTO t3 SELECT * FROM t2;
+INSERT INTO t4 SELECT * FROM t1;
+SELECT t1_int FROM t1 WHERE EXISTS (SELECT t2_int FROM t2 WHERE t1.t1_int = t2.t2_int) ORDER BY 1;
+t1_int
+1
+3
+5
+6
+7
+SELECT t1_int, t1_char FROM t1 WHERE NOT EXISTS (SELECT t2_int FROM t2 WHERE t1.t1_int = t2.t2_int) ORDER BY t1_char;
+t1_int	t1_char
+NULL	
+2	aaa
+4	ddd
+SELECT * FROM t2 WHERE EXISTS (SELECT t1_int FROM t1 WHERE t1.t1_int = t2.t2_int) ORDER BY t2_int;
+t2_int	t2_char
+1	eee
+3	ccc
+5	jjj
+6	
+7	lll
+SELECT t1_char FROM t1 WHERE NOT EXISTS (SELECT t2_int FROM t2 WHERE t1.t1_int = t2.t2_int) ORDER BY t1_char;
+t1_char
+
+aaa
+ddd
+SELECT t1_char FROM t1 WHERE EXISTS (SELECT 1 FROM t2 WHERE t2_int IS NULL) ORDER BY 1;
+t1_char
+
+
+aaa
+aaa
+aaa
+ccc
+ddd
+eee
+SELECT t1_char, t1_int FROM t1 WHERE EXISTS (SELECT 1 FROM t2 WHERE t2_int IS NULL) AND t1_int > 5 ORDER BY 1;
+t1_char	t1_int
+	6
+eee	7
+SELECT t1_int FROM t1 WHERE EXISTS (SELECT t3_int FROM t3 WHERE t1.t1_int = t3.t3_int);
+t1_int
+1
+3
+5
+6
+7
+SELECT t1_int FROM t1 WHERE NOT EXISTS (SELECT t3_int FROM t3 WHERE t1.t1_int = t3.t3_int);
+t1_int
+NULL
+2
+4
+SELECT t3_int FROM t3 WHERE EXISTS (SELECT t2_int FROM t2 WHERE t3.t3_int = t2.t2_int);
+t3_int
+1
+3
+5
+6
+7
+9
+11
+SELECT t3_int FROM t3 WHERE NOT EXISTS (SELECT t2_int FROM t2 WHERE t3.t3_int = t2.t2_int);
+t3_int
+NULL
+SELECT t1_int FROM t1 WHERE EXISTS (SELECT t4_int FROM t4 WHERE t1.t1_int = t4.t4_int);
+t1_int
+1
+2
+3
+4
+5
+6
+7
+SELECT t1_int FROM t1 WHERE NOT EXISTS (SELECT t4_int FROM t4 WHERE t1.t1_int = t4.t4_int);
+t1_int
+NULL
+SELECT t4_int FROM t4 WHERE EXISTS (SELECT t2_int FROM t2 WHERE t4.t4_int = t2.t2_int);
+t4_int
+1
+3
+5
+6
+7
+SELECT t4_int FROM t4 WHERE NOT EXISTS (SELECT t2_int FROM t2 WHERE t4.t4_int = t2.t2_int);
+t4_int
+NULL
+2
+4
+DROP TABLE t1,t2,t3,t4;
+CREATE TABLE t1 (c1 INT, c2 CHAR(100)) ENGINE=TIANMU;
+INSERT INTO t1 VALUES (null,null);
+INSERT INTO t1 VALUES (1,'');
+INSERT INTO t1 VALUES (2,'abcde');
+INSERT INTO t1 VALUES (100,'abcdefghij');
+CREATE TABLE t2 (c1 INT, c2 VARCHAR(100)) ENGINE=TIANMU;
+INSERT INTO t2 VALUES (1,'abcde');
+INSERT INTO t2 VALUES (2,'abcde');
+SELECT c1 FROM t1 WHERE EXISTS (SELECT * FROM t2 WHERE t1.c2 = t2.c2);
+c1
+2
+SELECT c1 FROM t1 WHERE NOT EXISTS (SELECT * FROM t2 WHERE t1.c2 =
+t2.c2);
+c1
+NULL
+1
+100
+DROP TABLE t1;
+DROP TABLE t2;
+CREATE TABLE t1 (c1 INT, c2 VARCHAR(100)) ENGINE=TIANMU;
+INSERT INTO t1 VALUES (null,null);
+INSERT INTO t1 VALUES (1,'');
+INSERT INTO t1 VALUES (2,'abcde');
+INSERT INTO t1 VALUES (100,'abcdefghij');
+CREATE TABLE t2 (c1 INT, c2 VARCHAR(100)) ENGINE=TIANMU;
+INSERT INTO t2 VALUES (1,'abcde');
+INSERT INTO t2 VALUES (2,'abcde');
+SELECT c1 FROM t1 WHERE EXISTS (SELECT * FROM t2 WHERE t1.c2 = t2.c2);
+c1
+2
+SELECT c1 FROM t1 WHERE NOT EXISTS (SELECT * FROM t2 WHERE t1.c2 =
+t2.c2);
+c1
+NULL
+1
+100
+DROP TABLE t1;
+DROP TABLE t2;
+CREATE TABLE t1 (c1 INT, c2 BINARY(100)) ENGINE=TIANMU;
+INSERT INTO t1 VALUES (null,null);
+INSERT INTO t1 VALUES (1,'');
+INSERT INTO t1 VALUES (2,'abcde');
+INSERT INTO t1 VALUES (100,'abcdefghij');
+CREATE TABLE t2 (c1 INT, c2 VARCHAR(100)) ENGINE=TIANMU;
+INSERT INTO t2 VALUES (1,'abcde');
+INSERT INTO t2 VALUES (2,'abcde');
+SELECT c1 FROM t1 WHERE EXISTS (SELECT * FROM t2 WHERE t1.c2 = t2.c2);
+c1
+SELECT c1 FROM t1 WHERE NOT EXISTS (SELECT * FROM t2 WHERE t1.c2 =
+t2.c2);
+c1
+NULL
+1
+2
+100
+DROP TABLE t1;
+DROP TABLE t2;
+CREATE TABLE t1 (c1 INT, c2 VARBINARY(100)) ENGINE=TIANMU;
+INSERT INTO t1 VALUES (null,null);
+INSERT INTO t1 VALUES (1,'');
+INSERT INTO t1 VALUES (2,'abcde');
+INSERT INTO t1 VALUES (100,'abcdefghij');
+CREATE TABLE t2 (c1 INT, c2 VARCHAR(100)) ENGINE=TIANMU;
+INSERT INTO t2 VALUES (1,'abcde');
+INSERT INTO t2 VALUES (2,'abcde');
+SELECT c1 FROM t1 WHERE EXISTS (SELECT * FROM t2 WHERE t1.c2 = t2.c2);
+c1
+2
+SELECT c1 FROM t1 WHERE NOT EXISTS (SELECT * FROM t2 WHERE t1.c2 =
+t2.c2);
+c1
+NULL
+1
+100
+DROP TABLE t1;
+DROP TABLE t2;

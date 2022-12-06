@@ -22,7 +22,7 @@
 
 #include "core/bin_tools.h"
 #include "mm/traceable_object.h"
-#include "types/rc_data_types.h"
+#include "types/tianmu_data_types.h"
 #include "util/fs.h"
 
 namespace Tianmu {

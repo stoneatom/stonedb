@@ -28,19 +28,23 @@ namespace core {
 class PackOrderer {
  public:
   enum class OrderType {
-    RangeSimilarity,  // ...
-    MinAsc,           // ascending by pack minimum
-    MinDesc,          // descending by pack minimum
-    MaxAsc,           // ascending by pack maximum
-    MaxDesc,          // descending by pack maximum
-    Covering,         // start with packs which quickly covers the whole attribute
-                      // domain (MinAsc, then find the next minimally overlapping pack)
-    NotSpecified
+    kRangeSimilarity = 0,  // ...
+    kMinAsc,               // ascending by pack minimum
+    kMinDesc,              // descending by pack minimum
+    kMaxAsc,               // ascending by pack maximum
+    kMaxDesc,              // descending by pack maximum
+    kCovering,             // start with packs which quickly covers the whole attribute
+                           // domain (kMinAsc, then find the next minimally overlapping pack)
+    kNotSpecified,
   };
-  enum class State { INIT_VAL = -1, END = -2 };
+
+  enum class State {
+    kInitVal = -1,
+    kEnd = -2,
+  };
 
   struct OrderStat {
-    OrderStat(int n, int o) : neutral(n), ordered(o){};
+    OrderStat(int n, int o) : neutral(n), ordered(o) {}
     int neutral;
     int ordered;
   };
@@ -63,7 +67,7 @@ class PackOrderer {
   //! Initialized Orderer constructed with a default constructor,
   //! ignored if used on a initialized orderer
   //! \return true if successful, otherwise false
-  bool Init(vcolumn::VirtualColumn *vc, OrderType order, common::RSValue *r_filter = NULL);
+  bool Init(vcolumn::VirtualColumn *vc, OrderType order, common::RSValue *r_filter = nullptr);
 
   /*!
    * Reset the iterator, so it will start from the first pack in the given sort
@@ -82,7 +86,9 @@ class PackOrderer {
    * \return pack number or -1 if end of sequence reached
    */
   int Current() {
-    return curndx[curvc] < 0 ? -1 : natural_order[curvc] ? curndx[curvc] : packs[curvc][curndx[curvc]].second;
+    return cur_ndx_[cur_vc_] < 0
+               ? -1
+               : natural_order_[cur_vc_] ? cur_ndx_[cur_vc_] : packs_[cur_vc_][cur_ndx_[cur_vc_]].second;
   }
 
   /*!
@@ -92,14 +98,20 @@ class PackOrderer {
   PackOrderer &operator++();
 
   //! Is the end of sequence reached?
-  bool IsValid() { return curndx[curvc] >= 0; }
-  bool Initialized() { return ncols > 0; }
+  bool IsValid() { return cur_ndx_[cur_vc_] >= 0; }
+  bool Initialized() { return n_cols_ > 0; }
   // true if the current position and the rest of packs are in ascending order
-  bool NaturallyOrdered() { return packs_passed >= packs_ordered_up_to; }
+  bool NaturallyOrdered() { return packs_passed_ >= packs_ordered_up_to_; }
 
  private:
-  enum class MinMaxType { MMT_Fixed, MMT_Float, MMT_Double, MMT_String };
+  enum class MinMaxType {
+    kMMTFixed = 0,
+    kMMTFloat,
+    kMMTDouble,
+    kMMTString,
+  };
 
+  // Short for Min Max Type Union
   union MMTU {
     int64_t i;
     double d;
@@ -110,29 +122,29 @@ class PackOrderer {
 
   using PackPair = std::pair<MMTU, int>;
 
-  void InitOneColumn(vcolumn::VirtualColumn *vc, OrderType otype, common::RSValue *r_filter, struct OrderStat os);
+  void InitOneColumn(vcolumn::VirtualColumn *vc, OrderType order_type_, common::RSValue *r_filter, struct OrderStat os);
   void NextPack();
   void RewindCol();
   void ReorderForCovering(std::vector<PackPair> &packs_one_col, vcolumn::VirtualColumn *vc);
 
-  static float basic_sorted_percentage;
+  static float basic_sorted_percentage_;
 
-  std::vector<std::vector<PackPair>> packs;
-  std::vector<int> curndx;   // Current() == packs[curvc][curndx[curvc]]
-  std::vector<int> prevndx;  // i = o.Current(); ++o; prevndx[curvc] = i ;
-  int curvc;                 //
-  int ncols;
-  std::vector<bool> natural_order;
-  int dimsize;
-  std::vector<bool> lastly_left;  // if the last ++ went to the left
-  std::vector<MinMaxType> mmtype;
-  std::vector<OrderType> otype;
+  std::vector<std::vector<PackPair>> packs_;
+  std::vector<int> cur_ndx_;   // Current() == packs[cur_vc_][cur_ndx_[cur_vc_]]
+  std::vector<int> prev_ndx_;  // i = o.Current(); ++o; prev_ndx_[cur_vc_] = i ;
+  int cur_vc_;                 //
+  int n_cols_;
+  std::vector<bool> natural_order_;
+  int dim_size_;
+  std::vector<bool> lastly_left_;  // if the last ++ went to the left
+  std::vector<MinMaxType> min_max_type_;
+  std::vector<OrderType> order_type_;
 
-  std::unique_ptr<Filter> visited;  // which pack was visited already; can be
-                                    // implemented by Filter class to save space
-  int64_t packs_ordered_up_to;      // how many packs are actually reordered (the
-                                    // rest of them is left in natural order
-  int64_t packs_passed;             // how many packs are already processed
+  std::unique_ptr<Filter> visited_;  // which pack was visited_ already; can be
+                                     // implemented by Filter class to save space
+  int64_t packs_ordered_up_to_;      // how many packs are actually reordered (the
+                                     // rest of them is left in natural order
+  int64_t packs_passed_;             // how many packs are already processed
 };
 }  // namespace core
 }  // namespace Tianmu

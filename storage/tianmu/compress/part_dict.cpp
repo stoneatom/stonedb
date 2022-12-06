@@ -27,9 +27,11 @@ namespace compress {
 
 // The smallest no. of bits of x which must be shifted right to make x <= limit
 static inline uint GetShift(uint x, uint limit) {
-  if (x <= limit) return 0;
+  if (x <= limit)
+    return 0;
   uint shift = core::GetBitLen(x) - core::GetBitLen(limit);
-  if ((x _SHR_ shift) > limit) shift++;
+  if ((x _SHR_ shift) > limit)
+    shift++;
   return shift;
 }
 
@@ -45,10 +47,12 @@ void PartDict<T>::Create(DataSet<T> *dataset) {
   for (uint i = 0; i < len; i++) hash.insert(data[i]);
 
   for (int k = 0; k < hash.nkeys; k++)
-    if (hash.keys[k].count >= MINOCCUR) freqkey[nfreq++] = &hash.keys[k];
+    if (hash.keys[k].count >= MINOCCUR)
+      freqkey[nfreq++] = &hash.keys[k];
 
   // sort the array of pointers to frequent values in descending order
-  if (nfreq > 0) qsort_tianmu(freqkey, nfreq, sizeof(*freqkey), compare);
+  if (nfreq > 0)
+    qsort_tianmu(freqkey, nfreq, sizeof(*freqkey), compare);
 
   if (nfreq > MAXTOTAL / 2)
     nfreq = MAXTOTAL / 2;  // there is no sense to hold big dictionary with all
@@ -63,7 +67,8 @@ void PartDict<T>::Create(DataSet<T> *dataset) {
     uint sumcnt = 0;
     for (uint f = 0; f < nfreq; f++) {
       scount = freqkey[f]->count _SHR_ shift;
-      if (scount == 0) scount = 1;
+      if (scount == 0)
+        scount = 1;
       freqkey[f]->low = low;
       freqkey[f]->count = scount;
       low += scount;
@@ -73,7 +78,8 @@ void PartDict<T>::Create(DataSet<T> *dataset) {
 
     esc_count = len - sumcnt;
     scount = esc_count _SHR_ shift;
-    if (((esc_count > 0) && (scount == 0)) || (sumcnt == 0)) scount = 1;
+    if (((esc_count > 0) && (scount == 0)) || (sumcnt == 0))
+      scount = 1;
     esc_low = low;
     esc_high = low + scount;
     ASSERT(esc_high <= MAXTOTAL, "should be 'esc_high <= MAXTOTAL'");
@@ -101,10 +107,12 @@ void PartDict<T>::Create(DataSet<T> *dataset) {
 
 template <class T>
 int PartDict<T>::compare(const void *p1, const void *p2) {
-  using AK = struct PartDict<T>::HashTab::AKey;
-  if (((*(AK **)p1)->count) < ((*(AK **)p2)->count))
+  using AK = typename PartDict<T>::HashTab::AKey;
+  if ((*reinterpret_cast<AK **>(const_cast<void *>(p1)))->count <
+      (*reinterpret_cast<AK **>(const_cast<void *>(p2)))->count)
     return 1;
-  else if (((*(AK **)p1)->count) > ((*(AK **)p2)->count))
+  else if ((*reinterpret_cast<AK **>(const_cast<void *>(p1)))->count >
+           (*reinterpret_cast<AK **>(const_cast<void *>(p2)))->count)
     return -1;
   else
     return 0;
@@ -144,14 +152,16 @@ void PartDict<T>::Load(RangeCoder *coder, T maxval) {
     prevc = c++;
     freqval[f].low = low;
     freqval[f].count = c;
-    if (low + c > MAXTOTAL) throw CprsErr::CPRS_ERR_COR;
+    if (low + c > MAXTOTAL)
+      throw CprsErr::CPRS_ERR_COR;
     for (; c > 0; c--) cnt2val[low++] = f;
   }
 
   // load range of ESC
   esc_low = low;
   coder->DecodeUniform(esc_high, MAXTOTAL);
-  if (esc_low > esc_high) throw CprsErr::CPRS_ERR_COR;
+  if (esc_low > esc_high)
+    throw CprsErr::CPRS_ERR_COR;
   esc_usecnt = esc_high - esc_low;
 }
 
@@ -166,7 +176,8 @@ uint PartDict<T>::Predict(DataSet<T> *ds) {
 
   // encoding of data:  frequent values + ESC + uniform model for rare values
   double data = ds->nrec * math.log2(esc_high);
-  if (esc_count > 0) data -= esc_count * (math.log2(esc_usecnt) - logmax);
+  if (esc_count > 0)
+    data -= esc_count * (math.log2(esc_usecnt) - logmax);
   ASSERT(MAXTOTAL >= ds->nrec, "should be 'MAXTOTAL >= ds->nrec'");
   for (uint f = 0; f < nfreq; f++) data -= math.nlog2n(freqkey[f]->count);
   // data -= freqkey[f]->count * math.log2(freqkey[f]->high - freqkey[f]->low);
@@ -179,7 +190,8 @@ template <class T>
 bool PartDict<T>::Encode(RangeCoder *coder, DataSet<T> *dataset) {
   // build dictionary
   Create(dataset);
-  if (Predict(dataset) > 0.98 * this->PredictUni(dataset)) return false;
+  if (Predict(dataset) > 0.98 * this->PredictUni(dataset))
+    return false;
 
   // save version of this routine, using 3 bits (7 = 2^3-1)
   coder->EncodeUniform((uchar)0, (uchar)7);
@@ -212,7 +224,8 @@ void PartDict<T>::Decode(RangeCoder *coder, DataSet<T> *dataset) {
   // read version
   uchar ver;
   coder->DecodeUniform(ver, (uchar)7);
-  if (ver > 0) throw CprsErr::CPRS_ERR_COR;
+  if (ver > 0)
+    throw CprsErr::CPRS_ERR_COR;
 
   // load dictionary
   Load(coder, dataset->maxval);
@@ -227,7 +240,8 @@ void PartDict<T>::Decode(RangeCoder *coder, DataSet<T> *dataset) {
   for (uint i = 0; i < len; i++) {
     c = coder->GetCountShift(shift);
     isesc[i] = GetVal(c, decoded[i], low, count);
-    if (isesc[i]) lenrest++;
+    if (isesc[i])
+      lenrest++;
     coder->DecodeShift(low, count, shift);
   }
   dataset->nrec = lenrest;

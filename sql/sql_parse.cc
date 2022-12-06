@@ -118,7 +118,7 @@
 #include "rpl_group_replication.h"
 #include <algorithm>
 
-#include "../storage/tianmu/handler/ha_rcengine.h" // tianmu code
+#include "../storage/tianmu/handler/ha_my_tianmu.h" // tianmu code
 using std::max;
 
 /**
@@ -2469,6 +2469,8 @@ mysql_execute_command(THD *thd, bool first_level)
   SELECT_LEX_UNIT *const unit= lex->unit;
   // keep GTID violation state in order to roll it back on statement failure
   bool gtid_consistency_violation_state = thd->has_gtid_consistency_violation;
+  //Used to save the old engine
+  legacy_db_type old_db_type = DB_TYPE_DEFAULT;
   assert(select_lex->master_unit() == unit);
   DBUG_ENTER("mysql_execute_command");
   /* EXPLAIN OTHER isn't explainable command, but can have describe flag. */
@@ -2772,6 +2774,29 @@ mysql_execute_command(THD *thd, bool first_level)
   if (!thd->in_sub_stmt)
     thd->query_plan.set_query_plan(lex->sql_command, lex,
                                    !thd->stmt_arena->is_conventional());
+  /*
+    When stonedb is used as a slave library, 
+    the default engine is tianmu, or the (sql_mode) of (MANDATORY_TIANMU) is set,
+    the engine will be forcibly converted to the tianmu engine.
+    Priority:
+    sql_mode ='MANDATORY_TIANMU' > default_storage_engine
+  */
+  if(thd->slave_thread && 
+    ((lex->sql_command == SQLCOM_CREATE_TABLE) || 
+    (lex->sql_command == SQLCOM_ALTER_TABLE)) &&
+    !(lex->create_info.options & HA_LEX_CREATE_TMP_TABLE)){
+
+    legacy_db_type default_db_type = plugin_data<handlerton*>(global_system_variables.table_plugin)->db_type;
+    if(lex->create_info.db_type &&
+        (lex->create_info.db_type->db_type != DB_TYPE_TIANMU) &&
+        ((global_system_variables.sql_mode & MODE_MANDATORY_TIANMU) || 
+        (default_db_type == DB_TYPE_TIANMU))){
+
+      old_db_type = lex->create_info.db_type->db_type;
+      lex->create_info.db_type->db_type = DB_TYPE_TIANMU;
+      lex->create_info.used_fields |= HA_CREATE_USED_ENGINE;
+    }
+  }
 
   switch (lex->sql_command) {
 
@@ -3261,11 +3286,12 @@ case SQLCOM_PREPARE:
           //res= handle_query(thd, lex, result, SELECT_NO_UNLOCK, 0);
 		  // Tianmu hook added
 		  
-		  int sdb_res, free_join_from_sdb, optimize_after_sdb;//TIANMU UPGRADE
-		  if (Tianmu::dbhandler::TIANMU_HandleSelect(thd, lex, result, 0, sdb_res, optimize_after_sdb, free_join_from_sdb, (int)true) == 0)
-			  res = handle_query(thd, lex, result, SELECT_NO_UNLOCK, (ulong)0, optimize_after_sdb, free_join_from_sdb);
+		  int tianmu_res, free_join_from_tianmu, optimize_after_tianmu;
+		  if (Tianmu::handler::QueryRouteTo::kToMySQL ==
+			  Tianmu::handler::ha_my_tianmu_query(thd, lex, result, 0, tianmu_res, optimize_after_tianmu, free_join_from_tianmu, (int)true))
+		    res = handle_query(thd, lex, result, SELECT_NO_UNLOCK, (ulong)0, optimize_after_tianmu, free_join_from_tianmu);
 		  else
-			  res = sdb_res;
+		    res = tianmu_res;
 		  
           if (thd->lex->is_ignore() || thd->is_strict_mode())
             thd->pop_internal_handler();
@@ -3727,7 +3753,7 @@ end_with_restore_list:
     if ((check_table_access(thd, SELECT_ACL, all_tables, FALSE, UINT_MAX, FALSE)
          || open_and_lock_tables(thd, all_tables, 0)))
       goto error;
-	if (!Tianmu::dbhandler::TIANMU_SetStatementAllowed(thd, lex)) {
+	if (!Tianmu::handler::ha_my_tianmu_set_statement_allowed(thd, lex)) {
 		goto error;
 	}
     if (!(res= sql_set_variables(thd, lex_var_list)))
@@ -4969,6 +4995,14 @@ error:
   res= TRUE;
 
 finish:
+  if(thd->slave_thread && 
+    ((lex->sql_command == SQLCOM_CREATE_TABLE) || 
+    (lex->sql_command == SQLCOM_ALTER_TABLE)) &&
+    !(lex->create_info.options & HA_LEX_CREATE_TMP_TABLE) &&
+    (old_db_type != DB_TYPE_DEFAULT)){
+      //If the engine is replaced, restore it at the end
+      lex->create_info.db_type->db_type = old_db_type;
+    }
   THD_STAGE_INFO(thd, stage_query_end);
 
   if (res && thd->get_reprepare_observer() != NULL &&
@@ -5178,13 +5212,13 @@ static bool execute_sqlcom_select(THD *thd, TABLE_LIST *all_tables)
       }
       //res= handle_query(thd, lex, result, 0, 0, 0, 0);
 	 
-	  int sdb_res, free_join_from_sdb, optimize_after_sdb;//ATIMSTORE UPGRADE
-	  if (Tianmu::dbhandler::TIANMU_HandleSelect(thd, lex, result, (ulong)0,
-		  sdb_res, optimize_after_sdb, free_join_from_sdb) == 0) {
-		  res = handle_query(thd, lex, result, (ulonglong)0, (ulonglong)0, optimize_after_sdb, free_join_from_sdb);
+	  int tianmu_res, free_join_from_tianmu, optimize_after_tianmu;
+	  if (Tianmu::handler::QueryRouteTo::kToMySQL ==
+		  Tianmu::handler::ha_my_tianmu_query(thd, lex, result, (ulong)0, tianmu_res, optimize_after_tianmu, free_join_from_tianmu)) {
+		  res = handle_query(thd, lex, result, (ulonglong)0, (ulonglong)0, optimize_after_tianmu, free_join_from_tianmu);
 	  }
 	  else
-		  res = sdb_res;
+		  res = tianmu_res;
 	  
       delete analyse_result;
       if (save_result != lex->result)

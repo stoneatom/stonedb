@@ -20,7 +20,7 @@ CREATE TABLE t_name(
 ) engine=stonedb;
 ```
 :::info
-The row-based storage engine is named StoneDB in StoneDB-5.6, and is renamed to Tianmu in StoneDB-5.7 to distinguish from the database StoneDB.
+The column-based storage engine is named after StoneDB in StoneDB-5.6, and is renamed to Tianmu in StoneDB-5.7 to distinguish from the database StoneDB.
 :::
 
 2. Execute a `CREATE TABLE ... LIKE `statement to create another table that uses the same schema as the table created in the step 1.

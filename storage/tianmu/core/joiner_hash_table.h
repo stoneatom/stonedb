@@ -21,7 +21,7 @@
 #include "core/bin_tools.h"
 #include "core/column_bin_encoder.h"
 #include "core/filter.h"
-#include "core/rc_attr_typeinfo.h"
+#include "core/tianmu_attr_typeinfo.h"
 #include "mm/traceable_object.h"
 #include "vc/virtual_column.h"
 
@@ -64,7 +64,7 @@ class JoinerHashTable : public mm::TraceableObject {
   // put values to a temporary buffer (note that it will contain the previous
   // values, which may be reused
   void PutKeyValue(int col, MIIterator &mit) {  // for all values EXCEPT NULLS
-    encoder[col].Encode(input_buffer.get(), mit, NULL,
+    encoder[col].Encode(input_buffer.get(), mit, nullptr,
                         true);  // true: update statistics
   }
   void PutMatchedValue(int col, vcolumn::VirtualColumn *vc,
@@ -115,18 +115,20 @@ class JoinerHashTable : public mm::TraceableObject {
     }
   }
 
-  int NumOfAttrs() { return no_attr; }         // total number of columns
-  int64_t NoRows() { return no_rows; }     // buffer size (max. number of rows)
+  int NumOfAttrs() { return no_attr; }  // total number of columns
+  int64_t NoRows() { return no_rows; }  // buffer size (max. number of rows)
   int64_t GetTupleValue(int col,
                         int64_t row) {  // columns have common numbering
     DEBUG_ASSERT(col >= no_key_attr);
     if (size[col] == 4) {
       int v = *((int *)(t + row * total_width + column_offset[col]));
-      if (v == 0) return common::NULL_VALUE_64;
+      if (v == 0)
+        return common::NULL_VALUE_64;
       return v - 1;
     } else {
       int64_t v = *((int64_t *)(t + row * total_width + column_offset[col]));
-      if (v == 0) return common::NULL_VALUE_64;
+      if (v == 0)
+        return common::NULL_VALUE_64;
       return v - 1;
     }
   }

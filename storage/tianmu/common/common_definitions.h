@@ -42,7 +42,7 @@ extern void PushWarning(THD *thd, Sql_condition::enum_severity_level level, uint
 // Column Type
 // NOTE: do not change the order of implemented data types! Stored as int(...)
 // on disk.
-enum class CT : unsigned char {
+enum class ColumnType : unsigned char {
   STRING,   // string treated either as dictionary value or "free" text
   VARCHAR,  // as above (discerned for compatibility with SQL)
   INT,      // integer 32-bit
@@ -73,6 +73,51 @@ enum class CT : unsigned char {
   UNK = 255
 };
 
+#define MYSQL_ENUM_FIELD_TYPE                    \
+  DISPOSE(MYSQL_TYPE_DECIMAL, "decimal")         \
+  DISPOSE(MYSQL_TYPE_TINY, "tiny")               \
+  DISPOSE(MYSQL_TYPE_SHORT, "short")             \
+  DISPOSE(MYSQL_TYPE_LONG, "long")               \
+  DISPOSE(MYSQL_TYPE_FLOAT, "float")             \
+  DISPOSE(MYSQL_TYPE_DOUBLE, "double")           \
+  DISPOSE(MYSQL_TYPE_NULL, "null")               \
+  DISPOSE(MYSQL_TYPE_TIMESTAMP, "timestamp")     \
+  DISPOSE(MYSQL_TYPE_LONGLONG, "longlong")       \
+  DISPOSE(MYSQL_TYPE_INT24, "int24")             \
+  DISPOSE(MYSQL_TYPE_DATE, "date")               \
+  DISPOSE(MYSQL_TYPE_TIME, "time")               \
+  DISPOSE(MYSQL_TYPE_DATETIME, "datetime")       \
+  DISPOSE(MYSQL_TYPE_YEAR, "year")               \
+  DISPOSE(MYSQL_TYPE_NEWDATE, "newdate")         \
+  DISPOSE(MYSQL_TYPE_VARCHAR, "varchar")         \
+  DISPOSE(MYSQL_TYPE_BIT, "bit")                 \
+  DISPOSE(MYSQL_TYPE_TIMESTAMP2, "timestamp2")   \
+  DISPOSE(MYSQL_TYPE_DATETIME2, "datetime2")     \
+  DISPOSE(MYSQL_TYPE_TIME2, "time2")             \
+  DISPOSE(MYSQL_TYPE_JSON, "json")               \
+  DISPOSE(MYSQL_TYPE_NEWDECIMAL, "newdecimal")   \
+  DISPOSE(MYSQL_TYPE_ENUM, "enum")               \
+  DISPOSE(MYSQL_TYPE_SET, "set")                 \
+  DISPOSE(MYSQL_TYPE_TINY_BLOB, "tiny_blob")     \
+  DISPOSE(MYSQL_TYPE_MEDIUM_BLOB, "medium_blob") \
+  DISPOSE(MYSQL_TYPE_LONG_BLOB, "long_blob")     \
+  DISPOSE(MYSQL_TYPE_BLOB, "blob")               \
+  DISPOSE(MYSQL_TYPE_VAR_STRING, "var_string")   \
+  DISPOSE(MYSQL_TYPE_STRING, "string")           \
+  DISPOSE(MYSQL_TYPE_GEOMETRY, "geometry")
+
+#define DISPOSE(mark, name) {mark, name},
+constexpr std::pair<int, const char *> enum_field_types_name[] = {MYSQL_ENUM_FIELD_TYPE};
+#undef DISPOSE
+
+constexpr const char *get_enum_field_types_name(int type) {
+  for (auto type_name : enum_field_types_name) {
+    if (type_name.first == type)
+      return type_name.second;
+  }
+  return "unkonwn type";
+}
+
 enum class PackType { INT, STR };
 
 constexpr double PLUS_INF_DBL = DBL_MAX;
@@ -88,6 +133,9 @@ constexpr int64_t MAX_ROW_NUMBER = 0x00007FFFFFFFFFFFULL;  // 2^47 - 1
 
 constexpr int64_t TIANMU_BIGINT_MAX = PLUS_INF_64;
 constexpr int64_t TIANMU_BIGINT_MIN = NULL_VALUE_64;
+
+constexpr int32_t TIANMU_MAX_INDEX_COL_LEN_LARGE = 3072;
+constexpr int32_t TIANMU_MAX_INDEX_COL_LEN_SMALL = 767;
 
 #define NULL_VALUE_D (*(double *)("\x01\x00\x00\x00\x00\x00\x00\x80"))
 #define TIANMU_INT_MIN (-2147483647)
@@ -105,7 +153,7 @@ constexpr int64_t TIANMU_BIGINT_MIN = NULL_VALUE_64;
 
 #define ZERO_LENGTH_STRING ""
 #define DEFAULT_DELIMITER ";"
-#define DEFAULT_LINE_TERMINATOR ""
+#define DEFAULT_LINE_TERMINATOR "\n"
 
 enum class RSValue : char {
   RS_NONE = 0,    // the pack is empty
@@ -200,6 +248,15 @@ enum class ColOperation {
 // pack data format, stored on disk so only append new ones at the end.
 enum class PackFmt : char { DEFAULT, PPM1, PPM2, RANGECODE, LZ4, LOOKUP, NOCOMPRESS, TRIE, ZLIB };
 
+// data source
+enum class LoadSource {
+  LS_Unknown = 0,   // unknown
+  LS_Direct,        // direct insertion
+  LS_MemRow,        // insert using rocksdb
+  LS_InsertBuffer,  // insert using insert buffer
+  LS_File           // load data from file
+};
+
 class Tribool {
   // NOTE: in comparisons and assignments use the following three values:
   //
@@ -214,28 +271,32 @@ class Tribool {
   enum class tribool { TRI_FALSE, TRI_TRUE, TRI_UNKNOWN };
 
  public:
-  Tribool() { v = tribool::TRI_UNKNOWN; }
-  Tribool(bool b) { v = (b ? tribool::TRI_TRUE : tribool::TRI_FALSE); }
-  bool operator==(Tribool sec) { return v == sec.v; }
-  bool operator!=(Tribool sec) { return v != sec.v; }
+  Tribool() { v_ = tribool::TRI_UNKNOWN; }
+  Tribool(bool b) { v_ = (b ? tribool::TRI_TRUE : tribool::TRI_FALSE); }
+  bool operator==(Tribool sec) { return v_ == sec.v_; }
+  bool operator!=(Tribool sec) { return v_ != sec.v_; }
   const Tribool operator!() {
-    return Tribool(v == tribool::TRI_TRUE ? tribool::TRI_FALSE
-                                          : (v == tribool::TRI_FALSE ? tribool::TRI_TRUE : tribool::TRI_UNKNOWN));
+    return Tribool(v_ == tribool::TRI_TRUE ? tribool::TRI_FALSE
+                                           : (v_ == tribool::TRI_FALSE ? tribool::TRI_TRUE : tribool::TRI_UNKNOWN));
   }
   static Tribool And(Tribool a, Tribool b) {
-    if (a == true && b == true) return true;
-    if (a == false || b == false) return false;
+    if (a == true && b == true)
+      return true;
+    if (a == false || b == false)
+      return false;
     return tribool::TRI_UNKNOWN;
   }
   static Tribool Or(Tribool a, Tribool b) {
-    if (a == true || b == true) return true;
-    if (a == tribool::TRI_UNKNOWN || b == tribool::TRI_UNKNOWN) return tribool::TRI_UNKNOWN;
+    if (a == true || b == true)
+      return true;
+    if (a == tribool::TRI_UNKNOWN || b == tribool::TRI_UNKNOWN)
+      return tribool::TRI_UNKNOWN;
     return false;
   }
 
  private:
-  Tribool(tribool b) { v = b; }
-  tribool v;
+  Tribool(tribool b) { v_ = b; }
+  tribool v_;
 };
 
 const Tribool TRIBOOL_UNKNOWN = Tribool();

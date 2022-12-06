@@ -36,9 +36,7 @@ namespace utils {
 
 // a memory-mapped circular buffer, support single-read, multiple write
 class MappedCircularBuffer {
-  static inline size_t round_up(size_t n, size_t multiple) { 
-     return ((n + multiple - 1) / multiple) * multiple; 
-  }
+  static inline size_t round_up(size_t n, size_t multiple) { return ((n + multiple - 1) / multiple) * multiple; }
 
  public:
   MappedCircularBuffer() = delete;
@@ -96,7 +94,6 @@ class MappedCircularBuffer {
     GetStat();
   }
 
-
   void Write(TAG tag, const void *data, size_t sz) {
     if (sz > MAX_BUF_SIZE) {
       throw std::invalid_argument("write data buffer size (" + std::to_string(sz) + ") exceeds system defined size");
@@ -126,7 +123,7 @@ class MappedCircularBuffer {
     ptr += sizeof(TAG);
     *(uint32_t *)ptr = sz;
     ptr += sizeof(uint32_t);
-    *(uint64_t *)ptr = 0;  
+    *(uint64_t *)ptr = 0;
     ptr += sizeof(uint64_t);
     std::memcpy(ptr, data, sz);
     hdr->write_offset += total_len;
@@ -263,7 +260,7 @@ class MappedCircularBuffer {
     std::atomic_ulong read_bytes{0};
   } stat;
 
-private:
+ private:
   uchar *start_addr_;
   std::mutex write_mutex_;
   int fd_;

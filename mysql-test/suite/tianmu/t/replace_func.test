@@ -1,0 +1,26 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test REPLACE() function
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS replace_func_test;
+--enable_warnings
+
+CREATE DATABASE replace_func_test;
+USE replace_func_test;
+
+CREATE TABLE t1 (a INT, b CHAR(20));
+INSERT INTO t1 VALUES (NULL, ''),(1, 'aaa'),(2, 'abcabc'),(3, 'cccbba'),(4, 'dddd'),(5, 'pqrs');
+
+SELECT REPLACE('abbcccb', 'b', 'z');
+SELECT REPLACE('xyz', 'z', 'ppp');
+
+SELECT b, REPLACE(b, 'a', 'mcs') FROM t1 ORDER BY 1;
+SELECT b, REPLACE(b, 'b', 'oo') FROM t1 ORDER BY 1;
+SELECT b, REPLACE(b, 'pqrs', 'a') FROM t1 ORDER BY 1;
+SELECT b, REPLACE(b, 'dd', 'n') FROM t1 ORDER BY 1;
+
+# Clean UP
+DROP DATABASE replace_func_test;

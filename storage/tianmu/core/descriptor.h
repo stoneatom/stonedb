@@ -67,6 +67,7 @@ class Descriptor {
   common::RSValue rv;                // rough evaluation of descriptor (accumulated or used locally)
   char like_esc;                     // nonstandard LIKE escape character
   std::mutex mtx;
+  CondType cond_type = CondType::UNKOWN_COND;
 
   Descriptor();
   Descriptor(TempTable *t,
@@ -76,8 +77,8 @@ class Descriptor {
   Descriptor(const Descriptor &desc);
   Descriptor(CQTerm e1, common::Operator pr, CQTerm e2, CQTerm e3, TempTable *t, int no_dims, char like_escape = '\\');
   Descriptor(DescTree *tree, TempTable *t, int no_dims);
-  Descriptor(TempTable *t, vcolumn::VirtualColumn *v1, common::Operator pr, vcolumn::VirtualColumn *v2 = NULL,
-             vcolumn::VirtualColumn *v3 = NULL);
+  Descriptor(TempTable *t, vcolumn::VirtualColumn *v1, common::Operator pr, vcolumn::VirtualColumn *v2 = nullptr,
+             vcolumn::VirtualColumn *v3 = nullptr);
 
   void swap(Descriptor &d);
 
@@ -123,6 +124,7 @@ class Descriptor {
   bool IsType_Subquery();
   bool IsType_Exists() const { return op == common::Operator::O_EXISTS || op == common::Operator::O_NOT_EXISTS; }
   bool IsType_In() const { return op == common::Operator::O_IN || op == common::Operator::O_NOT_IN; }
+  bool IsType_Between() const { return op == common::Operator::O_BETWEEN || op == common::Operator::O_NOT_BETWEEN; }
 
   bool IsType_TIANMUExpression() const;  // only columns, constants and TIANMUExpressions
   bool IsType_JoinComplex() const;
@@ -155,6 +157,12 @@ class Descriptor {
   bool ExsitTmpTable() const;
   bool IsleftIndexSearch() const;
   common::ErrorCode EvaluateOnIndex(MIUpdatingIterator &mit, int64_t limit);
+  CondType GetCondType() const { return cond_type; };
+  void SetCondType(CondType type) { cond_type = type; };
+  bool IsTypeJoinExprOn() const {
+    return CondType::ON_INNER_FILTER == cond_type || CondType::ON_LEFT_FILTER == cond_type ||
+           CondType::ON_RIGHT_FILTER == cond_type;
+  };
 
  private:
   /*! \brief Checks condition for set operator, e.g., <ALL
@@ -185,14 +193,14 @@ class Descriptor {
 
  public:
   bool null_after_simplify;  // true if Simplify set common::Operator::O_FALSE because of
-                             // NULL
+                             // nullptr
 };
 
 class SortDescriptor {
  public:
   vcolumn::VirtualColumn *vc;
   int dir;  // ordering direction: 0 - ascending, 1 - descending
-  SortDescriptor() : vc(NULL), dir(0){};
+  SortDescriptor() : vc(nullptr), dir(0){};
   int operator==(const SortDescriptor &sec) { return (dir == sec.dir) && (vc == sec.vc); }
 };
 
@@ -209,12 +217,12 @@ bool IsSimpleEqualityOperator(common::Operator op);
 
 struct DescTreeNode {
   DescTreeNode(common::LogicalOperator _lop, TempTable *t, int no_dims)
-      : desc(t, no_dims), locked(0), left(NULL), right(NULL), parent(NULL) {
+      : desc(t, no_dims), locked(0), left(nullptr), right(nullptr), parent(nullptr) {
     desc.lop = _lop;
   }
 
   DescTreeNode(CQTerm e1, common::Operator op, CQTerm e2, CQTerm e3, TempTable *t, int no_dims, char like_esc)
-      : desc(t, no_dims), locked(0), left(NULL), right(NULL), parent(NULL) {
+      : desc(t, no_dims), locked(0), left(nullptr), right(nullptr), parent(nullptr) {
     desc.attr = e1;
     desc.op = op;
     desc.val1 = e2;
@@ -226,7 +234,7 @@ struct DescTreeNode {
   }
 
   DescTreeNode(DescTreeNode &n, [[maybe_unused]] bool in_subq = false)
-      : desc(n.desc), locked(0), left(NULL), right(NULL), parent(NULL) {}
+      : desc(n.desc), locked(0), left(nullptr), right(nullptr), parent(nullptr) {}
   ~DescTreeNode();
   bool CheckCondition(MIIterator &mit);
   bool IsNull(MIIterator &mit);
@@ -300,17 +308,20 @@ class DescTree {
   void Display(DescTreeNode *node);
 
   bool Left() {
-    if (!curr || !curr->left) return false;
+    if (!curr || !curr->left)
+      return false;
     curr = curr->left;
     return true;
   }
   bool Right() {
-    if (!curr || !curr->right) return false;
+    if (!curr || !curr->right)
+      return false;
     curr = curr->right;
     return true;
   }
   bool Up() {
-    if (!curr || !curr->parent) return false;
+    if (!curr || !curr->parent)
+      return false;
     curr = curr->parent;
     return true;
   }

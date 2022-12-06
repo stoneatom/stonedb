@@ -40,7 +40,8 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
   rownums.reserve(128);
   why_failed = JoinFailure::FAIL_1N_TOO_HARD;
   auto &desc(cond[0]);
-  if (cond.Size() > 1 || !desc.IsType_JoinSimple() || desc.op != common::Operator::O_EQ) return;
+  if (cond.Size() > 1 || !desc.IsType_JoinSimple() || desc.op != common::Operator::O_EQ)
+    return;
 
   vcolumn::VirtualColumn *vc1 = desc.attr.vc;
   vcolumn::VirtualColumn *vc2 = desc.val1.vc;
@@ -78,7 +79,8 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
 
   // Prepare mapping function
   auto map_function = GenerateFunction(vc1);
-  if (!map_function) return;
+  if (!map_function)
+    return;
 
   bool outer_join = !(desc.right_dims.IsEmpty());  // traversed is outer: scan facts, add nulls
                                                    // for all non-matching dimension values
@@ -110,7 +112,8 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
   int single_filter_dim = new_mind.OptimizedCaseDimension();  // indicates a special case: the
                                                               // fact table remains a filter and
                                                               // the dimension table is forgotten
-  if (single_filter_dim != -1 && !matched_dims[single_filter_dim]) single_filter_dim = -1;
+  if (single_filter_dim != -1 && !matched_dims[single_filter_dim])
+    single_filter_dim = -1;
   while (mit.IsValid()) {
     bool omit_this_packrow = false;
     if (mit.PackrowStarted()) {
@@ -151,14 +154,17 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
 
     // Exact part
     rownums.clear();
-    if (!vc2->IsNull(mit)) map_function->Fetch(vc2->GetNotNullValueInt64(mit), rownums);
+    if (!vc2->IsNull(mit))
+      map_function->Fetch(vc2->GetNotNullValueInt64(mit), rownums);
     if (rownums.size()) {
       if (!outer_nulls_only) {
         for (auto rownum : rownums) {
           joined_tuples++;
-          if (tips.count_only) continue;
+          if (tips.count_only)
+            continue;
           for (int i = 0; i < mind->NumOfDimensions(); i++)
-            if (matched_dims[i]) new_mind.SetNewTableValue(i, mit[i]);
+            if (matched_dims[i])
+              new_mind.SetNewTableValue(i, mit[i]);
           new_mind.SetNewTableValue(traversed_dim, rownum);
           new_mind.CommitNewTableValues();
         }
@@ -167,21 +173,23 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
       joined_tuples++;
       if (!tips.count_only) {
         for (int i = 0; i < mind->NumOfDimensions(); i++)
-          if (matched_dims[i]) new_mind.SetNewTableValue(i, mit[i]);
+          if (matched_dims[i])
+            new_mind.SetNewTableValue(i, mit[i]);
         new_mind.SetNewTableValue(traversed_dim, common::NULL_VALUE_64);
         new_mind.CommitNewTableValues();
       }
     }
-    if (tips.limit != -1 && tips.limit <= joined_tuples) break;
+    if (tips.limit != -1 && tips.limit <= joined_tuples)
+      break;
     ++mit;
   }
 
   vc2->UnlockSourcePacks();
 
   // Cleaning up
-  rc_control_.lock(m_conn->GetThreadID()) << "Produced " << joined_tuples << " tuples." << system::unlock;
+  tianmu_control_.lock(m_conn->GetThreadID()) << "Produced " << joined_tuples << " tuples." << system::unlock;
   if (packrows_omitted > 0)
-    rc_control_.lock(m_conn->GetThreadID())
+    tianmu_control_.lock(m_conn->GetThreadID())
         << "Roughly omitted " << int(packrows_omitted / double(packrows_matched) * 10000.0) / 100.0 << "% packrows."
         << system::unlock;
   if (tips.count_only)
@@ -205,11 +213,12 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
 std::unique_ptr<JoinerMapFunction> JoinerMapped::GenerateFunction(vcolumn::VirtualColumn *vc) {
   MIIterator mit(mind, traversed_dims);
   auto map_function = std::make_unique<MultiMapsFunction>(m_conn);
-  if (!map_function->Init(vc, mit)) return nullptr;
+  if (!map_function->Init(vc, mit))
+    return nullptr;
 
-  rc_control_.lock(m_conn->GetThreadID()) << "Join mapping (multimaps) created on " << mit.NumOfTuples() << " rows."
-                                        << system::unlock;
-  return std::move(map_function);
+  tianmu_control_.lock(m_conn->GetThreadID())
+      << "Join mapping (multimaps) created on " << mit.NumOfTuples() << " rows." << system::unlock;
+  return map_function;
 }
 
 int64_t JoinerParallelMapped::ExecuteMatchLoop(std::shared_ptr<MultiIndexBuilder::BuildItem> *indextable,
@@ -273,9 +282,11 @@ int64_t JoinerParallelMapped::ExecuteMatchLoop(std::shared_ptr<MultiIndexBuilder
         if (!outer_nulls_only) {
           for (auto rownum : rownums) {
             joined_tuples++;
-            if (tips.count_only) continue;
+            if (tips.count_only)
+              continue;
             for (int i = 0; i < mind->NumOfDimensions(); i++)
-              if (matched_dims[i]) (*indextable)->SetTableValue(i, mit[i]);
+              if (matched_dims[i])
+                (*indextable)->SetTableValue(i, mit[i]);
             (*indextable)->SetTableValue(traversed_dim, rownum);
             (*indextable)->CommitTableValues();
           }
@@ -284,18 +295,20 @@ int64_t JoinerParallelMapped::ExecuteMatchLoop(std::shared_ptr<MultiIndexBuilder
         joined_tuples++;
         if (!tips.count_only) {
           for (int i = 0; i < mind->NumOfDimensions(); i++)
-            if (matched_dims[i]) (*indextable)->SetTableValue(i, mit[i]);
+            if (matched_dims[i])
+              (*indextable)->SetTableValue(i, mit[i]);
           (*indextable)->SetTableValue(traversed_dim, common::NULL_VALUE_64);
           (*indextable)->CommitTableValues();
         }
       }
-      if (tips.limit != -1 && tips.limit <= joined_tuples) break;
+      if (tips.limit != -1 && tips.limit <= joined_tuples)
+        break;
       ++mit;
     }
   }
 
   if (packrows_omitted > 0)
-    rc_control_.lock(m_conn->GetThreadID())
+    tianmu_control_.lock(m_conn->GetThreadID())
         << "Roughly omitted " << int(packrows_omitted / double(packrows_matched) * 10000.0) / 100.0 << "% packrows."
         << system::unlock;
 
@@ -308,7 +321,8 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
 
   why_failed = JoinFailure::FAIL_1N_TOO_HARD;
   auto &desc(cond[0]);
-  if (cond.Size() > 1 || !desc.IsType_JoinSimple() || desc.op != common::Operator::O_EQ) return;
+  if (cond.Size() > 1 || !desc.IsType_JoinSimple() || desc.op != common::Operator::O_EQ)
+    return;
 
   vcolumn::VirtualColumn *vc1 = desc.attr.vc;
   vcolumn::VirtualColumn *vc2 = desc.val1.vc;
@@ -343,7 +357,8 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
 
   // Prepare mapping function
   auto map_function = GenerateFunction(vc1);
-  if (map_function == nullptr) return;
+  if (map_function == nullptr)
+    return;
 
   outer_join = !(desc.right_dims.IsEmpty());  // traversed is outer: scan facts, add nulls
                                               // for all non-matching dimension values
@@ -376,18 +391,20 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
   int64_t joined_tuples = 0;
   int tids =
       (packnums < std::thread::hardware_concurrency() / 2) ? packnums : (std::thread::hardware_concurrency() / 2);
-  if (tids <= 2) tids = 1;
+  if (tids <= 2)
+    tids = 1;
   std::vector<std::shared_ptr<MultiIndexBuilder::BuildItem>> indextable(tids);
   utils::result_set<int64_t> res;
   std::vector<int64_t> matched_tuples(tids);
   CTask task;
   task.dwPackNum = tids;
-  for (int tid = 0; tid < tids; tid++) {
-    task.dwTaskId = tid;
-    task.dwStartPackno = tid * (packnums / tids);
-    task.dwEndPackno = (tid == tids - 1) ? packnums : (tid + 1) * (packnums / tids);
-    res.insert(ha_rcengine_->query_thread_pool.add_task(&JoinerParallelMapped::ExecuteMatchLoop, this, &indextable[tid],
-                                                 packrows, &matched_tuples[tid], vc2, task, map_function.get()));
+  for (int table_id = 0; table_id < tids; table_id++) {
+    task.dwTaskId = table_id;
+    task.dwStartPackno = table_id * (packnums / tids);
+    task.dwEndPackno = (table_id == tids - 1) ? packnums : (table_id + 1) * (packnums / tids);
+    res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&JoinerParallelMapped::ExecuteMatchLoop, this,
+                                                             &indextable[table_id], packrows, &matched_tuples[table_id],
+                                                             vc2, task, map_function.get()));
   }
   res.get_all();
 
@@ -398,7 +415,7 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
     joined_tuples += matched_tuples[i];
     new_mind->AddBuildItem(indextable[i]);
   }
-  rc_control_.lock(m_conn->GetThreadID()) << "Produced " << joined_tuples << " tuples." << system::unlock;
+  tianmu_control_.lock(m_conn->GetThreadID()) << "Produced " << joined_tuples << " tuples." << system::unlock;
 
   new_mind->Commit(joined_tuples, tips.count_only);
 
@@ -416,37 +433,45 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
 }
 
 void OffsetMapFunction::Fetch(int64_t key_val, std::vector<int64_t> &keys_value) {
-  if (key_val < key_min || key_val > key_max) return;
+  if (key_val < key_min || key_val > key_max)
+    return;
   unsigned char s = key_status[key_val - key_table_min];
-  if (s == 255) return;
+  if (s == 255)
+    return;
   keys_value.push_back(key_val + offset_table[s]);
   return;  // Offset map has one unique key
 }
 
 bool OffsetMapFunction::Init(vcolumn::VirtualColumn *vc, MIIterator &mit) {
   int dim = vc->GetDim();
-  if (dim == -1) return false;
+  if (dim == -1)
+    return false;
   key_table_min = vc->RoughMin();
   int64_t key_table_max = vc->RoughMax();
   if (key_table_min == common::NULL_VALUE_64 || key_table_min == common::MINUS_INF_64 ||
       key_table_max == common::PLUS_INF_64 || key_table_max == common::NULL_VALUE_64)
     return false;
   int64_t span = key_table_max - key_table_min + 1;
-  if (span < 0 || size_t(span) > 32_MB || (span < mit.NumOfTuples() && !vc->IsNullsPossible())) return false;
+  if (span < 0 || size_t(span) > 32_MB || (span < mit.NumOfTuples() && !vc->IsNullsPossible()))
+    return false;
 
   key_status.resize(span, 255);
 
   int offsets_used = 0;
   while (mit.IsValid()) {
-    if (mit.PackrowStarted()) vc->LockSourcePacks(mit);
+    if (mit.PackrowStarted())
+      vc->LockSourcePacks(mit);
     int64_t val = vc->GetValueInt64(mit);
     if (val != common::NULL_VALUE_64) {
-      if (val < key_min) key_min = val;
-      if (val > key_max) key_max = val;
+      if (val < key_min)
+        key_min = val;
+      if (val > key_max)
+        key_max = val;
       int64_t row_offset = mit[dim] - val;
       int s;
       for (s = 0; s < offsets_used; s++) {
-        if (offset_table[s] == row_offset) break;
+        if (offset_table[s] == row_offset)
+          break;
       }
       if (s == offsets_used) {  // new offset found
         if (offsets_used == 255) {
@@ -485,7 +510,8 @@ void MultiMapsFunction::Fetch(int64_t key_val, std::vector<int64_t> &keys_value)
 
 bool MultiMapsFunction::Init(vcolumn::VirtualColumn *vc, MIIterator &mit) {
   int dim = vc->GetDim();
-  if (dim == -1) return false;
+  if (dim == -1)
+    return false;
   key_table_min = vc->RoughMin();
   std::multimap<int64_t, int64_t> keys_value;
   int64_t key_table_max = vc->RoughMax();
@@ -493,22 +519,26 @@ bool MultiMapsFunction::Init(vcolumn::VirtualColumn *vc, MIIterator &mit) {
       key_table_max == common::PLUS_INF_64 || key_table_max == common::NULL_VALUE_64)
     return false;
   int64_t span = key_table_max - key_table_min + 1;
-  if (span < 0) return false;
-  rc_control_.lock(m_conn->GetThreadID()) << "MultiMapsFunction: constructing a multimap with " << mit.NumOfTuples()
-                                        << " tuples." << system::unlock;
+  if (span < 0)
+    return false;
+  tianmu_control_.lock(m_conn->GetThreadID())
+      << "MultiMapsFunction: constructing a multimap with " << mit.NumOfTuples() << " tuples." << system::unlock;
   while (mit.IsValid()) {
-    if (mit.PackrowStarted()) vc->LockSourcePacks(mit);
+    if (mit.PackrowStarted())
+      vc->LockSourcePacks(mit);
     int64_t val = vc->GetValueInt64(mit);
     if (val != common::NULL_VALUE_64) {
-      if (val < key_min) key_min = val;
-      if (val > key_max) key_max = val;
+      if (val < key_min)
+        key_min = val;
+      if (val > key_max)
+        key_max = val;
       keys_value.emplace(val, mit[dim]);
       ++vals_found;
     }
     ++mit;
   }
   vc->UnlockSourcePacks();
-  rc_control_.lock(m_conn->GetThreadID()) << "MultiMapsFunction: keys_value construction done. " << system::unlock;
+  tianmu_control_.lock(m_conn->GetThreadID()) << "MultiMapsFunction: keys_value construction done. " << system::unlock;
   keys_value_maps.emplace_back(keys_value);
   return true;
 }

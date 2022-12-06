@@ -83,7 +83,7 @@ enum class COORD_TYPE : int {
   PACK = 0,
   FILTER = 1,
   FTREE = 2,
-  RCATTR = 4,
+  kTianmuAttr = 4,
   COORD_UNKNOWN = 999,
 };
 
@@ -136,7 +136,7 @@ class ObjectId : public U {
 using PackCoordinate = ObjectId<COORD_TYPE::PACK, 3>;
 using FilterCoordinate = ObjectId<COORD_TYPE::FILTER, 5>;  // [ table, column, type, version1, version2 ]
 using FTreeCoordinate = ObjectId<COORD_TYPE::FTREE, 3>;
-using RCAttrCoordinate = ObjectId<COORD_TYPE::RCATTR, 2>;
+using TianmuAttrCoordinate = ObjectId<COORD_TYPE::kTianmuAttr, 2>;
 
 inline int pc_table(PackCoordinate const &pc) { return (pc[0]); }
 inline int pc_column(PackCoordinate const &pc) { return (pc[1]); }
@@ -156,23 +156,26 @@ class TOCoordinate {
   // instead
   struct {
     PackCoordinate pack;
-    RCAttrCoordinate rcattr;
+    TianmuAttrCoordinate rcattr;
   } co;
 
   TOCoordinate() : ID(COORD_TYPE::COORD_UNKNOWN) {}
   TOCoordinate(PackCoordinate &_p) : ID(COORD_TYPE::PACK) { co.pack = _p; }
-  TOCoordinate(RCAttrCoordinate &_r) : ID(COORD_TYPE::RCATTR) { co.rcattr = _r; }
+  TOCoordinate(TianmuAttrCoordinate &_r) : ID(COORD_TYPE::kTianmuAttr) { co.rcattr = _r; }
   TOCoordinate(const TOCoordinate &_t) : ID(_t.ID) {
     co.pack = _t.co.pack;
     co.rcattr = _t.co.rcattr;
   }
 
+  TOCoordinate &operator=(const TOCoordinate &) = default;
+
   bool operator==(TOCoordinate const &oid) const {
-    if (oid.ID != ID) return false;
+    if (oid.ID != ID)
+      return false;
     switch (ID) {
       case COORD_TYPE::PACK:
         return co.pack == oid.co.pack;
-      case COORD_TYPE::RCATTR:
+      case COORD_TYPE::kTianmuAttr:
         return co.rcattr == oid.co.rcattr;
       default:
         ASSERT(false, "Undefined coordinate usage");
@@ -188,7 +191,7 @@ class TOCoordinate {
       switch (ID) {
         case COORD_TYPE::PACK:
           return oid.co.pack < co.pack;
-        case COORD_TYPE::RCATTR:
+        case COORD_TYPE::kTianmuAttr:
           return oid.co.rcattr < co.rcattr;
         default:
           ASSERT(false, "Undefined coordinate usage");
@@ -200,7 +203,7 @@ class TOCoordinate {
     switch (ID) {
       case COORD_TYPE::PACK:
         return co.pack.hash();
-      case COORD_TYPE::RCATTR:
+      case COORD_TYPE::kTianmuAttr:
         return co.rcattr.hash();
       default:
         ASSERT(false, "Undefined coordinate usage");
@@ -213,7 +216,7 @@ class TOCoordinate {
     switch (ID) {
       case COORD_TYPE::PACK:
         return co.pack[idx_];
-      case COORD_TYPE::RCATTR:
+      case COORD_TYPE::kTianmuAttr:
         return co.rcattr[idx_];
       default:
         ASSERT(false, "Undefined coordinate usage");
@@ -225,7 +228,7 @@ class TOCoordinate {
     switch (ID) {
       case COORD_TYPE::PACK:
         return co.pack[idx_];
-      case COORD_TYPE::RCATTR:
+      case COORD_TYPE::kTianmuAttr:
         return co.rcattr[idx_];
       default:
         ASSERT(false, "Undefined coordinate usage");
@@ -237,7 +240,7 @@ class TOCoordinate {
     switch (oid.ID) {
       case COORD_TYPE::PACK:
         return oid.co.pack(oid.co.pack);
-      case COORD_TYPE::RCATTR:
+      case COORD_TYPE::kTianmuAttr:
         return oid.co.rcattr(oid.co.rcattr);
       default:
         ASSERT(false, "Undefined coordinate usage");
@@ -250,7 +253,7 @@ class TOCoordinate {
       case COORD_TYPE::PACK:
         return "PACK [" + std::to_string(co.pack[0]) + ", " + std::to_string(co.pack[1]) + ", " +
                std::to_string(co.pack[2]) + "]";
-      case COORD_TYPE::RCATTR:
+      case COORD_TYPE::kTianmuAttr:
         return "Attr [" + std::to_string(co.rcattr[0]) + ", " + std::to_string(co.rcattr[1]) + "]";
       default:
         return "bad COORD type";
@@ -264,11 +267,13 @@ class FunctionExecutor {
  public:
   FunctionExecutor(F call_in_constructor, F call_in_deconstructor)
       : call_in_constructor(call_in_constructor), call_in_deconstructor(call_in_deconstructor) {
-    if (call_in_constructor) call_in_constructor();
+    if (call_in_constructor)
+      call_in_constructor();
   }
 
   virtual ~FunctionExecutor() {
-    if (call_in_deconstructor) call_in_deconstructor();
+    if (call_in_deconstructor)
+      call_in_deconstructor();
   }
 
  private:

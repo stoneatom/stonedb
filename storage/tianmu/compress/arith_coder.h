@@ -34,12 +34,12 @@ class ArithCoder {
  public:
   using BaseT = unsigned short;
   using WideT = unsigned long;
-  static const BaseT MAX_TOTAL = USHRT_MAX / 4;
+  static const BaseT MAX_TOTAL_ = USHRT_MAX / 4;
 
   // Saves encoded data to 'dest'.
   //   sum - array of cumulated counts, starting with value 0.
   //      Its size = highest_index_of_character_to_encode + 2 (1 for total)
-  //      (contains 'low' for every character plus total),
+  //      (contains 'low_' for every character plus total),
   //		e.g. for characters 0 and 1 it is: { low0, low1, total }
   //   total - total sum of counts
   CprsErr CompressBytes(BitStream *dest, char *src, int slen, BaseT *sum, BaseT total);
@@ -60,24 +60,24 @@ class ArithCoder {
   // num0, uint num1);
 
  private:
-  BaseT low;
-  BaseT high;
-  BaseT code;
-  WideT range;
-  int underflow_bits;
-  unsigned int added;  // number of '0' bits virtually "added" to the source
-                       // during decompr. (added > 16, means error)
+  BaseT low_;
+  BaseT high_;
+  BaseT code_;
+  WideT range_;
+  int underflow_bits_;
+  unsigned int added_;  // number of '0' bits virtually "added_" to the source
+                        // during decompr. (added_ > 16, means error)
 
   // constants for uniform encoding:
-  static const uint uni_nbit = 13;
-  static const BaseT uni_mask = (1 << uni_nbit) - 1;
-  static const BaseT uni_total = 1 << uni_nbit;
+  static const uint uni_nbit_ = 13;
+  static const BaseT uni_mask_ = (1 << uni_nbit_) - 1;
+  static const BaseT uni_total_ = 1 << uni_nbit_;
 
  public:
   ArithCoder() {
-    low = high = code = 0;
-    range = 0;
-    underflow_bits = added = 0;
+    low_ = high_ = code_ = 0;
+    range_ = 0;
+    underflow_bits_ = added_ = 0;
   }
   ~ArithCoder() {}
   // compression methods

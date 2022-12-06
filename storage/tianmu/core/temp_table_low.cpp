@@ -30,7 +30,7 @@
 #include "exporter/data_exporter.h"
 #include "system/fet.h"
 #include "system/io_parameters.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 #include "system/txt_utils.h"
 #include "types/value_parser4txt.h"
 #include "util/thread_pool.h"
@@ -63,7 +63,8 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
   if (no_dims == 1) {
     for (int i = 0; i < filter.mind->NumOfDimensions(); i++) {
       if (all_dims[i]) {
-        if (filter.mind->GetFilter(i)) one_dim = i;  // exactly one filter (non-join or join with forgotten dims)
+        if (filter.mind->GetFilter(i))
+          one_dim = i;  // exactly one filter (non-join or join with forgotten dims)
         break;
       }
     }
@@ -107,14 +108,14 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
 
   int sort_order = 0;
   for (auto &j : attrs) {
-    if (j->alias != NULL) {
+    if (j->alias != nullptr) {
       vcolumn::VirtualColumn *vc = j->term.vc;
       DEBUG_ASSERT(vc);
       sort_order = 0;
       for (uint i = 0; i < ord.size(); i++)
         if (ord[i].vc == vc) {
           sort_order = (ord[i].dir == 0 ? (i + 1) : -(i + 1));
-          ord[i].vc = NULL;  // annotate this entry as already added
+          ord[i].vc = nullptr;  // annotate this entry as already added
         }
       sorted_table.AddSortedColumn(vc, sort_order, true);
       if (task_num != 1) {
@@ -128,7 +129,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
 
   // find all columns not added yet (i.e. not visible in output)
   for (uint i = 0; i < ord.size(); i++) {
-    if (ord[i].vc != NULL) {
+    if (ord[i].vc != nullptr) {
       sort_order = (ord[i].dir == 0 ? (i + 1) : -(i + 1));
       if (task_num != 1) {
         for (int j = 0; j < task_num; j++)
@@ -145,7 +146,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
     sorted_table.InitSorter(*(filter.mind), false);
   if (sorted_table.GetSorter() && std::strcmp(sorted_table.GetSorter()->Name(), "Heap Sort") != 0) {
     TIANMU_LOG(LogCtl_Level::DEBUG, "Multi-thread order by is not supported for %s table.",
-                sorted_table.GetSorter()->Name());
+               sorted_table.GetSorter()->Name());
     task_num = 1;
   }
   // Put data
@@ -160,7 +161,8 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
   ord.clear();
   if (task_num == 1) {
     while (it.IsValid() && continue_now) {
-      if (m_conn->Killed()) throw common::KilledException();
+      if (m_conn->Killed())
+        throw common::KilledException();
       if (it.PackrowStarted()) {
         if (sorted_table.InitPackrow(it)) {
           local_row += it.GetPackSizeLeft();
@@ -173,7 +175,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
 
       local_row++;
       if (local_row % 10000000 == 0)
-        rc_control_.lock(m_conn->GetThreadID())
+        tianmu_control_.lock(m_conn->GetThreadID())
             << "Preparing values to sort (" << int(local_row / double(filter.mind->NumOfTuples()) * 100) << "% done)."
             << system::unlock;
     }
@@ -209,9 +211,10 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
 
     utils::result_set<size_t> res;
     for (int i = 0; i < task_num; i++)
-      res.insert(ha_rcengine_->query_thread_pool.add_task(&TempTable::TaskPutValueInST, this, &taskIterator[i], current_txn_,
-                                                   &subsorted_table[i]));
-    if (filter.mind->m_conn->Killed()) throw common::KilledException("Query killed by user");
+      res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&TempTable::TaskPutValueInST, this, &taskIterator[i],
+                                                               current_txn_, &subsorted_table[i]));
+    if (filter.mind->m_conn->Killed())
+      throw common::KilledException("Query killed by user");
 
     for (int i = 0; i < task_num; ++i) {
       local_row += res.get(i);
@@ -220,13 +223,13 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
   }
 
   TIANMU_LOG(LogCtl_Level::DEBUG,
-              "SortTable preparation done. row num %d, offset %d, limit %d, "
-              "task_num %d",
-              local_row, offset, limit, task_num);
+             "SortTable preparation done. row num %d, offset %d, limit %d, "
+             "task_num %d",
+             local_row, offset, limit, task_num);
 
   // Create output
   for (uint i = 0; i < NumOfAttrs(); i++) {
-    if (attrs[i]->alias != NULL) {
+    if (attrs[i]->alias != nullptr) {
       if (sender)
         attrs[i]->CreateBuffer(no_obj > tianmu_sysvar_result_sender_rows ? tianmu_sysvar_result_sender_rows : no_obj,
                                m_conn, no_obj > tianmu_sysvar_result_sender_rows);
@@ -243,21 +246,22 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
   int64_t produced_rows = 0;
   bool null_value;
   bool valid = true;
-  do {  // outer loop - through streaming buffers (if sender != NULL)
+  do {  // outer loop - through streaming buffers (if sender != nullptr)
     do {
       valid = sorted_table.FetchNextRow();
       if (valid && global_row >= offset) {
         int col = 0;
-        if (m_conn->Killed()) throw common::KilledException();
+        if (m_conn->Killed())
+          throw common::KilledException();
         for (auto &attr : attrs) {
-          if (attr->alias != NULL) {
+          if (attr->alias != nullptr) {
             switch (attr->TypeName()) {
-              case common::CT::STRING:
-              case common::CT::VARCHAR:
-              case common::CT::BIN:
-              case common::CT::BYTE:
-              case common::CT::VARBYTE:
-              case common::CT::LONGTEXT:
+              case common::ColumnType::STRING:
+              case common::ColumnType::VARCHAR:
+              case common::ColumnType::BIN:
+              case common::ColumnType::BYTE:
+              case common::ColumnType::VARBYTE:
+              case common::ColumnType::LONGTEXT:
                 val_s = sorted_table.GetValueT(col);
                 attr->SetValueString(local_row, val_s);
                 break;
@@ -275,7 +279,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
         local_row++;
         ++produced_rows;
         if ((global_row - offset + 1) % 10000000 == 0)
-          rc_control_.lock(m_conn->GetThreadID())
+          tianmu_control_.lock(m_conn->GetThreadID())
               << "Retrieving sorted rows (" << int((global_row - offset) / double(limit - offset) * 100) << "% done)."
               << system::unlock;
       } else if (valid)
@@ -283,7 +287,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
       global_row++;
     } while (valid && global_row < limit + offset &&
              !(sender && local_row >= tianmu_sysvar_result_sender_rows));  // a limit for
-                                                                            // streaming buffer
+                                                                           // streaming buffer
     // Note: what about SetNumOfMaterialized()? Only no_obj is set now.
     if (sender) {
       TempTable::RecordIterator iter = begin();
@@ -295,7 +299,7 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
       local_row = 0;
     }
   } while (valid && global_row < limit + offset);
-  rc_control_.lock(m_conn->GetThreadID()) << "Sorted end, rows retrieved." << system::unlock;
+  tianmu_control_.lock(m_conn->GetThreadID()) << "Sorted end, rows retrieved." << system::unlock;
 
   // TIANMU_LOG(LogCtl_Level::INFO, "OrderByAndMaterialize complete global_row %d, limit %d,
   // offset %d", global_row, limit, offset);
@@ -304,7 +308,8 @@ bool TempTable::OrderByAndMaterialize(std::vector<SortDescriptor> &ord, int64_t 
 
 void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offset, ResultSender *sender,
                                         bool pagewise) {
-  if (filter.mind->ZeroTuples()) return;
+  if (filter.mind->ZeroTuples())
+    return;
 
   if (sender) {
     SendResult(local_limit, local_offset, *sender, pagewise);
@@ -321,7 +326,8 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
     // Column statistics
     if (m_conn->DisplayAttrStats()) {
       for (uint j = 0; j < NumOfAttrs(); j++) {
-        if (attrs[j]->term.vc) attrs[j]->term.vc->DisplayAttrStats();
+        if (attrs[j]->term.vc)
+          attrs[j]->term.vc->DisplayAttrStats();
       }
       m_conn->SetDisplayAttrStats(false);  // already displayed
     }
@@ -334,14 +340,18 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
       break;
     }
   }
-  if (!has_intresting_columns) return;
+  if (!has_intresting_columns)
+    return;
 
   MIIterator it(filter.mind, filter.mind->ValueOfPower());
-  if (pagewise && local_offset < no_materialized) local_offset = no_materialized;  // continue filling
+  if (pagewise && local_offset < no_materialized)
+    local_offset = no_materialized;  // continue filling
 
-  if (local_offset > 0) it.Skip(local_offset);
+  if (local_offset > 0)
+    it.Skip(local_offset);
 
-  if (!it.IsValid()) return;
+  if (!it.IsValid())
+    return;
 
   int64_t row = local_offset;
   std::vector<char> skip_parafilloutput;
@@ -362,7 +372,8 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
     skip_parafilloutput.push_back(skip);
   }
 
-  if (attrs.size() == 0) return;
+  if (attrs.size() == 0)
+    return;
 
   // Semantics of variables:
   // row		- a row number in orig. tables
@@ -375,7 +386,8 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
     int64_t page_end = (((row - local_offset) / page_size) + 1) * page_size + local_offset;
     // where the current TempTable buffer ends, in terms of multiindex rows
     // (integer division)
-    if (page_end > no_obj + local_offset) page_end = no_obj + local_offset;
+    if (page_end > no_obj + local_offset)
+      page_end = no_obj + local_offset;
 
     for (uint i = 0; i < NumOfAttrs(); i++) attrs[i]->CreateBuffer(page_end - start_row, m_conn, pagewise);
 
@@ -393,16 +405,18 @@ void TempTable::FillMaterializedBuffers(int64_t local_limit, int64_t local_offse
     utils::result_set<void> res;
     for (uint i = 1; i < attrs.size(); i++) {
       if (!skip_parafilloutput[i]) {
-        res.insert(ha_rcengine_->query_thread_pool.add_task(&TempTable::FillbufferTask, this, attrs[i], current_txn_,
-                                                     &page_start, start_row, page_end));
+        res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&TempTable::FillbufferTask, this, attrs[i],
+                                                                 current_txn_, &page_start, start_row, page_end));
       }
     }
     res.get_all_with_except();
 
     for (uint i = 1; i < attrs.size(); i++)
-      if (skip_parafilloutput[i]) FillbufferTask(attrs[i], current_txn_, &page_start, start_row, page_end);
+      if (skip_parafilloutput[i])
+        FillbufferTask(attrs[i], current_txn_, &page_start, start_row, page_end);
 
-    if (lazy) break;
+    if (lazy)
+      break;
   }
 }
 
@@ -413,7 +427,8 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
     //////// Column statistics ////////////////////////
     if (m_conn->DisplayAttrStats()) {
       for (uint j = 0; j < NumOfAttrs(); j++) {
-        if (attrs[j]->term.vc) attrs[j]->term.vc->DisplayAttrStats();
+        if (attrs[j]->term.vc)
+          attrs[j]->term.vc->DisplayAttrStats();
       }
       m_conn->SetDisplayAttrStats(false);  // already displayed
     }
@@ -426,12 +441,15 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
       break;
     }
   }
-  if (!has_intresting_columns) return;
+  if (!has_intresting_columns)
+    return;
 
   MIIterator it(filter.mind, filter.mind->ValueOfPower());
-  if (pagewise && offset < no_materialized) offset = no_materialized;  // continue filling
+  if (pagewise && offset < no_materialized)
+    offset = no_materialized;  // continue filling
 
-  if (offset > 0) it.Skip(offset);
+  if (offset > 0)
+    it.Skip(offset);
 
   int row = 0;
   bool first_row_for_vc = true;
@@ -441,29 +459,29 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
       first_row_for_vc = false;
     }
 
-    std::vector<std::unique_ptr<types::RCDataType>> record;
+    std::vector<std::unique_ptr<types::TianmuDataType>> record;
     for (uint att = 0; att < NumOfDisplaybleAttrs(); ++att) {
       Attr *col = GetDisplayableAttrP(att);
-      common::CT ct = col->TypeName();
+      common::ColumnType ct = col->TypeName();
 
       auto vc = col->term.vc;
-      if (ct == common::CT::INT || ct == common::CT::MEDIUMINT || ct == common::CT::SMALLINT ||
-          ct == common::CT::BYTEINT || ct == common::CT::NUM || ct == common::CT::BIGINT) {
-        auto data_ptr = new types::RCNum();
+      if (ct == common::ColumnType::INT || ct == common::ColumnType::MEDIUMINT || ct == common::ColumnType::SMALLINT ||
+          ct == common::ColumnType::BYTEINT || ct == common::ColumnType::NUM || ct == common::ColumnType::BIGINT) {
+        auto data_ptr = new types::TianmuNum();
         if (vc->IsNull(it))
           data_ptr->SetToNull();
         else
           data_ptr->Assign(vc->GetValueInt64(it), col->Type().GetScale(), false, ct);
         record.emplace_back(data_ptr);
       } else if (ATI::IsRealType(ct)) {
-        auto data_ptr = new types::RCNum();
+        auto data_ptr = new types::TianmuNum();
         if (vc->IsNull(it))
           data_ptr->SetToNull();
         else
           data_ptr->Assign(vc->GetValueDouble(it));
         record.emplace_back(data_ptr);
       } else if (ATI::IsDateTimeType(ct)) {
-        auto data_ptr = new types::RCDateTime();
+        auto data_ptr = new types::TianmuDateTime();
         if (vc->IsNull(it))
           data_ptr->SetToNull();
         else
@@ -482,7 +500,8 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
     sender.SendRow(record, this);
     row++;
     ++it;
-    if (lazy) break;
+    if (lazy)
+      break;
   }
   for (auto &attr : attrs) {
     attr->term.vc->UnlockSourcePacks();
@@ -492,7 +511,8 @@ void TempTable::SendResult(int64_t limit, int64_t offset, ResultSender &sender, 
 std::vector<AttributeTypeInfo> TempTable::GetATIs(bool orig) {
   std::vector<AttributeTypeInfo> deas;
   for (uint i = 0; i < NumOfAttrs(); i++) {
-    if (!IsDisplayAttr(i)) continue;
+    if (!IsDisplayAttr(i))
+      continue;
     deas.emplace_back(attrs[i]->TypeName(), attrs[i]->Type().NotNull(),
                       orig ? attrs[i]->orig_precision : attrs[i]->Type().GetPrecision(), attrs[i]->Type().GetScale(),
                       false, attrs[i]->Type().GetCollation());
@@ -521,7 +541,8 @@ void TempTable::VerifyAttrsSizes()  // verifies attr[i].field_size basing on the
             uint precision = ct.GetPrecision();
             if (precision >= STRING_LENGTH_THRESHOLD) {
               uint actual_size = column->MaxStringSize() * ct.GetCollation().collation->mbmaxlen;
-              if (actual_size < precision) max_length += (actual_size - precision);
+              if (actual_size < precision)
+                max_length += (actual_size - precision);
             }
           }
         }
@@ -546,7 +567,8 @@ size_t TempTable::TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrappe
   bool continue_now = true;
   current_txn_ = ci;
   while (it->IsValid() && continue_now) {
-    if (m_conn->Killed()) throw common::KilledException();
+    if (m_conn->Killed())
+      throw common::KilledException();
     if (it->PackrowStarted()) {
       if (st->InitPackrow(*it)) {
         local_row += it->GetPackSizeLeft();
@@ -561,7 +583,7 @@ size_t TempTable::TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrappe
 
     local_row++;
     if (local_row % 10000000 == 0)
-      rc_control_.lock(m_conn->GetThreadID())
+      tianmu_control_.lock(m_conn->GetThreadID())
           << "Preparing values to sort (" << int(local_row / double(filter.mind->NumOfTuples()) * 100) << "% done)."
           << system::unlock;
   }

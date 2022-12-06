@@ -1,0 +1,35 @@
+--echo #
+--echo # CAST Data types
+--echo # Author: ysw
+--echo #
+
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS cast_data_types;
+--enable_warnings
+
+CREATE DATABASE cast_data_types;
+USE cast_data_types;
+
+CREATE TABLE t1(t1_int INT, t1_decimal DECIMAL(5,3), t1_char CHAR(10), t1_text TEXT, t1_varchar VARCHAR(50))ENGINE=tianmu;
+INSERT INTO t1 VALUES(NULL, NULL, '', '', '');
+INSERT INTO t1 VALUES(512762, 86.722, 'A', repeat('a',50), repeat('b',50));
+INSERT INTO t1 VALUES(-512762, -86.722, '123456', repeat('1',50), repeat('2',50));
+
+SELECT * FROM t1;
+SELECT CAST(t1_int AS SIGNED), CAST(t1_decimal AS SIGNED), CAST(t1_char AS SIGNED), CAST(t1_text AS SIGNED), CAST(t1_varchar AS SIGNED) FROM t1;
+#UNSIGNED:stonedb is not supported, to be released after support(2022-10-26)
+#SELECT CAST(t1_int AS UNSIGNED), CAST(t1_decimal AS UNSIGNED), CAST(t1_char AS UNSIGNED), CAST(t1_text AS UNSIGNED), CAST(t1_varchar AS UNSIGNED) FROM t1;
+SELECT CAST(t1_int AS CHAR(10)), CAST(t1_decimal AS CHAR(10)), CAST(t1_char AS CHAR(10)), CAST(t1_text AS CHAR(10)), CAST(t1_varchar AS CHAR(10)) FROM t1;
+SELECT CAST(t1_int AS DECIMAL(6,5)), CAST(t1_decimal AS DECIMAL(6,5)), CAST(t1_char AS DECIMAL(6,5)), CAST(t1_text AS DECIMAL(6,5)), CAST(t1_varchar AS DECIMAL(6,5)) FROM t1;
+
+--error ER_M_BIGGER_THAN_D
+SELECT CAST(t1_int AS DECIMAL(4,5)) FROM t1;
+--error ER_TOO_BIG_PRECISION
+SELECT CAST(t1_int AS DECIMAL(66,6)) FROM t1;
+--error ER_TOO_BIG_SCALE
+SELECT CAST(t1_int AS DECIMAL(64,63)) FROM t1;
+
+# Clean UP
+DROP DATABASE cast_data_types;

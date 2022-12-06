@@ -30,7 +30,8 @@ namespace system {
 class FileOut : public ChannelOut {
  public:
   FileOut(std::string const &filepath) : out_stream_(filepath.c_str(), std::ios_base::out | std::ios_base::app) {
-    if (!out_stream_.is_open()) throw common::FileException(std::string("Unable to open ") + std::string(filepath));
+    if (!out_stream_.is_open())
+      throw common::FileException(std::string("Unable to open ") + std::string(filepath));
   }
 
   ~FileOut() {}
@@ -124,7 +125,8 @@ class FileOut : public ChannelOut {
   };
 
   void close() override {
-    if (out_stream_.is_open()) out_stream_.close();
+    if (out_stream_.is_open())
+      out_stream_.close();
   };
 
   ChannelOut &operator<<(ChannelOut &(*_Pfn)(ChannelOut &)) override { return _Pfn(*this); };

@@ -25,7 +25,7 @@
 namespace Tianmu {
 namespace core {
 Item_tianmufield::Item_tianmufield(Item_field *ifield, VarID varID)
-    : Item_field(current_txn_->Thd(), ifield), ifield(ifield), buf(NULL), ivalue(NULL) {
+    : Item_field(current_txn_->Thd(), ifield), ifield(ifield), buf(nullptr), ivalue(nullptr) {
   this->varID.push_back(varID);
   if (ifield->type() == Item::SUM_FUNC_ITEM) {
     was_aggregation = true;
@@ -37,7 +37,7 @@ Item_tianmufield::Item_tianmufield(Item_field *ifield, VarID varID)
 }
 
 Item_tianmufield::~Item_tianmufield() {
-  // if(ivalue != NULL) delete ivalue;	// done by MySQL not TIANMU, for each Item
+  // if(ivalue != nullptr) delete ivalue;	// done by MySQL not TIANMU, for each Item
   // subclass
   ClearBuf();
 }
@@ -45,12 +45,12 @@ Item_tianmufield::~Item_tianmufield() {
 void Item_tianmufield::ClearBuf() {
   if (isBufOwner) {
     delete buf;
-    buf = NULL;
+    buf = nullptr;
   }
 }
 
 void Item_tianmufield::SetBuf(ValueOrNull *&b) {
-  if (buf == NULL) {
+  if (buf == nullptr) {
     isBufOwner = true;
     buf = new ValueOrNull;
   }
@@ -58,9 +58,9 @@ void Item_tianmufield::SetBuf(ValueOrNull *&b) {
 }
 
 void Item_tianmufield::SetType(DataType t) {
-  if (ivalue != NULL) {
+  if (ivalue != nullptr) {
     // delete ivalue;		// done by MySQL not TIANMU, for each Item subclass
-    ivalue = NULL;
+    ivalue = nullptr;
   }
 
   tianmu_type = t;
@@ -83,19 +83,19 @@ void Item_tianmufield::SetType(DataType t) {
 
     case DataType::ValueType::VT_DATETIME:
       switch (tianmu_type.attrtype) {
-        case common::CT::DATETIME:
+        case common::ColumnType::DATETIME:
           ivalue = new Item_tianmudatetime();
           break;
-        case common::CT::TIMESTAMP:
+        case common::ColumnType::TIMESTAMP:
           ivalue = new Item_tianmutimestamp();
           break;
-        case common::CT::DATE:
+        case common::ColumnType::DATE:
           ivalue = new Item_tianmudate();
           break;
-        case common::CT::TIME:
+        case common::ColumnType::TIME:
           ivalue = new Item_tianmutime();
           break;
-        case common::CT::YEAR:
+        case common::ColumnType::YEAR:
           ivalue = new Item_tianmuyear(tianmu_type.precision);
           break;
         default:
@@ -142,27 +142,31 @@ void Item_tianmufield::FeedValue() {
 
 double Item_tianmufield::val_real() {
   // DBUG_ASSERT(fixed == 1);
-  if ((null_value = buf->null)) return 0.0;
+  if ((null_value = buf->null))
+    return 0.0;
   FeedValue();
   return ivalue->val_real();
 }
 
 longlong Item_tianmufield::val_int() {
   // DBUG_ASSERT(fixed == 1);
-  if ((null_value = buf->null)) return 0;
+  if ((null_value = buf->null))
+    return 0;
   FeedValue();
   return ivalue->val_int();
 }
 
 my_decimal *Item_tianmufield::val_decimal(my_decimal *decimal_value) {
-  if ((null_value = buf->null)) return 0;
+  if ((null_value = buf->null))
+    return 0;
   FeedValue();
   return ivalue->val_decimal(decimal_value);
 }
 
 String *Item_tianmufield::val_str(String *str) {
   // DBUG_ASSERT(fixed == 1);
-  if ((null_value = buf->null)) return 0;
+  if ((null_value = buf->null))
+    return 0;
   // acceleration
   if (tianmu_type.valtype == DataType::ValueType::VT_STRING) {
     str->copy(buf->sp, buf->len, ifield->collation.collation);
@@ -176,28 +180,53 @@ String *Item_tianmufield::val_str(String *str) {
 bool Item_tianmufield::get_date(MYSQL_TIME *ltime, uint fuzzydate) {
   if ((null_value = buf->null) ||
       ((!(fuzzydate & TIME_FUZZY_DATE) &&
-        (tianmu_type.attrtype == common::CT::DATETIME || tianmu_type.attrtype == common::CT::DATE) && buf->x == 0)))
+        (tianmu_type.attrtype == common::ColumnType::DATETIME || tianmu_type.attrtype == common::ColumnType::DATE) &&
+        buf->x == 0)))
     return 1;  // like in Item_field::get_date - return 1 on null value.
   FeedValue();
   return ivalue->get_date(ltime, fuzzydate);
 }
 
 bool Item_tianmufield::get_time(MYSQL_TIME *ltime) {
-  if ((null_value = buf->null) || ((tianmu_type.attrtype == common::CT::DATETIME || tianmu_type.attrtype == common::CT::DATE) &&
-                                   buf->x == 0))  // zero date is illegal
-    return 1;                                     // like in Item_field::get_time - return 1 on null value.
+  if ((null_value = buf->null) ||
+      ((tianmu_type.attrtype == common::ColumnType::DATETIME || tianmu_type.attrtype == common::ColumnType::DATE) &&
+       buf->x == 0))  // zero date is illegal
+    return 1;         // like in Item_field::get_time - return 1 on null value.
   FeedValue();
   return ivalue->get_time(ltime);
 }
 
 bool Item_tianmufield::get_timeval(struct timeval *tm, int *warnings) {
   MYSQL_TIME ltime;
-  if (get_time(&ltime)) return true;
-  if (datetime_to_timeval(current_thd, &ltime, tm, warnings)) return true;
+  if (get_time(&ltime))
+    return true;
+  if (datetime_to_timeval(current_thd, &ltime, tm, warnings))
+    return true;
   return false;
 }
 
 bool Item_tianmufield::operator==(Item_tianmufield const &o) const { return (varID == o.varID); }
+
+type_conversion_status Item_tianmufield::save_in_field_inner(Field *to, bool no_conversions) {
+  if ((null_value = buf->null)) {
+    null_value = 1;
+    return set_field_to_null_with_conversions(to, no_conversions);
+  }
+
+  null_value = 0;
+  to->set_notnull();
+
+  Field *from = ifield->result_field;
+  assert(from && from->table && from->table->write_set);
+
+  if (!bitmap_is_set(from->table->write_set, from->field_index)) {
+    bitmap_set_bit(from->table->write_set, from->field_index);
+  }
+
+  FeedValue();
+  ivalue->save_org_in_field(from);
+  return field_conv(to, from);
+}
 
 Item_tianmudecimal::Item_tianmudecimal(DataType t) : Item_decimal(0, false) {
   scale = t.fixscale;

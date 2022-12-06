@@ -50,6 +50,8 @@
 #include "opt_hints.h"           // hint_table_state
 
 #include <algorithm>
+#include <sstream> 
+
 using std::max;
 using std::min;
 
@@ -2933,16 +2935,32 @@ bool JOIN::get_best_combination()
         delete tab->quick();
         tab->set_quick(NULL);
       }
-      if (!pos->key)
+
+      // The tianmu engine does not handle the index well that day.
+      // If it is a tianmu table, the query does not pass the index.
+      // Otherwise, pass to the original logic
+      TABLE *const table = tab->table();
+      bool check_tianmu_table =
+          table && table->s && (table->s->db_type() ? (table->s->db_type()->db_type == DB_TYPE_TIANMU) : false);
+      if (check_tianmu_table)
       {
+        tab->set_type(JT_ALL);
         if (tab->quick())
-          tab->set_type(calc_join_type(tab->quick()->get_type()));
-        else
-          tab->set_type(JT_ALL);
+        {
+          delete tab->quick();
+          tab->set_quick(NULL);
+        }
       }
       else
-        // REF or RANGE, clarify later when prefix tables are set for JOIN_TABs
-        tab->set_type(JT_REF);
+      {
+        if (!pos->key)
+        {
+          tab->set_type((tab->quick()) ? calc_join_type(tab->quick()->get_type()) : JT_ALL);
+        }
+        else
+          // REF or RANGE, clarify later when prefix tables are set for JOIN_TABs
+          tab->set_type(JT_REF);
+      }
     }
     assert(tab->type() != JT_UNKNOWN);
 
@@ -5126,7 +5144,21 @@ bool JOIN::make_join_plan()
   // Build the key access information, which is the basis for ref access.
   if (where_cond || select_lex->outer_join)
   {
-    if (update_ref_and_keys(thd, &keyuse_array, join_tab, tables, where_cond,
+    /*
+      The primary key of the tianmu engine does not support delete and update statements.
+      The following codes can be deleted after subsequent support
+    */
+    TABLE *const table= join_tab->table();
+    bool check_if_tianmu_engine = table && table->s && 
+                        (table->s->db_type() ? (table->s->db_type()->db_type == DB_TYPE_TIANMU): false);
+    enum_sql_command sql_command = SQLCOM_END;
+    if(thd->lex) sql_command = thd->lex->sql_command;
+    bool check_tianmu_delete_or_update = (check_if_tianmu_engine && ((sql_command == SQLCOM_DELETE) ||
+                                          (sql_command == SQLCOM_DELETE_MULTI) ||
+                                          (sql_command == SQLCOM_UPDATE) ||
+                                          (sql_command == SQLCOM_UPDATE_MULTI)));
+
+    if (!check_tianmu_delete_or_update && update_ref_and_keys(thd, &keyuse_array, join_tab, tables, where_cond,
                             cond_equal, ~select_lex->outer_join, select_lex,
                             &sargables))
       DBUG_RETURN(true);
@@ -10102,7 +10134,7 @@ bool optimize_cond(THD *thd, Item **cond, COND_EQUAL **cond_equal,
   */
   DBUG_EXECUTE("where",print_where(*cond,"after const change", QT_ORDINARY););
    }
-  }//ATOMRESTORE UPGRADE
+  }
   if (*cond)
   {
     Opt_trace_object step_wrapper(trace);
@@ -10144,12 +10176,15 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
   if (cond->type() == Item::COND_ITEM)
   {
     Item_cond *const item_cond= down_cast<Item_cond *>(cond);
-    const bool and_level= item_cond->functype() == Item_func::COND_AND_FUNC;
+    const auto& item_func_type = item_cond->functype();
+    const bool and_level = Item_func::COND_AND_FUNC == item_func_type;
+    const bool or_level = Item_func::COND_OR_FUNC == item_func_type;
     List_iterator<Item> li(*item_cond->argument_list());
     bool should_fix_fields= false;
 
     *cond_value=Item::COND_UNDEF;
     Item *item;
+
     while ((item=li++))
     {
       Item *new_item;
@@ -10158,7 +10193,130 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
         return true;
 
       if (new_item == NULL)
-        li.remove();
+      {
+        bool cond_replace = false;
+        bool cond_value_equivalent = false;
+        switch (item->type())
+        {
+        case Item::Type::INT_ITEM:
+        {
+          cond_replace = true;
+          cond_value_equivalent = down_cast<Item_int*>(item)->value;
+          break;
+        }
+
+        case Item::Type::FUNC_ITEM:
+        {
+          Item_func* item_func = down_cast<Item_func*>(item);
+          const Item_func::Functype& func_type = item_func->functype();
+          String left_value;
+          String right_value;
+
+          bool check_value = false;
+          switch (func_type)
+          {
+          case Item_func::Functype::EQ_FUNC:
+          case Item_func::Functype::EQUAL_FUNC:
+          case Item_func::Functype::NE_FUNC:
+          case Item_func::Functype::GT_FUNC:
+          case Item_func::Functype::GE_FUNC:
+          case Item_func::Functype::LT_FUNC:
+          case Item_func::Functype::LE_FUNC:
+          {
+            check_value = true;
+            Item_bool_func2* func = down_cast<Item_bool_func2*>(item);
+            Item** args = func->arguments();
+            args[0]->val_str(&left_value);
+            args[1]->val_str(&right_value);
+            break;
+          }
+
+          default:
+            break;
+          }
+
+          if (!check_value)
+          {
+            break;
+          }
+
+          switch (func_type)
+          {
+          case Item_func::Functype::EQ_FUNC:
+          case Item_func::Functype::EQUAL_FUNC:
+          {
+            cond_replace = true;
+            cond_value_equivalent = !stringcmp(&left_value, &right_value);
+            break;
+          }
+
+          case Item_func::Functype::NE_FUNC:
+          {
+            cond_replace = true;
+            cond_value_equivalent = stringcmp(&left_value, &right_value);
+            break;
+          }
+
+          case Item_func::Functype::GT_FUNC:
+          case Item_func::Functype::GE_FUNC:
+          case Item_func::Functype::LT_FUNC:
+          case Item_func::Functype::LE_FUNC:
+          {
+            std::stringstream left_sin(std::string(left_value.ptr(), left_value.length()));
+            double left_d;
+            if (!(left_sin >> left_d))
+            {
+              break;
+            }
+
+            std::stringstream right_sin(std::string(right_value.ptr(), right_value.length()));
+            double right_d;
+            if (!(right_sin >> right_d))
+            {
+              break;
+            }
+
+            cond_replace = true;
+            if (Item_func::Functype::GT_FUNC == func_type)
+            {
+              cond_value_equivalent = left_d > right_d;
+            }
+            else if (Item_func::Functype::GE_FUNC == func_type)
+            {
+              cond_value_equivalent = left_d >= right_d;
+            }
+            else if (Item_func::Functype::LT_FUNC == func_type)
+            {
+              cond_value_equivalent = left_d < right_d;
+            }
+            else if (Item_func::Functype::LE_FUNC == func_type)
+            {
+              cond_value_equivalent = left_d <= right_d;
+            }
+
+            break;
+          }
+
+          default:
+            break;
+          }
+        }
+
+        default:
+          break;
+        }
+
+        if (cond_replace)
+        {
+          if ((or_level && cond_value_equivalent)
+            || (and_level && (!cond_value_equivalent)))
+          {
+            *cond_value = Item::COND_OK;
+            *retcond = NULL;
+            return false;
+          }
+        }
+      }
       else if (item != new_item)
       {
         (void) li.replace(new_item);
@@ -10288,11 +10446,11 @@ static bool internal_remove_eq_conds(THD *thd, Item *cond,
     {
       if (part!=1 || cond->type()!=Item::SUBSELECT_ITEM)
       {//TIANMU UPGRADE
-      bool value;
-      if (eval_const_cond(thd, cond, &value))
-        return true;
-      *cond_value= value ? Item::COND_TRUE : Item::COND_FALSE;
-      *retcond= NULL;
+        bool value;
+        if (eval_const_cond(thd, cond, &value))
+          return true;
+        *cond_value= value ? Item::COND_TRUE : Item::COND_FALSE;
+        *retcond= NULL;
       }//END
       return false;
     }

@@ -29,7 +29,8 @@ JoinThreadTable::Finder::Finder(JoinThreadTable *thread_table, std::string *key_
 int64_t JoinThreadTable::Finder::GetNextRow(bool auto_reset) {
   int64_t row = hash_table_finder_.GetNextRow();
   if (row != common::NULL_VALUE_64) {
-    if (auto_reset) thread_table_->ResetTraversed(row);
+    if (auto_reset)
+      thread_table_->ResetTraversed(row);
   }
   return row;
 }
@@ -46,7 +47,8 @@ int64_t JoinThreadTable::AddKeyValue(const std::string &key_buffer, bool *too_ma
   int64_t hash_row = GetHashTable()->AddKeyValue(key_buffer, too_many_conflicts);
   if (hash_row != common::NULL_VALUE_64) {
     *too_many_conflicts = *too_many_conflicts && !ignore_conflicts_;
-    if (!(*too_many_conflicts)) SetTraversed(hash_row);
+    if (!(*too_many_conflicts))
+      SetTraversed(hash_row);
   }
   return hash_row;
 }
@@ -59,7 +61,8 @@ class JoinThreadTableImpl : public JoinThreadTable {
                       bool ignore_conflicts = false)
       : JoinThreadTable(std::move(column_encoder), ignore_conflicts) {
     hash_table_ = std::make_unique<HashTable>(create_params);
-    if (watch_traversed) outer_filter_ = std::make_unique<Filter>(hash_table_->GetCount(), pack_power, false);
+    if (watch_traversed)
+      outer_filter_ = std::make_unique<Filter>(hash_table_->GetCount(), pack_power, false);
   }
 
   JoinThreadTableImpl(JoinThreadTableImpl &&table) = default;
@@ -69,10 +72,12 @@ class JoinThreadTableImpl : public JoinThreadTable {
   int64_t GetOuterTraversedCount() const override { return outer_filter_->NumOfOnes(); }
   bool IsOuterTraversed(int64_t hash_row) override { return outer_filter_->Get(hash_row); }
   void SetTraversed(int64_t hash_row) override {
-    if (outer_filter_) outer_filter_->Set(hash_row);
+    if (outer_filter_)
+      outer_filter_->Set(hash_row);
   }
   void ResetTraversed(int64_t hash_row) override {
-    if (outer_filter_) outer_filter_->Reset(hash_row);
+    if (outer_filter_)
+      outer_filter_->Reset(hash_row);
   }
   HashTable *GetHashTable() override { return hash_table_.get(); }
   const HashTable *GetHashTable() const override { return hash_table_.get(); }
@@ -100,10 +105,12 @@ class JoinThreadTableShared : public JoinThreadTable {
   int64_t GetOuterTraversedCount() const override { return outer_filter_->GetOnesCount(); }
   bool IsOuterTraversed(int64_t hash_row) override { return outer_filter_->Get(hash_row); }
   void SetTraversed(int64_t hash_row) override {
-    if (outer_filter_) outer_filter_->Set(hash_row, true);
+    if (outer_filter_)
+      outer_filter_->Set(hash_row, true);
   }
   void ResetTraversed(int64_t hash_row) override {
-    if (outer_filter_) outer_filter_->Reset(hash_row, true);
+    if (outer_filter_)
+      outer_filter_->Reset(hash_row, true);
   }
   HashTable *GetHashTable() override { return hash_table_.get(); }
   const HashTable *GetHashTable() const override { return hash_table_.get(); }
@@ -149,7 +156,8 @@ class JoinThreadTableManagerShared : public JoinThreadTableManager {
     DEBUG_ASSERT(table_count >= 1u);
 
     hash_table_ = std::make_shared<HashTable>(create_params);
-    if (watch_traversed) outer_filter_ = std::make_shared<HighSyncFilter>(hash_table_->GetCount(), pack_power, false);
+    if (watch_traversed)
+      outer_filter_ = std::make_shared<HighSyncFilter>(hash_table_->GetCount(), pack_power, false);
 
     tables_.reserve(table_count);
     for (size_t index = 0; index < table_count; ++index) {

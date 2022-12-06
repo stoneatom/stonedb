@@ -22,6 +22,7 @@
 #include "core/blocked_mem_table.h"
 #include "core/column_bin_encoder.h"
 #include "core/filter.h"
+#include "core/value_matching_table.h"
 #include "vc/virtual_column.h"
 
 namespace Tianmu {
@@ -52,6 +53,7 @@ class GroupDistinctTable : public mm::TraceableObject {
                                           // vector of bytes)
   void InitializeVC(int64_t max_no_groups, vcolumn::VirtualColumn *vc, int64_t max_no_rows, int64_t max_bytes,
                     bool decodable);
+  void CopyFromValueMatchingTable(ValueMatchingTable *vt) { vm_tab.reset(vt->Clone()); };
 
   // Assumption: group >= 0
   GDTResult Add(int64_t group,
@@ -75,7 +77,8 @@ class GroupDistinctTable : public mm::TraceableObject {
 
  private:
   GDTResult FindCurrentRow(bool find_only = false);  // find / insert the current buffer
-  bool RowEmpty(unsigned char *p)                    // is this position empty? only if it starts with zeros
+  GDTResult FindCurrentRowByVMTable();
+  bool RowEmpty(unsigned char *p)  // is this position empty? only if it starts with zeros
   {
     return (std::memcmp(&zero_const, p, group_bytes) == 0);
   }
@@ -113,6 +116,7 @@ class GroupDistinctTable : public mm::TraceableObject {
   bool filter_implementation;
   Filter *f;
   int64_t group_factor;  // (g, v)  ->  f( g + group_factor * v )
+  std::unique_ptr<ValueMatchingTable> vm_tab;
 };
 }  // namespace core
 }  // namespace Tianmu

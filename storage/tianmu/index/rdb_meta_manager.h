@@ -29,11 +29,11 @@
 #include "index/rdb_utils.h"
 #include "rocksdb/compaction_filter.h"
 #include "rocksdb/utilities/transaction_db.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace core {
-class RCMemTable;
+class TianmuMemTable;
 }
 namespace index {
 class DICTManager;
@@ -50,7 +50,7 @@ const std::string DEFAULT_SYSTEM_CF_NAME("__system__");
 const char QUALIFIER_VALUE_SEP = '=';
 const char *const CF_NAME_QUALIFIER = "cfname";
 const char QUALIFIER_SEP = ';';
-//mem for pack string.
+// mem for pack string.
 const std::string SPACE(CHUNKSIZE, 0x20);
 constexpr int REVERSE_CF_FLAG = 0x1;
 constexpr int INDEX_NUMBER_SIZE = 0x4;
@@ -79,13 +79,9 @@ enum class IndexInfoType {
   INDEX_INFO_VERSION_COLS = 2,
 };
 
-enum class IndexType { 
-  INDEX_TYPE_PRIMARY = 1, 
-  INDEX_TYPE_SECONDARY, 
-  INDEX_TYPE_HIDDEN_PRIMARY 
-};
+enum class IndexType { INDEX_TYPE_PRIMARY = 1, INDEX_TYPE_SECONDARY, INDEX_TYPE_HIDDEN_PRIMARY };
 
-//index of rocksdb table for tianmu.
+// index of rocksdb table for tianmu.
 class RdbKey {
  public:
   RdbKey(const RdbKey &k);
@@ -98,11 +94,11 @@ class RdbKey {
   void pack_key(StringWriter &key, std::vector<std::string_view> &fields, StringWriter &info);
   common::ErrorCode unpack_key(StringReader &key, StringReader &value, std::vector<std::string> &fields);
 
-  //pack and unpack field num.
+  // pack and unpack field num.
   void pack_field_number(StringWriter &key, std::string_view &field, uchar flag);
   common::ErrorCode unpack_field_number(StringReader &key, std::string &field, uchar flag);
 
-  //pack and unpack field value.
+  // pack and unpack field value.
   void pack_field_string(StringWriter &info, StringWriter &key, std::string_view &field);
   common::ErrorCode unpack_field_string(StringReader &key, StringReader &value, std::string &field);
 
@@ -116,13 +112,15 @@ class RdbKey {
 
   // Check if given mem-comparable key belongs to this index
   bool covers_key(const rocksdb::Slice &slice) const {
-    if (slice.size() < INDEX_NUMBER_SIZE) return false;
-    if (memcmp(slice.data(), index_pos_be_, INDEX_NUMBER_SIZE)) return false;
+    if (slice.size() < INDEX_NUMBER_SIZE)
+      return false;
+    if (memcmp(slice.data(), index_pos_be_, INDEX_NUMBER_SIZE))
+      return false;
 
     return true;
   }
 
-  //Check if prefix is matched.
+  // Check if prefix is matched.
   bool value_matches_prefix(const rocksdb::Slice &value, const rocksdb::Slice &prefix) const {
     return covers_key(value) && !cmp_full_keys(value, prefix);
   }
@@ -143,41 +141,42 @@ class RdbKey {
   static const std::vector<std::string> parse_into_tokens(const std::string &s, const char delim);
   static const std::string parse_comment(const std::string &comment);
 
-  //gets index pos
+  // gets index pos
   uint32_t GetIndexPos() const { return index_pos_; }
-  //gets index version.
-  uint16_t GetIndexVersion() const { return index_ver_;}
-  //gets index type.
-  uchar GetIndexType() const {return index_type_;}
-  //key is in reverse order.
+  // gets index version.
+  uint16_t GetIndexVersion() const { return index_ver_; }
+  // gets index type.
+  uchar GetIndexType() const { return index_type_; }
+  // key is in reverse order.
   bool IsInReverseOrder() const { return is_reverse_order_; }
-  //index key name.
-  std::string GetIndexName()  { return key_name_; }
-  //gets Attrs of Cols.
-  std::vector<ColAttr> GetColAttrs () const { return cols_; }
+  // index key name.
+  std::string GetIndexName() { return key_name_; }
+  // gets Attrs of Cols.
+  std::vector<ColAttr> GetColAttrs() const { return cols_; }
+
  private:
   friend class RdbTable;
-  //ith pos in TABLE_SHARE::key_info[].
+  // ith pos in TABLE_SHARE::key_info[].
   const uint32_t index_pos_;
-  //pos of index in big endian order.
+  // pos of index in big endian order.
   uchar index_pos_be_[INDEX_NUMBER_SIZE];
-  //handler of column family.
+  // handler of column family.
   rocksdb::ColumnFamilyHandle *cf_handle_;
-  //index version.
+  // index version.
   uint16_t index_ver_;
-  //index type.
+  // index type.
   uchar index_type_;
-  //is in reverse order.
+  // is in reverse order.
   bool is_reverse_order_;
-  //index key name.
+  // index key name.
   std::string key_name_;
-  
-  //uint m_keyno;
-  //atributes of key.
+
+  // uint m_keyno;
+  // atributes of key.
   std::vector<ColAttr> cols_;
 };
 
-//rocksdb table for tianmu.
+// rocksdb table for tianmu.
 class RdbTable {
  public:
   RdbTable(const RdbTable &) = delete;
@@ -187,97 +186,96 @@ class RdbTable {
   explicit RdbTable(const rocksdb::Slice &slice, const size_t &pos = 0);
   virtual ~RdbTable();
 
-  //does the cf exists in dicts.
+  // does the cf exists in dicts.
   bool if_exist_cf(DICTManager *dict);
-  //stores the dicts.
+  // stores the dicts.
   void put_dict(DICTManager *dict, rocksdb::WriteBatch *const batch, uchar *const key, size_t keylen);
 
-  //gets the mem vars.
+  // gets the mem vars.
   const std::string &fullname() const { return full_name_; }
   const std::string &dbname() const { return db_name_; }
   const std::string &tablename() const { return table_name_; }
 
-  std::vector<std::shared_ptr<RdbKey> >& GetRdbTableKeys () { return rdb_keys_;}
-  
+  std::vector<std::shared_ptr<RdbKey>> &GetRdbTableKeys() { return rdb_keys_; }
+
  private:
   void set_name(const std::string &name);
-  //keys of rdb table.
+  // keys of rdb table.
   std::vector<std::shared_ptr<RdbKey>> rdb_keys_;
-  //full table name.
+  // full table name.
   std::string full_name_;
-  //db name.
+  // db name.
   std::string db_name_;
-  //table name.
+  // table name.
   std::string table_name_;
 };
 
-//Seq Gen. the step length use default value: 1.
+// Seq Gen. the step length use default value: 1.
 class SeqGenerator {
  public:
   SeqGenerator(const SeqGenerator &) = delete;
   SeqGenerator &operator=(const SeqGenerator &) = delete;
   SeqGenerator() = default;
 
-  //do initialization.
+  // do initialization.
   void init(const uint &initial_number) { next_number_ = initial_number; }
-  //get the next seq id.
+  // get the next seq id.
   uint get_and_update_next_number(DICTManager *const dict);
 
  private:
-  //the next seq num.
-  std::atomic<uint> next_number_ {0};
-  //the mutex of seq, make sure it's mult-thread safe. not necessary.
-  //std::recursive_mutex seq_mutex_;
+  // the next seq num.
+  std::atomic<uint> next_number_{0};
+  // the mutex of seq, make sure it's mult-thread safe. not necessary.
+  // std::recursive_mutex seq_mutex_;
 };
 
-//DDL manager.
+// DDL manager.
 class DDLManager {
  public:
   DDLManager(const DDLManager &) = delete;
   DDLManager &operator=(const DDLManager &) = delete;
   DDLManager() = default;
 
-  //do initialization.
+  // do initialization.
   bool init(DICTManager *const dict, CFManager *const cf_manager_);
-  //do cleanup.
+  // do cleanup.
   void cleanup();
 
-  //find the handler by table name.
+  // find the handler by table name.
   std::shared_ptr<RdbTable> find(const std::string &table_name);
-  //find the mem handler by table name.
-  std::shared_ptr<core::RCMemTable> find_mem(const std::string &table_name);
-  //store a rc mem table into DDL mananger.
-  void put_mem(std::shared_ptr<core::RCMemTable> tb_mem, rocksdb::WriteBatch *const batch);
+  // find the mem handler by table name.
+  std::shared_ptr<core::TianmuMemTable> find_mem(const std::string &table_name);
+  // store a rc mem table into DDL mananger.
+  void put_mem(std::shared_ptr<core::TianmuMemTable> tb_mem, rocksdb::WriteBatch *const batch);
 
-  //write dictionary into tbl.
+  // write dictionary into tbl.
   void put_and_write(std::shared_ptr<RdbTable> tbl, rocksdb::WriteBatch *const batch);
-  //rename fromm `from` to `to`. 
+  // rename fromm `from` to `to`.
   bool rename(const std::string &from, const std::string &to, rocksdb::WriteBatch *const batch);
 
-  //remove the tbl from dictionary.
+  // remove the tbl from dictionary.
   void remove(std::shared_ptr<RdbTable> tbl, rocksdb::WriteBatch *const batch);
-  //remove tbl from mem hash table.
-  void remove_mem(std::shared_ptr<core::RCMemTable> tb_mem, rocksdb::WriteBatch *const batch);
+  // remove tbl from mem hash table.
+  void remove_mem(std::shared_ptr<core::TianmuMemTable> tb_mem, rocksdb::WriteBatch *const batch);
   bool rename_mem(std::string &from, std::string &to, rocksdb::WriteBatch *const batch);
-  //get the next seq num.
+  // get the next seq num.
   uint get_and_update_next_number(DICTManager *const dict) { return seq_gen_.get_and_update_next_number(dict); }
 
  private:
   // Put the data into in-memory table (only)
   void put(std::shared_ptr<RdbTable> tbl);
-  //dict mananger handler.
+  // dict mananger handler.
   DICTManager *dict_ = nullptr;
-  //column family manager handler.
+  // column family manager handler.
   CFManager *cf_ = nullptr;
 
   // Contains RdbTable elements
   std::unordered_map<std::string, std::shared_ptr<RdbTable>> ddl_hash_;
-  std::unordered_map<std::string, std::shared_ptr<core::RCMemTable>> mem_hash_;
+  std::unordered_map<std::string, std::shared_ptr<core::TianmuMemTable>> mem_hash_;
   std::recursive_mutex lock_;
   std::recursive_mutex mem_lock_;
   SeqGenerator seq_gen_;
 };
-
 
 /*
   Meta description
@@ -307,12 +305,12 @@ class DICTManager {
   DICTManager &operator=(const DICTManager &) = delete;
   DICTManager() = default;
 
-  //do initalization, gets or create a column family.
+  // do initalization, gets or create a column family.
   bool init(rocksdb::DB *const rdb_dict, CFManager *const cf_manager_);
-  //do cleanup.
+  // do cleanup.
   void cleanup(){};
 
-  //locks operations.
+  // locks operations.
   inline void lock() { dict_mutex_.lock(); }
   inline void unlock() { dict_mutex_.unlock(); }
 
@@ -323,33 +321,33 @@ class DICTManager {
 
   rocksdb::Status get_value(const rocksdb::Slice &key, std::string *const value) const;
 
-  //key operations, such as put and delete key.
+  // key operations, such as put and delete key.
   void put_key(rocksdb::WriteBatchBase *const batch, const rocksdb::Slice &key, const rocksdb::Slice &value) const;
   void delete_key(rocksdb::WriteBatchBase *batch, const rocksdb::Slice &key) const;
 
-  //get a new interator.
+  // get a new interator.
   std::shared_ptr<rocksdb::Iterator> new_iterator() const;
 
-  //index info operations.
+  // index info operations.
   void save_index_info(rocksdb::WriteBatch *batch, uint16_t index_ver, uchar index_type, uint index_id, uint cf_id,
                        std::vector<ColAttr> &cols) const;
   void delete_index_info(rocksdb::WriteBatch *batch, const GlobalId &index_id) const;
   bool get_index_info(const GlobalId &gl_index_id, uint16_t &index_ver, uchar &index_type,
                       std::vector<ColAttr> &cols) const;
 
-  //column family flags operations.
+  // column family flags operations.
   void add_cf_flags(rocksdb::WriteBatch *const batch, const uint &cf_id, const uint &cf_flags) const;
   bool get_cf_flags(const uint &cf_id, uint32_t &cf_flags) const;
 
-  //table operations.
+  // table operations.
   void add_drop_table(std::vector<std::shared_ptr<RdbKey>> &keys, rocksdb::WriteBatch *const batch) const;
   void add_drop_index(const std::vector<GlobalId> &gl_index_ids, rocksdb::WriteBatch *const batch) const;
 
-  //index id operations.
+  // index id operations.
   bool get_max_index_id(uint32_t *const index_id) const;
   bool update_max_index_id(rocksdb::WriteBatch *const batch, const uint32_t &index_id) const;
 
-  //ongoing_index operations.
+  // ongoing_index operations.
   void get_ongoing_index(std::vector<GlobalId> &ids, MetaType dd_type) const;
   void start_ongoing_index(rocksdb::WriteBatch *const batch, const GlobalId &index_id, MetaType dd_type) const;
   void end_ongoing_index(rocksdb::WriteBatch *const batch, const GlobalId &id, MetaType dd_type) const;
@@ -361,17 +359,17 @@ class DICTManager {
   void dump_index_id(StringWriter &id, MetaType dict_type, const GlobalId &gl_index_id) const;
   void delete_with_prefix(rocksdb::WriteBatch *const batch, MetaType dict_type, const GlobalId &gl_index_id) const;
 
-  //mutex for dict.
+  // mutex for dict.
   std::mutex dict_mutex_;
-  //handler of db;
+  // handler of db;
   rocksdb::DB *db_ = nullptr;
-  //system column family.
+  // system column family.
   rocksdb::ColumnFamilyHandle *system_cf_ = nullptr;
-  //max index of ervery INDEX_NUMBER_SIZE.
+  // max index of ervery INDEX_NUMBER_SIZE.
   uchar max_index_[INDEX_NUMBER_SIZE] = {0};
 };
 
-//Column Family Mananger.
+// Column Family Mananger.
 class CFManager {
  public:
   CFManager(const CFManager &) = delete;
@@ -381,24 +379,25 @@ class CFManager {
   void init(std::vector<rocksdb::ColumnFamilyHandle *> &handles);
   void cleanup();
 
-  //Gets the column family if exists, otherwise, create a new one.
+  // Gets the column family if exists, otherwise, create a new one.
   rocksdb::ColumnFamilyHandle *get_or_create_cf(rocksdb::DB *const rdb_, const std::string &cf_name);
-  //Gets the column family by cf id.
+  // Gets the column family by cf id.
   rocksdb::ColumnFamilyHandle *get_cf_by_id(const uint32_t &id);
-  //Gets all of the column family in this db.
+  // Gets all of the column family in this db.
   std::vector<rocksdb::ColumnFamilyHandle *> get_all_cf();
 
  private:
-  //name to column family map.
+  // name to column family map.
   std::map<std::string, rocksdb::ColumnFamilyHandle *> cf_name_map_;
-  //id to column family map.
+  // id to column family map.
   std::map<uint32_t, rocksdb::ColumnFamilyHandle *> cf_id_map_;
-  //mutex for the maps.
+  // mutex for the maps.
   std::recursive_mutex cf_mutex_;
 };
 
 inline bool IsRowStoreCF(std::string cf_name) {
-  if (cf_name.size() < DEFAULT_ROWSTORE_PREFIX.size()) return false;
+  if (cf_name.size() < DEFAULT_ROWSTORE_PREFIX.size())
+    return false;
 
   return (strncmp(cf_name.data(), DEFAULT_ROWSTORE_PREFIX.data(), DEFAULT_ROWSTORE_PREFIX.size()) == 0);
 };

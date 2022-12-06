@@ -226,7 +226,8 @@ ParallelHashJoiner::~ParallelHashJoiner() {}
 void ParallelHashJoiner::ExecuteJoinConditions(Condition &cond) {
   MEASURE_FET("ParallelHashJoiner::ExecuteJoinConditions(...)");
 
-  if (PrepareBeforeJoin(cond)) ExecuteJoin();
+  if (PrepareBeforeJoin(cond))
+    ExecuteJoin();
 
   why_failed = too_many_conflicts_ ? JoinFailure::FAIL_WRONG_SIDES : JoinFailure::NOT_FAILED;
 }
@@ -253,12 +254,14 @@ bool ParallelHashJoiner::PrepareBeforeJoin(Condition &cond) {
         mind->MarkInvolvedDimGroups(dims1);
         mind->MarkInvolvedDimGroups(dims2);
         // Add dimensions for nested outer joins
-        if (dims1.Intersects(cond[i].right_dims)) dims1.Plus(cond[i].right_dims);
-        if (dims2.Intersects(cond[i].right_dims)) dims2.Plus(cond[i].right_dims);
+        if (dims1.Intersects(cond[i].right_dims))
+          dims1.Plus(cond[i].right_dims);
+        if (dims2.Intersects(cond[i].right_dims))
+          dims2.Plus(cond[i].right_dims);
         first_found = false;
       } else {
         DimensionVector sec_dims1(mind->NumOfDimensions());  // Make sure the local descriptions are
-                                                          // compatible
+                                                             // compatible
         DimensionVector sec_dims2(mind->NumOfDimensions());
         cond[i].attr.vc->MarkUsedDims(sec_dims1);
         cond[i].val1.vc->MarkUsedDims(sec_dims2);
@@ -313,7 +316,8 @@ bool ParallelHashJoiner::PrepareBeforeJoin(Condition &cond) {
   } else if (dim1_size > dim2_size)
     switch_sides = true;
 
-  if (force_switching_sides_) switch_sides = !switch_sides;
+  if (force_switching_sides_)
+    switch_sides = !switch_sides;
   if (switch_sides) {
     for (int i = 0; i < cond_hashed_; i++)  // switch sides of joining conditions
       cond[hash_descriptors[i]].SwitchSides();
@@ -365,7 +369,8 @@ bool ParallelHashJoiner::PrepareBeforeJoin(Condition &cond) {
       traversed_hash_column_[i] = cond_hashed_ + num_of_traversed_dims;    // jump over the joining key columns
       num_of_traversed_dims++;
       int bin_index_size = 4;
-      if (mind->OrigSize(i) > 0x000000007FFFFF00) bin_index_size = 8;
+      if (mind->OrigSize(i) > 0x000000007FFFFF00)
+        bin_index_size = 8;
       hash_table_tuple_size_.push_back(bin_index_size);
     }
   }
@@ -386,7 +391,8 @@ bool ParallelHashJoiner::AddKeyColumn(vcolumn::VirtualColumn *vc, vcolumn::Virtu
   // Comparable, non-monotonic, non-decodable.
   column_bin_encoder_.push_back(ColumnBinEncoder(ColumnBinEncoder::ENCODER_IGNORE_NULLS));
   // common::CT::TIMESTAMP is omitted by ColumnValueEncoder::SecondColumn.
-  vcolumn::VirtualColumn *second_column = (vc->Type().GetTypeName() == common::CT::TIMESTAMP) ? nullptr : vc_matching;
+  vcolumn::VirtualColumn *second_column =
+      (vc->Type().GetTypeName() == common::ColumnType::TIMESTAMP) ? nullptr : vc_matching;
   bool success = column_bin_encoder_[column_index].PrepareEncoder(vc, second_column);
   hash_table_key_size_.push_back(column_bin_encoder_[column_index].GetPrimarySize());
   return success;
@@ -404,7 +410,8 @@ void ParallelHashJoiner::ExecuteJoin() {
   uint64_t matched_dims_size = match_mit.NumOfTuples();
 
   uint64_t approx_join_size = traversed_dims_size;
-  if (matched_dims_size > approx_join_size) approx_join_size = matched_dims_size;
+  if (matched_dims_size > approx_join_size)
+    approx_join_size = matched_dims_size;
 
   std::vector<bool> traverse_keys_unique;
   for (int i = 0; i < cond_hashed_; i++) traverse_keys_unique.push_back(vc1_[i]->IsDistinctInTable());
@@ -425,26 +432,28 @@ void ParallelHashJoiner::ExecuteJoin() {
     outer_tuples_ += outer_tuples;
 
     if (too_many_conflicts_) {
-      rc_control_.lock(m_conn->GetThreadID()) << "Too many hash conflicts: restarting join." << system::unlock;
+      tianmu_control_.lock(m_conn->GetThreadID()) << "Too many hash conflicts: restarting join." << system::unlock;
       return;
     }
 
     joined_tuples += MatchDim(match_mit);
 
-    if (watch_traversed_) outer_tuples_ += SubmitOuterTraversed();
+    if (watch_traversed_)
+      outer_tuples_ += SubmitOuterTraversed();
   }
 
   int64_t outer_tuples_matched = 0;
-  if (watch_matched_ && !outer_matched_filter_->IsEmpty()) outer_tuples_matched = SubmitOuterMatched(match_mit);
+  if (watch_matched_ && !outer_matched_filter_->IsEmpty())
+    outer_tuples_matched = SubmitOuterMatched(match_mit);
   outer_tuples_ += outer_tuples_matched;
 
   if (outer_tuples_ > 0)
-    rc_control_.lock(m_conn->GetThreadID())
+    tianmu_control_.lock(m_conn->GetThreadID())
         << "Added " << outer_tuples_ << " null tuples by outer join." << system::unlock;
   joined_tuples += outer_tuples_;
   // revert multiindex to the updated tables
   if (packrows_omitted_ > 0)
-    rc_control_.lock(m_conn->GetThreadID())
+    tianmu_control_.lock(m_conn->GetThreadID())
         << "Roughly omitted " << int(packrows_omitted_ / double(packrows_matched_) * 10000.0) / 100.0 << "% packrows."
         << system::unlock;
 
@@ -503,7 +512,8 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
     int64_t rows_length = origin_size / split_count;
     for (int index = 0; index < split_count; ++index) {
       int packs_started = index * packs_per_fragment;
-      if (packs_started >= packs_count) break;
+      if (packs_started >= packs_count)
+        break;
 
       int packs_increased = (index == split_count - 1) ? (-1 - packs_started) : (packs_per_fragment - 1);
 
@@ -517,8 +527,8 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
   }
 
   int traversed_fragment_count = (int)task_iterators.size();
-  rc_control_.lock(m_conn->GetThreadID()) << "Begin traversed with " << traversed_fragment_count << " threads with "
-                                        << splitting_type << " type." << system::unlock;
+  tianmu_control_.lock(m_conn->GetThreadID()) << "Begin traversed with " << traversed_fragment_count << " threads with "
+                                              << splitting_type << " type." << system::unlock;
 
   std::vector<TraverseTaskParams> traverse_task_params;
   traverse_task_params.reserve(task_iterators.size());
@@ -542,7 +552,7 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
       params.build_item = multi_index_builder_->CreateBuildItem();
       params.task_miter = iter;
 
-      res.insert(ha_rcengine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncTraverseDim, this, &params));
+      res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncTraverseDim, this, &params));
     }
   } catch (std::exception &e) {
     res.get_all_with_except();
@@ -565,18 +575,20 @@ int64_t ParallelHashJoiner::TraverseDim(MIIterator &mit, int64_t *outer_tuples) 
     throw common::Exception("Parallel hash join failed.");
   }
 
-  if (m_conn->Killed()) throw common::KilledException();
+  if (m_conn->Killed())
+    throw common::KilledException();
 
-  rc_control_.lock(m_conn->GetThreadID()) << "End traversed " << traversed_rows << "/" << rows_count << " rows."
-                                        << system::unlock;
+  tianmu_control_.lock(m_conn->GetThreadID())
+      << "End traversed " << traversed_rows << "/" << rows_count << " rows." << system::unlock;
 
   for (auto &params : traverse_task_params) {
     if (params.too_many_conflicts && !tianmu_sysvar_join_disable_switch_side) {
-      if (!force_switching_sides_ && !too_many_conflicts_) too_many_conflicts_ = true;
+      if (!force_switching_sides_ && !too_many_conflicts_)
+        too_many_conflicts_ = true;
     }
 
     if (params.no_space_left)
-      rc_control_.lock(m_conn->GetThreadID()) << "No space left of hash table. " << system::unlock;
+      tianmu_control_.lock(m_conn->GetThreadID()) << "No space left of hash table. " << system::unlock;
 
     *outer_tuples += params.outer_tuples;
     multi_index_builder_->AddBuildItem(params.build_item);
@@ -601,7 +613,8 @@ int64_t ParallelHashJoiner::AsyncTraverseDim(TraverseTaskParams *params) {
   int traversed_rows = 0;
 
   while (params->task_miter->IsValid()) {
-    if (m_conn->Killed()) break;
+    if (m_conn->Killed())
+      break;
 
     if (miter.PackrowStarted()) {
       for (int index = 0; index < cond_hashed_; ++index) vc1_[index]->LockSourcePacks(miter);
@@ -631,7 +644,8 @@ int64_t ParallelHashJoiner::AsyncTraverseDim(TraverseTaskParams *params) {
       if (!force_switching_sides_ && params->too_many_conflicts && !tianmu_sysvar_join_disable_switch_side)
         break;  // and exit the function
 
-      if (watch_traversed_) params->traversed_hash_table->outer_filter()->Set(hash_row);
+      if (watch_traversed_)
+        params->traversed_hash_table->outer_filter()->Set(hash_row);
 
       actually_traversed_rows_++;
 
@@ -639,7 +653,8 @@ int64_t ParallelHashJoiner::AsyncTraverseDim(TraverseTaskParams *params) {
       // another conditions may need it.
       if (!tips.count_only || other_cond_exist_) {
         for (int index = 0; index < mind->NumOfDimensions(); ++index)
-          if (traversed_dims_[index]) hash_table->SetTupleValue(traversed_hash_column_[index], hash_row, miter[index]);
+          if (traversed_dims_[index])
+            hash_table->SetTupleValue(traversed_hash_column_[index], hash_row, miter[index]);
       }
     } else if (watch_traversed_) {
       for (int index = 0; index < mind->NumOfDimensions(); ++index) {
@@ -696,18 +711,20 @@ bool ParallelHashJoiner::CreateMatchingTasks(MIIterator &mit, int64_t rows_count
     for (int index = 0; index < mind->NumOfDimensions(); index++) {
       if (matched_dims_[index]) {
         Filter *filter = mind->GetFilter(index);
-        if (filter) packs_count = filter->NumOfBlocks();
+        if (filter)
+          packs_count = filter->NumOfBlocks();
       }
     }
 
     if (packs_count > kJoinSplittedMinPacks) {
       // Splitting using packs.
       int split_count = (tianmu_sysvar_join_parallel > 1) ? tianmu_sysvar_join_parallel
-                                                           : EvaluateMatchedFragmentsWithPacks(packs_count);
+                                                          : EvaluateMatchedFragmentsWithPacks(packs_count);
       int packs_per_fragment = (packs_count + kJoinSplittedMinPacks) / split_count;
       for (int index = 0; index < split_count; ++index) {
         int packs_started = index * packs_per_fragment;
-        if (packs_started >= packs_count) break;
+        if (packs_started >= packs_count)
+          break;
 
         int packs_increased = (index == split_count - 1) ? (-1 - packs_started) : (packs_per_fragment - 1);
         MITaskIterator *iter = new MILinearPackTaskIterator(pack_power_, mind, matched_dims_, index, split_count, 0,
@@ -756,9 +773,9 @@ int64_t ParallelHashJoiner::MatchDim(MIIterator &mit) {
   std::vector<MITaskIterator *> task_iterators;
   CreateMatchingTasks(mit, rows_count, &task_iterators, &splitting_type);
 
-  rc_control_.lock(m_conn->GetThreadID()) << "Begin match dim of " << rows_count << " rows, spliting into "
-                                        << task_iterators.size() << " threads with " << splitting_type << " type."
-                                        << system::unlock;
+  tianmu_control_.lock(m_conn->GetThreadID())
+      << "Begin match dim of " << rows_count << " rows, spliting into " << task_iterators.size() << " threads with "
+      << splitting_type << " type." << system::unlock;
 
   auto &ftht = traversed_hash_tables_[0];
 
@@ -779,7 +796,7 @@ int64_t ParallelHashJoiner::MatchDim(MIIterator &mit) {
         params.build_item = multi_index_builder_->CreateBuildItem();
         params.task_miter = iter;
 
-        res.insert(ha_rcengine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncMatchDim, this, &params));
+        res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncMatchDim, this, &params));
       }
     } catch (std::exception &e) {
       res.get_all_with_except();
@@ -808,10 +825,11 @@ int64_t ParallelHashJoiner::MatchDim(MIIterator &mit) {
     matched_rows = AsyncMatchDim(&params);
   }
 
-  if (m_conn->Killed()) throw common::KilledException();
+  if (m_conn->Killed())
+    throw common::KilledException();
 
-  rc_control_.lock(m_conn->GetThreadID()) << "End match dim. Produced tuples:" << matched_rows << "/" << rows_count
-                                        << system::unlock;
+  tianmu_control_.lock(m_conn->GetThreadID())
+      << "End match dim. Produced tuples:" << matched_rows << "/" << rows_count << system::unlock;
 
   for (auto &params : match_task_params) {
     multi_index_builder_->AddBuildItem(params.build_item);
@@ -844,7 +862,8 @@ int64_t ParallelHashJoiner::AsyncMatchDim(MatchTaskParams *params) {
   MIDummyIterator combined_mit(mind);  // a combined iterator for checking non-hashed conditions, if any
 
   while (params->task_miter->IsValid() && !interrupt_matching_) {
-    if (m_conn->Killed()) break;
+    if (m_conn->Killed())
+      break;
 
     // Rough and locking part
     bool omit_this_packrow = false;
@@ -1000,11 +1019,13 @@ int64_t ParallelHashJoiner::AsyncMatchDim(MatchTaskParams *params) {
     matching_row++;
   }
 
-  if (watch_matched_) outer_matched_filter_->Commit(true);  // Commit the delayed resetsC.
+  if (watch_matched_)
+    outer_matched_filter_->Commit(true);  // Commit the delayed resetsC.
 
   params->build_item->Finish();
 
-  if (outer_nulls_only_) joined_tuples = 0;  // outer tuples added later
+  if (outer_nulls_only_)
+    joined_tuples = 0;  // outer tuples added later
   return joined_tuples;
 }
 
@@ -1053,7 +1074,8 @@ void ParallelHashJoiner::InitOuter(Condition &cond) {
     }
     outer_nulls_only_ = true;
     for (int j = 0; j < outer_dims.Size(); j++)
-      if (outer_dims[j] && tips.null_only[j] == false) outer_nulls_only_ = false;
+      if (outer_dims[j] && tips.null_only[j] == false)
+        outer_nulls_only_ = false;
   }
 }
 
@@ -1133,7 +1155,8 @@ int64_t ParallelHashJoiner::SubmitOuterMatched(MIIterator &miter) {
   MEASURE_FET("ParallelHashJoiner::SubmitOuterMatched(...)");
   // miter - an iterator through the matched dimensions
   DEBUG_ASSERT(outer_matched_filter_ && watch_matched_);
-  if (tips.count_only) return outer_matched_filter_->GetOnesCount();
+  if (tips.count_only)
+    return outer_matched_filter_->GetOnesCount();
 
   int64_t rows_count = mind->NumOfTuples(matched_dims_);
   std::string splitting_type("none");
@@ -1149,8 +1172,8 @@ int64_t ParallelHashJoiner::SubmitOuterMatched(MIIterator &miter) {
       params.task_iter = iter;
       params.build_item = multi_index_builder_->CreateBuildItem();
 
-      res.insert(ha_rcengine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncSubmitOuterMatched, this, &params,
-                                                   outer_matched_filter_.get()));
+      res.insert(ha_tianmu_engine_->query_thread_pool.add_task(&ParallelHashJoiner::AsyncSubmitOuterMatched, this,
+                                                               &params, outer_matched_filter_.get()));
     }
   } catch (std::exception &e) {
     res.get_all_with_except();

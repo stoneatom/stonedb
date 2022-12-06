@@ -1,0 +1,74 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test functions define and call
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS func_define_test;
+--enable_warnings
+
+CREATE DATABASE func_define_test;
+USE func_define_test;
+
+CREATE TABLE t1(x INT, y CHAR(10));
+INSERT INTO t1 VALUES(1,'aaaaa'),(100,'bbbbbb'),(100,'ccccccc'),(300,'ddddddd');
+# function declaration
+CREATE FUNCTION f1(z INT) RETURNS INT DETERMINISTIC 
+       RETURN (SELECT x FROM t1 WHERE x = z);
+CREATE FUNCTION f2(z INT) RETURNS INT DETERMINISTIC
+       RETURN (SELECT * FROM t1 WHERE x = z);
+
+# function call
+SELECT f1(1);
+SELECT f1(300);
+SELECT f1(11);
+--error 1318
+SELECT f1();
+--error 1242
+SELECT f1(100);	
+--error 1241
+SELECT f2(1);
+
+# function drop
+DROP FUNCTION f1;
+DROP FUNCTION f2;
+--error 1305
+DROP FUNCTION f2;
+
+DELIMITER //;
+CREATE FUNCTION f3(i INT) RETURNS INT DETERMINISTIC
+BEGIN
+ INSERT INTO t2 VALUES(i+1);
+ RETURN 42;
+END //
+DELIMITER ;//
+
+CREATE TABLE t2(col1 INT);
+--error 1054
+SELECT f3(a);
+SELECT f3(123);
+SELECT f3(86);
+SELECT f3(07);
+SELECT * FROM t2;
+DROP FUNCTION f3;
+
+DELIMITER //;
+CREATE FUNCTION func1() RETURNS INT LANGUAGE SQL DETERMINISTIC CONTAINS SQL SQL SECURITY DEFINER
+BEGIN
+  RETURN 1;
+END//
+DELIMITER ;//
+SHOW CREATE FUNCTION func1;
+SELECT func1();
+
+DELIMITER //;
+CREATE FUNCTION func2() RETURNS CHAR(10) LANGUAGE SQL NOT DETERMINISTIC NO SQL SQL SECURITY INVOKER
+BEGIN
+  RETURN 'func2';
+END//
+DELIMITER ;//
+SHOW CREATE FUNCTION func2;
+SELECT func2();
+
+DROP DATABASE func_define_test;

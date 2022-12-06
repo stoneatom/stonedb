@@ -36,35 +36,36 @@ namespace compress {
 // TODO: ratio - different algorithm for compression of short columns
 
 class TextCompressor {
-  // array of split positions, at which PPM models are built;
+  // array of split_ positions, at which PPM models are built;
   // its size is (no_of_models + 1) and is >= 2;
-  // split[0]=0 and split[size-1]=data_len
-  std::vector<int> split;
+  // split_[0]=0 and split_[size-1]=data_len
+  std::vector<int> split_;
 
-  // set splits so that split[i+1]/split[i] is approx. the same for all 'i' and
-  // is >= BLD_RATIO
+  // set splits so that split_[i+1]/split_[i] is approx. the same for all 'i' and
+  // is >= BLD_RATIO_
   void SetSplit(int len);
 
   // simple permutation of strings to compress; PermNext will loop through
   // permuted elements 0..nrec-1, beginning from PermFirst() and finishing in
   // PermFirst()
-  static const int PERMSTEP = 2048;
+  static const int PERMSTEP_ = 2048;
   int PermFirst([[maybe_unused]] int nrec) { return 0; }
   void PermNext(int &i, int nrec) {
-    i += PERMSTEP;
-    if (i >= nrec) i = (i + 1) % PERMSTEP % nrec;
+    i += PERMSTEP_;
+    if (i >= nrec)
+      i = (i + 1) % PERMSTEP_ % nrec;
   }
 
   // parameters of the procedure of building a sequence of models
-  int BLD_START;     // no. of bytes used to build the first model (they must be
-                     // simply copied during compression)
-  double BLD_RATIO;  // no. of bytes used to build the next model is min.
-                     // BLD_RATIO * no_bytes_to_build_previous_model
+  int BLD_START_;     // no. of bytes used to build the first model (they must be
+                      // simply copied during compression)
+  double BLD_RATIO_;  // no. of bytes used to build the next model is min.
+                      // BLD_RATIO_ * no_bytes_to_build_previous_model
 
   void SetParams(PPMParam &p, int ver, int lev,
                  int len);  // sets 'p' and BLD_...; then invokes SetSplit()
 
-  IncWGraph graph;
+  IncWGraph graph_;
 
   CprsErr CompressCopy(char *dest, int &dlen, char *src,
                        int slen);  // stores ver=0 at the beginning
@@ -78,7 +79,7 @@ class TextCompressor {
   //  representative for the rest)
   //  - and encodes them as null-separated concatenation (each string _begins_
   //  with '\0') Then it runs CompressSimple.
-  CprsErr CompressVer2(char *dest, int &dlen, char **index, const uint *lens, int nrec, int ver = VER, int lev = LEV);
+  CprsErr CompressVer2(char *dest, int &dlen, char **index, const uint *lens, int nrec, int ver = VER_, int lev = LEV_);
   CprsErr DecompressVer2(char *dest, int dlen, char *src, int slen, char **index, const uint * /*lens*/, int nrec);
 
   CprsErr CompressVer4(char *dest, int &dlen, char **index, const uint *lens, int nrec, int ver, int lev, uint packlen);
@@ -90,9 +91,9 @@ class TextCompressor {
   TextCompressor();
   ~TextCompressor() = default;
 
-  static const int MAXVER = static_cast<int>(common::PackFmt::ZLIB);
-  static const int VER = 3;
-  static const int LEV = 7;
+  static const int MAXVER_ = static_cast<int>(common::PackFmt::ZLIB);
+  static const int VER_ = 3;
+  static const int LEV_ = 7;
 
   // 'ver' - version of algorithm to use:
   //    0 - no compression,
@@ -118,7 +119,7 @@ class TextCompressor {
   // (symbol '\0' has special meaning!) Note 2: strings used to build PPM model
   // are taken simply from the beginning of 'src',
   //         so they can be non-representative for the next strings
-  CprsErr CompressPlain(char *dest, int &dlen, char *src, int slen, int ver = VER, int lev = LEV);
+  CprsErr CompressPlain(char *dest, int &dlen, char *src, int slen, int ver = VER_, int lev = LEV_);
 
   // 'dlen' - actual size of decompressed data ('slen' from CompressPlain())
   // 'slen' - size of compressed data ('dlen' returned from CompressPlain())
@@ -136,8 +137,8 @@ class TextCompressor {
   // of compressed data. packlen - upon exit will hold minimum size of 'dest'
   // buffer which must be passed to Decompress. Size of compressed data is
   // ALWAYS <= total_length_of_records + 2.
-  CprsErr Compress(char *dest, int &dlen, char **index, const uint *lens, int nrec, uint &packlen, int ver = VER,
-                   int lev = LEV);
+  CprsErr Compress(char *dest, int &dlen, char **index, const uint *lens, int nrec, uint &packlen, int ver = VER_,
+                   int lev = LEV_);
 
   // dlen - length of buffer 'dest'; must be >= 'packlen' returned from Compress
   //        (which is <= cumulative length of decoded strings)

@@ -20,7 +20,7 @@
 #include "core/transaction.h"
 #include "system/configuration.h"
 #include "system/file_out.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 
@@ -49,9 +49,9 @@ logger::LogCtl_Level LogCtl::GetGlobalLevel() {
 }
 
 bool LogCtl::LogEnabled(logger::LogCtl_Level level) {
-// there is issue with TLS in thread pool so we disable session log level until
-// a fix is available.
-  return tianmu_sysvar_global_debug_level >= static_cast<int>(level);
+  // there is issue with TLS in thread pool so we disable session log level until
+  // a fix is available.
+  return tianmu_sysvar_global_debug_level >= static_cast<unsigned int>(level);
 }
 
 void LogCtl::LogMsg(logger::LogCtl_Level level, const char *file, int line, const char *format, ...) {
@@ -61,10 +61,11 @@ void LogCtl::LogMsg(logger::LogCtl_Level level, const char *file, int line, cons
     va_start(args, format);
     char buff[MAX_LOG_LEN];
     auto length = std::vsnprintf(buff, sizeof(buff), format, args);
-    if (static_cast<size_t>(length) >= MAX_LOG_LEN) length = MAX_LOG_LEN - 1;
+    if (static_cast<size_t>(length) >= MAX_LOG_LEN)
+      length = MAX_LOG_LEN - 1;
     buff[length] = '\0';
     tianmulog << system::lock << "[" << logger::get_level_str(level) << "] [" << basename(file) << ":" << line
-               << "] MSG: " << buff << system::unlock;
+              << "] MSG: " << buff << system::unlock;
     va_end(args);
   }
 }
@@ -78,7 +79,7 @@ void LogCtl::LogMsg(logger::LogCtl_Level level, const std::string &msg) {
 void LogCtl::LogMsg(logger::LogCtl_Level level, const char *file, int line, const std::string &msg) {
   if (LogEnabled(level)) {
     tianmulog << system::lock << "[" << logger::get_level_str(level) << "] [" << basename(file) << ":" << line
-               << "] MSG: " << msg << system::unlock;
+              << "] MSG: " << msg << system::unlock;
   }
 }
 

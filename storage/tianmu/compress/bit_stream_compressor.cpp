@@ -26,7 +26,8 @@ namespace compress {
 const double log_of_2 = log(2.0);
 
 double BitstreamCompressor::Entropy(double p) {
-  if ((p <= 0.0) || (p >= 1.0)) return 0.0;
+  if ((p <= 0.0) || (p >= 1.0))
+    return 0.0;
   double q = 1.0 - p;
   return -(p * log(p) + q * log(q)) / log_of_2;
 }
@@ -34,15 +35,17 @@ double BitstreamCompressor::Entropy(double p) {
 void BitstreamCompressor::GetSumTable(unsigned short *sum, unsigned int num0, unsigned int num1) {
   unsigned int cnt0 = num0, cnt1 = num1;
 
-  uint maxtotal = ArithCoder::MAX_TOTAL;
+  uint maxtotal = ArithCoder::MAX_TOTAL_;
 
   // reduce cnt0 and cnt1 so that their 'total' is small enough for the coder
   while (cnt0 + cnt1 > maxtotal) {
     cnt0 >>= 1;
     cnt1 >>= 1;
     // repair if count = 0
-    if ((cnt0 == 0) && (num0 > 0)) cnt0 = 1;
-    if ((cnt1 == 0) && (num1 > 0)) cnt1 = 1;
+    if ((cnt0 == 0) && (num0 > 0))
+      cnt0 = 1;
+    if ((cnt1 == 0) && (num1 > 0))
+      cnt1 = 1;
   }
 
   sum[0] = 0;
@@ -59,7 +62,8 @@ uint BitstreamCompressor::Differ(BitStream *dest, BitStream *src) {
     next = src->GetBit();
     dest->PutBit(bit = prev ^ next);
     prev = next;
-    if (bit) num1++;
+    if (bit)
+      num1++;
   }
   return num1;
 }
@@ -162,7 +166,8 @@ CprsErr BitstreamCompressor::DecompressData(BitStream *dest, BitStream *src, uns
 
 CprsErr BitstreamCompressor::Decompress(BitStream *dest, BitStream *src, unsigned int numbits, unsigned int num1) {
   try {
-    if ((src->GetBit() == 0) || (src->GetBit() != 0)) return CprsErr::CPRS_ERR_VER;
+    if ((src->GetBit() == 0) || (src->GetBit() != 0))
+      return CprsErr::CPRS_ERR_VER;
 
     uchar isdiff = src->GetBit();  // is the data differentiated?
     if (isdiff) {

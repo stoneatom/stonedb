@@ -60,7 +60,7 @@ class ColumnBinEncoder final {
   // flags
   bool PrepareEncoder(
       vcolumn::VirtualColumn *vc1,
-      vcolumn::VirtualColumn *vc2 = NULL);  // encoder for one column, or a common encoder for two of them
+      vcolumn::VirtualColumn *vc2 = nullptr);  // encoder for one column, or a common encoder for two of them
   // return false if encoding of a second column is not possible (incompatible)
 
   void Disable() { disabled = true; }
@@ -94,11 +94,12 @@ class ColumnBinEncoder final {
 
   // Set / retrieve values
   void LockSourcePacks(MIIterator &mit) {
-    if (vc && !implicit && dup_col == -1) vc->LockSourcePacks(mit);
+    if (vc && !implicit && dup_col == -1)
+      vc->LockSourcePacks(mit);
   }
   void LoadPacks(MIIterator *mit);
 
-  void Encode(unsigned char *buf, MIIterator &mit, vcolumn::VirtualColumn *alternative_vc = NULL,
+  void Encode(unsigned char *buf, MIIterator &mit, vcolumn::VirtualColumn *alternative_vc = nullptr,
               bool update_stats = false);
   bool PutValue64(unsigned char *buf, int64_t v, bool sec_column,
                   bool update_stats = false);  // used in special cases only (e.g. rough),
@@ -493,7 +494,7 @@ class MultiindexPositionEncoder {
                           int dim);  // how many bytes is needed to encode the dimension
 
  private:
-  // Encoding: 0 = NULL, or k+1. Stored on a minimal number of bytes.
+  // Encoding: 0 = nullptr, or k+1. Stored on a minimal number of bytes.
   int val_offset;  // buffer offset of the value - externally set
   uint val_size;   // number of bytes for all the stored dimensions
 

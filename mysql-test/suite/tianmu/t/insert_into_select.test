@@ -1,0 +1,101 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test of insert into data from different engines
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS insert_into_select_test;
+--enable_warnings
+
+CREATE DATABASE insert_into_select_test;
+USE insert_into_select_test;
+
+#
+# Scenario-1: Tables with Default NULL
+#
+CREATE TABLE t1_i (
+  `a` varchar(100) DEFAULT NULL
+) ENGINE=innodb DEFAULT CHARSET=utf8 ;
+
+CREATE TABLE t1_tianmu (
+  `a` varchar(100) DEFAULT NULL
+)DEFAULT CHARSET=utf8 ;
+
+# Populate tables
+DELIMITER //;
+CREATE PROCEDURE generate_data()
+BEGIN
+  DECLARE i INT DEFAULT 0;
+  TRUNCATE TABLE t1_i;
+  TRUNCATE TABLE t1_tianmu;
+  WHILE i < 5000 DO
+    INSERT INTO t1_i VALUES (i);
+    SET i = i + 1;
+  END WHILE;
+END//
+DELIMITER ;//
+
+CALL generate_data();
+INSERT INTO t1_tianmu SELECT * FROM t1_i;
+SELECT COUNT(*), SUM(t1_i.a IS NULL) FROM t1_i;
+SELECT COUNT(*), SUM(t1_tianmu.a IS NULL) FROM t1_tianmu;
+
+# Copy derived TIANMU table to innodb table
+CREATE TABLE t2 LIKE t1_i;
+INSERT INTO t2 SELECT *  FROM (SELECT * FROM t1_tianmu) derived;
+SELECT COUNT(*), SUM(a IS NULL) FROM t2;
+DROP TABLE t2;
+
+# Copy derived innodb table to TIANMU table
+CREATE TABLE t2 LIKE t1_tianmu;
+INSERT INTO t2 SELECT * FROM (SELECT * FROM t1_i) derived;
+SELECT COUNT(*), SUM(a IS NULL) FROM t2;
+DROP TABLE t2;
+
+# Copy derived TIANMU table to another TIANMU table
+CREATE TABLE t2 LIKE t1_tianmu;
+INSERT INTO t2 SELECT * FROM (SELECT * FROM t1_tianmu) derived;
+SELECT COUNT(*), SUM(a IS NULL) FROM t2;
+DROP TABLE t2;
+
+#
+# Scenario-2: Tables with NOT NULL constraint and a default value
+#
+DROP TABLE IF EXISTS t1_i;
+DROP TABLE IF EXISTS t1_tianmu;
+
+CREATE TABLE t1_i ( 
+  `a` varchar(100) NOT NULL DEFAULT 123
+) ENGINE=innodb DEFAULT CHARSET=utf8 ;
+
+CREATE TABLE t1_tianmu ( 
+  `a` varchar(100) NOT NULL DEFAULT 123
+) DEFAULT CHARSET=utf8 ;
+
+# Populate tables
+CALL generate_data();
+INSERT INTO t1_tianmu SELECT * FROM t1_i;
+SELECT COUNT(*), SUM(t1_i.a IS NULL) FROM t1_i;
+SELECT COUNT(*), SUM(t1_tianmu.a IS NULL) FROM t1_tianmu;
+
+# Copy derived TIANMU table to innodb table
+CREATE TABLE t2 LIKE t1_i;
+INSERT INTO t2 SELECT *  FROM (SELECT * FROM t1_tianmu) derived;
+SELECT * FROM t2 LIMIT 3;
+DROP TABLE t2;
+
+# Copy derived innodb table to TIANMU table
+CREATE TABLE t2 LIKE t1_tianmu;
+INSERT INTO t2 SELECT * FROM (SELECT * FROM t1_i) derived;
+SELECT * FROM t2 LIMIT 3;
+DROP TABLE t2;
+
+# Copy derived TIANMU table to another TIANMU table
+CREATE TABLE t2 LIKE t1_tianmu;
+INSERT INTO t2 SELECT * FROM (SELECT * FROM t1_tianmu) derived;
+SELECT * FROM t2 LIMIT 3;
+DROP TABLE t2;
+
+# Clean UP
+DROP DATABASE insert_into_select_test;

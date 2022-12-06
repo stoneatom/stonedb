@@ -16,9 +16,9 @@
 */
 #include "common/common_definitions.h"
 #include "core/filter.h"
-#include "core/rc_attr_typeinfo.h"
-#include "types/rc_num.h"
+#include "core/tianmu_attr_typeinfo.h"
 #include "types/text_stat.h"
+#include "types/tianmu_num.h"
 #include "util/hash64.h"
 
 #include "value_set.h"
@@ -28,7 +28,7 @@ namespace core {
 ValueSet::ValueSet(uint32_t power) {
   prepared = false;
   contains_nulls = false;
-  prep_type = common::CT::UNK;
+  prep_type = common::ColumnType::UNK;
   prep_scale = 0;
   prep_collation = DTCollation();
   min = max = 0;
@@ -47,9 +47,11 @@ ValueSet::ValueSet(ValueSet &sec)
   min = max = 0;
   for (const auto &it : sec.values) values.insert(it->Clone().release());
 
-  if (sec.min) min = sec.min->Clone().release();
+  if (sec.min)
+    min = sec.min->Clone().release();
 
-  if (sec.max) max = sec.max->Clone().release();
+  if (sec.max)
+    max = sec.max->Clone().release();
 
   easy_min = sec.easy_min;
   easy_max = sec.easy_max;
@@ -57,11 +59,14 @@ ValueSet::ValueSet(ValueSet &sec)
   if (use_easy_table)
     for (int i = 0; i < no_obj; i++) easy_table[i] = sec.easy_table[i];
 
-  if (sec.easy_vals) easy_vals.reset(new Filter(*sec.easy_vals));
+  if (sec.easy_vals)
+    easy_vals.reset(new Filter(*sec.easy_vals));
 
-  if (sec.easy_hash) easy_hash.reset(new utils::Hash64(*sec.easy_hash));
+  if (sec.easy_hash)
+    easy_hash.reset(new utils::Hash64(*sec.easy_hash));
 
-  if (sec.easy_text) easy_text.reset(new types::TextStat(*sec.easy_text));
+  if (sec.easy_text)
+    easy_text.reset(new types::TextStat(*sec.easy_text));
 }
 
 ValueSet::~ValueSet() {
@@ -78,7 +83,7 @@ void ValueSet::Clear() {
   delete max;
   max = 0;
   prepared = false;
-  prep_type = common::CT::UNK;
+  prep_type = common::ColumnType::UNK;
   prep_scale = 0;
   prep_collation = DTCollation();
   easy_vals.reset();
@@ -93,87 +98,102 @@ void ValueSet::Add64(int64_t v)  // only for integers
     contains_nulls = true;
     return;
   }
-  types::RCDataType *rcv = new types::RCNum(v);
-  if (prep_type != common::CT::NUM || prep_scale != 0) prepared = false;
-
-  if (!values.insert(rcv).second)
-    delete rcv;
-  else if (prepared) {
-    if (types::RequiresUTFConversions(prep_collation)) {
-      if (min->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), min->ToBString()) < 0) *min = *rcv;
-      if (max->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), max->ToBString()) > 0) *max = *rcv;
-    } else {
-      if (min->IsNull() || *rcv < *min) *min = *rcv;
-      if (max->IsNull() || *rcv > *max) *max = *rcv;
-    }
-  }
-
-  no_obj = (int)values.size();
-}
-
-void ValueSet::Add(std::unique_ptr<types::RCDataType> rcdt) {
-  if (rcdt->IsNull()) {
-    contains_nulls = true;
-    return;
-  }
-  types::RCDataType *rcv = rcdt.release();
-  if (prep_type != rcv->Type() ||
-      (rcv->Type() == common::CT::NUM && static_cast<types::RCNum &>(*rcv).Scale() != prep_scale))
+  types::TianmuDataType *rcv = new types::TianmuNum(v);
+  if (prep_type != common::ColumnType::NUM || prep_scale != 0)
     prepared = false;
 
   if (!values.insert(rcv).second)
     delete rcv;
   else if (prepared) {
     if (types::RequiresUTFConversions(prep_collation)) {
-      if (min->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), min->ToBString()) < 0) *min = *rcv;
-      if (max->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), max->ToBString()) > 0) *max = *rcv;
+      if (min->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), min->ToBString()) < 0)
+        *min = *rcv;
+      if (max->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), max->ToBString()) > 0)
+        *max = *rcv;
     } else {
-      if (min->IsNull() || *rcv < *min) *min = *rcv;
-      if (max->IsNull() || *rcv > *max) *max = *rcv;
+      if (min->IsNull() || *rcv < *min)
+        *min = *rcv;
+      if (max->IsNull() || *rcv > *max)
+        *max = *rcv;
     }
   }
 
   no_obj = (int)values.size();
 }
 
-void ValueSet::Add(const types::RCValueObject &rcv) {
+void ValueSet::Add(std::unique_ptr<types::TianmuDataType> tianmu_dt) {
+  if (tianmu_dt->IsNull()) {
+    contains_nulls = true;
+    return;
+  }
+  types::TianmuDataType *rcv = tianmu_dt.release();
+  if (prep_type != rcv->Type() ||
+      (rcv->Type() == common::ColumnType::NUM && static_cast<types::TianmuNum &>(*rcv).Scale() != prep_scale))
+    prepared = false;
+
+  if (!values.insert(rcv).second)
+    delete rcv;
+  else if (prepared) {
+    if (types::RequiresUTFConversions(prep_collation)) {
+      if (min->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), min->ToBString()) < 0)
+        *min = *rcv;
+      if (max->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), max->ToBString()) > 0)
+        *max = *rcv;
+    } else {
+      if (min->IsNull() || *rcv < *min)
+        *min = *rcv;
+      if (max->IsNull() || *rcv > *max)
+        *max = *rcv;
+    }
+  }
+
+  no_obj = (int)values.size();
+}
+
+void ValueSet::Add(const types::TianmuValueObject &rcv) {
   if (rcv.IsNull())
     contains_nulls = true;
   else {
     // Add(rcv.Get()->Clone());
-    std::unique_ptr<types::RCDataType> rcdt = rcv.Get()->Clone();
-    if (rcdt->IsNull()) {
+    std::unique_ptr<types::TianmuDataType> tianmu_dt = rcv.Get()->Clone();
+    if (tianmu_dt->IsNull()) {
       contains_nulls = true;
       return;
     }
-    types::RCDataType *rcv = rcdt.release();
+    types::TianmuDataType *rcv = tianmu_dt.release();
     if (prep_type != rcv->Type() ||
-        (rcv->Type() == common::CT::NUM && static_cast<types::RCNum &>(*rcv).Scale() != prep_scale))
+        (rcv->Type() == common::ColumnType::NUM && static_cast<types::TianmuNum &>(*rcv).Scale() != prep_scale))
       prepared = false;
 
     if (!values.insert(rcv).second)
       delete rcv;
     else if (prepared) {
       if (types::RequiresUTFConversions(prep_collation)) {
-        if (min->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), min->ToBString()) < 0) *min = *rcv;
-        if (max->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), max->ToBString()) > 0) *max = *rcv;
+        if (min->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), min->ToBString()) < 0)
+          *min = *rcv;
+        if (max->IsNull() || CollationStrCmp(prep_collation, rcv->ToBString(), max->ToBString()) > 0)
+          *max = *rcv;
       } else {
-        if (min->IsNull() || *rcv < *min) *min = *rcv;
-        if (max->IsNull() || *rcv > *max) *max = *rcv;
+        if (min->IsNull() || *rcv < *min)
+          *min = *rcv;
+        if (max->IsNull() || *rcv > *max)
+          *max = *rcv;
       }
     }
 
     no_obj = (int)values.size();
   }
 }
-bool ValueSet::isContains(const types::RCDataType &v, DTCollation coll) {
-  if (v.IsNull()) return false;
+bool ValueSet::isContains(const types::TianmuDataType &v, DTCollation coll) {
+  if (v.IsNull())
+    return false;
   if (types::RequiresUTFConversions(coll)) {
     for (auto const &it : values)
-      if (CollationStrCmp(coll, it->ToBString(), v.ToBString()) == 0) return true;
+      if (CollationStrCmp(coll, it->ToBString(), v.ToBString()) == 0)
+        return true;
     return false;
   } else
-    return (values.size() > 0 && values.find(const_cast<types::RCDataType *>(&v)) != values.end());
+    return (values.size() > 0 && values.find(const_cast<types::TianmuDataType *>(&v)) != values.end());
 }
 
 bool ValueSet::Contains(int64_t v) {
@@ -182,52 +202,60 @@ bool ValueSet::Contains(int64_t v) {
 
   if (use_easy_table) {
     for (int i = 0; i < no_obj; i++)
-      if (v == easy_table[i]) return true;
+      if (v == easy_table[i])
+        return true;
     return false;
   }
   if (easy_vals) {
-    if (v < easy_min || v > easy_max) return false;
+    if (v < easy_min || v > easy_max)
+      return false;
     return easy_vals->Get(v - easy_min);
   }
-  if (easy_hash) return easy_hash->Find(v);
-  return isContains(types::RCNum(v, prep_scale), prep_collation);
+  if (easy_hash)
+    return easy_hash->Find(v);
+  return isContains(types::TianmuNum(v, prep_scale), prep_collation);
 }
 
 bool ValueSet::Contains(types::BString &v) {
   DEBUG_ASSERT(prepared);  // it implies a trivial collation
 
-  if (v.IsNull()) return false;
+  if (v.IsNull())
+    return false;
   if (easy_hash && easy_text) {
     int64_t vcode = easy_text->Encode(v);
-    if (vcode == common::NULL_VALUE_64) return false;
+    if (vcode == common::NULL_VALUE_64)
+      return false;
     return easy_hash->Find(vcode);
   }
-  return (values.size() > 0 && values.find(&v /*const_cast<RCDataType*>(&v)*/) != values.end());
+  return (values.size() > 0 && values.find(&v /*const_cast<TianmuDataType*>(&v)*/) != values.end());
 }
 
-bool ValueSet::Contains(const types::RCDataType &v, DTCollation coll) {
-  if (v.IsNull()) return false;
+bool ValueSet::Contains(const types::TianmuDataType &v, DTCollation coll) {
+  if (v.IsNull())
+    return false;
   if (types::RequiresUTFConversions(coll)) {
     for (auto const &it : values)
-      if (CollationStrCmp(coll, it->ToBString(), v.ToBString()) == 0) return true;
+      if (CollationStrCmp(coll, it->ToBString(), v.ToBString()) == 0)
+        return true;
     return false;
   } else
-    return (values.size() > 0 && values.find(const_cast<types::RCDataType *>(&v)) != values.end());
+    return (values.size() > 0 && values.find(const_cast<types::TianmuDataType *>(&v)) != values.end());
 }
 
-bool ValueSet::Contains(const types::RCValueObject &v, DTCollation coll) {
-  if (v.IsNull()) return false;
+bool ValueSet::Contains(const types::TianmuValueObject &v, DTCollation coll) {
+  if (v.IsNull())
+    return false;
   return isContains(*v.Get(), coll);
 }
 
-inline bool ValueSet::IsPrepared(common::CT at, int scale, DTCollation coll) {
+inline bool ValueSet::IsPrepared(common::ColumnType at, int scale, DTCollation coll) {
   return (prepared && (prep_type == at || (ATI::IsStringType(prep_type) && ATI::IsStringType(at)))  // CHAR = VARCHAR
           && prep_scale == scale &&
           (!ATI::IsStringType(at) || prep_collation.collation == coll.collation ||
            (!types::RequiresUTFConversions(prep_collation) && !types::RequiresUTFConversions(coll))));
 }
 
-void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
+void ValueSet::Prepare(common::ColumnType at, int scale, DTCollation coll) {
   if (!IsPrepared(at, scale, coll)) {
     decltype(values) new_values;
     if (ATI::IsStringType(at)) {
@@ -267,62 +295,77 @@ void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
       for (const auto &it : new_values) delete it;
     } else if (ATI::IsIntegerType(at)) {
       delete min;
-      min = new types::RCNum();
+      min = new types::TianmuNum();
       delete max;
-      max = new types::RCNum();
+      max = new types::TianmuNum();
       for (const auto &it : values) {
-        if (types::RCNum *rcn = dynamic_cast<types::RCNum *>(it)) {
-          if (rcn->IsInt() || rcn->IsReal()) {
-            types::RCNum *rcn_new = new types::RCNum();
-            if (rcn->IsInt())
-              types::RCDataType::ToInt(*rcn, *rcn_new);
+        if (types::TianmuNum *tianmu_n = dynamic_cast<types::TianmuNum *>(it)) {
+          if (tianmu_n->IsInt() || tianmu_n->IsReal()) {
+            types::TianmuNum *rcn_new = new types::TianmuNum();
+            if (tianmu_n->IsInt())
+              types::TianmuDataType::ToInt(*tianmu_n, *rcn_new);
             else
-              types::RCDataType::ToReal(*rcn, *rcn_new);
+              types::TianmuDataType::ToReal(*tianmu_n, *rcn_new);
 
-            if (!(*rcn_new > *min)) *min = *rcn_new;
-            if (!(*rcn_new < *max)) *max = *rcn_new;
-            if (!new_values.insert(rcn_new).second) delete rcn_new;
+            if (!(*rcn_new > *min))
+              *min = *rcn_new;
+            if (!(*rcn_new < *max))
+              *max = *rcn_new;
+            if (!new_values.insert(rcn_new).second)
+              delete rcn_new;
           }
-        } else if (it->Type() == common::CT::STRING) {
-          types::RCNum *rcn = new types::RCNum();
-          if (types::RCNum::Parse(it->ToBString(), *rcn, at) == common::ErrorCode::SUCCESS) {
-            if (!(*rcn > *min)) *min = *rcn;
-            if (!(*rcn < *max)) *max = *rcn;
-            if (!new_values.insert(rcn).second) delete rcn;
+        } else if (it->Type() == common::ColumnType::STRING) {
+          types::TianmuNum *tianmu_n = new types::TianmuNum();
+          if (types::TianmuNum::Parse(it->ToBString(), *tianmu_n, at) == common::ErrorCode::SUCCESS) {
+            if (!(*tianmu_n > *min))
+              *min = *tianmu_n;
+            if (!(*tianmu_n < *max))
+              *max = *tianmu_n;
+            if (!new_values.insert(tianmu_n).second)
+              delete tianmu_n;
           } else {
-            delete rcn;
-            rcn = new types::RCNum(0, scale, false, at);
-            if (!new_values.insert(rcn).second) delete rcn;
+            delete tianmu_n;
+            tianmu_n = new types::TianmuNum(0, scale, false, at);
+            if (!new_values.insert(tianmu_n).second)
+              delete tianmu_n;
           }
         }
       }
       std::swap(values, new_values);
       for (const auto &it : new_values) delete it;
-    } else if (at == common::CT::NUM) {
+    } else if (at == common::ColumnType::NUM) {
       delete min;
-      min = new types::RCNum();
+      min = new types::TianmuNum();
       delete max;
-      max = new types::RCNum();
+      max = new types::TianmuNum();
       for (const auto &it : values) {
-        if (types::RCNum *rcn = dynamic_cast<types::RCNum *>(it)) {
-          if (rcn->IsDecimal(scale)) {
-            types::RCNum *rcn_new = new types::RCNum();
-            types::RCDataType::ToDecimal(*rcn, scale, *rcn_new);
-            if (!(*rcn_new > *min)) *min = *rcn_new;
-            if (!(*rcn_new < *max)) *max = *rcn_new;
-            if (!new_values.insert(rcn_new).second) delete rcn_new;
+        if (types::TianmuNum *tianmu_n = dynamic_cast<types::TianmuNum *>(it)) {
+          if (tianmu_n->IsDecimal(scale)) {
+            types::TianmuNum *rcn_new = new types::TianmuNum();
+            types::TianmuDataType::ToDecimal(*tianmu_n, scale, *rcn_new);
+            if (!(*rcn_new > *min))
+              *min = *rcn_new;
+            if (!(*rcn_new < *max))
+              *max = *rcn_new;
+            if (!new_values.insert(rcn_new).second)
+              delete rcn_new;
           }
-        } else if (it->Type() == common::CT::STRING) {
-          types::RCNum *rcn = new types::RCNum();
-          if (types::RCNum::Parse(it->ToBString(), *rcn, common::CT::NUM) == common::ErrorCode::SUCCESS &&
-              rcn->IsDecimal(scale)) {
-            if (!(*rcn > *min)) *min = *rcn;
-            if (!(*rcn < *max)) *max = *rcn;
-            if (!new_values.insert(rcn).second) delete rcn;
+        } else if (it->Type() == common::ColumnType::STRING) {
+          types::TianmuNum *tianmu_n = new types::TianmuNum();
+          if (types::TianmuNum::Parse(it->ToBString(), *tianmu_n, common::ColumnType::NUM) ==
+                  common::ErrorCode::SUCCESS &&
+              tianmu_n->IsDecimal(scale)) {
+            if (!(*tianmu_n > *min))
+              *min = *tianmu_n;
+            if (!(*tianmu_n < *max))
+              *max = *tianmu_n;
+            if (!new_values.insert(tianmu_n).second)
+              delete tianmu_n;
           } else {
-            delete rcn;
-            rcn = new types::RCNum(0, scale, false, at);
-            if (!new_values.insert(rcn).second) delete rcn;
+            delete tianmu_n;
+            tianmu_n = new types::TianmuNum(0, scale, false, at);
+            if (!new_values.insert(tianmu_n).second)
+              delete tianmu_n;
           }
         }
       }
@@ -330,33 +373,43 @@ void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
       for (const auto &it : new_values) delete it;
     } else if (ATI::IsRealType(at)) {
       delete min;
-      min = new types::RCNum(at);
+      min = new types::TianmuNum(at);
       delete max;
-      max = new types::RCNum(at);
+      max = new types::TianmuNum(at);
 
       for (const auto &it : values) {
-        if (types::RCNum *rcn = dynamic_cast<types::RCNum *>(it)) {
-          if (ATI::IsRealType(rcn->Type())) {
-            if (!(*rcn > *min)) *min = (*rcn);
-            if (!(*rcn < *max)) *max = (*rcn);
-            if (!new_values.insert(rcn).second) delete it;
+        if (types::TianmuNum *tianmu_n = dynamic_cast<types::TianmuNum *>(it)) {
+          if (ATI::IsRealType(tianmu_n->Type())) {
+            if (!(*tianmu_n > *min))
+              *min = (*tianmu_n);
+            if (!(*tianmu_n < *max))
+              *max = (*tianmu_n);
+            if (!new_values.insert(tianmu_n).second)
+              delete it;
           } else {
-            types::RCNum *rcn_new = new types::RCNum(rcn->ToReal());
-            if (!(*rcn_new > *min)) *min = (*rcn_new);
-            if (!(*rcn < *max)) *max = (*rcn_new);
-            if (!new_values.insert(rcn_new).second) delete rcn_new;
+            types::TianmuNum *rcn_new = new types::TianmuNum(tianmu_n->ToReal());
+            if (!(*rcn_new > *min))
+              *min = (*rcn_new);
+            if (!(*tianmu_n < *max))
+              *max = (*rcn_new);
+            if (!new_values.insert(rcn_new).second)
+              delete rcn_new;
             delete it;
           }
-        } else if (it->Type() == common::CT::STRING) {
-          types::RCNum *rcn = new types::RCNum();
-          if (types::RCNum::ParseReal(*(types::BString *)it, *rcn, at) == common::ErrorCode::SUCCESS) {
-            if (!(*rcn > *min)) *min = *rcn;
-            if (!(*rcn < *max)) *max = *rcn;
-            if (!new_values.insert(rcn).second) delete rcn;
+        } else if (it->Type() == common::ColumnType::STRING) {
+          types::TianmuNum *tianmu_n = new types::TianmuNum();
+          if (types::TianmuNum::ParseReal(*(types::BString *)it, *tianmu_n, at) == common::ErrorCode::SUCCESS) {
+            if (!(*tianmu_n > *min))
+              *min = *tianmu_n;
+            if (!(*tianmu_n < *max))
+              *max = *tianmu_n;
+            if (!new_values.insert(tianmu_n).second)
+              delete tianmu_n;
           } else {
-            delete rcn;
-            rcn = new types::RCNum(0, scale, true, at);
-            if (!new_values.insert(rcn).second) delete rcn;
+            delete tianmu_n;
+            tianmu_n = new types::TianmuNum(0, scale, true, at);
+            if (!new_values.insert(tianmu_n).second)
+              delete tianmu_n;
           }
           delete it;
         } else {
@@ -366,37 +419,50 @@ void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
       std::swap(values, new_values);
     } else if (ATI::IsDateTimeType(at)) {
       delete min;
-      min = new types::RCDateTime();
+      min = new types::TianmuDateTime();
       delete max;
-      max = new types::RCDateTime();
+      max = new types::TianmuDateTime();
 
       for (const auto &it : values) {
-        if (types::RCDateTime *rcdt = dynamic_cast<types::RCDateTime *>(it)) {
-          if (!(*rcdt > *min)) *min = *rcdt;
-          if (!(*rcdt < *max)) *max = *rcdt;
-          if (!new_values.insert(it).second) delete it;
-        } else if (it->Type() == common::CT::STRING) {
-          types::RCDateTime *rcdt = new types::RCDateTime();
-          if (!common::IsError(types::RCDateTime::Parse(it->ToBString(), *rcdt, at))) {
-            if (!(*rcdt > *min)) *min = *rcdt;
-            if (!(*rcdt < *max)) *max = *rcdt;
-            if (!new_values.insert(rcdt).second) delete rcdt;
+        if (types::TianmuDateTime *tianmu_dt = dynamic_cast<types::TianmuDateTime *>(it)) {
+          if (!(*tianmu_dt > *min))
+            *min = *tianmu_dt;
+          if (!(*tianmu_dt < *max))
+            *max = *tianmu_dt;
+          if (!new_values.insert(it).second)
+            delete it;
+        } else if (it->Type() == common::ColumnType::STRING) {
+          types::TianmuDateTime *tianmu_dt = new types::TianmuDateTime();
+          if (!common::IsError(types::TianmuDateTime::Parse(it->ToBString(), *tianmu_dt, at))) {
+            if (!(*tianmu_dt > *min))
+              *min = *tianmu_dt;
+            if (!(*tianmu_dt < *max))
+              *max = *tianmu_dt;
+            if (!new_values.insert(tianmu_dt).second)
+              delete tianmu_dt;
           } else {
-            delete rcdt;
-            rcdt = static_cast<types::RCDateTime *>(types::RCDateTime::GetSpecialValue(at).Clone().release());
-            if (!new_values.insert(rcdt).second) delete rcdt;
+            delete tianmu_dt;
+            tianmu_dt =
+                static_cast<types::TianmuDateTime *>(types::TianmuDateTime::GetSpecialValue(at).Clone().release());
+            if (!new_values.insert(tianmu_dt).second)
+              delete tianmu_dt;
           }
           delete it;
-        } else if (types::RCNum *rcn = dynamic_cast<types::RCNum *>(it)) {
+        } else if (types::TianmuNum *tianmu_n = dynamic_cast<types::TianmuNum *>(it)) {
           try {
-            types::RCDateTime *rcdt = new types::RCDateTime(*rcn, at);
-            if (!(*rcdt > *min)) *min = *rcdt;
-            if (!(*rcdt < *max)) *max = *rcdt;
-            if (!new_values.insert(rcdt).second) delete rcdt;
+            types::TianmuDateTime *tianmu_dt = new types::TianmuDateTime(*tianmu_n, at);
+            if (!(*tianmu_dt > *min))
+              *min = *tianmu_dt;
+            if (!(*tianmu_dt < *max))
+              *max = *tianmu_dt;
+            if (!new_values.insert(tianmu_dt).second)
+              delete tianmu_dt;
           } catch (common::DataTypeConversionException &) {
-            delete rcdt;
-            rcdt = static_cast<types::RCDateTime *>(types::RCDateTime::GetSpecialValue(at).Clone().release());
-            if (!new_values.insert(rcn).second) delete rcdt;
+            delete tianmu_dt;
+            tianmu_dt =
+                static_cast<types::TianmuDateTime *>(types::TianmuDateTime::GetSpecialValue(at).Clone().release());
+            if (!new_values.insert(tianmu_n).second)
+              delete tianmu_dt;
           }
           delete it;
         } else {
@@ -415,30 +481,30 @@ void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
       if (no_obj <= VS_EASY_TABLE_SIZE && !ATI::IsStringType(prep_type)) {
         int i = 0;
         for (const auto &it : values) {
-          types::RCNum *rcn = static_cast<types::RCNum *>(it);
-          easy_table[i] = rcn->ValueInt();
+          types::TianmuNum *tianmu_n = static_cast<types::TianmuNum *>(it);
+          easy_table[i] = tianmu_n->ValueInt();
           i++;
         }
         use_easy_table = true;
       }
       if (!use_easy_table && ATI::IsFixedNumericType(prep_type)) {
-        easy_min = ((types::RCNum *)min)->ValueInt();
-        easy_max = ((types::RCNum *)max)->ValueInt();
+        easy_min = ((types::TianmuNum *)min)->ValueInt();
+        easy_max = ((types::TianmuNum *)max)->ValueInt();
         if (easy_max < common::PLUS_INF_64 / 2 && easy_min > common::MINUS_INF_64 / 2 &&
             size_t(easy_max - easy_min) < 8 * 64_MB        // upper limit: 64 MB for a filter
             && (easy_max - easy_min) / 8 < no_obj * 16) {  // otherwise easy_hash will be smaller
           easy_vals.reset(new Filter(easy_max - easy_min + 1, pack_power));
           for (const auto &it : values) {
-            types::RCNum *rcn = static_cast<types::RCNum *>(it);
-            easy_vals->Set(rcn->ValueInt() - easy_min);
+            types::TianmuNum *tianmu_n = static_cast<types::TianmuNum *>(it);
+            easy_vals->Set(tianmu_n->ValueInt() - easy_min);
           }
         }
       }
       if (!use_easy_table && !easy_vals && !ATI::IsStringType(prep_type)) {
         easy_hash.reset(new utils::Hash64(no_obj));
         for (const auto &it : values) {
-          types::RCNum *rcn = static_cast<types::RCNum *>(it);
-          easy_hash->Insert(rcn->ValueInt());
+          types::TianmuNum *tianmu_n = static_cast<types::TianmuNum *>(it);
+          easy_hash->Insert(tianmu_n->ValueInt());
         }
       }
       if (ATI::IsStringType(prep_type)) {  //&& !RequiresUTFConversions(coll)
@@ -451,7 +517,8 @@ void ValueSet::Prepare(common::CT at, int scale, DTCollation coll) {
           still_valid = easy_text->AddString(*v);
           it++;
         }
-        if (still_valid) still_valid = easy_text->CreateEncoding();
+        if (still_valid)
+          still_valid = easy_text->CreateEncoding();
 
         if (still_valid) {
           easy_hash.reset(new utils::Hash64(no_obj));
@@ -480,17 +547,17 @@ bool ValueSet::CopyCondition(types::CondArray &condition, [[maybe_unused]] DTCol
   return ret;
 }
 
-bool ValueSet::CopyCondition([[maybe_unused]] common::CT at, std::shared_ptr<utils::Hash64> &condition,
+bool ValueSet::CopyCondition([[maybe_unused]] common::ColumnType at, std::shared_ptr<utils::Hash64> &condition,
                              [[maybe_unused]] DTCollation coll) {
   bool ret = false;
   if (no_obj > 0) {
     std::shared_ptr<utils::Hash64> hash_ptr(new utils::Hash64(values.size()));
     for (const auto &it : values) {
-      types::RCNum *rcn = static_cast<types::RCNum *>(it);
-      // condition.push_back(rcn->ValueInt());
+      types::TianmuNum *tianmu_n = static_cast<types::TianmuNum *>(it);
+      // condition.push_back(tianmu_n->ValueInt());
       // condition.insert
-      // (std::make_pair<int64_t,int64_t>(rcn->ValueInt(),rcn->Value()));
-      hash_ptr->Insert(rcn->ValueInt());
+      // (std::make_pair<int64_t,int64_t>(tianmu_n->ValueInt(),tianmu_n->Value()));
+      hash_ptr->Insert(tianmu_n->ValueInt());
       ret = true;
     }
     condition = hash_ptr;

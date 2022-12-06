@@ -27,7 +27,7 @@ DimensionGroupVirtual::DimensionGroupVirtual(DimensionVector &dims, int bdim, Fi
   dims_used = dims;
   base_dim = bdim;
   no_dims = dims.Size();
-  f = NULL;
+  f = nullptr;
   if (copy_mode == 0)
     f = new Filter(*f_source);
   else if (copy_mode == 1)
@@ -36,11 +36,11 @@ DimensionGroupVirtual::DimensionGroupVirtual(DimensionVector &dims, int bdim, Fi
     f = f_source;
   dim_group_type = DGType::DG_VIRTUAL;
   no_obj = f->NumOfOnes();
-  pack_pos = NULL;  // created if needed
+  pack_pos = nullptr;  // created if needed
   t = new IndexTable *[no_dims];
   nulls_possible = new bool[no_dims];
   for (int i = 0; i < no_dims; i++) {
-    t[i] = NULL;
+    t[i] = nullptr;
     nulls_possible[i] = false;
   }
 }
@@ -55,7 +55,8 @@ DimensionGroupVirtual::~DimensionGroupVirtual() {
 
 DimensionGroup *DimensionGroupVirtual::Clone(bool shallow) {
   DimensionGroupVirtual *new_value = new DimensionGroupVirtual(dims_used, base_dim, f, (shallow ? 1 : 0));
-  if (shallow) return new_value;
+  if (shallow)
+    return new_value;
   for (int i = 0; i < no_dims; i++) {
     if (t[i]) {
       new_value->nulls_possible[i] = nulls_possible[i];
@@ -71,7 +72,7 @@ void DimensionGroupVirtual::Empty() {
   f->Reset();
   for (int i = 0; i < no_dims; i++) {
     delete t[i];
-    t[i] = NULL;
+    t[i] = nullptr;
   }
   no_obj = 0;
 }
@@ -92,7 +93,7 @@ DimensionGroup::Iterator *DimensionGroupVirtual::NewIterator(DimensionVector &di
 
 DimensionGroup::Iterator *DimensionGroupVirtual::NewOrderedIterator(DimensionVector &dim, PackOrderer *po,
                                                                     uint32_t power) {
-  if (pack_pos == NULL) {  // not used yet - create
+  if (pack_pos == nullptr) {  // not used yet - create
     int no_packs = f->NumOfBlocks();
     pack_pos = new int64_t[no_packs];
     int64_t cur_pack_start = 0;
@@ -119,21 +120,24 @@ void DimensionGroupVirtual::FillCurrentPos(DimensionGroup::Iterator *it, int64_t
 
 DimensionGroup::Iterator *DimensionGroupVirtual::CopyIterator(DimensionGroup::Iterator *s, uint32_t power) {
   DGVirtualIterator *sfit = (DGVirtualIterator *)s;
-  if (sfit->Ordered()) return new DGVirtualOrderedIterator(*s, power);
+  if (sfit->Ordered())
+    return new DGVirtualOrderedIterator(*s, power);
   return new DGVirtualIterator(*s, power);
 }
 
 void DimensionGroupVirtual::UpdateNumOfTuples() {
   no_obj = f->NumOfOnes();
   for (int d = 0; d < no_dims; d++)
-    if (t[d]) DEBUG_ASSERT((uint64_t)no_obj <= t[d]->N());  // N() is an upper size of buffer
+    if (t[d])
+      DEBUG_ASSERT((uint64_t)no_obj <= t[d]->N());  // N() is an upper size of buffer
 }
 
 bool DimensionGroupVirtual::IsOrderable() {
   // orderable only if all IndexTables are one-block, otherwise shuffling will
   // occur (and IT block may end inside a packrow)
   for (int d = 0; d < no_dims; d++)
-    if (t[d] && t[d]->EndOfCurrentBlock(0) < t[d]->N()) return false;
+    if (t[d] && t[d]->EndOfCurrentBlock(0) < t[d]->N())
+      return false;
   return true;
 }
 
@@ -200,7 +204,8 @@ bool DimensionGroupVirtual::DGVirtualIterator::NextInsidePack() {
   bool r = fi.NextInsidePack();
   valid = fi.IsValid();
   dim_pos++;
-  if (!r) dim_pos = cur_pack_start;
+  if (!r)
+    dim_pos = cur_pack_start;
   return r;
 }
 
@@ -214,9 +219,11 @@ void DimensionGroupVirtual::DGVirtualIterator::NextPackrow() {
 
 int64_t DimensionGroupVirtual::DGVirtualIterator::GetCurPos(int dim) {
   DEBUG_ASSERT(dim_pos < no_obj);
-  if (dim == base_dim) return (*fi);
+  if (dim == base_dim)
+    return (*fi);
   int64_t res = t[dim]->Get64(dim_pos);
-  if (res == 0) return common::NULL_VALUE_64;
+  if (res == 0)
+    return common::NULL_VALUE_64;
   return res - 1;
 }
 
@@ -229,7 +236,8 @@ bool DimensionGroupVirtual::DGVirtualIterator::BarrierAfterPackrow() {
                                                               // product of many groups)
     return true;
   for (int i = 0; i < no_dims; i++)
-    if (t[i] && (uint64_t)next_2_packs_start >= t[i]->EndOfCurrentBlock(dim_pos)) return true;
+    if (t[i] && (uint64_t)next_2_packs_start >= t[i]->EndOfCurrentBlock(dim_pos))
+      return true;
   return false;
 }
 
@@ -259,7 +267,8 @@ DimensionGroupVirtual::DGVirtualOrderedIterator::DGVirtualOrderedIterator(Filter
     }
   }
   dim_pos = -1;
-  if (valid) dim_pos = pack_pos[fi.GetCurrPack()];
+  if (valid)
+    dim_pos = pack_pos[fi.GetCurrPack()];
   cur_pack_start = dim_pos;
 }
 
@@ -304,14 +313,16 @@ bool DimensionGroupVirtual::DGVirtualOrderedIterator::NextInsidePack() {
   bool r = fi.NextInsidePack();
   valid = fi.IsValid();
   dim_pos++;
-  if (!r) dim_pos = cur_pack_start;
+  if (!r)
+    dim_pos = cur_pack_start;
   return r;
 }
 
 void DimensionGroupVirtual::DGVirtualOrderedIterator::Rewind() {
   fi.Rewind();
   valid = fi.IsValid();
-  if (valid) dim_pos = pack_pos[fi.GetCurrPack()];
+  if (valid)
+    dim_pos = pack_pos[fi.GetCurrPack()];
   cur_pack_start = dim_pos;
 }
 
@@ -319,14 +330,17 @@ void DimensionGroupVirtual::DGVirtualOrderedIterator::NextPackrow() {
   DEBUG_ASSERT(valid);
   fi.NextPack();
   valid = fi.IsValid();
-  if (valid) dim_pos = pack_pos[fi.GetCurrPack()];
+  if (valid)
+    dim_pos = pack_pos[fi.GetCurrPack()];
   cur_pack_start = dim_pos;
 }
 
 int64_t DimensionGroupVirtual::DGVirtualOrderedIterator::GetCurPos(int dim) {
-  if (dim == base_dim) return (*fi);
+  if (dim == base_dim)
+    return (*fi);
   int64_t res = t[dim]->Get64(dim_pos);
-  if (res == 0) return common::NULL_VALUE_64;
+  if (res == 0)
+    return common::NULL_VALUE_64;
   return res - 1;
 }
 }  // namespace core

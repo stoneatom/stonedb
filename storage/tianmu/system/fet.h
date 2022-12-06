@@ -21,7 +21,7 @@
 #include <map>
 
 #include "core/tools.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace system {
@@ -60,7 +60,7 @@ class FunctionsExecutionTimes {
   class SortEntryLess {
    public:
     bool operator()(const SortEntry &e1, const SortEntry &e2) { return e1.e.time < e2.e.time; }
-  }; //class SortEntryLess
+  };  // class SortEntryLess
 
  public:
   FunctionsExecutionTimes() {
@@ -108,8 +108,8 @@ class FunctionsExecutionTimes {
   void Clear() { times_->clear(); }
   void Print() {
     TIANMU_LOG(LogCtl_Level::INFO,
-                "***** Function Execution Times "
-                "************************************************************");
+               "***** Function Execution Times "
+               "************************************************************");
     std::priority_queue<SortEntry, std::vector<SortEntry>, SortEntryLess> sq;
     char str[512] = {0};
     for (auto &iter : *times_) sq.push(SortEntry(iter.first, iter.second));
@@ -122,13 +122,13 @@ class FunctionsExecutionTimes {
 
     TIANMU_LOG(LogCtl_Level::INFO, "Number of distinct Data Packs loads: %u", (uint)count_distinct_dp_loads.size());
     TIANMU_LOG(LogCtl_Level::INFO, "Number of distinct Data Packs decompressions: %u",
-                (uint)count_distinct_dp_decompressions.size());
+               (uint)count_distinct_dp_decompressions.size());
     TIANMU_LOG(LogCtl_Level::INFO, "Size of DP read from disk: %fMB", ((double)NumOfBytesReadByDPs / 1_MB));
     TIANMU_LOG(LogCtl_Level::INFO, "Size of uncompressed DPs: %fMB", ((double)SizeOfUncompressedDP / 1_MB));
     TIANMU_LOG(LogCtl_Level::INFO,
-                "**************************************************************"
-                "***********"
-                "******************");
+               "**************************************************************"
+               "***********"
+               "******************");
   }
 
   std::map<std::string, Entry> *times_;
@@ -138,12 +138,12 @@ class FunctionsExecutionTimes {
 
 class FETOperator {
  public:
-  FETOperator(const std::string &identyfier) : id(identyfier) { gettimeofday(&start_time, NULL); }
+  FETOperator(const std::string &identyfier) : id(identyfier) { gettimeofday(&start_time, nullptr); }
   ~FETOperator() {
     struct timeval t2;
     uint64_t sec, usec;
     sec = usec = 0;
-    gettimeofday(&t2, NULL);
+    gettimeofday(&t2, nullptr);
 
     sec += (t2.tv_sec - start_time.tv_sec);
     if (t2.tv_usec < start_time.tv_usec) {
@@ -167,9 +167,7 @@ class FETOperator {
 
 inline void FunctionsExecutionTimes::FlushFET(int signum) { fet->Flush(); }
 
-inline void FunctionsExecutionTimes::InstallFlushSignal() {
-  signal(16, FunctionsExecutionTimes::FlushFET);
-}
+inline void FunctionsExecutionTimes::InstallFlushSignal() { signal(16, FunctionsExecutionTimes::FlushFET); }
 
 #define MEASURE_FET(X) FETOperator feto(X)
 

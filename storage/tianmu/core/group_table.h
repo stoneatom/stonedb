@@ -60,7 +60,7 @@ class GroupTable : public mm::TraceableObject {
   // Group table construction
 
   void AddGroupingColumn(vcolumn::VirtualColumn *vc);
-  void AddAggregatedColumn(vcolumn::VirtualColumn *vc, GT_Aggregation operation, bool distinct, common::CT type,
+  void AddAggregatedColumn(vcolumn::VirtualColumn *vc, GT_Aggregation operation, bool distinct, common::ColumnType type,
                            int b_size, int precision, DTCollation in_collation, SI si);
   void AggregatedColumnStatistics(int ag_col, int64_t max_no_vals, int64_t min_v = common::MINUS_INF_64,
                                   int64_t max_v = common::PLUS_INF_64) {
@@ -118,10 +118,12 @@ class GroupTable : public mm::TraceableObject {
   bool IsFull() { return !not_full; }  // no place left or all groups found
   void SetAsFull() { not_full = false; }
   bool MayBeParallel() const {
-    if (distinct_present) return false;
+    if (distinct_present)
+      return false;
 
     for (auto &ag : aggregated_desc) {
-      if (ag.operation == GT_Aggregation::GT_GROUP_CONCAT) return false;
+      if (ag.operation == GT_Aggregation::GT_GROUP_CONCAT)
+        return false;
     }
     return true;
   }
@@ -178,7 +180,7 @@ class GroupTable : public mm::TraceableObject {
   // used for complex aggregations
   struct ColTempDesc {
     ColTempDesc() {
-      vc = NULL;
+      vc = nullptr;
       min = common::MINUS_INF_64;
       max = common::PLUS_INF_64;
       max_no_values = 0;
@@ -186,7 +188,7 @@ class GroupTable : public mm::TraceableObject {
       distinct = false;
       size = 0;
       precision = 0;
-      type = common::CT::INT;
+      type = common::ColumnType::INT;
       si.order = ORDER::ORDER_NOT_RELEVANT;  // direction for GROUP_CONCAT order
                                              // by 0/1-ASC/2-DESC
       si.separator = ',';                    // for GROUP_CONCAT
@@ -195,7 +197,7 @@ class GroupTable : public mm::TraceableObject {
     vcolumn::VirtualColumn *vc;
     GT_Aggregation operation;  // not used for grouping columns
     bool distinct;             // not used for grouping columns
-    common::CT type;
+    common::ColumnType type;
     int size;
     int precision;
     // optimization statistics, not used for grouping columns:
@@ -214,7 +216,7 @@ class GroupTable : public mm::TraceableObject {
   std::vector<bool> distinct;
   std::vector<vcolumn::VirtualColumn *> vc;
   std::vector<TIANMUAggregator *> aggregator;  // a table of actual aggregators
-  std::vector<ColumnBinEncoder *> encoder;      // encoders for grouping columns
+  std::vector<ColumnBinEncoder *> encoder;     // encoders for grouping columns
 
   // "distinct" part
   std::vector<std::shared_ptr<GroupDistinctTable>> gdistinct;  // Empty if not used
@@ -228,6 +230,7 @@ class GroupTable : public mm::TraceableObject {
 
   // some memory managing
   int64_t max_total_size;
+  std::mutex mtx;
 };
 }  // namespace core
 }  // namespace Tianmu

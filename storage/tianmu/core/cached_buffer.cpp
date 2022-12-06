@@ -24,7 +24,8 @@ namespace core {
 template <class T>
 CachedBuffer<T>::CachedBuffer(uint page_size, uint _elem_size, Transaction *conn)
     : system::CacheableItem("PS", "CB"), page_size(page_size), elem_size(_elem_size), m_conn(conn) {
-  if (!elem_size) elem_size = sizeof(T);
+  if (!elem_size)
+    elem_size = sizeof(T);
   CI_SetDefaultSize(page_size * elem_size);
 
   buf = (T *)alloc(sizeof(T) * (size_t)page_size, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
@@ -43,7 +44,7 @@ CachedBuffer<types::BString>::CachedBuffer(uint page_size, uint elem_size, Trans
     buf = (char *)alloc(buf_size, mm::BLOCK_TYPE::BLOCK_TEMPORARY);
     std::memset(buf, 0, buf_size);
   } else
-    buf = NULL;
+    buf = nullptr;
   loaded_page = 0;
   page_changed = false;
 }
@@ -58,15 +59,17 @@ CachedBuffer<types::BString>::~CachedBuffer() { dealloc(buf); }
 template <class T>
 T &CachedBuffer<T>::Get(uint64_t idx) {
   DEBUG_ASSERT(page_size > 0);
-  if (idx / page_size != loaded_page) LoadPage((uint)(idx / page_size));
+  if (idx / page_size != loaded_page)
+    LoadPage((uint)(idx / page_size));
   return buf[idx % page_size];
 }
 
 void CachedBuffer<types::BString>::Get(types::BString &s, uint64_t idx) {
-  if (idx / page_size != loaded_page) LoadPage((uint)(idx / page_size));
+  if (idx / page_size != loaded_page)
+    LoadPage((uint)(idx / page_size));
   uint64_t pos = (idx % page_size) * (elem_size + 4);
   uint size = *(uint *)&buf[pos];
-  if (size == common::NULL_VALUE_U)  // 0 -NULL, 1 -NOT NULL
+  if (size == common::NULL_VALUE_U)  // 0 -nullptr, 1 -NOT nullptr
     s = types::BString();
   else if (size == 0)
     s = types::BString(ZERO_LENGTH_STRING, 0);
@@ -81,21 +84,23 @@ types::BString &CachedBuffer<types::BString>::Get(uint64_t idx) {
 
 template <class T>
 void CachedBuffer<T>::Set(uint64_t idx, const T &value) {
-  if (idx / page_size != loaded_page) LoadPage((uint)(idx / page_size));
+  if (idx / page_size != loaded_page)
+    LoadPage((uint)(idx / page_size));
   buf[idx % page_size] = value;
   page_changed = true;
 }
 
 void CachedBuffer<types::BString>::Set(uint64_t idx, const types::BString &value) {
-  DEBUG_ASSERT(value.len <= elem_size);
-  if (idx / page_size != loaded_page) LoadPage((uint)(idx / page_size));
+  DEBUG_ASSERT(value.len_ <= elem_size);
+  if (idx / page_size != loaded_page)
+    LoadPage((uint)(idx / page_size));
   uint pos = (uint)(idx % page_size) * (elem_size + 4);
   uint *size = (uint *)&buf[pos];
   if (value.IsNull())
     *size = common::NULL_VALUE_U;
   else {
-    *size = value.len;
-    std::memcpy(&buf[pos + 4], value.val, value.len);
+    *size = value.len_;
+    std::memcpy(&buf[pos + 4], value.val_, value.len_);
   }
   page_changed = true;
 }
@@ -129,7 +134,8 @@ void CachedBuffer<types::BString>::LoadPage(uint page) {
 
 template <class T>
 void CachedBuffer<T>::SetNewPageSize(uint new_page_size) {
-  if (page_size == new_page_size) return;
+  if (page_size == new_page_size)
+    return;
   if (m_conn && m_conn->Killed())
     throw common::KilledException();  // cleaning is implemented below (we are
                                       // inside try{})
@@ -139,7 +145,8 @@ void CachedBuffer<T>::SetNewPageSize(uint new_page_size) {
 }
 
 void CachedBuffer<types::BString>::SetNewPageSize(uint new_page_size) {
-  if (page_size == new_page_size) return;
+  if (page_size == new_page_size)
+    return;
   if (m_conn && m_conn->Killed())
     throw common::KilledException();  // cleaning is implemented below (we are
                                       // inside try{})

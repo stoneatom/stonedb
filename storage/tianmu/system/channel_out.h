@@ -21,7 +21,7 @@
 #include <iomanip>
 
 #include "common/common_definitions.h"
-#include "types/rc_data_types.h"
+#include "types/tianmu_data_types.h"
 
 namespace Tianmu {
 namespace system {
@@ -48,8 +48,8 @@ class ChannelOut {
   virtual ChannelOut &operator<<(const wchar_t *buffer) = 0;
   virtual ChannelOut &operator<<(const std::string &str) = 0;
 
-  ChannelOut &operator<<(types::BString &rcbs) {
-    for (ushort i = 0; i < rcbs.len; i++) (*this) << (char)(rcbs[i]);
+  ChannelOut &operator<<(types::BString &tianmu_s) {
+    for (ushort i = 0; i < tianmu_s.len_; i++) (*this) << (char)(tianmu_s[i]);
     return *this;
   }
 

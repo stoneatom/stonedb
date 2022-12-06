@@ -23,7 +23,7 @@ body:
     attributes:
       label: Have you read the Contributing Guidelines on issues?
       options:
-        - label: I have read the [Contributing Guidelines on issues](https://github.com/stoneatom/stonedb/blob/stonedb-5.7/CONTRIBUTING.md).
+        - label: I have read the [Contributing Guidelines on issues](https://github.com/stoneatom/stonedb/blob/stonedb-5.7-dev/CONTRIBUTING.md).
           required: true
 
   - type: textarea

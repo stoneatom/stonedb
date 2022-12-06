@@ -48,12 +48,12 @@ class MysqlExpression {
   virtual ~MysqlExpression();
 
   static bool SanityAggregationCheck(Item *item, std::set<Item *> &aggregations, bool toplevel = true,
-                                     bool *has_aggregation = NULL);
+                                     bool *has_aggregation = nullptr);
   static bool HasAggregation(Item *item);
 
   virtual MysqlExpression::SetOfVars &GetVars();
   void SetBufsOrParams(var_buf_t *bufs);
-  virtual DataType EvalType(TypOfVars *tv = NULL);
+  virtual DataType EvalType(TypOfVars *tv = nullptr);
   StringType GetStringType();
   virtual std::shared_ptr<ValueOrNull> Evaluate();
 
@@ -73,7 +73,7 @@ class MysqlExpression {
   static std::shared_ptr<ValueOrNull> ItemReal2ValueOrNull(Item *item);
   static std::shared_ptr<ValueOrNull> ItemDecimal2ValueOrNull(Item *item, int dec_scale = -1);
   static std::shared_ptr<ValueOrNull> ItemString2ValueOrNull(Item *item, int max_str_len = -1,
-                                                             common::CT a_type = common::CT::STRING);
+                                                             common::ColumnType a_type = common::ColumnType::STRING);
 
   static int64_t &AsInt(int64_t &x) { return x; }
   static double &AsReal(int64_t &x) { return *(double *)&x; }

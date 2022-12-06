@@ -152,11 +152,11 @@ class circular_buffer_fixed_capacity {
   void push_front(const T &data);
   void push_front(T &&data);
   template <typename... A>
-  T &emplace_front(A &&...args);
+  T &emplace_front(A &&... args);
   void push_back(const T &data);
   void push_back(T &&data);
   template <typename... A>
-  T &emplace_back(A &&...args);
+  T &emplace_back(A &&... args);
   T &front();
   T &back();
   void pop_front();
@@ -230,7 +230,7 @@ inline void circular_buffer_fixed_capacity<T, Capacity>::push_front(T &&data) {
 
 template <typename T, size_t Capacity>
 template <typename... Args>
-inline T &circular_buffer_fixed_capacity<T, Capacity>::emplace_front(Args &&...args) {
+inline T &circular_buffer_fixed_capacity<T, Capacity>::emplace_front(Args &&... args) {
   auto p = new (obj(_begin - 1)) T(std::forward<Args>(args)...);
   --_begin;
   return *p;
@@ -250,7 +250,7 @@ inline void circular_buffer_fixed_capacity<T, Capacity>::push_back(T &&data) {
 
 template <typename T, size_t Capacity>
 template <typename... Args>
-inline T &circular_buffer_fixed_capacity<T, Capacity>::emplace_back(Args &&...args) {
+inline T &circular_buffer_fixed_capacity<T, Capacity>::emplace_back(Args &&... args) {
   auto p = new (obj(_end)) T(std::forward<Args>(args)...);
   ++_end;
   return *p;

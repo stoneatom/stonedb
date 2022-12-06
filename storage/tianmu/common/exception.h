@@ -57,44 +57,48 @@ static std::string error_messages[] = {
     "Killed.",
 };
 
-inline bool IsError(ErrorCode tianmu_rc) { return tianmu_rc == ErrorCode::FAILED; }
-inline bool IsWarning(ErrorCode tianmu_rc) {
-  return tianmu_rc == ErrorCode::OUT_OF_RANGE || tianmu_rc == ErrorCode::VALUE_TRUNCATED;
+inline bool IsError(ErrorCode tianmu_err_code) { return tianmu_err_code == ErrorCode::FAILED; }
+inline bool IsWarning(ErrorCode tianmu_err_code) {
+  return tianmu_err_code == ErrorCode::OUT_OF_RANGE || tianmu_err_code == ErrorCode::VALUE_TRUNCATED;
 }
 
-class TIANMUError {
+class TianmuError {
  public:
-  TIANMUError(ErrorCode tianmu_error_code = ErrorCode::SUCCESS) : ec(tianmu_error_code) {}
-  TIANMUError(ErrorCode tianmu_error_code, std::string message) : ec(tianmu_error_code), message(message) {}
-  TIANMUError(const TIANMUError &tianmu_e) : ec(tianmu_e.ec), message(tianmu_e.message) {}
-  operator ErrorCode() { return ec; }
-  ErrorCode GetErrorCode() { return ec; }
-  bool operator==(ErrorCode tianmu_ec) { return tianmu_ec == ec; }
+  TianmuError(ErrorCode tianmu_error_code = ErrorCode::SUCCESS) : ec_(tianmu_error_code) {}
+  TianmuError(ErrorCode tianmu_error_code, std::string message) : ec_(tianmu_error_code), message_(message) {}
+  TianmuError(const TianmuError &tianmu_e) : ec_(tianmu_e.ec_), message_(tianmu_e.message_) {}
+  TianmuError &operator=(const TianmuError &) = default;
+  operator ErrorCode() { return ec_; }
+  ErrorCode GetErrorCode() { return ec_; }
+  bool operator==(ErrorCode tianmu_ec) { return tianmu_ec == ec_; }
   const std::string &Message() {
-    if (!message.empty()) return message;
-    return error_messages[static_cast<int>(ec)];
+    if (!message_.empty())
+      return message_;
+    return error_messages[static_cast<int>(ec_)];
   }
 
  private:
-  ErrorCode ec;
-  std::string message;
+  ErrorCode ec_;
+  std::string message_;
 };
 
 class Exception : public std::runtime_error {
  public:
   Exception(std::string const &msg);
   virtual ~Exception() {}
-  virtual const std::string &trace() const { return stack_trace; }
+  virtual const std::string &trace() const { return stack_trace_; }
+  virtual const std::string &getExceptionMsg() const { return exception_msg_; }
 
  protected:
-  std::string stack_trace;
+  std::string stack_trace_;
+  std::string exception_msg_;
 };
 
 // internal error
 class InternalException : public Exception {
  public:
   InternalException(std::string const &msg) : Exception(msg) {}
-  InternalException(TIANMUError tianmu_error) : Exception(tianmu_error.Message()) {}
+  InternalException(TianmuError tianmu_error) : Exception(tianmu_error.Message()) {}
 };
 
 // the system lacks memory or cannot use disk cache
@@ -154,7 +158,7 @@ class NotImplementedException : public Exception {
 class FileException : public Exception {
  public:
   FileException(std::string const &msg) : Exception(msg) {}
-  FileException(TIANMUError tianmu_error) : Exception(tianmu_error.Message()) {}
+  FileException(TianmuError tianmu_error) : Exception(tianmu_error.Message()) {}
 };
 
 // wrong format of import file
@@ -172,26 +176,27 @@ class FormatException : public Exception {
 
 class DataTypeConversionException : public Exception {
  public:
-  int64_t value;  // converted value
-  CT type;        // type to which value is converted
-  DataTypeConversionException(std::string const &msg, int64_t val = NULL_VALUE_64, CT t = CT::UNK)
+  int64_t value;    // converted value
+  ColumnType type;  // type to which value is converted
+  DataTypeConversionException(std::string const &msg, int64_t val = NULL_VALUE_64, ColumnType t = ColumnType::UNK)
       : Exception(msg), value(val), type(t) {}
 
-  DataTypeConversionException(TIANMUError tianmu_error = ErrorCode::DATACONVERSION, int64_t val = NULL_VALUE_64,
-                              CT t = CT::UNK)
+  DataTypeConversionException(TianmuError tianmu_error = ErrorCode::DATACONVERSION, int64_t val = NULL_VALUE_64,
+                              ColumnType t = ColumnType::UNK)
       : Exception(tianmu_error.Message()), value(val), type(t) {}
 };
 
 class UnsupportedDataTypeException : public Exception {
  public:
   UnsupportedDataTypeException(std::string const &msg) : Exception(msg) {}
-  UnsupportedDataTypeException(TIANMUError tianmu_error = ErrorCode::UNSUPPORTED_DATATYPE) : Exception(tianmu_error.Message()) {}
+  UnsupportedDataTypeException(TianmuError tianmu_error = ErrorCode::UNSUPPORTED_DATATYPE)
+      : Exception(tianmu_error.Message()) {}
 };
 
 class NetStreamException : public Exception {
  public:
   NetStreamException(std::string const &msg) : Exception(msg) {}
-  NetStreamException(TIANMUError tianmu_error) : Exception(tianmu_error.Message()) {}
+  NetStreamException(TianmuError tianmu_error) : Exception(tianmu_error.Message()) {}
 };
 
 class AssertException : public Exception {

@@ -49,25 +49,26 @@ class MultiIndex {
   uint32_t ValueOfPower() { return p_power; }
   int NumOfDimensions() const { return no_dimensions; }  // number of dimensions
   int64_t NumOfTuples() const {                          // number of all tuples
-    if (!no_tuples_too_big) return no_tuples;
+    if (!no_tuples_too_big)
+      return no_tuples;
     throw common::OutOfMemoryException("Too many tuples.    (85)");
     return 0;
   }
   int64_t NumOfTuples(DimensionVector &dimensions,
-                   bool fail_on_overflow = true);  // for a given subset of dimensions
+                      bool fail_on_overflow = true);  // for a given subset of dimensions
 
   bool ZeroTuples() { return (!no_tuples_too_big && no_tuples == 0); }
   bool TooManyTuples() { return no_tuples_too_big; }
   Filter *GetFilter(int dim) const  // Get the pointer to a filter attached to a dimension.
-                                    // NOTE: will be NULL in case of materialized MultiIndex!
+                                    // NOTE: will be nullptr in case of materialized MultiIndex!
   {
-    return no_dimensions > 0 ? group_for_dim[dim]->GetFilter(dim) : NULL;
+    return no_dimensions > 0 ? group_for_dim[dim]->GetFilter(dim) : nullptr;
   }
   Filter *GetUpdatableFilter(int dim) const  // Get the pointer to a filter, if it may be changed.
-                                             // NOTE: will be NULL in case of materialized
+                                             // NOTE: will be nullptr in case of materialized
                                              // MultiIndex!
   {
-    return no_dimensions > 0 ? group_for_dim[dim]->GetUpdatableFilter(dim) : NULL;
+    return no_dimensions > 0 ? group_for_dim[dim]->GetUpdatableFilter(dim) : nullptr;
   }
   bool NullsExist(int dim) {
     return no_dimensions > 0 ? group_for_dim[dim]->NullsPossible(dim) : false;
@@ -91,7 +92,8 @@ class MultiIndex {
 
   bool IteratorLock() {  // register a normal iterator; false: already locked
                          // for updating
-    if (iterator_lock > -1) iterator_lock++;
+    if (iterator_lock > -1)
+      iterator_lock++;
     return (iterator_lock > -1);
   }
   bool IteratorUpdatingLock() {  // register an updating iterator; false:
@@ -135,8 +137,8 @@ class MultiIndex {
   // material_no_tuples and the dimensions from the list are deleted
 
   int MaxNumOfPacks(int dim);  // maximal (upper approx.) number of different
-                            // nonempty data packs for the given dimension
-  std::string Display();    // MultiIndex structure: f - Filter, i - IndexTable
+                               // nonempty data packs for the given dimension
+  std::string Display();       // MultiIndex structure: f - Filter, i - IndexTable
 
   Transaction &ConnInfo() const { return *m_conn; }
 
@@ -179,8 +181,9 @@ class MultiIndex {
   void MultiplyNoTuples(uint64_t factor);  // the same as "no_tuples*=factor", but set
                                            // no_tuples_too_big whenever needed
 
-  int iterator_lock;  // 0 - unlocked, >0 - normal iterator exists, -1 -
-                      // updating iterator exists
+  int iterator_lock;        // 0 - unlocked, >0 - normal iterator exists, -1 -
+                            // updating iterator exists
+  bool shallow_dim_groups;  // Indicates whether dim_groups is a shallow copy
 };
 }  // namespace core
 }  // namespace Tianmu

@@ -9681,7 +9681,19 @@ search_key_in_table(TABLE *table, MY_BITMAP *bi_cols, uint key_type)
   KEY *keyinfo;
   uint res= MAX_KEY;
   uint key;
-
+  /*
+    PK has bugs, not support
+  */
+  bool check_if_tianmu_engine = table && table->s && 
+                      (table->s->db_type() ? (table->s->db_type()->db_type == DB_TYPE_TIANMU): false);
+  enum_sql_command sql_command = SQLCOM_END;
+  if(table->in_use && table->in_use->lex) sql_command = table->in_use->lex->sql_command;
+  if (check_if_tianmu_engine && ((sql_command == SQLCOM_DELETE) ||
+                        (sql_command == SQLCOM_DELETE_MULTI) ||
+                        (sql_command == SQLCOM_UPDATE) ||
+                        (sql_command == SQLCOM_UPDATE_MULTI))){
+    DBUG_RETURN(res);
+  }
   if (key_type & PRI_KEY_FLAG &&
       (table->s->primary_key < MAX_KEY))
   {
@@ -10839,7 +10851,8 @@ int Rows_log_event::do_table_scan_and_update(Relay_log_info const *rli)
 
     int restart_count= 0; // Number of times scanning has restarted from top
 
-    if ((error= m_table->file->ha_rnd_init(1)))
+    bool push_result = can_push_donw();
+    if (!push_result && (error= m_table->file->ha_rnd_init(1)))
     {
       DBUG_PRINT("info",("error initializing table scan"
                          " (ha_rnd_init returns %d)",error));

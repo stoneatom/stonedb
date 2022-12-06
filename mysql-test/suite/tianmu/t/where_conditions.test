@@ -1,0 +1,52 @@
+--echo #
+--echo # Test WHERE conditions
+--echo # Author: syw
+--echo #
+
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS where_conditions_test;
+--enable_warnings
+
+CREATE DATABASE where_conditions_test;
+USE where_conditions_test;
+
+CREATE TABLE t1
+(
+ t1_tinyint TINYINT DEFAULT 0,
+ t1_int INT DEFAULT NULL,
+ t1_bigint BIGINT,
+ t1_decimal DECIMAL(5,2),
+ t1_text TEXT,
+ t1_char CHAR(5),
+ t1_varchar VARCHAR(255) DEFAULT 'hello world!',
+ t1_datetime DATETIME
+)ENGINE=tianmu;
+
+INSERT INTO t1 VALUES();
+INSERT INTO t1 VALUES(NULL, NULL, NULL, NULL, '', '', '', NULL);
+INSERT INTO t1 VALUES(1, 123456, 987654321, 122.32, repeat('z', 20), 'aaa', repeat('a', 20), '1111-11-11 11:11:11');
+INSERT INTO t1 VALUES(0, 1023456, 887654321, 222.32, repeat('y', 20), 'aaa', repeat('b', 20), '1111-11-11 11:11:11');
+INSERT INTO t1 VALUES(1, -123456, -987654321, -122.32, repeat('z', 20), 'bbb', repeat('a', 20), '1111-11-11 11:11:11');
+INSERT INTO t1 VALUES(0, -1023456, -887654321, -222.32, repeat('x', 20), 'bbb', repeat('b', 20), '1111-11-11 11:11:11');
+
+SELECT * FROM t1;
+SELECT * FROM t1 WHERE t1_int IS NULL;
+SELECT * FROM t1 WHERE t1_tinyint = 0;
+SELECT * FROM t1 WHERE t1_tinyint != 0;
+SELECT * FROM t1 WHERE t1_bigint > 0;
+SELECT * FROM t1 WHERE t1_bigint < 0;
+SELECT * FROM t1 WHERE t1_decimal >= -122.22;
+SELECT * FROM t1 WHERE t1_decimal <= -122.22;
+SELECT * FROM t1 WHERE t1_text LIKE '%x%';
+#bug ID: #829,Release the use case after the bug is resolved
+#SELECT * FROM t1 WHERE t1_datetime IN ('1111-11-11 11:11:10','1111-11-13 0:0:0');
+#bug ID:#829,Release the use case after the bug is resolved
+#SELECT * FROM t1 WHERE t1_datetime IN ('1111-11-11 11:11:11','1111-11-13 0:0:0');
+SELECT * FROM t1 WHERE t1_datetime BETWEEN '111-11-10' AND '1111-11-12';
+SELECT * FROM t1 WHERE t1_text LIKE '%x%' OR t1_varchar LIKE '%a%';
+SELECT * FROM t1 WHERE t1_text LIKE '%x%' AND t1_varchar LIKE '%b%';
+
+# Clean UP
+DROP DATABASE where_conditions_test;

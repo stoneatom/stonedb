@@ -7,7 +7,7 @@ sidebar_position: 3.3
 
 This topic presents some examples to show you that the StoneDB has superior performance than InnoDB on processing bulk insert of data, compressing data, and executing analytical queries.
 ## **Step 1. Deploy a test environment**
-Before using StoneDB, prepare your test environment according to instructions provided in [Quick Deployment](./quick-deployment.md) and start StoneDB.
+Before using StoneDB, prepare your test environment according to instructions provided in [Quick Deployment](./quick-deployment/quick-deployment-57.md) and start StoneDB.
 ## **Step 2. Prepare test data**
 Perform the following steps to generate test data.
 ### **1. Create a database**
@@ -40,7 +40,7 @@ CREATE TABLE t_user_innodb(
 ) engine=innodb;
 ```
 :::info
-The row-based storage engine is named StoneDB in StoneDB-5.6, and is renamed to Tianmu in StoneDB-5.7 to distinguish from the database StoneDB.
+The column-based storage engine is named after StoneDB in StoneDB-5.6, and is renamed to Tianmu in StoneDB-5.7 to distinguish from the database StoneDB.
 :::
 ### 3. **Create a stored procedure**
 Create a stored procedure that is used to generate a table containing randomly generated names of persons.
@@ -113,7 +113,7 @@ Query OK, 1 row affected (9 min 21.14 sec)
 ```
 According to the returned result, StoneDB takes 9 minutes and 21 seconds, while InnoDB takes 24 minutes and 46 seconds.
 :::info
-The execution time is different for different hardware configurations. Here, two stored procedures are executed in the same environment and their execution times are compared. 
+The execution time varies from different hardware configurations. Here, two stored procedures are executed in the same environment and their execution times are comparable. 
 :::
 ## **Step 4. Test data compression efficiency**
 Compress the inserted data.

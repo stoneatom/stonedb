@@ -18,7 +18,7 @@
 #include "numa_heap_policy.h"
 
 #include "common/assert.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 #ifdef USE_NUMA
 
@@ -76,7 +76,7 @@ void *NUMAHeap::alloc(size_t size) {
   ASSERT(h != m_nodeHeaps.end());
 
   result = h->second->alloc(size);
-  if (result != NULL) {
+  if (result != nullptr) {
     m_blockHeap.insert(std::make_pair(result, h->second));
     return result;
   } else {
@@ -84,13 +84,13 @@ void *NUMAHeap::alloc(size_t size) {
     h = m_nodeHeaps.begin();
     while (h != m_nodeHeaps.end()) {
       result = h->second->alloc(size);
-      if (result != NULL) {
+      if (result != nullptr) {
         m_blockHeap.insert(std::make_pair(result, h->second));
         return result;
       }
       h++;
     }
-    return NULL;
+    return nullptr;
   }
 }
 

@@ -30,7 +30,8 @@ class ResourceManager : public ResourceManagerBase {
   ~ResourceManager();
 
   int GetMemoryScale() override { return res_manage_policy_->estimate(); }
-private:
+
+ private:
   ResourceManagerPolicy *res_manage_policy_;
 };
 

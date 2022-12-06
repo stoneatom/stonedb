@@ -21,7 +21,7 @@
 
 #include "channel.h"
 #include "core/tools.h"
-#include "system/rc_system.h"
+#include "system/tianmu_system.h"
 
 namespace Tianmu {
 namespace system {
@@ -43,7 +43,7 @@ bool Channel::isOn() { return enabled_; }
 Channel &Channel::lock(uint optional_sess_id) {
   channel_mutex_.lock();
   if (time_stamp_at_lock_ && enabled_) {
-    time_t curtime = time(NULL);
+    time_t curtime = time(nullptr);
     struct tm *cdt = localtime(&curtime);
     char sdatetime[32] = "";
     struct timespec time;
