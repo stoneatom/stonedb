@@ -282,6 +282,8 @@ Copyright (c) 2021, 2022 StoneAtom Group Holding Limited
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
 mysql> alter user 'root'@'localhost' identified by 'stonedb123';
+mysql> GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'stonedb123' WITH GRANT OPTION;
+mysql> FLUSH PRIVILEGES;
 ```
 :::info
 The temporary password of user root is recorded in mysqld.log. Upon your first login, you must change the temporary password.
