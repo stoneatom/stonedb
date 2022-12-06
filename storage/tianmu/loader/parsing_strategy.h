@@ -35,12 +35,16 @@ class ParsingStrategy final {
   ~ParsingStrategy() {}
   ParseResult GetOneRow(const char *const buf, size_t size, std::vector<ValueCache> &values, uint &rowsize,
                         int &errorinfo);
+  void SetTHD(THD *thd) { thd_ = thd; }
+  THD *GetTHD() const { return thd_; };
 
  protected:
   core::AttributeTypeInfo &GetATI(ushort col) { return attr_infos_[col]; }
 
  private:
   std::vector<core::AttributeTypeInfo> attr_infos_;
+  THD *thd_{nullptr};
+  TABLE *table_{nullptr};
   bool prepared_;
 
   std::string terminator_;

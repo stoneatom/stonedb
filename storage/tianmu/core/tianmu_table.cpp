@@ -238,7 +238,8 @@ std::vector<AttributeTypeInfo> TianmuTable::GetATIs([[maybe_unused]] bool orig) 
   std::vector<AttributeTypeInfo> deas;
   for (uint j = 0; j < NumOfAttrs(); j++) {
     deas.emplace_back(m_attrs[j]->TypeName(), m_attrs[j]->Type().NotNull(), m_attrs[j]->Type().GetPrecision(),
-                      m_attrs[j]->Type().GetScale(), false, m_attrs[j]->Type().GetCollation());
+                      m_attrs[j]->Type().GetScale(), false, m_attrs[j]->Type().GetCollation(), common::PackFmt::DEFAULT,
+                      false, m_attrs[j]->GetFieldName());
   }
 
   return deas;
@@ -768,11 +769,12 @@ uint64_t TianmuTable::ProceedNormal(system::IOParameters &iop) {
   uint to_prepare;
   uint no_of_rows_returned;
   utils::Timer timer;
+
   do {
     to_prepare = share->PackSize() - (m_attrs[0]->NumOfObj() % share->PackSize());
     std::vector<loader::ValueCache> value_buffers;
     no_of_rows_returned = parser.GetPackrow(to_prepare, value_buffers);
-    no_dup_rows += parser.GetDuprow();
+    no_dup_rows += parser.GetDupRow();
     if (parser.GetNoRow() > 0) {
       utils::result_set<void> res;
       for (uint att = 0; att < m_attrs.size(); ++att) {
@@ -798,7 +800,7 @@ uint64_t TianmuTable::ProceedNormal(system::IOParameters &iop) {
     throw common::FormatException("Rejected rows threshold exceeded. " + std::to_string(no_rejected_rows) + " out of " +
                                   std::to_string(no_loaded_rows + no_rejected_rows) + " rows rejected.");
 
-  if (no_loaded_rows == 0 && no_rejected_rows == 0 && parser.GetDuprow() == 0)
+  if (no_loaded_rows == 0 && no_rejected_rows == 0 && parser.GetDupRow() == 0 && parser.GetIgnoreRow() == 0)
     throw common::FormatException(-1, -1);
 
   return no_loaded_rows;
@@ -826,22 +828,6 @@ int TianmuTable::binlog_load_query_log_event(system::IOParameters &iop) {
   Load_log_event lle(thd, ex, db_name.c_str(), string_buf.c_ptr_safe(), fv, FALSE, DUP_ERROR, FALSE, TRUE);
   if (thd->lex->local_file)
     lle.set_fname_outside_temp_buf(ex->file_name, std::strlen(ex->file_name));
-
-  if (!thd->lex->load_field_list.elements) {
-    Field **field;
-    for (field = table->field; *field; field++) thd->lex->load_field_list.push_back(new Item_field(*field));
-    // bitmap_set_all(table->write_set);
-    if (setup_fields(thd, Ref_ptr_array(), thd->lex->load_update_list, UPDATE_ACL, 0, 0, 0) ||
-        setup_fields(thd, Ref_ptr_array(), thd->lex->load_value_list, SELECT_ACL, 0, 0, 0))
-      return -1;
-  } else {
-    if (setup_fields(thd, Ref_ptr_array(), thd->lex->load_field_list, INSERT_ACL, 0, 0, 0) ||
-        setup_fields(thd, Ref_ptr_array(), thd->lex->load_update_list, UPDATE_ACL, 0, 0, 0))
-      return -1;
-
-    if (setup_fields(thd, Ref_ptr_array(), thd->lex->load_value_list, SELECT_ACL, 0, 0, 0))
-      return -1;
-  }
 
   if (!thd->lex->load_field_list.is_empty()) {
     List_iterator<Item> li(thd->lex->load_field_list);

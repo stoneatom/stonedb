@@ -308,11 +308,6 @@ int mysql_load(THD *thd,sql_exchange *ex,TABLE_LIST *table_list,
     my_error(ER_UPDATE_TABLE_USED, MYF(0), table_list->table_name);
     DBUG_RETURN(TRUE);
   }
-  // TIANMU UPGRADE BEGIN
-  if (!Tianmu::handler::ha_my_tianmu_load(thd, ex, table_list, (void*) &lf_info)) {
-    DBUG_RETURN(FALSE);
-  }
-  //END
 
   TABLE *const table= insert_table_ref->table;
 
@@ -386,6 +381,11 @@ int mysql_load(THD *thd,sql_exchange *ex,TABLE_LIST *table_list,
     if (setup_fields(thd, Ref_ptr_array(), set_values, SELECT_ACL, NULL,
                      false, false))
       DBUG_RETURN(TRUE);
+  }
+
+  if (!Tianmu::handler::ha_my_tianmu_load(thd, ex, table_list,
+                                          (void *)&lf_info)) {
+    DBUG_RETURN(FALSE);
   }
 
   const int escape_char= (escaped->length() && (ex->escaped_given() ||
