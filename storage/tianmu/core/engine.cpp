@@ -1549,8 +1549,10 @@ common::TianmuError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
     my_ok(thd, stats.records, 0L, name);
   } catch (common::FormatException &e) {
     tianmu_e = common::TianmuError(common::ErrorCode::DATA_ERROR, e.what());
+  } catch (common::NetStreamException &e) {
+    tianmu_e = common::TianmuError(common::ErrorCode::FAILED, e.what());
   } catch (common::Exception &e) {
-    tianmu_e = common::TianmuError(common::ErrorCode::UNKNOWN_ERROR, "Tianmu internal error");
+    tianmu_e = common::TianmuError(common::ErrorCode::UNKNOWN_ERROR, std::string("Tianmu internal error:") + e.what());
   } catch (common::TianmuError &e) {
     tianmu_e = e;
   }
