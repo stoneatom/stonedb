@@ -455,7 +455,7 @@ int ha_tianmu::write_row([[maybe_unused]] uchar *buf) {
   int ret = 1;
   DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
-    if (ha_thd()->lex->duplicates == DUP_UPDATE) {
+    if (ha_thd()->lex->duplicates == DUP_UPDATE || ha_thd()->lex->duplicates == DUP_REPLACE) {  // add DUP_REPLACE
       if (auto indextab = ha_tianmu_engine_->GetTableIndex(table_name_)) {
         if (size_t row; has_dup_key(indextab, table, row)) {
           dupkey_pos_ = row;
@@ -1572,6 +1572,10 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
     // support alter table: mix add/drop column、order column and other syntaxs to use
     if (ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER)
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+    if (ha_alter_info->handler_flags & Alter_inplace_info::ADD_PK_INDEX)
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+    if (ha_alter_info->handler_flags & Alter_inplace_info::DROP_PK_INDEX)
       DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
 
     DBUG_RETURN(HA_ALTER_ERROR);

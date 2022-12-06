@@ -561,8 +561,6 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemInt2ValueOrNull(Item *item) {
   int64_t v = item->val_int();
   if (v == common::NULL_VALUE_64)
     v++;
-  if (v < 0 && item->unsigned_flag)
-    throw common::NotImplementedException("Out of range: unsigned data type is not supported.");
   val->SetFixed(v);
   if (item->null_value)
     return std::make_shared<ValueOrNull>();

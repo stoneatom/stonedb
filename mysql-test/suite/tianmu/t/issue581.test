@@ -1,0 +1,56 @@
+--source include/have_tianmu.inc
+
+USE test;
+
+--disable_warnings
+
+## DDL
+
+DROP TABLE IF EXISTS t1,t2;
+
+CREATE TABLE t1 (id INT PRIMARY KEY, copy INT) ENGINE=TIANMU;
+ 
+CREATE TABLE t2 (id INT PRIMARY KEY, data INT) ENGINE=TIANMU;
+
+## CREATE trigger
+
+CREATE trigger t1_bi before insert on t1 for each row
+  set new.copy= (SELECT data FROM t2 where id = new.id);
+ 
+CREATE trigger t1_bu before UPDATE on t1 for each row
+  set new.copy= (SELECT data FROM t2 where id = new.id);
+
+## test trigger
+
+### insert data first
+
+INSERT INTO t2 VALUES (1,1), (2,2);
+
+SELECT * FROM t1;
+SELECT * FROM t2;
+
+### insert of trigger happen
+
+INSERT INTO t1 VALUES (1,3), (2,4), (3,3);
+
+SELECT * FROM t1;
+SELECT * FROM t2;
+
+### UPDATE of trigger happen
+
+UPDATE t1 set copy= 1 where id = 2;
+
+SELECT * FROM t1;
+SELECT * FROM t2;
+
+UPDATE t1 set copy= 1 where id = 3;
+
+SELECT * FROM t1;
+SELECT * FROM t2;
+
+## clean test TABLE
+
+DROP TABLE IF EXISTS t1,t2;
+
+
+
