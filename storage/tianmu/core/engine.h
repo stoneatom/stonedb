@@ -78,9 +78,9 @@ class Engine final {
 
   int Init(uint engine_slot);
   void CreateTable(const std::string &table, TABLE *from);
-  void DeleteTable(const char *table, THD *thd);
+  int DeleteTable(const char *table, THD *thd);
   void TruncateTable(const std::string &table_path, THD *thd);
-  void RenameTable(Transaction *trans_, const std::string &from, const std::string &to, THD *thd);
+  int RenameTable(Transaction *trans_, const std::string &from, const std::string &to, THD *thd);
   void PrepareAlterTable(const std::string &table_path, std::vector<Field *> &new_cols, std::vector<Field *> &old_cols,
                          THD *thd);
 
@@ -124,10 +124,10 @@ class Engine final {
   common::TX_ID MaxXID() const { return max_xid; }
   void DeferRemove(const fs::path &file, int32_t cookie);
   void HandleDeferredJobs();
-  // support for add primary key
+  // add primary key
   void AddTableIndex(const std::string &table_path, TABLE *table, THD *thd);
-  // support for delete primary key
-  void DeleteTableIndex(const std::string &table_path, THD *thd);
+  // delete primary key
+  bool DeleteTableIndex(const std::string &table_path, THD *thd);
   std::shared_ptr<index::TianmuTableIndex> GetTableIndex(const std::string &table_path);
   bool has_pk(TABLE *table) const { return table->s->primary_key != MAX_INDEXES; }
   void RenameRdbTable(const std::string &from, const std::string &to);
