@@ -165,7 +165,8 @@ gtest 默认安装在 /usr/local
 ```shell
 ls /usr/local/include/
 ...... gtest
-ls /usr/local/lib/
+ls /usr/local/lib/ # 32-bit os
+ls /usr/local/lib64/ # 64-bit os
 ...... cmake  libgtest.a  libgtest_main.a
 ```
 ## 第四步：执行编译
