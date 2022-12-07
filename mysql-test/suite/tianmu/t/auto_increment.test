@@ -1,0 +1,154 @@
+--source include/have_tianmu.inc
+#
+# Test auto_increment with TIANMU
+#
+
+# test auto increment
+--disable_warnings
+drop table if exists t_auto_inc;
+--enable_warnings
+CREATE TABLE t_auto_inc (
+  id int(4) NOT NULL AUTO_INCREMENT,
+  data VARCHAR(64) DEFAULT NULL,
+  PRIMARY KEY (id)
+)  engine=tianmu;
+insert into t_auto_inc (data) values("first"),("middle"),("last");
+select * from t_auto_inc;
+
+# test auto_increment about max value of column type
+# signed data type
+--disable_warnings
+drop table if exists tint;
+drop table if exists ttinyint;
+drop table if exists tsmallint;
+drop table if exists tmediumint;
+drop table if exists tbigint;
+--enable_warnings
+CREATE TABLE tint (
+  id int(4) NOT NULL AUTO_INCREMENT,
+  data VARCHAR(64) DEFAULT NULL,
+  PRIMARY KEY (id)
+)  engine=tianmu;
+
+insert into tint (id, data) values(2147483646, "first"),(63, "middle"),(0, "last");
+select * from tint;
+--error 1062
+insert into tint (id, data) values (0, "last");
+select * from tint;
+
+CREATE TABLE ttinyint (
+  id tinyint(1) NOT NULL AUTO_INCREMENT,
+  data VARCHAR(64) DEFAULT NULL,
+  PRIMARY KEY (id)
+)  engine=tianmu;
+
+insert into ttinyint (id, data) values(126, "first"),(63, "middle"),(0, "last");
+select * from ttinyint;
+--error 1062
+insert into ttinyint (id, data) values (0, "last");
+select * from ttinyint;
+
+CREATE TABLE tsmallint (
+  id smallint(2) NOT NULL AUTO_INCREMENT,
+  data VARCHAR(64) DEFAULT NULL,
+  PRIMARY KEY (id)
+)  engine=tianmu;
+
+insert into tsmallint (id, data) values(32766, "first"),(63, "middle"),(0, "last");
+select * from tsmallint;
+--error 1062
+insert into tsmallint (id, data) values (0, "last");
+select * from tsmallint;
+
+CREATE TABLE tmediumint (
+  id mediumint(3) NOT NULL AUTO_INCREMENT,
+  data VARCHAR(64) DEFAULT NULL,
+  PRIMARY KEY (id)
+)  engine=tianmu;
+
+insert into tmediumint (id, data) values(8388606, "first"),(63, "middle"),(0, "last");
+select * from tmediumint;
+--error 1062
+insert into tmediumint (id, data) values (0, "last");
+select * from tmediumint;
+
+CREATE TABLE tbigint (
+  id bigint(8) NOT NULL AUTO_INCREMENT,
+  data VARCHAR(64) DEFAULT NULL,
+  PRIMARY KEY (id)
+)  engine=tianmu;
+
+insert into tbigint (id, data) values(9223372036854775806, "first"),(63, "middle"),(0, "last");
+select * from tbigint;
+--error 1062
+insert into tbigint (id, data) values (0, "last");
+select * from tbigint;
+
+# unsigned data type
+
+--disable_warnings
+drop table if exists tint;
+drop table if exists ttinyint;
+drop table if exists tsmallint;
+drop table if exists tmediumint;
+drop table if exists tbigint;
+--enable_warnings
+CREATE TABLE tint (
+  id int(4) unsigned NOT NULL AUTO_INCREMENT,
+  data VARCHAR(64) DEFAULT NULL,
+  PRIMARY KEY (id)
+)  engine=tianmu;
+
+insert into tint (id, data) values(4294967294, "first"),(63, "middle"),(0, "last");
+select * from tint;
+--error 1062
+insert into tint (id, data) values (0, "last");
+select * from tint;
+
+CREATE TABLE ttinyint (
+  id tinyint(1) unsigned NOT NULL AUTO_INCREMENT,
+  data VARCHAR(64) DEFAULT NULL,
+  PRIMARY KEY (id)
+)  engine=tianmu;
+
+insert into ttinyint (id, data) values(254, "first"),(63, "middle"),(0, "last");
+select * from ttinyint;
+--error 1062
+insert into ttinyint (id, data) values (0, "last");
+select * from ttinyint;
+
+CREATE TABLE tsmallint (
+  id smallint(2) unsigned NOT NULL AUTO_INCREMENT,
+  data VARCHAR(64) DEFAULT NULL,
+  PRIMARY KEY (id)
+)  engine=tianmu;
+
+insert into tsmallint (id, data) values(65534, "first"),(63, "middle"),(0, "last");
+select * from tsmallint;
+--error 1062
+insert into tsmallint (id, data) values (0, "last");
+select * from tsmallint;
+
+CREATE TABLE tmediumint (
+  id mediumint(3) unsigned NOT NULL AUTO_INCREMENT,
+  data VARCHAR(64) DEFAULT NULL,
+  PRIMARY KEY (id)
+)  engine=tianmu;
+
+insert into tmediumint (id, data) values(16777214, "first"),(63, "middle"),(0, "last");
+select * from tmediumint;
+--error 1062
+insert into tmediumint (id, data) values (0, "last");
+select * from tmediumint;
+
+CREATE TABLE tbigint (
+  id bigint(8) unsigned NOT NULL AUTO_INCREMENT,
+  data VARCHAR(64) DEFAULT NULL,
+  PRIMARY KEY (id)
+)  engine=tianmu;
+
+insert into tbigint (id, data) values(18446744073709551614, "first"),(63, "middle"),(0, "last");
+select * from tbigint;
+--error 1062
+insert into tbigint (id, data) values (0, "last");
+select * from tbigint;
