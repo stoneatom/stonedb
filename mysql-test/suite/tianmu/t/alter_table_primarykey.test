@@ -1,0 +1,135 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+
+CREATE DATABASE alterpk;
+
+USE alterpk;
+
+
+CREATE TABLE `alter_pk` (
+  `c_id` int NOT NULL COMMENT 'int',
+  `c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',
+  `c_smallint` smallint NOT NULL COMMENT 'smallint',
+  `c_mediumint` mediumint DEFAULT NULL COMMENT 'mediumint',
+  `c_int` int DEFAULT NULL COMMENT 'int',
+  `c_bigint` bigint DEFAULT NULL COMMENT 'bigint',
+  `c_float` float DEFAULT NULL COMMENT 'float',
+  `c_double` double DEFAULT NULL COMMENT 'double',
+  `c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+  `c_date` date DEFAULT NULL COMMENT 'date',
+  `c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
+  `c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+  `c_time` time DEFAULT NULL COMMENT 'time',
+  `c_char` char(10) DEFAULT NULL COMMENT 'char',
+  `c_varchar` varchar(10) DEFAULT NULL COMMENT 'varchar',
+  `c_blob` blob COMMENT 'blob',
+  `c_text` text COMMENT 'text',
+  `c_longblob` longblob COMMENT 'longblob'
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+#
+#ALTER TABLE ADD PRIMARY KEY TEST
+#
+
+INSERT INTO alter_pk(c_id,c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
+VALUES
+(1,11,2,3,4,5,5.2,10.88,105.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom1','hello1','bcdefghijklmn'),
+(2,22,3,4,5,6,5.3,10.89,105.084,'2016-02-26','2016-02-26 10:20:02','2016-02-25 05:20:02','10:20:02','stoneatom2','hello2','qweqeqweqweqw'),
+(3,33,4,5,6,7,5.4,10.90,105.085,'2016-02-27','2016-02-27 10:20:03','2016-02-25 05:20:03','10:20:03','stoneatom3','hello3','asdfasdfsadfa');
+
+SHOW CREATE TABLE alter_pk;
+
+SELECT * FROM alter_pk;
+
+ALTER TABLE alter_pk ADD CONSTRAINT pk PRIMARY KEY(c_id);
+
+SELECT * FROM alter_pk;
+
+SHOW CREATE TABLE alter_pk;
+
+--error 1062
+INSERT INTO alter_pk(c_id,c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
+VALUES
+(1,11,2,3,4,5,5.2,10.88,105.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom1','hello1','bcdefghijklmn'),
+(2,22,3,4,5,6,5.3,10.89,105.084,'2016-02-26','2016-02-26 10:20:02','2016-02-25 05:20:02','10:20:02','stoneatom2','hello2','qweqeqweqweqw'),
+(3,33,4,5,6,7,5.4,10.90,105.085,'2016-02-27','2016-02-27 10:20:03','2016-02-25 05:20:03','10:20:03','stoneatom3','hello3','asdfasdfsadfa');
+
+SELECT * FROM alter_pk;
+
+#
+#ALTER TABLE DROP PRIMARY KEY TEST
+#
+
+ALTER TABLE alter_pk DROP PRIMARY KEY;
+
+SHOW CREATE TABLE alter_pk;
+
+SELECT * FROM alter_pk;
+
+INSERT INTO alter_pk(c_id,c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
+VALUES
+(1,11,2,3,4,5,5.2,10.88,105.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom1','hello1','bcdefghijklmn'),
+(2,22,3,4,5,6,5.3,10.89,105.084,'2016-02-26','2016-02-26 10:20:02','2016-02-25 05:20:02','10:20:02','stoneatom2','hello2','qweqeqweqweqw'),
+(3,33,4,5,6,7,5.4,10.90,105.085,'2016-02-27','2016-02-27 10:20:03','2016-02-25 05:20:03','10:20:03','stoneatom3','hello3','asdfasdfsadfa');
+
+SELECT * FROM alter_pk;
+
+
+#
+#ALTER TABLE DROP PRIMARY KEY TEST
+#
+
+CREATE TABLE `alter_pk_1` (
+  `c_id` int NOT NULL COMMENT 'int',
+  `c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',
+  `c_smallint` smallint NOT NULL COMMENT 'smallint',
+  `c_mediumint` mediumint DEFAULT NULL COMMENT 'mediumint',
+  `c_int` int DEFAULT NULL COMMENT 'int',
+  `c_bigint` bigint DEFAULT NULL COMMENT 'bigint',
+  `c_float` float DEFAULT NULL COMMENT 'float',
+  `c_double` double DEFAULT NULL COMMENT 'double',
+  `c_decimal` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+  `c_date` date DEFAULT NULL COMMENT 'date',
+  `c_datetime` datetime DEFAULT NULL COMMENT 'datetime',
+  `c_timestamp` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+  `c_time` time DEFAULT NULL COMMENT 'time',
+  `c_char` char(10) DEFAULT NULL COMMENT 'char',
+  `c_varchar` varchar(10) DEFAULT NULL COMMENT 'varchar',
+  `c_blob` blob COMMENT 'blob',
+  `c_text` text COMMENT 'text',
+  `c_longblob` longblob COMMENT 'longblob',
+  PRIMARY KEY(c_id)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO alter_pk_1(c_id,c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
+VALUES
+(1,11,2,3,4,5,5.2,10.88,105.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom1','hello1','bcdefghijklmn'),
+(2,22,3,4,5,6,5.3,10.89,105.084,'2016-02-26','2016-02-26 10:20:02','2016-02-25 05:20:02','10:20:02','stoneatom2','hello2','qweqeqweqweqw'),
+(3,33,4,5,6,7,5.4,10.90,105.085,'2016-02-27','2016-02-27 10:20:03','2016-02-25 05:20:03','10:20:03','stoneatom3','hello3','asdfasdfsadfa');
+
+
+ALTER TABLE alter_pk_1 DROP PRIMARY KEY;
+
+SHOW CREATE TABLE alter_pk_1;
+
+SELECT * FROM alter_pk_1;
+
+INSERT INTO alter_pk_1(c_id,c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_float,c_double,c_decimal,c_date,c_datetime,c_timestamp,c_time,c_char,c_varchar,c_text)
+VALUES
+(1,11,2,3,4,5,5.2,10.88,105.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom1','hello1','bcdefghijklmn'),
+(2,22,3,4,5,6,5.3,10.89,105.084,'2016-02-26','2016-02-26 10:20:02','2016-02-25 05:20:02','10:20:02','stoneatom2','hello2','qweqeqweqweqw'),
+(3,33,4,5,6,7,5.4,10.90,105.085,'2016-02-27','2016-02-27 10:20:03','2016-02-25 05:20:03','10:20:03','stoneatom3','hello3','asdfasdfsadfa');
+
+SELECT * FROM alter_pk_1;
+
+
+#
+#CLEAN
+#
+
+DROP TABLE  alter_pk, alter_pk_1;
+
+DROP DATABASE alterpk; 
+
+# End of alter table primary key tests

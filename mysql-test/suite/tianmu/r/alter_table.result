@@ -84,4 +84,5 @@ t_test	CREATE TABLE `t_test` (
   `copy_id` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8
+drop table t_test;
 DROP DATABASE alter_table_test;
