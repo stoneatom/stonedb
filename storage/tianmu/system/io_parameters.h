@@ -40,7 +40,8 @@ enum class Parameter {
   LOCAL_LOAD,
   VALUE_LIST_ELEMENTS,
   LOCK_OPTION,
-  OPTIONALLY_ENCLOSED
+  OPTIONALLY_ENCLOSED,
+  TABLE_ID
 };
 
 class IOParameters {
@@ -76,7 +77,8 @@ class IOParameters {
         break;
     }
   }
-
+  void SetTable(TABLE *table) { table_ = table; };
+  TABLE *GetTable() const { return table_; }
   void SetParameter(Parameter param, const std::string &value) {
     switch (param) {
       case Parameter::LINE_STARTER:
@@ -101,6 +103,9 @@ class IOParameters {
         break;
       case Parameter::VALUE_LIST_ELEMENTS:
         value_list_elements_ = value;
+        break;
+      case Parameter::TABLE_ID:
+        table_id_ = value;
         break;
       default:
         DEBUG_ASSERT(0 && "unexpected value");
@@ -142,7 +147,8 @@ class IOParameters {
   char EscapeCharacter() const { return escape_character_; }
   std::string TableName() const { return table_name_; }
   std::string LineStarter() const { return line_starter_; }
-  int64_t TableID() const { return skip_lines_; }
+  int64_t TableID() const { return table_id_; }
+  int64_t GetSkipLines() const { return skip_lines_; }
   int CharsetInfoNumber() const { return charset_info_number_; }
   int LocalLoad() const { return local_load_; }
   int OptionallyEnclosed() { return opt_enclosed_; }
@@ -154,12 +160,14 @@ class IOParameters {
   std::string GetRejectFile() const { return (reject_file_); }
   int64_t GetAbortOnCount() const { return (abort_on_count_); }
   double GetAbortOnThreshold() const { return (abort_on_threshold_); }
-  void SetATIs(const std::vector<core::AttributeTypeInfo> &attr_type_info_) { this->attr_type_info_ = attr_type_info_; }
+  void SetATIs(const std::vector<core::AttributeTypeInfo> &attr_type_info) { this->attr_type_info_ = attr_type_info; }
   const std::vector<core::AttributeTypeInfo> &ATIs() const { return attr_type_info_; }
   bool LoadDelayed() const { return load_delayed_insert_; }
   std::string GetTableName() const { return table_name_; }
   void SetLogInfo(void *logptr) { loginfo_ptr_ = logptr; }
   void *GetLogInfo() const { return loginfo_ptr_; }
+  void SetTHD(THD *thd) { thd_ = thd; }
+  THD *GetTHD() const { return thd_; }
 
  public:
   bool load_delayed_insert_ = false;
@@ -178,9 +186,11 @@ class IOParameters {
   std::string charsets_dir_;
   int charset_info_number_;
   int64_t skip_lines_;
+  int64_t table_id_{0};
   int64_t value_list_elements_;
   int local_load_;
   int lock_option_;
+  THD *thd_{nullptr};
 
   // TimeZone
   short sign_;
@@ -196,6 +206,7 @@ class IOParameters {
   std::string install_path_;
 
   void *loginfo_ptr_;
+  TABLE *table_{nullptr};
 
  private:
   void Init() {

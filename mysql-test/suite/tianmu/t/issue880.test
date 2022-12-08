@@ -124,14 +124,19 @@ CREATE TABLE `issue880_t3` (
   KEY `idx_pay_status_feetype` (`pay_status`,`fee_type`)
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED;
 
+--disable_warnings
 # load data issue880_t1
-LOAD DATA LOCAL INFILE 'suite/tianmu/std_data/issue880_t1.txt' INTO TABLE issue880_t1;
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t1.txt' INTO TABLE issue880_t1;
 
 #  load data issue880_t3
-LOAD DATA LOCAL INFILE 'suite/tianmu/std_data/issue880_t3.txt' INTO TABLE issue880_t3;
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t3.txt' INTO TABLE issue880_t3;
 
 #  load data issue880_t2
-LOAD DATA LOCAL INFILE 'suite/tianmu/std_data/issue880_t2.txt' INTO TABLE issue880_t2;
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t2.txt' INTO TABLE issue880_t2;
+--enable_warnings
 
 # test timestamp union timestamp
 select b.create_time AS create_time

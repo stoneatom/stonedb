@@ -24,19 +24,19 @@ CREATE TABLE `column_type_test` (
 #
 # DELETE FROM TABLE_NAME WHERE ...for Large amount of data
 #
-load data infile '../../std_data/tianmu/bigdata4load' into table column_type_test fields terminated by '|';
+load data infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/bigdata4load.txt' into table column_type_test fields terminated by '|';
 select * from column_type_test limit 10;
 c_tinyint	c_smallint	c_mediumint	c_int	c_bigint	c_float	c_double	c_decimal	c_date	c_datetime	c_timestamp	c_time	c_char	c_varchar	c_blob	c_text	c_longblob
 100	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
 101	101	101	101	101	5.2	10.88	101.08300	2016-02-25	2016-02-25 10:20:01	1985-08-11 09:10:25	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
-102	102	102	102	102	5.2	10.88	102.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
-103	103	103	103	103	5.2	10.88	103.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
-104	104	104	104	104	5.2	10.88	104.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	102	102	102	102	5.2	10.88	102.08300	2016-02-25	2016-02-25 10:20:01	2016-08-10 18:33:37	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+103	103	103	103	103	5.2	10.88	103.08300	2016-02-25	2016-02-25 10:20:01	2011-08-07 23:55:45	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+104	104	104	104	104	5.2	10.88	104.08300	2016-02-25	2016-02-25 10:20:01	2026-08-22 11:24:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
 100	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
 101	101	101	101	101	5.2	10.88	101.08300	2016-02-25	2016-02-25 10:20:01	1985-08-11 09:10:25	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
-102	102	102	102	102	5.2	10.88	102.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
-103	103	103	103	103	5.2	10.88	103.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
-104	104	104	104	104	5.2	10.88	104.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	102	102	102	102	5.2	10.88	102.08300	2016-02-25	2016-02-25 10:20:01	2016-08-10 18:33:37	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+103	103	103	103	103	5.2	10.88	103.08300	2016-02-25	2016-02-25 10:20:01	2011-08-07 23:55:45	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+104	104	104	104	104	5.2	10.88	104.08300	2016-02-25	2016-02-25 10:20:01	2026-08-22 11:24:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
 select count(*) from column_type_test;
 count(*)
 100000
@@ -56,15 +56,15 @@ delete from column_type_test where c_tinyint=100 limit 1000;
 select * from column_type_test limit 10;
 c_tinyint	c_smallint	c_mediumint	c_int	c_bigint	c_float	c_double	c_decimal	c_date	c_datetime	c_timestamp	c_time	c_char	c_varchar	c_blob	c_text	c_longblob
 101	101	101	101	101	5.2	10.88	101.08300	2016-02-25	2016-02-25 10:20:01	1985-08-11 09:10:25	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
-102	102	102	102	102	5.2	10.88	102.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
-103	103	103	103	103	5.2	10.88	103.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
-104	104	104	104	104	5.2	10.88	104.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	102	102	102	102	5.2	10.88	102.08300	2016-02-25	2016-02-25 10:20:01	2016-08-10 18:33:37	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+103	103	103	103	103	5.2	10.88	103.08300	2016-02-25	2016-02-25 10:20:01	2011-08-07 23:55:45	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+104	104	104	104	104	5.2	10.88	104.08300	2016-02-25	2016-02-25 10:20:01	2026-08-22 11:24:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
 101	101	101	101	101	5.2	10.88	101.08300	2016-02-25	2016-02-25 10:20:01	1985-08-11 09:10:25	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
-102	102	102	102	102	5.2	10.88	102.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
-103	103	103	103	103	5.2	10.88	103.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
-104	104	104	104	104	5.2	10.88	104.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	102	102	102	102	5.2	10.88	102.08300	2016-02-25	2016-02-25 10:20:01	2016-08-10 18:33:37	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+103	103	103	103	103	5.2	10.88	103.08300	2016-02-25	2016-02-25 10:20:01	2011-08-07 23:55:45	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+104	104	104	104	104	5.2	10.88	104.08300	2016-02-25	2016-02-25 10:20:01	2026-08-22 11:24:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
 101	101	101	101	101	5.2	10.88	101.08300	2016-02-25	2016-02-25 10:20:01	1985-08-11 09:10:25	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
-102	102	102	102	102	5.2	10.88	102.08300	2016-02-25	2016-02-25 10:20:01	0000-00-00 00:00:00	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	102	102	102	102	5.2	10.88	102.08300	2016-02-25	2016-02-25 10:20:01	2016-08-10 18:33:37	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
 show create table column_type_test;
 Table	Create Table
 column_type_test	CREATE TABLE `column_type_test` (
