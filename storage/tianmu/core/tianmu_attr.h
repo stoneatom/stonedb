@@ -224,7 +224,11 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   bool GetIfAutoInc() const { return ct.GetAutoInc(); }
   uint64_t AutoIncNext() {
     backup_auto_inc_next_ = hdr.auto_inc_next;
-    return ++hdr.auto_inc_next;
+    uint64_t auto_inc_value = ++hdr.auto_inc_next;  // current auto_increment value
+    if (backup_auto_inc_next_ == UINT64_MAX)        // avoid overflow
+      auto_inc_value = UINT64_MAX;
+    uint64_t max_value_ = m_share->m_field->get_max_int_value();        // max value of col type
+    return max_value_ >= auto_inc_value ? auto_inc_value : max_value_;  // not exceed max value
   }
   void RollBackIfAutoInc() {
     if (!GetIfAutoInc())

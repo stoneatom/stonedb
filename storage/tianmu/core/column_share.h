@@ -68,11 +68,11 @@ class ColumnShare final {
   ~ColumnShare();
   ColumnShare(ColumnShare const &) = delete;
   void operator=(ColumnShare const &x) = delete;
-  ColumnShare(TableShare *owner, common::TX_ID ver, uint32_t i, const fs::path &p, const Field *f)
-      : owner(owner), m_path(p), col_id(i), field_name_(f->field_name) {
-    ct.SetCollation({f->charset(), f->derivation()});
-    ct.SetAutoInc(f->flags & AUTO_INCREMENT_FLAG);
-    Init(ver);
+  ColumnShare(TableShare *owner_, common::TX_ID xid_, uint32_t col_id_, const fs::path &path_, const Field *field_)
+      : owner(owner_), m_path(path_), col_id(col_id_), field_name_(field_->field_name), m_field(field_) {
+    ct.SetCollation({field_->charset(), field_->derivation()});
+    ct.SetAutoInc(field_->flags & AUTO_INCREMENT_FLAG);
+    Init(xid_);
   }
 
   DPN *get_dpn_ptr(common::PACK_INDEX i) {
@@ -114,6 +114,7 @@ class ColumnShare final {
   common::PackType pt;
   uint32_t col_id;
   std::string field_name_;
+  const Field *m_field;
   struct seg {
     uint64_t offset;
     uint64_t len;
