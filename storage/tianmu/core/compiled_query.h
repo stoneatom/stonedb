@@ -68,6 +68,7 @@ class CompiledQuery final {
     CondID c1, c2, c3;
     CQTerm e1, e2, e3;
     common::Operator op;  // predicate: common::Operator::O_EQ, common::Operator::O_LESS etc.
+    common::ExtraOperation ex_op;
     TMParameter tmpar;    // Table Mode Parameter
     JoinType jt;
     common::ColOperation cop;
@@ -94,6 +95,7 @@ class CompiledQuery final {
           e2(),
           e3(),
           op(common::Operator::O_EQ),
+          ex_op(common::ExtraOperation::EX_DO_NOTHING),
           tmpar(TMParameter::TM_DISTINCT),
           jt(JoinType::JO_INNER),
           cop(common::ColOperation::LISTING),
@@ -132,8 +134,9 @@ class CompiledQuery final {
   void TableAlias(TabID &t_out, const TabID &n, const char *tab_name = nullptr, int id = -1);
   void TmpTable(TabID &t_out, const TabID &t1, bool for_subq = false);
   void CreateConds(CondID &c_out, const TabID &t1, CQTerm e1, common::Operator pr, CQTerm e2, CQTerm e3 = CQTerm(),
-                   bool is_or_subtree = false, char like_esc = '\\');
-  void CreateConds(CondID &c_out, const TabID &t1, const CondID &c1, bool is_or_subtree = false);
+                   bool is_or_subtree = false, char like_esc = '\\', bool can_cond_push = false);
+  void CreateConds(CondID &c_out, const TabID &t1, const CondID &c1, bool is_or_subtree = false,
+                   bool can_cond_push = false);
   void And(const CondID &c1, const TabID &t, const CondID &c2);
   void Or(const CondID &c1, const TabID &t, const CondID &c2);
   void And(const CondID &c1, const TabID &t, CQTerm e1, common::Operator pr, CQTerm e2 = CQTerm(),
