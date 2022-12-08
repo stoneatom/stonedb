@@ -1550,8 +1550,13 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
                                                                       Alter_inplace_info *ha_alter_info) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   if (ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) {
+    // support alter table: convert to character set utf8mb4;
+    if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_STORED_COLUMN_TYPE)
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+    // supprot alter table: DEFAULT CHARACTER SET gbk
     if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)
       DBUG_RETURN(HA_ALTER_INPLACE_EXCLUSIVE_LOCK);
+    // support alter table comment
     if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_COMMENT)
       DBUG_RETURN(HA_ALTER_INPLACE_EXCLUSIVE_LOCK);
   }
@@ -1588,6 +1593,8 @@ bool ha_tianmu::inplace_alter_table(TABLE *altered_table, Alter_inplace_info *ha
   DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
     if (ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) {
+      if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_STORED_COLUMN_TYPE)
+        DBUG_RETURN(false);
       if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)
         DBUG_RETURN(false);
       if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_COMMENT)
@@ -1619,6 +1626,8 @@ bool ha_tianmu::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_table
     DBUG_RETURN(true);
   }
   if (ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) {
+    if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_STORED_COLUMN_TYPE)
+      DBUG_RETURN(false);
     if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)
       DBUG_RETURN(false);
     if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_COMMENT)
