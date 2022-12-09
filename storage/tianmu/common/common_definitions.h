@@ -245,6 +245,8 @@ enum class ColOperation {
   GROUP_CONCAT
 };
 
+enum class ExtraOperation { EX_DO_NOTHING, EX_COND_PUSH, EX_UNKNOWN };
+
 // pack data format, stored on disk so only append new ones at the end.
 enum class PackFmt : char { DEFAULT, PPM1, PPM2, RANGECODE, LZ4, LOOKUP, NOCOMPRESS, TRIE, ZLIB };
 

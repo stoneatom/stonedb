@@ -386,6 +386,9 @@ class TempTable : public JustATable {
   size_t TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrapper *st);
   bool HasTempTable() const { return has_temp_table; }
 
+  void MarkCondPush() { can_cond_push_down = true; };
+  bool CanCondPushDown() { return can_cond_push_down; };
+
  protected:
   int64_t no_obj;
   uint32_t p_power;                      // pack power
@@ -431,6 +434,7 @@ class TempTable : public JustATable {
   common::Tribool rough_is_empty;  // rough value specifying if there is
                                    // non-empty result of a query
   bool force_full_materialize = false;
+  bool can_cond_push_down = false;  // Conditional push occurs
 
   // Refactoring: extracted small methods
   bool CanOrderSources();
