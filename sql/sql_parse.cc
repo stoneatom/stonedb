@@ -2787,11 +2787,10 @@ mysql_execute_command(THD *thd, bool first_level)
     !(lex->create_info.options & HA_LEX_CREATE_TMP_TABLE)){
 
     legacy_db_type default_db_type = plugin_data<handlerton*>(global_system_variables.table_plugin)->db_type;
-    if(lex->create_info.db_type &&
-        (lex->create_info.db_type->db_type != DB_TYPE_TIANMU) &&
-        ((global_system_variables.sql_mode & MODE_MANDATORY_TIANMU) || 
-        (default_db_type == DB_TYPE_TIANMU))){
+    if((global_system_variables.sql_mode & MODE_MANDATORY_TIANMU) || 
+        (default_db_type == DB_TYPE_TIANMU)){
 
+      lex->create_info.db_type = ha_default_handlerton(thd);
       old_db_type = lex->create_info.db_type->db_type;
       lex->create_info.db_type->db_type = DB_TYPE_TIANMU;
       lex->create_info.used_fields |= HA_CREATE_USED_ENGINE;

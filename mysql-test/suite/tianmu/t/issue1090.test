@@ -1,0 +1,141 @@
+-- source include/have_tianmu.inc
+-- source include/have_binlog_format_row.inc
+set global default_storage_engine=innodb;
+--disable_warnings
+-- source include/master-slave.inc
+--enable_warnings
+
+--echo # 
+--echo # sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+--echo # 
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+--disable_warnings
+set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+--enable_warnings
+
+--echo [on master]
+connection master;
+create table t1(c1 int,c2 varchar(255));
+show create table t1;
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+show global variables like 'sql_mode';
+show variables like '%_engine';
+show create table t1;
+--echo [on master]
+connection master;
+alter table t1 add c3 int;
+show create table t1;
+--echo [on slave]
+connection slave;
+sleep 1;
+show global variables like 'sql_mode';
+show global variables like '%_engine';
+show create table t1;
+--echo [on master]
+connection master;
+drop table t1;
+--source include/sync_slave_sql_with_master.inc
+
+
+--echo # 
+--echo # sql_mode='MANDATORY_TIANMU'
+--echo # 
+--echo [on slave]
+--disable_warnings
+set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+--enable_warnings
+
+--echo [on master]
+connection master;
+create table t2(c1 int,c2 varchar(255));
+show create table t2;
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+show global variables like 'sql_mode';
+show variables like '%_engine';
+show create table t2;
+--echo [on master]
+connection master;
+alter table t2 add c3 int;
+show create table t2;
+--echo [on slave]
+connection slave;
+sleep 1;
+show global variables like 'sql_mode';
+show global variables like '%_engine';
+show create table t2;
+--echo [on master]
+connection master;
+drop table t2;
+--source include/sync_slave_sql_with_master.inc
+
+--echo # 
+--echo # sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+--echo # 
+--echo [on slave]
+--disable_warnings
+set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+--enable_warnings
+
+--echo [on master]
+connection master;
+
+create table t3(c1 int,c2 varchar(255));
+show create table t3;
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+show global variables like 'sql_mode';
+show global variables like '%_engine';
+show create table t3;
+--echo [on master]
+connection master;
+alter table t3 add c3 int;
+show create table t3;
+--echo [on slave]
+connection slave;
+sleep 1;
+show global variables like 'sql_mode';
+show global variables like '%_engine';
+show create table t3;
+--echo [on master]
+connection master;
+drop table t3;
+--source include/sync_slave_sql_with_master.inc
+
+--echo # 
+--echo # sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU'
+
+--echo # 
+--echo [on slave]
+--disable_warnings
+set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+--enable_warnings
+
+
+--echo [on master]
+connection master;
+
+create table t4(c1 int,c2 varchar(255));
+show create table t4;
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+show global variables like 'sql_mode';
+show global variables like '%_engine';
+show create table t4;
+--echo [on master]
+connection master;
+alter table t4 DROP COLUMN c2;
+show create table t4;
+--echo [on slave]
+connection slave;
+sleep 1;
+show global variables like 'sql_mode';
+show global variables like '%_engine';
+show create table t4;
+--echo [on master]
+connection master;
+drop table t4;
+--source include/sync_slave_sql_with_master.inc
+stop slave;
