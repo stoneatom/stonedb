@@ -1676,7 +1676,10 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
   try {
     if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE) {
       if (tianmu_sysvar_enable_rowstore) {
-        InsertMemRow(table_path, share, table);
+        current_txn_->SetLoadSource(common::LoadSource::LS_Direct);
+        auto rct = current_txn_->GetTableByPath(table_path);
+        ret = rct->Insert(table);
+//        InsertMemRow(table_path, share, table);
       } else {
         InsertDelayed(table_path, share->TabID(), table);
       }

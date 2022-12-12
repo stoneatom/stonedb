@@ -1408,16 +1408,23 @@ class DelayedUpdateParser final {
     }
     uint update_row_num = update_rows->size();
     for (auto &row : *update_rows) {
-      auto row_val = row.get();
-      row_val += sizeof(int32_t);
-      std::string path(row_val);
-      row_val += path.length() + 1;
-      uint64_t row_id = index::be_to_uint64((uchar *)row_val);
-      row_val += sizeof(uint64_t);
-      utils::BitSet update_mask(attrs.size(), row_val);
-      row_val += update_mask.data_size();
-      utils::BitSet null_mask(attrs.size(), row_val);
-      row_val += null_mask.data_size();
+      // layout
+      // - table_id (int32_t)
+      // - table_path (string)
+      // - row_id (uint64_t)
+      // - update_mask
+      // - null_mask
+      // - cols
+      auto row_ptr = row.get();
+      row_ptr += sizeof(int32_t);
+      std::string path(row_ptr);
+      row_ptr += path.length() + 1;
+      uint64_t row_id = *(uint64_t *)row_ptr;
+      row_ptr += sizeof(uint64_t);
+      utils::BitSet update_mask(attrs.size(), row_ptr);
+      row_ptr += update_mask.data_size();
+      utils::BitSet null_mask(attrs.size(), row_ptr);
+      row_ptr += null_mask.data_size();
       for (uint col_id = 0; col_id < attrs.size(); col_id++) {
         if (!update_mask[col_id]) {
           continue;
@@ -1431,21 +1438,21 @@ class DelayedUpdateParser final {
         auto &attr(attrs[col_id]);
         switch (attr->GetPackType()) {
           case common::PackType::STR: {
-            uint32_t len = *(uint32_t *)row_val;
-            row_val += sizeof(uint32_t);
-            val.SetString(row_val, len);
+            uint32_t len = *(uint32_t *)row_ptr;
+            row_ptr += sizeof(uint32_t);
+            val.SetString(row_ptr, len);
             update_cols_vec[col_id].emplace(row_id, val);
-            row_val += len;
+            row_ptr += len;
           } break;
           case common::PackType::INT: {
             if (attr->Type().IsLookup()) {
-              uint32_t len = *(uint32_t *)row_val;
-              row_val += sizeof(uint32_t);
-              types::BString s(len == 0 ? "" : row_val, len);
+              uint32_t len = *(uint32_t *)row_ptr;
+              row_ptr += sizeof(uint32_t);
+              types::BString s(len == 0 ? "" : row_ptr, len);
               int64_t int_val = attr->EncodeValue_T(s, true);
-              row_val += len;
+              row_ptr += len;
             } else {
-              int64_t int_val = *(int64_t *)row_val;
+              int64_t int_val = *(int64_t *)row_ptr;
               if (attr->GetIfAutoInc()) {
                 if (int_val == 0)  // Value of auto inc column was not assigned by user
                   int_val = attr->AutoIncNext();
@@ -1454,7 +1461,7 @@ class DelayedUpdateParser final {
               }
               val.SetInt(int_val);
               update_cols_vec[col_id].emplace(row_id, val);
-              row_val += sizeof(int64_t);
+              row_ptr += sizeof(int64_t);
             }
           } break;
           default:
@@ -1632,6 +1639,8 @@ uint64_t TianmuTable::MergeInsertRecords(system::IOParameters &iop) {
 uint64_t TianmuTable::MergeUpdateRecords() {
   auto index_table = ha_tianmu_engine_->GetTableIndex(share->Path());
 
+  struct timespec t1, t2, t3;
+  clock_gettime(CLOCK_REALTIME, &t1);
   std::vector<std::unique_ptr<char[]>> update_rows;
   {
     uchar entry_key[32];
@@ -1672,17 +1681,35 @@ uint64_t TianmuTable::MergeUpdateRecords() {
         break;
     }
   }
+  if (update_rows.empty())
+    return 0;
 
+  clock_gettime(CLOCK_REALTIME, &t2);
   DelayedUpdateParser parser(m_attrs, &update_rows, index_table);
   std::vector<std::unordered_map<uint64_t, Value>> update_cols_vec;
   uint64_t returned_row_num = parser.GetRows(update_cols_vec);
   if (returned_row_num > 0) {
     utils::result_set<void> res;
     for (uint att = 0; att < m_attrs.size(); ++att) {
-      res.insert(ha_tianmu_engine_->delete_or_update_thread_pool.add_task(&TianmuAttr::UpdateBatchData,
-                                                                          m_attrs[att].get(), update_cols_vec[att]));
+      if (!update_cols_vec[att].empty()) {
+        res.insert(ha_tianmu_engine_->delete_or_update_thread_pool.add_task(
+            &TianmuAttr::UpdateBatchData, m_attrs[att].get(), current_txn_, update_cols_vec[att]));
+      }
     }
     res.get_all();
+  }
+  clock_gettime(CLOCK_REALTIME, &t3);
+
+  if (t2.tv_sec - t1.tv_sec > 15) {
+    TIANMU_LOG(LogCtl_Level::WARN, "Latency of rowstore %s larger than 15s, compact manually.", share->Path().c_str());
+    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), m_mem_table->GetCFHandle(), nullptr, nullptr);
+  }
+
+  if ((t3.tv_sec - t2.tv_sec > 15) && index_table) {
+    TIANMU_LOG(LogCtl_Level::WARN, "Latency of index table %s larger than 15s, compact manually.",
+               share->Path().c_str());
+    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rocksdb_key_->get_cf(), nullptr,
+                                        nullptr);
   }
   return returned_row_num;
 }

@@ -1008,8 +1008,10 @@ rocksdb::ColumnFamilyHandle *CFManager::get_or_create_cf(rocksdb::DB *const rdb_
     cf_handle = it->second;
   } else {
     rocksdb::ColumnFamilyOptions opts;
-    if (!IsRowStoreCF(cf_name))
-      opts.compaction_filter_factory.reset(new index::IndexCompactFilterFactory);
+    if (!IsRowStoreCF(cf_name)) {
+//        opts.write_buffer_size = 512 << 20;  // test for speed insert/update
+        opts.compaction_filter_factory.reset(new index::IndexCompactFilterFactory);
+    }
     const rocksdb::Status s = rdb_->CreateColumnFamily(opts, cf_name, &cf_handle);
     if (s.ok()) {
       cf_name_map_[cf_handle->GetName()] = cf_handle;

@@ -438,7 +438,7 @@ void PackInt::UpdateValueFixed(size_t locationInPack, const Value &v) {
 
     // update non-null to another nonull
     auto newv = v.GetInt();
-    ASSERT(oldv != newv);
+//    ASSERT(oldv != newv);
 
     newmin = std::min(newmin, newv);
     newmax = std::max(newmax, newv);

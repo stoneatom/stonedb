@@ -421,7 +421,8 @@ bool Rows_log_event::can_push_donw()
     goto error;
   thd->set_query(lex_str);
   thd->set_query_id(next_query_id());
-
+  // dfx:
+  sql_print_information("print sql_dfx_print_information %s",  sql_statement.c_str());
   //Parse statement
   if (parser_state.init(thd, thd->query().str, thd->query().length))
     goto error;

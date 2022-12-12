@@ -1013,7 +1013,7 @@ void TianmuAttr::UpdateData(uint64_t row, Value &v) {
   auto pn = row2pack(row);
   FunctionExecutor fe([this, pn]() { LockPackForUse(pn); }, [this, pn]() { UnlockPackFromUse(pn); });
   // primary key process
-  UpdateIfIndex(row, ColId(), v);
+  UpdateIfIndex(nullptr, row, ColId(), v);
 
   CopyPackForWrite(pn);
 
@@ -1075,17 +1075,15 @@ void TianmuAttr::UpdateData(uint64_t row, Value &v) {
   }
 }
 
-void TianmuAttr::UpdateBatchData(const std::unordered_map<uint64_t, Value> &rows) {
+void TianmuAttr::UpdateBatchData(core::Transaction *tx, const std::unordered_map<uint64_t, Value> &rows) {
   no_change = false;
 
   // group by pn
   std::unordered_map<common::PACK_INDEX, std::unordered_map<uint64_t, Value>> packs;
-//  for (const auto &[row, val] : rows) {
+  //  for (const auto &[row, val] : rows) {
   for (const auto &row : rows) {
     auto row_id = row.first;
     auto row_val = row.second;
-    // primary key process
-    UpdateIfIndex(row_id, ColId(), row_val);
     auto pn = row2pack(row_id);
     auto pack = packs.find(pn);
     if (pack != packs.end()) {
@@ -1108,6 +1106,8 @@ void TianmuAttr::UpdateBatchData(const std::unordered_map<uint64_t, Value> &rows
     for (const auto &row : pack.second) {
       uint64_t row_id = row.first;
       Value row_val = row.second;
+      // primary key process
+      UpdateIfIndex(tx, row_id, ColId(), row_val);
       if (ct.IsLookup() && row_val.HasValue()) {
         auto &str = row_val.GetString();
         int code = m_dict->GetEncodedValue(str.data(), str.size());
@@ -1452,7 +1452,10 @@ std::shared_ptr<RSIndex_Bloom> TianmuAttr::GetFilter_Bloom() {
       FilterCoordinate(m_tid, m_cid, (int)FilterType::BLOOM, m_version.v1, m_version.v2), filter_creator));
 }
 
-void TianmuAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
+void TianmuAttr::UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col, const Value &v) {
+  if (tx == nullptr) {
+    tx = current_txn_;
+  }
   auto path = m_share->owner->Path();
   std::shared_ptr<index::TianmuTableIndex> tab = ha_tianmu_engine_->GetTableIndex(path);
   // col is not primary key
@@ -1470,7 +1473,7 @@ void TianmuAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
     auto vold = GetValueString(row);
     std::string_view nkey(vnew.data(), vnew.length());
     std::string_view okey(vold.val_, vold.size());
-    common::ErrorCode returnCode = tab->UpdateIndex(current_txn_, nkey, okey, row);
+    common::ErrorCode returnCode = tab->UpdateIndex(tx, nkey, okey, row);
     if (returnCode == common::ErrorCode::DUPP_KEY || returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Duplicate entry: %s for primary key", vnew.data());
       throw common::DupKeyException("Duplicate entry: " + vnew + " for primary key");
@@ -1480,7 +1483,7 @@ void TianmuAttr::UpdateIfIndex(uint64_t row, uint64_t col, const Value &v) {
     int64_t vold = GetValueInt64(row);
     std::string_view nkey(reinterpret_cast<const char *>(&vnew), sizeof(int64_t));
     std::string_view okey(reinterpret_cast<const char *>(&vold), sizeof(int64_t));
-    common::ErrorCode returnCode = tab->UpdateIndex(current_txn_, nkey, okey, row);
+    common::ErrorCode returnCode = tab->UpdateIndex(tx, nkey, okey, row);
     if (returnCode == common::ErrorCode::DUPP_KEY || returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Duplicate entry :%" PRId64 " for primary key", vnew);
       throw common::DupKeyException("Duplicate entry: " + std::to_string(vnew) + " for primary key");
