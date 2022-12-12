@@ -389,41 +389,41 @@ DataType MysqlExpression::EvalType(TypOfVars *tv) {
   //  type = DataType();
   switch (mysql_type) {
     case INT_RESULT:
-      type = DataType(common::CT::BIGINT);
+      type = DataType(common::ColumnType::BIGINT);
       break;
     case REAL_RESULT:
-      type = DataType(common::CT::FLOAT);
+      type = DataType(common::ColumnType::FLOAT);
       break;
     case DECIMAL_RESULT:
-      type = DataType(common::CT::NUM, decimal_precision, decimal_scale);
+      type = DataType(common::ColumnType::NUM, decimal_precision, decimal_scale);
       break;
     case STRING_RESULT:  // GA: in case of time item->max_length can contain
                          // invalid value
       if ((item->type() != Item_tianmufield::get_tianmuitem_type() && item->field_type() == MYSQL_TYPE_TIME) ||
           (item->type() == Item_tianmufield::get_tianmuitem_type() &&
            static_cast<Item_tianmufield *>(item)->IsAggregation() == false && item->field_type() == MYSQL_TYPE_TIME))
-        type = DataType(common::CT::TIME, 17, 0, item->collation);
+        type = DataType(common::ColumnType::TIME, 17, 0, item->collation);
       else if ((item->type() != Item_tianmufield::get_tianmuitem_type() &&
                 item->field_type() == MYSQL_TYPE_TIMESTAMP) ||
                (item->type() == Item_tianmufield::get_tianmuitem_type() &&
                 static_cast<Item_tianmufield *>(item)->IsAggregation() == false &&
                 item->field_type() == MYSQL_TYPE_TIMESTAMP))
-        type = DataType(common::CT::TIMESTAMP, 17, 0, item->collation);
+        type = DataType(common::ColumnType::TIMESTAMP, 17, 0, item->collation);
       else if ((item->type() != Item_tianmufield::get_tianmuitem_type() && item->field_type() == MYSQL_TYPE_DATETIME) ||
                (item->type() == Item_tianmufield::get_tianmuitem_type() &&
                 static_cast<Item_tianmufield *>(item)->IsAggregation() == false &&
                 item->field_type() == MYSQL_TYPE_DATETIME))
-        type = DataType(common::CT::DATETIME, 17, 0, item->collation);
+        type = DataType(common::ColumnType::DATETIME, 17, 0, item->collation);
       else if ((item->type() != Item_tianmufield::get_tianmuitem_type() && item->field_type() == MYSQL_TYPE_DATE) ||
                (item->type() == Item_tianmufield::get_tianmuitem_type() &&
                 static_cast<Item_tianmufield *>(item)->IsAggregation() == false &&
                 item->field_type() == MYSQL_TYPE_DATE))
-        type = DataType(common::CT::DATE, 17, 0, item->collation);
+        type = DataType(common::ColumnType::DATE, 17, 0, item->collation);
       else
         // type = DataType(common::CT::STRING, item->max_length, 0,
         // item->collation);
         type =
-            DataType(common::CT::STRING,
+            DataType(common::ColumnType::STRING,
                      (item->str_value.length() == 0) ? item->max_length
                                                      : (item->str_value.length() * item->collation.collation->mbmaxlen),
                      0, item->collation);
@@ -521,7 +521,8 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemDecimal2ValueOrNull(Item *item
   return val;
 }
 
-std::shared_ptr<ValueOrNull> MysqlExpression::ItemString2ValueOrNull(Item *item, int maxstrlen, common::CT a_type) {
+std::shared_ptr<ValueOrNull> MysqlExpression::ItemString2ValueOrNull(Item *item, int maxstrlen,
+                                                                     common::ColumnType a_type) {
   auto val = std::make_shared<ValueOrNull>();
   String string_result;
   String *ret = item->val_str(&string_result);
@@ -560,88 +561,82 @@ std::shared_ptr<ValueOrNull> MysqlExpression::ItemInt2ValueOrNull(Item *item) {
   int64_t v = item->val_int();
   if (v == common::NULL_VALUE_64)
     v++;
-  if (v < 0 && item->unsigned_flag)
-    throw common::NotImplementedException("Out of range: unsigned data type is not supported.");
   val->SetFixed(v);
   if (item->null_value)
     return std::make_shared<ValueOrNull>();
   return val;
 }
 
-bool SameTIANMUField(Item_tianmufield *const &l, Item_tianmufield *const &r) {
-  return (!(l || r)) || (l && r && ((*l) == (*r)));
+bool SameTIANMUField(Item_tianmufield *const &left, Item_tianmufield *const &right) {
+  return (!(left || right)) || (left && right && ((*left) == (*right)));
 }
 
-bool SameTIANMUFieldSet(MysqlExpression::tianmu_fields_cache_t::value_type const &l,
-                        MysqlExpression::tianmu_fields_cache_t::value_type const &r) {
-  return l.second.size() == r.second.size() &&
-         equal(l.second.begin(), l.second.end(), r.second.begin(), SameTIANMUField);
+bool SameTIANMUFieldSet(MysqlExpression::tianmu_fields_cache_t::value_type const &left,
+                        MysqlExpression::tianmu_fields_cache_t::value_type const &right) {
+  return left.second.size() == right.second.size() &&
+         equal(left.second.begin(), left.second.end(), right.second.begin(), SameTIANMUField);
 }
 
 bool operator==(Item const &, Item const &);
 
 namespace {
-bool generic_item_same(Item const &l_, Item const &r_) {
-  return ((&l_ == &r_) || ((l_.type() == r_.type()) && (l_.result_type() == r_.result_type()) &&
-                           (l_.cast_to_int_type() == r_.cast_to_int_type()) &&
-                           (l_.string_field_type() == r_.string_field_type()) && (l_.field_type() == r_.field_type()) &&
-                           (l_.const_during_execution() == r_.const_during_execution()) && (l_ == r_)));
+bool generic_item_same(Item const &left, Item const &right) {
+  return ((&left == &right) ||
+          ((left.type() == right.type()) && (left.result_type() == right.result_type()) &&
+           (left.cast_to_int_type() == right.cast_to_int_type()) &&
+           (left.string_field_type() == right.string_field_type()) && (left.field_type() == right.field_type()) &&
+           (left.const_during_execution() == right.const_during_execution()) && (left == right)));
 }
 }  // namespace
 
-bool operator==(Item const &l_, Item const &r_) {
-  Item::Type t = l_.type();
-  bool same = t == r_.type();
+bool operator==(Item const &left, Item const &right) {
+  Item::Type t = left.type();
+  bool same = t == right.type();
   if (same) {
     switch (static_cast<int>(t)) {
       case (Item::FIELD_ITEM): {
         same = false;  // not implemented
                        //              Item_field const* l = static_cast<Item_field
-                       //              const*>(&l_); Item_field const* r =
+                       //              const*>(&left); Item_field const* r =
                        //              static_cast<Item_field const*>(&r_);
                        //                  same = l->field->
       } break;
       case (Item::COND_ITEM):
       case (Item::FUNC_ITEM): {
-        Item_func const *l = static_cast<Item_func const *>(&l_);
-        Item_func const *r = static_cast<Item_func const *>(&r_);
+        Item_func const *l = static_cast<Item_func const *>(&left);
+        Item_func const *r = static_cast<Item_func const *>(&right);
         same = !std::strcmp(l->func_name(), r->func_name());
         same = same && (l->arg_count == r->arg_count);
         same = same && l->functype() == r->functype();
+        // add for the diff operation, as below example:
+        // select EXTRACT(DAY_HOUR FROM a), EXTRACT(MINUTE_SECOND FROM b) from xxx;
+        same = same && l->item_name.eq_safe(r->item_name);
         if (l->functype() == Item_func::GUSERVAR_FUNC) {
           if (same) {
-            Item_func_get_user_var const *ll = static_cast<Item_func_get_user_var const *>(&l_);
-            Item_func_get_user_var const *rr = static_cast<Item_func_get_user_var const *>(&r_);
+            Item_func_get_user_var const *ll = static_cast<Item_func_get_user_var const *>(&left);
+            Item_func_get_user_var const *rr = static_cast<Item_func_get_user_var const *>(&right);
             same = !std::strcmp(ll->name.ptr(), rr->name.ptr());
           }
         } else {
           same = same && l->arg_count == r->arg_count;
           for (uint i = 0; same && (i < l->arg_count); ++i) same = same && (*l->arguments()[i] == *r->arguments()[i]);
 
-          // Item_func* lll = (Item_func*)&l;
-          // Item_func* mmm = (Item_func*)&r;
-
-          // bool x = l->const_item();
-          // bool y = r->const_item();
-          // longlong zzz = lll->val_int_result();
-          // longlong vvv = mmm->val_int_result();
           same = same && (l->const_item() == r->const_item());
           if (same && l->const_item())
-            same = ((Item_func *)&l_)->val_int() == ((Item_func *)&r_)->val_int();
-          if (dynamic_cast<const Item_date_add_interval *>(&l_)) {
-            const Item_date_add_interval *l = static_cast<const Item_date_add_interval *>(&l_);
-            const Item_date_add_interval *r = static_cast<const Item_date_add_interval *>(&r_);
-            same = same && dynamic_cast<const Item_date_add_interval *>(&r_);
-            same = same && ((l->int_type == r->int_type) && (l->date_sub_interval == r->date_sub_interval));
-          }
+            same = ((Item_func *)&left)->val_int() == ((Item_func *)&right)->val_int();
+
+          const Item_date_add_interval *l = static_cast<const Item_date_add_interval *>(&left);
+          const Item_date_add_interval *r = static_cast<const Item_date_add_interval *>(&right);
+          same = same && ((l->int_type == r->int_type) && (l->date_sub_interval == r->date_sub_interval));
+
           if (l->functype() == Item_func::IN_FUNC) {
-            const Item_func_in *l = static_cast<const Item_func_in *>(&l_);
-            const Item_func_in *r = static_cast<const Item_func_in *>(&r_);
+            const Item_func_in *l = static_cast<const Item_func_in *>(&left);
+            const Item_func_in *r = static_cast<const Item_func_in *>(&right);
             same = same && l->negated == r->negated;
           }
           if (same && (l->functype() == Item_func::COND_AND_FUNC || l->functype() == Item_func::COND_OR_FUNC)) {
-            Item_cond *l = const_cast<Item_cond *>(static_cast<Item_cond const *>(&l_));
-            Item_cond *r = const_cast<Item_cond *>(static_cast<Item_cond const *>(&r_));
+            Item_cond *l = const_cast<Item_cond *>(static_cast<Item_cond const *>(&left));
+            Item_cond *r = const_cast<Item_cond *>(static_cast<Item_cond const *>(&right));
             List_iterator<Item> li(*l->argument_list());
             List_iterator<Item> ri(*r->argument_list());
             Item *il, *ir;
@@ -656,13 +651,13 @@ bool operator==(Item const &l_, Item const &r_) {
         }
       } break;
       case static_cast<int>(Item_tianmufield::enumTIANMUFiledItem::TIANMUFIELD_ITEM): {
-        Item_tianmufield const *l = static_cast<Item_tianmufield const *>(&l_);
-        Item_tianmufield const *r = static_cast<Item_tianmufield const *>(&r_);
+        Item_tianmufield const *l = static_cast<Item_tianmufield const *>(&left);
+        Item_tianmufield const *r = static_cast<Item_tianmufield const *>(&right);
         same = (*l == *r);
       } break;
       case (Item::REF_ITEM): {
-        Item_ref const *l = static_cast<Item_ref const *>(&l_);
-        Item_ref const *r = static_cast<Item_ref const *>(&r_);
+        Item_ref const *l = static_cast<Item_ref const *>(&left);
+        Item_ref const *r = static_cast<Item_ref const *>(&right);
         same = (!(l->ref || r->ref)) ||
                (l->ref && r->ref &&
                 ((!(*(l->ref) || *(r->ref))) || (*(l->ref) && *(r->ref) && (*(*(l->ref)) == *(*(r->ref))))));
@@ -673,10 +668,10 @@ bool operator==(Item const &l_, Item const &r_) {
       case (Item::REAL_ITEM):
       case (Item::VARBIN_ITEM):
       case (Item::INT_ITEM): {
-        same = l_.eq(&r_, true);
+        same = left.eq(&right, true);
       } break;
       default: {
-        same = generic_item_same(l_, r_);
+        same = generic_item_same(left, right);
       } break;
     }
   }

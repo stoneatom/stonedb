@@ -181,7 +181,7 @@ types::TianmuValueObject ExpressionColumn::GetValueImpl(const core::MIIterator &
     return types::TianmuDateTime(GetValueInt64(mit), TypeName());
   if (core::ATI::IsRealType(TypeName()))
     return types::TianmuNum(GetValueInt64(mit), 0, true, TypeName());
-  if (lookup_to_num || TypeName() == common::CT::NUM)
+  if (lookup_to_num || TypeName() == common::ColumnType::NUM)
     return types::TianmuNum(GetValueInt64(mit), Type().GetScale());
   DEBUG_ASSERT(!"Illegal execution path");
   return types::TianmuValueObject();

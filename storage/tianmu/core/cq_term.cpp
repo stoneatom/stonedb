@@ -26,14 +26,17 @@
 
 namespace Tianmu {
 namespace core {
-CQTerm::CQTerm() : type(common::CT::UNK), vc(nullptr), vc_id(common::NULL_VALUE_32), is_vc_owner(false) {}
+CQTerm::CQTerm()
+    : type(common::ColumnType::UNK), vc(nullptr), vc_id(common::NULL_VALUE_32), is_vc_owner(false), item(nullptr) {}
 
-CQTerm::CQTerm(int v) : type(common::CT::UNK), vc(nullptr), vc_id(v), is_vc_owner(false) {}
+CQTerm::CQTerm(int v, Item *item_arg)
+    : type(common::ColumnType::UNK), vc(nullptr), vc_id(v), is_vc_owner(false), item(item_arg) {}
 
 CQTerm::CQTerm(const CQTerm &t) {
   type = t.type;
   vc_id = t.vc_id;
   vc = t.vc;  // deep copy is not necessary, as vc are managed by Query
+  item = t.item;
   is_vc_owner = false;
 }
 
@@ -49,6 +52,7 @@ CQTerm &CQTerm::operator=(const CQTerm &t) {
   vc_id = t.vc_id;
 
   vc = t.vc;  // deep copy is not necessary, as vc are managed by Query
+  item = t.item;
   is_vc_owner = false;
   return *this;
 }

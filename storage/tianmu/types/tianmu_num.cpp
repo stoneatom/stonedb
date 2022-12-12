@@ -28,14 +28,15 @@
 namespace Tianmu {
 namespace types {
 
-TianmuNum::TianmuNum(common::CT attrt) : value_(0), scale_(0), is_double_(false), is_dot_(false), attr_type_(attrt) {}
+TianmuNum::TianmuNum(common::ColumnType attrt)
+    : value_(0), scale_(0), is_double_(false), is_dot_(false), attr_type_(attrt) {}
 
-TianmuNum::TianmuNum(int64_t value_, short scale, bool is_double_, common::CT attrt) {
-  Assign(value_, scale, is_double_, attrt);
+TianmuNum::TianmuNum(int64_t value, short scale, bool is_double, common::ColumnType attrt) {
+  Assign(value, scale, is_double, attrt);
 }
 
 TianmuNum::TianmuNum(double value)
-    : value_(*(int64_t *)&value), scale_(0), is_double_(true), is_dot_(false), attr_type_(common::CT::REAL) {
+    : value_(*(int64_t *)&value), scale_(0), is_double_(true), is_dot_(false), attr_type_(common::ColumnType::REAL) {
   null_ = (value_ == NULL_VALUE_D ? true : false);
 }
 
@@ -51,23 +52,23 @@ TianmuNum::TianmuNum(const TianmuNum &tianmu_n)
 
 TianmuNum::~TianmuNum() {}
 
-TianmuNum &TianmuNum::Assign(int64_t value, short scale, bool is_double, common::CT attrt) {
+TianmuNum &TianmuNum::Assign(int64_t value, short scale, bool is_double, common::ColumnType attrt) {
   this->value_ = value;
   this->scale_ = scale;
   this->is_double_ = is_double;
   this->attr_type_ = attrt;
 
   if (scale != -1 && !is_double_) {
-    if (scale != 0 || attrt == common::CT::UNK) {
+    if (scale != 0 || attrt == common::ColumnType::UNK) {
       is_dot_ = true;
-      this->attr_type_ = common::CT::NUM;
+      this->attr_type_ = common::ColumnType::NUM;
     }
   }
   if (scale <= -1 && !is_double_)
     scale_ = 0;
   if (is_double_) {
-    if (!(this->attr_type_ == common::CT::REAL || this->attr_type_ == common::CT::FLOAT))
-      this->attr_type_ = common::CT::REAL;
+    if (!(this->attr_type_ == common::ColumnType::REAL || this->attr_type_ == common::ColumnType::FLOAT))
+      this->attr_type_ = common::ColumnType::REAL;
     this->is_dot_ = false;
     scale_ = 0;
     null_ = (value_ == *(int64_t *)&NULL_VALUE_D ? true : false);
@@ -81,17 +82,17 @@ TianmuNum &TianmuNum::Assign(double value) {
   this->scale_ = 0;
   this->is_double_ = true;
   this->is_dot_ = false;
-  this->attr_type_ = common::CT::REAL;
+  this->attr_type_ = common::ColumnType::REAL;
   common::double_int_t v(value_);
   null_ = (v.i == common::NULL_VALUE_64 ? true : false);
   return *this;
 }
 
-common::ErrorCode TianmuNum::Parse(const BString &tianmu_s, TianmuNum &tianmu_n, common::CT at) {
+common::ErrorCode TianmuNum::Parse(const BString &tianmu_s, TianmuNum &tianmu_n, common::ColumnType at) {
   return ValueParserForText::Parse(tianmu_s, tianmu_n, at);
 }
 
-common::ErrorCode TianmuNum::ParseReal(const BString &tianmu_s, TianmuNum &tianmu_n, common::CT at) {
+common::ErrorCode TianmuNum::ParseReal(const BString &tianmu_s, TianmuNum &tianmu_n, common::ColumnType at) {
   return ValueParserForText::ParseReal(tianmu_s, tianmu_n, at);
 }
 
@@ -123,12 +124,12 @@ TianmuNum &TianmuNum::operator=(const TianmuDataType &tianmu_dt) {
   return *this;
 }
 
-common::CT TianmuNum::Type() const { return attr_type_; }
+common::ColumnType TianmuNum::Type() const { return attr_type_; }
 
 bool TianmuNum::IsDecimal(ushort scale) const {
   if (core::ATI::IsIntegerType(this->attr_type_)) {
     return GetDecIntLen() <= (MAX_DEC_PRECISION - scale);
-  } else if (attr_type_ == common::CT::NUM) {
+  } else if (attr_type_ == common::ColumnType::NUM) {
     if (this->GetDecFractLen() <= scale)
       return true;
     if (scale_ > scale)
@@ -207,13 +208,13 @@ TianmuNum TianmuNum::ToReal() const {
 
 TianmuNum TianmuNum::ToInt() const { return GetIntPart(); }
 
-static char *Text(int64_t value_, char buf[], int scale) {
+static char *Text(int64_t value, char buf[], int scale) {
   bool sign = true;
-  if (value_ < 0) {
+  if (value < 0) {
     sign = false;
-    value_ *= -1;
+    value *= -1;
   }
-  longlong2str(value_, buf, 10);
+  longlong2str(value, buf, 10);
   int l = (int)std::strlen(buf);
   std::memset(buf + l + 1, ' ', 21 - l);
   int pos = 21;
@@ -261,8 +262,8 @@ BString TianmuNum::ToBString() const {
 }
 
 TianmuNum::operator double() const {
-  return (core::ATI::IsRealType(Type()) || Type() == common::CT::FLOAT) ? *(double *)&value_
-                                                                        : GetIntPart() + GetFractPart();
+  return (core::ATI::IsRealType(Type()) || Type() == common::ColumnType::FLOAT) ? *(double *)&value_
+                                                                                : GetIntPart() + GetFractPart();
 }
 
 bool TianmuNum::operator==(const TianmuDataType &tianmu_dt) const {

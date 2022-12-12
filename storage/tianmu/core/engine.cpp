@@ -22,6 +22,7 @@
 #include <set>
 #include <tuple>
 
+#include "common/common_definitions.h"
 #include "common/data_format.h"
 #include "common/exception.h"
 #include "common/mysql_gate.h"
@@ -841,9 +842,6 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
     case MYSQL_TYPE_FLOAT:
     case MYSQL_TYPE_DOUBLE:
     case MYSQL_TYPE_LONGLONG:
-      if (field.flags & UNSIGNED_FLAG)
-        throw common::UnsupportedDataTypeException("UNSIGNED data types are not supported.");
-      [[fallthrough]];
     case MYSQL_TYPE_YEAR:
     case MYSQL_TYPE_TIMESTAMP:
     case MYSQL_TYPE_DATETIME:
@@ -852,7 +850,7 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
       return AttributeTypeInfo(Engine::GetCorrespondingType(field), notnull, (ushort)field.field_length, 0, auto_inc,
                                DTCollation(), fmt, filter);
     case MYSQL_TYPE_TIME:
-      return AttributeTypeInfo(common::CT::TIME, notnull, 0, 0, false, DTCollation(), fmt, filter);
+      return AttributeTypeInfo(common::ColumnType::TIME, notnull, 0, 0, false, DTCollation(), fmt, filter);
     case MYSQL_TYPE_STRING:
     case MYSQL_TYPE_VARCHAR: {
       if (field.field_length > FIELD_MAXLENGTH)
@@ -869,34 +867,35 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
           throw common::UnsupportedDataTypeException();
         }
         if (fstr->charset() != &my_charset_bin)
-          return AttributeTypeInfo(common::CT::STRING, notnull, field.field_length, 0, auto_inc, coll, fmt, filter);
-        return AttributeTypeInfo(common::CT::BYTE, notnull, field.field_length, 0, auto_inc, coll, fmt, filter);
+          return AttributeTypeInfo(common::ColumnType::STRING, notnull, field.field_length, 0, auto_inc, coll, fmt,
+                                   filter);
+        return AttributeTypeInfo(common::ColumnType::BYTE, notnull, field.field_length, 0, auto_inc, coll, fmt, filter);
       } else if (const Field_str *fvstr = dynamic_cast<const Field_varstring *>(&field)) {
         DTCollation coll(fvstr->charset(), fvstr->derivation());
         if (fmt == common::PackFmt::TRIE && types::IsCaseInsensitive(coll))
           throw common::UnsupportedDataTypeException();
         if (fvstr->charset() != &my_charset_bin)
-          return AttributeTypeInfo(common::CT::VARCHAR, notnull, field.field_length, 0, auto_inc, coll, fmt, filter);
-        return AttributeTypeInfo(common::CT::VARBYTE, notnull, field.field_length, 0, auto_inc, coll, fmt, filter);
+          return AttributeTypeInfo(common::ColumnType::VARCHAR, notnull, field.field_length, 0, auto_inc, coll, fmt,
+                                   filter);
+        return AttributeTypeInfo(common::ColumnType::VARBYTE, notnull, field.field_length, 0, auto_inc, coll, fmt,
+                                 filter);
       }
       throw common::UnsupportedDataTypeException();
     }
     case MYSQL_TYPE_NEWDECIMAL: {
-      if (field.flags & UNSIGNED_FLAG)
-        throw common::UnsupportedDataTypeException("UNSIGNED data types are not supported.");
       const Field_new_decimal *fnd = ((const Field_new_decimal *)&field);
       if (/*fnd->precision > 0 && */ fnd->precision <= 18 /*&& fnd->dec >= 0*/
           && fnd->dec <= fnd->precision)
-        return AttributeTypeInfo(common::CT::NUM, notnull, fnd->precision, fnd->dec);
+        return AttributeTypeInfo(common::ColumnType::NUM, notnull, fnd->precision, fnd->dec);
       throw common::UnsupportedDataTypeException("Precision must be less than or equal to 18.");
     }
     case MYSQL_TYPE_BLOB:
       if (const Field_str *fstr = dynamic_cast<const Field_str *>(&field)) {
         if (const Field_blob *fblo = dynamic_cast<const Field_blob *>(fstr)) {
           if (fblo->charset() != &my_charset_bin) {  // TINYTEXT, MEDIUMTEXT, TEXT, LONGTEXT
-            common::CT t = common::CT::VARCHAR;
+            common::ColumnType t = common::ColumnType::VARCHAR;
             if (field.field_length > FIELD_MAXLENGTH) {
-              t = common::CT::LONGTEXT;
+              t = common::ColumnType::LONGTEXT;
             }
             return AttributeTypeInfo(t, notnull, field.field_length, 0, auto_inc, DTCollation(), fmt, filter);
           }
@@ -904,13 +903,13 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
             case 255:
             case FIELD_MAXLENGTH:
               // TINYBLOB, BLOB
-              return AttributeTypeInfo(common::CT::VARBYTE, notnull, field.field_length, 0, auto_inc, DTCollation(),
-                                       fmt, filter);
+              return AttributeTypeInfo(common::ColumnType::VARBYTE, notnull, field.field_length, 0, auto_inc,
+                                       DTCollation(), fmt, filter);
             case 16777215:
             case 4294967295:
               // MEDIUMBLOB, LONGBLOB
-              return AttributeTypeInfo(common::CT::BIN, notnull, field.field_length, 0, auto_inc, DTCollation(), fmt,
-                                       filter);
+              return AttributeTypeInfo(common::ColumnType::BIN, notnull, field.field_length, 0, auto_inc, DTCollation(),
+                                       fmt, filter);
             default:
               throw common::UnsupportedDataTypeException();
           }
@@ -918,7 +917,8 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
       }
       [[fallthrough]];
     default:
-      throw common::UnsupportedDataTypeException("Unsupported data type.");
+      throw common::UnsupportedDataTypeException(std::string("Unsupported data type[") +
+                                                 common::get_enum_field_types_name(field.type()) + std::string("]"));
   }
   throw;
 }
@@ -1335,7 +1335,8 @@ static void HandleDelayedLoad(uint32_t table_id, std::vector<std::unique_ptr<cha
   thd->lex->sql_command = SQLCOM_LOAD;
   sql_exchange ex("buffered_insert", 0, FILETYPE_MEM);
   ex.file_name = const_cast<char *>(addr.c_str());
-  ex.skip_lines = table_id;  // this is ugly...
+  ex.skip_lines = 0;
+  ex.tab_id = table_id;
   thd->lex->select_lex->context.resolve_in_table_list_only(&tl);
   if (open_temporary_tables(thd, &tl)) {
     // error/////
@@ -1603,7 +1604,7 @@ void Engine::InsertDelayed(const std::string &table_path, int table_id, TABLE *t
   std::unique_ptr<char[]> buf;
   EncodeInsertRecord(table_path, table_id, table->field, table->s->fields, table->s->blob_fields, buf, buf_sz);
 
-  int failed = 0;
+  unsigned int failed = 0;
   while (true) {
     try {
       insert_buffer.Write(utils::MappedCircularBuffer::TAG::INSERT_RECORD, buf.get(), buf_sz);
@@ -1748,6 +1749,10 @@ common::TianmuError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
 
     auto tab = current_txn_->GetTableByPath(table_path);
 
+    // Maybe not good to put this code here,just for temp.
+    bitmap_set_all(table->read_set);
+    bitmap_set_all(table->write_set);
+
     tab->LoadDataInfile(*iop);
 
     if (current_txn_->Killed()) {
@@ -1773,8 +1778,12 @@ common::TianmuError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
 
     /* ok to client */
     my_ok(thd, stats.records, 0L, name);
+  } catch (common::FormatException &e) {
+    tianmu_e = common::TianmuError(common::ErrorCode::DATA_ERROR, e.what());
+  } catch (common::NetStreamException &e) {
+    tianmu_e = common::TianmuError(common::ErrorCode::FAILED, e.what());
   } catch (common::Exception &e) {
-    tianmu_e = common::TianmuError(common::ErrorCode::UNKNOWN_ERROR, "Tianmu internal error");
+    tianmu_e = common::TianmuError(common::ErrorCode::UNKNOWN_ERROR, std::string("Tianmu internal error:") + e.what());
   } catch (common::TianmuError &e) {
     tianmu_e = e;
   }
@@ -1804,7 +1813,7 @@ bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects
   if (!table_list)
     return false;
   if (with_insert)
-    table_list = table_list->next_global;  // we skip one
+    table_list = table_list->next_global ? table_list->next_global : *(table_list->prev_global);  // we skip one
 
   if (!table_list)
     return false;
@@ -1997,7 +2006,8 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
   short sign, minutes;
   ComputeTimeZoneDiffInMinutes(&thd, sign, minutes);
   io_params->SetTimeZone(sign, minutes);
-
+  io_params->SetTHD(&thd);
+  io_params->SetTable(table);
   if (ex.filetype == FILETYPE_MEM) {
     io_params->load_delayed_insert_ = true;
   }
@@ -2095,8 +2105,11 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
                             (int)(thd.variables.collation_database->number));  // default charset
 
   if (ex.skip_lines != 0) {
-    unsupported_syntax = true;
     io_params->SetParameter(system::Parameter::SKIP_LINES, (int64_t)ex.skip_lines);
+  }
+
+  if (ex.tab_id != 0) {
+    io_params->SetParameter(system::Parameter::TABLE_ID, static_cast<int64_t>(ex.tab_id));
   }
 
   if (ex.line.line_start != 0 && ex.line.line_start->length() != 0) {
@@ -2109,7 +2122,6 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
   }
 
   if (value_list_elements != 0) {
-    unsupported_syntax = true;
     io_params->SetParameter(system::Parameter::VALUE_LIST_ELEMENTS, (int64_t)value_list_elements);
   }
 

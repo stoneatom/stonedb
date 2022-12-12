@@ -2469,6 +2469,8 @@ mysql_execute_command(THD *thd, bool first_level)
   SELECT_LEX_UNIT *const unit= lex->unit;
   // keep GTID violation state in order to roll it back on statement failure
   bool gtid_consistency_violation_state = thd->has_gtid_consistency_violation;
+  //Used to save the old engine
+  legacy_db_type old_db_type = DB_TYPE_DEFAULT;
   assert(select_lex->master_unit() == unit);
   DBUG_ENTER("mysql_execute_command");
   /* EXPLAIN OTHER isn't explainable command, but can have describe flag. */
@@ -2772,6 +2774,29 @@ mysql_execute_command(THD *thd, bool first_level)
   if (!thd->in_sub_stmt)
     thd->query_plan.set_query_plan(lex->sql_command, lex,
                                    !thd->stmt_arena->is_conventional());
+  /*
+    When stonedb is used as a slave library, 
+    the default engine is tianmu, or the (sql_mode) of (MANDATORY_TIANMU) is set,
+    the engine will be forcibly converted to the tianmu engine.
+    Priority:
+    sql_mode ='MANDATORY_TIANMU' > default_storage_engine
+  */
+  if(thd->slave_thread && 
+    ((lex->sql_command == SQLCOM_CREATE_TABLE) || 
+    (lex->sql_command == SQLCOM_ALTER_TABLE)) &&
+    !(lex->create_info.options & HA_LEX_CREATE_TMP_TABLE)){
+
+    legacy_db_type default_db_type = plugin_data<handlerton*>(global_system_variables.table_plugin)->db_type;
+    if(lex->create_info.db_type &&
+        (lex->create_info.db_type->db_type != DB_TYPE_TIANMU) &&
+        ((global_system_variables.sql_mode & MODE_MANDATORY_TIANMU) || 
+        (default_db_type == DB_TYPE_TIANMU))){
+
+      old_db_type = lex->create_info.db_type->db_type;
+      lex->create_info.db_type->db_type = DB_TYPE_TIANMU;
+      lex->create_info.used_fields |= HA_CREATE_USED_ENGINE;
+    }
+  }
 
   switch (lex->sql_command) {
 
@@ -4970,6 +4995,14 @@ error:
   res= TRUE;
 
 finish:
+  if(thd->slave_thread && 
+    ((lex->sql_command == SQLCOM_CREATE_TABLE) || 
+    (lex->sql_command == SQLCOM_ALTER_TABLE)) &&
+    !(lex->create_info.options & HA_LEX_CREATE_TMP_TABLE) &&
+    (old_db_type != DB_TYPE_DEFAULT)){
+      //If the engine is replaced, restore it at the end
+      lex->create_info.db_type->db_type = old_db_type;
+    }
   THD_STAGE_INFO(thd, stage_query_end);
 
   if (res && thd->get_reprepare_observer() != NULL &&

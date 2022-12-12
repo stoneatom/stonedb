@@ -89,7 +89,6 @@ bool LoadParser::MakeRow(std::vector<ValueCache> &value_buffers) {
 
   bool cont = true;
   while (cont) {
-    bool make_value_ok;
     switch (strategy_->GetOneRow(cur_ptr_, buf_end_ - cur_ptr_, value_buffers, rowsize, errorinfo)) {
       case ParsingStrategy::ParseResult::EOB:
         if (mysql_bin_log.is_open())
@@ -110,31 +109,54 @@ bool LoadParser::MakeRow(std::vector<ValueCache> &value_buffers) {
         rejecter_.ConsumeBadRow(cur_ptr_, rowsize, cur_row_ + 1, errorinfo + 1);
         cur_ptr_ += rowsize;
         cur_row_++;
+        cont = false;
         break;
 
-      case ParsingStrategy::ParseResult::OK:
-        make_value_ok = true;
+      case ParsingStrategy::ParseResult::OK: {
+        bool make_value_ok{true};
         for (uint att = 0; make_value_ok && att < attrs_.size(); ++att)
           if (!MakeValue(att, value_buffers[att])) {
             rejecter_.ConsumeBadRow(cur_ptr_, rowsize, cur_row_ + 1, att + 1);
             make_value_ok = false;
           }
+
         cur_ptr_ += rowsize;
         cur_row_++;
-        if (make_value_ok) {
-          for (uint att = 0; att < attrs_.size(); ++att) value_buffers[att].Commit();
-          // check key
-          num_of_row_++;
-          if (tab_index_ != nullptr) {
-            if (HA_ERR_FOUND_DUPP_KEY == ProcessInsertIndex(tab_index_, value_buffers, num_of_row_ - 1)) {
-              num_of_row_--;
-              num_of_dup_++;
-              for (uint att = 0; att < attrs_.size(); ++att) value_buffers[att].Rollback();
+
+        if (!make_value_ok)
+          break;
+
+        for (uint att = 0; att < attrs_.size(); ++att) {
+          value_buffers[att].Commit();
+        }
+
+        num_of_row_++;
+        io_param_.GetTHD()->get_stmt_da()->inc_current_row_for_condition();
+        if (num_of_skip_ < io_param_.GetSkipLines()) /*check skip lines */
+        {
+          num_of_skip_++;
+          num_of_row_--;
+          for (uint att = 0; att < attrs_.size(); ++att) {
+            value_buffers[att].Rollback();
+
+            auto &attr(attrs_[att]);
+            attr->RollBackIfAutoInc();
+          }
+        } else if (tab_index_ != nullptr) { /* check duplicate */
+          if (HA_ERR_FOUND_DUPP_KEY == ProcessInsertIndex(tab_index_, value_buffers, num_of_row_ - 1)) {
+            num_of_row_--;
+            num_of_dup_++;
+            for (uint att = 0; att < attrs_.size(); ++att) {
+              value_buffers[att].Rollback();
+
+              auto &attr(attrs_[att]);
+              attr->RollBackIfAutoInc();
             }
           }
-          return true;
         }
-        break;
+
+        return true;
+      }
     }
   }
 
@@ -142,12 +164,27 @@ bool LoadParser::MakeRow(std::vector<ValueCache> &value_buffers) {
 }
 
 bool LoadParser::MakeValue(uint att, ValueCache &buffer) {
-  if (attrs_[att]->TypeName() == common::CT::TIMESTAMP) {
+  if (attrs_[att]->TypeName() == common::ColumnType::TIMESTAMP) {
     if (buffer.ExpectedNull() && attrs_[att]->Type().NotNull()) {
       *reinterpret_cast<int64_t *>(buffer.Prepare(sizeof(int64_t))) = start_time_;
       buffer.ExpectedSize(sizeof(int64_t));
       buffer.ExpectedNull(false);
     }
+  }
+
+  // deal with auto increment
+  auto &attr(attrs_[att]);
+  if (core::ATI::IsIntegerType(attrs_[att]->TypeName()) && attr->GetIfAutoInc()) {
+    uint64_t *buf = reinterpret_cast<uint64_t *>(buffer.Prepare(sizeof(uint64_t)));
+    uint64_t value = *(uint64_t *)buf;
+
+    if (value == 0)  // Value of auto inc column was not assigned by user
+      *buf = attr->AutoIncNext();
+
+    if (value > attr->GetAutoInc())
+      attr->SetAutoInc(value);
+
+    buffer.ExpectedSize(sizeof(uint64_t));
   }
 
   // validate the value length

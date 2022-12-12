@@ -19,6 +19,7 @@
 #pragma once
 
 #include <cstring>
+#include <regex>
 
 #include "common/assert.h"
 #include "common/common_definitions.h"
@@ -33,7 +34,7 @@ namespace types {
 class BString;
 class TianmuNum;
 
-bool AreComparable(common::CT att1, common::CT att2);
+bool AreComparable(common::ColumnType att1, common::ColumnType att2);
 
 //  TYPE            range
 // -------------------------------------------
@@ -140,7 +141,7 @@ class TianmuDataType {
  public:
   virtual std::unique_ptr<TianmuDataType> Clone() const = 0;
   virtual BString ToBString() const = 0;
-  virtual common::CT Type() const = 0;
+  virtual common::ColumnType Type() const = 0;
   virtual ValueTypeEnum GetValueType() const = 0;
 
   bool AreComperable(const TianmuDataType &) const;
@@ -163,7 +164,7 @@ class TianmuDataType {
   bool null_;
 
  public:
-  static ValueTypeEnum GetValueType(common::CT attr_type);
+  static ValueTypeEnum GetValueType(common::ColumnType attr_type);
   static bool ToDecimal(const TianmuDataType &in, int scale, TianmuNum &out);
   static bool ToInt(const TianmuDataType &in, TianmuNum &out);
   static bool ToReal(const TianmuDataType &in, TianmuNum &out);
@@ -209,7 +210,7 @@ class BString : public ValueBasic<BString> {
   void PersistentCopy(const BString &tianmu_s);  // like "=", but makes this persistent_
 
   static bool Parse(BString &in, BString &out);
-  common::CT Type() const override;
+  common::ColumnType Type() const override;
 
   void PutString(char *&dest, ushort len, bool move_ptr = true) const;
   void PutVarchar(char *&dest, uchar prefixlen, bool move_ptr) const;
@@ -271,6 +272,13 @@ class BString : public ValueBasic<BString> {
     return std::memcmp(val_ + pos_, tianmu_s2.val_ + tianmu_s2.pos_, l);
   }
 
+  bool IsDigital() {
+    static std::regex const re{R"([-+]?((\.\d+)|(\d+\.)|(\d+))\d*([eE][-+]?\d+)?)"};
+    return std::regex_match(ToString(), re);
+  }
+
+  bool IsDigitalZero() const { return (Equals("0", 1) || Equals("+0", 2) || Equals("-0", 2)); }
+
   // Wildcards: "_" is any character, "%" is 0 or more characters
   bool Like(const BString &pattern, char escape_character);
 
@@ -298,21 +306,23 @@ class TianmuDateTime : public ValueBasic<TianmuDateTime> {
   friend class ValueParserForText;
 
  public:
-  TianmuDateTime(int64_t dt, common::CT at);
+  TianmuDateTime(int64_t dt, common::ColumnType at);
   TianmuDateTime(short year = common::NULL_VALUE_SH);
   TianmuDateTime(short year, short month, short day, short hour, short minute, short second,
-                 common::CT at);                                // DataTime , Timestamp
-  TianmuDateTime(short yh, short mm, short ds, common::CT at);  // Date or Time
+                 common::ColumnType at);  // DataTime , Timestamp
+  TianmuDateTime(short year, short month, short day, short hour, short minute, short second, uint microsecond,
+                 common::ColumnType at);                                // DataTime , Timestamp
+  TianmuDateTime(short yh, short mm, short ds, common::ColumnType at);  // Date or Time
   TianmuDateTime(const TianmuDateTime &tianmu_dt);
-  TianmuDateTime(const MYSQL_TIME &myt, common::CT at);
+  TianmuDateTime(const MYSQL_TIME &myt, common::ColumnType at);
 
-  TianmuDateTime(TianmuNum &tianmu_n, common::CT at);
+  TianmuDateTime(TianmuNum &tianmu_n, common::ColumnType at);
   ~TianmuDateTime();
 
  public:
   TianmuDateTime &operator=(const TianmuDateTime &tianmu_dt);
   TianmuDateTime &operator=(const TianmuDataType &tianmu_dt) override;
-  TianmuDateTime &Assign(int64_t v, common::CT at);
+  TianmuDateTime &Assign(int64_t v, common::ColumnType at);
 
   void Store(MYSQL_TIME *my_time, enum_mysql_timestamp_type t) { dt_.Store(my_time, t); }
   bool IsZero() const;
@@ -333,7 +343,7 @@ class TianmuDateTime : public ValueBasic<TianmuDateTime> {
   bool ToInt64(int64_t &value) const;
   char *GetDataBytesPointer() const override { return (char *)&dt_; }
   BString ToBString() const override;
-  common::CT Type() const override;
+  common::ColumnType Type() const override;
   uint GetHashCode() const override;
 
   bool operator==(const TianmuDataType &tianmu_dt) const override;
@@ -348,7 +358,7 @@ class TianmuDateTime : public ValueBasic<TianmuDateTime> {
   short Month() const { return dt_.month; }
   short Day() const { return dt_.day; }
   short Hour() const {
-    if (at_ != common::CT::TIME)
+    if (at_ != common::ColumnType::TIME)
       return dt_.hour;
     return dt_.time_hour;
   }
@@ -358,7 +368,7 @@ class TianmuDateTime : public ValueBasic<TianmuDateTime> {
 
  private:
   DT dt_{};
-  common::CT at_;
+  common::ColumnType at_;
 
  private:
   int compare(const TianmuDateTime &tianmu_dt) const;
@@ -366,8 +376,8 @@ class TianmuDateTime : public ValueBasic<TianmuDateTime> {
 
  public:
   static void AdjustTimezone(TianmuDateTime &dt);
-  static common::ErrorCode Parse(const BString &, TianmuDateTime &, common::CT);
-  static common::ErrorCode Parse(const int64_t &, TianmuDateTime &, common::CT, int precision = -1);
+  static common::ErrorCode Parse(const BString &, TianmuDateTime &, common::ColumnType);
+  static common::ErrorCode Parse(const int64_t &, TianmuDateTime &, common::ColumnType, int precision = -1);
 
   static bool CanBeYear(int64_t year);
   static bool CanBeMonth(int64_t month);
@@ -375,6 +385,7 @@ class TianmuDateTime : public ValueBasic<TianmuDateTime> {
   static bool CanBeHour(int64_t hour);
   static bool CanBeMinute(int64_t minute);
   static bool CanBeSecond(int64_t second);
+  static bool CanBeMicroSecond(int64_t microsecond);
   static bool CanBeDate(int64_t year, int64_t month, int64_t day);
   static bool CanBeTime(int64_t hour, int64_t minute, int64_t second);
   static bool CanBeTimestamp(int64_t year, int64_t month, int64_t day, int64_t hour, int64_t minute, int64_t second);
@@ -388,9 +399,9 @@ class TianmuDateTime : public ValueBasic<TianmuDateTime> {
   static bool IsCorrectTianmuTime(short hour, short minute, short second);
   static bool IsCorrectTianmuTimestamp(short year, short month, short day, short hour, short minute, short second);
   static bool IsCorrectTianmuDatetime(short year, short month, short day, short hour, short minute, short second);
-
-  static short ToCorrectYear(uint v, common::CT at, bool is_year_2 = false);
-  static TianmuDateTime GetSpecialValue(common::CT at);
+  static bool IsZeroTianmuDate(short year, short month, short day);
+  static short ToCorrectYear(uint v, common::ColumnType at, bool is_year_2 = false);
+  static TianmuDateTime GetSpecialValue(common::ColumnType at);
   static TianmuDateTime GetCurrent();
 
  public:
@@ -424,7 +435,7 @@ class TianmuValueObject {
 
   bool IsNull() const;
 
-  common::CT Type() const { return value_.get() ? value_->Type() : common::CT::UNK; }
+  common::ColumnType Type() const { return value_.get() ? value_->Type() : common::ColumnType::UNK; }
   ValueTypeEnum GetValueType() const { return value_.get() ? value_->GetValueType() : ValueTypeEnum::NULL_TYPE; }
   BString ToBString() const;
   // operator TianmuDataType*()		{ return value_.get(); }
@@ -485,6 +496,16 @@ static inline void ConvertToBinaryForm(const BString &src, BString &dst, DTColla
 static int inline CollationStrCmp(DTCollation coll, const BString &s1, const BString &s2) {
   return coll.collation->coll->strnncoll(coll.collation, (const uchar *)s1.val_, s1.len_, (const uchar *)s2.val_,
                                          s2.len_, 0);
+}
+
+static int inline CollationRealCmp(DTCollation coll, const BString &s1, const BString &s2) {
+  int not_used = 0;
+  char *end_not_used = nullptr;
+  double d1 = coll.collation->cset->strntod(coll.collation, const_cast<char *>(s1.GetDataBytesPointer()), s1.len_,
+                                            &end_not_used, &not_used);
+  double d2 = coll.collation->cset->strntod(coll.collation, const_cast<char *>(s2.GetDataBytesPointer()), s2.len_,
+                                            &end_not_used, &not_used);
+  return (d1 < d2) ? -1 : ((d1 == d2) ? 0 : 1);
 }
 
 static bool inline CollationStrCmp(DTCollation coll, const BString &s1, const BString &s2, common::Operator op) {
@@ -642,21 +663,21 @@ const static TianmuDateTime kTianmuYearMin(1901);
 const static TianmuDateTime kTianmuYearMax(2155);
 const static TianmuDateTime kTianmuYearSpec(0);
 
-const static TianmuDateTime kTianmuTimeMin(-838, 59, 59, common::CT::TIME);
-const static TianmuDateTime kTianmuTimeMax(838, 59, 59, common::CT::TIME);
-const static TianmuDateTime kTianmuTimeSpec(0, common::CT::TIME);
+const static TianmuDateTime kTianmuTimeMin(-838, 59, 59, common::ColumnType::TIME);
+const static TianmuDateTime kTianmuTimeMax(838, 59, 59, common::ColumnType::TIME);
+const static TianmuDateTime kTianmuTimeSpec(0, common::ColumnType::TIME);
 
-const static TianmuDateTime kTianmuDateMin(100, 1, 1, common::CT::DATE);
-const static TianmuDateTime kTianmuDateMax(9999, 12, 31, common::CT::DATE);
-const static TianmuDateTime kTianmuDateSpec(0, common::CT::DATE);
+const static TianmuDateTime kTianmuDateMin(100, 1, 1, common::ColumnType::DATE);
+const static TianmuDateTime kTianmuDateMax(9999, 12, 31, common::ColumnType::DATE);
+const static TianmuDateTime kTianmuDateSpec(0, common::ColumnType::DATE);
 
-const static TianmuDateTime kTianmuDatetimeMin(100, 1, 1, 0, 0, 0, common::CT::DATETIME);
-const static TianmuDateTime kTianmuDatetimeMax(9999, 12, 31, 23, 59, 59, common::CT::DATETIME);
-const static TianmuDateTime kTianmuDatetimeSpec(0, common::CT::DATETIME);
+const static TianmuDateTime kTianmuDatetimeMin(100, 1, 1, 0, 0, 0, common::ColumnType::DATETIME);
+const static TianmuDateTime kTianmuDatetimeMax(9999, 12, 31, 23, 59, 59, common::ColumnType::DATETIME);
+const static TianmuDateTime kTianmuDatetimeSpec(0, common::ColumnType::DATETIME);
 
-const static TianmuDateTime kTianmuTimestampMin(1970, 01, 01, 00, 00, 00, common::CT::TIMESTAMP);
-const static TianmuDateTime kTianmuTimestampMax(2038, 01, 01, 00, 59, 59, common::CT::TIMESTAMP);
-const static TianmuDateTime kTianmuTimestampSpec(0, common::CT::TIMESTAMP);
+const static TianmuDateTime kTianmuTimestampMin(1970, 01, 01, 00, 00, 00, common::ColumnType::TIMESTAMP);
+const static TianmuDateTime kTianmuTimestampMax(2038, 01, 01, 00, 59, 59, common::ColumnType::TIMESTAMP);
+const static TianmuDateTime kTianmuTimestampSpec(0, common::ColumnType::TIMESTAMP);
 
 }  // namespace types
 }  // namespace Tianmu

@@ -388,6 +388,11 @@ int mysql_load(THD *thd,sql_exchange *ex,TABLE_LIST *table_list,
       DBUG_RETURN(TRUE);
   }
 
+  if (!Tianmu::DBHandler::ha_my_tianmu_load(thd, ex, table_list,
+                                          (void *)&lf_info)) {
+    DBUG_RETURN(FALSE);
+  }
+
   const int escape_char= (escaped->length() && (ex->escaped_given() ||
                           !(thd->variables.sql_mode & MODE_NO_BACKSLASH_ESCAPES)))
                           ? (*escaped)[0] : INT_MAX;

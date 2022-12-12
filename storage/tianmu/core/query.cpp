@@ -38,6 +38,7 @@
 
 namespace Tianmu {
 namespace core {
+
 Query::~Query() {
   for (auto it : gc_expressions) delete it;
 }
@@ -184,7 +185,8 @@ std::pair<int, int> Query::VirtualColumnAlreadyExists(const TabID &tmp_table, co
 }
 
 bool Query::IsFieldItem(Item *item) {
-  return (item->type() == Item::FIELD_ITEM || item->type() == Item_tianmufield::get_tianmuitem_type());
+  return (item->type() == Item::FIELD_ITEM || item->type() == Item::REF_ITEM ||
+          item->type() == Item_tianmufield::get_tianmuitem_type());
 }
 
 bool Query::IsAggregationOverFieldItem(Item *item) {
@@ -495,8 +497,8 @@ vcolumn::VirtualColumn *Query::CreateColumnFromExpression(std::vector<MysqlExpre
     }
     vc = new vcolumn::ExpressionColumn(exprs[0], temp_table, temp_table_alias, mind);
     if (static_cast<vcolumn::ExpressionColumn *>(vc)->GetStringType() == MysqlExpression::StringType::STRING_TIME &&
-        vc->TypeName() != common::CT::TIME) {  // common::CT::TIME is already as int64_t
-      vcolumn::TypeCastColumn *tcc = new vcolumn::String2DateTimeCastColumn(vc, ColumnType(common::CT::TIME));
+        vc->TypeName() != common::ColumnType::TIME) {  // common::CT::TIME is already as int64_t
+      vcolumn::TypeCastColumn *tcc = new vcolumn::String2DateTimeCastColumn(vc, ColumnType(common::ColumnType::TIME));
       temp_table->AddVirtColumn(vc);
       vc = tcc;
     }
@@ -630,6 +632,9 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           break;
         case CompiledQuery::StepType::CREATE_CONDS:
           DEBUG_ASSERT(step.t1.n < 0);
+          if (step.ex_op == common::ExtraOperation::EX_COND_PUSH) {
+            ((TempTable *)ta[-step.t1.n - 1].get())->MarkCondPush();
+          }
           step.e1.vc = (step.e1.vc_id != common::NULL_VALUE_32)
                            ? ((TempTable *)ta[-step.t1.n - 1].get())->GetVirtualColumn(step.e1.vc_id)
                            : nullptr;
@@ -781,7 +786,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           if (used_dims.size() == 1 && used_dims.find(common::NULL_VALUE_32) != used_dims.end())
             is_simple_filter = false;
           for (int i = 0; i < filter->mind->NumOfDimensions(); i++) {
-            if (used_dims.find(i) == used_dims.end() && is_simple_filter)
+            if (used_dims.find(i) == used_dims.end() && is_simple_filter && (!tb->CanCondPushDown()))
               filter->mind->ResetUsedInOutput(i);
             else
               filter->mind->SetUsedInOutput(i);
@@ -975,7 +980,7 @@ QueryRouteTo Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_tab
             UnmarkAllAny(*oper_for_subselect);
         }
       }
-      term = CQTerm(vc.n);
+      term = CQTerm(vc.n, an_arg);
     }
     return res;
   }
@@ -1069,7 +1074,7 @@ QueryRouteTo Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_tab
         }
       }
     }
-    term = CQTerm(vc.n);
+    term = CQTerm(vc.n, an_arg);
     return QueryRouteTo::kToTianmu;
   } else {
     // WHERE FILTER
@@ -1118,14 +1123,14 @@ QueryRouteTo Query::Item2CQTerm(Item *an_arg, CQTerm &term, const TabID &tmp_tab
         tab_id2expression.insert(std::make_pair(tmp_table, std::make_pair(vc.n, expr)));
       }
     }
-    term = CQTerm(vc.n);
+    term = CQTerm(vc.n, an_arg);
     return QueryRouteTo::kToTianmu;
   }
   return QueryRouteTo::kToMySQL;
 }
 
 CondID Query::ConditionNumberFromMultipleEquality(Item_equal *conds, const TabID &tmp_table, CondType filter_type,
-                                                  CondID *and_me_filter, bool is_or_subtree) {
+                                                  CondID *and_me_filter, bool is_or_subtree, bool can_cond_push) {
   Item_equal_iterator li(*conds);
 
   CQTerm zero_term, first_term, next_term;
@@ -1146,7 +1151,7 @@ CondID Query::ConditionNumberFromMultipleEquality(Item_equal *conds, const TabID
 
   CondID filter;
   cq->CreateConds(filter, tmp_table, first_term, common::Operator::O_EQ, zero_term, CQTerm(),
-                  is_or_subtree || filter_type == CondType::HAVING_COND);
+                  is_or_subtree || filter_type == CondType::HAVING_COND, can_cond_push);
 
   while ((ifield = li++) != nullptr) {
     if (QueryRouteTo::kToMySQL == Item2CQTerm(ifield, next_term, tmp_table, filter_type))
@@ -1191,7 +1196,8 @@ Item *Query::FindOutAboutNot(Item *it, bool &is_there_not) {
 }
 
 CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table, CondType filter_type,
-                                            CondID *and_me_filter, bool is_or_subtree, bool negative) {
+                                            CondID *and_me_filter, bool is_or_subtree, bool negative,
+                                            bool can_cond_push) {
   CondID filter;
   common::Operator op; /*{    common::Operator::O_EQ, common::Operator::O_NOT_EQ, common::Operator::O_LESS,
                      common::Operator::O_MORE, common::Operator::O_LESS_EQ, common::Operator::O_MORE_EQ,
@@ -1204,17 +1210,18 @@ CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table,
   Item_func *cond_func = (Item_func *)conds;
   if (op == common::Operator::O_MULT_EQUAL_FUNC)
     return ConditionNumberFromMultipleEquality((Item_equal *)conds, tmp_table, filter_type, and_me_filter,
-                                               is_or_subtree);
+                                               is_or_subtree, can_cond_push);
   else if (op == common::Operator::O_NOT_FUNC) {
     if (cond_func->arg_count != 1 || dynamic_cast<Item_in_optimizer *>(cond_func->arguments()[0]) == nullptr)
       return CondID(-2);
     return ConditionNumberFromComparison(cond_func->arguments()[0], tmp_table, filter_type, and_me_filter,
-                                         is_or_subtree, true);
+                                         is_or_subtree, true, can_cond_push);
   } else if (op == common::Operator::O_NOT_ALL_FUNC) {
     if (cond_func->arg_count != 1)
       return CondID(-1);
     return ConditionNumberFromComparison(cond_func->arguments()[0], tmp_table, filter_type, and_me_filter,
-                                         is_or_subtree, dynamic_cast<Item_func_nop_all *>(cond_func) == nullptr);
+                                         is_or_subtree, dynamic_cast<Item_func_nop_all *>(cond_func) == nullptr,
+                                         can_cond_push);
   } else if (op == common::Operator::O_UNKNOWN_FUNC) {
     in_opt = dynamic_cast<Item_in_optimizer *>(cond_func);
     if (in_opt == nullptr || cond_func->arg_count != 2 || in_opt->arguments()[0]->cols() != 1)
@@ -1343,7 +1350,7 @@ CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table,
 
   if (!and_me_filter)
     cq->CreateConds(filter, tmp_table, terms[0], op, terms[1], terms[2],
-                    is_or_subtree || filter_type == CondType::HAVING_COND, like_esc);
+                    is_or_subtree || filter_type == CondType::HAVING_COND, like_esc, can_cond_push);
   else {
     if (is_or_subtree)
       cq->Or(*and_me_filter, tmp_table, terms[0], op, terms[1], terms[2]);
@@ -1355,7 +1362,7 @@ CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table,
 }
 
 CondID Query::ConditionNumberFromNaked(Item *conds, const TabID &tmp_table, CondType filter_type, CondID *and_me_filter,
-                                       bool is_or_subtree) {
+                                       bool is_or_subtree, bool can_cond_push) {
   CondID filter;
   CQTerm naked_col;
   if (QueryRouteTo::kToMySQL == Item2CQTerm(conds, naked_col, tmp_table, filter_type,
@@ -1381,7 +1388,7 @@ CondID Query::ConditionNumberFromNaked(Item *conds, const TabID &tmp_table, Cond
   }
   if (!and_me_filter)
     cq->CreateConds(filter, tmp_table, naked_col, common::Operator::O_NOT_EQ, CQTerm(vc.n), CQTerm(),
-                    is_or_subtree || filter_type == CondType::HAVING_COND);
+                    is_or_subtree || filter_type == CondType::HAVING_COND, can_cond_push);
   else {
     if (is_or_subtree)
       cq->Or(*and_me_filter, tmp_table, naked_col, common::Operator::O_NOT_EQ, CQTerm(vc.n), CQTerm());
@@ -1397,7 +1404,7 @@ struct ItemFieldCompare {
 };
 
 CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filter_type, CondID *and_me_filter,
-                              bool is_or_subtree) {
+                              bool is_or_subtree, bool can_cond_push) {
   // we know, that conds != 0
   // returns -1 on error
   //        >=0 is a created filter number
@@ -1419,7 +1426,7 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
                                          about tree/no tree like descriptor has to be passed recursively
                                          down once filter is created we pass 'false' to indicate AND
                                        */
-                                       and_cond.get() ? false : is_or_subtree);
+                                       and_cond.get() ? false : is_or_subtree, can_cond_push);
           if (res.IsInvalid())
             return res;
           if (!and_cond.get())
@@ -1471,7 +1478,8 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
           if (is_transformed[item] == true)
             continue;
           create_or_subtree = true;
-          CondID res = ConditionNumber(item, tmp_table, filter_type, or_cond.get(), true /*CondType::OR_SUBTREE*/);
+          CondID res = ConditionNumber(item, tmp_table, filter_type, or_cond.get(), true /*CondType::OR_SUBTREE*/,
+                                       can_cond_push);
           if (res.IsInvalid())
             return res;
           if (!or_cond)
@@ -1497,7 +1505,7 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
                 and_me_filter = nullptr;
               } else
                 cq->CreateConds(c_id, tmp_table, terms[0], common::Operator::O_IN, terms[1], CQTerm(),
-                                create_or_subtree || filter_type == CondType::HAVING_COND);
+                                create_or_subtree || filter_type == CondType::HAVING_COND, can_cond_push);
               or_cond.reset(new CondID(c_id.n));
             } else {
               cq->Or(*or_cond, tmp_table, terms[0], common::Operator::O_IN, terms[1], CQTerm());
@@ -1512,7 +1520,7 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
                 and_me_filter = nullptr;
               } else
                 cq->CreateConds(c_id, tmp_table, terms[0], common::Operator::O_EQ, terms[1], CQTerm(),
-                                create_or_subtree || filter_type == CondType::HAVING_COND);
+                                create_or_subtree || filter_type == CondType::HAVING_COND, can_cond_push);
               or_cond.reset(new CondID(c_id.n));
             } else {
               cq->Or(*or_cond, tmp_table, terms[0], common::Operator::O_EQ, terms[1], CQTerm());
@@ -1531,7 +1539,8 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
           else if (and_me_filter && is_or_subtree)
             cq->Or(*and_me_filter, tmp_table, cond_id);
           else if (filter_type != CondType::HAVING_COND && create_or_subtree && !is_or_subtree)
-            cq->CreateConds(cond_id, tmp_table, cond_id, create_or_subtree || filter_type == CondType::HAVING_COND);
+            cq->CreateConds(cond_id, tmp_table, cond_id, create_or_subtree || filter_type == CondType::HAVING_COND,
+                            can_cond_push);
         }
         break;
       }
@@ -1552,7 +1561,7 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
         return CondID(-1);
       if (!and_me_filter)
         cq->CreateConds(cond_id, tmp_table, term, common::Operator::O_NOT_EXISTS, CQTerm(), CQTerm(),
-                        is_or_subtree || filter_type == CondType::HAVING_COND);
+                        is_or_subtree || filter_type == CondType::HAVING_COND, can_cond_push);
       else {
         if (is_or_subtree)
           cq->Or(*and_me_filter, tmp_table, term, common::Operator::O_NOT_EXISTS, CQTerm(), CQTerm());
@@ -1563,9 +1572,10 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
     } else if (func_type == Item_func::XOR_FUNC) {
       return CondID(-1);
     } else {
-      CondID val = ConditionNumberFromComparison(cond_func, tmp_table, filter_type, and_me_filter, is_or_subtree);
+      CondID val = ConditionNumberFromComparison(cond_func, tmp_table, filter_type, and_me_filter, is_or_subtree, false,
+                                                 can_cond_push);
       if (val.n == -2)
-        val = ConditionNumberFromNaked(conds, tmp_table, filter_type, and_me_filter, is_or_subtree);
+        val = ConditionNumberFromNaked(conds, tmp_table, filter_type, and_me_filter, is_or_subtree, can_cond_push);
       return val;
     }
   } else if (cond_type == Item::SUBSELECT_ITEM &&
@@ -1575,7 +1585,7 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
       return CondID(-1);
     if (!and_me_filter) {
       cq->CreateConds(cond_id, tmp_table, term, common::Operator::O_EXISTS, CQTerm(), CQTerm(),
-                      is_or_subtree || filter_type == CondType::HAVING_COND);
+                      is_or_subtree || filter_type == CondType::HAVING_COND, can_cond_push);
     } else {
       if (is_or_subtree)
         cq->Or(*and_me_filter, tmp_table, term, common::Operator::O_EXISTS, CQTerm(), CQTerm());
@@ -1586,18 +1596,19 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
   } else if (cond_type == Item::FIELD_ITEM || cond_type == Item::SUM_FUNC_ITEM || cond_type == Item::SUBSELECT_ITEM ||
              cond_type == Item::INT_ITEM || cond_type == Item::STRING_ITEM || cond_type == Item::NULL_ITEM ||
              cond_type == Item::REAL_ITEM || cond_type == Item::DECIMAL_ITEM) {
-    return ConditionNumberFromNaked(conds, tmp_table, filter_type, and_me_filter, is_or_subtree);
+    return ConditionNumberFromNaked(conds, tmp_table, filter_type, and_me_filter, is_or_subtree, can_cond_push);
   }
   return cond_id;
 }
 
 QueryRouteTo Query::BuildConditions(Item *conds, CondID &cond_id, CompiledQuery *cq, const TabID &tmp_table,
-                                    CondType filter_type, bool is_zero_result, [[maybe_unused]] JoinType join_type) {
+                                    CondType filter_type, bool is_zero_result, [[maybe_unused]] JoinType join_type,
+                                    bool can_cond_push) {
   conds = UnRef(conds);
   PrintItemTree("BuildFiler(), item tree passed in 'conds':", conds);
   if (is_zero_result) {
     CondID fi;
-    cq->CreateConds(fi, tmp_table, CQTerm(), common::Operator::O_FALSE, CQTerm(), CQTerm(), false);
+    cq->CreateConds(fi, tmp_table, CQTerm(), common::Operator::O_FALSE, CQTerm(), CQTerm(), false, can_cond_push);
     cond_id = fi;
     return QueryRouteTo::kToTianmu;
   }
@@ -1610,12 +1621,12 @@ QueryRouteTo Query::BuildConditions(Item *conds, CondID &cond_id, CompiledQuery 
   // copy method arguments to class fields
   this->cq = cq;
 
-  CondID res = ConditionNumber(conds, tmp_table, filter_type);
+  CondID res = ConditionNumber(conds, tmp_table, filter_type, 0, false, can_cond_push);
   if (res.IsInvalid())
     return QueryRouteTo::kToMySQL;
 
   if (filter_type == CondType::HAVING_COND) {
-    cq->CreateConds(res, tmp_table, res, false);
+    cq->CreateConds(res, tmp_table, res, false, can_cond_push);
   }
 
   // restore original values of class fields (may be necessary if this method is
@@ -1908,5 +1919,6 @@ QueryRouteTo Query::BuildCondsIfPossible(Item *conds, CondID &cond_id, const Tab
   }
   return QueryRouteTo::kToTianmu;
 }
+
 }  // namespace core
 }  // namespace Tianmu

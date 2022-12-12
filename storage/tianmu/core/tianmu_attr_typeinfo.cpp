@@ -24,16 +24,16 @@
 
 namespace Tianmu {
 namespace core {
-int ATI::TextSize(common::CT attrt, uint precision, int scale, DTCollation collation) {
+int ATI::TextSize(common::ColumnType attrt, uint precision, int scale, DTCollation collation) {
   return common::TxtDataFormat::StaticExtrnalSize(attrt, precision, scale, &collation);
 }
 
 const types::TianmuDataType &AttributeTypeInfo::ValuePrototype() const {
-  if (Lookup() || ATI::IsNumericType(attrt))
+  if (Lookup() || ATI::IsNumericType(attrt_))
     return types::TianmuNum::NullValue();
-  if (ATI::IsStringType(attrt))
+  if (ATI::IsStringType(attrt_))
     return types::BString::NullValue();
-  DEBUG_ASSERT(ATI::IsDateTimeType(attrt));
+  DEBUG_ASSERT(ATI::IsDateTimeType(attrt_));
   return types::TianmuDateTime::NullValue();
 }
 }  // namespace core

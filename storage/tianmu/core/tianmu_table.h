@@ -34,7 +34,7 @@ class IOParameters;
 
 namespace core {
 struct AttrInfo {
-  common::CT type;
+  common::ColumnType type;
   int size;
   int precision;
   bool no_nulls;

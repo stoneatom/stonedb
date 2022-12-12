@@ -35,7 +35,7 @@ void DataExporter::Init(std::shared_ptr<system::LargeBuffer> buffer, std::vector
   this->no_attrs_ = int(attr_infos_.size());
 
   for (size_t i = 0; i < attr_infos_.size(); ++i) {
-    common::CT f_at = ha_tianmu_engine_->GetCorrespondingType(fields[i]);
+    common::ColumnType f_at = ha_tianmu_engine_->GetCorrespondingType(fields[i]);
     if (core::ATI::IsStringType(attr_infos_[i].Type()) && !core::ATI::IsStringType(f_at))
       this->attr_infos_[i] = core::AttributeTypeInfo(f_at, attr_infos_[i].NotNull());
   }
