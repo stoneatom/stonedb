@@ -858,6 +858,7 @@ int ha_tianmu::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] const uc
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int rc = HA_ERR_KEY_NOT_FOUND;
   try {
+    table->status = STATUS_NOT_FOUND;
     auto index = ha_tianmu_engine_->GetTableIndex(table_name_);
     if (index && (active_index == table_share->primary_key)) {
       std::vector<std::string_view> keys;
@@ -868,6 +869,8 @@ int ha_tianmu::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] const uc
         if (index->GetRowByKey(current_txn_, keys, rowid) == common::ErrorCode::SUCCESS) {
           rc = fill_row_by_id(buf, rowid);
         }
+        if (!rc)
+          table->status = 0;
       } else if (find_flag == HA_READ_AFTER_KEY || find_flag == HA_READ_KEY_OR_NEXT) {
         auto iter = current_txn_->KVTrans().KeyIter();
         common::Operator op = (find_flag == HA_READ_AFTER_KEY) ? common::Operator::O_MORE : common::Operator::O_MORE_EQ;
@@ -875,7 +878,8 @@ int ha_tianmu::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] const uc
         uint64_t rowid;
         iter->GetRowid(rowid);
         rc = fill_row_by_id(buf, rowid);
-
+        if (!rc)
+          table->status = 0;
       } else {
         // not support HA_READ_PREFIX_LAST_OR_PREV HA_READ_PREFIX_LAST
         rc = HA_ERR_WRONG_COMMAND;
@@ -909,7 +913,10 @@ int ha_tianmu::index_next([[maybe_unused]] uchar *buf) {
       uint64_t rowid;
       iter->GetRowid(rowid);
       rc = fill_row_by_id(buf, rowid);
+      if (!rc)
+        table->status = 0;
     } else {
+      table->status = STATUS_NOT_FOUND;
       rc = HA_ERR_KEY_NOT_FOUND;
     }
   } catch (std::exception &e) {
@@ -932,7 +939,10 @@ int ha_tianmu::index_prev([[maybe_unused]] uchar *buf) {
       uint64_t rowid;
       iter->GetRowid(rowid);
       rc = fill_row_by_id(buf, rowid);
+      if (!rc)
+        table->status = 0;
     } else {
+      table->status = STATUS_NOT_FOUND;
       rc = HA_ERR_KEY_NOT_FOUND;
     }
   } catch (std::exception &e) {
@@ -960,7 +970,10 @@ int ha_tianmu::index_first([[maybe_unused]] uchar *buf) {
       if (iter->IsValid()) {
         iter->GetRowid(rowid);
         rc = fill_row_by_id(buf, rowid);
+        if (!rc)
+          table->status = 0;
       } else {
+        table->status = STATUS_NOT_FOUND;
         rc = HA_ERR_KEY_NOT_FOUND;
       }
     }
@@ -989,7 +1002,10 @@ int ha_tianmu::index_last([[maybe_unused]] uchar *buf) {
       if (iter->IsValid()) {
         iter->GetRowid(rowid);
         rc = fill_row_by_id(buf, rowid);
+        if (!rc)
+          table->status = 0;
       } else {
+        table->status = STATUS_NOT_FOUND;
         rc = HA_ERR_KEY_NOT_FOUND;
       }
     }
@@ -1124,7 +1140,15 @@ int ha_tianmu::rnd_next(uchar *buf) {
 void ha_tianmu::position([[maybe_unused]] const uchar *record) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
-  my_store_ptr(ref, ref_length, current_position_);
+  if (table->in_use->slave_thread && table->s->primary_key != MAX_INDEXES) {
+    /* Copy primary key as the row reference */
+    KEY *key_info = table->key_info + table->s->primary_key;
+    key_copy(ref, (uchar *)record, key_info, key_info->key_length);
+    ref_length = key_info->key_length;
+    active_index = table->s->primary_key;
+  } else {
+    my_store_ptr(ref, ref_length, current_position_);
+  }
 
   DBUG_VOID_RETURN;
 }
@@ -1141,25 +1165,29 @@ int ha_tianmu::rnd_pos(uchar *buf, uchar *pos) {
 
   int ret = HA_ERR_END_OF_FILE;
   try {
-    uint64_t position = my_get_ptr(pos, ref_length);
+    if (table->in_use->slave_thread && table->s->primary_key != MAX_INDEXES && pos && pos[0] != '\0') {
+      ret = index_read(buf, pos, ref_length, HA_READ_KEY_EXACT);
+    } else {
+      uint64_t position = my_get_ptr(pos, ref_length);
 
-    filter_ptr_ = std::make_unique<core::Filter>(position + 1, share_->PackSizeShift());
-    filter_ptr_->Reset();
-    filter_ptr_->Set(position);
+      filter_ptr_ = std::make_unique<core::Filter>(position + 1, share_->PackSizeShift());
+      filter_ptr_->Reset();
+      filter_ptr_->Set(position);
 
-    auto tab_ptr = ha_tianmu_engine_->GetTx(table->in_use)->GetTableByPath(table_name_);
-    table_new_iter_ = tab_ptr->Begin(GetAttrsUseIndicator(table), *filter_ptr_);
-    table_new_iter_end_ = tab_ptr->End();
-    table_ptr_ = tab_ptr.get();
+      auto tab_ptr = ha_tianmu_engine_->GetTx(table->in_use)->GetTableByPath(table_name_);
+      table_new_iter_ = tab_ptr->Begin(GetAttrsUseIndicator(table), *filter_ptr_);
+      table_new_iter_end_ = tab_ptr->End();
+      table_ptr_ = tab_ptr.get();
 
-    table_new_iter_.MoveToRow(position);
-    table->status = 0;
-    blob_buffers_.resize(table->s->fields);
-    if (fill_row(buf) == HA_ERR_END_OF_FILE) {
-      table->status = STATUS_NOT_FOUND;
-      DBUG_RETURN(ret);
+      table_new_iter_.MoveToRow(position);
+      table->status = 0;
+      blob_buffers_.resize(table->s->fields);
+      if (fill_row(buf) == HA_ERR_END_OF_FILE) {
+        table->status = STATUS_NOT_FOUND;
+        DBUG_RETURN(ret);
+      }
+      ret = 0;
     }
-    ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
