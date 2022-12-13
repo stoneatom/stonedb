@@ -1,6 +1,3 @@
-#
-#duplicate key update
-#
 DROP DATABASE IF EXISTS insert_update_db;
 CREATE DATABASE insert_update_db;
 USE insert_update_db;
