@@ -2,6 +2,12 @@
 --echo #
 --echo # Problem with INSERT ... SELECT
 --echo #
+--disable_warnings
+DROP DATABASE IF EXISTS insert_select_db;
+--enable_warnings
+
+CREATE DATABASE insert_select_db;
+USE insert_select_db;
 
 --disable_warnings
 drop table if exists t1,t2,t3;
@@ -199,3 +205,5 @@ SELECT *, HEX(a) FROM t1 WHERE a = 'abc-def';
 SELECT *, HEX(a) FROM t1 WHERE a = '\'(),-.';
 
 DROP TABLE t1;
+# Clean UP
+DROP DATABASE insert_select_db;

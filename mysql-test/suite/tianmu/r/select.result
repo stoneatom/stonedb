@@ -1,6 +1,9 @@
 #
 # Simple select test
 #
+DROP DATABASE IF EXISTS select_db;
+CREATE DATABASE select_db;
+USE select_db;
 drop table if exists t1,t2,t3,t4,t11;
 # The following may be left from older tests
 drop table if exists t1_1,t1_2,t9_1,t9_2,t1aa,t2aa;
@@ -26366,3 +26369,4 @@ period	name	companynr	price	price2
 1009	gems	447	2374834	9872392
 1010	clinker	512	786542	76234234
 drop database aa;
+DROP DATABASE select_db;
