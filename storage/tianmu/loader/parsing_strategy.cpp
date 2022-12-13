@@ -555,8 +555,6 @@ void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort 
     for (size_t j = 0; j < value_size; j++) {
       if (value_ptr[j] == escape_char_)
         buf[new_size] = TranslateEscapedChar(value_ptr[++j]);
-      else if (value_ptr[j] == *delimiter_.c_str())
-        break;
       else
         buf[new_size] = value_ptr[j];
       new_size++;
