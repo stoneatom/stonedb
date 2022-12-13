@@ -1,5 +1,6 @@
 USE test;
 set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+drop table if exists t_test;
 CREATE TABLE t_test(
 id INT NOT NULL AUTO_INCREMENT,
 first_name VARCHAR(10) NOT NULL,

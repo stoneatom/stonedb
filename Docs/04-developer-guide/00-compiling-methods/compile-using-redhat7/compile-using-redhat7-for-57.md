@@ -179,7 +179,8 @@ Install in /usr/local/ by default.
 ```shell
 ls /usr/local/include/
 ...... gtest
-ls /usr/local/lib/
+ls /usr/local/lib/ # 32-bit os
+ls /usr/local/lib64/ # 64-bit os
 ...... cmake  libgtest.a  libgtest_main.a
 ```
 ### Step 4. Compile StoneDB
@@ -282,6 +283,9 @@ Copyright (c) 2021, 2022 StoneAtom Group Holding Limited
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
 mysql> alter user 'root'@'localhost' identified by 'stonedb123';
+# Allow root user to log in remotely
+mysql> GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'stonedb123' WITH GRANT OPTION;
+mysql> FLUSH PRIVILEGES;
 ```
 :::info
 The temporary password of user root is recorded in mysqld.log. Upon your first login, you must change the temporary password.
