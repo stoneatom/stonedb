@@ -611,11 +611,14 @@ AggregaGroupingResult AggregationAlgorithm::AggregatePackrow(GroupByWrapper &gbw
 
           // Prepare packs for aggregated columns
           for (int gr_a = gbw.NumOfGroupingAttrs(); gr_a < gbw.NumOfAttrs(); gr_a++)
-            if (gbw.ColumnNotOmitted(gr_a)) {
+            if (gbw.ColumnNotOmitted(gr_a) && (!gbw.CheckCoordinates(gr_a, pos))) {
               bool value_successfully_aggregated = gbw.PutAggregatedValue(gr_a, pos, *mit, factor);
               if (!value_successfully_aggregated) {
                 gbw.DistinctlyOmitted(gr_a, cur_tuple);
+                continue;
               }
+
+              gbw.SetCoordinates(gr_a, pos);
             }
         }
       }

@@ -697,6 +697,16 @@ void GroupByWrapper::ResetPackrow() {
   }
 }
 
+void GroupByWrapper::SetCoordinates(int attr, int64_t obj) {
+  std::string coord = std::to_string(attr) + ":" + std::to_string(obj);
+  coordinates.emplace(std::pair<std::string, bool>(coord, true));
+}
+
+bool GroupByWrapper::CheckCoordinates(int attr, int64_t obj) {
+  std::string coord = std::to_string(attr) + ":" + std::to_string(obj);
+  return coordinates.find(coord) != coordinates.end();
+}
+
 void DistinctWrapper::Initialize(int n_attr) {
   no_attr = n_attr;
   f.resize(no_attr);

@@ -181,6 +181,9 @@ class GroupByWrapper final {
   }
   bool JustDistinct() { return just_distinct; }
 
+  void SetCoordinates(int attr, int64_t obj);
+  bool CheckCoordinates(int attr, int64_t obj);
+
   DistinctWrapper distinct_watch;
 
   // Statistics:
@@ -217,6 +220,7 @@ class GroupByWrapper final {
 
   Filter *tuple_left;  // a mask of all rows still to be aggregated
   bool just_distinct;
+  std::unordered_map<std::string, bool> coordinates;  // [column:row] -> bool
 };
 }  // namespace core
 }  // namespace Tianmu
