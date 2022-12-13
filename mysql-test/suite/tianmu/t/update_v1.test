@@ -1,6 +1,12 @@
 --echo #
 --echo # test of updating of keys
 --echo #
+--disable_warnings
+DROP DATABASE IF EXISTS update_v1_db;
+--enable_warnings
+
+CREATE DATABASE update_v1_db;
+USE update_v1_db;
 
 --disable_warnings
 drop table if exists t1,t2;
@@ -227,4 +233,5 @@ SELECT * FROM t1;
 UPDATE t1 SET token = NULL WHERE token = X'ad';
 SELECT * FROM t1;
 DROP TABLE t1;
-
+# Clean UP
+DROP DATABASE update_v1_db;

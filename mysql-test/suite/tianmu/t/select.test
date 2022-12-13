@@ -3,6 +3,12 @@
 --echo #
 --echo # Simple select test
 --echo #
+--disable_warnings
+DROP DATABASE IF EXISTS select_db;
+--enable_warnings
+
+CREATE DATABASE select_db;
+USE select_db;
 
 --disable_warnings
 drop table if exists t1,t2,t3,t4,t11;
@@ -1407,4 +1413,5 @@ insert into t3_1 select * from t3;
 
 select * from t3_1;
 drop database aa;
-
+# Clean UP
+DROP DATABASE select_db;

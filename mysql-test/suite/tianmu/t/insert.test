@@ -3,7 +3,12 @@
 --echo #
 --echo #Insert values for different types of fields
 --echo #
-use test;
+--disable_warnings
+DROP DATABASE IF EXISTS insert_db;
+--enable_warnings
+
+CREATE DATABASE insert_db;
+USE insert_db;
 CREATE TABLE `column_type_test` (
  `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
   `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
@@ -466,4 +471,5 @@ SELECT * FROM t1;
 
 DROP VIEW v1, v2;
 DROP TABLE t1;
-
+# Clean UP
+DROP DATABASE insert_db;

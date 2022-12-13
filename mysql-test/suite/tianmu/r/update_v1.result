@@ -1,6 +1,9 @@
 #
 # test of updating of keys
 #
+DROP DATABASE IF EXISTS update_v1_db;
+CREATE DATABASE update_v1_db;
+USE update_v1_db;
 drop table if exists t1,t2;
 create table t1 (a int auto_increment , primary key (a))engine=tianmu;
 insert into t1 values (NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL),(NULL);
@@ -267,3 +270,4 @@ id	token
 1	­
 2	­
 DROP TABLE t1;
+DROP DATABASE update_v1_db;
