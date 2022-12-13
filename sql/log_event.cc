@@ -9681,8 +9681,19 @@ search_key_in_table(TABLE *table, MY_BITMAP *bi_cols, uint key_type)
   KEY *keyinfo;
   uint res= MAX_KEY;
   uint key;
+  
+  if (key_type & PRI_KEY_FLAG &&
+      (table->s->primary_key < MAX_KEY))
+  {
+    DBUG_PRINT("debug", ("Searching for PK"));
+    keyinfo= table->s->key_info + table->s->primary_key;
+    if (are_all_columns_signaled_for_key(keyinfo, bi_cols))
+      DBUG_RETURN(table->s->primary_key);
+  }
   /*
-    PK has bugs, not support
+    The tianmu engine only supports primary keys, 
+    and unique constraints and secondary indexes are not supported,
+    Therefore, only scanning with primary key scenarios is allowed here.
   */
   bool check_if_tianmu_engine = table && table->s && 
                       (table->s->db_type() ? (table->s->db_type()->db_type == DB_TYPE_TIANMU): false);
@@ -9693,14 +9704,6 @@ search_key_in_table(TABLE *table, MY_BITMAP *bi_cols, uint key_type)
                         (sql_command == SQLCOM_UPDATE) ||
                         (sql_command == SQLCOM_UPDATE_MULTI))){
     DBUG_RETURN(res);
-  }
-  if (key_type & PRI_KEY_FLAG &&
-      (table->s->primary_key < MAX_KEY))
-  {
-    DBUG_PRINT("debug", ("Searching for PK"));
-    keyinfo= table->s->key_info + table->s->primary_key;
-    if (are_all_columns_signaled_for_key(keyinfo, bi_cols))
-      DBUG_RETURN(table->s->primary_key);
   }
 
   if (key_type & UNIQUE_KEY_FLAG)
