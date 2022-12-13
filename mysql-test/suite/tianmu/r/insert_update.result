@@ -1,6 +1,9 @@
 #
 #duplicate key update
 #
+DROP DATABASE IF EXISTS insert_update_db;
+CREATE DATABASE insert_update_db;
+USE insert_update_db;
 create table t1(a int primary key, b int);
 insert into t1 values(1,1),(2,2),(3,3),(4,4),(5,5);
 select * from t1;
@@ -136,3 +139,4 @@ UPDATE t_utf8 SET a=x'f69687' where a=x'e69687';
 select * from t_utf8;
 a	b	c
 ?	?	?
+DROP DATABASE insert_update_db;
