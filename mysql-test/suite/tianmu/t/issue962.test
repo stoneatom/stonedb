@@ -1,0 +1,20 @@
+--source include/have_tianmu.inc
+ 
+
+--disable_query_log
+
+CREATE DATABASE test_issue962_db;
+
+USE test_issue962_db;
+
+CREATE TABLE t0(c0 INT)engine=tianmu;
+CREATE TABLE t1(c0 INT)engine=tianmu;
+INSERT INTO t0 VALUES (NULL);
+
+--enable_query_log
+SELECT t0.c0 FROM t0 LEFT JOIN t1 ON t0.c0>=t1.c0 WHERE (CONCAT_WS(t0.c0, t1.c0) IS NULL);
+
+--disable_query_log
+DROP DATABASE test_issue962_db;
+--enable_query_log
+
