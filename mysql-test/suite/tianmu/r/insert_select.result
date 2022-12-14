@@ -1,6 +1,9 @@
 #
 # Problem with INSERT ... SELECT
 #
+DROP DATABASE IF EXISTS insert_select_db;
+CREATE DATABASE insert_select_db;
+USE insert_select_db;
 drop table if exists t1,t2,t3;
 SET sql_mode = 'NO_ENGINE_SUBSTITUTION,NO_AUTO_CREATE_USER';
 create table t1 (bandID MEDIUMINT NOT NULL PRIMARY KEY, payoutID SMALLINT NOT NULL);
@@ -688,3 +691,4 @@ SELECT *, HEX(a) FROM t1 WHERE a = '\'(),-.';
 id	a	HEX(a)
 3	'(),-.	2728292C2D2E
 DROP TABLE t1;
+DROP DATABASE insert_select_db;

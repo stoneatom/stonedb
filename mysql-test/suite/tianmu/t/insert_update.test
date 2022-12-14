@@ -1,9 +1,11 @@
 --source include/have_tianmu.inc
 
---echo #
---echo #duplicate key update
---echo #
+--disable_warnings
+DROP DATABASE IF EXISTS insert_update_db;
+--enable_warnings
 
+CREATE DATABASE insert_update_db;
+USE insert_update_db;
 create table t1(a int primary key, b int);
 insert into t1 values(1,1),(2,2),(3,3),(4,4),(5,5);
 select * from t1;
@@ -133,4 +135,5 @@ INSERT INTO t_utf8 values(x'f4b8ad', x'f4b8ad', x'f4b8ad');
 UPDATE t_utf8 SET a=x'e69687' where a=x'e4b8ad';
 UPDATE t_utf8 SET a=x'f69687' where a=x'e69687';
 select * from t_utf8;
-
+# Clean UP
+DROP DATABASE insert_update_db;
