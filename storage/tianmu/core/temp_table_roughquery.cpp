@@ -28,6 +28,7 @@
 
 namespace Tianmu {
 namespace core {
+
 void TempTable::RoughMaterialize([[maybe_unused]] bool in_subq, ResultSender *sender, [[maybe_unused]] bool lazy) {
   MEASURE_FET("Descriptor::RoughMaterialize(...)");
   if (materialized)
@@ -77,7 +78,7 @@ void TempTable::RoughAggregateMinMax(vcolumn::VirtualColumn *vc, int64_t &min_va
   bool double_vals = vc->Type().IsFloat();
   MIIterator mit(filter.mind, dim, true);
   while (mit.IsValid()) {
-    if (filter.rough_mind->GetPackStatus(dim, mit.GetCurPackrow(dim)) != common::RSValue::RS_NONE &&
+    if (filter.rough_mind->GetPackStatus(dim, mit.GetCurPackrow(dim)) != common::RoughSetValue::RS_NONE &&
         vc->GetPackOntologicalStatus(mit) != PackOntologicalStatus::NULLS_ONLY) {
       int64_t v = vc->GetMinInt64(mit);
       if (v == common::NULL_VALUE_64)
@@ -103,10 +104,10 @@ void TempTable::RoughAggregateCount(DimensionVector &dims, int64_t &min_val, int
       int64_t loc_min = 0;
       int64_t loc_max = 0;
       while (mit.IsValid()) {
-        common::RSValue res = filter.rough_mind->GetPackStatus(dim, mit.GetCurPackrow(dim));
-        if (res != common::RSValue::RS_NONE) {
+        common::RoughSetValue res = filter.rough_mind->GetPackStatus(dim, mit.GetCurPackrow(dim));
+        if (res != common::RoughSetValue::RS_NONE) {
           loc_max += mit.GetPackSizeLeft();
-          if (!group_by_present && res == common::RSValue::RS_ALL)
+          if (!group_by_present && res == common::RoughSetValue::RS_ALL)
             loc_min += mit.GetPackSizeLeft();
         }
         mit.NextPackrow();
@@ -142,7 +143,7 @@ void TempTable::RoughAggregateSum(vcolumn::VirtualColumn *vc, int64_t &min_val, 
     MIIterator mit(filter.mind, dim, true);
     mit.Rewind();
     while (mit.IsValid()) {
-      common::RSValue res = filter.rough_mind->GetPackStatus(dim, mit.GetCurPackrow(dim));
+      common::RoughSetValue res = filter.rough_mind->GetPackStatus(dim, mit.GetCurPackrow(dim));
       bool no_groups_or_uniform = true;  // false if there is a nontrivial grouping (more than one group
                                          // possible)
       for (uint j = 0; j < group_by_attrs.size(); j++) {
@@ -152,12 +153,13 @@ void TempTable::RoughAggregateSum(vcolumn::VirtualColumn *vc, int64_t &min_val, 
           no_groups_or_uniform = false;  // leave it true only when we are sure the
                                          // grouping columns are uniform for this packrow
       }
-      if (res != common::RSValue::RS_NONE && vc->GetPackOntologicalStatus(mit) != PackOntologicalStatus::NULLS_ONLY) {
+      if (res != common::RoughSetValue::RS_NONE &&
+          vc->GetPackOntologicalStatus(mit) != PackOntologicalStatus::NULLS_ONLY) {
         empty_set = false;
         success = true;
         bool nonnegative = false;
         int64_t v = vc->GetSum(mit, nonnegative);
-        if (no_groups_or_uniform && res == common::RSValue::RS_ALL && !distinct_present) {
+        if (no_groups_or_uniform && res == common::RoughSetValue::RS_ALL && !distinct_present) {
           if (v == common::NULL_VALUE_64) {  // unknown sum
             success = false;
             break;
@@ -285,7 +287,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
         filter.mind			- multiindex with nontrivial contents,
      although not necessarily updated by conditions filter.rough_mind	- rough
      multiindex with more up-to-date contents than mind, i.e. a packrow may
-     exist in mind, but be marked as common::RSValue::RS_NONE in rough_mind To check a
+     exist in mind, but be marked as common::RoughSetValue::RS_NONE in rough_mind To check a
      rough status of a packrow, use both mind and rough_mind. The method does
      not change mind / rough_mind.
 
@@ -317,13 +319,13 @@ void TempTable::RoughAggregate(ResultSender *sender) {
       bool local_empty = true;
       bool local_some = true;  // true if no pack is full
       for (int pack = 0; pack < filter.rough_mind->NoPacks(dim); pack++) {
-        common::RSValue res = filter.rough_mind->GetPackStatus(dim, pack);
-        if (res != common::RSValue::RS_NONE) {
+        common::RoughSetValue res = filter.rough_mind->GetPackStatus(dim, pack);
+        if (res != common::RoughSetValue::RS_NONE) {
           local_empty = false;
           if (rough_is_empty != false)
             break;
         }
-        if (res == common::RSValue::RS_ALL) {
+        if (res == common::RoughSetValue::RS_ALL) {
           local_some = false;
           break;
         }
@@ -373,8 +375,8 @@ void TempTable::RoughAggregate(ResultSender *sender) {
         int64_t certain_rows = 0;
         bool cutoff_is_null = false;  // true if all values up to limit are nullptr for ascending
         while (mit.IsValid()) {
-          common::RSValue res = filter.rough_mind->GetPackStatus(0, mit.GetCurPackrow(0));
-          if (res == common::RSValue::RS_ALL) {
+          common::RoughSetValue res = filter.rough_mind->GetPackStatus(0, mit.GetCurPackrow(0));
+          if (res == common::RoughSetValue::RS_ALL) {
             // Algorithm for ascending:
             // - cutoff value is the maximum of the first full data pack which
             // hit the limit
@@ -392,8 +394,8 @@ void TempTable::RoughAggregate(ResultSender *sender) {
           mit.Rewind();
           int64_t local_stat = common::NULL_VALUE_64;
           while (mit.IsValid()) {
-            common::RSValue res = filter.rough_mind->GetPackStatus(0, mit.GetCurPackrow(0));
-            if (res != common::RSValue::RS_NONE) {
+            common::RoughSetValue res = filter.rough_mind->GetPackStatus(0, mit.GetCurPackrow(0));
+            if (res != common::RoughSetValue::RS_NONE) {
               bool omit = false;
               if (asc) {
                 local_stat = vc->GetMinInt64(mit);  // omit if pack minimum is larger than cutoff
@@ -411,7 +413,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
                   omit = true;
               }
               if (omit)
-                filter.rough_mind->SetPackStatus(0, mit.GetCurPackrow(0), common::RSValue::RS_NONE);
+                filter.rough_mind->SetPackStatus(0, mit.GetCurPackrow(0), common::RoughSetValue::RS_NONE);
             }
             mit.NextPackrow();
           }
@@ -423,10 +425,10 @@ void TempTable::RoughAggregate(ResultSender *sender) {
       MIIterator mit(filter.mind, filter.mind->ValueOfPower());
       while (mit.IsValid()) {
         if (omit_the_rest) {
-          filter.rough_mind->SetPackStatus(0, mit.GetCurPackrow(0), common::RSValue::RS_NONE);
+          filter.rough_mind->SetPackStatus(0, mit.GetCurPackrow(0), common::RoughSetValue::RS_NONE);
         } else {
-          common::RSValue res = filter.rough_mind->GetPackStatus(0, mit.GetCurPackrow(0));
-          if (res == common::RSValue::RS_ALL) {
+          common::RoughSetValue res = filter.rough_mind->GetPackStatus(0, mit.GetCurPackrow(0));
+          if (res == common::RoughSetValue::RS_ALL) {
             certain_rows += mit.GetPackSizeLeft();
             if (certain_rows >= local_limit)
               omit_the_rest = true;
@@ -523,12 +525,12 @@ void TempTable::RoughAggregate(ResultSender *sender) {
             if (!nulls_only) {
               MIIterator mit(filter.mind, dim, true);
               while (mit.IsValid()) {
-                common::RSValue res = filter.rough_mind->GetPackStatus(dim, mit.GetCurPackrow(dim));
-                if (res != common::RSValue::RS_NONE &&
+                common::RoughSetValue res = filter.rough_mind->GetPackStatus(dim, mit.GetCurPackrow(dim));
+                if (res != common::RoughSetValue::RS_NONE &&
                     vc->GetPackOntologicalStatus(mit) != PackOntologicalStatus::NULLS_ONLY) {
                   min_val = UpdateMin(min_val, vc->GetMinInt64(mit), double_vals);
                   max_val = UpdateMax(max_val, vc->GetMaxInt64(mit), double_vals);
-                  if (!skip_counting && !group_by_present && res == common::RSValue::RS_ALL) {
+                  if (!skip_counting && !group_by_present && res == common::RoughSetValue::RS_ALL) {
                     int64_t exact_val = is_min ? vc->GetMinInt64Exact(mit) : vc->GetMaxInt64Exact(mit);
                     if (exact_val != common::NULL_VALUE_64)
                       relevant_val = is_min ? UpdateMin(relevant_val, exact_val, double_vals)
@@ -567,10 +569,10 @@ void TempTable::RoughAggregate(ResultSender *sender) {
               max_val = 0;
               if (!nulls_only) {
                 while (mit.IsValid()) {
-                  common::RSValue res = filter.rough_mind->GetPackStatus(dim, mit.GetCurPackrow(dim));
-                  if (res != common::RSValue::RS_NONE) {
+                  common::RoughSetValue res = filter.rough_mind->GetPackStatus(dim, mit.GetCurPackrow(dim));
+                  if (res != common::RoughSetValue::RS_NONE) {
                     max_val += mit.GetPackSizeLeft();
-                    if (!group_by_present && res == common::RSValue::RS_ALL) {
+                    if (!group_by_present && res == common::RoughSetValue::RS_ALL) {
                       int64_t no_nulls = vc->GetNumOfNulls(mit);
                       if (no_nulls != common::NULL_VALUE_64) {
                         min_val += mit.GetPackSizeLeft() - no_nulls;
@@ -596,17 +598,18 @@ void TempTable::RoughAggregate(ResultSender *sender) {
               bool all_only = true;
               int64_t max_count_star = common::NULL_VALUE_64;
               int64_t min_count_star = 0;
-              for (int dim = 0; dim < dims.Size(); dim++)
+
+              for (int dim = 0; dim < dims.Size(); dim++) {
                 if (dims[dim]) {
                   MIIterator mit(filter.mind, dim, true);
                   int64_t loc_max = 0;
                   while (mit.IsValid()) {
-                    common::RSValue res = filter.rough_mind->GetPackStatus(dim, mit.GetCurPackrow(dim));
-                    if (res != common::RSValue::RS_NONE)
+                    common::RoughSetValue res = filter.rough_mind->GetPackStatus(dim, mit.GetCurPackrow(dim));
+                    if (res != common::RoughSetValue::RS_NONE)
                       loc_max += mit.GetPackSizeLeft();
-                    if (res == common::RSValue::RS_ALL && !group_by_present)
+                    if (res == common::RoughSetValue::RS_ALL && !group_by_present)
                       min_count_star += mit.GetPackSizeLeft();
-                    if (res != common::RSValue::RS_ALL)
+                    if (res != common::RoughSetValue::RS_ALL)
                       all_only = false;
                     mit.NextPackrow();
                   }
@@ -618,10 +621,13 @@ void TempTable::RoughAggregate(ResultSender *sender) {
                                                  // reached - stop execution
                     break;
                 }
+              }
               if (max_count_star < max_val)
                 max_val = max_count_star;
+
               if (vc->IsDistinct() && dims.Size() == 1)
                 min_val = min_count_star;
+
               if (all_only) {
                 int64_t exact_dist = vc->GetExactDistVals();
                 if (exact_dist != common::NULL_VALUE_64)
@@ -804,5 +810,6 @@ void TempTable::RoughUnion(TempTable *t, ResultSender *sender) {
     }
   }
 }
+
 }  // namespace core
 }  // namespace Tianmu
