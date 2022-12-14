@@ -23,6 +23,9 @@ Stonedb prepares the rules to be followed by MTR
 - Table names: t1, t2, t3, ...
 - View names: v1, v2, v3, ...
 
+##Adding engine check
+--source include/have_tianmu.inc  
+
 ## Use case annotation requirements  
 The sample is as follows：
 ```
