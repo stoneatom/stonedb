@@ -206,6 +206,8 @@ class TIANMUAggregator {
 
  protected:
   bool stats_updated = false;
+  constexpr static int AggregatedValue_LEN_SIZE = sizeof(unsigned short);
+  enum class AggregatedValue_Mark : char { AM_NOT_FILL = 0, AM_STRING_ZERO = 1, AM_STRING_NULL = 2, AM_END };
 };
 
 // Examples: aggregators for COUNT
