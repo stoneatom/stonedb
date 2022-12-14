@@ -24,6 +24,7 @@
 
 namespace Tianmu {
 namespace core {
+
 class DimensionVector {
  public:
   DimensionVector() = default;
@@ -35,6 +36,7 @@ class DimensionVector {
     if (&sec != this) {
       v = sec.v;
     }
+
     return *this;
   }
 
@@ -43,16 +45,20 @@ class DimensionVector {
     for (int i = 0; i < Size(); ++i)
       if (v[i] != d2.v[i])
         return false;
+
     return true;
   }
+
   bool operator!=(const DimensionVector &d2) { return !operator==(d2); }
 
   std::vector<bool>::reference operator[](int i) { return v[i]; }
 
-  bool Get(int i) const { return v[i]; }
+  bool Get(int i) const { return (i == -1) ? false : v[i]; }
 
   void Clean() { std::fill(v.begin(), v.end(), false); }
+
   void SetAll() { std::fill(v.begin(), v.end(), true); }
+
   void Complement() { v.flip(); }
 
   // true if any common dimension present
@@ -61,6 +67,7 @@ class DimensionVector {
     for (size_t i = 0; i < v.size(); i++)
       if (v[i] && sec.v[i])
         return true;
+
     return false;
   }
 
@@ -70,8 +77,10 @@ class DimensionVector {
     for (size_t i = 0; i < v.size(); i++)
       if (sec.v[i] && !v[i])
         return false;
+
     return true;
   }
+
   // exclude from *this all dimensions present in sec
   void Minus(DimensionVector &sec) {
     DEBUG_ASSERT(v.size() == sec.v.size());
@@ -79,6 +88,7 @@ class DimensionVector {
       if (sec.v[i])
         v[i] = false;
   }
+
   // include in *this all dimensions present in sec
   void Plus(DimensionVector &sec) {
     DEBUG_ASSERT(v.size() == sec.v.size());
@@ -94,6 +104,7 @@ class DimensionVector {
         res++;
     return res;
   }
+
   // return the only existing dim, or -1 if more or less than one
   int GetOneDim() {
     int res = -1;
@@ -101,21 +112,26 @@ class DimensionVector {
       if (v[i]) {
         if (res != -1)
           return -1;
+
         res = i;
       }
+
     return res;
   }
+
   bool IsEmpty() const {
     for (size_t i = 0; i < v.size(); i++)
       if (v[i])
         return false;
     return true;
   }
+
   int Size() const { return v.size(); }  // return a number of all dimensions (present or not)
 
  private:
   std::vector<bool> v;
 };
+
 }  // namespace core
 }  // namespace Tianmu
 

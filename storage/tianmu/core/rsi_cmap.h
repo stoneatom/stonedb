@@ -24,6 +24,7 @@
 
 namespace Tianmu {
 namespace core {
+
 class PackStr;
 
 class RSIndex_CMap final : public RSIndex {
@@ -41,14 +42,14 @@ class RSIndex_CMap final : public RSIndex {
                 int pack);  // set information that value v does exist in this pack
   void Create(int64_t _no_obj, int no_pos, int pss);
 
-  common::RSValue IsValue(types::BString min_v, types::BString max_v, int pack);
-  // Results:		common::RSValue::RS_NONE - there is no objects having values
+  common::RoughSetValue IsValue(types::BString min_v, types::BString max_v, int pack);
+  // Results:		common::RoughSetValue::RS_NONE - there is no objects having values
   // between min_v and max_v (including)
-  //				common::RSValue::RS_SOME - some objects from this pack do
+  //				common::RoughSetValue::RS_SOME - some objects from this pack do
   // have values
-  // between min_v and max_v 				common::RSValue::RS_ALL	- all objects
+  // between min_v and max_v 				common::RoughSetValue::RS_ALL	- all objects
   // from this pack do have values between min_v and max_v
-  common::RSValue IsLike(types::BString pattern, int pack, char escape_character);
+  common::RoughSetValue IsLike(types::BString pattern, int pack, char escape_character);
   int Count(int pack, uint pos);  // a number of ones in the pack on a given
                                   // position 0..no_positions
   bool IsSet(int pack, unsigned char c, uint pos);
@@ -78,6 +79,7 @@ class RSIndex_CMap final : public RSIndex {
   uint32_t *cmap_buffers = nullptr;
   size_t capacity = 0;
 };
+
 }  // namespace core
 }  // namespace Tianmu
 
