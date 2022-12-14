@@ -1,3 +1,4 @@
+--source include/have_tianmu.inc
 --echo #writer:shangyanwen
 
 --echo #

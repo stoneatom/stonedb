@@ -1,3 +1,5 @@
+--source include/have_tianmu.inc
+
 --echo #
 --echo # test of updating of keys
 --echo #

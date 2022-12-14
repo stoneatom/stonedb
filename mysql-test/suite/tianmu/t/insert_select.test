@@ -1,4 +1,5 @@
---source include/no_valgrind_without_big.inc
+--source include/have_tianmu.inc
+
 --echo #
 --echo # Problem with INSERT ... SELECT
 --echo #

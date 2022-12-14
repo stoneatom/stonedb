@@ -1,3 +1,4 @@
+--source include/have_tianmu.inc
 
 CREATE TABLE `column_type_test` (
  `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',

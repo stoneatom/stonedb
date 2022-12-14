@@ -1,3 +1,5 @@
+--source include/have_tianmu.inc
+
 use test;
 create table tt (val time) ENGINE=TIANMU;
 insert into tt values ('06:34:12'), ('13:23:33');
