@@ -23,6 +23,7 @@
 
 namespace Tianmu {
 namespace vcolumn {
+
 void ConstExpressionColumn::RequestEval([[maybe_unused]] const core::MIIterator &mit, [[maybe_unused]] const int tta) {
   first_eval_ = true;
   // TODO: check if parameters were changed before reeval
@@ -36,9 +37,11 @@ void ConstExpressionColumn::RequestEval([[maybe_unused]] const core::MIIterator 
 
 double ConstExpressionColumn::GetValueDoubleImpl([[maybe_unused]] const core::MIIterator &mit) {
   DEBUG_ASSERT(core::ATI::IsNumericType(TypeName()));
+
   double val = 0;
   if (last_val_->IsNull())
     return NULL_VALUE_D;
+
   if (core::ATI::IsIntegerType(TypeName()))
     val = (double)last_val_->Get64();
   else if (core::ATI::IsFixedNumericType(TypeName()))
@@ -58,10 +61,12 @@ double ConstExpressionColumn::GetValueDoubleImpl([[maybe_unused]] const core::MI
     val = (double)vd_conv;
   } else if (core::ATI::IsStringType(TypeName())) {
     auto vs = last_val_->ToString();
+
     if (vs)
       val = std::stod(*vs);
   } else
     DEBUG_ASSERT(0 && "conversion to double not implemented");
+
   return val;
 }
 
@@ -75,41 +80,49 @@ types::TianmuValueObject ConstExpressionColumn::GetValueImpl([[maybe_unused]] co
     last_val_->GetBString(s);
     return s;
   }
+
   if (core::ATI::IsIntegerType(TypeName()))
     return types::TianmuNum(last_val_->Get64(), -1, false, TypeName());
+
   if (core::ATI::IsDateTimeType(TypeName()))
     return types::TianmuDateTime(last_val_->Get64(), TypeName());
+
   if (core::ATI::IsRealType(TypeName()))
     return types::TianmuNum(last_val_->Get64(), 0, true, TypeName());
+
   if (lookup_to_num || TypeName() == common::ColumnType::NUM)
     return types::TianmuNum((int64_t)last_val_->Get64(), Type().GetScale());
+
   DEBUG_ASSERT(!"Illegal execution path");
   return types::TianmuValueObject();
 }
 
 int64_t ConstExpressionColumn::GetSumImpl(const core::MIIterator &mit, bool &nonnegative) {
   DEBUG_ASSERT(!core::ATI::IsStringType(TypeName()));
+
   nonnegative = true;
   if (last_val_->IsNull())
-    return common::NULL_VALUE_64;  // note that this is a bit ambiguous: the
-                                   // same is for sum of nulls and for "not
+    return common::NULL_VALUE_64;  // note that this is a bit ambiguous: the  same is for sum of nulls and for "not
                                    // implemented"
   if (core::ATI::IsRealType(TypeName())) {
     double res = last_val_->GetDouble() * mit.GetPackSizeLeft();
     return *(int64_t *)&res;
   }
+
   return (last_val_->Get64() * mit.GetPackSizeLeft());
 }
 
 types::BString ConstExpressionColumn::GetMinStringImpl([[maybe_unused]] const core::MIIterator &mit) {
   types::BString s;
   last_val_->GetBString(s);
+
   return s;
 }
 
 types::BString ConstExpressionColumn::GetMaxStringImpl([[maybe_unused]] const core::MIIterator &mit) {
   types::BString s;
   last_val_->GetBString(s);
+
   return s;
 }
 
@@ -128,6 +141,7 @@ core::PackOntologicalStatus ConstExpressionColumn::GetPackOntologicalStatusImpl(
     [maybe_unused]] const core::MIIterator &mit) {
   if (last_val_->IsNull())
     return core::PackOntologicalStatus::NULLS_ONLY;
+
   return core::PackOntologicalStatus::UNIFORM;
 }
 
@@ -136,14 +150,15 @@ void ConstExpressionColumn::EvaluatePackImpl([[maybe_unused]] core::MIUpdatingIt
   DEBUG_ASSERT(0);  // comparison of a const with a const should be simplified earlier
 }
 
-common::RSValue ConstExpressionColumn::RoughCheckImpl([[maybe_unused]] const core::MIIterator &mit,
-                                                      [[maybe_unused]] core::Descriptor &d) {
-  return common::RSValue::RS_SOME;  // not implemented
+common::RoughSetValue ConstExpressionColumn::RoughCheckImpl([[maybe_unused]] const core::MIIterator &mit,
+                                                            [[maybe_unused]] core::Descriptor &d) {
+  return common::RoughSetValue::RS_SOME;  // not implemented
 }
 
 types::BString ConstExpressionColumn::DecodeValue_S([[maybe_unused]] int64_t code) {
   types::BString s;
   last_val_->GetBString(s);
+
   return s;
 }
 
