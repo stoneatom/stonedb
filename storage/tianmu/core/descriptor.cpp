@@ -57,7 +57,7 @@ Descriptor::Descriptor()
       tree(nullptr),
       left_dims(0),
       right_dims(0),
-      rv(common::RSValue::RS_UNKNOWN),
+      rv(common::RoughSetValue::RS_UNKNOWN),
       like_esc('\\'),
       desc_t(DescriptorJoinType::DT_NOT_KNOWN_YET),
       collation(DTCollation()),
@@ -78,7 +78,7 @@ Descriptor::Descriptor(TempTable *t, int no_dims)  // no_dims is a destination n
       tree(nullptr),
       left_dims(no_dims),
       right_dims(no_dims),
-      rv(common::RSValue::RS_UNKNOWN),
+      rv(common::RoughSetValue::RS_UNKNOWN),
       like_esc('\\'),
       desc_t(DescriptorJoinType::DT_NOT_KNOWN_YET),
       collation(DTCollation()),
@@ -124,7 +124,7 @@ Descriptor::Descriptor(CQTerm e1, common::Operator pr, CQTerm e2, CQTerm e3, Tem
       tree(nullptr),
       left_dims(no_dims),
       right_dims(no_dims),
-      rv(common::RSValue::RS_UNKNOWN),
+      rv(common::RoughSetValue::RS_UNKNOWN),
       desc_t(DescriptorJoinType::DT_NOT_KNOWN_YET),
       collation(DTCollation()),
       null_after_simplify(false) {
@@ -146,7 +146,7 @@ Descriptor::Descriptor(DescTree *sec_tree, TempTable *t, int no_dims)
       table(t),
       left_dims(no_dims),
       right_dims(no_dims),
-      rv(common::RSValue::RS_UNKNOWN),
+      rv(common::RoughSetValue::RS_UNKNOWN),
       like_esc('\\'),
       desc_t(DescriptorJoinType::DT_NOT_KNOWN_YET),
       collation(DTCollation()),
@@ -169,7 +169,7 @@ Descriptor::Descriptor(TempTable *t, vcolumn::VirtualColumn *v1, common::Operato
       tree(nullptr),
       left_dims(0),
       right_dims(0),
-      rv(common::RSValue::RS_UNKNOWN),
+      rv(common::RoughSetValue::RS_UNKNOWN),
       like_esc('\\'),
       desc_t(DescriptorJoinType::DT_NOT_KNOWN_YET),
       collation(DTCollation()),
@@ -438,18 +438,18 @@ bool Descriptor::IsType_JoinComplex() const {
   return desc_t == DescriptorJoinType::DT_COMPLEX_JOIN;
 }
 
-common::RSValue Descriptor::EvaluateRoughlyPack(const MIIterator &mit) {
+common::RoughSetValue Descriptor::EvaluateRoughlyPack(const MIIterator &mit) {
   if (IsType_OrTree())
     return tree->root->EvaluateRoughlyPack(mit);
-  common::RSValue r = common::RSValue::RS_SOME;
+  common::RoughSetValue r = common::RoughSetValue::RS_SOME;
   if (attr.vc /*&& !attr.vc->IsConst()*/)
     r = attr.vc->RoughCheck(mit, *this);
-  if (rv == common::RSValue::RS_UNKNOWN)
+  if (rv == common::RoughSetValue::RS_UNKNOWN)
     rv = r;
-  else if (rv == common::RSValue::RS_NONE && r != common::RSValue::RS_NONE)
-    rv = common::RSValue::RS_SOME;
-  else if (rv == common::RSValue::RS_ALL && r != common::RSValue::RS_ALL)
-    rv = common::RSValue::RS_SOME;
+  else if (rv == common::RoughSetValue::RS_NONE && r != common::RoughSetValue::RS_NONE)
+    rv = common::RoughSetValue::RS_SOME;
+  else if (rv == common::RoughSetValue::RS_ALL && r != common::RoughSetValue::RS_ALL)
+    rv = common::RoughSetValue::RS_SOME;
   return r;
 }
 
@@ -1832,7 +1832,7 @@ void Descriptor::ClearRoughValues() {
   if (IsType_OrTree())
     tree->root->ClearRoughValues();
   else
-    rv = common::RSValue::RS_UNKNOWN;
+    rv = common::RoughSetValue::RS_UNKNOWN;
 }
 
 void Descriptor::RoughAccumulate(MIIterator &mit) {
@@ -1845,9 +1845,9 @@ void Descriptor::SimplifyAfterRoughAccumulate() {
     if (tree->UseRoughAccumulated())
       Simplify(false);
   } else {
-    if (rv == common::RSValue::RS_NONE)
+    if (rv == common::RoughSetValue::RS_NONE)
       op = common::Operator::O_FALSE;
-    else if (rv == common::RSValue::RS_ALL)
+    else if (rv == common::RoughSetValue::RS_ALL)
       op = common::Operator::O_TRUE;
   }
 }
@@ -2159,21 +2159,21 @@ common::Tribool DescTreeNode::Simplify(DescTreeNode *&root, bool in_having) {
                                              : (desc.op == common::Operator::O_FALSE ? false : common::TRIBOOL_UNKNOWN);
 }
 
-common::RSValue DescTreeNode::EvaluateRoughlyPack(const MIIterator &mit) {
+common::RoughSetValue DescTreeNode::EvaluateRoughlyPack(const MIIterator &mit) {
   if (desc.op == common::Operator::O_OR_TREE) {
-    common::RSValue left_res = left->EvaluateRoughlyPack(mit);
-    common::RSValue right_res = right->EvaluateRoughlyPack(mit);
-    common::RSValue r;
+    common::RoughSetValue left_res = left->EvaluateRoughlyPack(mit);
+    common::RoughSetValue right_res = right->EvaluateRoughlyPack(mit);
+    common::RoughSetValue r;
     if (desc.lop == common::LogicalOperator::O_AND)
       r = And(left_res, right_res);
     else
       r = Or(left_res, right_res);
-    if (desc.rv == common::RSValue::RS_UNKNOWN)
+    if (desc.rv == common::RoughSetValue::RS_UNKNOWN)
       desc.rv = r;
-    else if (desc.rv == common::RSValue::RS_NONE && r != common::RSValue::RS_NONE)
-      desc.rv = common::RSValue::RS_SOME;
-    else if (desc.rv == common::RSValue::RS_ALL && r != common::RSValue::RS_ALL)
-      desc.rv = common::RSValue::RS_SOME;
+    else if (desc.rv == common::RoughSetValue::RS_NONE && r != common::RoughSetValue::RS_NONE)
+      desc.rv = common::RoughSetValue::RS_SOME;
+    else if (desc.rv == common::RoughSetValue::RS_ALL && r != common::RoughSetValue::RS_ALL)
+      desc.rv = common::RoughSetValue::RS_SOME;
     return r;
   }
   return desc.EvaluateRoughlyPack(mit);
@@ -2251,35 +2251,35 @@ void DescTreeNode::EvaluatePack(MIUpdatingIterator &mit) {
   if (left) {             // i.e., not a leaf
     DEBUG_ASSERT(right);  // if left is not empty so should be right
     if (desc.lop == common::LogicalOperator::O_AND) {
-      if (left->desc.rv == common::RSValue::RS_NONE || right->desc.rv == common::RSValue::RS_NONE) {
+      if (left->desc.rv == common::RoughSetValue::RS_NONE || right->desc.rv == common::RoughSetValue::RS_NONE) {
         mit.ResetCurrentPack();
         mit.NextPackrow();
         return;
       }
-      if (left->desc.rv == common::RSValue::RS_ALL && right->desc.rv == common::RSValue::RS_ALL) {
+      if (left->desc.rv == common::RoughSetValue::RS_ALL && right->desc.rv == common::RoughSetValue::RS_ALL) {
         mit.NextPackrow();
         return;
       }
       int pack_start = mit.GetCurPackrow(single_dim);
-      if (left->desc.rv != common::RSValue::RS_ALL && mit.IsValid())
+      if (left->desc.rv != common::RoughSetValue::RS_ALL && mit.IsValid())
         left->EvaluatePack(mit);
-      if (right->desc.rv != common::RSValue::RS_ALL && mit.RewindToPack(pack_start) &&
+      if (right->desc.rv != common::RoughSetValue::RS_ALL && mit.RewindToPack(pack_start) &&
           mit.IsValid())  // otherwise the pack is already empty
         right->EvaluatePack(mit);
       return;
     } else {
-      if (left->desc.rv == common::RSValue::RS_NONE && right->desc.rv == common::RSValue::RS_NONE) {
+      if (left->desc.rv == common::RoughSetValue::RS_NONE && right->desc.rv == common::RoughSetValue::RS_NONE) {
         mit.ResetCurrentPack();
         mit.NextPackrow();
         return;
       }
-      if (left->desc.rv == common::RSValue::RS_ALL || right->desc.rv == common::RSValue::RS_ALL) {
+      if (left->desc.rv == common::RoughSetValue::RS_ALL || right->desc.rv == common::RoughSetValue::RS_ALL) {
         mit.NextPackrow();
         return;
       }
-      if (left->desc.rv == common::RSValue::RS_NONE)
+      if (left->desc.rv == common::RoughSetValue::RS_NONE)
         right->EvaluatePack(mit);
-      else if (right->desc.rv == common::RSValue::RS_NONE)
+      else if (right->desc.rv == common::RoughSetValue::RS_NONE)
         left->EvaluatePack(mit);
       else {
         int pack_start = mit.GetCurPackrow(single_dim);
@@ -2508,7 +2508,7 @@ void DescTreeNode::RoughAccumulate(MIIterator &mit) {
     left->RoughAccumulate(mit);
     right->RoughAccumulate(mit);
   } else {
-    if (desc.rv == common::RSValue::RS_SOME)
+    if (desc.rv == common::RoughSetValue::RS_SOME)
       return;
     desc.EvaluateRoughlyPack(mit);  // updating desc.rv inside
   }
@@ -2521,10 +2521,10 @@ bool DescTreeNode::UseRoughAccumulated() {
     return (res1 || res2);
   } else {
     bool res = false;
-    if (desc.rv == common::RSValue::RS_NONE) {
+    if (desc.rv == common::RoughSetValue::RS_NONE) {
       desc.op = common::Operator::O_FALSE;
       res = true;
-    } else if (desc.rv == common::RSValue::RS_ALL) {
+    } else if (desc.rv == common::RoughSetValue::RS_ALL) {
       desc.op = common::Operator::O_TRUE;
       res = true;
     }
@@ -2614,7 +2614,7 @@ void Descriptor::MClearRoughValues(int taskid) {
   if (IsType_OrTree())
     tree->root->MClearRoughValues(taskid);
   else
-    rvs[taskid] = common::RSValue::RS_UNKNOWN;
+    rvs[taskid] = common::RoughSetValue::RS_UNKNOWN;
 }
 
 void DescTreeNode::MClearRoughValues(int taskid) {
@@ -2625,36 +2625,36 @@ void DescTreeNode::MClearRoughValues(int taskid) {
     desc.MClearRoughValues(taskid);
 }
 
-common::RSValue Descriptor::MEvaluateRoughlyPack(const MIIterator &mit, int taskid) {
+common::RoughSetValue Descriptor::MEvaluateRoughlyPack(const MIIterator &mit, int taskid) {
   if (IsType_OrTree())
     return tree->root->MEvaluateRoughlyPack(mit, taskid);
-  common::RSValue r = common::RSValue::RS_SOME;
+  common::RoughSetValue r = common::RoughSetValue::RS_SOME;
   if (attr.vc /*&& !attr.vc->IsConst()*/)
     r = attr.vc->RoughCheck(mit, *this);
-  if (rvs[taskid] == common::RSValue::RS_UNKNOWN)
+  if (rvs[taskid] == common::RoughSetValue::RS_UNKNOWN)
     rvs[taskid] = r;
-  else if (rvs[taskid] == common::RSValue::RS_NONE && r != common::RSValue::RS_NONE)
-    rvs[taskid] = common::RSValue::RS_SOME;
-  else if (rvs[taskid] == common::RSValue::RS_ALL && r != common::RSValue::RS_ALL)
-    rvs[taskid] = common::RSValue::RS_SOME;
+  else if (rvs[taskid] == common::RoughSetValue::RS_NONE && r != common::RoughSetValue::RS_NONE)
+    rvs[taskid] = common::RoughSetValue::RS_SOME;
+  else if (rvs[taskid] == common::RoughSetValue::RS_ALL && r != common::RoughSetValue::RS_ALL)
+    rvs[taskid] = common::RoughSetValue::RS_SOME;
   return r;
 }
 
-common::RSValue DescTreeNode::MEvaluateRoughlyPack(const MIIterator &mit, int taskid) {
+common::RoughSetValue DescTreeNode::MEvaluateRoughlyPack(const MIIterator &mit, int taskid) {
   if (desc.op == common::Operator::O_OR_TREE) {
-    common::RSValue left_res = left->MEvaluateRoughlyPack(mit, taskid);
-    common::RSValue right_res = right->MEvaluateRoughlyPack(mit, taskid);
-    common::RSValue r;
+    common::RoughSetValue left_res = left->MEvaluateRoughlyPack(mit, taskid);
+    common::RoughSetValue right_res = right->MEvaluateRoughlyPack(mit, taskid);
+    common::RoughSetValue r;
     if (desc.lop == common::LogicalOperator::O_AND)
       r = And(left_res, right_res);
     else
       r = Or(left_res, right_res);
-    if (desc.rvs[taskid] == common::RSValue::RS_UNKNOWN)
+    if (desc.rvs[taskid] == common::RoughSetValue::RS_UNKNOWN)
       desc.rvs[taskid] = r;
-    else if (desc.rvs[taskid] == common::RSValue::RS_NONE && r != common::RSValue::RS_NONE)
-      desc.rvs[taskid] = common::RSValue::RS_SOME;
-    else if (desc.rvs[taskid] == common::RSValue::RS_ALL && r != common::RSValue::RS_ALL)
-      desc.rvs[taskid] = common::RSValue::RS_SOME;
+    else if (desc.rvs[taskid] == common::RoughSetValue::RS_NONE && r != common::RoughSetValue::RS_NONE)
+      desc.rvs[taskid] = common::RoughSetValue::RS_SOME;
+    else if (desc.rvs[taskid] == common::RoughSetValue::RS_ALL && r != common::RoughSetValue::RS_ALL)
+      desc.rvs[taskid] = common::RoughSetValue::RS_SOME;
     return r;
   }
   return desc.MEvaluateRoughlyPack(mit, taskid);
@@ -2682,7 +2682,7 @@ void DescTreeNode::MPrepareToLock(int locked_by, int taskid) {
 void Descriptor::InitRvs(int value) {
   parallsize = value;
   for (int i = 0; i < parallsize + 1; i++) {
-    rvs.push_back(common::RSValue::RS_UNKNOWN);
+    rvs.push_back(common::RoughSetValue::RS_UNKNOWN);
   }
 }
 
@@ -2708,7 +2708,7 @@ void DescTreeNode::InitLocks(int value) {
 void Descriptor::InitParallel(int value, MIIterator &mit) {
   parallsize = value;
   for (int i = 0; i < parallsize + 1; i++) {
-    rvs.push_back(common::RSValue::RS_UNKNOWN);
+    rvs.push_back(common::RoughSetValue::RS_UNKNOWN);
   }
   if (encoded) {
     PrepareValueSet(mit);
@@ -2738,35 +2738,39 @@ void DescTreeNode::MEvaluatePack(MIUpdatingIterator &mit, int taskid) {
   if (left) {             // i.e., not a leaf
     DEBUG_ASSERT(right);  // if left is not empty so should be right
     if (desc.lop == common::LogicalOperator::O_AND) {
-      if (left->desc.rvs[taskid] == common::RSValue::RS_NONE || right->desc.rvs[taskid] == common::RSValue::RS_NONE) {
+      if (left->desc.rvs[taskid] == common::RoughSetValue::RS_NONE ||
+          right->desc.rvs[taskid] == common::RoughSetValue::RS_NONE) {
         mit.ResetCurrentPack();
         mit.NextPackrow();
         return;
       }
-      if (left->desc.rvs[taskid] == common::RSValue::RS_ALL && right->desc.rvs[taskid] == common::RSValue::RS_ALL) {
+      if (left->desc.rvs[taskid] == common::RoughSetValue::RS_ALL &&
+          right->desc.rvs[taskid] == common::RoughSetValue::RS_ALL) {
         mit.NextPackrow();
         return;
       }
       int pack_start = mit.GetCurPackrow(single_dim);
-      if (left->desc.rvs[taskid] != common::RSValue::RS_ALL && mit.IsValid())
+      if (left->desc.rvs[taskid] != common::RoughSetValue::RS_ALL && mit.IsValid())
         left->MEvaluatePack(mit, taskid);
-      if (right->desc.rvs[taskid] != common::RSValue::RS_ALL && mit.RewindToPack(pack_start) &&
+      if (right->desc.rvs[taskid] != common::RoughSetValue::RS_ALL && mit.RewindToPack(pack_start) &&
           mit.IsValid())  // otherwise the pack is already empty
         right->MEvaluatePack(mit, taskid);
       return;
     } else {
-      if (left->desc.rvs[taskid] == common::RSValue::RS_NONE && right->desc.rvs[taskid] == common::RSValue::RS_NONE) {
+      if (left->desc.rvs[taskid] == common::RoughSetValue::RS_NONE &&
+          right->desc.rvs[taskid] == common::RoughSetValue::RS_NONE) {
         mit.ResetCurrentPack();
         mit.NextPackrow();
         return;
       }
-      if (left->desc.rvs[taskid] == common::RSValue::RS_ALL || right->desc.rvs[taskid] == common::RSValue::RS_ALL) {
+      if (left->desc.rvs[taskid] == common::RoughSetValue::RS_ALL ||
+          right->desc.rvs[taskid] == common::RoughSetValue::RS_ALL) {
         mit.NextPackrow();
         return;
       }
-      if (left->desc.rvs[taskid] == common::RSValue::RS_NONE)
+      if (left->desc.rvs[taskid] == common::RoughSetValue::RS_NONE)
         right->MEvaluatePack(mit, taskid);
-      else if (right->desc.rvs[taskid] == common::RSValue::RS_NONE)
+      else if (right->desc.rvs[taskid] == common::RoughSetValue::RS_NONE)
         left->MEvaluatePack(mit, taskid);
       else {
         int pack_start = mit.GetCurPackrow(single_dim);

@@ -41,14 +41,14 @@ class RSIndex_CMap final : public RSIndex {
                 int pack);  // set information that value v does exist in this pack
   void Create(int64_t _no_obj, int no_pos, int pss);
 
-  common::RSValue IsValue(types::BString min_v, types::BString max_v, int pack);
+  common::RoughSetValue IsValue(types::BString min_v, types::BString max_v, int pack);
   // Results:		common::RSValue::RS_NONE - there is no objects having values
   // between min_v and max_v (including)
   //				common::RSValue::RS_SOME - some objects from this pack do
   // have values
   // between min_v and max_v 				common::RSValue::RS_ALL	- all objects
   // from this pack do have values between min_v and max_v
-  common::RSValue IsLike(types::BString pattern, int pack, char escape_character);
+  common::RoughSetValue IsLike(types::BString pattern, int pack, char escape_character);
   int Count(int pack, uint pos);  // a number of ones in the pack on a given
                                   // position 0..no_positions
   bool IsSet(int pack, unsigned char c, uint pos);

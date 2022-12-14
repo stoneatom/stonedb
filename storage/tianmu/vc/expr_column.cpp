@@ -61,21 +61,16 @@ ExpressionColumn::ExpressionColumn(core::MysqlExpression *expr, core::TempTable 
         var_buf_[v] = std::vector<core::MysqlExpression::value_or_null_info_t>();  // now empty, pointers
                                                                                    // inserted by SetBufs()
       } else {
-        // parameter
         // parameter type is not available here, must be set later (EvalType())
         params_.insert(v);
-        //				param_buf[v].second = nullptr; //assigned
-        // by
-        // SetBufs()
+        // param_buf[v].second = nullptr; //assigned by SetBufs()
       }
     }
+
     ct = core::ColumnType(expr_->EvalType(&var_types_));  // set the column type from expression result type
     expr->SetBufsOrParams(&var_buf_);
-    //		expr->SetBufsOrParams(&param_buf);
     dim_ = (only_dim_number >= 0 ? only_dim_number : -1);
 
-    // if (status == VC_EXPR && var_map_.size() == 0 )
-    //	status = VC_CONST;
   } else {
     DEBUG_ASSERT(!"unexpected!!");
   }

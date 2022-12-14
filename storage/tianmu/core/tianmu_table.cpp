@@ -227,7 +227,7 @@ std::vector<AttrInfo> TianmuTable::GetAttributesInfo() {
       info[j].no_nulls = true;
     else
       info[j].no_nulls = false;
-    info[j].actually_unique = (m_attrs[j]->PhysicalColumn::IsDistinct() == common::RSValue::RS_ALL);
+    info[j].actually_unique = (m_attrs[j]->PhysicalColumn::IsDistinct() == common::RoughSetValue::RS_ALL);
     info[j].uncomp_size = m_attrs[j]->ComputeNaturalSize();
     info[j].comp_size = m_attrs[j]->CompressedSize();
   }

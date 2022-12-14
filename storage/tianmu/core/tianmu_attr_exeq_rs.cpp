@@ -40,11 +40,11 @@ uint Int64StrLen(int64_t x) {
 }
 
 // NOTE: similar code is in vcolumn::VirtualColumnBase::DoRoughCheck
-common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_nulls_possible) {
+common::RoughSetValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_nulls_possible) {
   if (d.op == common::Operator::O_FALSE)
-    return common::RSValue::RS_NONE;
+    return common::RoughSetValue::RS_NONE;
   else if (d.op == common::Operator::O_TRUE)
-    return common::RSValue::RS_ALL;
+    return common::RoughSetValue::RS_ALL;
   // TODO: implement RoughCheck CMAP for utf8
   if (GetPackType() == common::PackType::STR && types::RequiresUTFConversions(d.GetCollation()) &&
       d.GetCollation().collation != Type().GetCollation().collation) {
@@ -54,16 +54,16 @@ common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_
       auto const &dpn(get_dpn(pack));
       if (dpn.NullOnly()) {  // all objects are null
         if (d.op == common::Operator::O_IS_NULL)
-          return common::RSValue::RS_ALL;
+          return common::RoughSetValue::RS_ALL;
         else
-          return common::RSValue::RS_NONE;
+          return common::RoughSetValue::RS_NONE;
       }
     }
-    return common::RSValue::RS_SOME;
+    return common::RoughSetValue::RS_SOME;
   }
   if (d.IsType_AttrValOrAttrValVal()) {
     if (!d.encoded)
-      return common::RSValue::RS_SOME;
+      return common::RoughSetValue::RS_SOME;
     vcolumn::VirtualColumn *vc1 = d.val1.vc;
     static MIIterator const mit(nullptr, pss);
     LoadPackInfo();  // just in case, although the condition was encoded and
@@ -71,24 +71,24 @@ common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_
     auto const &dpn(get_dpn(pack));
     if (dpn.NullOnly()) {  // all objects are null
       if (d.op == common::Operator::O_IS_NULL)
-        return common::RSValue::RS_ALL;
+        return common::RoughSetValue::RS_ALL;
       else
-        return common::RSValue::RS_NONE;
+        return common::RoughSetValue::RS_NONE;
     }
     if (d.op == common::Operator::O_IS_NULL || d.op == common::Operator::O_NOT_NULL) {
       if (dpn.numOfNulls == 0 && !additional_nulls_possible) {
         if (d.op == common::Operator::O_IS_NULL)
-          return common::RSValue::RS_NONE;
+          return common::RoughSetValue::RS_NONE;
         else
-          return common::RSValue::RS_ALL;
+          return common::RoughSetValue::RS_ALL;
       }
-      return common::RSValue::RS_SOME;
+      return common::RoughSetValue::RS_SOME;
     } else if ((d.op == common::Operator::O_LIKE || d.op == common::Operator::O_NOT_LIKE) &&
                GetPackType() == common::PackType::STR) {
       DEBUG_ASSERT(vc1->IsConst());
       types::BString pat;
       vc1->GetValueString(pat, mit);
-      common::RSValue res = common::RSValue::RS_SOME;
+      common::RoughSetValue res = common::RoughSetValue::RS_SOME;
       // here: check min, max
       uint pattern_prefix = 0;        // e.g. "ab_cd_e%f"  -> 7
       uint pattern_fixed_prefix = 0;  // e.g. "ab_cd_e%f"  -> 2
@@ -106,21 +106,21 @@ common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_
 
         if ((pattern_fixed_prefix > 0) &&
             types::BString(pat.val_, pattern_fixed_prefix).LessEqThanMaxUTF(dpn.max_s, Type().GetCollation()) == false)
-          res = common::RSValue::RS_NONE;
+          res = common::RoughSetValue::RS_NONE;
 
         if (pattern_fixed_prefix > GetActualSize(pack))
-          res = common::RSValue::RS_NONE;
+          res = common::RoughSetValue::RS_NONE;
         pack_prefix = GetPrefixLength(pack);
-        if (res == common::RSValue::RS_SOME && pack_prefix > 0 &&
+        if (res == common::RoughSetValue::RS_SOME && pack_prefix > 0 &&
             pattern_fixed_prefix <= pack_prefix  // special case: "xyz%" and the
                                                  // pack prefix is at least 3
             && pattern_fixed_prefix + 1 == pat.len_ && pat[pattern_fixed_prefix] == '%') {
           if (d.GetCollation().collation->coll->strnncoll(d.GetCollation().collation, (const uchar *)pat.val_,
                                                           pattern_fixed_prefix, (const uchar *)dpn.min_s,
                                                           pattern_fixed_prefix, 0) == 0)
-            res = common::RSValue::RS_ALL;
+            res = common::RoughSetValue::RS_ALL;
           else
-            res = common::RSValue::RS_NONE;  // prefix and pattern are different
+            res = common::RoughSetValue::RS_NONE;  // prefix and pattern are different
         }
 
       } else {
@@ -130,22 +130,22 @@ common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_
 
         if ((pattern_fixed_prefix > 0) && types::BString(pat.val_, pattern_fixed_prefix).LessEqThanMax(dpn.max_s) ==
                                               false)  // val_t==nullptr means +/-infty
-          res = common::RSValue::RS_NONE;
+          res = common::RoughSetValue::RS_NONE;
         if (pattern_fixed_prefix > GetActualSize(pack))
-          res = common::RSValue::RS_NONE;
+          res = common::RoughSetValue::RS_NONE;
         pack_prefix = GetPrefixLength(pack);
-        if (res == common::RSValue::RS_SOME && pack_prefix > 0 &&
+        if (res == common::RoughSetValue::RS_SOME && pack_prefix > 0 &&
             pattern_fixed_prefix <= pack_prefix  // special case: "xyz%" and the
                                                  // pack prefix is at least 3
             && pattern_fixed_prefix + 1 == pat.len_ && pat[pattern_fixed_prefix] == '%') {
           if (std::memcmp(pat.val_, dpn.min_s, pattern_fixed_prefix) == 0)  // pattern is equal to the prefix
-            res = common::RSValue::RS_ALL;
+            res = common::RoughSetValue::RS_ALL;
           else
-            res = common::RSValue::RS_NONE;  // prefix and pattern are different
+            res = common::RoughSetValue::RS_NONE;  // prefix and pattern are different
         }
       }
 
-      if (res == common::RSValue::RS_SOME && std::min(pattern_prefix, pack_prefix) < pat.len_ &&
+      if (res == common::RoughSetValue::RS_SOME && std::min(pattern_prefix, pack_prefix) < pat.len_ &&
           !types::RequiresUTFConversions(d.GetCollation())) {
         types::BString pattern_for_cmap;  // note that cmap is shifted by a common prefix!
         if (pattern_prefix > pack_prefix)
@@ -159,39 +159,39 @@ common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_
           if (auto sp = GetFilter_CMap())
             res = sp->IsLike(pattern_for_cmap, pack, d.like_esc);
         } else
-          res = common::RSValue::RS_ALL;
+          res = common::RoughSetValue::RS_ALL;
       }
       if (d.op == common::Operator::O_NOT_LIKE) {
-        if (res == common::RSValue::RS_ALL)
-          res = common::RSValue::RS_NONE;
-        else if (res == common::RSValue::RS_NONE)
-          res = common::RSValue::RS_ALL;
+        if (res == common::RoughSetValue::RS_ALL)
+          res = common::RoughSetValue::RS_NONE;
+        else if (res == common::RoughSetValue::RS_NONE)
+          res = common::RoughSetValue::RS_ALL;
       }
-      if ((dpn.numOfNulls != 0 || additional_nulls_possible) && res == common::RSValue::RS_ALL)
-        res = common::RSValue::RS_SOME;
+      if ((dpn.numOfNulls != 0 || additional_nulls_possible) && res == common::RoughSetValue::RS_ALL)
+        res = common::RoughSetValue::RS_SOME;
       return res;
     } else if ((d.op == common::Operator::O_IN || d.op == common::Operator::O_NOT_IN) &&
                GetPackType() == common::PackType::STR) {
       DEBUG_ASSERT(dynamic_cast<vcolumn::MultiValColumn *>(vc1));
       vcolumn::MultiValColumn *mvc(static_cast<vcolumn::MultiValColumn *>(vc1));
       uint pack_prefix = GetPrefixLength(pack);
-      common::RSValue res = common::RSValue::RS_SOME;
+      common::RoughSetValue res = common::RoughSetValue::RS_SOME;
       if ((mvc->IsConst()) && (mvc->NumOfValues(mit) > 0 && mvc->NumOfValues(mit) < 64) &&
           !types::RequiresUTFConversions(d.GetCollation())) {
         if (auto sp = GetFilter_CMap()) {
-          res = common::RSValue::RS_NONE;  // TODO: get rid with the iterator below
+          res = common::RoughSetValue::RS_NONE;  // TODO: get rid with the iterator below
 
           for (vcolumn::MultiValColumn::Iterator it = mvc->begin(mit), end = mvc->end(mit);
-               (it != end) && (res == common::RSValue::RS_NONE); ++it) {
+               (it != end) && (res == common::RoughSetValue::RS_NONE); ++it) {
             types::BString v1 = it->GetString();
             if (pack_prefix <= v1.len_) {
               if (pack_prefix == 0 || std::memcmp(v1.val_, dpn.min_s, pack_prefix) == 0) {
                 size_t len = v1.len_ - pack_prefix;
                 types::BString v(len <= 0 ? "" : v1.val_ + pack_prefix, (int)len);
-                if (v1.len_ == pack_prefix || sp->IsValue(v, v, pack) != common::RSValue::RS_NONE)
+                if (v1.len_ == pack_prefix || sp->IsValue(v, v, pack) != common::RoughSetValue::RS_NONE)
                   // suspected, if any value is possible (due to the prefix or
                   // CMAP)
-                  res = common::RSValue::RS_SOME;
+                  res = common::RoughSetValue::RS_SOME;
               }
             }
           }
@@ -199,27 +199,27 @@ common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_
       }
 
       // add bloom filter for in/not in
-      if (res == common::RSValue::RS_SOME && (mvc->IsConst()) &&
+      if (res == common::RoughSetValue::RS_SOME && (mvc->IsConst()) &&
           (mvc->NumOfValues(mit) > 0 && mvc->NumOfValues(mit) < 64)) {
         if (auto sp = GetFilter_Bloom()) {
-          res = common::RSValue::RS_NONE;
+          res = common::RoughSetValue::RS_NONE;
           for (vcolumn::MultiValColumn::Iterator it = mvc->begin(mit), end = mvc->end(mit);
-               (it != end) && (res == common::RSValue::RS_NONE); ++it) {
+               (it != end) && (res == common::RoughSetValue::RS_NONE); ++it) {
             types::BString v = it->GetString();
-            if (sp->IsValue(v, v, pack) != common::RSValue::RS_NONE)
-              res = common::RSValue::RS_SOME;
+            if (sp->IsValue(v, v, pack) != common::RoughSetValue::RS_NONE)
+              res = common::RoughSetValue::RS_SOME;
           }
         }
       }
 
       if (d.op == common::Operator::O_NOT_IN) {
-        if (res == common::RSValue::RS_ALL)
-          res = common::RSValue::RS_NONE;
-        else if (res == common::RSValue::RS_NONE)
-          res = common::RSValue::RS_ALL;
+        if (res == common::RoughSetValue::RS_ALL)
+          res = common::RoughSetValue::RS_NONE;
+        else if (res == common::RoughSetValue::RS_NONE)
+          res = common::RoughSetValue::RS_ALL;
       }
-      if (res == common::RSValue::RS_ALL && (dpn.numOfNulls > 0 || additional_nulls_possible))
-        res = common::RSValue::RS_SOME;
+      if (res == common::RoughSetValue::RS_ALL && (dpn.numOfNulls > 0 || additional_nulls_possible))
+        res = common::RoughSetValue::RS_SOME;
       return res;
     } else if ((d.op == common::Operator::O_IN || d.op == common::Operator::O_NOT_IN) &&
                (GetPackType() == common::PackType::INT)) {
@@ -230,7 +230,7 @@ common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_
         types::TianmuNum rcn_min = mvc->GetSetMin(mit);
         types::TianmuNum rcn_max = mvc->GetSetMax(mit);
         if (rcn_min.IsNull() || rcn_max.IsNull())  // cannot determine min/max
-          return common::RSValue::RS_SOME;
+          return common::RoughSetValue::RS_SOME;
         if (Type().IsLookup()) {
           v1 = rcn_min.GetValueInt64();
           v2 = rcn_max.GetValueInt64();
@@ -240,31 +240,32 @@ common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_
           v2 = EncodeValue64(&rcn_max, v2_rounded);
         }
 
-        common::RSValue res = common::RSValue::RS_SOME;
+        common::RoughSetValue res = common::RoughSetValue::RS_SOME;
         if (ATI::IsRealType(TypeName()))
           return res;  // real values not implemented yet
         if (v1 > dpn.max_i || v2 < dpn.min_i) {
-          res = common::RSValue::RS_NONE;  // calculate as for common::Operator::O_IN and then take
-                                           // common::Operator::O_NOT_IN into account
+          res = common::RoughSetValue::RS_NONE;  // calculate as for common::Operator::O_IN and then take
+                                                 // common::Operator::O_NOT_IN into account
         } else if (dpn.min_i == dpn.max_i) {
           types::TianmuValueObject tianmu_value_obj(
               ATI::IsDateTimeType(TypeName())
                   ? types::TianmuValueObject(types::TianmuDateTime(dpn.min_i, TypeName()))
                   : types::TianmuValueObject(types::TianmuNum(dpn.min_i, Type().GetScale())));
-          res = (mvc->Contains(mit, *tianmu_value_obj) != false) ? common::RSValue::RS_ALL : common::RSValue::RS_NONE;
+          res = (mvc->Contains(mit, *tianmu_value_obj) != false) ? common::RoughSetValue::RS_ALL
+                                                                 : common::RoughSetValue::RS_NONE;
         } else {
           if (auto sp = GetFilter_Hist())
             res = sp->IsValue(v1, v2, pack, dpn.min_i, dpn.max_i);
-          if (res == common::RSValue::RS_ALL)  // v1, v2 are just a boundary, not
-                                               // continuous interval
-            res = common::RSValue::RS_SOME;
+          if (res == common::RoughSetValue::RS_ALL)  // v1, v2 are just a boundary, not
+                                                     // continuous interval
+            res = common::RoughSetValue::RS_SOME;
         }
-        if (res == common::RSValue::RS_SOME && (mvc->NumOfValues(mit) > 0 && mvc->NumOfValues(mit) < 64)) {
+        if (res == common::RoughSetValue::RS_SOME && (mvc->NumOfValues(mit) > 0 && mvc->NumOfValues(mit) < 64)) {
           bool v_rounded = false;
-          res = common::RSValue::RS_NONE;
+          res = common::RoughSetValue::RS_NONE;
           int64_t v;  // TODO: get rid with the iterator below
           for (vcolumn::MultiValColumn::Iterator it = mvc->begin(mit), end = mvc->end(mit);
-               (it != end) && (res == common::RSValue::RS_NONE); ++it) {
+               (it != end) && (res == common::RoughSetValue::RS_NONE); ++it) {
             if (!Type().IsLookup()) {  // otherwise it will be decoded to text
               v = EncodeValue64(it->GetValue().Get(), v_rounded);
             } else
@@ -272,23 +273,23 @@ common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_
             if (!v_rounded) {
               auto sp = GetFilter_Hist();
               if ((!sp && v <= dpn.max_i && v >= dpn.min_i) ||
-                  (sp && sp->IsValue(v, v, pack, dpn.min_i, dpn.max_i) != common::RSValue::RS_NONE)) {
+                  (sp && sp->IsValue(v, v, pack, dpn.min_i, dpn.max_i) != common::RoughSetValue::RS_NONE)) {
                 // suspected, if any value is possible
-                res = common::RSValue::RS_SOME;  // note: v_rounded means that this real
-                                                 // value could not match this pack
+                res = common::RoughSetValue::RS_SOME;  // note: v_rounded means that this real
+                                                       // value could not match this pack
                 break;
               }
             }
           }
         }
         if (d.op == common::Operator::O_NOT_IN) {
-          if (res == common::RSValue::RS_ALL)
-            res = common::RSValue::RS_NONE;
-          else if (res == common::RSValue::RS_NONE)
-            res = common::RSValue::RS_ALL;
+          if (res == common::RoughSetValue::RS_ALL)
+            res = common::RoughSetValue::RS_NONE;
+          else if (res == common::RoughSetValue::RS_NONE)
+            res = common::RoughSetValue::RS_ALL;
         }
-        if (res == common::RSValue::RS_ALL && (dpn.numOfNulls > 0 || additional_nulls_possible))
-          res = common::RSValue::RS_SOME;
+        if (res == common::RoughSetValue::RS_ALL && (dpn.numOfNulls > 0 || additional_nulls_possible))
+          res = common::RoughSetValue::RS_SOME;
         return res;
       }
     } else if (GetPackType() == common::PackType::STR) {  // Note: text operations as
@@ -297,7 +298,7 @@ common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_
 
       DEBUG_ASSERT(d.op == common::Operator::O_BETWEEN || d.op == common::Operator::O_NOT_BETWEEN);
       vcolumn::VirtualColumn *vc2 = d.val2.vc;
-      common::RSValue res = common::RSValue::RS_SOME;
+      common::RoughSetValue res = common::RoughSetValue::RS_SOME;
       uint pack_prefix = GetPrefixLength(pack);
       uint val_prefix = 0;
       types::BString vmin;
@@ -305,7 +306,7 @@ common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_
       vc1->GetValueString(vmin, mit);
       vc2->GetValueString(vmax, mit);
       if (vmin.IsNull() && vmax.IsNull())  // comparing with null - always false
-        return common::RSValue::RS_NONE;
+        return common::RoughSetValue::RS_NONE;
       while (vmin.val_ && vmax.val_ && val_prefix < vmin.len_ && val_prefix < vmax.len_ &&
              vmin[val_prefix] == vmax[val_prefix])
         val_prefix++;  // Common prefix for values. It is a value length in case
@@ -313,50 +314,50 @@ common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_
       // check min, max
       // TODO UTF8: check PREFIX handling
       if (val_prefix > GetActualSize(pack)) {  // value to be found is longer than texts in the pack
-        res = common::RSValue::RS_NONE;
+        res = common::RoughSetValue::RS_NONE;
       } else if ((vmax.val_ && vmax.GreaterEqThanMinUTF(dpn.min_s, Type().GetCollation()) == false) ||
                  (vmin.val_ &&
                   vmin.LessEqThanMaxUTF(dpn.max_s, Type().GetCollation()) == false))  // val_t==nullptr means +/-infty
-        res = common::RSValue::RS_NONE;
+        res = common::RoughSetValue::RS_NONE;
       else if ((vmin.val_ == nullptr || vmin.GreaterEqThanMinUTF(dpn.min_s, Type().GetCollation()) == false) &&
                (vmax.val_ == nullptr ||
                 vmax.LessEqThanMaxUTF(dpn.max_s, Type().GetCollation()) == false))  // val_t==nullptr means +/-infty
-        res = common::RSValue::RS_ALL;
+        res = common::RoughSetValue::RS_ALL;
       else if (pack_prefix == GetActualSize(pack) && vmin == vmax) {  // exact case for short texts
         if (vmin.GreaterEqThanMinUTF(dpn.min_s, Type().GetCollation()) &&
             vmin.LessEqThanMaxUTF(dpn.min_s, Type().GetCollation()))
-          res = common::RSValue::RS_ALL;
+          res = common::RoughSetValue::RS_ALL;
         else
-          res = common::RSValue::RS_NONE;
+          res = common::RoughSetValue::RS_NONE;
       }
 
-      if (res == common::RSValue::RS_SOME && vmin.len_ >= pack_prefix && vmax.len_ >= pack_prefix &&
+      if (res == common::RoughSetValue::RS_SOME && vmin.len_ >= pack_prefix && vmax.len_ >= pack_prefix &&
           !types::RequiresUTFConversions(d.GetCollation())) {
         vmin += pack_prefix;  // redefine - shift by a common prefix
         vmax += pack_prefix;
         if (auto sp = GetFilter_CMap()) {
           res = sp->IsValue(vmin, vmax, pack);
-          if (d.sharp && res == common::RSValue::RS_ALL)
-            res = common::RSValue::RS_SOME;  // simplified version
+          if (d.sharp && res == common::RoughSetValue::RS_ALL)
+            res = common::RoughSetValue::RS_SOME;  // simplified version
         }
 
         vmin -= pack_prefix;
         vmax -= pack_prefix;
       }
-      if (res == common::RSValue::RS_SOME) {
+      if (res == common::RoughSetValue::RS_SOME) {
         if (auto sp = GetFilter_Bloom()) {
           res = sp->IsValue(vmin, vmax, pack);
         }
       }
 
       if (d.op == common::Operator::O_NOT_BETWEEN) {
-        if (res == common::RSValue::RS_ALL)
-          res = common::RSValue::RS_NONE;
-        else if (res == common::RSValue::RS_NONE)
-          res = common::RSValue::RS_ALL;
+        if (res == common::RoughSetValue::RS_ALL)
+          res = common::RoughSetValue::RS_NONE;
+        else if (res == common::RoughSetValue::RS_NONE)
+          res = common::RoughSetValue::RS_ALL;
       }
-      if ((dpn.numOfNulls != 0 || additional_nulls_possible) && res == common::RSValue::RS_ALL) {
-        res = common::RSValue::RS_SOME;
+      if ((dpn.numOfNulls != 0 || additional_nulls_possible) && res == common::RoughSetValue::RS_ALL) {
+        res = common::RoughSetValue::RS_SOME;
       }
       return res;
     } else if (GetPackType() == common::PackType::INT) {
@@ -377,37 +378,37 @@ common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_
         if (v2 == *(int64_t *)&common::PLUS_INF_DBL)
           v2 = dpn.max_i;
       }
-      common::RSValue res =
+      common::RoughSetValue res =
           RoughCheckBetween(pack, v1,
                             v2);  // calculate as for common::Operator::O_BETWEEN and then consider negation
       if (d.op == common::Operator::O_NOT_BETWEEN) {
-        if (res == common::RSValue::RS_ALL)
-          res = common::RSValue::RS_NONE;
-        else if (res == common::RSValue::RS_NONE) {
-          res = common::RSValue::RS_ALL;
+        if (res == common::RoughSetValue::RS_ALL)
+          res = common::RoughSetValue::RS_NONE;
+        else if (res == common::RoughSetValue::RS_NONE) {
+          res = common::RoughSetValue::RS_ALL;
         }
       }
-      if (res == common::RSValue::RS_ALL && (dpn.numOfNulls != 0 || additional_nulls_possible)) {
-        res = common::RSValue::RS_SOME;
+      if (res == common::RoughSetValue::RS_ALL && (dpn.numOfNulls != 0 || additional_nulls_possible)) {
+        res = common::RoughSetValue::RS_SOME;
       }
       return res;
     }
   } else {
     if (!d.encoded)
-      return common::RSValue::RS_SOME;
+      return common::RoughSetValue::RS_SOME;
     vcolumn::SingleColumn *sc =
         (static_cast<int>(d.val1.vc->IsSingleColumn()) ? static_cast<vcolumn::SingleColumn *>(d.val1.vc) : nullptr);
     TianmuAttr *sec = nullptr;
     if (sc)
       sec = dynamic_cast<TianmuAttr *>(sc->GetPhysical());
     if (d.IsType_AttrAttr() && d.op != common::Operator::O_BETWEEN && d.op != common::Operator::O_NOT_BETWEEN && sec) {
-      common::RSValue res = common::RSValue::RS_SOME;
+      common::RoughSetValue res = common::RoughSetValue::RS_SOME;
       // special cases, not implemented yet:
       if ((TypeName() != sec->TypeName() &&  // Exceptions:
            !(ATI::IsDateTimeType(TypeName()) && ATI::IsDateTimeType(sec->TypeName())) &&
            !(ATI::IsIntegerType(TypeName()) && ATI::IsIntegerType(sec->TypeName()))) ||
           Type().GetScale() != sec->Type().GetScale() || Type().IsLookup() || sec->Type().IsLookup())
-        return common::RSValue::RS_SOME;
+        return common::RoughSetValue::RS_SOME;
       LoadPackInfo();
       sec->LoadPackInfo();
 
@@ -425,33 +426,33 @@ common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_
                                  // later (treated as negations)
             if (d.op == common::Operator::O_LESS ||
                 d.op == common::Operator::O_MORE_EQ)  // the second case will be negated soon
-              res = common::RSValue::RS_NONE;
+              res = common::RoughSetValue::RS_NONE;
             if (v1min > v2max) {
               if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ)
-                res = common::RSValue::RS_NONE;
+                res = common::RoughSetValue::RS_NONE;
               if (d.op == common::Operator::O_MORE || d.op == common::Operator::O_LESS_EQ)
-                res = common::RSValue::RS_ALL;
+                res = common::RoughSetValue::RS_ALL;
             }
           }
           if (v1max <= v2min) {
             if (d.op == common::Operator::O_MORE ||
                 d.op == common::Operator::O_LESS_EQ)  // the second case will be negated soon
-              res = common::RSValue::RS_NONE;
+              res = common::RoughSetValue::RS_NONE;
             if (v1max < v2min) {
               if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ)
-                res = common::RSValue::RS_NONE;
+                res = common::RoughSetValue::RS_NONE;
               if (d.op == common::Operator::O_LESS || d.op == common::Operator::O_MORE_EQ)
-                res = common::RSValue::RS_ALL;
+                res = common::RoughSetValue::RS_ALL;
             }
           }
-          if (res == common::RSValue::RS_SOME &&
+          if (res == common::RoughSetValue::RS_SOME &&
               (d.op == common::Operator::O_EQ ||
                d.op == common::Operator::O_NOT_EQ)) {  // the second case will be negated soon
             if (v1min == v1max && v2min == v2max) {
               if (v1min == v2min)
-                res = common::RSValue::RS_ALL;
+                res = common::RoughSetValue::RS_ALL;
               else
-                res = common::RSValue::RS_NONE;
+                res = common::RoughSetValue::RS_NONE;
             } else if (v1min == v1max) {
               auto sp2 = sec->GetFilter_Hist();
               if (sp2) {
@@ -468,16 +469,16 @@ common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_
 
               // check intersection possibility on histograms
               if (sp && sp2 && (sp->Intersection(pack, v1min, v1max, sp2.get(), pack, v2min, v2max) == false))
-                res = common::RSValue::RS_NONE;
+                res = common::RoughSetValue::RS_NONE;
             }
           }
           // Now take into account all negations
           if (d.op == common::Operator::O_NOT_EQ || d.op == common::Operator::O_LESS_EQ ||
               d.op == common::Operator::O_MORE_EQ) {
-            if (res == common::RSValue::RS_ALL)
-              res = common::RSValue::RS_NONE;
-            else if (res == common::RSValue::RS_NONE)
-              res = common::RSValue::RS_ALL;
+            if (res == common::RoughSetValue::RS_ALL)
+              res = common::RoughSetValue::RS_NONE;
+            else if (res == common::RoughSetValue::RS_NONE)
+              res = common::RoughSetValue::RS_ALL;
           }
         } else if (GetPackType() == common::PackType::STR) {
           types::BString v1min(dpn.min_s, Int64StrLen(dpn.min_i), false);
@@ -490,59 +491,59 @@ common::RSValue TianmuAttr::RoughCheck(int pack, Descriptor &d, bool additional_
                     // will be taken into account later (treated as negations)
             if (d.op == common::Operator::O_LESS ||
                 d.op == common::Operator::O_MORE_EQ)  // the second case will be negated soon
-              res = common::RSValue::RS_NONE;
+              res = common::RoughSetValue::RS_NONE;
             if (CollationStrCmp(d.GetCollation(), v1min, v2max) > 0) {
               if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ)
-                res = common::RSValue::RS_NONE;
+                res = common::RoughSetValue::RS_NONE;
               if (d.op == common::Operator::O_MORE || d.op == common::Operator::O_LESS_EQ)
-                res = common::RSValue::RS_ALL;
+                res = common::RoughSetValue::RS_ALL;
             }
           }
           if (CollationStrCmp(d.GetCollation(), v1max, v2min) <= 0) {
             if (d.op == common::Operator::O_MORE ||
                 d.op == common::Operator::O_LESS_EQ)  // the second case will be negated soon
-              res = common::RSValue::RS_NONE;
+              res = common::RoughSetValue::RS_NONE;
             if (CollationStrCmp(d.GetCollation(), v1max, v2min) < 0) {
               if (d.op == common::Operator::O_EQ || d.op == common::Operator::O_NOT_EQ)
-                res = common::RSValue::RS_NONE;
+                res = common::RoughSetValue::RS_NONE;
               if (d.op == common::Operator::O_LESS || d.op == common::Operator::O_MORE_EQ)
-                res = common::RSValue::RS_ALL;
+                res = common::RoughSetValue::RS_ALL;
             }
           }
           if (d.op == common::Operator::O_NOT_EQ || d.op == common::Operator::O_LESS_EQ ||
               d.op == common::Operator::O_MORE_EQ) {
-            if (res == common::RSValue::RS_ALL)
-              res = common::RSValue::RS_NONE;
-            else if (res == common::RSValue::RS_NONE)
-              res = common::RSValue::RS_ALL;
+            if (res == common::RoughSetValue::RS_ALL)
+              res = common::RoughSetValue::RS_NONE;
+            else if (res == common::RoughSetValue::RS_NONE)
+              res = common::RoughSetValue::RS_ALL;
           }
         }
       }
       // take nulls into account
       if ((dpn.numOfNulls != 0 || secDpn.numOfNulls != 0 || additional_nulls_possible) &&
-          res == common::RSValue::RS_ALL)
-        res = common::RSValue::RS_SOME;
+          res == common::RoughSetValue::RS_ALL)
+        res = common::RoughSetValue::RS_SOME;
       return res;
     }
   }
-  return common::RSValue::RS_SOME;
+  return common::RoughSetValue::RS_SOME;
 }
 
-common::RSValue TianmuAttr::RoughCheck(int pack1, int pack2, Descriptor &d) {
+common::RoughSetValue TianmuAttr::RoughCheck(int pack1, int pack2, Descriptor &d) {
   vcolumn::VirtualColumn *vc1 = d.val1.vc;
   vcolumn::VirtualColumn *vc2 = d.val2.vc;
 
   // Limitations for now: only the easiest numerical cases
   if (vc1 == nullptr || vc2 != nullptr || d.op != common::Operator::O_EQ || pack1 == -1 || pack2 == -1)
-    return common::RSValue::RS_SOME;
+    return common::RoughSetValue::RS_SOME;
   vcolumn::SingleColumn *sc = nullptr;
   if (static_cast<int>(vc1->IsSingleColumn()))
     sc = static_cast<vcolumn::SingleColumn *>(vc1);
   if (sc == nullptr)
-    return common::RSValue::RS_SOME;
+    return common::RoughSetValue::RS_SOME;
   TianmuAttr *sec = dynamic_cast<TianmuAttr *>(sc->GetPhysical());
   if (sec == nullptr || !Type().IsNumComparable(sec->Type()))
-    return common::RSValue::RS_SOME;
+    return common::RoughSetValue::RS_SOME;
 
   LoadPackInfo();
   sec->LoadPackInfo();
@@ -550,36 +551,36 @@ common::RSValue TianmuAttr::RoughCheck(int pack1, int pack2, Descriptor &d) {
   //	if(sec->Type().IsFloat())
   //		return RoughCheckBetween(pack1, *(double*)(&secDpn.min),
   //*(double*)(&secDpn.max));
-  common::RSValue r = RoughCheckBetween(pack1, secDpn.min_i, secDpn.max_i);
-  return r == common::RSValue::RS_ALL ? common::RSValue::RS_SOME : r;
+  common::RoughSetValue r = RoughCheckBetween(pack1, secDpn.min_i, secDpn.max_i);
+  return r == common::RoughSetValue::RS_ALL ? common::RoughSetValue::RS_SOME : r;
 }
 
 // check whether any value from the pack may meet the condition "... BETWEEN min
 // AND max"
-common::RSValue TianmuAttr::RoughCheckBetween(int pack, int64_t v1, int64_t v2) {
-  common::RSValue res = common::RSValue::RS_SOME;  // calculate as for common::Operator::O_BETWEEN
-                                                   // and then consider negation
+common::RoughSetValue TianmuAttr::RoughCheckBetween(int pack, int64_t v1, int64_t v2) {
+  common::RoughSetValue res = common::RoughSetValue::RS_SOME;  // calculate as for common::Operator::O_BETWEEN
+                                                               // and then consider negation
   bool is_float = Type().IsFloat();
   auto const &dpn(get_dpn(pack));
   if (!is_float && (v1 == common::PLUS_INF_64 || v2 == common::MINUS_INF_64)) {
-    res = common::RSValue::RS_NONE;
+    res = common::RoughSetValue::RS_NONE;
   } else if (is_float && (v1 == *(int64_t *)&common::PLUS_INF_DBL || v2 == *(int64_t *)&common::MINUS_INF_DBL)) {
-    res = common::RSValue::RS_NONE;
+    res = common::RoughSetValue::RS_NONE;
   } else if (!is_float && (v1 > dpn.max_i || v2 < dpn.min_i)) {
-    res = common::RSValue::RS_NONE;
+    res = common::RoughSetValue::RS_NONE;
   } else if (is_float && (*(double *)&v1 > dpn.max_d || *(double *)&v2 < dpn.min_d)) {
-    res = common::RSValue::RS_NONE;
+    res = common::RoughSetValue::RS_NONE;
   } else if (!is_float && (v1 <= dpn.min_i && v2 >= dpn.max_i)) {
-    res = common::RSValue::RS_ALL;
+    res = common::RoughSetValue::RS_ALL;
   } else if (is_float && (*(double *)&v1 <= dpn.min_d && *(double *)&v2 >= dpn.max_d)) {
-    res = common::RSValue::RS_ALL;
+    res = common::RoughSetValue::RS_ALL;
   } else if ((!is_float && v1 > v2) || (is_float && (*(double *)&v1 > *(double *)&v2))) {
-    res = common::RSValue::RS_NONE;
+    res = common::RoughSetValue::RS_NONE;
   } else {
     if (auto sp = GetFilter_Hist())
       res = sp->IsValue(v1, v2, pack, dpn.min_i, dpn.max_i);
 
-    if (res == common::RSValue::RS_SOME) {
+    if (res == common::RoughSetValue::RS_SOME) {
       if (auto sp = GetFilter_Bloom()) {
         auto vmin = std::to_string(v1);
         auto vmax = std::to_string(v2);
@@ -589,13 +590,13 @@ common::RSValue TianmuAttr::RoughCheckBetween(int pack, int64_t v1, int64_t v2) 
       }
     }
   }
-  if (dpn.numOfNulls != 0 && res == common::RSValue::RS_ALL) {
-    res = common::RSValue::RS_SOME;
+  if (dpn.numOfNulls != 0 && res == common::RoughSetValue::RS_ALL) {
+    res = common::RoughSetValue::RS_SOME;
   }
   return res;
 }
 
-int64_t TianmuAttr::RoughMin(Filter *f, common::RSValue *rf)  // f == nullptr is treated as full filter
+int64_t TianmuAttr::RoughMin(Filter *f, common::RoughSetValue *rf)  // f == nullptr is treated as full filter
 {
   LoadPackInfo();
   if (GetPackType() == common::PackType::STR)
@@ -611,7 +612,7 @@ int64_t TianmuAttr::RoughMin(Filter *f, common::RSValue *rf)  // f == nullptr is
     di.d = DBL_MAX;
     for (uint p = 0; p < SizeOfPack(); p++) {  // minimum of nonempty packs
       auto const &dpn(get_dpn(p));
-      if ((f == nullptr || !f->IsEmpty(p)) && (rf == nullptr || rf[p] != common::RSValue::RS_NONE)) {
+      if ((f == nullptr || !f->IsEmpty(p)) && (rf == nullptr || rf[p] != common::RoughSetValue::RS_NONE)) {
         if (di.d > dpn.min_d)
           di.i = dpn.min_i;
       }
@@ -623,7 +624,8 @@ int64_t TianmuAttr::RoughMin(Filter *f, common::RSValue *rf)  // f == nullptr is
     res = common::PLUS_INF_64;
     for (uint p = 0; p < SizeOfPack(); p++) {  // minimum of nonempty packs
       auto const &dpn(get_dpn(p));
-      if ((f == nullptr || !f->IsEmpty(p)) && (rf == nullptr || rf[p] != common::RSValue::RS_NONE) && res > dpn.min_i)
+      if ((f == nullptr || !f->IsEmpty(p)) && (rf == nullptr || rf[p] != common::RoughSetValue::RS_NONE) &&
+          res > dpn.min_i)
         res = dpn.min_i;
     }
     if (res == common::PLUS_INF_64)
@@ -632,7 +634,7 @@ int64_t TianmuAttr::RoughMin(Filter *f, common::RSValue *rf)  // f == nullptr is
   return res;
 }
 
-int64_t TianmuAttr::RoughMax(Filter *f, common::RSValue *rf)  // f == nullptr is treated as full filter
+int64_t TianmuAttr::RoughMax(Filter *f, common::RoughSetValue *rf)  // f == nullptr is treated as full filter
 {
   LoadPackInfo();
   if (GetPackType() == common::PackType::STR)
@@ -648,7 +650,7 @@ int64_t TianmuAttr::RoughMax(Filter *f, common::RSValue *rf)  // f == nullptr is
     di.d = -(DBL_MAX);
     for (uint p = 0; p < SizeOfPack(); p++) {  // minimum of nonempty packs
       auto const &dpn(get_dpn(p));
-      if ((f == nullptr || !f->IsEmpty(p)) && (rf == nullptr || rf[p] != common::RSValue::RS_NONE)) {
+      if ((f == nullptr || !f->IsEmpty(p)) && (rf == nullptr || rf[p] != common::RoughSetValue::RS_NONE)) {
         if (di.d < dpn.max_d)
           di.i = dpn.max_i;
       }
@@ -660,7 +662,8 @@ int64_t TianmuAttr::RoughMax(Filter *f, common::RSValue *rf)  // f == nullptr is
     res = common::MINUS_INF_64;
     for (uint p = 0; p < SizeOfPack(); p++) {  // maximum of nonempty packs
       auto const &dpn(get_dpn(p));
-      if ((f == nullptr || !f->IsEmpty(p)) && (rf == nullptr || rf[p] != common::RSValue::RS_NONE) && res < dpn.max_i)
+      if ((f == nullptr || !f->IsEmpty(p)) && (rf == nullptr || rf[p] != common::RoughSetValue::RS_NONE) &&
+          res < dpn.max_i)
         res = dpn.max_i;
     }
     if (res == common::MINUS_INF_64)
@@ -693,7 +696,7 @@ std::vector<int64_t> TianmuAttr::GetListOfDistinctValuesInPack(int pack) {
     list_vals.push_back(dpn.min_i);
     list_vals.push_back(dpn.max_i);
     for (int64_t v = dpn.min_i + 1; v < dpn.max_i; v++) {
-      if (sp->IsValue(v, v, pack, dpn.min_i, dpn.max_i) != common::RSValue::RS_NONE)
+      if (sp->IsValue(v, v, pack, dpn.min_i, dpn.max_i) != common::RoughSetValue::RS_NONE)
         list_vals.push_back(v);
     }
     if (NumOfNulls() > 0)
@@ -703,7 +706,8 @@ std::vector<int64_t> TianmuAttr::GetListOfDistinctValuesInPack(int pack) {
   return list_vals;
 }
 
-uint64_t TianmuAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue *rf, bool outer_nulls_possible) {
+uint64_t TianmuAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RoughSetValue *rf,
+                                        bool outer_nulls_possible) {
   LoadPackInfo();
   uint64_t no_dist = 0;
   int64_t max_obj = NumOfObj();  // no more values than objects
@@ -744,7 +748,7 @@ uint64_t TianmuAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSVa
       values_present.Reset();
       for (uint p = 0; p < SizeOfPack(); p++) {
         auto const &dpn(get_dpn(p));
-        if ((f == nullptr || !f->IsEmpty(p)) && (rf == nullptr || rf[p] != common::RSValue::RS_NONE) &&
+        if ((f == nullptr || !f->IsEmpty(p)) && (rf == nullptr || rf[p] != common::RoughSetValue::RS_NONE) &&
             dpn.min_i <= dpn.max_i) {
           // dpn.min <= dpn.max is not true e.g. when the pack contains nulls
           // only
@@ -752,7 +756,7 @@ uint64_t TianmuAttr::ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSVa
             values_present.Set(dpn.min_i - cur_min);
             values_present.Set(dpn.max_i - cur_min);
             for (int64_t v = dpn.min_i + 1; v < dpn.max_i; v++)
-              if (sp->IsValue(v, v, p, dpn.min_i, dpn.max_i) != common::RSValue::RS_NONE) {
+              if (sp->IsValue(v, v, p, dpn.min_i, dpn.max_i) != common::RoughSetValue::RS_NONE) {
                 values_present.Set(v - cur_min);
               }
           } else {  // no Histogram or not exact: mark the whole interval
@@ -830,7 +834,7 @@ uint64_t TianmuAttr::ExactDistinctVals(Filter *f)  // provide the exact number o
               values_present.Set(dpn.min_i - cur_min);
               values_present.Set(dpn.max_i - cur_min);
               for (int64_t v = dpn.min_i + 1; v < dpn.max_i; v++)
-                if (sp->IsValue(v, v, p, dpn.min_i, dpn.max_i) != common::RSValue::RS_NONE) {
+                if (sp->IsValue(v, v, p, dpn.min_i, dpn.max_i) != common::RoughSetValue::RS_NONE) {
                   values_present.Set(v - cur_min);
                 }
             } else {  // no Histogram or not exact: cannot calculate exact

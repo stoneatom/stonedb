@@ -136,9 +136,9 @@ void ConstExpressionColumn::EvaluatePackImpl([[maybe_unused]] core::MIUpdatingIt
   DEBUG_ASSERT(0);  // comparison of a const with a const should be simplified earlier
 }
 
-common::RSValue ConstExpressionColumn::RoughCheckImpl([[maybe_unused]] const core::MIIterator &mit,
-                                                      [[maybe_unused]] core::Descriptor &d) {
-  return common::RSValue::RS_SOME;  // not implemented
+common::RoughSetValue ConstExpressionColumn::RoughCheckImpl([[maybe_unused]] const core::MIIterator &mit,
+                                                            [[maybe_unused]] core::Descriptor &d) {
+  return common::RoughSetValue::RS_SOME;  // not implemented
 }
 
 types::BString ConstExpressionColumn::DecodeValue_S([[maybe_unused]] int64_t code) {

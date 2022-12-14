@@ -123,7 +123,7 @@ class ConstExpressionColumn : public ExpressionColumn {
   int64_t GetApproxDistValsImpl(bool incl_nulls, core::RoughMultiIndex *rough_mind) override;
   size_t MaxStringSizeImpl() override;  // maximal byte string length in column
   core::PackOntologicalStatus GetPackOntologicalStatusImpl(const core::MIIterator &mit) override;
-  common::RSValue RoughCheckImpl(const core::MIIterator &it, core::Descriptor &d) override;
+  common::RoughSetValue RoughCheckImpl(const core::MIIterator &it, core::Descriptor &d) override;
   void EvaluatePackImpl(core::MIUpdatingIterator &mit, core::Descriptor &desc) override;
   // comparison of a const with a const should be simplified earlier
   virtual common::ErrorCode EvaluateOnIndexImpl([[maybe_unused]] core::MIUpdatingIterator &mit, core::Descriptor &,

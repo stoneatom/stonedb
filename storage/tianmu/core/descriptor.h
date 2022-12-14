@@ -63,9 +63,9 @@ class Descriptor {
   DimensionVector left_dims;
   DimensionVector right_dims;
   int parallsize = 0;
-  std::vector<common::RSValue> rvs;  // index corresponding threadid
-  common::RSValue rv;                // rough evaluation of descriptor (accumulated or used locally)
-  char like_esc;                     // nonstandard LIKE escape character
+  std::vector<common::RoughSetValue> rvs;  // index corresponding threadid
+  common::RoughSetValue rv;                // rough evaluation of descriptor (accumulated or used locally)
+  char like_esc;                           // nonstandard LIKE escape character
   std::mutex mtx;
   CondType cond_type = CondType::UNKOWN_COND;
 
@@ -107,7 +107,7 @@ class Descriptor {
   void LockSourcePacks(const MIIterator &mit, int th_no);
   void EvaluatePack(MIUpdatingIterator &mit, int th_no);
   void EvaluatePack(MIUpdatingIterator &mit);  // Assumption: no locking needed, done inside
-  common::RSValue EvaluateRoughlyPack(const MIIterator &mit);
+  common::RoughSetValue EvaluateRoughlyPack(const MIIterator &mit);
 
   void UnlockSourcePacks();
   void DimensionUsed(DimensionVector &dims);
@@ -152,7 +152,7 @@ class Descriptor {
   void InitParallel(int value, MIIterator &mit);
   int GetParallelSize() { return parallsize; }
   void MClearRoughValues(int taskid);
-  common::RSValue MEvaluateRoughlyPack(const MIIterator &mit, int taskid);
+  common::RoughSetValue MEvaluateRoughlyPack(const MIIterator &mit, int taskid);
   void MLockSourcePacks(const MIIterator &mit, int taskid);
   bool ExsitTmpTable() const;
   bool IsleftIndexSearch() const;
@@ -248,7 +248,7 @@ struct DescTreeNode {
   bool NullMayBeTrue();
   void EncodeIfPossible(bool for_rough_query, bool additional_nulls);
   double EvaluateConditionWeight(ParameterizedFilter *p, bool for_or);
-  common::RSValue EvaluateRoughlyPack(const MIIterator &mit);
+  common::RoughSetValue EvaluateRoughlyPack(const MIIterator &mit);
   void CollectDescriptor(std::vector<std::pair<int, Descriptor>> &desc_counts);
 
   void IncreaseDescriptorCount(std::vector<std::pair<int, Descriptor>> &desc_counts);
@@ -272,7 +272,7 @@ struct DescTreeNode {
   bool WithoutAttrs();
   bool WithoutTypeCast();
   // for muti-thread
-  common::RSValue MEvaluateRoughlyPack(const MIIterator &mit, int taskid);
+  common::RoughSetValue MEvaluateRoughlyPack(const MIIterator &mit, int taskid);
   void MClearRoughValues(int taskid);
   void MPrepareToLock(int locked_by, int taskid);
   void MEvaluatePack(MIUpdatingIterator &mit, int taskid);
@@ -347,6 +347,7 @@ class DescTree {
   bool WithoutAttrs() { return root->WithoutAttrs(); }
   bool WithoutTypeCast() { return root->WithoutTypeCast(); }
 };
+
 }  // namespace core
 }  // namespace Tianmu
 

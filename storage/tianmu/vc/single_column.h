@@ -124,7 +124,7 @@ class SingleColumn : public VirtualColumn {
   int64_t GetExactDistVals() override;
   size_t MaxStringSizeImpl() override;  // maximal byte string length in column
   core::PackOntologicalStatus GetPackOntologicalStatusImpl(const core::MIIterator &mit) override;
-  common::RSValue RoughCheckImpl(const core::MIIterator &it, core::Descriptor &d) override;
+  common::RoughSetValue RoughCheckImpl(const core::MIIterator &it, core::Descriptor &d) override;
   void EvaluatePackImpl(core::MIUpdatingIterator &mit, core::Descriptor &desc) override;
   virtual common::ErrorCode EvaluateOnIndexImpl(core::MIUpdatingIterator &mit, core::Descriptor &desc,
                                                 int64_t limit) override {

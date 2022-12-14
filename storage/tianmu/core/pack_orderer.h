@@ -60,14 +60,14 @@ class PackOrderer {
    * \param r_filter use only pack not eliminated by this rough filter
    * \param order how to order datapacks
    */
-  PackOrderer(vcolumn::VirtualColumn *vc, common::RSValue *r_filter, OrderType order);
+  PackOrderer(vcolumn::VirtualColumn *vc, common::RoughSetValue *r_filter, OrderType order);
 
   ~PackOrderer() = default;
 
   //! Initialized Orderer constructed with a default constructor,
   //! ignored if used on a initialized orderer
   //! \return true if successful, otherwise false
-  bool Init(vcolumn::VirtualColumn *vc, OrderType order, common::RSValue *r_filter = nullptr);
+  bool Init(vcolumn::VirtualColumn *vc, OrderType order, common::RoughSetValue *r_filter = nullptr);
 
   /*!
    * Reset the iterator, so it will start from the first pack in the given sort
@@ -122,7 +122,8 @@ class PackOrderer {
 
   using PackPair = std::pair<MMTU, int>;
 
-  void InitOneColumn(vcolumn::VirtualColumn *vc, OrderType order_type_, common::RSValue *r_filter, struct OrderStat os);
+  void InitOneColumn(vcolumn::VirtualColumn *vc, OrderType order_type_, common::RoughSetValue *r_filter,
+                     struct OrderStat os);
   void NextPack();
   void RewindCol();
   void ReorderForCovering(std::vector<PackPair> &packs_one_col, vcolumn::VirtualColumn *vc);

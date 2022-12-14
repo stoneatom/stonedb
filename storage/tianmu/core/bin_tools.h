@@ -22,6 +22,7 @@
 
 namespace Tianmu {
 namespace core {
+
 // Number of "1"-s in 32-bit value
 
 int CalculateBinSum(unsigned int n);
@@ -58,8 +59,8 @@ uint HashValue(const void *buf,
 #define HASH_FUNCTION_BYTE_SIZE 16
 void HashMD5(unsigned char const *buf, int n, unsigned char *hash);
 
-common::RSValue Or(common::RSValue f, common::RSValue s);
-common::RSValue And(common::RSValue f, common::RSValue s);
+common::RoughSetValue Or(common::RoughSetValue f, common::RoughSetValue s);
+common::RoughSetValue And(common::RoughSetValue f, common::RoughSetValue s);
 
 inline bool IsDoubleNull(const double d) { return *(int64_t *)&d == common::NULL_VALUE_64; }
 
@@ -89,6 +90,7 @@ inline uint GetBitLen(uint64_t x) {
 
 inline uint GetBitLen(ushort x) { return GetBitLen((uint)x); }
 inline uint GetBitLen(uchar x) { return GetBitLen((uint)x); }
+
 }  // namespace core
 }  // namespace Tianmu
 

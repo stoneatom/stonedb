@@ -66,11 +66,11 @@ PackOrderer &PackOrderer::operator=(const PackOrderer &p) {
   return *this;
 }
 
-PackOrderer::PackOrderer(vcolumn::VirtualColumn *vc, common::RSValue *r_filter, OrderType order) {
+PackOrderer::PackOrderer(vcolumn::VirtualColumn *vc, common::RoughSetValue *r_filter, OrderType order) {
   Init(vc, order, r_filter);
 }
 
-bool PackOrderer::Init(vcolumn::VirtualColumn *vc, OrderType order, common::RSValue *r_filter) {
+bool PackOrderer::Init(vcolumn::VirtualColumn *vc, OrderType order, common::RoughSetValue *r_filter) {
   DEBUG_ASSERT(vc->GetDim() != -1);  // works only for vcolumns based on a single table
 
   if (Initialized())
@@ -86,7 +86,7 @@ bool PackOrderer::Init(vcolumn::VirtualColumn *vc, OrderType order, common::RSVa
   return true;
 }
 
-void PackOrderer::InitOneColumn(vcolumn::VirtualColumn *vc, OrderType ot, common::RSValue *r_filter,
+void PackOrderer::InitOneColumn(vcolumn::VirtualColumn *vc, OrderType ot, common::RoughSetValue *r_filter,
                                 struct OrderStat os) {
   ++n_cols_;
   MinMaxType mmt;
@@ -109,7 +109,7 @@ void PackOrderer::InitOneColumn(vcolumn::VirtualColumn *vc, OrderType ot, common
   MMTU mid(0);
   while (mit.IsValid()) {
     int pack = mit.GetCurPackrow(d);
-    if (!r_filter || r_filter[pack] != common::RSValue::RS_NONE) {
+    if (!r_filter || r_filter[pack] != common::RoughSetValue::RS_NONE) {
       if (mmt == MinMaxType::kMMTFixed) {
         if (vc->GetNumOfNulls(mit) == mit.GetPackSizeLeft()) {
           mid.i = common::PLUS_INF_64;

@@ -227,33 +227,29 @@ const std::string Query::GetItemName(Item *item) {
     case Item::SUM_FUNC_ITEM: {
       Item_sum *sum_func = static_cast<Item_sum *>(item);
       uint index = sum_func->sum_func();
-      if (index >= sizeof(sumNameOf) / sizeof(*sumNameOf))
-        return "UNKNOWN SUM_FUNC_ITEM";
-      else
-        return sumNameOf[index];
+
+      return (index >= sizeof(sumNameOf) / sizeof(*sumNameOf)) ? "UNKNOWN SUM_FUNC_ITEM" : sumNameOf[index];
     }
     case Item::REF_ITEM: {
       Item_ref *ref = static_cast<Item_ref *>(item);
       Item *real = ref->real_item();
-      if (ref != real)
-        return GetItemName(real);
-      return "REF_ITEM";
+
+      return (ref != real) ? GetItemName(real) : "REF_ITEM";
     }
     case Item::NULL_ITEM:
       return "nullptr";
     case Item::INT_ITEM: {
       Item_int_with_ref *int_ref = dynamic_cast<Item_int_with_ref *>(item);
       String s(buf, 256, nullptr);
-      if (!int_ref) {
-        String *ps = item->val_str(&s);
-        return ps ? ps->c_ptr_safe() : "nullptr";
-      }
+      String *ps = item->val_str(&s);
+
       // else item is an instance of Item_int_with_ref, not Item_int
-      return GetItemName(int_ref->real_item());
+      return (!int_ref) ? (ps ? ps->c_ptr_safe() : "nullptr") : GetItemName(int_ref->real_item());
     }
     case Item::STRING_ITEM: {
       String s(buf, 256, nullptr);
       String *ps = item->val_str(&s);
+
       return ps ? ps->c_ptr_safe() : "nullptr";
     }
     case Item::SUBSELECT_ITEM:
@@ -265,11 +261,14 @@ const std::string Query::GetItemName(Item *item) {
     case static_cast<int>(Item_tianmufield::enumTIANMUFiledItem::TIANMUFIELD_ITEM):
       Item_tianmufield *tianmu = static_cast<Item_tianmufield *>(item);
       size_t cur_var_id = tianmuitems_cur_var_ids[tianmu]++;
+
       if (cur_var_id >= tianmu->varID.size())
         cur_var_id = 0;
+
       std::sprintf(buf, "TIANMU_FIELD(T:%d,A:%d)", tianmu->varID[cur_var_id].tab, tianmu->varID[cur_var_id].col);
       return buf;
   }
+
   return "UNKNOWN";
 }
 
@@ -277,21 +276,25 @@ int Query::GetAddColumnId(const AttrID &vc, const TabID &tmp_table, const common
                           const bool distinct) {
   for (int i = 0; i < cq->NumOfSteps(); i++) {
     CompiledQuery::CQStep *step = &cq->Step(i);
+
     if (step->type == CompiledQuery::StepType::ADD_COLUMN && step->t1 == tmp_table && step->e1.vc_id == vc.n &&
         step->cop == oper && step->n1 == (distinct ? 1 : 0)) {
       return step->a1.n;
     }
   }
+
   return common::NULL_VALUE_32;
 }
 
 void Query::CQChangeAddColumnLIST2GROUP_BY(const TabID &tmp_table, int attr) {
   for (int i = 0; i < cq->NumOfSteps(); i++) {
     CompiledQuery::CQStep *step = &cq->Step(i);
+
     if (step->type == CompiledQuery::StepType::ADD_COLUMN && step->t1 == tmp_table && step->a1.n == attr &&
         step->cop == common::ColOperation::LISTING) {
       step->cop = common::ColOperation::GROUP_BY;
       cq->AddGroupByStep(*step);
+
       return;
     }
   }
@@ -442,10 +445,12 @@ void Query::ExtractOperatorType(Item *&conds, common::Operator &op, bool &negati
       Item_func *cond_func = (Item_func *)conds;
       negative = dynamic_cast<Item_func_nop_all *>(cond_func) == nullptr;
       ExtractOperatorType(cond_func->arguments()[0], op, negative, like_esc);
+
       if (dynamic_cast<Item_func_nop_all *>(cond_func))
         MarkWithAny(op);
       else if (dynamic_cast<Item_func_not_all *>(cond_func))
         MarkWithAll(op);
+
       conds = cond_func->arguments()[0];
       break;
     }
@@ -462,6 +467,7 @@ vcolumn::VirtualColumn *Query::CreateColumnFromExpression(std::vector<MysqlExpre
                                                           TempTable *temp_table, int temp_table_alias,
                                                           MultiIndex *mind) {
   DEBUG_ASSERT(exprs.size() > 0);
+
   if (exprs.size() != 1) {
     DEBUG_ASSERT(0);
   }
@@ -472,6 +478,7 @@ vcolumn::VirtualColumn *Query::CreateColumnFromExpression(std::vector<MysqlExpre
   if (exprs[0]->IsDeterministic() && (exprs[0]->GetVars().empty())) {
     ColumnType type(exprs[0]->EvalType());
     vc = new vcolumn::ConstColumn(*(exprs[0]->Evaluate()), type, true);
+
   } else if (vcolumn::VirtualColumn::IsConstExpression(exprs[0], temp_table_alias, &temp_table->GetAliases()) &&
              exprs[0]->IsDeterministic()) {
     if (IsFieldItem(item)) {
@@ -480,6 +487,7 @@ vcolumn::VirtualColumn *Query::CreateColumnFromExpression(std::vector<MysqlExpre
       // e.g. timestamp would be string 19
       TabID tab;
       AttrID col;
+
       tab.n = exprs[0]->GetVars().begin()->tab;
       col.n = exprs[0]->GetVars().begin()->col;
       col.n = col.n < 0 ? -col.n - 1 : col.n;
@@ -487,14 +495,14 @@ vcolumn::VirtualColumn *Query::CreateColumnFromExpression(std::vector<MysqlExpre
       vc = new vcolumn::ConstExpressionColumn(exprs[0], ct, temp_table, temp_table_alias, mind);
     } else
       vc = new vcolumn::ConstExpressionColumn(exprs[0], temp_table, temp_table_alias, mind);
+
   } else {
-    if (tianmu_control_.isOn()) {
-      if ((item->type()) == Item::FUNC_ITEM) {
-        Item_func *ifunc = down_cast<Item_func *>(item);
-        tianmu_control_.lock(mind->m_conn->GetThreadID())
-            << "Unoptimized expression near '" << ifunc->func_name() << "'" << system::unlock;
-      }
+    if (tianmu_control_.isOn() && item->type() == Item::FUNC_ITEM) {
+      Item_func *ifunc = down_cast<Item_func *>(item);
+      tianmu_control_.lock(mind->m_conn->GetThreadID())
+          << "Unoptimized expression near '" << ifunc->func_name() << "'" << system::unlock;
     }
+
     vc = new vcolumn::ExpressionColumn(exprs[0], temp_table, temp_table_alias, mind);
     if (static_cast<vcolumn::ExpressionColumn *>(vc)->GetStringType() == MysqlExpression::StringType::STRING_TIME &&
         vc->TypeName() != common::ColumnType::TIME) {  // common::CT::TIME is already as int64_t
@@ -509,6 +517,7 @@ vcolumn::VirtualColumn *Query::CreateColumnFromExpression(std::vector<MysqlExpre
   for (auto &iter : params) {
     types[iter] = ta[-iter.tab - 1]->GetColumnType(iter.col < 0 ? -iter.col - 1 : iter.col);
   }
+
   vc->SetParamTypes(&types);
   return vc;
 }
@@ -518,6 +527,7 @@ bool Query::IsConstExpr(MysqlExpression::SetOfVars &sv, const TabID &t) {
   for (auto &iter : sv) {
     res |= cq->ExistsInTempTable(TabID(iter.tab), t);
   }
+
   return !res;
 }
 
@@ -526,7 +536,9 @@ bool Query::IsParameterFromWhere(const TabID &params_table) {
     if (it.first == params_table)
       return it.second;
   }
+
   DEBUG_ASSERT(!"Subquery not properly placed on compilation stack");
+
   return true;
 }
 
@@ -541,6 +553,7 @@ const char *Query::GetTableName(Item_field *ifield) {
   else if (ifield->result_field && ifield->result_field->table &&
            ifield->result_field->table->s->table_category != TABLE_CATEGORY_TEMPORARY)
     table_name = ifield->result_field->table->s->table_name.str;
+
   return table_name;
 }
 
@@ -556,22 +569,26 @@ void Query::GetPrecisionScale(Item *item, int &precision, int &scale, bool max_s
     precision -= (scale - 18);
     scale = 18;
   }
+
   if (precision > 18)
     precision = 18;
 
   Item_func *item_func = dynamic_cast<Item_func *>(item);
   if (max_scale && precision < 18 && item_func && std::strcmp(item_func->func_name(), "/") == 0) {
     scale += 18 - precision;
+
     if (scale > 15)
       scale = 15;
+
     precision = 18;
   }
 }
 
-TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_unused]] bool display_now) {
+TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, bool display_now [[maybe_unused]]) {
   if (TIANMU_LOGCHECK(LogCtl_Level::DEBUG)) {
     qu.Print(this);
   }
+
   std::vector<Condition *> conds(qu.NumOfConds());
 
   TempTable *output_table = nullptr;  // NOTE: this pointer will be returned by the function
@@ -586,26 +603,17 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
     std::shared_ptr<JustATable> t1_ptr, t2_ptr, t3_ptr;
 
     if (step.t1.n != common::NULL_VALUE_32) {
-      if (step.t1.n >= 0)
-        t1_ptr = Table(step.t1.n);  // normal table
-      else {
-        t1_ptr = ta[-step.t1.n - 1];  // TempTable
-      }
+      t1_ptr = (step.t1.n >= 0) ? Table(step.t1.n) : ta[-step.t1.n - 1];
     }
+
     if (step.t2.n != common::NULL_VALUE_32) {
-      if (step.t2.n >= 0)
-        t2_ptr = Table(step.t2.n);  // normal table
-      else {
-        t2_ptr = ta[-step.t2.n - 1];  // TempTable
-      }
+      t2_ptr = (step.t2.n >= 0) ? Table(step.t2.n) : ta[-step.t2.n - 1];
     }
+
     if (step.t3.n != common::NULL_VALUE_32) {
-      if (step.t3.n >= 0)
-        t3_ptr = Table(step.t3.n);  // normal table
-      else {
-        t3_ptr = ta[-step.t3.n - 1];  // TempTable
-      }
+      t3_ptr = (step.t3.n >= 0) ? Table(step.t3.n) : ta[-step.t3.n - 1];
     }
+
     // Some technical information
     if (step.alias && std::strcmp(step.alias, "roughstats") == 0) {
       // magical word (passed as table alias) to display statistics
@@ -625,6 +633,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           break;
         case CompiledQuery::StepType::TMP_TABLE:
           DEBUG_ASSERT(step.t1.n < 0);
+
           ta[-step.t1.n - 1] = step.n1
                                    ? TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this, true)
                                    : TempTable::Create(ta[-step.tables1[0].n - 1].get(), step.tables1[0].n, this);
@@ -636,36 +645,44 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
             ((TempTable *)ta[-step.t1.n - 1].get())->MarkCondPush();
           }
           step.e1.vc = (step.e1.vc_id != common::NULL_VALUE_32)
-                           ? ((TempTable *)ta[-step.t1.n - 1].get())->GetVirtualColumn(step.e1.vc_id)
+                           ? down_cast<TempTable *>(ta[-step.t1.n - 1].get())->GetVirtualColumn(step.e1.vc_id)
                            : nullptr;
+
           step.e2.vc = (step.e2.vc_id != common::NULL_VALUE_32)
-                           ? ((TempTable *)ta[-step.t1.n - 1].get())->GetVirtualColumn(step.e2.vc_id)
+                           ? down_cast<TempTable *>(ta[-step.t1.n - 1].get())->GetVirtualColumn(step.e2.vc_id)
                            : nullptr;
+
           step.e3.vc = (step.e3.vc_id != common::NULL_VALUE_32)
-                           ? ((TempTable *)ta[-step.t1.n - 1].get())->GetVirtualColumn(step.e3.vc_id)
+                           ? down_cast<TempTable *>(ta[-step.t1.n - 1].get())->GetVirtualColumn(step.e3.vc_id)
                            : nullptr;
           if (step.n1 != static_cast<int64_t>(CondType::OR_SUBTREE)) {  // on result = false
             conds[step.c1.n] = new Condition();
+
             if (step.c2.IsNull()) {
               conds[step.c1.n]->AddDescriptor(
-                  step.e1, step.op, step.e2, step.e3, (TempTable *)ta[-step.t1.n - 1].get(), qu.GetNumOfDimens(step.t1),
+                  step.e1, step.op, step.e2, step.e3, down_cast<TempTable *>(ta[-step.t1.n - 1].get()),
+                  qu.GetNumOfDimens(step.t1),
                   (step.op == common::Operator::O_LIKE || step.op == common::Operator::O_NOT_LIKE) ? char(step.n2)
                                                                                                    : '\\');
             } else {
               DEBUG_ASSERT(conds[step.c2.n]->IsType_Tree());
-              conds[step.c1.n]->AddDescriptor(static_cast<SingleTreeCondition *>(conds[step.c2.n])->GetTree(),
-                                              (TempTable *)ta[-step.t1.n - 1].get(), qu.GetNumOfDimens(step.t1));
+
+              conds[step.c1.n]->AddDescriptor((down_cast<SingleTreeCondition *>(conds[step.c2.n]))->GetTree(),
+                                              down_cast<TempTable *>(ta[-step.t1.n - 1].get()),
+                                              qu.GetNumOfDimens(step.t1));
             }
           } else {  // on result = true
             if (step.c2.IsNull())
-              conds[step.c1.n] =
-                  new SingleTreeCondition(step.e1, step.op, step.e2, step.e3, (TempTable *)ta[-step.t1.n - 1].get(),
-                                          qu.GetNumOfDimens(step.t1), char(step.n2));
+              conds[step.c1.n] = new SingleTreeCondition(step.e1, step.op, step.e2, step.e3,
+                                                         down_cast<TempTable *>(ta[-step.t1.n - 1].get()),
+                                                         qu.GetNumOfDimens(step.t1), char(step.n2));
             else {
               DEBUG_ASSERT(conds[step.c2.n]->IsType_Tree());
+
               conds[step.c1.n] = new Condition();
-              conds[step.c1.n]->AddDescriptor(((SingleTreeCondition *)conds[step.c2.n])->GetTree(),
-                                              (TempTable *)ta[-step.t1.n - 1].get(), qu.GetNumOfDimens(step.t1));
+              conds[step.c1.n]->AddDescriptor((down_cast<SingleTreeCondition *>(conds[step.c2.n]))->GetTree(),
+                                              down_cast<TempTable *>(ta[-step.t1.n - 1].get()),
+                                              qu.GetNumOfDimens(step.t1));
             }
           }
           break;
@@ -673,17 +690,20 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
         case CompiledQuery::StepType::OR_F:
           if (!conds[step.c2.n]->IsType_Tree()) {
             ASSERT(step.type == CompiledQuery::StepType::AND_F);
+
             auto cond2 = conds[step.c2.n];
             for (size_t i = 0; i < cond2->Size(); i++) {
               auto &desc = (*cond2)[i];
+
               if (conds[step.c1.n]->IsType_Tree()) {
-                TempTable *temptb = (TempTable *)ta[-qu.GetTableOfCond(step.c2).n - 1].get();
+                TempTable *temptb = down_cast<TempTable *>(ta[-qu.GetTableOfCond(step.c2).n - 1].get());
                 int no_dims = qu.GetNumOfDimens(qu.GetTableOfCond(step.c2));
+
                 if (desc.op == common::Operator::O_OR_TREE) {
-                  static_cast<SingleTreeCondition *>(conds[step.c1.n])
+                  down_cast<SingleTreeCondition *>(conds[step.c1.n])
                       ->AddTree(common::LogicalOperator::O_AND, desc.tree, no_dims);
                 } else {
-                  static_cast<SingleTreeCondition *>(conds[step.c1.n])
+                  down_cast<SingleTreeCondition *>(conds[step.c1.n])
                       ->AddDescriptor(common::LogicalOperator::O_AND, desc.attr, desc.op, desc.val1, desc.val2, temptb,
                                       no_dims, desc.like_esc);
                 }
@@ -691,17 +711,20 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
                 conds[step.c1.n]->AddDescriptor(desc);
               }
             }
+
           } else if (conds[step.c1.n]->IsType_Tree()) {  // on result = false
             DEBUG_ASSERT(conds[step.c2.n]->IsType_Tree());
+
             common::LogicalOperator lop = (step.type == CompiledQuery::StepType::AND_F ? common::LogicalOperator::O_AND
                                                                                        : common::LogicalOperator::O_OR);
-            static_cast<SingleTreeCondition *>(conds[step.c1.n])
+            down_cast<SingleTreeCondition *>(conds[step.c1.n])
                 ->AddTree(lop, static_cast<SingleTreeCondition *>(conds[step.c2.n])->GetTree(),
                           qu.GetNumOfDimens(step.t1));
           } else {
             DEBUG_ASSERT(conds[step.c2.n]->IsType_Tree());
-            conds[step.c1.n]->AddDescriptor(static_cast<SingleTreeCondition *>(conds[step.c2.n])->GetTree(),
-                                            (TempTable *)ta[-qu.GetTableOfCond(step.c1).n - 1].get(),
+
+            conds[step.c1.n]->AddDescriptor(down_cast<SingleTreeCondition *>(conds[step.c2.n])->GetTree(),
+                                            down_cast<TempTable *>(ta[-qu.GetTableOfCond(step.c1).n - 1].get()),
                                             qu.GetNumOfDimens(qu.GetTableOfCond(step.c1)));
           }
           break;
@@ -710,25 +733,31 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           common::LogicalOperator lop =
               (step.type == CompiledQuery::StepType::AND_DESC ? common::LogicalOperator::O_AND
                                                               : common::LogicalOperator::O_OR);
+
           step.e1.vc = (step.e1.vc_id != common::NULL_VALUE_32)
-                           ? ((TempTable *)ta[-step.t1.n - 1].get())->GetVirtualColumn(step.e1.vc_id)
+                           ? down_cast<TempTable *>(ta[-step.t1.n - 1].get())->GetVirtualColumn(step.e1.vc_id)
                            : nullptr;
+
           step.e2.vc = (step.e2.vc_id != common::NULL_VALUE_32)
-                           ? ((TempTable *)ta[-step.t1.n - 1].get())->GetVirtualColumn(step.e2.vc_id)
+                           ? down_cast<TempTable *>(ta[-step.t1.n - 1].get())->GetVirtualColumn(step.e2.vc_id)
                            : nullptr;
+
           step.e3.vc = (step.e3.vc_id != common::NULL_VALUE_32)
-                           ? ((TempTable *)ta[-step.t1.n - 1].get())->GetVirtualColumn(step.e3.vc_id)
+                           ? down_cast<TempTable *>(ta[-step.t1.n - 1].get())->GetVirtualColumn(step.e3.vc_id)
                            : nullptr;
+
           if (!conds[step.c1.n]->IsType_Tree()) {
             DEBUG_ASSERT(conds[step.c1.n]);
+
             conds[step.c1.n]->AddDescriptor(
-                step.e1, step.op, step.e2, step.e3, (TempTable *)ta[-step.t1.n - 1].get(), qu.GetNumOfDimens(step.t1),
+                step.e1, step.op, step.e2, step.e3, down_cast<TempTable *>(ta[-step.t1.n - 1].get()),
+                qu.GetNumOfDimens(step.t1),
                 (step.op == common::Operator::O_LIKE || step.op == common::Operator::O_NOT_LIKE) ? char(step.n2)
                                                                                                  : '\\');
           } else
             static_cast<SingleTreeCondition *>(conds[step.c1.n])
-                ->AddDescriptor(lop, step.e1, step.op, step.e2, step.e3, (TempTable *)ta[-step.t1.n - 1].get(),
-                                qu.GetNumOfDimens(step.t1),
+                ->AddDescriptor(lop, step.e1, step.op, step.e2, step.e3,
+                                down_cast<TempTable *>(ta[-step.t1.n - 1].get()), qu.GetNumOfDimens(step.t1),
                                 (step.op == common::Operator::O_LIKE || step.op == common::Operator::O_NOT_LIKE)
                                     ? char(step.n2)
                                     : '\\');
@@ -744,24 +773,31 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           break;
         case CompiledQuery::StepType::ADD_CONDS: {
           DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
+
           if (step.c1.n == common::NULL_VALUE_32)
             break;
+
           if (step.n1 != static_cast<int64_t>(CondType::HAVING_COND))
             conds[step.c1.n]->Simplify();
+
           ((TempTable *)ta[-step.t1.n - 1].get())->AddConds(conds[step.c1.n], (CondType)step.n1);
           break;
         }
         case CompiledQuery::StepType::LEFT_JOIN_ON: {
           DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
+
           if (step.c1.n == common::NULL_VALUE_32)
             break;
+
           ((TempTable *)ta[-step.t1.n - 1].get())->AddLeftConds(conds[step.c1.n], step.tables1, step.tables2);
           break;
         }
         case CompiledQuery::StepType::INNER_JOIN_ON: {
           DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
+
           if (step.c1.n == common::NULL_VALUE_32)
             break;
+
           ((TempTable *)ta[-step.t1.n - 1].get())->AddInnerConds(conds[step.c1.n], step.tables1);
           break;
         }
@@ -771,6 +807,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
 
           if (qu.FindDistinct(step.t1.n))
             tb->SetMode(TMParameter::TM_DISTINCT, 0, 0);
+
           if (qu.NoAggregationOrderingAndDistinct(step.t1.n))
             cur_limit = qu.FindLimit(step.t1.n);
 
@@ -785,6 +822,7 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           bool is_simple_filter = true;  // qu.IsSimpleFilter(step.c1);
           if (used_dims.size() == 1 && used_dims.find(common::NULL_VALUE_32) != used_dims.end())
             is_simple_filter = false;
+
           for (int i = 0; i < filter->mind->NumOfDimensions(); i++) {
             if (used_dims.find(i) == used_dims.end() && is_simple_filter && (!tb->CanCondPushDown()))
               filter->mind->ResetUsedInOutput(i);
@@ -800,58 +838,70 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
         }
         case CompiledQuery::StepType::ADD_COLUMN: {
           DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
+
           CQTerm e(step.e1);
           if (e.vc_id != common::NULL_VALUE_32)
             e.vc =
                 ((TempTable *)ta[-step.t1.n - 1].get())->GetVirtualColumn(step.e1.vc_id);  // vc must have been created
+
           step.a1.n = ((TempTable *)ta[-step.t1.n - 1].get())
                           ->AddColumn(e, step.cop, step.alias, step.n1 ? true : false, step.si);
           break;
         }
         case CompiledQuery::StepType::CREATE_VC: {
           DEBUG_ASSERT(step.t1.n < 0 && ta[-step.t1.n - 1]->TableType() == TType::TEMP_TABLE);
-          TempTable *t = (TempTable *)ta[-step.t1.n - 1].get();
+          TempTable *t = down_cast<TempTable *>(ta[-step.t1.n - 1].get());
 
           DEBUG_ASSERT(t);
+
           if (step.mysql_expr.size() > 0) {
             // vcolumn::VirtualColumn for Expression
             DEBUG_ASSERT(step.mysql_expr.size() == 1);
+
             MultiIndex *mind = (step.t2.n == step.t1.n) ? t->GetOutputMultiIndexP() : t->GetMultiIndexP();
-            int c = ((TempTable *)ta[-step.t1.n - 1].get())
+            int c = down_cast<TempTable *>(ta[-step.t1.n - 1].get())
                         ->AddVirtColumn(CreateColumnFromExpression(step.mysql_expr, t, step.t1.n, mind), step.a1.n);
+
             ASSERT(c == step.a1.n, "AddVirtColumn failed");
           } else if (step.virt_cols.size() > 0) {
             // vcolumn::VirtualColumn for IN
             ColumnType ct;
             if (step.a2.n != common::NULL_VALUE_32)
-              ct = ((TempTable *)ta[-step.t1.n - 1].get())->GetVirtualColumn(step.a2.n)->Type();
+              ct = down_cast<TempTable *>(ta[-step.t1.n - 1].get())->GetVirtualColumn(step.a2.n)->Type();
+
             std::vector<vcolumn::VirtualColumn *> vcs;
             for (uint i = 0; i < step.virt_cols.size(); i++)
-              vcs.push_back(((TempTable *)ta[-step.t1.n - 1].get())->GetVirtualColumn(step.virt_cols[i]));
-            int c = ((TempTable *)ta[-step.t1.n - 1].get())
+              vcs.emplace_back(down_cast<TempTable *>(ta[-step.t1.n - 1].get())->GetVirtualColumn(step.virt_cols[i]));
+
+            int c = down_cast<TempTable *>(ta[-step.t1.n - 1].get())
                         ->AddVirtColumn(new vcolumn::InSetColumn(ct, t->GetMultiIndexP(), vcs), step.a1.n);
+
             ASSERT(c == step.a1.n, "AddVirtColumn failed");
           } else if (step.a2.n != common::NULL_VALUE_32) {
             // vcolumn::VirtualColumn for PhysicalColumn
             JustATable *t_src = ta[-step.t2.n - 1].get();
-            PhysicalColumn *phc;
             MultiIndex *mind = (step.t2.n == step.t1.n) ? t->GetOutputMultiIndexP() : t->GetMultiIndexP();
+
             int dim = (step.t2.n == step.t1.n) ? 0 : t->GetDimension(step.t2);
-            phc = (PhysicalColumn *)t_src->GetColumn(step.a2.n >= 0 ? step.a2.n : -step.a2.n - 1);
-            int c = ((TempTable *)ta[-step.t1.n - 1].get())
+            PhysicalColumn *const phc = t_src->GetColumn(step.a2.n >= 0 ? step.a2.n : -step.a2.n - 1);
+
+            int c = down_cast<TempTable *>(ta[-step.t1.n - 1].get())
                         ->AddVirtColumn(
                             new vcolumn::SingleColumn(phc, mind, step.t2.n, step.a2.n, ta[-step.t2.n - 1].get(), dim),
                             step.a1.n);
+
             ASSERT(c == step.a1.n, "AddVirtColumn failed");
           } else {
             // vcolumn::VirtualColumn for Subquery
             DEBUG_ASSERT(ta[-step.t2.n - 1]->TableType() == TType::TEMP_TABLE);
+
             int c =
-                ((TempTable *)ta[-step.t1.n - 1].get())
+                down_cast<TempTable *>(ta[-step.t1.n - 1].get())
                     ->AddVirtColumn(new vcolumn::SubSelectColumn(
-                                        dynamic_cast<TempTable *>(ta[-step.t2.n - 1].get()),
+                                        down_cast<TempTable *>(ta[-step.t2.n - 1].get()),
                                         step.n1 == 1 ? t->GetOutputMultiIndexP() : t->GetMultiIndexP(), t, step.t1.n),
                                     step.a1.n);
+
             ASSERT(c == step.a1.n, "AddVirtColumn failed");
           }
           break;
@@ -1214,11 +1264,13 @@ CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table,
   else if (op == common::Operator::O_NOT_FUNC) {
     if (cond_func->arg_count != 1 || dynamic_cast<Item_in_optimizer *>(cond_func->arguments()[0]) == nullptr)
       return CondID(-2);
+
     return ConditionNumberFromComparison(cond_func->arguments()[0], tmp_table, filter_type, and_me_filter,
                                          is_or_subtree, true, can_cond_push);
   } else if (op == common::Operator::O_NOT_ALL_FUNC) {
     if (cond_func->arg_count != 1)
       return CondID(-1);
+
     return ConditionNumberFromComparison(cond_func->arguments()[0], tmp_table, filter_type, and_me_filter,
                                          is_or_subtree, dynamic_cast<Item_func_nop_all *>(cond_func) == nullptr,
                                          can_cond_push);
@@ -1226,6 +1278,7 @@ CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table,
     in_opt = dynamic_cast<Item_in_optimizer *>(cond_func);
     if (in_opt == nullptr || cond_func->arg_count != 2 || in_opt->arguments()[0]->cols() != 1)
       return CondID(-2);
+
     op = common::Operator::O_IN;
   } else if (op == common::Operator::O_ERROR)
     return CondID(-2);  // unknown function type
@@ -1245,6 +1298,7 @@ CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table,
         if (QueryRouteTo::kToMySQL ==
             Item2CQTerm(an_arg, terms[i], tmp_table, filter_type, negative, *in_opt->get_cache(), &op))
           return CondID(-1);
+
         if (negative)
           switch (op) {
             case common::Operator::O_EQ:
@@ -1358,6 +1412,7 @@ CondID Query::ConditionNumberFromComparison(Item *conds, const TabID &tmp_table,
       cq->And(*and_me_filter, tmp_table, terms[0], op, terms[1], terms[2]);
     filter = *and_me_filter;
   }
+
   return filter;
 }
 
@@ -1372,7 +1427,7 @@ CondID Query::ConditionNumberFromNaked(Item *conds, const TabID &tmp_table, Cond
   bool is_string = conds->result_type() == STRING_RESULT;
   MysqlExpression::Item2VarID item2varid;
   AttrID vc;
-  Item *zero_item;
+  Item *zero_item{nullptr};
   if (is_string)
     zero_item = new Item_empty_string("", 0, conds->collation.collation);
   else
@@ -1386,6 +1441,7 @@ CondID Query::ConditionNumberFromNaked(Item *conds, const TabID &tmp_table, Cond
     cq->CreateVirtualColumn(vc, tmp_table, mysql_expression);
     tab_id2expression.insert(std::make_pair(tmp_table, std::make_pair(vc.n, mysql_expression)));
   }
+
   if (!and_me_filter)
     cq->CreateConds(filter, tmp_table, naked_col, common::Operator::O_NOT_EQ, CQTerm(vc.n), CQTerm(),
                     is_or_subtree || filter_type == CondType::HAVING_COND, can_cond_push);
@@ -1396,6 +1452,7 @@ CondID Query::ConditionNumberFromNaked(Item *conds, const TabID &tmp_table, Cond
       cq->And(*and_me_filter, tmp_table, naked_col, common::Operator::O_NOT_EQ, CQTerm(vc.n), CQTerm());
     filter = *and_me_filter;
   }
+
   return filter;
 }
 
@@ -1411,13 +1468,14 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
   conds = UnRef(conds);
   Item::Type cond_type = conds->type();
   CondID cond_id;
+
   if (cond_type == Item::COND_ITEM) {
-    Item_cond *cond_cond = (Item_cond *)conds;
+    Item_cond *cond_cond = down_cast<Item_cond *>(conds);
     Item_func::Functype func_type = cond_cond->functype();
     switch (func_type) {
       case Item_func::COND_AND_FUNC: {
         List_iterator_fast<Item> li(*(cond_cond->argument_list()));
-        Item *item;
+        Item *item{nullptr};
         std::unique_ptr<CondID> and_cond;
         while ((item = li++) != nullptr) {
           CondID res = ConditionNumber(item, tmp_table, filter_type, and_cond.get(),
@@ -1457,12 +1515,14 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
           Item_func_eq *item_func = dynamic_cast<Item_func_eq *>(item);
           if (!item_func)
             continue;
+
           Item **args = item_func->arguments();
           DEBUG_ASSERT(item_func->arg_count == 2);
           Item *first_arg = UnRef(args[0]);
           Item *sec_arg = UnRef(args[1]);
           if (IsConstItem(first_arg) && IsFieldItem(sec_arg))
             std::swap(first_arg, sec_arg);
+
           if (IsFieldItem(first_arg) && IsConstItem(sec_arg)) {
             is_transformed[item] = true;
             CQTerm t;
@@ -1471,6 +1531,7 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
             value_map[static_cast<Item_field *>(first_arg)].insert(t.vc_id);
           }
         }
+
         bool create_or_subtree = is_or_subtree;
         li.rewind();
         // generate non-transformed conditions
@@ -1552,13 +1613,16 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
     Item_func *cond_func = (Item_func *)conds;
     Item_func::Functype func_type = cond_func->functype();
     Item *arg = nullptr;
+
     if (cond_func->arg_count == 1)
       arg = cond_func->arguments()[0];
+
     if (func_type == Item_func::NOT_FUNC && arg != nullptr && arg->type() == Item::SUBSELECT_ITEM &&
         ((Item_subselect *)arg)->substype() == Item_subselect::EXISTS_SUBS) {
       CQTerm term;
       if (QueryRouteTo::kToMySQL == Item2CQTerm(arg, term, tmp_table, filter_type))
         return CondID(-1);
+
       if (!and_me_filter)
         cq->CreateConds(cond_id, tmp_table, term, common::Operator::O_NOT_EXISTS, CQTerm(), CQTerm(),
                         is_or_subtree || filter_type == CondType::HAVING_COND, can_cond_push);
@@ -1576,6 +1640,7 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
                                                  can_cond_push);
       if (val.n == -2)
         val = ConditionNumberFromNaked(conds, tmp_table, filter_type, and_me_filter, is_or_subtree, can_cond_push);
+
       return val;
     }
   } else if (cond_type == Item::SUBSELECT_ITEM &&
@@ -1598,6 +1663,7 @@ CondID Query::ConditionNumber(Item *conds, const TabID &tmp_table, CondType filt
              cond_type == Item::REAL_ITEM || cond_type == Item::DECIMAL_ITEM) {
     return ConditionNumberFromNaked(conds, tmp_table, filter_type, and_me_filter, is_or_subtree, can_cond_push);
   }
+
   return cond_id;
 }
 
@@ -1605,15 +1671,17 @@ QueryRouteTo Query::BuildConditions(Item *conds, CondID &cond_id, CompiledQuery 
                                     CondType filter_type, bool is_zero_result, [[maybe_unused]] JoinType join_type,
                                     bool can_cond_push) {
   conds = UnRef(conds);
+  if (!conds)
+    return QueryRouteTo::kToTianmu;  // No Conditions - no filters. OK
+
   PrintItemTree("BuildFiler(), item tree passed in 'conds':", conds);
+
   if (is_zero_result) {
     CondID fi;
     cq->CreateConds(fi, tmp_table, CQTerm(), common::Operator::O_FALSE, CQTerm(), CQTerm(), false, can_cond_push);
     cond_id = fi;
     return QueryRouteTo::kToTianmu;
   }
-  if (!conds)
-    return QueryRouteTo::kToTianmu;  // No Conditions - no filters. OK
 
   // keep local copies of class fields to be changed
   CompiledQuery *saved_cq = this->cq;
@@ -1634,6 +1702,7 @@ QueryRouteTo Query::BuildConditions(Item *conds, CondID &cond_id, CompiledQuery 
   this->cq = saved_cq;
   if (res.IsInvalid())
     return QueryRouteTo::kToMySQL;
+
   cond_id = res;
   return QueryRouteTo::kToTianmu;
 }
@@ -1657,14 +1726,18 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
       // if the condition is a complex formula it must be AND
       if (having_cond->functype() != Item_func::COND_AND_FUNC)
         return false;
+
       // the extra condition is in the last argument
       if (having_cond->argument_list()->elements < 2)
         return false;
+
       List_iterator<Item> li(*(having_cond->argument_list()));
       while (li++ != nullptr) cond_to_reinsert = *li.ref();
       li.rewind();
+
       while (*li.ref() != cond_to_reinsert) li++;
       li.remove();
+
       list_to_reinsert = having_cond->argument_list();
       cond_removed = cond_to_reinsert;
     } else {
@@ -1672,6 +1745,7 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
       cond_removed = having;
       having = nullptr;
     }
+
     cond_removed = UnRef(cond_removed);
     // check if the extra condition was wrapped into trigger
     if (cond_removed->type() == Item::FUNC_ITEM &&
@@ -1679,12 +1753,15 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
       cond_removed = down_cast<Item_func *>(cond_removed)->arguments()[0];
       cond_removed = UnRef(cond_removed);
     }
+
     // check if the extra condition is a comparison
     if (cond_removed->type() != Item::FUNC_ITEM || down_cast<Item_func *>(cond_removed)->arg_count != 2)
       return false;
+
     // the right side of equality is the field of the original subselect
     if (dynamic_cast<Item_ref_null_helper *>(down_cast<Item_func *>(cond_removed)->arguments()[1]) == nullptr)
       return false;
+
     field_for_subselect = nullptr;
     // the left side of equality should be the left side of the original
     // expression with subselect
@@ -1694,6 +1771,7 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
                           down_cast<Item_func *>(having)->functype() == Item_func::TRIG_COND_FUNC))) {
     if (!conds)
       return false;
+
     if (conds->type() == Item::COND_ITEM && down_cast<Item_cond *>(conds)->functype() == Item_func::COND_AND_FUNC) {
       // if the condition is a conjunctive formula
       // the extra condition should be in the last argument
@@ -1703,6 +1781,7 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
       List_iterator<Item> li(*(down_cast<Item_cond *>(conds)->argument_list()));
       while (li++ != nullptr) cond_to_reinsert = *li.ref();
       li.rewind();
+
       while (*li.ref() != cond_to_reinsert) li++;
       li.remove();
       list_to_reinsert = down_cast<Item_cond *>(conds)->argument_list();
@@ -1712,11 +1791,13 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
       cond_removed = conds;
       conds = nullptr;
     }
+
     if (cond_removed->type() == Item::FUNC_ITEM &&
         down_cast<Item_func *>(cond_removed)->functype() == Item_func::TRIG_COND_FUNC) {
       // Condition was wrapped into trigger
       cond_removed = down_cast<Item_cond *>(down_cast<Item_func *>(cond_removed)->arguments()[0]);
     }
+
     if (cond_removed->type() == Item::COND_ITEM &&
         down_cast<Item_func *>(cond_removed)->functype() == Item_func::COND_OR_FUNC) {
       // if the subselect field could have null values
@@ -1733,6 +1814,7 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
       // the original having was empty
       having = nullptr;
     }
+
     // check if the extra condition is a comparison
     if (cond_removed->type() != Item::FUNC_ITEM || down_cast<Item_func *>(cond_removed)->arg_count != 2)
       return false;
@@ -1759,9 +1841,11 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
 
   if (dynamic_cast<Item_int_with_ref *>(left_ref) != nullptr)
     left_ref = down_cast<Item_int_with_ref *>(left_ref)->real_item();
+
   if (left_ref->type() != Item::REF_ITEM || down_cast<Item_ref *>(left_ref)->ref_type() != Item_ref::DIRECT_REF ||
       down_cast<Item_ref *>(left_ref)->real_item() != left_expr_for_subselect)
     return false;
+
   // set the operation type
   switch (down_cast<Item_func *>(cond_removed)->functype()) {
     case Item_func::EQ_FUNC:
@@ -1785,6 +1869,7 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
     default:
       return false;
   }
+
   return true;
 }
 
@@ -1792,6 +1877,7 @@ bool Query::ClearSubselectTransformation(common::Operator &oper_for_subselect, I
 // used only in assert macro
 TableStatus Query::PrefixCheck(Item *conds) {
   conds = UnRef(conds);
+
   if (!conds)
     return TableStatus::TABLE_YET_UNSEEN_INVOLVED;
 
@@ -1895,11 +1981,13 @@ TableStatus Query::PrefixCheck(Item *conds) {
       // hmmm.... ?
       break;
   }
+
   return TableStatus::TABLE_SEEN_INVOLVED;
 }
 
 QueryRouteTo Query::BuildCondsIfPossible(Item *conds, CondID &cond_id, const TabID &tmp_table, JoinType join_type) {
   conds = UnRef(conds);
+
   if (conds) {
     CondType filter_type =
         (join_type == JoinType::JO_LEFT
@@ -1909,14 +1997,17 @@ QueryRouteTo Query::BuildCondsIfPossible(Item *conds, CondID &cond_id, const Tab
     // switched back to left!
     if (filter_type == CondType::ON_RIGHT_FILTER)
       filter_type = CondType::ON_LEFT_FILTER;
+
     DEBUG_ASSERT(PrefixCheck(conds) != TableStatus::TABLE_YET_UNSEEN_INVOLVED &&
                  "Table not yet seen was involved in this condition");
 
     bool zero_result = conds->type() == Item::INT_ITEM && !conds->val_bool();
     if (BuildConditions(conds, cond_id, cq, tmp_table, filter_type, zero_result, join_type) == QueryRouteTo::kToMySQL)
       return QueryRouteTo::kToMySQL;
+
     conds = 0;
   }
+
   return QueryRouteTo::kToTianmu;
 }
 

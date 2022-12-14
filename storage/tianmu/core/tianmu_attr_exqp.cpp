@@ -1149,7 +1149,7 @@ bool TianmuAttr::IsDistinct(Filter *f) {
   MEASURE_FET("TianmuAttr::IsDistinct(...)");
   if (ct.IsLookup() && types::RequiresUTFConversions(GetCollation()))
     return false;
-  if (PhysicalColumn::IsDistinct() == common::RSValue::RS_ALL) {  // = is_unique_updated && is_unique
+  if (PhysicalColumn::IsDistinct() == common::RoughSetValue::RS_ALL) {  // = is_unique_updated && is_unique
     if (f == nullptr)
       return (NumOfNulls() == 0);  // no nulls at all, and is_unique  => distinct
     LoadPackInfo();

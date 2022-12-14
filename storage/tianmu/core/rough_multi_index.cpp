@@ -24,16 +24,16 @@ RoughMultiIndex::RoughMultiIndex(std::vector<int> no_of_packs) {
   no_dims = int(no_of_packs.size());
   no_packs = new int[no_dims];
   no_empty_packs = new int[no_dims];
-  rf = new common::RSValue *[no_dims];
+  rf = new common::RoughSetValue *[no_dims];
   local_desc = new std::vector<RFDesc *>[no_dims];
   for (int d = 0; d < no_dims; d++) {
     no_packs[d] = no_of_packs[d];
     no_empty_packs[d] = 0;
     if (no_packs[d] > 0)
-      rf[d] = new common::RSValue[no_packs[d]];
+      rf[d] = new common::RoughSetValue[no_packs[d]];
     else
       rf[d] = nullptr;
-    for (int p = 0; p < no_packs[d]; p++) rf[d][p] = common::RSValue::RS_UNKNOWN;
+    for (int p = 0; p < no_packs[d]; p++) rf[d][p] = common::RoughSetValue::RS_UNKNOWN;
   }
 }
 
@@ -41,7 +41,7 @@ RoughMultiIndex::RoughMultiIndex(const RoughMultiIndex &rmind) {
   no_dims = rmind.no_dims;
   no_packs = new int[no_dims];
   no_empty_packs = new int[no_dims];
-  rf = new common::RSValue *[no_dims];
+  rf = new common::RoughSetValue *[no_dims];
   local_desc = new std::vector<RFDesc *>[no_dims];
   for (int d = 0; d < no_dims; d++) {
     no_packs[d] = rmind.no_packs[d];
@@ -51,7 +51,7 @@ RoughMultiIndex::RoughMultiIndex(const RoughMultiIndex &rmind) {
     // vectors
     // - copying constructor of RFDesc in use?
     if (no_packs[d] > 0)
-      rf[d] = new common::RSValue[no_packs[d]];
+      rf[d] = new common::RoughSetValue[no_packs[d]];
     else
       rf[d] = nullptr;
     for (int p = 0; p < no_packs[d]; p++) rf[d][p] = rmind.rf[d][p];
@@ -70,7 +70,7 @@ RoughMultiIndex::~RoughMultiIndex() {
   delete[] no_empty_packs;
 }
 
-common::RSValue *RoughMultiIndex::GetLocalDescFilter(int dim, int desc_num, bool read_only) {
+common::RoughSetValue *RoughMultiIndex::GetLocalDescFilter(int dim, int desc_num, bool read_only) {
   if (desc_num < 0)
     return nullptr;
   uint j;
@@ -85,10 +85,10 @@ common::RSValue *RoughMultiIndex::GetLocalDescFilter(int dim, int desc_num, bool
   // prepare a new table.
   local_desc[dim].push_back(new RFDesc(no_packs[dim], desc_num));
   for (int p = 0; p < no_packs[dim]; p++) {
-    if (rf[dim][p] == common::RSValue::RS_NONE)  // check global dimension filter
-      (local_desc[dim])[j]->desc_rf[p] = common::RSValue::RS_NONE;
+    if (rf[dim][p] == common::RoughSetValue::RS_NONE)  // check global dimension filter
+      (local_desc[dim])[j]->desc_rf[p] = common::RoughSetValue::RS_NONE;
     else
-      (local_desc[dim])[j]->desc_rf[p] = common::RSValue::RS_UNKNOWN;
+      (local_desc[dim])[j]->desc_rf[p] = common::RoughSetValue::RS_UNKNOWN;
   }
   return (local_desc[dim])[j]->desc_rf;
 }
@@ -106,36 +106,36 @@ void RoughMultiIndex::MakeDimensionSuspect(int dim)  // common::RSValue::RS_ALL 
   for (int d = 0; d < no_dims; d++)
     if ((dim == d || dim == -1) && rf[d]) {
       for (int p = 0; p < no_packs[d]; p++)
-        if (rf[d][p] == common::RSValue::RS_ALL)
-          rf[d][p] = common::RSValue::RS_SOME;
+        if (rf[d][p] == common::RoughSetValue::RS_ALL)
+          rf[d][p] = common::RoughSetValue::RS_SOME;
     }
 }
 
 void RoughMultiIndex::MakeDimensionEmpty(int dim /*= -1*/) {
   for (int d = 0; d < no_dims; d++)
     if ((dim == d || dim == -1) && rf[d]) {
-      for (int p = 0; p < no_packs[d]; p++) rf[d][p] = common::RSValue::RS_NONE;
+      for (int p = 0; p < no_packs[d]; p++) rf[d][p] = common::RoughSetValue::RS_NONE;
     }
 }
 
 bool RoughMultiIndex::UpdateGlobalRoughFilter(int dim, int desc_num) {
   bool any_nonempty = false;
-  common::RSValue *loc_rs = GetLocalDescFilter(dim, desc_num, true);
+  common::RoughSetValue *loc_rs = GetLocalDescFilter(dim, desc_num, true);
   if (loc_rs == nullptr)
     return true;
   for (int p = 0; p < no_packs[dim]; p++) {
-    if (rf[dim][p] == common::RSValue::RS_UNKNOWN) {  // not known yet - get the first
-                                                      // information available
+    if (rf[dim][p] == common::RoughSetValue::RS_UNKNOWN) {  // not known yet - get the first
+                                                            // information available
       rf[dim][p] = loc_rs[p];
-      if (rf[dim][p] != common::RSValue::RS_NONE)
+      if (rf[dim][p] != common::RoughSetValue::RS_NONE)
         any_nonempty = true;
-    } else if (loc_rs[p] == common::RSValue::RS_NONE)
-      rf[dim][p] = common::RSValue::RS_NONE;
-    else if (rf[dim][p] != common::RSValue::RS_NONE) {  // else no change
+    } else if (loc_rs[p] == common::RoughSetValue::RS_NONE)
+      rf[dim][p] = common::RoughSetValue::RS_NONE;
+    else if (rf[dim][p] != common::RoughSetValue::RS_NONE) {  // else no change
       any_nonempty = true;
-      if (loc_rs[p] != common::RSValue::RS_ALL ||
-          rf[dim][p] != common::RSValue::RS_ALL)  // else rf[..] remains common::RSValue::RS_ALL
-        rf[dim][p] = common::RSValue::RS_SOME;
+      if (loc_rs[p] != common::RoughSetValue::RS_ALL ||
+          rf[dim][p] != common::RoughSetValue::RS_ALL)  // else rf[..] remains common::RSValue::RS_ALL
+        rf[dim][p] = common::RoughSetValue::RS_SOME;
     }
   }
   return any_nonempty;
@@ -148,7 +148,7 @@ void RoughMultiIndex::UpdateGlobalRoughFilter(int dim,
     return;
   for (int p = 0; p < no_packs[dim]; p++) {
     if (loc_f->IsEmpty(p))
-      rf[dim][p] = common::RSValue::RS_NONE;
+      rf[dim][p] = common::RoughSetValue::RS_NONE;
   }
 }
 
@@ -156,8 +156,9 @@ void RoughMultiIndex::UpdateLocalRoughFilters(int dim)  // make projection from 
                                                         // given dimensions
 {
   for (int p = 0; p < no_packs[dim]; p++) {
-    if (rf[dim][p] == common::RSValue::RS_NONE) {
-      for (uint i = 0; i < local_desc[dim].size(); i++) (local_desc[dim])[i]->desc_rf[p] = common::RSValue::RS_NONE;
+    if (rf[dim][p] == common::RoughSetValue::RS_NONE) {
+      for (uint i = 0; i < local_desc[dim].size(); i++)
+        (local_desc[dim])[i]->desc_rf[p] = common::RoughSetValue::RS_NONE;
     }
   }
 }
@@ -171,7 +172,7 @@ void RoughMultiIndex::UpdateReducedDimension() {
 void RoughMultiIndex::UpdateReducedDimension(int d) {
   int omitted = 0;
   for (int i = 0; i < no_packs[d]; i++)
-    if (rf[d][i] == common::RSValue::RS_NONE)
+    if (rf[d][i] == common::RoughSetValue::RS_NONE)
       omitted++;
   no_empty_packs[d] = omitted;
 }
@@ -181,7 +182,7 @@ std::vector<int> RoughMultiIndex::GetReducedDimensions() {
   for (int d = 0; d < no_dims; d++) {
     int omitted = 0;
     for (int i = 0; i < no_packs[d]; i++)
-      if (rf[d][i] == common::RSValue::RS_NONE)
+      if (rf[d][i] == common::RoughSetValue::RS_NONE)
         omitted++;
     if (no_empty_packs[d] < omitted)
       dims.push_back(d);
@@ -192,13 +193,13 @@ std::vector<int> RoughMultiIndex::GetReducedDimensions() {
 RoughMultiIndex::RFDesc::RFDesc(int packs, int d) {
   desc_num = d;
   no_packs = packs;
-  desc_rf = new common::RSValue[no_packs];
+  desc_rf = new common::RoughSetValue[no_packs];
 }
 
 RoughMultiIndex::RFDesc::RFDesc(const RFDesc &sec) {
   no_packs = sec.no_packs;
   desc_num = sec.desc_num;
-  desc_rf = new common::RSValue[no_packs];
+  desc_rf = new common::RoughSetValue[no_packs];
   for (int i = 0; i < no_packs; i++) desc_rf[i] = sec.desc_rf[i];
 }
 

@@ -61,23 +61,23 @@ void RSIndex_Bloom::SaveToFile(common::TX_ID ver) {
   }
 }
 
-common::RSValue RSIndex_Bloom::IsValue(types::BString min_v, types::BString max_v, int pack) {
+common::RoughSetValue RSIndex_Bloom::IsValue(types::BString min_v, types::BString max_v, int pack) {
   if (min_v == max_v) {
     auto &bf = bloom_buffers[pack];
     if (bf.len == 0) {
       // this pack no bloom filter data
-      return common::RSValue::RS_SOME;
+      return common::RoughSetValue::RS_SOME;
     }
     Slice key(max_v.val_, max_v.size());
     // get filter data
     Slice pack_block(bf.data, bf.len);
     FilterBlockReader reader(bloom_filter_policy.get(), pack_block);
     if (!reader.KeyMayMatch(0, key)) {
-      return common::RSValue::RS_NONE;
+      return common::RoughSetValue::RS_NONE;
     }
-    return common::RSValue::RS_SOME;
+    return common::RoughSetValue::RS_SOME;
   } else {
-    return common::RSValue::RS_SOME;
+    return common::RoughSetValue::RS_SOME;
   }
 }
 

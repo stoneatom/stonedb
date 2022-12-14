@@ -116,7 +116,7 @@ void JoinerGeneral::ExecuteInnerJoinPackRow(MIIterator *mii, CTask *task [[maybe
     if (mii->PackrowStarted()) {
       bool omit_this_packrow = false;
       for (int i = 0; (i < no_desc && !omit_this_packrow); i++)
-        if ((*cond)[i].EvaluateRoughlyPack(*mii) == common::RSValue::RS_NONE)
+        if ((*cond)[i].EvaluateRoughlyPack(*mii) == common::RoughSetValue::RS_NONE)
           omit_this_packrow = true;
       for (int i = 0; i < no_desc; i++) pack_desc_locked[i] = false;  // delay locking
       if (new_mind->NoMoreTuplesPossible())
@@ -217,7 +217,7 @@ void JoinerGeneral::ExecuteInnerJoinLoopSingleThread(MIIterator &mit, Condition 
     if (mit.PackrowStarted()) {
       bool omit_this_packrow = false;
       for (int i = 0; (i < no_desc && !omit_this_packrow); i++)
-        if (cond[i].EvaluateRoughlyPack(mit) == common::RSValue::RS_NONE)
+        if (cond[i].EvaluateRoughlyPack(mit) == common::RoughSetValue::RS_NONE)
           omit_this_packrow = true;
       for (int i = 0; i < no_desc; i++) pack_desc_locked[i] = false;  // delay locking
       if (new_mind.NoMoreTuplesPossible())
