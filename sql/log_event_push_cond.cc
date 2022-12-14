@@ -451,6 +451,7 @@ bool Rows_log_event::can_push_down()
   //Get SQL statement
   if(!row_event_to_statement(lex_str, sql_statement))
     goto error;
+  DBUG_PRINT("info",(" fuxiang row_event_to_statement: %s", sql_statement.c_str()));
   thd->set_query(lex_str);
   thd->set_query_id(next_query_id());
   DBUG_EXECUTE_IF("tianmu_can_push_down_falied",

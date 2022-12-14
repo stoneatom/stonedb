@@ -117,7 +117,7 @@ common::ErrorCode TianmuMemTable::DropMemTable(std::string table_name) {
   return ha_kvstore_->KVDelMemTableMeta(normalized_name);
 }
 
-void TianmuMemTable::InsertRow(std::unique_ptr<char[]> buf, uint32_t size) {
+void TianmuMemTable::AddInsertEvent(std::unique_ptr<char[]> buf, uint32_t size) {
   // insert rowset data
   uint64_t row_id = next_insert_id_++;
   if (row_id < next_load_id_)
@@ -138,7 +138,7 @@ void TianmuMemTable::InsertRow(std::unique_ptr<char[]> buf, uint32_t size) {
   stat.write_bytes += size;
 }
 
-void TianmuMemTable::UpdateRow(std::unique_ptr<char[]> buf, uint32_t size) {
+void TianmuMemTable::AddUpdateEvent(std::unique_ptr<char[]> buf, uint32_t size) {
   uint64_t load_row_id = next_insert_id_++;  // this is only for load, not real row id
   if (load_row_id < next_load_id_)
     next_load_id_ = load_row_id;
@@ -156,6 +156,17 @@ void TianmuMemTable::UpdateRow(std::unique_ptr<char[]> buf, uint32_t size) {
   kv_trans.Commit();
   stat.write_cnt++;
   stat.write_bytes += size;
+}
+
+void TianmuMemTable::SelectForUpdate(bool change) {
+  // need from rocksdb is row_id
+  //   1. if get event is insert, update insert event;
+  //   2. else if get event is delete, ignore this update event;
+  //   3. else if get event id update, merge this two update event;
+  //   4. else, not return event, need to insert update event.
+}
+void TianmuMemTable::SelectForDelete() {
+  // for delete
 }
 
 void TianmuMemTable::Truncate(Transaction *tx) {

@@ -1504,11 +1504,11 @@ uint64_t TianmuTable::ProcessDelayed(system::IOParameters &iop) {
 }
 
 void TianmuTable::InsertMemRow(std::unique_ptr<char[]> buf, uint32_t size) {
-  return m_mem_table->InsertRow(std::move(buf), size);
+  return m_mem_table->AddInsertEvent(std::move(buf), size);
 }
 
 void TianmuTable::UpdateMemRow(std::unique_ptr<char[]> buf, uint32_t size) {
-  return m_mem_table->UpdateRow(std::move(buf), size);
+  return m_mem_table->AddUpdateEvent(std::move(buf), size);
 }
 
 void TianmuTable::DeleteMemRow() {}

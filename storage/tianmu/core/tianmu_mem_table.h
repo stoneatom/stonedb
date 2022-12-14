@@ -45,8 +45,12 @@ class TianmuMemTable {
   uint64_t CountRecords() { return (next_insert_id_.load() - next_load_id_.load()); }
   rocksdb::ColumnFamilyHandle *GetCFHandle() { return cf_handle_; }
   common::ErrorCode Rename(const std::string &to);
-  void InsertRow(std::unique_ptr<char[]> buf, uint32_t size);
-  void UpdateRow(std::unique_ptr<char[]> buf, uint32_t size);
+  void AddInsertEvent(std::unique_ptr<char[]> buf, uint32_t size);
+  void AddUpdateEvent(std::unique_ptr<char[]> buf, uint32_t size);
+  void AddDeleteEvent(std::unique_ptr<char[]> buf, uint32_t size);
+
+  void SelectForUpdate(bool change = true);
+  void SelectForDelete();
   void Truncate(Transaction *tx);
 
   struct Stat {
