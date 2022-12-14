@@ -2356,6 +2356,8 @@ static MYSQL_SYSVAR_UINT(bg_load_threads, tianmu_sysvar_bg_load_threads, PLUGIN_
                          0, 100, 0);
 static MYSQL_SYSVAR_UINT(insert_buffer_size, tianmu_sysvar_insert_buffer_size, PLUGIN_VAR_READONLY, "-", nullptr,
                          nullptr, 512, 512, 10000, 0);
+static MYSQL_SYSVAR_UINT(delete_or_update_threads, tianmu_sysvar_delete_or_update_threads, PLUGIN_VAR_READONLY, "-",
+                         nullptr, nullptr, 0, 0, 100, 0);
 
 static MYSQL_THDVAR_INT(session_debug_level, PLUGIN_VAR_INT, "session debug level", nullptr, debug_update, 3, 0, 5, 0);
 static MYSQL_THDVAR_INT(control_trace, PLUGIN_VAR_OPCMDARG, "ini controltrace", nullptr, trace_update, 0, 0, 100, 0);
@@ -2489,6 +2491,7 @@ static struct st_mysql_sys_var *tianmu_showvars[] = {MYSQL_SYSVAR(bg_load_thread
                                                      MYSQL_SYSVAR(compensation_start),
                                                      MYSQL_SYSVAR(control_trace),
                                                      MYSQL_SYSVAR(data_distribution_policy),
+                                                     MYSQL_SYSVAR(delete_or_update_threads),
                                                      MYSQL_SYSVAR(disk_usage_threshold),
                                                      MYSQL_SYSVAR(distinct_cache_size),
                                                      MYSQL_SYSVAR(filterevaluation_speedup),
