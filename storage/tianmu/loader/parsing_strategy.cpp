@@ -360,15 +360,27 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
       errorinfo = index;
       goto end;
     }
+
+    char *val_start{nullptr};
+    size_t val_len{0};
+
+    if (string_qualifier_ && *val_beg == string_qualifier_) {
+      val_start = const_cast<char *>(val_beg) + 1;
+      val_len = ptr - val_beg - 2;
+    } else {
+      val_start = const_cast<char *>(val_beg);
+      val_len = ptr - val_beg;
+    }
+
     if (real_item->type() == Item::FIELD_ITEM) {
       Field *field = ((Item_field *)real_item)->field;
       field->set_notnull();
-      field->store((char *)val_beg, ptr - val_beg, char_info);
+      field->store(val_start, val_len, char_info);
       std::string str_field(field->field_name);
       map_str_field[str_field] = field;
-      map_ptr_field[str_field] = std::make_pair(val_beg, ptr - val_beg);
+      map_ptr_field[str_field] = std::make_pair(val_start, val_len);
     } else if (item->type() == Item::STRING_ITEM) {
-      ((Item_user_var_as_out_param *)item)->set_value((char *)val_beg, ptr - val_beg, char_info);
+      ((Item_user_var_as_out_param *)item)->set_value(val_start, val_len, char_info);
     }
 
     ptr += delimiter_.size();
