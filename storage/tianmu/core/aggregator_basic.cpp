@@ -570,8 +570,8 @@ types::BString AggregatorListT::GetValueT(unsigned char *buf) {
     if ((*p != static_cast<char>(AggregatedValue_Mark::AM_NOT_FILL)) &&
         (*p != static_cast<char>(
                    AggregatedValue_Mark::AM_STRING_NULL)))  // empty string indicator: len==0 and nontrivial character
-      return types::BString("", 0, true);  // empty string
-    return types::BString();               // null value
+      return types::BString("", 0, true);                   // empty string
+    return types::BString();                                // null value
   }
   types::BString res(p, len);
   return res;
