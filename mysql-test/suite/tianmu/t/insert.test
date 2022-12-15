@@ -4,11 +4,11 @@
 --echo #Insert values for different types of fields
 --echo #
 --disable_warnings
-DROP DATABASE IF EXISTS insert_db;
+DROP DATABASE IF EXISTS insert_test;
 --enable_warnings
 
-CREATE DATABASE insert_db;
-USE insert_db;
+CREATE DATABASE insert_test;
+USE insert_test;
 CREATE TABLE `column_type_test` (
  `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
   `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
@@ -111,13 +111,13 @@ drop table t1;
 --disable_warnings
 drop database if exists mysqltest;
 --enable_warnings
-create database mysqltest;
-use mysqltest;
+create database mysqltest_insert_test;
+use mysqltest_insert_test;
 create table t1 (c int);
-insert into mysqltest.t1 set mysqltest.t1.c = '1';
-drop database mysqltest;
-use test;
+insert into mysqltest_insert_test.t1 set mysqltest_insert_test.t1.c = '1';
+drop database mysqltest_insert_test;
 
+use insert_test;
 
 --echo #
 --echo # Test of wrong values for float data 
@@ -472,4 +472,4 @@ SELECT * FROM t1;
 DROP VIEW v1, v2;
 DROP TABLE t1;
 # Clean UP
-DROP DATABASE insert_db;
+DROP DATABASE insert_test;

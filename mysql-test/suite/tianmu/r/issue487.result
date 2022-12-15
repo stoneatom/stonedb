@@ -1,3 +1,6 @@
-use test;
+DROP DATABASE IF EXISTS issue487_test;
+CREATE DATABASE issue487_test;
+USE issue487_test;
 create table `#mysql50#q.q` (f1 int primary key) engine=tianmu;
 ERROR HY000: Got error 1103 from storage engine
+DROP DATABASE issue487_test;

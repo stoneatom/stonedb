@@ -1,5 +1,16 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue475_test;
+--enable_warnings
+
+CREATE DATABASE issue475_test;
+
+USE issue475_test;
+
 create table jl (date_test date) ENGINE=TIANMU;
 insert into jl values ('2015-11-12');
 select ADDTIME(date_test, '1 1:1:1.00002') from jl;
 drop table jl;
+
+DROP DATABASE issue475_test;

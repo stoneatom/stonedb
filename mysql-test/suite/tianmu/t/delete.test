@@ -1,10 +1,17 @@
 --source include/have_tianmu.inc
 
+--disable_warnings
+DROP DATABASE IF EXISTS delete_test;
+--enable_warnings
+
+CREATE DATABASE delete_test;
+
+USE delete_test;
+
 --echo #
 --echo # DELETE FROM TABLE_NAME WHERE ...
 --echo #
 
-use test;
 CREATE TABLE `column_type_test` (
  `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
   `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
@@ -225,7 +232,6 @@ delete t2.*,t3.* from t1,t2,t3 where t1.a=t2.a AND t2.b=t3.a and t1.b=t3.b;
 select * from t3;
 drop table t1,t2,t3;
 
-
 #
 # deleting '0000-00-00' values using IS NULL
 #
@@ -293,3 +299,5 @@ insert into t1 values(1,'hhhb');
 delete tbIn,t1 from tbIn,t1 where tbIn.c1=t1.c1 and tbIn.c1=1;
 
 drop table tbIn,t1;
+
+DROP DATABASE delete_test;

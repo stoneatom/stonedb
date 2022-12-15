@@ -1,5 +1,16 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue430_test;
+--enable_warnings
+
+CREATE DATABASE issue430_test;
+
+USE issue430_test;
+
 create table tt2 (a tinyint(4), b smallint(6), c bigint(20)) ENGINE=TIANMU;
 insert into tt2 values (15, 20, 18), (1, 6, 4);
 select (a/b)/c as agf from tt2 group by agf;
 drop table tt2;
+
+DROP DATABASE issue430_test;

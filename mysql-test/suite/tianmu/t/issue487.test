@@ -1,4 +1,14 @@
 --source include/have_tianmu.inc
-use test;
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue487_test;
+--enable_warnings
+
+CREATE DATABASE issue487_test;
+
+USE issue487_test;
+
 -- error 1030
 create table `#mysql50#q.q` (f1 int primary key) engine=tianmu;
+
+DROP DATABASE issue487_test;

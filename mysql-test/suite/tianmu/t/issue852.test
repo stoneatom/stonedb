@@ -1,6 +1,12 @@
 --source include/have_tianmu.inc
 
-USE test;
+--disable_warnings
+DROP DATABASE IF EXISTS issue852_test;
+--enable_warnings
+
+CREATE DATABASE issue852_test;
+
+USE issue852_test;
 
 CREATE TABLE IF NOT EXISTS `lineorder_flat` (
   `LO_ORDERDATE` date NOT NULL COMMENT '',
@@ -47,3 +53,5 @@ CREATE TABLE IF NOT EXISTS `lineorder_flat` (
 eval LOAD DATA INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue852.txt' Into TABLE lineorder_flat FIELDS TERMINATED BY ',' enclosed by '"' ;
 select * from lineorder_flat;
 drop table lineorder_flat;
+
+DROP DATABASE issue852_test;

@@ -1,4 +1,13 @@
 --source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS func_math_test;
+--enable_warnings
+
+CREATE DATABASE func_math_test;
+
+USE func_math_test;
+
 create table t1
 (f1 varchar(32) not null,
 f2 smallint(5) unsigned not null,
@@ -163,3 +172,5 @@ select a-b from t1;
 --error 1690
 select cast((a-b) as unsigned) from t2;
 drop table t1, t2;
+
+DROP DATABASE func_math_test;

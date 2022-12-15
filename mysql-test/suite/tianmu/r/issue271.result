@@ -1,4 +1,6 @@
-USE test;
+DROP DATABASE IF EXISTS issue271_test;
+CREATE DATABASE issue271_test;
+USE issue271_test;
 DROP TABLE IF EXISTS test1;
 CREATE TABLE test1(a varchar(100)) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
 INSERT INTO test1 VALUES ('hakan%'), ('hakank'), ("ha%an");
@@ -164,3 +166,4 @@ SHOW LOCAL VARIABLES LIKE 'SQL_MODE';
 Variable_name	Value
 sql_mode	
 DROP TABLE test1;
+DROP DATABASE issue271_test;

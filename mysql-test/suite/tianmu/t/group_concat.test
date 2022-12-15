@@ -1,4 +1,13 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS group_concat_test;
+--enable_warnings
+
+CREATE DATABASE group_concat_test;
+
+USE group_concat_test;
+
 CREATE TABLE `test_groupconcat_case` (
   `id` int(11) DEFAULT NULL,
   `name` text
@@ -16,3 +25,4 @@ select id,group_concat(name order by name desc SEPARATOR ":") from test_groupcon
 select id,group_concat(distinct name SEPARATOR ":") from test_groupconcat_case group by id;
 drop table test_groupconcat_case;
 
+DROP DATABASE group_concat_test;

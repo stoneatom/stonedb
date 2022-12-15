@@ -1,6 +1,12 @@
 --source include/have_tianmu.inc
 
-USE test;
+--disable_warnings
+DROP DATABASE IF EXISTS issue1107_test;
+--enable_warnings
+
+CREATE DATABASE issue1107_test;
+
+USE issue1107_test;
 
 --disable_warnings
 
@@ -52,3 +58,4 @@ select a.ID,
 DROP TABLE A;
 DROP TABLE B;
 
+DROP DATABASE issue1107_test;

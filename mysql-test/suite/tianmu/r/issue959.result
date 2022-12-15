@@ -1,4 +1,6 @@
-USE test;
+DROP DATABASE IF EXISTS issue959_test;
+CREATE DATABASE issue959_test;
+USE issue959_test;
 DROP TABLE IF EXISTS device_delta_collect;
 CREATE TABLE device_delta_collect
 (
@@ -409,3 +411,4 @@ reportTime	deviceId	multiple	deltaJgs
 2022-08-22 22:33:58	+0	1	1
 2022-08-22 22:33:58	-0	1	1
 DROP TABLE device_delta_collect;
+DROP DATABASE issue959_test;

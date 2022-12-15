@@ -1,3 +1,6 @@
+DROP DATABASE IF EXISTS func_math_test;
+CREATE DATABASE func_math_test;
+USE func_math_test;
 create table t1
 (f1 varchar(32) not null,
 f2 smallint(5) unsigned not null,
@@ -181,17 +184,18 @@ SELECT @a / 0.5 from t1;
 ERROR 22003: DECIMAL value is out of range in '((@`a`) / 0.5)'
 drop table if exists t1, t2;
 Warnings:
-Note	1051	Unknown table 'test.t2'
+Note	1051	Unknown table 'func_math_test.t2'
 create table t1(a tinyint zerofill, b int) engine=tianmu;
 insert into t1 values (11, 22);
 select a-b from t1;
-ERROR 22003: BIGINT UNSIGNED value is out of range in '(`test`.`t1`.`a` - `test`.`t1`.`b`)'
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(`func_math_test`.`t1`.`a` - `func_math_test`.`t1`.`b`)'
 select cast((a-b) as unsigned) from t1;
-ERROR 22003: BIGINT UNSIGNED value is out of range in '(`test`.`t1`.`a` - `test`.`t1`.`b`)'
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(`func_math_test`.`t1`.`a` - `func_math_test`.`t1`.`b`)'
 create table t2(a tinyint unsigned, b int) engine=tianmu;
 insert into t2 values (1, 22);
 select a-b from t1;
-ERROR 22003: BIGINT UNSIGNED value is out of range in '(`test`.`t1`.`a` - `test`.`t1`.`b`)'
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(`func_math_test`.`t1`.`a` - `func_math_test`.`t1`.`b`)'
 select cast((a-b) as unsigned) from t2;
-ERROR 22003: BIGINT UNSIGNED value is out of range in '(`test`.`t2`.`a` - `test`.`t2`.`b`)'
+ERROR 22003: BIGINT UNSIGNED value is out of range in '(`func_math_test`.`t2`.`a` - `func_math_test`.`t2`.`b`)'
 drop table t1, t2;
+DROP DATABASE func_math_test;

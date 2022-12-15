@@ -1,4 +1,13 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS truncate_test;
+--enable_warnings
+
+CREATE DATABASE truncate_test;
+
+USE truncate_test;
+
 CREATE TABLE `column_type_test` (
  `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
   `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
@@ -27,3 +36,5 @@ insert into column_type_test(c_tinyint,c_smallint,c_mediumint,c_int,c_bigint,c_f
 values(105,105,105,105,105,5.2,10.88,105.083,'2016-02-25','2016-02-25 10:20:01','2016-02-25 05:20:01','10:20:01','stoneatom','hello','bcdefghijklmn');
 select * from column_type_test;
 drop table column_type_test;
+
+DROP DATABASE truncate_test;

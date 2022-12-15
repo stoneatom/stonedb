@@ -1,7 +1,9 @@
+DROP DATABASE IF EXISTS delete_all_rows_test;
+CREATE DATABASE delete_all_rows_test;
+USE delete_all_rows_test;
 #
 # DELETE FROM TABLE_NAME
 #
-use test;
 CREATE TABLE `column_type_test` (
 `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
 `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
@@ -169,3 +171,4 @@ SET AUTOCOMMIT=0;
 DELETE from t1;
 SET AUTOCOMMIT=1;
 drop table t1;
+DROP DATABASE delete_all_rows_test;

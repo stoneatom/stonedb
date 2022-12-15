@@ -1,4 +1,6 @@
-use test;
+DROP DATABASE IF EXISTS issue1000_test;
+CREATE DATABASE issue1000_test;
+USE issue1000_test;
 #
 # Test of skip lines syntax
 #
@@ -121,3 +123,4 @@ drop table tmp_loaddata3;
 drop table tmp_loaddata4;
 drop table tmp_loaddata5;
 drop table error_log;
+DROP DATABASE issue1000_test;

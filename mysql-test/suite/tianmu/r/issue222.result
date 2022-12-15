@@ -1,7 +1,10 @@
-use test;
+DROP DATABASE IF EXISTS issue222_test;
+CREATE DATABASE issue222_test;
+USE issue222_test;
 create table $tt (a$1 int, $b int, c$ int) engine=tianmu;
 insert into $tt values (1,2,3);
 select a$1, $b, c$ from $tt;
 a$1	$b	c$
 1	2	3
 drop table $tt;
+DROP DATABASE issue222_test;
