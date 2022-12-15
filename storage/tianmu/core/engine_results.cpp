@@ -404,14 +404,14 @@ ResultSender::~ResultSender() { delete[] buf_lens; }
 
 ResultExportSender::ResultExportSender(THD *thd, Query_result *result, List<Item> &fields)
     : ResultSender(thd, result, fields) {
-  export_res = dynamic_cast<exporter::select_tianmu_export *>(result);
-  DEBUG_ASSERT(export_res);
+  export_res_ = dynamic_cast<exporter::select_tianmu_export *>(result);
+  DEBUG_ASSERT(export_res_);
 }
 
 void ResultExportSender::SendEof() {
-  rcbuffer->FlushAndClose();
-  export_res->SetRowCount((ha_rows)rows_sent);
-  export_res->SendOk(thd);
+  tiammu_buffer_->FlushAndClose();
+  export_res_->SetRowCount((ha_rows)rows_sent);
+  export_res_->SendOk(thd);
 }
 
 void init_field_scan_helpers(THD *&thd, TABLE &tmp_table, TABLE_SHARE &share) {
@@ -475,9 +475,9 @@ void ResultExportSender::Init(TempTable *t) {
 
   common::TianmuError tianmu_error;
 
-  export_res->send_result_set_metadata(fields, Protocol::SEND_NUM_ROWS | Protocol::SEND_EOF);
+  export_res_->send_result_set_metadata(fields, Protocol::SEND_NUM_ROWS | Protocol::SEND_EOF);
 
-  if ((tianmu_error = Engine::GetIOP(iop, *thd, *export_res->SqlExchange(), 0, nullptr, true)) !=
+  if ((tianmu_error = Engine::GetIOP(iop, *thd, *export_res_->SqlExchange(), 0, nullptr, true)) !=
       common::ErrorCode::SUCCESS)
     throw common::Exception("Unable to get IOP");
 
@@ -498,12 +498,12 @@ void ResultExportSender::Init(TempTable *t) {
     i++;
   }
 
-  rcbuffer = std::make_shared<system::LargeBuffer>();
-  if (!rcbuffer->BufOpen(*iop))
+  tiammu_buffer_ = std::make_shared<system::LargeBuffer>();
+  if (!tiammu_buffer_->BufOpen(*iop))
     throw common::FileException("Unable to open file or named pipe.");
 
-  rcde = common::DataFormat::GetDataFormat(iop->GetEDF())->CreateDataExporter(*iop);
-  rcde->Init(rcbuffer, t->GetATIs(iop->GetEDF() != common::EDF::TRI_UNKNOWN), f, deas);
+  tianmu_data_exp_ = common::DataFormat::GetDataFormat(iop->GetEDF())->CreateDataExporter(*iop);
+  tianmu_data_exp_->Init(tiammu_buffer_, t->GetATIs(iop->GetEDF() != common::EDF::TRI_UNKNOWN), f, deas);
 }
 
 // send to Exporter
@@ -515,52 +515,52 @@ void ResultExportSender::SendRecord(const std::vector<std::unique_ptr<types::Tia
   while ((l_item = li++) != nullptr) {
     types::TianmuDataType &tianmu_dt(*r[o]);
     if (tianmu_dt.IsNull())
-      rcde->PutNull();
+      tianmu_data_exp_->PutNull();
     else if (ATI::IsTxtType(tianmu_dt.Type())) {
       types::BString val(tianmu_dt.ToBString());
       if (l_item->field_type() == MYSQL_TYPE_DATE) {
         types::TianmuDateTime dt;
         types::ValueParserForText::ParseDateTime(val, dt, common::ColumnType::DATE);
-        rcde->PutDateTime(dt.GetInt64());
+        tianmu_data_exp_->PutDateTime(dt.GetInt64());
       } else if ((l_item->field_type() == MYSQL_TYPE_DATETIME) || (l_item->field_type() == MYSQL_TYPE_TIMESTAMP)) {
         types::TianmuDateTime dt;
         types::ValueParserForText::ParseDateTime(val, dt, common::ColumnType::DATETIME);
         if (l_item->field_type() == MYSQL_TYPE_TIMESTAMP) {
           types::TianmuDateTime::AdjustTimezone(dt);
         }
-        rcde->PutDateTime(dt.GetInt64());
+        tianmu_data_exp_->PutDateTime(dt.GetInt64());
       } else {
         // values from binary columns from TempTable are retrieved as
         // types::BString -> they get common::CT::STRING type, so an
         // additional check is necessary
         if (dynamic_cast<Item_field *>(l_item) && static_cast<Item_field *>(l_item)->field->binary())
-          rcde->PutBin(val);
+          tianmu_data_exp_->PutBin(val);
         else
-          rcde->PutText(val);
+          tianmu_data_exp_->PutText(val);
       }
     } else if (ATI::IsBinType(tianmu_dt.Type()))
-      rcde->PutBin(tianmu_dt.ToBString());
+      tianmu_data_exp_->PutBin(tianmu_dt.ToBString());
     else if (ATI::IsNumericType(tianmu_dt.Type())) {
       if (tianmu_dt.Type() == common::ColumnType::BYTEINT)
-        rcde->PutNumeric((char)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        tianmu_data_exp_->PutNumeric((char)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
       else if (tianmu_dt.Type() == common::ColumnType::SMALLINT)
-        rcde->PutNumeric((short)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        tianmu_data_exp_->PutNumeric((short)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
       else if (tianmu_dt.Type() == common::ColumnType::INT || tianmu_dt.Type() == common::ColumnType::MEDIUMINT)
-        rcde->PutNumeric((int)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        tianmu_data_exp_->PutNumeric((int)dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
       else
-        rcde->PutNumeric(dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
+        tianmu_data_exp_->PutNumeric(dynamic_cast<types::TianmuNum &>(tianmu_dt).ValueInt());
     } else if (ATI::IsDateTimeType(tianmu_dt.Type())) {
       if (tianmu_dt.Type() == common::ColumnType::TIMESTAMP) {
         // timezone conversion
         types::TianmuDateTime &dt(dynamic_cast<types::TianmuDateTime &>(tianmu_dt));
         types::TianmuDateTime::AdjustTimezone(dt);
-        rcde->PutDateTime(dt.GetInt64());
+        tianmu_data_exp_->PutDateTime(dt.GetInt64());
       } else
-        rcde->PutDateTime(dynamic_cast<types::TianmuDateTime &>(tianmu_dt).GetInt64());
+        tianmu_data_exp_->PutDateTime(dynamic_cast<types::TianmuDateTime &>(tianmu_dt).GetInt64());
     }
     o++;
   }
-  rcde->PutRowEnd();
+  tianmu_data_exp_->PutRowEnd();
 }
 }  // namespace core
 }  // namespace Tianmu

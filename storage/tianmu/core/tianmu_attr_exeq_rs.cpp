@@ -683,7 +683,7 @@ std::vector<int64_t> TianmuAttr::GetListOfDistinctValuesInPack(int pack) {
     if (NumOfNulls() > 0)
       list_vals.push_back(common::NULL_VALUE_64);
     return list_vals;
-  } else if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY) {
+  } else if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::kNullsOnly) {
     list_vals.push_back(common::NULL_VALUE_64);
     return list_vals;
   } else if (TypeName() == common::ColumnType::REAL || TypeName() == common::ColumnType::FLOAT) {
@@ -808,7 +808,7 @@ uint64_t TianmuAttr::ExactDistinctVals(Filter *f)  // provide the exact number o
     return RoughMax(nullptr) + 1;
   bool nulls_only = true;
   for (uint p = 0; p < SizeOfPack(); p++)
-    if (!f->IsEmpty(p) && GetPackOntologicalStatus(p) != PackOntologicalStatus::NULLS_ONLY) {
+    if (!f->IsEmpty(p) && GetPackOntologicalStatus(p) != PackOntologicalStatus::kNullsOnly) {
       nulls_only = false;
       break;
     }

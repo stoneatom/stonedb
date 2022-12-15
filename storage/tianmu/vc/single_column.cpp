@@ -159,7 +159,7 @@ double SingleColumn::RoughSelectivity() { return col_->RoughSelectivity(); }
 std::vector<int64_t> SingleColumn::GetListOfDistinctValues(core::MIIterator const &mit) {
   int pack = mit.GetCurPackrow(dim_);
   if (pack < 0 ||
-      (!mit.WholePack(dim_) && col_->GetPackOntologicalStatus(pack) != core::PackOntologicalStatus::UNIFORM)) {
+      (!mit.WholePack(dim_) && col_->GetPackOntologicalStatus(pack) != core::PackOntologicalStatus::kUniform)) {
     std::vector<int64_t> empty;
     return empty;
   }

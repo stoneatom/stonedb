@@ -127,7 +127,7 @@ class TempTable : public JustATable {
     void DisplayAttrStats(Filter *f [[maybe_unused]]) override {}
     bool TryToMerge(Descriptor &d1 [[maybe_unused]], Descriptor &d2 [[maybe_unused]]) override { return false; }
     PackOntologicalStatus GetPackOntologicalStatus(int pack_no [[maybe_unused]]) override {
-      return PackOntologicalStatus::NORMAL;
+      return PackOntologicalStatus::kNormal;
     }  // not implemented properly yet
     void ApplyFilter(MultiIndex &, int64_t offset, int64_t no_obj);
     void DeleteBuffer();

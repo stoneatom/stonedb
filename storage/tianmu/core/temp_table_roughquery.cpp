@@ -79,7 +79,7 @@ void TempTable::RoughAggregateMinMax(vcolumn::VirtualColumn *vc, int64_t &min_va
   MIIterator mit(filter.mind_, dim, true);
   while (mit.IsValid()) {
     if (filter.rough_mind_->GetPackStatus(dim, mit.GetCurPackrow(dim)) != common::RoughSetValue::RS_NONE &&
-        vc->GetPackOntologicalStatus(mit) != PackOntologicalStatus::NULLS_ONLY) {
+        vc->GetPackOntologicalStatus(mit) != PackOntologicalStatus::kNullsOnly) {
       int64_t v = vc->GetMinInt64(mit);
       if (v == common::NULL_VALUE_64)
         min_val = common::MINUS_INF_64;
@@ -154,7 +154,7 @@ void TempTable::RoughAggregateSum(vcolumn::VirtualColumn *vc, int64_t &min_val, 
                                          // grouping columns are uniform for this packrow
       }
       if (res != common::RoughSetValue::RS_NONE &&
-          vc->GetPackOntologicalStatus(mit) != PackOntologicalStatus::NULLS_ONLY) {
+          vc->GetPackOntologicalStatus(mit) != PackOntologicalStatus::kNullsOnly) {
         empty_set = false;
         success = true;
         bool nonnegative = false;
@@ -527,7 +527,7 @@ void TempTable::RoughAggregate(ResultSender *sender) {
               while (mit.IsValid()) {
                 common::RoughSetValue res = filter.rough_mind_->GetPackStatus(dim, mit.GetCurPackrow(dim));
                 if (res != common::RoughSetValue::RS_NONE &&
-                    vc->GetPackOntologicalStatus(mit) != PackOntologicalStatus::NULLS_ONLY) {
+                    vc->GetPackOntologicalStatus(mit) != PackOntologicalStatus::kNullsOnly) {
                   min_val = UpdateMin(min_val, vc->GetMinInt64(mit), double_vals);
                   max_val = UpdateMax(max_val, vc->GetMaxInt64(mit), double_vals);
                   if (!skip_counting && !group_by_present && res == common::RoughSetValue::RS_ALL) {

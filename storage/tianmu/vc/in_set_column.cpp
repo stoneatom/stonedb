@@ -104,7 +104,7 @@ size_t InSetColumn::MaxStringSizeImpl()  // maximal byte string length in column
 
 core::PackOntologicalStatus InSetColumn::GetPackOntologicalStatusImpl([[maybe_unused]] const core::MIIterator &mit) {
   DEBUG_ASSERT(!"To be implemented.");
-  return core::PackOntologicalStatus::NORMAL;
+  return core::PackOntologicalStatus::kNormal;
 }
 
 void InSetColumn::EvaluatePackImpl([[maybe_unused]] core::MIUpdatingIterator &mit,
