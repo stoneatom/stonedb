@@ -50,7 +50,7 @@ class PackStr final : public Pack {
 
   void LoadValues(const loader::ValueCache *vc);
   bool IsTrie() const { return pack_str_state_ == PackStrtate::kPackTrie; }
-  bool Lookup(const types::BString &pattern, uint16_t &id);
+  bool IsLookup(const types::BString &pattern, uint16_t &id);
   bool LikePrefix(const types::BString &pattern, std::size_t prefixlen, std::unordered_set<uint16_t> &ids);
   bool IsNotMatched(int row, uint16_t &id);
   bool IsNotMatched(int row, const std::unordered_set<uint16_t> &ids);

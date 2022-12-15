@@ -223,7 +223,7 @@ class PhysicalColumn : public Column {
    */
   virtual bool IsDistinct(Filter *f) = 0;
 
-  //! \brief Is the pack NULLS_ONLY, UNIFORM, NORMAL etc...
+  //! \brief Is the pack kNullsOnly, kUniform, kNormal etc...
   virtual PackOntologicalStatus GetPackOntologicalStatus(int pack_no) = 0;
 
   /*! Check whether the value identified by \e row meets the condition \e d and

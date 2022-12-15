@@ -140,9 +140,9 @@ size_t ConstExpressionColumn::MaxStringSizeImpl()  // maximal byte string length
 core::PackOntologicalStatus ConstExpressionColumn::GetPackOntologicalStatusImpl([
     [maybe_unused]] const core::MIIterator &mit) {
   if (last_val_->IsNull())
-    return core::PackOntologicalStatus::NULLS_ONLY;
+    return core::PackOntologicalStatus::kNullsOnly;
 
-  return core::PackOntologicalStatus::UNIFORM;
+  return core::PackOntologicalStatus::kUniform;
 }
 
 void ConstExpressionColumn::EvaluatePackImpl([[maybe_unused]] core::MIUpdatingIterator &mit,

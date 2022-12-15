@@ -383,7 +383,7 @@ bool GroupByWrapper::AggregatePackInOneGroup(int attr_no, MIIterator &mit, int64
 }
 
 bool GroupByWrapper::AddPackIfUniform(int attr_no, MIIterator &mit) {
-  if (virt_col[attr_no] && virt_col[attr_no]->GetPackOntologicalStatus(mit) == PackOntologicalStatus::UNIFORM &&
+  if (virt_col[attr_no] && virt_col[attr_no]->GetPackOntologicalStatus(mit) == PackOntologicalStatus::kUniform &&
       !mit.NullsPossibleInPack()) {
     // Put constant values for the grouping vector (will not be changed for this
     // pack)

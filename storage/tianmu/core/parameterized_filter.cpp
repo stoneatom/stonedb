@@ -812,7 +812,7 @@ bool ParameterizedFilter::TryToMerge(Descriptor &d1, Descriptor &d2)  // true, i
 
   if (d1.attr.vc == d2.attr.vc && d1.IsInner() && d2.IsInner()) {
     // IS_NULL and anything based on the same column => FALSE
-    // NOT_NULL and anything based on the same column => NOT_NULL is not needed
+    // kNotNull and anything based on the same column => kNotNull is not needed
     // Exceptions:
     //		null NOT IN {empty set}
     //		null < ALL {empty set} etc.

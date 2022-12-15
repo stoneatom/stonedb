@@ -24,7 +24,13 @@
 
 namespace Tianmu {
 namespace core {
-enum class PackOntologicalStatus { NULLS_ONLY, UNIFORM, UNIFORM_AND_NULLS, SEQUENTIAL, NORMAL };
+enum class PackOntologicalStatus {
+  kNullsOnly = 0,
+  kUniform,
+  kUniformAndNulls,
+  kSequential,
+  kNormal
+};
 
 /*! \brief Base class for columns.
  *

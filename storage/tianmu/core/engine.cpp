@@ -166,7 +166,7 @@ static std::string has_mem_name(const LEX_STRING &comment) {
   return name;
 }
 
-bool parameter_equals(THD *thd, enum tianmu_var_name vn, longlong value) {
+bool parameter_equals(THD *thd, enum TianmuVarName vn, longlong value) {
   longlong param = 0;
   std::string s_res;
 
@@ -643,7 +643,7 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
 
   bool notnull = (field.null_bit == 0);
   auto str = boost::to_upper_copy(std::string(field.comment.str, field.comment.length));
-  bool filter = (str.find("FILTER") != std::string::npos);
+  bool bloom_filter = (str.find("FILTER") != std::string::npos);
 
   auto fmt = common::PackFmt::DEFAULT;
   if (str.find("LOOKUP") != std::string::npos) {
@@ -683,9 +683,9 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
     case MYSQL_TYPE_DATE:
     case MYSQL_TYPE_NEWDATE:
       return AttributeTypeInfo(Engine::GetCorrespondingType(field), notnull, (ushort)field.field_length, 0, auto_inc,
-                               DTCollation(), fmt, filter);
+                               DTCollation(), fmt, bloom_filter);
     case MYSQL_TYPE_TIME:
-      return AttributeTypeInfo(common::ColumnType::TIME, notnull, 0, 0, false, DTCollation(), fmt, filter);
+      return AttributeTypeInfo(common::ColumnType::TIME, notnull, 0, 0, false, DTCollation(), fmt, bloom_filter);
     case MYSQL_TYPE_STRING:
     case MYSQL_TYPE_VARCHAR: {
       if (field.field_length > FIELD_MAXLENGTH)
@@ -703,17 +703,17 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
         }
         if (fstr->charset() != &my_charset_bin)
           return AttributeTypeInfo(common::ColumnType::STRING, notnull, field.field_length, 0, auto_inc, coll, fmt,
-                                   filter);
-        return AttributeTypeInfo(common::ColumnType::BYTE, notnull, field.field_length, 0, auto_inc, coll, fmt, filter);
+                                   bloom_filter);
+        return AttributeTypeInfo(common::ColumnType::BYTE, notnull, field.field_length, 0, auto_inc, coll, fmt, bloom_filter);
       } else if (const Field_str *fvstr = dynamic_cast<const Field_varstring *>(&field)) {
         DTCollation coll(fvstr->charset(), fvstr->derivation());
         if (fmt == common::PackFmt::TRIE && types::IsCaseInsensitive(coll))
           throw common::UnsupportedDataTypeException();
         if (fvstr->charset() != &my_charset_bin)
           return AttributeTypeInfo(common::ColumnType::VARCHAR, notnull, field.field_length, 0, auto_inc, coll, fmt,
-                                   filter);
+                                   bloom_filter);
         return AttributeTypeInfo(common::ColumnType::VARBYTE, notnull, field.field_length, 0, auto_inc, coll, fmt,
-                                 filter);
+                                 bloom_filter);
       }
       throw common::UnsupportedDataTypeException();
     }
@@ -739,19 +739,19 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
             if (field.field_length > FIELD_MAXLENGTH) {
               t = common::ColumnType::LONGTEXT;
             }
-            return AttributeTypeInfo(t, notnull, field.field_length, 0, auto_inc, DTCollation(), fmt, filter);
+            return AttributeTypeInfo(t, notnull, field.field_length, 0, auto_inc, DTCollation(), fmt, bloom_filter);
           }
           switch (field.field_length) {
             case 255:
             case FIELD_MAXLENGTH:
               // TINYBLOB, BLOB
               return AttributeTypeInfo(common::ColumnType::VARBYTE, notnull, field.field_length, 0, auto_inc,
-                                       DTCollation(), fmt, filter);
+                                       DTCollation(), fmt, bloom_filter);
             case 16777215:
             case 4294967295:
               // MEDIUMBLOB, LONGBLOB
               return AttributeTypeInfo(common::ColumnType::BIN, notnull, field.field_length, 0, auto_inc, DTCollation(),
-                                       fmt, filter);
+                                       fmt, bloom_filter);
             default:
               throw common::UnsupportedDataTypeException();
           }
@@ -981,13 +981,13 @@ int Engine::SetUpCacheFolder(const std::string &cachefolder_path) {
   return 0;
 }
 
-std::string get_parameter_name(enum tianmu_var_name vn) {
+std::string get_parameter_name(enum TianmuVarName vn) {
   DEBUG_ASSERT(static_cast<int>(vn) >= 0 &&
-               static_cast<int>(vn) <= static_cast<int>(tianmu_var_name::TIANMU_VAR_LIMIT));
+               static_cast<int>(vn) <= static_cast<int>(TianmuVarName::kTianmuVarLimit));
   return tianmu_var_name_strings[static_cast<int>(vn)];
 }
 
-int get_parameter(THD *thd, enum tianmu_var_name vn, double &value) {
+int get_parameter(THD *thd, enum TianmuVarName vn, double &value) {
   std::string var_data = get_parameter_name(vn);
   user_var_entry *m_entry;
   my_bool null_val;
@@ -1001,7 +1001,7 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, double &value) {
   return 0;
 }
 
-int get_parameter(THD *thd, enum tianmu_var_name vn, int64_t &value) {
+int get_parameter(THD *thd, enum TianmuVarName vn, int64_t &value) {
   std::string var_data = get_parameter_name(vn);
   user_var_entry *m_entry;
   my_bool null_val;
@@ -1016,7 +1016,7 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, int64_t &value) {
   return 0;
 }
 
-int get_parameter(THD *thd, enum tianmu_var_name vn, std::string &value) {
+int get_parameter(THD *thd, enum TianmuVarName vn, std::string &value) {
   my_bool null_val;
   std::string var_data = get_parameter_name(vn);
   user_var_entry *m_entry;
@@ -1035,7 +1035,7 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, std::string &value) {
   return 0;
 }
 
-int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::string &s_result) {
+int get_parameter(THD *thd, enum TianmuVarName vn, longlong &result, std::string &s_result) {
   user_var_entry *m_entry;
   std::string var_data = get_parameter_name(vn);
 
@@ -1045,7 +1045,7 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::stri
 
   if (m_entry->type() == DECIMAL_RESULT) {
     switch (vn) {
-      case tianmu_var_name::TIANMU_ABORT_ON_THRESHOLD: {
+      case TianmuVarName::kTianmuAbortOnThreshold: {
         double dv;
         my_bool null_value;
         my_decimal v;
@@ -1062,10 +1062,10 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::stri
     return 0;
   } else if (m_entry->type() == INT_RESULT) {
     switch (vn) {
-      case tianmu_var_name::TIANMU_THROTTLE:
-      case tianmu_var_name::TIANMU_TIANMUEXPRESSIONS:
-      case tianmu_var_name::TIANMU_PARALLEL_AGGR:
-      case tianmu_var_name::TIANMU_ABORT_ON_COUNT:
+      case TianmuVarName::kTianmuThrottle:
+      case TianmuVarName::kTianmuExpressions:
+      case TianmuVarName::kTianmuParallelAggr:
+      case TianmuVarName::kTianmuAbortOnCount:
         my_bool null_value;
         result = m_entry->val_int(&null_value);
         break;
@@ -1082,15 +1082,15 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::stri
     m_entry->val_str(&null_value, &str, NOT_FIXED_DEC);
     var_data = std::string(str.ptr());
 
-    if (vn == tianmu_var_name::TIANMU_DATAFORMAT || vn == tianmu_var_name::TIANMU_REJECT_FILE_PATH) {
+    if (vn == TianmuVarName::kTianmuDataFormat || vn == TianmuVarName::kTianmuRejectFilePath) {
       s_result = var_data;
-    } else if (vn == tianmu_var_name::TIANMU_PIPEMODE) {
+    } else if (vn == TianmuVarName::kTianmuPipeMode) {
       boost::to_upper(var_data);
       if (var_data == "SERVER")
         result = 1;
       if (var_data == "CLIENT")
         result = 0;
-    } else if (vn == tianmu_var_name::TIANMU_NULL) {
+    } else if (vn == TianmuVarName::kTianmuNull) {
       s_result = var_data;
     }
     return 0;
@@ -1630,13 +1630,13 @@ bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects
   if (file) {  // it writes to a file
     longlong param = 0;
     std::string s_res;
-    if (!get_parameter(thd, tianmu_var_name::TIANMU_DATAFORMAT, param, s_res)) {
+    if (!get_parameter(thd, TianmuVarName::kTianmuDataFormat, param, s_res)) {
       if (boost::iequals(boost::trim_copy(s_res), "MYSQL"))
         return false;
 
       common::DataFormatPtr df = common::DataFormat::GetDataFormat(s_res);
       if (!df) {  // parameter is UNKNOWN VALUE
-        my_message(ER_SYNTAX_ERROR, "Histgore specific error: Unknown value of TIANMU_DATAFORMAT parameter", MYF(0));
+        my_message(ER_SYNTAX_ERROR, "Histgore specific error: Unknown value of kTianmuDataFormat parameter", MYF(0));
         return true;
       } else if (!df->CanExport()) {
         my_message(ER_SYNTAX_ERROR,
@@ -1743,30 +1743,30 @@ common::TianmuError Engine::GetRejectFileIOParameters(THD &thd, std::unique_ptr<
   int64_t abort_on_count = 0;
   double abort_on_threshold = 0;
 
-  get_parameter(&thd, tianmu_var_name::TIANMU_REJECT_FILE_PATH, reject_file);
-  if (get_parameter(&thd, tianmu_var_name::TIANMU_REJECT_FILE_PATH, reject_file) == 2)
+  get_parameter(&thd, TianmuVarName::kTianmuRejectFilePath, reject_file);
+  if (get_parameter(&thd, TianmuVarName::kTianmuRejectFilePath, reject_file) == 2)
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_LOAD_REJECT_FILE parameter.");
 
-  if (get_parameter(&thd, tianmu_var_name::TIANMU_ABORT_ON_COUNT, abort_on_count) == 2)
-    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_ABORT_ON_COUNT parameter.");
+  if (get_parameter(&thd, TianmuVarName::kTianmuAbortOnCount, abort_on_count) == 2)
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of kTianmuAbortOnCount parameter.");
 
-  if (get_parameter(&thd, tianmu_var_name::TIANMU_ABORT_ON_THRESHOLD, abort_on_threshold) == 2)
+  if (get_parameter(&thd, TianmuVarName::kTianmuAbortOnThreshold, abort_on_threshold) == 2)
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
-                               "Wrong value of TIANMU_ABORT_ON_THRESHOLD parameter.");
+                               "Wrong value of kTianmuAbortOnThreshold parameter.");
 
   if (abort_on_count != 0 && abort_on_threshold != 0)
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
-                               "TIANMU_ABORT_ON_COUNT and TIANMU_ABORT_ON_THRESHOLD "
+                               "kTianmuAbortOnCount and kTianmuAbortOnThreshold "
                                "parameters are mutualy exclusive.");
 
   if (!(abort_on_threshold >= 0.0 && abort_on_threshold < 1.0))
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
-                               "TIANMU_ABORT_ON_THRESHOLD parameter value must be in range (0,1).");
+                               "kTianmuAbortOnThreshold parameter value must be in range (0,1).");
 
   if ((abort_on_count != 0 || abort_on_threshold != 0) && reject_file.empty())
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
-                               "TIANMU_ABORT_ON_COUNT or TIANMU_ABORT_ON_THRESHOLD can by only specified with "
-                               "TIANMU_REJECT_FILE_PATH parameter.");
+                               "kTianmuAbortOnCount or kTianmuAbortOnThreshold can by only specified with "
+                               "kTianmuRejectFilePath parameter.");
 
   if (!reject_file.empty() && fs::exists(reject_file))
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
@@ -1807,10 +1807,10 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
   longlong param = 0;
   std::string s_res;
   if (common::DataFormat::GetNoFormats() > 1) {
-    if (!get_parameter(&thd, tianmu_var_name::TIANMU_DATAFORMAT, param, s_res)) {
+    if (!get_parameter(&thd, TianmuVarName::kTianmuDataFormat, param, s_res)) {
       common::DataFormatPtr df = common::DataFormat::GetDataFormat(s_res);
       if (!df)
-        return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Unknown value of TIANMU_DATAFORMAT parameter.");
+        return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Unknown value of kTianmuDataFormat parameter.");
       else
         io_mode = df->GetId();
     } else
@@ -1818,7 +1818,7 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
   } else
     io_mode = common::DataFormat::GetDataFormat(0)->GetId();
 
-  if (!get_parameter(&thd, tianmu_var_name::TIANMU_NULL, param, s_res))
+  if (!get_parameter(&thd, TianmuVarName::kTianmuNull, param, s_res))
     io_params->SetNullsStr(s_res);
 
   if (io_params->LoadDelayed()) {
