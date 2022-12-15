@@ -1,5 +1,13 @@
 --source include/have_tianmu.inc
 
+--disable_warnings
+DROP DATABASE IF EXISTS temporary_test;
+--enable_warnings
+
+CREATE DATABASE temporary_test;
+
+USE temporary_test;
+
 --echo #
 --echo #create temporary...like...
 --echo #
@@ -81,3 +89,4 @@ DROP TABLE  `#sql2`;
 #Table names contain characters
 CREATE TEMPORARY TABLE `tt+1` (c1 INT)engine=tianmu;
 
+DROP DATABASE temporary_test;

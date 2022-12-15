@@ -1,6 +1,12 @@
 --source include/have_tianmu.inc
 
-USE test;
+--disable_warnings
+DROP DATABASE IF EXISTS issue998_test;
+--enable_warnings
+
+CREATE DATABASE issue998_test;
+
+USE issue998_test;
 
 --disable_warnings
 
@@ -28,7 +34,6 @@ SELECT t2_int FROM t2 UNION SELECT t1_char FROM t1;
 
 DROP TABLE t1,t2;
 
-
 # type big int
 
 ## DDL
@@ -50,7 +55,6 @@ SELECT t2_int FROM t2 UNION SELECT t1_char FROM t1;
 ## clean test table
 
 DROP TABLE t1,t2;
-
 
 # type char
 
@@ -76,7 +80,6 @@ SELECT t2_int FROM t2 UNION SELECT t1_char FROM t1;
 
 DROP TABLE t1,t2;
 
-
 # type datetime, default precision
 
 ## DDL
@@ -98,7 +101,6 @@ SELECT t2_int FROM t2 UNION SELECT t1_char FROM t1;
 ## clean test table
 
 DROP TABLE t1,t2;
-
 
 # type datetime, default precision of 3
 
@@ -122,7 +124,6 @@ SELECT t2_int FROM t2 UNION SELECT t1_char FROM t1;
 
 DROP TABLE t1,t2;
 
-
 # type datetime, default precision of 4
 
 ## DDL
@@ -144,3 +145,5 @@ SELECT t2_int FROM t2 UNION SELECT t1_char FROM t1;
 ## clean test table
 
 DROP TABLE t1,t2;
+
+DROP DATABASE issue998_test;

@@ -1,6 +1,13 @@
 --source include/have_tianmu.inc
 
-use test;
+--disable_warnings
+DROP DATABASE IF EXISTS issue282_test;
+--enable_warnings
+
+CREATE DATABASE issue282_test;
+
+USE issue282_test;
+
 CREATE TABLE issue282_t1 (sku int PRIMARY KEY, pr int)engine=tianmu;
 CREATE TABLE issue282_t2 (sku int PRIMARY KEY, sppr int, name varchar(255))engine=tianmu;
 
@@ -54,3 +61,5 @@ SELECT issue282_t2.sku, issue282_t2.sppr, issue282_t2.name, issue282_t1.sku, iss
   issue282_t2.sppr=issue282_t1.sku));
 
 drop table issue282_t1 ,issue282_t2;
+
+DROP DATABASE issue282_test;

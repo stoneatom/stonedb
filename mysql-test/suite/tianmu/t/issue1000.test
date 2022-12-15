@@ -1,6 +1,13 @@
 --source include/have_tianmu.inc
 
-use test;
+--disable_warnings
+DROP DATABASE IF EXISTS issue1000_test;
+--enable_warnings
+
+CREATE DATABASE issue1000_test;
+
+USE issue1000_test;
+
 --echo #
 --echo # Test of skip lines syntax
 --echo #
@@ -101,3 +108,5 @@ drop table tmp_loaddata3;
 drop table tmp_loaddata4;
 drop table tmp_loaddata5;
 drop table error_log;
+
+DROP DATABASE issue1000_test;

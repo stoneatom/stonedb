@@ -1,6 +1,12 @@
 --source include/have_tianmu.inc
 
-USE test;
+--disable_warnings
+DROP DATABASE IF EXISTS issue271_test;
+--enable_warnings
+
+CREATE DATABASE issue271_test;
+
+USE issue271_test;
 
 --disable_warnings
 
@@ -66,7 +72,6 @@ SHOW LOCAL VARIABLES LIKE 'SQL_MODE';
 
 DROP TABLE test1;
 
-
 # CHARACTER ascii
 
 ## DDL
@@ -126,7 +131,6 @@ SHOW LOCAL VARIABLES LIKE 'SQL_MODE';
 ## clean test table
 
 DROP TABLE test1;
-
 
 # CHARACTER gb18030
 
@@ -188,7 +192,6 @@ SHOW LOCAL VARIABLES LIKE 'SQL_MODE';
 
 DROP TABLE test1;
 
-
 # CHARACTER gdk
 
 ## DDL
@@ -249,3 +252,4 @@ SHOW LOCAL VARIABLES LIKE 'SQL_MODE';
 
 DROP TABLE test1;
 
+DROP DATABASE issue271_test;
