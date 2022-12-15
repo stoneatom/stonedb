@@ -41,16 +41,18 @@ class ATI {
   }
   static bool IsFixedNumericType(common::ColumnType attr_type) {
     return IsInteger32Type(attr_type) || attr_type == common::ColumnType::BIGINT ||
-           attr_type == common::ColumnType::NUM;
+           attr_type == common::ColumnType::NUM || attr_type == common::ColumnType::BIT;
   }
 
   static bool IsRealType(common::ColumnType attr_type) {
     return attr_type == common::ColumnType::FLOAT || attr_type == common::ColumnType::REAL;
   }
+
+  static bool IsBitType(common::ColumnType attr_type) { return attr_type == common::ColumnType::BIT; }
+
   static bool IsNumericType(common::ColumnType attr_type) {
-    return IsInteger32Type(attr_type) || attr_type == common::ColumnType::BIGINT ||
-           attr_type == common::ColumnType::NUM || attr_type == common::ColumnType::FLOAT ||
-           attr_type == common::ColumnType::REAL;
+    return IsIntegerType(attr_type) || attr_type == common::ColumnType::NUM || attr_type == common::ColumnType::FLOAT ||
+           attr_type == common::ColumnType::REAL || attr_type == common::ColumnType::BIT;
   }
 
   static bool IsBinType(common::ColumnType attr_type) {

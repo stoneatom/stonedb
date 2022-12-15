@@ -487,6 +487,14 @@ void Engine::EncodeRecord(const std::string &table_path, int table_id, Field **f
         *(int64_t *)ptr = v;
         ptr += sizeof(int64_t);
       } break;
+      case MYSQL_TYPE_BIT: {
+        int64_t v = f->val_int();
+        ASSERT(v < 0, "bit type data should never less than 0.");
+        if (v > common::TIANMU_BIGINT_MAX)  // how can v > bigint max ??
+          v = common::TIANMU_BIGINT_MAX;    // TODO(fix with bit prec)
+        *(int64_t *)ptr = v;
+        ptr += sizeof(int64_t);
+      } break;
       case MYSQL_TYPE_DECIMAL:
       case MYSQL_TYPE_FLOAT:
       case MYSQL_TYPE_DOUBLE: {
@@ -555,7 +563,6 @@ void Engine::EncodeRecord(const std::string &table_path, int table_id, Field **f
       case MYSQL_TYPE_ENUM:
       case MYSQL_TYPE_GEOMETRY:
       case MYSQL_TYPE_NULL:
-      case MYSQL_TYPE_BIT:
       default:
         throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
         break;
@@ -709,6 +716,13 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
                                  filter);
       }
       throw common::UnsupportedDataTypeException();
+    }
+    case MYSQL_TYPE_BIT: {
+      const Field_bit_as_char *f_bit = ((const Field_bit_as_char *)&field);
+      if (/*f_bit->field_length > 0 && */ f_bit->field_length <= common::kTianmuBitMaxPrec)
+        return AttributeTypeInfo(common::ColumnType::NUM, notnull, f_bit->field_length);
+      throw common::UnsupportedDataTypeException(
+          "The bit(M) type, M must be less than or equal to 63 in tianmu engine.");
     }
     case MYSQL_TYPE_NEWDECIMAL: {
       const Field_new_decimal *fnd = ((const Field_new_decimal *)&field);
