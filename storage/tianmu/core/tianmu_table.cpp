@@ -607,6 +607,7 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
     case MYSQL_TYPE_LONG:
     case MYSQL_TYPE_INT24:
     case MYSQL_TYPE_LONGLONG: {
+    case MYSQL_TYPE_BIT:
       int64_t value = f->val_int();
       if (m_attrs[col]->GetIfAutoInc() && value == 0)
         // Value of auto inc column was not assigned by user
@@ -620,7 +621,6 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
           if (value > 0 || ((m_attrs[col]->TypeName() == common::ColumnType::BIGINT) && m_attrs[col]->GetIfUnsigned()))
             m_attrs[col]->SetAutoInc(value);
         }
-      }
     } break;
     case MYSQL_TYPE_DECIMAL:
     case MYSQL_TYPE_FLOAT:
@@ -708,7 +708,6 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
     case MYSQL_TYPE_ENUM:
     case MYSQL_TYPE_GEOMETRY:
     case MYSQL_TYPE_NULL:
-    case MYSQL_TYPE_BIT:
     default:
       throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
       break;
@@ -1016,15 +1015,16 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
         case common::ColumnType::SMALLINT:
         case common::ColumnType::INT:
         case common::ColumnType::MEDIUMINT:
-        case common::ColumnType::BIGINT: {
+        case common::ColumnType::BIGINT:
+        case common::ColumnType::BIT: {
           types::BString s;
           int64_t v = *(int64_t *)(vcs[att].GetDataBytesPointer(i));
           if (v == common::NULL_VALUE_64)
             s = types::BString();
           else {
-            types::TianmuNum rcd(v, m_attrs[att]->Type().GetScale(), m_attrs[att]->Type().IsFloat(),
-                                 m_attrs[att]->TypeName());
-            s = rcd.ToBString();
+            types::TianmuNum tianmu_d(v, m_attrs[att]->Type().GetScale(), m_attrs[att]->Type().IsFloat(),
+                                      m_attrs[att]->TypeName());
+            s = tianmu_d.ToBString();
           }
           std::memcpy(ptr, s.GetDataBytesPointer(), s.size());
           ptr += s.size();

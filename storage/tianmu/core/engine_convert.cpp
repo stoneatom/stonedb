@@ -97,6 +97,7 @@ bool Engine::ConvertToField(Field *field, types::TianmuDataType &tianmu_item, st
         case common::ColumnType::REAL:
         case common::ColumnType::FLOAT:
         case common::ColumnType::NUM:
+        case common::ColumnType::BIT:
           switch (field->type()) {
             case MYSQL_TYPE_TINY:
               *(char *)field->ptr = (char)(int64_t)((types::TianmuNum &)(tianmu_item));
@@ -111,6 +112,9 @@ bool Engine::ConvertToField(Field *field, types::TianmuDataType &tianmu_item, st
               *(int *)field->ptr = (int)(int64_t)((types::TianmuNum &)(tianmu_item));
               break;
             case MYSQL_TYPE_LONGLONG:
+              *(int64_t *)field->ptr = (int64_t)((types::TianmuNum &)(tianmu_item));
+              break;
+            case MYSQL_TYPE_BIT:  // mysql bit(1~64), here is (1~63, 1 precision lose)
               *(int64_t *)field->ptr = (int64_t)((types::TianmuNum &)(tianmu_item));
               break;
             case MYSQL_TYPE_FLOAT:
@@ -146,7 +150,8 @@ bool Engine::ConvertToField(Field *field, types::TianmuDataType &tianmu_item, st
                 blob->set_ptr(((types::BString &)tianmu_item).len_, (uchar *)((types::BString &)tianmu_item).val_);
                 blob->copy();
               } else {
-                blob->store(((types::BString &)tianmu_item).val_, ((types::BString &)tianmu_item).len_, &my_charset_bin);
+                blob->store(((types::BString &)tianmu_item).val_, ((types::BString &)tianmu_item).len_,
+                            &my_charset_bin);
                 uchar *src, *tgt;
 
                 uint packlength = blob->pack_length_no_ptr();
@@ -481,7 +486,8 @@ int Engine::Convert(int &is_null, String *value, types::TianmuDataType &tianmu_i
   return 0;
 }
 
-bool Engine::AreConvertible(types::TianmuDataType &tianmu_item, enum_field_types my_type, [[maybe_unused]] uint length) {
+bool Engine::AreConvertible(types::TianmuDataType &tianmu_item, enum_field_types my_type,
+                            [[maybe_unused]] uint length) {
   /*if(tianmu_item->Type() == Engine::GetCorrespondingType(my_type, length) ||
    tianmu_item->IsNull()) return true;*/
   common::ColumnType tianmu_type = tianmu_item.Type();
@@ -514,6 +520,8 @@ bool Engine::AreConvertible(types::TianmuDataType &tianmu_item, enum_field_types
       return tianmu_type == common::ColumnType::MEDIUMINT;
     case MYSQL_TYPE_LONG:
       return tianmu_type == common::ColumnType::INT;
+    case MYSQL_TYPE_BIT:
+      return tianmu_type == common::ColumnType::BIT;
     case MYSQL_TYPE_FLOAT:
     case MYSQL_TYPE_DOUBLE:
       return tianmu_type == common::ColumnType::FLOAT || tianmu_type == common::ColumnType::REAL;
@@ -549,6 +557,8 @@ common::ColumnType Engine::GetCorrespondingType(const enum_field_types &eft) {
       return common::ColumnType::INT;
     case MYSQL_TYPE_LONGLONG:
       return common::ColumnType::BIGINT;
+    case MYSQL_TYPE_BIT:
+      return common::ColumnType::BIT;
     case MYSQL_TYPE_FLOAT:
       return common::ColumnType::FLOAT;
     case MYSQL_TYPE_DOUBLE:

@@ -181,7 +181,7 @@ types::TianmuValueObject ExpressionColumn::GetValueImpl(const core::MIIterator &
     return types::TianmuDateTime(GetValueInt64(mit), TypeName());
   if (core::ATI::IsRealType(TypeName()))
     return types::TianmuNum(GetValueInt64(mit), 0, true, TypeName());
-  if (lookup_to_num || TypeName() == common::ColumnType::NUM)
+  if (lookup_to_num || TypeName() == common::ColumnType::NUM || TypeName() == common::ColumnType::BIT)
     return types::TianmuNum(GetValueInt64(mit), Type().GetScale());
   DEBUG_ASSERT(!"Illegal execution path");
   return types::TianmuValueObject();
@@ -221,8 +221,8 @@ size_t ExpressionColumn::MaxStringSizeImpl()  // maximal byte string length in c
 }
 
 core::PackOntologicalStatus ExpressionColumn::GetPackOntologicalStatusImpl(const core::MIIterator &mit) {
-  core::PackOntologicalStatus st =
-      deterministic_ ? core::PackOntologicalStatus::kUniform : core::PackOntologicalStatus::kNormal;  // will be used for
+  core::PackOntologicalStatus st = deterministic_ ? core::PackOntologicalStatus::kUniform
+                                                  : core::PackOntologicalStatus::kNormal;  // will be used for
 
   // what about 0 arguments and null only?
   core::PackOntologicalStatus st_loc;

@@ -91,9 +91,10 @@ class AttributeTypeInfo {
     kBloomFilter,
   };
 
-  AttributeTypeInfo(common::ColumnType attrt, bool not_null, uint precision = 0, ushort scale = 0, bool auto_inc = false,
-                    DTCollation collation = DTCollation(), common::PackFmt fmt = common::PackFmt::DEFAULT,
-                    bool filter = false, std::string field_name = std::string())
+  AttributeTypeInfo(common::ColumnType attrt, bool not_null, uint precision = 0, ushort scale = 0,
+                    bool auto_inc = false, DTCollation collation = DTCollation(),
+                    common::PackFmt fmt = common::PackFmt::DEFAULT, bool filter = false,
+                    std::string field_name = std::string())
       : attrt_(attrt), fmt_(fmt), precision_(precision), scale_(scale), collation_(collation), field_name_(field_name) {
     flag_[static_cast<int>(enumATI::kNotNull)] = not_null;
     flag_[static_cast<int>(enumATI::kBloomFilter)] = filter;
@@ -106,7 +107,7 @@ class AttributeTypeInfo {
   common::ColumnType Type() const { return attrt_; }
   common::PackType GetPackType() const {
     return ATI::IsDateTimeType(attrt_) || ATI::IsNumericType(attrt_) || IsLookup() ? common::PackType::INT
-                                                                                 : common::PackType::STR;
+                                                                                   : common::PackType::STR;
   }
   std::string GetFieldName() { return field_name_; }
   uint Precision() const { return precision_; }

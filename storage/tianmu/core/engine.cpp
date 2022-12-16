@@ -489,8 +489,9 @@ void Engine::EncodeRecord(const std::string &table_path, int table_id, Field **f
       } break;
       case MYSQL_TYPE_BIT: {
         int64_t v = f->val_int();
-        ASSERT(v < 0, "bit type data should never less than 0.");
-        if (v > common::TIANMU_BIGINT_MAX)  // how can v > bigint max ??
+        // DEBUG_ASSERT(v < 0, "bit type data should never less than 0.");
+	// open it when support M = 64, now all value parsed is < 0.
+        if (v > common::TIANMU_BIGINT_MAX)  // v > bigint max when uint64_t is supported
           v = common::TIANMU_BIGINT_MAX;    // TODO(fix with bit prec)
         *(int64_t *)ptr = v;
         ptr += sizeof(int64_t);
@@ -704,7 +705,8 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
         if (fstr->charset() != &my_charset_bin)
           return AttributeTypeInfo(common::ColumnType::STRING, notnull, field.field_length, 0, auto_inc, coll, fmt,
                                    bloom_filter);
-        return AttributeTypeInfo(common::ColumnType::BYTE, notnull, field.field_length, 0, auto_inc, coll, fmt, bloom_filter);
+        return AttributeTypeInfo(common::ColumnType::BYTE, notnull, field.field_length, 0, auto_inc, coll, fmt,
+                                 bloom_filter);
       } else if (const Field_str *fvstr = dynamic_cast<const Field_varstring *>(&field)) {
         DTCollation coll(fvstr->charset(), fvstr->derivation());
         if (fmt == common::PackFmt::TRIE && types::IsCaseInsensitive(coll))
@@ -720,7 +722,7 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
     case MYSQL_TYPE_BIT: {
       const Field_bit_as_char *f_bit = ((const Field_bit_as_char *)&field);
       if (/*f_bit->field_length > 0 && */ f_bit->field_length <= common::kTianmuBitMaxPrec)
-        return AttributeTypeInfo(common::ColumnType::NUM, notnull, f_bit->field_length);
+        return AttributeTypeInfo(common::ColumnType::BIT, notnull, f_bit->field_length);
       throw common::UnsupportedDataTypeException(
           "The bit(M) type, M must be less than or equal to 63 in tianmu engine.");
     }
@@ -982,8 +984,7 @@ int Engine::SetUpCacheFolder(const std::string &cachefolder_path) {
 }
 
 std::string get_parameter_name(enum TianmuVarName vn) {
-  DEBUG_ASSERT(static_cast<int>(vn) >= 0 &&
-               static_cast<int>(vn) <= static_cast<int>(TianmuVarName::kTianmuVarLimit));
+  DEBUG_ASSERT(static_cast<int>(vn) >= 0 && static_cast<int>(vn) <= static_cast<int>(TianmuVarName::kTianmuVarLimit));
   return tianmu_var_name_strings[static_cast<int>(vn)];
 }
 
@@ -1751,8 +1752,7 @@ common::TianmuError Engine::GetRejectFileIOParameters(THD &thd, std::unique_ptr<
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of kTianmuAbortOnCount parameter.");
 
   if (get_parameter(&thd, TianmuVarName::kTianmuAbortOnThreshold, abort_on_threshold) == 2)
-    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
-                               "Wrong value of kTianmuAbortOnThreshold parameter.");
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of kTianmuAbortOnThreshold parameter.");
 
   if (abort_on_count != 0 && abort_on_threshold != 0)
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,

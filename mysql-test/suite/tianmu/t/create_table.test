@@ -414,6 +414,7 @@ create table bittypes (
 
 ) ENGINE=tianmu DEFAULT CHARSET=utf8mb4;
 show create table bittypes;
+drop table bittypes;
 
 --error 6
 create table tc(a bit(64)) engine=tianmu;

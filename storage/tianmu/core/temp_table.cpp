@@ -277,6 +277,7 @@ void TempTable::Attr::SetValueInt64(int64_t obj, int64_t val) {
   switch (TypeName()) {
     case common::ColumnType::BIGINT:
     case common::ColumnType::NUM:
+    case common::ColumnType::BIT:
     case common::ColumnType::YEAR:
     case common::ColumnType::TIME:
     case common::ColumnType::DATE:
@@ -2199,7 +2200,8 @@ TempTable::RecordIterator::RecordIterator(TempTable *table_, Transaction *conn_,
     common::ColumnType att_type = table->GetDisplayableAttrP(att)->TypeName();
     if (att_type == common::ColumnType::INT || att_type == common::ColumnType::MEDIUMINT ||
         att_type == common::ColumnType::SMALLINT || att_type == common::ColumnType::BYTEINT ||
-        ATI::IsRealType(att_type) || att_type == common::ColumnType::NUM || att_type == common::ColumnType::BIGINT)
+        ATI::IsRealType(att_type) || att_type == common::ColumnType::NUM || att_type == common::ColumnType::BIGINT ||
+        att_type == common::ColumnType::BIT)
       dataTypes.emplace_back(new types::TianmuNum());
     else if (ATI::IsDateTimeType(att_type))
       dataTypes.emplace_back(new types::TianmuDateTime());
