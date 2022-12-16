@@ -92,6 +92,7 @@ static core::Value GetValueFromField(Field *f) {
     case MYSQL_TYPE_LONG:
     case MYSQL_TYPE_INT24:
     case MYSQL_TYPE_LONGLONG:
+    case MYSQL_TYPE_BIT:
       v.SetInt(f->val_int());
       break;
     case MYSQL_TYPE_DECIMAL:
@@ -167,7 +168,6 @@ static core::Value GetValueFromField(Field *f) {
     case MYSQL_TYPE_ENUM:
     case MYSQL_TYPE_GEOMETRY:
     case MYSQL_TYPE_NULL:
-    case MYSQL_TYPE_BIT:
     default:
       throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
       break;
@@ -347,7 +347,8 @@ inline bool has_dup_key(std::shared_ptr<index::TianmuTableIndex> &indextab, TABL
       case MYSQL_TYPE_SHORT:
       case MYSQL_TYPE_LONG:
       case MYSQL_TYPE_INT24:
-      case MYSQL_TYPE_LONGLONG: {
+      case MYSQL_TYPE_LONGLONG:
+      case MYSQL_TYPE_BIT: {
         int64_t v = f->val_int();
         records.emplace_back((const char *)&v, sizeof(int64_t));
         break;
@@ -419,7 +420,6 @@ inline bool has_dup_key(std::shared_ptr<index::TianmuTableIndex> &indextab, TABL
       case MYSQL_TYPE_ENUM:
       case MYSQL_TYPE_GEOMETRY:
       case MYSQL_TYPE_NULL:
-      case MYSQL_TYPE_BIT:
       default:
         throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
         break;
@@ -1781,6 +1781,15 @@ void ha_tianmu::key_convert(const uchar *key, uint key_len, std::vector<uint> co
         *(int64_t *)ptr = v;
         ptr += sizeof(int64_t);
       } break;
+      case MYSQL_TYPE_BIT: {
+        int64_t v = f->val_int();
+        if (v > common::TIANMU_BIGINT_MAX)  // TODO(fix with prec, like newdecimal)
+          v = common::TIANMU_BIGINT_MAX;
+        else if (v < common::TIANMU_BIGINT_MIN)
+          v = 0;
+        *(int64_t *)ptr = v;
+        ptr += sizeof(int64_t);
+      } break;
       case MYSQL_TYPE_DECIMAL:
       case MYSQL_TYPE_FLOAT:
       case MYSQL_TYPE_DOUBLE: {
@@ -1849,7 +1858,6 @@ void ha_tianmu::key_convert(const uchar *key, uint key_len, std::vector<uint> co
       case MYSQL_TYPE_ENUM:
       case MYSQL_TYPE_GEOMETRY:
       case MYSQL_TYPE_NULL:
-      case MYSQL_TYPE_BIT:
       default:
         throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
         break;

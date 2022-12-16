@@ -602,5 +602,6 @@ bittypes	CREATE TABLE `bittypes` (
   `bit63` bit(63) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4
+drop table bittypes;
 create table tc(a bit(64)) engine=tianmu;
 ERROR HY000: The bit(M) type, M must be less than or equal to 63 in tianmu engine.
