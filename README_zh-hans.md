@@ -8,7 +8,7 @@
 
 </br>
 
-[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/stoneatom/stonedb/Compile%20&%20MTR)](https://github.com/stoneatom/stonedb/actions)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/stoneatom/stonedb/pull_requests.yml?branch=stonedb-5.7-dev)](https://github.com/stoneatom/stonedb/actions)
 [![codecov](https://codecov.io/gh/stoneatom/stonedb/branch/stonedb-5.7-dev/graph/badge.svg?token=NWJYOOZ2S5)](https://codecov.io/gh/stoneatom/stonedb)
 [![Docker Pulls](https://img.shields.io/docker/pulls/stoneatom/stonedb)](https://hub.docker.com/r/stoneatom/stonedb)
 [![GitHub license](https://img.shields.io/github/license/stoneatom/stonedb)](https://github.com/stoneatom/stonedb/blob/stonedb-5.6/LICENSE)
