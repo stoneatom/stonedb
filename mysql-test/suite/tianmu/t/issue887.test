@@ -1,6 +1,12 @@
 --source include/have_tianmu.inc
 
-USE test;
+--disable_warnings
+DROP DATABASE IF EXISTS issue887_test;
+--enable_warnings
+
+CREATE DATABASE issue887_test;
+
+USE issue887_test;
 
 --disable_warnings
 
@@ -384,3 +390,5 @@ ORDER BY
 ## clear test table of this issue
 
 DROP TABLE t1,t2,t3;
+
+DROP DATABASE issue887_test;

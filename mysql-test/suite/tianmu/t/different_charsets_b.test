@@ -1,0 +1,538 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test column length with different charsets 2
+--echo #
+
+-- disable_warnings
+drop database if exists different_charsets_test;
+set character_set_client = utf8;
+set character_set_connection = utf8;
+set character_set_database = utf8mb4;
+set character_set_results = utf8;
+set character_set_server  = utf8mb4;
+-- enable_warnings
+
+create database different_charsets_test;
+use different_charsets_test;
+
+# CHAR tests
+# With mix of utf8 and utf8mb4 character sets at the column level
+--disable_warnings
+drop table if exists st1;
+drop table if exists st2;
+drop table if exists st3;
+drop table if exists i1;
+drop table if exists i2;
+--enable_warnings
+create table st1 (a char(1) CHARACTER SET utf8 NOT NULL, b datetime NOT NULL,
+                  c char(10) CHARACTER SET utf8mb4 NOT NULL, d datetime NOT NULL,
+                  e char(240) CHARACTER SET utf8 NOT NULL, f datetime NOT NULL,
+                  g char(255) CHARACTER SET utf8mb4 NOT NULL, h datetime NOT NULL
+                 );
+create table st2 (a char(1) CHARACTER SET utf8, b datetime NOT NULL,
+                  c char(10) CHARACTER SET utf8mb4, d datetime NOT NULL,
+                  e char(240) CHARACTER SET utf8, f datetime NOT NULL,
+                  g char(255) CHARACTER SET utf8mb4, h datetime NOT NULL
+                 );
+create table i1 (a char(1) CHARACTER SET utf8 NOT NULL, b datetime NOT NULL,
+                 c char(10) CHARACTER SET utf8mb4 NOT NULL, d datetime NOT NULL,
+                 e char(240) CHARACTER SET utf8 NOT NULL, f datetime NOT NULL,
+                 g char(255) CHARACTER SET utf8mb4 NOT NULL, h datetime NOT NULL
+                );
+create table i2 (a char(1) CHARACTER SET utf8, b datetime NOT NULL,
+                 c char(10) CHARACTER SET utf8mb4, d datetime NOT NULL,
+                 e char(240) CHARACTER SET utf8, f datetime NOT NULL,
+                 g char(255) CHARACTER SET utf8mb4, h datetime NOT NULL
+                );
+insert into i1 values ('a', '2020-10-25 01:02:03',
+                       'bcd', '2020-10-25 01:02:04',
+                       'cde', '2020-10-25 01:02:05',
+                       'def', '2020-10-25 01:02:06'
+                      );
+insert into i2(b, d, f, h) values ('2020-10-25 01:02:03',
+                                   '2020-10-25 01:02:04',
+                                   '2020-10-25 01:02:05',
+                                   '2020-10-25 01:02:06'
+                                  );
+insert into st1 select * from i1;
+insert into st2 select * from i2;
+select * from st1;
+select * from st2;
+
+# test some corner cases: wrong encoding, truncating, internal structure
+create table st3 like st1;
+insert into st3 values ('1', '2020-10-25 01:02:04',
+                        _utf8mb4 0xc2b9c2b2c2b3e281b4e281b5e281b6e281b7e281b8e281b9e281b0, '2020-10-25 01:02:05',
+                        'abc', '2020-10-25 01:02:06',
+                        'cde', '2020-10-25 01:02:07');
+--error 1406
+insert into st3 values ('1', '2020-10-25 01:02:05',
+                        _utf8mb4 0xc2b9c2b2c2b3e281b4e281b5e281b6e281b7e281b8e281b9e281b0c2b9, '2020-10-25 01:02:06',
+                        'abc', '2020-10-25 01:02:07',
+                        'cde', '2020-10-25 01:02:08');
+insert ignore into st3 values ('12', '2020-10-25 01:02:06',
+                               _utf8mb4 0xc2b9c2b2c2b3e281b4e281b5e281b6e281b7e281b8e281b9e281b0c2b9, '2020-10-25 01:02:07',
+                               'abc', '2020-10-25 01:02:08',
+                               'cde', '2020-10-25 01:02:09');
+--error 1366
+insert into st3 values (_utf8mb4 0xF09F988E, '2020-10-25 01:02:07',
+                        '1234567890', '2020-10-25 01:02:08',
+                        'abc', '2020-10-25 01:02:09',
+                        'cde', '2020-10-25 01:02:10');
+select * from st3;
+select column_name, data_type, character_maximum_length, character_octet_length from information_schema.columns where table_schema='different_charsets_test' and table_name='st3';
+
+# With utf8 character set at the table level
+--disable_warnings
+drop table if exists st1;
+drop table if exists st2;
+drop table if exists st3;
+drop table if exists i1;
+drop table if exists i2;
+--enable_warnings
+create table st1 (a char(1) NOT NULL, b datetime NOT NULL,
+                  c char(10) NOT NULL, d datetime NOT NULL,
+                  e char(240) NOT NULL, f datetime NOT NULL,
+                  g char(255) NOT NULL, h datetime NOT NULL
+                 ) default character set utf8;
+create table st2 (a char(1), b datetime NOT NULL,
+                  c char(10), d datetime NOT NULL,
+                  e char(240), f datetime NOT NULL,
+                  g char(255), h datetime NOT NULL
+                 ) default character set utf8;
+create table i1 (a char(1) NOT NULL, b datetime NOT NULL,
+                 c char(10) NOT NULL, d datetime NOT NULL,
+                 e char(240) NOT NULL, f datetime NOT NULL,
+                 g char(255) NOT NULL, h datetime NOT NULL
+                ) default character set utf8;
+create table i2 (a char(1), b datetime NOT NULL,
+                 c char(10), d datetime NOT NULL,
+                 e char(240), f datetime NOT NULL,
+                 g char(255), h datetime NOT NULL
+                ) default character set utf8;
+insert into i1 values ('a', '2020-10-25 01:02:03',
+                       'bcd', '2020-10-25 01:02:04',
+                       'cde', '2020-10-25 01:02:05',
+                       'def', '2020-10-25 01:02:06'
+                      );
+insert into i2(b, d, f, h) values ('2020-10-25 01:02:03',
+                                   '2020-10-25 01:02:04',
+                                   '2020-10-25 01:02:05',
+                                   '2020-10-25 01:02:06'
+                                  );
+insert into st1 select * from i1;
+insert into st2 select * from i2;
+select * from st1;
+select * from st2;
+
+# test some corner cases: wrong encoding, truncating, internal structure
+create table st3 like st1;
+insert into st3 values ('1', '2020-10-25 01:02:04',
+                        _utf8mb4 0xc2b9c2b2c2b3e281b4e281b5e281b6e281b7e281b8e281b9e281b0, '2020-10-25 01:02:05',
+                        'abc', '2020-10-25 01:02:06',
+                        'cde', '2020-10-25 01:02:07');
+--error 1406
+insert into st3 values ('1', '2020-10-25 01:02:05',
+                        _utf8mb4 0xc2b9c2b2c2b3e281b4e281b5e281b6e281b7e281b8e281b9e281b0c2b9, '2020-10-25 01:02:06',
+                        'abc', '2020-10-25 01:02:07',
+                        'cde', '2020-10-25 01:02:08');
+insert ignore into st3 values ('12', '2020-10-25 01:02:06',
+                               _utf8mb4 0xc2b9c2b2c2b3e281b4e281b5e281b6e281b7e281b8e281b9e281b0c2b9, '2020-10-25 01:02:07',
+                               'abc', '2020-10-25 01:02:08',
+                               'cde', '2020-10-25 01:02:09');
+--error 1366
+insert into st3 values (_utf8mb4 0xF09F988E, '2020-10-25 01:02:07',
+                        '1234567890', '2020-10-25 01:02:08',
+                        'abc', '2020-10-25 01:02:09',
+                        'cde', '2020-10-25 01:02:10');
+select * from st3;
+select column_name, data_type, character_maximum_length, character_octet_length from information_schema.columns where table_schema='different_charsets_test' and table_name='st3';
+
+# With utf8mb4 character set at the table level
+--disable_warnings
+drop table if exists st1;
+drop table if exists st2;
+drop table if exists st3;
+drop table if exists i1;
+drop table if exists i2;
+--enable_warnings
+create table st1 (a char(1) NOT NULL, b datetime NOT NULL,
+                  c char(10) NOT NULL, d datetime NOT NULL,
+                  e char(240) NOT NULL, f datetime NOT NULL,
+                  g char(255) NOT NULL, h datetime NOT NULL
+                 ) default character set utf8mb4;
+create table st2 (a char(1), b datetime NOT NULL,
+                  c char(10), d datetime NOT NULL,
+                  e char(240), f datetime NOT NULL,
+                  g char(255), h datetime NOT NULL
+                 ) default character set utf8mb4;
+create table i1 (a char(1) NOT NULL, b datetime NOT NULL,
+                 c char(10) NOT NULL, d datetime NOT NULL,
+                 e char(240) NOT NULL, f datetime NOT NULL,
+                 g char(255) NOT NULL, h datetime NOT NULL
+                ) default character set utf8mb4;
+create table i2 (a char(1), b datetime NOT NULL,
+                 c char(10), d datetime NOT NULL,
+                 e char(240), f datetime NOT NULL,
+                 g char(255), h datetime NOT NULL
+                ) default character set utf8mb4;
+insert into i1 values ('a', '2020-10-25 01:02:03',
+                       'bcd', '2020-10-25 01:02:04',
+                       'cde', '2020-10-25 01:02:05',
+                       'def', '2020-10-25 01:02:06'
+                      );
+insert into i2(b, d, f, h) values ('2020-10-25 01:02:03',
+                                   '2020-10-25 01:02:04',
+                                   '2020-10-25 01:02:05',
+                                   '2020-10-25 01:02:06'
+                                  );
+insert into st1 select * from i1;
+insert into st2 select * from i2;
+select * from st1;
+select * from st2;
+
+# test some corner cases: wrong encoding, truncating, internal structure
+create table st3 like st1;
+insert into st3 values ('1', '2020-10-25 01:02:04',
+                        _utf8mb4 0xc2b9c2b2c2b3e281b4e281b5e281b6e281b7e281b8e281b9e281b0, '2020-10-25 01:02:05',
+                        'abc', '2020-10-25 01:02:06',
+                        'cde', '2020-10-25 01:02:07');
+--error 1406
+insert into st3 values ('1', '2020-10-25 01:02:05',
+                        _utf8mb4 0xc2b9c2b2c2b3e281b4e281b5e281b6e281b7e281b8e281b9e281b0c2b9, '2020-10-25 01:02:06',
+                        'abc', '2020-10-25 01:02:07',
+                        'cde', '2020-10-25 01:02:08');
+insert ignore into st3 values ('12', '2020-10-25 01:02:06',
+                               _utf8mb4 0xc2b9c2b2c2b3e281b4e281b5e281b6e281b7e281b8e281b9e281b0c2b9, '2020-10-25 01:02:07',
+                               'abc', '2020-10-25 01:02:08',
+                               'cde', '2020-10-25 01:02:09');
+insert into st3 values (_utf8mb4 0xF09F988E, '2020-10-25 01:02:07',
+                        '1234567890', '2020-10-25 01:02:08',
+                        'abc', '2020-10-25 01:02:09',
+                        'cde', '2020-10-25 01:02:10');
+select * from st3;
+select column_name, data_type, character_maximum_length, character_octet_length from information_schema.columns where table_schema='different_charsets_test' and table_name='st3';
+
+# TEXT tests
+# Without character set
+--disable_warnings
+drop table if exists st1;
+drop table if exists st2;
+drop table if exists st3;
+drop table if exists i1;
+drop table if exists i2;
+--enable_warnings
+create table st1 (a text(8) NOT NULL, b datetime NOT NULL,
+                  c text(10) NOT NULL, d datetime NOT NULL,
+                  e text(255) NOT NULL, f datetime NOT NULL,
+                  g text NOT NULL, h datetime NOT NULL,
+                  i text(65535) NOT NULL, j datetime NOT NULL,
+                  k text(16777215) NOT NULL, l datetime NOT NULL
+                 );
+create table st2 (a text(8), b datetime NOT NULL,
+                  c text(10), d datetime NOT NULL,
+                  e text(255), f datetime NOT NULL,
+                  g text, h datetime NOT NULL,
+                  i text(65535), j datetime NOT NULL,
+                  k text(16777215), l datetime NOT NULL
+                 );
+create table i1  (a text(8) NOT NULL, b datetime NOT NULL,
+                  c text(10) NOT NULL, d datetime NOT NULL,
+                  e text(255) NOT NULL, f datetime NOT NULL,
+                  g text NOT NULL, h datetime NOT NULL,
+                  i text(65535) NOT NULL, j datetime NOT NULL,
+                  k text(16777215) NOT NULL, l datetime NOT NULL
+                 );
+create table i2  (a text(8), b datetime NOT NULL,
+                  c text(10), d datetime NOT NULL,
+                  e text(255), f datetime NOT NULL,
+                  g text, h datetime NOT NULL,
+                  i text(65535), j datetime NOT NULL,
+                  k text(16777215), l datetime NOT NULL
+                 );
+insert into i1 values ('a', '2020-10-25 01:02:03',
+                       'bcd', '2020-10-25 01:02:04',
+                       'cde', '2020-10-25 01:02:05',
+                       'def', '2020-10-25 01:02:06',
+                       'efg', '2020-10-25 01:02:07',
+                       'fgh', '2020-10-25 01:02:08'
+                      );
+insert into i2(b, d, f, h, j, l) values ('2020-10-25 01:02:03',
+                                         '2020-10-25 01:02:04',
+                                         '2020-10-25 01:02:05',
+                                         '2020-10-25 01:02:06',
+                                         '2020-10-25 01:02:07',
+                                         '2020-10-25 01:02:08'
+                                        );
+insert into st1 select * from i1;
+insert into st2 select * from i2;
+select * from st1;
+select * from st2;
+
+# test some corner cases: wrong encoding, truncating, internal structure
+create table st3 like st1;
+insert into st3 values ('1', '2020-10-25 01:02:04',
+                        '1234567890', '2020-10-25 01:02:05',
+                        'cde', '2020-10-25 01:02:07',
+                        'def', '2020-10-25 01:02:08',
+                        'efg', '2020-10-25 01:02:09',
+                        'fgh', '2020-10-25 01:02:10');
+insert into st3 values ('1', '2020-10-25 01:02:05',
+                        '12345678901', '2020-10-25 01:02:06',
+                        'cde', '2020-10-25 01:02:08',
+                        'def', '2020-10-25 01:02:09',
+                        'efg', '2020-10-25 01:02:10',
+                        'fgh', '2020-10-25 01:02:11');
+insert into st3 values (_utf8mb4 0xF09F988E, '2020-10-25 01:02:07',
+                        '1234567890', '2020-10-25 01:02:08',
+                        'cde', '2020-10-25 01:02:10',
+                        'def', '2020-10-25 01:02:11',
+                        'efg', '2020-10-25 01:02:12',
+                        'fgh', '2020-10-25 01:02:13');
+select * from st3;
+select column_name, data_type, character_maximum_length, character_octet_length from information_schema.columns where table_schema='different_charsets_test' and table_name='st3';
+
+# With mix of utf8 and utf8mb4 character sets at the column level
+--disable_warnings
+drop table if exists st1;
+drop table if exists st2;
+drop table if exists st3;
+drop table if exists i1;
+drop table if exists i2;
+--enable_warnings
+create table st1 (a text(8) CHARACTER SET utf8 NOT NULL, b datetime NOT NULL,
+                  c text(10) CHARACTER SET utf8mb4 NOT NULL, d datetime NOT NULL,
+                  e text(255) CHARACTER SET utf8 NOT NULL, f datetime NOT NULL,
+                  g text CHARACTER SET utf8mb4 NOT NULL, h datetime NOT NULL,
+                  i text(65535) CHARACTER SET utf8 NOT NULL, j datetime NOT NULL,
+                  k text(16777215) CHARACTER SET utf8mb4 NOT NULL, l datetime NOT NULL
+                 );
+create table st2 (a text(8) CHARACTER SET utf8, b datetime NOT NULL,
+                  c text(10) CHARACTER SET utf8mb4, d datetime NOT NULL,
+                  e text(255) CHARACTER SET utf8, f datetime NOT NULL,
+                  g text CHARACTER SET utf8mb4, h datetime NOT NULL,
+                  i text(65535) CHARACTER SET utf8, j datetime NOT NULL,
+                  k text(16777215) CHARACTER SET utf8mb4, l datetime NOT NULL
+                 );
+create table i1  (a text(8) CHARACTER SET utf8 NOT NULL, b datetime NOT NULL,
+                  c text(10) CHARACTER SET utf8mb4 NOT NULL, d datetime NOT NULL,
+                  e text(255) CHARACTER SET utf8 NOT NULL, f datetime NOT NULL,
+                  g text CHARACTER SET utf8mb4 NOT NULL, h datetime NOT NULL,
+                  i text(65535) CHARACTER SET utf8 NOT NULL, j datetime NOT NULL,
+                  k text(16777215) CHARACTER SET utf8mb4 NOT NULL, l datetime NOT NULL
+                 );
+create table i2  (a text(8) CHARACTER SET utf8, b datetime NOT NULL,
+                  c text(10) CHARACTER SET utf8mb4, d datetime NOT NULL,
+                  e text(255) CHARACTER SET utf8, f datetime NOT NULL,
+                  g text CHARACTER SET utf8mb4, h datetime NOT NULL,
+                  i text(65535) CHARACTER SET utf8, j datetime NOT NULL,
+                  k text(16777215) CHARACTER SET utf8mb4, l datetime NOT NULL
+                 );
+insert into i1 values ('ab', '2020-10-25 01:02:03',
+                       'bcd', '2020-10-25 01:02:04',
+                       'cde', '2020-10-25 01:02:05',
+                       'def', '2020-10-25 01:02:06',
+                       'efg', '2020-10-25 01:02:07',
+                       'fgh', '2020-10-25 01:02:08'
+                      );
+insert into i2(b, d, f, h, j, l) values ('2020-10-25 01:02:03',
+                                         '2020-10-25 01:02:04',
+                                         '2020-10-25 01:02:05',
+                                         '2020-10-25 01:02:06',
+                                         '2020-10-25 01:02:07',
+                                         '2020-10-25 01:02:08'
+                                        );
+insert into st1 select * from i1;
+insert into st2 select * from i2;
+select * from st1;
+select * from st2;
+
+# test some corner cases: wrong encoding, truncating, internal structure
+create table st3 like st1;
+insert into st3 values ('1', '2020-10-25 01:02:04',
+                        _utf8mb4 0xc2b9c2b2c2b3e281b4e281b5e281b6e281b7e281b8e281b9e281b0, '2020-10-25 01:02:05',
+                        'cde', '2020-10-25 01:02:07',
+                        'def', '2020-10-25 01:02:08',
+                        'efg', '2020-10-25 01:02:09',
+                        'fgh', '2020-10-25 01:02:10');
+insert into st3 values ('1', '2020-10-25 01:02:05',
+                        _utf8mb4 0xc2b9c2b2c2b3e281b4e281b5e281b6e281b7e281b8e281b9e281b0c2b9, '2020-10-25 01:02:06',
+                        'cde', '2020-10-25 01:02:08',
+                        'def', '2020-10-25 01:02:09',
+                        'efg', '2020-10-25 01:02:10',
+                        'fgh', '2020-10-25 01:02:11');
+--error 1366
+insert into st3 values (_utf8mb4 0xF09F988E, '2020-10-25 01:02:07',
+                        '1234567890', '2020-10-25 01:02:08',
+                        'cde', '2020-10-25 01:02:10',
+                        'def', '2020-10-25 01:02:11',
+                        'efg', '2020-10-25 01:02:12',
+                        'fgh', '2020-10-25 01:02:13');
+select * from st3;
+select column_name, data_type, character_maximum_length, character_octet_length from information_schema.columns where table_schema='different_charsets_test' and table_name='st3';
+
+# With utf8 character set at the table level
+--disable_warnings
+drop table if exists st1;
+drop table if exists st2;
+drop table if exists st3;
+drop table if exists i1;
+drop table if exists i2;
+--enable_warnings
+create table st1 (a text(8) NOT NULL, b datetime NOT NULL,
+                  c text(10) NOT NULL, d datetime NOT NULL,
+                  e text(255) NOT NULL, f datetime NOT NULL,
+                  g text NOT NULL, h datetime NOT NULL,
+                  i text(65535) NOT NULL, j datetime NOT NULL,
+                  k text(16777215) NOT NULL, l datetime NOT NULL
+                 ) default character set utf8;
+create table st2 (a text(8), b datetime NOT NULL,
+                  c text(10), d datetime NOT NULL,
+                  e text(255), f datetime NOT NULL,
+                  g text, h datetime NOT NULL,
+                  i text(65535), j datetime NOT NULL,
+                  k text(16777215), l datetime NOT NULL
+                 ) default character set utf8;
+create table i1  (a text(8) NOT NULL, b datetime NOT NULL,
+                  c text(10) NOT NULL, d datetime NOT NULL,
+                  e text(255) NOT NULL, f datetime NOT NULL,
+                  g text NOT NULL, h datetime NOT NULL,
+                  i text(65535) NOT NULL, j datetime NOT NULL,
+                  k text(16777215) NOT NULL, l datetime NOT NULL
+                 ) default character set utf8;
+create table i2  (a text(8), b datetime NOT NULL,
+                  c text(10), d datetime NOT NULL,
+                  e text(255), f datetime NOT NULL,
+                  g text, h datetime NOT NULL,
+                  i text(65535), j datetime NOT NULL,
+                  k text(16777215), l datetime NOT NULL
+                 ) default character set utf8;
+insert into i1 values ('ab', '2020-10-25 01:02:03',
+                       'bcd', '2020-10-25 01:02:04',
+                       'cde', '2020-10-25 01:02:05',
+                       'def', '2020-10-25 01:02:06',
+                       'efg', '2020-10-25 01:02:07',
+                       'fgh', '2020-10-25 01:02:08'
+                      );
+insert into i2(b, d, f, h, j, l) values ('2020-10-25 01:02:03',
+                                         '2020-10-25 01:02:04',
+                                         '2020-10-25 01:02:05',
+                                         '2020-10-25 01:02:06',
+                                         '2020-10-25 01:02:07',
+                                         '2020-10-25 01:02:08'
+                                        );
+insert into st1 select * from i1;
+insert into st2 select * from i2;
+select * from st1;
+select * from st2;
+
+# test some corner cases: wrong encoding, truncating, internal structure
+create table st3 like st1;
+insert into st3 values ('1', '2020-10-25 01:02:04',
+                        _utf8mb4 0xc2b9c2b2c2b3e281b4e281b5e281b6e281b7e281b8e281b9e281b0, '2020-10-25 01:02:05',
+                        'cde', '2020-10-25 01:02:07',
+                        'def', '2020-10-25 01:02:08',
+                        'efg', '2020-10-25 01:02:09',
+                        'fgh', '2020-10-25 01:02:10');
+insert into st3 values ('1', '2020-10-25 01:02:05',
+                        _utf8mb4 0xc2b9c2b2c2b3e281b4e281b5e281b6e281b7e281b8e281b9e281b0c2b9, '2020-10-25 01:02:06',
+                        'cde', '2020-10-25 01:02:08',
+                        'def', '2020-10-25 01:02:09',
+                        'efg', '2020-10-25 01:02:10',
+                        'fgh', '2020-10-25 01:02:11');
+--error 1366
+insert into st3 values (_utf8mb4 0xF09F988E, '2020-10-25 01:02:07',
+                        '1234567890', '2020-10-25 01:02:08',
+                        'cde', '2020-10-25 01:02:10',
+                        'def', '2020-10-25 01:02:11',
+                        'efg', '2020-10-25 01:02:12',
+                        'fgh', '2020-10-25 01:02:13');
+select * from st3;
+select column_name, data_type, character_maximum_length, character_octet_length from information_schema.columns where table_schema='different_charsets_test' and table_name='st3';
+
+# With utf8mb4 character set at the table level
+--disable_warnings
+drop table if exists st1;
+drop table if exists st2;
+drop table if exists st3;
+drop table if exists i1;
+drop table if exists i2;
+--enable_warnings
+create table st1 (a text(8) NOT NULL, b datetime NOT NULL,
+                  c text(10) NOT NULL, d datetime NOT NULL,
+                  e text(255) NOT NULL, f datetime NOT NULL,
+                  g text NOT NULL, h datetime NOT NULL,
+                  i text(65535) NOT NULL, j datetime NOT NULL,
+                  k text(16777215) NOT NULL, l datetime NOT NULL
+                 ) default character set utf8mb4;
+create table st2 (a text(8), b datetime NOT NULL,
+                  c text(10), d datetime NOT NULL,
+                  e text(255), f datetime NOT NULL,
+                  g text, h datetime NOT NULL,
+                  i text(65535), j datetime NOT NULL,
+                  k text(16777215), l datetime NOT NULL
+                 ) default character set utf8mb4;
+create table i1  (a text(8) NOT NULL, b datetime NOT NULL,
+                  c text(10) NOT NULL, d datetime NOT NULL,
+                  e text(255) NOT NULL, f datetime NOT NULL,
+                  g text NOT NULL, h datetime NOT NULL,
+                  i text(65535) NOT NULL, j datetime NOT NULL,
+                  k text(16777215) NOT NULL, l datetime NOT NULL
+                 ) default character set utf8mb4;
+create table i2  (a text(8), b datetime NOT NULL,
+                  c text(10), d datetime NOT NULL,
+                  e text(255), f datetime NOT NULL,
+                  g text, h datetime NOT NULL,
+                  i text(65535), j datetime NOT NULL,
+                  k text(16777215), l datetime NOT NULL
+                 ) default character set utf8mb4;
+insert into i1 values ('ab', '2020-10-25 01:02:03',
+                       'bcd', '2020-10-25 01:02:04',
+                       'cde', '2020-10-25 01:02:05',
+                       'def', '2020-10-25 01:02:06',
+                       'efg', '2020-10-25 01:02:07',
+                       'fgh', '2020-10-25 01:02:08'
+                      );
+insert into i2(b, d, f, h, j, l) values ('2020-10-25 01:02:03',
+                                         '2020-10-25 01:02:04',
+                                         '2020-10-25 01:02:05',
+                                         '2020-10-25 01:02:06',
+                                         '2020-10-25 01:02:07',
+                                         '2020-10-25 01:02:08'
+                                        );
+insert into st1 select * from i1;
+insert into st2 select * from i2;
+select * from st1;
+select * from st2;
+
+# test some corner cases: wrong encoding, truncating, internal structure
+create table st3 like st1;
+insert into st3 values ('1', '2020-10-25 01:02:04',
+                        _utf8mb4 0xc2b9c2b2c2b3e281b4e281b5e281b6e281b7e281b8e281b9e281b0, '2020-10-25 01:02:05',
+                        'cde', '2020-10-25 01:02:07',
+                        'def', '2020-10-25 01:02:08',
+                        'efg', '2020-10-25 01:02:09',
+                        'fgh', '2020-10-25 01:02:10');
+insert into st3 values ('1', '2020-10-25 01:02:05',
+                        _utf8mb4 0xc2b9c2b2c2b3e281b4e281b5e281b6e281b7e281b8e281b9e281b0c2b9, '2020-10-25 01:02:06',
+                        'cde', '2020-10-25 01:02:08',
+                        'def', '2020-10-25 01:02:09',
+                        'efg', '2020-10-25 01:02:10',
+                        'fgh', '2020-10-25 01:02:11');
+insert into st3 values (_utf8mb4 0xF09F988E, '2020-10-25 01:02:07',
+                        '1234567890', '2020-10-25 01:02:08',
+                        'cde', '2020-10-25 01:02:10',
+                        'def', '2020-10-25 01:02:11',
+                        'efg', '2020-10-25 01:02:12',
+                        'fgh', '2020-10-25 01:02:13');
+select * from st3;
+select column_name, data_type, character_maximum_length, character_octet_length from information_schema.columns where table_schema='different_charsets_test' and table_name='st3';
+
+drop table st1;
+drop table st2;
+drop table st3;
+drop table i1;
+drop table i2;
+
+drop database different_charsets_test;

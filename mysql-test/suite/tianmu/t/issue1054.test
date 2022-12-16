@@ -9,10 +9,10 @@
 --echo [on master]
 connection master;
 --disable_warnings
-drop table if exists `column_type_test`;
+drop table if exists `t_issue1054`;
 --enable_warnings
 
-CREATE TABLE `column_type_test` (
+CREATE TABLE `t_issue1054` (
 `usage` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
 `use` smallint(6) DEFAULT NULL COMMENT 'smallint',
 `update` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
@@ -32,32 +32,32 @@ CREATE TABLE `column_type_test` (
 `show` longblob COMMENT 'longblob'
 ) engine=tianmu;
 
-insert into column_type_test 
+insert into t_issue1054 
 values(100,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
 '2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
-insert into column_type_test 
+insert into t_issue1054 
 values(101,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
 '2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
-insert into column_type_test 
+insert into t_issue1054 
 values(102,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
 '2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
 
-update column_type_test set `use`=200 where `usage`=100;
-select * from column_type_test;
+update t_issue1054 set `use`=200 where `usage`=100;
+select * from t_issue1054;
 --echo [on slave]
 --source include/sync_slave_sql_with_master.inc
-select * from column_type_test;
+select * from t_issue1054;
 --echo [on master]
 connection master;
-delete from column_type_test where `usage`=100;
-select * from column_type_test;
+delete from t_issue1054 where `usage`=100;
+select * from t_issue1054;
 --echo [on slave]
 --source include/sync_slave_sql_with_master.inc
-select * from column_type_test;
+select * from t_issue1054;
 
 --echo [on master]
 connection master;
-drop table column_type_test;
+drop table t_issue1054;
 --source include/sync_slave_sql_with_master.inc
 
 
@@ -69,7 +69,7 @@ drop table column_type_test;
 --echo [on master]
 connection master;
 
-CREATE TABLE `column_type_test` (
+CREATE TABLE `t_issue1054` (
 `usage` tinyint(4) COMMENT 'tinyint',
 `use` smallint(6) DEFAULT NULL COMMENT 'smallint',
 `update` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
@@ -90,32 +90,32 @@ CREATE TABLE `column_type_test` (
 UNIQUE (`usage`)
 ) engine=tianmu;
 
-insert into column_type_test 
+insert into t_issue1054 
 values(100,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
 '2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
-insert into column_type_test 
+insert into t_issue1054 
 values(101,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
 '2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
-insert into column_type_test 
+insert into t_issue1054 
 values(102,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
 '2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
 
-update column_type_test set `use`=200 where `usage`=100;
-select * from column_type_test;
+update t_issue1054 set `use`=200 where `usage`=100;
+select * from t_issue1054;
 --echo [on slave]
 --source include/sync_slave_sql_with_master.inc
-select * from column_type_test;
+select * from t_issue1054;
 --echo [on master]
 connection master;
-delete from column_type_test where `usage`=100;
-select * from column_type_test;
+delete from t_issue1054 where `usage`=100;
+select * from t_issue1054;
 --echo [on slave]
 --source include/sync_slave_sql_with_master.inc
-select * from column_type_test;
+select * from t_issue1054;
 
 --echo [on master]
 connection master;
-drop table column_type_test;
+drop table t_issue1054;
 --source include/sync_slave_sql_with_master.inc
 
 
@@ -126,7 +126,7 @@ drop table column_type_test;
 --echo [on master]
 connection master;
 
-CREATE TABLE `column_type_test` (
+CREATE TABLE `t_issue1054` (
 `usage` tinyint(4) COMMENT 'tinyint',
 `use` smallint(6) DEFAULT NULL COMMENT 'smallint',
 `update` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
@@ -147,32 +147,32 @@ CREATE TABLE `column_type_test` (
 primary key(`usage`)
 ) engine=tianmu;
 
-insert into column_type_test 
+insert into t_issue1054 
 values(100,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
 '2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
-insert into column_type_test 
+insert into t_issue1054 
 values(101,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
 '2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
-insert into column_type_test 
+insert into t_issue1054 
 values(102,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
 '2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
 
-update column_type_test set `use`=200 where `usage`=100;
-select * from column_type_test;
+update t_issue1054 set `use`=200 where `usage`=100;
+select * from t_issue1054;
 --echo [on slave]
 --source include/sync_slave_sql_with_master.inc
-select * from column_type_test;
+select * from t_issue1054;
 --echo [on master]
 connection master;
-delete from column_type_test where `usage`=100;
-select * from column_type_test;
+delete from t_issue1054 where `usage`=100;
+select * from t_issue1054;
 --echo [on slave]
 --source include/sync_slave_sql_with_master.inc
-select * from column_type_test;
+select * from t_issue1054;
 
 --echo [on master]
 connection master;
-drop table column_type_test;
+drop table t_issue1054;
 --source include/sync_slave_sql_with_master.inc
 
 --echo #
@@ -190,7 +190,7 @@ if (`show variables like "debug"`)
 --echo [on master]
 connection master;
 
-CREATE TABLE `column_type_test` (
+CREATE TABLE `t_issue1054` (
 `usage` tinyint(4) COMMENT 'tinyint',
 `use` smallint(6) DEFAULT NULL COMMENT 'smallint',
 `update` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
@@ -211,32 +211,32 @@ CREATE TABLE `column_type_test` (
 primary key(`usage`)
 ) engine=tianmu;
 
-insert into column_type_test 
+insert into t_issue1054 
 values(100,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
 '2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
-insert into column_type_test 
+insert into t_issue1054 
 values(101,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
 '2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
-insert into column_type_test 
+insert into t_issue1054 
 values(102,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
 '2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
 
-update column_type_test set `use`=200 where `usage`=100;
-select * from column_type_test;
+update t_issue1054 set `use`=200 where `usage`=100;
+select * from t_issue1054;
 --echo [on slave]
 --source include/sync_slave_sql_with_master.inc
-select * from column_type_test;
+select * from t_issue1054;
 --echo [on master]
 connection master;
-delete from column_type_test where `usage`=100;
-select * from column_type_test;
+delete from t_issue1054 where `usage`=100;
+select * from t_issue1054;
 --echo [on slave]
 --source include/sync_slave_sql_with_master.inc
-select * from column_type_test;
+select * from t_issue1054;
 
 --echo [on master]
 connection master;
-drop table column_type_test;
+drop table t_issue1054;
 --source include/sync_slave_sql_with_master.inc
 
 --echo #
@@ -246,7 +246,7 @@ drop table column_type_test;
 --echo [on master]
 connection master;
 
-CREATE TABLE `column_type_test` (
+CREATE TABLE `t_issue1054` (
 `abc def` tinyint(4) COMMENT 'tinyint',
 `пусто` smallint(6) DEFAULT NULL COMMENT 'smallint',
 `новое` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
@@ -266,32 +266,32 @@ CREATE TABLE `column_type_test` (
 `sho*w` longblob COMMENT 'longblob'
 ) engine=innodb;
 
-insert into column_type_test 
+insert into t_issue1054 
 values(100,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
 '2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
-insert into column_type_test 
+insert into t_issue1054 
 values(101,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
 '2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
-insert into column_type_test 
+insert into t_issue1054 
 values(102,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
 '2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
 
-update column_type_test set `пусто`=200 where `abc def`=100;
-select * from column_type_test;
+update t_issue1054 set `пусто`=200 where `abc def`=100;
+select * from t_issue1054;
 --echo [on slave]
 --source include/sync_slave_sql_with_master.inc
-select * from column_type_test;
+select * from t_issue1054;
 --echo [on master]
 connection master;
-delete from column_type_test where `abc def`=100;
-select * from column_type_test;
+delete from t_issue1054 where `abc def`=100;
+select * from t_issue1054;
 --echo [on slave]
 --source include/sync_slave_sql_with_master.inc
-select * from column_type_test;
+select * from t_issue1054;
 
 --echo [on master]
 connection master;
-drop table column_type_test;
+drop table t_issue1054;
 --source include/sync_slave_sql_with_master.inc
 
 stop slave;

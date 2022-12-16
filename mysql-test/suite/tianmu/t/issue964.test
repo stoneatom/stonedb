@@ -1,6 +1,12 @@
 --source include/have_tianmu.inc
 
-USE test;
+--disable_warnings
+DROP DATABASE IF EXISTS issue964_test;
+--enable_warnings
+
+CREATE DATABASE issue964_test;
+
+USE issue964_test;
 
 --disable_warnings
 
@@ -42,3 +48,5 @@ WHERE
 ## clear tables
 
 DROP TABLE t1,t2;
+
+DROP DATABASE issue964_test;

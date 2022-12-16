@@ -9,10 +9,10 @@ include/sync_slave_sql_with_master.inc
 set global default_storage_engine=innodb;
 set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
 [on master]
-create table t1(c1 int,c2 varchar(255))engine=InnoDB;
-show create table t1;
+create table t_issue956(c1 int,c2 varchar(255))engine=InnoDB;
+show create table t_issue956;
 Table	Create Table
-t1	CREATE TABLE `t1` (
+t_issue956	CREATE TABLE `t_issue956` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
@@ -26,17 +26,17 @@ Variable_name	Value
 default_storage_engine	InnoDB
 default_tmp_storage_engine	InnoDB
 internal_tmp_disk_storage_engine	InnoDB
-show create table t1;
+show create table t_issue956;
 Table	Create Table
-t1	CREATE TABLE `t1` (
+t_issue956	CREATE TABLE `t_issue956` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
 [on master]
-alter table t1 engine=MyISAM;
-show create table t1;
+alter table t_issue956 engine=MyISAM;
+show create table t_issue956;
 Table	Create Table
-t1	CREATE TABLE `t1` (
+t_issue956	CREATE TABLE `t_issue956` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
@@ -49,14 +49,14 @@ Variable_name	Value
 default_storage_engine	InnoDB
 default_tmp_storage_engine	InnoDB
 internal_tmp_disk_storage_engine	InnoDB
-show create table t1;
+show create table t_issue956;
 Table	Create Table
-t1	CREATE TABLE `t1` (
+t_issue956	CREATE TABLE `t_issue956` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
 [on master]
-drop table t1;
+drop table t_issue956;
 include/sync_slave_sql_with_master.inc
 # 
 # sql_mode='MANDATORY_TIANMU'
@@ -66,10 +66,10 @@ include/sync_slave_sql_with_master.inc
 set global default_storage_engine=innodb;
 set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
 [on master]
-create table t2(c1 int,c2 varchar(255))engine=InnoDB;
-show create table t2;
+create table t_issue956_2(c1 int,c2 varchar(255))engine=InnoDB;
+show create table t_issue956_2;
 Table	Create Table
-t2	CREATE TABLE `t2` (
+t_issue956_2	CREATE TABLE `t_issue956_2` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
@@ -83,17 +83,17 @@ Variable_name	Value
 default_storage_engine	InnoDB
 default_tmp_storage_engine	InnoDB
 internal_tmp_disk_storage_engine	InnoDB
-show create table t2;
+show create table t_issue956_2;
 Table	Create Table
-t2	CREATE TABLE `t2` (
+t_issue956_2	CREATE TABLE `t_issue956_2` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=TIANMU DEFAULT CHARSET=latin1
 [on master]
-alter table t2 engine=MyISAM;
-show create table t2;
+alter table t_issue956_2 engine=MyISAM;
+show create table t_issue956_2;
 Table	Create Table
-t2	CREATE TABLE `t2` (
+t_issue956_2	CREATE TABLE `t_issue956_2` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
@@ -106,14 +106,14 @@ Variable_name	Value
 default_storage_engine	InnoDB
 default_tmp_storage_engine	InnoDB
 internal_tmp_disk_storage_engine	InnoDB
-show create table t2;
+show create table t_issue956_2;
 Table	Create Table
-t2	CREATE TABLE `t2` (
+t_issue956_2	CREATE TABLE `t_issue956_2` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=TIANMU DEFAULT CHARSET=latin1
 [on master]
-drop table t2;
+drop table t_issue956_2;
 include/sync_slave_sql_with_master.inc
 # 
 # sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
@@ -123,10 +123,10 @@ include/sync_slave_sql_with_master.inc
 set global default_storage_engine=tianmu;
 set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
 [on master]
-create table t3(c1 int,c2 varchar(255))engine=InnoDB;
-show create table t3;
+create table t_issue956_3(c1 int,c2 varchar(255))engine=InnoDB;
+show create table t_issue956_3;
 Table	Create Table
-t3	CREATE TABLE `t3` (
+t_issue956_3	CREATE TABLE `t_issue956_3` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
@@ -140,17 +140,17 @@ Variable_name	Value
 default_storage_engine	TIANMU
 default_tmp_storage_engine	InnoDB
 internal_tmp_disk_storage_engine	InnoDB
-show create table t3;
+show create table t_issue956_3;
 Table	Create Table
-t3	CREATE TABLE `t3` (
+t_issue956_3	CREATE TABLE `t_issue956_3` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=TIANMU DEFAULT CHARSET=latin1
 [on master]
-alter table t3 engine=MyISAM;
-show create table t3;
+alter table t_issue956_3 engine=MyISAM;
+show create table t_issue956_3;
 Table	Create Table
-t3	CREATE TABLE `t3` (
+t_issue956_3	CREATE TABLE `t_issue956_3` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
@@ -163,14 +163,14 @@ Variable_name	Value
 default_storage_engine	TIANMU
 default_tmp_storage_engine	InnoDB
 internal_tmp_disk_storage_engine	InnoDB
-show create table t3;
+show create table t_issue956_3;
 Table	Create Table
-t3	CREATE TABLE `t3` (
+t_issue956_3	CREATE TABLE `t_issue956_3` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=TIANMU DEFAULT CHARSET=latin1
 [on master]
-drop table t3;
+drop table t_issue956_3;
 include/sync_slave_sql_with_master.inc
 # 
 # sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU'
@@ -180,10 +180,10 @@ include/sync_slave_sql_with_master.inc
 set global default_storage_engine=tianmu;
 set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
 [on master]
-create table t4(c1 int,c2 varchar(255))engine=InnoDB;
-show create table t4;
+create table t_issue956_4(c1 int,c2 varchar(255))engine=InnoDB;
+show create table t_issue956_4;
 Table	Create Table
-t4	CREATE TABLE `t4` (
+t_issue956_4	CREATE TABLE `t_issue956_4` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
@@ -197,17 +197,17 @@ Variable_name	Value
 default_storage_engine	TIANMU
 default_tmp_storage_engine	InnoDB
 internal_tmp_disk_storage_engine	InnoDB
-show create table t4;
+show create table t_issue956_4;
 Table	Create Table
-t4	CREATE TABLE `t4` (
+t_issue956_4	CREATE TABLE `t_issue956_4` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=TIANMU DEFAULT CHARSET=latin1
 [on master]
-alter table t4 engine=MyISAM;
-show create table t4;
+alter table t_issue956_4 engine=MyISAM;
+show create table t_issue956_4;
 Table	Create Table
-t4	CREATE TABLE `t4` (
+t_issue956_4	CREATE TABLE `t_issue956_4` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
@@ -220,14 +220,14 @@ Variable_name	Value
 default_storage_engine	TIANMU
 default_tmp_storage_engine	InnoDB
 internal_tmp_disk_storage_engine	InnoDB
-show create table t4;
+show create table t_issue956_4;
 Table	Create Table
-t4	CREATE TABLE `t4` (
+t_issue956_4	CREATE TABLE `t_issue956_4` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=TIANMU DEFAULT CHARSET=latin1
 [on master]
-drop table t4;
+drop table t_issue956_4;
 include/sync_slave_sql_with_master.inc
 # 
 # sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
@@ -237,10 +237,10 @@ include/sync_slave_sql_with_master.inc
 set global default_storage_engine=MyISAM;
 set global sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
 [on master]
-create table t4(c1 int,c2 varchar(255))engine=InnoDB;
-show create table t4;
+create table t_issue956_4(c1 int,c2 varchar(255))engine=InnoDB;
+show create table t_issue956_4;
 Table	Create Table
-t4	CREATE TABLE `t4` (
+t_issue956_4	CREATE TABLE `t_issue956_4` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
@@ -254,17 +254,17 @@ Variable_name	Value
 default_storage_engine	MyISAM
 default_tmp_storage_engine	InnoDB
 internal_tmp_disk_storage_engine	InnoDB
-show create table t4;
+show create table t_issue956_4;
 Table	Create Table
-t4	CREATE TABLE `t4` (
+t_issue956_4	CREATE TABLE `t_issue956_4` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1
 [on master]
-alter table t4 engine=MyISAM;
-show create table t4;
+alter table t_issue956_4 engine=MyISAM;
+show create table t_issue956_4;
 Table	Create Table
-t4	CREATE TABLE `t4` (
+t_issue956_4	CREATE TABLE `t_issue956_4` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
@@ -277,13 +277,13 @@ Variable_name	Value
 default_storage_engine	MyISAM
 default_tmp_storage_engine	InnoDB
 internal_tmp_disk_storage_engine	InnoDB
-show create table t4;
+show create table t_issue956_4;
 Table	Create Table
-t4	CREATE TABLE `t4` (
+t_issue956_4	CREATE TABLE `t_issue956_4` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1
 [on master]
-drop table t4;
+drop table t_issue956_4;
 include/sync_slave_sql_with_master.inc
 stop slave;

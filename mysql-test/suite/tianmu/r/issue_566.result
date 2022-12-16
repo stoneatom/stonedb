@@ -1,4 +1,6 @@
-USE test;
+DROP DATABASE IF EXISTS issue_566_test;
+CREATE DATABASE issue_566_test;
+USE issue_566_test;
 CREATE TABLE `lineitem_i342` (
 `l_orderkey` int(11) NOT NULL,
 `l_partkey` int(11) NOT NULL,
@@ -47,3 +49,4 @@ supplier_no	total_revenue
 99271	18210.2270
 drop view revenue_i05;
 drop table lineitem_i342;
+DROP DATABASE issue_566_test;

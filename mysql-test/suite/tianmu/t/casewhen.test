@@ -1,4 +1,13 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS casewhen_test;
+--enable_warnings
+
+CREATE DATABASE casewhen_test;
+
+USE casewhen_test;
+
 CREATE TABLE `test_case1` (
   `id` int(11) DEFAULT NULL,
   `age` int(11) DEFAULT NULL,
@@ -7,3 +16,4 @@ CREATE TABLE `test_case1` (
 select id,case age when 2 then '1'  else name end from test_case1;
 drop table test_case1;
 
+DROP DATABASE casewhen_test;

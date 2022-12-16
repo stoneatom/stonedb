@@ -1,10 +1,16 @@
 --source include/have_tianmu.inc
 
+--disable_warnings
+DROP DATABASE IF EXISTS alter_table_mix_use_test;
+--enable_warnings
+
+CREATE DATABASE alter_table_mix_use_test;
+
+USE alter_table_mix_use_test;
+
 #
 #ALTER TABLE table_name NOT NULL to NULL or NULL to NOT NULL ...
 #
-create database alter_table_mix;
-use alter_table_mix;
 
 CREATE TABLE `alter_table_mix_test` (
   `c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',
@@ -82,3 +88,4 @@ values(105,105,105,105,105,5.2,10.88,105.083,'2016-02-25','2016-02-25 10:20:01',
 
 show create table alter_table_rename_drop;
 
+DROP DATABASE alter_table_mix_use_test;

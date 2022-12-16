@@ -1,8 +1,16 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue538_test;
+--enable_warnings
+
+CREATE DATABASE issue538_test;
+
+USE issue538_test;
+
 --echo #
 --echo # issue 538 test for user defined function of tianmu
 --echo #
-
-use test;
 
 --disable_warnings
 
@@ -253,3 +261,5 @@ SELECT sfunc(2);
 
 DROP TABLE tf;
 DROP FUNCTION sfunc;
+
+DROP DATABASE issue538_test;

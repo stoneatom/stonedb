@@ -1,7 +1,9 @@
+DROP DATABASE IF EXISTS delete_test;
+CREATE DATABASE delete_test;
+USE delete_test;
 #
 # DELETE FROM TABLE_NAME WHERE ...
 #
-use test;
 CREATE TABLE `column_type_test` (
 `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
 `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
@@ -257,7 +259,7 @@ insert into t1 values (3, 3), (7, 7);
 delete from t1 where a = 3;
 check table t1;
 Table	Op	Msg_type	Msg_text
-test.t1	check	note	The storage engine for the table doesn't support check
+delete_test.t1	check	note	The storage engine for the table doesn't support check
 select * from t1;
 a	b
 7	7
@@ -338,8 +340,8 @@ drop table t1 , t2;
 #
 drop table if exists tbIn,t1;
 Warnings:
-Note	1051	Unknown table 'test.tbIn'
-Note	1051	Unknown table 'test.t1'
+Note	1051	Unknown table 'delete_test.tbIn'
+Note	1051	Unknown table 'delete_test.t1'
 create table tbIn(c1 int,c2 varchar(255))engine=InnoDB;
 insert into tbIn values(3,'hhhb');
 insert into tbIn values(2,'hhhb');
@@ -350,3 +352,4 @@ insert into t1 values(2,'hhhb');
 insert into t1 values(1,'hhhb');
 delete tbIn,t1 from tbIn,t1 where tbIn.c1=t1.c1 and tbIn.c1=1;
 drop table tbIn,t1;
+DROP DATABASE delete_test;

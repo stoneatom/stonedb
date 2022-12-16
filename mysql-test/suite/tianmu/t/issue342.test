@@ -1,4 +1,13 @@
-USE test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue342_test;
+--enable_warnings
+
+CREATE DATABASE issue342_test;
+
+USE issue342_test;
+
 CREATE TABLE `lineitem_i342` (
 `l_orderkey` int(11) NOT NULL,
 `l_partkey` int(11) NOT NULL,
@@ -34,3 +43,5 @@ CREATE VIEW revenue_i342 AS SELECT l_suppkey AS supplier_no, sum(l_extendedprice
 SELECT * FROM revenue_i342 ORDER BY supplier_no;
 DROP VIEW revenue_i342;
 DROP TABLE lineitem_i342;
+
+DROP DATABASE issue342_test;

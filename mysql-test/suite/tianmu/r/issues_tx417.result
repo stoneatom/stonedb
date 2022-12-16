@@ -1,4 +1,6 @@
-use test;
+DROP DATABASE IF EXISTS issues_tx417_test;
+CREATE DATABASE issues_tx417_test;
+USE issues_tx417_test;
 show variables like 'tianmu_insert_delayed';
 Variable_name	Value
 tianmu_insert_delayed	OFF
@@ -25,3 +27,4 @@ id
 1
 2
 DROP TABLE t_test;
+DROP DATABASE issues_tx417_test;

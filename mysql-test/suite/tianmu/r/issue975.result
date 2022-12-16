@@ -1,4 +1,6 @@
-use test;
+DROP DATABASE IF EXISTS issue975_test;
+CREATE DATABASE issue975_test;
+USE issue975_test;
 CREATE TABLE t1 (date CHAR(30), format CHAR(30)) engine=tianmu default CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 INSERT INTO t1 VALUES
 ('10:20:10', '%H:%i:%s'),
@@ -25,3 +27,4 @@ show variables like '%sql_mode%';
 Variable_name	Value
 sql_mode	NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 drop table t1;
+DROP DATABASE issue975_test;

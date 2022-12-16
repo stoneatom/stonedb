@@ -1,4 +1,6 @@
-use test;
+DROP DATABASE IF EXISTS group_concat_test;
+CREATE DATABASE group_concat_test;
+USE group_concat_test;
 CREATE TABLE `test_groupconcat_case` (
 `id` int(11) DEFAULT NULL,
 `name` text
@@ -35,3 +37,4 @@ id	group_concat(distinct name SEPARATOR ":")
 2	test:test2
 3	test1
 drop table test_groupconcat_case;
+DROP DATABASE group_concat_test;

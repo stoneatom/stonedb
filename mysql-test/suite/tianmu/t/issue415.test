@@ -1,10 +1,17 @@
 --source include/have_tianmu.inc
 
+--disable_warnings
+DROP DATABASE IF EXISTS issue415_test;
+--enable_warnings
+
+CREATE DATABASE issue415_test;
+
+USE issue415_test;
+
 --echo #
 --echo # fix issue415
 --echo #
 
-use test;
 CREATE TABLE `select_base_with_primary_key` (
   `pk` bigint(11) NOT NULL AUTO_INCREMENT,
   `varchar_test` varchar(255) DEFAULT NULL,
@@ -27,3 +34,5 @@ CREATE TABLE `select_base_with_primary_key` (
 insert into select_base_with_primary_key values (11, 'abcde', 123, 'char', 3, 1, 23, 32, 332, 1.4, 25, '2017-11-11', '11:11:11', '2017-11-11 11:11:11','2017-11-11 11:11:11', 2017);
 select 'aa' as ag_column1,  !( tinyint_1bit_test )as ag_column2, 1 as ag_column3,min((smallint_test +  smallint_test) =11)as ag_column_fun  from select_base_with_primary_key    GROUP BY  ag_column1,ag_column2  asc,ag_column3   having ag_column_fun<= 37 order by  ag_column1    ,ag_column2    asc,ag_column3    asc,ag_column_fun;
 drop table select_base_with_primary_key;
+
+DROP DATABASE issue415_test;

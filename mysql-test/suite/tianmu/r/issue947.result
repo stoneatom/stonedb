@@ -1,4 +1,6 @@
-USE test;
+DROP DATABASE IF EXISTS issue947_test;
+CREATE DATABASE issue947_test;
+USE issue947_test;
 DROP TABLE IF EXISTS test1,test2;
 CREATE TABLE test1 (a int) ENGINE=TIANMU;
 CREATE TABLE test2 (b int, c int) ENGINE=TIANMU;
@@ -44,3 +46,4 @@ a
 SELECT * FROM test1 WHERE a IN ( SELECT b FROM test2 WHERE b NOT IN ( SELECT a FROM test1));
 a
 DROP TABLE test1,test2;
+DROP DATABASE issue947_test;

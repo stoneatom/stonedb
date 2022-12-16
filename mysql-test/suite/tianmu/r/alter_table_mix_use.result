@@ -1,5 +1,6 @@
-create database alter_table_mix;
-use alter_table_mix;
+DROP DATABASE IF EXISTS alter_table_mix_use_test;
+CREATE DATABASE alter_table_mix_use_test;
+USE alter_table_mix_use_test;
 CREATE TABLE `alter_table_mix_test` (
 `c_tinyint` tinyint DEFAULT NULL COMMENT 'tinyint',
 `c_smallint` smallint NOT NULL COMMENT 'smallint',
@@ -174,3 +175,4 @@ alter_table_rename_drop	CREATE TABLE `alter_table_rename_drop` (
   `c_blob` blob COMMENT 'blob',
   `c_text` text COLLATE utf8mb4_unicode_ci COMMENT 'text'
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+DROP DATABASE alter_table_mix_use_test;
