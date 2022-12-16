@@ -47,7 +47,7 @@ class MultiIndexBuilder {
 
     IndexTable *ReleaseIndexTable(int dim);
     bool NullExisted(int dim) const { return nulls_possible_[dim]; }
-    int GetCount() const { return added_count_; }
+    uint64_t GetCount() const { return added_count_; }
     bool IsEmpty() const { return (added_count_ == 0) ? true : false; }
 
    private:
@@ -59,7 +59,7 @@ class MultiIndexBuilder {
     std::vector<int64_t> cached_values_;
     std::vector<bool> nulls_possible_;
 
-    int added_count_ = 0;
+    uint64_t added_count_ = 0;
     IndexTable **index_table_;
     std::unique_ptr<MINewContentsRSorter> rough_sorter_;
   };

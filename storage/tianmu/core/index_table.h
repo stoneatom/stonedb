@@ -108,7 +108,7 @@ class IndexTable : private system::CacheableItem, public mm::TraceableObject {
                                             // which may occur in table
   uint64_t N() { return size; }             // note: this is the upper size, the table can be used partially!
   int BlockShift() { return block_shift; }  // block = int( tuple >> block_shift )
-  void ExpandTo(int64_t new_size);
+  void ExpandTo(uint64_t new_size);
 
   // mm::TraceableObject functionality
   mm::TO_TYPE TraceableType() const override { return mm::TO_TYPE::TO_INDEXTABLE; }
@@ -118,10 +118,10 @@ class IndexTable : private system::CacheableItem, public mm::TraceableObject {
 
   unsigned char *buf = nullptr;  // polymorphic: unsigned short, unsigned int or int64_t
 
-  int max_buffer_size_in_bytes;
+  uint64_t max_buffer_size_in_bytes;
   int bytes_per_value;
   int max_block_used;
-  size_t buffer_size_in_bytes;
+  uint64_t buffer_size_in_bytes;
   int block_shift;
   uint64_t block_mask;
   uint64_t size;
