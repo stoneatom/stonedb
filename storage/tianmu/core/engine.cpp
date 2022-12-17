@@ -1860,12 +1860,12 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
       io_params->Delimiter().find(io_params->EscapeCharacter()) != std::string::npos)
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "Field terminator containing the escape character not supported.");
-
+#if 0 
   if (io_params->EscapeCharacter() != 0 && io_params->StringQualifier() != 0 &&
       io_params->EscapeCharacter() == io_params->StringQualifier())
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
                                "The same enclose and escape characters not supported.");
-
+#endif
   bool unsupported_syntax = false;
   if (cs != 0)
     io_params->SetParameter(system::Parameter::CHARSET_INFO_NUMBER, (int)(cs->number));

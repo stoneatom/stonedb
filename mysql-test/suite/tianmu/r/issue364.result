@@ -1,4 +1,6 @@
-USE test;
+DROP DATABASE IF EXISTS issue364_test;
+CREATE DATABASE issue364_test;
+USE issue364_test;
 CREATE TABLE `t_test1`(
 `id` INT NOT NULL AUTO_INCREMENT,
 `first_name` VARCHAR(10) NOT NULL,
@@ -28,3 +30,4 @@ id
 DROP TRIGGER insert_trigger_t_test2;
 DROP TABLE t_test2;
 DROP TABLE t_test1;
+DROP DATABASE issue364_test;

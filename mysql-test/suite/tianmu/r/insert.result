@@ -1,7 +1,9 @@
 #
 #Insert values for different types of fields
 #
-use test;
+DROP DATABASE IF EXISTS insert_test;
+CREATE DATABASE insert_test;
+USE insert_test;
 CREATE TABLE `column_type_test` (
 `c_tinyint` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
 `c_smallint` smallint(6) DEFAULT NULL COMMENT 'smallint',
@@ -118,12 +120,12 @@ drop table t1;
 # Test of mysqld crash with fully qualified column names
 #
 drop database if exists mysqltest;
-create database mysqltest;
-use mysqltest;
+create database mysqltest_insert_test;
+use mysqltest_insert_test;
 create table t1 (c int);
-insert into mysqltest.t1 set mysqltest.t1.c = '1';
-drop database mysqltest;
-use test;
+insert into mysqltest_insert_test.t1 set mysqltest_insert_test.t1.c = '1';
+drop database mysqltest_insert_test;
+use insert_test;
 #
 # Test of wrong values for float data 
 #
@@ -312,15 +314,15 @@ create view v1 as select * from t1, t2 where f1= f3;
 insert into t1 values (1,11), (2,22);
 insert into t2 values (1,12), (2,24);
 insert into v1 (f1) values (3) on duplicate key update f3= f3 + 10;
-ERROR HY000: Can not modify more than one base table through a join view 'test.v1'
+ERROR HY000: Can not modify more than one base table through a join view 'insert_test.v1'
 insert into v1 (f1) values (3) on duplicate key update f1= f3 + 10;
-ERROR HY000: Can not modify more than one base table through a join view 'test.v1'
+ERROR HY000: Can not modify more than one base table through a join view 'insert_test.v1'
 select * from t1;
 f1	f2
 1	11
 2	22
 insert into v1 (f1) values (3) on duplicate key update f1= f3 + 10;
-ERROR HY000: Can not modify more than one base table through a join view 'test.v1'
+ERROR HY000: Can not modify more than one base table through a join view 'insert_test.v1'
 select * from t1;
 f1	f2
 1	11
@@ -550,3 +552,4 @@ pk
 2
 DROP VIEW v1, v2;
 DROP TABLE t1;
+DROP DATABASE insert_test;

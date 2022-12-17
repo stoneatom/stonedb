@@ -1,2 +1,14 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue703_test;
+--enable_warnings
+
+CREATE DATABASE issue703_test;
+
+USE issue703_test;
+
 --replace_column 2 #
 show status like "Tianmu%";
+
+DROP DATABASE issue703_test;

@@ -1,0 +1,100 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test CREATE TABLE AS SELECT
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS ctas_test;
+--enable_warnings
+
+CREATE DATABASE ctas_test;
+USE ctas_test;
+
+CREATE TABLE `user` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'id',
+  `user_name` varchar(200) DEFAULT '',
+  `phone` varchar(200) DEFAULT '',
+  `b_code` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+)DEFAULT CHARSET=utf8;
+
+INSERT INTO `user`(`user_name`, `phone`, `b_code`) VALUES ('李明', '101', '2021001');
+INSERT INTO `user`(`user_name`, `phone`, `b_code`) VALUES ('赵慧', '456', '2020001');
+INSERT INTO `user`(`user_name`, `phone`, `b_code`) VALUES ('李凯', '123', '2021002');
+INSERT INTO `user`(`user_name`, `phone`, `b_code`) VALUES ('张三1', '123', '2022001');
+INSERT INTO `user`(`user_name`, `phone`, `b_code`) VALUES ('张三2', '123', '2021003');
+
+create table user1 as select * from user;
+select * from user1;
+desc user1;
+
+create table user2 as select user_name, phone from user;
+select * from user2;
+
+create table user3 as select user_name, phone from user limit 2;
+select * from user3;
+
+create table user4 select user_name, phone from user limit 4;
+select * from user4;
+
+create table user5 as select * from user where b_code like '2021%';
+select * from user5;
+desc user5;
+
+create table user6 like user;
+select * from user6;
+desc user6;
+
+create table user7 like user;
+insert into user7  select * from user;
+
+CREATE TABLE user_bk4( id INT NOT NULL) ENGINE=InnoDB SELECT id,user_name FROM user;
+select * from user_bk4;
+
+CREATE TABLE user_bk5( id INT NOT NULL primary key)ENGINE=TIANMU SELECT id,user_name FROM user;
+select * from user_bk5;
+
+create table user_bk6 select id+1 as id1 from user;
+select * from user_bk6;
+desc user_bk6;
+
+# create table as select join
+DROP TABLE IF EXISTS `test_tbl`;
+CREATE TABLE `test_tbl` (
+  `test_id` int(11) NOT NULL AUTO_INCREMENT,
+  `test_title` varchar(100) NOT NULL,
+  `test_author` varchar(40) NOT NULL,
+  `submission_date` date DEFAULT NULL,
+  PRIMARY KEY (`test_id`)
+) DEFAULT CHARSET=utf8;
+
+INSERT INTO `test_tbl` 
+VALUES 
+('1', 'c++', 'test', '2017-04-12'), 
+('2', 'MySQL', 'test', '2017-04-12'), 
+('3', 'Java', 'test.COM', '2015-05-01'), 
+('4', 'Python', 'test.COM', '2016-03-06'), 
+('5', 'C', 'FK', '2017-04-05');
+
+
+DROP TABLE IF EXISTS `tcount_tbl`;
+CREATE TABLE `tcount_tbl` (
+  `test_author` varchar(255) NOT NULL DEFAULT '',
+  `test_count` int(11) NOT NULL DEFAULT '0'
+) DEFAULT CHARSET=utf8;
+
+INSERT INTO `tcount_tbl` 
+VALUES 
+('test','10'), 
+('test.COM','20'), 
+('Google', '22');
+
+create table test_tbl1 SELECT test_id, submission_date FROM test_tbl a left JOIN tcount_tbl b ON a.test_author = b.test_author;
+create table test_tbl2 SELECT a.test_id, a.test_author FROM test_tbl a right JOIN tcount_tbl b ON a.test_author = b.test_author;
+create table test_tbl3 SELECT a.test_id, a.test_author, b.test_count FROM test_tbl a INNER JOIN tcount_tbl b ON a.test_author = b.test_author;
+create table test_tbl4 as SELECT a.test_id, a.test_author, b.test_count FROM test_tbl a INNER JOIN tcount_tbl b ON a.test_author = b.test_author;
+create table test_tbl5 select * from test_tbl natural join tcount_tbl;
+
+# clean up
+drop database ctas_test;

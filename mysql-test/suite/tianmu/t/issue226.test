@@ -1,7 +1,16 @@
-use test;
+--source include/have_tianmu.inc
+
 --disable_warnings
-DROP DATABASE IF EXISTS t1;
-DROP DATABASE IF EXISTS t2;
+DROP DATABASE IF EXISTS issue226_test;
+--enable_warnings
+
+CREATE DATABASE issue226_test;
+
+USE issue226_test;
+
+--disable_warnings
+DROP TABLE IF EXISTS t1;
+DROP TABLE IF EXISTS t2;
 --enable_warnings
 CREATE TABLE t1 (f1 VARCHAR(255) CHARACTER SET utf8) ENGINE=TIANMU;
 CREATE TABLE t2 AS SELECT LEFT(f1,171) AS f2 FROM t1 UNION SELECT LEFT(f1,171) AS f2 FROM t1;
@@ -11,3 +20,5 @@ INSERT INTO t2 VALUES ('c');
 SELECT * FROM t2;
 DROP TABLE t1;
 DROP TABLE t2;
+
+DROP DATABASE issue226_test;

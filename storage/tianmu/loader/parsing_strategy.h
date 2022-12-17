@@ -64,6 +64,11 @@ class ParsingStrategy final {
   CHARSET_INFO *charset_info_;
   std::vector<char> temp_buf_;
 
+  bool first_row_prepared_{false};
+  std::vector<String *> vec_field_Str_list_;  // table column index<---> String*, string will be delete by THD
+  std::vector<uint> vec_field_num_to_index_;  // calculate the order number of the assignment fields and set fields
+  std::map<std::string, uint> map_field_name_to_index_;  // field name to the table column index;
+
   void GuessUnescapedEOL(const char *ptr, const char *buf_end);
   void GuessUnescapedEOLWithEnclose(const char *ptr, const char *const buf_end);
 

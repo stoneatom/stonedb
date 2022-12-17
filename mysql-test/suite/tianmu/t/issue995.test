@@ -1,6 +1,12 @@
 --source include/have_tianmu.inc
 
-USE test;
+--disable_warnings
+DROP DATABASE IF EXISTS issue995_test;
+--enable_warnings
+
+CREATE DATABASE issue995_test;
+
+USE issue995_test;
 
 CREATE TABLE t1 (a CHAR(1), b INT, c DATETIME, d DOUBLE);
 
@@ -12,3 +18,5 @@ INSERT INTO t1 VALUES ('', NULL, '0-0-0', NULL),
 
 SELECT CONVERT(c, TIME) FROM t1;
 DROP TABLE t1;
+
+DROP DATABASE issue995_test;

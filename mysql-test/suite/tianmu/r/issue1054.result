@@ -1,0 +1,307 @@
+include/master-slave.inc
+[connection master]
+#
+# There are MySQL keywords in the table fields
+# 
+[on master]
+drop table if exists `t_issue1054`;
+CREATE TABLE `t_issue1054` (
+`usage` tinyint(4) DEFAULT NULL COMMENT 'tinyint',
+`use` smallint(6) DEFAULT NULL COMMENT 'smallint',
+`update` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
+`delete` int(11) DEFAULT NULL COMMENT 'int',
+`select` bigint(20) DEFAULT NULL COMMENT 'bigint',
+`drop` float DEFAULT NULL COMMENT 'float',
+`create` double DEFAULT NULL COMMENT 'double',
+`insert` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+`database` date DEFAULT NULL COMMENT 'date',
+`where` datetime DEFAULT NULL COMMENT 'datetime',
+`lefe` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+`join` time DEFAULT NULL COMMENT 'time',
+`engine` char(10) DEFAULT NULL COMMENT 'char',
+`reset` varchar(10) DEFAULT NULL COMMENT 'varchar',
+`into` blob COMMENT 'blob',
+`set` text COMMENT 'text',
+`show` longblob COMMENT 'longblob'
+) engine=tianmu;
+insert into t_issue1054 
+values(100,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
+'2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
+insert into t_issue1054 
+values(101,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
+'2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
+insert into t_issue1054 
+values(102,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
+'2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
+update t_issue1054 set `use`=200 where `usage`=100;
+select * from t_issue1054;
+usage	use	update	delete	select	drop	create	insert	database	where	lefe	join	engine	reset	into	set	show
+100	200	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on slave]
+include/sync_slave_sql_with_master.inc
+select * from t_issue1054;
+usage	use	update	delete	select	drop	create	insert	database	where	lefe	join	engine	reset	into	set	show
+100	200	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on master]
+delete from t_issue1054 where `usage`=100;
+select * from t_issue1054;
+usage	use	update	delete	select	drop	create	insert	database	where	lefe	join	engine	reset	into	set	show
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on slave]
+include/sync_slave_sql_with_master.inc
+select * from t_issue1054;
+usage	use	update	delete	select	drop	create	insert	database	where	lefe	join	engine	reset	into	set	show
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on master]
+drop table t_issue1054;
+include/sync_slave_sql_with_master.inc
+#
+# Have unique constraints
+# 
+[on master]
+CREATE TABLE `t_issue1054` (
+`usage` tinyint(4) COMMENT 'tinyint',
+`use` smallint(6) DEFAULT NULL COMMENT 'smallint',
+`update` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
+`delete` int(11) DEFAULT NULL COMMENT 'int',
+`select` bigint(20) DEFAULT NULL COMMENT 'bigint',
+`drop` float DEFAULT NULL COMMENT 'float',
+`create` double DEFAULT NULL COMMENT 'double',
+`insert` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+`database` date DEFAULT NULL COMMENT 'date',
+`where` datetime DEFAULT NULL COMMENT 'datetime',
+`lefe` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+`join` time DEFAULT NULL COMMENT 'time',
+`engine` char(10) DEFAULT NULL COMMENT 'char',
+`reset` varchar(10) DEFAULT NULL COMMENT 'varchar',
+`into` blob COMMENT 'blob',
+`set` text COMMENT 'text',
+`show` longblob COMMENT 'longblob',
+UNIQUE (`usage`)
+) engine=tianmu;
+insert into t_issue1054 
+values(100,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
+'2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
+insert into t_issue1054 
+values(101,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
+'2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
+insert into t_issue1054 
+values(102,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
+'2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
+update t_issue1054 set `use`=200 where `usage`=100;
+select * from t_issue1054;
+usage	use	update	delete	select	drop	create	insert	database	where	lefe	join	engine	reset	into	set	show
+100	200	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on slave]
+include/sync_slave_sql_with_master.inc
+select * from t_issue1054;
+usage	use	update	delete	select	drop	create	insert	database	where	lefe	join	engine	reset	into	set	show
+100	200	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on master]
+delete from t_issue1054 where `usage`=100;
+select * from t_issue1054;
+usage	use	update	delete	select	drop	create	insert	database	where	lefe	join	engine	reset	into	set	show
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on slave]
+include/sync_slave_sql_with_master.inc
+select * from t_issue1054;
+usage	use	update	delete	select	drop	create	insert	database	where	lefe	join	engine	reset	into	set	show
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on master]
+drop table t_issue1054;
+include/sync_slave_sql_with_master.inc
+#
+# Has primary key
+# 
+[on master]
+CREATE TABLE `t_issue1054` (
+`usage` tinyint(4) COMMENT 'tinyint',
+`use` smallint(6) DEFAULT NULL COMMENT 'smallint',
+`update` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
+`delete` int(11) DEFAULT NULL COMMENT 'int',
+`select` bigint(20) DEFAULT NULL COMMENT 'bigint',
+`drop` float DEFAULT NULL COMMENT 'float',
+`create` double DEFAULT NULL COMMENT 'double',
+`insert` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+`database` date DEFAULT NULL COMMENT 'date',
+`where` datetime DEFAULT NULL COMMENT 'datetime',
+`lefe` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+`join` time DEFAULT NULL COMMENT 'time',
+`engine` char(10) DEFAULT NULL COMMENT 'char',
+`reset` varchar(10) DEFAULT NULL COMMENT 'varchar',
+`into` blob COMMENT 'blob',
+`set` text COMMENT 'text',
+`show` longblob COMMENT 'longblob',
+primary key(`usage`)
+) engine=tianmu;
+insert into t_issue1054 
+values(100,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
+'2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
+insert into t_issue1054 
+values(101,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
+'2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
+insert into t_issue1054 
+values(102,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
+'2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
+update t_issue1054 set `use`=200 where `usage`=100;
+select * from t_issue1054;
+usage	use	update	delete	select	drop	create	insert	database	where	lefe	join	engine	reset	into	set	show
+100	200	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on slave]
+include/sync_slave_sql_with_master.inc
+select * from t_issue1054;
+usage	use	update	delete	select	drop	create	insert	database	where	lefe	join	engine	reset	into	set	show
+100	200	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on master]
+delete from t_issue1054 where `usage`=100;
+select * from t_issue1054;
+usage	use	update	delete	select	drop	create	insert	database	where	lefe	join	engine	reset	into	set	show
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on slave]
+include/sync_slave_sql_with_master.inc
+select * from t_issue1054;
+usage	use	update	delete	select	drop	create	insert	database	where	lefe	join	engine	reset	into	set	show
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on master]
+drop table t_issue1054;
+include/sync_slave_sql_with_master.inc
+#
+# Validate scenarios where push down fails
+# 
+[on master]
+CREATE TABLE `t_issue1054` (
+`usage` tinyint(4) COMMENT 'tinyint',
+`use` smallint(6) DEFAULT NULL COMMENT 'smallint',
+`update` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
+`delete` int(11) DEFAULT NULL COMMENT 'int',
+`select` bigint(20) DEFAULT NULL COMMENT 'bigint',
+`drop` float DEFAULT NULL COMMENT 'float',
+`create` double DEFAULT NULL COMMENT 'double',
+`insert` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+`database` date DEFAULT NULL COMMENT 'date',
+`where` datetime DEFAULT NULL COMMENT 'datetime',
+`lefe` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+`join` time DEFAULT NULL COMMENT 'time',
+`engine` char(10) DEFAULT NULL COMMENT 'char',
+`reset` varchar(10) DEFAULT NULL COMMENT 'varchar',
+`into` blob COMMENT 'blob',
+`set` text COMMENT 'text',
+`show` longblob COMMENT 'longblob',
+primary key(`usage`)
+) engine=tianmu;
+insert into t_issue1054 
+values(100,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
+'2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
+insert into t_issue1054 
+values(101,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
+'2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
+insert into t_issue1054 
+values(102,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
+'2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
+update t_issue1054 set `use`=200 where `usage`=100;
+select * from t_issue1054;
+usage	use	update	delete	select	drop	create	insert	database	where	lefe	join	engine	reset	into	set	show
+100	200	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on slave]
+include/sync_slave_sql_with_master.inc
+select * from t_issue1054;
+usage	use	update	delete	select	drop	create	insert	database	where	lefe	join	engine	reset	into	set	show
+100	200	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on master]
+delete from t_issue1054 where `usage`=100;
+select * from t_issue1054;
+usage	use	update	delete	select	drop	create	insert	database	where	lefe	join	engine	reset	into	set	show
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on slave]
+include/sync_slave_sql_with_master.inc
+select * from t_issue1054;
+usage	use	update	delete	select	drop	create	insert	database	where	lefe	join	engine	reset	into	set	show
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on master]
+drop table t_issue1054;
+include/sync_slave_sql_with_master.inc
+#
+# Adds some test cases for unicode.
+# 
+[on master]
+CREATE TABLE `t_issue1054` (
+`abc def` tinyint(4) COMMENT 'tinyint',
+`пусто` smallint(6) DEFAULT NULL COMMENT 'smallint',
+`новое` mediumint(9) DEFAULT NULL COMMENT 'mediumint',
+`你好` int(11) DEFAULT NULL COMMENT 'int',
+`to-to0` bigint(20) DEFAULT NULL COMMENT 'bigint',
+`dr(op` float DEFAULT NULL COMMENT 'float',
+`cr+eate` double DEFAULT NULL COMMENT 'double',
+`ins=ert` decimal(10,5) DEFAULT NULL COMMENT 'decimal',
+`data.base` date DEFAULT NULL COMMENT 'date',
+`whe]re` datetime DEFAULT NULL COMMENT 'datetime',
+`lef[e` timestamp NULL DEFAULT NULL COMMENT 'timestamp',
+`joi)n` time DEFAULT NULL COMMENT 'time',
+`eng<ine` char(10) DEFAULT NULL COMMENT 'char',
+`rese>&t` varchar(10) DEFAULT NULL COMMENT 'varchar',
+`into#` blob COMMENT 'blob',
+`set@` text COMMENT 'text',
+`sho*w` longblob COMMENT 'longblob'
+) engine=innodb;
+insert into t_issue1054 
+values(100,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
+'2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
+insert into t_issue1054 
+values(101,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
+'2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
+insert into t_issue1054 
+values(102,100,100,100,100,5.2,10.88,100.08300,'2016-02-25','2016-02-25 10:20:01',
+'2007-04-23 08:12:49','10:20:01','stoneatom','hello',NULL,'bcdefghijklmn',NULL);
+update t_issue1054 set `пусто`=200 where `abc def`=100;
+select * from t_issue1054;
+abc def	пусто	новое	你好	to-to0	dr(op	cr+eate	ins=ert	data.base	whe]re	lef[e	joi)n	eng<ine	rese>&t	into#	set@	sho*w
+100	200	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on slave]
+include/sync_slave_sql_with_master.inc
+select * from t_issue1054;
+abc def	пусто	новое	你好	to-to0	dr(op	cr+eate	ins=ert	data.base	whe]re	lef[e	joi)n	eng<ine	rese>&t	into#	set@	sho*w
+100	200	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on master]
+delete from t_issue1054 where `abc def`=100;
+select * from t_issue1054;
+abc def	пусто	новое	你好	to-to0	dr(op	cr+eate	ins=ert	data.base	whe]re	lef[e	joi)n	eng<ine	rese>&t	into#	set@	sho*w
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on slave]
+include/sync_slave_sql_with_master.inc
+select * from t_issue1054;
+abc def	пусто	новое	你好	to-to0	dr(op	cr+eate	ins=ert	data.base	whe]re	lef[e	joi)n	eng<ine	rese>&t	into#	set@	sho*w
+101	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+102	100	100	100	100	5.2	10.88	100.08300	2016-02-25	2016-02-25 10:20:01	2007-04-23 08:12:49	10:20:01	stoneatom	hello	NULL	bcdefghijklmn	NULL
+[on master]
+drop table t_issue1054;
+include/sync_slave_sql_with_master.inc
+stop slave;

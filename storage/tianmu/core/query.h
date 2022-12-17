@@ -74,7 +74,7 @@ class Query final {
   TempTable *Preexecute(CompiledQuery &qu, ResultSender *sender, bool display_now = true);
   QueryRouteTo BuildConditions(Item *conds, CondID &cond_id, CompiledQuery *cq, const TabID &tmp_table,
                                CondType filter_type, bool is_zero_result = false,
-                               JoinType join_type = JoinType::JO_INNER);
+                               JoinType join_type = JoinType::JO_INNER, bool can_cond_push = false);
 
   std::multimap<std::string, std::pair<int, TABLE *>> table_alias2index_ptr;
 
@@ -151,11 +151,13 @@ class Query final {
    * \return filter number (non-negative) or error indication (negative)
    */
   CondID ConditionNumberFromNaked(Item *conds, const TabID &tmp_table, CondType filter_type, CondID *and_me_filter,
-                                  bool is_or_subtree = false);
+                                  bool is_or_subtree = false, bool can_cond_push = false);
   CondID ConditionNumberFromMultipleEquality(Item_equal *conds, const TabID &tmp_table, CondType filter_type,
-                                             CondID *and_me_filter = 0, bool is_or_subtree = false);
+                                             CondID *and_me_filter = 0, bool is_or_subtree = false,
+                                             bool can_cond_push = false);
   CondID ConditionNumberFromComparison(Item *conds, const TabID &tmp_table, CondType filter_type,
-                                       CondID *and_me_filter = 0, bool is_or_subtree = false, bool negative = false);
+                                       CondID *and_me_filter = 0, bool is_or_subtree = false, bool negative = false,
+                                       bool can_cond_push = false);
 
   /*! \brief Checks type of operator involved in condition
    * \param conds - conditions
@@ -179,7 +181,7 @@ class Query final {
   static void MarkWithAll(common::Operator &op);
 
   CondID ConditionNumber(Item *conds, const TabID &tmp_table, CondType filter_type, CondID *and_me_filter = 0,
-                         bool is_or_subtree = false);
+                         bool is_or_subtree = false, bool can_cond_push = false);
   QueryRouteTo BuildCondsIfPossible(Item *conds, CondID &cond_id, const TabID &tmp_table, JoinType join_type);
 
  public:

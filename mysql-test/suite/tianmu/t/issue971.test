@@ -1,6 +1,12 @@
 --source include/have_tianmu.inc
 
-USE test;
+--disable_warnings
+DROP DATABASE IF EXISTS issue971_test;
+--enable_warnings
+
+CREATE DATABASE issue971_test;
+
+USE issue971_test;
 
 --disable_warnings
 
@@ -48,3 +54,4 @@ set global tianmu_index_search=off;
 
 DROP TABLE tt1,tt2;
 
+DROP DATABASE issue971_test;

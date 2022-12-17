@@ -3297,14 +3297,13 @@ private:
 
   /*column information to conditions,Prepare for conditional push*/
   bool column_information_to_conditions(std::string &sql_statemens, 
-                                                      MY_BITMAP *cols_bitmap, 
                                                       std::string &prefix);
 
   /*
     Push down the execution conditions for the engine 
     if necessary to reduce the number of rows to be iterated
   */
-  bool can_push_donw();
+  bool can_push_down();
 
   /*
     Convert log in row format to sql statement

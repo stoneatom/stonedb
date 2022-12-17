@@ -1,4 +1,6 @@
-use test;
+DROP DATABASE IF EXISTS issue1000_test;
+CREATE DATABASE issue1000_test;
+USE issue1000_test;
 #
 # Test of skip lines syntax
 #
@@ -98,19 +100,19 @@ create temporary table error_log (row int auto_increment primary key,   suspicio
 load data infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue1000.txt' into table error_log fields terminated by 'xykls37' escaped by ''   ignore 1 lines (line) set file_name='/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err';
 select * from error_log;
 row	suspicious	file_name	line
-1	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.545786Z 0 [Warning] The synta
-2	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.545885Z 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --e
+1	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.545786Z 0 [Warning] The syntax '--master-retry-count' is deprecated and will be removed in a future release. Please use 'CHANGE MASTER TO master_retry_count = <num>' instead.
+2	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.545885Z 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
 3	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.546902Z 0 [Warning] Insecure configuration for --secure-file-priv: Data directory is accessible through --secure-file-priv. Consider choosing a different directory.
 4	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.546916Z 0 [Warning] Insecure configuration for --secure-file-priv: Location is accessible to all OS users. Consider choosing a different directory.
-5	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.856735Z 0 [Warning] unknown variable 'loose-mysql
-6	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.856749Z 0 [Warning] unknown variable 'loose-mysql
-7	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.858729Z 0 [Warning] No e
+5	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.856735Z 0 [Warning] unknown variable 'loose-mysqlx-port=13020'
+6	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.856749Z 0 [Warning] unknown variable 'loose-mysqlx-socket=/home/Code/GitHub/stonedb/build/install/mysql-test/var/tmp/mysqlx.2.sock'
+7	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.858729Z 0 [Warning] No existing UUID has been found, so we assume that this is the first time that this server has been started. Generating a new UUID: e90ca738-6b76-11ed-b11c-000c2921dc32.
 8	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.861317Z 0 [Warning] A deprecated TLS version TLSv1 is enabled. Please use TLSv1.2 or higher.
 9	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.861325Z 0 [Warning] A deprecated TLS version TLSv1.1 is enabled. Please use TLSv1.2 or higher.
 10	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.861798Z 0 [Warning] CA certificate /home/Code/GitHub/stonedb/build/install/mysql-test/std_data/cacert.pem is self signed.
 11	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.861860Z 0 [Warning] RSA private key file not found: /home/Code/GitHub/stonedb/build/install/mysql-test/var/mysqld.2/data//private_key.pem. Some authentication plugins will not work.
 12	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:37.861871Z 0 [Warning] RSA public key file not found: /home/Code/GitHub/stonedb/build/install/mysql-test/var/mysqld.2/data//public_key.pem. Some authentication plugins will not work.
-13	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:38.116846Z 5 [Warning] Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Synta
+13	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:38.116846Z 5 [Warning] Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
 14	1	/home/Code/GitHub/stonedb/build/install/mysql-test/var/log/mysqld.2.err	2022-11-23T21:36:38.117197Z 6 [Warning] Slave SQL for channel '': If a crash happens this configuration does not guarantee that the relay log info will be consistent, Error_code: 0
 #
 # Clean Resource
@@ -121,3 +123,4 @@ drop table tmp_loaddata3;
 drop table tmp_loaddata4;
 drop table tmp_loaddata5;
 drop table error_log;
+DROP DATABASE issue1000_test;

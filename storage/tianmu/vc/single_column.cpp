@@ -23,6 +23,7 @@
 
 namespace Tianmu {
 namespace vcolumn {
+
 SingleColumn::SingleColumn(core::PhysicalColumn *col, core::MultiIndex *multi_index, int alias, int col_no,
                            core::JustATable *source_table, int d)
     : VirtualColumn(col->Type(), multi_index), col_(col) {
@@ -62,18 +63,21 @@ double SingleColumn::GetValueDoubleImpl(const core::MIIterator &mit) {
   } else if (core::ATI::IsDateTimeType(TypeName())) {
     int64_t v = col_->GetValueInt64(mit[dim_]);
     types::TianmuDateTime vd(v, TypeName());  // 274886765314048  ->  2000-01-01
+
     int64_t vd_conv = 0;
     vd.ToInt64(vd_conv);  // 2000-01-01  ->  20000101
     val = (double)vd_conv;
   } else if (core::ATI::IsStringType(TypeName())) {
     types::BString vrcbs;
     col_->GetValueString(mit[dim_], vrcbs);
+
     auto vs = std::make_unique<char[]>(vrcbs.len_ + 1);
     std::memcpy(vs.get(), vrcbs.GetDataBytesPointer(), vrcbs.len_);
     vs[vrcbs.len_] = '\0';
     val = std::atof(vs.get());
   } else
     DEBUG_ASSERT(0 && "conversion to double not implemented");
+
   return val;
 }
 
@@ -85,6 +89,7 @@ int64_t SingleColumn::GetSumImpl(const core::MIIterator &mit, bool &nonnegative)
   // DEBUG_ASSERT(!core::ATI::IsStringType(TypeName()));
   if (mit.WholePack(dim_) && mit.GetCurPackrow(dim_) >= 0)
     return col_->GetSum(mit.GetCurPackrow(dim_), nonnegative);
+
   nonnegative = false;
   return common::NULL_VALUE_64;
 }
@@ -93,6 +98,7 @@ int64_t SingleColumn::GetApproxSumImpl(const core::MIIterator &mit, bool &nonneg
   // DEBUG_ASSERT(!core::ATI::IsStringType(TypeName()));
   if (mit.GetCurPackrow(dim_) >= 0)
     return col_->GetSum(mit.GetCurPackrow(dim_), nonnegative);
+
   nonnegative = false;
   return common::NULL_VALUE_64;
 }
@@ -117,6 +123,7 @@ int64_t SingleColumn::GetMinInt64ExactImpl(const core::MIIterator &mit) {
     if (val != common::MINUS_INF_64)
       return val;
   }
+
   return common::NULL_VALUE_64;
 }
 
@@ -126,6 +133,7 @@ int64_t SingleColumn::GetMaxInt64ExactImpl(const core::MIIterator &mit) {
     if (val != common::PLUS_INF_64)
       return val;
   }
+
   return common::NULL_VALUE_64;
 }
 
@@ -140,6 +148,7 @@ types::BString SingleColumn::GetMaxStringImpl(const core::MIIterator &mit) {
 int64_t SingleColumn::GetApproxDistValsImpl(bool incl_nulls, core::RoughMultiIndex *rough_mind) {
   if (rough_mind)
     return col_->ApproxDistinctVals(incl_nulls, multi_index_->GetFilter(dim_), rough_mind->GetRSValueTable(dim_), true);
+
   return col_->ApproxDistinctVals(incl_nulls, multi_index_->GetFilter(dim_), nullptr, multi_index_->NullsExist(dim_));
 }
 
@@ -154,6 +163,7 @@ std::vector<int64_t> SingleColumn::GetListOfDistinctValues(core::MIIterator cons
     std::vector<int64_t> empty;
     return empty;
   }
+
   return col_->GetListOfDistinctValuesInPack(pack);
 }
 
@@ -172,18 +182,19 @@ void SingleColumn::EvaluatePackImpl(core::MIUpdatingIterator &mit, core::Descrip
   col_->EvaluatePack(mit, dim_, desc);
 }
 
-common::RSValue SingleColumn::RoughCheckImpl(const core::MIIterator &mit, core::Descriptor &d) {
+common::RoughSetValue SingleColumn::RoughCheckImpl(const core::MIIterator &mit, core::Descriptor &d) {
   if (mit.GetCurPackrow(dim_) >= 0) {
     // check whether isn't it a join
     SingleColumn *sc = nullptr;
     if (d.val1.vc && static_cast<int>(d.val1.vc->IsSingleColumn()))
       sc = static_cast<SingleColumn *>(d.val1.vc);
+
     if (sc && sc->dim_ != dim_)  // Pack2Pack rough check
       return col_->RoughCheck(mit.GetCurPackrow(dim_), mit.GetCurPackrow(sc->dim_), d);
     else  // One-dim_ rough check
       return col_->RoughCheck(mit.GetCurPackrow(dim_), d, mit.NullsPossibleInPack(dim_));
   } else
-    return common::RSValue::RS_SOME;
+    return common::RoughSetValue::RS_SOME;
 }
 
 void SingleColumn::DisplayAttrStats() { col_->DisplayAttrStats(multi_index_->GetFilter(dim_)); }
@@ -196,5 +207,6 @@ char *SingleColumn::ToString(char p_buf[], size_t buf_ct) const {
     std::snprintf(p_buf, buf_ct, "t%da*", dim_);
   return p_buf;
 }
+
 }  // namespace vcolumn
 }  // namespace Tianmu

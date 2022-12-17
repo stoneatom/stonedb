@@ -1,4 +1,6 @@
-use test;
+DROP DATABASE IF EXISTS issue429_test;
+CREATE DATABASE issue429_test;
+USE issue429_test;
 create table tt (val time) ENGINE=TIANMU;
 insert into tt values ('06:34:12'), ('13:23:33');
 select * from tt where DATE(TIMESTAMP(val)) = CURDATE();
@@ -9,3 +11,4 @@ select * from tt where DATE(TIMESTAMP(val, val)) = CURDATE();
 val
 06:34:12
 drop table tt;
+DROP DATABASE issue429_test;

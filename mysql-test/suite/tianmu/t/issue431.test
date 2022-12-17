@@ -1,5 +1,16 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue431_test;
+--enable_warnings
+
+CREATE DATABASE issue431_test;
+
+USE issue431_test;
+
 create table tt(a int, b int) ENGINE=TIANMU;
 insert into tt values (3, 4);
 select * from tt where (a >= 3) AND (b = 5 AND a > 2 OR 0);
 drop table tt;
+
+DROP DATABASE issue431_test;

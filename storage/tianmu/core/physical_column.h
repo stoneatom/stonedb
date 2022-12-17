@@ -176,7 +176,7 @@ class PhysicalColumn : public Column {
     return 0;
   }
 
-  virtual uint64_t ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue *rf,
+  virtual uint64_t ApproxDistinctVals(bool incl_nulls, Filter *f, common::RoughSetValue *rf,
                                       bool outer_nulls_possible) = 0;  // provide the best upper
                                                                        // approximation of number
                                                                        // of diff. values (incl.
@@ -200,22 +200,22 @@ class PhysicalColumn : public Column {
   bool IsUniqueUpdated() const { return is_unique_updated; }
   void SetUniqueUpdated(bool updated) { is_unique_updated = updated; }
   //! shortcut utility function = IsUniqueUpdated && IsUnique
-  common::RSValue IsDistinct() const {
-    return (IsUniqueUpdated() ? (IsUnique() ? common::RSValue::RS_ALL : common::RSValue::RS_NONE)
-                              : common::RSValue::RS_UNKNOWN);
+  common::RoughSetValue IsDistinct() const {
+    return (IsUniqueUpdated() ? (IsUnique() ? common::RoughSetValue::RS_ALL : common::RoughSetValue::RS_NONE)
+                              : common::RoughSetValue::RS_UNKNOWN);
   }
   virtual int64_t RoughMin(Filter *f = nullptr,
-                           common::RSValue *rf = nullptr) = 0;  // for numerical: best
-                                                                // rough approximation of
-                                                                // min for a given filter
-                                                                // (or global min if filter
-                                                                // is nullptr)
+                           common::RoughSetValue *rf = nullptr) = 0;  // for numerical: best
+                                                                      // rough approximation of
+                                                                      // min for a given filter
+                                                                      // (or global min if filter
+                                                                      // is nullptr)
   virtual int64_t RoughMax(Filter *f = nullptr,
-                           common::RSValue *rf = nullptr) = 0;  // for numerical: best
-                                                                // rough approximation of
-                                                                // max for a given filter
-                                                                // (or global max if filter
-                                                                // is nullptr)
+                           common::RoughSetValue *rf = nullptr) = 0;  // for numerical: best
+                                                                      // rough approximation of
+                                                                      // max for a given filter
+                                                                      // (or global max if filter
+                                                                      // is nullptr)
   virtual void GetTextStat(types::TextStat &s, [[maybe_unused]] Filter *f = nullptr) { s.Invalidate(); }
   virtual double RoughSelectivity() { return 1; }
   /*! \brief Return true if the column (filtered) contain only non-null distinct
@@ -261,14 +261,14 @@ class PhysicalColumn : public Column {
   // virtual bool CheckCondition(uint64_t row, Descriptor& d) = 0;
 
   //! check whether any value from the pack may meet the condition
-  virtual common::RSValue RoughCheck(int pack, Descriptor &d, bool additional_nulls_possible) = 0;
+  virtual common::RoughSetValue RoughCheck(int pack, Descriptor &d, bool additional_nulls_possible) = 0;
 
   //! check whether any pair from two packs of two different attr/tables may
   //! meet the condition
-  virtual common::RSValue RoughCheck(int pack1, int pack2, Descriptor &d) = 0;
-  virtual common::RSValue RoughCheckBetween([[maybe_unused]] int pack, [[maybe_unused]] int64_t min,
-                                            [[maybe_unused]] int64_t max) {
-    return common::RSValue::RS_SOME;
+  virtual common::RoughSetValue RoughCheck(int pack1, int pack2, Descriptor &d) = 0;
+  virtual common::RoughSetValue RoughCheckBetween([[maybe_unused]] int pack, [[maybe_unused]] int64_t min,
+                                                  [[maybe_unused]] int64_t max) {
+    return common::RoughSetValue::RS_SOME;
   }
   virtual bool TryToMerge(Descriptor &d1, Descriptor &d2) = 0;
 

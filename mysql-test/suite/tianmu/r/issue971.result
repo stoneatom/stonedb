@@ -1,4 +1,6 @@
-USE test;
+DROP DATABASE IF EXISTS issue971_test;
+CREATE DATABASE issue971_test;
+USE issue971_test;
 set global tianmu_index_search=on;
 DROP TABLE IF EXISTS tt1,tt2;
 CREATE TABLE tt1(id INT PRIMARY KEY,name VARCHAR(5),copy_id INT) ENGINE=TIANMU;
@@ -43,3 +45,4 @@ id	name	copy_id
 5	CCC	5
 set global tianmu_index_search=off;
 DROP TABLE tt1,tt2;
+DROP DATABASE issue971_test;

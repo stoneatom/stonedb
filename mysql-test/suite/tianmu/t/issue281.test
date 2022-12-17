@@ -1,7 +1,21 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue281_test;
+--enable_warnings
+
+CREATE DATABASE issue281_test;
+
+USE issue281_test;
+
+--disable_warnings
+
+DROP TABLE IF EXISTS t1;
 CREATE TABLE t1 (f1 INT UNIQUE) ENGINE=TIANMU;
 INSERT INTO t1 VALUES(1),(2),(NULL),(NULL);
 SELECT * FROM t1 WHERE f1 IS NULL;
 SELECT * FROM t1 WHERE f1 IS NOT NULL;
 SELECT * FROM t1;
 DROP TABLE t1;
+
+DROP DATABASE issue281_test;

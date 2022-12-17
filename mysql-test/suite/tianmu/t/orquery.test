@@ -1,4 +1,13 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS orquery_test;
+--enable_warnings
+
+CREATE DATABASE orquery_test;
+
+USE orquery_test;
+
 CREATE TABLE `test_or` (
   `id` int(11) DEFAULT NULL,
   `age` int(11) DEFAULT NULL
@@ -8,3 +17,4 @@ insert into test_or values(2,2);
 select count(*) from test_or where id=1 or age=2;
 drop table test_or;
 
+DROP DATABASE orquery_test;

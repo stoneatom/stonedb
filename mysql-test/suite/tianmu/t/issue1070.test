@@ -1,0 +1,21 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue1070_test;
+--enable_warnings
+
+CREATE DATABASE issue1070_test;
+
+USE issue1070_test;
+
+create table t_issue1070(id int,name varchar(5)) engine=tianmu DEFAULT CHARSET=utf8mb4;
+insert into t_issue1070 values(1,x'E5BCA0E4B889'),(2,x'E69D8EE59B9B');
+show create table t_issue1070;
+select hex(name) from t_issue1070;
+alter table t_issue1070 convert to character set gbk;
+select hex(name) from t_issue1070;
+alter table t_issue1070 convert to character set utf8mb4;
+select hex(name) from t_issue1070;
+drop table t_issue1070;
+
+DROP DATABASE issue1070_test;

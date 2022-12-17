@@ -1,4 +1,6 @@
-use test;
+DROP DATABASE IF EXISTS group_concat2_test;
+CREATE DATABASE group_concat2_test;
+USE group_concat2_test;
 CREATE TABLE `test_groupconcat2_case` (
 `id` int(11) DEFAULT NULL,
 `val` int(11)
@@ -12,3 +14,4 @@ select id,group_concat(distinct val SEPARATOR ":") from test_groupconcat2_case g
 id	group_concat(distinct val SEPARATOR ":")
 1	22:4
 drop table test_groupconcat2_case;
+DROP DATABASE group_concat2_test;

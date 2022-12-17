@@ -41,6 +41,7 @@
 
 namespace Tianmu {
 namespace core {
+
 uint32_t TianmuTable::GetTableId(const fs::path &dir) {
   TABLE_META meta;
   system::TianmuFile f;
@@ -227,7 +228,7 @@ std::vector<AttrInfo> TianmuTable::GetAttributesInfo() {
       info[j].no_nulls = true;
     else
       info[j].no_nulls = false;
-    info[j].actually_unique = (m_attrs[j]->PhysicalColumn::IsDistinct() == common::RSValue::RS_ALL);
+    info[j].actually_unique = (m_attrs[j]->PhysicalColumn::IsDistinct() == common::RoughSetValue::RS_ALL);
     info[j].uncomp_size = m_attrs[j]->ComputeNaturalSize();
     info[j].comp_size = m_attrs[j]->CompressedSize();
   }
@@ -1265,14 +1266,17 @@ uint64_t TianmuTable::ProcessDelayed(system::IOParameters &iop) {
     no_of_rows_returned = parser.GetRows(to_prepare, vcs);
     size_t real_loaded_rows = vcs[0].NumOfValues();
     no_dup_rows += (no_of_rows_returned - real_loaded_rows);
+
     if (real_loaded_rows > 0) {
       utils::result_set<void> res;
       for (uint att = 0; att < m_attrs.size(); ++att) {
         res.insert(ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(), &vcs[att],
                                                                 current_txn_));
       }
+
       res.get_all();
       no_loaded_rows += real_loaded_rows;
+
       if (real_loaded_rows > 0 && mysql_bin_log.is_open())
         binlog_insert2load_block(vcs, real_loaded_rows, iop);
     }
@@ -1343,8 +1347,10 @@ int TianmuTable::MergeMemTable(system::IOParameters &iop) {
       m_mem_table->next_load_id_ = index::be_to_uint64((uchar *)iter->key().data() + key_pos);
     }
   }
+
   if (vec.empty())
     return 0;
+
   clock_gettime(CLOCK_REALTIME, &t2);
 
   DelayedInsertParser parser(m_attrs, &vec, share->PackSize(), index_table);
@@ -1391,5 +1397,6 @@ int TianmuTable::MergeMemTable(system::IOParameters &iop) {
 
   return no_loaded_rows;
 }
+
 }  // namespace core
 }  // namespace Tianmu
