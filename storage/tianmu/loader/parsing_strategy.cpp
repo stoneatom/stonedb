@@ -280,34 +280,30 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
   if (buf == buf_end)
     return ParsingStrategy::ParseResult::EOB;
 
-  std::map<std::string, std::pair<const char *, size_t>> map_ptr_field;
-  std::map<std::string, Field *> map_str_field;
+  std::vector<std::pair<const char *, size_t>> vec_ptr_field;
   // default values;
   uint n_fields = table_->s->fields;
   uint i = 0;
-  std::vector<String *> vec_Str;
 
   // step1, initial field to defaut value
+  restore_record(table_, s->default_values);
   for (i = 0; i < n_fields; i++) {
-    table_->field[i]->set_default();
     Field *field = table_->field[i];
 
-    std::string str_field(field->field_name);
-    map_str_field[str_field] = field;
-    table_->field[i]->set_default();
+    String *str{nullptr};
+    if (!first_row_prepared_) {
+      std::string field_name(field->field_name);
 
-    char buff[MAX_FIELD_WIDTH] = {0};
-    String tmp(buff, MAX_FIELD_WIDTH, &my_charset_bin), *res{nullptr};
-    res = field->val_str(&tmp);
-
-    if (res) {
-      String *str = new (thd_->mem_root) String();
-      str->copy(*res);
-      map_ptr_field[str_field] = std::make_pair(str->ptr(), str->length());
-      vec_Str.push_back(str);
+      str = new (thd_->mem_root) String(MAX_FIELD_WIDTH);
+      String *res = field->val_str(str);
+      DEBUG_ASSERT(res);
+      vec_field_Str_list_.push_back(str);
+      vec_field_num_to_index_.push_back(0);
+      map_field_name_to_index_[field_name] = i;
     } else {
-      DEBUG_ASSERT(0);
+      str = vec_field_Str_list_[i];
     }
+    vec_ptr_field.emplace_back(str->ptr(), str->length());
   }
 
   const char *ptr = buf;
@@ -327,6 +323,10 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
   Item *item{nullptr};
   Item *real_item{nullptr};
   uint index{0};
+  uint field_index_in_field_list{0};
+  uint index_of_field{0};
+  char *val_start{nullptr};
+  size_t val_len{0};
   // step2, fill the filed list with data file content;
   while ((item = it++)) {
     index++;
@@ -341,15 +341,32 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
     } else {
       SearchResult res = SearchUnescapedPatternNoEOL(ptr, buf_end, delimiter_, kmp_next_delimiter_);
       if (res == SearchResult::END_OF_LINE) {
+        // check if the string is enclosed by some char
+        if (string_qualifier_ && *val_beg == string_qualifier_) {
+          val_start = const_cast<char *>(val_beg) + 1;  // first char is enclose char, skip it
+          val_len = ptr - val_beg - 2;                  // skip the first and the last char which is encolose char
+        } else {
+          val_start = const_cast<char *>(val_beg);
+          val_len = ptr - val_beg;
+        }
+
         if (real_item->type() == Item::FIELD_ITEM) {
           Field *field = ((Item_field *)real_item)->field;
           field->set_notnull();
-          field->store((char *)val_beg, ptr - val_beg, char_info);
-          std::string str_field(field->field_name);
-          map_str_field[str_field] = field;
-          map_ptr_field[str_field] = std::make_pair(val_beg, ptr - val_beg);
+          field->store(val_start, val_len, char_info);
+          if (!first_row_prepared_) {
+            std::string field_name(field->field_name);
+            index_of_field = map_field_name_to_index_[field_name];
+            vec_field_num_to_index_[field_index_in_field_list] = index_of_field;
+          } else {
+            index_of_field = vec_field_num_to_index_[field_index_in_field_list];
+          }
+
+          vec_ptr_field[index_of_field] = std::make_pair(val_start, val_len);
+          ++field_index_in_field_list;
+
         } else if (item->type() == Item::STRING_ITEM) {
-          ((Item_user_var_as_out_param *)item)->set_value((char *)val_beg, ptr - val_beg, char_info);
+          ((Item_user_var_as_out_param *)item)->set_value((char *)val_start, val_len, char_info);
         }
         continue;
       }
@@ -361,12 +378,10 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
       goto end;
     }
 
-    char *val_start{nullptr};
-    size_t val_len{0};
-
+    // check if the string is enclosed by some char
     if (string_qualifier_ && *val_beg == string_qualifier_) {
-      val_start = const_cast<char *>(val_beg) + 1;
-      val_len = ptr - val_beg - 2;
+      val_start = const_cast<char *>(val_beg) + 1;  // first char is enclose char, skip it
+      val_len = ptr - val_beg - 2;                  // skip the first and the last char which is encolose char
     } else {
       val_start = const_cast<char *>(val_beg);
       val_len = ptr - val_beg;
@@ -376,9 +391,17 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
       Field *field = ((Item_field *)real_item)->field;
       field->set_notnull();
       field->store(val_start, val_len, char_info);
-      std::string str_field(field->field_name);
-      map_str_field[str_field] = field;
-      map_ptr_field[str_field] = std::make_pair(val_start, val_len);
+      if (!first_row_prepared_) {
+        std::string str_field(field->field_name);
+        index_of_field = map_field_name_to_index_[str_field];
+        vec_field_num_to_index_[field_index_in_field_list] = index_of_field;
+      } else {
+        index_of_field = vec_field_num_to_index_[field_index_in_field_list];
+      }
+
+      vec_ptr_field[index_of_field] = std::make_pair(val_start, val_len);
+      ++field_index_in_field_list;
+
     } else if (item->type() == Item::STRING_ITEM) {
       ((Item_user_var_as_out_param *)item)->set_value(val_start, val_len, char_info);
     }
@@ -397,15 +420,33 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
       row_incomplete = !SearchUnescapedPattern(ptr, buf_end, terminator_, kmp_next_terminator_);
 
     if (!row_incomplete) {
+      // check if the string is enclosed by some char
+      if (string_qualifier_ && *val_beg == string_qualifier_) {
+        val_start = const_cast<char *>(val_beg) + 1;  // first char is enclose char, skip it
+        val_len = ptr - val_beg - 2;                  // skip the first and the last char which is encolose char
+      } else {
+        val_start = const_cast<char *>(val_beg);
+        val_len = ptr - val_beg;
+      }
+
       if (real_item->type() == Item::FIELD_ITEM) {
         Field *field = ((Item_field *)real_item)->field;
         field->set_notnull();
-        field->store((char *)val_beg, ptr - val_beg, char_info);
-        std::string str_field(field->field_name);
-        map_str_field[str_field] = field;
-        map_ptr_field[str_field] = std::make_pair(val_beg, ptr - val_beg);
+        field->store(val_start, val_len, char_info);
+
+        if (!first_row_prepared_) {
+          std::string str_field(field->field_name);
+          index_of_field = map_field_name_to_index_[str_field];
+          vec_field_num_to_index_[field_index_in_field_list] = index_of_field;
+        } else {
+          index_of_field = vec_field_num_to_index_[field_index_in_field_list];
+        }
+
+        vec_ptr_field[index_of_field] = std::make_pair(val_start, val_len);
+        ++field_index_in_field_list;
+
       } else if (item->type() == Item::STRING_ITEM) {
-        ((Item_user_var_as_out_param *)item)->set_value((char *)val_beg, ptr - val_beg, char_info);
+        ((Item_user_var_as_out_param *)item)->set_value(val_start, val_len, char_info);
       }
     } else {
       errorinfo = index;
@@ -419,56 +460,55 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
     row_data_error = true;
     goto end;
   }
-  // step3,field in the set clause
 
+  // step3,field in the set clause
   while ((fld = f++)) {
     Item_field *const field = fld->field_for_view_update();
     DEBUG_ASSERT(field != NULL);
     Field *const rfield = field->field;
-
-    std::string str_field(field->field_name);
-    map_str_field[str_field] = rfield;
 
     Item *const value = v++;
 
     if (value->save_in_field(rfield, false) < 0) {
       DEBUG_ASSERT(0);
     }
-    char buff[MAX_FIELD_WIDTH] = {0};
-    String tmp(buff, MAX_FIELD_WIDTH, &my_charset_bin), *res{nullptr};
-    res = field->str_result(&tmp);
 
-    if (res) {
-      String *str = new (thd_->mem_root) String();
-      str->copy(*res);
-      map_ptr_field[str_field] = std::make_pair(str->ptr(), str->length());
-      vec_Str.push_back(str);
+    String *str{nullptr};
+
+    if (!first_row_prepared_) {
+      std::string field_name(field->field_name);
+      str = new (thd_->mem_root) String(MAX_FIELD_WIDTH);
+      index_of_field = map_field_name_to_index_[field_name];
+      vec_field_num_to_index_[field_index_in_field_list] = index_of_field;
+      vec_field_Str_list_[index_of_field] = str;
+    } else {
+      index_of_field = vec_field_num_to_index_[field_index_in_field_list];
+      str = vec_field_Str_list_[index_of_field];
     }
+    String *res = field->str_result(str);
+    DEBUG_ASSERT(res);
+    if (res && res != str) {
+      str->copy(*res);
+    }
+
+    vec_ptr_field[index_of_field] = std::make_pair(str->ptr(), str->length());
+    ++field_index_in_field_list;
   }
 
   // step4,row is completed, to make the whole row
   for (uint col = 0; col < attr_infos_.size(); ++col) {
-    core::AttributeTypeInfo &ati = GetATI(col);
-    std::string field_name = ati.GetFieldName();
-    if (0 == map_str_field.count(field_name)) {
-      DEBUG_ASSERT(0);
-    }
-
-    auto field = map_str_field[field_name];
-    DEBUG_ASSERT(field != nullptr);
-    auto ptr_field = map_ptr_field[field_name];
+    auto &ptr_field = vec_ptr_field[col];
     GetValue(ptr_field.first, ptr_field.second, col, record[col]);
   }
 
 end:
-  for (auto str : vec_Str) delete str;
 
   if (row_incomplete) {
     if (errorinfo == -1)
       errorinfo = index;
     return ParsingStrategy::ParseResult::EOB;
   }
-
+  first_row_prepared_ = true;
   rowsize = uint(ptr - buf);
 
   return !row_data_error ? ParseResult::OK : ParseResult::ERROR;

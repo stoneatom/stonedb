@@ -51,7 +51,7 @@ class CacheableItem {
   // or its subrange from position 'off', of length 'size' bytes.
   // Returns 0 if successfully got the (sub)block, -1 otherwise
 
-  void CI_SetDefaultSize(int size)  // If the value is set (here, or in constructor),
+  void CI_SetDefaultSize(uint64_t size)  // If the value is set (here, or in constructor),
   {
     default_block_size_ = size;
   }  // then the size parameter in CI_Put may be omitted.
@@ -73,7 +73,7 @@ class CacheableItem {
   std::vector<int> file_start_;     // an address in the file where the i-th data block starts
   std::vector<int> file_size_;      // a size of the i-th data block
 
-  int default_block_size_ = 0;
+  uint64_t default_block_size_ = 0;
   TianmuFile cur_file_handle_;
   int cur_file_number_ = -1;  // the number of currently opened file
   void *cur_map_addr_ = nullptr;
