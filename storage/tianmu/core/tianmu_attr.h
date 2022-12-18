@@ -223,9 +223,34 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   int64_t GetMaxInt64() const { return hdr.max; }
   void SetMaxInt64(int64_t a_imax) { hdr.max = a_imax; }
   bool GetIfAutoInc() const { return ct.GetAutoInc(); }
+  bool GetIfUnsigned() const { return ct.GetUnsigned(); }
   uint64_t AutoIncNext() {
     backup_auto_inc_next_ = hdr.auto_inc_next;
-    return ++hdr.auto_inc_next;
+    if (backup_auto_inc_next_ >= UINT64_MAX)
+      return backup_auto_inc_next_;
+    uint64_t auto_inc_value = ++hdr.auto_inc_next;
+    uint64_t max_value{0};
+    bool unsigned_flag = GetIfUnsigned();
+    switch (TypeName()) {
+      case common::ColumnType::BYTEINT:
+        max_value = unsigned_flag ? TIANMU_TINYINT_UNSIGNED_MAX : TIANMU_TINYINT_MAX;
+        break;
+      case common::ColumnType::SMALLINT:
+        max_value = unsigned_flag ? TIANMU_SMALLINT_UNSIGNED_MAX : TIANMU_SMALLINT_MAX;
+        break;
+      case common::ColumnType::MEDIUMINT:
+        max_value = unsigned_flag ? TIANMU_MEDIUMINT_UNSIGNED_MAX : TIANMU_MEDIUMINT_MAX;
+        break;
+      case common::ColumnType::INT:
+        max_value = unsigned_flag ? TIANMU_INT_UNSIGNED_MAX : TIANMU_INT_MAX;
+        break;
+      case common::ColumnType::BIGINT:
+        max_value = unsigned_flag ? common::TIANMU_BIGINT_UNSIGNED_MAX : common::TIANMU_BIGINT_MAX;
+        break;
+      default:
+        break;
+    }
+    return max_value >= auto_inc_value ? auto_inc_value : max_value;  // not exceed max value
   }
   void RollBackIfAutoInc() {
     if (!GetIfAutoInc())
