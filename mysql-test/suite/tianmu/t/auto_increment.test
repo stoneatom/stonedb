@@ -2,11 +2,14 @@
 #
 # Test auto_increment with TIANMU
 #
+--disable_warnings
+DROP DATABASE IF EXISTS auto_increment_db;
+--enable_warnings
+
+CREATE DATABASE auto_increment_db;
+USE auto_increment_db;
 
 # test auto increment
---disable_warnings
-drop table if exists t_auto_inc;
---enable_warnings
 CREATE TABLE t_auto_inc (
   id int(4) NOT NULL AUTO_INCREMENT,
   data VARCHAR(64) DEFAULT NULL,
@@ -17,13 +20,6 @@ select * from t_auto_inc;
 
 # test auto_increment about max value of column type
 # signed data type
---disable_warnings
-drop table if exists tint;
-drop table if exists ttinyint;
-drop table if exists tsmallint;
-drop table if exists tmediumint;
-drop table if exists tbigint;
---enable_warnings
 CREATE TABLE tint (
   id int(4) NOT NULL AUTO_INCREMENT,
   data VARCHAR(64) DEFAULT NULL,
@@ -85,70 +81,75 @@ insert into tbigint (id, data) values (0, "last");
 select * from tbigint;
 
 # unsigned data type
-
---disable_warnings
-drop table if exists tint;
-drop table if exists ttinyint;
-drop table if exists tsmallint;
-drop table if exists tmediumint;
-drop table if exists tbigint;
---enable_warnings
-CREATE TABLE tint (
+CREATE TABLE tintu (
   id int(4) unsigned NOT NULL AUTO_INCREMENT,
   data VARCHAR(64) DEFAULT NULL,
   PRIMARY KEY (id)
 )  engine=tianmu;
 
-insert into tint (id, data) values(4294967294, "first"),(63, "middle"),(0, "last");
-select * from tint;
+insert into tintu (id, data) values(4294967294, "first"),(63, "middle"),(0, "last");
+select * from tintu;
 --error 1062
-insert into tint (id, data) values (0, "last");
+insert into tintu (id, data) values (0, "last");
 select * from tint;
 
-CREATE TABLE ttinyint (
+CREATE TABLE ttinyintu (
   id tinyint(1) unsigned NOT NULL AUTO_INCREMENT,
   data VARCHAR(64) DEFAULT NULL,
   PRIMARY KEY (id)
 )  engine=tianmu;
 
-insert into ttinyint (id, data) values(254, "first"),(63, "middle"),(0, "last");
-select * from ttinyint;
+insert into ttinyintu (id, data) values(254, "first"),(63, "middle"),(0, "last");
+select * from ttinyintu;
 --error 1062
-insert into ttinyint (id, data) values (0, "last");
-select * from ttinyint;
+insert into ttinyintu (id, data) values (0, "last");
+select * from ttinyintu;
 
-CREATE TABLE tsmallint (
+CREATE TABLE tsmallintu (
   id smallint(2) unsigned NOT NULL AUTO_INCREMENT,
   data VARCHAR(64) DEFAULT NULL,
   PRIMARY KEY (id)
 )  engine=tianmu;
 
-insert into tsmallint (id, data) values(65534, "first"),(63, "middle"),(0, "last");
+insert into tsmallintu (id, data) values(65534, "first"),(63, "middle"),(0, "last");
 select * from tsmallint;
 --error 1062
-insert into tsmallint (id, data) values (0, "last");
-select * from tsmallint;
+insert into tsmallintu (id, data) values (0, "last");
+select * from tsmallintu;
 
-CREATE TABLE tmediumint (
+CREATE TABLE tmediumintu (
   id mediumint(3) unsigned NOT NULL AUTO_INCREMENT,
   data VARCHAR(64) DEFAULT NULL,
   PRIMARY KEY (id)
 )  engine=tianmu;
 
-insert into tmediumint (id, data) values(16777214, "first"),(63, "middle"),(0, "last");
-select * from tmediumint;
+insert into tmediumintu (id, data) values(16777214, "first"),(63, "middle"),(0, "last");
+select * from tmediumintu;
 --error 1062
-insert into tmediumint (id, data) values (0, "last");
-select * from tmediumint;
+insert into tmediumintu (id, data) values (0, "last");
+select * from tmediumintu;
 
-CREATE TABLE tbigint (
+CREATE TABLE tbigintu (
   id bigint(8) unsigned NOT NULL AUTO_INCREMENT,
   data VARCHAR(64) DEFAULT NULL,
   PRIMARY KEY (id)
 )  engine=tianmu;
 
-insert into tbigint (id, data) values(18446744073709551614, "first"),(63, "middle"),(0, "last");
-select * from tbigint;
+insert into tbigintu (id, data) values(18446744073709551614, "first"),(63, "middle"),(0, "last");
+select * from tbigintu;
 --error 1062
-insert into tbigint (id, data) values (0, "last");
-select * from tbigint;
+insert into tbigintu (id, data) values (0, "last");
+select * from tbigintu;
+
+#test load data with negative value into auto_increment col
+CREATE TABLE auto_increment_negative (
+  id int(11) NOT NULL AUTO_INCREMENT, 
+  company varchar(25), 
+  PRIMARY KEY (id)
+  ) ENGINE=TIANMU;
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA LOCAL INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/auto_increment_negative.txt' INTO TABLE auto_increment_negative;  
+select * from auto_increment_negative;
+
+# Clean UP
+DROP DATABASE auto_increment_db;

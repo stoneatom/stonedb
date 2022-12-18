@@ -142,9 +142,12 @@ struct ColumnType {
   bool GetAutoInc() const { return flag[static_cast<int>(enumCT::AUTO_INC)]; }
   void SetAutoInc(bool inc) { flag[static_cast<int>(enumCT::AUTO_INC)] = inc; }
   bool HasFilter() const { return flag[static_cast<int>(enumCT::BLOOM_FILTER)]; }
+  bool GetUnsigned() const { return is_unsigned; }
+  void SetUnsigned(bool unsigned_) { is_unsigned = unsigned_; }
 
  private:
   common::ColumnType type;
+  bool is_unsigned = false;
   uint precision = 0;
   int scale = 0;
   uint internal_size;
