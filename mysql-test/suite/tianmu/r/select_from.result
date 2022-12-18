@@ -1,3 +1,6 @@
+DROP DATABASE IF EXISTS select_from_test;
+CREATE DATABASE select_from_test;
+USE select_from_test;
 #
 # Test select from
 #
@@ -79,7 +82,7 @@ id	c1	c2	c3
 3	NULL	NULL	2001-05-03
 drop table if exists t2_test;
 Warnings:
-Note	1051	Unknown table 'test.t2_test'
+Note	1051	Unknown table 'select_from_test.t2_test'
 create table t2_test (
 idx int,
 i1 int,
@@ -205,3 +208,4 @@ q10	9
 q10	10
 drop table t2_test;
 drop table t1_test;
+DROP DATABASE select_from_test;

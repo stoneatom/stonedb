@@ -58,8 +58,8 @@ uint HashValue(const void *buf,
 #define HASH_FUNCTION_BYTE_SIZE 16
 void HashMD5(unsigned char const *buf, int n, unsigned char *hash);
 
-common::RSValue Or(common::RSValue f, common::RSValue s);
-common::RSValue And(common::RSValue f, common::RSValue s);
+common::RoughSetValue Or(common::RoughSetValue f, common::RoughSetValue s);
+common::RoughSetValue And(common::RoughSetValue f, common::RoughSetValue s);
 
 inline bool IsDoubleNull(const double d) { return *(int64_t *)&d == common::NULL_VALUE_64; }
 

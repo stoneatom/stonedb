@@ -1,4 +1,6 @@
-use test;
+DROP DATABASE IF EXISTS issue985_test;
+CREATE DATABASE issue985_test;
+USE issue985_test;
 create table t1(a int not null,b int not null) default CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 insert into t1 values (1,2);
 show create table t1;
@@ -22,3 +24,4 @@ t1	CREATE TABLE `t1` (
   `b` int(11) NOT NULL
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='测试表'
 drop table t1;
+DROP DATABASE issue985_test;

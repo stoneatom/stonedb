@@ -1,3 +1,6 @@
+DROP DATABASE IF EXISTS issue880_db;
+CREATE DATABASE issue880_db;
+USE issue880_db;
 # support (timestamp union timestamp)
 # support (not timestamp union not timestamp)
 # support (timestamp union varchar)
@@ -364,3 +367,4 @@ create_time
 2021-08-25 17:46:00
 机制
 DROP DATABASE test_timestamp_union;
+DROP DATABASE issue880_db;

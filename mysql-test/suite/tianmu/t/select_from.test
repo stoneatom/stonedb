@@ -1,5 +1,13 @@
 --source include/have_tianmu.inc
 
+--disable_warnings
+DROP DATABASE IF EXISTS select_from_test;
+--enable_warnings
+
+CREATE DATABASE select_from_test;
+
+USE select_from_test;
+
 --echo #
 --echo # Test select from
 --echo #
@@ -107,3 +115,5 @@ vc1 = 9 or bi2 = 4;
 # clean up
 drop table t2_test;
 drop table t1_test;
+
+DROP DATABASE select_from_test;

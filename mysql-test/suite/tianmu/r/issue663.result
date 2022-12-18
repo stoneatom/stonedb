@@ -1,3 +1,6 @@
+DROP DATABASE IF EXISTS issue663_test;
+CREATE DATABASE issue663_test;
+USE issue663_test;
 create table t11 (a int NOT NULL, b int, primary key (a))ENGINE=TIANMU;
 create table t12 (a int NOT NULL, b int, primary key (a))ENGINE=TIANMU;
 insert into t11 values (0, 10),(1, 11),(2, 12);
@@ -87,3 +90,4 @@ t1.sku=10 AND
 t2.sppr=t1.sku));
 sku	sppr	name	sku	pr
 drop table t1,t2;
+DROP DATABASE issue663_test;

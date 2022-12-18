@@ -1,4 +1,6 @@
-use test;
+DROP DATABASE IF EXISTS issue496_test;
+CREATE DATABASE issue496_test;
+USE issue496_test;
 create table t1 (id int, name varchar(10) comment "LOOKUP") ENGINE=TIANMU;
 insert into t1 values (1, 'one');
 insert into t1 values (2, 'one');
@@ -12,3 +14,4 @@ id	name
 3	one
 4	one
 drop table t1;
+DROP DATABASE issue496_test;

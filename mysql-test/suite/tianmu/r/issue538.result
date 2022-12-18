@@ -1,7 +1,9 @@
+DROP DATABASE IF EXISTS issue538_test;
+CREATE DATABASE issue538_test;
+USE issue538_test;
 #
 # issue 538 test for user defined function of tianmu
 #
-use test;
 DROP TABLE IF EXISTS employees;
 CREATE TABLE `employees` (
 `employee_id` int(11) NOT NULL ,
@@ -238,3 +240,4 @@ sfunc(2)
 3
 DROP TABLE tf;
 DROP FUNCTION sfunc;
+DROP DATABASE issue538_test;

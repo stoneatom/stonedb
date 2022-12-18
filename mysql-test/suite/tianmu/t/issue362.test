@@ -1,7 +1,18 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue362_test;
+--enable_warnings
+
+CREATE DATABASE issue362_test;
+
+USE issue362_test;
+
 CREATE TABLE `abcÿdef` (i int)engine=tianmu;
 INSERT INTO `abcÿdef` VALUES (1);
 INSERT INTO abcÿdef VALUES (2);
 SELECT * FROM `abcÿdef`;
 SELECT * FROM abcÿdef;
 DROP TABLE `abcÿdef`;
+
+DROP DATABASE issue362_test;

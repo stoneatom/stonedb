@@ -1,5 +1,13 @@
 --source include/have_tianmu.inc
 
+--disable_warnings
+DROP DATABASE IF EXISTS issue663_test;
+--enable_warnings
+
+CREATE DATABASE issue663_test;
+
+USE issue663_test;
+
 create table t11 (a int NOT NULL, b int, primary key (a))ENGINE=TIANMU;
 create table t12 (a int NOT NULL, b int, primary key (a))ENGINE=TIANMU;
 insert into t11 values (0, 10),(1, 11),(2, 12);
@@ -32,7 +40,6 @@ select * from t2;
 select * from t3;
 
 drop table t1,t2,t3;
-
 
 CREATE TABLE t1 (sku int PRIMARY KEY, pr int)engine=tianmu;
 CREATE TABLE t2 (sku int PRIMARY KEY, sppr int, name varchar(255))engine=tianmu;
@@ -87,3 +94,5 @@ SELECT t2.sku, t2.sppr, t2.name, t1.sku, t1.pr
   t2.sppr=t1.sku));
 
 drop table t1,t2;
+
+DROP DATABASE issue663_test;

@@ -1,6 +1,12 @@
 --source include/have_tianmu.inc
 
-USE test;
+--disable_warnings
+DROP DATABASE IF EXISTS issue959_test;
+--enable_warnings
+
+CREATE DATABASE issue959_test;
+
+USE issue959_test;
 
 --disable_warnings
 
@@ -144,3 +150,4 @@ SELECT * FROM device_delta_collect a WHERE a.deviceId NOT BETWEEN '14.9' AND '15
 
 DROP TABLE device_delta_collect;
 
+DROP DATABASE issue959_test;

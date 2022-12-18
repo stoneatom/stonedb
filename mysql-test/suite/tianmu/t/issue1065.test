@@ -1,9 +1,20 @@
 --source include/have_tianmu.inc
 
-USE test;
+--disable_warnings
+DROP DATABASE IF EXISTS issue1065_test;
+--enable_warnings
+
+CREATE DATABASE issue1065_test;
+
+USE issue1065_test;
+
 --disable_warnings
 set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
 --enable_warnings
+--disable_warnings
+drop table if exists t_test; 
+--enable_warnings
+
 CREATE TABLE t_test(
   id INT NOT NULL AUTO_INCREMENT,
   first_name VARCHAR(10) NOT NULL,
@@ -13,7 +24,6 @@ CREATE TABLE t_test(
   copy_id INT NOT NULL,
   PRIMARY KEY (`id`)
 ) engine=tianmu;
-
 
 DELIMITER //;
     create PROCEDURE add_user(in num INT)
@@ -44,7 +54,6 @@ DELIMITER //;
 DELIMITER ;//
 
 drop  PROCEDURE add_user;
-
 
 --disable_warnings
 set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
@@ -115,7 +124,6 @@ DELIMITER ;//
 drop  PROCEDURE add_user;
 
 drop table t_test;
-
 
 CREATE TABLE t_test(
   id INT NOT NULL AUTO_INCREMENT,
@@ -196,3 +204,5 @@ DELIMITER ;//
 drop  PROCEDURE add_user;
 
 drop table t_test;
+
+DROP DATABASE issue1065_test;

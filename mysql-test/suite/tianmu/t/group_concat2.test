@@ -1,4 +1,13 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS group_concat2_test;
+--enable_warnings
+
+CREATE DATABASE group_concat2_test;
+
+USE group_concat2_test;
+
 CREATE TABLE `test_groupconcat2_case` (
   `id` int(11) DEFAULT NULL,
   `val` int(11)
@@ -8,3 +17,5 @@ insert into test_groupconcat2_case values(1, 4);
 select id,group_concat(val order by val desc SEPARATOR " ") from test_groupconcat2_case group by id;
 select id,group_concat(distinct val SEPARATOR ":") from test_groupconcat2_case group by id;
 drop table test_groupconcat2_case;
+
+DROP DATABASE group_concat2_test;

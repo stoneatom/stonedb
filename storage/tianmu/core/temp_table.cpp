@@ -41,6 +41,7 @@
 
 namespace Tianmu {
 namespace core {
+
 template <class T>
 class AttrBuffer : public CachedBuffer<T> {
  public:
@@ -852,11 +853,12 @@ void TempTable::Attr::ApplyFilter(MultiIndex &mind, int64_t offset, int64_t last
 
 // provide the best upper approximation of number of diff. values (incl. null)
 uint64_t TempTable::Attr::ApproxDistinctVals([[maybe_unused]] bool incl_nulls, Filter *f,
-                                             [[maybe_unused]] common::RSValue *rf,
+                                             [[maybe_unused]] common::RoughSetValue *rf,
                                              [[maybe_unused]] bool outer_nulls_possible) {
   // TODO: can it be done better?
   if (f)
     return f->NumOfOnes();
+
   return no_obj;
 }
 
@@ -867,6 +869,7 @@ size_t TempTable::Attr::MaxStringSize([[maybe_unused]] Filter *f)  // maximal by
     res = std::max(res, 21u);  // max. numeric size ("-aaa.bbb")
   else if (!ct.IsString())
     res = std::max(res, 23u);  // max. size of datetime/double etc.
+
   return res;
 }
 
@@ -2329,5 +2332,6 @@ void TempTableForSubquery::CreateTemplateIfNotExists() {
     template_virt_cols = virt_cols;
   }
 }
+
 }  // namespace core
 }  // namespace Tianmu

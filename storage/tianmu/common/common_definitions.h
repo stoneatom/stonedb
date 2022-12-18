@@ -155,7 +155,7 @@ constexpr int32_t TIANMU_MAX_INDEX_COL_LEN_SMALL = 767;
 #define DEFAULT_DELIMITER ";"
 #define DEFAULT_LINE_TERMINATOR "\n"
 
-enum class RSValue : char {
+enum class RoughSetValue : char {
   RS_NONE = 0,    // the pack is empty
   RS_SOME = 1,    // the pack is suspected (but may be empty or full) (i.e.
                   // RSValue::RS_SOME & RSValue::RS_ALL = RSValue::RS_SOME)
@@ -244,6 +244,8 @@ enum class ColOperation {
   BIT_XOR,
   GROUP_CONCAT
 };
+
+enum class ExtraOperation { EX_DO_NOTHING, EX_COND_PUSH, EX_UNKNOWN };
 
 // pack data format, stored on disk so only append new ones at the end.
 enum class PackFmt : char { DEFAULT, PPM1, PPM2, RANGECODE, LZ4, LOOKUP, NOCOMPRESS, TRIE, ZLIB };

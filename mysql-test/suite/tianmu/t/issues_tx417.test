@@ -1,4 +1,13 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issues_tx417_test;
+--enable_warnings
+
+CREATE DATABASE issues_tx417_test;
+
+USE issues_tx417_test;
+
 show variables like 'tianmu_insert_delayed';
 CREATE TABLE `t_test` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -19,3 +28,5 @@ INSERT INTO t_test values(2,'tom','jerry',1,57,0);
 ROLLBACK;
 SELECT id FROM t_test;
 DROP TABLE t_test;
+
+DROP DATABASE issues_tx417_test;

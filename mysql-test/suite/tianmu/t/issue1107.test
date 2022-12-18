@@ -1,0 +1,61 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue1107_test;
+--enable_warnings
+
+CREATE DATABASE issue1107_test;
+
+USE issue1107_test;
+
+--disable_warnings
+
+# ONLY_FULL_GROUP_BY
+
+SET @@sql_mode ='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+
+select @@sql_mode;
+
+## DDL
+
+DROP TABLE IF EXISTS A;
+DROP TABLE IF EXISTS B;
+
+create table A(id int,UnitSN varchar(10),CTIME datetime) engine=tianmu;
+
+create table B(id int,AID int,Name varchar(10),value varchar(10)) engine=tianmu;
+
+## insert data
+
+insert into A values(1,'A1','2022-12-09 01:00:00');
+insert into A values(2,'A2','2022-12-09 02:00:00');
+insert into A values(3,'A3','2022-12-09 03:00:00');
+insert into A values(4,'A4','2022-12-09 04:00:00');
+insert into A values(5,'A5','2022-12-09 05:00:00');
+ 
+insert into B values(1,1,'V1','XXXXXXX1');
+insert into B values(2,1,'V2','XXXXXXX2');
+insert into B values(3,1,'V3','XXXXXXX3');
+insert into B values(4,1,'V4','XXXXXXX4');
+insert into B values(5,1,'V5','XXXXXXX5');
+
+## query of group by
+
+select a.ID,
+       a.UNITSN,
+       case upper(b.NAME) when 'V1' then b.VALUE else null end as V1,
+       case upper(b.NAME) when 'V2' then b.VALUE else null end as V2,
+       case upper(b.NAME) when 'V3' then b.VALUE else null end as V3,
+       case upper(b.NAME) when 'V4' then b.VALUE else null end as V4,
+       case upper(b.NAME) when 'V5' then b.VALUE else null end as V5
+  from A a
+  left join B b
+    on a.ID = b.AID
+ group by a.ID, a.UNITSN;
+
+## clean test table
+
+DROP TABLE A;
+DROP TABLE B;
+
+DROP DATABASE issue1107_test;

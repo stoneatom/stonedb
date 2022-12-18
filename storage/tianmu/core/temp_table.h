@@ -36,6 +36,7 @@
 
 namespace Tianmu {
 namespace core {
+
 class Descriptor;
 class Filter;
 class Query;
@@ -106,18 +107,20 @@ class TempTable : public JustATable {
     void GetValueString(int64_t row, types::BString &s) override { GetValueString(s, row); }
     void GetValueString(types::BString &s, int64_t row);
     void GetNotNullValueString(int64_t row, types::BString &s) override { GetValueString(s, row); }
-    uint64_t ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue *rf,
+    uint64_t ApproxDistinctVals(bool incl_nulls, Filter *f, common::RoughSetValue *rf,
                                 bool outer_nulls_possible) override;  // provide the best upper
                                                                       // approximation of number of diff.
                                                                       // values (incl. null, if flag set)
     uint64_t ExactDistinctVals(Filter *f [[maybe_unused]]) override { return common::NULL_VALUE_64; }
     bool IsDistinct(Filter *f [[maybe_unused]]) override { return false; }
     size_t MaxStringSize(Filter *f = nullptr) override;  // maximal byte string length in column
-    int64_t RoughMin(Filter *f [[maybe_unused]] = nullptr, common::RSValue *rf [[maybe_unused]] = nullptr) override {
+    int64_t RoughMin(Filter *f [[maybe_unused]] = nullptr,
+                     common::RoughSetValue *rf [[maybe_unused]] = nullptr) override {
       return common::MINUS_INF_64;
     }  // for numerical: best rough approximation of min for a given filter (or
        // global min if filter is nullptr)
-    int64_t RoughMax(Filter *f [[maybe_unused]] = nullptr, common::RSValue *rf [[maybe_unused]] = nullptr) override {
+    int64_t RoughMax(Filter *f [[maybe_unused]] = nullptr,
+                     common::RoughSetValue *rf [[maybe_unused]] = nullptr) override {
       return common::PLUS_INF_64;
     }  // for numerical: best rough approximation of max for a given filter (or
        // global max if filter is nullptr)
@@ -145,13 +148,13 @@ class TempTable : public JustATable {
     bool IsRoughNullsOnly() const override { return false; }
     int64_t GetSum(int pack, bool &nonnegative) override;
     int NumOfAttr() const override { return -1; }
-    common::RSValue RoughCheck(int pack [[maybe_unused]], Descriptor &d [[maybe_unused]],
-                               bool additional_nulls_possible [[maybe_unused]]) override {
-      return common::RSValue::RS_SOME;
+    common::RoughSetValue RoughCheck(int pack [[maybe_unused]], Descriptor &d [[maybe_unused]],
+                                     bool additional_nulls_possible [[maybe_unused]]) override {
+      return common::RoughSetValue::RS_SOME;
     }
-    common::RSValue RoughCheck(int pack1 [[maybe_unused]], int pack2 [[maybe_unused]],
-                               Descriptor &d [[maybe_unused]]) override {
-      return common::RSValue::RS_SOME;
+    common::RoughSetValue RoughCheck(int pack1 [[maybe_unused]], int pack2 [[maybe_unused]],
+                                     Descriptor &d [[maybe_unused]]) override {
+      return common::RoughSetValue::RS_SOME;
     }
     // as far as Attr is not pack oriented the function below should not be
     // called
@@ -386,6 +389,9 @@ class TempTable : public JustATable {
   size_t TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrapper *st);
   bool HasTempTable() const { return has_temp_table; }
 
+  void MarkCondPush() { can_cond_push_down = true; };
+  bool CanCondPushDown() { return can_cond_push_down; };
+
  protected:
   int64_t no_obj;
   uint32_t p_power;                      // pack power
@@ -431,6 +437,7 @@ class TempTable : public JustATable {
   common::Tribool rough_is_empty;  // rough value specifying if there is
                                    // non-empty result of a query
   bool force_full_materialize = false;
+  bool can_cond_push_down = false;  // Conditional push occurs
 
   // Refactoring: extracted small methods
   bool CanOrderSources();
@@ -528,6 +535,7 @@ class TempTableForSubquery : public TempTable {
   std::vector<Attr *> template_attrs;
   std::vector<vcolumn::VirtualColumn *> template_virt_cols;
 };
+
 }  // namespace core
 }  // namespace Tianmu
 

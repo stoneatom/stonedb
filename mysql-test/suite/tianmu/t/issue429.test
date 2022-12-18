@@ -1,6 +1,17 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue429_test;
+--enable_warnings
+
+CREATE DATABASE issue429_test;
+
+USE issue429_test;
+
 create table tt (val time) ENGINE=TIANMU;
 insert into tt values ('06:34:12'), ('13:23:33');
 select * from tt where DATE(TIMESTAMP(val)) = CURDATE();
 select * from tt where DATE(TIMESTAMP(val, val)) = CURDATE();
 drop table tt;
+
+DROP DATABASE issue429_test;

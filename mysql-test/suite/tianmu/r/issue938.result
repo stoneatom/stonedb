@@ -1,6 +1,10 @@
+DROP DATABASE IF EXISTS issue938_test;
+CREATE DATABASE issue938_test;
+USE issue938_test;
 SELECT group_concat(d1 ORDER BY d1) FROM (SELECT d1 FROM tb) a1;
 group_concat(d1 ORDER BY d1)
 1234,56789012,1234567890123
 SELECT group_concat(d1 ORDER BY d1) FROM tb;
 group_concat(d1 ORDER BY d1)
 1234,56789012,1234567890123
+DROP DATABASE issue938_test;

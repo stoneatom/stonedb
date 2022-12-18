@@ -53,6 +53,8 @@ cmake ../../ \
 -DDEFAULT_COLLATION=utf8mb4_general_ci \
 -DDOWNLOAD_BOOST=0 \
 -DWITH_BOOST=/usr/local/stonedb-boost \
+-DWITH_MARISA=/usr/local/stonedb-marisa \
+-DWITH_ROCKSDB=/usr/local/stonedb-gcc-rocksdb \
 2>&1 | tee -a ${build_log}
 
 # step 5. make & make install
