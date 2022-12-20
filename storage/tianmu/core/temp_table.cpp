@@ -455,7 +455,8 @@ types::TianmuValueObject TempTable::Attr::GetValue(int64_t obj, [[maybe_unused]]
   else if (TypeName() == common::ColumnType::NUM)
     ret = types::TianmuNum((int64_t)GetValueInt64(obj), Type().GetScale());
   else if (TypeName() == common::ColumnType::BIT)
-    ret = types::TianmuNum((int64_t)GetValueInt64(obj), Type().GetScale(), false, TypeName()); // TODO(check prec & scale)
+    ret = types::TianmuNum((int64_t)GetValueInt64(obj), Type().GetScale(), false,
+                           TypeName());  // TODO(check prec & scale)
   return ret;
 }
 
@@ -2175,7 +2176,7 @@ void TempTable::RecordIterator::PrepareValues() {
         else
           ((types::TianmuNum *)dataTypes[att].get())->Assign(v);
       } else if (attrt_tmp == common::ColumnType::NUM || attrt_tmp == common::ColumnType::BIGINT ||
-	         attrt_tmp == common::ColumnType::BIT) {
+                 attrt_tmp == common::ColumnType::BIT) {
         int64_t &v = (*(AttrBuffer<int64_t> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == common::NULL_VALUE_64)
           dataTypes[att]->SetToNull();

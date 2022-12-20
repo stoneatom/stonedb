@@ -58,7 +58,8 @@ TianmuNum &TianmuNum::Assign(int64_t value, short scale, bool is_double, common:
   this->is_double_ = is_double;
   this->attr_type_ = attrt;
 
-  if (scale != -1 && !is_double_) { // check if construct decimal, the UNK is used on temp_table.cpp: GetValueString(..)
+  if (scale != -1 &&
+      !is_double_) {  // check if construct decimal, the UNK is used on temp_table.cpp: GetValueString(..)
     if (scale != 0 || attrt == common::ColumnType::UNK || attrt == common::ColumnType::BIT) {
       is_dot_ = true;
       this->attr_type_ = common::ColumnType::NUM;
@@ -254,7 +255,7 @@ BString TianmuNum::ToBString() const {
     } else if (core::ATI::IsIntegerType(attr_type_))
       std::sprintf(buf, "%ld", value_);
     else {
-      return BString(Text(value_, buf, scale_), 0, true); // here include num & bit
+      return BString(Text(value_, buf, scale_), 0, true);  // here include num & bit
     }
     return BString(buf, std::strlen(buf), true);
   }

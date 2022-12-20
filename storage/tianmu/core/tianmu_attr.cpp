@@ -202,11 +202,10 @@ size_t TianmuAttr::ComputeNaturalSize() {
       na_size += (Type().GetPrecision() + (Type().GetScale() ? 1 : 0)) * NumOfObj();
       break;
     case common::ColumnType::BIT:
-      na_size += Type().GetPrecision() * NumOfObj(); // one bytes one digit
+      na_size += Type().GetPrecision() * NumOfObj();  // one bytes one digit
       break;
     case common::ColumnType::BIGINT:
     case common::ColumnType::REAL:
-    case common::ColumnType::BIT:
       na_size += 8 * NumOfObj();
       break;
     case common::ColumnType::FLOAT:
