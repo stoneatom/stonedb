@@ -178,6 +178,7 @@ void TempTable::Attr::CreateBuffer(uint64_t size, Transaction *conn, bool not_c)
     case common::ColumnType::DATE:
     case common::ColumnType::DATETIME:
     case common::ColumnType::TIMESTAMP:
+    case common::ColumnType::BIT:
       if (!buffer)
         buffer = new AttrBuffer<int64_t>(page_size, sizeof(int64_t), conn);
       break;
@@ -258,6 +259,7 @@ void TempTable::Attr::DeleteBuffer() {
     case common::ColumnType::DATE:
     case common::ColumnType::DATETIME:
     case common::ColumnType::TIMESTAMP:
+    case common::ColumnType::BIT:
       delete (AttrBuffer<int64_t> *)(buffer);
       break;
     case common::ColumnType::REAL:
@@ -350,6 +352,7 @@ void TempTable::Attr::SetNull(int64_t obj) {
     case common::ColumnType::DATE:
     case common::ColumnType::DATETIME:
     case common::ColumnType::TIMESTAMP:
+    case common::ColumnType::BIT:
       ((AttrBuffer<int64_t> *)buffer)->Set(obj, common::NULL_VALUE_64);
       break;
     case common::ColumnType::INT:
@@ -418,6 +421,7 @@ void TempTable::Attr::SetValueString(int64_t obj, const types::BString &val) {
     case common::ColumnType::DATE:
     case common::ColumnType::DATETIME:
     case common::ColumnType::TIMESTAMP:
+    case common::ColumnType::BIT:
       val64 = *(int64_t *)(val.GetDataBytesPointer());
       ((AttrBuffer<int64_t> *)buffer)->Set(obj, val64);
       break;
@@ -450,6 +454,8 @@ types::TianmuValueObject TempTable::Attr::GetValue(int64_t obj, [[maybe_unused]]
     ret = types::TianmuNum(this->GetValueInt64(obj), 0, true);
   else if (TypeName() == common::ColumnType::NUM)
     ret = types::TianmuNum((int64_t)GetValueInt64(obj), Type().GetScale());
+  else if (TypeName() == common::ColumnType::BIT)
+    ret = types::TianmuNum((int64_t)GetValueInt64(obj), Type().GetScale(), false, TypeName()); // TODO(check prec & scale)
   return ret;
 }
 
@@ -491,6 +497,11 @@ void TempTable::Attr::GetValueString(types::BString &value, int64_t obj) {
     }
     case common::ColumnType::NUM: {
       types::TianmuNum tianmu_n((*(AttrBuffer<int64_t> *)buffer)[obj], Type().GetScale());
+      value = tianmu_n.GetValueInt64() == common::NULL_VALUE_64 ? types::BString() : tianmu_n.ToBString();
+      break;
+    }
+    case common::ColumnType::BIT: {
+      types::TianmuNum tianmu_n((*(AttrBuffer<int64_t> *)buffer)[obj], Type().GetScale(), false, TypeName());
       value = tianmu_n.GetValueInt64() == common::NULL_VALUE_64 ? types::BString() : tianmu_n.ToBString();
       break;
     }
@@ -636,6 +647,7 @@ int64_t TempTable::Attr::GetValueInt64(int64_t obj) const {
     case common::ColumnType::DATE:
     case common::ColumnType::DATETIME:
     case common::ColumnType::TIMESTAMP:
+    case common::ColumnType::BIT:
       if (!IsNull(obj))
         res = (*(AttrBuffer<int64_t> *)buffer)[obj];
       break;
@@ -695,6 +707,7 @@ int64_t TempTable::Attr::GetNotNullValueInt64(int64_t obj) const {
     case common::ColumnType::DATE:
     case common::ColumnType::DATETIME:
     case common::ColumnType::TIMESTAMP:
+    case common::ColumnType::BIT:
       res = (*(AttrBuffer<int64_t> *)buffer)[obj];
       break;
     case common::ColumnType::REAL:
@@ -738,6 +751,7 @@ bool TempTable::Attr::IsNull(const int64_t obj) const {
     case common::ColumnType::DATE:
     case common::ColumnType::DATETIME:
     case common::ColumnType::TIMESTAMP:
+    case common::ColumnType::BIT:
       res = (*(AttrBuffer<int64_t> *)buffer)[obj] == common::NULL_VALUE_64;
       break;
     case common::ColumnType::REAL:
@@ -802,6 +816,7 @@ void TempTable::Attr::ApplyFilter(MultiIndex &mind_, int64_t offset, int64_t las
       case common::ColumnType::DATE:
       case common::ColumnType::DATETIME:
       case common::ColumnType::TIMESTAMP:
+      case common::ColumnType::BIT:
         ((AttrBuffer<int64_t> *)buffer)->Set(i, (*(AttrBuffer<int64_t> *)old_buffer)[idx]);
         break;
       case common::ColumnType::REAL:
@@ -840,6 +855,7 @@ void TempTable::Attr::ApplyFilter(MultiIndex &mind_, int64_t offset, int64_t las
     case common::ColumnType::DATE:
     case common::ColumnType::DATETIME:
     case common::ColumnType::TIMESTAMP:
+    case common::ColumnType::BIT:
       delete (AttrBuffer<int64_t> *)old_buffer;
       break;
     case common::ColumnType::REAL:
@@ -1232,6 +1248,7 @@ int TempTable::AddColumn(CQTerm e, common::ColOperation mode, char *alias, bool 
             precision = 18;
             break;
           case common::ColumnType::BIGINT:
+          case common::ColumnType::BIT:
             type = common::ColumnType::BIGINT;
             precision = 19;
             break;
@@ -2157,7 +2174,8 @@ void TempTable::RecordIterator::PrepareValues() {
           dataTypes[att]->SetToNull();
         else
           ((types::TianmuNum *)dataTypes[att].get())->Assign(v);
-      } else if (attrt_tmp == common::ColumnType::NUM || attrt_tmp == common::ColumnType::BIGINT) {
+      } else if (attrt_tmp == common::ColumnType::NUM || attrt_tmp == common::ColumnType::BIGINT ||
+	         attrt_tmp == common::ColumnType::BIT) {
         int64_t &v = (*(AttrBuffer<int64_t> *)table->GetDisplayableAttrP(att)->buffer)[_currentRNo];
         if (v == common::NULL_VALUE_64)
           dataTypes[att]->SetToNull();

@@ -360,7 +360,8 @@ int Engine::Convert(int &is_null, int64_t &value, types::TianmuDataType &tianmu_
     is_null = 1;
   else {
     is_null = 0;
-    if (tianmu_item.Type() == common::ColumnType::NUM || tianmu_item.Type() == common::ColumnType::BIGINT) {
+    if (tianmu_item.Type() == common::ColumnType::NUM || tianmu_item.Type() == common::ColumnType::BIGINT ||
+	tianmu_item.Type() == common::ColumnType::BIT) {
       value = (int64_t)(types::TianmuNum &)tianmu_item;
       switch (f_type) {
         case MYSQL_TYPE_LONG:

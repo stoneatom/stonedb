@@ -203,6 +203,7 @@ size_t TianmuAttr::ComputeNaturalSize() {
       break;
     case common::ColumnType::BIGINT:
     case common::ColumnType::REAL:
+    case common::ColumnType::BIT:
       na_size += 8 * NumOfObj();
       break;
     case common::ColumnType::FLOAT:
@@ -446,7 +447,7 @@ void TianmuAttr::GetValueBin(int64_t obj, size_t &size, char *val_buf) {
     val_buf[4] = 0;
     return;
   } else if (a_type == common::ColumnType::NUM || a_type == common::ColumnType::BIGINT || ATI::IsRealType(a_type) ||
-             ATI::IsDateTimeType(a_type)) {
+             ATI::IsDateTimeType(a_type) || a_type == common::ColumnType::BIT) {
     size = 8;
     int64_t v = GetValueInt64(obj);
     if (v == common::NULL_VALUE_64)
@@ -487,7 +488,7 @@ types::TianmuValueObject TianmuAttr::GetValue(int64_t obj, bool lookup_to_num) {
       ret = types::TianmuDateTime(this->GetNotNullValueInt64(obj), a_type);
     else if (ATI::IsRealType(a_type))
       ret = types::TianmuNum(this->GetNotNullValueInt64(obj), 0, true, a_type);
-    else if (lookup_to_num || a_type == common::ColumnType::NUM)
+    else if (lookup_to_num || a_type == common::ColumnType::NUM || a_type == common::ColumnType::BIT)
       ret = types::TianmuNum((int64_t)GetNotNullValueInt64(obj), Type().GetScale());
   }
   return ret;
@@ -610,27 +611,27 @@ types::BString TianmuAttr::DecodeValue_S(int64_t code) {
   common::ColumnType a_type = TypeName();
   if (ATI::IsIntegerType(a_type)) {
     types::TianmuNum tianmu_n(code, -1, false, a_type);
-    types::BString local_rcb = tianmu_n.ToBString();
-    local_rcb.MakePersistent();
-    return local_rcb;
+    types::BString local_tianmu_b = tianmu_n.ToBString();
+    local_tianmu_b.MakePersistent();
+    return local_tianmu_b;
   } else if (ATI::IsRealType(a_type)) {
     types::TianmuNum tianmu_n(code, -1, true, a_type);
-    types::BString local_rcb = tianmu_n.ToBString();
-    local_rcb.MakePersistent();
-    return local_rcb;
-  } else if (a_type == common::ColumnType::NUM) {
+    types::BString local_tianmu_b = tianmu_n.ToBString();
+    local_tianmu_b.MakePersistent();
+    return local_tianmu_b;
+  } else if (a_type == common::ColumnType::NUM || a_type == common::ColumnType::BIT) {
     types::TianmuNum tianmu_n(code, Type().GetScale(), false, a_type);
-    types::BString local_rcb = tianmu_n.ToBString();
-    local_rcb.MakePersistent();
-    return local_rcb;
+    types::BString local_tianmu_b = tianmu_n.ToBString();
+    local_tianmu_b.MakePersistent();
+    return local_tianmu_b;
   } else if (ATI::IsDateTimeType(a_type)) {
     types::TianmuDateTime tianmu_dt(code, a_type);
     if (a_type == common::ColumnType::TIMESTAMP) {
       types::TianmuDateTime::AdjustTimezone(tianmu_dt);
     }
-    types::BString local_rcb = tianmu_dt.ToBString();
-    local_rcb.MakePersistent();
-    return local_rcb;
+    types::BString local_tianmu_b = tianmu_dt.ToBString();
+    local_tianmu_b.MakePersistent();
+    return local_tianmu_b;
   }
   return types::BString();
 }
@@ -690,7 +691,7 @@ int64_t TianmuAttr::EncodeValue64(types::TianmuDataType *v, bool &rounded, commo
   if (!v || v->IsNull())
     return common::NULL_VALUE_64;
 
-  if ((Type().IsLookup() && v->Type() != common::ColumnType::NUM)) {
+  if ((Type().IsLookup() && v->Type() != common::ColumnType::NUM && v->Type() != common::ColumnType::BIT)) {
     return EncodeValue_T(v->ToBString(), false, tianmu_err_code);
   } else if (ATI::IsDateTimeType(TypeName()) || ATI::IsDateTimeNType(TypeName())) {
     return ((types::TianmuDateTime *)v)->GetInt64();

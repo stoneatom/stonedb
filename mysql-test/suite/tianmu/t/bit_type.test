@@ -50,3 +50,46 @@ SELECT b+0, BIN(b), OCT(b), HEX(b) FROM t;
 --error 1406
 insert into t values(' ');
 drop table t;
+
+# test functions and operators
+create table bit2(a bit(8), b bit(11)) engine=tianmu DEFAULT CHARSET=utf8mb4;
+insert into bit2 values(b'10111', b'1011');
+insert into bit2 values(b'10111111', b'1011000');
+# test comparison operators: https://dev.mysql.com/doc/refman/5.7/en/comparison-operators.html
+select a>b, a=b, a<b, a<=>b, a<>b, a!=b, a<=b, a>=b from bit2;
+select COALESCE(a),greatest(a, 0), greatest(a, 123), a is true, b is false, a is null, isnull(b),least(a,2.0) from bit2;
+
+# test Logical Operators: https://dev.mysql.com/doc/refman/5.7/en/logical-operators.html 
+select not a, a is true, b is null, a is not null, !(a+b), a and b, a and 0, a and null, a or 1, a or b, a xor 1, a xor b, a xor 0 from bit2;
+
+# test Mathematical Functions: https://dev.mysql.com/doc/refman/5.7/en/mathematical-functions.html
+select abs(-a), abs(a), acos(b), asin(a), atan(b),atan2(a),ceil(a+0.1), ceiling(a+0.2),conv(a, 16,2), conv(a, 16, 10), conv(a, 16, 16) from bit2;
+select cos(a), cot(b), degrees(a), exp(a), floor(a+0.33), ln(a), log(a), log10(a), log2(a), mod(a, 0), pi()+a, pow(a,b), radians(a), rand(a) from
+bit2;
+select round(a), sign(b), sin(a), sqrt(a), tan(a),truncate(a+0.1123, 2) from bit2;
+
+# test date and time: https://dev.mysql.com/doc/refman/5.7/en/date-and-time-functions.html
+SELECT DATE_ADD('2018-05-01',INTERVAL a DAY) from bit2;
+
+# test string ... : https://dev.mysql.com/doc/refman/5.7/en/string-comparison-functions.html
+select a like "10111", b not like "1011" from bit2;
+select strcmp(a,b), strcmp(b,a),strcmp(a,a) from bit2;
+select charset(binary a), collation(binary b) from bit2;
+
+# test bit function & operators: https://dev.mysql.com/doc/refman/8.0/en/bit-functions.html
+SELECT BIT_AND(a), BIT_OR(a), BIT_XOR(a), BIT_COUNT(a), bin(a >> 1), bin(a << 1), bin(~a), bin(a & b'1111'), a ^ b, a | b, a & b from bit2 group by a,b;
+
+# test agg
+select avg(a), count(distinct a), max(b),max(a),std(a),stddev(a),sum(a),var_pop(a),var_samp(b),variance(a) from bit2 group by a;
+
+
+# test boundary operations, unsigned bigint is 20 bits digits
+select a * 12345678910111213 from bit2;
+# error like mysql does: BIGINT UNSIGNED value is out of range in '(`test`.`bit2`.`a` * 1234567891011121312)'
+--error 1690
+select a * 1234567891011121312 from bit2;
+--error 1690
+select a * 12345678910111213123 from bit2;
+# error(mysql will be numeric results, diff with tianmu):  Numeric result of an expression is too large and cannot be handled by tianmu. Please use an explicit cast to a data type handled by tianmu, e.g. CAST(<expr> AS DECIMAL(18,6)).
+--error 1105
+select a * 12345678910111213123456 from bit2;

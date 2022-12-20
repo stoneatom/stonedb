@@ -52,7 +52,7 @@ uint TxtDataFormat::StaticExtrnalSize(ColumnType attrt, uint precision, int scal
     return 10;
   else if (attrt == ColumnType::INT)
     return 11;
-  else if (attrt == ColumnType::BIGINT)
+  else if (attrt == ColumnType::BIGINT || attrt == ColumnType::BIT)
     return 20;
   else if (attrt == ColumnType::BYTEINT || attrt == ColumnType::YEAR)
     return 4;
