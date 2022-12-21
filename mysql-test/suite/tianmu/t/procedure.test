@@ -1,0 +1,260 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test PROCEDURE
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS procedure_test;
+--enable_warnings
+
+CREATE DATABASE procedure_test;
+USE procedure_test;
+
+# test variable settings
+
+--disable_warnings
+drop procedure if exists math;
+--enable_warnings
+
+delimiter //;
+create procedure math
+(
+    in a int,
+    in b int
+)
+begin
+    set @var1 = 1;
+    set @var2 = 2;
+    select @sum:=(a + b) as sum, @dif:=(a - b) as dif;
+end//
+delimiter ;//
+call math(3, 4);
+select @var1;
+select @var2;
+drop procedure math;
+
+delimiter //;
+create procedure proc02()
+begin
+	declare var_name01 varchar(20) default 'aaa';  -- 声明/定义变量
+	set var_name01 = 'zhangsan'; -- 给变量赋值
+	select var_name01; -- 输出变量的值
+end //
+delimiter ;//
+call proc02();
+drop procedure proc02;
+
+# flow control statements while
+
+CREATE TABLE `one_data`  (
+  `id` int(11) PRIMARY key AUTO_INCREMENT,
+  `name` varchar(255),
+  `sort_number` int(11),
+  `create_time` datetime(0)
+);
+ 
+--disable_warnings
+DROP PROCEDURE IF EXISTS doinsert;
+--enable_warnings
+
+delimiter //;
+create procedure doinsert()
+begin
+ declare i int;  
+ set i = 0; 
+while(i<=10) do
+  INSERT INTO `one_data`( `name`, `sort_number`, `create_time`) VALUES (CONCAT('stonedb',i), i, NOW());
+  set i = i+1; 
+end while;  
+end;//
+delimiter ;//
+call doinsert();
+DROP PROCEDURE doinsert;
+DROP TABLE `one_data`;
+
+--disable_warnings
+DROP PROCEDURE IF EXISTS test_mysql_while;
+--enable_warnings
+
+DELIMITER //;
+CREATE PROCEDURE test_mysql_while ( ) 
+	BEGIN
+	DECLARE x INT;
+	DECLARE str VARCHAR ( 255 );
+	SET x = 1;
+	SET str = '';
+	WHILE x <= 5 DO
+		SET str = CONCAT( str, x, ',' );
+		SET x = x + 1;
+	END WHILE;
+	SELECT str;
+END//
+DELIMITER ;//
+call test_mysql_while;
+DROP PROCEDURE test_mysql_while;
+
+# flow control statements repeat
+
+--disable_warnings
+DROP PROCEDURE IF EXISTS mysql_test_repeat;
+--enable_warnings
+
+DELIMITER //;
+CREATE PROCEDURE mysql_test_repeat ( ) 
+BEGIN
+	DECLARE x INT;
+	DECLARE str VARCHAR ( 255 );
+	SET x = 1;
+	SET str = '';
+	REPEAT
+		SET str = CONCAT( str, x, ',' );
+		SET x = x + 1;
+	UNTIL x > 5 
+	END REPEAT;
+	SELECT str;
+END //
+DELIMITER ;//
+call mysql_test_repeat;
+DROP PROCEDURE mysql_test_repeat;
+
+# flow control statements loop and if
+
+--disable_warnings
+DROP PROCEDURE IF EXISTS test_mysql_loop;
+--enable_warnings
+
+DELIMITER //;
+CREATE PROCEDURE test_mysql_loop() 
+BEGIN
+  DECLARE x INT;
+  DECLARE str VARCHAR ( 255 );
+  SET x = 1;
+  SET str = '';
+  loop_label :LOOP
+    IF x > 10 THEN
+      LEAVE loop_label;
+    END IF;
+    SET x = x + 1;
+    IF ( x MOD 2 ) THEN
+      ITERATE loop_label;
+    ELSE 
+      SET str = CONCAT( str, x, ',' );
+    END IF;
+  END LOOP;
+  SELECT str;
+END //
+DELIMITER ;//
+call test_mysql_loop;
+DROP PROCEDURE test_mysql_loop;
+
+--disable_warnings
+DROP PROCEDURE IF EXISTS myadd;
+--enable_warnings
+
+delimiter //;
+create procedure myadd(in a int,in b int)
+begin
+    declare c int default 0;
+    set c = a + b;
+    select c as c;
+end
+//
+delimiter ;//
+call myadd(3, 4);
+DROP PROCEDURE myadd;
+
+# flow control statements case
+
+--disable_warnings
+DROP PROCEDURE if exists `pro_test`;
+--enable_warnings
+
+DELIMITER //;
+CREATE PROCEDURE pro_test(a int)
+  BEGIN
+    DECLARE v INT DEFAULT 1;
+    set v = a;
+    CASE v
+      WHEN 2 THEN SELECT v;
+      WHEN 3 THEN SELECT 0;
+      ELSE
+        BEGIN
+        END;
+    END CASE;
+  END;
+//
+DELIMITER ;//
+call pro_test(3);
+call pro_test(5);
+call pro_test(2);
+DROP PROCEDURE `pro_test`;
+
+# flow control statements loop
+
+--disable_warnings
+DROP PROCEDURE if exists `s_loop`;
+--enable_warnings
+
+delimiter //;
+create procedure s_loop()
+begin
+    # 声明计数器
+    declare i int default 1;
+    # 开始循环
+    num:
+    loop
+        # 查询计数器记录的值
+        select i;
+        # 判断大于等于停止计数
+        if i >= 3 then
+            leave num;
+        end if;
+        # 计数器自增1
+        set i = i + 1;
+    # 结束循环
+    end loop num;
+end //
+delimiter ;//
+call s_loop();
+DROP PROCEDURE `s_loop`;
+
+--disable_warnings
+DROP PROCEDURE if exists `doiterate`;
+--enable_warnings
+
+delimiter //;
+CREATE PROCEDURE doiterate(p1 INT)
+BEGIN
+  label1: LOOP
+    SET p1 = p1 + 1;
+    IF p1 < 10 THEN
+      ITERATE label1;
+    END IF;
+    LEAVE label1;
+  END LOOP label1;
+  SET @x = p1;
+  select @x;
+END//
+delimiter ;//
+call doiterate(3);
+call doiterate(11);
+alter PROCEDURE doiterate COMMENT 'test';
+DROP PROCEDURE `doiterate`;
+
+--disable_warnings
+drop procedure if exists my_add;
+--enable_warnings
+
+delimiter //;
+create procedure my_add(in a int)
+begin
+    select a;
+end
+//
+delimiter ;//
+call my_add(3);
+drop procedure my_add;
+
+# clean up
+DROP DATABASE procedure_test;

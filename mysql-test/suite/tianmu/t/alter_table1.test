@@ -1,0 +1,133 @@
+--source include/have_tianmu.inc
+
+--echo #
+--echo # Test alter
+--echo #
+
+--disable_warnings
+DROP DATABASE IF EXISTS alter_table1_test;
+--enable_warnings
+
+CREATE DATABASE alter_table1_test;
+USE alter_table1_test;
+
+#alter table add, alter table alter
+
+CREATE TABLE st1
+(id INT(11),
+name VARCHAR(25),
+deptId INT(11),
+salary FLOAT
+);
+
+alter table st1 add column test varchar(4);
+alter table st1 add column test1 varchar(4) after test;
+#alter table st1 add column test2 varchar(4) first test;
+alter table st1 add column test3 varchar(4);
+
+alter table st1 add primary key(id);
+alter table st1 alter column id set default 3;
+alter table st1 alter column name drop default;
+alter table st1 alter column name set default NULL;
+
+--error 1064
+alter table st1 alter column id set 'unknown';
+--error 1064
+alter table st1 alter column id set default;
+
+
+#alter table drop
+alter table st1 drop primary key;
+alter table st1 drop name;
+desc st1;
+
+
+#alter table..order by
+CREATE TABLE st2
+(id INT(11),
+name VARCHAR(25),
+deptId INT(11),
+salary FLOAT
+);
+
+insert into st2 values(3,'haha1',45,4.5);
+insert into st2 values(1,'haha2',12,1.2);
+insert into st2 values(4,'haha3',31,3.2);
+insert into st2 values(2,'haha4',55,3.5);
+
+alter table st2 order by id;
+select * from st2;
+
+alter table st2 order by id,deptId;
+select * from st2;
+
+alter table st2 order by deptId,id;
+select * from st2;
+
+#test rename table
+
+CREATE TABLE st3
+(id INT(11),
+name VARCHAR(25),
+deptId INT(11),
+salary FLOAT,
+PRIMARY KEY(id)
+);
+
+ALTER TABLE st3 RENAME to st4 ;
+ALTER TABLE st4 RENAME as st3 ;
+ALTER TABLE st3 RENAME to st4 ;
+desc st4;
+
+# alter change column name
+
+alter table st4  change name name1 varchar(20);
+alter table st4  change column name1 name varchar(25);
+alter table st4 change name name2 varchar(20) after salary;
+#alter table st4 change name2 name varchar(25) first salary;
+
+
+#alter table modify
+
+CREATE TABLE st5
+(id INT(11),
+name VARCHAR(25),
+deptId INT(11),
+salary FLOAT,
+PRIMARY KEY(id)
+);
+
+alter table st5 modify name varchar(20);
+alter table st5 modify column name varchar(24);
+alter table st5 modify column name varchar(15) after salary;
+#alter table st5 modify column name varchar(30) first salary;
+
+ALTER TABLE st5 modify id varchar(10) CHARACTER SET utf8 COLLATE utf8_general_ci;
+
+#alter table multi table_options
+
+CREATE TABLE st6
+(id INT(11),
+name VARCHAR(25),
+deptId INT(11),
+salary FLOAT,
+PRIMARY KEY(id)
+);
+
+alter table st6 rename to st7,add name1 varchar(10);
+desc st7;
+
+alter table st7 rename to st8,drop name1;
+desc st8;
+
+alter table st8 add name1 varchar(10),drop name;
+desc st8;
+
+alter table st8 add name2 varchar(10),change name1 name varchar(10);
+desc st8;
+
+alter table st8 add name3 varchar(10),modify name varchar(20);
+desc st8;
+
+# clean up
+drop database alter_table1_test;
