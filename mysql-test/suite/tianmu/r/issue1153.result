@@ -1,0 +1,101 @@
+create table test1(a bigint NULL ) engine=tianmu;
+load data local infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-1.txt' into table test1 fields terminated by ";"  optionally enclosed by '';
+Warnings:
+Warning	1366	Incorrect integer value: 'null' for column 'a' at row 4
+show warnings;
+Level	Code	Message
+Warning	1366	Incorrect integer value: 'null' for column 'a' at row 4
+select * from test1;
+a
+1
+0
+0
+0
+truncate table test1;
+load data local infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-1.txt' into table test1 fields terminated by ";"  optionally enclosed by '"';
+show warnings;
+Level	Code	Message
+select * from test1;
+a
+1
+0
+0
+0
+truncate table test1;
+create table test2(a bigint not NULL) engine=tianmu;
+load data local infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-1.txt' into table test2 fields terminated by ";"  optionally enclosed by '';
+Warnings:
+Warning	1263	Column set to default value; NULL supplied to NOT NULL column 'a' at row 3
+Warning	1366	Incorrect integer value: 'null' for column 'a' at row 4
+show warnings;
+Level	Code	Message
+Warning	1263	Column set to default value; NULL supplied to NOT NULL column 'a' at row 3
+Warning	1366	Incorrect integer value: 'null' for column 'a' at row 4
+select * from test2;
+a
+1
+0
+0
+0
+truncate table test2;
+load data local infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-1.txt' into table test2 fields terminated by ";"  optionally enclosed by '"';
+Warnings:
+Warning	1263	Column set to default value; NULL supplied to NOT NULL column 'a' at row 3
+Warning	1263	Column set to default value; NULL supplied to NOT NULL column 'a' at row 4
+show warnings;
+Level	Code	Message
+Warning	1263	Column set to default value; NULL supplied to NOT NULL column 'a' at row 3
+Warning	1263	Column set to default value; NULL supplied to NOT NULL column 'a' at row 4
+select * from test2;
+a
+1
+0
+0
+0
+truncate table test2;
+create table test3(a varchar(10) NULL ) engine=tianmu;
+load data local infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-2.txt' into table test3 fields terminated by ";"  optionally enclosed by '';
+show warnings;
+Level	Code	Message
+select * from test3;
+a
+1
+0
+
+null
+"null"
+truncate table test3;
+load data local infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-2.txt' into table test3 fields terminated by ";"  optionally enclosed by '"';
+show warnings;
+Level	Code	Message
+select * from test3;
+a
+1
+0
+
+
+null
+truncate table test3;
+create table test4(a varchar(10) NULL ) engine=tianmu;
+load data local infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-2.txt' into table test4 fields terminated by ";"  optionally enclosed by '';
+show warnings;
+Level	Code	Message
+select * from test4;
+a
+1
+0
+
+null
+"null"
+truncate table test4;
+load data local infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-2.txt' into table test4 fields terminated by ";"  optionally enclosed by '"';
+show warnings;
+Level	Code	Message
+select * from test4;
+a
+1
+0
+
+
+null
+truncate table test4;

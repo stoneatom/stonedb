@@ -1527,7 +1527,7 @@ common::TianmuError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
     // Maybe not good to put this code here,just for temp.
     bitmap_set_all(table->read_set);
     bitmap_set_all(table->write_set);
-
+    thd->count_cuted_fields = CHECK_FIELD_WARN;
     tab->LoadDataInfile(*iop);
 
     if (current_txn_->Killed()) {

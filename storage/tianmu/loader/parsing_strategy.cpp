@@ -22,6 +22,7 @@
 #include <vector>
 #include "core/tools.h"
 #include "core/transaction.h"
+#include "item_timefunc.h"
 #include "loader/value_cache.h"
 #include "system/io_parameters.h"
 #include "system/tianmu_system.h"
@@ -268,6 +269,119 @@ void ParsingStrategy::GetEOL(const char *const buf, const char *const buf_end) {
   }
 }
 
+// copy from sql_load.cc
+class Field_tmp_nullability_guard {
+ public:
+  explicit Field_tmp_nullability_guard(Item *item) : m_field(NULL) {
+    if (item->type() == Item::FIELD_ITEM) {
+      m_field = ((Item_field *)item)->field;
+
+      m_field->set_tmp_nullable();
+    }
+  }
+
+  ~Field_tmp_nullability_guard() {
+    if (m_field)
+      m_field->reset_tmp_nullable();
+  }
+
+ private:
+  Field *m_field;
+};
+
+void ParsingStrategy::ReadField(const char *&ptr, const char *&val_beg, Item *&item, uint &index_of_field,
+                                std::vector<std::pair<const char *, size_t>> &vec_ptr_field,
+                                uint &field_index_in_field_list, const CHARSET_INFO *char_info) {
+  bool is_enclosed = false;
+  char *val_start{nullptr};
+  size_t val_len{0};
+
+  if (string_qualifier_ && *val_beg == string_qualifier_) {
+    // first char is enclose char, skip it
+    val_start = const_cast<char *>(val_beg) + 1;
+    // skip the first and the last char which is encolose char
+    val_len = ptr - val_beg - 2;
+    is_enclosed = true;
+  } else {
+    val_start = const_cast<char *>(val_beg);
+    val_len = ptr - val_beg;
+  }
+
+  // check for null
+  bool isnull = false;
+  switch (val_len) {
+    case 0:
+      if (!is_enclosed)
+        isnull = true;
+      break;
+    case 2:
+      if (*val_start == '\\' && (val_start[1] == 'N' || (!is_enclosed && val_start[1] == 'n')))
+        isnull = true;
+      break;
+    case 4:
+      if (string_qualifier_ && !is_enclosed && strncasecmp(val_start, "nullptr", 4) == 0)
+        isnull = true;
+      break;
+    default:
+      break;
+  }
+
+  Item *real_item = item->real_item();
+  Field_tmp_nullability_guard fld_tmp_nullability_guard(real_item);
+  if (isnull) {
+    if (real_item->type() == Item::FIELD_ITEM) {
+      Field *field = ((Item_field *)real_item)->field;
+      if (field->reset())  // Set to 0
+      {
+        my_error(ER_WARN_NULL_TO_NOTNULL, MYF(0), field->field_name, thd_->get_stmt_da()->current_row_for_condition());
+        return;
+      }
+      if (!field->real_maybe_null() && field->type() == FIELD_TYPE_TIMESTAMP) {
+        // Specific of TIMESTAMP NOT NULL: set to CURRENT_TIMESTAMP.
+        Item_func_now_local::store_in(field);
+      } else {
+        field->set_null();
+      }
+      if (!first_row_prepared_) {
+        std::string field_name(field->field_name);
+        index_of_field = map_field_name_to_index_[field_name];
+        vec_field_num_to_index_[field_index_in_field_list] = index_of_field;
+      } else {
+        index_of_field = vec_field_num_to_index_[field_index_in_field_list];
+      }
+
+      vec_ptr_field[index_of_field] = std::make_pair(nullptr, 0);  // nullptr indicates null
+      ++field_index_in_field_list;
+    } else if (item->type() == Item::STRING_ITEM) {
+      auto tmp_item = dynamic_cast<Item_user_var_as_out_param *>(item);
+      assert(NULL != tmp_item);
+      tmp_item->set_null_value(char_info);
+    }
+    return;
+  } else {
+    if (real_item->type() == Item::FIELD_ITEM) {
+      Field *field = ((Item_field *)real_item)->field;
+      field->set_notnull();
+      field->store(val_start, val_len, char_info);
+      if (!first_row_prepared_) {
+        std::string field_name(field->field_name);
+        index_of_field = map_field_name_to_index_[field_name];
+        vec_field_num_to_index_[field_index_in_field_list] = index_of_field;
+      } else {
+        index_of_field = vec_field_num_to_index_[field_index_in_field_list];
+      }
+
+      vec_ptr_field[index_of_field] = std::make_pair(val_start, val_len);
+      ++field_index_in_field_list;
+
+    } else if (item->type() == Item::STRING_ITEM) {
+      ((Item_user_var_as_out_param *)item)->set_value((char *)val_start, val_len, char_info);
+    }
+  }
+
+  return;
+}
+
 ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, size_t size,
                                                         std::vector<ValueCache> &record, uint &rowsize,
                                                         int &errorinfo) {
@@ -321,16 +435,13 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
 
   List_iterator_fast<Item> it(fields_vars);
   Item *item{nullptr};
-  Item *real_item{nullptr};
   uint index{0};
   uint field_index_in_field_list{0};
   uint index_of_field{0};
-  char *val_start{nullptr};
-  size_t val_len{0};
+
   // step2, fill the filed list with data file content;
   while ((item = it++)) {
     index++;
-    real_item = item->real_item();
 
     if (index == fields_vars.elements)
       break;
@@ -341,33 +452,7 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
     } else {
       SearchResult res = SearchUnescapedPatternNoEOL(ptr, buf_end, delimiter_, kmp_next_delimiter_);
       if (res == SearchResult::END_OF_LINE) {
-        // check if the string is enclosed by some char
-        if (string_qualifier_ && *val_beg == string_qualifier_) {
-          val_start = const_cast<char *>(val_beg) + 1;  // first char is enclose char, skip it
-          val_len = ptr - val_beg - 2;                  // skip the first and the last char which is encolose char
-        } else {
-          val_start = const_cast<char *>(val_beg);
-          val_len = ptr - val_beg;
-        }
-
-        if (real_item->type() == Item::FIELD_ITEM) {
-          Field *field = ((Item_field *)real_item)->field;
-          field->set_notnull();
-          field->store(val_start, val_len, char_info);
-          if (!first_row_prepared_) {
-            std::string field_name(field->field_name);
-            index_of_field = map_field_name_to_index_[field_name];
-            vec_field_num_to_index_[field_index_in_field_list] = index_of_field;
-          } else {
-            index_of_field = vec_field_num_to_index_[field_index_in_field_list];
-          }
-
-          vec_ptr_field[index_of_field] = std::make_pair(val_start, val_len);
-          ++field_index_in_field_list;
-
-        } else if (item->type() == Item::STRING_ITEM) {
-          ((Item_user_var_as_out_param *)item)->set_value((char *)val_start, val_len, char_info);
-        }
+        ReadField(ptr, val_beg, item, index_of_field, vec_ptr_field, field_index_in_field_list, char_info);
         continue;
       }
       row_incomplete = (res == SearchResult::END_OF_BUFFER);
@@ -378,33 +463,7 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
       goto end;
     }
 
-    // check if the string is enclosed by some char
-    if (string_qualifier_ && *val_beg == string_qualifier_) {
-      val_start = const_cast<char *>(val_beg) + 1;  // first char is enclose char, skip it
-      val_len = ptr - val_beg - 2;                  // skip the first and the last char which is encolose char
-    } else {
-      val_start = const_cast<char *>(val_beg);
-      val_len = ptr - val_beg;
-    }
-
-    if (real_item->type() == Item::FIELD_ITEM) {
-      Field *field = ((Item_field *)real_item)->field;
-      field->set_notnull();
-      field->store(val_start, val_len, char_info);
-      if (!first_row_prepared_) {
-        std::string str_field(field->field_name);
-        index_of_field = map_field_name_to_index_[str_field];
-        vec_field_num_to_index_[field_index_in_field_list] = index_of_field;
-      } else {
-        index_of_field = vec_field_num_to_index_[field_index_in_field_list];
-      }
-
-      vec_ptr_field[index_of_field] = std::make_pair(val_start, val_len);
-      ++field_index_in_field_list;
-
-    } else if (item->type() == Item::STRING_ITEM) {
-      ((Item_user_var_as_out_param *)item)->set_value(val_start, val_len, char_info);
-    }
+    ReadField(ptr, val_beg, item, index_of_field, vec_ptr_field, field_index_in_field_list, char_info);
 
     ptr += delimiter_.size();
   }
@@ -420,34 +479,7 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
       row_incomplete = !SearchUnescapedPattern(ptr, buf_end, terminator_, kmp_next_terminator_);
 
     if (!row_incomplete) {
-      // check if the string is enclosed by some char
-      if (string_qualifier_ && *val_beg == string_qualifier_) {
-        val_start = const_cast<char *>(val_beg) + 1;  // first char is enclose char, skip it
-        val_len = ptr - val_beg - 2;                  // skip the first and the last char which is encolose char
-      } else {
-        val_start = const_cast<char *>(val_beg);
-        val_len = ptr - val_beg;
-      }
-
-      if (real_item->type() == Item::FIELD_ITEM) {
-        Field *field = ((Item_field *)real_item)->field;
-        field->set_notnull();
-        field->store(val_start, val_len, char_info);
-
-        if (!first_row_prepared_) {
-          std::string str_field(field->field_name);
-          index_of_field = map_field_name_to_index_[str_field];
-          vec_field_num_to_index_[field_index_in_field_list] = index_of_field;
-        } else {
-          index_of_field = vec_field_num_to_index_[field_index_in_field_list];
-        }
-
-        vec_ptr_field[index_of_field] = std::make_pair(val_start, val_len);
-        ++field_index_in_field_list;
-
-      } else if (item->type() == Item::STRING_ITEM) {
-        ((Item_user_var_as_out_param *)item)->set_value(val_start, val_len, char_info);
-      }
+      ReadField(ptr, val_beg, item, index_of_field, vec_ptr_field, field_index_in_field_list, char_info);
     } else {
       errorinfo = index;
       goto end;
@@ -460,7 +492,12 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
     row_data_error = true;
     goto end;
   }
-
+  it.rewind();
+  while ((item = it++)) {
+    Item *real_item = item->real_item();
+    if (real_item->type() == Item::FIELD_ITEM)
+      ((Item_field *)real_item)->field->check_constraints(ER_WARN_NULL_TO_NOTNULL);
+  }
   // step3,field in the set clause
   while ((fld = f++)) {
     Item_field *const field = fld->field_for_view_update();
@@ -473,6 +510,7 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
       DEBUG_ASSERT(0);
     }
 
+    rfield->check_constraints(ER_BAD_NULL_ERROR);
     String *str{nullptr};
 
     if (!first_row_prepared_) {
@@ -486,12 +524,16 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
       str = vec_field_Str_list_[index_of_field];
     }
     String *res = field->str_result(str);
-    DEBUG_ASSERT(res);
-    if (res && res != str) {
-      str->copy(*res);
+    rfield->check_constraints(ER_BAD_NULL_ERROR);
+    if (!res) {
+      vec_ptr_field[index_of_field] = std::make_pair(nullptr, 0);
+    } else {
+      if (res != str) {
+        str->copy(*res);
+      }
+      vec_ptr_field[index_of_field] = std::make_pair(str->ptr(), str->length());
     }
 
-    vec_ptr_field[index_of_field] = std::make_pair(str->ptr(), str->length());
     ++field_index_in_field_list;
   }
 
@@ -502,7 +544,6 @@ ParsingStrategy::ParseResult ParsingStrategy::GetOneRow(const char *const buf, s
   }
 
 end:
-
   if (row_incomplete) {
     if (errorinfo == -1)
       errorinfo = index;
@@ -527,41 +568,16 @@ char TranslateEscapedChar(char c) {
 void ParsingStrategy::GetValue(const char *value_ptr, size_t value_size, ushort col, ValueCache &buffer) {
   core::AttributeTypeInfo &ati = GetATI(col);
 
-  bool is_enclosed = false;
-  if (string_qualifier_ && *value_ptr == string_qualifier_) {
-    // trim quotes
-    ++value_ptr;
-    value_size -= 2;
-    is_enclosed = true;
-  }
-
-  if (core::ATI::IsCharType(ati.Type())) {
-    // trim spaces
-    while (value_size > 0 && value_ptr[value_size - 1] == ' ') --value_size;
-  }
-
   // check for null
   bool isnull = false;
-  switch (value_size) {
-    case 0:
-      if (!is_enclosed)
-        isnull = true;
-      break;
-    case 2:
-      if (*value_ptr == '\\' && (value_ptr[1] == 'N' || (!is_enclosed && value_ptr[1] == 'n')))
-        isnull = true;
-      break;
-    case 4:
-      if (!is_enclosed && strncasecmp(value_ptr, "nullptr", 4) == 0)
-        isnull = true;
-      break;
-    default:
-      break;
+  // null scenario
+  if (nullptr == value_ptr) {
+    isnull = true;
+    return;
   }
 
   if (isnull)
     buffer.ExpectedNull(true);
-
   else if (core::ATI::IsBinType(ati.Type())) {
     // convert hexadecimal format to binary
     if (value_size % 2)
