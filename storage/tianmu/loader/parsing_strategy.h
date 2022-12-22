@@ -35,6 +35,9 @@ class ParsingStrategy final {
   ~ParsingStrategy() {}
   ParseResult GetOneRow(const char *const buf, size_t size, std::vector<ValueCache> &values, uint &rowsize,
                         int &errorinfo);
+  void ReadField(const char *&ptr, const char *&val_beg, Item *&item, uint &index_of_field,
+                 std::vector<std::pair<const char *, size_t>> &vec_ptr_field, uint &field_index_in_field_list,
+                 const CHARSET_INFO *char_info);
   void SetTHD(THD *thd) { thd_ = thd; }
   THD *GetTHD() const { return thd_; };
 

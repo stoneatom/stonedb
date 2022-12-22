@@ -1,3 +1,11 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS trigger_test;
+--enable_warnings
+
+CREATE DATABASE trigger_test;
+
 --echo #writer:shangyanwen
 
 --echo #
@@ -1135,3 +1143,5 @@ INSERT INTO t1 VALUES (1, 2);
 SELECT * FROM t2;
 DROP TABLE t1;
 DROP TEMPORARY TABLE t2;
+
+DROP DATABASE trigger_test;
