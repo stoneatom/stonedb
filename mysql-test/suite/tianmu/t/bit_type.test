@@ -1,5 +1,7 @@
 --source include/have_tianmu.inc
 
+drop database if exists test_bit;
+create database test_bit;
 drop table if exists bittypes, t;
 CREATE TABLE t (b BIT(8));
 # insert values using literals: https://dev.mysql.com/doc/refman/8.0/en/bit-value-literals.html
@@ -93,3 +95,5 @@ select a * 12345678910111213123 from bit2;
 # error(mysql will be numeric results, diff with tianmu):  Numeric result of an expression is too large and cannot be handled by tianmu. Please use an explicit cast to a data type handled by tianmu, e.g. CAST(<expr> AS DECIMAL(18,6)).
 --error 1105
 select a * 12345678910111213123456 from bit2;
+drop table bit2;
+drop database test_bit;
