@@ -7,11 +7,11 @@ CREATE TABLE `test` (
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
 load data local infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue656.txt' into table test fields terminated by ',';
 Warnings:
-Warning	1292	Incorrect datetime value: '2056-08-22 11:24:49' for column 't' at row 2
-Warning	1292	Incorrect datetime value: '2056-08-22 12:24:49' for column 't' at row 3
+Warning	1264	Out of range value for column 't' at row 2
+Warning	1264	Out of range value for column 't' at row 3
 show warnings;
 Level	Code	Message
-Warning	1292	Incorrect datetime value: '2056-08-22 11:24:49' for column 't' at row 2
-Warning	1292	Incorrect datetime value: '2056-08-22 12:24:49' for column 't' at row 3
+Warning	1264	Out of range value for column 't' at row 2
+Warning	1264	Out of range value for column 't' at row 3
 drop table test;
 DROP DATABASE issue656_test;

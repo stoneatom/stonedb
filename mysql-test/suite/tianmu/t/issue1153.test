@@ -1,0 +1,85 @@
+--source include/have_tianmu.inc
+
+create table test1(a bigint NULL ) engine=tianmu;
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data local infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-1.txt' into table test1 fields terminated by ";"  optionally enclosed by '';
+show warnings;
+select * from test1;
+truncate table test1;
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data local infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-1.txt' into table test1 fields terminated by ";"  optionally enclosed by '"';
+show warnings;
+select * from test1;
+truncate table test1;
+
+
+
+set @var1 = 888;
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data local infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-1.txt' into table test1 fields terminated by ";"  optionally enclosed by '"' set a = @var1/2;
+show warnings;
+select * from test1;
+truncate table test1;
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data local infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-1.txt' into table test1 fields terminated by ";"  optionally enclosed by '' set a = @var1/2;
+show warnings;
+select * from test1;
+truncate table test1;
+
+
+
+create table test2(a bigint NOT NULL) engine=tianmu;
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data local infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-1.txt' into table test2 fields terminated by ";"  optionally enclosed by '';
+show warnings;
+select * from test2;
+truncate table test2;
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data local infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-1.txt' into table test2 fields terminated by ";"  optionally enclosed by '"';
+show warnings;
+select * from test2;
+truncate table test2;
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data local infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-1.txt' into table test2 fields terminated by ";"  optionally enclosed by '"' set a = @var1/2;
+show warnings;
+select * from test2;
+truncate table test2;
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data local infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-1.txt' into table test2 fields terminated by ";"  optionally enclosed by '' set a = @var1/2;
+show warnings;
+select * from test2;
+truncate table test2;
+
+
+
+create table test3(a varchar(10) NULL ) engine=tianmu;
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data local infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-2.txt' into table test3 fields terminated by ";"  optionally enclosed by '';
+show warnings;
+select * from test3;
+truncate table test3;
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data local infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-2.txt' into table test3 fields terminated by ";"  optionally enclosed by '"';
+show warnings;
+select * from test3;
+truncate table test3;
+
+
+
+create table test4(a varchar(10) NOT NULL ) engine=tianmu;
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data local infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-2.txt' into table test4 fields terminated by ";"  optionally enclosed by '';
+show warnings;
+select * from test4;
+truncate table test4;
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval load data local infile '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue1153-2.txt' into table test4 fields terminated by ";"  optionally enclosed by '"';
+show warnings;
+select * from test4;
+truncate table test4;
