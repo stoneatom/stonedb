@@ -597,6 +597,51 @@ common::ErrorCode ValueParserForText::ParseBigIntAdapter(const BString &tianmu_s
   return return_code;
 }
 
+// Unlike the other numeric values, the exactly bit value has already stored int Field_bit in GetOneRow() function,
+// and make the string buffer to arg tianmu_s, so this function just convert the string value to int64 back.
+common::ErrorCode ValueParserForText::ParseBitAdapter(const BString &tianmu_s, int64_t &out) {
+  char *val_ptr = tianmu_s.val_;
+  int len = tianmu_s.len_;
+  // No matter null value or not, the value stored in char buffer at least one byte and up to 8 bytes.
+  // calculated by len = (prec+7)/8
+  DEBUG_ASSERT(len >=1 && len <=8);
+
+  // The parse code may never go here, but we still check null value for integrity.
+  if (tianmu_s.Equals("nullptr", 4)) {
+    out = common::NULL_VALUE_64;
+    return common::ErrorCode::SUCCESS;
+  }
+
+  switch (len) {
+    case 1: {
+      out = mi_uint1korr(val_ptr);break;
+    }
+    case 2: {
+      out = mi_uint2korr(val_ptr);break;
+    }
+    case 3: {
+      out = mi_uint3korr(val_ptr);break;
+    }
+    case 4: {
+      out = mi_uint4korr(val_ptr);break;
+    }
+    case 5: {
+      out = mi_uint5korr(val_ptr);break;
+    }
+    case 6: {
+      out = mi_uint6korr(val_ptr);break;
+    }
+    case 7: {
+      out = mi_uint7korr(val_ptr);break;
+    }
+    default: {
+      out = mi_uint8korr(val_ptr);break;
+    }
+  }
+
+  return common::ErrorCode::SUCCESS;
+}
+
 common::ErrorCode ValueParserForText::ParseDecimal(BString const &tianmu_s, int64_t &out, short precision,
                                                    short scale) {
   TianmuNum number;
