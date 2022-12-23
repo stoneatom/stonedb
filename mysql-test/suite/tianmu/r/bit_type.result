@@ -124,4 +124,25 @@ ERROR 22003: BIGINT UNSIGNED value is out of range in '(`test`.`bit2`.`a` * 1234
 select a * 12345678910111213123456 from bit2;
 ERROR HY000: Numeric result of an expression is too large and cannot be handled by tianmu. Please use an explicit cast to a data type handled by tianmu, e.g. CAST(<expr> AS DECIMAL(18,6)).
 drop table bit2;
+CREATE TABLE `bit_test` (
+`bit1` bit(1) DEFAULT NULL,
+`bit2` bit(2) DEFAULT NULL,
+`bit8` bit(8) DEFAULT NULL,
+`bit16` bit(16) DEFAULT NULL,
+`bit32` bit(32) DEFAULT NULL,
+`bit63` bit(63) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+LOAD DATA local INFILE 'MYSQL_TEST_DIR/suite/tianmu/std_data/bit_test.txt' INTO TABLE bit_test fields TERMINATED BY ',' (@var1, @var2, @var3, @var4, @var5, @var6)
+SET bit1 = CAST(CONV(MID(@var1, 3, LENGTH(@var1)-3), 2, 10) AS UNSIGNED),
+bit2 = CAST(CONV(MID(@var2, 3, LENGTH(@var2)-3), 2, 10) AS UNSIGNED),
+bit8 = CAST(CONV(MID(@var3, 3, LENGTH(@var3)-3), 2, 10) AS UNSIGNED),
+bit16 = CAST(CONV(MID(@var4, 3, LENGTH(@var4)-3), 2, 10) AS UNSIGNED),
+bit32 = CAST(CONV(MID(@var5, 3, LENGTH(@var5)-3), 2, 10) AS UNSIGNED),
+bit63 = CAST(CONV(MID(@var6, 3, LENGTH(@var6)-3), 2, 10) AS UNSIGNED);
+select bit1+0, bit2+0, bit8+0, bit16+0, bit32+0, bit63+0 from bit_test;
+bit1+0	bit2+0	bit8+0	bit16+0	bit32+0	bit63+0
+NULL	NULL	NULL	NULL	NULL	NULL
+0	0	0	0	0	0
+1	2	7	47	3071	268435455
+drop table bit_test;
 drop database test_bit;
