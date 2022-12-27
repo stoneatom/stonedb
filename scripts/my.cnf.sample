@@ -1,6 +1,6 @@
 [client]
 port = 3306
-socket          = /tmp/mysql.sock
+socket          = YOUR_ABS_PATH/tmp/mysql.sock
 
 [mysqld]
 port                            = 3306
@@ -8,7 +8,7 @@ basedir                         = YOUR_ABS_PATH/
 character-sets-dir              = YOUR_ABS_PATH/share/charsets/
 plugin_dir                      = YOUR_ABS_PATH/lib/plugin/
 tmpdir                          = YOUR_ABS_PATH/tmp/
-socket                          = /tmp/mysql.sock
+socket                          = YOUR_ABS_PATH/tmp/mysql.sock
 datadir                         = YOUR_ABS_PATH/data/
 pid-file                        = YOUR_ABS_PATH/data/mysqld.pid
 log-error                       = YOUR_ABS_PATH/data/mysqld.log
