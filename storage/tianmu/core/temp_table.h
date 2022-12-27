@@ -278,7 +278,7 @@ class TempTable : public JustATable {
     return GetFieldSize(n_a);
   }
 
-  uint NumOfDimensions() { return filter.mind ? (uint)filter.mind->NumOfDimensions() : 1; }
+  uint NumOfDimensions() { return filter.mind_ ? (uint)filter.mind_->NumOfDimensions() : 1; }
   int GetDimension(TabID alias);
   std::vector<AttributeTypeInfo> GetATIs(bool orig = false) override;
   int GetAttrScale(int a) {
@@ -322,9 +322,9 @@ class TempTable : public JustATable {
   }
   void CreateDisplayableAttrP();
   uint GetDisplayableAttrIndex(uint attr);
-  MultiIndex *GetMultiIndexP() { return filter.mind; }
+  MultiIndex *GetMultiIndexP() { return filter.mind_; }
   void ClearMultiIndexP() {
-    if (nullptr == filter.mind) {
+    if (nullptr == filter.mind_) {
       return;
     }
 
@@ -332,8 +332,8 @@ class TempTable : public JustATable {
       return;
     }
 
-    delete filter.mind;
-    filter.mind = nullptr;
+    delete filter.mind_;
+    filter.mind_ = nullptr;
   }
   MultiIndex *GetOutputMultiIndexP() { return &output_mind; }
   ParameterizedFilter *GetFilterP() { return &filter; }
@@ -385,7 +385,7 @@ class TempTable : public JustATable {
   void MoveVC(int colnum, std::vector<vcolumn::VirtualColumn *> &from, std::vector<vcolumn::VirtualColumn *> &to);
   void MoveVC(vcolumn::VirtualColumn *vc, std::vector<vcolumn::VirtualColumn *> &from,
               std::vector<vcolumn::VirtualColumn *> &to);
-  void FillbufferTask(Attr *attr, Transaction *ci, MIIterator *page_start, int64_t start_row, int64_t page_end);
+  void FillbufferTask(Attr *attr, Transaction *txn, MIIterator *page_start, int64_t start_row, int64_t page_end);
   size_t TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrapper *st);
   bool HasTempTable() const { return has_temp_table; }
 
@@ -405,7 +405,7 @@ class TempTable : public JustATable {
   std::vector<int> aliases;                         // vector of aliases of source tables
   std::vector<vcolumn::VirtualColumn *> virt_cols;  // vector of virtual columns defined for TempTable
   std::vector<bool> virt_cols_for_having;           // is a virt column based on output_mind (true) or
-                                                    // source mind (false)
+                                                    // source mind_ (false)
   std::vector<JoinType> join_types;                 // vector of types of joins, one less than tables
   ParameterizedFilter filter;                       // multidimensional filter, contains multiindex,
                                                     // can be parametrized

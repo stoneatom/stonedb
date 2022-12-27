@@ -36,8 +36,8 @@ class RoughMultiIndex {
   void SetPackStatus(int dim, int pack, common::RoughSetValue v) { rf[dim][pack] = v; };
 
   int NumOfDimensions() { return no_dims; };
-  int NoPacks(int dim) { return no_packs[dim]; };
-  int NoConditions(int dim) { return int(local_desc[dim].size()); };
+  int NumOfPacks(int dim) { return no_packs[dim]; };
+  int NumOfConditions(int dim) { return int(local_desc[dim].size()); };
   int GlobalDescNum(int dim, int local_desc_num) { return (local_desc[dim])[local_desc_num]->desc_num; }
   /*
           Example of query processing steps:

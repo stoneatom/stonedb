@@ -636,8 +636,11 @@ int ha_tianmu::delete_all_rows() {
 int ha_tianmu::rename_table(const char *from, const char *to) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
-    ha_tianmu_engine_->RenameTable(current_txn_, from, to, ha_thd());
-    DBUG_RETURN(0);
+    if (!ha_tianmu_engine_->RenameTable(current_txn_, from, to, ha_thd())) {
+      DBUG_RETURN(0);
+    } else {
+      DBUG_RETURN(1);
+    }
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -1232,10 +1235,12 @@ my_bool ha_tianmu::register_query_cache_table(THD *thd, char *table_key, size_t 
  */
 int ha_tianmu::delete_table(const char *name) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
-  int ret = 1;
   try {
-    ha_tianmu_engine_->DeleteTable(name, ha_thd());
-    ret = 0;
+    if (!ha_tianmu_engine_->DeleteTable(name, ha_thd())) {
+      DBUG_RETURN(0);
+    } else {
+      DBUG_RETURN(1);
+    }
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -1244,7 +1249,7 @@ int ha_tianmu::delete_table(const char *name) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
-  DBUG_RETURN(ret);
+  DBUG_RETURN(0);
 }
 
 /*

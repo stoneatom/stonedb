@@ -768,18 +768,16 @@ void Engine::Rollback(THD *thd, bool all, bool force_error_message) {
   thd->transaction_rollback_request = false;
 }
 
-void Engine::DeleteTable(const char *table, [[maybe_unused]] THD *thd) {
-  {
-    std::unique_lock<std::shared_mutex> index_guard(tables_keys_mutex);
-    index::TianmuTableIndex::DropIndexTable(table);
-    m_table_keys.erase(table);
-  }
+int Engine::DeleteTable(const char *table, [[maybe_unused]] THD *thd) {
   {
     std::unique_lock<std::shared_mutex> mem_guard(mem_table_mutex);
     TianmuMemTable::DropMemTable(table);
     mem_table_map.erase(table);
   }
-
+  if (DeleteTableIndex(table, thd)) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "DeleteTable  failed");
+    return 1;
+  }
   UnRegisterTable(table);
   std::string p = table;
   p += common::TIANMU_EXT;
@@ -793,6 +791,8 @@ void Engine::DeleteTable(const char *table, [[maybe_unused]] THD *thd) {
   }
   system::DeleteDirectory(p);
   TIANMU_LOG(LogCtl_Level::INFO, "Drop table %s, ID = %u", table, id);
+
+  return 0;
 }
 
 void Engine::TruncateTable(const std::string &table_path, [[maybe_unused]] THD *thd) {
@@ -1086,16 +1086,22 @@ int get_parameter(THD *thd, enum tianmu_var_name vn, longlong &result, std::stri
   }
 }
 
-void Engine::RenameTable([[maybe_unused]] Transaction *trans_, const std::string &from, const std::string &to,
-                         [[maybe_unused]] THD *thd) {
+int Engine::RenameTable([[maybe_unused]] Transaction *trans_, const std::string &from, const std::string &to,
+                        [[maybe_unused]] THD *thd) {
   UnRegisterTable(from);
   auto id = TianmuTable::GetTableId(from + common::TIANMU_EXT);
   cache.ReleaseTable(id);
   filter_cache.RemoveIf([id](const FilterCoordinate &c) { return c[0] == int(id); });
   system::RenameFile(tianmu_data_dir / (from + common::TIANMU_EXT), tianmu_data_dir / (to + common::TIANMU_EXT));
   RenameRdbTable(from, to);
+  DBUG_EXECUTE_IF("delete tianmu primary key", DeleteTableIndex(from, thd););
+  if (DeleteTableIndex(from, thd)) {
+    TIANMU_LOG(LogCtl_Level::ERROR, "delete tianmu primary key failed.");
+    return 1;
+  }
   UnregisterMemTable(from, to);
   TIANMU_LOG(LogCtl_Level::INFO, "Rename table %s to %s", from.c_str(), to.c_str());
+  return 0;
 }
 
 void Engine::PrepareAlterTable(const std::string &table_path, std::vector<Field *> &new_cols,
@@ -1521,9 +1527,9 @@ common::TianmuError Engine::RunLoader(THD *thd, sql_exchange *ex, TABLE_LIST *ta
     // Maybe not good to put this code here,just for temp.
     bitmap_set_all(table->read_set);
     bitmap_set_all(table->write_set);
-
+    thd->count_cuted_fields = CHECK_FIELD_WARN;
     tab->LoadDataInfile(*iop);
-
+    thd->count_cuted_fields = CHECK_FIELD_IGNORE;
     if (current_txn_->Killed()) {
       thd->send_kill_message();
       throw common::TianmuError(common::ErrorCode::KILLED);
@@ -1951,6 +1957,22 @@ void Engine::AddTableIndex(const std::string &table_path, TABLE *table, [[maybe_
     std::shared_ptr<index::TianmuTableIndex> tab = std::make_shared<index::TianmuTableIndex>(table_path, table);
     m_table_keys[table_path] = tab;
   }
+}
+
+bool Engine::DeleteTableIndex(const std::string &table_path, [[maybe_unused]] THD *thd) {
+  if (table_path.empty() || thd == nullptr) {
+    return true;
+  }
+
+  std::unique_lock<std::shared_mutex> index_guard(tables_keys_mutex);
+  if (index::TianmuTableIndex::FindIndexTable(table_path)) {
+    index::TianmuTableIndex::DropIndexTable(table_path);
+  }
+  if (m_table_keys.find(table_path) != m_table_keys.end()) {
+    m_table_keys.erase(table_path);
+  }
+
+  return false;
 }
 
 std::shared_ptr<index::TianmuTableIndex> Engine::GetTableIndex(const std::string &table_path) {

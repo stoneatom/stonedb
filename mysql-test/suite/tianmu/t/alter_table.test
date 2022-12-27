@@ -63,4 +63,9 @@ alter table t_test modify sex smallint(5);
 
 show create table t_test;
 
+#
+#END
+#
+
+drop table t_test;
 DROP DATABASE alter_table_test;

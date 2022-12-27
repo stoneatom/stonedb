@@ -604,25 +604,26 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
     case MYSQL_TYPE_LONG:
     case MYSQL_TYPE_INT24:
     case MYSQL_TYPE_LONGLONG: {
-      int64_t v = f->val_int();
-      if (m_attrs[col]->GetIfAutoInc() && v == 0)
+      int64_t value = f->val_int();
+      if (m_attrs[col]->GetIfAutoInc() && value == 0)
         // Value of auto inc column was not assigned by user
         *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = m_attrs[col]->AutoIncNext();
       else
-        *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = v;
+        *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = value;
       vc.ExpectedSize(sizeof(int64_t));
       if (m_attrs[col]->GetIfAutoInc()) {
         // inc counter should be set to value of user assigned
-        if (static_cast<uint64_t>(v) > m_attrs[col]->GetAutoInc()) {
-          m_attrs[col]->SetAutoInc(v);
+        if (static_cast<uint64_t>(value) > m_attrs[col]->GetAutoInc()) {
+          if (value > 0 || ((m_attrs[col]->TypeName() == common::ColumnType::BIGINT) && m_attrs[col]->GetIfUnsigned()))
+            m_attrs[col]->SetAutoInc(value);
         }
       }
     } break;
     case MYSQL_TYPE_DECIMAL:
     case MYSQL_TYPE_FLOAT:
     case MYSQL_TYPE_DOUBLE: {
-      double v = f->val_real();
-      *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = *reinterpret_cast<int64_t *>(&v);
+      double value = f->val_real();
+      *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = *reinterpret_cast<int64_t *>(&value);
       vc.ExpectedSize(sizeof(int64_t));
     } break;
     case MYSQL_TYPE_NEWDECIMAL: {
@@ -1199,9 +1200,10 @@ class DelayedInsertParser final {
               if (attr->GetIfAutoInc()) {
                 if (*buf == 0)  // Value of auto inc column was not assigned by user
                   *buf = attr->AutoIncNext();
-
-                if (static_cast<uint64_t>(*buf) > attr->GetAutoInc())
-                  attr->SetAutoInc(*buf);
+                if (static_cast<uint64_t>(*buf) > attr->GetAutoInc()) {
+                  if (*buf > 0 || ((attr->TypeName() == common::ColumnType::BIGINT) && attr->GetIfUnsigned()))
+                    attr->SetAutoInc(*buf);
+                }
               }
               vc.ExpectedSize(sizeof(int64_t));
               ptr += sizeof(int64_t);

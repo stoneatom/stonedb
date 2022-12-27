@@ -751,24 +751,24 @@ bool TempTable::Attr::IsNull(const int64_t obj) const {
   return res;
 }
 
-void TempTable::Attr::ApplyFilter(MultiIndex &mind, int64_t offset, int64_t last_index) {
-  DEBUG_ASSERT(mind.NumOfDimensions() == 1);
+void TempTable::Attr::ApplyFilter(MultiIndex &mind_, int64_t offset, int64_t last_index) {
+  DEBUG_ASSERT(mind_.NumOfDimensions() == 1);
 
-  if (mind.NumOfDimensions() != 1)
+  if (mind_.NumOfDimensions() != 1)
     throw common::NotImplementedException("MultiIndex has too many dimensions.");
-  if (mind.ZeroTuples() || no_obj == 0 || offset >= mind.NumOfTuples()) {
+  if (mind_.ZeroTuples() || no_obj == 0 || offset >= mind_.NumOfTuples()) {
     DeleteBuffer();
     return;
   }
 
-  if (last_index > mind.NumOfTuples())
-    last_index = mind.NumOfTuples();
+  if (last_index > mind_.NumOfTuples())
+    last_index = mind_.NumOfTuples();
 
   void *old_buffer = buffer;
   buffer = nullptr;
-  CreateBuffer(last_index - offset, mind.m_conn);
+  CreateBuffer(last_index - offset, mind_.m_conn);
 
-  MIIterator mit(&mind, mind.ValueOfPower());
+  MIIterator mit(&mind_, mind_.ValueOfPower());
   for (int64_t i = 0; i < offset; i++) ++mit;
   uint64_t idx = 0;
   for (int64_t i = 0; i < last_index - offset; i++, ++mit) {
@@ -1004,15 +1004,15 @@ std::shared_ptr<TempTable> TempTable::CreateMaterializedCopy(bool translate_orde
   }
   // VirtualColumns are copied, and we should replace them by references to the
   // temporary source
-  delete filter.mind;
-  filter.mind = new MultiIndex(p_power);
-  filter.mind->AddDimension_cross(no_obj);
+  delete filter.mind_;
+  filter.mind_ = new MultiIndex(p_power);
+  filter.mind_->AddDimension_cross(no_obj);
   if (virt_cols.size() < attrs.size())
     virt_cols.resize(attrs.size());
   fill(virt_cols.begin(), virt_cols.end(), (vcolumn::VirtualColumn *)nullptr);
   for (uint i = 0; i < attrs.size(); i++) {
     vcolumn::VirtualColumn *new_vc =
-        new vcolumn::SingleColumn(working_copy->attrs[i], filter.mind, 0, 0, working_copy.get(), 0);
+        new vcolumn::SingleColumn(working_copy->attrs[i], filter.mind_, 0, 0, working_copy.get(), 0);
     virt_cols[i] = new_vc;
     attrs[i]->term.vc = new_vc;
     attrs[i]->dim = 0;
@@ -1776,7 +1776,7 @@ int TempTable::DimInDistinctContext() {
   // return a dimension number if it is used only in contexts where row
   // repetitions may be omitted, e.g. distinct
   int d = -1;
-  if (HasHavingConditions() || filter.mind->NumOfDimensions() == 1)  // having or no joins
+  if (HasHavingConditions() || filter.mind_->NumOfDimensions() == 1)  // having or no joins
     return -1;
   bool group_by_exists = false;
   bool aggregation_exists = false;
@@ -1861,7 +1861,7 @@ std::shared_ptr<TempTable> TempTable::Create(const TempTable &t, bool in_subq) {
     //	if(tnew->virt_cols_for_having[i]) {
     //		tnew->virt_cols[i]->SetMultiIndex(&tnew->output_mind, tnew);
     //	} else
-    //		tnew->virt_cols[i]->SetMultiIndex(tnew->filter.mind);
+    //		tnew->virt_cols[i]->SetMultiIndex(tnew->filter.mind_);
     //}
   }
   return tnew;
@@ -1923,7 +1923,7 @@ void TempTable::LockPackForUse([[maybe_unused]] unsigned attr, unsigned pack_no)
 
 bool TempTable::CanOrderSources() {
   for (uint i = 0; i < order_by.size(); i++) {
-    if (order_by[i].vc->GetMultiIndex() != filter.mind)
+    if (order_by[i].vc->GetMultiIndex() != filter.mind_)
       return false;
   }
   return true;
@@ -1996,7 +1996,7 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
     lazy = false;
   this->lazy = lazy;
 
-  bool no_rows_too_large = filter.mind->TooManyTuples();
+  bool no_rows_too_large = filter.mind_->TooManyTuples();
   no_obj = -1;         // no_obj not calculated yet - wait for better moment
   VerifyAttrsSizes();  // resize attr[i] buffers basing on the current
                        // multiindex state
@@ -2011,7 +2011,7 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
       if (no_rows_too_large && order_by.size() == 0)
         no_obj = offset + limit;  // offset + limit in the worst case
       else
-        no_obj = filter.mind->NumOfTuples();
+        no_obj = filter.mind_->NumOfTuples();
       if (no_obj <= offset) {
         no_obj = 0;
         materialized = true;
@@ -2022,7 +2022,7 @@ void TempTable::Materialize(bool in_subq, ResultSender *sender, bool lazy) {
       local_limit = std::min(limit, (int64_t)no_obj - offset);
       local_limit = local_limit < 0 ? 0 : local_limit;
     } else {
-      no_obj = filter.mind->NumOfTuples();
+      no_obj = filter.mind_->NumOfTuples();
       local_limit = no_obj;
     }
     if (exists_only) {
@@ -2268,16 +2268,15 @@ void TempTableForSubquery::ResetToTemplate(bool rough, bool use_filter_shallow) 
 
   for (int i = 0; i < no_global_virt_cols; i++)
     if (!virt_cols_for_having[i])
-      virt_cols[i]->SetMultiIndex(filter.mind);
+      virt_cols[i]->SetMultiIndex(filter.mind_);
 
   having_conds = template_having_conds;
   order_by = template_order_by;
   mode = template_mode;
   no_obj = 0;
-  if (rough)
-    rough_materialized = false;
-  else
-    materialized = false;
+
+  (rough) ? rough_materialized = false : materialized = false;
+
   no_materialized = 0;
   rough_is_empty = common::Tribool();
 }

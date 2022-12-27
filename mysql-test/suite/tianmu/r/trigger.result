@@ -1,3 +1,5 @@
+DROP DATABASE IF EXISTS trigger_test;
+CREATE DATABASE trigger_test;
 #writer:shangyanwen
 #
 # Trigger is not activated by LOAD DATA"
@@ -1033,3 +1035,4 @@ a	b
 1000	150
 DROP TABLE t1;
 DROP TEMPORARY TABLE t2;
+DROP DATABASE trigger_test;
