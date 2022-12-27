@@ -109,7 +109,7 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
   tianmu_stat.select++;
 
   // at this point all tables are in RCBase engine, so we can proceed with the
-  // query and we know that if the result goes to the file, the kTianmuDataFormat is
+  // query and we know that if the result goes to the file, the TIANMU_DATAFORMAT is
   // one of TIANMU formats
   QueryRouteTo route = QueryRouteTo::kToTianmu;
   SELECT_LEX *save_current_select = lex->current_select();
@@ -200,7 +200,7 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
                 const char *err_msg =
                     "Error: Query syntax not implemented in Tianmu, can "
                     "export "
-                    "only to MySQL format (set kTianmuDataFormat to 'MYSQL').";
+                    "only to MySQL format (set TIANMU_DATAFORMAT to 'MYSQL').";
                 TIANMU_LOG(LogCtl_Level::ERROR, err_msg);
                 my_message(ER_SYNTAX_ERROR, err_msg, MYF(0));
                 throw ReturnMeToMySQLWithError();
@@ -239,11 +239,11 @@ QueryRouteTo Engine::HandleSelect(THD *thd, LEX *lex, Query_result *&result, ulo
         if (route == QueryRouteTo::kToMySQL && !in_case_of_failure_can_go_to_mysql) {
           TIANMU_LOG(LogCtl_Level::ERROR,
                      "Error: Query syntax not implemented in Tianmu, can export "
-                     "only to MySQL format (set kTianmuDataFormat to 'MYSQL').");
+                     "only to MySQL format (set TIANMU_DATAFORMAT to 'MYSQL').");
           my_message(ER_SYNTAX_ERROR,
                      "Query syntax not implemented in Tianmu, can export only "
                      "to MySQL "
-                     "format (set kTianmuDataFormat to 'MYSQL').",
+                     "format (set TIANMU_DATAFORMAT to 'MYSQL').",
                      MYF(0));
           throw ReturnMeToMySQLWithError();
         }

@@ -100,28 +100,28 @@ bool Engine::ConvertToField(Field *field, types::TianmuDataType &tianmu_item, st
         case common::ColumnType::BIT:
           switch (field->type()) {
             case MYSQL_TYPE_TINY:
-              *(char *)field->ptr = (char)(int64_t)((types::TianmuNum &)(tianmu_item));
+              *reinterpret_cast<char *>(field->ptr) = (char)(int64_t)((types::TianmuNum &)(tianmu_item));
               break;
             case MYSQL_TYPE_SHORT:
-              *(short *)field->ptr = (short)(int64_t)((types::TianmuNum &)(tianmu_item));
+              *reinterpret_cast<short *>(field->ptr) = (short)(int64_t)((types::TianmuNum &)(tianmu_item));
               break;
             case MYSQL_TYPE_INT24:
               int3store((char *)field->ptr, (int)(int64_t)((types::TianmuNum &)(tianmu_item)));
               break;
             case MYSQL_TYPE_LONG:
-              *(int *)field->ptr = (int)(int64_t)((types::TianmuNum &)(tianmu_item));
+              *reinterpret_cast<int *>(field->ptr) = (int)(int64_t)((types::TianmuNum &)(tianmu_item));
               break;
             case MYSQL_TYPE_LONGLONG:
-              *(int64_t *)field->ptr = (int64_t)((types::TianmuNum &)(tianmu_item));
+              *reinterpret_cast<int64_t *>(field->ptr) = (int64_t)((types::TianmuNum &)(tianmu_item));
               break;
             case MYSQL_TYPE_BIT:  // mysql bit(1~64), here is (1~63, 1 precision lose)
-              *(int64_t *)field->ptr = (int64_t)((types::TianmuNum &)(tianmu_item));
+              *reinterpret_cast<int64_t *>(field->ptr) = (int64_t)((types::TianmuNum &)(tianmu_item));
               break;
             case MYSQL_TYPE_FLOAT:
-              *(float *)field->ptr = (float)((types::TianmuNum &)(tianmu_item));
+              *reinterpret_cast<float *>(field->ptr) = (float)((types::TianmuNum &)(tianmu_item));
               break;
             case MYSQL_TYPE_DOUBLE:
-              *(double *)field->ptr = (double)((types::TianmuNum &)(tianmu_item));
+              *reinterpret_cast<double *>(field->ptr) = (double)((types::TianmuNum &)(tianmu_item));
               break;
             default:
               DEBUG_ASSERT(!"No data types conversion available!");

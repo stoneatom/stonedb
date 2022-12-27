@@ -202,7 +202,7 @@ double ParameterizedFilter::EvaluateConditionNonJoinWeight(Descriptor &desc, boo
     if (no_in_values > 1)
       eval += log(double(no_in_values)) * 0.5;  // INs are potentially slower (many comparisons needed)
 
-    if (col->Type().IsString() && !col->Type().IsLookup())
+    if (col->Type().IsString() && !col->Type().Lookup())
       eval += 0.5;  // strings are slower
 
     if (col->Type().IsFloat())
@@ -812,7 +812,7 @@ bool ParameterizedFilter::TryToMerge(Descriptor &d1, Descriptor &d2)  // true, i
 
   if (d1.attr.vc == d2.attr.vc && d1.IsInner() && d2.IsInner()) {
     // IS_NULL and anything based on the same column => FALSE
-    // kNotNull and anything based on the same column => kNotNull is not needed
+    // NOT_NULL and anything based on the same column => NOT_NULL is not needed
     // Exceptions:
     //		null NOT IN {empty set}
     //		null < ALL {empty set} etc.

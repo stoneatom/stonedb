@@ -918,7 +918,7 @@ void Descriptor::UpdateVCStatistics()  // Apply all the information from
     return;
   }
   attr.vc->SetLocalNullsPossible(false);
-  if ((attr.vc->Type().IsNumeric() || attr.vc->Type().IsLookup()) &&
+  if ((attr.vc->Type().IsNumeric() || attr.vc->Type().Lookup()) &&
       encoded) {  // if not encoded, we may have an incompatible comparison here
                   // (e.g. double between int and int)
     int64_t v1 = common::NULL_VALUE_64;
@@ -972,7 +972,7 @@ bool Descriptor::CheckCondition_UTF(const MIIterator &mit) {
 
   bool result = true;
 
-  if (encoded && attr.vc->Type().IsLookup())  // encoded to numerical comparison
+  if (encoded && attr.vc->Type().Lookup())  // encoded to numerical comparison
     return CheckCondition(mit);
 
   // Assumption: LockSourcePack externally done.
@@ -1086,7 +1086,7 @@ bool Descriptor::CheckCondition(const MIIterator &mit) {
     // need to consider three value logic
     common::Tribool val1_res, val2_res;
     if (encoded) {
-      if (attr.vc->Type().IsString() && !attr.vc->Type().IsLookup()) {
+      if (attr.vc->Type().IsString() && !attr.vc->Type().Lookup()) {
         types::BString val, v1, v2;
         attr.vc->GetNotNullValueString(val, mit);
         val1.vc->GetValueString(v1, mit);
@@ -1160,7 +1160,7 @@ bool Descriptor::IsNull(const MIIterator &mit) {
     // need to consider three value logic
     common::Tribool val1_res, val2_res;
     if (encoded) {
-      if (attr.vc->Type().IsString() && !attr.vc->Type().IsLookup()) {
+      if (attr.vc->Type().IsString() && !attr.vc->Type().Lookup()) {
         types::BString val, v1, v2;
         attr.vc->GetNotNullValueString(val, mit);
         val1.vc->GetValueString(v1, mit);
@@ -1424,7 +1424,7 @@ bool Descriptor::CheckSetCondition(const MIIterator &mit, common::Operator op) {
       return true;
     }
     common::Tribool res;
-    if (attr.vc->Type().IsString() && !attr.vc->Type().IsLookup()) {
+    if (attr.vc->Type().IsString() && !attr.vc->Type().Lookup()) {
       types::BString val;
       attr.vc->GetNotNullValueString(val, mit);
       res = mvc->ContainsString(mit, val);
@@ -1527,7 +1527,7 @@ bool Descriptor::IsNull_Set(const MIIterator &mit, common::Operator op) {
     if (attr.vc->IsNull(mit))
       return true;
     common::Tribool res;
-    if (attr.vc->Type().IsString() && !attr.vc->Type().IsLookup()) {
+    if (attr.vc->Type().IsString() && !attr.vc->Type().Lookup()) {
       types::BString val;
       attr.vc->GetNotNullValueString(val, mit);
       res = mvc->ContainsString(mit, val);
@@ -1858,7 +1858,7 @@ bool Descriptor::CopyDesCond(MIUpdatingIterator &mit) {
   common::PackType pack_type;
   if (IsType_AttrValOrAttrValVal()) {
     common::ColumnType column_type = attr.vc->Type().GetTypeName();
-    bool is_lookup = attr.vc->Type().IsLookup();
+    bool is_lookup = attr.vc->Type().Lookup();
     if (((column_type == common::ColumnType::VARCHAR || column_type == common::ColumnType::STRING) && is_lookup) ||
         ATI::IsNumericType(column_type) || ATI::IsDateTimeType(column_type))
       pack_type = common::PackType::INT;

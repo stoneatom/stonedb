@@ -104,7 +104,7 @@ void AggregationAlgorithm::Aggregate(bool just_distinct, int64_t &limit, int64_t
 
       if (cur_a.term.vc) {
         if (!has_lookup)
-          has_lookup = cur_a.term.vc->Type().IsLookup();
+          has_lookup = cur_a.term.vc->Type().Lookup();
         max_size = cur_a.term.vc->MaxStringSize();
         min_v = cur_a.term.vc->RoughMin();
         max_v = cur_a.term.vc->RoughMax();

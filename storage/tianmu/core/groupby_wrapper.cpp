@@ -220,7 +220,7 @@ void GroupByWrapper::AddAggregatedColumn(int orig_attr_no, TempTable::Attr &a, i
       throw common::NotImplementedException("Aggregation not implemented");
   }
 
-  if (virt_col[attr_no] && virt_col[attr_no]->Type().IsLookup() &&
+  if (virt_col[attr_no] && virt_col[attr_no]->Type().Lookup() &&
       !types::RequiresUTFConversions(virt_col[attr_no]->GetCollation()) &&
       (ag_oper == GT_Aggregation::GT_COUNT || ag_oper == GT_Aggregation::GT_COUNT_NOT_NULL ||
        ag_oper == GT_Aggregation::GT_LIST)) {
@@ -383,7 +383,7 @@ bool GroupByWrapper::AggregatePackInOneGroup(int attr_no, MIIterator &mit, int64
 }
 
 bool GroupByWrapper::AddPackIfUniform(int attr_no, MIIterator &mit) {
-  if (virt_col[attr_no] && virt_col[attr_no]->GetPackOntologicalStatus(mit) == PackOntologicalStatus::kUniform &&
+  if (virt_col[attr_no] && virt_col[attr_no]->GetPackOntologicalStatus(mit) == PackOntologicalStatus::UNIFORM &&
       !mit.NullsPossibleInPack()) {
     // Put constant values for the grouping vector (will not be changed for this
     // pack)

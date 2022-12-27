@@ -166,7 +166,7 @@ static std::string has_mem_name(const LEX_STRING &comment) {
   return name;
 }
 
-bool parameter_equals(THD *thd, enum TianmuVarName vn, longlong value) {
+bool parameter_equals(THD *thd, enum tianmu_param_name vn, longlong value) {
   longlong param = 0;
   std::string s_res;
 
@@ -448,7 +448,7 @@ void Engine::EncodeRecord(const std::string &table_path, int table_id, Field **f
           v = TIANMU_TINYINT_MAX;
         else if (v < TIANMU_TINYINT_MIN)
           v = TIANMU_TINYINT_MIN;
-        *(int64_t *)ptr = v;
+        *reinterpret_cast<int64_t *>(ptr) = v;
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_SHORT: {
@@ -457,7 +457,7 @@ void Engine::EncodeRecord(const std::string &table_path, int table_id, Field **f
           v = TIANMU_SMALLINT_MAX;
         else if (v < TIANMU_SMALLINT_MIN)
           v = TIANMU_SMALLINT_MIN;
-        *(int64_t *)ptr = v;
+        *reinterpret_cast<int64_t *>(ptr) = v;
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_LONG: {
@@ -466,7 +466,7 @@ void Engine::EncodeRecord(const std::string &table_path, int table_id, Field **f
           v = std::numeric_limits<int>::max();
         else if (v < TIANMU_INT_MIN)
           v = TIANMU_INT_MIN;
-        *(int64_t *)ptr = v;
+        *reinterpret_cast<int64_t *>(ptr) = v;
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_INT24: {
@@ -475,7 +475,7 @@ void Engine::EncodeRecord(const std::string &table_path, int table_id, Field **f
           v = TIANMU_MEDIUMINT_MAX;
         else if (v < TIANMU_MEDIUMINT_MIN)
           v = TIANMU_MEDIUMINT_MIN;
-        *(int64_t *)ptr = v;
+        *reinterpret_cast<int64_t *>(ptr) = v;
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_LONGLONG: {
@@ -484,7 +484,7 @@ void Engine::EncodeRecord(const std::string &table_path, int table_id, Field **f
           v = common::TIANMU_BIGINT_MAX;
         else if (v < common::TIANMU_BIGINT_MIN)
           v = common::TIANMU_BIGINT_MIN;
-        *(int64_t *)ptr = v;
+        *reinterpret_cast<int64_t *>(ptr) = v;
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_BIT: {
@@ -493,14 +493,14 @@ void Engine::EncodeRecord(const std::string &table_path, int table_id, Field **f
         // open it when support M = 64, now all value parsed is < 0.
         if (v > common::TIANMU_BIGINT_MAX)  // v > bigint max when uint64_t is supported
           v = common::TIANMU_BIGINT_MAX;    // TODO(fix with bit prec)
-        *(int64_t *)ptr = v;
+        *reinterpret_cast<int64_t *>(ptr) = v;
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_DECIMAL:
       case MYSQL_TYPE_FLOAT:
       case MYSQL_TYPE_DOUBLE: {
         double v = f->val_real();
-        *(int64_t *)ptr = *reinterpret_cast<int64_t *>(&v);
+        *reinterpret_cast<int64_t *>(ptr) = *reinterpret_cast<int64_t *>(&v);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_NEWDECIMAL: {
@@ -644,7 +644,7 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
 
   bool notnull = (field.null_bit == 0);
   auto str = boost::to_upper_copy(std::string(field.comment.str, field.comment.length));
-  bool bloom_filter = (str.find("FILTER") != std::string::npos);
+  bool filter = (str.find("FILTER") != std::string::npos);
 
   auto fmt = common::PackFmt::DEFAULT;
   if (str.find("LOOKUP") != std::string::npos) {
@@ -684,9 +684,9 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
     case MYSQL_TYPE_DATE:
     case MYSQL_TYPE_NEWDATE:
       return AttributeTypeInfo(Engine::GetCorrespondingType(field), notnull, (ushort)field.field_length, 0, auto_inc,
-                               DTCollation(), fmt, bloom_filter);
+                               DTCollation(), fmt, filter);
     case MYSQL_TYPE_TIME:
-      return AttributeTypeInfo(common::ColumnType::TIME, notnull, 0, 0, false, DTCollation(), fmt, bloom_filter);
+      return AttributeTypeInfo(common::ColumnType::TIME, notnull, 0, 0, false, DTCollation(), fmt, filter);
     case MYSQL_TYPE_STRING:
     case MYSQL_TYPE_VARCHAR: {
       if (field.field_length > FIELD_MAXLENGTH)
@@ -704,24 +704,23 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
         }
         if (fstr->charset() != &my_charset_bin)
           return AttributeTypeInfo(common::ColumnType::STRING, notnull, field.field_length, 0, auto_inc, coll, fmt,
-                                   bloom_filter);
-        return AttributeTypeInfo(common::ColumnType::BYTE, notnull, field.field_length, 0, auto_inc, coll, fmt,
-                                 bloom_filter);
+                                   filter);
+        return AttributeTypeInfo(common::ColumnType::BYTE, notnull, field.field_length, 0, auto_inc, coll, fmt, filter);
       } else if (const Field_str *fvstr = dynamic_cast<const Field_varstring *>(&field)) {
         DTCollation coll(fvstr->charset(), fvstr->derivation());
         if (fmt == common::PackFmt::TRIE && types::IsCaseInsensitive(coll))
           throw common::UnsupportedDataTypeException();
         if (fvstr->charset() != &my_charset_bin)
           return AttributeTypeInfo(common::ColumnType::VARCHAR, notnull, field.field_length, 0, auto_inc, coll, fmt,
-                                   bloom_filter);
+                                   filter);
         return AttributeTypeInfo(common::ColumnType::VARBYTE, notnull, field.field_length, 0, auto_inc, coll, fmt,
-                                 bloom_filter);
+                                 filter);
       }
       throw common::UnsupportedDataTypeException();
     }
     case MYSQL_TYPE_BIT: {
       const Field_bit_as_char *f_bit = ((const Field_bit_as_char *)&field);
-      if (/*f_bit->field_length > 0 && */ f_bit->field_length <= common::kTianmuBitMaxPrec)
+      if (/*f_bit->field_length > 0 && */ f_bit->field_length <= common::TIANMU_BIT_MAX_PREC)
         return AttributeTypeInfo(common::ColumnType::BIT, notnull, f_bit->field_length);
       throw common::UnsupportedDataTypeException(
           "The bit(M) type, M must be less than or equal to 63 in tianmu engine.");
@@ -741,19 +740,19 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
             if (field.field_length > FIELD_MAXLENGTH) {
               t = common::ColumnType::LONGTEXT;
             }
-            return AttributeTypeInfo(t, notnull, field.field_length, 0, auto_inc, DTCollation(), fmt, bloom_filter);
+            return AttributeTypeInfo(t, notnull, field.field_length, 0, auto_inc, DTCollation(), fmt, filter);
           }
           switch (field.field_length) {
             case 255:
             case FIELD_MAXLENGTH:
               // TINYBLOB, BLOB
               return AttributeTypeInfo(common::ColumnType::VARBYTE, notnull, field.field_length, 0, auto_inc,
-                                       DTCollation(), fmt, bloom_filter);
+                                       DTCollation(), fmt, filter);
             case 16777215:
             case 4294967295:
               // MEDIUMBLOB, LONGBLOB
               return AttributeTypeInfo(common::ColumnType::BIN, notnull, field.field_length, 0, auto_inc, DTCollation(),
-                                       fmt, bloom_filter);
+                                       fmt, filter);
             default:
               throw common::UnsupportedDataTypeException();
           }
@@ -983,12 +982,13 @@ int Engine::SetUpCacheFolder(const std::string &cachefolder_path) {
   return 0;
 }
 
-std::string get_parameter_name(enum TianmuVarName vn) {
-  DEBUG_ASSERT(static_cast<int>(vn) >= 0 && static_cast<int>(vn) <= static_cast<int>(TianmuVarName::kTianmuVarLimit));
+std::string get_parameter_name(enum tianmu_param_name vn) {
+  DEBUG_ASSERT(static_cast<int>(vn) >= 0 &&
+               static_cast<int>(vn) <= static_cast<int>(tianmu_param_name::TIANMU_VAR_LIMIT));
   return tianmu_var_name_strings[static_cast<int>(vn)];
 }
 
-int get_parameter(THD *thd, enum TianmuVarName vn, double &value) {
+int get_parameter(THD *thd, enum tianmu_param_name vn, double &value) {
   std::string var_data = get_parameter_name(vn);
   user_var_entry *m_entry;
   my_bool null_val;
@@ -1002,7 +1002,7 @@ int get_parameter(THD *thd, enum TianmuVarName vn, double &value) {
   return 0;
 }
 
-int get_parameter(THD *thd, enum TianmuVarName vn, int64_t &value) {
+int get_parameter(THD *thd, enum tianmu_param_name vn, int64_t &value) {
   std::string var_data = get_parameter_name(vn);
   user_var_entry *m_entry;
   my_bool null_val;
@@ -1017,7 +1017,7 @@ int get_parameter(THD *thd, enum TianmuVarName vn, int64_t &value) {
   return 0;
 }
 
-int get_parameter(THD *thd, enum TianmuVarName vn, std::string &value) {
+int get_parameter(THD *thd, enum tianmu_param_name vn, std::string &value) {
   my_bool null_val;
   std::string var_data = get_parameter_name(vn);
   user_var_entry *m_entry;
@@ -1036,7 +1036,7 @@ int get_parameter(THD *thd, enum TianmuVarName vn, std::string &value) {
   return 0;
 }
 
-int get_parameter(THD *thd, enum TianmuVarName vn, longlong &result, std::string &s_result) {
+int get_parameter(THD *thd, enum tianmu_param_name vn, longlong &result, std::string &s_result) {
   user_var_entry *m_entry;
   std::string var_data = get_parameter_name(vn);
 
@@ -1046,7 +1046,7 @@ int get_parameter(THD *thd, enum TianmuVarName vn, longlong &result, std::string
 
   if (m_entry->type() == DECIMAL_RESULT) {
     switch (vn) {
-      case TianmuVarName::kTianmuAbortOnThreshold: {
+      case tianmu_param_name::TIANMU_ABORT_ON_THRESHOLD: {
         double dv;
         my_bool null_value;
         my_decimal v;
@@ -1063,10 +1063,10 @@ int get_parameter(THD *thd, enum TianmuVarName vn, longlong &result, std::string
     return 0;
   } else if (m_entry->type() == INT_RESULT) {
     switch (vn) {
-      case TianmuVarName::kTianmuThrottle:
-      case TianmuVarName::kTianmuExpressions:
-      case TianmuVarName::kTianmuParallelAggr:
-      case TianmuVarName::kTianmuAbortOnCount:
+      case tianmu_param_name::TIANMU_THROTTLE:
+      case tianmu_param_name::TIANMU_TIANMUEXPRESSIONS:
+      case tianmu_param_name::TIANMU_PARALLEL_AGGR:
+      case tianmu_param_name::TIANMU_ABORT_ON_COUNT:
         my_bool null_value;
         result = m_entry->val_int(&null_value);
         break;
@@ -1083,15 +1083,15 @@ int get_parameter(THD *thd, enum TianmuVarName vn, longlong &result, std::string
     m_entry->val_str(&null_value, &str, NOT_FIXED_DEC);
     var_data = std::string(str.ptr());
 
-    if (vn == TianmuVarName::kTianmuDataFormat || vn == TianmuVarName::kTianmuRejectFilePath) {
+    if (vn == tianmu_param_name::TIANMU_DATAFORMAT || vn == tianmu_param_name::TIANMU_REJECT_FILE_PATH) {
       s_result = var_data;
-    } else if (vn == TianmuVarName::kTianmuPipeMode) {
+    } else if (vn == tianmu_param_name::TIANMU_PIPEMODE) {
       boost::to_upper(var_data);
       if (var_data == "SERVER")
         result = 1;
       if (var_data == "CLIENT")
         result = 0;
-    } else if (vn == TianmuVarName::kTianmuNull) {
+    } else if (vn == tianmu_param_name::TIANMU_NULL) {
       s_result = var_data;
     }
     return 0;
@@ -1631,13 +1631,13 @@ bool Engine::IsTIANMURoute(THD *thd, TABLE_LIST *table_list, SELECT_LEX *selects
   if (file) {  // it writes to a file
     longlong param = 0;
     std::string s_res;
-    if (!get_parameter(thd, TianmuVarName::kTianmuDataFormat, param, s_res)) {
+    if (!get_parameter(thd, tianmu_param_name::TIANMU_DATAFORMAT, param, s_res)) {
       if (boost::iequals(boost::trim_copy(s_res), "MYSQL"))
         return false;
 
       common::DataFormatPtr df = common::DataFormat::GetDataFormat(s_res);
       if (!df) {  // parameter is UNKNOWN VALUE
-        my_message(ER_SYNTAX_ERROR, "Histgore specific error: Unknown value of kTianmuDataFormat parameter", MYF(0));
+        my_message(ER_SYNTAX_ERROR, "Histgore specific error: Unknown value of TIANMU_DATAFORMAT parameter", MYF(0));
         return true;
       } else if (!df->CanExport()) {
         my_message(ER_SYNTAX_ERROR,
@@ -1744,29 +1744,30 @@ common::TianmuError Engine::GetRejectFileIOParameters(THD &thd, std::unique_ptr<
   int64_t abort_on_count = 0;
   double abort_on_threshold = 0;
 
-  get_parameter(&thd, TianmuVarName::kTianmuRejectFilePath, reject_file);
-  if (get_parameter(&thd, TianmuVarName::kTianmuRejectFilePath, reject_file) == 2)
+  get_parameter(&thd, tianmu_param_name::TIANMU_REJECT_FILE_PATH, reject_file);
+  if (get_parameter(&thd, tianmu_param_name::TIANMU_REJECT_FILE_PATH, reject_file) == 2)
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_LOAD_REJECT_FILE parameter.");
 
-  if (get_parameter(&thd, TianmuVarName::kTianmuAbortOnCount, abort_on_count) == 2)
-    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of kTianmuAbortOnCount parameter.");
+  if (get_parameter(&thd, tianmu_param_name::TIANMU_ABORT_ON_COUNT, abort_on_count) == 2)
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of TIANMU_ABORT_ON_COUNT parameter.");
 
-  if (get_parameter(&thd, TianmuVarName::kTianmuAbortOnThreshold, abort_on_threshold) == 2)
-    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Wrong value of kTianmuAbortOnThreshold parameter.");
+  if (get_parameter(&thd, tianmu_param_name::TIANMU_ABORT_ON_THRESHOLD, abort_on_threshold) == 2)
+    return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
+                               "Wrong value of TIANMU_ABORT_ON_THRESHOLD parameter.");
 
   if (abort_on_count != 0 && abort_on_threshold != 0)
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
-                               "kTianmuAbortOnCount and kTianmuAbortOnThreshold "
+                               "TIANMU_ABORT_ON_COUNT and TIANMU_ABORT_ON_THRESHOLD "
                                "parameters are mutualy exclusive.");
 
   if (!(abort_on_threshold >= 0.0 && abort_on_threshold < 1.0))
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
-                               "kTianmuAbortOnThreshold parameter value must be in range (0,1).");
+                               "TIANMU_ABORT_ON_THRESHOLD parameter value must be in range (0,1).");
 
   if ((abort_on_count != 0 || abort_on_threshold != 0) && reject_file.empty())
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
-                               "kTianmuAbortOnCount or kTianmuAbortOnThreshold can by only specified with "
-                               "kTianmuRejectFilePath parameter.");
+                               "TIANMU_ABORT_ON_COUNT or TIANMU_ABORT_ON_THRESHOLD can by only specified with "
+                               "TIANMU_REJECT_FILE_PATH parameter.");
 
   if (!reject_file.empty() && fs::exists(reject_file))
     return common::TianmuError(common::ErrorCode::WRONG_PARAMETER,
@@ -1807,10 +1808,10 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
   longlong param = 0;
   std::string s_res;
   if (common::DataFormat::GetNoFormats() > 1) {
-    if (!get_parameter(&thd, TianmuVarName::kTianmuDataFormat, param, s_res)) {
+    if (!get_parameter(&thd, tianmu_param_name::TIANMU_DATAFORMAT, param, s_res)) {
       common::DataFormatPtr df = common::DataFormat::GetDataFormat(s_res);
       if (!df)
-        return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Unknown value of kTianmuDataFormat parameter.");
+        return common::TianmuError(common::ErrorCode::WRONG_PARAMETER, "Unknown value of TIANMU_DATAFORMAT parameter.");
       else
         io_mode = df->GetId();
     } else
@@ -1818,7 +1819,7 @@ common::TianmuError Engine::GetIOP(std::unique_ptr<system::IOParameters> &io_par
   } else
     io_mode = common::DataFormat::GetDataFormat(0)->GetId();
 
-  if (!get_parameter(&thd, TianmuVarName::kTianmuNull, param, s_res))
+  if (!get_parameter(&thd, tianmu_param_name::TIANMU_NULL, param, s_res))
     io_params->SetNullsStr(s_res);
 
   if (io_params->LoadDelayed()) {

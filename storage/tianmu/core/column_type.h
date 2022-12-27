@@ -27,9 +27,9 @@ struct DataType;
 
 struct ColumnType {
   enum class enumCT {
-    kNotNull = 0,
-    kAutoInc,
-    kBloomFilter,
+    NOT_NULL = 0,
+    AUTO_INC,
+    BLOOM_FILTER,
   };
 
  public:
@@ -42,14 +42,14 @@ struct ColumnType {
         display_size(ATI::TextSize(t, prec, sc, collation)),
         collation(collation),
         fmt(fmt) {
-    flag[static_cast<int>(enumCT::kNotNull)] = notnull;
+    flag[static_cast<int>(enumCT::NOT_NULL)] = notnull;
     internal_size = InternalSize();
   }
 
   void Initialize(common::ColumnType t, bool notnull, common::PackFmt f, uint prec, int sc,
                   DTCollation collation = DTCollation()) {
     type = t;
-    flag[static_cast<int>(enumCT::kNotNull)] = notnull;
+    flag[static_cast<int>(enumCT::NOT_NULL)] = notnull;
     fmt = f;
     precision = prec;
     scale = sc;
@@ -95,7 +95,7 @@ struct ColumnType {
   // materialization of Attr
   void OverrideInternalSize(uint size) { internal_size = size; };
   int GetDisplaySize() const { return display_size; }
-  bool IsLookup() const { return fmt == common::PackFmt::LOOKUP; }
+  bool Lookup() const { return fmt == common::PackFmt::LOOKUP; }
   ColumnType RemovedLookup() const;
 
   bool IsNumeric() const {
@@ -121,7 +121,7 @@ struct ColumnType {
   const DTCollation &GetCollation() const { return collation; }
   void SetCollation(DTCollation _collation) { collation = _collation; }
   bool IsNumComparable(const ColumnType &sec) const {
-    if (IsLookup() || sec.IsLookup() || IsString() || sec.IsString())
+    if (Lookup() || sec.Lookup() || IsString() || sec.IsString())
       return false;
     if (scale != sec.scale)
       return false;
@@ -137,11 +137,11 @@ struct ColumnType {
   void SetFmt(common::PackFmt f) { fmt = f; }
   unsigned char GetFlag() const { return flag.to_ulong(); }
   void SetFlag(unsigned char v) { flag = std::bitset<std::numeric_limits<unsigned char>::digits>(v); }
-  bool NotNull() const { return flag[static_cast<int>(enumCT::kNotNull)]; }
+  bool NotNull() const { return flag[static_cast<int>(enumCT::NOT_NULL)]; }
   bool IsNullable() const { return !NotNull(); }
-  bool GetAutoInc() const { return flag[static_cast<int>(enumCT::kAutoInc)]; }
-  void SetAutoInc(bool inc) { flag[static_cast<int>(enumCT::kAutoInc)] = inc; }
-  bool HasFilter() const { return flag[static_cast<int>(enumCT::kBloomFilter)]; }
+  bool GetAutoInc() const { return flag[static_cast<int>(enumCT::AUTO_INC)]; }
+  void SetAutoInc(bool inc) { flag[static_cast<int>(enumCT::AUTO_INC)] = inc; }
+  bool HasFilter() const { return flag[static_cast<int>(enumCT::BLOOM_FILTER)]; }
   bool GetUnsigned() const { return is_unsigned; }
   void SetUnsigned(bool unsigned_) { is_unsigned = unsigned_; }
 

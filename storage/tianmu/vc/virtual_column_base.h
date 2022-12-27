@@ -358,8 +358,8 @@ class VirtualColumnBase : public core::Column {
   inline common::RoughSetValue RoughCheck(const core::MIIterator &it, core::Descriptor &d) {
     return RoughCheckImpl(it, d);
   }
-  //! is a datapack pointed by \e mit kNullsOnly, kUniform, kUniformAndNulls or
-  //! kNormal
+  //! is a datapack pointed by \e mit NULLS_ONLY, UNIFORM, UNIFORM_AND_NULLS or
+  //! NORMAL
   core::PackOntologicalStatus GetPackOntologicalStatus(const core::MIIterator &mit) {
     return GetPackOntologicalStatusImpl(mit);
   }

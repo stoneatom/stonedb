@@ -29,7 +29,7 @@ int ATI::TextSize(common::ColumnType attrt, uint precision, int scale, DTCollati
 }
 
 const types::TianmuDataType &AttributeTypeInfo::ValuePrototype() const {
-  if (IsLookup() || ATI::IsNumericType(attrt_))
+  if (Lookup() || ATI::IsNumericType(attrt_))
     return types::TianmuNum::NullValue();
   if (ATI::IsStringType(attrt_))
     return types::BString::NullValue();

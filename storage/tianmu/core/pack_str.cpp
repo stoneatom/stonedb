@@ -755,7 +755,7 @@ void PackStr::LoadUncompressed(system::Stream *f) {
   ASSERT(data_.sum_len == sz, "bad pack! " + std::to_string(data_.sum_len) + "/" + std::to_string(sz));
 }
 
-bool PackStr::IsLookup(const types::BString &pattern, uint16_t &id) {
+bool PackStr::Lookup(const types::BString &pattern, uint16_t &id) {
   marisa::Agent agent;
   agent.set_query(pattern.GetDataBytesPointer(), pattern.size());
   if (!marisa_trie_.lookup(agent)) {

@@ -102,7 +102,7 @@ void TianmuAttr::Create(const fs::path &dir, const AttributeTypeInfo &ati, uint8
       0,        // compressed size
   };
 
-  if (ati.IsLookup()) {
+  if (ati.Lookup()) {
     hdr.dict_ver = 1;  // starting with 1 because 0 means n/a
 
     fs::create_directory(dir / common::COL_DICT_DIR);
@@ -174,7 +174,7 @@ void TianmuAttr::LoadVersion(common::TX_ID xid) {
 void TianmuAttr::Truncate() {
   no_change = false;
   hdr = {};
-  if (ct.IsLookup()) {
+  if (ct.Lookup()) {
     hdr.dict_ver = 1;  // starting with 1 because 0 means n/a
     auto dict = std::make_unique<FTree>();
     dict->Init(ct.GetPrecision());
@@ -365,15 +365,15 @@ PackOntologicalStatus TianmuAttr::GetPackOntologicalStatus(int pack_no) {
   LoadPackInfo();
   DPN const *dpn(pack_no >= 0 ? &get_dpn(pack_no) : nullptr);
   if (pack_no < 0 || dpn->NullOnly())
-    return PackOntologicalStatus::kNullsOnly;
+    return PackOntologicalStatus::NULLS_ONLY;
   if (GetPackType() == common::PackType::INT) {
     if (dpn->min_i == dpn->max_i) {
       if (dpn->numOfNulls == 0)
-        return PackOntologicalStatus::kUniform;
-      return PackOntologicalStatus::kUniformAndNulls;
+        return PackOntologicalStatus::UNIFORM;
+      return PackOntologicalStatus::UNIFORM_AND_NULLS;
     }
   }
-  return PackOntologicalStatus::kNormal;
+  return PackOntologicalStatus::NORMAL;
 }
 
 types::BString TianmuAttr::GetValueString(const int64_t obj) {
@@ -529,9 +529,9 @@ int64_t TianmuAttr::GetNumOfNulls(int pack) {
 }
 
 size_t TianmuAttr::GetActualSize(int pack) {
-  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::kNullsOnly)
+  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY)
     return 0;
-  if (Type().IsLookup() || GetPackType() != common::PackType::STR)
+  if (Type().Lookup() || GetPackType() != common::PackType::STR)
     return Type().GetPrecision();
   return get_dpn(pack).sum_i;
 }
@@ -539,7 +539,7 @@ size_t TianmuAttr::GetActualSize(int pack) {
 int64_t TianmuAttr::GetSum(int pack, bool &nonnegative) {
   LoadPackInfo();
   auto const &dpn(get_dpn(pack));
-  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::kNullsOnly ||
+  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY ||
       /* dpns.Size() == 0 || */ Type().IsString())
     return common::NULL_VALUE_64;
   if (!Type().IsFloat() &&
@@ -552,21 +552,21 @@ int64_t TianmuAttr::GetSum(int pack, bool &nonnegative) {
 
 int64_t TianmuAttr::GetMinInt64(int pack) {
   LoadPackInfo();
-  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::kNullsOnly)
+  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY)
     return common::MINUS_INF_64;
   return get_dpn(pack).min_i;
 }
 
 int64_t TianmuAttr::GetMaxInt64(int pack) {
   LoadPackInfo();
-  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::kNullsOnly)
+  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY)
     return common::PLUS_INF_64;
   return get_dpn(pack).max_i;
 }
 
 types::BString TianmuAttr::GetMaxString(int pack) {
   LoadPackInfo();
-  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::kNullsOnly || pack_type != common::PackType::STR)
+  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY || pack_type != common::PackType::STR)
     return types::BString();
   auto s = get_dpn(pack).max_s;
   size_t max_len = GetActualSize(pack);
@@ -579,7 +579,7 @@ types::BString TianmuAttr::GetMaxString(int pack) {
 
 types::BString TianmuAttr::GetMinString(int pack) {
   LoadPackInfo();
-  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::kNullsOnly || pack_type != common::PackType::STR)
+  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY || pack_type != common::PackType::STR)
     return types::BString();
   auto s = get_dpn(pack).min_s;
   size_t max_len = GetActualSize(pack);
@@ -606,34 +606,34 @@ types::BString TianmuAttr::DecodeValue_S(int64_t code) {
   if (code == common::NULL_VALUE_64) {
     return types::BString();
   }
-  if (Type().IsLookup()) {
+  if (Type().Lookup()) {
     DEBUG_ASSERT(GetPackType() == common::PackType::INT);
     return m_dict->GetRealValue((int)code);
   }
   common::ColumnType a_type = TypeName();
   if (ATI::IsIntegerType(a_type)) {
     types::TianmuNum tianmu_n(code, -1, false, a_type);
-    types::BString local_tianmu_b = tianmu_n.ToBString();
-    local_tianmu_b.MakePersistent();
-    return local_tianmu_b;
+    types::BString tianmu_bstring = tianmu_n.ToBString();
+    tianmu_bstring.MakePersistent();
+    return tianmu_bstring;
   } else if (ATI::IsRealType(a_type)) {
     types::TianmuNum tianmu_n(code, -1, true, a_type);
-    types::BString local_tianmu_b = tianmu_n.ToBString();
-    local_tianmu_b.MakePersistent();
-    return local_tianmu_b;
+    types::BString tianmu_bstring = tianmu_n.ToBString();
+    tianmu_bstring.MakePersistent();
+    return tianmu_bstring;
   } else if (a_type == common::ColumnType::NUM || a_type == common::ColumnType::BIT) {
     types::TianmuNum tianmu_n(code, Type().GetScale(), false, a_type);
-    types::BString local_tianmu_b = tianmu_n.ToBString();
-    local_tianmu_b.MakePersistent();
-    return local_tianmu_b;
+    types::BString tianmu_bstring = tianmu_n.ToBString();
+    tianmu_bstring.MakePersistent();
+    return tianmu_bstring;
   } else if (ATI::IsDateTimeType(a_type)) {
     types::TianmuDateTime tianmu_dt(code, a_type);
     if (a_type == common::ColumnType::TIMESTAMP) {
       types::TianmuDateTime::AdjustTimezone(tianmu_dt);
     }
-    types::BString local_tianmu_b = tianmu_dt.ToBString();
-    local_tianmu_b.MakePersistent();
-    return local_tianmu_b;
+    types::BString tianmu_bstring = tianmu_dt.ToBString();
+    tianmu_bstring.MakePersistent();
+    return tianmu_bstring;
   }
   return types::BString();
 }
@@ -693,7 +693,7 @@ int64_t TianmuAttr::EncodeValue64(types::TianmuDataType *v, bool &rounded, commo
   if (!v || v->IsNull())
     return common::NULL_VALUE_64;
 
-  if ((Type().IsLookup() && v->Type() != common::ColumnType::NUM && v->Type() != common::ColumnType::BIT)) {
+  if ((Type().Lookup() && v->Type() != common::ColumnType::NUM && v->Type() != common::ColumnType::BIT)) {
     return EncodeValue_T(v->ToBString(), false, tianmu_err_code);
   } else if (ATI::IsDateTimeType(TypeName()) || ATI::IsDateTimeNType(TypeName())) {
     return ((types::TianmuDateTime *)v)->GetInt64();
@@ -749,7 +749,7 @@ int64_t TianmuAttr::EncodeValue64(const types::TianmuValueObject &v, bool &round
 size_t TianmuAttr::GetPrefixLength(int pack) {
   LoadPackInfo();
 
-  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::kNullsOnly)
+  if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY)
     return 0;
 
   auto const &dpn(get_dpn(pack));
@@ -1027,7 +1027,7 @@ void TianmuAttr::UpdateData(uint64_t row, Value &v) {
     ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
   }
 
-  if (ct.IsLookup() && v.HasValue()) {
+  if (ct.Lookup() && v.HasValue()) {
     auto &str = v.GetString();
     int code = m_dict->GetEncodedValue(str.data(), str.size());
     if (code < 0) {
@@ -1218,8 +1218,8 @@ types::BString TianmuAttr::MinS(Filter *f) {
       auto const &dpn(get_dpn(b));
       auto p = get_packS(b);
       if (GetPackType() == common::PackType::INT &&
-          (GetPackOntologicalStatus(b) == PackOntologicalStatus::kUniform ||
-           (GetPackOntologicalStatus(b) == PackOntologicalStatus::kUniformAndNulls && f->IsFull(b)))) {
+          (GetPackOntologicalStatus(b) == PackOntologicalStatus::UNIFORM ||
+           (GetPackOntologicalStatus(b) == PackOntologicalStatus::UNIFORM_AND_NULLS && f->IsFull(b)))) {
         CompareAndSetCurrentMin(DecodeValue_S(dpn.min_i), min, set);
         it.NextPack();
       } else if (!(dpn.NullOnly() || dpn.numOfRecords == 0)) {
@@ -1253,8 +1253,8 @@ types::BString TianmuAttr::MaxS(Filter *f) {
       auto const &dpn(get_dpn(b));
       auto p = get_packS(b);
       if (GetPackType() == common::PackType::INT &&
-          (GetPackOntologicalStatus(b) == PackOntologicalStatus::kUniform ||
-           (GetPackOntologicalStatus(b) == PackOntologicalStatus::kUniformAndNulls && f->IsFull(b)))) {
+          (GetPackOntologicalStatus(b) == PackOntologicalStatus::UNIFORM ||
+           (GetPackOntologicalStatus(b) == PackOntologicalStatus::UNIFORM_AND_NULLS && f->IsFull(b)))) {
         CompareAndSetCurrentMax(DecodeValue_S(dpn.min_i), max);
       } else if (!(dpn.NullOnly() || dpn.numOfRecords == 0)) {
         while (it.IsValid() && b == it.GetCurrPack()) {
@@ -1290,7 +1290,7 @@ void TianmuAttr::UpdateRSI_CMap(common::PACK_INDEX pi) {
   if (!GetFilter_CMap())
     return;
 
-  if (GetPackOntologicalStatus(pi) == PackOntologicalStatus::kNullsOnly)
+  if (GetPackOntologicalStatus(pi) == PackOntologicalStatus::NULLS_ONLY)
     return;
   filter_cmap->Update(pi, get_dpn(pi), get_packS(pi));
 }
@@ -1303,7 +1303,7 @@ void TianmuAttr::UpdateRSI_Bloom(common::PACK_INDEX pi) {
   if (NumOfObj() == 0)
     return;
 
-  if (GetPackOntologicalStatus(pi) == PackOntologicalStatus::kNullsOnly)
+  if (GetPackOntologicalStatus(pi) == PackOntologicalStatus::NULLS_ONLY)
     return;
 
   filter_bloom->Update(pi, get_dpn(pi), get_packS(pi));

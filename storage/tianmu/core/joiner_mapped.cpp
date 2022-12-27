@@ -47,7 +47,7 @@ void JoinerMapped::ExecuteJoinConditions(Condition &cond) {
   vcolumn::VirtualColumn *vc2 = desc.val1.vc;
 
   if (!vc1->Type().IsFixed() || !vc2->Type().IsFixed() || vc1->Type().GetScale() != vc2->Type().GetScale() ||
-      vc1->Type().IsLookup() || vc2->Type().IsLookup())
+      vc1->Type().Lookup() || vc2->Type().Lookup())
     return;
 
   vc1->MarkUsedDims(traversed_dims);  // "traversed" is unique now (a "dimension" table)
@@ -328,7 +328,7 @@ void JoinerParallelMapped::ExecuteJoinConditions(Condition &cond) {
   vcolumn::VirtualColumn *vc2 = desc.val1.vc;
 
   if (!vc1->Type().IsFixed() || !vc2->Type().IsFixed() || vc1->Type().GetScale() != vc2->Type().GetScale() ||
-      vc1->Type().IsLookup() || vc2->Type().IsLookup())
+      vc1->Type().Lookup() || vc2->Type().Lookup())
     return;
 
   vc1->MarkUsedDims(traversed_dims);  // "traversed" is unique now (a "dimension" table)
