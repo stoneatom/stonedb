@@ -348,7 +348,7 @@ void TianmuAttr::EvaluatePack_IsNull(MIUpdatingIterator &mit, int dim) {
       ++mit;
     } while (mit.IsValid() && !mit.PackrowStarted());
   } else {  // pack is trivial - uniform or null only
-    if (GetPackOntologicalStatus(pack) != PackOntologicalStatus::kNullsOnly) {
+    if (GetPackOntologicalStatus(pack) != PackOntologicalStatus::NULLS_ONLY) {
       if (mit.NullsPossibleInPack(dim)) {
         do {
           if (mit[dim] != common::NULL_VALUE_64 || get_pack(pack)->IsDeleted(mit.GetCurInpack(dim)))
@@ -378,7 +378,7 @@ void TianmuAttr::EvaluatePack_NotNull(MIUpdatingIterator &mit, int dim) {
       ++mit;
     } while (mit.IsValid() && !mit.PackrowStarted());
   } else {  // pack is trivial - uniform or null only
-    if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::kNullsOnly)
+    if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY)
       mit.ResetCurrentPack();
     else if (mit.NullsPossibleInPack(dim)) {
       do {
@@ -664,7 +664,7 @@ void TianmuAttr::EvaluatePack_InNum(MIUpdatingIterator &mit, int dim, Descriptor
   if (d.val1.cond_numvalue != nullptr)
     arraysize = d.val1.cond_numvalue->capacity();
   if (local_min == local_max) {
-    if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::kNullsOnly) {
+    if (GetPackOntologicalStatus(pack) == PackOntologicalStatus::NULLS_ONLY) {
       mit.ResetCurrentPack();
       mit.NextPackrow();
     } else {
@@ -750,7 +750,7 @@ void TianmuAttr::EvaluatePack_BetweenString(MIUpdatingIterator &mit, int dim, De
   bool use_trie = false;
   uint16_t trie_id;
   if (v1 == v2 && p->IsTrie()) {
-    use_trie = p->IsLookup(v1, trie_id);
+    use_trie = p->Lookup(v1, trie_id);
     if (!use_trie) {
       mit.ResetCurrentPack();
       mit.NextPackrow();
@@ -808,7 +808,7 @@ void TianmuAttr::EvaluatePack_BetweenString_UTF(MIUpdatingIterator &mit, int dim
   bool use_trie = false;
   uint16_t trie_id;
   if (v1 == v2 && p->IsTrie()) {
-    use_trie = p->IsLookup(v1, trie_id);
+    use_trie = p->Lookup(v1, trie_id);
     if (!use_trie) {
       mit.ResetCurrentPack();
       mit.NextPackrow();
@@ -1152,7 +1152,7 @@ void TianmuAttr::EvaluatePack_AttrAttrReal(MIUpdatingIterator &mit, int dim, Des
 
 bool TianmuAttr::IsDistinct(Filter *f) {
   MEASURE_FET("TianmuAttr::IsDistinct(...)");
-  if (ct.IsLookup() && types::RequiresUTFConversions(GetCollation()))
+  if (ct.Lookup() && types::RequiresUTFConversions(GetCollation()))
     return false;
 
   if (PhysicalColumn::IsDistinct() == common::RoughSetValue::RS_ALL) {  // = is_unique_updated && is_unique
@@ -1263,11 +1263,11 @@ size_t TianmuAttr::MaxStringSize(Filter *f)  // maximal byte string length in co
 {
   LoadPackInfo();
   size_t max_size = 1;
-  if (Type().IsLookup()) {
+  if (Type().Lookup()) {
     int64_t cur_min = common::PLUS_INF_64;
     int64_t cur_max = common::MINUS_INF_64;
     for (uint b = 0; b < SizeOfPack(); b++) {
-      if ((f && f->IsEmpty(b)) || GetPackOntologicalStatus(b) == PackOntologicalStatus::kNullsOnly)
+      if ((f && f->IsEmpty(b)) || GetPackOntologicalStatus(b) == PackOntologicalStatus::NULLS_ONLY)
         continue;
 
       auto &d = get_dpn(b);

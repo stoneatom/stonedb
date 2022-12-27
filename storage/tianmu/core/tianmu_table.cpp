@@ -694,7 +694,7 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
     case MYSQL_TYPE_STRING: {
       String buf;
       f->val_str(&buf);
-      if (m_attrs[col]->Type().IsLookup()) {
+      if (m_attrs[col]->Type().Lookup()) {
         types::BString s(buf.length() == 0 ? "" : buf.ptr(), buf.length());
         int64_t *buf = reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t)));
         *buf = m_attrs[col]->EncodeValue_T(s, true);
@@ -1023,9 +1023,9 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
           if (v == common::NULL_VALUE_64)
             s = types::BString();
           else {
-            types::TianmuNum tianmu_d(v, m_attrs[att]->Type().GetScale(), m_attrs[att]->Type().IsFloat(),
-                                      m_attrs[att]->TypeName());
-            s = tianmu_d.ToBString();
+            types::TianmuNum tianmu_num(v, m_attrs[att]->Type().GetScale(), m_attrs[att]->Type().IsFloat(),
+                                        m_attrs[att]->TypeName());
+            s = tianmu_num.ToBString();
           }
           std::memcpy(ptr, s.GetDataBytesPointer(), s.size());
           ptr += s.size();
@@ -1084,7 +1084,7 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
             ptr += ENCLOSE.length();
           } else {
             types::BString s;
-            if (m_attrs[att]->Type().IsLookup()) {
+            if (m_attrs[att]->Type().Lookup()) {
               s = m_attrs[att]->DecodeValue_S(*(int64_t *)v);
               v = s.GetDataBytesPointer();
               size = s.size();
@@ -1189,7 +1189,7 @@ class DelayedInsertParser final {
             ptr += len;
           } break;
           case common::PackType::INT: {
-            if (attr->Type().IsLookup()) {
+            if (attr->Type().Lookup()) {
               uint32_t len = *(uint32_t *)ptr;
               ptr += sizeof(uint32_t);
               types::BString s(len == 0 ? "" : ptr, len);

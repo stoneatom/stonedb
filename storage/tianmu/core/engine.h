@@ -312,17 +312,17 @@ class ResultExportSender final : public ResultSender {
   std::shared_ptr<system::LargeBuffer> tiammu_buffer_;
 };
 
-enum class TianmuVarName {
-  kTianmuDataFormat = 0,
-  kTianmuPipeMode,
-  kTianmuNull,
-  kTianmuThrottle,
-  kTianmuExpressions,
-  kTianmuParallelAggr,
-  kTianmuRejectFilePath,
-  kTianmuAbortOnCount,
-  kTianmuAbortOnThreshold,
-  kTianmuVarLimit  // KEEP THIS LAST
+enum class tianmu_param_name {
+  TIANMU_DATAFORMAT = 0,
+  TIANMU_PIPEMODE,
+  TIANMU_NULL,
+  TIANMU_THROTTLE,
+  TIANMU_TIANMUEXPRESSIONS,
+  TIANMU_PARALLEL_AGGR,
+  TIANMU_REJECT_FILE_PATH,
+  TIANMU_ABORT_ON_COUNT,
+  TIANMU_ABORT_ON_THRESHOLD,
+  TIANMU_VAR_LIMIT  // KEEP THIS LAST
 };
 
 static std::string tianmu_var_name_strings[] = {"TIANMU_LOAD_TIMEOUT",        "TIANMU_LOAD_DATAFORMAT",
@@ -331,18 +331,18 @@ static std::string tianmu_var_name_strings[] = {"TIANMU_LOAD_TIMEOUT",        "T
                                                 "TIANMU_LOAD_PARALLEL_AGGR",  "TIANMU_LOAD_REJECT_FILE",
                                                 "TIANMU_LOAD_ABORT_ON_COUNT", "TIANMU_LOAD_ABORT_ON_THRESHOLD"};
 
-std::string get_parameter_name(enum TianmuVarName vn);
+std::string get_parameter_name(enum tianmu_param_name vn);
 
-int get_parameter(THD *thd, enum TianmuVarName vn, longlong &result, std::string &s_result);
+int get_parameter(THD *thd, enum tianmu_param_name vn, longlong &result, std::string &s_result);
 
 // return 0 on success
 // 1 if parameter was not specified
 // 2 if was specified but with wrong type
-int get_parameter(THD *thd, enum TianmuVarName vn, double &value);
-int get_parameter(THD *thd, enum TianmuVarName vn, int64_t &value);
-int get_parameter(THD *thd, enum TianmuVarName vn, std::string &value);
+int get_parameter(THD *thd, enum tianmu_param_name vn, double &value);
+int get_parameter(THD *thd, enum tianmu_param_name vn, int64_t &value);
+int get_parameter(THD *thd, enum tianmu_param_name vn, std::string &value);
 
-bool parameter_equals(THD *thd, enum TianmuVarName vn, longlong value);
+bool parameter_equals(THD *thd, enum tianmu_param_name vn, longlong value);
 
 /** The maximum length of an encode table name in bytes.  The max
 +table and database names are NAME_CHAR_LEN (64) characters. After the

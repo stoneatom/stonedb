@@ -54,7 +54,7 @@ uint TxtDataFormat::StaticExtrnalSize(ColumnType attrt, uint precision, int scal
     return 10;
   else if (attrt == ColumnType::INT)
     return 11;  // -2,147,483,648 ~ 2,147,483,647, 1(signed) + 10(max digits)
-  else if (attrt == ColumnType::BIGINT || attrt == ColumnType::BIT)
+  else if (attrt == ColumnType::BIGINT)
     return 20;  // -9,223,372,036,854,775,808 ~ 9,223,372,036,854,775,807, 1(signed) + 19(max digits)
   else if (attrt == ColumnType::BYTEINT || attrt == ColumnType::YEAR)
     return 4;

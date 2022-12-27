@@ -60,7 +60,7 @@ TianmuNum &TianmuNum::Assign(int64_t value, short scale, bool is_double, common:
 
   if (scale != -1 &&
       !is_double_) {  // check if construct decimal, the UNK is used on temp_table.cpp: GetValueString(..)
-    if (scale != 0 || attrt == common::ColumnType::UNK || attrt == common::ColumnType::BIT) {
+    if ((scale != 0 && attrt != common::ColumnType::BIT) || attrt == common::ColumnType::UNK) {
       is_dot_ = true;
       this->attr_type_ = common::ColumnType::NUM;
     }

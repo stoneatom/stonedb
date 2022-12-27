@@ -221,8 +221,8 @@ size_t ExpressionColumn::MaxStringSizeImpl()  // maximal byte string length in c
 }
 
 core::PackOntologicalStatus ExpressionColumn::GetPackOntologicalStatusImpl(const core::MIIterator &mit) {
-  core::PackOntologicalStatus st = deterministic_ ? core::PackOntologicalStatus::kUniform
-                                                  : core::PackOntologicalStatus::kNormal;  // will be used for
+  core::PackOntologicalStatus st =
+      deterministic_ ? core::PackOntologicalStatus::UNIFORM : core::PackOntologicalStatus::NORMAL;  // will be used for
 
   // what about 0 arguments and null only?
   core::PackOntologicalStatus st_loc;
@@ -230,8 +230,8 @@ core::PackOntologicalStatus ExpressionColumn::GetPackOntologicalStatusImpl(const
     // cast to remove const as GetPackOntologicalStatus() is not const
     st_loc = ((core::PhysicalColumn *)it.GetTabPtr()->GetColumn(it.col_ndx))
                  ->GetPackOntologicalStatus(mit.GetCurPackrow(it.dim));
-    if (st_loc != core::PackOntologicalStatus::kUniform && st_loc != core::PackOntologicalStatus::kNullsOnly)
-      return core::PackOntologicalStatus::kNormal;
+    if (st_loc != core::PackOntologicalStatus::UNIFORM && st_loc != core::PackOntologicalStatus::NULLS_ONLY)
+      return core::PackOntologicalStatus::NORMAL;
   }
 
   return st;
@@ -269,7 +269,7 @@ bool ExpressionColumn::ExactlyOneLookup() {
   if (!deterministic_)
     return false;
   auto iter = var_map_.begin();
-  if (iter == var_map_.end() || !iter->GetTabPtr()->GetColumnType(iter->col_ndx).IsLookup())
+  if (iter == var_map_.end() || !iter->GetTabPtr()->GetColumnType(iter->col_ndx).Lookup())
     return false;  // not a lookup
   iter++;
   if (iter != var_map_.end())  // more than one column

@@ -77,6 +77,10 @@ SELECT DATE_ADD('2018-05-01',INTERVAL a DAY) from bit2;
 select a like "10111", b not like "1011" from bit2;
 select strcmp(a,b), strcmp(b,a),strcmp(a,a) from bit2;
 select charset(binary a), collation(binary b) from bit2;
+SELECT _latin1 b'1000001' from bit2;
+SELECT _utf8mb4 0b1000001 COLLATE utf8mb4_danish_ci from bit2;
+--error 1064
+SELECT _utf8mb4 0B1000001 COLLATE utf8mb4_danish_ci from bit_test;
 
 # test bit function & operators: https://dev.mysql.com/doc/refman/8.0/en/bit-functions.html
 SELECT BIT_AND(a), BIT_OR(a), BIT_XOR(a), BIT_COUNT(a), bin(a >> 1), bin(a << 1), bin(~a), bin(a & b'1111'), a ^ b, a | b, a & b from bit2 group by a,b;
@@ -118,6 +122,37 @@ bit63 = CAST(CONV(MID(@var6, 3, LENGTH(@var6)-3), 2, 10) AS UNSIGNED);
 
 select bit1+0, bit2+0, bit8+0, bit16+0, bit32+0, bit63+0 from bit_test;
 
+drop table bit_test;
+
+# boundary test
+CREATE TABLE `bit_test` (
+  `bit1` bit(1) DEFAULT NULL,
+  `bit2` bit(2) DEFAULT NULL,
+  `bit8` bit(8) DEFAULT NULL,
+  `bit16` bit(16) DEFAULT NULL,
+  `bit32` bit(32) DEFAULT NULL,
+  `bit63` bit(63) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+
+insert into bit_test values(b'1', b'11',b'111',b'1111',b'11',b'111');
+#  Data too long for column 'bit1' at row 1
+--error 1406
+insert into bit_test values(b'11', b'11',b'111',b'1111',b'11',b'111');
+#  Data too long for column 'bit2' at row 1
+--error 1406
+insert into bit_test values(b'1', b'111',b'111',b'1111',b'11',b'111');
+#  Data too long for column 'bit8' at row 1
+--error 1406
+insert into bit_test values(b'1', b'1',b'111111111',b'1111',b'11',b'111');
+#  Data too long for column 'bit16' at row 1
+--error 1406
+insert into bit_test values(b'1', b'1',b'1',b'11111111111111111',b'11',b'111');
+#  Data too long for column 'bit32' at row 1
+--error 1406
+insert into bit_test values(b'1', b'1',b'1',b'1', b'111111111111111111111111111111111',b'111');
+#  Data too long for column 'bit63' at row 1
+--error 1406
+insert into bit_test values(b'1', b'1',b'1', b'1', b'1', b'11111111111111111111111111111111111111111111111111111111111111111');
 drop table bit_test;
 
 drop database test_bit;

@@ -187,7 +187,7 @@ void SorterWrapper::InitSorter(MultiIndex &mind, bool implicit_logic) {
   if (rough_sort_by > -1 &&
       (input_cols[rough_sort_by].col->GetDim() == -1 ||  // switch off this optimization for harder cases
        scol[rough_sort_by].IsString() || input_cols[rough_sort_by].col->Type().IsFloat() ||
-       input_cols[rough_sort_by].col->Type().IsLookup() ||
+       input_cols[rough_sort_by].col->Type().Lookup() ||
        input_cols[rough_sort_by].col->GetMultiIndex()->OrigSize(input_cols[rough_sort_by].col->GetDim()) < 65536))
     rough_sort_by = -1;
   if (mi_encoder) {

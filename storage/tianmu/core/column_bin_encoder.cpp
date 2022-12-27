@@ -107,12 +107,12 @@ bool ColumnBinEncoder::PrepareEncoder(vcolumn::VirtualColumn *_vc, vcolumn::Virt
     my_encoder.reset(new ColumnBinEncoder::EncoderDate(vc, decodable, nulls_possible, descending));
   } else if (vct.GetTypeName() == common::ColumnType::YEAR) {
     my_encoder.reset(new ColumnBinEncoder::EncoderYear(vc, decodable, nulls_possible, descending));
-  } else if (!monotonic_encoding && vct.IsLookup() && _vc2 == nullptr &&
+  } else if (!monotonic_encoding && vct.Lookup() && _vc2 == nullptr &&
              !types::RequiresUTFConversions(vc->GetCollation())) {  // Lookup encoding: only non-UTF
     my_encoder.reset(new ColumnBinEncoder::EncoderLookup(vc, decodable, nulls_possible, descending));
     lookup_encoder = true;
-  } else if (!monotonic_encoding && vct.IsLookup() && _vc2 != nullptr &&
-             vct2.IsLookup()) {  // Lookup in joining - may be UTF
+  } else if (!monotonic_encoding && vct.Lookup() && _vc2 != nullptr &&
+             vct2.Lookup()) {  // Lookup in joining - may be UTF
     my_encoder.reset(new ColumnBinEncoder::EncoderLookup(vc, decodable, nulls_possible, descending));
     lookup_encoder = true;
   } else if (vct.IsString() || vct2.IsString()) {

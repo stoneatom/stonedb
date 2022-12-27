@@ -604,7 +604,7 @@ common::ErrorCode ValueParserForText::ParseBitAdapter(const BString &tianmu_s, i
   int len = tianmu_s.len_;
   // No matter null value or not, the value stored in char buffer at least one byte and up to 8 bytes.
   // calculated by len = (prec+7)/8
-  DEBUG_ASSERT(len >=1 && len <=8);
+  DEBUG_ASSERT(len >= 1 && len <= 8);
 
   // The parse code may never go here, but we still check null value for integrity.
   if (tianmu_s.Equals("nullptr", 4)) {
@@ -614,28 +614,36 @@ common::ErrorCode ValueParserForText::ParseBitAdapter(const BString &tianmu_s, i
 
   switch (len) {
     case 1: {
-      out = mi_uint1korr(val_ptr);break;
+      out = mi_uint1korr(val_ptr);
+      break;
     }
     case 2: {
-      out = mi_uint2korr(val_ptr);break;
+      out = mi_uint2korr(val_ptr);
+      break;
     }
     case 3: {
-      out = mi_uint3korr(val_ptr);break;
+      out = mi_uint3korr(val_ptr);
+      break;
     }
     case 4: {
-      out = mi_uint4korr(val_ptr);break;
+      out = mi_uint4korr(val_ptr);
+      break;
     }
     case 5: {
-      out = mi_uint5korr(val_ptr);break;
+      out = mi_uint5korr(val_ptr);
+      break;
     }
     case 6: {
-      out = mi_uint6korr(val_ptr);break;
+      out = mi_uint6korr(val_ptr);
+      break;
     }
     case 7: {
-      out = mi_uint7korr(val_ptr);break;
+      out = mi_uint7korr(val_ptr);
+      break;
     }
     default: {
-      out = mi_uint8korr(val_ptr);break;
+      out = mi_uint8korr(val_ptr);
+      break;
     }
   }
 

@@ -104,21 +104,21 @@ int64_t SingleColumn::GetApproxSumImpl(const core::MIIterator &mit, bool &nonneg
 }
 
 int64_t SingleColumn::GetMinInt64Impl(const core::MIIterator &mit) {
-  if (mit.GetCurPackrow(dim_) >= 0 && !(col_->Type().IsString() && !col_->Type().IsLookup()))
+  if (mit.GetCurPackrow(dim_) >= 0 && !(col_->Type().IsString() && !col_->Type().Lookup()))
     return col_->GetMinInt64(mit.GetCurPackrow(dim_));
   else
     return common::MINUS_INF_64;
 }
 
 int64_t SingleColumn::GetMaxInt64Impl(const core::MIIterator &mit) {
-  if (mit.GetCurPackrow(dim_) >= 0 && !(col_->Type().IsString() && !col_->Type().IsLookup()))
+  if (mit.GetCurPackrow(dim_) >= 0 && !(col_->Type().IsString() && !col_->Type().Lookup()))
     return col_->GetMaxInt64(mit.GetCurPackrow(dim_));
   else
     return common::PLUS_INF_64;
 }
 
 int64_t SingleColumn::GetMinInt64ExactImpl(const core::MIIterator &mit) {
-  if (mit.GetCurPackrow(dim_) >= 0 && mit.WholePack(dim_) && !(col_->Type().IsString() && !col_->Type().IsLookup())) {
+  if (mit.GetCurPackrow(dim_) >= 0 && mit.WholePack(dim_) && !(col_->Type().IsString() && !col_->Type().Lookup())) {
     int64_t val = col_->GetMinInt64(mit.GetCurPackrow(dim_));
     if (val != common::MINUS_INF_64)
       return val;
@@ -128,7 +128,7 @@ int64_t SingleColumn::GetMinInt64ExactImpl(const core::MIIterator &mit) {
 }
 
 int64_t SingleColumn::GetMaxInt64ExactImpl(const core::MIIterator &mit) {
-  if (mit.GetCurPackrow(dim_) >= 0 && mit.WholePack(dim_) && !(col_->Type().IsString() && !col_->Type().IsLookup())) {
+  if (mit.GetCurPackrow(dim_) >= 0 && mit.WholePack(dim_) && !(col_->Type().IsString() && !col_->Type().Lookup())) {
     int64_t val = col_->GetMaxInt64(mit.GetCurPackrow(dim_));
     if (val != common::PLUS_INF_64)
       return val;
@@ -159,7 +159,7 @@ double SingleColumn::RoughSelectivity() { return col_->RoughSelectivity(); }
 std::vector<int64_t> SingleColumn::GetListOfDistinctValues(core::MIIterator const &mit) {
   int pack = mit.GetCurPackrow(dim_);
   if (pack < 0 ||
-      (!mit.WholePack(dim_) && col_->GetPackOntologicalStatus(pack) != core::PackOntologicalStatus::kUniform)) {
+      (!mit.WholePack(dim_) && col_->GetPackOntologicalStatus(pack) != core::PackOntologicalStatus::UNIFORM)) {
     std::vector<int64_t> empty;
     return empty;
   }
