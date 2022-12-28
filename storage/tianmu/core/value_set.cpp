@@ -154,7 +154,6 @@ void ValueSet::Add(const types::TianmuValueObject &rcv) {
   if (rcv.IsNull())
     contains_nulls = true;
   else {
-    // Add(rcv.Get()->Clone());
     std::unique_ptr<types::TianmuDataType> tianmu_dt = rcv.Get()->Clone();
     if (tianmu_dt->IsNull()) {
       contains_nulls = true;
