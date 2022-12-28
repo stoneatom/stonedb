@@ -1,0 +1,148 @@
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue790_test;
+--enable_warnings
+
+CREATE DATABASE issue790_test;
+
+USE issue790_test;
+
+SELECT @@sql_mode;
+SET SQL_MODE='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+SELECT @@sql_mode;
+CREATE TABLE `account` (
+  `id` bigint(20) NOT NULL COMMENT '',
+  `acc_id` bigint(20) NOT NULL COMMENT '',
+  `acc_code` varchar(100) DEFAULT NULL COMMENT '',
+  `acc_name` varchar(50) DEFAULT NULL COMMENT '',
+  `acc_type` tinyint(4) DEFAULT NULL COMMENT '',
+  `balance` decimal(15,2) DEFAULT '0.00' COMMENT '',
+  `froze_amount` decimal(15,2) DEFAULT '0.00' COMMENT '',
+  `remark` varchar(1024) DEFAULT NULL COMMENT '',
+  `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '',
+  `create_person` varchar(50) DEFAULT NULL COMMENT '',
+  `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '',
+  `update_person` varchar(50) DEFAULT NULL COMMENT '',
+  `tenant_id` tinyint(4) DEFAULT NULL,
+  `instance_id` bigint(20) DEFAULT NULL,
+  `extension` varchar(1024) DEFAULT NULL,
+  `dr` tinyint(4) NOT NULL DEFAULT '1' COMMENT '',
+  `version` int(11) DEFAULT '0' COMMENT '',
+  `account_balance` decimal(15,2) DEFAULT '0.00' COMMENT '',
+  `order_froze_amount` decimal(15,2) DEFAULT NULL COMMENT '',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `account_acc_id_uindex` (`acc_id`),
+  KEY `index_name` (`acc_id`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COMMENT='账户';
+
+CREATE TABLE `account_statement` (
+  `id` bigint(20) NOT NULL COMMENT '',
+  `acc_id` bigint(20) NOT NULL COMMENT '',
+  `pa_acc_id` bigint(20) DEFAULT NULL COMMENT '',
+  `ac_type` tinyint(4) DEFAULT NULL COMMENT '',
+  `before_balance` decimal(15,2) NOT NULL DEFAULT '0.00' COMMENT '',
+  `after_balance` decimal(15,2) DEFAULT '0.00' COMMENT '',
+  `pa_amount` decimal(15,2) DEFAULT '0.00' COMMENT '',
+  `business_no` varchar(30) DEFAULT NULL COMMENT '',
+  `business_type` tinyint(4) DEFAULT NULL COMMENT '',
+  `create_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '',
+  `create_person` varchar(50) DEFAULT NULL COMMENT '',
+  `update_time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '',
+  `update_person` varchar(50) DEFAULT NULL COMMENT '',
+  `tenant_id` tinyint(4) DEFAULT NULL,
+  `instance_id` bigint(20) DEFAULT NULL,
+  `extension` varchar(1024) DEFAULT NULL,
+  `dr` tinyint(4) DEFAULT '1' COMMENT '',
+  `before_account_balance` decimal(15,2) DEFAULT '0.00' COMMENT '',
+  `after_account_balance` decimal(15,2) DEFAULT '0.00' COMMENT '',
+  `before_froze_amount` decimal(15,2) DEFAULT '0.00' COMMENT '',
+  `after_froze_amount` decimal(15,2) DEFAULT '0.00' COMMENT '',
+  `before_froze_order_amount` decimal(15,2) DEFAULT NULL COMMENT '',
+  `after_froze_order_amount` decimal(15,2) DEFAULT NULL COMMENT '',
+  PRIMARY KEY (`id`),
+  KEY `index_business_no` (`business_no`),
+  KEY `index_name` (`acc_id`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 COMMENT='账户流水';
+
+CREATE TABLE `customer_branch_account` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `branch_org_name` varchar(255) DEFAULT NULL COMMENT '',
+  `branch_org_code` varchar(50) NOT NULL COMMENT '',
+  `customer_name` varchar(255) DEFAULT NULL COMMENT '',
+  `customer_code` varchar(50) NOT NULL COMMENT '',
+  `agency_org_code` varchar(50) NOT NULL COMMENT '',
+  `agency_org_name` varchar(255) DEFAULT NULL COMMENT '',
+  `shop` varchar(20) DEFAULT NULL COMMENT '',
+  `shop_name` varchar(50) DEFAULT NULL COMMENT '',
+  `draw_category` varchar(50) NOT NULL COMMENT '',
+  `transfer_course` int(11) NOT NULL COMMENT '',
+  `acc_id` bigint(20) DEFAULT NULL COMMENT '',
+  `extension` varchar(255) DEFAULT NULL,
+  `instance_id` bigint(20) DEFAULT NULL,
+  `create_person` varchar(20) DEFAULT NULL,
+  `create_time` datetime DEFAULT NULL,
+  `update_person` varchar(20) DEFAULT NULL,
+  `update_time` datetime DEFAULT NULL,
+  `tenant_id` tinyint(1) DEFAULT '0',
+  `dr` tinyint(1) DEFAULT '0',
+  `type` tinyint(4) NOT NULL COMMENT '',
+  `change_sign` varchar(50) DEFAULT NULL COMMENT '',
+  `rebate_item` varchar(30) DEFAULT NULL COMMENT '',
+  `rebate_subitem` varchar(30) DEFAULT NULL COMMENT '',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `union` (`branch_org_code`,`customer_code`,`agency_org_code`,`draw_category`,`transfer_course`,`type`,`dr`)
+  USING BTREE COMMENT '',
+  KEY `idx_union` (`agency_org_code`,`customer_code`,`draw_category`,`transfer_course`,`dr`)
+  USING BTREE COMMENT ''
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC COMMENT='关系表';
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA local INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue790_customer_branch_account.txt' into TABLE customer_branch_account fields terminated by ',' enclosed by '"' lines terminated by '\n' ;
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA local INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue790_account.txt' into TABLE account fields terminated by ',' enclosed by '"' lines terminated by '\n' ;
+
+--replace_result $MYSQL_TEST_DIR MYSQL_TEST_DIR
+eval LOAD DATA local INFILE '$MYSQL_TEST_DIR/suite/tianmu/std_data/issue790_account_statement.txt' into TABLE account_statement fields terminated by ',' enclosed by '"' lines terminated by '\n' ;
+
+
+
+select * from (
+SELECT cba.branch_org_name AS branch_org_name,
+cba.branch_org_code AS branch_org_code,
+cba.agency_org_name AS agency_org_name,
+cba.agency_org_code AS agency_org_code,
+cba.customer_name AS customer_name,
+cba.customer_code AS customer_code,
+cba.draw_category AS draw_category,
+cba.transfer_course AS transfer_course,
+aa.after_account_balance AS balance
+FROM account a
+LEFT JOIN account_statement aa
+ON a.acc_id = aa.acc_id
+LEFT JOIN customer_branch_account cba
+ON a.acc_id = cba.acc_id
+INNER JOIN (SELECT MAX(id) id
+FROM account_statement
+WHERE ac_type IN (1, 2)
+GROUP BY acc_id) zd
+ON aa.id = zd.id
+WHERE a.dr = '0'
+AND aa.dr = '0'
+AND cba.dr = '0'
+AND cba.transfer_course NOT IN
+(0, 1, 20, 40, 5, 15, 32, 35, 36, 39, 42, 41, 43, 16, 31, 25)
+AND cba . type = '0'
+GROUP BY branch_org_code,
+agency_org_code,
+customer_code,
+draw_category,
+transfer_course
+) v;
+
+
+--echo #
+--echo # Clean Resource
+--echo #
+DROP DATABASE issue790_test;
