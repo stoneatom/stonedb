@@ -1,0 +1,160 @@
+use test;
+drop table IF EXISTS tmp_table;
+# 
+# sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+# 
+set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+create table t_issue1131(c1 int,c2 varchar(255))engine=innodb;
+show create table t_issue1131;
+Table	Create Table
+t_issue1131	CREATE TABLE `t_issue1131` (
+  `c1` int(11) DEFAULT NULL,
+  `c2` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+show variables like 'sql_mode';
+Variable_name	Value
+sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+show variables like '%_engine';
+Variable_name	Value
+default_storage_engine	TIANMU
+default_tmp_storage_engine	InnoDB
+internal_tmp_disk_storage_engine	InnoDB
+alter table t_issue1131 add c3 int;
+show create table t_issue1131;
+Table	Create Table
+t_issue1131	CREATE TABLE `t_issue1131` (
+  `c1` int(11) DEFAULT NULL,
+  `c2` varchar(255) DEFAULT NULL,
+  `c3` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+drop table t_issue1131;
+CREATE TEMPORARY TABLE tmp_table (
+name VARCHAR(10) NOT NULL,
+value INTEGER NOT NULL
+)engine=innodb;
+show create table tmp_table;
+Table	Create Table
+tmp_table	CREATE TEMPORARY TABLE `tmp_table` (
+  `name` varchar(10) NOT NULL,
+  `value` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+drop table tmp_table;
+# 
+# sql_mode='MANDATORY_TIANMU'
+# 
+set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+create table t_issue1131(c1 int,c2 varchar(255))engine=innodb;
+show create table t_issue1131;
+Table	Create Table
+t_issue1131	CREATE TABLE `t_issue1131` (
+  `c1` int(11) DEFAULT NULL,
+  `c2` varchar(255) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
+show variables like 'sql_mode';
+Variable_name	Value
+sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU
+show variables like '%_engine';
+Variable_name	Value
+default_storage_engine	TIANMU
+default_tmp_storage_engine	InnoDB
+internal_tmp_disk_storage_engine	InnoDB
+alter table t_issue1131 add c3 int;
+show create table t_issue1131;
+Table	Create Table
+t_issue1131	CREATE TABLE `t_issue1131` (
+  `c1` int(11) DEFAULT NULL,
+  `c2` varchar(255) DEFAULT NULL,
+  `c3` int(11) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
+drop table t_issue1131;
+CREATE TEMPORARY TABLE tmp_table (
+name VARCHAR(10) NOT NULL,
+value INTEGER NOT NULL
+)engine=innodb;
+show create table tmp_table;
+Table	Create Table
+tmp_table	CREATE TEMPORARY TABLE `tmp_table` (
+  `name` varchar(10) NOT NULL,
+  `value` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+drop table tmp_table;
+# 
+# sql_mode='MANDATORY_TIANMU'
+# set default_storage_engine=innodb;
+set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU';
+set default_storage_engine=innodb;
+create table t_issue1131(c1 int,c2 varchar(255));
+show create table t_issue1131;
+Table	Create Table
+t_issue1131	CREATE TABLE `t_issue1131` (
+  `c1` int(11) DEFAULT NULL,
+  `c2` varchar(255) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
+show variables like 'sql_mode';
+Variable_name	Value
+sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,MANDATORY_TIANMU
+show variables like '%_engine';
+Variable_name	Value
+default_storage_engine	InnoDB
+default_tmp_storage_engine	InnoDB
+internal_tmp_disk_storage_engine	InnoDB
+alter table t_issue1131 add c3 int;
+show create table t_issue1131;
+Table	Create Table
+t_issue1131	CREATE TABLE `t_issue1131` (
+  `c1` int(11) DEFAULT NULL,
+  `c2` varchar(255) DEFAULT NULL,
+  `c3` int(11) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
+drop table t_issue1131;
+CREATE TEMPORARY TABLE tmp_table (
+name VARCHAR(10) NOT NULL,
+value INTEGER NOT NULL
+);
+show create table tmp_table;
+Table	Create Table
+tmp_table	CREATE TEMPORARY TABLE `tmp_table` (
+  `name` varchar(10) NOT NULL,
+  `value` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+drop table tmp_table;
+# 
+# sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'
+# 
+[on slave]
+set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+create table t_issue1131(c1 int,c2 varchar(255));
+show create table t_issue1131;
+Table	Create Table
+t_issue1131	CREATE TABLE `t_issue1131` (
+  `c1` int(11) DEFAULT NULL,
+  `c2` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+show variables like 'sql_mode';
+Variable_name	Value
+sql_mode	STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+show variables like '%_engine';
+Variable_name	Value
+default_storage_engine	InnoDB
+default_tmp_storage_engine	InnoDB
+internal_tmp_disk_storage_engine	InnoDB
+alter table t_issue1131 add c3 int;
+show create table t_issue1131;
+Table	Create Table
+t_issue1131	CREATE TABLE `t_issue1131` (
+  `c1` int(11) DEFAULT NULL,
+  `c2` varchar(255) DEFAULT NULL,
+  `c3` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+drop table t_issue1131;
+CREATE TEMPORARY TABLE tmp_table (
+name VARCHAR(10) NOT NULL,
+value INTEGER NOT NULL
+);
+show create table tmp_table;
+Table	Create Table
+tmp_table	CREATE TEMPORARY TABLE `tmp_table` (
+  `name` varchar(10) NOT NULL,
+  `value` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
+drop table tmp_table;
