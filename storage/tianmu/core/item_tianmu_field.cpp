@@ -145,7 +145,10 @@ double Item_tianmufield::val_real() {
   if ((null_value = buf->null))
     return 0.0;
   FeedValue();
-  return ivalue->val_real();
+  if (unsigned_flag)
+    return static_cast<ulonglong>(ivalue->val_real());
+  else
+    return ivalue->val_real();
 }
 
 longlong Item_tianmufield::val_int() {
