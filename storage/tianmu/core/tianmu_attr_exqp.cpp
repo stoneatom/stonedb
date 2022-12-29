@@ -484,8 +484,12 @@ void TianmuAttr::EvaluatePack_Like_UTF(MIUpdatingIterator &mit, int dim, Descrip
   types::BString pattern;
   d.val1.vc->GetValueString(pattern, mit);
   size_t min_len = 0;  // the number of fixed characters
+  /*
+    When calculating the length of the matching string,
+    need to exclude wildcard characters and characters in ESCAPE
+  */
   for (uint i = 0; i < pattern.len_; i++)
-    if (pattern[i] != '%')
+    if (pattern[i] != '%' && pattern[i] != '\\' && pattern[i] != d.like_esc)
       min_len++;
   std::unordered_set<uint16_t> possible_ids;
   bool use_trie = false;
