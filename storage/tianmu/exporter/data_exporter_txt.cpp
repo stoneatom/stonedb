@@ -57,9 +57,6 @@ void DEforTxt::PutText(const types::BString &str) {
 
 void DEforTxt::PutBin(const types::BString &str) {
   int len = str.size();
-  // if((rcdea[cur_attr_].attrt == common::CT::BYTE) && (len <
-  // rcdea[cur_attr_].size))
-  //	len = rcdea[cur_attr_].size;
   if (len > 0) {
     char *hex = new char[len * 2];
     system::Convert2Hex((const unsigned char *)str.val_, len, hex, len * 2, false);
