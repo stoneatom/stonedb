@@ -11,8 +11,8 @@ USE issue880_db;
 --echo # support (not timestamp union not timestamp)
 --echo # support (timestamp union varchar)
 --echo # support (varchar union timestamp)
---echo # not support (timestamp union datetime)
---echo # not support (datetime union timestamp)
+--echo # support (timestamp union datetime)
+--echo # support (datetime union timestamp)
 --echo # not support (timestamp union other type)
 --echo # not support (other type union timestamp)
 --echo # SELECT timestamp_type/other_type FROM tablename union SELECT timestamp_type/other_type FROM tablename
@@ -168,7 +168,6 @@ where ((a.id = b.period_account_id) and (b.type = 1) and (a.pay_type = 1) and
 (a.period_status = 1));
 
 # test timestamp union datetime
---error 1105
 select b.CREATE_TIME AS create_time
 from (issue880_t3 a join issue880_t1 b)
 where ((a.id = b.period_pay_id) and (a.pay_status = 2) and
@@ -180,7 +179,6 @@ where ((a.id = b.period_account_id) and (b.type = 1) and (a.pay_type = 1) and
 (a.period_status = 1));
 
 # test datetime union timestamp
---error 1105
 select b.update_time AS create_time
 from (issue880_t3 a join issue880_t1 b)
 where ((a.id = b.period_pay_id) and (a.pay_status = 2) and
