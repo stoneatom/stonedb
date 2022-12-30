@@ -1165,7 +1165,7 @@ int ha_tianmu::rnd_pos(uchar *buf, uchar *pos) {
 
   int ret = HA_ERR_END_OF_FILE;
   try {
-    if (table->in_use->slave_thread && table->s->primary_key != MAX_INDEXES && pos && pos[0] != '\0') {
+    if (table->in_use->slave_thread && table->s->primary_key != MAX_INDEXES) {
       ret = index_read(buf, pos, ref_length, HA_READ_KEY_EXACT);
     } else {
       uint64_t position = my_get_ptr(pos, ref_length);
