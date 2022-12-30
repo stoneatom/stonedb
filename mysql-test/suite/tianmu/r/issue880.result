@@ -5,8 +5,8 @@ USE issue880_db;
 # support (not timestamp union not timestamp)
 # support (timestamp union varchar)
 # support (varchar union timestamp)
-# not support (timestamp union datetime)
-# not support (datetime union timestamp)
+# support (timestamp union datetime)
+# support (datetime union timestamp)
 # not support (timestamp union other type)
 # not support (other type union timestamp)
 # SELECT timestamp_type/other_type FROM tablename union SELECT timestamp_type/other_type FROM tablename
@@ -253,7 +253,61 @@ select a.period_time AS create_time
 from (issue880_t2 a join issue880_t1 b)
 where ((a.id = b.period_account_id) and (b.type = 1) and (a.pay_type = 1) and
 (a.period_status = 1));
-ERROR HY000: The query includes syntax that is not supported by the storage engine. Tianmu: UNION of non-matching columns (column no 0) .
+create_time
+2019-06-03 06:08:00
+2019-07-01 06:08:01
+2019-08-01 06:08:00
+2019-09-02 06:08:01
+2019-10-08 06:22:00
+2019-11-01 06:04:00
+2019-12-02 06:06:01
+2020-01-02 05:32:00
+2020-01-18 00:00:03
+2020-03-27 04:10:02
+2020-06-11 23:34:02
+2020-06-14 22:16:02
+2020-06-22 04:08:02
+2020-06-23 21:10:03
+2020-06-24 23:12:03
+2020-06-29 22:52:02
+2020-07-09 23:02:03
+2020-07-13 21:10:03
+2020-09-07 11:28:03
+2020-09-07 11:58:03
+2020-09-07 23:34:04
+2020-09-28 04:06:04
+2020-10-23 04:00:04
+2021-08-18 09:12:00
+2021-08-20 09:50:00
+2021-08-25 14:46:00
+2020-02-28 14:56:34
+2020-03-24 15:04:33
+2020-02-28 10:01:12
+2020-02-28 13:56:04
+2020-02-28 13:31:25
+2020-02-27 17:26:17
+2020-02-28 15:12:48
+2020-02-27 17:30:23
+2020-04-07 09:16:37
+2020-04-07 13:19:43
+2020-02-28 14:50:53
+2020-04-07 20:13:38
+2020-04-07 19:54:43
+2020-04-08 09:22:47
+2020-05-18 13:49:25
+2020-06-11 14:30:25
+2020-07-17 16:32:11
+2020-09-07 18:10:23
+2020-09-07 18:10:18
+2020-09-07 17:53:16
+2020-09-07 17:34:46
+2020-09-07 17:34:31
+2020-09-07 17:33:26
+2020-09-07 17:33:06
+2020-12-01 14:58:50
+2021-02-06 14:46:04
+2021-06-28 13:52:21
+2021-07-16 13:22:13
 select b.update_time AS create_time
 from (issue880_t3 a join issue880_t1 b)
 where ((a.id = b.period_pay_id) and (a.pay_status = 2) and
@@ -263,7 +317,58 @@ select a.create_time AS create_time
 from (issue880_t2 a join issue880_t1 b)
 where ((a.id = b.period_account_id) and (b.type = 1) and (a.pay_type = 1) and
 (a.period_status = 1));
-ERROR HY000: The query includes syntax that is not supported by the storage engine. Tianmu: UNION of non-matching columns (column no 0) .
+create_time
+2019-06-03 12:08:00
+2019-07-01 12:08:00
+2019-08-01 12:08:00
+2019-09-02 12:08:00
+2019-10-08 12:22:00
+2019-11-01 12:04:00
+2019-12-02 12:06:00
+2020-01-02 11:32:00
+2020-01-17 17:38:02
+2020-03-27 10:09:29
+2020-06-04 18:35:31
+2020-06-15 04:15:51
+2020-06-22 10:07:58
+2020-06-22 16:35:08
+2020-06-22 16:35:09
+2020-06-23 16:36:15
+2020-06-28 15:34:37
+2020-06-30 15:04:45
+2020-07-14 03:09:49
+2020-07-14 03:09:50
+2020-09-01 10:05:26
+2020-09-01 10:35:26
+2020-09-01 17:05:14
+2020-09-28 10:06:03
+2020-10-23 10:00:03
+2021-08-18 15:12:00
+2021-08-20 15:50:00
+2021-08-25 20:46:00
+2019-06-01 00:00:00
+2019-07-01 00:00:00
+2019-08-01 00:00:00
+2019-10-01 00:00:00
+2019-11-01 00:00:00
+2020-01-01 00:00:00
+2020-01-16 15:45:59
+2020-01-16 15:53:32
+2020-01-16 15:53:33
+2020-01-16 16:16:04
+2020-01-16 16:19:00
+2020-03-31 13:17:31
+2020-03-31 23:59:23
+2020-03-31 23:59:24
+2020-05-31 23:58:22
+2020-06-28 19:28:24
+2020-08-01 00:01:31
+2020-08-28 17:04:00
+2020-08-28 17:04:01
+2020-12-01 00:02:03
+2021-01-01 00:02:03
+2021-06-22 00:02:00
+2021-07-16 00:02:00
 select b.order_sn AS create_time
 from (issue880_t3 a join issue880_t1 b)
 where ((a.id = b.period_pay_id) and (a.pay_status = 2) and
