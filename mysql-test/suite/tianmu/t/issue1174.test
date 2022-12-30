@@ -1,0 +1,200 @@
+-- source include/have_tianmu.inc
+
+use test;
+--disable_warnings
+drop table if exists `ttt`;
+drop table if exists `t3`;
+--enable_warnings
+
+--disable_warnings
+-- source include/master-slave.inc
+--enable_warnings
+
+
+--echo #
+--echo # Has primary key
+--echo # 
+--echo [on master]
+connection master;
+create table ttt(id int primary key,name varchar(64))engine=innodb;
+insert into ttt values(111,'你好');
+insert into ttt values(11,'aaa');
+insert into ttt values(3,'hhhb');
+insert into ttt values(2,'hhhb');
+insert into ttt values(1,'hhhb');
+insert into ttt values(0,'hhhb');
+insert into ttt values(31,'hhhb');
+insert into ttt values(32,'zzz');
+insert into ttt values(4,'hhhb');
+insert into ttt values(5,'zzz');
+insert into ttt values(6,'hhhb');
+insert into ttt values(7,'zzz');
+insert into ttt values(88,'hhhb');
+insert into ttt values(98,'zzz');
+update ttt set name='lllll' where id in(1,3,2,0);
+select * from ttt where id in(1,3,2,0) order by id desc;
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+select * from ttt where id in(1,3,2,0) order by id desc;
+--echo [on master]
+connection master;
+delete from ttt where id=1;
+delete from ttt where id=0;
+delete from ttt where name='zzz';
+select * from ttt order by id desc;
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+select * from ttt order by id desc;
+--echo [on master]
+connection master;
+drop table ttt;
+CREATE TABLE t3 (a int not null, b int not null, primary key (a,b))engine=innodb;
+insert into t3 values (1,1),(2,1),(1,3),(4,5),(6,7),(8,9),(0,0);
+delete from t3 where a in (4,6,1,0);
+select * from t3 order by a desc;
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+select * from t3 order by a desc;
+--echo [on master]
+connection master;
+drop table t3;
+--source include/sync_slave_sql_with_master.inc
+
+--echo #
+--echo # Have unique constraints
+--echo # 
+--echo [on master]
+connection master;
+create table ttt(id int NOT NULL UNIQUE,name varchar(64))engine=innodb;
+insert into ttt values(111,'你好');
+insert into ttt values(11,'aaa');
+insert into ttt values(3,'hhhb');
+insert into ttt values(2,'hhhb');
+insert into ttt values(1,'hhhb');
+insert into ttt values(0,'hhhb');
+insert into ttt values(31,'hhhb');
+insert into ttt values(32,'zzz');
+insert into ttt values(4,'hhhb');
+insert into ttt values(5,'zzz');
+insert into ttt values(6,'hhhb');
+insert into ttt values(7,'zzz');
+insert into ttt values(88,'hhhb');
+insert into ttt values(98,'zzz');
+update ttt set name='lllll' where id in(1,3,2,0);
+select * from ttt where id in(1,3,2,0) order by id desc;
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+select * from ttt where id in(1,3,2,0) order by id desc;
+--echo [on master]
+connection master;
+delete from ttt where id=1;
+delete from ttt where id=0;
+delete from ttt where name='zzz';
+select * from ttt order by id desc;
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+select * from ttt order by id desc;
+--echo [on master]
+connection master;
+drop table ttt;
+CREATE TABLE t3 (a int not null, b int not null, UNIQUE(a,b))engine=innodb;
+insert into t3 values (1,1),(2,1),(1,3),(4,5),(6,7),(8,9),(0,0);
+delete from t3 where a in (4,6,1,0);
+select * from t3 order by a desc;
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+select * from t3 order by a desc;
+--echo [on master]
+connection master;
+drop table t3;
+--source include/sync_slave_sql_with_master.inc
+
+--echo #
+--echo # With secondary index
+--echo # 
+--echo [on master]
+connection master;
+create table ttt(id int not null,name varchar(64),index(id))engine=innodb;
+insert into ttt values(111,'你好');
+insert into ttt values(11,'aaa');
+insert into ttt values(3,'hhhb');
+insert into ttt values(2,'hhhb');
+insert into ttt values(1,'hhhb');
+insert into ttt values(0,'hhhb');
+insert into ttt values(31,'hhhb');
+insert into ttt values(32,'zzz');
+insert into ttt values(4,'hhhb');
+insert into ttt values(5,'zzz');
+insert into ttt values(6,'hhhb');
+insert into ttt values(7,'zzz');
+insert into ttt values(88,'hhhb');
+insert into ttt values(98,'zzz');
+update ttt set name='lllll' where id in(1,3,2,0);
+select * from ttt where id in(1,3,2,0) order by id desc;
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+select * from ttt where id in(1,3,2,0) order by id desc;
+--echo [on master]
+connection master;
+delete from ttt where id=1;
+delete from ttt where id=0;
+delete from ttt where name='zzz';
+select * from ttt order by id desc;
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+select * from ttt order by id desc;
+--echo [on master]
+connection master;
+drop table ttt;
+CREATE TABLE t3 (a int not null, b int not null, index(a,b))engine=innodb;
+insert into t3 values (1,1),(2,1),(1,3),(4,5),(6,7),(8,9),(0,0);
+delete from t3 where a in (4,6,1,0);
+select * from t3 order by a desc;
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+select * from t3 order by a desc;
+--echo [on master]
+connection master;
+drop table t3;
+--source include/sync_slave_sql_with_master.inc
+
+--echo #
+--echo # common
+--echo # 
+--echo [on master]
+connection master;
+create table ttt(id int , name varchar(64))engine=innodb;
+insert into ttt values(111,'你好');
+insert into ttt values(11,'aaa');
+insert into ttt values(3,'hhhb');
+insert into ttt values(2,'hhhb');
+insert into ttt values(1,'hhhb');
+insert into ttt values(0,'hhhb');
+insert into ttt values(31,'hhhb');
+insert into ttt values(32,'zzz');
+insert into ttt values(4,'hhhb');
+insert into ttt values(5,'zzz');
+insert into ttt values(6,'hhhb');
+insert into ttt values(7,'zzz');
+insert into ttt values(88,'hhhb');
+insert into ttt values(98,'zzz');
+update ttt set name='lllll' where id in(1,3,2,0);
+select * from ttt where id in(1,3,2,0) order by id desc;
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+select * from ttt where id in(1,3,2,0) order by id desc;
+--echo [on master]
+connection master;
+delete from ttt where id=1;
+delete from ttt where id=0;
+delete from ttt where name='zzz';
+select * from ttt order by id desc;
+--echo [on slave]
+--source include/sync_slave_sql_with_master.inc
+select * from ttt order by id desc;
+--echo [on master]
+connection master;
+drop table ttt;
+--source include/sync_slave_sql_with_master.inc
+
+stop slave;
