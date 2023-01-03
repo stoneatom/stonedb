@@ -99,6 +99,9 @@ void TianmuTable::Alter(const std::string &table_path, std::vector<Field *> &new
   fs::path tmp_dir = table_path + ".tmp";
   fs::path tab_dir = table_path + common::TIANMU_EXT;
 
+  if (fs::exists(tmp_dir))
+    fs::remove_all(tmp_dir);
+
   fs::copy(tab_dir, tmp_dir, fs::copy_options::recursive | fs::copy_options::copy_symlinks);
 
   for (auto &p : fs::directory_iterator(tmp_dir / common::COLUMN_DIR)) fs::remove(p);
