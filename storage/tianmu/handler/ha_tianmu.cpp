@@ -372,21 +372,21 @@ int ha_tianmu::write_row([[maybe_unused]] uchar *buf) {
   } catch (common::OutOfMemoryException &e) {
     DBUG_RETURN(ER_LOCK_WAIT_TIMEOUT);
   } catch (common::DatabaseException &e) {
-    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::AddInsertEvent: %s.", e.what());
+    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::AddInsertRecord: %s.", e.what());
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
   } catch (common::FormatException &e) {
-    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::AddInsertEvent: %s Row: %ld, field %u.", e.what(),
+    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::AddInsertRecord: %s Row: %ld, field %u.", e.what(),
                e.m_row_no, e.m_field_no);
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
   } catch (common::FileException &e) {
-    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::AddInsertEvent: %s.", e.what());
+    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::AddInsertRecord: %s.", e.what());
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
   } catch (common::Exception &e) {
-    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::AddInsertEvent: %s.", e.what());
+    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::AddInsertRecord: %s.", e.what());
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
-    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::AddInsertEvent: %s.", e.what());
+    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::AddInsertRecord: %s.", e.what());
   } catch (...) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "An unknown system exception error caught.", MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
@@ -646,7 +646,7 @@ int ha_tianmu::open(const char *name, [[maybe_unused]] int mode, [[maybe_unused]
     // have primary key, use table index
     if (table->s->primary_key != MAX_INDEXES)
       ha_tianmu_engine_->AddTableIndex(name, table, ha_thd());
-    ha_tianmu_engine_->AddMemTable(table, share_);
+    ha_tianmu_engine_->AddTableDelta(table, share_);
     ret = 0;
   } catch (common::Exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Error from Tianmu engine", MYF(0));
@@ -1927,7 +1927,7 @@ int get_DelayedBufferUsage_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *v
 int get_RowStoreUsage_StatusVar([[maybe_unused]] MYSQL_THD thd, SHOW_VAR *var, char *buff) {
   var->type = SHOW_CHAR;
   var->value = buff;
-  std::string str = ha_tianmu_engine_->RowStoreStat();
+  std::string str = ha_tianmu_engine_->DeltaStoreStat();
   std::memcpy(buff, str.c_str(), str.length() + 1);
   return 0;
 }

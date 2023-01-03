@@ -69,7 +69,7 @@ class TableShare;
 class Transaction;
 class RSIndex;
 class TaskExecutor;
-class TianmuMemTable;
+class DeltaTable;
 
 class Engine final {
  public:
@@ -117,11 +117,12 @@ class Engine final {
   int UpdateRow(const std::string &tablename, TABLE *table, std::shared_ptr<TableShare> &share, uint64_t row_id,
                 const uchar *old_data, uchar *new_data);
   void InsertDelayed(const std::string &table_path, int table_id, TABLE *table);
-  void InsertMemRow(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table);
-  void UpdateMemRow(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table, uint64_t row_id,
+  void InsertToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table);
+  void UpdateToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table, uint64_t row_id,
                     const uchar *old_data, uchar *new_data);
+  void DeleteToDelta();
   std::string DelayedBufferStat() { return insert_buffer.Status(); }
-  std::string RowStoreStat();
+  std::string DeltaStoreStat();
   void UnRegisterTable(const std::string &table_path);
   std::shared_ptr<TableShare> GetTableShare(const TABLE_SHARE *table_share);
   common::TX_ID MinXID() const { return min_xid; }
@@ -136,12 +137,13 @@ class Engine final {
   void DropSignal() { cv_drop_.notify_one(); }
   void ResetTaskExecutor(int percent);
   TaskExecutor *GetTaskExecutor() const { return task_executor.get(); }
-  void AddMemTable(TABLE *form, std::shared_ptr<TableShare> share);
-  void UnregisterMemTable(const std::string &from, const std::string &to);
+  void AddTableDelta(TABLE *form, std::shared_ptr<TableShare> share);
+  void UnregisterDeltaTable(const std::string &from, const std::string &to);
 
  public:
-  utils::thread_pool delay_insert_thread_pool;
+  utils::thread_pool bg_load_thread_pool;
   utils::thread_pool load_thread_pool;
+  utils::thread_pool delta_thread_pool;
   utils::thread_pool query_thread_pool;
   utils::thread_pool delete_or_update_thread_pool;
   DataCache cache;
@@ -180,14 +182,16 @@ class Engine final {
   void LogStat();
   std::shared_ptr<TableOption> GetTableOption(const std::string &table, TABLE *form);
   std::shared_ptr<TableShare> getTableShare(const std::string &table_path);
-  void ProcessDelayedInsert();
-  void ProcessDelayedMerge();
   std::unique_ptr<char[]> GetRecord(size_t &len);
+
   void EncodeInsertRecord(const std::string &table_path, int table_id, Field **field, size_t col, size_t blobs,
                           std::unique_ptr<char[]> &buf, uint32_t &size);
-  void EncodeUpdateRecord(const std::string &table_path, int table_id, uint64_t row_id,
-                          std::unordered_map<uint, Field *> update_fields, size_t field_size, size_t blobs,
+  void EncodeUpdateRecord(const std::string &table_path, int table_id,
+                          std::unordered_map<uint, Field *> update_fields, size_t field_count, size_t blobs,
                           std::unique_ptr<char[]> &buf, uint32_t &buf_size);
+  void ProcessInsertBufferMerge();
+  void ProcessDeltaStoreMerge();
+  void EncodeDeleteRecord();
 
  private:
   struct TianmuStat {
@@ -256,7 +260,7 @@ class Engine final {
   unsigned long UT = 0;    // Update total
 
   std::unordered_map<std::string, std::shared_ptr<index::TianmuTableIndex>> m_table_keys;
-  std::unordered_map<std::string, std::shared_ptr<TianmuMemTable>> mem_table_map;
+  std::unordered_map<std::string, std::shared_ptr<DeltaTable>> m_table_deltas;
   std::shared_mutex tables_keys_mutex;
   std::shared_mutex mem_table_mutex;
   std::thread m_drop_idx_thread;

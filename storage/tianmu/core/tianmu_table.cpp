@@ -252,7 +252,7 @@ void TianmuTable::Alter(const std::string &table_path, std::vector<Field *> &new
 
 void TianmuTable::Truncate() {
   for (auto &attr : m_attrs) attr->Truncate();
-  m_mem_table->Truncate(m_tx);
+  m_delta->Truncate(m_tx);
 }
 
 TianmuTable::TianmuTable(std::string const &p, TableShare *s, Transaction *tx) : share(s), m_tx(tx), m_path(p) {
@@ -284,7 +284,7 @@ TianmuTable::TianmuTable(std::string const &p, TableShare *s, Transaction *tx) :
   if (!index::NormalizeName(table_name, normalized_path)) {
     throw common::Exception("Normalization wrong of table  " + share->Path());
   }
-  m_mem_table = ha_kvstore_->FindMemTable(normalized_path);
+  m_delta = ha_kvstore_->FindDeltaTable(normalized_path);
 }
 
 void TianmuTable::LockPackInfoForUse() {
@@ -614,6 +614,10 @@ int64_t TianmuTable::NumOfObj() { return m_attrs[0]->NumOfObj(); }
 
 int64_t TianmuTable::NumOfDeleted() { return m_attrs[0]->NumOfDeleted(); }
 
+int64_t TianmuTable::NumOfValues() { return NumOfObj(); }
+
+uint64_t TianmuTable::NextRowId() { return m_delta->next_row_id++; }
+
 void TianmuTable::GetTable_S(types::BString &s, int64_t obj, int attr) {
   DEBUG_ASSERT(static_cast<size_t>(attr) <= m_attrs.size());
   DEBUG_ASSERT(static_cast<uint64_t>(obj) <= m_attrs[attr]->NumOfObj());
@@ -676,7 +680,7 @@ void TianmuTable::LoadDataInfile(system::IOParameters &iop) {
   if (iop.LoadDelayed()) {
     if (tianmu_sysvar_enable_rowstore) {
       current_txn_->SetLoadSource(common::LoadSource::LS_MemRow);
-      no_loaded_rows = MergeMemTable(iop);
+      no_loaded_rows = MergeDeltaTable(iop);
     } else {
       current_txn_->SetLoadSource(common::LoadSource::LS_InsertBuffer);
       no_loaded_rows = ProcessDelayed(iop);
@@ -1268,8 +1272,8 @@ int TianmuTable::binlog_insert2load_block(std::vector<loader::ValueCache> &vcs, 
 class DelayedInsertParser final {
  public:
   DelayedInsertParser(std::vector<std::unique_ptr<TianmuAttr>> &attrs, std::vector<std::unique_ptr<char[]>> *vec,
-                      uint packsize, std::shared_ptr<index::TianmuTableIndex> index)
-      : pack_size(packsize), attrs(attrs), vec(vec), index_table(index) {}
+                      uint packsize, std::shared_ptr<index::TianmuTableIndex> index, core::Transaction *tx)
+      : pack_size(packsize), attrs(attrs), vec(vec), index_table(index), tx(tx) {}
 
   uint GetRows(uint no_of_rows, std::vector<loader::ValueCache> &value_buffers) {
     int64_t start_row = attrs[0]->NumOfObj();
@@ -1287,12 +1291,16 @@ class DelayedInsertParser final {
       }
 
       auto ptr = (*vec)[processed].get();
-      // int  tid = *(int32_t *)ptr;
-      ptr += sizeof(int32_t);
-      std::string path(ptr);
+      ptr += sizeof(RecordType);  // skip type
+      ptr += sizeof(int32_t);     // skip tid
+      std::string path(ptr);      // table path
       ptr += path.length() + 1;
-      utils::BitSet null_mask(attrs.size(), ptr);
+      size_t field_count = *(size_t *)ptr;  // field count
+      ptr += sizeof(size_t);
+      utils::BitSet null_mask(attrs.size(), ptr);  // null mask
       ptr += null_mask.data_size();
+      int64_t *field_head = (int64_t *)ptr;  // field head
+      ptr += sizeof(int64_t) * field_count;
       for (uint i = 0; i < attrs.size(); i++) {
         auto &vc = value_buffers[i];
         if (null_mask[i]) {
@@ -1361,12 +1369,12 @@ class DelayedInsertParser final {
 
     size_t row_idx = vcs[0].NumOfValues() - 1;
     std::vector<uint> cols = index_table->KeyCols();
-    std::vector<std::string_view> fields;
+    std::vector<std::string_view> index_fields;
     for (auto &col : cols) {
-      fields.emplace_back(vcs[col].GetDataBytesPointer(row_idx), vcs[col].Size(row_idx));
+      index_fields.emplace_back(vcs[col].GetDataBytesPointer(row_idx), vcs[col].Size(row_idx));
     }
 
-    if (index_table->InsertIndex(current_txn_, fields, start_row + row_idx) == common::ErrorCode::DUPP_KEY) {
+    if (index_table->InsertIndex(tx, index_fields, start_row + row_idx) == common::ErrorCode::DUPP_KEY) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Delay insert discard this row for duplicate key");
       return common::ErrorCode::DUPP_KEY;
     }
@@ -1379,6 +1387,7 @@ class DelayedInsertParser final {
   std::vector<std::unique_ptr<TianmuAttr>> &attrs;
   std::vector<std::unique_ptr<char[]>> *vec;
   std::shared_ptr<index::TianmuTableIndex> index_table;
+  core::Transaction *tx;
 };
 
 class DelayedUpdateParser final {
@@ -1471,7 +1480,8 @@ uint64_t TianmuTable::ProcessDelayed(system::IOParameters &iop) {
   std::string str(basename(const_cast<char *>(iop.Path())));
   auto vec = reinterpret_cast<std::vector<std::unique_ptr<char[]>> *>(std::stol(str));
 
-  DelayedInsertParser parser(m_attrs, vec, share->PackSize(), ha_tianmu_engine_->GetTableIndex(share->Path()));
+  DelayedInsertParser parser(m_attrs, vec, share->PackSize(), ha_tianmu_engine_->GetTableIndex(share->Path()),
+                             current_txn_);
   long no_loaded_rows = 0;
 
   uint to_prepare, no_of_rows_returned;
@@ -1503,81 +1513,117 @@ uint64_t TianmuTable::ProcessDelayed(system::IOParameters &iop) {
   return no_loaded_rows;
 }
 
-void TianmuTable::InsertMemRow(std::unique_ptr<char[]> buf, uint32_t size) {
-  return m_mem_table->AddInsertEvent(std::move(buf), size);
+void TianmuTable::InsertToDelta(std::unique_ptr<char[]> buf, uint32_t size) {
+  uint64_t row_id = NextRowId();
+  return m_delta->AddInsertRecord(row_id, std::move(buf), size);
 }
 
-void TianmuTable::UpdateMemRow(std::unique_ptr<char[]> buf, uint32_t size) {
-  return m_mem_table->AddUpdateEvent(std::move(buf), size);
+void TianmuTable::UpdateToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size) {
+  return m_delta->AddUpdateRecord(row_id, std::move(buf), size);
 }
 
-void TianmuTable::DeleteMemRow() {}
+void TianmuTable::DeleteToDelta() {}
 
-uint64_t TianmuTable::MergeMemTable(system::IOParameters &iop) {
+uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
   ASSERT(m_tx, "Transaction not generated.");
-  ASSERT(m_mem_table, "memory table not exist");
-  uint64_t changed_row_num = 0;
-  changed_row_num += MergeInsertRecords(iop);
-  changed_row_num += MergeUpdateRecords();
-  changed_row_num += MergeDeleteRecords();
-  return changed_row_num;
-}
-
-uint64_t TianmuTable::MergeInsertRecords(system::IOParameters &iop) {
-  auto index_table = ha_tianmu_engine_->GetTableIndex(share->Path());
-
-  struct timespec t1, t2, t3;
+  ASSERT(m_delta, "memory table not exist");
+  struct timespec t1, t2;
   clock_gettime(CLOCK_REALTIME, &t1);
-  std::vector<std::unique_ptr<char[]>> vec;
+  std::vector<std::unique_ptr<char[]>> insert_vec;
+  bool insert_vec_full = false;
+  std::vector<std::unique_ptr<char[]>> update_vec;
+  bool update_vec_full = false;
+  std::vector<std::unique_ptr<char[]>> delete_vec;
+  bool delete_vec_full = false;
+
+  utils::result_set<int> async_res;
   {
     uchar entry_key[32];
     size_t key_pos = 0;
-    auto cf_handle = m_mem_table->GetCFHandle();
-    uint32_t mem_id = m_mem_table->GetMemID();
+    auto cf_handle = m_delta->GetCFHandle();
+    uint32_t mem_id = m_delta->GetDeltaTableID();
     index::be_store_index(entry_key + key_pos, mem_id);
     key_pos += sizeof(uint32_t);
-    index::be_store_byte(entry_key + key_pos, static_cast<uchar>(TianmuMemTable::RecordType::kInsert));
-    key_pos += sizeof(uchar);
     rocksdb::Slice entry_slice((char *)entry_key, key_pos);
-
-    uchar upper_key[32];
-    size_t upper_pos = 0;
-    index::be_store_index(upper_key + upper_pos, mem_id);
-    upper_pos += sizeof(uint32_t);
-    uchar upkey = static_cast<int>(TianmuMemTable::RecordType::kInsert) + 1;
-    index::be_store_byte(upper_key + upper_pos, upkey);
-    upper_pos += sizeof(uchar);
-    rocksdb::Slice upper_slice((char *)upper_key, upper_pos);
-
-    m_mem_table->next_load_id_ = m_mem_table->next_insert_id_.load();
-    rocksdb::ReadOptions ropts;
-    ropts.iterate_upper_bound = &upper_slice;
-    std::unique_ptr<rocksdb::Iterator> iter(m_tx->KVTrans().GetDataIterator(ropts, cf_handle));
+    rocksdb::ReadOptions r_opts;
+    std::unique_ptr<rocksdb::Iterator> iter(m_tx->KVTrans().GetDataIterator(r_opts, cf_handle));
     iter->Seek(entry_slice);
-
     while (iter->Valid()) {
       auto value = iter->value();
       std::unique_ptr<char[]> buf(new char[value.size()]);
       std::memcpy(buf.get(), value.data(), value.size());
-      vec.emplace_back(std::move(buf));
-      m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());
-      m_mem_table->stat.read_cnt++;
-      m_mem_table->stat.read_bytes += value.size();
-
+      auto type = static_cast<RecordType>(buf[0]);
+      if (type == RecordType::kInsert && !insert_vec_full) {
+        insert_vec.emplace_back(std::move(buf));
+        m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());
+        m_delta->merge_id++;
+        m_delta->stat.read_cnt++;
+        m_delta->stat.read_bytes += value.size();
+      } else if (type == RecordType::kUpdate && !update_vec_full) {
+        update_vec.emplace_back(std::move(buf));
+        m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());
+        m_delta->merge_id++;
+        m_delta->stat.read_cnt++;
+        m_delta->stat.read_bytes += value.size();
+      } else if (type == RecordType::kDelete && !delete_vec_full) {
+        delete_vec.emplace_back(std::move(buf));
+        m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());
+        m_delta->merge_id++;
+        m_delta->stat.read_cnt++;
+        m_delta->stat.read_bytes += value.size();
+      }
+      if (insert_vec.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered) && !insert_vec_full) {
+        insert_vec_full = true;
+        // start to parse insert records[async]
+        async_res.insert(ha_tianmu_engine_->delta_thread_pool.add_task(&TianmuTable::AsyncParseInsertRecords, this,
+                                                                       &iop, &insert_vec));
+      }
+      if (update_vec.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered) && !update_vec_full) {
+        update_vec_full = true;
+        // start to parse update records[async]
+        async_res.insert(ha_tianmu_engine_->delta_thread_pool.add_task(&TianmuTable::AsyncParseUpdateRecords, this,
+                                                                       &iop, &update_vec));
+      }
+      if (delete_vec.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered) && !delete_vec_full) {
+        delete_vec_full = true;
+        // start to parse update records[async]
+        //        async_res.insert(ha_tianmu_engine_->delta_thread_pool.add_task(&TianmuTable::AsyncParseDeleteRecords,
+        //        this,
+        //                                                                       &iop, &delete_vec));
+      }
       iter->Next();
-      if (vec.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered))
-        break;
-    }
-
-    if (iter->Valid() && iter->key().starts_with(entry_slice)) {
-      m_mem_table->next_load_id_ = index::be_to_uint64((uchar *)iter->key().data() + key_pos);
     }
   }
-  if (vec.empty())
-    return 0;
-  clock_gettime(CLOCK_REALTIME, &t2);
+  if (!insert_vec.empty() && !insert_vec_full) {
+    AsyncParseInsertRecords(&iop, &insert_vec);
+  }
+  if (!update_vec.empty() && !update_vec_full) {
+    async_res.insert(
+        ha_tianmu_engine_->delta_thread_pool.add_task(&TianmuTable::AsyncParseUpdateRecords, this, &iop, &update_vec));
+  }
+  if (!delete_vec.empty() && !insert_vec_full) {
+    //    async_res.insert(
+    //        ha_tianmu_engine_->delta_thread_pool.add_task(&TianmuTable::AsyncParseDeleteRecords, this, &iop,
+    //        &delete_vec));
+  }
+  if (t2.tv_sec - t1.tv_sec > 15) {
+    TIANMU_LOG(LogCtl_Level::WARN, "Latency of rowstore %s larger than 15s, compact manually.", share->Path().c_str());
+    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), m_delta->GetCFHandle(), nullptr, nullptr);
+  }
 
-  DelayedInsertParser parser(m_attrs, &vec, share->PackSize(), index_table);
+  int loaded_row_num = 0;
+  async_res.get_all_with_except();
+  for (size_t i = 0; i < async_res.size(); i++) {
+    loaded_row_num += async_res.get(i);
+  }
+  return loaded_row_num;
+}
+
+int TianmuTable::AsyncParseInsertRecords(system::IOParameters *iop, std::vector<std::unique_ptr<char[]>> *insert_vec) {
+  struct timespec t1, t2;
+  clock_gettime(CLOCK_REALTIME, &t1);
+  auto index_table = ha_tianmu_engine_->GetTableIndex(share->Path());
+  DelayedInsertParser parser(m_attrs, insert_vec, share->PackSize(), index_table, m_tx);
   uint64_t loaded_row_num = 0;
 
   uint to_prepare, no_of_rows_returned;
@@ -1596,84 +1642,31 @@ uint64_t TianmuTable::MergeInsertRecords(system::IOParameters &iop) {
       res.get_all();
       loaded_row_num += real_loaded_rows;
       if (mysql_bin_log.is_open())
-        binlog_insert2load_block(vcs, real_loaded_rows, iop);
+        binlog_insert2load_block(vcs, real_loaded_rows, *iop);
     }
   } while (no_of_rows_returned == to_prepare);
-  clock_gettime(CLOCK_REALTIME, &t3);
-
+  clock_gettime(CLOCK_REALTIME, &t2);
   if (loaded_row_num > 0 && mysql_bin_log.is_open())
-    if (binlog_insert2load_log_event(iop) != 0) {
+    if (binlog_insert2load_log_event(*iop) != 0) {
       TIANMU_LOG(LogCtl_Level::ERROR, "Write insert to load binlog fail!");
       throw common::FormatException("Write insert to load binlog fail!");
     }
 
-  if (t2.tv_sec - t1.tv_sec > 15) {
-    TIANMU_LOG(LogCtl_Level::WARN, "Latency of rowstore %s larger than 15s, compact manually.", share->Path().c_str());
-    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), m_mem_table->GetCFHandle(), nullptr, nullptr);
-  }
-
-  if ((t3.tv_sec - t2.tv_sec > 15) && index_table) {
+  if ((t2.tv_sec - t1.tv_sec > 15) && index_table) {
     TIANMU_LOG(LogCtl_Level::WARN, "Latency of index table %s larger than 15s, compact manually.",
                share->Path().c_str());
     ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rocksdb_key_->get_cf(), nullptr,
                                         nullptr);
   }
-
   return loaded_row_num;
 }
-
-uint64_t TianmuTable::MergeUpdateRecords() {
-  auto index_table = ha_tianmu_engine_->GetTableIndex(share->Path());
-
-  struct timespec t1, t2, t3;
+int TianmuTable::AsyncParseUpdateRecords(system::IOParameters *iop, std::vector<std::unique_ptr<char[]>> *update_vec) {
+  struct timespec t1, t2;
   clock_gettime(CLOCK_REALTIME, &t1);
-  std::vector<std::unique_ptr<char[]>> update_rows;
-  {
-    uchar entry_key[32];
-    size_t key_pos = 0;
-    auto cf_handle = m_mem_table->GetCFHandle();
-    uint32_t mem_id = m_mem_table->GetMemID();
-    index::be_store_index(entry_key + key_pos, mem_id);
-    key_pos += sizeof(uint32_t);
-    index::be_store_byte(entry_key + key_pos, static_cast<uchar>(TianmuMemTable::RecordType::kUpdate));
-    key_pos += sizeof(uchar);
-    rocksdb::Slice entry_slice((char *)entry_key, key_pos);
-
-    uchar upper_key[32];
-    size_t upper_pos = 0;
-    index::be_store_index(upper_key + upper_pos, mem_id);
-    upper_pos += sizeof(uint32_t);
-    uchar upkey = static_cast<int>(TianmuMemTable::RecordType::kUpdate) + 1;
-    index::be_store_byte(upper_key + upper_pos, upkey);
-    upper_pos += sizeof(uchar);
-    rocksdb::Slice upper_slice((char *)upper_key, upper_pos);
-
-    rocksdb::ReadOptions ropts;
-    ropts.iterate_upper_bound = &upper_slice;
-    std::unique_ptr<rocksdb::Iterator> iter(m_tx->KVTrans().GetDataIterator(ropts, cf_handle));
-    iter->Seek(entry_slice);
-
-    while (iter->Valid()) {
-      auto value = iter->value();
-      std::unique_ptr<char[]> buf(new char[value.size()]);
-      std::memcpy(buf.get(), value.data(), value.size());
-      update_rows.emplace_back(std::move(buf));
-      m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());
-      m_mem_table->stat.read_cnt++;
-      m_mem_table->stat.read_bytes += value.size();
-
-      iter->Next();
-      if (update_rows.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered))
-        break;
-    }
-  }
-  if (update_rows.empty())
-    return 0;
-
-  clock_gettime(CLOCK_REALTIME, &t2);
-  DelayedUpdateParser parser(m_attrs, &update_rows, index_table);
+  auto index_table = ha_tianmu_engine_->GetTableIndex(share->Path());
+  DelayedUpdateParser parser(m_attrs, update_vec, index_table);
   std::vector<std::unordered_map<uint64_t, Value>> update_cols_vec;
-  uint64_t returned_row_num = parser.GetRows(update_cols_vec);
+  int returned_row_num = parser.GetRows(update_cols_vec);
   if (returned_row_num > 0) {
     utils::result_set<void> res;
     for (uint att = 0; att < m_attrs.size(); ++att) {
@@ -1684,14 +1677,9 @@ uint64_t TianmuTable::MergeUpdateRecords() {
     }
     res.get_all();
   }
-  clock_gettime(CLOCK_REALTIME, &t3);
+  clock_gettime(CLOCK_REALTIME, &t2);
 
-  if (t2.tv_sec - t1.tv_sec > 15) {
-    TIANMU_LOG(LogCtl_Level::WARN, "Latency of rowstore %s larger than 15s, compact manually.", share->Path().c_str());
-    ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), m_mem_table->GetCFHandle(), nullptr, nullptr);
-  }
-
-  if ((t3.tv_sec - t2.tv_sec > 15) && index_table) {
+  if ((t2.tv_sec - t1.tv_sec > 15) && index_table) {
     TIANMU_LOG(LogCtl_Level::WARN, "Latency of index table %s larger than 15s, compact manually.",
                share->Path().c_str());
     ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), index_table->rocksdb_key_->get_cf(), nullptr,
@@ -1699,7 +1687,9 @@ uint64_t TianmuTable::MergeUpdateRecords() {
   }
   return returned_row_num;
 }
+int TianmuTable::AsyncParseDeleteRecords() {
+  // todo(dfx):
+}
 
-uint64_t TianmuTable::MergeDeleteRecords() { return 0; }
 }  // namespace core
 }  // namespace Tianmu

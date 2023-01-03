@@ -21,9 +21,9 @@
 #include <string>
 
 #include "common/common_definitions.h"
+#include "core/delta_store.h"
 #include "core/just_a_table.h"
 #include "core/tianmu_attr.h"
-#include "core/tianmu_mem_table.h"
 #include "util/fs.h"
 
 namespace Tianmu {
@@ -98,9 +98,10 @@ class TianmuTable final : public JustATable {
   void PostCommit();
 
   // Data access & information
-  int64_t NumOfObj() override;
   int64_t NumOfDeleted();
-  int64_t NumOfValues() { return NumOfObj(); }
+  int64_t NumOfValues();
+  int64_t NumOfObj() override;
+  uint64_t NextRowId();
 
   void GetTable_S(types::BString &s, int64_t obj, int attr) override;
   int64_t GetTable64(int64_t obj, int attr) override;  // value from table in 1-level numerical form
@@ -122,17 +123,23 @@ class TianmuTable final : public JustATable {
   uint32_t Getpackpower() const override;
   int64_t NoRecordsLoaded() { return no_loaded_rows; }
   int64_t NoRecordsDuped() { return no_dup_rows; }
+
+  // directly (no delta)
   int Insert(TABLE *table);
   int Update(TABLE *table, uint64_t row_id, const uchar *old_data, uchar *new_data);
   int Delete(TABLE *table);
+
+  // delta frontend
+  void InsertToDelta(std::unique_ptr<char[]> buf, uint32_t size);
+  void UpdateToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);
+  void DeleteToDelta();
+
+  // delta backend
   void LoadDataInfile(system::IOParameters &iop);
-  void InsertMemRow(std::unique_ptr<char[]> buf, uint32_t size);
-  void UpdateMemRow(std::unique_ptr<char[]> buf, uint32_t size);
-  void DeleteMemRow();  // todo(dfx): delete mem row
-  uint64_t MergeMemTable(system::IOParameters &iop);
-  uint64_t MergeInsertRecords(system::IOParameters &iop);
-  uint64_t MergeUpdateRecords();
-  uint64_t MergeDeleteRecords();
+  uint64_t MergeDeltaTable(system::IOParameters &iop);
+  int AsyncParseInsertRecords(system::IOParameters *iop, std::vector<std::unique_ptr<char[]>> *insert_vec);
+  int AsyncParseUpdateRecords(system::IOParameters *iop, std::vector<std::unique_ptr<char[]>> *update_vec);
+  int AsyncParseDeleteRecords();
 
   std::unique_lock<std::mutex> write_lock;
 
@@ -152,7 +159,7 @@ class TianmuTable final : public JustATable {
   Transaction *m_tx = nullptr;
 
   std::vector<std::unique_ptr<TianmuAttr>> m_attrs;
-  std::shared_ptr<TianmuMemTable> m_mem_table;
+  std::shared_ptr<DeltaTable> m_delta;
 
   std::vector<common::TX_ID> m_versions;
 

@@ -26,10 +26,10 @@
 #include "common/data_format.h"
 #include "common/exception.h"
 #include "common/mysql_gate.h"
+#include "core/delta_store.h"
 #include "core/table_share.h"
 #include "core/task_executor.h"
 #include "core/temp_table.h"
-#include "core/tianmu_mem_table.h"
 #include "core/tools.h"
 #include "core/transaction.h"
 #include "mm/initializer.h"
@@ -185,13 +185,16 @@ static auto GetNames(const std::string &table_path) {
 bool Engine::TrxCmp::operator()(Transaction *l, Transaction *r) const { return l->GetID() < r->GetID(); }
 
 Engine::Engine()
-    : delay_insert_thread_pool(
-          "bg_loader",
-          tianmu_sysvar_bg_load_threads
-              ? tianmu_sysvar_bg_load_threads
-              : ((std::thread::hardware_concurrency() / 2) ? (std::thread::hardware_concurrency() / 2) : 1)),
+    : bg_load_thread_pool("bg_loader", tianmu_sysvar_bg_load_threads ? tianmu_sysvar_bg_load_threads
+                                                                     : ((std::thread::hardware_concurrency() / 2)
+                                                                            ? (std::thread::hardware_concurrency() / 2)
+                                                                            : 1)),
       load_thread_pool("loader",
                        tianmu_sysvar_load_threads ? tianmu_sysvar_load_threads : std::thread::hardware_concurrency()),
+      delta_thread_pool(
+          "delta", tianmu_sysvar_bg_load_threads
+                       ? tianmu_sysvar_bg_load_threads
+                       : ((std::thread::hardware_concurrency() / 2) ? (std::thread::hardware_concurrency() / 2) : 1)),
       query_thread_pool(
           "query", tianmu_sysvar_query_threads ? tianmu_sysvar_query_threads : std::thread::hardware_concurrency()),
       delete_or_update_thread_pool("delete_or_update", tianmu_sysvar_delete_or_update_threads
@@ -260,7 +263,7 @@ int Engine::Init(uint engine_slot) {
     }
   TIANMU_LOG(LogCtl_Level::INFO, "  }");
 
-  TIANMU_LOG(LogCtl_Level::INFO, "Tianmu thread pool for background load, size = %ld", delay_insert_thread_pool.size());
+  TIANMU_LOG(LogCtl_Level::INFO, "Tianmu thread pool for background load, size = %ld", bg_load_thread_pool.size());
   TIANMU_LOG(LogCtl_Level::INFO, "Tianmu thread pool for load, size = %ld", load_thread_pool.size());
   TIANMU_LOG(LogCtl_Level::INFO, "Tianmu thread pool for query, size = %ld", query_thread_pool.size());
 
@@ -302,10 +305,8 @@ int Engine::Init(uint engine_slot) {
     }
     TIANMU_LOG(LogCtl_Level::INFO, "Tianmu monitor thread exiting...");
   });
-
-  m_load_thread = std::thread([this] { ProcessDelayedInsert(); });
-  m_merge_thread = std::thread([this] { ProcessDelayedMerge(); });
-
+  m_load_thread = std::thread([this] { ProcessInsertBufferMerge(); });
+  m_merge_thread = std::thread([this] { ProcessDeltaStoreMerge(); });
   m_purge_thread = std::thread([this] {
     do {
       std::this_thread::sleep_for(std::chrono::seconds(3));
@@ -368,7 +369,7 @@ Engine::~Engine() {
 
   cache.ReleaseAll();
   table_share_map.clear();
-  mem_table_map.clear();
+  m_table_deltas.clear();
   m_table_keys.clear();
   delete m_resourceManager;
   delete the_filter_block_owner;
@@ -390,26 +391,40 @@ Engine::~Engine() {
 
 void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Field **field, size_t col, size_t blobs,
                                 std::unique_ptr<char[]> &buf, uint32_t &size) {
+  // value_layout:
+  //     (Insert)TypeFlag
+  //     table_id
+  //     table_path
+  //     fields_size
+  //     null_mask
+  //     fields count
+  //     fields...
   size = blobs > 0 ? 4_MB : 128_KB;
   buf.reset(new char[size]);
   utils::BitSet null_mask(col);
 
-  // layout:
-  //     table_id
-  //     table_path
-  //     null_mask
-  //     fileds...
   char *ptr = buf.get();
-  *(int32_t *)ptr = table_id;  // table id
+  // RecordType
+  *(RecordType *)ptr = RecordType::kInsert;
+  ptr += sizeof(RecordType);
+  // table id
+  *(int32_t *)ptr = table_id;
   ptr += sizeof(int32_t);
+  // table path
   int32_t path_len = table_path.size();
   std::memcpy(ptr, table_path.c_str(), path_len);
   ptr += path_len;
-  *ptr++ = 0;  // end with NUL
-
+  *ptr++ = 0;  // end with \0
+  // field count
+  *(size_t *)ptr = col;
+  ptr += sizeof(size_t);
+  // null mask
   auto null_offset = ptr - buf.get();
   ptr += null_mask.data_size();
-
+  // field head
+  int64_t *field_head = (int64_t *)ptr;
+  ptr += sizeof(int64_t) * col;
+  auto field_offset = ptr - buf.get();
   for (uint i = 0; i < col; i++) {
     Field *f = field[i];
 
@@ -418,10 +433,9 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
       length = dynamic_cast<Field_blob *>(f)->get_length();
     else
       length = f->row_pack_length();
-
     length += 8;
-
     size_t used = ptr - buf.get();
+    // resize
     if (size - used < length) {
       while (size - used < length) {
         size *= 2;
@@ -449,6 +463,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         else if (v < TIANMU_TINYINT_MIN)
           v = TIANMU_TINYINT_MIN;
         *(int64_t *)ptr = v;
+        field_head[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_SHORT: {
@@ -458,6 +473,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         else if (v < TIANMU_SMALLINT_MIN)
           v = TIANMU_SMALLINT_MIN;
         *(int64_t *)ptr = v;
+        field_head[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_LONG: {
@@ -467,6 +483,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         else if (v < TIANMU_INT_MIN)
           v = TIANMU_INT_MIN;
         *(int64_t *)ptr = v;
+        field_head[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_INT24: {
@@ -476,6 +493,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         else if (v < TIANMU_MEDIUMINT_MIN)
           v = TIANMU_MEDIUMINT_MIN;
         *(int64_t *)ptr = v;
+        field_head[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_LONGLONG: {
@@ -485,6 +503,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         else if (v < common::TIANMU_BIGINT_MIN)
           v = common::TIANMU_BIGINT_MIN;
         *(int64_t *)ptr = v;
+        field_head[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_DECIMAL:
@@ -492,11 +511,13 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
       case MYSQL_TYPE_DOUBLE: {
         double v = f->val_real();
         *(int64_t *)ptr = *reinterpret_cast<int64_t *>(&v);
+        field_head[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_NEWDECIMAL: {
         auto dec_f = dynamic_cast<Field_new_decimal *>(f);
         *(int64_t *)ptr = std::lround(dec_f->val_real() * types::PowOfTen(dec_f->dec));
+        field_head[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_TIME:
@@ -511,6 +532,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         f->get_time(&my_time);
         types::DT dt(my_time);
         *(int64_t *)ptr = dt.val;
+        field_head[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
 
@@ -528,6 +550,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         my_time.second_part = saved;
         types::DT dt(my_time);
         *(int64_t *)ptr = dt.val;
+        field_head[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_YEAR:  // what the hell?
@@ -535,6 +558,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         types::DT dt = {};
         dt.year = f->val_int();
         *(int64_t *)ptr = dt.val;
+        field_head[i] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_VARCHAR:
@@ -550,6 +574,7 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
         ptr += sizeof(uint32_t);
         std::memcpy(ptr, str.ptr(), str.length());
         ptr += str.length();
+        field_head[i] = sizeof(uint32_t) + str.length();
       } break;
       case MYSQL_TYPE_SET:
       case MYSQL_TYPE_ENUM:
@@ -567,52 +592,82 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
   size = ptr - buf.get();
 }
 
-void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id, uint64_t row_id,
-                                std::unordered_map<uint, Field *> update_fields, size_t field_size, size_t blobs,
+void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
+                                std::unordered_map<uint, Field *> update_fields, size_t field_count, size_t blobs,
                                 std::unique_ptr<char[]> &buf, uint32_t &buf_size) {
-  // layout:
+  // value_layout:
+  //     (Update)TypeFlag
   //     table_id
   //     table_path
-  //     row_id
+  //     fields_count
   //     update_mask
   //     null_mask
-  //     update_fileds...
+  //     update_fields...
 
   buf_size = blobs > 0 ? 4_MB : 128_KB;
   buf.reset(new char[buf_size]);
-  utils::BitSet update_mask(field_size);
-  utils::BitSet null_mask(field_size);
+  utils::BitSet update_mask(field_count);
+  utils::BitSet null_mask(field_count);
 
   char *ptr = buf.get();
-
-  *(int32_t *)ptr = table_id;  // table id
+  // RecordType
+  *(RecordType *)ptr = RecordType::kUpdate;
+  ptr += sizeof(RecordType);
+  // table id
+  *(int32_t *)ptr = table_id;
   ptr += sizeof(int32_t);
-
+  // table path
   int32_t path_len = table_path.size();
-  std::memcpy(ptr, table_path.c_str(), path_len);  // table path
+  std::memcpy(ptr, table_path.c_str(), path_len);
   ptr += path_len;
-  *ptr++ = 0;  // end with NULL
-
-  *(uint64_t *)ptr = row_id;  // row id
-  ptr += sizeof(uint64_t);
-
+  *ptr++ = 0;  // end with \0
+  // field count
+  *(size_t *)ptr = field_count;
+  ptr += sizeof(size_t);
+  // update mask
   auto update_offset = ptr - buf.get();
   ptr += update_mask.data_size();
-
+  // null mask
   auto null_offset = ptr - buf.get();
   ptr += null_mask.data_size();
-
-  for (uint col_id = 0; col_id < field_size; col_id++) {
+  // field head
+  int64_t *field_head = (int64_t *)ptr;
+  ptr += sizeof(int64_t) * field_count;
+  auto field_offset = ptr - buf.get();
+  // fields...
+  for (uint col_id = 0; col_id < field_count; col_id++) {
     if (update_fields.find(col_id) == update_fields.end()) {
+      field_head[col_id] = -1;
       continue;
     }
     Field *f = update_fields[col_id];
     if (f == nullptr) {
       null_mask.set(col_id);
+      field_head[col_id] = -1;
       continue;
     }
     update_mask.set(col_id);
-
+    // resize
+    size_t length;
+    if (f->flags & BLOB_FLAG)
+      length = dynamic_cast<Field_blob *>(f)->get_length();
+    else
+      length = f->row_pack_length();
+    length += 8;
+    size_t used = ptr - buf.get();
+    // resize
+    if (buf_size - used < length) {
+      while (buf_size - used < length) {
+        buf_size *= 2;
+        if (buf_size > utils::MappedCircularBuffer::MAX_BUF_SIZE)
+          throw common::Exception(table_path + " INSERT data exceeds max buffer size " +
+                                  std::to_string(utils::MappedCircularBuffer::MAX_BUF_SIZE));
+      }
+      std::unique_ptr<char[]> old_buf = std::move(buf);
+      buf.reset(new char[buf_size]);
+      std::memcpy(buf.get(), old_buf.get(), used);
+      ptr = buf.get() + used;
+    }
     switch (f->type()) {
       case MYSQL_TYPE_TINY: {
         int64_t v = f->val_int();
@@ -621,6 +676,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id, uin
         else if (v < TIANMU_TINYINT_MIN)
           v = TIANMU_TINYINT_MIN;
         *(int64_t *)ptr = v;
+        field_head[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_SHORT: {
@@ -630,6 +686,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id, uin
         else if (v < TIANMU_SMALLINT_MIN)
           v = TIANMU_SMALLINT_MIN;
         *(int64_t *)ptr = v;
+        field_head[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_LONG: {
@@ -639,6 +696,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id, uin
         else if (v < TIANMU_INT_MIN)
           v = TIANMU_INT_MIN;
         *(int64_t *)ptr = v;
+        field_head[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_INT24: {
@@ -648,6 +706,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id, uin
         else if (v < TIANMU_MEDIUMINT_MIN)
           v = TIANMU_MEDIUMINT_MIN;
         *(int64_t *)ptr = v;
+        field_head[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_LONGLONG: {
@@ -657,6 +716,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id, uin
         else if (v < common::TIANMU_BIGINT_MIN)
           v = common::TIANMU_BIGINT_MIN;
         *(int64_t *)ptr = v;
+        field_head[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_DECIMAL:
@@ -664,11 +724,13 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id, uin
       case MYSQL_TYPE_DOUBLE: {
         double v = f->val_real();
         *(int64_t *)ptr = *reinterpret_cast<int64_t *>(&v);
+        field_head[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_NEWDECIMAL: {
         auto dec_f = dynamic_cast<Field_new_decimal *>(f);
         *(int64_t *)ptr = std::lround(dec_f->val_real() * types::PowOfTen(dec_f->dec));
+        field_head[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_TIME:
@@ -683,6 +745,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id, uin
         f->get_time(&my_time);
         types::DT dt(my_time);
         *(int64_t *)ptr = dt.val;
+        field_head[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
 
@@ -700,6 +763,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id, uin
         my_time.second_part = saved;
         types::DT dt(my_time);
         *(int64_t *)ptr = dt.val;
+        field_head[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_YEAR:  // what the hell?
@@ -707,6 +771,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id, uin
         types::DT dt = {};
         dt.year = f->val_int();
         *(int64_t *)ptr = dt.val;
+        field_head[col_id] = sizeof(int64_t);
         ptr += sizeof(int64_t);
       } break;
       case MYSQL_TYPE_VARCHAR:
@@ -722,6 +787,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id, uin
         ptr += sizeof(uint32_t);
         std::memcpy(ptr, str.ptr(), str.length());
         ptr += str.length();
+        field_head[col_id] = sizeof(uint32_t) + str.length();
       } break;
       case MYSQL_TYPE_SET:
       case MYSQL_TYPE_ENUM:
@@ -923,23 +989,6 @@ AttributeTypeInfo Engine::GetAttrTypeInfo(const Field &field) {
   throw;
 }
 
-void Engine::CommitTx(THD *thd, bool all) {
-  if (all || !thd_test_options(thd, OPTION_NOT_AUTOCOMMIT)) {
-    GetTx(thd)->Commit(thd);
-  }
-  ClearTx(thd);
-}
-
-void Engine::Rollback(THD *thd, bool all, bool force_error_message) {
-  force_error_message = force_error_message || (!all && thd_test_options(thd, OPTION_NOT_AUTOCOMMIT));
-  TIANMU_LOG(LogCtl_Level::ERROR, "Roll back query '%s'", thd->query().str);
-  if (current_txn_) {
-    GetTx(thd)->Rollback(thd, force_error_message);
-    ClearTx(thd);
-  }
-  thd->transaction_rollback_request = false;
-}
-
 void Engine::DeleteTable(const char *table, [[maybe_unused]] THD *thd) {
   {
     std::unique_lock<std::shared_mutex> index_guard(tables_keys_mutex);
@@ -948,8 +997,8 @@ void Engine::DeleteTable(const char *table, [[maybe_unused]] THD *thd) {
   }
   {
     std::unique_lock<std::shared_mutex> mem_guard(mem_table_mutex);
-    TianmuMemTable::DropMemTable(table);
-    mem_table_map.erase(table);
+    DeltaTable::DropDeltaTable(table);
+    m_table_deltas.erase(table);
   }
 
   UnRegisterTable(table);
@@ -1067,6 +1116,23 @@ void Engine::UpdateAndStoreColumnComment(TABLE *table, int field_id, Field *sour
   } else {
     table->field[field_id]->store(source_field->comment.str, uint(source_field->comment.length), cs);
   }
+}
+
+void Engine::CommitTx(THD *thd, bool all) {
+  if (all || !thd_test_options(thd, OPTION_NOT_AUTOCOMMIT)) {
+    GetTx(thd)->Commit(thd);
+  }
+  ClearTx(thd);
+}
+
+void Engine::Rollback(THD *thd, bool all, bool force_error_message) {
+  force_error_message = force_error_message || (!all && thd_test_options(thd, OPTION_NOT_AUTOCOMMIT));
+  TIANMU_LOG(LogCtl_Level::ERROR, "Roll back query '%s'", thd->query().str);
+  if (current_txn_) {
+    GetTx(thd)->Rollback(thd, force_error_message);
+    ClearTx(thd);
+  }
+  thd->transaction_rollback_request = false;
 }
 
 void Engine::AddTx(Transaction *tx) {
@@ -1266,7 +1332,7 @@ void Engine::RenameTable([[maybe_unused]] Transaction *trans_, const std::string
   filter_cache.RemoveIf([id](const FilterCoordinate &c) { return c[0] == int(id); });
   system::RenameFile(tianmu_data_dir / (from + common::TIANMU_EXT), tianmu_data_dir / (to + common::TIANMU_EXT));
   RenameRdbTable(from, to);
-  UnregisterMemTable(from, to);
+  UnregisterDeltaTable(from, to);
   TIANMU_LOG(LogCtl_Level::INFO, "Rename table %s to %s", from.c_str(), to.c_str());
 }
 
@@ -1374,13 +1440,13 @@ static void HandleDelayedLoad(uint32_t table_id, std::vector<std::unique_ptr<cha
 void DistributeLoad(std::unordered_map<uint32_t, std::vector<std::unique_ptr<char[]>>> &tm) {
   utils::result_set<void> res;
   for (auto &it : tm) {
-    res.insert(ha_tianmu_engine_->delay_insert_thread_pool.add_task(HandleDelayedLoad, it.first, std::ref(it.second)));
+    res.insert(ha_tianmu_engine_->bg_load_thread_pool.add_task(HandleDelayedLoad, it.first, std::ref(it.second)));
   }
   res.get_all();
   tm.clear();
 }
 
-void Engine::ProcessDelayedInsert() {
+void Engine::ProcessInsertBufferMerge() {
   mysql_mutex_lock(&LOCK_server_started);
   while (!mysqld_server_started) {
     struct timespec abstime;
@@ -1435,7 +1501,7 @@ void Engine::ProcessDelayedInsert() {
   TIANMU_LOG(LogCtl_Level::INFO, "Tianmu load thread exiting...");
 }
 
-void Engine::ProcessDelayedMerge() {
+void Engine::ProcessDeltaStoreMerge() {
   mysql_mutex_lock(&LOCK_server_started);
   while (!mysqld_server_started) {
     struct timespec abstime;
@@ -1460,8 +1526,8 @@ void Engine::ProcessDelayedMerge() {
     {
       try {
         std::scoped_lock guard(mem_table_mutex);
-        for (auto &[name, mem_table] : mem_table_map) {
-          uint64_t record_count = mem_table->CountRecords();
+        for (auto &[name, delta_table] : m_table_deltas) {
+          uint64_t record_count = delta_table->CountRecords();
           if (record_count >= tianmu_sysvar_insert_numthreshold ||
               (sleep_cnts.count(name) && sleep_cnts[name] > tianmu_sysvar_insert_cntthreshold)) {
             auto share = ha_tianmu_engine_->getTableShare(name);
@@ -1622,20 +1688,21 @@ void Engine::InsertDelayed(const std::string &table_path, int table_id, TABLE *t
   }
 }
 
-void Engine::InsertMemRow(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table) {
+void Engine::InsertToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table) {
   my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->read_set);
   std::shared_ptr<void> defer(nullptr,
                               [table, org_bitmap](...) { dbug_tmp_restore_column_map(table->read_set, org_bitmap); });
-
+  // check & encode
   uint32_t buf_sz = 0;
   std::unique_ptr<char[]> buf;
   EncodeInsertRecord(table_path, share->TabID(), table->field, table->s->fields, table->s->blob_fields, buf, buf_sz);
+  // insert to delta
   auto tm_table = share->GetSnapshot();
-  tm_table->InsertMemRow(std::move(buf), buf_sz);
+  tm_table->InsertToDelta(std::move(buf), buf_sz);
 }
 
-void Engine::UpdateMemRow(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table,
-                          uint64_t row_id, const uchar *old_data, uchar *new_data) {
+void Engine::UpdateToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table,
+                           uint64_t row_id, const uchar *old_data, uchar *new_data) {
   my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->read_set);
   std::shared_ptr<void> defer(nullptr,
                               [table, org_bitmap](...) { dbug_tmp_restore_column_map(table->read_set, org_bitmap); });
@@ -1665,10 +1732,9 @@ void Engine::UpdateMemRow(const std::string &table_path, std::shared_ptr<TableSh
 
   uint32_t buf_sz = 0;
   std::unique_ptr<char[]> buf;
-  EncodeUpdateRecord(table_path, share->TabID(), row_id, update_fields, table->s->fields, table->s->blob_fields, buf,
-                     buf_sz);
+  EncodeUpdateRecord(table_path, share->TabID(), update_fields, table->s->fields, table->s->blob_fields, buf, buf_sz);
   auto tm_table = share->GetSnapshot();
-  tm_table->UpdateMemRow(std::move(buf), buf_sz);
+  tm_table->UpdateToDelta(row_id, std::move(buf), buf_sz);
 }
 
 int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transaction *trans_, TABLE *table,
@@ -1677,7 +1743,7 @@ int Engine::InsertRow(const std::string &table_path, [[maybe_unused]] Transactio
   try {
     if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE) {
       if (tianmu_sysvar_enable_rowstore) {
-        InsertMemRow(table_path, share, table);
+        InsertToDelta(table_path, share, table);
       } else {
         InsertDelayed(table_path, share->TabID(), table);
       }
@@ -1709,10 +1775,10 @@ int Engine::UpdateRow(const std::string &table_path, TABLE *table, std::shared_p
   int ret = 0;
   if (tianmu_sysvar_insert_delayed && table->s->tmp_table == NO_TMP_TABLE) {
     if (tianmu_sysvar_enable_rowstore) {
-      UpdateMemRow(table_path, share, table, row_id, old_data, new_data);
+      UpdateToDelta(table_path, share, table, row_id, old_data, new_data);
     } else {
       // todo(dfx): full mem version
-      // InsertDelayed(table_path, share->TabID(), table);
+      // UpdateDelayed(table_path, share->TabID(), table);
     }
     tianmu_stat.delayinsert++;
   } else {
@@ -2201,12 +2267,14 @@ void Engine::RenameRdbTable(const std::string &from, const std::string &to) {
   }
 }
 
-void Engine::AddMemTable(TABLE *form, std::shared_ptr<TableShare> share) {
+void Engine::AddTableDelta(TABLE *form, std::shared_ptr<TableShare> share) {
   std::scoped_lock guard(mem_table_mutex);
   try {
     auto table_path = share->Path();
-    if (mem_table_map.find(table_path) == mem_table_map.end()) {
-      mem_table_map[table_path] = TianmuMemTable::CreateMemTable(share, has_mem_name(form->s->comment));
+    if (m_table_deltas.find(table_path) == m_table_deltas.end()) {
+      m_table_deltas[table_path] = DeltaTable::CreateDeltaTable(share, has_mem_name(form->s->comment));
+      uint64 base_row_num = share->GetSnapshot()->NumOfObj();
+      m_table_deltas[table_path]->Init(base_row_num);
       return;
     }
     return;
@@ -2220,13 +2288,13 @@ void Engine::AddMemTable(TABLE *form, std::shared_ptr<TableShare> share) {
   return;
 }
 
-void Engine::UnregisterMemTable(const std::string &from, const std::string &to) {
+void Engine::UnregisterDeltaTable(const std::string &from, const std::string &to) {
   std::scoped_lock guard(mem_table_mutex);
-  auto iter = mem_table_map.find(from);
-  if (iter != mem_table_map.end()) {
-    auto tb_mem = iter->second;
-    tb_mem->Rename(to);
-    mem_table_map.erase(iter);
+  auto iter = m_table_deltas.find(from);
+  if (iter != m_table_deltas.end()) {
+    auto delta_table = iter->second;
+    delta_table->Rename(to);
+    m_table_deltas.erase(iter);
   }
 }
 
@@ -2252,7 +2320,7 @@ void Engine::ResetTaskExecutor(int percent) {
 
 // notice: rowstore stat compute insert/read roughly
 // as it costs much to get storage size in rocks
-std::string Engine::RowStoreStat() {
+std::string Engine::DeltaStoreStat() {
   uint64_t write_cnt = 0;
   uint64_t write_bytes = 0;
   uint64_t read_cnt = 0;
@@ -2260,16 +2328,16 @@ std::string Engine::RowStoreStat() {
   uint64_t delta_cnt = 0;
   uint64_t delta_bytes = 0;
   std::scoped_lock guard(mem_table_mutex);
-  for (auto &iter : mem_table_map) {
-    auto mem_table = iter.second;
-    write_cnt += mem_table->stat.write_cnt.load();
-    write_bytes += mem_table->stat.write_bytes.load();
-    read_cnt += mem_table->stat.read_cnt;
-    read_bytes += mem_table->stat.read_bytes;
-    if (mem_table->stat.write_cnt > mem_table->stat.read_cnt)
-      delta_cnt += (mem_table->stat.write_cnt - mem_table->stat.read_cnt);
-    if (mem_table->stat.write_bytes > mem_table->stat.read_bytes)
-      delta_bytes += (mem_table->stat.write_bytes - mem_table->stat.read_bytes);
+  for (auto &iter : m_table_deltas) {
+    auto delta_table = iter.second;
+    write_cnt += delta_table->stat.write_cnt.load();
+    write_bytes += delta_table->stat.write_bytes.load();
+    read_cnt += delta_table->stat.read_cnt;
+    read_bytes += delta_table->stat.read_bytes;
+    if (delta_table->stat.write_cnt > delta_table->stat.read_cnt)
+      delta_cnt += (delta_table->stat.write_cnt - delta_table->stat.read_cnt);
+    if (delta_table->stat.write_bytes > delta_table->stat.read_bytes)
+      delta_bytes += (delta_table->stat.write_bytes - delta_table->stat.read_bytes);
   }
 
   return "w:" + std::to_string(write_cnt) + "/" + std::to_string(write_bytes) + ", r:" + std::to_string(read_cnt) +

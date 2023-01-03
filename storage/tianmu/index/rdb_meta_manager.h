@@ -33,7 +33,7 @@
 
 namespace Tianmu {
 namespace core {
-class TianmuMemTable;
+class DeltaTable;
 }
 namespace index {
 class DICTManager;
@@ -44,7 +44,7 @@ class RdbTable;
 
 const std::string DEFAULT_CF_NAME("default");
 const std::string DEFAULT_ROWSTORE_NAME("__rowstore__.default");
-const std::string DEFAULT_ROWSTORE_PREFIX("__rowstore__.");
+const std::string DEFAULT_DELTA_STORE_PREFIX("__rowstore__.");
 const std::string DEFAULT_SYSTEM_CF_NAME("__system__");
 
 const char QUALIFIER_VALUE_SEP = '=';
@@ -244,9 +244,9 @@ class DDLManager {
   // find the handler by table name.
   std::shared_ptr<RdbTable> find(const std::string &table_name);
   // find the mem handler by table name.
-  std::shared_ptr<core::TianmuMemTable> find_mem(const std::string &table_name);
+  std::shared_ptr<core::DeltaTable> find_delta(const std::string &table_name);
   // store a rc mem table into DDL mananger.
-  void put_mem(std::shared_ptr<core::TianmuMemTable> tb_mem, rocksdb::WriteBatch *const batch);
+  void put_delta(std::shared_ptr<core::DeltaTable> delta, rocksdb::WriteBatch *const batch);
 
   // write dictionary into tbl.
   void put_and_write(std::shared_ptr<RdbTable> tbl, rocksdb::WriteBatch *const batch);
@@ -256,8 +256,8 @@ class DDLManager {
   // remove the tbl from dictionary.
   void remove(std::shared_ptr<RdbTable> tbl, rocksdb::WriteBatch *const batch);
   // remove tbl from mem hash table.
-  void remove_mem(std::shared_ptr<core::TianmuMemTable> tb_mem, rocksdb::WriteBatch *const batch);
-  bool rename_mem(std::string &from, std::string &to, rocksdb::WriteBatch *const batch);
+  void remove_delta(std::shared_ptr<core::DeltaTable> tb_mem, rocksdb::WriteBatch *const batch);
+  bool rename_delta(std::string &from, std::string &to, rocksdb::WriteBatch *const batch);
   // get the next seq num.
   uint get_and_update_next_number(DICTManager *const dict) { return seq_gen_.get_and_update_next_number(dict); }
 
@@ -271,7 +271,7 @@ class DDLManager {
 
   // Contains RdbTable elements
   std::unordered_map<std::string, std::shared_ptr<RdbTable>> ddl_hash_;
-  std::unordered_map<std::string, std::shared_ptr<core::TianmuMemTable>> mem_hash_;
+  std::unordered_map<std::string, std::shared_ptr<core::DeltaTable>> delta_hash_;
   std::recursive_mutex lock_;
   std::recursive_mutex mem_lock_;
   SeqGenerator seq_gen_;
@@ -395,11 +395,11 @@ class CFManager {
   std::recursive_mutex cf_mutex_;
 };
 
-inline bool IsRowStoreCF(std::string cf_name) {
-  if (cf_name.size() < DEFAULT_ROWSTORE_PREFIX.size())
+inline bool IsDeltaStoreCF(std::string cf_name) {
+  if (cf_name.size() < DEFAULT_DELTA_STORE_PREFIX.size())
     return false;
 
-  return (strncmp(cf_name.data(), DEFAULT_ROWSTORE_PREFIX.data(), DEFAULT_ROWSTORE_PREFIX.size()) == 0);
+  return (strncmp(cf_name.data(), DEFAULT_DELTA_STORE_PREFIX.data(), DEFAULT_DELTA_STORE_PREFIX.size()) == 0);
 };
 
 }  // namespace index

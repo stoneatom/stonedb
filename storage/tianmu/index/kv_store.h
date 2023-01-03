@@ -56,12 +56,12 @@ class KVStore final {
   // async Droping Data
   void AsyncDropData();
   // gets rocksdb handler
-  rocksdb::TransactionDB *GetRdb() const { return txn_db_; }
+  rocksdb::TransactionDB *GetRdb() const { return index_db_; }
 
   uint GetNextIndexId() { return ddl_manager_.get_and_update_next_number(&dict_manager_); }
   // gets the column family
   rocksdb::ColumnFamilyHandle *GetCfHandle(std::string &cf_name) {
-    return cf_manager_.get_or_create_cf(txn_db_, cf_name);
+    return cf_manager_.get_or_create_cf(index_db_, cf_name);
   }
   // gets the column family by ID
   rocksdb::ColumnFamilyHandle *GetCfHandleByID(const uint32_t id) { return cf_manager_.get_cf_by_id(id); }
@@ -80,22 +80,22 @@ class KVStore final {
 
   // kv memory table meta operation
   // as KVWriteTableMeta does, but not to on-disk but in-mem
-  std::shared_ptr<core::TianmuMemTable> FindMemTable(std::string &name) { return ddl_manager_.find_mem(name); }
-  common::ErrorCode KVWriteMemTableMeta(std::shared_ptr<core::TianmuMemTable> tb_mem);
-  common::ErrorCode KVDelMemTableMeta(std::string table_name);
-  common::ErrorCode KVRenameMemTableMeta(std::string s_name, std::string d_name);
+  std::shared_ptr<core::DeltaTable> FindDeltaTable(std::string &name) { return ddl_manager_.find_delta(name); }
+  common::ErrorCode KVWriteDeltaMeta(std::shared_ptr<core::DeltaTable> delta);
+  common::ErrorCode KVDelDeltaMeta(std::string table_name);
+  common::ErrorCode KVRenameDeltaMeta(std::string s_name, std::string d_name);
 
   // kv data operation
   bool KVDeleteKey(rocksdb::WriteOptions &wopts, rocksdb::ColumnFamilyHandle *cf, rocksdb::Slice &key);
   rocksdb::Iterator *GetScanIter(rocksdb::ReadOptions &ropts, rocksdb::ColumnFamilyHandle *cf) {
-    return txn_db_->NewIterator(ropts, cf);
+    return index_db_->NewIterator(ropts, cf);
   }
   // write mult-rows in batch mode with write options.
   bool KVWriteBatch(rocksdb::WriteOptions &wopts, rocksdb::WriteBatch *batch);
   // gets snapshot from rocksdb.
-  const rocksdb::Snapshot *GetRdbSnapshot() { return txn_db_->GetSnapshot(); }
+  const rocksdb::Snapshot *GetRdbSnapshot() { return index_db_->GetSnapshot(); }
   // release the specific snapshot
-  void ReleaseRdbSnapshot(const rocksdb::Snapshot *snapshot) { txn_db_->ReleaseSnapshot(snapshot); }
+  void ReleaseRdbSnapshot(const rocksdb::Snapshot *snapshot) { index_db_->ReleaseSnapshot(snapshot); }
   // gets the column family name by table handler.
   static std::string generate_cf_name(uint index, TABLE *table);
   // creates a ith key of rocksdb table.
@@ -121,7 +121,8 @@ class KVStore final {
   // bb table options
   rocksdb::BlockBasedTableOptions bb_table_option_;
   // rocksdb transaction
-  rocksdb::TransactionDB *txn_db_;
+  rocksdb::TransactionDB *index_db_;
+  rocksdb::TransactionDB *delta_db_;
   // meta data manager
   DICTManager dict_manager_;
   // column family manager
