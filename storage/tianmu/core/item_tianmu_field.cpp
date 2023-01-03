@@ -140,14 +140,6 @@ void Item_tianmufield::FeedValue() {
   }
 }
 
-double Item_tianmufield::val_real() {
-  // DBUG_ASSERT(fixed == 1);
-  if ((null_value = buf->null))
-    return 0.0;
-  FeedValue();
-  return ivalue->val_real();
-}
-
 longlong Item_tianmufield::val_int() {
   // DBUG_ASSERT(fixed == 1);
   if ((null_value = buf->null))
@@ -175,6 +167,17 @@ String *Item_tianmufield::val_str(String *str) {
   FeedValue();
   str->copy(*(ivalue->val_str(str)));
   return str;
+}
+
+double Item_tianmufield::val_real() {
+  // DBUG_ASSERT(fixed == 1);
+  if ((null_value = buf->null))
+    return 0.0;
+  FeedValue();
+  if (unsigned_flag)
+    return static_cast<ulonglong>(ivalue->val_real());
+  else
+    return ivalue->val_real();
 }
 
 bool Item_tianmufield::get_date(MYSQL_TIME *ltime, uint fuzzydate) {

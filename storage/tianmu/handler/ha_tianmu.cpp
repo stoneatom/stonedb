@@ -1165,7 +1165,7 @@ int ha_tianmu::rnd_pos(uchar *buf, uchar *pos) {
 
   int ret = HA_ERR_END_OF_FILE;
   try {
-    if (table->in_use->slave_thread && table->s->primary_key != MAX_INDEXES && pos && pos[0] != '\0') {
+    if (table->in_use->slave_thread && table->s->primary_key != MAX_INDEXES) {
       ret = index_read(buf, pos, ref_length, HA_READ_KEY_EXACT);
     } else {
       uint64_t position = my_get_ptr(pos, ref_length);
@@ -1645,6 +1645,10 @@ bool ha_tianmu::inplace_alter_table(TABLE *altered_table, Alter_inplace_info *ha
   } catch (...) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
+
+  fs::path tmp_dir = table_name_ + ".tmp";
+  if (fs::exists(tmp_dir))
+    fs::remove_all(tmp_dir);
 
   my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Unable to inplace alter table", MYF(0));
 
