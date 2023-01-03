@@ -1717,8 +1717,7 @@ bool ha_tianmu::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_table
  key: mysql format, may be union key, need changed to kvstore key format
 
  */
-void ha_tianmu::key_convert(const uchar *key, uint key_len, std::vector<uint> cols,
-                            std::vector<std::string> &keys) {
+void ha_tianmu::key_convert(const uchar *key, uint key_len, std::vector<uint> cols, std::vector<std::string> &keys) {
   key_restore(table->record[0], (uchar *)key, &table->key_info[active_index], key_len);
 
   Field **field = table->field;
