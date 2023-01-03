@@ -336,7 +336,7 @@ int ha_tianmu::external_lock(THD *thd, int lock_type) {
 namespace {
 inline bool has_dup_key(std::shared_ptr<index::TianmuTableIndex> &indextab, TABLE *table, size_t &row) {
   common::ErrorCode ret = common::ErrorCode::SUCCESS;
-  std::vector<std::string_view> records;
+  std::vector<std::string> records;
   KEY *key = table->key_info + table->s->primary_key;
 
   for (uint i = 0; i < key->actual_key_parts; i++) {
@@ -861,7 +861,7 @@ int ha_tianmu::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] const uc
     table->status = STATUS_NOT_FOUND;
     auto index = ha_tianmu_engine_->GetTableIndex(table_name_);
     if (index && (active_index == table_share->primary_key)) {
-      std::vector<std::string_view> keys;
+      std::vector<std::string> keys;
       key_convert(key, key_len, index->KeyCols(), keys);
       // support equality fullkey lookup over primary key, using full tuple
       if (find_flag == HA_READ_KEY_EXACT) {
@@ -1718,11 +1718,10 @@ bool ha_tianmu::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_table
 
  */
 void ha_tianmu::key_convert(const uchar *key, uint key_len, std::vector<uint> cols,
-                            std::vector<std::string_view> &keys) {
+                            std::vector<std::string> &keys) {
   key_restore(table->record[0], (uchar *)key, &table->key_info[active_index], key_len);
 
   Field **field = table->field;
-  std::vector<std::string> records;
   for (auto &i : cols) {
     Field *f = field[i];
     size_t length;
@@ -1856,11 +1855,7 @@ void ha_tianmu::key_convert(const uchar *key, uint key_len, std::vector<uint> co
         throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
         break;
     }
-    records.emplace_back((const char *)buf.get(), ptr - buf.get());
-  }
-
-  for (auto &elem : records) {
-    keys.emplace_back(elem.data(), elem.size());
+    keys.emplace_back((const char *)buf.get(), ptr - buf.get());
   }
 }
 
