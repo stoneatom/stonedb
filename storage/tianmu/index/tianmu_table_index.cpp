@@ -166,8 +166,7 @@ common::ErrorCode TianmuTableIndex::CheckUniqueness(core::Transaction *tx, const
   return common::ErrorCode::SUCCESS;
 }
 
-common::ErrorCode TianmuTableIndex::InsertIndex(core::Transaction *tx, std::vector<std::string> &fields,
-                                                uint64_t row) {
+common::ErrorCode TianmuTableIndex::InsertIndex(core::Transaction *tx, std::vector<std::string> &fields, uint64_t row) {
   StringWriter value, key;
 
   rocksdb_key_->pack_key(key, fields, value);
