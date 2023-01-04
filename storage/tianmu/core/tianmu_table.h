@@ -138,7 +138,7 @@ class TianmuTable final : public JustATable {
   void LoadDataInfile(system::IOParameters &iop);
   uint64_t MergeDeltaTable(system::IOParameters &iop);
   int AsyncParseInsertRecords(system::IOParameters *iop, std::vector<std::unique_ptr<char[]>> *insert_vec);
-  int AsyncParseUpdateRecords(system::IOParameters *iop, std::vector<std::unique_ptr<char[]>> *update_vec);
+  int AsyncParseUpdateRecords(system::IOParameters *iop, std::map<uint64_t, std::unique_ptr<char[]>> *update_records);
   int AsyncParseDeleteRecords();
 
   std::unique_lock<std::mutex> write_lock;

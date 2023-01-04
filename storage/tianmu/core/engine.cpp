@@ -396,8 +396,9 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
   //     table_id
   //     table_path
   //     fields_size
-  //     null_mask
   //     fields count
+  //     null_mask
+  //     fields head
   //     fields...
   size = blobs > 0 ? 4_MB : 128_KB;
   buf.reset(new char[size]);
@@ -602,6 +603,7 @@ void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
   //     fields_count
   //     update_mask
   //     null_mask
+  //     field_head
   //     update_fields...
 
   buf_size = blobs > 0 ? 4_MB : 128_KB;

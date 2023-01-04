@@ -1289,17 +1289,25 @@ class DelayedInsertParser final {
         // no more to parse
         return no_of_rows_returned;
       }
-
+      // value_layout:
+      //     (Insert)TypeFlag
+      //     table_id
+      //     table_path
+      //     fields_size
+      //     fields_count
+      //     null_mask
+      //     field_head
+      //     fields...
       auto ptr = (*vec)[processed].get();
-      ptr += sizeof(RecordType);  // skip type
-      ptr += sizeof(int32_t);     // skip tid
-      std::string path(ptr);      // table path
+      ptr += sizeof(RecordType);
+      ptr += sizeof(int32_t);
+      std::string path(ptr);
       ptr += path.length() + 1;
-      size_t field_count = *(size_t *)ptr;  // field count
+      size_t field_count = *(size_t *)ptr;
       ptr += sizeof(size_t);
-      utils::BitSet null_mask(attrs.size(), ptr);  // null mask
+      utils::BitSet null_mask(attrs.size(), ptr);
       ptr += null_mask.data_size();
-      int64_t *field_head = (int64_t *)ptr;  // field head
+      int64_t *field_head = (int64_t *)ptr;
       ptr += sizeof(int64_t) * field_count;
       for (uint i = 0; i < attrs.size(); i++) {
         auto &vc = value_buffers[i];
@@ -1393,40 +1401,46 @@ class DelayedInsertParser final {
 class DelayedUpdateParser final {
  public:
   DelayedUpdateParser(std::vector<std::unique_ptr<TianmuAttr>> &attrs,
-                      std::vector<std::unique_ptr<char[]>> *update_rows, std::shared_ptr<index::TianmuTableIndex> index)
+                      std::map<uint64_t, std::unique_ptr<char[]>> *update_rows,
+                      std::shared_ptr<index::TianmuTableIndex> index)
       : attrs(attrs), update_rows(update_rows), index_table(std::move(index)) {}
 
-  uint GetRows(std::vector<std::unordered_map<uint64_t, Value>> &update_cols_vec) {
-    update_cols_vec.reserve(attrs.size());
+  uint GetRows(std::vector<std::unordered_map<uint64_t, Value>> &update_cols_buf) {
+    update_cols_buf.reserve(attrs.size());
     for (int i = 0; i < attrs.size(); i++) {
-      update_cols_vec.emplace_back(std::unordered_map<uint64_t, Value>());
+      update_cols_buf.emplace_back(std::unordered_map<uint64_t, Value>());
     }
     uint update_row_num = update_rows->size();
-    for (auto &row : *update_rows) {
-      // layout
-      // - table_id (int32_t)
-      // - table_path (string)
-      // - row_id (uint64_t)
-      // - update_mask
-      // - null_mask
-      // - cols
+    for (auto &[row_id, row] : *update_rows) {
+      // value_layout:
+      //     (Update)TypeFlag
+      //     table_id
+      //     table_path
+      //     fields_count
+      //     update_mask
+      //     null_mask
+      //     field_head
+      //     update_fields...
       auto row_ptr = row.get();
+      row_ptr += sizeof(RecordType);
       row_ptr += sizeof(int32_t);
       std::string path(row_ptr);
       row_ptr += path.length() + 1;
-      uint64_t row_id = *(uint64_t *)row_ptr;
-      row_ptr += sizeof(uint64_t);
+      size_t field_count = *(size_t *)row_ptr;
+      row_ptr += sizeof(size_t);
       utils::BitSet update_mask(attrs.size(), row_ptr);
       row_ptr += update_mask.data_size();
       utils::BitSet null_mask(attrs.size(), row_ptr);
       row_ptr += null_mask.data_size();
+      int64_t *field_head = (int64_t *)row_ptr;
+      row_ptr += sizeof(int64_t) * field_count;
       for (uint col_id = 0; col_id < attrs.size(); col_id++) {
         if (!update_mask[col_id]) {
           continue;
         }
         core::Value val;
         if (null_mask[col_id]) {
-          update_cols_vec[col_id].emplace(row_id, val);
+          update_cols_buf[col_id].emplace(row_id, val);
           continue;
         }
         auto &update_row = update_rows[col_id];
@@ -1436,7 +1450,7 @@ class DelayedUpdateParser final {
             uint32_t len = *(uint32_t *)row_ptr;
             row_ptr += sizeof(uint32_t);
             val.SetString(row_ptr, len);
-            update_cols_vec[col_id].emplace(row_id, val);
+            update_cols_buf[col_id].emplace(row_id, val);
             row_ptr += len;
           } break;
           case common::PackType::INT: {
@@ -1455,7 +1469,7 @@ class DelayedUpdateParser final {
                   attr->SetAutoInc(int_val);
               }
               val.SetInt(int_val);
-              update_cols_vec[col_id].emplace(row_id, val);
+              update_cols_buf[col_id].emplace(row_id, val);
               row_ptr += sizeof(int64_t);
             }
           } break;
@@ -1472,7 +1486,7 @@ class DelayedUpdateParser final {
 
  private:
   std::vector<std::unique_ptr<TianmuAttr>> &attrs;
-  std::vector<std::unique_ptr<char[]>> *update_rows;
+  std::map<uint64_t, std::unique_ptr<char[]>> *update_rows;
   std::shared_ptr<index::TianmuTableIndex> index_table;
 };
 
@@ -1529,14 +1543,12 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
   ASSERT(m_delta, "memory table not exist");
   struct timespec t1, t2;
   clock_gettime(CLOCK_REALTIME, &t1);
-  std::vector<std::unique_ptr<char[]>> insert_vec;
-  bool insert_vec_full = false;
-  std::vector<std::unique_ptr<char[]>> update_vec;
-  bool update_vec_full = false;
-  std::vector<std::unique_ptr<char[]>> delete_vec;
-  bool delete_vec_full = false;
-
-  utils::result_set<int> async_res;
+  std::vector<std::unique_ptr<char[]>> insert_records;
+  int insert_num = 0;
+  std::map<uint64_t, std::unique_ptr<char[]>> update_records;
+  int update_num = 0;
+  std::vector<std::unique_ptr<char[]>> delete_records;
+  int delete_num = 0;
   {
     uchar entry_key[32];
     size_t key_pos = 0;
@@ -1549,74 +1561,60 @@ uint64_t TianmuTable::MergeDeltaTable(system::IOParameters &iop) {
     std::unique_ptr<rocksdb::Iterator> iter(m_tx->KVTrans().GetDataIterator(r_opts, cf_handle));
     iter->Seek(entry_slice);
     while (iter->Valid()) {
+      auto key = iter->key();
+      uint64_t row_id = index::be_to_uint64(reinterpret_cast<const uchar *>(key.data()) + sizeof(uint32_t));
       auto value = iter->value();
       std::unique_ptr<char[]> buf(new char[value.size()]);
       std::memcpy(buf.get(), value.data(), value.size());
       auto type = static_cast<RecordType>(buf[0]);
-      if (type == RecordType::kInsert && !insert_vec_full) {
-        insert_vec.emplace_back(std::move(buf));
+      if (type == RecordType::kInsert) {
+        insert_records.emplace_back(std::move(buf));
         m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());
         m_delta->merge_id++;
         m_delta->stat.read_cnt++;
         m_delta->stat.read_bytes += value.size();
-      } else if (type == RecordType::kUpdate && !update_vec_full) {
-        update_vec.emplace_back(std::move(buf));
+      } else if (type == RecordType::kUpdate) {
+        update_records.emplace(row_id, std::move(buf));
         m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());
         m_delta->merge_id++;
         m_delta->stat.read_cnt++;
         m_delta->stat.read_bytes += value.size();
-      } else if (type == RecordType::kDelete && !delete_vec_full) {
-        delete_vec.emplace_back(std::move(buf));
+      } else if (type == RecordType::kDelete) {
+        delete_records.emplace_back(std::move(buf));
         m_tx->KVTrans().SingleDeleteData(cf_handle, iter->key());
         m_delta->merge_id++;
         m_delta->stat.read_cnt++;
         m_delta->stat.read_bytes += value.size();
       }
-      if (insert_vec.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered) && !insert_vec_full) {
-        insert_vec_full = true;
-        // start to parse insert records[async]
-        async_res.insert(ha_tianmu_engine_->delta_thread_pool.add_task(&TianmuTable::AsyncParseInsertRecords, this,
-                                                                       &iop, &insert_vec));
+      if (insert_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
+        // todo(dfx): parse insert records[async]
+        insert_num += AsyncParseInsertRecords(&iop, &insert_records);
       }
-      if (update_vec.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered) && !update_vec_full) {
-        update_vec_full = true;
-        // start to parse update records[async]
-        async_res.insert(ha_tianmu_engine_->delta_thread_pool.add_task(&TianmuTable::AsyncParseUpdateRecords, this,
-                                                                       &iop, &update_vec));
+      if (update_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
+        // todo(dfx): parse update records[async]
+        update_num += AsyncParseUpdateRecords(&iop, &update_records);
       }
-      if (delete_vec.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered) && !delete_vec_full) {
-        delete_vec_full = true;
-        // start to parse update records[async]
-        //        async_res.insert(ha_tianmu_engine_->delta_thread_pool.add_task(&TianmuTable::AsyncParseDeleteRecords,
-        //        this,
-        //                                                                       &iop, &delete_vec));
+      if (delete_records.size() >= static_cast<std::size_t>(tianmu_sysvar_insert_max_buffered)) {
+        //        delete_num += AsyncParseDeleteRecords(&iop, &delete_vec);
       }
       iter->Next();
     }
   }
-  if (!insert_vec.empty() && !insert_vec_full) {
-    AsyncParseInsertRecords(&iop, &insert_vec);
+  if (!insert_records.empty()) {
+    insert_num += AsyncParseInsertRecords(&iop, &insert_records);
   }
-  if (!update_vec.empty() && !update_vec_full) {
-    async_res.insert(
-        ha_tianmu_engine_->delta_thread_pool.add_task(&TianmuTable::AsyncParseUpdateRecords, this, &iop, &update_vec));
+  if (!update_records.empty()) {
+    update_num += AsyncParseUpdateRecords(&iop, &update_records);
   }
-  if (!delete_vec.empty() && !insert_vec_full) {
-    //    async_res.insert(
-    //        ha_tianmu_engine_->delta_thread_pool.add_task(&TianmuTable::AsyncParseDeleteRecords, this, &iop,
-    //        &delete_vec));
+  if (!delete_records.empty()) {
+    //        delete_num += AsyncParseDeleteRecords(&iop, &delete_vec);
   }
   if (t2.tv_sec - t1.tv_sec > 15) {
     TIANMU_LOG(LogCtl_Level::WARN, "Latency of rowstore %s larger than 15s, compact manually.", share->Path().c_str());
     ha_kvstore_->GetRdb()->CompactRange(rocksdb::CompactRangeOptions(), m_delta->GetCFHandle(), nullptr, nullptr);
   }
 
-  int loaded_row_num = 0;
-  async_res.get_all_with_except();
-  for (size_t i = 0; i < async_res.size(); i++) {
-    loaded_row_num += async_res.get(i);
-  }
-  return loaded_row_num;
+  return insert_num + update_num + delete_num;
 }
 
 int TianmuTable::AsyncParseInsertRecords(system::IOParameters *iop, std::vector<std::unique_ptr<char[]>> *insert_vec) {
@@ -1660,19 +1658,20 @@ int TianmuTable::AsyncParseInsertRecords(system::IOParameters *iop, std::vector<
   }
   return loaded_row_num;
 }
-int TianmuTable::AsyncParseUpdateRecords(system::IOParameters *iop, std::vector<std::unique_ptr<char[]>> *update_vec) {
+int TianmuTable::AsyncParseUpdateRecords(system::IOParameters *iop,
+                                         std::map<uint64_t, std::unique_ptr<char[]>> *update_records) {
   struct timespec t1, t2;
   clock_gettime(CLOCK_REALTIME, &t1);
   auto index_table = ha_tianmu_engine_->GetTableIndex(share->Path());
-  DelayedUpdateParser parser(m_attrs, update_vec, index_table);
-  std::vector<std::unordered_map<uint64_t, Value>> update_cols_vec;
-  int returned_row_num = parser.GetRows(update_cols_vec);
+  DelayedUpdateParser parser(m_attrs, update_records, index_table);
+  std::vector<std::unordered_map<uint64_t, Value>> update_cols_buf;
+  int returned_row_num = parser.GetRows(update_cols_buf);
   if (returned_row_num > 0) {
     utils::result_set<void> res;
     for (uint att = 0; att < m_attrs.size(); ++att) {
-      if (!update_cols_vec[att].empty()) {
+      if (!update_cols_buf[att].empty()) {
         res.insert(ha_tianmu_engine_->delete_or_update_thread_pool.add_task(
-            &TianmuAttr::UpdateBatchData, m_attrs[att].get(), current_txn_, update_cols_vec[att]));
+            &TianmuAttr::UpdateBatchData, m_attrs[att].get(), current_txn_, update_cols_buf[att]));
       }
     }
     res.get_all();
