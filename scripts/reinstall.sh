@@ -1,10 +1,10 @@
+#!/bin/bash
 mysql_server_script=mysql_server
 mysql_install_db_script=mysqld
 
 # uninstall
 ./${mysql_server_script} stop
 echo "clean the directories..."
-#sleep 3
 rm -fr data
 rm -fr binlog 
 rm -fr log 

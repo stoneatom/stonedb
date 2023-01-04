@@ -56,5 +56,25 @@ ALTER TABLE t1 DROP COLUMN c11;
 SHOW CREATE TABLE t1;
 SELECT * FROM t1 ORDER BY c1;
 
+#################
+# ADD  COLUMEN BEFORE THE FIRST ADDING COLUMN IS WRONG
+#################
+
+CREATE TABLE st1 (
+    task_id INT NOT NULL,
+    subject VARCHAR(45) NULL,
+    start_date DATE NULL,
+    end_date DATE NULL,
+    description VARCHAR(200) NULL,
+    PRIMARY KEY (task_id)
+);
+
+--error 6
+ALTER TABLE st1 ADD COLUMN test numeric(20,10);
+
+ALTER TABLE st1 ADD COLUMN test1 numeric(8,2);
+
+SHOW CREATE TABLE st1;
+
 # Clean UP
 DROP DATABASE alter_colunm;

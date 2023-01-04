@@ -123,7 +123,7 @@ common::ErrorCode TianmuAttr::EvaluateOnIndex_BetweenInt(MIUpdatingIterator &mit
   if (keycols.size() > 0 && keycols[0] == ColId()) {
     int64_t passed = 0;
     index::KeyIterator iter(&current_txn_->KVTrans());
-    std::vector<std::string_view> fields;
+    std::vector<std::string> fields;
     fields.emplace_back((const char *)&pv1, sizeof(int64_t));
 
     iter.ScanToKey(indextab, fields, common::Operator::O_MORE_EQ);
@@ -187,7 +187,7 @@ common::ErrorCode TianmuAttr::EvaluateOnIndex_BetweenString(MIUpdatingIterator &
   if (keycols.size() > 0 && keycols[0] == ColId()) {
     int64_t passed = 0;
     index::KeyIterator iter(&current_txn_->KVTrans());
-    std::vector<std::string_view> fields;
+    std::vector<std::string> fields;
     fields.emplace_back(pv1.GetDataBytesPointer(), pv1.size());
 
     iter.ScanToKey(indextab, fields, (d.sharp ? common::Operator::O_MORE : common::Operator::O_MORE_EQ));
@@ -253,7 +253,7 @@ common::ErrorCode TianmuAttr::EvaluateOnIndex_BetweenString_UTF(MIUpdatingIterat
   if (keycols.size() > 0 && keycols[0] == ColId()) {
     int64_t passed = 0;
     index::KeyIterator iter(&current_txn_->KVTrans());
-    std::vector<std::string_view> fields;
+    std::vector<std::string> fields;
     fields.emplace_back(pv1.GetDataBytesPointer(), pv1.size());
     iter.ScanToKey(indextab, fields, (d.sharp ? common::Operator::O_MORE : common::Operator::O_MORE_EQ));
     DTCollation coll = d.GetCollation();
@@ -484,8 +484,12 @@ void TianmuAttr::EvaluatePack_Like_UTF(MIUpdatingIterator &mit, int dim, Descrip
   types::BString pattern;
   d.val1.vc->GetValueString(pattern, mit);
   size_t min_len = 0;  // the number of fixed characters
+  /*
+    When calculating the length of the matching string,
+    need to exclude wildcard characters and characters in ESCAPE
+  */
   for (uint i = 0; i < pattern.len_; i++)
-    if (pattern[i] != '%')
+    if (pattern[i] != '%' && pattern[i] != '\\' && pattern[i] != d.like_esc)
       min_len++;
   std::unordered_set<uint16_t> possible_ids;
   bool use_trie = false;

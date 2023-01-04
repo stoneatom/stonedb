@@ -166,8 +166,7 @@ common::ErrorCode TianmuTableIndex::CheckUniqueness(core::Transaction *tx, const
   return common::ErrorCode::SUCCESS;
 }
 
-common::ErrorCode TianmuTableIndex::InsertIndex(core::Transaction *tx, std::vector<std::string_view> &fields,
-                                                uint64_t row) {
+common::ErrorCode TianmuTableIndex::InsertIndex(core::Transaction *tx, std::vector<std::string> &fields, uint64_t row) {
   StringWriter value, key;
 
   rocksdb_key_->pack_key(key, fields, value);
@@ -187,10 +186,10 @@ common::ErrorCode TianmuTableIndex::InsertIndex(core::Transaction *tx, std::vect
   return err_code;
 }
 
-common::ErrorCode TianmuTableIndex::UpdateIndex(core::Transaction *tx, std::string_view &nkey, std::string_view &okey,
+common::ErrorCode TianmuTableIndex::UpdateIndex(core::Transaction *tx, std::string &nkey, std::string &okey,
                                                 uint64_t row) {
   StringWriter value, packkey;
-  std::vector<std::string_view> ofields, nfields;
+  std::vector<std::string> ofields, nfields;
 
   ofields.emplace_back(okey);
   nfields.emplace_back(nkey);
@@ -207,10 +206,10 @@ common::ErrorCode TianmuTableIndex::UpdateIndex(core::Transaction *tx, std::stri
   return err_code;
 }
 
-common::ErrorCode TianmuTableIndex::DeleteIndex(core::Transaction *tx, std::string_view &currentRowKey,
+common::ErrorCode TianmuTableIndex::DeleteIndex(core::Transaction *tx, std::string &currentRowKey,
                                                 uint64_t row [[maybe_unused]]) {
   StringWriter value, packkey;
-  std::vector<std::string_view> fields;
+  std::vector<std::string> fields;
 
   fields.emplace_back(currentRowKey);
 
@@ -227,7 +226,7 @@ common::ErrorCode TianmuTableIndex::DeleteIndex(core::Transaction *tx, std::stri
   return common::ErrorCode::SUCCESS;
 }
 
-common::ErrorCode TianmuTableIndex::GetRowByKey(core::Transaction *tx, std::vector<std::string_view> &fields,
+common::ErrorCode TianmuTableIndex::GetRowByKey(core::Transaction *tx, std::vector<std::string> &fields,
                                                 uint64_t &row) {
   std::string value;
   StringWriter packkey, info;
@@ -253,7 +252,7 @@ common::ErrorCode TianmuTableIndex::GetRowByKey(core::Transaction *tx, std::vect
   return common::ErrorCode::SUCCESS;
 }
 
-void KeyIterator::ScanToKey(std::shared_ptr<TianmuTableIndex> tab, std::vector<std::string_view> &fields,
+void KeyIterator::ScanToKey(std::shared_ptr<TianmuTableIndex> tab, std::vector<std::string> &fields,
                             common::Operator op) {
   if (!tab || !txn_) {
     return;

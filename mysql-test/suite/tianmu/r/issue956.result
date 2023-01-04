@@ -145,7 +145,7 @@ Table	Create Table
 t_issue956_3	CREATE TABLE `t_issue956_3` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
+) ENGINE=InnoDB DEFAULT CHARSET=latin1
 [on master]
 alter table t_issue956_3 engine=MyISAM;
 show create table t_issue956_3;
@@ -168,7 +168,7 @@ Table	Create Table
 t_issue956_3	CREATE TABLE `t_issue956_3` (
   `c1` int(11) DEFAULT NULL,
   `c2` varchar(255) DEFAULT NULL
-) ENGINE=TIANMU DEFAULT CHARSET=latin1
+) ENGINE=MyISAM DEFAULT CHARSET=latin1
 [on master]
 drop table t_issue956_3;
 include/sync_slave_sql_with_master.inc

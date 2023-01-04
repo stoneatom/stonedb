@@ -99,6 +99,9 @@ void TianmuTable::Alter(const std::string &table_path, std::vector<Field *> &new
   fs::path tmp_dir = table_path + ".tmp";
   fs::path tab_dir = table_path + common::TIANMU_EXT;
 
+  if (fs::exists(tmp_dir))
+    fs::remove_all(tmp_dir);
+
   fs::copy(tab_dir, tmp_dir, fs::copy_options::recursive | fs::copy_options::copy_symlinks);
 
   for (auto &p : fs::directory_iterator(tmp_dir / common::COLUMN_DIR)) fs::remove(p);
@@ -730,7 +733,7 @@ int TianmuTable::Insert(TABLE *table) {
 
   std::shared_ptr<index::TianmuTableIndex> tab = ha_tianmu_engine_->GetTableIndex(share->Path());
   if (tab) {
-    std::vector<std::string_view> fields;
+    std::vector<std::string> fields;
     std::vector<uint> cols = tab->KeyCols();
     for (auto &col : cols) {
       fields.emplace_back(vcs[col].GetDataBytesPointer(0), vcs[col].Size(0));
@@ -1234,7 +1237,7 @@ class DelayedInsertParser final {
 
     size_t row_idx = vcs[0].NumOfValues() - 1;
     std::vector<uint> cols = index_table->KeyCols();
-    std::vector<std::string_view> fields;
+    std::vector<std::string> fields;
     for (auto &col : cols) {
       fields.emplace_back(vcs[col].GetDataBytesPointer(row_idx), vcs[col].Size(row_idx));
     }

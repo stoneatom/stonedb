@@ -1,0 +1,21 @@
+--source include/have_tianmu.inc
+
+USE test;
+--disable_warnings
+set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+--enable_warnings
+--disable_warnings
+drop table if exists t_test;
+--enable_warnings
+
+CREATE TABLE `t_test`
+(
+    `id`   INT NOT NULL,
+    `test` VARCHAR(64) DEFAULT NULL,
+    `id1`  int NOT NULL,
+    PRIMARY KEY (`id`, `id1`)
+);
+INSERT INTO t_test VALUES(1,'old',1);
+REPLACE INTO t_test VALUES (8,'New',1);
+SELECT * FROM t_test;
+DROP TABLE t_test;

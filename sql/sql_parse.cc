@@ -2774,21 +2774,17 @@ mysql_execute_command(THD *thd, bool first_level)
   if (!thd->in_sub_stmt)
     thd->query_plan.set_query_plan(lex->sql_command, lex,
                                    !thd->stmt_arena->is_conventional());
-  /*
-    When stonedb is used as a slave library, 
-    the default engine is tianmu, or the (sql_mode) of (MANDATORY_TIANMU) is set,
+  /* 
+    the (sql_mode) of (MANDATORY_TIANMU) is set,
     the engine will be forcibly converted to the tianmu engine.
-    Priority:
-    sql_mode ='MANDATORY_TIANMU' > default_storage_engine
   */
-  if(thd->slave_thread && 
-    ((lex->sql_command == SQLCOM_CREATE_TABLE) || 
-    (lex->sql_command == SQLCOM_ALTER_TABLE)) &&
+  if(lex && ((lex->sql_command == SQLCOM_CREATE_TABLE) || 
+    (lex->sql_command == SQLCOM_ALTER_TABLE)) && 
     !(lex->create_info.options & HA_LEX_CREATE_TMP_TABLE)){
 
-    legacy_db_type default_db_type = plugin_data<handlerton*>(global_system_variables.table_plugin)->db_type;
-    if((global_system_variables.sql_mode & MODE_MANDATORY_TIANMU) || 
-        (default_db_type == DB_TYPE_TIANMU)){
+    sql_mode_t sql_mode = thd->variables.sql_mode;
+    if(thd->slave_thread) sql_mode = global_system_variables.sql_mode;
+    if(sql_mode & MODE_MANDATORY_TIANMU){
 
       lex->create_info.db_type = ha_default_handlerton(thd);
       old_db_type = lex->create_info.db_type->db_type;
@@ -4994,11 +4990,7 @@ error:
   res= TRUE;
 
 finish:
-  if(thd->slave_thread && 
-    ((lex->sql_command == SQLCOM_CREATE_TABLE) || 
-    (lex->sql_command == SQLCOM_ALTER_TABLE)) &&
-    !(lex->create_info.options & HA_LEX_CREATE_TMP_TABLE) &&
-    (old_db_type != DB_TYPE_DEFAULT)){
+  if(old_db_type != DB_TYPE_DEFAULT){
       //If the engine is replaced, restore it at the end
       lex->create_info.db_type->db_type = old_db_type;
     }
