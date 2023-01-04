@@ -515,7 +515,9 @@ types::TianmuDataType &TianmuAttr::GetValueData(size_t obj, types::TianmuDataTyp
       ((types::TianmuDateTime &)value) = types::TianmuDateTime(this->GetNotNullValueInt64(obj), a_type);
     } else if (ATI::IsRealType(a_type))
       ((types::TianmuNum &)value).Assign(this->GetNotNullValueInt64(obj), 0, true, a_type);
-    else
+    else if (ATI::IsBitType(a_type)) {
+      ((types::TianmuNum &)value).Assign(this->GetNotNullValueInt64(obj), Type().GetScale(), false, a_type);
+    } else
       ((types::TianmuNum &)value).Assign(this->GetNotNullValueInt64(obj), Type().GetScale());
   }
   return value;
