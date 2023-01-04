@@ -179,4 +179,29 @@ ERROR 22001: Data too long for column 'bit32' at row 1
 insert into bit_test values(b'1', b'1',b'1', b'1', b'1', b'11111111111111111111111111111111111111111111111111111111111111111');
 ERROR 22001: Data too long for column 'bit63' at row 1
 drop table bit_test;
+CREATE TABLE bittest(a bit(8));
+INSERT INTO bittest VALUES(b'00111001');
+INSERT INTO bittest VALUES(b'00111101');
+INSERT INTO bittest VALUES(b'00000001');
+insert into bittest values(b'00111010');
+insert into bittest values(b'00000000');
+select a,a+0,bin(a),oct(a),hex(a) from bittest;
+a	a+0	bin(a)	oct(a)	hex(a)
+9	57	111001	71	39
+=	61	111101	75	3D
+	1	1	1	1
+:	58	111010	72	3A
+ 	0	0	0	0
+select hex(a) from bittest where a='0';
+hex(a)
+0
+select hex(a) from bittest where a=0;
+hex(a)
+0
+select hex(a) from bittest where a=48;
+hex(a)
+select hex(a) from bittest where a=57;
+hex(a)
+39
+drop table bittest;
 drop database test_bit;

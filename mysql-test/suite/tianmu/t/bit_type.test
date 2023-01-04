@@ -155,4 +155,18 @@ insert into bit_test values(b'1', b'1',b'1',b'1', b'1111111111111111111111111111
 insert into bit_test values(b'1', b'1',b'1', b'1', b'1', b'11111111111111111111111111111111111111111111111111111111111111111');
 drop table bit_test;
 
+# test select with filters.
+CREATE TABLE bittest(a bit(8));
+INSERT INTO bittest VALUES(b'00111001');
+INSERT INTO bittest VALUES(b'00111101');
+INSERT INTO bittest VALUES(b'00000001');
+insert into bittest values(b'00111010');
+insert into bittest values(b'00000000');
+select a,a+0,bin(a),oct(a),hex(a) from bittest;
+select hex(a) from bittest where a='0';
+select hex(a) from bittest where a=0;
+select hex(a) from bittest where a=48;
+select hex(a) from bittest where a=57;
+drop table bittest;
+
 drop database test_bit;

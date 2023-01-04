@@ -489,7 +489,6 @@ void Engine::EncodeRecord(const std::string &table_path, int table_id, Field **f
       } break;
       case MYSQL_TYPE_BIT: {
         int64_t v = f->val_int();
-        // DEBUG_ASSERT(v < 0, "bit type data should never less than 0.");
         // open it when support M = 64, now all value parsed is < 0.
         if (v > common::TIANMU_BIGINT_MAX)  // v > bigint max when uint64_t is supported
           v = common::TIANMU_BIGINT_MAX;    // TODO(fix with bit prec)
