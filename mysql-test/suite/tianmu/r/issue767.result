@@ -1,4 +1,6 @@
-use test;
+DROP DATABASE IF EXISTS issue767_test;
+CREATE DATABASE issue767_test;
+USE issue767_test;
 create table t1(val int) ENGINE=tianmu;
 create table t2(val2 int) ENGINE=tianmu;
 insert into t1 values(0);
@@ -150,3 +152,4 @@ val
 43
 drop table t1;
 drop table t2;
+DROP DATABASE issue767_test;

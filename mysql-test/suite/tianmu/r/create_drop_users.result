@@ -1,3 +1,6 @@
+DROP DATABASE IF EXISTS create_drop_users_test;
+CREATE DATABASE create_drop_users_test;
+USE create_drop_users_test;
 #
 # Test create and drop users
 # Author: shiz
@@ -27,3 +30,4 @@ DROP USER 'user2'@'%';
 DROP USER 'user'@'%';
 DROP USER 'user'@'localhost';
 DROP USER 'user'@'127.0.0.1';
+DROP DATABASE create_drop_users_test;

@@ -1,0 +1,19 @@
+DROP DATABASE IF EXISTS issue1006_test;
+CREATE DATABASE issue1006_test;
+USE issue1006_test;
+CREATE TABLE `orders` (
+`o_orderkey` int(11) NOT NULL,
+`o_custkey` int(11) NOT NULL,
+`o_orderstatus` char(1) NOT NULL,
+`o_totalprice` decimal(15,2) NOT NULL,
+`o_orderdate` date NOT NULL,
+`o_orderpriority` char(15) NOT NULL,
+`o_clerk` char(15) NOT NULL,
+`o_shippriority` int(11) NOT NULL,
+`o_comment` varchar(79) NOT NULL,
+PRIMARY KEY (`o_orderkey`)
+) ENGINE=tianmu DEFAULT CHARSET=utf8mb4;
+load data local infile 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue1006.txt' into table orders FIELDS TERMINATED BY ' ' ENCLOSED BY '"' LINES TERMINATED BY '\n';
+select * from orders limit 10 into outfile 'MYSQLTEST_VARDIR/tmp/issue1006_out.txt' FIELDS TERMINATED BY ' ' ENCLOSED BY '"'  LINES TERMINATED BY '\n';
+drop table orders;
+DROP DATABASE issue1006_test;

@@ -1,4 +1,6 @@
-USE test;
+DROP DATABASE IF EXISTS issue441_test;
+CREATE DATABASE issue441_test;
+USE issue441_test;
 CREATE TEMPORARY TABLE `t_test1`(
 `id` INT NOT NULL AUTO_INCREMENT,
 `first_name` VARCHAR(10) NOT NULL,
@@ -13,3 +15,4 @@ SELECT id FROM t_test1;
 id
 1
 DROP TABLE t_test1;
+DROP DATABASE issue441_test;

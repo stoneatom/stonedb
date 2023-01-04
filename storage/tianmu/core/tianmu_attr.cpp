@@ -1473,8 +1473,8 @@ void TianmuAttr::UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col
   if (GetPackType() == common::PackType::STR) {
     auto &vnew = v.GetString();
     auto vold = GetValueString(row);
-    std::string_view nkey(vnew.data(), vnew.length());
-    std::string_view okey(vold.val_, vold.size());
+    std::string nkey(vnew.data(), vnew.length());
+    std::string okey(vold.val_, vold.size());
     common::ErrorCode returnCode = tab->UpdateIndex(tx, nkey, okey, row);
     if (returnCode == common::ErrorCode::DUPP_KEY || returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Duplicate entry: %s for primary key", vnew.data());
@@ -1483,8 +1483,8 @@ void TianmuAttr::UpdateIfIndex(core::Transaction *tx, uint64_t row, uint64_t col
   } else {  // common::PackType::INT
     int64_t vnew = v.GetInt();
     int64_t vold = GetValueInt64(row);
-    std::string_view nkey(reinterpret_cast<const char *>(&vnew), sizeof(int64_t));
-    std::string_view okey(reinterpret_cast<const char *>(&vold), sizeof(int64_t));
+    std::string nkey(reinterpret_cast<const char *>(&vnew), sizeof(int64_t));
+    std::string okey(reinterpret_cast<const char *>(&vold), sizeof(int64_t));
     common::ErrorCode returnCode = tab->UpdateIndex(tx, nkey, okey, row);
     if (returnCode == common::ErrorCode::DUPP_KEY || returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Duplicate entry :%" PRId64 " for primary key", vnew);
@@ -1505,7 +1505,7 @@ void TianmuAttr::DeleteByPrimaryKey(uint64_t row, uint64_t col) {
 
   if (GetPackType() == common::PackType::STR) {
     auto currentValue = GetValueString(row);
-    std::string_view currentRowKey(currentValue.val_, currentValue.size());
+    std::string currentRowKey(currentValue.val_, currentValue.size());
     common::ErrorCode returnCode = tab->DeleteIndex(current_txn_, currentRowKey, row);
     if (returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Delete: %s for primary key", currentValue.GetDataBytesPointer());
@@ -1513,7 +1513,7 @@ void TianmuAttr::DeleteByPrimaryKey(uint64_t row, uint64_t col) {
     }
   } else {  // common::PackType::INT
     auto currentValue = GetValueInt64(row);
-    std::string_view currentRowKey(reinterpret_cast<const char *>(&currentValue), sizeof(int64_t));
+    std::string currentRowKey(reinterpret_cast<const char *>(&currentValue), sizeof(int64_t));
     common::ErrorCode returnCode = tab->DeleteIndex(current_txn_, currentRowKey, row);
     if (returnCode == common::ErrorCode::FAILED) {
       TIANMU_LOG(LogCtl_Level::DEBUG, "Delete: %" PRId64 " for primary key", currentValue);

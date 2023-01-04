@@ -1,6 +1,12 @@
 --source include/have_tianmu.inc
 
-USE test;
+--disable_warnings
+DROP DATABASE IF EXISTS issue781_test;
+--enable_warnings
+
+CREATE DATABASE issue781_test;
+
+USE issue781_test;
 
 --disable_warnings
 
@@ -341,7 +347,6 @@ SELECT * FROM cs1;
 DROP TABLE cs1;
 DROP TABLE cs2;
 
-
 # test with primary key
 
 ## default safe mode
@@ -678,7 +683,6 @@ SELECT * FROM cs1;
 
 DROP TABLE cs1;
 DROP TABLE cs2;
-
 
 # not safe mode
 
@@ -1019,7 +1023,6 @@ SELECT * FROM cs1;
 DROP TABLE cs1;
 DROP TABLE cs2;
 
-
 # test with primary key
 
 ## DDL
@@ -1354,11 +1357,6 @@ SELECT * FROM cs1;
 
 DROP TABLE cs1;
 DROP TABLE cs2;
-
-
-
-
-
 
 # test with primary key
 
@@ -1717,7 +1715,6 @@ SELECT * FROM cs1;
 DROP TABLE cs1;
 DROP TABLE cs2;
 
-
 # not safe mode
 
 set sql_safe_updates=0;
@@ -2074,11 +2071,6 @@ SELECT * FROM cs1;
 DROP TABLE cs1;
 DROP TABLE cs2;
 
-
-
-
-
-
 # not safe mode
 
 set sql_safe_updates=0;
@@ -2424,7 +2416,6 @@ SELECT * FROM cs1;
 DROP TABLE cs1;
 DROP TABLE cs2;
 
-
 # test with primary key
 
 ## DDL
@@ -2765,9 +2756,6 @@ SELECT * FROM cs1;
 
 DROP TABLE cs1;
 DROP TABLE cs2;
-
-
-
 
 # test with primary key
 
@@ -3108,8 +3096,9 @@ SELECT * FROM cs1;
 DROP TABLE cs1;
 DROP TABLE cs2;
 
-
 # test with json type
 
 --error 6
 CREATE TABLE cs1 (c1 JSON, c2 INT) ENGINE=TIANMU;
+
+DROP DATABASE issue781_test;

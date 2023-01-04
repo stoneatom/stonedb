@@ -91,15 +91,15 @@ class RdbKey {
   RdbKey &operator=(const RdbKey &) = delete;
 
   // Convert a key from KeyTupleFormat to mem-comparable form
-  void pack_key(StringWriter &key, std::vector<std::string_view> &fields, StringWriter &info);
+  void pack_key(StringWriter &key, std::vector<std::string> &fields, StringWriter &info);
   common::ErrorCode unpack_key(StringReader &key, StringReader &value, std::vector<std::string> &fields);
 
   // pack and unpack field num.
-  void pack_field_number(StringWriter &key, std::string_view &field, uchar flag);
+  void pack_field_number(StringWriter &key, std::string &field, uchar flag);
   common::ErrorCode unpack_field_number(StringReader &key, std::string &field, uchar flag);
 
   // pack and unpack field value.
-  void pack_field_string(StringWriter &info, StringWriter &key, std::string_view &field);
+  void pack_field_string(StringWriter &info, StringWriter &key, std::string &field);
   common::ErrorCode unpack_field_string(StringReader &key, StringReader &value, std::string &field);
 
   void get_key_cols(std::vector<uint> &cols);

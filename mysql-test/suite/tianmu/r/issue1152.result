@@ -1,0 +1,17 @@
+USE test;
+set sql_mode='STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+drop table if exists t_test;
+CREATE TABLE `t_test`
+(
+`id`   INT NOT NULL,
+`test` VARCHAR(64) DEFAULT NULL,
+`id1`  int NOT NULL,
+PRIMARY KEY (`id`, `id1`)
+);
+INSERT INTO t_test VALUES(1,'old',1);
+REPLACE INTO t_test VALUES (8,'New',1);
+SELECT * FROM t_test;
+id	test	id1
+1	old	1
+8	New	1
+DROP TABLE t_test;

@@ -175,15 +175,15 @@ bool LoadParser::MakeValue(uint att, ValueCache &buffer) {
   // deal with auto increment
   auto &attr(attrs_[att]);
   if (core::ATI::IsIntegerType(attrs_[att]->TypeName()) && attr->GetIfAutoInc()) {
-    uint64_t *buf = reinterpret_cast<uint64_t *>(buffer.Prepare(sizeof(uint64_t)));
-    uint64_t value = *(uint64_t *)buf;
+    int64_t *buf = reinterpret_cast<int64_t *>(buffer.Prepare(sizeof(uint64_t)));
 
-    if (value == 0)  // Value of auto inc column was not assigned by user
+    if (*buf == 0)  // Value of auto inc column was not assigned by user
       *buf = attr->AutoIncNext();
 
-    if (value > attr->GetAutoInc())
-      attr->SetAutoInc(value);
-
+    if (static_cast<uint64_t>(*buf) > attr->GetAutoInc()) {
+      if (*buf > 0 || ((attr->TypeName() == common::ColumnType::BIGINT) && attr->GetIfUnsigned()))
+        attr->SetAutoInc(*buf);
+    }
     buffer.ExpectedSize(sizeof(uint64_t));
   }
 
@@ -206,7 +206,7 @@ bool LoadParser::MakeValue(uint att, ValueCache &buffer) {
 
 int LoadParser::ProcessInsertIndex(std::shared_ptr<index::TianmuTableIndex> tab, std::vector<ValueCache> &vcs,
                                    uint no_rows) {
-  std::vector<std::string_view> fields;
+  std::vector<std::string> fields;
   size_t lastrow = vcs[0].NumOfValues();
   ASSERT(lastrow >= 1, "should be 'lastrow >= 1'");
   std::vector<uint> cols = tab->KeyCols();

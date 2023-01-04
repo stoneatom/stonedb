@@ -1,5 +1,13 @@
 --source include/have_tianmu.inc
 
+--disable_warnings
+DROP DATABASE IF EXISTS issue829_test;
+--enable_warnings
+
+CREATE DATABASE issue829_test;
+
+USE issue829_test;
+
 CREATE TABLE t1
 (
  t1_tinyint TINYINT DEFAULT 0,
@@ -31,7 +39,6 @@ SELECT * FROM t1 WHERE t1_datetime > '1111-11-13 0:0:0';
 
 SELECT * FROM t1 WHERE t1_datetime > '1111-11-10 0:0:0';
 
-
 CREATE TABLE t2
 (
  t1_tinyint TINYINT DEFAULT 0,
@@ -57,5 +64,6 @@ SELECT * FROM t1,t2 WHERE
   t1.t1_datetime IN ('1111-11-11 11:11:11','1111-11-13 0:0:0') and
   t2.t1_datetime IN ('1111-11-11 0:0:0','1111-11-13 11:11:11');
 
-
 drop table t1 ,t2;
+
+DROP DATABASE issue829_test;

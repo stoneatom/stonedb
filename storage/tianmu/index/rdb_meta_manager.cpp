@@ -102,7 +102,7 @@ void RdbKey::get_key_cols(std::vector<uint> &cols) {
   }
 }
 
-void RdbKey::pack_field_number(StringWriter &key, std::string_view &field, uchar flag) {
+void RdbKey::pack_field_number(StringWriter &key, std::string &field, uchar flag) {
   uchar tuple[INTSIZE] = {0};
   copy_integer<false>(tuple, INTSIZE, (const uchar *)field.data(), INTSIZE, flag);
   key.write(tuple, sizeof(tuple));
@@ -125,7 +125,7 @@ common::ErrorCode RdbKey::unpack_field_number(StringReader &key, std::string &fi
   return common::ErrorCode::SUCCESS;
 }
 
-void RdbKey::pack_field_string(StringWriter &info, StringWriter &key, std::string_view &field) {
+void RdbKey::pack_field_string(StringWriter &info, StringWriter &key, std::string &field) {
   // version compatible
   if (index_ver_ == static_cast<uint16_t>(IndexInfoType::INDEX_INFO_VERSION_INITIAL)) {
     key.write((const uchar *)field.data(), field.length());
@@ -210,7 +210,7 @@ common::ErrorCode RdbKey::unpack_field_string(StringReader &key, StringReader &i
 }
 
 // cmp packed
-void RdbKey::pack_key(StringWriter &key, std::vector<std::string_view> &fields, StringWriter &info) {
+void RdbKey::pack_key(StringWriter &key, std::vector<std::string> &fields, StringWriter &info) {
   ASSERT(cols_.size() >= fields.size(), "fields size larger than keyparts size");
   key.clear();
   info.clear();

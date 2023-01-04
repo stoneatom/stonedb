@@ -54,10 +54,10 @@ class TianmuTableIndex final {
 
   common::ErrorCode RefreshIndexTable(const std::string &name);
   common::ErrorCode RenameIndexTable(const std::string &from, const std::string &to);
-  common::ErrorCode InsertIndex(core::Transaction *tx, std::vector<std::string_view> &fields, uint64_t row);
-  common::ErrorCode UpdateIndex(core::Transaction *tx, std::string_view &nkey, std::string_view &okey, uint64_t row);
-  common::ErrorCode DeleteIndex(core::Transaction *tx, std::string_view &currentRowKey, uint64_t row);
-  common::ErrorCode GetRowByKey(core::Transaction *tx, std::vector<std::string_view> &fields, uint64_t &row);
+  common::ErrorCode InsertIndex(core::Transaction *tx, std::vector<std::string> &fields, uint64_t row);
+  common::ErrorCode UpdateIndex(core::Transaction *tx, std::string &nkey, std::string &okey, uint64_t row);
+  common::ErrorCode DeleteIndex(core::Transaction *tx, std::string &currentRowKey, uint64_t row);
+  common::ErrorCode GetRowByKey(core::Transaction *tx, std::vector<std::string> &fields, uint64_t &row);
 
  public:
   std::shared_ptr<RdbTable> rocksdb_tbl_;
@@ -75,7 +75,7 @@ class KeyIterator final {
   KeyIterator() = delete;
   KeyIterator(const KeyIterator &sec) : valid(sec.valid), iter_(sec.iter_), rocksdb_key_(sec.rocksdb_key_){};
   KeyIterator(KVTransaction *tx) : txn_(tx){};
-  void ScanToKey(std::shared_ptr<TianmuTableIndex> tab, std::vector<std::string_view> &fields, common::Operator op);
+  void ScanToKey(std::shared_ptr<TianmuTableIndex> tab, std::vector<std::string> &fields, common::Operator op);
   void ScanToEdge(std::shared_ptr<TianmuTableIndex> tab, bool forward);
   common::ErrorCode GetCurKV(std::vector<std::string> &keys, uint64_t &row);
   common::ErrorCode GetRowid(uint64_t &row) {

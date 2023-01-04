@@ -44,6 +44,7 @@
 
 namespace Tianmu {
 namespace core {
+
 class Transaction;
 class Filter;
 class MIUpdatingIterator;
@@ -223,9 +224,34 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   int64_t GetMaxInt64() const { return hdr.max; }
   void SetMaxInt64(int64_t a_imax) { hdr.max = a_imax; }
   bool GetIfAutoInc() const { return ct.GetAutoInc(); }
+  bool GetIfUnsigned() const { return ct.GetUnsigned(); }
   uint64_t AutoIncNext() {
     backup_auto_inc_next_ = hdr.auto_inc_next;
-    return ++hdr.auto_inc_next;
+    if (backup_auto_inc_next_ >= UINT64_MAX)
+      return backup_auto_inc_next_;
+    uint64_t auto_inc_value = ++hdr.auto_inc_next;
+    uint64_t max_value{0};
+    bool unsigned_flag = GetIfUnsigned();
+    switch (TypeName()) {
+      case common::ColumnType::BYTEINT:
+        max_value = unsigned_flag ? TIANMU_TINYINT_UNSIGNED_MAX : TIANMU_TINYINT_MAX;
+        break;
+      case common::ColumnType::SMALLINT:
+        max_value = unsigned_flag ? TIANMU_SMALLINT_UNSIGNED_MAX : TIANMU_SMALLINT_MAX;
+        break;
+      case common::ColumnType::MEDIUMINT:
+        max_value = unsigned_flag ? TIANMU_MEDIUMINT_UNSIGNED_MAX : TIANMU_MEDIUMINT_MAX;
+        break;
+      case common::ColumnType::INT:
+        max_value = unsigned_flag ? TIANMU_INT_UNSIGNED_MAX : TIANMU_INT_MAX;
+        break;
+      case common::ColumnType::BIGINT:
+        max_value = unsigned_flag ? common::TIANMU_BIGINT_UNSIGNED_MAX : common::TIANMU_BIGINT_MAX;
+        break;
+      default:
+        break;
+    }
+    return max_value >= auto_inc_value ? auto_inc_value : max_value;  // not exceed max value
   }
   void RollBackIfAutoInc() {
     if (!GetIfAutoInc())
@@ -280,7 +306,8 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
 
   // provide the best upper approximation of number of diff. values (incl.null,
   // if flag set)
-  uint64_t ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue *rf, bool outer_nulls_possible) override;
+  uint64_t ApproxDistinctVals(bool incl_nulls, Filter *f, common::RoughSetValue *rf,
+                              bool outer_nulls_possible) override;
 
   // provide the exact number of diff. non-null values, if possible, or
   // common::NULL_VALUE_64
@@ -295,21 +322,21 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
   bool IsDistinct(Filter *f) override;
   // for numerical: best rough approximation of min/max for a given filter (or
   // global min if filter is nullptr) or rough filter
-  int64_t RoughMin(Filter *f, common::RSValue *rf = nullptr) override;
-  int64_t RoughMax(Filter *f, common::RSValue *rf = nullptr) override;
+  int64_t RoughMin(Filter *f, common::RoughSetValue *rf = nullptr) override;
+  int64_t RoughMax(Filter *f, common::RoughSetValue *rf = nullptr) override;
 
   // Rough queries and indexes
   // Note that you should release all indexes after using a series of
   // RoughChecks!
 
   // check whether any value from the pack may meet the condition
-  common::RSValue RoughCheck(int pack, Descriptor &d, bool additional_nulls_possible) override;
+  common::RoughSetValue RoughCheck(int pack, Descriptor &d, bool additional_nulls_possible) override;
   // check whether any pair from two packs of two different attr/tables may meet
   // the condition
-  common::RSValue RoughCheck(int pack1, int pack2, Descriptor &d) override;
+  common::RoughSetValue RoughCheck(int pack1, int pack2, Descriptor &d) override;
   // check whether any value from the pack may meet the condition "... BETWEEN
   // min AND max"
-  common::RSValue RoughCheckBetween(int pack, int64_t min, int64_t max) override;
+  common::RoughSetValue RoughCheckBetween(int pack, int64_t min, int64_t max) override;
 
   // calculate the number of 1's in histograms and other KN stats
   void RoughStats(double &hist_density, int &trivial_packs, double &span);
@@ -421,6 +448,7 @@ class TianmuAttr final : public mm::TraceableObject, public PhysicalColumn, publ
                                   // pack, providing KNs etc.
   std::function<std::shared_ptr<RSIndex>(const FilterCoordinate &co)> filter_creator;
 };
+
 }  // namespace core
 }  // namespace Tianmu
 

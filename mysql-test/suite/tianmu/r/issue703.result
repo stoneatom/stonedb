@@ -1,3 +1,6 @@
+DROP DATABASE IF EXISTS issue703_test;
+CREATE DATABASE issue703_test;
+USE issue703_test;
 show status like "Tianmu%";
 Variable_name	Value
 Tianmu_delay_buffer_usage	#
@@ -44,3 +47,4 @@ Tianmu_query_total	#
 Tianmu_row_store_usage	#
 Tianmu_update_per_minute	#
 Tianmu_update_total	#
+DROP DATABASE issue703_test;

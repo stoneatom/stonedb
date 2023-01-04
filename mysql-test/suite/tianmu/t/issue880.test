@@ -1,4 +1,11 @@
 --source include/have_tianmu.inc
+--disable_warnings
+DROP DATABASE IF EXISTS issue880_db;
+--enable_warnings
+
+CREATE DATABASE issue880_db;
+USE issue880_db;
+--disable_warnings
 
 --echo # support (timestamp union timestamp)
 --echo # support (not timestamp union not timestamp)
@@ -208,3 +215,5 @@ where ((a.id = b.period_account_id) and (b.type = 1) and (a.pay_type = 1) and
 
 # clean up
 DROP DATABASE test_timestamp_union;
+# Clean UP
+DROP DATABASE issue880_db;

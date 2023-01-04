@@ -1,5 +1,13 @@
 --source include/have_tianmu.inc
 
+--disable_warnings
+DROP DATABASE IF EXISTS create_drop_users_test;
+--enable_warnings
+
+CREATE DATABASE create_drop_users_test;
+
+USE create_drop_users_test;
+
 --echo #
 --echo # Test create and drop users
 --echo # Author: shiz
@@ -41,3 +49,4 @@ DROP USER 'user'@'%';
 DROP USER 'user'@'localhost';
 DROP USER 'user'@'127.0.0.1';
 
+DROP DATABASE create_drop_users_test;

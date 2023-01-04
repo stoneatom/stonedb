@@ -153,7 +153,7 @@ class ha_tianmu final : public handler {
                                      ulonglong *engine_data) override;
   void update_create_info(HA_CREATE_INFO *create_info) override;
   int fill_row_by_id(uchar *buf, uint64_t rowid);
-  void key_convert(const uchar *key, uint key_len, std::vector<uint> cols, std::vector<std::string_view> &keys);
+  void key_convert(const uchar *key, uint key_len, std::vector<uint> cols, std::vector<std::string> &keys);
 
  public:
   static const Alter_inplace_info::HA_ALTER_FLAGS TIANMU_SUPPORTED_ALTER_ADD_DROP_ORDER;

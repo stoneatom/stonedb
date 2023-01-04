@@ -36,6 +36,7 @@
 
 namespace Tianmu {
 namespace core {
+
 void TianmuAttr::EvaluatePack(MIUpdatingIterator &mit, int dim, Descriptor &d) {
   MEASURE_FET("TianmuAttr::EvaluatePack(...)");
   ASSERT(d.encoded, "Descriptor is not encoded!");
@@ -122,7 +123,7 @@ common::ErrorCode TianmuAttr::EvaluateOnIndex_BetweenInt(MIUpdatingIterator &mit
   if (keycols.size() > 0 && keycols[0] == ColId()) {
     int64_t passed = 0;
     index::KeyIterator iter(&current_txn_->KVTrans());
-    std::vector<std::string_view> fields;
+    std::vector<std::string> fields;
     fields.emplace_back((const char *)&pv1, sizeof(int64_t));
 
     iter.ScanToKey(indextab, fields, common::Operator::O_MORE_EQ);
@@ -186,7 +187,7 @@ common::ErrorCode TianmuAttr::EvaluateOnIndex_BetweenString(MIUpdatingIterator &
   if (keycols.size() > 0 && keycols[0] == ColId()) {
     int64_t passed = 0;
     index::KeyIterator iter(&current_txn_->KVTrans());
-    std::vector<std::string_view> fields;
+    std::vector<std::string> fields;
     fields.emplace_back(pv1.GetDataBytesPointer(), pv1.size());
 
     iter.ScanToKey(indextab, fields, (d.sharp ? common::Operator::O_MORE : common::Operator::O_MORE_EQ));
@@ -252,7 +253,7 @@ common::ErrorCode TianmuAttr::EvaluateOnIndex_BetweenString_UTF(MIUpdatingIterat
   if (keycols.size() > 0 && keycols[0] == ColId()) {
     int64_t passed = 0;
     index::KeyIterator iter(&current_txn_->KVTrans());
-    std::vector<std::string_view> fields;
+    std::vector<std::string> fields;
     fields.emplace_back(pv1.GetDataBytesPointer(), pv1.size());
     iter.ScanToKey(indextab, fields, (d.sharp ? common::Operator::O_MORE : common::Operator::O_MORE_EQ));
     DTCollation coll = d.GetCollation();
@@ -483,8 +484,12 @@ void TianmuAttr::EvaluatePack_Like_UTF(MIUpdatingIterator &mit, int dim, Descrip
   types::BString pattern;
   d.val1.vc->GetValueString(pattern, mit);
   size_t min_len = 0;  // the number of fixed characters
+  /*
+    When calculating the length of the matching string,
+    need to exclude wildcard characters and characters in ESCAPE
+  */
   for (uint i = 0; i < pattern.len_; i++)
-    if (pattern[i] != '%')
+    if (pattern[i] != '%' && pattern[i] != '\\' && pattern[i] != d.like_esc)
       min_len++;
   std::unordered_set<uint16_t> possible_ids;
   bool use_trie = false;
@@ -1149,15 +1154,19 @@ bool TianmuAttr::IsDistinct(Filter *f) {
   MEASURE_FET("TianmuAttr::IsDistinct(...)");
   if (ct.IsLookup() && types::RequiresUTFConversions(GetCollation()))
     return false;
-  if (PhysicalColumn::IsDistinct() == common::RSValue::RS_ALL) {  // = is_unique_updated && is_unique
+
+  if (PhysicalColumn::IsDistinct() == common::RoughSetValue::RS_ALL) {  // = is_unique_updated && is_unique
     if (f == nullptr)
       return (NumOfNulls() == 0);  // no nulls at all, and is_unique  => distinct
+
     LoadPackInfo();
     for (uint b = 0; b < SizeOfPack(); b++)
       if (!f->IsEmpty(b) && get_dpn(b).numOfNulls > 0)  // any null in nonempty pack?
         return false;
+
     return true;
   }
+
   return false;
 }
 
@@ -1169,6 +1178,7 @@ uint64_t TianmuAttr::ApproxAnswerSize(Descriptor &d) {
 
   if (d.op == common::Operator::O_NOT_NULL)
     return NumOfObj() - NumOfNulls();
+
   if (d.op == common::Operator::O_IS_NULL)
     return NumOfNulls();
 
@@ -1176,10 +1186,13 @@ uint64_t TianmuAttr::ApproxAnswerSize(Descriptor &d) {
     uint64_t no_distinct = ApproxDistinctVals(false, nullptr, nullptr, false);
     if (no_distinct == 0)
       no_distinct = 1;
+
     if (d.op == common::Operator::O_EQ)
       return NumOfObj() / no_distinct;
+
     if (d.op == common::Operator::O_NOT_EQ)
       return NumOfObj() - (NumOfObj() / no_distinct);
+
     return (NumOfObj() - NumOfNulls()) / 2;  // default
   }
 
@@ -1189,40 +1202,45 @@ uint64_t TianmuAttr::ApproxAnswerSize(Descriptor &d) {
     int64_t val1 = d.val1.vc->GetValueInt64(mit);
     int64_t val2 = d.val2.vc->GetValueInt64(mit);
     if (!ATI::IsRealType(TypeName())) {
-      int64_t span1,
-          span2;  // numerical case: approximate number of rows in each pack
+      int64_t span1, span2;  // numerical case: approximate number of rows in each pack
       if (val1 == val2) {
         res = (NumOfObj() - NumOfNulls()) / 2;  // return default; up func will make Prior other types
         return int64_t(res);
       }
+
       for (uint b = 0; b < SizeOfPack(); b++) {
         if (get_dpn(b).min_i > val2 || get_dpn(b).max_i < val1 || get_dpn(b).numOfNulls == get_dpn(b).numOfRecords)
           continue;  // pack irrelevant
+
         span1 = get_dpn(b).max_i - get_dpn(b).min_i + 1;
         if (span1 <= 0)  // out of int64_t range
           span1 = 1;
+
         if (val2 < get_dpn(b).max_i)  // calculate the size of intersection
           span2 = val2;
         else
           span2 = get_dpn(b).max_i;
+
         if (val1 > get_dpn(b).min_i)
           span2 -= val1;
         else
           span2 -= get_dpn(b).min_i;
+
         span2 += 1;
         res += (get_dpn(b).numOfRecords - get_dpn(b).numOfNulls) * double(span2) /
                span1;  // supposing uniform distribution of values
       }
-    } else {  // double
-      double span1,
-          span2;  // numerical case: approximate number of rows in each pack
+    } else {                // double
+      double span1, span2;  // numerical case: approximate number of rows in each pack
       double v_min = *(double *)&val1;
       double v_max = *(double *)&val2;
+
       for (uint b = 0; b < SizeOfPack(); b++) {
         double d_min = get_dpn(b).min_d;
         double d_max = get_dpn(b).max_d;
         if (d_min > v_max || d_max < v_min || get_dpn(b).numOfNulls == get_dpn(b).numOfRecords)
           continue;  // pack irrelevant
+
         span1 = d_max - d_min;
         span2 = std::min(v_max, d_max) - std::max(v_min, d_min);
         if (span1 == 0)
@@ -1234,6 +1252,7 @@ uint64_t TianmuAttr::ApproxAnswerSize(Descriptor &d) {
                  (span2 / span1);  // supposing uniform distribution of values
       }
     }
+
     return int64_t(res);
   }
 
@@ -1250,33 +1269,41 @@ size_t TianmuAttr::MaxStringSize(Filter *f)  // maximal byte string length in co
     for (uint b = 0; b < SizeOfPack(); b++) {
       if ((f && f->IsEmpty(b)) || GetPackOntologicalStatus(b) == PackOntologicalStatus::NULLS_ONLY)
         continue;
+
       auto &d = get_dpn(b);
       if (d.min_i < cur_min)
         cur_min = d.min_i;
+
       if (d.max_i > cur_max)
         cur_max = d.max_i;
     }
+
     if (cur_min != common::PLUS_INF_64)
       max_size = m_dict->MaxValueSize(int(cur_min), int(cur_max));
   } else {
     for (uint b = 0; b < SizeOfPack(); b++) {
       if (f && f->IsEmpty(b))
         continue;
+
       size_t cur_size = GetActualSize(b);
       if (max_size < cur_size)
         max_size = cur_size;
+
       if (max_size == Type().GetPrecision())
         break;
     }
   }
+
   return max_size;
 }
 
 bool TianmuAttr::TryToMerge(Descriptor &d1, Descriptor &d2) {
   MEASURE_FET("TianmuAttr::TryToMerge(...)");
+
   if ((d1.op != common::Operator::O_BETWEEN && d1.op != common::Operator::O_NOT_BETWEEN) ||
       (d2.op != common::Operator::O_BETWEEN && d2.op != common::Operator::O_NOT_BETWEEN))
     return false;
+
   if (GetPackType() == common::PackType::INT && d1.val1.vc && d1.val2.vc && d2.val1.vc && d2.val2.vc &&
       d1.val1.vc->IsConst() && d1.val2.vc->IsConst() && d2.val1.vc->IsConst() && d2.val2.vc->IsConst()) {
     static MIIterator const mit(nullptr, pss);
@@ -1284,32 +1311,39 @@ bool TianmuAttr::TryToMerge(Descriptor &d1, Descriptor &d2) {
     int64_t d1max = d1.val2.vc->GetValueInt64(mit);
     int64_t d2min = d2.val1.vc->GetValueInt64(mit);
     int64_t d2max = d2.val2.vc->GetValueInt64(mit);
+
     if (!ATI::IsRealType(TypeName())) {
       if (d1.op == common::Operator::O_BETWEEN && d2.op == common::Operator::O_BETWEEN) {
         if (d2min > d1min) {
           std::swap(d1.val1, d2.val1);
           std::swap(d1min, d2min);
         }
+
         if (d2max < d1max) {
           std::swap(d1.val2, d2.val2);
           std::swap(d1max, d2max);
         }
+
         if (d1min > d1max)
           d1.op = common::Operator::O_FALSE;  // disjoint?
         return true;
       }
+
       if (d1.op == common::Operator::O_NOT_BETWEEN && d2.op == common::Operator::O_NOT_BETWEEN) {
         if (d1min < d2max && d2min < d1max) {
           if (d2min < d1min)
             std::swap(d1.val1, d2.val1);
+
           if (d2max > d1max)
             std::swap(d1.val2, d2.val2);
+
           return true;
         }
       }
     } else {  // double
       if (d1.sharp != d2.sharp)
         return false;
+
       double dv1min = *((double *)&d1min);
       double dv1max = *((double *)&d1max);
       double dv2min = *((double *)&d2min);
@@ -1319,20 +1353,26 @@ bool TianmuAttr::TryToMerge(Descriptor &d1, Descriptor &d2) {
           std::swap(d1.val1, d2.val1);
           std::swap(dv2min, dv1min);
         }
+
         if (dv2max < dv1max) {
           std::swap(d1.val2, d2.val2);
           std::swap(dv2max, dv1max);
         }
+
         if (dv1min > dv1max)
           d1.op = common::Operator::O_FALSE;  // disjoint?
+
         return true;
       }
+
       if (d1.op == common::Operator::O_NOT_BETWEEN && d2.op == common::Operator::O_NOT_BETWEEN) {
         if (dv1min < dv2max && dv2min < dv1max) {
           if (dv2min < dv1min)
             std::swap(d1.val1, d2.val1);
+
           if (dv2max > dv1max)
             std::swap(d1.val2, d2.val2);
+
           return true;
         }
       }
@@ -1347,16 +1387,19 @@ bool TianmuAttr::TryToMerge(Descriptor &d1, Descriptor &d2) {
     d2.val1.vc->GetValueString(d2min, mit);
     d2.val2.vc->GetValueString(d2max, mit);
     DTCollation my_coll = d1.GetCollation();
+
     if (d1.op == common::Operator::O_BETWEEN && d2.op == common::Operator::O_BETWEEN) {
       if (types::RequiresUTFConversions(my_coll)) {
         if (d1min.IsNull() || CollationStrCmp(my_coll, d2min, d1min, common::Operator::O_MORE)) {
           std::swap(d1.val1, d2.val1);
           std::swap(d1min, d2min);
         }
+
         if (d1max.IsNull() || (!d2max.IsNull() && CollationStrCmp(my_coll, d2max, d1max, common::Operator::O_LESS))) {
           std::swap(d1.val2, d2.val2);
           std::swap(d1max, d2max);
         }
+
         if (CollationStrCmp(my_coll, d1min, d1max, common::Operator::O_MORE))
           d1.op = common::Operator::O_FALSE;  // disjoint?
       } else {
@@ -1364,33 +1407,42 @@ bool TianmuAttr::TryToMerge(Descriptor &d1, Descriptor &d2) {
           std::swap(d1.val1, d2.val1);
           std::swap(d1min, d2min);
         }
+
         if (d1max.IsNull() || d2max < d1max) {
           std::swap(d1.val2, d2.val2);
           std::swap(d1max, d2max);
         }
+
         if (d1min > d1max)
           d1.op = common::Operator::O_FALSE;  // disjoint?
       }
+
       return true;
     }
+
     if (d1.op == common::Operator::O_NOT_BETWEEN && d2.op == common::Operator::O_NOT_BETWEEN) {
       if (d1min.IsNull() || d1max.IsNull() || d2min.IsNull() || d2max.IsNull())
         return false;  // should not appear in normal circumstances
+
       if (types::RequiresUTFConversions(my_coll)) {
         if (CollationStrCmp(my_coll, d1min, d2max, common::Operator::O_LESS) &&
             CollationStrCmp(my_coll, d2min, d1max, common::Operator::O_LESS)) {
           if (CollationStrCmp(my_coll, d2min, d1min, common::Operator::O_LESS))
             std::swap(d1.val1, d2.val1);
+
           if (CollationStrCmp(my_coll, d2max, d1max, common::Operator::O_MORE))
             std::swap(d1.val2, d2.val2);
+
           return true;
         }
       } else {
         if (d1min < d2max && d2min < d1max) {
           if (d2min < d1min)
             std::swap(d1.val1, d2.val1);
+
           if (d2max > d1max)
             std::swap(d1.val2, d2.val2);
+
           return true;
         }
       }
@@ -1398,5 +1450,6 @@ bool TianmuAttr::TryToMerge(Descriptor &d1, Descriptor &d2) {
   }
   return false;
 }
+
 }  // namespace core
 }  // namespace Tianmu

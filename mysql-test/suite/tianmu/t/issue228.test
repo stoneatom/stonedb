@@ -1,4 +1,12 @@
-use test;
+--source include/have_tianmu.inc
+
+--disable_warnings
+DROP DATABASE IF EXISTS issue228_test;
+--enable_warnings
+
+CREATE DATABASE issue228_test;
+
+USE issue228_test;
 
 --disable_warnings
 drop table if exists t1;
@@ -7,3 +15,5 @@ drop table if exists t1;
 create table t1 (a varchar(112) charset utf8 collate utf8_bin not null,primary key (a)) select 'test' as a ;
 select a from t1;
 drop table t1;
+
+DROP DATABASE issue228_test;

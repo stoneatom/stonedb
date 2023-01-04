@@ -241,7 +241,7 @@ int ha_tianmu::external_lock(THD *thd, int lock_type) {
 namespace {
 inline bool has_dup_key(std::shared_ptr<index::TianmuTableIndex> &indextab, TABLE *table, size_t &row) {
   common::ErrorCode ret = common::ErrorCode::SUCCESS;
-  std::vector<std::string_view> records;
+  std::vector<std::string> records;
   KEY *key = table->key_info + table->s->primary_key;
 
   for (uint i = 0; i < key->actual_key_parts; i++) {
@@ -510,8 +510,11 @@ int ha_tianmu::delete_all_rows() {
 int ha_tianmu::rename_table(const char *from, const char *to) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
-    ha_tianmu_engine_->RenameTable(current_txn_, from, to, ha_thd());
-    DBUG_RETURN(0);
+    if (!ha_tianmu_engine_->RenameTable(current_txn_, from, to, ha_thd())) {
+      DBUG_RETURN(0);
+    } else {
+      DBUG_RETURN(1);
+    }
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -729,9 +732,10 @@ int ha_tianmu::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] const uc
   DBUG_ENTER(__PRETTY_FUNCTION__);
   int rc = HA_ERR_KEY_NOT_FOUND;
   try {
+    table->status = STATUS_NOT_FOUND;
     auto index = ha_tianmu_engine_->GetTableIndex(table_name_);
     if (index && (active_index == table_share->primary_key)) {
-      std::vector<std::string_view> keys;
+      std::vector<std::string> keys;
       key_convert(key, key_len, index->KeyCols(), keys);
       // support equality fullkey lookup over primary key, using full tuple
       if (find_flag == HA_READ_KEY_EXACT) {
@@ -739,6 +743,8 @@ int ha_tianmu::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] const uc
         if (index->GetRowByKey(current_txn_, keys, rowid) == common::ErrorCode::SUCCESS) {
           rc = fill_row_by_id(buf, rowid);
         }
+        if (!rc)
+          table->status = 0;
       } else if (find_flag == HA_READ_AFTER_KEY || find_flag == HA_READ_KEY_OR_NEXT) {
         auto iter = current_txn_->KVTrans().KeyIter();
         common::Operator op = (find_flag == HA_READ_AFTER_KEY) ? common::Operator::O_MORE : common::Operator::O_MORE_EQ;
@@ -746,7 +752,8 @@ int ha_tianmu::index_read([[maybe_unused]] uchar *buf, [[maybe_unused]] const uc
         uint64_t rowid;
         iter->GetRowid(rowid);
         rc = fill_row_by_id(buf, rowid);
-
+        if (!rc)
+          table->status = 0;
       } else {
         // not support HA_READ_PREFIX_LAST_OR_PREV HA_READ_PREFIX_LAST
         rc = HA_ERR_WRONG_COMMAND;
@@ -780,7 +787,10 @@ int ha_tianmu::index_next([[maybe_unused]] uchar *buf) {
       uint64_t rowid;
       iter->GetRowid(rowid);
       rc = fill_row_by_id(buf, rowid);
+      if (!rc)
+        table->status = 0;
     } else {
+      table->status = STATUS_NOT_FOUND;
       rc = HA_ERR_KEY_NOT_FOUND;
     }
   } catch (std::exception &e) {
@@ -803,7 +813,10 @@ int ha_tianmu::index_prev([[maybe_unused]] uchar *buf) {
       uint64_t rowid;
       iter->GetRowid(rowid);
       rc = fill_row_by_id(buf, rowid);
+      if (!rc)
+        table->status = 0;
     } else {
+      table->status = STATUS_NOT_FOUND;
       rc = HA_ERR_KEY_NOT_FOUND;
     }
   } catch (std::exception &e) {
@@ -831,7 +844,10 @@ int ha_tianmu::index_first([[maybe_unused]] uchar *buf) {
       if (iter->IsValid()) {
         iter->GetRowid(rowid);
         rc = fill_row_by_id(buf, rowid);
+        if (!rc)
+          table->status = 0;
       } else {
+        table->status = STATUS_NOT_FOUND;
         rc = HA_ERR_KEY_NOT_FOUND;
       }
     }
@@ -860,7 +876,10 @@ int ha_tianmu::index_last([[maybe_unused]] uchar *buf) {
       if (iter->IsValid()) {
         iter->GetRowid(rowid);
         rc = fill_row_by_id(buf, rowid);
+        if (!rc)
+          table->status = 0;
       } else {
+        table->status = STATUS_NOT_FOUND;
         rc = HA_ERR_KEY_NOT_FOUND;
       }
     }
@@ -995,7 +1014,15 @@ int ha_tianmu::rnd_next(uchar *buf) {
 void ha_tianmu::position([[maybe_unused]] const uchar *record) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
 
-  my_store_ptr(ref, ref_length, current_position_);
+  if (table->in_use->slave_thread && table->s->primary_key != MAX_INDEXES) {
+    /* Copy primary key as the row reference */
+    KEY *key_info = table->key_info + table->s->primary_key;
+    key_copy(ref, (uchar *)record, key_info, key_info->key_length);
+    ref_length = key_info->key_length;
+    active_index = table->s->primary_key;
+  } else {
+    my_store_ptr(ref, ref_length, current_position_);
+  }
 
   DBUG_VOID_RETURN;
 }
@@ -1012,25 +1039,29 @@ int ha_tianmu::rnd_pos(uchar *buf, uchar *pos) {
 
   int ret = HA_ERR_END_OF_FILE;
   try {
-    uint64_t position = my_get_ptr(pos, ref_length);
+    if (table->in_use->slave_thread && table->s->primary_key != MAX_INDEXES) {
+      ret = index_read(buf, pos, ref_length, HA_READ_KEY_EXACT);
+    } else {
+      uint64_t position = my_get_ptr(pos, ref_length);
 
-    filter_ptr_ = std::make_unique<core::Filter>(position + 1, share_->PackSizeShift());
-    filter_ptr_->Reset();
-    filter_ptr_->Set(position);
+      filter_ptr_ = std::make_unique<core::Filter>(position + 1, share_->PackSizeShift());
+      filter_ptr_->Reset();
+      filter_ptr_->Set(position);
 
-    auto tab_ptr = ha_tianmu_engine_->GetTx(table->in_use)->GetTableByPath(table_name_);
-    table_new_iter_ = tab_ptr->Begin(GetAttrsUseIndicator(table), *filter_ptr_);
-    table_new_iter_end_ = tab_ptr->End();
-    table_ptr_ = tab_ptr.get();
+      auto tab_ptr = ha_tianmu_engine_->GetTx(table->in_use)->GetTableByPath(table_name_);
+      table_new_iter_ = tab_ptr->Begin(GetAttrsUseIndicator(table), *filter_ptr_);
+      table_new_iter_end_ = tab_ptr->End();
+      table_ptr_ = tab_ptr.get();
 
-    table_new_iter_.MoveToRow(position);
-    table->status = 0;
-    blob_buffers_.resize(table->s->fields);
-    if (fill_row(buf) == HA_ERR_END_OF_FILE) {
-      table->status = STATUS_NOT_FOUND;
-      DBUG_RETURN(ret);
+      table_new_iter_.MoveToRow(position);
+      table->status = 0;
+      blob_buffers_.resize(table->s->fields);
+      if (fill_row(buf) == HA_ERR_END_OF_FILE) {
+        table->status = STATUS_NOT_FOUND;
+        DBUG_RETURN(ret);
+      }
+      ret = 0;
     }
-    ret = 0;
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -1106,10 +1137,12 @@ my_bool ha_tianmu::register_query_cache_table(THD *thd, char *table_key, size_t 
  */
 int ha_tianmu::delete_table(const char *name) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
-  int ret = 1;
   try {
-    ha_tianmu_engine_->DeleteTable(name, ha_thd());
-    ret = 0;
+    if (!ha_tianmu_engine_->DeleteTable(name, ha_thd())) {
+      DBUG_RETURN(0);
+    } else {
+      DBUG_RETURN(1);
+    }
   } catch (std::exception &e) {
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught: %s", e.what());
@@ -1118,7 +1151,7 @@ int ha_tianmu::delete_table(const char *name) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
-  DBUG_RETURN(ret);
+  DBUG_RETURN(0);
 }
 
 /*
@@ -1424,8 +1457,13 @@ enum_alter_inplace_result ha_tianmu::check_if_supported_inplace_alter([[maybe_un
                                                                       Alter_inplace_info *ha_alter_info) {
   DBUG_ENTER(__PRETTY_FUNCTION__);
   if (ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) {
+    // support alter table: convert to character set utf8mb4;
+    if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_STORED_COLUMN_TYPE)
+      DBUG_RETURN(HA_ALTER_INPLACE_NOT_SUPPORTED);
+    // supprot alter table: DEFAULT CHARACTER SET gbk
     if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)
       DBUG_RETURN(HA_ALTER_INPLACE_EXCLUSIVE_LOCK);
+    // support alter table comment
     if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_COMMENT)
       DBUG_RETURN(HA_ALTER_INPLACE_EXCLUSIVE_LOCK);
   }
@@ -1462,6 +1500,8 @@ bool ha_tianmu::inplace_alter_table(TABLE *altered_table, Alter_inplace_info *ha
   DBUG_ENTER(__PRETTY_FUNCTION__);
   try {
     if (ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) {
+      if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_STORED_COLUMN_TYPE)
+        DBUG_RETURN(false);
       if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)
         DBUG_RETURN(false);
       if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_COMMENT)
@@ -1480,6 +1520,10 @@ bool ha_tianmu::inplace_alter_table(TABLE *altered_table, Alter_inplace_info *ha
     TIANMU_LOG(LogCtl_Level::ERROR, "An unknown system exception error caught.");
   }
 
+  fs::path tmp_dir = table_name_ + ".tmp";
+  if (fs::exists(tmp_dir))
+    fs::remove_all(tmp_dir);
+
   my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), "Unable to inplace alter table", MYF(0));
 
   DBUG_RETURN(true);
@@ -1493,6 +1537,8 @@ bool ha_tianmu::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_table
     DBUG_RETURN(true);
   }
   if (ha_alter_info->handler_flags & TIANMU_SUPPORTED_ALTER_TABLE_OPTIONS) {
+    if (ha_alter_info->handler_flags & Alter_inplace_info::ALTER_STORED_COLUMN_TYPE)
+      DBUG_RETURN(false);
     if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_DEFAULT_CHARSET)
       DBUG_RETURN(false);
     if (ha_alter_info->create_info->used_fields & HA_CREATE_USED_COMMENT)
@@ -1545,12 +1591,10 @@ bool ha_tianmu::commit_inplace_alter_table([[maybe_unused]] TABLE *altered_table
  key: mysql format, may be union key, need changed to kvstore key format
 
  */
-void ha_tianmu::key_convert(const uchar *key, uint key_len, std::vector<uint> cols,
-                            std::vector<std::string_view> &keys) {
+void ha_tianmu::key_convert(const uchar *key, uint key_len, std::vector<uint> cols, std::vector<std::string> &keys) {
   key_restore(table->record[0], (uchar *)key, &table->key_info[active_index], key_len);
 
   Field **field = table->field;
-  std::vector<std::string> records;
   for (auto &i : cols) {
     Field *f = field[i];
     size_t length;
@@ -1684,11 +1728,7 @@ void ha_tianmu::key_convert(const uchar *key, uint key_len, std::vector<uint> co
         throw common::Exception("unsupported mysql type " + std::to_string(f->type()));
         break;
     }
-    records.emplace_back((const char *)buf.get(), ptr - buf.get());
-  }
-
-  for (auto &elem : records) {
-    keys.emplace_back(elem.data(), elem.size());
+    keys.emplace_back((const char *)buf.get(), ptr - buf.get());
   }
 }
 
@@ -2221,6 +2261,8 @@ static MYSQL_SYSVAR_UINT(bg_load_threads, tianmu_sysvar_bg_load_threads, PLUGIN_
                          0, 100, 0);
 static MYSQL_SYSVAR_UINT(insert_buffer_size, tianmu_sysvar_insert_buffer_size, PLUGIN_VAR_READONLY, "-", nullptr,
                          nullptr, 512, 512, 10000, 0);
+static MYSQL_SYSVAR_UINT(delete_or_update_threads, tianmu_sysvar_delete_or_update_threads, PLUGIN_VAR_READONLY, "-",
+                         nullptr, nullptr, 0, 0, 100, 0);
 
 static MYSQL_THDVAR_INT(session_debug_level, PLUGIN_VAR_INT, "session debug level", nullptr, debug_update, 3, 0, 5, 0);
 static MYSQL_THDVAR_INT(control_trace, PLUGIN_VAR_OPCMDARG, "ini controltrace", nullptr, trace_update, 0, 0, 100, 0);
@@ -2354,6 +2396,7 @@ static struct st_mysql_sys_var *tianmu_showvars[] = {MYSQL_SYSVAR(bg_load_thread
                                                      MYSQL_SYSVAR(compensation_start),
                                                      MYSQL_SYSVAR(control_trace),
                                                      MYSQL_SYSVAR(data_distribution_policy),
+                                                     MYSQL_SYSVAR(delete_or_update_threads),
                                                      MYSQL_SYSVAR(disk_usage_threshold),
                                                      MYSQL_SYSVAR(distinct_cache_size),
                                                      MYSQL_SYSVAR(filterevaluation_speedup),

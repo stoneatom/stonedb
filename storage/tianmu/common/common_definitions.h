@@ -133,18 +133,24 @@ constexpr int64_t MAX_ROW_NUMBER = 0x00007FFFFFFFFFFFULL;  // 2^47 - 1
 
 constexpr int64_t TIANMU_BIGINT_MAX = PLUS_INF_64;
 constexpr int64_t TIANMU_BIGINT_MIN = NULL_VALUE_64;
+constexpr uint64_t TIANMU_BIGINT_UNSIGNED_MAX = 0xFFFFFFFFFFFFFFFFULL;  // 2^64 - 1
 
 constexpr int32_t TIANMU_MAX_INDEX_COL_LEN_LARGE = 3072;
 constexpr int32_t TIANMU_MAX_INDEX_COL_LEN_SMALL = 767;
 
 #define NULL_VALUE_D (*(double *)("\x01\x00\x00\x00\x00\x00\x00\x80"))
+#define TIANMU_INT_MAX (2147483647)
 #define TIANMU_INT_MIN (-2147483647)
+#define TIANMU_INT_UNSIGNED_MAX (0xFFFFFFFFULL)
 #define TIANMU_MEDIUMINT_MAX ((1 << 23) - 1)
 #define TIANMU_MEDIUMINT_MIN (-((1 << 23)))
+#define TIANMU_MEDIUMINT_UNSIGNED_MAX ((1 << 24) - 1)
 #define TIANMU_TINYINT_MAX 127
 #define TIANMU_TINYINT_MIN (-128)
+#define TIANMU_TINYINT_UNSIGNED_MAX 255
 #define TIANMU_SMALLINT_MAX ((1 << 15) - 1)
 #define TIANMU_SMALLINT_MIN (-(1 << 15))
+#define TIANMU_SMALLINT_UNSIGNED_MAX ((1 << 16) - 1)
 
 #define PACK_INVALID 0
 #define FIELD_MAXLENGTH 65535
@@ -155,7 +161,7 @@ constexpr int32_t TIANMU_MAX_INDEX_COL_LEN_SMALL = 767;
 #define DEFAULT_DELIMITER ";"
 #define DEFAULT_LINE_TERMINATOR "\n"
 
-enum class RSValue : char {
+enum class RoughSetValue : char {
   RS_NONE = 0,    // the pack is empty
   RS_SOME = 1,    // the pack is suspected (but may be empty or full) (i.e.
                   // RSValue::RS_SOME & RSValue::RS_ALL = RSValue::RS_SOME)

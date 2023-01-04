@@ -1,5 +1,13 @@
 --source include/have_tianmu.inc
 
+--disable_warnings
+DROP DATABASE IF EXISTS replace_test;
+--enable_warnings
+
+CREATE DATABASE replace_test;
+
+USE replace_test;
+
 #
 # Test REPLACE INTO with TIANMU
 #
@@ -55,3 +63,5 @@ SELECT * FROM test1;
 REPLACE INTO test1 VALUES (1, 'NewNewNew', '2014-08-20 18:55:55');
 SELECT * FROM test1;
 drop table test1;
+
+DROP DATABASE replace_test;

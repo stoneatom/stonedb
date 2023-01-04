@@ -785,11 +785,10 @@ TempTable *Query::Preexecute(CompiledQuery &qu, ResultSender *sender, [[maybe_un
           bool is_simple_filter = true;  // qu.IsSimpleFilter(step.c1);
           if (used_dims.size() == 1 && used_dims.find(common::NULL_VALUE_32) != used_dims.end())
             is_simple_filter = false;
-          for (int i = 0; i < filter->mind->NumOfDimensions(); i++) {
-            if (used_dims.find(i) == used_dims.end() && is_simple_filter && (!tb->CanCondPushDown()))
-              filter->mind->ResetUsedInOutput(i);
-            else
-              filter->mind->SetUsedInOutput(i);
+          for (int i = 0; i < filter->mind_->NumOfDimensions(); i++) {
+            (used_dims.find(i) == used_dims.end() && is_simple_filter && (!tb->CanCondPushDown()))
+                ? filter->mind_->ResetUsedInOutput(i)
+                : filter->mind_->SetUsedInOutput(i);
           }
 
           if (IsRoughQuery()) {

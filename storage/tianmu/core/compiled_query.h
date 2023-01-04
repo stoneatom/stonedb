@@ -69,7 +69,7 @@ class CompiledQuery final {
     CQTerm e1, e2, e3;
     common::Operator op;  // predicate: common::Operator::O_EQ, common::Operator::O_LESS etc.
     common::ExtraOperation ex_op;
-    TMParameter tmpar;    // Table Mode Parameter
+    TMParameter tmpar;  // Table Mode Parameter
     JoinType jt;
     common::ColOperation cop;
     char *alias;

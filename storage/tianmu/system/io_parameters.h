@@ -151,7 +151,7 @@ class IOParameters {
   int64_t GetSkipLines() const { return skip_lines_; }
   int CharsetInfoNumber() const { return charset_info_number_; }
   int LocalLoad() const { return local_load_; }
-  int OptionallyEnclosed() { return opt_enclosed_; }
+  int OptionallyEnclosed() const { return opt_enclosed_; }
   void SetRejectFile(std::string const &path, int64_t abortOnCount, double abortOnThreshold) {
     reject_file_ = path;
     abort_on_count_ = abortOnCount;

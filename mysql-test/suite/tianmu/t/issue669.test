@@ -1,10 +1,17 @@
 --source include/have_tianmu.inc
 
+--disable_warnings
+DROP DATABASE IF EXISTS issue669_test;
+--enable_warnings
+
+CREATE DATABASE issue669_test;
+
+USE issue669_test;
+
 --echo #
 --echo # Fix assertion errors caused by syntax optimization of the tianmu engine #669
 --echo # 
 
-use test;
 create table t11 (a int NOT NULL, b int, primary key (a))ENGINE=TIANMU;
 create table t12 (a int NOT NULL, b int, primary key (a))ENGINE=TIANMU;
 create table t2 (a int NOT NULL, b int, primary key (a))ENGINE=TIANMU;
@@ -15,3 +22,5 @@ insert into t2 values (1, 21),(2, 12),(3, 23);
 delete from t11 where t11.b not in (select b from t2 where t11.a < t2.a);
 
 drop table t11,t12,t2;
+
+DROP DATABASE issue669_test;

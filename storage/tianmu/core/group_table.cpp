@@ -572,8 +572,6 @@ bool GroupTable::PutAggregatedValue(int col, int64_t row, MIIterator &mit, int64
   if (as_string) {
     types::BString v;
     vc[col]->GetValueString(v, mit);
-    if (v.IsNull() && cur_aggr->IgnoreNulls())
-      return true;  // null omitted
     cur_aggr->PutAggregatedValue(vm_tab->GetAggregationRow(row) + aggregated_col_offset[col], v, factor);
   } else {
     // note: it is too costly to check nulls separately (e.g. for complex

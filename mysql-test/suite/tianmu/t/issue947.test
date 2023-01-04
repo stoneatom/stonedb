@@ -1,6 +1,12 @@
 --source include/have_tianmu.inc
 
-USE test;
+--disable_warnings
+DROP DATABASE IF EXISTS issue947_test;
+--enable_warnings
+
+CREATE DATABASE issue947_test;
+
+USE issue947_test;
 
 --disable_warnings
 
@@ -50,3 +56,5 @@ SELECT * FROM test1 WHERE a IN ( SELECT b FROM test2 WHERE b NOT IN ( SELECT a F
 ## clean test table
 
 DROP TABLE test1,test2;
+
+DROP DATABASE issue947_test;

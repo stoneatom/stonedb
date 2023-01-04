@@ -1,5 +1,13 @@
 --source include/have_tianmu.inc
 
+--disable_warnings
+DROP DATABASE IF EXISTS alter_table_test;
+--enable_warnings
+
+CREATE DATABASE alter_table_test;
+
+USE alter_table_test;
+
 #
 #ALTER TABLE table_name MODIFY ...
 #
@@ -54,3 +62,10 @@ show create table t_test;
 alter table t_test modify sex smallint(5);
 
 show create table t_test;
+
+#
+#END
+#
+
+drop table t_test;
+DROP DATABASE alter_table_test;

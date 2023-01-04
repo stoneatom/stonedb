@@ -36,6 +36,7 @@
 
 namespace Tianmu {
 namespace core {
+
 class Descriptor;
 class Filter;
 class Query;
@@ -106,18 +107,20 @@ class TempTable : public JustATable {
     void GetValueString(int64_t row, types::BString &s) override { GetValueString(s, row); }
     void GetValueString(types::BString &s, int64_t row);
     void GetNotNullValueString(int64_t row, types::BString &s) override { GetValueString(s, row); }
-    uint64_t ApproxDistinctVals(bool incl_nulls, Filter *f, common::RSValue *rf,
+    uint64_t ApproxDistinctVals(bool incl_nulls, Filter *f, common::RoughSetValue *rf,
                                 bool outer_nulls_possible) override;  // provide the best upper
                                                                       // approximation of number of diff.
                                                                       // values (incl. null, if flag set)
     uint64_t ExactDistinctVals(Filter *f [[maybe_unused]]) override { return common::NULL_VALUE_64; }
     bool IsDistinct(Filter *f [[maybe_unused]]) override { return false; }
     size_t MaxStringSize(Filter *f = nullptr) override;  // maximal byte string length in column
-    int64_t RoughMin(Filter *f [[maybe_unused]] = nullptr, common::RSValue *rf [[maybe_unused]] = nullptr) override {
+    int64_t RoughMin(Filter *f [[maybe_unused]] = nullptr,
+                     common::RoughSetValue *rf [[maybe_unused]] = nullptr) override {
       return common::MINUS_INF_64;
     }  // for numerical: best rough approximation of min for a given filter (or
        // global min if filter is nullptr)
-    int64_t RoughMax(Filter *f [[maybe_unused]] = nullptr, common::RSValue *rf [[maybe_unused]] = nullptr) override {
+    int64_t RoughMax(Filter *f [[maybe_unused]] = nullptr,
+                     common::RoughSetValue *rf [[maybe_unused]] = nullptr) override {
       return common::PLUS_INF_64;
     }  // for numerical: best rough approximation of max for a given filter (or
        // global max if filter is nullptr)
@@ -145,13 +148,13 @@ class TempTable : public JustATable {
     bool IsRoughNullsOnly() const override { return false; }
     int64_t GetSum(int pack, bool &nonnegative) override;
     int NumOfAttr() const override { return -1; }
-    common::RSValue RoughCheck(int pack [[maybe_unused]], Descriptor &d [[maybe_unused]],
-                               bool additional_nulls_possible [[maybe_unused]]) override {
-      return common::RSValue::RS_SOME;
+    common::RoughSetValue RoughCheck(int pack [[maybe_unused]], Descriptor &d [[maybe_unused]],
+                                     bool additional_nulls_possible [[maybe_unused]]) override {
+      return common::RoughSetValue::RS_SOME;
     }
-    common::RSValue RoughCheck(int pack1 [[maybe_unused]], int pack2 [[maybe_unused]],
-                               Descriptor &d [[maybe_unused]]) override {
-      return common::RSValue::RS_SOME;
+    common::RoughSetValue RoughCheck(int pack1 [[maybe_unused]], int pack2 [[maybe_unused]],
+                                     Descriptor &d [[maybe_unused]]) override {
+      return common::RoughSetValue::RS_SOME;
     }
     // as far as Attr is not pack oriented the function below should not be
     // called
@@ -275,7 +278,7 @@ class TempTable : public JustATable {
     return GetFieldSize(n_a);
   }
 
-  uint NumOfDimensions() { return filter.mind ? (uint)filter.mind->NumOfDimensions() : 1; }
+  uint NumOfDimensions() { return filter.mind_ ? (uint)filter.mind_->NumOfDimensions() : 1; }
   int GetDimension(TabID alias);
   std::vector<AttributeTypeInfo> GetATIs(bool orig = false) override;
   int GetAttrScale(int a) {
@@ -319,9 +322,9 @@ class TempTable : public JustATable {
   }
   void CreateDisplayableAttrP();
   uint GetDisplayableAttrIndex(uint attr);
-  MultiIndex *GetMultiIndexP() { return filter.mind; }
+  MultiIndex *GetMultiIndexP() { return filter.mind_; }
   void ClearMultiIndexP() {
-    if (nullptr == filter.mind) {
+    if (nullptr == filter.mind_) {
       return;
     }
 
@@ -329,8 +332,8 @@ class TempTable : public JustATable {
       return;
     }
 
-    delete filter.mind;
-    filter.mind = nullptr;
+    delete filter.mind_;
+    filter.mind_ = nullptr;
   }
   MultiIndex *GetOutputMultiIndexP() { return &output_mind; }
   ParameterizedFilter *GetFilterP() { return &filter; }
@@ -382,7 +385,7 @@ class TempTable : public JustATable {
   void MoveVC(int colnum, std::vector<vcolumn::VirtualColumn *> &from, std::vector<vcolumn::VirtualColumn *> &to);
   void MoveVC(vcolumn::VirtualColumn *vc, std::vector<vcolumn::VirtualColumn *> &from,
               std::vector<vcolumn::VirtualColumn *> &to);
-  void FillbufferTask(Attr *attr, Transaction *ci, MIIterator *page_start, int64_t start_row, int64_t page_end);
+  void FillbufferTask(Attr *attr, Transaction *txn, MIIterator *page_start, int64_t start_row, int64_t page_end);
   size_t TaskPutValueInST(MIIterator *it, Transaction *ci, SorterWrapper *st);
   bool HasTempTable() const { return has_temp_table; }
 
@@ -402,7 +405,7 @@ class TempTable : public JustATable {
   std::vector<int> aliases;                         // vector of aliases of source tables
   std::vector<vcolumn::VirtualColumn *> virt_cols;  // vector of virtual columns defined for TempTable
   std::vector<bool> virt_cols_for_having;           // is a virt column based on output_mind (true) or
-                                                    // source mind (false)
+                                                    // source mind_ (false)
   std::vector<JoinType> join_types;                 // vector of types of joins, one less than tables
   ParameterizedFilter filter;                       // multidimensional filter, contains multiindex,
                                                     // can be parametrized
@@ -532,6 +535,7 @@ class TempTableForSubquery : public TempTable {
   std::vector<Attr *> template_attrs;
   std::vector<vcolumn::VirtualColumn *> template_virt_cols;
 };
+
 }  // namespace core
 }  // namespace Tianmu
 

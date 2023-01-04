@@ -194,6 +194,9 @@ void TianmuTable::Alter(const std::string &table_path, std::vector<Field *> &new
   fs::path tmp_dir = table_path + ".tmp";
   fs::path tab_dir = table_path + common::TIANMU_EXT;
 
+  if (fs::exists(tmp_dir))
+    fs::remove_all(tmp_dir);
+
   fs::copy(tab_dir, tmp_dir, fs::copy_options::recursive | fs::copy_options::copy_symlinks);
 
   for (auto &p : fs::directory_iterator(tmp_dir / common::COLUMN_DIR)) fs::remove(p);
@@ -323,7 +326,7 @@ std::vector<AttrInfo> TianmuTable::GetAttributesInfo() {
       info[j].no_nulls = true;
     else
       info[j].no_nulls = false;
-    info[j].actually_unique = (m_attrs[j]->PhysicalColumn::IsDistinct() == common::RSValue::RS_ALL);
+    info[j].actually_unique = (m_attrs[j]->PhysicalColumn::IsDistinct() == common::RoughSetValue::RS_ALL);
     info[j].uncomp_size = m_attrs[j]->ComputeNaturalSize();
     info[j].comp_size = m_attrs[j]->CompressedSize();
   }
@@ -703,25 +706,26 @@ void TianmuTable::Field2VC(Field *f, loader::ValueCache &vc, size_t col) {
     case MYSQL_TYPE_LONG:
     case MYSQL_TYPE_INT24:
     case MYSQL_TYPE_LONGLONG: {
-      int64_t v = f->val_int();
-      if (m_attrs[col]->GetIfAutoInc() && v == 0)
+      int64_t value = f->val_int();
+      if (m_attrs[col]->GetIfAutoInc() && value == 0)
         // Value of auto inc column was not assigned by user
         *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = m_attrs[col]->AutoIncNext();
       else
-        *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = v;
+        *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = value;
       vc.ExpectedSize(sizeof(int64_t));
       if (m_attrs[col]->GetIfAutoInc()) {
         // inc counter should be set to value of user assigned
-        if (static_cast<uint64_t>(v) > m_attrs[col]->GetAutoInc()) {
-          m_attrs[col]->SetAutoInc(v);
+        if (static_cast<uint64_t>(value) > m_attrs[col]->GetAutoInc()) {
+          if (value > 0 || ((m_attrs[col]->TypeName() == common::ColumnType::BIGINT) && m_attrs[col]->GetIfUnsigned()))
+            m_attrs[col]->SetAutoInc(value);
         }
       }
     } break;
     case MYSQL_TYPE_DECIMAL:
     case MYSQL_TYPE_FLOAT:
     case MYSQL_TYPE_DOUBLE: {
-      double v = f->val_real();
-      *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = *reinterpret_cast<int64_t *>(&v);
+      double value = f->val_real();
+      *reinterpret_cast<int64_t *>(vc.Prepare(sizeof(int64_t))) = *reinterpret_cast<int64_t *>(&value);
       vc.ExpectedSize(sizeof(int64_t));
     } break;
     case MYSQL_TYPE_NEWDECIMAL: {
@@ -828,7 +832,7 @@ int TianmuTable::Insert(TABLE *table) {
 
   std::shared_ptr<index::TianmuTableIndex> tab = ha_tianmu_engine_->GetTableIndex(share->Path());
   if (tab) {
-    std::vector<std::string_view> fields;
+    std::vector<std::string> fields;
     std::vector<uint> cols = tab->KeyCols();
     for (auto &col : cols) {
       fields.emplace_back(vcs[col].GetDataBytesPointer(0), vcs[col].Size(0));
@@ -1344,9 +1348,10 @@ class DelayedInsertParser final {
               if (attr->GetIfAutoInc()) {
                 if (*buf == 0)  // Value of auto inc column was not assigned by user
                   *buf = attr->AutoIncNext();
-
-                if (static_cast<uint64_t>(*buf) > attr->GetAutoInc())
-                  attr->SetAutoInc(*buf);
+                if (static_cast<uint64_t>(*buf) > attr->GetAutoInc()) {
+                  if (*buf > 0 || ((attr->TypeName() == common::ColumnType::BIGINT) && attr->GetIfUnsigned()))
+                    attr->SetAutoInc(*buf);
+                }
               }
               vc.ExpectedSize(sizeof(int64_t));
               ptr += sizeof(int64_t);
@@ -1377,7 +1382,7 @@ class DelayedInsertParser final {
 
     size_t row_idx = vcs[0].NumOfValues() - 1;
     std::vector<uint> cols = index_table->KeyCols();
-    std::vector<std::string_view> index_fields;
+    std::vector<std::string> index_fields;
     for (auto &col : cols) {
       index_fields.emplace_back(vcs[col].GetDataBytesPointer(row_idx), vcs[col].Size(row_idx));
     }
@@ -1505,14 +1510,17 @@ uint64_t TianmuTable::ProcessDelayed(system::IOParameters &iop) {
     no_of_rows_returned = parser.GetRows(to_prepare, vcs);
     size_t real_loaded_rows = vcs[0].NumOfValues();
     no_dup_rows += (no_of_rows_returned - real_loaded_rows);
+
     if (real_loaded_rows > 0) {
       utils::result_set<void> res;
       for (uint att = 0; att < m_attrs.size(); ++att) {
         res.insert(ha_tianmu_engine_->load_thread_pool.add_task(&TianmuAttr::LoadData, m_attrs[att].get(), &vcs[att],
                                                                 current_txn_));
       }
+
       res.get_all();
       no_loaded_rows += real_loaded_rows;
+
       if (real_loaded_rows > 0 && mysql_bin_log.is_open())
         binlog_insert2load_block(vcs, real_loaded_rows, iop);
     }
