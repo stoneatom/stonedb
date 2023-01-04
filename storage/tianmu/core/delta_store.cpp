@@ -168,5 +168,7 @@ void DeltaTable::Truncate(Transaction *tx) {
 
   return;
 }
+
+
 }  // namespace core
 }  // namespace Tianmu

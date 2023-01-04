@@ -68,6 +68,7 @@ class TianmuTable final : public JustATable {
   TianmuTable(std::string const &path, TableShare *share, Transaction *tx = nullptr);
   ~TianmuTable() = default;
 
+  // Create the physical file of table
   static void CreateNew(const std::shared_ptr<TableOption> &opt);
   static uint32_t GetTableId(const fs::path &dir);
   static void Alter(const std::string &path, std::vector<Field *> &new_cols, std::vector<Field *> &old_cols,

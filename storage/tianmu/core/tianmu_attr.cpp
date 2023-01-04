@@ -256,6 +256,7 @@ void TianmuAttr::SaveFilters() {
 bool TianmuAttr::SaveVersion() {
   ASSERT(m_tx != nullptr, "Attempt to modify table in read-only transaction");
 
+  // save modified pack data
   for (size_t i = 0; i < m_idx.size(); i++) {
     auto &dpn = get_dpn(i);
     if (dpn.IsLocal()) {
@@ -302,6 +303,7 @@ bool TianmuAttr::SaveVersion() {
     });
   }
 
+  // save attr transaction version
   auto fname = Path() / common::COL_VERSION_DIR / m_tx->GetID().ToString();
   system::TianmuFile fattr;
   fattr.OpenCreate(fname);
