@@ -1051,30 +1051,7 @@ void TianmuAttr::UpdateData(uint64_t row, Value &v) {
   hdr.numOfNulls -= dpn_save.numOfNulls;
   hdr.numOfNulls += dpn.numOfNulls;
 
-  if (GetPackType() == common::PackType::INT) {
-    if (dpn.min_i < hdr.min) {
-      hdr.min = dpn.min_i;
-    } else {
-      // re-calculate the min
-      hdr.min = std::numeric_limits<int64_t>::max();
-      for (uint i = 0; i < m_idx.size(); i++) {
-        if (!get_dpn(i).NullOnly())
-          hdr.min = std::min(get_dpn(i).min_i, hdr.min);
-      }
-    }
-
-    if (dpn.max_i > hdr.max) {
-      hdr.max = dpn.max_i;
-    } else {
-      // re-calculate the max
-      hdr.max = std::numeric_limits<int64_t>::min();
-      for (uint i = 0; i < m_idx.size(); i++) {
-        if (!get_dpn(i).NullOnly())
-          hdr.max = std::max(get_dpn(i).max_i, hdr.max);
-      }
-    }
-  } else {  // common::PackType::STR
-  }
+  ResetMaxMin(dpn);
 }
 
 void TianmuAttr::UpdateBatchData(core::Transaction *tx, const std::unordered_map<uint64_t, Value> &rows) {
@@ -1133,30 +1110,7 @@ void TianmuAttr::UpdateBatchData(core::Transaction *tx, const std::unordered_map
     // update global data
     hdr.numOfNulls -= dpn_save.numOfNulls;
     hdr.numOfNulls += dpn.numOfNulls;
-    if (GetPackType() == common::PackType::INT) {
-      if (dpn.min_i < hdr.min) {
-        hdr.min = dpn.min_i;
-      } else {
-        // re-calculate the min
-        hdr.min = std::numeric_limits<int64_t>::max();
-        for (uint i = 0; i < m_idx.size(); i++) {
-          if (!get_dpn(i).NullOnly())
-            hdr.min = std::min(get_dpn(i).min_i, hdr.min);
-        }
-      }
-      if (dpn.max_i > hdr.max) {
-        hdr.max = dpn.max_i;
-      } else {
-        // re-calculate the max
-        hdr.max = std::numeric_limits<int64_t>::min();
-        for (uint i = 0; i < m_idx.size(); i++) {
-          if (!get_dpn(i).NullOnly())
-            hdr.max = std::max(get_dpn(i).max_i, hdr.max);
-        }
-      }
-    } else {
-      // PackStr
-    }
+    ResetMaxMin(dpn);
   }
 }
 
@@ -1197,7 +1151,49 @@ void TianmuAttr::DeleteData(uint64_t row) {
   hdr.numOfNulls -= dpn_save.numOfNulls;
   hdr.numOfNulls += dpn.numOfNulls;
   hdr.numOfDeleted++;
+  ResetMaxMin(dpn);
+}
 
+void TianmuAttr::DeleteBatchData(core::Transaction *tx, const std::vector<uint64_t> &rows){
+  // group by pn
+  std::unordered_map<common::PACK_INDEX, std::vector<uint64_t>> packs;
+  //  for (const auto &[row, val] : rows) {
+  for (const auto &row_id : rows) {
+    auto pn = row2pack(row_id);
+    auto pack = packs.find(pn);
+    if (pack != packs.end()) {
+      pack->second.push_back(row_id);
+    } else {
+      packs.emplace(pn, std::vector<uint64_t>{row_id});
+    }
+  }
+
+  for (const auto &pack : packs) {
+    auto pn = pack.first;
+    FunctionExecutor fe([this, pn]() { LockPackForUse(pn); }, [this, pn]() { UnlockPackFromUse(pn); });
+    CopyPackForWrite(pn);
+    auto &dpn = get_dpn(pn);
+    auto dpn_save = dpn;
+    if (dpn.Trivial()) {
+      ha_tianmu_engine_->cache.GetOrFetchObject<Pack>(get_pc(pn), this);
+    }
+
+    for (const auto &row_id : pack.second) {
+      // primary key process
+      DeleteByPrimaryKey(row_id, ColId());
+
+      get_pack(pn)->DeleteByRow(row2offset(row_id));
+
+      // update global data
+      hdr.numOfNulls -= dpn_save.numOfNulls;
+      hdr.numOfNulls += dpn.numOfNulls;
+      hdr.numOfDeleted++;
+    }
+    ResetMaxMin(dpn);
+  }
+}
+
+void TianmuAttr::ResetMaxMin(DPN &dpn){
   if (GetPackType() == common::PackType::INT) {
     if (dpn.min_i < hdr.min) {
       hdr.min = dpn.min_i;

@@ -117,11 +117,12 @@ class Engine final {
   int InsertRow(const std::string &tablename, Transaction *trans_, TABLE *table, std::shared_ptr<TableShare> &share);
   int UpdateRow(const std::string &tablename, TABLE *table, std::shared_ptr<TableShare> &share, uint64_t row_id,
                 const uchar *old_data, uchar *new_data);
+  int DeleteRow(const std::string &tablename, TABLE *table, std::shared_ptr<TableShare> &share, uint64_t row_id);
   void InsertDelayed(const std::string &table_path, int table_id, TABLE *table);
   void InsertToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table);
   void UpdateToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table, uint64_t row_id,
                     const uchar *old_data, uchar *new_data);
-  void DeleteToDelta();
+  void DeleteToDelta(const std::string &table_path, std::shared_ptr<TableShare> &share, TABLE *table, uint64_t row_id);
   std::string DelayedBufferStat() { return insert_buffer.Status(); }
   std::string DeltaStoreStat();
   void UnRegisterTable(const std::string &table_path);
@@ -193,6 +194,7 @@ class Engine final {
   void EncodeUpdateRecord(const std::string &table_path, int table_id,
                           std::unordered_map<uint, Field *> update_fields, size_t field_count, size_t blobs,
                           std::unique_ptr<char[]> &buf, uint32_t &buf_size);
+  void EncodeDeleteRecord(const std::string &table_path, int table_id,std::unique_ptr<char[]> &buf, uint32_t &buf_size);
   void ProcessInsertBufferMerge();
   void ProcessDeltaStoreMerge();
   void EncodeDeleteRecord();

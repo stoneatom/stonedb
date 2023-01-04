@@ -13,12 +13,12 @@ bool RecordMergeOperator::Merge(const rocksdb::Slice &key, const rocksdb::Slice 
                                 const rocksdb::Slice &value, std::string *new_value, rocksdb::Logger *logger) const {
   // existing value ptr
   const char *e_ptr = existing_value->data();
-  RecordType existing_type = static_cast<RecordType>(e_ptr[0]);
+  RecordType existing_type = *(RecordType *)(e_ptr);
   e_ptr += sizeof(RecordType);
 
   // value ptr
   const char *ptr = existing_value->data();
-  RecordType type = static_cast<RecordType>(ptr[0]);
+  RecordType type = *(RecordType *)(ptr);
   ptr += sizeof(RecordType);
 
   // new value ptr

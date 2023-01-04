@@ -51,8 +51,7 @@ class DeltaTable {
   rocksdb::ColumnFamilyHandle *GetCFHandle() { return cf_handle_; }
   common::ErrorCode Rename(const std::string &to);
   void AddInsertRecord(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);
-  void AddUpdateRecord(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);
-  void AddDeleteRecord(std::unique_ptr<char[]> buf, uint32_t size);
+  void AddRecord(Transaction *tx, uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);
 
   void Truncate(Transaction *tx);
 

@@ -128,19 +128,19 @@ class TianmuTable final : public JustATable {
   // directly (no delta)
   int Insert(TABLE *table);
   int Update(TABLE *table, uint64_t row_id, const uchar *old_data, uchar *new_data);
-  int Delete(TABLE *table);
+  int Delete(TABLE *table, uint64_t row_id);
 
   // delta frontend
   void InsertToDelta(std::unique_ptr<char[]> buf, uint32_t size);
   void UpdateToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);
-  void DeleteToDelta();
+  void DeleteToDelta(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);
 
   // delta backend
   void LoadDataInfile(system::IOParameters &iop);
   uint64_t MergeDeltaTable(system::IOParameters &iop);
   int AsyncParseInsertRecords(system::IOParameters *iop, std::vector<std::unique_ptr<char[]>> *insert_vec);
   int AsyncParseUpdateRecords(system::IOParameters *iop, std::map<uint64_t, std::unique_ptr<char[]>> *update_records);
-  int AsyncParseDeleteRecords();
+  int AsyncParseDeleteRecords(std::vector<uint64_t> &delete_records);
 
   std::unique_lock<std::mutex> write_lock;
 
