@@ -107,15 +107,19 @@ void TianmuTable::Alter(const std::string &table_path, std::vector<Field *> &new
   for (auto &p : fs::directory_iterator(tmp_dir / common::COLUMN_DIR)) fs::remove(p);
 
   TABLE_META meta;
-  system::TianmuFile f;
-  f.OpenReadOnly(tab_dir / common::TABLE_DESC_FILE);
-  f.ReadExact(&meta, sizeof(meta));
+  {
+    system::TianmuFile f;
+    f.OpenReadOnly(tab_dir / common::TABLE_DESC_FILE);
+    f.ReadExact(&meta, sizeof(meta));
+  }
   meta.id = ha_tianmu_engine_->GetNextTableId();  // only table id is updated
 
-  system::TianmuFile tempf;
-  tempf.OpenReadWrite(tmp_dir / common::TABLE_DESC_FILE);
-  tempf.WriteExact(&meta, sizeof(meta));
-  tempf.Flush();
+  {
+    system::TianmuFile tempf;
+    tempf.OpenReadWrite(tmp_dir / common::TABLE_DESC_FILE);
+    tempf.WriteExact(&meta, sizeof(meta));
+    tempf.Flush();
+  }
 
   std::vector<common::TX_ID> old_versions(old_cols.size());
   {

@@ -76,5 +76,25 @@ ALTER TABLE st1 ADD COLUMN test1 numeric(8,2);
 
 SHOW CREATE TABLE st1;
 
-# Clean UP
+#################
+# ADD  COLUMEN  WARNING INFO
+#################
+
+CREATE TABLE st2 (
+    task_id INT NOT NULL,
+    subject VARCHAR(45) NULL,
+    start_date DATE NULL,
+    end_date DATE NULL,
+    description VARCHAR(200) NULL,
+    PRIMARY KEY (task_id)
+); 
+
+--error 6
+ALTER TABLE st2 ADD COLUMN col_name3 int auto_increment;
+
+SHOW CREATE TABLE st2;
+
+#################
+# CLEAR UP
+#################
 DROP DATABASE alter_colunm;
