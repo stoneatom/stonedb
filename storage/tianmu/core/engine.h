@@ -313,7 +313,8 @@ class ResultExportSender final : public ResultSender {
 };
 
 enum class tianmu_param_name {
-  TIANMU_DATAFORMAT = 0,
+  TIANMU_TIMEOUT = 0,
+  TIANMU_DATAFORMAT,
   TIANMU_PIPEMODE,
   TIANMU_NULL,
   TIANMU_THROTTLE,

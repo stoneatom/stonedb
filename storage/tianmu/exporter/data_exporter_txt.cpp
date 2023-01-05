@@ -89,14 +89,14 @@ void DEforTxt::PutRowEnd() {
     WriteChars(line_terminator_);
 }
 
-size_t DEforTxt::WriteString(const types::BString &str, int len, bool text_or_bin) {
+size_t DEforTxt::WriteString(const types::BString &str, int len, bool text_or_bin, bool is_null) {
   int res_len = 0;
   bool enclose_output{false};
 
   // If you omit the word OPTIONALLY, all fields are enclosed by the ENCLOSED BY character.
   // If you specify OPTIONALLY, the ENCLOSED BY character is used only to enclose values from columns that
   // have a string data type (such as CHAR, BINARY, TEXT, or ENUM):
-  if (str_qualifier_ && (text_or_bin || !opt_enclosed_)) {
+  if (str_qualifier_ && !is_null && (text_or_bin || !opt_enclosed_)) {
     enclose_output = true;
     WriteChar(str_qualifier_, 1);
   }
