@@ -401,9 +401,10 @@ types::BString TianmuAttr::GetNotNullValueString(const int64_t obj) {
 
   if (GetPackType() == common::PackType::STR) {
     auto cur_pack = get_packS(pack);
-    ASSERT(cur_pack != nullptr, "Pack ptr is null");
-    ASSERT(cur_pack->IsLocked(), "Access unlocked pack");
-    return cur_pack->GetValueBinary(offset);
+    if (cur_pack != nullptr)
+      return cur_pack->GetValueBinary(offset);
+    else
+      return types::BString();  // for adding column not null
   }
   int64_t v = GetNotNullValueInt64(obj);
   return DecodeValue_S(v);

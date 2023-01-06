@@ -81,4 +81,21 @@ st2	CREATE TABLE `st2` (
   `description` varchar(200) DEFAULT NULL,
   PRIMARY KEY (`task_id`)
 ) ENGINE=TIANMU DEFAULT CHARSET=latin1
+CREATE TABLE ttb1(
+id int,
+name varchar(5)
+) ENGINE=TIANMU;
+INSERT INTO ttb1 VALUES(1,'AAA'),(2,'BBB');
+ALTER TABLE ttb1 ADD COLUMN age VARCHAR(5) NOT NULL;
+SHOW CREATE TABLE ttb1;
+Table	Create Table
+ttb1	CREATE TABLE `ttb1` (
+  `id` int(11) DEFAULT NULL,
+  `name` varchar(5) DEFAULT NULL,
+  `age` varchar(5) NOT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=latin1
+SELECT * FROM ttb1;
+id	name	age
+1	AAA	NULL
+2	BBB	NULL
 DROP DATABASE alter_colunm;

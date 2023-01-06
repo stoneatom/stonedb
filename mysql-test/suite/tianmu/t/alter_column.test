@@ -95,6 +95,23 @@ ALTER TABLE st2 ADD COLUMN col_name3 int auto_increment;
 SHOW CREATE TABLE st2;
 
 #################
+# ADD  COLUMN  NOT NULL
+#################
+
+CREATE TABLE ttb1(
+        id int,
+        name varchar(5)
+) ENGINE=TIANMU;
+
+INSERT INTO ttb1 VALUES(1,'AAA'),(2,'BBB');
+
+ALTER TABLE ttb1 ADD COLUMN age VARCHAR(5) NOT NULL;
+
+SHOW CREATE TABLE ttb1;
+
+SELECT * FROM ttb1;
+
+#################
 # CLEAR UP
 #################
 DROP DATABASE alter_colunm;
