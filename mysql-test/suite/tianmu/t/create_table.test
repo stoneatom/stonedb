@@ -11,8 +11,8 @@ create table t1 (b char(0) not null)ENGINE=tianmu;
 --error 1048
 insert into t1 values (""),(null);
 create table if not exists t1 (b char(0) not null)ENGINE=tianmu;
---error 1167
-create table t1 (b char(0) not null, index(b))engine=tianmu;
+--error 1050
+create table t1 (b char(0) not null)engine=tianmu;
 drop table t1;
 create table `a/a` (a int)engine=tianmu;
 show create table `a/a`;
@@ -62,8 +62,8 @@ drop table if exists ``;
 use test;
 --error 1166
 create table t1 (`` int)engine=tianmu;
---error 1280
-create table t1 (i int, index `` (i))engine=tianmu;
+#-error 1280
+#create table t1 (i int, index `` (i))engine=tianmu;
 create table t1 (i int)engine=tianmu;
 drop table t1;
 
@@ -81,15 +81,6 @@ drop table t1;
 --echo # Test of primary key with 32 index
 --echo #
 
-create table t1 (a int not null, b int, primary key(a),
- key (b), key (b), key (b), key (b), key (b), key (b),
- key (b), key (b), key (b), key (b), key (b), key (b),
- key (b), key (b), key (b), key (b), key (b), key (b), 
- key (b), key (b), key (b), key (b), key (b), key (b), 
- key (b), key (b), key (b), key (b), key (b), key (b),
- key (b))engine=tianmu;
-show create table t1;
-drop table t1;
 
 --echo #
 --echo # Test default table type
@@ -147,9 +138,9 @@ create table t1 (,b int)engine=tianmu;
 --echo # Test create with foreign keys
 --echo #
 
-create table t1 (a int, key(a))engine=tianmu;
-create table t2 (b int, foreign key(b) references t1(a), key(b))engine=tianmu;
-drop table if exists t1,t2;
+#create table t1 (a int, key(a))engine=tianmu;
+#create table t2 (b int, foreign key(b) references t1(a), key(b))engine=tianmu;
+drop table if exists t1;
 
 --echo #
 --echo # Test for create table .. LIKE ..
@@ -206,28 +197,28 @@ describe t1;
 drop table t1;
 create table t1(name varchar(10), age smallint default -1);
 describe t2;
-
+drop table t1,t2;
 --echo #
 --echo # 'Naming a key "Primary" causes trouble'
 --echo #
 
---error 1280
-create table t1 (a int, index `primary` (a))engine=tianmu;
---error 1280
-create table t1 (a int, index `PRIMARY` (a))engine=tianmu;
-drop table t1;
-create table t1 (`primary` int, index(`primary`))engine=tianmu;
-show create table t1;
-drop table t2;
-create table t2 (`PRIMARY` int, index(`PRIMARY`))engine=tianmu;
-show create table t2;
-create table t3 (a int);
---error 1280
-alter table t3 add index `primary` (a);
---error 1280
-alter table t3 add index `PRIMARY` (a);
-create table t4 (`primary` int)engine=tianmu;
-drop table t1,t2,t3,t4;
+#--error 1280
+#create table t1 (a int, index `primary` (a))engine=tianmu;
+#--error 1280
+#create table t1 (a int, index `PRIMARY` (a))engine=tianmu;
+#drop table t1;
+#create table t1 (`primary` int, index(`primary`))engine=tianmu;
+#show create table t1;
+#drop table t2;
+#create table t2 (`PRIMARY` int, index(`PRIMARY`))engine=tianmu;
+#show create table t2;
+#create table t3 (a int);
+#--error 1280
+#alter table t3 add index `primary` (a);
+#--error 1280
+#alter table t3 add index `PRIMARY` (a);
+#create table t4 (`primary` int)engine=tianmu;
+#drop table t1,t2,t3,t4;
 
 --echo #
 --echo #Can't use 'DEFAULT FALSE' for column of type bool
@@ -342,7 +333,7 @@ drop tables t1,t2;
 --echo # Creating a base table in presence of an updatable view.
 --echo # 
 
-create table t2 (a int unique);
+create table t2 (a int primary key);
 create view t1 as select a from t2;
 insert into t1 (a) values (1);
 --error 1050

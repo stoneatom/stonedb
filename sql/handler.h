@@ -306,6 +306,14 @@ enum enum_alter_inplace_result {
   The handler supports non-KEY auto_increment column
 */
 #define HA_NON_KEY_AUTO_INC           (1LL << 48) //TIANMU UPGRADE
+/*
+  The handler does not support secondary key
+*/
+#define HA_NON_SECONDARY_KEY (1LL << 49)
+/*
+  The handler does not support unique key
+*/
+#define HA_NON_UNIQUE_KEY (1LL << 50)
 
 /* bits in index_flags(index_number) for what you can do with index */
 #define HA_READ_NEXT            1       /* TODO really use this flag */

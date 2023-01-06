@@ -33,11 +33,7 @@ CREATE TABLE `issue880_t1` (
 `operator` varchar(50) DEFAULT NULL COMMENT '操作人; Size[MB]: 0.1; Ratio: 0.02',
 `operator_id` int(11) DEFAULT NULL COMMENT '操作人id; Size[MB]: 0.1; Ratio: 1.78',
 `remark` varchar(50) DEFAULT NULL COMMENT '备注; Size[MB]: 0.1; Ratio: 0.02',
-PRIMARY KEY (`id`),
-UNIQUE KEY `company_account_change_id` (`id`),
-KEY `company_change_company_id` (`COMPANY_ID`),
-KEY `period_pay_id_index` (`period_pay_id`),
-KEY `period_account_id_index` (`period_account_id`)
+PRIMARY KEY (`id`)
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED;
 CREATE TABLE `issue880_t2` (
 `id` int(10) NOT NULL COMMENT 'Size[MB]: 0.1; Ratio: 2.00\0 ',
@@ -84,12 +80,7 @@ CREATE TABLE `issue880_t2` (
 `subscribe_number` varchar(5000) DEFAULT NULL COMMENT '订阅编号; Size[MB]: 0.1; Ratio: 0.04',
 `settlement_status` smallint(1) DEFAULT '1' COMMENT '是否需要结算0不需要，1需要; Size[MB]: 0.1; Ratio: 1.60',
 `company_type` smallint(1) DEFAULT '1' COMMENT '公司类型(1:运营商,2:合作伙伴); Size[MB]: 0.1; Ratio: 2.12',
-PRIMARY KEY (`id`),
-UNIQUE KEY `period_account_id` (`id`),
-KEY `period_account_company_id` (`company_id`),
-KEY `index_pay_type` (`pay_type`),
-KEY `index_pay_status` (`pay_status`),
-KEY `index_type_status` (`pay_type`,`pay_status`)
+PRIMARY KEY (`id`)
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED;
 CREATE TABLE `issue880_t3` (
 `id` int(10) NOT NULL COMMENT 'Size[MB]: 0.1; Ratio: 2.00\0 ',
@@ -110,11 +101,7 @@ CREATE TABLE `issue880_t3` (
 `account_number` varchar(20) DEFAULT NULL COMMENT '交易银行账户; Size[MB]: 0.1; Ratio: 0.04',
 `pay_flag` smallint(1) DEFAULT '0' COMMENT '是否需要支付，0需要，1不需要; Size[MB]: 0.1; Ratio: 0.24',
 `union_order_flag` smallint(1) DEFAULT '0' COMMENT '是否合成订单0不是，1是; Size[MB]: 0.1; Ratio: 2.12',
-PRIMARY KEY (`id`),
-UNIQUE KEY `pay_id` (`id`),
-UNIQUE KEY `pay_order_no` (`order_no`),
-KEY `pay_status_index` (`pay_status`),
-KEY `idx_pay_status_feetype` (`pay_status`,`fee_type`)
+PRIMARY KEY (`id`)
 ) ENGINE=TIANMU DEFAULT CHARSET=utf8 ROW_FORMAT=COMPRESSED;
 LOAD DATA LOCAL INFILE 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t1.txt' INTO TABLE issue880_t1;
 LOAD DATA LOCAL INFILE 'MYSQL_TEST_DIR/suite/tianmu/std_data/issue880_t3.txt' INTO TABLE issue880_t3;

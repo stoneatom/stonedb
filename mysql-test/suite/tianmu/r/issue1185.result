@@ -1,0 +1,306 @@
+DROP DATABASE IF EXISTS issue1185_test;
+CREATE DATABASE issue1185_test;
+USE issue1185_test;
+#
+# Secondary INDEX
+# 
+CREATE TABLE tb_stu_info (id int(11) NOT NULL, height int(11) DEFAULT NULL,KEY height (height)) ENGINE=TIANMU;
+ERROR HY000: Tianmu engine does not support secondary index.
+CREATE TABLE tb_stu_info (id int(11) NOT NULL, height int(11) DEFAULT NULL,INDEX height (height)) ENGINE=TIANMU;
+ERROR HY000: Tianmu engine does not support secondary index.
+CREATE TABLE tb_stu_info (id int, col_name varchar(10)) ENGINE=TIANMU;
+CREATE INDEX index_name ON tb_stu_info(column_name);
+ERROR HY000: Tianmu engine does not support secondary index.
+ALTER TABLE  tb_stu_info  add INDEX  index_name  (col_name) ;
+ERROR HY000: Tianmu engine does not support secondary index.
+ALTER TABLE  tb_stu_info  add KEY  index_name  (col_name) ;
+ERROR HY000: Tianmu engine does not support secondary index.
+ALTER TABLE tb_stu_info DROP INDEX indx_name;
+ERROR HY000: Tianmu engine does not find the index.
+ALTER TABLE tb_stu_info DROP KEY indx_name;
+ERROR HY000: Tianmu engine does not find the index.
+ALTER TABLE tb_stu_info RENAME INDEX old_index_name TO new_index_name;
+ERROR HY000: Tianmu engine does not find the index.
+ALTER TABLE tb_stu_info RENAME KEY old_index_name TO new_index_name;
+ERROR HY000: Tianmu engine does not find the index.
+#
+# UNIQUE INDEX
+#
+CREATE TABLE tb_stu_info_2 (id int(11) NOT NULL, height int(11) DEFAULT NULL,UNIQUE KEY height (height)) ENGINE=TIANMU;
+ERROR HY000: Tianmu engine does not support unique index.
+CREATE TABLE tb_stu_info_2 (id int(11) NOT NULL, height int(11) DEFAULT NULL,UNIQUE INDEX height (height)) ENGINE=TIANMU;
+ERROR HY000: Tianmu engine does not support unique index.
+CREATE TABLE tb_stu_info_2 (id int(11) NOT NULL, height int(11) DEFAULT NULL) ENGINE=TIANMU;
+ALTER TABLE tb_stu_info_2 ADD CONSTRAINT constraint_name UNIQUE KEY(height);
+ERROR HY000: Tianmu engine does not support unique index.
+ALTER TABLE tb_stu_info_2 ADD CONSTRAINT constraint_name UNIQUE INDEX(height);
+ERROR HY000: Tianmu engine does not support unique index.
+CREATE UNIQUE INDEX index_name ON tb_stu_info_2(height);
+ERROR HY000: Tianmu engine does not support unique index.
+ALTER TABLE tb_stu_info_2 DROP INDEX c;
+ERROR HY000: Tianmu engine does not find the index.
+ALTER TABLE tb_stu_info_2 DROP KEY c;
+ERROR HY000: Tianmu engine does not find the index.
+ALTER TABLE tb_stu_info_2  RENAME INDEX old_index_name TO new_index_name;
+ERROR HY000: Tianmu engine does not find the index.
+ALTER TABLE tb_stu_info_2  RENAME KEY old_index_name TO new_index_name;
+ERROR HY000: Tianmu engine does not find the index.
+#
+# FULL INDEX
+#
+CREATE TABLE tb_posts (id int(4) NOT NULL AUTO_INCREMENT,
+title varchar(255) NOT NULL,
+post_content text,
+PRIMARY KEY (id),
+FULLTEXT KEY post_content (post_content)
+)ENGINE=TIANMU;
+ERROR HY000: Tianmu engine does not support fulltext index.
+CREATE TABLE tb_posts (id int(4) NOT NULL AUTO_INCREMENT,
+title varchar(255) NOT NULL,
+post_content text,
+PRIMARY KEY (id)
+)ENGINE=TIANMU;
+ALTER TABLE tb_posts ADD FULLTEXT INDEX  index_name (post_content);
+ERROR HY000: Tianmu engine does not support fulltext index.
+CREATE FULLTEXT INDEX index_name ON tb_posts (post_content);
+ERROR HY000: Tianmu engine does not support fulltext index.
+ALTER TABLE tb_posts DROP INDEX index_name;
+ERROR HY000: Tianmu engine does not find the index.
+ALTER TABLE tb_posts DROP KEY index_name;
+ERROR HY000: Tianmu engine does not find the index.
+DROP INDEX index_name ON tb_posts;
+ERROR HY000: Tianmu engine does not find the index.
+#
+# SPATIAL INDEX
+#
+CREATE TABLE geom (g GEOMETRY NOT NULL, SPATIAL INDEX(g));
+ERROR HY000: Tianmu engine does not support gemoetry.
+#
+# FOREIGN KEY
+#
+CREATE TABLE customer (id int primary key) ENGINE=TIANMU;
+CREATE TABLE product_order (
+no INT NOT NULL ,
+customer_id INT NOT NULL primary key,
+FOREIGN KEY (customer_id)
+REFERENCES customer1(id)) ENGINE=TIANMU;
+ERROR HY000: Tianmu engine does not support foreign key.
+CREATE TABLE product_order (
+no INT NOT NULL ,
+customer_id INT NOT NULL primary key) ENGINE=TIANMU;
+ALTER TABLE product_order ADD CONSTRAINT fk_custome_key FOREIGN KEY(customer_id) REFERENCES customer(id);
+ERROR HY000: Tianmu engine does not support foreign key.
+ALTER TABLE product_order DROP FOREIGN KEY customer_id;
+ERROR HY000: Tianmu engine does not support foreign key.
+#
+# PARTITION
+#
+CREATE TABLE t1 (id INT, amount DECIMAL(7,2), tr_date DATE) ENGINE=TIANMU PARTITION BY HASH( MONTH(tr_date)) PARTITIONS 6;
+ERROR HY000: Tianmu engine does not support partition.
+CREATE TABLE t1 (id INT, amount DECIMAL(7,2), tr_date DATE) ENGINE=TIANMU;
+ALTER TABLE t1 ADD PARTITION (PARTITION p3 VALUES LESS THAN (2002));
+ERROR HY000: Tianmu engine does not support partition.
+ALTER TABLE t1 DROP PARTITION p0, p1;
+ERROR HY000: Tianmu engine does not support partition.
+#
+# GEOMETRY, ENUM, SET
+#
+CREATE TABLE geom (g GEOMETRY NOT NULL) engine=tianmu;
+ERROR HY000: Tianmu engine does not support gemoetry.
+CREATE TABLE my_enum(gender enum('male', 'female', 'secret'))engine=tianmu;
+ERROR HY000: Tianmu engine does not support enum data type.
+CREATE TABLE myset_test(Myset SET('Java','Python','C++','PHP'))engine=tianmu;
+ERROR HY000: Tianmu engine does not support set data type.
+#
+# TRIGGER
+#
+CREATE TABLE employees(
+id INT auto_increment PRIMARY KEY,
+employeeNumber INT NOT NULL,
+lastname VARCHAR(50) NOT NULL,
+changedat DATETIME DEFAULT NULL,
+action VARCHAR(50) DEFAULT NULL) ENGINE=TIANMU;
+CREATE TABLE employees_audit(
+id INT auto_increment PRIMARY KEY,
+employeeNumber INT NOT NULL,
+lastname VARCHAR(50) NOT NULL,
+changedat DATETIME DEFAULT NULL,
+action VARCHAR(50) DEFAULT NULL) ENGINE=TIANMU;
+CREATE TABLE employees_audit2(
+id INT auto_increment PRIMARY KEY,
+employeeNumber INT NOT NULL,
+lastname VARCHAR(50) NOT NULL,
+changedat DATETIME DEFAULT NULL,
+action VARCHAR(50) DEFAULT NULL) ENGINE=TIANMU;
+CREATE TRIGGER before_employee_update 
+BEFORE UPDATE ON employees 
+FOR EACH ROW
+BEGIN
+INSERT INTO employees_audit 
+SET action = 'update',
+employeeNumber = OLD.employeeNumber,
+lastname = OLD.lastname,
+new_lastname = NEW.lastname,
+changedat = NOW( );
+END |
+ERROR HY000: Tianmu engine does not support trigger.
+CREATE TRIGGER after_employee_update 
+after UPDATE ON employees 
+FOR EACH ROW
+BEGIN
+INSERT INTO employees_audit2 
+SET action = 'update',
+employeeNumber = OLD.employeeNumber,
+lastname = OLD.firstName,
+new_lastname = NEW.firstName,
+changedat = NOW( );
+END |
+ERROR HY000: Tianmu engine does not support trigger.
+CREATE TRIGGER before_employee_insert 
+BEFORE INSERT ON employees 
+FOR EACH ROW
+BEGIN
+INSERT INTO employees_audit 
+SET action = 'insert',
+employeeNumber = NEW.employeeNumber,
+lastname = NEW.lastname,
+new_lastname = NEW.lastname,
+changedat = NOW( );
+END |
+ERROR HY000: Tianmu engine does not support trigger.
+CREATE TRIGGER AFTER_employee_insert 
+AFTER INSERT ON employees 
+FOR EACH ROW
+BEGIN
+INSERT INTO employees_audit2 
+SET action = 'insert',
+employeeNumber = NEW.employeeNumber,
+lastname = NEW.lastname,
+new_lastname = NEW.lastname,
+changedat = NOW( );
+END |
+ERROR HY000: Tianmu engine does not support trigger.
+CREATE TRIGGER BEFORE_employee_delete
+BEFORE DELETE ON employees 
+FOR EACH ROW
+BEGIN
+INSERT INTO employees_audit
+SET action = 'delete',
+employeeNumber = OLD.employeeNumber,
+lastname = OLD.lastname,
+new_lastname = OLD.lastname,
+changedat = NOW( );
+END |
+ERROR HY000: Tianmu engine does not support trigger.
+CREATE TRIGGER after_employee_delete
+after DELETE ON employees 
+FOR EACH ROW
+BEGIN
+INSERT INTO employees_audit2 
+SET action = 'delete',
+employeeNumber = OLD.employeeNumber,
+lastname = OLD.lastname,
+new_lastname = OLD.lastname,
+changedat = NOW( );
+END |
+ERROR HY000: Tianmu engine does not support trigger.
+#
+# TRIGGER BEFORE PRECEDES/FOLLOWS
+#
+CREATE TABLE price_logs (
+id INT(11) NOT NULL,
+product_code VARCHAR(15) NOT NULL,
+price DOUBLE NOT NULL,
+updated_at TIMESTAMP NOT NULL
+) ENGINE=tianmu;
+CREATE TABLE user_change_logs (
+id int(11) NOT NULL ,
+product_code varchar(15) DEFAULT NULL,
+updated_at timestamp NOT NULL,
+updated_by varchar(30) NOT NULL
+) ENGINE=tianmu;
+CREATE TABLE `products` (
+`productCode` varchar(15) NOT NULL DEFAULT '' COMMENT '',
+`productName` varchar(70) NOT NULL COMMENT '',
+`productLine` varchar(50) NOT NULL COMMENT '',
+`productScale` varchar(10) NOT NULL,
+`productVendor` varchar(50) NOT NULL,
+`productDescription` text NOT NULL,
+`quantityInStock` smallint(6) NOT NULL COMMENT '',
+`buyPrice` decimal(10,2) NOT NULL COMMENT '',
+`MSRP` decimal(10,2) NOT NULL COMMENT '',
+PRIMARY KEY (`productCode`)
+) ENGINE=TIANMU DEFAULT CHARSET=utf8;
+CREATE TRIGGER before_products_update 
+BEFORE UPDATE ON products 
+FOR EACH ROW
+BEGIN
+INSERT INTO price_logs ( product_code, price )
+VALUES(old.productCode, old.msrp);
+END |
+ERROR HY000: Tianmu engine does not support trigger.
+CREATE TRIGGER before_products_update_2 
+BEFORE UPDATE ON products 
+FOR EACH ROW FOLLOWS before_products_update 
+BEGIN
+INSERT INTO user_change_logs ( product_code, updated_by )
+VALUES(old.productCode, USER ());
+END |
+ERROR HY000: Tianmu engine does not support trigger.
+CREATE TRIGGER before_products_update_2 
+BEFORE UPDATE ON products 
+FOR EACH ROW PRECEDES before_products_update 
+BEGIN
+INSERT INTO user_change_logs ( product_code, updated_by )
+VALUES(old.productCode, USER ());
+END |
+ERROR HY000: Tianmu engine does not support trigger.
+CREATE TRIGGER before_products_insert_2 
+BEFORE INSERT ON products 
+FOR EACH ROW FOLLOWS before_products_insert 
+BEGIN
+INSERT INTO user_change_logs ( product_code, updated_by )
+VALUES(new.productCode, USER ());
+END |
+ERROR HY000: Tianmu engine does not support trigger.
+CREATE TRIGGER before_products_insert 
+BEFORE INSERT ON products 
+FOR EACH ROW
+BEGIN
+INSERT INTO price_logs ( product_code, price )
+VALUES(new.productCode, new.msrp);
+END |
+ERROR HY000: Tianmu engine does not support trigger.
+CREATE TRIGGER before_products_insert_2 
+BEFORE INSERT ON products 
+FOR EACH ROW PRECEDES before_products_insert 
+BEGIN
+INSERT INTO user_change_logs ( product_code, updated_by )
+VALUES(new.productCode, USER ());
+END |
+ERROR HY000: Tianmu engine does not support trigger.
+CREATE TRIGGER before_products_delete
+BEFORE DELETE ON products 
+FOR EACH ROW
+BEGIN
+INSERT INTO price_logs ( product_code, price )
+VALUES(old.productCode, old.msrp);
+END |
+ERROR HY000: Tianmu engine does not support trigger.
+CREATE TRIGGER before_products_delete_2 
+BEFORE delete ON products 
+FOR EACH ROW FOLLOWS before_products_delete 
+BEGIN
+INSERT INTO user_change_logs ( product_code, updated_by )
+VALUES(old.productCode, USER ());
+END |
+ERROR HY000: Tianmu engine does not support trigger.
+CREATE TRIGGER before_products_delete_2 
+BEFORE delete ON products 
+FOR EACH ROW PRECEDES before_products_delete 
+BEGIN
+INSERT INTO user_change_logs ( product_code, updated_by )
+VALUES(old.productCode, USER ());
+END |
+ERROR HY000: Tianmu engine does not support trigger.
+DROP DATABASE issue1185_test;
