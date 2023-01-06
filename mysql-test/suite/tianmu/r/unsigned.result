@@ -1,0 +1,153 @@
+#
+# Test unsigned
+#
+DROP DATABASE IF EXISTS unsigned_test;
+CREATE DATABASE unsigned_test;
+USE unsigned_test;
+create table st1 (ukey int, c1 tinyint unsigned, c2 smallint unsigned, c3 int unsigned, c4 bigint unsigned);
+insert into st1 values (1,2,3,4,5), (2,127,32767,2147483647,9223372036854775807);
+select 'q1', st1.* from st1 order by 1;
+q1	ukey	c1	c2	c3	c4
+q1	1	2	3	4	5
+q1	2	127	32767	2147483647	9223372036854775807
+insert into st1 values (3,-127,-32766,-2147483646,-9223372036854775806);
+ERROR 22003: Out of range value for column 'c1' at row 1
+insert into st1 values (4,126,32766,2147483646,9223372036854775806),(5,125,32765,2147483645,9223372036854775805);
+insert into st1 values (6,1255,165535,14294967295,118446744073709551615);
+ERROR 22003: Out of range value for column 'c1' at row 1
+select 'q2', st1.* from st1 where ukey > 2 order by 1;
+q2	ukey	c1	c2	c3	c4
+q2	4	126	32766	2147483646	9223372036854775806
+q2	5	125	32765	2147483645	9223372036854775805
+insert into st1 values (7,NULL,NULL,NULL,NULL);
+select 'q3', st1.* from st1 where ukey=7;
+q3	ukey	c1	c2	c3	c4
+q3	7	NULL	NULL	NULL	NULL
+update st1 set c4=-9223372036854775806 where ukey=1;
+ERROR 22003: Out of range value for column 'c4' at row 1
+update st1 set c3=-2147483646 where ukey=1;
+ERROR 22003: Out of range value for column 'c3' at row 1
+update st1 set c2=-32766 where ukey=1;
+ERROR 22003: Out of range value for column 'c2' at row 1
+update st1 set c1=-127 where ukey between 0 and 2;
+ERROR 22003: Out of range value for column 'c1' at row 1
+select 'q4', st1.* from st1 where ukey<2;
+q4	ukey	c1	c2	c3	c4
+q4	1	2	3	4	5
+update st1 set c3=2147483646 where ukey=4;
+update st1 set c2=32766 where ukey=4;
+update st1 set c1=125 where ukey between 4 and 5;
+select 'q5', st1.* from st1 where ukey>3 order by 2;
+q5	ukey	c1	c2	c3	c4
+q5	4	125	32766	2147483646	9223372036854775806
+q5	5	125	32765	2147483645	9223372036854775805
+q5	7	NULL	NULL	NULL	NULL
+create table st2 (ukey int, c1 tinyint unsigned, c2 smallint unsigned, c3 int unsigned, c4 bigint unsigned);
+insert into st2 values (8,125,32764,2147483645,9223372036854775800), (9,126,32766,2147483646,9223372036854775800),(10,127,32767,2147483647,9223372036854775801);
+select 'q6', st2.* from st2 where c1 between 125 and 127;
+q6	ukey	c1	c2	c3	c4
+q6	8	125	32764	2147483645	9223372036854775800
+q6	9	126	32766	2147483646	9223372036854775800
+q6	10	127	32767	2147483647	9223372036854775801
+select 'q7', st2.* from st2 where c2 between 32764 and 32767;
+q7	ukey	c1	c2	c3	c4
+q7	8	125	32764	2147483645	9223372036854775800
+q7	9	126	32766	2147483646	9223372036854775800
+q7	10	127	32767	2147483647	9223372036854775801
+select 'q8', st2.* from st2 where c3 between 2147483645 and 2147483647;
+q8	ukey	c1	c2	c3	c4
+q8	8	125	32764	2147483645	9223372036854775800
+q8	9	126	32766	2147483646	9223372036854775800
+q8	10	127	32767	2147483647	9223372036854775801
+select 'q9', st2.* from st2 where c4 between 9223372036854775800 and 9223372036854775801;
+q9	ukey	c1	c2	c3	c4
+q9	8	125	32764	2147483645	9223372036854775800
+q9	9	126	32766	2147483646	9223372036854775800
+q9	10	127	32767	2147483647	9223372036854775801
+drop table if exists st1;
+drop table if exists st2;
+DROP TABLE if exists st3;
+create table st3 (ukey bigint unsigned, c1 float unsigned, c2 double unsigned, c3 decimal(5,2) unsigned, c4 decimal(18,6) unsigned);
+insert into st3 values (0,2.22507385E-18, 2.225073858507201E-307, 123.45, 1234567890.12345678);
+Warnings:
+Note	1265	Data truncated for column 'c4' at row 1
+select 'q10', st3.* from st3 order by st3.ukey;
+q10	ukey	c1	c2	c3	c4
+q10	0	2.22507e-18	2.225073858507201e-307	123.45	1234567890.123457
+insert into st3 values (0,-2.22507385E-18, -2.225073858507201E-307, -123.45, -1234567890.12345678);
+ERROR 22003: Out of range value for column 'c1' at row 1
+select 'q11', st3.* from st3 order by st3.ukey;
+q11	ukey	c1	c2	c3	c4
+q11	0	2.22507e-18	2.225073858507201e-307	123.45	1234567890.123457
+insert into st3 values (0,0.0, 0.0, 43123.45, 34321234567890.12345678);
+ERROR 22003: Out of range value for column 'c3' at row 1
+select 'q12', st3.* from st3 order by st3.ukey;
+q12	ukey	c1	c2	c3	c4
+q12	0	2.22507e-18	2.225073858507201e-307	123.45	1234567890.123457
+select 'q13', st3.* from st3 where c2 > 0 order by st3.ukey;
+q13	ukey	c1	c2	c3	c4
+q13	0	2.22507e-18	2.225073858507201e-307	123.45	1234567890.123457
+insert into st3 values (0,0.0, 0.0, 0.0, 0);
+select 'q12', st3.* from st3 order by st3.ukey;
+q12	ukey	c1	c2	c3	c4
+q12	0	2.22507e-18	2.225073858507201e-307	123.45	1234567890.123457
+q12	0	0	0	0.00	0.000000
+DROP TABLE if exists st3;
+DROP TABLE IF EXISTS st4;
+CREATE TABLE st4 (ukey TINYINT UNSIGNED, c1 INT UNSIGNED);
+INSERT INTO st4 VALUES (0,1);
+INSERT INTO st4 VALUES (0,2);
+INSERT INTO st4 VALUES (0,3);
+INSERT INTO st4 VALUES (0,4);
+INSERT INTO st4 VALUES (0,5);
+SELECT 'q13', st4.* FROM st4 ORDER BY st4.ukey;
+q13	ukey	c1
+q13	0	1
+q13	0	2
+q13	0	3
+q13	0	4
+q13	0	5
+DROP TABLE IF EXISTS st4;
+CREATE TABLE st4 (ukey SMALLINT UNSIGNED, c1 INT UNSIGNED);
+INSERT INTO st4 VALUES (0,1);
+INSERT INTO st4 VALUES (0,2);
+INSERT INTO st4 VALUES (0,3);
+INSERT INTO st4 VALUES (0,4);
+INSERT INTO st4 VALUES (0,5);
+SELECT 'q13', st4.* FROM st4 ORDER BY st4.ukey;
+q13	ukey	c1
+q13	0	1
+q13	0	2
+q13	0	3
+q13	0	4
+q13	0	5
+DROP TABLE IF EXISTS st4;
+CREATE TABLE st4 (ukey INT UNSIGNED, c1 INT UNSIGNED);
+INSERT INTO st4 VALUES (0,1);
+INSERT INTO st4 VALUES (0,2);
+INSERT INTO st4 VALUES (0,3);
+INSERT INTO st4 VALUES (0,4);
+INSERT INTO st4 VALUES (0,5);
+SELECT 'q13', st4.* FROM st4 ORDER BY st4.ukey;
+q13	ukey	c1
+q13	0	1
+q13	0	2
+q13	0	3
+q13	0	4
+q13	0	5
+DROP TABLE IF EXISTS st4;
+CREATE TABLE st4 (ukey BIGINT UNSIGNED, c1 INT UNSIGNED);
+INSERT INTO st4 VALUES (0,1);
+INSERT INTO st4 VALUES (0,2);
+INSERT INTO st4 VALUES (0,3);
+INSERT INTO st4 VALUES (0,4);
+INSERT INTO st4 VALUES (0,5);
+SELECT 'q13', st4.* FROM st4 ORDER BY st4.ukey;
+q13	ukey	c1
+q13	0	1
+q13	0	2
+q13	0	3
+q13	0	4
+q13	0	5
+DROP TABLE IF EXISTS st4;
+DROP DATABASE unsigned_test;

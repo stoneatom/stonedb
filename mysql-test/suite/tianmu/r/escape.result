@@ -1,0 +1,121 @@
+#
+# Test escape
+#
+DROP DATABASE IF EXISTS escape_test;
+CREATE DATABASE escape_test;
+USE escape_test;
+CREATE TABLE `st1` (
+`id` BIGINT(20) NOT NULL AUTO_INCREMENT,
+`name` VARCHAR(255) DEFAULT NULL,
+`uid` VARCHAR(11) DEFAULT NULL,
+PRIMARY KEY (`id`)
+) DEFAULT CHARSET=utf8;
+INSERT INTO st1 (NAME,uid) VALUES('zhangsan','hello');
+INSERT INTO st1 (NAME,uid) VALUES('lisi_wu','world');
+INSERT INTO st1 (NAME,uid) VALUES('wangwu%','world');
+INSERT INTO st1 (NAME,uid) VALUES('%a','world');
+INSERT INTO st1 (NAME,uid) VALUES('%_','world');
+select * from st1;
+id	name	uid
+1	zhangsan	hello
+2	lisi_wu	world
+3	wangwu%	world
+4	%a	world
+5	%_	world
+SELECT * FROM st1 WHERE NAME LIKE CONCAT("%", "san", "%");
+id	name	uid
+1	zhangsan	hello
+SELECT * FROM st1 WHERE NAME LIKE CONCAT("%", "%", "%");
+id	name	uid
+1	zhangsan	hello
+2	lisi_wu	world
+3	wangwu%	world
+4	%a	world
+5	%_	world
+SELECT * FROM st1 WHERE NAME LIKE CONCAT("%", "\%", "%");
+id	name	uid
+3	wangwu%	world
+4	%a	world
+5	%_	world
+SELECT * FROM st1 WHERE NAME LIKE CONCAT("%", "\%", "%");
+id	name	uid
+3	wangwu%	world
+4	%a	world
+5	%_	world
+SELECT * FROM st1 WHERE NAME LIKE CONCAT("%", "$%", "%") ESCAPE "$";
+id	name	uid
+3	wangwu%	world
+4	%a	world
+5	%_	world
+SELECT * FROM st1 WHERE NAME LIKE CONCAT("%", "\_", "%");
+id	name	uid
+2	lisi_wu	world
+5	%_	world
+SELECT * FROM st1 WHERE NAME LIKE CONCAT("%", "a_", "%") ESCAPE "a";
+id	name	uid
+2	lisi_wu	world
+5	%_	world
+SELECT * FROM st1 WHERE NAME LIKE "a%_" ESCAPE "a" ;
+id	name	uid
+4	%a	world
+5	%_	world
+SELECT * FROM st1 WHERE NAME LIKE "a%a" ESCAPE "a" ;
+id	name	uid
+4	%a	world
+drop table st1;
+CREATE TABLE `st1` (
+`id` BIGINT(20) NOT NULL AUTO_INCREMENT,
+`name` VARCHAR(255) DEFAULT NULL,
+`uid` VARCHAR(11) DEFAULT NULL,
+PRIMARY KEY (`id`)
+) DEFAULT CHARSET=utf8;
+INSERT INTO st1 (NAME,uid) VALUES('123hello','hello');
+INSERT INTO st1 (NAME,uid) VALUES('123hello123','world');
+INSERT INTO st1 (NAME,uid) VALUES('hello123','world');
+INSERT INTO st1 (NAME,uid) VALUES('_hello','world');
+select * from st1;
+id	name	uid
+1	123hello	hello
+2	123hello123	world
+3	hello123	world
+4	_hello	world
+select * from st1 where name like '%hello%';
+id	name	uid
+1	123hello	hello
+2	123hello123	world
+3	hello123	world
+4	_hello	world
+select * from st1 where name like '_hello';
+id	name	uid
+4	_hello	world
+select * from st1 where name like 'hello12_';
+id	name	uid
+3	hello123	world
+create table st2(id int ,column_2 varchar(10),column_3 varchar(10));
+insert into st2 values(1,'_a\\\\','111111');
+insert into st2 values(2,'12%','%12%');
+insert into st2 values(3,'a_a','a%');
+insert into st2 values(4,'_a\\','_12%');
+insert into st2 values(5,'\\a','\\\\_a%12%');
+select * from st2 where column_2 like '%\\\%' ;
+id	column_2	column_3
+1	_a\\	111111
+4	_a\	_12%
+5	\a	\\_a%12%
+select * from st2 where column_2 like '%\%' ;
+id	column_2	column_3
+2	12%	%12%
+select * from st2 where column_2 like '%\\%' ;
+id	column_2	column_3
+2	12%	%12%
+select * from st2 where column_2 like '%\_%' ;
+id	column_2	column_3
+1	_a\\	111111
+3	a_a	a%
+4	_a\	_12%
+select * from st2 where column_2 like '%?_%'  escape '?';
+id	column_2	column_3
+1	_a\\	111111
+3	a_a	a%
+4	_a\	_12%
+DROP DATABASE escape_test;
