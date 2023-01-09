@@ -115,7 +115,13 @@ bool Engine::ConvertToField(Field *field, types::TianmuDataType &tianmu_item, st
               *reinterpret_cast<int64_t *>(field->ptr) = (int64_t)((types::TianmuNum &)(tianmu_item));
               break;
             case MYSQL_TYPE_BIT:  // mysql bit(1~64), here is (1~63, 1 precision lose)
-              *reinterpret_cast<int64_t *>(field->ptr) = (int64_t)((types::TianmuNum &)(tianmu_item));
+              // Bit type used ** type_conversion_status Field_bit::store(longlong nr, bool unsigned_val) ** to store
+              // longlong val. Storing of values to field->ptr in high byte first order to get better compression(that
+              // means for integer values, stored in big-endian bytes order. We should not use
+              // **reinterpret_cast<int64_t *>(field->ptr) ** to store directly, otherwise the field->ptr will be
+              // little-endian bytes order and will get wrong value when used Field_bit::val_int() to get bit value back
+              // params: "true" is unsigned flag, but it's not used in bit field->store() function.
+              field->store((int64_t)((types::TianmuNum &)(tianmu_item)), true);
               break;
             case MYSQL_TYPE_FLOAT:
               *reinterpret_cast<float *>(field->ptr) = (float)((types::TianmuNum &)(tianmu_item));
