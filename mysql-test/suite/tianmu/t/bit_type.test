@@ -169,4 +169,37 @@ select hex(a) from bittest where a=48;
 select hex(a) from bittest where a=57;
 drop table bittest;
 
+# test "insert into bit_test select * from bit_test"
+CREATE TABLE `bit_test` (
+  `bit1` bit(1) DEFAULT NULL,
+  `bit2` bit(2) DEFAULT NULL,
+  `bit8` bit(8) DEFAULT NULL,
+  `bit16` bit(16) DEFAULT NULL,
+  `bit32` bit(32) DEFAULT NULL,
+  `bit63` bit(63) DEFAULT NULL
+) ENGINE=TIANMU DEFAULT CHARSET=utf8mb4;
+insert into bit_test values(b'1', b'11',b'111',b'1111',b'11',b'111');
+insert into bit_test values(null, b'11',b'111000',b'1111',b'11',null);
+insert into bit_test values(b'0', b'10',b'111',b'1111',b'11',b'0');
+insert into bit_test values(b'1', b'1',b'11111111',b'1111',b'11',b'111');
+insert into bit_test values(b'1', b'1',b'1',b'1111111111111111',b'11',b'111');
+insert into bit_test values(b'1', b'1',b'1',b'1', b'11111111111111111111111111111111',b'111');
+insert into bit_test values(b'1', b'1',b'1', b'1', b'1', b'11111111111111111111111111111111111111111111111111111111111111');
+insert into bit_test values(null, null, null, null, null, null);
+
+select count(*) from  bit_test;
+select bit1+0, bit2+0, bit8+0, bit16+0, bit32+0, bit63+0 from bit_test;
+
+insert into bit_test select * from bit_test;
+select count(*) from  bit_test;
+select bit1+0, bit2+0, bit8+0, bit16+0, bit32+0, bit63+0 from bit_test;
+
+# test "create table t select * from bit_test"
+create table fork_bit select * from bit_test;
+select count(*) from  fork_bit;
+select bit1+0, bit2+0, bit8+0, bit16+0, bit32+0, bit63+0 from fork_bit;
+
+drop table bit_test;
+drop table fork_bit;
+
 drop database test_bit;
