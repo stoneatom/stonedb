@@ -375,8 +375,8 @@ int ha_tianmu::write_row([[maybe_unused]] uchar *buf) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::AddInsertRecord: %s.", e.what());
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
   } catch (common::FormatException &e) {
-    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::AddInsertRecord: %s Row: %ld, field %u.", e.what(),
-               e.m_row_no, e.m_field_no);
+    TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::AddInsertRecord: %s Row: %ld, field %u.",
+               e.what(), e.m_row_no, e.m_field_no);
     my_message(static_cast<int>(common::ErrorCode::UNKNOWN_ERROR), e.what(), MYF(0));
   } catch (common::FileException &e) {
     TIANMU_LOG(LogCtl_Level::ERROR, "An exception is caught in Engine::AddInsertRecord: %s.", e.what());
@@ -924,8 +924,6 @@ int ha_tianmu::rnd_init(bool scan) {
           filter_ptr_.reset(new core::Filter(*filter));
 
         table_ptr_ = push_down_result->GetTableP(0);
-        table_new_iter_ = ((core::TianmuTable *)table_ptr_)->Begin(GetAttrsUseIndicator(table), *filter);
-        table_new_iter_end_ = ((core::TianmuTable *)table_ptr_)->End();
       } catch (common::Exception const &e) {
         tianmu_control_ << system::lock << "Error in push-down execution, push-down execution aborted: " << e.what()
                         << system::unlock;
@@ -935,12 +933,11 @@ int ha_tianmu::rnd_init(bool scan) {
       cq_.reset();
     } else {
       if (scan && filter_ptr_.get()) {
-        table_new_iter_ = ((core::TianmuTable *)table_ptr_)->Begin(GetAttrsUseIndicator(table), *filter_ptr_);
-        table_new_iter_end_ = ((core::TianmuTable *)table_ptr_)->End();
+        iterator_ =
+            core::CombinedIterator::Create((core::TianmuTable *)table_ptr_, GetAttrsUseIndicator(table), *filter_ptr_);
       } else {
         std::shared_ptr<core::TianmuTable> rctp;
-        ha_tianmu_engine_->GetTableIterator(table_name_, table_new_iter_, table_new_iter_end_, rctp,
-                                            GetAttrsUseIndicator(table), table->in_use);
+        ha_tianmu_engine_->GetTableIterator(table_name_, iterator_, rctp, GetAttrsUseIndicator(table), table->in_use);
         table_ptr_ = rctp.get();
         filter_ptr_.reset();
       }
@@ -1049,11 +1046,11 @@ int ha_tianmu::rnd_pos(uchar *buf, uchar *pos) {
       filter_ptr_->Set(position);
 
       auto tab_ptr = ha_tianmu_engine_->GetTx(table->in_use)->GetTableByPath(table_name_);
-      table_new_iter_ = tab_ptr->Begin(GetAttrsUseIndicator(table), *filter_ptr_);
-      table_new_iter_end_ = tab_ptr->End();
+      iterator_ =
+          core::CombinedIterator::Create((core::TianmuTable *)table_ptr_, GetAttrsUseIndicator(table), *filter_ptr_);
       table_ptr_ = tab_ptr.get();
 
-      table_new_iter_.MoveToRow(position);
+      iterator_.MoveTo(position);
       table->status = 0;
       blob_buffers_.resize(table->s->fields);
       if (fill_row(buf) == HA_ERR_END_OF_FILE) {
@@ -1229,7 +1226,7 @@ uint ha_tianmu::max_supported_key_part_length([[maybe_unused]] HA_CREATE_INFO *c
 }
 
 int ha_tianmu::fill_row(uchar *buf) {
-  if (table_new_iter_ == table_new_iter_end_)
+  if (!iterator_.Valid())
     return HA_ERR_END_OF_FILE;
 
   my_bitmap_map *org_bitmap = dbug_tmp_use_all_columns(table, table->write_set);
@@ -1242,17 +1239,21 @@ int ha_tianmu::fill_row(uchar *buf) {
     buffer.reset(new char[table->s->reclength]);
     std::memcpy(buffer.get(), table->record[0], table->s->reclength);
   }
-
-  for (uint col_id = 0; col_id < table->s->fields; col_id++)
-    core::Engine::ConvertToField(table->field[col_id], *(table_new_iter_.GetData(col_id)), &blob_buffers_[col_id]);
+  if (iterator_.IsDelta()) {
+    std::string insert_record = iterator_.GetDeltaData();
+    core::Engine::DecodeInsertRecord(insert_record.data(), insert_record.size(), table->field);
+  } else {
+    for (uint col_id = 0; col_id < table->s->fields; col_id++)
+      core::Engine::ConvertToField(table->field[col_id], *(iterator_.GetBaseData(col_id)), &blob_buffers_[col_id]);
+  }
 
   if (buf != table->record[0]) {
     std::memcpy(buf, table->record[0], table->s->reclength);
     std::memcpy(table->record[0], buffer.get(), table->s->reclength);
   }
 
-  current_position_ = table_new_iter_.GetCurrentRowId();
-  table_new_iter_++;
+  current_position_ = iterator_.Position();
+  iterator_++;
 
   dbug_tmp_restore_column_map(table->write_set, org_bitmap);
 
@@ -1338,8 +1339,8 @@ int ha_tianmu::set_cond_iter() {
         filter_ptr_.reset(new core::Filter(*filter));
 
       table_ptr_ = push_down_result->GetTableP(0);
-      table_new_iter_ = ((core::TianmuTable *)table_ptr_)->Begin(GetAttrsUseIndicator(table), *filter_ptr_);
-      table_new_iter_end_ = ((core::TianmuTable *)table_ptr_)->End();
+      iterator_ =
+          core::CombinedIterator::Create((core::TianmuTable *)table_ptr_, GetAttrsUseIndicator(table), *filter_ptr_);
       blob_buffers_.resize(0);
       if (table_ptr_ != nullptr)
         blob_buffers_.resize(table_ptr_->NumOfDisplaybleAttrs());
@@ -1362,8 +1363,7 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
   try {
     if (!query_) {
       std::shared_ptr<core::TianmuTable> rctp;
-      ha_tianmu_engine_->GetTableIterator(table_name_, table_new_iter_, table_new_iter_end_, rctp,
-                                          GetAttrsUseIndicator(table), table->in_use);
+      ha_tianmu_engine_->GetTableIterator(table_name_, iterator_, rctp, GetAttrsUseIndicator(table), table->in_use);
       table_ptr_ = rctp.get();
       query_.reset(new core::Query(current_txn_));
       cq_.reset(new core::CompiledQuery);
@@ -1415,7 +1415,7 @@ const Item *ha_tianmu::cond_push(const Item *a_cond) {
     tmp_cq->AddConds(tmp_table_, cond_id, core::CondType::WHERE_COND);
     tmp_cq->ApplyConds(tmp_table_);
     cq_.reset(tmp_cq.release());
-    // reset  table_new_iter_ with push condition
+    // reset iterator with push condition
     if (!set_cond_iter())
       ret = 0;
   } catch (std::exception &e) {
@@ -1433,8 +1433,7 @@ int ha_tianmu::reset() {
 
   int ret = 1;
   try {
-    table_new_iter_ = core::TianmuTable::Iterator();
-    table_new_iter_end_ = core::TianmuTable::Iterator();
+    iterator_ = core::CombinedIterator();
     table_ptr_ = nullptr;
     filter_ptr_.reset();
     query_.reset();

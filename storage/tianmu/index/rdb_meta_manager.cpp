@@ -29,7 +29,7 @@
 #include "m_ctype.h"
 #include "my_bit.h"
 
-#include "core/delta_store.h"
+#include "core/delta_table.h"
 #include "core/engine.h"
 #include "index/kv_store.h"
 #include "index/rdb_utils.h"

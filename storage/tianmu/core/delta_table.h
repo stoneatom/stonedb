@@ -20,10 +20,12 @@
 
 #include <string>
 
-#include "rocksdb/db.h"
-#include "rocksdb/slice.h"
-
 #include "common/exception.h"
+#include "core/tianmu_attr.h"
+#include "index/kv_store.h"
+#include "rocksdb/db.h"
+#include "rocksdb/iterator.h"
+#include "rocksdb/slice.h"
 #include "types/tianmu_data_types.h"
 
 namespace Tianmu {
@@ -32,6 +34,9 @@ class TableShare;
 class Transaction;
 
 enum class RecordType { RecordType_min, kSchema, kInsert, kUpdate, kDelete, RecordType_max };
+
+class DeltaIterator;
+
 class DeltaTable {
  public:
   DeltaTable() = default;
@@ -44,9 +49,7 @@ class DeltaTable {
   void Init(uint64_t base_row_num);
   std::string FullName() { return fullname_; }
   [[nodiscard]] uint32_t GetDeltaTableID() const { return delta_tid_; }
-  uint64_t CountRecords() {
-    return load_id.load() - merge_id.load();
-  }
+  uint64_t CountRecords() { return load_id.load() - merge_id.load(); }
   rocksdb::ColumnFamilyHandle *GetCFHandle() { return cf_handle_; }
   common::ErrorCode Rename(const std::string &to);
   void AddInsertRecord(uint64_t row_id, std::unique_ptr<char[]> buf, uint32_t size);
@@ -69,40 +72,70 @@ class DeltaTable {
   std::string fullname_;
   uint32_t delta_tid_ = 0;
   rocksdb::ColumnFamilyHandle *cf_handle_ = nullptr;
+  //
+  // public:
+  //  DeltaIterator Begin(const std::vector<bool> &attrs) { return DeltaIterator::CreateBegin(this, attrs); }
+  //  DeltaIterator End() { return DeltaIterator::CreateEnd(); }
+};
+
+class DeltaIterator final {
+  friend class DeltaTable;
 
  public:
-  class Iterator final {
-    friend class DeltaTable;
-
-   public:
-    Iterator() = default;
-    ~Iterator() = default;
-
-   private:
-    Iterator(DeltaTable *table) : table(table){};
-
-   public:
-    bool operator==(const Iterator &iter);
-    bool operator!=(const Iterator &iter) { return !(*this == iter); }
-    void operator++(int);
-
-    std::shared_ptr<types::TianmuDataType> &GetData(int col) {}
-
-    void MoveToRow(int64_t row_id);
-    int64_t GetCurrentRowId() const { return position; }
-    bool Inited() const { return table != nullptr; }
-
-   private:
-    DeltaTable *table = nullptr;
-    int64_t position = -1;
-    Transaction *conn = nullptr;
-    bool current_record_fetched = false;
-    std::vector<std::shared_ptr<types::TianmuDataType>> record;
-
-   private:
-    static Iterator CreateBegin(DeltaTable *table) { Iterator iter(table); };
-    static Iterator CreateEnd();
+  DeltaIterator() = default;
+  ~DeltaIterator() = default;
+  DeltaIterator(DeltaTable &table, const std::vector<bool> &attrs);
+  bool operator==(const DeltaIterator &iter) {
+    return table_->GetDeltaTableID() == iter.table_->GetDeltaTableID() && position_ == iter.position_;
   };
+  bool operator!=(const DeltaIterator &iter) { return !(*this == iter); }
+  void operator++(int) {
+    ++it_;
+    int64_t new_pos;
+    if (it_->Valid()) {
+      // new_pos = it->key(); parse the real row_id
+      ;
+    } else {
+      new_pos = -1;
+    }
+    position_ = new_pos;
+    current_record_fetched_ = false;
+  };
+
+  bool Inited() const { return table_ != nullptr; }
+  std::string &GetData() {
+    // parse value
+    // check type=Insert
+    // read data to record
+    current_record_fetched_ = true;
+    return record_;
+  }
+  void MoveToRow(int64_t row_id) {
+    // combined key{delta_id+row_id}
+    // it = new iterator().seek(key)
+    int64_t new_pos;
+    if (it_->Valid()) {  // need check valid
+      // new_pos = it->key(); parse the real row_id
+      ;
+    } else {
+      new_pos = -1;
+    }
+    position_ = new_pos;
+    current_record_fetched_ = false;
+  }
+  int64_t Position() const { return position_; }
+  int64_t StartPosition() const { return start_position_; }
+  bool Valid() const { return position_ != -1; }
+
+ private:
+  DeltaTable *table_ = nullptr;
+  int64_t position_ = -1;
+  int64_t start_position_ = -1;     // this is dividing point between delta and base
+  //  Transaction *conn_ = nullptr;
+  [[maybe_unused]] bool current_record_fetched_ = false;
+  rocksdb::Iterator *it_ = nullptr;
+  std::string record_;
+  std::vector<bool> attrs_;
 };
 
 }  // namespace core

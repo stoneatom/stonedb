@@ -526,10 +526,31 @@ void TianmuTable::DisplayRSI() {
   TIANMU_LOG(LogCtl_Level::DEBUG, "%s", ss.str().c_str());
 }
 
-TianmuTable::Iterator::Iterator(TianmuTable &table, std::shared_ptr<Filter> filter)
-    : table(&table), filter(filter), it(filter.get(), table.Getpackpower()) {}
+TianmuIterator::TianmuIterator(TianmuTable *table, const std::vector<bool> &attrs, const Filter &raw_filter)
+    : table(table), filter(std::make_shared<Filter>(raw_filter)), it(filter.get(), table->Getpackpower()) {
+  Initialize(attrs);
+  it.Rewind();
+  if (it.IsValid())
+    position = *(it);
+  else
+    position = -1;
+  conn = current_txn_;
+}
 
-void TianmuTable::Iterator::Initialize(const std::vector<bool> &attrs_) {
+TianmuIterator::TianmuIterator(TianmuTable *table, const std::vector<bool> &attrs)
+    : table(table),
+      filter(std::make_shared<Filter>(table->NumOfObj(), table->Getpackpower(), true)),
+      it(filter.get(), table->Getpackpower()) {
+  Initialize(attrs);
+  it.Rewind();
+  if (it.IsValid())
+    position = *(it);
+  else
+    position = -1;
+  conn = current_txn_;
+}
+
+void TianmuIterator::Initialize(const std::vector<bool> &attrs_) {
   int attr_id = 0;
   attrs.clear();
   record.clear();
@@ -549,9 +570,9 @@ void TianmuTable::Iterator::Initialize(const std::vector<bool> &attrs_) {
   }
 }
 
-bool TianmuTable::Iterator::operator==(const Iterator &iter) { return position == iter.position; }
+bool TianmuIterator::operator==(const TianmuIterator &iter) { return position == iter.position; }
 
-void TianmuTable::Iterator::operator++(int) {
+void TianmuIterator::operator++(int) {
   ++it;
   int64_t new_pos;
   if (it.IsValid())
@@ -563,7 +584,7 @@ void TianmuTable::Iterator::operator++(int) {
   current_record_fetched = false;
 }
 
-void TianmuTable::Iterator::MoveToRow(int64_t row_id) {
+void TianmuIterator::MoveToRow(int64_t row_id) {
   UnlockPacks(row_id);
   it.RewindToRow(row_id);
   if (it.IsValid())
@@ -573,7 +594,7 @@ void TianmuTable::Iterator::MoveToRow(int64_t row_id) {
   current_record_fetched = false;
 }
 
-void TianmuTable::Iterator::FetchValues() {
+void TianmuIterator::FetchValues() {
   if (!current_record_fetched) {
     LockPacks();
     for (auto &func : values_fetchers) {
@@ -583,7 +604,7 @@ void TianmuTable::Iterator::FetchValues() {
   }
 }
 
-void TianmuTable::Iterator::UnlockPacks(int64_t new_row_id) {
+void TianmuIterator::UnlockPacks(int64_t new_row_id) {
   if (position != -1) {
     uint32_t power = table->Getpackpower();
     if (new_row_id == -1 || (position >> power) != (new_row_id >> power))
@@ -591,27 +612,12 @@ void TianmuTable::Iterator::UnlockPacks(int64_t new_row_id) {
   }
 }
 
-void TianmuTable::Iterator::LockPacks() {
+void TianmuIterator::LockPacks() {
   if (dp_locks.empty() && position != -1) {
     uint32_t power = table->Getpackpower();
     for (auto &a : attrs) dp_locks.emplace_back(std::make_unique<DataPackLock>(a, int(position >> power)));
   }
 }
-
-TianmuTable::Iterator TianmuTable::Iterator::CreateBegin(TianmuTable &table, std::shared_ptr<Filter> filter,
-                                                         const std::vector<bool> &attrs) {
-  TianmuTable::Iterator ret(table, filter);
-  ret.Initialize(attrs);
-  ret.it.Rewind();
-  if (ret.it.IsValid())
-    ret.position = *(ret.it);
-  else
-    ret.position = -1;
-  ret.conn = current_txn_;
-  return ret;
-}
-
-TianmuTable::Iterator TianmuTable::Iterator::CreateEnd() { return TianmuTable::Iterator(); }
 
 int64_t TianmuTable::NumOfObj() { return m_attrs[0]->NumOfObj(); }
 

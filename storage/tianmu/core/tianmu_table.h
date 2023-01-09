@@ -20,8 +20,9 @@
 
 #include <string>
 
+#include "combined_iterator.h"
 #include "common/common_definitions.h"
-#include "core/delta_store.h"
+#include "core/delta_table.h"
 #include "core/just_a_table.h"
 #include "core/tianmu_attr.h"
 #include "util/fs.h"
@@ -91,7 +92,7 @@ class TianmuTable final : public JustATable {
   const ColumnType &GetColumnType(int col) override;
   PhysicalColumn *GetColumn(int col_no) override { return m_attrs[col_no].get(); }
   TianmuAttr *GetAttr(int n_a);
-
+  const std::shared_ptr<DeltaTable> &GetDelta() const { return m_delta; }
   // Transaction management
   bool Verify();
   void CommitVersion();
@@ -170,62 +171,55 @@ class TianmuTable final : public JustATable {
   uint64_t no_loaded_rows = 0;
   uint64_t no_dup_rows = 0;
 
- public:
-  class Iterator final {
-    friend class TianmuTable;
-
-   public:
-    Iterator() = default;
-
-   private:
-    Iterator(TianmuTable &table, std::shared_ptr<Filter> filter);
-    void Initialize(const std::vector<bool> &attrs);
-
-   public:
-    bool operator==(const Iterator &iter);
-    bool operator!=(const Iterator &iter) { return !(*this == iter); }
-    void operator++(int);
-
-    std::shared_ptr<types::TianmuDataType> &GetData(int col) {
-      FetchValues();
-      return record[col];
-    }
-
-    void MoveToRow(int64_t row_id);
-    int64_t GetCurrentRowId() const { return position; }
-    bool Inited() const { return table != nullptr; }
-
-   private:
-    void FetchValues();
-    void UnlockPacks(int64_t new_row_id);
-    void LockPacks();
-
-   private:
-    TianmuTable *table = nullptr;
-    int64_t position = -1;
-    Transaction *conn = nullptr;
-    bool current_record_fetched = false;
-    std::shared_ptr<Filter> filter;
-    FilterOnesIterator it;
-
-    std::vector<std::shared_ptr<types::TianmuDataType>> record;
-    std::vector<std::function<void(size_t)>> values_fetchers;
-    std::vector<std::unique_ptr<DataPackLock>> dp_locks;
-    std::vector<TianmuAttr *> attrs;
-
-   private:
-    static Iterator CreateBegin(TianmuTable &table, std::shared_ptr<Filter> filter, const std::vector<bool> &attrs);
-    static Iterator CreateEnd();
-  };
-
-  Iterator Begin(const std::vector<bool> &attrs, Filter &filter) {
-    return Iterator::CreateBegin(*this, std::shared_ptr<Filter>(new Filter(filter)), attrs);
-  }
-  Iterator Begin(const std::vector<bool> &attrs) {
-    return Iterator::CreateBegin(*this, std::shared_ptr<Filter>(new Filter(NumOfObj(), Getpackpower(), true)), attrs);
-  }
-  Iterator End() { return Iterator::CreateEnd(); }
+// public:
+//  CombinedIterator Begin(const std::vector<bool> &attrs, const Filter &filter) {
+//    auto filter_sp = std::make_shared<Filter>(filter);
+//    return CombinedIterator::Create(*this, attrs, std::move(filter_sp));
+//  }
+//  CombinedIterator Begin(const std::vector<bool> &attrs) {
+//    auto filter_sp = std::make_shared<Filter>(NumOfObj(), Getpackpower(), true);  // create empty filter
+//    return CombinedIterator::Create(*this, attrs, std::move(filter_sp));
+//  }
 };
+
+class TianmuIterator {
+  friend class TianmuTable;
+
+ public:
+  TianmuIterator() = default;
+  TianmuIterator(TianmuTable *table, const std::vector<bool> &attrs, const Filter& filter);
+  TianmuIterator(TianmuTable *table, const std::vector<bool> &attrs);
+  bool operator==(const TianmuIterator &iter);
+  bool operator!=(const TianmuIterator &iter) { return !(*this == iter); }
+  void operator++(int);
+
+  bool Inited() const { return table != nullptr; }
+  std::shared_ptr<types::TianmuDataType> &GetData(int col) {
+    FetchValues();
+    return record[col];
+  }
+  void MoveToRow(int64_t row_id);
+  int64_t Position() const { return position; }
+  bool Valid() { return position != -1; }
+
+ private:
+  void Initialize(const std::vector<bool> &attrs);
+  void FetchValues();
+  void UnlockPacks(int64_t new_row_id);
+  void LockPacks();
+
+  TianmuTable *table = nullptr;
+  int64_t position = -1;
+  Transaction *conn = nullptr;
+  bool current_record_fetched = false;
+  std::shared_ptr<Filter> filter;
+  FilterOnesIterator it;
+  std::vector<std::shared_ptr<types::TianmuDataType>> record;
+  std::vector<std::function<void(size_t)>> values_fetchers;
+  std::vector<std::unique_ptr<DataPackLock>> dp_locks;
+  std::vector<TianmuAttr *> attrs;
+};
+
 }  // namespace core
 }  // namespace Tianmu
 

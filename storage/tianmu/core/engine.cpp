@@ -26,7 +26,7 @@
 #include "common/data_format.h"
 #include "common/exception.h"
 #include "common/mysql_gate.h"
-#include "core/delta_store.h"
+#include "core/delta_table.h"
 #include "core/table_share.h"
 #include "core/task_executor.h"
 #include "core/temp_table.h"
@@ -593,6 +593,106 @@ void Engine::EncodeInsertRecord(const std::string &table_path, int table_id, Fie
   size = ptr - buf.get();
 }
 
+void Engine::DecodeInsertRecord(const char *ptr, size_t size, Field **fields) {
+  ptr += sizeof(RecordType);
+  ptr += sizeof(int32_t);
+  std::string path(ptr);
+  ptr += path.length() + 1;
+  size_t field_count = *(size_t *)ptr;
+  ptr += sizeof(size_t);
+  utils::BitSet null_mask(field_count, const_cast<char *>(ptr));
+  ptr += null_mask.data_size();
+  auto *field_head = (int64_t *)ptr;
+  ptr += sizeof(int64_t) * field_count;
+  for (uint i = 0; i < field_count; i++) {
+    auto field = fields[i];
+    if (null_mask[i]) {
+      field->set_null();
+      continue;
+    }
+    auto length = field_head[i];
+    switch (field->type()) {
+      case MYSQL_TYPE_TINY:
+      case MYSQL_TYPE_SHORT:
+      case MYSQL_TYPE_LONG:
+      case MYSQL_TYPE_INT24:
+      case MYSQL_TYPE_LONGLONG: {
+        int64_t v = *(int64_t *)ptr;
+        ptr += sizeof(int64_t);
+        field->store(v, true);
+        break;
+      }
+      case MYSQL_TYPE_FLOAT:
+      case MYSQL_TYPE_DOUBLE:
+      case MYSQL_TYPE_DECIMAL: {
+        double v = *(double *)ptr;
+        ptr += sizeof(double);
+        field->store(v);
+        break;
+      }
+      case MYSQL_TYPE_NEWDECIMAL: {
+        my_decimal md;
+        double v = *(double *)ptr;
+        ptr += sizeof(double);
+        double2decimal(v, &md);
+        auto dec_field = static_cast<Field_new_decimal *>(field);
+        decimal_round(&md, &md, dec_field->decimals(), HALF_UP);
+        decimal2bin(&md, (uchar *)field->ptr, dec_field->precision, dec_field->decimals());
+      }
+      case MYSQL_TYPE_TIME:
+      case MYSQL_TYPE_TIME2: {
+        uint64_t v = *(uint64_t *)ptr;
+        ptr += sizeof(uint64_t);
+        types::DT dt;
+        dt.val = v;
+        MYSQL_TIME my_time = {};
+        dt.Store(&my_time, MYSQL_TIMESTAMP_TIME);
+        field->store_time(&my_time);
+      } break;
+      case MYSQL_TYPE_DATE:
+      case MYSQL_TYPE_YEAR:
+      case MYSQL_TYPE_NEWDATE: {
+        uint64_t v = *(uint64_t *)ptr;
+        ptr += sizeof(uint64_t);
+        types::DT dt;
+        dt.val = v;
+        MYSQL_TIME my_time = {};
+        dt.Store(&my_time, MYSQL_TIMESTAMP_DATE);
+        field->store_time(&my_time);
+      } break;
+      case MYSQL_TYPE_TIMESTAMP:
+      case MYSQL_TYPE_TIMESTAMP2:
+      case MYSQL_TYPE_DATETIME:
+      case MYSQL_TYPE_DATETIME2: {
+        uint64_t v = *(uint64_t *)ptr;
+        ptr += sizeof(uint64_t);
+        types::DT dt;
+        dt.val = v;
+        MYSQL_TIME my_time = {};
+        dt.Store(&my_time, MYSQL_TIMESTAMP_DATETIME);
+        field->store_time(&my_time);
+      } break;
+      case MYSQL_TYPE_VARCHAR:
+      case MYSQL_TYPE_VAR_STRING:
+      case MYSQL_TYPE_STRING:
+      case MYSQL_TYPE_BLOB:
+      case MYSQL_TYPE_TINY_BLOB:
+      case MYSQL_TYPE_MEDIUM_BLOB:
+      case MYSQL_TYPE_LONG_BLOB: {
+        uint32_t str_len = *(uint32_t *)ptr;
+        ptr += sizeof(uint32_t);
+        auto str = std::make_unique<char[]>(str_len);
+        std::memcpy(str.get(), ptr, str_len);
+        ptr += str_len;
+        field->store(str.get(), str_len, field->charset());
+      } break;
+      default:
+        throw common::Exception("Unsupported field type for INSERT " + std::to_string(field->type()));
+    }
+    ptr += length;
+  }
+}
+
 void Engine::EncodeUpdateRecord(const std::string &table_path, int table_id,
                                 std::unordered_map<uint, Field *> update_fields, size_t field_count, size_t blobs,
                                 std::unique_ptr<char[]> &buf, uint32_t &buf_size) {
@@ -1048,12 +1148,10 @@ void Engine::TruncateTable(const std::string &table_path, [[maybe_unused]] THD *
   TIANMU_LOG(LogCtl_Level::INFO, "Truncated table %s, ID = %u", table_path.c_str(), id);
 }
 
-void Engine::GetTableIterator(const std::string &table_path, TianmuTable::Iterator &iter_begin,
-                              TianmuTable::Iterator &iter_end, std::shared_ptr<TianmuTable> &table,
-                              const std::vector<bool> &attrs, THD *thd) {
+void Engine::GetTableIterator(const std::string &table_path, CombinedIterator &iterator,
+                              std::shared_ptr<TianmuTable> &table, const std::vector<bool> &attrs, THD *thd) {
   table = GetTx(thd)->GetTableByPath(table_path);
-  iter_begin = table->Begin(attrs);
-  iter_end = table->End();
+  iterator = CombinedIterator::Create(table.get(), attrs);
 }
 
 std::shared_ptr<TianmuTable> Engine::GetTableRD(const std::string &table_path) {
