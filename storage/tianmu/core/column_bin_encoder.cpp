@@ -566,10 +566,10 @@ ColumnBinEncoder::EncoderDate::EncoderDate(vcolumn::VirtualColumn *vc, bool deco
 }
 
 bool ColumnBinEncoder::EncoderDate::SecondColumn(vcolumn::VirtualColumn *vc) {
-  // Possible conversions: support datetime/timestamp.
+  // Possible conversions: support datetime/timestamp/date.
   if (!vc->Type().IsDateTime()) {
     tianmu_control_.lock(vc->ConnInfo()->GetThreadID())
-        << "Nontrivial comparison: date with non-date." << system::unlock;
+        << "Nontrivial comparison: date with non-datetime." << system::unlock;
     return false;
   }
   int64_t new_min_val = types::DT::DateSortEncoding(vc->RoughMin());
